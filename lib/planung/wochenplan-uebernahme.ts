@@ -76,6 +76,16 @@ export function uidFuerBlock(person: string, blockId: string): string {
   return `makeos-wochenplan-${person.replace(/[^a-z0-9-]/g, '')}-${id}`;
 }
 
+/** Texte der Übernahme-Karte in Planen — Einzahl/Mehrzahl richtig (Schlussprüfung 29.09.: „1 künftige Blöcke liegen“). */
+export function uebernahmeTexte(offen: number): { karte: string; frage: string } {
+  const bloecke = offen === 1 ? '1 künftiger Block liegt' : `${offen} künftige Blöcke liegen`;
+  const sie = offen === 1 ? 'ihn' : 'sie';
+  return {
+    karte: `${bloecke} noch im alten Wochenplan. Übernehmen macht ${sie} zu ${offen === 1 ? 'einem Termin' : 'Terminen'} in iCloud (Kopien, die schon in Apple stehen, werden zum Block statt doppelt). Vorher wird eine Archivkopie abgelegt; vergangene Blöcke bleiben als Archiv lesbar.`,
+    frage: `${offen === 1 ? '1 Block' : `${offen} Blöcke`} aus dem alten Wochenplan jetzt als ${offen === 1 ? 'Termin' : 'Termine'} in iCloud anlegen? Vorher wird eine Archivkopie abgelegt; vergangene Blöcke bleiben als Archiv.`,
+  };
+}
+
 export interface UebernahmeEintrag { person: string; block: PlanBlock; uid: string; weg: 'apple' | 'neu' }
 export interface UebernahmePlan { person: string; offen: UebernahmeEintrag[]; vergangen: number; schon: number; uebersprungen: number }
 

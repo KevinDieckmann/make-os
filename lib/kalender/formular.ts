@@ -73,6 +73,16 @@ export function vonAendern(f: Pick<Formular, 'von' | 'bis'>, von: string, standa
   return { von, bis: plusMin(von, dauer > 0 ? dauer : standardDauer) };
 }
 
+/**
+ * Fehlertext nach einem gescheiterten Speichern (Schlussprüfung 29.09.): bei 409, verlorener Verbindung (0) und 5xx
+ * der Hinweis, dass der Entwurf gemerkt bleibt — genau einmal (der Text für „Keine Verbindung“ trägt ihn schon).
+ */
+export function speicherFehlerText(fehler: string | undefined, status: number): string {
+  const text = fehler ?? 'Nicht angelegt.';
+  const merken = status === 409 || status === 0 || status >= 500;
+  return merken && !/Entwurf bleibt gemerkt/i.test(text) ? `${text} Dein Entwurf bleibt gemerkt.` : text;
+}
+
 /** Startzustand aus einer Vorgabe (Klick, Aufziehen, Erstellen-Menü). */
 export function formularStart(v: Vorgabe, standardDauer: number, fokusDauer = 90): Formular {
   const art = v.art ?? 'termin';

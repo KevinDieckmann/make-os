@@ -252,6 +252,9 @@ export const abweichungText = (min: number): string => (Math.abs(min) < 3 ? '±0
 export const BLOCK_NAME: Record<string, string> = { reha: 'Reha', routine: 'Routine', pause: 'Pause', aufgabe: 'Aufgabe', block: 'Blockzeit' };
 
 /** Anteil in Prozent (0 bei leerem Ganzen). */
+/** „1 Termin“ / „3 Termine“ (Schlussprüfung 29.09.). */
+export const termineText = (n: number): string => `${n} ${n === 1 ? 'Termin' : 'Termine'}`;
+
 export const anteil = (teil: number, ganz: number): number => (ganz > 0 ? Math.round((teil / ganz) * 100) : 0);
 
 /**
@@ -263,7 +266,7 @@ export function auswertungMarkdown(a: Auswertung, name: { einheit?: (k: string) 
   const z = (label: string, wert: number, schnitt: number) => `- ${label}: ${stundenAus(wert)} (Ø 4 Wochen ${stundenAus(schnitt)}, ${abweichungText(wert - schnitt)})`;
   const zeilen = [
     `## Zeit ${w.label}`,
-    z('Meetings', m.meetings, a.schnitt.meetings) + ` · ${w.anzahlMeetings} Termine`,
+    z('Meetings', m.meetings, a.schnitt.meetings) + ` · ${termineText(w.anzahlMeetings)}`,
     z('Fokus', m.fokus, a.schnitt.fokus),
     ...(m.bloecke || a.schnitt.bloecke ? [z('Blöcke (Planen)', m.bloecke, a.schnitt.bloecke ?? 0)] : []),
     z('Abwesend', m.abwesend, a.schnitt.abwesend),
@@ -273,7 +276,7 @@ export function auswertungMarkdown(a: Auswertung, name: { einheit?: (k: string) 
   if (w.jeBlock?.length) zeilen.push('', '### Blöcke je Art', ...w.jeBlock.map(x => `- ${BLOCK_NAME[x.art] ?? x.art}: ${stundenAus(x.minuten)}`));
   if (w.jeEinheit.length) zeilen.push('', '### Je Firma', ...w.jeEinheit.map(x => `- ${name.einheit?.(x.einheit) ?? x.einheit}: ${stundenAus(x.minuten)}`));
   if (w.jeMandat.length) zeilen.push('', '### Je Mandat', ...w.jeMandat.map(x => `- ${name.mandat?.(x.mandatId) ?? x.mandatId}: ${stundenAus(x.minuten)}`));
-  if (w.kontakte.length) zeilen.push('', '### Meistbesuchte Kontakte', ...w.kontakte.slice(0, 5).map(x => `- ${name.kontakt?.(x.id) ?? x.id}: ${x.termine} Termine, ${stundenAus(x.minuten)}`));
+  if (w.kontakte.length) zeilen.push('', '### Meistbesuchte Kontakte', ...w.kontakte.slice(0, 5).map(x => `- ${name.kontakt?.(x.id) ?? x.id}: ${termineText(x.termine)}, ${stundenAus(x.minuten)}`));
   return zeilen.join('\n');
 }
 

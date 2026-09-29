@@ -125,16 +125,19 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
   // Abgesagt — oder abgelehnt/abgelaufen, während die Freigabe lief (F1 #2): der Termin blieb stehen, entfernt wird von Hand.
   const abgesagtMitTermin = (stand?.buchungen ?? []).filter(x => (x.status === 'abgesagt' || x.status === 'abgelehnt' || x.status === 'abgelaufen') && x.terminUid);
   const seiteVon = (id: string) => stand?.seiten.find(s => s.id === id);
+  // Schlussprüfung (29.09.): Das Fenster zeigt `meldung` als Fehler — eine alte Meldung der Leiste („Termin im Kalender
+  // entfernt.“) stand sonst beim Öffnen einer neuen Seite rot darin. Beim Öffnen leeren.
+  const oeffnen = (s: Partial<SeiteSicht>) => { setMeldung(''); setBearbeiten(s); };
 
   return (
     <Karte i={5} akzent={anfragen.length ? LEUCHT.achtung : undefined} id="buchungsseiten">
-      <Ueberschrift rechts={<Knopf leise onClick={() => setBearbeiten({ titel: '', dauerMin: 30, aktiv: true })}>+ Seite</Knopf>}>Buchungsseiten</Ueberschrift>
+      <Ueberschrift rechts={<Knopf leise onClick={() => oeffnen({ titel: '', dauerMin: 30, aktiv: true })}>+ Seite</Knopf>}>Buchungsseiten</Ueberschrift>
       <div style={{ display: 'grid', gap: 6 }}>
         {(stand?.seiten ?? []).map(s => (
           <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.aktiv ? LEUCHT.gut : C.inkLeise, flex: '0 0 auto' }} />
-            <button onClick={() => setBearbeiten(s)} style={{ background: 'none', border: 'none', color: s.aktiv ? C.ink : C.inkLeise, cursor: 'pointer', padding: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text, fontSize: 12.5, flex: 1, minWidth: 0 }}>{s.titel}</button>
-            {(!s.verantwortlich || s.verantwortlich.trim().length < 5) && <button onClick={() => setBearbeiten(s)} title="Ohne Verantwortlichen zeigt die Seite keine Termine (Datenschutz-Hinweis)" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, fontSize: 11, cursor: 'pointer', fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>Verantwortlich fehlt</button>}
+            <button onClick={() => oeffnen(s)} style={{ background: 'none', border: 'none', color: s.aktiv ? C.ink : C.inkLeise, cursor: 'pointer', padding: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text, fontSize: 12.5, flex: 1, minWidth: 0 }}>{s.titel}</button>
+            {(!s.verantwortlich || s.verantwortlich.trim().length < 5) && <button onClick={() => oeffnen(s)} title="Ohne Verantwortlichen zeigt die Seite keine Termine (Datenschutz-Hinweis)" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, fontSize: 11, cursor: 'pointer', fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>Verantwortlich fehlt</button>}
             <button onClick={() => void kopieren(s)} disabled={!s.aktiv} style={{ background: 'none', border: 'none', color: s.aktiv ? LEUCHT.puls : C.inkLeise, cursor: s.aktiv ? 'pointer' : 'default', fontSize: 11.5, fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>{kopiert === s.id ? 'kopiert ✓' : 'Link kopieren'}</button>
           </div>
         ))}

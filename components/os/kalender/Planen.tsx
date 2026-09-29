@@ -23,7 +23,7 @@ import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { fokusFuerSpace } from '@/lib/make-one/space-regeln';
 import { useSpace } from '@/hooks/useSpace';
 import { blockAnfrage, wochenStunden, planArtVon } from '@/lib/planung/bloecke';
-import type { ArchivBlock } from '@/lib/planung/wochenplan-uebernahme';
+import { uebernahmeTexte, type ArchivBlock } from '@/lib/planung/wochenplan-uebernahme';
 import { wandAus } from '@/lib/kalender/zeit';
 import { ZieleMeilensteine } from '../planung/ZieleMeilensteine';
 import { WEG } from '@/lib/wege';
@@ -176,7 +176,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
 
   async function uebernehmen() {
     if (!uebernahme?.offen) return;
-    if (!window.confirm(`${uebernahme.offen} Blöcke aus dem alten Wochenplan jetzt als Termine in iCloud anlegen? Vorher wird eine Archivkopie abgelegt; vergangene Blöcke bleiben als Archiv.`)) return;
+    if (!window.confirm(uebernahmeTexte(uebernahme.offen).frage)) return;
     setUebernahmeLaeuft(true);
     const r = await fetch('/api/planung/uebernahme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'ausfuehren' }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setUebernahmeLaeuft(false);
@@ -230,7 +230,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
         <Karte i={1} akzent={LEUCHT.achtung}>
           <Ueberschrift farbe={LEUCHT.achtung}>Alter Wochenplan</Ueberschrift>
           <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>
-            {uebernahme.offen} künftige Blöcke liegen noch im alten Wochenplan. Übernehmen macht sie zu Terminen in iCloud (Kopien, die schon in Apple stehen, werden zum Block statt doppelt). Vorher wird eine Archivkopie abgelegt; vergangene Blöcke bleiben als Archiv lesbar.
+            {uebernahmeTexte(uebernahme.offen).karte}
           </div>
           <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
             {uebernahme.personen.filter(p => p.zukuenftig).map(p => (

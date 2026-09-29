@@ -22,7 +22,7 @@ const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ?
 
 /** Anzeige-Namen für die Beispiel-Kennungen der Befunde (Kennung → Name). Nur, was auflösbar ist. */
 export function beispielNamen(
-  b: Pick<VerbindungsBestaende, 'kontakte' | 'crm'> & Partial<Pick<VerbindungsBestaende, 'aufgaben' | 'dateien'>>,
+  b: Pick<VerbindungsBestaende, 'kontakte' | 'crm'> & Partial<Pick<VerbindungsBestaende, 'aufgaben' | 'dateien' | 'buchungen'>>,
   befunde: readonly Pick<VerbindungsBefund, 'beispiele'>[],
   termine: readonly NamenTermin[] = [],
 ): Record<string, string> {
@@ -31,7 +31,11 @@ export function beispielNamen(
   if (!gesucht.size) return raus;
   const setze = (id: string | undefined, name: string | null) => { if (id && name && gesucht.has(id) && !raus[id]) raus[id] = name; };
 
-  for (const k of b.kontakte as readonly Kontakt[]) setze(k.id, text(anzeigename(k)));
+  const kontaktName = new Map<string, string>();
+  for (const k of b.kontakte as readonly Kontakt[]) { const n = text(anzeigename(k)); if (n) kontaktName.set(k.id, n); setze(k.id, n); }
+  // Buchungen (Schlussprüfung 29.09.): „Buchung Anna Beispiel · 1.10.“ — der Name nur über den Kontakt im CRM (die
+  // Prüfung lädt die Buchungen ohne Namen); ohne Kontakt bleibt die Kennung.
+  for (const x of b.buchungen?.buchungen ?? []) { const n = x.kontaktId ? kontaktName.get(x.kontaktId) : undefined; if (n) setze(x.id, text(`Buchung ${n}${tagKurz(x.start) ? ` · ${tagKurz(x.start)}` : ''}`)); }
   // CRM-Listen: das erste sprechende Feld (Name, Titel, Nummer, Text) — gleiche Reihenfolge für jede Liste.
   for (const liste of Object.values(b.crm)) {
     if (!Array.isArray(liste)) continue;

@@ -99,7 +99,7 @@ describe('Vergleich zum 4-Wochen-Schnitt und Brain-Text', () => {
     expect(stundenAus(90)).toBe('1,5 h');
     const md = auswertungMarkdown(a, { mandat: () => 'X' });
     expect(md).toContain('## Zeit KW 40');
-    expect(md).toContain('- Meetings: 5 h (Ø 4 Wochen 1,5 h, +3,5 h) · 1 Termine');
+    expect(md).toContain('- Meetings: 5 h (Ø 4 Wochen 1,5 h, +3,5 h) · 1 Termin\n');
     expect(md).not.toContain('10:00'); // keine Termin-Titel/Uhrzeiten im Brain
   });
 });

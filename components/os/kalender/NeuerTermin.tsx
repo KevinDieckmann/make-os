@@ -34,7 +34,7 @@ import { ART_INFO, TERMIN_ARTEN, ARBEITSORTE, SICHTBARKEIT_LABEL, ERINNERUNG_VOR
 import { ZONEN, gmtText, ausWandzeitIn } from '@/lib/kalender/zeitzone';
 import { wiederholungVorlagen, wiederholungBeschreiben, wochentagVon, wochentagNr, WOCHENTAGE, TAG_KURZ, type Wiederholung, type WiederholungFreq } from '@/lib/kalender/wiederholung';
 import { neueTerminUid } from '@/lib/kalender/eingabe';
-import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, vonAendern, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
+import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, vonAendern, speicherFehlerText, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
 import { FarbPunkte, WER_FARBE, WER_LABEL, type Wer } from './teile';
 import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
 
@@ -102,7 +102,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
     // Der Server verlangt die Bestätigung (z. B. Gäste kamen anders an) → dieselbe Rückfrage mit SEINEN Adressen.
     if (r.status === 409 && r.d.einladung && Array.isArray(r.d.adressen)) { setFrage({ adressen: r.d.adressen, x }); return; }
     setFrage(null);
-    setFehler(`${r.d.fehler ?? 'Nicht angelegt.'}${r.status === 409 || r.status === 0 || r.status >= 500 ? ' Dein Entwurf bleibt gemerkt.' : ''}`);
+    setFehler(speicherFehlerText(r.d.fehler, r.status));
   };
 
   // ── Teile ──
