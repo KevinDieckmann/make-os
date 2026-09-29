@@ -4,6 +4,243 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Absichtsprotokoll, zufällige Kontakt-Kennungen, Dateiablage v2 (29.09.2026, Paket D-C, nur lokal — Commits 21a6cf5 · 7d40037 · 94d2b5a)
+
+Kevin: Kontakt-Kennungen auf zufällige umstellen (Vorschau, Rückweg, alte Links leiten weiter). Alles mit Tests, nichts am Server.
+
+- **Nichts bleibt halb:** Löschen (Art. 17), Dubletten zusammenführen, Import, „Angebot stellen“ und das Löschen eines Deals mit
+  Leads schreiben mehrere Bestände nacheinander. Jetzt hält MAKE OS vorher fest, was es vorhat, und macht einen abgebrochenen
+  Vorgang (Absturz, Deploy) beim Start, im Takt und nachts von selbst fertig. Klappt das dreimal nicht: Head of IT rot
+  („Abgebrochene Vorgänge“, NOTFALL.md sagt, was zu tun ist).
+- **Löschen (Art. 17) ehrlicher:** scheitert ein einzelner Speicher, laufen die anderen weiter; das Löschprotokoll steht dann auf
+  „unvollständig“ (mit dem Namen des Schritts) und wird automatisch vervollständigt — die Oberfläche sagt es.
+- **Neue Kontakte bekommen eine zufällige Kennung** (keine E-Mail mehr in Adressen, Protokollen, Import-Läufen). Der Import
+  erkennt Personen weiter über E-Mail bzw. Name+Firma.
+- **Kennungs-Umzug für den Bestand** (Stammdaten › Datenqualität › „Kontakt-Kennungen“, nur Kevin): Vorschau zeigt, wie viele
+  und wo überall; „Umstellen …“ zieht alle Verweise mit (CRM, Ablage, Aufgaben, Heads, ZOE, Protokolle, Läufe, Suche), vorher
+  Archivkopie. Alte Links (Notizen im Vault, Lesezeichen) leiten weiter. Rückweg möglich, solange keiner der Kontakte seitdem
+  geändert wurde. **Läuft nie von selbst.** Getestet mit 500 erfundenen Kontakten (~0,6 s).
+- **Dateien (Verträge, Angebote):** neue Dateien mit Schlüssel-Kennung und Bindung an Haushalt/Datei verschlüsselt; beim
+  Schlüsselwechsel im Betrieb bleibt jede Datei lesbar. ZOE-Vorschläge und Dateien tragen Kennungen ohne Zeitstempel.
+
+**Was Kevin am Server tun muss (erst auf dein Wort, in dieser Reihenfolge):**
+1. **VOR dem Upload:** `ssh make@2.28.108.162 'sudo install -d -m 700 -o make -g make /srv/make-os/grabsteine'` — das Volume steht
+   jetzt in `compose.yml`; ohne den Ordner legt Docker ihn als root an und Grabsteine (Art. 17) scheitern (Warnung beim Löschen).
+   Eine `MAKE_OS_GRABSTEINE_DIR`-Zeile in der `.env` ist dann unnötig (compose setzt sie).
+2. Upload wie immer (push auf `main`).
+3. **Nach dem Upload, wenn niemand im CRM arbeitet:** Stammdaten › Datenqualität › Kontakt-Kennungen → Vorschau ansehen →
+   „Umstellen …“. Danach andere offene Fenster einmal neu laden. (DEPLOY.md › Kennungs-Umzug)
+
+**Prüfliste (vor dem Hochladen, lokal mit Wegwerfdaten):**
+- Kontakt anlegen (Kartei, Einlass) → Kennung `c-…` mit langer Zufallszeichenkette, keine E-Mail darin.
+- Art. 17 an einem Testkontakt → Hinweis ohne Fehler, Löschprotokoll unter Stammdaten › Datenschutz mit Status.
+- Karte „Kontakt-Kennungen“ → Vorschau zählt; Umstellen → alter Link `…?s=kontakte&a=akte&k=<alte Kennung>` öffnet die Akte.
+- Head of IT: Befund „Abgebrochene Vorgänge: keine“.
+
+## Aufgaben — Oberfläche, ZOE-Freigabe, Follow-up = Aufgabe, „Neu anfangen“ (29.09.2026, Paket T2, nur lokal — Commits 3ccaef9 · bd5bb36 · 5cbec77 · e138ef8 · 56ef653 · 8010907 · 9223eb5 · 369f171 · c5d94ad)
+
+- **„Neu anfangen …“** (Aufgaben-Überblick und Ziele & Planung): Vorschau („n Ziele, n Meilensteine, n Projekte, n Aufgaben“,
+  ruhende Serien, was bleibt), Bestätigung durch Tippen von „NEU ANFANGEN“. Alles wird **archiviert, nicht gelöscht** (vorher
+  Sicherheitskopie), die Spaces sind danach leer, die Startvorlagen stehen bereit. Routinen, Vorlagen, CRM, Papierkorb und offene
+  Fristen-Aufgaben (Steuern, Belege, Löschfristen, Events) bleiben. Unter Aufgaben › Archiv › „Neu angefangen“ ganz oder einzeln
+  wiederherstellen (Serien laufen dann weiter).
+- **Oberfläche für Kevins Entscheidungen:** 🔒 „nur ich“ (Detail + Schnell-Anlegen), Zuständig + Beteiligte (kein „Beide“ mehr),
+  Filter Alle · Meine · Beteiligt, „Abgebrochen“ grau/durchgestrichen (eigene Board-Spalte), Serien: ab Fälligkeit/ab Erledigung,
+  „im Wechsel: Kevin → Malin“, Werktage ohne Feiertage NRW, „Diese überspringen“ und „Serie beenden“ getrennt; Löschen einer
+  laufenden Serien-Aufgabe fragt.
+- **Weniger Fehlklicks:** Erledigen mit offenen Unteraufgaben fragt; Deadline verschieben fragt „Unteraufgaben mitverschieben?“;
+  nach Löschen/Erledigen/Status/Verschieben 10 s „Rückgängig“; Datumsfelder speichern beim Verlassen; Schnell-Anlegen zeigt vor
+  dem Speichern, was es erkannt hat („Fr 02.10. · kritisch · @Malin“), „so schnell wie möglich“ ist kein Sonntag mehr, „31.02.“ kein
+  Datum. Suchfeld im Aufgabenraum; Suche überall mit Umlauten („mueller“ = „Müller“). Board/Liste per Tastatur und Screenreader
+  bedienbar, „!!/!“ und „! 02.10.“ zusätzlich zur Farbe. Tote Links: „gibt es nicht mehr / im Papierkorb / archiviert“ (auch Glocke).
+- **ZOE-Freigabe:** „alt → neu“ je Feld mit Häkchen; hat jemand Status/Deadline seit dem Vorschlag geändert, sagt ZOE es statt zu
+  überschreiben; „Alle freigeben“ nur für risikoarme Vorschläge (Notiz/Unteraufgaben); „Charge rückgängig“ je ZOE-Lauf bzw.
+  Sammelfreigabe; Deadlines nur echte Tage ab heute.
+- **Follow-up = Aufgabe:** „Aufgabe anlegen“ am Kontakt legt eine Aufgabe an (auch in Aufgaben/Glocke); verknüpfte Follow-ups und
+  Aufgaben werden gemeinsam erledigt; Follow-up › Fällig zeigt Aufgaben mit CRM-Bezug mit an.
+- **Export** aller Aufgaben als JSON (Aufgaben › Archiv), Vorlagen mit Werktagen und Fassung, Umzug nach Privat fragt nach dem
+  CRM-Bezug und nimmt die Dateien mit.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Aufgaben › „Neu anfangen …“: Zahlen plausibel, „NEU ANFANGEN“ tippen → Spaces leer; Archiv › „Neu angefangen“ → ein
+      Projekt zurückholen, dann „Alles wiederherstellen“ → alles wieder da (auch Ziele/Meilensteine unter Ziele & Planung).
+- [ ] Aufgabe öffnen: „nur ich“ an/aus, Beteiligte wählen, Status „Abgebrochen“, Serie „Diese überspringen“ und „Serie beenden“.
+- [ ] Hauptaufgabe mit offenen Unteraufgaben abhaken → Rückfrage; danach „Rückgängig“ im Hinweis unten.
+- [ ] Schnell-Anlegen „Rechnung fr @malin“ → Vorschau „Fr … · @Malin“.
+- [ ] ZOE-Vorschlag: Häkchen abwählen, Deadline vorher von Hand ändern → Hinweis „inzwischen geändert“; Aufgaben › ZOE → „Charge rückgängig“.
+- [ ] Kontakt öffnen → „Aufgabe anlegen“ → erscheint in Aufgaben und Follow-up › Fällig; abhaken → verknüpftes Follow-up erledigt.
+
+### Offen
+- Brain (`lib/brain*`) liest `tasks` roh und kennt die Archiv-Marke von „Neu anfangen“ noch nicht — archivierte Aufgaben stehen im
+  _App-Spiegel/Such-Index, bis das Brain-Paket `imArchiv` (lib/aufgaben/neustart.ts) berücksichtigt.
+- Follow-up erledigt über die Aufgabe schreibt (noch) keine Aktivität an die Person.
+
+## Datenschutz, Löschung, ZOE-Rechte (29.09.2026, Paket D-B, nur lokal — Commits d3b3551 · fe40d08 · 9ed9522 · c74ff91)
+
+Kevin: „Top 1 %“ und „ZOE schreibt nur über den Stapel“. Alles mit Tests, nichts auf dem Server.
+
+- **Eine gelöschte Person ist überall weg:** außer Kartei und CRM jetzt auch im alten Netzwerk, in Kunden/Stammdaten,
+  in den Postfach- und Kalender-Zwischenspeichern, in Gesprächen/Gedächtnis/Protokoll/Stapel von ZOE, in ZOEs
+  Entscheidungen und im Änderungsprotokoll (nur noch „[gelöscht]“), in Meldungen und in der Umzugs-Kopie im Archiv. Die
+  Suche wird sofort nachgezogen. Ein Register aller Speicher mit Wächter-Test verhindert, dass ein neuer Speicher vergessen wird.
+- **Auskunft (Art. 15)** zeigt zusätzlich ZOE-Protokoll, ZOE-Vorschläge, Änderungsprotokoll und je weiterem Speicher,
+  wie oft die Person vorkommt. Das Löschprotokoll nennt nie mehr die Kennung (die E-Mail steckt darin) — nur eine Protokoll-ID.
+- **Ein Restore holt Gelöschte nicht zurück:** „Grabsteine“ (nur Fingerabdrücke) liegen außerhalb des Datenordners und
+  werden nach jedem Zurückspielen angewendet (Takt, Einzel-Restore, neues `deploy/wiederherstellen.sh`), gehen mit in die
+  Nachtsicherung.
+- **Gesalzene Fingerabdrücke:** Sperrliste und Protokoll-Kennungen mit geheimem Pepper (vorher erkannte man Gelöschte mit
+  einer Mail-Liste wieder). Ohne Pepper läuft alles weiter wie bisher, der Head of IT zeigt gelb.
+- **Eingeschränkte Personen (Art. 18)** verschwinden an einer Stelle aus allem, was verarbeitet (Ansprache, Power Hour,
+  ZOE, Export); der Export nimmt sie nur mit dem Schalter „mit eingeschränkten Personen“ auf (für eine Auskunft).
+- **Löschfristen neu:** ZOE-Protokoll und entschiedene Vorschläge 90 Tage, ZOE-Gespräche 12 Monate, Gedächtnis 24 Monate,
+  Mail-Zwischenspeicher 30 Tage, Kalender 12 Monate, Umzugs-Kopien im Archiv 30 Tage, Grabsteine 13 Monate — alles unter
+  Stammdaten › Datenschutz einstellbar; das alte Netzwerk zählt in die Löschfrist-Aufgabe.
+- **ZOE schreibt nur über den Stapel:** Notiz am Kontakt, Deal anlegen, Übergabe, Kunde — und Aufgaben für die andere
+  Person — liegen erst im Stapel, ein Klick übernimmt. Solche Einträge tragen „von ZOE, freigegeben von …“. Nach einer Mail
+  im Gespräch startet ZOE keine Agenten mehr selbst; nach einem Blick ins CRM/Postfach geht keine Web-Recherche ohne Klick raus.
+  ZOEs Protokoll hält nur noch Kennungen und Feldnamen, keine Gesprächsnotizen.
+- **Brain:** Regeln wirken nur mit Freigabe einer bekannten Person; private Notizen sieht nur, wem sie gehören (auch Kevin
+  nicht Malins); Vault-Konflikte und gescheiterte Pushes erscheinen im Head of IT rot („letzter erfolgreicher Push“).
+
+**Was Kevin tun muss (erst auf dein Wort am Server):**
+1. **Pepper erzeugen und setzen:** im Terminal `openssl rand -hex 32` → in `/srv/make-os/app/.env` als `MAKE_OS_PEPPER=…`
+   (Vorlage `deploy/env.server.beispiel`), zusätzlich in beide Passwort-Manager + Papier. **Nie wechseln.** Lokal zum
+   Ausprobieren in `.env.local` ebenso (eigener Wert).
+2. **Grabstein-Ordner am Server:** `/srv/make-os/grabsteine` anlegen (Besitzer make), Volume in `compose.yml` einbinden und
+   `MAKE_OS_GRABSTEINE_DIR=/grabsteine` setzen (DEPLOY.md › Datenschutz: Pepper und Grabsteine).
+3. **Vault umziehen:** Schritt für Schritt nach `VAULT_UMZUG_ANLEITUNG.md` (vorher die offenen Änderungen festhalten,
+   dann `~/Desktop/MAKE` → `~/Vaults/MAKE`, Obsidian neu öffnen, Abgleich-Dienst laden). Claude fasst den Vault nicht an.
+4. Auftragsverarbeitungsvertrag mit dem KI-Anbieter ablegen (weiter offen).
+
+## Aufgaben — Modell und Server (29.09.2026, Paket T1, nur lokal — Commits b0a301e + Schritt 2)
+
+Kevins Entscheidungen vom 29.09. als Datenschicht; die Schalter in der Oberfläche baut Paket T2.
+
+- **„Nur ich“:** eine Aufgabe kann nur für die Person sichtbar sein, die sie angelegt hat — überall (Überblick, Suche,
+  Kalender, Glocke, ZOE, Brain, CRM-Akten, Heute/Flächen). Wer eine fremde „nur ich“-Aufgabe ändern will, findet sie nicht.
+- **Eine Verantwortliche + Beteiligte** statt „Beide“: bestehende „Beide“-Aufgaben gehören der Person, die sie angelegt hat,
+  die andere ist beteiligt (vorher Sicherheitskopie im Archiv). „Meine“ = verantwortlich; Beteiligte bekommen eine Meldung.
+- **„Abgebrochen“** als Status: zählt nicht als erledigt, gibt Wartende nicht frei, erzeugt keine nächste Serien-Aufgabe.
+- **Serien:** „ab Erledigung“, Wechsel Kevin/Malin, Werktage ohne Feiertage NRW, „nur diese löschen“ überspringt einen Termin
+  (kommt nicht wieder), Serie beenden wirkt; wieder geöffnet → keine zweite offene Aufgabe mehr.
+- **Sauberer gespeichert:** Datum wird geprüft (kein 31.02., Start nicht nach der Deadline), Zeitstempel setzt der Server,
+  Heads/Steuern/Belege/Löschfristen/Events erledigen Aufgaben mit Verlauf und Serie, Kommentare werden nur weich entfernt.
+- **Glocke ruhiger:** mehrere Zuweisungen auf einmal = eine Meldung; „wartet auf …“ statt „überfällig“, wenn eine Aufgabe
+  noch auf eine andere wartet. Die Aufgabenliste lädt schneller (ETag/304).
+
+## Datenschicht-Kern und Betrieb (29.09.2026, Paket D-A, nur lokal — Commits bea2739 · 1d4cd04 · 9081719 · e363279 · bec0500 · f1cff14)
+
+Kevin: „Wir wollen Top 1 % sein.“ Die Datenschicht und der Betrieb gegen die Prüfliste der 100 typischen Fehler
+(DATENARCHITEKTUR_FEHLER_PRUEFLISTE.md) nachgeschärft — alles mit Tests, nichts auf dem Server.
+
+- **Nichts halb oder verloren:** jede Datei atomar und dauerhaft (auch Tagessicherung, Archiv, Skripte); eine gescheiterte
+  Tagessicherung wird laut (HOI rot) und am nächsten Schreiben erneut versucht; kaputtes JSON wird nie überschrieben.
+- **Sperren:** Hot-Reload-fest, Verklemmungen (Wiedereintritt, falsche Reihenfolge crm → kontakte) werfen sofort,
+  30 s Zeitlimit mit Messwert. Lockfile `.data/.schreiber`: Skripte brechen ab, solange die App läuft. Docker wartet
+  beim Beenden 60 s (laufende Vorgänge werden fertig).
+- **Kennungen** `r-<uuid>` statt Millisekunden (keine doppelten Rechnungen mehr in derselben Millisekunde).
+- **„Heute“** ist überall der Berliner Tag (auch ohne TZ, auch in Tests); ZOE-Verlauf „Heute/Gestern“ stimmt nachts.
+- **Verschlüsselung v2:** Schlüssel-ID + AAD (vertauschte/zurückgespielte Dateien fallen auf), Klartext bei gesetztem
+  Schlüssel wird abgelehnt, Schlüssel als Datei statt in der `.env`, **Rotation ohne Unterbrechung**
+  (`deploy/datenschluessel-rotieren-live.sh`).
+- **Sicherung:** nachts mit kurzer Schreibpause, geprüft (jeder Bestand entschlüsselt/gezählt), age Pflicht, ohne
+  `backup/` (wuchs quadratisch), Generationen 14 täglich / 8 wöchentlich / 12 monatlich, Status + Dead-Man-Ping immer.
+- **Auf euren Mac:** der Mac holt jeden Morgen das neueste Archiv ab (nur lesend, Prüfsumme), HOI warnt ab 48 h.
+- **Wiederherstellen:** Probe-Restore startet die App im Probe-Ordner und misst die Zeit; Einzel-Restore holt einzelne
+  Datensätze aus einer Tageskopie (Vorschau, Stand-Prüfung, Protokoll). NOTFALL.md: eine Seite „Server weg → läuft wieder“.
+- **Head of IT:** Sicherung geprüft, Dead-Man-Ping, Mac-Abholung, nächtliche Durchsicht aller Bestände (Zeilen-Sprünge,
+  Verbindungsprüfung), Sperrwartezeit/Schreibdauer p50/p99, 409/413, Parse-Zeit, .tmp-Reste, Klartext, zweiter Schreiber.
+- **Doppelt ausgeschlossen:** Beleg-Übernahme mit `anfrageId` (Retry legt nichts doppelt an), Aufträge mit Pacht-Token
+  (ein zu langer Lauf wirkt nicht doppelt), Angebots-PDF außerhalb der CRM-Sperre (Nummer reserviert, keine Lücke).
+- **Schema:** jeder Bestand trägt `_v`, Migrationsrahmen in `lib/store/schema.ts`; Wächter, dass die CRM-Säuberer jedes Feld kennen.
+
+### Was Kevin auf dem Server tun muss (erst nach dem Hochladen, in dieser Reihenfolge)
+1. **age-Empfänger** (falls noch nicht): am Mac `brew install age` → `age-keygen -o ~/make-os-sicherung.txt`; die Datei in
+   beide Passwort-Manager + Papier; Zeile `age1…` nach `/srv/make-os/sicherung.pub`. Ohne sie bricht die Sicherung ab (HOI rot).
+2. **Healthcheck (Pflicht):** Prüfung bei Healthchecks.io anlegen (1 Tag, Kulanz 2 h), Adresse nach `/srv/make-os/.healthchecks-sicherung`.
+3. **Logrotate:** `sudo install -m 644 /srv/make-os/app/deploy/logrotate-make-os /etc/logrotate.d/make-os`.
+4. **Schlüssel als Datei** (DEPLOY.md › Verschlüsselung): Datei `/srv/make-os/schluessel/daten` (0400), Zeile aus der `.env`
+   nehmen, `docker compose up -d`. Danach ist die Rotation ohne Unterbrechung möglich.
+5. **Einmal verschlüsseln** (alte v1-Hüllen/Klartext-Reste → v2): `docker compose stop app arbeiter` →
+   `docker compose run --rm -T --no-deps app node scripts/daten-verschluesselung.mjs --verschluesseln </dev/null` → `docker compose up -d`.
+   Ohne diesen Schritt werden v1-Hüllen beim nächsten Schreiben v2 — Klartext-Reste lehnt die App ab (HOI zeigt sie).
+6. **Mac-Abholung** einrichten (unten), dann im HOI prüfen: „Sicherung am Mac“ grün.
+
+### Was Kevin am Mac tun muss
+1. `deploy/sicherung-abholen.sh --einrichten` → die angezeigte Zeile in `/home/make/.ssh/authorized_keys` auf dem Server.
+2. `cp deploy/de.makeos.sicherung.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/de.makeos.sicherung.plist`,
+   einmal von Hand `deploy/sicherung-abholen.sh` → Archiv liegt in `~/MAKE-OS-Sicherungen`.
+3. **Probe-Restore** (NOTFALL.md › Übung): `deploy/sicherung-probe.sh ~/MAKE-OS-Sicherungen/<archiv> <age-identität> --app`,
+   Ergebnis in DEPLOY.md eintragen.
+4. **NOTFALL.md** durchgehen: Datenschlüssel, alter Schlüssel (26.09.), age-Identität, Sicherungspasswort in beide
+   Passwort-Manager + Papier in den Tresor.
+
+### Prüfliste (vor dem Hochladen)
+- [ ] Lokal `./start.sh` → baut ohne Fehler (instrumentation), `/os/hoi` zeigt die neuen Befunde (Durchsicht grau bis 4 Uhr).
+- [ ] Beleg in ZOE lesen, „Als Rechnung“ zweimal schnell klicken → eine Rechnung.
+- [ ] Angebot stellen → PDF in der Ablage, Nummer lückenlos.
+- [ ] `node scripts/daten-verschluesselung.mjs --verschluesseln` bei laufender App → bricht mit Meldung ab.
+
+### Offen (nächste Pakete)
+- Dateiablage (`lib/dateien/ablage.ts`): liest `.bin` nur mit dem aktiven Schlüssel → auf `schluesselRing()` umstellen
+  (während einer Rotation sonst Sekunden ohne Zugriff auf ältere Dateien); `.bin` ohne AAD/Schlüssel-ID; `neueDateiId` noch mit Zeit.
+- Kennungen in `lib/zoe/stapel.ts`, `lib/zoe/protokoll.ts`, `components/os/aufgaben/hilfe.ts` (andere Pakete) und Kontakt-Kennungen `c-…`.
+- Grabsteine für Wiederherstellungen (#70), Absichtsprotokoll für Mehr-Bestand-Vorgänge (#17), SQLite-Auslöser beobachten.
+
+## Aufgaben & CRM: nichts geht beim Speichern verloren (29.09.2026, A1–A9, nur lokal — Commit d5a1502)
+
+Kevin: „Alle Infos müssen immer sauber gespeichert werden — extrem wichtig.“ Reparatur der Prüfbefunde, mit Tests.
+
+- **Nicht gespeichert = sichtbar und nicht weg:** Aufgaben-Änderungen bleiben ausstehend, bis der Server sie bestätigt. Netz weg, Neustart beim Hochladen (502), Sitzung abgelaufen → unten rechts „Nicht gespeichert — wird erneut versucht (in 8 s)“ + „Jetzt“; der Abgleich alle 45 s überschreibt nichts mehr (eigene Änderungen kommen wieder obendrauf). Zu groß/ungültig → die Zeile bleibt mit Grund stehen („Erneut versuchen“/„Verwerfen“), der Rest wird gespeichert.
+- **Konflikt zu zweit:** nur die betroffene Aufgabe zeigt den Stand der anderen Person, die eigene bleibt als „Deine Fassung“ („übernehmen“/„kopieren“) — überall (Aufgaben, CRM-Kachel, Flächen, Heute). Angebots-Editor genauso, dazu erneuter Versuch per Timer.
+- **Tab zu / Seite weg:** sofort speichern (keepalive) und Browser-Warnung, solange etwas offen ist; offene Aufgaben-Änderungen überleben Neuladen im selben Tab.
+- **Alte Tabs nach dem Hochladen:** jeder Bau hat eine Kennung; ein alter Tab bekommt beim Speichern „MAKE OS wurde aktualisiert — bitte neu laden“ statt mit altem Code Einträge zu ersetzen (Aufgaben, Kartei, CRM, Angebote, Gesellschaften, Dateien). Nach „Neu laden“ gehen die gemerkten Aufgaben-Änderungen erneut raus (mit Konfliktprüfung).
+- **Notizen + Projektbeschreibung** speichern von selbst (Pause, Feld verlassen, Seite verlassen); Entwurf im Tab gemerkt, bis der Server bestätigt; zu lang → rote Meldung, nichts gekürzt. Projekttitel über 120 Zeichen → Meldung statt still gekürzt.
+- **Papierkorb** (Aufgaben › Archiv › Papierkorb): Projekt löschen nimmt Aufgaben, Notiz, Felder, Listen, Dateien mit in den Papierkorb; Aufgabe samt Unteraufgaben. 30 Tage „Wiederherstellen“, danach räumt der Morgenlauf auf; „Endgültig löschen“ getrennt (dann auch die Dateien). Die Rückfrage nennt, was mitgeht.
+- **Eigene Felder:** Auswahl-Wert umbenennen → alle Aufgaben ziehen mit; entfernte Werte bleiben an den Aufgaben stehen; „1.500“ im Betragsfeld = 1.500 € (vorher 1,50 €).
+- **Übernahme beim ersten Online-Lauf:** vor dem ersten Schreiben liegt einmal eine Kopie `archiv/tasks-vor-umbau-<zeit>.json` (verschlüsselt).
+- **Fokus-Zähler** läuft jetzt auch nach Gerätewechsel weiter (Start liegt auf dem Server); Beenden löscht ihn erst, wenn die Zeit gespeichert ist.
+- Eingang aus dem iCloud-Ordner: nur im Haushalt, über den normalen Schreibweg (Listen/Status/Gruppen/Vorlagen bleiben), abgehakt erst nach dem Speichern. Dateiablage schreibt mit fsync; Schlüssel-Rotation prüft auch Archiv und Dateien auf Klartext.
+- Tests: `tests/aufgaben-speichern-sicher.test.ts`, `aufgaben-abgleich`, `aufgaben-papierkorb`, `aufgaben-felder-werte`, `bau-kennung`, `fokus-laufend`.
+
+### Offene Punkte
+- `lib/brain*` liest den Aufgaben-Bestand noch roh (Papierkorb dort ausblenden — Paket Brain).
+- Nach dem Ausrollen: offene alte Tabs zeigen einmal „bitte neu laden“ — das ist gewollt.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Aufgabe ändern, WLAN aus → unten rechts „Nicht gespeichert — wird erneut versucht“; WLAN an → Hinweis verschwindet, Änderung ist da (zweites Gerät neu laden).
+- [ ] Zwei Fenster, dieselbe Aufgabe unterschiedlich ändern → im zweiten „wurde inzwischen geändert“ + „Deine Fassung übernehmen“ → danach steht deine Fassung.
+- [ ] Notiz tippen, sofort Tab schließen → Browser warnt; nach erneutem Öffnen ist der Text gespeichert.
+- [ ] Notiz über 50.000 Zeichen einfügen → rote Meldung „NICHT gespeichert“, Text bleibt.
+- [ ] Projekt löschen → Rückfrage nennt Aufgaben/Notiz/Dateien → Aufgaben › Archiv › Papierkorb → Wiederherstellen → Projekt samt Aufgaben, Notiz, Feldern wieder da.
+- [ ] Papierkorb → „Endgültig löschen“ → Dateien des Projekts sind weg.
+- [ ] Eigenes Auswahl-Feld „Web“ → „Online“ umbenennen → Aufgaben zeigen „Online“.
+- [ ] Nach dem Neustart des Dev-Servers in einem alten Tab eine Aufgabe ändern → Banner „MAKE OS wurde aktualisiert — bitte neu laden“ → Neu laden → Änderung ist gespeichert.
+- [ ] Fokus am Mac starten, am Handy öffnen → Zähler läuft dort mit.
+
+## Brain: alles sauber gespeichert — Freigaben dauerhaft, App → Brain, eine Suche (29.09.2026, S2, nur lokal)
+
+Kevin: „Alle Infos müssen immer sauber gespeichert werden — online in unserem Brain. Extrem wichtig.“ Dazu Kevins Entscheidung 29.09. (BRAIN_SERVER_PLAN.md): Server-Vault = Wahrheit.
+
+- **Freigaben dauerhaft:** Jede Entscheidung im Stapel (freigegeben · abgelehnt · fehlgeschlagen · zurück an ZOE) steht jetzt mit **wer**, Art, Bezug und Grund dauerhaft in einer Monatsdatei (`zoe-entscheidungen`), dazu jede ZOE-Ausführung (nur Feldnamen). Die Arbeitslisten dürfen erst danach kürzen — nichts verschwindet mehr still. Im Stapel steht bei Entschiedenem, wer es war.
+- **Nichts doppelt:** Doppelklick, zwei Fenster oder „Alle freigeben“ gleichzeitig legen eine Aktivität/ein Follow-up/einen Beitrag nur einmal an („Wird gerade übernommen“ für den zweiten). Zu langer Ablehnungsgrund (> 400 Zeichen) wird abgelehnt statt abgeschnitten.
+- **App → Brain:** Nachts liegt in der Brain-Inbox je Tag ein **„App-Tagesbericht“** (erledigte Aufgaben je Projekt, Projekt-Notizen, Angebote, Deal-Stufen, Mandate, ZOE-Entscheidungen, Zeit je Mandat) — annehmen oder ablehnen wie jeden Vorschlag. Privates standardmäßig nur als Zahl, eingeschränkte Kontakte (Art. 18) und „nur ich“ nie.
+- **`_App/`-Spiegel im Server-Vault** (Projekte, Mandate, Angebote, Entscheidungen, Wochenrückblick) — gebaut, **aus**, bis Kevin ihn einschaltet (`MAKE_OS_APP_SPIEGEL=an`).
+- **Eine Suche für ZOE:** „Wo hatten wir … notiert?“ sucht jetzt in Brain-Notizen UND Aufgaben, Kommentaren, Projekten, Angeboten, Mandaten (`suche_arbeit`, mit Links).
+- ZOE-Kontext zählt nur Hauptaufgaben (ohne Papierkorb); „Mandate“ bei ZOE zeigt die Zeit je Mandat der Woche.
+- Tests: `tests/zoe-entscheidungen.test.ts`, `tests/brain-app-bruecke.test.ts`.
+
+### Offene Einmal-Schritte (Server, erst auf Kevins Wort)
+- [ ] `MAKE_OS_APP_SPIEGEL=an` in `/srv/make-os/app/.env` setzen (Plan Schritt 3) und einmal `POST /api/brain/app { "aktion": "jetzt" }` bzw. den nächtlichen Lauf abwarten.
+- [ ] Privat-Einstellung festlegen: Standard „nur Zahlen“; voll nur mit `POST /api/brain/app { "privat": "voll" }`.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Stapel: einen Vorschlag ablehnen mit Grund → unter „Entschieden“ steht die Person; Grund mit 500 Zeichen → Hinweis „länger als 400 Zeichen“, nichts entschieden.
+- [ ] CRM-Vorschlag (Aktivität) in zwei Fenstern gleichzeitig freigeben → eine Aktivität am Kontakt, das zweite Fenster meldet „Wird gerade übernommen“ bzw. „Schon entschieden“.
+- [ ] ZOE fragen: „Wo hatten wir etwas zu <Stichwort aus einer Aufgaben-Notiz> notiert?“ → Treffer mit Link in die Aufgabe (und ggf. Brain-Notiz).
+- [ ] ZOE fragen: „Wie viel Zeit ging diese Woche in welches Mandat?“ → Stunden je Mandat.
+- [ ] Wissen › Brain-Inbox am nächsten Morgen: „App-Tagesbericht <gestern>“ vorhanden, ohne private Titel, annehmen → Protokoll unter „03. Protokolle/App“.
+
 ## ZOE sieht und unterstützt die ganze Markttraktion (28.09.2026 spät, C7, nur lokal)
 
 - **Kevins Entscheidung:** ZOE liest jetzt CRM und CRM-Dateiablage (hebt „Ablage nie an ZOE“ auf) — nur im Gespräch mit Kevin oder Malin, mit festen Leitplanken: Art.-18-eingeschränkte Kontakte gar nicht (nur „n ausgeblendet“), private Notizen nur die eigenen, IBAN maskiert, fremder Text gekapselt, lange Antworten in Teilen.
@@ -1254,8 +1491,10 @@ zuhause haben soll benutzt werden, an jedem Gericht das Rezept“)** — Gesundh
 - **Lieferkette:** Docker-Basisbilder und GitHub-Actions per Digest/SHA festgenagelt (Dependabot hält sie
   aktuell), Action nur mit Leserecht.
 - **Verschlüsselung im Ruhezustand:** liegt `MAKE_OS_DATEN_SCHLUESSEL` in der Server-`.env`, schreibt MAKE OS
-  jede Sammlung in `.data` (und die Tagessicherungen) als AES-256-GCM-Hülle — ein kopierter Datenordner, ein
-  Server-Abbild oder eine Sicherung ohne Schlüssel sind wertlos. Ohne passenden Schlüssel bricht das Lesen laut
+  jede Sammlung in `.data` (und die Tagessicherungen) als AES-256-GCM-Hülle — ein kopierter Datenordner oder eine
+  Sicherung ohne Schlüssel sind wertlos. (Korrektur 29.09.: ein Hetzner-Server-Abbild enthält die `.env` bzw. die
+  Schlüssel-Datei MIT — es ist so schutzwürdig wie der Server selbst; Bedrohungsmodell in DATENARCHITEKTUR.md › 4b.)
+  Ohne passenden Schlüssel bricht das Lesen laut
   ab (nie „leer“). Einmalige Umstellung aller Bestände: `scripts/daten-verschluesselung.mjs --verschluesseln`.
   **Der Schlüssel gehört in Kevins Passwort-Manager** — ohne ihn sind die Daten weg.
 
