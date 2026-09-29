@@ -30,6 +30,7 @@ import { followUpBis } from './events';
 import { werIstDran } from './heute';
 import { fuerDich, nameVon, TEAM } from './team';
 import { localDay } from '@/lib/zeit';
+import { isoWoche as kalenderwoche, montagVon as kernMontag } from '@/lib/zeit/kalender-kern';
 
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 const tag = (v?: string) => (v ?? '').slice(0, 10);
@@ -104,19 +105,11 @@ export function jePersonSieben(kontakte: Kontakt[], crm: CrmBestand, heute: stri
 /** Ziele je Woche (Team). Startwerte aus den Kennzahlen des Konzepts — nach acht Wochen zu kalibrieren. */
 export const SCORE_ZIELE = { power_hours: 4, gespraeche: 8, neue_chancen: 1, beitraege: 2, nachfassen_48h: 90 } as const;
 
-/** Montag der Kalenderwoche, in der `d` liegt. */
-export function montagVon(d: string): string {
-  const x = new Date(`${d}T12:00:00Z`);
-  return tagPlus(d, -((x.getUTCDay() + 6) % 7));
-}
+/** Montag der Kalenderwoche, in der `d` liegt — aus dem Kalender-Kern (29.09., K2). */
+export const montagVon = kernMontag;
 
-/** Kalenderwoche nach ISO 8601: die Woche gehört dem Jahr ihres Donnerstags. */
-export function kalenderwoche(d: string): { kw: number; jahr: number } {
-  const donnerstag = new Date(`${tagPlus(montagVon(d), 3)}T12:00:00Z`);
-  const jahr = donnerstag.getUTCFullYear();
-  const tageSeitNeujahr = Math.round((donnerstag.getTime() - Date.UTC(jahr, 0, 1, 12)) / 864e5);
-  return { kw: 1 + Math.floor(tageSeitNeujahr / 7), jahr };
-}
+/** Kalenderwoche nach ISO 8601 mit Wochenjahr — aus dem Kalender-Kern (29.09., K2: eine Stelle). */
+export { kalenderwoche };
 
 export interface ScoreWoche { von: string; bis: string; kw: number; label: string; laufend: boolean }
 

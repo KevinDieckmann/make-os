@@ -190,7 +190,22 @@ export const kalenderBezugOhne: Wirkung = (cur, m) => {
   return { neu: n ? { ...cur, bezuege } : cur, n };
 };
 
-export interface WeitererSpeicher { name: string; muster: RegExp; behandlung: 'entfernen' | 'tilgen'; wirkung: Wirkung }
+/**
+ * `nur-in-apple` (29.09., K2): Spiegel einer Apple-Quelle (Kalender, Erinnerungen, Kontakte). Tilgen wäre Schein — der
+ * Abgleich baut den Spiegel aus Apple neu. Der Löschlauf ändert ihn NICHT, sondern zählt die Einträge, die die Person
+ * nennen (`nurInApple`), und meldet „n Einträge in Apple nennen die Person — dort löschen“. Register: „ausgenommen“.
+ */
+export interface WeitererSpeicher { name: string; muster: RegExp; behandlung: 'entfernen' | 'tilgen' | 'nur-in-apple'; wirkung: Wirkung }
+
+/** Einträge eines Apple-Spiegels, die die Person nennen — gezählt, nie geändert. `{events}`, `{daten}`, `{objekte: {kal: [...]}}`. */
+export const inAppleZaehlen: Wirkung = (cur, m) => {
+  const o = (cur ?? {}) as Obj;
+  const eintraege: unknown[] = [];
+  for (const feld of ['events', 'daten', 'eintraege']) if (Array.isArray(o[feld])) eintraege.push(...(o[feld] as unknown[]));
+  if (o.objekte && typeof o.objekte === 'object') for (const l of Object.values(o.objekte as Obj)) if (Array.isArray(l)) eintraege.push(...l);
+  if (o.daten && typeof o.daten === 'object' && !Array.isArray(o.daten)) for (const l of Object.values(o.daten as Obj)) if (Array.isArray(l)) eintraege.push(...l);
+  return { neu: cur, n: eintraege.filter(e => nenntPerson(e, m)).length };
+};
 
 /**
  * Die weiteren Speicher — Name, Dateimuster, Behandlung. Das Register (lib/crm/speicher-register.ts) verweist hierher;
@@ -206,7 +221,10 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'apple-mail-cache', muster: /^apple-mail-cache$/, behandlung: 'entfernen', wirkung: eintraegeRaus('daten') },
   { name: 'm365-postfach', muster: /^m365-postfach$/, behandlung: 'entfernen', wirkung: eintraegeRaus('mails') },
   { name: 'microsoft-inbox', muster: /^microsoft-inbox$/, behandlung: 'entfernen', wirkung: eintraegeRaus('emails') },
-  { name: 'calendar-cache', muster: /^calendar-cache$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'calendar-cache', muster: /^calendar-cache$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
+  { name: 'kalender-icloud', muster: /^kalender-icloud$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
+  { name: 'apple-reminders-cache', muster: /^apple-reminders-cache$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
+  { name: 'apple-contacts-cache', muster: /^apple-contacts-cache$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
   { name: 'kemaris-calendar', muster: /^kemaris-calendar$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'kalender-bezug', muster: /^kalender-bezug$/, behandlung: 'entfernen', wirkung: kalenderBezugOhne },
   { name: 'meetings', muster: /^meetings$/, behandlung: 'tilgen', wirkung: tilgen },
@@ -238,12 +256,20 @@ async function bestandsNamen(): Promise<string[]> {
  * Liefert je Speicher die Zahl der Änderungen. Fehler in einem Speicher halten die anderen nicht auf (Log); ein
  * zweiter Lauf räumt Reste.
  */
-export async function weitereEntfernen(m: PersonMerkmale): Promise<{ speicher: Record<string, number>; fehler: string[] }> {
+export async function weitereEntfernen(m: PersonMerkmale): Promise<{ speicher: Record<string, number>; fehler: string[]; nurInApple: Record<string, number> }> {
   const speicher: Record<string, number> = {};
+  const nurInApple: Record<string, number> = {};
   const fehler: string[] = [];
   for (const name of await bestandsNamen()) {
     const s = weitererSpeicher(name);
     if (!s) continue;
+    if (s.behandlung === 'nur-in-apple') {
+      // Nie schreiben — nur zählen, damit der Mensch in Apple löschen kann (Register: „ausgenommen: Löschung nur in Apple“).
+      const cur = await loadJson<Obj>(name).catch(() => null);
+      const n = cur && typeof cur === 'object' ? s.wirkung(cur, m).n : 0;
+      if (n) nurInApple[name] = n;
+      continue;
+    }
     try {
       let n = 0;
       await updateJson<Obj>(name, cur => {
@@ -261,7 +287,7 @@ export async function weitereEntfernen(m: PersonMerkmale): Promise<{ speicher: R
   const a = await archivTilgen(m);
   for (const [k, v] of Object.entries(a.speicher)) speicher[k] = v;
   fehler.push(...a.fehler);
-  return { speicher, fehler };
+  return { speicher, fehler, nurInApple };
 }
 
 /** Art. 15: in welchen weiteren Speichern die Person vorkommt (nur Zahlen je Speicher, keine Inhalte). */

@@ -105,7 +105,8 @@ export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberf
         </Pille>
       )}
       {termine.map(t => (
-        <Pille key={t.id} farbe={WER_FARBE[t.wer]} titel={`${t.titel} · ${t.kalender}${t.bearbeitbar ? '' : ' (nur in Apple änderbar)'}`} onClick={() => onTermin(t)}>{t.titel}</Pille>
+        // K2 (29.09.): Quell-Einträge (Feiertage NRW, Geburtstage) tragen eigene Farbe und Hinweis (components/os/kalender/quellen.tsx).
+        <Pille key={t.id} farbe={(t as { farbe?: string }).farbe ?? WER_FARBE[t.wer]} titel={`${t.titel} · ${t.kalender}${(t as { hinweis?: string }).hinweis ? ` — ${(t as { hinweis?: string }).hinweis}` : t.bearbeitbar ? '' : ' (nur in Apple änderbar)'}`} onClick={() => onTermin(t)}>{t.titel}</Pille>
       ))}
       {fristen.map(f => (
         <Pille key={f.id} farbe={FRIST_ZEICHEN[f.art].farbe} titel={`${FRIST_ZEICHEN[f.art].label}: ${f.titel}${f.unter ? ` · ${f.unter}` : ''}`} href={f.href} durch={f.erledigt}>

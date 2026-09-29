@@ -96,6 +96,8 @@ const KONTAKT_SPALTEN: Spalte<KontaktZeile>[] = [
   // U2 (28.09., am Ende angehängt): Art. 18 nur MIT Markierung, Nachweis der Einwilligungen, geprüft, Hinweis bei Erhebung.
   ['EINGESCHRAENKT', z => (z.k.eingeschraenkt ? `seit ${z.k.eingeschraenkt.seit}` : '')], ['EINWILLIGUNG_NACHWEIS', z => nachweisStand(z.k)],
   ['GEPRUEFT_AM', z => z.k.geprueftAm], ['HINWEIS_BEI_ERHEBUNG', z => z.k.hinweisBeiErhebung?.am],
+  // K2 (29.09., am Ende angehängt): Geburtstag wie gespeichert („TT.MM.“ oder „JJJJ-MM-TT“).
+  ['GEBURTSTAG', z => z.k.geburtstag],
 ];
 export function kontakteCsv(q: ExportQuelle): string {
   const firmen = nachId(q.crm.firmen);

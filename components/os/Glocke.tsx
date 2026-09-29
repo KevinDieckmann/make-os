@@ -14,9 +14,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { vorZeit, type GespeicherteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
+import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
 import { imArchiv } from '@/lib/aufgaben/neustart';
 
@@ -78,7 +78,7 @@ function gelesenMarkieren(ids: string[] | 'alle') {
   void senden(ids === 'alle' ? { aktion: 'gelesen', alle: true } : { aktion: 'gelesen', ids });
 }
 
-const ART: Record<GespeicherteArt, { Icon: LucideIcon; label: string; farbe: string }> = {
+const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: string; farbe: string }> = {
   zuweisung: { Icon: UserPlus, label: 'Zuweisung', farbe: C.aktiv },
   kommentar: { Icon: MessageSquare, label: 'Kommentar', farbe: C.inkDim },
   erwaehnung: { Icon: AtSign, label: 'Erwähnung', farbe: C.aktiv },
@@ -86,10 +86,12 @@ const ART: Record<GespeicherteArt, { Icon: LucideIcon; label: string; farbe: str
   ueberfaellig: { Icon: AlertTriangle, label: 'Überfällig', farbe: C.kritisch },
   zoe: { Icon: Sparkles, label: 'ZOE', farbe: C.aktiv },
   sammel: { Icon: Layers, label: 'Weitere', farbe: C.inkDim },
+  // K2 (29.09.): Geburtstag am Vortag und am Tag — abgeleitet, nie gespeichert.
+  geburtstag: { Icon: Cake, label: 'Geburtstag', farbe: '#FF7EB6' },
 };
 
 function zeitVon(m: Meldung, jetzt: number): string {
-  if (m.virtuell) return m.art === 'faellig' ? 'heute' : 'überfällig';
+  if (m.virtuell) return m.art === 'faellig' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
   return vorZeit(m.am, jetzt);
 }
 

@@ -186,6 +186,8 @@ export async function POST(req: Request) {
   const dealsOhnePerson = nurSie.size ? (await ladeCrm()).chancen.filter(c => nurSie.has(c.id) && !c.kontaktIds.length).map(c => ({ id: c.id, titel: c.titel })) : [];
   return NextResponse.json({
     ok: true, vollstaendig: bericht.vollstaendig !== false, schritte: bericht.schritte ?? {}, speicher: bericht.speicher, aufgabenPruefen: bericht.aufgabenPruefen, dealsOhnePerson, protokollId: bericht.protokollId ?? null,
+    // K2 (29.09.): Apple-Spiegel werden nicht getilgt (der Abgleich baut sie neu) — die Löschung geschieht in Apple.
+    ...(bericht.nurInApple && Object.keys(bericht.nurInApple).length ? { inApple: Object.values(bericht.nurInApple).reduce((a, n) => a + n, 0) } : {}),
     ...(bericht.grabstein === false ? { warnung: 'Grabstein nicht geschrieben — ein Restore könnte die Person zurückholen. Wird automatisch nachgeholt; bitte den Head of IT prüfen.' } : {}),
     ...(bericht.vollstaendig === false ? { nachzuholen: bericht.fehler ?? [], hinweis: `Nicht alle Bestände bestätigt (${(bericht.fehler ?? []).join(', ')}) — das Löschprotokoll steht auf „unvollständig“, MAKE OS holt es automatisch nach (Head of IT zeigt den Stand).` } : {}),
   });

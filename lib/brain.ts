@@ -33,6 +33,8 @@ import type { Prospect } from '@/lib/make-one/prospecting-data';
 // ── Feste Wahrheiten (client-sicher ausgelagert) ──
 export { NORDSTERN, MILESTONES } from '@/lib/make-one/nordstern-data';
 import { NORDSTERN, MILESTONES } from '@/lib/make-one/nordstern-data';
+import { geburtstageIm } from '@/lib/kalender/quellen-geburtstage-server';
+import { feiertageIm } from '@/lib/zeit/kalender-kern';
 
 // ── Formen ──
 interface StoredTask { id: string; title: string; status: string; priority: string; dueDate?: string; projectId?: string; assignee?: string; /** Business-Einheit (27.09.) — nur im Business gesetzt. */ einheit?: string }
@@ -66,6 +68,11 @@ export interface Brain {
     /** Frische je Quelle — der M365-Snapshot altert unabhängig vom Apple-Cache. */
     quellen: { apple: { alterH: number | null; stale: boolean }; kemaris: { alterH: number | null; stale: boolean } };
   };
+  /**
+   * Anlässe der nächsten 7 Tage (29.09., K2): Feiertage NRW (Kalender-Kern) und Geburtstage (`geburtstageIm` — Familie
+   * der Person + CRM ohne Art.-18-Kontakte). Optional: fehlt es, sagt ZOE nichts dazu.
+   */
+  anlaesse?: { feiertage: { tag: string; name: string }[]; geburtstage: { name: string; tag: string; alter?: number; herkunft: string }[] };
   /** M365-Postfach-Snapshot (KEMARIS) — Team-Mails gehören ins Bild. */
   msMails: { ungelesen: MsMail[]; at: string | null; alterH: number | null; stale: boolean };
   laeufe: AgentLogEntry[];
@@ -130,6 +137,9 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     schwellen(),
     teamFuerPerson(person),
   ]);
+  // Anlässe (K2): eigener Abruf, wirft nie (geburtstageIm fängt selbst ab).
+  const anlaesseBis = tagePlus(heute, 8);
+  const geburtstage = await geburtstageIm({ von: heute, bis: anlaesseBis }, person).catch(() => []);
   const val = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === 'fulfilled' ? r.value : null);
 
   const store = val(tasksR);
@@ -208,6 +218,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
       alterH: msAlterH == null ? null : Math.round(msAlterH),
       stale: msAlterH == null || msAlterH > 24,
     },
+    anlaesse: { feiertage: feiertageIm(heute, anlaesseBis), geburtstage: geburtstage.map(g => ({ name: g.name, tag: g.tag, ...(g.alter !== undefined ? { alter: g.alter } : {}), herkunft: g.herkunft })) },
     laeufe: val(laeufeR) ?? [],
     // Business-Meilensteine aus dem Store — Fallback: alte Konstante.
     meilensteine: (() => {
@@ -335,7 +346,12 @@ function blockTermineRoh(b: Brain): string {
     const zeit = e.allDay || !d ? 'ganztägig' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     return `${zeit} ${e.title ?? ''}`;
   });
-  return `TERMINE HEUTE (${b.kalender.heute.length})${stale}${quellenHinweis}:\n${heute.join('\n') || '(keine im Stand)'}`;
+  const a = b.anlaesse;
+  const wann = (t: string) => (t === b.heute ? 'heute' : t === tagePlus(b.heute, 1) ? 'morgen' : `${t.slice(8, 10)}.${t.slice(5, 7)}.`);
+  const anlaesse = a && (a.feiertage.length || a.geburtstage.length)
+    ? `\nANLÄSSE (7 Tage): ${[...a.feiertage.map(f => `Feiertag NRW ${wann(f.tag)}: ${f.name}`), ...a.geburtstage.map(g => `Geburtstag ${g.name} ${wann(g.tag)}${g.alter ? ` (wird ${g.alter})` : ''}${g.herkunft === 'crm' ? ' [Kontakt]' : ' [Familie]'}`)].join(' · ')} — an Gratulieren denken, nichts von selbst verschicken.`
+    : '';
+  return `TERMINE HEUTE (${b.kalender.heute.length})${stale}${quellenHinweis}:\n${heute.join('\n') || '(keine im Stand)'}${anlaesse}`;
 }
 
 export function blockIndex(b: Brain): string {

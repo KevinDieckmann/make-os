@@ -26,6 +26,7 @@ import { emailsSaeubern, emailsSynchron, alleAdressen, adresseAnhaengen, hatAdre
 import { einwilligungSaeubern } from '@/lib/crm/einwilligung';
 import { neueKontaktKennung } from '@/lib/kennung';
 import { einschraenkungSaeubern } from '@/lib/crm/einschraenkung';
+import { geburtstagSaeubern } from '@/lib/kalender/geburtstag';
 
 export const STUFEN = [
   'neu', 'ansprechen', 'angesprochen', 'gespraech', 'termin', 'angebot',
@@ -245,6 +246,12 @@ export interface Kontakt {
   /** Mehrfach: Partner, Multiplikator, Dienstleister, Investor, Netzwerk, Freund (26.09.). */
   rollen?: Rolle[];
   anrede?: 'Sie' | 'Du';
+  /**
+   * Geburtstag (29.09., Paket K2) — „TT.MM.“ oder „JJJJ-MM-TT“ (lib/kalender/geburtstag.ts), von Hand gepflegt, der Import
+   * fasst ihn nie an (PIPELINE_FELDER). Eine Stelle je Person: ist die Person auch in der Familie (verknüpft/gleicher
+   * Name), hat der Tag der Familie Vorrang (lib/kalender/quellen-geburtstage.ts). Art. 15 über die Kartei, Art. 17 mit ihr.
+   */
+  geburtstag?: string;
   vorgestelltDurch?: string;
   einwilligungen?: Einwilligung[];
   /** Werbewiderspruch (Art. 21 DSGVO): sofort, dauerhaft, kein Import überschreibt ihn. */
@@ -300,7 +307,7 @@ export interface Kontakt {
 export const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
   'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden',
   'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung', 'bean', 'geloeschteAktivitaeten', 'stationen',
-  'eingeschraenkt', 'geprueftAm', 'geprueftVon', 'hinweisBeiErhebung', 'loeschfristVerlaengert'];
+  'eingeschraenkt', 'geprueftAm', 'geprueftVon', 'hinweisBeiErhebung', 'loeschfristVerlaengert', 'geburtstag'];
 
 /** Höchstens so viele Feldnamen in `vonHand` — mehr Stammdaten-Felder gibt es nicht. */
 export const VON_HAND_MAX = 60;
@@ -1077,7 +1084,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     ...(kreis ? { kreis } : {}), ...(takt >= 7 && takt <= 730 ? { taktTage: Math.round(takt) } : {}),
     ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}), ...(istLifecycle(o.phase) ? { phase: o.phase } : {}), ...(rollen?.length ? { rollen } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}),
     ...(netzwerkSaeubern(o.netzwerk) ? { netzwerk: netzwerkSaeubern(o.netzwerk) } : {}), ...(tag(o.linkedinNichtGefunden) ? { linkedinNichtGefunden: tag(o.linkedinNichtGefunden) } : {}),
-    ...(o.anrede === 'Sie' || o.anrede === 'Du' ? { anrede: o.anrede } : {}), ...(txt(o.vorgestelltDurch, 60) ? { vorgestelltDurch: txt(o.vorgestelltDurch, 60) } : {}),
+    ...(o.anrede === 'Sie' || o.anrede === 'Du' ? { anrede: o.anrede } : {}), ...(geburtstagSaeubern(o.geburtstag) ? { geburtstag: geburtstagSaeubern(o.geburtstag) } : {}), ...(txt(o.vorgestelltDurch, 60) ? { vorgestelltDurch: txt(o.vorgestelltDurch, 60) } : {}),
     ...(einwilligungen?.length ? { einwilligungen } : {}),
     ...(ws && tag(ws.seit) ? { werbesperre: { seit: tag(ws.seit)!, grund: txt(ws.grund, 300) ?? 'Widerspruch' } } : {}),
     ...(eingeschraenkt ? { eingeschraenkt } : {}),

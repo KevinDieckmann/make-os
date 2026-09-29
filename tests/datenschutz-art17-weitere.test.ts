@@ -134,16 +134,19 @@ describe('Art. 17 über alle weiteren Speicher (#69/#30/#93)', () => {
     const d = await r.json();
     expect(d.protokollId).toMatch(/^lp-/);
     expect(d.warnung).toBeUndefined();
-    expect(Object.keys(d.speicher)).toEqual(expect.arrayContaining(['kontakte', 'netzwerk', 'kunden', 'inbox-absender', 'inbox-triage', 'm365-postfach', 'microsoft-inbox', 'apple-mail-cache', 'calendar-cache', 'meetings', 'zoe-verlauf', 'zoe-gedaechtnis', 'zoe-protokoll', 'zoe-stapel', `zoe-entscheidungen--${HAUS}--2026-09`, `aenderungsprotokoll--${HAUS}--2026-09`, 'agent-log']));
-    const text = await alles(['konten']);
+    expect(Object.keys(d.speicher)).toEqual(expect.arrayContaining(['kontakte', 'netzwerk', 'kunden', 'inbox-absender', 'inbox-triage', 'm365-postfach', 'microsoft-inbox', 'apple-mail-cache', 'meetings', 'zoe-verlauf', 'zoe-gedaechtnis', 'zoe-protokoll', 'zoe-stapel', `zoe-entscheidungen--${HAUS}--2026-09`, `aenderungsprotokoll--${HAUS}--2026-09`, 'agent-log']));
+    // Apple-Spiegel (29.09., K2): „ausgenommen — Löschung nur in Apple“ — gezählt und gemeldet, nicht getilgt.
+    expect(d.speicher['calendar-cache']).toBeUndefined();
+    expect(d.inApple).toBe(1);
+    const text = await alles(['konten', 'calendar-cache']);
     for (const x of [ID, MAIL, NAME, ...fp]) expect(text, x).not.toContain(x);
     // Andere bleiben
     expect(text).toContain('Testo Bleiber');
-    expect(text).toContain('Zahnarzt');
     expect(text).toContain('mag Kaffee');
-    // Termin bleibt, Name getilgt; Entscheidung bleibt (Rechenschaft), Fingerabdruck → c#geloescht
+    // Kalender-Spiegel unverändert (Löschung in Apple, der Abgleich baute ihn sonst sofort neu); Entscheidung bleibt
+    // (Rechenschaft), Fingerabdruck → c#geloescht
     const kal = (await db.loadJson<{ events: { title: string }[] }>('calendar-cache'))!.events;
-    expect(kal.map(e => e.title)).toEqual(['Kaffee mit [gelöscht]', 'Zahnarzt']);
+    expect(kal.map(e => e.title)).toEqual([`Kaffee mit ${NAME}`, 'Zahnarzt']);
     const ent = (await db.loadJson<{ eintraege: { bezug: { id: string } }[] }>(`zoe-entscheidungen--${HAUS}--2026-09`))!.eintraege;
     expect(ent[0].bezug.id).toBe('aktivitaet:c#geloescht');
     // Löschprotokoll: nur lp-ID, Tag, Grund, wer

@@ -4,7 +4,11 @@
 // Steuerberatung: ob und wie oft Voranmeldungen/Vorauszahlungen anfallen,
 // steht im Bescheid bzw. hängt von der Einstellung ab (monatlich/quartalsweise,
 // Dauerfristverlängerung). Fällt ein Termin auf Samstag, Sonntag oder einen
-// bundesweiten Feiertag, gilt der nächste Werktag (§ 108 Abs. 3 AO).
+// gesetzlichen Feiertag, gilt der nächste Werktag (§ 108 Abs. 3 AO). Maßgeblich
+// ist der Feiertag am Sitz des Finanzamts — also NRW (29.09., K2: vorher nur
+// bundesweit; Fronleichnam und Allerheiligen fehlten). Rechnung: Kalender-Kern.
+
+import { feiertageNRW, werktagAbOder } from '@/lib/zeit/kalender-kern';
 
 export type UstRhythmus = 'monatlich' | 'quartal' | 'keine';
 export interface SteuerEinstellung {
@@ -19,31 +23,13 @@ export interface Termin { datum: string; art: 'ust' | 'ust-sv' | 'est' | 'kst' |
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const utc = (j: number, m: number, t: number) => new Date(Date.UTC(j, m - 1, t, 12));
 
-/** Ostersonntag (Gauß) — für die beweglichen bundesweiten Feiertage. */
-function ostern(j: number): Date {
-  const a = j % 19, b = Math.floor(j / 100), c = j % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const monat = Math.floor((h + l - 7 * m + 114) / 31), tag = ((h + l - 7 * m + 114) % 31) + 1;
-  return utc(j, monat, tag);
-}
-
-/** Bundesweite gesetzliche Feiertage (ohne landesspezifische). */
+/** Gesetzliche Feiertage NRW eines Jahres (Kalender-Kern, eine Rechnung). */
 export function feiertage(j: number): Set<string> {
-  const o = ostern(j);
-  const plus = (n: number) => { const x = new Date(o); x.setUTCDate(x.getUTCDate() + n); return iso(x); };
-  return new Set([`${j}-01-01`, plus(-2), plus(1), `${j}-05-01`, plus(39), plus(50), `${j}-10-03`, `${j}-12-25`, `${j}-12-26`]);
+  return new Set(feiertageNRW(j).map(f => f.tag));
 }
 
-/** Nächster Werktag, falls Wochenende oder bundesweiter Feiertag. */
-export function werktag(datum: string): string {
-  const d = new Date(`${datum}T12:00:00Z`);
-  for (let i = 0; i < 7; i++) {
-    const tag = d.getUTCDay();
-    if (tag !== 0 && tag !== 6 && !feiertage(d.getUTCFullYear()).has(iso(d))) return iso(d);
-    d.setUTCDate(d.getUTCDate() + 1);
-  }
-  return iso(d);
-}
+/** Nächster Werktag (Mo–Fr ohne Feiertag NRW), falls Wochenende oder Feiertag. */
+export const werktag = (datum: string): string => werktagAbOder(datum);
 
 /** Die Termine im Fenster [von, bis]. */
 export function steuertermine(von: string, bis: string, e: SteuerEinstellung = STANDARD_EINSTELLUNG): Termin[] {

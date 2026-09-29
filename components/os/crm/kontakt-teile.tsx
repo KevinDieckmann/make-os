@@ -39,6 +39,7 @@ import { stationenVon, hauptStation, type KontaktFelder } from '@/lib/crm/statio
 import { useFirmaWechselFrage, type FirmaWechselFrageFn } from './kontakt/FirmaWechselFrage';
 import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
 import type { LifecyclePhase } from '@/lib/crm/lifecycle';
+import { geburtstagSaeubern, geburtstagText, naechsterGeburtstag } from '@/lib/kalender/geburtstag';
 
 export const PHASEN: { id: Lebensphase; label: string }[] = [
   { id: 'kontakt', label: 'Kontakt' }, { id: 'interessent', label: 'Interessent' }, { id: 'kunde', label: 'Kunde' }, { id: 'ex_kunde', label: 'Ex-Kunde' }, { id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' },
@@ -151,8 +152,38 @@ export function BeziehungTeil({ k, api, setze, ohneTitel }: { k: Kontakt; api: C
         </span>
       </Feldzeile>
       <Feldzeile label="Zuständig"><ZustaendigWahl wert={k.besitzer} welt="sales" onWahl={besitzer => void setze({ besitzer })} /></Feldzeile>
+      <Feldzeile label="Geburtstag"><GeburtstagFeld k={k} setze={setze} /></Feldzeile>
       <div style={{ marginTop: 8 }}><Uebergeben api={api} art="kontakt" id={k.id} jetzt={haeltBeziehung(k)} /></div>
     </div>
+  );
+}
+
+/**
+ * Geburtstag (29.09., K2) — optional, mit Zweck (Datensparsamkeit): nur zum Gratulieren/Beziehungspflege. Erscheint im
+ * Kalender „Geburtstage“ (Business), in der Glocke am Vortag (für die, die die Beziehung hält) und bei ZOE. Ist die
+ * Person auch in der Familie, führt dort der Tag der Familie. „Gratulieren“ ist nur ein Vorschlag für den nächsten
+ * Schritt — nichts wird automatisch gesetzt oder verschickt.
+ */
+function GeburtstagFeld({ k, setze }: { k: Kontakt; setze: Setze }) {
+  const heute = localDay();
+  const [fehler, setFehler] = useState(false);
+  const n = k.geburtstag ? naechsterGeburtstag(k.geburtstag, heute) : null;
+  const gratulieren = 'Zum Geburtstag gratulieren';
+  const schonGeplant = k.naechsterSchritt?.text === gratulieren && k.naechsterSchritt.datum === n?.tag;
+  return (
+    <span style={{ display: 'grid', gap: 4 }}>
+      <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Feld wert={k.geburtstag} breite={150} platzhalter="TT.MM. oder TT.MM.JJJJ" onFertig={t => {
+          const g = t.trim() ? geburtstagSaeubern(t, heute) : undefined;
+          if (t.trim() && !g) { setFehler(true); return; }
+          setFehler(false); void setze({ geburtstag: g });
+        }} />
+        {n && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{geburtstagText(k.geburtstag)}{n.inTagen === 0 ? ' · heute' : ` · in ${n.inTagen} Tagen`}{n.alter ? ` · wird ${n.alter}` : ''}</span>}
+        {n && n.inTagen <= 14 && !schonGeplant && <Knopf leise onClick={() => void setze({ naechsterSchritt: { text: gratulieren, datum: n.tag } })}>Gratulieren vormerken</Knopf>}
+      </span>
+      {fehler && <span style={{ fontSize: 12, color: LEUCHT.kritisch }}>Kein gültiges Datum — z. B. „3.10.“ oder „3.10.1990“.</span>}
+      {!k.geburtstag && <span style={{ fontSize: 11.5, color: C.inkLeise }}>Optional, nur zum Gratulieren — nicht erfassen, was ihr nicht braucht.</span>}
+    </span>
   );
 }
 
@@ -423,7 +454,7 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
  * Ergebnis des Löschens (Art. 17) als Hinweis zum Abarbeiten (W3, 28.09.): Deals, an denen nur diese Person hing,
  * und Aufgaben, die sie nur beim Namen nennen (nicht geändert). Nichts offen → null.
  */
-function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; aufgabenPruefen?: string[]; vollstaendig?: boolean; hinweis?: string; warnung?: string }): string | null {
+function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; aufgabenPruefen?: string[]; vollstaendig?: boolean; hinweis?: string; warnung?: string; inApple?: number }): string | null {
   const deals = r.dealsOhnePerson ?? [];
   const aufgaben = r.aufgabenPruefen ?? [];
   const teile = [
@@ -432,6 +463,8 @@ function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; 
     r.warnung ?? '',
     deals.length ? `${deals.length === 1 ? '1 Deal hat' : `${deals.length} Deals haben`} jetzt keine Person mehr: ${deals.slice(0, 5).map(d => `„${d.titel}“`).join(', ')}${deals.length > 5 ? ' …' : ''} — unter Deals eine Person zuordnen oder den Deal schließen.` : '',
     aufgaben.length ? `${aufgaben.length === 1 ? '1 Aufgabe nennt' : `${aufgaben.length} Aufgaben nennen`} den Namen noch (nicht geändert) — bitte unter Aufgaben prüfen.` : '',
+    // K2 (29.09.): Kalender/Erinnerungen/Kontakte sind Spiegel aus Apple — dort löschen, sonst kommt es mit dem Abgleich zurück.
+    r.inApple ? `${r.inApple === 1 ? '1 Eintrag in Apple (Kalender, Erinnerungen oder Kontakte) nennt' : `${r.inApple} Einträge in Apple (Kalender, Erinnerungen oder Kontakte) nennen`} die Person — bitte dort löschen (MAKE OS spiegelt nur).` : '',
   ].filter(Boolean);
   return teile.length ? `Gelöscht.\n${teile.join('\n')}` : null;
 }

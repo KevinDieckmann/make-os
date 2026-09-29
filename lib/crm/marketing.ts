@@ -21,6 +21,7 @@ import { TEMPERATUR, temperaturLabel } from './score';
 import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ } from './lifecycle';
 import { BEAN_IDS, BEAN_LABEL } from './bean';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { kalenderwoche } from '@/lib/zeit/kalender-kern';
 
 // ── Kleine Helfer ───────────────────────────────────────────────────────────
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -96,14 +97,8 @@ export function saeubereEinstellung(roh: unknown): MarketingEinstellung {
 export type PlanSicht = 'woche' | 'monat' | 'alle';
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
-/** Kalenderwoche nach ISO 8601 (Donnerstag entscheidet). */
-export function kalenderwoche(iso: string): number {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3);
-  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4, 12));
-  jan4.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() + 6) % 7) + 3);
-  return 1 + Math.round((d.getTime() - jan4.getTime()) / (7 * 864e5));
-}
+/** Kalenderwoche nach ISO 8601 — aus dem Kalender-Kern (29.09., K2: eine Stelle). */
+export { kalenderwoche };
 
 export interface PlanFenster { von: string; bis: string; label: string }
 /** Woche (Mo–So) oder Kalendermonat um heute, verschoben um `versatz`; „alle“ hat kein Fenster. */

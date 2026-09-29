@@ -3,6 +3,7 @@
 // Beschriftung. Rein, auf einem gegebenen „heute“ gerechnet, damit prüfbar.
 
 import type { ZielHorizont } from './typen';
+import { kalenderwoche, montagVon as kernMontag } from '@/lib/zeit/kalender-kern';
 
 export interface Zeitraum { von: string; bis: string; label: string }
 
@@ -10,12 +11,8 @@ const p = (n: number) => String(n).padStart(2, '0');
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 const tageImMonat = (y: number, m1: number) => new Date(y, m1, 0).getDate();
 
-/** Montag der Woche eines Tages (YYYY-MM-DD, ohne Zeitzonen-Sprung). */
-export function montagVon(tag: string): string {
-  const d = new Date(`${tag}T12:00:00`);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
+/** Montag der Woche eines Tages — aus dem Kalender-Kern (29.09., K2). */
+export const montagVon = kernMontag;
 export function tagePlus(tag: string, n: number): string {
   const d = new Date(`${tag}T12:00:00`);
   d.setDate(d.getDate() + n);
@@ -40,14 +37,8 @@ export function zeitraum(h: ZielHorizont, heute: string): Zeitraum {
   return { von: `${y}-01-01`, bis: `${y}-12-31`, label: String(y) };
 }
 
-/** ISO-Kalenderwoche. */
-export function kalenderwoche(tag: string): number {
-  const d = new Date(Date.UTC(Number(tag.slice(0, 4)), Number(tag.slice(5, 7)) - 1, Number(tag.slice(8, 10))));
-  const wt = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - wt);
-  const jahrStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - jahrStart.getTime()) / 86400000 + 1) / 7);
-}
+/** ISO-Kalenderwoche — aus dem Kalender-Kern (29.09., K2: eine Stelle). */
+export { kalenderwoche };
 
 /** Liegt ein Tag im Zeitraum? */
 export const imZeitraum = (tag: string | undefined, zr: Zeitraum): boolean => !!tag && tag >= zr.von && tag <= zr.bis;

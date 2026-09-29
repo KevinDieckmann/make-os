@@ -13,6 +13,8 @@ import { KINDER_KARTEN } from '@/lib/familie/katalog';
 import type { Karte as KarteT, WichtigerTag, Mensch } from '@/lib/familie/typen';
 import { type FamilieApi, neueId, datumLang } from './daten';
 import { Eingabe, Wahl, Klein, Reihe, Mehr, Symbol, Auswahl } from './teile';
+import { tagDatum } from '@/lib/familie/logik';
+import { geburtstagSaeubern, geburtstagText, naechsterGeburtstag } from '@/lib/kalender/geburtstag';
 
 const ROSA = LEUCHT.beziehung;
 const BEREICHE: { id: KarteT['bereich']; label: string }[] = [
@@ -44,11 +46,24 @@ export function FamilieOrga({ api }: { api: FamilieApi }) {
 
 export function Tage({ api }: { api: FamilieApi }) {
   const d = api.d!;
-  const [neu, setNeu] = useState<{ titel: string; datum: string; art: WichtigerTag['art']; aktion: WichtigerTag['aktion']; wer: string; vorlaufTage: number } | null>(null);
+  const [neu, setNeu] = useState<{ titel: string; datum: string; art: WichtigerTag['art']; aktion: WichtigerTag['aktion']; wer: string; vorlaufTage: number; menschId?: string } | null>(null);
   const [alle, setAlle] = useState(false);
   const jahr = (am: string) => Number(am.slice(0, 4));
-  const liste = alle ? [...d.familie.tage].sort((a, b) => a.datum.slice(-5).localeCompare(b.datum.slice(-5))) : null;
-  const ok = neu && neu.titel.trim() && datumAus(neu.datum);
+  const menschen = d.familie.menschen;
+  // Geburtstag (29.09., K2): der MENSCH führt das Datum — der wichtige Tag verweist nur (menschId, ohne eigenes Datum).
+  const verwiesen = neu?.art === 'geburtstag' && neu.menschId ? menschen.find(m => m.id === neu.menschId) : undefined;
+  const datumVon = (t: WichtigerTag) => tagDatum(t, menschen) ?? '';
+  const liste = alle ? [...d.familie.tage].sort((a, b) => datumVon(a).slice(-5).localeCompare(datumVon(b).slice(-5))) : null;
+  const ok = neu && neu.titel.trim() && (verwiesen ? verwiesen.geburtstag || geburtstagSaeubern(neu.datum) : datumAus(neu.datum));
+  const speichern = () => {
+    if (!neu || !ok) return;
+    if (verwiesen) {
+      // Fehlt dem Menschen der Geburtstag, landet das eingegebene Datum dort (eine Stelle je Person).
+      if (!verwiesen.geburtstag) void api.setze('menschen', { ...verwiesen, geburtstag: geburtstagSaeubern(neu.datum) ?? null });
+      void api.setze('tage', { id: neueId('tag'), titel: neu.titel.trim(), art: 'geburtstag', datum: '', menschId: verwiesen.id, vorlaufTage: neu.vorlaufTage, wer: neu.wer, aktion: neu.aktion, erledigt: [] });
+    } else void api.setze('tage', { id: neueId('tag'), titel: neu.titel.trim(), art: neu.art, datum: datumAus(neu.datum)!, vorlaufTage: neu.vorlaufTage, wer: neu.wer, aktion: neu.aktion, erledigt: [] });
+    setNeu(null);
+  };
   return (
     <Karte i={0}>
       <Ueberschrift farbe={ROSA} rechts={<Knopf leise onClick={() => setNeu({ titel: '', datum: '', art: 'geburtstag', aktion: 'geschenk', wer: d.person, vorlaufTage: 14 })}>+ Tag</Knopf>}>Wichtige Tage · 60 Tage</Ueberschrift>
@@ -56,16 +71,22 @@ export function Tage({ api }: { api: FamilieApi }) {
         <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', marginBottom: 12 }}>
           <Reihe>
             <div style={{ flex: 2, minWidth: 160 }}><Eingabe wert={neu.titel} platzhalter="Wessen Tag? (z. B. Geburtstag Mama)" onFertig={titel => setNeu({ ...neu, titel })} /></div>
-            <div style={{ flex: 1, minWidth: 110 }}><Eingabe wert={neu.datum} platzhalter="TT.MM." onFertig={datum => setNeu({ ...neu, datum })} /></div>
+            {verwiesen?.geburtstag
+              ? <div style={{ flex: 1, minWidth: 110 }}><Klein>{geburtstagText(verwiesen.geburtstag)} (bei {verwiesen.name})</Klein></div>
+              : <div style={{ flex: 1, minWidth: 110 }}><Eingabe wert={neu.datum} platzhalter="TT.MM." onFertig={datum => setNeu({ ...neu, datum })} /></div>}
           </Reihe>
           <Reihe><Wahl liste={ARTEN} aktiv={neu.art} onWahl={art => setNeu({ ...neu, art })} farbe={ROSA} /></Reihe>
+          {neu.art === 'geburtstag' && menschen.length > 0 && (
+            <Reihe><Klein>Wessen Geburtstag:</Klein><Wahl liste={[{ id: '', label: 'niemand aus „Unsere Menschen“' }, ...menschen.map(m => ({ id: m.id, label: m.name }))]} aktiv={neu.menschId ?? ''}
+              onWahl={id => { const m = menschen.find(x => x.id === id); setNeu({ ...neu, menschId: id || undefined, ...(m && !neu.titel.trim() ? { titel: `Geburtstag ${m.name}` } : {}) }); }} farbe={ROSA} /></Reihe>
+          )}
           <Reihe>
             <Wahl liste={AKTIONEN} aktiv={neu.aktion} onWahl={aktion => setNeu({ ...neu, aktion })} farbe={ROSA} />
             <Klein>kümmert sich:</Klein><Wahl liste={d.mitglieder.map(m => ({ id: m.person, label: m.name }))} aktiv={neu.wer} onWahl={wer => setNeu({ ...neu, wer })} farbe={ROSA} />
             <Auswahl label="Vorlauf" wert={neu.vorlaufTage} liste={[3, 7, 14, 21, 30].map(n => ({ id: n, label: `${n} Tage vorher` }))} onWahl={vorlaufTage => setNeu({ ...neu, vorlaufTage })} />
           </Reihe>
           <Reihe>
-            <Knopf farbe={ROSA} aus={!ok} onClick={() => { if (!ok) return; void api.setze('tage', { id: neueId('tag'), titel: neu.titel.trim(), art: neu.art, datum: datumAus(neu.datum)!, vorlaufTage: neu.vorlaufTage, wer: neu.wer, aktion: neu.aktion, erledigt: [] }); setNeu(null); }}>Speichern</Knopf>
+            <Knopf farbe={ROSA} aus={!ok} onClick={speichern}>Speichern</Knopf>
             <Knopf leise onClick={() => setNeu(null)}>Abbrechen</Knopf>
           </Reihe>
         </div>
@@ -88,7 +109,7 @@ export function Tage({ api }: { api: FamilieApi }) {
       )}
       {liste && (
         <Liste>
-          {liste.map(t => <Zeile key={t.id} titel={t.titel} unter={`${t.datum.slice(-2)}.${t.datum.slice(-5, -3)}. · ${ARTEN.find(a => a.id === t.art)?.label} · ${t.vorlaufTage} Tage Vorlauf`} rechts={<Symbol titel="Entfernen" onClick={() => api.weg('tage', t.id)}>×</Symbol>} />)}
+          {liste.map(t => { const dt = datumVon(t); return <Zeile key={t.id} titel={t.titel} unter={`${dt ? `${dt.slice(-2)}.${dt.slice(-5, -3)}.` : 'ohne Datum'} · ${ARTEN.find(a => a.id === t.art)?.label}${t.menschId ? ' · Datum vom Menschen' : ''} · ${t.vorlaufTage} Tage Vorlauf`} rechts={<Symbol titel="Entfernen" onClick={() => api.weg('tage', t.id)}>×</Symbol>} />; })}
         </Liste>
       )}
     </Karte>
@@ -99,7 +120,10 @@ export function Menschen({ api }: { api: FamilieApi }) {
   const d = api.d!;
   const [rolle, setRolle] = useState<Mensch['rolle']>('eltern');
   const [takt, setTakt] = useState<number | null>(7);
+  const [geb, setGeb] = useState<string | null>(null);
+  const [gebFehler, setGebFehler] = useState(false);
   const faellig = new Set(d.kontakte.map(k => k.id));
+  const gebMensch = geb ? d.familie.menschen.find(m => m.id === geb) : undefined;
   const sortiert = [...d.familie.menschen].sort((a, b) => Number(faellig.has(b.id)) - Number(faellig.has(a.id)) || a.name.localeCompare(b.name));
   const TAKTE = [{ id: '0', label: 'ohne Takt' }, { id: '7', label: 'wöchentlich' }, { id: '14', label: 'alle 2 Wochen' }, { id: '30', label: 'monatlich' }];
   return (
@@ -110,15 +134,27 @@ export function Menschen({ api }: { api: FamilieApi }) {
           const dran = faellig.has(m.id);
           return (
             <Zeile key={m.id} titel={<span style={{ color: dran ? C.ink : C.inkDim }}>{m.name}</span>}
-              unter={`${ROLLEN.find(r => r.id === m.rolle)?.label}${m.kontaktAlleTage ? ` · alle ${m.kontaktAlleTage} Tage` : ''}${m.letzterKontakt ? ` · zuletzt ${datumLang(m.letzterKontakt)}` : ''}`}
+              unter={`${ROLLEN.find(r => r.id === m.rolle)?.label}${m.kontaktAlleTage ? ` · alle ${m.kontaktAlleTage} Tage` : ''}${m.letzterKontakt ? ` · zuletzt ${datumLang(m.letzterKontakt)}` : ''}${(() => { const n = m.geburtstag ? naechsterGeburtstag(m.geburtstag, d.heute) : null; return n ? ` · 🎂 ${geburtstagText(m.geburtstag)}${n.inTagen === 0 ? ' — heute' : n.inTagen <= 30 ? ` — in ${n.inTagen} T` : ''}` : ''; })()}`}
               rechts={<Reihe gap={4}>
                 {dran && <Chip farbe={ROSA}>dran</Chip>}
+                <Symbol titel={m.geburtstag ? 'Geburtstag ändern' : 'Geburtstag eintragen'} onClick={() => { setGeb(geb === m.id ? null : m.id); setGebFehler(false); }}>🎂</Symbol>
                 <Knopf leise onClick={() => api.setze('menschen', { ...m, letzterKontakt: d.heute })}>Gesprochen</Knopf>
                 <Symbol titel="Entfernen" onClick={() => api.weg('menschen', m.id)}>×</Symbol>
               </Reihe>} />
           );
         })}
       </Liste>
+      {gebMensch && (
+        <div style={{ display: 'grid', gap: 6, padding: 10, borderRadius: 10, background: 'rgba(255,255,255,.03)', marginTop: 8 }}>
+          <Klein>Geburtstag von {gebMensch.name} — „TT.MM.“ oder „TT.MM.JJJJ“ (mit Jahr zeigt der Kalender das Alter). Leer lassen und Enter entfernt ihn.</Klein>
+          <Eingabe wert={gebMensch.geburtstag ?? ''} platzhalter="TT.MM.JJJJ" onFertig={t => {
+            const g = t ? geburtstagSaeubern(t, d.heute) : null;
+            if (t && !g) { setGebFehler(true); return; }
+            void api.setze('menschen', { ...gebMensch, geburtstag: g ?? null }); setGeb(null); setGebFehler(false);
+          }} />
+          {gebFehler && <Klein farbe={LEUCHT.kritisch}>Kein gültiges Datum — z. B. „3.10.“ oder „3.10.1990“.</Klein>}
+        </div>
+      )}
       {!sortiert.length && <Leer>Eltern, Geschwister, Kinder, enge Freunde — mit einem Takt, wie oft sie von euch hören sollen.</Leer>}
       <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
         <Eingabe leeren platzhalter="Name hinzufügen" onFertig={name => api.setze('menschen', { id: neueId('m'), name, rolle, geburtstag: null, kontaktAlleTage: takt, letzterKontakt: null, notiz: '' })} />

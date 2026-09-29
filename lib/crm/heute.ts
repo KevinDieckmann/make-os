@@ -28,6 +28,7 @@ import { hatTyp } from './mehrfach';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { personenDerFirma } from './stationen';
+import { werktagePlus as kernWerktagePlus, istWerktag } from '@/lib/zeit/kalender-kern';
 
 export type Kategorie = 'versprechen' | 'signale' | 'chancen' | 'kunden' | 'pflege' | 'neu';
 export const KATEGORIEN: { id: Kategorie; label: string; warum: string }[] = [
@@ -45,15 +46,11 @@ export interface Karte {
 }
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
-export function werktagePlus(datum: string, n: number): string {
-  const d = new Date(`${datum}T12:00:00Z`);
-  let rest = n;
-  while (rest > 0) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) rest--; }
-  return d.toISOString().slice(0, 10);
-}
+/** +n Werktage (Mo–Fr ohne Feiertage NRW) — Kalender-Kern (29.09., K2: vorher zählten Feiertage als Werktag). */
+export const werktagePlus = (datum: string, n: number): string => (n > 0 ? kernWerktagePlus(datum, n) : datum);
 function werktageSeit(von: string, bis: string): number {
   let n = 0; const d = new Date(`${von}T12:00:00Z`);
-  while (d.toISOString().slice(0, 10) < bis) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) n++; }
+  while (d.toISOString().slice(0, 10) < bis) { d.setUTCDate(d.getUTCDate() + 1); if (istWerktag(d.toISOString().slice(0, 10))) n++; }
   return n;
 }
 const KREIS_GEWICHT: Record<string, number> = { A: 3, B: 2, C: 1, D: 1 };

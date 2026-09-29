@@ -33,10 +33,12 @@ export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnu
 
 /** Gespeicherte Arten: die fünf der Schnittstelle + die Sammelmeldung der Grenze. */
 export type GespeicherteArt = MeldungArt | 'sammel';
+/** Nur abgeleitet, nie gespeichert (29.09., K2): Geburtstag am Vortag und am Tag (lib/kalender/quellen-geburtstage). */
+export type AbgeleiteteArt = 'geburtstag';
 
 export interface Meldung {
   id: string;
-  art: GespeicherteArt;
+  art: GespeicherteArt | AbgeleiteteArt;
   titel: string;
   link: string;
   von?: string;
@@ -216,6 +218,32 @@ export function faelligAbleiten(aufgaben: unknown[], o: FaelligOptionen): Meldun
   // Überfällige zuerst, darin die älteste Deadline zuerst.
   raus.sort((a, b) => (a.art === b.art ? a.tag.localeCompare(b.tag) : a.art === 'ueberfaellig' ? -1 : 1));
   return raus.map(({ tag: _t, ...m }) => m);
+}
+
+// ── Geburtstage (29.09., K2) ────────────────────────────────────────────────
+// Regel 4 gilt genauso: nie gespeichert, beim Lesen aus `geburtstageIm` abgeleitet — am Vortag („morgen“) und am Tag
+// („heute“); der Gelesen-Merker gilt je Berliner Tag. Wer: Familie = wer den Eintrag sieht, CRM = wer die Beziehung
+// hält (`zustaendig`, „beide“ = beide). Eingeschränkte Kontakte (Art. 18) kommen gar nicht erst an.
+
+export const geburtstagId = (heute: string, gid: string) => `geburtstag:${heute}:${gid}`;
+
+export function geburtstagAbleiten(
+  liste: readonly { id: string; name: string; tag: string; alter?: number; href: string; zustaendig?: string }[],
+  o: { person: string; heute: string; morgen: string; am: string; gelesen?: { tag: string; ids: string[] } },
+): Meldung[] {
+  const merker = o.gelesen?.tag === o.heute ? new Set(o.gelesen.ids) : new Set<string>();
+  const raus: Meldung[] = [];
+  for (const g of liste) {
+    if (g.tag !== o.heute && g.tag !== o.morgen) continue;
+    if (g.zustaendig && g.zustaendig !== o.person && g.zustaendig !== 'beide') continue;
+    if (!istLink(g.href)) continue;
+    const id = geburtstagId(o.heute, g.id.replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 120));
+    const wann = g.tag === o.heute ? 'heute' : 'morgen';
+    const alter = g.alter !== undefined && g.alter > 0 ? ` (wird ${g.alter})` : '';
+    raus.push({ id, art: 'geburtstag', titel: `${g.name} hat ${wann} Geburtstag${alter}`.slice(0, TITEL_MAX), link: g.href, am: o.am, virtuell: true, gelesen: merker.has(id) });
+  }
+  // Heute vor morgen.
+  return raus.sort((a, b) => Number(b.titel.includes(' heute ')) - Number(a.titel.includes(' heute ')));
 }
 
 // ── Sicht und „gelesen“ ─────────────────────────────────────────────────────

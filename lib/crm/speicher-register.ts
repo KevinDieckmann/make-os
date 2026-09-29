@@ -21,10 +21,12 @@ const E = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({
 const T = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'tilgen', grund, ...(frist ? { frist } : {}) });
 const H = (muster: string, grund: string): SpeicherEintrag => ({ muster, bezug: 'haushalt', behandlung: 'ausgenommen', grund });
 const K = (muster: string, grund: string): SpeicherEintrag => ({ muster, bezug: 'kein', behandlung: 'ausgenommen', grund });
+/** Spiegel einer Apple-Quelle mit Dritten: ausgenommen — Löschung nur in Apple (der Löschlauf meldet, wo). */
+const A = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'ausgenommen', grund, ...(frist ? { frist } : {}) });
 
 export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // ── CRM-Kern (lib/crm/person-bestaende.ts) ──
-  E('kontakte', 'Die Kartei — Eintrag raus (personEntfernen).', 'kontakte'),
+  E('kontakte', 'Die Kartei — Eintrag raus (personEntfernen), mit allen Feldern inkl. Geburtstag (K2, 29.09.).', 'kontakte'),
   E('crm', 'Kennung raus (person-verweise.ts), voller Name in Deal-Titeln/Kundennamen → „[gelöscht]“.'),
   E('crm-dateien--*', 'Dateiablage: nur Personen-Bezug → Eintrag + Datei weg; mit Geschäftsbezug nur der Personen-Bezug.'),
   E('crm-import-konflikte', 'Konflikte und mögliche Dubletten der Person raus.', 'import-konflikte'),
@@ -45,7 +47,12 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   E('apple-mail-cache', 'Mail-Zwischenspeicher — Mails der Person raus (Postfach selbst beim Anbieter).', 'postfach-caches'),
   E('m365-postfach', 'Mail-Zwischenspeicher (Microsoft 365) — Mails der Person raus.', 'postfach-caches'),
   E('microsoft-inbox', 'Mail-Zwischenspeicher (Anzeige) — Mails der Person raus.', 'postfach-caches'),
-  T('calendar-cache', 'Kalender-Zwischenspeicher — Termin bleibt, Name/Adresse getilgt.', 'kalender-caches'),
+  // Apple-Spiegel (29.09., K2 — Verbindungskarte Befund 3): Tilgen im Zwischenspeicher wäre Schein, der Abgleich baut
+  // ihn alle 5 Min. aus Apple neu. Deshalb „ausgenommen: Löschung nur in Apple“ — der Löschlauf zählt die Einträge, die
+  // die Person nennen, und meldet „n Einträge in Apple nennen die Person — dort löschen“ (person-weitere.ts `nurInApple`).
+  A('calendar-cache', 'Kalender-Spiegel aus Apple (Mac-Zulieferung/iCloud) — Löschung nur in Apple; der Löschlauf meldet die Termine, die die Person nennen.', 'kalender-caches'),
+  A('apple-reminders-cache', 'Erinnerungen-Spiegel vom Mac — Löschung nur in Apple; der Löschlauf meldet die Einträge, die die Person nennen.'),
+  A('apple-contacts-cache', 'Kontakte-Spiegel vom Mac (Adressbuch) — Löschung nur in Apple; der Löschlauf meldet die Einträge, die die Person nennen.'),
   T('kemaris-calendar', 'Kalender-Zwischenspeicher (KEMARIS) — Termin bleibt, Name/Adresse getilgt.', 'kalender-caches'),
   // Kalender K1 (29.09., KALENDER_VERBINDUNGEN.md 4a/4f):
   E('kalender-bezug', 'Bezüge der Termine zu MAKE OS (nur Kennungen: Kontakt, Firma, Mandat, Deal, Aufgabe, Event) — die Kontakt-Kennung der Person fällt weg, der Eintrag bleibt (lib/crm/person-weitere.ts kalenderBezugOhne).'),
@@ -73,7 +80,38 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   { muster: 'finance', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Controlling-Zahlen, Rechnungen — Aufbewahrungspflicht § 147 AO.' },
   { muster: 'grundlage', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanz-Export aus Malins Dashboard (Original, nur gelesen) — Buchführung, Aufbewahrungspflicht.' },
   K('business-abschluesse', 'Monatszahlen der Gesellschaften — keine Personen.'),
+  // Familie & Partnerschaft (29.09., K2 — Name dynamisch `familie--<haushalt>`, der Scanner sieht ihn nicht; hier trotzdem
+  // eingetragen): „Unsere Menschen“ tragen Name und Geburtstag Dritter — persönlich-familiär (Art. 2 Abs. 2 lit. c DSGVO),
+  // gepflegt nur vom Haushalt, nie im CRM, nie in einem Agentenpaket außer dem eigenen ZOE-Kontext. Eine verknüpfte
+  // CRM-Person (`kontaktId`) verliert bei Art. 17 nur die Verknüpfung (Kennung zeigt ins Leere, der Kalender zeigt dann
+  // allein den Familien-Eintrag).
+  H('familie--*', 'Familie des Haushalts (Paar, Rituale, Menschen mit Geburtstag) — eigene Daten des Haushalts.'),
   H('ernaehrung', 'Eigene Daten des Haushalts (Essen, Einkauf).'),
+  H('ernaehrung-vorschlag', 'Essens-Vorschlag des Haushalts.'),
+  // Seit 29.09. (K2) findet der Wächter auch Namen aus Konstanten, Namens-Funktionen und speicherFuer() — diese
+  // Bestände standen schon im Code, fehlten aber hier:
+  H('zeit', 'Zeit & Fokus (Kevin) — eigene Messung des Haushalts.'),
+  H('zeit--*', 'Zeit & Fokus je Person — eigene Messung des Haushalts.'),
+  H('fokus-laufend--*', 'Laufender Fokus-Block je Person.'),
+  H('wochenplan--*', 'Wochenplan je Person.'),
+  H('sport', 'Sport (Kevin) — eigene Gesundheitsdaten.'),
+  H('sport--*', 'Sport je Person — eigene Gesundheitsdaten.'),
+  H('vitals', 'Körperwerte (Kevin, Whoop) — eigene Gesundheitsdaten.'),
+  H('vitals--*', 'Körperwerte je Person — eigene Gesundheitsdaten.'),
+  H('haut', 'Haut-Tagebuch (Kevin) — eigene Gesundheitsdaten.'),
+  H('haut--*', 'Haut-Tagebuch je Person — eigene Gesundheitsdaten.'),
+  H('streak', 'Serien (Kevin) — eigene Daten.'),
+  H('streak--*', 'Serien je Person — eigene Daten.'),
+  H('health-log--*', 'Gesundheits-Log je Person — eigene Gesundheitsdaten.'),
+  H('journal--*', 'Journal je Person — eigene Daten.'),
+  H('steuern', 'Eigene Steuern des Haushalts (Einstellungen, Vorauszahlungen).'),
+  H('haushalt-*--*', 'Haushaltsfinanzen (Konten, Buchungen, Rechnungen) — eigene Daten des Haushalts.'),
+  H('haushalt-umzug--*', 'Umzugs-Kopie der Haushaltsfinanzen — eigene Daten des Haushalts.'),
+  H('telegram', 'Telegram-Verknüpfung der Personen des Haushalts (Chat-Kennungen).'),
+  H('anmeldungen', 'Anmeldungen der Konten des Haushalts (Zeit, Gerät) — Art. 17 über das Konto.'),
+  H('content-entwuerfe', 'Eigene Marketing-Entwürfe (ZOE) — Themen und Texte des Haushalts, keine Kartei-Daten.'),
+  H('delegation-runde', 'Delegations-Vorschläge an Personen des Haushalts (Aufgaben-Titel).'),
+  { muster: 'anfragen-ergebnis', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Idempotenz-Ablage (lib/store/anfragen.ts): Antworten höchstens 24 h, danach automatisch weg — kein eigener Löschlauf nötig.' },
   H('gesundheit-takt', 'Eigene Gesundheitsdaten des Haushalts.'),
   H('gesundheitszeit', 'Eigene Gesundheitsdaten des Haushalts.'),
   H('health-log', 'Eigene Gesundheitsdaten des Haushalts.'),
@@ -114,6 +152,20 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('tageslauf', 'Riegel des Tageslaufs.'),
   K('tagesstart', 'Riegel des Morgenlaufs.'),
   K('willkommen', 'Willkommens-Hinweise.'),
+  K('gesellschaften--*', 'Die eigenen Gesellschaften des Haushalts (Firmendaten, Nummernkreise).'),
+  K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
+  K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),
+  K('performance--*', 'Wachstums-Score je Person (Zahlen).'),
+  K('flaeche', 'Anordnung der Flächen (Kevin).'),
+  K('flaeche--*', 'Anordnung der Flächen je Person.'),
+  K('hoi-aussen', 'Außenprüfung des Head of IT (Zeiten, Status).'),
+  K('hoi-csp', 'CSP-Meldungen des Browsers (Adressen der App, keine Personen).'),
+  K('ki-stand', 'Stand der Modell-Anbindung (Guthaben, Fehlerzeit).'),
+  K('brain-bruecke--*', 'Einstellung der App → Brain-Brücke je Haushalt.'),
+  K('brain-app-spiegel', 'Riegel des _App-Spiegels (Tag + Stände).'),
+  K('business-einstellungen', 'Einstellungen des Business-Index.'),
+  K('business-verlauf', 'Verlauf des Business-Index (Zahlen).'),
+  K('zoe-chargen--*', 'ZOE-Chargen: nur Kennungen von Aufgaben/Vorschlägen und Feldstände, keine Texte.'),
   K('aufgaben-dateien--*', 'Aufgaben-Ablage (Dateien zu Aufgaben, lib/dateien/aufgaben-ablage.ts) — Kontakt-Dateien liegen in crm-dateien--*.'),
   K('datenschutz-grabsteine', 'Marke „Grabsteine zuletzt angewendet“ (Fingerabdruck der Grabstein-Datei, Zahl).'),
   K('datenschutz-migration', 'Marke der Umrechnung v1 → v2 je Pepper (nur Zahlen).'),

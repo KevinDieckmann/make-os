@@ -11,6 +11,7 @@
 import type { Wiederholung, WiederholungRegel } from '@/types/tasks';
 import { wandzeit, tagVon, tagPlus } from '@/lib/kalender/zeit';
 import { istWerktag as werktagNRW } from './feiertage';
+import { isoWoche as kalenderwoche, montagVon } from '@/lib/zeit/kalender-kern';
 
 export { tagPlus };
 
@@ -37,7 +38,6 @@ export const wochentag = (tag: string): number => new Date(`${tag}T12:00:00Z`).g
 export const tageZwischen = (a: string, b: string): number => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
 /** Werktag der Regel „Werktage“: Mo–Fr ohne gesetzliche Feiertage NRW (29.09., Kevin — gilt global, lib/aufgaben/feiertage.ts). */
 const istWerktag = (tag: string) => werktagNRW(tag, 'NRW');
-const montagVon = (tag: string) => tagPlus(tag, -((wochentag(tag) + 6) % 7));
 function monatPlus(j: number, m: number, n: number): { j: number; m: number } {
   const i = j * 12 + (m - 1) + n;
   return { j: Math.floor(i / 12), m: (((i % 12) + 12) % 12) + 1 };
@@ -192,15 +192,8 @@ export function wiederholungText(w: Wiederholung): string {
 
 // ── Titel-Platzhalter ──────────────────────────────────────────────────────
 
-/** ISO-Kalenderwoche (Mo–So, die Woche mit dem 4. Januar ist KW 1). */
-export function kalenderwoche(tag: string): { kw: number; jahr: number } {
-  const d = new Date(`${tag}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3); // Donnerstag dieser Woche
-  const jahr = d.getUTCFullYear();
-  const vierter = new Date(Date.UTC(jahr, 0, 4, 12));
-  const kw = 1 + Math.round(((d.getTime() - vierter.getTime()) / 86_400_000 - 3 + ((vierter.getUTCDay() + 6) % 7)) / 7);
-  return { kw, jahr };
-}
+/** ISO-Kalenderwoche mit Wochenjahr — aus dem Kalender-Kern (29.09., K2: eine Stelle). */
+export { kalenderwoche };
 
 const PLATZHALTER = /\{(Monat|Jahr|KW|Datum)\}/g;
 export const hatPlatzhalter = (s: string): boolean => /\{(Monat|Jahr|KW|Datum)\}/.test(s);

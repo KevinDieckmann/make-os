@@ -22,6 +22,7 @@ import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { bezugSaeubern, mitMandatBezug, type MandatKurz } from '@/lib/planung/mandat';
 import { teile, type BlockZuordnung, type FokusBlock, type ZeitDatei } from './modell';
+import { kalenderwoche } from '@/lib/zeit/kalender-kern';
 
 /** Das, was die Auswertung und die Säuberung von einer Aufgabe brauchen. */
 export interface AufgabeKurz {
@@ -104,13 +105,8 @@ export const berlinTag = (iso: string): string => wandzeit(new Date(iso)).slice(
 
 const wochentagIndex = (tag: string) => (new Date(`${tag}T12:00:00Z`).getUTCDay() + 6) % 7; // Mo = 0
 
-/** ISO-Kalenderwoche eines Tages. */
-export function kalenderwoche(tag: string): number {
-  const d = new Date(`${tag}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + 3 - wochentagIndex(tag)); // Donnerstag derselben Woche
-  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4, 12));
-  return 1 + Math.round(((d.getTime() - jan4.getTime()) / 86_400_000 - 3 + wochentagIndex(jan4.toISOString().slice(0, 10))) / 7);
-}
+/** ISO-Kalenderwoche eines Tages — aus dem Kalender-Kern (29.09., K2: eine Stelle). */
+export { kalenderwoche };
 
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 

@@ -43,7 +43,8 @@
 //   netzwerk · kunden · stammdaten (Altbestände)      Datensätze der Person raus, Rest getilgt
 //   inbox-absender · inbox-triage · apple-mail-cache  Mails/Einträge der Person raus (Zwischenspeicher; das Postfach
 //     · m365-postfach · microsoft-inbox                selbst liegt beim Anbieter — Art. 17 dort gesondert)
-//   calendar-cache · kemaris-calendar · meetings      getilgt (Termin bleibt, Name/Adresse → „[gelöscht]“)
+//   kemaris-calendar · meetings                        getilgt (Termin bleibt, Name/Adresse → „[gelöscht]“)
+//   calendar-cache · kalender-icloud · Apple-Spiegel   NICHT geändert — gezählt, Meldung „in Apple löschen“ (29.09., K2)
 //   zoe-verlauf · zoe-auftraege · zoe-empfang         getilgt
 //   zoe-gedaechtnis · zoe-protokoll · zoe-stapel      Einträge, die die Person nennen, raus
 //   zoe-entscheidungen--* · aenderungsprotokoll--*    getilgt: Fingerabdrücke (v2 + v1) → `c#geloescht`, Name → „[gelöscht]“
@@ -383,6 +384,11 @@ export interface PersonBericht {
   vollstaendig?: boolean;
   /** Protokoll-ID des Löschprotokolls (nur, wenn verlangt). */
   protokollId?: string;
+  /**
+   * Apple-Spiegel (29.09., K2): je Spiegel (calendar-cache, kalender-icloud, Erinnerungen, Kontakte) die Zahl der Einträge,
+   * die die Person nennen — NICHT geändert (Löschung nur in Apple, sonst baut der Abgleich sie neu). Anzeige: „in Apple löschen“.
+   */
+  nurInApple?: Record<string, number>;
 }
 const zaehle = (b: PersonBericht, name: string, n: number) => { if (n) b.speicher[name] = (b.speicher[name] ?? 0) + n; };
 
@@ -620,6 +626,7 @@ async function art17Lauf(haushalt: string, absicht: import('@/lib/store/absichte
     await lauf('weitere', async () => {
       const w = await weitereEntfernen(merkmaleVon(id, person));
       for (const [s, n] of Object.entries(w.speicher)) zaehle(b, s, n);
+      if (Object.keys(w.nurInApple).length) b.nurInApple = w.nurInApple;
       const { aliasOhnePerson, aliasName } = await import('./kennung-alias');
       const { karteiHaushalt } = await import('./sperrliste');
       zaehle(b, aliasName(await karteiHaushalt()), await aliasOhnePerson([id, ...(v.daten<string[]>('alteKennungen') ?? [])]));

@@ -6,6 +6,8 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { DATE_IDEEN, KARTEN, TAGES_RITUALE } from './katalog';
+import { geburtstagSaeubern } from '@/lib/kalender/geburtstag';
+import { localDay } from '@/lib/zeit';
 import { LISTEN, type Familie, type Liste, type Einstellungen, type Profil, type Vision } from './typen';
 
 export const familieName = (haushalt: string) => `familie--${haushalt}`;
@@ -57,6 +59,16 @@ export function wendeFamilieAn(f: Familie, ops: ListenOp[], person: string, jetz
       const aus: Record<string, unknown> = { ...roh, id, von: alt?.von ?? person, am: alt?.am ?? jetzt, sichtbarkeit: roh.sichtbarkeit === 'nur-ich' ? 'nur-ich' : 'paar' };
       // Reparatur: jeder schreibt nur die eigene Reflexion. Die des anderen
       // (die man ungeteilt gar nicht sieht) bleibt aus dem Bestand erhalten.
+      // Menschen (29.09., K2): Geburtstag in EINER Form (TT.MM. oder JJJJ-MM-TT, sonst null), CRM-Verknüpfung nur als Kennung.
+      if (name === 'menschen') {
+        aus.geburtstag = geburtstagSaeubern(roh.geburtstag, localDay(new Date(jetzt))) ?? null;
+        if (typeof roh.kontaktId === 'string' && /^c-[a-z0-9-]{4,60}$/.test(roh.kontaktId)) aus.kontaktId = roh.kontaktId; else delete aus.kontaktId;
+      }
+      // Wichtige Tage (29.09., K2): ein Geburtstag mit Verweis auf einen Menschen trägt KEIN eigenes Datum — der Mensch führt.
+      if (name === 'tage') {
+        if (roh.art === 'geburtstag' && typeof roh.menschId === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(roh.menschId)) { aus.menschId = roh.menschId; aus.datum = ''; }
+        else delete aus.menschId;
+      }
       if (name === 'reparaturen') {
         type Refl = { person: string };
         const eigene = ((roh.reflexionen as Refl[]) ?? []).filter(x => x?.person === person);

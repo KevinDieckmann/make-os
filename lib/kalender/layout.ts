@@ -3,6 +3,8 @@
 // die Breite der Spalte; eine zusammenhängende Gruppe bekommt so viele
 // Spalten, wie sich höchstens gleichzeitig überlappen.
 
+import { montagVon } from '@/lib/zeit/kalender-kern';
+
 export interface Lage { id: string; von: number; bis: number }
 export interface Platz { id: string; spalte: number; spalten: number }
 
@@ -29,13 +31,8 @@ export function spaltenLegen(liste: Lage[]): Platz[] {
   return raus;
 }
 
-/** Wochen-/Monatsrechnung: Montag der Woche eines Tages. */
-export function montagVon(tag: string): string {
-  const d = new Date(`${tag}T12:00:00`);
-  const w = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - w);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+/** Wochen-/Monatsrechnung: Montag der Woche eines Tages — aus dem Kalender-Kern (29.09., K2). */
+export { montagVon };
 
 /** Die 42 Tage (6 Wochen) eines Monatsblatts, beginnend am Montag vor dem 1. */
 export function monatsblatt(jahr: number, monat: number): string[] {

@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Spalten, Spalte } from './schlank';
 import { WIDGETS } from './flaeche/widgets';
+import { Anlaesse } from './kalender/Anlaesse';
 
 export function HeuteView() {
   const [datum, setDatum] = useState('');
@@ -29,6 +30,8 @@ export function HeuteView() {
     <Seite titel={<>{gruss}{vorname ? `, ${vorname}` : ''}</>} unter={<span suppressHydrationWarning>{datum} · <Link href={`/os/ritual?modus=${abend ? 'abend' : 'morgen'}`} style={{ color: C.inkDim }}>{abend ? 'Tagesende' : 'Tagesstart'} ›</Link></span>}>
       {/* Der Tag in einer Zeile: was heute zählt */}
       <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.mikro, letterSpacing: '.12em', textTransform: 'uppercase', color: C.inkLeise, margin: '-6px 0 14px', fontWeight: 600 }}>Was heute zählt</div>
+      {/* K2 (29.09.): Feiertag NRW heute/morgen und Geburtstage der nächsten 7 Tage (Familie + CRM). */}
+      <Anlaesse />
       <Spalten verhaeltnis="2:1">
         <Spalte>
           <W.fokus.Komponente e={{ horizont: 'tag' }} i={0} />

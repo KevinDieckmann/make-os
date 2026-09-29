@@ -20,6 +20,7 @@ import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
 import { preisBasisVon } from '@/lib/finanzen/produkte';
+import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
 
@@ -162,13 +163,8 @@ const tagMs = (d: string) => Date.parse(`${d}T12:00:00Z`);
 const tagAus = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 export const tagOk = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(tagMs(v));
 export const plusTage = (d: string, n: number) => tagAus(tagMs(d) + n * 864e5);
-/** +n Werktage (Mo–Fr), Feiertage zählen mit — der Nachfass-Termin ist ein Vorschlag. */
-export function werktagePlus(d: string, n: number): string {
-  let ms = tagMs(d);
-  let rest = n;
-  while (rest > 0) { ms += 864e5; const wt = new Date(ms).getUTCDay(); if (wt !== 0 && wt !== 6) rest--; }
-  return tagAus(ms);
-}
+/** +n Werktage (Mo–Fr ohne Feiertage NRW, Kalender-Kern — 29.09., K2: vorher zählten Feiertage mit). */
+export const werktagePlus = (d: string, n: number): string => (n > 0 ? kernWerktagePlus(d, n) : d);
 
 // ── Säubern (Entwurf aus dem Browser) ────────────────────────────────────────
 

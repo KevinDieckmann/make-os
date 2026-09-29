@@ -6,6 +6,7 @@
 // wichtige Tage).
 
 import type { Familie, WichtigerTag, Mensch, Gespraech, Einstellungen } from './typen';
+import { alsTagesSchluessel } from '@/lib/kalender/geburtstag';
 
 const tag = (d: Date) => d.toISOString().slice(0, 10);
 const plus = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return tag(d); };
@@ -29,7 +30,7 @@ export function pflegeRhythmus(f: Familie, heute: string): Rhythmus {
   const grenzen = f.gespraeche.filter(g => imFenster(g.datum) && g.businessGrenzeGehalten !== null);
   const karten = f.karten.filter(k => k.aktiv);
   const kartenOk = karten.length ? karten.filter(k => k.inhaber && k.geprueft && zwischen(k.geprueft, heute) <= 90).length / karten.length : null;
-  const tageFaellig = wichtigeTage(f.tage, heute, 28).filter(t => t.faelligAb <= heute);
+  const tageFaellig = wichtigeTage(f.tage, heute, 28, f.menschen).filter(t => t.faelligAb <= heute);
   const tageOk = tageFaellig.length ? tageFaellig.filter(t => t.erledigt).length / tageFaellig.length : null;
 
   const q = (x: number) => Math.max(0, Math.min(1, x));
@@ -63,11 +64,22 @@ export function naechstes(datum: string, heute: string): string {
   return kandidat >= heute ? kandidat : `${j + 1}-${mt}`;
 }
 
-export function wichtigeTage(tage: WichtigerTag[], heute: string, horizont = 60) {
-  return tage.map(t => {
-    const am = naechstes(t.datum, heute);
+/**
+ * Das Datum eines wichtigen Tages (MM-TT oder JJJJ-MM-TT): ein Geburtstag mit `menschId` liest es vom Menschen (der Mensch
+ * führt, 29.09. K2); fehlt der Mensch oder sein Geburtstag, gibt es keins (null).
+ */
+export function tagDatum(t: Pick<WichtigerTag, 'datum' | 'menschId'>, menschen: readonly Pick<Mensch, 'id' | 'geburtstag'>[] = []): string | null {
+  if (t.menschId) return alsTagesSchluessel(menschen.find(m => m.id === t.menschId)?.geburtstag);
+  return /^(\d{4}-)?\d{2}-\d{2}$/.test(t.datum ?? '') ? t.datum : null;
+}
+
+export function wichtigeTage(tage: WichtigerTag[], heute: string, horizont = 60, menschen: readonly Pick<Mensch, 'id' | 'geburtstag'>[] = []) {
+  return tage.flatMap(t => {
+    const datum = tagDatum(t, menschen);
+    if (!datum) return [];
+    const am = naechstes(datum, heute);
     const faelligAb = plus(am, -t.vorlaufTage);
-    return { ...t, am, faelligAb, inTagen: zwischen(heute, am), erledigt: t.erledigt.includes(Number(am.slice(0, 4))) };
+    return [{ ...t, datum, am, faelligAb, inTagen: zwischen(heute, am), erledigt: t.erledigt.includes(Number(am.slice(0, 4))) }];
   }).filter(t => t.inTagen <= horizont).sort((a, b) => a.am.localeCompare(b.am));
 }
 
@@ -93,7 +105,7 @@ export function agendaVorbereiten(f: Familie, heute: string, person: string) {
   const offeneThemen = f.themen.filter(t => (t.status === 'offen' || t.status === 'geparkt') && t.hut === 'privat' && (t.sichtbarkeit !== 'nur-ich' || t.von === person));
   const offeneVereinbarungen = f.vereinbarungen.filter(v => v.status === 'offen');
   const businessThemen = f.themen.filter(t => t.status === 'offen' && t.hut === 'business');
-  const tage = wichtigeTage(f.tage, heute, 14);
+  const tage = wichtigeTage(f.tage, heute, 14, f.menschen);
   const faelligeKarten = f.karten.filter(k => k.aktiv && (!k.inhaber || !k.geprueft || zwischen(k.geprueft, heute) > 90));
   return { offeneThemen, offeneVereinbarungen, businessThemen, tage, faelligeKarten };
 }

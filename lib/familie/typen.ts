@@ -44,10 +44,20 @@ export interface Profil { person: string; stress: string; traeume: string; wasMi
 export interface Reparatur extends Basis { datum: string; pauseBis: string | null; reflexionen: { person: string; gefuehle: string; meineSicht: string; meinAnteil: string; wunsch: string; geteilt: boolean }[]; abgeschlossen: string | null; vereinbarung: string }
 export interface Vision { jahr: number; leitbild: string; ziele: { id: string; text: string; erreicht: boolean }[]; traeume: { person: string; text: string }[] }
 
-export interface WichtigerTag extends Basis { titel: string; art: 'geburtstag' | 'jahrestag' | 'gedenktag' | 'sonstig'; datum: string /* MM-TT oder JJJJ-MM-TT */; vorlaufTage: number; wer: string; aktion: 'geschenk' | 'karte' | 'anruf' | 'feier'; erledigt: number[] }
+/**
+ * Ein wichtiger Tag mit Vorlauf und Aktion. Geburtstage (29.09., K2): der MENSCH führt das Datum — ein Geburtstag mit
+ * `menschId` trägt nur den Verweis (datum leer), Tag und Alter kommen von `Mensch.geburtstag` (`tagDatum`). Alte
+ * Einträge ohne Verweis bleiben gültig (eigenes `datum`).
+ */
+export interface WichtigerTag extends Basis { titel: string; art: 'geburtstag' | 'jahrestag' | 'gedenktag' | 'sonstig'; datum: string /* MM-TT oder JJJJ-MM-TT; leer bei menschId */; vorlaufTage: number; wer: string; aktion: 'geschenk' | 'karte' | 'anruf' | 'feier'; erledigt: number[]; menschId?: string }
 export interface Karte extends Basis { titel: string; bereich: 'zuhause' | 'unterwegs' | 'fuersorge' | 'magie' | 'wild'; inhaber: string | null; mindeststandard: string; rhythmus: string; aufwandMinWoche: number | null; geprueft: string | null; aktiv: boolean }
 export interface Ritual extends Basis { titel: string; ebene: 'paar' | 'familie'; rhythmus: 'taeglich' | 'woechentlich' | 'monatlich' | 'jaehrlich' }
-export interface Mensch extends Basis { name: string; rolle: 'kind' | 'eltern' | 'geschwister' | 'freund' | 'sonstig'; geburtstag: string | null; kontaktAlleTage: number | null; letzterKontakt: string | null; notiz: string }
+/**
+ * Ein Mensch der Familie. `geburtstag` (29.09., K2): „TT.MM.“ oder „JJJJ-MM-TT“ (lib/kalender/geburtstag.ts, gesäubert im
+ * Schreibweg). `kontaktId`: dieselbe Person im CRM — dann erscheint der Geburtstag EINMAL, Vorrang hat die Familie
+ * (lib/kalender/quellen-geburtstage.ts). Auch ohne Verknüpfung gilt gleicher Name als dieselbe Person.
+ */
+export interface Mensch extends Basis { name: string; rolle: 'kind' | 'eltern' | 'geschwister' | 'freund' | 'sonstig'; geburtstag: string | null; kontaktAlleTage: number | null; letzterKontakt: string | null; notiz: string; kontaktId?: string }
 
 export interface Familie {
   einstellungen: Einstellungen;

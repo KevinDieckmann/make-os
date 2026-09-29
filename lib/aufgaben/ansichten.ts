@@ -14,6 +14,7 @@ import type { Priority } from '@/types/common';
 import { LEUCHT, FARBE } from '@/lib/make-one/design';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { montagVon, monatsblatt } from '@/lib/kalender/layout';
+import { kalenderwoche } from '@/lib/zeit/kalender-kern';
 
 // ── Allgemein ──────────────────────────────────────────────────────────────
 
@@ -280,17 +281,8 @@ export function merkerLesen(roh: string | null): { aus: string[]; sort: Sortieru
 export type KalenderAnsicht = 'monat' | 'woche';
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
-/** ISO-Kalenderwoche eines Tages. */
-export function kalenderwoche(tag: string): number {
-  const d = new Date(`${tag}T12:00:00Z`);
-  const wt = (d.getUTCDay() + 6) % 7;
-  d.setUTCDate(d.getUTCDate() - wt + 3); // Donnerstag derselben Woche
-  const jahr = d.getUTCFullYear();
-  const erster = new Date(Date.UTC(jahr, 0, 4, 12));
-  const wt1 = (erster.getUTCDay() + 6) % 7;
-  erster.setUTCDate(erster.getUTCDate() - wt1 + 3);
-  return 1 + Math.round((d.getTime() - erster.getTime()) / (7 * 86_400_000));
-}
+/** ISO-Kalenderwoche eines Tages — aus dem Kalender-Kern (29.09., K2: eine Stelle). */
+export { kalenderwoche };
 
 /** Die Tage der Ansicht: Monat = 42 (sechs Wochen ab Montag), Woche = 7 ab Montag. */
 export function kalenderTage(ansicht: KalenderAnsicht, anker: string): string[] {

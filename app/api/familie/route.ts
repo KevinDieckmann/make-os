@@ -42,7 +42,7 @@ async function antwort(f: Familie, person: string, haushalt: string) {
     ok: true, person, familie: sicht(f, person),
     rhythmus: pflegeRhythmus(f, heute),
     gespraech: naechstesGespraech(f.einstellungen, heute, f.gespraeche),
-    tage: wichtigeTage(f.tage, heute, 60),
+    tage: wichtigeTage(f.tage, heute, 60, f.menschen),
     kontakte: kontaktFaellig(f.menschen, heute),
     frage: LOVEMAP_FRAGEN[woche % LOVEMAP_FRAGEN.length],
     agenda: agendaVorbereiten(f, heute, person),

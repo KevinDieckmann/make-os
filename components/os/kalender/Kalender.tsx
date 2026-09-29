@@ -26,14 +26,19 @@ import { Monat } from './Monat';
 import { Agenda } from './Agenda';
 import { NeuerTermin, type Vorgabe } from './NeuerTermin';
 import { suchPasst } from '@/lib/text/such-norm';
+// K2 (29.09.): 4 Tage, Jahr, Quellen „Feiertage NRW“ + „Geburtstage“, Zeit-Auswertung.
+import { VierTage } from './VierTage';
+import { Jahr, useJahr } from './Jahr';
+import { useQuellTermine, istQuellTermin, QUELL_KALENDER } from './quellen';
+import { AuswertungKarte } from './Auswertung';
+import { kalenderwoche } from '@/lib/zeit/kalender-kern';
 
-type Ansicht = 'tag' | 'woche' | 'monat' | 'agenda';
-const ANSICHTEN: { id: Ansicht; label: string; taste: string }[] = [{ id: 'tag', label: 'Tag', taste: 'd' }, { id: 'woche', label: 'Woche', taste: 'w' }, { id: 'monat', label: 'Monat', taste: 'm' }, { id: 'agenda', label: 'Agenda', taste: 'a' }];
+type Ansicht = 'tag' | 'vier' | 'woche' | 'monat' | 'jahr' | 'agenda';
+const ANSICHTEN: { id: Ansicht; label: string; taste: string }[] = [{ id: 'tag', label: 'Tag', taste: 'd' }, { id: 'vier', label: '4 Tage', taste: 'x' }, { id: 'woche', label: 'Woche', taste: 'w' }, { id: 'monat', label: 'Monat', taste: 'm' }, { id: 'jahr', label: 'Jahr', taste: 'y' }, { id: 'agenda', label: 'Termine', taste: 'a' }];
 const MERKER = 'make-os:kalender-ansicht';
 const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 const uhr = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-const kwVon = (tag: string) => { const d = new Date(Date.UTC(Number(tag.slice(0, 4)), Number(tag.slice(5, 7)) - 1, Number(tag.slice(8, 10)))); const w = d.getUTCDay() || 7; d.setUTCDate(d.getUTCDate() + 4 - w); const j = new Date(Date.UTC(d.getUTCFullYear(), 0, 1)); return Math.ceil(((d.getTime() - j.getTime()) / 864e5 + 1) / 7); };
 const monatPlus = (tag: string, n: number) => { const d = new Date(`${tag.slice(0, 7)}-15T12:00:00`); d.setMonth(d.getMonth() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
 
 interface Einstellungen { kalender: Record<Wer, string>; dauer: { termin: number; fokus: number; routine: number; aufgabe: number; reha: number }; space: Record<string, 'privat' | 'business'>; standardSicht?: 'alle' | Wer }
@@ -73,21 +78,36 @@ export function Kalender() {
   // Zeitraum je Ansicht
   const { von, bis, tage, blatt } = useMemo(() => {
     if (ansicht === 'tag') return { von: anker, bis: tagPlus(anker, 1), tage: [anker], blatt: [] as string[] };
+    if (ansicht === 'vier') { const t = Array.from({ length: 4 }, (_, i) => tagPlus(anker, i)); return { von: anker, bis: tagPlus(anker, 4), tage: t, blatt: [] as string[] }; }
+    // Jahr (K2): die Ansicht lädt ihr Jahr verdichtet selbst (useJahr) — hier nur der Ankertag für Leiste/Mini-Monat.
+    if (ansicht === 'jahr') return { von: anker, bis: tagPlus(anker, 1), tage: [anker], blatt: [] as string[] };
     if (ansicht === 'woche') { const mo = montagVon(anker); const t = Array.from({ length: 7 }, (_, i) => tagPlus(mo, i)); return { von: mo, bis: tagPlus(mo, 7), tage: t, blatt: [] as string[] }; }
     if (ansicht === 'monat') { const b = monatsblatt(Number(anker.slice(0, 4)), Number(anker.slice(5, 7))); return { von: b[0], bis: tagPlus(b[41], 1), tage: b, blatt: b }; }
     const t = Array.from({ length: 30 }, (_, i) => tagPlus(anker, i)); return { von: anker, bis: tagPlus(anker, 30), tage: t, blatt: [] as string[] };
   }, [ansicht, anker]);
   const { daten, laedt, laden, setDaten } = useKalender(von, bis);
+  // Quellen (K2): Feiertage NRW + Geburtstage — ganztägig, schreibgeschützt, in allen Ansichten; im Jahr das ganze Jahr.
+  const jahr = Number(anker.slice(0, 4));
+  const quell = useQuellTermine(ansicht === 'jahr' ? `${jahr}-01-01` : von, ansicht === 'jahr' ? `${jahr + 1}-01-01` : bis);
+  const jahrDaten = useJahr(ansicht === 'jahr' ? jahr : 0);
 
-  const farbe = useCallback((t: KTermin) => daten?.kalender.find(k => k.name === t.kalender)?.farbe ?? WER_FARBE[t.wer], [daten]);
+  const farbe = useCallback((t: KTermin) => (istQuellTermin(t) ? t.farbe : daten?.kalender.find(k => k.name === t.kalender)?.farbe ?? WER_FARBE[t.wer]), [daten]);
   const such = suche.trim().toLowerCase();
-  const termine = useMemo(() => (daten?.termine ?? []).filter(t => (sicht === 'alle' || t.wer === sicht) && !aus.has(t.kalender) && (!such || `${t.titel} ${t.ort ?? ''} ${t.kalender} ${t.notiz ?? ''}`.toLowerCase().includes(such))), [daten, sicht, aus, such]);
+  const termine = useMemo(() => [
+    ...(daten?.termine ?? []).filter(t => (sicht === 'alle' || t.wer === sicht) && !aus.has(t.kalender) && (!such || `${t.titel} ${t.ort ?? ''} ${t.kalender} ${t.notiz ?? ''}`.toLowerCase().includes(such))),
+    ...quell.filter(t => !aus.has(t.kalender) && (!such || `${t.titel} ${t.kalender}`.toLowerCase().includes(such))),
+  ], [daten, quell, sicht, aus, such]);
+  // Klick auf einen Quell-Eintrag öffnet nie das Termin-Fenster: Geburtstag → Person/Kontaktakte, Feiertag → nichts.
+  const oeffnen = (t: KTermin) => { if (istQuellTermin(t)) { if (t.href) router.push(t.href); return; } setOffen(t); };
+  const jahrKalender = jahrDaten?.kalender;
+  const kalenderAn = useCallback((name: string) => { if (aus.has(name)) return false; if (sicht === 'alle') return true; const w = jahrKalender?.find(k => k.name === name)?.wer; return !w || w === sicht; }, [aus, sicht, jahrKalender]);
+  const kalenderFarbe = useCallback((name: string) => { const k = jahrKalender?.find(x => x.name === name); return k?.farbe ?? WER_FARBE[k?.wer ?? 'beide']; }, [jahrKalender]);
   const fristen = useMemo(() => (ebenen.fristen && !such ? daten?.fristen ?? [] : (daten?.fristen ?? []).filter(f => such && f.titel.toLowerCase().includes(such))), [daten, ebenen.fristen, such]);
   const erinnerungen = useMemo(() => (ebenen.erinnerungen && !such ? daten?.erinnerungen ?? [] : (daten?.erinnerungen ?? []).filter(e => such && e.titel.toLowerCase().includes(such))), [daten, ebenen.erinnerungen, such]);
   const aufgabenImZeitraum = useMemo(() => (ebenen.aufgaben ? aufgaben : []).filter(a => a.dueDate && a.dueDate >= von && a.dueDate < bis && a.status !== 'done' && (!such || suchPasst([a.title], such))).map(a => ({ id: a.id, title: a.title, done: a.status === 'done', priority: a.priority, tag: a.dueDate! })), [aufgaben, ebenen.aufgaben, von, bis, such]);
 
   // Navigation
-  const springe = (richtung: -1 | 1) => setAnker(a => ansicht === 'tag' ? tagPlus(a, richtung) : ansicht === 'woche' ? tagPlus(a, 7 * richtung) : ansicht === 'monat' ? monatPlus(a, richtung) : tagPlus(a, 30 * richtung));
+  const springe = (richtung: -1 | 1) => setAnker(a => ansicht === 'tag' ? tagPlus(a, richtung) : ansicht === 'vier' ? tagPlus(a, 4 * richtung) : ansicht === 'woche' ? tagPlus(a, 7 * richtung) : ansicht === 'monat' ? monatPlus(a, richtung) : ansicht === 'jahr' ? monatPlus(a, 12 * richtung) : tagPlus(a, 30 * richtung));
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
       const ziel = e.target as HTMLElement | null;
@@ -105,7 +125,9 @@ export function Kalender() {
   }, [ansicht, anker, heute]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const titel = ansicht === 'tag' ? `${WD[new Date(`${anker}T12:00:00`).getDay()]}, ${Number(anker.slice(8, 10))}. ${MONATE[Number(anker.slice(5, 7)) - 1]} ${anker.slice(0, 4)}`
-    : ansicht === 'woche' ? `KW ${kwVon(tage[0])} · ${Number(tage[0].slice(8, 10))}.${Number(tage[0].slice(5, 7))}. – ${Number(tage[6].slice(8, 10))}.${Number(tage[6].slice(5, 7))}.${tage[6].slice(0, 4)}`
+    : ansicht === 'woche' ? `KW ${kalenderwoche(tage[0])} · ${Number(tage[0].slice(8, 10))}.${Number(tage[0].slice(5, 7))}. – ${Number(tage[6].slice(8, 10))}.${Number(tage[6].slice(5, 7))}.${tage[6].slice(0, 4)}`
+    : ansicht === 'vier' ? `${Number(tage[0].slice(8, 10))}.${Number(tage[0].slice(5, 7))}. – ${Number(tage[3].slice(8, 10))}.${Number(tage[3].slice(5, 7))}.${tage[3].slice(0, 4)}`
+    : ansicht === 'jahr' ? `${jahr}`
     : ansicht === 'monat' ? `${MONATE[Number(anker.slice(5, 7)) - 1]} ${anker.slice(0, 4)}` : `Nächste 30 Tage ab ${Number(anker.slice(8, 10))}.${Number(anker.slice(5, 7))}.`;
 
   // Schreiben
@@ -149,8 +171,8 @@ export function Kalender() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center' }}>
           {['M', 'D', 'M', 'D', 'F', 'S', 'S'].map((w, i) => <span key={i} style={{ fontSize: 11, color: C.inkLeise }}>{w}</span>)}
-          {miniBlatt.map(tag => { const im = tag.slice(0, 7) === anker.slice(0, 7); const gew = ansicht === 'tag' ? tag === anker : ansicht === 'woche' ? tage.includes(tag) : false; return (
-            <button key={tag} onClick={() => { setAnker(tag); if (ansicht === 'monat' || ansicht === 'agenda') setAnsicht('tag'); }} style={{ position: 'relative', border: 'none', borderRadius: 7, padding: '4px 0', fontSize: 11.5, cursor: 'pointer', fontFamily: SCHRIFT.text,
+          {miniBlatt.map(tag => { const im = tag.slice(0, 7) === anker.slice(0, 7); const gew = ansicht === 'tag' ? tag === anker : ansicht === 'woche' || ansicht === 'vier' ? tage.includes(tag) : false; return (
+            <button key={tag} onClick={() => { setAnker(tag); if (ansicht === 'monat' || ansicht === 'agenda' || ansicht === 'jahr') setAnsicht('tag'); }} style={{ position: 'relative', border: 'none', borderRadius: 7, padding: '4px 0', fontSize: 11.5, cursor: 'pointer', fontFamily: SCHRIFT.text,
               background: tag === heute ? LEUCHT.puls : gew ? 'rgba(255,255,255,.08)' : 'transparent', color: tag === heute ? '#0b0b0c' : im ? C.ink : C.inkLeise, fontWeight: tag === heute ? 700 : 500 }}>
               {Number(tag.slice(8, 10))}{tageMitTermin.has(tag) && tag !== heute && <span style={{ position: 'absolute', left: '50%', bottom: 1, width: 3, height: 3, borderRadius: '50%', background: LEUCHT.puls, transform: 'translateX(-50%)' }} />}
             </button>
@@ -170,6 +192,14 @@ export function Kalender() {
             </label>
           ))}
           {!daten?.kalender.length && <span style={{ fontSize: 12, color: C.inkLeise }}>Noch keine Kalender geladen.</span>}
+          {QUELL_KALENDER.map(k => (
+            <label key={k.name} title={k.hinweis} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
+              <input type="checkbox" checked={!aus.has(k.name)} onChange={() => setAus(s => { const n = new Set(s); if (n.has(k.name)) n.delete(k.name); else n.add(k.name); return n; })} />
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: k.farbe }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: C.inkLeise }}>🔒</span>
+            </label>
+          ))}
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
           {([['fristen', 'Fristen', LEUCHT.agenten], ['erinnerungen', 'Erinnerungen', LEUCHT.schlaf], ['aufgaben', 'Aufgaben', LEUCHT.achtung]] as const).map(([id, label, f]) => (
@@ -194,7 +224,8 @@ export function Kalender() {
           </Liste>
         )}
       </Karte>
-      <Karte i={4}>
+      <AuswertungKarte stichtag={ansicht === 'woche' || ansicht === 'vier' || ansicht === 'tag' ? anker : heute} i={4} />
+      <Karte i={5}>
         <Ueberschrift rechts={<Knopf leise onClick={() => setZeigeEinst(v => !v)}>{zeigeEinst ? 'zu' : 'öffnen'}</Knopf>}>Einstellungen</Ueberschrift>
         {zeigeEinst && einst && (
           <div style={{ display: 'grid', gap: 10 }}>
@@ -234,16 +265,21 @@ export function Kalender() {
       <div style={{ minHeight: 0 }}>
         {(ansicht === 'tag' || ansicht === 'woche') && (
           <Zeitraster tage={tage} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} farbe={farbe}
-            onOeffnen={setOffen} onNeu={(tag, m) => setNeu({ tag, von: uhr(m), bis: uhr(Math.min(24 * 60, m + standardDauer)) })} onVerschieben={verschieben} onAufgabe={() => router.push('/os/aufgaben')} />
+            onOeffnen={oeffnen} onNeu={(tag, m) => setNeu({ tag, von: uhr(m), bis: uhr(Math.min(24 * 60, m + standardDauer)) })} onVerschieben={verschieben} onAufgabe={() => router.push('/os/aufgaben')} />
         )}
-        {ansicht === 'monat' && <Monat blatt={blatt} monat={Number(anker.slice(5, 7))} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} onOeffnen={setOffen} />}
-        {ansicht === 'agenda' && <Karte i={0}><Agenda tage={tage} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} suche={such} onOeffnen={setOffen} /></Karte>}
+        {ansicht === 'vier' && (
+          <VierTage start={anker} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} farbe={farbe}
+            onOeffnen={oeffnen} onNeu={(tag, m) => setNeu({ tag, von: uhr(m), bis: uhr(Math.min(24 * 60, m + standardDauer)) })} onVerschieben={verschieben} onAufgabe={() => router.push('/os/aufgaben')} />
+        )}
+        {ansicht === 'monat' && <Monat blatt={blatt} monat={Number(anker.slice(5, 7))} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} onOeffnen={oeffnen} />}
+        {ansicht === 'jahr' && <Jahr jahr={jahr} heute={heute} daten={jahrDaten} quellen={quell.filter(t => !aus.has(t.kalender))} kalenderAn={kalenderAn} farbe={kalenderFarbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} />}
+        {ansicht === 'agenda' && <Karte i={0}><Agenda tage={tage} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} suche={such} onOeffnen={oeffnen} /></Karte>}
       </div>
     </div>
   );
 
   return (
-    <Seite titel="Kalender" unter="Tag, Woche, Monat, Agenda — iCloud direkt, dazu Fristen, Erinnerungen und Aufgaben mit Datum. Tastatur: t heute · ← → blättern · d/w/m/a Ansicht · n neuer Termin." rechts={<Chip farbe={LEUCHT.puls}>{daten?.icloud ? 'iCloud · live' : 'nur lesen'}</Chip>}>
+    <Seite titel="Kalender" unter="Tag, 4 Tage, Woche, Monat, Jahr, Termine — iCloud direkt, dazu Feiertage NRW, Geburtstage, Fristen, Erinnerungen und Aufgaben mit Datum. Tastatur: t heute · ← → blättern · d/x/w/m/y/a Ansicht · n neuer Termin." rechts={<Chip farbe={LEUCHT.puls}>{daten?.icloud ? 'iCloud · live' : 'nur lesen'}</Chip>}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center' }}>{meldung}<button onClick={() => setMeldung(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>}
       {!daten && !laedt && <Leer>Kalender wird geladen …</Leer>}
       <div style={{ display: 'grid', gridTemplateColumns: breit ? '280px 1fr' : '1fr', gap: 14, alignItems: 'start' }}>
