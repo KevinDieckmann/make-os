@@ -8,10 +8,12 @@
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
-import { askJson, hasAnthropicKey } from '@/lib/anthropic';
+import { askJson, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveVitals, vitalsHint } from '@/lib/vitals';
 import { personAus } from '@/lib/zoe/raum';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagePlus } from '@/lib/zeit';
+import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
+import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
@@ -24,8 +26,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface Block { date: string; startMin: number; dauerMin: number; titel: string; art: string; taskId?: string }
-interface CalEvent { title?: string; startDate?: string; endDate?: string; allDay?: boolean }
-interface KemEvent { title?: string; start?: string; end?: string }
 interface Task { id: string; title: string; status: string; priority: string; dueDate?: string; projectId?: string }
 
 const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -49,10 +49,11 @@ export async function POST(req: Request) {
   }
   const tagSet = new Set(tage);
 
-  // Feste Termine beider Kalender für genau diese Woche (dedupliziert).
-  const [cal, kem, tasksState, ziele, vitals, routinenF, reglerF] = await Promise.all([
-    loadJson<{ events: CalEvent[] }>('calendar-cache'),
-    loadJson<{ events: KemEvent[] }>('kemaris-calendar'),
+  // Feste Termine beider Kalender für genau diese Woche (dedupliziert). Seit 29.09. (Paket R-Z, #K4) über denselben
+  // Lesepfad wie ZOE (`termineFuerZoe`): für die Person gefiltert — private/Gesundheitstermine der anderen nur „Belegt“
+  // (die Zeit blockiert weiter), fremder Haushalt bekommt keine Termine; fremde Titel gekapselt (#K1).
+  const [kal, tasksState, ziele, vitals, routinenF, reglerF] = await Promise.all([
+    termineFuerZoe(personAus(req), tage[0], tagePlus(tage[6], 1)),
     ladeAufgabenSicht(personStreng(req)), // Sichtfilter „nur ich“ (29.09.)
     loadJson<Record<string, { titel: string; fortschritt: number; erledigt?: boolean }[]> & { fokus?: Record<string, string> }>('ziele'),
     resolveVitals(undefined, personAus(req)),
@@ -61,11 +62,8 @@ export async function POST(req: Request) {
   ]);
   const regler = reglerF?.regler ?? {};
   const gesehen = new Set<string>();
-  const fest: { date: string; startMin: number; dauerMin: number; titel: string }[] = [];
-  const roh = [
-    ...(cal?.events ?? []).filter(e => !e.allDay && e.startDate).map(e => ({ t: e.title ?? '', s: e.startDate!, e: e.endDate })),
-    ...(kem?.events ?? []).filter(e => e.start).map(e => ({ t: e.title ?? '', s: e.start!, e: e.end })),
-  ];
+  const fest: { date: string; startMin: number; dauerMin: number; titel: string; fremd?: boolean }[] = [];
+  const roh = [...kal.termine, ...kal.kemaris].filter(t => !t.ganztags).map(t => ({ t: t.titel, s: t.start, e: t.ende as string | undefined, fremd: !!t.fremd }));
   for (const e of roh) {
     const date = e.s.slice(0, 10);
     if (!tagSet.has(date)) continue;
@@ -73,7 +71,7 @@ export async function POST(req: Request) {
     if (gesehen.has(key)) continue;
     gesehen.add(key);
     const s = new Date(e.s), en = e.e ? new Date(e.e) : null;
-    fest.push({ date, startMin: s.getHours() * 60 + s.getMinutes(), dauerMin: en ? Math.max(15, Math.round((en.getTime() - s.getTime()) / 60000)) : 60, titel: e.t });
+    fest.push({ date, startMin: s.getHours() * 60 + s.getMinutes(), dauerMin: en ? Math.max(15, Math.round((en.getTime() - s.getTime()) / 60000)) : 60, titel: e.t, ...(e.fremd ? { fremd: true } : {}) });
   }
 
   const offen = (tasksState?.tasks ?? []).filter(t => t.status !== 'done');
@@ -92,6 +90,8 @@ export async function POST(req: Request) {
   const quartalsZiele = (ziele?.quartal ?? []).filter(z => !z.erledigt);
 
   const system = [
+    FREMD_REGEL,
+    '„Belegt“ bei einem festen Termin ist ein privater Termin der anderen Person: die Zeit ist blockiert, sonst nichts.',
     'Du bist ZOE und belegst Kevins Woche im Wochenplaner — ein VORSCHLAG, den er danach frei zurechtschiebt.',
     'HARTE REGELN:',
     '- Plane NIE über feste Termine (Liste unten). Zeitfenster 06:00–22:00, Raster 15 Minuten.',
@@ -111,7 +111,8 @@ export async function POST(req: Request) {
     `Recovery ${vitals.rec}%, Schlaf ${vitals.sleep}h${vitalsHint(vitals)}.`,
     '',
     `FESTE TERMINE (unverrückbar):`,
-    fest.length ? fest.map(f => `- ${WD[tage.indexOf(f.date)]} ${f.date} ${mm(f.startMin)}–${mm(f.startMin + f.dauerMin)}: ${f.titel}`).join('\n') : '(keine)',
+    // Fremde Titel (Einladung, Abo, Buchungsseite) als Daten gekapselt — nie Anweisung (#K1).
+    fest.length ? fest.map(f => `- ${WD[tage.indexOf(f.date)]} ${f.date} ${mm(f.startMin)}–${mm(f.startMin + f.dauerMin)}: ${f.fremd ? fremd(KALENDER_QUELLE, f.titel) : f.titel}`).join('\n') : '(keine)',
     '',
     ziele?.fokus?.woche ? `FOKUS DER WOCHE (dagegen planst du zuerst): ${ziele.fokus.woche}` : '',
     ziele?.fokus?.monat ? `FOKUS DES MONATS: ${ziele.fokus.monat}` : '',

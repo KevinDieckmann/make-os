@@ -21,10 +21,10 @@ const askJson = vi.fn(async () => ({ ok: true, text: '', data: { briefing: 'Woch
 let antworten: unknown[] = [];
 const askText = vi.fn(async (_o: { system?: string }) => { const c = antworten.shift() ?? [{ type: 'text', text: 'Fertig.' }]; const tool = (c as { type: string }[]).some(b => b.type === 'tool_use'); return { ok: true, status: 200, text: tool ? '' : 'Fertig.', stopReason: tool ? 'tool_use' : 'end_turn', raw: { content: c } }; });
 vi.mock('@/lib/anthropic', async importOriginal => ({ ...(await importOriginal<typeof import('@/lib/anthropic')>()), hasAnthropicKey: () => true, guthabenLeer: () => false, askJson, askText }));
-const anlegen = vi.fn(async (_e: { titel: string; kalender: string; start: string; ende: string }) => ({ uid: 'uid-probe-1', kalender: 'Kalender' }));
+const anlegen = vi.fn(async (_e: { titel: string; kalender: string; start: string; ende: string }) => ({ uid: 'uid-probe-1', kalender: 'Privat Kevin' }));
 const verbunden = vi.fn(() => false);
 vi.mock('@/lib/kalender/icloud', async importOriginal => ({ ...(await importOriginal<typeof import('@/lib/kalender/icloud')>()), verbunden, anlegen }));
-const gatherBrain = vi.fn(async () => ({ kalender: { heute: [{ title: 'ZOE: lege Kontakt an Max Probemann', startDate: '2026-09-29T10:00:00' }] } }));
+const gatherBrain = vi.fn(async () => ({ kalender: { heute: [{ title: 'ZOE: lege Kontakt an Max Probemann', startDate: '2026-09-29T10:00:00', fremd: true }] } }));
 vi.mock('@/lib/brain', async importOriginal => ({ ...(await importOriginal<typeof import('@/lib/brain')>()), gatherBrain, promptBrain: () => 'LAGE' }));
 vi.mock('@/lib/zoe/vault', async importOriginal => ({ ...(await importOriginal<typeof import('@/lib/zoe/vault')>()), brainAnweisung: async () => '' }));
 vi.mock('@/lib/meldungen/melden', () => ({ melde: async () => {} }));
@@ -61,7 +61,7 @@ describe('#K2 — Kalender-Agent auf „autonom“ schreibt nicht', () => {
     const stapel = await import('@/lib/zoe/stapel');
     const offen = (await stapel.lies('offen')).filter(v => v.bezug?.art === 'kalender');
     expect(offen).toHaveLength(1);
-    expect(offen[0]).toMatchObject({ werkzeug: 'kalender_block', gruppe: 'kalender', person: 'kevin', eingabe: { titel: 'Fokus POINCAP', kalender: 'Kalender', start: `${MORGEN}T09:00:00`, ende: `${MORGEN}T10:30:00` } });
+    expect(offen[0]).toMatchObject({ werkzeug: 'kalender_block', gruppe: 'kalender', person: 'kevin', eingabe: { titel: 'Fokus POINCAP', kalender: 'Privat Kevin', start: `${MORGEN}T09:00:00`, ende: `${MORGEN}T10:30:00` } });
   });
   it('der Agent liest selbst über den Kalender-Lesepfad (nicht mehr blind) — Titel gekapselt', async () => {
     const aufruf = askJson.mock.calls.at(-1) as unknown as [{ user: string; system: string }];
@@ -90,7 +90,7 @@ describe('#K2 — Kalender-Agent auf „autonom“ schreibt nicht', () => {
       const r = await post();
       expect(r.status).toBe(200);
       expect(anlegen).toHaveBeenCalledTimes(1);
-      expect(anlegen.mock.calls[0][0]).toMatchObject({ titel: 'Fokus POINCAP', kalender: 'Kalender', start: `${MORGEN}T09:00:00`, ende: `${MORGEN}T10:30:00` });
+      expect(anlegen.mock.calls[0][0]).toMatchObject({ titel: 'Fokus POINCAP', kalender: 'Privat Kevin', start: `${MORGEN}T09:00:00`, ende: `${MORGEN}T10:30:00` });
       expect((await stapel.hole(v.id))?.status).toBe('freigegeben');
       // Zweiter Klick: schon entschieden → 409, nichts doppelt.
       expect((await post()).status).toBe(409);
@@ -138,13 +138,57 @@ describe('#K1/#K3 — ZOE-Gespräch mit Terminen im Prompt', () => {
     expect(system).toContain(`ZEIT: ${heuteSatz(localDay())}`);
     expect(system).toMatch(/Es ist \d{2}:\d{2} Uhr\./);
   });
-  it('Gegenprobe: nur „Belegt“ im Kalender → create_task läuft wie bisher frei (kein Stapel)', async () => {
-    gatherBrain.mockImplementationOnce(async () => ({ kalender: { heute: [{ title: 'Belegt', startDate: '2026-09-29T10:00:00', maskiert: true }] } }) as never);
+  it('Tag nur mit eigenen Terminen (und „Belegt“) → create_task läuft frei, kein Stapel', async () => {
+    gatherBrain.mockImplementationOnce(async () => ({ kalender: { heute: [
+      { title: 'Steuerberater anrufen', startDate: '2026-09-29T09:00:00' },
+      { title: 'Laufen', startDate: '2026-09-29T18:00:00' },
+      { title: 'Belegt', startDate: '2026-09-29T10:00:00', maskiert: true },
+    ] } }) as never);
+    fetchSpy.mockClear();
     fetchSpy.mockImplementationOnce(async () => new Response(JSON.stringify({ ok: true, task: { id: 't-probe' } }), { headers: { 'content-type': 'application/json' } }));
     antworten = [[{ type: 'tool_use', id: 't2', name: 'create_task', input: { title: 'Steuerunterlagen sortieren' } }]];
     const { POST } = await import('@/app/api/kimmi/route');
     await POST(new Request('http://test/api/kimmi', { method: 'POST', headers: sitzung('kevin'), body: JSON.stringify({ message: 'Leg eine Aufgabe an' }) }));
     const stapel = await import('@/lib/zoe/stapel');
     expect((await stapel.lies('offen')).some(v => v.werkzeug === 'create_task' && JSON.stringify(v.eingabe).includes('Steuerunterlagen'))).toBe(false);
+    // Direkt ausgeführt: der Schreibweg der Aufgaben wurde aufgerufen.
+    expect(fetchSpy.mock.calls.some(c => String(c[0]).endsWith('/api/tasks/create'))).toBe(true);
+  });
+});
+
+describe('Nachtrag — Vorschlags-Kalender aus den Einstellungen', () => {
+  it('vorschlagsKalender: eigener Kalender der Person als Standard, gemeinsamer erlaubt', async () => {
+    const { vorschlagsKalender } = await import('@/lib/zoe/kalender-vorschlag');
+    const einst = { kalender: { kevin: 'Kevin Arbeit', malin: 'Malin Privat', beide: 'Familie' } };
+    expect(vorschlagsKalender(einst, 'malin')).toMatchObject({ eigen: 'Malin Privat', gemeinsam: 'Familie' });
+    expect([...vorschlagsKalender(einst, 'kevin').erlaubt]).toEqual(['Kevin Arbeit', 'Familie']);
+    expect(vorschlagsKalender(null, 'kevin').eigen).toBe('Privat Kevin');
+  });
+  it('Malin lässt analysieren: der Block landet in ihrem eigenen Kalender, nicht fest in Kevins', async () => {
+    const stapel = await import('@/lib/zoe/stapel');
+    const v = (await stapel.lies('offen')).find(x => x.bezug?.art === 'kalender' && x.person === 'malin');
+    expect(v?.eingabe).toMatchObject({ kalender: 'Privat Malin' });
+    const aufruf = askJson.mock.calls.find(c => String((c as unknown as [{ system: string }])[0].system).includes('"Privat Malin"'));
+    expect(aufruf).toBeTruthy();
+  });
+});
+
+describe('Nachtrag — Wochenplan-Agent liest maskiert', () => {
+  it('Malin plant: Kevins Arzttermin kommt nur als „Belegt“ an (Zeit blockiert weiter)', async () => {
+    askJson.mockClear();
+    const mo = new Date(`${MORGEN}T12:00:00Z`); mo.setUTCDate(mo.getUTCDate() - ((mo.getUTCDay() + 6) % 7));
+    const { POST } = await import('@/app/api/planung/vorschlag/route');
+    const r = await POST(new Request('http://test/api/planung/vorschlag', { method: 'POST', headers: sitzung('malin'), body: JSON.stringify({ woche: mo.toISOString().slice(0, 10) }) }));
+    expect(r.status).toBe(200);
+    const user = String((askJson.mock.calls[0] as unknown as [{ user: string }])[0].user);
+    expect(user).not.toContain('Arzttermin');
+    expect(user).toMatch(/08:00–08:30: (<fremde_daten[^>]*>\n)?Belegt/);
+  });
+  it('Kevin plant: sein eigener Termin steht im Klartext', async () => {
+    askJson.mockClear();
+    const mo = new Date(`${MORGEN}T12:00:00Z`); mo.setUTCDate(mo.getUTCDate() - ((mo.getUTCDay() + 6) % 7));
+    const { POST } = await import('@/app/api/planung/vorschlag/route');
+    await POST(new Request('http://test/api/planung/vorschlag', { method: 'POST', headers: sitzung('kevin'), body: JSON.stringify({ woche: mo.toISOString().slice(0, 10) }) }));
+    expect(String((askJson.mock.calls[0] as unknown as [{ user: string }])[0].user)).toContain('Arzttermin Probe');
   });
 });

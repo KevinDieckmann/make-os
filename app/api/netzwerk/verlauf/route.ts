@@ -12,25 +12,31 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt, Chance } from '@/lib/make-one/netzwerk-data';
+import { localDay, tagePlus } from '@/lib/zeit';
+import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
+import { personAus } from '@/lib/zoe/raum';
 
-import { localDay } from '@/lib/zeit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface NetzFile { kontakte: Kontakt[]; chancen: Chance[] }
 interface MsMail { senderName?: string; senderEmail?: string; subject?: string; receivedAt?: string }
-interface CalEvent { title?: string; startDate?: string; start?: string }
 
 interface Treffer { id: string; name: string; datum: string; woher: string; beleg: string }
 
 const tag = (iso?: string) => (iso && iso.length >= 10 ? iso.slice(0, 10) : null);
 
-async function rechne() {
-  const [netz, ms, cal, kem] = await Promise.all([
+/** So weit zurück zählen Termine als Beleg (der Kalender-Stand reicht ohnehin nicht weiter). */
+const KALENDER_TAGE_ZURUECK = 400;
+
+async function rechne(person: string) {
+  // Termine seit 29.09. (Paket R-Z, #K4) über denselben Lesepfad wie ZOE, für die Person gefiltert: private und
+  // Gesundheitstermine der anderen Person kommen nur als „Belegt“ an — ihr Titel landet nie als Beleg in einer Notiz.
+  const heute = localDay();
+  const [netz, ms, kal] = await Promise.all([
     loadJson<NetzFile>('netzwerk'),
     loadJson<{ emails: MsMail[] }>('microsoft-inbox'),
-    loadJson<{ events: CalEvent[] }>('calendar-cache'),
-    loadJson<{ events: CalEvent[] }>('kemaris-calendar'),
+    termineFuerZoe(person, tagePlus(heute, -KALENDER_TAGE_ZURUECK), tagePlus(heute, 1)),
   ]);
   const kontakte = netz?.kontakte ?? [];
   const treffer = new Map<string, Treffer>();
@@ -56,23 +62,23 @@ async function rechne() {
   const mitNachname = kontakte
     .map(k => ({ k, teile: k.name.trim().split(/\s+/).filter(t => t.length > 2) }))
     .filter(x => x.teile.length >= 2);
-  const termine = [...(cal?.events ?? []), ...(kem?.events ?? [])];
+  const termine = [...kal.termine, ...kal.kemaris].filter(t => !t.maskiert);
   for (const e of termine) {
-    const titel = (e.title ?? '').toLowerCase();
+    const titel = e.titel.toLowerCase();
     if (!titel) continue;
-    const datum = tag(e.startDate ?? e.start);
+    const datum = tag(e.start);
     // Nur Vergangenes zählt als „gesprochen".
-    if (!datum || datum > localDay()) continue;
+    if (!datum || datum > heute) continue;
     for (const { k, teile } of mitNachname) {
-      if (teile.every(t => titel.includes(t.toLowerCase()))) merke(k, datum, 'Kalender', e.title ?? 'Termin');
+      if (teile.every(t => titel.includes(t.toLowerCase()))) merke(k, datum, 'Kalender', e.titel || 'Termin');
     }
   }
 
   return { kontakte, chancen: netz?.chancen ?? [], treffer: Array.from(treffer.values()).sort((a, b) => b.datum.localeCompare(a.datum)) };
 }
 
-export async function GET() {
-  const { treffer, kontakte } = await rechne();
+export async function GET(req: Request) {
+  const { treffer, kontakte } = await rechne(personAus(req));
   return NextResponse.json({
     treffer,
     anzahl: treffer.length,
@@ -81,8 +87,8 @@ export async function GET() {
   });
 }
 
-export async function POST() {
-  const { treffer } = await rechne();
+export async function POST(req: Request) {
+  const { treffer } = await rechne(personAus(req));
   if (!treffer.length) return NextResponse.json({ ok: true, gesetzt: 0, hinweis: 'Nichts Neues gefunden.' });
 
   const map = new Map(treffer.map(t => [t.id, t]));

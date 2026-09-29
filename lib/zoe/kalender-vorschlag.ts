@@ -16,6 +16,7 @@ import { notiere } from './protokoll';
 import { innen } from './crm-vorschlag';
 import type { StapelArtFreigabe } from './stapel-arten';
 import { localDay, tagePlus } from '@/lib/zeit';
+import { EINSTELLUNGEN_LEER, type KalenderEinstellungen } from '@/lib/kalender/einstellungen';
 
 export const KALENDER_VORSCHLAG_WERKZEUG = 'kalender_block';
 export const KALENDER_GRUPPE = 'kalender';
@@ -27,6 +28,17 @@ const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const WAND = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
 const zwei = (n: number) => String(n).padStart(2, '0');
 const kurz = (v: unknown, n: number) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, n);
+
+/**
+ * In welche Kalender der Agent vorschlagen darf (Nachtrag 29.09.): nicht fest verdrahtet, sondern aus den
+ * Kalender-Einstellungen (lib/kalender/einstellungen.ts) — der eigene Kalender der fragenden Person (Standard, wie beim
+ * Anlegen in /api/kalender/termin) und der gemeinsame. Ohne Einstellungen gelten deren Standardnamen. Rein.
+ */
+export function vorschlagsKalender(einst: Pick<KalenderEinstellungen, 'kalender'> | null | undefined, person: string): { eigen: string; gemeinsam: string; erlaubt: ReadonlySet<string> } {
+  const k = (einst ?? EINSTELLUNGEN_LEER).kalender;
+  const eigen = person === 'malin' ? k.malin : k.kevin;
+  return { eigen, gemeinsam: k.beide, erlaubt: new Set([eigen, k.beide]) };
+}
 
 /** Wandzeit „YYYY-MM-DDTHH:mm:00“ aus Tag + Minuten ab Mitternacht (über Mitternacht → Folgetag). Rein. */
 export function wandzeitAus(tag: string, minuten: number): string {
