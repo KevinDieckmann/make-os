@@ -98,11 +98,10 @@ async function zeilenLaden(): Promise<AppZeile[]> {
   const { haushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
   const haushalt = await haushaltDesInhabers();
   if (!haushalt) return [];
-  const { ladeAufgaben } = await import('@/lib/aufgaben/speicher');
-  const { sichtFuer } = await import('@/lib/aufgaben/sicht');
+  const { ladeAufgabenSicht } = await import('@/lib/aufgaben/sicht'); // ohne Papierkorb, ohne Archiv („Neu anfangen“), ohne „nur ich“
   const { ladeCrm } = await import('@/lib/crm/speicher');
   // Geteilter Such-Index: Systemsicht — keine „nur ich“-Aufgabe (29.09., lib/aufgaben/sicht.ts).
-  const [state, crm, kartei] = await Promise.all([ladeAufgaben().then(s => sichtFuer(s, null)), ladeCrm(), loadJson<{ kontakte?: { id: string; eingeschraenkt?: unknown }[] }>('kontakte')]);
+  const [state, crm, kartei] = await Promise.all([ladeAufgabenSicht(null), ladeCrm(), loadJson<{ kontakte?: { id: string; eingeschraenkt?: unknown }[] }>('kontakte')]);
   // Nur die Kennungen eingeschränkter Kontakte — nichts von ihnen geht in den Index.
   const eingeschraenkt = new Set((kartei?.kontakte ?? []).filter(k => k.eingeschraenkt).map(k => k.id));
   return appZeilen(state, crm, { haushalt, eingeschraenkt });

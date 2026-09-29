@@ -70,8 +70,7 @@ export async function appDatenLaden(heute: string): Promise<AppDaten | null> {
   const inhaber = konten.find(k => k.rolle === 'inhaber');
   const haushalt = inhaber?.haushalt;
   if (!inhaber || !haushalt) return null;
-  const { ladeAufgaben } = await import('@/lib/aufgaben/speicher');
-  const { sichtFuer } = await import('@/lib/aufgaben/sicht');
+  const { ladeAufgabenSicht } = await import('@/lib/aufgaben/sicht'); // ohne Papierkorb, ohne Archiv („Neu anfangen“), ohne „nur ich“
   const { ladeCrm } = await import('@/lib/crm/speicher');
   const { entscheidungenMonat } = await import('@/lib/zoe/entscheidungen');
   const zeit = async (zeitraum: 'woche' | 'monat', stichtag: string) => {
@@ -80,7 +79,7 @@ export async function appDatenLaden(heute: string): Promise<AppDaten | null> {
   const vorTag = `${vormonatVon(heute)}-15`;
   const [state, crm, kartei, e1, e2, zeitWoche, zeitMonat, zeitVormonat, einstellung] = await Promise.all([
     // Geteilter Spiegel/Index: Systemsicht — keine „nur ich“-Aufgabe und keine ihrer Unteraufgaben (29.09., lib/aufgaben/sicht.ts).
-    ladeAufgaben().then(s => sichtFuer(s, null)), ladeCrm(), loadJson<{ kontakte?: { id: string; eingeschraenkt?: unknown }[] }>('kontakte'),
+    ladeAufgabenSicht(null), ladeCrm(), loadJson<{ kontakte?: { id: string; eingeschraenkt?: unknown }[] }>('kontakte'),
     entscheidungenMonat(haushalt, vormonatVon(heute)), entscheidungenMonat(haushalt, monatVon(heute)),
     zeit('woche', heute), zeit('monat', heute), zeit('monat', vorTag), einstellungLesen(haushalt),
   ]);
