@@ -9,7 +9,8 @@
 // /api/crm/followup (anlegen, erledigen) und — für eigene Notizen — POST
 // /api/crm/aktivitaet mit `aktion: 'aendern' | 'loeschen'`, Anker und Stand
 // (28.09., H4: 409 statt Überschreiben, Löschmarke gegen Wiederauferstehung).
-// „+ Meeting“ legt seit 30.09. (K3) einen echten Termin an (Anlege-Dialog des Kalenders) — Zeit und Ort liest die
+// „+ Meeting“ legt seit 30.09. (K3) einen echten Termin an (Anlege-Dialog des Kalenders; danach laden die Termin-Listen
+// der Akte neu — F3, `termineZuNeuLaden`) — Zeit und Ort liest die
 // Akte aus dem Termin (`terminUid`); die alte Form mit `wann`/`ort` (H4) bleibt für den Bestand lesbar.
 
 import Link from 'next/link';
@@ -18,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { NOTIZ_FELDER, anzeigename, type Ergebnis, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
 import { NeuerTermin } from '../../kalender/NeuerTermin';
+import { termineZuNeuLaden } from '../../kalender/TermineAkte';
 import type { FollowUpArt } from '@/lib/crm/typen';
 import { FOLLOWUP_ARTEN } from '@/lib/crm/followup';
 import { nameVon } from '@/lib/crm/team';
@@ -303,7 +305,7 @@ export function MeetingNeu({ k, api, heute, onFertig, onAbbruch }: FormProps) {
     <div style={{ display: 'grid', gap: 8 }}>
       <Hinweis>Der Termin landet im Kalender (iCloud) und steht dann hier als Meeting — mit der Zeit aus dem Kalender.</Hinweis>
       <NeuerTermin vorgabe={vorgabe} heute={heute} standardDauer={60} kalender={[]} onZu={onAbbruch}
-        onAngelegt={x => { if (x.uid) { void api.laden(true); onFertig(x.gaeste ? `Termin angelegt — Einladung an ${x.gaeste} ${x.gaeste === 1 ? 'Person' : 'Personen'} verschickt.` : 'Termin angelegt — steht unter Aktivitäten als Meeting.'); } }} />
+        onAngelegt={x => { if (x.uid) { void api.laden(true); termineZuNeuLaden(); onFertig(x.gaeste ? `Termin angelegt — Einladung an ${x.gaeste} ${x.gaeste === 1 ? 'Person' : 'Personen'} verschickt.` : 'Termin angelegt — steht unter Aktivitäten als Meeting.'); } }} />
     </div>
   );
 }

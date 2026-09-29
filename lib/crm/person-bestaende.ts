@@ -21,6 +21,8 @@
 //                                  noch nennen (Kennung oder voller Name), raus
 //   heads-replay-<head>            Fälle, die die Person enthalten, raus      Kennung im Fall → neu
 //   crm-signale                    kommender Termin der Person raus           Schlüssel → neu (früherer Termin gewinnt)
+//                                  (Altbestand: seit F3, 29.09., schreibt der Signal-Lauf `kommend` nicht mehr — der
+//                                  nächste Termin kommt aus dem Kalender; bis zum nächsten Lauf kann er noch dastehen)
 //   tasks                          nur EINDEUTIG zugeordnete Aufgaben         Link k=<alt> → k=<neu> (Beschreibung +
 //                                  (Head-Aufgabe hd-<Vorschlag der Person>,   Kommentare), bezug.kontaktId → neu
 //                                  Link k=<id> oder bezug.kontaktId, 28.09.
@@ -264,7 +266,7 @@ export function replayUm(st: ReplayStand, alt: string, neu: string): { stand: Re
   return { stand: n ? { ...st, faelle: kennungErsetzen(st.faelle, alt, neu) } : st, n };
 }
 
-// ── Signale (kommende Termine je Person) ──
+// ── Signale (kommende Termine je Person — Altbestand bis F3, 29.09.; der Lauf überschreibt ohne `kommend`) ──
 
 export interface SignalStand { letzter?: string; kommend?: Record<string, { titel: string; start: string }>; neu?: number }
 export function signaleOhne(st: SignalStand, id: string): { stand: SignalStand; n: number } {

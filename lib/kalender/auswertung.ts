@@ -93,6 +93,28 @@ const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const MIN = 60_000;
 const RANG: Record<AuswertungKategorie, number> = { block: 0, fokus: 1, meeting: 2, abwesend: 3 };
 
+/**
+ * Belegung je Minute — EINE Regel für jede Stunden-Rechnung mit Überlappung (Auswertung hier, Planen
+ * lib/planung/bloecke.ts `wochenStunden`, Kalender-Gesamtprüfung F3): jede Minute gehört höchstens EINER Quelle; bei
+ * Überlappung gewinnt der höhere Rang (gleicher Rang: die zuerst gelegte). So zählen 6 parallele Termine à 1 h als 1 h.
+ * `legen(i0, i1, q)` belegt die Minuten [i0, i1) (außerhalb von [0, laenge) wird abgeschnitten).
+ */
+export function minutenBelegung<Q>(laenge: number, rang: (q: Q) => number): { legen: (i0: number, i1: number, q: Q) => void; quelle: (i: number) => Q | null } {
+  const n = Math.max(0, laenge);
+  const feld = new Int32Array(n).fill(-1);
+  const quellen: Q[] = [], raenge: number[] = [];
+  return {
+    legen(i0, i1, q) {
+      const a = Math.max(0, i0), b = Math.min(n, i1);
+      if (b <= a) return;
+      const nr = quellen.push(q) - 1, r = rang(q);
+      raenge.push(r);
+      for (let i = a; i < b; i++) { const alt = feld[i]; if (alt < 0 || raenge[alt] < r) feld[i] = nr; }
+    },
+    quelle: i => { const nr = i >= 0 && i < n ? feld[i] : -1; return nr < 0 ? null : quellen[nr]; },
+  };
+}
+
 
 /** Montag der Berliner Woche eines Tages (Kalender-Kern). */
 export const montagDer = montagVon;
@@ -122,18 +144,12 @@ export function wocheAuswerten(e: AuswertungEingabe, stichtag: string): WochenZa
   const t0 = ausWandzeit(`${von}T00:00:00`).getTime();
   const t1 = ausWandzeit(`${tagPlus(von, 7)}T00:00:00`).getTime();
   const laenge = Math.round((t1 - t0) / MIN);
-  const belegung = new Int32Array(laenge).fill(-1);
+  const belegung = minutenBelegung<Quelle>(laenge, q => RANG[q.kat]);
   const arbeit = new Uint8Array(laenge);
-  const quellen: Quelle[] = [];
   const tagesStart = Array.from({ length: 8 }, (_, i) => Math.round((ausWandzeit(`${tagPlus(von, i)}T00:00:00`).getTime() - t0) / MIN));
   const index = (ms: number) => Math.max(0, Math.min(laenge, Math.round((ms - t0) / MIN)));
 
-  const legen = (a: number, b: number, q: Quelle) => {
-    const i0 = index(a), i1 = index(b);
-    if (i1 <= i0) return;
-    const nr = quellen.push(q) - 1;
-    for (let i = i0; i < i1; i++) { const alt = belegung[i]; if (alt < 0 || RANG[quellen[alt].kat] < RANG[q.kat]) belegung[i] = nr; }
-  };
+  const legen = (a: number, b: number, q: Quelle) => belegung.legen(index(a), index(b), q);
 
   // Arbeitszeit je Tag (ohne Feiertage).
   const tageArbeit = new Set(e.arbeitszeit.tage ?? [1, 2, 3, 4, 5]);
@@ -194,9 +210,8 @@ export function wocheAuswerten(e: AuswertungEingabe, stichtag: string): WochenZa
   for (let i = 0; i < laenge; i++) {
     while (tagNr < 6 && i >= tagesStart[tagNr + 1]) tagNr++;
     if (arbeit[i]) m.arbeitszeit++;
-    const nr = belegung[i];
-    if (nr < 0) { if (arbeit[i]) m.frei++; continue; }
-    const q = quellen[nr];
+    const q = belegung.quelle(i);
+    if (!q) { if (arbeit[i]) m.frei++; continue; }
     if (q.kat === 'abwesend') { m.abwesend++; tage[tagNr].abwesend++; continue; }
     if (q.kat === 'meeting') { m.meetings++; tage[tagNr].meetings++; } else if (q.kat === 'block') { m.bloecke++; const art = q.blockArt ?? 'block'; block.set(art, (block.get(art) ?? 0) + 1); } else { m.fokus++; tage[tagNr].fokus++; }
     m.belegt++;

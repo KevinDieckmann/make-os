@@ -3,8 +3,10 @@
 // ─── Stammdaten › Datenqualität · Verbindungen (28.09.) ─────────────────────
 // Kevin: „Einmal nochmal alle Verbindungen im Hintergrund prüfen.“ Die Karte zeigt
 // die Ampel und die Befunde aus /api/crm/verbindungen, nach Schwere gruppiert —
-// je Befund Satz, Anzahl und bis zu fünf Kennungen als Links. „Reparieren“ gibt es
+// je Befund Satz, Anzahl und bis zu fünf Beispiele als Links. „Reparieren“ gibt es
 // nur für sichere Fälle und immer erst mit Vorschau (POST vorschau:true schreibt nichts).
+// F3 (29.09.): Überschrift nach Schwere (auch offene Hinweise — nicht mehr „sauber“), Beispiele mit Namen/Titel statt
+// roher Kennung, wo auflösbar (`namen`, lib/crm/verbindungen-namen.ts); die Kennung steht im Tooltip.
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
@@ -14,11 +16,13 @@ import { Fenster } from '../../Fenster';
 import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
 import type { Aenderung, BeispielArt, Schwere, VerbindungsBefund } from '@/lib/crm/verbindungen';
+import { verbindungsUeberschrift } from '@/lib/crm/verbindungen-namen';
 
-interface Antwort { ok: boolean; ampel: 'rot' | 'gelb' | 'gruen'; befunde: VerbindungsBefund[]; geprueft: number; fehler?: string }
+interface Antwort { ok: boolean; ampel: 'rot' | 'gelb' | 'gruen'; befunde: VerbindungsBefund[]; namen?: Record<string, string>; geprueft: number; fehler?: string }
 interface Vorschau { ids: string[]; aenderungen: Aenderung[] }
 
-const AMPEL = { rot: { farbe: LEUCHT.kritisch, text: 'Fehler in den Verbindungen' }, gelb: { farbe: LEUCHT.achtung, text: 'Verbindungen mit Warnungen' }, gruen: { farbe: LEUCHT.gut, text: 'Alle Verbindungen sauber' } } as const;
+/** Farbe der Überschrift je schwerster Schwere (ohne Befund: grün). */
+const FARBE_SCHWERE: Record<Schwere, string> = { fehler: LEUCHT.kritisch, warnung: LEUCHT.achtung, hinweis: C.inkDim };
 const GRUPPEN: { schwere: Schwere; label: string; farbe: string }[] = [
   { schwere: 'fehler', label: 'Fehler', farbe: LEUCHT.kritisch },
   { schwere: 'warnung', label: 'Warnungen', farbe: LEUCHT.achtung },
@@ -95,15 +99,17 @@ export function Verbindungen({ i = 0, onGeaendert }: { i?: number; onGeaendert?:
   };
 
   if (!d) return <Karte i={i}><Ueberschrift>Verbindungen</Ueberschrift><Leer>{fehler ? `Prüfung nicht geladen — ${fehler}` : 'Prüfe alle Verbindungen …'}</Leer></Karte>;
-  const a = AMPEL[d.ampel];
+  const kopf = verbindungsUeberschrift(d.befunde);
+  const a = { farbe: kopf.schwere ? FARBE_SCHWERE[kopf.schwere] : LEUCHT.gut, text: kopf.text };
   const reparierbar = d.befunde.filter(b => b.reparierbar).map(b => b.id);
 
   return (
-    <Karte i={i} akzent={d.ampel === 'gruen' ? undefined : a.farbe}>
+    <Karte i={i} akzent={kopf.schwere === 'fehler' || kopf.schwere === 'warnung' ? a.farbe : undefined}>
       <Ueberschrift rechts={reparierbar.length ? <Knopf leise aus={laeuft} onClick={() => void zeigeVorschau(reparierbar)}>Alle reparierbaren ({reparierbar.length})</Knopf> : undefined}>Verbindungen</Ueberschrift>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px 10px', marginBottom: 10, flexWrap: 'wrap' }}>
         <Punkt farbe={a.farbe} groesse={11} />
         <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{a.text}</span>
+        {kopf.zahlen && kopf.schwere !== 'hinweis' && <span style={{ fontSize: 12.5, color: C.inkDim }}>{kopf.zahlen}</span>}
         <span style={{ fontSize: 12, color: C.inkLeise }}>{d.geprueft} Prüfungen über Personen, Firmen, Deals, Mandate, Rechnungen, Follow-ups, Events, Marketing, Aufgaben, Fokus und Ablage</span>
       </div>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>{meldung}</div>}
@@ -127,7 +133,9 @@ export function Verbindungen({ i = 0, onGeaendert }: { i?: number; onGeaendert?:
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     {b.beispiele.map(id => {
                       const href = ziel(b.art, id);
-                      return href ? <Link key={id} href={href} style={{ ...kennung, color: C.aktiv }}>{id}</Link> : <span key={id} style={kennung}>{id}</span>;
+                      const name = d.namen?.[id];
+                      const stil = name ? { ...kennung, fontFamily: 'inherit', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' } : kennung;
+                      return href ? <Link key={id} href={href} title={id} style={{ ...stil, color: C.aktiv }}>{name ?? id}</Link> : <span key={id} title={id} style={stil}>{name ?? id}</span>;
                     })}
                     {b.anzahl > b.beispiele.length && <span style={{ fontSize: 12, color: C.inkLeise }}>+ {b.anzahl - b.beispiele.length} weitere</span>}
                     <span style={{ flex: 1 }} />

@@ -84,7 +84,7 @@ afterAll(() => { vi.useRealTimers(); rmSync(ordner, { recursive: true, force: tr
 
 describe('Buchungsseite verwalten', () => {
   it('neue Seite bekommt eine nicht erratbare Adresse; nur der Haushalt', async () => {
-    expect(SLUG).toMatch(/^erstgesprach-[a-f0-9]{24}$/);
+    expect(SLUG).toMatch(/^erstgespraech-[a-f0-9]{24}$/); // F3: ä→ae
     const fremd = await verwaltung.POST(new Request('http://test/api/kalender/buchung', { method: 'POST', headers: { ...dienst, 'x-make-person': 'gast' }, body: '{}' }));
     expect(fremd.status).toBe(403);
     const ohne = await verwaltung.GET(new Request('http://test/api/kalender/buchung'));

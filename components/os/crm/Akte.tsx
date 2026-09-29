@@ -55,6 +55,7 @@ import { AktivitaetenReiter } from './kontakt/AktivitaetenReiter';
 import { UmsatzReiter } from './kontakt/UmsatzReiter';
 import { typenVon, kategorienVon, labelsVon } from '@/lib/crm/mehrfach';
 import { personenDerFirma } from '@/lib/crm/stationen';
+import { useNaechsterTermin } from '../kalender/TermineAkte';
 
 /** Drei Spalten ab SPALTEN_AB, sonst untereinander. */
 function useDrei(): boolean {
@@ -170,6 +171,8 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
   // Personen der Firma — für den Lead-Score im Kopf und die Lead-Qualifizierung (wie in den Leads).
   // Personen der Firma nur über die Stationen (28.09., `personenDerFirma`).
   const personen = useMemo(() => (k ? (k.firmaId ? personenDerFirma(api.kontakte ?? [k], k.firmaId) : [k]) : []), [k, api.kontakte]);
+  // Nächster Termin (F3, 29.09.): derselbe Kalender-Leser wie Termine/Zusammenfassung — über den Bezug, abgesagte nie.
+  const termin = useNaechsterTermin(k?.id);
 
   const zurueckKnopf = (
     <button onClick={zurueck} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px 7px 10px', borderRadius: 11, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700 }}>
@@ -192,7 +195,6 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
   const tk = takt(k, heute);
   const vz = verlaufZahlen(k);
   const zuletzt = k.letzterKontakt ?? vz.zuletzt;
-  const termin = crm?.termine?.[k.id];
   const initialen = `${(k.vorname || '').charAt(0)}${(k.nachname || '').charAt(0)}`.toUpperCase() || '?';
   const ph = phaseVon(k, crm?.stand);
   const pf = phaseFarbe(ph.phase);
@@ -248,7 +250,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
           <Grund ampel={ampel} />
         </div>
       </div>
-      {termin && <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 10, background: `${LEUCHT.puls}14`, fontSize: TYP.bedien }}>Nächster Termin: <b style={{ fontWeight: 600 }}>{termin.titel}</b> · {datum(termin.start.slice(0, 10), heute)} {termin.start.slice(11, 16)}</div>}
+      {termin && <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 10, background: `${LEUCHT.puls}14`, fontSize: TYP.bedien }}>Nächster Termin: <b style={{ fontWeight: 600 }}>{termin.titel}</b> · {datum(termin.start.slice(0, 10), heute)}{termin.ganztags ? '' : ` ${termin.start.slice(11, 16)}`}</div>}
       <div style={{ display: 'flex', gap: '8px 22px', flexWrap: 'wrap', alignItems: 'baseline', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
         <Kurz label="Letzter Kontakt" wert={zuletzt ? datum(zuletzt, heute) : 'noch keiner'} farbe={zuletzt ? undefined : C.inkLeise} title={vz.eintraege ? `${vz.eintraege} Einträge im Verlauf` : 'Verlauf leer'} />
         <Kurz label="Nächster" wert={k.naechsterSchritt ? datum(k.naechsterSchritt.datum, heute) : 'keiner'} zusatz={k.naechsterSchritt?.text} farbe={!k.naechsterSchritt ? LEUCHT.achtung : schrittUeberfaellig ? LEUCHT.kritisch : undefined} title={k.naechsterSchritt?.text ?? 'Ohne Schritt verliert sich die Person'} />

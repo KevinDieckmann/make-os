@@ -49,6 +49,7 @@ import { typenVon, kategorienVon, labelsVon, enthaeltEinenVon } from '@/lib/crm/
 import { alleAdressen, hatAdresse } from '@/lib/crm/emails';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { neueKontaktKennung } from '@/lib/kennung';
+import { useNaechsterTermin } from '../kalender/TermineAkte';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
@@ -403,6 +404,8 @@ function Karteikarte({ k, api, name, zuFirma, zuAkte }: { k: Kontakt; api: CrmAp
   const crm = api.crm;
   const heute = crm?.heute ?? localDay();
   const [reiter, setReiter] = useState<Reiter>('ueberblick');
+  // Nächster Termin (F3, 29.09.): derselbe Kalender-Leser wie die Kontaktakte — über den Bezug, abgesagte nie.
+  const termin = useNaechsterTermin(k.id);
   const firma = k.firmaId ? crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;
   const chancen = (crm?.stand.chancen ?? []).filter(c => c.kontaktIds.includes(k.id));
   const mandate = (crm?.stand.mandate ?? []).filter(m => m.kontaktIds.includes(k.id));
@@ -437,7 +440,7 @@ function Karteikarte({ k, api, name, zuFirma, zuAkte }: { k: Kontakt; api: CrmAp
 
       {reiter === 'ueberblick' && (
         <>
-          {crm?.termine?.[k.id] && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${LEUCHT.puls}14`, fontSize: TYP.bedien, color: C.ink }}>Nächster Termin: <b style={{ fontWeight: 600 }}>{crm.termine[k.id].titel}</b> · {datum(crm.termine[k.id].start.slice(0, 10), heute)} {crm.termine[k.id].start.slice(11, 16)}</div>}
+          {termin && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${LEUCHT.puls}14`, fontSize: TYP.bedien, color: C.ink }}>Nächster Termin: <b style={{ fontWeight: 600 }}>{termin.titel}</b> · {datum(termin.start.slice(0, 10), heute)}{termin.ganztags ? '' : ` ${termin.start.slice(11, 16)}`}</div>}
           <div><Ueberschrift>Kanäle</Ueberschrift><KanalAmpel ampel={ampel} ziele={{ telefon: k.telefon ?? k.sms, email: k.email, linkedin: k.linkedin }} /><Grund ampel={ampel} /></div>
           <NaechsterSchrittTeil k={k} heute={heute} setze={setze} />
           <LinkedInTeil k={k} api={api} />

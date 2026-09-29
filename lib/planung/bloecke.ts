@@ -21,6 +21,7 @@
 import { PLAN_ARTEN, type PlanArt, type PlanBlock } from '@/types/planer';
 import { istBlockArt, type BlockArt } from '@/lib/kalender/arten';
 import { wandAus, minutenVon, tagPlus } from '@/lib/kalender/zeit';
+import { minutenBelegung } from '@/lib/kalender/auswertung';
 
 /** Was ein Leser über einen Termin wissen muss, um ihn als Block zu erkennen. */
 export interface BlockQuelle {
@@ -115,22 +116,32 @@ export interface WochenStunden { terminMin: number; blockMin: number; gesamtMin:
  * Stunden einer Woche (Tage [von, bis)): Termine = mit Uhrzeit, beschäftigt, kein Arbeitsort, kein Block;
  * Blöcke = Fokus/Block. Frei gestellte Termine (TRANSP) zählen nicht — sie belegen nichts. Mehrtägige Termine
  * zählen je Tag bis Mitternacht.
+ * Überlappung (Kalender-Gesamtprüfung F3, 29.09.): als VEREINIGUNG wie die Zeit-Auswertung — dieselbe Regel
+ * (lib/kalender/auswertung.ts `minutenBelegung`): 6 parallele Termine à 1 h = 1 h, nicht 6 h. Liegt ein Block unter
+ * einem Termin, zählt die Minute als Termin (Vorrang wie in der Auswertung: Meeting vor Block).
  */
 export function wochenStunden(termine: readonly StundenTermin[], tage: readonly string[]): WochenStunden {
   const r: WochenStunden = { terminMin: 0, blockMin: 0, gesamtMin: 0, jeTag: Object.fromEntries(tage.map(t => [t, 0])) };
+  const TAG_MIN = 24 * 60;
+  const belegung = minutenBelegung<'termin' | 'block'>(tage.length * TAG_MIN, q => (q === 'termin' ? 1 : 0));
   for (const t of termine) {
     if (t.ganztags || t.art === 'arbeitsort' || t.beschaeftigt === false) continue;
-    const block = !!planArtVon(t);
-    for (const tag of tage) {
-      if (t.start.slice(0, 10) > tag || t.ende.slice(0, 10) < tag) continue;
+    const art = planArtVon(t) ? 'block' as const : 'termin' as const;
+    tage.forEach((tag, d) => {
+      if (t.start.slice(0, 10) > tag || t.ende.slice(0, 10) < tag) return;
       const von = t.start.slice(0, 10) < tag ? 0 : minutenVon(t.start);
-      const bis = t.ende.slice(0, 10) > tag ? 24 * 60 : minutenVon(t.ende);
-      const min = Math.max(0, bis - von);
-      if (!min) continue;
-      if (block) r.blockMin += min; else r.terminMin += min;
-      r.jeTag[tag] = (r.jeTag[tag] ?? 0) + min;
-    }
+      const bis = t.ende.slice(0, 10) > tag ? TAG_MIN : minutenVon(t.ende);
+      if (bis > von) belegung.legen(d * TAG_MIN + von, d * TAG_MIN + bis, art);
+    });
   }
+  tage.forEach((tag, d) => {
+    for (let i = d * TAG_MIN; i < (d + 1) * TAG_MIN; i++) {
+      const q = belegung.quelle(i);
+      if (!q) continue;
+      if (q === 'block') r.blockMin++; else r.terminMin++;
+      r.jeTag[tag]++;
+    }
+  });
   r.gesamtMin = r.terminMin + r.blockMin;
   return r;
 }

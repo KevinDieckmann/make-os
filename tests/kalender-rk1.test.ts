@@ -207,10 +207,10 @@ describe('#68/#100 abgesagt, abgelehnt, vorläufig', () => {
     const v = verfuegbarkeitAus({ person: 'kevin', von: '2026-10-05', bis: '2026-10-06', termine: [c, d, t].map(x => ({ ...x, wer: 'kevin' })) });
     expect(v.tage[0].beschaeftigt.map(b => b.start)).toEqual(['2026-10-05T14:00:00']);
   });
-  it('#100 CRM: ein abgesagter Termin mit Namen im Titel erzeugt kein Signal und kein „kommend“', () => {
+  it('#100 CRM: ein abgesagter Termin mit Namen im Titel erzeugt kein Signal', () => {
     const anna = { id: 'c-anna', vorname: 'Anna', nachname: 'Muster', aktivitaeten: [] } as unknown as Kontakt;
     const r = terminSignale([anna], [{ id: 'x', titel: 'Termin Anna Muster', start: '2026-10-01T09:00:00', abgesagt: true }, { id: 'y', titel: 'Anna Muster Folge', start: '2026-12-01T09:00:00', abgesagt: true }], '2026-10-05T10:00:00Z');
-    expect(r.vergangen).toEqual([]); expect(r.kommend).toEqual({});
+    expect(r).toEqual({ vergangen: [] });
   });
 });
 

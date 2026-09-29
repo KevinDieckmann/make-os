@@ -127,7 +127,7 @@ describe('Löschfrist und Sichten', () => {
 
 describe('Seite säubern, Adresse, Kleinigkeiten', () => {
   it('Adresse: lesbarer Vorsatz + 24 Hex-Zeichen', () => {
-    expect(slugVorsatz('30 min mit Kevin & Größe!')).toBe('30-min-mit-kevin-grosse');
+    expect(slugVorsatz('30 min mit Kevin & Größe!')).toBe('30-min-mit-kevin-groesse'); // F3: ö→oe wie in der Suche
     expect(slugOk(SEITE.slug)).toBe(true);
     expect(slugOk('30-min-mit-test')).toBe(false);
     expect(slugOk('../x-0123456789abcdef01234567')).toBe(false);

@@ -17,6 +17,8 @@ export interface AkteTermin {
   gastKontakte?: string[];
   /** Zusagen/Absagen (nur Status und Name — die Adressen bleiben im Kalender). */
   antworten?: Pick<Teilnehmer, 'status' | 'name'>[];
+  /** Abgesagt (STATUS:CANCELLED oder selbst abgelehnt) — steht in der Liste, ist aber nie der „nächste Termin“. */
+  abgesagt?: true;
 }
 
 /** Passt ein Termin zur Frage? (Kontakt direkt oder als Gast, Firma, Deal, Mandat) */
@@ -39,10 +41,20 @@ export function termineZu(termine: readonly TerminMitBezug[], f: TermineZuFrage,
       id: t.id, uid: t.uid, titel: t.titel, start: t.start, ende: t.ende, ganztags: t.ganztags, ...(t.ort ? { ort: t.ort } : {}), kalender: t.kalender,
       vergangen, serie: t.serie, bezug: { ...(t.bezug?.kontaktId ? { kontaktId: t.bezug.kontaktId } : {}), ...(t.bezug?.firmaId ? { firmaId: t.bezug.firmaId } : {}), ...(t.bezug?.dealId ? { dealId: t.bezug.dealId } : {}), ...(t.bezug?.mandatId ? { mandatId: t.bezug.mandatId } : {}) },
       ...(t.gastKontakte?.length ? { gastKontakte: t.gastKontakte } : {}), ...(antworten.length ? { antworten } : {}),
+      ...(t.abgesagt ? { abgesagt: true as const } : {}),
     } satisfies AkteTermin;
   });
   return {
     kommend: passend.filter(t => !t.vergangen).sort((a, b) => a.start.localeCompare(b.start)).slice(0, max),
     vergangen: passend.filter(t => t.vergangen).sort((a, b) => b.start.localeCompare(a.start)).slice(0, max),
   };
+}
+
+/**
+ * Der nächste Termin einer Akte (Kalender-Gesamtprüfung F3, 29.09.): der früheste kommende, der nicht abgesagt ist.
+ * EINE Quelle für den Kopf der Kontaktakte, die Karteikarte und den Verlauf — dieselbe Auswahl wie die Liste
+ * (`termineZu`, über den Bezug, maskiert je Person). Der frühere Zwischenspeicher `crm-signale.kommend` ist abgelöst.
+ */
+export function naechsterTermin(kommend: readonly AkteTermin[]): AkteTermin | null {
+  return kommend.find(t => !t.abgesagt) ?? null;
 }

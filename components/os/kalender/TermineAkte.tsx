@@ -7,6 +7,9 @@
 // legt das Follow-up an (POST /api/crm/followup), nichts geschieht automatisch. Es hängt am Termin (`terminUid`, F2 M4):
 // der Titel wird nicht kopiert (die Anzeige leitet ihn ab), und „Wie lief's?“ fragt dazu nicht noch einmal.
 // `useTerminZeiten` liefert dieselben Zeiten je Termin-Schlüssel für die Meeting-Aktivitäten (`terminUid` → Zeit).
+// F3 (29.09.): `useNaechsterTermin` = der „Nächste Termin“ im Kopf der Akte/Karteikarte und im Verlauf — dieselbe Quelle
+// wie die Liste (abgesagte ausgenommen). Nach „+ Meeting“ ruft der Dialog `termineZuNeuLaden()` — alle offenen Leser
+// laden neu. Gleichzeitige Leser derselben Frage teilen sich EINE Anfrage.
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -15,7 +18,7 @@ import { LEUCHT } from '../schlank';
 import { WEG } from '@/lib/wege';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { antwortenZaehlen } from '@/lib/kalender/gaeste';
-import type { AkteTermin, TermineZuFrage } from '@/lib/kalender/termine-zu';
+import { naechsterTermin, type AkteTermin, type TermineZuFrage } from '@/lib/kalender/termine-zu';
 import type { TerminZeiten } from '@/lib/crm/aktivitaeten';
 
 interface Antwort { kommend: AkteTermin[]; vergangen: AkteTermin[]; zeiten: TerminZeiten }
@@ -27,15 +30,34 @@ const adresse = (f: TermineZuFrage) => {
   return q.toString();
 };
 
+/** Ereignis: Termine haben sich geändert (z. B. „+ Meeting“) — jeder `useTermineZu` lädt neu. */
+export const TERMINE_ZU_EREIGNIS = 'make-termine-zu';
+/** Laufende Anfragen je Frage — Kopf, Zusammenfassung, Verlauf und Liste einer Akte teilen sich eine. */
+const laufend = new Map<string, Promise<Antwort>>();
+/** Nach einer Änderung: keine alte Anfrage weiterreichen, dann alle Leser neu laden (sie teilen sich wieder eine). */
+export const termineZuNeuLaden = () => { laufend.clear(); window.dispatchEvent(new Event(TERMINE_ZU_EREIGNIS)); };
+function holen(q: string): Promise<Antwort> {
+  const da = laufend.get(q);
+  if (da) return da;
+  const p: Promise<Antwort> = fetch(`/api/kalender/bezug?${q}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null))
+    .then((d): Antwort => (d?.ok ? { kommend: d.kommend ?? [], vergangen: d.vergangen ?? [], zeiten: d.zeiten ?? {} } : LEER))
+    .catch(() => LEER).finally(() => { if (laufend.get(q) === p) laufend.delete(q); });
+  laufend.set(q, p);
+  return p;
+}
+
 /** Termine zu Kontakten/Firmen/Deals/Mandaten laden (null = noch nicht geladen oder kein Kalender-Zugang). */
 export function useTermineZu(f: TermineZuFrage): { daten: Antwort | null; laden: () => void } {
   const q = adresse(f);
   const [daten, setDaten] = useState<Antwort | null>(null);
-  const laden = useCallback(() => {
-    if (!q) { setDaten(LEER); return; }
-    fetch(`/api/kalender/bezug?${q}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => setDaten(d?.ok ? { kommend: d.kommend ?? [], vergangen: d.vergangen ?? [], zeiten: d.zeiten ?? {} } : LEER)).catch(() => setDaten(LEER));
+  const laden = useCallback(() => { termineZuNeuLaden(); }, []);
+  useEffect(() => {
+    let an = true;
+    const lade = () => { if (!q) { setDaten(LEER); return; } void holen(q).then(d => { if (an) setDaten(d); }); };
+    lade();
+    window.addEventListener(TERMINE_ZU_EREIGNIS, lade);
+    return () => { an = false; window.removeEventListener(TERMINE_ZU_EREIGNIS, lade); };
   }, [q]);
-  useEffect(() => { laden(); }, [laden]);
   return { daten, laden };
 }
 
@@ -43,6 +65,13 @@ export function useTermineZu(f: TermineZuFrage): { daten: Antwort | null; laden:
 export function useTerminZeiten(kontaktId: string): TerminZeiten | undefined {
   const frage = useMemo(() => ({ kontakte: [kontaktId] }), [kontaktId]);
   return useTermineZu(frage).daten?.zeiten;
+}
+
+/** Der nächste (nicht abgesagte) Termin eines Kontakts — Kopf der Akte, Karteikarte, Verlauf (F3). Ohne Kennung: null. */
+export function useNaechsterTermin(kontaktId: string | undefined): AkteTermin | null {
+  const frage = useMemo(() => (kontaktId ? { kontakte: [kontaktId] } : {}), [kontaktId]);
+  const kommend = useTermineZu(frage).daten?.kommend;
+  return useMemo(() => (kontaktId && kommend ? naechsterTermin(kommend) : null), [kontaktId, kommend]);
 }
 
 const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
@@ -75,8 +104,8 @@ export function TermineAkte({ frage, kontaktId, heute }: { frage: TermineZuFrage
     return (
       <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.045)', minWidth: 0, fontFamily: SCHRIFT.text }}>
         <Link href={WEG.termin(t.id, t.start.slice(0, 10))} title="Im Kalender öffnen" style={{ display: 'grid', gap: 1, flex: 1, minWidth: 0, color: C.ink, textDecoration: 'none' }}>
-          <span style={{ fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titel}</span>
-          <span style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wann(t)}{t.ort ? ` · ${t.ort}` : ''}{t.serie ? ' · Serie' : ''}{t.antworten?.length ? ` · ${antwortenZaehlen(t.antworten)}` : ''}</span>
+          <span style={{ fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(t.abgesagt ? { textDecoration: 'line-through', color: C.inkLeise } : {}) }}>{t.titel}</span>
+          <span style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.abgesagt ? 'abgesagt · ' : ''}{wann(t)}{t.ort ? ` · ${t.ort}` : ''}{t.serie ? ' · Serie' : ''}{t.antworten?.length ? ` · ${antwortenZaehlen(t.antworten)}` : ''}</span>
         </Link>
         {kannNach && (v === 'ok'
           ? <span style={{ fontSize: 12, color: LEUCHT.gut, whiteSpace: 'nowrap' }}>✓ vorgemerkt</span>

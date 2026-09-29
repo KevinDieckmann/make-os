@@ -37,7 +37,7 @@ import type { CrmApi } from '../daten';
 import { Karte, Leer, Knopf, feld, LEUCHT } from '../../schlank';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { AktivitaetKarte, NeuFormular, NEU_KNOEPFE, KATEGORIE_FARBE, type NeuArt } from './aktivitaeten-teile';
-import { useTerminZeiten } from '../../kalender/TermineAkte';
+import { useTerminZeiten, useNaechsterTermin } from '../../kalender/TermineAkte';
 
 export interface AktivitaetenReiterProps {
   k: Kontakt;
@@ -82,8 +82,10 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
   useEffect(() => { if (!meldung) return; const t = setTimeout(() => setMeldung(null), 4000); return () => clearTimeout(t); }, [meldung]);
 
   // K3: Meetings mit `terminUid` zeigen die Zeit ihres Termins (verschoben → neue Zeit).
+  // F3 (29.09.): der nächste Termin aus demselben Leser (über den Bezug, abgesagte nie) — nicht mehr aus `crm-signale`.
   const terminZeiten = useTerminZeiten(k.id);
-  const alle = useMemo<Eintrag[]>(() => aufbereiten(k, api.crm?.stand, { heute, jetzt, termin: api.crm?.termine?.[k.id] ?? null, ...(terminZeiten ? { termine: terminZeiten } : {}) }), [k, api.crm?.stand, api.crm?.termine, heute, jetzt, terminZeiten]);
+  const naechster = useNaechsterTermin(k.id);
+  const alle = useMemo<Eintrag[]>(() => aufbereiten(k, api.crm?.stand, { heute, jetzt, termin: naechster ? { id: naechster.id, titel: naechster.titel, start: naechster.start } : null, ...(terminZeiten ? { termine: terminZeiten } : {}) }), [k, api.crm?.stand, naechster, heute, jetzt, terminZeiten]);
   const zahlen = useMemo(() => zaehlen(alle, filter, heute), [alle, filter, heute]);
   const sichtbar = useMemo(() => filtern(alle, aktiv, filter, heute), [alle, aktiv, filter, heute]);
   const gruppen = useMemo(() => gruppieren(sichtbar), [sichtbar]);

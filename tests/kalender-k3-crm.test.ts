@@ -61,10 +61,9 @@ describe('Termin → Aktivität „Meeting“ (K3)', () => {
 
 describe('Signale über den Bezug (K3, Befund 7 + 11)', () => {
   const k = [kontakt('c-anna1'), kontakt('c-bert1', { vorname: 'Bert', nachname: 'Muster' })];
-  it('Termin mit Bezug: kein Signal (die Meeting-Aktivität kommt aus dem Bezug), aber „kommend“ für alle Kontakte', () => {
+  it('Termin mit Bezug: kein Signal (die Meeting-Aktivität kommt aus dem Bezug) — und seit F3 kein „kommend“-Zwischenspeicher', () => {
     const r = terminSignale(k, [{ id: 'U1', uid: 'U1', titel: 'Kaffee', start: '2026-10-02T10:00:00', kontaktIds: ['c-anna1', 'c-bert1'] }, { id: 'U0', uid: 'U0', titel: 'Anna Beispiel', start: '2026-09-29T10:00:00', kontaktIds: ['c-anna1'] }], JETZT);
-    expect(r.vergangen).toEqual([]);
-    expect(Object.keys(r.kommend).sort()).toEqual(['c-anna1', 'c-bert1']);
+    expect(r).toEqual({ vergangen: [] });
   });
   it('Name im Titel nur noch als Rückfall; kein zweites Signal, wenn schon ein Meeting mit der UID existiert', () => {
     const r = terminSignale(k, [{ id: 'ac-U2', uid: 'U2', titel: 'Kaffee mit Anna Beispiel', start: '2026-09-29T10:00:00' }], JETZT);

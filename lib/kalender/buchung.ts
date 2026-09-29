@@ -28,6 +28,7 @@
 
 import { freieZeiten, fensterSauber, istFrei, type Belegung, type Fenster, type FreieZeit } from './verfuegbar';
 import { tagVon, ausWandzeit, wandzeit } from './zeit';
+import { suchNorm } from '@/lib/text/such-norm';
 
 // ── Texte mit Fassung (Nachweis der Einwilligung) ────────────────────────────
 
@@ -158,9 +159,13 @@ const PERSON = /^[a-z0-9-]{1,40}$/;
 const txt = (v: unknown) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim() : '');
 const zahl = (v: unknown, min: number, max: number, sonst: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : sonst; };
 
-/** Lesbarer Vorsatz der Adresse aus dem Titel („30 min mit Kevin“ → „30-min-mit-kevin“). */
+/**
+ * Lesbarer Vorsatz der Adresse aus dem Titel („30 min mit Kevin“ → „30-min-mit-kevin“). Umlaute wie in der Suche
+ * (F3, 29.09.: `suchNorm` — ä→ae, ö→oe, ü→ue, ß→ss; vorher „Gespräch“ → „gesprach“). Gilt nur für NEUE Seiten: der
+ * Slug wird beim Anlegen einmal vergeben und nie neu gerechnet (bestehende Links bleiben).
+ */
 export function slugVorsatz(titel: string): string {
-  const s = titel.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/g, '');
+  const s = suchNorm(titel).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/g, '');
   return s || 'termin';
 }
 

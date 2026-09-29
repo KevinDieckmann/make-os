@@ -33,7 +33,9 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   E('crm-import-laeufe--*', 'Vorher-Stände der Person raus (laufOhne), auch Zusammenführ-Läufe; Namen getilgt.', 'import-laeufe'),
   E('head-*', 'Head-Vorschläge der Person raus, Berichte, die sie nennen, raus.'),
   E('heads-replay-*', 'Replay-Fälle mit der Person raus.', 'heads-replay'),
-  E('crm-signale', 'Kommender Termin der Person raus.', 'signale'),
+  // F3 (29.09.): `kommend` ist abgelöst (der nächste Termin kommt aus dem Kalender über den Bezug) — der Signal-Lauf schreibt
+  // nur noch Zeitpunkt + Zahl; ein alter `kommend` bleibt bis zum nächsten Lauf und fällt bis dahin hier mit.
+  E('crm-signale', 'Altbestand: kommender Termin der Person raus (seit F3 nicht mehr geschrieben, der Lauf überschreibt ohne).', 'signale'),
   E('tasks', 'Nur eindeutig zugeordnete Aufgaben: Name → „[gelöscht]“, Link und bezug.kontaktId raus — die Aufgabe bleibt.'),
   { muster: 'crm-sperrliste--*', bezug: 'dritte', behandlung: 'pseudonym', grund: 'Person KOMMT HINZU (Grund „loeschung“) — nur HMAC-Fingerabdrücke, damit ein Import sie nie neu anlegt.' },
   { muster: 'crm-loeschprotokoll', bezug: 'dritte', behandlung: 'pseudonym', grund: 'Nur Protokoll-ID `lp-…`, Tag, Grund, wer — nie die Kennung (lib/crm/loeschprotokoll.ts).' },

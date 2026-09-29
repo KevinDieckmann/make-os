@@ -292,7 +292,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
           {!f.ganztags && <label style={{ display: 'grid', gap: 4 }}><span style={beschr}>Zeitzone (die Uhrzeiten oben gelten dort)</span>
-            <select value={f.zone} onChange={e => setF({ ...f, zone: e.target.value })} style={{ ...eingabe, width: 'auto' }}>
+            <select value={f.zone} onChange={e => setF({ ...f, zone: e.target.value })} aria-label="Zeitzone" style={{ ...eingabe, width: 'auto' }}>
               {ZONEN.map(z => <option key={z.id} value={z.id}>{z.label} · {gmtText(z.id, ausWandzeitIn(`${f.tag}T${f.von}:00`, z.id))}</option>)}
             </select></label>}
           <div style={zeile}>

@@ -294,8 +294,9 @@ export function Kalender() {
       </Karte>
       <Karte i={2}>
         <Ueberschrift>Sicht</Ueberschrift>
-        <Segmente liste={sichten} aktiv={sicht} onWahl={setSicht} />
-        <div style={{ marginTop: 8 }}><Segmente liste={[{ id: 'alle', label: 'Alles' }, { id: 'privat', label: 'Privat' }, { id: 'business', label: 'Business' }] as { id: Bereich; label: string }[]} aktiv={bereich} onWahl={setBereich} /></div>
+        {/* F3 (29.09.): in der 280-px-Leiste wurde „Gemeinsam“ abgeschnitten — die Knöpfe brechen jetzt um. */}
+        <Segmente liste={sichten} aktiv={sicht} onWahl={setSicht} umbrechen />
+        <div style={{ marginTop: 8 }}><Segmente liste={[{ id: 'alle', label: 'Alles' }, { id: 'privat', label: 'Privat' }, { id: 'business', label: 'Business' }] as { id: Bereich; label: string }[]} aktiv={bereich} onWahl={setBereich} umbrechen /></div>
         <div style={{ display: 'grid', gap: 4, marginTop: 10 }}>
           {(daten?.kalender ?? []).map(k => (
             <label key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>

@@ -22,7 +22,7 @@ export interface MailEin { id: string; email: string; betreff: string; am: strin
  */
 export interface TerminEin {
   id: string; titel: string; start: string; uid?: string; kontaktIds?: readonly string[];
-  /** R-K1 #100: abgesagt (STATUS:CANCELLED) oder selbst abgelehnt — zählt nicht (kein Signal, kein „kommend“). */
+  /** R-K1 #100: abgesagt (STATUS:CANCELLED) oder selbst abgelehnt — zählt nicht (kein Signal). */
   abgesagt?: boolean;
 }
 
@@ -70,30 +70,27 @@ export function personImTitel(k: Kontakt, titel: string): boolean {
   return t.includes(` ${vn} `) && t.includes(` ${nn} `);
 }
 
-export function terminSignale(kontakte: Kontakt[], termine: TerminEin[], jetzt: string): { vergangen: Signal[]; kommend: Record<string, { titel: string; start: string }> } {
+/**
+ * Vergangene Termine → Signale im Verlauf (nur Termine OHNE Bezug, über den Namen im Titel). Kommende Termine merkt sich
+ * der Lauf seit F3 (29.09.) nicht mehr: der „nächste Termin“ kommt aus dem Kalender-Leser der Akte (über den Bezug,
+ * lib/kalender/termine-zu.ts `naechsterTermin`) — eine Quelle statt eines zweiten Zwischenspeichers.
+ */
+export function terminSignale(kontakte: Kontakt[], termine: TerminEin[], jetzt: string): { vergangen: Signal[] } {
   const vergangen: Signal[] = [];
-  const kommend: Record<string, { titel: string; start: string }> = {};
   const jetztMs = Date.parse(jetzt);
-  const nachId = new Map(kontakte.map(k => [k.id, k]));
-  const merke = (k: Kontakt, t: TerminEin) => { if (!kommend[k.id] || terminMs(t.start) < terminMs(kommend[k.id].start)) kommend[k.id] = { titel: t.titel, start: t.start }; };
   for (const t of termine) {
     if (t.abgesagt) continue;
-    const vorbei = terminMs(t.start) <= jetztMs;
     // Bezug gewinnt: zugeordnet über `kalender-bezug`, die Aktivität legt lib/crm/termin-aktivitaet.ts an.
-    if (t.kontaktIds?.length) {
-      if (!vorbei) for (const id of t.kontaktIds) { const k = nachId.get(id); if (k && !ausgenommen(k)) merke(k, t); }
-      continue;
-    }
+    if (t.kontaktIds?.length) continue;
+    if (terminMs(t.start) > jetztMs) continue; // kommt noch — kein Signal
     const passend = kontakte.filter(k => !ausgenommen(k) && personImTitel(k, t.titel));
     if (passend.length !== 1) continue; // mehrdeutig → lieber nichts zuordnen
     const k = passend[0];
-    if (vorbei) {
-      const bezug = bezugTermin(t.id);
-      if ((k.aktivitaeten ?? []).some(a => a.bezug === bezug || (!!t.uid && ((!!a.terminUid && uidVonSchluessel(a.terminUid) === t.uid) || a.bezug === bezugTermin(t.uid))))) continue;
-      vergangen.push({ kontaktId: k.id, aktivitaet: { am: t.start, art: 'termin', text: `Termin: ${t.titel.slice(0, 200)}`, von: 'system', bezug } });
-    } else merke(k, t);
+    const bezug = bezugTermin(t.id);
+    if ((k.aktivitaeten ?? []).some(a => a.bezug === bezug || (!!t.uid && ((!!a.terminUid && uidVonSchluessel(a.terminUid) === t.uid) || a.bezug === bezugTermin(t.uid))))) continue;
+    vergangen.push({ kontaktId: k.id, aktivitaet: { am: t.start, art: 'termin', text: `Termin: ${t.titel.slice(0, 200)}`, von: 'system', bezug } });
   }
-  return { vergangen, kommend };
+  return { vergangen };
 }
 
 /** Signale auf die Kartei anwenden: Verlauf ergänzen, letzter Kontakt nur vorwärts. */

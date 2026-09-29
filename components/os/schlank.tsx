@@ -114,11 +114,15 @@ export function Zeile({ links, titel, unter, rechts, onClick, aktiv }: {
   );
 }
 
-export function Segmente<T extends string>({ liste, aktiv, onWahl }: { liste: { id: T; label: string }[]; aktiv: T; onWahl: (id: T) => void }) {
+/**
+ * Segment-Umschalter. `umbrechen` (F3, 29.09.): für schmale Spalten (Kalender-Seitenleiste 280 px, Handy) — die Knöpfe
+ * teilen sich die Breite und brechen in eine zweite Zeile um, statt abgeschnitten zu werden („Gemeinsam“).
+ */
+export function Segmente<T extends string>({ liste, aktiv, onWahl, umbrechen }: { liste: { id: T; label: string }[]; aktiv: T; onWahl: (id: T) => void; umbrechen?: boolean }) {
   return (
-    <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,.06)', borderRadius: 12, padding: 3 }}>
+    <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,.06)', borderRadius: 12, padding: 3, ...(umbrechen ? { flexWrap: 'wrap' as const } : {}) }}>
       {liste.map(s => (
-        <button key={s.id} onClick={() => onWahl(s.id)} style={{ padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, transition: 'background .2s ease, color .2s ease', background: aktiv === s.id ? C.ink : 'transparent', color: aktiv === s.id ? C.grund : C.inkDim }}>{s.label}</button>
+        <button key={s.id} onClick={() => onWahl(s.id)} aria-pressed={aktiv === s.id} style={{ padding: umbrechen ? '7px 10px' : '7px 14px', ...(umbrechen ? { flex: '1 1 auto', whiteSpace: 'nowrap' as const } : {}), borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, transition: 'background .2s ease, color .2s ease', background: aktiv === s.id ? C.ink : 'transparent', color: aktiv === s.id ? C.grund : C.inkDim }}>{s.label}</button>
       ))}
     </div>
   );

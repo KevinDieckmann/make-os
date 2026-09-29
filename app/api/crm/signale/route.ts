@@ -1,9 +1,11 @@
 // ─── CRM — Signale aus Mail und Kalender übernehmen ─────────────────────────
 // POST → liest nur geschäftliche Quellen (M365-Postfach, Apple-Mail außer dem
-//        privaten Konto, KEMARIS-Kalender, Holding-Kalender), hängt Mails und
-//        vergangene Termine bekannter Personen an deren Verlauf und merkt sich
-//        die kommenden Termine. Höchstens alle 5 Minuten (sonst „frisch“).
-// GET  → die kommenden Termine je Person (für Karteikarte und Power Hour)
+//        privaten Konto, KEMARIS-Kalender, Holding-Kalender) und hängt Mails und
+//        vergangene Termine bekannter Personen an deren Verlauf. Höchstens alle 5 Minuten (sonst „frisch“).
+// GET  → wann der Lauf zuletzt lief.
+// F3 (29.09.): Die kommenden Termine je Person (`kommend`) merkt sich der Lauf nicht mehr — der „nächste Termin“ kommt
+// aus dem Kalender-Leser der Akte (GET /api/kalender/bezug, über den Bezug, abgesagte nie). Ein alter `kommend` im
+// Bestand verschwindet beim nächsten Lauf (der Stand wird ganz geschrieben); bis dahin räumen Art. 17 und Umzug ihn mit.
 // Seit 30.09. (K3): Termine mit Bezug (`kalender-bezug`: Kontakt + Gäste aus dem CRM) zählen aus JEDEM Kalender —
 // wer verknüpft, meint es. Für sie legt der Lauf je vergangenem Vorkommen genau EINE Aktivität „Meeting“ mit
 // `terminUid` an (lib/crm/termin-aktivitaet.ts) und zieht den letzten Kontakt für inzwischen vergangene Meetings nach;
@@ -27,13 +29,13 @@ import { localDay, tagePlus } from '@/lib/zeit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface Stand { letzter?: string; kommend?: Record<string, { titel: string; start: string }>; neu?: number }
+interface Stand { letzter?: string; neu?: number }
 const NAME = 'crm-signale';
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const s = (await loadJson<Stand>(NAME)) ?? {};
-  return NextResponse.json({ ok: true, letzter: s.letzter ?? null, kommend: s.kommend ?? {} });
+  return NextResponse.json({ ok: true, letzter: s.letzter ?? null });
 }
 
 export async function POST(req: Request) {
@@ -69,11 +71,10 @@ export async function POST(req: Request) {
   });
   const jetzt = new Date().toISOString();
   const heute = localDay();
-  let neu = 0, kommend: Stand['kommend'] = {};
+  let neu = 0;
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
     const t = terminSignale(f.kontakte, termine, jetzt);
-    kommend = t.kommend;
     const r = signaleAnwenden(f.kontakte, [...mailSignale(f.kontakte, mails), ...t.vergangen]);
     let kontakte = r.kontakte;
     let n = r.neu;
@@ -89,6 +90,6 @@ export async function POST(req: Request) {
     neu = n;
     return n || nach.geaendert ? { ...f, kontakte: nach.kontakte } : f;
   }, werAus(req));
-  await saveJson<Stand>(NAME, { letzter: jetzt, kommend, neu });
-  return NextResponse.json({ ok: true, neu, mails: mails.length, termine: termine.length, kommend: Object.keys(kommend ?? {}).length });
+  await saveJson<Stand>(NAME, { letzter: jetzt, neu });
+  return NextResponse.json({ ok: true, neu, mails: mails.length, termine: termine.length });
 }

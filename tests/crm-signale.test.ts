@@ -15,7 +15,7 @@ describe('Signale aus Mail und Kalender', () => {
     expect(r.kontakte[0].aktivitaeten[0]).toMatchObject({ art: 'antwort', bezug: bezugMail('m1') });
     expect(mailSignale(r.kontakte, [{ id: 'm1', email: 'max@firma.de', betreff: 'Re: Angebot', am: '2026-09-23T10:00:00Z' }]).length).toBe(0);
   });
-  it('Termine: Vor- und Nachname im Titel, eindeutig; vergangen → Verlauf, kommend → nächster Termin', () => {
+  it('Termine: Vor- und Nachname im Titel, eindeutig; vergangen → Verlauf, kommende erzeugen nichts (F3)', () => {
     const w = k('walter', { vorname: 'Walter', nachname: 'Probemann' });
     expect(personImTitel(w, 'Call mit Walter Probemann (Kunde A)')).toBe(true);
     expect(personImTitel(w, 'Probemannweg Walterstraße')).toBe(false);
@@ -25,7 +25,8 @@ describe('Signale aus Mail und Kalender', () => {
       { id: 't3', titel: 'Probemann Familie', start: '2026-09-21T10:00:00Z' },
     ], '2026-09-24T12:00:00Z');
     expect(t.vergangen.map(x => x.kontaktId)).toEqual(['c-walter']);
-    expect(t.kommend['c-walter']).toMatchObject({ titel: 'Walter Probemann Planung' });
+    // Der nächste Termin kommt seit F3 aus dem Kalender-Leser der Akte (über den Bezug) — kein zweiter Speicher.
+    expect(Object.keys(t)).toEqual(['vergangen']);
   });
 });
 

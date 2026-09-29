@@ -7,7 +7,7 @@
 //   · die Follow-ups der Person (echte aus crm.followups, offen und abgeschlossen,
 //     plus die virtuellen aus lib/crm/followup.ts `faellige` — nächster Schritt,
 //     Wiedervorlage, Deal-Schritt, Nachfassen, Review, Kadenz) = „Aufgaben“
-//   · der nächste Kalendertermin aus dem Geschäftskalender (crm.termine)
+//   · der nächste Kalendertermin (verknüpft über den Bezug, abgesagte nie — F3: TermineAkte `useNaechsterTermin`)
 // Aufgaben im Board haben keinen Kontaktbezug (types/tasks.ts) — sie kommen
 // nur über ein Follow-up hierher (FollowUp.aufgabeId).
 //
@@ -286,8 +286,8 @@ export interface AufbereitenOpts {
   heute: string;
   /** Jetzt als ISO-Zeitpunkt. */
   jetzt: string;
-  /** Nächster Termin der Person aus dem Geschäftskalender (crm.termine[k.id]). */
-  termin?: { titel: string; start: string } | null;
+  /** Nächster Termin der Person (F3: aus dem Kalender-Leser der Akte, über den Bezug, abgesagte nie — `naechsterTermin`). */
+  termin?: { id?: string; titel: string; start: string } | null;
   /** Zeiten der verknüpften Termine je `terminUid` (K3) — Meetings zeigen die Zeit ihres Termins. */
   termine?: TerminZeiten;
 }
@@ -351,12 +351,12 @@ export function aufbereiten(k: Kontakt, crm: CrmBestand | null | undefined, o: A
   }
 
   // 3 · Nächster Kalendertermin (nur, wenn er noch kommt) — steht er schon als Meeting mit `terminUid` im Verlauf (K3), nicht doppelt.
-  const alsMeeting = (start: string) => log.some(a => !!a.terminUid && o.termine?.[a.terminUid]?.start.slice(0, 16) === start.slice(0, 16));
-  if (o.termin?.start && !alsMeeting(o.termin.start)) {
+  const alsMeeting = (t: { id?: string; start: string }) => log.some(a => !!a.terminUid && ((!!t.id && (a.terminUid === t.id || a.terminUid === altSchluessel(t.id))) || o.termine?.[a.terminUid]?.start.slice(0, 16) === t.start.slice(0, 16)));
+  if (o.termin?.start && !alsMeeting(o.termin)) {
     const b = berlin(o.termin.start);
     if (`${b.tag}T${b.zeit ?? '23:59'}` > jetzt) {
       raus.push({ anker: kalenderAnker(k.id), quelle: 'kalender', kategorie: 'meetings', art: 'kalender', tag: b.tag, ...(b.zeit ? { zeit: b.zeit } : {}),
-        sortier: sortierVon(b.tag, b.zeit), titel: 'Termin im Kalender', text: o.termin.titel, kommend: true, hinweis: 'aus dem Geschäftskalender' });
+        sortier: sortierVon(b.tag, b.zeit), titel: 'Termin im Kalender', text: o.termin.titel, kommend: true, hinweis: 'verknüpft im Kalender' });
     }
   }
   return raus;

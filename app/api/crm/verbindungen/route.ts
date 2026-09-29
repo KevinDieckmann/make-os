@@ -15,13 +15,14 @@
 //                                Kennungen) und Fokus-Blöcke aus gelöschten Fokuszeiten (`terminUid`).
 //
 // Zugang: Haushalt des Inhabers UND eine benannte Person (Sitzung oder Dienstweg mit
-// x-make-person) — Default-Deny, kein Rückfall auf ein Erstkonto. Antworten tragen nur
-// Kennungen, nie Namen oder Inhalte.
+// x-make-person) — Default-Deny, kein Rückfall auf ein Erstkonto. Befunde tragen nur Kennungen; seit F3 (29.09.)
+// kommt für die Anzeige `namen` mit (Kennung → Name/Titel, lib/crm/verbindungen-namen.ts) — nur Auflösbares aus den
+// geladenen Beständen, Termin-Titel nur, wenn der Termin für die fragende Person nicht maskiert ist.
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
-import { updateJson } from '@/lib/store/local-db';
+import { updateJson, speicherStand } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { etagAus, jsonAntwort, unveraendert } from '@/lib/http/json-antwort';
@@ -41,7 +42,11 @@ import { toteTermine, toteKennungen, zeitDateiTermineBereinigen } from '@/lib/cr
 import { ladeKalenderPruefung } from '@/lib/crm/verbindungen-laden';
 import { bezuegeBereinigen, bezuegeUmhaengen } from '@/lib/kalender/bezug-server';
 import { waisenPaare, verwaisteEventTermine } from '@/lib/crm/verbindungen-termine';
-import type { BezugFeld } from '@/lib/kalender/bezug';
+import { maskieren, type BezugFeld } from '@/lib/kalender/bezug';
+import { beispielNamen, type NamenTermin } from '@/lib/crm/verbindungen-namen';
+import { termineLesen } from '@/lib/kalender/termine-lesen';
+import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
+import { tagPlus } from '@/lib/kalender/zeit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,14 +59,27 @@ async function zugang(req: Request): Promise<string | null> {
   return w && person ? person : null;
 }
 
+/** Termine für die Namen — gelesen ohne Abgleich, maskiert für die fragende Person (wie GET /api/kalender/bezug). */
+async function termineFuerNamen(person: string, heute: string): Promise<NamenTermin[]> {
+  const g = await termineLesen(await ladeEinstellungen(), tagPlus(heute, -400), tagPlus(heute, 401)).catch(() => null);
+  return (g?.termine ?? []).map(t => maskieren(t, person)).map(t => ({ id: t.id, titel: t.titel, start: t.start, ...(t.maskiert ? { maskiert: true as const } : {}) }));
+}
+
 export async function GET(req: Request) {
-  if (!(await zugang(req))) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const person = await zugang(req);
+  if (!person) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   const heute = localDay();
-  const etag = etagAus('verbindungen', await verbindungsStand(), heute);
+  // Die Namen hängen an der Person (maskierte Termine) — sie gehört ins ETag.
+  const etag = etagAus('verbindungen-2', await verbindungsStand(), await speicherStand(['calendar-cache', 'kalender-einstellungen']), heute, person);
   const nichtsNeu = unveraendert(req, etag);
   if (nichtsNeu) return nichtsNeu;
-  const befunde = verbindungenPruefen(await ladeVerbindungsBestaende(heute));
-  return jsonAntwort(req, { ok: true, heute, ampel: verbindungsAmpel(befunde), befunde, geprueft: PRUEFUNG_IDS.length, pruefungen: PRUEFUNG_IDS, reparierbar: REPARIERBAR }, etag);
+  const bestaende = await ladeVerbindungsBestaende(heute);
+  const befunde = verbindungenPruefen(bestaende);
+  // Termine nur lesen, wenn eine Kennung offen bleibt (sonst reicht der Bestand).
+  const ohneTermine = beispielNamen(bestaende, befunde);
+  const offen = befunde.some(b => b.beispiele.some(id => !ohneTermine[id]));
+  const namen = offen ? beispielNamen(bestaende, befunde, await termineFuerNamen(person, heute)) : ohneTermine;
+  return jsonAntwort(req, { ok: true, heute, ampel: verbindungsAmpel(befunde), befunde, namen, geprueft: PRUEFUNG_IDS.length, pruefungen: PRUEFUNG_IDS, reparierbar: REPARIERBAR }, etag);
 }
 
 export async function POST(req: Request) {

@@ -58,7 +58,8 @@ async function antwort(b: CrmBestand, ich: string) {
     zahlung: Object.fromEntries(b.mandate.map(m => [m.id, zahlungAusRechnungen(m, rechnungen, heute)])),
     mrr: mrr(b.mandate), konzentration: konzentration(b.mandate),
     events: Object.fromEntries(b.events.map(e => [e.id, eventZahlen(e, b.teilnahmen, kontakte, b.chancen)])),
-    termine: ((await loadJson<{ kommend?: Record<string, { titel: string; start: string }> }>('crm-signale'))?.kommend) ?? {},
+    // Der nächste Termin je Person kommt seit F3 (29.09.) aus dem Kalender-Leser der Akte (GET /api/kalender/bezug) —
+    // eine Quelle für Kopf, Zusammenfassung und Termine; `crm-signale.kommend` ist abgelöst.
   };
 }
 
@@ -67,10 +68,10 @@ export async function GET(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const person = zugang.person;
-  // Alles, woraus die Antwort entsteht: die vier Speicher, der Tag (Ampeln, Prognose) und wer fragt.
+  // Alles, woraus die Antwort entsteht: die drei Speicher, der Tag (Ampeln, Prognose) und wer fragt.
   // Angebote (28.09.): gestellte nach „gültig bis“ → abgelaufen, bevor der Stand gerechnet wird (schreibt nur bei Bedarf).
   await ablaufNachziehen();
-  const etag = etagAus('b3', await speicherStand(['crm', 'kontakte', 'finanzplan', 'crm-signale']), localDay(), person);
+  const etag = etagAus('b4', await speicherStand(['crm', 'kontakte', 'finanzplan']), localDay(), person);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   return jsonAntwort(req, await antwort(await ladeCrm(), person), etag);

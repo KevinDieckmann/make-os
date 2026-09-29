@@ -32,8 +32,8 @@ export interface CrmAntwort {
   zahlung: Record<string, { wert: number; text: string } | null>;
   mrr: number; konzentration: { kunde: string; anteil: number } | null;
   events: Record<string, EventZahlen>;
-  /** Nächster Termin je Person (aus dem Geschäftskalender). */
-  termine: Record<string, { titel: string; start: string }>;
+  // Der nächste Termin je Person kommt seit F3 (29.09.) NICHT mehr hier mit, sondern aus dem Kalender-Leser der Akte
+  // (components/os/kalender/TermineAkte.tsx `useNaechsterTermin`, GET /api/kalender/bezug) — eine Quelle.
 }
 
 /**
