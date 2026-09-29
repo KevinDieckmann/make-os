@@ -20,3 +20,9 @@
 - **K3 Verbindungen (nach K1):** CRM am Termin → Aktivität, Aufgaben abhaken/einplanen, Gäste + Einladungen nach Klick, Zusagen.
 - **K5 Ein Kalender (nach K1):** Wochenplaner als Modus „Planen“, Alt-Dashboard und dessen Kalender-Kontext entfernen, alte Schreibwege (`/api/apple-calendar/*`) auf `/api/kalender/termin` umstellen.
 Alles lokal; Upload nur auf Kevins Wort.
+
+## Verbindungen (Kevin 29.09.: „alles sauber mit allen verbunden, Datenhaltung sauber, einen Schritt weiter denken“)
+- **Eine Quelle je Information:** iCloud = Wahrheit für Termine; MAKE-OS-Zusätze (Art, Farbe, Bezug, Fokus-Verknüpfung) als X-Eigenschaft und/oder Neben-Bestand über UID/RECURRENCE-ID, mit Abgleich, falls Apple X-Eigenschaften verliert. Aufgabe-als-Termin = dieselbe Aufgabe (keine Kopie). Geburtstag genau einmal je Person. Buchung = ein CRM-Vorgang.
+- **Gemeinsame Lesefunktionen** statt Doppel-Logik: `verfuegbarkeitFuer` (Abwesend, Arbeitsort, Arbeitszeiten), Feiertage NRW, `geburtstageIm`, freie Zeit, Wochen-Auswertung — genutzt von Kalender, Aufgaben, Heute, Glocke, ZOE, Buchung, Angebot, Brain.
+- **Jede neue Kennung** → Verbindungsprüfung; **Personenbezug** → Speicher-Register/Art. 17.
+- **K6 Verbindungsrunde** (nach K1–K4): Karte „Zeit & Termine“ über alle Module (Aufgaben, Ziele, Zeitmessung, CRM-Follow-ups/Deals/Angebote/Mandate/Events/Power Hour, Finanzen-Fälligkeiten/Steuern, Familie, Gesundheit/Sport, Inbox, ZOE, Heads, Glocke, Heute, Brain) → doppelte Wahrheiten auflösen, fehlende Verbindungen bauen.
