@@ -41,3 +41,20 @@ export function monatsblatt(jahr: number, monat: number): string[] {
   const d = new Date(`${start}T12:00:00`);
   return Array.from({ length: 42 }, (_, i) => { const x = new Date(d); x.setDate(d.getDate() + i); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; });
 }
+
+/**
+ * Aufziehen im Raster (29.09., K1, wie Google): Anfang und aktuelle Position (Minuten seit Mitternacht) → Spanne im
+ * 15-Minuten-Raster, in beide Richtungen, mindestens ein Rasterschritt, innerhalb des Tages.
+ */
+export function ziehSpanne(a: number, b: number, raster = 15): { von: number; bis: number } {
+  const s = (m: number) => Math.max(0, Math.min(24 * 60, Math.round(m / raster) * raster));
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  const von = Math.min(24 * 60 - raster, Math.floor(Math.max(0, lo) / raster) * raster);
+  return { von, bis: Math.max(von + raster, s(hi)) };
+}
+
+/** „4–5 Uhr“, „9:30–10:15 Uhr“, „23–0 Uhr“ — die Vorschau beim Aufziehen. */
+export function spanneText(von: number, bis: number): string {
+  const t = (m: number) => { const h = Math.floor(m / 60) % 24, mi = m % 60; return mi ? `${h}:${String(mi).padStart(2, '0')}` : `${h}`; };
+  return `${t(von)}–${t(bis)} Uhr`;
+}

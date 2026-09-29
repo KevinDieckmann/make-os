@@ -9,8 +9,12 @@
 // d/w/m/a, n). Daten wie bisher: iCloud direkt (lib/kalender), Fristen aus dem
 // System, Apple-Erinnerungen, Aufgaben mit Datum. Der Kalender-Agent
 // (Konflikte, Schutz-Blöcke) und die Einstellungen sitzen in der Leiste.
+// Seit 29.09. (K1, Google-Vorbild): „Erstellen ▾“ mit den Arten (Termin, Aufgabe, Abwesend,
+// Fokuszeit, Arbeitsort), Kürzel c, Aufziehen im Raster, Arbeitsort-Leiste, Farbe je Termin.
+// Aufgaben kommen aus dem TasksContext (dieselben Aufgaben, mit Uhrzeit an ihrer Zeit).
+// Fristen und Aufgaben respektieren Sicht (Kevin/Malin/Gemeinsam) und Bereich (Privat/Business).
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -33,6 +37,12 @@ import { Jahr, useJahr } from './Jahr';
 import { useQuellTermine, istQuellTermin, QUELL_KALENDER } from './quellen';
 import { AuswertungKarte } from './Auswertung';
 import { kalenderwoche } from '@/lib/zeit/kalender-kern';
+import { useTasks } from '@/context/TasksContext';
+import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
+import { WEG } from '@/lib/wege';
+import { ART_INFO, TERMIN_ARTEN, type TerminArt } from '@/lib/kalender/arten';
+import type { RasterAufgabe } from './Zeitraster';
+import type { Task } from '@/types/tasks';
 
 type Ansicht = 'tag' | 'vier' | 'woche' | 'monat' | 'jahr' | 'agenda';
 const ANSICHTEN: { id: Ansicht; label: string; taste: string }[] = [{ id: 'tag', label: 'Tag', taste: 'd' }, { id: 'vier', label: '4 Tage', taste: 'x' }, { id: 'woche', label: 'Woche', taste: 'w' }, { id: 'monat', label: 'Monat', taste: 'm' }, { id: 'jahr', label: 'Jahr', taste: 'y' }, { id: 'agenda', label: 'Termine', taste: 'a' }];
@@ -44,7 +54,46 @@ const monatPlus = (tag: string, n: number) => { const d = new Date(`${tag.slice(
 
 interface Einstellungen { kalender: Record<Wer, string>; dauer: { termin: number; fokus: number; routine: number; aufgabe: number; reha: number }; space: Record<string, 'privat' | 'business'>; standardSicht?: 'alle' | Wer }
 interface Analyse { briefing?: string; conflicts?: { date: string; a: string; b: string; overlap: string }[]; vorschlaege?: { title: string; date: string; startHour: number; startMin?: number; durationMin: number; calendar: string; grund?: string }[]; eingetragen?: boolean }
-interface Aufgabe { id: string; title: string; status: string; dueDate?: string; priority?: string }
+type Bereich = 'alle' | 'privat' | 'business';
+
+/** Gehört eine Aufgabe in die Sicht? Kevin/Malin: verantwortlich oder beteiligt; Gemeinsam: mehr als eine Person. */
+function aufgabeInSicht(t: Pick<Task, 'assignee' | 'beteiligte'>, sicht: 'alle' | Wer): boolean {
+  if (sicht === 'alle') return true;
+  const mehrere = t.assignee === 'both' || (t.beteiligte?.length ?? 0) > 0;
+  if (sicht === 'beide') return mehrere;
+  return t.assignee === sicht || t.assignee === 'both' || (t.beteiligte ?? []).includes(sicht);
+}
+
+/** „Erstellen ▾“ wie Google: Menü der Arten. */
+function ErstellenMenue({ onArt, breit }: { onArt: (a: TerminArt) => void; breit: boolean }) {
+  const [auf, setAuf] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!auf) return;
+    const weg = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setAuf(false); };
+    const taste = (e: KeyboardEvent) => { if (e.key === 'Escape') setAuf(false); };
+    document.addEventListener('mousedown', weg); document.addEventListener('keydown', taste);
+    return () => { document.removeEventListener('mousedown', weg); document.removeEventListener('keydown', taste); };
+  }, [auf]);
+  return (
+    <div ref={box} style={{ position: 'relative', display: 'inline-flex' }}>
+      <button type="button" onClick={() => setAuf(a => !a)} aria-haspopup="menu" aria-expanded={auf} className="fassbar"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: breit ? '10px 18px' : '8px 14px', borderRadius: 14, border: `1px solid ${LEUCHT.puls}80`, background: `${LEUCHT.puls}24`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 18px -8px rgba(0,0,0,.6)' }}>
+        <span aria-hidden style={{ fontSize: 18, lineHeight: 1, color: LEUCHT.puls }}>+</span> Erstellen <span aria-hidden style={{ fontSize: 11, color: C.inkLeise }}>▾</span>
+      </button>
+      {auf && (
+        <div role="menu" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 40, minWidth: 190, display: 'grid', padding: 6, borderRadius: 12, background: C.flaeche, border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 18px 50px -12px rgba(0,0,0,.75)' }}>
+          {TERMIN_ARTEN.map(a => (
+            <button key={a} role="menuitem" type="button" onClick={() => { setAuf(false); onArt(a); }} className="fassbar"
+              style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: '9px 10px', border: 'none', borderRadius: 8, background: 'transparent', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, cursor: 'pointer' }}>
+              <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: ART_INFO[a].farbe ?? LEUCHT.puls }} />{ART_INFO[a].label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Kalender() {
   const breit = useBreit();
@@ -53,6 +102,8 @@ export function Kalender() {
   const [ansicht, setAnsichtRoh] = useState<Ansicht>('woche');
   const [anker, setAnker] = useState(heute);
   const [sicht, setSicht] = useState<'alle' | Wer>('alle');
+  const [bereich, setBereich] = useState<Bereich>('alle');
+  const { state: aufgabenStand } = useTasks();
   const [aus, setAus] = useState<Set<string>>(new Set());
   const [ebenen, setEbenen] = useState<{ fristen: boolean; erinnerungen: boolean; aufgaben: boolean }>({ fristen: true, erinnerungen: true, aufgaben: true });
   const [suche, setSuche] = useState('');
@@ -64,14 +115,12 @@ export function Kalender() {
   const [analyse, setAnalyse] = useState<Analyse | null>(null);
   const [analysiert, setAnalysiert] = useState(false);
   const [eingetragen, setEingetragen] = useState<Record<number, 'ok' | 'busy' | 'err'>>({});
-  const [aufgaben, setAufgaben] = useState<Aufgabe[]>([]);
   const [abgleich, setAbgleich] = useState(false);
 
   useEffect(() => { try { const a = localStorage.getItem(MERKER) as Ansicht | null; if (a && ANSICHTEN.some(x => x.id === a)) setAnsichtRoh(a); else if (!breit) setAnsichtRoh('tag'); } catch { /* egal */ } }, [breit]);
   const setAnsicht = (a: Ansicht) => { setAnsichtRoh(a); try { localStorage.setItem(MERKER, a); } catch { /* egal */ } };
   useEffect(() => {
     fetch('/api/state/kalender-einstellungen').then(r => r.json()).then((e: Einstellungen) => { setEinst(e); if (e.standardSicht) setSicht(e.standardSicht); }).catch(() => {});
-    fetch('/api/state/tasks').then(r => r.json()).then(d => setAufgaben(Array.isArray(d?.state?.tasks) ? d.state.tasks : [])).catch(() => {});
   }, []);
   const einstSetzen = (teil: Partial<Einstellungen>) => { if (!einst) return; const n = { ...einst, ...teil }; setEinst(n); fetch('/api/state/kalender-einstellungen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(n), keepalive: true }).catch(() => {}); };
   const standardDauer = einst?.dauer.termin ?? 60;
@@ -94,20 +143,29 @@ export function Kalender() {
   // K4 Termine finden: „Mit … planen“ (Überlagerung + freie Zeiten) und Buchungsseiten — ein Haken (components/os/kalender/MitPlanen.tsx).
   const k4 = useTermineFinden({ alle: daten?.termine, onVorschlag: setNeu });
 
-  const farbe = useCallback((t: KTermin) => (istQuellTermin(t) ? t.farbe : daten?.kalender.find(k => k.name === t.kalender)?.farbe ?? WER_FARBE[t.wer]), [daten]);
+  const kalFarbe = useCallback((name: string, wer: Wer) => daten?.kalender.find(k => k.name === name)?.farbe ?? WER_FARBE[wer], [daten]);
+  const farbe = useCallback((t: KTermin) => (istQuellTermin(t) ? t.farbe : t.farbeEigen ?? kalFarbe(t.kalender, t.wer)), [kalFarbe]);
   const such = suche.trim().toLowerCase();
+  const imBereich = useCallback((b: 'privat' | 'business' | undefined) => bereich === 'alle' || !b || b === bereich, [bereich]);
   const termine = useMemo(() => [
-    ...(daten?.termine ?? []).filter(t => (sicht === 'alle' || t.wer === sicht) && !aus.has(t.kalender) && (!such || `${t.titel} ${t.ort ?? ''} ${t.kalender} ${t.notiz ?? ''}`.toLowerCase().includes(such))),
-    ...quell.filter(t => !aus.has(t.kalender) && (!such || `${t.titel} ${t.kalender}`.toLowerCase().includes(such))),
-  ], [daten, quell, sicht, aus, such]);
+    ...(daten?.termine ?? []).filter(t => (sicht === 'alle' || t.wer === sicht) && !aus.has(t.kalender) && imBereich(spaceVonKalender(einst, t.kalender)) && (!such || `${t.titel} ${t.ort ?? ''} ${t.kalender} ${t.notiz ?? ''}`.toLowerCase().includes(such))),
+    ...quell.filter(t => !aus.has(t.kalender) && imBereich(t.space) && (!such || `${t.titel} ${t.kalender}`.toLowerCase().includes(such))),
+  ], [daten, quell, sicht, aus, such, einst, imBereich]);
   // Klick auf einen Quell-Eintrag öffnet nie das Termin-Fenster: Geburtstag → Person/Kontaktakte, Feiertag → nichts.
   const oeffnen = (t: KTermin) => { if (istQuellTermin(t)) { if (t.href) router.push(t.href); return; } setOffen(t); };
   const jahrKalender = jahrDaten?.kalender;
   const kalenderAn = useCallback((name: string) => { if (aus.has(name)) return false; if (sicht === 'alle') return true; const w = jahrKalender?.find(k => k.name === name)?.wer; return !w || w === sicht; }, [aus, sicht, jahrKalender]);
   const kalenderFarbe = useCallback((name: string) => { const k = jahrKalender?.find(x => x.name === name); return k?.farbe ?? WER_FARBE[k?.wer ?? 'beide']; }, [jahrKalender]);
-  const fristen = useMemo(() => (ebenen.fristen && !such ? daten?.fristen ?? [] : (daten?.fristen ?? []).filter(f => such && f.titel.toLowerCase().includes(such))), [daten, ebenen.fristen, such]);
+  // Fristen gehören dem Haushalt: in „Alle“ und „Gemeinsam“, gefiltert nach Bereich (KALENDER_VERBINDUNGEN.md 4i).
+  const fristenSichtbar = sicht === 'alle' || sicht === 'beide';
+  const fristen = useMemo(() => (!fristenSichtbar ? [] : (ebenen.fristen && !such ? daten?.fristen ?? [] : (daten?.fristen ?? []).filter(f => such && f.titel.toLowerCase().includes(such))).filter(f => imBereich(f.bereich))), [daten, ebenen.fristen, such, fristenSichtbar, imBereich]);
   const erinnerungen = useMemo(() => (ebenen.erinnerungen && !such ? daten?.erinnerungen ?? [] : (daten?.erinnerungen ?? []).filter(e => such && e.titel.toLowerCase().includes(such))), [daten, ebenen.erinnerungen, such]);
-  const aufgabenImZeitraum = useMemo(() => (ebenen.aufgaben ? aufgaben : []).filter(a => a.dueDate && a.dueDate >= von && a.dueDate < bis && a.status !== 'done' && (!such || suchPasst([a.title], such))).map(a => ({ id: a.id, title: a.title, done: a.status === 'done', priority: a.priority, tag: a.dueDate! })), [aufgaben, ebenen.aufgaben, von, bis, such]);
+  const aufgabenImZeitraum = useMemo<RasterAufgabe[]>(() => (ebenen.aufgaben ? aufgabenStand.tasks : [])
+    .filter(a => a.dueDate && a.dueDate.slice(0, 10) >= von && a.dueDate.slice(0, 10) < bis && a.status !== 'done' && a.status !== 'cancelled' && aufgabeInSicht(a, sicht) && imBereich(spaceVonAufgabe(a)) && (!such || suchPasst([a.title], such)))
+    .map(a => ({ id: a.id, title: a.title, done: false, priority: a.priority, tag: a.dueDate!.slice(0, 10), ...(a.dueTime ? { zeit: a.dueTime } : {}) })), [aufgabenStand.tasks, ebenen.aufgaben, von, bis, such, sicht, imBereich]);
+  const neuVon = (art: TerminArt, tag = ansicht === 'tag' ? anker : heute): Vorgabe => ({ tag, art, ...(art === 'abwesend' || art === 'arbeitsort' ? { ganztags: true } : { von: '09:00' }), ...(sicht === 'kevin' || sicht === 'malin' || sicht === 'beide' ? { wer: sicht } : {}), ...(bereich === 'business' ? { spaceId: 'kdc' } : {}) });
+  const neuImRaster = (tag: string, m: number, ende?: number) => setNeu({ ...neuVon('termin', tag), von: uhr(m), bis: uhr(Math.min(23 * 60 + 59, ende ?? m + standardDauer)) });
+  const arbeitsortNeu = (tag: string, wer: Wer) => setNeu({ tag, art: 'arbeitsort', ganztags: true, wer });
 
   // Navigation
   const springe = (richtung: -1 | 1) => setAnker(a => ansicht === 'tag' ? tagPlus(a, richtung) : ansicht === 'vier' ? tagPlus(a, 4 * richtung) : ansicht === 'woche' ? tagPlus(a, 7 * richtung) : ansicht === 'monat' ? monatPlus(a, richtung) : ansicht === 'jahr' ? monatPlus(a, 12 * richtung) : tagPlus(a, 30 * richtung));
@@ -119,13 +177,13 @@ export function Kalender() {
       if (e.key === 't') setAnker(localDay());
       else if (e.key === 'ArrowLeft') springe(-1);
       else if (e.key === 'ArrowRight') springe(1);
-      else if (e.key === 'n') setNeu({ tag: ansicht === 'tag' ? anker : heute, von: '09:00' });
+      else if (e.key === 'n' || e.key === 'c') setNeu(neuVon('termin'));
       else { const a = ANSICHTEN.find(x => x.taste === e.key); if (a) setAnsicht(a.id); else return; }
       e.preventDefault();
     };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
-  }, [ansicht, anker, heute]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ansicht, anker, heute, sicht, bereich]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const titel = ansicht === 'tag' ? `${WD[new Date(`${anker}T12:00:00`).getDay()]}, ${Number(anker.slice(8, 10))}. ${MONATE[Number(anker.slice(5, 7)) - 1]} ${anker.slice(0, 4)}`
     : ansicht === 'woche' ? `KW ${kalenderwoche(tage[0])} · ${Number(tage[0].slice(8, 10))}.${Number(tage[0].slice(5, 7))}. – ${Number(tage[6].slice(8, 10))}.${Number(tage[6].slice(5, 7))}.${tage[6].slice(0, 4)}`
@@ -137,7 +195,8 @@ export function Kalender() {
   const verschieben = async (t: KTermin, tag: string, startMin: number, endeMin: number) => {
     const start = wandAus(tag, startMin), ende = wandAus(tag, endeMin);
     setDaten(d => (d ? { ...d, termine: d.termine.map(x => (x.uid === t.uid ? { ...x, start, ende } : x)) } : d));
-    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: t.uid, start, ende }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    // Mit Stand (ETag): woanders geändert → 409 statt still überschreiben; der Termin springt beim Neuladen zurück.
+    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: t.uid, start, ende, ...(t.stand ? { stand: t.stand } : {}) }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     if (!r.ok) setMeldung(r.fehler ?? 'Nicht verschoben.'); else setMeldung(null);
     void laden();
   };
@@ -166,6 +225,7 @@ export function Kalender() {
 
   const leiste = (
     <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
+      {breit && <div><ErstellenMenue breit onArt={a => setNeu(neuVon(a))} /></div>}
       <Karte i={1}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <button onClick={() => setAnker(a => monatPlus(a, -1))} aria-label="Vormonat" style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 16 }}>‹</button>
@@ -185,6 +245,7 @@ export function Kalender() {
       <Karte i={2}>
         <Ueberschrift>Sicht</Ueberschrift>
         <Segmente liste={sichten} aktiv={sicht} onWahl={setSicht} />
+        <div style={{ marginTop: 8 }}><Segmente liste={[{ id: 'alle', label: 'Alles' }, { id: 'privat', label: 'Privat' }, { id: 'business', label: 'Business' }] as { id: Bereich; label: string }[]} aktiv={bereich} onWahl={setBereich} /></div>
         <div style={{ display: 'grid', gap: 4, marginTop: 10 }}>
           {(daten?.kalender ?? []).map(k => (
             <label key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
@@ -256,26 +317,27 @@ export function Kalender() {
   );
 
   const haupt = (
-    <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr', gap: 10, minHeight: 0, height: breit ? 'calc(100vh - 190px)' : undefined }}>
+    <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minHeight: 0, minWidth: 0, height: breit ? 'calc(100vh - 190px)' : undefined }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Knopf leise onClick={() => setAnker(heute)}>Heute</Knopf>
         <button onClick={() => springe(-1)} aria-label="zurück" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>‹</button>
         <button onClick={() => springe(1)} aria-label="weiter" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>›</button>
         <span style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', marginRight: 'auto' }}>{titel}{laedt && <span style={{ fontSize: 11, color: C.inkLeise, fontWeight: 400, marginLeft: 8 }}>lädt …</span>}</span>
         <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen …" aria-label="Termine suchen" style={{ ...feld, width: breit ? 180 : '100%', fontSize: 13, padding: '7px 11px' }} />
-        <Segmente liste={ANSICHTEN.map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} />
-        <Knopf farbe={LEUCHT.puls} onClick={() => setNeu({ tag: ansicht === 'tag' ? anker : heute, von: '09:00' })}>+ Termin</Knopf>
+        {/* Sechs Ansichten passen am Handy nicht nebeneinander — die Leiste rollt statt die Seite zu verbreitern. */}
+        <div style={{ maxWidth: '100%', overflowX: 'auto' }}><Segmente liste={ANSICHTEN.map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>
+        {!breit && <ErstellenMenue breit={false} onArt={a => setNeu(neuVon(a))} />}
       </div>
       <div style={{ minHeight: 0 }}>
         {(ansicht === 'tag' || ansicht === 'woche') && (
-          <Zeitraster tage={tage} heute={heute} termine={k4.raster(termine)} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} farbe={k4.farbe(farbe)}
-            onOeffnen={t => { if (!k4.oeffnen(t)) oeffnen(t); }} onNeu={(tag, m) => setNeu({ tag, von: uhr(m), bis: uhr(Math.min(24 * 60, m + standardDauer)) })} onVerschieben={verschieben} onAufgabe={() => router.push('/os/aufgaben')} />
+          <Zeitraster tage={tage} heute={heute} termine={k4.raster(termine)} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={k4.farbe(farbe)}
+            onOeffnen={t => { if (!k4.oeffnen(t)) oeffnen(t); }} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={id => router.push(WEG.aufgabe(id))} onArbeitsortNeu={arbeitsortNeu} />
         )}
         {ansicht === 'vier' && (
-          <VierTage start={anker} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} farbe={farbe}
-            onOeffnen={oeffnen} onNeu={(tag, m) => setNeu({ tag, von: uhr(m), bis: uhr(Math.min(24 * 60, m + standardDauer)) })} onVerschieben={verschieben} onAufgabe={() => router.push('/os/aufgaben')} />
+          <VierTage start={anker} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={farbe}
+            onOeffnen={oeffnen} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={id => router.push(WEG.aufgabe(id))} onArbeitsortNeu={arbeitsortNeu} />
         )}
-        {ansicht === 'monat' && <Monat blatt={blatt} monat={Number(anker.slice(5, 7))} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} onOeffnen={oeffnen} />}
+        {ansicht === 'monat' && <Monat blatt={blatt} monat={Number(anker.slice(5, 7))} heute={heute} termine={termine.filter(t => t.art !== 'arbeitsort')} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} onOeffnen={oeffnen} />}
         {ansicht === 'jahr' && <Jahr jahr={jahr} heute={heute} daten={jahrDaten} quellen={quell.filter(t => !aus.has(t.kalender))} kalenderAn={kalenderAn} farbe={kalenderFarbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} />}
         {ansicht === 'agenda' && <Karte i={0}><Agenda tage={tage} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} suche={such} onOeffnen={oeffnen} /></Karte>}
       </div>
@@ -283,16 +345,16 @@ export function Kalender() {
   );
 
   return (
-    <Seite titel="Kalender" unter="Tag, 4 Tage, Woche, Monat, Jahr, Termine — iCloud direkt, dazu Feiertage NRW, Geburtstage, Fristen, Erinnerungen und Aufgaben mit Datum. Tastatur: t heute · ← → blättern · d/x/w/m/y/a Ansicht · n neuer Termin." rechts={<Chip farbe={LEUCHT.puls}>{daten?.icloud ? 'iCloud · live' : 'nur lesen'}</Chip>}>
+    <Seite titel="Kalender" unter="Tag, 4 Tage, Woche, Monat, Jahr, Termine — iCloud direkt, dazu Feiertage NRW, Geburtstage, Fristen, Erinnerungen und Aufgaben mit Datum. Tastatur: t heute · ← → blättern · d/x/w/m/y/a Ansicht · c erstellen." rechts={<Chip farbe={LEUCHT.puls}>{daten?.icloud ? 'iCloud · live' : 'nur lesen'}</Chip>}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center' }}>{meldung}<button onClick={() => setMeldung(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>}
       {!daten && !laedt && <Leer>Kalender wird geladen …</Leer>}
-      <div style={{ display: 'grid', gridTemplateColumns: breit ? '280px 1fr' : '1fr', gap: 14, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: breit ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: 'start' }}>
         {breit && leiste}
         {haupt}
         {!breit && leiste}
       </div>
-      {offen && <TerminFenster termin={offen} icloud={daten?.icloud ?? false} onZu={() => setOffen(null)} onGespeichert={() => void laden()} />}
-      {neu && <NeuerTermin vorgabe={neu} heute={heute} standardDauer={standardDauer} kalender={daten?.kalender ?? []} onZu={() => setNeu(null)} onAngelegt={() => void laden()} />}
+      {offen && <TerminFenster key={offen.id} termin={offen} icloud={daten?.icloud ?? false} space={spaceVonKalender(einst, offen.kalender)} kalenderFarbe={kalFarbe(offen.kalender, offen.wer)} onZu={() => setOffen(null)} onGespeichert={() => void laden()} />}
+      {neu && <NeuerTermin vorgabe={neu} heute={heute} standardDauer={standardDauer} fokusDauer={einst?.dauer.fokus ?? 90} kalender={daten?.kalender ?? []} kalenderStandard={einst?.kalender} onZu={() => setNeu(null)} onAngelegt={x => { if (x.uid) void laden(); }} />}
     </Seite>
   );
 }

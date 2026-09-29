@@ -5,6 +5,8 @@
 // im Monat am Tag n, am letzten Tag oder am n-ten Wochentag, Ende nie / am Datum / nach Anzahl.
 // Client- und serversicher (ohne ical.js). Den iCalendar-Text baut `rruleText`.
 
+import { wochentag } from '@/lib/zeit/kalender-kern';
+
 export type WiederholungFreq = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 export type Wochentag = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU';
 export const WOCHENTAGE: readonly Wochentag[] = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
@@ -24,10 +26,9 @@ export const TAG_KURZ: Record<Wochentag, string> = { MO: 'Mo', TU: 'Di', WE: 'Mi
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Wochentag eines Tages (YYYY-MM-DD). */
+/** Wochentag eines Tages (YYYY-MM-DD) — über den Kalender-Kern (ISO 1 = Mo … 7 = So). */
 export function wochentagVon(tag: string): Wochentag {
-  const d = new Date(`${tag}T12:00:00Z`).getUTCDay();
-  return WOCHENTAGE[(d + 6) % 7];
+  return WOCHENTAGE[wochentag(tag) - 1];
 }
 const tageImMonat = (tag: string) => new Date(Date.UTC(Number(tag.slice(0, 4)), Number(tag.slice(5, 7)), 0)).getUTCDate();
 /** Der wievielte Wochentag im Monat (1–5) und ob es der letzte ist. */

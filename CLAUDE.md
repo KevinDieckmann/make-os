@@ -508,6 +508,20 @@ lokal, Route `/os`, Port 3001.
   Wochentag, Anzahl, bis (ganztägig: UNTIL als Datum); Vorlagen wie Google (`wiederholungVorlagen`), Text `wiederholungBeschreiben`.
 - **Verbindungsprüfung** (`lib/crm/verbindungen-kalender.ts`): `termin-uid-tot` (Bezug zu in Apple gelöschtem Termin, nur im
   Holfenster eines gelungenen Stands), `kalender-bezug-kennung-tot`, `termin-art-verloren` (Hinweis), `zeit-termin-tot`.
+- **Oberfläche (K1):** „Erstellen ▾“ (Arten, Kürzel `c`/`n`) → `NeuerTermin.tsx` wie Google (Titel, Reiter, Zeit + „GMT+02“,
+  „Wiederholt sich nicht ▾“ + Benutzerdefiniert, Ort, Beschreibung, Kalender + Farbe, Zeile „Beschäftigt · Sichtbarkeit ·
+  Erinnerung“, „Weitere Optionen“ = Zone, frei/beschäftigt, Sichtbarkeit, mehrere Erinnerungen). Formular → Anfrage NUR in
+  `lib/kalender/formular.ts`. Entwurf im Sitzungsspeicher (`make-kalender-entwurf`) bis der Server bestätigt — beim nächsten
+  Öffnen „Wiederherstellen/Verwerfen“. Erweiterungsstelle `zusatz={{ gaeste, crm }}` für K3 (keine Platzhalter bauen).
+  Raster: Klick = Standarddauer, **Aufziehen** = Spanne (`ziehSpanne`/`spanneText` in layout.ts; Touch nach 350 ms Halten, die
+  Liste rollt dann nicht), Arbeitsort-Leiste je Person über den Tagen (Klick auf „+“ legt an), Abwesend rot schraffiert (ganztägig
+  über die ganze Spalte), Fokus ◎ (▶ solange er läuft), frei gestrichelt, privat der anderen „Belegt“, vorläufige Buchungen (K4)
+  gestrichelt (`istVorlaeufig`: Feld `vorlaeufig`, Rückfall Kennung `buchung-…`), Aufgaben mit `dueTime` als Block (Dauer
+  `einst.dauer.aufgabe`). Termin-Fenster: Art/Farbe/frei/Sichtbarkeit änderbar, „▶ Fokus starten“; Änderungen mit `stand` —
+  409 zeigt die andere Fassung, „Meine Fassung speichern“ schickt NUR meine Änderungen auf den neuen Stand; Entwurf
+  `make-kalender-aenderung:<uid>` merkt sich seine Ausgangsfassung. Sicht/Bereich: Aufgaben nach verantwortlich/beteiligt
+  (Gemeinsam = mehrere Personen), Fristen nur in „Alle“/„Gemeinsam“, alles nach Bereich (Kalender → `spaceVonKalender`,
+  Aufgabe → `spaceVonAufgabe`, Frist → `bereich`).
 ## Kalender — Termine finden (29.09., Paket K4, nur lokal)
 - **Freie Zeit = EINE Lesefunktion, auf K1 aufgesetzt:** WANN jemand da ist, sagt nur K1 `verfuegbarkeitFuer` (beschäftigt/TRANSP, Abwesend, Arbeitsort, Arbeitszeit aus der Wochenvorlage `routinen.bloecke`, Feiertage NRW). `lib/kalender/freie-zeit.ts` übersetzt (`belegungenAus`, `arbeitszeitAus` — ohne Vorlage Mo–Fr 9–18, nicht an Feiertagen/ganz abwesenden Tagen —, `feiertageAus`) und ruft die reine Lückensuche `freieZeiten` (`lib/kalender/verfuegbar.ts`: Arbeitszeit je Tag oder Wochen-Fenster, Belegungen, Puffer, Vorlauf, Raster, max. je Tag; Zeitumstellung über Rundweg `wandzeit(ausWandzeit(x)) === x` + echte Dauer, doppelte Stunde = die spätere). `freieZeitFuer({ personen, dauerMin, … })` nutzen „Mit … planen“ (`GET /api/kalender/frei`), künftig ZOE (`freie_zeit`, nur lesen) und das Angebot. Gehaltene Buchungen zählen als belegt. Nie eine zweite Verfügbarkeits-Rechnung bauen; Feiertage/KW später aus K2 `lib/zeit/kalender-kern.ts` (über K1).
 - **Mit … planen** (`components/os/kalender/MitPlanen.tsx`, ein Haken `useTermineFinden` in `Kalender.tsx`): Personen wählen → Termine der anderen halbtransparent im Raster (Farbe gemischt, `gedimmt`), private (`maskiert`/`sichtbarkeit: privat`) nur „belegt“; `FreieZeiten.tsx` → Klick öffnet `NeuerTermin` vorbelegt (`Vorgabe`, gemeinsam → `wer: 'beide'`). Offene Buchungen stehen als `buchung-…`-Einträge im Raster (Klick öffnet die Buchungsseiten-Karte). Arbeitszeiten pflegt man in der Wochenvorlage (`WEG.routinen()`), nicht hier.

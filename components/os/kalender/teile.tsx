@@ -10,16 +10,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../schlank';
+import { Knopf, Segmente, Chip, feld, LEUCHT } from '../schlank';
 import { Fenster } from '../Fenster';
 import { ART_FARBE } from '@/types/planer';
+import { ART_INFO, TERMIN_FARBEN, SICHTBARKEIT_LABEL, ARBEITSORTE, arbeitsortTitel, erinnerungText, farbeHex, type IcsArt, type Sichtbarkeit, type Arbeitsort, type ArbeitsortArt } from '@/lib/kalender/arten';
+import { gmtText, wandzeitIn } from '@/lib/kalender/zeitzone';
+import { ausWandzeit } from '@/lib/kalender/zeit';
+import type { BezugKennungen } from '@/lib/kalender/bezug';
+import { fokusFuerTermin } from '@/lib/zeitmessung/fokus-laufend';
+import { ZuordnungWahl, type Zuordnung } from '../zeit/Zuordnung';
 
 export type Wer = 'kevin' | 'malin' | 'beide';
+/** Ein Termin, wie ihn /api/kalender liefert (Bezug angewandt, für die ansehende Person maskiert). */
 export interface KTermin {
   id: string; uid: string; titel: string; start: string; ende: string; ganztags: boolean;
   kalender: string; wer: Wer; ort?: string; notiz?: string; serie: boolean; mitTeilnehmern: boolean; bearbeitbar: boolean;
+  // ── seit 29.09. (K1) ──
+  art?: IcsArt; farbeEigen?: string; farbeId?: string; beschaeftigt?: boolean; sichtbarkeit?: Sichtbarkeit; zone?: string;
+  erinnerungen?: number[]; arbeitsort?: Arbeitsort; stand?: string; bezug?: BezugKennungen; von?: string; maskiert?: true;
+  /** Vorläufig (K4: offene Buchungsanfrage, noch kein fester Termin) — gestrichelt im Raster. Ältere Einträge: Kennung `buchung-…`. */
+  vorlaeufig?: true;
 }
-export interface KFrist { id: string; art: 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang'; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean }
+/** Vorläufiger Eintrag (Buchungsanfrage) — über das Feld, Rückfall auf das Kennungs-Präfix von K4. */
+export const istVorlaeufig = (t: Pick<KTermin, 'id' | 'vorlaeufig'>): boolean => !!t.vorlaeufig || t.id.startsWith('buchung-');
+export interface KFrist { id: string; art: 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang'; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean; bereich?: 'privat' | 'business' }
 export interface KErinnerung { id: string; tag: string; zeit?: string; titel: string; liste?: string }
 export interface KalenderStand {
   ok: boolean; quelle: 'icloud' | 'mac' | 'leer'; stand: string | null; fehler?: string; icloud: boolean; konto: string | null;
@@ -106,7 +120,10 @@ export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberf
       )}
       {termine.map(t => (
         // K2 (29.09.): Quell-Einträge (Feiertage NRW, Geburtstage) tragen eigene Farbe und Hinweis (components/os/kalender/quellen.tsx).
-        <Pille key={t.id} farbe={(t as { farbe?: string }).farbe ?? WER_FARBE[t.wer]} titel={`${t.titel} · ${t.kalender}${(t as { hinweis?: string }).hinweis ? ` — ${(t as { hinweis?: string }).hinweis}` : t.bearbeitbar ? '' : ' (nur in Apple änderbar)'}`} onClick={() => onTermin(t)}>{t.titel}</Pille>
+        // K1 (29.09.): Abwesend rot, eigene Farbe je Termin, privat mit Schloss.
+        <Pille key={t.id} farbe={t.art === 'abwesend' ? LEUCHT.kritisch : (t as { farbe?: string }).farbe ?? t.farbeEigen ?? WER_FARBE[t.wer]} titel={`${t.art && t.art !== 'termin' ? `${ART_INFO[t.art].label}: ` : ''}${t.titel} · ${t.kalender}${(t as { hinweis?: string }).hinweis ? ` — ${(t as { hinweis?: string }).hinweis}` : t.bearbeitbar ? '' : ' (nur in Apple änderbar)'}`} onClick={() => onTermin(t)}>
+          {t.art === 'abwesend' && <span aria-hidden>⊘</span>}{t.sichtbarkeit === 'privat' && <span aria-hidden>🔒</span>}{t.titel}
+        </Pille>
       ))}
       {fristen.map(f => (
         <Pille key={f.id} farbe={FRIST_ZEICHEN[f.art].farbe} titel={`${FRIST_ZEICHEN[f.art].label}: ${f.titel}${f.unter ? ` · ${f.unter}` : ''}`} href={f.href} durch={f.erledigt}>
@@ -114,7 +131,7 @@ export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberf
         </Pille>
       ))}
       {aufgaben.map(a => (
-        <Pille key={a.id} farbe={ART_FARBE.aufgabe} titel={`Aufgabe: ${a.title} — Klick hakt ab`} onClick={() => onAufgabeHaken(a.id)} durch={a.done}>
+        <Pille key={a.id} farbe={ART_FARBE.aufgabe} titel={`Aufgabe: ${a.title}`} onClick={() => onAufgabeHaken(a.id)} durch={a.done}>
           <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto', background: a.done ? ART_FARBE.aufgabe : 'transparent' }} />
           {a.priority === 'critical' ? '‼ ' : ''}{a.title}
         </Pille>
@@ -136,66 +153,195 @@ export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberf
 /** Warum ein Termin nur in Apple änderbar ist — in Worten. */
 export function nurAppleGrund(t: KTermin, icloud = true): string | null {
   if (t.bearbeitbar) return null;
+  if (t.maskiert) return `Privater Termin${t.von ? ` von ${WER_LABEL[t.von as Wer] ?? t.von}` : ''} — du siehst nur, dass die Zeit belegt ist.`;
   if (!icloud) return 'iCloud ist noch nicht verbunden — du siehst den zuletzt vom Mac gelieferten Stand. Ändern geht hier, sobald die Verbindung steht.';
   if (t.serie) return 'Serientermin — Änderungen bitte in Apple Kalender (dort fragt Apple „nur dieser oder alle?“).';
   if (t.mitTeilnehmern) return 'Termin mit Teilnehmern — bitte in Apple Kalender ändern, dort gehen die Einladungen raus. MAKE OS versendet nichts.';
   return 'Dieser Kalender ist nur lesbar (geteilt ohne Schreibrecht).';
 }
 
-/** Ein Termin im Detail: Titel, Tag, Uhrzeit, Ort, Notiz — ändern oder löschen (mit Rückfrage). */
-export function TerminFenster({ termin, icloud = true, onZu, onGespeichert }: { termin: KTermin; icloud?: boolean; onZu: () => void; onGespeichert: () => void }) {
-  const [f, setF] = useState({ titel: termin.titel, tag: termin.start.slice(0, 10), von: uhr(termin.start), bis: uhr(termin.ende), ort: termin.ort ?? '', notiz: termin.notiz ?? '' });
+/** Farbwahl wie Google: runde Punkte der Palette, „Kalenderfarbe“ zuerst. */
+export function FarbPunkte({ wert, onWahl, kalenderFarbe, aus }: { wert: string; onWahl: (id: string) => void; kalenderFarbe: string; aus?: boolean }) {
+  const punkt = (id: string, hex: string, label: string) => (
+    <button key={id || 'kal'} type="button" disabled={aus} onClick={() => onWahl(id)} title={label} aria-label={`Farbe ${label}`} aria-pressed={wert === id}
+      style={{ width: 22, height: 22, borderRadius: '50%', background: hex, border: wert === id ? `2px solid ${C.ink}` : '2px solid transparent', boxShadow: wert === id ? `0 0 0 2px ${C.flaeche}` : undefined, cursor: aus ? 'default' : 'pointer', padding: 0 }} />
+  );
+  return (
+    <div role="group" aria-label="Farbe" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      {punkt('', kalenderFarbe, 'Kalenderfarbe')}
+      {TERMIN_FARBEN.map(f => punkt(f.id, f.hex, f.label))}
+    </div>
+  );
+}
+
+const MERKER_AENDERUNG = (uid: string) => `make-kalender-aenderung:${uid}`;
+/** Entwurf einer Änderung: meine Fassung + die Fassung, von der ich ausging. */
+interface Merker { f: Fassung; start: Fassung }
+const leseMerker = <T,>(k: string): T | null => { try { const v = window.sessionStorage.getItem(k); return v ? JSON.parse(v) as T : null; } catch { return null; } };
+const schreibeMerker = (k: string, v: unknown) => { try { if (v === null) window.sessionStorage.removeItem(k); else window.sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* voll/privat — dann ohne Entwurf */ } };
+
+interface Fassung { titel: string; tag: string; von: string; bis: string; ort: string; notiz: string; farbe: string; beschaeftigt: boolean; sichtbarkeit: Sichtbarkeit; art: IcsArt; arbeitsort: ArbeitsortArt }
+const fassungVon = (t: KTermin): Fassung => ({
+  titel: t.titel, tag: t.start.slice(0, 10), von: uhr(t.start), bis: uhr(t.ende), ort: t.ort ?? '', notiz: t.notiz ?? '', farbe: t.farbeId ?? '',
+  beschaeftigt: t.beschaeftigt ?? !t.ganztags, sichtbarkeit: t.sichtbarkeit ?? 'standard', art: t.art ?? 'termin', arbeitsort: t.arbeitsort?.art ?? 'home',
+});
+
+/**
+ * Ein Termin im Detail (seit 29.09., K1): Art, Zeit (mit Zone), Ort, Notiz, Farbe, frei/beschäftigt, Sichtbarkeit —
+ * ändern (mit Stand: 409 behält „Deine Fassung“), löschen (mit Rückfrage), Fokuszeit starten (Zeitmessung, Aufgabe/
+ * Mandat/Einheit wie im Fokus-Kopf). Ungespeicherte Änderungen liegen bis zur Bestätigung im Sitzungsspeicher.
+ */
+export function TerminFenster({ termin, icloud = true, space = 'privat', kalenderFarbe, onZu, onGespeichert }: {
+  termin: KTermin; icloud?: boolean; space?: 'privat' | 'business'; kalenderFarbe?: string; onZu: () => void; onGespeichert: () => void;
+}) {
+  // `start` = die Fassung, von der die Eingabe ausging (Unterschiede = meine Änderungen); `basis` = der zuletzt bekannte
+  // Server-Stand (für `stand`). Gespeichert wird NUR, was ich geändert habe — auch nach 409 („Meine Fassung speichern“)
+  // und nach dem Wiederherstellen aus dem Sitzungsspeicher (der Entwurf merkt sich seine Ausgangsfassung mit).
+  const [gemerkt] = useState(() => { const m = leseMerker<Merker>(MERKER_AENDERUNG(termin.uid)); return m && m.f && m.start ? m : null; });
+  const [start, setStart] = useState<Fassung>(() => gemerkt?.start ?? fassungVon(termin));
+  const [basis, setBasis] = useState<KTermin>(termin);
+  const [f, setFRoh] = useState<Fassung>(() => gemerkt?.f ?? fassungVon(termin));
+  const wiederhergestellt = !!gemerkt;
   const [laeuft, setLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [konflikt, setKonflikt] = useState<KTermin | null>(null);
   const [loeschenFragen, setLoeschenFragen] = useState(false);
-  const grund = nurAppleGrund(termin, icloud);
-  const endeTag = termin.ganztags ? termin.ende.slice(0, 10) : f.tag;
-  const speichern = async () => {
-    setLaeuft(true); setFehler(null);
-    const body: Record<string, unknown> = { uid: termin.uid };
-    if (f.titel.trim() !== termin.titel) body.titel = f.titel.trim();
-    if ((f.ort ?? '') !== (termin.ort ?? '')) body.ort = f.ort;
-    if ((f.notiz ?? '') !== (termin.notiz ?? '')) body.notiz = f.notiz;
-    if (!termin.ganztags && (f.tag !== termin.start.slice(0, 10) || f.von !== uhr(termin.start) || f.bis !== uhr(termin.ende))) {
-      if (f.bis <= f.von) { setLaeuft(false); setFehler('Das Ende liegt vor dem Anfang.'); return; }
-      body.start = `${f.tag}T${f.von}`; body.ende = `${f.tag}T${f.bis}`;
-    }
-    if (Object.keys(body).length === 1) { setLaeuft(false); onZu(); return; }
-    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
-    setLaeuft(false);
-    if (r.ok) { onGespeichert(); onZu(); } else setFehler(r.fehler ?? 'Nicht gespeichert.');
+  const [zuordnung, setZuordnung] = useState<Zuordnung>({ ...(termin.bezug?.aufgabeId ? { aufgabeId: termin.bezug.aufgabeId } : {}), ...(termin.bezug?.mandatId ? { mandatId: termin.bezug.mandatId } : {}) });
+  const [fokusMeldung, setFokusMeldung] = useState<string | null>(null);
+  const grund = nurAppleGrund(basis, icloud);
+  const aus = !!grund;
+  const art = f.art;
+  const setF = (n: Fassung) => { setFRoh(n); schreibeMerker(MERKER_AENDERUNG(termin.uid), JSON.stringify(n) === JSON.stringify(start) ? null : { f: n, start }); };
+  const endeTag = basis.ganztags ? basis.ende.slice(0, 10) : f.tag;
+
+  /** Nur, was ich gegenüber `start` geändert habe. */
+  const aenderungen = (): Record<string, unknown> => {
+    const a = start;
+    const body: Record<string, unknown> = {};
+    const titel = art === 'arbeitsort' ? arbeitsortTitel({ art: f.arbeitsort, ...(f.arbeitsort === 'frei' ? { text: f.titel } : {}) }) : f.titel.trim();
+    if (titel !== a.titel) body.titel = titel;
+    if (f.ort !== a.ort) body.ort = f.ort;
+    if (f.notiz !== a.notiz) body.notiz = f.notiz;
+    if (f.farbe !== a.farbe) body.farbe = f.farbe || null;
+    if (f.beschaeftigt !== a.beschaeftigt && art !== 'abwesend' && art !== 'fokus') body.beschaeftigt = f.beschaeftigt;
+    if (f.sichtbarkeit !== a.sichtbarkeit) body.sichtbarkeit = f.sichtbarkeit;
+    if (f.art !== a.art) body.art = f.art;
+    if (!basis.ganztags && (f.tag !== a.tag || f.von !== a.von || f.bis !== a.bis)) { body.start = `${f.tag}T${f.von}`; body.ende = `${f.tag}T${f.bis}`; }
+    return body;
   };
+  const bezugAenderung = (): Record<string, string | null> | null => {
+    const alt = termin.bezug ?? {};
+    const neu: Record<string, string | null> = {};
+    if ((zuordnung.aufgabeId ?? '') !== (alt.aufgabeId ?? '')) neu.aufgabeId = zuordnung.aufgabeId ?? null;
+    if ((zuordnung.mandatId ?? '') !== (alt.mandatId ?? '')) neu.mandatId = zuordnung.mandatId ?? null;
+    return art === 'fokus' && Object.keys(neu).length ? neu : null;
+  };
+
+  const speichern = async (b: KTermin = basis) => {
+    const stand = b.stand;
+    const body = aus ? {} : aenderungen();
+    const bezug = bezugAenderung();
+    if (!Object.keys(body).length && !bezug) { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onZu(); return; }
+    if (body.start && String(body.ende) <= String(body.start)) { setFehler('Das Ende liegt vor dem Anfang.'); return; }
+    setLaeuft(true); setFehler(null);
+    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: termin.uid, ...(stand && Object.keys(body).length ? { stand } : {}), ...body, ...(bezug ? { bezug } : {}) }) })
+      .then(async x => ({ status: x.status, d: await x.json().catch(() => ({})) })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung — deine Änderung bleibt hier gemerkt.' } }));
+    setLaeuft(false);
+    if (r.d.ok) { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onGespeichert(); onZu(); return; }
+    if (r.status === 409 && r.d.konflikt) { setKonflikt(r.d.aktuell ?? null); setFehler(r.d.fehler ?? 'Inzwischen woanders geändert.'); return; }
+    setFehler(r.d.fehler ?? 'Nicht gespeichert — deine Änderung bleibt hier gemerkt.');
+  };
+  const meineUebernehmen = () => { if (!konflikt) return; const neu = { ...konflikt }; setBasis(neu); setKonflikt(null); void speichern(neu); };
+  const serverUebernehmen = () => { if (!konflikt) return; setBasis(konflikt); setStart(fassungVon(konflikt)); setFRoh(fassungVon(konflikt)); schreibeMerker(MERKER_AENDERUNG(termin.uid), null); setKonflikt(null); setFehler(null); };
   const loeschen = async () => {
     setLaeuft(true); setFehler(null);
-    const r = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(termin.uid)}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    const r = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(termin.uid)}${basis.stand ? `&stand=${encodeURIComponent(basis.stand)}` : ''}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setLaeuft(false);
-    if (r.ok) { onGespeichert(); onZu(); } else { setFehler(r.fehler ?? 'Nicht gelöscht.'); setLoeschenFragen(false); }
+    if (r.ok) { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onGespeichert(); onZu(); } else { setFehler(r.fehler ?? 'Nicht gelöscht.'); if (r.aktuell) setKonflikt(r.aktuell); setLoeschenFragen(false); }
   };
+  const abbrechen = () => { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onZu(); };
+  const fokusStarten = () => {
+    const r = fokusFuerTermin({ uid: termin.uid, titel: basis.titel, space }, zuordnung);
+    setFokusMeldung(r.art === 'gestartet' ? 'Fokus läuft — der Zähler steht oben im Kopf.' : `Es läuft schon ein Fokus („${r.label}“) — erst im Kopf beenden.`);
+  };
+
   const eingabe = { ...feld, fontSize: TYP.bedien, padding: '9px 12px', colorScheme: 'dark' as const };
-  const aus = !!grund;
+  const beschr = { fontSize: 12.5, color: C.inkLeise };
   const tagText = (t: string) => new Date(`${t}T12:00:00`).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const farbe = farbeHex(f.farbe) ?? basis.farbeEigen ?? kalenderFarbe ?? WER_FARBE[basis.wer];
+  // Andere Zone: die Zeit dort zusätzlich nennen („16:00–17:00 · in New York 10:00–11:00 GMT-04“).
+  const zonenHinweis = basis.zone && !basis.ganztags ? (() => { const s = ausWandzeit(basis.start), e = ausWandzeit(basis.ende); return `in ${basis.zone.split('/').pop()!.replace(/_/g, ' ')} ${wandzeitIn(s, basis.zone).slice(11, 16)}–${wandzeitIn(e, basis.zone).slice(11, 16)} ${gmtText(basis.zone, s)}`; })() : null;
   return (
-    <Fenster breit={560} onZu={onZu} titel={<span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: WER_FARBE[termin.wer], flex: '0 0 auto' }} />{termin.titel}</span>}>
-      <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>
-        {termin.ganztags ? `${tagText(termin.start.slice(0, 10))}${endeTag > termin.start.slice(0, 10) && endeTag !== termin.start.slice(0, 10) ? ' · ganztägig' : ''}` : `${tagText(termin.start.slice(0, 10))} · ${uhr(termin.start)}–${uhr(termin.ende)}`}
-        {' · '}{termin.kalender} ({WER_LABEL[termin.wer]})
+    <Fenster breit={580} onZu={onZu} titel={<span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ width: 12, height: 12, borderRadius: 4, background: art === 'abwesend' ? LEUCHT.kritisch : farbe, flex: '0 0 auto' }} />{basis.titel}</span>}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
+        {basis.ganztags ? `${tagText(basis.start.slice(0, 10))}${endeTag > basis.start.slice(0, 10) ? ` – ${tagText(new Date(Date.parse(`${endeTag}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10))}` : ''} · ganztägig` : `${tagText(basis.start.slice(0, 10))} · ${uhr(basis.start)}–${uhr(basis.ende)} ${gmtText('Europe/Berlin', ausWandzeit(basis.start))}`}
+        {zonenHinweis ? ` · ${zonenHinweis}` : ''}{' · '}{basis.kalender} ({WER_LABEL[basis.wer]})
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {art !== 'termin' && <Chip farbe={ART_INFO[art].farbe ?? LEUCHT.puls}>{ART_INFO[art].label}</Chip>}
+        {!basis.maskiert && <Chip farbe={C.inkLeise}>{basis.beschaeftigt === false ? 'frei' : 'beschäftigt'}</Chip>}
+        {basis.sichtbarkeit === 'privat' && <Chip farbe={LEUCHT.beziehung}>privat</Chip>}
+        {basis.serie && <Chip farbe={C.inkLeise}>Serie</Chip>}
+        {(basis.erinnerungen ?? []).map(m => <Chip key={m} farbe={C.inkLeise}>{erinnerungText(m)}</Chip>)}
       </div>
       {grund && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '9px 12px', lineHeight: 1.5 }}>{grund}</div>}
-      <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Titel</span>
-        <input value={f.titel} disabled={aus} onChange={e => setF({ ...f, titel: e.target.value })} style={eingabe} /></label>
-      {!termin.ganztags && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <label style={{ display: 'grid', gap: 4, flex: '1 1 150px' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Tag</span><input type="date" disabled={aus} value={f.tag} onChange={e => setF({ ...f, tag: e.target.value })} style={eingabe} /></label>
-          <label style={{ display: 'grid', gap: 4, flex: '0 1 110px' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Von</span><input type="time" step={300} disabled={aus} value={f.von} onChange={e => setF({ ...f, von: e.target.value })} style={eingabe} /></label>
-          <label style={{ display: 'grid', gap: 4, flex: '0 1 110px' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Bis</span><input type="time" step={300} disabled={aus} value={f.bis} onChange={e => setF({ ...f, bis: e.target.value })} style={eingabe} /></label>
+      {wiederhergestellt && !aus && <div style={{ fontSize: 12.5, color: LEUCHT.puls }}>Ungespeicherte Änderung wiederhergestellt.</div>}
+      {!basis.maskiert && (<>
+        {art === 'arbeitsort' ? (
+          <div style={{ display: 'grid', gap: 6 }}><span style={beschr}>Arbeitsort</span>
+            <Segmente liste={ARBEITSORTE.map(a => ({ id: a.id, label: a.label }))} aktiv={f.arbeitsort} onWahl={a => !aus && setF({ ...f, arbeitsort: a })} />
+            {f.arbeitsort === 'frei' && <input value={f.titel} disabled={aus} onChange={e => setF({ ...f, titel: e.target.value })} placeholder="Ort" aria-label="Eigener Ort" style={eingabe} />}
+          </div>
+        ) : (
+          <label style={{ display: 'grid', gap: 4 }}><span style={beschr}>Titel</span>
+            <input value={f.titel} disabled={aus} onChange={e => setF({ ...f, titel: e.target.value })} style={eingabe} /></label>
+        )}
+        {!basis.ganztags && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <label style={{ display: 'grid', gap: 4, flex: '1 1 150px' }}><span style={beschr}>Tag</span><input type="date" disabled={aus} value={f.tag} onChange={e => setF({ ...f, tag: e.target.value })} style={eingabe} /></label>
+            <label style={{ display: 'grid', gap: 4, flex: '0 1 110px' }}><span style={beschr}>Von</span><input type="time" step={300} disabled={aus} value={f.von} onChange={e => setF({ ...f, von: e.target.value })} style={eingabe} /></label>
+            <label style={{ display: 'grid', gap: 4, flex: '0 1 110px' }}><span style={beschr}>Bis</span><input type="time" step={300} disabled={aus} value={f.bis} onChange={e => setF({ ...f, bis: e.target.value })} style={eingabe} /></label>
+          </div>
+        )}
+        {art !== 'arbeitsort' && <label style={{ display: 'grid', gap: 4 }}><span style={beschr}>Ort</span>
+          <input value={f.ort} disabled={aus} onChange={e => setF({ ...f, ort: e.target.value })} placeholder="optional" style={eingabe} /></label>}
+        <label style={{ display: 'grid', gap: 4 }}><span style={beschr}>{art === 'abwesend' ? 'Hinweis' : 'Beschreibung'}</span>
+          <textarea value={f.notiz} disabled={aus} rows={3} onChange={e => setF({ ...f, notiz: e.target.value })} placeholder="optional" style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} /></label>
+        {!aus && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {art !== 'arbeitsort' && <div style={{ display: 'grid', gap: 6 }}><span style={beschr}>Art</span>
+              <Segmente liste={(['termin', 'abwesend', 'fokus'] as IcsArt[]).map(a => ({ id: a, label: ART_INFO[a].label }))} aktiv={art} onWahl={a => setF({ ...f, art: a })} /></div>}
+            <div style={{ display: 'grid', gap: 6 }}><span style={beschr}>Farbe</span><FarbPunkte wert={f.farbe} onWahl={id => setF({ ...f, farbe: id })} kalenderFarbe={kalenderFarbe ?? WER_FARBE[basis.wer]} /></div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'end' }}>
+              {art !== 'abwesend' && art !== 'fokus' && <Segmente liste={[{ id: 'b', label: 'Beschäftigt' }, { id: 'f', label: 'Frei' }]} aktiv={f.beschaeftigt ? 'b' : 'f'} onWahl={v => setF({ ...f, beschaeftigt: v === 'b' })} />}
+              <select value={f.sichtbarkeit} onChange={e => setF({ ...f, sichtbarkeit: e.target.value as Sichtbarkeit })} aria-label="Sichtbarkeit" style={{ ...eingabe, width: 'auto' }}>
+                {(['standard', 'privat', 'oeffentlich'] as Sichtbarkeit[]).map(s => <option key={s} value={s}>{SICHTBARKEIT_LABEL[s]}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+        {art === 'fokus' && (
+          <div style={{ display: 'grid', gap: 8, background: `${ART_INFO.fokus.farbe}14`, border: `1px solid ${ART_INFO.fokus.farbe}40`, borderRadius: 12, padding: '10px 12px' }}>
+            <span style={{ fontSize: 12.5, color: C.inkDim }}>Fokuszeit — startet die Zeitmessung (wie der Fokus im Kopf). Zählt auf Aufgabe, Mandat oder Einheit:</span>
+            <ZuordnungWahl klein wert={zuordnung} setzen={setZuordnung} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Knopf farbe={ART_INFO.fokus.farbe} onClick={fokusStarten}>▶ Fokus starten</Knopf>
+              {fokusMeldung && <span style={{ fontSize: 12.5, color: C.inkDim }}>{fokusMeldung}</span>}
+            </div>
+          </div>
+        )}
+      </>)}
+      {konflikt && (
+        <div style={{ display: 'grid', gap: 8, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '10px 12px', fontSize: TYP.bedien }}>
+          <span>Inzwischen woanders geändert: <b>{konflikt.titel}</b> · {konflikt.ganztags ? 'ganztägig' : `${uhr(konflikt.start)}–${uhr(konflikt.ende)}`} am {tagText(konflikt.start.slice(0, 10))}. Deine Fassung steht oben in den Feldern.</span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Knopf farbe={LEUCHT.puls} aus={laeuft} onClick={meineUebernehmen}>Meine Fassung speichern</Knopf>
+            <Knopf leise onClick={serverUebernehmen}>Andere Fassung übernehmen</Knopf>
+          </div>
         </div>
       )}
-      <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Ort</span>
-        <input value={f.ort} disabled={aus} onChange={e => setF({ ...f, ort: e.target.value })} placeholder="optional" style={eingabe} /></label>
-      <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Notiz</span>
-        <textarea value={f.notiz} disabled={aus} rows={3} onChange={e => setF({ ...f, notiz: e.target.value })} placeholder="optional" style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} /></label>
-      {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
-      {!aus && (loeschenFragen ? (
+      {fehler && !konflikt && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {!basis.maskiert && (loeschenFragen && !aus ? (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: `${LEUCHT.kritisch}14`, borderRadius: 10, padding: '9px 12px' }}>
           <span style={{ fontSize: TYP.bedien, flex: 1 }}>Termin wirklich löschen? Er verschwindet auch auf iPhone und Mac.</span>
           <Knopf farbe={LEUCHT.kritisch} aus={laeuft} onClick={() => void loeschen()}>Ja, löschen</Knopf>
@@ -204,10 +350,10 @@ export function TerminFenster({ termin, icloud = true, onZu, onGespeichert }: { 
       ) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Knopf aus={laeuft || !f.titel.trim()} onClick={() => void speichern()}>{laeuft ? 'Speichert …' : 'Speichern'}</Knopf>
-            <Knopf leise onClick={onZu}>Abbrechen</Knopf>
+            <Knopf aus={laeuft || (!aus && art !== 'arbeitsort' && !f.titel.trim())} onClick={() => void speichern()}>{laeuft ? 'Speichert …' : 'Speichern'}</Knopf>
+            <Knopf leise onClick={abbrechen}>Abbrechen</Knopf>
           </div>
-          <Knopf leise onClick={() => setLoeschenFragen(true)}>Löschen</Knopf>
+          {!aus && <Knopf leise onClick={() => setLoeschenFragen(true)}>Löschen</Knopf>}
         </div>
       ))}
     </Fenster>

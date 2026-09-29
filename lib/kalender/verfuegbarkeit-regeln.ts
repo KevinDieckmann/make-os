@@ -1,7 +1,7 @@
 // ─── Kalender — Verfügbarkeit einer Person (rein, getestet, 29.09., K1) ─────
 // EINE Stelle für „wann ist jemand da?“ (Datenregel KALENDER_VERBINDUNGEN.md 4g): aus
 // Abwesend-Terminen, Arbeitsort, der Wochenvorlage (lib/planung/typen.ts `Block`: wann
-// Privat, wann Arbeit) und den Feiertagen NRW (lib/aufgaben/feiertage.ts). Genutzt von
+// Privat, wann Arbeit) und den Feiertagen NRW (lib/zeit/kalender-kern.ts). Genutzt von
 // der freien-Zeit-Suche und der Buchungsseite (K4), Heute, Glocke und ZOE (K6).
 // Der Server-Lader ist lib/kalender/verfuegbarkeit.ts `verfuegbarkeitFuer(person, von, bis)`.
 //
@@ -10,8 +10,8 @@
 // (`von`) oder niemand eingetragen ist. Titel nur, wenn der Termin nicht privat ist.
 // Alle Zeiten Berliner Wandzeit; Tage [von, bis).
 
-import { tagPlus, minutenVon, wandAus } from './zeit';
-import { feiertag, istWochenende } from '@/lib/aufgaben/feiertage';
+// Tag, Wandzeit, Wochentag und Feiertage NRW nur aus dem Kalender-Kern (lib/zeit/kalender-kern.ts, K2).
+import { tagPlus, minutenVon, wandAus, feiertag, istWochenende, wochentag } from '@/lib/zeit/kalender-kern';
 import type { TerminMitBezug } from './bezug';
 import type { IcsArt, ArbeitsortArt } from './arten';
 import { arbeitsortTitel } from './arten';
@@ -55,7 +55,6 @@ function amTag(t: T, tag: string): Belegt | null {
   return { start: s < tag ? `${tag}T00:00:00` : t.start, ende: e > tag ? `${tagPlus(tag, 1)}T00:00:00` : t.ende, art: t.art, ganztags: false };
 }
 
-const WOCHENTAG = (tag: string) => { const d = new Date(`${tag}T12:00:00Z`).getUTCDay(); return (d === 0 ? 7 : d) as Block['wochentag']; };
 const hhmm = (s: string) => { const m = /^(\d{2}):(\d{2})$/.exec(s); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 
 /** Verfügbarkeit einer Person in [von, bis) aus Terminen (mit `wer`, Bezug angewandt) und Wochenvorlage. */
@@ -69,7 +68,7 @@ export function verfuegbarkeitAus(a: { person: string; von: string; bis: string;
     const ganzAbwesend = abwesend.some(x => x.ganztags);
     const ort = heute.filter(x => x.t.art === 'arbeitsort' && x.t.arbeitsort).pop();
     const ft = feiertag(tag);
-    const arbeitszeit = ft || ganzAbwesend ? [] : vorlage.filter(b => b.wochentag === WOCHENTAG(tag)).flatMap(b => {
+    const arbeitszeit = ft || ganzAbwesend ? [] : vorlage.filter(b => b.wochentag === wochentag(tag)).flatMap(b => {
       const v = hhmm(b.von), bi = hhmm(b.bis);
       return v !== null && bi !== null && bi > v ? [{ start: wandAus(tag, v), ende: wandAus(tag, bi) }] : [];
     }).sort((x, y) => x.start.localeCompare(y.start));
