@@ -12,11 +12,13 @@ import { Liste, Zeile, Leer, Punkt, Chip, Haken, prioFarbe, LEUCHT } from '../sc
 import { FRIST_ZEICHEN, WER_LABEL, type KTermin, type KFrist, type KErinnerung } from './teile';
 import type { KalenderAufgabe } from '@/lib/kalender/aufgaben';
 import { letzterTag, laeuftWeiter } from '@/lib/kalender/layout';
+import { anderesJahr, tagKurz } from '@/lib/zeit/kalender-kern';
 
 const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-const tagText = (tag: string) => { const d = new Date(`${tag}T12:00:00`); return `${WD[d.getDay()]}, ${d.getDate()}. ${d.toLocaleDateString('de-DE', { month: 'long' })}`; };
-/** „So 14:00“ */
-const endeText = (wand: string) => `${WD[new Date(`${wand.slice(0, 10)}T12:00:00`).getDay()]} ${wand.slice(8, 10)}.${wand.slice(5, 7)}. ${wand.slice(11, 16)}`;
+// Restpunkte 29.09.: Jahreszahl nur außerhalb des laufenden Jahres — eine Regel mit Aufgaben-Modus, Glocke und Heute.
+const tagText = (tag: string, heute: string) => { const d = new Date(`${tag}T12:00:00`); return `${WD[d.getDay()]}, ${d.getDate()}. ${d.toLocaleDateString('de-DE', { month: 'long' })}${anderesJahr(tag, heute) ? ` ${tag.slice(0, 4)}` : ''}`; };
+/** „So 14.09. 14:00“ */
+const endeText = (wand: string, heute: string) => `${WD[new Date(`${wand.slice(0, 10)}T12:00:00`).getDay()]} ${tagKurz(wand.slice(0, 10), heute)} ${wand.slice(11, 16)}`;
 
 export function Agenda({ tage, heute, termine, fristen, erinnerungen, farbe, suche, onOeffnen, aufgaben = [], onAufgabe, onAufgabeHaken }: {
   tage: string[]; heute: string; termine: KTermin[]; fristen: KFrist[]; erinnerungen: KErinnerung[]; farbe: (t: KTermin) => string; suche: string; onOeffnen: (t: KTermin) => void;
@@ -35,19 +37,19 @@ export function Agenda({ tage, heute, termine, fristen, erinnerungen, farbe, suc
       {treffer.map(t => (
         <div key={t.tag}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, fontWeight: 700, color: t.tag === heute ? LEUCHT.puls : C.inkDim, marginBottom: 2 }}>
-            {t.tag === heute && <Punkt farbe={LEUCHT.puls} groesse={7} />}{tagText(t.tag)}{t.tag === heute ? ' · heute' : ''}
+            {t.tag === heute && <Punkt farbe={LEUCHT.puls} groesse={7} />}{tagText(t.tag, heute)}{t.tag === heute ? ' · heute' : ''}
           </div>
           <Liste>
             {t.termine.map(x => { const weiter = laeuftWeiter(x, t.tag), mehr = !x.ganztags && letzterTag(x) > x.start.slice(0, 10); return (
               <Zeile key={x.id} onClick={() => onOeffnen(x)} links={<><span style={{ fontSize: TYP.bedien, color: C.inkLeise, width: 52, flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{x.ganztags ? 'ganzt.' : weiter ? '…' : x.start.slice(11, 16)}</span><Punkt farbe={farbe(x)} groesse={7} /></>}
                 titel={<span>{!x.bearbeitbar && <span aria-label="nur in Apple" style={{ marginRight: 4 }}>🔒</span>}{x.titel}</span>}
-                unter={`${x.ganztags ? '' : weiter ? `läuft weiter · bis ${endeText(x.ende)} · ` : mehr ? `bis ${endeText(x.ende)} · ` : `bis ${x.ende.slice(11, 16)} · `}${x.kalender} (${WER_LABEL[x.wer]})${x.ort ? ` · ${x.ort}` : ''}`} rechts={x.serie ? <Chip farbe={C.inkLeise}>Serie</Chip> : undefined} />
+                unter={`${x.ganztags ? '' : weiter ? `läuft weiter · bis ${endeText(x.ende, heute)} · ` : mehr ? `bis ${endeText(x.ende, heute)} · ` : `bis ${x.ende.slice(11, 16)} · `}${x.kalender} (${WER_LABEL[x.wer]})${x.ort ? ` · ${x.ort}` : ''}`} rechts={x.serie ? <Chip farbe={C.inkLeise}>Serie</Chip> : undefined} />
             ); })}
             {t.fristen.map(f => <Zeile key={f.id} links={<><span style={{ width: 52, flex: '0 0 auto' }} /><span style={{ color: FRIST_ZEICHEN[f.art].farbe }}>{FRIST_ZEICHEN[f.art].zeichen}</span></>} titel={<a href={f.href} style={{ color: 'inherit', textDecoration: f.erledigt ? 'line-through' : 'none' }}>{f.titel}</a>} unter={`${FRIST_ZEICHEN[f.art].label}${f.unter ? ` · ${f.unter}` : ''}`} />)}
             {t.aufgaben.map(a => (
               <Zeile key={`a:${a.id}`} onClick={onAufgabe ? () => onAufgabe(a.id) : undefined}
                 links={<><span style={{ fontSize: TYP.bedien, color: C.inkLeise, width: 52, flex: '0 0 auto' }}>{a.zeit ?? ''}</span>{onAufgabeHaken ? <Haken an={false} onChange={() => onAufgabeHaken(a.id)} farbe={prioFarbe(a.priority ?? 'medium')} label={a.title} /> : <span aria-hidden>☐</span>}</>}
-                titel={<span>{a.eltern ? <span style={{ color: C.inkLeise }}>↳ </span> : null}{a.title}</span>} unter={`Aufgabe${a.eltern ? ` · Unteraufgabe von „${a.eltern}“` : ''}${a.start ? ` · seit ${a.start.slice(8, 10)}.${a.start.slice(5, 7)}.` : ''}`} />
+                titel={<span>{a.eltern ? <span style={{ color: C.inkLeise }}>↳ </span> : null}{a.title}</span>} unter={`Aufgabe${a.eltern ? ` · Unteraufgabe von „${a.eltern}“` : ''}${a.start ? ` · seit ${tagKurz(a.start.slice(0, 10), heute)}` : ''}`} />
             ))}
             {t.erinnerungen.map(e => <Zeile key={e.id} links={<><span style={{ fontSize: TYP.bedien, color: C.inkLeise, width: 52, flex: '0 0 auto' }}>{e.zeit ?? ''}</span><span style={{ color: LEUCHT.schlaf }}>◷</span></>} titel={e.titel} unter={`Erinnerung${e.liste ? ` · ${e.liste}` : ''}`} />)}
           </Liste>

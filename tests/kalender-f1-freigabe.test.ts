@@ -210,3 +210,53 @@ describe('#2 Freigabe gegen Absage / Ablehnung / Ablauf', () => {
     expect((await ab.absichtenLaden(HAUS)).filter(ab.istOffen)).toHaveLength(0);
   });
 });
+
+// ─── Restpunkte (29.09.): „Termin entfernen?“ erledigt sich, „Termin vorbereiten“ wird mit erledigt ─────────────────
+describe('Restpunkte: Termin gelöst → Glocke erledigt, „Termin vorbereiten“ erledigt (kein followup-termin-tot)', () => {
+  it('Gast sagt eine bestätigte Buchung ab → Glocke mit Bezug `buchung-termin`; „Termin entfernen“ erledigt das Follow-up mit Notiz', async () => {
+    const { id, token } = await anfragen('2026-10-09T09:00:00', 'rest.absage@example.invalid');
+    expect((await verwalten({ aktion: 'freigeben', id })).status).toBe(200);
+    const x = (await bestand()).buchungen.find(y => y.id === id)!;
+    expect(x.terminUid && x.vorbereitenId).toBeTruthy();
+    const crm0 = (await db.loadJson<{ followups: { id: string; status: string; terminUid?: string; notiz?: string }[] }>('crm'))!;
+    expect(crm0.followups.find(f => f.id === x.vorbereitenId)).toMatchObject({ status: 'offen', terminUid: x.terminUid });
+    ic.meldungen.length = 0;
+    expect((await statusAktion(token, 'absagen')).d.sicht.status).toBe('abgesagt');
+    const m = ic.meldungen.find(y => /Termin im Kalender entfernen\?/.test(y.titel))!;
+    expect(m.bezug).toEqual({ art: 'buchung-termin', id });
+    expect(m.titel).toMatch(/am 09\.10\. vom Gast/); // laufendes Jahr → ohne Jahreszahl
+
+    // Glocke vor dem Entfernen: offen (Termin steht noch); danach „Termin gelöst“.
+    const sp = await import('@/lib/meldungen/speicher');
+    expect((await sp.meldungAblegen({ an: 'kevin', art: 'buchung', titel: m.titel, link: '/os/kalender?buchungen=1', bezug: m.bezug as { art: 'buchung-termin'; id: string } })).ok).toBe(true);
+    const offen = (s: Awaited<ReturnType<typeof sp.meldungenSicht>>) => s.meldungen.filter(y => y.bezug?.art === 'buchung-termin' && y.bezug.id === id && !y.gelesen).length;
+    expect(offen(await sp.meldungenSicht('kevin'))).toBe(1);
+
+    expect((await verwalten({ aktion: 'termin-geloest', id })).status).toBe(200);
+    const crm1 = (await db.loadJson<{ followups: { id: string; status: string; notiz?: string; erledigtAm?: string }[] }>('crm'))!;
+    const fu = crm1.followups.find(f => f.id === x.vorbereitenId)!;
+    expect(fu.status).toBe('erledigt'); // erledigt, nicht gelöscht
+    expect(fu.notiz).toMatch(/Termin entfernt$/);
+    expect(fu.erledigtAm).toBeTruthy();
+    expect(offen(await sp.meldungenSicht('kevin'))).toBe(0);
+    // Ein zweiter Klick ändert nichts mehr (kein Verweis → nichts zu erledigen).
+    expect((await verwalten({ aktion: 'termin-geloest', id })).status).toBe(200);
+  });
+
+  it('Termin in Apple gelöscht (Verweis steht noch) → die Glocke gilt ebenfalls als erledigt; unbekannter Stand → bleibt offen', async () => {
+    const { id, token } = await anfragen('2026-10-09T10:00:00', 'rest.apple@example.invalid');
+    expect((await verwalten({ aktion: 'freigeben', id })).status).toBe(200);
+    expect((await statusAktion(token, 'absagen')).d.sicht.status).toBe('abgesagt');
+    const x = (await bestand()).buchungen.find(y => y.id === id)!;
+    const sp = await import('@/lib/meldungen/speicher');
+    await sp.meldungAblegen({ an: 'kevin', art: 'buchung', titel: 'Termin abgesagt — Termin im Kalender entfernen?', link: '/os/kalender?buchungen=1', bezug: { art: 'buchung-termin', id } });
+    const offen = async () => (await sp.meldungenSicht('kevin')).meldungen.filter(y => y.bezug?.art === 'buchung-termin' && y.bezug.id === id && !y.gelesen).length;
+    expect(await offen()).toBe(1);
+    const i = ic.termine.findIndex(t => t.id === x.terminUid);
+    expect(i).toBeGreaterThanOrEqual(0);
+    const [weg] = ic.termine.splice(i, 1); // in Apple gelöscht
+    expect(await offen()).toBe(0);
+    ic.termine.push(weg);
+    expect(await offen()).toBe(1);
+  });
+});

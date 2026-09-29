@@ -56,3 +56,14 @@ export function feiertagsHinweis(tag: string): string | undefined {
   const name = TAG.test(tag) ? feiertag(tag) : undefined;
   return name ? `Feiertag in NRW: ${name}` : undefined;
 }
+
+/**
+ * Restpunkte 29.09.: Datum kurz mit Jahreszahl NUR außerhalb des laufenden Jahres — „25.09.“ bzw. „25.09.2027“ (eine
+ * Regel für Aufgaben-Modus, Agenda, Glocke und Heute). `heute` ist der Berliner Tag; `ohneNull` für „5.9.“ statt „05.09.“.
+ */
+export const anderesJahr = (tag: string, heute: string): boolean => TAG.test(tag) && TAG.test(heute) && tag.slice(0, 4) !== heute.slice(0, 4);
+export function tagKurz(tag: string, heute: string, opt: { ohneNull?: boolean } = {}): string {
+  if (!TAG.test(tag)) return '';
+  const t = opt.ohneNull ? `${Number(tag.slice(8, 10))}.${Number(tag.slice(5, 7))}.` : `${tag.slice(8, 10)}.${tag.slice(5, 7)}.`;
+  return anderesJahr(tag, heute) ? `${t}${tag.slice(0, 4)}` : t;
+}

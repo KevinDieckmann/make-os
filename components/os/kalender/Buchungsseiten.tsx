@@ -108,15 +108,20 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
   };
   const textKopieren = async (e: Entwurf) => { try { await navigator.clipboard.writeText(`${e.betreff}\n\n${e.text}`); setTextKopiert(true); } catch { setMeldung('Kopieren nicht möglich — Text bitte markieren.'); } };
   const kopieren = async (s: SeiteSicht) => { try { await navigator.clipboard.writeText(`${window.location.origin}${s.pfad}`); setKopiert(s.id); setTimeout(() => setKopiert(''), 1800); } catch { setMeldung('Kopieren nicht möglich — Link: ' + s.pfad); } };
+  /** Buchung, deren Termin gerade entfernt wird (Restpunkte 29.09.) — „Termin entfernen“ ist so lange gesperrt (kein Doppelklick). */
+  const [entferntLaeuft, setEntferntLaeuft] = useState<string | null>(null);
   /** Termin einer abgesagten Buchung entfernen — mit Gästen erst nach „Absage senden?“; danach Verweis lösen (#12). */
   const terminEntfernen = async (x: BuchungSicht, einladungBestaetigt = false) => {
-    if (!x.terminUid) return;
-    const r: { ok: boolean; fehler?: string; einladung?: string; adressen?: string[] } = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(x.terminUid)}${einladungBestaetigt ? '&einladungBestaetigt=1' : ''}`, { method: 'DELETE' }).then(y => y.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
-    if (!r.ok && r.einladung) { setMeldung(''); setAbsageFrage({ id: x.id, adressen: r.adressen ?? [] }); return; }
-    setAbsageFrage(null);
-    if (!r.ok) { setMeldung(r.fehler ?? 'Nicht entfernt.'); return; }
-    const l = await senden({ aktion: 'termin-geloest', id: x.id });
-    if (l.ok) setMeldung('Termin im Kalender entfernt.');
+    if (!x.terminUid || entferntLaeuft) return;
+    setEntferntLaeuft(x.id);
+    try {
+      const r: { ok: boolean; fehler?: string; einladung?: string; adressen?: string[] } = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(x.terminUid)}${einladungBestaetigt ? '&einladungBestaetigt=1' : ''}`, { method: 'DELETE' }).then(y => y.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+      if (!r.ok && r.einladung) { setMeldung(''); setAbsageFrage({ id: x.id, adressen: r.adressen ?? [] }); return; }
+      setAbsageFrage(null);
+      if (!r.ok) { setMeldung(r.fehler ?? 'Nicht entfernt.'); return; }
+      const l = await senden({ aktion: 'termin-geloest', id: x.id });
+      if (l.ok) setMeldung('Termin im Kalender entfernt.');
+    } finally { setEntferntLaeuft(null); }
   };
 
   const anfragen = (stand?.buchungen ?? []).filter(x => x.status === 'angefragt');
@@ -194,9 +199,9 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
             <div key={x.id} style={{ fontSize: 12, color: C.inkDim, display: 'grid', gap: 6 }}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span>{STATUS_TEXT[x.status]}: {x.name} · {zeit(x)}</span>
-                <Knopf leise onClick={async () => { await terminEntfernen(x); }}>Termin entfernen</Knopf>
+                <Knopf leise aus={!!entferntLaeuft} onClick={async () => { await terminEntfernen(x); }}>{entferntLaeuft === x.id ? 'entfernt …' : 'Termin entfernen'}</Knopf>
               </div>
-              {absageFrage?.id === x.id && <EinladungFrage was="absage" adressen={absageFrage.adressen} onNein={() => setAbsageFrage(null)} onJa={async () => { await terminEntfernen(x, true); }} />}
+              {absageFrage?.id === x.id && <EinladungFrage was="absage" adressen={absageFrage.adressen} laeuft={entferntLaeuft === x.id} onNein={() => setAbsageFrage(null)} onJa={async () => { await terminEntfernen(x, true); }} />}
             </div>
           ))}
         </div>

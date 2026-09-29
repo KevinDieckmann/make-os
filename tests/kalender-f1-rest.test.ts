@@ -156,7 +156,7 @@ describe('Nachträge F1', () => {
       { id: 'm2', art: 'buchung' as const, titel: 'Neue Terminanfrage B', link: '/os/kalender', am: '2026-10-05T06:01:00Z', bezug: { art: 'buchung' as const, id: 'bu-entschieden' } },
       { id: 'm3', art: 'buchung' as const, titel: 'Termin entfernen?', link: '/os/kalender', am: '2026-10-05T06:02:00Z' },
     ] };
-    const e = buchungenErledigen(b, new Set(['bu-offen']));
+    const e = buchungenErledigen(b, { offen: new Set(['bu-offen']), mitTermin: new Set() });
     expect(e.eintraege.map(x => [x.id, !!x.gelesen])).toEqual([['m1', false], ['m2', true], ['m3', false]]);
     expect(ungelesenZahl(e.eintraege)).toBe(2);
     expect(buchungenErledigen(b, null)).toBe(b); // Bestand nicht lesbar → nichts ausblenden

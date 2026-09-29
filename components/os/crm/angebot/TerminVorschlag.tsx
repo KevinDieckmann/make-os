@@ -16,15 +16,24 @@ import type { FreieZeit } from '@/lib/kalender/verfuegbar';
 const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const zeitText = (v: FreieZeit) => `${WT[new Date(`${v.tag}T12:00:00Z`).getUTCDay()]} ${Number(v.tag.slice(8, 10))}.${Number(v.tag.slice(5, 7))}. ${v.start.slice(11, 16)}`;
 
+/**
+ * Termintitel: „Angebot besprechen: <Titel>“ — ohne Titel (Restpunkte 29.09.) Nummer und Kunde aus dem Angebot statt
+ * „Angebot besprechen: Angebot“; fehlt auch das, nur „Angebot besprechen“.
+ */
+export function angebotTerminTitel(e: { titel?: string; nummer?: string; kunde?: string }): string {
+  const was = e.titel?.trim() || [e.nummer?.trim(), e.kunde?.trim()].filter(Boolean).join(' · ');
+  return (was ? `Angebot besprechen: ${was}` : 'Angebot besprechen').slice(0, 120);
+}
+
 /** Termin-Vorgabe aus einer freien Zeit (rein, getestet). */
-export function vorgabeAusFreierZeit(v: FreieZeit, e: { titel: string; kontaktId?: string; firmaId?: string; dealId?: string }): Vorgabe {
+export function vorgabeAusFreierZeit(v: FreieZeit, e: { titel: string; nummer?: string; kunde?: string; kontaktId?: string; firmaId?: string; dealId?: string }): Vorgabe {
   return {
-    tag: v.tag, von: v.start.slice(11, 16), bis: v.ende.slice(11, 16), art: 'termin', titel: `Angebot besprechen: ${e.titel || 'Angebot'}`.slice(0, 120),
+    tag: v.tag, von: v.start.slice(11, 16), bis: v.ende.slice(11, 16), art: 'termin', titel: angebotTerminTitel(e),
     crm: { ...(e.kontaktId ? { kontaktId: e.kontaktId } : {}), ...(e.firmaId ? { firmaId: e.firmaId } : {}), ...(e.dealId ? { dealId: e.dealId } : {}) },
   };
 }
 
-export function TerminVorschlag({ ich, heute, titel, kontaktId, firmaId, dealId, dauerMin = 45 }: { ich: string; heute: string; titel: string; kontaktId?: string; firmaId?: string; dealId?: string; dauerMin?: number }) {
+export function TerminVorschlag({ ich, heute, titel, nummer, kunde, kontaktId, firmaId, dealId, dauerMin = 45 }: { ich: string; heute: string; titel: string; nummer?: string; kunde?: string; kontaktId?: string; firmaId?: string; dealId?: string; dauerMin?: number }) {
   const [liste, setListe] = useState<FreieZeit[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [laeuft, setLaeuft] = useState(false);
@@ -39,7 +48,7 @@ export function TerminVorschlag({ ich, heute, titel, kontaktId, firmaId, dealId,
   };
   if (gewaehlt) {
     return (
-      <NeuerTermin vorgabe={vorgabeAusFreierZeit(gewaehlt, { titel, kontaktId, firmaId, dealId })} heute={heute} standardDauer={dauerMin} kalender={[]} onZu={() => setGewaehlt(null)}
+      <NeuerTermin vorgabe={vorgabeAusFreierZeit(gewaehlt, { titel, nummer, kunde, kontaktId, firmaId, dealId })} heute={heute} standardDauer={dauerMin} kalender={[]} onZu={() => setGewaehlt(null)}
         onAngelegt={x => { setGewaehlt(null); setListe(null); if (x.uid) setFertig(`Termin am ${zeitText(gewaehlt)} steht im Kalender — mit Bezug zum Kontakt${dealId ? ' und Deal' : ''}.`); }} />
     );
   }

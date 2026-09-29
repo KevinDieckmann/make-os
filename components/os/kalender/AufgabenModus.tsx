@@ -17,7 +17,8 @@ import { useIch, spacesOderFest, spaceLabel, projekteImSpace } from '../aufgaben
 import { aufgabenVorfiltern, faelligGruppen, FAELLIG_GRUPPEN, type WerFilter, type FaelligGruppe } from '@/lib/kalender/modus';
 import { aufgabenFuerKalender, ohneTermin, type Sicht, type Bereich } from '@/lib/kalender/aufgaben';
 import { useAufgabenImKalender, aufgabeZiehStart, ziehtAufgabe, aufgabeAusZiehen } from './aufgaben';
-import { datumKurz } from '@/lib/aufgaben/ansichten';
+// Restpunkte 29.09.: Fälligkeit mit Jahreszahl nur außerhalb des laufenden Jahres (eine Regel mit Agenda, Glocke, Heute).
+import { tagKurz } from '@/lib/zeit/kalender-kern';
 import { WEG } from '@/lib/wege';
 
 const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -72,7 +73,7 @@ export function AufgabenModus({ heute, woche, sicht, bereich, suche, filter, onF
           <div style={{ minWidth: 0, flex: 1 }}>
             <Link href={WEG.aufgabe(a.id)} style={{ color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.eltern ? <span style={{ color: C.inkLeise }}>↳ </span> : null}{a.priority === 'critical' ? '‼ ' : ''}{a.title}</Link>
             <div style={{ fontSize: 12, color: C.inkLeise, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {a.tag && <span style={{ fontVariantNumeric: 'tabular-nums' }}>{datumKurz(a.tag)}{a.zeit ? ` · ${a.zeit}` : ''}</span>}
+              {a.tag && <span style={{ fontVariantNumeric: 'tabular-nums' }}>{tagKurz(a.tag, heute)}{a.zeit ? ` · ${a.zeit}` : ''}</span>}
               {a.spaceId && <span>{spaceLabel(spaces, a.spaceId)}</span>}
               {a.eltern && <span>zu „{a.eltern}“</span>}
             </div>
@@ -126,7 +127,7 @@ export function AufgabenModus({ heute, woche, sicht, bereich, suche, filter, onF
             {woche.map((tag, i) => (
               <div key={tag} data-tag={tag} onDragOver={e => { if (!ziehtAufgabe(e)) return; e.preventDefault(); setZiehtUeber(tag); }} onDragLeave={() => setZiehtUeber(z => (z === tag ? null : z))} onDrop={e => abgelegt(e, tag)}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', borderRadius: 10, border: `1px dashed ${ziehtUeber === tag ? LEUCHT.puls : 'rgba(255,255,255,.12)'}`, background: ziehtUeber === tag ? `${LEUCHT.puls}1c` : tag === heute ? 'rgba(255,255,255,.05)' : 'transparent', fontFamily: SCHRIFT.text }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: tag === heute ? LEUCHT.puls : C.inkDim, width: 72 }}>{WD[i]} {datumKurz(tag)}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: tag === heute ? LEUCHT.puls : C.inkDim, minWidth: 72 }}>{WD[i]} {tagKurz(tag, heute)}</span>
                 <span style={{ marginLeft: 'auto', fontSize: 12, color: C.inkLeise }}>{jeTag.get(tag) ?? 0}</span>
               </div>
             ))}

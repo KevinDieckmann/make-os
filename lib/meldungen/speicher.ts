@@ -17,8 +17,9 @@ import { WEG } from '@/lib/wege';
 import type { MeldungEingabe } from './melden';
 import {
   MELDUNGEN_MAX, PERSON_OK, bestandSaeubern, buchungenErledigen, eintragAus, einfuegen, faelligAbleiten, geburtstagAbleiten, anstehendAbleiten, gelesenSetzen, pruefeEingabe, sichtBauen,
-  type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht, type AnstehendFuerGlocke,
+  type BuchungenLage, type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht, type AnstehendFuerGlocke,
 } from './regeln';
+import { lebendAus, verweisLebt } from '@/lib/kalender/bezug';
 import { anstehendLesen, anstehendStand } from '@/lib/heute/anstehend-server';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { geburtstageIm } from '@/lib/kalender/quellen-geburtstage-server';
@@ -74,12 +75,34 @@ export async function meldungenStand(person: string, jetzt: Date = new Date()): 
 }
 
 /**
- * Kennungen der Buchungen, die noch auf eine Entscheidung warten (vorläufig/angefragt, Ablauf nachgezogen) — nur, wenn
- * der Bestand eine ungelesene Buchungs-Meldung hat (sonst gar nicht lesen). null = nicht lesbar → nichts ausblenden.
+ * Was die Buchungs-Meldungen erledigt (lib/meldungen/regeln.ts `buchungenErledigen`) — nur, wenn der Bestand eine ungelesene
+ * Buchungs-Meldung hat (sonst gar nicht lesen). null = nicht lesbar → nichts ausblenden.
+ *  offen      Buchungen, die noch auf eine Entscheidung warten (vorläufig/angefragt, Ablauf nachgezogen).
+ *  mitTermin  (Restpunkte 29.09.) Buchungen mit Termin-Verweis, deren Termin noch steht. „Steht nicht mehr“ nur, wenn der
+ *             iCloud-Stand es sicher weiß (gelungener Abgleich, Tag im Holfenster) — sonst gilt er als da.
  */
-async function offeneBuchungen(b: MeldungenBestand, jetzt: Date): Promise<Set<string> | null> {
-  if (!b.eintraege.some(e => !e.gelesen && e.bezug?.art === 'buchung')) return null;
-  try { return new Set((await ladeBuchungBestand(jetzt)).buchungen.filter(x => OFFEN.includes(x.status)).map(x => x.id)); } catch { return null; }
+async function buchungenLage(b: MeldungenBestand, jetzt: Date): Promise<BuchungenLage | null> {
+  const ungelesen = b.eintraege.filter(e => !e.gelesen && (e.bezug?.art === 'buchung' || e.bezug?.art === 'buchung-termin'));
+  if (!ungelesen.length) return null;
+  try {
+    const buchungen = (await ladeBuchungBestand(jetzt)).buchungen;
+    const mitVerweis = buchungen.filter(x => !!x.terminUid);
+    let lebt: (x: { terminUid?: string; start: string }) => boolean = () => true;
+    // Den iCloud-Stand nur lesen, wenn eine „Termin entfernen?“-Meldung offen ist und es einen Verweis zu prüfen gibt.
+    if (mitVerweis.length && ungelesen.some(e => e.bezug?.art === 'buchung-termin')) {
+      const { ladeStand, holfenster, objekteKurz } = await import('@/lib/kalender/icloud');
+      const s = await ladeStand();
+      const f = holfenster(s);
+      if (f) {
+        const da = lebendAus(objekteKurz(s));
+        lebt = x => { const tag = x.start.slice(0, 10); return tag < f.von || tag >= f.bis || verweisLebt(x.terminUid!, da); };
+      }
+    }
+    return {
+      offen: new Set(buchungen.filter(x => OFFEN.includes(x.status)).map(x => x.id)),
+      mitTermin: new Set(mitVerweis.filter(lebt).map(x => x.id)),
+    };
+  } catch { return null; }
 }
 
 const LEER_ANSTEHEND: AnstehendFuerGlocke = { termine: [], nachbereiten: [], fristen: [], followups: [] };
@@ -123,8 +146,8 @@ export async function meldungenSicht(person: string, jetzt: Date = new Date()): 
   const heute = heuteBerlin(jetzt);
   const [roh, q] = await Promise.all([loadJson<unknown>(meldungenSpeicher(person)), quellenLesen(person, heute, jetzt)]);
   const gespeichert = bestandSaeubern(roh);
-  // Nachtrag F1: entschiedene Terminanfragen zählen nicht mehr an der Glocke.
-  const bestand = buchungenErledigen(gespeichert, await offeneBuchungen(gespeichert, jetzt));
+  // Nachtrag F1: entschiedene Terminanfragen zählen nicht mehr an der Glocke; Restpunkte 29.09.: gelöste Termine auch nicht.
+  const bestand = buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt));
   return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
 }
 
@@ -137,7 +160,7 @@ export async function meldungenGelesen(person: string, auswahl: GelesenAuswahl, 
     const ids = abgeleitet(b, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand).map(m => m.id);
     return gelesenSetzen(b, auswahl, heute, ids);
   });
-  const sicht = buchungenErledigen(next, await offeneBuchungen(next, jetzt));
+  const sicht = buchungenErledigen(next, await buchungenLage(next, jetzt));
   return sichtBauen(sicht, abgeleitet(sicht, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
 }
 
@@ -146,6 +169,6 @@ export async function meldungenEinstellen(person: string, e: { telegram: boolean
   const heute = heuteBerlin(jetzt);
   const q = await quellenLesen(person, heute, jetzt);
   const gespeichert = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => ({ ...bestandSaeubern(cur), einstellungen: { telegram: e.telegram === true } }));
-  const next = buchungenErledigen(gespeichert, await offeneBuchungen(gespeichert, jetzt));
+  const next = buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt));
   return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
 }

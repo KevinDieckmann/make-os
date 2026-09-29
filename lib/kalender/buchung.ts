@@ -29,6 +29,8 @@
 import { freieZeiten, fensterSauber, istFrei, type Belegung, type Fenster, type FreieZeit } from './verfuegbar';
 import { tagVon, ausWandzeit, wandzeit } from './zeit';
 import { suchNorm } from '@/lib/text/such-norm';
+import { schluesselPasst } from './bezug';
+import type { FollowUp } from '@/lib/crm/typen';
 
 // ── Texte mit Fassung (Nachweis der Einwilligung) ────────────────────────────
 
@@ -385,6 +387,27 @@ export function vorbereitenTag(start: string, heute: string): string {
   d.setUTCDate(d.getUTCDate() - 1);
   const t = d.toISOString().slice(0, 10);
   return t < heute ? heute : t;
+}
+
+/** Notiz am Follow-up, wenn „Termin entfernen“ es erledigt (Restpunkte 29.09.). */
+export const VORBEREITEN_ERLEDIGT_NOTIZ = 'Termin entfernt';
+
+/**
+ * Restpunkte 29.09.: „Termin entfernen“ an einer abgesagten/abgelehnten/abgelaufenen Buchung — das Follow-up „Termin
+ * vorbereiten“ an DIESEM Termin wird erledigt (nie gelöscht, Notiz „Termin entfernt“), sonst hinge es an einem Termin,
+ * den es nicht mehr gibt (Verbindungsprüfung `followup-termin-tot`). Getroffen werden nur offene Follow-ups mit
+ * `terminUid` dieses Termins, die „Termin vorbereiten“ sind: die Kennung der Buchung (`vorbereitenId`) oder Art „termin“.
+ * Rein; unverändert (dasselbe Array), wenn keins passt.
+ */
+export function vorbereitenErledigen(followups: FollowUp[], termin: { terminUid: string; vorbereitenId?: string }, person: string, jetzt: string): { followups: FollowUp[]; erledigt: FollowUp[] } {
+  const erledigt: FollowUp[] = [];
+  const neu = followups.map(f => {
+    if (f.status !== 'offen' || !f.terminUid || !schluesselPasst(f.terminUid, termin.terminUid) || !(f.id === termin.vorbereitenId || f.art === 'termin')) return f;
+    const x: FollowUp = { ...f, status: 'erledigt', erledigtAm: jetzt, notiz: `${f.notiz ? `${f.notiz}\n` : ''}${VORBEREITEN_ERLEDIGT_NOTIZ}`.slice(0, 1000), geaendert: jetzt, geaendertVon: person };
+    erledigt.push(x);
+    return x;
+  });
+  return erledigt.length ? { followups: neu, erledigt } : { followups, erledigt };
 }
 
 // ── Frische des Kalenders (R-K2 #73) ─────────────────────────────────────────

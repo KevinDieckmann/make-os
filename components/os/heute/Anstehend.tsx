@@ -20,8 +20,10 @@ import { aufgabeAnlegen } from '../aufgaben/hilfe';
 import { geschenkAufgabeTitel, geschenkStand, ANLASS_WORT, GEBURTSTAG_VORLAUF, type Anstehend as AnstehendDaten, type AGeburtstag } from '@/lib/heute/anstehend';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import { neueKennung } from '../aufgaben/hilfe';
+import { tagKurz } from '@/lib/zeit/kalender-kern';
 
-const kurz = (tag: string) => `${Number(tag.slice(8, 10))}.${Number(tag.slice(5, 7))}.`;
+/** „5.9.“ — mit Jahreszahl nur außerhalb des laufenden Jahres (eine Regel mit Glocke/Agenda, lib/zeit/kalender-kern `tagKurz`). */
+const kurz = (tag: string, heute: string) => tagKurz(tag, heute, { ohneNull: true });
 const zeile: React.CSSProperties = { display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.045)', textDecoration: 'none', color: C.ink, minWidth: 0, fontFamily: SCHRIFT.text };
 const vorne = (farbe: string): React.CSSProperties => ({ fontSize: 12, color: farbe, fontWeight: 600, whiteSpace: 'nowrap', minWidth: 74 });
 const text: React.CSSProperties = { fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 };
@@ -32,17 +34,17 @@ export const anstehendLeer = (d: Pick<AnstehendDaten, 'nachbereiten' | 'fristen'
   !d.nachbereiten.length && !d.fristen.length && !d.followups.length && !d.buchungen.length && !d.vorschlaege.kalender && !d.geburtstage.length;
 
 /** Was beim Geburtstag rechts steht: Stand aus dem Wichtigen Tag (Familie) bzw. der verknüpften Aufgabe (CRM). */
-function GeschenkRechts({ g, stand, geschenk }: { g: AGeburtstag; stand: 'offen' | 'erledigt' | null; geschenk?: (g: AGeburtstag) => void }) {
+function GeschenkRechts({ g, heute, stand, geschenk }: { g: AGeburtstag; heute: string; stand: 'offen' | 'erledigt' | null; geschenk?: (g: AGeburtstag) => void }) {
   const fertig: React.CSSProperties = { fontSize: 12, color: LEUCHT.gut, whiteSpace: 'nowrap' };
   if (g.anlass) {
     const wort = ANLASS_WORT[g.anlass.aktion];
     return g.anlass.erledigt ? <span style={fertig}>✓ {wort} erledigt</span>
-      : <Link href="/os/familie" style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }} title="In der Familie abhaken">{wort} ab {kurz(g.anlass.ab)}</Link>;
+      : <Link href="/os/familie" style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }} title="In der Familie abhaken">{wort} ab {kurz(g.anlass.ab, heute)}</Link>;
   }
   if (stand === 'erledigt') return <span style={fertig}>✓ Geschenk erledigt</span>;
   if (stand === 'offen') return <span style={fertig}>✓ Geschenk vorgemerkt</span>;
   if (!geschenk || (g.herkunft === 'crm' ? !g.kontaktId : !g.menschId)) return null;
-  return <Knopf leise onClick={() => geschenk(g)}>{g.herkunft === 'crm' ? 'Geschenk-Aufgabe' : 'Geschenk vormerken'} ({kurz(g.aufgabeTag)})</Knopf>;
+  return <Knopf leise onClick={() => geschenk(g)}>{g.herkunft === 'crm' ? 'Geschenk-Aufgabe' : 'Geschenk vormerken'} ({kurz(g.aufgabeTag, heute)})</Knopf>;
 }
 
 /** Rein darstellend (Render-Test): die Abschnitte. `geschenkStandVon` = Stand der Geschenk-Aufgabe eines CRM-Geburtstags. */
@@ -52,7 +54,7 @@ export function AnstehendListe({ d, geschenkStandVon, geschenk }: { d: Anstehend
       {d.nachbereiten.length > 0 && <div style={kopf}>Nachbereiten</div>}
       {d.nachbereiten.map(n => (
         <Link key={`n-${n.kontaktId}`} href={n.href} style={zeile} title="Kontakt öffnen — Ergebnis festhalten">
-          <span style={vorne(LEUCHT.achtung)}>{kurz(n.tag)}{n.zeit ? ` ${n.zeit}` : ''}</span><span style={text}>Wie lief „{n.titel}“ mit {n.name}?</span>
+          <span style={vorne(LEUCHT.achtung)}>{kurz(n.tag, d.heute)}{n.zeit ? ` ${n.zeit}` : ''}</span><span style={text}>Wie lief „{n.titel}“ mit {n.name}?</span>
         </Link>
       ))}
       {d.fristen.length > 0 && <div style={kopf}>Fristen</div>}
@@ -73,7 +75,7 @@ export function AnstehendListe({ d, geschenkStandVon, geschenk }: { d: Anstehend
       {d.buchungen.length > 0 && (
         <Link href={d.buchungen[0].href} style={zeile}>
           <span style={vorne(LEUCHT.business)}>{d.buchungen.length} Anfrage{d.buchungen.length === 1 ? '' : 'n'}</span>
-          <span style={text}>Buchungsanfrage{d.buchungen.length === 1 ? '' : 'n'} freigeben oder ablehnen — {d.buchungen.map(b => `${b.titel} ${kurz(b.start.slice(0, 10))}`).join(', ')}</span>
+          <span style={text}>Buchungsanfrage{d.buchungen.length === 1 ? '' : 'n'} freigeben oder ablehnen — {d.buchungen.map(b => `${b.titel} ${kurz(b.start.slice(0, 10), d.heute)}`).join(', ')}</span>
         </Link>
       )}
       {d.vorschlaege.kalender > 0 && (
@@ -85,9 +87,9 @@ export function AnstehendListe({ d, geschenkStandVon, geschenk }: { d: Anstehend
       {d.geburtstage.length > 0 && <div style={kopf}>Geburtstage</div>}
       {d.geburtstage.map(g => (
         <div key={`g-${g.id}`} style={{ ...zeile, alignItems: 'center' }}>
-          <span style={vorne('#FF7EB6')}>{kurz(g.tag)}</span>
+          <span style={vorne('#FF7EB6')}>{kurz(g.tag, d.heute)}</span>
           <Link href={g.href} style={{ ...text, color: C.ink, textDecoration: 'none' }}>🎂 {g.name}{g.alter !== undefined && g.alter > 0 ? ` (wird ${g.alter})` : ''}</Link>
-          <GeschenkRechts g={g} stand={geschenkStandVon(g)} geschenk={geschenk} />
+          <GeschenkRechts g={g} heute={d.heute} stand={geschenkStandVon(g)} geschenk={geschenk} />
         </div>
       ))}
     </div>

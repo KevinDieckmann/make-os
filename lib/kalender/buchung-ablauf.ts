@@ -202,7 +202,8 @@ async function freigabeLauf(h: string, a: Absicht): Promise<'fertig' | 'verworfe
 /**
  * Verworfen (F1 #2): Absicht schließen, Status der Buchung NICHT anfassen. Liegt schon ein Termin dieses Laufs in iCloud
  * (angelegt, bevor die Absage ankam — oder von einem abgebrochenen Lauf), bleibt er stehen: Verweis an die Buchung (für
- * „Termin entfernen“) und Glocke „Termin entfernen?“ an die Person der Seite. Nie automatisch löschen.
+ * „Termin entfernen“) und Glocke „Termin entfernen?“ an die Person der Seite (Bezug `buchung-termin`: erledigt, sobald der
+ * Termin gelöst ist — Restpunkte 29.09.). Nie automatisch löschen.
  */
 async function freigabeVerwerfen(h: string, a: Absicht, e: FreigabeVerworfen): Promise<void> {
   const id = String(a.daten.buchungId ?? '');
@@ -217,7 +218,7 @@ async function freigabeVerwerfen(h: string, a: Absicht, e: FreigabeVerworfen): P
     const kal = typeof a.daten.terminKalender === 'string' ? a.daten.terminKalender : s.zielKalender;
     await aendereBuchungBestand(bs => ({ ...bs, buchungen: bs.buchungen.map(x => (x.id === id && x.status !== 'bestaetigt' && !x.terminUid ? { ...x, terminUid: uid, terminKalender: kal } : x)) }));
     await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['terminUid'] }], { art: 'system' });
-    await melde({ an: s.person, art: 'buchung', titel: `Freigabe „${s.titel}“ am ${datumText(b)} kam zu spät (Buchung ${STATUS_WORT[b.status]}) — der Termin steht schon im Kalender. Termin entfernen?`, link: '/os/kalender?buchungen=1' });
+    await melde({ an: s.person, art: 'buchung', titel: `Freigabe „${s.titel}“ am ${datumText(b)} kam zu spät (Buchung ${STATUS_WORT[b.status]}) — der Termin steht schon im Kalender. Termin entfernen?`, link: '/os/kalender?buchungen=1', bezug: { art: 'buchung-termin', id } });
   }
   console.warn(`[buchung] Freigabe verworfen (${e.buchungStatus})${stehtNoch ? ' — Termin blieb stehen, die Glocke fragt' : ''}`);
   await absichtAbschliessen(h, a.id, 'verworfen');

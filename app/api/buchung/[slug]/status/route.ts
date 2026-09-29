@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server';
 import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { melde } from '@/lib/meldungen/melden';
+import { tagKurz, berlinerTag } from '@/lib/zeit/kalender-kern';
 import { slugOk, statusSicht, mailLinkGueltig, OFFEN, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
 import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, tokenPasst, mailTokenPasst, TOKEN_OK } from '@/lib/kalender/buchung-speicher';
 import { buchungAnfragen, mailBestaetigtNachtragen } from '@/lib/kalender/buchung-ablauf';
@@ -103,7 +104,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
       // Glocke — ein Fehler bricht die Antwort nicht ab (die Absicht wird fortgesetzt).
       await buchungAnfragen(fertig.id, (seite as BuchungsSeite).person, jetzt).catch(e => console.error('[buchung] Anfrage offen:', e instanceof Error ? e.message : e));
     } else if (fertig.status === 'abgesagt' && (vorher === 'angefragt' || vorher === 'bestaetigt')) {
-      await melde({ an: seite.person, art: 'buchung', titel: vorher === 'bestaetigt' ? `Termin „${seite.titel}“ am ${fertig.start.slice(8, 10)}.${fertig.start.slice(5, 7)}. vom Gast abgesagt — Termin im Kalender entfernen?` : `Terminanfrage „${seite.titel}“ vom Gast zurückgezogen`, link: '/os/kalender?buchungen=1' });
+      // Restpunkte 29.09.: „Termin entfernen?“ trägt den Bezug `buchung-termin` — erledigt sich, sobald der Termin gelöst ist.
+      await melde(vorher === 'bestaetigt'
+        ? { an: seite.person, art: 'buchung', titel: `Termin „${seite.titel}“ am ${tagKurz(fertig.start.slice(0, 10), berlinerTag(jetzt))} vom Gast abgesagt — Termin im Kalender entfernen?`, link: '/os/kalender?buchungen=1', bezug: { art: 'buchung-termin', id: fertig.id } }
+        : { an: seite.person, art: 'buchung', titel: `Terminanfrage „${seite.titel}“ vom Gast zurückgezogen`, link: '/os/kalender?buchungen=1' });
     }
   }
   return antwort({ ok: true, sicht: statusSicht(fertig, seite) });

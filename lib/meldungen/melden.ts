@@ -11,7 +11,12 @@
  *  `buchung` (29.09., K4): neue Terminanfrage über eine Buchungsseite — an die Person der Seite.
  *  `kalender` (29.09., F1 #5): ein Kalender-Spiegel (Event, Date, Paar-Gespräch) ließ sich nicht nachziehen — an die
  *  Person, die die Änderung ausgelöst hat (lib/kalender/spiegel-server.ts `spiegelHinweiseMelden`). */
-export interface MeldungBezug { art: 'aufgabe' | 'buchung'; id: string }
+/**
+ * `buchung-termin` (Restpunkte 29.09.): „… Termin im Kalender entfernen?“ zu einer Buchung (id = Buchungs-Kennung) — eigene
+ * Erledigt-Regel „Termin gelöst“: erledigt, sobald die Buchung keinen Termin-Verweis mehr hat oder der Termin nicht mehr
+ * im iCloud-Stand steht (lib/meldungen/regeln.ts `buchungenErledigen`).
+ */
+export interface MeldungBezug { art: 'aufgabe' | 'buchung' | 'buchung-termin'; id: string }
 export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender';
 
 export interface MeldungEingabe {

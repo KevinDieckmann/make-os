@@ -11,7 +11,8 @@
 //                                                       inzwischen abgesagt/abgelehnt/abgelaufen → 409 { verworfen } (F1).
 //      { aktion: 'ablehnen', id, grund? }               Buchender sieht den Status (und den Grund) auf seiner Seite
 //      { aktion: 'termin-geloest', id }                 (F1 #12) nach „Termin entfernen“ (DELETE /api/kalender/termin):
-//                                                       Verweis auf den Termin an einer NICHT bestätigten Buchung lösen.
+//                                                       Verweis auf den Termin an einer NICHT bestätigten Buchung lösen;
+//                                                       „Termin vorbereiten“ an diesem Termin wird erledigt (Restpunkte).
 //      { aktion: 'mail-link', id }                      (#76) einmaliger Bestätigungslink für die E-Mail-Adresse →
 //                                                       { token, pfad, bis } — die Oberfläche baut daraus den Mail-ENTWURF
 //                                                       (mailto); verschickt wird nur per Klick in der Mail-App. Ein neuer
@@ -23,9 +24,11 @@ import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
-import { ladeCrm } from '@/lib/crm/speicher';
+import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
+import { aufgabeErledigenNachFollowUp } from '@/lib/crm/followup-aufgabe-server';
+import type { FollowUp } from '@/lib/crm/typen';
 import { neueKennung } from '@/lib/kennung';
-import { seiteSauber, mailLinkMoeglich, mailLinkPfad, GRENZEN, OFFEN, MAIL_LINK_TAGE, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
+import { seiteSauber, mailLinkMoeglich, mailLinkPfad, vorbereitenErledigen, GRENZEN, OFFEN, MAIL_LINK_TAGE, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
 import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, neuerSlug, neuesToken, mailTokenHash } from '@/lib/kalender/buchung-speicher';
 import { buchungFreigeben, folgeVorschlag, FreigabeFehler } from '@/lib/kalender/buchung-ablauf';
 import { istDienst } from '@/lib/zugang/dienst';
@@ -142,19 +145,32 @@ export async function POST(req: Request) {
   if (b.aktion === 'termin-geloest') {
     // F1 #12: Der Termin einer abgesagten/abgelehnten/abgelaufenen Buchung ist aus dem Kalender entfernt — der Verweis
     // fällt weg (sonst zeigt die Leiste weiter „Termin entfernen“ und die Verbindungsprüfung „Termin fehlt in Apple“).
+    // Restpunkte 29.09.: dazu wird „Termin vorbereiten“ an diesem Termin erledigt (nicht gelöscht, Notiz „Termin entfernt“)
+    // — sonst meldete die Verbindungsprüfung `followup-termin-tot`. Die Glocke „Termin entfernen?“ erledigt sich über
+    // ihren Bezug `buchung-termin` (lib/meldungen/regeln.ts `buchungenErledigen`).
     const id = typeof b.id === 'string' && ID.test(b.id) ? b.id : '';
-    let fehler = '', status = 400, geaendert = false;
+    let fehler = '', status = 400;
+    let geloest: { terminUid: string; vorbereitenId?: string } | null = null;
     await aendereBuchungBestand(bs => {
       const x = bs.buchungen.find(y => y.id === id);
       if (!x) { fehler = 'Buchung nicht gefunden.'; status = 404; return bs; }
       if (x.status === 'bestaetigt') { fehler = 'Eine bestätigte Buchung behält ihren Termin — erst absagen.'; status = 409; return bs; }
       if (!x.terminUid) return bs;
-      geaendert = true;
+      geloest = { terminUid: x.terminUid, ...(x.vorbereitenId ? { vorbereitenId: x.vorbereitenId } : {}) };
       const { terminUid: _u, terminKalender: _k, ...rest } = x;
       return { ...bs, buchungen: bs.buchungen.map(y => (y.id === id ? rest : y)) };
     }, jetzt);
     if (fehler) return nein(fehler, status);
-    if (geaendert) await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['terminUid'] }], { art: 'person', person });
+    const g = geloest as { terminUid: string; vorbereitenId?: string } | null;
+    if (g) {
+      await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['terminUid'] }], { art: 'person', person });
+      // Der Verweis ist gelöst (die Antwort bleibt ok); ein Fehler hier bleibt im Log — die Verbindungsprüfung fände den Rest.
+      try {
+        let erledigt: FollowUp[] = [];
+        await aendereCrm(c => { const r = vorbereitenErledigen(c.followups ?? [], g, person, jetztIso); erledigt = r.erledigt; return r.erledigt.length ? { ...c, followups: r.followups } : c; }, { art: 'person', person });
+        for (const f of erledigt) if (f.aufgabeId) await aufgabeErledigenNachFollowUp(f, person);
+      } catch (e) { console.error('[buchung] „Termin vorbereiten“ nicht erledigt:', e instanceof Error ? e.message.slice(0, 160) : e); }
+    }
     return NextResponse.json({ ok: true });
   }
 

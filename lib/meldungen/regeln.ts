@@ -20,6 +20,8 @@
 
 import type { MeldungArt, MeldungBezug, MeldungEingabe } from './melden';
 import { geburtstagFuer } from '@/lib/kalender/geburtstag';
+// Restpunkte 29.09.: Datum mit Jahreszahl nur außerhalb des laufenden Jahres — dieselbe Regel wie Agenda/Heute.
+import { tagKurz } from '@/lib/zeit/kalender-kern';
 
 export const MELDUNGEN_MAX = 500;
 /** Längster Titel — länger wird abgelehnt, nicht gekürzt (Regel „nie abschneiden“). */
@@ -29,6 +31,7 @@ export const GELESEN_IDS_MAX = 2000;
 
 export const PERSON_OK = /^[a-z0-9-]{1,40}$/;
 const BEZUG_ID_OK = /^[A-Za-z0-9_-]{1,80}$/;
+const BEZUG_ARTEN: readonly unknown[] = ['aufgabe', 'buchung', 'buchung-termin'];
 export const MELDUNG_ID_OK = /^[A-Za-z0-9:_.-]{1,160}$/;
 export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnung', 'faellig', 'ueberfaellig', 'zoe', 'buchung', 'kalender'];
 
@@ -101,7 +104,7 @@ export function pruefeEingabe(m: MeldungEingabe): { ok: true } | { ok: false; gr
   if (!istText(m.titel) || !m.titel.trim()) return { ok: false, grund: 'Titel fehlt' };
   if (m.titel.length > TITEL_MAX) return { ok: false, grund: `Titel länger als ${TITEL_MAX} Zeichen` };
   if (!istLink(m.link)) return { ok: false, grund: 'Link muss ein Weg in MAKE OS sein' };
-  if (m.bezug !== undefined && ((m.bezug?.art !== 'aufgabe' && m.bezug?.art !== 'buchung') || !istText(m.bezug.id) || !BEZUG_ID_OK.test(m.bezug.id))) return { ok: false, grund: 'Bezug ungültig' };
+  if (m.bezug !== undefined && (!BEZUG_ARTEN.includes(m.bezug?.art) || !istText(m.bezug.id) || !BEZUG_ID_OK.test(m.bezug.id))) return { ok: false, grund: 'Bezug ungültig' };
   return { ok: true };
 }
 
@@ -172,7 +175,6 @@ export function istZustaendig(t: Record<string, unknown>, person: string): boole
   return werte.some(v => v === person || v === 'both');
 }
 
-const tagText = (tag: string) => `${tag.slice(8, 10)}.${tag.slice(5, 7)}.`;
 
 export interface FaelligOptionen {
   person: string;
@@ -217,8 +219,8 @@ export function faelligAbleiten(aufgaben: unknown[], o: FaelligOptionen): Meldun
     raus.push({
       id, art, tag, am: o.am, link: o.link(t.id), virtuell: true, gelesen: merker.has(id),
       bezug: { art: 'aufgabe', id: t.id },
-      titel: wartet.length ? `„${name}“ wartet auf ${aufWen} (fällig ${art === 'faellig' ? 'heute' : `seit ${tagText(tag)}`})`
-        : art === 'faellig' ? `„${name}“ ist heute fällig` : `„${name}“ ist überfällig — fällig seit ${tagText(tag)}`,
+      titel: wartet.length ? `„${name}“ wartet auf ${aufWen} (fällig ${art === 'faellig' ? 'heute' : `seit ${tagKurz(tag, o.heute)}`})`
+        : art === 'faellig' ? `„${name}“ ist heute fällig` : `„${name}“ ist überfällig — fällig seit ${tagKurz(tag, o.heute)}`,
     });
   }
   // Überfällige zuerst, darin die älteste Deadline zuerst.
@@ -288,7 +290,7 @@ export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; je
     dazu('termin', kurzSchluessel(t.id), t.laeuft ? `Läuft gerade: ${t.titel}` : `Um ${t.start.slice(11, 16)}: ${t.titel}${bis <= 30 ? ` (in ${Math.max(0, bis)} Min.)` : ''}`, t.href);
   }
   for (const n of a.nachbereiten) dazu('nachbereiten', n.kontaktId, `Wie lief „${n.titel}“ mit ${n.name}? — Ergebnis festhalten`, n.href);
-  for (const f of a.fristen) dazu('frist', f.id, f.inTagen <= 0 ? `Heute: ${f.titel}` : f.inTagen === 1 ? `Morgen: ${f.titel}` : `In ${f.inTagen} Tagen (${tagText(f.tag)}): ${f.titel}`, f.href);
+  for (const f of a.fristen) dazu('frist', f.id, f.inTagen <= 0 ? `Heute: ${f.titel}` : f.inTagen === 1 ? `Morgen: ${f.titel}` : `In ${f.inTagen} Tagen (${tagKurz(f.tag, o.heute)}): ${f.titel}`, f.href);
   // Die Zahl steckt in der Kennung: kommt ein neuer Vorschlag dazu, meldet sich die Glocke wieder.
   if (a.vorschlaege?.kalender) dazu('vorschlag', `kalender-${a.vorschlaege.kalender}`, `${a.vorschlaege.kalender} Kalender-Vorschl${a.vorschlaege.kalender === 1 ? 'ag' : 'äge'} von ZOE ${a.vorschlaege.kalender === 1 ? 'wartet' : 'warten'} auf Freigabe`, '/os/stapel');
   for (const f of a.followups) dazu('followup', f.id, `${f.tageUeber > 0 ? `Überfällig seit ${f.tageUeber} ${f.tageUeber === 1 ? 'Tag' : 'Tagen'}` : 'Heute'}: ${f.text}${f.name && !f.text.includes(f.name) ? ` (${f.name})` : ''}`, f.href);
@@ -324,14 +326,26 @@ export function sichtBauen(bestand: MeldungenBestand, abgeleitet: Meldung[], heu
   return { meldungen, ungelesen: ungelesenZahl(meldungen), einstellungen: bestand.einstellungen, heute };
 }
 
+/** Was `buchungenErledigen` über die Buchungen wissen muss — null = Bestand nicht lesbar (dann bleibt alles, wie es ist). */
+export interface BuchungenLage {
+  /** Buchungen, die noch auf eine Entscheidung warten (vorläufig/angefragt). */
+  offen: ReadonlySet<string>;
+  /** Buchungen mit Termin-Verweis, dessen Termin (soweit bekannt) noch im Kalender steht. */
+  mitTermin: ReadonlySet<string>;
+}
+
 /**
- * Nachtrag F1 (29.09.): Meldungen zu einer Buchung (Bezug `buchung`) gelten als erledigt (gelesen), sobald die Buchung
- * nicht mehr in `offen` steht — freigegeben, abgelehnt, abgesagt oder abgelaufen. Nur in der Sicht (rein), der Bestand
- * bleibt; `offen` null (Bestand nicht lesbar) → nichts ändern.
+ * Meldungen zu einer Buchung gelten als erledigt (gelesen) — nur in der Sicht (rein), der Bestand bleibt:
+ *  · Bezug `buchung` (Nachtrag F1, „Neue Terminanfrage“): sobald die Buchung nicht mehr in `offen` steht — freigegeben,
+ *    abgelehnt, abgesagt oder abgelaufen.
+ *  · Bezug `buchung-termin` (Restpunkte 29.09., „Termin entfernen?“) — Regel „Termin gelöst“: sobald die Buchung nicht
+ *    mehr in `mitTermin` steht — Verweis gelöst („Termin entfernen“), Termin in Apple gelöscht oder Buchung weg.
+ * `lage` null (Bestand nicht lesbar) → nichts ändern.
  */
-export function buchungenErledigen(bestand: MeldungenBestand, offen: ReadonlySet<string> | null): MeldungenBestand {
-  if (!offen) return bestand;
-  const eintraege = bestand.eintraege.map(e => (!e.gelesen && e.bezug?.art === 'buchung' && !offen.has(e.bezug.id) ? { ...e, gelesen: true } : e));
+export function buchungenErledigen(bestand: MeldungenBestand, lage: BuchungenLage | null): MeldungenBestand {
+  if (!lage) return bestand;
+  const erledigt = (e: Meldung) => (e.bezug?.art === 'buchung' && !lage.offen.has(e.bezug.id)) || (e.bezug?.art === 'buchung-termin' && !lage.mitTermin.has(e.bezug.id));
+  const eintraege = bestand.eintraege.map(e => (!e.gelesen && erledigt(e) ? { ...e, gelesen: true } : e));
   return { ...bestand, eintraege };
 }
 
