@@ -49,20 +49,16 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
   const [routinen, setRoutinen] = useState<{ label: string; wann: string; kategorie: string }[]>([]);
 
   useEffect(() => {
-    wochen.forEach(w => {
-      fetch(`/api/state/wochenplan?woche=${w}`).then(r => r.json())
-        .then(d => setBloecke(prev => ({ ...prev, [w]: Array.isArray(d.bloecke) ? d.bloecke : [] }))).catch(() => {});
-    });
-    Promise.all([
-      fetch('/api/apple-calendar').then(r => r.json()).catch(() => []),
-      fetch('/api/kemaris-calendar').then(r => r.json()).catch(() => ({ events: [] })),
-    ]).then(([apple, kem]) => {
-      const bis = tagPlus(startMontag, 28);
-      const roh = [
-        ...(Array.isArray(apple) ? apple : []).filter((e: { allDay?: boolean; startDate?: string }) => !e.allDay && e.startDate)
-          .map((e: { title?: string; startDate?: string }) => ({ t: e.title ?? '', s: e.startDate! })),
-        ...((kem?.events ?? []) as { title?: string; start?: string }[]).filter(e => e.start).map(e => ({ t: e.title ?? '', s: e.start! })),
-      ];
+    // K5 (29.09.): Blöcke = Kalender-Termine der Art Fokus/Block (+ Archiv), Termine aus /api/kalender — eine Quelle,
+    // keine KEMARIS-Beispieldaten mehr. Je Woche gruppiert (Schlüssel = Montag).
+    const bis = tagPlus(startMontag, 28);
+    fetch(`/api/planung/bloecke?von=${startMontag}&bis=${bis}`).then(r => r.json()).then(d => {
+      const je: Record<string, PlanBlock[]> = {};
+      for (const b of (Array.isArray(d.bloecke) ? d.bloecke : []) as PlanBlock[]) { const w = montagVon(b.date); (je[w] ??= []).push(b); }
+      setBloecke(je);
+    }).catch(() => {});
+    fetch(`/api/kalender?von=${startMontag}&bis=${bis}`).then(r => r.json()).catch(() => ({ termine: [] })).then((k: { termine?: { titel?: string; start?: string; ganztags?: boolean; art?: string }[] }) => {
+      const roh = (k?.termine ?? []).filter(e => !e.ganztags && e.start && e.art !== 'fokus' && e.art !== 'block').map(e => ({ t: e.titel ?? '', s: e.start! }));
       const gesehen = new Set<string>();
       setTermine(roh
         .filter(e => GES_TERMIN.test(e.t) && e.s.slice(0, 10) >= startMontag && e.s.slice(0, 10) < bis)
@@ -96,7 +92,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
     <>
       {/* 4 Wochen */}
       <Abschnitt eingebettet={eingebettet} i={0} akzent={LEUCHT.gut}>
-        <Ueberschrift farbe={wochenMitPlan === 4 ? LEUCHT.gut : LEUCHT.achtung} rechts={<Link href="/os/planung/woche" style={link}>Wochenplaner ›</Link>}>Die nächsten 4 Wochen</Ueberschrift>
+        <Ueberschrift farbe={wochenMitPlan === 4 ? LEUCHT.gut : LEUCHT.achtung} rechts={<Link href="/os/kalender?modus=planen" style={link}>Wochenplaner ›</Link>}>Die nächsten 4 Wochen</Ueberschrift>
         <Liste>
           {wochenDaten.map(({ w, wi, reha, sport, term, ms }) => {
             const leer = !reha.length && !sport.length && !term.length && !ms.length;
@@ -110,7 +106,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
                     Reha {reha.length}× {reha.length === 0 ? '— Bandscheibe braucht täglich' : reha.length < 5 ? '— Luft nach oben' : '✓'}
                   </span>}
                   rechts={leer
-                    ? <span style={{ fontSize: 12, color: LEUCHT.achtung, whiteSpace: 'nowrap' }}>nichts geplant — <Link href="/os/planung/woche" style={link}>Blöcke reinziehen ›</Link></span>
+                    ? <span style={{ fontSize: 12, color: LEUCHT.achtung, whiteSpace: 'nowrap' }}>nichts geplant — <Link href="/os/kalender?modus=planen" style={link}>Blöcke reinziehen ›</Link></span>
                     : <Chip farbe={LEUCHT.gut}>{einheiten.length + term.length + ms.length} geplant</Chip>} />
                 {!leer && (
                   <div style={{ padding: '4px 2px 12px 23px' }}>
@@ -138,7 +134,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
           })}
         </Liste>
         <p style={{ fontSize: 12, color: C.inkLeise, margin: '12px 0 0', lineHeight: 1.5 }}>
-          Geplant wird im <Link href="/os/planung/woche" style={link}>Wochenplaner</Link> (Reha-Baustein reinziehen) — hier siehst du, ob die 4 Wochen tragen.
+          Geplant wird im <Link href="/os/kalender?modus=planen" style={link}>Wochenplaner</Link> (Reha-Baustein reinziehen) — hier siehst du, ob die 4 Wochen tragen.
         </p>
       </Abschnitt>
 

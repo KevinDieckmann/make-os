@@ -28,6 +28,7 @@ import { zahlungMaskiert } from '@/lib/crm/zahlung';
 import { opsFehler } from '@/lib/store/patch-liste';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
+import { eventSpiegelNachziehen } from '@/lib/kalender/spiegel-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -108,6 +109,10 @@ export async function PATCH(req: Request) {
   if (e.grenze.length) return NextResponse.json({ ok: false, fehler: e.grenze.join(' · ') }, { status: 413 });
   // Regeln (28.09.): Angebote nur übers Tool, Produkt ohne Leistungstext nicht „aktiv“ — ganze Änderung abgelehnt.
   if (e.abgelehnt?.length) return NextResponse.json({ ok: false, fehler: e.abgelehnt.join(' · '), abgelehnt: e.abgelehnt }, { status: 409 });
+  // Event-Termine nachziehen (29.09., K5): Datum, Uhrzeit, Titel, Ort, Absage → der iCloud-Spiegel folgt
+  // (lib/kalender/spiegel-server.ts). Im Hintergrund — die Änderung am Event steht schon.
+  const eventIds = ops.filter(o => o?.liste === 'events' && o.op !== 'delete').map(o => String(o.op === 'teil' ? o.id : o.eintrag?.id ?? '')).filter(Boolean);
+  if (eventIds.length) void eventSpiegelNachziehen(eventIds, werAus(req)).catch(() => { /* beim nächsten Ändern */ });
   // Abgelehnte Stufenwechsel (Regeln, 27.09.) kommen als `fehler` mit — der Stand ist trotzdem der aktuelle.
   return jsonAntwort(req, { ...(await antwort(b, person)), angewandt: e.angewandt, fehler: e.fehler });
 }

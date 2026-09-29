@@ -1,11 +1,12 @@
 // ─── Kalender — Termin anlegen, ändern, löschen (iCloud) ────────────────────
 // POST   { titel, kalender? | wer?, start, ende, ganztags?, ort?, notiz?,
-//          art?, farbe?, beschaeftigt?, sichtbarkeit?, zone?, wiederholung?, erinnerungenMin?, arbeitsort?, bezug?,
+//          art?, farbe?, beschaeftigt?, sichtbarkeit?, zone?, wiederholung?, erinnerungenMin?, arbeitsort?, blockArt?, bezug?,
 //          gaeste?: [{ email, name?, kontaktId? }], einladungBestaetigt? }
 //                                         → { uid, kalender, gaeste?, crm?, werbesperre? }
 // PATCH  { uid, stand?, titel?, start?, ende?, ort?, notiz?, art?, farbe?, beschaeftigt?, sichtbarkeit?, bezug?,
 //          gaeste?, antwort?: 'zugesagt'|'abgesagt'|'vielleicht', einladungBestaetigt? }
 //          Termin-Felder nur für Einzeltermine; `bezug` (nur Kennungen) geht auch bei Serien —
+//          (K5: Art „block“ + blockArt = ein Block aus dem Modus „Planen“)
 //          er liegt nie im Termin, nur im Bestand `kalender-bezug` (lib/kalender/bezug.ts).
 //          `stand` = ETag, den der Browser zuletzt sah → veraltet: 409 { konflikt, aktuell } („Deine Fassung“ bleibt im Browser).
 // DELETE ?uid=…&stand=…&einladungBestaetigt=1   (dito — die Oberfläche fragt vorher)
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
       titel: e.titel, kalender, start: e.start, ende: e.ende, ganztags: e.ganztags,
       ...(e.ort ? { ort: e.ort } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.wiederholung ? { wiederholung: e.wiederholung } : {}),
       erinnerungenMin: e.erinnerungenMin, art: e.art, ...(e.farbe ? { farbe: e.farbe } : {}), beschaeftigt: e.beschaeftigt,
-      sichtbarkeit: e.sichtbarkeit, zone: e.zone, ...(e.arbeitsort ? { arbeitsort: e.arbeitsort } : {}),
+      sichtbarkeit: e.sichtbarkeit, zone: e.zone, ...(e.arbeitsort ? { arbeitsort: e.arbeitsort } : {}), ...(e.blockArt ? { blockArt: e.blockArt } : {}),
       ...(g.gaeste.length ? { gaeste: g.gaeste.map(x => ({ email: x.email, ...(x.name ? { name: x.name } : {}) })) } : {}),
     }, { einladungBestaetigt: e.einladungBestaetigt });
     // Starttag in Berlin (für die Verbindungsprüfung) — bei einer anderen Zone umgerechnet, nie über new Date(wandzeit).

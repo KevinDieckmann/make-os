@@ -89,11 +89,12 @@ describe('Punkte hinter den Kacheln', () => {
     const b = leer({ bloecke: [{ date: '2026-09-22', dauerMin: 240, art: 'fokus' }] });
     const d = MESSEN.fokuszeit(b).details!;
     expect(d).toHaveLength(4);
-    expect(d[0]).toMatchObject({ titel: 'Woche ab 18.09.', wert: '4 h', href: '/os/planung/woche?tag=2026-09-18' });
+    // K5 (29.09.): die Woche ist der Modus „Planen“ im Kalender.
+    expect(d[0]).toMatchObject({ titel: 'Woche ab 18.09.', wert: '4 h', href: '/os/kalender?modus=planen&tag=2026-09-18' });
   });
 
   it('kein Link endet im Leeren: jeder Punkt und jedes „so schließen“ zeigt auf eine echte Seite', () => {
-    const ERLAUBT = /^\/os\/(finanzen(\/(planung|liquiditaet|grundlage|buchungen))?|mandate|markttraktion|planung\/(woche|jahr)|agenten|controlling|aufgaben)(\?[a-z]+=[^&#\s]+(&[a-z]+=[^&#\s]+)*)?(#(abschluss|einstellungen|modell|verlauf|kontostaende|fristen|ruecklage|ust|uebergabe|index))?$/;
+    const ERLAUBT = /^\/os\/(finanzen(\/(planung|liquiditaet|grundlage|buchungen))?|mandate|markttraktion|planung\/(woche|jahr)|kalender|agenten|controlling|aufgaben)(\?[a-z]+=[^&#\s]+(&[a-z]+=[^&#\s]+)*)?(#(abschluss|einstellungen|modell|verlauf|kontostaende|fristen|ruecklage|ust|uebergabe|index))?$/;
     const b = leer({
       firmen: [{ id: 'kdc', name: 'Consulting', kontostand: 20000, stand: '2026-09-01' }, { id: 'kdv', name: 'KD Ventures', kontostand: null, stand: null }],
       grundlageMonate: monate(1, 8, 10000, 7000), planposten: [posten('miete', -2000), posten('kredit', -500, { kategorie: 'kredite' })],

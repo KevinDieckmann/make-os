@@ -8,23 +8,26 @@ import Link from 'next/link';
 // mit hohem Fokus-Regler), darunter der ganze Tag als Kalender — auch wenn
 // keine Termine da sind. Lücken sind sichtbar, und wie im Wochenplaner zieht
 // man Bausteine, Routinen und Aufgaben einfach rein. Die Blöcke sind DIESELBEN
-// wie im Wochenplaner (gleicher Store) — hier bearbeitet man nur den heutigen
-// Tag, der Rest der Woche bleibt unangetastet.
+// wie im Kalender-Modus „Planen“ — hier bearbeitet man nur den heutigen Tag.
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Chips, Leuchtfarben).
+// 29.09. (K5, „Ein Kalender“): Blöcke sind iCloud-Termine der Art Fokus/Block (lib/planung/bloecke.ts) — gelesen über
+// /api/kalender (+ Archiv des alten Wochenplans, nur lesen), geschrieben über /api/kalender/termin (mit ETag).
+// Feste Termine = die übrigen Termine des Tages (beschäftigt, mit Uhrzeit). Keine KEMARIS-Beispieldaten mehr.
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ART_FARBE, type PlanBlock } from '@/types/planer';
+import { useKalender } from './kalender/teile';
+import { bloeckeAus, blockAnfrage, gehoertZu, planArtVon, type PlanBlockSicht } from '@/lib/planung/bloecke';
+import { tagPlus, wandAus, minutenVon } from '@/lib/kalender/zeit';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { einheitKurz } from '@/lib/aufgaben/einheit';
 import { localDay } from '@/lib/zeit';
-import { wochenplanSchreiben } from '@/lib/make-one/wochenplan-sync';
 import { SAEULE_VON_PROJEKT, KATEGORIE_ZU_SAEULE, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT } from './schlank';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
-import { neueKennung } from '@/lib/kennung';
 
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }
 interface Fix { titel: string; startMin: number; dauerMin: number }
@@ -58,14 +61,6 @@ const BAUSTEINE: { art: PlanBlock['art']; titel: string; dauerMin: number }[] = 
   { art: 'routine', titel: 'Tagesende', dauerMin: 15 },
 ];
 
-const neuId = () => neueKennung('pb');
-
-function montagVon(tag: string): string {
-  const d = new Date(`${tag}T12:00:00`);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return localDay(d);
-}
-
 const verweis: CSSProperties = { fontSize: 12, color: C.aktiv, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' };
 const mini = (farbe: string): CSSProperties => ({ background: `${farbe}33`, border: 'none', borderRadius: 5, color: farbe, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '0 6px', lineHeight: '16px' });
 
@@ -84,10 +79,11 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   // Kevins Ansage: den nächsten Tag angucken können. Ohne Anker ist es heute.
   const heute = tag ?? localDay();
   const istHeute = heute === localDay();
-  const woche = montagVon(heute);
   const { state: tasksState } = useTasks();
-  const [wocheBloecke, setWocheBloecke] = useState<PlanBlock[]>([]);
-  const [fix, setFix] = useState<Fix[]>([]);
+  const { daten: kal, laden: kalLaden } = useKalender(heute, tagPlus(heute, 1));
+  const [ich, setIch] = useState<string | null>(null);
+  const [archiv, setArchiv] = useState<PlanBlockSicht[]>([]);
+  const [meldung, setMeldung] = useState<string | null>(null);
   const [routinen, setRoutinen] = useState<Routine[]>([]);
   const [hlog, setHlog] = useState<Record<string, string[]>>({});
   const [fokusAlle, setFokusAlle] = useState<Record<string, string>>({});
@@ -95,46 +91,20 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const [regler, setRegler] = useState<Record<string, number>>({});
   const [aktivBlock, setAktivBlock] = useState<string | null>(null);
   const [jetztMin, setJetztMin] = useState<number | null>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  /** Stand, wie er zuletzt gelesen/geschrieben wurde — Basis für die Unterschiede. */
-  const gespeichert = useRef<PlanBlock[] | null>(null);
-  /** Ein Speichervorgang steht aus — dann keinen Abgleich dazwischenschieben. */
-  const speichernSteht = useRef(false);
   const hSpaeter = useNachspeichern<Record<string, string[]>>(next => {
     fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
   }, 300);
 
   useEffect(() => {
-    fetch(`/api/state/wochenplan?woche=${woche}`).then(r => r.json())
-      .then(d => {
-        const geladen = Array.isArray(d.bloecke) ? d.bloecke : [];
-        gespeichert.current = geladen;
-        setWocheBloecke(geladen);
-      }).catch(() => {});
-    Promise.all([
-      fetch('/api/apple-calendar').then(r => r.json()).catch(() => []),
-      fetch('/api/kemaris-calendar').then(r => r.json()).catch(() => ({ events: [] })),
-    ]).then(([apple, kem]) => {
-      const roh = [
-        ...(Array.isArray(apple) ? apple : []).filter((e: { allDay?: boolean; startDate?: string }) => !e.allDay && e.startDate?.slice(0, 10) === heute)
-          .map((e: { title?: string; startDate?: string; endDate?: string }) => ({ t: e.title ?? '', s: e.startDate!, e: e.endDate })),
-        ...((kem?.events ?? []) as { title?: string; start?: string; end?: string }[]).filter(e => e.start?.slice(0, 10) === heute)
-          .map(e => ({ t: e.title ?? '', s: e.start!, e: e.end })),
-      ];
-      const gesehen = new Set<string>();
-      setFix(roh.filter(e => {
-        const k = `${e.t.toLowerCase().trim()}|${e.s.slice(0, 16)}`;
-        if (gesehen.has(k)) return false; gesehen.add(k); return true;
-      }).map(e => {
-        const s = new Date(e.s), en = e.e ? new Date(e.e) : null;
-        return { titel: e.t, startMin: s.getHours() * 60 + s.getMinutes(), dauerMin: en ? Math.max(15, Math.round((en.getTime() - s.getTime()) / 60000)) : 60 };
-      }));
-    });
+    fetch('/api/konto/ich').then(r => r.json()).then(d => { if (typeof d.ich?.speicher === 'string') setIch(d.ich.speicher); }).catch(() => {});
+    // Archiv: Blöcke des alten Wochenplans an diesem Tag, die (noch) nicht übernommen sind — nur lesen.
+    fetch(`/api/planung/bloecke?von=${heute}&bis=${tagPlus(heute, 1)}`).then(r => r.json())
+      .then(d => setArchiv(((d.bloecke ?? []) as (PlanBlockSicht & { gespiegelt?: true })[]).filter(b => b.quelle === 'archiv' && !b.gespiegelt))).catch(() => setArchiv([]));
     fetch('/api/state/routinen').then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: Routine) => x.aktiv))).catch(() => {});
     fetch('/api/state/health').then(r => r.json()).then(d => setHlog(d.log ?? {})).catch(() => {});
     fetch('/api/state/ziele').then(r => r.json()).then(d => { setFokusAlle(d.fokus ?? {}); setZiele((d.monat ?? []).filter((z: { erledigt?: boolean }) => !z.erledigt)); }).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
-  }, [heute, woche]);
+  }, [heute]);
 
   // Jetzt-Linie erst nach dem Mount setzen (kein Hydration-Versatz), dann mitlaufen lassen.
   useEffect(() => {
@@ -144,38 +114,30 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     return () => clearInterval(iv);
   }, []);
 
-  const meine = useMemo(() => wocheBloecke.filter(b => b.date === heute), [wocheBloecke, heute]);
+  // Termine des Tages (Kalender): Blöcke der eigenen Person + feste Termine (beschäftigt, mit Uhrzeit, kein Block).
+  const termineHeute = useMemo(() => (kal?.termine ?? []).filter(t => !t.ganztags && t.start.slice(0, 10) === heute), [kal, heute]);
+  const standVon = useMemo(() => new Map(termineHeute.map(t => [t.uid, t.stand])), [termineHeute]);
+  const meine = useMemo<PlanBlockSicht[]>(() => [...bloeckeAus(termineHeute.filter(t => !ich || gehoertZu(t, ich))), ...archiv], [termineHeute, ich, archiv]);
+  const fix = useMemo<Fix[]>(() => termineHeute.filter(t => !planArtVon(t) && t.art !== 'arbeitsort' && t.beschaeftigt !== false).map(t => {
+    const s0 = minutenVon(t.start);
+    const e0 = t.ende.slice(0, 10) > heute ? 24 * 60 : minutenVon(t.ende);
+    return { titel: t.titel, startMin: s0, dauerMin: Math.max(15, e0 - s0) };
+  }), [termineHeute, heute]);
 
-  /** Heutige Blöcke ersetzen, Rest der Woche unangetastet lassen, debounced
-   *  sichern — als Einzel-Änderungen, damit Malins Fenster nichts verliert. */
-  function speichern(nextHeute: PlanBlock[]) {
-    const alle = [...wocheBloecke.filter(b => b.date !== heute), ...nextHeute];
-    setWocheBloecke(alle);
-    clearTimeout(saveTimer.current);
-    speichernSteht.current = true;
-    saveTimer.current = setTimeout(() => {
-      speichernSteht.current = false;
-      const alt = gespeichert.current;
-      gespeichert.current = alle;
-      void wochenplanSchreiben(woche, alt, alle);
-    }, 500);
+  /** Ein Block ist ein Termin: anlegen/ändern/löschen über /api/kalender/termin (mit ETag), dann neu laden. */
+  async function schreiben(method: 'POST' | 'PATCH' | 'DELETE', body: Record<string, unknown>) {
+    const url = method === 'DELETE' ? `/api/kalender/termin?uid=${encodeURIComponent(String(body.uid))}${body.stand ? `&stand=${encodeURIComponent(String(body.stand))}` : ''}` : '/api/kalender/termin';
+    const r = await fetch(url, { method, ...(method === 'DELETE' ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) })
+      .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    setMeldung(r.ok ? null : r.fehler ?? 'Nicht gespeichert.');
+    await kalLaden();
   }
-
-  // Regelmäßiger Abgleich mit dem Bestand — nie mitten in einem eigenen Zug.
-  useEffect(() => {
-    const iv = setInterval(() => {
-      if (speichernSteht.current) return;
-      fetch(`/api/state/wochenplan?woche=${woche}`).then(r => r.json()).then(d => {
-        if (speichernSteht.current) return;
-        const neu = Array.isArray(d.bloecke) ? d.bloecke : [];
-        if (JSON.stringify(neu) !== JSON.stringify(gespeichert.current ?? [])) {
-          gespeichert.current = neu;
-          setWocheBloecke(neu);
-        }
-      }).catch(() => { /* nächste Runde */ });
-    }, 60_000);
-    return () => clearInterval(iv);
-  }, [woche]);
+  const bearbeitbar = (b: PlanBlockSicht) => b.quelle === 'kalender' && !!b.uid && !!termineHeute.find(t => t.uid === b.uid)?.bearbeitbar;
+  const blockNeu = (n: { art: PlanBlock['art']; titel: string; dauerMin: number; taskId?: string }, startMin: number) =>
+    schreiben('POST', blockAnfrage({ date: heute, startMin, dauerMin: n.dauerMin, titel: n.titel, art: n.art, ...(n.taskId ? { taskId: n.taskId } : {}) }));
+  const blockSetzen = (b: PlanBlockSicht, startMin: number, dauerMin: number) =>
+    schreiben('PATCH', { uid: b.uid, start: wandAus(heute, startMin), ende: wandAus(heute, startMin + dauerMin), ...(standVon.get(b.uid!) ? { stand: standVon.get(b.uid!) } : {}) });
+  const blockWeg = (b: PlanBlockSicht) => schreiben('DELETE', { uid: b.uid, ...(standVon.get(b.uid!) ? { stand: standVon.get(b.uid!) } : {}) });
 
   function dropAufKalender(e: React.DragEvent) {
     e.preventDefault();
@@ -185,13 +147,9 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     const startMin = Math.max(START, Math.min(ENDE - 15, START + snap((e.clientY - rect.top) / PX)));
     try {
       const p = JSON.parse(daten) as { move?: string; neu?: { art: PlanBlock['art']; titel: string; dauerMin: number }; aufgabe?: { taskId: string; titel: string } };
-      if (p.move) {
-        speichern(meine.map(b => b.id === p.move ? { ...b, startMin } : b));
-      } else if (p.neu) {
-        speichern([...meine, { id: neuId(), date: heute, startMin, dauerMin: p.neu.dauerMin, titel: p.neu.titel, art: p.neu.art }]);
-      } else if (p.aufgabe) {
-        speichern([...meine, { id: neuId(), date: heute, startMin, dauerMin: 60, titel: p.aufgabe.titel, art: 'aufgabe', taskId: p.aufgabe.taskId }]);
-      }
+      if (p.move) { const b = meine.find(x => x.id === p.move); if (b && bearbeitbar(b)) void blockSetzen(b, startMin, b.dauerMin); }
+      else if (p.neu) void blockNeu(p.neu, startMin);
+      else if (p.aufgabe) void blockNeu({ art: 'aufgabe', titel: p.aufgabe.titel, dauerMin: 60, taskId: p.aufgabe.taskId }, startMin);
     } catch { /* kein gültiges Paket */ }
   }
 
@@ -226,7 +184,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   // ── Aufgaben-Leiste: Priorität schlägt immer, dann Fokus-Regler, dann Fälligkeit ──
   const offeneAufgaben = useMemo(() => {
     const rank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-    const geplant = new Set(wocheBloecke.filter(b => b.taskId).map(b => b.taskId));
+    const geplant = new Set(meine.filter(b => b.taskId).map(b => b.taskId));
     const boost = (t: { projectId?: string }) => regler[SAEULE_VON_PROJEKT[t.projectId ?? ''] ?? ''] ?? 50;
     return tasksState.tasks
       .filter(t => t.status !== 'done' && !geplant.has(t.id))
@@ -236,7 +194,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
         (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'))
       .slice(0, 8)
       .map(t => ({ ...t, imFokus: boost(t) >= FOKUS_SCHWELLE }));
-  }, [tasksState, wocheBloecke, regler]);
+  }, [tasksState, meine, regler]);
 
   // ── Tageslücken: freie Fenster ≥30 Min zwischen 07 und 21 Uhr ──
   const luecken = useMemo(() => {
@@ -316,7 +274,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
 
       {/* ── Kompakter Durchgeplant-Check ── */}
       <Karte i={1}>
-        <Ueberschrift farbe={checkFarbe} rechts={<Link href="/os/planung/woche" style={verweis}>Wochenplaner ›</Link>}>Durchgeplant</Ueberschrift>
+        <Ueberschrift farbe={checkFarbe} rechts={<Link href="/os/kalender?modus=planen" style={verweis}>Wochenplaner ›</Link>}>Durchgeplant</Ueberschrift>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
           <Zahl wert={`${okN}/${check.length}`} label="Punkte erfüllt" farbe={checkFarbe} />
           <div style={{ flex: '1 1 240px', minWidth: 'min(240px, 100%)' }}>
@@ -335,7 +293,9 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* ── Der Tag als Kalender — Lücken sichtbar, alles reinziehbar ── */}
         <Karte i={2} style={{ flex: '0 1 440px', minWidth: 'min(300px, 100%)' }}>
-          <Ueberschrift farbe={LEUCHT.puls} rechts="ziehen wie im Wochenplaner">Der Tag</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.puls} rechts="ziehen wie im Kalender (Planen)">Der Tag</Ueberschrift>
+          {meldung && <div role="alert" style={{ marginBottom: 8, fontSize: 12.5, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 8, padding: '6px 10px' }}>{meldung}</div>}
+          {kal && !kal.icloud && <div style={{ marginBottom: 8, fontSize: 12, color: C.inkLeise }}>Ohne iCloud nur lesen — Blöcke sind Termine im Kalender.</div>}
           <div style={{ display: 'flex', gap: 4 }}>
             {/* Zeitspalte */}
             <div style={{ position: 'relative', height: H, width: 42, flex: '0 0 auto' }}>
@@ -365,17 +325,18 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
               {meine.map(b => {
                 const aktiv = aktivBlock === b.id;
                 const farbe = ART_FARBE[b.art] ?? C.inkLeise;
+                const aenderbar = bearbeitbar(b);
                 return (
-                  <div key={b.id} draggable
+                  <div key={b.id} draggable={aenderbar} title={aenderbar ? undefined : b.quelle === 'archiv' ? 'Alter Wochenplan — nur lesen (Kalender › Planen: übernehmen)' : 'Nur in Apple änderbar'}
                     onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
-                    onClick={() => setAktivBlock(aktiv ? null : b.id)}
+                    onClick={() => aenderbar && setAktivBlock(aktiv ? null : b.id)}
                     style={{ position: 'absolute', top: (b.startMin - START) * PX, height: Math.max(18, b.dauerMin * PX - 2), left: 4, right: 4, background: `${farbe}2A`, borderLeft: `3px solid ${farbe}`, borderRadius: 8, padding: '2px 8px', fontSize: 11.5, color: C.ink, overflow: 'hidden', cursor: 'grab', zIndex: aktiv ? 4 : 2, boxShadow: aktiv ? `0 0 0 1px ${farbe}, 0 0 14px ${farbe}33` : undefined, transition: 'box-shadow .2s ease' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: farbe, fontVariantNumeric: 'tabular-nums' }}>{mm(b.startMin)}</span> {b.titel}
                     {aktiv && (
                       <span style={{ position: 'absolute', right: 4, top: 2, display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.max(15, x.dauerMin - 30) } : x))} style={mini(C.inkDim)}>−</button>
-                        <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.min(240, x.dauerMin + 30) } : x))} style={mini(C.inkDim)}>＋</button>
-                        <button onClick={() => { speichern(meine.filter(x => x.id !== b.id)); setAktivBlock(null); }} style={mini(LEUCHT.kritisch)}>✕</button>
+                        <button onClick={() => void blockSetzen(b, b.startMin, Math.max(15, b.dauerMin - 30))} style={mini(C.inkDim)}>−</button>
+                        <button onClick={() => void blockSetzen(b, b.startMin, Math.min(240, b.dauerMin + 30))} style={mini(C.inkDim)}>＋</button>
+                        <button onClick={() => { if (window.confirm(`„${b.titel}“ löschen? Der Termin verschwindet auch in Apple.`)) { void blockWeg(b); setAktivBlock(null); } }} style={mini(LEUCHT.kritisch)}>✕</button>
                       </span>
                     )}
                   </div>

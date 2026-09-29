@@ -42,7 +42,7 @@ export const DEPARTMENTS: Department[] = [
       { id: 'meeting', name: 'Meeting-Agent', role: 'Mitschreiben → Action-Items', status: 'live', autonomy: 'entwurf', model: 'ausgewogen', href: '/os/meeting',
         funktionen: ['Transkript/Notizen → Protokoll', 'Zusammenfassung + Entscheidungen', 'Action-Items mit Owner/Prio/Projekt', 'Auf Klick in echte Aufgaben übernehmen'],
         bauplan: 'LIVE: Transkript einfügen → Anthropic (streng JSON: Titel/Summary/Entscheidungen/ActionItems) → Übernahme in echten Task-Store (/api/tasks/create), Human-in-the-Loop. Auto-Mitschrift (Granola/Fireflies) als Zusatz. → /os/meeting' },
-      { id: 'planung', name: 'Wochenplan-Agent', role: 'Die Woche aus Kalender, Aufgaben und Routinen bauen', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/planung/woche',
+      { id: 'planung', name: 'Wochenplan-Agent', role: 'Die Woche aus Kalender, Aufgaben und Routinen bauen', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/kalender?modus=planen',
         funktionen: ['Freie Zeit gegen Termine prüfen', 'Fokus, Reha und Routinen einplanen', 'Kollisionen verwerfen statt überplanen', 'Vorschlag — Kevin bestätigt im Planer'],
         bauplan: 'LIVE: /api/planung/vorschlag baut aus beiden Kalendern, Aufgaben, Routinen und den Fokus-Reglern einen Wochenvorschlag; Blöcke mit Kollision werden verworfen, nicht überschrieben. ZOE startet ihn selbst (run_agent planung).' },
       { id: 'wissen', name: 'Dokument-/Wissens-Agent', role: 'Kevins Notizen durchsuchen und ergänzen', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/stapel',

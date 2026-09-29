@@ -8,7 +8,6 @@
 // register.ts; ob es ausgeführt oder in den Stapel gelegt wird, entscheidet
 // die Route.
 
-import { speicherFuer } from '@/lib/zoe/raum';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay, tagePlus } from '@/lib/zeit';
@@ -22,11 +21,16 @@ import { ARBEIT_WERKZEUGE } from './arbeit-werkzeug';
 import { CRM_LESE_LAEUFE, suche_kontakt as sucheKontaktSicht, crm_lage as crmLageSicht } from './crm-werkzeuge';
 import { CRM_VORSCHLAG_LAUF } from './crm-vorschlag';
 import { neueKennung } from '@/lib/kennung';
+import type { PlanArt } from '@/types/planer';
+import { blockAnlegen } from '@/lib/planung/bloecke-server';
+import { verbunden as icloudVerbunden } from '@/lib/kalender/icloud';
+import { minutenVon } from '@/lib/kalender/zeit';
 
-// ── ZOE plant SELBST: Block in den Wochenplan legen (Kevins Ansage:
-// „dass da auch drin geplant werden kann"). Interne Planung, frei verschiebbar
-// — aber NIE über feste Termine (harte Kollisionsprüfung vor dem Schreiben).
-const PLAN_ARTEN = ['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'] as const;
+// ── ZOE plant SELBST: Block in den Kalender legen (Kevins Ansage:
+// „dass da auch drin geplant werden kann"). Seit 29.09. (K5) ist ein Block ein iCloud-Termin der Art Fokus/Block
+// im Kalender der Person (lib/planung/bloecke-server.ts `blockAnlegen`: iCloud → kalender-bezug → Änderungsprotokoll,
+// ohne Teilnehmer) — NIE über feste Termine (harte Kollisionsprüfung vor dem Schreiben, gelesen ohne Netz).
+const PLAN_ARTEN_ZOE = ['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'] as const;
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 async function planBlock(input: Record<string, unknown>, _o?: unknown, person = 'kevin'): Promise<string> {
@@ -36,36 +40,26 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person = 
   const startMin = Math.max(6 * 60, Math.min(22 * 60 - 15, Math.round(Number(input.startMin) / 15) * 15 || 9 * 60));
   const dauerMin = Math.max(15, Math.min(240, Math.round(Number(input.dauerMin) / 15) * 15 || 60));
   const titel = String(input.titel ?? '').slice(0, 120) || 'Block';
-  const art = (PLAN_ARTEN as readonly string[]).includes(String(input.art)) ? String(input.art) : 'block';
+  const art = (PLAN_ARTEN_ZOE as readonly string[]).includes(String(input.art)) ? String(input.art) as PlanArt : 'block';
   const ende = startMin + dauerMin;
+  if (!icloudVerbunden()) return 'Fehlgeschlagen: iCloud ist nicht verbunden — Blöcke sind Termine im Kalender.';
 
-  // Feste Termine beider Kalender an diesem Tag — nichts wird überplant. Seit 29.09. (#K4) über denselben Lesepfad wie
-  // die Kalender-Sicht, für die Person gefiltert: private Termine der anderen Person heißen hier nur „Belegt“.
+  // Feste Termine an diesem Tag — nichts wird überplant. Über denselben Lesepfad wie ZOE (R-Z #K4, für die Person
+  // gefiltert: private der anderen nur „Belegt“); zählen: beschäftigt, mit Uhrzeit, eigener oder gemeinsamer Kalender.
+  // KEMARIS-Beispieldaten zählen seit K5 nicht mehr (`kal.kemaris` bleibt außen vor).
   const kal = await termineFuerZoe(person, date, tagePlus(date, 1));
-  const fest = [...kal.termine, ...kal.kemaris]
-    .filter(t => !t.ganztags && t.start.slice(0, 10) === date)
-    .map(t => {
-      const s = new Date(t.start);
-      const sMin = s.getHours() * 60 + s.getMinutes();
-      const eMin = t.ende ? (d => d.getHours() * 60 + d.getMinutes())(new Date(t.ende)) : sMin + 60;
-      return { titel: t.titel, s: sMin, e: Math.max(eMin, sMin + 15) };
-    });
+  const fest = kal.termine
+    .filter(t => !t.ganztags && t.beschaeftigt !== false && t.art !== 'arbeitsort' && (t.wer === person || t.wer === 'beide' || t.von === person) && t.start.slice(0, 10) === date)
+    .map(t => ({ titel: t.titel, s: minutenVon(t.start), e: Math.max(t.ende.slice(0, 10) > date ? 24 * 60 : minutenVon(t.ende), minutenVon(t.start) + 15) }));
   const kollision = fest.find(f => startMin < f.e && f.s < ende);
-  if (kollision) return `Kollision mit festem Termin „${kollision.titel}" (${hhmm(kollision.s)}–${hhmm(kollision.e)}) am ${date} — nicht eingeplant. Schlage Kevin eine freie Zeit vor.`;
+  if (kollision) return `Kollision mit festem Termin „${kollision.titel}" (${hhmm(kollision.s)}–${hhmm(kollision.e)}) am ${date} — nicht eingeplant. Schlage eine freie Zeit vor.`;
 
-  const mo = new Date(`${date}T12:00:00`);
-  mo.setDate(mo.getDate() - ((mo.getDay() + 6) % 7));
-  const woche = localDay(mo);
-  interface PB { id: string; date: string; startMin: number; dauerMin: number; titel: string; art: string }
-  const block: PB = { id: neueKennung('pb'), date, startMin, dauerMin, titel, art };
-  // Seit 26.09. in den Plan der Person, die ZOE gerade bittet (Malin hat ihren eigenen).
-  await updateJson<Record<string, PB[]>>(speicherFuer('wochenplan', person), current => {
-    const f = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
-    const liste = Array.isArray(f[woche]) ? f[woche] : [];
-    if (liste.length >= 120) return f;
-    return { ...f, [woche]: [...liste, block] };
-  });
-  return `Eingeplant: „${titel}" am ${date}, ${hhmm(startMin)}–${hhmm(ende)} (${art}). Kevin sieht den Block sofort im Planer und kann ihn frei verschieben.`;
+  try {
+    await blockAnlegen(person, { date, startMin, dauerMin, titel, art }, { art: 'zoe', person });
+  } catch (e) {
+    return `Fehlgeschlagen: ${e instanceof Error ? e.message.slice(0, 200) : 'Kalender nicht erreichbar.'}`;
+  }
+  return `Eingeplant: „${titel}" am ${date}, ${hhmm(startMin)}–${hhmm(ende)} (${art}) — als Block im Kalender (iCloud), frei verschiebbar.`;
 }
 
 // ─── ZOE als Eingabe-Schicht: Kevin ruft zu, ZOE schreibt in die Stores.

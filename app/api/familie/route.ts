@@ -15,6 +15,8 @@ import { LOVEMAP_FRAGEN } from '@/lib/familie/katalog';
 import { LISTEN, type Familie } from '@/lib/familie/typen';
 import type { ListenOp } from '@/lib/sync';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { familieSpiegelNachziehen } from '@/lib/kalender/spiegel-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,6 +53,13 @@ async function antwort(f: Familie, person: string, haushalt: string) {
   };
 }
 
+async function spiegelNachziehen(haushalt: string, person: string): Promise<void> {
+  try {
+    if (haushalt !== await haushaltDesInhabers()) return;
+    await familieSpiegelNachziehen(haushalt, { art: 'person', person });
+  } catch { /* Die Änderung in der Familie steht — der Spiegel wird beim nächsten Mal nachgezogen. */ }
+}
+
 export async function GET(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
@@ -71,5 +80,8 @@ export async function PATCH(req: Request) {
     if (b.felder) x = setzeFelder(x, b.felder, z.person, jetzt);
     return x;
   });
+  // Spiegel im Kalender nachziehen (29.09., K5): Date verschoben/abgesagt, Gespräch ausgefallen, Uhrzeit/Wochentag
+  // geändert → der iCloud-Termin folgt (lib/kalender/spiegel-server.ts). Im Hintergrund; nur die Familie des Inhabers.
+  if ((Array.isArray(b.ops) && b.ops.some(o => o?.liste === 'dates' || o?.liste === 'gespraeche')) || (b.felder && 'einstellungen' in b.felder)) void spiegelNachziehen(z.haushalt, z.person);
   return NextResponse.json({ ...(await antwort(f, z.person, z.haushalt)), angewandt, abgelehnt });
 }

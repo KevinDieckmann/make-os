@@ -11,7 +11,9 @@
 //     Business  &f=kdc|kdv (Sicht) &k=<Kennzahl>  #abschluss · #einstellungen · #modell
 //   Rechnung    /os/finanzen/planung?r=<id>        (springt hin und hebt hervor)
 //   Planposten  /os/finanzen/liquiditaet?p=<id>    (öffnet den Posten) · #kontostaende
-//   Woche       /os/planung/woche?tag=YYYY-MM-DD
+//   Woche       /os/kalender?modus=planen&tag=YYYY-MM-DD   (K5: der Wochenplaner ist der Modus „Planen“ im Kalender;
+//               /os/planung/woche leitet dorthin weiter)
+//   Kalender    /os/kalender[?tag=YYYY-MM-DD]
 //   Gesundheit  /os/gesundheit?fuer=<person>#morgen|routinen|haut|streak|index
 //   Markttraktion über lib/crm/adresse.ts (s · a · k)
 
@@ -71,7 +73,7 @@ export const WEG = {
   /** Ein Termin im Kalender (K3): Tag anspringen und das Termin-Fenster öffnen (Schlüssel `uid` bzw. `uid::RID`). */
   termin: (id: string, tag?: string) => q('/os/kalender', { tag, termin: id }),
   kalender: (tag?: string) => q('/os/kalender', { tag }),
-  woche: (tag?: string) => q('/os/planung/woche', { tag }),
+  woche: (tag?: string) => q('/os/kalender', { modus: 'planen', tag }),
   tag: (tag?: string) => q('/os/planung', { tag }),
   routinen: () => '/os/planung/routinen',
 

@@ -70,7 +70,10 @@ const nextConfig = {
       { source: '/os/ernaehrung', destination: '/os/gesundheit?s=ernaehrung', permanent: false },
       { source: '/os/energie', destination: '/os/gesundheit?s=koerper', permanent: false },
       // 26.09.: der alte Wochen-Rhythmus lebt im Wochenplaner (nicht mehr unter Gesundheit).
-      { source: '/os/woche', destination: '/os/planung/woche', permanent: false },
+      { source: '/os/woche', destination: '/os/kalender?modus=planen', permanent: false },
+      // 29.09. (K5): das Alt-Dashboard /calendar (Beispieldaten) ist weg — Lesezeichen landen im Kalender.
+      { source: '/calendar', destination: '/os/kalender', permanent: false },
+      { source: '/calendar/:ansicht*', destination: '/os/kalender', permanent: false },
       // 02.08.: die Fokus-Regler leben im Kompass.
       { source: '/os/planung/fokus', destination: '/os/kompass', permanent: false },
     ];

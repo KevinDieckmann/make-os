@@ -6,7 +6,7 @@
 // K3 (30.09.): Gäste (Adresse, Name, Kontakt-Kennung) — die Adresse geht NUR in den Termin (ATTENDEE), die Kennung
 // in `kalender-bezug.gastKontakte`; `einladungBestaetigt: true` ist die ausdrückliche Bestätigung aus der Oberfläche.
 
-import { istIcsArt, istSichtbarkeit, farbeSauber, arbeitsortSauber, arbeitsortTitel, erinnerungenSauber, beschaeftigtStandard, type IcsArt, type Sichtbarkeit, type Arbeitsort } from './arten';
+import { istIcsArt, istBlockArt, istSichtbarkeit, farbeSauber, arbeitsortSauber, arbeitsortTitel, erinnerungenSauber, beschaeftigtStandard, type IcsArt, type BlockArt, type Sichtbarkeit, type Arbeitsort } from './arten';
 import { wiederholungSauber, type Wiederholung } from './wiederholung';
 import { zoneGueltig, STANDARD_ZONE } from './zeitzone';
 import { kennungenVon, GAST_KONTAKTE_MAX, type BezugKennungen } from './bezug';
@@ -45,6 +45,8 @@ export interface AnlegeEingabe {
   ort?: string; notiz?: string;
   art: IcsArt; farbe?: string; beschaeftigt: boolean; sichtbarkeit: Sichtbarkeit; zone: string;
   wiederholung?: Wiederholung; erinnerungenMin: number[]; arbeitsort?: Arbeitsort;
+  /** K5: Unterart eines Blocks (nur Art „block“). */
+  blockArt?: BlockArt;
   /** Nur Kennungen → `kalender-bezug`. */
   bezug: BezugKennungen;
   /** Gäste (K3) — nur mit `einladungBestaetigt` geschrieben. */
@@ -84,6 +86,7 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
       ...(ort ? { ort } : {}), ...(notiz ? { notiz } : {}),
       art, ...(farbe ? { farbe } : {}), beschaeftigt, sichtbarkeit: istSichtbarkeit(b.sichtbarkeit) ? b.sichtbarkeit : 'standard', zone,
       ...(wiederholung ? { wiederholung } : {}), erinnerungenMin, ...(arbeitsort ? { arbeitsort } : {}),
+      ...(art === 'block' && istBlockArt(b.blockArt) ? { blockArt: b.blockArt } : {}),
       bezug: kennungenVon(b.bezug && typeof b.bezug === 'object' ? b.bezug as BezugKennungen : {}),
       gaeste: g.gaeste, einladungBestaetigt: b.einladungBestaetigt === true,
     },
@@ -92,7 +95,7 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
 
 export interface AenderEingabe {
   uid: string; stand?: string;
-  termin: { titel?: string; start?: string; ende?: string; ort?: string | null; notiz?: string | null; art?: IcsArt; farbe?: string | null; beschaeftigt?: boolean; sichtbarkeit?: Sichtbarkeit };
+  termin: { titel?: string; start?: string; ende?: string; ort?: string | null; notiz?: string | null; art?: IcsArt; farbe?: string | null; beschaeftigt?: boolean; sichtbarkeit?: Sichtbarkeit; blockArt?: BlockArt | null };
   /** Bezüge ändern (null = Kennung entfernen) — nur Neben-Bestand, auch bei Serien erlaubt. */
   bezug?: Record<string, string | null>;
   /** K3: die ganze neue Gästeliste (nur Organisator, nur nach Bestätigung). */
@@ -112,6 +115,7 @@ export function aendernPruefen(b: Record<string, unknown>): { ok: true; e: Aende
   if (b.art !== undefined && !istIcsArt(b.art)) return { ok: false, fehler: 'Unbekannte Art.' };
   if (b.sichtbarkeit !== undefined && !istSichtbarkeit(b.sichtbarkeit)) return { ok: false, fehler: 'Unbekannte Sichtbarkeit.' };
   if (b.farbe !== undefined && b.farbe !== null && b.farbe !== '' && !farbeSauber(b.farbe)) return { ok: false, fehler: 'Unbekannte Farbe.' };
+  if (b.blockArt !== undefined && b.blockArt !== null && b.blockArt !== '' && !istBlockArt(b.blockArt)) return { ok: false, fehler: 'Unbekannte Block-Art.' };
   const termin: AenderEingabe['termin'] = {
     ...(start ? { start } : {}), ...(ende ? { ende } : {}),
     ...(b.titel !== undefined ? { titel: text(b.titel, 300) ?? '' } : {}),
@@ -121,6 +125,7 @@ export function aendernPruefen(b: Record<string, unknown>): { ok: true; e: Aende
     ...(b.farbe !== undefined ? { farbe: farbeSauber(b.farbe) ?? null } : {}),
     ...(typeof b.beschaeftigt === 'boolean' ? { beschaeftigt: b.beschaeftigt } : {}),
     ...(istSichtbarkeit(b.sichtbarkeit) ? { sichtbarkeit: b.sichtbarkeit } : {}),
+    ...(b.blockArt !== undefined ? { blockArt: istBlockArt(b.blockArt) ? b.blockArt : null } : {}),
   };
   let bezug: Record<string, string | null> | undefined;
   if (b.bezug && typeof b.bezug === 'object') {

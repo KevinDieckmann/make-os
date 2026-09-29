@@ -15,6 +15,8 @@ import { gatherBrain } from '@/lib/brain';
 import { vitalsHint } from '@/lib/vitals';
 import { computeMetrics, eur } from '@/lib/make-one/finance-data';
 import { loadJson } from '@/lib/store/local-db';
+import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
+import { montagVon, tagPlus } from '@/lib/zeit/kalender-kern';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -192,7 +194,8 @@ export async function POST(req: Request) {
       loadJson<{ kunden: { name: string; status: string; mandat?: string; cashflow?: number; naechsterSchritt?: string }[] }>('kunden'),
       loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean; messlatte?: string }[] }>('meilensteine'),
       loadJson<Record<string, { energy?: number; stress?: number; haut?: string; ruecken?: string; tagesnote?: number }>>('journal'),
-      loadJson<Record<string, { date: string; dauerMin: number }[]>>('wochenplan'),
+      // Blöcke dieser Woche (K5: Kalender-Termine der Art Fokus/Block) der auslösenden Person.
+      planBloeckeLesen({ person: personAus(req), von: montagVon(today), bis: tagPlus(montagVon(today), 7) }).catch(() => []),
     ]);
     const m = g.fin ? computeMetrics(g.fin) : null;
     const msBiz = (msF?.meilensteine ?? []).filter(x => x.bereich === 'business' && !x.erledigt);
@@ -246,14 +249,14 @@ export async function POST(req: Request) {
       label = 'Operations-Loop';
       const blocked = g.open.filter(t => (t as { status?: string }).status === 'blocked');
       const delegiert = g.open.filter(t => /— Delegiert an /.test((t as { description?: string }).description ?? ''));
-      const wochenMin = Object.values(wplanF ?? {}).flat().reduce((s, b2) => s + (b2?.dauerMin || 0), 0);
+      const wochenMin = wplanF.reduce((s, b2) => s + (b2.dauerMin || 0), 0);
       system = [kopf, `OPERATIONS-LOOP: Ausführung entstopfen und Kevin entlasten. punkte = Entlastungs-Moves (was, und WER es übernimmt — Team: ${delegierbar(await teamFuerAnfrage(req)).map(t => t.kurz).join(', ')}).`, formatJson].join('\n');
       user = [
         `Stichtag ${wd}, ${today}.`,
         `AUSFÜHRUNG: ${g.open.length} offen · ${g.overdue.length} überfällig · ${g.critical.length} kritisch · ${blocked.length} blockiert · ${delegiert.length} bereits delegiert.`,
         `ÜBERFÄLLIG: ${g.overdue.slice(0, 6).map(t => t.title).join(' · ') || 'nichts'}`,
         `BLOCKIERT: ${blocked.slice(0, 4).map(t => t.title).join(' · ') || 'nichts'}`,
-        `KAPAZITÄT: ${(wochenMin / 60).toFixed(1)} h in Plan-Blöcken über alle gespeicherten Wochen.`,
+        `KAPAZITÄT: ${(wochenMin / 60).toFixed(1)} h in Plan-Blöcken diese Woche.`,
         `RISK-SHIELDS: ${g.shields.map(s => s.text).join(' · ') || 'keine aktiven Warnungen'}`,
         `FINANZ-UHRWERK: letztes Meeting ${fplan?.uhrwerk?.letztesMeeting ?? 'noch nie'}.`,
         'Die Delegations-Runde in /os/aufgaben erzeugt fertige Übergabetexte — beziehe das ein.',

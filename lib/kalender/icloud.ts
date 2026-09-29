@@ -298,21 +298,33 @@ function findeObjekt(s: IcloudStand, uid: string): { kal: KalenderEintrag; obj: 
   return null;
 }
 
-/** Anlegen: alles aus NeuerTermin (ohne uid, ohne Organisator — der kommt aus dem Konto) plus der Kalender (Name). */
-export type NeuEingabe = Omit<NeuerTermin, 'uid' | 'organisator'> & { kalender: string };
+/**
+ * Anlegen: alles aus NeuerTermin (ohne uid, ohne Organisator — der kommt aus dem Konto) plus der Kalender (Name). `uid`
+ * nur für Server-Vorgänge, die idempotent sein müssen (K5: Übernahme der Wochenplan-Blöcke, Spiegel von Event/Familie) —
+ * eine feste, echte UID: gibt es den Termin schon (If-None-Match scheitert mit 412 oder er steht im Stand), wird nichts
+ * doppelt angelegt (`schonDa`).
+ */
+export type NeuEingabe = Omit<NeuerTermin, 'uid' | 'organisator'> & { kalender: string; uid?: string };
+
+const UID_FEST = /^[A-Za-z0-9][A-Za-z0-9._-]{7,120}$/;
 
 /** Neuen Termin anlegen. Liefert die UID. Mit Gästen nur nach Bestätigung (`einladungBestaetigt`, sonst EinladungNoetig). */
-export async function anlegen(e: NeuEingabe, opt: { einladungBestaetigt?: boolean } = {}): Promise<{ uid: string; kalender: string; gaeste: number }> {
+export async function anlegen(e: NeuEingabe, opt: { einladungBestaetigt?: boolean } = {}): Promise<{ uid: string; kalender: string; gaeste: number; schonDa?: true }> {
   const gaeste = e.gaeste ?? [];
   if (gaeste.length && !opt.einladungBestaetigt) throw new EinladungNoetig('einladung', gaeste.map(g => g.email));
   const s = await frischerStand();
   const kal = kalenderNachName(s, e.kalender);
   if (!kal) throw new KalenderFehler(`Kalender „${e.kalender}“ gibt es in iCloud nicht.`, 400);
   if (!kal.schreibbar) throw new KalenderFehler(`„${kal.name}“ ist nur lesbar (geteilt ohne Schreibrecht).`, 403);
+  if (e.uid !== undefined && !UID_FEST.test(e.uid)) throw new KalenderFehler('Ungültige Termin-Kennung.', 400);
+  const { uid: fest, kalender: _k, ...rest } = e;
+  if (fest) { const da = findeObjekt(s, fest); if (da) return { uid: fest, kalender: da.kal.name, gaeste: 0, schonDa: true }; }
   const ich = kontoAdressen(s);
   if (gaeste.length && !ich[0]) throw new KalenderFehler('Ohne iCloud-Adresse keine Einladung — bitte iCloud neu verbinden.', 409);
-  const uid = randomUUID().toUpperCase();
-  const r = await dav(`${kal.id.replace(/\/?$/, '/')}${uid}.ics`, 'PUT', { body: baueTermin({ uid, ...e, ...(gaeste.length ? { gaeste: gaeste.filter(g => !ich.includes(g.email)), organisator: ich[0] } : {}) }), typ: 'text/calendar; charset=utf-8', kopf: { 'If-None-Match': '*' } });
+  const uid = fest ?? randomUUID().toUpperCase();
+  const r = await dav(`${kal.id.replace(/\/?$/, '/')}${uid}.ics`, 'PUT', { body: baueTermin({ uid, ...rest, ...(gaeste.length ? { gaeste: gaeste.filter(g => !ich.includes(g.email)), organisator: ich[0] } : {}) }), typ: 'text/calendar; charset=utf-8', kopf: { 'If-None-Match': '*' } });
+  // Feste UID und 412: der Termin liegt schon dort (ein früherer, abgebrochener Lauf) — nicht noch einmal.
+  if (fest && r.status === 412) { await abgleichen({ nur: kal.id }).catch(() => {}); return { uid, kalender: kal.name, gaeste: 0, schonDa: true }; }
   if (![200, 201, 204].includes(r.status)) throw new KalenderFehler(`iCloud hat den Termin nicht angenommen (${r.status}).`);
   await abgleichen({ nur: kal.id }).catch(() => {});
   return { uid, kalender: kal.name, gaeste: gaeste.length };

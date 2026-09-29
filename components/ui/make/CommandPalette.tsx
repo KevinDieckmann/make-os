@@ -23,7 +23,7 @@ export function CommandPalette() {
   const COMMANDS: Command[] = [
     { id: 'dashboard',    label: 'Dashboard',               desc: 'Zum Haupt-Dashboard',             tag: 'NAV',     action: () => { router.push('/dashboard'); closePalette(); } },
     { id: 'tasks',        label: 'Projekte & Tasks',         desc: 'Task-Manager öffnen',             tag: 'NAV',     action: () => { router.push('/tasks'); closePalette(); } },
-    { id: 'calendar',     label: 'Kalender',                desc: 'Kalenderansicht öffnen',          tag: 'NAV',     action: () => { router.push('/calendar'); closePalette(); } },
+    { id: 'calendar',     label: 'Kalender',                desc: 'Kalenderansicht öffnen',          tag: 'NAV',     action: () => { router.push('/os/kalender'); closePalette(); } },
     { id: 'parting',      label: '/parting — Abschied',     desc: 'Intentionaler Abschied starten',  tag: 'HABIT',   action: () => { openHabit('parting'); closePalette(); } },
     { id: 'appreciate',   label: '/appreciate — Wertschätzen', desc: 'Wertschätzungsmodul öffnen',  tag: 'HABIT',   action: () => { openHabit('appreciation'); closePalette(); } },
     { id: 'reset',        label: '/reset — 6-Sekunden Reset', desc: 'Physiologischen Reset starten', tag: 'HABIT',   action: () => { openHabit('reset'); closePalette(); } },

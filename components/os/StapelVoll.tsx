@@ -48,7 +48,7 @@ const SELBST: Record<string, { href: string; label: string }> = {
   fokus: { href: '/os/fokus', label: 'Fokus' },
   aufgaben: { href: '/os/aufgaben', label: 'Aufgaben' },
   kunden: { href: '/os/mandate', label: 'Produkte & Mandate' },
-  planer: { href: '/os/planung/woche', label: 'Wochenplaner' },
+  planer: { href: '/os/kalender?modus=planen', label: 'Wochenplaner' },
   inbox: { href: '/os/inbox', label: 'Postfach' },
   gesundheit: { href: '/os/gesundheit', label: 'Gesundheit' },
 };

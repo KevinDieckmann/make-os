@@ -39,10 +39,9 @@ export async function POST(req: Request) {
   const alt = (await loadJson<Stand>(NAME)) ?? {};
   if (!erzwingen && alt.letzter && Date.now() - Date.parse(alt.letzter) < 5 * 60_000) return NextResponse.json({ ok: true, frisch: true, neu: 0 });
 
-  const [ms, apple, kemaris, kalender] = await Promise.all([
+  const [ms, apple, kalender] = await Promise.all([
     loadJson<{ emails?: { id: string; senderEmail?: string; subject?: string; receivedAt?: string }[] }>('microsoft-inbox'),
     loadJson<{ daten?: { id: string; account?: string; sender?: string; subject?: string; receivedAt?: string }[] }>('apple-mail-cache'),
-    loadJson<{ events?: { id: string; title?: string; start?: string }[] }>('kemaris-calendar'),
     loadJson<{ events?: { id: string; uid?: string; title?: string; startDate?: string; category?: string; privat?: boolean }[] }>('calendar-cache'),
   ]);
   const bezuege: BezugBestand | null = await ladeBezuege().catch(() => null);
@@ -53,7 +52,7 @@ export async function POST(req: Request) {
     ...(apple?.daten ?? []).filter(m => m.account && !/privat/i.test(m.account) && m.receivedAt).map(m => ({ id: `ap-${m.id}`, email: mailAdresse(m.sender ?? '') ?? '', betreff: m.subject ?? '', am: m.receivedAt! })).filter(m => m.email),
   ];
   const termine: TerminEin[] = [
-    ...(kemaris?.events ?? []).filter(t => t.title && t.start).map(t => ({ id: `km-${t.id}`, titel: t.title!, start: t.start! })),
+    // KEMARIS/M365: bis zur echten Anbindung keine Termine (die Beispieldaten sind seit 29.09., K5, raus).
     // Apple-Kalender: mit Bezug aus jedem Kalender; über den Namen im Titel nur die geschäftliche Kategorie (Holding).
     ...(kalender?.events ?? []).filter(t => t.title && t.startDate).map(t => ({ t, k: kontakteVon(bezugVon(t)) })).filter(({ t, k }) => k.length || t.category === 'holding')
       .map(({ t, k }) => ({ id: k.length ? t.id : `ac-${t.id}`, titel: t.title!, start: t.startDate!, ...(t.uid ? { uid: t.uid } : {}), ...(k.length ? { kontaktIds: k } : {}) })),

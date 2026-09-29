@@ -52,6 +52,7 @@ import { tagVon } from '@/lib/zeit';
 import { PRUEFUNGEN_PLANUNG, planungPruefen, planungReparieren, type PlanungBestand } from './verbindungen-planung';
 import { PRUEFUNGEN_KALENDER, kalenderPruefen, kalenderReparieren, type KalenderPruefBestand, type KalenderLebend } from './verbindungen-kalender';
 import { PRUEFUNGEN_BUCHUNG, buchungenPruefen, type BuchungenStand } from '@/lib/kalender/buchung-verbindungen';
+import { PRUEFUNGEN_SPIEGEL, spiegelPruefen, type SpiegelStand } from '@/lib/kalender/spiegel-verbindungen';
 // ── Eingang ─────────────────────────────────────────────────────────────────
 
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
@@ -94,6 +95,8 @@ export interface VerbindungsBestaende {
   kalender?: KalenderPruefBestand | null;
   /** Terminbuchungen (29.09., K4): nur Kennungen/Status, Seiten, UIDs des iCloud-Stands. null = nicht geprüft. */
   buchungen?: BuchungenStand | null;
+  /** Spiegel im Kalender (29.09., K5): Familie des Inhabers (Dates, Gespräche) — nur Kennungen/UIDs. Events kommen aus `crm`. */
+  familieSpiegel?: SpiegelStand['familie'];
 }
 
 // ── Befunde ─────────────────────────────────────────────────────────────────
@@ -208,6 +211,8 @@ export const PRUEFUNGEN = {
   ...PRUEFUNGEN_KALENDER,
   // Buchung ↔ Seite ↔ Kontakt ↔ Termin (29.09., K4): lib/kalender/buchung-verbindungen.ts.
   ...PRUEFUNGEN_BUCHUNG,
+  // Spiegel Event/Familie ↔ iCloud-Termin (29.09., K5): lib/kalender/spiegel-verbindungen.ts.
+  ...PRUEFUNGEN_SPIEGEL,
 } as const satisfies Record<string, Pruefung>;
 
 export type PruefungId = keyof typeof PRUEFUNGEN;
@@ -551,6 +556,8 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
 
   // Terminbuchungen (29.09., K4): Seite, Kontakt, Termin.
   buchungenPruefen(b.buchungen, m.kontakte, b.kalender, melde);
+  // Spiegel (29.09., K5): Event-/Familien-Termine mit echter UID.
+  spiegelPruefen(b.crm ? { events: b.crm.events.map(x => ({ id: x.id, datum: x.datum, ...(x.kalenderUid ? { kalenderUid: x.kalenderUid } : {}) })), familie: b.familieSpiegel ?? null } : null, b.kalender, melde);
 
   // Import-Konflikte
   if (b.konflikte) {

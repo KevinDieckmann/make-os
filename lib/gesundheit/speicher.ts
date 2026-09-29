@@ -9,7 +9,7 @@ import { merken } from '@/lib/store/memo';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import type { VitalsLog } from '@/lib/vitals';
-import type { PlanBlock } from '@/types/planer';
+import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
 import type { ErnaehrungFile } from '@/lib/make-one/ernaehrung-data';
 import { ladeIndexDatei, fortschreiben, speichereSchwelle, type IndexVerlauf } from '@/lib/kennzahlen/speicher';
 import { berechneGesundheit, GESUNDHEIT_KENNZAHLEN, type GesundheitBestand, type GesundheitsIndex } from './index';
@@ -26,7 +26,8 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     loadJson<HautLog>(speicherFuer('haut', person)),
     loadJson<StreakLog>(speicherFuer('streak', person)),
     loadJson<{ routinen?: { id: string; label: string; wann?: string; aktiv: boolean; kategorie?: string }[] }>('routinen'),
-    loadJson<Record<string, PlanBlock[]>>(speicherFuer('wochenplan', person)),
+    // Blöcke = Kalender-Termine der Art Fokus/Block (+ Archiv des alten Wochenplans) — K5, 29.09.
+    planBloeckeLesen({ person, von: tagPlus(heute, -35), bis: tagPlus(heute, 1) }).catch(() => []),
     loadJson<{ events?: { title?: string; startDate?: string; endDate?: string; allDay?: boolean; owner?: string }[]; at?: string; quelle?: string }>('calendar-cache'),
     loadJson<{ meilensteine?: GesundheitBestand['meilensteine'] }>('meilensteine'),
     loadJson<ErnaehrungFile>('ernaehrung'),
@@ -42,7 +43,7 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     journal: journal ?? {},
     haut: haut ?? {},
     streak: streak ?? {},
-    bloecke: Object.entries(plan ?? {}).filter(([woche]) => woche >= tagPlus(ab, -7)).flatMap(([, l]) => (l ?? []).filter(x => x.date >= ab)).map(x => ({ date: x.date, dauerMin: x.dauerMin, art: x.art, titel: x.titel })),
+    bloecke: plan.filter(x => x.date >= ab).map(x => ({ date: x.date, dauerMin: x.dauerMin, art: x.art, titel: x.titel })),
     termine: (cal?.events ?? []).filter(e => e.startDate && !e.allDay).map(e => ({ start: e.startDate!, ende: e.endDate, title: e.title, owner: e.owner })),
     kalenderFrisch: !!cal?.at && (Date.now() - new Date(cal.at).getTime()) / 3_600_000 < 48,
     meilensteine: ms?.meilensteine ?? [],

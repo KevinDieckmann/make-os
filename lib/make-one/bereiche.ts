@@ -59,8 +59,8 @@ export const BEREICHE: Bereich[] = [
       { href: '/os/planung', label: 'Tag', icon: Target, hinweis: 'Der Tagesplan' },
       { href: '/os/ritual', label: 'Tagesstart & -ende', icon: Sunrise },
       { href: '/os/tageslauf', label: 'Tageslauf', icon: Activity },
-      { href: '/os/planung/woche', label: 'Kalender', icon: CalendarRange },
-      { href: '/os/kalender', label: 'Kalender-Agent', icon: CalendarRange },
+      // K5 (29.09.): EIN Kalender — Planen ist dort ein Modus, der Kalender-Agent sitzt in seiner Leiste.
+      { href: '/os/kalender', label: 'Kalender', icon: CalendarRange },
     ],
   },
   {
@@ -74,7 +74,7 @@ export const BEREICHE: Bereich[] = [
     items: [
       { href: '/os/aufgaben', label: 'Taskmanagement', icon: CheckSquare },
       { href: '/os/meeting', label: 'Meeting → Aufgaben', icon: Users, modus: 'business' },
-      { href: '/os/planung/woche', label: 'Wochenplaner', icon: CalendarRange },
+      { href: '/os/kalender?modus=planen', label: 'Wochenplaner', icon: CalendarRange },
       { href: '/os/planung/monat', label: 'Monat', icon: CalendarRange },
       { href: '/os/planung/quartal', label: 'Quartal', icon: CalendarRange },
       { href: '/os/planung/jahr', label: 'Jahr & Ziele', icon: Target },

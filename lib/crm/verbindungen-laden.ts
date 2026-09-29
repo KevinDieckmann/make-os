@@ -35,6 +35,7 @@ import { kennungenVon } from '@/lib/kalender/bezug';
 import type { KalenderPruefBestand } from './verbindungen-kalender';
 import { HAUSHALT_ERSATZ } from './sperrliste';
 import type { BuchungenStand } from '@/lib/kalender/buchung-verbindungen';
+import type { SpiegelStand } from '@/lib/kalender/spiegel-verbindungen';
 
 interface Quellen { haushalt: string | null; personen: string[] }
 
@@ -50,7 +51,7 @@ async function quellen(): Promise<Quellen> {
 /** Die Speicher, deren Stand das ETag der Prüfung bestimmt. */
 function speicherNamen(q: Quellen): string[] {
   return ['kontakte', CRM_SPEICHER, 'finanzplan', 'tasks', 'ordnung', KONFLIKT_SPEICHER, 'liquiplan', ICLOUD_SPEICHER, BEZUG_SPEICHER, ...HEADS.map(h => standName(h)),
-    ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`, `${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`] : []),
+    ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`, `${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`, `familie--${q.haushalt}`] : []),
     ...q.personen.map(p => speicherFuer('zeit', p)), ...zieleSpeicher(q), `buchung--${q.haushalt ?? HAUSHALT_ERSATZ}`];
 }
 
@@ -106,6 +107,18 @@ async function ladeBuchungen(): Promise<BuchungenStand> {
   };
 }
 
+/** Spiegel (29.09., K5): Familie des Inhabers — nur Kennungen, Tage, UIDs (keine Titel). */
+async function ladeFamilieSpiegel(): Promise<SpiegelStand['familie']> {
+  const h = (await quellen()).haushalt;
+  if (!h) return null;
+  const f = await loadJson<{ dates?: { id: string; datum: string; kalenderUid?: string }[]; einstellungen?: { kalenderTermine?: Record<string, string> } }>(`familie--${h}`);
+  if (!f) return null;
+  return {
+    dates: (Array.isArray(f.dates) ? f.dates : []).filter(d => d.kalenderUid).map(d => ({ id: d.id, datum: d.datum, kalenderUid: d.kalenderUid })),
+    gespraeche: Object.entries(f.einstellungen?.kalenderTermine ?? {}).map(([datum, uid]) => ({ datum, uid })),
+  };
+}
+
 const dateiOrdner = (h: string) => path.join(datenOrdner(), 'dateien', h);
 
 /** Stand aller beteiligten Speicher plus Ordner der Ablage — Grundlage für das ETag (304 ohne Rechnen). */
@@ -129,12 +142,13 @@ async function aufPlatte(h: string): Promise<string[]> {
 export async function ladeVerbindungsBestaende(heute: string): Promise<VerbindungsBestaende & { haushalt: string | null }> {
   const q = await quellen();
   // Seit 28.09. abends: Planposten-Kennungen (Mandat → Liquiditätsplan) und Head-Vorschläge (nur Kennung, Person, Status).
-  const [liquiplan, heads, planung, kalender, buchungen] = await Promise.all([
+  const [liquiplan, heads, planung, kalender, buchungen, familieSpiegel] = await Promise.all([
     loadJson<{ posten?: { id: string }[] }>('liquiplan'),
     Promise.all(HEADS.map(async h => ({ head: h, stand: await loadJson<{ vorschlaege?: { id: string; kontakt_id?: string | null; status?: string }[] }>(standName(h)) }))),
     ladePlanung(q),
     ladeKalenderPruefung().catch(() => null),
     ladeBuchungen().catch(() => null),
+    ladeFamilieSpiegel().catch(() => null),
   ]);
   const [kontakte, crm, finanz, tasks, ordnung, einheiten, konflikte, ablage, dateien, zeiten, aufgabenAblage] = await Promise.all([
     loadJson<{ kontakte?: Kontakt[] }>('kontakte'),
@@ -166,6 +180,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     planung,
     kalender,
     buchungen,
+    familieSpiegel,
     heads: heads.map(h => ({ head: h.head, vorschlaege: (Array.isArray(h.stand?.vorschlaege) ? h.stand!.vorschlaege : []).map(v => ({ id: v.id, ...(v.kontakt_id ? { kontakt_id: v.kontakt_id } : {}), ...(v.status ? { status: v.status } : {}) })) })),
   };
 }

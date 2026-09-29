@@ -62,7 +62,8 @@ async function rechne(person: string) {
   const mitNachname = kontakte
     .map(k => ({ k, teile: k.name.trim().split(/\s+/).filter(t => t.length > 2) }))
     .filter(x => x.teile.length >= 2);
-  const termine = [...kal.termine, ...kal.kemaris].filter(t => !t.maskiert);
+  // KEMARIS/M365 folgt mit der echten Anbindung (Beispieldaten seit 29.09., K5, raus) — `kal.kemaris` zählt nicht.
+  const termine = kal.termine.filter(t => !t.maskiert);
   for (const e of termine) {
     const titel = e.titel.toLowerCase();
     if (!titel) continue;

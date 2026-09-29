@@ -41,6 +41,8 @@ import { HandlungProvider } from './Handlung';
 import { suchPasst } from '@/lib/text/such-norm';
 import { imArchiv } from '@/lib/aufgaben/neustart';
 import { projektAnlegen, spacesOderFest, usePersonen, useIch } from './hilfe';
+import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
+import { kalenderLink } from '@/lib/kalender/modus';
 
 const RAUM_MERKER = 'make-aufgaben-raum';
 const FILTER_MERKER = 'make-aufgaben-filter';
@@ -193,6 +195,9 @@ export function AufgabenRaum() {
     <HandlungProvider>
     <Seite titel={titel} rechts={
       <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Umschalter Kalender | Aufgaben (29.09., K5): springt mit Space/Projekt/Filter in den Kalender. */}
+        <KalenderAufgabenSchalter aktiv="aufgaben" aufgaben={{ href: aktuell }}
+          kalender={{ href: kalenderLink({ ...(raumId ? { space: bereichVonSpace(raumId), as: raumId } : {}), ...(projektId ? { ap: projektId } : {}), ...(filter.wer !== 'alle' ? { wer: filter.wer } : {}) }) }} />
         {raum && <Segmente liste={[{ id: 'liste', label: 'Liste' }, { id: 'board', label: 'Board' }, { id: 'tabelle', label: 'Tabelle' }, { id: 'kalender', label: 'Kalender' }, { id: 'zoe', label: 'ZOE' }]} aktiv={darstellung} onWahl={a => gehe({ ...adresse, darstellung: a === 'liste' ? undefined : a }, 'replace')} />}
         <Link href={bereichGemerkt === 'privat' ? '/os/aufgaben/board?space=privat' : '/os/aufgaben/board?space=business'} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Zeitstrahl ›</Link>
         {!raum && <NeuAnfangenKnopf klein />}

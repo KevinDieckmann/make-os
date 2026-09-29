@@ -13,7 +13,8 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { traktionsIndex, alsTraktion } from '@/lib/crm/traktion-index';
 import { ladeIndexDatei } from '@/lib/kennzahlen/speicher';
 import type { Kontakt } from '@/lib/make-one/crm';
-import type { PlanBlock } from '@/types/planer';
+import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
+import { tagPlus } from '@/lib/kalender/zeit';
 import { localDay } from '@/lib/zeit';
 import { SCOPES, schwelleSauber, type Scope, type Schwelle } from './register';
 import { mrrJeKunde, type Bestand, type Monatsabschluss } from './messen';
@@ -141,7 +142,8 @@ async function ladeRohFrisch(heute: string) {
     ladeCrm(),
     loadJson<{ kontakte: Kontakt[] }>('kontakte'),
     loadJson<{ events?: { startDate?: string; endDate?: string; allDay?: boolean; owner?: string }[]; quelle?: string }>('calendar-cache'),
-    loadJson<Record<string, PlanBlock[]>>('wochenplan'),
+    // Fokus-Blöcke (K5: Kalender-Termine der Art Fokus/Block + Archiv) — wie bisher Kevins Plan.
+    planBloeckeLesen({ person: 'kevin', von: tagPlus(heute, -42), bis: tagPlus(heute, 1) }).catch(() => []),
     loadJson<{ auftraege?: { status: string; beendet?: string; zeit?: string; anlass?: string; name?: string; auftrag?: string }[] }>('zoe-auftraege'),
     loadJson<{ meilensteine?: { id?: string; titel?: string; bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     ladeEinstellungen(),
@@ -174,7 +176,7 @@ async function ladeRohFrisch(heute: string) {
     traktion: { score: tr.score, text: tr.score != null ? `${tr.welten.map(w => `${w.label} ${w.score ?? '—'}`).join(' · ')}${tr.vorlaeufig ? ' (vorläufig)' : ''}` : tr.hinweis, welten: tr.welten.map(w => ({ id: w.id, label: w.label, score: w.score })) },
     termine: (cal?.events ?? []).filter(e => !e.allDay && e.startDate && e.endDate).map(e => ({ start: e.startDate!, ende: e.endDate!, owner: e.owner })),
     termineVollstaendig: cal?.quelle === 'icloud',
-    bloecke: Object.entries(plan ?? {}).filter(([woche]) => woche >= localDay(new Date(ab.getTime() - 7 * 86_400_000))).flatMap(([, l]) => (l ?? []).filter(x => x.date >= abTag)).map(x => ({ date: x.date, dauerMin: x.dauerMin, art: x.art })),
+    bloecke: plan.filter(x => x.date >= abTag).map(x => ({ date: x.date, dauerMin: x.dauerMin, art: x.art })),
     // Nur die Felder, die der Index braucht (Auftragstexte können lang sein).
     auftraege: (auftraege?.auftraege ?? []).map(a => ({ status: a.status, beendet: a.beendet, zeit: a.zeit, anlass: a.anlass, name: a.name, auftrag: typeof a.auftrag === 'string' ? a.auftrag.slice(0, 120) : undefined })),
     meilensteine: ms?.meilensteine ?? [],

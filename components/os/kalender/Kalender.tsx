@@ -13,6 +13,11 @@
 // Fokuszeit, Arbeitsort), Kürzel c, Aufziehen im Raster, Arbeitsort-Leiste, Farbe je Termin.
 // Aufgaben kommen aus dem TasksContext (dieselben Aufgaben, mit Uhrzeit an ihrer Zeit).
 // Fristen und Aufgaben respektieren Sicht (Kevin/Malin/Gemeinsam) und Bereich (Privat/Business).
+// Seit 29.09. (K5, Kevin: „Ein Kalender, Planen als Modus“): Modus „Planen“ (`?modus=planen`, Taste p) — der frühere
+// Wochenplaner im selben Raster (components/os/kalender/Planen.tsx); Blöcke sind Termine der Art Fokus/Block.
+// Adresse: `?modus=planen`, `?tag=YYYY-MM-DD` (Woche/Tag dorthin), `?space=privat|business` (Bereich).
+// Umschalter oben rechts (Kevin 29.09., wie Google): Kalender | Aufgaben (`?modus=aufgaben`, Taste k bzw. u) — Aufgaben
+// nach Fälligkeit (AufgabenModus.tsx). Planen gehört zur Kalender-Seite; Aufgaben schließt Planen aus (lib/kalender/modus.ts).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -43,8 +48,15 @@ import { aufgabenFuerKalender, ohneTermin, type KalenderAufgabe } from '@/lib/ka
 import { useAufgabenImKalender, OhneTerminListe } from './aufgaben';
 import { useTerminAusAdresse } from './verknuepfen';
 import { useIch } from '../aufgaben/hilfe';
+import { usePlanen, istArchivTermin, blockFarbe } from './Planen';
+import { icsVonPlanArt, planArtAusTitel } from '@/lib/planung/bloecke';
+import { AufgabenModus, type AufgabenModusFilter } from './AufgabenModus';
+import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
+import { modusAusAdresse, type Modus } from '@/lib/kalender/modus';
 
 type Ansicht = 'tag' | 'vier' | 'woche' | 'monat' | 'jahr' | 'agenda';
+/** Ansichten mit Zeitraster — nur dort lässt sich planen. */
+const MIT_RASTER: readonly Ansicht[] = ['tag', 'vier', 'woche'];
 const ANSICHTEN: { id: Ansicht; label: string; taste: string }[] = [{ id: 'tag', label: 'Tag', taste: 'd' }, { id: 'vier', label: '4 Tage', taste: 'x' }, { id: 'woche', label: 'Woche', taste: 'w' }, { id: 'monat', label: 'Monat', taste: 'm' }, { id: 'jahr', label: 'Jahr', taste: 'y' }, { id: 'agenda', label: 'Termine', taste: 'a' }];
 const MERKER = 'make-os:kalender-ansicht';
 const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
@@ -53,7 +65,7 @@ const uhr = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${Str
 const monatPlus = (tag: string, n: number) => { const d = new Date(`${tag.slice(0, 7)}-15T12:00:00`); d.setMonth(d.getMonth() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
 
 interface Einstellungen { kalender: Record<Wer, string>; dauer: { termin: number; fokus: number; routine: number; aufgabe: number; reha: number }; space: Record<string, 'privat' | 'business'>; standardSicht?: 'alle' | Wer }
-interface Analyse { briefing?: string; conflicts?: { date: string; a: string; b: string; overlap: string }[]; vorschlaege?: { title: string; date: string; startHour: number; startMin?: number; durationMin: number; calendar: string; grund?: string }[]; eingetragen?: boolean }
+interface Analyse { briefing?: string; conflicts?: { date: string; a: string; b: string; overlap: string }[]; vorschlaege?: { title: string; date: string; startHour: number; startMin?: number; durationMin: number; calendar: string; grund?: string }[]; /** R-Z (29.09.): Vorschläge liegen als Freigabe im ZOE-Stapel (Gruppe „Kalender“) — nie autonom eingetragen. */ gestapelt?: number }
 type Bereich = 'alle' | 'privat' | 'business';
 
 
@@ -109,9 +121,31 @@ export function Kalender() {
   const [analysiert, setAnalysiert] = useState(false);
   const [eingetragen, setEingetragen] = useState<Record<number, 'ok' | 'busy' | 'err'>>({});
   const [abgleich, setAbgleich] = useState(false);
+  const [modus, setModusRoh] = useState<Modus>('kalender');
+  const planenStart = useRef(false);
+  const [aufgabenFilter, setAufgabenFilterRoh] = useState<AufgabenModusFilter>({ wer: 'alle' });
 
   useEffect(() => { try { const a = localStorage.getItem(MERKER) as Ansicht | null; if (a && ANSICHTEN.some(x => x.id === a)) setAnsichtRoh(a); else if (!breit) setAnsichtRoh('tag'); } catch { /* egal */ } }, [breit]);
   const setAnsicht = (a: Ansicht) => { setAnsichtRoh(a); try { localStorage.setItem(MERKER, a); } catch { /* egal */ } };
+  // Adresse (K5): ?modus=planen|aufgaben · ?tag= · ?space= · as/ap/al/wer (Aufgaben-Filter) — alte Links
+  // (/os/planung/woche, WEG.woche) und der Umschalter in den Aufgaben landen hier (lib/kalender/modus.ts).
+  useEffect(() => {
+    const a = modusAusAdresse(window.location.search);
+    setModusRoh(a.modus);
+    // Aus dem früheren Wochenplaner (Link mit ?modus=planen): am großen Bildschirm die Woche.
+    if (a.modus === 'planen') planenStart.current = true;
+    if (a.tag) setAnker(a.tag);
+    if (a.space) setBereich(a.space);
+    setAufgabenFilterRoh({ wer: a.wer ?? 'alle', ...(a.as ? { as: a.as } : {}), ...(a.ap ? { ap: a.ap } : {}), ...(a.al ? { al: a.al } : {}) });
+  }, []);
+  const adresseSetzen = (teil: Record<string, string | undefined>) => {
+    try { const u = new URL(window.location.href); for (const [k, v] of Object.entries(teil)) { if (v) u.searchParams.set(k, v); else u.searchParams.delete(k); } window.history.replaceState(null, '', u.toString()); } catch { /* egal */ }
+  };
+  const setAufgabenFilter = (f: AufgabenModusFilter) => { setAufgabenFilterRoh(f); adresseSetzen({ as: f.as, ap: f.ap, al: f.al, wer: f.wer === 'alle' ? undefined : f.wer }); };
+  useEffect(() => { if (planenStart.current && breit) { planenStart.current = false; setAnsichtRoh('woche'); } }, [breit, modus]);
+  // Planen braucht das Zeitraster: aus Monat/Jahr/Termine geht es in die Woche (am Handy in den Tag).
+  useEffect(() => { if (modus === 'planen' && !MIT_RASTER.includes(ansicht)) setAnsichtRoh(breit ? 'woche' : 'tag'); }, [modus, ansicht, breit]);
+  const setModus = (m: Modus) => { setModusRoh(m); adresseSetzen({ modus: m === 'kalender' ? undefined : m }); };
   useEffect(() => {
     fetch('/api/state/kalender-einstellungen').then(r => r.json()).then((e: Einstellungen) => { setEinst(e); if (e.standardSicht) setSicht(e.standardSicht); }).catch(() => {});
   }, []);
@@ -137,15 +171,25 @@ export function Kalender() {
   const k4 = useTermineFinden({ alle: daten?.termine, onVorschlag: setNeu });
 
   const kalFarbe = useCallback((name: string, wer: Wer) => daten?.kalender.find(k => k.name === name)?.farbe ?? WER_FARBE[wer], [daten]);
-  const farbe = useCallback((t: KTermin) => (istQuellTermin(t) ? t.farbe : t.farbeEigen ?? kalFarbe(t.kalender, t.wer)), [kalFarbe]);
+  // Blöcke (K5) in der Farbe ihrer Art (Reha, Routine, Pause, Aufgabe, Block), solange der Termin keine eigene hat.
+  const farbe = useCallback((t: KTermin) => (istQuellTermin(t) ? t.farbe : t.farbeEigen ?? blockFarbe(t) ?? kalFarbe(t.kalender, t.wer)), [kalFarbe]);
   const such = suche.trim().toLowerCase();
   const imBereich = useCallback((b: 'privat' | 'business' | undefined) => bereich === 'alle' || !b || b === bereich, [bereich]);
   const termine = useMemo(() => [
     ...(daten?.termine ?? []).filter(t => (sicht === 'alle' || t.wer === sicht) && !aus.has(t.kalender) && imBereich(spaceVonKalender(einst, t.kalender)) && (!such || `${t.titel} ${t.ort ?? ''} ${t.kalender} ${t.notiz ?? ''}`.toLowerCase().includes(such))),
     ...quell.filter(t => !aus.has(t.kalender) && imBereich(t.space) && (!such || `${t.titel} ${t.kalender}`.toLowerCase().includes(such))),
   ], [daten, quell, sicht, aus, such, einst, imBereich]);
+  const wocheDesAnkers = useMemo(() => { const mo = montagVon(anker); return Array.from({ length: 7 }, (_, i) => tagPlus(mo, i)); }, [anker]);
+  // Planen (K5): Bausteine platzieren, Stunden der Woche, Archiv der alten Wochenplan-Blöcke (schreibgeschützt im Raster).
+  const planen = usePlanen({ aktiv: modus === 'planen' && MIT_RASTER.includes(ansicht), tage, termine, sicht, laden, melden: setMeldung });
+  const rasterTermine = useMemo(() => (planen.archivTermine.length ? [...termine, ...planen.archivTermine] : termine), [termine, planen.archivTermine]);
   // Klick auf einen Quell-Eintrag öffnet nie das Termin-Fenster: Geburtstag → Person/Kontaktakte, Feiertag → nichts.
-  const oeffnen = (t: KTermin) => { if (istQuellTermin(t)) { if (t.href) router.push(t.href); return; } setOffen(t); };
+  const oeffnen = (t: KTermin) => {
+    if (istQuellTermin(t)) { if (t.href) router.push(t.href); return; }
+    // Alter Wochenplan (K5): schreibgeschützt — wird mit der Übernahme zum Termin bzw. bleibt Archiv.
+    if (istArchivTermin(t)) { setMeldung(t.titel.endsWith('(wartet auf Übernahme)') ? 'Block aus dem alten Wochenplan — „Jetzt übernehmen“ (links) macht ihn zum Termin.' : 'Vergangener Block aus dem alten Wochenplan — nur zum Nachlesen.'); return; }
+    setOffen(t);
+  };
   const jahrKalender = jahrDaten?.kalender;
   const kalenderAn = useCallback((name: string) => { if (aus.has(name)) return false; if (sicht === 'alle') return true; const w = jahrKalender?.find(k => k.name === name)?.wer; return !w || w === sicht; }, [aus, sicht, jahrKalender]);
   const kalenderFarbe = useCallback((name: string) => { const k = jahrKalender?.find(x => x.name === name); return k?.farbe ?? WER_FARBE[k?.wer ?? 'beide']; }, [jahrKalender]);
@@ -160,7 +204,11 @@ export function Kalender() {
   const ka = useAufgabenImKalender();
   useTerminAusAdresse(daten?.termine, setAnker, setOffen);
   const neuVon = (art: TerminArt, tag = ansicht === 'tag' ? anker : heute): Vorgabe => ({ tag, art, ...(art === 'abwesend' || art === 'arbeitsort' ? { ganztags: true } : { von: '09:00' }), ...(sicht === 'kevin' || sicht === 'malin' || sicht === 'beide' ? { wer: sicht } : {}), ...(bereich === 'business' ? { spaceId: 'kdc' } : {}) });
-  const neuImRaster = (tag: string, m: number, ende?: number) => setNeu({ ...neuVon('termin', tag), von: uhr(m), bis: uhr(Math.min(23 * 60 + 59, ende ?? m + standardDauer)) });
+  const neuImRaster = (tag: string, m: number, ende?: number) => {
+    // Planen: ist ein Baustein gewählt, entsteht hier der Block (kein Dialog).
+    if (planen.platzieren(tag, m, ende)) return;
+    setNeu({ ...neuVon('termin', tag), von: uhr(m), bis: uhr(Math.min(23 * 60 + 59, ende ?? m + standardDauer)) });
+  };
   const arbeitsortNeu = (tag: string, wer: Wer) => setNeu({ tag, art: 'arbeitsort', ganztags: true, wer });
 
   // Navigation
@@ -174,12 +222,15 @@ export function Kalender() {
       else if (e.key === 'ArrowLeft') springe(-1);
       else if (e.key === 'ArrowRight') springe(1);
       else if (e.key === 'n' || e.key === 'c') setNeu(neuVon('termin'));
+      else if (e.key === 'p') setModus(modus === 'planen' ? 'kalender' : 'planen');
+      else if (e.key === 'k') setModus('kalender');
+      else if (e.key === 'u') setModus('aufgaben');
       else { const a = ANSICHTEN.find(x => x.taste === e.key); if (a) setAnsicht(a.id); else return; }
       e.preventDefault();
     };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
-  }, [ansicht, anker, heute, sicht, bereich]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ansicht, anker, heute, sicht, bereich, modus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const titel = ansicht === 'tag' ? `${WD[new Date(`${anker}T12:00:00`).getDay()]}, ${Number(anker.slice(8, 10))}. ${MONATE[Number(anker.slice(5, 7)) - 1]} ${anker.slice(0, 4)}`
     : ansicht === 'woche' ? `KW ${kalenderwoche(tage[0])} · ${Number(tage[0].slice(8, 10))}.${Number(tage[0].slice(5, 7))}. – ${Number(tage[6].slice(8, 10))}.${Number(tage[6].slice(5, 7))}.${tage[6].slice(0, 4)}`
@@ -203,12 +254,11 @@ export function Kalender() {
     const events = (daten?.termine ?? []).filter(t => wochenTage.includes(t.start.slice(0, 10))).map(t => ({ id: t.id, title: t.titel, startDate: t.start, endDate: t.ende, allDay: t.ganztags, calendarName: t.kalender, location: t.ort }));
     const d: Analyse = await fetch('/api/kalender/analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events, today: heute }) }).then(r => r.json()).catch(() => ({ briefing: 'Analyse gerade nicht möglich.' }));
     setAnalyse(d); setAnalysiert(false);
-    if (d.eingetragen) { setEingetragen(Object.fromEntries((d.vorschlaege ?? []).map((_, i) => [i, 'ok' as const]))); void laden(); }
   };
   const blockEintragen = async (b: NonNullable<Analyse['vorschlaege']>[number], i: number) => {
     setEingetragen(e => ({ ...e, [i]: 'busy' }));
     const startMin = b.startHour * 60 + (b.startMin ?? 0);
-    const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titel: b.title, kalender: b.calendar, start: wandAus(b.date, startMin), ende: wandAus(b.date, startMin + b.durationMin) }) }).then(x => x.json()).catch(() => ({ ok: false }));
+    const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titel: b.title, kalender: b.calendar, start: wandAus(b.date, startMin), ende: wandAus(b.date, startMin + b.durationMin), ...icsVonPlanArt(planArtAusTitel(b.title)) }) }).then(x => x.json()).catch(() => ({ ok: false }));
     setEingetragen(e => ({ ...e, [i]: r.ok ? 'ok' : 'err' }));
     if (r.ok) void laden(); else if (r.fehler) setMeldung(r.fehler);
   };
@@ -222,6 +272,7 @@ export function Kalender() {
   const leiste = (
     <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
       {breit && <div><ErstellenMenue breit onArt={a => setNeu(neuVon(a))} /></div>}
+      {planen.leiste}
       <Karte i={1}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <button onClick={() => setAnker(a => monatPlus(a, -1))} aria-label="Vormonat" style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 16 }}>‹</button>
@@ -269,7 +320,7 @@ export function Kalender() {
         <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 10 }}>{quelleText}{daten?.stand ? ` · Stand ${new Date(daten.stand).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : ''}{daten?.fehler ? ` · ${daten.fehler}` : ''}</div>
         <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
           {daten?.icloud && <Knopf leise aus={abgleich} onClick={() => void jetztAbgleichen()}>{abgleich ? 'gleicht ab …' : '↻ Mit iCloud abgleichen'}</Knopf>}
-          <Link href="/os/planung/woche" style={{ fontSize: 12, color: C.inkDim, alignSelf: 'center' }}>Wochenplaner (Blöcke) ›</Link>
+          {modus !== 'planen' && <button type="button" onClick={() => setModus('planen')} style={{ fontSize: 12, color: C.inkDim, alignSelf: 'center', background: 'none', border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>Woche planen (Blöcke) ›</button>}
         </div>
       </Karte>
       {ebenen.aufgaben && (
@@ -284,6 +335,7 @@ export function Kalender() {
         <Ueberschrift rechts={<Knopf leise aus={analysiert || !daten} onClick={() => void analysieren()}>{analysiert ? 'analysiert …' : 'Woche prüfen'}</Knopf>}>Kalender-Agent</Ueberschrift>
         {!analyse && <div style={{ fontSize: 12.5, color: C.inkDim }}>Konflikte finden, Reha- und Fokus-Blöcke in freie Lücken vorschlagen — eintragen tust du.</div>}
         {analyse?.briefing && <div style={{ fontSize: TYP.bedien, lineHeight: 1.55, marginBottom: 8 }}>{analyse.briefing}</div>}
+        {!!analyse?.gestapelt && <Link href="/os/stapel" style={{ display: 'inline-block', fontSize: 12.5, color: LEUCHT.agenten, textDecoration: 'none', fontWeight: 600, marginBottom: 8 }}>{analyse.gestapelt === 1 ? '1 Vorschlag' : `${analyse.gestapelt} Vorschläge`} im Stapel ›</Link>}
         {!!analyse?.conflicts?.length && <Liste>{analyse.conflicts.map((c, i) => <Zeile key={i} links={<Punkt farbe={LEUCHT.kritisch} />} titel={<><b>{c.a}</b> ⨯ <b>{c.b}</b></>} unter={`${c.date} · ${c.overlap}`} />)}</Liste>}
         {!!analyse?.vorschlaege?.length && (
           <Liste>
@@ -326,36 +378,43 @@ export function Kalender() {
         <button onClick={() => springe(-1)} aria-label="zurück" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>‹</button>
         <button onClick={() => springe(1)} aria-label="weiter" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>›</button>
         <span style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', marginRight: 'auto' }}>{titel}{laedt && <span style={{ fontSize: 11, color: C.inkLeise, fontWeight: 400, marginLeft: 8 }}>lädt …</span>}</span>
-        <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen …" aria-label="Termine suchen" style={{ ...feld, width: breit ? 180 : '100%', fontSize: 13, padding: '7px 11px' }} />
+        {/* Umschalter Kalender | Aufgaben (Kevin 29.09., wie Google) — vor der Suche, damit er am Handy in der ersten Zeile bleibt. */}
+        <KalenderAufgabenSchalter aktiv={modus === 'aufgaben' ? 'aufgaben' : 'kalender'} kalender={{ onClick: () => setModus(modus === 'planen' ? 'planen' : 'kalender') }} aufgaben={{ onClick: () => setModus('aufgaben') }} tasten={{ kalender: 'k', aufgaben: 'u' }} />
+        <input value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'aufgaben' ? 'Aufgaben suchen …' : 'Suchen …'} aria-label={modus === 'aufgaben' ? 'Aufgaben suchen' : 'Termine suchen'} style={{ ...feld, width: breit ? 180 : '100%', fontSize: 13, padding: '7px 11px' }} />
+        {/* Modus (K5): Kalender · Planen — dasselbe Raster (nur auf der Kalender-Seite des Umschalters). */}
+        {modus !== 'aufgaben' && <Segmente liste={[{ id: 'kalender' as Modus, label: 'Kalender' }, { id: 'planen' as Modus, label: 'Planen' }]} aktiv={modus} onWahl={setModus} />}
         {/* Sechs Ansichten passen am Handy nicht nebeneinander — die Leiste rollt statt die Seite zu verbreitern. */}
-        <div style={{ maxWidth: '100%', overflowX: 'auto' }}><Segmente liste={ANSICHTEN.map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>
+        {modus !== 'aufgaben' && <div style={{ maxWidth: '100%', overflowX: 'auto' }}><Segmente liste={(modus === 'planen' ? ANSICHTEN.filter(a => MIT_RASTER.includes(a.id)) : ANSICHTEN).map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>}
         {!breit && <ErstellenMenue breit={false} onArt={a => setNeu(neuVon(a))} />}
       </div>
-      <div style={{ minHeight: 0 }}>
-        {(ansicht === 'tag' || ansicht === 'woche') && (
-          <Zeitraster tage={tage} heute={heute} termine={k4.raster(termine)} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={k4.farbe(farbe)}
+      <div style={{ minHeight: 0, ...(modus === 'aufgaben' ? { overflowY: 'auto' as const } : {}) }}>
+        {modus === 'aufgaben' && <AufgabenModus heute={heute} woche={wocheDesAnkers} sicht={sicht} bereich={bereich} suche={suche} filter={aufgabenFilter} onFilter={setAufgabenFilter} />}
+        {modus !== 'aufgaben' && (ansicht === 'tag' || ansicht === 'woche') && (
+          <Zeitraster tage={tage} heute={heute} termine={k4.raster(rasterTermine)} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={k4.farbe(farbe)}
             onOeffnen={t => { if (!k4.oeffnen(t)) oeffnen(t); }} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} onArbeitsortNeu={arbeitsortNeu} />
         )}
-        {ansicht === 'vier' && (
-          <VierTage start={anker} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={farbe}
+        {modus !== 'aufgaben' && ansicht === 'vier' && (
+          <VierTage start={anker} heute={heute} termine={rasterTermine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={farbe}
             onOeffnen={oeffnen} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} onArbeitsortNeu={arbeitsortNeu} />
         )}
-        {ansicht === 'monat' && <Monat blatt={blatt} monat={Number(anker.slice(5, 7))} heute={heute} termine={termine.filter(t => t.art !== 'arbeitsort')} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} onOeffnen={oeffnen} aufgaben={aufgabenImZeitraum} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} />}
-        {ansicht === 'jahr' && <Jahr jahr={jahr} heute={heute} daten={jahrDaten} quellen={quell.filter(t => !aus.has(t.kalender))} kalenderAn={kalenderAn} farbe={kalenderFarbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} />}
-        {ansicht === 'agenda' && <Karte i={0}><Agenda tage={tage} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} suche={such} onOeffnen={oeffnen} aufgaben={aufgabenImZeitraum} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} /></Karte>}
+        {modus !== 'aufgaben' && ansicht === 'monat' && <Monat blatt={blatt} monat={Number(anker.slice(5, 7))} heute={heute} termine={termine.filter(t => t.art !== 'arbeitsort')} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} onOeffnen={oeffnen} aufgaben={aufgabenImZeitraum} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} />}
+        {modus !== 'aufgaben' && ansicht === 'jahr' && <Jahr jahr={jahr} heute={heute} daten={jahrDaten} quellen={quell.filter(t => !aus.has(t.kalender))} kalenderAn={kalenderAn} farbe={kalenderFarbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} />}
+        {modus !== 'aufgaben' && ansicht === 'agenda' && <Karte i={0}><Agenda tage={tage} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} suche={such} onOeffnen={oeffnen} aufgaben={aufgabenImZeitraum} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} /></Karte>}
       </div>
     </div>
   );
 
   return (
-    <Seite titel="Kalender" unter="Tag, 4 Tage, Woche, Monat, Jahr, Termine — iCloud direkt, dazu Feiertage NRW, Geburtstage, Fristen, Erinnerungen und Aufgaben mit Datum. Tastatur: t heute · ← → blättern · d/x/w/m/y/a Ansicht · c erstellen." rechts={<Chip farbe={LEUCHT.puls}>{daten?.icloud ? 'iCloud · live' : 'nur lesen'}</Chip>}>
+    <Seite titel="Kalender" unter={modus === 'aufgaben' ? 'Aufgaben nach Fälligkeit — abhaken, öffnen, einplanen (Datum wählen oder auf einen Tag ziehen). Tastatur: k Kalender · u Aufgaben.' : modus === 'planen' ? 'Planen: Bausteine, Routinen und Aufgaben antippen und in den Kalender klicken — jeder Block ist ein Termin in iCloud. Tastatur: p Kalender/Planen · t heute · ← → blättern.' : 'Tag, 4 Tage, Woche, Monat, Jahr, Termine — iCloud direkt, dazu Feiertage NRW, Geburtstage, Fristen, Erinnerungen und Aufgaben mit Datum. Tastatur: t heute · ← → blättern · d/x/w/m/y/a Ansicht · c erstellen · p planen.'} rechts={<Chip farbe={LEUCHT.puls}>{daten?.icloud ? 'iCloud · live' : 'nur lesen'}</Chip>}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center' }}>{meldung}<button onClick={() => setMeldung(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>}
       {!daten && !laedt && <Leer>Kalender wird geladen …</Leer>}
+      {planen.kopf && <div style={{ marginBottom: 12 }}>{planen.kopf}</div>}
       <div style={{ display: 'grid', gridTemplateColumns: breit ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: 'start' }}>
         {breit && leiste}
         {haupt}
         {!breit && leiste}
       </div>
+      {planen.unten && <div style={{ marginTop: 14 }}>{planen.unten}</div>}
       {offen && <TerminFenster key={offen.id} termin={offen} icloud={daten?.icloud ?? false} space={spaceVonKalender(einst, offen.kalender)} kalenderFarbe={kalFarbe(offen.kalender, offen.wer)} onZu={() => setOffen(null)} onGespeichert={() => void laden()} />}
       {neu && <NeuerTermin vorgabe={neu} heute={heute} standardDauer={standardDauer} fokusDauer={einst?.dauer.fokus ?? 90} kalender={daten?.kalender ?? []} kalenderStandard={einst?.kalender} onZu={() => setNeu(null)} onAngelegt={x => { if (x.uid) void laden(); }} />}
     </Seite>

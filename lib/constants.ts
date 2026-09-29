@@ -34,7 +34,7 @@ export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string }>
 export const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { href: '/tasks', label: 'Projects', icon: 'FolderKanban' },
-  { href: '/calendar', label: 'Calendar', icon: 'CalendarDays' },
+  { href: '/os/kalender', label: 'Calendar', icon: 'CalendarDays' },
   { href: '/wellness', label: 'Fundament', icon: 'Activity' },
   { href: '/dog', label: 'Dog', icon: 'PawPrint' },
   { href: '/groceries', label: 'Groceries', icon: 'ShoppingCart' },

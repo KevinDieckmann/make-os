@@ -190,9 +190,9 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   ).length;
 
   const planung: Faktor[] = [
-    { label: 'Vormittage frei', wert: clamp((freieVormittage / 5) * 100), echt: calFrisch, href: '/os/planung/woche',
+    { label: 'Vormittage frei', wert: clamp((freieVormittage / 5) * 100), echt: calFrisch, href: '/os/kalender?modus=planen',
       quelle: calFrisch ? `${freieVormittage} von 7 Tagen ohne Vormittagstermin — 5 = 100` : 'Kalender-Stand zu alt, /os/kalender öffnen' },
-    { label: 'Keine Terminkollisionen', wert: clamp(100 - kollisionen * 25), echt: calFrisch, href: '/os/planung/woche',
+    { label: 'Keine Terminkollisionen', wert: clamp(100 - kollisionen * 25), echt: calFrisch, href: '/os/kalender?modus=planen',
       quelle: calFrisch ? `${kollisionen} Überschneidung(en) diese Woche` : 'Kalender-Stand zu alt' },
     { label: 'Nichts überfällig', href: '/os/aufgaben', wert: offen.length ? clamp(100 - (overdue / offen.length) * 100) : 100, echt: alle.length > 0,
       quelle: alle.length ? `${overdue} von ${offen.length} überfällig` : 'keine Aufgaben' },

@@ -2,7 +2,8 @@
 import { describe, it, expect } from 'vitest';
 import type { Kontakt } from '../lib/make-one/crm';
 import type { Event, Lead, Teilnahme, Chance } from '../lib/crm/typen';
-import { leadNachGespraech, leadZiel, hebtLead, NACHFASS_ERGEBNISSE, followUpEingabe, followUpMoeglich, planpostenAusEvent, planpostenId, liquiplanStand, uebernommenAm, LIQUIPLAN_KATEGORIE, kalenderTermin, terminBekannt, TERMIN_DAUER_MIN } from '../lib/crm/event-bruecke';
+import { leadNachGespraech, leadZiel, hebtLead, NACHFASS_ERGEBNISSE, followUpEingabe, followUpMoeglich, planpostenAusEvent, planpostenId, liquiplanStand, uebernommenAm, LIQUIPLAN_KATEGORIE } from '../lib/crm/event-bruecke';
+import { eventSoll, scheinAufloesen, EVENT_DAUER_MIN } from '../lib/kalender/spiegel';
 import { eventZahlen, feedbackZahlen } from '../lib/crm/events';
 
 const HEUTE = '2026-09-27';
@@ -125,27 +126,27 @@ describe('Brücke 4 · Budget in den Liquiditätsplan', () => {
   });
 });
 
-describe('Brücke 5 · Termin im Kalender', () => {
-  it('Termin: Titel mit Ort, Tag, Uhrzeit, drei Stunden — die Felder von /api/apple-calendar/create', () => {
-    expect(kalenderTermin(ev())).toEqual({ title: 'Stammtisch Maschinenbau · Frankfurt', date: '2026-09-25', startHour: 18, startMin: 30, durationMin: TERMIN_DAUER_MIN });
-    expect(kalenderTermin(ev({ ort: undefined }))!.title).toBe('Stammtisch Maschinenbau');
-    expect(TERMIN_DAUER_MIN).toBe(180);
+describe('Brücke 5 · Termin im Kalender (Spiegel, K5)', () => {
+  it('Termin: Titel, Ort als eigenes Feld, Tag, Uhrzeit, drei Stunden', () => {
+    expect(eventSoll(ev())).toEqual({ art: 'soll', t: { titel: 'Stammtisch Maschinenbau', ort: 'Frankfurt', start: '2026-09-25T18:30:00', ende: '2026-09-25T21:30:00', ganztags: false } });
+    expect(EVENT_DAUER_MIN).toBe(180);
   });
-  it('ohne Uhrzeit kein Termin', () => {
-    expect(kalenderTermin(ev({ uhrzeit: undefined }))).toBeNull();
-    expect(kalenderTermin(ev({ uhrzeit: '25:99' }))).toBeNull();
+  it('ohne Uhrzeit kein Termin, abgesagt → weg', () => {
+    expect(eventSoll(ev({ uhrzeit: undefined })).art).toBe('keiner');
+    expect(eventSoll(ev({ uhrzeit: '25:99' })).art).toBe('keiner');
+    expect(eventSoll(ev({ status: 'abgesagt' })).art).toBe('weg');
   });
-  it('bekannt, wenn Titel (auch „Titel · Ort“) und Tag im Kalender-Cache stehen', () => {
-    const cache = [
-      { title: 'Stammtisch Maschinenbau · Frankfurt', startDate: '2026-09-25T18:30:00' },
-      { title: 'Stammtisch Maschinenbau', startDate: '2026-10-02T18:30:00' },
-      { title: 'Zahnarzt', startDate: '2026-09-25T09:00:00' },
+  it('alte Schein-Kennung: eindeutiger Termin (Titel, auch „Titel · Ort“, und Tag) wird verknüpft', () => {
+    const liste = [
+      { uid: 'A', titel: 'Stammtisch Maschinenbau · Frankfurt', start: '2026-09-25T18:30:00' },
+      { uid: 'B', titel: 'Stammtisch Maschinenbau', start: '2026-10-02T18:30:00' },
+      { uid: 'C', titel: 'Zahnarzt', start: '2026-09-25T09:00:00' },
     ];
-    expect(terminBekannt(cache, ev())).toBe(true);
-    expect(terminBekannt(cache, ev({ titel: '  stammtisch   maschinenbau ' }))).toBe(true);
-    expect(terminBekannt(cache, ev({ datum: '2026-09-26' }))).toBe(false);
-    expect(terminBekannt(cache, ev({ titel: 'Stammtisch' }))).toBe(false);
-    expect(terminBekannt([{ title: 42, startDate: null }], ev())).toBe(false);
-    expect(terminBekannt([], ev({ titel: '' }))).toBe(false);
+    expect(scheinAufloesen(liste, ev())?.uid).toBe('A');
+    expect(scheinAufloesen(liste, ev({ titel: '  stammtisch   maschinenbau ' }))?.uid).toBe('A');
+    expect(scheinAufloesen(liste, ev({ datum: '2026-09-26' }))).toBeNull();
+    expect(scheinAufloesen(liste, ev({ titel: 'Stammtisch' }))).toBeNull();
+    expect(scheinAufloesen([...liste, { uid: 'D', titel: 'Stammtisch Maschinenbau', start: '2026-09-25T20:00:00' }], ev())).toBeNull();
+    expect(scheinAufloesen(liste, ev({ titel: '' }))).toBeNull();
   });
 });

@@ -11,12 +11,16 @@
 //   abwesend    beschäftigt, zählt als „nicht verfügbar“ (lib/kalender/belegung.ts)
 //   fokus       beschäftigt, startet auf Klick die Fokus-Zeitmessung (lib/zeitmessung)
 //   arbeitsort  ganztägig, frei, als Leiste über den Tagen — je Person
+//   block       (K5, 29.09.) geplante eigene Zeit aus dem Modus „Planen“ (früher Wochenplan-Block): beschäftigt,
+//               Unterart als X-MAKE-BLOCK (reha · routine · pause · aufgabe; ohne = „Block“), eine eingeplante
+//               Aufgabe hängt über `kalender-bezug.aufgabeId` daran. Fokus-Blöcke sind Art „fokus“.
+//               Nicht im „Erstellen“-Menü (TERMIN_ARTEN) — Blöcke entstehen im Modus „Planen“.
 
-export type TerminArt = 'termin' | 'aufgabe' | 'abwesend' | 'fokus' | 'arbeitsort';
+export type TerminArt = 'termin' | 'aufgabe' | 'abwesend' | 'fokus' | 'arbeitsort' | 'block';
 /** Die Arten, die als iCloud-Termin gespeichert werden (Aufgabe lebt im Aufgaben-Modell). */
 export type IcsArt = Exclude<TerminArt, 'aufgabe'>;
 export const TERMIN_ARTEN: readonly TerminArt[] = ['termin', 'aufgabe', 'abwesend', 'fokus', 'arbeitsort'];
-export const ICS_ARTEN: readonly IcsArt[] = ['termin', 'abwesend', 'fokus', 'arbeitsort'];
+export const ICS_ARTEN: readonly IcsArt[] = ['termin', 'abwesend', 'fokus', 'arbeitsort', 'block'];
 export const istIcsArt = (v: unknown): v is IcsArt => typeof v === 'string' && (ICS_ARTEN as readonly string[]).includes(v);
 export const istTerminArt = (v: unknown): v is TerminArt => typeof v === 'string' && (TERMIN_ARTEN as readonly string[]).includes(v);
 
@@ -35,7 +39,14 @@ export const ART_INFO: Record<TerminArt, ArtInfo> = {
   abwesend: { label: 'Abwesend', beschaeftigt: true, ganztags: true, farbe: '#FF5C5C' },
   fokus: { label: 'Fokuszeit', beschaeftigt: true, ganztags: false, farbe: '#21B5AA' },
   arbeitsort: { label: 'Arbeitsort', beschaeftigt: false, ganztags: true, farbe: '#96A8A2' },
+  block: { label: 'Block', beschaeftigt: true, ganztags: false, farbe: '#AC9D80' },
 };
+
+// ── Unterart eines Blocks (X-MAKE-BLOCK, K5) ────────────────────────────────
+/** Unterart eines Blocks — so heißen die Bausteine des Planens (types/planer.ts PLAN_ARTEN ohne fokus/block). */
+export type BlockArt = 'reha' | 'routine' | 'pause' | 'aufgabe';
+export const BLOCK_ARTEN: readonly BlockArt[] = ['reha', 'routine', 'pause', 'aufgabe'];
+export const istBlockArt = (v: unknown): v is BlockArt => typeof v === 'string' && (BLOCK_ARTEN as readonly string[]).includes(v);
 
 /**
  * Standard für frei/beschäftigt, wenn der Termin selbst nichts sagt (kein TRANSP): Abwesend/Fokus beschäftigt,

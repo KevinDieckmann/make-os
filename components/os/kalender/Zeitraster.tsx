@@ -269,6 +269,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                           {ev.mitTeilnehmern && !ev.maskiert && <span aria-label="mit Gästen" title={ev.ichOrganisator ? 'Du hast eingeladen' : 'Du bist Gast'} style={{ marginRight: 4 }}>👥</span>}
                           {fokus && <span aria-hidden style={{ marginRight: 4, color: f }}>{laeuftJetzt ? '▶' : '◎'}</span>}
                           {abwesend && <span aria-hidden style={{ marginRight: 4, color: f }}>⊘</span>}
+                          {ev.art === 'block' && <span aria-hidden style={{ marginRight: 4, color: f }}>▪</span>}
                           {ev.titel}
                         </div>
                         {(bis - von) * PX_MIN >= 30 && <div style={{ fontSize: 11, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{uhr(von)}–{uhr(bis)}{ev.ort ? ` · ${ev.ort}` : ''}{frei ? ' · frei' : ''}</div>}

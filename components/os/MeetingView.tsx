@@ -49,11 +49,12 @@ export function MeetingView() {
   };
   useEffect(() => {
     ladeVerlauf();
-    // Die Termine kommen aus dem Apple-Kalender — dort wird gepflegt, hier
-    // nur gelesen und verknüpft.
-    fetch('/api/apple-calendar').then(r => r.json()).then((e: Termin[]) => {
-      const heute = localDay();
-      setTermine((Array.isArray(e) ? e : []).filter(t => (t.startDate ?? '').slice(0, 10) === heute));
+    // Die Termine kommen aus dem Kalender (iCloud) — dort wird gepflegt, hier nur gelesen und verknüpft. Seit 29.09.
+    // (K5) über /api/kalender: private Termine der anderen Person nur als „Belegt“.
+    const heute = localDay();
+    const morgen = new Date(`${heute}T12:00:00Z`); morgen.setUTCDate(morgen.getUTCDate() + 1);
+    fetch(`/api/kalender?von=${heute}&bis=${morgen.toISOString().slice(0, 10)}`).then(r => r.json()).then((d: { termine?: { id: string; titel: string; start: string; ganztags: boolean; maskiert?: true }[] }) => {
+      setTermine((d.termine ?? []).filter(t => !t.ganztags && !t.maskiert && t.start.slice(0, 10) === heute).map(t => ({ id: t.id, title: t.titel, startDate: t.start })));
     }).catch(() => {});
   }, []);
 

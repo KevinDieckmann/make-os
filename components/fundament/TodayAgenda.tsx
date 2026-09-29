@@ -53,38 +53,21 @@ export function TodayAgenda() {
       setEvents([...todays].sort((a, b) => a.start.localeCompare(b.start)));
     };
 
+    // Seit 29.09. (K5): über /api/kalender (iCloud, private Termine der anderen Person nur als „Belegt“) — die
+    // KEMARIS-Beispieldaten und der Altweg /api/apple-calendar sind raus. Farbe/Label nach wem der Kalender gehört.
     (async () => {
-      const pool: AgendaEvent[] = [];
-
-      // 1) KEMARIS (M365) — sofort rendern
+      const heute = localDay();
+      const bis = new Date(`${heute}T12:00:00Z`); bis.setUTCDate(bis.getUTCDate() + 14);
       try {
-        const r = await fetch('/api/kemaris-calendar');
-        const data = await r.json();
-        for (const e of data.events ?? []) {
-          pool.push({ id: e.id, title: e.title, start: e.start, end: e.end, sourceLabel: 'KEMARIS', color: '#00d4ff', isTeams: e.isTeams });
-        }
-      } catch { /* ignore */ }
-      render(pool);
-      setStatus('partial');
-
-      // 2) Apple (Holding + Privat + Joint) — kurzer Timeout, dann mergen wenn da
-      try {
-        const ctrl = new AbortController();
-        const to = setTimeout(() => ctrl.abort(), 9000);
-        const r = await fetch('/api/apple-calendar', { signal: ctrl.signal });
-        clearTimeout(to);
-        if (r.ok) {
-          const arr = await r.json();
-          if (alive && Array.isArray(arr)) {
-            for (const e of arr) {
-              const s = CAT_STYLE[e.category] ?? { label: 'KALENDER', color: '#888' };
-              pool.push({ id: e.id, title: e.title, start: e.startDate, end: e.endDate, sourceLabel: s.label, color: s.color });
-            }
-            render(pool);
-            setStatus('ok');
-          }
-        }
-      } catch { /* Apple offline — KEMARIS bleibt sichtbar */ }
+        const r = await fetch(`/api/kalender?von=${heute}&bis=${bis.toISOString().slice(0, 10)}`, { cache: 'no-store' });
+        const d = await r.json() as { ok?: boolean; termine?: { id: string; titel: string; start: string; ende: string; ganztags: boolean; wer: string }[] };
+        const pool: AgendaEvent[] = (d.termine ?? []).filter(e => !e.ganztags).map(e => {
+          const s = CAT_STYLE[e.wer === 'kevin' ? 'private-kevin' : e.wer === 'malin' ? 'private-malin' : 'joint'];
+          return { id: e.id, title: e.titel, start: e.start, end: e.ende, sourceLabel: s.label, color: s.color };
+        });
+        render(pool);
+        setStatus(d.ok ? 'ok' : 'partial');
+      } catch { if (alive) setStatus('partial'); }
     })();
 
     return () => { alive = false; };

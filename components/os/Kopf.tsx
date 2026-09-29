@@ -33,7 +33,8 @@ import { Glocke } from './Glocke';
 const SCHNELL = (space: SpaceId) => [
   { href: '/os/heute', label: 'Heute', Icon: Sun, passt: ['/os/heute'] },
   { href: `/os/inbox?space=${space}`, label: 'Inbox', Icon: InboxIcon, passt: ['/os/inbox'] },
-  { href: `/os/planung/woche?space=${space}`, label: 'Kalender', Icon: CalendarDays, passt: ['/os/planung/woche', '/os/kalender'] },
+  // K5 (29.09.): EIN Kalender — der Knopf öffnet /os/kalender (Woche); Planen ist dort ein Modus.
+  { href: `/os/kalender?space=${space}`, label: 'Kalender', Icon: CalendarDays, passt: ['/os/kalender', '/os/planung/woche'] },
 ];
 
 // Der Index je Space: einmal je fünf Minuten holen, nicht bei jedem Seitenwechsel.

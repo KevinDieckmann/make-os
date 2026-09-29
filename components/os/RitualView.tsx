@@ -14,6 +14,7 @@ import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
+import { tagPlus as tagPlusK } from '@/lib/kalender/zeit';
 import { useTasks } from '@/context/TasksContext';
 import { Seite, Karte, Chip, Knopf, Segmente, feld, LEUCHT } from './schlank';
 
@@ -24,11 +25,6 @@ interface Modus { an: boolean; seit: string | null; aktivMin: number }
 const link = { fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' as const };
 const zahlenFeld = { ...feld, width: 'auto', flex: '1 1 96px', minWidth: 0 } as const;
 
-function montagVon(tag: string): string {
-  const d = new Date(`${tag}T12:00:00`);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return localDay(d);
-}
 const stunden = (min: number) => `${(min / 60).toFixed(1).replace('.', ',')} h`;
 
 /** Ein Ritual-Schritt: eine Karte, die sich selbst abhakt, wenn `done` wahr ist. */
@@ -98,7 +94,8 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
       setAbendText(j[heute]?.text ?? '');
     }).catch(() => {});
     fetch('/api/state/ziele').then(r => r.json()).then(d => setFokusTag(d.fokus?.tag ?? '')).catch(() => {});
-    fetch(`/api/state/wochenplan?woche=${montagVon(heute)}`).then(r => r.json()).then(d => setBloecke(Array.isArray(d.bloecke) ? d.bloecke : [])).catch(() => {});
+    // Blöcke von heute und morgen (K5: Kalender-Termine der Art Fokus/Block + Archiv des alten Wochenplans).
+    fetch(`/api/planung/bloecke?von=${heute}&bis=${tagPlusK(heute, 2)}`).then(r => r.json()).then(d => setBloecke(Array.isArray(d.bloecke) ? d.bloecke : [])).catch(() => {});
     Promise.all([
       fetch('/api/state/routinen').then(r => r.json()).catch(() => ({ routinen: [] })),
       fetch('/api/state/health').then(r => r.json()).catch(() => ({ log: {} })),
@@ -334,7 +331,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
                 ? `${morgenBloecke.length} Block${morgenBloecke.length > 1 ? ' e' : ''} für morgen geplant — der Tag ist vorbereitet.`
                 : 'Morgen ist noch leer — zwei, drei Blöcke reichen, dann startet der Morgen ohne Denken.'}
             </div>
-            <Link href="/os/planung/woche" style={link}>Wochenplaner öffnen ›</Link>
+            <Link href="/os/kalender?modus=planen" style={link}>Wochenplaner öffnen ›</Link>
           </Schritt>
 
           <Schritt nr={5} titel="Ausloggen — Feierabend ist Feierabend" done={aSchritte.aus}>

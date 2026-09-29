@@ -9,6 +9,8 @@ import { localDay } from '@/lib/zeit';
 import { computeMetrics, mitKasse, type FinanceState } from '@/lib/make-one/finance-data';
 import { schwellen } from '@/lib/schwellen';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
+import { tagPlus } from '@/lib/kalender/zeit';
 
 export interface Shield {
   id: string;
@@ -26,7 +28,8 @@ export async function computeShields(today = localDay()): Promise<Shield[]> {
     loadJson<FinanceState>('finance'),
     ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean }[] }>('meilensteine'),
-    loadJson<Record<string, { date: string; art: string }[]>>('wochenplan'),
+    // Heutige Blöcke (K5: Kalender-Termine der Art Fokus/Block) — wie bisher Kevins Plan (der alte Bestand `wochenplan`).
+    planBloeckeLesen({ person: 'kevin', von: today, bis: tagPlus(today, 1) }).catch(() => []),
   ]);
 
   const shields: Shield[] = [];
@@ -88,7 +91,7 @@ export async function computeShields(today = localDay()): Promise<Shield[]> {
   }
 
   // ── Rücken: heute kein Reha-Block im Plan (Bandscheibe — nicht verhandelbar) ──
-  const heuteBloecke = Object.values(wplanF ?? {}).flat().filter(b => b?.date === today);
+  const heuteBloecke = wplanF.filter(b => b.date === today);
   if (heuteBloecke.length && !heuteBloecke.some(b => b.art === 'reha')) {
     shields.push({ id: 'reha', stufe: 'amber', text: 'Heute ist kein Reha-Block geplant — 30 Minuten, nicht verhandelbar.', href: '/os/planung', label: 'Tagesplanung' });
   }

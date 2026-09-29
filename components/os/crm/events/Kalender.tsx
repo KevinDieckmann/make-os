@@ -1,70 +1,65 @@
 'use client';
 
 // ─── Event · Kalender — Datei zum Herunterladen und Termin im gemeinsamen Kalender ──
-// Zwei Wege, beide nur auf Klick: die Kalender-Datei (RFC 5545, gästetauglich,
-// lib/crm/eventplanung.ts) und ein Termin im Kalender „Gemeinsam“ über den
-// bestehenden Weg /api/apple-calendar/create — nur Titel (mit Ort), Datum,
-// Uhrzeit und drei Stunden; keine Gäste, keine Einladungen. Ob der Termin
-// schon steht, weiß das Event selbst (`kalenderUid`, 27.09.) — für ältere Events
-// ohne Kennung fragt der Kalender-Cache (/api/apple-calendar, Titel + Tag).
+// Zwei Wege, beide nur auf Klick: die Kalender-Datei (RFC 5545, gästetauglich, lib/crm/eventplanung.ts) und ein
+// Termin im Kalender „Gemeinsam“. Seit 29.09. (K5, Verbindungskarte Befund 4) über POST /api/kalender/spiegel: ein
+// echter iCloud-Termin mit ECHTER, fester UID (`kalenderUid`), Titel, Ort, Tag, Uhrzeit, drei Stunden, Bezug `eventId`
+// (kalender-bezug) — keine Gäste, keine Einladungen. Ändert sich Datum/Uhrzeit/Titel/Ort im Event oder wird es
+// abgesagt, zieht der Server den Termin nach bzw. löscht ihn (lib/kalender/spiegel-server.ts). Alte Events mit
+// erfundener Kennung (`mac-…`) werden beim Anlegen/Nachziehen mit ihrem Termin verknüpft, wenn er eindeutig ist.
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
 import { Knopf, Chip, LEUCHT } from '../../schlank';
-import { kalenderTermin, terminBekannt } from '@/lib/crm/event-bruecke';
 import type { Event } from '@/lib/crm/typen';
-import { neueKennung } from '@/lib/kennung';
 
-type Lage = 'prueft' | 'bekannt' | 'frei' | 'kein-zugang' | 'nicht-erreichbar';
+type Lage = 'prueft' | 'da' | 'fehlt' | 'schein' | 'keiner' | 'ohne-icloud' | 'kein-zugang' | 'nicht-erreichbar';
 
 export function Kalender({ e }: { e: Event }) {
   const [lage, setLage] = useState<Lage>('prueft');
+  const [grund, setGrund] = useState('');
+  const [warDa, setWarDa] = useState(false);
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState('');
-  const termin = kalenderTermin(e);
-  const { titel, datum } = e;
+  const { id, datum, uhrzeit, status } = e;
 
-  // Geprüft wird je Titel und Tag — nicht bei jedem Abgleich des Bestands (alle 20 s).
+  // Geprüft wird je Event, Tag, Uhrzeit, Status und Kennung — nicht bei jedem Abgleich des Bestands (alle 20 s).
   const pruefen = useCallback(async () => {
-    if (e.kalenderUid) { setLage('bekannt'); return; }
     try {
-      const r = await fetch('/api/apple-calendar', { cache: 'no-store' });
+      const r = await fetch(`/api/kalender/spiegel?art=event&id=${encodeURIComponent(id)}`, { cache: 'no-store' });
       if (r.status === 403) { setLage('kein-zugang'); return; }
-      if (!r.ok) { setLage('nicht-erreichbar'); return; }
-      const liste = (await r.json()) as unknown;
-      setLage(Array.isArray(liste) && terminBekannt(liste as { title?: unknown; startDate?: unknown }[], { titel, datum }) ? 'bekannt' : 'frei');
+      const d = await r.json() as { ok?: boolean; lage?: Lage; uid?: string; grund?: string };
+      if (!r.ok || !d.ok || !d.lage) { setLage('nicht-erreichbar'); return; }
+      setLage(d.lage); setGrund(d.grund ?? ''); setWarDa(!!d.uid);
     } catch { setLage('nicht-erreichbar'); }
-  }, [titel, datum, e.kalenderUid]);
-  useEffect(() => { void pruefen(); }, [pruefen]);
+  }, [id]);
+  useEffect(() => { void pruefen(); }, [pruefen, datum, uhrzeit, status, e.kalenderUid]);
 
   const anlegen = async () => {
-    if (!termin || laeuft) return;
+    if (laeuft) return;
     setLaeuft(true); setMeldung('');
-    type Antwort = { ok: boolean; created?: number; error?: string; fehler?: string; teilweise?: string };
-    const r: Antwort = await fetch('/api/apple-calendar/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events: [termin] }) })
-      .then(x => x.json() as Promise<Antwort>).catch((): Antwort => ({ ok: false, error: 'Kalender nicht erreichbar.' }));
+    const r = await fetch('/api/kalender/spiegel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ art: 'event', id }) })
+      .then(x => x.json() as Promise<{ ok: boolean; fehler?: string }>).catch(() => ({ ok: false, fehler: 'Kalender nicht erreichbar.' }));
     setLaeuft(false);
-    if (r.ok && r.created) {
-      setLage('bekannt'); setMeldung('Termin steht im Kalender „Gemeinsam“ — drei Stunden, ohne Gäste.');
-      // /create liefert keine Termin-Kennung — die Marke am Event verhindert trotzdem einen zweiten Termin.
-      void fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'events', op: 'teil', id: e.id, felder: { kalenderUid: neueKennung('mac') } }] }) })
-        .then(r => { if (!r.ok) setMeldung('Termin steht im Kalender, aber die Marke am Event wurde nicht gesetzt — Seite neu laden, bevor du noch einmal anlegst.'); })
-        .catch(() => setMeldung('Termin steht im Kalender — die Marke am Event konnte nicht gesetzt werden (keine Verbindung). Seite neu laden, bevor du noch einmal anlegst.'));
-    }
-    else setMeldung(r.error ?? r.fehler ?? 'Termin nicht angelegt.');
+    if (r.ok) { setMeldung('Termin steht im Kalender „Gemeinsam“ — drei Stunden, ohne Gäste. Änderungen am Event zieht er mit.'); void pruefen(); }
+    else setMeldung(r.fehler ?? 'Termin nicht angelegt.');
   };
 
   return (
     <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-        {lage === 'bekannt' && <Chip farbe={LEUCHT.gut}>im Kalender</Chip>}
-        {lage === 'frei' && termin && <Knopf leise aus={laeuft} onClick={() => void anlegen()}>{laeuft ? 'trägt ein …' : 'Termin anlegen (Kalender Gemeinsam)'}</Knopf>}
-        <Knopf leise onClick={() => { window.location.href = `/api/crm/events?ics=${encodeURIComponent(e.id)}`; }}>Kalender-Datei</Knopf>
+        {lage === 'da' && <Chip farbe={LEUCHT.gut}>im Kalender</Chip>}
+        {lage === 'schein' && <Knopf leise aus={laeuft} onClick={() => void anlegen()}>{laeuft ? 'verknüpft …' : 'Mit dem Kalender verknüpfen'}</Knopf>}
+        {lage === 'fehlt' && status !== 'abgesagt' && <Knopf leise aus={laeuft} onClick={() => void anlegen()}>{laeuft ? 'trägt ein …' : warDa ? 'Termin neu anlegen' : 'Termin anlegen (Kalender Gemeinsam)'}</Knopf>}
+        <Knopf leise onClick={() => { window.location.href = `/api/crm/events?ics=${encodeURIComponent(id)}`; }}>Kalender-Datei</Knopf>
       </div>
-      {lage === 'frei' && !termin && <span style={{ fontSize: 12, color: C.inkLeise }}>Uhrzeit setzen (Überblick), dann lässt sich der Termin anlegen.</span>}
+      {lage === 'fehlt' && warDa && <span style={{ fontSize: 12, color: C.inkLeise }}>Der Termin ist nicht mehr im Kalender (in Apple gelöscht?).</span>}
+      {lage === 'schein' && <span style={{ fontSize: 12, color: C.inkLeise }}>Alter Eintrag ohne echte Kennung — verknüpfen sucht den Termin (Tag + Titel) oder legt ihn neu an.</span>}
+      {lage === 'keiner' && <span style={{ fontSize: 12, color: C.inkLeise }}>{grund || 'Uhrzeit setzen (Überblick), dann lässt sich der Termin anlegen.'}</span>}
+      {lage === 'ohne-icloud' && <span style={{ fontSize: 12, color: C.inkLeise }}>Ohne iCloud kein Termin — die Kalender-Datei geht immer.</span>}
       {lage === 'kein-zugang' && <span style={{ fontSize: 12, color: C.inkLeise }}>Termin anlegen geht nur im Haushalt des Inhabers — die Kalender-Datei immer.</span>}
       {lage === 'nicht-erreichbar' && <span style={{ fontSize: 12, color: C.inkLeise }}>Kalender gerade nicht erreichbar — die Kalender-Datei geht immer.</span>}
-      {meldung && <span style={{ fontSize: 12, color: lage === 'bekannt' ? LEUCHT.gut : LEUCHT.achtung }}>{meldung}</span>}
+      {meldung && <span style={{ fontSize: 12, color: lage === 'da' ? LEUCHT.gut : LEUCHT.achtung }}>{meldung}</span>}
     </div>
   );
 }

@@ -130,16 +130,15 @@ lokal, Route `/os`, Port 3001.
 - Bilder liegen unter `.data/bauplan-bilder` (auf dem Server in `daten`, mit gesichert).
 
 ## Kalender — iCloud direkt (seit 25.09.2026)
-- Kopf-Knopf „Kalender“ → `/os/planung/woche` (der Wochenplaner ist der Kalender): Termine
-  aus iCloud (anlegen, ziehen = verschieben, ändern, löschen mit Rückfrage), Blöcke, eine
-  Ganztags-Zeile (Aufgaben mit Datum, Überfälliges als eine Pille, Apple-Erinnerungen,
-  Fristen: Meilensteine, Bauplan-Etappen, Mandate, Zahlungen/Eingänge), Sicht
-  Kevin/Malin/Gemeinsam, Ebenen. `/os/kalender` = Kalender-Agent (Konflikte, Vorschläge,
-  Zuordnung „welcher Kalender gehört wem“).
+- **EIN Kalender (seit 29.09., K5):** Kopf-Knopf „Kalender“ → `/os/kalender` (Woche, `?space=`); der frühere
+  Wochenplaner ist dort der Modus „Planen“ (`?modus=planen`), `/os/planung/woche` und `/os/woche` leiten dorthin um
+  (`WEG.woche(tag)`), das Alt-Dashboard `/calendar` (Beispieldaten, `CalendarContext`) ist weg. Details: Abschnitt
+  „Kalender — Ein Kalender“ unten.
 - Server spricht CalDAV mit iCloud: `lib/kalender/` (zeit, dav, ics mit ical.js, icloud,
-  eintraege, zugang, einstellungen), API `app/api/kalender` (+ `/termin`). Die alten Wege
-  (`/api/apple-calendar`, `/termin`, `/create`) laufen auf dem Server über iCloud; der
-  Abgleich schreibt `calendar-cache` für alle bisherigen Leser (Heute, Tag, ZOE, Morgenlauf).
+  eintraege, zugang, einstellungen), API `app/api/kalender` (+ `/termin`). Geschrieben wird NUR über `/api/kalender/termin`
+  (Browser) bzw. `lib/kalender/termin-server.ts` (Server); `/api/apple-calendar/{create,termin}` antworten 410. GET
+  `/api/apple-calendar` bleibt nur für den Mac-Zulieferer/Abgleich-Anstoß (liefert `calendar-cache` UNMASKIERT — Oberflächen
+  lesen `/api/kalender`). Der Abgleich schreibt `calendar-cache` für die übrigen Server-Leser (ZOE, Morgenlauf; K6).
 - Zugang: `ICLOUD_APPLE_ID`/`ICLOUD_APP_PASSWORT` (app-spezifisch) NUR in der Server-.env —
   einrichten/trennen mit `deploy/icloud-verbinden.sh <apple-id>` (Kevin, per `ssh -t`; fragt nur das App-Passwort). Zugangsdaten
   gehen nur an *.icloud.com. Nach abgelehnter Anmeldung erst nach 30 Min. neu (Apple sperrt sonst).
@@ -464,7 +463,7 @@ lokal, Route `/os`, Port 3001.
   beim ersten Import. Neue Schreibwege für Stammdaten-Felder müssen `vonHandMarkieren` rufen — sonst überschreibt der nächste Import die Handarbeit.
 
 ## Kalender-Oberfläche (components/os/kalender, seit 27.09.)
-- `/os/kalender` = `Kalender.tsx` (Tag/4 Tage/Woche/Monat/Jahr/Termine). Daten nur über `useKalender` (`/api/kalender`), Schreiben nur über `/api/kalender/termin` (iCloud) — nie mehr über `/api/apple-calendar/create`.
+- `/os/kalender` = `Kalender.tsx` (Tag/4 Tage/Woche/Monat/Jahr/Termine; Modi Planen/Aufgaben seit K5). Daten nur über `useKalender` (`/api/kalender`), Schreiben nur über `/api/kalender/termin` (iCloud) — nie mehr über `/api/apple-calendar/create`.
 - Zeiten sind Berliner Wandzeit `YYYY-MM-DDTHH:mm:ss` (`lib/kalender/zeit.ts wandAus`), Raster 15 Minuten. Überlappung über `lib/kalender/layout.ts spaltenLegen`.
 - Schnelleingabe `lib/kalender/schnell.ts` (rein, getestet) — neue Muster dort ergänzen, nie im Dialog parsen.
 - Serien/Erinnerungen entstehen beim Anlegen (`rruleText`, VALARM); Ändern von Serien bleibt in Apple (`aendereTermin` lehnt ab).
@@ -527,6 +526,50 @@ lokal, Route `/os`, Port 3001.
   `make-kalender-aenderung:<uid>` merkt sich seine Ausgangsfassung. Sicht/Bereich: Aufgaben nach verantwortlich/beteiligt
   (Gemeinsam = mehrere Personen), Fristen nur in „Alle“/„Gemeinsam“, alles nach Bereich (Kalender → `spaceVonKalender`,
   Aufgabe → `spaceVonAufgabe`, Frist → `bereich`).
+## Kalender — Ein Kalender: Planen, Aufgaben, Spiegel (K5, 29.09., nur lokal — KALENDER_PLAN.md Entscheidung 8)
+- **Modus in der Adresse** (`lib/kalender/modus.ts`, rein): `?modus=planen` (Kalender-Seite, dasselbe Zeitraster, Taste p) ·
+  `?modus=aufgaben` (Umschalter oben rechts wie Google: Kalender | Aufgaben, `components/os/KalenderAufgabenSchalter.tsx`,
+  Tasten k/u; auch in `/os/aufgaben` mit Space/Projekt/Filter → `kalenderLink`) · `tag`, `space`, Aufgaben-Filter `as/ap/al/wer`.
+  Aufgaben schließt Planen aus (Planen ist ein Unter-Modus des Kalenders). Neue Links: `WEG.woche(tag)` (Planen), `WEG.kalender(tag)`.
+- **Ein Block IST ein iCloud-Termin** (`lib/planung/bloecke.ts`): Fokus = `X-MAKE-ART:fokus`, sonst `X-MAKE-ART:block` +
+  Unterart `X-MAKE-BLOCK` (reha|routine|pause|aufgabe; `blockArt` in ics/eingabe/Termin-Route), eingeplante Aufgabe nur als
+  `kalender-bezug.aufgabeId` (die Deadline der Aufgabe bleibt — „Aufgabe mit Uhrzeit“ ist K1/K3). Blöcke sind beschäftigt;
+  wer nur für sich plant, stellt im Termin-Fenster auf „frei“ (TRANSP). **Kein Kalender „Planung“** (MAKE OS legt keine
+  iCloud-Kalender an; ein zweiter Kalender wäre eine zweite Wahrheit für „wem gehört das“) — Blöcke liegen im Kalender der
+  Person. Verschieben/Dauer/Löschen = Termin ändern (ETag) — der Apple-Spiegel des alten Wochenplans (Befund 5) ist weg.
+  `block` steht in `ICS_ARTEN`, NICHT in `TERMIN_ARTEN` (kein Reiter im Anlege-Dialog). Farbe im Raster je Unterart (`blockFarbe`).
+- **Planen-Oberfläche** `components/os/kalender/Planen.tsx` (`usePlanen`): Stunden des Zeitraums (`wochenStunden`: Termine vs.
+  Blöcke, frei/Arbeitsort zählen nicht) + je Tag, Bausteine/Routinen/„Aufgaben einplanen“/„Eigener Block“ — **antippen, dann in
+  den Kalender klicken oder aufziehen** (kein HTML-Ziehen: geht am Handy nicht), ZOE-Vorschlag (legt erst auf Klick an),
+  Fokus + Ziele, Übernahme-Karte. `Kalender.tsx` fragt `planen.platzieren` vor dem Anlege-Dialog.
+- **Blöcke lesen: NUR `planBloeckeLesen`** (`lib/planung/bloecke-server.ts`, ohne Netz über `termineLesen`, `gehoertZu` je Person,
+  `betrachter` maskiert fremde private) bzw. `GET /api/planung/bloecke?von&bis[&fuer]`. Leser: Gesundheit, Business-Index,
+  Risiko (Reha heute), Loops, Ritual, Energie, Tagesplan (schreibt über `/api/kalender/termin`). ZOE `plan_block` →
+  `blockAnlegen` (Kalender der Person, kein Rückfall auf kevin). Server-Schreiben immer über `lib/kalender/termin-server.ts`
+  (iCloud → kalender-bezug → Änderungsprotokoll = Audit), feste UIDs erlaubt (`anlegen({ uid })` → `schonDa` statt doppelt).
+- **Übernahme des alten Wochenplans** (`lib/planung/wochenplan-uebernahme(-server).ts`, `/api/planung/uebernahme`, einmal nach
+  dem Upload): nur zukünftige Blöcke; vorhandene Apple-Kopie (`appleUid`) wird DER Block, sonst neuer Termin mit fester UID
+  `makeos-wochenplan-<person>-<id>`; vorher Archivkopie `archiv/wochenplan-vor-uebernahme-*`, Absicht `wochenplan-uebernahme`
+  (Schritte archiv · je Block · abschluss, Wiederaufnahme im Takt). Stand `wochenplan-uebernahme` (nur Kennung → UID). Der alte
+  Bestand bleibt unverändert; vergangene (und bis zur Übernahme künftige, `wartet`) Blöcke liest nur `archivBloecke` —
+  im Raster gestrichelt/schreibgeschützt (`archiv:…`). `/api/state/wochenplan` → 410. Wächter: `tests/kalender-k5.test.ts`.
+- **Spiegel Event/Familie** (`lib/kalender/spiegel(-server).ts`, `POST/GET /api/kalender/spiegel`): das Modul führt, der
+  Termin folgt — feste echte UID (`makeos-event-<id>`, `makeos-date-<id>`, `makeos-gespraech-<haushalt>-<datum>`), Kalender
+  „Gemeinsam“, Event mit Bezug `eventId`, Ort als Feld, drei Stunden. Nachziehen im Hintergrund nach `/api/crm/bestand`
+  (Events) bzw. `/api/familie` (Dates, Gespräche, Einstellungen — Wochentag geändert → der künftige Termin zieht um); abgesagt
+  → Termin weg. `Date.kalenderUid`/`einstellungen.kalenderTermine` schreibt NUR der Server (`wendeFamilieAn`/`setzeFelder`
+  ignorieren Browserwerte). Alte Schein-Kennung `mac-…` (Befund 4) → beim Nachziehen/„Verknüpfen“ mit dem eindeutigen Termin
+  (Tag + Titel) verbunden. Verbindungsprüfung `event-termin-tot`, `event-termin-schein`, `familie-termin-tot`
+  (`lib/kalender/spiegel-verbindungen.ts`); `wochenplan-aufgabe-tot` entfällt (Bezug `aufgabeId` prüft K1 `kalender-bezug-kennung-tot`).
+- **Aufgaben-Modus** (`components/os/kalender/AufgabenModus.tsx`): Überfällig · Heute · Diese Woche · Später · Ohne Datum über
+  K3 `aufgabenFuerKalender`/`ohneTermin` + Vorfilter (`aufgabenVorfiltern`: Space, Projekt, Liste, meine/beteiligt), Abhaken/
+  Einplanen/Öffnen NUR über K3 `useAufgabenImKalender` (Aufgaben-Schreibweg + Rückgängig); Ziehen auf einen Wochentag rechts
+  (`AUFGABE_ZIEH_TYP`) oder Datum/Uhrzeit wählen.
+- **KEMARIS/M365:** `/api/kemaris-calendar` liefert bis zur echten Anbindung nichts (keine Beispieldaten mehr in Heute,
+  Tagesplan, Energie, Signalen, `planung/vorschlag`, Netzwerk); `lib/brain.ts` liest den Bestand noch (Paket R-Z).
+- **Oberflächen lesen Termine nur über `/api/kalender`** (maskiert fremde private): Heute-Widget, Tagesplan, Energie, Meeting,
+  Fundament-Agenda. Alt-Dashboard `/calendar`, `CalendarContext`, `components/calendar`, `MOCK_CALENDAR_EVENTS` entfernt.
+
 ## Kalender — Termine finden (29.09., Paket K4, nur lokal)
 - **Freie Zeit = EINE Lesefunktion, auf K1 aufgesetzt:** WANN jemand da ist, sagt nur K1 `verfuegbarkeitFuer` (beschäftigt/TRANSP, Abwesend, Arbeitsort, Arbeitszeit aus der Wochenvorlage `routinen.bloecke`, Feiertage NRW). `lib/kalender/freie-zeit.ts` übersetzt (`belegungenAus`, `arbeitszeitAus` — ohne Vorlage Mo–Fr 9–18, nicht an Feiertagen/ganz abwesenden Tagen —, `feiertageAus`) und ruft die reine Lückensuche `freieZeiten` (`lib/kalender/verfuegbar.ts`: Arbeitszeit je Tag oder Wochen-Fenster, Belegungen, Puffer, Vorlauf, Raster, max. je Tag; Zeitumstellung über Rundweg `wandzeit(ausWandzeit(x)) === x` + echte Dauer, doppelte Stunde = die spätere). `freieZeitFuer({ personen, dauerMin, … })` nutzen „Mit … planen“ (`GET /api/kalender/frei`), künftig ZOE (`freie_zeit`, nur lesen) und das Angebot. Gehaltene Buchungen zählen als belegt. Nie eine zweite Verfügbarkeits-Rechnung bauen; Feiertage/KW später aus K2 `lib/zeit/kalender-kern.ts` (über K1).
 - **Mit … planen** (`components/os/kalender/MitPlanen.tsx`, ein Haken `useTermineFinden` in `Kalender.tsx`): Personen wählen → Termine der anderen halbtransparent im Raster (Farbe gemischt, `gedimmt`), private (`maskiert`/`sichtbarkeit: privat`) nur „belegt“; `FreieZeiten.tsx` → Klick öffnet `NeuerTermin` vorbelegt (`Vorgabe`, gemeinsam → `wer: 'beide'`). Offene Buchungen stehen als `buchung-…`-Einträge im Raster (Klick öffnet die Buchungsseiten-Karte). Arbeitszeiten pflegt man in der Wochenvorlage (`WEG.routinen()`), nicht hier.

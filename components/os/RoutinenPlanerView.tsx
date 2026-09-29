@@ -182,7 +182,7 @@ export function RoutinenPlanerView() {
   return (
     <Seite
       titel="Was dich jeden Tag trägt."
-      unter={<>Routine-Planer · Privat und Business, je Person und gemeinsam, mit Rhythmus — hier geplant, überall wirksam: im <Link href="/os/planung/woche" style={linkStil}>Wochenplaner</Link>, in der <Link href="/os/planung" style={linkStil}>Tagesplanung</Link>, auf <Link href="/os/gesundheit" style={linkStil}>Gesundheit</Link> (Häkchen), auf <Link href="/os" style={linkStil}>Home</Link> („Routinen heute“) und im <Link href="/os/gesundheit?s=index" style={linkStil}>Gesundheits-Index</Link>. Pausierte zählen nirgends mit.</>}
+      unter={<>Routine-Planer · Privat und Business, je Person und gemeinsam, mit Rhythmus — hier geplant, überall wirksam: im <Link href="/os/kalender?modus=planen" style={linkStil}>Wochenplaner</Link>, in der <Link href="/os/planung" style={linkStil}>Tagesplanung</Link>, auf <Link href="/os/gesundheit" style={linkStil}>Gesundheit</Link> (Häkchen), auf <Link href="/os" style={linkStil}>Home</Link> („Routinen heute“) und im <Link href="/os/gesundheit?s=index" style={linkStil}>Gesundheits-Index</Link>. Pausierte zählen nirgends mit.</>}
       rechts={<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         <Chip farbe={aktivN ? LEUCHT.gut : C.inkLeise}>{aktivN} aktive Routinen</Chip>
         <Chip farbe={SPACE_FARBE.privat}>{routinen.length - nBusiness} Privat</Chip>

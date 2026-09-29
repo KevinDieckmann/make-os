@@ -161,31 +161,5 @@ export function liquiplanStand(e: Event, vorhanden: Planposten | null | undefine
 }
 
 // ── 4 · Termin im Kalender ──────────────────────────────────────────────────
-
-/** Dauer, solange der Ablauf nichts anderes sagt — Kevins Vorgabe: drei Stunden. */
-export const TERMIN_DAUER_MIN = 180;
-/** Genau die Felder, die POST /api/apple-calendar/create nimmt (ohne calendar → Kalender „Gemeinsam“). */
-export interface KalenderTermin { title: string; date: string; startHour: number; startMin: number; durationMin: number }
-
-/**
- * Der Termin zum Event: Titel (mit Ort, weil der Kalender-Weg kein eigenes
- * Ortsfeld hat), Tag, Uhrzeit, drei Stunden. Ohne Uhrzeit kein Termin —
- * ein Ganztages-Block wäre etwas anderes als ein Abend.
- */
-export function kalenderTermin(e: Pick<Event, 'titel' | 'datum' | 'uhrzeit' | 'ort'>): KalenderTermin | null {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(e.uhrzeit ?? '');
-  if (!m || !/^\d{4}-\d{2}-\d{2}$/.test(e.datum)) return null;
-  const startHour = Number(m[1]), startMin = Number(m[2]);
-  if (startHour > 23 || startMin > 59) return null;
-  const title = (e.ort?.trim() ? `${e.titel} · ${e.ort.trim()}` : e.titel).slice(0, 120);
-  return { title, date: e.datum, startHour, startMin, durationMin: TERMIN_DAUER_MIN };
-}
-
-const norm = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ');
-
-/** Steht der Termin schon im Kalender? Gleicher Tag und gleicher Titel (auch „Titel · Ort“) — aus dem Kalender-Cache (/api/apple-calendar). */
-export function terminBekannt(kalender: ReadonlyArray<{ title?: unknown; startDate?: unknown }>, e: Pick<Event, 'titel' | 'datum'>): boolean {
-  const titel = norm(e.titel);
-  if (!titel) return false;
-  return kalender.some(x => typeof x.startDate === 'string' && x.startDate.slice(0, 10) === e.datum && typeof x.title === 'string' && (norm(x.title) === titel || norm(x.title).startsWith(`${titel} ·`)));
-}
+// Seit 29.09. (K5) ein Spiegel mit echter UID: lib/kalender/spiegel.ts (`eventSoll`, drei Stunden) und
+// lib/kalender/spiegel-server.ts (anlegen auf Klick, nachziehen nach jeder Änderung) — hier nichts mehr.

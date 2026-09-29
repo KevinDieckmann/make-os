@@ -35,9 +35,10 @@ export const GRENZE_VERSUCHE = 3;
 /** Abgeschlossene Absichten bleiben so lange (Nachvollziehbarkeit), dann fallen sie beim nächsten Schreiben weg. */
 export const HALTEN_TAGE = 30;
 
-/** `buchung` (29.09., K4): Terminbuchung als EIN CRM-Vorgang — Anfrage bzw. Freigabe (lib/kalender/buchung-ablauf.ts). */
-export type AbsichtArt = 'art17' | 'zusammenfuehren' | 'import' | 'kennungen-umzug' | 'kennungen-rueckweg' | 'crm-folgen' | 'angebot-stellen' | 'buchung';
-export const ABSICHT_ARTEN: readonly AbsichtArt[] = ['art17', 'zusammenfuehren', 'import', 'kennungen-umzug', 'kennungen-rueckweg', 'crm-folgen', 'angebot-stellen', 'buchung'];
+/** `buchung` (29.09., K4): Terminbuchung als EIN CRM-Vorgang — Anfrage bzw. Freigabe (lib/kalender/buchung-ablauf.ts).
+ *  `wochenplan-uebernahme` (29.09., K5): alte Wochenplan-Blöcke → iCloud-Termine (lib/planung/wochenplan-uebernahme-server.ts). */
+export type AbsichtArt = 'art17' | 'zusammenfuehren' | 'import' | 'kennungen-umzug' | 'kennungen-rueckweg' | 'crm-folgen' | 'angebot-stellen' | 'buchung' | 'wochenplan-uebernahme';
+export const ABSICHT_ARTEN: readonly AbsichtArt[] = ['art17', 'zusammenfuehren', 'import', 'kennungen-umzug', 'kennungen-rueckweg', 'crm-folgen', 'angebot-stellen', 'buchung', 'wochenplan-uebernahme'];
 /**
  * offen          läuft oder wartet auf Wiederaufnahme
  * fertig         alle Schritte abgehakt

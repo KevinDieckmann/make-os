@@ -168,6 +168,10 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   // Terminbuchungen (29.09., K4)
   ['buchung-seite-tot', b => { b.buchungen!.buchungen.push({ id: 'bu-2', seiteId: 'bs-weg', status: 'abgelehnt', start: `${HEUTE}T11:00:00` }); }, 1, 'bu-2'],
   ['buchung-kontakt-tot', b => { b.buchungen!.buchungen.push({ id: 'bu-3', seiteId: 'bs-1', status: 'angefragt', kontaktId: 'c-weg1', start: `${HEUTE}T11:00:00` }); }, 1, 'bu-3'],
+  // Spiegel (29.09., K5): Event/Familie ↔ iCloud-Termin mit echter UID.
+  ['event-termin-tot', b => { b.crm!.events[0].kalenderUid = 'UID-event-weg'; }, 1, 'ev-1'],
+  ['event-termin-schein', b => { b.crm!.events[0].kalenderUid = 'mac-0f3c'; }, 1, 'ev-1'],
+  ['familie-termin-tot', b => { b.familieSpiegel = { dates: [{ id: 'd-1', datum: '2026-10-03', kalenderUid: 'UID-date-weg' }, { id: 'd-2', datum: '2026-10-04', kalenderUid: 'U-2' }], gespraeche: [{ datum: '2026-10-05', uid: 'U-1' }] }; }, 1, 'd-1'],
   ['buchung-termin-tot', b => { b.buchungen!.buchungen.push({ id: 'bu-4', seiteId: 'bs-1', status: 'bestaetigt', terminUid: 'UID-weg', start: `${HEUTE}T12:00:00` }, { id: 'bu-5', seiteId: 'bs-1', status: 'bestaetigt', terminUid: 'UID-alt', start: '2025-01-01T12:00:00' }); }, 1, 'bu-4'],
   ['zeit-mandat-tot', b => { b.fokus![0].bloecke.push({ von: HEUTE, bis: HEUTE, schluessel: 'business:x', label: 'x', sek: 60, mandatId: 'm-weg' }); }, 1, 'm-weg'],
   // Kalender (29.09., K1) — gelöschte Termine nur im Holfenster; ohne gelungenen Stand (fenster null) nie.

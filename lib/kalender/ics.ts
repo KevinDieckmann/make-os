@@ -21,7 +21,7 @@
 import ICAL from 'ical.js';
 import { wandzeit, ausWandzeit, ZONE } from './zeit';
 import { rruleText, type Wiederholung } from './wiederholung';
-import { istIcsArt, beschaeftigtStandard, farbeSauber, farbeHex, arbeitsortAusTitel, arbeitsortTitel, erinnerungenSauber, istSichtbarkeit, type IcsArt, type Sichtbarkeit, type Arbeitsort } from './arten';
+import { istIcsArt, istBlockArt, beschaeftigtStandard, farbeSauber, farbeHex, arbeitsortAusTitel, arbeitsortTitel, erinnerungenSauber, istSichtbarkeit, type IcsArt, type BlockArt, type Sichtbarkeit, type Arbeitsort } from './arten';
 import { vtimezoneText, ausWandzeitIn } from './zeitzone';
 import { adresseAus, type Teilnahme, type Teilnehmer, type Gast } from './gaeste';
 
@@ -69,6 +69,8 @@ export interface Termin {
   erinnerungen?: number[];
   /** Nur Art „arbeitsort“: der Ort, gelesen aus dem Titel. */
   arbeitsort?: Arbeitsort;
+  /** Nur Art „block“ (K5): Unterart aus X-MAKE-BLOCK (reha, routine, pause, aufgabe) — ohne = „Block“. */
+  blockArt?: BlockArt;
   /** ETag des iCloud-Objekts — der Stand für Änderungen (veraltet → 409 statt still überschreiben). */
   stand?: string;
   // ── seit 30.09. (K3) ──
@@ -83,7 +85,7 @@ export interface Termin {
 }
 
 /** Was ein VEVENT selbst über Art, Farbe und Sichtbarkeit sagt (X-MAKE-ART, COLOR, CLASS). */
-export interface IcsZusatz { art?: IcsArt; farbe?: string; sichtbarkeit?: Sichtbarkeit }
+export interface IcsZusatz { art?: IcsArt; farbe?: string; sichtbarkeit?: Sichtbarkeit; /** K5: X-MAKE-BLOCK */ blockArt?: BlockArt }
 
 // Europe/Berlin einmal fest hinterlegen — falls ein Objekt seine Zone nicht mitliefert.
 const BERLIN_VTZ = `BEGIN:VCALENDAR
@@ -185,11 +187,13 @@ export function einladungsLage(ics: string, ich: readonly string[]): { gaeste: s
 function zusatzVon(v: ICAL.Component): IcsZusatz & { transp?: 'OPAQUE' | 'TRANSPARENT'; markiert: boolean } {
   const x = (n: string) => { const w = v.getFirstPropertyValue(n); return typeof w === 'string' ? w.trim() : undefined; };
   const artRoh = x('x-make-art')?.toLowerCase();
+  const blockRoh = x('x-make-block')?.toLowerCase();
   const klasse = x('class')?.toUpperCase();
   const transp = x('transp')?.toUpperCase();
   const sichtbarkeit: Sichtbarkeit | undefined = klasse === 'PRIVATE' || klasse === 'CONFIDENTIAL' ? 'privat' : klasse === 'PUBLIC' ? 'oeffentlich' : undefined;
   return {
     ...(istIcsArt(artRoh) ? { art: artRoh } : {}),
+    ...(artRoh === 'block' && istBlockArt(blockRoh) ? { blockArt: blockRoh } : {}),
     ...(farbeSauber(x('color')) ? { farbe: farbeSauber(x('color')) } : {}),
     ...(sichtbarkeit ? { sichtbarkeit } : {}),
     ...(transp === 'OPAQUE' || transp === 'TRANSPARENT' ? { transp } : {}),
@@ -283,7 +287,7 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
 }
 
 /** Die K1-Felder eines Vorkommens aus seinem VEVENT. */
-function zusatzFelder(z: ReturnType<typeof zusatzVon>, start: ICAL.Time, v: ICAL.Component): Pick<Termin, 'art' | 'farbeEigen' | 'farbeId' | 'beschaeftigt' | 'sichtbarkeit' | 'zone' | 'erinnerungen' | 'arbeitsort'> {
+function zusatzFelder(z: ReturnType<typeof zusatzVon>, start: ICAL.Time, v: ICAL.Component): Pick<Termin, 'art' | 'farbeEigen' | 'farbeId' | 'beschaeftigt' | 'sichtbarkeit' | 'zone' | 'erinnerungen' | 'arbeitsort' | 'blockArt'> {
   const art = z.art ?? 'termin';
   const tzid = !start.isDate ? start.zone?.tzid : undefined;
   const er = erinnerungenVon(v);
@@ -295,6 +299,7 @@ function zusatzFelder(z: ReturnType<typeof zusatzVon>, start: ICAL.Time, v: ICAL
     ...(tzid && !['UTC', 'floating', 'Z', ZONE].includes(tzid) ? { zone: tzid } : {}),
     ...(er.length ? { erinnerungen: er } : {}),
     ...(art === 'arbeitsort' ? { arbeitsort: arbeitsortAusTitel(String(v.getFirstPropertyValue('summary') ?? '')) } : {}),
+    ...(art === 'block' && z.blockArt ? { blockArt: z.blockArt } : {}),
   };
 }
 
@@ -369,6 +374,8 @@ export interface NeuerTermin {
   gaeste?: Gast[];
   /** ORGANIZER = eine Adresse des iCloud-Kontos (Pflicht, sobald es Gäste gibt). */
   organisator?: string;
+  /** Nur Art „block“ (K5): Unterart → X-MAKE-BLOCK. */
+  blockArt?: BlockArt;
 }
 
 /** Name für einen Parameter (CN): eine Zeile, ohne Anführungszeichen und Steuerzeichen. */
@@ -455,9 +462,11 @@ function mitZone(comp: ICAL.Component, zone: string, jahr: number) {
 }
 
 /** Art, Farbe, Sichtbarkeit in ein VEVENT schreiben (nur die übergebenen; `null`/„standard“ entfernt). */
-function zusaetzeSetzen(v: ICAL.Component, z: { art?: IcsArt; farbe?: string | null; sichtbarkeit?: Sichtbarkeit }) {
+function zusaetzeSetzen(v: ICAL.Component, z: { art?: IcsArt; farbe?: string | null; sichtbarkeit?: Sichtbarkeit; blockArt?: BlockArt | null }) {
   const setze = (name: string, wert: string | undefined) => { v.removeAllProperties(name); if (wert) v.updatePropertyWithValue(name, wert); };
   if (z.art !== undefined) setze('x-make-art', z.art);
+  // Unterart nur bei Blöcken; eine andere Art nimmt sie mit weg.
+  if (z.blockArt !== undefined || (z.art !== undefined && z.art !== 'block')) setze('x-make-block', z.art !== undefined && z.art !== 'block' ? undefined : z.blockArt ?? undefined);
   if (z.farbe !== undefined) setze('color', farbeSauber(z.farbe));
   if (z.sichtbarkeit !== undefined) setze('class', z.sichtbarkeit === 'privat' ? 'PRIVATE' : z.sichtbarkeit === 'oeffentlich' ? 'PUBLIC' : undefined);
 }
@@ -496,7 +505,7 @@ export function baueTermin(t: NeuerTermin, jetzt = new Date()): string {
   if (t.wiederholung) v.updatePropertyWithValue('rrule', ICAL.Recur.fromString(rruleText(t.wiederholung, !!t.ganztags)));
   // Frei/beschäftigt immer ausdrücklich — Apple, Google und die freie-Zeit-Suche lesen TRANSP.
   v.updatePropertyWithValue('transp', (t.beschaeftigt ?? beschaeftigtStandard(art, !!t.ganztags)) ? 'OPAQUE' : 'TRANSPARENT');
-  zusaetzeSetzen(v, { art, ...(t.farbe ? { farbe: t.farbe } : {}), ...(t.sichtbarkeit && t.sichtbarkeit !== 'standard' ? { sichtbarkeit: t.sichtbarkeit } : {}) });
+  zusaetzeSetzen(v, { art, ...(t.farbe ? { farbe: t.farbe } : {}), ...(t.sichtbarkeit && t.sichtbarkeit !== 'standard' ? { sichtbarkeit: t.sichtbarkeit } : {}), ...(art === 'block' && t.blockArt ? { blockArt: t.blockArt } : {}) });
   const min = [...(t.erinnerungenMin ?? []), ...(t.erinnerungMin !== undefined && t.erinnerungMin >= 0 ? [Math.min(60 * 24 * 14, Math.round(t.erinnerungMin))] : [])];
   alarmeSetzen(v, min, titel);
   if (t.gaeste?.length) {
@@ -515,6 +524,8 @@ export interface Aenderung {
   art?: IcsArt; farbe?: string | null; beschaeftigt?: boolean; sichtbarkeit?: Sichtbarkeit;
   // ── seit 30.09. (K3) ── die ganze neue Gästeliste (leer = alle ausladen) — nur nach Bestätigung
   gaeste?: Gast[];
+  /** K5: Unterart eines Blocks (null entfernt). */
+  blockArt?: BlockArt | null;
 }
 
 /**
@@ -543,7 +554,7 @@ export function aendereTermin(ics: string, a: Aenderung, jetzt = new Date(), opt
   if (a.titel !== undefined) v.updatePropertyWithValue('summary', sauber(a.titel, 300) || 'Termin');
   if (a.beschaeftigt !== undefined) v.updatePropertyWithValue('transp', a.beschaeftigt ? 'OPAQUE' : 'TRANSPARENT');
   if (a.sichtbarkeit !== undefined && !istSichtbarkeit(a.sichtbarkeit)) return { fehler: 'Unbekannte Sichtbarkeit.' };
-  zusaetzeSetzen(v, { ...(a.art !== undefined ? { art: a.art } : {}), ...(a.farbe !== undefined ? { farbe: a.farbe } : {}), ...(a.sichtbarkeit !== undefined ? { sichtbarkeit: a.sichtbarkeit } : {}) });
+  zusaetzeSetzen(v, { ...(a.art !== undefined ? { art: a.art } : {}), ...(a.farbe !== undefined ? { farbe: a.farbe } : {}), ...(a.sichtbarkeit !== undefined ? { sichtbarkeit: a.sichtbarkeit } : {}), ...(a.blockArt !== undefined ? { blockArt: a.blockArt } : {}) });
   if (a.ort !== undefined) { if (a.ort) v.updatePropertyWithValue('location', sauber(a.ort, 300)); else v.removeAllProperties('location'); }
   if (a.notiz !== undefined) { if (a.notiz) v.updatePropertyWithValue('description', sauber(a.notiz, 2000)); else v.removeAllProperties('description'); }
   if (a.start || a.ende) {

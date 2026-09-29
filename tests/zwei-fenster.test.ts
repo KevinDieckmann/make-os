@@ -4,7 +4,6 @@
 
 import { describe, expect, it } from 'vitest';
 import { listenOps } from '@/lib/make-one/liste-sync';
-import { planOps } from '@/lib/make-one/wochenplan-sync';
 import { opsLesen } from '@/lib/store/patch-liste';
 
 describe('listenOps (Kunden, Meilensteine, Routinen …)', () => {
@@ -33,18 +32,7 @@ describe('listenOps (Kunden, Meilensteine, Routinen …)', () => {
   });
 });
 
-describe('planOps (Wochenplaner)', () => {
-  it('ein verschobener Block erzeugt genau eine Änderung', () => {
-    const alt = [
-      { id: 'x', startMin: 600, dauerMin: 60 },
-      { id: 'y', startMin: 720, dauerMin: 30 },
-    ];
-    const neu = [{ ...alt[0], startMin: 660 }, alt[1]];
-    const ops = planOps(alt, neu);
-    expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ op: 'upsert', block: { id: 'x', startMin: 660 } });
-  });
-});
+// planOps (Wochenplaner) ist seit 29.09. (K5) weg: ein Block ist ein iCloud-Termin (lib/planung/bloecke.ts).
 
 describe('opsLesen (Server-Seite)', () => {
   const saeubern = (e: unknown) => {

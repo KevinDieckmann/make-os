@@ -23,7 +23,7 @@ export type Horizont = 'tag' | 'woche' | 'monat' | 'quartal' | 'jahr' | 'routine
 
 const HORIZONTE: { id: Horizont; label: string; href: string }[] = [
   { id: 'tag', label: 'Tag', href: '/os/planung' },
-  { id: 'woche', label: 'Woche', href: '/os/planung/woche' },
+  { id: 'woche', label: 'Woche', href: '/os/kalender?modus=planen' },
   { id: 'monat', label: 'Monat', href: '/os/planung/monat' },
   { id: 'quartal', label: 'Quartal', href: '/os/planung/quartal' },
   { id: 'jahr', label: 'Jahr & Ziele', href: '/os/planung/jahr' },

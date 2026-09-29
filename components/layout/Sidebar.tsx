@@ -7,7 +7,7 @@ import { useMakeOS } from '@/context/MakeOSContext';
 const NAV = [
   { href: '/dashboard', label: 'DASHBOARD',  key: '01' },
   { href: '/tasks',     label: 'PROJEKTE',   key: '02' },
-  { href: '/calendar',  label: 'KALENDER',   key: '03' },
+  { href: '/os/kalender',  label: 'KALENDER',   key: '03' },
   { href: '/wellness',  label: 'FUNDAMENT',  key: '04' },
   { href: '/dog',       label: 'LUNA',       key: '05' },
   { href: '/groceries', label: 'EINKAUF',    key: '06' },

@@ -18,7 +18,6 @@ const publicSans = localFont({
 });
 import { AppContextProvider } from '@/context/AppContext';
 import { TasksProvider } from '@/context/TasksContext';
-import { CalendarProvider } from '@/context/CalendarContext';
 import { PrivacyProvider } from '@/context/PrivacyContext';
 import { MakeOSProvider } from '@/context/MakeOSContext';
 import { VerlaufWaechter } from '@/components/os/Verlauf';
@@ -52,10 +51,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MakeOSProvider>
           <PrivacyProvider>
             <AppContextProvider>
+              {/* Seit 29.09. (K5) ohne CalendarProvider: das Alt-Dashboard /calendar ist weg — sein Abruf von
+                  /api/apple-calendar lief auf JEDER Seite (auch /anmelden → 401/500). Kalender: /os/kalender. */}
               <TasksProvider>
-                <CalendarProvider>
-                  {children}
-                </CalendarProvider>
+                {children}
               </TasksProvider>
             </AppContextProvider>
           </PrivacyProvider>

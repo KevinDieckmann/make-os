@@ -84,13 +84,13 @@ export const REGLER: Regler[] = [
 
   // ── Zeit & Last ──
   { id: 'tageslast', label: 'Tageslast', bereich: 'zeit', erklaert: 'Wie viele Stunden Arbeit ein Tag höchstens tragen soll — darüber warnt das System.', min: 2, max: 12, schritt: 1, einheit: 'h',
-    wirktIn: [{ label: 'Tag', href: '/os/planung' }, { label: 'Wochenplaner', href: '/os/planung/woche' }, { label: 'Aufgaben', href: '/os/aufgaben' }], skala: ['ruhiger Tag', 'Vollgas'] },
+    wirktIn: [{ label: 'Tag', href: '/os/planung' }, { label: 'Wochenplaner', href: '/os/kalender?modus=planen' }, { label: 'Aufgaben', href: '/os/aufgaben' }], skala: ['ruhiger Tag', 'Vollgas'] },
   { id: 'kritisch-grenze', label: 'Kritisch-Grenze', bereich: 'zeit', erklaert: 'Ab wie vielen kritischen Aufgaben das System Alarm schlägt — mehr kann niemand gleichzeitig tragen.', min: 1, max: 15, schritt: 1,
     wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Dashboard', href: '/os' }], skala: ['sehr streng', 'lässt viel zu'] },
   { id: 'vorschau-tage', label: 'Vorausschau', bereich: 'zeit', erklaert: 'Wie weit der Zeitstrahl und die Fällig-Gruppen nach vorn schauen.', min: 7, max: 120, schritt: 7, einheit: 'Tage',
     wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Monat', href: '/os/planung/monat' }], skala: ['kurzer Horizont', 'weiter Blick'] },
   { id: 'wochenlast', label: 'Wochenlast', bereich: 'zeit', erklaert: 'Ab wie vielen verplanten Stunden pro Woche der Wochenplaner warnt.', min: 20, max: 70, schritt: 5, einheit: 'h',
-    wirktIn: [{ label: 'Wochenplaner', href: '/os/planung/woche' }], skala: ['ruhige Woche', 'Vollauslastung'] },
+    wirktIn: [{ label: 'Wochenplaner', href: '/os/kalender?modus=planen' }], skala: ['ruhige Woche', 'Vollauslastung'] },
 
   // ── Postfach ──
   { id: 'tuersteher', label: 'Türsteher-Strenge', bereich: 'postfach', erklaert: 'Wie viel unbekannte Absender überhaupt ins Postfach dürfen, bevor du entschieden hast.', min: 0, max: 100, schritt: 25,
@@ -111,7 +111,7 @@ export const REGLER: Regler[] = [
 
   // ── Schutz ──
   { id: 'schutzzeit', label: 'Schutzzeit', bereich: 'schutz', erklaert: 'Wie hart geschützte Zeiten (Sport, Sunday Dinner, Feierabend) verteidigt werden.', min: 0, max: 100, schritt: 25,
-    wirktIn: [{ label: 'Wochenplaner', href: '/os/planung/woche' }, { label: 'Energie', href: '/os/gesundheit?s=koerper' }], skala: ['nachgiebig', 'unantastbar'] },
+    wirktIn: [{ label: 'Wochenplaner', href: '/os/kalender?modus=planen' }, { label: 'Energie', href: '/os/gesundheit?s=koerper' }], skala: ['nachgiebig', 'unantastbar'] },
   { id: 'recovery-gruen', label: 'Grüne Tagesform ab', bereich: 'schutz', erklaert: 'Ab welchem Erholungswert ein Tag als grün gilt — steuert Tagesform, Fokus-Vorschlag und Wochenplanung.', min: 50, max: 85, schritt: 1, einheit: '%',
     wirktIn: [{ label: 'Gesundheit', href: '/os/gesundheit' }, { label: 'Tag', href: '/os/planung' }], skala: ['schnell grün', 'nur wirklich erholt'] },
   { id: 'runway-warnung', label: 'Runway-Warnung ab', bereich: 'schutz', erklaert: 'Ab wie wenigen Monaten Geldreichweite das System rot schlägt.', min: 1, max: 12, schritt: 1, einheit: 'Monate',

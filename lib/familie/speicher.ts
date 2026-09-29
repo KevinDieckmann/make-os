@@ -69,6 +69,9 @@ export function wendeFamilieAn(f: Familie, ops: ListenOp[], person: string, jetz
         if (roh.art === 'geburtstag' && typeof roh.menschId === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(roh.menschId)) { aus.menschId = roh.menschId; aus.datum = ''; }
         else delete aus.menschId;
       }
+      // Termin im gemeinsamen Kalender (29.09., K5): die UID schreibt NUR der Server (lib/kalender/spiegel-server.ts) —
+      // ein Browser mit älterem Stand kann sie weder setzen noch verlieren (sonst bliebe der Termin bei „Absagen“ stehen).
+      if (name === 'dates') { if (typeof alt?.kalenderUid === 'string') aus.kalenderUid = alt.kalenderUid; else delete aus.kalenderUid; }
       if (name === 'reparaturen') {
         type Refl = { person: string };
         const eigene = ((roh.reflexionen as Refl[]) ?? []).filter(x => x?.person === person);
@@ -93,8 +96,8 @@ export function setzeFelder(f: Familie, felder: Record<string, unknown>, person:
       ...(Array.isArray(e.businessFrei) ? { businessFrei: e.businessFrei.slice(0, 10).map(b => ({ tage: (b.tage ?? []).map(Number).filter(x => x >= 0 && x <= 6), von: text(b.von, 5), bis: text(b.bis, 5) })) } : {}),
       ...(typeof e.kinder === 'boolean' ? { kinder: e.kinder } : {}),
       ...('ausnahmeBis' in e ? { ausnahmeBis: tag(e.ausnahmeBis) } : {}),
-      // Kalender-Uids je Gesprächstag — höchstens 30, nur echte Tage.
-      ...(e.kalenderTermine && typeof e.kalenderTermine === 'object' ? { kalenderTermine: Object.fromEntries(Object.entries(e.kalenderTermine as Record<string, unknown>).filter(([k, v]) => /^\d{4}-\d{2}-\d{2}$/.test(k) && typeof v === 'string' && v.length <= 300).slice(-30).map(([k, v]) => [k, v as string])) } : {}),
+      // Kalender-Uids je Gesprächstag (`kalenderTermine`) schreibt seit 29.09. (K5) NUR der Server
+      // (lib/kalender/spiegel-server.ts) — was der Browser hier mitschickt, bleibt unbeachtet (`...f.einstellungen` oben).
     };
   }
   // Profil: jeder pflegt nur sein eigenes.

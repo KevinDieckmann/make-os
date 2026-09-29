@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   }
   const tagSet = new Set(tage);
 
-  // Feste Termine beider Kalender für genau diese Woche (dedupliziert). Seit 29.09. (Paket R-Z, #K4) über denselben
+  // Feste Termine (iCloud-Stand, auch die Blöcke — K5) für genau diese Woche (dedupliziert). Seit 29.09. (Paket R-Z, #K4) über denselben
   // Lesepfad wie ZOE (`termineFuerZoe`): für die Person gefiltert — private/Gesundheitstermine der anderen nur „Belegt“
   // (die Zeit blockiert weiter), fremder Haushalt bekommt keine Termine; fremde Titel gekapselt (#K1).
   const [kal, tasksState, ziele, vitals, routinenF, reglerF] = await Promise.all([
@@ -62,8 +62,9 @@ export async function POST(req: Request) {
   ]);
   const regler = reglerF?.regler ?? {};
   const gesehen = new Set<string>();
+  // KEMARIS/M365: bis zur echten Anbindung keine Termine (Beispieldaten seit 29.09., K5, raus).
   const fest: { date: string; startMin: number; dauerMin: number; titel: string; fremd?: boolean }[] = [];
-  const roh = [...kal.termine, ...kal.kemaris].filter(t => !t.ganztags).map(t => ({ t: t.titel, s: t.start, e: t.ende as string | undefined, fremd: !!t.fremd }));
+  const roh = kal.termine.filter(t => !t.ganztags).map(t => ({ t: t.titel, s: t.start, e: t.ende as string | undefined, fremd: !!t.fremd }));
   for (const e of roh) {
     const date = e.s.slice(0, 10);
     if (!tagSet.has(date)) continue;

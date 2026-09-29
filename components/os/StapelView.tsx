@@ -36,7 +36,7 @@ const HEADS_QUELLEN: { id: string; name: string; api: string; href: string }[] =
 const GRUPPE: Record<string, { label: string; href: string; farbe: string }> = {
   finanzen: { label: 'Geld', href: '/os/finanzen', farbe: LEUCHT.geld }, meilensteine: { label: 'Meilensteine', href: '/os/roadmap', farbe: LEUCHT.schlaf },
   fokus: { label: 'Fokus & Ziele', href: '/os/wachstum', farbe: LEUCHT.schlaf }, aufgaben: { label: 'Aufgaben', href: '/os/aufgaben', farbe: LEUCHT.achtung },
-  kunden: { label: 'Mandate', href: '/os/mandate', farbe: LEUCHT.business }, planer: { label: 'Planung', href: '/os/planung/woche', farbe: LEUCHT.puls },
+  kunden: { label: 'Mandate', href: '/os/mandate', farbe: LEUCHT.business }, planer: { label: 'Planung', href: '/os/kalender?modus=planen', farbe: LEUCHT.puls },
   inbox: { label: 'Postfach', href: '/os/inbox', farbe: LEUCHT.puls }, gesundheit: { label: 'Gesundheit', href: '/os/gesundheit', farbe: LEUCHT.gut },
   kalender: { label: 'Kalender', href: '/os/kalender', farbe: LEUCHT.schlaf },
 };

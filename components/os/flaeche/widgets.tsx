@@ -82,7 +82,8 @@ function useDaten<T>(url: string, ok: (d: unknown) => T | null): T | null | unde
   }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
   return d;
 }
-const uhr = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '');
+/** Uhrzeit einer Berliner Wandzeit „YYYY-MM-DDTHH:mm:ss“ (nie über new Date(wandzeit)). */
+const uhr = (wand?: string) => (wand && wand.length >= 16 ? wand.slice(11, 16) : '');
 const tagKurz = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
 const plusTage = (d: string, n: number) => { const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
 
@@ -135,22 +136,24 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
 
 // ── Termine (heute / nächste Tage) ──────────────────────────────────────────
 interface Termin { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; quelle?: 'privat' | 'business' }
-function useTermine(tage: number, mitBusiness: boolean, space: 'alle' | 'privat' | 'business' = 'alle'): Termin[] | undefined {
-  const einst = useDaten<object>('/api/state/kalender-einstellungen', d => (d as object) ?? null);
+/**
+ * Termine der nächsten Tage — seit 29.09. (K5) über /api/kalender (iCloud, private Termine der anderen Person nur als
+ * „Belegt“, K1 `maskieren`) statt über den Altweg /api/apple-calendar (Rohtitel ohne Maskierung) und ohne die
+ * KEMARIS-Beispieldaten. Der Space eines Termins kommt aus den Kalender-Einstellungen.
+ */
+function useTermine(tage: number, _mitBusiness: boolean, space: 'alle' | 'privat' | 'business' = 'alle'): Termin[] | undefined {
   const heute = localDay();
   const bis = plusTage(heute, tage - 1);
-  const apple = useDaten<Termin[]>('/api/apple-calendar', d => (Array.isArray(d) ? (d as Termin[]) : null));
-  const kem = useDaten<Termin[]>(mitBusiness ? '/api/kemaris-calendar' : '/api/kemaris-calendar?leer=1', d => {
-    const ev = (d as { events?: { title?: string; start?: string; end?: string }[] })?.events;
-    return Array.isArray(ev) ? ev.map(x => ({ title: x.title, startDate: x.start, endDate: x.end, quelle: 'business' as const })) : null;
+  const kal = useDaten<{ termine: { id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string }[]; einstellungen?: object }>(`/api/kalender?von=${heute}&bis=${plusTage(heute, tage)}`, d => {
+    const r = d as { ok?: boolean; termine?: unknown };
+    return r?.ok && Array.isArray(r.termine) ? d as { termine: { id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string }[]; einstellungen?: object } : null;
   });
   return useMemo(() => {
-    if (apple === undefined) return undefined;
-    // Je Termin der Space seines Kalenders (26.09.): KEMARIS = Business, Apple-Kalender nach Einstellung.
-    const alle = [...(apple ?? []).map(t => ({ ...t, quelle: spaceVonKalender(einst ?? null, t.calendarName ?? '') })), ...(mitBusiness || space === 'business' ? kem ?? [] : [])]
+    if (kal === undefined) return undefined;
+    const alle: Termin[] = (kal?.termine ?? []).map(t => ({ id: t.id, title: t.titel, startDate: t.start, endDate: t.ende, allDay: t.ganztags, calendarName: t.kalender, quelle: spaceVonKalender((kal?.einstellungen ?? null) as Parameters<typeof spaceVonKalender>[0], t.kalender) }))
       .filter(t => space === 'alle' || t.quelle === space);
     return alle.filter(t => { const d = (t.startDate ?? '').slice(0, 10); return d >= heute && d <= bis; }).sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
-  }, [apple, kem, heute, bis, mitBusiness, space, einst]);
+  }, [kal, heute, bis, space]);
 }
 function TermineWidget({ e, titel, i }: WidgetProps) {
   const router = useRouter();
@@ -165,7 +168,7 @@ function TermineWidget({ e, titel, i }: WidgetProps) {
   }, [termine]);
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href={sp === 'alle' ? '/os/planung/woche' : `/os/planung/woche?space=${sp}`} style={link}>Kalender ›</Link>}>{titel ?? `${tage === 1 ? 'Termine' : `Nächste ${tage} Tage`}${sp === 'alle' ? '' : ` · ${SPACE_LABEL[sp]}`}`}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href={sp === 'alle' ? '/os/kalender' : `/os/kalender?space=${sp}`} style={link}>Kalender ›</Link>}>{titel ?? `${tage === 1 ? 'Termine' : `Nächste ${tage} Tage`}${sp === 'alle' ? '' : ` · ${SPACE_LABEL[sp]}`}`}</Ueberschrift>
       <Liste>
         {termine && termine.length === 0 && <Leer>{tage === 1 ? 'Keine Termine heute — freie Bahn.' : 'Nichts eingetragen — freie Bahn.'}</Leer>}
         {termine === undefined && <Leer>lade …</Leer>}
@@ -173,9 +176,9 @@ function TermineWidget({ e, titel, i }: WidgetProps) {
           <div key={d}>
             {tage > 1 && <div style={{ fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: d === heute ? LEUCHT.puls : C.inkLeise, fontWeight: 600, padding: '8px 2px 2px' }}>{d === heute ? 'Heute' : tagKurz(d)}</div>}
             {liste.map((t, k) => (
-              <Zeile key={t.id ?? `${d}-${k}`} onClick={() => router.push(WEG.woche(d))}
+              <Zeile key={t.id ?? `${d}-${k}`} onClick={() => router.push(WEG.kalender(d))}
                 links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: t.quelle === 'business' ? LEUCHT.business : LEUCHT.puls, width: 52 }}>{t.allDay ? 'Tag' : uhr(t.startDate)}</span>}
-                titel={t.title ?? '—'} unter={t.endDate && !t.allDay ? `bis ${uhr(t.endDate)}${t.quelle === 'business' ? ' · KEMARIS' : ''}` : t.quelle === 'business' ? 'KEMARIS' : undefined} />
+                titel={t.title ?? '—'} unter={t.endDate && !t.allDay ? `bis ${uhr(t.endDate)}${t.quelle === 'business' ? ' · Business' : ''}` : t.quelle === 'business' ? 'Business' : undefined} />
             ))}
           </div>
         ))}
