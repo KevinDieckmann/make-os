@@ -33,3 +33,4 @@ Alles lokal; Upload nur auf Kevins Wort.
 - Auswertung: mehrere Gäste je Termin (`ATermin.kontakte`) sobald K3 Gäste einführt.
 - Glocke + Heute: Termine, Follow-ups, Fristen (Verbindungskarte Befund 8/9).
 - ZOE-Kalender-Agent reparieren (blind, autonom über Altweg, fest verdrahtete Kalender) — Verbindungskarte Befund 1.
+- (aus K4) ZOE-Werkzeug `freie_zeit` (nur lesen) → `freieZeitFuer`; Angebot „Termin zum Besprechen vorschlagen“ → `freieZeitFuer`; Heute + Glocke: offene Buchungsanfragen; K3: Gast-Einladung statt Notiz bei bestätigter Buchung.
