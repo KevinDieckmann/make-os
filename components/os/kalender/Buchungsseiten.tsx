@@ -286,7 +286,7 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
           <label><input type="checkbox" checked={s.anliegen} onChange={e => setS({ ...s, anliegen: e.target.checked })} /> nach Anliegen fragen</label>
           <label><input type="checkbox" checked={s.aktiv} onChange={e => setS({ ...s, aktiv: e.target.checked })} /> aktiv (Link erreichbar)</label>
         </div>
-        <div style={{ fontSize: 11.5, color: C.inkLeise }}>Name und E-Mail sind immer Pflicht, ebenso das Häkchen zur Einwilligung (Wortlaut und Fassung werden an jeder Buchung gespeichert). Buchungen sind erst fest, wenn ihr sie freigebt.</div>
+        <div style={{ fontSize: 11.5, color: C.inkLeise }}>Name und E-Mail sind immer Pflicht, ebenso das Häkchen zur Kenntnisnahme des Datenschutzhinweises (Wortlaut und Fassung werden an jeder Buchung gespeichert). Buchungen sind erst fest, wenn ihr sie freigebt.</div>
         {fehler && <div style={{ fontSize: 12, color: LEUCHT.achtung }}>{fehler}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {onLoeschen && <Knopf leise onClick={onLoeschen}>Löschen</Knopf>}

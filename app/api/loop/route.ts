@@ -100,7 +100,7 @@ export async function POST(req: Request) {
     const user = [
       `Heute: ${wd}, ${today}.`,
       eigeneAngaben,
-      `Recovery ${vit.rec}%, Ruhepuls ${vit.rhr}, HRV ${vit.hrv}, Schlaf letzte Nacht ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Kevin notiert: "${vit.note}"` : ""}`,
+      `Recovery ${vit.rec}%, Ruhepuls ${vit.rhr}, HRV ${vit.hrv}, Schlaf letzte Nacht ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ""}`,
       '',
       // Ehrlich über die Datenlage: der Kalender-Cache wird nur beim Öffnen von
       // /os/kalender erneuert. Ohne diesen Hinweis behauptet der Loop „dein Tag

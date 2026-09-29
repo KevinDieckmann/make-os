@@ -228,7 +228,7 @@ export async function POST(req: Request) {
       ].join('\n'),
       user: [
         `Heute ${wd}, ${heute}, ${jetzt.getHours()}:${String(jetzt.getMinutes()).padStart(2, '0')} Uhr. Lauf-Art: ${art}.`,
-        `Recovery ${vit.rec}%, Schlaf ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Kevin notiert: "${vit.note}"` : ''}`,
+        `Recovery ${vit.rec}%, Schlaf ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ''}`,
         eigeneAngaben,
         blockIndex(b),
         '',

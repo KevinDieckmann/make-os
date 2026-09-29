@@ -102,6 +102,8 @@ Danach auf dem Server einmal `docker compose exec caddy caddy reload --config /e
 wieder; ohne Buchungsseite ist das unkritisch).
 Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist alles seit dem Upload weg).
 
+**Nach dem Rückweg zusätzlich (Art. 17 / 14-Tage-Zusage):** af4679a räumt die Kalender-Tagesdateien nicht auf und nimmt sie ins Nachtarchiv — deshalb direkt nach dem Rückweg `rm -f /srv/make-os/daten/archiv/kalender-export-*` (als make).
+
 **Was beim Rückweg wegfällt oder später doppelt kommen kann** (af4679a verwirft beim nächsten Schreiben, was er nicht kennt):
 - Aufgaben: Uhrzeit der Deadline (`dueTime`), Anlass „Geschenk“ (→ Heute bietet „Geschenk vormerken“ evtl. noch einmal an).
 - CRM: Geburtstag am Kontakt; Meeting-Aktivitäten verlieren den Verweis auf ihren Termin (`terminUid`), Follow-ups ebenso.

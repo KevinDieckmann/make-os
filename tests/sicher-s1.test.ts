@@ -167,8 +167,8 @@ describe('#9 Gesundheits-Kontext nur aus dem eigenen Profil', () => {
   });
   it('kein fest kodierter Gesundheitskontext mehr in den Prompts der Planungs-Routen', () => {
     const wurzel = path.resolve(__dirname, '..');
-    const routen = ['app/api/kalender/analyse/route.ts', 'app/api/planung/vorschlag/route.ts', 'app/api/loop/route.ts', 'app/api/tageslauf/route.ts', 'app/api/fokus/route.ts', 'app/api/zoe/morgen/route.ts', 'app/api/performance/route.ts', 'app/api/kimmi/route.ts'];
-    for (const r of routen) expect(readFileSync(path.join(wurzel, r), 'utf8'), r).not.toMatch(/Bandscheib|Psoriasis|Schuppenflechte|Cannabis|Spritze|spine-safe/i);
+    const routen = ['app/api/kalender/analyse/route.ts', 'app/api/planung/vorschlag/route.ts', 'app/api/loop/route.ts', 'app/api/tageslauf/route.ts', 'app/api/fokus/route.ts', 'app/api/zoe/morgen/route.ts', 'app/api/performance/route.ts', 'app/api/kimmi/route.ts', 'lib/make-one/agents-data.ts'];
+    for (const r of routen) expect(readFileSync(path.join(wurzel, r), 'utf8'), r).not.toMatch(/Bandscheib|Psoriasis|Schuppenflechte|Cannabis|Spritze|spine-safe|Hautarzt/i);
     expect(KONTEXT_REGEL).toMatch(/keine Annahmen/);
   });
 });

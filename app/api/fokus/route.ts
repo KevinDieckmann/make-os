@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   ].join('\n');
 
   const eigeneAngaben = await eigenerGesundheitsKontext(personStreng(req));
-  const message = `Recovery: ${rec}% (Zone ${zone})${vitalsHint(v)}. Ruhepuls ${v.rhr}, HRV ${v.hrv}, Schlaf letzte Nacht ${v.sleep}h.${v.note ? ` Kevin notiert: "${v.note}"` : ""}${eigeneAngaben ? `\n\n${eigeneAngaben}` : ''}\n\n${taskLines}\n\nRichte meinen Tag aus.`;
+  const message = `Recovery: ${rec}% (Zone ${zone})${vitalsHint(v)}. Ruhepuls ${v.rhr}, HRV ${v.hrv}, Schlaf letzte Nacht ${v.sleep}h.${v.note ? ` Notiz: "${v.note}"` : ""}${eigeneAngaben ? `\n\n${eigeneAngaben}` : ''}\n\n${taskLines}\n\nRichte meinen Tag aus.`;
 
   const r = await askText({ zweck: 'fokus', system, user: message, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Tagesplan erzeugen — nochmal versuchen.', recovery: rec, zone });
