@@ -57,6 +57,8 @@ export interface KalenderStand {
   kalender: { name: string; farbe?: string; schreibbar: boolean; wer: Wer }[];
   termine: KTermin[]; fristen: KFrist[]; erinnerungen: KErinnerung[]; erinnerungenStand: string | null;
   einstellungen?: { kalender: Record<Wer, string> };
+  /** R-K1 #51: Alter des Stands („letzter Abgleich vor X Min.“, `veraltet` ab 30 Min., Hinweise je Kalender). */
+  abgleich?: import('./AbgleichStand').AbgleichInfo;
 }
 
 export const WER_FARBE: Record<Wer, string> = { kevin: LEUCHT.puls, malin: LEUCHT.beziehung, beide: LEUCHT.geld };

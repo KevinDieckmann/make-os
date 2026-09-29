@@ -2,10 +2,19 @@
 // GET  → { ok, seiten (+ Pfad), buchungen (ohne Token-Hash), vorschlaege }
 // POST { aktion: 'seite', seite: {…, id?} }            anlegen/ändern (neue bekommen eine nicht erratbare Adresse)
 //      { aktion: 'seite-loeschen', id }                 nur ohne Buchungen (sonst erst deaktivieren — Löschfrist räumt)
-//      { aktion: 'freigeben', id, einladen?, einladungBestaetigt? }  fester Termin + CRM (lib/kalender/buchung-ablauf.ts);
-//                                                       `einladen` (K3): Gast als echte Einladung — nur mit Bestätigung
+//      { aktion: 'freigeben', id, einladen?, einladungBestaetigt?, adresseUnbestaetigt?, trotzKonflikt? }
+//                                                       Kontakt + fester Termin + CRM (lib/kalender/buchung-ablauf.ts);
+//                                                       `einladen` (K3): Gast als echte Einladung — nur mit Bestätigung,
+//                                                       an eine unbestätigte Adresse nur mit `adresseUnbestaetigt` (#76).
+//                                                       Platz inzwischen belegt → 409 { konflikt: true } (#73), dann nur
+//                                                       mit `trotzKonflikt`.
 //      { aktion: 'ablehnen', id, grund? }               Buchender sieht den Status (und den Grund) auf seiner Seite
-// Nur der Haushalt des Inhabers (wie der Kalender). Versendet wird nichts — außer der Einladung nach Klick (iCloud).
+//      { aktion: 'mail-link', id }                      (#76) einmaliger Bestätigungslink für die E-Mail-Adresse →
+//                                                       { token, pfad, bis } — die Oberfläche baut daraus den Mail-ENTWURF
+//                                                       (mailto); verschickt wird nur per Klick in der Mail-App. Ein neuer
+//                                                       Link ersetzt den alten.
+// Nur der Haushalt des Inhabers (wie der Kalender), nie der Dienstweg für Einladungen/Links. Versendet wird nichts —
+// außer der Einladung nach Klick (iCloud).
 
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
@@ -13,8 +22,8 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { neueKennung } from '@/lib/kennung';
-import { seiteSauber, GRENZEN, OFFEN, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
-import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, neuerSlug } from '@/lib/kalender/buchung-speicher';
+import { seiteSauber, mailLinkMoeglich, mailLinkPfad, GRENZEN, OFFEN, MAIL_LINK_TAGE, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
+import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, neuerSlug, neuesToken, mailTokenHash } from '@/lib/kalender/buchung-speicher';
 import { buchungFreigeben, folgeVorschlag, FreigabeFehler } from '@/lib/kalender/buchung-ablauf';
 import { istDienst } from '@/lib/zugang/dienst';
 
@@ -23,8 +32,8 @@ export const dynamic = 'force-dynamic';
 
 const ID = /^[a-z]{1,4}-[a-z0-9-]{8,80}$/;
 const nein = (fehler: string, status = 400) => NextResponse.json({ ok: false, fehler }, { status });
-/** Was die Oberfläche von einer Buchung sieht — nie der Token-Hash. */
-const sicht = ({ tokenHash: _t, ...b }: Buchung) => b;
+/** Was die Oberfläche von einer Buchung sieht — nie ein Token-Hash (Status und Mail-Link), vom Link nur der Ablauf. */
+const sicht = ({ tokenHash: _t, mailLink, ...b }: Buchung) => ({ ...b, ...(mailLink ? { mailLinkBis: mailLink.bis } : {}) });
 
 export async function GET(req: Request) {
   if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
@@ -102,9 +111,9 @@ export async function POST(req: Request) {
     if (einladen && b.einladungBestaetigt !== true) return nein('Einladung erst nach Bestätigung („Einladung senden?“).', 409);
     if (einladen && istDienst(req)) return nein('Einladungen nur von Hand — nie über ZOE oder Skripte.', 403);
     try {
-      await buchungFreigeben(id, person, jetzt, { einladen });
+      await buchungFreigeben(id, person, jetzt, { einladen, adresseUnbestaetigt: b.adresseUnbestaetigt === true, trotzKonflikt: b.trotzKonflikt === true });
     } catch (e) {
-      if (e instanceof FreigabeFehler) return nein(e.message, e.status);
+      if (e instanceof FreigabeFehler) return NextResponse.json({ ok: false, fehler: e.message, ...e.extra }, { status: e.status });
       const text = e instanceof Error ? e.message.slice(0, 200) : 'Fehler';
       return nein(`Freigabe nicht vollständig (${text}) — sie wird automatisch fortgesetzt.`, 502);
     }
@@ -125,6 +134,28 @@ export async function POST(req: Request) {
     if (fehler) return nein(fehler, status);
     await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['status'] }], { art: 'person', person });
     return NextResponse.json({ ok: true });
+  }
+
+  if (b.aktion === 'mail-link') {
+    // Nur von Hand: ein Link führt zu einer Mail an Dritte (auch als Entwurf) — nie über ZOE oder Skripte.
+    if (istDienst(req)) return nein('Bestätigungslinks nur von Hand — nie über ZOE oder Skripte.', 403);
+    const id = typeof b.id === 'string' && ID.test(b.id) ? b.id : '';
+    const token = neuesToken();
+    const bis = new Date(jetzt.getTime() + MAIL_LINK_TAGE * 86_400_000).toISOString();
+    let fehler = '', status = 400, slug = '';
+    await aendereBuchungBestand(bs => {
+      const x = bs.buchungen.find(y => y.id === id);
+      if (!x) { fehler = 'Buchung nicht gefunden.'; status = 404; return bs; }
+      const m = mailLinkMoeglich(x);
+      if (!m.ok) { fehler = m.fehler; status = 409; return bs; }
+      slug = bs.seiten.find(s => s.id === x.seiteId)?.slug ?? '';
+      if (!slug) { fehler = 'Buchungsseite nicht gefunden.'; status = 404; return bs; }
+      // Nur der Hash liegt im Bestand; ein neuer Link ersetzt den alten (der alte gilt ab jetzt nicht mehr).
+      return { ...bs, buchungen: bs.buchungen.map(y => (y.id === id ? { ...y, mailLink: { hash: mailTokenHash(token), bis, am: jetztIso } } : y)) };
+    }, jetzt);
+    if (fehler) return nein(fehler, status);
+    await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['mailLink'] }], { art: 'person', person });
+    return NextResponse.json({ ok: true, token, pfad: mailLinkPfad(slug, token), bis }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   return nein('Unbekannte Aktion.');

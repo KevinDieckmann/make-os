@@ -16,22 +16,28 @@ process.env.MAKE_OS_DATEN_SCHLUESSEL = 'pruef-datenschluessel-k4-nur-im-test';
 process.env.MAKE_OS_PEPPER = 'pruef-pepper-k4-nur-im-test-0123456789abcdef';
 
 // ── iCloud gemockt: Termine liegen im Speicher dieses Tests ────────────────────
-const ic = vi.hoisted(() => ({ verbunden: true, termine: [] as { uid: string; id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string; notiz?: string; art: string; beschaeftigt: boolean }[], angelegt: 0, gaeste: [] as { email: string }[][], bestaetigt: [] as boolean[] }));
-vi.mock('@/lib/kalender/icloud', () => ({
+const ic = vi.hoisted(() => ({ verbunden: true, termine: [] as { uid: string; id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string; notiz?: string; art: string; beschaeftigt: boolean }[], angelegt: 0, gaeste: [] as { email: string }[][], bestaetigt: [] as boolean[], erzwungen: 0 }));
+// R-K2 #73: der Stand ist so frisch wie die (vorgestellte) Uhr; POST und Freigabe gleichen erzwungen ab.
+const stand = () => ({ at: new Date().toISOString(), kalender: [], objekte: {} });
+vi.mock('@/lib/kalender/icloud', async () => ({
   CACHE: 'calendar-cache',
   SPEICHER: 'kalender-icloud',
+  // Die Frische-Regel ist die echte (R-K1) — nur die Daten sind nachgebaut.
+  abgleichAlter: (await vi.importActual<typeof import('@/lib/kalender/icloud')>('@/lib/kalender/icloud')).abgleichAlter,
   holfenster: () => ({ von: '2026-07-01', bis: '2027-11-01' }),
-  objekteKurz: () => ic.termine.map(t => ({ uid: t.uid, tag: t.start.slice(0, 10), zusatz: null })),
+  objekteKurz: () => ic.termine.map(t => ({ uid: t.uid, schluessel: t.id, tag: t.start.slice(0, 10), zusatz: null })),
   verbunden: () => ic.verbunden,
-  ladeStand: async () => ({ at: '2026-10-05T06:00:00.000Z', kalender: [], objekte: {} }),
-  frischerStand: async () => ({ at: '2026-10-05T06:00:00.000Z', kalender: [], objekte: {} }),
+  ladeStand: async () => stand(),
+  frischerStand: async () => stand(),
+  abgleichen: async (opt: { erzwingen?: boolean } = {}) => { if (opt.erzwingen) ic.erzwungen++; return stand(); },
   termineImZeitraum: (_s: unknown, von: string, bis: string) => ic.termine.filter(t => t.start.slice(0, 10) < bis && t.ende.slice(0, 10) >= von).map(t => ({ ...t, href: '', kalenderId: '', serie: false, mitTeilnehmern: false, bearbeitbar: true })),
   anlegen: async (e: { titel: string; kalender: string; start: string; ende: string; notiz?: string; art?: string; beschaeftigt?: boolean; gaeste?: { email: string }[] }, opt: { einladungBestaetigt?: boolean } = {}) => {
     ic.angelegt++;
     ic.gaeste.push(e.gaeste ?? []); ic.bestaetigt.push(!!opt.einladungBestaetigt);
-    const uid = `UID-TEST-${ic.angelegt}`;
-    ic.termine.push({ uid, id: uid, titel: e.titel, start: e.start, ende: e.ende, ganztags: false, kalender: e.kalender, notiz: e.notiz, art: e.art ?? 'termin', beschaeftigt: e.beschaeftigt ?? true });
-    return { uid, kalender: e.kalender };
+    // R-K1: Schlüssel = Kalender-Kennung + UID.
+    const uid = `UID-TEST-${ic.angelegt}`, schluessel = `testkal|${uid}`;
+    ic.termine.push({ uid, id: schluessel, titel: e.titel, start: e.start, ende: e.ende, ganztags: false, kalender: e.kalender, notiz: e.notiz, art: e.art ?? 'termin', beschaeftigt: e.beschaeftigt ?? true });
+    return { uid, schluessel, kalender: e.kalender, gaeste: (e.gaeste ?? []).length };
   },
 }));
 
@@ -157,8 +163,8 @@ describe('Buchen: Spam-Schutz, Doppelbuchung, Drosselung', () => {
 
 let token = '';
 
-describe('Bestätigen → EIN CRM-Vorgang → Freigabe → Termin', () => {
-  it('Status sehen, bestätigen: Anfrage im CRM mit vollem Einwilligungs-Nachweis, Follow-up, Glocke', async () => {
+describe('Bestätigen → Glocke → Freigabe → EIN CRM-Vorgang + Termin', () => {
+  it('Status sehen, bestätigen: Glocke — aber noch KEIN Kontakt im CRM (R-K2 #79)', async () => {
     const s = await statusAktion(token, 'ansehen');
     expect(s.status).toBe(200);
     expect(s.d.sicht).toMatchObject({ status: 'vorlaeufig', titel: 'Erstgespräch' });
@@ -168,49 +174,57 @@ describe('Bestätigen → EIN CRM-Vorgang → Freigabe → Termin', () => {
     const b = await statusAktion(token, 'bestaetigen');
     expect(b.d.sicht.status).toBe('angefragt');
     const buchung = (await bestand()).buchungen[0];
-    expect(buchung.kontaktId).toMatch(/^c-/);
-    const k = (await kontakte()).find(x => x.id === buchung.kontaktId)!;
-    expect(k).toMatchObject({ email: 'testa.gast@example.invalid', vorname: 'Testa', nachname: 'Gast', herkunft: 'selbst' });
-    expect(k.aktivitaeten.filter(a => (a.text ?? '').startsWith('Anfrage über Website: Terminbuchung „Erstgespräch“'))).toHaveLength(1);
-    const ew = k.einwilligungen!.find(e => e.grundlage === 'anfrage' && e.kanal === 'mail')!;
-    expect(ew).toMatchObject({ belegRef: `buchung:${buchung.id}`, wortlautVersion: buchung.einwilligung.version, erfasstVon: 'kevin' });
-    expect(ew.wortlaut).toBe(buchung.einwilligung.wortlaut);
-    expect(ew.zeitpunkt).toBeTruthy();
-    const crm = (await db.loadJson<{ followups: { id: string; text: string; kontaktId?: string }[] }>('crm'))!;
-    expect(crm.followups.find(f => f.id === buchung.followUpId)).toMatchObject({ kontaktId: k.id });
+    expect(buchung.kontaktId).toBeUndefined();
+    expect((await kontakte()).some(x => x.email === 'testa.gast@example.invalid')).toBe(false);
+    expect((await db.loadJson<{ followups?: unknown[] }>('crm'))?.followups ?? []).toHaveLength(0);
     const glocke = await db.loadJson<{ eintraege: { art: string; titel: string }[] }>('meldungen--kevin');
     expect(glocke!.eintraege.some(m => m.art === 'buchung' && m.titel.includes('Erstgespräch'))).toBe(true);
-    // Zweimal bestätigen legt nichts doppelt an
+    // Zweimal bestätigen legt nichts an
     await statusAktion(token, 'bestaetigen');
-    expect((await kontakte()).filter(x => x.email === 'testa.gast@example.invalid')).toHaveLength(1);
+    expect((await kontakte()).filter(x => x.email === 'testa.gast@example.invalid')).toHaveLength(0);
   });
 
-  it('Freigabe: fester Termin (echte UID), genau eine Aktivität „Termin gebucht“ mit Termin-Bezug, Follow-up „vorbereiten“, Audit', async () => {
+  it('Freigabe: Kontakt mit Nachweis „unbestätigt“, fester Termin (echte UID), genau eine Aktivität „Termin gebucht“, Follow-up „vorbereiten“ (nie Mail), Audit', async () => {
     const id = (await bestand()).buchungen[0].id;
     // K3: „einladen“ ohne Bestätigung → 409, nichts angelegt.
     expect((await verwalten({ aktion: 'freigeben', id, einladen: true })).status).toBe(409);
     expect(ic.angelegt).toBe(0);
+    const vorher = ic.erzwungen;
     const r = await verwalten({ aktion: 'freigeben', id });
     expect(r.status).toBe(200);
+    expect(ic.erzwungen).toBe(vorher + 1); // #73: vor der Freigabe erzwungen abgeglichen
     expect(ic.angelegt).toBe(1);
     expect(ic.gaeste[0]).toEqual([]); // ohne „einladen“ nie ein Gast im Termin
     const b = (await bestand()).buchungen[0];
-    expect(b).toMatchObject({ status: 'bestaetigt', terminUid: 'UID-TEST-1', entschiedenVon: 'kevin' });
+    expect(b).toMatchObject({ status: 'bestaetigt', terminUid: 'testkal|UID-TEST-1', entschiedenVon: 'kevin' });
+    // Der Kontakt entsteht erst jetzt — mit vollem Nachweis; die Adresse ist (noch) unbestätigt (#76).
+    expect(b.kontaktId).toMatch(/^c-/);
+    const kk = (await kontakte()).find(x => x.id === b.kontaktId)!;
+    expect(kk).toMatchObject({ email: 'testa.gast@example.invalid', vorname: 'Testa', nachname: 'Gast', herkunft: 'selbst' });
+    expect(kk.aktivitaeten.filter(a => (a.text ?? '').startsWith('Anfrage über Website: Terminbuchung „Erstgespräch“'))).toHaveLength(1);
+    const ew = kk.einwilligungen!.find(e => e.grundlage === 'anfrage' && e.kanal === 'mail')!;
+    expect(ew).toMatchObject({ belegRef: `buchung:${b.id}`, wortlautVersion: b.einwilligung.version, erfasstVon: 'kevin' });
+    expect(ew.wortlaut).toBe(b.einwilligung.wortlaut);
+    expect(ew.nachweis).toContain('E-Mail-Adresse unbestätigt');
+    expect(ew.zeitpunkt).toBeTruthy();
+    const fus = (await db.loadJson<{ followups: { kontaktId?: string; art: string }[] }>('crm'))!.followups.filter(f => f.kontaktId === b.kontaktId);
+    expect(fus.length).toBeGreaterThan(0);
+    expect(fus.every(f => f.art !== 'mail')).toBe(true); // kein automatisches Mail-Follow-up
     expect(ic.termine[0].notiz).not.toContain(b.kontaktId!); // Kontaktbezug nie im Termin …
     const bezug = await db.loadJson<{ bezuege: Record<string, { kontaktId?: string; von?: string }> }>('kalender-bezug'); // … sondern in K1 `kalender-bezug`
-    expect(bezug!.bezuege['UID-TEST-1']).toMatchObject({ kontaktId: b.kontaktId, von: 'kevin' });
+    expect(bezug!.bezuege['testkal|UID-TEST-1']).toMatchObject({ kontaktId: b.kontaktId, von: 'kevin' });
     const k = (await kontakte()).find(x => x.id === b.kontaktId)!;
     const termin = k.aktivitaeten.filter(a => a.art === 'termin');
     expect(termin).toHaveLength(1);
     // K3: die Meeting-Aktivität verweist auf den Termin (`terminUid`) — die Zeit steht nur im Termin, kein `wann`.
-    expect(termin[0]).toMatchObject({ terminUid: 'UID-TEST-1' });
+    expect(termin[0]).toMatchObject({ terminUid: 'testkal|UID-TEST-1' });
     expect(termin[0].wann).toBeUndefined();
     const crm = (await db.loadJson<{ followups: { id: string; text: string; faellig: string }[] }>('crm'))!;
     expect(crm.followups.find(f => f.id === b.vorbereitenId)?.text).toContain('Termin vorbereiten');
     // Audit: Kalender-Schreibaktion mit UID, ohne Titel/Namen
     const monat = `aenderungsprotokoll--${HAUS}--2026-10`;
     const prot = await db.loadJson<{ eintraege: { bestand: string; id: string; op: string; person?: string }[] }>(monat);
-    expect(prot!.eintraege.some(e => e.bestand === 'kalender' && e.id === 'UID-TEST-1' && e.op === 'neu' && e.person === 'kevin')).toBe(true);
+    expect(prot!.eintraege.some(e => e.bestand === 'kalender' && e.id === 'testkal|UID-TEST-1' && e.op === 'neu' && e.person === 'kevin')).toBe(true);
     expect(JSON.stringify(prot)).not.toContain('Testa');
     // Zweite Freigabe: kein zweiter Termin
     await verwalten({ aktion: 'freigeben', id });
@@ -244,7 +258,7 @@ describe('Bestätigen → EIN CRM-Vorgang → Freigabe → Termin', () => {
 });
 
 describe('Absichtsprotokoll: Abbruch nach jedem Schritt der Freigabe → Wiederaufnahme → derselbe Endzustand', () => {
-  const SCHRITTE = ['termin', 'buchung', 'kartei', 'crm'];
+  const SCHRITTE = ['kontakt', 'termin', 'buchung', 'kartei', 'crm'];
   for (const schritt of SCHRITTE) for (const wann of ['vorAbhaken', 'nachAbhaken'] as const) {
     it(`Abbruch ${wann === 'vorAbhaken' ? 'vor' : 'nach'} dem Abhaken von „${schritt}“`, async () => {
       const ab = await import('@/lib/store/absichten');
@@ -302,7 +316,7 @@ describe('Datenschutz und Verbindungen', () => {
     const { verbindungenPruefen } = await import('@/lib/crm/verbindungen');
     const b = (await bestand()).buchungen.find(x => x.status === 'bestaetigt')!;
     await db.updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ kontakte: (cur?.kontakte ?? []).filter(x => x.id !== b.kontaktId) }));
-    ic.termine = ic.termine.filter(t => t.uid !== b.terminUid);
+    ic.termine = ic.termine.filter(t => t.id !== b.terminUid);
     const befunde = verbindungenPruefen(await ladeVerbindungsBestaende('2026-10-05'));
     expect(befunde.find(x => x.id === 'buchung-kontakt-tot')?.beispiele).toContain(b.id);
     expect(befunde.find(x => x.id === 'buchung-termin-tot')?.beispiele).toContain(b.id);

@@ -48,12 +48,17 @@ import { aufgabenFuerKalender, ohneTermin, type KalenderAufgabe } from '@/lib/ka
 import { useAufgabenImKalender, OhneTerminListe } from './aufgaben';
 import { useTerminAusAdresse } from './verknuepfen';
 import { useIch } from '../aufgaben/hilfe';
+// R-K2 (29.09.): Suche mit Umlaut-Faltung (#94), Verschieben mit „Rückgängig“ (#92), belegt/freie Tage (#69/#72).
+import { suchPasst } from '@/lib/text/such-norm';
+import { useVerschieben } from './verschieben';
+import { EinstellungenBelegt } from './EinstellungenBelegt';
+import { AbgleichStand } from './AbgleichStand';
+import type { FreierTag } from '@/lib/kalender/freie-tage';
 import { usePlanen, istArchivTermin, blockFarbe } from './Planen';
 import { icsVonPlanArt, planArtAusTitel } from '@/lib/planung/bloecke';
 import { AufgabenModus, type AufgabenModusFilter } from './AufgabenModus';
 import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
 import { modusAusAdresse, type Modus } from '@/lib/kalender/modus';
-import { objektSchluessel } from '@/lib/kalender/bezug';
 
 type Ansicht = 'tag' | 'vier' | 'woche' | 'monat' | 'jahr' | 'agenda';
 /** Ansichten mit Zeitraster — nur dort lässt sich planen. */
@@ -65,7 +70,7 @@ const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'A
 const uhr = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const monatPlus = (tag: string, n: number) => { const d = new Date(`${tag.slice(0, 7)}-15T12:00:00`); d.setMonth(d.getMonth() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
 
-interface Einstellungen { kalender: Record<Wer, string>; dauer: { termin: number; fokus: number; routine: number; aufgabe: number; reha: number }; space: Record<string, 'privat' | 'business'>; standardSicht?: 'alle' | Wer }
+interface Einstellungen { kalender: Record<Wer, string>; dauer: { termin: number; fokus: number; routine: number; aufgabe: number; reha: number }; space: Record<string, 'privat' | 'business'>; standardSicht?: 'alle' | Wer; belegt?: Record<string, boolean>; freieTage?: FreierTag[] }
 interface Analyse { briefing?: string; conflicts?: { date: string; a: string; b: string; overlap: string }[]; vorschlaege?: { title: string; date: string; startHour: number; startMin?: number; durationMin: number; calendar: string; grund?: string }[]; /** R-Z (29.09.): Vorschläge liegen als Freigabe im ZOE-Stapel (Gruppe „Kalender“) — nie autonom eingetragen. */ gestapelt?: number }
 type Bereich = 'alle' | 'privat' | 'business';
 
@@ -177,8 +182,8 @@ export function Kalender() {
   const such = suche.trim().toLowerCase();
   const imBereich = useCallback((b: 'privat' | 'business' | undefined) => bereich === 'alle' || !b || b === bereich, [bereich]);
   const termine = useMemo(() => [
-    ...(daten?.termine ?? []).filter(t => (sicht === 'alle' || t.wer === sicht) && !aus.has(t.kalender) && imBereich(spaceVonKalender(einst, t.kalender)) && (!such || `${t.titel} ${t.ort ?? ''} ${t.kalender} ${t.notiz ?? ''}`.toLowerCase().includes(such))),
-    ...quell.filter(t => !aus.has(t.kalender) && imBereich(t.space) && (!such || `${t.titel} ${t.kalender}`.toLowerCase().includes(such))),
+    ...(daten?.termine ?? []).filter(t => (sicht === 'alle' || t.wer === sicht) && !aus.has(t.kalender) && imBereich(spaceVonKalender(einst, t.kalender)) && (!such || suchPasst([t.titel, t.ort, t.kalender, t.notiz], such))),
+    ...quell.filter(t => !aus.has(t.kalender) && imBereich(t.space) && (!such || suchPasst([t.titel, t.kalender], such))),
   ], [daten, quell, sicht, aus, such, einst, imBereich]);
   const wocheDesAnkers = useMemo(() => { const mo = montagVon(anker); return Array.from({ length: 7 }, (_, i) => tagPlus(mo, i)); }, [anker]);
   // Planen (K5): Bausteine platzieren, Stunden der Woche, Archiv der alten Wochenplan-Blöcke (schreibgeschützt im Raster).
@@ -196,8 +201,8 @@ export function Kalender() {
   const kalenderFarbe = useCallback((name: string) => { const k = jahrKalender?.find(x => x.name === name); return k?.farbe ?? WER_FARBE[k?.wer ?? 'beide']; }, [jahrKalender]);
   // Fristen gehören dem Haushalt: in „Alle“ und „Gemeinsam“, gefiltert nach Bereich (KALENDER_VERBINDUNGEN.md 4i).
   const fristenSichtbar = sicht === 'alle' || sicht === 'beide';
-  const fristen = useMemo(() => (!fristenSichtbar ? [] : (ebenen.fristen && !such ? daten?.fristen ?? [] : (daten?.fristen ?? []).filter(f => such && f.titel.toLowerCase().includes(such))).filter(f => imBereich(f.bereich))), [daten, ebenen.fristen, such, fristenSichtbar, imBereich]);
-  const erinnerungen = useMemo(() => (ebenen.erinnerungen && !such ? daten?.erinnerungen ?? [] : (daten?.erinnerungen ?? []).filter(e => such && e.titel.toLowerCase().includes(such))), [daten, ebenen.erinnerungen, such]);
+  const fristen = useMemo(() => (!fristenSichtbar ? [] : (ebenen.fristen && !such ? daten?.fristen ?? [] : (daten?.fristen ?? []).filter(f => such && suchPasst([f.titel], such))).filter(f => imBereich(f.bereich))), [daten, ebenen.fristen, such, fristenSichtbar, imBereich]);
+  const erinnerungen = useMemo(() => (ebenen.erinnerungen && !such ? daten?.erinnerungen ?? [] : (daten?.erinnerungen ?? []).filter(e => such && suchPasst([e.titel], such))), [daten, ebenen.erinnerungen, such]);
   // Aufgaben (K3): Start bis Deadline, ohne Abgebrochene/Papierkorb/Archiv/fremde „nur ich“ — lib/kalender/aufgaben.ts.
   const ich = useIch();
   const aufgabenImZeitraum = useMemo<KalenderAufgabe[]>(() => (ebenen.aufgaben ? aufgabenFuerKalender(aufgabenStand.tasks, von, bis, { sicht, bereich, suche: such, ich }) : []), [aufgabenStand.tasks, ebenen.aufgaben, von, bis, such, sicht, bereich, ich]);
@@ -240,14 +245,9 @@ export function Kalender() {
     : ansicht === 'monat' ? `${MONATE[Number(anker.slice(5, 7)) - 1]} ${anker.slice(0, 4)}` : `Nächste 30 Tage ab ${Number(anker.slice(8, 10))}.${Number(anker.slice(5, 7))}.`;
 
   // Schreiben
-  const verschieben = async (t: KTermin, tag: string, startMin: number, endeMin: number) => {
-    const start = wandAus(tag, startMin), ende = wandAus(tag, endeMin);
-    setDaten(d => (d ? { ...d, termine: d.termine.map(x => (x.id === t.id ? { ...x, start, ende } : x)) } : d));
-    // Mit Stand (ETag): woanders geändert → 409 statt still überschreiben; der Termin springt beim Neuladen zurück.
-    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: objektSchluessel(t), start, ende, ...(t.stand ? { stand: t.stand } : {}) }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
-    if (!r.ok) setMeldung(r.fehler ?? 'Nicht verschoben.'); else setMeldung(null);
-    void laden();
-  };
+  // Verschieben/Dauer mit Stand (ETag, 409 statt still überschreiben) + „Rückgängig“ 8 s (R-K2 #92, verschieben.tsx);
+  // Schlüssel = `objektSchluessel` (R-K1: Kalender + UID).
+  const { verschieben, hinweis: rueckgaengig } = useVerschieben({ setDaten, laden, melden: setMeldung });
   const jetztAbgleichen = async () => { setAbgleich(true); const r = await fetch('/api/kalender', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'abgleichen' }) }).then(x => x.json()).catch(() => ({ ok: false })); if (!r.ok && r.fehler) setMeldung(r.fehler); await laden(); setAbgleich(false); };
   const analysieren = async () => {
     setAnalysiert(true); setEingetragen({});
@@ -365,6 +365,7 @@ export function Kalender() {
                 </div>
               ); })}
             </div>
+            <EinstellungenBelegt kalender={daten?.kalender ?? []} einst={einst} setzen={einstSetzen} />
             <div style={{ fontSize: 11.5, color: C.inkLeise }}>Namen müssen genau so heißen wie in der Kalender-App. iCloud verbinden: System › Konto.</div>
           </div>
         )}
@@ -378,7 +379,7 @@ export function Kalender() {
         <Knopf leise onClick={() => setAnker(heute)}>Heute</Knopf>
         <button onClick={() => springe(-1)} aria-label="zurück" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>‹</button>
         <button onClick={() => springe(1)} aria-label="weiter" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>›</button>
-        <span style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', marginRight: 'auto' }}>{titel}{laedt && <span style={{ fontSize: 11, color: C.inkLeise, fontWeight: 400, marginLeft: 8 }}>lädt …</span>}</span>
+        <span style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', marginRight: 'auto' }}>{titel}{laedt && <span style={{ fontSize: 11, color: C.inkLeise, fontWeight: 400, marginLeft: 8 }}>lädt …</span>}{daten?.icloud && <span style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={daten.abgleich} /></span>}</span>
         {/* Umschalter Kalender | Aufgaben (Kevin 29.09., wie Google) — vor der Suche, damit er am Handy in der ersten Zeile bleibt. */}
         <KalenderAufgabenSchalter aktiv={modus === 'aufgaben' ? 'aufgaben' : 'kalender'} kalender={{ onClick: () => setModus(modus === 'planen' ? 'planen' : 'kalender') }} aufgaben={{ onClick: () => setModus('aufgaben') }} tasten={{ kalender: 'k', aufgaben: 'u' }} />
         <input value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'aufgaben' ? 'Aufgaben suchen …' : 'Suchen …'} aria-label={modus === 'aufgaben' ? 'Aufgaben suchen' : 'Termine suchen'} style={{ ...feld, width: breit ? 180 : '100%', fontSize: 13, padding: '7px 11px' }} />
@@ -416,6 +417,7 @@ export function Kalender() {
         {!breit && leiste}
       </div>
       {planen.unten && <div style={{ marginTop: 14 }}>{planen.unten}</div>}
+      {rueckgaengig}
       {offen && <TerminFenster key={offen.id} termin={offen} icloud={daten?.icloud ?? false} space={spaceVonKalender(einst, offen.kalender)} kalenderFarbe={kalFarbe(offen.kalender, offen.wer)} onZu={() => setOffen(null)} onGespeichert={() => void laden()} />}
       {neu && <NeuerTermin vorgabe={neu} heute={heute} standardDauer={standardDauer} fokusDauer={einst?.dauer.fokus ?? 90} kalender={daten?.kalender ?? []} kalenderStandard={einst?.kalender} onZu={() => setNeu(null)} onAngelegt={x => { if (x.uid) void laden(); }} />}
     </Seite>

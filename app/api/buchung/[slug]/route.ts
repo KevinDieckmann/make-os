@@ -1,21 +1,27 @@
 // ─── Öffentliche Buchungsseite — freie Plätze und Buchen (29.09., Paket K4) ──
 // OHNE Sitzung erreichbar (middleware.ts: nur /buchen/<slug>(/status) und /api/buchung/<slug>(/status)).
-// GET  → { ok, seite (Titel, Dauer, Fragen, Hinweise — nie Person, Kalender, Ort), plaetze: [{ start, ende }], stempel }
+// GET  → { ok, seite (Titel, Dauer, Fragen, Hinweise — nie Person, Kalender, Ort), plaetze: [{ start, ende }], stempel,
+//          hinweis? } — `hinweis` statt Plätzen, wenn gerade nichts buchbar ist (R-K2 #73: Stand älter als 30 Min.,
+//          letzter Abgleich mit Fehler, iCloud nicht verbunden; #79: Seite ohne Verantwortlichen).
 // POST { start, name, email, firma?, anliegen?, einwilligung: true, stempel, webseite (Honigtopf, leer) }
 //      → 201 { ok, status: 'vorlaeufig', reserviertBis, token, statusPfad } — der Platz ist 30 Min. reserviert, bis
-//        der Buchende auf der Status-Seite bestätigt (Double-Opt-in-Ersatz, MAKE OS verschickt keine Mail).
+//        der Buchende auf der Status-Seite bestätigt. Vorher ein ERZWUNGENER iCloud-Abgleich (#73; höchstens einer je
+//        ZWANG_ABSTAND_MS für die ganze Seite, dazwischen der gewöhnliche mit ctag) — scheitert er: 503, nichts reserviert.
 // Schutz: Drosselung je Adresse (lib/zugang/drossel.ts; jeder Buchungsversuch und jeder Fehlgriff zählt), Honigtopf,
 // signierter Formular-Stempel (zu schnell → Maschine), Längen- und Größengrenzen (400/413), eine offene Anfrage je
 // E-Mail und Seite, Platz-Prüfung in EINER Sperre (keine Doppelbuchung), unbekannte Adresse → 404.
+// Gesperrt sind Feiertage NRW und die „freien Tage“ aus den Kalender-Einstellungen (#72, z. B. 24.12./31.12.).
 
 import { NextResponse } from 'next/server';
 import { pruefe, fehlschlag, adresse } from '@/lib/zugang/drossel';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { abgleichen, abgleichAlter, ladeStand, verbunden } from '@/lib/kalender/icloud';
 import { verfuegbarkeitFuer } from '@/lib/kalender/verfuegbarkeit';
-import { belegungenAus, feiertageAus } from '@/lib/kalender/freie-zeit';
-import { plaetzeFuerSeite, oeffentlich, eingabePruefen, ausfuellZeitOk, reservieren, slugOk, type BuchungsSeite, type Reservierung } from '@/lib/kalender/buchung';
+import { belegungenAus, sperrTageAus } from '@/lib/kalender/freie-zeit';
+import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
+import { plaetzeFuerSeite, oeffentlich, eingabePruefen, ausfuellZeitOk, reservieren, slugOk, standBuchbar, NICHT_BUCHBAR, type BuchungsSeite, type Reservierung } from '@/lib/kalender/buchung';
 import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, formularStempel, stempelZeit, neuesToken, tokenHash } from '@/lib/kalender/buchung-speicher';
 
 export const runtime = 'nodejs';
@@ -23,6 +29,8 @@ export const dynamic = 'force-dynamic';
 
 /** Größter Körper einer Buchung (Byte) — darüber 413. */
 const MAX_BYTES = 8 * 1024;
+/** Mindestabstand zweier erzwungener Abgleiche aus dieser Route (Schutz des einen vCPU und vor Apples Drosselung). */
+const ZWANG_ABSTAND_MS = 10_000;
 const KOPF = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' };
 const antwort = (body: Record<string, unknown>, status = 200, extra: Record<string, string> = {}) => NextResponse.json(body, { status, headers: { ...KOPF, ...extra } });
 const NICHT_GEFUNDEN = { ok: false, fehler: 'Diese Buchungsseite gibt es nicht.' };
@@ -38,6 +46,21 @@ function gedrosselt(schluessel: string) {
   return p.erlaubt ? null : antwort({ ok: false, fehler: `Zu viele Versuche — bitte in ${Math.ceil(p.warteSek / 60)} Min. noch einmal.` }, 429, { 'Retry-After': String(p.warteSek) });
 }
 
+let letzterZwang = 0;
+/** Vor dem Reservieren frisch mit iCloud abgleichen (#73). false = iCloud nicht erreichbar. */
+async function frischAbgleichen(): Promise<boolean> {
+  const jetzt = Date.now();
+  const erzwingen = jetzt - letzterZwang >= ZWANG_ABSTAND_MS;
+  if (erzwingen) letzterZwang = jetzt;
+  try { await abgleichen(erzwingen ? { erzwingen: true } : {}); return true; } catch { return false; }
+}
+
+/** Ist gerade etwas buchbar? (Verantwortlicher gesetzt, iCloud verbunden, Stand frisch und ohne Fehler) */
+async function buchbar(seite: BuchungsSeite, jetzt: Date): Promise<boolean> {
+  if (!seite.verantwortlich || seite.verantwortlich.trim().length < 5) return false;
+  return standBuchbar(verbunden() ? abgleichAlter(await ladeStand(), jetzt.getTime()) : null, verbunden()).ok;
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
   const schluessel = `buchung:${adresse(req)}`;
@@ -46,10 +69,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ slug: string }>
   if (!seite) { fehlschlag(schluessel); return antwort(NICHT_GEFUNDEN, 404); }
   const jetzt = new Date();
   const heute = localDay(jetzt);
+  const bis = tagPlus(heute, seite.tageVoraus + 1);
   // Verfügbarkeit der Person (K1: beschäftigt, Abwesend, Feiertage) — die Fenster der Seite bestimmen die buchbaren Zeiten.
-  const [v, bestand] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, tagPlus(heute, seite.tageVoraus + 1)), ladeBuchungBestand(jetzt)]);
-  const plaetze = plaetzeFuerSeite(seite, belegungenAus(v), bestand, jetzt, feiertageAus(v), heute).map(p => ({ start: p.start, ende: p.ende }));
-  return antwort({ ok: true, seite: oeffentlich(seite), plaetze, stempel: formularStempel(slug, jetzt.getTime()) });
+  // `verfuegbarkeitFuer` erneuert einen Stand, der älter als 2 Min. ist; danach entscheidet `standBuchbar`.
+  const [v, bestand, einst] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeBuchungBestand(jetzt), ladeEinstellungen()]);
+  const stempel = formularStempel(slug, jetzt.getTime());
+  if (!(await buchbar(seite, jetzt))) return antwort({ ok: true, seite: oeffentlich(seite), plaetze: [], stempel, hinweis: NICHT_BUCHBAR });
+  const plaetze = plaetzeFuerSeite(seite, belegungenAus(v), bestand, jetzt, sperrTageAus(v, einst.freieTage, heute, bis), heute).map(p => ({ start: p.start, ende: p.ende }));
+  return antwort({ ok: true, seite: oeffentlich(seite), plaetze, stempel });
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ slug: string }> }) {
@@ -74,10 +101,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   const e = eingabePruefen(roh, seite);
   if (!e.ok) return antwort({ ok: false, fehler: e.fehler }, e.status);
 
+  // #73: nie auf einem alten Stand reservieren — erst frisch abgleichen; scheitert das oder ist der Stand nicht frisch → 503.
+  if (!verbunden() || !(await frischAbgleichen()) || !(await buchbar(seite, jetzt))) return antwort({ ok: false, fehler: NICHT_BUCHBAR }, 503, { 'Retry-After': '600' });
+
   const heute = localDay(jetzt);
-  // K1 liest den frischen Stand (ein eben am iPhone eingetragener Termin blockiert); Buchungen prüft `reservieren` in der Sperre.
-  const v = await verfuegbarkeitFuer(seite.person, heute, tagPlus(heute, seite.tageVoraus + 1));
-  const feiertage = feiertageAus(v);
+  const bis = tagPlus(heute, seite.tageVoraus + 1);
+  // K1 liest den eben abgeglichenen Stand (ein am iPhone eingetragener Termin blockiert); Buchungen prüft `reservieren` in der Sperre.
+  const [v, einst] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeEinstellungen()]);
+  const feiertage = sperrTageAus(v, einst.freieTage, heute, bis);
   const token = neuesToken();
   const id = neueKennung('bu');
   let r: Reservierung | { ok: false; status: number; fehler: string } = { ok: false, status: 409, fehler: 'Nicht reserviert.' };

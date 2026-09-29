@@ -5,7 +5,13 @@
 // Aktivität „Termin gebucht“ + Follow-up „Termin vorbereiten“ im CRM) oder ablehnen. Offene Buchungen liegen im
 // Raster als eigene Einträge (vorläufig/angefragt). Nach der Freigabe erscheint ein nächster Schritt NUR als Vorschlag
 // (Qualifizierung starten / Deal anlegen) mit Link auf den Kontakt — angelegt wird dort, von Hand.
-// Daten: /api/kalender/buchung (Haushalt). Versendet wird nichts.
+// Daten: /api/kalender/buchung (Haushalt). Versendet wird nichts von selbst.
+// R-K2 (29.09.):
+//   · #76 E-Mail des Gasts: „unbestätigt“, bis er den Bestätigungslink anklickt. „Bestätigungslink senden“ erzeugt einen
+//     Mail-ENTWURF (mailto → eure Mail-App, dort ein Klick auf Senden) mit einem einmaligen Link, 7 Tage gültig.
+//     „Freigeben + einladen …“ an eine unbestätigte Adresse nur nach dem Warnhinweis.
+//   · #73 Ist der Platz inzwischen belegt (Termin am iPhone, Abwesend), fragt die Freigabe zurück: trotzdem · ablehnen.
+//   · #79 Verantwortlich ist Pflicht (Datenschutz-Hinweis der Seite).
 
 import { EinladungFrage } from './verknuepfen';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -16,10 +22,15 @@ import { Fenster } from '../Fenster';
 import { WEG } from '@/lib/wege';
 import { usePersonen } from '../aufgaben/hilfe';
 import type { KTermin, Wer } from './teile';
-import type { Buchung, BuchungsSeite } from '@/lib/kalender/buchung';
+import { bestaetigungsMail, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
+import { mailtoLink } from '@/lib/crm/angebote';
 
 type SeiteSicht = BuchungsSeite & { pfad: string };
-type BuchungSicht = Omit<Buchung, 'tokenHash'>;
+type BuchungSicht = Omit<Buchung, 'tokenHash' | 'mailLink'> & { mailLinkBis?: string };
+/** Antwort der Verwaltung (Fehler tragen `konflikt`/`unbestaetigt` für die Rückfragen). */
+type Antwort = { ok: boolean; fehler?: string; konflikt?: boolean; unbestaetigt?: boolean; token?: string; pfad?: string; bis?: string };
+/** Ein fertiger Mail-Entwurf zum Bestätigungslink. */
+interface Entwurf { id: string; an: string; betreff: string; text: string; mailto: string }
 interface Stand { seiten: SeiteSicht[]; buchungen: BuchungSicht[]; vorschlaege: Record<string, { art: 'qualifizierung' | 'deal'; text: string; kontaktId: string }> }
 
 const STATUS_TEXT: Record<Buchung['status'], string> = { vorlaeufig: 'vorläufig', angefragt: 'angefragt', bestaetigt: 'bestätigt', abgelehnt: 'abgelehnt', abgesagt: 'abgesagt', abgelaufen: 'abgelaufen' };
@@ -58,12 +69,34 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
   const [meldung, setMeldung] = useState('');
   const [kopiert, setKopiert] = useState('');
   const [einladen, setEinladen] = useState<string | null>(null);
-  const aktion = async (body: Record<string, unknown>) => {
-    const r = await fetch('/api/kalender/buchung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+  /** Rückfrage nach 409 „Platz belegt“ (#73): Buchung + Text. */
+  const [konflikt, setKonflikt] = useState<{ id: string; text: string; einladen: boolean; unbestaetigt: boolean } | null>(null);
+  const [entwurf, setEntwurf] = useState<Entwurf | null>(null);
+  const [textKopiert, setTextKopiert] = useState(false);
+  const senden = async (body: Record<string, unknown>): Promise<Antwort> => {
+    const r: Antwort = await fetch('/api/kalender/buchung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setMeldung(r.ok ? '' : r.fehler ?? 'Nicht geklappt.');
     await laden();
-    return r.ok as boolean;
+    return r;
   };
+  const aktion = async (body: Record<string, unknown>) => (await senden(body)).ok;
+  /** Freigeben (optional mit Einladung) — belegt → Rückfrage statt still einen zweiten Termin daneben. */
+  const freigeben = async (x: BuchungSicht, opt: { einladen?: boolean; trotzKonflikt?: boolean } = {}) => {
+    const unbestaetigt = !x.emailBestaetigtAm;
+    const r = await senden({ aktion: 'freigeben', id: x.id, ...(opt.einladen ? { einladen: true, einladungBestaetigt: true, ...(unbestaetigt ? { adresseUnbestaetigt: true } : {}) } : {}), ...(opt.trotzKonflikt ? { trotzKonflikt: true } : {}) });
+    if (!r.ok && r.konflikt) { setMeldung(''); setKonflikt({ id: x.id, text: r.fehler ?? 'Der Platz ist inzwischen belegt.', einladen: !!opt.einladen, unbestaetigt }); }
+    else setKonflikt(null);
+  };
+  /** Bestätigungslink (#76): der Server merkt sich nur den Hash; hier wird daraus der Mail-Entwurf. */
+  const mailLink = async (x: BuchungSicht) => {
+    const r = await senden({ aktion: 'mail-link', id: x.id });
+    if (!r.ok || !r.pfad || !r.bis) return;
+    const s = stand?.seiten.find(y => y.id === x.seiteId);
+    const m = bestaetigungsMail({ name: x.name, titel: s?.titel ?? 'Termin', start: x.start, ende: x.ende, link: `${window.location.origin}${r.pfad}`, verantwortlich: s?.verantwortlich ?? '', bis: r.bis });
+    setTextKopiert(false);
+    setEntwurf({ id: x.id, an: x.email, ...m, mailto: mailtoLink(x.email, m.betreff, m.text) });
+  };
+  const textKopieren = async (e: Entwurf) => { try { await navigator.clipboard.writeText(`${e.betreff}\n\n${e.text}`); setTextKopiert(true); } catch { setMeldung('Kopieren nicht möglich — Text bitte markieren.'); } };
   const kopieren = async (s: SeiteSicht) => { try { await navigator.clipboard.writeText(`${window.location.origin}${s.pfad}`); setKopiert(s.id); setTimeout(() => setKopiert(''), 1800); } catch { setMeldung('Kopieren nicht möglich — Link: ' + s.pfad); } };
   const terminEntfernen = async (x: BuchungSicht) => {
     if (!x.terminUid) return;
@@ -85,6 +118,7 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
           <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.aktiv ? LEUCHT.gut : C.inkLeise, flex: '0 0 auto' }} />
             <button onClick={() => setBearbeiten(s)} style={{ background: 'none', border: 'none', color: s.aktiv ? C.ink : C.inkLeise, cursor: 'pointer', padding: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text, fontSize: 12.5, flex: 1, minWidth: 0 }}>{s.titel}</button>
+            {(!s.verantwortlich || s.verantwortlich.trim().length < 5) && <button onClick={() => setBearbeiten(s)} title="Ohne Verantwortlichen zeigt die Seite keine Termine (Datenschutz-Hinweis)" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, fontSize: 11, cursor: 'pointer', fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>Verantwortlich fehlt</button>}
             <button onClick={() => void kopieren(s)} disabled={!s.aktiv} style={{ background: 'none', border: 'none', color: s.aktiv ? LEUCHT.puls : C.inkLeise, cursor: s.aktiv ? 'pointer' : 'default', fontSize: 11.5, fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>{kopiert === s.id ? 'kopiert ✓' : 'Link kopieren'}</button>
           </div>
         ))}
@@ -102,23 +136,38 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
               <div style={{ fontSize: 12.5, fontWeight: 700 }}>{x.name}{x.firma ? ` · ${x.firma}` : ''}</div>
               <div style={{ fontSize: 11.5, color: C.inkDim }}>{seiteVon(x.seiteId)?.titel ?? 'Seite'} · {zeit(x)}</div>
               {x.anliegen && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{x.anliegen}</div>}
+              <MailStand x={x} onLink={() => void mailLink(x)} />
+              {entwurf?.id === x.id && <MailEntwurf e={entwurf} kopiert={textKopiert} onKopieren={() => void textKopieren(entwurf)} onZu={() => setEntwurf(null)} />}
               {einladen === x.id && <EinladungFrage was="einladung" adressen={[x.email]} onNein={() => setEinladen(null)}
-                warnung="Die Adresse hat der Buchende selbst eingetragen — sie ist nicht per Mail bestätigt. Nur einladen, wenn du sicher bist, dass sie ihm gehört (sonst schreibt iCloud eine fremde Person an)."
-                onJa={async () => { setEinladen(null); await aktion({ aktion: 'freigeben', id: x.id, einladen: true, einladungBestaetigt: true }); }} />}
+                warnung={x.emailBestaetigtAm ? undefined : 'Die Adresse hat der Buchende selbst eingetragen — sie ist nicht per Mail bestätigt. Nur einladen, wenn du sicher bist, dass sie ihm gehört (sonst schreibt iCloud eine fremde Person an). Sicherer: erst „Bestätigungslink senden“.'}
+                onJa={async () => { setEinladen(null); await freigeben(x, { einladen: true }); }} />}
+              {konflikt?.id === x.id && (
+                <div role="alertdialog" aria-label="Platz belegt" style={{ display: 'grid', gap: 8, background: `${LEUCHT.kritisch}14`, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 10, padding: '8px 10px' }}>
+                  <span style={{ fontSize: 12, color: C.ink, lineHeight: 1.45 }}>{konflikt.text} Trotzdem freigeben? Dann liegen zwei Termine übereinander.</span>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <Knopf farbe={LEUCHT.achtung} onClick={async () => { await freigeben(x, { einladen: konflikt.einladen, trotzKonflikt: true }); }}>Trotzdem freigeben</Knopf>
+                    <Knopf leise onClick={async () => { setKonflikt(null); await aktion({ aktion: 'ablehnen', id: x.id, grund: 'Der Termin ist leider nicht mehr frei — bitte einen anderen wählen.' }); }}>Ablehnen</Knopf>
+                    <Knopf leise onClick={() => setKonflikt(null)}>Abbrechen</Knopf>
+                  </div>
+                </div>
+              )}
               {x.crmHinweis && <div style={{ fontSize: 11.5, color: LEUCHT.achtung }}>{x.crmHinweis}</div>}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Knopf farbe={LEUCHT.gut} onClick={async () => { await aktion({ aktion: 'freigeben', id: x.id }); }}>Freigeben</Knopf>
-                {/* K3: den Gast als echte Einladung — erst nach der Rückfrage mit der Adresse. */}
+                <Knopf farbe={LEUCHT.gut} onClick={async () => { await freigeben(x); }}>Freigeben</Knopf>
+                {/* K3: den Gast als echte Einladung — erst nach der Rückfrage mit der Adresse (unbestätigt: mit Warnhinweis). */}
                 <Knopf leise onClick={() => setEinladen(x.id)}>Freigeben + einladen …</Knopf>
                 <Knopf leise onClick={async () => { await aktion({ aktion: 'ablehnen', id: x.id }); }}>Ablehnen</Knopf>
                 {x.kontaktId && <Link href={WEG.kontakt(x.kontaktId)} style={{ fontSize: 11.5, color: C.inkDim }}>Kontakt ›</Link>}
               </div>
+              <span style={{ fontSize: 11, color: C.inkLeise }}>Ins CRM kommt die Person erst mit der Freigabe.</span>
             </div>
           ))}
           {vorlaeufig.length > 0 && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{vorlaeufig.length} vorläufig reserviert — wartet auf die Bestätigung des Gastes (höchstens 30 Min.).</div>}
           {kommend.map(x => { const v = stand?.vorschlaege[x.id]; return (
             <div key={x.id} style={{ fontSize: 12, color: C.inkDim, display: 'grid', gap: 3 }}>
               <span><span style={{ color: LEUCHT.gut }}>✓</span> {x.name} · {zeit(x)}</span>
+              <MailStand x={x} onLink={() => void mailLink(x)} />
+              {entwurf?.id === x.id && <MailEntwurf e={entwurf} kopiert={textKopiert} onKopieren={() => void textKopieren(entwurf)} onZu={() => setEntwurf(null)} />}
               {v && <Link href={WEG.kontakt(v.kontaktId)} style={{ fontSize: 11.5, color: LEUCHT.puls }}>Vorschlag: {v.text} ›</Link>}
             </div>
           ); })}
@@ -133,6 +182,34 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
       {meldung && <div style={{ fontSize: 11.5, color: LEUCHT.achtung, marginTop: 8 }}>{meldung}</div>}
       {bearbeiten && <SeiteBearbeiten start={bearbeiten} onZu={() => setBearbeiten(null)} onSpeichern={async s => { if (await aktion({ aktion: 'seite', seite: s })) setBearbeiten(null); }} onLoeschen={bearbeiten.id ? async () => { if (await aktion({ aktion: 'seite-loeschen', id: bearbeiten.id })) setBearbeiten(null); } : undefined} fehler={meldung} />}
     </Karte>
+  );
+}
+
+/** E-Mail-Stand einer Buchung (#76): bestätigt ✓ — oder unbestätigt + „Bestätigungslink senden“. */
+function MailStand({ x, onLink }: { x: BuchungSicht; onLink: () => void }) {
+  if (x.emailBestaetigtAm) return <span style={{ fontSize: 11.5, color: LEUCHT.gut }}>✓ E-Mail bestätigt</span>;
+  const offen = x.mailLinkBis && x.mailLinkBis > new Date().toISOString();
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 11.5 }}>
+      <span style={{ color: LEUCHT.achtung }}>E-Mail unbestätigt{offen ? ` · Link offen bis ${x.mailLinkBis!.slice(8, 10)}.${x.mailLinkBis!.slice(5, 7)}.` : ''}</span>
+      <button type="button" onClick={onLink} style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.puls, cursor: 'pointer', fontSize: 11.5, fontFamily: SCHRIFT.text }}>{offen ? 'Neuen Bestätigungslink …' : 'Bestätigungslink senden …'}</button>
+    </div>
+  );
+}
+
+/** Der Mail-Entwurf zum Bestätigungslink — verschickt wird er nur mit dem Klick in der Mail-App. */
+function MailEntwurf({ e, kopiert, onKopieren, onZu }: { e: Entwurf; kopiert: boolean; onKopieren: () => void; onZu: () => void }) {
+  return (
+    <div role="region" aria-label="Mail-Entwurf" style={{ display: 'grid', gap: 6, background: 'rgba(255,255,255,.04)', border: `1px solid ${LEUCHT.puls}44`, borderRadius: 10, padding: '8px 10px' }}>
+      <span style={{ fontSize: 11.5, color: C.inkDim }}>Entwurf an <b style={{ color: C.ink }}>{e.an}</b> — „{e.betreff}“</span>
+      <textarea readOnly value={e.text} rows={6} style={{ ...feld, fontSize: 11.5, padding: '6px 8px', resize: 'vertical', fontFamily: SCHRIFT.text }} />
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <a href={e.mailto} style={{ fontSize: 12, fontWeight: 700, color: '#061312', background: LEUCHT.puls, borderRadius: 8, padding: '6px 10px', textDecoration: 'none' }}>In Mail öffnen</a>
+        <Knopf leise onClick={onKopieren}>{kopiert ? 'kopiert ✓' : 'Text kopieren'}</Knopf>
+        <Knopf leise onClick={onZu}>Schließen</Knopf>
+      </div>
+      <span style={{ fontSize: 11, color: C.inkLeise }}>MAKE OS verschickt nichts selbst: Die Mail geht erst mit deinem Klick auf „Senden“ in der Mail-App raus. Der Link gilt 7 Tage und nur einmal; ein neuer Link ersetzt diesen.</span>
+    </div>
   );
 }
 
@@ -169,7 +246,7 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
         ))}
         {zeile('Zielkalender (Name wie in der Kalender-App)', <input value={s.zielKalender} maxLength={100} onChange={e => setS({ ...s, zielKalender: e.target.value })} placeholder="Kalender" style={klein} />)}
         {zeile('Ort oder Videolink (sieht der Gast erst nach der Freigabe)', <input value={s.ort} maxLength={300} onChange={e => setS({ ...s, ort: e.target.value })} style={klein} />)}
-        {zeile('Verantwortlich (Datenschutz-Hinweis: Name/Firma und Kontakt)', <input value={s.verantwortlich} maxLength={300} onChange={e => setS({ ...s, verantwortlich: e.target.value })} style={klein} />)}
+        {zeile('Verantwortlich * (Pflicht — steht im Datenschutz-Hinweis: Name/Firma und Kontakt)', <input value={s.verantwortlich} maxLength={300} required aria-required="true" onChange={e => setS({ ...s, verantwortlich: e.target.value })} placeholder="Firma, Anschrift, datenschutz@…" style={klein} />)}
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
           <label><input type="checkbox" checked={s.firma} onChange={e => setS({ ...s, firma: e.target.checked })} /> nach Firma fragen</label>
           <label><input type="checkbox" checked={s.anliegen} onChange={e => setS({ ...s, anliegen: e.target.checked })} /> nach Anliegen fragen</label>

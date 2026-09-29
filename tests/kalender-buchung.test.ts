@@ -129,7 +129,9 @@ describe('Seite säubern, Adresse, Kleinigkeiten', () => {
     expect(seiteSauber({ titel: 'x'.repeat(81), person: 'kevin', fenster: SEITE.fenster, zielKalender: 'K' }, fest, 'kevin', 'j')).toMatchObject({ ok: false });
     expect(seiteSauber({ titel: 'Test', person: 'kevin', fenster: [], zielKalender: 'K' }, fest, 'kevin', 'j')).toMatchObject({ ok: false });
     expect(seiteSauber({ titel: 'Test', person: 'kevin', fenster: SEITE.fenster }, fest, 'kevin', 'j')).toMatchObject({ ok: false });
-    const ok = seiteSauber({ titel: 'Test', person: 'kevin', fenster: SEITE.fenster, zielKalender: 'K', dauerMin: 9999, rasterMin: 7 }, fest, 'kevin', 'j');
+    // R-K2 #79: ohne Verantwortlichen keine Seite (Art. 13 Abs. 1 a DSGVO).
+    expect(seiteSauber({ titel: 'Test', person: 'kevin', fenster: SEITE.fenster, zielKalender: 'K' }, fest, 'kevin', 'j')).toMatchObject({ ok: false, fehler: expect.stringContaining('Verantwortlich') });
+    const ok = seiteSauber({ titel: 'Test', person: 'kevin', fenster: SEITE.fenster, zielKalender: 'K', dauerMin: 9999, rasterMin: 7, verantwortlich: 'Probe GmbH, p@example.invalid' }, fest, 'kevin', 'j');
     expect(ok).toMatchObject({ ok: true, seite: { dauerMin: 240, rasterMin: 30, vorlaufMin: 1440, aktiv: true } });
   });
   it('Name teilen, Vortag zum Vorbereiten', () => {

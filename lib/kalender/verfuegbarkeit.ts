@@ -9,7 +9,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { verbunden, frischerStand, termineImZeitraum } from './icloud';
 import { ladeBezuege } from './bezug-server';
 import { mitBezug } from './bezug';
-import { ladeEinstellungen, wemGehoert } from './einstellungen';
+import { ladeEinstellungen, werFuerBelegung } from './einstellungen';
 import { verfuegbarkeitAus, type Verfuegbarkeit } from './verfuegbarkeit-regeln';
 import type { RoutinenDatei } from '@/lib/planung/typen';
 
@@ -26,7 +26,8 @@ export async function verfuegbarkeitFuer(person: string, von: string, bis: strin
   const termine = verbunden() ? termineImZeitraum(await frischerStand(), von, bis) : [];
   return verfuegbarkeitAus({
     person, von, bis,
-    termine: termine.map(t => ({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) })),
+    // R-K2 #69: Schalter „zählt als belegt“ je Kalender — ein nicht zugeordneter Kalender betrifft niemanden.
+    termine: termine.map(t => ({ ...mitBezug(t, bezuege), wer: werFuerBelegung(einst, t.kalender) })),
     bloecke: Array.isArray(routinen?.bloecke) ? routinen!.bloecke : [],
   });
 }

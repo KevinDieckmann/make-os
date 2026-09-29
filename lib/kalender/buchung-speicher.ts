@@ -69,6 +69,16 @@ export function tokenPasst(token: string, hash: string): boolean {
   return timingSafeEqual(Buffer.from(tokenHash(token), 'hex'), Buffer.from(hash, 'hex'));
 }
 
+/**
+ * Bestätigungslink der E-Mail-Adresse (R-K2 #76): eigenes Token (256 Bit) mit eigenem Hash-Vorsatz — ein Status-Token
+ * passt nie als Mail-Token und umgekehrt. Gespeichert wird nur der Hash (`Buchung.mailLink.hash`).
+ */
+export const mailTokenHash = (token: string): string => createHash('sha256').update(`make-os-buchung-mail|${token}`).digest('hex');
+export function mailTokenPasst(token: string, hash: string | undefined): boolean {
+  if (!hash || !TOKEN_OK.test(token) || !/^[a-f0-9]{64}$/.test(hash)) return false;
+  return timingSafeEqual(Buffer.from(mailTokenHash(token), 'hex'), Buffer.from(hash, 'hex'));
+}
+
 /** Neue Adresse: lesbarer Vorsatz + 96 Bit Zufall (hex) — nicht erratbar, nicht aufzählbar. */
 export const neuerSlug = (titel: string): string => `${slugVorsatz(titel)}-${randomBytes(12).toString('hex')}`;
 

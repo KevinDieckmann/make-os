@@ -3,31 +3,49 @@
 // Freigabe, erst dann fester Termin; DSGVO-Hinweis.“ Und (29.09.): „Eine Buchung ist im CRM EIN Vorgang.“
 //
 // Ablauf einer Buchung (Status):
-//   vorlaeufig  Platz 30 Minuten reserviert — der Buchende bestätigt auf seiner Status-Seite (Double-Opt-in-Ersatz,
-//               solange MAKE OS keine Mail verschickt). Nicht bestätigt → abgelaufen, der Platz ist wieder frei.
-//   angefragt   bestätigt vom Buchenden → Anfrage im CRM (lib/crm/anfragen.ts) + Glocke. Platz bleibt gehalten.
-//   bestaetigt  Kevin oder Malin haben freigegeben → fester Termin im Zielkalender (iCloud), Aktivität „Termin
-//               gebucht“ + Follow-up „Termin vorbereiten“ im CRM (lib/kalender/buchung-ablauf.ts).
-//   abgelehnt · abgesagt (vom Buchenden) · abgelaufen — Endzustände; nach der Löschfrist fallen sie weg.
+//   vorlaeufig  Platz 30 Minuten reserviert — der Buchende bestätigt auf seiner Status-Seite. Nicht bestätigt →
+//               abgelaufen, der Platz ist wieder frei.
+//   angefragt   bestätigt vom Buchenden → Glocke an die Person der Seite. Platz bleibt gehalten. Im CRM entsteht
+//               NOCH NICHTS (R-K2 #79, 29.09.: der Hinweis sagt „erst ein vereinbarter Termin wird Geschäftskontakt“).
+//   bestaetigt  Kevin oder Malin haben freigegeben → Kontakt im CRM (Anfrage mit Einwilligungs-Nachweis), fester
+//               Termin im Zielkalender (iCloud), Aktivität „Termin gebucht“ + Follow-up „Termin vorbereiten“
+//               (lib/kalender/buchung-ablauf.ts).
+//   abgelehnt · abgesagt (vom Buchenden) · abgelaufen — Endzustände; nach der Löschfrist fallen sie weg. Ohne
+//               Freigabe gab es nie einen CRM-Kontakt — es bleibt nichts zurück.
+//
+// E-Mail-Adresse (R-K2 #76, 29.09.): Die Adresse hat der Gast selbst eingetippt — sie ist „unbestätigt“, bis er
+// den Bestätigungslink anklickt. MAKE OS verschickt keine Mail von selbst: Im Buchungs-Panel erzeugt
+// „Bestätigungslink senden“ einen Mail-Entwurf (mailto, Versand per Klick in der Mail-App) mit einem einmaligen
+// Link (256 Bit, im Bestand nur der Hash, gilt MAIL_LINK_TAGE). Bis zum Klick: Einwilligungs-Nachweis im CRM als
+// „unbestätigt“, kein Mail-Follow-up, Einladen als Gast nur nach dem Warnhinweis.
+//
+// Frische (R-K2 #73): Plätze gibt es nur mit einem iCloud-Stand, der nicht veraltet (R-K1: ab 30 Min.) und ohne Fehler
+// ist (`standBuchbar` über `abgleichAlter`) — sonst „gerade keine Termine buchbar“ statt veralteter Plätze.
 //
 // Diese Datei rechnet nur (Säubern, Plätze, Reservieren, Aufräumen, Prüfungen) — ohne Platte, Netz, Uhr.
 // Der Speicher liegt in `buchung--<haushalt>` (lib/kalender/buchung-speicher.ts), die Routen unter
 // app/api/buchung/[slug] (öffentlich) und app/api/kalender/buchung (Haushalt).
 
 import { freieZeiten, fensterSauber, istFrei, type Belegung, type Fenster, type FreieZeit } from './verfuegbar';
-import { tagVon, ausWandzeit } from './zeit';
+import { tagVon, ausWandzeit, wandzeit } from './zeit';
 
 // ── Texte mit Fassung (Nachweis der Einwilligung) ────────────────────────────
 
 /** Fassung des Einwilligungs- und Hinweistextes — wird mit jeder Buchung gespeichert. Text ändern → Fassung hoch. */
-export const EINWILLIGUNG_VERSION = 'buchung-2026-09-29';
+export const EINWILLIGUNG_VERSION = 'buchung-2026-09-29-2';
 /** Wortlaut des Pflicht-Häkchens (so steht er als Nachweis an der Buchung und an der Einwilligung im CRM). */
 export const EINWILLIGUNG_WORTLAUT = 'Ich bin einverstanden, dass meine Angaben (Name, E-Mail, Firma, Anliegen) zur Bearbeitung dieser Terminanfrage gespeichert und verarbeitet werden. Die Hinweise zum Datenschutz habe ich gelesen.';
-/** Datenschutz-Hinweis auf der Seite (Art. 13 DSGVO, kurz). Verantwortlicher steht an der Buchungsseite. */
+/**
+ * Datenschutz-Hinweis auf der Seite (Art. 13 DSGVO, kurz; steht ausgeklappt ÜBER dem Formular). Verantwortlicher steht
+ * an der Buchungsseite (Pflicht). Jeder Satz beschreibt genau das Verhalten von buchung-ablauf.ts und der Löschfrist —
+ * Verhalten ändern → Text und EINWILLIGUNG_VERSION mitändern.
+ */
 export const DATENSCHUTZ_HINWEIS = [
-  'Zweck: Ihre Angaben werden nur verwendet, um diese Terminanfrage zu bearbeiten und den Termin vorzubereiten (Art. 6 Abs. 1 lit. b DSGVO, Anbahnung).',
-  'Speicherdauer: Nicht bestätigte, abgelehnte oder abgesagte Anfragen werden nach 30 Tagen gelöscht; aus einem vereinbarten Termin entsteht ein Geschäftskontakt.',
-  'Es wird keine Werbung verschickt. Sie können jederzeit Auskunft, Berichtigung oder Löschung verlangen — über den Verantwortlichen unten.',
+  'Zweck: Ihre Angaben (Name, E-Mail, Firma, Anliegen) werden nur verwendet, um diese Terminanfrage zu bearbeiten und den Termin vorzubereiten (Art. 6 Abs. 1 lit. b DSGVO, Anbahnung).',
+  'Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung. Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir 30 Tage nach der letzten Änderung.',
+  'Erst wenn wir den Termin bestätigen, legen wir Sie als Geschäftskontakt an (Name, E-Mail, Firma, Anliegen, Termin) und tragen den Termin in unseren Kalender ein. Die Buchung selbst löschen wir 30 Tage nach dem Termin.',
+  'Wir können Ihnen einmal einen Link schicken, mit dem Sie bestätigen, dass die E-Mail-Adresse Ihnen gehört. Es wird keine Werbung verschickt.',
+  'Sie können jederzeit Auskunft, Berichtigung oder Löschung verlangen — beim Verantwortlichen unten.',
   'Die Seite setzt keine Cookies und lädt nichts von fremden Servern.',
 ];
 
@@ -42,6 +60,10 @@ export const MIN_AUSFUELLEN_SEK = 3;
 export const MAX_AUSFUELLEN_SEK = 2 * 3600;
 /** Standard-Löschfrist in Tagen (einstellbar unter Stammdaten › Datenschutz, Frist „buchungen“). */
 export const LOESCHFRIST_TAGE = 30;
+/** So lange gilt ein Bestätigungslink für die E-Mail-Adresse (einmalig). */
+export const MAIL_LINK_TAGE = 7;
+/** Text, wenn gerade nichts buchbar ist (Stand alt, Fehler, ohne iCloud, ohne Verantwortlichen). */
+export const NICHT_BUCHBAR = 'Gerade sind keine Termine buchbar. Bitte später noch einmal vorbeischauen.';
 
 // ── Formen ──────────────────────────────────────────────────────────────────
 
@@ -109,10 +131,16 @@ export interface Buchung {
   followUpId?: string;
   /** Follow-up „Termin vorbereiten“ (nach der Freigabe). */
   vorbereitenId?: string;
+  /** Verweis auf den Termin: Schlüssel Kalender + UID (R-K1 `objektSchluessel`); Buchungen von vorher: nackte UID. */
   terminUid?: string;
   terminKalender?: string;
   /** Warum im CRM nichts festgehalten wurde (Werbesperre, Art. 18) — sichtbar für den Haushalt. */
   crmHinweis?: string;
+  // ── E-Mail-Adresse (R-K2 #76) ──
+  /** Wann der Gast den Bestätigungslink angeklickt hat — fehlt es, ist die Adresse unbestätigt. */
+  emailBestaetigtAm?: string;
+  /** Offener Bestätigungslink: nur der SHA-256 (nie in Antworten), gültig bis `bis`, erzeugt `am`. Einmalig. */
+  mailLink?: { hash: string; bis: string; am: string };
 }
 
 export interface BuchungBestand {
@@ -152,6 +180,8 @@ export function seiteSauber(roh: Record<string, unknown>, fest: Pick<BuchungsSei
   if (kal.length > GRENZEN.kalender) return { ok: false, fehler: 'Kalendername zu lang.' };
   if (!kal) return { ok: false, fehler: 'Zielkalender fehlt (Name wie in der Kalender-App).' };
   if (verantwortlich.length > GRENZEN.verantwortlich) return { ok: false, fehler: `Verantwortlicher höchstens ${GRENZEN.verantwortlich} Zeichen.` };
+  // Art. 13 Abs. 1 a DSGVO: ohne Verantwortlichen kein Datenschutz-Hinweis — und damit keine Seite (R-K2 #79).
+  if (verantwortlich.length < 5) return { ok: false, fehler: 'Verantwortlich fehlt (Name/Firma und Kontakt, z. B. E-Mail) — Pflicht für den Datenschutz-Hinweis.' };
   const f = (roh.fragen && typeof roh.fragen === 'object' ? roh.fragen : {}) as Record<string, unknown>;
   return {
     ok: true,
@@ -305,7 +335,7 @@ export function loeschfristAnwenden(bestand: BuchungBestand, jetzt: Date, tage =
 }
 
 /** Was der Buchende auf seiner Status-Seite sieht — ohne Namen anderer, ohne Termininhalte; Ort erst nach Freigabe. */
-export interface StatusSicht { status: BuchungStatus; titel: string; start: string; ende: string; reserviertBis?: string; ort?: string; grund?: string; verantwortlich?: string }
+export interface StatusSicht { status: BuchungStatus; titel: string; start: string; ende: string; reserviertBis?: string; ort?: string; grund?: string; verantwortlich?: string; emailBestaetigt?: true }
 export function statusSicht(b: Buchung, seite: BuchungsSeite | undefined): StatusSicht {
   return {
     status: b.status, titel: seite?.titel ?? 'Termin', start: b.start, ende: b.ende,
@@ -313,6 +343,7 @@ export function statusSicht(b: Buchung, seite: BuchungsSeite | undefined): Statu
     ...(b.status === 'bestaetigt' && seite?.ort ? { ort: seite.ort } : {}),
     ...(b.status === 'abgelehnt' && b.grund ? { grund: b.grund } : {}),
     ...(seite?.verantwortlich ? { verantwortlich: seite.verantwortlich } : {}),
+    ...(b.emailBestaetigtAm ? { emailBestaetigt: true as const } : {}),
   };
 }
 
@@ -338,4 +369,64 @@ export function vorbereitenTag(start: string, heute: string): string {
   d.setUTCDate(d.getUTCDate() - 1);
   const t = d.toISOString().slice(0, 10);
   return t < heute ? heute : t;
+}
+
+// ── Frische des Kalenders (R-K2 #73) ─────────────────────────────────────────
+
+/** Alter des Stands, wie R-K1 ihn liefert (lib/kalender/icloud.ts `abgleichAlter`: `veraltet` ab 30 Min., `fehler`). */
+export interface AbgleichKurz { veraltet: boolean; fehler?: string; anmeldung?: true }
+export type NichtBuchbarGrund = 'ohne-icloud' | 'kein-stand' | 'alt' | 'fehler';
+
+/**
+ * Darf die Seite mit diesem Stand Plätze zeigen bzw. reservieren? Nein, wenn iCloud nicht verbunden ist (sonst wären
+ * alle Fenster „frei“), der letzte Abgleich scheiterte oder der Stand veraltet ist (dieselbe Regel wie der
+ * Kalender-Kopf „letzter Abgleich vor X Min.“, R-K1 `abgleichAlter`). Lieber „gerade keine Termine buchbar“ als ein
+ * Platz, der am iPhone längst belegt ist.
+ */
+export function standBuchbar(a: AbgleichKurz | null | undefined, verbunden: boolean): { ok: true } | { ok: false; grund: NichtBuchbarGrund } {
+  if (!verbunden) return { ok: false, grund: 'ohne-icloud' };
+  if (!a) return { ok: false, grund: 'kein-stand' };
+  if (a.fehler || a.anmeldung) return { ok: false, grund: 'fehler' };
+  if (a.veraltet) return { ok: false, grund: 'alt' };
+  return { ok: true };
+}
+
+// ── Bestätigungslink für die E-Mail-Adresse (R-K2 #76) ──────────────────────
+
+/** Kann für diese Buchung ein Bestätigungslink erzeugt werden? (angefragt oder bestätigt, Adresse noch unbestätigt) */
+export function mailLinkMoeglich(b: Pick<Buchung, 'status' | 'emailBestaetigtAm'>): { ok: true } | { ok: false; fehler: string } {
+  if (b.emailBestaetigtAm) return { ok: false, fehler: 'Die E-Mail-Adresse ist schon bestätigt.' };
+  if (b.status !== 'angefragt' && b.status !== 'bestaetigt') return { ok: false, fehler: b.status === 'vorlaeufig' ? 'Der Gast hat die Anfrage noch nicht bestätigt.' : 'Diese Buchung ist nicht mehr offen.' };
+  return { ok: true };
+}
+
+/** Gilt der gespeicherte Link noch? (Den Hash vergleicht der Speicher — hier nur die Zeit.) */
+export const mailLinkGueltig = (l: Buchung['mailLink'], jetztIso: string): boolean => !!l && l.bis > jetztIso;
+
+/** Pfad des Bestätigungslinks: die Status-Seite mit dem Token im Fragment (geht nie an den Server, nie in Logs). */
+export const mailLinkPfad = (slug: string, token: string) => `/buchen/${slug}/status#mail=${token}`;
+
+/**
+ * Text des Mail-Entwurfs (Sie-Form, ohne Werbung). Nur ein Entwurf — verschickt wird er erst mit dem Klick in der
+ * Mail-App. `link` = volle Adresse (der Browser kennt den Ursprung), `bis` = ISO-Ablauf des Links.
+ */
+export function bestaetigungsMail(a: { name: string; titel: string; start: string; ende: string; link: string; verantwortlich: string; bis: string }): { betreff: string; text: string } {
+  const d = (w: string) => `${w.slice(8, 10)}.${w.slice(5, 7)}.${w.slice(0, 4)}`;
+  return {
+    betreff: `Bitte bestätigen Sie Ihre E-Mail-Adresse — Terminanfrage „${a.titel}“`,
+    text: [
+      `Guten Tag ${a.name},`,
+      '',
+      `vielen Dank für Ihre Terminanfrage „${a.titel}“ am ${d(a.start)}, ${a.start.slice(11, 16)}–${a.ende.slice(11, 16)} Uhr.`,
+      'Bitte bestätigen Sie mit einem Klick, dass diese E-Mail-Adresse Ihnen gehört:',
+      '',
+      a.link,
+      '',
+      `Der Link gilt bis ${d(wandzeit(new Date(a.bis)))} und nur einmal. Haben Sie keinen Termin angefragt, ignorieren Sie diese Mail bitte — dann geschieht nichts.`,
+      '',
+      'Freundliche Grüße',
+      '',
+      `Verantwortlich: ${a.verantwortlich}`,
+    ].join('\n'),
+  };
 }

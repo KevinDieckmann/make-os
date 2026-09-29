@@ -3,12 +3,18 @@
 // ─── Öffentliche Buchungsseite — Status des Gastes (29.09., Paket K4) ────────
 // Das Token steht im Fragment der Adresse (#…) und geht nur im Körper an den Server. Hier: bestätigen (vorläufig →
 // angefragt), sehen (angefragt · bestätigt mit Ort · abgelehnt mit Grund · abgesagt · abgelaufen), absagen.
+// R-K2 #76 (29.09.): Der Bestätigungslink aus der Mail führt hierher mit `#mail=<token>` — dann wird NUR die E-Mail-
+// Adresse bestätigt (einmalig); absagen/ansehen geht weiter nur mit dem persönlichen Status-Link. #74: zweite Uhrzeit
+// in der Zone des Gasts.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { C, AKZENT, seite, rahmen, karte, titel, leise, klein, knopf, zeitText } from './stil';
+import { useGastZone } from './Buchen';
+import { gastZeitText, zonenOrt } from '@/lib/kalender/gast-zeit';
 
 type Status = 'vorlaeufig' | 'angefragt' | 'bestaetigt' | 'abgelehnt' | 'abgesagt' | 'abgelaufen';
-interface Sicht { status: Status; titel: string; start: string; ende: string; reserviertBis?: string; ort?: string; grund?: string; verantwortlich?: string }
+interface Sicht { status: Status; titel: string; start: string; ende: string; reserviertBis?: string; ort?: string; grund?: string; verantwortlich?: string; emailBestaetigt?: true }
+const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
 const TEXT: Record<Status, { kopf: string; satz: string; farbe: string }> = {
   vorlaeufig: { kopf: 'Fast fertig — bitte bestätigen', satz: 'Der Platz ist für Sie reserviert. Bestätigen Sie Ihre Anfrage, dann melden wir uns mit der Zusage.', farbe: C.achtung },
@@ -26,8 +32,11 @@ export function BuchungStatus({ slug }: { slug: string }) {
   const [laeuft, setLaeuft] = useState(false);
   const [absagenFrage, setAbsagenFrage] = useState(false);
   const [kopiert, setKopiert] = useState(false);
+  /** Aufruf über den Bestätigungslink aus der Mail (#mail=…) — nur die Adresse bestätigen. */
+  const [mailModus, setMailModus] = useState(false);
+  const zone = useGastZone();
 
-  const senden = async (aktion: 'ansehen' | 'bestaetigen' | 'absagen', t = token) => {
+  const senden = async (aktion: 'ansehen' | 'bestaetigen' | 'absagen' | 'mail-bestaetigen', t = token) => {
     if (!t) return;
     setLaeuft(true); setFehler('');
     try {
@@ -38,15 +47,50 @@ export function BuchungStatus({ slug }: { slug: string }) {
     setLaeuft(false);
   };
 
+  const gestartet = useRef(false);
   useEffect(() => {
-    const t = window.location.hash.replace(/^#/, '');
-    if (!/^[A-Za-z0-9_-]{43}$/.test(t)) { setFehler('Dieser Link ist unvollständig. Bitte den vollständigen Link Ihrer Anfrage öffnen.'); return; }
-    setToken(t);
-    void senden('ansehen', t);
+    // Nur einmal (auch im Strict-Mode der Entwicklung): ein Mail-Token gilt genau einmal.
+    if (gestartet.current) return;
+    gestartet.current = true;
+    const roh = window.location.hash.replace(/^#/, '');
+    if (roh.startsWith('mail=')) {
+      const m = roh.slice(5);
+      if (!TOKEN.test(m)) { setMailModus(true); setFehler('Dieser Bestätigungslink ist unvollständig. Bitte den vollständigen Link aus der Mail öffnen.'); return; }
+      // Das Token verschwindet aus der Adresszeile (Lesezeichen, geteilter Bildschirm) — es gilt ohnehin nur einmal.
+      try { window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search); } catch { /* egal */ }
+      setMailModus(true);
+      void senden('mail-bestaetigen', m);
+      return;
+    }
+    if (!TOKEN.test(roh)) { setFehler('Dieser Link ist unvollständig. Bitte den vollständigen Link Ihrer Anfrage öffnen.'); return; }
+    setToken(roh);
+    void senden('ansehen', roh);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kopieren = async () => { try { await navigator.clipboard.writeText(window.location.href); setKopiert(true); } catch { /* egal */ } };
   const t = sicht ? TEXT[sicht.status] : null;
+  const bei = (wand: string) => (zone ? gastZeitText(wand, zone) : null);
+
+  if (mailModus) return (
+    <main style={seite}>
+      <div style={{ ...rahmen, maxWidth: 560 }}>
+        <span style={{ ...klein, textTransform: 'uppercase', letterSpacing: '.12em', color: AKZENT, fontWeight: 700 }}>E-Mail-Adresse bestätigen</span>
+        <section style={{ ...karte, display: 'grid', gap: 12 }}>
+          {laeuft && <p style={leise}>Wird bestätigt …</p>}
+          {!laeuft && sicht && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: C.gut }} /><span style={{ fontSize: 13, color: C.gut, fontWeight: 700 }}>Danke — Ihre E-Mail-Adresse ist bestätigt.</span></div>
+              <h1 style={titel}>{sicht.titel}</h1>
+              <div style={{ fontSize: 16, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{zeitText(sicht.start, sicht.ende)}</div>
+              <p style={{ ...leise, margin: 0 }}>Den Stand Ihrer Anfrage sehen Sie weiter über Ihren persönlichen Link von der Buchung.</p>
+            </>
+          )}
+          {!laeuft && !sicht && fehler && <><h1 style={titel}>Nicht bestätigt</h1><p role="alert" style={leise}>{fehler}</p></>}
+          {sicht?.verantwortlich && <span style={klein}>Verantwortlich: {sicht.verantwortlich}</span>}
+        </section>
+      </div>
+    </main>
+  );
 
   return (
     <main style={seite}>
@@ -58,8 +102,9 @@ export function BuchungStatus({ slug }: { slug: string }) {
           <section style={{ ...karte, display: 'grid', gap: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: t.farbe, boxShadow: `0 0 10px ${t.farbe}66` }} /><span style={{ fontSize: 13, color: t.farbe, fontWeight: 700 }}>{t.kopf}</span></div>
             <h1 style={titel}>{sicht.titel}</h1>
-            <div style={{ fontSize: 16, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{zeitText(sicht.start, sicht.ende)}</div>
+            <div style={{ fontSize: 16, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{zeitText(sicht.start, sicht.ende)}{zone && bei(sicht.start) ? <span style={{ ...klein, display: 'block', fontWeight: 500 }}>bei Ihnen ({zonenOrt(zone)}): {bei(sicht.start)}–{bei(sicht.ende) ?? sicht.ende.slice(11, 16)}</span> : null}</div>
             <p style={{ ...leise, margin: 0 }}>{t.satz}</p>
+            {sicht.emailBestaetigt && <p style={{ ...klein, margin: 0, color: C.gut }}>E-Mail-Adresse bestätigt.</p>}
             {sicht.status === 'vorlaeufig' && sicht.reserviertBis && <p style={{ ...klein, margin: 0 }}>Reserviert bis {new Date(sicht.reserviertBis).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr.</p>}
             {sicht.ort && <p style={{ ...leise, margin: 0, color: C.ink }}>Ort / Zugang: {sicht.ort}</p>}
             {sicht.grund && <p style={{ ...leise, margin: 0 }}>Hinweis: {sicht.grund}</p>}

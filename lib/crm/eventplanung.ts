@@ -573,11 +573,23 @@ function dauerMinuten(e: Event, start: number): number {
   return letzte > start ? letzte - start + 30 : DAUER[e.format] ?? 120;
 }
 
+/**
+ * SEQUENCE einer Event-Datei (R-K2 #78, RFC 5545 3.8.7.4): muss steigen, wenn sich das Event ändert — sonst übernimmt
+ * ein Kalender, der die Datei schon importiert hat, die neue Zeit/den neuen Ort nicht. Ohne eigenen Zähler: Sekunden
+ * seit 2026-01-01 aus `geaendert` (wächst mit jeder Änderung, passt in 32 Bit bis 2094). Unbekannt → 0.
+ */
+export function icsSequenz(geaendert: string | undefined): number {
+  const t = Date.parse(geaendert ?? '');
+  return Number.isFinite(t) ? Math.max(0, Math.floor((t - Date.UTC(2026, 0, 1)) / 1000)) : 0;
+}
+
 export function icsText(e: Event, jetzt: string = new Date().toISOString()): string {
   const start = minuten(e.uhrzeit);
   const z: string[] = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MAKE OS//CRM Events//DE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
   if (start !== null) z.push(...VTIMEZONE_BERLIN);
-  z.push('BEGIN:VEVENT', `UID:${e.id}@makeos`, `DTSTAMP:${utcStempel(jetzt)}`);
+  // DTSTAMP = wann diese Datei entstand (mit METHOD Pflicht), LAST-MODIFIED/SEQUENCE = Stand des Events (#78).
+  z.push('BEGIN:VEVENT', `UID:${e.id}@makeos`, `DTSTAMP:${utcStempel(jetzt)}`, `SEQUENCE:${icsSequenz(e.geaendert)}`);
+  if (Number.isFinite(Date.parse(e.geaendert ?? ''))) z.push(`LAST-MODIFIED:${utcStempel(e.geaendert)}`);
   if (start !== null) z.push(`DTSTART;TZID=Europe/Berlin:${lokal(e.datum, start)}`, `DTEND;TZID=Europe/Berlin:${lokal(e.datum, start + dauerMinuten(e, start))}`);
   else z.push(`DTSTART;VALUE=DATE:${e.datum.replace(/-/g, '')}`, `DTEND;VALUE=DATE:${plusTage(e.datum, 1).replace(/-/g, '')}`);
   z.push(`SUMMARY:${icsEscape(e.titel)}`);

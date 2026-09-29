@@ -31,7 +31,8 @@ export function buchungenPruefen(s: BuchungenStand | null | undefined, kontakte:
   if (!s) return;
   const seiten = new Set(s.seiten);
   const fenster = icloud?.fenster ?? null;
-  const uids = fenster ? new Set(icloud!.objekte.map(o => o.uid)) : null;
+  // Seit R-K2 trägt eine Buchung den Schlüssel Kalender + UID, ältere die nackte UID — beide Formen zählen.
+  const uids = fenster ? new Set(icloud!.objekte.flatMap(o => (o.schluessel ? [o.uid, o.schluessel] : [o.uid]))) : null;
   for (const b of s.buchungen) {
     if (!seiten.has(b.seiteId)) melde('buchung-seite-tot', b.id);
     if (b.kontaktId && !kontakte.has(b.kontaktId)) melde('buchung-kontakt-tot', b.id);

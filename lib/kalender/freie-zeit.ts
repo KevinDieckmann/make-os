@@ -17,6 +17,8 @@ import { verfuegbarkeitFuer, type Verfuegbarkeit } from './verfuegbarkeit';
 import { freieZeiten, fensterSauber, wochentag, ARBEITSZEIT_STANDARD, type Belegung, type FreieZeit, type PersonName, type Zeitspanne } from './verfuegbar';
 import { ladeBuchungBestand } from './buchung-speicher';
 import { buchungenAlsBelegung } from './buchung';
+import { ladeEinstellungen } from './einstellungen';
+import { freieTageIm, type FreierTag } from './freie-tage';
 
 /** Belegt aus K1: alles Beschäftigte je Tag (Abwesend als „abwesend“, ohne Puffer), ganz abwesende Tage ganz. */
 export function belegungenAus(v: Verfuegbarkeit): Belegung[] {
@@ -45,6 +47,13 @@ export function arbeitszeitAus(v: Verfuegbarkeit): Record<string, Zeitspanne[]> 
 /** Feiertage NRW aus K1 (Tag → Name). */
 export const feiertageAus = (v: Verfuegbarkeit): Record<string, string> => Object.fromEntries(v.tage.filter(t => t.feiertag).map(t => [t.tag, t.feiertag!]));
 
+/**
+ * Gesperrte Tage für Buchung und freie Zeit (R-K2 #72): Feiertage NRW aus K1 + die „freien Tage“ aus den
+ * Kalender-Einstellungen (24.12., 31.12. … — nicht gesetzlich, aber frei). Tag → Name.
+ */
+export const sperrTageAus = (v: Verfuegbarkeit, freie: readonly FreierTag[], von: string, bis: string): Record<string, string> =>
+  ({ ...freieTageIm(von, bis, freie), ...feiertageAus(v) });
+
 export interface FreieZeitAnfrage {
   personen: PersonName[];
   dauerMin: number;
@@ -65,12 +74,15 @@ export async function freieZeitFuer(a: FreieZeitAnfrage): Promise<{ vorschlaege:
   const tage = Math.max(1, Math.min(60, Math.round(a.tage ?? 14)));
   const bis = tagPlus(von, tage);
   const personen = Array.from(new Set(a.personen));
-  const [je, bestand] = await Promise.all([Promise.all(personen.map(p => verfuegbarkeitFuer(p, von, bis))), ladeBuchungBestand(jetzt)]);
+  const [je, bestand, einst] = await Promise.all([Promise.all(personen.map(p => verfuegbarkeitFuer(p, von, bis))), ladeBuchungBestand(jetzt), ladeEinstellungen()]);
   const feiertage = je.length ? feiertageAus(je[0]) : {};
+  // R-K2 #72: „frei, aber nicht gesetzlich“ (24.12., 31.12. …) — an diesen Tagen schlägt die Suche nichts vor.
+  const frei = freieTageIm(von, bis, einst.freieTage);
+  const ohneFreie = (az: Record<string, Zeitspanne[]>) => Object.fromEntries(Object.entries(az).map(([tag, z]) => [tag, frei[tag] ? [] : z]));
   const vorschlaege = freieZeiten({
     personen,
     belegungen: [...je.flatMap(belegungenAus), ...personen.flatMap(p => buchungenAlsBelegung(bestand, p, jetzt.toISOString()))],
-    arbeitszeitJeTag: Object.fromEntries(je.map(v => [v.person, arbeitszeitAus(v)])),
+    arbeitszeitJeTag: Object.fromEntries(je.map(v => [v.person, ohneFreie(arbeitszeitAus(v))])),
     dauerMin: a.dauerMin, von, tage, jetzt, vorlaufMin: a.vorlaufMin ?? 0, pufferMin: a.pufferMin ?? 0, rasterMin: a.rasterMin ?? 15, feiertage, grenze: a.grenze ?? 200,
   });
   return { vorschlaege, von, bis, feiertage };
