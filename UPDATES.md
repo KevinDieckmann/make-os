@@ -4,6 +4,34 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Kalender K5: Ein Kalender — Planen als Modus, Aufgaben-Modus (29.09.2026, nur lokal — Commit 55866be)
+
+- **Ein Kalender:** Der Wochenplaner ist jetzt der Modus „Planen“ im Kalender (`/os/kalender?modus=planen`, Taste p).
+  Bausteine (Fokus, Reha, Pause, Blockzeit), Routinen, Aufgaben und eigene Blöcke antippen, dann in den Kalender klicken
+  oder aufziehen — jeder Block ist ein Termin in iCloud (auf allen Geräten); verschieben/löschen zieht Apple mit. Oben die
+  Stunden des Zeitraums (h belegt · Termine · Blöcke) und je Tag. Alte Links (`/os/planung/woche`, Kennzahl-Links) leiten um;
+  der Kopf-Knopf „Kalender“ öffnet den Kalender.
+- **Umschalter Kalender | Aufgaben** oben rechts (wie Google): Aufgaben nach Fälligkeit (Überfällig · Heute · Diese Woche ·
+  Später · Ohne Datum), abhaken, einplanen (Datum/Uhrzeit oder auf einen Tag ziehen). Derselbe Umschalter in den Aufgaben.
+- **Make.One-Events und Familie** (Dates, Paar-Gespräch) legen echte Termine an; Datum ändern oder absagen zieht den Termin
+  im Kalender „Gemeinsam“ nach bzw. löscht ihn.
+- **Aufgeräumt:** das alte Kalender-Dashboard `/calendar` (Beispieldaten, verursachte Fehler auf der Anmeldeseite) ist weg,
+  die festen KEMARIS-Beispieltermine (Juli 2026) tauchen nirgends mehr auf.
+
+**Was Kevin nach dem Upload tun muss (einmal):**
+1. **Übernahme der Wochenplan-Blöcke einmal ausführen:** Kalender → „Planen“ → links die Karte „Alter Wochenplan“ →
+   Vorschau ansehen → „Jetzt übernehmen“. Künftige Blöcke werden Termine in iCloud (vorhandene Apple-Kopien werden zum Block,
+   nicht doppelt), vorher legt MAKE OS eine Archivkopie ab; vergangene Blöcke bleiben als Archiv lesbar. Bricht es ab, macht
+   der Takt es fertig. (Solange nicht übernommen, stehen die alten Blöcke gestrichelt „wartet auf Übernahme“ im Raster.)
+2. Alte Make.One-Events mit Termin: auf der Event-Seite ggf. „Mit dem Kalender verknüpfen“ (die Verbindungsprüfung nennt sie).
+
+**Prüfliste (vor dem Hochladen, lokal mit Wegwerfdaten):**
+- `/os/planung/woche` → landet im Kalender, Modus Planen, Woche. Baustein antippen → in den Kalender klicken → Block steht
+  (in Apple mit Art), verschieben zieht Apple mit, löschen fragt.
+- Umschalter ✓-Symbol → Aufgaben-Liste; „Einplanen“ setzt Datum/Uhrzeit, die Aufgabe springt in die richtige Gruppe.
+- Event mit Uhrzeit → „Termin anlegen“ → Datum ändern → Termin im Kalender wandert mit; „Abgesagt“ → Termin weg.
+- `/anmelden` ohne Sitzung: keine 401/500 mehr in der Konsole.
+
 ## Upload umkehrbar: Kompatibilitätsmodus (29.09.2026 abends, nur lokal)
 
 - **Neuer Schalter `MAKE_OS_FORMAT`** (Standard ohne Variable: `kompatibel`). Die neue Version schreibt dann genau im Format
