@@ -43,6 +43,17 @@ Jährlich prüfen (Übung, Abschnitt 3), ob alle drei Orte den **aktuellen** Sta
    (DEPLOY.md › Sicherung, Offsite, Wiederherstellung).
 8. **Was fehlt:** alles seit dem Archiv (≤ 24 h). Der Vault kommt aus GitHub (`make-vault`), nicht aus dem Archiv.
 
+### Absichten (abgebrochene Vorgänge, Paket D-C)
+
+Zeigt der Head of IT „Abgebrochene Vorgänge“ **rot** (nach 3 Versuchen nicht fertig): ein Vorgang über mehrere Bestände
+(Art. 17, Import, Dubletten, Kennungs-Umzug, Angebot, CRM-Folgen) hängt halb. Nichts von Hand in `.data` ändern.
+1. Grund lesen: `docker compose logs app | grep -i absicht` bzw. `GET /api/intern/absichten` (nur Art, Schritte, Fehlergrund —
+   nie Personendaten).
+2. Ursache beheben (meist ein beschädigter Bestand → `.corrupt-…` prüfen, Einzel-Restore; volle Platte; fehlender Schlüssel).
+3. Wieder anstoßen: `POST /api/intern/absichten { "aktion": "erneut", "id": "ab-…" }` (Inhaber bzw. Dienstweg) — die Schritte
+   sind idempotent, bereits erledigte laufen nicht noch einmal. Ein Art.-17-Vorgang steht bis dahin im Löschprotokoll auf
+   „unvollständig“.
+
 ## 3 · Jährliche Übung (und nach jeder Rotation)
 
 Ohne Server-Zugriff, nur mit Mac + Passwort-Manager: Schritt 2 mit `--app` (`deploy/sicherung-probe.sh <archiv>

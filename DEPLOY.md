@@ -270,12 +270,32 @@ das Werkzeug nie zurück (Art. 17 möglich). Route: `/api/intern/wiederherstelle
   (Terminal, nie über Chat/Claude), in `/srv/make-os/app/.env` eintragen und in beide Passwort-Manager + Papier (wie der
   Datenschlüssel). **Nie wechseln.** Alternativ als Datei (`MAKE_OS_PEPPER_DATEI`, 0400). Ohne Pepper: gelber HOI-Befund.
   Nach dem Setzen rechnet der nächste Löschfristen-Lauf die Fingerabdrücke existierender Kontakte einmal um.
-- **Grabsteine** außerhalb des Datenordners: `sudo install -d -m 700 -o make -g make /srv/make-os/grabsteine`, in
-  `compose.yml` beim Dienst `app` das Volume `- ${MAKE_OS_GRABSTEINE:-/srv/make-os/grabsteine}:/grabsteine` und in der
-  `.env` `MAKE_OS_GRABSTEINE_DIR=/grabsteine`. `deploy/sicherung.sh` packt den Ordner mit ins Nachtarchiv.
+- **Grabsteine** außerhalb des Datenordners: seit Paket D-C steht das Volume in `compose.yml` (Dienst `app`:
+  `- ${MAKE_OS_GRABSTEINE:-/srv/make-os/grabsteine}:/grabsteine` und `MAKE_OS_GRABSTEINE_DIR: /grabsteine`; der Arbeiter
+  braucht es nicht). **VOR dem Upload** einmal den Ordner mit den richtigen Rechten anlegen — sonst legt Docker ihn als root
+  an und die App (UID 1000) kann keinen Grabstein schreiben (Art. 17 meldet dann „Grabstein nicht geschrieben“):
+  `sudo install -d -m 700 -o make -g make /srv/make-os/grabsteine`. Neue Server: `deploy/server-einrichten.sh` legt ihn an.
+  `deploy/sicherung.sh` packt den Ordner mit ins Nachtarchiv.
 - **Zurückspielen** eines ganzen Archivs nur mit `deploy/wiederherstellen.sh <archiv> <identität>`: hält App und Arbeiter
   an, legt den alten Datenordner beiseite, lässt den Grabstein-Ordner stehen, startet die App und wendet die Grabsteine
   zwingend an (sonst bleibt der Arbeiter aus). Einzel-Restore (`scripts/einzel-wiederherstellen.mjs`) wendet sie selbst an.
+
+## Kennungs-Umzug nach dem Upload (Paket D-C #35 — nur auf Kevins Wort, nie automatisch)
+
+Neue Kontakte bekommen ab dem Upload `c-<uuid>`. Der Altbestand trägt weiter Kennungen aus E-Mail bzw. Name, bis Kevin
+den Umzug startet:
+1. **Vorher:** die Nachtsicherung des Tages ist durch (HOI „Sicherung geprüft“ grün) — die App legt zusätzlich eine
+   Archivkopie aller betroffenen Bestände an (`archiv/crm-vor-kennungen-umzug-<zeit>.json`, 30 Tage).
+2. Stammdaten › Datenqualität › **Kontakt-Kennungen** (nur Inhaber): die Vorschau zeigt Anzahl, Bestände und je Person,
+   wo ihre Kennung steht — sie schreibt nichts.
+3. Wenn gerade niemand im CRM arbeitet: **Umstellen …** → bestätigen. Dauert Sekunden (500 erfundene Kontakte mit Verweisen in allen Speichern: ~0,6 s am Mac).
+   Offene Fenster anderer Geräte einmal neu laden (sie halten noch alte Kennungen; ein Schreiben damit endet in 409 +
+   „neu laden“).
+4. Danach: alte Links (Notizen im Vault, Lesezeichen, `?k=`/`?kontakt=`) leiten weiter; HOI „Abgebrochene Vorgänge“ grün.
+   Bricht der Lauf ab (Deploy, Absturz), setzt ihn der Start/Takt fort — oder „Umzug fortsetzen …“ auf der Karte.
+5. **Rückweg** (Karte „Rückweg …“) geht nur, solange kein umgezogener Kontakt seitdem geändert, gelöscht oder
+   zusammengeführt wurde — sonst 409 mit Grund; danach leitet die Tabelle neue Kennungen auf die alten zurück.
+Per Kommandozeile (Dienstweg ist bewusst NICHT erlaubt — der Umzug steht mit der Person im Protokoll): nur über die Oberfläche.
 
 ## Ausrollen seit 26.09. abends: Bild kommt fertig von GitHub
 Die Action baut das Docker-Image auf dem GitHub-Rechner (`docker build`) und schickt es per SSH-Stdin an den Server

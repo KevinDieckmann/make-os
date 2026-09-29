@@ -101,6 +101,36 @@ Verschlüsselung, skaliert begrenzt). Beides braucht Stufe 1 und 2 vorher.
   Beleg-Übernahme, Pacht-Token, Angebots-PDF außerhalb der Sperre, Säuberer-Wächter. Tests: `tests/datenschicht-*.test.ts`,
   `sicherung-skripte`, `idempotenz-auftraege`, `kennungen`, `zeit-berlin`, `crm-saeuberer-waechter`.
 
+- **Paket D-C — Absichtsprotokoll, zufällige Kontakt-Kennungen, Reste (29.09., lokal, Prüfliste #17/#21/#33/#35):**
+  - **Absichtsprotokoll** (`lib/store/absichten.ts`, Bestand `absichten--<haushalt>`, verschlüsselt): VOR dem ersten
+    Schritt eines Vorgangs über mehrere Bestände liegt eine Absicht (Art, fachlicher Schlüssel, die Daten, die die Schritte
+    brauchen — bei Art. 17 Name/Adressen/HubSpot/Firma/alte Kennungen —, Schrittliste). Jeder Schritt ist idempotent und
+    wird abgehakt (`mitVorgang` → `v.schritt(name, fn)`). Wiederaufnahme (`lib/store/absichten-fortsetzen.ts`): 5 s nach dem
+    Start (`lib/store/betrieb.ts`), im Takt (Agent `absichten`, Absichten älter als 10 min, Rückzug 30 min je Fehlversuch)
+    und vor der nächtlichen Durchsicht. Nach 3 gescheiterten Wiederaufnahmen „gescheitert“ → HOI rot (Befund `absichten`),
+    von Hand über `POST /api/intern/absichten { aktion: 'erneut', id }`. Beim Abschluss werden Daten und Schlüssel geleert;
+    fertige Absichten fallen nach 30 Tagen weg. Abgedeckt: **Art. 17** (13 Schritte; ein scheiternder Bestand hält die
+    anderen nicht auf — Löschprotokoll-Status `laeuft`/`vollstaendig`/`unvollstaendig` mit Schrittnamen, #21; das
+    Kartei-Löschen merkt die Merkmale VOR dem Schreiben vor), **Dubletten** (Kartei → `personUmbiegen`), **Import**
+    (Kartei → Konflikte → Segment → Firmen → Lauf), **CRM-Folgen gelöschter Deals** (Kartei innen in der CRM-Sperre: scheitert
+    das CRM-Schreiben, holt der Ausgleich die Leads zurück), **Angebot stellen** (Festschreiben → Kontakt-Vermerk; ein
+    verwaistes PDF eines nicht gestellten Angebots wird entfernt) und der **Kennungs-Umzug**. Tests: `tests/absichten.test.ts`
+    (Abbruch vor/nach JEDEM Schritt → derselbe Endzustand), `angebot-route`, `kennungen-umzug`.
+  - **Zufällige Kontakt-Kennungen** (#35, Kevin): neue Kontakte `c-<uuid>` (`neueKontaktKennung`, lib/kennung.ts — Import,
+    Kartei, Einlass, Brain-Umzug). Der fachliche Schlüssel (`schluessel`) ist nur noch Such-/Dubletten-Index; der Import
+    bleibt idempotent. Altbestand: **Kennungs-Umzug** (`lib/crm/kennungen-umzug.ts`, `POST /api/crm/kennungen-umzug`,
+    nur Inhaber, Karte Stammdaten › Datenqualität, nie automatisch): Vorschau → Absicht → Archivkopie → Weiterleitung
+    `kennung-alias--<haushalt>` → alle Verweise über `personenUmbiegen` (ein Durchgang je Bestand, auch Import-/Zusammenführ-
+    Läufe mit nachgezogenen Fingerabdrücken, alle übrigen Bestände, Protokoll-Fingerabdrücke `c2#hmac(alt)` → `c2#hmac(neu)`)
+    → Kartei → Nachlese → Such-Index → Vermerk. Alte Links (`?k=`, `?kontakt=`) leitet `app/os/markttraktion/page.tsx`
+    weiter. Rückweg über dieselbe Tabelle, solange kein umgezogener Kontakt geändert/gelöscht/zusammengeführt wurde (409).
+    Sperrliste bleibt gültig (Merkmale), Grabsteine auch (Merkmale; Art. 17 setzt zusätzlich Grabsteine der alten Kennungen).
+    Getestet an 500 erfundenen Kontakten mit Verweisen in allen Speichern (`tests/kennungen-umzug.test.ts`).
+  - **Dateiablage** (`lib/store/datei-huelle.mjs`): neue `.bin` als Hülle v2 „MKOSDAT2“ mit Schlüssel-ID + AAD
+    (Haushalt/Kennung), gelesen über den Schlüsselring (v1 + v2, aktiver und alter Schlüssel) — die Rotation im Betrieb
+    lässt keine Datei mehr kurz unlesbar; Kennungen `d-<uuid>`. ZOE-Stapel/-Protokoll `v-`/`p-<uuid>`. Compose: Grabstein-
+    Volume für die App. Zwischenspeicher-Rauschen: `anfragen-ergebnis`, `absichten--*`, `kennung-alias--*`.
+
 ## 4b. Bedrohungsmodell (29.09., Prüfliste #50/#62)
 
 Was die Verschlüsselung im Ruhezustand schützt — und was nicht. Grundsatz: **Schlüssel und Daten liegen nie im
@@ -137,6 +167,9 @@ solange sie gesetzt ist — deshalb die Zeile aus der `.env` nehmen (DEPLOY.md).
 - **Grabsteine** (`lib/datenschutz/grabsteine.ts`): HMAC der Kennung + Sperrlisten-Hashes, außerhalb des Datenordners
   (`MAKE_OS_GRABSTEINE_DIR`, Server `/srv/make-os/grabsteine` als eigenes Volume), mit ins Nachtarchiv. Angewendet nach
   jedem Restore (Restore-Skript zwingend, Einzel-Restore, Takt über die Marke `datenschutz-grabsteine`). Frist 13 Monate.
+- **Absichten und Weiterleitung (29.09., Paket D-C):** `absichten--*` wird getilgt (andere Absichten), die eigene
+  Art.-17-Absicht der Person behält Name/Adressen bis zum letzten Schritt (danach geleert); `kennung-alias--*`: Zeilen der
+  Person raus, ihre alten Kennungen bekommen vorher eigene Grabsteine. Das Löschprotokoll trägt den Status des Vorgangs.
 - **Pepper** (`lib/datenschutz/pepper.ts`, `MAKE_OS_PEPPER`): Sperrliste, Protokoll-Kennungen, Grabsteine als HMAC v2;
   v1-Hashes gelöschter Personen bleiben gültig, existierende Kontakte werden einmal je Pepper umgerechnet.
 - **Art. 18 zentral** (`lib/crm/verarbeitung.ts`): Leser, die verarbeiten, sehen eingeschränkte Personen gar nicht; direkte
