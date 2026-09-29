@@ -1,4 +1,4 @@
-# Go-Live-Checkliste — Stand `entwicklung` 8b20804 (29.09.2026)
+# Go-Live-Checkliste — Stand `entwicklung` (ab 3db3020) (29.09.2026)
 
 **Urteil: Ja, mit Bedingungen.** Im Code blockiert nichts (tsc, Lint, 2.579 Tests, Produktionsbau grün; Trockenlauf auf einer verschlüsselten Kopie der lokalen Daten: alles lesbar, alle Zahlen gleich, Neustart und harter Absturz ok).
 **Wichtig: Der Upload ist eine Einbahnstraße.** Die neue Version schreibt Bestände in der neuen Verschlüsselung (v2). Der alte Stand (aeb4964) kann v2 nicht lesen. Zurück geht es nur mit der Daten-Sicherung von vor dem Upload (Schritt V7) oder mit dem getesteten Rückweg-Skript (unten).
@@ -17,7 +17,7 @@ Alle Befehle auf dem Server als `make`, im Ordner `/srv/make-os/app`, außer wo 
 8. Kevin und Malin: alle MAKE-OS-Tabs auf allen Geräten schließen, während des Uploads nichts eingeben.
 
 ## Upload (nur auf Kevins Wort)
-Am Mac: `cd ~/Claude/Projects/MakeOS && git push origin entwicklung:main && git push origin entwicklung` → GitHub-Action (~10–12 Min): „pruefen“ grün, im Ausrollen-Log „fertig: 8b20804 …“.
+Am Mac: `cd ~/Claude/Projects/MakeOS && git push origin entwicklung:main && git push origin entwicklung` → GitHub-Action (~10–12 Min): „pruefen“ grün, im Ausrollen-Log „fertig: <neuester Commit von entwicklung> …“.
 
 ## Direkt nach dem Upload
 1. `docker compose ps` → app healthy, arbeiter läuft.
