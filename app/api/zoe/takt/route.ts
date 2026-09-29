@@ -12,6 +12,7 @@ import { faellig } from '@/lib/zoe/takt';
 import { reihe } from '@/lib/zoe/auftraege';
 import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
 import { alleSichten } from '@/lib/business/speicher';
+import { kalenderSicherungTaeglich } from '@/lib/kalender/sicherung-server';
 import { localDay } from '@/lib/zeit';
 
 /** Business-Index: einmal am Tag festhalten (Verlauf, Trend, Ampel-Wechsel, MRR für die NRR) — auch ohne offene Seite. */
@@ -53,6 +54,8 @@ export async function POST() {
   // liest alle Notizen und rechnet synchron in SQLite) — nie blockierend.
   void import('@/lib/brain/index').then(ix => ix.indexFrischHalten(30)).catch(() => {});
   await kalenderFrischHalten().catch(() => {});
+  // Tägliche Voll-Sicherung je Kalender (R-K1 #K5) — nachts ab 03:00, einmal je Tag, nie blockierend.
+  void kalenderSicherungTaeglich().catch(() => { /* Fehler stehen im Stand kalender-sicherung */ });
   void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });

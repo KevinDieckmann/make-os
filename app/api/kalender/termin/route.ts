@@ -10,6 +10,10 @@
 //          er liegt nie im Termin, nur im Bestand `kalender-bezug` (lib/kalender/bezug.ts).
 //          `stand` = ETag, den der Browser zuletzt sah → veraltet: 409 { konflikt, aktuell } („Deine Fassung“ bleibt im Browser).
 // DELETE ?uid=…&stand=…&einladungBestaetigt=1   (dito — die Oberfläche fragt vorher)
+// Seit R-K1 (29.09.): `uid` bei PATCH/DELETE ist der Schlüssel `kalender|uid` (`objektSchluessel(termin)`) — alte reine
+// UIDs gehen weiter, solange sie in genau einem Kalender stehen (sonst 409). Bezug und Protokoll laufen über den
+// Schlüssel; POST liefert ihn mit (`schluessel`). Fremd-private Termine (privat, gehören der anderen Person) lehnen
+// PATCH/DELETE mit 403 ab (#96). POST nimmt `endZone` (Zone des Endes, #13).
 // Zeiten als Wandzeit „YYYY-MM-DDTHH:mm(:ss)“ — beim Anlegen in `zone` (Standard Europe/Berlin), sonst Berlin;
 // ganztags: Tag, Ende exklusiv. Eingaben prüft lib/kalender/eingabe.ts.
 // Seit 29.09. (K1): Build-Kennung (409 `neuLaden`), jede Schreibaktion im Änderungsprotokoll (wer, UID, Aktion,
@@ -29,11 +33,12 @@
 
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
-import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminBekannt, terminLesen, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
+import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminAufloesen, terminLesen, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
 import { ladeEinstellungen, wemGehoert, type Wer } from '@/lib/kalender/einstellungen';
 import { anlegenPruefen, aendernPruefen, text } from '@/lib/kalender/eingabe';
 import { bezugSetzen, ladeBezuege, BezugZuGross } from '@/lib/kalender/bezug-server';
-import { mitBezug, maskieren, kontakteVon, type TerminBezug } from '@/lib/kalender/bezug';
+import { mitBezug, maskieren, kontakteVon, fremdPrivat, bezugVon, objektSchluessel, type TerminBezug } from '@/lib/kalender/bezug';
+import type { Termin } from '@/lib/kalender/ics';
 import { gaestePruefenCrm } from '@/lib/kalender/gaeste-server';
 import { wandzeit } from '@/lib/kalender/zeit';
 import { ausWandzeitIn, STANDARD_ZONE } from '@/lib/kalender/zeitzone';
@@ -71,6 +76,17 @@ async function vorab(req: Request): Promise<{ person: string } | NextResponse> {
   return { person: z.person };
 }
 
+/**
+ * Rechte (R-K1 #96): ein privater Termin der ANDEREN Person (in geteilten Sichten nur „Belegt“) lässt sich über die API
+ * weder ändern noch löschen — auch nicht mit bekannter UID. Der Bezug (Kennungen) zählt mit (`von` = Eigentümer).
+ */
+async function fremdPrivatFuer(t: Termin | null, person: string): Promise<boolean> {
+  if (!t) return false;
+  const [einst, bezuege] = await Promise.all([ladeEinstellungen(), ladeBezuege().catch(() => null)]);
+  return fremdPrivat({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, person);
+}
+const nichtDeiner = () => NextResponse.json({ ok: false, fehler: 'Privater Termin der anderen Person — nur sie kann ihn ändern oder löschen.' }, { status: 403 });
+
 /** Einladungen, Post an Gäste und Antworten nur von Hand — nie über den Dienstweg (ZOE, Takt, Skripte). */
 const nurVonHand = () => NextResponse.json({ ok: false, fehler: 'Einladungen, Änderungen an Gäste und Antworten nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
 
@@ -102,7 +118,7 @@ export async function POST(req: Request) {
       titel: e.titel, kalender, start: e.start, ende: e.ende, ganztags: e.ganztags,
       ...(e.ort ? { ort: e.ort } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.wiederholung ? { wiederholung: e.wiederholung } : {}),
       erinnerungenMin: e.erinnerungenMin, art: e.art, ...(e.farbe ? { farbe: e.farbe } : {}), beschaeftigt: e.beschaeftigt,
-      sichtbarkeit: e.sichtbarkeit, zone: e.zone, ...(e.arbeitsort ? { arbeitsort: e.arbeitsort } : {}), ...(e.blockArt ? { blockArt: e.blockArt } : {}),
+      sichtbarkeit: e.sichtbarkeit, zone: e.zone, ...(e.endZone ? { endZone: e.endZone } : {}), ...(e.arbeitsort ? { arbeitsort: e.arbeitsort } : {}), ...(e.blockArt ? { blockArt: e.blockArt } : {}),
       ...(g.gaeste.length ? { gaeste: g.gaeste.map(x => ({ email: x.email, ...(x.name ? { name: x.name } : {}) })) } : {}),
     }, { einladungBestaetigt: e.einladungBestaetigt });
     // Starttag in Berlin (für die Verbindungsprüfung) — bei einer anderen Zone umgerechnet, nie über new Date(wandzeit).
@@ -112,18 +128,18 @@ export async function POST(req: Request) {
     let hinweis: string | undefined;
     let bezug: TerminBezug | null = null;
     try {
-      bezug = await bezugSetzen(r.uid, { ...e.bezug, ...(gastKontakte.length ? { gastKontakte } : {}), von: z.person, tag, ...(e.art !== 'termin' ? { art: e.art } : {}), ...(e.sichtbarkeit === 'privat' ? { privat: true } : {}) });
+      bezug = await bezugSetzen(r.schluessel, { ...e.bezug, ...(gastKontakte.length ? { gastKontakte } : {}), von: z.person, tag, ...(e.art !== 'termin' ? { art: e.art } : {}), ...(e.sichtbarkeit === 'privat' ? { privat: true } : {}), ...(e.farbe ? { farbe: e.farbe } : {}) });
     } catch { hinweis = 'Termin angelegt — der Bezug zu MAKE OS ließ sich gerade nicht speichern (Art und Sichtbarkeit stehen im Termin).'; }
-    await protokolliere('kalender', [{ liste: 'termine', op: 'neu', id: r.uid, felder: ['art', ...(Object.keys(e.bezug)), ...(gastKontakte.length ? ['gastKontakte'] : [])] }], werAus(req));
-    await einladungProtokoll(req, r.uid, 'neu', r.gaeste);
+    await protokolliere('kalender', [{ liste: 'termine', op: 'neu', id: r.schluessel, felder: ['art', ...(Object.keys(e.bezug)), ...(gastKontakte.length ? ['gastKontakte'] : [])] }], werAus(req));
+    await einladungProtokoll(req, r.schluessel, 'neu', r.gaeste);
     // CRM: der Termin wird zur Aktivität „Meeting“ (nur echte Termine; Serien → Signal-Lauf je Vorkommen).
     let crm: { neu: number; eingeschraenkt: number } | undefined;
     const kontakte = kontakteVon(bezug);
     if (e.art === 'termin' && !e.wiederholung && kontakte.length) {
-      crm = await terminAktivitaetenSetzen({ id: r.uid, uid: r.uid, titel: e.titel, start: startBerlin, ...(e.sichtbarkeit === 'privat' ? { privat: true } : {}), kontaktIds: kontakte, ...(bezug?.dealId ? { dealId: bezug.dealId } : {}), von: z.person }, werAus(req))
+      crm = await terminAktivitaetenSetzen({ id: r.schluessel, uid: r.uid, titel: e.titel, start: startBerlin, ...(e.sichtbarkeit === 'privat' ? { privat: true } : {}), kontaktIds: kontakte, ...(bezug?.dealId ? { dealId: bezug.dealId } : {}), von: z.person }, werAus(req))
         .catch(() => { hinweis = 'Termin angelegt — die Aktivität im CRM entsteht beim nächsten Abgleich.'; return undefined; });
     }
-    return NextResponse.json({ ok: true, uid: r.uid, kalender: r.kalender, ...(r.gaeste ? { gaeste: r.gaeste } : {}), ...(g.werbesperre ? { werbesperre: g.werbesperre } : {}), ...(crm ? { crm } : {}), ...(hinweis ? { hinweis } : {}) });
+    return NextResponse.json({ ok: true, uid: r.uid, schluessel: r.schluessel, kalender: r.kalender, ...(r.gaeste ? { gaeste: r.gaeste } : {}), ...(g.werbesperre ? { werbesperre: g.werbesperre } : {}), ...(crm ? { crm } : {}), ...(hinweis ? { hinweis } : {}) });
   } catch (err) { return antwortFehler(err, z.person); }
 }
 
@@ -136,40 +152,51 @@ export async function PATCH(req: Request) {
   const { uid, stand, termin, bezug, gaeste, antwort, einladungBestaetigt } = p.e;
   if ((gaeste || antwort || einladungBestaetigt) && istDienst(req)) return nurVonHand();
   try {
+    // Rechte zuerst (R-K1 #96): fremd-private Termine gibt es für diese Person nur als „Belegt“.
+    const bisher = await terminLesen(uid).catch(() => null);
+    if (await fremdPrivatFuer(bisher, z.person)) return nichtDeiner();
     // Als Gast antworten (K3): nur PARTSTAT, nach Bestätigung — sonst nichts an diesem Aufruf.
     if (antwort) {
       await antwortSenden(uid, antwort, { ...(stand ? { stand } : {}), einladungBestaetigt });
-      await protokolliere('kalender', [{ liste: 'antworten', op: 'geaendert', id: uid, felder: [antwort] }], werAus(req));
+      await protokolliere('kalender', [{ liste: 'antworten', op: 'geaendert', id: bisher ? objektSchluessel(bisher) : uid, felder: [antwort] }], werAus(req));
       return NextResponse.json({ ok: true });
     }
     const g = gaeste ? await gaestePruefenCrm(gaeste) : null;
     if (g && !g.ok) return NextResponse.json({ ok: false, fehler: g.fehler, eingeschraenkt: true }, { status: 409 });
     const felder = Object.keys(termin);
     if (!felder.length && !bezug && !g) return NextResponse.json({ ok: true });
-    const alt = (await ladeBezuege().catch(() => null))?.bezuege[uid];
+    // Schlüssel (Kalender + UID) des Objekts — alte reine UIDs werden hier aufgelöst (R-K1 #46).
+    let ziel = await terminAufloesen(uid);
+    if (!ziel) return NextResponse.json({ ok: false, fehler: 'Termin nicht gefunden — vielleicht gerade in Apple gelöscht.' }, { status: 404 });
+    const bestand = await ladeBezuege().catch(() => null);
+    const alt = bezugVon(bestand, { id: ziel.schluessel });
     if (felder.length || g) {
       const r = await aendern(uid, { ...termin, ...(g ? { gaeste: g.gaeste.map(x => ({ email: x.email, ...(x.name ? { name: x.name } : {}) })) } : {}) }, { ...(stand ? { stand } : {}), einladungBestaetigt });
-      await einladungProtokoll(req, uid, 'geaendert', r.gaeste);
-    } else if (!(await terminBekannt(uid))) return NextResponse.json({ ok: false, fehler: 'Termin nicht gefunden — vielleicht gerade in Apple gelöscht.' }, { status: 404 });
+      ziel = { schluessel: r.schluessel, uid: r.uid, eindeutig: r.eindeutig };
+      await einladungProtokoll(req, ziel.schluessel, 'geaendert', r.gaeste);
+    }
+    const schluessel = ziel.schluessel;
     // Sicherung (Art, privat) und Bezüge nachziehen — Kennungen nie in den Termin.
     const teil: Record<string, unknown> = {
       ...(bezug ?? {}),
       ...(g ? { gastKontakte: g.gaeste.map(x => x.kontaktId).filter(Boolean) } : {}),
       ...(termin.art !== undefined ? { art: termin.art === 'termin' ? null : termin.art } : {}),
       ...(termin.sichtbarkeit !== undefined ? { privat: termin.sichtbarkeit === 'privat' ? true : null } : {}),
+      // Farbe gespiegelt (R-K1 #47): Apple verliert COLOR beim Bearbeiten — die Sicherung füllt sie beim Lesen nach.
+      ...(termin.farbe !== undefined ? { farbe: termin.farbe ?? null } : {}),
       ...(termin.start ? { tag: termin.start.slice(0, 10) } : {}),
     };
-    const neu = Object.keys(teil).length ? await bezugSetzen(uid, teil) : alt ?? null;
-    await protokolliere('kalender', [{ liste: 'termine', op: 'geaendert', id: uid, felder: [...felder, ...Object.keys(bezug ?? {}), ...(g ? ['gaeste'] : [])] }], werAus(req));
+    const neu = Object.keys(teil).length ? await bezugSetzen(schluessel, teil, undefined, { altSchluessel: ziel.uid, altBehalten: !ziel.eindeutig }) : alt ?? null;
+    await protokolliere('kalender', [{ liste: 'termine', op: 'geaendert', id: schluessel, felder: [...felder, ...Object.keys(bezug ?? {}), ...(g ? ['gaeste'] : [])] }], werAus(req));
     // CRM-Folgen einer Bezug-Änderung: neue Kontakte → Meeting-Aktivität, gelöste (Termin noch in der Zukunft) → weg.
     const vorher = new Set(kontakteVon(alt)), nachher = kontakteVon(neu);
     const dazu = nachher.filter(k => !vorher.has(k)), weg = [...vorher].filter(k => !nachher.includes(k));
     let hinweis: string | undefined;
     if (dazu.length || weg.length) {
-      const t = await terminLesen(uid).catch(() => null);
+      const t = await terminLesen(schluessel).catch(() => null);
       if (t && !t.serie && t.art !== 'abwesend' && t.art !== 'fokus' && t.art !== 'arbeitsort') {
-        if (dazu.length) await terminAktivitaetenSetzen({ id: t.id, uid, titel: t.titel, start: t.start, ...(t.sichtbarkeit === 'privat' || neu?.privat ? { privat: true } : {}), kontaktIds: dazu, ...(neu?.dealId ? { dealId: neu.dealId } : {}), von: z.person }, werAus(req)).catch(() => { hinweis = 'Die Aktivität im CRM entsteht beim nächsten Abgleich.'; });
-        if (weg.length && !terminVorbei(t.start, new Date().toISOString())) await terminAktivitaetenLoeschen(uid, werAus(req), weg).catch(() => {});
+        if (dazu.length) await terminAktivitaetenSetzen({ id: t.id, uid: t.uid, titel: t.titel, start: t.start, ...(t.sichtbarkeit === 'privat' || neu?.privat ? { privat: true } : {}), kontaktIds: dazu, ...(neu?.dealId ? { dealId: neu.dealId } : {}), von: z.person }, werAus(req)).catch(() => { hinweis = 'Die Aktivität im CRM entsteht beim nächsten Abgleich.'; });
+        if (weg.length && !terminVorbei(t.start, new Date().toISOString())) await terminAktivitaetenLoeschen(schluessel, werAus(req), weg).catch(() => {});
       }
     }
     return NextResponse.json({ ok: true, ...(g?.ok && g.werbesperre ? { werbesperre: g.werbesperre } : {}), ...(hinweis ? { hinweis } : {}) });
@@ -186,12 +213,15 @@ export async function DELETE(req: Request) {
   if (einladungBestaetigt && istDienst(req)) return nurVonHand();
   try {
     const vorher = await terminLesen(uid).catch(() => null);
+    if (await fremdPrivatFuer(vorher, z.person)) return nichtDeiner();
     const r = await loeschen(uid, { ...(stand ? { stand } : {}), einladungBestaetigt });
-    await bezugSetzen(uid, null).catch(() => { /* die Verbindungsprüfung meldet den Rest (termin-uid-tot) */ });
-    await protokolliere('kalender', [{ liste: 'termine', op: 'geloescht', id: uid }], werAus(req));
-    await einladungProtokoll(req, uid, 'geloescht', r.gaeste);
+    const schluessel = r.schluessel ?? uid;
+    // Bezug weg — unter dem Schlüssel und (UID nur in diesem Kalender) auch der alte Eintrag ohne Kalender.
+    await bezugSetzen(schluessel, null, undefined, r.uid ? { altSchluessel: r.uid, altBehalten: !r.eindeutig } : {}).catch(() => { /* die Verbindungsprüfung meldet den Rest (termin-uid-tot) */ });
+    await protokolliere('kalender', [{ liste: 'termine', op: 'geloescht', id: schluessel }], werAus(req));
+    await einladungProtokoll(req, schluessel, 'geloescht', r.gaeste);
     // Ein Termin in der Zukunft fand nicht statt → seine Meeting-Aktivitäten fallen weg (vergangene bleiben: es gab ihn).
-    if (vorher && !terminVorbei(vorher.start, new Date().toISOString())) await terminAktivitaetenLoeschen(uid, werAus(req)).catch(() => {});
+    if (vorher && !terminVorbei(vorher.start, new Date().toISOString())) await terminAktivitaetenLoeschen(schluessel, werAus(req)).catch(() => {});
     return NextResponse.json({ ok: true });
   } catch (err) { return antwortFehler(err, z.person); }
 }

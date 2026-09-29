@@ -76,3 +76,17 @@ export const etagSauber = (e?: string) => (e ? entschluesseln(e).trim() : undefi
 
 /** Rohinhalt einer Eigenschaft als Klartext (Entitäten aufgelöst). */
 export const klartext = (roh?: string) => (roh === undefined ? undefined : entschluesseln(roh).trim());
+
+/**
+ * Ist eine REPORT-Antwort gekürzt (R-K1 #43)? CalDAV meldet das mit Status 507 an einer Response (oft zusammen mit
+ * `number-of-matches-within-limits`). Früher übersprang `antworten` solche Blöcke still — dann fehlten Termine ohne jede
+ * Meldung. Liefert den Hinweistext oder null.
+ */
+export function unvollstaendig(xml: string): string | null {
+  if (new RegExp(`<${P}number-of-matches-within-limits[\\s/>]`).test(xml)) return 'iCloud hat die Antwort gekürzt (zu viele Termine) — Termine fehlen, der letzte vollständige Stand bleibt.';
+  for (const block of elemente(xml, 'response')) {
+    const status = text(block, 'status') ?? '';
+    if (/\s507\s/.test(` ${status} `) && !elemente(block, 'propstat').length) return 'iCloud hat die Antwort gekürzt (507) — Termine fehlen, der letzte vollständige Stand bleibt.';
+  }
+  return null;
+}

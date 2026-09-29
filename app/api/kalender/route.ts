@@ -7,11 +7,13 @@
 // Seit 29.09. (K1): Termine tragen Art, Farbe, frei/beschäftigt, Sichtbarkeit, Zone, Stand (ETag) und ihren Bezug
 // (`kalender-bezug`, lib/kalender/bezug.ts); private Termine der ANDEREN Person kommen nur als „Belegt“ (`maskieren`).
 // Fristen tragen `bereich` (privat/business) — die Oberfläche filtert nach Sicht und Bereich.
+// Seit R-K1 (#51): `abgleich` = { letzter, vorMin, veraltet (ab 30 Min.), fehler?, anmeldung?, hinweise? } — „letzter
+// Abgleich vor X Min.“; übersprungene Kalender (403, gekürzte Antwort) stehen in `hinweise`.
 
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
-import { verbunden, abgleichen, termineImZeitraum, kontoAnzeige, CACHE, ladeStand, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
+import { verbunden, abgleichen, termineImZeitraum, kontoAnzeige, CACHE, ladeStand, naechsterVersuchFaellig, abgleichAlter } from '@/lib/kalender/icloud';
 import { fristen, erinnerungen, type Quellen } from '@/lib/kalender/eintraege';
 import { ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
@@ -47,6 +49,7 @@ export async function GET(req: Request) {
   let fehler: string | undefined;
   let quelle: 'icloud' | 'mac' | 'leer' = 'leer';
   let kalender: { name: string; farbe?: string; schreibbar: boolean; wer: string }[] = [];
+  let abgleich: ReturnType<typeof abgleichAlter> | undefined;
 
   if (verbunden()) {
     // Tempo (27.09.): nicht auf iCloud warten — Stand ausliefern, fälligen Abgleich im Hintergrund anstoßen (der Takt hält ihn alle 5 Min. frisch).
@@ -57,6 +60,7 @@ export async function GET(req: Request) {
     stand = s.at ?? null;
     fehler = s.fehler && (!s.at || (s.fehlerAt ?? '') > s.at) ? s.fehler : undefined;
     quelle = s.at ? 'icloud' : 'leer';
+    abgleich = abgleichAlter(s);
     kalender = s.kalender.map(k => ({ name: k.name, ...(k.farbe ? { farbe: k.farbe } : {}), schreibbar: k.schreibbar, wer: wemGehoert(einst, k.name) }));
   } else {
     // Ohne iCloud: der zuletzt vom Mac gelieferte Stand — nur lesen.
@@ -86,7 +90,7 @@ export async function GET(req: Request) {
   };
 
   return NextResponse.json({
-    ok: true, von, bis, quelle, stand, ...(fehler ? { fehler } : {}),
+    ok: true, von, bis, quelle, stand, ...(fehler ? { fehler } : {}), ...(abgleich ? { abgleich } : {}),
     icloud: verbunden(), konto: kontoAnzeige(),
     kalender, einstellungen: einst,
     // Bezug + Sicherung anwenden, dann für die ansehende Person maskieren (privat der anderen → „Belegt“).
@@ -105,7 +109,7 @@ export async function POST(req: Request) {
   if (!verbunden()) return NextResponse.json({ ok: false, fehler: 'iCloud ist noch nicht verbunden.' }, { status: 409 });
   try {
     const s = await abgleichen({ erzwingen: true });
-    return NextResponse.json({ ok: true, stand: s.at, kalender: s.kalender.length });
+    return NextResponse.json({ ok: true, stand: s.at, kalender: s.kalender.length, ...(s.hinweise?.length ? { hinweise: s.hinweise } : {}) });
   } catch (e) {
     return NextResponse.json({ ok: false, fehler: e instanceof Error ? e.message : 'iCloud nicht erreichbar.' }, { status: 502 });
   }

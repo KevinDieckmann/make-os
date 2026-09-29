@@ -14,11 +14,11 @@ const J = '2026-09-29T10:00:00.000Z';
 
 describe('Wiederholung (voll)', () => {
   it('RRULE: Wochentage sortiert, Monatstag, letzter Tag, n-ter Wochentag, ganztägiges Ende als Datum', () => {
-    expect(rruleText({ freq: 'WEEKLY', intervall: 2, tage: ['WE', 'MO', 'MO'], anzahl: 10 })).toBe('FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=10');
-    expect(rruleText({ freq: 'MONTHLY', monatstag: -1 })).toBe('FREQ=MONTHLY;BYMONTHDAY=-1');
-    expect(rruleText({ freq: 'MONTHLY', monatstag: 15, bis: '2026-12-31' })).toBe('FREQ=MONTHLY;BYMONTHDAY=15;UNTIL=20261231T215959Z');
-    expect(rruleText({ freq: 'MONTHLY', wochentagImMonat: { nr: -1, tag: 'TU' } })).toBe('FREQ=MONTHLY;BYDAY=-1TU');
-    expect(rruleText({ freq: 'YEARLY', bis: '2030-01-01' }, true)).toBe('FREQ=YEARLY;UNTIL=20300101');
+    expect(rruleText({ freq: 'WEEKLY', intervall: 2, tage: ['WE', 'MO', 'MO'], anzahl: 10 })).toBe('FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=10;WKST=MO');
+    expect(rruleText({ freq: 'MONTHLY', monatstag: -1 })).toBe('FREQ=MONTHLY;BYMONTHDAY=-1;WKST=MO');
+    expect(rruleText({ freq: 'MONTHLY', monatstag: 15, bis: '2026-12-31' })).toBe('FREQ=MONTHLY;BYMONTHDAY=15;UNTIL=20261231T225959Z;WKST=MO');
+    expect(rruleText({ freq: 'MONTHLY', wochentagImMonat: { nr: -1, tag: 'TU' } })).toBe('FREQ=MONTHLY;BYDAY=-1TU;WKST=MO');
+    expect(rruleText({ freq: 'YEARLY', bis: '2030-01-01' }, true)).toBe('FREQ=YEARLY;UNTIL=20300101;WKST=MO');
   });
   it('säubert fremde Eingaben', () => {
     expect(wiederholungSauber({ freq: 'WEEKLY', tage: ['FR', 'XX', 'MO'], intervall: '3', anzahl: 0, bis: '2026-12-01' })).toEqual({ freq: 'WEEKLY', tage: ['MO', 'FR'], intervall: 3, bis: '2026-12-01' });

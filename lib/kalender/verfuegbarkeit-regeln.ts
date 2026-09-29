@@ -59,7 +59,9 @@ const hhmm = (s: string) => { const m = /^(\d{2}):(\d{2})$/.exec(s); return m ? 
 
 /** Verfügbarkeit einer Person in [von, bis) aus Terminen (mit `wer`, Bezug angewandt) und Wochenvorlage. */
 export function verfuegbarkeitAus(a: { person: string; von: string; bis: string; termine: readonly T[]; bloecke?: readonly Block[] }): Verfuegbarkeit {
-  const eigene = a.termine.filter(t => betrifft(t, a.person));
+  // Abgesagte (STATUS:CANCELLED) und selbst abgelehnte Einladungen belegen nicht und sind keine Abwesenheit (R-K1 #68);
+  // vorläufige (TENTATIVE) zählen wie bestätigte.
+  const eigene = a.termine.filter(t => betrifft(t, a.person) && !t.abgesagt);
   const vorlage = (a.bloecke ?? []).filter(b => b.owner === a.person && b.art === 'business');
   const tage: TagVerfuegbarkeit[] = [];
   for (let tag = a.von, n = 0; tag < a.bis && n < 400; tag = tagPlus(tag, 1), n++) {

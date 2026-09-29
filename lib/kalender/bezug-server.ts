@@ -6,8 +6,7 @@
 // jeder andere verschlüsselt (lib/store/local-db.ts). Register: lib/crm/speicher-register.ts.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { bezugAendern, bezugAbgleichPlan, kennungenVon, BEZUG_MAX, LEER_BEZUG, type BezugBestand, type TerminBezug, type BezugFeld } from './bezug';
-import type { IcsZusatz } from './ics';
+import { bezugAendern, bezugAbgleichPlan, bezugUmzugPlan, kennungenVon, BEZUG_MAX, LEER_BEZUG, type BezugBestand, type TerminBezug, type BezugFeld, type ObjektKurz } from './bezug';
 
 export const BEZUG_SPEICHER = 'kalender-bezug';
 
@@ -19,16 +18,23 @@ export async function ladeBezuege(): Promise<BezugBestand> {
   return sauberBestand(await loadJson<BezugBestand>('kalender-bezug'));
 }
 
-/** Einen Eintrag ändern (Teil; `null`-Werte entfernen Felder, `null` als Ganzes entfernt den Eintrag). Liefert den neuen Eintrag. */
-export async function bezugSetzen(schluessel: string, teil: Record<string, unknown> | null, jetzt = new Date().toISOString()): Promise<TerminBezug | null> {
+/**
+ * Einen Eintrag ändern (Teil; `null`-Werte entfernen Felder, `null` als Ganzes entfernt den Eintrag). Liefert den neuen
+ * Eintrag. `altSchluessel` (R-K1 #46): derselbe Termin in der alten Form ohne Kalender (`uid`). Steht unter dem neuen
+ * Schlüssel noch nichts, ist der alte Eintrag die Grundlage; er fällt danach weg — außer `altBehalten` (die UID steht in
+ * mehreren Kalendern: der alte Eintrag gilt dann weiter für die andere Kopie).
+ */
+export async function bezugSetzen(schluessel: string, teil: Record<string, unknown> | null, jetzt = new Date().toISOString(), opt: { altSchluessel?: string; altBehalten?: boolean } = {}): Promise<TerminBezug | null> {
   let ergebnis: TerminBezug | null = null;
   await updateJson<BezugBestand>('kalender-bezug', cur => {
     const b = sauberBestand(cur);
-    const alt = b.bezuege[schluessel];
+    const altKey = opt.altSchluessel && opt.altSchluessel !== schluessel && b.bezuege[opt.altSchluessel] ? opt.altSchluessel : undefined;
+    const alt = b.bezuege[schluessel] ?? (altKey ? b.bezuege[altKey] : undefined);
     const neu = teil === null ? null : bezugAendern(alt, teil, jetzt);
     ergebnis = neu;
     if (!alt && !neu) return cur as BezugBestand;
     const bezuege = { ...b.bezuege };
+    if (altKey && !opt.altBehalten) delete bezuege[altKey];
     if (neu) bezuege[schluessel] = neu; else delete bezuege[schluessel];
     if (Object.keys(bezuege).length > BEZUG_MAX) throw new BezugZuGross(`Zu viele Kalender-Bezüge (über ${BEZUG_MAX}) — nichts gespeichert.`);
     return { ...b, bezuege };
@@ -36,16 +42,23 @@ export async function bezugSetzen(schluessel: string, teil: Record<string, unkno
   return ergebnis;
 }
 
-/** Nach einem iCloud-Lauf: Sicherungen nachtragen, Starttage nachziehen (nur, wenn sich etwas ändert). */
-export async function bezuegeAbgleichen(objekte: readonly { uid: string; tag?: string; zusatz: IcsZusatz | null }[], jetzt = new Date().toISOString()): Promise<number> {
-  const vorab = bezugAbgleichPlan(objekte, await ladeBezuege(), jetzt);
-  if (!Object.keys(vorab).length) return 0;
+/**
+ * Nach einem iCloud-Lauf: alte Schlüssel ohne Kalender umziehen (eindeutige UID, R-K1 #46), Sicherungen nachtragen,
+ * Starttage und Farbe nachziehen (nur, wenn sich etwas ändert).
+ */
+export async function bezuegeAbgleichen(objekte: readonly ObjektKurz[], jetzt = new Date().toISOString()): Promise<number> {
+  const vorher = await ladeBezuege();
+  if (!bezugUmzugPlan(objekte, vorher).length && !Object.keys(bezugAbgleichPlan(objekte, vorher, jetzt)).length) return 0;
   let n = 0;
   await updateJson<BezugBestand>('kalender-bezug', cur => {
-    const b = sauberBestand(cur);
+    const b0 = sauberBestand(cur);
+    const umzug = bezugUmzugPlan(objekte, b0);
+    const bezuege = { ...b0.bezuege };
+    for (const [alt, neu] of umzug) { bezuege[neu] = bezuege[alt]; delete bezuege[alt]; }
+    const b = { ...b0, bezuege };
     const plan = bezugAbgleichPlan(objekte, b, jetzt);
-    n = Object.keys(plan).length;
-    if (!n || Object.keys(b.bezuege).length + n > BEZUG_MAX) { n = 0; return cur as BezugBestand; }
+    n = umzug.length + Object.keys(plan).length;
+    if (!n || Object.keys(b.bezuege).length + Object.keys(plan).length > BEZUG_MAX) { n = 0; return cur as BezugBestand; }
     return { ...b, bezuege: { ...b.bezuege, ...plan } };
   });
   return n;

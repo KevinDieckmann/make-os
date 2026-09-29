@@ -51,7 +51,8 @@ export async function zeitAuswertungFuer(person: string, stichtag: string, woche
     loadJson<RoutinenDatei>('routinen').catch(() => null),
   ]);
 
-  const eigene = gelesen.termine.filter(t => betrifft(t, person));
+  // Abgesagte/abgelehnte Termine fanden nicht statt (R-K1 #68) — sie zählen nicht als verbrachte Zeit.
+  const eigene = gelesen.termine.filter(t => betrifft(t, person) && !t.abgesagt);
   const termine: ATermin[] = eigene.map(t => ({
     id: t.id, start: t.start, ende: t.ende, ganztags: t.ganztags, space: spaceVonKalender(einst, t.kalender), mitTeilnehmern: t.mitTeilnehmern,
     art: t.art, ...(t.beschaeftigt === false ? { frei: true } : {}),

@@ -89,7 +89,7 @@ export async function ladeKalenderPruefung(): Promise<KalenderPruefBestand> {
   const [s, b] = await Promise.all([ladeStand(), ladeBezuege()]);
   return {
     fenster: holfenster(s),
-    objekte: objekteKurz(s).map(o => ({ uid: o.uid, mitArt: !!o.zusatz?.art })),
+    objekte: objekteKurz(s).map(o => ({ uid: o.uid, schluessel: o.schluessel, mitArt: !!o.zusatz?.art })),
     bezuege: Object.entries(b.bezuege).map(([schluessel, x]) => ({ schluessel, ...(x.tag ? { tag: x.tag } : {}), ...(x.art ? { art: x.art } : {}), kennungen: kennungenVon(x) })),
   };
 }

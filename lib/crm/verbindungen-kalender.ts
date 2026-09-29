@@ -14,15 +14,17 @@
 //                              oder sein Starttag im Holfenster). Reparieren löst nur den Verweis — die Aktivität bleibt
 //                              (ihre Zeit ist dann der Tag, an dem sie festgehalten wurde).
 // Beispiele sind UIDs bzw. Schlüssel — nie Titel. Eingehängt in lib/crm/verbindungen.ts.
+// Seit R-K1 (#46): Verweise tragen den Kalender (`kalender|uid`); ältere nur die UID — `verweisLebt` prüft beide Formen
+// (neue: genau dieser Kalender, alte: irgendwo im Stand).
 
 import type { FokusBlock, ZeitDatei } from '@/lib/zeitmessung/modell';
-import { uidVonSchluessel, BEZUG_FELDER, type BezugFeld, type BezugKennungen } from '@/lib/kalender/bezug';
+import { uidVonSchluessel, schluesselTeile, lebendAus, verweisLebt, BEZUG_FELDER, type BezugFeld, type BezugKennungen } from '@/lib/kalender/bezug';
 
 export interface KalenderPruefBestand {
   /** Fenster [von, bis), in dem der iCloud-Stand alle Termine kennt — null: Stand fehlt oder letzter Lauf scheiterte. */
   fenster: { von: string; bis: string } | null;
-  /** Alle iCloud-Objekte: UID und ob ihr Text X-MAKE-ART trägt. */
-  objekte: { uid: string; mitArt: boolean }[];
+  /** Alle iCloud-Objekte: UID, Schlüssel (`kalender|uid`) und ob ihr Text X-MAKE-ART trägt. */
+  objekte: { uid: string; schluessel?: string; mitArt: boolean }[];
   /** Einträge in `kalender-bezug` — Schlüssel, Starttag, Sicherung der Art, Kennungen. */
   bezuege: { schluessel: string; tag?: string; art?: string; kennungen: BezugKennungen }[];
 }
@@ -52,13 +54,13 @@ export type KontaktTermine = readonly { id: string; aktivitaeten?: readonly { te
  */
 export function toteMeetings(k: KalenderPruefBestand | null | undefined, kontakte: KontaktTermine | null | undefined): string[] {
   if (!k?.fenster) return [];
-  const da = new Set(k.objekte.map(o => o.uid));
+  const da = lebendAus(k.objekte);
   const tag = new Map(k.bezuege.map(b => [uidVonSchluessel(b.schluessel), b.tag]));
   const raus: string[] = [];
   for (const kt of kontakte ?? []) for (const a of kt.aktivitaeten ?? []) {
     if (!a.terminUid) continue;
     const uid = uidVonSchluessel(a.terminUid);
-    if (da.has(uid)) continue;
+    if (verweisLebt(a.terminUid, da)) continue;
     if (tag.has(uid) && !imFenster(tag.get(uid), k.fenster)) continue;
     raus.push(`${kt.id}|${a.terminUid}`);
   }
@@ -73,10 +75,10 @@ export function toteKennungen(k: BezugKennungen, l: KalenderLebend): BezugFeld[]
 /** Die Einträge und Blöcke, deren Termin es nicht mehr gibt (nur im Fenster). */
 export function toteTermine(k: KalenderPruefBestand | null | undefined, fokus?: { person: string; bloecke: FokusBlock[] }[] | null): { bezuege: string[]; bloecke: string[] } {
   if (!k?.fenster) return { bezuege: [], bloecke: [] };
-  const da = new Set(k.objekte.map(o => o.uid));
-  const bezuege = k.bezuege.filter(b => imFenster(b.tag, k.fenster!) && !da.has(uidVonSchluessel(b.schluessel))).map(b => b.schluessel);
+  const da = lebendAus(k.objekte);
+  const bezuege = k.bezuege.filter(b => imFenster(b.tag, k.fenster!) && !verweisLebt(b.schluessel, da)).map(b => b.schluessel);
   const bloecke: string[] = [];
-  for (const p of fokus ?? []) for (const bl of p.bloecke ?? []) if (bl.terminUid && !da.has(bl.terminUid) && imFenster(bl.von.slice(0, 10), k.fenster)) bloecke.push(bl.terminUid);
+  for (const p of fokus ?? []) for (const bl of p.bloecke ?? []) if (bl.terminUid && !verweisLebt(bl.terminUid, da) && imFenster(bl.von.slice(0, 10), k.fenster)) bloecke.push(bl.terminUid);
   return { bezuege, bloecke };
 }
 
@@ -92,8 +94,8 @@ export function kalenderPruefen(
   for (const m of toteMeetings(k, b.kontakte)) melde('aktivitaet-termin-tot', m);
   if (!k) return;
   for (const x of k.bezuege) if (toteKennungen(x.kennungen, l).length) melde('kalender-bezug-kennung-tot', x.schluessel);
-  const ohneArt = new Set(k.objekte.filter(o => !o.mitArt).map(o => o.uid));
-  for (const x of k.bezuege) if (x.art && x.art !== 'termin' && !x.schluessel.includes('::') && ohneArt.has(x.schluessel)) melde('termin-art-verloren', x.schluessel);
+  const ohneArt = new Set(k.objekte.filter(o => !o.mitArt).flatMap(o => [o.uid, ...(o.schluessel ? [o.schluessel] : [])]));
+  for (const x of k.bezuege) if (x.art && x.art !== 'termin' && !schluesselTeile(x.schluessel).rid && ohneArt.has(x.schluessel)) melde('termin-art-verloren', x.schluessel);
 }
 
 export interface KalenderAenderung { befundId: KalenderPruefungId; speicher: 'kalender-bezug' | 'zeit' | 'kontakte'; anzahl: number; text: string }

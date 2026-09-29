@@ -14,7 +14,9 @@ import { fremderSchreiber } from '@/lib/store/betrieb';
 import { tmpResteZaehlen, DURCHSICHT_SPEICHER, type DurchsichtErgebnis } from '@/lib/store/durchsicht';
 import { lies, stand } from '@/lib/zoe/auftraege';
 import { alle } from '@/lib/zugang/anmeldungen';
-import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz } from './lage';
+import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz, type KalenderLage } from './lage';
+import { verbunden as kalenderVerbunden, ladeStand as kalenderStand, abgleichAlter, tzVersion } from '@/lib/kalender/icloud';
+import { ladeSicherungStand } from '@/lib/kalender/sicherung-server';
 import { fehlerquote24h, fehlanmeldungen24h, neueNetze7d, cspBild, type CspMeldung } from './rechnen';
 import { hasAnthropicKey, guthabenStand } from '@/lib/anthropic';
 import { pepperGesetzt } from '@/lib/datenschutz/pepper';
@@ -71,6 +73,20 @@ async function sicherungLauf(): Promise<SicherungLauf | null> {
   try { const j = JSON.parse(await fs.readFile(path.join(systemOrdner(), 'sicherung.json'), 'utf8')); return j && typeof j === 'object' ? j as SicherungLauf : null; } catch { return null; }
 }
 
+/** iCloud-Kalender (R-K1 #51/#K5): nur Alter, Zähler, Fehlertext — nie Titel. null = nicht verbunden. */
+async function kalenderLage(jetzt: string): Promise<KalenderLage | null> {
+  if (!kalenderVerbunden()) return null;
+  try {
+    const [s, sich] = await Promise.all([kalenderStand(), ladeSicherungStand()]);
+    const a = abgleichAlter(s, Date.parse(jetzt));
+    return {
+      vorMin: a.vorMin, veraltet: a.veraltet, ...(a.fehler ? { fehler: a.fehler.slice(0, 160) } : {}), ...(a.anmeldung ? { anmeldung: true } : {}),
+      hinweise: a.hinweise?.length ?? 0, tz: tzVersion(),
+      sicherung: { letzter: sich.letzter ?? null, kalender: sich.dateien.filter(d => d.at === sich.letzter).length, fehler: sich.fehler?.length ?? 0 },
+    };
+  } catch { return null; }
+}
+
 async function durchsichtKurz(): Promise<DurchsichtKurz | null> {
   const d = (await loadJson<{ letzter?: DurchsichtErgebnis }>(DURCHSICHT_SPEICHER).catch(() => null))?.letzter;
   if (!d) return null;
@@ -100,6 +116,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     datenschicht: ds, sicherungLauf: sl, durchsicht: dk,
     datenschutz: { pepper: pepperGesetzt(), grabsteinOrdner: grabsteinOrdnerKonfiguriert(), produktion: process.env.NODE_ENV === 'production' },
     absichten: await absichtenLage(new Date(jetzt), MINDEST_ALTER_MS),
+    kalender: await kalenderLage(jetzt),
   };
 }
 

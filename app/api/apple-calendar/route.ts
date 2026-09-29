@@ -24,9 +24,10 @@ const DE_MONATE: Record<string, string> = {
   September: '09', Oktober: '10', November: '11', Dezember: '12',
 };
 
-function parseGermanDate(str: string): string {
+/** „Montag, 5. Oktober 2026 um 09:00:00“ → Berliner Wandzeit — oder null (R-K1 #8: nie „jetzt“ als UTC-Rückfall erfinden). */
+function parseGermanDate(str: string): string | null {
   const m = str.trim().match(/(\d+)\.\s+(\S+)\s+(\d{4})\s+um\s+(\d{2}:\d{2}:\d{2})/);
-  if (!m) return new Date().toISOString();
+  if (!m) return null;
   const [, day, month, year, time] = m;
   const mm = DE_MONATE[month] ?? '01';
   return `${year}-${mm}-${day.padStart(2, '0')}T${time}`;
@@ -150,7 +151,9 @@ export async function GET(req: Request) {
       if (!title) continue;
 
       const startISO = parseGermanDate(startStr);
-      const endISO   = parseGermanDate(endStr);
+      const endISO   = parseGermanDate(endStr) ?? startISO;
+      // Unlesbares Datum: den Termin verwerfen statt ihn auf „jetzt“ (UTC mit „Z“) zu legen (R-K1 #8).
+      if (!startISO || !endISO) continue;
 
       const dedupKey = `${title}|${startISO.substring(0, 16)}`;
       if (seen.has(dedupKey)) continue;

@@ -6,6 +6,7 @@
 // Client- und serversicher (ohne ical.js). Den iCalendar-Text baut `rruleText`.
 
 import { wochentag } from '@/lib/zeit/kalender-kern';
+import { ausWandzeitIn } from './zeitzone';
 
 export type WiederholungFreq = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 export type Wochentag = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU';
@@ -37,8 +38,17 @@ export function wochentagNr(tag: string): { nr: 1 | 2 | 3 | 4 | 5; letzter: bool
   return { nr: Math.ceil(t / 7) as 1 | 2 | 3 | 4 | 5, letzter: t + 7 > tageImMonat(tag) };
 }
 
-/** RRULE-Text (ohne „RRULE:“). Ganztägige Serien enden mit UNTIL als Datum (RFC 5545: gleicher Typ wie DTSTART). */
-export function rruleText(w: Wiederholung, ganztags = false): string {
+/** UNTIL in UTC für „bis einschließlich Tag X“ in einer Zone: 23:59:59 Wandzeit dort (R-K1 #21, statt fest 21:59:59Z). */
+function untilUtc(bis: string, zone: string): string {
+  return ausWandzeitIn(`${bis}T23:59:59`, zone).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+/**
+ * RRULE-Text (ohne „RRULE:“). Ganztägige Serien enden mit UNTIL als Datum (RFC 5545: gleicher Typ wie DTSTART),
+ * zeitgebundene mit dem letzten Moment des Tages in ihrer Zone (`zone`, Standard Berlin). Immer `WKST=MO` (R-K1 #25:
+ * die Woche beginnt am Montag — ausdrücklich, damit „alle 2 Wochen“ in jedem Programm gleich zählt).
+ */
+export function rruleText(w: Wiederholung, ganztags = false, zone = 'Europe/Berlin'): string {
   const teile = [`FREQ=${w.freq}`];
   if (w.intervall && w.intervall > 1) teile.push(`INTERVAL=${Math.min(365, Math.round(w.intervall))}`);
   if (w.freq === 'WEEKLY' && w.tage?.length) teile.push(`BYDAY=${WOCHENTAGE.filter(t => w.tage!.includes(t)).join(',')}`);
@@ -47,7 +57,8 @@ export function rruleText(w: Wiederholung, ganztags = false): string {
     else if (w.monatstag) teile.push(`BYMONTHDAY=${w.monatstag}`);
   }
   if (w.anzahl && w.anzahl > 0) teile.push(`COUNT=${Math.min(999, Math.round(w.anzahl))}`);
-  else if (w.bis && TAG.test(w.bis)) teile.push(ganztags ? `UNTIL=${w.bis.replace(/-/g, '')}` : `UNTIL=${w.bis.replace(/-/g, '')}T215959Z`);
+  else if (w.bis && TAG.test(w.bis)) teile.push(ganztags ? `UNTIL=${w.bis.replace(/-/g, '')}` : `UNTIL=${untilUtc(w.bis, zone)}`);
+  teile.push('WKST=MO');
   return teile.join(';');
 }
 

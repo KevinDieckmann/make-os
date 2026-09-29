@@ -9,6 +9,7 @@
 // Beispiele sind Kennungen (Event, Date, Datum des Gesprächs) — nie Titel.
 
 import { istScheinUid } from './spiegel';
+import { lebendAus, verweisLebt } from './bezug';
 import type { IcloudUids } from './buchung-verbindungen';
 
 export interface SpiegelStand {
@@ -31,9 +32,10 @@ export function spiegelPruefen(s: SpiegelStand | null | undefined, icloud: Iclou
   for (const ev of s.events) if (istScheinUid(ev.kalenderUid)) melde('event-termin-schein', ev.id);
   const fenster = icloud?.fenster ?? null;
   if (!fenster) return;
-  const da = new Set(icloud!.objekte.map(o => o.uid));
+  // Die Spiegel tragen ihre feste UID; ein Verweis mit Kalender (`kalender|uid`, R-K1 #46) wird genauso geprüft.
+  const da = lebendAus(icloud!.objekte);
   const imFenster = (tag: string) => tag >= fenster.von && tag < fenster.bis;
-  for (const ev of s.events) if (ev.kalenderUid && !istScheinUid(ev.kalenderUid) && imFenster(ev.datum) && !da.has(ev.kalenderUid)) melde('event-termin-tot', ev.id);
-  for (const d of s.familie?.dates ?? []) if (d.kalenderUid && imFenster(d.datum) && !da.has(d.kalenderUid)) melde('familie-termin-tot', d.id);
-  for (const g of s.familie?.gespraeche ?? []) if (imFenster(g.datum) && !da.has(g.uid)) melde('familie-termin-tot', `gespraech:${g.datum}`);
+  for (const ev of s.events) if (ev.kalenderUid && !istScheinUid(ev.kalenderUid) && imFenster(ev.datum) && !verweisLebt(ev.kalenderUid, da)) melde('event-termin-tot', ev.id);
+  for (const d of s.familie?.dates ?? []) if (d.kalenderUid && imFenster(d.datum) && !verweisLebt(d.kalenderUid, da)) melde('familie-termin-tot', d.id);
+  for (const g of s.familie?.gespraeche ?? []) if (imFenster(g.datum) && !verweisLebt(g.uid, da)) melde('familie-termin-tot', `gespraech:${g.datum}`);
 }

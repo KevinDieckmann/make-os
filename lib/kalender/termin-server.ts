@@ -6,11 +6,13 @@
 //   3. Änderungsprotokoll (`kalender`/`termine`: UID + Feldnamen, nie Titel) — das ist das Audit-Log jeder
 //      Kalender-Schreibaktion, auch der autonomen (KALENDER_VERBINDUNGEN.md 4h).
 // Nie Teilnehmer (MAKE OS verschickt keine Einladungen). Ohne iCloud: KalenderFehler 409.
+// Seit R-K1 (#46): Bezug und Protokoll unter dem Schlüssel `kalender|uid`; `uid` der Aufrufer darf auch die alte reine
+// UID sein (die Spiegel tragen ihre feste UID) — der alte Bezug-Eintrag zieht dabei mit um, wenn die UID eindeutig ist.
 
-import { verbunden, anlegen, aendern, loeschen, KalenderFehler } from './icloud';
+import { verbunden, anlegen, aendern, loeschen, terminAufloesen, KalenderFehler } from './icloud';
 import { ladeEinstellungen, type Wer } from './einstellungen';
 import { bezugSetzen } from './bezug-server';
-import type { BezugKennungen } from './bezug';
+import { uidVonSchluessel, type BezugKennungen } from './bezug';
 import type { Aenderung } from './ics';
 import type { IcsArt, BlockArt } from './arten';
 import { protokolliere, type Wer as ProtokollWer } from '@/lib/store/aenderungsprotokoll';
@@ -33,7 +35,7 @@ function nurVerbunden() {
 }
 
 /** Anlegen + Bezug + Protokoll. `schonDa`: der Termin mit dieser festen UID lag schon in iCloud (nichts doppelt). */
-export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): Promise<{ uid: string; kalender: string; schonDa?: true }> {
+export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): Promise<{ uid: string; schluessel: string; kalender: string; schonDa?: true }> {
   nurVerbunden();
   const einst = await ladeEinstellungen();
   const art: IcsArt = t.art ?? 'termin';
@@ -44,8 +46,8 @@ export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): P
     ...(t.ort ? { ort: t.ort } : {}), ...(t.notiz ? { notiz: t.notiz } : {}), ...(t.uid ? { uid: t.uid } : {}),
     erinnerungenMin: [],
   });
-  await bezugSetzen(r.uid, { ...(t.bezug ?? {}), von: t.von, tag: t.start.slice(0, 10), ...(art !== 'termin' ? { art } : {}) });
-  if (!r.schonDa) await protokolliere('kalender', [{ liste: 'termine', op: 'neu', id: r.uid, felder: ['art', ...Object.keys(t.bezug ?? {})] }], wer);
+  await bezugSetzen(r.schluessel, { ...(t.bezug ?? {}), von: t.von, tag: t.start.slice(0, 10), ...(art !== 'termin' ? { art } : {}) }, undefined, { altSchluessel: r.uid });
+  if (!r.schonDa) await protokolliere('kalender', [{ liste: 'termine', op: 'neu', id: r.schluessel, felder: ['art', ...Object.keys(t.bezug ?? {})] }], wer);
   return r;
 }
 
@@ -53,20 +55,21 @@ export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): P
 export async function terminAendernServer(uid: string, a: Aenderung, wer: ProtokollWer, bezug?: Record<string, string | null>): Promise<void> {
   nurVerbunden();
   const felder = Object.keys(a).filter(k => a[k as keyof Aenderung] !== undefined);
-  if (felder.length) await aendern(uid, a);
+  // Schlüssel des Objekts; nur-Bezug-Änderungen an einem (noch) unbekannten Termin bleiben wie bisher beim Verweis.
+  const ziel = (felder.length ? await aendern(uid, a) : null) ?? await terminAufloesen(uid) ?? { schluessel: uid, uid: uidVonSchluessel(uid), eindeutig: false };
   const teil: Record<string, unknown> = {
     ...(bezug ?? {}),
     ...(a.art !== undefined ? { art: a.art === 'termin' ? null : a.art } : {}),
     ...(a.start ? { tag: a.start.slice(0, 10) } : {}),
   };
-  if (Object.keys(teil).length) await bezugSetzen(uid, teil);
-  await protokolliere('kalender', [{ liste: 'termine', op: 'geaendert', id: uid, felder: [...felder, ...Object.keys(bezug ?? {})] }], wer);
+  if (Object.keys(teil).length) await bezugSetzen(ziel.schluessel, teil, undefined, { altSchluessel: ziel.uid, altBehalten: !ziel.eindeutig });
+  await protokolliere('kalender', [{ liste: 'termine', op: 'geaendert', id: ziel.schluessel, felder: [...felder, ...Object.keys(bezug ?? {})] }], wer);
 }
 
 /** Löschen (+ Bezug weg) und protokollieren. Schon weg → still ok. */
 export async function terminLoeschenServer(uid: string, wer: ProtokollWer): Promise<void> {
   nurVerbunden();
-  await loeschen(uid);
-  await bezugSetzen(uid, null).catch(() => { /* die Verbindungsprüfung meldet den Rest */ });
-  await protokolliere('kalender', [{ liste: 'termine', op: 'geloescht', id: uid }], wer);
+  const r = await loeschen(uid);
+  await bezugSetzen(r.schluessel ?? uid, null, undefined, r.uid ? { altSchluessel: r.uid, altBehalten: !r.eindeutig } : {}).catch(() => { /* die Verbindungsprüfung meldet den Rest */ });
+  await protokolliere('kalender', [{ liste: 'termine', op: 'geloescht', id: r.schluessel ?? uid }], wer);
 }

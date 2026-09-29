@@ -60,7 +60,9 @@ const anfrage = (methode: string, body?: unknown, extra: Record<string, string> 
   new Request(`http://localhost/api/kalender/termin${suche}`, { method: methode, headers: { 'content-type': 'application/json', 'x-make-user': 'kevin', ...extra }, ...(body ? { body: JSON.stringify(body) } : {}) });
 const kontakte = () => (speicher.get('kontakte') as { kontakte: { id: string; letzterKontakt?: string; aktivitaeten: { art: string; terminUid?: string; wann?: string; text?: string }[]; geloeschteAktivitaeten?: string[] }[] }).kontakte;
 const k = (id: string) => kontakte().find(x => x.id === id)!;
-const bezug = (uid: string) => (speicher.get('kalender-bezug') as { bezuege: Record<string, Record<string, unknown>> }).bezuege[uid];
+// R-K1 #46: Bezug und Meeting-Verweis tragen den Kalender (`home|uid`).
+const S = (uid: string) => `home|${uid}`;
+const bezug = (uid: string) => (speicher.get('kalender-bezug') as { bezuege: Record<string, Record<string, unknown>> }).bezuege[S(uid)];
 const MORGEN = '2026-10-02';
 const fremdeEinladung = (partstat = 'NEEDS-ACTION') => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:fremd\r\nDTSTAMP:20260901T100000Z\r\nDTSTART:20261002T080000Z\r\nDTEND:20261002T090000Z\r\nSUMMARY:Workshop Nord\r\nORGANIZER;CN=Nora Nord:mailto:nora@example.invalid\r\nATTENDEE;CN=Nora Nord;PARTSTAT=ACCEPTED:mailto:nora@example.invalid\r\nATTENDEE;PARTSTAT=${partstat};RSVP=TRUE:mailto:kevin.konto@example.invalid\r\nEND:VEVENT\r\nEND:VCALENDAR`;
 
@@ -112,12 +114,12 @@ describe('Termin-Route (K3) — Einladung nur nach Klick', () => {
     expect(bezug(d.uid)).toMatchObject({ kontaktId: 'c-anna1', gastKontakte: ['c-anna1'], von: 'kevin', tag: MORGEN });
     expect(JSON.stringify(speicher.get('kalender-bezug'))).not.toContain('@');
     // Protokoll: Liste „einladungen“ mit Anzahl — nie Adressen.
-    expect(protokoll.flatMap(p => p.aenderungen).find(a => a.liste === 'einladungen')).toEqual({ liste: 'einladungen', op: 'neu', id: d.uid, felder: ['gaeste:2'] });
+    expect(protokoll.flatMap(p => p.aenderungen).find(a => a.liste === 'einladungen')).toEqual({ liste: 'einladungen', op: 'neu', id: S(d.uid), felder: ['gaeste:2'] });
     expect(JSON.stringify(protokoll)).not.toContain('@');
     // CRM: genau eine Meeting-Aktivität mit terminUid, ohne `wann`; geplant → noch kein letzter Kontakt.
     const m = k('c-anna1').aktivitaeten.filter(a => a.art === 'termin');
     expect(m).toHaveLength(1);
-    expect(m[0]).toMatchObject({ terminUid: d.uid, text: 'Meeting: Kennenlernen' });
+    expect(m[0]).toMatchObject({ terminUid: S(d.uid), text: 'Meeting: Kennenlernen' });
     expect(m[0].wann).toBeUndefined();
     expect(k('c-anna1').letzterKontakt).toBeUndefined();
     // Die Akte liest die Zeit über den Bezug.
@@ -144,7 +146,7 @@ describe('Termin-Route (K3) — Einladung nur nach Klick', () => {
     expect(w).toMatchObject({ ok: true, werbesperre: 1 });
     // Frei eingegebene Adresse einer (einzigen) Person → deren Kennung als Gast-Kontakt.
     expect(bezug(w.uid)).toMatchObject({ gastKontakte: ['c-bert1'] });
-    expect(k('c-bert1').aktivitaeten.filter(a => a.terminUid === w.uid)).toHaveLength(1);
+    expect(k('c-bert1').aktivitaeten.filter(a => a.terminUid === S(w.uid))).toHaveLength(1);
   });
 
   it('Termin mit Gästen ändern/löschen nur nach Bestätigung; SEQUENCE nur bei Zeit/Ort; Löschen einer künftigen Termins nimmt das Meeting (mit Löschmarke)', async () => {
@@ -166,7 +168,7 @@ describe('Termin-Route (K3) — Einladung nur nach Klick', () => {
     expect(d1.status).toBe(409);
     expect(await d1.json()).toMatchObject({ einladung: 'absage', anzahl: 2 });
     expect((await DELETE(anfrage('DELETE', undefined, {}, `?uid=${encodeURIComponent(uid)}&einladungBestaetigt=1`))).status).toBe(200);
-    expect(k('c-anna1').aktivitaeten.filter(a => a.terminUid === uid)).toEqual([]);
+    expect(k('c-anna1').aktivitaeten.filter(a => a.terminUid === S(uid))).toEqual([]);
     expect(k('c-anna1').geloeschteAktivitaeten?.length).toBe(1);
     expect(protokoll.flatMap(p => p.aenderungen).filter(a => a.liste === 'einladungen').map(a => a.op)).toEqual(['neu', 'geaendert', 'geaendert', 'geloescht']);
   });
@@ -179,21 +181,21 @@ describe('Termin-Route (K3) — Einladung nur nach Klick', () => {
     expect(puts).toEqual([]);
     expect((await PATCH(anfrage('PATCH', { uid: 'fremd', antwort: 'zugesagt', einladungBestaetigt: true }))).status).toBe(200);
     expect(puts.at(-1)!.replace(/\r?\n[ \t]/g, '')).toMatch(/ATTENDEE;PARTSTAT=ACCEPTED:mailto:kevin\.konto@example\.invalid/);
-    expect(protokoll.at(-1)).toEqual({ bestand: 'kalender', aenderungen: [{ liste: 'antworten', op: 'geaendert', id: 'fremd', felder: ['zugesagt'] }] });
+    expect(protokoll.at(-1)).toEqual({ bestand: 'kalender', aenderungen: [{ liste: 'antworten', op: 'geaendert', id: S('fremd'), felder: ['zugesagt'] }] });
     // Verknüpfen geht auch an einer fremden Einladung (nur Neben-Bestand) → Meeting am Kontakt.
     const n = puts.length;
     expect((await PATCH(anfrage('PATCH', { uid: 'fremd', bezug: { kontaktId: 'c-anna1' } }))).status).toBe(200);
     expect(puts.length).toBe(n);
-    expect(k('c-anna1').aktivitaeten.filter(x => x.terminUid === 'fremd')).toHaveLength(1);
+    expect(k('c-anna1').aktivitaeten.filter(x => x.terminUid === S('fremd'))).toHaveLength(1);
     // Lösen, solange der Termin in der Zukunft liegt → das Meeting fällt weg.
     expect((await PATCH(anfrage('PATCH', { uid: 'fremd', bezug: { kontaktId: null } }))).status).toBe(200);
-    expect(k('c-anna1').aktivitaeten.filter(x => x.terminUid === 'fremd')).toEqual([]);
+    expect(k('c-anna1').aktivitaeten.filter(x => x.terminUid === S('fremd'))).toEqual([]);
   });
 
   it('vergangener Termin mit Kontakt zählt sofort als Kontakt (letzter Kontakt = sein Tag), idempotent', async () => {
     const d = await (await POST(anfrage('POST', { titel: 'Rückblick', start: '2026-09-29T10:00', ende: '2026-09-29T11:00', bezug: { kontaktId: 'c-anna1' } }))).json();
     expect(k('c-anna1').letzterKontakt).toBe('2026-09-29');
     expect((await PATCH(anfrage('PATCH', { uid: d.uid, bezug: { kontaktId: 'c-anna1' } }))).status).toBe(200);
-    expect(k('c-anna1').aktivitaeten.filter(a => a.terminUid === d.uid)).toHaveLength(1);
+    expect(k('c-anna1').aktivitaeten.filter(a => a.terminUid === S(d.uid))).toHaveLength(1);
   });
 });

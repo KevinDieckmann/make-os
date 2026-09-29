@@ -20,9 +20,13 @@
 import { wendeAktivitaetAn, type Kontakt, type Aktivitaet } from '@/lib/make-one/crm';
 import { aktivitaetMarke, markenMit } from './aktivitaet-marke';
 import { bezugTermin, terminMs } from './signale';
+import { schluesselPasst, schluesselGehoertZu, altSchluessel } from '@/lib/kalender/bezug';
 
 export interface TerminFuerCrm {
-  /** Schlüssel des Termins bzw. Vorkommens (`uid` oder `uid::RECURRENCE-ID`) — wird `terminUid`. */
+  /**
+   * Schlüssel des Termins bzw. Vorkommens (`kalender|uid` bzw. `kalender|uid::RECURRENCE-ID`, R-K1 #46; ältere Aktivitäten
+   * tragen noch `uid` bzw. `uid::RID` — beide Formen treffen) — wird `terminUid`.
+   */
   id: string;
   uid: string;
   titel: string;
@@ -42,7 +46,8 @@ export const meetingTextAusTermin = (t: Pick<TerminFuerCrm, 'titel' | 'privat'>)
 
 /** Hat der Kontakt schon eine Aktivität zu diesem Termin/Vorkommen? (auch die Buchungs-Aktivität von K4) */
 export function hatTerminAktivitaet(k: Pick<Kontakt, 'aktivitaeten'>, t: Pick<TerminFuerCrm, 'id' | 'uid'>): boolean {
-  return (k.aktivitaeten ?? []).some(a => a.terminUid === t.id || (t.id === t.uid && a.bezug === bezugTermin(t.uid)));
+  const einzel = altSchluessel(t.id) === t.uid;
+  return (k.aktivitaeten ?? []).some(a => schluesselPasst(a.terminUid, t.id) || (einzel && a.bezug === bezugTermin(t.uid)));
 }
 
 /** Ist der Termin schon vorbei (Berliner Wandzeit gegen jetzt, nie über new Date(wandzeit))? */
@@ -86,7 +91,7 @@ export function terminKontaktNachziehen(kontakte: readonly Kontakt[], termine: R
   const raus = kontakte.map(k => {
     let letzter = k.letzterKontakt;
     for (const a of k.aktivitaeten ?? []) {
-      const t = a.terminUid ? termine.get(a.terminUid) : undefined;
+      const t = a.terminUid ? termine.get(a.terminUid) ?? termine.get(altSchluessel(a.terminUid)) : undefined;
       if (!t || !terminVorbei(t.start, jetztIso)) continue;
       const tag = t.start.slice(0, 10) > heute ? heute : t.start.slice(0, 10);
       if (!letzter || tag > letzter) letzter = tag;
@@ -105,7 +110,7 @@ export function terminKontaktNachziehen(kontakte: readonly Kontakt[], termine: R
  */
 export function terminAktivitaetenEntfernen(kontakte: readonly Kontakt[], id: string, nur?: ReadonlySet<string>): { kontakte: Kontakt[]; weg: number } {
   let weg = 0;
-  const trifft = (a: Aktivitaet) => !!a.terminUid && (a.terminUid === id || a.terminUid.startsWith(`${id}::`));
+  const trifft = (a: Aktivitaet) => schluesselGehoertZu(a.terminUid, id);
   const raus = kontakte.map(k => {
     if (nur && !nur.has(k.id)) return k;
     const treffer = (k.aktivitaeten ?? []).filter(trifft);

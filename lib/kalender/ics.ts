@@ -19,10 +19,11 @@
 // Kontakt …) stehen NIE im Termin, nur im Neben-Bestand `kalender-bezug` (lib/kalender/bezug.ts).
 
 import ICAL from 'ical.js';
-import { wandzeit, ausWandzeit, ZONE } from './zeit';
+import { wandzeit, ausWandzeit, tagPlus, ZONE } from './zeit';
+import { kalenderKennung, terminSchluessel } from './bezug';
 import { rruleText, type Wiederholung } from './wiederholung';
 import { istIcsArt, istBlockArt, beschaeftigtStandard, farbeSauber, farbeHex, arbeitsortAusTitel, arbeitsortTitel, erinnerungenSauber, istSichtbarkeit, type IcsArt, type BlockArt, type Sichtbarkeit, type Arbeitsort } from './arten';
-import { vtimezoneText, ausWandzeitIn } from './zeitzone';
+import { vtimezoneText, ausWandzeitIn, wandzeitIn, ianaZone } from './zeitzone';
 import { adresseAus, type Teilnahme, type Teilnehmer, type Gast } from './gaeste';
 
 export { rruleText };
@@ -34,7 +35,10 @@ const PARTSTAT: Record<Exclude<Teilnahme, 'offen'>, string> = { zugesagt: 'ACCEP
 export interface KalenderInfo { id: string; name: string; farbe?: string; schreibbar?: boolean }
 
 export interface Termin {
-  /** uid, bei Serien uid::Vorkommen */
+  /**
+   * Schlüssel: Kalender-Kennung + UID, bei Serien + Vorkommen — `kalender|uid` bzw. `kalender|uid::RID` (R-K1 #46:
+   * dieselbe UID kann in zwei Kalendern stehen). Für Ändern/Löschen/Bezug: `objektSchluessel` (lib/kalender/bezug.ts).
+   */
   id: string;
   uid: string;
   href: string;
@@ -80,8 +84,15 @@ export interface Termin {
   organisator?: { email: string; name?: string };
   /** Wir haben eingeladen (ORGANIZER = eine Adresse des iCloud-Kontos) — dann nach Bestätigung änderbar. */
   ichOrganisator?: boolean;
-  /** Wir sind Gast: unsere Antwort (nur Zusagen/Absagen, nach Klick). */
+  /** Wir sind Gast: unsere Antwort (PARTSTAT der eigenen Adresse — die „eigene Antwort“; nur Zusagen/Absagen, nach Klick). */
   meineAntwort?: Teilnahme;
+  // ── seit R-K1 (#68, #1) ──
+  /** STATUS des VEVENT, wenn angegeben: bestätigt (CONFIRMED), vorläufig (TENTATIVE — belegt trotzdem), abgesagt (CANCELLED). */
+  status?: 'bestaetigt' | 'vorlaeufig' | 'abgesagt';
+  /** Abgesagt (STATUS:CANCELLED) oder von uns abgelehnt (eigene Antwort DECLINED): belegt nicht, zählt im CRM nicht. */
+  abgesagt?: true;
+  /** Beginn als echter Zeitpunkt (ms, UTC) — sortiert richtig auch in der doppelten Stunde am 25.10. */
+  startMs?: number;
 }
 
 /** Was ein VEVENT selbst über Art, Farbe und Sichtbarkeit sagt (X-MAKE-ART, COLOR, CLASS). */
@@ -119,22 +130,101 @@ function berlin(): ICAL.Timezone {
 
 const tagText = (t: ICAL.Time) => `${t.year}-${String(t.month).padStart(2, '0')}-${String(t.day).padStart(2, '0')}`;
 
+const zwei = (n: number) => String(n).padStart(2, '0');
+/** Die Wandzeit eines ical.js-Werts, wie sie im Text steht (ohne Umrechnung). */
+const wandText = (t: ICAL.Time) => `${tagText(t)}T${zwei(t.hour)}:${zwei(t.minute)}:${zwei(t.second)}`;
+
+/**
+ * Der Zeitpunkt eines ical.js-Werts (R-K1 #4/#5/#6): Wandzeit in IANA-Zonen (auch Windows-Namen und Präfixe) über
+ * Intl aufgelöst — mehrdeutig = erstes Vorkommen, Lücke = vorwärts (RFC 5545 3.3.5), NICHT über ical.js `toJSDate`
+ * (das legt die doppelte Stunde auf das zweite Vorkommen). Floating = Berliner Wandzeit, unabhängig von der Zone der
+ * Maschine. UTC direkt. Nur eine unbekannte Zone mit eingebetteter VTIMEZONE rechnet ical.js.
+ */
+function zeitpunkt(t: ICAL.Time): number {
+  if (t.isDate) return ausWandzeit(`${tagText(t)}T00:00:00`).getTime();
+  const tzid = t.zone?.tzid;
+  if (tzid === 'UTC' || tzid === 'Z') return t.toJSDate().getTime();
+  if (!tzid || tzid === 'floating') return ausWandzeit(wandText(t)).getTime();
+  const iana = ianaZone(tzid);
+  if (iana === 'UTC') return Date.UTC(t.year, t.month - 1, t.day, t.hour, t.minute, t.second);
+  if (iana) return ausWandzeitIn(wandText(t), iana).getTime();
+  return t.toJSDate().getTime();
+}
+
 /** Ein ical.js-Zeitpunkt als Berliner Wandzeit (ganztags: Datum 00:00). */
 function alsWand(t: ICAL.Time): string {
   if (t.isDate) return `${tagText(t)}T00:00:00`;
-  return wandzeit(t.toJSDate());
+  const tzid = t.zone?.tzid;
+  // Berlin und floating: die Wandzeit steht schon da (nur eine Uhrzeit aus der Lücke Ende März rückt vor).
+  if ((!tzid || tzid === 'floating' || ianaZone(tzid) === ZONE) && t.hour !== 2) return wandText(t);
+  return wandzeit(new Date(zeitpunkt(t)));
 }
 
+/** Die IANA-Zone eines Werts für die Anzeige (nur, wenn nicht Berlin/UTC/floating). */
+function anzeigeZone(t: ICAL.Time): string | undefined {
+  if (t.isDate) return undefined;
+  const iana = ianaZone(t.zone?.tzid);
+  return iana && iana !== 'UTC' && iana !== ZONE ? iana : undefined;
+}
+
+/** Die Zonendaten der Laufzeit (Intl) einmal je Prozess und Name registrieren — unter dem Namen, der im Termin steht. */
+const ianaRegistriert = new Set<string>();
+function ianaRegistrieren(tzid: string, iana: string) {
+  if (ianaRegistriert.has(tzid) || iana === 'UTC') return;
+  const text = vtimezoneText(iana, new Date().getUTCFullYear()).replace(`TZID:${iana}`, `TZID:${tzid.replace(/[\r\n]/g, '')}`);
+  const vtz = new ICAL.Component(ICAL.parse(`BEGIN:VCALENDAR\r\n${text}\r\nEND:VCALENDAR`)).getFirstSubcomponent('vtimezone')!;
+  // IANA gewinnt immer (R-K1 #9): eine früher registrierte, eingebettete Fassung wird ersetzt.
+  ICAL.TimezoneService.register(vtz);
+  ianaRegistriert.add(tzid);
+}
+
+/**
+ * Parsen und Zonen registrieren, BEVOR ical.js Termine baut (R-K1 #3/#9/#10): jede TZID, die im Text vorkommt (auch
+ * ohne mitgeschickte VTIMEZONE), wird — wenn sie sich auf IANA abbilden lässt (IANA direkt, Windows-Name, Präfix) — aus
+ * den Zonendaten der Laufzeit registriert; eine eingebettete VTIMEZONE gilt nur für Namen ohne IANA-Entsprechung.
+ * Berlin bleibt die fest hinterlegte Fassung (`berlin()`).
+ */
 function parse(ics: string): ICAL.Component | null {
   try {
     berlin();
     const comp = new ICAL.Component(ICAL.parse(ics));
+    const namen = new Set<string>();
+    for (const m of ics.replace(/\r?\n[ \t]/g, '').matchAll(/;TZID=("?)([^";:\r\n]+)\1[;:]/gi)) namen.add(m[2]);
     for (const tz of comp.getAllSubcomponents('vtimezone')) {
       const id = tz.getFirstPropertyValue('tzid');
-      if (typeof id === 'string' && !ICAL.TimezoneService.has(id)) ICAL.TimezoneService.register(tz);
+      if (typeof id !== 'string' || id === ZONE) continue;
+      namen.delete(id);
+      const iana = ianaZone(id);
+      if (iana) ianaRegistrieren(id, iana);
+      else if (!ICAL.TimezoneService.has(id)) ICAL.TimezoneService.register(tz);
+    }
+    for (const id of namen) {
+      if (id === ZONE) continue;
+      const iana = ianaZone(id);
+      if (iana) ianaRegistrieren(id, iana);
     }
     return comp;
   } catch { return null; }
+}
+
+/**
+ * EXDATE ohne Zone (floating) an einer Serie MIT Zone meint die Zone von DTSTART (R-K1 #26) — sonst träfe ical.js das
+ * Vorkommen nicht, und es erschiene wieder. Vor dem Auffalten auf die Zone von DTSTART umschreiben.
+ */
+function exdateInStartzone(v: ICAL.Component) {
+  const start = v.getFirstPropertyValue('dtstart');
+  if (!(start instanceof ICAL.Time) || start.isDate || !start.zone || ['floating', 'UTC'].includes(start.zone.tzid)) return;
+  const zone = start.zone;
+  for (const p of v.getAllProperties('exdate')) {
+    if (p.getParameter('tzid')) continue;
+    const werte = p.getValues().filter((x): x is ICAL.Time => x instanceof ICAL.Time);
+    if (!werte.length || werte.some(x => x.isDate || (x.zone && x.zone.tzid !== 'floating'))) continue;
+    const neu = new ICAL.Property('exdate', v);
+    neu.setParameter('tzid', zone.tzid);
+    neu.setValues(werte.map(x => ICAL.Time.fromData({ year: x.year, month: x.month, day: x.day, hour: x.hour, minute: x.minute, second: x.second, isDate: false }, zone)));
+    v.removeProperty(p);
+    v.addProperty(neu);
+  }
 }
 
 const kurz = (v: unknown, n: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : undefined);
@@ -235,25 +325,37 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
   const vevents = comp.getAllSubcomponents('vevent');
   const master = vevents.find(v => !v.hasProperty('recurrence-id')) ?? vevents[0];
   if (!master) return [];
+  exdateInStartzone(master);
+  // Minütliche/sekündliche Serien aus fremden Daten (R-K1 #33): nicht auffalten — nur der erste Termin zählt.
+  const freq = String((master.getFirstPropertyValue('rrule') as ICAL.Recur | null)?.freq ?? '').toUpperCase();
+  if (freq === 'MINUTELY' || freq === 'SECONDLY') master.removeAllProperties('rrule');
   const ev = new ICAL.Event(master);
   const serie = ev.isRecurring();
-  if (serie) for (const x of vevents) if (x !== master && x.hasProperty('recurrence-id')) ev.relateException(x);
+  const ausnahmen = vevents.filter(x => x !== master && x.hasProperty('recurrence-id'));
+  if (serie) for (const x of ausnahmen) ev.relateException(x);
   const mitTeilnehmern = vevents.some(v => v.hasProperty('attendee'));
   const vonT = ausWandzeit(`${von}T00:00:00`).getTime();
   const bisT = ausWandzeit(`${bis}T00:00:00`).getTime();
   const raus: Termin[] = [];
+  const kal0 = kalenderKennung(kal.id);
+  const gesehen = new Set<string>();
 
   const fuege = (e: ICAL.Event, start: ICAL.Time, ende: ICAL.Time, rid?: ICAL.Time) => {
+    if (rid) gesehen.add(rid.toString());
     const z = zusatzVon(e.component);
     const g = gaesteVon(e.component, ich);
+    const endeW = ende && ende.compare(start) > 0 ? ende : start;
     const s = alsWand(start);
-    const en = alsWand(ende && ende.compare(start) > 0 ? ende : start);
-    const sT = start.isDate ? ausWandzeit(s).getTime() : start.toJSDate().getTime();
-    const eT = start.isDate ? ausWandzeit(en).getTime() : (ende ?? start).toJSDate().getTime();
+    const en = alsWand(endeW);
+    const sT = zeitpunkt(start);
+    const eT = Math.max(sT, zeitpunkt(endeW));
     // Überlappt den Zeitraum? (ganztägige und Null-Dauer-Termine zählen am Starttag)
     if (!(sT < bisT && (eT > vonT || (eT === sT && sT >= vonT)))) return;
+    const st = String(e.component.getFirstPropertyValue('status') ?? '').toUpperCase();
+    const status = st === 'CANCELLED' ? 'abgesagt' as const : st === 'TENTATIVE' ? 'vorlaeufig' as const : st === 'CONFIRMED' ? 'bestaetigt' as const : undefined;
+    const abgesagt = status === 'abgesagt' || g.meineAntwort === 'abgesagt';
     raus.push({
-      id: rid ? `${ev.uid}::${rid.toString()}` : ev.uid, uid: ev.uid, href: obj.href,
+      id: terminSchluessel(kal0, ev.uid, rid?.toString()), uid: ev.uid, href: obj.href,
       titel: kurz(e.summary, 300) ?? '(ohne Titel)', start: s, ende: en, ganztags: start.isDate,
       kalender: kal.name, kalenderId: kal.id, farbe: kal.farbe,
       ort: kurz(e.location, 300), notiz: kurz(e.description, 2000),
@@ -261,7 +363,11 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
       // Mit Gästen nur, wenn WIR eingeladen haben (dann nach Bestätigung, K3); als Gast nur zusagen/absagen.
       bearbeitbar: !serie && (!mitTeilnehmern || !!g.ichOrganisator) && kal.schreibbar !== false,
       ...zusatzFelder(z, start, e.component),
+      // Abgesagt/abgelehnt belegt nicht (#68); vorläufig (TENTATIVE) belegt wie bestätigt.
+      ...(abgesagt ? { beschaeftigt: false, abgesagt: true as const } : {}),
       ...g,
+      ...(status ? { status } : {}),
+      startMs: sT,
       ...(obj.etag ? { stand: obj.etag } : {}),
     });
   };
@@ -270,33 +376,45 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
     fuege(ev, ev.startDate, ev.endDate);
     return raus;
   }
-  // Serie: vom Serienbeginn bis zum Zeitraumende aufzählen (gedeckelt).
+  // Serie: vom Serienbeginn bis zum Zeitraumende aufzählen (gedeckelt: 60.000 Schritte, höchstens VORKOMMEN_MAX Termine).
   const it = ev.iterator();
   const grenze = ICAL.Time.fromJSDate(new Date(bisT), true);
-  // Vorkommen weit vor dem Zeitraum nur überspringen (verschobene Ausnahmen haben eine Woche Luft).
+  // Vorkommen weit vor dem Zeitraum nur überspringen (verschobene Ausnahmen holt der Nachlauf unten).
   const ab = ICAL.Time.fromJSDate(new Date(vonT - 7 * 86_400_000), true);
   let n: ICAL.Time | null;
   let schritte = 0;
-  while ((n = it.next()) && schritte++ < 60_000) {
+  while ((n = it.next()) && schritte++ < 60_000 && raus.length < VORKOMMEN_MAX) {
     if (n.compare(grenze) >= 0) break;
     if (n.compare(ab) < 0) continue;
     const o = ev.getOccurrenceDetails(n);
     fuege(o.item, o.startDate, o.endDate, o.recurrenceId);
   }
+  // Verschobene Vorkommen (RECURRENCE-ID), deren Original weit außerhalb liegt, die aber IN den Zeitraum verschoben
+  // wurden (R-K1 #35) — nach ihrem tatsächlichen Beginn, ohne Doppelte.
+  for (const x of ausnahmen) {
+    if (raus.length >= VORKOMMEN_MAX) break;
+    const rid = x.getFirstPropertyValue('recurrence-id');
+    if (!(rid instanceof ICAL.Time) || gesehen.has(rid.toString())) continue;
+    const o = ev.getOccurrenceDetails(rid);
+    fuege(o.item, o.startDate, o.endDate, o.recurrenceId ?? rid);
+  }
   return raus;
 }
+
+/** Höchstzahl Vorkommen je Objekt und Abfrage (R-K1 #33) — eine fremde Serie darf den Server (1 vCPU) nicht lähmen. */
+export const VORKOMMEN_MAX = 2000;
 
 /** Die K1-Felder eines Vorkommens aus seinem VEVENT. */
 function zusatzFelder(z: ReturnType<typeof zusatzVon>, start: ICAL.Time, v: ICAL.Component): Pick<Termin, 'art' | 'farbeEigen' | 'farbeId' | 'beschaeftigt' | 'sichtbarkeit' | 'zone' | 'erinnerungen' | 'arbeitsort' | 'blockArt'> {
   const art = z.art ?? 'termin';
-  const tzid = !start.isDate ? start.zone?.tzid : undefined;
+  const zone = anzeigeZone(start);
   const er = erinnerungenVon(v);
   return {
     art,
     ...(z.farbe ? { farbeId: z.farbe, farbeEigen: farbeHex(z.farbe) } : {}),
     beschaeftigt: z.transp ? z.transp === 'OPAQUE' : beschaeftigtStandard(art, start.isDate),
     sichtbarkeit: z.sichtbarkeit ?? 'standard',
-    ...(tzid && !['UTC', 'floating', 'Z', ZONE].includes(tzid) ? { zone: tzid } : {}),
+    ...(zone ? { zone } : {}),
     ...(er.length ? { erinnerungen: er } : {}),
     ...(art === 'arbeitsort' ? { arbeitsort: arbeitsortAusTitel(String(v.getFirstPropertyValue('summary') ?? '')) } : {}),
     ...(art === 'block' && z.blockArt ? { blockArt: z.blockArt } : {}),
@@ -367,6 +485,8 @@ export interface NeuerTermin {
   sichtbarkeit?: Sichtbarkeit;
   /** IANA-Zone, in der `start`/`ende` gemeint sind (Standard Europe/Berlin). */
   zone?: string;
+  /** R-K1 #13: IANA-Zone des ENDES, wenn anders als `zone` (Flug Berlin → New York) — `ende` ist dann dort gemeint. */
+  endZone?: string;
   /** Nur Art „arbeitsort“: wird der Titel. */
   arbeitsort?: Arbeitsort;
   // ── seit 30.09. (K3) ── nur nach Bestätigung (Route: `einladungBestaetigt`)
@@ -428,16 +548,46 @@ function zoneFuer(zone: string, jahr: number): ICAL.Timezone {
   return ICAL.TimezoneService.get(zone)!;
 }
 
-/** Wandzeit → ical.js-Zeit: ganztags als Datum; sonst in `zone` gemeint (Standard Berlin). */
+/** ical.js-Zeit direkt aus den Wandzeit-Teilen „YYYY-MM-DDTHH:mm:ss“ in einer Zone — ohne Umweg über UTC. */
+function ausTeilen(wand: string, tz: ICAL.Timezone): ICAL.Time {
+  const [j, mo, t] = wand.slice(0, 10).split('-').map(Number);
+  const [h, mi, se] = wand.slice(11, 19).split(':').map(x => Number(x || 0));
+  return ICAL.Time.fromData({ year: j, month: mo, day: t, hour: h, minute: mi, second: se || 0, isDate: false }, tz);
+}
+
+/**
+ * Wandzeit → ical.js-Zeit: ganztags als Datum; sonst in `zone` gemeint (Standard Berlin). Seit R-K1 (#4/#5) aus den
+ * Wandzeit-Teilen gebaut, nicht über den UTC-Zeitpunkt und `convertToZone` (ical.js machte am 25.10. aus 02:00–03:00
+ * einen Termin 03:00–03:00). Eine Uhrzeit aus der Lücke Ende März gibt es nicht: sie rückt nach RFC vor (02:30 → 03:30).
+ * Eine mehrdeutige (doppelte Stunde) bleibt stehen — sie meint das erste Vorkommen (Sommerzeit).
+ */
 function zeitFuer(wand: string, ganztags: boolean, zone: string = ZONE): ICAL.Time {
   if (ganztags) {
     const [j, m, t] = wand.slice(0, 10).split('-').map(Number);
     return ICAL.Time.fromData({ year: j, month: m, day: t, isDate: true });
   }
-  if (zone === ZONE) return ICAL.Time.fromJSDate(ausWandzeit(wand), true).convertToZone(berlin());
-  const tz = zoneFuer(zone, Number(wand.slice(0, 4)));
-  const utc = ICAL.Time.fromJSDate(ausWandzeitIn(wand, zone), true);
-  return zone === 'UTC' ? utc : utc.convertToZone(tz);
+  if (zone === 'UTC') return ICAL.Time.fromJSDate(ausWandzeitIn(wand, 'UTC'), true);
+  const echt = wandzeitIn(ausWandzeitIn(wand, zone), zone);
+  return ausTeilen(echt, zoneFuer(zone, Number(wand.slice(0, 4))));
+}
+
+/** Ein echter Zeitpunkt als ical.js-Zeit in einer IANA-Zone (über deren Wandzeit). */
+function zeitAusMs(ms: number, zone: string): ICAL.Time {
+  if (zone === 'UTC') return ICAL.Time.fromJSDate(new Date(ms), true);
+  return ausTeilen(wandzeitIn(new Date(ms), zone), zoneFuer(zone, new Date(ms).getUTCFullYear()));
+}
+
+/**
+ * Serien (R-K1 #20): DTSTART muss das erste echte Vorkommen sein — sonst zählt Apple (RFC: DTSTART ist immer das erste)
+ * anders als ical.js (überspringt einen unpassenden Beginn). Liefert die Verschiebung in Tagen (0 = passt schon).
+ */
+function tageBisErstesVorkommen(start: ICAL.Time, rrule: string): number {
+  try {
+    const n = ICAL.Recur.fromString(rrule).iterator(start.clone()).next();
+    if (!n) return 0;
+    const tag = (t: ICAL.Time) => Date.UTC(t.year, t.month - 1, t.day);
+    return Math.round((tag(n) - tag(start)) / 86_400_000);
+  } catch { return 0; }
 }
 
 function setzeZeit(v: ICAL.Component, name: 'dtstart' | 'dtend', t: ICAL.Time) {
@@ -498,11 +648,19 @@ export function baueTermin(t: NeuerTermin, jetzt = new Date()): string {
   const titel = art === 'arbeitsort' && t.arbeitsort ? arbeitsortTitel(t.arbeitsort) : t.titel;
   v.updatePropertyWithValue('summary', sauber(titel, 300) || 'Termin');
   const zone = t.zone ?? ZONE;
-  setzeZeit(v, 'dtstart', zeitFuer(t.start, !!t.ganztags, zone));
-  setzeZeit(v, 'dtend', zeitFuer(t.ende, !!t.ganztags, zone));
+  // Ende in einer anderen Zone (R-K1 #13, z. B. ein Flug) — sonst dieselbe wie der Beginn.
+  const zoneE = !t.ganztags && t.endZone ? t.endZone : zone;
+  const rrule = t.wiederholung ? rruleText(t.wiederholung, !!t.ganztags, zone) : null;
+  let start = t.start, ende = t.ende;
+  if (rrule) {
+    const tage = tageBisErstesVorkommen(zeitFuer(start, !!t.ganztags, zone), rrule);
+    if (tage > 0) { start = `${tagPlus(start.slice(0, 10), tage)}${start.slice(10)}`; ende = `${tagPlus(ende.slice(0, 10), tage)}${ende.slice(10)}`; }
+  }
+  setzeZeit(v, 'dtstart', zeitFuer(start, !!t.ganztags, zone));
+  setzeZeit(v, 'dtend', zeitFuer(ende, !!t.ganztags, zoneE));
   if (t.ort) v.updatePropertyWithValue('location', sauber(t.ort, 300));
   if (t.notiz) v.updatePropertyWithValue('description', sauber(t.notiz, 2000));
-  if (t.wiederholung) v.updatePropertyWithValue('rrule', ICAL.Recur.fromString(rruleText(t.wiederholung, !!t.ganztags)));
+  if (rrule) v.updatePropertyWithValue('rrule', ICAL.Recur.fromString(rrule));
   // Frei/beschäftigt immer ausdrücklich — Apple, Google und die freie-Zeit-Suche lesen TRANSP.
   v.updatePropertyWithValue('transp', (t.beschaeftigt ?? beschaeftigtStandard(art, !!t.ganztags)) ? 'OPAQUE' : 'TRANSPARENT');
   zusaetzeSetzen(v, { art, ...(t.farbe ? { farbe: t.farbe } : {}), ...(t.sichtbarkeit && t.sichtbarkeit !== 'standard' ? { sichtbarkeit: t.sichtbarkeit } : {}), ...(art === 'block' && t.blockArt ? { blockArt: t.blockArt } : {}) });
@@ -513,9 +671,13 @@ export function baueTermin(t: NeuerTermin, jetzt = new Date()): string {
     organisatorSetzen(v, t.organisator);
     for (const g of t.gaeste) if (g.email !== t.organisator) v.addProperty(gastEigenschaft(v, g));
   }
-  if (!t.ganztags) mitZone(cal, zone, Number(t.start.slice(0, 4)));
+  if (!t.ganztags) { mitZone(cal, zone, Number(start.slice(0, 4))); if (zoneE !== zone) mitZone(cal, zoneE, Number(ende.slice(0, 4))); }
   cal.addSubcomponent(v);
-  return cal.toString();
+  const text = cal.toString();
+  if (!rrule) return text;
+  // ical.js lässt WKST=MO beim Schreiben weg (sein Standard) — die RRULE des Termins steht wörtlich da (R-K1 #25).
+  const i = text.indexOf('BEGIN:VEVENT');
+  return text.slice(0, i) + text.slice(i).replace(/\r\nRRULE:[^\r\n]*/, `\r\nRRULE:${rrule}`);
 }
 
 export interface Aenderung {
@@ -558,20 +720,30 @@ export function aendereTermin(ics: string, a: Aenderung, jetzt = new Date(), opt
   if (a.ort !== undefined) { if (a.ort) v.updatePropertyWithValue('location', sauber(a.ort, 300)); else v.removeAllProperties('location'); }
   if (a.notiz !== undefined) { if (a.notiz) v.updatePropertyWithValue('description', sauber(a.notiz, 2000)); else v.removeAllProperties('description'); }
   if (a.start || a.ende) {
-    // Ohne neues Ende: Dauer bleibt. Die Zone des Termins bleibt, wenn es eine gibt.
+    // Ohne neues Ende: Dauer bleibt. `a.start`/`a.ende` sind Berliner Wandzeit.
     const altS = ev.startDate, altE = ev.endDate ?? ev.startDate;
-    const dauerMs = ganztags ? 0 : altE.toJSDate().getTime() - altS.toJSDate().getTime();
-    const neuS = a.start ? zeitFuer(a.start, ganztags) : altS;
-    let neuE: ICAL.Time;
-    if (a.ende) neuE = zeitFuer(a.ende, ganztags);
-    else if (ganztags) { neuE = neuS.clone(); const tage = altE.subtractDate(altS).toSeconds() / 86400; neuE.adjust(Math.max(1, Math.round(tage)), 0, 0, 0); }
-    else neuE = ICAL.Time.fromJSDate(new Date(neuS.toJSDate().getTime() + dauerMs), true).convertToZone(berlin());
-    if (neuE.compare(neuS) <= 0) return { fehler: 'Das Ende liegt vor dem Anfang.' };
-    const zone = !ganztags && altS.zone && altS.zone.tzid && !['UTC', 'floating'].includes(altS.zone.tzid) ? altS.zone : null;
-    setzeZeit(v, 'dtstart', zone ? neuS.convertToZone(zone) : neuS);
-    setzeZeit(v, 'dtend', zone ? neuE.convertToZone(zone) : neuE);
+    if (ganztags) {
+      const neuS = a.start ? zeitFuer(a.start, true) : altS;
+      let neuE: ICAL.Time;
+      if (a.ende) neuE = zeitFuer(a.ende, true);
+      else { neuE = neuS.clone(); const tage = altE.subtractDate(altS).toSeconds() / 86400; neuE.adjust(Math.max(1, Math.round(tage)), 0, 0, 0); }
+      if (neuE.compare(neuS) <= 0) return { fehler: 'Das Ende liegt vor dem Anfang.' };
+      setzeZeit(v, 'dtstart', neuS);
+      setzeZeit(v, 'dtend', neuE);
+    } else {
+      // Die Zonen von Beginn UND Ende bleiben (R-K1 #13: ein Flug Berlin → New York behält beide). Floating und
+      // unbekannte Zonen werden Berlin; Windows-Namen/Präfixe ihr IANA-Name. Geschrieben aus der Wandzeit der Zone.
+      const zoneVon = (t: ICAL.Time) => ianaZone(t.zone?.tzid) ?? ZONE;
+      const zS = zoneVon(altS), zE = zoneVon(altE);
+      const sMs = a.start ? ausWandzeit(a.start).getTime() : zeitpunkt(altS);
+      const eMs = a.ende ? ausWandzeit(a.ende).getTime() : sMs + (zeitpunkt(altE) - zeitpunkt(altS));
+      if (eMs <= sMs) return { fehler: 'Das Ende liegt vor dem Anfang.' };
+      setzeZeit(v, 'dtstart', zeitAusMs(sMs, zS));
+      setzeZeit(v, 'dtend', zeitAusMs(eMs, zE));
+      mitZone(comp, zS, new Date(sMs).getUTCFullYear());
+      if (zE !== zS) mitZone(comp, zE, new Date(eMs).getUTCFullYear());
+    }
     v.removeAllProperties('duration');
-    if (!ganztags && (!zone || zone.tzid === ZONE)) mitBerlinZone(comp);
   }
   const stempel = ICAL.Time.fromJSDate(jetzt, true);
   v.updatePropertyWithValue('dtstamp', stempel);

@@ -481,9 +481,10 @@ lokal, Route `/os`, Port 3001.
   ganztags, Ort, Notiz, Serie, Erinnerungen (mehrere VALARM), frei/beschäftigt (`TRANSP`, immer ausdrücklich geschrieben),
   Sichtbarkeit (`CLASS`), Farbe (`COLOR`, RFC 7986: CSS-Name aus `TERMIN_FARBEN`), Art (`X-MAKE-ART`: termin|abwesend|fokus|arbeitsort).
   Der Arbeitsort steht im Titel („Home“, „Büro“ … `arbeitsortAusTitel`). **Bezüge zu MAKE OS stehen NIE im Termin**, nur im
-  verschlüsselten Neben-Bestand `kalender-bezug` (`lib/kalender/bezug.ts` rein, `bezug-server.ts` Sperre): Schlüssel `uid`
-  bzw. `uid::RECURRENCE-ID`, Inhalt nur Kennungen (`kontaktId/firmaId/mandatId/dealId/aufgabeId/eventId`), `von` (wer angelegt
-  hat = Eigentümer für „privat“), `tag` (Starttag) und eine **Sicherung** von Art und „privat“ — Apple verliert X-Eigenschaften
+  verschlüsselten Neben-Bestand `kalender-bezug` (`lib/kalender/bezug.ts` rein, `bezug-server.ts` Sperre): Schlüssel
+  `kalender|uid` bzw. `kalender|uid::RECURRENCE-ID` (seit R-K1: Kalender-Kennung = letztes Stück der Kalender-Adresse; alte
+  Schlüssel `uid` bleiben lesbar, eindeutige zieht der Abgleich um — `bezugVon`, `bezugUmzugPlan`), Inhalt nur Kennungen (`kontaktId/firmaId/mandatId/dealId/aufgabeId/eventId`), `von` (wer angelegt
+  hat = Eigentümer für „privat“), `tag` (Starttag) und eine **Sicherung** von Art, „privat“ und Farbe — Apple verliert X-Eigenschaften
   und CLASS, wenn man in Apple bearbeitet. Lesen (`mitBezug`): iCloud gewinnt, die Sicherung füllt nur Fehlendes; privat gilt,
   wenn EINE Seite privat sagt. Abgleich nach jedem iCloud-Lauf (`bezuegeAbgleichen` in `abgleichen`): Termine mit X-MAKE-ART
   ohne Eintrag bekommen ihre Sicherung. Register: `kalender-bezug` (dritte, entfernen → `kalenderBezugOhne`), `kalender-icloud`
@@ -507,6 +508,16 @@ lokal, Route `/os`, Port 3001.
   Abwesend/Arbeitsort nur für `von`. Genutzt von K4 (freie Zeit, Buchung), künftig Heute/Glocke/ZOE.
 - **Zeitzonen** (`lib/kalender/zeitzone.ts`): intern bleibt alles Berliner Wandzeit; eine andere Zone nur beim Anlegen
   (Eingabe in jener Zone, TZID + VTIMEZONE aus den Zonendaten der Laufzeit) und in der Anzeige („GMT-04“). Nie `new Date(wandzeit)`.
+- **Kern & Abgleich (R-K1, 29.09., KALENDER_FEHLER_ABGLEICH.md „Nachtrag Paket R-K1“):** Zeiten werden aus Wandzeit-Teilen
+  geschrieben und über Intl gelesen (RFC 5545: doppelte Stunde = erstes Vorkommen, Lücke vorwärts); jede TZID wird vor dem
+  Parsen auf IANA abgebildet (auch ohne VTIMEZONE, Windows-Namen, `/mozilla.org/`-Präfixe; IANA vor eingebetteter Zone);
+  floating = Berliner Wandzeit; `Termin.startMs` sortiert. `Termin.id` = `kalender|uid(::RID)` — Ändern/Löschen über
+  `objektSchluessel(termin)`; eine alte reine UID in mehreren Kalendern → 409. `status`/`abgesagt` (CANCELLED, eigene Antwort
+  DECLINED) belegen nicht. Abgleich: 403/gekürzt nur diesen Kalender überspringen (`hinweise`), 401 = Anmeldung, Backoff mit
+  Retry-After (`pauseBis`), `abgleich` (vor X Min., veraltet ab 30) in `GET /api/kalender` und im HOI; ohne ETag nie blind;
+  Zeitüberschreitung beim Anlegen → erst nachsehen, dieselbe UID. Tägliche Voll-Sicherung je Kalender als ICS (verschlüsselt,
+  Archiv, 14 Tage, `lib/kalender/sicherung*.ts`, Takt), Zurückspielen nur mit Probelauf/Bestätigung, nie Termine mit Gästen
+  (`/api/kalender/sicherung`). Kalender-Tests zusätzlich mit `MAKE_OS_TEST_TZ=UTC` bzw. `=America/Los_Angeles`.
 - **Wiederholung voll** (`lib/kalender/wiederholung.ts`, client-sicher): Intervall, Wochentage, Monatstag/letzter Tag/n-ter
   Wochentag, Anzahl, bis (ganztägig: UNTIL als Datum); Vorlagen wie Google (`wiederholungVorlagen`), Text `wiederholungBeschreiben`.
 - **Verbindungsprüfung** (`lib/crm/verbindungen-kalender.ts`): `termin-uid-tot` (Bezug zu in Apple gelöschtem Termin, nur im

@@ -60,7 +60,7 @@ describe('Termine aus iCalendar', () => {
   it('Einzeltermin in Berliner Zeit, bearbeitbar', () => {
     const ics = vcal(`${BERLIN}\r\nBEGIN:VEVENT\r\nUID:e1\r\nDTSTAMP:20260901T100000Z\r\nDTSTART;TZID=Europe/Berlin:20260926T093000\r\nDTEND;TZID=Europe/Berlin:20260926T110000\r\nSUMMARY:Steuerberater\r\nLOCATION:Hamburg\r\nEND:VEVENT`);
     const t = termineAus({ href: '/e1.ics', etag: '"1"', ics }, KAL, '2026-09-21', '2026-09-28');
-    expect(t).toEqual([expect.objectContaining({ id: 'e1', titel: 'Steuerberater', start: '2026-09-26T09:30:00', ende: '2026-09-26T11:00:00', ganztags: false, ort: 'Hamburg', kalender: 'Privat Kevin', serie: false, bearbeitbar: true })]);
+    expect(t).toEqual([expect.objectContaining({ id: 'home|e1', uid: 'e1', titel: 'Steuerberater', start: '2026-09-26T09:30:00', ende: '2026-09-26T11:00:00', ganztags: false, ort: 'Hamburg', kalender: 'Privat Kevin', serie: false, bearbeitbar: true })]);
     expect(termineAus({ href: '/e1.ics', ics }, KAL, '2026-09-28', '2026-10-05')).toEqual([]);
   });
   it('Serie mit Ausnahme und gestrichenem Vorkommen, über die Zeitumstellung — nicht bearbeitbar', () => {

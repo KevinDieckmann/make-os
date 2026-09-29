@@ -4,6 +4,26 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Kalender R-K1: Kern & Abgleich (29.09.2026, nur lokal)
+
+- **Zeitumstellung stimmt:** Termine zwischen 02:00 und 03:59 am 25.10. und 29.03. werden richtig geschrieben und gelesen
+  (vorher wurde 02:00–03:00 am 25.10. zu einem Termin ohne Dauer). Termine aus Outlook (Windows-Zonen), Abos und
+  weitergeleiteten Einladungen ohne Zonen-Angabe stehen zur richtigen Berliner Zeit.
+- **Gleicher Termin in zwei Kalendern** (z. B. in Apple kopiert) sind zwei Termine; Ändern trifft den richtigen.
+- **Abgesagte oder selbst abgelehnte Einladungen** blockieren weder freie Zeit noch Buchungsseite und zählen im CRM nicht.
+- **Abgleich robuster:** Ein gesperrter geteilter Kalender stoppt nicht mehr den ganzen Abgleich; bei Überlastung wartet
+  MAKE OS, wie Apple es verlangt; der HOI meldet, wenn der Kalender-Stand älter als 30 Minuten ist.
+- **Tägliche Kalender-Sicherung** (nachts, verschlüsselt, 14 Tage je Kalender) — zurückspielen nur mit Probelauf und Klick,
+  nie Termine mit Gästen.
+
+**Was Kevin nach dem Upload tun muss:** nichts. Alte Verknüpfungen (Kontakt, Aufgabe … am Termin) ziehen beim ersten
+Abgleich von selbst auf das neue Schlüssel-Format um.
+
+**Prüfliste (vor dem Hochladen, lokal mit Wegwerfdaten):**
+- Termin am 25.10. 02:00–03:00 anlegen → steht 02:00–03:00 im Raster und in Apple.
+- Termin im Kalender ändern und löschen (Einzeltermin und Serie mit Bezug) → wie bisher, keine 409.
+- HOI-Seite: Befund „iCloud-Kalender“ grün; am Folgetag Befund „Kalender-Sicherung“ grün.
+
 ## Kalender K5: Ein Kalender — Planen als Modus, Aufgaben-Modus (29.09.2026, nur lokal — Commit 55866be)
 
 - **Ein Kalender:** Der Wochenplaner ist jetzt der Modus „Planen“ im Kalender (`/os/kalender?modus=planen`, Taste p).

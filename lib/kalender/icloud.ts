@@ -18,14 +18,26 @@
 //             `EinladungNoetig` (409 mit Anzahl + Adressen für die Rückfrage).
 //
 // Die Zugangsdaten gehen NUR an *.icloud.com (auch bei Weiterleitungen).
+//
+// Seit R-K1 (29.09., KALENDER_FEHLER_ABGLEICH.md):
+//   Schlüssel   Termine heißen `kalender|uid` (+ `::RID`) — dieselbe UID in zwei Kalendern sind zwei Termine (#46).
+//               Ändern/Löschen nehmen den Schlüssel oder (alt) die UID; eine alte UID in mehreren Kalendern → 409.
+//   Fehler      401 = Anmeldung abgelehnt (30 Min. Pause). 403 bzw. eine gekürzte Antwort (507) betrifft EINEN
+//               Kalender: er wird übersprungen (alter Stand bleibt, `hinweise`), der Rest läuft weiter (#51/#43).
+//               503/429: Pause nach `Retry-After`, sonst exponentiell 2 → 30 Min. (#50). `abgleichAlter`: „vor X Min.“,
+//               ab 30 Min. veraltet — in der Kalender-Antwort und im HOI-Stand.
+//   Schreiben   Ohne ETag nie blind: erst holen (GET), bei Abweichung 409 (#37). Zeitüberschreitung beim Anlegen:
+//               erst nachsehen (GET `${uid}.ics`), dann mit DERSELBEN UID noch einmal — nie ein Duplikat (#38).
+//   Tempo       geparste Termine je Objekt + ETag (+ Zeitraum) im Speicher, nicht je Abgleich (#95).
 
 import { randomUUID } from 'node:crypto';
 import { loadJson, saveJson } from '@/lib/store/local-db';
-import { antworten, istTerminKalender, text, adresse, etagSauber, klartext } from './dav';
+import { antworten, istTerminKalender, text, adresse, etagSauber, klartext, unvollstaendig } from './dav';
 import { termineAus, baueTermin, aendereTermin, antwortSetzen, einladungsLage, uidVon, nichtBearbeitbar, objektKurz, adresseAus, type KalenderObjekt, type Termin, type Aenderung, type NeuerTermin, type Teilnahme } from './ics';
 import { tagPlus } from './zeit';
 import { localDay } from '@/lib/zeit';
-import { mitBezug, type BezugBestand } from './bezug';
+import { mitBezug, kalenderKennung, terminSchluessel, schluesselTeile, type BezugBestand, type ObjektKurz } from './bezug';
+import { ausWandzeit } from './zeit';
 import { ladeBezuege, bezuegeAbgleichen } from './bezug-server';
 
 export const SPEICHER = 'kalender-icloud';
@@ -48,6 +60,12 @@ export interface IcloudStand {
   home?: string;
   /** Adressen des Kontos (calendar-user-address-set, klein) — Organisator neuer Einladungen, „bin ich Gast?“ (K3). */
   adressen?: string[];
+  /** R-K1 #51/#43: Kalender, die beim letzten Lauf übersprungen wurden (403, gekürzte Antwort) — ihr alter Stand blieb. */
+  hinweise?: { kalender: string; grund: string }[];
+  /** R-K1 #50: wie oft der Abgleich zuletzt in Folge scheiterte (für das Backoff) … */
+  fehlerFolge?: number;
+  /** … und vor wann kein neuer Versuch (Retry-After bzw. exponentiell). */
+  pauseBis?: string;
   kalender: KalenderEintrag[];
   objekte: Record<string, KalenderObjekt[]>;
 }
@@ -71,6 +89,26 @@ export function kontoAnzeige(): string | null {
 
 export class KalenderFehler extends Error {
   constructor(message: string, public status = 502) { super(message); }
+}
+/** 403 (R-K1 #51): iCloud verweigert eine Sammlung oder ein Objekt (geteilter Kalender, Rechte) — KEINE abgelehnte Anmeldung. */
+export class KalenderVerboten extends KalenderFehler {
+  constructor(message: string) { super(message, 403); }
+}
+/** 503/429 (R-K1 #50): iCloud bittet um Pause — `sekunden` aus Retry-After, wenn angegeben. */
+export class KalenderUeberlastet extends KalenderFehler {
+  constructor(message: string, public sekunden?: number) { super(message, 503); }
+}
+/** Zeitüberschreitung (R-K1 #38) — ob die Anfrage ankam, ist offen. */
+export class KalenderZeitueberschreitung extends KalenderFehler {
+  constructor() { super('iCloud antwortet nicht (Zeitüberschreitung) — bitte gleich noch einmal.', 504); }
+}
+
+/** Retry-After (Sekunden oder HTTP-Datum) → Sekunden, gedeckelt auf eine Stunde. */
+export function retryAfterSekunden(v: string | null | undefined, jetzt = Date.now()): number | undefined {
+  if (!v) return undefined;
+  const n = Number(v.trim());
+  const s = Number.isFinite(n) ? n : (Date.parse(v) - jetzt) / 1000;
+  return Number.isFinite(s) && s > 0 ? Math.min(3600, Math.ceil(s)) : undefined;
 }
 /** 409: der Termin hat inzwischen einen anderen Stand (ETag) — mit dem aktuellen Termin, damit „Deine Fassung“ bleibt. */
 export class KalenderKonflikt extends KalenderFehler {
@@ -102,7 +140,9 @@ async function dav(url: string, method: string, opt: { body?: string; tiefe?: '0
   let ziel = url;
   for (let sprung = 0; sprung < 4; sprung++) {
     if (!icloudHost(ziel)) throw new KalenderFehler('Unerwartete Adresse — Abbruch (Zugang geht nur an iCloud).');
-    const r = await fetch(ziel, {
+    let r: Response;
+    try {
+      r = await fetch(ziel, {
       method, redirect: 'manual', signal: AbortSignal.timeout(25_000),
       headers: {
         Authorization: `Basic ${Buffer.from(`${z.id}:${z.passwort}`).toString('base64')}`,
@@ -112,9 +152,17 @@ async function dav(url: string, method: string, opt: { body?: string; tiefe?: '0
         ...opt.kopf,
       },
       body: opt.body,
-    });
+      });
+    } catch (e) {
+      const name = (e as { name?: string } | null)?.name;
+      if (name === 'TimeoutError' || name === 'AbortError') throw new KalenderZeitueberschreitung();
+      throw e;
+    }
     if ([301, 302, 307, 308].includes(r.status) && r.headers.get('location')) { ziel = new URL(r.headers.get('location')!, ziel).toString(); continue; }
-    if (r.status === 401 || r.status === 403) throw new KalenderFehler('iCloud lehnt die Anmeldung ab — Apple-ID oder app-spezifisches Passwort stimmt nicht (neu einrichten mit deploy/icloud-verbinden.sh).', 401);
+    // 401 = Anmeldung abgelehnt; 403 = diese Sammlung/dieses Objekt ist verboten — getrennt behandeln (R-K1 #51).
+    if (r.status === 401) throw new KalenderFehler('iCloud lehnt die Anmeldung ab — Apple-ID oder app-spezifisches Passwort stimmt nicht (neu einrichten mit deploy/icloud-verbinden.sh).', 401);
+    if (r.status === 403) throw new KalenderVerboten(`iCloud verweigert den Zugriff (403)${method === 'PUT' || method === 'DELETE' ? ' — der Termin ließ sich nicht schreiben' : ''}.`);
+    if (r.status === 503 || r.status === 429) throw new KalenderUeberlastet(`iCloud ist gerade überlastet (${r.status}) — neuer Versuch später.`, retryAfterSekunden(r.headers.get('retry-after')));
     return { status: r.status, text: await r.text(), etag: etagSauber(r.headers.get('etag') ?? undefined) };
   }
   throw new KalenderFehler('Zu viele Weiterleitungen.');
@@ -157,14 +205,31 @@ async function kalenderListe(home: string): Promise<KalenderEintrag[]> {
 
 const zeitraumUtc = (tag: string) => `${tag.replace(/-/g, '')}T000000Z`;
 
-async function holeObjekte(kal: KalenderEintrag): Promise<KalenderObjekt[]> {
+async function holeObjekte(kal: Pick<KalenderEintrag, 'id' | 'name'>, alle = false): Promise<KalenderObjekt[]> {
   const heute = localDay();
-  const body = `<?xml version="1.0" encoding="UTF-8"?><c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"><c:time-range start="${zeitraumUtc(tagPlus(heute, HOLEN_VON))}" end="${zeitraumUtc(tagPlus(heute, HOLEN_BIS))}"/></c:comp-filter></c:comp-filter></c:filter></c:calendar-query>`;
+  const zeitraum = alle ? '' : `<c:time-range start="${zeitraumUtc(tagPlus(heute, HOLEN_VON))}" end="${zeitraumUtc(tagPlus(heute, HOLEN_BIS))}"/>`;
+  const body = `<?xml version="1.0" encoding="UTF-8"?><c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT">${zeitraum}</c:comp-filter></c:comp-filter></c:filter></c:calendar-query>`;
   const r = await dav(kal.id, 'REPORT', { tiefe: '1', body });
+  if (r.status === 507) throw new KalenderFehler(`„${kal.name}“: iCloud hat die Antwort gekürzt (507) — Termine fehlen, der letzte vollständige Stand bleibt.`, 507);
   if (r.status !== 207) throw new KalenderFehler(`iCloud: „${kal.name}“ nicht lesbar (${r.status}).`);
+  // Gekürzte Antwort (507 je Response oder „number-of-matches-within-limits“) nie still übernehmen (R-K1 #43).
+  const kurz = unvollstaendig(r.text);
+  if (kurz) throw new KalenderFehler(`„${kal.name}“: ${kurz}`, 507);
   return antworten(r.text, ['getetag', 'calendar-data'])
     .filter(a => a.props['calendar-data'])
     .map(a => ({ href: adresse(kal.id, a.href), etag: etagSauber(a.props.getetag), ics: a.props['calendar-data'] }));
+}
+
+/** Alle Objekte eines Kalenders OHNE Zeitfenster — nur für die tägliche Voll-Sicherung (R-K1 #K5, lib/kalender/sicherung-server.ts). */
+export const holeAlleObjekte = (kal: Pick<KalenderEintrag, 'id' | 'name'>): Promise<KalenderObjekt[]> => holeObjekte(kal, true);
+
+/** Ein Objekt neu in einen Kalender legen (nur Wiederherstellung, R-K1 #K5): PUT mit If-None-Match — nie überschreiben. */
+export async function objektWiederherstellen(kal: Pick<KalenderEintrag, 'id' | 'name'>, uid: string, ics: string): Promise<'angelegt' | 'schon-da'> {
+  if (!/^[^\u0000-\u001f\u007f/]{1,200}$/.test(uid)) throw new KalenderFehler('Ungültige Termin-Kennung.', 400);
+  const r = await dav(`${kal.id.replace(/\/?$/, '/')}${encodeURIComponent(uid)}.ics`, 'PUT', { body: ics, typ: 'text/calendar; charset=utf-8', kopf: { 'If-None-Match': '*' } });
+  if (r.status === 412) return 'schon-da';
+  if (![200, 201, 204].includes(r.status)) throw new KalenderFehler(`iCloud hat den Termin nicht angenommen (${r.status}).`);
+  return 'angelegt';
 }
 
 // ── Abgleich ────────────────────────────────────────────────────────────────
@@ -175,19 +240,34 @@ export async function ladeStand(): Promise<IcloudStand> {
   return s && Array.isArray(s.kalender) ? { ...LEER, ...s } : { ...LEER };
 }
 
-/** Geparste Termine je (Stand, Zeitraum) — die Kalenderseite fragt denselben Zeitraum jede Minute, das ICS-Parsen aller Objekte kostete jedes Mal 100–700 ms (Tempo-Prüfung 27.09.). */
-const terminCache = new Map<string, Termin[]>();
+/**
+ * Geparste Termine je Objekt + ETag + Zeitraum (R-K1 #95): die Kalenderseite fragt denselben Zeitraum jede Minute, das
+ * ICS-Parsen aller Objekte kostete 100–700 ms (Tempo-Prüfung 27.09.). Früher hing der Cache am Abgleich (`s.at`) und
+ * verfiel alle 5 Minuten; jetzt parst ein Abgleich nur die Objekte neu, die sich wirklich geändert haben.
+ */
+const objektCache = new Map<string, Termin[]>();
+const OBJEKT_CACHE_MAX = 20_000;
+function fnv(t: string): string { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return `${(h >>> 0).toString(36)}.${t.length}`; }
 
-/** Alle Termine aller Kalender im Zeitraum [von, bis) — Berliner Tage. */
-export function termineImZeitraum(s: IcloudStand, von: string, bis: string): Termin[] {
-  const key = `${s.at ?? ''}|${von}|${bis}`;
-  const c = s.at ? terminCache.get(key) : undefined;
+function objektTermine(o: KalenderObjekt, k: KalenderEintrag, von: string, bis: string, ich: readonly string[]): Termin[] {
+  const key = [k.id, k.name, k.farbe ?? '', k.schreibbar ? 1 : 0, o.href, o.etag ? `${o.etag}.${o.ics.length}` : fnv(o.ics), von, bis, ich.join(',')].join('|');
+  const c = objektCache.get(key);
   if (c) return c;
+  const t = termineAus(o, k, von, bis, ich);
+  if (objektCache.size >= OBJEKT_CACHE_MAX) objektCache.clear();
+  objektCache.set(key, t);
+  return t;
+}
+
+/** Zeitpunkt eines Termins für die Sortierung — der mitgeführte (R-K1 #1), sonst aus der Wandzeit. */
+const beginnMs = (t: Termin) => t.startMs ?? ausWandzeit(t.start).getTime();
+
+/** Alle Termine aller Kalender im Zeitraum [von, bis) — Berliner Tage, sortiert nach dem echten Zeitpunkt. */
+export function termineImZeitraum(s: IcloudStand, von: string, bis: string): Termin[] {
   const raus: Termin[] = [];
   const ich = kontoAdressen(s);
-  for (const k of s.kalender) for (const o of s.objekte[k.id] ?? []) raus.push(...termineAus(o, k, von, bis, ich));
-  raus.sort((a, b) => a.start.localeCompare(b.start) || a.titel.localeCompare(b.titel));
-  if (s.at) { if (terminCache.size >= 24) terminCache.clear(); terminCache.set(key, raus); }
+  for (const k of s.kalender) for (const o of s.objekte[k.id] ?? []) raus.push(...objektTermine(o, k, von, bis, ich));
+  raus.sort((a, b) => beginnMs(a) - beginnMs(b) || a.titel.localeCompare(b.titel));
   return raus;
 }
 
@@ -210,13 +290,18 @@ function cacheFormat(t: Termin, bezuege: BezugBestand | null) {
     id: t.id, uid: t.uid, title: t.titel, ...e, startDate: t.start, endDate: t.ende, allDay: t.ganztags,
     calendarName: t.kalender, ...(t.ort ? { location: t.ort } : {}), source: 'icloud', serie: t.serie, bearbeitbar: t.bearbeitbar,
     art: m.art, beschaeftigt: m.beschaeftigt, ...(m.sichtbarkeit === 'privat' ? { privat: true } : {}), ...(m.von ? { von: m.von } : {}),
+    // R-K1 #68/#100: abgesagte bzw. abgelehnte Termine belegen nicht und zählen im CRM nicht.
+    ...(t.abgesagt ? { abgesagt: true } : {}),
   };
 }
 
-/** Kurzbild aller Objekte eines Stands (UID, Starttag, Art/Farbe/Sichtbarkeit aus dem Text) — Abgleich und Verbindungsprüfung. */
-export function objekteKurz(s: IcloudStand): { uid: string; tag?: string; zusatz: ReturnType<typeof objektKurz>['zusatz'] }[] {
-  const raus: { uid: string; tag?: string; zusatz: ReturnType<typeof objektKurz>['zusatz'] }[] = [];
-  for (const k of s.kalender) for (const o of s.objekte[k.id] ?? []) { const x = objektKurz(o.ics); if (x.uid) raus.push({ uid: x.uid, ...(x.tag ? { tag: x.tag } : {}), zusatz: x.zusatz }); }
+/** Kurzbild aller Objekte eines Stands (UID, Schlüssel, Starttag, Art/Farbe/Sichtbarkeit aus dem Text) — Abgleich und Verbindungsprüfung. */
+export function objekteKurz(s: IcloudStand): (ObjektKurz & { schluessel: string })[] {
+  const raus: (ObjektKurz & { schluessel: string })[] = [];
+  for (const k of s.kalender) {
+    const kal = kalenderKennung(k.id);
+    for (const o of s.objekte[k.id] ?? []) { const x = objektKurz(o.ics); if (x.uid) raus.push({ uid: x.uid, schluessel: terminSchluessel(kal, x.uid), ...(x.tag ? { tag: x.tag } : {}), zusatz: x.zusatz }); }
+  }
   return raus;
 }
 
@@ -239,6 +324,7 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
   // hat die Änderung womöglich noch nicht gesehen.
   if (laufend && !opt.nur && !opt.erzwingen) return laufend;
   while (laufend) await laufend.catch(() => {});
+  tzMelden();
   laufend = (async () => {
     const alt = await ladeStand();
     try {
@@ -247,12 +333,23 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
       const home = ort.home;
       const liste = await kalenderListe(home);
       const objekte: Record<string, KalenderObjekt[]> = {};
-      for (const k of liste) {
+      const hinweise: { kalender: string; grund: string }[] = [];
+      for (let i = 0; i < liste.length; i++) {
+        const k = liste[i];
         const vorher = alt.kalender.find(x => x.id === k.id);
         const unveraendert = !opt.erzwingen && opt.nur !== k.id && vorher?.ctag && vorher.ctag === k.ctag && alt.objekte[k.id];
-        objekte[k.id] = unveraendert ? alt.objekte[k.id] : await holeObjekte(k);
+        if (unveraendert) { objekte[k.id] = alt.objekte[k.id]; continue; }
+        try { objekte[k.id] = await holeObjekte(k); }
+        catch (e) {
+          // 403 (geteilt, Rechte entzogen) oder gekürzte Antwort: NUR diesen Kalender überspringen (R-K1 #51/#43) — sein
+          // alter Stand bleibt, der ctag nicht (sonst gälte der alte Stand beim nächsten Lauf als aktuell), Hinweis dazu.
+          if (!(e instanceof KalenderFehler) || (e.status !== 403 && e.status !== 507)) throw e;
+          objekte[k.id] = alt.objekte[k.id] ?? [];
+          liste[i] = { ...k, ctag: vorher?.ctag };
+          hinweise.push({ kalender: k.name, grund: e.message.slice(0, 200) });
+        }
       }
-      const neu: IcloudStand = { at: new Date().toISOString(), home, adressen: ort.adressen, kalender: liste, objekte };
+      const neu: IcloudStand = { at: new Date().toISOString(), home, adressen: ort.adressen, kalender: liste, objekte, ...(hinweise.length ? { hinweise } : {}) };
       await saveJson(SPEICHER, neu);
       // Sicherung von Art/„privat“ im Neben-Bestand nachtragen (Apple kann X-MAKE-ART/CLASS verlieren) — ein Fehler hier kostet den Abgleich nicht.
       let bezuege: BezugBestand | null = null;
@@ -264,7 +361,12 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
       const fehler = e instanceof Error ? e.message.slice(0, 300) : 'iCloud nicht erreichbar.';
       // Die Adresse kann sich ändern — beim nächsten Mal neu suchen.
       const anmeldung = e instanceof KalenderFehler && e.status === 401;
-      const s: IcloudStand = { ...alt, home: anmeldung ? alt.home : undefined, ...(anmeldung ? {} : { adressen: undefined }), fehler, fehlerAt: new Date().toISOString(), fehlerAnmeldung: anmeldung };
+      const jetzt = Date.now();
+      const folge = (alt.fehlerFolge ?? 0) + 1;
+      const s: IcloudStand = {
+        ...alt, home: anmeldung ? alt.home : undefined, ...(anmeldung ? {} : { adressen: undefined }), fehler, fehlerAt: new Date(jetzt).toISOString(), fehlerAnmeldung: anmeldung,
+        fehlerFolge: folge, pauseBis: new Date(jetzt + pauseMs(folge, anmeldung, e instanceof KalenderUeberlastet ? e.sekunden : undefined)).toISOString(),
+      };
       await saveJson(SPEICHER, s).catch(() => {});
       throw e;
     }
@@ -279,11 +381,51 @@ export async function frischerStand(): Promise<IcloudStand> {
   try { return await abgleichen(); } catch { return ladeStand(); }
 }
 
-/** Frisch genug? Nach einem Fehler erst nach einer Pause wieder — nach abgelehnter Anmeldung nach 30 Minuten. */
+/**
+ * Pause nach dem n-ten Fehlschlag in Folge (R-K1 #50): abgelehnte Anmeldung 30 Min. (Apple sperrt sonst), sonst
+ * exponentiell 2, 4, 8, 16, 30 Min. — und nie kürzer als ein `Retry-After` von iCloud.
+ */
+export function pauseMs(folge: number, anmeldung: boolean, retryAfterSek?: number): number {
+  const basis = anmeldung ? 30 * 60_000 : Math.min(30 * 60_000, FRISCH_MS * 2 ** Math.max(0, folge - 1));
+  return Math.max(basis, (retryAfterSek ?? 0) * 1000);
+}
+
+/** Frisch genug? Nach einem Fehler erst nach der Pause (`pauseBis`) wieder — ältere Stände ohne Pause wie bisher. */
 export function naechsterVersuchFaellig(s: IcloudStand, jetzt = Date.now()): boolean {
   if (s.at && jetzt - Date.parse(s.at) < FRISCH_MS) return false;
-  if (s.fehlerAt && (!s.at || s.fehlerAt > s.at)) return jetzt - Date.parse(s.fehlerAt) >= (s.fehlerAnmeldung ? 30 * 60_000 : FRISCH_MS);
+  if (s.fehlerAt && (!s.at || s.fehlerAt > s.at)) {
+    if (s.pauseBis && Number.isFinite(Date.parse(s.pauseBis))) return jetzt >= Date.parse(s.pauseBis);
+    return jetzt - Date.parse(s.fehlerAt) >= (s.fehlerAnmeldung ? 30 * 60_000 : FRISCH_MS);
+  }
   return true;
+}
+
+/** Ab so vielen Minuten ohne gelungenen Abgleich gilt der Stand als veraltet (R-K1 #51). */
+export const VERALTET_MIN = 30;
+
+/**
+ * Wie alt ist der Stand (R-K1 #51)? `vorMin` = Minuten seit dem letzten GELUNGENEN Abgleich, `veraltet` ab 30 Min. (oder
+ * nie abgeglichen). Für die Kalender-Antwort („letzter Abgleich vor X Min.“) und den HOI-Stand. Rein.
+ */
+export function abgleichAlter(s: Pick<IcloudStand, 'at' | 'fehler' | 'fehlerAt' | 'fehlerAnmeldung' | 'hinweise' | 'pauseBis'>, jetzt = Date.now()): { letzter: string | null; vorMin: number | null; veraltet: boolean; fehler?: string; anmeldung?: true; hinweise?: { kalender: string; grund: string }[]; naechsterVersuch?: string } {
+  const at = s.at && Number.isFinite(Date.parse(s.at)) ? s.at : null;
+  const vorMin = at ? Math.max(0, Math.floor((jetzt - Date.parse(at)) / 60_000)) : null;
+  const scheitert = !!s.fehlerAt && (!at || s.fehlerAt > at);
+  return {
+    letzter: at, vorMin, veraltet: vorMin === null || vorMin >= VERALTET_MIN,
+    ...(scheitert && s.fehler ? { fehler: s.fehler } : {}), ...(scheitert && s.fehlerAnmeldung ? { anmeldung: true as const } : {}),
+    ...(s.hinweise?.length ? { hinweise: s.hinweise } : {}),
+    ...(scheitert && s.pauseBis ? { naechsterVersuch: s.pauseBis } : {}),
+  };
+}
+
+/** Die Zonendaten der Laufzeit (tz-Version) einmal je Prozess protokollieren (R-K1 #9) — Termine rechnen mit ihnen. */
+let tzGemeldet = false;
+export const tzVersion = (): string => `${process.versions.tz ?? 'unbekannt'} (ICU ${process.versions.icu ?? '?'})`;
+function tzMelden() {
+  if (tzGemeldet) return;
+  tzGemeldet = true;
+  console.info(`[kalender] Zeitzonen-Daten: tz ${tzVersion()}`);
 }
 
 // ── Schreiben ───────────────────────────────────────────────────────────────
@@ -293,9 +435,54 @@ export function kalenderNachName(s: IcloudStand, name: string): KalenderEintrag 
   return s.kalender.find(k => k.name.trim().toLowerCase() === n);
 }
 
-function findeObjekt(s: IcloudStand, uid: string): { kal: KalenderEintrag; obj: KalenderObjekt } | null {
-  for (const kal of s.kalender) for (const obj of s.objekte[kal.id] ?? []) if (uidVon(obj.ics) === uid) return { kal, obj };
-  return null;
+/** Alle Objekte zu einem Verweis: Schlüssel `kalender|uid` (nur dieser Kalender) oder alte UID (alle Kalender). */
+function objekteZu(s: IcloudStand, ref: string): { kal: KalenderEintrag; obj: KalenderObjekt }[] {
+  const t = schluesselTeile(ref);
+  const raus: { kal: KalenderEintrag; obj: KalenderObjekt }[] = [];
+  for (const kal of s.kalender) {
+    if (t.kal && kalenderKennung(kal.id) !== t.kal) continue;
+    for (const obj of s.objekte[kal.id] ?? []) if (uidVon(obj.ics) === t.uid) raus.push({ kal, obj });
+  }
+  return raus;
+}
+
+/** Ein Fund: Kalender, Objekt, sein Schlüssel (`kalender|uid`) und ob die UID im ganzen Stand eindeutig ist. */
+export interface Fund { kal: KalenderEintrag; obj: KalenderObjekt; schluessel: string; uid: string; eindeutig: boolean }
+
+/**
+ * Objekt zu einem Verweis (R-K1 #46). Lesen nimmt beim alten Verweis (nur UID) den ersten Treffer; SCHREIBEN mit einer
+ * alten UID, die in mehreren Kalendern steht, bricht ab (409) — sonst träfe es womöglich den falschen Kalender.
+ */
+export function findeObjekt(s: IcloudStand, ref: string, schreiben = false): Fund | null {
+  const l = objekteZu(s, ref);
+  if (!l.length) return null;
+  if (l.length > 1 && schreiben) throw new KalenderFehler('Diesen Termin gibt es in mehreren Kalendern (gleiche Kennung) — bitte neu laden und im richtigen Kalender ändern.', 409);
+  const uid = schluesselTeile(ref).uid;
+  const eindeutig = schluesselTeile(ref).kal ? objekteZu(s, uid).length === 1 : l.length === 1;
+  return { ...l[0], uid, schluessel: terminSchluessel(kalenderKennung(l[0].kal.id), uid), eindeutig };
+}
+
+/** Schlüssel zu einem Verweis im aktuellen Stand — für Bezug und Protokoll; `eindeutig`: die UID steht in genau einem Kalender. */
+export async function terminAufloesen(ref: string): Promise<{ schluessel: string; uid: string; eindeutig: boolean } | null> {
+  const f = findeObjekt(await frischerStand(), ref);
+  return f ? { schluessel: f.schluessel, uid: f.uid, eindeutig: f.eindeutig } : null;
+}
+
+/**
+ * Der Stand (ETag), mit dem geschrieben wird (R-K1 #37): fehlt er im Spiegel, erst holen (GET). Weicht der geholte Text
+ * vom Spiegel ab, wurde inzwischen woanders geändert → 409. Ohne ETag schreibt MAKE OS nie (auch nicht „blind“).
+ */
+async function standZumSchreiben(f: Fund, s: IcloudStand, ref: string): Promise<string> {
+  if (f.obj.etag) return f.obj.etag;
+  const r = await dav(f.obj.href, 'GET');
+  if (r.status === 404) throw new KalenderFehler('Termin nicht gefunden — vielleicht gerade in Apple gelöscht.', 404);
+  if (r.status !== 200 || !r.etag) throw new KalenderFehler('iCloud liefert für diesen Termin keinen Stand (ETag) — ohne ihn schreibt MAKE OS nicht blind. Bitte neu laden.', 409);
+  const glatt = (x: string) => x.replace(/\r\n/g, '\n').trim();
+  if (glatt(r.text) !== glatt(f.obj.ics)) {
+    await abgleichen({ nur: f.kal.id }).catch(() => {});
+    throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — deine Fassung ist unten noch da.', aktuellerTermin(await ladeStand().catch(() => s), ref));
+  }
+  return r.etag;
 }
 
 /**
@@ -309,7 +496,7 @@ export type NeuEingabe = Omit<NeuerTermin, 'uid' | 'organisator'> & { kalender: 
 const UID_FEST = /^[A-Za-z0-9][A-Za-z0-9._-]{7,120}$/;
 
 /** Neuen Termin anlegen. Liefert die UID. Mit Gästen nur nach Bestätigung (`einladungBestaetigt`, sonst EinladungNoetig). */
-export async function anlegen(e: NeuEingabe, opt: { einladungBestaetigt?: boolean } = {}): Promise<{ uid: string; kalender: string; gaeste: number; schonDa?: true }> {
+export async function anlegen(e: NeuEingabe, opt: { einladungBestaetigt?: boolean } = {}): Promise<{ uid: string; schluessel: string; kalender: string; gaeste: number; schonDa?: true }> {
   const gaeste = e.gaeste ?? [];
   if (gaeste.length && !opt.einladungBestaetigt) throw new EinladungNoetig('einladung', gaeste.map(g => g.email));
   const s = await frischerStand();
@@ -318,26 +505,42 @@ export async function anlegen(e: NeuEingabe, opt: { einladungBestaetigt?: boolea
   if (!kal.schreibbar) throw new KalenderFehler(`„${kal.name}“ ist nur lesbar (geteilt ohne Schreibrecht).`, 403);
   if (e.uid !== undefined && !UID_FEST.test(e.uid)) throw new KalenderFehler('Ungültige Termin-Kennung.', 400);
   const { uid: fest, kalender: _k, ...rest } = e;
-  if (fest) { const da = findeObjekt(s, fest); if (da) return { uid: fest, kalender: da.kal.name, gaeste: 0, schonDa: true }; }
+  if (fest) { const da = findeObjekt(s, fest); if (da) return { uid: fest, schluessel: da.schluessel, kalender: da.kal.name, gaeste: 0, schonDa: true }; }
   const ich = kontoAdressen(s);
   if (gaeste.length && !ich[0]) throw new KalenderFehler('Ohne iCloud-Adresse keine Einladung — bitte iCloud neu verbinden.', 409);
   const uid = fest ?? randomUUID().toUpperCase();
-  const r = await dav(`${kal.id.replace(/\/?$/, '/')}${uid}.ics`, 'PUT', { body: baueTermin({ uid, ...rest, ...(gaeste.length ? { gaeste: gaeste.filter(g => !ich.includes(g.email)), organisator: ich[0] } : {}) }), typ: 'text/calendar; charset=utf-8', kopf: { 'If-None-Match': '*' } });
+  const schluessel = terminSchluessel(kalenderKennung(kal.id), uid);
+  const ziel = `${kal.id.replace(/\/?$/, '/')}${uid}.ics`;
+  const put = () => dav(ziel, 'PUT', { body: baueTermin({ uid, ...rest, ...(gaeste.length ? { gaeste: gaeste.filter(g => !ich.includes(g.email)), organisator: ich[0] } : {}) }), typ: 'text/calendar; charset=utf-8', kopf: { 'If-None-Match': '*' } });
+  let r: { status: number };
+  let wiederholt = false;
+  try { r = await put(); }
+  catch (err) {
+    // Zeitüberschreitung (R-K1 #38): ob der PUT ankam, ist offen. Erst nachsehen, dann mit DERSELBEN UID noch einmal
+    // (If-None-Match: * schützt zusätzlich) — nie eine neue UID, also nie ein Duplikat.
+    if (!(err instanceof KalenderZeitueberschreitung)) throw err;
+    const da = await dav(ziel, 'GET').catch(() => null);
+    wiederholt = true;
+    r = da?.status === 200 ? { status: 201 } : await put();
+  }
   // Feste UID und 412: der Termin liegt schon dort (ein früherer, abgebrochener Lauf) — nicht noch einmal.
-  if (fest && r.status === 412) { await abgleichen({ nur: kal.id }).catch(() => {}); return { uid, kalender: kal.name, gaeste: 0, schonDa: true }; }
+  if (fest && r.status === 412) { await abgleichen({ nur: kal.id }).catch(() => {}); return { uid, schluessel, kalender: kal.name, gaeste: 0, schonDa: true }; }
+  // Nach der Wiederholung heißt 412: der erste PUT kam doch an (die UID ist neu und nur unsere).
+  if (wiederholt && r.status === 412) r = { status: 201 };
   if (![200, 201, 204].includes(r.status)) throw new KalenderFehler(`iCloud hat den Termin nicht angenommen (${r.status}).`);
   await abgleichen({ nur: kal.id }).catch(() => {});
-  return { uid, kalender: kal.name, gaeste: gaeste.length };
+  return { uid, schluessel, kalender: kal.name, gaeste: gaeste.length };
 }
 
-/** Gibt es den Termin (UID) im aktuellen Stand? Für Bezug-Änderungen ohne iCloud-Schreiben (auch Serien). */
+/** Gibt es den Termin (Schlüssel oder UID) im aktuellen Stand? Für Bezug-Änderungen ohne iCloud-Schreiben (auch Serien). */
 export async function terminBekannt(uid: string): Promise<boolean> {
   return !!findeObjekt(await frischerStand(), uid);
 }
 
 /** Der aktuelle Termin (erstes Vorkommen) eines Objekts — für „Deine Fassung“ bei 409. */
 function aktuellerTermin(s: IcloudStand, uid: string): Termin | null {
-  const f = findeObjekt(s, uid);
+  let f: Fund | null = null;
+  try { f = findeObjekt(s, uid); } catch { return null; }
   if (!f) return null;
   const heute = localDay();
   return termineAus(f.obj, f.kal, tagPlus(heute, HOLEN_VON), tagPlus(heute, HOLEN_BIS), kontoAdressen(s))[0] ?? null;
@@ -353,9 +556,9 @@ export async function terminLesen(uid: string): Promise<Termin | null> {
  * `stand` = das ETag, das der Browser zuletzt gesehen hat: weicht es vom aktuellen ab (am iPhone geändert, schon
  * abgeglichen), gibt es 409 mit dem aktuellen Termin statt still zu überschreiben.
  */
-export async function aendern(uid: string, a: Aenderung, opt: { stand?: string; einladungBestaetigt?: boolean } = {}): Promise<{ gaeste: number }> {
+export async function aendern(uid: string, a: Aenderung, opt: { stand?: string; einladungBestaetigt?: boolean } = {}): Promise<{ gaeste: number; schluessel: string; uid: string; eindeutig: boolean }> {
   const s = await frischerStand();
-  const f = findeObjekt(s, uid);
+  const f = findeObjekt(s, uid, true);
   if (!f) throw new KalenderFehler('Termin nicht gefunden — vielleicht gerade in Apple gelöscht.', 404);
   if (!f.kal.schreibbar) throw new KalenderFehler(`„${f.kal.name}“ ist nur lesbar.`, 403);
   if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — deine Fassung ist unten noch da.', aktuellerTermin(s, uid));
@@ -368,20 +571,21 @@ export async function aendern(uid: string, a: Aenderung, opt: { stand?: string; 
   if (betroffen.length && !opt.einladungBestaetigt) throw new EinladungNoetig(lage.gaeste.length ? 'aenderung' : 'einladung', betroffen);
   const neu = aendereTermin(f.obj.ics, a, new Date(), { ich, einladungBestaetigt: opt.einladungBestaetigt });
   if ('fehler' in neu) throw new KalenderFehler(neu.fehler, 400);
-  const r = await dav(f.obj.href, 'PUT', { body: neu.ics, typ: 'text/calendar; charset=utf-8', kopf: f.obj.etag ? { 'If-Match': f.obj.etag } : {} });
+  const etag = await standZumSchreiben(f, s, uid);
+  const r = await dav(f.obj.href, 'PUT', { body: neu.ics, typ: 'text/calendar; charset=utf-8', kopf: { 'If-Match': etag } });
   if (r.status === 412) { await abgleichen({ nur: f.kal.id }).catch(() => {}); throw new KalenderKonflikt('Der Termin wurde gerade woanders geändert — deine Fassung ist unten noch da.', aktuellerTermin(await ladeStand(), uid)); }
   if (![200, 201, 204].includes(r.status)) throw new KalenderFehler(`iCloud hat die Änderung nicht angenommen (${r.status}).`);
   await abgleichen({ nur: f.kal.id }).catch(() => {});
-  return { gaeste: betroffen.length };
+  return { gaeste: betroffen.length, schluessel: f.schluessel, uid: f.uid, eindeutig: f.eindeutig };
 }
 
 /**
  * Termin löschen — Einzeltermine, mit ETag (und `stand` wie beim Ändern). Mit Gästen (K3): nur, wenn wir eingeladen haben,
  * und nur nach Bestätigung (iCloud schickt die Absage). Liefert die Zahl der Gäste (für das Protokoll).
  */
-export async function loeschen(uid: string, opt: { stand?: string; einladungBestaetigt?: boolean } = {}): Promise<{ gaeste: number }> {
+export async function loeschen(uid: string, opt: { stand?: string; einladungBestaetigt?: boolean } = {}): Promise<{ gaeste: number; schluessel?: string; uid?: string; eindeutig?: boolean }> {
   const s = await frischerStand();
-  const f = findeObjekt(s, uid);
+  const f = findeObjekt(s, uid, true);
   if (!f) return { gaeste: 0 }; // schon weg
   if (!f.kal.schreibbar) throw new KalenderFehler(`„${f.kal.name}“ ist nur lesbar.`, 403);
   if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — bitte erst ansehen.', aktuellerTermin(s, uid));
@@ -390,11 +594,14 @@ export async function loeschen(uid: string, opt: { stand?: string; einladungBest
   if (grund) throw new KalenderFehler(grund.replace('ändern', 'löschen'), 400);
   const lage = einladungsLage(f.obj.ics, ich);
   if (lage.gaeste.length && !opt.einladungBestaetigt) throw new EinladungNoetig('absage', lage.gaeste);
-  const r = await dav(f.obj.href, 'DELETE', { kopf: f.obj.etag ? { 'If-Match': f.obj.etag } : {} });
+  let etag: string;
+  try { etag = await standZumSchreiben(f, s, uid); }
+  catch (e) { if (e instanceof KalenderFehler && e.status === 404) return { gaeste: 0, schluessel: f.schluessel, uid: f.uid, eindeutig: f.eindeutig }; throw e; }
+  const r = await dav(f.obj.href, 'DELETE', { kopf: { 'If-Match': etag } });
   if (r.status === 412) { await abgleichen({ nur: f.kal.id }).catch(() => {}); throw new KalenderKonflikt('Der Termin wurde gerade woanders geändert — bitte erst ansehen.', aktuellerTermin(await ladeStand(), uid)); }
   if (![200, 204, 404].includes(r.status)) throw new KalenderFehler(`iCloud hat das Löschen nicht angenommen (${r.status}).`);
   await abgleichen({ nur: f.kal.id }).catch(() => {});
-  return { gaeste: lage.gaeste.length };
+  return { gaeste: lage.gaeste.length, schluessel: f.schluessel, uid: f.uid, eindeutig: f.eindeutig };
 }
 
 /**
@@ -403,7 +610,7 @@ export async function loeschen(uid: string, opt: { stand?: string; einladungBest
  */
 export async function antwortSenden(uid: string, status: Exclude<Teilnahme, 'offen'>, opt: { stand?: string; einladungBestaetigt?: boolean } = {}): Promise<void> {
   const s = await frischerStand();
-  const f = findeObjekt(s, uid);
+  const f = findeObjekt(s, uid, true);
   if (!f) throw new KalenderFehler('Termin nicht gefunden — vielleicht gerade in Apple gelöscht.', 404);
   if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — bitte erst ansehen.', aktuellerTermin(s, uid));
   const ich = kontoAdressen(s);
@@ -412,7 +619,8 @@ export async function antwortSenden(uid: string, status: Exclude<Teilnahme, 'off
   if (!opt.einladungBestaetigt) throw new EinladungNoetig('antwort', lage.empfaenger);
   const neu = antwortSetzen(f.obj.ics, ich, status);
   if ('fehler' in neu) throw new KalenderFehler(neu.fehler, 400);
-  const r = await dav(f.obj.href, 'PUT', { body: neu.ics, typ: 'text/calendar; charset=utf-8', kopf: f.obj.etag ? { 'If-Match': f.obj.etag } : {} });
+  const etag = await standZumSchreiben(f, s, uid);
+  const r = await dav(f.obj.href, 'PUT', { body: neu.ics, typ: 'text/calendar; charset=utf-8', kopf: { 'If-Match': etag } });
   if (r.status === 412) { await abgleichen({ nur: f.kal.id }).catch(() => {}); throw new KalenderKonflikt('Der Termin wurde gerade woanders geändert — bitte erst ansehen.', aktuellerTermin(await ladeStand(), uid)); }
   if (![200, 201, 204].includes(r.status)) throw new KalenderFehler(`iCloud hat die Antwort nicht angenommen (${r.status}).`);
   await abgleichen({ nur: f.kal.id }).catch(() => {});

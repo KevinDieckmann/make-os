@@ -71,16 +71,20 @@ describe('Termin-Route (K1)', () => {
     const obj = Object.values(server).find(o => o.ics.includes(d.uid))!;
     expect(obj.ics).toContain('X-MAKE-ART:fokus'); expect(obj.ics).toContain('CLASS:PRIVATE'); expect(obj.ics).toContain('COLOR:tomato');
     expect(obj.ics).not.toMatch(/t-1|m-1/);
-    const b = (speicher.get('kalender-bezug') as { bezuege: Record<string, unknown> }).bezuege[d.uid];
-    expect(b).toMatchObject({ aufgabeId: 't-1', mandatId: 'm-1', von: 'kevin', art: 'fokus', privat: true, tag: '2026-09-30' });
-    expect(protokoll).toEqual([{ bestand: 'kalender', aenderungen: [{ liste: 'termine', op: 'neu', id: d.uid, felder: ['art', 'mandatId', 'aufgabeId'] }] }]);
+    // R-K1 #46: Schlüssel = Kalender + UID; #47: die Farbe steht als Sicherung im Bezug.
+    expect(d.schluessel).toBe(`home|${d.uid}`);
+    const b = (speicher.get('kalender-bezug') as { bezuege: Record<string, unknown> }).bezuege[d.schluessel];
+    expect(b).toMatchObject({ aufgabeId: 't-1', mandatId: 'm-1', von: 'kevin', art: 'fokus', privat: true, farbe: 'tomato', tag: '2026-09-30' });
+    expect(protokoll).toEqual([{ bestand: 'kalender', aenderungen: [{ liste: 'termine', op: 'neu', id: d.schluessel, felder: ['art', 'mandatId', 'aufgabeId'] }] }]);
     expect(JSON.stringify(protokoll)).not.toContain('Angebot');
 
     // Kevin sieht alles, Malin nur „Belegt“ — ohne Bezug, ohne Farbe.
     const kevin = (await lesen('kevin')).termine.find((t: { uid: string }) => t.uid === d.uid);
     expect(kevin).toMatchObject({ titel: 'Angebot Nord schreiben', art: 'fokus', sichtbarkeit: 'privat', bezug: { aufgabeId: 't-1', mandatId: 'm-1' }, von: 'kevin', erinnerungen: [10, 60], beschaeftigt: true });
-    const malin = (await lesen('malin')).termine.find((t: { uid: string }) => t.uid === d.uid);
+    // Maskiert: ohne echte UID nach außen (R-K1 #96).
+    const malin = (await lesen('malin')).termine.find((t: { maskiert?: boolean; start: string }) => t.maskiert && t.start === '2026-09-30T09:00:00');
     expect(malin).toMatchObject({ titel: 'Belegt', maskiert: true, bearbeitbar: false, start: '2026-09-30T09:00:00' });
+    expect(malin.uid).not.toBe(d.uid); expect(JSON.stringify(malin)).not.toContain(d.uid);
     expect(malin.bezug).toBeUndefined(); expect(malin.farbeEigen).toBeUndefined();
   });
 
@@ -109,18 +113,18 @@ describe('Termin-Route (K1)', () => {
     const r = await PATCH(anfrage('PATCH', { uid: 'serie', bezug: { aufgabeId: 't-9' } }));
     expect(r.status).toBe(200);
     expect(puts).toBe(vorher);
-    expect((speicher.get('kalender-bezug') as { bezuege: Record<string, unknown> }).bezuege.serie).toMatchObject({ aufgabeId: 't-9' });
+    expect((speicher.get('kalender-bezug') as { bezuege: Record<string, unknown> }).bezuege['home|serie']).toMatchObject({ aufgabeId: 't-9' });
     expect((await PATCH(anfrage('PATCH', { uid: 'serie', farbe: 'gold' }))).status).toBe(400);
     expect((await PATCH(anfrage('PATCH', { uid: 'gibt-es-nicht', bezug: { aufgabeId: 't-9' } }))).status).toBe(404);
   });
 
   it('Löschen räumt den Bezug ab und protokolliert; fremder Bau → 409 neuLaden, nichts geschrieben', async () => {
-    const { uid } = await (await POST(anfrage('POST', { titel: 'Weg', start: '2026-10-01', ende: '2026-10-02', ganztags: true, art: 'abwesend' }))).json();
-    expect((speicher.get('kalender-bezug') as { bezuege: Record<string, unknown> }).bezuege[uid]).toBeTruthy();
-    const d = await DELETE(anfrage('DELETE', undefined, 'kevin', {}, `?uid=${encodeURIComponent(uid)}`));
+    const { schluessel } = await (await POST(anfrage('POST', { titel: 'Weg', start: '2026-10-01', ende: '2026-10-02', ganztags: true, art: 'abwesend' }))).json();
+    expect((speicher.get('kalender-bezug') as { bezuege: Record<string, unknown> }).bezuege[schluessel]).toBeTruthy();
+    const d = await DELETE(anfrage('DELETE', undefined, 'kevin', {}, `?uid=${encodeURIComponent(schluessel)}`));
     expect(d.status).toBe(200);
-    expect((speicher.get('kalender-bezug') as { bezuege: Record<string, unknown> }).bezuege[uid]).toBeUndefined();
-    expect(protokoll.at(-1)).toEqual({ bestand: 'kalender', aenderungen: [{ liste: 'termine', op: 'geloescht', id: uid }] });
+    expect((speicher.get('kalender-bezug') as { bezuege: Record<string, unknown> }).bezuege[schluessel]).toBeUndefined();
+    expect(protokoll.at(-1)).toEqual({ bestand: 'kalender', aenderungen: [{ liste: 'termine', op: 'geloescht', id: schluessel }] });
     vi.stubEnv('NEXT_PUBLIC_MAKE_BAU', 'bau-neu');
     const alt = await POST(anfrage('POST', { titel: 'Alt', start: '2026-10-01T09:00', ende: '2026-10-01T10:00' }, 'kevin', { 'x-make-bau': 'bau-alt' }));
     expect(alt.status).toBe(409);

@@ -25,6 +25,7 @@ function fassung(): string {
 vi.mock('@/lib/kalender/icloud', async orig => {
   const echt = await orig<typeof import('@/lib/kalender/icloud')>();
   const ics = await import('@/lib/kalender/ics');
+  const bz = await import('@/lib/kalender/bezug');
   const KAL = ['Testkalender', 'Malin-Kalender', 'Gemeinsam'].map(n => ({ id: `K-${n}`, name: n, schreibbar: true }));
   const stand = () => ({ at: fassung(), kalender: KAL, objekte: Object.fromEntries(KAL.map(k => [k.id, [...ic.objekte.entries()].filter(([, o]) => o.kal === k.name).map(([uid, o]) => ({ href: `h/${uid}`, etag: o.etag, ics: o.ics }))])) });
   return {
@@ -34,23 +35,27 @@ vi.mock('@/lib/kalender/icloud', async orig => {
     frischerStand: async () => stand(),
     abgleichen: async () => stand(),
     terminBekannt: async (uid: string) => ic.objekte.has(uid),
+    // R-K1 #46: Schlüssel = Kalender-Kennung + UID (hier `K-<Name>|<uid>`); der Verweis darf beide Formen haben.
+    terminAufloesen: async (ref: string) => { const uid = bz.uidVonSchluessel(ref); const o = ic.objekte.get(uid); return o ? { schluessel: `K-${o.kal}|${uid}`, uid, eindeutig: true } : null; },
     anlegen: async (e: import('@/lib/kalender/icloud').NeuEingabe) => {
       const { kalender, uid: fest, ...rest } = e;
-      if (fest && ic.objekte.has(fest)) return { uid: fest, kalender, schonDa: true as const };
+      if (fest && ic.objekte.has(fest)) return { uid: fest, schluessel: `K-${ic.objekte.get(fest)!.kal}|${fest}`, kalender, gaeste: 0, schonDa: true as const };
       ic.angelegt++;
       const uid = fest ?? `UID-K5-${ic.angelegt}`;
       ic.objekte.set(uid, { kal: kalender, ics: ics.baueTermin({ uid, ...rest }, new Date()), etag: 'e0' });
-      return { uid, kalender };
+      return { uid, schluessel: `K-${kalender}|${uid}`, kalender, gaeste: 0 };
     },
-    aendern: async (uid: string, a: import('@/lib/kalender/ics').Aenderung) => {
+    aendern: async (ref: string, a: import('@/lib/kalender/ics').Aenderung) => {
+      const uid = bz.uidVonSchluessel(ref);
       const o = ic.objekte.get(uid);
       if (!o) throw new echt.KalenderFehler('Termin nicht gefunden.', 404);
       const r = ics.aendereTermin(o.ics, a);
       if ('fehler' in r) throw new echt.KalenderFehler(r.fehler, 400);
       ic.geaendert++;
       ic.objekte.set(uid, { ...o, ics: r.ics, etag: `e${ic.geaendert}` });
+      return { gaeste: 0, schluessel: `K-${o.kal}|${uid}`, uid, eindeutig: true };
     },
-    loeschen: async (uid: string) => { if (ic.objekte.delete(uid)) ic.geloescht++; },
+    loeschen: async (ref: string) => { const uid = bz.uidVonSchluessel(ref); const o = ic.objekte.get(uid); if (!o) return { gaeste: 0 }; ic.objekte.delete(uid); ic.geloescht++; return { gaeste: 0, schluessel: `K-${o.kal}|${uid}`, uid, eindeutig: true }; },
   };
 });
 
@@ -178,7 +183,7 @@ describe('Spiegel: Make.One-Event', () => {
     expect(o.ics).toMatch(/DTSTART;TZID=Europe\/Berlin:20261010T183000/);
     expect((await crm()).events.find(e => e.id === 'ev-1')?.kalenderUid).toBe('makeos-event-ev-1');
     const bezug = await db.loadJson<{ bezuege: Record<string, { eventId?: string }> }>('kalender-bezug');
-    expect(bezug?.bezuege['makeos-event-ev-1']?.eventId).toBe('ev-1');
+    expect(bezug?.bezuege['K-Gemeinsam|makeos-event-ev-1']?.eventId).toBe('ev-1');
     await sp.eventSpiegelAnlegen('ev-1', 'kevin', WER);
     expect(ic.angelegt).toBe(vorher + 1);
     expect(await sp.eventSpiegelLage('ev-1')).toMatchObject({ lage: 'da', uid: 'makeos-event-ev-1' });
@@ -204,7 +209,7 @@ describe('Spiegel: Make.One-Event', () => {
     expect((await crm()).events.find(e => e.id === 'ev-2')?.kalenderUid).toBe('ALT-WS');
     expect(ic.objekte.get('ALT-WS')!.ics).toMatch(/SUMMARY:Workshop\r?\n/);
     const bezug = await db.loadJson<{ bezuege: Record<string, { eventId?: string }> }>('kalender-bezug');
-    expect(bezug?.bezuege['ALT-WS']?.eventId).toBe('ev-2');
+    expect(bezug?.bezuege['K-Gemeinsam|ALT-WS']?.eventId).toBe('ev-2');
   });
 });
 

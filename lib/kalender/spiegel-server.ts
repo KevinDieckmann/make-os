@@ -9,8 +9,8 @@
 //     /api/familie (Dates, Gespräche, Einstellungen), im Hintergrund; ein Fehler kostet die Änderung im Modul nie.
 // Nur mit iCloud; nur Einzeltermine, die MAKE OS ändern darf (`bearbeitbar`) — sonst bleibt es beim Hinweis.
 
-import { verbunden, ladeStand, termineImZeitraum, KalenderFehler, HOLEN_VON, HOLEN_BIS, type IcloudStand } from './icloud';
-import { termineAus, uidVon, type Termin } from './ics';
+import { verbunden, ladeStand, termineImZeitraum, findeObjekt, KalenderFehler, HOLEN_VON, HOLEN_BIS, type IcloudStand } from './icloud';
+import { termineAus, type Termin } from './ics';
 import { tagPlus } from './zeit';
 import { terminAnlegenServer, terminAendernServer, terminLoeschenServer } from './termin-server';
 import { eventSoll, dateSoll, gespraechSoll, spiegelAbweichung, spiegelUid, istScheinUid, scheinAufloesen, gespraecheUmziehen, type Soll, type SpiegelArt } from './spiegel';
@@ -22,11 +22,15 @@ import { localDay } from '@/lib/zeit';
 import type { Familie } from '@/lib/familie/typen';
 import type { Wer as ProtokollWer } from '@/lib/store/aenderungsprotokoll';
 
-/** Der Termin einer UID (erstes Vorkommen) im gespeicherten Stand — null, wenn es ihn nicht (mehr) gibt. */
+/**
+ * Der Termin einer UID (erstes Vorkommen) im gespeicherten Stand — null, wenn es ihn nicht (mehr) gibt. Nimmt auch den
+ * Schlüssel `kalender|uid` (R-K1 #46); die Spiegel selbst tragen ihre feste UID.
+ */
 export function terminNachUid(s: IcloudStand, uid: string): Termin | null {
+  const f = findeObjekt(s, uid);
+  if (!f) return null;
   const heute = localDay();
-  for (const kal of s.kalender) for (const o of s.objekte[kal.id] ?? []) if (uidVon(o.ics) === uid) return termineAus(o, kal, tagPlus(heute, HOLEN_VON), tagPlus(heute, HOLEN_BIS))[0] ?? null;
-  return null;
+  return termineAus(f.obj, f.kal, tagPlus(heute, HOLEN_VON), tagPlus(heute, HOLEN_BIS))[0] ?? null;
 }
 
 export interface SpiegelLage { lage: 'da' | 'fehlt' | 'schein' | 'keiner' | 'ohne-icloud'; uid?: string; grund?: string; bearbeitbar?: boolean }

@@ -26,6 +26,7 @@ import { ART_FARBE } from '@/types/planer';
 import { GanztagsZelle, WER_FARBE, WER_LABEL, istVorlaeufig, type KTermin, type KFrist, type KErinnerung, type Wer } from './teile';
 import { ganztagsAm, mitZeitAm, zeitAusMinuten, type KalenderAufgabe } from '@/lib/kalender/aufgaben';
 import { aufgabeZiehStart, aufgabeAusZiehen, ziehtAufgabe } from './aufgaben';
+import { wandzeit, minutenVon } from '@/lib/kalender/zeit';
 
 export const PX_MIN = 0.9;
 const RASTER = 15;
@@ -70,8 +71,9 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
   const aufzugRef = useRef<Aufzug | null>(null);
   const halten = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setAufzug = (a: Aufzug | null) => { aufzugRef.current = a; setAufzugRoh(a); };
-  const [jetztMin, setJetztMin] = useState(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); });
-  useEffect(() => { const t = setInterval(() => { const d = new Date(); setJetztMin(d.getHours() * 60 + d.getMinutes()); }, 60_000); return () => clearInterval(t); }, []);
+  // Jetzt-Linie in Berliner Wandzeit (R-K1 #7) — nicht in der Zone des Browsers (unterwegs in New York läge sie sonst falsch).
+  const [jetztMin, setJetztMin] = useState(() => minutenVon(wandzeit(new Date())));
+  useEffect(() => { const t = setInterval(() => setJetztMin(minutenVon(wandzeit(new Date()))), 60_000); return () => clearInterval(t); }, []);
   // Beim ersten Zeichnen auf 7 Uhr rollen (bzw. eine Stunde vor jetzt, wenn heute sichtbar ist).
   useEffect(() => { const r = rollen.current; if (!r) return; const ziel = tage.includes(heute) ? Math.max(0, jetztMin - 60) : 7 * 60; r.scrollTop = ziel * PX_MIN; }, [tage.length]); // eslint-disable-line react-hooks/exhaustive-deps
   // Touch: solange aufgezogen wird, darf die Liste nicht rollen (nicht-passiver Hörer — React-Hörer sind passiv).

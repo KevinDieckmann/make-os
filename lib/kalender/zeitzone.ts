@@ -7,6 +7,8 @@
 // Jahres suchen, als Jahresregel (n-ter/letzter Wochentag im Monat) schreiben —
 // passt die Regel im Folgejahr nicht, feste Übergänge für zwölf Jahre.
 
+import { wandzeitAufloesen, wandzeitZahl } from './zeit';
+
 export const STANDARD_ZONE = 'Europe/Berlin';
 
 /** Die Auswahl im Dialog — jede andere gültige IANA-Zone nimmt die Route auch. */
@@ -71,14 +73,75 @@ export function wandzeitIn(d: Date, zone: string): string {
   return `${t.year}-${zwei(t.month)}-${zwei(t.day)}T${zwei(t.hour)}:${zwei(t.minute)}:${zwei(t.second)}`;
 }
 
-/** Wandzeit in einer Zone → Zeitpunkt (zweimal ansetzen wegen der Umstellung; eine fehlende Stunde landet später). */
+/**
+ * Wandzeit in einer Zone → Zeitpunkt (RFC 5545 3.3.5, wie `ausWandzeit`): mehrdeutig → erstes Vorkommen, eine
+ * Uhrzeit aus der Lücke → mit dem Versatz vor der Lücke (landet später).
+ */
 export function ausWandzeitIn(wand: string, zone: string): Date {
-  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(wand);
-  if (!m) throw new Error(`Keine Wandzeit: ${wand}`);
-  const alsUtc = Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] ?? 0), +(m[5] ?? 0), +(m[6] ?? 0));
-  let t = alsUtc - versatzMin(zone, new Date(alsUtc)) * 60_000;
-  t = alsUtc - versatzMin(zone, new Date(t)) * 60_000;
-  return new Date(t);
+  if (zone === 'UTC') return new Date(wandzeitZahl(wand));
+  return new Date(wandzeitAufloesen(wandzeitZahl(wand), d => versatzMin(zone, d)));
+}
+
+// ── Fremde Zonen-Namen (R-K1 #10) ───────────────────────────────────────────
+// Outlook/Exchange schreibt Windows-Namen („W. Europe Standard Time“), Thunderbird alter Art Präfixe
+// („/mozilla.org/20070129_1/Europe/Berlin“). Beides auf IANA abbilden — dann rechnet Intl, nicht eine mitgeschickte
+// (womöglich veraltete) VTIMEZONE. Tabelle: die gängigen Zonen aus CLDR windowsZones (Gebiet 001).
+const WINDOWS_ZONEN: Record<string, string> = {
+  'w. europe standard time': 'Europe/Berlin',
+  'central europe standard time': 'Europe/Budapest',
+  'central european standard time': 'Europe/Warsaw',
+  'romance standard time': 'Europe/Paris',
+  'gmt standard time': 'Europe/London',
+  'greenwich standard time': 'Atlantic/Reykjavik',
+  'gtb standard time': 'Europe/Bucharest',
+  'e. europe standard time': 'Europe/Chisinau',
+  'fle standard time': 'Europe/Kiev',
+  'russian standard time': 'Europe/Moscow',
+  'turkey standard time': 'Europe/Istanbul',
+  'israel standard time': 'Asia/Jerusalem',
+  'egypt standard time': 'Africa/Cairo',
+  'south africa standard time': 'Africa/Johannesburg',
+  'arabian standard time': 'Asia/Dubai',
+  'india standard time': 'Asia/Kolkata',
+  'singapore standard time': 'Asia/Singapore',
+  'china standard time': 'Asia/Shanghai',
+  'tokyo standard time': 'Asia/Tokyo',
+  'korea standard time': 'Asia/Seoul',
+  'aus eastern standard time': 'Australia/Sydney',
+  'new zealand standard time': 'Pacific/Auckland',
+  'eastern standard time': 'America/New_York',
+  'central standard time': 'America/Chicago',
+  'mountain standard time': 'America/Denver',
+  'us mountain standard time': 'America/Phoenix',
+  'pacific standard time': 'America/Los_Angeles',
+  'alaskan standard time': 'America/Anchorage',
+  'hawaiian standard time': 'Pacific/Honolulu',
+  'atlantic standard time': 'America/Halifax',
+  'canada central standard time': 'America/Regina',
+  'sa pacific standard time': 'America/Bogota',
+  'e. south america standard time': 'America/Sao_Paulo',
+  'utc': 'UTC',
+  'coordinated universal time': 'UTC',
+};
+
+/**
+ * Ein TZID-Wert als IANA-Name — oder null (unbekannt, dann gilt eine mitgeschickte VTIMEZONE). Nimmt IANA direkt,
+ * Windows-Namen über die Tabelle, Präfixe („/mozilla.org/…/Europe/Berlin“) werden abgeschnitten; Outlook-Anzeigenamen
+ * („(UTC+01:00) Amsterdam, Berlin, Bern …“) nur für Berlin.
+ */
+export function ianaZone(tzid: string | undefined | null): string | null {
+  const roh = (tzid ?? '').trim().replace(/^"|"$/g, '');
+  if (!roh || roh.length > 120) return null;
+  const alsIana: unknown = roh;
+  if (zoneGueltig(alsIana)) return alsIana;
+  const win = WINDOWS_ZONEN[roh.toLowerCase()];
+  if (win) return win;
+  if (roh.startsWith('/')) {
+    const teile = roh.split('/').filter(Boolean);
+    for (const n of [3, 2, 1]) { const k = teile.slice(-n).join('/'); if (teile.length >= n && zoneGueltig(k)) return k; }
+  }
+  if (/^\(UTC\+01:00\).*\bBerlin\b/i.test(roh)) return STANDARD_ZONE;
+  return null;
 }
 
 // ── VTIMEZONE ───────────────────────────────────────────────────────────────

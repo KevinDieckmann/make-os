@@ -53,6 +53,7 @@ import { icsVonPlanArt, planArtAusTitel } from '@/lib/planung/bloecke';
 import { AufgabenModus, type AufgabenModusFilter } from './AufgabenModus';
 import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
 import { modusAusAdresse, type Modus } from '@/lib/kalender/modus';
+import { objektSchluessel } from '@/lib/kalender/bezug';
 
 type Ansicht = 'tag' | 'vier' | 'woche' | 'monat' | 'jahr' | 'agenda';
 /** Ansichten mit Zeitraster — nur dort lässt sich planen. */
@@ -241,9 +242,9 @@ export function Kalender() {
   // Schreiben
   const verschieben = async (t: KTermin, tag: string, startMin: number, endeMin: number) => {
     const start = wandAus(tag, startMin), ende = wandAus(tag, endeMin);
-    setDaten(d => (d ? { ...d, termine: d.termine.map(x => (x.uid === t.uid ? { ...x, start, ende } : x)) } : d));
+    setDaten(d => (d ? { ...d, termine: d.termine.map(x => (x.id === t.id ? { ...x, start, ende } : x)) } : d));
     // Mit Stand (ETag): woanders geändert → 409 statt still überschreiben; der Termin springt beim Neuladen zurück.
-    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: t.uid, start, ende, ...(t.stand ? { stand: t.stand } : {}) }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: objektSchluessel(t), start, ende, ...(t.stand ? { stand: t.stand } : {}) }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     if (!r.ok) setMeldung(r.fehler ?? 'Nicht verschoben.'); else setMeldung(null);
     void laden();
   };

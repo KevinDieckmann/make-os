@@ -8,7 +8,7 @@
 
 import { istIcsArt, istBlockArt, istSichtbarkeit, farbeSauber, arbeitsortSauber, arbeitsortTitel, erinnerungenSauber, beschaeftigtStandard, type IcsArt, type BlockArt, type Sichtbarkeit, type Arbeitsort } from './arten';
 import { wiederholungSauber, type Wiederholung } from './wiederholung';
-import { zoneGueltig, STANDARD_ZONE } from './zeitzone';
+import { zoneGueltig, ausWandzeitIn, STANDARD_ZONE } from './zeitzone';
 import { kennungenVon, GAST_KONTAKTE_MAX, type BezugKennungen } from './bezug';
 import { adresseAus, TEILNAHMEN, type Teilnahme } from './gaeste';
 import type { Wer } from './einstellungen';
@@ -44,6 +44,8 @@ export interface AnlegeEingabe {
   kalender?: string; wer?: Wer;
   ort?: string; notiz?: string;
   art: IcsArt; farbe?: string; beschaeftigt: boolean; sichtbarkeit: Sichtbarkeit; zone: string;
+  /** R-K1 #13: Zone des Endes, wenn anders als `zone` (Flug) — `ende` ist dort gemeint. Nur über die Route, ohne Dialog. */
+  endZone?: string;
   wiederholung?: Wiederholung; erinnerungenMin: number[]; arbeitsort?: Arbeitsort;
   /** K5: Unterart eines Blocks (nur Art „block“). */
   blockArt?: BlockArt;
@@ -63,9 +65,13 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
   if (!titel) return { ok: false, fehler: 'Titel fehlt.' };
   const ganztags = b.ganztags === true;
   const start = wand(b.start), ende = wand(b.ende);
-  if (!start || !ende || ende <= start) return { ok: false, fehler: 'Start und Ende fehlen oder passen nicht.' };
   if (b.zone !== undefined && b.zone !== null && b.zone !== '' && !zoneGueltig(b.zone)) return { ok: false, fehler: 'Unbekannte Zeitzone.' };
+  if (b.endZone !== undefined && b.endZone !== null && b.endZone !== '' && !zoneGueltig(b.endZone)) return { ok: false, fehler: 'Unbekannte Zeitzone des Endes.' };
   const zone = ganztags || !zoneGueltig(b.zone) ? STANDARD_ZONE : b.zone;
+  const endZone = !ganztags && zoneGueltig(b.endZone) && b.endZone !== zone ? b.endZone : undefined;
+  // Mit eigener Endzone zählt der echte Zeitpunkt, nicht der Text (18:00 Berlin → 20:00 New York ist später).
+  const passt = !!start && !!ende && (endZone ? ausWandzeitIn(ende, endZone).getTime() > ausWandzeitIn(start, zone).getTime() : ende > start);
+  if (!start || !ende || !passt) return { ok: false, fehler: 'Start und Ende fehlen oder passen nicht.' };
   if (b.sichtbarkeit !== undefined && !istSichtbarkeit(b.sichtbarkeit)) return { ok: false, fehler: 'Unbekannte Sichtbarkeit.' };
   if (b.wiederholung !== undefined && b.wiederholung !== null && !wiederholungSauber(b.wiederholung)) return { ok: false, fehler: 'Wiederholung unvollständig.' };
   const wiederholung = wiederholungSauber(b.wiederholung) ?? undefined;
@@ -85,6 +91,7 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
       titel, start, ende, ganztags, ...(kalender ? { kalender } : {}), ...(wer ? { wer } : {}),
       ...(ort ? { ort } : {}), ...(notiz ? { notiz } : {}),
       art, ...(farbe ? { farbe } : {}), beschaeftigt, sichtbarkeit: istSichtbarkeit(b.sichtbarkeit) ? b.sichtbarkeit : 'standard', zone,
+      ...(endZone ? { endZone } : {}),
       ...(wiederholung ? { wiederholung } : {}), erinnerungenMin, ...(arbeitsort ? { arbeitsort } : {}),
       ...(art === 'block' && istBlockArt(b.blockArt) ? { blockArt: b.blockArt } : {}),
       bezug: kennungenVon(b.bezug && typeof b.bezug === 'object' ? b.bezug as BezugKennungen : {}),

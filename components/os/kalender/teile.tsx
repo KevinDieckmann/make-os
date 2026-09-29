@@ -16,7 +16,7 @@ import { ART_FARBE } from '@/types/planer';
 import { ART_INFO, TERMIN_FARBEN, SICHTBARKEIT_LABEL, ARBEITSORTE, arbeitsortTitel, erinnerungText, farbeHex, type IcsArt, type Sichtbarkeit, type Arbeitsort, type ArbeitsortArt } from '@/lib/kalender/arten';
 import { gmtText, wandzeitIn } from '@/lib/kalender/zeitzone';
 import { ausWandzeit } from '@/lib/kalender/zeit';
-import type { BezugKennungen } from '@/lib/kalender/bezug';
+import { objektSchluessel, type BezugKennungen } from '@/lib/kalender/bezug';
 import { TEILNAHME_LABEL, type GastWahl } from '@/lib/kalender/gaeste';
 import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
 import { fokusFuerTermin } from '@/lib/zeitmessung/fokus-laufend';
@@ -308,7 +308,7 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
     const betroffen = Array.from(new Set([...(Object.keys(body).length ? bisher : []), ...(gaesteGeaendert ? gaeste.map(g => g.email) : [])]));
     if (betroffen.length && !bestaetigt) { setFrage({ was: bisher.length ? 'aenderung' : 'einladung', adressen: betroffen, tun: () => void speichern(b, true) }); return; }
     setLaeuft(true); setFehler(null);
-    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: termin.uid, ...(stand && Object.keys(body).length ? { stand } : {}), ...body, ...(bezug ? { bezug } : {}), ...(bestaetigt ? { einladungBestaetigt: true } : {}) }) })
+    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: objektSchluessel(termin), ...(stand && Object.keys(body).length ? { stand } : {}), ...body, ...(bezug ? { bezug } : {}), ...(bestaetigt ? { einladungBestaetigt: true } : {}) }) })
       .then(async x => ({ status: x.status, d: await x.json().catch(() => ({})) })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung — deine Änderung bleibt hier gemerkt.' } }));
     setLaeuft(false); setFrage(null);
     if (r.d.ok) { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onGespeichert(); onZu(); return; }
@@ -319,7 +319,7 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
   /** Als Gast antworten (K3) — nach Klick, iCloud schickt die Antwort an die einladende Person. */
   const antworten = (status: 'zugesagt' | 'vielleicht' | 'abgesagt') => setFrage({ was: 'antwort', adressen: basis.organisator ? [basis.organisator.email] : [], tun: async () => {
     setLaeuft(true); setFehler(null);
-    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: termin.uid, antwort: status, einladungBestaetigt: true, ...(basis.stand ? { stand: basis.stand } : {}) }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: objektSchluessel(termin), antwort: status, einladungBestaetigt: true, ...(basis.stand ? { stand: basis.stand } : {}) }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setLaeuft(false); setFrage(null);
     if (r.ok) { onGespeichert(); onZu(); } else setFehler(r.fehler ?? 'Antwort nicht gesendet.');
   } });
@@ -330,13 +330,13 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
     const bisher = (basis.teilnehmer ?? []).map(x => x.email);
     if (bisher.length && !bestaetigt) { setLoeschenFragen(false); setFrage({ was: 'absage', adressen: bisher, tun: () => void loeschen(true) }); return; }
     setLaeuft(true); setFehler(null);
-    const r = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(termin.uid)}${basis.stand ? `&stand=${encodeURIComponent(basis.stand)}` : ''}${bestaetigt ? '&einladungBestaetigt=1' : ''}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    const r = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(objektSchluessel(termin))}${basis.stand ? `&stand=${encodeURIComponent(basis.stand)}` : ''}${bestaetigt ? '&einladungBestaetigt=1' : ''}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setLaeuft(false); setFrage(null);
     if (r.ok) { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onGespeichert(); onZu(); } else { setFehler(r.fehler ?? 'Nicht gelöscht.'); if (r.aktuell) setKonflikt(r.aktuell); setLoeschenFragen(false); }
   };
   const abbrechen = () => { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onZu(); };
   const fokusStarten = () => {
-    const r = fokusFuerTermin({ uid: termin.uid, titel: basis.titel, space }, zuordnung);
+    const r = fokusFuerTermin({ uid: objektSchluessel(termin), titel: basis.titel, space }, zuordnung);
     setFokusMeldung(r.art === 'gestartet' ? 'Fokus läuft — der Zähler steht oben im Kopf.' : `Es läuft schon ein Fokus („${r.label}“) — erst im Kopf beenden.`);
   };
 

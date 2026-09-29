@@ -12,7 +12,7 @@
 export interface BuchungKurz { id: string; seiteId: string; status: string; kontaktId?: string; terminUid?: string; start: string }
 export interface BuchungenStand { buchungen: BuchungKurz[]; seiten: string[] }
 /** Der iCloud-Teil der Prüfung (K1, lib/crm/verbindungen-kalender.ts `KalenderPruefBestand`): UIDs + Holfenster. */
-export interface IcloudUids { fenster: { von: string; bis: string } | null; objekte: readonly { uid: string }[] }
+export interface IcloudUids { fenster: { von: string; bis: string } | null; objekte: readonly { uid: string; schluessel?: string }[] }
 
 const e = (n: number, ein: string, mehr: string) => (n === 1 ? ein : mehr);
 

@@ -69,6 +69,42 @@ export interface InnenLage {
   datenschutz?: { pepper: boolean; grabsteinOrdner: boolean; produktion: boolean };
   /** Absichtsprotokoll (29.09., Paket D-C #17): offene und gescheiterte Vorgänge über mehrere Bestände. */
   absichten?: { offen: number; faellig: number; gescheitert: number; arten: string[]; aeltesteMinuten: number | null };
+  /**
+   * iCloud-Kalender (29.09., R-K1 #51/#K5): Alter des letzten GELUNGENEN Abgleichs, veraltet ab 30 Min., abgelehnte
+   * Anmeldung, übersprungene Kalender (403/gekürzt), tz-Version der Laufzeit, Alter der Tagessicherung. null = nicht verbunden.
+   */
+  kalender?: KalenderLage | null;
+}
+
+export interface KalenderLage {
+  vorMin: number | null; veraltet: boolean; fehler?: string; anmeldung?: boolean; hinweise: number; tz?: string;
+  sicherung?: { letzter: string | null; kalender: number; fehler: number };
+}
+
+/** Befunde zum iCloud-Kalender (rein) — „still ausgefallener Abgleich“ soll auffallen (KALENDER_FEHLER_ABGLEICH #51). */
+export function kalenderBefunde(k: KalenderLage | null | undefined, jetzt: string): Befund[] {
+  if (!k) return [];
+  const b: Befund[] = [];
+  const alt = k.vorMin;
+  const ampel: Ampel = k.anmeldung ? 'rot' : alt === null || alt >= 180 ? 'rot' : k.veraltet ? 'gelb' : k.hinweise ? 'gelb' : 'gruen';
+  b.push({
+    id: 'kalender', bereich: 'app', label: 'iCloud-Kalender', ampel,
+    wert: `${alt === null ? 'noch nie abgeglichen' : `letzter Abgleich vor ${alt < 120 ? `${alt} min` : `${Math.round(alt / 60)} h`}`}${k.hinweise ? ` · ${k.hinweise} Kalender übersprungen` : ''}${k.tz ? ` · tz ${k.tz}` : ''}`,
+    satz: k.anmeldung ? 'iCloud lehnt die Anmeldung ab — app-spezifisches Passwort neu einrichten (deploy/icloud-verbinden.sh)'
+      : k.veraltet ? `Abgleich steht${k.fehler ? `: ${k.fehler.slice(0, 100)}` : ''} — Heute, Buchungsseite und ZOE rechnen mit einem alten Stand`
+      : k.hinweise ? 'ein Kalender ist gesperrt (403) oder kam gekürzt — sein letzter Stand bleibt; Freigabe in Apple prüfen'
+      : 'Abgleich läuft (alle 5 Minuten)',
+  });
+  if (k.sicherung) {
+    const std = k.sicherung.letzter ? (Date.parse(jetzt) - Date.parse(k.sicherung.letzter)) / 3_600_000 : null;
+    b.push({
+      id: 'kalender-sicherung', bereich: 'sicherung', label: 'Kalender-Sicherung (ICS je Kalender)',
+      ampel: std === null ? 'gelb' : k.sicherung.fehler ? 'gelb' : std <= 30 ? 'gruen' : std <= 54 ? 'gelb' : 'rot',
+      wert: std === null ? 'noch keine' : `vor ${uhr(std)} · ${k.sicherung.kalender} Kalender${k.sicherung.fehler ? ` · ${k.sicherung.fehler} gescheitert` : ''}`,
+      satz: std === null ? 'läuft nachts ab 03:00 im Takt — verschlüsselt ins Archiv, 14 Tage' : k.sicherung.fehler ? 'ein Kalender ließ sich nicht sichern — Stand kalender-sicherung ansehen' : std <= 30 ? 'täglich, verschlüsselt, 14 Tage' : 'Tagessicherung ausgefallen — Takt und iCloud prüfen',
+    });
+  }
+  return b;
 }
 
 export interface Quantile { p50: number | null; p99: number | null; n: number }
@@ -163,6 +199,8 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
 
   // ── Datenschicht, Sicherung, Durchsicht (29.09., Paket D-A) ──
   b.push(...datenschichtBefunde(innen, host, jetzt));
+  // ── iCloud-Kalender (R-K1 #51/#K5) ──
+  b.push(...kalenderBefunde(innen.kalender, jetzt));
 
   // ── Außen ──
   const aAlter = alterMin(aussen?.zeit);

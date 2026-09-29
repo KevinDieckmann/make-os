@@ -57,6 +57,11 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // Kalender K1 (29.09., KALENDER_VERBINDUNGEN.md 4a/4f):
   E('kalender-bezug', 'Bezüge der Termine zu MAKE OS (nur Kennungen: Kontakt, Firma, Mandat, Deal, Aufgabe, Event) — die Kontakt-Kennung der Person fällt weg, der Eintrag bleibt (lib/crm/person-weitere.ts kalenderBezugOhne).'),
   { muster: 'kalender-icloud', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Spiegel der iCloud-Objekte (auch Teilnehmer-Adressen Dritter) — Wahrheit ist iCloud, Löschung nur in Apple; der Abgleich holt den Spiegel alle 5 Minuten neu.' },
+  // Kalender R-K1 #K5 (29.09.): tägliche Voll-Sicherung je Kalender. Der Bestand selbst trägt nur Dateinamen, Zeitpunkte,
+  // Anzahlen und Fehlertexte; die .ics-Inhalte (auch Teilnehmer-Adressen Dritter) liegen VERSCHLÜSSELT im Archiv
+  // (`kalender-export-<kalender>-<tag>.json`, lib/store/archiv.ts) und fallen nach 14 Tagen von selbst weg — Art. 17 wirkt
+  // in Apple und ist spätestens nach 14 Tagen auch aus den Sicherungen verschwunden.
+  { muster: 'kalender-sicherung', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Stand der täglichen Kalender-Sicherung (nur Dateinamen/Zahlen); die verschlüsselten Tagesdateien im Archiv enthalten Termine samt Teilnehmern und laufen nach 14 Tagen ab — Löschung in Apple, danach spätestens nach 14 Tagen auch in der Sicherung.' },
   T('meetings', 'Meeting-Protokolle — bleiben, Name/Adresse getilgt.'),
   T('zoe-verlauf', 'Gespräche mit ZOE — bleiben, die Person getilgt.', 'zoe-verlauf'),
   E('zoe-gedaechtnis', 'Fakten, die die Person nennen, raus.', 'zoe-gedaechtnis'),

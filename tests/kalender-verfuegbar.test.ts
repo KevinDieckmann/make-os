@@ -59,10 +59,12 @@ describe('freieZeiten', () => {
     expect(starts(maerz)).not.toContain('01:30'); // 01:30–02:30: 02:30 gibt es nicht
     expect(starts(maerz)).toContain('03:00');
     const okt = freieZeiten({ dauerMin: 60, rasterMin: 30, von: '2026-10-25', tage: 1, jetzt: new Date('2026-10-01T00:00:00Z'), personen: ['kevin'], belegungen: [], arbeitszeiten: nacht });
-    // Doppelte Stunde: 02:00 zählt als die spätere (Winterzeit). 01:00–02:00 dauerte real 2 Std. → kein Platz.
-    expect(starts(okt)).not.toContain('01:00');
-    expect(starts(okt)).not.toContain('01:30');
-    expect(starts(okt)).toContain('02:00');
+    // Doppelte Stunde: 02:xx meint nach RFC 5545 das ERSTE Vorkommen (Sommerzeit, R-K1 #5). 02:00–03:00 dauert damit
+    // real 2 Std. → kein Platz; 01:00–02:00 und 01:30–02:30 dauern genau 1 Std.
+    expect(starts(okt)).toContain('01:00');
+    expect(starts(okt)).toContain('01:30');
+    expect(starts(okt)).not.toContain('02:00');
+    expect(starts(okt)).not.toContain('02:30');
     expect(starts(okt)).toContain('03:00');
   });
 

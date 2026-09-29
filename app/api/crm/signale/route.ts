@@ -8,6 +8,9 @@
 // wer verknüpft, meint es. Für sie legt der Lauf je vergangenem Vorkommen genau EINE Aktivität „Meeting“ mit
 // `terminUid` an (lib/crm/termin-aktivitaet.ts) und zieht den letzten Kontakt für inzwischen vergangene Meetings nach;
 // der Name im Titel gilt nur noch für Termine ohne Bezug (Holding-Kalender).
+// Seit R-K1 (#46/#68/#100): Termin-Kennungen tragen den Kalender (`kalender|uid`) — Bezüge werden in beiden Formen
+// gefunden (`bezugVon`), die Signal-Kennung der Titel-Termine bleibt die alte (sonst entstünden Doppelte). Abgesagte
+// und abgelehnte Termine (STATUS:CANCELLED, eigene Antwort DECLINED) zählen nicht: kein Meeting, kein Kontakt.
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
@@ -18,7 +21,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { mailAdresse, mailSignale, terminSignale, signaleAnwenden, type MailEin, type TerminEin } from '@/lib/crm/signale';
 import { terminAktivitaeten, terminKontaktNachziehen, terminVorbei, type TerminFuerCrm } from '@/lib/crm/termin-aktivitaet';
 import { ladeBezuege } from '@/lib/kalender/bezug-server';
-import { kontakteVon, type BezugBestand } from '@/lib/kalender/bezug';
+import { kontakteVon, bezugVon as bezugFuer, altSchluessel, type BezugBestand } from '@/lib/kalender/bezug';
 import { localDay, tagePlus } from '@/lib/zeit';
 
 export const runtime = 'nodejs';
@@ -42,10 +45,12 @@ export async function POST(req: Request) {
   const [ms, apple, kalender] = await Promise.all([
     loadJson<{ emails?: { id: string; senderEmail?: string; subject?: string; receivedAt?: string }[] }>('microsoft-inbox'),
     loadJson<{ daten?: { id: string; account?: string; sender?: string; subject?: string; receivedAt?: string }[] }>('apple-mail-cache'),
-    loadJson<{ events?: { id: string; uid?: string; title?: string; startDate?: string; category?: string; privat?: boolean }[] }>('calendar-cache'),
+    loadJson<{ events?: { id: string; uid?: string; title?: string; startDate?: string; category?: string; privat?: boolean; abgesagt?: boolean }[] }>('calendar-cache'),
   ]);
   const bezuege: BezugBestand | null = await ladeBezuege().catch(() => null);
-  const bezugVon = (e: { id: string; uid?: string }) => bezuege?.bezuege[e.id] ?? (e.uid ? bezuege?.bezuege[e.uid] : undefined);
+  const bezugVon = (e: { id: string; uid?: string }) => bezugFuer(bezuege, e);
+  // Abgesagt/abgelehnt (R-K1 #100): fand nicht statt — weder Signal noch Meeting noch „letzter Kontakt“.
+  const kalTermine = (kalender?.events ?? []).filter(t => t.title && t.startDate && !t.abgesagt);
   const mails: MailEin[] = [
     ...(ms?.emails ?? []).filter(m => m.senderEmail && m.receivedAt).map(m => ({ id: `ms-${m.id}`, email: m.senderEmail!, betreff: m.subject ?? '', am: m.receivedAt! })),
     // Das private Apple-Postfach bleibt draußen — nur Geschäftskonten.
@@ -54,11 +59,11 @@ export async function POST(req: Request) {
   const termine: TerminEin[] = [
     // KEMARIS/M365: bis zur echten Anbindung keine Termine (die Beispieldaten sind seit 29.09., K5, raus).
     // Apple-Kalender: mit Bezug aus jedem Kalender; über den Namen im Titel nur die geschäftliche Kategorie (Holding).
-    ...(kalender?.events ?? []).filter(t => t.title && t.startDate).map(t => ({ t, k: kontakteVon(bezugVon(t)) })).filter(({ t, k }) => k.length || t.category === 'holding')
-      .map(({ t, k }) => ({ id: k.length ? t.id : `ac-${t.id}`, titel: t.title!, start: t.startDate!, ...(t.uid ? { uid: t.uid } : {}), ...(k.length ? { kontaktIds: k } : {}) })),
+    ...kalTermine.map(t => ({ t, k: kontakteVon(bezugVon(t)) })).filter(({ t, k }) => k.length || t.category === 'holding')
+      .map(({ t, k }) => ({ id: k.length ? t.id : `ac-${altSchluessel(t.id)}`, titel: t.title!, start: t.startDate!, ...(t.uid ? { uid: t.uid } : {}), ...(k.length ? { kontaktIds: k } : {}) })),
   ];
   // Termine mit Bezug → Meeting-Aktivitäten (eine je Vorkommen) und Kontaktpflege für vergangene Meetings.
-  const mitBezug: TerminFuerCrm[] = (kalender?.events ?? []).filter(t => t.title && t.startDate).flatMap(t => {
+  const mitBezug: TerminFuerCrm[] = kalTermine.flatMap(t => {
     const b = bezugVon(t), k = kontakteVon(b);
     return k.length ? [{ id: t.id, uid: t.uid ?? t.id, titel: t.title!, start: t.startDate!, ...(t.privat ? { privat: true } : {}), kontaktIds: k, ...(b?.dealId ? { dealId: b.dealId } : {}), von: b?.von ?? 'system' }] : [];
   });
@@ -77,7 +82,10 @@ export async function POST(req: Request) {
       const x = terminAktivitaeten(kontakte, m, heute, jetzt, tagePlus);
       kontakte = x.kontakte; n += x.neu.length;
     }
-    const nach = terminKontaktNachziehen(kontakte, new Map(mitBezug.map(m => [m.id, { start: m.start }])), heute, jetzt);
+    // Zeiten je Schlüssel — auch unter der alten Form (Aktivitäten vor R-K1 tragen `uid` bzw. `uid::RID`).
+    const zeiten = new Map<string, { start: string }>();
+    for (const m of mitBezug) { zeiten.set(m.id, { start: m.start }); if (!zeiten.has(altSchluessel(m.id))) zeiten.set(altSchluessel(m.id), { start: m.start }); }
+    const nach = terminKontaktNachziehen(kontakte, zeiten, heute, jetzt);
     neu = n;
     return n || nach.geaendert ? { ...f, kontakte: nach.kontakte } : f;
   }, werAus(req));

@@ -13,13 +13,18 @@
 import type { Kontakt, Aktivitaet } from '@/lib/make-one/crm';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { ausWandzeit } from '@/lib/kalender/zeit';
+import { uidVonSchluessel } from '@/lib/kalender/bezug';
 
 export interface MailEin { id: string; email: string; betreff: string; am: string }
 /**
  * Ein Termin für die Signale. `start`: Berliner Wandzeit (iCloud) oder ISO mit Zone (Beispiel-Quellen). `uid` = die
  * echte iCloud-UID (für „gibt es schon ein Meeting dazu?“), `kontaktIds` = Bezug + Gäste aus `kalender-bezug`.
  */
-export interface TerminEin { id: string; titel: string; start: string; uid?: string; kontaktIds?: readonly string[] }
+export interface TerminEin {
+  id: string; titel: string; start: string; uid?: string; kontaktIds?: readonly string[];
+  /** R-K1 #100: abgesagt (STATUS:CANCELLED) oder selbst abgelehnt — zählt nicht (kein Signal, kein „kommend“). */
+  abgesagt?: boolean;
+}
 
 /** Zeitpunkt eines Terminbeginns in ms — Wandzeit über `ausWandzeit`, ISO mit Zone direkt. */
 export function terminMs(start: string): number {
@@ -72,6 +77,7 @@ export function terminSignale(kontakte: Kontakt[], termine: TerminEin[], jetzt: 
   const nachId = new Map(kontakte.map(k => [k.id, k]));
   const merke = (k: Kontakt, t: TerminEin) => { if (!kommend[k.id] || terminMs(t.start) < terminMs(kommend[k.id].start)) kommend[k.id] = { titel: t.titel, start: t.start }; };
   for (const t of termine) {
+    if (t.abgesagt) continue;
     const vorbei = terminMs(t.start) <= jetztMs;
     // Bezug gewinnt: zugeordnet über `kalender-bezug`, die Aktivität legt lib/crm/termin-aktivitaet.ts an.
     if (t.kontaktIds?.length) {
@@ -83,7 +89,7 @@ export function terminSignale(kontakte: Kontakt[], termine: TerminEin[], jetzt: 
     const k = passend[0];
     if (vorbei) {
       const bezug = bezugTermin(t.id);
-      if ((k.aktivitaeten ?? []).some(a => a.bezug === bezug || (!!t.uid && (a.terminUid === t.uid || a.terminUid?.startsWith(`${t.uid}::`) || a.bezug === bezugTermin(t.uid))))) continue;
+      if ((k.aktivitaeten ?? []).some(a => a.bezug === bezug || (!!t.uid && ((!!a.terminUid && uidVonSchluessel(a.terminUid) === t.uid) || a.bezug === bezugTermin(t.uid))))) continue;
       vergangen.push({ kontaktId: k.id, aktivitaet: { am: t.start, art: 'termin', text: `Termin: ${t.titel.slice(0, 200)}`, von: 'system', bezug } });
     } else merke(k, t);
   }

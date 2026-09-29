@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
 import { termineLesen } from '@/lib/kalender/termine-lesen';
-import { maskieren } from '@/lib/kalender/bezug';
+import { maskieren, altSchluessel } from '@/lib/kalender/bezug';
 import { termineZu, type TermineZuFrage } from '@/lib/kalender/termine-zu';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { localDay } from '@/lib/zeit';
@@ -32,6 +32,11 @@ export async function GET(req: Request) {
   const sicht = gelesen.termine.map(t => maskieren(t, z.person));
   const r = termineZu(sicht, frage, wandzeit(new Date()));
   const zeiten: Record<string, TerminZeit> = {};
-  for (const t of [...r.kommend, ...r.vergangen]) zeiten[t.id] = { start: t.start, ende: t.ende, ...(t.ganztags ? { ganztags: true } : {}), ...(t.ort ? { ort: t.ort } : {}), titel: t.titel };
+  for (const t of [...r.kommend, ...r.vergangen]) {
+    zeiten[t.id] = { start: t.start, ende: t.ende, ...(t.ganztags ? { ganztags: true } : {}), ...(t.ort ? { ort: t.ort } : {}), titel: t.titel };
+    // Meetings vor R-K1 tragen den Schlüssel ohne Kalender (`uid`, `uid::RID`) — auch darunter auffindbar (#46).
+    const alt = altSchluessel(t.id);
+    if (!zeiten[alt]) zeiten[alt] = zeiten[t.id];
+  }
   return NextResponse.json({ ok: true, quelle: gelesen.quelle, ...r, zeiten });
 }

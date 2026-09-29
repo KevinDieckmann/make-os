@@ -23,6 +23,8 @@ import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { termineFuerZoe, type ZoeTermin } from '@/lib/kalender/zoe-sicht-server';
 import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
+import { terminMs } from '@/lib/crm/signale';
+import { ausWandzeit, wandzeit, tagPlus as wandTagPlus } from '@/lib/kalender/zeit';
 import { legeKalenderVorschlaege, vorschlagsKalender, type KalenderBlock } from '@/lib/zoe/kalender-vorschlag';
 
 export const runtime = 'nodejs';
@@ -32,12 +34,15 @@ interface Ev { title?: string; startDate?: string; endDate?: string; calendarNam
 interface Conflict { date: string; a: string; b: string; overlap: string; }
 
 const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+// R-K1 #7: Termine stehen als Berliner Wandzeit — Zeitpunkte über `terminMs`/`ausWandzeit`, Wochentag und Uhrzeit aus
+// dem Text, nie über `new Date(wandzeit)` und `getHours()` (das rechnet in der Zone der Maschine).
+const wochentagVon = (tag: string) => WEEKDAYS[new Date(`${tag}T12:00:00Z`).getUTCDay()];
 
 // Overlap-Erkennung: echte Zeit-Kollisionen (keine Ganztags-Events).
 function findConflicts(events: Ev[]): Conflict[] {
   const timed = events
     .filter(e => !e.allDay && e.startDate && e.endDate && e.title)
-    .map(e => ({ t: e.title as string, s: new Date(e.startDate as string).getTime(), e: new Date(e.endDate as string).getTime(), day: (e.startDate as string).slice(0, 10) }))
+    .map(e => ({ t: e.title as string, s: terminMs(e.startDate as string), e: terminMs(e.endDate as string), day: (e.startDate as string).slice(0, 10) }))
     .filter(e => !isNaN(e.s) && !isNaN(e.e))
     .sort((a, b) => a.s - b.s);
   const out: Conflict[] = [];
@@ -45,8 +50,8 @@ function findConflicts(events: Ev[]): Conflict[] {
     for (let j = i + 1; j < timed.length; j++) {
       if (timed[j].s >= timed[i].e) break;
       if (timed[j].day !== timed[i].day) continue;
-      const st = new Date(Math.max(timed[i].s, timed[j].s));
-      out.push({ date: timed[i].day, a: timed[i].t, b: timed[j].t, overlap: `ab ${String(st.getHours()).padStart(2, '0')}:${String(st.getMinutes()).padStart(2, '0')}` });
+      const st = wandzeit(new Date(Math.max(timed[i].s, timed[j].s)));
+      out.push({ date: timed[i].day, a: timed[i].t, b: timed[j].t, overlap: `ab ${st.slice(11, 16)}` });
     }
   }
   return out;
@@ -59,11 +64,11 @@ function scheduleText(events: Ev[], from: number): string {
   const abschliessen = () => { if (fremdeZeilen.length) teile.push(fremd(KALENDER_QUELLE, fremdeZeilen.join('\n'))); fremdeZeilen = []; };
   for (const e of events) {
     if (!e.title || !e.startDate) continue;
-    const d = new Date(e.startDate);
-    if (isNaN(d.getTime()) || d.getTime() < from) continue;
+    const ms = terminMs(e.startDate);
+    if (isNaN(ms) || ms < from) continue;
     const day = e.startDate.slice(0, 10);
-    const wd = WEEKDAYS[d.getDay()];
-    const time = e.allDay ? 'ganztägig' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const wd = wochentagVon(day);
+    const time = e.allDay ? 'ganztägig' : e.startDate.slice(11, 16);
     const zeile = `${wd} ${day} ${time} — ${e.title} [${e.calendarName ?? ''}]`;
     if (e.fremd) fremdeZeilen.push(zeile); else { abschliessen(); teile.push(zeile); }
   }
@@ -92,18 +97,16 @@ export async function POST(req: Request) {
   const kalender = vorschlagsKalender(kal.einstellungen, zugang.person);
 
   const conflicts = findConflicts(events);
-  const fromTs = new Date(`${today}T00:00:00`).getTime();
+  const fromTs = ausWandzeit(`${today}T00:00:00`).getTime();
 
   // Nächste 7 Werk-/Kalendertage als erlaubte Ziel-Daten
   // setDate() statt +i*86400000: sonst kippt der Tag an Zeitumstellungen.
   const days: string[] = [];
   const allowedDates = new Set<string>();
   for (let i = 0; i < 8; i++) {
-    const d = new Date(`${today}T12:00:00`);
-    d.setDate(d.getDate() + i);
-    const key = localKey(d);
+    const key = wandTagPlus(today, i);
     allowedDates.add(key);
-    days.push(`${WEEKDAYS[d.getDay()]} ${key}`);
+    days.push(`${wochentagVon(key)} ${key}`);
   }
 
   if (!hasAnthropicKey()) return NextResponse.json({ briefing: 'Kein Anthropic-Key hinterlegt — Konflikte sind trotzdem geprüft.', conflicts, vorschlaege: [], eingetragen: false, gestapelt: 0 });

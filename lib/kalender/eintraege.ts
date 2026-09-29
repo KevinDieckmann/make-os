@@ -60,15 +60,28 @@ export function fristen(q: Quellen, von: string, bis: string): Frist[] {
   return raus.sort((a, b) => a.tag.localeCompare(b.tag) || a.titel.localeCompare(b.titel));
 }
 
+/**
+ * Fälligkeit einer Erinnerung → Berliner Wandzeit (R-K1 #8): ein reines Datum bleibt der Tag (ohne Uhrzeit — nicht als
+ * UTC-Mitternacht gelesen, sonst stünde „02:00“ daran), eine Wandzeit ohne Zone gilt als Berliner Zeit, nur ein Wert mit
+ * Zone („Z“, „+02:00“) wird umgerechnet. Unlesbar → null.
+ */
+export function faelligWand(due: string, wand: (d: Date) => string): string | null {
+  const s = due.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00:00`;
+  const ohneZone = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/.exec(s);
+  if (ohneZone) return `${ohneZone[1]}T${ohneZone[2]}:${ohneZone[3]}:${ohneZone[4] ?? '00'}`;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : wand(d);
+}
+
 /** Apple-Erinnerungen (vom Mac zugeliefert) mit Datum im Zeitraum. */
 export function erinnerungen(roh: unknown, von: string, bis: string, wand: (d: Date) => string): Erinnerung[] {
   if (!Array.isArray(roh)) return [];
   const raus: Erinnerung[] = [];
   for (const r of roh as { id?: string; title?: string; due?: string; list?: string }[]) {
     if (!r?.title || !r.due) continue;
-    const d = new Date(r.due);
-    if (Number.isNaN(d.getTime())) continue;
-    const w = wand(d);
+    const w = faelligWand(String(r.due), wand);
+    if (!w) continue;
     const tag = w.slice(0, 10);
     if (tag < von || tag >= bis) continue;
     raus.push({ id: `er-${r.id ?? `${tag}-${r.title}`}`, tag, ...(w.slice(11, 16) !== '00:00' ? { zeit: w.slice(11, 16) } : {}), titel: String(r.title).slice(0, 200), ...(r.list ? { liste: String(r.list).slice(0, 80) } : {}) });
