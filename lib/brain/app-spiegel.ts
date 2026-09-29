@@ -28,7 +28,7 @@ import type { ZeitJeMandat } from '@/lib/zeitmessung/mandate';
 import { vaultZiel } from './vault-ziel';
 import {
   appDatenLaden, aufgabeSichtbar, privatAufgabe, privatProjekt, imPapierkorb, material, materialLeer, materialMarkdown, entscheidungZeile,
-  md, zitat, link, stunden, monatVon, vormonatVon, type AppDaten,
+  md, zitat, link, stunden, monatVon, vormonatVon, einstellungLesen, einstellungName, zeitBestaende, type AppDaten,
 } from './app-material';
 
 export const SPIEGEL_ORDNER = '_App';
@@ -246,7 +246,10 @@ export async function appSpiegel(opt: { erzwingen?: boolean; heute?: string } = 
     const { haushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
     const hh = await haushaltDesInhabers();
     if (!hh) return { ok: true, geschrieben: 0, unveraendert: 0, entfernt: 0, text: 'Kein Haushalt des Inhabers — kein Spiegel.' };
-    const stand = `${heute}:${await speicherStand(['tasks', 'crm', 'kontakte', entscheidungenName(hh, monatVon(heute)), `brain-bruecke--${hh}`])}`;
+    // F2 H1: Zeit-Bestände (Kalender-Stand, `zeit--*`) der eingewilligten Personen gehören in den Riegel — sonst bliebe
+    // `_App/Woche` nach neuen Terminen/Fokus-Blöcken bis zum nächsten Tag stehen.
+    const { zeitFreigabe } = await einstellungLesen(hh);
+    const stand = `${heute}:${await speicherStand(['tasks', 'crm', 'kontakte', entscheidungenName(hh, monatVon(heute)), einstellungName(hh), ...zeitBestaende(zeitFreigabe)])}`;
     const riegel = (await loadJson<SpiegelStand>(RIEGEL)) ?? {};
     if (!opt.erzwingen && riegel.stand === stand) return { ok: true, geschrieben: 0, unveraendert: 0, entfernt: 0, text: 'Spiegel aktuell.' };
     const d = await appDatenLaden(heute, { mitZeit: true }); // K6a: mit Zeit-Auswertung für `_App/Woche`

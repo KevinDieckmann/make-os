@@ -37,7 +37,7 @@ beforeAll(async () => {
       ev('e-malin', 'Yoga mit Freundin', 14, 'Privat Malin'),
       ev('e-team', 'Teamcall Probe GmbH', 16, 'Privat Kevin'),
       ev('e-reha-gemeinsam', 'Physio-Termin', 18, 'Gemeinsam'),
-      // Gestern, privat (Kevin): darf im Netzwerk-Verlauf für Malin nicht als Beleg auftauchen.
+      // Gestern, privat (Kevin): für Malin nur „Belegt“ (der frühere Netzwerk-Verlauf ist seit F2 M7 entfernt).
       { id: 'e-gestern', title: 'Abendessen mit Petra Probefrau', startDate: `${tagePlus(H, -1)}T19:00:00`, endDate: `${tagePlus(H, -1)}T21:00:00`, allDay: false, calendarName: 'Privat Kevin' },
     ],
   });
@@ -179,18 +179,6 @@ describe('#K1 Nachtrag — nur Text Dritter ist fremd (iCloud-Stand mit Teilnehm
     expect(terminFremd(t, { ...h, quelle: 'icloud' })).toBe(false);
     expect(terminFremd(t, { ...h, quelle: 'mac' })).toBe(true);
     expect(terminFremd(t, { ...h, quelle: 'kemaris' })).toBe(true);
-  });
-});
-
-describe('#K4 Nachtrag — Netzwerk-Verlauf liest maskiert', () => {
-  it('Malin: Kevins privater Termin ist kein Beleg (Titel kommt nicht durch); Kevin: schon', async () => {
-    const { GET } = await import('@/app/api/netzwerk/verlauf/route');
-    const fuer = async (p: string) => (await (await GET(new Request('http://test/api/netzwerk/verlauf', { headers: { 'x-make-user': p } }))).json()) as { treffer: { beleg: string }[] };
-    const malin = await fuer('malin');
-    expect(JSON.stringify(malin)).not.toContain('Abendessen');
-    expect(malin.treffer).toHaveLength(0);
-    const kevin = await fuer('kevin');
-    expect(kevin.treffer.map(t => t.beleg)).toContain('Abendessen mit Petra Probefrau');
   });
 });
 

@@ -155,7 +155,9 @@ export function Kalender() {
   useEffect(() => {
     fetch('/api/state/kalender-einstellungen').then(r => r.json()).then((e: Einstellungen) => { setEinst(e); if (e.standardSicht) setSicht(e.standardSicht); }).catch(() => {});
   }, []);
-  const einstSetzen = (teil: Partial<Einstellungen>) => { if (!einst) return; const n = { ...einst, ...teil }; setEinst(n); fetch('/api/state/kalender-einstellungen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(n), keepalive: true }).catch(() => {}); };
+  // F2 N7: nur die geänderten Teile senden (`{ teil }`) — der Server legt sie auf den AKTUELLEN Stand; ein älterer Stand in
+  // diesem Fenster überschreibt so nie, was die andere Person inzwischen an anderen Einstellungen geändert hat.
+  const einstSetzen = (teil: Partial<Einstellungen>) => { if (!einst) return; setEinst({ ...einst, ...teil }); fetch('/api/state/kalender-einstellungen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teil }), keepalive: true }).catch(() => {}); };
   const standardDauer = einst?.dauer.termin ?? 60;
 
   // Zeitraum je Ansicht

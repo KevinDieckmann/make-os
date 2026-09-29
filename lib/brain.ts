@@ -46,7 +46,7 @@ interface StoredProject { id: string; title: string }
  * Termin im Brain — für die fragende Person gefiltert (`termineFuerZoe`); `maskiert` = nur „Belegt“ (privat/Gesundheit
  * der anderen Person), `fremd` = Text möglicherweise von Dritten (Einladung, Abo, Buchungsseite — gekapselt im Prompt).
  */
-interface CalEvent { title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; maskiert?: boolean; fremd?: boolean }
+interface CalEvent { title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; maskiert?: boolean; fremd?: boolean; abgesagt?: boolean }
 export interface MsMail { id?: string; subject?: string; senderName?: string; senderEmail?: string; preview?: string; receivedAt?: string; isRead?: boolean; importance?: string }
 
 export interface Brain {
@@ -164,8 +164,9 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
   const zoeKal = val(zoeKalR);
   const calAlterH = alterStunden(zoeKal?.stand ?? null);
   const wocheEnde = tagePlus(heute, 7);
+  // `abgesagt` (F2 M5): `termineFuerZoe` lässt abgesagte schon weg — trägt ein Termin es doch, geht es mit (und fällt unten heraus).
   const alsEvent = (t: ZoeTermin): CalEvent => ({
-    title: t.titel, startDate: t.start, endDate: t.ende, allDay: t.ganztags, calendarName: t.kalender, ...(t.maskiert ? { maskiert: true } : {}), ...(t.fremd ? { fremd: true } : {}),
+    title: t.titel, startDate: t.start, endDate: t.ende, allDay: t.ganztags, calendarName: t.kalender, ...(t.maskiert ? { maskiert: true } : {}), ...(t.fremd ? { fremd: true } : {}), ...(t.abgesagt ? { abgesagt: true } : {}),
   });
 
   // KEMARIS-Termine (M365-Snapshot) in den Kalender mergen. Dedupe über
@@ -176,7 +177,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
   const calEvents: CalEvent[] = (zoeKal?.termine ?? []).map(alsEvent);
   const schluessel = (e: CalEvent) => `${(e.title ?? '').toLowerCase().trim()}|${(e.startDate ?? '').slice(0, 16)}`;
   const bekannt = new Set(calEvents.map(schluessel));
-  const events: CalEvent[] = [...calEvents, ...kemEvents.filter(e => !bekannt.has(schluessel(e)))]
+  const events: CalEvent[] = [...calEvents, ...kemEvents.filter(e => !bekannt.has(schluessel(e)))].filter(e => !e.abgesagt)
     .sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
 
   const ms = val(msR);

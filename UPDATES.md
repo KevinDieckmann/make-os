@@ -4,6 +4,26 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Prüfung 2 (F2): Nachbesserungen Heute, Glocke, Brain, ZOE (29.09.2026, nur lokal)
+
+- **Zeit im Brain nur mit Einwilligung:** Der Wochenrückblick im Brain (`_App/Woche`) zeigt die Zeit einer Person erst, wenn sie
+  selbst zustimmt (Standard: niemand). Jede Person entscheidet nur für sich.
+- **Mandats-Review einmal:** Glocke und Heute zeigen es nur noch als Follow-up; ein pausiertes Mandat hat kein Review.
+- **Geburtstage an einer Stelle:** Auf Heute nur noch in „Steht an“ (auch heutige). Familie: der Vorlauf kommt aus dem
+  „Wichtigen Tag“ (mit „erledigt“ je Jahr); ohne ihn legt „Geschenk vormerken“ ihn an. CRM: „Geschenk-Aufgabe“ heißt nur noch
+  „Geschenk für …“ und wird über den Kontakt erkannt, nicht über den Titel.
+- **Follow-ups am Termin:** „Termin vorbereiten“ (Buchung) und „Nachbereiten“ (Akte) hängen am Termin — verschoben zieht mit,
+  gelöscht meldet die Verbindungsprüfung („Vom Termin lösen“); „Wie lief’s?“ fragt nicht doppelt.
+- **Abgesagte Termine** zählen für ZOE, das Brain und Blöcke nicht mehr; ganztägig abwesend = kein Block an dem Tag.
+- **ZOE plant nur über den Stapel:** Blöcke landen als Vorschlag im Stapel, erst dein Klick trägt sie ein.
+- **Kleinigkeiten:** Glocke ohne „Belegt“-Termine der anderen Person, Kalender-Einstellungen speichern nur Geänderte, der
+  Text aus „Als Nächstes“ bei geparkten Deals bleibt in der Notiz, die ungenutzte Netzwerk-Verlauf-Schnittstelle ist weg.
+
+**Prüfliste (lokal, Wegwerfdaten):** Mandat mit Review heute → Glocke genau eine Meldung. Familie: Mensch mit Geburtstag in
+10 Tagen → Heute „Geschenk vormerken“ → Familie › Wichtige Tage hat den Eintrag. CRM-Kontakt mit Geburtstag → „Geschenk-Aufgabe“
+→ Aufgabe „Geschenk für …“ mit Kontakt. ZOE „plane morgen 9 Uhr Fokus“ → Stapel → Freigeben → Block im Kalender.
+Brain: POST /api/brain/app `{ zeitAuswertung: true }` → `_App/Woche` mit eigener Zeit.
+
 ## Kalender K6a: alles mit dem Kalender verbunden (29.09.2026, nur lokal — Commit c3d9f53)
 
 - **Glocke und Heute wissen, was ansteht:** ein Termin meldet sich 2 Stunden vorher, Termine ohne festgehaltenes Ergebnis

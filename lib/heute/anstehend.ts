@@ -13,8 +13,10 @@
 //   buchungen     offene Buchungsanfragen der eigenen Buchungsseiten (die Glocke hat dafür schon die gespeicherte
 //                 Meldung „Terminanfrage“ — hier nur für Heute)
 //   vorschlaege   Kalender-Vorschläge im ZOE-Stapel (Zahl, Link in den Stapel)
-//   geburtstage   Geburtstage in den nächsten 14 Tagen mit Vorschlag „Geschenk-Aufgabe 10 Tage vorher“ (Zusatzthema #12,
-//                 erst der Klick legt die Aufgabe an)
+//   geburtstage   Geburtstage ab heute (14 Tage, Familie mit längerem Vorlauf ab dessen Beginn) — auf Heute NUR hier (die
+//                 Anlässe-Zeile zeigt dort nur Feiertage, F2 M2). Geschenk: Familie → der „Wichtige Tag“ (Vorlauf, Aktion,
+//                 erledigt je Jahr, lib/familie/logik.ts) ist die Quelle; CRM → Aufgabe mit `bezug.kontaktId` + `anlass`
+//                 (Kennung Kontakt+Jahr, `geschenkStand`), erst der Klick legt an
 // Die Glocke leitet daraus Meldungen ab (lib/meldungen/regeln.ts `anstehendAbleiten`); Heute zeigt die Liste
 // (components/os/heute/Anstehend.tsx über GET /api/heute/anstehend).
 
@@ -22,7 +24,7 @@ import type { TerminMitBezug } from '@/lib/kalender/bezug';
 import type { Frist } from '@/lib/kalender/eintraege';
 import type { Faellig } from '@/lib/crm/followup';
 import type { Nachbereitung } from '@/lib/crm/erfassen';
-import type { Geburtstag } from '@/lib/kalender/geburtstag';
+import { geburtstagFuer, type Geburtstag, type AnlassAktion } from '@/lib/kalender/geburtstag';
 import type { TerminZeit } from '@/lib/crm/aktivitaeten';
 import { WEG } from '@/lib/wege';
 import { tagPlus } from '@/lib/kalender/zeit';
@@ -32,7 +34,13 @@ export interface AFrist { id: string; art: Frist['art']; tag: string; titel: str
 export interface AFollowup { id: string; text: string; name: string; faellig: string; uhrzeit?: string; tageUeber: number; quelle: string; href: string }
 export interface ANachbereiten { kontaktId: string; name: string; titel: string; tag: string; zeit?: string; href: string }
 export interface ABuchung { id: string; titel: string; start: string; href: string }
-export interface AGeburtstag { id: string; name: string; tag: string; alter?: number; href: string; herkunft: Geburtstag['herkunft']; kontaktId?: string; /** Vorschlag: Geschenk-Aufgabe mit dieser Deadline (10 Tage vorher, frühestens heute). */ aufgabeTag: string }
+export interface AGeburtstag {
+  id: string; name: string; tag: string; alter?: number; href: string; herkunft: Geburtstag['herkunft']; kontaktId?: string; menschId?: string;
+  /** Vorschlag: Geschenk-Aufgabe (CRM) bzw. „Geschenk vormerken“ (Familie) mit dieser Deadline (10 Tage vorher, frühestens heute). */
+  aufgabeTag: string;
+  /** Familie: der Wichtige Tag dazu — `ab` = Geburtstag − Vorlauf, `erledigt` für dieses Jahr (F2 M2). */
+  anlass?: { tagId: string; aktion: AnlassAktion; ab: string; erledigt: boolean };
+}
 
 export interface Anstehend {
   heute: string;
@@ -69,7 +77,8 @@ function betrifftPerson(t: { wer?: string; von?: string; art?: string }, person:
 export function termineHeute(termine: readonly (TerminMitBezug & { wer?: string })[], person: string, heute: string, jetztWand: string): ATermin[] {
   const morgen = `${tagPlus(heute, 1)}T00:00:00`, tagesbeginn = `${heute}T00:00:00`;
   return termine
-    .filter(t => !t.abgesagt && t.art !== 'arbeitsort' && betrifftPerson(t, person))
+    // Maskierte Termine (privat der anderen Person, „Belegt“) nicht — sie hätten nur einen toten Link (F2 N1).
+    .filter(t => !t.abgesagt && !t.maskiert && t.art !== 'arbeitsort' && betrifftPerson(t, person))
     .filter(t => t.start < morgen && (t.ganztags ? t.ende > tagesbeginn : t.ende > jetztWand))
     .map(t => ({
       id: t.id, titel: t.titel, start: t.start, ende: t.ende, ganztags: t.ganztags, ...(t.ort ? { ort: t.ort } : {}), art: t.art,
@@ -85,20 +94,30 @@ export function termineHeute(termine: readonly (TerminMitBezug & { wer?: string 
 export function fristenAnstehend(fristen: readonly Frist[], person: string, heute: string, vorlauf: number): AFrist[] {
   const morgen = tagPlus(heute, 1), grenze = tagPlus(heute, Math.max(1, vorlauf));
   return fristen
-    .filter(f => !f.erledigt && (!f.fuer || f.fuer === person || f.fuer === 'beide'))
+    // Mandats-Reviews meldet die Follow-up-Ebene (`v:review`, eine Quelle — F2 M1), nicht zusätzlich als Frist.
+    .filter(f => !f.erledigt && !f.review && (!f.fuer || f.fuer === person || f.fuer === 'beide'))
     .filter(f => f.tag >= heute && (f.tag <= morgen || (f.kuendigung && f.tag <= grenze)))
     .map(f => ({ id: f.id, art: f.art, tag: f.tag, titel: f.titel, ...(f.unter ? { unter: f.unter } : {}), href: f.href, inTagen: tageZwischen(heute, f.tag), ...(f.kuendigung ? { kuendigung: true as const } : {}) }));
 }
 
-/** Fällige Follow-ups der Person (heute/überfällig) — ohne Kadenz und ohne die mit verknüpfter Aufgabe. */
-export function followupsAnstehend(liste: readonly Faellig[], person: string, mitAufgabe: ReadonlySet<string>): AFollowup[] {
+/**
+ * Fällige Follow-ups der Person (heute/überfällig) — ohne Kadenz und ohne die mit verknüpfter Aufgabe. Hängt eines am
+ * Termin (`terminUid`, F2 M4), nennt die Anzeige dessen Titel aus dem Termin (`zeiten`) — gespeichert wird er nie.
+ */
+export function followupsAnstehend(liste: readonly Faellig[], person: string, mitAufgabe: ReadonlySet<string>, zeiten?: Readonly<Record<string, TerminZeit>>): AFollowup[] {
   return liste
     .filter(f => (f.gruppe === 'ueberfaellig' || f.gruppe === 'heute') && f.quelle !== 'kadenz' && !mitAufgabe.has(f.id))
     .filter(f => f.zustaendig === person || f.zustaendig === 'beide')
     .map(f => ({
-      id: f.id, text: f.text, name: f.name, faellig: f.faellig, ...(f.uhrzeit ? { uhrzeit: f.uhrzeit } : {}), tageUeber: f.tageUeber, quelle: String(f.quelle),
+      id: f.id, text: followupAnzeige(f, zeiten), name: f.name, faellig: f.faellig, ...(f.uhrzeit ? { uhrzeit: f.uhrzeit } : {}), tageUeber: f.tageUeber, quelle: String(f.quelle),
       href: f.bezug.art === 'chance' ? WEG.deal(f.bezug.id) : f.kontaktId ? WEG.akte(f.kontaktId) : WEG.followup(),
     }));
+}
+
+/** Text eines Follow-ups zur Anzeige: am Termin (`terminUid`) mit dessen Titel, sofern er im Stand lesbar ist. */
+export function followupAnzeige(f: { text: string; terminUid?: string }, zeiten?: Readonly<Record<string, TerminZeit>>): string {
+  const titel = f.terminUid ? zeiten?.[f.terminUid]?.titel?.trim() : undefined;
+  return titel && !f.text.includes(titel) ? `${f.text} — „${titel}“` : f.text;
 }
 
 /** Nachbereitungen als Einträge (Link in die Kontaktakte). */
@@ -107,19 +126,43 @@ export function nachbereitenAnstehend(liste: readonly Nachbereitung[]): ANachber
 }
 
 /**
- * Geburtstage der nächsten 14 Tage mit dem Vorschlag „Geschenk-Aufgabe“ (Deadline 10 Tage vorher, frühestens heute).
- * CRM-Geburtstage nur bei der Person, die die Beziehung hält (wie die Glocke, `zustaendig`).
+ * Geburtstage ab heute bis 14 Tage (Familie mit Wichtigem Tag: schon ab Beginn seines Vorlaufs, höchstens 60 Tage) mit dem
+ * Geschenk-Vorlauf. Sichtregel wie die Glocke (`geburtstagFuer`, CRM nur bei der Person, die die Beziehung hält).
  */
 export function geburtstageVorlauf(liste: readonly Geburtstag[], person: string, heute: string): AGeburtstag[] {
   const bis = tagPlus(heute, GEBURTSTAG_FENSTER);
   return liste
-    .filter(g => g.tag > heute && g.tag <= bis && (!g.zustaendig || g.zustaendig === person || g.zustaendig === 'beide'))
+    .filter(g => g.tag >= heute && geburtstagFuer(g, person))
+    .filter(g => g.tag <= bis || (!!g.anlass && tagPlus(g.tag, -g.anlass.vorlaufTage) <= heute))
     .map(g => {
       const vorher = tagPlus(g.tag, -GEBURTSTAG_VORLAUF);
-      return { id: g.id, name: g.name, tag: g.tag, ...(g.alter !== undefined ? { alter: g.alter } : {}), href: g.href, herkunft: g.herkunft, ...(g.kontaktId ? { kontaktId: g.kontaktId } : {}), aufgabeTag: vorher < heute ? heute : vorher };
+      return {
+        id: g.id, name: g.name, tag: g.tag, ...(g.alter !== undefined ? { alter: g.alter } : {}), href: g.href, herkunft: g.herkunft,
+        ...(g.kontaktId ? { kontaktId: g.kontaktId } : {}), ...(g.menschId ? { menschId: g.menschId } : {}),
+        aufgabeTag: vorher < heute ? heute : vorher,
+        ...(g.anlass ? { anlass: { tagId: g.anlass.tagId, aktion: g.anlass.aktion, ab: tagPlus(g.tag, -g.anlass.vorlaufTage), erledigt: g.anlass.erledigt } } : {}),
+      };
     })
     .sort((a, b) => a.tag.localeCompare(b.tag));
 }
 
-/** Titel der Geschenk-Aufgabe (Vorschlag) — ohne Geburtsjahr, ohne Alter (Datensparsamkeit). */
-export const geschenkAufgabeTitel = (name: string, tag: string) => `Geschenk für ${name} (Geburtstag ${Number(tag.slice(8, 10))}.${Number(tag.slice(5, 7))}.)`;
+/** Titel der Geschenk-Aufgabe — nur der Name, kein Datum, kein Alter (Datensparsamkeit; das Datum kommt aus dem Kontakt). */
+export const geschenkAufgabeTitel = (name: string) => `Geschenk für ${name}`;
+
+/** Das Stichwort der Aktion eines Wichtigen Tages (Familie). */
+export const ANLASS_WORT: Record<AnlassAktion, string> = { geschenk: 'Geschenk', karte: 'Karte', anruf: 'Anruf', feier: 'Feier' };
+
+/**
+ * Gibt es zur Geschenk-Aufgabe dieses CRM-Geburtstags schon eine Aufgabe? Verknüpft per Kennung (Kontakt + Jahr:
+ * `bezug.kontaktId` + `anlass`), nie per Titel. Papierkorb, Archiv („Neu anfangen“) und abgebrochene zählen nicht.
+ * 'erledigt' = fertig, 'offen' = vorgemerkt, null = keine.
+ */
+export function geschenkStand(
+  tasks: readonly { status: string; bezug?: { kontaktId?: string }; anlass?: { art: string; jahr: number }; geloeschtAm?: string; archiviertAm?: string }[],
+  g: Pick<AGeburtstag, 'kontaktId' | 'tag'>,
+): 'offen' | 'erledigt' | null {
+  if (!g.kontaktId) return null;
+  const jahr = Number(g.tag.slice(0, 4));
+  const passend = tasks.filter(t => t.anlass?.art === 'geschenk' && t.anlass.jahr === jahr && t.bezug?.kontaktId === g.kontaktId && !t.geloeschtAm && !t.archiviertAm && t.status !== 'cancelled');
+  return passend.some(t => t.status !== 'done') ? 'offen' : passend.length ? 'erledigt' : null;
+}

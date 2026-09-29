@@ -22,8 +22,9 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { faellige } from '@/lib/crm/followup';
 import { nachbereitung } from '@/lib/crm/erfassen';
 import { zeitenAus } from '@/lib/crm/aktivitaeten';
+import { haeltBeziehung, BEIDE } from '@/lib/crm/team';
 import {
-  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, GEBURTSTAG_FENSTER, type Anstehend, type ABuchung,
+  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, type Anstehend, type ABuchung,
 } from './anstehend';
 
 const sicher = async <T>(p: Promise<T>, sonst: T): Promise<T> => { try { return await p; } catch { return sonst; } };
@@ -38,10 +39,14 @@ async function buchungenLesen(person: string): Promise<ABuchung[]> {
     .sort((a, c) => a.start.localeCompare(c.start));
 }
 
-/** Offene ZOE-Vorschläge: alle und die Kalender-Vorschläge. */
-async function vorschlaegeZaehlen(): Promise<{ kalender: number; gesamt: number }> {
-  const { lies } = await import('@/lib/zoe/stapel');
-  const offen = await lies('offen');
+/**
+ * Offene ZOE-Vorschläge der Person: alle und die Kalender-Vorschläge — dieselbe Sichtregel wie der Stapel selbst
+ * (`vorschlagSichtbar`, F2 M6): eigene und die des Systems, nie die der anderen Person.
+ */
+async function vorschlaegeZaehlen(person: string): Promise<{ kalender: number; gesamt: number }> {
+  const [{ lies, vorschlagSichtbar }, { haushaltFuer }] = await Promise.all([import('@/lib/zoe/stapel'), import('@/lib/finanzen/haushalt/zugriff')]);
+  const imHaushalt = !!(await haushaltFuer(person).catch(() => null));
+  const offen = (await lies('offen')).filter(v => vorschlagSichtbar(v, person, imHaushalt));
   return { gesamt: offen.length, kalender: offen.filter(v => v.bezug?.art === 'kalender' || v.gruppe === 'kalender').length };
 }
 
@@ -56,20 +61,24 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     sicher(ladeCrm(), null),
     sicher(fristenLesen(heute, tagPlus(heute, Math.max(2, vorlauf + 1)), heute), []),
     sicher(buchungenLesen(person), []),
-    sicher(vorschlaegeZaehlen(), { kalender: 0, gesamt: 0 }),
-    sicher(geburtstageIm({ von: tagPlus(heute, 1), bis: tagPlus(heute, GEBURTSTAG_FENSTER + 1) }, person), []),
+    sicher(vorschlaegeZaehlen(person), { kalender: 0, gesamt: 0 }),
+    // Ab heute; 61 Tage, damit ein längerer Vorlauf eines Wichtigen Tages (Familie, ≤ 60) greift — `geburtstageVorlauf` schneidet.
+    sicher(geburtstageIm({ von: heute, bis: tagPlus(heute, 61) }, person), []),
   ]);
   const sicht = (gelesen?.termine ?? []).map(t => maskieren(t, person));
   const mitAufgabe = new Set((crm?.followups ?? []).filter(f => f.aufgabeId).map(f => f.id));
   const zeiten = zeitenAus(sicht);
-  const verwiesen = new Set(kontakte.flatMap(k => (k.aktivitaeten ?? []).map(a => a.terminUid).filter((x): x is string => !!x)));
+  // N3 (F2): Zeiten nur für Meetings an Kontakten, deren Nachbereitung bei DIESER Person liegt (wie `nachbereitung` mit `person`).
+  const eigene = kontakte.filter(k => { const f = haeltBeziehung(k); return f === person || f === BEIDE; });
+  const verwiesen = new Set(eigene.flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art === 'termin').map(a => a.terminUid).filter((x): x is string => !!x)));
   return {
     heute,
     termine: termineHeute(sicht, person, heute, jetztWand),
-    nachbereiten: nachbereitenAnstehend(nachbereitung(kontakte, heute, person, zeiten, jetztWand)),
+    // M4 (F2): ein offenes Follow-up am selben Termin (`terminUid`) ist „in Arbeit“ — keine zweite Meldung.
+    nachbereiten: nachbereitenAnstehend(nachbereitung(kontakte, heute, person, zeiten, jetztWand, crm?.followups)),
     nachbereitZeiten: Object.fromEntries(Object.entries(zeiten).filter(([k]) => verwiesen.has(k))),
     fristen: fristenAnstehend(fristen, person, heute, vorlauf),
-    followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten }), person, mitAufgabe) : [],
+    followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten }), person, mitAufgabe, zeiten) : [],
     buchungen,
     vorschlaege,
     geburtstage: geburtstageVorlauf(geburtstage, person, heute),
@@ -81,8 +90,10 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
  * „vorbei“ ändern sich auch ohne neue Daten.
  */
 export async function anstehendStand(jetzt: Date = new Date()): Promise<string> {
-  const { buchungHaushalt } = await import('@/lib/kalender/buchung-speicher');
+  const [{ buchungHaushalt }, { familieName }] = await Promise.all([import('@/lib/kalender/buchung-speicher'), import('@/lib/familie/speicher')]);
   const h = await sicher(buchungHaushalt(), '');
-  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'backlog', 'zoe-stapel', ...(h ? [`buchung--${h}`] : [])];
+  // F2 N9: alle Quellen von `anstehendLesen` — Bauplan-Etappen (`backlog`), Steuer-Vorlage (`steuern`), Familie (Geburtstage,
+  // Wichtige Tage mit Geschenk-Vorlauf) — sonst bliebe das ETag nach einer Änderung dort stehen.
+  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h)] : [])];
   return `${wandzeit(jetzt).slice(0, 15)}:${await sicher(speicherStand(namen), '0')}`;
 }

@@ -19,6 +19,7 @@ import { OFFENE_STUFEN } from './pipeline';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
 import { followUpBis } from './events';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { reviewZaehlt } from './review';
 
 export const FOLLOWUP_ARTEN: { id: FollowUpArt; label: string }[] = [
   { id: 'anruf', label: 'Anruf' }, { id: 'mail', label: 'Mail' }, { id: 'linkedin', label: 'LinkedIn' }, { id: 'termin', label: 'Termin' }, { id: 'nachricht', label: 'Nachricht' }, { id: 'sonstig', label: 'Sonstiges' },
@@ -48,6 +49,8 @@ export interface Faellig {
   tageUeber: number;
   gruppe: Gruppe;
   verschoben?: number;
+  /** Termin, an dem das Follow-up hängt (Schlüssel) — die Anzeige leitet Titel/Zeit daraus ab (F2 M4). */
+  terminUid?: string;
 }
 
 const tage = (von: string, bis: string) => Math.round((Date.parse(`${bis.slice(0, 10)}T12:00:00Z`) - Date.parse(`${von.slice(0, 10)}T12:00:00Z`)) / 864e5);
@@ -107,7 +110,7 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     if (k?.werbesperre && istWerblich(f)) { opts.beiSperre?.(f); continue; }
     const titel = f.bezug.art === 'chance' ? crm.chancen.find(c => c.id === f.bezug.id)?.titel : f.bezug.art === 'mandat' ? crm.mandate.find(m => m.id === f.bezug.id)?.kunde : f.bezug.art === 'event' ? crm.events.find(e => e.id === f.bezug.id)?.titel : f.bezug.art === 'firma' ? firmen.get(f.bezug.id)?.name : undefined;
     raus.push(mach({ id: f.id, virtuell: false, quelle: f.quelle, art: f.art, text: f.text, faellig: f.faellig, ...(f.uhrzeit ? { uhrzeit: f.uhrzeit } : {}), ...(f.kontaktId ? { kontaktId: f.kontaktId } : {}),
-      name: k ? anzeigename(k) : titel ?? f.text, ...(firmaVon(f.kontaktId) ? { firma: firmaVon(f.kontaktId) } : {}), bezug: { ...f.bezug, ...(titel ? { titel } : {}) }, zustaendig: f.zustaendig, ...(f.verschoben ? { verschoben: f.verschoben } : {}) }));
+      name: k ? anzeigename(k) : titel ?? f.text, ...(firmaVon(f.kontaktId) ? { firma: firmaVon(f.kontaktId) } : {}), bezug: { ...f.bezug, ...(titel ? { titel } : {}) }, zustaendig: f.zustaendig, ...(f.verschoben ? { verschoben: f.verschoben } : {}), ...(f.terminUid ? { terminUid: f.terminUid } : {}) }));
   }
   const frei = (kontaktId: string, faellig: string) => !belegt.has(`${kontaktId}|${faellig}`);
 
@@ -149,7 +152,8 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     raus.push(mach({ id: `v:nachfassen:${t.id}`, virtuell: true, quelle: 'nachfassen', art: 'nachricht', text: `Nachfassen nach „${ev.titel}“`, faellig: f, kontaktId: t.kontaktId, name: nameVon(t.kontaktId), ...(firmaVon(t.kontaktId) ? { firma: firmaVon(t.kontaktId) } : {}), bezug: { art: 'event', id: ev.id, titel: ev.titel }, zustaendig: t.einladenDurch ?? zustaendig(ev.zustaendig, 'event') }));
   }
   // 5 · Review am Mandat
-  for (const m of crm.mandate.filter(m => m.status === 'aktiv' && m.naechstesReview && m.naechstesReview <= bis)) {
+  // Dieselbe Regel wie die Kalender-Frist (`reviewZaehlt`, F2 M1) — in Glocke/Heute führt DIESER Eintrag.
+  for (const m of crm.mandate.filter(m => reviewZaehlt(m) && m.naechstesReview! <= bis)) {
     const kid = m.kontaktIds[0];
     raus.push(mach({ id: `v:review:${m.id}`, virtuell: true, quelle: 'review', art: 'termin', text: `Review „${m.kunde}“`, faellig: m.naechstesReview!, ...(kid ? { kontaktId: kid } : {}), name: kid ? nameVon(kid) : m.kunde, firma: m.kunde, bezug: { art: 'mandat', id: m.id, titel: m.kunde }, zustaendig: zustaendig(m.zustaendig, 'sales') }));
   }
@@ -198,11 +202,11 @@ export function puenktlichkeit(followups: FollowUp[], heute: string, tageZurueck
 }
 
 /** Ein neues Follow-up aus einer Eingabe — Zuständig: Angabe, sonst wer die Beziehung hält, sonst die Person, die anlegt. */
-export function neuesFollowUp(e: { id: string; bezug: { art: FollowUpBezugArt; id: string }; kontaktId?: string; art?: FollowUpArt; text: string; faellig: string; uhrzeit?: string; zustaendig?: string; quelle?: FollowUp['quelle']; notiz?: string; aufgabeId?: string }, kontakt: Kontakt | undefined, person: string, jetzt: string): FollowUp {
+export function neuesFollowUp(e: { id: string; bezug: { art: FollowUpBezugArt; id: string }; kontaktId?: string; art?: FollowUpArt; text: string; faellig: string; uhrzeit?: string; zustaendig?: string; quelle?: FollowUp['quelle']; notiz?: string; aufgabeId?: string; terminUid?: string }, kontakt: Kontakt | undefined, person: string, jetzt: string): FollowUp {
   return {
     id: e.id, bezug: e.bezug, ...(e.kontaktId ? { kontaktId: e.kontaktId } : {}), art: e.art ?? 'sonstig', text: e.text.trim().slice(0, 300), faellig: e.faellig,
     ...(e.uhrzeit ? { uhrzeit: e.uhrzeit } : {}), zustaendig: e.zustaendig ?? (kontakt ? haeltBeziehung(kontakt) : person), status: 'offen', quelle: e.quelle ?? 'hand',
-    ...(e.notiz ? { notiz: e.notiz.slice(0, 1000) } : {}), ...(e.aufgabeId ? { aufgabeId: e.aufgabeId } : {}), angelegt: jetzt, geaendert: jetzt,
+    ...(e.notiz ? { notiz: e.notiz.slice(0, 1000) } : {}), ...(e.aufgabeId ? { aufgabeId: e.aufgabeId } : {}), ...(e.terminUid ? { terminUid: e.terminUid } : {}), angelegt: jetzt, geaendert: jetzt,
   };
 }
 

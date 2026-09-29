@@ -2,6 +2,8 @@
 // GET: Einstellung des Haushalts (Privat-Space: nur Zahlen oder voll), Ziel (Server-Vault konfiguriert? Spiegel an?),
 //      letzter _App-Spiegel-Lauf, Stand des Such-Index der Arbeitsbestände.
 // POST { privat: 'anzahl' | 'voll' }: Einstellung ändern (Person im Haushalt, wer/wann wird festgehalten).
+// POST { zeitAuswertung: true | false }: Einwilligung der ANGEMELDETEN Person, dass ihre Zeit-Auswertung der Woche in
+//      `_App/Woche` steht (F2 H1, Standard aus) — nur für sich selbst, nie für eine andere Person.
 // POST { aktion: 'jetzt' }: Tagesbericht ablegen und den Spiegel abgleichen — sonst macht das der nächtliche Lauf.
 // Nur im Haushalt des Inhabers (Aufgaben und CRM gehören ihm).
 
@@ -34,7 +36,7 @@ export async function POST(req: Request) {
   if (!zugang) return KEIN_ZUGANG();
   const hh = await haushaltDesInhabers();
   if (!hh) return KEIN_ZUGANG();
-  let b: { privat?: unknown; aktion?: unknown } = {};
+  let b: { privat?: unknown; aktion?: unknown; zeitAuswertung?: unknown } = {};
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion === 'jetzt') {
     const [{ appTagesbericht }, { appSpiegel }] = await Promise.all([import('@/lib/brain/app-bericht'), import('@/lib/brain/app-spiegel')]);
@@ -46,5 +48,9 @@ export async function POST(req: Request) {
     const { einstellungSetzen } = await import('@/lib/brain/app-material');
     return NextResponse.json({ ok: true, einstellung: await einstellungSetzen(hh, b.privat, zugang.person) });
   }
-  return NextResponse.json({ ok: false, fehler: "privat ('anzahl' | 'voll') oder aktion: 'jetzt'." }, { status: 400 });
+  if (typeof b.zeitAuswertung === 'boolean') {
+    const { zeitFreigabeSetzen } = await import('@/lib/brain/app-material');
+    return NextResponse.json({ ok: true, einstellung: await zeitFreigabeSetzen(hh, zugang.person, b.zeitAuswertung) });
+  }
+  return NextResponse.json({ ok: false, fehler: "privat ('anzahl' | 'voll'), zeitAuswertung (true | false) oder aktion: 'jetzt'." }, { status: 400 });
 }

@@ -16,6 +16,7 @@
 
 import { WEG } from '@/lib/wege';
 import { mandatFristen, type MandatFristFelder } from '@/lib/crm/kunden';
+import { reviewZaehlt } from '@/lib/crm/review';
 import { werktagAbOder } from '@/lib/zeit/kalender-kern';
 
 export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang' | 'steuer' | 'dsgvo' | 'angebot' | 'deal';
@@ -24,7 +25,9 @@ export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingan
  * nach ihrem Space. `fuer` (K6a): wer zuständig ist (Mandat: `zustaendig`) — ohne Angabe der ganze Haushalt (Glocke).
  * `kuendigung` (K6a): die Frist ist eine Kündigungsfrist (Glocke/Heute melden sie mit Vorlauf).
  */
-export interface Frist { id: string; art: FristArt; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean; bereich: 'privat' | 'business'; fuer?: string; kuendigung?: true }
+export interface Frist { id: string; art: FristArt; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean; bereich: 'privat' | 'business'; fuer?: string; kuendigung?: true;
+  /** Review eines Mandats — führt als Follow-up `v:review`; hier nur für die Kalenderansicht (F2 M1). */
+  review?: true }
 export interface Erinnerung { id: string; tag: string; zeit?: string; titel: string; liste?: string }
 
 /** Pflicht-Hinweis an jedem Steuertermin aus der Vorlage (Kevin 29.09., Zusatzthema #11). */
@@ -70,7 +73,8 @@ export function fristen(q: Quellen, von: string, bis: string, heute: string = vo
     const f = mandatFristen(m, heute);
     if (imZeitraum(f.endeAm ?? undefined, von, bis)) raus.push({ id: `md-ende-${m.id}`, art: 'mandat', tag: f.endeAm!, titel: m.ende ? `Mandat endet: ${name}` : `Laufzeit-Ende: ${name}`, ...(m.ende ? {} : { unter: m.verlaengerung === 'auto' ? 'verlängert sich sonst automatisch' : 'nach der Mindestlaufzeit' }), href: WEG.mandat(m.id), bereich: 'business', ...fuer });
     if (imZeitraum(f.frist ?? undefined, von, bis)) raus.push({ id: `md-frist-${m.id}`, art: 'mandat', tag: f.frist!, titel: `Kündigungsfrist: ${name}`, unter: `${m.kuendigungsfristTage} Tage vor Ende ${kurzTag(f.endeAm!)}`, href: WEG.mandat(m.id), bereich: 'business', kuendigung: true, ...fuer });
-    if (imZeitraum(m.naechstesReview, von, bis)) raus.push({ id: `md-review-${m.id}`, art: 'mandat', tag: m.naechstesReview.slice(0, 10), titel: `Review: ${name}`, href: WEG.mandat(m.id), bereich: 'business', ...fuer });
+    // Review: dieselbe Regel wie das Follow-up `v:review` (`reviewZaehlt` — pausiert zählt nicht, F2 M1).
+    if (reviewZaehlt(m) && imZeitraum(m.naechstesReview, von, bis)) raus.push({ id: `md-review-${m.id}`, art: 'mandat', tag: m.naechstesReview.slice(0, 10), titel: `Review: ${name}`, href: WEG.mandat(m.id), bereich: 'business', review: true, ...fuer });
   }
   for (const z of q.zahlungen ?? []) {
     if (z.status === 'bezahlt' || z.status === 'erledigt') continue;

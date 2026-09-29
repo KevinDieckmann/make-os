@@ -37,6 +37,7 @@ import { HAUSHALT_ERSATZ } from './sperrliste';
 import type { BuchungenStand } from '@/lib/kalender/buchung-verbindungen';
 import type { SpiegelStand } from '@/lib/kalender/spiegel-verbindungen';
 import type { TermineStand } from './verbindungen-termine';
+import type { FamilieTageStand } from './verbindungen-familie';
 
 interface Quellen { haushalt: string | null; personen: string[] }
 
@@ -134,6 +135,18 @@ async function ladeFamilieSpiegel(): Promise<SpiegelStand['familie']> {
   };
 }
 
+/** Familie des Inhabers (F2 N4): nur Kennungen der Menschen und der Wichtigen Tage mit Verweis — keine Namen, keine Daten. */
+async function ladeFamilieTage(): Promise<FamilieTageStand | null> {
+  const h = (await quellen()).haushalt;
+  if (!h) return null;
+  const f = await loadJson<{ menschen?: { id: string }[]; tage?: { id: string; menschId?: string; datum?: string }[] }>(`familie--${h}`);
+  if (!f) return null;
+  return {
+    menschen: (Array.isArray(f.menschen) ? f.menschen : []).map(m => m.id),
+    tage: (Array.isArray(f.tage) ? f.tage : []).filter(t => t.menschId).map(t => ({ id: t.id, menschId: t.menschId, mitDatum: !!t.datum })),
+  };
+}
+
 const dateiOrdner = (h: string) => path.join(datenOrdner(), 'dateien', h);
 
 /** Stand aller beteiligten Speicher plus Ordner der Ablage — Grundlage für das ETag (304 ohne Rechnen). */
@@ -157,7 +170,7 @@ async function aufPlatte(h: string): Promise<string[]> {
 export async function ladeVerbindungsBestaende(heute: string): Promise<VerbindungsBestaende & { haushalt: string | null }> {
   const q = await quellen();
   // Seit 28.09. abends: Planposten-Kennungen (Mandat → Liquiditätsplan) und Head-Vorschläge (nur Kennung, Person, Status).
-  const [liquiplan, heads, planung, kalender, buchungen, familieSpiegel, termine] = await Promise.all([
+  const [liquiplan, heads, planung, kalender, buchungen, familieSpiegel, termine, familieTage] = await Promise.all([
     loadJson<{ posten?: { id: string }[] }>('liquiplan'),
     Promise.all(HEADS.map(async h => ({ head: h, stand: await loadJson<{ vorschlaege?: { id: string; kontakt_id?: string | null; status?: string }[] }>(standName(h)) }))),
     ladePlanung(q),
@@ -165,6 +178,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     ladeBuchungen().catch(() => null),
     ladeFamilieSpiegel().catch(() => null),
     ladeTermineStand().catch(() => null),
+    ladeFamilieTage().catch(() => null),
   ]);
   const [kontakte, crm, finanz, tasks, ordnung, einheiten, konflikte, ablage, dateien, zeiten, aufgabenAblage] = await Promise.all([
     loadJson<{ kontakte?: Kontakt[] }>('kontakte'),
@@ -198,6 +212,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     buchungen,
     familieSpiegel,
     termine,
+    familieTage,
     heads: heads.map(h => ({ head: h.head, vorschlaege: (Array.isArray(h.stand?.vorschlaege) ? h.stand!.vorschlaege : []).map(v => ({ id: v.id, ...(v.kontakt_id ? { kontakt_id: v.kontakt_id } : {}), ...(v.status ? { status: v.status } : {}) })) })),
   };
 }

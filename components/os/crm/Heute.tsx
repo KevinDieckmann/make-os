@@ -112,7 +112,8 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   // (K3) zählen mit der Zeit ihres TERMINS (K6a): die Zeiten liefert GET /api/heute/anstehend (dieselbe Quelle wie die Glocke).
   const [terminZeiten, setTerminZeiten] = useState<TerminZeiten | undefined>(undefined);
   useEffect(() => { fetch('/api/heute/anstehend', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => { if (x?.ok) setTerminZeiten(x.nachbereitZeiten ?? {}); }).catch(() => {}); }, [api.kontakte]);
-  const nachbereiten = useMemo(() => (d ? nachbereitung(api.kontakte ?? [], d.heute, d.ich, terminZeiten, wandzeit(new Date())) : []), [api.kontakte, d, terminZeiten]);
+  // Offene Follow-ups am selben Termin (F2 M4) gelten als „in Arbeit“ — keine zweite Frage.
+  const nachbereiten = useMemo(() => (d ? nachbereitung(api.kontakte ?? [], d.heute, d.ich, terminZeiten, wandzeit(new Date()), api.crm?.stand.followups) : []), [api.kontakte, api.crm, d, terminZeiten]);
 
   const serie = useMemo(() => {
     const tage = new Set((d?.sitzungen ?? []).map(s => s.datum));

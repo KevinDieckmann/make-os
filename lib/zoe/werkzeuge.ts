@@ -24,16 +24,20 @@ import { neueKennung } from '@/lib/kennung';
 import type { PlanArt } from '@/types/planer';
 import { blockAnlegen } from '@/lib/planung/bloecke-server';
 import { verbunden as icloudVerbunden } from '@/lib/kalender/icloud';
-import { minutenVon } from '@/lib/kalender/zeit';
+import { blockKollision } from '@/lib/planung/bloecke';
 
-// ── ZOE plant SELBST: Block in den Kalender legen (Kevins Ansage:
-// „dass da auch drin geplant werden kann"). Seit 29.09. (K5) ist ein Block ein iCloud-Termin der Art Fokus/Block
-// im Kalender der Person (lib/planung/bloecke-server.ts `blockAnlegen`: iCloud → kalender-bezug → Änderungsprotokoll,
-// ohne Teilnehmer) — NIE über feste Termine (harte Kollisionsprüfung vor dem Schreiben, gelesen ohne Netz).
+// ── ZOE plant: Block in den Kalender der Person (Kevins Ansage: „dass da auch drin geplant werden kann"). Seit F2 M8
+// (29.09., Kevin: „ZOE schreibt nur über den Stapel“) ist `plan_block` freigabepflichtig (Register, Gruppe „kalender“):
+// der Aufruf aus dem Gespräch oder einem Lauf legt einen Vorschlag in den Stapel, erst der Klick führt diese Funktion aus
+// (`erzwingen`). Angelegt wird über den Blöcke-Weg (lib/planung/bloecke-server.ts `blockAnlegen`: iCloud-Termin der Art
+// Fokus/Block im Kalender der Person → kalender-bezug → Änderungsprotokoll, ohne Teilnehmer) — nie über den Apple-Altweg,
+// NIE über feste Termine (Kollision `blockKollision` bei der Freigabe, gelesen ohne Netz).
 const PLAN_ARTEN_ZOE = ['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'] as const;
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const KEINE_PERSON_PLAN = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 
-async function planBlock(input: Record<string, unknown>, _o?: unknown, person = 'kevin'): Promise<string> {
+async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON_PLAN; // Regel 5: nie ein Rückfall auf „kevin“
   const date = String(input.date ?? '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Fehlgeschlagen: date muss YYYY-MM-DD sein.';
   if (date < localDay()) return `Fehlgeschlagen: ${date} liegt in der Vergangenheit — plane ab heute (${localDay()}).`;
@@ -44,15 +48,12 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person = 
   const ende = startMin + dauerMin;
   if (!icloudVerbunden()) return 'Fehlgeschlagen: iCloud ist nicht verbunden — Blöcke sind Termine im Kalender.';
 
-  // Feste Termine an diesem Tag — nichts wird überplant. Über denselben Lesepfad wie ZOE (R-Z #K4, für die Person
-  // gefiltert: private der anderen nur „Belegt“); zählen: beschäftigt, mit Uhrzeit, eigener oder gemeinsamer Kalender.
+  // Feste Termine — nichts wird überplant. Über denselben Lesepfad wie ZOE (R-Z #K4, für die Person gefiltert: private
+  // der anderen nur „Belegt“, abgesagte fehlen). Ab dem Vortag gelesen: ein Termin über Mitternacht zählt mit (F2 M5).
   // KEMARIS-Beispieldaten zählen seit K5 nicht mehr (`kal.kemaris` bleibt außen vor).
-  const kal = await termineFuerZoe(person, date, tagePlus(date, 1));
-  const fest = kal.termine
-    .filter(t => !t.ganztags && t.beschaeftigt !== false && t.art !== 'arbeitsort' && (t.wer === person || t.wer === 'beide' || t.von === person) && t.start.slice(0, 10) === date)
-    .map(t => ({ titel: t.titel, s: minutenVon(t.start), e: Math.max(t.ende.slice(0, 10) > date ? 24 * 60 : minutenVon(t.ende), minutenVon(t.start) + 15) }));
-  const kollision = fest.find(f => startMin < f.e && f.s < ende);
-  if (kollision) return `Kollision mit festem Termin „${kollision.titel}" (${hhmm(kollision.s)}–${hhmm(kollision.e)}) am ${date} — nicht eingeplant. Schlage eine freie Zeit vor.`;
+  const kal = await termineFuerZoe(person, tagePlus(date, -1), tagePlus(date, 1));
+  const kollision = blockKollision(kal.termine, person, date, startMin, ende);
+  if (kollision) return `Kollision mit festem Termin „${kollision.titel}" (${hhmm(kollision.s)}–${hhmm(Math.min(kollision.e, 24 * 60 - 1))}) am ${date} — nicht eingeplant. Schlage eine freie Zeit vor.`;
 
   try {
     await blockAnlegen(person, { date, startMin, dauerMin, titel, art }, { art: 'zoe', person });

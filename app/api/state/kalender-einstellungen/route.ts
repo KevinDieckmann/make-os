@@ -24,8 +24,10 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  let body: Partial<Datei>;
+  let body: Partial<Datei> & { teil?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const next = await updateJson<Datei>('kalender-einstellungen', current => sauber({ ...sauber(current ?? LEER), ...body }));
+  // F2 N7: `{ teil }` = nur die geänderten Felder, gelegt auf den aktuellen Stand (in der Schreibsperre). Ohne `teil` wie bisher.
+  const teil = body.teil && typeof body.teil === 'object' && !Array.isArray(body.teil) ? body.teil as Partial<Datei> : null;
+  const next = await updateJson<Datei>('kalender-einstellungen', current => sauber({ ...sauber(current ?? LEER), ...(teil ?? body) }));
   return NextResponse.json({ ok: true, ...next });
 }

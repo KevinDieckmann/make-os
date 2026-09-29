@@ -137,3 +137,33 @@ export function wochenStunden(termine: readonly StundenTermin[], tage: readonly 
 
 /** Die Tage einer Woche ab Montag. */
 export const wochenTage = (montag: string): string[] => Array.from({ length: 7 }, (_, i) => tagPlus(montag, i));
+
+/**
+ * Kollidiert ein geplanter Block [startMin, endeMin) am Tag `date` mit einem festen Termin der Person? — rein (F2 M5, für
+ * ZOE `plan_block`; geprüft bei der Freigabe). Zählt:
+ *   · beschäftigte Termine der Person oder gemeinsame (`wer`/`von`), auch über Tagesgrenzen (Beginn gestern, Ende heute)
+ *   · ganztägige Abwesenheit der Person = der ganze Tag ist belegt; andere ganztägige Termine (Feiertag, Erinnerung) nicht
+ * Zählt nicht: abgesagte/abgelehnte, freie (TRANSP), Arbeitsort. Liefert den ersten Treffer (Titel kann „Belegt“ sein).
+ */
+export function blockKollision(
+  termine: readonly { titel: string; start: string; ende: string; ganztags: boolean; art?: string; beschaeftigt?: boolean; abgesagt?: true; wer?: string; von?: string }[],
+  person: string, date: string, startMin: number, endeMin: number,
+): { titel: string; s: number; e: number } | null {
+  const tagesbeginn = `${date}T00:00`, folgetag = `${tagPlus(date, 1)}T00:00`;
+  for (const t of termine) {
+    if (t.abgesagt || t.beschaeftigt === false || t.art === 'arbeitsort') continue;
+    if (!(t.wer === person || t.wer === 'beide' || t.von === person)) continue;
+    if (t.ganztags) {
+      // Ganztags: `ende` ist der Folgetag (exklusiv; ein Tag mit Ende = Beginn zählt wie in `verfuegbarkeit-regeln`).
+      const s0 = t.start.slice(0, 10), e0 = t.ende.slice(0, 10);
+      const drin = s0 <= date && (e0 > date || (e0 === date && s0 === date));
+      if (t.art === 'abwesend' && (!t.von || t.von === person) && drin) return { titel: t.titel, s: 0, e: 24 * 60 };
+      continue;
+    }
+    if (!(t.start.slice(0, 16) < folgetag && t.ende.slice(0, 16) > tagesbeginn)) continue;
+    const s = t.start.slice(0, 10) < date ? 0 : minutenVon(t.start);
+    const e = t.ende.slice(0, 10) > date ? 24 * 60 : Math.max(minutenVon(t.ende), s + 15);
+    if (startMin < e && s < endeMin) return { titel: t.titel, s, e };
+  }
+  return null;
+}

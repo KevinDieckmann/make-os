@@ -17,7 +17,7 @@
 // je einen Blick (Antwort `einzeln`). Jede Sammelfreigabe bekommt eine Charge (`sammel`, „Charge rückgängig“).
 
 import { NextResponse } from 'next/server';
-import { lies, hole, entscheide, beanspruche, loslassen, type Vorschlag } from '@/lib/zoe/stapel';
+import { lies, hole, entscheide, beanspruche, loslassen, vorschlagSichtbar, type Vorschlag } from '@/lib/zoe/stapel';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { stapelArtVon, UNBEKANNTE_ART } from '@/lib/zoe/stapel-arten';
 import { personAus } from '@/lib/zoe/raum';
@@ -61,8 +61,8 @@ function eingabeSauber(v: unknown, vorher: Record<string, unknown>): Sauber {
   }
   return { ok: true, wert: raus };
 }
-/** Sehen und entscheiden: eigene Vorschläge, die des Systems, und Haushalts-Vorschläge für Haushaltsmitglieder. */
-const meiner = (v: { person?: string; gruppe: string }, person: string | null, z: unknown, HH: string) => (!v.person || v.person === person) && (z || v.gruppe !== HH);
+/** Sehen und entscheiden: eigene Vorschläge, die des Systems, und Haushalts-Vorschläge für Haushaltsmitglieder (`vorschlagSichtbar`, eine Regel mit Heute). */
+const meiner = (v: { person?: string; gruppe: string }, person: string | null, z: unknown) => vorschlagSichtbar(v, person, !!z);
 
 // Haushaltsfinanzen (24.09.): Vorschläge der Gruppe „haushalt“ sieht und
 // entscheidet nur, wer einem Haushalt angehört — mit ausdrücklich benannter
@@ -76,7 +76,7 @@ export async function GET(req: Request) {
   const alle = new URL(req.url).searchParams.get('alle') === '1';
   const z = await haushaltVon(req);
   const person = personStreng(req);
-  const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person, z, HAUSHALT));
+  const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person, z));
   return NextResponse.json({ ok: true, vorschlaege: liste, offen: liste.filter(v => v.status === 'offen').length });
 }
 
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
   const person = personAus(req);
   const wer = personStreng(req);
   const z = await haushaltVon(req);
-  const darf = (v: Vorschlag) => (meiner(v, wer, z, HAUSHALT) ? null : { status: 404 as const, fehler: 'Vorschlag nicht gefunden.' });
+  const darf = (v: Vorschlag) => (meiner(v, wer, z) ? null : { status: 404 as const, fehler: 'Vorschlag nicht gefunden.' });
 
   /** Ein gewöhnlicher Werkzeug-Vorschlag: beanspruchen (in der Sperre), ausführen, entscheiden. */
   const werkzeugFreigeben = async (id: string, eingabeNeu: Record<string, unknown> | null) => {
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
 
   // ── Sammel-Freigabe: „durcharbeiten" ──
   if (body.alle) {
-    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, z, HAUSHALT));
+    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, z));
     const offen = alleOffen.filter(sammelTauglich);
     const einzeln = alleOffen.length - offen.length;
     if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [], einzeln });
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
   const id = String(body.id ?? '');
   const v = id ? await hole(id) : null;
   if (!v) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
-  if (!meiner(v, wer, z, HAUSHALT)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
+  if (!meiner(v, wer, z)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
   if (v.status === 'in_arbeit') return NextResponse.json({ ok: false, error: 'Wird gerade übernommen.' }, { status: 409 });
   if (v.status !== 'offen') return NextResponse.json({ ok: false, error: `Schon entschieden (${v.status}).` }, { status: 409 });
 

@@ -198,7 +198,8 @@ function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig;
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <Wahl label="Art" liste={FOLLOWUP_ARTEN} wert={naechster.art} onWahl={art => setNaechster({ ...naechster, art })} aus={kein} />
-            {f.bezug.art !== 'chance' ? <label style={{ fontSize: 12.5, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={kein} onChange={e => setKein(e.target.checked)} /> kein nächster Schritt (bewusst)</label> : <span style={{ fontSize: 12, color: C.inkLeise }}>Beim Deal ist der nächste Schritt Pflicht (Deal-Regel).</span>}
+            {f.quelle === 'dealwiedervorlage' ? <span style={{ fontSize: 12, color: C.inkLeise }}>Das Datum wird die nächste Wiedervorlage am geparkten Deal; der Text steht danach in der Notiz dieses Follow-ups.</span>
+              : f.bezug.art !== 'chance' ? <label style={{ fontSize: 12.5, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={kein} onChange={e => setKein(e.target.checked)} /> kein nächster Schritt (bewusst)</label> : <span style={{ fontSize: 12, color: C.inkLeise }}>Beim Deal ist der nächste Schritt Pflicht (Deal-Regel).</span>}
           </div>
         </div>
       </Feldzeile>

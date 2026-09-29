@@ -65,8 +65,8 @@ describe('Eine Stelle je Person — Vorrang Familie, Mensch führt', () => {
     expect(v.filter(x => x.name.startsWith('Tom'))).toHaveLength(1);
     expect(v.find(x => x.name.startsWith('Tom'))).toMatchObject({ herkunft: 'familie', space: 'privat', geburtstag: '05.05.', kontaktId: 'c-tom-muell-test' });
   });
-  it('verknüpft ohne eigenen Tag → Tag vom Kontakt, Eintrag bleibt in der Familie', () => {
-    const fam = familieQuellen({ menschen: [{ id: 'm2', name: 'Bruder', geburtstag: null, kontaktId: 'c-ida-kund-test' }, { id: 'm3', name: 'Niemand', geburtstag: null }] }, links);
+  it('gleicher Name ohne eigenen Tag → Tag vom Kontakt, Eintrag bleibt in der Familie (F2 N4: ohne `kontaktId`)', () => {
+    const fam = familieQuellen({ menschen: [{ id: 'm2', name: 'Ida Kundin', geburtstag: null }, { id: 'm3', name: 'Niemand', geburtstag: null }] }, links);
     const v = quellenVereinen(fam, crm);
     expect(v.map(x => x.id).sort()).toEqual(['crm-c-tom-muell-test', 'fam-m2']);
     expect(v.find(x => x.id === 'fam-m2')).toMatchObject({ geburtstag: '12.12.', space: 'privat' });

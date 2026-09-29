@@ -2,6 +2,7 @@
 // GET  → alle fälligen und bald fälligen Follow-ups (echte + virtuelle aus den alten
 //        Feldern), Zahlen je Gruppe, Pünktlichkeit
 // POST { aktion: 'anlegen', bezug, kontaktId?, art?, text, faellig, uhrzeit?, zustaendig?, notiz?, id? (nur `fu-v-…` aus einem ZOE-Vorschlag, idempotent) }
+//      (+ terminUid? — Termin-Schlüssel `kalender|uid(::RID)`, z. B. „Nachbereiten“ aus der Akte, F2 M4: kein Titel im Text)
 //      { aktion: 'erledigen', id, ergebnis?, notiz?, naechster?: { text, faellig, art? } }
 //      { aktion: 'verschieben', id, tage | faellig }     (nie in die Vergangenheit)
 //      { aktion: 'absagen', id }                          (überfällig abgesagt = verpasst)
@@ -124,6 +125,8 @@ export async function POST(req: Request) {
       id: wunschId ?? neueId('fu'), bezug, kontaktId: kontaktId ?? (bezug.art === 'kontakt' ? bezug.id : undefined), art: ARTEN.includes(b.art as FollowUpArt) ? (b.art as FollowUpArt) : undefined, text, faellig,
       uhrzeit: typeof b.uhrzeit === 'string' && /^\d{2}:\d{2}$/.test(b.uhrzeit) ? b.uhrzeit : undefined, zustaendig: wer(b.zustaendig), notiz: typeof b.notiz === 'string' ? b.notiz : undefined,
       quelle: ['hand', 'zoe', 'head', 'deal', 'event', 'kampagne', 'kadenz'].includes(String(b.quelle)) ? (b.quelle as FollowUp['quelle']) : 'hand',
+      // Termin-Verweis (F2 M4): dieselbe Prüfung wie beim Säubern des Bestands (lib/crm/speicher.ts).
+      terminUid: typeof b.terminUid === 'string' && /^[^\u0000-\u001f\u007f]{1,300}$/.test(b.terminUid) ? b.terminUid : undefined,
     }, kontakt(kontaktId ?? bezug.id), person, jetzt);
     let schonDa = false;
     await aendereCrm(c => {
@@ -191,9 +194,13 @@ export async function POST(req: Request) {
       erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notiz ? { notiz: `${f.notiz ? `${f.notiz}\n` : ''}${notiz}` } : {}), geaendert: jetzt, geaendertVon: person };
       // Geparkter Deal (K6a): „Als Nächstes“ ist die nächste Wiedervorlage am Deal — kein zweites Follow-up daneben.
       if (herkunft === 'dealwiedervorlage') {
-        erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notiz ? { notiz } : {}), geaendert: jetzt, geaendertVon: person };
+        // F2 N8: am geparkten Deal gibt es kein Feld für den Text aus „Als Nächstes“ — er geht nicht verloren, sondern steht
+        // in der Notiz dieses erledigten Follow-ups (und damit in der Aktivität am Kontakt); das Datum wird die Wiedervorlage.
+        const alsNaechstes = naechsterRoh?.text ? `Als Nächstes: ${naechsterRoh.text}` : '';
+        const notizGesamt = [notiz, alsNaechstes].filter(Boolean).join('\n').slice(0, 1000);
+        erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notizGesamt ? { notiz: notizGesamt } : {}), geaendert: jetzt, geaendertVon: person };
         const naechste = naechsterRoh?.faellig ?? tagPlus(heute, 90);
-        hinweis = `Deal bleibt geparkt — nächste Wiedervorlage am ${naechste} (oder in der Deal-Akte wieder aufnehmen).`;
+        hinweis = `Deal bleibt geparkt — nächste Wiedervorlage am ${naechste} (oder in der Deal-Akte wieder aufnehmen).${alsNaechstes ? ' Der Text aus „Als Nächstes“ steht in der Notiz dieses Follow-ups.' : ''}`;
         return altesFeldImCrm({ ...c, followups: [...(c.followups ?? []), erledigt] }, naechste);
       }
       folge = naechsterRoh ? { ...neuesFollowUp({ id: neueId('fu'), bezug: f.bezug, kontaktId: f.kontaktId, art: naechsterRoh.art ?? f.art, text: naechsterRoh.text, faellig: naechsterRoh.faellig, zustaendig: f.zustaendig, quelle: 'hand' }, kontakt(f.kontaktId), person, jetzt), geaendertVon: person } : null;
@@ -212,7 +219,8 @@ export async function POST(req: Request) {
     if (e.aufgabeId) await aufgabeErledigenNachFollowUp(e, person);
     let lead: LeadMeldung | null = null;
     if (e.kontaktId) {
-      await aktivitaet(e.kontaktId, AKT_ART[e.art], `${e.text}${notiz ? ` — ${notiz}` : ''}`, person, ergebnis, e.bezug.art === 'chance' || e.bezug.art === 'event' || e.bezug.art === 'mandat' ? e.bezug.id : undefined, herkunft, werAus(req));
+      const aktNotiz = (herkunft as Herkunft) === 'dealwiedervorlage' ? (e.notiz ?? '') : notiz; // N8: dort mit „Als Nächstes“
+      await aktivitaet(e.kontaktId, AKT_ART[e.art], `${e.text}${aktNotiz ? ` — ${aktNotiz.replace(/\n/g, ' · ')}` : ''}`, person, ergebnis, e.bezug.art === 'chance' || e.bezug.art === 'event' || e.bezug.art === 'mandat' ? e.bezug.id : undefined, herkunft, werAus(req));
       if (e.bezug.art === 'event' && (ergebnis === 'gespraech' || ergebnis === 'termin')) lead = await leadHebenNachGespraech(e.kontaktId, jetzt, person, heute, werAus(req));
     }
     const f2 = folge as FollowUp | null;

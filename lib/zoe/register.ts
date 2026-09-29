@@ -253,9 +253,11 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'kalender', risiko: 'frei',
     vorschau: schlicht('Freie Zeit suchen', i => `${Number(i.dauerMin) || 60} Min.${Array.isArray(i.personen) && i.personen.length ? ` mit ${(i.personen as unknown[]).map(String).join(', ').slice(0, 60)}` : ''}`),
   },
+  // F2 M8 (29.09., Kevin: „ZOE schreibt nur über den Stapel“): ein Block ist ein Termin im Kalender — erst der Klick im
+  // Stapel legt ihn an (Blöcke-Weg, lib/planung/bloecke-server.ts). Gruppe „kalender“: Heute/Glocke zählen ihn als Kalender-Vorschlag.
   plan_block: {
-    gruppe: 'planer', risiko: 'frei',
-    vorschau: schlicht('Block in den Planer legen', i => `„${text(i.titel)}" am ${text(i.date, 10)}`),
+    gruppe: 'kalender', risiko: 'freigabe',
+    vorschau: schlicht('Block in deinen Kalender legen', i => `„${text(i.titel)}" am ${text(i.date, 10)}`),
   },
   lies_postfach: {
     gruppe: 'inbox', risiko: 'frei',

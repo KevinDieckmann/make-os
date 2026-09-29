@@ -96,6 +96,13 @@ export function bezugSauber(v: unknown): AufgabeBezug | undefined {
   return Object.keys(b).length ? b : undefined;
 }
 
+/** Anlass (F2 M2): nur „geschenk“ + Jahr — sonst weg. */
+export function anlassSauber(v: unknown): Task['anlass'] {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  return o.art === 'geschenk' && Number.isInteger(o.jahr) && (o.jahr as number) >= 1900 && (o.jahr as number) <= 2200 ? { art: 'geschenk', jahr: o.jahr as number } : undefined;
+}
+
 /** Kommentare: Kennung, Person, Text (≤ 4000), Zeitpunkt, Erwähnte. Mehr als die Grenze → ZuGross. */
 export function kommentareSauber(v: unknown): AufgabeKommentar[] | undefined {
   if (!Array.isArray(v)) return undefined;
@@ -150,6 +157,7 @@ export function taskSauber(o: unknown): Task | null {
     parentId: kennung(t.parentId),
     statusId: kennung(t.statusId),
     bezug: bezugSauber(t.bezug),
+    anlass: anlassSauber(t.anlass),
     // Seit 29.09. (Kevin): Beteiligte, Sichtbarkeit „nur ich“, Anlegerin (setzt der Server — lib/aufgaben/speicher.ts überschreibt).
     beteiligte: beteiligteSauber(t.beteiligte),
     sichtbarkeit: t.sichtbarkeit === 'nur-ich' || t.sichtbarkeit === 'haushalt' ? t.sichtbarkeit : undefined,

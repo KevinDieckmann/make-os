@@ -24,7 +24,7 @@ import { haeltBeziehung, BEIDE } from './team';
 import { tagePlus } from '@/lib/zeit';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { bezugTermin, terminMs } from './signale';
-import { uidVonSchluessel } from '@/lib/kalender/bezug';
+import { uidVonSchluessel, schluesselPasst } from '@/lib/kalender/bezug';
 import type { TerminZeiten } from './aktivitaeten';
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
@@ -115,8 +115,11 @@ const menschlich = (a: { von: string; art: string }) => a.von !== 'system' && a.
  *     Berliner Wandzeit). Abgesagte Termine (R-K1) fragen nicht nach.
  * Erledigt ist die Nachbereitung, sobald danach etwas Menschliches festgehalten wurde oder etwas am Termin hängt
  * (`bezug`). Das Meeting selbst zählt dabei nicht (es kann nach dem Termin verknüpft worden sein).
+ * In Arbeit (F2 M4): ein OFFENES Follow-up am selben Termin (`terminUid`, z. B. „Nachbereiten“ aus der Akte) — dann
+ * fragt „Wie lief's?“ nicht zusätzlich (keine Doppelmeldung); das Follow-up meldet sich selbst.
  */
-export function nachbereitung(kontakte: Kontakt[], heute: string, person?: string, termine?: TerminZeiten, jetztWand?: string): Nachbereitung[] {
+export function nachbereitung(kontakte: Kontakt[], heute: string, person?: string, termine?: TerminZeiten, jetztWand?: string, followups?: readonly { status: string; terminUid?: string }[]): Nachbereitung[] {
+  const inArbeit = (followups ?? []).filter(f => f.status === 'offen' && !!f.terminUid).map(f => f.terminUid!);
   const ab = tagePlus(heute, -NACHBEREITEN_TAGE);
   const jetzt = jetztWand ?? `${heute}T00:00:00`;
   const raus: (Nachbereitung & { iso: string })[] = [];
@@ -132,6 +135,7 @@ export function nachbereitung(kontakte: Kontakt[], heute: string, person?: strin
       }
       const t = a.art === 'termin' && a.terminUid ? termine?.[a.terminUid] : undefined;
       if (!t || t.abgesagt || t.ganztags) continue;
+      if (inArbeit.some(u => schluesselPasst(u, a.terminUid!, { serie: true }) || schluesselPasst(a.terminUid, u, { serie: true }))) continue;
       const ende = t.ende ?? t.start;
       if (ende.slice(0, 10) < ab || ende > jetzt) continue;
       const ms = terminMs(t.start);

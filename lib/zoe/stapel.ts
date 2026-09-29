@@ -153,6 +153,13 @@ const sicht = (v: Vorschlag): Vorschlag => {
   return { ...rest, status: 'offen' };
 };
 
+/**
+ * Sieht/entscheidet `person` diesen Vorschlag? — EINE Regel (Route /api/zoe/stapel und Heute/Glocke, F2 M6): eigene und
+ * die des Systems (ohne Person); Vorschläge der Gruppe „haushalt“ nur für Haushaltsmitglieder (`imHaushalt`).
+ */
+export const vorschlagSichtbar = (v: { person?: string; gruppe: string }, person: string | null, imHaushalt: boolean): boolean =>
+  (!v.person || v.person === person) && (imHaushalt || v.gruppe !== 'haushalt');
+
 export async function lies(nur?: VorschlagStatus): Promise<Vorschlag[]> {
   const s = await loadJson<Stand>('zoe-stapel');
   const liste = (s?.vorschlaege ?? []).map(sicht);

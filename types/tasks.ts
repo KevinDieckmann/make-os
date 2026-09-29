@@ -70,6 +70,11 @@ export interface Task extends Timestamps {
   statusId?: ID;
   /** Verknüpfung mit dem CRM: Kontakt, Firma, Mandat, Deal (Kennungen). */
   bezug?: AufgabeBezug;
+  /**
+   * Anlass der Aufgabe (F2 M2, 29.09.): Geschenk zum Geburtstag eines CRM-Kontakts in diesem Jahr — die Person steckt in
+   * `bezug.kontaktId`, hier nur Art + Jahr (keine Kopie von Name oder Datum). Heute erkennt so „vorgemerkt“ per Kennung.
+   */
+  anlass?: AufgabeAnlass;
   /** Kommentare mit @-Erwähnung (Speichernamen der Personen). */
   kommentare?: AufgabeKommentar[];
   /** Startdatum (YYYY-MM-DD). */
@@ -181,6 +186,7 @@ export interface VerlaufEintrag {
 export type AufgabenSpaceId = string;
 
 export interface AufgabeBezug { kontaktId?: string; firmaId?: string; mandatId?: string; dealId?: string }
+export interface AufgabeAnlass { art: 'geschenk'; jahr: number }
 
 export interface AufgabeKommentar {
   id: ID;

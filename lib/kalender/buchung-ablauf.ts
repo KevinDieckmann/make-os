@@ -237,7 +237,9 @@ async function freigabeLauf(h: string, a: Absicht): Promise<void> {
       if (!k || k.eingeschraenkt) return;
       await aendereCrm(c => {
         if ((c.followups ?? []).some(f => f.id === vorbereitenId)) return c;
-        const fu = neuesFollowUp({ id: vorbereitenId, bezug: { art: 'kontakt', id: b.kontaktId! }, kontaktId: b.kontaktId, art: 'termin', text: `Termin vorbereiten — „${s.titel.slice(0, 60)}“ am ${datumText(b)}`, faellig: vorbereitenTag(b.start, heute), quelle: 'hand', ...(b.anliegen ? { notiz: `Anliegen: ${b.anliegen}`.slice(0, 1000) } : {}) }, k, von, jetzt);
+        // F2 M3: am Termin verknüpft (`terminUid` = Schlüssel Kalender|UID wie R-K1) — verschiebt er sich, zieht die
+        // Verbindungsprüfung das Datum nach. Das Datum steht NICHT im Text (die Anzeige leitet es aus dem Termin ab).
+        const fu = neuesFollowUp({ id: vorbereitenId, bezug: { art: 'kontakt', id: b.kontaktId! }, kontaktId: b.kontaktId, art: 'termin', text: `Termin vorbereiten — „${s.titel.slice(0, 60)}“`, faellig: vorbereitenTag(b.start, heute), quelle: 'hand', ...(b.terminUid ? { terminUid: b.terminUid } : {}), ...(b.anliegen ? { notiz: `Anliegen: ${b.anliegen}`.slice(0, 1000) } : {}) }, k, von, jetzt);
         return { ...c, followups: [...(c.followups ?? []), { ...fu, zustaendig: s.person, geaendertVon: von }] };
       }, { art: 'person', person: von });
     });

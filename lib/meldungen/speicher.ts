@@ -8,6 +8,7 @@
 // je Person, standardmäßig aus. Der einzige Ort, an dem später versendet wird, ist
 // `telegramHaken` unten — heute versendet er NICHTS.
 
+import { merken } from '@/lib/store/memo';
 import { randomBytes } from 'crypto';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -89,10 +90,19 @@ function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: stri
   ];
 }
 
-/** Alles, woraus die abgeleiteten Meldungen entstehen (Aufgaben, Geburtstage, was ansteht). */
+/**
+ * Alles, woraus die abgeleiteten Meldungen entstehen (Aufgaben, Geburtstage, was ansteht). F2 N9: gemerkt (lib/store/memo.ts
+ * `merken`, 60 s, je Person und 10-Minuten-Uhr) — Glocke, „gelesen“ und Kanal-Einstellung rechneten sonst jedes Mal alle
+ * Quellen neu. Jede Schreibung in einen Quell-Bestand macht es ungültig; die Meldungen selbst (`meldungen--*`) sind Rauschen,
+ * „gelesen“ lässt die Quellen also warm. `jetztWand` bleibt die echte Uhrzeit.
+ */
 async function quellenLesen(person: string, heute: string, jetzt: Date) {
-  const [aufgaben, geburtstage, anstehend] = await Promise.all([aufgabenLesen(person), geburtstageLesen(person, heute), anstehendFuerGlocke(person, jetzt)]);
-  return { aufgaben, geburtstage, anstehend, jetztWand: wandzeit(jetzt) };
+  const uhr = wandzeit(jetzt);
+  const q = await merken(`glocke-quellen:${person}:${uhr.slice(0, 15)}`, 60_000, async () => {
+    const [aufgaben, geburtstage, anstehend] = await Promise.all([aufgabenLesen(person), geburtstageLesen(person, heute), anstehendFuerGlocke(person, jetzt)]);
+    return { aufgaben, geburtstage, anstehend };
+  });
+  return { ...q, jetztWand: uhr };
 }
 
 /** Die Glocke einer Person: eigene Meldungen + fällig/überfällig von heute + was ansteht (K6a). */

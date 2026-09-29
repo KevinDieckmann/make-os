@@ -4,9 +4,12 @@
 // Eine Karte für Heute mit allem, was außer Terminen und Aufgaben heute zählt — dieselbe Quelle wie die Glocke
 // (GET /api/heute/anstehend, lib/heute/anstehend.ts): Termine nachbereiten, Fristen (Kündigungsfristen mit Vorlauf,
 // Zahlungen, Steuer-Vorlage), fällige Follow-ups (auch die Wiedervorlage geparkter Deals), offene Buchungsanfragen,
-// Kalender-Vorschläge von ZOE und Geburtstage mit dem Vorschlag „Geschenk-Aufgabe 10 Tage vorher“.
-// Nur Verweise: jede Zeile führt in ihr Modul; erst ein Klick legt etwas an (die Geschenk-Aufgabe über den normalen
-// Aufgaben-Schreibweg). Nichts da → keine Karte.
+// Kalender-Vorschläge von ZOE und Geburtstage (auf Heute NUR hier, F2 M2) mit dem Geschenk-Vorlauf:
+//   Familie  der „Wichtige Tag“ ist die Quelle (Vorlauf, Aktion, erledigt je Jahr) — ohne ihn „Geschenk vormerken“, das
+//            legt ihn in der Familie an (Verweis `menschId`, kein Datum kopiert).
+//   CRM      „Geschenk-Aufgabe“ über den normalen Aufgaben-Schreibweg mit `bezug.kontaktId` + `anlass` (Kontakt + Jahr);
+//            vorgemerkt/erledigt erkennt `geschenkStand` per Kennung, nie per Titel.
+// Nur Verweise: jede Zeile führt in ihr Modul; erst ein Klick legt etwas an. Nichts da → keine Karte.
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -14,7 +17,9 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, LEUCHT } from '../schlank';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabeAnlegen } from '../aufgaben/hilfe';
-import { geschenkAufgabeTitel, type Anstehend as AnstehendDaten, type AGeburtstag } from '@/lib/heute/anstehend';
+import { geschenkAufgabeTitel, geschenkStand, ANLASS_WORT, GEBURTSTAG_VORLAUF, type Anstehend as AnstehendDaten, type AGeburtstag } from '@/lib/heute/anstehend';
+import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
+import { neueKennung } from '../aufgaben/hilfe';
 
 const kurz = (tag: string) => `${Number(tag.slice(8, 10))}.${Number(tag.slice(5, 7))}.`;
 const zeile: React.CSSProperties = { display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.045)', textDecoration: 'none', color: C.ink, minWidth: 0, fontFamily: SCHRIFT.text };
@@ -26,8 +31,22 @@ const kopf: React.CSSProperties = { fontSize: 11.5, color: C.inkLeise, textTrans
 export const anstehendLeer = (d: Pick<AnstehendDaten, 'nachbereiten' | 'fristen' | 'followups' | 'buchungen' | 'vorschlaege' | 'geburtstage'>) =>
   !d.nachbereiten.length && !d.fristen.length && !d.followups.length && !d.buchungen.length && !d.vorschlaege.kalender && !d.geburtstage.length;
 
-/** Rein darstellend (Render-Test): die Abschnitte. `vorgemerkt` = Geburtstage mit schon angelegter Geschenk-Aufgabe. */
-export function AnstehendListe({ d, vorgemerkt, geschenk }: { d: AnstehendDaten; vorgemerkt: (g: AGeburtstag) => boolean; geschenk?: (g: AGeburtstag) => void }) {
+/** Was beim Geburtstag rechts steht: Stand aus dem Wichtigen Tag (Familie) bzw. der verknüpften Aufgabe (CRM). */
+function GeschenkRechts({ g, stand, geschenk }: { g: AGeburtstag; stand: 'offen' | 'erledigt' | null; geschenk?: (g: AGeburtstag) => void }) {
+  const fertig: React.CSSProperties = { fontSize: 12, color: LEUCHT.gut, whiteSpace: 'nowrap' };
+  if (g.anlass) {
+    const wort = ANLASS_WORT[g.anlass.aktion];
+    return g.anlass.erledigt ? <span style={fertig}>✓ {wort} erledigt</span>
+      : <Link href="/os/familie" style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }} title="In der Familie abhaken">{wort} ab {kurz(g.anlass.ab)}</Link>;
+  }
+  if (stand === 'erledigt') return <span style={fertig}>✓ Geschenk erledigt</span>;
+  if (stand === 'offen') return <span style={fertig}>✓ Geschenk vorgemerkt</span>;
+  if (!geschenk || (g.herkunft === 'crm' ? !g.kontaktId : !g.menschId)) return null;
+  return <Knopf leise onClick={() => geschenk(g)}>{g.herkunft === 'crm' ? 'Geschenk-Aufgabe' : 'Geschenk vormerken'} ({kurz(g.aufgabeTag)})</Knopf>;
+}
+
+/** Rein darstellend (Render-Test): die Abschnitte. `geschenkStandVon` = Stand der Geschenk-Aufgabe eines CRM-Geburtstags. */
+export function AnstehendListe({ d, geschenkStandVon, geschenk }: { d: AnstehendDaten; geschenkStandVon: (g: AGeburtstag) => 'offen' | 'erledigt' | null; geschenk?: (g: AGeburtstag) => void }) {
   return (
     <div style={{ display: 'grid', gap: 2 }}>
       {d.nachbereiten.length > 0 && <div style={kopf}>Nachbereiten</div>}
@@ -68,8 +87,7 @@ export function AnstehendListe({ d, vorgemerkt, geschenk }: { d: AnstehendDaten;
         <div key={`g-${g.id}`} style={{ ...zeile, alignItems: 'center' }}>
           <span style={vorne('#FF7EB6')}>{kurz(g.tag)}</span>
           <Link href={g.href} style={{ ...text, color: C.ink, textDecoration: 'none' }}>🎂 {g.name}{g.alter !== undefined && g.alter > 0 ? ` (wird ${g.alter})` : ''}</Link>
-          {vorgemerkt(g) ? <span style={{ fontSize: 12, color: LEUCHT.gut, whiteSpace: 'nowrap' }}>✓ Geschenk vorgemerkt</span>
-            : geschenk ? <Knopf leise onClick={() => geschenk(g)}>Geschenk-Aufgabe ({kurz(g.aufgabeTag)})</Knopf> : null}
+          <GeschenkRechts g={g} stand={geschenkStandVon(g)} geschenk={geschenk} />
         </div>
       ))}
     </div>
@@ -78,6 +96,8 @@ export function AnstehendListe({ d, vorgemerkt, geschenk }: { d: AnstehendDaten;
 
 export function Anstehend({ i = 0 }: { i?: number }) {
   const [d, setD] = useState<AnstehendDaten | null>(null);
+  const [runde, setRunde] = useState(0);
+  const neuLaden = () => setRunde(r => r + 1);
   const { state, dispatch } = useTasks();
   useEffect(() => {
     let lebt = true;
@@ -85,23 +105,31 @@ export function Anstehend({ i = 0 }: { i?: number }) {
     void laden();
     const t = setInterval(() => { if (document.visibilityState === 'visible') void laden(); }, 5 * 60_000);
     return () => { lebt = false; clearInterval(t); };
-  }, []);
+  }, [runde]);
   if (!d || anstehendLeer(d)) return null;
-  // Eine Geschenk-Aufgabe gilt als vorgemerkt, solange eine offene Aufgabe mit genau diesem Titel existiert (keine Kopie).
-  const vorgemerkt = (g: AGeburtstag) => state.tasks.some(t => t.title === geschenkAufgabeTitel(g.name, g.tag) && t.status !== 'done' && t.status !== 'cancelled');
+  // CRM: verknüpft per Kennung (Kontakt + Jahr), nie per Titel — Papierkorb/Archiv/abgebrochen zählen nicht (`geschenkStand`).
+  const geschenkStandVon = (g: AGeburtstag) => (g.herkunft === 'crm' ? geschenkStand(state.tasks, g) : null);
   const geschenk = (g: AGeburtstag) => {
-    if (vorgemerkt(g)) return;
-    // Familie → Privat; CRM → Business mit Kontakt-Bezug (nur die Kennung, der Geburtstag bleibt am Kontakt).
-    aufgabeAnlegen(dispatch, state, { spaceId: g.herkunft === 'crm' ? 'kdv' : 'privat' }, {
-      title: geschenkAufgabeTitel(g.name, g.tag), dueDate: g.aufgabeTag, description: 'Vorschlag aus Heute (Geburtstag, 10 Tage Vorlauf).',
-      ...(g.herkunft === 'crm' && g.kontaktId ? { bezug: { kontaktId: g.kontaktId } } : {}),
-    });
+    if (g.herkunft === 'crm') {
+      if (!g.kontaktId || geschenkStandVon(g)) return;
+      // Business mit Kontakt-Bezug; Titel nur „Geschenk für …“ (kein Datum), der Geburtstag bleibt am Kontakt.
+      aufgabeAnlegen(dispatch, state, { spaceId: 'kdv' }, {
+        title: geschenkAufgabeTitel(g.name), dueDate: g.aufgabeTag, description: `Vorschlag aus Heute (Geburtstag, ${GEBURTSTAG_VORLAUF} Tage Vorlauf).`,
+        bezug: { kontaktId: g.kontaktId }, anlass: { art: 'geschenk', jahr: Number(g.tag.slice(0, 4)) },
+      });
+      return;
+    }
+    // Familie: der Wichtige Tag wird die Quelle (Verweis auf den Menschen, ohne eigenes Datum) — dann laden wir neu.
+    if (!g.menschId || g.anlass) return;
+    const eintrag = { id: neueKennung('tag'), titel: `Geburtstag ${g.name}`, art: 'geburtstag', datum: '', menschId: g.menschId, vorlaufTage: GEBURTSTAG_VORLAUF, wer: personLesen() || '', aktion: 'geschenk', erledigt: [] };
+    void fetch('/api/familie', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'tage', op: 'upsert', eintrag }] }) })
+      .then(r => (r.ok ? neuLaden() : undefined)).catch(() => {});
   };
   const zahl = d.nachbereiten.length + d.fristen.length + d.followups.length + d.buchungen.length + (d.vorschlaege.kalender ? 1 : 0) + d.geburtstage.length;
   return (
     <Karte i={i} akzent={d.fristen.some(f => f.kuendigung) || d.followups.some(f => f.tageUeber > 0) ? LEUCHT.achtung : undefined}>
       <Ueberschrift farbe={LEUCHT.achtung} rechts={<span style={{ fontSize: 12, color: C.inkLeise }}>{zahl}</span>}>Steht an</Ueberschrift>
-      <AnstehendListe d={d} vorgemerkt={vorgemerkt} geschenk={geschenk} />
+      <AnstehendListe d={d} geschenkStandVon={geschenkStandVon} geschenk={geschenk} />
     </Karte>
   );
 }

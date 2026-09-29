@@ -13,6 +13,9 @@
 //                              „Nachziehen“ setzt den Vortag (von Hand verschobene bleiben, wie sie sind).
 //   buchung-followup-ohne-termin „Termin vorbereiten“ einer bestätigten Buchung hängt noch nicht am Termin — „Verknüpfen“
 //                              setzt `terminUid` (dann zieht es mit). Buchungen selbst bleiben unberührt (R-K2).
+//   followup-termin-tot        (F2 M3) Offenes Follow-up zeigt auf einen Termin, den es in iCloud nicht mehr gibt (im
+//                              Holfenster, kein Waisen-Paar) — „Vom Termin lösen“ nimmt nur `terminUid` weg, das Follow-up
+//                              bleibt mit seinem Datum. Ein Waisen-Paar (`termin-waise-neu`) hängt Follow-ups mit um.
 // Beispiele sind Schlüssel/Kennungen — nie Titel.
 
 import type { FollowUp } from './typen';
@@ -20,6 +23,7 @@ import { schluesselPasst, schluesselTeile, lebendAus, verweisLebt, altSchluessel
 import { tagPlus } from '@/lib/kalender/zeit';
 import type { KalenderPruefBestand } from './verbindungen-kalender';
 import { toteTermine } from './verbindungen-kalender';
+import { uidVonSchluessel } from '@/lib/kalender/bezug';
 
 /** Lebende Termine im Holfenster (Einzeltermine und Vorkommen) — nur, was die Prüfung braucht. */
 export interface TermineStand {
@@ -34,6 +38,7 @@ export const PRUEFUNGEN_TERMINE = {
   'event-termin-verwaist': { schwere: 'warnung', bereich: 'kalender', reparierbar: true, art: 'kennung', knopf: 'Termin entfernen', text: (n: number) => `${n} ${e(n, 'Termin gehört', 'Termine gehören')} zu einem Event, das im CRM gelöscht wurde, und ${e(n, 'steht', 'stehen')} noch im Kalender — „Termin entfernen“ löscht ${e(n, 'ihn', 'sie')} in iCloud (Termine mit Gästen nie: dort in Apple absagen).` },
   'termin-waise-neu': { schwere: 'hinweis', bereich: 'kalender', reparierbar: true, art: 'kennung', knopf: 'Neu zuordnen', text: (n: number) => `${n} ${e(n, 'gelöschter Termin mit Bezug hat', 'gelöschte Termine mit Bezug haben')} einen neuen Termin mit gleichem Titel am selben Tag (±1) — „Neu zuordnen“ hängt Kontakt/Firma/Deal/Aufgabe und Meetings an den neuen Termin.` },
   'followup-termin-verschoben': { schwere: 'hinweis', bereich: 'followup', reparierbar: true, art: 'followup', knopf: 'Nachziehen', text: (n: number) => `${n} Follow-${e(n, 'up hängt', 'ups hängen')} an einem Termin, der sich verschoben hat — „Nachziehen“ setzt den Vortag des Termins.` },
+  'followup-termin-tot': { schwere: 'hinweis', bereich: 'followup', reparierbar: true, art: 'followup', knopf: 'Vom Termin lösen', text: (n: number) => `${n} Follow-${e(n, 'up hängt', 'ups hängen')} an einem Termin, den es in iCloud nicht mehr gibt — „Vom Termin lösen“ nimmt nur die Verbindung weg (das Follow-up bleibt).` },
   'buchung-followup-ohne-termin': { schwere: 'hinweis', bereich: 'followup', reparierbar: true, art: 'followup', knopf: 'Mit dem Termin verknüpfen', text: (n: number) => `${n} „Termin vorbereiten“ ${e(n, 'einer Buchung hängt', 'von Buchungen hängen')} noch nicht am Termin — verknüpft zieht ${e(n, 'es', 'sie')} beim Verschieben mit.` },
 } as const;
 export type TerminePruefungId = keyof typeof PRUEFUNGEN_TERMINE;
@@ -96,6 +101,25 @@ export function followupsNachTermin(followups: readonly FollowUp[], t: TermineSt
   return raus;
 }
 
+/**
+ * Offene Follow-ups, deren Termin es nicht mehr gibt (F2 M3) — nur bei gelungenem Stand und im Holfenster (Tag des Bezugs,
+ * sonst das Fälligkeitsdatum); Verweise, die ein Waisen-Paar umhängen würde, bleiben dafür stehen.
+ */
+export function followupsTerminTot(followups: readonly FollowUp[], k: KalenderPruefBestand | null | undefined, umhaengen: ReadonlySet<string> = new Set(), t?: TermineStand | null): string[] {
+  if (!k?.fenster) return [];
+  const f0 = k.fenster;
+  const da = lebendAus(k.objekte);
+  const tag = new Map(k.bezuege.map(b => [uidVonSchluessel(b.schluessel), b.tag]));
+  // Lebt, wenn der iCloud-Stand ihn kennt ODER er als Termin/Vorkommen im Holfenster steht (Serien-Vorkommen).
+  const lebt = (ref: string) => verweisLebt(ref, da) || !!t?.termine.some(z => schluesselPasst(ref, z.id, { serie: true }));
+  return followups.filter(f => {
+    if (f.status !== 'offen' || !f.terminUid || lebt(f.terminUid)) return false;
+    if ([...umhaengen].some(alt => schluesselPasst(f.terminUid, alt, { serie: true }))) return false;
+    const t = tag.get(uidVonSchluessel(f.terminUid)) ?? f.faellig;
+    return !!t && t >= f0.von && t < f0.bis;
+  }).map(f => f.id);
+}
+
 /** „Termin vorbereiten“ bestätigter Buchungen ohne Termin-Verweis: Follow-up-Kennung → Termin-Schlüssel. */
 export function buchungFollowupsOhneTermin(followups: readonly FollowUp[], t: TermineStand | null | undefined): Map<string, string> {
   const raus = new Map<string, string>();
@@ -112,8 +136,10 @@ export function terminePruefen(
   melde: (id: TerminePruefungId, kennung: string) => void,
 ): void {
   for (const s of verwaisteEventTermine(b.kalender, events)) melde('event-termin-verwaist', s);
-  for (const [alt, neu] of waisenPaare(b.kalender, b.termine, b.kontakte, b.aufgaben?.liste ?? [])) melde('termin-waise-neu', `${alt} → ${neu}`);
+  const paare = waisenPaare(b.kalender, b.termine, b.kontakte, b.aufgaben?.liste ?? []);
+  for (const [alt, neu] of paare) melde('termin-waise-neu', `${alt} → ${neu}`);
   for (const id of followupsNachTermin(b.followups, b.termine, b.heute).keys()) melde('followup-termin-verschoben', id);
+  for (const id of followupsTerminTot(b.followups, b.kalender, new Set(paare.map(([alt]) => alt)), b.termine)) melde('followup-termin-tot', id);
   for (const id of buchungFollowupsOhneTermin(b.followups, b.termine).keys()) melde('buchung-followup-ohne-termin', id);
 }
 
@@ -149,10 +175,23 @@ export function termineReparieren<K extends { id: string; aktivitaeten?: readonl
         if (!(k.aktivitaeten ?? []).some(a => paare.some(([alt]) => schluesselPasst(a.terminUid, alt, { serie: true })))) return k;
         return { ...k, aktivitaeten: (k.aktivitaeten ?? []).map(a => { const p = paare.find(([alt]) => schluesselPasst(a.terminUid, alt, { serie: true })); if (!p) return a; n++; return { ...a, terminUid: p[1] }; }) };
       });
+      // F2 M3: auch Follow-ups am alten Termin (z. B. „Termin vorbereiten“) wandern mit — sonst zögen sie nie mehr nach.
+      let nf = 0;
+      followups = followups.map(f => { const p = f.terminUid ? paare.find(([alt]) => schluesselPasst(f.terminUid, alt, { serie: true })) : undefined; if (!p) return f; nf++; return { ...f, terminUid: p[1], geaendert: jetzt, geaendertVon: person }; });
+      if (nf) aenderungen.push({ befundId: 'termin-waise-neu', speicher: 'crm', anzahl: nf, text: `${nf} Follow-${e(nf, 'up hängt', 'ups hängen')} jetzt am neuen Termin` });
       const neuVon = new Map(paare);
       if (kalender) kalender = { ...kalender, bezuege: kalender.bezuege.map(x => (neuVon.has(x.schluessel) ? { ...x, schluessel: neuVon.get(x.schluessel)! } : x)) };
       aenderungen.push({ befundId: 'termin-waise-neu', speicher: 'kalender-bezug', anzahl: paare.length, text: `${paare.length} ${e(paare.length, 'Bezug', 'Bezüge')} an den neuen Termin gehängt${n ? ` (${n} ${e(n, 'Meeting', 'Meetings')} mit)` : ''}` });
       if (n) aenderungen.push({ befundId: 'termin-waise-neu', speicher: 'kontakte', anzahl: n, text: `${n} ${e(n, 'Meeting zeigt', 'Meetings zeigen')} jetzt auf den neuen Termin` });
+    }
+  }
+  if (will.has('followup-termin-tot')) {
+    // Nach dem Umhängen der Waisen: was dann noch tot ist, wird gelöst (nur `terminUid` weg).
+    const umhaengen = will.has('termin-waise-neu') ? new Set<string>() : new Set(waisenPaare(b.kalender, b.termine, b.kontakte as readonly { aktivitaeten?: readonly { terminUid?: string; art?: string; text?: string }[] }[], b.aufgaben?.liste ?? []).map(([alt]) => alt));
+    const tot = new Set(followupsTerminTot(followups, b.kalender, umhaengen, b.termine));
+    if (tot.size) {
+      followups = followups.map(f => { if (!tot.has(f.id)) return f; const { terminUid: _t, ...rest } = f; return { ...rest, geaendert: jetzt, geaendertVon: person }; });
+      aenderungen.push({ befundId: 'followup-termin-tot', speicher: 'crm', anzahl: tot.size, text: `${tot.size} Follow-${e(tot.size, 'up', 'ups')} vom gelöschten Termin gelöst (bleiben mit ihrem Datum)` });
     }
   }
   if (will.has('event-termin-verwaist')) {

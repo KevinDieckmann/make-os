@@ -9,6 +9,7 @@
 //   · keine Aufgaben mit Sichtbarkeit „nur ich“ (Feld kommt mit dem Aufgaben-Paket — `nurIch` liest es tolerant)
 //   · nichts aus dem Papierkorb (`geloeschtAm`, tolerant)
 //   · Privat-Space nur, wenn der Haushalt es zulässt (`brain-bruecke--<haushalt>`, Standard „anzahl“: nur Zahlen)
+//   · Zeit-Auswertung einer Person (`_App/Woche`) nur mit IHRER ausdrücklichen Einwilligung (`zeitFreigabe`, Standard: niemand)
 // Alles hier ist rein bis auf `appDatenLaden` und die Einstellung.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -21,21 +22,56 @@ import type { CrmBestand, ChancenStufe } from '@/lib/crm/typen';
 import type { DauerEintrag } from '@/lib/zoe/entscheidungen';
 import type { ZeitJeMandat } from '@/lib/zeitmessung/mandate';
 import { appLink } from './vault-ziel';
+import { speicherFuer } from '@/lib/zoe/raum';
 
 // ── Einstellung des Haushalts ──────────────────────────────────────────────
 
 /** „anzahl“ (Standard): aus dem Privat-Space nur Zahlen · „voll“: Titel und Notizen wie im Business. */
 export type PrivatStufe = 'anzahl' | 'voll';
-export interface BrueckeEinstellung { privat: PrivatStufe; geaendertVon?: string; geaendertAm?: string }
-export const EINSTELLUNG_STANDARD: BrueckeEinstellung = { privat: 'anzahl' };
+export interface BrueckeEinstellung {
+  privat: PrivatStufe;
+  /**
+   * Personen (Speichername), deren Zeit-Auswertung der Woche in den gemeinsamen Vault (`_App/Woche`) darf (F2 H1, 29.09.).
+   * Standard leer = von niemandem. Jede Person schaltet NUR sich selbst ein/aus (`zeitFreigabeSetzen`) — die Zeit ist
+   * persönlich; ohne Einwilligung steht von dieser Person nichts im Wochenrückblick.
+   */
+  zeitFreigabe: string[];
+  geaendertVon?: string; geaendertAm?: string;
+}
+export const EINSTELLUNG_STANDARD: BrueckeEinstellung = { privat: 'anzahl', zeitFreigabe: [] };
 export const einstellungName = (haushalt: string) => `brain-bruecke--${haushalt.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+/, '') || 'ohne-haushalt'}`;
 
-export async function einstellungLesen(haushalt: string): Promise<BrueckeEinstellung> {
-  const e = await loadJson<Partial<BrueckeEinstellung>>(einstellungName(haushalt));
-  return { ...EINSTELLUNG_STANDARD, ...(e ?? {}), privat: e?.privat === 'voll' ? 'voll' : 'anzahl' };
+const PERSON_RE = /^[a-z0-9-]{1,40}$/;
+function einstellungAus(e: Partial<BrueckeEinstellung> | null | undefined): BrueckeEinstellung {
+  const zf = Array.isArray(e?.zeitFreigabe) ? [...new Set(e!.zeitFreigabe.filter((p): p is string => typeof p === 'string' && PERSON_RE.test(p)))].sort() : [];
+  return { ...EINSTELLUNG_STANDARD, ...(e ?? {}), privat: e?.privat === 'voll' ? 'voll' : 'anzahl', zeitFreigabe: zf };
 }
+
+export async function einstellungLesen(haushalt: string): Promise<BrueckeEinstellung> {
+  return einstellungAus(await loadJson<Partial<BrueckeEinstellung>>(einstellungName(haushalt)));
+}
+/** Privat-Stufe des Haushalts ändern — die Zeit-Einwilligungen der Personen bleiben unberührt. */
 export async function einstellungSetzen(haushalt: string, privat: PrivatStufe, von: string): Promise<BrueckeEinstellung> {
-  return updateJson<BrueckeEinstellung>(einstellungName(haushalt), () => ({ privat, geaendertVon: von, geaendertAm: new Date().toISOString() }));
+  return updateJson<BrueckeEinstellung>(einstellungName(haushalt), cur => ({ ...einstellungAus(cur), privat, geaendertVon: von, geaendertAm: new Date().toISOString() }));
+}
+/** Einwilligung EINER Person für ihre eigene Zeit-Auswertung im Wochenrückblick (nur für sich selbst aufrufen). */
+export async function zeitFreigabeSetzen(haushalt: string, person: string, an: boolean, von: string = person): Promise<BrueckeEinstellung> {
+  if (!PERSON_RE.test(person)) throw new Error('Ungültige Person.');
+  return updateJson<BrueckeEinstellung>(einstellungName(haushalt), cur => {
+    const e = einstellungAus(cur);
+    const zf = new Set(e.zeitFreigabe);
+    if (an) zf.add(person); else zf.delete(person);
+    return { ...e, zeitFreigabe: [...zf].sort(), geaendertVon: von, geaendertAm: new Date().toISOString() };
+  });
+}
+
+/**
+ * Bestände, aus denen `_App/Woche` die Zeit rechnet (für den Riegel des Spiegels): Kalender-Stand (iCloud/Mac), Bezüge,
+ * Einstellungen, Wochenvorlage und `zeit`/`zeit--<person>` der eingewilligten Personen. Ohne Einwilligung: keine.
+ */
+export function zeitBestaende(zeitFreigabe: readonly string[]): string[] {
+  if (!zeitFreigabe.length) return [];
+  return ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'routinen', ...zeitFreigabe.map(p => speicherFuer('zeit', p))];
 }
 
 // ── Die Daten ──────────────────────────────────────────────────────────────
@@ -56,7 +92,8 @@ export interface AppDaten {
   einstellung: BrueckeEinstellung;
   /**
    * Zeit-Auswertung der Woche je Person des Haushalts (K6a, 29.09. — `auswertungMarkdown`, lib/kalender/auswertung.ts)
-   * für `_App/Woche`. Nur Zahlen, Firmen und Mandate — keine Termin-Titel, keine Kontakte. Nur mit `mitZeit` geladen.
+   * für `_App/Woche`. Nur Zahlen, Firmen und Mandate — keine Termin-Titel, keine Kontakte. Nur mit `mitZeit` geladen und
+   * nur für Personen mit Einwilligung (`einstellung.zeitFreigabe`, F2 H1).
    */
   zeitAuswertung?: { person: string; name: string; markdown: string }[];
 }
@@ -92,7 +129,8 @@ export async function appDatenLaden(heute: string, opt: { mitZeit?: boolean } = 
     haushalt, heute, state, crm,
     eingeschraenkt: new Set((kartei?.kontakte ?? []).filter(k => k.eingeschraenkt).map(k => k.id)),
     entscheidungen: [...e1, ...e2], zeitWoche, zeitMonat, zeitVormonat, einstellung,
-    ...(opt.mitZeit ? { zeitAuswertung: await zeitAuswertungLaden(konten.filter(k => k.haushalt === haushalt), heute) } : {}),
+    // F2 H1: nur Personen dieses Haushalts, die selbst eingewilligt haben — ohne Einwilligung wird ihre Zeit gar nicht gelesen.
+    ...(opt.mitZeit ? { zeitAuswertung: await zeitAuswertungLaden(konten.filter(k => k.haushalt === haushalt && einstellung.zeitFreigabe.includes(k.speicher)), heute) } : {}),
   };
 }
 

@@ -59,10 +59,11 @@ export function wendeFamilieAn(f: Familie, ops: ListenOp[], person: string, jetz
       const aus: Record<string, unknown> = { ...roh, id, von: alt?.von ?? person, am: alt?.am ?? jetzt, sichtbarkeit: roh.sichtbarkeit === 'nur-ich' ? 'nur-ich' : 'paar' };
       // Reparatur: jeder schreibt nur die eigene Reflexion. Die des anderen
       // (die man ungeteilt gar nicht sieht) bleibt aus dem Bestand erhalten.
-      // Menschen (29.09., K2): Geburtstag in EINER Form (TT.MM. oder JJJJ-MM-TT, sonst null), CRM-Verknüpfung nur als Kennung.
+      // Menschen (29.09., K2): Geburtstag in EINER Form (TT.MM. oder JJJJ-MM-TT, sonst null). `kontaktId` (alte
+      // CRM-Verknüpfung) fällt weg (F2 N4) — auch aus dem Bestand, sobald der Mensch das nächste Mal geschrieben wird.
       if (name === 'menschen') {
         aus.geburtstag = geburtstagSaeubern(roh.geburtstag, localDay(new Date(jetzt))) ?? null;
-        if (typeof roh.kontaktId === 'string' && /^c-[a-z0-9-]{4,60}$/.test(roh.kontaktId)) aus.kontaktId = roh.kontaktId; else delete aus.kontaktId;
+        delete aus.kontaktId;
       }
       // Wichtige Tage (29.09., K2): ein Geburtstag mit Verweis auf einen Menschen trägt KEIN eigenes Datum — der Mensch führt.
       if (name === 'tage') {

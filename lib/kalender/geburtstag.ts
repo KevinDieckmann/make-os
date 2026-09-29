@@ -100,7 +100,21 @@ export interface Geburtstag {
   href: string;
   kontaktId?: string;
   zustaendig?: string;
+  /** Familien-Person dahinter (`fam-<id>`) — für „Geschenk vormerken“ (legt einen Wichtigen Tag mit `menschId` an). */
+  menschId?: string;
+  /**
+   * Der „Wichtige Tag“ der Familie zu diesem Geburtstag (F2 M2) — DIE Quelle für Vorlauf, Aktion und „erledigt“ (je Jahr,
+   * lib/familie/logik.ts). Heute rechnet damit, nicht mit einer eigenen Frist.
+   */
+  anlass?: GeburtstagAnlass;
 }
+
+export type AnlassAktion = 'geschenk' | 'karte' | 'anruf' | 'feier';
+export interface GeburtstagAnlass { tagId: string; aktion: AnlassAktion; vorlaufTage: number; erledigt: boolean }
+
+/** Sieht `person` diesen Geburtstag in Glocke und Heute? — EINE Regel (F2 M2): Familie = wer den Eintrag sieht (ohne
+ * `zustaendig` bzw. die Person selbst), CRM = wer die Beziehung hält, „beide“ = beide. */
+export const geburtstagFuer = (g: { zustaendig?: string }, person: string): boolean => !g.zustaendig || g.zustaendig === person || g.zustaendig === 'beide';
 
 /** „Malin (40)“ bzw. „Malin“ — für Pillen und Listen. */
 export const geburtstagTitel = (g: Pick<Geburtstag, 'name' | 'alter'>): string => `${g.name}${g.alter !== undefined && g.alter > 0 ? ` (${g.alter})` : ''}`;

@@ -6,8 +6,8 @@
 // EINE Stelle je Person (Kevin: „alles sauber verbunden“):
 //   · Der Geburtstag liegt am CRM-Kontakt (`Kontakt.geburtstag`) ODER an der Familien-Person (`Mensch.geburtstag`),
 //     Format lib/kalender/geburtstag.ts.
-//   · Ist eine Familien-Person auch ein CRM-Kontakt — ausdrücklich verknüpft (`Mensch.kontaktId`) oder mit gleichem
-//     Namen (`normName`, ohne Titel/Umlaute) —, erscheint sie EINMAL. VORRANG hat die Familie (privat gepflegt, kein
+//   · Ist eine Familien-Person auch ein CRM-Kontakt — gleicher Name (`normName`, ohne Titel/Umlaute; die frühere
+//     Verknüpfung `Mensch.kontaktId` ist seit F2 N4 entfernt) —, erscheint sie EINMAL. VORRANG hat die Familie (privat gepflegt, kein
 //     Import fasst sie an); fehlt dort der Tag, gilt der des Kontakts. Der Eintrag steht dann im Privat-Space.
 //   · In der Familie FÜHRT der Mensch (`Mensch.geburtstag`). Ein „Wichtiger Tag“ der Art „geburtstag“ verweist nur auf
 //     ihn (`menschId`, dann ohne eigenes Datum) und erscheint hier nie zusätzlich. Alte Einträge ohne Verweis: gleicher
@@ -16,7 +16,7 @@
 // `kontakteFuerVerarbeitung()`; „nur ich“-Einträge der Familie sieht nur, wer sie angelegt hat (`sichtFuer`).
 // Wer liest: `geburtstageIm` (quellen-geburtstage-server.ts) — Kalender, Glocke, Heute, Familie, Kontaktakte, ZOE.
 
-import { geburtstagLesen, geburtstagImJahr, type GeburtstagTeile, type GeburtstagHerkunft, type Geburtstag } from './geburtstag';
+import { geburtstagLesen, geburtstagImJahr, type GeburtstagTeile, type GeburtstagHerkunft, type Geburtstag, type AnlassAktion } from './geburtstag';
 import { normName } from '@/lib/make-one/crm';
 
 export { GEBURTSTAGE_KALENDER, GEBURTSTAG_FARBE, geburtstagTitel, geburtstagSatz, type Geburtstag, type GeburtstagHerkunft } from './geburtstag';
@@ -36,6 +36,23 @@ export interface GeburtstagQuelle {
   kontaktId?: string;
   /** Wer daran erinnert wird (Glocke): Familie = alle, die den Eintrag sehen; CRM = wer die Beziehung hält. */
   zustaendig?: string;
+  /** Familien-Person (`fam-…`). */
+  menschId?: string;
+  /** Wichtiger Tag der Familie zu diesem Geburtstag (Vorlauf, Aktion, erledigte Jahre) — nur Verweis + seine Felder. */
+  anlass?: QuelleAnlass;
+}
+export interface QuelleAnlass { tagId: string; aktion: AnlassAktion; vorlaufTage: number; erledigt: readonly number[] }
+
+type TagRoh = { id: string; titel: string; art: string; datum: string; menschId?: string; aktion?: string; vorlaufTage?: number; erledigt?: readonly number[] };
+const AKTIONEN: readonly AnlassAktion[] = ['geschenk', 'karte', 'anruf', 'feier'];
+/** Die Felder eines Wichtigen Tages als Anlass (Vorlauf 0–60 Tage, erledigte Jahre als Zahlen). */
+function anlassVon(t: TagRoh): QuelleAnlass {
+  const v = Number(t.vorlaufTage);
+  return {
+    tagId: t.id, aktion: AKTIONEN.includes(t.aktion as AnlassAktion) ? (t.aktion as AnlassAktion) : 'geschenk',
+    vorlaufTage: Number.isFinite(v) ? Math.min(60, Math.max(0, Math.round(v))) : 10,
+    erledigt: Array.isArray(t.erledigt) ? t.erledigt.filter(j => Number.isInteger(j)) : [],
+  };
 }
 
 
@@ -44,21 +61,25 @@ const monatTag = (t: GeburtstagTeile) => `${t.monat}-${t.tag}`;
 
 /** Was die Familie beisteuert (bereits nach Sicht der Person gefiltert). Rein. */
 export function familieQuellen(
-  f: { menschen?: readonly { id: string; name: string; geburtstag?: string | null; kontaktId?: string }[]; tage?: readonly { id: string; titel: string; art: string; datum: string; menschId?: string }[] },
+  f: { menschen?: readonly { id: string; name: string; geburtstag?: string | null }[]; tage?: readonly TagRoh[] },
   links: { mensch: string; tag: string },
 ): GeburtstagQuelle[] {
   const raus: GeburtstagQuelle[] = [];
+  // Der Wichtige Tag „Geburtstag“ eines Menschen (Verweis `menschId`) trägt Vorlauf/Aktion/erledigt — der erste zählt.
+  const tagZuMensch = new Map<string, TagRoh>();
+  for (const t of f.tage ?? []) if (t?.art === 'geburtstag' && t.menschId && !tagZuMensch.has(t.menschId)) tagZuMensch.set(t.menschId, t);
   for (const m of f.menschen ?? []) {
     if (!m?.id || !m.name?.trim()) continue;
-    // Auch ohne eigenen Tag aufnehmen, wenn verknüpft — dann kommt der Tag vom Kontakt (vereinen).
-    raus.push({ id: `fam-${m.id}`, name: m.name.trim().slice(0, 120), geburtstag: m.geburtstag ?? '', herkunft: 'familie', space: 'privat', href: links.mensch, ...(m.kontaktId ? { kontaktId: m.kontaktId } : {}) });
+    const tag = tagZuMensch.get(m.id);
+    // Auch ohne eigenen Tag aufnehmen — trägt ein CRM-Kontakt gleichen Namens einen, kommt er von dort (vereinen).
+    raus.push({ id: `fam-${m.id}`, name: m.name.trim().slice(0, 120), geburtstag: m.geburtstag ?? '', herkunft: 'familie', space: 'privat', href: links.mensch, menschId: m.id, ...(tag ? { anlass: anlassVon(tag) } : {}) });
   }
   for (const t of f.tage ?? []) {
     // Verweist der Tag auf einen Menschen, führt der Mensch — kein zweiter Eintrag.
     if (t?.art !== 'geburtstag' || t.menschId || !geburtstagLesen(t.datum)) continue;
     const name = String(t.titel ?? '').replace(/^\s*geburtstag\s*(von\s+)?/i, '').replace(/^[\s:–-]+/, '').trim() || String(t.titel ?? '').trim();
     if (!name) continue;
-    raus.push({ id: `tag-${t.id}`, name: name.slice(0, 120), geburtstag: t.datum, herkunft: 'wichtiger-tag', space: 'privat', href: links.tag });
+    raus.push({ id: `tag-${t.id}`, name: name.slice(0, 120), geburtstag: t.datum, herkunft: 'wichtiger-tag', space: 'privat', href: links.tag, anlass: anlassVon(t) });
   }
   return raus;
 }
@@ -111,7 +132,9 @@ export function quellenVereinen(familie: readonly GeburtstagQuelle[], crm: reado
     const s = nameSchluessel(w.name);
     const mensch = s ? menschNachName.get(s) : undefined;
     if (mensch) {
-      if (!raus.some(r => r.id === mensch.id)) { raus.push({ ...mensch, geburtstag: w.geburtstag }); schonDa.add(`${s}|${monatTag(t)}`); }
+      const i = raus.findIndex(r => r.id === mensch.id);
+      if (i < 0) { raus.push({ ...mensch, geburtstag: w.geburtstag, ...(!mensch.anlass && w.anlass ? { anlass: w.anlass } : {}) }); schonDa.add(`${s}|${monatTag(t)}`); }
+      else if (!raus[i].anlass && w.anlass) raus[i] = { ...raus[i], anlass: w.anlass }; // der alte Tag trägt Vorlauf/erledigt weiter
       continue;
     }
     const schluessel = `${s}|${monatTag(t)}`;
@@ -144,6 +167,8 @@ export function geburtstageAus(quellen: readonly GeburtstagQuelle[], von: string
       raus.push({
         id: `${q.id}-${j}`, name: q.name, tag, ...(alter !== undefined ? { alter } : {}), herkunft: q.herkunft, space: q.space, href: q.href,
         ...(q.kontaktId ? { kontaktId: q.kontaktId } : {}), ...(q.zustaendig ? { zustaendig: q.zustaendig } : {}),
+        ...(q.menschId ? { menschId: q.menschId } : {}),
+        ...(q.anlass ? { anlass: { tagId: q.anlass.tagId, aktion: q.anlass.aktion, vorlaufTage: q.anlass.vorlaufTage, erledigt: q.anlass.erledigt.includes(j) } } : {}),
       });
     }
   }

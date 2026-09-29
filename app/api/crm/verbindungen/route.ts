@@ -34,6 +34,7 @@ import { ablageName } from '@/lib/dateien/ablage';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { verbindungenPruefen, verbindungenReparieren, verbindungsAmpel, istReparierbar, PRUEFUNG_IDS, REPARIERBAR, type VerbindungsBestaende } from '@/lib/crm/verbindungen';
 import { ladeVerbindungsBestaende, verbindungsStand, aufgabenBezugZurueckschreiben } from '@/lib/crm/verbindungen-laden';
+import { familieTageBereinigen } from '@/lib/crm/verbindungen-familie';
 import { zieleDateiBereinigen, meilensteinDateiBereinigen, zeitDateiBereinigen } from '@/lib/crm/verbindungen-planung';
 import { zeitAendern } from '@/lib/zeitmessung/speicher';
 import { toteTermine, toteKennungen, zeitDateiTermineBereinigen } from '@/lib/crm/verbindungen-kalender';
@@ -156,6 +157,10 @@ export async function POST(req: Request) {
       const weg = new Set(tot.bloecke);
       for (const p of alt.fokus ?? []) await zeitAendern(p.person, d => zeitDateiTermineBereinigen(d, weg).datei);
     }
+  }
+  // F2 N4: Wichtige Tage ohne Menschen — in der Sperre auf dem frischen Familien-Stand des Inhabers.
+  if (speicher.has('familie') && alt.haushalt) {
+    await updateJson<{ menschen?: { id: string }[]; tage?: { id: string; menschId?: string; datum?: string }[] }>(`familie--${alt.haushalt}`, cur => (cur ? familieTageBereinigen(cur).datei : cur as unknown as { tage?: [] }));
   }
   // Aufgaben (28.09. spät): nur `bezug` der betroffenen Aufgaben, auf dem aktuellen Stand in der Sperre.
   if (speicher.has('tasks')) await aufgabenBezugZurueckschreiben(stand, werAus(req));

@@ -41,11 +41,12 @@ let laeuft = false;
 /** Einmal je Tag (nachts): je Kalender alle Termine verschlüsselt ins Archiv. Fehler je Kalender halten die anderen nicht auf. */
 export async function kalenderSicherungTaeglich(jetzt = new Date(), opt: { erzwingen?: boolean } = {}): Promise<{ gesichert: number; fehler: number } | null> {
   if (laeuft || !verbunden()) return null;
-  const alt = await ladeSicherungStand();
-  const wand = wandzeit(jetzt);
-  if (!opt.erzwingen && !sicherungFaellig(alt.letzterTag, wand)) return null;
+  // F2 N6: der Riegel sitzt VOR dem ersten `await` — sonst kamen zwei Takte gleichzeitig durch (beide lasen „fällig“).
   laeuft = true;
   try {
+    const alt = await ladeSicherungStand();
+    const wand = wandzeit(jetzt);
+    if (!opt.erzwingen && !sicherungFaellig(alt.letzterTag, wand)) return null;
     const stand = await ladeStand();
     if (!stand.at) return null;
     const tag = wand.slice(0, 10), at = jetzt.toISOString();

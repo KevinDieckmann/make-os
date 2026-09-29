@@ -75,6 +75,8 @@ export interface Neu {
   dueTime?: string;
   /** 29.09.: „nur ich“ (nur die Anlegerin sieht sie) und Beteiligte neben der einen Verantwortlichen. */
   sichtbarkeit?: Task['sichtbarkeit']; beteiligte?: string[];
+  /** Anlass (F2 M2): Geschenk zum Geburtstag eines Kontakts in einem Jahr — die Person steckt in `bezug.kontaktId`. */
+  anlass?: Task['anlass'];
 }
 
 /** Eine Aufgabe anlegen (Kennung vorab, damit die Seite sie gleich öffnen kann). In Mandanten-Spaces ist die Firma vorbelegt. */
@@ -99,6 +101,7 @@ export function aufgabeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksS
     // Unteraufgaben erben die Sichtbarkeit ohnehin (Server); gesetzt wird sie an der Hauptaufgabe.
     ...(neu.sichtbarkeit === 'nur-ich' && !eltern ? { sichtbarkeit: 'nur-ich' as const } : {}),
     ...(neu.beteiligte?.length ? { beteiligte: neu.beteiligte } : {}),
+    ...(neu.anlass ? { anlass: neu.anlass } : {}),
   };
   dispatch({ type: 'ADD_TASK_MIT_ID', payload: task });
   return id;

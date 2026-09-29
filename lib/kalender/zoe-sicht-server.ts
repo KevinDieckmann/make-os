@@ -1,11 +1,13 @@
 // ─── Kalender für ZOE lesen (Server, 29.09., Paket R-Z #K4/#K2) ─────────────
 // Der EINE Lesepfad für alles, was Termine an ein Modell gibt (Brain → ZOE-Gespräch, Kalender-Agent, plan_block,
-// Wochenplan-Agent, Netzwerk-Verlauf): derselbe Stand wie die Kalender-Sicht (`termineLesen`: iCloud-Stand bzw.
+// Wochenplan-Agent): derselbe Stand wie die Kalender-Sicht (`termineLesen`: iCloud-Stand bzw.
 // Mac-Lieferung, Bezug + Sicherung, `wer` aus den Einstellungen), danach je fragender Person gefiltert (`fuerZoe`:
 // privat/Gesundheit der anderen → „Belegt“). Nie ein Netzaufruf. Der Kalender gehört dem Haushalt des Inhabers
 // (lib/kalender/zugang.ts) — eine Person aus einem anderen Haushalt bekommt keine Termine.
 // Dazu der KEMARIS-Snapshot (M365, Kevins Arbeitspostfach): gleiche Form, Eigentümer Kevin, gleiche Filterung.
 // Jeder Termin trägt `fremd` (Nachtrag #K1, `terminFremd`): Einladung, Abo-/fremder Kalender, Buchungsseite, Altweg.
+// Abgesagte bzw. von uns abgelehnte Termine (R-K1 #68, `abgesagt`) fallen hier HERAUS (F2 M5): sie finden nicht statt —
+// weder das Brain noch plan_block, Wochenplan oder die Kalender-Analyse sollen mit ihnen rechnen.
 
 import { loadJson } from '@/lib/store/local-db';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -68,6 +70,7 @@ export async function termineFuerZoe(person: string, von: string, bis: string): 
     }));
   return {
     termine: (g?.termine ?? [])
+      .filter(t => !t.abgesagt)
       .map(t => mitFremd(fuerZoe(t, person), !herkunft || terminFremd(t, herkunft)))
       .sort((a, b) => a.start.localeCompare(b.start)),
     stand: g?.stand ?? null,

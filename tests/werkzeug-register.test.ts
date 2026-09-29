@@ -20,13 +20,15 @@ describe('Werkzeug-Register', () => {
     for (const name of [
       'setze_kontostand', 'erfasse_rechnung', 'erfasse_zahlung', 'erfasse_planposten',
       'setze_ziele', 'setze_meilenstein', 'setze_fokus',
+      // F2 M8 (29.09., Kevin): ZOE schreibt in den Kalender nur über den Stapel — auch Blöcke im eigenen Kalender.
+      'plan_block',
     ]) {
       expect(risikoVon(name), name).toBe('freigabe');
     }
   });
 
-  it('lässt Aufgaben, Postfach, eigenen Kalender und CRM durchlaufen', () => {
-    for (const name of ['plan_block', 'lies_postfach', 'setze_vitalwerte']) {
+  it('lässt Postfach und Tagesform durchlaufen', () => {
+    for (const name of ['lies_postfach', 'setze_vitalwerte']) {
       expect(risikoVon(name), name).toBe('frei');
     }
     // 26.09.: Honorare wirken auf MRR und Business-Index — Freigabe.

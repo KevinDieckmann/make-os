@@ -151,6 +151,26 @@ describe('_App-Spiegel (direkt im Server-Vault)', () => {
     expect(await lesen(`_App/Entscheidungen/${H.slice(0, 7)}.md`)).toContain('lieber Donnerstag');
     const woche = (await fs.readdir(path.join(vault, '_App', 'Woche')))[0];
     expect(await lesen(`_App/Woche/${woche}`)).toContain('Startseite abnehmen');
+    // F2 H1: ohne Einwilligung steht von keiner Person Zeit im gemeinsamen Vault.
+    expect(await lesen(`_App/Woche/${woche}`)).not.toContain('# Zeit —');
+    const { zeitFreigabeSetzen, einstellungLesen } = await import('@/lib/brain/app-material');
+    await zeitFreigabeSetzen('haus', 'kevin', true);
+    // Der Riegel kennt die Einwilligung (brain-bruecke) — ohne `erzwingen` läuft der Spiegel neu.
+    expect((await S.appSpiegel()).text).not.toBe('Spiegel aktuell.');
+    expect(await lesen(`_App/Woche/${woche}`)).toContain('# Zeit — kevin');
+    expect(await lesen(`_App/Woche/${woche}`)).not.toContain('# Zeit — malin');
+    // Neuer Fokus-Block von Kevin (Bestand `zeit`) → Riegel ändert sich; Malins Zeit ändert ihn nicht (keine Einwilligung).
+    expect((await S.appSpiegel()).text).toBe('Spiegel aktuell.');
+    await db.saveJson('zeit--malin', { tage: {} });
+    expect((await S.appSpiegel()).text).toBe('Spiegel aktuell.');
+    await db.saveJson('zeit', { tage: {} });
+    expect((await S.appSpiegel()).text).not.toBe('Spiegel aktuell.');
+    await zeitFreigabeSetzen('haus', 'malin', true);
+    await S.appSpiegel();
+    // Die Privat-Stufe ändern lässt die Einwilligungen stehen.
+    const { einstellungSetzen } = await import('@/lib/brain/app-material');
+    await einstellungSetzen('haus', 'anzahl', 'kevin');
+    expect((await einstellungLesen('haus')).zeitFreigabe).toEqual(['kevin', 'malin']);
     // K6a (29.09.): Zeit der Woche je Person aus `auswertungMarkdown` — nur Zahlen, keine Kontakte.
     const wocheText = await lesen(`_App/Woche/${woche}`);
     expect(wocheText).toContain('# Zeit — kevin');

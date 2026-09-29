@@ -54,10 +54,12 @@ export interface Karte extends Basis { titel: string; bereich: 'zuhause' | 'unte
 export interface Ritual extends Basis { titel: string; ebene: 'paar' | 'familie'; rhythmus: 'taeglich' | 'woechentlich' | 'monatlich' | 'jaehrlich' }
 /**
  * Ein Mensch der Familie. `geburtstag` (29.09., K2): „TT.MM.“ oder „JJJJ-MM-TT“ (lib/kalender/geburtstag.ts, gesäubert im
- * Schreibweg). `kontaktId`: dieselbe Person im CRM — dann erscheint der Geburtstag EINMAL, Vorrang hat die Familie
- * (lib/kalender/quellen-geburtstage.ts). Auch ohne Verknüpfung gilt gleicher Name als dieselbe Person.
+ * Schreibweg). Dieselbe Person im CRM erkennt die Geburtstags-Quelle am gleichen Namen — dann erscheint der Geburtstag
+ * EINMAL, Vorrang hat die Familie (lib/kalender/quellen-geburtstage.ts). Das frühere Feld `kontaktId` (ausdrückliche
+ * CRM-Verknüpfung) ist seit F2 N4 (29.09.) entfernt: es hatte keinen Schreibweg in der Oberfläche und keine Pflege bei
+ * Art. 17, Kennungs-Umzug oder in der Verbindungsprüfung — ein totes Ende. Der Schreibweg verwirft es.
  */
-export interface Mensch extends Basis { name: string; rolle: 'kind' | 'eltern' | 'geschwister' | 'freund' | 'sonstig'; geburtstag: string | null; kontaktAlleTage: number | null; letzterKontakt: string | null; notiz: string; kontaktId?: string }
+export interface Mensch extends Basis { name: string; rolle: 'kind' | 'eltern' | 'geschwister' | 'freund' | 'sonstig'; geburtstag: string | null; kontaktAlleTage: number | null; letzterKontakt: string | null; notiz: string }
 
 export interface Familie {
   einstellungen: Einstellungen;

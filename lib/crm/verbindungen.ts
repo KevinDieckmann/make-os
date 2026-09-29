@@ -54,6 +54,7 @@ import { PRUEFUNGEN_KALENDER, kalenderPruefen, kalenderReparieren, type Kalender
 import { PRUEFUNGEN_BUCHUNG, buchungenPruefen, type BuchungenStand } from '@/lib/kalender/buchung-verbindungen';
 import { PRUEFUNGEN_SPIEGEL, spiegelPruefen, type SpiegelStand } from '@/lib/kalender/spiegel-verbindungen';
 import { PRUEFUNGEN_TERMINE, terminePruefen, termineReparieren, type TermineStand } from './verbindungen-termine';
+import { PRUEFUNGEN_FAMILIE, familiePruefen, familieReparieren, type FamilieTageStand } from './verbindungen-familie';
 // ── Eingang ─────────────────────────────────────────────────────────────────
 
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
@@ -100,6 +101,8 @@ export interface VerbindungsBestaende {
   familieSpiegel?: SpiegelStand['familie'];
   /** K6a (29.09.): lebende Termine im Holfenster (Schlüssel, Tag, Titel nur zum Vergleichen) + Buchung → Follow-up. null = nicht geprüft. */
   termine?: TermineStand | null;
+  /** F2 N4: Familie des Inhabers — Kennungen der Menschen und Wichtigen Tage (Verweis `menschId`). null = nicht geprüft. */
+  familieTage?: FamilieTageStand | null;
 }
 
 // ── Befunde ─────────────────────────────────────────────────────────────────
@@ -218,6 +221,8 @@ export const PRUEFUNGEN = {
   ...PRUEFUNGEN_SPIEGEL,
   // K6a (29.09.): Event gelöscht → Termin, Waisen (#100), Follow-ups am Termin — lib/crm/verbindungen-termine.ts.
   ...PRUEFUNGEN_TERMINE,
+  // F2 N4 (29.09.): Wichtige Tage mit totem Menschen-Verweis — lib/crm/verbindungen-familie.ts.
+  ...PRUEFUNGEN_FAMILIE,
 } as const satisfies Record<string, Pruefung>;
 
 export type PruefungId = keyof typeof PRUEFUNGEN;
@@ -565,6 +570,8 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
   spiegelPruefen(b.crm ? { events: b.crm.events.map(x => ({ id: x.id, datum: x.datum, ...(x.kalenderUid ? { kalenderUid: x.kalenderUid } : {}) })), familie: b.familieSpiegel ?? null } : null, b.kalender, melde);
   // K6a (29.09.): Termine gelöschter Events, Waisen (#100), Follow-ups am Termin.
   terminePruefen({ kalender: b.kalender, termine: b.termine, kontakte, aufgaben: b.aufgaben, followups: liste(crm.followups), heute: b.heute }, m.events, melde);
+  // F2 N4: Wichtige Tage der Familie, deren Mensch gelöscht ist.
+  familiePruefen(b.familieTage, melde);
 
   // Import-Konflikte
   if (b.konflikte) {
@@ -623,7 +630,7 @@ function leadOhneDeal<L extends { status: string; chanceId?: string; sqlAm?: str
   return { ...ohne, status: 'qualifizierung' } as L;
 }
 
-export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien' | 'tasks' | 'ziele' | 'meilensteine' | 'zeit' | 'kalender-bezug' | 'kalender-termine';
+export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien' | 'tasks' | 'ziele' | 'meilensteine' | 'zeit' | 'kalender-bezug' | 'kalender-termine' | 'familie';
 export interface Aenderung { befundId: PruefungId; speicher: ReparaturSpeicher; anzahl: number; text: string }
 
 /**
@@ -868,6 +875,9 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
   if (ter.aenderungen.some(a => a.speicher === 'crm')) crm = { ...crm, followups: ter.followups };
   const kal = kalenderReparieren({ ...b, kalender: ter.kalender, kontakte: ter.kontakte, fokus: planung.fokus }, will, kalenderLebend(b, m));
   aenderungen.push(...kal.aenderungen, ...ter.aenderungen);
+  // F2 N4: Wichtige Tage ohne Menschen (geschrieben von der Route in `familie--<haushalt>`).
+  const fam = familieReparieren(b.familieTage, will);
+  aenderungen.push(...fam.aenderungen);
 
-  return { aenderungen, bestaende: { ...b, crm, kontakte: kal.kontakte, konflikte, dateien, aufgaben, planung: planung.planung, fokus: kal.fokus, kalender: kal.kalender } };
+  return { aenderungen, bestaende: { ...b, crm, kontakte: kal.kontakte, konflikte, dateien, aufgaben, planung: planung.planung, fokus: kal.fokus, kalender: kal.kalender, familieTage: fam.familie } };
 }

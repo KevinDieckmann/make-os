@@ -36,12 +36,16 @@ export function AnlaesseZeile({ feiertage, geburtstage, heute }: Stand) {
   );
 }
 
-export function Anlaesse({ tage = 7 }: { tage?: number }) {
+/**
+ * `geburtstage={false}` (Heute, F2 M2): nur Feiertage — Geburtstage stehen auf Heute an EINER Stelle, in „Steht an“
+ * (mit Geschenk-Vorlauf). Andere Seiten zeigen beide.
+ */
+export function Anlaesse({ tage = 7, geburtstage = true }: { tage?: number; geburtstage?: boolean }) {
   const [stand, setStand] = useState<Stand | null>(null);
   useEffect(() => {
     const heute = localDay();
     fetch(`/api/kalender/quellen?von=${heute}&bis=${tagPlus(heute, tage + 1)}`, { cache: 'no-store' }).then(r => r.json())
-      .then(d => { if (d?.ok) setStand({ heute, feiertage: (d.feiertage ?? []).filter((f: { tag: string }) => f.tag <= tagPlus(heute, 1)), geburtstage: d.geburtstage ?? [] }); }).catch(() => {});
-  }, [tage]);
+      .then(d => { if (d?.ok) setStand({ heute, feiertage: (d.feiertage ?? []).filter((f: { tag: string }) => f.tag <= tagPlus(heute, 1)), geburtstage: geburtstage ? d.geburtstage ?? [] : [] }); }).catch(() => {});
+  }, [tage, geburtstage]);
   return stand ? <AnlaesseZeile {...stand} /> : null;
 }

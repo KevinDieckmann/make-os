@@ -4,7 +4,8 @@
 // Kontaktakte, Firmenakte, Deal-Akte und Mandat zeigen kommende und vergangene Termine — gelesen NUR über den Bezug
 // (`kalender-bezug`, GET /api/kalender/bezug), nie über den Namen im Titel. Klick öffnet den Termin im Kalender
 // (`WEG.termin`). Ein vergangener Termin der letzten 14 Tage bietet „Nachbereiten“ an — ein VORSCHLAG: erst der Klick
-// legt das Follow-up an (POST /api/crm/followup), nichts geschieht automatisch.
+// legt das Follow-up an (POST /api/crm/followup), nichts geschieht automatisch. Es hängt am Termin (`terminUid`, F2 M4):
+// der Titel wird nicht kopiert (die Anzeige leitet ihn ab), und „Wie lief's?“ fragt dazu nicht noch einmal.
 // `useTerminZeiten` liefert dieselben Zeiten je Termin-Schlüssel für die Meeting-Aktivitäten (`terminUid` → Zeit).
 
 import Link from 'next/link';
@@ -64,7 +65,7 @@ export function TermineAkte({ frage, kontaktId, heute }: { frage: TermineZuFrage
     setVorgemerkt(v => ({ ...v, [t.id]: 'laeuft' }));
     const r = await fetch('/api/crm/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       aktion: 'anlegen', kontaktId: wer, ...(t.bezug.dealId ? { bezug: { art: 'chance', id: t.bezug.dealId } } : {}), art: 'sonstig',
-      text: `Nachbereiten: ${t.titel}`.slice(0, 200), faellig: heute,
+      text: 'Termin nachbereiten', terminUid: t.id, faellig: heute,
     }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setVorgemerkt(v => ({ ...v, [t.id]: r.ok ? 'ok' : (r.fehler ?? 'Nicht angelegt.') }));
   };

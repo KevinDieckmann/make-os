@@ -19,6 +19,7 @@
 //     (der Zugang ist schon auf den Haushalt des Inhabers begrenzt).
 
 import type { MeldungArt, MeldungEingabe } from './melden';
+import { geburtstagFuer } from '@/lib/kalender/geburtstag';
 
 export const MELDUNGEN_MAX = 500;
 /** Längster Titel — länger wird abgelehnt, nicht gekürzt (Regel „nie abschneiden“). */
@@ -240,7 +241,7 @@ export function geburtstagAbleiten(
   const raus: Meldung[] = [];
   for (const g of liste) {
     if (g.tag !== o.heute && g.tag !== o.morgen) continue;
-    if (g.zustaendig && g.zustaendig !== o.person && g.zustaendig !== 'beide') continue;
+    if (!geburtstagFuer(g, o.person)) continue; // eine Sichtregel mit Heute (F2 M2)
     if (!istLink(g.href)) continue;
     const id = geburtstagId(o.heute, g.id.replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 120));
     const wann = g.tag === o.heute ? 'heute' : 'morgen';

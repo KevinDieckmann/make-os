@@ -34,8 +34,9 @@ lokal, Route `/os`, Port 3001.
 2. **Rohbau-Regel:** An Dritte (z. B. Alex/KEMARIS) geht nur Code, Struktur
    und Regeln — niemals Daten. Das Repo ist genau so geschnitten.
 3. **Human-in-the-Loop:** Nichts verlässt das System Richtung Dritter ohne
-   Freigabe von Kevin oder Malin. Interne Planung/Buchführung (plan_block,
-   Erfassungs-Werkzeuge) darf direkt schreiben.
+   Freigabe von Kevin oder Malin. Interne Buchführung (Erfassungs-Werkzeuge) darf direkt schreiben.
+   In den Kalender schreibt ZOE NUR über den Stapel (Kevin 29.09., F2 M8): `plan_block` ist freigabepflichtig
+   (Gruppe „kalender“), erst der Klick legt den Block über `blockAnlegen` an.
 4. **Testdaten nach Tests zurücksetzen** — vorher prüfen, ob ein Wert wirklich
    vom Test stammt und nicht von Kevin/Malin echt eingetragen wurde.
 5. **Zugang je Person, nie Rückfall auf „kevin“:** Jede Route liest die Person aus der Sitzung
@@ -562,8 +563,9 @@ lokal, Route `/os`, Port 3001.
   Fokus + Ziele, Übernahme-Karte. `Kalender.tsx` fragt `planen.platzieren` vor dem Anlege-Dialog.
 - **Blöcke lesen: NUR `planBloeckeLesen`** (`lib/planung/bloecke-server.ts`, ohne Netz über `termineLesen`, `gehoertZu` je Person,
   `betrachter` maskiert fremde private) bzw. `GET /api/planung/bloecke?von&bis[&fuer]`. Leser: Gesundheit, Business-Index,
-  Risiko (Reha heute), Loops, Ritual, Energie, Tagesplan (schreibt über `/api/kalender/termin`). ZOE `plan_block` →
-  `blockAnlegen` (Kalender der Person, kein Rückfall auf kevin). Server-Schreiben immer über `lib/kalender/termin-server.ts`
+  Risiko (Reha heute), Loops, Ritual, Energie, Tagesplan (schreibt über `/api/kalender/termin`). ZOE `plan_block` → Stapel
+  (F2 M8), Freigabe → `blockAnlegen` (Kalender der Person, ohne Person `KEINE_PERSON`); Kollision `blockKollision`
+  (lib/planung/bloecke.ts: abgesagte/freie zählen nicht, ganztägige Abwesenheit belegt den Tag, über Mitternacht zählt). Server-Schreiben immer über `lib/kalender/termin-server.ts`
   (iCloud → kalender-bezug → Änderungsprotokoll = Audit), feste UIDs erlaubt (`anlegen({ uid })` → `schonDa` statt doppelt).
 - **Übernahme des alten Wochenplans** (`lib/planung/wochenplan-uebernahme(-server).ts`, `/api/planung/uebernahme`, einmal nach
   dem Upload): nur zukünftige Blöcke; vorhandene Apple-Kopie (`appleUid`) wird DER Block, sonst neuer Termin mit fester UID
@@ -620,9 +622,18 @@ lokal, Route `/os`, Port 3001.
   10-Min.-Uhr) → Route `GET /api/heute/anstehend` (eigene Person, ETag) und Glocke (`anstehendAbleiten` in lib/meldungen/regeln.ts,
   Arten termin ≤ 2 h · nachbereiten · frist · followup · vorschlag — abgeleitet, nie gespeichert, Gelesen je Tag). Heute-Karte
   `components/os/heute/Anstehend.tsx` („Steht an“: Nachbereiten, Fristen, Follow-ups, Buchungsanfragen, ZOE-Kalender-Vorschläge,
-  Geburtstage mit „Geschenk-Aufgabe (10 Tage vorher)“ — erst der Klick legt die Aufgabe an; vorgemerkt = offene Aufgabe mit
-  gleichem Titel). Follow-ups ohne Kadenz und ohne verknüpfte Aufgabe (die Aufgabe führt). Buchungsanfragen meldet die Glocke
+  Geburtstage). Follow-ups ohne Kadenz und ohne verknüpfte Aufgabe (die Aufgabe führt). Buchungsanfragen meldet die Glocke
   schon beim Eingang (gespeicherte Art „buchung“).
+- **F2 (29.09., Prüfung 2):** Geburtstage stehen auf Heute NUR in „Steht an“ (`Anlaesse geburtstage={false}`), ab heute, Sichtregel
+  `geburtstagFuer` (lib/kalender/geburtstag.ts) auch in der Glocke. Geschenk-Vorlauf: Familie → der „Wichtige Tag“ (`anlass`:
+  Vorlauf, Aktion, erledigt je Jahr; ohne ihn „Geschenk vormerken“ = legt ihn mit `menschId` an); CRM → Aufgabe mit
+  `bezug.kontaktId` + `Task.anlass { art: 'geschenk', jahr }`, erkannt über `geschenkStand` (nie per Titel; Papierkorb/Archiv/
+  abgebrochen zählen nicht), Titel nur „Geschenk für …“. Mandats-Review nur als Follow-up `v:review` (Frist `review: true` nur in
+  der Kalenderansicht, Regel `reviewZaehlt` lib/crm/review.ts: pausiert = kein Review). ZOE-Vorschläge in Heute nur der Person
+  (`vorschlagSichtbar`). Maskierte Termine fehlen in Heute/Glocke. `nachbereitZeiten` nur für eigene Kontakte. Offenes
+  Follow-up mit derselben `terminUid` = Nachbereitung in Arbeit (keine Doppelmeldung); Follow-up-Text ohne Titel/Datum, die
+  Anzeige leitet ab (`followupAnzeige`). Glocken-Quellen gemerkt (`merken`, 60 s); ETag mit `steuern` und Familie.
+  Offen (bewusst): private Termine ohne Eigentümer im Kalender „beide“ bleiben sichtbar (kein `von`, kein Eigentümer).
 - **Fristen an EINER Stelle:** Quellen lädt NUR `lib/kalender/fristen-server.ts` (`fristenLesen`, auch GET /api/kalender);
   gerechnet in `eintraege.ts fristen(q, von, bis, heute)`. Kündigungsfrist/Periodenende NUR `mandatFristen` (lib/crm/kunden.ts,
   auch `mandatLage`) — `kuendigung`, `fuer` (zuständig). Dazu DSGVO-Anträge (ohne Namen), Angebote „gültig bis“, Deals
@@ -634,7 +645,12 @@ lokal, Route `/os`, Port 3001.
   Wiedervorlage am Deal (+90 Tage ohne Angabe), absagen → 400. Der Datenumzug der Altfelder zu echten Follow-ups ist offen.
 - **Follow-up am Termin:** `FollowUp.terminUid` (Schlüssel wie `Aktivitaet.terminUid`); die Verbindungsprüfung zieht den Vortag
   nach (`followup-termin-verschoben`, von Hand verschobene bleiben) und verknüpft „Termin vorbereiten“ bestätigter Buchungen
-  (`buchung-followup-ohne-termin`) — Buchungen selbst fasst sie nicht an (R-K2).
+  (`buchung-followup-ohne-termin`) — Buchungen selbst fasst sie nicht an (R-K2). Seit F2 setzt die Freigabe `terminUid` gleich
+  (Text ohne Datum), „Neu zuordnen“ hängt Follow-ups mit um, `followup-termin-tot` („Vom Termin lösen“) räumt Verweise auf
+  gelöschte Termine; „Nachbereiten“ in der Akte legt das Follow-up mit `terminUid` an (Text „Termin nachbereiten“).
+- **Familie (F2 N4):** `Mensch.kontaktId` entfernt (kein Schreibweg, keine Pflege) — Familie ↔ CRM nur über gleichen Namen.
+  Verbindungsprüfung `familie-tag-mensch-tot` (lib/crm/verbindungen-familie.ts): Wichtiger Tag mit totem `menschId` → entfernen
+  (mit eigenem Datum nur der Verweis). `app/api/netzwerk/verlauf` ist entfernt (F2 M7: kein Aufrufer).
 - **Verbindungsprüfung K6a** (`lib/crm/verbindungen-termine.ts`): `event-termin-verwaist` („Termin entfernen“ — iCloud über
   `terminLoeschenServer`, nach Vorschau/Rückfrage, nie mit Gästen, nie ein Serien-Vorkommen), `termin-waise-neu` (#100: gelöschter
   Termin mit CRM-/Aufgaben-Bezug + genau EIN neuer Termin gleichen Titels ±1 Tag → „Neu zuordnen“ hängt Bezug
@@ -646,8 +662,11 @@ lokal, Route `/os`, Port 3001.
   `components/os/crm/angebot/TerminVorschlag.tsx` („Termin zum Besprechen vorschlagen“ → freie Zeit → Termin-Entwurf mit
   Kontakt/Firma/Deal; erst „Speichern“ legt an).
 - **Zeit-Auswertung:** Planen-Blöcke (`X-MAKE-ART:block` + `X-MAKE-BLOCK`) = Kategorie `block` (Vorrang unter Fokus),
-  `minuten.bloecke`, `jeBlock` je Unterart (`BLOCK_NAME`). `_App/Woche` enthält je Person `auswertungMarkdown` (ohne Kontakte;
-  `appDatenLaden(…, { mitZeit: true })` nur im Spiegel).
+  `minuten.bloecke`, `jeBlock` je Unterart (`BLOCK_NAME`). `_App/Woche` enthält die Zeit einer Person NUR mit ihrer Einwilligung
+  (F2 H1: `brain-bruecke--<haushalt>.zeitFreigabe`, Standard leer; POST /api/brain/app `{ zeitAuswertung: true|false }` nur für
+  sich selbst) — ohne Kontakte; `appDatenLaden(…, { mitZeit: true })` nur im Spiegel, der Riegel kennt `zeitBestaende` (Kalender-
+  Stand, `zeit`/`zeit--<p>` der Eingewilligten). Termin-Zeiten für Modellpfade (`terminZeitenLesen`) nach `fuerZoe`; `termineFuerZoe`
+  lässt abgesagte weg.
 - Tests: `tests/kalender-k6a.test.ts`, `tests/crm-verbindungen.test.ts` (4 neue Prüfungen), `tests/brain-app-bruecke.test.ts`.
 
 ## Brain (lib/brain, seit 27.09.)

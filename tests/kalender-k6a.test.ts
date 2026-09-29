@@ -184,7 +184,8 @@ describe('2 · Glocke & Heute: abgeleitet, nie gespeichert', () => {
       { id: 'g3', name: 'Test Drei', tag: '2026-10-01', herkunft: 'crm', space: 'business', href: '/os/m', kontaktId: 'c-y', zustaendig: 'kevin' },
     ], 'kevin', HEUTE);
     expect(g.map(x => [x.id, x.aufgabeTag])).toEqual([['g3', HEUTE], ['g1', '2026-10-02']]);
-    expect(geschenkAufgabeTitel('Test Eins', '2026-10-12')).toBe('Geschenk für Test Eins (Geburtstag 12.10.)');
+    // F2 N5: nur der Name — kein Geburtsdatum im Titel.
+    expect(geschenkAufgabeTitel('Test Eins')).toBe('Geschenk für Test Eins');
   });
 });
 
