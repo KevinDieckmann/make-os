@@ -3,16 +3,25 @@
 # für MAKE OS selbst, keine Verrate-Kopfzeilen. Content-Security-Policy und X-Frame-Options
 # setzt seit 26.09. die App selbst (next.config.mjs, je Pfad: der Altbestand /finanz-dashboard.html
 # darf im eigenen Rahmen laufen) — Caddy würde sie hier überschreiben, deshalb stehen sie nicht mehr hier.
+# Referrer-Policy und Permissions-Policy (Upload U1 N1, 29.09.): nur noch als Vorgabe („?“ = nur, wenn die App keine
+# setzt) — die öffentliche Buchungsseite (/buchen…, /api/buchung…) hat eigene, strengere Werte in next.config.mjs
+# (`no-referrer`: die Status-Adresse trägt das Token im Fragment; keine Kamera/Mikrofon). Früher überschrieb Caddy sie
+# mit den allgemeinen. Für diese Pfade setzt Caddy dieselben strengen Werte zusätzlich ausdrücklich.
 {$MAKE_OS_DOMAIN} {
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
-		Referrer-Policy strict-origin-when-cross-origin
-		Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()"
+		?Referrer-Policy strict-origin-when-cross-origin
+		?Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()"
 		Cross-Origin-Opener-Policy same-origin
 		-Server
 		-X-Powered-By
+	}
+	@buchung path /buchen /buchen/* /api/buchung /api/buchung/*
+	header @buchung {
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
 	}
 	reverse_proxy app:3000
 }

@@ -1,10 +1,12 @@
-// ─── Kalender — tägliche Voll-Sicherung und Wiederherstellung (Server, 29.09., R-K1 #K5) ─
+// ─── Kalender — tägliche Sicherung und Wiederherstellung (Server, 29.09., R-K1 #K5) ─
 // Was, warum, welche Regeln: lib/kalender/sicherung.ts. Hier nur der Weg:
-//   täglich    Der Takt (app/api/zoe/takt) ruft `kalenderSicherungTaeglich` — einmal je Berliner Tag ab 03:00 holt
-//              sie je Kalender ALLE Termine (ohne Zeitfenster) und legt sie als .ics-Text VERSCHLÜSSELT ins Archiv
-//              (lib/store/archiv.ts: Hülle mit dem Datenschlüssel, nie Klartext, wenn ein Schlüssel gesetzt ist).
-//              14 Tage je Kalender, ältere Tagesdateien fallen weg. Stand (nur Dateinamen, Zahlen, Fehler) im
-//              Bestand `kalender-sicherung` — Register: lib/crm/speicher-register.ts.
+//   täglich    Der Takt (app/api/zoe/takt, gestaffelt über lib/kalender/takt-jobs.ts) ruft `kalenderSicherungTaeglich` —
+//              einmal je Berliner Tag zwischen 03:00 und 05:00, frühestens 30 Min. nach dem Start des Prozesses und nie
+//              während einer iCloud-Pause (U1 M4). Je Kalender die Termine im Fenster −400 … +800 Tage (U1 H2) als
+//              .ics-Text VERSCHLÜSSELT ins Archiv (lib/store/archiv.ts: Hülle mit dem Datenschlüssel, nie Klartext,
+//              wenn ein Schlüssel gesetzt ist). 14 Tage je Kalender, ältere Tagesdateien fallen weg; das Nachtarchiv
+//              (deploy/sicherung.sh) nimmt sie NICHT mit. Stand (nur Dateinamen, Zahlen, Fehler) im Bestand
+//              `kalender-sicherung` — Register: lib/crm/speicher-register.ts.
 //   zurück     `kalenderWiederherstellen` — Probelauf ohne `bestaetigt` (zählt nur), mit `bestaetigt` legt es NUR
 //              Fehlendes ohne Gäste neu an (PUT If-None-Match, nie überschreiben, Teilnehmer-Sperre), protokolliert
 //              je Termin (UID, nie Titel). Aufruf nur von Hand (app/api/kalender/sicherung).
@@ -17,7 +19,7 @@ import { promises as fs } from 'fs';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { archivSchreiben, archivLesen, archivOrdner } from '@/lib/store/archiv';
 import { protokolliere, type Wer as ProtokollWer } from '@/lib/store/aenderungsprotokoll';
-import { verbunden, ladeStand, holeAlleObjekte, objektWiederherstellen, KalenderFehler, type KalenderEintrag } from './icloud';
+import { verbunden, ladeStand, holeSicherungsObjekte, objektWiederherstellen, KalenderFehler, type KalenderEintrag, type IcloudStand } from './icloud';
 import { kalenderKennung, terminSchluessel } from './bezug';
 import { ladeBezuege, bezugSetzen } from './bezug-server';
 import { uidVon } from './ics';
@@ -38,23 +40,42 @@ export interface SicherungStand {
 type BezugSicherung = Record<string, { von?: string; privat?: true }>;
 interface ArchivInhalt { kalender: string; id: string; at: string; termine: number; ics: string; bezug?: BezugSicherung }
 
+/**
+ * Der Stand der Sicherung. Ein Lesefehler (beschädigt, falscher Schlüssel) wird NICHT verschluckt (U1 N2, CLAUDE.md:
+ * nie „leer lesen und dann überschreiben“) — er geht an den Aufrufer; die Tagessicherung bricht dann ab, statt den
+ * Stand mit einer leeren Liste zu ersetzen. Nur „gibt es noch nicht“ ergibt den leeren Stand.
+ */
 export async function ladeSicherungStand(): Promise<SicherungStand> {
-  const s = await loadJson<SicherungStand>(SICHERUNG_SPEICHER).catch(() => null);
+  const s = await loadJson<SicherungStand>(SICHERUNG_SPEICHER);
   return s && Array.isArray(s.dateien) ? s : { dateien: [] };
 }
 
 let laeuft = false;
+/** Start des Prozesses (U1 M4: die Sicherung wartet mindestens 30 Min. nach einem Start/Upload). */
+const PROZESS_START = Date.now();
+/** Läuft gerade eine Tagessicherung? (die übrigen Kalender-Jobs im Takt warten dann — lib/kalender/takt-jobs.ts) */
+export const sicherungLaeuft = (): boolean => laeuft;
+
+/** `pauseBis` nur, wenn der letzte Abgleich gescheitert ist (sonst ist eine alte Pause bedeutungslos). */
+const aktivePause = (s: Pick<IcloudStand, 'at' | 'fehlerAt' | 'pauseBis'>): string | undefined => (s.fehlerAt && (!s.at || s.fehlerAt > s.at) ? s.pauseBis : undefined);
+
+/** Fällig im Takt? (ohne zu sichern) — Tag, Nachtfenster, Laufzeit, iCloud-Pause. Wirft bei unlesbarem Stand. */
+export async function kalenderSicherungFaellig(jetzt = new Date(), prozessStart = PROZESS_START): Promise<boolean> {
+  if (laeuft || !verbunden()) return false;
+  const [alt, stand] = await Promise.all([ladeSicherungStand(), ladeStand()]);
+  return !!stand.at && sicherungFaellig(alt.letzterTag, wandzeit(jetzt), { laufzeitMs: jetzt.getTime() - prozessStart, pauseBis: aktivePause(stand), jetztMs: jetzt.getTime() });
+}
 
 /** Einmal je Tag (nachts): je Kalender alle Termine verschlüsselt ins Archiv. Fehler je Kalender halten die anderen nicht auf. */
-export async function kalenderSicherungTaeglich(jetzt = new Date(), opt: { erzwingen?: boolean } = {}): Promise<{ gesichert: number; fehler: number } | null> {
+export async function kalenderSicherungTaeglich(jetzt = new Date(), opt: { erzwingen?: boolean; prozessStart?: number } = {}): Promise<{ gesichert: number; fehler: number } | null> {
   if (laeuft || !verbunden()) return null;
   // F2 N6: der Riegel sitzt VOR dem ersten `await` — sonst kamen zwei Takte gleichzeitig durch (beide lasen „fällig“).
   laeuft = true;
   try {
     const alt = await ladeSicherungStand();
     const wand = wandzeit(jetzt);
-    if (!opt.erzwingen && !sicherungFaellig(alt.letzterTag, wand)) return null;
     const stand = await ladeStand();
+    if (!opt.erzwingen && !sicherungFaellig(alt.letzterTag, wand, { laufzeitMs: jetzt.getTime() - (opt.prozessStart ?? PROZESS_START), pauseBis: aktivePause(stand), jetztMs: jetzt.getTime() })) return null;
     if (!stand.at) return null;
     const bezuege = await ladeBezuege().catch(() => null);
     const tag = wand.slice(0, 10), at = jetzt.toISOString();
@@ -62,7 +83,7 @@ export async function kalenderSicherungTaeglich(jetzt = new Date(), opt: { erzwi
     const fehler: NonNullable<SicherungStand['fehler']> = [];
     for (const k of stand.kalender) {
       try {
-        const objekte = await holeAlleObjekte(k);
+        const objekte = await holeSicherungsObjekte(k);
         const x = exportIcs(objekte, k.name);
         const kennung = kalenderKennung(k.id);
         // `von` und `privat` je UID mitsichern (F1 #11) — unter dem Schlüssel Kalender + UID, alte Einträge unter der UID.
@@ -114,7 +135,7 @@ export async function kalenderWiederherstellen(kalenderName: string, opt: { date
   const inhalt = await archivLesen<ArchivInhalt>(eintrag.datei);
   if (inhalt.id !== kal.id && kalenderKennung(inhalt.id) !== kennung) throw new KalenderFehler('Die Sicherung gehört zu einem anderen Kalender.', 409);
   const gesichert = objekteAusIcs(inhalt.ics);
-  const ist = (await holeAlleObjekte(kal)).map(o => ({ uid: uidVon(o.ics) ?? '', ics: o.ics })).filter(o => o.uid);
+  const ist = (await holeSicherungsObjekte(kal)).map(o => ({ uid: uidVon(o.ics) ?? '', ics: o.ics })).filter(o => o.uid);
   const plan: WiederherstellPlan = wiederherstellPlan(gesichert, ist);
   const nachUid = new Map(gesichert.map(o => [o.uid, o.ics] as const));
   const bezug = inhalt.bezug ?? {};

@@ -8,6 +8,7 @@ import { wendeAn, type ListenOp } from '@/lib/sync';
 import { DATE_IDEEN, KARTEN, TAGES_RITUALE } from './katalog';
 import { geburtstagSaeubern } from '@/lib/kalender/geburtstag';
 import { localDay } from '@/lib/zeit';
+import { tageDatumSpiegeln } from './logik';
 import { LISTEN, type Familie, type Liste, type Einstellungen, type Profil, type Vision } from './typen';
 
 export const familieName = (haushalt: string) => `familie--${haushalt}`;
@@ -65,9 +66,10 @@ export function wendeFamilieAn(f: Familie, ops: ListenOp[], person: string, jetz
         aus.geburtstag = geburtstagSaeubern(roh.geburtstag, localDay(new Date(jetzt))) ?? null;
         delete aus.kontaktId;
       }
-      // Wichtige Tage (29.09., K2): ein Geburtstag mit Verweis auf einen Menschen trägt KEIN eigenes Datum — der Mensch führt.
+      // Wichtige Tage (29.09., K2): bei einem Geburtstag mit Verweis auf einen Menschen führt der Mensch. `datum` ist nur die
+      // Kopie für den Rückweg zum alten Stand (U1 B2) — gesetzt unten von `tageDatumSpiegeln`, nie aus dem Browser.
       if (name === 'tage') {
-        if (roh.art === 'geburtstag' && typeof roh.menschId === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(roh.menschId)) { aus.menschId = roh.menschId; aus.datum = ''; }
+        if (roh.art === 'geburtstag' && typeof roh.menschId === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(roh.menschId)) { aus.menschId = roh.menschId; aus.datum = typeof alt?.datum === 'string' ? alt.datum : ''; }
         else delete aus.menschId;
       }
       // Termin im gemeinsamen Kalender (29.09., K5): die UID schreibt NUR der Server (lib/kalender/spiegel-server.ts) —
@@ -83,6 +85,14 @@ export function wendeFamilieAn(f: Familie, ops: ListenOp[], person: string, jetz
     });
     angewandt += r.angewandt;
     (neu as Record<string, unknown>)[name] = r.liste;
+  }
+  // Rückweg (U1 B2): nach allen Listen (ein Mensch kann im selben Aufruf seinen Geburtstag bekommen) spiegelt jeder
+  // Geburtstag mit Verweis sein Datum vom Menschen — der alte Stand af4679a braucht `datum` (sonst RangeError).
+  if (ops.some(o => o.liste === 'tage' || o.liste === 'menschen')) {
+    const s = tageDatumSpiegeln(neu.tage, neu.menschen, new Set(f.tage.map(t => t.id)));
+    neu.tage = s.tage;
+    angewandt -= s.verworfen;
+    abgelehnt += s.verworfen;
   }
   return { familie: neu, angewandt, abgelehnt };
 }

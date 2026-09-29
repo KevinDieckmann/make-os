@@ -44,7 +44,7 @@ const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const fmtH = (min: number) => (min / 60).toFixed(1).replace('.', ',');
 
 interface VorschlagBlock { date: string; startMin: number; dauerMin: number; titel: string; art: PlanArt; taskId?: string }
-interface Vorschau { icloud: boolean; offen: number; laeuft: boolean; archiv?: string; personen: { person: string; zukuenftig: number; mitApple: number; vergangen: number; schon: number; beispiele: { tag: string; zeit: string; titel: string; art: string }[] }[] }
+interface Vorschau { icloud: boolean; offen: number; laeuft: boolean; uebersprungen: number; unterbrochen: boolean; zuruecknehmbar: number; archiv?: string; personen: { person: string; zukuenftig: number; mitApple: number; vergangen: number; schon: number; uebersprungen: number; beispiele: { tag: string; zeit: string; titel: string; art: string }[] }[] }
 
 /** Ein Archiv-Block (alter Wochenplan) als schreibgeschützter Eintrag im Raster — gestrichelt, Klick erklärt. */
 export const istArchivTermin = (t: Pick<KTermin, 'id'>) => t.id.startsWith('archiv:');
@@ -174,13 +174,29 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     void laden();
   }
 
-  async function uebernehmen() {
-    if (!uebernahme?.offen) return;
-    if (!window.confirm(uebernahmeTexte(uebernahme.offen).frage)) return;
+  /** Übernahme bzw. „Erneut versuchen“ (U1 M1: übersprungene freigeben, eine unterbrochene fortsetzen). */
+  async function uebernehmen(aktion: 'ausfuehren' | 'erneut' = 'ausfuehren') {
+    if (!uebernahme) return;
+    if (aktion === 'ausfuehren' && (!uebernahme.offen || !window.confirm(uebernahmeTexte(uebernahme.offen).frage))) return;
     setUebernahmeLaeuft(true);
-    const r = await fetch('/api/planung/uebernahme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'ausfuehren' }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    const r = await fetch('/api/planung/uebernahme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setUebernahmeLaeuft(false);
-    melden(r.ok ? null : `${r.fehler ?? 'Übernahme unterbrochen.'}${r.weiter ? ` ${r.weiter}` : ''}`);
+    melden(r.ok ? (r.uebersprungen ? `${r.uebersprungen} Block/Blöcke ließen sich nicht übernehmen — „Erneut versuchen“ in der Karte.` : null) : `${r.fehler ?? 'Übernahme unterbrochen.'}${r.weiter ? ` ${r.weiter}` : ''}`);
+    await Promise.all([uebernahmeLaden(), archivLaden(), laden()]);
+  }
+
+  /** „Übernahme zurücknehmen“ (U1 H1, nur für den Rückweg zur alten Version): Probelauf → Rückfrage mit Zahlen → löschen. */
+  async function zuruecknehmen() {
+    const post = (bestaetigt: boolean) => fetch('/api/planung/uebernahme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'zuruecknehmen', bestaetigt }) })
+      .then(x => x.json() as Promise<{ ok: boolean; termine?: number; gesperrt?: number; geloescht?: number; fehler?: number | string; grund?: string }>).catch(() => ({ ok: false, grund: 'Keine Verbindung.' } as { ok: boolean; grund?: string; termine?: number; gesperrt?: number }));
+    const p = await post(false);
+    if (!p.ok) { melden(p.grund ?? 'Zurücknehmen geht gerade nicht.'); return; }
+    const n = p.termine ?? 0, g = p.gesperrt ?? 0;
+    if (!window.confirm(`Übernahme zurücknehmen? ${n} ${n === 1 ? 'Termin' : 'Termine'} aus der Übernahme (${n === 1 ? 'Kennung' : 'Kennungen'} „makeos-wochenplan-…“) werden in iCloud gelöscht${g ? ` — ${g} davon mit Gästen/Serie bleiben stehen` : ''}. Änderungen, die ihr seitdem an diesen Blöcken gemacht habt, gehen verloren. Nur für den Rückweg zur alten Version.`)) return;
+    setUebernahmeLaeuft(true);
+    const r = await post(true);
+    setUebernahmeLaeuft(false);
+    melden(r.ok ? null : r.grund ?? `Nicht alles zurückgenommen (${'geloescht' in r ? r.geloescht ?? 0 : 0} gelöscht, ${g} gesperrt).`);
     await Promise.all([uebernahmeLaden(), archivLaden(), laden()]);
   }
 
@@ -226,11 +242,26 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   /** Linke Leiste: Bausteine, Routinen, Aufgaben, eigener Block, Übernahme. */
   const leiste = !aktiv ? null : (
     <div style={{ display: 'grid', gap: 12 }}>
+      {!!uebernahme && !uebernahme.offen && (uebernahme.uebersprungen > 0 || uebernahme.unterbrochen) && (
+        <Karte i={1} akzent={LEUCHT.achtung}>
+          <Ueberschrift farbe={LEUCHT.achtung}>Alter Wochenplan</Ueberschrift>
+          <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>
+            {uebernahme.unterbrochen ? 'Die Übernahme wurde unterbrochen (iCloud nicht erreichbar) und läuft von selbst weiter. ' : ''}
+            {uebernahme.uebersprungen ? `${uebernahme.uebersprungen} ${uebernahme.uebersprungen === 1 ? 'Block ließ' : 'Blöcke ließen'} sich nicht übernehmen und ${uebernahme.uebersprungen === 1 ? 'bleibt' : 'bleiben'} im Archiv.` : ''}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <Knopf farbe={LEUCHT.achtung} aus={uebernahmeLaeuft || !uebernahme.icloud || uebernahme.laeuft} onClick={() => uebernehmen('erneut')}>{uebernahmeLaeuft || uebernahme.laeuft ? 'übernimmt …' : 'Erneut versuchen'}</Knopf>
+          </div>
+        </Karte>
+      )}
       {!!uebernahme?.offen && (
         <Karte i={1} akzent={LEUCHT.achtung}>
           <Ueberschrift farbe={LEUCHT.achtung}>Alter Wochenplan</Ueberschrift>
           <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>
             {uebernahmeTexte(uebernahme.offen).karte}
+          </div>
+          <div role="note" style={{ fontSize: 12.5, color: LEUCHT.achtung, lineHeight: 1.5, marginTop: 8, fontWeight: 600 }}>
+            {uebernahmeTexte(uebernahme.offen).warnung}
           </div>
           <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
             {uebernahme.personen.filter(p => p.zukuenftig).map(p => (
@@ -242,8 +273,15 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
           </div>
           <div style={{ marginTop: 10 }}>
             <Knopf farbe={LEUCHT.achtung} aus={uebernahmeLaeuft || !uebernahme.icloud || uebernahme.laeuft} onClick={() => uebernehmen()}>{uebernahmeLaeuft || uebernahme.laeuft ? 'übernimmt …' : uebernahme.icloud ? 'Jetzt übernehmen' : 'Erst iCloud verbinden'}</Knopf>
+            {uebernahme.uebersprungen > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: C.inkLeise }}>{uebernahme.uebersprungen} übersprungen</span>}
           </div>
         </Karte>
+      )}
+      {!!uebernahme && !uebernahme.offen && !uebernahme.unterbrochen && uebernahme.zuruecknehmbar > 0 && (
+        <div style={{ fontSize: 12, color: C.inkLeise, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span>Alter Wochenplan übernommen ({uebernahme.zuruecknehmbar} {uebernahme.zuruecknehmbar === 1 ? 'Termin' : 'Termine'}).</span>
+          <Knopf leise aus={uebernahmeLaeuft} onClick={() => void zuruecknehmen()}>Übernahme zurücknehmen …</Knopf>
+        </div>
       )}
       <Karte i={1}>
         <Ueberschrift rechts={<span style={{ fontSize: 11.5, color: C.inkLeise }}>antippen, dann in den Kalender</span>}>Bausteine</Ueberschrift>

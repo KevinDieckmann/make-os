@@ -14,6 +14,11 @@
 // Übernahme Start/Ende/Titel des Blocks mit (der Block ist die Wahrheit). Lässt sie sich nicht ändern (Serie, Gäste,
 // nur lesbar, mehrdeutig), entsteht ein neuer Termin mit `uidFuerBlock`; scheitert auch das, steht der Block mit Grund
 // unter `uebersprungen` (nie Titel) und die Übernahme macht mit dem nächsten weiter — kein Block hält sie auf.
+// Upload U1 (29.09.): M1 — ein Netz-/Überlast-Fehler (503, Zeitüberschreitung, nicht verbunden) ist KEIN Grund zum
+// Überspringen: der Schritt scheitert, die Absicht bleibt offen, die Wiederaufnahme macht später weiter. „Erneut
+// versuchen“ gibt übersprungene Blöcke wieder frei (`uebersprungeneFreigeben`). H1 — erst nach ein paar stabilen Tagen
+// übernehmen (danach ist der Rückweg zur alten Version nur mit Aufräumen möglich); „Übernahme zurücknehmen“ löscht genau
+// die Termine mit `UEBERNAHME_UID_PRAEFIX` und setzt den Stand zurück (`ruecknahmeStand`, Server: Probelauf + Bestätigung).
 
 import { PLAN_ARTEN, type PlanBlock } from '@/types/planer';
 import { wandAus } from '@/lib/kalender/zeit';
@@ -70,20 +75,55 @@ export function altBloecke(datei: AltDatei | null | undefined): PlanBlock[] {
 /** Beginnt der Block jetzt oder später? (`jetztWand` = Berliner Wandzeit, nie über new Date(wandzeit).) */
 export const istZukuenftig = (b: Pick<PlanBlock, 'date' | 'startMin'>, jetztWand: string): boolean => wandAus(b.date, b.startMin) >= jetztWand.slice(0, 19);
 
+/** Präfix der UIDs, die die Übernahme NEU anlegt — genau diese Termine löscht „Übernahme zurücknehmen“. */
+export const UEBERNAHME_UID_PRAEFIX = 'makeos-wochenplan-';
+export const istUebernahmeUid = (uid: string | null | undefined): boolean => !!uid && uid.startsWith(UEBERNAHME_UID_PRAEFIX);
+
 /** Feste, echte UID des Termins zu einem alten Block (je Person + Block eindeutig, gültig für iCloud). */
 export function uidFuerBlock(person: string, blockId: string): string {
   const id = blockId.replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 90);
-  return `makeos-wochenplan-${person.replace(/[^a-z0-9-]/g, '')}-${id}`;
+  return `${UEBERNAHME_UID_PRAEFIX}${person.replace(/[^a-z0-9-]/g, '')}-${id}`;
 }
 
+/** H1 (U1): der Hinweis, der auf der Karte und in der Rückfrage steht. */
+export const UEBERNAHME_WARNUNG = 'Erst nach ein paar stabilen Tagen übernehmen — danach ist der Rückweg zur alten Version nur mit Aufräumen möglich.';
+
 /** Texte der Übernahme-Karte in Planen — Einzahl/Mehrzahl richtig (Schlussprüfung 29.09.: „1 künftige Blöcke liegen“). */
-export function uebernahmeTexte(offen: number): { karte: string; frage: string } {
+export function uebernahmeTexte(offen: number): { karte: string; frage: string; warnung: string } {
   const bloecke = offen === 1 ? '1 künftiger Block liegt' : `${offen} künftige Blöcke liegen`;
   const sie = offen === 1 ? 'ihn' : 'sie';
   return {
     karte: `${bloecke} noch im alten Wochenplan. Übernehmen macht ${sie} zu ${offen === 1 ? 'einem Termin' : 'Terminen'} in iCloud (Kopien, die schon in Apple stehen, werden zum Block statt doppelt). Vorher wird eine Archivkopie abgelegt; vergangene Blöcke bleiben als Archiv lesbar.`,
-    frage: `${offen === 1 ? '1 Block' : `${offen} Blöcke`} aus dem alten Wochenplan jetzt als ${offen === 1 ? 'Termin' : 'Termine'} in iCloud anlegen? Vorher wird eine Archivkopie abgelegt; vergangene Blöcke bleiben als Archiv.`,
+    frage: `${offen === 1 ? '1 Block' : `${offen} Blöcke`} aus dem alten Wochenplan jetzt als ${offen === 1 ? 'Termin' : 'Termine'} in iCloud anlegen? Vorher wird eine Archivkopie abgelegt; vergangene Blöcke bleiben als Archiv.\n\n${UEBERNAHME_WARNUNG}`,
+    warnung: UEBERNAHME_WARNUNG,
   };
+}
+
+/** „Erneut versuchen“ (M1): übersprungene Blöcke wieder freigeben — sie laufen beim nächsten Ausführen noch einmal. Rein. */
+export function uebersprungeneFreigeben(s: UebernahmeStand): { stand: UebernahmeStand; frei: number } {
+  let frei = 0;
+  const personen: Record<string, UebernahmePerson> = {};
+  for (const [p, e] of Object.entries(s.personen)) {
+    frei += Object.keys(e.uebersprungen ?? {}).length;
+    const { uebersprungen: _u, ...rest } = e;
+    personen[p] = rest;
+  }
+  return { stand: { ...s, personen }, frei };
+}
+
+/**
+ * Stand nach „Übernahme zurücknehmen“ (H1, rein): ging alles (`vollstaendig`), ist der Stand leer (nur der Verweis auf die
+ * Archivkopie bleibt) — die alten Blöcke gelten wieder als „wartet“. Sonst fallen nur die Einträge weg, deren Termin
+ * gelöscht ist oder die eine Apple-Kopie waren (die bleibt in Apple, wie der alte Stand sie kennt).
+ */
+export function ruecknahmeStand(s: UebernahmeStand, geloescht: ReadonlySet<string>, vollstaendig: boolean): UebernahmeStand {
+  if (vollstaendig) return { ...LEER_STAND, personen: {}, ...(s.archiv ? { archiv: s.archiv } : {}) };
+  const personen: Record<string, UebernahmePerson> = {};
+  for (const [p, e] of Object.entries(s.personen)) {
+    const bloecke = Object.fromEntries(Object.entries(e.bloecke).filter(([, uid]) => istUebernahmeUid(uid) && !geloescht.has(uid)));
+    personen[p] = { bloecke, ...(e.uebersprungen ? { uebersprungen: e.uebersprungen } : {}) };
+  }
+  return { ...s, personen };
 }
 
 export interface UebernahmeEintrag { person: string; block: PlanBlock; uid: string; weg: 'apple' | 'neu' }

@@ -1,4 +1,4 @@
-// ─── Kalender — Voll-Sicherung ansehen und zurückspielen (29.09., R-K1 #K5) ──
+// ─── Kalender — Sicherung ansehen und zurückspielen (29.09., R-K1 #K5) ──
 // GET                                          → { stand } (letzte Tagessicherungen: Kalender, Datei, Zeitpunkt, Anzahl)
 // POST { aktion: 'probelauf', kalender, datei? }        → { ergebnis } — zählt nur (fehlt / gesperrt / geändert / gleich / neu)
 // POST { aktion: 'wiederherstellen', kalender, datei?, bestaetigt: true }
@@ -22,7 +22,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
-  const s = await ladeSicherungStand();
+  let s: Awaited<ReturnType<typeof ladeSicherungStand>>;
+  try { s = await ladeSicherungStand(); } catch { return NextResponse.json({ ok: false, fehler: 'Stand der Kalender-Sicherung nicht lesbar (Head of IT prüfen).' }, { status: 500 }); }
   return NextResponse.json({ ok: true, stand: { letzterTag: s.letzterTag ?? null, letzter: s.letzter ?? null, dateien: s.dateien, ...(s.fehler?.length ? { fehler: s.fehler } : {}) } }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

@@ -19,7 +19,7 @@ vi.mock('@/lib/kalender/icloud', async orig => {
     ...echt,
     verbunden: () => true,
     ladeStand: async () => ({ at: '2026-10-05T01:00:00Z', kalender: [KAL], objekte: {} }),
-    holeAlleObjekte: async () => [...ic.objekte.entries()].map(([uid, ics]) => ({ href: `/${uid}.ics`, etag: 'e', ics })),
+    holeSicherungsObjekte: async () => [...ic.objekte.entries()].map(([uid, ics]) => ({ href: `/${uid}.ics`, etag: 'e', ics })),
     objektWiederherstellen: async (_k: unknown, uid: string, ics: string) => { if (ic.objekte.has(uid)) return 'schon-da'; ic.objekte.set(uid, ics); ic.angelegt.push(uid); return 'angelegt'; },
   };
 });
@@ -38,9 +38,9 @@ afterAll(() => rmSync(ordner, { recursive: true, force: true }));
 
 describe('#K5 Voll-Export und Wiederherstellung', () => {
   it('nachts einmal je Tag: je Kalender eine verschlüsselte Datei im Archiv, Stand ohne Titel', async () => {
-    expect(await sv.kalenderSicherungTaeglich(new Date('2026-10-05T00:30:00Z'))).toBeNull(); // 02:30 Berlin: noch nicht
-    expect(await sv.kalenderSicherungTaeglich(new Date('2026-10-05T01:30:00Z'))).toEqual({ gesichert: 1, fehler: 0 });
-    expect(await sv.kalenderSicherungTaeglich(new Date('2026-10-05T05:00:00Z'))).toBeNull(); // derselbe Tag
+    expect(await sv.kalenderSicherungTaeglich(new Date('2026-10-05T00:30:00Z'), { prozessStart: 0 })).toBeNull(); // 02:30 Berlin: noch nicht
+    expect(await sv.kalenderSicherungTaeglich(new Date('2026-10-05T01:30:00Z'), { prozessStart: 0 })).toEqual({ gesichert: 1, fehler: 0 });
+    expect(await sv.kalenderSicherungTaeglich(new Date('2026-10-05T05:00:00Z'), { prozessStart: 0 })).toBeNull(); // derselbe Tag
     const archiv = readdirSync(path.join(ordner, 'archiv'));
     expect(archiv).toEqual(['kalender-export-home-2026-10-05.json']);
     const roh = readFileSync(path.join(ordner, 'archiv', archiv[0]), 'utf8');

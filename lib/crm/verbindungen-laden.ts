@@ -143,7 +143,7 @@ async function ladeFamilieTage(): Promise<FamilieTageStand | null> {
   if (!f) return null;
   return {
     menschen: (Array.isArray(f.menschen) ? f.menschen : []).map(m => m.id),
-    tage: (Array.isArray(f.tage) ? f.tage : []).filter(t => t.menschId).map(t => ({ id: t.id, menschId: t.menschId, mitDatum: !!t.datum })),
+    tage: (Array.isArray(f.tage) ? f.tage : []).filter(t => t.menschId).map(t => ({ id: t.id, menschId: t.menschId })),
   };
 }
 

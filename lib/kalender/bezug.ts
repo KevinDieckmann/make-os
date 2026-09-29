@@ -55,6 +55,12 @@ export interface TerminBezug extends BezugKennungen {
   farbe?: string;
   /** Starttag YYYY-MM-DD (Berlin) — „UID tot“ prüft nur im Holfenster. */
   tag?: string;
+  /**
+   * Änderungsmarke eines Spiegels (Upload U1 B3, 29.09.): Fingerabdruck des Solls (Titel, Zeit, Ort) beim letzten Spiegeln
+   * bzw. `weg` nach einer gemeldeten Absage (lib/kalender/spiegel.ts `spiegelMarke`). Der Abgleich schreibt nur, wenn sich
+   * das Modul seitdem geändert hat — Änderungen in Apple werden nicht bei jedem Takt überschrieben. Nie Titel, nur der Hash.
+   */
+  spiegel?: string;
   geaendert: string;
 }
 export interface BezugBestand { bezuege: Record<string, TerminBezug> }
@@ -66,6 +72,7 @@ const KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 const PERSON = /^[a-z0-9-]{1,40}$/;
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const UID = /^[^\u0000-\u001f\u007f]{1,300}$/;
+const SPIEGEL_MARKE = /^[a-z0-9]{1,24}$/;
 
 // ── Schlüssel (R-K1 #46: Kalender + UID + RECURRENCE-ID) ────────────────────
 // Eine UID ist nur innerhalb EINES Kalenders eindeutig (Apple kopiert beim Duplizieren in einen anderen Kalender die UID
@@ -77,7 +84,7 @@ const KAL_KENNUNG = /^[A-Za-z0-9_.-]{1,48}$/;
 const KAL_TRENNER = '|';
 
 /** Kurzer, stabiler Hash (FNV-1a) — client- und serversicher. */
-function fnv(t: string): string { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+export function fnv(t: string): string { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
 
 /** Kennung eines Kalenders aus seiner Adresse (letztes Pfadstück, sonst ein Hash) — ohne `|` und `::`. */
 export function kalenderKennung(kalenderId: string): string {
@@ -188,6 +195,7 @@ export function bezugSauber(v: unknown, jetzt = new Date().toISOString()): Termi
     ...(o.privat === true ? { privat: true as const } : {}),
     ...(farbeSauber(o.farbe) ? { farbe: farbeSauber(o.farbe)! } : {}),
     ...(typeof o.tag === 'string' && TAG.test(o.tag) ? { tag: o.tag } : {}),
+    ...(typeof o.spiegel === 'string' && SPIEGEL_MARKE.test(o.spiegel) ? { spiegel: o.spiegel } : {}),
     geaendert: typeof o.geaendert === 'string' && Number.isFinite(Date.parse(o.geaendert)) ? o.geaendert : jetzt,
   };
   const inhalt = Object.keys(raus).filter(k => k !== 'geaendert' && k !== 'tag');
@@ -201,7 +209,7 @@ export function bezugSauber(v: unknown, jetzt = new Date().toISOString()): Termi
 export function bezugAendern(alt: TerminBezug | undefined, teil: Record<string, unknown>, jetzt: string): TerminBezug | null {
   const neu: Record<string, unknown> = { ...(alt ?? {}) };
   for (const [k, v] of Object.entries(teil)) {
-    if (![...BEZUG_FELDER, 'gastKontakte', 'von', 'art', 'privat', 'farbe', 'tag'].includes(k)) continue;
+    if (![...BEZUG_FELDER, 'gastKontakte', 'von', 'art', 'privat', 'farbe', 'tag', 'spiegel'].includes(k)) continue;
     if (v === null || v === '' || v === false || v === undefined || (Array.isArray(v) && !v.length)) delete neu[k]; else neu[k] = v;
   }
   neu.geaendert = jetzt;

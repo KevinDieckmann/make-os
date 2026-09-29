@@ -297,4 +297,14 @@ describe('#K5 Sicherung (rein): Export als ICS, Probelauf, Teilnehmer-Sperre, Fr
     expect(sicherungFaellig('2026-10-04', '2026-10-05T03:00:00')).toBe(true);
     expect(sicherungFaellig('2026-10-05', '2026-10-05T23:00:00')).toBe(false);
   });
+  it('U1 M4: nur 03:00–04:59, frühestens 30 Min. nach dem Start, nie in einer iCloud-Pause', () => {
+    expect(sicherungFaellig('2026-10-04', '2026-10-05T04:59:00')).toBe(true);
+    expect(sicherungFaellig('2026-10-04', '2026-10-05T05:00:00')).toBe(false);
+    expect(sicherungFaellig('2026-10-04', '2026-10-05T23:00:00')).toBe(false);
+    expect(sicherungFaellig('2026-10-04', '2026-10-05T03:10:00', { laufzeitMs: 29 * 60_000 })).toBe(false);
+    expect(sicherungFaellig('2026-10-04', '2026-10-05T03:10:00', { laufzeitMs: 30 * 60_000 })).toBe(true);
+    const jetztMs = Date.parse('2026-10-05T01:10:00Z');
+    expect(sicherungFaellig('2026-10-04', '2026-10-05T03:10:00', { pauseBis: '2026-10-05T01:20:00Z', jetztMs })).toBe(false);
+    expect(sicherungFaellig('2026-10-04', '2026-10-05T03:10:00', { pauseBis: '2026-10-05T01:00:00Z', jetztMs })).toBe(true);
+  });
 });

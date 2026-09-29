@@ -104,6 +104,20 @@ export class KalenderZeitueberschreitung extends KalenderFehler {
   constructor() { super('iCloud antwortet nicht (Zeitüberschreitung) — bitte gleich noch einmal.', 504); }
 }
 
+/**
+ * Vorübergehend (Upload U1 M1)? Überlast (503/429), Zeitüberschreitung, iCloud nicht verbunden, Netz weg (fetch-TypeError,
+ * ECONN…/ETIMEDOUT/ENOTFOUND/EAI_AGAIN/UND_ERR…) oder ein 5xx von iCloud außer 507. Solche Fehler sind kein Grund, etwas
+ * endgültig zu überspringen — der Vorgang scheitert und wird später wieder aufgenommen.
+ */
+export function voruebergehenderFehler(e: unknown, verbundenJetzt = verbunden()): boolean {
+  if (!verbundenJetzt) return true;
+  if (e instanceof KalenderUeberlastet || e instanceof KalenderZeitueberschreitung) return true;
+  if (e instanceof KalenderFehler) return e.status === 503 || e.status === 504 || /\((50[0-689]|5[1-9]\d)\)/.test(e.message);
+  if (e instanceof TypeError) return true;
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && /^(ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|UND_ERR)/.test(code);
+}
+
 /** Retry-After (Sekunden oder HTTP-Datum) → Sekunden, gedeckelt auf eine Stunde. */
 export function retryAfterSekunden(v: string | null | undefined, jetzt = Date.now()): number | undefined {
   if (!v) return undefined;
@@ -206,9 +220,9 @@ async function kalenderListe(home: string): Promise<KalenderEintrag[]> {
 
 const zeitraumUtc = (tag: string) => `${tag.replace(/-/g, '')}T000000Z`;
 
-async function holeObjekte(kal: Pick<KalenderEintrag, 'id' | 'name'>, alle = false): Promise<KalenderObjekt[]> {
+async function holeObjekte(kal: Pick<KalenderEintrag, 'id' | 'name'>, fenster: { von: number; bis: number } = { von: HOLEN_VON, bis: HOLEN_BIS }): Promise<KalenderObjekt[]> {
   const heute = localDay();
-  const zeitraum = alle ? '' : `<c:time-range start="${zeitraumUtc(tagPlus(heute, HOLEN_VON))}" end="${zeitraumUtc(tagPlus(heute, HOLEN_BIS))}"/>`;
+  const zeitraum = `<c:time-range start="${zeitraumUtc(tagPlus(heute, fenster.von))}" end="${zeitraumUtc(tagPlus(heute, fenster.bis))}"/>`;
   const body = `<?xml version="1.0" encoding="UTF-8"?><c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT">${zeitraum}</c:comp-filter></c:comp-filter></c:filter></c:calendar-query>`;
   const r = await dav(kal.id, 'REPORT', { tiefe: '1', body });
   if (r.status === 507) throw new KalenderFehler(`„${kal.name}“: iCloud hat die Antwort gekürzt (507) — Termine fehlen, der letzte vollständige Stand bleibt.`, 507);
@@ -221,8 +235,15 @@ async function holeObjekte(kal: Pick<KalenderEintrag, 'id' | 'name'>, alle = fal
     .map(a => ({ href: adresse(kal.id, a.href), etag: etagSauber(a.props.getetag), ics: a.props['calendar-data'] }));
 }
 
-/** Alle Objekte eines Kalenders OHNE Zeitfenster — nur für die tägliche Voll-Sicherung (R-K1 #K5, lib/kalender/sicherung-server.ts). */
-export const holeAlleObjekte = (kal: Pick<KalenderEintrag, 'id' | 'name'>): Promise<KalenderObjekt[]> => holeObjekte(kal, true);
+/**
+ * Zeitfenster der täglichen Kalender-Sicherung in Tagen ab heute (Upload U1 H2, 29.09.): −400 … +800 statt „alles“ — die
+ * Tagesdateien bleiben klein und enthalten keine Jahrzehnte alter Termine samt Teilnehmern. Serien mit einem Vorkommen
+ * im Fenster sind ganz dabei (CalDAV time-range).
+ */
+export const SICHERUNG_VON = -400;
+export const SICHERUNG_BIS = 800;
+/** Objekte eines Kalenders im Sicherungs-Fenster — nur für die tägliche Sicherung (R-K1 #K5, lib/kalender/sicherung-server.ts). */
+export const holeSicherungsObjekte = (kal: Pick<KalenderEintrag, 'id' | 'name'>): Promise<KalenderObjekt[]> => holeObjekte(kal, { von: SICHERUNG_VON, bis: SICHERUNG_BIS });
 
 /** Ein Objekt neu in einen Kalender legen (nur Wiederherstellung, R-K1 #K5): PUT mit If-None-Match — nie überschreiben. */
 export async function objektWiederherstellen(kal: Pick<KalenderEintrag, 'id' | 'name'>, uid: string, ics: string): Promise<'angelegt' | 'schon-da'> {
@@ -314,6 +335,8 @@ export function holfenster(s: IcloudStand): { von: string; bis: string } | null 
 }
 
 let laufend: Promise<IcloudStand> | null = null;
+/** Läuft gerade ein Abgleich? (die Kalender-Jobs im Takt warten dann — lib/kalender/takt-jobs.ts, U1 M4) */
+export const abgleichLaeuft = (): boolean => laufend !== null;
 
 /**
  * Mit iCloud abgleichen. Eine Anfrage für die Kalenderliste; nur Kalender,

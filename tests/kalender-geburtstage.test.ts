@@ -1,9 +1,8 @@
 // ─── Geburtstage (29.09., K2): ein Format, eine Stelle je Person, Art. 18, Glocke, Familie ─
-// Eigener Datenordner; alle Namen erfunden.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+// Eigener Datenordner (U1 M3: VOR allen Imports über vi.hoisted — statische Imports laufen vor jedem Code der Datei,
+// local-db läse sonst `<repo>/.data`); alle Namen erfunden.
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { rmSync } from 'node:fs';
 import { geburtstagLesen, geburtstagSaeubern, geburtstagText, naechsterGeburtstag, alsTagesSchluessel, geburtstagImJahr } from '@/lib/kalender/geburtstag';
 import { familieQuellen, crmQuellen, quellenVereinen, geburtstageAus, type GeburtstagQuelle } from '@/lib/kalender/quellen-geburtstage';
 import { saeubereKontakt, PIPELINE_FELDER, type Kontakt } from '@/lib/make-one/crm';
@@ -12,10 +11,14 @@ import { wichtigeTage, tagDatum } from '@/lib/familie/logik';
 import { wendeFamilieAn, startBestand } from '@/lib/familie/speicher';
 import { geburtstagAbleiten, gelesenSetzen, leererBestand } from '@/lib/meldungen/regeln';
 
-const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-geb-'));
-process.env.MAKE_OS_DATEN_DIR = ordner;
-process.env.MAKE_OS_KEY = 'pruef-schluessel-k2';
-process.env.MAKE_OS_DATEN_SCHLUESSEL = 'pruef-datenschluessel-k2-nur-im-test';
+const { ordner } = await vi.hoisted(async () => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const { default: path } = await import('node:path');
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'make-os-geb-'));
+  Object.assign(process.env, { MAKE_OS_DATEN_DIR: ordner, MAKE_OS_KEY: 'pruef-schluessel-k2', MAKE_OS_DATEN_SCHLUESSEL: 'pruef-datenschluessel-k2-nur-im-test' });
+  return { ordner };
+});
 const HAUS = 'test-haus';
 
 describe('Format', () => {
@@ -109,7 +112,7 @@ describe('Datenhaltung: CRM-Kontakt, Export, Familie', () => {
     const csv = kontakteCsv({ kontakte: [k({ geburtstag: '03.10.' })], crm: { firmen: [], chancen: [], mandate: [], produkte: [], events: [], teilnahmen: [], followups: [] } as never, heute: '2026-09-29' });
     expect(csv.split('\n')[1].endsWith(';03.10.')).toBe(true);
   });
-  it('Familie: Mensch-Geburtstag gesäubert, Wichtiger Tag mit Verweis ohne eigenes Datum', () => {
+  it('Familie: Mensch-Geburtstag gesäubert, Wichtiger Tag mit Verweis (Datum nur als Kopie vom Menschen)', () => {
     const f = startBestand('2026-09-29T08:00:00.000Z');
     const r = wendeFamilieAn(f, [
       { liste: 'menschen', op: 'set', eintrag: { id: 'm1', name: 'Oma', rolle: 'eltern', geburtstag: '1.3.1940', kontaktAlleTage: null, letzterKontakt: null, notiz: '', kontaktId: 'kaputt' } },
@@ -119,7 +122,7 @@ describe('Datenhaltung: CRM-Kontakt, Export, Familie', () => {
     expect(m.geburtstag).toBe('1940-03-01');
     expect(m).not.toHaveProperty('kontaktId');
     const t = r.familie.tage[0];
-    expect([t.datum, t.menschId]).toEqual(['', 'm1']);
+    expect([t.datum, t.menschId]).toEqual(['1940-03-01', 'm1']); // Datum nur als Kopie für den Rückweg (U1 B2)
     expect(tagDatum(t, r.familie.menschen)).toBe('1940-03-01');
     expect(wichtigeTage(r.familie.tage, '2027-02-20', 60, r.familie.menschen)[0]).toMatchObject({ am: '2027-03-01', inTagen: 9 });
     expect(wichtigeTage(r.familie.tage, '2027-02-20', 60, [])).toEqual([]); // Mensch weg → kein Datum

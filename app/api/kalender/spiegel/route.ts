@@ -2,16 +2,18 @@
 // GET  ?art=event&id=<Event>                 → { lage: da|fehlt|schein|keiner|ohne-icloud, uid?, grund? }
 // POST { art: 'event', id }                  → Termin zum Make.One-Event anlegen (Kalender „Gemeinsam“, echte UID,
 //                                              Bezug eventId) — ersetzt POST /api/apple-calendar/create (Schein-Kennung).
+// POST { art: 'event', id, aktion: 'loeschen' } → Termin eines ABGESAGTEN Events löschen (nur auf Klick — der Takt
+//                                              meldet Absagen nur in die Glocke, Upload U1 B3).
 // POST { art: 'date'|'gespraech', id }       → Date (id = Date-Kennung) bzw. Paar-Gespräch (id = Datum) in den
 //                                              gemeinsamen Kalender — die UID landet in der Familie.
-// Nachziehen (Datum/Absage) passiert von selbst nach jeder Änderung im Modul (lib/kalender/spiegel-server.ts).
+// Nachziehen (Datum/Absage) passiert nach jeder Änderung im Modul durch eine Person (lib/kalender/spiegel-server.ts).
 // Nur Haushalt des Inhabers; Familie nur, wenn es DESSEN Familie ist. Nie Teilnehmer, nie Einladungen.
 
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { KalenderFehler } from '@/lib/kalender/icloud';
-import { eventSpiegelLage, eventSpiegelAnlegen, familieSpiegelAnlegen } from '@/lib/kalender/spiegel-server';
+import { eventSpiegelLage, eventSpiegelAnlegen, eventSpiegelLoeschen, familieSpiegelAnlegen } from '@/lib/kalender/spiegel-server';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
@@ -39,11 +41,12 @@ export async function POST(req: Request) {
   if (!z) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
-  let b: { art?: string; id?: string };
+  let b: { art?: string; id?: string; aktion?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const id = typeof b.id === 'string' ? b.id : '';
   if (!KENNUNG.test(id)) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
   try {
+    if (b.art === 'event' && b.aktion === 'loeschen') return NextResponse.json({ ok: true, ...(await eventSpiegelLoeschen(id, werAus(req))) });
     if (b.art === 'event') return NextResponse.json({ ok: true, ...(await eventSpiegelAnlegen(id, z.person, werAus(req))) });
     if (b.art === 'date' || b.art === 'gespraech') {
       const h = await haushaltVon(req);

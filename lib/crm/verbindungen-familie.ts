@@ -1,22 +1,23 @@
 // ─── Verbindungsprüfung: Familie — Wichtige Tage ohne Menschen (rein, getestet, F2 N4, 29.09.) ───────────
-// Ein „Wichtiger Tag“ der Art Geburtstag verweist seit K2 nur auf den Menschen (`menschId`, OHNE eigenes Datum — der Mensch
-// führt, lib/familie/logik.ts `tagDatum`). Wird der Mensch gelöscht, bleibt der Tag als leere Hülle zurück: kein Datum,
-// keine Erinnerung, aber in „Wichtige Tage“ gezählt. Eingehängt in lib/crm/verbindungen.ts (Prüfen/Reparieren) und
-// app/api/crm/verbindungen (Schreiben in `familie--<haushalt>` des Inhabers).
+// Ein „Wichtiger Tag“ der Art Geburtstag verweist seit K2 auf den Menschen (`menschId` — der Mensch führt,
+// lib/familie/logik.ts `tagDatum`; `datum` ist seit U1 B2 nur die Kopie für den Rückweg zum alten Stand). Wird der Mensch
+// gelöscht, bleibt der Tag als leere Hülle zurück: kein Datum, keine Erinnerung, aber in „Wichtige Tage“ gezählt.
+// Eingehängt in lib/crm/verbindungen.ts (Prüfen/Reparieren) und app/api/crm/verbindungen (Schreiben in
+// `familie--<haushalt>` des Inhabers).
 //   familie-tag-mensch-tot   Wichtiger Tag verweist auf einen Menschen, den es nicht mehr gibt. „Eintrag entfernen“ nimmt
-//                            Tage ohne eigenes Datum weg; trägt ein alter Tag noch ein Datum, fällt nur der Verweis.
+//                            ihn weg (die Datums-Kopie gehört zum gelöschten Menschen).
 // Beispiele sind Kennungen der Tage — nie Titel oder Namen.
 
-/** Was die Prüfung aus der Familie braucht — nur Kennungen und ob ein eigenes Datum da ist. */
+/** Was die Prüfung aus der Familie braucht — nur Kennungen. */
 export interface FamilieTageStand {
   menschen: string[];
-  tage: { id: string; menschId?: string; mitDatum: boolean }[];
+  tage: { id: string; menschId?: string }[];
 }
 
 const e = (n: number, ein: string, mehr: string) => (n === 1 ? ein : mehr);
 
 export const PRUEFUNGEN_FAMILIE = {
-  'familie-tag-mensch-tot': { schwere: 'hinweis', bereich: 'planung', reparierbar: true, art: 'kennung', knopf: 'Eintrag entfernen', text: (n: number) => `${n} ${e(n, 'Wichtiger Tag verweist', 'Wichtige Tage verweisen')} auf einen Menschen der Familie, den es nicht mehr gibt — „Eintrag entfernen“ räumt ${e(n, 'ihn', 'sie')} ab (ein Tag mit eigenem Datum verliert nur den Verweis).` },
+  'familie-tag-mensch-tot': { schwere: 'hinweis', bereich: 'planung', reparierbar: true, art: 'kennung', knopf: 'Eintrag entfernen', text: (n: number) => `${n} ${e(n, 'Wichtiger Tag verweist', 'Wichtige Tage verweisen')} auf einen Menschen der Familie, den es nicht mehr gibt — „Eintrag entfernen“ räumt ${e(n, 'ihn', 'sie')} ab.` },
 } as const;
 export type FamiliePruefungId = keyof typeof PRUEFUNGEN_FAMILIE;
 
@@ -32,19 +33,13 @@ export function familiePruefen(f: FamilieTageStand | null | undefined, melde: (i
 }
 
 /**
- * Den gespeicherten Familien-Bestand bereinigen (rein, für die Route in der Schreibsperre): Tage mit totem Verweis ohne
- * eigenes Datum fallen weg, mit Datum verlieren sie nur `menschId`. Alles andere bleibt, wie es ist.
+ * Den gespeicherten Familien-Bestand bereinigen (rein, für die Route in der Schreibsperre): Tage mit totem Verweis fallen
+ * weg (auch mit Datums-Kopie). Alles andere bleibt, wie es ist.
  */
 export function familieTageBereinigen<F extends { menschen?: { id: string }[]; tage?: { id: string; menschId?: string; datum?: string }[] }>(datei: F): { datei: F; n: number } {
   const da = new Set((datei.menschen ?? []).map(m => m.id));
-  let n = 0;
-  const tage = (datei.tage ?? []).flatMap(t => {
-    if (!t.menschId || da.has(t.menschId)) return [t];
-    n++;
-    if (!t.datum) return [];
-    const { menschId: _m, ...rest } = t;
-    return [rest as typeof t];
-  });
+  const tage = (datei.tage ?? []).filter(t => !t.menschId || da.has(t.menschId));
+  const n = (datei.tage ?? []).length - tage.length;
   return n ? { datei: { ...datei, tage }, n } : { datei, n: 0 };
 }
 
@@ -53,6 +48,6 @@ export function familieReparieren(f: FamilieTageStand | null | undefined, will: 
   if (!f || !will.has('familie-tag-mensch-tot')) return { familie: f, aenderungen: [] };
   const tot = new Set(familieTageTot(f));
   if (!tot.size) return { familie: f, aenderungen: [] };
-  const tage = f.tage.flatMap(t => (!tot.has(t.id) ? [t] : t.mitDatum ? [{ id: t.id, mitDatum: true }] : []));
+  const tage = f.tage.filter(t => !tot.has(t.id));
   return { familie: { ...f, tage }, aenderungen: [{ befundId: 'familie-tag-mensch-tot', speicher: 'familie', anzahl: tot.size, text: `${tot.size} ${e(tot.size, 'Wichtiger Tag', 'Wichtige Tage')} ohne Menschen bereinigt` }] };
 }

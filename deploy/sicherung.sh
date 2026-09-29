@@ -112,8 +112,10 @@ mkdir -p "$ZIELORDNER"
 # ── 1–3 · Schreibpause, Schnappschuss, Pause aufheben ────────────────────────
 rm -rf "$STAGE"; mkdir -p "$STAGE"
 if pause_an; then PAUSE=an; SCHNAPPSCHUSS=mit-pause; else SCHNAPPSCHUSS=ohne-pause; fi
+# Kalender-Tagessicherungen (archiv/kalender-export-*, U1 H2) bleiben draußen: sie laufen nach 14 Tagen ab (Art. 17 wirkt
+# so spätestens nach 14 Tagen) — im Nachtarchiv mit Generationen 14/8/12 lebten sie sonst Monate weiter.
 tar -C "$BASIS" --exclude='daten/backup' --exclude='daten/.sicherung-stage' --exclude='daten/.schreiber' --exclude='*.tmp' \
-    --exclude='daten/brain-index.sqlite*' -cf - daten | tar -C "$STAGE" -xf - || fehlschlag "Schnappschuss (tar) gescheitert"
+    --exclude='daten/brain-index.sqlite*' --exclude='daten/archiv/kalender-export-*' -cf - daten | tar -C "$STAGE" -xf - || fehlschlag "Schnappschuss (tar) gescheitert"
 pause_aus
 # Grabsteine gelöschter Personen (29.09., Paket D-B #70) — liegen AUSSERHALB von daten und gehen mit ins Archiv.
 TEILE=(daten)

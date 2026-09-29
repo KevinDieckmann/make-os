@@ -196,7 +196,7 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['buchung-followup-ohne-termin', b => { b.crm.followups.push(fu('fu-v')); b.termine = { termine: [], buchungFollowups: [{ buchungId: 'bu-1', terminUid: 'U-1', followUpId: 'fu-v' }] }; }, 1, 'fu-v'],
   // F2 (29.09.): Follow-up am gelöschten Termin; Wichtiger Tag der Familie mit gelöschtem Menschen.
   ['followup-termin-tot', b => { b.crm.followups.push(fu('fu-tot', { terminUid: 'U-gibtsnicht', faellig: '2026-10-01' }), fu('fu-lebt', { terminUid: 'U-1', faellig: '2026-10-01' })); }, 1, 'fu-tot'],
-  ['familie-tag-mensch-tot', b => { b.familieTage = { menschen: ['m-1'], tage: [{ id: 'tag-ok', menschId: 'm-1', mitDatum: false }, { id: 'tag-tot', menschId: 'm-weg', mitDatum: false }] }; }, 1, 'tag-tot'],
+  ['familie-tag-mensch-tot', b => { b.familieTage = { menschen: ['m-1'], tage: [{ id: 'tag-ok', menschId: 'm-1' }, { id: 'tag-tot', menschId: 'm-weg' }] }; }, 1, 'tag-tot'],
   ['einwilligung-beleg-tot', b => { b.kontakte[0].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'd-weg99' }]; b.kontakte[1].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'Formular d-abcd1' }]; }, 1, 'c-anna1'],
 ];
 
@@ -300,7 +300,7 @@ describe('Verbindungen reparieren', () => {
     b.termine = { termine: [{ id: 'U-neu', tag: '2026-10-03', titel: 'Jahresplanung', mitTeilnehmern: false }, { id: 'U-9', tag: '2026-10-10', titel: 'x', mitTeilnehmern: false }], buchungFollowups: [{ buchungId: 'bu-1', terminUid: 'U-1', followUpId: 'fu-v' }] };
     // F2 (29.09.): Follow-up am gelöschten Termin, Wichtiger Tag ohne Menschen.
     b.crm.followups.push(fu('fu-tot', { terminUid: 'U-gibtsnicht', faellig: '2026-10-01' }));
-    b.familieTage = { menschen: ['m-1'], tage: [{ id: 'tag-tot', menschId: 'm-weg', mitDatum: false }] };
+    b.familieTage = { menschen: ['m-1'], tage: [{ id: 'tag-tot', menschId: 'm-weg' }] };
     // Nicht reparierbar — muss stehen bleiben:
     b.crm.chancen[0].firmaId = 'f-weg';
     b.crm.teilnahmen.push({ id: 'tn-9', eventId: 'ev-1', kontaktId: 'c-weg1', status: 'da', geaendert: J });

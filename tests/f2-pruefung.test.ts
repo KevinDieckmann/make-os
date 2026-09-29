@@ -197,8 +197,8 @@ describe('N4 · Familie: `Mensch.kontaktId` entfernt, verwaiste Wichtige Tage mi
     const r = wendeFamilieAn(f, [{ liste: 'menschen', op: 'upsert', eintrag: { id: 'm1', name: 'Test', rolle: 'sonstig', geburtstag: '01.01.', kontaktAlleTage: null, letzterKontakt: null, notiz: '', kontaktId: 'c-abcd-test' } }], 'kevin', '2026-09-29T10:00:00Z');
     expect(r.familie.menschen[0]).not.toHaveProperty('kontaktId');
   });
-  it('Tag mit totem Menschen-Verweis: gemeldet, ohne Datum entfernt, mit Datum nur der Verweis weg', () => {
-    const stand = { menschen: ['m1'], tage: [{ id: 't-ok', menschId: 'm1', mitDatum: false }, { id: 't-tot', menschId: 'm9', mitDatum: false }, { id: 't-alt', menschId: 'm8', mitDatum: true }] };
+  it('Tag mit totem Menschen-Verweis: gemeldet und entfernt (auch mit Datums-Kopie für den Rückweg)', () => {
+    const stand = { menschen: ['m1'], tage: [{ id: 't-ok', menschId: 'm1' }, { id: 't-tot', menschId: 'm9' }, { id: 't-alt', menschId: 'm8' }] };
     expect(familieTageTot(stand)).toEqual(['t-tot', 't-alt']);
     const v = familieReparieren(stand, new Set(['familie-tag-mensch-tot']));
     expect(v.aenderungen).toMatchObject([{ speicher: 'familie', anzahl: 2 }]);
@@ -206,7 +206,7 @@ describe('N4 · Familie: `Mensch.kontaktId` entfernt, verwaiste Wichtige Tage mi
     const datei = { menschen: [{ id: 'm1' }], tage: [{ id: 't-ok', menschId: 'm1', datum: '' }, { id: 't-tot', menschId: 'm9', datum: '' }, { id: 't-alt', menschId: 'm8', datum: '03-03' }], dates: [] };
     const r = familieTageBereinigen(datei);
     expect(r.n).toBe(2);
-    expect(r.datei.tage).toEqual([{ id: 't-ok', menschId: 'm1', datum: '' }, { id: 't-alt', datum: '03-03' }]);
+    expect(r.datei.tage).toEqual([{ id: 't-ok', menschId: 'm1', datum: '' }]);
     expect(familieTageBereinigen(r.datei).n).toBe(0);
   });
 });

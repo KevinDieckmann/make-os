@@ -1,10 +1,12 @@
-// ─── Kalender — Voll-Export und Wiederherstellung (rein, getestet, 29.09., R-K1 #K5) ─
+// ─── Kalender — Export und Wiederherstellung (rein, getestet, 29.09., R-K1 #K5) ─
 // KALENDER_FEHLER_PRUEFLISTE #K5: Wird in iCloud gelöscht, verteilt sich das auf alle Geräte — der Spiegel
 // `kalender-icloud` kennt nur −90 … +400 Tage und führt keinen Weg zurück. Deshalb:
 //
 //   Export        je Kalender EINE iCalendar-Datei (VCALENDAR mit allen VEVENTs und den nötigen VTIMEZONEs) — das
 //                 übliche .ics-Format, das jeder Kalender importieren kann. Der Server legt sie täglich verschlüsselt
-//                 ins Archiv (lib/kalender/sicherung-server.ts, Speicherweg lib/store/archiv.ts).
+//                 ins Archiv (lib/kalender/sicherung-server.ts, Speicherweg lib/store/archiv.ts). Seit Upload U1 (H2)
+//                 nur Termine im Fenster −400 … +800 Tage (lib/kalender/icloud.ts `SICHERUNG_VON/BIS`); die Tagesdateien
+//                 gehen NICHT ins Nachtarchiv (deploy/sicherung.sh) — die 14 Tage Aufbewahrung gelten also wirklich.
 //   Wiederherstellen  Probelauf zuerst: zählt, was in der Sicherung steht und in iCloud FEHLT (gelöscht), was sich
 //                 geändert hat und was Gäste trägt. Geschrieben wird nur mit Bestätigung, nur Fehlendes (nie
 //                 überschreiben), und nie Termine mit Teilnehmern (Teilnehmer-Sperre: iCloud würde sonst Einladungen
@@ -125,7 +127,18 @@ export function abgelaufen(dateien: readonly string[], heute: string, tagePlus: 
   return dateien.filter(d => { const t = exportDateiTeile(d); return !!t && t.tag < grenze; });
 }
 
-/** Ist die Tagessicherung fällig? Einmal je Berliner Tag, nachts ab 03:00 (nach dem Abgleich, vor dem Morgen). */
-export function sicherungFaellig(letzterTag: string | undefined, jetztWand: string): boolean {
-  return letzterTag !== jetztWand.slice(0, 10) && Number(jetztWand.slice(11, 13)) >= 3;
+/** Mindest-Laufzeit des Prozesses vor der ersten Sicherung (U1 M4): nie im ersten Takt nach einem Start/Upload. */
+export const SICHERUNG_START_VERZUG_MS = 30 * 60_000;
+
+/**
+ * Ist die Tagessicherung fällig? Einmal je Berliner Tag, nur nachts 03:00–04:59 (nach dem Abgleich, vor dem Morgen).
+ * U1 M4: erst, wenn der Prozess mindestens 30 Min. läuft (`laufzeitMs`), und nie, solange iCloud nach einem Fehler
+ * pausiert (`pauseBis` — nur übergeben, wenn der letzte Abgleich gescheitert ist).
+ */
+export function sicherungFaellig(letzterTag: string | undefined, jetztWand: string, o: { laufzeitMs?: number; pauseBis?: string; jetztMs?: number } = {}): boolean {
+  const stunde = Number(jetztWand.slice(11, 13));
+  if (letzterTag === jetztWand.slice(0, 10) || stunde < 3 || stunde >= 5) return false;
+  if (o.laufzeitMs !== undefined && o.laufzeitMs < SICHERUNG_START_VERZUG_MS) return false;
+  if (o.pauseBis && o.jetztMs !== undefined && Date.parse(o.pauseBis) > o.jetztMs) return false;
+  return true;
 }

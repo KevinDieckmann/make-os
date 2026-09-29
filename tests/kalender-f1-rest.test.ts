@@ -26,7 +26,7 @@ vi.mock('@/lib/kalender/icloud', async orig => {
     ...echt,
     verbunden: () => true,
     ladeStand: async () => ({ at: '2026-10-05T01:00:00Z', kalender: [KAL], objekte: {} }),
-    holeAlleObjekte: async () => [...ic.objekte.entries()].map(([uid, ics]) => ({ href: `/${uid}.ics`, etag: 'e', ics })),
+    holeSicherungsObjekte: async () => [...ic.objekte.entries()].map(([uid, ics]) => ({ href: `/${uid}.ics`, etag: 'e', ics })),
     objektWiederherstellen: async (_k: unknown, uid: string, ics: string) => { if (ic.objekte.has(uid)) return 'schon-da'; ic.objekte.set(uid, ics); ic.angelegt.push(uid); return 'angelegt'; },
   };
 });
@@ -113,7 +113,7 @@ describe('#10/#11 Sicherung', () => {
     ic.objekte.set(bu, vcal(bu, 'Kennenlernen · Testa Gast'));
     ic.objekte.set('alt-bu', vcal('alt-bu', 'Erstgespräch', [`DESCRIPTION:Gebucht.\\n${terminMarke('bu-alt-1')}`]));
     await db.saveJson('kalender-bezug', { bezuege: { 'home|p': { von: 'malin', privat: true } } });
-    expect(await sv.kalenderSicherungTaeglich(new Date('2026-10-05T01:30:00Z'))).toEqual({ gesichert: 1, fehler: 0 });
+    expect(await sv.kalenderSicherungTaeglich(new Date('2026-10-05T01:30:00Z'), { prozessStart: 0 })).toEqual({ gesichert: 1, fehler: 0 });
     // In Apple gelöscht — und der Bezug ist weg (Termin gelöscht).
     ic.objekte.clear();
     await db.saveJson('kalender-bezug', { bezuege: {} });

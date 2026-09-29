@@ -10,10 +10,8 @@ import { herzschlag } from '@/lib/hoi/innen';
 import { NextResponse } from 'next/server';
 import { faellig } from '@/lib/zoe/takt';
 import { reihe } from '@/lib/zoe/auftraege';
-import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
 import { alleSichten } from '@/lib/business/speicher';
-import { kalenderSicherungTaeglich } from '@/lib/kalender/sicherung-server';
-import { eventSpiegelImTakt } from '@/lib/kalender/spiegel-server';
+import { kalenderJobsImTakt } from '@/lib/kalender/takt-jobs';
 import { localDay } from '@/lib/zeit';
 
 /** Business-Index: einmal am Tag festhalten (Verlauf, Trend, Ampel-Wechsel, MRR für die NRR) — auch ohne offene Seite. */
@@ -25,13 +23,6 @@ async function businessTagesstand() {
   await alleSichten(heute).catch(() => { businessTag = ''; });
 }
 
-/** Kalender im Hintergrund frisch halten (alle 5 Min., seit 27.09. — der Seitenpfad wartet nicht mehr auf iCloud) — ZOE, Morgenlauf und Heute lesen den Stand, auch wenn keine Seite offen ist. */
-async function kalenderFrischHalten() {
-  if (!verbunden()) return;
-  const s = await ladeStand();
-  const zuletzt = Date.parse(s.at ?? '') || 0;
-  if (Date.now() - zuletzt > 5 * 60_000 && naechsterVersuchFaellig(s)) void abgleichen().catch(() => { /* Fehler steht im Stand */ });
-}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,12 +45,11 @@ export async function POST() {
   // Brain-Index alle 30 Minuten leise mit dem Vault abgleichen (27.09.; erst 10, seit der Tempo-Prüfung 30 — der Lauf
   // liest alle Notizen und rechnet synchron in SQLite) — nie blockierend.
   void import('@/lib/brain/index').then(ix => ix.indexFrischHalten(30)).catch(() => {});
-  await kalenderFrischHalten().catch(() => {});
-  // Tägliche Voll-Sicherung je Kalender (R-K1 #K5) — nachts ab 03:00, einmal je Tag, nie blockierend.
-  void kalenderSicherungTaeglich().catch(() => { /* Fehler stehen im Stand kalender-sicherung */ });
-  // Event-Termine im Takt nachziehen (K6a) — auch Änderungen am Event ohne Bestand-PATCH (ZOE, Heads); alle 30 Min.
-  // F1 #5: die Hinweise je Event protokolliert eventSpiegelImTakt selbst; ein Fehler des ganzen Laufs hier (nie Titel).
-  void eventSpiegelImTakt().catch(e => console.warn(`[spiegel] Takt: ${e instanceof Error ? `${e.name}: ${e.message.slice(0, 160)}` : 'Fehler'}`));
+  // Kalender (U1 M4): höchstens EIN iCloud-Job je Takt, gestaffelt — Abgleich (alle 5 Min., seit 27.09.: ZOE, Morgenlauf
+  // und Heute lesen den Stand auch ohne offene Seite), sonst die Tagessicherung (R-K1 #K5, 03:00–05:00, frühestens 30 Min.
+  // nach dem Start), sonst der Event-Spiegel (K6a, alle 30 Min.; U1 B3: nur eigene, künftige Termine, Absagen → Glocke).
+  // Nie blockierend; Fehler als eine Zeile `[kalender-sicherung] …` / `[spiegel] …` (lib/kalender/takt-jobs.ts).
+  await kalenderJobsImTakt().catch(() => {});
   void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });

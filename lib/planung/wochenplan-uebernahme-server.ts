@@ -12,20 +12,26 @@
 //      mitgeschrieben; sonst Rückfall auf den neuen Termin mit fester UID; scheitert auch das → „übersprungen“ mit Grund
 //      (Stand, nie Titel) und weiter mit dem nächsten Block. Ein Block hält die Übernahme nie auf.
 //   5. `abschluss`: je Person `am` setzen. Abbruch irgendwo → die Wiederaufnahme (Start/Takt/Durchsicht) macht weiter.
+//      U1 M1: ein vorübergehender Fehler (Netz, Überlast, nicht verbunden — `voruebergehenderFehler`) überspringt NICHT,
+//      sondern lässt den Schritt scheitern; die Wiederaufnahme prüft zuerst `verbunden()`.
+// Zurücknehmen (U1 H1, `uebernahmeZuruecknehmen`, POST { aktion: 'zuruecknehmen' }): Probelauf zählt, erst mit
+// `bestaetigt` löscht es genau die Termine mit UID-Präfix `makeos-wochenplan-` (Teilnehmer-Sperre: mit Gästen nie) und
+// setzt den Stand zurück — für den Rückweg zur alten Version (GO_LIVE_CHECKLISTE.md › Rückweg).
 // Der alte Bestand wird nie geändert. Außer dieser Datei liest ihn niemand mehr (Leser: planBloeckeLesen).
 
 import { promises as fs } from 'fs';
 import { loadJson, updateJson, datenOrdner } from '@/lib/store/local-db';
 import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
-import { absichtBeginnen, absichtAbschliessen, mitVorgang, fehlerGrund, type Absicht } from '@/lib/store/absichten';
-import { verbunden, ladeStand, objekteKurz, findeObjekt, HOLEN_VON, HOLEN_BIS, type IcloudStand } from '@/lib/kalender/icloud';
+import { absichtBeginnen, absichtAbschliessen, absichtenLaden, istOffen, mitVorgang, fehlerGrund, type Absicht } from '@/lib/store/absichten';
+import { verbunden, ladeStand, objekteKurz, findeObjekt, voruebergehenderFehler, KalenderFehler, HOLEN_VON, HOLEN_BIS, type IcloudStand } from '@/lib/kalender/icloud';
 import { termineAus, type Termin } from '@/lib/kalender/ics';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { localDay } from '@/lib/zeit';
-import { terminAnlegenServer, terminAendernServer } from '@/lib/kalender/termin-server';
+import { terminAnlegenServer, terminAendernServer, terminLoeschenServer } from '@/lib/kalender/termin-server';
 import { icsVonPlanArt, blockAnfrage } from './bloecke';
 import {
   UEBERNAHME_SPEICHER, UEBERNAHME_ARCHIV_PRAEFIX, LEER_STAND, altName, altBloecke, standSauber, uebernahmePlanen, archivBloecke, uidFuerBlock,
+  istUebernahmeUid, uebersprungeneFreigeben, ruecknahmeStand,
   type AltDatei, type UebernahmeStand, type UebernahmePlan, type ArchivBlock,
 } from './wochenplan-uebernahme';
 
@@ -66,8 +72,13 @@ export async function archivFuer(person: string, von: string, bis: string, jetzt
 
 // ── Vorschau ────────────────────────────────────────────────────────────────
 
-export interface VorschauPerson { person: string; zukuenftig: number; mitApple: number; vergangen: number; schon: number; beispiele: { tag: string; zeit: string; titel: string; art: string }[] }
-export interface Vorschau { icloud: boolean; personen: VorschauPerson[]; offen: number; laeuft: boolean; archiv?: string }
+export interface VorschauPerson { person: string; zukuenftig: number; mitApple: number; vergangen: number; schon: number; uebersprungen: number; beispiele: { tag: string; zeit: string; titel: string; art: string }[] }
+/**
+ * `uebersprungen` (M1): Blöcke, die nicht übernommen werden konnten (Grund im Stand) — „Erneut versuchen“ gibt sie frei.
+ * `unterbrochen`: eine Übernahme ist offen (Netz/Überlast) und wird fortgesetzt. `zuruecknehmbar` (H1): so viele Termine
+ * der Übernahme (UID-Präfix) stehen im Kalender.
+ */
+export interface Vorschau { icloud: boolean; personen: VorschauPerson[]; offen: number; laeuft: boolean; uebersprungen: number; unterbrochen: boolean; zuruecknehmbar: number; archiv?: string }
 
 async function plaene(jetzt: Date): Promise<UebernahmePlan[]> {
   const [personen, stand] = await Promise.all([altPersonen(), ladeUebernahme()]);
@@ -79,13 +90,33 @@ async function plaene(jetzt: Date): Promise<UebernahmePlan[]> {
 
 const zeitText = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-export async function uebernahmeVorschau(jetzt = new Date()): Promise<Vorschau> {
-  const [ps, stand] = await Promise.all([plaene(jetzt), ladeUebernahme()]);
+/** Ist eine Übernahme angefangen und nicht fertig (Absicht offen)? `h` fehlt → unbekannt (false). */
+async function unterbrochen(h: string | null | undefined): Promise<boolean> {
+  if (!h) return false;
+  return (await absichtenLaden(h)).some(a => a.art === 'wochenplan-uebernahme' && istOffen(a));
+}
+
+/** Die Termine der Übernahme im Kalender (UID-Präfix, je Schlüssel einmal). */
+const uebernahmeTermine = (s: IcloudStand) => Array.from(new Map(objekteKurz(s).filter(o => istUebernahmeUid(o.uid)).map(o => [o.schluessel, o] as const)).values());
+
+export async function uebernahmeVorschau(jetzt = new Date(), h?: string | null): Promise<Vorschau> {
+  const [ps, stand, offen] = await Promise.all([plaene(jetzt), ladeUebernahme(), unterbrochen(h)]);
   const personen = ps.map(p => ({
-    person: p.person, zukuenftig: p.offen.length, mitApple: p.offen.filter(e => e.weg === 'apple').length, vergangen: p.vergangen, schon: p.schon,
+    person: p.person, zukuenftig: p.offen.length, mitApple: p.offen.filter(e => e.weg === 'apple').length, vergangen: p.vergangen, schon: p.schon, uebersprungen: p.uebersprungen,
     beispiele: p.offen.slice(0, 5).map(e => ({ tag: e.block.date, zeit: zeitText(e.block.startMin), titel: e.block.titel, art: e.block.art })),
   }));
-  return { icloud: verbunden(), personen, offen: personen.reduce((s, p) => s + p.zukuenftig, 0), laeuft: laufend !== null, ...(stand.archiv ? { archiv: stand.archiv } : {}) };
+  const zuruecknehmbar = verbunden() ? uebernahmeTermine(await ladeStand()).length : 0;
+  return {
+    icloud: verbunden(), personen, offen: personen.reduce((s, p) => s + p.zukuenftig, 0), laeuft: laufend !== null,
+    uebersprungen: personen.reduce((s, p) => s + p.uebersprungen, 0), unterbrochen: offen, zuruecknehmbar, ...(stand.archiv ? { archiv: stand.archiv } : {}),
+  };
+}
+
+/** „Erneut versuchen“ (M1): übersprungene Blöcke freigeben und die Übernahme (bzw. ihre Wiederaufnahme) starten. */
+export async function uebernahmeErneut(h: string, ausloeser: string | null, jetzt = new Date()): Promise<UebernahmeErgebnis> {
+  if (!verbunden()) return { ok: false, uebernommen: 0, fehler: 'iCloud ist nicht verbunden — erneut versuchen, sobald es wieder geht.' };
+  await updateJson<UebernahmeStand>(UEBERNAHME_SPEICHER, cur => uebersprungeneFreigeben(standSauber(cur ?? LEER_STAND)).stand);
+  return uebernahmeAusfuehren(h, ausloeser, jetzt);
 }
 
 // ── Ausführen ───────────────────────────────────────────────────────────────
@@ -113,8 +144,9 @@ export async function uebernahmeAusfuehren(h: string, ausloeser: string | null, 
 
 const schrittName = (person: string, id: string) => `b:${person}:${id}`.slice(0, 200);
 
-/** Wiederaufnahme (lib/store/absichten-fortsetzen.ts). */
+/** Wiederaufnahme (lib/store/absichten-fortsetzen.ts). M1: ohne iCloud gar nicht erst anfangen (zählt als Fehlversuch, Rückzug). */
 export async function wochenplanUebernahmeFortsetzen(h: string, a: Absicht): Promise<void> {
+  if (!verbunden()) throw new KalenderFehler('iCloud ist nicht verbunden — die Übernahme wartet.', 503);
   await lauf(h, a, a.person ? { art: 'person', person: a.person } : { art: 'system' });
 }
 
@@ -150,8 +182,13 @@ async function lauf(h: string, absicht: Absicht, wer: WerP): Promise<UebernahmeE
       });
     });
     return (await ladeUebernahme()).archiv;
+  }).catch(e => {
+    // M1: offen lassen — die Wiederaufnahme (Takt/Start/Durchsicht) macht weiter. Nur der Grund, nie Titel.
+    console.warn(`[wochenplan-uebernahme] unterbrochen (${fehlerGrund(e)}) — wird später fortgesetzt`);
+    throw e;
   });
   await absichtAbschliessen(h, absicht.id, 'fertig');
+  console.info(`[wochenplan-uebernahme] fertig: ${uebernommen} übernommen${uebersprungen ? `, ${uebersprungen} übersprungen` : ''}`);
   if (uebersprungen) console.warn(`[wochenplan-uebernahme] ${uebersprungen} Block/Blöcke übersprungen (Grund im Stand wochenplan-uebernahme)`);
   return { ok: true, uebernommen, ...(uebersprungen ? { uebersprungen } : {}), ...(r ? { archiv: r } : {}) };
 }
@@ -205,7 +242,10 @@ async function blockUebernehmen(person: string, blockId: string, wer: WerP): Pro
         const passt = t.start.slice(0, 16) === soll.start.slice(0, 16) && t.ende.slice(0, 16) === soll.ende.slice(0, 16) && t.titel === soll.titel;
         await terminAendernServer(b.appleUid, { art, ...(blockArt ? { blockArt } : {}), ...(passt ? {} : soll) }, wer, { ...(b.taskId ? { aufgabeId: b.taskId } : {}), von: person } as Record<string, string | null>);
         uid = b.appleUid;
-      } catch (e) { gruende.push(`Apple-Kopie: ${fehlerGrund(e)}`); }
+      } catch (e) {
+        if (voruebergehenderFehler(e, verbunden())) throw e; // M1: später noch einmal, nicht überspringen
+        gruende.push(`Apple-Kopie: ${fehlerGrund(e)}`);
+      }
     }
   }
   if (!uid) {
@@ -217,7 +257,10 @@ async function blockUebernehmen(person: string, blockId: string, wer: WerP): Pro
         notiz: 'Aus dem MAKE-OS-Wochenplan übernommen.',
       }, wer);
       uid = r.uid;
-    } catch (e) { gruende.push(`Neuer Termin: ${fehlerGrund(e)}`); }
+    } catch (e) {
+      if (voruebergehenderFehler(e, verbunden())) throw e; // M1: später noch einmal, nicht überspringen
+      gruende.push(`Neuer Termin: ${fehlerGrund(e)}`);
+    }
   }
   const fertig = uid;
   await updateJson<UebernahmeStand>(UEBERNAHME_SPEICHER, cur => {
@@ -227,4 +270,44 @@ async function blockUebernehmen(person: string, blockId: string, wer: WerP): Pro
     return { ...st, personen: { ...st.personen, [person]: { ...p, uebersprungen: { ...(p.uebersprungen ?? {}), [blockId]: gruende.join(' · ').slice(0, 160) } } } };
   });
   return fertig ? 'uebernommen' : 'uebersprungen';
+}
+
+// ── Zurücknehmen (U1 H1) ────────────────────────────────────────────────────
+
+export interface RuecknahmeErgebnis {
+  ok: boolean; probelauf: boolean;
+  /** Termine der Übernahme im Kalender (UID-Präfix) — davon mit Gästen/Serie/nur lesbar gesperrt. */
+  termine: number; gesperrt: number;
+  geloescht?: number; fehler?: number; grund?: string;
+}
+
+/**
+ * „Übernahme zurücknehmen“ — für den Rückweg zur alten Version. Ohne `bestaetigt`: Probelauf (zählt nur). Mit
+ * `bestaetigt`: löscht genau die Termine mit UID-Präfix `makeos-wochenplan-` (über den Server-Schreibweg: iCloud →
+ * kalender-bezug → Änderungsprotokoll; Teilnehmer-Sperre: mit Gästen, Serie oder nur lesbar nie) und setzt den Stand
+ * zurück (`ruecknahmeStand`). Apple-Kopien, die zum Block wurden, bleiben (der alte Stand kennt sie). Nie während
+ * einer laufenden oder unterbrochenen Übernahme.
+ */
+export async function uebernahmeZuruecknehmen(h: string, wer: WerP, bestaetigt: boolean): Promise<RuecknahmeErgebnis> {
+  if (!verbunden()) return { ok: false, probelauf: !bestaetigt, termine: 0, gesperrt: 0, grund: 'iCloud ist nicht verbunden.' };
+  if (laufend || await unterbrochen(h)) return { ok: false, probelauf: !bestaetigt, termine: 0, gesperrt: 0, grund: 'Die Übernahme läuft noch oder ist unterbrochen — erst fertig werden lassen.' };
+  const s = await ladeStand();
+  const heute = localDay();
+  const liste = uebernahmeTermine(s).map(o => {
+    const f = findeObjekt(s, o.schluessel);
+    const t = f ? termineAus(f.obj, f.kal, tagPlus(heute, HOLEN_VON), tagPlus(heute, HOLEN_BIS))[0] : undefined;
+    return { ...o, gesperrt: !!t && (t.mitTeilnehmern || t.serie || !t.bearbeitbar) };
+  });
+  const gesperrt = liste.filter(x => x.gesperrt).length;
+  if (!bestaetigt) return { ok: true, probelauf: true, termine: liste.length, gesperrt };
+  const geloescht = new Set<string>();
+  let fehler = 0;
+  for (const o of liste) {
+    if (o.gesperrt) continue;
+    try { await terminLoeschenServer(o.schluessel, wer); geloescht.add(o.uid); } catch { fehler++; }
+  }
+  const vollstaendig = !gesperrt && !fehler;
+  await updateJson<UebernahmeStand>(UEBERNAHME_SPEICHER, cur => ruecknahmeStand(standSauber(cur ?? LEER_STAND), geloescht, vollstaendig));
+  console.info(`[wochenplan-uebernahme] zurückgenommen: ${geloescht.size} Termin(e) gelöscht${gesperrt ? `, ${gesperrt} gesperrt` : ''}${fehler ? `, ${fehler} Fehler` : ''}`);
+  return { ok: vollstaendig, probelauf: false, termine: liste.length, gesperrt, geloescht: geloescht.size, fehler };
 }

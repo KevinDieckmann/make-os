@@ -199,10 +199,9 @@ nur mit SHA-256 v1 und kennt das Feld `_v` nicht. Deshalb schreibt die App **ohn
 - Rotation im Betrieb und `scripts/daten-verschluesselung.mjs --verschluesseln` schreiben ebenfalls v1/„MKOSDAT1“.
 - Der Head of IT zeigt gelb „Kompatibilitätsmodus — Rückweg zum alten Stand möglich; nach stabilen Tagen auf v2 umstellen“.
 
-**Rückweg zum alten Stand, solange kompatibel** (App anhalten, altes Bild starten — NOTFALL.md › Rückweg): Voraussetzung
-ist, dass der aktuelle Datenschlüssel als `MAKE_OS_DATEN_SCHLUESSEL=` in der `.env` steht (aeb4964 kennt keine
-Schlüssel-Datei und keinen Schlüsselring). Deshalb im Kompatibilitätsmodus den Schlüssel NICHT auf die Datei umstellen
-und nicht rotieren. Was der alte Stand nicht kennt, geht beim Zurückgehen verloren bzw. wird ignoriert: neue Felder an
+**Rückweg zum alten Stand, solange kompatibel** (App anhalten, altes Bild starten — NOTFALL.md › Rückweg): Seit dem
+Upload von af4679a (hat den Kompatibilitätsmodus, liest Schlüssel-Datei und Schlüsselring) ist der Rückweg-Stand af4679a,
+nicht mehr aeb4964; nur für einen Rückweg bis aeb4964 müsste der Schlüssel in der `.env` stehen und dürfte nicht rotiert sein. Was der alte Stand nicht kennt, geht beim Zurückgehen verloren bzw. wird ignoriert: neue Felder an
 Aufgaben (Verlauf, Kommentare, Listen, Unteraufgaben, Papierkorb/Archiv — der alte Stand zeigt gelöschte/archivierte
 Aufgaben wieder als offen und entfernt die neuen Felder bei seiner nächsten Schreibung), neue Aktivitätsfelder an
 Kontakten (ZOE-Herkunft), Buchungsort `ug` (wird „privat“), Mandatsbezug an Meilensteinen; nach einem Kennungs-Umzug

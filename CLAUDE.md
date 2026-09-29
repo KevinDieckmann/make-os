@@ -107,7 +107,7 @@ lokal, Route `/os`, Port 3001.
   Ausrollen über einen Schlüssel, der auf dem Server nur `git pull && docker compose up
   -d --build` darf (authorized_keys `command=…,restrict`, fester Host-Fingerabdruck im
   Workflow). Ausrollen dauert ~5 Min., die alte Version läuft solange weiter.
-- **Öffentliche Pfade (29.09., K4):** ohne Sitzung offen sind nur `/anmelden`, `/api/konto/{status,anmelden,einrichten,beitreten}`, `/api/hoi/csp` (POST) und die Buchung: `/buchen/<slug>(/status)` + `/api/buchung/<slug>(/status)` mit `<slug>` = `[a-z0-9-]{1,40}-[a-f0-9]{24}` (`BUCHUNG_OFFEN` in `middleware.ts`, Test `tests/buchung-middleware.test.ts`). Diese Wege handeln nie als Person (Köpfe gelöscht), drosseln je Adresse selbst (`buchung:`/`buchung-status:` in `lib/zugang/drossel.ts`), prüfen Honigtopf, signierten Formular-Stempel (≥ 3 s, ≤ 2 h), Größe (8 KB/1 KB → 413) und zeigen nur freie Zeiten. Eigene Köpfe in `next.config.mjs` (`buchung`: strengere CSP ohne Rahmen/Worker/Medien, `Referrer-Policy: no-referrer`, `noindex`, `no-store`). Neue öffentliche Wege nur so: eng gefasste Regex + eigener Test.
+- **Öffentliche Pfade (29.09., K4):** ohne Sitzung offen sind nur `/anmelden`, `/api/konto/{status,anmelden,einrichten,beitreten}`, `/api/hoi/csp` (POST) und die Buchung: `/buchen/<slug>(/status)` + `/api/buchung/<slug>(/status)` mit `<slug>` = `[a-z0-9-]{1,40}-[a-f0-9]{24}` (`BUCHUNG_OFFEN` in `middleware.ts`, Test `tests/buchung-middleware.test.ts`). Diese Wege handeln nie als Person (Köpfe gelöscht), drosseln je Adresse selbst (`buchung:`/`buchung-status:` in `lib/zugang/drossel.ts`), prüfen Honigtopf, signierten Formular-Stempel (≥ 3 s, ≤ 2 h), Größe (8 KB/1 KB → 413) und zeigen nur freie Zeiten. Eigene Köpfe in `next.config.mjs` (`buchung`: strengere CSP ohne Rahmen/Worker/Medien, `Referrer-Policy: no-referrer`, `Permissions-Policy` ohne Kamera/Mikrofon, `noindex`, `no-store`). Caddy (`deploy/caddy/Caddyfile`, U1 N1) setzt Referrer-/Permissions-Policy nur als Vorgabe (`?`, die App gewinnt) und für `/buchen*` + `/api/buchung*` ausdrücklich dieselben strengen Werte — nie wieder allgemein überschreiben. Neue öffentliche Wege nur so: eng gefasste Regex + eigener Test.
 - **Härtung:** `deploy/server-haerten.sh` (SSH nur Schlüssel, fail2ban, ufw, Auto-Updates
   mit Reboot 04:30, Docker-Log-Grenzen, sysctl), Login-/Code-Drossel (`lib/zugang/drossel.ts`),
   Sicherheits-Header (`deploy/caddy/Caddyfile`), Schriften selbst mitgeliefert (`app/schriften`).
@@ -516,9 +516,11 @@ lokal, Route `/os`, Port 3001.
   `objektSchluessel(termin)`; eine alte reine UID in mehreren Kalendern → 409. `status`/`abgesagt` (CANCELLED, eigene Antwort
   DECLINED) belegen nicht. Abgleich: 403/gekürzt nur diesen Kalender überspringen (`hinweise`), 401 = Anmeldung, Backoff mit
   Retry-After (`pauseBis`), `abgleich` (vor X Min., veraltet ab 30) in `GET /api/kalender` und im HOI; ohne ETag nie blind;
-  Zeitüberschreitung beim Anlegen → erst nachsehen, dieselbe UID. Tägliche Voll-Sicherung je Kalender als ICS (verschlüsselt,
-  Archiv, 14 Tage, `lib/kalender/sicherung*.ts`, Takt), Zurückspielen nur mit Probelauf/Bestätigung, nie Termine mit Gästen
-  (`/api/kalender/sicherung`). Kalender-Tests zusätzlich mit `MAKE_OS_TEST_TZ=UTC` bzw. `=America/Los_Angeles`.
+  Zeitüberschreitung beim Anlegen → erst nachsehen, dieselbe UID. Tägliche Sicherung je Kalender als ICS (verschlüsselt,
+  Archiv, 14 Tage, Fenster −400 … +800 Tage, NICHT im Nachtarchiv — `deploy/sicherung.sh` schließt `archiv/kalender-export-*`
+  aus; `lib/kalender/sicherung*.ts`; Takt gestaffelt über `lib/kalender/takt-jobs.ts`: höchstens ein iCloud-Job je Takt,
+  Sicherung nur 03:00–05:00, frühestens 30 Min. nach dem Start, nie in einer iCloud-Pause — U1 H2/M4), Zurückspielen nur mit
+  Probelauf/Bestätigung, nie Termine mit Gästen (`/api/kalender/sicherung`). Kalender-Tests zusätzlich mit `MAKE_OS_TEST_TZ=UTC` bzw. `=America/Los_Angeles`.
 - **Wiederholung voll** (`lib/kalender/wiederholung.ts`, client-sicher): Intervall, Wochentage, Monatstag/letzter Tag/n-ter
   Wochentag, Anzahl, bis (ganztägig: UNTIL als Datum); Vorlagen wie Google (`wiederholungVorlagen`), Text `wiederholungBeschreiben`.
 - **Verbindungsprüfung** (`lib/crm/verbindungen-kalender.ts`): `termin-uid-tot` (Bezug zu in Apple gelöschtem Termin, nur im
@@ -577,9 +579,12 @@ lokal, Route `/os`, Port 3001.
   Termin folgt — feste echte UID (`makeos-event-<id>`, `makeos-date-<id>`, `makeos-gespraech-<haushalt>-<datum>`), Kalender
   „Gemeinsam“, Event mit Bezug `eventId`, Ort als Feld, drei Stunden. Nachziehen im Hintergrund nach `/api/crm/bestand`
   (Events) bzw. `/api/familie` (Dates, Gespräche, Einstellungen — Wochentag geändert → der künftige Termin zieht um); abgesagt
-  → Termin weg. `Date.kalenderUid`/`einstellungen.kalenderTermine` schreibt NUR der Server (`wendeFamilieAn`/`setzeFelder`
-  ignorieren Browserwerte). Alte Schein-Kennung `mac-…` (Befund 4) → beim Nachziehen/„Verknüpfen“ mit dem eindeutigen Termin
-  (Tag + Titel) verbunden. Verbindungsprüfung `event-termin-tot`, `event-termin-schein`, `familie-termin-tot`
+  durch eine Person → Termin weg. `Date.kalenderUid`/`einstellungen.kalenderTermine` schreibt NUR der Server (`wendeFamilieAn`/`setzeFelder`
+  ignorieren Browserwerte). **Upload U1 B3:** nachgezogen werden nur Termine mit Bezug (von MAKE OS angelegt; Event: `eventId`
+  = dieses Event), nur künftige, und nur, wenn sich das Modul seit dem letzten Spiegeln geändert hat — Änderungsmarke
+  `kalender-bezug.spiegel` (Hash des Solls, `spiegelMarke`/`spiegelSchritt`); ohne Marke wird sie nur gesetzt (nichts
+  geschrieben). Alte Schein-Kennung `mac-…` (Befund 4) → NUR per Klick „Mit dem Kalender verknüpfen“ (Event-Seite) mit dem
+  eindeutigen Termin (Tag + Titel) verbunden, nie beim Nachziehen/im Takt. Verbindungsprüfung `event-termin-tot`, `event-termin-schein`, `familie-termin-tot`
   (`lib/kalender/spiegel-verbindungen.ts`); `wochenplan-aufgabe-tot` entfällt (Bezug `aufgabeId` prüft K1 `kalender-bezug-kennung-tot`).
 - **Aufgaben-Modus** (`components/os/kalender/AufgabenModus.tsx`): Überfällig · Heute · Diese Woche · Später · Ohne Datum über
   K3 `aufgabenFuerKalender`/`ohneTermin` + Vorfilter (`aufgabenVorfiltern`: Space, Projekt, Liste, meine/beteiligt), Abhaken/
@@ -656,8 +661,11 @@ lokal, Route `/os`, Port 3001.
   Termin mit CRM-/Aufgaben-Bezug + genau EIN neuer Termin gleichen Titels ±1 Tag → „Neu zuordnen“ hängt Bezug
   (`bezuegeUmhaengen`) und Meetings um; Titel nur aus „Meeting: …“ bzw. Aufgabentitel). Reparatur vor K1 (Meetings sonst „tot“).
   Loader `ladeTermineStand` (Holfenster, Titel nur zum Vergleichen).
-- **Event-Spiegel im Takt:** `eventSpiegelImTakt` (lib/kalender/spiegel-server.ts, alle 30 Min. aus /api/zoe/takt) — Änderungen
-  am Event ohne Bestand-PATCH (ZOE, Heads) ziehen den Termin nach.
+- **Event-Spiegel im Takt:** `eventSpiegelImTakt` (lib/kalender/spiegel-server.ts, alle 30 Min. aus /api/zoe/takt, gestaffelt über
+  `lib/kalender/takt-jobs.ts`) — Änderungen am Event ohne Bestand-PATCH (ZOE, Heads) ziehen den Termin nach (U1 B3: nur eigene,
+  künftige, geänderte). Eine Absage LÖSCHT im Takt nie: einmal Glocke (Art `kalender`, an die Zuständige bzw. den Haushalt, Marke
+  `weg`), gelöscht wird per Klick „Termin im Kalender löschen“ auf der Event-Seite (`POST /api/kalender/spiegel { art: 'event',
+  id, aktion: 'loeschen' }` → `eventSpiegelLoeschen`).
 - **ZOE `freie_zeit`** (nur lesen, Register frei, `LESEND`): `freieZeitFuer` — nur Zeiten, nie Titel; legt nichts an. Angebot:
   `components/os/crm/angebot/TerminVorschlag.tsx` („Termin zum Besprechen vorschlagen“ → freie Zeit → Termin-Entwurf mit
   Kontakt/Firma/Deal; erst „Speichern“ legt an).

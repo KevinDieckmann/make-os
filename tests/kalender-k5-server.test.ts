@@ -199,12 +199,17 @@ describe('Spiegel: Make.One-Event', () => {
     expect((await crm()).events.find(e => e.id === 'ev-1')?.kalenderUid).toBeUndefined();
   });
 
-  it('alte Schein-Kennung (Befund 4): der eindeutige Termin am Tag wird verknüpft, nicht doppelt angelegt', async () => {
+  it('alte Schein-Kennung (Befund 4): NUR der Klick verknüpft den eindeutigen Termin am Tag, nicht doppelt angelegt', async () => {
     const ics = await import('@/lib/kalender/ics');
     ic.objekte.set('ALT-WS', { kal: 'Gemeinsam', ics: ics.baueTermin({ uid: 'ALT-WS', titel: 'Workshop · Probehaus', start: '2026-10-12T10:00:00', ende: '2026-10-12T13:00:00' }), etag: 'e0' });
     expect(await sp.eventSpiegelLage('ev-2')).toMatchObject({ lage: 'schein' });
-    const vorher = ic.angelegt;
+    const vorher = ic.angelegt, geaendert = ic.geaendert;
+    // U1 B3: Nachziehen (Änderung im Modul) und Takt lösen die alte Kennung NIE selbst auf.
     await sp.eventSpiegelNachziehen(['ev-2'], WER);
+    await sp.eventSpiegelNachziehen(null, { art: 'system' }, { imTakt: true });
+    expect((await crm()).events.find(e => e.id === 'ev-2')?.kalenderUid).toBe('mac-0f3c');
+    expect([ic.angelegt, ic.geaendert]).toEqual([vorher, geaendert]);
+    await sp.eventSpiegelAnlegen('ev-2', 'kevin', WER); // Klick „Mit dem Kalender verknüpfen“
     expect(ic.angelegt).toBe(vorher);
     expect((await crm()).events.find(e => e.id === 'ev-2')?.kalenderUid).toBe('ALT-WS');
     expect(ic.objekte.get('ALT-WS')!.ics).toMatch(/SUMMARY:Workshop\r?\n/);

@@ -9,10 +9,16 @@
 //   Date       ganztägig am Tag · „Date: <Titel>“ · Gemeinsam. „abgesagt“ → weg; „stattgefunden“ bleibt stehen.
 //   Gespräch   Tag + Uhrzeit/Dauer aus den Einstellungen · „Paar-Gespräch“ · Gemeinsam. „ausgefallen“ → weg.
 // Feste UID je Eintrag (`spiegelUid`) — ein abgebrochener Vorgang legt nie doppelt an (icloud.ts `anlegen`).
-// Alte Events tragen eine erfundene Kennung (`mac-…`, Verbindungskarte Befund 4): `istScheinUid` — sie wird beim
-// Nachziehen durch die echte UID ersetzt, wenn der Termin eindeutig (Tag + Titel) im Kalender steht.
+// Alte Events tragen eine erfundene Kennung (`mac-…`, Verbindungskarte Befund 4): `istScheinUid` — sie wird NUR auf Klick
+// („Mit dem Kalender verknüpfen“ auf der Event-Seite, Hinweis der Verbindungsprüfung `event-termin-schein`) durch die
+// echte UID ersetzt, wenn der Termin eindeutig (Tag + Titel) im Kalender steht — nie im Takt, nie beim Nachziehen (U1 B3).
+//
+// Änderungsmarke (Upload U1 B3, 29.09.): Nach jedem Spiegeln steht am Bezug (`kalender-bezug`, Feld `spiegel`) der
+// Fingerabdruck des Solls. Nachgezogen wird nur, wenn sich das MODUL seitdem geändert hat (`spiegelSchritt`) — so bleibt
+// eine Änderung, die jemand in Apple gemacht hat, stehen, bis sich das Event/Date selbst ändert.
 
 import { wandAus, tagPlus } from './zeit';
+import { fnv } from './bezug';
 
 export const EVENT_DAUER_MIN = 180;
 export type SpiegelArt = 'event' | 'date' | 'gespraech';
@@ -64,6 +70,38 @@ export function spiegelAbweichung(ist: { titel: string; start: string; ende: str
   if (ist.titel !== soll.titel) a.titel = soll.titel;
   if ((ist.ort ?? '') !== (soll.ort ?? '')) a.ort = soll.ort ?? null;
   return Object.keys(a).length ? a : null;
+}
+
+/** Marke für „abgesagt, schon gemeldet bzw. gelöscht“. */
+export const MARKE_WEG = 'weg';
+
+/** Fingerabdruck des Solls (nur `soll` und `weg` haben einen) — steht als `spiegel` am Bezug, nie der Titel selbst. */
+export function spiegelMarke(soll: Soll): string | null {
+  if (soll.art === 'weg') return MARKE_WEG;
+  if (soll.art !== 'soll') return null;
+  const t = soll.t;
+  return `s${fnv(JSON.stringify([t.titel, t.start, t.ende, t.ganztags, t.ort ?? '']))}`;
+}
+
+/**
+ * Was ein Abgleich mit einem vorhandenen Spiegel tun darf (rein, U1 B3):
+ *   nichts     nicht unser Termin (`bekannt` falsch), Soll ohne Termin, oder seit dem letzten Spiegeln unverändert
+ *   merken     unser Termin, aber noch ohne Marke (angelegt vor B3): nur die Marke setzen, NICHTS in iCloud schreiben
+ *   aendern    das Modul hat sich geändert (bzw. `erzwingen` = Klick): Zeit/Titel/Ort nachziehen, Marke setzen
+ *   loeschen   abgesagt und eine Person hat es ausgelöst (`loeschenErlaubt`)
+ *   melden     abgesagt, aber ohne Person (Takt): Glocke statt Löschen, Marke `weg` — nur einmal
+ */
+export type SpiegelSchritt = 'nichts' | 'merken' | 'aendern' | 'loeschen' | 'melden';
+export function spiegelSchritt(soll: Soll, marke: string | undefined, o: { bekannt: boolean; erzwingen?: boolean; loeschenErlaubt: boolean }): SpiegelSchritt {
+  if (!o.bekannt && !o.erzwingen) return 'nichts';
+  if (soll.art === 'weg') {
+    if (o.loeschenErlaubt) return 'loeschen';
+    return marke === MARKE_WEG ? 'nichts' : 'melden';
+  }
+  if (soll.art !== 'soll') return 'nichts';
+  if (o.erzwingen) return 'aendern';
+  if (marke === undefined) return 'merken';
+  return marke === spiegelMarke(soll) ? 'nichts' : 'aendern';
 }
 
 const norm = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ');

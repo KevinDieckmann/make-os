@@ -63,6 +63,21 @@ describe('deploy/sicherung.sh', () => {
     expect(existsSync(path.join(b, 'daten', '.sicherung-stage'))).toBe(false);
     expect(r.stdout + r.stderr).not.toContain(SCHL);
   });
+  it('U1 H2: Kalender-Tagessicherungen (archiv/kalender-export-*) gehen NICHT ins Nachtarchiv, das übrige Archiv schon', () => {
+    const b = basisAnlegen('kalender-export');
+    const s = schluesselAus(SCHL);
+    mkdirSync(path.join(b, 'daten', 'archiv'));
+    writeFileSync(path.join(b, 'daten', 'archiv', 'kalender-export-home-2026-10-05.json'), huelleSchreiben(JSON.stringify({ ics: 'x' }), s, 'kalender-export-home-2026-10-05'));
+    writeFileSync(path.join(b, 'daten', 'archiv', 'crm-vorher-2026-10-01.json'), huelleSchreiben(JSON.stringify({ a: 1 }), s, 'crm-vorher-2026-10-01'));
+    const r = lauf(b);
+    expect(r.status, r.stderr + r.stdout).toBe(0);
+    const archiv = readdirSync(path.join(b, 'sicherungen')).find(f => f.endsWith('.tar.gz.age'))!;
+    const inhalt = execFileSync('bash', ['-c', `tail -c +23 "${path.join(b, 'sicherungen', archiv)}" | tar -tzf -`], { encoding: 'utf8' });
+    expect(inhalt).toContain('daten/archiv/crm-vorher-2026-10-01.json');
+    expect(inhalt).not.toContain('kalender-export');
+    // Die Datei selbst bleibt auf dem Server (sie läuft dort nach 14 Tagen ab).
+    expect(existsSync(path.join(b, 'daten', 'archiv', 'kalender-export-home-2026-10-05.json'))).toBe(true);
+  });
   it('Probe-Restore am Mac (sicherung-probe.sh): entpackt, entschlüsselt, zählt — ohne Schlüssel in der Ausgabe', () => {
     const b = basisAnlegen('probe');
     expect(lauf(b).status).toBe(0);

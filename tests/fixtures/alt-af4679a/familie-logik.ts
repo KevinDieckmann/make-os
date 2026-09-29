@@ -1,3 +1,7 @@
+// ─── Test-Fixture: WÖRTLICH aus dem alten Online-Stand af4679a (`git show af4679a:lib/familie/logik.ts`) ─
+// Nicht ändern — tests/rueckweg-familie.test.ts prüft damit, dass neu geschriebene Familien-Daten den alten Stand nicht
+// zum Absturz bringen (Upload U1 B2). Nur die Import-Zeile zeigt auf die ebenso kopierten alten Typen.
+
 // ─── Familie & Partnerschaft — Logik (rein, getestet) ───────────────────────
 // Pflege-Rhythmus statt „Beziehungs-Score“: gemessen werden gemeinsame
 // Rhythmen des Paares über 28 Tage, nie eine einzelne Person, nie Gefühle.
@@ -5,12 +9,10 @@
 // tägliche Rituale, Neues, Wertschätzung, Reparatur, Grenzen, Mental Load,
 // wichtige Tage).
 
-import type { Familie, WichtigerTag, Mensch, Gespraech, Einstellungen } from './typen';
-import { alsTagesSchluessel } from '@/lib/kalender/geburtstag';
+import type { Familie, WichtigerTag, Mensch, Gespraech, Einstellungen } from './familie-typen';
 
 const tag = (d: Date) => d.toISOString().slice(0, 10);
 const plus = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return tag(d); };
-const TAGES_FORM = /^(\d{4}-)?\d{2}-\d{2}$/;
 const zwischen = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
 
 export interface Baustein { id: string; titel: string; gewicht: number; wert: number; text: string }
@@ -31,7 +33,7 @@ export function pflegeRhythmus(f: Familie, heute: string): Rhythmus {
   const grenzen = f.gespraeche.filter(g => imFenster(g.datum) && g.businessGrenzeGehalten !== null);
   const karten = f.karten.filter(k => k.aktiv);
   const kartenOk = karten.length ? karten.filter(k => k.inhaber && k.geprueft && zwischen(k.geprueft, heute) <= 90).length / karten.length : null;
-  const tageFaellig = wichtigeTage(f.tage, heute, 28, f.menschen).filter(t => t.faelligAb <= heute);
+  const tageFaellig = wichtigeTage(f.tage, heute, 28).filter(t => t.faelligAb <= heute);
   const tageOk = tageFaellig.length ? tageFaellig.filter(t => t.erledigt).length / tageFaellig.length : null;
 
   const q = (x: number) => Math.max(0, Math.min(1, x));
@@ -65,47 +67,11 @@ export function naechstes(datum: string, heute: string): string {
   return kandidat >= heute ? kandidat : `${j + 1}-${mt}`;
 }
 
-/**
- * Das Datum eines wichtigen Tages (MM-TT oder JJJJ-MM-TT): ein Geburtstag mit `menschId` liest es vom Menschen (der Mensch
- * führt, 29.09. K2); fehlt der Mensch oder sein Geburtstag, gibt es keins (null).
- */
-export function tagDatum(t: Pick<WichtigerTag, 'datum' | 'menschId'>, menschen: readonly Pick<Mensch, 'id' | 'geburtstag'>[] = []): string | null {
-  if (t.menschId) return alsTagesSchluessel(menschen.find(m => m.id === t.menschId)?.geburtstag);
-  return TAGES_FORM.test(t.datum ?? '') ? t.datum : null;
-}
-
-/**
- * Rückweg-Kopie (Upload U1 B2, 29.09.): ein Geburtstag mit `menschId` trägt im Bestand IMMER auch `datum` („MM-TT“ bzw.
- * „JJJJ-MM-TT“, gespiegelt vom Menschen) — der alte Online-Stand af4679a kennt `menschId` nicht und rechnet mit `datum`
- * (`naechstes('')` warf dort RangeError). Gelesen wird weiter über `tagDatum` (der Mensch hat Vorrang). Rein.
- * - Mensch mit Geburtstag → `datum` = sein Tages-Schlüssel.
- * - Mensch ohne Geburtstag / gelöscht → die letzte gültige Kopie bleibt stehen.
- * - Gar kein gültiges Datum: NEUE Einträge (nicht in `bekannt`) fallen weg (`verworfen`), vorhandene bleiben unverändert.
- */
-export function tageDatumSpiegeln(tage: WichtigerTag[], menschen: readonly Pick<Mensch, 'id' | 'geburtstag'>[], bekannt: ReadonlySet<string>): { tage: WichtigerTag[]; verworfen: number; geaendert: number } {
-  let verworfen = 0, geaendert = 0;
-  const aus = tage.flatMap(t => {
-    if (!t.menschId) return [t];
-    const datum = alsTagesSchluessel(menschen.find(m => m.id === t.menschId)?.geburtstag) ?? (TAGES_FORM.test(t.datum ?? '') ? t.datum : null);
-    if (!datum) {
-      if (bekannt.has(t.id)) return [t];
-      verworfen++;
-      return [];
-    }
-    if (datum === t.datum) return [t];
-    geaendert++;
-    return [{ ...t, datum }];
-  });
-  return { tage: aus, verworfen, geaendert };
-}
-
-export function wichtigeTage(tage: WichtigerTag[], heute: string, horizont = 60, menschen: readonly Pick<Mensch, 'id' | 'geburtstag'>[] = []) {
-  return tage.flatMap(t => {
-    const datum = tagDatum(t, menschen);
-    if (!datum) return [];
-    const am = naechstes(datum, heute);
+export function wichtigeTage(tage: WichtigerTag[], heute: string, horizont = 60) {
+  return tage.map(t => {
+    const am = naechstes(t.datum, heute);
     const faelligAb = plus(am, -t.vorlaufTage);
-    return [{ ...t, datum, am, faelligAb, inTagen: zwischen(heute, am), erledigt: t.erledigt.includes(Number(am.slice(0, 4))) }];
+    return { ...t, am, faelligAb, inTagen: zwischen(heute, am), erledigt: t.erledigt.includes(Number(am.slice(0, 4))) };
   }).filter(t => t.inTagen <= horizont).sort((a, b) => a.am.localeCompare(b.am));
 }
 
@@ -131,7 +97,7 @@ export function agendaVorbereiten(f: Familie, heute: string, person: string) {
   const offeneThemen = f.themen.filter(t => (t.status === 'offen' || t.status === 'geparkt') && t.hut === 'privat' && (t.sichtbarkeit !== 'nur-ich' || t.von === person));
   const offeneVereinbarungen = f.vereinbarungen.filter(v => v.status === 'offen');
   const businessThemen = f.themen.filter(t => t.status === 'offen' && t.hut === 'business');
-  const tage = wichtigeTage(f.tage, heute, 14, f.menschen);
+  const tage = wichtigeTage(f.tage, heute, 14);
   const faelligeKarten = f.karten.filter(k => k.aktiv && (!k.inhaber || !k.geprueft || zwischen(k.geprueft, heute) > 90));
   return { offeneThemen, offeneVereinbarungen, businessThemen, tage, faelligeKarten };
 }

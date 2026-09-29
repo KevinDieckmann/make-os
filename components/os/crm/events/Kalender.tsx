@@ -4,9 +4,11 @@
 // Zwei Wege, beide nur auf Klick: die Kalender-Datei (RFC 5545, gästetauglich, lib/crm/eventplanung.ts) und ein
 // Termin im Kalender „Gemeinsam“. Seit 29.09. (K5, Verbindungskarte Befund 4) über POST /api/kalender/spiegel: ein
 // echter iCloud-Termin mit ECHTER, fester UID (`kalenderUid`), Titel, Ort, Tag, Uhrzeit, drei Stunden, Bezug `eventId`
-// (kalender-bezug) — keine Gäste, keine Einladungen. Ändert sich Datum/Uhrzeit/Titel/Ort im Event oder wird es
-// abgesagt, zieht der Server den Termin nach bzw. löscht ihn (lib/kalender/spiegel-server.ts). Alte Events mit
-// erfundener Kennung (`mac-…`) werden beim Anlegen/Nachziehen mit ihrem Termin verknüpft, wenn er eindeutig ist.
+// (kalender-bezug) — keine Gäste, keine Einladungen. Ändert jemand Datum/Uhrzeit/Titel/Ort im Event oder sagt es ab,
+// zieht der Server den Termin nach bzw. löscht ihn (lib/kalender/spiegel-server.ts). Kommt die Absage anders (ZOE, Heads),
+// meldet der Takt sie nur in die Glocke — gelöscht wird dann hier per Klick („Termin im Kalender löschen“, U1 B3).
+// Alte Events mit erfundener Kennung (`mac-…`) werden NUR per Klick „Mit dem Kalender verknüpfen“ mit ihrem Termin
+// verknüpft, wenn er eindeutig ist.
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
@@ -45,10 +47,21 @@ export function Kalender({ e }: { e: Event }) {
     else setMeldung(r.fehler ?? 'Termin nicht angelegt.');
   };
 
+  const loeschen = async () => {
+    if (laeuft || !window.confirm('Den Termin dieses abgesagten Events im Kalender „Gemeinsam“ löschen? Das Event selbst bleibt.')) return;
+    setLaeuft(true); setMeldung('');
+    const r = await fetch('/api/kalender/spiegel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ art: 'event', id, aktion: 'loeschen' }) })
+      .then(x => x.json() as Promise<{ ok: boolean; fehler?: string }>).catch(() => ({ ok: false, fehler: 'Kalender nicht erreichbar.' }));
+    setLaeuft(false);
+    setMeldung(r.ok ? 'Termin gelöscht.' : r.fehler ?? 'Termin nicht gelöscht.');
+    void pruefen();
+  };
+
   return (
     <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-        {lage === 'da' && <Chip farbe={LEUCHT.gut}>im Kalender</Chip>}
+        {lage === 'da' && <Chip farbe={status === 'abgesagt' ? LEUCHT.achtung : LEUCHT.gut}>im Kalender</Chip>}
+        {lage === 'da' && status === 'abgesagt' && <Knopf leise aus={laeuft} onClick={() => void loeschen()}>{laeuft ? 'löscht …' : 'Termin im Kalender löschen'}</Knopf>}
         {lage === 'schein' && <Knopf leise aus={laeuft} onClick={() => void anlegen()}>{laeuft ? 'verknüpft …' : 'Mit dem Kalender verknüpfen'}</Knopf>}
         {lage === 'fehlt' && status !== 'abgesagt' && <Knopf leise aus={laeuft} onClick={() => void anlegen()}>{laeuft ? 'trägt ein …' : warDa ? 'Termin neu anlegen' : 'Termin anlegen (Kalender Gemeinsam)'}</Knopf>}
         <Knopf leise onClick={() => { window.location.href = `/api/crm/events?ics=${encodeURIComponent(id)}`; }}>Kalender-Datei</Knopf>

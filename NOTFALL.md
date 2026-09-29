@@ -56,16 +56,20 @@ Zeigt der Head of IT „Abgebrochene Vorgänge“ **rot** (nach 3 Versuchen nich
 
 ### Rückweg zum alten Stand nach einem Upload (Kompatibilitätsmodus, seit 29.09. abends)
 
-Solange `MAKE_OS_FORMAT` nicht auf `v2` steht (Standard: „kompatibel“, HOI gelb „Kompatibilitätsmodus“), schreibt die neue
-App im Format des alten Stands aeb4964 — zurück geht es ohne Datenverlust der gemeinsamen Daten:
-1. Prüfen: `grep -c '^MAKE_OS_DATEN_SCHLUESSEL=' /srv/make-os/app/.env` → `1` (der alte Stand liest den Schlüssel NUR aus der
-   `.env`, keine Schlüssel-Datei). `grep '^MAKE_OS_FORMAT=' .env` → leer oder `kompatibel`.
+Stand 29.09. spät (Upload U1): online läuft **af4679a**; das Bild dieses Stands heißt vor dem Upload `make-os:af4679a`
+(GO_LIVE_CHECKLISTE.md › Vor dem Upload 6, Probe `ALTES-BILD-OK`). af4679a hat den Kompatibilitätsmodus schon: er liest
+v1 und v2, den Schlüssel aus `.env` ODER Schlüssel-Datei. Solange `MAKE_OS_FORMAT` nicht auf `v2` steht (Standard:
+„kompatibel“, HOI gelb „Kompatibilitätsmodus“), geht es ohne Datenverlust der gemeinsamen Daten zurück:
+1. Prüfen: `grep '^MAKE_OS_FORMAT=' /srv/make-os/app/.env` → leer oder `kompatibel`. Offene Absichten `buchung` /
+   `wochenplan-uebernahme` (`/api/intern/absichten`) erst fertig werden lassen; eine ausgeführte Wochenplan-Übernahme vorher
+   in Kalender › Planen zurücknehmen (Termine `makeos-wochenplan-…`) — Einzelheiten: GO_LIVE_CHECKLISTE.md › Rückweg.
 2. `cd /srv/make-os/app && docker compose stop app arbeiter`
 3. Optional zur Sicherheit: `docker compose run --rm -T --no-deps app node scripts/daten-verschluesselung.mjs --verschluesseln </dev/null`
    (stellt übrig gebliebene v2-Hüllen/„MKOSDAT2“ auf v1 um; meldet am Ende „0 Fehler“).
-4. Altes Bild: `docker tag make-os:aeb4964 make-os:aktuell && docker compose up -d --no-build`, dann `main` per Revert auf
-   aeb4964 bringen (sonst rollt die nächste Action wieder aus).
-Was dabei verloren geht (nur Neues, das der alte Stand nicht kennt): DEPLOY.md › Schreibformat.
+4. Altes Bild: `docker tag make-os:af4679a make-os:aktuell && docker compose up -d --no-build`, dann `main` per Revert
+   `af4679a..HEAD` auf af4679a bringen (`git diff --stat af4679a HEAD` muss danach leer sein — sonst rollt die nächste Action
+   wieder aus), danach `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`.
+Was dabei verloren geht (nur Neues, das der alte Stand nicht kennt): GO_LIVE_CHECKLISTE.md › Rückweg und DEPLOY.md › Schreibformat.
 **Nach der Umstellung auf v2** (`MAKE_OS_FORMAT=v2` + `docker compose up -d`, optional Skript `--verschluesseln` bei
 angehaltener App — DEPLOY.md) gibt es diesen Weg nicht mehr: zurück nur mit der Sicherung von vor der Umstellung.
 

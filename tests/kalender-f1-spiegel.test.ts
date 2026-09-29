@@ -61,6 +61,13 @@ beforeAll(async () => {
   }
   ic.objekte.set('makeos-date-d-1', { kal: 'Gemeinsam', ics: ics.baueTermin({ uid: 'makeos-date-d-1', titel: 'Date', start: '2026-10-09', ende: '2026-10-10', ganztags: true }), etag: 'e0' });
   ic.objekte.set('makeos-date-d-2', { kal: 'Gemeinsam', ics: ics.baueTermin({ uid: 'makeos-date-d-2', titel: 'Date', start: '2026-10-12', ende: '2026-10-13', ganztags: true }), etag: 'e0' });
+  // U1 B3: nur Spiegel mit Bezug (von MAKE OS angelegt) werden nachgezogen — und nur, wenn sich das Modul seit der
+  // Marke geändert hat. Hier: alte Marke `salt`, damit das Nachziehen schreibt.
+  const b = (x: Record<string, string>) => ({ ...x, spiegel: 'salt', geaendert: '2026-10-01T00:00:00Z' });
+  await db.saveJson('kalender-bezug', { bezuege: {
+    'K-Gemeinsam|makeos-event-ev-a': b({ eventId: 'ev-a' }), 'K-Gemeinsam|makeos-event-ev-b': b({ eventId: 'ev-b' }),
+    'K-Gemeinsam|makeos-date-d-1': b({ von: 'kevin' }), 'K-Gemeinsam|makeos-date-d-2': b({ von: 'kevin' }),
+  } });
   sp = await import('@/lib/kalender/spiegel-server');
 });
 afterAll(() => { vi.useRealTimers(); rmSync(ordner, { recursive: true, force: true }); });

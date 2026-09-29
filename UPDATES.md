@@ -4,6 +4,26 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Upload-Prüfung U1: Rückweg sicher, nichts ungefragt nach iCloud (29.09.2026 spät, nur lokal)
+
+- **Familie stürzt im alten Stand nicht mehr ab:** Wichtige Tage mit Verweis auf einen Menschen tragen das Datum wieder mit
+  (Kopie vom Menschen — gelesen wird weiter vom Menschen). Ohne das hätte ein Rückweg die Familie, die Startfläche und die
+  Leistungsseite lahmgelegt.
+- **Kalender beim ersten Takt ruhig:** Event-Termine werden nur nachgezogen, wenn MAKE OS sie selbst angelegt hat, nur künftige
+  und nur, wenn sich das Event seitdem geändert hat — eine Änderung in Apple bleibt sonst stehen. Alte Event-Marken (`mac-…`)
+  verknüpft nur ein Klick auf der Event-Seite. Ein abgesagtes Event löscht seinen Termin im Takt nie: die Glocke meldet es
+  einmal, gelöscht wird per Klick („Termin im Kalender löschen“).
+- **Wochenplan-Übernahme:** deutlicher Hinweis „erst nach ein paar stabilen Tagen“; Netz- oder Überlastfehler überspringen
+  keinen Block mehr (die Übernahme macht später weiter); übersprungene Blöcke mit „Erneut versuchen“; neu „Übernahme
+  zurücknehmen …“ (Probelauf, Rückfrage, löscht nur die Termine `makeos-wochenplan-…`) für den Rückweg.
+- **Kalender-Sicherung:** nur Termine −400 … +800 Tage, nicht mehr im Nachtarchiv (14 Tage gelten wirklich), nur 03:00–05:00,
+  frühestens 30 Minuten nach dem Start, nie während einer iCloud-Pause; die Kalender-Jobs im Takt laufen nacheinander.
+- **Buchungsseite:** Caddy überschreibt ihre strengen Köpfe (kein Referrer, keine Kamera) nicht mehr.
+- **Tests:** schreiben nie mehr in `<repo>/.data` (local-db bricht im Testlauf dort ab).
+
+**Was Kevin nach dem Upload tun muss:** GO_LIVE_CHECKLISTE.md (Caddy neu laden, Kurztest). Wochenplan-Übernahme erst nach ein
+paar stabilen Tagen. Alte Events mit Termin einzeln auf der Event-Seite verknüpfen, wenn die Verbindungsprüfung sie nennt.
+
 ## Prüfung 2 (F2): Nachbesserungen Heute, Glocke, Brain, ZOE (29.09.2026, nur lokal)
 
 - **Zeit im Brain nur mit Einwilligung:** Der Wochenrückblick im Brain (`_App/Woche`) zeigt die Zeit einer Person erst, wenn sie
@@ -65,8 +85,8 @@ Brain: POST /api/brain/app `{ zeitAuswertung: true }` → `_App/Woche` mit eigen
 - **Tägliche Kalender-Sicherung** (nachts, verschlüsselt, 14 Tage je Kalender) — zurückspielen nur mit Probelauf und Klick,
   nie Termine mit Gästen.
 
-**Was Kevin nach dem Upload tun muss:** nichts. Alte Verknüpfungen (Kontakt, Aufgabe … am Termin) ziehen beim ersten
-Abgleich von selbst auf das neue Schlüssel-Format um.
+**Was Kevin nach dem Upload tun muss:** nichts. (Online gibt es noch keine Kalender-Verknüpfungen — `kalender-bezug` entsteht
+erst mit diesem Upload; das Umziehen alter Schlüssel betrifft nur Stände, die schon mit dem neuen Format liefen.)
 
 **Prüfliste (vor dem Hochladen, lokal mit Wegwerfdaten):**
 - Termin am 25.10. 02:00–03:00 anlegen → steht 02:00–03:00 im Raster und in Apple.
@@ -88,11 +108,14 @@ Abgleich von selbst auf das neue Schlüssel-Format um.
   die festen KEMARIS-Beispieltermine (Juli 2026) tauchen nirgends mehr auf.
 
 **Was Kevin nach dem Upload tun muss (einmal):**
-1. **Übernahme der Wochenplan-Blöcke einmal ausführen:** Kalender → „Planen“ → links die Karte „Alter Wochenplan“ →
+1. **Übernahme der Wochenplan-Blöcke — NICHT am ersten Tag, erst nach ein paar stabilen Tagen** (danach ist der Rückweg zur
+   alten Version nur mit „Übernahme zurücknehmen“ möglich, U1): Kalender → „Planen“ → links die Karte „Alter Wochenplan“ →
    Vorschau ansehen → „Jetzt übernehmen“. Künftige Blöcke werden Termine in iCloud (vorhandene Apple-Kopien werden zum Block,
-   nicht doppelt), vorher legt MAKE OS eine Archivkopie ab; vergangene Blöcke bleiben als Archiv lesbar. Bricht es ab, macht
-   der Takt es fertig. (Solange nicht übernommen, stehen die alten Blöcke gestrichelt „wartet auf Übernahme“ im Raster.)
-2. Alte Make.One-Events mit Termin: auf der Event-Seite ggf. „Mit dem Kalender verknüpfen“ (die Verbindungsprüfung nennt sie).
+   nicht doppelt), vorher legt MAKE OS eine Archivkopie ab; vergangene Blöcke bleiben als Archiv lesbar. Bricht es an iCloud
+   ab, macht der Takt es fertig; übersprungene Blöcke → „Erneut versuchen“. (Solange nicht übernommen, stehen die alten Blöcke
+   gestrichelt „wartet auf Übernahme“ im Raster.)
+2. Alte Make.One-Events mit Termin: die Verbindungsprüfung nennt sie — verknüpft wird NUR per Klick auf der Event-Seite
+   („Mit dem Kalender verknüpfen“), nie von selbst (U1).
 
 **Prüfliste (vor dem Hochladen, lokal mit Wegwerfdaten):**
 - `/os/planung/woche` → landet im Kalender, Modus Planen, Woche. Baustein antippen → in den Kalender klicken → Block steht

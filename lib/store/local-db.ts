@@ -39,8 +39,19 @@ import { localDay } from '@/lib/zeit';
 
 // Tests dürfen den Ordner umbiegen — nie die echten Bestände anfassen (26.09.).
 const DATA_DIR = process.env.MAKE_OS_DATEN_DIR || path.join(process.cwd(), '.data');
+/**
+ * Der Datenordner für jeden Zugriff. Schutz (Upload U1 M3, 29.09.): im Testlauf (`VITEST`) nie `<repo>/.data` — ein
+ * Test, der `MAKE_OS_DATEN_DIR` erst NACH dem (statischen) Import setzt, landete sonst in den echten Beständen. Geworfen
+ * wird beim ersten Zugriff, nicht beim Import (reine Tests, die das Modul nur mitziehen, laufen weiter).
+ */
+function ordner(): string {
+  if (process.env.VITEST && path.resolve(DATA_DIR) === path.resolve(process.cwd(), '.data')) {
+    throw new Error('[local-db] Testlauf ohne eigenen Datenordner — MAKE_OS_DATEN_DIR VOR allen Imports setzen (vi.hoisted oder dynamischer Import), nie <repo>/.data.');
+  }
+  return DATA_DIR;
+}
 /** Der Datenordner (Pfad) — für den Head of IT (Größen der Bestände, Lagebericht des Hosts unter system/). */
-export const datenOrdner = () => DATA_DIR;
+export const datenOrdner = () => ordner();
 
 // ── Verschlüsselung im Ruhezustand ────────────────────────────────────────────
 // Kevin (26.09.): „extrem sicher — unsere privatesten Themen.“ Mit MAKE_OS_DATEN_SCHLUESSEL (bzw.
@@ -81,7 +92,7 @@ export class SperreZeitlimit extends Error { readonly status = 503; }
 /** Die App fährt herunter bzw. die Sicherung hält eine Schreibpause — später erneut versuchen. */
 export class SchreibenGesperrt extends Error { readonly status = 503; }
 
-const BACKUP_DIR = path.join(DATA_DIR, 'backup');
+const backupOrdner = () => path.join(ordner(), 'backup');
 const BACKUPS_BEHALTEN = 14;
 /** Höchstens so lange auf eine Schreibsperre warten (Tests biegen es mit MAKE_OS_SPERR_LIMIT_MS um). */
 const sperrLimitMs = () => Number(process.env.MAKE_OS_SPERR_LIMIT_MS) || 30_000;
@@ -123,7 +134,7 @@ const Z: Zustand = (glob.__makeosDatenschicht ??= {
 });
 
 async function ensureDir(): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.mkdir(ordner(), { recursive: true });
 }
 
 // Nur einfache Namen — nie Pfade. Verhindert, dass ein manipulierter Aufruf
@@ -135,7 +146,7 @@ function pruefeName(name: string): void {
 
 /** Liegt neben dem Bestand eine beiseitegelegte, beschädigte Fassung (26.09.)? */
 export async function beschaedigt(name: string): Promise<boolean> {
-  try { return (await fs.readdir(DATA_DIR)).some(f => f.startsWith(`${name}.json.corrupt-`)); } catch { return false; }
+  try { return (await fs.readdir(ordner())).some(f => f.startsWith(`${name}.json.corrupt-`)); } catch { return false; }
 }
 
 /**
@@ -155,8 +166,8 @@ async function taeglicheSicherung(name: string, dest: string): Promise<void> {
   const tag = localDay();
   if (Z.gesichertHeute.get(name) === tag) return;
   try {
-    await fs.mkdir(BACKUP_DIR, { recursive: true, mode: 0o700 });
-    const ziel = path.join(BACKUP_DIR, `${name}-${tag}.json`);
+    await fs.mkdir(backupOrdner(), { recursive: true, mode: 0o700 });
+    const ziel = path.join(backupOrdner(), `${name}-${tag}.json`);
     let schonDa = true;
     try { await fs.access(ziel); } catch { schonDa = false; }
     if (!schonDa) {
@@ -164,9 +175,9 @@ async function taeglicheSicherung(name: string, dest: string): Promise<void> {
       // Noch keine Datei: nichts zu sichern — der Tag bleibt offen, damit das erste ÜBERschreiben gesichert wird.
       catch (e) { if ((e as NodeJS.ErrnoException)?.code === 'ENOENT') return; throw e; }
     }
-    const alle = sicherungenVon(name, await fs.readdir(BACKUP_DIR));
+    const alle = sicherungenVon(name, await fs.readdir(backupOrdner()));
     for (const f of alle.slice(0, Math.max(0, alle.length - BACKUPS_BEHALTEN))) {
-      await fs.unlink(path.join(BACKUP_DIR, f)).catch(e => { if ((e as NodeJS.ErrnoException)?.code !== 'ENOENT') throw e; });
+      await fs.unlink(path.join(backupOrdner(), f)).catch(e => { if ((e as NodeJS.ErrnoException)?.code !== 'ENOENT') throw e; });
     }
     Z.gesichertHeute.set(name, tag);
   } catch (e) {
@@ -187,7 +198,7 @@ export async function speicherStand(namen: string[]): Promise<string> {
   const teile = await Promise.all(namen.map(async name => {
     pruefeName(name);
     try {
-      const st = await fs.stat(path.join(DATA_DIR, `${name}.json`));
+      const st = await fs.stat(path.join(ordner(), `${name}.json`));
       return `${Math.round(st.mtimeMs).toString(36)}.${st.size.toString(36)}.${(st.ino % 1_679_616).toString(36)}.${(Z.zaehler.get(name) ?? 0).toString(36)}`;
     } catch { return '0'; }
   }));
@@ -259,7 +270,7 @@ async function ohneUeberschreiben(von: string, nach: string): Promise<'ok' | 'da
 async function altenNamenUebernehmen(name: string, file: string): Promise<boolean> {
   if (!/^zoe(-|$)/.test(name)) return false;
   const altName = name.replace(/^zoe/, 'jarvis');
-  const alt = path.join(DATA_DIR, `${altName}.json`);
+  const alt = path.join(ordner(), `${altName}.json`);
   const istDa = async () => { try { await fs.access(file); return true; } catch { return false; } };
   let roh: string;
   try { roh = await fs.readFile(alt, 'utf8'); } catch { return istDa(); } // keine alte Datei (oder schon übernommen)
@@ -281,7 +292,7 @@ async function altenNamenUebernehmen(name: string, file: string): Promise<boolea
       if (r === 'da') { await fs.unlink(tmp).catch(() => {}); return true; }
       await fs.unlink(alt).catch(() => {});
     }
-    await ordnerSyncKern(DATA_DIR);
+    await ordnerSyncKern(ordner());
     console.log(`[local-db] ${path.basename(alt)} → ${path.basename(file)} (ZOE${neu !== null ? ', mit neuem Namen verschlüsselt' : ''})`);
     return true;
   } catch { return istDa(); }
@@ -318,7 +329,7 @@ export function rohOeffnen(roh: string, aad: string): Gelesen {
 
 /** Der entschlüsselte Text eines Bestands — null, wenn er noch nie geschrieben wurde. Wirft bei Lesefehlern. */
 async function leseText(name: string): Promise<Gelesen | null> {
-  const file = path.join(DATA_DIR, `${name}.json`);
+  const file = path.join(ordner(), `${name}.json`);
   let st: Awaited<ReturnType<typeof fs.stat>>;
   try { st = await fs.stat(file); }
   catch (err) {
@@ -355,7 +366,7 @@ function altAadNachschreiben(name: string): void {
   Z.als.exit(() => {
     void mitSperre(name, async () => {
       aenderungFertig();
-      const file = path.join(DATA_DIR, `${name}.json`);
+      const file = path.join(ordner(), `${name}.json`);
       let roh: string;
       try { roh = await fs.readFile(file, 'utf8'); } catch { return; }
       const g = rohOeffnen(roh, name);
@@ -378,7 +389,7 @@ async function parseOderBeiseite<T>(name: string, text: string): Promise<T | nul
   let roh: unknown;
   try { roh = JSON.parse(text); }
   catch {
-    const file = path.join(DATA_DIR, `${name}.json`);
+    const file = path.join(ordner(), `${name}.json`);
     const backup = `${file}.corrupt-${Date.now()}`;
     cacheWeg(name);
     try { await fs.rename(file, backup); }
@@ -546,7 +557,7 @@ export async function saveJson<T>(name: string, data: T): Promise<void> {
     aenderungFertig();
     const text = zuText(name, data);
     if (unveraendert(vorher, text)) return; // nichts Neues → keine Schreibung, kein ETag-Sprung, kein Cache-Verlust
-    await schreibeDatei(name, path.join(DATA_DIR, `${name}.json`), text);
+    await schreibeDatei(name, path.join(ordner(), `${name}.json`), text);
   });
 }
 
@@ -573,7 +584,7 @@ export async function updateJsonAsync<T>(name: string, mutate: (current: T | nul
     aenderungFertig();
     const text = zuText(name, next);
     if (unveraendert(vorher, text)) return next; // unverändert → nichts geschrieben
-    await schreibeDatei(name, path.join(DATA_DIR, `${name}.json`), text);
+    await schreibeDatei(name, path.join(ordner(), `${name}.json`), text);
     return next;
   });
 }
@@ -641,12 +652,12 @@ export async function bestandUmschluesseln(name: string): Promise<{ bestand: 'ne
       return 'neu';
     };
     let bestand: 'neu' | 'schon' | 'fehlt' = 'fehlt';
-    try { bestand = await umstellen(path.join(DATA_DIR, `${name}.json`)); } catch (e) { fehler.push(`${name}: ${e instanceof Error ? e.message : String(e)}`); }
+    try { bestand = await umstellen(path.join(ordner(), `${name}.json`)); } catch (e) { fehler.push(`${name}: ${e instanceof Error ? e.message : String(e)}`); }
     if (bestand === 'neu') { cacheWeg(name); Z.zaehler.set(name, (Z.zaehler.get(name) ?? 0) + 1); }
     let sicherungen = 0;
-    const kopien = sicherungenVon(name, await fs.readdir(BACKUP_DIR).catch(() => [] as string[]));
+    const kopien = sicherungenVon(name, await fs.readdir(backupOrdner()).catch(() => [] as string[]));
     for (const f of kopien) {
-      try { if ((await umstellen(path.join(BACKUP_DIR, f))) === 'neu') sicherungen++; }
+      try { if ((await umstellen(path.join(backupOrdner(), f))) === 'neu') sicherungen++; }
       catch (e) { fehler.push(`backup/${f}: ${e instanceof Error ? e.message : String(e)}`); }
     }
     return { bestand, sicherungen, fehler };

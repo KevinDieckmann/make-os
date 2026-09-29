@@ -77,7 +77,8 @@ async function sicherungLauf(): Promise<SicherungLauf | null> {
 async function kalenderLage(jetzt: string): Promise<KalenderLage | null> {
   if (!kalenderVerbunden()) return null;
   try {
-    const [s, sich] = await Promise.all([kalenderStand(), ladeSicherungStand()]);
+    // U1 N2: ein unlesbarer Sicherungs-Stand wird sichtbar (Fehler), statt die ganze Kalender-Lage zu verschlucken.
+    const [s, sich] = await Promise.all([kalenderStand(), ladeSicherungStand().catch(() => ({ dateien: [], fehler: [{ kalender: 'Stand', grund: 'Stand der Kalender-Sicherung nicht lesbar' }] }) as Awaited<ReturnType<typeof ladeSicherungStand>>)]);
     const a = abgleichAlter(s, Date.parse(jetzt));
     return {
       vorMin: a.vorMin, veraltet: a.veraltet, ...(a.fehler ? { fehler: a.fehler.slice(0, 160) } : {}), ...(a.anmeldung ? { anmeldung: true } : {}),

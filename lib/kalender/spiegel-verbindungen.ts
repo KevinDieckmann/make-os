@@ -3,8 +3,8 @@
 //   event-termin-tot     Event trägt `kalenderUid`, den Termin gibt es in iCloud nicht (mehr) — in Apple gelöscht?
 //                        Nur im Holfenster eines gelungenen Stands (wie K1 `termin-uid-tot`). Die Event-Seite bietet
 //                        „Termin neu anlegen“ (feste UID) — kein Knopf hier (Termine legt MAKE OS nur auf Klick an).
-//   event-termin-schein  Event trägt noch eine erfundene Kennung (`mac-…`, vor K5, Verbindungskarte Befund 4) — beim
-//                        nächsten Ändern bzw. „Mit dem Kalender verknüpfen“ auf der Event-Seite wird sie ersetzt.
+//   event-termin-schein  Event trägt noch eine erfundene Kennung (`mac-…`, vor K5, Verbindungskarte Befund 4) — ersetzt
+//                        wird sie NUR per Klick „Mit dem Kalender verknüpfen“ auf der Event-Seite (nie im Takt, U1 B3).
 //   familie-termin-tot   Date/Paar-Gespräch trägt eine UID, deren Termin es in iCloud nicht mehr gibt.
 // Beispiele sind Kennungen (Event, Date, Datum des Gesprächs) — nie Titel.
 
@@ -22,7 +22,7 @@ const e = (n: number, ein: string, mehr: string) => (n === 1 ? ein : mehr);
 
 export const PRUEFUNGEN_SPIEGEL = {
   'event-termin-tot': { schwere: 'hinweis', bereich: 'events', reparierbar: false, art: 'event', text: (n: number) => `${n} ${e(n, 'Event hat', 'Events haben')} keinen Termin mehr im Kalender (in Apple gelöscht?) — auf der Event-Seite „Termin neu anlegen“.` },
-  'event-termin-schein': { schwere: 'hinweis', bereich: 'events', reparierbar: false, art: 'event', text: (n: number) => `${n} ${e(n, 'Event trägt', 'Events tragen')} noch eine alte Kalender-Marke ohne echten Termin-Bezug — auf der Event-Seite „Mit dem Kalender verknüpfen“ (oder beim nächsten Ändern von selbst).` },
+  'event-termin-schein': { schwere: 'hinweis', bereich: 'events', reparierbar: false, art: 'event', text: (n: number) => `${n} ${e(n, 'Event trägt', 'Events tragen')} noch eine alte Kalender-Marke ohne echten Termin-Bezug — auf der Event-Seite „Mit dem Kalender verknüpfen“.` },
   'familie-termin-tot': { schwere: 'hinweis', bereich: 'kalender', reparierbar: false, art: 'kennung', text: (n: number) => `${n} ${e(n, 'Date/Paar-Gespräch zeigt', 'Dates/Paar-Gespräche zeigen')} auf einen Termin, den es im Kalender nicht mehr gibt (in Apple gelöscht?).` },
 } as const;
 export type SpiegelPruefungId = keyof typeof PRUEFUNGEN_SPIEGEL;
