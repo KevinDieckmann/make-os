@@ -34,3 +34,7 @@ Alles lokal; Upload nur auf Kevins Wort.
 - Glocke + Heute: Termine, Follow-ups, Fristen (Verbindungskarte Befund 8/9).
 - ZOE-Kalender-Agent reparieren (blind, autonom über Altweg, fest verdrahtete Kalender) — Verbindungskarte Befund 1.
 - (aus K4) ZOE-Werkzeug `freie_zeit` (nur lesen) → `freieZeitFuer`; Angebot „Termin zum Besprechen vorschlagen“ → `freieZeitFuer`; Heute + Glocke: offene Buchungsanfragen; K3: Gast-Einladung statt Notiz bei bestätigter Buchung.
+
+## Qualität (Kevin 29.09.)
+- Nach K3/K5/K6: **Prüfliste „100 typische Fehler bei Kalender-Systemen“** (Web-Recherche, `KALENDER_FEHLER_PRUEFLISTE.md`) gegen den Code abgleichen (2 Prüfer), Befunde reparieren, Gesamtprüfung.
+- **Sinnvolle Zusatzthemen** aus der Recherche (Timeboxing, Meeting-Vorbereitung aus CRM, Nachbereitung → Follow-ups, Puffer/Reisezeit, Kontingente je Mandat, Abrechnung aus Terminen, Reisen aus Mails …) in die Verbindungsrunde aufnehmen — Auswahl der 15 sinnvollsten.
