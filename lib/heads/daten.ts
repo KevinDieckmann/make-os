@@ -39,7 +39,7 @@ export function person(k: Kontakt, ctx: { hatMandat?: boolean; hatChance?: boole
     bean: ctx.bean ?? k.bean ?? null,
     stufe: k.stufe, letzter_kontakt: k.letzterKontakt, naechster_schritt: k.naechsterSchritt, aufhaenger: kurz(k.aufhaenger, 240),
     kanal_erlaubt: erlaubt,
-    verlauf: (k.aktivitaeten ?? []).filter(a => a.art !== 'system').slice(-3).map(a => ({ am: a.am.slice(0, 10), art: a.art, ...(a.wann ? { wann: a.wann } : {}), ...(a.ort ? { ort: kurz(a.ort, 80) } : {}), ergebnis: a.ergebnis, text: kurz(a.text, 160), bedarf: kurz(a.notiz?.bedarf, 160), zusage: kurz(a.notiz?.zusage, 120) })),
+    verlauf: (k.aktivitaeten ?? []).filter(a => a.art !== 'system').slice(-3).map(a => ({ am: a.am.slice(0, 10), art: a.art, ...(a.wann ? { wann: a.wann } : {}), ...(a.terminUid ? { aus_termin: true } : {}), ...(a.ort ? { ort: kurz(a.ort, 80) } : {}), ergebnis: a.ergebnis, text: kurz(a.text, 160), bedarf: kurz(a.notiz?.bedarf, 160), zusage: kurz(a.notiz?.zusage, 120) })),
   };
 }
 
@@ -63,6 +63,10 @@ export function dealSignale(c: CrmBestand['chancen'][number], personen: Kontakt[
   const akt = personen.flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art !== 'system'));
   const termin = akt.filter(a => (a.art === 'termin' || a.ergebnis === 'termin') && tage(a.am) <= 14).sort((a, b) => b.am.localeCompare(a.am))[0];
   if (termin) positiv.push(`Termin vereinbart am ${termin.am.slice(0, 10)}`);
+  // K6a: ein Meeting mit Termin trägt im Paket die Zeit seines Termins (`wann`, lib/crm/termin-zeiten-server.ts) —
+  // steht es noch bevor, ist das ein eigenes Signal („Meeting geplant am …“), nicht nur „vereinbart“.
+  const geplant = akt.filter(a => a.art === 'termin' && a.terminUid && a.wann && a.wann.slice(0, 10) >= heute).sort((a, b) => a.wann!.localeCompare(b.wann!))[0];
+  if (geplant) positiv.push(`Meeting geplant am ${geplant.wann!.replace('T', ' ')}`);
   const antwort = akt.filter(a => a.art === 'antwort' && tage(a.am) <= 7).sort((a, b) => b.am.localeCompare(a.am))[0];
   if (antwort) positiv.push(`Antwort am ${antwort.am.slice(0, 10)}`);
   const vor = c.historie.length > 1 ? c.historie[c.historie.length - 1] : null;

@@ -74,7 +74,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'aufgabe-bezug-tot', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'zeit-mandat-tot', 'termin-uid-tot', 'kalender-bezug-kennung-tot', 'zeit-termin-tot', 'aktivitaet-termin-tot']);
+    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'aufgabe-bezug-tot', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'zeit-mandat-tot', 'termin-uid-tot', 'kalender-bezug-kennung-tot', 'zeit-termin-tot', 'aktivitaet-termin-tot', 'event-termin-verwaist', 'termin-waise-neu', 'followup-termin-verschoben', 'buchung-followup-ohne-termin']);
   });
 });
 
@@ -184,6 +184,16 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
     b.kalender!.bezuege.push({ schluessel: 'U-uralt', tag: '2025-01-01', kennungen: {} });
     b.kontakte[0].aktivitaeten = [...(b.kontakte[0].aktivitaeten ?? []), { am: J, art: 'termin', von: 'kevin', terminUid: 'U-weg' }, { am: J, art: 'termin', von: 'kevin', terminUid: 'U-1' }, { am: J, art: 'termin', von: 'kevin', terminUid: 'U-uralt' }, { am: J, art: 'termin', von: 'kevin', terminUid: 'U-2::20261001T080000Z' }];
   }, 1, 'c-anna1|U-weg'],
+  // K6a (29.09.): Termin eines gelöschten Events, Waise (#100), Follow-up am verschobenen Termin, Buchungs-Follow-up ohne Termin.
+  ['event-termin-verwaist', b => { b.kalender!.objekte.push({ uid: 'U-ev', mitArt: false }); b.kalender!.bezuege.push({ schluessel: 'U-ev', tag: '2026-10-03', kennungen: { eventId: 'ev-weg' } }, { schluessel: 'U-weg-ev', tag: '2026-10-03', kennungen: { eventId: 'ev-weg' } }); }, 1, 'U-ev'],
+  ['termin-waise-neu', b => {
+    b.kalender!.objekte.push({ uid: 'U-neu', mitArt: false });
+    b.kalender!.bezuege.push({ schluessel: 'U-alt2', tag: '2026-10-02', kennungen: { kontaktId: 'c-anna1' } });
+    b.kontakte[0].aktivitaeten = [...(b.kontakte[0].aktivitaeten ?? []), { am: J, art: 'termin', von: 'kevin', text: 'Meeting: Jahresplanung', terminUid: 'U-alt2' }];
+    b.termine = { termine: [{ id: 'U-neu', tag: '2026-10-03', titel: 'Jahresplanung', mitTeilnehmern: false }], buchungFollowups: [] };
+  }, 1, 'U-alt2 → U-neu'],
+  ['followup-termin-verschoben', b => { b.crm.followups.push(fu('fu-t', { terminUid: 'U-9', faellig: '2026-10-01' }), fu('fu-t2', { terminUid: 'U-9', faellig: '2026-10-01', verschoben: 1 })); b.termine = { termine: [{ id: 'U-9', tag: '2026-10-10', titel: 'x', mitTeilnehmern: false }], buchungFollowups: [] }; }, 1, 'fu-t'],
+  ['buchung-followup-ohne-termin', b => { b.crm.followups.push(fu('fu-v')); b.termine = { termine: [], buchungFollowups: [{ buchungId: 'bu-1', terminUid: 'U-1', followUpId: 'fu-v' }] }; }, 1, 'fu-v'],
   ['einwilligung-beleg-tot', b => { b.kontakte[0].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'd-weg99' }]; b.kontakte[1].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'Formular d-abcd1' }]; }, 1, 'c-anna1'],
 ];
 
@@ -279,6 +289,12 @@ describe('Verbindungen reparieren', () => {
     b.kalender!.bezuege.push({ schluessel: 'U-weg', tag: '2026-10-01', kennungen: { aufgabeId: 't-1' } }, { schluessel: 'U-2', tag: '2026-10-01', kennungen: { mandatId: 'm-weg', aufgabeId: 't-1' } });
     b.fokus![0].bloecke.push({ von: '2026-09-28T08:00:00.000Z', bis: '2026-09-28T09:00:00.000Z', schluessel: 'business:fokuszeit', label: 'x', sek: 3600, terminUid: 'U-weg' });
     b.kontakte[1].aktivitaeten = [...(b.kontakte[1].aktivitaeten ?? []), { am: J, art: 'termin', von: 'kevin', text: 'Meeting: X', terminUid: 'U-weg' }];
+    // K6a (29.09.): Termin eines gelöschten Events, Waise mit neuem Termin, Follow-ups am Termin.
+    b.kalender!.objekte.push({ uid: 'U-ev', mitArt: false }, { uid: 'U-neu', mitArt: false });
+    b.kalender!.bezuege.push({ schluessel: 'U-ev', tag: '2026-10-03', kennungen: { eventId: 'ev-weg' } }, { schluessel: 'U-alt2', tag: '2026-10-02', kennungen: { kontaktId: 'c-anna1' } });
+    b.kontakte[0].aktivitaeten = [...(b.kontakte[0].aktivitaeten ?? []), { am: J, art: 'termin', von: 'kevin', text: 'Meeting: Jahresplanung', terminUid: 'U-alt2' }];
+    b.crm.followups.push(fu('fu-t', { terminUid: 'U-9', faellig: '2026-10-01' }), fu('fu-v'));
+    b.termine = { termine: [{ id: 'U-neu', tag: '2026-10-03', titel: 'Jahresplanung', mitTeilnehmern: false }, { id: 'U-9', tag: '2026-10-10', titel: 'x', mitTeilnehmern: false }], buchungFollowups: [{ buchungId: 'bu-1', terminUid: 'U-1', followUpId: 'fu-v' }] };
     // Nicht reparierbar — muss stehen bleiben:
     b.crm.chancen[0].firmaId = 'f-weg';
     b.crm.teilnahmen.push({ id: 'tn-9', eventId: 'ev-1', kontaktId: 'c-weg1', status: 'da', geaendert: J });
@@ -310,7 +326,10 @@ describe('Verbindungen reparieren', () => {
     expect(n.crm.chancen[0].geaendert).toBe(J);
     expect(n.crm.mandate[0]).toEqual({ ...b.crm.mandate[0], kontaktIds: ['c-anna1'] });
     // Lead mit totem Deal (28.09. abends): Verweis weg UND „SQL“ zurück auf „Qualifizierung“, sqlAm weg.
-    expect(n.kontakte[0]).toEqual({ ...b.kontakte[0], typen: ['Partner', 'Kunde'], lead: { status: 'qualifizierung', kriterien: { ...Q } } });
+    // K6a: das Meeting am gelöschten Termin hängt jetzt am neuen (Waise, #100) — sonst bleibt die Person, wie sie war.
+    expect(n.kontakte[0]).toEqual({ ...b.kontakte[0], typen: ['Partner', 'Kunde'], lead: { status: 'qualifizierung', kriterien: { ...Q } }, aktivitaeten: b.kontakte[0].aktivitaeten.map(a => (a.terminUid === 'U-alt2' ? { ...a, terminUid: 'U-neu' } : a)) });
+    expect(n.crm.followups.find(f => f.id === 'fu-t')!.faellig).toBe('2026-10-09');
+    expect(n.crm.followups.find(f => f.id === 'fu-v')!.terminUid).toBe('U-1');
     expect(n.kontakte[0].geaendertAm).toBe('2026-08-01');
     expect(n.crm.firmen[0].lead).toEqual({ status: 'qualifizierung', kriterien: { ...Q } });
     expect(n.crm.antraege[0].kontaktId).toBeUndefined();
@@ -336,7 +355,8 @@ describe('Verbindungen reparieren', () => {
     expect(n.fokus![0].bloecke.at(-2)).toMatchObject({ sek: 60, einheit: 'KD Ventures' });
     expect(n.fokus![0].bloecke.at(-2)).not.toHaveProperty('mandatId');
     // Kalender: Eintrag zum gelöschten Termin weg, im anderen nur die tote Kennung; Block behält Zeit, verliert nur den Verweis.
-    expect(n.kalender!.bezuege.map(x => x.schluessel)).toEqual(['U-1', 'U-2']);
+    // K6a: U-ev (Termin des gelöschten Events) ist in der Vorschau weg, U-alt2 hängt jetzt als U-neu am neuen Termin.
+    expect(n.kalender!.bezuege.map(x => x.schluessel)).toEqual(['U-1', 'U-2', 'U-neu']);
     expect(n.kalender!.bezuege[1].kennungen).toEqual({ aufgabeId: 't-1' });
     expect(n.fokus![0].bloecke.at(-1)).toMatchObject({ sek: 3600, schluessel: 'business:fokuszeit' });
     expect(n.fokus![0].bloecke.at(-1)).not.toHaveProperty('terminUid');

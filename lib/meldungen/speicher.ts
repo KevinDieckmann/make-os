@@ -15,9 +15,10 @@ import { wandzeit, ausWandzeit, tagVon } from '@/lib/kalender/zeit';
 import { WEG } from '@/lib/wege';
 import type { MeldungEingabe } from './melden';
 import {
-  MELDUNGEN_MAX, PERSON_OK, bestandSaeubern, eintragAus, einfuegen, faelligAbleiten, geburtstagAbleiten, gelesenSetzen, pruefeEingabe, sichtBauen,
-  type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht,
+  MELDUNGEN_MAX, PERSON_OK, bestandSaeubern, eintragAus, einfuegen, faelligAbleiten, geburtstagAbleiten, anstehendAbleiten, gelesenSetzen, pruefeEingabe, sichtBauen,
+  type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht, type AnstehendFuerGlocke,
 } from './regeln';
+import { anstehendLesen, anstehendStand } from '@/lib/heute/anstehend-server';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { geburtstageIm } from '@/lib/kalender/quellen-geburtstage-server';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
@@ -61,10 +62,15 @@ export async function meldungAblegen(m: MeldungEingabe, jetzt: Date = new Date()
 }
 
 /** Stand für das ETag: eigener Bestand + Aufgaben + Geburtstags-Quellen (Kartei, Familie) — Tag und Person nimmt die Route dazu. */
-export async function meldungenStand(person: string): Promise<string> {
+export async function meldungenStand(person: string, jetzt: Date = new Date()): Promise<string> {
   const h = await haushaltFuer(person).catch(() => null);
-  return speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', ...(h ? [familieName(h.haushalt)] : [])]);
+  // K6a: dazu die Quellen von „Was ansteht“ (Termine, Fristen, Follow-ups …) samt 10-Minuten-Uhr (Termin „gleich“).
+  return `${await speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', ...(h ? [familieName(h.haushalt)] : [])])}|${await anstehendStand(jetzt)}`;
 }
+
+const LEER_ANSTEHEND: AnstehendFuerGlocke = { termine: [], nachbereiten: [], fristen: [], followups: [] };
+/** Was ansteht (K6a) — wirft nie; ohne Quellen nichts. */
+const anstehendFuerGlocke = (person: string, jetzt: Date): Promise<AnstehendFuerGlocke> => anstehendLesen(person, jetzt).catch(() => LEER_ANSTEHEND);
 
 /** Geburtstage heute und morgen (K2) — wirft nie. */
 const geburtstageLesen = (person: string, heute: string): Promise<Geburtstag[]> => geburtstageIm({ von: heute, bis: tagPlus(heute, 2) }, person);
@@ -74,38 +80,45 @@ async function aufgabenLesen(person: string): Promise<unknown[]> {
   return Array.isArray(s?.tasks) ? s.tasks : [];
 }
 
-function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: string, heute: string, geburtstage: readonly Geburtstag[] = []): Meldung[] {
+function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: string, heute: string, geburtstage: readonly Geburtstag[] = [], anstehend: AnstehendFuerGlocke = LEER_ANSTEHEND, jetztWand = `${heute}T00:00:00`): Meldung[] {
   const am = ausWandzeit(`${heute}T00:00:00`).toISOString();
   return [
     ...faelligAbleiten(aufgaben, { person, heute, am, link: WEG.aufgabe, tagVonIso, gelesen: bestand.faelligGelesen }),
     ...geburtstagAbleiten(geburtstage, { person, heute, morgen: tagPlus(heute, 1), am, gelesen: bestand.faelligGelesen }),
+    ...anstehendAbleiten(anstehend, { heute, jetztWand, am, gelesen: bestand.faelligGelesen }),
   ];
 }
 
-/** Die Glocke einer Person: eigene Meldungen + fällig/überfällig von heute. */
+/** Alles, woraus die abgeleiteten Meldungen entstehen (Aufgaben, Geburtstage, was ansteht). */
+async function quellenLesen(person: string, heute: string, jetzt: Date) {
+  const [aufgaben, geburtstage, anstehend] = await Promise.all([aufgabenLesen(person), geburtstageLesen(person, heute), anstehendFuerGlocke(person, jetzt)]);
+  return { aufgaben, geburtstage, anstehend, jetztWand: wandzeit(jetzt) };
+}
+
+/** Die Glocke einer Person: eigene Meldungen + fällig/überfällig von heute + was ansteht (K6a). */
 export async function meldungenSicht(person: string, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
-  const [roh, aufgaben, geburtstage] = await Promise.all([loadJson<unknown>(meldungenSpeicher(person)), aufgabenLesen(person), geburtstageLesen(person, heute)]);
+  const [roh, q] = await Promise.all([loadJson<unknown>(meldungenSpeicher(person)), quellenLesen(person, heute, jetzt)]);
   const bestand = bestandSaeubern(roh);
-  return sichtBauen(bestand, abgeleitet(bestand, aufgaben, person, heute, geburtstage), heute);
+  return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
 }
 
 /** „Gelesen“ setzen — nur im eigenen Bestand der Person. */
 export async function meldungenGelesen(person: string, auswahl: GelesenAuswahl, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
-  const [aufgaben, geburtstage] = await Promise.all([aufgabenLesen(person), geburtstageLesen(person, heute)]);
+  const q = await quellenLesen(person, heute, jetzt);
   const next = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => {
     const b = bestandSaeubern(cur);
-    const ids = abgeleitet(b, aufgaben, person, heute, geburtstage).map(m => m.id);
+    const ids = abgeleitet(b, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand).map(m => m.id);
     return gelesenSetzen(b, auswahl, heute, ids);
   });
-  return sichtBauen(next, abgeleitet(next, aufgaben, person, heute, geburtstage), heute);
+  return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
 }
 
 /** Kanal-Einstellung der Person (Telegram vorgesehen, versendet noch nichts). */
 export async function meldungenEinstellen(person: string, e: { telegram: boolean }, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
-  const [aufgaben, geburtstage] = await Promise.all([aufgabenLesen(person), geburtstageLesen(person, heute)]);
+  const q = await quellenLesen(person, heute, jetzt);
   const next = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => ({ ...bestandSaeubern(cur), einstellungen: { telegram: e.telegram === true } }));
-  return sichtBauen(next, abgeleitet(next, aufgaben, person, heute, geburtstage), heute);
+  return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
 }

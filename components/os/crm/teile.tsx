@@ -14,6 +14,7 @@ import { NOTIZ_FELDER, ereignisMs, type Aktivitaet, type NotizVorlage, type Erge
 import type { KanalStatus } from '@/lib/crm/recht';
 import { kanalLink, einwilligungVorlage, einwilligungUebernehmen } from '@/lib/crm/erfassen';
 import { datum, plusTage, type CrmApi } from './daten';
+import { mitTerminZeit, type TerminZeiten } from '@/lib/crm/aktivitaeten';
 
 import { Person } from './team';
 
@@ -59,10 +60,13 @@ export const ERGEBNIS_KNOEPFE: { id: Ergebnis; label: string; notiz: boolean }[]
 const ART_LABEL: Record<string, string> = { uebergabe: 'Übergabe', mail: 'Mail', linkedin: 'LinkedIn', anruf: 'Anruf', antwort: 'Antwort', termin: 'Termin', notiz: 'Notiz', stufe: 'Stufe', gespraech: 'Gespräch', event: 'Event', system: 'System' };
 const ERG_LABEL: Record<string, string> = { gespraech: 'Gespräch', termin: 'Termin', mailbox: 'Mailbox', nicht_erreicht: 'nicht erreicht', rueckruf: 'Rückruf', kein_bedarf: 'kein Bedarf', sperre: 'Sperre' };
 
-/** Verlauf: jüngstes zuerst, Notizvorlage aufgeklappt. */
-export function Verlauf({ liste, name, max = 50, heute }: { liste: Aktivitaet[]; name: (p: string) => string; max?: number; heute?: string }) {
+/**
+ * Verlauf: jüngstes zuerst, Notizvorlage aufgeklappt. `termine` (K6a): Zeiten der verknüpften Termine je `terminUid` —
+ * ein Meeting mit Termin steht an der Zeit seines TERMINS (verschoben → neue Zeit), nicht am Tag des Festhaltens.
+ */
+export function Verlauf({ liste, name, max = 50, heute, termine }: { liste: Aktivitaet[]; name: (p: string) => string; max?: number; heute?: string; termine?: TerminZeiten }) {
   // Ereigniszeit (U2 #46): jüngstes Ereignis zuerst — `wann ?? am` (ein nachgetragener Anruf steht an seinem Tag).
-  const l = [...liste].sort((a, b) => ereignisMs(b) - ereignisMs(a)).slice(0, max);
+  const l = liste.map(a => mitTerminZeit(a, termine)).sort((a, b) => ereignisMs(b) - ereignisMs(a)).slice(0, max);
   if (!l.length) return <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch kein Verlauf. Das erste Gespräch mit der Notizvorlage festhalten.</div>;
   return (
     <div style={{ display: 'grid', gap: 0 }}>

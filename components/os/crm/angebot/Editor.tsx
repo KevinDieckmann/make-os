@@ -35,6 +35,7 @@ import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { absenderAus, empfaengerAus, angebotDokument } from '@/lib/crm/angebot-dokument';
 import { angebotPost, letzteGesellschaft, merkeGesellschaft, pdfLaden, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
 import { Katalog, PositionZeile, freiePosition } from './Positionen';
+import { TerminVorschlag } from './TerminVorschlag';
 import { Vorschau, NUMMER_PLATZHALTER, type MailEntwurf } from './Vorschau';
 import { mailtoLink } from '@/lib/crm/angebote';
 
@@ -280,6 +281,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
           {!deals.length && !deal && k && <span style={klein}>Kein offener Deal — beim Senden entsteht einer in Stufe „Angebot“.</span>}
           {(g.luecken ?? []).length > 0 && <Chip farbe={LEUCHT.achtung}>Absender: {(g.luecken ?? []).join(', ')} fehlt</Chip>}
         </div>
+        {/* K6a (29.09.): freie Zeit zeigen → Termin-Entwurf mit Bezug (Kontakt/Firma/Deal) — erst „Speichern“ legt an. */}
+        {k && api.ich && <div style={{ marginTop: 10 }}><TerminVorschlag ich={api.ich} heute={heute} titel={form.titel} kontaktId={k.id} {...(form.firmaId ? { firmaId: form.firmaId } : {})} {...(form.dealId ? { dealId: form.dealId } : {})} /></div>}
       </Karte>
 
       <Karte i={1}>

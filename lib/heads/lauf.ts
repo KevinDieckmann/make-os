@@ -78,7 +78,9 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
   const heute = localDay();
-  const daten = vollesPaket(a.head, a.modus, kontakte, crm, heute, a.person, alt) as Record<string, unknown>;
+  // K6a: Meetings mit Termin-Verweis tragen im Paket die Zeit ihres Termins (nie `am`) — nur fürs Paket, nie gespeichert.
+  const { kontakteMitTerminZeitenLesen } = await import('@/lib/crm/termin-zeiten-server');
+  const daten = vollesPaket(a.head, a.modus, await kontakteMitTerminZeitenLesen(kontakte, a.person), crm, heute, a.person, alt) as Record<string, unknown>;
 
   // Nichts zu tun → ohne Modell.
   const leer = a.head === 'sales' && a.modus === 'power_hour' ? !(daten.karten as unknown[]).length

@@ -62,6 +62,27 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person = 
   return `Eingeplant: „${titel}" am ${date}, ${hhmm(startMin)}–${hhmm(ende)} (${art}) — als Block im Kalender (iCloud), frei verschiebbar.`;
 }
 
+// ── ZOE sucht freie Zeit (K6a, 29.09.; Verbindung aus K4): NUR lesen, über die EINE Lesefunktion `freieZeitFuer`
+// (lib/kalender/freie-zeit.ts — dieselbe wie „Mit … planen“, Buchungsseite und Angebot). Liefert nur Zeiten, nie Titel:
+// private Termine der anderen Person sind darin nur „belegt“ (maskiert je Person). Legt nichts an — einen Termin
+// schlägt ZOE danach vor, angelegt wird erst per Klick.
+const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+async function freieZeit(input: Record<string, unknown>, _o?: unknown, person = 'kevin'): Promise<string> {
+  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+  if (!(await personImHaushaltDesInhabers(person))) return 'Fehlgeschlagen: freie Zeit nur für Personen des Haushalts.';
+  const roh = Array.isArray(input.personen) ? input.personen.map(String) : typeof input.personen === 'string' ? String(input.personen).split(',') : [];
+  const personen = Array.from(new Set([person, ...roh.map(x => x.trim().toLowerCase()).filter(x => /^[a-z0-9-]{1,40}$/.test(x))])).slice(0, 4);
+  for (const p of personen) if (!(await personImHaushaltDesInhabers(p))) return `Fehlgeschlagen: ${p} gehört nicht zum Haushalt — freie Zeit nur für Kevin und Malin.`;
+  const dauerMin = Math.max(10, Math.min(480, Math.round(Number(input.dauerMin) || 60)));
+  const tage = Math.max(1, Math.min(30, Math.round(Number(input.tage) || 7)));
+  const von = /^\d{4}-\d{2}-\d{2}$/.test(String(input.von ?? '')) && String(input.von) >= localDay() ? String(input.von) : undefined;
+  const { freieZeitFuer } = await import('@/lib/kalender/freie-zeit');
+  const r = await freieZeitFuer({ personen, dauerMin, tage, grenze: 40, ...(von ? { von } : {}) });
+  if (!r.vorschlaege.length) return `Keine gemeinsame freie Zeit von ${dauerMin} Min. für ${personen.join(' + ')} zwischen ${r.von} und ${r.bis} (Arbeitszeit aus der Wochenvorlage, Feiertage NRW, Abwesenheiten).`;
+  const zeilen = r.vorschlaege.slice(0, 12).map(v => `- ${WT[new Date(`${v.tag}T12:00:00Z`).getUTCDay()]} ${v.tag} ${v.start.slice(11, 16)}–${v.ende.slice(11, 16)}${v.feiertag ? ` (Feiertag ${v.feiertag})` : ''}`);
+  return `Freie Zeit (${dauerMin} Min.) für ${personen.join(' + ')} von ${r.von} bis ${r.bis} — ${r.vorschlaege.length} Möglichkeiten, die ersten ${zeilen.length}:\n${zeilen.join('\n')}\nNur ein Vorschlag: einen Termin legt erst ein Klick im Kalender an.`;
+}
+
 // ─── ZOE als Eingabe-Schicht: Kevin ruft zu, ZOE schreibt in die Stores.
 // Interne Buchführung (nichts geht nach außen) — jede Erfassung wird im Chat
 // knapp bestätigt und erscheint sofort in Finanzplanung/Meilensteinen/Markttraktion.
@@ -955,6 +976,7 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   haushalt_rechnung_erfassen: { gruppe: 'haushalt', lauf: haushaltRechnungErfassen },
   frag_gedaechtnis: { gruppe: 'gedaechtnis', lauf: fragGedaechtnis },
   plan_block: { gruppe: 'planer', lauf: planBlock },
+  freie_zeit: { gruppe: 'kalender', lauf: freieZeit },
   // Selbst nachsehen statt verweisen — Kevins Ansage.
   lies_postfach: { gruppe: 'inbox', lauf: liesPostfach },
   setze_vitalwerte: { gruppe: 'gesundheit', lauf: setzeVitalwerte },

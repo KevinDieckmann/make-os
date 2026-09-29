@@ -9,28 +9,52 @@
 // Mandanten klickbar (28.09.): Mandatsfristen führen direkt ins Mandat (`WEG.mandat(id)`),
 // nicht mehr nur in die Liste; der Name ist die CRM-Firma (die Route setzt `kunde` aus der Kennung).
 
-import { tagPlus } from './zeit';
-import { WEG } from '@/lib/wege';
+// K6a (29.09.): Kündigungsfrist und Periodenende rechnet NUR `mandatFristen` (lib/crm/kunden.ts) — dieselbe Rechnung wie
+// die Mandatsseite (Befund 6: vorher hier nur `ende`). Steuertermine (Zusatzthema #11) kommen als abschaltbare VORLAGE
+// aus dem Steuer-Modul (lib/kalender/fristen-server.ts `steuerFristenLesen`, Werktag nach § 108 AO) — Standard aus,
+// ohne Beträge, mit Hinweis. Zahlungen/Eingänge auf Wochenende/Feiertag tragen den Hinweis auf den nächsten Werktag.
 
-export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang';
-/** `bereich` (29.09., K1): Privat oder Business — Mandate, Zahlungen, Eingänge, Bauplan-Etappen sind Business, Meilensteine nach ihrem Space. */
-export interface Frist { id: string; art: FristArt; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean; bereich: 'privat' | 'business' }
+import { WEG } from '@/lib/wege';
+import { mandatFristen, type MandatFristFelder } from '@/lib/crm/kunden';
+import { werktagAbOder } from '@/lib/zeit/kalender-kern';
+
+export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang' | 'steuer' | 'dsgvo' | 'angebot' | 'deal';
+/**
+ * `bereich` (29.09., K1): Privat oder Business — Mandate, Zahlungen, Eingänge, Bauplan-Etappen sind Business, Meilensteine
+ * nach ihrem Space. `fuer` (K6a): wer zuständig ist (Mandat: `zustaendig`) — ohne Angabe der ganze Haushalt (Glocke).
+ * `kuendigung` (K6a): die Frist ist eine Kündigungsfrist (Glocke/Heute melden sie mit Vorlauf).
+ */
+export interface Frist { id: string; art: FristArt; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean; bereich: 'privat' | 'business'; fuer?: string; kuendigung?: true }
 export interface Erinnerung { id: string; tag: string; zeit?: string; titel: string; liste?: string }
+
+/** Pflicht-Hinweis an jedem Steuertermin aus der Vorlage (Kevin 29.09., Zusatzthema #11). */
+export const STEUER_HINWEIS = 'Hinweis, keine Steuerberatung; Termine gegen BMF-Steuerkalender prüfen';
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const imZeitraum = (tag: string | undefined, von: string, bis: string): tag is string => !!tag && TAG.test(tag.slice(0, 10)) && tag.slice(0, 10) >= von && tag.slice(0, 10) < bis;
 const eur = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n) : undefined);
+const kurzTag = (tag: string) => `${tag.slice(8, 10)}.${tag.slice(5, 7)}.`;
+/** Fällt eine Zahlungsfrist auf Wochenende/Feiertag NRW, zählt der nächste Werktag (§ 193 BGB) — als Hinweis, der Tag bleibt. */
+const werktagHinweis = (tag: string): string | undefined => { const w = werktagAbOder(tag); return w !== tag ? `zählt bis ${kurzTag(w)} (nächster Werktag)` : undefined; };
 
 export interface Quellen {
   meilensteine?: { id: string; titel: string; faellig?: string; erledigt?: boolean; bereich?: string; space?: string }[];
   etappen?: { id: string; name: string; ziel?: string }[];
-  mandate?: { id: string; kunde: string; titel?: string; status?: string; ende?: string; kuendigungsfristTage?: number; naechstesReview?: string }[];
+  mandate?: ({ id: string; kunde: string; titel?: string; status?: string; naechstesReview?: string; zustaendig?: string } & Partial<MandatFristFelder>)[];
   zahlungen?: { id: string; an?: string; titel?: string; betrag?: number; status?: string; faellig?: string }[];
   rechnungen?: { id: string; kunde?: string; titel?: string; betrag?: number; status?: string; faellig?: string }[];
+  /** K6a (Verbindung 7): gesetzliche Frist offener Betroffenenanträge (Art. 12 Abs. 3 DSGVO) — ohne Namen im Titel. */
+  antraege?: { id: string; art: string; frist: string; status: string }[];
+  /** K6a: „gültig bis“ gestellter Angebote. */
+  angebote?: { id: string; titel: string; status: string; gueltigBis: string }[];
+  /** K6a (Verbindung 4): „Entscheidung bis“ offener Deals (`erwartetAm`) — Zuständig = Besitzer. */
+  deals?: { id: string; titel: string; stufe: string; erwartetAm?: string; besitzer?: string; offen: boolean }[];
+  /** Steuertermine aus der Vorlage (nur wenn in den Kalender-Einstellungen eingeschaltet) — ohne Beträge. */
+  steuer?: { datum: string; art: string; titel: string; hinweis: string; privat?: boolean }[];
 }
 
-/** Alle Stichtage im Zeitraum [von, bis) — Berliner Tage. */
-export function fristen(q: Quellen, von: string, bis: string): Frist[] {
+/** Alle Stichtage im Zeitraum [von, bis) — Berliner Tage. `heute` für die laufende Periode eines Mandats (Verlängerung). */
+export function fristen(q: Quellen, von: string, bis: string, heute: string = von): Frist[] {
   const raus: Frist[] = [];
   for (const m of q.meilensteine ?? []) {
     if (imZeitraum(m.faellig, von, bis)) raus.push({ id: `ms-${m.id}`, art: 'meilenstein', tag: m.faellig.slice(0, 10), titel: m.titel, unter: m.bereich, href: '/os/planung/jahr', erledigt: !!m.erledigt, bereich: (m.space ?? m.bereich) === 'business' ? 'business' : 'privat' });
@@ -41,21 +65,35 @@ export function fristen(q: Quellen, von: string, bis: string): Frist[] {
   for (const m of q.mandate ?? []) {
     if (m.status && !['aktiv', 'pausiert'].includes(m.status)) continue;
     const name = m.kunde || m.titel || 'Mandat';
-    if (imZeitraum(m.ende, von, bis)) raus.push({ id: `md-ende-${m.id}`, art: 'mandat', tag: m.ende.slice(0, 10), titel: `Mandat endet: ${name}`, href: WEG.mandat(m.id), bereich: 'business' });
-    if (m.ende && TAG.test(m.ende.slice(0, 10)) && m.kuendigungsfristTage && m.kuendigungsfristTage > 0) {
-      const frist = tagPlus(m.ende.slice(0, 10), -m.kuendigungsfristTage);
-      if (imZeitraum(frist, von, bis)) raus.push({ id: `md-frist-${m.id}`, art: 'mandat', tag: frist, titel: `Kündigungsfrist: ${name}`, unter: `${m.kuendigungsfristTage} Tage vor Ende`, href: WEG.mandat(m.id), bereich: 'business' });
-    }
-    if (imZeitraum(m.naechstesReview, von, bis)) raus.push({ id: `md-review-${m.id}`, art: 'mandat', tag: m.naechstesReview.slice(0, 10), titel: `Review: ${name}`, href: WEG.mandat(m.id), bereich: 'business' });
+    const fuer = m.zustaendig ? { fuer: m.zustaendig } : {};
+    // EINE Rechnung für Periodenende und Kündigungsfrist (lib/crm/kunden.ts `mandatFristen`, K6a — Befund 6).
+    const f = mandatFristen(m, heute);
+    if (imZeitraum(f.endeAm ?? undefined, von, bis)) raus.push({ id: `md-ende-${m.id}`, art: 'mandat', tag: f.endeAm!, titel: m.ende ? `Mandat endet: ${name}` : `Laufzeit-Ende: ${name}`, ...(m.ende ? {} : { unter: m.verlaengerung === 'auto' ? 'verlängert sich sonst automatisch' : 'nach der Mindestlaufzeit' }), href: WEG.mandat(m.id), bereich: 'business', ...fuer });
+    if (imZeitraum(f.frist ?? undefined, von, bis)) raus.push({ id: `md-frist-${m.id}`, art: 'mandat', tag: f.frist!, titel: `Kündigungsfrist: ${name}`, unter: `${m.kuendigungsfristTage} Tage vor Ende ${kurzTag(f.endeAm!)}`, href: WEG.mandat(m.id), bereich: 'business', kuendigung: true, ...fuer });
+    if (imZeitraum(m.naechstesReview, von, bis)) raus.push({ id: `md-review-${m.id}`, art: 'mandat', tag: m.naechstesReview.slice(0, 10), titel: `Review: ${name}`, href: WEG.mandat(m.id), bereich: 'business', ...fuer });
   }
   for (const z of q.zahlungen ?? []) {
     if (z.status === 'bezahlt' || z.status === 'erledigt') continue;
-    if (imZeitraum(z.faellig, von, bis)) raus.push({ id: `za-${z.id}`, art: 'zahlung', tag: z.faellig.slice(0, 10), titel: `Zahlung: ${z.an || z.titel || '—'}`, unter: [z.titel && z.an ? z.titel : undefined, eur(z.betrag)].filter(Boolean).join(' · ') || undefined, href: '/os/finanzen', bereich: 'business' });
+    if (imZeitraum(z.faellig, von, bis)) raus.push({ id: `za-${z.id}`, art: 'zahlung', tag: z.faellig.slice(0, 10), titel: `Zahlung: ${z.an || z.titel || '—'}`, unter: [z.titel && z.an ? z.titel : undefined, eur(z.betrag), werktagHinweis(z.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: '/os/finanzen', bereich: 'business' });
   }
   for (const r of q.rechnungen ?? []) {
     // Nur gestellte Rechnungen: da wartet Geld. Geplante sind noch keine Frist.
     if (r.status && r.status !== 'gestellt' && r.status !== 'offen') continue;
-    if (imZeitraum(r.faellig, von, bis)) raus.push({ id: `re-${r.id}`, art: 'eingang', tag: r.faellig.slice(0, 10), titel: `Zahlungseingang: ${r.kunde || r.titel || '—'}`, unter: [r.titel && r.kunde ? r.titel : undefined, eur(r.betrag)].filter(Boolean).join(' · ') || undefined, href: '/os/finanzen', bereich: 'business' });
+    if (imZeitraum(r.faellig, von, bis)) raus.push({ id: `re-${r.id}`, art: 'eingang', tag: r.faellig.slice(0, 10), titel: `Zahlungseingang: ${r.kunde || r.titel || '—'}`, unter: [r.titel && r.kunde ? r.titel : undefined, eur(r.betrag), werktagHinweis(r.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: '/os/finanzen', bereich: 'business' });
+  }
+  // CRM-Fristen (K6a, Verbindung 4/7): DSGVO-Anträge (ohne Namen), Angebote „gültig bis“, Deals „Entscheidung bis“.
+  for (const a of q.antraege ?? []) {
+    if (a.status === 'offen' && imZeitraum(a.frist, von, bis)) raus.push({ id: `ds-${a.id}`, art: 'dsgvo', tag: a.frist.slice(0, 10), titel: `DSGVO-Antrag (${a.art}): Frist`, unter: 'Art. 12 Abs. 3 DSGVO — Hinweis, keine Rechtsberatung', href: WEG.stammdaten('datenschutz'), bereich: 'business' });
+  }
+  for (const a of q.angebote ?? []) {
+    if (a.status === 'gestellt' && imZeitraum(a.gueltigBis, von, bis)) raus.push({ id: `an-${a.id}`, art: 'angebot', tag: a.gueltigBis.slice(0, 10), titel: `Angebot gültig bis: ${a.titel}`, href: WEG.angebot({ angebotId: a.id }), bereich: 'business' });
+  }
+  for (const d of q.deals ?? []) {
+    if (d.offen && imZeitraum(d.erwartetAm, von, bis)) raus.push({ id: `dl-${d.id}`, art: 'deal', tag: d.erwartetAm.slice(0, 10), titel: `Entscheidung erwartet: ${d.titel}`, href: WEG.deal(d.id), bereich: 'business', ...(d.besitzer ? { fuer: d.besitzer } : {}) });
+  }
+  // Steuertermine (Vorlage, Zusatzthema #11): schon auf den Werktag geschoben (§ 108 AO), nie mit Betrag.
+  for (const s of q.steuer ?? []) {
+    if (imZeitraum(s.datum, von, bis)) raus.push({ id: `st-${s.art}-${s.datum}`, art: 'steuer', tag: s.datum.slice(0, 10), titel: s.titel, unter: `${s.hinweis} · ${STEUER_HINWEIS}`, href: WEG.steuern('fristen'), bereich: s.privat ? 'privat' : 'business' });
   }
   return raus.sort((a, b) => a.tag.localeCompare(b.tag) || a.titel.localeCompare(b.titel));
 }

@@ -30,6 +30,8 @@ import type { TeamTag } from '@/lib/crm/pipeline';
 import { nameVon, anderer, BEIDE } from '@/lib/crm/team';
 import { markttraktion } from '@/lib/crm/adresse';
 import { kanalLink, nachbereitung, type Nachbereitung } from '@/lib/crm/erfassen';
+import type { TerminZeiten } from '@/lib/crm/aktivitaeten';
+import { wandzeit } from '@/lib/kalender/zeit';
 import { type CrmApi, neueId, datum } from './daten';
 import { KanalAmpel, Grund, NotizFormular, Verlauf, festhalten, hatMailEinwilligung, ERGEBNIS_KNOEPFE, type NotizErgebnis } from './teile';
 import { Person, Uebergeben } from './team';
@@ -106,8 +108,11 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   const ruhig = !fokus;
   useEffect(() => { if (ruhig) void laden(); }, [laden, ruhig, api.crm, api.kontakte]);
 
-  // „Wie lief's?“ — aus der Kartei auf der Seite, damit ein Tipp die Karte sofort verschwinden lässt.
-  const nachbereiten = useMemo(() => (d ? nachbereitung(api.kontakte ?? [], d.heute, d.ich) : []), [api.kontakte, d]);
+  // „Wie lief's?“ — aus der Kartei auf der Seite, damit ein Tipp die Karte sofort verschwinden lässt. Meetings mit Termin
+  // (K3) zählen mit der Zeit ihres TERMINS (K6a): die Zeiten liefert GET /api/heute/anstehend (dieselbe Quelle wie die Glocke).
+  const [terminZeiten, setTerminZeiten] = useState<TerminZeiten | undefined>(undefined);
+  useEffect(() => { fetch('/api/heute/anstehend', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => { if (x?.ok) setTerminZeiten(x.nachbereitZeiten ?? {}); }).catch(() => {}); }, [api.kontakte]);
+  const nachbereiten = useMemo(() => (d ? nachbereitung(api.kontakte ?? [], d.heute, d.ich, terminZeiten, wandzeit(new Date())) : []), [api.kontakte, d, terminZeiten]);
 
   const serie = useMemo(() => {
     const tage = new Set((d?.sitzungen ?? []).map(s => s.datum));

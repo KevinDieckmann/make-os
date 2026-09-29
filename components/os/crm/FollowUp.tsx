@@ -40,7 +40,7 @@ const GRUPPEN: { id: Gruppe; label: string; farbe: string }[] = [
 ];
 const QUELLE_LABEL: Record<string, string> = {
   hand: 'von Hand', regel: 'Regel', kadenz: 'Kadenz', kampagne: 'Kampagne', event: 'Event', head: 'Head', zoe: 'ZOE', deal: 'Deal',
-  schritt: 'Zusage', wiedervorlage: 'Wiedervorlage', dealschritt: 'Deal-Schritt', nachfassen: 'Nachfassen', review: 'Review',
+  schritt: 'Zusage', wiedervorlage: 'Wiedervorlage', dealschritt: 'Deal-Schritt', dealwiedervorlage: 'Deal-Wiedervorlage', nachfassen: 'Nachfassen', review: 'Review',
 };
 const ART_LABEL = Object.fromEntries(FOLLOWUP_ARTEN.map(a => [a.id, a.label])) as Record<FollowUpArt, string>;
 
@@ -161,7 +161,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Knopf farbe={LEUCHT.gut} onClick={() => setErledigen(!erledigen)}>✓ Erledigt</Knopf>
             {VERSCHIEBEN_TAGE.map(t => <Knopf key={t} leise onClick={() => void aktion({ aktion: 'verschieben', id: f.id, tage: t })}>+{t} {t === 1 ? 'Tag' : 'Tage'}</Knopf>)}
-            {f.quelle !== 'dealschritt' && <Knopf leise onClick={() => { if (window.confirm(f.quelle === 'nachfassen' ? 'Nachfassen bewusst auslassen? Der Gast verschwindet aus der Liste, zählt aber nicht als nachgefasst.' : 'Follow-up absagen? Die Person bleibt, nur diese Zusage fällt weg.')) void aktion({ aktion: 'absagen', id: f.id }); }}>{f.quelle === 'nachfassen' ? 'Auslassen' : 'Absagen'}</Knopf>}
+            {f.quelle !== 'dealschritt' && f.quelle !== 'dealwiedervorlage' && <Knopf leise onClick={() => { if (window.confirm(f.quelle === 'nachfassen' ? 'Nachfassen bewusst auslassen? Der Gast verschwindet aus der Liste, zählt aber nicht als nachgefasst.' : 'Follow-up absagen? Die Person bleibt, nur diese Zusage fällt weg.')) void aktion({ aktion: 'absagen', id: f.id }); }}>{f.quelle === 'nachfassen' ? 'Auslassen' : 'Absagen'}</Knopf>}
             <span style={{ flex: 1 }} />
             {f.kontaktId && <Knopf leise onClick={() => zuKontakt(f.kontaktId!)}>Person</Knopf>}
             {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Kontakt öffnen'}</Knopf>}

@@ -130,6 +130,7 @@ export function SteuernView() {
           <button onClick={() => setAlleFristen(!alleFristen)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', padding: 0, fontSize: 12.5 }}>{alleFristen ? 'nur 90 Tage' : `alle ${kommend.length} der nächsten 12 Monate`}</button>
           <span>Vor jeder Frist steht {d.einstellungen.vorlaufTage} Tage vorher eine Aufgabe in <Link href="/os/aufgaben" style={{ color: C.inkDim }}>Aufgaben</Link>; abhaken hier schließt sie.</span>
         </div>
+        <SteuerImKalender />
       </Abschnitt>
 
       <Spalten verhaeltnis="1:1">
@@ -221,6 +222,23 @@ export function SteuernView() {
 
       <EinstellungenKarte e={d.einstellungen} gewinn={d.gewinn} tun={tun} />
     </>
+  );
+}
+
+/**
+ * Steuertermine im Kalender zeigen (K6a, Zusatzthema #11) — ein Schalter in den Kalender-Einstellungen, Standard AUS.
+ * Die Termine selbst kommen von hier (eure Einstellungen oben), ohne Beträge, mit Hinweis. Hinweis, keine Steuerberatung.
+ */
+function SteuerImKalender() {
+  const [an, setAn] = useState<boolean | null>(null);
+  useEffect(() => { fetch('/api/state/kalender-einstellungen', { cache: 'no-store' }).then(r => r.json()).then(e => setAn(e?.steuerVorlage?.an === true)).catch(() => setAn(null)); }, []);
+  if (an === null) return null;
+  const setzen = (neu: boolean) => { setAn(neu); void fetch('/api/state/kalender-einstellungen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steuerVorlage: { an: neu } }) }).catch(() => setAn(!neu)); };
+  return (
+    <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: C.inkDim, marginTop: 10 }}>
+      <Haken an={an} onChange={() => setzen(!an)} />
+      Steuertermine im Kalender zeigen (Fristen-Ebene, ohne Beträge) — Hinweis, keine Steuerberatung; Termine gegen BMF-Steuerkalender prüfen.
+    </label>
   );
 }
 

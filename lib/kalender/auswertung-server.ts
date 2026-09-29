@@ -55,7 +55,7 @@ export async function zeitAuswertungFuer(person: string, stichtag: string, woche
   const eigene = gelesen.termine.filter(t => betrifft(t, person) && !t.abgesagt);
   const termine: ATermin[] = eigene.map(t => ({
     id: t.id, start: t.start, ende: t.ende, ganztags: t.ganztags, space: spaceVonKalender(einst, t.kalender), mitTeilnehmern: t.mitTeilnehmern,
-    art: t.art, ...(t.beschaeftigt === false ? { frei: true } : {}),
+    art: t.art, ...(t.beschaeftigt === false ? { frei: true } : {}), ...(t.blockArt ? { blockArt: t.blockArt } : {}),
     ...(t.bezug?.mandatId ? { mandatId: t.bezug.mandatId } : {}),
     // K3 (30.09.): Kontakt am Termin + Gäste aus dem CRM (`gastKontakte`) — je Person einmal.
     ...(kontakteVon({ ...(t.bezug?.kontaktId ? { kontaktId: t.bezug.kontaktId } : {}), ...(t.gastKontakte ? { gastKontakte: t.gastKontakte } : {}) }).length

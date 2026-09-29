@@ -122,6 +122,21 @@ export async function eventSpiegelNachziehen(ids: readonly string[] | null, wer:
   return events.length;
 }
 
+/** Zuletzt im Takt nachgezogen (Prozess-Merker) — der Abgleich läuft höchstens alle 30 Minuten. */
+let taktZuletzt = 0;
+export const SPIEGEL_TAKT_MS = 30 * 60_000;
+
+/**
+ * Events im vorhandenen Takt nachziehen (K6a, 29.09.): Änderungen am Event, die NICHT über den Bestand-PATCH kamen (ZOE,
+ * Heads, Import), ziehen den Termin trotzdem nach — höchstens alle 30 Min., nie blockierend, nur mit iCloud. Schreibt
+ * wie jeder Spiegel über `terminAendernServer` (Änderungsprotokoll). Liefert die Zahl der geprüften Events (0 = übersprungen).
+ */
+export async function eventSpiegelImTakt(jetzt = Date.now()): Promise<number> {
+  if (!verbunden() || jetzt - taktZuletzt < SPIEGEL_TAKT_MS) return 0;
+  taktZuletzt = jetzt;
+  return eventSpiegelNachziehen(null, { art: 'system' });
+}
+
 // ── Familie (Dates, Paar-Gespräche) ─────────────────────────────────────────
 
 async function familieAendern(h: string, f: (x: Familie) => Familie): Promise<void> {

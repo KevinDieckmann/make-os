@@ -29,7 +29,18 @@ export interface KalenderEinstellungen {
   belegt: Record<string, boolean>;
   /** „Frei, aber nicht gesetzlich“ (R-K2 #72): „MM-TT“ + Name, Standard 24.12. und 31.12. — lib/kalender/freie-tage.ts. */
   freieTage: FreierTag[];
+  /**
+   * Steuertermine als Fristen-Vorlage im Kalender (K6a, Zusatzthema #11) — Standard AUS. Nur der Schalter: WELCHE Termine
+   * (USt-Rhythmus, Vorauszahlungen, Erklärungen) stellt ihr im Steuer-Modul ein (lib/steuern — eine Quelle, Werktag nach
+   * § 108 AO); der Kalender zeigt sie nur, nie Beträge. Hinweis, keine Steuerberatung.
+   */
+  steuerVorlage: SteuerVorlage;
+  /** Glocke: Kündigungsfristen so viele Tage vorher melden (K6a). */
+  kuendigungVorlaufTage: number;
 }
+
+export interface SteuerVorlage { an: boolean }
+export const STEUER_VORLAGE_AUS: SteuerVorlage = { an: false };
 
 export const EINSTELLUNGEN_LEER: KalenderEinstellungen = {
   kalender: { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Gemeinsam' },
@@ -40,7 +51,14 @@ export const EINSTELLUNGEN_LEER: KalenderEinstellungen = {
   space: {},
   belegt: {},
   freieTage: [...FREIE_TAGE_STANDARD],
+  steuerVorlage: STEUER_VORLAGE_AUS,
+  kuendigungVorlaufTage: 14,
 };
+
+/** Steuer-Vorlage säubern — alles Unbekannte fällt auf „aus“ zurück (nie still eingeschaltet). */
+export function steuerVorlageSauber(v: unknown): SteuerVorlage {
+  return { an: !!v && typeof v === 'object' && (v as { an?: unknown }).an === true };
+}
 
 const zahl = (v: unknown, min: number, max: number, sonst: number) => {
   const n = Math.round(Number(v));
@@ -63,6 +81,8 @@ export function einstellungenSauber(d: Partial<KalenderEinstellungen> | null): K
     space: Object.fromEntries(Object.entries((d?.space && typeof d.space === 'object' ? d.space : {}) as Record<string, unknown>).slice(0, 40).map(([k, v]) => [String(k).trim().slice(0, 60), v]).filter(([k, v]) => k && (v === 'privat' || v === 'business'))) as Record<string, 'privat' | 'business'>,
     belegt: Object.fromEntries(Object.entries((d?.belegt && typeof d.belegt === 'object' ? d.belegt : {}) as Record<string, unknown>).slice(0, 60).map(([k, v]) => [String(k).trim().slice(0, 60), v]).filter(([k, v]) => k && typeof v === 'boolean')) as Record<string, boolean>,
     freieTage: freieTageSauber(d?.freieTage),
+    steuerVorlage: steuerVorlageSauber(d?.steuerVorlage),
+    kuendigungVorlaufTage: zahl(d?.kuendigungVorlaufTage, 0, 90, L.kuendigungVorlaufTage),
   };
 }
 

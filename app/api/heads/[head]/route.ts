@@ -99,7 +99,8 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
   if (b.aktion === 'daten') {
     const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
     const st = { ...leererStand(), ...((await loadJson<HeadStand>(standName(h))) ?? {}) };
-    const d = vollesPaket(h, String(b.modus ?? MODI[h][0].id), kontakte, await ladeCrm(), localDay(), person, st);
+    const { kontakteMitTerminZeitenLesen } = await import('@/lib/crm/termin-zeiten-server'); // K6a: Meeting-Zeit aus dem Termin
+    const d = vollesPaket(h, String(b.modus ?? MODI[h][0].id), await kontakteMitTerminZeitenLesen(kontakte, person), await ladeCrm(), localDay(), person, st);
     return NextResponse.json({ ok: true, daten: d, zeichen: JSON.stringify(d).length });
   }
 

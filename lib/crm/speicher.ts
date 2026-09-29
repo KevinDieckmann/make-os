@@ -390,6 +390,8 @@ function followup(o: Record<string, unknown>, jetzt: string, person: string): Fo
     zustaendig: wer(o.zustaendig) ?? (wer(person) && wer(person) !== BEIDE ? person : verantwortlich('sales')),
     status, ...(opt(o.ergebnis, 60) ? { ergebnis: opt(o.ergebnis, 60) } : {}), ...(opt(o.notiz, 1000) ? { notiz: opt(o.notiz, 1000) } : {}),
     quelle: aus(o.quelle, FU_QUELLE, 'hand'), ...(opt(o.aufgabeId, 80) ? { aufgabeId: opt(o.aufgabeId, 80) } : {}),
+    // K6a (29.09.): Termin, an dem das Follow-up hängt (Schlüssel wie `Aktivitaet.terminUid`).
+    ...(typeof o.terminUid === 'string' && /^[^\u0000-\u001f\u007f]{1,300}$/.test(o.terminUid) ? { terminUid: o.terminUid } : {}),
     ...(zahl(o.verschoben, 0, 99) ? { verschoben: zahl(o.verschoben, 0, 99) } : {}),
     ...(status === 'erledigt' ? { erledigtAm: opt(o.erledigtAm, 25) ?? jetzt } : {}),
     angelegt: txt(o.angelegt, 25) || jetzt, geaendert: jetzt,

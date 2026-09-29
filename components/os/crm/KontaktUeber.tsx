@@ -175,7 +175,7 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
   const aktivitaeten = (
     <Klappe id="ueber-letzte" i={5} titel="Letzte Aktivitäten" unter={echte.length ? `${letzte.length} von ${echte.length}` : 'Noch nichts festgehalten.'} zu={klappen.istZu('ueber-letzte')} umschalten={klappen.umschalten}
       rechts={<button type="button" onClick={() => zuReiter('aktivitaeten', 'alle')} style={leiseKnopf}>alle ›</button>}>
-      {letzte.length ? <Verlauf liste={letzte} name={name} heute={heute} max={3} /> : <div style={{ fontSize: 12.5, color: C.inkLeise }}>Links über die Schnellaktionen festhalten: Notiz, Anruf, Meeting.</div>}
+      {letzte.length ? <Verlauf liste={letzte} name={name} heute={heute} max={3} termine={terminZeiten} /> : <div style={{ fontSize: 12.5, color: C.inkLeise }}>Links über die Schnellaktionen festhalten: Notiz, Anruf, Meeting.</div>}
     </Klappe>
   );
 

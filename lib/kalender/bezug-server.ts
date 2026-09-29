@@ -86,3 +86,24 @@ export async function bezuegeBereinigen(weg: readonly string[], tot: Partial<Rec
   });
   return n;
 }
+
+/**
+ * Verbindungsprüfung „termin-waise-neu“ (K6a, #100): Bezüge gelöschter Termine an den neuen Termin hängen — in EINER
+ * Sperre, nur wenn der alte Eintrag noch da ist und der neue Schlüssel frei ist. Liefert die Zahl der umgehängten.
+ */
+export async function bezuegeUmhaengen(paare: readonly (readonly [string, string])[]): Promise<number> {
+  if (!paare.length) return 0;
+  let n = 0;
+  await updateJson<BezugBestand>('kalender-bezug', cur => {
+    const b = sauberBestand(cur);
+    const bezuege = { ...b.bezuege };
+    for (const [alt, neu] of paare) {
+      if (!bezuege[alt] || bezuege[neu]) continue;
+      bezuege[neu] = bezuege[alt];
+      delete bezuege[alt];
+      n++;
+    }
+    return n ? { ...b, bezuege } : cur as BezugBestand;
+  });
+  return n;
+}

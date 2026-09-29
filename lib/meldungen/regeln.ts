@@ -33,8 +33,13 @@ export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnu
 
 /** Gespeicherte Arten: die fünf der Schnittstelle + die Sammelmeldung der Grenze. */
 export type GespeicherteArt = MeldungArt | 'sammel';
-/** Nur abgeleitet, nie gespeichert (29.09., K2): Geburtstag am Vortag und am Tag (lib/kalender/quellen-geburtstage). */
-export type AbgeleiteteArt = 'geburtstag';
+/**
+ * Nur abgeleitet, nie gespeichert (29.09., K2): Geburtstag am Vortag und am Tag (lib/kalender/quellen-geburtstage).
+ * K6a (29.09.): Termin gleich (≤ 2 h), Nachbereitung offen, Frist (heute/morgen, Kündigung mit Vorlauf), Follow-up
+ * heute/überfällig, Kalender-Vorschläge von ZOE im Stapel — alle aus lib/heute/anstehend.ts (`anstehendAbleiten`).
+ * Offene Buchungsanfragen meldet die Glocke schon beim Eingang (gespeicherte Art „buchung“) — hier nicht doppelt.
+ */
+export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag';
 
 export interface Meldung {
   id: string;
@@ -244,6 +249,56 @@ export function geburtstagAbleiten(
   }
   // Heute vor morgen.
   return raus.sort((a, b) => Number(b.titel.includes(' heute ')) - Number(a.titel.includes(' heute ')));
+}
+
+// ── Was ansteht (29.09., K6a) ───────────────────────────────────────────────
+// Regel 4 gilt genauso: nie gespeichert, beim Lesen aus lib/heute/anstehend.ts abgeleitet, Gelesen-Merker je Berliner Tag.
+// Termine melden sich erst, wenn sie in ≤ 2 Stunden beginnen (oder laufen) — nicht schon morgens alle auf einmal.
+
+/** So lange vor Beginn meldet die Glocke einen Termin. */
+export const TERMIN_VORLAUF_MIN = 120;
+const kennung = (s: string) => s.replace(/[^A-Za-z0-9:_.-]/g, '_').slice(0, 100);
+const minutenBis = (vonWand: string, bisWand: string) => {
+  const m = (w: string) => Date.UTC(Number(w.slice(0, 4)), Number(w.slice(5, 7)) - 1, Number(w.slice(8, 10)), Number(w.slice(11, 13)), Number(w.slice(14, 16)));
+  return Math.round((m(bisWand) - m(vonWand)) / 60_000);
+};
+
+export interface AnstehendFuerGlocke {
+  termine: readonly { id: string; titel: string; start: string; ganztags: boolean; href: string; laeuft: boolean }[];
+  nachbereiten: readonly { kontaktId: string; name: string; titel: string; href: string }[];
+  fristen: readonly { id: string; titel: string; tag: string; href: string; inTagen: number; kuendigung?: true }[];
+  followups: readonly { id: string; text: string; name: string; tageUeber: number; href: string }[];
+  /** Offene Kalender-Vorschläge von ZOE im Freigabe-Stapel (nur die Zahl). */
+  vorschlaege?: { kalender: number };
+}
+
+export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; jetztWand: string; am: string; gelesen?: { tag: string; ids: string[] } }): Meldung[] {
+  const merker = o.gelesen?.tag === o.heute ? new Set(o.gelesen.ids) : new Set<string>();
+  const raus: Meldung[] = [];
+  const dazu = (art: AbgeleiteteArt, schluessel: string, titel: string, link: string) => {
+    if (!istLink(link)) return;
+    const id = `${art}:${o.heute}:${kennung(schluessel)}`;
+    raus.push({ id, art, titel: titel.slice(0, TITEL_MAX), link, am: o.am, virtuell: true, gelesen: merker.has(id) });
+  };
+  for (const t of a.termine) {
+    if (t.ganztags) continue;
+    const bis = minutenBis(o.jetztWand, t.start);
+    if (!t.laeuft && bis > TERMIN_VORLAUF_MIN) continue;
+    dazu('termin', kurzSchluessel(t.id), t.laeuft ? `Läuft gerade: ${t.titel}` : `Um ${t.start.slice(11, 16)}: ${t.titel}${bis <= 30 ? ` (in ${Math.max(0, bis)} Min.)` : ''}`, t.href);
+  }
+  for (const n of a.nachbereiten) dazu('nachbereiten', n.kontaktId, `Wie lief „${n.titel}“ mit ${n.name}? — Ergebnis festhalten`, n.href);
+  for (const f of a.fristen) dazu('frist', f.id, f.inTagen <= 0 ? `Heute: ${f.titel}` : f.inTagen === 1 ? `Morgen: ${f.titel}` : `In ${f.inTagen} Tagen (${tagText(f.tag)}): ${f.titel}`, f.href);
+  // Die Zahl steckt in der Kennung: kommt ein neuer Vorschlag dazu, meldet sich die Glocke wieder.
+  if (a.vorschlaege?.kalender) dazu('vorschlag', `kalender-${a.vorschlaege.kalender}`, `${a.vorschlaege.kalender} Kalender-Vorschl${a.vorschlaege.kalender === 1 ? 'ag' : 'äge'} von ZOE ${a.vorschlaege.kalender === 1 ? 'wartet' : 'warten'} auf Freigabe`, '/os/stapel');
+  for (const f of a.followups) dazu('followup', f.id, `${f.tageUeber > 0 ? `Überfällig seit ${f.tageUeber} ${f.tageUeber === 1 ? 'Tag' : 'Tagen'}` : 'Heute'}: ${f.text}${f.name && !f.text.includes(f.name) ? ` (${f.name})` : ''}`, f.href);
+  return raus;
+}
+
+/** Kurzer, stabiler Schlüssel aus einer langen Kennung (Termin `kalender|uid::RID`) — FNV-1a. */
+function kurzSchluessel(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
 }
 
 // ── Sicht und „gelesen“ ─────────────────────────────────────────────────────

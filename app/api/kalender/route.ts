@@ -14,13 +14,12 @@ import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, abgleichen, termineImZeitraum, kontoAnzeige, CACHE, ladeStand, naechsterVersuchFaellig, abgleichAlter } from '@/lib/kalender/icloud';
-import { fristen, erinnerungen, type Quellen } from '@/lib/kalender/eintraege';
+import { erinnerungen } from '@/lib/kalender/eintraege';
+import { fristenLesen } from '@/lib/kalender/fristen-server';
+import { macTermine, type MacEv } from '@/lib/kalender/termine-lesen';
 import { ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { SPEICHER as MAC, type Gemerkt } from '@/lib/mac';
-import { ladeBauplan } from '@/lib/bauplan/speicher';
-import { ladeCrm } from '@/lib/crm/speicher';
-import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
 import { localDay } from '@/lib/zeit';
 import type { Termin } from '@/lib/kalender/ics';
 import { ladeBezuege } from '@/lib/kalender/bezug-server';
@@ -30,8 +29,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
-
-interface MacEv { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; location?: string }
 
 export async function GET(req: Request) {
   const zugang = await kalenderZugang(req);
@@ -63,31 +60,20 @@ export async function GET(req: Request) {
     abgleich = abgleichAlter(s);
     kalender = s.kalender.map(k => ({ name: k.name, ...(k.farbe ? { farbe: k.farbe } : {}), schreibbar: k.schreibbar, wer: wemGehoert(einst, k.name) }));
   } else {
-    // Ohne iCloud: der zuletzt vom Mac gelieferte Stand — nur lesen.
+    // Ohne iCloud: der zuletzt vom Mac gelieferte Stand — nur lesen, EINE Abbildung (`macTermine`, K6a).
     const c = await loadJson<{ events?: MacEv[]; at?: string }>(CACHE);
     stand = c?.at ?? null;
     quelle = c?.at ? 'mac' : 'leer';
-    termine = (c?.events ?? []).filter(e => e.title && e.startDate && e.startDate.slice(0, 10) < bis && (e.endDate ?? e.startDate).slice(0, 10) >= von).map((e, i) => ({
-      id: e.id ?? `mac-${i}`, uid: e.id ?? `mac-${i}`, href: '', titel: e.title!, start: e.startDate!, ende: e.endDate ?? e.startDate!, ganztags: !!e.allDay,
-      kalender: (e.calendarName ?? 'Kalender').trim(), kalenderId: '', ...(e.location ? { ort: e.location } : {}), serie: false, mitTeilnehmern: false, bearbeitbar: false,
-      art: 'termin' as const, beschaeftigt: !e.allDay, sichtbarkeit: 'standard' as const,
-    }));
+    termine = macTermine(c?.events, von, bis);
     kalender = Array.from(new Set(termine.map(t => t.kalender))).map(name => ({ name, schreibbar: false, wer: wemGehoert(einst, name) }));
   }
 
   const bezuege: BezugBestand | null = await ladeBezuege().catch(() => null);
-  const [meilensteine, bauplan, crm, finanzplan, rem] = await Promise.all([
-    loadJson<{ meilensteine?: Quellen['meilensteine'] }>('meilensteine').catch(() => null),
-    ladeBauplan().catch(() => null),
-    ladeCrm().catch(() => null),
-    loadJson<{ zahlungen?: Quellen['zahlungen']; rechnungen?: Quellen['rechnungen'] }>('finanzplan').catch(() => null),
+  // Fristen: die Quellen lädt EINE Stelle (lib/kalender/fristen-server.ts, K6a) — dieselbe wie Glocke/Heute.
+  const [fristenListe, rem] = await Promise.all([
+    fristenLesen(von, bis, heute).catch(() => []),
     loadJson<Gemerkt>(MAC.erinnerungen).catch(() => null),
   ]);
-  const quellen: Quellen = {
-    meilensteine: meilensteine?.meilensteine, etappen: bauplan?.etappen,
-    // Mandanten klickbar (28.09.): der Name der CRM-Firma (per Kennung) statt des alten Kundentexts.
-    mandate: crm?.mandate.map(m => ({ ...m, kunde: firmaVonMandat(m, crm.firmen)?.name ?? m.kunde })) as Quellen['mandate'], zahlungen: finanzplan?.zahlungen, rechnungen: finanzplan?.rechnungen,
-  };
 
   return NextResponse.json({
     ok: true, von, bis, quelle, stand, ...(fehler ? { fehler } : {}), ...(abgleich ? { abgleich } : {}),
@@ -95,7 +81,7 @@ export async function GET(req: Request) {
     kalender, einstellungen: einst,
     // Bezug + Sicherung anwenden, dann für die ansehende Person maskieren (privat der anderen → „Belegt“).
     termine: termine.map(t => maskieren({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, zugang.person)),
-    fristen: fristen(quellen, von, bis),
+    fristen: fristenListe,
     erinnerungen: erinnerungen(rem?.daten, von, bis, wandzeit),
     erinnerungenStand: rem?.at ?? null,
   }, { headers: { 'Cache-Control': 'no-store' } });

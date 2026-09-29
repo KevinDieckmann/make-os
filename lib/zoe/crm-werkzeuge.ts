@@ -14,6 +14,7 @@ import { suchPasst } from '@/lib/text/such-norm';
 import { loadJson } from '@/lib/store/local-db';
 import { anzeigename, STUFE_LABEL, STAMMDATEN_FELDER, ereignisMs, type Kontakt, type Aktivitaet } from '@/lib/make-one/crm';
 import type { Chance, Firma, Mandat, Angebot, Kampagne, Event, CrmBestand } from '@/lib/crm/typen';
+import { hatTerminVerweise, kontakteMitTerminZeit } from '@/lib/crm/aktivitaeten';
 import { crmSicht, crmAntwort, ausgeblendetText, eindeutig, NICHT_IM_HINTERGRUND, ABLAGE_QUELLE, EINGESCHRAENKT_NAME, type CrmSicht } from './crm-sicht';
 
 type Eingabe = Record<string, unknown>;
@@ -32,12 +33,25 @@ function sicher(f: (input: Eingabe, s: CrmSicht) => Promise<string> | string): L
     try {
       const s = await crmSicht(person);
       if (!s) return NICHT_IM_HINTERGRUND;
-      return await f(input, s);
+      return await f(input, await mitTerminZeiten(s));
     } catch (e) {
       console.error('[zoe/crm]', e instanceof Error ? e.message : e);
       return 'Fehlgeschlagen: Die Markttraktion ist gerade nicht lesbar.';
     }
   };
+}
+
+/**
+ * Meetings mit Termin-Verweis zeigen die Zeit ihres TERMINS (K6a, 29.09. — nie `am`, den Zeitpunkt des Festhaltens):
+ * gelesen über lib/crm/termin-zeiten-server.ts (ohne Abgleich, fremd-private Termine der anderen Person fallen heraus).
+ * Nur für die Antwort — die Sicht wird nie gespeichert.
+ */
+async function mitTerminZeiten(s: CrmSicht): Promise<CrmSicht> {
+  if (!hatTerminVerweise(s.kontakte)) return s;
+  const { terminZeitenLesen } = await import('@/lib/crm/termin-zeiten-server');
+  const kontakte = kontakteMitTerminZeit(s.kontakte, await terminZeitenLesen(s.person, s.heute));
+  const nachId = new Map(kontakte.map(k => [k.id, k]));
+  return { ...s, kontakte, kontakt: id => (id ? nachId.get(id) : undefined) };
 }
 
 // ── Kleine Bausteine ──────────────────────────────────────────────────────
@@ -68,7 +82,8 @@ const mehrdeutig = <T extends { id: string }>(liste: T[], name: (x: T) => string
 
 function aktivitaetZeile(s: CrmSicht, a: Aktivitaet): string {
   const n = a.notiz ? Object.entries(a.notiz).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' | ') : '';
-  return `- ${tag(a.wann ?? a.am)} · ${a.art}${a.ergebnis ? ` (${a.ergebnis})` : ''} · von ${a.von}${a.bezug ? ` · Bezug ${a.bezug}` : ''}${a.ort ? ` · Ort ${a.ort}` : ''}${a.anlass ? ` · Anlass ${a.anlass}` : ''}${a.text ? `\n  ${a.text}` : ''}${n ? `\n  ${n}` : ''}`;
+  // Ereigniszeit: `wann` (bei Meetings mit Termin aus dem Termin, s. `mitTerminZeiten`) mit Uhrzeit, sonst der Tag von `am`.
+  return `- ${a.wann ? a.wann.replace('T', ' ') : tag(a.am)}${a.terminUid ? ' (Termin im Kalender)' : ''} · ${a.art}${a.ergebnis ? ` (${a.ergebnis})` : ''} · von ${a.von}${a.bezug ? ` · Bezug ${a.bezug}` : ''}${a.ort ? ` · Ort ${a.ort}` : ''}${a.anlass ? ` · Anlass ${a.anlass}` : ''}${a.text ? `\n  ${a.text}` : ''}${n ? `\n  ${n}` : ''}`;
 }
 
 function dealZeile(s: CrmSicht, c: Chance, heute: string, gesundheit?: (c: Chance, h: string) => { ampel: string; gruende: string[] }): string {

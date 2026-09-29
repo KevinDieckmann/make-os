@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { stundenAus, abweichungText, anteil, type Minuten } from '@/lib/kalender/auswertung';
+import { stundenAus, abweichungText, anteil, BLOCK_NAME, type Minuten } from '@/lib/kalender/auswertung';
 import type { AuswertungAntwort } from '@/lib/kalender/auswertung-server';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
@@ -18,6 +18,8 @@ import { MandantLink } from '../crm/MandantLink';
 export const KENNZAHL: { id: keyof Minuten; label: string; farbe: string }[] = [
   { id: 'meetings', label: 'Meetings', farbe: LEUCHT.puls },
   { id: 'fokus', label: 'Fokus', farbe: LEUCHT.schlaf },
+  // K6a (29.09.): Planen-Blöcke (Reha, Routine, Pause, Aufgabe, Blockzeit) als eigene Kategorie.
+  { id: 'bloecke', label: 'Blöcke (Planen)', farbe: LEUCHT.agenten },
   { id: 'abwesend', label: 'Abwesend', farbe: LEUCHT.achtung },
   { id: 'frei', label: 'Frei (Arbeitszeit)', farbe: LEUCHT.gut },
 ];
@@ -61,8 +63,8 @@ export function KennzahlZeilen({ a }: { a: AuswertungAntwort }) {
         <div key={k.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13 }}>
           <span style={{ width: 8, height: 8, borderRadius: 2, background: k.farbe, flex: '0 0 auto', alignSelf: 'center' }} />
           <span style={{ color: C.inkDim, flex: 1 }}>{k.label}</span>
-          <b style={{ fontVariantNumeric: 'tabular-nums' }}>{stundenAus(a.woche.minuten[k.id])}</b>
-          <span title="gegenüber dem Schnitt der letzten 4 Wochen" style={{ fontSize: 11.5, color: pfeil(a.abweichung[k.id]), width: 62, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{abweichungText(a.abweichung[k.id])}</span>
+          <b style={{ fontVariantNumeric: 'tabular-nums' }}>{stundenAus(a.woche.minuten[k.id] ?? 0)}</b>
+          <span title="gegenüber dem Schnitt der letzten 4 Wochen" style={{ fontSize: 11.5, color: pfeil(a.abweichung[k.id] ?? 0), width: 62, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{abweichungText(a.abweichung[k.id] ?? 0)}</span>
         </div>
       ))}
     </div>
@@ -137,15 +139,16 @@ export function AuswertungInhalt({ a }: { a: AuswertungAntwort }) {
           {w.jeMandat.length ? w.jeMandat.map(m => <Zeile2 key={m.mandatId} links={<MandantLink mandatId={m.mandatId} name={a.namen.mandate[m.mandatId] ?? 'Mandat'} klein />} rechts={stundenAus(m.minuten)} />) : <div style={{ color: C.inkLeise, fontSize: 12.5 }}>Noch keine Zeit mit Mandat.</div>}
         </div>
       </div>
+      {(w.jeBlock ?? []).length > 0 && <>{abschnitt('Blöcke je Art')}{(w.jeBlock ?? []).map(x => <Zeile2 key={x.art} links={BLOCK_NAME[x.art] ?? x.art} rechts={stundenAus(x.minuten)} />)}</>}
       {abschnitt('Meistbesuchte Kontakte')}
       {w.kontakte.length ? w.kontakte.slice(0, 5).map(k => <Zeile2 key={k.id} links={k.id} rechts={`${k.termine} Termine · ${stundenAus(k.minuten)}`} />)
         : <div style={{ color: C.inkLeise, fontSize: 12.5 }}>Erscheint, sobald Termine mit CRM-Kontakten verknüpft sind.</div>}
       {abschnitt('Vorwochen')}
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto repeat(4, 1fr)', gap: '4px 10px', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `auto repeat(${KENNZAHL.length}, 1fr)`, gap: '4px 10px', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
         <span />{KENNZAHL.map(k => <span key={k.id} style={{ color: C.inkLeise, fontSize: 11.5 }}>{k.label}</span>)}
         {[...a.vorher, w].map(v => [
           <span key={`${v.von}-l`} style={{ color: v === w ? C.ink : C.inkDim, fontWeight: v === w ? 700 : 500 }}>KW {v.kw}</span>,
-          ...KENNZAHL.map(k => <span key={`${v.von}-${k.id}`} style={{ fontWeight: v === w ? 700 : 400 }}>{stundenAus(v.minuten[k.id])}</span>),
+          ...KENNZAHL.map(k => <span key={`${v.von}-${k.id}`} style={{ fontWeight: v === w ? 700 : 400 }}>{stundenAus(v.minuten[k.id] ?? 0)}</span>),
         ])}
       </div>
     </div>

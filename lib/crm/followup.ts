@@ -5,7 +5,9 @@
 //   · und, solange die alten Felder noch leben, „virtuelle“ Einträge daraus:
 //     nächster Schritt und Wiedervorlage am Kontakt, nächster Schritt am Deal,
 //     Nachfassen nach einem Event (Teilnahme ohne followUpAm), Review am Mandat,
+//     die Wiedervorlage am geparkten Deal (K6a, 29.09. — Befund 2 der Kalender-Verbindungskarte: kam nie hoch)
 //     und die Kadenz je Kreis (A 30 · B 60 · C 90 · D 180 Tage ohne Kontakt).
+// Wer Fälliges zeigt (Follow-up-Liste, Power Hour, Glocke, Heute, Akte), liest NUR hier — nie die alten Felder selbst.
 // Virtuelle Einträge haben Kennungen `v:<quelle>:<id>`; erledigt oder verschoben
 // werden sie über die Route, die dann das alte Feld ändert oder ein echtes
 // Follow-up daraus macht.
@@ -26,7 +28,7 @@ export const VERSCHIEBEN_TAGE = [1, 3, 7] as const;
 export const HORIZONT_TAGE = 14;
 
 export type Gruppe = 'ueberfaellig' | 'heute' | 'woche' | 'spaeter';
-export type VirtuelleQuelle = 'schritt' | 'wiedervorlage' | 'dealschritt' | 'nachfassen' | 'review' | 'kadenz';
+export type VirtuelleQuelle = 'schritt' | 'wiedervorlage' | 'dealschritt' | 'dealwiedervorlage' | 'nachfassen' | 'review' | 'kadenz';
 
 export interface Faellig {
   /** echte Follow-up-Kennung oder `v:<quelle>:<id>` */
@@ -130,6 +132,12 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     raus.push(mach({ id: `v:dealschritt:${c.id}`, virtuell: true, quelle: 'dealschritt', art: 'sonstig', text: c.naechsterSchritt.text, faellig: c.naechsterSchritt.datum, ...(kid ? { kontaktId: kid } : {}), name: kid ? nameVon(kid) : c.titel, firma: c.firma ?? (c.firmaId ? firmen.get(c.firmaId)?.name : undefined), bezug: { art: 'chance', id: c.id, titel: c.titel }, zustaendig: zustaendig(c.besitzer, 'sales') }));
     if (kid) belegt.add(`${kid}|${c.naechsterSchritt.datum}`);
   }
+  // 3b · Wiedervorlage am geparkten Deal (K6a) — Pflicht beim Parken (pipeline.ts), kam aber nirgends mehr hoch.
+  for (const c of dealWiedervorlagen(crm, bis)) {
+    const kid = c.kontaktIds.find(id => nachId.has(id));
+    if (kid && nachId.get(kid)?.eingeschraenkt) continue;
+    raus.push(mach({ id: `v:dealwiedervorlage:${c.id}`, virtuell: true, quelle: 'dealwiedervorlage', art: 'sonstig', text: `Wiedervorlage: geparkter Deal „${c.titel}“${c.grund ? ` (${c.grund.slice(0, 80)})` : ''}`, faellig: c.wiedervorlage!, ...(kid ? { kontaktId: kid } : {}), name: kid ? nameVon(kid) : c.titel, firma: c.firma ?? (c.firmaId ? firmen.get(c.firmaId)?.name : undefined), bezug: { art: 'chance', id: c.id, titel: c.titel }, zustaendig: zustaendig(c.besitzer, 'sales') }));
+  }
   // 4 · Nachfassen nach einem Event (binnen 48 h)
   for (const t of crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && !t.nachfassenVerzichtet)) {
     const ev = crm.events.find(e => e.id === t.eventId);
@@ -160,6 +168,11 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
   }
   const rang: Record<Gruppe, number> = { ueberfaellig: 0, heute: 1, woche: 2, spaeter: 3 };
   return raus.sort((a, b) => rang[a.gruppe] - rang[b.gruppe] || a.faellig.localeCompare(b.faellig) || (a.uhrzeit ?? '99').localeCompare(b.uhrzeit ?? '99') || a.name.localeCompare(b.name));
+}
+
+/** Geparkte Deals mit Wiedervorlage bis `bis` (einschließlich) — die EINE Regel für Follow-ups und „Wer ist dran“ (K6a). */
+export function dealWiedervorlagen(crm: Pick<CrmBestand, 'chancen'>, bis: string): CrmBestand['chancen'] {
+  return crm.chancen.filter(c => c.stufe === 'geparkt' && !!c.wiedervorlage && /^\d{4}-\d{2}-\d{2}$/.test(c.wiedervorlage) && c.wiedervorlage <= bis);
 }
 
 /** Für den Filter „Alle · Meins · Malin“: gemeinsame („beide“) zählen bei jedem. */
@@ -195,6 +208,6 @@ export function neuesFollowUp(e: { id: string; bezug: { art: FollowUpBezugArt; i
 
 /** Kennung eines virtuellen Eintrags zerlegen. */
 export function virtuell(id: string): { quelle: VirtuelleQuelle; ziel: string } | null {
-  const m = /^v:(schritt|wiedervorlage|dealschritt|nachfassen|review|kadenz):(.+)$/.exec(id);
+  const m = /^v:(schritt|wiedervorlage|dealschritt|dealwiedervorlage|nachfassen|review|kadenz):(.+)$/.exec(id);
   return m ? { quelle: m[1] as VirtuelleQuelle, ziel: m[2] } : null;
 }

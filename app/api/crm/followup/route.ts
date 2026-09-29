@@ -64,7 +64,7 @@ export async function GET(req: Request) {
   return jsonAntwort(req, { ok: true, heute, liste, zahlen: zaehlen(liste), puenktlich: puenktlichkeit(crm.followups ?? [], heute), ...(gesperrt ? { hinweis: werbesperreHinweis(gesperrt) } : {}) }, etag);
 }
 
-type Herkunft = 'schritt' | 'wiedervorlage' | 'dealschritt' | 'nachfassen' | 'review' | 'kadenz' | 'echt';
+type Herkunft = 'schritt' | 'wiedervorlage' | 'dealschritt' | 'dealwiedervorlage' | 'nachfassen' | 'review' | 'kadenz' | 'echt';
 
 /**
  * Aktivität an die Person — dieselben Regeln wie /api/crm/aktivitaet (letzter Kontakt, Stufe,
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
   const virtuellerEintrag = (c: CrmBestand): Faellig | undefined => {
     if (!v) return undefined;
     const ziel = v.ziel;
-    const teil: CrmBestand = v.quelle === 'dealschritt' ? { ...c, chancen: c.chancen.filter(x => x.id === ziel), teilnahmen: [], mandate: [] }
+    const teil: CrmBestand = v.quelle === 'dealschritt' || v.quelle === 'dealwiedervorlage' ? { ...c, chancen: c.chancen.filter(x => x.id === ziel), teilnahmen: [], mandate: [] }
       : v.quelle === 'nachfassen' ? { ...c, chancen: [], mandate: [], teilnahmen: c.teilnahmen.filter(t => t.id === ziel) }
       : v.quelle === 'review' ? { ...c, chancen: [], teilnahmen: [], mandate: c.mandate.filter(m => m.id === ziel) }
       : { ...c, chancen: [], teilnahmen: [], mandate: [] };
@@ -159,6 +159,8 @@ export async function POST(req: Request) {
     if (!v) return c;
     if (v.quelle === 'dealschritt') return { ...c, chancen: c.chancen.map(x => (x.id === v.ziel ? { ...x, naechsterSchritt: neuesDatum && x.naechsterSchritt ? { ...x.naechsterSchritt, datum: neuesDatum } : undefined, geaendert: jetzt, geaendertVon: person } : x)) };
     if (v.quelle === 'review') return { ...c, mandate: c.mandate.map(m => (m.id === v.ziel ? { ...m, naechstesReview: neuesDatum ?? tagPlus(heute, 90), geaendert: jetzt, geaendertVon: person } : m)) };
+    // Geparkter Deal (K6a): die Wiedervorlage IST das Feld am Deal — verschieben/erledigen setzt die nächste (Pflicht beim Parken).
+    if (v.quelle === 'dealwiedervorlage') return { ...c, chancen: c.chancen.map(x => (x.id === v.ziel && x.stufe === 'geparkt' ? { ...x, wiedervorlage: neuesDatum ?? tagPlus(heute, 90), geaendert: jetzt, geaendertVon: person } : x)) };
     return c;
   };
   // `geaendertAm` der Kartei ist ein Berliner TAG (28.09., W8) — vorher stand hier der ISO-Zeitstempel.
@@ -187,6 +189,13 @@ export async function POST(req: Request) {
       const deal = f.bezug.art === 'chance' ? c.chancen.find(x => x.id === f.bezug.id) : undefined;
       if (deal && OFFENE_STUFEN.includes(deal.stufe) && !naechsterRoh && (herkunft === 'dealschritt' || !deal.naechsterSchritt)) { regelFehler = 'Am Deal muss ein nächster Schritt stehen — bitte „Als Nächstes“ ausfüllen (die Deal-Regel gilt auch hier).'; return c; }
       erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notiz ? { notiz: `${f.notiz ? `${f.notiz}\n` : ''}${notiz}` } : {}), geaendert: jetzt, geaendertVon: person };
+      // Geparkter Deal (K6a): „Als Nächstes“ ist die nächste Wiedervorlage am Deal — kein zweites Follow-up daneben.
+      if (herkunft === 'dealwiedervorlage') {
+        erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notiz ? { notiz } : {}), geaendert: jetzt, geaendertVon: person };
+        const naechste = naechsterRoh?.faellig ?? tagPlus(heute, 90);
+        hinweis = `Deal bleibt geparkt — nächste Wiedervorlage am ${naechste} (oder in der Deal-Akte wieder aufnehmen).`;
+        return altesFeldImCrm({ ...c, followups: [...(c.followups ?? []), erledigt] }, naechste);
+      }
       folge = naechsterRoh ? { ...neuesFollowUp({ id: neueId('fu'), bezug: f.bezug, kontaktId: f.kontaktId, art: naechsterRoh.art ?? f.art, text: naechsterRoh.text, faellig: naechsterRoh.faellig, zustaendig: f.zustaendig, quelle: 'hand' }, kontakt(f.kontaktId), person, jetzt), geaendertVon: person } : null;
       let neu: CrmBestand = { ...c, followups: [...(c.followups ?? []).filter(x => x.id !== f.id), erledigt, ...(folge ? [folge] : [])] };
       // Deal: das „Als Nächstes“ ist der nächste Schritt am Deal — so bleibt die Deal-Regel erfüllt.
@@ -236,6 +245,7 @@ export async function POST(req: Request) {
   if (b.aktion === 'absagen') {
     // Der nächste Schritt am Deal ist keine Zusage, die man absagt — er ist die Deal-Regel (Punkt 6).
     if (v?.quelle === 'dealschritt') return NextResponse.json({ ok: false, fehler: 'Der nächste Schritt am Deal lässt sich nicht absagen — verschieben oder in der Deal-Akte einen neuen setzen.' }, { status: 400 });
+    if (v?.quelle === 'dealwiedervorlage') return NextResponse.json({ ok: false, fehler: 'Die Wiedervorlage am geparkten Deal lässt sich nicht absagen — verschieben, in der Deal-Akte wieder aufnehmen oder auf „verloren“ setzen.' }, { status: 400 });
     let neu: FollowUp | null = null;
     await aendereCrm(c => {
       const echt = (c.followups ?? []).find(f => f.id === id);

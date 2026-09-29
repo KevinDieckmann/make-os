@@ -503,6 +503,11 @@ export interface FollowUp {
   quelle: FollowUpQuelle;
   /** Verknüpfte Aufgabe im Board, wenn man es sich dorthin geholt hat. */
   aufgabeId?: string;
+  /**
+   * Termin, an dem das Follow-up hängt (K6a, 29.09.; `kalender|uid(::RID)` wie `Aktivitaet.terminUid`) — z. B. „Termin
+   * vorbereiten“ einer Buchung. Verschiebt sich der Termin, zieht die Verbindungsprüfung das Datum nach (Vortag).
+   */
+  terminUid?: string;
   /** Wie oft verschoben — ab dem dritten Mal ist es ehrlicherweise keine Zusage mehr. */
   verschoben?: number;
   erledigtAm?: string;

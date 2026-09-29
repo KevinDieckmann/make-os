@@ -38,7 +38,8 @@ import { zieleDateiBereinigen, meilensteinDateiBereinigen, zeitDateiBereinigen }
 import { zeitAendern } from '@/lib/zeitmessung/speicher';
 import { toteTermine, toteKennungen, zeitDateiTermineBereinigen } from '@/lib/crm/verbindungen-kalender';
 import { ladeKalenderPruefung } from '@/lib/crm/verbindungen-laden';
-import { bezuegeBereinigen } from '@/lib/kalender/bezug-server';
+import { bezuegeBereinigen, bezuegeUmhaengen } from '@/lib/kalender/bezug-server';
+import { waisenPaare, verwaisteEventTermine } from '@/lib/crm/verbindungen-termine';
 import type { BezugFeld } from '@/lib/kalender/bezug';
 
 export const runtime = 'nodejs';
@@ -119,6 +120,22 @@ export async function POST(req: Request) {
       for (const p of alt.fokus ?? []) await zeitAendern(p.person, d => zeitDateiBereinigen(d, lebend).datei);
     }
   }
+  // K6a (29.09.): Waisen neu zuordnen (Bezug umhängen — die Meetings hat der Kartei-Schritt oben schon umgehängt) und
+  // Termine gelöschter Events in iCloud entfernen (auf dem frischen Stand; mit Gästen nie — Teilnehmer-Sperre).
+  let terminHinweis = '';
+  if (ids.includes('termin-waise-neu') || ids.includes('event-termin-verwaist')) {
+    const frisch = await ladeVerbindungsBestaende(heute);
+    if (ids.includes('termin-waise-neu')) {
+      const tasksKurz = frisch.aufgaben?.liste ?? [];
+      // Die Kartei ist schon umgehängt — die Paare kommen aus dem Stand VOR dem Schreiben (`alt`), geprüft gegen den frischen Bezug.
+      await bezuegeUmhaengen(waisenPaare(frisch.kalender, frisch.termine, alt.kontakte, tasksKurz));
+    }
+    if (ids.includes('event-termin-verwaist')) {
+      const r = await verwaisteTermineEntfernen(verwaisteEventTermine(frisch.kalender, new Set(frisch.crm.events.map(x => x.id))), person);
+      terminHinweis = r.mitGaesten ? ` · ${r.mitGaesten} ${r.mitGaesten === 1 ? 'Termin hat' : 'Termine haben'} Gäste — bitte in Apple absagen` : '';
+      if (r.fehler) terminHinweis += ` · ${r.fehler} nicht entfernt (iCloud)`;
+    }
+  }
   // Kalender (29.09., K1): auf dem frischen Stand (iCloud-UIDs, Bezüge, CRM, Aufgaben) neu gerechnet — je Speicher eine Sperre.
   if (speicher.has('kalender-bezug') || (speicher.has('zeit') && ids.includes('zeit-termin-tot'))) {
     const kal = await ladeKalenderPruefung();
@@ -143,5 +160,19 @@ export async function POST(req: Request) {
   // Aufgaben (28.09. spät): nur `bezug` der betroffenen Aufgaben, auf dem aktuellen Stand in der Sperre.
   if (speicher.has('tasks')) await aufgabenBezugZurueckschreiben(stand, werAus(req));
   const befunde = verbindungenPruefen(await ladeVerbindungsBestaende(heute));
-  return NextResponse.json({ ok: true, aenderungen: vorschau.aenderungen, ampel: verbindungsAmpel(befunde), befunde });
+  return NextResponse.json({ ok: true, aenderungen: vorschau.aenderungen.map(a => (a.befundId === 'event-termin-verwaist' && terminHinweis ? { ...a, text: `${a.text}${terminHinweis}` } : a)), ampel: verbindungsAmpel(befunde), befunde });
+}
+
+/** Termine gelöschter Events in iCloud löschen (K6a) — über den Server-Schreibweg (Änderungsprotokoll, Bezug weg). */
+async function verwaisteTermineEntfernen(schluessel: readonly string[], person: string): Promise<{ weg: number; mitGaesten: number; fehler: number }> {
+  const { terminLoeschenServer } = await import('@/lib/kalender/termin-server');
+  const { EinladungNoetig } = await import('@/lib/kalender/icloud');
+  let weg = 0, mitGaesten = 0, fehler = 0;
+  for (const s of schluessel) {
+    // Nur ganze Termine (kein einzelnes Vorkommen einer Serie) — Serien bleiben in Apple.
+    if (s.includes('::')) { fehler++; continue; }
+    try { await terminLoeschenServer(s, { art: 'person', person }); weg++; }
+    catch (e) { if (e instanceof EinladungNoetig) mitGaesten++; else fehler++; }
+  }
+  return { weg, mitGaesten, fehler };
 }

@@ -23,6 +23,9 @@ import type { KanalStatus } from './recht';
 import { haeltBeziehung, BEIDE } from './team';
 import { tagePlus } from '@/lib/zeit';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { bezugTermin, terminMs } from './signale';
+import { uidVonSchluessel } from '@/lib/kalender/bezug';
+import type { TerminZeiten } from './aktivitaeten';
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -102,30 +105,45 @@ function nach(a: string, b: string): boolean {
 const menschlich = (a: { von: string; art: string }) => a.von !== 'system' && a.art !== 'system' && a.art !== 'uebergabe';
 
 /**
- * Termine der letzten drei Tage (bis heute) aus dem Geschäftskalender, nach
- * denen an dieser Person noch nichts Menschliches festgehalten wurde — je
- * Person höchstens einmal (der jüngste Termin), jüngste zuerst. Mit `person`
- * nur, was bei ihr liegt (hält die Beziehung oder „beide“). Gesperrte
- * Personen tauchen nirgends auf, auch hier nicht.
+ * Termine der letzten drei Tage (bis heute), nach denen an dieser Person noch nichts Menschliches festgehalten wurde —
+ * je Person höchstens einmal (der jüngste Termin), jüngste zuerst. Mit `person` nur, was bei ihr liegt (hält die
+ * Beziehung oder „beide“). Gesperrte Personen tauchen nirgends auf, auch hier nicht.
+ * Zwei Wege, EINE Liste (K6a, 29.09.):
+ *   · Signal aus dem Geschäftskalender (Aktivität von „system“ mit `bezug = termin-…`, Altweg über den Namen im Titel)
+ *   · Meeting mit Termin-Verweis (K3, `terminUid`) — Zeit, Titel und „abgesagt“ kommen aus dem TERMIN (`termine`,
+ *     lib/crm/termin-zeiten-server.ts bzw. /api/heute/anstehend); zählt erst, wenn der Termin vorbei ist (`jetztWand`,
+ *     Berliner Wandzeit). Abgesagte Termine (R-K1) fragen nicht nach.
+ * Erledigt ist die Nachbereitung, sobald danach etwas Menschliches festgehalten wurde oder etwas am Termin hängt
+ * (`bezug`). Das Meeting selbst zählt dabei nicht (es kann nach dem Termin verknüpft worden sein).
  */
-export function nachbereitung(kontakte: Kontakt[], heute: string, person?: string): Nachbereitung[] {
+export function nachbereitung(kontakte: Kontakt[], heute: string, person?: string, termine?: TerminZeiten, jetztWand?: string): Nachbereitung[] {
   const ab = tagePlus(heute, -NACHBEREITEN_TAGE);
-  const raus: Nachbereitung[] = [];
+  const jetzt = jetztWand ?? `${heute}T00:00:00`;
+  const raus: (Nachbereitung & { iso: string })[] = [];
   for (const k of kontakte) {
     if (ausgenommen(k)) continue;
     const fuer = haeltBeziehung(k);
     if (person && fuer !== person && fuer !== BEIDE) continue;
     const l = k.aktivitaeten ?? [];
-    const termine = l.filter(a => a.art === 'termin' && a.von === 'system' && a.bezug?.startsWith('termin-') && a.am.slice(0, 10) >= ab && a.am.slice(0, 10) <= heute);
-    if (!termine.length) continue;
-    const t = termine.reduce((j, x) => (nach(x.am, j.am) ? x : j));
-    if (l.some(a => menschlich(a) && (nach(a.am, t.am) || a.bezug === t.bezug))) continue;
-    raus.push({
-      kontaktId: k.id, name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}),
-      titel: (t.text ?? '').replace(/^Termin:\s*/, '').trim() || 'Termin', am: t.am, tag: t.am.slice(0, 10), bezug: t.bezug!, fuer,
-    });
+    const kandidaten: { am: string; iso: string; titel: string; bezug: string }[] = [];
+    for (const a of l) {
+      if (a.art === 'termin' && a.von === 'system' && a.bezug?.startsWith('termin-') && a.am.slice(0, 10) >= ab && a.am.slice(0, 10) <= heute) {
+        kandidaten.push({ am: a.am, iso: a.am, titel: (a.text ?? '').replace(/^Termin:\s*/, '').trim() || 'Termin', bezug: a.bezug });
+      }
+      const t = a.art === 'termin' && a.terminUid ? termine?.[a.terminUid] : undefined;
+      if (!t || t.abgesagt || t.ganztags) continue;
+      const ende = t.ende ?? t.start;
+      if (ende.slice(0, 10) < ab || ende > jetzt) continue;
+      const ms = terminMs(t.start);
+      if (Number.isNaN(ms)) continue;
+      kandidaten.push({ am: t.start, iso: new Date(ms).toISOString(), titel: (t.titel ?? '').trim() || 'Termin', bezug: bezugTermin(uidVonSchluessel(a.terminUid!)) });
+    }
+    if (!kandidaten.length) continue;
+    const t = kandidaten.reduce((j, x) => (nach(x.iso, j.iso) ? x : j));
+    if (l.some(a => menschlich(a) && !a.terminUid && (nach(a.am, t.iso) || a.bezug === t.bezug))) continue;
+    raus.push({ kontaktId: k.id, name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}), titel: t.titel, am: t.am, tag: t.am.slice(0, 10), bezug: t.bezug, fuer, iso: t.iso });
   }
-  return raus.sort((a, b) => (nach(a.am, b.am) ? -1 : nach(b.am, a.am) ? 1 : 0));
+  return raus.sort((a, b) => (nach(a.iso, b.iso) ? -1 : nach(b.iso, a.iso) ? 1 : 0)).map(({ iso: _i, ...n }) => n);
 }
 
 // ── Einwilligung im Gespräch ────────────────────────────────────────────────

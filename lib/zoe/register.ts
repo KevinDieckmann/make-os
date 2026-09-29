@@ -248,6 +248,11 @@ export const REGISTER: Record<string, Eintrag> = {
     },
     vorschau: schlicht('Aufgabe anlegen', i => `„${text(i.title, 200)}"${i.priority && i.priority !== 'medium' ? ` (${String(i.priority)})` : ''}${i.einheit && i.space !== 'privat' ? ` · ${text(i.einheit, 40)}` : ''}`),
   },
+  // K6a (29.09.): freie Zeit nur LESEN (freieZeitFuer — Zeiten, nie Titel).
+  freie_zeit: {
+    gruppe: 'kalender', risiko: 'frei',
+    vorschau: schlicht('Freie Zeit suchen', i => `${Number(i.dauerMin) || 60} Min.${Array.isArray(i.personen) && i.personen.length ? ` mit ${(i.personen as unknown[]).map(String).join(', ').slice(0, 60)}` : ''}`),
+  },
   plan_block: {
     gruppe: 'planer', risiko: 'frei',
     vorschau: schlicht('Block in den Planer legen', i => `„${text(i.titel)}" am ${text(i.date, 10)}`),

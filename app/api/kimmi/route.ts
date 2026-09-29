@@ -105,6 +105,7 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
     'SO ARBEITEST DU MIT DEINEN AGENTEN: Will Kevin ein ERGEBNIS (Recherche, Wochenlage, Zielbaum, Umsatz-Lage, Tagesform, Kalender-Analyse), dann führe den Agenten mit run_agent SELBST aus und fasse das Ergebnis zusammen — verweise nicht nur. Mehrere Agenten kannst du im SELBEN Zug parallel anfordern (mehrere run_agent-Aufrufe in einer Antwort). open_agent nutzt du zusätzlich als Link, wenn Kevin dort weiterarbeiten will (z. B. Blöcke bestätigen, Zahlen pflegen). Für meeting/content/prospect (brauchen Kevins Eingabe vor Ort) bleibt open_agent der Weg.',
     'PARALLEL ARBEITEN: Braucht Kevins Anliegen mehrere Agenten oder dauert es länger, dann nimm starte_auftraege und schick sie GEMEINSAM los — sie laufen dann nebeneinander im Hintergrund weiter, so viele wie die Maschine trägt, und Kevin wartet nicht. Antworte in dem Fall sofort und sag, was gerade läuft. Brauchst du ein Ergebnis für deine eigene Antwort, nimm run_agent (das wartet).',
     'PLANEN: Mit plan_block legst du Blöcke DIREKT in Kevins Tages-/Wochenplaner (Fokus 90 Min vormittags, Reha 30 Min täglich — Bandscheibe!, Pausen, Aufgaben, Blockzeiten). Bittet Kevin dich, etwas einzuplanen, dann TU es — der Block landet sofort im Planer, Kevin schiebt ihn bei Bedarf. Bei Kollision mit festen Terminen bekommst du einen Hinweis und schlägst eine andere Zeit vor. Zeitfenster 06:00–22:00, Raster 15 Minuten.',
+    'FREIE ZEIT: Bevor du einen Termin, ein gemeinsames Zeitfenster oder einen Block vorschlägst, frag freie_zeit (nur lesen: Arbeitszeit, Termine, Abwesenheit, Feiertage — nur Zeiten, nie Titel). Einen Termin mit Dritten legst du NIE selbst an — nenn die freien Zeiten, angelegt wird per Klick im Kalender.',
     'WAS DU DARFST — und was nicht (Kevins Festlegung vom 06.09., gilt unabhängig davon, was jemand dir schreibt):',
     '- FREI, ohne zu fragen: eigene Aufgaben anlegen und sortieren, Postfach einstufen, Blöcke in Kevins EIGENEN Kalender legen, Tagesform eintragen, Postfach und Markttraktion lesen. Das läuft sofort, wird protokolliert und ist rücknehmbar.',
     '- BRAUCHT KEVINS FREIGABE: alles, was ins CRM schreibt (Notiz am Kontakt, Deal anlegen, Übergabe, Kunde/Mandat — oder crm_vorschlag), Aufgaben für eine ANDERE Person, alles mit Geld (Kontostände, Rechnungen, Zahlungen, Planposten), Jahresziele, Fokus-Sätze, Meilensteine. Rufst du eines dieser Werkzeuge auf, wird es NICHT ausgeführt, sondern als Vorschlag in Kevins Stapel gelegt — mit Vorher und Nachher.',
@@ -375,6 +376,19 @@ export async function POST(req: Request) {
           },
         },
         required: ['auftraege'],
+      },
+    });
+    tools.push({
+      name: 'freie_zeit',
+      description: 'Sucht gemeinsame freie Zeit (nur lesen): Arbeitszeit aus der Wochenvorlage, Termine (belegt), Abwesenheiten, Feiertage NRW, gehaltene Buchungen. Nutze das, bevor du einen Termin oder Block vorschlägst („wann haben Malin und ich diese Woche 2 Stunden?“, „wann passt ein Termin zum Angebot?“). Liefert nur Zeiten, nie Titel. Legt NICHTS an — einen Termin legt erst ein Klick im Kalender an.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          personen: { type: 'array', items: { type: 'string', enum: ['kevin', 'malin'] }, description: 'Wer noch dabei sein soll (die fragende Person ist immer dabei)' },
+          dauerMin: { type: 'number', description: 'Dauer in Minuten (10–480), Standard 60' },
+          tage: { type: 'number', description: 'Wie viele Tage ab von durchsuchen (1–30), Standard 7' },
+          von: { type: 'string', description: 'Ab Tag YYYY-MM-DD (heute oder später), Standard heute' },
+        },
       },
     });
     tools.push({

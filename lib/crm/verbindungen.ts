@@ -53,6 +53,7 @@ import { PRUEFUNGEN_PLANUNG, planungPruefen, planungReparieren, type PlanungBest
 import { PRUEFUNGEN_KALENDER, kalenderPruefen, kalenderReparieren, type KalenderPruefBestand, type KalenderLebend } from './verbindungen-kalender';
 import { PRUEFUNGEN_BUCHUNG, buchungenPruefen, type BuchungenStand } from '@/lib/kalender/buchung-verbindungen';
 import { PRUEFUNGEN_SPIEGEL, spiegelPruefen, type SpiegelStand } from '@/lib/kalender/spiegel-verbindungen';
+import { PRUEFUNGEN_TERMINE, terminePruefen, termineReparieren, type TermineStand } from './verbindungen-termine';
 // ── Eingang ─────────────────────────────────────────────────────────────────
 
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
@@ -97,6 +98,8 @@ export interface VerbindungsBestaende {
   buchungen?: BuchungenStand | null;
   /** Spiegel im Kalender (29.09., K5): Familie des Inhabers (Dates, Gespräche) — nur Kennungen/UIDs. Events kommen aus `crm`. */
   familieSpiegel?: SpiegelStand['familie'];
+  /** K6a (29.09.): lebende Termine im Holfenster (Schlüssel, Tag, Titel nur zum Vergleichen) + Buchung → Follow-up. null = nicht geprüft. */
+  termine?: TermineStand | null;
 }
 
 // ── Befunde ─────────────────────────────────────────────────────────────────
@@ -213,6 +216,8 @@ export const PRUEFUNGEN = {
   ...PRUEFUNGEN_BUCHUNG,
   // Spiegel Event/Familie ↔ iCloud-Termin (29.09., K5): lib/kalender/spiegel-verbindungen.ts.
   ...PRUEFUNGEN_SPIEGEL,
+  // K6a (29.09.): Event gelöscht → Termin, Waisen (#100), Follow-ups am Termin — lib/crm/verbindungen-termine.ts.
+  ...PRUEFUNGEN_TERMINE,
 } as const satisfies Record<string, Pruefung>;
 
 export type PruefungId = keyof typeof PRUEFUNGEN;
@@ -558,6 +563,8 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
   buchungenPruefen(b.buchungen, m.kontakte, b.kalender, melde);
   // Spiegel (29.09., K5): Event-/Familien-Termine mit echter UID.
   spiegelPruefen(b.crm ? { events: b.crm.events.map(x => ({ id: x.id, datum: x.datum, ...(x.kalenderUid ? { kalenderUid: x.kalenderUid } : {}) })), familie: b.familieSpiegel ?? null } : null, b.kalender, melde);
+  // K6a (29.09.): Termine gelöschter Events, Waisen (#100), Follow-ups am Termin.
+  terminePruefen({ kalender: b.kalender, termine: b.termine, kontakte, aufgaben: b.aufgaben, followups: liste(crm.followups), heute: b.heute }, m.events, melde);
 
   // Import-Konflikte
   if (b.konflikte) {
@@ -616,7 +623,7 @@ function leadOhneDeal<L extends { status: string; chanceId?: string; sqlAm?: str
   return { ...ohne, status: 'qualifizierung' } as L;
 }
 
-export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien' | 'tasks' | 'ziele' | 'meilensteine' | 'zeit' | 'kalender-bezug';
+export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien' | 'tasks' | 'ziele' | 'meilensteine' | 'zeit' | 'kalender-bezug' | 'kalender-termine';
 export interface Aenderung { befundId: PruefungId; speicher: ReparaturSpeicher; anzahl: number; text: string }
 
 /**
@@ -855,8 +862,12 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
   aenderungen.push(...planung.aenderungen);
   // Kalender (29.09., K1): Einträge zu gelöschten Terminen, tote Kennungen, Fokus-Blöcke aus gelöschten Fokuszeiten.
   // K3 (30.09.): Meetings mit Verweis auf gelöschte Termine — auf der schon reparierten Kartei (`kontakte`).
-  const kal = kalenderReparieren({ ...b, kontakte, fokus: planung.fokus }, will, kalenderLebend(b, m));
-  aenderungen.push(...kal.aenderungen);
+  // K6a (29.09.): Follow-ups am Termin (CRM), Meetings an Waisen-Terminen (Kartei); iCloud/Bezug schreibt die Route.
+  // VOR der K1-Reparatur: ein Meeting, das an den neuen Termin wandert, verliert seinen Verweis sonst als „tot“.
+  const ter = termineReparieren({ kalender: b.kalender, termine: b.termine, kontakte, aufgaben: b.aufgaben, followups: liste(crm.followups), heute: b.heute }, will, jetzt, person, m.events);
+  if (ter.aenderungen.some(a => a.speicher === 'crm')) crm = { ...crm, followups: ter.followups };
+  const kal = kalenderReparieren({ ...b, kalender: ter.kalender, kontakte: ter.kontakte, fokus: planung.fokus }, will, kalenderLebend(b, m));
+  aenderungen.push(...kal.aenderungen, ...ter.aenderungen);
 
   return { aenderungen, bestaende: { ...b, crm, kontakte: kal.kontakte, konflikte, dateien, aufgaben, planung: planung.planung, fokus: kal.fokus, kalender: kal.kalender } };
 }

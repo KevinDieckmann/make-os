@@ -54,6 +54,11 @@ export interface AppDaten {
   zeitMonat: ZeitJeMandat | null;
   zeitVormonat: ZeitJeMandat | null;
   einstellung: BrueckeEinstellung;
+  /**
+   * Zeit-Auswertung der Woche je Person des Haushalts (K6a, 29.09. — `auswertungMarkdown`, lib/kalender/auswertung.ts)
+   * für `_App/Woche`. Nur Zahlen, Firmen und Mandate — keine Termin-Titel, keine Kontakte. Nur mit `mitZeit` geladen.
+   */
+  zeitAuswertung?: { person: string; name: string; markdown: string }[];
 }
 
 /** Monat (JJJJ-MM) eines Tages und der davor. */
@@ -64,7 +69,7 @@ export function vormonatVon(tag: string): string {
 }
 
 /** Alles laden (Server). Ohne Haushalt des Inhabers: null — dann schreibt niemand etwas. */
-export async function appDatenLaden(heute: string): Promise<AppDaten | null> {
+export async function appDatenLaden(heute: string, opt: { mitZeit?: boolean } = {}): Promise<AppDaten | null> {
   const { ladeKonten } = await import('@/lib/zugang/konten');
   const konten = (await ladeKonten()).konten;
   const inhaber = konten.find(k => k.rolle === 'inhaber');
@@ -87,7 +92,27 @@ export async function appDatenLaden(heute: string): Promise<AppDaten | null> {
     haushalt, heute, state, crm,
     eingeschraenkt: new Set((kartei?.kontakte ?? []).filter(k => k.eingeschraenkt).map(k => k.id)),
     entscheidungen: [...e1, ...e2], zeitWoche, zeitMonat, zeitVormonat, einstellung,
+    ...(opt.mitZeit ? { zeitAuswertung: await zeitAuswertungLaden(konten.filter(k => k.haushalt === haushalt), heute) } : {}),
   };
+}
+
+/**
+ * Zeit-Auswertung je Person (K6a): die EINE Rechnung `zeitAuswertungFuer` (lib/kalender/auswertung-server.ts, Termine ohne
+ * Abgleich + Fokus-Blöcke) → `auswertungMarkdown` mit Firmen-/Mandatsnamen. Kontakte fallen heraus (keine Namen Dritter im
+ * Wochenrückblick). Wirft nie — ohne Kalender fehlt die Person.
+ */
+async function zeitAuswertungLaden(personen: readonly { speicher: string; name: string }[], heute: string): Promise<{ person: string; name: string; markdown: string }[]> {
+  const { zeitAuswertungFuer } = await import('@/lib/kalender/auswertung-server');
+  const { auswertungMarkdown } = await import('@/lib/kalender/auswertung');
+  const raus: { person: string; name: string; markdown: string }[] = [];
+  for (const p of personen) {
+    try {
+      const a = await zeitAuswertungFuer(p.speicher, heute);
+      const ohneKontakte = { ...a, woche: { ...a.woche, kontakte: [] } };
+      raus.push({ person: p.speicher, name: p.name.split(' ')[0] || p.speicher, markdown: auswertungMarkdown(ohneKontakte, { einheit: k => a.namen.einheiten[k] ?? k, mandat: id => a.namen.mandate[id] ?? 'Mandat' }) });
+    } catch { /* ohne Kalender/Zeit: diese Person fehlt */ }
+  }
+  return raus;
 }
 
 // ── Leitplanken ────────────────────────────────────────────────────────────

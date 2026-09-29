@@ -12,13 +12,15 @@
 //   fokus     Termin der Art „fokuszeit“ und bewusste Fokus-Blöcke der Zeitmessung
 //   frei      Arbeitszeit ohne jede der drei Arten — Soll aus der Wochenvorlage (K1 Verfügbarkeit, `arbeitszeitJeTag`),
 //             sonst Einstellungen vonStunde–bisStunde Mo–Fr; nie an Feiertagen NRW
+//   block     (K6a, 29.09.) Planen-Blöcke (`X-MAKE-ART:block`, K5) — eigene Kategorie je Unterart `X-MAKE-BLOCK`
+//             (reha · routine · pause · aufgabe · ohne = „block“); Vorrang unter Fokus (abwesend > Meeting > Fokus > Block)
 // Aufgaben/Arbeitsort-Einträge ohne Gäste und sonstige ganztägige Termine (Geburtstage, Feiertage) zählen nicht.
 // Privat/Business, Einheit, Mandat und Kontakte kommen je Minute von dem, was dort gewinnt.
 
 import { ausWandzeit, tagPlus } from './zeit';
 import { kalenderwoche, montagVon } from '@/lib/zeit/kalender-kern';
 
-export type AuswertungKategorie = 'meeting' | 'fokus' | 'abwesend';
+export type AuswertungKategorie = 'meeting' | 'fokus' | 'abwesend' | 'block';
 export type ZeitSpaceA = 'privat' | 'business';
 
 /** Ein Termin, wie die Auswertung ihn braucht (aus lib/kalender/ics.ts `Termin` + Space; K1/K3-Felder optional). */
@@ -34,6 +36,8 @@ export interface ATermin {
   mitTeilnehmern?: boolean;
   /** K1: TRANSP=TRANSPARENT („frei“). */
   frei?: boolean;
+  /** K6a: Unterart eines Planen-Blocks (X-MAKE-BLOCK: reha · routine · pause · aufgabe) — ohne Angabe „block“. */
+  blockArt?: string;
   /** K3: Mandat/Einheit/Kontakte am Termin — Schnittstelle, heute meist leer. */
   mandatId?: string;
   einheit?: string;
@@ -57,7 +61,7 @@ export interface AuswertungEingabe {
   arbeitszeitJeTag?: Readonly<Record<string, readonly { start: string; ende: string }[]>>;
 }
 
-export interface Minuten { meetings: number; fokus: number; abwesend: number; frei: number; arbeitszeit: number; belegt: number }
+export interface Minuten { meetings: number; fokus: number; abwesend: number; frei: number; arbeitszeit: number; belegt: number; /** K6a: Planen-Blöcke (alle Unterarten). */ bloecke: number }
 export interface WochenZahlen {
   /** Montag „YYYY-MM-DD“, Sonntag, ISO-KW, Länge der Woche in Minuten (Zeitumstellung!). */
   von: string; bis: string; kw: number; label: string; laenge: number;
@@ -66,6 +70,8 @@ export interface WochenZahlen {
   space: Record<ZeitSpaceA, number>;
   jeEinheit: { einheit: string; minuten: number }[];
   jeMandat: { mandatId: string; minuten: number }[];
+  /** K6a: Planen-Blöcke je Unterart (reha · routine · pause · aufgabe · block), absteigend. */
+  jeBlock: { art: string; minuten: number }[];
   /** Meistbesuchte Kontakte (K3-Schnittstelle: `ATermin.kontakte`) — Termine und Minuten je Kontakt. */
   kontakte: { id: string; termine: number; minuten: number }[];
   /** Je Tag Mo–So: Meetings und Fokus in Minuten. */
@@ -85,7 +91,7 @@ export interface Auswertung {
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const MIN = 60_000;
-const RANG: Record<AuswertungKategorie, number> = { fokus: 1, meeting: 2, abwesend: 3 };
+const RANG: Record<AuswertungKategorie, number> = { block: 0, fokus: 1, meeting: 2, abwesend: 3 };
 
 
 /** Montag der Berliner Woche eines Tages (Kalender-Kern). */
@@ -103,10 +109,11 @@ export function terminKategorie(t: Pick<ATermin, 'art' | 'mitTeilnehmern' | 'fre
   if (art === 'fokuszeit' || art === 'fokus') return 'fokus';
   if (t.mitTeilnehmern) return 'meeting';
   if (t.frei) return null;
+  if (art === 'block') return 'block';
   return art === 'termin' ? 'meeting' : null;
 }
 
-interface Quelle { kat: AuswertungKategorie; space: ZeitSpaceA | null; einheit?: string; mandatId?: string; kontakte?: string[] }
+interface Quelle { kat: AuswertungKategorie; space: ZeitSpaceA | null; einheit?: string; mandatId?: string; kontakte?: string[]; blockArt?: string }
 
 /** Eine Woche auswerten. `stichtag` = irgendein Tag der Woche. */
 export function wocheAuswerten(e: AuswertungEingabe, stichtag: string): WochenZahlen {
@@ -152,7 +159,7 @@ export function wocheAuswerten(e: AuswertungEingabe, stichtag: string): WochenZa
   for (const t of e.termine) {
     const kat = terminKategorie(t);
     if (!kat) continue;
-    const q: Quelle = { kat, space: t.space, ...(t.einheit ? { einheit: t.einheit } : {}), ...(t.mandatId ? { mandatId: t.mandatId } : {}), ...(t.kontakte?.length ? { kontakte: t.kontakte } : {}) };
+    const q: Quelle = { kat, space: t.space, ...(t.einheit ? { einheit: t.einheit } : {}), ...(t.mandatId ? { mandatId: t.mandatId } : {}), ...(t.kontakte?.length ? { kontakte: t.kontakte } : {}), ...(kat === 'block' ? { blockArt: t.blockArt || 'block' } : {}) };
     let a: number, b: number;
     try { a = ausWandzeit(t.start).getTime(); b = ausWandzeit(t.ende).getTime(); } catch { continue; }
     if (!(b > a) || b <= t0 || a >= t1) continue;
@@ -179,9 +186,9 @@ export function wocheAuswerten(e: AuswertungEingabe, stichtag: string): WochenZa
   }
 
   // Zählen — je Minute genau eine Quelle.
-  const m: Minuten = { meetings: 0, fokus: 0, abwesend: 0, frei: 0, arbeitszeit: 0, belegt: 0 };
+  const m: Minuten = { meetings: 0, fokus: 0, abwesend: 0, frei: 0, arbeitszeit: 0, belegt: 0, bloecke: 0 };
   const space: Record<ZeitSpaceA, number> = { privat: 0, business: 0 };
-  const einheit = new Map<string, number>(), mandat = new Map<string, number>(), kontaktMin = new Map<string, number>();
+  const einheit = new Map<string, number>(), mandat = new Map<string, number>(), kontaktMin = new Map<string, number>(), block = new Map<string, number>();
   const tage = Array.from({ length: 7 }, (_, i) => ({ tag: tagPlus(von, i), meetings: 0, fokus: 0, abwesend: 0 }));
   let tagNr = 0;
   for (let i = 0; i < laenge; i++) {
@@ -191,7 +198,7 @@ export function wocheAuswerten(e: AuswertungEingabe, stichtag: string): WochenZa
     if (nr < 0) { if (arbeit[i]) m.frei++; continue; }
     const q = quellen[nr];
     if (q.kat === 'abwesend') { m.abwesend++; tage[tagNr].abwesend++; continue; }
-    if (q.kat === 'meeting') { m.meetings++; tage[tagNr].meetings++; } else { m.fokus++; tage[tagNr].fokus++; }
+    if (q.kat === 'meeting') { m.meetings++; tage[tagNr].meetings++; } else if (q.kat === 'block') { m.bloecke++; const art = q.blockArt ?? 'block'; block.set(art, (block.get(art) ?? 0) + 1); } else { m.fokus++; tage[tagNr].fokus++; }
     m.belegt++;
     if (q.space) space[q.space]++;
     if (q.einheit) einheit.set(q.einheit, (einheit.get(q.einheit) ?? 0) + 1);
@@ -204,11 +211,11 @@ export function wocheAuswerten(e: AuswertungEingabe, stichtag: string): WochenZa
   const kw = kalenderwoche(von);
   return {
     von, bis, kw, label: `KW ${kw} · ${Number(von.slice(8, 10))}.${Number(von.slice(5, 7))}. – ${Number(bis.slice(8, 10))}.${Number(bis.slice(5, 7))}.${bis.slice(0, 4)}`, laenge,
-    minuten: m, space, jeEinheit: absteigend(einheit, 'einheit'), jeMandat: absteigend(mandat, 'mandatId'), kontakte, tage, anzahlMeetings,
+    minuten: m, space, jeEinheit: absteigend(einheit, 'einheit'), jeMandat: absteigend(mandat, 'mandatId'), jeBlock: absteigend(block, 'art'), kontakte, tage, anzahlMeetings,
   };
 }
 
-const KENNZAHLEN: (keyof Minuten)[] = ['meetings', 'fokus', 'abwesend', 'frei', 'arbeitszeit', 'belegt'];
+const KENNZAHLEN: (keyof Minuten)[] = ['meetings', 'fokus', 'abwesend', 'frei', 'arbeitszeit', 'belegt', 'bloecke'];
 
 /** Die Woche des Stichtags + `wochen` Vorwochen, Schnitt und Abweichung. */
 export function zeitAuswertung(e: AuswertungEingabe, stichtag: string, wochen = 4): Auswertung {
@@ -226,6 +233,9 @@ export const stundenAus = (min: number): string => `${(Math.round((min / 60) * 1
 /** „+1,5 h“ / „−2 h“ / „±0 h“ gegenüber dem Schnitt. */
 export const abweichungText = (min: number): string => (Math.abs(min) < 3 ? '±0 h' : `${min > 0 ? '+' : '−'}${stundenAus(Math.abs(min))}`);
 
+/** Anzeigename der Block-Unterarten (K5 `X-MAKE-BLOCK`). */
+export const BLOCK_NAME: Record<string, string> = { reha: 'Reha', routine: 'Routine', pause: 'Pause', aufgabe: 'Aufgabe', block: 'Blockzeit' };
+
 /** Anteil in Prozent (0 bei leerem Ganzen). */
 export const anteil = (teil: number, ganz: number): number => (ganz > 0 ? Math.round((teil / ganz) * 100) : 0);
 
@@ -240,10 +250,12 @@ export function auswertungMarkdown(a: Auswertung, name: { einheit?: (k: string) 
     `## Zeit ${w.label}`,
     z('Meetings', m.meetings, a.schnitt.meetings) + ` · ${w.anzahlMeetings} Termine`,
     z('Fokus', m.fokus, a.schnitt.fokus),
+    ...(m.bloecke || a.schnitt.bloecke ? [z('Blöcke (Planen)', m.bloecke, a.schnitt.bloecke ?? 0)] : []),
     z('Abwesend', m.abwesend, a.schnitt.abwesend),
     z('Frei in der Arbeitszeit', m.frei, a.schnitt.frei),
     `- Privat/Business: ${anteil(w.space.privat, w.space.privat + w.space.business)} % / ${anteil(w.space.business, w.space.privat + w.space.business)} %`,
   ];
+  if (w.jeBlock?.length) zeilen.push('', '### Blöcke je Art', ...w.jeBlock.map(x => `- ${BLOCK_NAME[x.art] ?? x.art}: ${stundenAus(x.minuten)}`));
   if (w.jeEinheit.length) zeilen.push('', '### Je Firma', ...w.jeEinheit.map(x => `- ${name.einheit?.(x.einheit) ?? x.einheit}: ${stundenAus(x.minuten)}`));
   if (w.jeMandat.length) zeilen.push('', '### Je Mandat', ...w.jeMandat.map(x => `- ${name.mandat?.(x.mandatId) ?? x.mandatId}: ${stundenAus(x.minuten)}`));
   if (w.kontakte.length) zeilen.push('', '### Meistbesuchte Kontakte', ...w.kontakte.slice(0, 5).map(x => `- ${name.kontakt?.(x.id) ?? x.id}: ${x.termine} Termine, ${stundenAus(x.minuten)}`));

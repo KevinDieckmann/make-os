@@ -29,13 +29,14 @@ import type { PlanungBezug } from './verbindungen-planung';
 import { ZIEL_HORIZONTE } from '@/lib/planung/typen';
 import { HEADS } from '@/lib/heads/prompt';
 import { standName } from '@/lib/heads/stand';
-import { ladeStand, objekteKurz, holfenster, SPEICHER as ICLOUD_SPEICHER } from '@/lib/kalender/icloud';
+import { ladeStand, objekteKurz, holfenster, termineImZeitraum, SPEICHER as ICLOUD_SPEICHER } from '@/lib/kalender/icloud';
 import { ladeBezuege, BEZUG_SPEICHER } from '@/lib/kalender/bezug-server';
 import { kennungenVon } from '@/lib/kalender/bezug';
 import type { KalenderPruefBestand } from './verbindungen-kalender';
 import { HAUSHALT_ERSATZ } from './sperrliste';
 import type { BuchungenStand } from '@/lib/kalender/buchung-verbindungen';
 import type { SpiegelStand } from '@/lib/kalender/spiegel-verbindungen';
+import type { TermineStand } from './verbindungen-termine';
 
 interface Quellen { haushalt: string | null; personen: string[] }
 
@@ -95,6 +96,20 @@ export async function ladeKalenderPruefung(): Promise<KalenderPruefBestand> {
 }
 
 /**
+ * K6a (29.09.): lebende Termine im Holfenster (Schlüssel, Starttag, Titel — der Titel nur zum Vergleichen für die
+ * Waisen-Neuzuordnung, er verlässt die Prüfung nie) und je bestätigter Buchung das Follow-up „Termin vorbereiten“.
+ * Ohne gelungenen iCloud-Stand: keine Termine (die Prüfungen schweigen dann).
+ */
+async function ladeTermineStand(): Promise<TermineStand> {
+  const [s, b] = await Promise.all([ladeStand(), import('@/lib/kalender/buchung-speicher').then(m => m.ladeBuchungBestand()).catch(() => null)]);
+  const f = holfenster(s);
+  return {
+    termine: f ? termineImZeitraum(s, f.von, f.bis).map(t => ({ id: t.id, tag: t.start.slice(0, 10), titel: t.titel, mitTeilnehmern: t.mitTeilnehmern })) : [],
+    buchungFollowups: (b?.buchungen ?? []).filter(x => x.status === 'bestaetigt' && x.terminUid && x.vorbereitenId).map(x => ({ buchungId: x.id, terminUid: x.terminUid!, followUpId: x.vorbereitenId! })),
+  };
+}
+
+/**
  * Terminbuchungen (29.09., K4): nur Kennungen und Status der Buchungen und die Kennungen der Seiten. Ob der Termin in
  * iCloud noch da ist, prüft die Prüfung gegen dieselben UIDs wie K1 (`kalender` oben) — kein zweites Laden.
  */
@@ -142,13 +157,14 @@ async function aufPlatte(h: string): Promise<string[]> {
 export async function ladeVerbindungsBestaende(heute: string): Promise<VerbindungsBestaende & { haushalt: string | null }> {
   const q = await quellen();
   // Seit 28.09. abends: Planposten-Kennungen (Mandat → Liquiditätsplan) und Head-Vorschläge (nur Kennung, Person, Status).
-  const [liquiplan, heads, planung, kalender, buchungen, familieSpiegel] = await Promise.all([
+  const [liquiplan, heads, planung, kalender, buchungen, familieSpiegel, termine] = await Promise.all([
     loadJson<{ posten?: { id: string }[] }>('liquiplan'),
     Promise.all(HEADS.map(async h => ({ head: h, stand: await loadJson<{ vorschlaege?: { id: string; kontakt_id?: string | null; status?: string }[] }>(standName(h)) }))),
     ladePlanung(q),
     ladeKalenderPruefung().catch(() => null),
     ladeBuchungen().catch(() => null),
     ladeFamilieSpiegel().catch(() => null),
+    ladeTermineStand().catch(() => null),
   ]);
   const [kontakte, crm, finanz, tasks, ordnung, einheiten, konflikte, ablage, dateien, zeiten, aufgabenAblage] = await Promise.all([
     loadJson<{ kontakte?: Kontakt[] }>('kontakte'),
@@ -181,6 +197,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     kalender,
     buchungen,
     familieSpiegel,
+    termine,
     heads: heads.map(h => ({ head: h.head, vorschlaege: (Array.isArray(h.stand?.vorschlaege) ? h.stand!.vorschlaege : []).map(v => ({ id: v.id, ...(v.kontakt_id ? { kontakt_id: v.kontakt_id } : {}), ...(v.status ? { status: v.status } : {}) })) })),
   };
 }

@@ -49,6 +49,7 @@ import type { CrmBestand, FollowUpArt, FollowUpStatus } from './typen';
 import { faellige, FOLLOWUP_ARTEN, tagPlus, type Faellig, type VirtuelleQuelle } from './followup';
 import { normiere } from './wahl';
 import { kurzHash, grundAnker, aktivitaetMarke, markenMit } from './aktivitaet-marke';
+import { altSchluessel } from '@/lib/kalender/bezug';
 
 // ── Unter-Reiter und Kategorien ──────────────────────────────────────────────
 export type Unter = 'alle' | 'notizen' | 'emails' | 'anrufe' | 'aufgaben' | 'meetings';
@@ -92,7 +93,7 @@ export const ERGEBNIS_KURZ: Record<Ergebnis, string> = {
 export const ANRUF_ERGEBNISSE: readonly Ergebnis[] = ['gespraech', 'termin', 'mailbox', 'nicht_erreicht', 'rueckruf', 'kein_bedarf'];
 
 const QUELLE_HINWEIS: Record<VirtuelleQuelle, string> = {
-  schritt: 'Nächster Schritt am Kontakt', wiedervorlage: 'Wiedervorlage', dealschritt: 'Nächster Schritt am Deal',
+  schritt: 'Nächster Schritt am Kontakt', wiedervorlage: 'Wiedervorlage', dealschritt: 'Nächster Schritt am Deal', dealwiedervorlage: 'Wiedervorlage am geparkten Deal',
   nachfassen: 'Nachfassen nach dem Event', review: 'Review am Mandat', kadenz: 'Takt des Kreises',
 };
 export const STATUS_LABEL: Record<FollowUpStatus, string> = { offen: 'offen', erledigt: 'erledigt', verpasst: 'verpasst', abgesagt: 'abgesagt' };
@@ -132,8 +133,58 @@ export interface MeetingDaten { tag: string; zeit?: string; ort?: string; notiz?
 export const meetingWann = (tag: string, zeit?: string): string => (zeit && /^\d{2}:\d{2}$/.test(zeit) ? `${tag}T${zeit}` : tag);
 
 /** Zeit eines Kalendertermins für ein Meeting mit `terminUid` (K3) — aus /api/kalender/bezug, je Schlüssel. */
-export interface TerminZeit { start: string; ende?: string; ganztags?: boolean; ort?: string; titel?: string }
+export interface TerminZeit { start: string; ende?: string; ganztags?: boolean; ort?: string; titel?: string; /** R-K1: abgesagt oder von uns abgelehnt. */ abgesagt?: true }
 export type TerminZeiten = Readonly<Record<string, TerminZeit>>;
+
+// ── Termin-Zeiten überall aus dem Termin (K6a, 29.09.) ───────────────────────
+// EINE Abbildung Termin → Zeit für alle Leser: die Akte (GET /api/kalender/bezug), ZOE (lib/zoe/crm-werkzeuge.ts), die
+// Heads (lib/heads/lauf.ts), Glocke/Heute (lib/heute/anstehend-server.ts). Server lesen über
+// lib/crm/termin-zeiten-server.ts `terminZeitenLesen` (ohne iCloud-Abgleich, fremd-private Termine fallen heraus).
+// `mitTerminZeit` setzt `wann`/`ort` NUR für die Anzeige bzw. für Datenpakete — nie zurückschreiben: ein Meeting mit
+// `terminUid` trägt in der Kartei kein `wann` (K3).
+
+/** Die Zeit eines Termins (lib/kalender/ics.ts `Termin`) für Meetings. */
+export function terminZeitAus(t: { start: string; ende?: string; ganztags?: boolean; ort?: string; titel?: string; abgesagt?: true }): TerminZeit {
+  return { start: t.start, ...(t.ende ? { ende: t.ende } : {}), ...(t.ganztags ? { ganztags: true } : {}), ...(t.ort ? { ort: t.ort } : {}), ...(t.titel ? { titel: t.titel } : {}), ...(t.abgesagt ? { abgesagt: true as const } : {}) };
+}
+
+/**
+ * Zeiten je Termin-Schlüssel — unter `kalender|uid(::RID)` UND unter der alten Form ohne Kalender (Meetings vor R-K1 #46).
+ * Gibt es dieselbe alte Form zweimal (gleiche UID in zwei Kalendern), bleibt die erste — neue Verweise tragen den Kalender.
+ */
+export function zeitenAus(termine: readonly { id: string; start: string; ende?: string; ganztags?: boolean; ort?: string; titel?: string; abgesagt?: true; maskiert?: true }[]): Record<string, TerminZeit> {
+  const raus: Record<string, TerminZeit> = {};
+  for (const t of termine) {
+    if (t.maskiert) continue;
+    const z = terminZeitAus(t);
+    raus[t.id] = z;
+    const alt = altSchluessel(t.id);
+    if (!raus[alt]) raus[alt] = z;
+  }
+  return raus;
+}
+
+/** `wann` einer Aktivität aus der Termin-Zeit: Berliner Tag bzw. Tag + Uhrzeit (Format wie `Aktivitaet.wann`). */
+export const wannAusTermin = (t: TerminZeit): string => (t.ganztags || t.start.length < 16 ? t.start.slice(0, 10) : t.start.slice(0, 16));
+
+/**
+ * Eine Aktivität mit der Zeit ihres Termins (rein): Meetings mit `terminUid` bekommen `wann` (und `ort`, wenn er fehlt)
+ * aus dem Termin — alles andere bleibt, wie es ist. Nur zum Anzeigen/Weitergeben, nie speichern.
+ */
+export function mitTerminZeit<A extends Pick<Aktivitaet, 'terminUid' | 'wann' | 'ort'>>(a: A, termine: TerminZeiten | undefined): A {
+  const t = a.terminUid ? termine?.[a.terminUid] : undefined;
+  if (!t) return a;
+  return { ...a, wann: wannAusTermin(t), ...(t.ort && !a.ort ? { ort: t.ort } : {}) };
+}
+
+/** Alle Aktivitäten einer Kartei mit den Zeiten ihrer Termine (rein, nur Anzeige/Datenpakete). */
+export function kontakteMitTerminZeit<K extends Pick<Kontakt, 'aktivitaeten'>>(kontakte: readonly K[], termine: TerminZeiten | undefined): K[] {
+  if (!termine || !Object.keys(termine).length) return [...kontakte];
+  return kontakte.map(k => ((k.aktivitaeten ?? []).some(a => a.terminUid && termine[a.terminUid]) ? { ...k, aktivitaeten: (k.aktivitaeten ?? []).map(a => mitTerminZeit(a, termine)) } : k));
+}
+
+/** Trägt eine Kartei Meetings mit Termin-Verweis? (sonst muss niemand den Kalender lesen) */
+export const hatTerminVerweise = (kontakte: readonly Pick<Kontakt, 'aktivitaeten'>[]): boolean => kontakte.some(k => (k.aktivitaeten ?? []).some(a => !!a.terminUid));
 
 /**
  * Datum, Uhrzeit, Ort und Notiz eines Meetings. Mit `terminUid` (K3) kommen Zeit und Ort aus dem TERMIN (`termine`,

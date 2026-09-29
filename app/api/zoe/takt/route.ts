@@ -13,6 +13,7 @@ import { reihe } from '@/lib/zoe/auftraege';
 import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
 import { alleSichten } from '@/lib/business/speicher';
 import { kalenderSicherungTaeglich } from '@/lib/kalender/sicherung-server';
+import { eventSpiegelImTakt } from '@/lib/kalender/spiegel-server';
 import { localDay } from '@/lib/zeit';
 
 /** Business-Index: einmal am Tag festhalten (Verlauf, Trend, Ampel-Wechsel, MRR für die NRR) — auch ohne offene Seite. */
@@ -56,6 +57,8 @@ export async function POST() {
   await kalenderFrischHalten().catch(() => {});
   // Tägliche Voll-Sicherung je Kalender (R-K1 #K5) — nachts ab 03:00, einmal je Tag, nie blockierend.
   void kalenderSicherungTaeglich().catch(() => { /* Fehler stehen im Stand kalender-sicherung */ });
+  // Event-Termine im Takt nachziehen (K6a) — auch Änderungen am Event ohne Bestand-PATCH (ZOE, Heads); alle 30 Min.
+  void eventSpiegelImTakt().catch(() => { /* beim nächsten Takt */ });
   void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });

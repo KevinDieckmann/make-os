@@ -24,6 +24,7 @@ import { netzStufe, profilAdresse, suchLink } from '@/lib/crm/netzwerk';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import Link from 'next/link';
 import { type CrmApi, datum, euro } from './daten';
+import { useTerminZeiten } from '../kalender/TermineAkte';
 import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEinwilligung } from './teile';
 import { Wahl, WahlMehrfach } from './Wahl';
 import { anredeVorschlag, kontaktRollenVorschlag } from '@/lib/crm/vorschlaege';
@@ -286,6 +287,7 @@ export function VerlaufTeil({ k, api, name, heute, max = 60 }: { k: Kontakt; api
   const verlauf = (k.aktivitaeten ?? []).filter(a => artFilter === 'alle' || a.art === artFilter);
   const arten = Array.from(new Set((k.aktivitaeten ?? []).map(a => a.art)));
   const log = (art: string) => api.aktivitaet({ id: k.id, art });
+  const terminZeiten = useTerminZeiten(k.id); // K6a: Meetings mit Termin an der Zeit ihres Termins
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -294,7 +296,7 @@ export function VerlaufTeil({ k, api, name, heute, max = 60 }: { k: Kontakt; api
       </div>
       {notiz && <div style={{ marginBottom: 10 }}><NotizFormular heute={heute} anrede={k.anrede} einwilligung={!hatMailEinwilligung(k)} onAbbruch={() => setNotiz(false)} onFertig={x => { void festhalten(api, { id: k.id, art: 'gespraech', notiz: x.notiz, naechster: x.naechster }, x.einwilligung, heute); setNotiz(false); }} /></div>}
       {arten.length > 1 && <div style={{ marginBottom: 8 }}><Pillen liste={[{ id: 'alle', label: 'Alle' }, ...arten.map(a => ({ id: a, label: a }))] as { id: 'alle' | AktivitaetArt; label: string }[]} aktiv={artFilter} onWahl={setArtFilter} /></div>}
-      <Verlauf liste={verlauf} name={name} heute={heute} max={max} />
+      <Verlauf liste={verlauf} name={name} heute={heute} max={max} termine={terminZeiten} />
       {verlauf.length > max && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Die jüngsten {max} von {verlauf.length} Einträgen.</div>}
     </div>
   );

@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   const person = await eigenePerson(req);
   if (!person) return NextResponse.json(GESPERRT, { status: 403 });
   const jetzt = new Date();
-  const etag = etagAus('meldungen1', person, heuteBerlin(jetzt), await meldungenStand(person));
+  const etag = etagAus('meldungen2', person, heuteBerlin(jetzt), await meldungenStand(person, jetzt));
   const nichts = unveraendert(req, etag);
   if (nichts) return nichts;
   const sicht = await meldungenSicht(person, jetzt);

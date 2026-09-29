@@ -12,6 +12,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Spalten, Spalte } from './schlank';
 import { WIDGETS } from './flaeche/widgets';
 import { Anlaesse } from './kalender/Anlaesse';
+import { Anstehend } from './heute/Anstehend';
 
 export function HeuteView() {
   const [datum, setDatum] = useState('');
@@ -37,6 +38,8 @@ export function HeuteView() {
           <W.fokus.Komponente e={{ horizont: 'tag' }} i={0} />
           <W.aufgaben.Komponente e={{ nur: 'dran', anzahl: 10 }} titel="Heute dran" i={1} />
           <W.termine.Komponente e={{ tage: 1, business: true }} titel="Termine heute" i={2} />
+          {/* K6a (29.09.): Nachbereiten, Fristen, Follow-ups, Buchungsanfragen, ZOE-Kalender-Vorschläge, Geburtstage — dieselbe Quelle wie die Glocke. */}
+          <Anstehend i={3} />
         </Spalte>
         <Spalte>
           <W.koerper.Komponente e={{}} i={1} />

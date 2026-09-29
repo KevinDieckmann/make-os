@@ -22,7 +22,7 @@ import { gesundheit, gesamtwert, OFFENE_STUFEN } from './pipeline';
 import { besterKanal, kanalStatus, type KanalStatus } from './recht';
 import { mandatLage } from './kunden';
 import { followUpBis } from './events';
-import { taktVon } from './followup';
+import { taktVon, dealWiedervorlagen } from './followup';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
 import { hatTyp } from './mehrfach';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
@@ -132,6 +132,14 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   }
   // 2 Signale
   for (const k of kontakte) if (unbeantwortet(k, heute)) nimm(k, 'signale', 50, (k.aktivitaeten ?? []).slice(-1)[0]?.text?.startsWith('Mail:') ? `hat geschrieben (${(k.aktivitaeten ?? []).slice(-1)[0].text!.slice(6, 70)}) — wartet auf dich` : 'hat geantwortet — wartet auf dich');
+  // 2b Geparkte Deals mit fälliger Wiedervorlage (K6a, Befund 2 der Kalender-Verbindungskarte) — Regel `dealWiedervorlagen`
+  // (dieselbe wie in der Follow-up-Ebene). Über die Person des Deals, sonst eine der Firma.
+  for (const c of dealWiedervorlagen(crm, heute)) {
+    const { k, ueberFirma } = ansprech(c.kontaktIds, f => dealZuFirma(c, f));
+    if (!k) { aus.ohnePerson++; continue; }
+    const d = tage(c.wiedervorlage!, heute);
+    nimm(k, 'chancen', 35 + Math.min(20, d), `„${c.titel}“ geparkt — Wiedervorlage ${d > 0 ? `seit ${d} Tagen überfällig` : 'heute'}${ueberFirma ? ` (über ${ueberFirma})` : ''}`, { chance: c });
+  }
   // 3 Chancen
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) {
     const g = gesundheit(c, heute);

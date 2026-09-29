@@ -151,6 +151,13 @@ describe('_App-Spiegel (direkt im Server-Vault)', () => {
     expect(await lesen(`_App/Entscheidungen/${H.slice(0, 7)}.md`)).toContain('lieber Donnerstag');
     const woche = (await fs.readdir(path.join(vault, '_App', 'Woche')))[0];
     expect(await lesen(`_App/Woche/${woche}`)).toContain('Startseite abnehmen');
+    // K6a (29.09.): Zeit der Woche je Person aus `auswertungMarkdown` — nur Zahlen, keine Kontakte.
+    const wocheText = await lesen(`_App/Woche/${woche}`);
+    expect(wocheText).toContain('# Zeit — kevin');
+    expect(wocheText).toContain('# Zeit — malin');
+    expect(wocheText).toMatch(/- Meetings: 0 h/);
+    expect(wocheText).not.toContain('Meistbesuchte Kontakte');
+    expect(wocheText).not.toContain('# Zeit — gast');
     const nochmal = await S.appSpiegel({ erzwingen: true });
     expect(nochmal.geschrieben).toBe(0);
     expect((await S.appSpiegel()).text).toBe('Spiegel aktuell.');

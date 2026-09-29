@@ -55,17 +55,32 @@ export function zahlungAusRechnungen(m: Pick<Mandat, 'kunde'>, rechnungen: Rechn
   return { wert: Math.max(0, 100 - ueber * 30 - spaet * 10), text: `${l.length} Rechnungen · ${ueber} überfällig · ${spaet} verspätet bezahlt` };
 }
 
-export function mandatLage(m: Mandat, heute: string, rechnungen?: RechnungKurz[]): MandatLage {
-  // Zahlung: von Hand gesetzt gewinnt, sonst aus den Rechnungen gerechnet.
-  if (rechnungen && m.health.zahlung === null) { const z = zahlungAusRechnungen(m, rechnungen, heute); if (z) m = { ...m, health: { ...m.health, zahlung: z.wert } }; }
-  let endeAm: string | null = m.ende ?? null;
+/** Was `mandatFristen` von einem Mandat braucht — auch die schlanke Form aus dem Kalender (lib/kalender/eintraege.ts). */
+export type MandatFristFelder = Pick<Mandat, 'ende' | 'start' | 'mindestlaufzeitMonate' | 'verlaengerung' | 'kuendigungsfristTage'>;
+
+/**
+ * Ende der laufenden Periode und Kündigungsfrist eines Mandats — die EINE Rechnung (K6a, 29.09.; Befund 6 der
+ * Kalender-Verbindungskarte: vorher rechnete der Kalender nur mit `ende`, die Mandatsseite zusätzlich aus Start +
+ * Mindestlaufzeit + automatischer Verlängerung). Genutzt von `mandatLage` (Mandat, Power Hour, Heads), den Kalender-
+ * Fristen und Glocke/Heute. `frist` = letzter Tag zum Kündigen/Verlängern, nur mit Kündigungsfrist (sonst null).
+ */
+export function mandatFristen(m: Partial<MandatFristFelder>, heute: string): { endeAm: string | null; frist: string | null } {
+  let endeAm: string | null = m.ende ? m.ende.slice(0, 10) : null;
   if (!endeAm && m.start && m.mindestlaufzeitMonate) {
-    endeAm = plusMonate(m.start, m.mindestlaufzeitMonate);
+    endeAm = plusMonate(m.start.slice(0, 10), m.mindestlaufzeitMonate);
     // Nach der Mindestlaufzeit verlängert sich ein Auto-Vertrag monatsweise.
     while (m.verlaengerung === 'auto' && endeAm < heute) endeAm = plusMonate(endeAm, 1);
   }
+  const frist = endeAm && m.kuendigungsfristTage && m.kuendigungsfristTage > 0 ? plusTage(endeAm, -m.kuendigungsfristTage) : null;
+  return { endeAm, frist };
+}
+
+export function mandatLage(m: Mandat, heute: string, rechnungen?: RechnungKurz[]): MandatLage {
+  // Zahlung: von Hand gesetzt gewinnt, sonst aus den Rechnungen gerechnet.
+  if (rechnungen && m.health.zahlung === null) { const z = zahlungAusRechnungen(m, rechnungen, heute); if (z) m = { ...m, health: { ...m.health, zahlung: z.wert } }; }
+  const { endeAm, frist } = mandatFristen(m, heute);
   const endeIn = endeAm ? tage(heute, endeAm) : null;
-  const fristBis = endeAm && m.kuendigungsfristTage ? plusTage(endeAm, -m.kuendigungsfristTage) : endeAm;
+  const fristBis = frist ?? endeAm;
   // Health: nur bewertete Faktoren zählen, anteilig neu gewichtet.
   let summe = 0, gewicht = 0;
   for (const [k, g] of Object.entries(HEALTH_GEWICHTE) as [keyof typeof HEALTH_GEWICHTE, number][]) {

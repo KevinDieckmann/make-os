@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, ClipboardCheck, Hourglass, PhoneForwarded, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
@@ -89,10 +89,16 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   sammel: { Icon: Layers, label: 'Weitere', farbe: C.inkDim },
   // K2 (29.09.): Geburtstag am Vortag und am Tag — abgeleitet, nie gespeichert.
   geburtstag: { Icon: Cake, label: 'Geburtstag', farbe: '#FF7EB6' },
+  // K6a (29.09.): was ansteht — abgeleitet, nie gespeichert (lib/heute/anstehend.ts).
+  termin: { Icon: CalendarClock, label: 'Termin', farbe: C.aktiv },
+  nachbereiten: { Icon: ClipboardCheck, label: 'Nachbereiten', farbe: C.achtung },
+  frist: { Icon: Hourglass, label: 'Frist', farbe: C.achtung },
+  followup: { Icon: PhoneForwarded, label: 'Follow-up', farbe: C.aktiv },
+  vorschlag: { Icon: Sparkles, label: 'ZOE-Vorschlag', farbe: C.aktiv },
 };
 
 function zeitVon(m: Meldung, jetzt: number): string {
-  if (m.virtuell) return m.art === 'faellig' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
+  if (m.virtuell) return m.art === 'faellig' || m.art === 'termin' || m.art === 'nachbereiten' || m.art === 'frist' || m.art === 'followup' || m.art === 'vorschlag' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
   return vorZeit(m.am, jetzt);
 }
 

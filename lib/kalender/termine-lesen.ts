@@ -11,7 +11,19 @@ import type { Termin } from './ics';
 import { ladeBezuege } from './bezug-server';
 import { mitBezug, type TerminMitBezug } from './bezug';
 
-interface MacEv { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; location?: string }
+export interface MacEv { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; location?: string }
+
+/**
+ * Der vom Mac gelieferte Stand (`calendar-cache`) als Termine im Zeitraum [von, bis) — die EINE Abbildung (K6a: vorher
+ * doppelt in GET /api/kalender). Nur lesen: Mac-Termine sind in MAKE OS nie bearbeitbar.
+ */
+export function macTermine(events: readonly MacEv[] | undefined, von: string, bis: string): Termin[] {
+  return (events ?? []).filter(e => e.title && e.startDate && e.startDate.slice(0, 10) < bis && (e.endDate ?? e.startDate).slice(0, 10) >= von).map((e, i) => ({
+    id: e.id ?? `mac-${i}`, uid: e.id ?? `mac-${i}`, href: '', titel: e.title!, start: e.startDate!, ende: e.endDate ?? e.startDate!, ganztags: !!e.allDay,
+    kalender: (e.calendarName ?? 'Kalender').trim(), kalenderId: '', ...(e.location ? { ort: e.location } : {}), serie: false, mitTeilnehmern: false, bearbeitbar: false,
+    art: 'termin' as const, beschaeftigt: !e.allDay, sichtbarkeit: 'standard' as const,
+  }));
+}
 
 export interface GeleseneTermine {
   quelle: 'icloud' | 'mac' | 'leer';
@@ -34,11 +46,7 @@ export async function termineLesen(einst: KalenderEinstellungen, von: string, bi
   } else {
     const c = await loadJson<{ events?: MacEv[]; at?: string }>(CACHE);
     if (c?.at) { quelle = 'mac'; stand = c.at; }
-    termine = (c?.events ?? []).filter(e => e.title && e.startDate && e.startDate.slice(0, 10) < bis && (e.endDate ?? e.startDate).slice(0, 10) >= von).map((e, i) => ({
-      id: e.id ?? `mac-${i}`, uid: e.id ?? `mac-${i}`, href: '', titel: e.title!, start: e.startDate!, ende: e.endDate ?? e.startDate!, ganztags: !!e.allDay,
-      kalender: (e.calendarName ?? 'Kalender').trim(), kalenderId: '', ...(e.location ? { ort: e.location } : {}), serie: false, mitTeilnehmern: false, bearbeitbar: false,
-      art: 'termin' as const, beschaeftigt: !e.allDay, sichtbarkeit: 'standard' as const,
-    }));
+    termine = macTermine(c?.events, von, bis);
     kalender = Array.from(new Set(termine.map(t => t.kalender))).map(name => ({ name, schreibbar: false }));
   }
   const bezuege = await ladeBezuege().catch(() => null);
