@@ -8,7 +8,7 @@
 //                                        und den Stand zurücksetzen (U1 H1, Rückweg zur alten Version) — nur von Hand,
 //                                        nie über den Dienstweg.
 // Was und wie: lib/planung/wochenplan-uebernahme(-server).ts. Nur der Haushalt des Inhabers; Build-Kennung wie jede
-// schreibende Route.
+// schreibende Route. S1 (29.09.): alle drei Aktionen nur von Hand (Dienstweg → 403), Protokoll mit der Person der Sitzung.
 
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
@@ -17,6 +17,7 @@ import { uebernahmeVorschau, uebernahmeAusfuehren, uebernahmeErneut, uebernahmeZ
 import { karteiHaushalt } from '@/lib/crm/sperrliste';
 import { KalenderFehler } from '@/lib/kalender/icloud';
 import { istDienst } from '@/lib/zugang/dienst';
+
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,9 +34,10 @@ export async function POST(req: Request) {
   if (alterBau) return alterBau;
   let b: { aktion?: string; bestaetigt?: unknown };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  if (istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Übernahme und Zurücknehmen nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
   if (b.aktion === 'zuruecknehmen') {
-    if (istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Zurücknehmen nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
     try {
+      // Nur Sitzungen kommen hierher (Dienstweg oben 403) — die Person ist die aus der Sitzung, wie `werAus(req)`.
       const r = await uebernahmeZuruecknehmen(await karteiHaushalt(), { art: 'person', person: z.person }, b.bestaetigt === true);
       return NextResponse.json(r, { status: r.ok || r.probelauf ? 200 : 409 });
     } catch (e) { return NextResponse.json({ ok: false, fehler: e instanceof Error ? e.message.slice(0, 300) : 'Zurücknehmen gescheitert.' }, { status: 502 }); }

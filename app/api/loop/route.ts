@@ -5,12 +5,17 @@
 // (agent-log), damit der nächste Loop darauf aufbauen kann.
 //
 // POST { loop: 'morgen' | 'woche' | 'rueckblick' }
+// S1 (29.09.): nur der Haushalt des Inhabers (`imHaushaltDesInhabers`, 403), die Loops laufen für die ausdrücklich
+// benannte Person (nie der Rückfall auf „kevin“). Kein fester Gesundheitskontext mehr im Prompt — optional aus dem
+// eigenen Profil der Person (lib/gesundheit/kontext.ts); das Journal ist das der Person (`speicherFuer`).
 
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { logRun, recentRuns } from '@/lib/agent-log';
 import { askJson } from '@/lib/anthropic';
-import { personAus } from '@/lib/zoe/raum';
+import { nameVon, speicherFuer } from '@/lib/zoe/raum';
+import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { gatherBrain } from '@/lib/brain';
 import { vitalsHint } from '@/lib/vitals';
 import { computeMetrics, eur } from '@/lib/make-one/finance-data';
@@ -64,6 +69,9 @@ const fmtEvent = (e: { title?: string; startDate?: string; allDay?: boolean }) =
 };
 
 export async function POST(req: Request) {
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
+  const person = zugang.person;
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { loop?: string; today?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
@@ -72,22 +80,26 @@ export async function POST(req: Request) {
   const today = body.today && /^\d{4}-\d{2}-\d{2}$/.test(body.today) ? body.today : localKey(new Date());
   const wd = WD[new Date(`${today}T12:00:00`).getDay()];
 
-  const g = await gather(today, personAus(req));
+  const g = await gather(today, person);
+  const name = nameVon(person);
+  const eigeneAngaben = await eigenerGesundheitsKontext(person);
 
   // ───────────────────────────────── MORGEN-LOOP ─────────────────────────────
   if (loop === 'morgen') {
     const vit = g.vitals;
     const system = [
       'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Erzeuge den MORGEN-LOOP: eine ruhige, konkrete Tagesausrichtung.',
-      'Kevin: Bandscheibenvorfall in Reha (Rücken schonen), Nordstern 1 Mio € Umsatz KD Ventures → 300k Gewinn. Ziel „mehr Ruhe".',
+      `Die Person heute: ${name}. Nordstern 1 Mio € Umsatz KD Ventures → 300k Gewinn. Ziel „mehr Ruhe".`,
+      KONTEXT_REGEL,
       'Regeln: max 3 echte Prioritäten für heute (nicht mehr — Überladung ist das Problem). Berücksichtige Recovery UND die echten Termine (freie Zeit realistisch einschätzen). Wenn Recovery niedrig oder der Tag voll ist: weniger vornehmen, das offen sagen.',
-      'Gesundheitsdaten sind privat — nur für Kevin, nie als Business-Aussage.',
+      `Gesundheitsdaten sind privat — nur für ${name}, nie als Business-Aussage.`,
       'Kein Startup-Sprech. Deutsch, direkt, warm aber knapp.',
-      'Antworte NUR als JSON: {"gruss":"<1 Satz Lage heute>","tagesform":"<gruen|gelb|rot>","warum":"<1 Satz warum diese Tagesform>","prioritaeten":[{"titel":"<Aufgabe>","warum":"<1 kurzer Satz>","wann":"<z.B. Vormittag / nach dem Termin>"}],"schutz":"<1 Satz: was du heute für Rücken/Ruhe empfiehlst>","warnung":"<optional: was heute kippt, sonst leer>"}',
+      'Antworte NUR als JSON: {"gruss":"<1 Satz Lage heute>","tagesform":"<gruen|gelb|rot>","warum":"<1 Satz warum diese Tagesform>","prioritaeten":[{"titel":"<Aufgabe>","warum":"<1 kurzer Satz>","wann":"<z.B. Vormittag / nach dem Termin>"}],"schutz":"<1 Satz: was du heute für Körper und Ruhe empfiehlst>","warnung":"<optional: was heute kippt, sonst leer>"}',
     ].join('\n');
 
     const user = [
       `Heute: ${wd}, ${today}.`,
+      eigeneAngaben,
       `Recovery ${vit.rec}%, Ruhepuls ${vit.rhr}, HRV ${vit.hrv}, Schlaf letzte Nacht ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Kevin notiert: "${vit.note}"` : ""}`,
       '',
       // Ehrlich über die Datenlage: der Kalender-Cache wird nur beim Öffnen von
@@ -193,9 +205,10 @@ export async function POST(req: Request) {
       loadJson<{ rechnungen: { kunde: string; titel: string; betrag: number; status: string; faellig?: string }[]; zahlungen: { an: string; betrag: number; status: string; faellig?: string }[]; produkte: { name: string; preis: number; status: string; einheit: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
       loadJson<{ kunden: { name: string; status: string; mandat?: string; cashflow?: number; naechsterSchritt?: string }[] }>('kunden'),
       loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean; messlatte?: string }[] }>('meilensteine'),
-      loadJson<Record<string, { energy?: number; stress?: number; haut?: string; ruecken?: string; tagesnote?: number }>>('journal'),
+      // Das Journal der auslösenden Person (S1: vorher der Altbestand „journal“ — der einer Person — für jede).
+      loadJson<Record<string, { energy?: number; stress?: number; haut?: string; ruecken?: string; tagesnote?: number }>>(speicherFuer('journal', person)),
       // Blöcke dieser Woche (K5: Kalender-Termine der Art Fokus/Block) der auslösenden Person.
-      planBloeckeLesen({ person: personAus(req), von: montagVon(today), bis: tagPlus(montagVon(today), 7) }).catch(() => []),
+      planBloeckeLesen({ person, von: montagVon(today), bis: tagPlus(montagVon(today), 7) }).catch(() => []),
     ]);
     const m = g.fin ? computeMetrics(g.fin) : null;
     const msBiz = (msF?.meilensteine ?? []).filter(x => x.bereich === 'business' && !x.erledigt);
@@ -281,11 +294,13 @@ export async function POST(req: Request) {
       const energie = j7.map(x => x.energy).filter((x): x is number => typeof x === 'number');
       const stress = j7.map(x => x.stress).filter((x): x is number => typeof x === 'number');
       system = [kopf,
-        'GESUNDHEITS-LOOP (PRIVAT — nur für Kevin, niemals Business-Kontext): Trend ehrlich lesen, die Etappen im Blick, Schutz vor Überlastung. punkte = die 1-2 Gesundheits-Hebel der Woche.',
-        'Kevin: Bandscheibenvorfall (Reha täglich, spine-safe), Psoriasis (anti-entzündlich essen), Cannabis-Cut seit 31.07. Kein Medizinrat — Alltag und Verhalten.',
+        `GESUNDHEITS-LOOP (PRIVAT — nur für ${name}, niemals Business-Kontext): Trend ehrlich lesen, die Etappen im Blick, Schutz vor Überlastung. punkte = die 1-2 Gesundheits-Hebel der Woche.`,
+        KONTEXT_REGEL,
+        'Kein Medizinrat — Alltag und Verhalten.',
         formatJson].join('\n');
       user = [
         `Stichtag ${wd}, ${today}.`,
+        eigeneAngaben,
         `AKTUELL: Recovery ${g.vitals.rec}%, Schlaf ${g.vitals.sleep}h, HRV ${g.vitals.hrv}, Puls ${g.vitals.rhr}${vitalsHint(g.vitals)}.`,
         `JOURNAL (7 Tage): Energie Ø ${energie.length ? (energie.reduce((a, b2) => a + b2, 0) / energie.length).toFixed(1) : '—'}/5 · Stress Ø ${stress.length ? (stress.reduce((a, b2) => a + b2, 0) / stress.length).toFixed(1) : '—'}/5 · ${j7.length} Einträge.`,
         `GESUNDHEITS-ETAPPEN: ${msGes.map(x => `${x.titel} (${x.fortschritt}%${x.messlatte ? ` — Messlatte: ${x.messlatte}` : ''})`).join(' · ') || 'keine'}`,

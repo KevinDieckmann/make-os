@@ -5,6 +5,8 @@
 // Der Arbeiter fragt jede Minute, der Browser alle paar Minuten als Rückfall.
 // Beides zusammen erzeugt nichts doppelt: die Fälligkeit kommt aus dem echten
 // Zustand, und die Warteschlange lässt denselben Auftrag nur einmal offen.
+// S1 #16 (29.09.): nur der Dienstweg (Arbeiter) oder eine Sitzung im Haushalt des Inhabers — vorher konnte jedes
+// angemeldete Konto (auch ohne Haushalt) den Takt anstoßen und damit Abgleich, Sicherung und Aufträge auslösen.
 
 import { herzschlag } from '@/lib/hoi/innen';
 import { NextResponse } from 'next/server';
@@ -13,6 +15,14 @@ import { reihe } from '@/lib/zoe/auftraege';
 import { alleSichten } from '@/lib/business/speicher';
 import { kalenderJobsImTakt } from '@/lib/kalender/takt-jobs';
 import { localDay } from '@/lib/zeit';
+import { istDienst } from '@/lib/zugang/dienst';
+import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+
+/** Darf diese Anfrage den Takt sehen/anstoßen? Dienstweg (mit oder ohne Person) oder Haushalt des Inhabers. */
+async function taktErlaubt(req: Request): Promise<boolean> {
+  return istDienst(req) || !!(await imHaushaltDesInhabers(req));
+}
+const TAKT_GESPERRT = () => NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
 
 /** Business-Index: einmal am Tag festhalten (Verlauf, Trend, Ampel-Wechsel, MRR für die NRR) — auch ohne offene Seite. */
 let businessTag = '';
@@ -28,6 +38,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  if (!(await taktErlaubt(req))) return TAKT_GESPERRT();
   // ?in=<Minuten> schaut voraus, ohne etwas zu tun — so lässt sich prüfen, ob
   // der Takt später wirklich anspringt, statt darauf zu warten.
   const vor = Number(new URL(req.url).searchParams.get('in')) || 0;
@@ -40,7 +51,8 @@ export async function GET(req: Request) {
   });
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  if (!(await taktErlaubt(req))) return TAKT_GESPERRT();
   void herzschlag();
   // Brain-Index alle 30 Minuten leise mit dem Vault abgleichen (27.09.; erst 10, seit der Tempo-Prüfung 30 — der Lauf
   // liest alle Notizen und rechnet synchron in SQLite) — nie blockierend.

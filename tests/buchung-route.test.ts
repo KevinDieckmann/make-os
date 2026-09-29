@@ -51,7 +51,9 @@ let SLUG = '';
 const HAUS = 'test-haus';
 
 const dienst = { 'content-type': 'application/json', 'x-make-key': 'pruef-schluessel-k4-buchung', 'x-make-person': 'kevin' };
-const verwalten = async (body: Record<string, unknown>) => { const r = await verwaltung.POST(new Request('http://test/api/kalender/buchung', { method: 'POST', headers: dienst, body: JSON.stringify(body) })); return { status: r.status, d: await r.json() as Record<string, any> }; }; // eslint-disable-line @typescript-eslint/no-explicit-any
+// S1 #14 (29.09.): Seiten und Freigaben nur von Hand (Sitzung) — der Dienstweg bekommt 403.
+const sitzung = { 'content-type': 'application/json', 'x-make-user': 'kevin' };
+const verwalten = async (body: Record<string, unknown>) => { const r = await verwaltung.POST(new Request('http://test/api/kalender/buchung', { method: 'POST', headers: sitzung, body: JSON.stringify(body) })); return { status: r.status, d: await r.json() as Record<string, any> }; }; // eslint-disable-line @typescript-eslint/no-explicit-any
 const ctx = (slug: string) => ({ params: Promise.resolve({ slug }) });
 const holen = async (slug = SLUG) => { const r = await oeffentlich.GET!(new Request(`http://test/api/buchung/${slug}`), ctx(slug)); return { status: r.status, d: await r.json() as Record<string, any>, text: '' }; }; // eslint-disable-line @typescript-eslint/no-explicit-any
 const buchen = async (body: Record<string, unknown>, slug = SLUG) => { const r = await oeffentlich.POST!(new Request(`http://test/api/buchung/${slug}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), ctx(slug)); return { status: r.status, d: await r.json() as Record<string, any> }; }; // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -7,6 +7,8 @@
 // übergeordnete Aufgabe, CRM-Bezug, Startdatum; Änderungsprotokoll und Meldung bei Zuweisung an jemand anderen.
 // Seit 29.09. (Paket T1) über `aufgabenAendern` — dieselben Regeln wie die Aufgaben-Seite (eine Verantwortliche,
 // Anlegerin, Datumsprüfung, „nur ich“, Verlauf durch den Server).
+// S1 (29.09.): nie still gekürzt — Titel über 300, Einheit über 40, Beschreibung über 4000 Zeichen → 413; ohne
+// ausdrückliche Person (Systemlauf) muss `owner` genannt sein (400) — kein Rückfall auf „kevin“ (Regel 5).
 
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
@@ -33,6 +35,8 @@ interface NewTask {
   beteiligte?: unknown; sichtbarkeit?: string;
 }
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
+/** Grenzen wie im Schreibweg (lib/aufgaben/saeubern.ts) — darüber 413 statt still zu kürzen. */
+const TITEL_MAX = 300, EINHEIT_MAX = 40, BESCHREIBUNG_MAX = 4000;
 const KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 
 export async function POST(req: Request) {
@@ -44,14 +48,22 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!body || typeof body !== 'object') return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 });
   try { beteiligteSauber(body.beteiligte); } catch (e) { if (e instanceof ZuGross) return NextResponse.json({ ok: false, error: e.message }, { status: 413 }); throw e; }
-  const title = String(body.title ?? '').trim().slice(0, 300);
+  const title = String(body.title ?? '').trim();
   if (!title) return NextResponse.json({ ok: false, error: 'Kein Titel.' }, { status: 400 });
+  if (title.length > TITEL_MAX) return NextResponse.json({ ok: false, error: `Titel höchstens ${TITEL_MAX} Zeichen.` }, { status: 413 });
+  const einheit = typeof body.einheit === 'string' ? body.einheit.trim() : '';
+  if (einheit.length > EINHEIT_MAX) return NextResponse.json({ ok: false, error: `Einheit höchstens ${EINHEIT_MAX} Zeichen.` }, { status: 413 });
+  const beschreibung = typeof body.description === 'string' ? body.description.trim() : '';
+  if (beschreibung.length > BESCHREIBUNG_MAX) return NextResponse.json({ ok: false, error: `Beschreibung höchstens ${BESCHREIBUNG_MAX} Zeichen.` }, { status: 413 });
   // Fristen-Plausibilität: kein Datum vor 2020 o. ä. Unsinn.
   const dueDate = body.dueDate && TAG.test(body.dueDate) && body.dueDate >= '2020-01-01' ? body.dueDate : undefined;
   const orgs = await orgZuordnung();
   const now = new Date().toISOString();
   const priority: Priority = (['low', 'medium', 'high', 'critical'] as Priority[]).includes(body.priority as Priority) ? body.priority as Priority : 'medium';
-  const assignee: Owner = (['kevin', 'malin', 'both'] as Owner[]).includes(body.owner as Owner) ? body.owner as Owner : (zugang.person === 'malin' ? 'malin' : 'kevin');
+  const owner = (['kevin', 'malin', 'both'] as Owner[]).includes(body.owner as Owner) ? body.owner as Owner : null;
+  // Ohne `owner`: die anlegende Person selbst (Sitzung bzw. Dienstweg mit Person) — ein Systemlauf muss sie nennen.
+  if (!owner && !zugang.person) return NextResponse.json({ ok: false, error: 'owner fehlt (Systemlauf ohne Person).' }, { status: 400 });
+  const assignee: Owner = owner ?? (zugang.person as Owner);
 
   const wer = werAus(req);
   let ergebnis: { id: string; duplikat?: boolean } = { id: '' };
@@ -68,13 +80,13 @@ export async function POST(req: Request) {
     const basis: Task = {
       // Kollisionsfrei: nicht an array.length koppeln (bricht nach Löschungen).
       id: `mtg-${now.replace(/[^0-9]/g, '').slice(0, 14)}-${randomUUID().slice(0, 8)}`,
-      projectId: projekt?.id ?? '', title, description: body.description?.trim() || 'Aus Meeting übernommen.',
+      projectId: projekt?.id ?? '', title, description: beschreibung || 'Aus Meeting übernommen.',
       status: 'todo' as TaskStatus, priority, assignee, tags: [], dueDate, subTasks: [], dependencies: [],
       // max+1 statt length: nach Löschungen sonst doppelte Sortierwerte.
       sortOrder: state0.tasks.reduce((mx, t) => Math.max(mx, t.sortOrder ?? 0), -1) + 1,
       createdAt: now, updatedAt: now,
       ...(body.space === 'privat' || body.space === 'business' ? { space: body.space } : {}),
-      ...(typeof body.einheit === 'string' && body.einheit.trim() ? { einheit: body.einheit.trim().slice(0, 40) } : {}),
+      ...(einheit ? { einheit } : {}),
       ...(body.listeId && KENNUNG.test(body.listeId) ? { listeId: body.listeId } : {}),
       ...(eltern ? { parentId: eltern.id } : {}),
       ...(bezugSauber(body.bezug) ? { bezug: bezugSauber(body.bezug) } : {}),

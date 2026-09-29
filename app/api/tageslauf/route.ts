@@ -19,8 +19,14 @@ import {
 } from '@/lib/tageslauf';
 import { innenAdresse } from '@/lib/innen';
 import { personAus } from '@/lib/zoe/raum';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+
+import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke } from '@/lib/zugang/umfang';
+
+/** Interner Hop: nur eine ausdrücklich benannte Person (S1, Regel 5/7) — ohne sie ein Systemlauf, nie „kevin“. */
+const personKopf = (req: Request): Record<string, string> => { const p = personStreng(req); return p ? { 'x-make-person': p } : {}; };
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -84,7 +90,7 @@ export async function POST(req: Request) {
     // Kevins Mac-Postfach gehört dem Inhaber (26.09.): andere Konten bekommen nur den M365-Spiegel.
     const darfPostfach = await nurInhaber(req);
     const r = darfPostfach
-      ? await fetch(`${origin}/api/apple-mail`, { headers: { 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) }, signal: AbortSignal.timeout(70_000) })
+      ? await fetch(`${origin}/api/apple-mail`, { headers: { 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(personKopf(req)) }, signal: AbortSignal.timeout(70_000) })
       : new Response('[]', { headers: { 'Content-Type': 'application/json' } });
     const d = await r.json();
     // Beide Postfächer: Apple live + KEMARIS/M365 aus dem Brain-Snapshot.
@@ -205,21 +211,25 @@ export async function POST(req: Request) {
     if (!hasAnthropicKey()) return { stand: 'uebersprungen' as const, kurz: 'Kein Anthropic-Key' };
     const vit = b.vitals;
     const vorher = schritte.map(s => `- ${s.name}: ${s.kurz}`).join('\n');
+    // S1 #9: Gesundheitskontext nur aus dem eigenen Profil der ausdrücklich benannten Person (Systemlauf: keiner).
+    const eigeneAngaben = await eigenerGesundheitsKontext(personStreng(req));
 
     const r = await askJson<Record<string, unknown>>({ zweck: 'tageslauf',
       system: [
         'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Du schließt den Tageslauf ab: aus allem, was die Kette gefunden hat, wird EINE ruhige Ausrichtung.',
         FREMD_REGEL,
         'Sprich Kevin mit „Sir" an — einmal, nicht in jedem Satz.',
-        'Kevin: Bandscheibenvorfall in Reha, Ziel „mehr Ruhe". Nordstern: 1 Mio € Umsatz KD Ventures → min. 300k € Gewinn.',
+        'Ziel „mehr Ruhe". Nordstern: 1 Mio € Umsatz KD Ventures → min. 300k € Gewinn.',
+        KONTEXT_REGEL,
         'Regeln: max 3 Prioritäten. Bei niedriger Recovery oder vollem Tag: weniger, und sag es offen. Gesundheitsdaten sind privat.',
         'Wenn die Kette Ausfälle hatte (Kalender alt, kein Postfach-Zugriff), benenne das — lieber ehrlich unvollständig als falsch zuversichtlich.',
         'Kein Startup-Sprech. Deutsch, direkt, warm aber knapp.',
-        'Antworte NUR als JSON: {"gruss":"<1-2 Sätze Lage heute>","tagesform":"<gruen|gelb|rot>","warum":"<1 Satz>","prioritaeten":[{"titel":"…","warum":"…","wann":"…"}],"schutz":"<1 Satz für Rücken/Ruhe>","warnung":"<optional, sonst leer>"}',
+        'Antworte NUR als JSON: {"gruss":"<1-2 Sätze Lage heute>","tagesform":"<gruen|gelb|rot>","warum":"<1 Satz>","prioritaeten":[{"titel":"…","warum":"…","wann":"…"}],"schutz":"<1 Satz für Körper und Ruhe>","warnung":"<optional, sonst leer>"}',
       ].join('\n'),
       user: [
         `Heute ${wd}, ${heute}, ${jetzt.getHours()}:${String(jetzt.getMinutes()).padStart(2, '0')} Uhr. Lauf-Art: ${art}.`,
         `Recovery ${vit.rec}%, Schlaf ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Kevin notiert: "${vit.note}"` : ''}`,
+        eigeneAngaben,
         blockIndex(b),
         '',
         'WAS DIE KETTE GEFUNDEN HAT:',
@@ -246,7 +256,7 @@ export async function POST(req: Request) {
           if (!p.titel) continue;
           const res = await fetch(`${origin}/api/tasks/create`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) },
+            headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(personKopf(req)) },
             body: JSON.stringify({
               title: p.titel,
               description: [p.warum, p.wann ? `Wann: ${p.wann}` : '', 'Automatisch aus der Tages-Ausrichtung (Task-Agent: autonom).'].filter(Boolean).join(' · '),

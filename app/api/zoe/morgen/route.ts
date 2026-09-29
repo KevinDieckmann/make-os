@@ -80,7 +80,8 @@ function anweisung(person: Person, lage: string, zeit: Tageszeit, liegt: string)
     '',
     'AUFTRAG: Sieh dir die Lage an und schlage HÖCHSTENS FÜNF Dinge vor, die heute wirklich zählen.',
     'Jeder Vorschlag muss aus einer konkreten Stelle der Lage folgen — eine überfällige Zahlung, ein Termin,',
-    'ein Meilenstein ohne nächsten Schritt, eine ungeschützte Fokuszeit, die Bandscheibe (Reha täglich 30 Min).',
+    // S1 #9: kein fester Gesundheitskontext mehr — Gesundheits-Routinen stehen, wenn gepflegt, in der Lage.
+    'ein Meilenstein ohne nächsten Schritt, eine ungeschützte Fokuszeit, eine gepflegte Gesundheits-Routine ohne Platz.',
     '',
     'STRENG: Lieber ZWEI gute Vorschläge als fünf mittelmäßige. Nichts vorschlagen, was schon als Aufgabe',
     'offen ist oder schon im Stapel liegt. Keine Allgemeinplätze („Prioritäten prüfen", „Mails checken") —',

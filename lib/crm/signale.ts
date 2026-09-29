@@ -24,6 +24,8 @@ export interface TerminEin {
   id: string; titel: string; start: string; uid?: string; kontaktIds?: readonly string[];
   /** R-K1 #100: abgesagt (STATUS:CANCELLED) oder selbst abgelehnt — zählt nicht (kein Signal). */
   abgesagt?: boolean;
+  /** S1 #10: privater Termin (CLASS bzw. Sicherung „privat“) — ohne Bezug nie über den Titel ins CRM. */
+  privat?: boolean;
 }
 
 /** Zeitpunkt eines Terminbeginns in ms — Wandzeit über `ausWandzeit`, ISO mit Zone direkt. */
@@ -82,6 +84,10 @@ export function terminSignale(kontakte: Kontakt[], termine: TerminEin[], jetzt: 
     if (t.abgesagt) continue;
     // Bezug gewinnt: zugeordnet über `kalender-bezug`, die Aktivität legt lib/crm/termin-aktivitaet.ts an.
     if (t.kontaktIds?.length) continue;
+    // S1 #10 (29.09.): private Termine OHNE Bezug gehen nie ins CRM — weder mit Titel noch als „Termin (privat)“: die
+    // Zuordnung liefe nur über den Namen im (privaten) Titel. Wer einen privaten Termin im CRM will, verknüpft ihn
+    // (Bezug) — dann entsteht „Meeting (privat)“ ohne Titel (`meetingTextAusTermin`).
+    if (t.privat) continue;
     if (terminMs(t.start) > jetztMs) continue; // kommt noch — kein Signal
     const passend = kontakte.filter(k => !ausgenommen(k) && personImTitel(k, t.titel));
     if (passend.length !== 1) continue; // mehrdeutig → lieber nichts zuordnen

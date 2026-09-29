@@ -14,6 +14,9 @@
 // großzügigeres Budget `LESEN_FREI`); höchstens GRENZEN.neueJeStunde neue Buchungen je Seite und Stunde (429); der
 // erzwungene Abgleich vor dem Reservieren holt nur den Zielkalender neu (`nur`) — die übrigen über ihren ctag.
 // Gesperrt sind Feiertage NRW und die „freien Tage“ aus den Kalender-Einstellungen (#72, z. B. 24.12./31.12.).
+// S1 (29.09.): Honigtopf und Zeit-Fehler antworten mit DEMSELBEN Text (`NICHT_ANGENOMMEN`); höchstens
+// GRENZEN.vorlaeufigJeSeite vorläufige Reservierungen je Seite gleichzeitig (429, in `reservieren`); der Hinweis nennt
+// die wirksamen Löschfristen, die Fassung trägt sie mit (`hinweisFristenLaden`, `hinweisFassung`).
 
 import { NextResponse } from 'next/server';
 import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
@@ -24,8 +27,8 @@ import { abgleichen, abgleichAlter, ladeStand, verbunden } from '@/lib/kalender/
 import { verfuegbarkeitFuer } from '@/lib/kalender/verfuegbarkeit';
 import { belegungenAus, sperrTageAus } from '@/lib/kalender/freie-zeit';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
-import { plaetzeFuerSeite, oeffentlich, eingabePruefen, ausfuellZeitOk, reservieren, slugOk, standBuchbar, NICHT_BUCHBAR, type BuchungsSeite, type Reservierung } from '@/lib/kalender/buchung';
-import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, formularStempel, stempelZeit, neuesToken, tokenHash } from '@/lib/kalender/buchung-speicher';
+import { plaetzeFuerSeite, oeffentlich, eingabePruefen, ausfuellZeitOk, reservieren, slugOk, standBuchbar, hinweisFassung, NICHT_BUCHBAR, NICHT_ANGENOMMEN, type BuchungsSeite, type Reservierung } from '@/lib/kalender/buchung';
+import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, formularStempel, stempelZeit, neuesToken, tokenHash, hinweisFristenLaden } from '@/lib/kalender/buchung-speicher';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -89,11 +92,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ slug: string }>
   const bis = tagPlus(heute, seite.tageVoraus + 1);
   // Verfügbarkeit der Person (K1: beschäftigt, Abwesend, Feiertage) — die Fenster der Seite bestimmen die buchbaren Zeiten.
   // `verfuegbarkeitFuer` erneuert einen Stand, der älter als 2 Min. ist; danach entscheidet `standBuchbar`.
-  const [v, bestand, einst] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeBuchungBestand(jetzt), ladeEinstellungen()]);
+  const [v, bestand, einst, fristen] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeBuchungBestand(jetzt), ladeEinstellungen(), hinweisFristenLaden()]);
   const stempel = formularStempel(slug, jetzt.getTime());
-  if (!(await buchbar(seite, jetzt))) return antwort({ ok: true, seite: oeffentlich(seite), plaetze: [], stempel, hinweis: NICHT_BUCHBAR });
+  if (!(await buchbar(seite, jetzt))) return antwort({ ok: true, seite: oeffentlich(seite, fristen), plaetze: [], stempel, hinweis: NICHT_BUCHBAR });
   const plaetze = plaetzeFuerSeite(seite, belegungenAus(v), bestand, jetzt, sperrTageAus(v, einst.freieTage, heute, bis), heute).map(p => ({ start: p.start, ende: p.ende }));
-  return antwort({ ok: true, seite: oeffentlich(seite), plaetze, stempel });
+  return antwort({ ok: true, seite: oeffentlich(seite, fristen), plaetze, stempel });
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ slug: string }> }) {
@@ -114,7 +117,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   const jetzt = new Date();
   const geladen = stempelZeit(slug, roh.stempel);
   if (geladen === null) return antwort({ ok: false, fehler: 'Bitte die Seite neu laden.' }, 400);
-  if (!ausfuellZeitOk(geladen, jetzt.getTime())) return antwort({ ok: false, fehler: 'Buchung nicht angenommen — bitte die Seite neu laden und in Ruhe ausfüllen.' }, 400);
+  if (!ausfuellZeitOk(geladen, jetzt.getTime())) return antwort({ ok: false, fehler: NICHT_ANGENOMMEN }, 400);
   const e = eingabePruefen(roh, seite);
   if (!e.ok) return antwort({ ok: false, fehler: e.fehler }, e.status);
 
@@ -124,13 +127,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   const heute = localDay(jetzt);
   const bis = tagPlus(heute, seite.tageVoraus + 1);
   // K1 liest den eben abgeglichenen Stand (ein am iPhone eingetragener Termin blockiert); Buchungen prüft `reservieren` in der Sperre.
-  const [v, einst] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeEinstellungen()]);
+  const [v, einst, fristen] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeEinstellungen(), hinweisFristenLaden()]);
   const feiertage = sperrTageAus(v, einst.freieTage, heute, bis);
   const token = neuesToken();
   const id = neueKennung('bu');
   let r: Reservierung | { ok: false; status: number; fehler: string } = { ok: false, status: 409, fehler: 'Nicht reserviert.' };
   await aendereBuchungBestand(bs => {
-    const x = reservieren(bs, seite.id, e.e, belegungenAus(v), feiertage, { id, tokenHash: tokenHash(token), jetzt, heute });
+    const x = reservieren(bs, seite.id, e.e, belegungenAus(v), feiertage, { id, tokenHash: tokenHash(token), jetzt, heute, fassung: hinweisFassung(fristen) });
     r = x;
     return x.ok ? x.bestand : bs;
   }, jetzt);

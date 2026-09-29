@@ -14,6 +14,9 @@
 //              `kalender-bezug` — beides steht nicht (verlässlich) im Termin selbst. Beim Zurückspielen kommen sie wieder in
 //              den Bezug (sonst wäre ein privater Termin für die andere Person plötzlich lesbar); der Probelauf nennt die
 //              Zahl (`bezug`) und die gesperrten Buchungstermine (`buchung`).
+//   S1 #7 (29.09.): Jede fehlende .ics wird gegen die Grabsteine gelöschter Personen geprüft (Adressen im Objekt →
+//              `grabsteinTrifft`, dieselben Merkmals-Fingerabdrücke wie die Sperrliste). Treffer sind gesperrt und stehen im
+//              Probelauf (`grabstein`) — eine Sicherung holt eine Art.-17-Löschung nie zurück.
 
 import { promises as fs } from 'fs';
 import { loadJson, saveJson } from '@/lib/store/local-db';
@@ -25,6 +28,7 @@ import { ladeBezuege, bezugSetzen } from './bezug-server';
 import { uidVon } from './ics';
 import { wandzeit, tagPlus } from './zeit';
 import { exportIcs, objekteAusIcs, wiederherstellPlan, exportDatei, exportDateiTeile, abgelaufen, sicherungFaellig, buchungsTermin, type WiederherstellPlan } from './sicherung';
+import { grabsteineLesen, grabsteinTrifft } from '@/lib/datenschutz/grabsteine';
 
 export const SICHERUNG_SPEICHER = 'kalender-sicherung';
 
@@ -114,7 +118,7 @@ async function aufraeumen(heute: string): Promise<number> {
 }
 
 /** `plan.buchung`: davon gesperrt, weil Termin einer Buchung · `plan.bezug`: so viele der fehlenden bekommen `von`/privat zurück (F1 #11). */
-export interface WiederherstellErgebnis { kalender: string; datei: string; probelauf: boolean; plan: { fehlt: number; gesperrt: number; buchung: number; geaendert: number; gleich: number; neu: number; bezug: number }; angelegt?: number; schonDa?: number; fehler?: number }
+export interface WiederherstellErgebnis { kalender: string; datei: string; probelauf: boolean; plan: { fehlt: number; gesperrt: number; buchung: number; grabstein: number; geaendert: number; gleich: number; neu: number; bezug: number }; angelegt?: number; schonDa?: number; fehler?: number }
 
 /**
  * Eine Sicherung eines Kalenders zurückspielen. Ohne `bestaetigt`: nur Probelauf (zählt, schreibt nichts). Mit
@@ -136,11 +140,13 @@ export async function kalenderWiederherstellen(kalenderName: string, opt: { date
   if (inhalt.id !== kal.id && kalenderKennung(inhalt.id) !== kennung) throw new KalenderFehler('Die Sicherung gehört zu einem anderen Kalender.', 409);
   const gesichert = objekteAusIcs(inhalt.ics);
   const ist = (await holeSicherungsObjekte(kal)).map(o => ({ uid: uidVon(o.ics) ?? '', ics: o.ics })).filter(o => o.uid);
-  const plan: WiederherstellPlan = wiederherstellPlan(gesichert, ist);
+  // S1 #7: Grabsteine gelöschter Personen — nie mit dem Datenordner zurückgespielt, darum hier maßgeblich.
+  const grabsteine = await grabsteineLesen();
+  const plan: WiederherstellPlan = wiederherstellPlan(gesichert, ist, adresse => !!grabsteinTrifft(grabsteine, { id: '', email: adresse }));
   const nachUid = new Map(gesichert.map(o => [o.uid, o.ics] as const));
   const bezug = inhalt.bezug ?? {};
   const kurz = {
-    fehlt: plan.fehlt.length, gesperrt: plan.gesperrt.length, buchung: plan.gesperrt.filter(u => buchungsTermin(nachUid.get(u) ?? '')).length,
+    fehlt: plan.fehlt.length, gesperrt: plan.gesperrt.length, buchung: plan.gesperrt.filter(u => buchungsTermin(nachUid.get(u) ?? '')).length, grabstein: plan.grabstein.length,
     geaendert: plan.geaendert.length, gleich: plan.gleich, neu: plan.neu, bezug: plan.fehlt.filter(u => bezug[u]).length,
   };
   if (!opt.bestaetigt) return { kalender: kal.name, datei: eintrag.datei, probelauf: true, plan: kurz };

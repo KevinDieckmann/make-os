@@ -4,6 +4,8 @@ import { kalenderLesen, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
 import { spawn } from 'child_process';
 import { loadJson, saveJson } from '@/lib/store/local-db';
+import { cacheFuerPerson, type CacheEreignis } from '@/lib/kalender/zoe-sicht';
+import { ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
 
 // Apple Kalender via osascript ist zäh (whose-Datumsfilter) und wird unter Last
 // >60s → Timeout. Deshalb Cache: frische Reads werden gespeichert, bei
@@ -103,9 +105,25 @@ function runOsascript(script: string): Promise<string> {
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
+/**
+ * Was die Anfrage sehen darf (S1 #1, 29.09.): der Systemlauf ohne Person (Mac-Zulieferer → eigener Server) bekommt den
+ * Stand roh; jede Person (Sitzung oder Dienstweg mit Person) nur ihre Sicht — privat/Gesundheit der anderen Person als
+ * „Belegt“ (`cacheFuerPerson`, dieselbe Regel wie `fuerZoe`). Vorher gingen Rohtitel und Orte an jede Sitzung im Haushalt.
+ */
+async function sichtFuer(person: string | null): Promise<(events: object[]) => object[]> {
+  if (person === null) return events => events;
+  const einst = await ladeEinstellungen().catch(() => null);
+  return events => (events as CacheEreignis[]).map(e => {
+    const wer = einst && e.calendarName ? wemGehoert(einst, e.calendarName) : e.owner === 'kevin' || e.owner === 'malin' ? e.owner : undefined;
+    return cacheFuerPerson(e, person, wer);
+  });
+}
+
 export async function GET(req: Request) {
   // Lesen: auch der Systemlauf ohne Person (Zulieferer vom Mac) — Regel 5 gilt über `kalenderLesen` (28.09.).
-  if (!(await kalenderLesen(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  const zugang = await kalenderLesen(req);
+  if (!zugang) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  const sicht = await sichtFuer(zugang.person);
   const force = new URL(req.url).searchParams.get('refresh') === '1';
 
   // Seit 25.09.: iCloud direkt (Server) — der Abgleich schreibt den calendar-cache.
@@ -116,17 +134,17 @@ export async function GET(req: Request) {
     let s = s0;
     if (naechsterVersuchFaellig(s0)) { const lauf = abgleichen().catch(() => ladeStand()); if (!s0.at) s = await lauf; else void lauf; }
     const c = await loadJson<CalCache>(CACHE);
-    return NextResponse.json(c?.events ?? [], { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'icloud', ...(c?.at ? { 'X-Stand': c.at } : {}), ...(s.fehler && s.fehlerAt && (!s.at || s.fehlerAt > s.at) ? { 'X-Eingefroren': '1' } : {}) } });
+    return NextResponse.json(sicht(c?.events ?? []), { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'icloud', ...(c?.at ? { 'X-Stand': c.at } : {}), ...(s.fehler && s.fehlerAt && (!s.at || s.fehlerAt > s.at) ? { 'X-Eingefroren': '1' } : {}) } });
   }
 
   const cached = await loadJson<CalCache>(CACHE);
   // Auf dem Server gibt es kein osascript: dort gilt, was der Mac zugeliefert hat.
   if (!AUF_DEM_MAC) {
-    return NextResponse.json(cached?.events ?? [], { headers: { 'Cache-Control': 'no-store', 'X-Cache': cached ? 'zulieferung' : 'leer', ...(cached?.at ? { 'X-Stand': cached.at } : { 'X-Nur-Mac': '1' }) } });
+    return NextResponse.json(sicht(cached?.events ?? []), { headers: { 'Cache-Control': 'no-store', 'X-Cache': cached ? 'zulieferung' : 'leer', ...(cached?.at ? { 'X-Stand': cached.at } : { 'X-Nur-Mac': '1' }) } });
   }
   // Frischer Cache → sofort ausliefern (kein zäher osascript-Read)
   if (!force && cached && Date.now() - new Date(cached.at).getTime() < STALE_MS) {
-    return NextResponse.json(cached.events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'hit', 'X-Stand': cached.at } });
+    return NextResponse.json(sicht(cached.events), { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'hit', 'X-Stand': cached.at } });
   }
 
   try {
@@ -181,7 +199,7 @@ export async function GET(req: Request) {
     (events as Array<{ startDate: string }>).sort((a, b) => a.startDate.localeCompare(b.startDate));
 
     await saveJson<CalCache>(CACHE, { events, at: new Date().toISOString() });
-    return NextResponse.json(events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'fresh', 'X-Stand': new Date().toISOString() } });
+    return NextResponse.json(sicht(events), { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'fresh', 'X-Stand': new Date().toISOString() } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[Apple Calendar API]', msg);
@@ -194,7 +212,7 @@ export async function GET(req: Request) {
       // werfen — und dann antwortet die Route mit 500, obwohl der Cache noch
       // da war. Genau das ist am 07.09. passiert: der Kalender fiel aus, und
       // ausgerechnet der Rettungsweg stürzte am Fehlertext ab.
-      return NextResponse.json(cached.events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'stale', 'X-Stand': cached.at, 'X-Grund': kopfTauglich(msg) } });
+      return NextResponse.json(sicht(cached.events), { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'stale', 'X-Stand': cached.at, 'X-Grund': kopfTauglich(msg) } });
     }
     return NextResponse.json(
       { error: 'Kein Zugriff auf Apple Kalender' },

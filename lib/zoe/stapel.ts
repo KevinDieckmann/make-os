@@ -155,10 +155,15 @@ const sicht = (v: Vorschlag): Vorschlag => {
 
 /**
  * Sieht/entscheidet `person` diesen Vorschlag? — EINE Regel (Route /api/zoe/stapel und Heute/Glocke, F2 M6): eigene und
- * die des Systems (ohne Person); Vorschläge der Gruppe „haushalt“ nur für Haushaltsmitglieder (`imHaushalt`).
+ * die des Systems (ohne Person). `imHaushalt` = die Person gehört zum Haushalt des Inhabers (`personImHaushaltDesInhabers`).
+ * Seit S1 (29.09.): Vorschläge des Systems (ohne Person) und die der Gruppe „haushalt“ NUR im Haushalt des Inhabers —
+ * vorher sah jedes Konto (auch ohne Haushalt) die personlosen Vorschläge und konnte sie freigeben.
  */
-export const vorschlagSichtbar = (v: { person?: string; gruppe: string }, person: string | null, imHaushalt: boolean): boolean =>
-  (!v.person || v.person === person) && (imHaushalt || v.gruppe !== 'haushalt');
+export const vorschlagSichtbar = (v: { person?: string; gruppe: string }, person: string | null, imHaushalt: boolean): boolean => {
+  if (!person) return false;
+  if (v.person) return v.person === person && (imHaushalt || v.gruppe !== 'haushalt');
+  return imHaushalt;
+};
 
 export async function lies(nur?: VorschlagStatus): Promise<Vorschlag[]> {
   const s = await loadJson<Stand>('zoe-stapel');

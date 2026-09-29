@@ -13,8 +13,7 @@ import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib
 import { AUSFUEHRBAR, AGENT_ZWECK, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahl } from '@/lib/zoe/stapel';
-import { kontextIstFremd, nurVorschlag, agentNurVorschlag, verlaufVertraulich, VERTRAULICHE_QUELLEN, WEB_AGENTEN } from '@/lib/zoe/gespraech-schutz';
-import { personAus } from '@/lib/zoe/raum';
+import { kontextIstFremd, nurVorschlag, agentNurVorschlag, verlaufVertraulich, verlaufFremd, VERTRAULICHE_QUELLEN, WEB_AGENTEN } from '@/lib/zoe/gespraech-schutz';
 import { brainAnweisung } from '@/lib/zoe/vault';
 import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
@@ -39,7 +38,7 @@ export const dynamic = 'force-dynamic';
 // Live-Bewusstsein kommt jetzt aus dem Brain — derselben Kontextschicht, die
 // auch Loops und Tageslauf nutzen. Eine Wahrheit statt vier Sammler.
 // `kalenderFremd` (29.09., #K1): stehen Termintitel/Namen im Prompt, gilt das Gespräch als „fremd gelesen“.
-async function liveContext(person: string = 'kevin'): Promise<{ text: string; kalenderFremd: boolean }> {
+async function liveContext(person: string): Promise<{ text: string; kalenderFremd: boolean }> {
   try {
     const b = await gatherBrain(undefined, person);
     return { text: promptBrain(b), kalenderFremd: kalenderImPrompt(b) };
@@ -47,7 +46,7 @@ async function liveContext(person: string = 'kevin'): Promise<{ text: string; ka
     return { text: '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)', kalenderFremd: false };
   }
 }
-function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaechtnis = '', person: string = 'kevin', brain = '', space: 'privat' | 'business' | null = null): string {
+function systemPrompt(extra: string | undefined, live: string | undefined, fortsetzung: boolean, gedaechtnis: string, person: string, brain = '', space: 'privat' | 'business' | null = null): string {
   return [
     // Der aktive Space (26.09.): Privat oder Business — ZOE legt Neues dort ab und antwortet aus dieser Sicht.
     space ? `AKTIVER SPACE: ${space === 'privat' ? 'PRIVAT (Familie, Gesundheit, Haushalt, private Ziele)' : 'BUSINESS (KD Ventures, Consulting, KEMARIS, Markttraktion, Mandate)'}. Der Nutzer schaut gerade auf diesen Space. Aufgaben und Ziele, die du anlegst, gehören in diesen Space (Feld „space“), außer er sagt ausdrücklich etwas anderes. Antworte aus dieser Sicht; Dinge aus dem anderen Space erwähnst du nur, wenn sie hier wichtig sind.` : '',
@@ -140,8 +139,10 @@ export async function POST(req: Request) {
     });
   }
 
-  // Wer redet gerade mit ihm. Bis zum echten Login das Cookie — siehe raum.ts.
-  const person = personAus(req);
+  // Wer redet gerade mit ZOE: die ausdrücklich benannte Person (Sitzung oder Dienstweg mit Person, z. B. Telegram) —
+  // seit S1 (29.09.) nie mehr der Rückfall `personAus` → „kevin“ (Regel 5).
+  const person = personStreng(req);
+  if (!person) return NextResponse.json({ reply: 'Ohne angemeldete Person antworte ich nicht.', error: 'Keine Person.' }, { status: 400 });
 
   // Haushaltsfinanzen (24.09.): nur mit ausdrücklich benannter Person, die
   // einem Haushalt angehört. Der Block steht bewusst NICHT im gemeinsamen
@@ -510,7 +511,7 @@ export async function POST(req: Request) {
       },
       {
         name: 'haut_eintrag',
-        description: 'Haut-Tagebuch (Schuppenflechte): Juckreiz 0–10, Schub, Auslöser, Stellen. Nutze das, sobald jemand über Haut, Jucken, Kratzen oder einen Schub spricht.',
+        description: 'Haut-Tagebuch der sprechenden Person: Juckreiz 0–10, Schub, Auslöser, Stellen. Nutze das, sobald jemand über Haut, Jucken, Kratzen oder einen Schub spricht.',
         input_schema: { type: 'object', properties: {
           juckreiz: { type: 'number', description: '0 = nichts, 10 = unerträglich' },
           schub: { type: 'boolean' },
@@ -537,7 +538,7 @@ export async function POST(req: Request) {
       },
       {
         name: 'streak_eintrag',
-        description: 'Der Streak (Cannabis-Schnitt): sauber ja/nein, Verlangen 0–10. Unterstützend, nie wertend — ein Rückfall ist ein Datum. Nutze das, sobald jemand „sauber", „nicht geraucht", „Rückfall" oder Verlangen erwähnt.',
+        description: 'Der Streak (ein selbst gewählter Verzicht der sprechenden Person): sauber ja/nein, Verlangen 0–10. Unterstützend, nie wertend — ein Rückfall ist ein Datum. Nutze das, sobald jemand „sauber", „nicht geraucht", „Rückfall" oder Verlangen erwähnt.',
         input_schema: { type: 'object', properties: {
           sauber: { type: 'boolean' },
           verlangen: { type: 'number', description: '0–10' },
@@ -670,11 +671,14 @@ export async function POST(req: Request) {
     // noch als Vorschlag (Freigabe). Regeln rein und getestet in lib/zoe/gespraech-schutz.ts.
     // Seit 29.09. (#K1) auch, sobald Termintitel/Einladungen im Prompt stehen (`lage.kalenderFremd`, lib/brain.ts
     // `kalenderImPrompt`) — der Kalender ist eine Fremdquelle wie das Postfach.
-    let fremdGelesen = kontextFremd || lage.kalenderFremd;
+    // S1 #4 (29.09.): „fremd gelesen“ gilt fürs GANZE Gespräch — hat ein früherer Zug (Verlauf, `ran`) einen Leser mit
+    // Text Dritter benutzt (Postfach, Web, Kontaktnotizen, Agentenläufe …), steht dieser Text im Verlauf, der dem Modell
+    // wieder mitgegeben wird. Vorher galt der Schutz nur im Zug, in dem gelesen wurde.
+    const quelleVon = (n: string) => FREMD_WERKZEUGE[n] ?? FREMD_AGENTEN[n] ?? null;
+    let fremdGelesen = kontextFremd || lage.kalenderFremd || verlaufFremd(payload.verlauf, quelleVon);
     // Web-Schutz (29.09., #91): hat dieses Gespräch schon CRM/Kartei/Postfach/Notizen gelesen (jetzt oder in einem früheren
     // Zug, `ran` im Verlauf) oder bringt es Kontext/Bezug mit, starten Web-Agenten (Recherche …) nur als Vorschlag.
     // Termine sind vertraulich (#K1/#K4) — mit Kalender im Prompt ebenso.
-    const quelleVon = (n: string) => FREMD_WERKZEUGE[n] ?? FREMD_AGENTEN[n] ?? null;
     let vertraulich = kontextFremd || lage.kalenderFremd || !!crmBezug || verlaufVertraulich(payload.verlauf, quelleVon);
 
     // Grundlage aus dem Obsidian-Brain (00_ZOE_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.

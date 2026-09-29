@@ -130,3 +130,18 @@ export function erinnerungen(roh: unknown, von: string, bis: string, wand: (d: D
   }
   return raus;
 }
+
+/**
+ * Was eine Person von Fristen und Apple-Erinnerungen sieht (S1 #20, 29.09., rein) — serverseitig statt nur im Browser:
+ *   · Apple-Erinnerungen kommen vom Mac des Inhabers (sein Apple-Konto, wie Postfach und Adressbuch: `nurInhaber`) —
+ *     nur der Inhaber sieht sie; andere Personen des Haushalts bekommen keine.
+ *   · Private Fristen (`bereich: 'privat'`: private Meilensteine, private Steuertermine) nur für Personen mit
+ *     eingetragenem Haushalt (Regel der Haushaltsfinanzen, `haushaltFuer`) — Business-Fristen sieht der ganze Haushalt
+ *     des Inhabers (wie bisher, `fuer` nennt nur die Zuständige).
+ */
+export function fuerPersonFiltern<F extends Pick<Frist, 'bereich'>, E>(x: { fristen: F[]; erinnerungen: E[] }, recht: { inhaber: boolean; privat: boolean }): { fristen: F[]; erinnerungen: E[] } {
+  return {
+    fristen: recht.privat ? x.fristen : x.fristen.filter(f => f.bereich !== 'privat'),
+    erinnerungen: recht.inhaber ? x.erinnerungen : [],
+  };
+}

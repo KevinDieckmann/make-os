@@ -85,6 +85,43 @@ lokal, Route `/os`, Port 3001.
    (`lib/make-one/team-speicher.ts`) bzw. `useTeam` (`GET/PATCH /api/team`); Prompts bekommen die Namen zur Laufzeit. Kevin und Malin
    kommen aus den Konten. `lib/make-one/team-data.ts` = nur Rollen-Platzhalter als Rückfall (leerer Speicher, Tests).
 
+## Sicherheit & DSGVO — Prüfung S1 (29.09., nur lokal)
+- **Kalender je Person, auch im Altweg:** GET `/api/apple-calendar` liefert Rohdaten NUR dem Systemlauf ohne Person
+  (Mac-Zulieferer); jede Person bekommt `cacheFuerPerson` (lib/kalender/zoe-sicht.ts, Regel wie `fuerZoe`: privat und
+  Gesundheit der anderen → „Belegt“). Leser für Modelle nehmen `termineFuerZoe` (auch Tagesstart). `terminFremd` erkennt
+  Buchungstermine zusätzlich an der UID `makeos-buchung-…`. GET `/api/kalender`: Apple-Erinnerungen nur für den Inhaber,
+  private Fristen nur mit Haushalt (`fuerPersonFiltern`).
+- **Tore:** `/api/zoe/stapel`, `/api/planung/vorschlag`, `/api/loop` = `imHaushaltDesInhabers` (403), `/api/zoe/takt` =
+  Dienstweg oder Haushalt. Personlose (System-)Vorschläge sieht/entscheidet nur der Haushalt (`vorschlagSichtbar`);
+  ausgeführt wird als die benannte Person. `bauPruefen` auch in crm/followup, crm/signale, crm/verbindungen (Reparieren),
+  crm/datenschutz, heads/[head], familie, zoe/stapel, brain/app.
+  Nur von Hand (Dienstweg → 403): Buchungs-Verwaltung (Seiten, Freigabe, Mail-Link, Gast-Rechte), Übernahme
+  (`ausfuehren`/`erneut`/`zuruecknehmen`), Spiegel-Löschen (`/api/kalender/spiegel` `loeschen`).
+- **Kein Rückfall auf „kevin“** (Regel 5) mehr in kimmi (400 ohne Person), zoe/stapel, state/zeit, planung/vorschlag, loop,
+  `freie_zeit`/`bauplan_notieren`, kalender/termin (ohne Kalender/`wer` → 400), tasks/create (Systemlauf ohne `owner` → 400);
+  interne Hops (Tagesstart, Tageslauf, Eingang) tragen nur `personStreng`. Offen (dokumentierte Systemläufe): `personAus`
+  in Lese-Routen und `resolveVitals`/`gatherBrain`-Standard.
+- **Nie still kürzen:** tasks/create (Titel 300, Einheit 40, Beschreibung 4000), crm/followup (Text 300, Notiz 1000 auch
+  zusammen mit der alten Notiz), familie (200 Ops) → 413.
+- **ZOE-Gespräch:** „fremd gelesen“ gilt fürs ganze Gespräch (`verlaufFremd` über `ran` im Verlauf); `notiz_ergaenzen` wie
+  `notiz_anlegen` immer über den Stapel.
+- **Kein Gesundheitskontext im Code:** Prompts nennen keine Diagnosen/Beschwerden einer Person. Optional
+  `eigenerGesundheitsKontext(person)` (lib/gesundheit/kontext.ts) aus dem EIGENEN Ernährungs-Profil der fragenden Person
+  (`bedarf`, `ziel`), als `<eigene_angaben>` mit `KONTEXT_REGEL` — nie für die andere Person. Wächter in tests/sicher-s1.test.ts.
+- **Buchung (Datenschutz):** EINE Rechtsgrundlage Art. 6 Abs. 1 lit. b; das Häkchen ist „Kenntnisnahme Datenschutzhinweis“
+  (Feld heißt weiter `einwilligung`, CRM-Nachweis `KENNTNISNAHME_NAME`). Hinweistext `datenschutzHinweis(fristen)` mit den
+  wirksamen Löschfristen (`hinweisFristenLaden`: buchungen, kontakte, kalender-caches), Fassung `hinweisFassung` trägt sie.
+  Hinweis, keine Rechtsberatung — Text einmal anwaltlich gegenlesen. Honigtopf und Zeit-Fehler: ein Text
+  (`NICHT_ANGENOMMEN`); höchstens `GRENZEN.vorlaeufigJeSeite` (5) vorläufige je Seite; `/buchen/<slug>` gedrosselt
+  (`buchung-seite:`) und Titel 30 s gemerkt. Verwaltung (`/api/kalender/buchung`): Dienstweg → 403 für Seiten, Freigaben,
+  Mail-Link, Gast-Rechte; Protokoll `werAus(req)`; Seiten nur mit `stand` (= `geaendert`, sonst 409), `seite.person` im
+  Haushalt, Körper ≤ 64 KB (413). Gäste OHNE Kontakt: `buchung-auskunft` / `buchung-loeschen` (Rückfrage, optional
+  Name/Gastzeilen im Apple-Termin entfernen, sonst `inApple`); mit Kontakt → 409, über die Akte.
+- **Art. 15** (`personAufzaehlen`): zusätzlich Buchungen (ohne Token-/Link-Hash), Termin-Bezüge, Meetings (ohne Wortlaut
+  Dritter), Termin-Follow-ups — lib/crm/person-auskunft-kalender.ts.
+- **Kalender-Wiederherstellung** prüft jede fehlende .ics gegen die Grabsteine (Adressen → `grabsteinTrifft`): gesperrt,
+  im Probelauf `grabstein`. **CRM-Signale:** private Termine ohne Bezug gehen nie über den Titel ins CRM.
+
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),
   Petrol `#21B5AA` als Akzent. Motion-Sprache in `app/globals.css`.

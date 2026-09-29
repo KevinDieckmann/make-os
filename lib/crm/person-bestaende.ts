@@ -879,7 +879,17 @@ export async function personAufzaehlen(id: string) {
     .filter(v => nenntPerson(v, m)).map(v => ({ zeit: v.zeit, werkzeug: v.werkzeug, status: v.status, titel: v.titel }));
   const aenderungsprotokoll = await protokollDerPerson(m.fingerabdruecke);
   const weitereSpeicher = await weitereAufzaehlen(m);
-  return { ...personVerweise(crm, id), dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
+  // S1 #5 (29.09.): Buchungen, Termin-Bezüge, Meetings und Termin-Follow-ups als KOPIE (Art. 15 Abs. 3) — ohne Geheimnisse
+  // (Token-/Link-Hashes) und ohne Wortlaut Dritter (lib/crm/person-auskunft-kalender.ts).
+  const kal = await import('./person-auskunft-kalender');
+  const [{ ladeBuchungBestand }, { ladeBezuege }] = await Promise.all([import('@/lib/kalender/buchung-speicher'), import('@/lib/kalender/bezug-server')]);
+  const buchungen = kal.buchungenAuskunft((await ladeBuchungBestand().catch(() => null))?.buchungen, m);
+  const terminBezuege = kal.bezuegeAuskunft(await ladeBezuege().catch(() => null), id);
+  const terminSchluessel = kal.terminSchluesselDerPerson(terminBezuege, buchungen, kontakt?.aktivitaeten);
+  const meetings = kal.meetingsAuskunft((await loadJson<{ meetings?: import('./person-auskunft-kalender').MeetingRoh[] }>('meetings'))?.meetings, m, terminSchluessel);
+  const verweise = personVerweise(crm, id);
+  const terminFollowups = kal.terminFollowupsAuskunft(crm.followups, terminSchluessel, new Set(verweise.followups.map(f => f.id)));
+  return { ...verweise, terminFollowups, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */

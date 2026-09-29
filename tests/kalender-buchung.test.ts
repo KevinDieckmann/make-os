@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   plaetzeFuerSeite, reservieren, eingabePruefen, ausfuellZeitOk, ablaufNachziehen, loeschfristAnwenden, oeffentlich, statusSicht,
-  seiteSauber, slugVorsatz, slugOk, nameTeilen, vorbereitenTag, LEER, EINWILLIGUNG_VERSION, EINWILLIGUNG_WORTLAUT, GRENZEN,
+  seiteSauber, slugVorsatz, slugOk, nameTeilen, vorbereitenTag, LEER, EINWILLIGUNG_VERSION, EINWILLIGUNG_WORTLAUT, GRENZEN, hinweisFassung, HINWEIS_FRISTEN_STANDARD,
   type BuchungBestand, type BuchungsSeite, type Buchung,
 } from '@/lib/kalender/buchung';
 import type { Belegung } from '@/lib/kalender/verfuegbar';
@@ -40,11 +40,12 @@ describe('Plätze einer Seite', () => {
 });
 
 describe('Reservieren', () => {
-  it('reserviert einen freien Platz vorläufig mit Nachweis der Einwilligung', () => {
+  it('reserviert einen freien Platz vorläufig mit Nachweis der Kenntnisnahme (Fassung mit Fristen, S1 #8)', () => {
     const r = reservieren(bestand(), SEITE.id, EIN, [], {}, ctx());
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.buchung).toMatchObject({ status: 'vorlaeufig', start: EIN.start, ende: '2026-10-05T10:30:00', einwilligung: { wortlaut: EINWILLIGUNG_WORTLAUT, version: EINWILLIGUNG_VERSION } });
+    expect(r.buchung).toMatchObject({ status: 'vorlaeufig', start: EIN.start, ende: '2026-10-05T10:30:00', einwilligung: { wortlaut: EINWILLIGUNG_WORTLAUT, version: hinweisFassung(HINWEIS_FRISTEN_STANDARD) } });
+    expect(r.buchung.einwilligung.version.startsWith(EINWILLIGUNG_VERSION)).toBe(true);
     expect(r.buchung.reserviertBis).toBe('2026-10-05T06:30:00.000Z');
   });
   it('Doppelbuchung desselben Platzes → 409; dieselbe E-Mail offen → 409; belegter Platz → 409', () => {

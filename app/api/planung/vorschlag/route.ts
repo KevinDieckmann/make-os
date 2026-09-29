@@ -1,16 +1,21 @@
 // ─── MAKE OS — ZOE belegt die Woche ──────────────────────────────────────
 // POST { woche: 'YYYY-MM-DD' (Montag), hinweis? }
-// ZOE plant eine komplette Wochenbelegung: Reha täglich (Bandscheibe!),
-// Fokus vormittags, Routinen morgens/abends, Aufgaben nach Priorität — um die
-// festen Termine HERUM. Das Ergebnis ist ein VORSCHLAG: Kevin übernimmt ihn im
+// ZOE plant eine komplette Wochenbelegung: Gesundheits-Routinen, Fokus
+// vormittags, Routinen morgens/abends, Aufgaben nach Priorität — um die
+// festen Termine HERUM. Das Ergebnis ist ein VORSCHLAG: die Person übernimmt ihn im
 // Planer per Klick und schiebt dann zurecht. Nichts wird hier gespeichert.
+// S1 (29.09.): nur der Haushalt des Inhabers (`imHaushaltDesInhabers`, sonst 403), geplant wird für die ausdrücklich
+// benannte Person (nie der Rückfall auf „kevin“). Kein Gesundheitskontext mehr im Code — optional aus dem eigenen
+// Profil der fragenden Person (lib/gesundheit/kontext.ts), nie aus dem der anderen.
 
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveVitals, vitalsHint } from '@/lib/vitals';
-import { personAus } from '@/lib/zoe/raum';
+import { nameVon } from '@/lib/zoe/raum';
+import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
 import { ausWandzeit, minutenVon } from '@/lib/kalender/zeit';
@@ -20,7 +25,6 @@ import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { neueKennung } from '@/lib/kennung';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
-import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 interface RoutineDef { label: string; wann: 'morgen' | 'tag' | 'abend'; dauerMin: number; aktiv: boolean }
 
 export const runtime = 'nodejs';
@@ -34,6 +38,9 @@ const ARTEN = new Set(['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'])
 const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 export async function POST(req: Request) {
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
+  const person = zugang.person;
   const agentCfg = await resolveAgent('planung'); if (!agentCfg.enabled) return NextResponse.json(disabledResponse(agentCfg), { status: 409 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { woche?: string; hinweis?: string };
@@ -51,14 +58,16 @@ export async function POST(req: Request) {
   // Feste Termine (iCloud-Stand, auch die Blöcke — K5) für genau diese Woche (dedupliziert). Seit 29.09. (Paket R-Z, #K4) über denselben
   // Lesepfad wie ZOE (`termineFuerZoe`): für die Person gefiltert — private/Gesundheitstermine der anderen nur „Belegt“
   // (die Zeit blockiert weiter), fremder Haushalt bekommt keine Termine; fremde Titel gekapselt (#K1).
-  const [kal, tasksState, ziele, vitals, routinenF, reglerF] = await Promise.all([
-    termineFuerZoe(personAus(req), tage[0], tagePlus(tage[6], 1)),
-    ladeAufgabenSicht(personStreng(req)), // Sichtfilter „nur ich“ (29.09.)
+  const [kal, tasksState, ziele, vitals, routinenF, reglerF, eigeneAngaben] = await Promise.all([
+    termineFuerZoe(person, tage[0], tagePlus(tage[6], 1)),
+    ladeAufgabenSicht(person), // Sichtfilter „nur ich“ (29.09.)
     loadJson<Record<string, { titel: string; fortschritt: number; erledigt?: boolean }[]> & { fokus?: Record<string, string> }>('ziele'),
-    resolveVitals(undefined, personAus(req)),
+    resolveVitals(undefined, person),
     loadJson<{ routinen: RoutineDef[] }>('routinen'),
     loadJson<{ regler: Record<string, number> }>('fokus-regler'),
+    eigenerGesundheitsKontext(person),
   ]);
+  const name = nameVon(person);
   const regler = reglerF?.regler ?? {};
   const gesehen = new Set<string>();
   // KEMARIS/M365: bis zur echten Anbindung keine Termine (Beispieldaten seit 29.09., K5, raus).
@@ -94,15 +103,16 @@ export async function POST(req: Request) {
   const system = [
     FREMD_REGEL,
     '„Belegt“ bei einem festen Termin ist ein privater Termin der anderen Person: die Zeit ist blockiert, sonst nichts.',
-    'Du bist ZOE und belegst Kevins Woche im Wochenplaner — ein VORSCHLAG, den er danach frei zurechtschiebt.',
+    `Du bist ZOE und belegst die Woche von ${name} im Wochenplaner — ein VORSCHLAG, der danach frei zurechtgeschoben wird.`,
+    KONTEXT_REGEL,
     'HARTE REGELN:',
     '- Plane NIE über feste Termine (Liste unten). Zeitfenster 06:00–22:00, Raster 15 Minuten.',
-    '- REHA TÄGLICH mindestens 30 Min (Bandscheibenvorfall — nicht verhandelbar). Nach der Reha nichts Schweres.',
+    '- Gesundheits-Routinen aus der Routinen-Liste (z. B. Reha, Mobilität) plane als eigene reha-Blöcke ein, wenn es welche gibt — sonst nicht.',
     '- Fokus-Blöcke (90 Min) vormittags, wo frei — dort die wichtigsten Aufgaben als eigene aufgabe-Blöcke (mit taskId!) einplanen, kritische zuerst, Fälligkeiten beachten.',
     '- Morgens ~07:15 Routine-Block „Morgenroutine" (~30 Min), abends ~21:00 „Abendroutine" (~30 Min).',
     '- Pausen (15 Min) zwischen langen Blöcken. Nach 2 Stunden Sitzen: Bewegung.',
     '- Wochenende deutlich leichter: keine Arbeits-Fokusblöcke am Sonntag, Samstag maximal einer.',
-    '- Max 8 Blöcke pro Tag. Weniger ist besser als vollgestopft — Kevin will Ruhe, nicht Takt um des Takts willen.',
+    '- Max 8 Blöcke pro Tag. Weniger ist besser als vollgestopft — Ruhe, nicht Takt um des Takts willen.',
     '- Wenn die Recovery niedrig ist, plane spürbar weniger.',
     'arten: fokus | reha | routine | pause | aufgabe | block.',
     'Antworte NUR als JSON: {"begruendung":"<2-3 Sätze: wie du die Woche gedacht hast>","bloecke":[{"date":"YYYY-MM-DD","startMin":435,"dauerMin":90,"titel":"…","art":"fokus","taskId":"nur bei art=aufgabe"}]}',
@@ -111,6 +121,7 @@ export async function POST(req: Request) {
   const user = [
     `Woche: ${tage[0]} bis ${tage[6]}. Heute ist ${localDay()}.`,
     `Recovery ${vitals.rec}%, Schlaf ${vitals.sleep}h${vitalsHint(vitals)}.`,
+    eigeneAngaben,
     '',
     `FESTE TERMINE (unverrückbar):`,
     // Fremde Titel (Einladung, Abo, Buchungsseite) als Daten gekapselt — nie Anweisung (#K1).
@@ -119,7 +130,7 @@ export async function POST(req: Request) {
     ziele?.fokus?.woche ? `FOKUS DER WOCHE (dagegen planst du zuerst): ${ziele.fokus.woche}` : '',
     ziele?.fokus?.monat ? `FOKUS DES MONATS: ${ziele.fokus.monat}` : '',
     Object.keys(regler).length
-      ? `FOKUS-REGLER (von Kevin selbst eingestellt, 0–100 — Bereiche mit hohem Wert bekommen MEHR Blöcke/bessere Slots, niedrige treten zurück; kritische Aufgaben schlagen den Regler immer): ${Object.entries(regler).map(([k, v]) => `${SAEULE_LABEL[k] ?? k} ${v}`).join(' · ')}`
+      ? `FOKUS-REGLER (im Haushalt eingestellt, 0–100 — Bereiche mit hohem Wert bekommen MEHR Blöcke/bessere Slots, niedrige treten zurück; kritische Aufgaben schlagen den Regler immer): ${Object.entries(regler).map(([k, v]) => `${SAEULE_LABEL[k] ?? k} ${v}`).join(' · ')}`
       : '',
     `MONATSZIELE: ${monatsZiele.map(z => `${z.titel} (${z.fortschritt}%)`).join(' · ') || '(keine gepflegt)'}`,
     `QUARTALSZIELE: ${quartalsZiele.map(z => `${z.titel} (${z.fortschritt}%)`).join(' · ') || '(keine gepflegt)'}`,
@@ -131,7 +142,7 @@ export async function POST(req: Request) {
     }).join('\n') || '(keine)',
     '',
     `ROUTINEN (Inhalt der Routine-Blöcke): morgens ${rMorgen.join(', ') || '—'} · abends ${rAbend.join(', ') || '—'}${rTag.length ? ` · tagsüber als EIGENE kleine Blöcke einplanen: ${rTag.map(r => `${r.label} (${r.dauerMin}m)`).join(', ')}` : ''}`,
-    body.hinweis ? `\nKevins Hinweis: ${body.hinweis}` : '',
+    body.hinweis ? `\nHinweis von ${name}: ${body.hinweis}` : '',
   ].filter(Boolean).join('\n');
 
   const r = await askJson<{ begruendung?: string; bloecke?: Block[] }>({ zweck: 'planung-vorschlag', system, user, maxTokens: 6000, timeoutMs: 150_000 });

@@ -9,6 +9,8 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { zoneOf, vitalsHint } from '@/lib/vitals';
 import { gatherBrain, blockAufgaben } from '@/lib/brain';
 import { personAus } from '@/lib/zoe/raum';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
@@ -36,13 +38,16 @@ export async function POST(req: Request) {
     '- GRÜN (Recovery ≥66): volle Kapazität → 2–3 harte Deep-Work-Blöcke (90 Min) auf die kritischste Aufgabe.',
     '- GELB (40–65): fokussiert, aber mit Puffer — weniger/ kürzere Blöcke, mehr Pausen.',
     '- ROT (<40): nur das Essentielle + Regeneration (NSDR, Reha, früher Feierabend). Nicht durchpowern.',
-    'Kontext: Fokuszeit 09–17 schützen, Reha täglich, Spritze/Bandscheibe → spine-safe. Nordstern: mehr Ruhe + 1 Mio € Umsatz KD Ventures.',
+    // S1 #9: kein fester Gesundheitskontext mehr — nur aus dem eigenen Profil der fragenden Person (unten, falls gepflegt).
+    'Kontext: Fokuszeit 09–17 schützen. Nordstern: mehr Ruhe + 1 Mio € Umsatz KD Ventures.',
+    KONTEXT_REGEL,
     'Antworte auf Deutsch, kurz & strukturiert in Markdown mit genau diesen fetten Überschriften:',
     '**Tagesform** (1 Satz zur Recovery-Zone) · **Heute zuerst** (die EINE wichtigste Aufgabe) · **Zeitblöcke** (2–3 konkrete mit Uhrzeit) · **Heute bewusst NICHT** (was warten kann) · **Körper** (1 konkreter Reha-/Ruhe-Hinweis).',
     'Keine Textwände, keine Floskeln, kein Startup-Sprech. Souverän und klar.',
   ].join('\n');
 
-  const message = `Recovery: ${rec}% (Zone ${zone})${vitalsHint(v)}. Ruhepuls ${v.rhr}, HRV ${v.hrv}, Schlaf letzte Nacht ${v.sleep}h.${v.note ? ` Kevin notiert: "${v.note}"` : ""}\n\n${taskLines}\n\nRichte meinen Tag aus.`;
+  const eigeneAngaben = await eigenerGesundheitsKontext(personStreng(req));
+  const message = `Recovery: ${rec}% (Zone ${zone})${vitalsHint(v)}. Ruhepuls ${v.rhr}, HRV ${v.hrv}, Schlaf letzte Nacht ${v.sleep}h.${v.note ? ` Kevin notiert: "${v.note}"` : ""}${eigeneAngaben ? `\n\n${eigeneAngaben}` : ''}\n\n${taskLines}\n\nRichte meinen Tag aus.`;
 
   const r = await askText({ zweck: 'fokus', system, user: message, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Tagesplan erzeugen — nochmal versuchen.', recovery: rec, zone });

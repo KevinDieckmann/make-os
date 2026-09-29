@@ -27,6 +27,7 @@ import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { etagAus, jsonAntwort, unveraendert } from '@/lib/http/json-antwort';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from '@/lib/crm/speicher';
@@ -97,6 +98,8 @@ export async function POST(req: Request) {
   const alt = await ladeVerbindungsBestaende(heute);
   const vorschau = verbindungenReparieren(alt, ids, jetzt, person);
   if (body.vorschau === true) return NextResponse.json({ ok: true, vorschau: true, aenderungen: vorschau.aenderungen });
+  // S1 #19: Reparieren schreibt — nur aus dem aktuellen Bau (Dienstweg ausgenommen); die Vorschau oben liest nur.
+  const alterBau = bauPruefen(req); if (alterBau) return alterBau;
 
   // Schreiben: je Speicher EINE Sperre, darin auf dem frischen Stand neu gerechnet — was
   // inzwischen jemand anderes geändert hat, geht nicht verloren.

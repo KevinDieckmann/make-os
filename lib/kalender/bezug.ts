@@ -257,9 +257,12 @@ export function maskieren<T extends TerminMitBezug & { wer?: string }>(t: T, bet
   const { ort: _o, notiz: _n, bezug: _b, gastKontakte: _g, teilnehmer: _t, organisator: _og, erinnerungen: _e, farbeEigen: _f, farbeId: _fi, arbeitsort: _a, stand: _s, ...rest } = t;
   // R-K1 #96: nach außen keine echte UID (mit ihr ließe sich der Termin per API ansprechen) — eine Kennung, die nur für
   // die Anzeige eindeutig ist; die Route lehnt Ändern/Löschen fremd-privater Termine ohnehin mit 403 ab.
-  const verdeckt = `belegt-${fnv(t.id)}`;
+  const verdeckt = verdeckteKennung(t.id);
   return { ...rest, id: verdeckt, uid: verdeckt, href: '', titel: 'Belegt', bearbeitbar: false, maskiert: true } as T;
 }
+
+/** Anzeige-Kennung eines maskierten Termins („belegt-…“) — nie die echte UID (R-K1 #96). */
+export const verdeckteKennung = (id: string): string => `belegt-${fnv(id)}`;
 
 /** Wäre der Termin für diese Person maskiert (privat einer anderen Person)? — Rechte-Prüfung für Ändern/Löschen (R-K1 #96). */
 export const fremdPrivat = (t: TerminMitBezug & { wer?: string }, person: string | null | undefined): boolean => !!t.maskiert || !!maskieren(t, person).maskiert;

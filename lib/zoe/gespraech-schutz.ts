@@ -14,8 +14,11 @@ export const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'f
   'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage', 'crm_vorschlag',
   // K6a (29.09.): freie Zeit — nur Zeiten, nichts wird angelegt.
   'freie_zeit']);
-/** Im Gespräch immer nur Vorschlag. */
-export const IMMER_VORSCHLAG = new Set(['fakt_merken', 'notiz_anlegen']);
+/**
+ * Im Gespräch immer nur Vorschlag. `notiz_ergaenzen` seit S1 #12 (29.09.): es schreibt wie `notiz_anlegen` dauerhaft in
+ * den Vault (Offene Fragen, Taskmanagement, Zoe-Log) — ein eingeschleuster Satz darf sich dort nicht selbst anhängen.
+ */
+export const IMMER_VORSCHLAG = new Set(['fakt_merken', 'notiz_anlegen', 'notiz_ergaenzen']);
 
 /** Bringt der Browser-Kontext Text mit? Dann ist das Gespräch ab dem ersten Zug „fremd gelesen“. */
 export function kontextIstFremd(kontext: unknown): boolean {
@@ -65,4 +68,15 @@ export function verlaufVertraulich(verlauf: unknown, quelleVon: (name: string) =
     const q = typeof r?.agent === 'string' ? quelleVon(r.agent) : null;
     return !!q && VERTRAULICHE_QUELLEN.has(q);
   }));
+}
+
+/**
+ * Hat ein früherer Zug DIESES Gesprächs einen Leser mit Text Dritter benutzt (S1 #4, 29.09.)? Dann steht dieser Text im
+ * Verlauf, den das Modell wieder bekommt — das Gespräch bleibt „fremd gelesen“, schreibende Werkzeuge nur als Vorschlag.
+ * `quelleVon` bildet einen Werkzeug-/Agentennamen auf seine Fremd-Quelle ab (lib/zoe/fremd.ts); jede Quelle zählt, auch
+ * ein gescheiterter Lauf (sein Fehlertext kann Fremdtext tragen).
+ */
+export function verlaufFremd(verlauf: unknown, quelleVon: (name: string) => string | null): boolean {
+  if (!Array.isArray(verlauf)) return false;
+  return verlauf.some(n => Array.isArray((n as { ran?: unknown })?.ran) && ((n as { ran: { agent?: unknown }[] }).ran).some(r => typeof r?.agent === 'string' && !!quelleVon(r.agent)));
 }

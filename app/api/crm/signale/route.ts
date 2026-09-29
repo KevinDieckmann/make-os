@@ -13,8 +13,11 @@
 // Seit R-K1 (#46/#68/#100): Termin-Kennungen tragen den Kalender (`kalender|uid`) — Bezüge werden in beiden Formen
 // gefunden (`bezugVon`), die Signal-Kennung der Titel-Termine bleibt die alte (sonst entstünden Doppelte). Abgesagte
 // und abgelehnte Termine (STATUS:CANCELLED, eigene Antwort DECLINED) zählen nicht: kein Meeting, kein Kontakt.
+// S1 (29.09.): private Termine ohne Bezug gehen nie über den Titel ins CRM (#10, `terminSignale`); POST prüft die
+// Bau-Kennung (`bauPruefen`, Dienstweg ausgenommen).
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
@@ -40,6 +43,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   const erzwingen = new URL(req.url).searchParams.get('jetzt') === '1';
   const alt = (await loadJson<Stand>(NAME)) ?? {};
   if (!erzwingen && alt.letzter && Date.now() - Date.parse(alt.letzter) < 5 * 60_000) return NextResponse.json({ ok: true, frisch: true, neu: 0 });
@@ -62,7 +66,7 @@ export async function POST(req: Request) {
     // KEMARIS/M365: bis zur echten Anbindung keine Termine (die Beispieldaten sind seit 29.09., K5, raus).
     // Apple-Kalender: mit Bezug aus jedem Kalender; über den Namen im Titel nur die geschäftliche Kategorie (Holding).
     ...kalTermine.map(t => ({ t, k: kontakteVon(bezugVon(t)) })).filter(({ t, k }) => k.length || t.category === 'holding')
-      .map(({ t, k }) => ({ id: k.length ? t.id : `ac-${altSchluessel(t.id)}`, titel: t.title!, start: t.startDate!, ...(t.uid ? { uid: t.uid } : {}), ...(k.length ? { kontaktIds: k } : {}) })),
+      .map(({ t, k }) => ({ id: k.length ? t.id : `ac-${altSchluessel(t.id)}`, titel: t.title!, start: t.startDate!, ...(t.uid ? { uid: t.uid } : {}), ...(k.length ? { kontaktIds: k } : {}), ...(t.privat ? { privat: true } : {}) })),
   ];
   // Termine mit Bezug → Meeting-Aktivitäten (eine je Vorkommen) und Kontaktpflege für vergangene Meetings.
   const mitBezug: TerminFuerCrm[] = kalTermine.flatMap(t => {

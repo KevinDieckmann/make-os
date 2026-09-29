@@ -20,6 +20,7 @@ import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { HEADS, HEAD_NAME, MODI, AGENT_ID, type HeadId } from '@/lib/heads/prompt';
 import { headLauf } from '@/lib/heads/lauf';
@@ -82,6 +83,8 @@ function ort(t: { art?: string; kontakt_id?: string | null; chance_id?: string |
 export async function POST(req: Request, props: { params: Promise<{ head: string }> }) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
+  // S1 #19: Läufe und Entscheidungen schreiben — nur aus dem aktuellen Bau (Dienstweg ausgenommen).
+  const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   const params = await props.params;
   const h = headAus(params);
   if (!h) return NextResponse.json({ ok: false, fehler: 'Unbekannter Head.' }, { status: 404 });

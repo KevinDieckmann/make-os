@@ -17,8 +17,19 @@
 //                                                       { token, pfad, bis } — die Oberfläche baut daraus den Mail-ENTWURF
 //                                                       (mailto); verschickt wird nur per Klick in der Mail-App. Ein neuer
 //                                                       Link ersetzt den alten.
-// Nur der Haushalt des Inhabers (wie der Kalender), nie der Dienstweg für Einladungen/Links. Versendet wird nichts —
-// außer der Einladung nach Klick (iCloud).
+//      { aktion: 'buchung-auskunft', email }            (S1 #6) Art. 15 für Gäste OHNE CRM-Kontakt: Kopie ihrer Buchungen
+//                                                       (ohne Token-/Link-Hashes) + welche Termine in Apple sie nennen.
+//      { aktion: 'buchung-loeschen', email, bestaetigt?, notizBereinigen? }
+//                                                       (S1 #6) Art. 17 für Gäste ohne CRM-Kontakt. Ohne `bestaetigt` nur
+//                                                       die Rückfrage (was gelöscht wird, was in Apple bleibt). Mit
+//                                                       `bestaetigt`: Buchungen weg; mit `notizBereinigen` zusätzlich Name
+//                                                       und Gastzeilen aus Titel/Notiz der Termine (über den Schreibweg
+//                                                       `terminAendernServer`) — was dabei nicht geht, meldet `inApple`.
+//                                                       Gäste MIT Kontakt: 409 → Löschen über die Akte (Art. 17 überall).
+// Nur der Haushalt des Inhabers (wie der Kalender), nie der Dienstweg für Einladungen/Links, Seiten, Freigaben und
+// Gast-Auskunft/-Löschung (S1 #14: 403). Versendet wird nichts — außer der Einladung nach Klick (iCloud).
+// S1 (29.09.): Protokoll mit `werAus(req)` (nur Kennungen), Körper höchstens 64 KB (413), Seiten mit Stand (`stand` =
+// `geaendert` der gelesenen Fassung, sonst 409), `seite.person` muss im Haushalt des Inhabers sein (#13).
 
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
@@ -28,10 +39,18 @@ import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { aufgabeErledigenNachFollowUp } from '@/lib/crm/followup-aufgabe-server';
 import type { FollowUp } from '@/lib/crm/typen';
 import { neueKennung } from '@/lib/kennung';
-import { seiteSauber, mailLinkMoeglich, mailLinkPfad, vorbereitenErledigen, GRENZEN, OFFEN, MAIL_LINK_TAGE, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
+import { seiteSauber, mailLinkMoeglich, mailLinkPfad, vorbereitenErledigen, buchungenDesGasts, gastAdresse, notizOhneGast, titelOhneGast, GRENZEN, OFFEN, MAIL_LINK_TAGE, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
 import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, neuerSlug, neuesToken, mailTokenHash } from '@/lib/kalender/buchung-speicher';
 import { buchungFreigeben, folgeVorschlag, FreigabeFehler } from '@/lib/kalender/buchung-ablauf';
 import { istDienst } from '@/lib/zugang/dienst';
+import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
+import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
+import { buchungKopie } from '@/lib/crm/person-auskunft-kalender';
+import { terminLesen, verbunden } from '@/lib/kalender/icloud';
+import { terminAendernServer } from '@/lib/kalender/termin-server';
+import { localDay } from '@/lib/zeit';
+import { loadJson } from '@/lib/store/local-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,6 +59,10 @@ const ID = /^[a-z]{1,4}-[a-z0-9-]{8,80}$/;
 const nein = (fehler: string, status = 400) => NextResponse.json({ ok: false, fehler }, { status });
 /** Was die Oberfläche von einer Buchung sieht — nie ein Token-Hash (Status und Mail-Link), vom Link nur der Ablauf. */
 const sicht = ({ tokenHash: _t, mailLink, ...b }: Buchung) => ({ ...b, ...(mailLink ? { mailLinkBis: mailLink.bis } : {}) });
+/** Größter Körper (Byte) — darüber 413 statt still zu kürzen (S1 #15). */
+const MAX_BYTES = 64_000;
+/** Aktionen, die nie über den Dienstweg laufen (ZOE, Skripte) — nur von Hand (S1 #14). */
+const NUR_VON_HAND = new Set(['seite', 'seite-loeschen', 'freigeben', 'mail-link', 'buchung-auskunft', 'buchung-loeschen']);
 
 export async function GET(req: Request) {
   if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
@@ -70,19 +93,34 @@ export async function POST(req: Request) {
   const zugang = await kalenderZugang(req);
   if (!zugang) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const alt = bauPruefen(req); if (alt) return alt;
+  if (zuGross(req, MAX_BYTES)) return ZU_GROSS(MAX_BYTES);
   const person = zugang.person;
+  const wer = werAus(req);
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return nein('Kein JSON.'); }
+  try {
+    const text = await req.text();
+    if (text.length > MAX_BYTES) return ZU_GROSS(MAX_BYTES);
+    const j = JSON.parse(text);
+    if (!j || typeof j !== 'object' || Array.isArray(j)) return nein('Kein JSON.');
+    b = j as Record<string, unknown>;
+  } catch { return nein('Kein JSON.'); }
   const jetzt = new Date();
   const jetztIso = jetzt.toISOString();
+  if (NUR_VON_HAND.has(String(b.aktion)) && istDienst(req)) return nein('Nur von Hand — nie über ZOE oder Skripte.', 403);
+  const stand = typeof b.stand === 'string' ? b.stand : null;
 
   if (b.aktion === 'seite') {
     const roh = (b.seite && typeof b.seite === 'object' ? b.seite : {}) as Record<string, unknown>;
     const id = typeof roh.id === 'string' && ID.test(roh.id) ? roh.id : null;
+    // #13: die Seite bucht für eine Person — sie muss zum Haushalt des Inhabers gehören (sonst ginge ihre Belegung/Glocke ins Leere oder nach außen).
+    const fuer = typeof roh.person === 'string' ? roh.person.trim() : '';
+    if (!(await personImHaushaltDesInhabers(fuer))) return nein('Für wen ist die Seite? Nur für eine Person des Haushalts.', 400);
     let fehler = '', status = 400, gespeichert: BuchungsSeite | null = null;
     await aendereBuchungBestand(bs => {
       const vorher = id ? bs.seiten.find(s => s.id === id) : undefined;
       if (id && !vorher) { fehler = 'Buchungsseite nicht gefunden.'; status = 404; return bs; }
+      // #15: nur auf der Fassung ändern, die gelesen wurde — sonst 409 (ein anderes Fenster, Kevin und Malin gleichzeitig).
+      if (vorher && stand !== vorher.geaendert) { fehler = 'Die Seite wurde inzwischen geändert — bitte neu laden.'; status = 409; return bs; }
       if (!vorher && bs.seiten.length >= GRENZEN.seiten) { fehler = `Höchstens ${GRENZEN.seiten} Buchungsseiten.`; status = 413; return bs; }
       const titel = typeof roh.titel === 'string' ? roh.titel : '';
       const fest = vorher ? { id: vorher.id, slug: vorher.slug, angelegt: vorher.angelegt } : { id: neueKennung('bs'), slug: neuerSlug(titel), angelegt: jetztIso };
@@ -93,7 +131,7 @@ export async function POST(req: Request) {
     }, jetzt);
     if (!gespeichert) return nein(fehler || 'Nicht gespeichert.', status);
     const s = gespeichert as BuchungsSeite;
-    await buchungProtokoll([{ liste: 'seiten', op: id ? 'geaendert' : 'neu', id: s.id }], { art: 'person', person });
+    await buchungProtokoll([{ liste: 'seiten', op: id ? 'geaendert' : 'neu', id: s.id }], wer);
     return NextResponse.json({ ok: true, seite: { ...s, pfad: `/buchen/${s.slug}` } });
   }
 
@@ -101,12 +139,14 @@ export async function POST(req: Request) {
     const id = typeof b.id === 'string' && ID.test(b.id) ? b.id : '';
     let fehler = '', status = 400;
     await aendereBuchungBestand(bs => {
-      if (!bs.seiten.some(s => s.id === id)) { fehler = 'Buchungsseite nicht gefunden.'; status = 404; return bs; }
+      const vorher = bs.seiten.find(s => s.id === id);
+      if (!vorher) { fehler = 'Buchungsseite nicht gefunden.'; status = 404; return bs; }
+      if (stand !== vorher.geaendert) { fehler = 'Die Seite wurde inzwischen geändert — bitte neu laden.'; status = 409; return bs; }
       if (bs.buchungen.some(x => x.seiteId === id)) { fehler = 'An dieser Seite hängen noch Buchungen — erst deaktivieren; löschen geht, wenn die Löschfrist sie geräumt hat.'; status = 409; return bs; }
       return { ...bs, seiten: bs.seiten.filter(s => s.id !== id) };
     }, jetzt);
     if (fehler) return nein(fehler, status);
-    await buchungProtokoll([{ liste: 'seiten', op: 'geloescht', id }], { art: 'person', person });
+    await buchungProtokoll([{ liste: 'seiten', op: 'geloescht', id }], wer);
     return NextResponse.json({ ok: true });
   }
 
@@ -115,7 +155,6 @@ export async function POST(req: Request) {
     // K3: Gast als echte Einladung — nur nach der Rückfrage in der Oberfläche (`einladungBestaetigt`), nie über den Dienstweg.
     const einladen = b.einladen === true;
     if (einladen && b.einladungBestaetigt !== true) return nein('Einladung erst nach Bestätigung („Einladung senden?“).', 409);
-    if (einladen && istDienst(req)) return nein('Einladungen nur von Hand — nie über ZOE oder Skripte.', 403);
     try {
       await buchungFreigeben(id, person, jetzt, { einladen, adresseUnbestaetigt: b.adresseUnbestaetigt === true, trotzKonflikt: b.trotzKonflikt === true });
     } catch (e) {
@@ -138,7 +177,7 @@ export async function POST(req: Request) {
       return { ...bs, buchungen: bs.buchungen.map(y => (y.id === id ? { ...y, status: 'abgelehnt' as const, statusAm: jetztIso, entschiedenAm: jetztIso, entschiedenVon: person, ...(grund ? { grund } : {}) } : y)) };
     }, jetzt);
     if (fehler) return nein(fehler, status);
-    await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['status'] }], { art: 'person', person });
+    await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['status'] }], wer);
     return NextResponse.json({ ok: true });
   }
 
@@ -163,7 +202,7 @@ export async function POST(req: Request) {
     if (fehler) return nein(fehler, status);
     const g = geloest as { terminUid: string; vorbereitenId?: string } | null;
     if (g) {
-      await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['terminUid'] }], { art: 'person', person });
+      await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['terminUid'] }], wer);
       // Der Verweis ist gelöst (die Antwort bleibt ok); ein Fehler hier bleibt im Log — die Verbindungsprüfung fände den Rest.
       try {
         let erledigt: FollowUp[] = [];
@@ -175,8 +214,7 @@ export async function POST(req: Request) {
   }
 
   if (b.aktion === 'mail-link') {
-    // Nur von Hand: ein Link führt zu einer Mail an Dritte (auch als Entwurf) — nie über ZOE oder Skripte.
-    if (istDienst(req)) return nein('Bestätigungslinks nur von Hand — nie über ZOE oder Skripte.', 403);
+    // Nur von Hand: ein Link führt zu einer Mail an Dritte (auch als Entwurf) — nie über ZOE oder Skripte (NUR_VON_HAND).
     const id = typeof b.id === 'string' && ID.test(b.id) ? b.id : '';
     const token = neuesToken();
     const bis = new Date(jetzt.getTime() + MAIL_LINK_TAGE * 86_400_000).toISOString();
@@ -192,9 +230,77 @@ export async function POST(req: Request) {
       return { ...bs, buchungen: bs.buchungen.map(y => (y.id === id ? { ...y, mailLink: { hash: mailTokenHash(token), bis, am: jetztIso } } : y)) };
     }, jetzt);
     if (fehler) return nein(fehler, status);
-    await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['mailLink'] }], { art: 'person', person });
+    await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['mailLink'] }], wer);
     return NextResponse.json({ ok: true, token, pfad: mailLinkPfad(slug, token), bis }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
+  if (b.aktion === 'buchung-auskunft' || b.aktion === 'buchung-loeschen') return gastRechte(b, wer, jetztIso);
+
   return nein('Unbekannte Aktion.');
+}
+
+// ── Art. 15 / 17 für Gäste ohne CRM-Kontakt (S1 #6) ────────────────────────────
+// Die Person steht nur in der Buchung (Name, Adresse, Firma, Anliegen) und im Termin in Apple (Titel „… · Name“, Notiz
+// „Gast: Name <Adresse>“). Das Protokoll nennt nur Kennungen der Buchungen — nie Name oder Adresse. Gäste MIT Kontakt
+// laufen über die Akte (GET/POST /api/crm/datenschutz — Art. 15/17 über alle Speicher, auch diese Buchungen).
+
+interface InApple { terminUid: string; kalender?: string; tag: string; grund: string }
+
+async function gastRechte(b: Record<string, unknown>, wer: ReturnType<typeof werAus>, jetztIso: string): Promise<NextResponse> {
+  const email = gastAdresse(b.email);
+  if (!email) return nein('E-Mail-Adresse des Gasts fehlt oder ist ungültig.');
+  const bestand = await ladeBuchungBestand();
+  const eigene = buchungenDesGasts(bestand, email);
+  if (!eigene.length) return nein('Zu dieser Adresse gibt es keine Buchung.', 404);
+  const kontakte = new Set(((await loadJson<{ kontakte?: { id: string }[] }>('kontakte'))?.kontakte ?? []).map(k => k.id));
+  if (eigene.some(x => x.kontaktId && kontakte.has(x.kontaktId))) {
+    return NextResponse.json({ ok: false, fehler: 'Der Gast ist Geschäftskontakt — Auskunft und Löschung über seine Akte (Datenschutz), dort über alle Speicher.', mitKontakt: true }, { status: 409 });
+  }
+  const titel = (seiteId: string) => bestand.seiten.find(s => s.id === seiteId)?.titel ?? 'Termin';
+  const mitTermin = eigene.filter(x => x.terminUid);
+
+  if (b.aktion === 'buchung-auskunft') {
+    await buchungProtokoll(eigene.map(x => ({ liste: 'auskunft', op: 'neu' as const, id: x.id, felder: ['art15'] })), wer);
+    return new NextResponse(JSON.stringify({
+      erstellt: jetztIso, art: 'Auskunft nach Art. 15 DSGVO — Gast einer Buchungsseite (ohne Geschäftskontakt)',
+      buchungen: eigene.map(x => ({ ...buchungKopie(x), seite: titel(x.seiteId) })),
+      // Der Termin in Apple trägt Name und Adresse in Titel/Notiz (bis zur Löschung dort bzw. „notizBereinigen“).
+      termineInApple: mitTermin.map(x => ({ terminUid: x.terminUid, kalender: x.terminKalender ?? null, start: x.start, ende: x.ende })),
+    }, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Disposition': `attachment; filename="Auskunft-Art15-Buchung-${localDay()}.json"` } });
+  }
+
+  // Löschen: erst die Rückfrage — was weg ist, was in Apple bleibt.
+  const bereinigen = b.notizBereinigen === true;
+  if (b.bestaetigt !== true) {
+    return NextResponse.json({
+      ok: true, rueckfrage: true, buchungen: eigene.length,
+      termine: mitTermin.map(x => ({ kalender: x.terminKalender ?? null, tag: x.start.slice(0, 10), status: x.status })),
+      hinweis: mitTermin.length
+        ? `${mitTermin.length} Termin${mitTermin.length === 1 ? '' : 'e'} in Apple nennen den Gast in Titel und Notiz. Mit „Notiz bereinigen“ entfernt MAKE OS Name und Gastzeilen dort; sonst bitte in Apple bearbeiten oder löschen.`
+        : 'In Apple steht kein Termin dieses Gasts.',
+    });
+  }
+  const inApple: InApple[] = [];
+  for (const x of mitTermin) {
+    const tag = x.start.slice(0, 10);
+    if (!bereinigen) { inApple.push({ terminUid: x.terminUid!, kalender: x.terminKalender, tag, grund: 'nicht bereinigt (auf Wunsch)' }); continue; }
+    if (!verbunden()) { inApple.push({ terminUid: x.terminUid!, kalender: x.terminKalender, tag, grund: 'iCloud nicht verbunden' }); continue; }
+    try {
+      const t = await terminLesen(x.terminUid!);
+      if (!t) continue; // in Apple schon weg
+      // Mit Einladung (ATTENDEE) steht die Adresse als Gast im Termin — ändern hieße Post an den Gast: nur in Apple.
+      if (t.mitTeilnehmern) { inApple.push({ terminUid: x.terminUid!, kalender: x.terminKalender, tag, grund: 'Einladung mit Gast — bitte in Apple löschen' }); continue; }
+      const notiz = notizOhneGast(t.notiz);
+      await terminAendernServer(x.terminUid!, { titel: titelOhneGast(t.titel, x.name), notiz: notiz || null }, wer);
+    } catch (e) {
+      inApple.push({ terminUid: x.terminUid!, kalender: x.terminKalender, tag, grund: e instanceof Error ? e.message.slice(0, 160) : 'nicht geändert' });
+    }
+  }
+  const ids = new Set(eigene.map(x => x.id));
+  await aendereBuchungBestand(bs => ({ ...bs, buchungen: bs.buchungen.filter(y => !ids.has(y.id)) }));
+  await buchungProtokoll(eigene.map(x => ({ liste: 'buchungen', op: 'geloescht' as const, id: x.id, felder: ['art17-gast'] })), wer);
+  const { loeschungFesthalten } = await import('@/lib/crm/loeschprotokoll');
+  // Löschprotokoll ohne Klartext (nur Tag, Grund, wer); was in Apple offen bleibt, nur als Zahl im Grund.
+  await loeschungFesthalten({ datum: jetztIso.slice(0, 10), grund: `Art. 17 DSGVO — Gast einer Buchungsseite (ohne Geschäftskontakt)${inApple.length ? ` · ${inApple.length} Termin(e) in Apple offen` : ''}`, von: wer.person ?? 'system', status: 'vollstaendig' });
+  return NextResponse.json({ ok: true, geloescht: eigene.length, ...(inApple.length ? { inApple } : {}) });
 }

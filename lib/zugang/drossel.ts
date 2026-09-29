@@ -40,13 +40,17 @@ export function erfolg(schluessel: string): void { stand.delete(schluessel); }
  * eigene Vorbau (Caddy); frühere Einträge könnte ein Angreifer selbst schicken.
  */
 export function adresse(req: Request): string {
+  return adresseAusKoepfen(req.headers);
+}
+/** Wie `adresse`, aus den Köpfen allein (Server-Seiten mit `headers()` — S1 #21, Drosselung von /buchen/<slug>). */
+export function adresseAusKoepfen(h: { get(n: string): string | null }): string {
   // Den Kopfzeilen nur hinter dem eigenen Vorbau trauen (Caddy auf dem Server) — sonst könnte ein
   // direkter Aufrufer sich mit jedem Versuch eine neue Adresse geben (26.09.).
   const vorbau = process.env.NODE_ENV === 'production' || process.env.TRUST_PROXY === '1';
   if (!vorbau) return 'direkt';
-  const xff = req.headers.get('x-forwarded-for');
+  const xff = h.get('x-forwarded-for');
   const letzte = xff?.split(',').map(s => s.trim()).filter(Boolean).pop();
-  return letzte || req.headers.get('x-real-ip') || 'unbekannt';
+  return letzte || h.get('x-real-ip') || 'unbekannt';
 }
 
 /**

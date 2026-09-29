@@ -30,6 +30,7 @@ export const KONTAKTE_LESER_ERLAUBT: Readonly<Record<string, string>> = {
   'lib/crm/verarbeitung.ts': 'Die eine Lesefunktion mit Pflicht-Filter.',
   // Verwalten, schützen, auskunften — brauchen jede Person, auch eingeschränkte (aufbewahren heißt: da sein).
   'app/api/state/kontakte/route.ts': 'Die Kartei-Route selbst (Anzeige mit Kennzeichnung, Bearbeiten gesperrt → 409).',
+  'app/api/kalender/buchung/route.ts': 'Art. 15/17 für Gäste der Buchungsseite (S1 #6): nur die Kennungen — hat der Gast einen Kontakt (auch eingeschränkt), läuft es über seine Akte (409).',
   'app/api/crm/bestand/route.ts': 'Bestand für die Oberfläche — eingeschränkte Personen erscheinen gekennzeichnet („eingeschränkter Kontakt“).',
   'app/api/crm/datenschutz/route.ts': 'Auskunft (Art. 15) und Löschung (Art. 17) — muss jede Person sehen; eingeschränkte werden aufbewahrt (409).',
   'app/api/crm/dubletten/route.ts': 'Dubletten-Prüfung — eingeschränkte Personen werden erkannt und nicht zusammengeführt (409).',

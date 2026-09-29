@@ -17,6 +17,7 @@ import { eventSpiegelLage, eventSpiegelAnlegen, eventSpiegelLoeschen, familieSpi
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
+import { istDienst } from '@/lib/zugang/dienst';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +47,11 @@ export async function POST(req: Request) {
   const id = typeof b.id === 'string' ? b.id : '';
   if (!KENNUNG.test(id)) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
   try {
-    if (b.art === 'event' && b.aktion === 'loeschen') return NextResponse.json({ ok: true, ...(await eventSpiegelLoeschen(id, werAus(req))) });
+    // S1: Löschen eines Spiegel-Termins nur von Hand — nie über ZOE oder Skripte (Dienstweg → 403).
+    if (b.art === 'event' && b.aktion === 'loeschen') {
+      if (istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Löschen nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
+      return NextResponse.json({ ok: true, ...(await eventSpiegelLoeschen(id, werAus(req))) });
+    }
     if (b.art === 'event') return NextResponse.json({ ok: true, ...(await eventSpiegelAnlegen(id, z.person, werAus(req))) });
     if (b.art === 'date' || b.art === 'gespraech') {
       const h = await haushaltVon(req);

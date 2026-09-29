@@ -32,30 +32,54 @@ import { suchNorm } from '@/lib/text/such-norm';
 import { schluesselPasst } from './bezug';
 import type { FollowUp } from '@/lib/crm/typen';
 
-// ── Texte mit Fassung (Nachweis der Einwilligung) ────────────────────────────
+// ── Texte mit Fassung (Nachweis der Kenntnisnahme) ───────────────────────────
+// S1 #8 (29.09.): EINE Rechtsgrundlage, konsistent in Hinweis und Häkchen — Art. 6 Abs. 1 lit. b DSGVO (Maßnahmen vor
+// einem Vertrag auf Anfrage der Person: sie fragt einen Termin an). Das Häkchen ist darum KEINE Einwilligung, sondern die
+// Kenntnisnahme des Datenschutzhinweises (vorher: „Ich bin einverstanden …“ neben „lit. b“ — zwei Grundlagen). Die
+// Fristen im Hinweis kommen aus der Löschfristen-Tabelle (`fristenWirksam`, Stammdaten › Datenschutz), die Fassung trägt
+// sie mit (`hinweisFassung`) — ändert jemand eine Frist, entsteht eine neue Fassung. Das Datenmodell bleibt: das Feld
+// heißt weiter `einwilligung` (Wortlaut, Fassung, Zeitpunkt), sein Inhalt ist der Nachweis der Kenntnisnahme.
+// Hinweis, keine Rechtsberatung — den Text einmal anwaltlich gegenlesen.
 
-/** Fassung des Einwilligungs- und Hinweistextes — wird mit jeder Buchung gespeichert. Text ändern → Fassung hoch. */
-export const EINWILLIGUNG_VERSION = 'buchung-2026-09-29-2';
-/** Wortlaut des Pflicht-Häkchens (so steht er als Nachweis an der Buchung und an der Einwilligung im CRM). */
-export const EINWILLIGUNG_WORTLAUT = 'Ich bin einverstanden, dass meine Angaben (Name, E-Mail, Firma, Anliegen) zur Bearbeitung dieser Terminanfrage gespeichert und verarbeitet werden. Die Hinweise zum Datenschutz habe ich gelesen.';
+/** Grundfassung des Hinweis- und Häkchentextes. Text ändern → hochzählen; die Fristen hängt `hinweisFassung` an. */
+export const EINWILLIGUNG_VERSION = 'buchung-2026-09-29-3';
+/** Wortlaut des Pflicht-Häkchens — Kenntnisnahme, keine Einwilligung (so steht er als Nachweis an der Buchung und im CRM). */
+export const EINWILLIGUNG_WORTLAUT = 'Ich habe den Datenschutzhinweis oben zur Kenntnis genommen.';
+/** Wie der Nachweis im CRM heißt (Einwilligungs-Liste, Grundlage „Antwort auf Anfrage“). */
+export const KENNTNISNAHME_NAME = 'Kenntnisnahme Datenschutzhinweis';
+
+/** Die Fristen, die der Hinweis nennt (aus `fristenWirksam`): Buchungen (Tage), Kontakte (Monate), Kalender-Zwischenspeicher (Monate). */
+export interface HinweisFristen { buchungen: number; kontakte: number; kalenderCaches: number }
+/** Standard der Löschfristen-Tabelle (lib/crm/loeschfristen.ts) — für Tests und als Rückfall ohne gespeicherte Abweichung. */
+export const HINWEIS_FRISTEN_STANDARD: HinweisFristen = { buchungen: 30, kontakte: 24, kalenderCaches: 12 };
+
+/** Fassung des Hinweises MIT den Fristen, die er nennt — wird mit jeder Buchung gespeichert. */
+export const hinweisFassung = (f: HinweisFristen): string => `${EINWILLIGUNG_VERSION}.b${f.buchungen}-k${f.kontakte}-c${f.kalenderCaches}`;
+
+const tageText = (n: number) => `${n} ${n === 1 ? 'Tag' : 'Tage'}`;
+const monateText = (n: number) => `${n} ${n === 1 ? 'Monat' : 'Monate'}`;
+
 /**
  * Datenschutz-Hinweis auf der Seite (Art. 13 DSGVO, kurz; steht ausgeklappt ÜBER dem Formular). Verantwortlicher steht
- * an der Buchungsseite (Pflicht). Jeder Satz beschreibt genau das Verhalten von buchung-ablauf.ts und der Löschfrist —
- * Verhalten ändern → Text und EINWILLIGUNG_VERSION mitändern.
+ * an der Buchungsseite (Pflicht). Jeder Satz beschreibt genau das Verhalten von buchung-ablauf.ts, der Löschfristen und
+ * der Seite — Verhalten ändern → Text und EINWILLIGUNG_VERSION mitändern.
  */
-export const DATENSCHUTZ_HINWEIS = [
-  'Zweck: Ihre Angaben (Name, E-Mail, Firma, Anliegen) werden nur verwendet, um diese Terminanfrage zu bearbeiten und den Termin vorzubereiten (Art. 6 Abs. 1 lit. b DSGVO, Anbahnung).',
-  'Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung. Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir 30 Tage nach der letzten Änderung.',
-  'Erst wenn wir den Termin bestätigen, legen wir Sie als Geschäftskontakt an (Name, E-Mail, Firma, Anliegen, Termin) und tragen den Termin in unseren Kalender ein. Die Buchung selbst löschen wir 30 Tage nach dem Termin.',
-  'Wir können Ihnen einmal einen Link schicken, mit dem Sie bestätigen, dass die E-Mail-Adresse Ihnen gehört. Es wird keine Werbung verschickt.',
-  'Sie können jederzeit Auskunft, Berichtigung oder Löschung verlangen — beim Verantwortlichen unten.',
-  'Die Seite setzt keine Cookies und lädt nichts von fremden Servern.',
-];
+export function datenschutzHinweis(f: HinweisFristen): string[] {
+  return [
+    'Zweck und Rechtsgrundlage: Ihre Angaben (Name, E-Mail, Firma, Anliegen) verwenden wir nur, um Ihre Terminanfrage zu bearbeiten und den Termin vorzubereiten — auf Ihre Anfrage hin, vor einem möglichen Vertrag (Art. 6 Abs. 1 lit. b DSGVO). Ohne Name und E-Mail können wir die Anfrage nicht bearbeiten.',
+    `Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung. Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir ${tageText(f.buchungen)} nach der letzten Änderung, bestätigte Buchungen ${tageText(f.buchungen)} nach dem Termin.`,
+    `Erst wenn wir den Termin bestätigen, legen wir Sie als Geschäftskontakt an (Name, E-Mail, Firma, Anliegen, Termin) und tragen den Termin mit Ihrem Namen und Ihrer E-Mail-Adresse in unseren Kalender ein. Den Geschäftskontakt prüfen wir spätestens ${monateText(f.kontakte)} nach dem letzten Kontakt auf Löschung. Den Kalendereintrag behalten wir, solange die Geschäftsbeziehung ihn braucht; die Zwischenkopie vergangener Termine in unserer Software löschen wir nach ${monateText(f.kalenderCaches)}.`,
+    `Nach dem Absenden führt Sie die Seite zu Ihrer persönlichen Status-Seite (die Adresse mit Ihrem Schlüssel kennen nur Sie — bitte aufbewahren). Gegebenenfalls schicken wir Ihnen per E-Mail einen Link, mit dem Sie bestätigen, dass die Adresse Ihnen gehört; jeder solche Link gilt ${tageText(MAIL_LINK_TAGE)} und nur einmal. Darüber hinaus schicken wir Ihnen keine E-Mails und keine Werbung.`,
+    'Sie können jederzeit Auskunft, Berichtigung, Einschränkung oder Löschung verlangen und sich bei einer Datenschutz-Aufsichtsbehörde beschweren — Ihr Ansprechpartner ist der Verantwortliche unten.',
+    'Die Seite setzt keine Cookies und lädt nichts von fremden Servern.',
+  ];
+}
 
 // ── Grenzen ─────────────────────────────────────────────────────────────────
 
 /** `neueJeStunde` (F1 #13): so viele neue (vorläufige) Buchungen je Seite und Stunde — gegen Fluten über viele Adressen. */
-export const GRENZEN = { name: 80, email: 160, firma: 160, anliegen: 1000, titel: 80, ort: 300, verantwortlich: 300, kalender: 100, seiten: 30, buchungen: 2000, offeneJeSeite: 60, neueJeStunde: 20 } as const;
+/** `vorlaeufigJeSeite` (S1 #21): so viele vorläufige Reservierungen je Seite GLEICHZEITIG — eine Flut unbestätigter Plätze blockiert sonst die Seite. */
+export const GRENZEN = { name: 80, email: 160, firma: 160, anliegen: 1000, titel: 80, ort: 300, verantwortlich: 300, kalender: 100, seiten: 30, buchungen: 2000, offeneJeSeite: 60, neueJeStunde: 20, vorlaeufigJeSeite: 5 } as const;
 /** So lange hält eine vorläufige Buchung ihren Platz. */
 export const RESERVIERT_MIN = 30;
 /** Zu schnell ausgefüllt (Sekunden seit dem Laden der Seite) → Maschine. */
@@ -68,6 +92,11 @@ export const LOESCHFRIST_TAGE = 30;
 export const MAIL_LINK_TAGE = 7;
 /** Text, wenn gerade nichts buchbar ist (Stand alt, Fehler, ohne iCloud, ohne Verantwortlichen). */
 export const NICHT_BUCHBAR = 'Gerade sind keine Termine buchbar. Bitte später noch einmal vorbeischauen.';
+/**
+ * EIN Text für jede Ablehnung, die nichts verraten soll (S1 #21): Honigtopf gefüllt, zu schnell oder zu spät ausgefüllt.
+ * Vorher unterschied sich der Honigtopf-Text vom Zeit-Fehler — ein Skript konnte so erkennen, welches Feld die Falle ist.
+ */
+export const NICHT_ANGENOMMEN = 'Buchung nicht angenommen — bitte die Seite neu laden und in Ruhe ausfüllen.';
 
 // ── Formen ──────────────────────────────────────────────────────────────────
 
@@ -264,14 +293,14 @@ const WAND = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00$/;
  * `falle: true` = Honigtopf gefüllt (die Route antwortet dann wie bei jedem anderen Fehler, ohne zu verraten, warum).
  */
 export function eingabePruefen(roh: Record<string, unknown>, seite: Pick<BuchungsSeite, 'fragen'>): { ok: true; e: BuchungEingabe } | { ok: false; fehler: string; falle?: boolean; status: 400 | 413 } {
-  if (txt(roh.webseite)) return { ok: false, fehler: 'Buchung nicht angenommen.', falle: true, status: 400 };
+  if (txt(roh.webseite)) return { ok: false, fehler: NICHT_ANGENOMMEN, falle: true, status: 400 };
   const name = txt(roh.name), email = txt(roh.email).toLowerCase(), firma = txt(roh.firma), anliegen = typeof roh.anliegen === 'string' ? roh.anliegen.replace(/\u0000/g, '').trim() : '';
   const start = txt(roh.start);
   if (name.length > GRENZEN.name || email.length > GRENZEN.email || firma.length > GRENZEN.firma || anliegen.length > GRENZEN.anliegen) return { ok: false, fehler: 'Eine Angabe ist zu lang.', status: 413 };
   if (!name) return { ok: false, fehler: 'Bitte Ihren Namen angeben.', status: 400 };
   if (!MAIL.test(email)) return { ok: false, fehler: 'Bitte eine gültige E-Mail-Adresse angeben.', status: 400 };
   if (!WAND.test(start)) return { ok: false, fehler: 'Bitte einen Termin wählen.', status: 400 };
-  if (roh.einwilligung !== true) return { ok: false, fehler: 'Bitte der Verarbeitung Ihrer Angaben zustimmen (Pflicht).', status: 400 };
+  if (roh.einwilligung !== true) return { ok: false, fehler: 'Bitte bestätigen Sie, dass Sie den Datenschutzhinweis zur Kenntnis genommen haben (Pflicht).', status: 400 };
   return { ok: true, e: { start, name, email, ...(seite.fragen.firma && firma ? { firma } : {}), ...(seite.fragen.anliegen && anliegen ? { anliegen } : {}), einwilligung: true } };
 }
 
@@ -290,13 +319,15 @@ export interface Reservierung { ok: true; bestand: BuchungBestand; buchung: Buch
  * Einen Platz vorläufig reservieren. Prüft auf dem Stand IN der Sperre: Seite aktiv, Platz frei (inkl. gehaltener
  * Buchungen — so gibt es keine Doppelbuchung), dieselbe E-Mail nicht schon offen auf dieser Seite, Grenzen.
  */
-export function reservieren(bestand: BuchungBestand, seiteId: string, e: BuchungEingabe, belegungen: readonly Belegung[], feiertage: Readonly<Record<string, string>>, ctx: { id: string; tokenHash: string; jetzt: Date; heute: string }): Reservierung | ReservierFehler {
+export function reservieren(bestand: BuchungBestand, seiteId: string, e: BuchungEingabe, belegungen: readonly Belegung[], feiertage: Readonly<Record<string, string>>, ctx: { id: string; tokenHash: string; jetzt: Date; heute: string; fassung?: string }): Reservierung | ReservierFehler {
   const seite = bestand.seiten.find(s => s.id === seiteId && s.aktiv);
   if (!seite) return { ok: false, status: 404, fehler: 'Diese Buchungsseite gibt es nicht (mehr).' };
   const jetztIso = ctx.jetzt.toISOString();
   if (bestand.buchungen.length >= GRENZEN.buchungen) return { ok: false, status: 413, fehler: 'Gerade sind keine Buchungen möglich.' };
   const offeneSeite = bestand.buchungen.filter(b => b.seiteId === seite.id && OFFEN.includes(b.status) && haeltPlatz(b, jetztIso));
   if (offeneSeite.length >= GRENZEN.offeneJeSeite) return { ok: false, status: 429, fehler: 'Gerade sind zu viele Anfragen offen — bitte später noch einmal.' };
+  // S1 #21: höchstens GRENZEN.vorlaeufigJeSeite unbestätigte Reservierungen je Seite gleichzeitig (jede hält 30 Min. einen Platz).
+  if (offeneSeite.filter(b => b.status === 'vorlaeufig').length >= GRENZEN.vorlaeufigJeSeite) return { ok: false, status: 429, fehler: 'Gerade sind zu viele Anfragen offen — bitte in einer halben Stunde noch einmal.' };
   // F1 #13: neue Buchungen je Seite und Stunde (auch schon abgelaufene vorläufige zählen — sie belegten den Platz).
   const vorStunde = ctx.jetzt.getTime() - 3_600_000;
   if (bestand.buchungen.filter(b => b.seiteId === seite.id && Date.parse(b.angelegt) >= vorStunde).length >= GRENZEN.neueJeStunde) return { ok: false, status: 429, fehler: 'Gerade kommen sehr viele Anfragen — bitte in einer Stunde noch einmal.' };
@@ -308,7 +339,7 @@ export function reservieren(bestand: BuchungBestand, seiteId: string, e: Buchung
   const buchung: Buchung = {
     id: ctx.id, seiteId: seite.id, start: passend.start, ende: passend.ende, status: 'vorlaeufig',
     name: e.name, email: e.email, ...(e.firma ? { firma: e.firma } : {}), ...(e.anliegen ? { anliegen: e.anliegen } : {}),
-    einwilligung: { wortlaut: EINWILLIGUNG_WORTLAUT, version: EINWILLIGUNG_VERSION, am: jetztIso },
+    einwilligung: { wortlaut: EINWILLIGUNG_WORTLAUT, version: ctx.fassung ?? hinweisFassung(HINWEIS_FRISTEN_STANDARD), am: jetztIso },
     tokenHash: ctx.tokenHash, angelegt: jetztIso, reserviertBis: new Date(ctx.jetzt.getTime() + RESERVIERT_MIN * 60_000).toISOString(), statusAm: jetztIso,
   };
   return { ok: true, bestand: { ...bestand, buchungen: [...bestand.buchungen, buchung] }, buchung };
@@ -360,8 +391,8 @@ export function statusSicht(b: Buchung, seite: BuchungsSeite | undefined): Statu
 
 /** Öffentliche Sicht einer Seite: Titel, Dauer, Fragen, Hinweise — nie Person, Kalender, Ort, Buchungen. */
 export interface OeffentlicheSeite { titel: string; dauerMin: number; fragen: BuchungsSeite['fragen']; verantwortlich: string; hinweis: string[]; einwilligung: { wortlaut: string; version: string } }
-export function oeffentlich(seite: BuchungsSeite): OeffentlicheSeite {
-  return { titel: seite.titel, dauerMin: seite.dauerMin, fragen: seite.fragen, verantwortlich: seite.verantwortlich, hinweis: DATENSCHUTZ_HINWEIS, einwilligung: { wortlaut: EINWILLIGUNG_WORTLAUT, version: EINWILLIGUNG_VERSION } };
+export function oeffentlich(seite: BuchungsSeite, fristen: HinweisFristen = HINWEIS_FRISTEN_STANDARD): OeffentlicheSeite {
+  return { titel: seite.titel, dauerMin: seite.dauerMin, fragen: seite.fragen, verantwortlich: seite.verantwortlich, hinweis: datenschutzHinweis(fristen), einwilligung: { wortlaut: EINWILLIGUNG_WORTLAUT, version: hinweisFassung(fristen) } };
 }
 
 /** Vor- und Nachname aus einer Namenszeile (letztes Wort = Nachname). */
@@ -468,4 +499,36 @@ export function bestaetigungsMail(a: { name: string; titel: string; start: strin
       `Verantwortlich: ${a.verantwortlich}`,
     ].join('\n'),
   };
+}
+
+// ── Gäste ohne CRM-Kontakt: Auskunft und Löschung (S1 #6, 29.09.) ────────────
+// Wer über die Buchungsseite anfragt, aber (noch) kein Geschäftskontakt ist, steht NUR in der Buchung und — nach einer
+// Freigabe ohne Kontakt (Art. 18, Werbesperre) oder bis zum Entfernen — in Titel und Notiz des Termins in Apple. Für
+// Art. 15/17 ohne Akte: Aktionen `buchung-auskunft` / `buchung-loeschen` in app/api/kalender/buchung (nur Haushalt).
+
+const MAIL_KLEIN = (m: string) => m.trim().toLowerCase();
+
+/** Alle Buchungen mit dieser Adresse (ohne Groß/klein). Rein. */
+export function buchungenDesGasts(bestand: Pick<BuchungBestand, 'buchungen'>, email: string): Buchung[] {
+  const m = MAIL_KLEIN(email);
+  return m ? bestand.buchungen.filter(b => MAIL_KLEIN(b.email) === m) : [];
+}
+
+/** Adresse aus einer Eingabe (Aktion der Route) — oder null. */
+export const gastAdresse = (v: unknown): string | null => (typeof v === 'string' && MAIL.test(v.trim()) && v.trim().length <= GRENZEN.email ? MAIL_KLEIN(v) : null);
+
+/**
+ * Termin-Notiz ohne die Angaben des Gasts (die Zeilen „Gast: …“ und „Anliegen: …“, die die Freigabe schreibt — siehe
+ * lib/kalender/buchung-ablauf.ts); der Rest (Herkunft, Marke, eigene Notizen) bleibt. Rein.
+ */
+export function notizOhneGast(notiz: string | undefined): string {
+  return (notiz ?? '').split('\n').filter(z => !/^\s*(Gast|Anliegen):/.test(z)).join('\n').trim();
+}
+
+/** Termintitel ohne den Namen des Gasts („30 min · Erika Muster“ → „30 min“). Rein. */
+export function titelOhneGast(titel: string, name: string): string {
+  const n = name.trim();
+  if (!n) return titel;
+  const t = titel.replace(new RegExp(`\\s*·\\s*${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`), '').trim();
+  return t || 'Termin';
 }

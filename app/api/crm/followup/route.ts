@@ -17,6 +17,8 @@
 //   · Kadenz: verschieben/absagen legt ein echtes Follow-up an (nächster Anlauf) — vorher waren
 //     die Knöpfe dort ohne Wirkung.
 // Nichts wird versendet.
+// S1 (29.09.): nie still gekürzt — Text über 300, Notiz über 1000 Zeichen (auch zusammen mit der bisherigen Notiz bzw.
+// „Als Nächstes“) → 413; POST prüft die Bau-Kennung (`bauPruefen`, Dienstweg ausgenommen).
 
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
@@ -25,6 +27,11 @@ import { werAus, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { bauPruefen } from '@/lib/bau/pruefen';
+
+/** Grenzen des Follow-ups (wie `neuesFollowUp`) — darüber 413, nie gekürzt. */
+const TEXT_MAX = 300, NOTIZ_MAX = 1000;
+const ZU_LANG = (was: string, max: number) => NextResponse.json({ ok: false, fehler: `${was} höchstens ${max} Zeichen.` }, { status: 413 });
 import { wendeAktivitaetAn, ERGEBNISSE, type Kontakt, type Ergebnis, type AktivitaetArt } from '@/lib/make-one/crm';
 import { folgeAus } from '@/lib/crm/heute';
 import { sperren } from '@/lib/crm/sperrliste';
@@ -101,9 +108,12 @@ export async function POST(req: Request) {
   // Person aus dem Zugang (28.09., Regel 5): Sitzung oder Dienstweg MIT Person im Haushalt — kein Rückfall auf „kevin“.
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return KEIN_ZUGANG();
+  const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = zugang.person;
+  if (typeof b.text === 'string' && b.text.trim().length > TEXT_MAX) return ZU_LANG('Text', TEXT_MAX);
+  if (typeof b.notiz === 'string' && b.notiz.trim().length > NOTIZ_MAX) return ZU_LANG('Notiz', NOTIZ_MAX);
   const jetzt = new Date().toISOString();
   const heute = localDay();
   const kontakte = await kontakteLaden();
@@ -178,10 +188,11 @@ export async function POST(req: Request) {
   if (b.aktion === 'erledigen') {
     const ergebnis = ERGEBNISSE.includes(b.ergebnis as Ergebnis) ? (b.ergebnis as Ergebnis) : undefined;
     const n = b.naechster as { text?: unknown; faellig?: unknown; art?: unknown } | undefined;
-    const naechsterRoh = n && String(n.text ?? '').trim() && tagOk(n.faellig) ? { text: String(n.text).trim().slice(0, 300), faellig: tagOk(n.faellig)!, art: ARTEN.includes(n.art as FollowUpArt) ? (n.art as FollowUpArt) : undefined } : undefined;
+    if (n && String(n.text ?? '').trim().length > TEXT_MAX) return ZU_LANG('„Als Nächstes“', TEXT_MAX);
+    const naechsterRoh = n && String(n.text ?? '').trim() && tagOk(n.faellig) ? { text: String(n.text).trim(), faellig: tagOk(n.faellig)!, art: ARTEN.includes(n.art as FollowUpArt) ? (n.art as FollowUpArt) : undefined } : undefined;
     if (naechsterRoh && naechsterRoh.faellig < heute) return NextResponse.json({ ok: false, fehler: 'Der nächste Schritt liegt in der Vergangenheit.' }, { status: 400 });
-    const notiz = typeof b.notiz === 'string' ? b.notiz.trim().slice(0, 1000) : '';
-    let erledigt: FollowUp | null = null, folge: FollowUp | null = null, herkunft: Herkunft = 'echt', hinweis = '', regelFehler = '';
+    const notiz = typeof b.notiz === 'string' ? b.notiz.trim() : '';
+    let erledigt: FollowUp | null = null, folge: FollowUp | null = null, herkunft: Herkunft = 'echt', hinweis = '', regelFehler = '', zuLang = false;
     await aendereCrm(c => {
       const echt = (c.followups ?? []).find(f => f.id === id);
       const vorlage = echt ? null : virtuellerEintrag(c);
@@ -191,13 +202,16 @@ export async function POST(req: Request) {
       // Deal-Regel (Prüfbericht 27.09., Punkt 6): ein offener Deal braucht einen nächsten Schritt — auch über die Follow-up-Ebene.
       const deal = f.bezug.art === 'chance' ? c.chancen.find(x => x.id === f.bezug.id) : undefined;
       if (deal && OFFENE_STUFEN.includes(deal.stufe) && !naechsterRoh && (herkunft === 'dealschritt' || !deal.naechsterSchritt)) { regelFehler = 'Am Deal muss ein nächster Schritt stehen — bitte „Als Nächstes“ ausfüllen (die Deal-Regel gilt auch hier).'; return c; }
-      erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notiz ? { notiz: `${f.notiz ? `${f.notiz}\n` : ''}${notiz}` } : {}), geaendert: jetzt, geaendertVon: person };
+      const notizNeu = notiz ? `${f.notiz ? `${f.notiz}\n` : ''}${notiz}` : '';
+      if (notizNeu.length > NOTIZ_MAX) { zuLang = true; return c; }
+      erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notizNeu ? { notiz: notizNeu } : {}), geaendert: jetzt, geaendertVon: person };
       // Geparkter Deal (K6a): „Als Nächstes“ ist die nächste Wiedervorlage am Deal — kein zweites Follow-up daneben.
       if (herkunft === 'dealwiedervorlage') {
         // F2 N8: am geparkten Deal gibt es kein Feld für den Text aus „Als Nächstes“ — er geht nicht verloren, sondern steht
         // in der Notiz dieses erledigten Follow-ups (und damit in der Aktivität am Kontakt); das Datum wird die Wiedervorlage.
         const alsNaechstes = naechsterRoh?.text ? `Als Nächstes: ${naechsterRoh.text}` : '';
-        const notizGesamt = [notiz, alsNaechstes].filter(Boolean).join('\n').slice(0, 1000);
+        const notizGesamt = [notiz, alsNaechstes].filter(Boolean).join('\n');
+        if (notizGesamt.length > NOTIZ_MAX) { zuLang = true; erledigt = null; return c; }
         erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notizGesamt ? { notiz: notizGesamt } : {}), geaendert: jetzt, geaendertVon: person };
         const naechste = naechsterRoh?.faellig ?? tagPlus(heute, 90);
         hinweis = `Deal bleibt geparkt — nächste Wiedervorlage am ${naechste} (oder in der Deal-Akte wieder aufnehmen).${alsNaechstes ? ' Der Text aus „Als Nächstes“ steht in der Notiz dieses Follow-ups.' : ''}`;
@@ -212,6 +226,7 @@ export async function POST(req: Request) {
       if (herkunft === 'review') { neu = altesFeldImCrm(neu); hinweis = 'Nächstes Review in 90 Tagen eingetragen.'; }
       return neu;
     });
+    if (zuLang) return ZU_LANG('Notiz (mit der bisherigen Notiz bzw. „Als Nächstes“)', NOTIZ_MAX);
     if (regelFehler) return NextResponse.json({ ok: false, fehler: regelFehler }, { status: 400 });
     if (!erledigt) return NextResponse.json({ ok: false, fehler: 'Follow-up nicht gefunden.' }, { status: 404 });
     const e = erledigt as FollowUp;

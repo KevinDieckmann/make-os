@@ -44,8 +44,8 @@ async function buchungenLesen(person: string): Promise<ABuchung[]> {
  * (`vorschlagSichtbar`, F2 M6): eigene und die des Systems, nie die der anderen Person.
  */
 async function vorschlaegeZaehlen(person: string): Promise<{ kalender: number; gesamt: number }> {
-  const [{ lies, vorschlagSichtbar }, { haushaltFuer }] = await Promise.all([import('@/lib/zoe/stapel'), import('@/lib/finanzen/haushalt/zugriff')]);
-  const imHaushalt = !!(await haushaltFuer(person).catch(() => null));
+  const [{ lies, vorschlagSichtbar }, { personImHaushaltDesInhabers }] = await Promise.all([import('@/lib/zoe/stapel'), import('@/lib/zugang/haushalt-inhaber')]);
+  const imHaushalt = await personImHaushaltDesInhabers(person).catch(() => false);
   const offen = (await lies('offen')).filter(v => vorschlagSichtbar(v, person, imHaushalt));
   return { gesamt: offen.length, kalender: offen.filter(v => v.bezug?.art === 'kalender' || v.gruppe === 'kalender').length };
 }

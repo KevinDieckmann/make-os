@@ -68,7 +68,8 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: 
 // private Termine der anderen Person sind darin nur „belegt“ (maskiert je Person). Legt nichts an — einen Termin
 // schlägt ZOE danach vor, angelegt wird erst per Klick.
 const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-async function freieZeit(input: Record<string, unknown>, _o?: unknown, person = 'kevin'): Promise<string> {
+async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON_PLAN; // S1 #17: kein Rückfall auf „kevin“ (Regel 5)
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
   if (!(await personImHaushaltDesInhabers(person))) return 'Fehlgeschlagen: freie Zeit nur für Personen des Haushalts.';
   const roh = Array.isArray(input.personen) ? input.personen.map(String) : typeof input.personen === 'string' ? String(input.personen).split(',') : [];
@@ -676,7 +677,8 @@ async function bauplanNotieren(input: Record<string, unknown>, _origin: string, 
   const { karteAnlegen } = await import('@/lib/bauplan/speicher');
   const { ARTEN } = await import('@/lib/bauplan/form');
   // Bilder und Seite kommen nur aus der Oberfläche, nie aus dem Gespräch.
-  const k = await karteAnlegen({ ...input, bilder: undefined, seite: undefined, quelle: 'ZOE' }, person ?? 'kevin');
+  if (!person) return KEINE_PERSON; // S1 #17: kein Rückfall auf „kevin“ (Regel 5)
+  const k = await karteAnlegen({ ...input, bilder: undefined, seite: undefined, quelle: 'ZOE' }, person);
   if (!k) return 'Fehlgeschlagen: titel nötig.';
   return `Im Bauplan notiert (Ideen): „${k.titel}“ — ${ARTEN.find(a => a.id === k.art)?.label ?? 'Verbesserung'}, Bereich ${k.bereich}.`;
 }

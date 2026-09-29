@@ -114,9 +114,11 @@ export async function POST(req: Request) {
   const g = await gaestePruefenCrm(e.gaeste);
   if (!g.ok) return NextResponse.json({ ok: false, fehler: g.fehler, eingeschraenkt: true }, { status: 409 });
   const einst = await ladeEinstellungen();
-  // Ohne Angabe: der Kalender der anlegenden Person (Kevin/Malin), sonst Kevins.
-  const wer: Wer = e.wer ?? (z.person === 'malin' ? 'malin' : 'kevin');
-  const kalender = e.kalender || einst.kalender[wer];
+  // Ohne Angabe: der Kalender der anlegenden Person — S1 #17: nie mehr „sonst Kevins“ (Regel 5). Hat die Person keinen
+  // eigenen Kalender in den Einstellungen und nennt weder Kalender noch `wer`, lehnt der Server ab (400).
+  const wer: Wer | null = e.wer ?? (z.person === 'malin' || z.person === 'kevin' ? z.person : null);
+  if (!e.kalender && !wer) return NextResponse.json({ ok: false, fehler: 'In welchen Kalender? Bitte einen Kalender wählen.' }, { status: 400 });
+  const kalender = e.kalender || einst.kalender[wer!];
   try {
     const r = await anlegen({
       ...(e.uid ? { uid: e.uid } : {}),

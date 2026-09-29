@@ -24,11 +24,15 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import type { Task } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
-import { personAus } from '@/lib/zoe/raum';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+
 import { imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeAufgabenSicht, aufgabenAendern, type AufgabenOps } from '@/lib/aufgaben/speicher';
 import { taskSauber } from '@/lib/aufgaben/saeubern';
+
+/** Interner Hop: nur eine ausdrücklich benannte Person (S1, Regel 5/7) — ohne sie ein Systemlauf, nie „kevin“. */
+const personKopf = (req: Request): Record<string, string> => { const p = personStreng(req); return p ? { 'x-make-person': p } : {}; };
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -138,7 +142,7 @@ export async function POST(req: Request) {
       try {
         await fetch(`http://127.0.0.1:${process.env.PORT ?? 3001}/api/state/backlog`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) },
+          headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(personKopf(req)) },
           body: JSON.stringify({ titel: z.text, warum: 'Von Malin über den gemeinsamen Ordner notiert.', kategorie: 'qualitaet', prio: 2, block: 'frei', quelle: 'Eingang · Malin' }),
         });
         notizen++;

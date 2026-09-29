@@ -207,7 +207,9 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
         </div>
       )}
       {meldung && <div style={{ fontSize: 11.5, color: LEUCHT.achtung, marginTop: 8 }}>{meldung}</div>}
-      {bearbeiten && <SeiteBearbeiten start={bearbeiten} onZu={() => setBearbeiten(null)} onSpeichern={async s => { if (await aktion({ aktion: 'seite', seite: s })) setBearbeiten(null); }} onLoeschen={bearbeiten.id ? async () => { if (await aktion({ aktion: 'seite-loeschen', id: bearbeiten.id })) setBearbeiten(null); } : undefined} fehler={meldung} />}
+      {stand && (stand.buchungen.length > 0) && <GastDatenschutz onFertig={laden} />}
+      {/* S1 #15: Stand der gelesenen Fassung mitschicken — hat jemand die Seite inzwischen geändert, antwortet der Server 409. */}
+      {bearbeiten && <SeiteBearbeiten start={bearbeiten} onZu={() => setBearbeiten(null)} onSpeichern={async s => { if (await aktion({ aktion: 'seite', seite: s, ...(bearbeiten.geaendert ? { stand: bearbeiten.geaendert } : {}) })) setBearbeiten(null); }} onLoeschen={bearbeiten.id ? async () => { if (await aktion({ aktion: 'seite-loeschen', id: bearbeiten.id, ...(bearbeiten.geaendert ? { stand: bearbeiten.geaendert } : {}) })) setBearbeiten(null); } : undefined} fehler={meldung} />}
     </Karte>
   );
 }
@@ -293,5 +295,65 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
         </div>
       </div>
     </Fenster>
+  );
+}
+
+/**
+ * Art. 15 / 17 für Gäste OHNE Geschäftskontakt (S1 #6): Auskunft als Datei, Löschen erst nach Rückfrage — mit der Wahl,
+ * Name und Gastzeilen auch aus dem Termin in Apple zu entfernen. Gäste mit Kontakt → über ihre Akte (Server: 409).
+ */
+function GastDatenschutz({ onFertig }: { onFertig: () => Promise<void> }) {
+  const [auf, setAuf] = useState(false);
+  const [email, setEmail] = useState('');
+  const [frage, setFrage] = useState<{ buchungen: number; hinweis: string } | null>(null);
+  const [bereinigen, setBereinigen] = useState(true);
+  const [text, setText] = useState('');
+  const [laeuft, setLaeuft] = useState(false);
+  const post = (body: Record<string, unknown>) => fetch('/api/kalender/buchung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const auskunft = async () => {
+    setText(''); setLaeuft(true);
+    try {
+      const r = await post({ aktion: 'buchung-auskunft', email });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); setText(j.fehler ?? 'Keine Auskunft möglich.'); return; }
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement('a'); a.href = url; a.download = 'Auskunft-Art15-Buchung.json'; a.click(); URL.revokeObjectURL(url);
+      setText('Auskunft heruntergeladen.');
+    } catch { setText('Keine Verbindung.'); } finally { setLaeuft(false); }
+  };
+  const loeschen = async (bestaetigt: boolean) => {
+    setText(''); setLaeuft(true);
+    try {
+      const j: { ok?: boolean; fehler?: string; rueckfrage?: boolean; buchungen?: number; hinweis?: string; geloescht?: number; inApple?: { tag: string; grund: string }[] } = await post({ aktion: 'buchung-loeschen', email, ...(bestaetigt ? { bestaetigt: true, notizBereinigen: bereinigen } : {}) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+      if (!j.ok) { setText(j.fehler ?? 'Nicht gelöscht.'); return; }
+      if (j.rueckfrage) { setFrage({ buchungen: j.buchungen ?? 0, hinweis: j.hinweis ?? '' }); return; }
+      setFrage(null);
+      setText(`${j.geloescht ?? 0} Buchung(en) gelöscht.${j.inApple?.length ? ` In Apple bleibt: ${j.inApple.map(x => `${x.tag} (${x.grund})`).join(' · ')}.` : ''}`);
+      await onFertig();
+    } finally { setLaeuft(false); }
+  };
+  return (
+    <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+      <button onClick={() => setAuf(!auf)} style={{ background: 'none', border: 'none', color: C.inkDim, fontSize: 11.5, cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: SCHRIFT.text }}>Datenschutz für Gäste ohne Kontakt{auf ? ' ▴' : ' ▾'}</button>
+      {auf && (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <input value={email} onChange={e => { setEmail(e.target.value); setFrage(null); setText(''); }} placeholder="E-Mail-Adresse des Gasts" aria-label="E-Mail-Adresse des Gasts" style={feld} />
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <Knopf leise aus={laeuft || !email.trim()} onClick={() => void auskunft()}>Auskunft (Art. 15)</Knopf>
+            <Knopf leise aus={laeuft || !email.trim()} onClick={() => void loeschen(false)}>Löschen (Art. 17) …</Knopf>
+          </div>
+          {frage && (
+            <div role="alertdialog" aria-label="Löschen bestätigen" style={{ display: 'grid', gap: 6, background: `${LEUCHT.kritisch}14`, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 10, padding: '8px 10px', fontSize: 12, lineHeight: 1.45 }}>
+              <span>{frage.buchungen} Buchung(en) dieser Adresse werden endgültig gelöscht. {frage.hinweis}</span>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={bereinigen} onChange={e => setBereinigen(e.target.checked)} />Name und Gastzeilen im Apple-Termin entfernen</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Knopf farbe={LEUCHT.kritisch} aus={laeuft} onClick={() => void loeschen(true)}>Endgültig löschen</Knopf>
+                <Knopf leise onClick={() => setFrage(null)}>Abbrechen</Knopf>
+              </div>
+            </div>
+          )}
+          {text && <span style={{ fontSize: 11.5, color: C.inkDim }}>{text}</span>}
+        </div>
+      )}
+    </div>
   );
 }

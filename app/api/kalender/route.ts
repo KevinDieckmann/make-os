@@ -9,12 +9,16 @@
 // Fristen tragen `bereich` (privat/business) — die Oberfläche filtert nach Sicht und Bereich.
 // Seit R-K1 (#51): `abgleich` = { letzter, vorMin, veraltet (ab 30 Min.), fehler?, anmeldung?, hinweise? } — „letzter
 // Abgleich vor X Min.“; übersprungene Kalender (403, gekürzte Antwort) stehen in `hinweise`.
+// S1 #20 (29.09.): Apple-Erinnerungen (Mac des Inhabers) nur für den Inhaber, private Fristen nur für Personen mit
+// Haushalt — serverseitig (`fuerPersonFiltern`, lib/kalender/eintraege.ts), nicht erst im Browser.
 
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, abgleichen, termineImZeitraum, kontoAnzeige, CACHE, ladeStand, naechsterVersuchFaellig, abgleichAlter } from '@/lib/kalender/icloud';
-import { erinnerungen } from '@/lib/kalender/eintraege';
+import { erinnerungen, fuerPersonFiltern } from '@/lib/kalender/eintraege';
+import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { fristenLesen } from '@/lib/kalender/fristen-server';
 import { macTermine, type MacEv } from '@/lib/kalender/termine-lesen';
 import { ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
@@ -70,10 +74,13 @@ export async function GET(req: Request) {
 
   const bezuege: BezugBestand | null = await ladeBezuege().catch(() => null);
   // Fristen: die Quellen lädt EINE Stelle (lib/kalender/fristen-server.ts, K6a) — dieselbe wie Glocke/Heute.
-  const [fristenListe, rem] = await Promise.all([
+  const [fristenAlle, rem, inhaber, eigenerHaushalt] = await Promise.all([
     fristenLesen(von, bis, heute).catch(() => []),
     loadJson<Gemerkt>(MAC.erinnerungen).catch(() => null),
+    istInhaber(zugang.person).catch(() => false),
+    haushaltFuer(zugang.person).catch(() => null),
   ]);
+  const sicht = fuerPersonFiltern({ fristen: fristenAlle, erinnerungen: erinnerungen(rem?.daten, von, bis, wandzeit) }, { inhaber, privat: !!eigenerHaushalt });
 
   return NextResponse.json({
     ok: true, von, bis, quelle, stand, ...(fehler ? { fehler } : {}), ...(abgleich ? { abgleich } : {}),
@@ -81,9 +88,9 @@ export async function GET(req: Request) {
     kalender, einstellungen: einst,
     // Bezug + Sicherung anwenden, dann für die ansehende Person maskieren (privat der anderen → „Belegt“).
     termine: termine.map(t => maskieren({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, zugang.person)),
-    fristen: fristenListe,
-    erinnerungen: erinnerungen(rem?.daten, von, bis, wandzeit),
-    erinnerungenStand: rem?.at ?? null,
+    fristen: sicht.fristen,
+    erinnerungen: sicht.erinnerungen,
+    erinnerungenStand: inhaber ? rem?.at ?? null : null,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

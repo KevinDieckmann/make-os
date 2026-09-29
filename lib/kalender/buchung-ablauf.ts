@@ -62,7 +62,7 @@ import { bezugSetzen } from './bezug-server';
 import { objektSchluessel, uidVonSchluessel } from './bezug';
 import { tagVon, tagPlus } from './zeit';
 import { aendereBuchungBestand, ladeBuchungBestand, buchungHaushalt, buchungProtokoll } from './buchung-speicher';
-import { nameTeilen, terminMarke, buchungTerminUid, vorbereitenTag, EINWILLIGUNG_VERSION, type Buchung, type BuchungsSeite, type BuchungStatus } from './buchung';
+import { nameTeilen, terminMarke, buchungTerminUid, vorbereitenTag, EINWILLIGUNG_VERSION, KENNTNISNAHME_NAME, type Buchung, type BuchungsSeite, type BuchungStatus } from './buchung';
 
 export const ANFRAGE_SCHRITTE = ['melden'] as const;
 export const FREIGABE_SCHRITTE = ['kontakt', 'termin', 'buchung', 'kartei', 'crm'] as const;
@@ -71,9 +71,12 @@ type Phase = 'anfrage' | 'freigabe';
 const datumText = (b: Pick<Buchung, 'start' | 'ende'>) => `${b.start.slice(8, 10)}.${b.start.slice(5, 7)}.${b.start.slice(0, 4)}, ${b.start.slice(11, 16)}–${b.ende.slice(11, 16)} Uhr`;
 /** Text der Anfrage-Aktivität (nach „Anfrage über Website: “). Nie mit Kennungen. */
 const anfrageText = (b: Buchung, s: BuchungsSeite) => `Terminbuchung „${s.titel}“ für ${datumText(b)}${b.anliegen ? ` — ${b.anliegen}` : ''}`;
-/** Nachweis-Text der Einwilligung — sagt, ob der Gast seine Adresse bestätigt hat (#76). */
+/**
+ * Nachweis-Text am Eintrag „Antwort auf Anfrage“ — sagt, ob der Gast seine Adresse bestätigt hat (#76). Seit S1 #8
+ * (29.09.) heißt der Nachweis „Kenntnisnahme Datenschutzhinweis“: das Häkchen ist keine Einwilligung (Grundlage lit. b).
+ */
 export const nachweisText = (s: Pick<BuchungsSeite, 'titel'>, tag: string, bestaetigtAm: string | undefined) =>
-  `Buchungsseite „${s.titel}“ am ${tag} — E-Mail-Adresse ${bestaetigtAm ? `per Bestätigungslink bestätigt am ${localDay(new Date(bestaetigtAm))}` : 'unbestätigt (Bestätigungslink nicht angeklickt)'}`;
+  `${KENNTNISNAHME_NAME} — Buchungsseite „${s.titel}“ am ${tag} — E-Mail-Adresse ${bestaetigtAm ? `per Bestätigungslink bestätigt am ${localDay(new Date(bestaetigtAm))}` : 'unbestätigt (Bestätigungslink nicht angeklickt)'}`;
 
 async function buchungUndSeite(id: string): Promise<{ b: Buchung; s: BuchungsSeite }> {
   const bestand = await ladeBuchungBestand();

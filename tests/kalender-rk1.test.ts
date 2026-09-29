@@ -287,7 +287,7 @@ describe('#K5 Sicherung (rein): Export als ICS, Probelauf, Teilnehmer-Sperre, Fr
     // In iCloud: a unverändert, b und g gelöscht, c neu.
     const c = vcal(ev('c', 'DTSTART;TZID=Europe/Berlin:20261008T090000', 'DTEND;TZID=Europe/Berlin:20261008T100000', 'SUMMARY:C'));
     const plan = wiederherstellPlan(zurueck, [{ uid: 'a', ics: a }, { uid: 'c', ics: c }]);
-    expect(plan).toEqual({ fehlt: ['b'], gesperrt: ['g'], geaendert: [], gleich: 1, neu: 1 });
+    expect(plan).toEqual({ fehlt: ['b'], gesperrt: ['g'], grabstein: [], geaendert: [], gleich: 1, neu: 1 });
   });
   it('Frist 14 Tage nach dem Tag im Namen; fällig einmal je Berliner Tag ab 03:00', () => {
     const d = (t: string) => exportDatei('home', t);

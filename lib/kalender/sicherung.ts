@@ -76,11 +76,22 @@ export const buchungsTermin = (ics: string): boolean => { const g = glatt(ics); 
 /** Trägt das Objekt Teilnehmer (ATTENDEE)? — dann nie automatisch zurückspielen (Teilnehmer-Sperre). */
 export const mitTeilnehmern = (ics: string): boolean => /^ATTENDEE[;:]/m.test(glatt(ics).replace(/BEGIN:VALARM[\s\S]*?END:VALARM/g, ''));
 
+/** E-Mail-Adressen im Text eines Objekts (ATTENDEE/ORGANIZER mailto:, Notiz „Gast: Name <Adresse>“, Beschreibung). Klein, ohne Doppelte. */
+export function adressenIn(ics: string): string[] {
+  const g = glatt(ics).replace(/\\n/gi, ' ').replace(/\\,/g, ',');
+  return Array.from(new Set((g.match(/[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,253}\.[A-Za-z]{2,24}/g) ?? []).map(a => a.toLowerCase())));
+}
+
 export interface WiederherstellPlan {
   /** In der Sicherung, in iCloud nicht (mehr) da — und ohne Gäste: das würde die Wiederherstellung anlegen. */
   fehlt: string[];
   /** Fehlt ebenfalls, trägt aber Gäste oder gehört zu einer Buchung — gesperrt (nur einzeln von Hand). */
   gesperrt: string[];
+  /**
+   * Davon gesperrt, weil das Objekt eine gelöschte Person nennt (S1 #7: eine Adresse trifft einen Grabstein,
+   * lib/datenschutz/grabsteine.ts) — nie zurückspielen, auch nicht von Hand ohne neue Prüfung.
+   */
+  grabstein: string[];
   /** In beiden, aber inzwischen geändert — bleibt, wie es in iCloud ist (nie überschreiben). */
   geaendert: string[];
   /** In beiden und gleich. */
@@ -89,15 +100,21 @@ export interface WiederherstellPlan {
   neu: number;
 }
 
-/** Probelauf (rein): vergleicht eine Sicherung mit dem aktuellen iCloud-Stand desselben Kalenders — nach UID. */
-export function wiederherstellPlan(sicherung: readonly SicherungsObjekt[], ist: readonly SicherungsObjekt[]): WiederherstellPlan {
+/**
+ * Probelauf (rein): vergleicht eine Sicherung mit dem aktuellen iCloud-Stand desselben Kalenders — nach UID.
+ * `geloeschtePerson` (S1 #7): trifft eine Adresse des Objekts eine gelöschte Person (Grabstein, wie `sperrHashes`)?
+ * Dann gesperrt und in `grabstein` genannt — eine Sicherung holt keine Art.-17-Löschung zurück.
+ */
+export function wiederherstellPlan(sicherung: readonly SicherungsObjekt[], ist: readonly SicherungsObjekt[], geloeschtePerson: (adresse: string) => boolean = () => false): WiederherstellPlan {
   const jetzt = new Map(ist.map(o => [o.uid, o.ics] as const));
-  const plan: WiederherstellPlan = { fehlt: [], gesperrt: [], geaendert: [], gleich: 0, neu: 0 };
+  const plan: WiederherstellPlan = { fehlt: [], gesperrt: [], grabstein: [], geaendert: [], gleich: 0, neu: 0 };
   const inSicherung = new Set<string>();
   for (const o of sicherung) {
     inSicherung.add(o.uid);
     const da = jetzt.get(o.uid);
-    if (da === undefined) (mitTeilnehmern(o.ics) || buchungsTermin(o.ics) ? plan.gesperrt : plan.fehlt).push(o.uid);
+    const grab = da === undefined && adressenIn(o.ics).some(geloeschtePerson);
+    if (grab) { plan.gesperrt.push(o.uid); plan.grabstein.push(o.uid); }
+    else if (da === undefined) (mitTeilnehmern(o.ics) || buchungsTermin(o.ics) ? plan.gesperrt : plan.fehlt).push(o.uid);
     else if (vevents(da) === vevents(o.ics)) plan.gleich++;
     else plan.geaendert.push(o.uid);
   }

@@ -9,13 +9,18 @@
 // (lib/crm/angebot-server.ts `ablaufNachziehen`); vorher geschah das nur beim Lesen der Markttraktion.
 // 28.09. spät (Paket C3): danach die Aufgaben-Serien — fällige wiederkehrende Listen und nachzuholende
 // Serien-Aufgaben (lib/aufgaben/serie-server.ts), nur Haushalt des Inhabers oder Systemlauf.
+// S1 (29.09.): kein Rückfall auf „kevin“ mehr (Regel 5) — die internen Hops tragen nur eine ausdrücklich benannte Person
+// (`personStreng`), sonst laufen sie als Systemlauf. Der Kalender-Schritt liest nichts mehr aus dem Altweg
+// /api/apple-calendar: er stößt den Abgleich an und zählt über `termineFuerZoe` (für die Person gefiltert).
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { recentRuns } from '@/lib/agent-log';
 import { resolveVitals, localDay } from '@/lib/vitals';
 import { innenAdresse } from '@/lib/innen';
-import { personAus } from '@/lib/zoe/raum';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
+import { tagePlus } from '@/lib/zeit';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
 import { imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
 import { aufgabenSerienNachziehen, papierkorbAufraeumen } from '@/lib/aufgaben/serie-server';
@@ -67,6 +72,9 @@ export async function POST(req: Request) {
 
   const origin = innenAdresse(req);
   const schritte: { name: string; ok: boolean; info?: string }[] = [];
+  // Interne Hops: Dienstschlüssel + die ausdrücklich benannte Person (Regel 7) — ohne Person ein Systemlauf, nie „kevin“.
+  const person = personStreng(req);
+  const dienst = { 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}) };
 
   // 0) Angebote: Ablauf nach „gültig bis“ serverseitig nachziehen (ohne Netz, schreibt nur bei Bedarf, Protokoll „System“).
   try {
@@ -105,9 +113,12 @@ export async function POST(req: Request) {
   //    ist zäh (bis ~55s), das muss nicht jeden Morgen sein.
   if (st.kalenderAlterStd == null || st.kalenderAlterStd > 12) {
     try {
-      const r = await fetch(`${origin}/api/apple-calendar?refresh=1`, { headers: { 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) }, signal: AbortSignal.timeout(75_000) });
-      const d = await r.json();
-      schritte.push({ name: 'Kalender', ok: Array.isArray(d), info: Array.isArray(d) ? `${d.length} Termine` : 'Zugriff fehlt' });
+      // Nur auffrischen (iCloud-Abgleich bzw. Mac-Lesen) — der Inhalt wird hier nicht gelesen. Gezählt wird über den EINEN
+      // Lesepfad für Personen (`termineFuerZoe`: privat/Gesundheit der anderen nur „Belegt“).
+      const r = await fetch(`${origin}/api/apple-calendar?refresh=1`, { headers: dienst, signal: AbortSignal.timeout(75_000) });
+      await r.body?.cancel().catch(() => {});
+      const n = r.ok && person ? (await termineFuerZoe(person, today, tagePlus(today, 21))).termine.length : null;
+      schritte.push({ name: 'Kalender', ok: r.ok, info: !r.ok ? 'Zugriff fehlt' : n !== null ? `${n} Termine` : 'aufgefrischt' });
     } catch {
       schritte.push({ name: 'Kalender', ok: false, info: 'zu langsam — letzter Stand bleibt' });
     }
@@ -121,7 +132,7 @@ export async function POST(req: Request) {
   let loop: unknown = null;
   try {
     const r = await fetch(`${origin}/api/tageslauf`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...dienst },
       body: JSON.stringify({ art: 'voll' }),
       signal: AbortSignal.timeout(240_000),
     });
@@ -135,7 +146,7 @@ export async function POST(req: Request) {
 
   // 3) Performance-Schnappschuss — nur so entsteht ein Verlauf.
   try {
-    await fetch(`${origin}/api/performance`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) }, body: '{}', signal: AbortSignal.timeout(20_000) });
+    await fetch(`${origin}/api/performance`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...dienst }, body: '{}', signal: AbortSignal.timeout(20_000) });
     schritte.push({ name: 'Index', ok: true });
   } catch {
     schritte.push({ name: 'Index', ok: false });

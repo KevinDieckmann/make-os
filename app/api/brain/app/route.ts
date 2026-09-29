@@ -9,6 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { loadJson } from '@/lib/store/local-db';
 
 export const runtime = 'nodejs';
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
   if (!zugang) return KEIN_ZUGANG();
   const hh = await haushaltDesInhabers();
   if (!hh) return KEIN_ZUGANG();
+  // S1 #19: schreibt (Spiegel, Einstellungen) — nur aus dem aktuellen Bau; der Dienstweg ist ausgenommen.
+  const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   let b: { privat?: unknown; aktion?: unknown; zeitAuswertung?: unknown } = {};
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion === 'jetzt') {

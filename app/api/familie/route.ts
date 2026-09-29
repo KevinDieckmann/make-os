@@ -3,8 +3,10 @@
 //         nächstes Paar-Gespräch, wichtige Tage, fällige Kontakte, Frage der Woche
 // PATCH → { ops: Einzeländerungen je Liste, felder: einstellungen|profil|vision|ritual }
 // Nur Haushaltsmitglieder (haushaltVon, streng). Kein Business-Agent liest das.
+// S1 (29.09.): mehr als OPS_MAX Einzeländerungen → 413 (vorher still auf 200 gekürzt); PATCH prüft die Bau-Kennung.
 
 import { NextResponse } from 'next/server';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { merken } from '@/lib/store/memo';
 import { updateJson } from '@/lib/store/local-db';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
@@ -64,6 +66,9 @@ async function spiegelNachziehen(haushalt: string, person: string): Promise<void
   }
 }
 
+/** Größte Zahl Einzeländerungen je PATCH — darüber 413, nie still gekürzt. */
+const OPS_MAX = 200;
+
 export async function GET(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
@@ -73,13 +78,15 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
+  const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   let b: { ops?: ListenOp[]; felder?: Record<string, unknown> };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  if (Array.isArray(b.ops) && b.ops.length > OPS_MAX) return NextResponse.json({ ok: false, fehler: `Höchstens ${OPS_MAX} Änderungen auf einmal.` }, { status: 413 });
   const jetzt = new Date().toISOString();
   let abgelehnt = 0, angewandt = 0;
   const f = await updateJson<Familie>(familieName(z.haushalt), cur => {
     let x = { ...startBestand(jetzt), ...(cur ?? {}) };
-    const ops = (Array.isArray(b.ops) ? b.ops : []).slice(0, 200);
+    const ops = Array.isArray(b.ops) ? b.ops : [];
     if (ops.length) { const r = wendeFamilieAn(x, ops, z.person, jetzt); x = r.familie; abgelehnt = r.abgelehnt; angewandt = r.angewandt; }
     if (b.felder) x = setzeFelder(x, b.felder, z.person, jetzt);
     return x;

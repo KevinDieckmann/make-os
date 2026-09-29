@@ -170,7 +170,9 @@ describe('M6 · ZOE-Vorschläge nur der Person (Heute = Stapel)', () => {
   it('eigene und die des Systems; Haushalt nur für Mitglieder', () => {
     expect(vorschlagSichtbar({ person: 'kevin', gruppe: 'kalender' }, 'kevin', true)).toBe(true);
     expect(vorschlagSichtbar({ person: 'malin', gruppe: 'kalender' }, 'kevin', true)).toBe(false);
-    expect(vorschlagSichtbar({ gruppe: 'kalender' }, 'kevin', false)).toBe(true);
+    // S1 #2 (29.09.): Vorschläge des Systems (ohne Person) nur im Haushalt des Inhabers.
+    expect(vorschlagSichtbar({ gruppe: 'kalender' }, 'kevin', true)).toBe(true);
+    expect(vorschlagSichtbar({ gruppe: 'kalender' }, 'kevin', false)).toBe(false);
     expect(vorschlagSichtbar({ gruppe: 'haushalt' }, 'kevin', false)).toBe(false);
   });
 });

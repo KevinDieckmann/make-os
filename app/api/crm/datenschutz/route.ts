@@ -40,6 +40,7 @@ import { einschraenkungSetzen, einschraenkungAufheben } from '@/lib/crm/einschra
 import { LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristenSpeichern, verlaengerungPruefen, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { istDienst } from '@/lib/zugang/dienst';
+import { bauPruefen } from '@/lib/bau/pruefen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -118,6 +119,8 @@ export async function POST(req: Request) {
     }
   }
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  // S1 #19: Löschen, Einschränken, Fristen — nur aus dem aktuellen Bau (Dienstweg ausgenommen).
+  const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   // Regel 5 (28.09., K1): Löschprotokoll und Vermerke nennen, WER — nur mit ausdrücklicher Person, nie „kevin“ als Rückfall.
   const von = personStreng(req);
   if (!von) return NextResponse.json({ ok: false, fehler: 'Nur mit angemeldeter Person.' }, { status: 401 });

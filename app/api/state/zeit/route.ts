@@ -12,7 +12,6 @@
 // Die laufende Messung kommt über die Anwesenheit (/api/state/anwesenheit).
 
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/zoe/raum';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { fokusAbschliessen, fokusZuordnen, fokusUmbuchen, aufgabenKurz, zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { zuordnungSaeubern, AUFGABE_ID_MAX, type AufgabeKurz } from '@/lib/zeitmessung/einheiten';
@@ -24,7 +23,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  const person = personAus(req);
+  // S1 #17: nur mit ausdrücklicher Person — nie der Rückfall auf „kevin“ (Regel 5).
+  const person = personStreng(req);
+  if (!person) return NextResponse.json({ ok: false, error: 'Keine Person.' }, { status: 401 });
   return NextResponse.json({ ok: true, bild: await zeitBildFuer(person) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

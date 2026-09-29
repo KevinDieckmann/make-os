@@ -117,9 +117,12 @@ describe('kimmi bietet CRM-Werkzeuge und -Agenten nur im Haushalt des Inhabers a
     for (const n of W.CRM_WERKZEUGE) expect(z.namen, n).not.toContain(n);
     for (const a of W.CRM_AGENTEN) { expect(z.agenten, a).not.toContain(a); expect(z.auftraege, a).not.toContain(a); }
   });
-  it('Dienstweg ohne Person (fiele früher auf „kevin“): ebenfalls keine CRM-Werkzeuge', async () => {
-    const z = await zug(dienst());
-    for (const n of W.CRM_WERKZEUGE) expect(z.namen, n).not.toContain(n);
+  it('Dienstweg ohne Person (fiele früher auf „kevin“): kein Gespräch überhaupt (S1: 400, kein Modellaufruf)', async () => {
+    const { POST } = await import('@/app/api/kimmi/route');
+    mitschnitt.length = 0;
+    const r = await POST(anfrage('/api/kimmi', dienst(), 'POST', { message: 'Wen soll ich heute anrufen?' }));
+    expect(r.status).toBe(400);
+    expect(mitschnitt.length).toBe(0);
   });
   it('Kevin/Malin: CRM-Werkzeuge und -Agenten sind da', async () => {
     const z = await zug(sitzung('malin'));

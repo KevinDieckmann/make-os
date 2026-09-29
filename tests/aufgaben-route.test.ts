@@ -72,9 +72,10 @@ describe('Zugang: nur Haushalt des Inhabers', () => {
     expect((await route.PUT(anfrage(sitzung('ohne'), 'PUT', { projects: [], tasks: [] }))).status).toBe(403);
     expect((await route.PATCH(anfrage(dienst('malin'), 'PATCH', b))).status).toBe(200);
   });
-  it('/api/tasks/create: fremdes Konto 403, Systemlauf darf', async () => {
+  it('/api/tasks/create: fremdes Konto 403, Systemlauf darf (mit owner — S1: ohne → 400, kein Rückfall auf „kevin“)', async () => {
     expect((await anlegen.POST(anfrage(sitzung('fremd'), 'POST', { title: 'X' }, '/api/tasks/create'))).status).toBe(403);
-    const r = await anlegen.POST(anfrage(dienst(), 'POST', { title: 'Vom Takt' }, '/api/tasks/create'));
+    expect((await anlegen.POST(anfrage(dienst(), 'POST', { title: 'Vom Takt ohne owner' }, '/api/tasks/create'))).status).toBe(400);
+    const r = await anlegen.POST(anfrage(dienst(), 'POST', { title: 'Vom Takt', owner: 'kevin' }, '/api/tasks/create'));
     expect(r.status).toBe(200);
   });
 });
