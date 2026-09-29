@@ -287,7 +287,9 @@ nav a:hover { transform: translateX(2px); }
 /* Zeilen einer Liste kommen gestaffelt an — die Verzögerung setzt die
    Komponente, hier steht nur die Bewegung. */
 @keyframes zeileAuf { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.zeile-auf { animation: zeileAuf .45s cubic-bezier(.22, 1, .36, 1) both; }
+/* `backwards` statt `both` (Gesamtprüfung 29.09.): eine nach dem Ende weiter geltende transform-Animation macht die Zeile
+   zum Bezugsrahmen für position:fixed — ein Fenster darin (components/os/Fenster.tsx) säße eingesperrt in der Zeile. */
+.zeile-auf { animation: zeileAuf .45s cubic-bezier(.22, 1, .36, 1) backwards; }
 
 
 /* ─── Fokus: sichtbar für die Tastatur, unsichtbar für die Maus ─────────────
@@ -399,7 +401,13 @@ nav a:hover { transform: translateX(2px); }
   min-width: 0;
 }
 @keyframes osAuf { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-.os-auf { animation: osAuf .55s var(--ease-glatt, cubic-bezier(.22,1,.36,1)) both; animation-delay: calc(var(--i, 0) * 70ms); }
+/* Gesamtprüfung 29.09.: `backwards` statt `both` — eine nach dem Ende weiter geltende transform-Animation (und das
+   Anheben beim Zeigen, .karte:hover) macht die Karte zum Bezugsrahmen für position:fixed. Ein Fenster darin
+   (components/os/Fenster.tsx: Buchungsseite, „+ Meeting“ in der Kontaktakte, Termin-Vorschlag im Angebot, Reparatur-
+   Vorschau …) war dann so breit wie die Karte und lag unter den Nachbarkarten. Ist ein Fenster offen, bleibt die Karte
+   flach (Test: tests/fenster-karte.test.ts). */
+.os-auf { animation: osAuf .55s var(--ease-glatt, cubic-bezier(.22,1,.36,1)) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+.karte:has([aria-modal="true"]), .os-auf:has([aria-modal="true"]), .zeile-auf:has([aria-modal="true"]) { transform: none !important; }
 @keyframes balkenAuf { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .balken-auf { transform-origin: bottom; animation: balkenAuf .7s var(--ease-glatt, cubic-bezier(.22,1,.36,1)) both; animation-delay: calc(120ms + var(--i, 0) * 25ms); }
 .zeile:last-child { border-bottom: 0 !important; }

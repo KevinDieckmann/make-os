@@ -58,9 +58,9 @@ import { usePlanen, istArchivTermin, blockFarbe } from './Planen';
 import { icsVonPlanArt, planArtAusTitel } from '@/lib/planung/bloecke';
 import { AufgabenModus, type AufgabenModusFilter } from './AufgabenModus';
 import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
-import { modusAusAdresse, type Modus } from '@/lib/kalender/modus';
+import { modusAusAdresse, startAnsicht, type Modus, type KalenderAnsicht } from '@/lib/kalender/modus';
 
-type Ansicht = 'tag' | 'vier' | 'woche' | 'monat' | 'jahr' | 'agenda';
+type Ansicht = KalenderAnsicht;
 /** Ansichten mit Zeitraster — nur dort lässt sich planen. */
 const MIT_RASTER: readonly Ansicht[] = ['tag', 'vier', 'woche'];
 const ANSICHTEN: { id: Ansicht; label: string; taste: string }[] = [{ id: 'tag', label: 'Tag', taste: 'd' }, { id: 'vier', label: '4 Tage', taste: 'x' }, { id: 'woche', label: 'Woche', taste: 'w' }, { id: 'monat', label: 'Monat', taste: 'm' }, { id: 'jahr', label: 'Jahr', taste: 'y' }, { id: 'agenda', label: 'Termine', taste: 'a' }];
@@ -131,7 +131,7 @@ export function Kalender() {
   const planenStart = useRef(false);
   const [aufgabenFilter, setAufgabenFilterRoh] = useState<AufgabenModusFilter>({ wer: 'alle' });
 
-  useEffect(() => { try { const a = localStorage.getItem(MERKER) as Ansicht | null; if (a && ANSICHTEN.some(x => x.id === a)) setAnsichtRoh(a); else if (!breit) setAnsichtRoh('tag'); } catch { /* egal */ } }, [breit]);
+  useEffect(() => { let a: string | null = null; try { a = localStorage.getItem(MERKER); } catch { /* egal */ } setAnsichtRoh(startAnsicht(a, breit)); }, [breit]);
   const setAnsicht = (a: Ansicht) => { setAnsichtRoh(a); try { localStorage.setItem(MERKER, a); } catch { /* egal */ } };
   // Adresse (K5): ?modus=planen|aufgaben · ?tag= · ?space= · as/ap/al/wer (Aufgaben-Filter) — alte Links
   // (/os/planung/woche, WEG.woche) und der Umschalter in den Aufgaben landen hier (lib/kalender/modus.ts).

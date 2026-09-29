@@ -27,7 +27,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPE, type DragEvent } from 'react';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { LEUCHT } from '../schlank';
-import { spaltenLegen, ziehSpanne, spanneText, rasterLage, zeitumstellung, letzterTag, verschiebeDifferenz, endeAmTag } from '@/lib/kalender/layout';
+import { spaltenLegen, ziehSpanne, spanneText, rasterLage, zeitumstellung, letzterTag, verschiebeDifferenz, endeAmTag, startMinute } from '@/lib/kalender/layout';
 import { ART_INFO, ARBEITSORTE } from '@/lib/kalender/arten';
 import { ART_FARBE } from '@/types/planer';
 import { GanztagsZelle, WER_FARBE, WER_LABEL, istVorlaeufig, type KTermin, type KFrist, type KErinnerung, type Wer } from './teile';
@@ -104,7 +104,23 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
     return () => clearInterval(t);
   }, []);
   // Beim ersten Zeichnen auf 7 Uhr rollen (bzw. eine Stunde vor jetzt, wenn heute sichtbar ist).
-  useEffect(() => { const r = rollen.current; if (!r) return; const ziel = tage.includes(heute) ? Math.max(0, minutenVon(wandzeit(new Date())) - 60) : 7 * 60; r.scrollTop = ziel * PX_MIN; }, [tage.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Gesamtprüfung 29.09.: beim ersten Zeichnen ist die Liste oft noch nicht begrenzt (Spalten erst nach `useBreit`) — dann
+  // lief `scrollTop` ins Leere und das Raster stand nach jedem Neuladen auf 0 Uhr. Deshalb: rollen, sobald die Liste
+  // wirklich rollen kann (ResizeObserver), und nur einmal je Zeitraum (wer selbst gerollt hat, wird nicht zurückgeholt).
+  const gerollt = useRef(false);
+  const hinRollen = useRef(() => {});
+  hinRollen.current = () => {
+    const r = rollen.current; if (!r || gerollt.current || r.scrollHeight <= r.clientHeight) return;
+    r.scrollTop = startMinute(tage, heute, minutenVon(wandzeit(new Date()))) * PX_MIN;
+    gerollt.current = true;
+  };
+  useEffect(() => { gerollt.current = false; hinRollen.current(); }, [tage.length]);
+  useEffect(() => {
+    const r = rollen.current; if (!r || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => hinRollen.current());
+    ro.observe(r);
+    return () => ro.disconnect();
+  }, []);
   // Touch: solange aufgezogen wird, darf die Liste nicht rollen (nicht-passiver Hörer — React-Hörer sind passiv).
   useEffect(() => {
     const r = rollen.current; if (!r) return;

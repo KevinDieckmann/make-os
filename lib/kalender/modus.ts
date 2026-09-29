@@ -15,6 +15,18 @@ import { istTag, prioRang } from '@/lib/aufgaben/ansichten';
 import { montagVon, tagPlus } from '@/lib/zeit/kalender-kern';
 
 export type Modus = 'kalender' | 'planen' | 'aufgaben';
+
+/** Die Ansichten des Kalenders (Kürzel d/x/w/m/y/a). */
+export const KALENDER_ANSICHTEN = ['tag', 'vier', 'woche', 'monat', 'jahr', 'agenda'] as const;
+export type KalenderAnsicht = (typeof KALENDER_ANSICHTEN)[number];
+
+/**
+ * Ansicht beim Öffnen: die gemerkte Wahl, sonst Woche am Rechner und Tag am Handy (Gesamtprüfung 29.09.: vorher blieb
+ * ohne gemerkte Wahl auch am Rechner „Tag“ stehen — `useBreit` meldet beim ersten Zeichnen immer „schmal“).
+ */
+export function startAnsicht(gemerkt: string | null | undefined, breit: boolean): KalenderAnsicht {
+  return (KALENDER_ANSICHTEN as readonly string[]).includes(gemerkt ?? '') ? (gemerkt as KalenderAnsicht) : breit ? 'woche' : 'tag';
+}
 export type WerFilter = 'alle' | 'meine' | 'beteiligt';
 
 export interface ModusAdresse { modus: Modus; as?: string; ap?: string; al?: string; wer?: WerFilter; space?: 'privat' | 'business'; tag?: string }

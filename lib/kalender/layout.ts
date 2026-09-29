@@ -68,6 +68,11 @@ export function zeitumstellung(tag: string): 'doppelt' | 'entfaellt' | null {
   return h > 24 ? 'doppelt' : h < 24 ? 'entfaellt' : null;
 }
 
+/** Wohin das Zeitraster beim Öffnen rollt (Minute des Tages): eine Stunde vor jetzt, wenn heute sichtbar ist, sonst 7 Uhr. */
+export function startMinute(tage: readonly string[], heute: string, jetztMin: number): number {
+  return tage.includes(heute) ? Math.max(0, jetztMin - 60) : 7 * 60;
+}
+
 /** Kalendertage zwischen zwei Berliner Tagen (b − a). */
 export const tageZwischen = (a: string, b: string): number => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
 

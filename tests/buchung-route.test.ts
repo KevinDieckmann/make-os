@@ -219,8 +219,10 @@ describe('Bestätigen → Glocke → Freigabe → EIN CRM-Vorgang + Termin', () 
     // K3: die Meeting-Aktivität verweist auf den Termin (`terminUid`) — die Zeit steht nur im Termin, kein `wann`.
     expect(termin[0]).toMatchObject({ terminUid: 'testkal|UID-TEST-1' });
     expect(termin[0].wann).toBeUndefined();
-    const crm = (await db.loadJson<{ followups: { id: string; text: string; faellig: string }[] }>('crm'))!;
+    const crm = (await db.loadJson<{ followups: { id: string; text: string; faellig: string; terminUid?: string }[] }>('crm'))!;
     expect(crm.followups.find(f => f.id === b.vorbereitenId)?.text).toContain('Termin vorbereiten');
+    // Gesamtprüfung 29.09.: „Termin vorbereiten“ hängt gleich am Termin (kein Befund „buchung-followup-ohne-termin“ nach jeder Freigabe)
+    expect(crm.followups.find(f => f.id === b.vorbereitenId)?.terminUid).toBe('testkal|UID-TEST-1');
     // Audit: Kalender-Schreibaktion mit UID, ohne Titel/Namen
     const monat = `aenderungsprotokoll--${HAUS}--2026-10`;
     const prot = await db.loadJson<{ eintraege: { bestand: string; id: string; op: string; person?: string }[] }>(monat);
