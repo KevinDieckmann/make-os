@@ -10,10 +10,13 @@
 // Schutz: Drosselung je Adresse (lib/zugang/drossel.ts; jeder Buchungsversuch und jeder Fehlgriff zählt), Honigtopf,
 // signierter Formular-Stempel (zu schnell → Maschine), Längen- und Größengrenzen (400/413), eine offene Anfrage je
 // E-Mail und Seite, Platz-Prüfung in EINER Sperre (keine Doppelbuchung), unbekannte Adresse → 404.
+// F1 (Prüfer 1 #13): Drosselung je Netz (IPv6 auf /64 gekürzt, `adresseNetz`); auch erfolgreiche GETs zählen (eigenes,
+// großzügigeres Budget `LESEN_FREI`); höchstens GRENZEN.neueJeStunde neue Buchungen je Seite und Stunde (429); der
+// erzwungene Abgleich vor dem Reservieren holt nur den Zielkalender neu (`nur`) — die übrigen über ihren ctag.
 // Gesperrt sind Feiertage NRW und die „freien Tage“ aus den Kalender-Einstellungen (#72, z. B. 24.12./31.12.).
 
 import { NextResponse } from 'next/server';
-import { pruefe, fehlschlag, adresse } from '@/lib/zugang/drossel';
+import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
 import { tagPlus } from '@/lib/kalender/zeit';
@@ -34,6 +37,8 @@ const ZWANG_ABSTAND_MS = 10_000;
 const KOPF = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' };
 const antwort = (body: Record<string, unknown>, status = 200, extra: Record<string, string> = {}) => NextResponse.json(body, { status, headers: { ...KOPF, ...extra } });
 const NICHT_GEFUNDEN = { ok: false, fehler: 'Diese Buchungsseite gibt es nicht.' };
+/** So viele Aufrufe (GET) je Netz und Viertelstunde frei, danach wächst die Wartezeit (F1 #13). */
+const LESEN_FREI = 40;
 
 async function seiteZu(slug: string): Promise<BuchungsSeite | null> {
   if (!slugOk(slug)) return null;
@@ -47,12 +52,21 @@ function gedrosselt(schluessel: string) {
 }
 
 let letzterZwang = 0;
-/** Vor dem Reservieren frisch mit iCloud abgleichen (#73). false = iCloud nicht erreichbar. */
-async function frischAbgleichen(): Promise<boolean> {
+/**
+ * Vor dem Reservieren frisch mit iCloud abgleichen (#73). false = iCloud nicht erreichbar. F1 #13: neu geholt wird nur
+ * der Zielkalender (`nur`); alle übrigen kommen über ihren ctag (geändert → neu geholt). Kennt der Stand den Kalender
+ * nicht (noch nie abgeglichen), einmal alles.
+ */
+async function frischAbgleichen(seite: BuchungsSeite): Promise<boolean> {
   const jetzt = Date.now();
-  const erzwingen = jetzt - letzterZwang >= ZWANG_ABSTAND_MS;
-  if (erzwingen) letzterZwang = jetzt;
-  try { await abgleichen(erzwingen ? { erzwingen: true } : {}); return true; } catch { return false; }
+  const zwingen = jetzt - letzterZwang >= ZWANG_ABSTAND_MS;
+  if (zwingen) letzterZwang = jetzt;
+  try {
+    // Wie icloud.ts `kalenderNachName` (Name ohne Groß/Klein, getrimmt).
+    const kal = zwingen ? (await ladeStand()).kalender?.find(k => k.name.trim().toLowerCase() === seite.zielKalender.trim().toLowerCase()) : undefined;
+    await abgleichen(!zwingen ? {} : kal ? { nur: kal.id } : { erzwingen: true });
+    return true;
+  } catch { return false; }
 }
 
 /** Ist gerade etwas buchbar? (Verantwortlicher gesetzt, iCloud verbunden, Stand frisch und ohne Fehler) */
@@ -63,8 +77,11 @@ async function buchbar(seite: BuchungsSeite, jetzt: Date): Promise<boolean> {
 
 export async function GET(req: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
-  const schluessel = `buchung:${adresse(req)}`;
-  const zu = gedrosselt(schluessel); if (zu) return zu;
+  const netz = adresseNetz(req);
+  const schluessel = `buchung:${netz}`, lesen = `buchung-lesen:${netz}`;
+  const zu = gedrosselt(schluessel) ?? gedrosselt(lesen); if (zu) return zu;
+  // Auch erfolgreiche Aufrufe zählen (F1 #13) — jeder GET rechnet Plätze aus dem Kalender.
+  fehlschlag(lesen, Date.now(), LESEN_FREI);
   const seite = await seiteZu(slug);
   if (!seite) { fehlschlag(schluessel); return antwort(NICHT_GEFUNDEN, 404); }
   const jetzt = new Date();
@@ -81,7 +98,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ slug: string }>
 
 export async function POST(req: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
-  const schluessel = `buchung:${adresse(req)}`;
+  const schluessel = `buchung:${adresseNetz(req)}`;
   const zu = gedrosselt(schluessel); if (zu) return zu;
   // Jeder Buchungsversuch zählt (auch ein erfolgreicher): höchstens wenige je Viertelstunde und Adresse.
   fehlschlag(schluessel);
@@ -102,7 +119,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   if (!e.ok) return antwort({ ok: false, fehler: e.fehler }, e.status);
 
   // #73: nie auf einem alten Stand reservieren — erst frisch abgleichen; scheitert das oder ist der Stand nicht frisch → 503.
-  if (!verbunden() || !(await frischAbgleichen()) || !(await buchbar(seite, jetzt))) return antwort({ ok: false, fehler: NICHT_BUCHBAR }, 503, { 'Retry-After': '600' });
+  if (!verbunden() || !(await frischAbgleichen(seite)) || !(await buchbar(seite, jetzt))) return antwort({ ok: false, fehler: NICHT_BUCHBAR }, 503, { 'Retry-After': '600' });
 
   const heute = localDay(jetzt);
   const bis = tagPlus(heute, seite.tageVoraus + 1);

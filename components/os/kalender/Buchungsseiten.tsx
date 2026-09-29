@@ -12,6 +12,9 @@
 //     „Freigeben + einladen …“ an eine unbestätigte Adresse nur nach dem Warnhinweis.
 //   · #73 Ist der Platz inzwischen belegt (Termin am iPhone, Abwesend), fragt die Freigabe zurück: trotzdem · ablehnen.
 //   · #79 Verantwortlich ist Pflicht (Datenschutz-Hinweis der Seite).
+// F1 (Prüfer 1): Während eine Freigabe läuft, sind alle Freigabe-Knöpfe dieser Buchung gesperrt (#1). „Termin entfernen“
+// fragt bei Gästen zurück („Absage senden?“) und löst danach den Verweis an der Buchung (#12) — auch für Termine, deren
+// Freigabe zu spät kam (Buchung abgelehnt/abgelaufen).
 
 import { EinladungFrage } from './verknuepfen';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -72,6 +75,10 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
   /** Rückfrage nach 409 „Platz belegt“ (#73): Buchung + Text. */
   const [konflikt, setKonflikt] = useState<{ id: string; text: string; einladen: boolean; unbestaetigt: boolean } | null>(null);
   const [entwurf, setEntwurf] = useState<Entwurf | null>(null);
+  /** Buchung, deren Freigabe gerade läuft (F1 #1) — alle Freigabe-Knöpfe dieser Buchung sind so lange aus. */
+  const [freigabeLaeuft, setFreigabeLaeuft] = useState<string | null>(null);
+  /** Rückfrage „Absage an die Gäste senden?“ vor dem Entfernen eines Termins mit Gästen (F1 #12). */
+  const [absageFrage, setAbsageFrage] = useState<{ id: string; adressen: string[] } | null>(null);
   const [textKopiert, setTextKopiert] = useState(false);
   const senden = async (body: Record<string, unknown>): Promise<Antwort> => {
     const r: Antwort = await fetch('/api/kalender/buchung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
@@ -82,8 +89,11 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
   const aktion = async (body: Record<string, unknown>) => (await senden(body)).ok;
   /** Freigeben (optional mit Einladung) — belegt → Rückfrage statt still einen zweiten Termin daneben. */
   const freigeben = async (x: BuchungSicht, opt: { einladen?: boolean; trotzKonflikt?: boolean } = {}) => {
+    if (freigabeLaeuft) return;
     const unbestaetigt = !x.emailBestaetigtAm;
+    setFreigabeLaeuft(x.id);
     const r = await senden({ aktion: 'freigeben', id: x.id, ...(opt.einladen ? { einladen: true, einladungBestaetigt: true, ...(unbestaetigt ? { adresseUnbestaetigt: true } : {}) } : {}), ...(opt.trotzKonflikt ? { trotzKonflikt: true } : {}) });
+    setFreigabeLaeuft(null);
     if (!r.ok && r.konflikt) { setMeldung(''); setKonflikt({ id: x.id, text: r.fehler ?? 'Der Platz ist inzwischen belegt.', einladen: !!opt.einladen, unbestaetigt }); }
     else setKonflikt(null);
   };
@@ -98,16 +108,22 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
   };
   const textKopieren = async (e: Entwurf) => { try { await navigator.clipboard.writeText(`${e.betreff}\n\n${e.text}`); setTextKopiert(true); } catch { setMeldung('Kopieren nicht möglich — Text bitte markieren.'); } };
   const kopieren = async (s: SeiteSicht) => { try { await navigator.clipboard.writeText(`${window.location.origin}${s.pfad}`); setKopiert(s.id); setTimeout(() => setKopiert(''), 1800); } catch { setMeldung('Kopieren nicht möglich — Link: ' + s.pfad); } };
-  const terminEntfernen = async (x: BuchungSicht) => {
+  /** Termin einer abgesagten Buchung entfernen — mit Gästen erst nach „Absage senden?“; danach Verweis lösen (#12). */
+  const terminEntfernen = async (x: BuchungSicht, einladungBestaetigt = false) => {
     if (!x.terminUid) return;
-    const r = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(x.terminUid)}`, { method: 'DELETE' }).then(y => y.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
-    setMeldung(r.ok ? 'Termin im Kalender entfernt.' : r.fehler ?? 'Nicht entfernt.');
+    const r: { ok: boolean; fehler?: string; einladung?: string; adressen?: string[] } = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(x.terminUid)}${einladungBestaetigt ? '&einladungBestaetigt=1' : ''}`, { method: 'DELETE' }).then(y => y.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    if (!r.ok && r.einladung) { setMeldung(''); setAbsageFrage({ id: x.id, adressen: r.adressen ?? [] }); return; }
+    setAbsageFrage(null);
+    if (!r.ok) { setMeldung(r.fehler ?? 'Nicht entfernt.'); return; }
+    const l = await senden({ aktion: 'termin-geloest', id: x.id });
+    if (l.ok) setMeldung('Termin im Kalender entfernt.');
   };
 
   const anfragen = (stand?.buchungen ?? []).filter(x => x.status === 'angefragt');
   const vorlaeufig = (stand?.buchungen ?? []).filter(x => x.status === 'vorlaeufig');
   const kommend = (stand?.buchungen ?? []).filter(x => x.status === 'bestaetigt');
-  const abgesagtMitTermin = (stand?.buchungen ?? []).filter(x => x.status === 'abgesagt' && x.terminUid);
+  // Abgesagt — oder abgelehnt/abgelaufen, während die Freigabe lief (F1 #2): der Termin blieb stehen, entfernt wird von Hand.
+  const abgesagtMitTermin = (stand?.buchungen ?? []).filter(x => (x.status === 'abgesagt' || x.status === 'abgelehnt' || x.status === 'abgelaufen') && x.terminUid);
   const seiteVon = (id: string) => stand?.seiten.find(s => s.id === id);
 
   return (
@@ -138,14 +154,14 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
               {x.anliegen && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{x.anliegen}</div>}
               <MailStand x={x} onLink={() => void mailLink(x)} />
               {entwurf?.id === x.id && <MailEntwurf e={entwurf} kopiert={textKopiert} onKopieren={() => void textKopieren(entwurf)} onZu={() => setEntwurf(null)} />}
-              {einladen === x.id && <EinladungFrage was="einladung" adressen={[x.email]} onNein={() => setEinladen(null)}
+              {einladen === x.id && <EinladungFrage was="einladung" adressen={[x.email]} laeuft={freigabeLaeuft === x.id} onNein={() => setEinladen(null)}
                 warnung={x.emailBestaetigtAm ? undefined : 'Die Adresse hat der Buchende selbst eingetragen — sie ist nicht per Mail bestätigt. Nur einladen, wenn du sicher bist, dass sie ihm gehört (sonst schreibt iCloud eine fremde Person an). Sicherer: erst „Bestätigungslink senden“.'}
                 onJa={async () => { setEinladen(null); await freigeben(x, { einladen: true }); }} />}
               {konflikt?.id === x.id && (
                 <div role="alertdialog" aria-label="Platz belegt" style={{ display: 'grid', gap: 8, background: `${LEUCHT.kritisch}14`, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 10, padding: '8px 10px' }}>
                   <span style={{ fontSize: 12, color: C.ink, lineHeight: 1.45 }}>{konflikt.text} Trotzdem freigeben? Dann liegen zwei Termine übereinander.</span>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <Knopf farbe={LEUCHT.achtung} onClick={async () => { await freigeben(x, { einladen: konflikt.einladen, trotzKonflikt: true }); }}>Trotzdem freigeben</Knopf>
+                    <Knopf farbe={LEUCHT.achtung} aus={!!freigabeLaeuft} onClick={async () => { await freigeben(x, { einladen: konflikt.einladen, trotzKonflikt: true }); }}>Trotzdem freigeben</Knopf>
                     <Knopf leise onClick={async () => { setKonflikt(null); await aktion({ aktion: 'ablehnen', id: x.id, grund: 'Der Termin ist leider nicht mehr frei — bitte einen anderen wählen.' }); }}>Ablehnen</Knopf>
                     <Knopf leise onClick={() => setKonflikt(null)}>Abbrechen</Knopf>
                   </div>
@@ -153,9 +169,9 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
               )}
               {x.crmHinweis && <div style={{ fontSize: 11.5, color: LEUCHT.achtung }}>{x.crmHinweis}</div>}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Knopf farbe={LEUCHT.gut} onClick={async () => { await freigeben(x); }}>Freigeben</Knopf>
+                <Knopf farbe={LEUCHT.gut} aus={!!freigabeLaeuft} onClick={async () => { await freigeben(x); }}>{freigabeLaeuft === x.id ? 'gibt frei …' : 'Freigeben'}</Knopf>
                 {/* K3: den Gast als echte Einladung — erst nach der Rückfrage mit der Adresse (unbestätigt: mit Warnhinweis). */}
-                <Knopf leise onClick={() => setEinladen(x.id)}>Freigeben + einladen …</Knopf>
+                <Knopf leise aus={!!freigabeLaeuft} onClick={() => setEinladen(x.id)}>Freigeben + einladen …</Knopf>
                 <Knopf leise onClick={async () => { await aktion({ aktion: 'ablehnen', id: x.id }); }}>Ablehnen</Knopf>
                 {x.kontaktId && <Link href={WEG.kontakt(x.kontaktId)} style={{ fontSize: 11.5, color: C.inkDim }}>Kontakt ›</Link>}
               </div>
@@ -172,9 +188,12 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
             </div>
           ); })}
           {abgesagtMitTermin.map(x => (
-            <div key={x.id} style={{ fontSize: 12, color: C.inkDim, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>{STATUS_TEXT[x.status]}: {x.name} · {zeit(x)}</span>
-              <Knopf leise onClick={async () => { await terminEntfernen(x); }}>Termin entfernen</Knopf>
+            <div key={x.id} style={{ fontSize: 12, color: C.inkDim, display: 'grid', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span>{STATUS_TEXT[x.status]}: {x.name} · {zeit(x)}</span>
+                <Knopf leise onClick={async () => { await terminEntfernen(x); }}>Termin entfernen</Knopf>
+              </div>
+              {absageFrage?.id === x.id && <EinladungFrage was="absage" adressen={absageFrage.adressen} onNein={() => setAbsageFrage(null)} onJa={async () => { await terminEntfernen(x, true); }} />}
             </div>
           ))}
         </div>

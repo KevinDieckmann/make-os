@@ -47,6 +47,11 @@ export interface Formular {
   crm: { kontaktId?: string; firmaId?: string; mandatId?: string; dealId?: string };
   /** K3: Gäste — gehen erst nach der Rückfrage „Einladung an n Personen senden?“ an iCloud. */
   gaeste: GastWahl[];
+  /**
+   * F1 #6: feste UID des neuen Termins — entsteht beim ersten Senden im Browser und bleibt im Entwurf. Ein zweites
+   * Senden (Verbindung weg, Antwort verloren) legt so nie einen zweiten Termin an (Server: `schonDa` = Erfolg).
+   */
+  uid?: string;
 }
 
 export interface Vorgabe {
@@ -131,6 +136,7 @@ export function formularAnfrage(f: Formular): Anfrage {
       ...(f.art === 'arbeitsort' ? { arbeitsort: f.arbeitsort } : {}),
       ...(Object.keys(bezug).length ? { bezug } : {}),
       ...(gaeste.length ? { gaeste } : {}),
+      ...(f.uid ? { uid: f.uid } : {}),
     },
   };
 }

@@ -8,9 +8,11 @@
 //   Fokus       `ladeZeit(person)` — bewusste Blöcke aller Spaces; Einheit über `einheitVonBlock` (Aufgabe/Mandat live),
 //               Aufgaben aus `aufgabenKurz`, Mandate aus `mandateKurz` (dieselben Wege wie Zeit je Einheit/Mandat).
 // Die Zeit ist persönlich (wie in der Zeitmessung): ausgewertet wird die angemeldete Person.
+// F1 (Prüfer 1 #7): Private Termine der ANDEREN Person (z. B. im Kalender „Gemeinsam“) laufen vorher durch `maskieren`
+// (dieselbe Regel wie jede Kalender-Sicht) — sie zählen nur als belegte Zeit, ohne Mandat, Kontakte oder Gäste.
 
 import { termineLesen } from './termine-lesen';
-import { kontakteVon } from './bezug';
+import { kontakteVon, maskieren } from './bezug';
 import { ladeEinstellungen } from './einstellungen';
 import { spaceVonKalender } from './space';
 import { tagPlus } from './zeit';
@@ -52,9 +54,10 @@ export async function zeitAuswertungFuer(person: string, stichtag: string, woche
   ]);
 
   // Abgesagte/abgelehnte Termine fanden nicht statt (R-K1 #68) — sie zählen nicht als verbrachte Zeit.
-  const eigene = gelesen.termine.filter(t => betrifft(t, person) && !t.abgesagt);
+  // Privates der anderen Person nur als „Belegt“ (F1 #7) — `maskieren` nimmt Bezug (Mandat, Kontakt) und Gäste weg.
+  const eigene = gelesen.termine.map(t => maskieren(t, person)).filter(t => betrifft(t, person) && !t.abgesagt);
   const termine: ATermin[] = eigene.map(t => ({
-    id: t.id, start: t.start, ende: t.ende, ganztags: t.ganztags, space: spaceVonKalender(einst, t.kalender), mitTeilnehmern: t.mitTeilnehmern,
+    id: t.id, start: t.start, ende: t.ende, ganztags: t.ganztags, space: spaceVonKalender(einst, t.kalender), mitTeilnehmern: t.maskiert ? false : t.mitTeilnehmern,
     art: t.art, ...(t.beschaeftigt === false ? { frei: true } : {}), ...(t.blockArt ? { blockArt: t.blockArt } : {}),
     ...(t.bezug?.mandatId ? { mandatId: t.bezug.mandatId } : {}),
     // K3 (30.09.): Kontakt am Termin + Gäste aus dem CRM (`gastKontakte`) — je Person einmal.

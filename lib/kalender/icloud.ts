@@ -39,6 +39,7 @@ import { localDay } from '@/lib/zeit';
 import { mitBezug, kalenderKennung, terminSchluessel, schluesselTeile, type BezugBestand, type ObjektKurz } from './bezug';
 import { ausWandzeit } from './zeit';
 import { ladeBezuege, bezuegeAbgleichen } from './bezug-server';
+import { UID_FEST } from './eingabe';
 
 export const SPEICHER = 'kalender-icloud';
 export const CACHE = 'calendar-cache';
@@ -487,13 +488,13 @@ async function standZumSchreiben(f: Fund, s: IcloudStand, ref: string): Promise<
 
 /**
  * Anlegen: alles aus NeuerTermin (ohne uid, ohne Organisator — der kommt aus dem Konto) plus der Kalender (Name). `uid`
- * nur für Server-Vorgänge, die idempotent sein müssen (K5: Übernahme der Wochenplan-Blöcke, Spiegel von Event/Familie) —
+ * für Vorgänge, die idempotent sein müssen (K5: Übernahme der Wochenplan-Blöcke, Spiegel von Event/Familie; F1: Buchung,
+ * Anlegen aus dem Browser) —
  * eine feste, echte UID: gibt es den Termin schon (If-None-Match scheitert mit 412 oder er steht im Stand), wird nichts
  * doppelt angelegt (`schonDa`).
  */
 export type NeuEingabe = Omit<NeuerTermin, 'uid' | 'organisator'> & { kalender: string; uid?: string };
 
-const UID_FEST = /^[A-Za-z0-9][A-Za-z0-9._-]{7,120}$/;
 
 /** Neuen Termin anlegen. Liefert die UID. Mit Gästen nur nach Bestätigung (`einladungBestaetigt`, sonst EinladungNoetig). */
 export async function anlegen(e: NeuEingabe, opt: { einladungBestaetigt?: boolean } = {}): Promise<{ uid: string; schluessel: string; kalender: string; gaeste: number; schonDa?: true }> {

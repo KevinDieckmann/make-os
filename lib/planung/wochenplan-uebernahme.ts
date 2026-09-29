@@ -10,6 +10,10 @@
 // letzten Wochen rechnen weiter mit ihnen. Der alte Bestand wird NICHT verändert; der Stand der Übernahme
 // (Block-Kennung → Termin-UID, keine Titel) liegt in `wochenplan-uebernahme`. Nur diese Datei und ihr Server-Teil
 // lesen den alten Bestand.
+// F1 (Prüfer 1 #3/#4): Die Apple-Kopie wird nur dann DER Block, wenn sie noch zum Block passt — sonst schreibt die
+// Übernahme Start/Ende/Titel des Blocks mit (der Block ist die Wahrheit). Lässt sie sich nicht ändern (Serie, Gäste,
+// nur lesbar, mehrdeutig), entsteht ein neuer Termin mit `uidFuerBlock`; scheitert auch das, steht der Block mit Grund
+// unter `uebersprungen` (nie Titel) und die Übernahme macht mit dem nächsten weiter — kein Block hält sie auf.
 
 import { PLAN_ARTEN, type PlanBlock } from '@/types/planer';
 import { wandAus } from '@/lib/kalender/zeit';
@@ -21,7 +25,8 @@ export const UEBERNAHME_ARCHIV_PRAEFIX = 'wochenplan-vor-uebernahme-';
 export const altName = (person: string): string => (person === 'kevin' ? 'wochenplan' : `wochenplan--${person}`);
 
 export type AltDatei = Record<string, PlanBlock[] | undefined>;
-export interface UebernahmePerson { am?: string; bloecke: Record<string, string> }
+/** `uebersprungen` (F1 #4): Block-Kennung → kurzer technischer Grund — der Block bleibt Archiv, kein neuer Versuch. */
+export interface UebernahmePerson { am?: string; bloecke: Record<string, string>; uebersprungen?: Record<string, string> }
 export interface UebernahmeStand { version: 1; personen: Record<string, UebernahmePerson>; archiv?: string }
 export const LEER_STAND: UebernahmeStand = { version: 1, personen: {} };
 
@@ -35,7 +40,9 @@ export function standSauber(v: unknown): UebernahmeStand {
     if (!PERSON.test(p) || !e || typeof e !== 'object') continue;
     const bloecke: Record<string, string> = {};
     for (const [id, uid] of Object.entries((e as UebernahmePerson).bloecke ?? {})) if (typeof uid === 'string' && uid) bloecke[id] = uid;
-    personen[p] = { ...(typeof (e as UebernahmePerson).am === 'string' ? { am: (e as UebernahmePerson).am } : {}), bloecke };
+    const uebersprungen: Record<string, string> = {};
+    for (const [id, grund] of Object.entries((e as UebernahmePerson).uebersprungen ?? {})) if (typeof grund === 'string' && !bloecke[id]) uebersprungen[id] = grund.slice(0, 160);
+    personen[p] = { ...(typeof (e as UebernahmePerson).am === 'string' ? { am: (e as UebernahmePerson).am } : {}), bloecke, ...(Object.keys(uebersprungen).length ? { uebersprungen } : {}) };
   }
   return { version: 1, personen, ...(typeof o.archiv === 'string' ? { archiv: o.archiv } : {}) };
 }
@@ -70,7 +77,7 @@ export function uidFuerBlock(person: string, blockId: string): string {
 }
 
 export interface UebernahmeEintrag { person: string; block: PlanBlock; uid: string; weg: 'apple' | 'neu' }
-export interface UebernahmePlan { person: string; offen: UebernahmeEintrag[]; vergangen: number; schon: number }
+export interface UebernahmePlan { person: string; offen: UebernahmeEintrag[]; vergangen: number; schon: number; uebersprungen: number }
 
 /**
  * Was für eine Person zu tun ist. `appleDa`: gibt es den gespiegelten Apple-Termin (appleUid) noch in iCloud?
@@ -78,9 +85,11 @@ export interface UebernahmePlan { person: string; offen: UebernahmeEintrag[]; ve
  */
 export function uebernahmePlanen(person: string, datei: AltDatei | null | undefined, stand: UebernahmeStand, jetztWand: string, appleDa: (uid: string) => boolean): UebernahmePlan {
   const schonMap = stand.personen[person]?.bloecke ?? {};
-  const plan: UebernahmePlan = { person, offen: [], vergangen: 0, schon: 0 };
+  const weg = stand.personen[person]?.uebersprungen ?? {};
+  const plan: UebernahmePlan = { person, offen: [], vergangen: 0, schon: 0, uebersprungen: 0 };
   for (const b of altBloecke(datei)) {
     if (schonMap[b.id]) { plan.schon++; continue; }
+    if (weg[b.id]) { plan.uebersprungen++; continue; }
     if (!istZukuenftig(b, jetztWand)) { plan.vergangen++; continue; }
     const apple = !!b.appleUid && appleDa(b.appleUid);
     plan.offen.push({ person, block: b, uid: apple ? b.appleUid! : uidFuerBlock(person, b.id), weg: apple ? 'apple' : 'neu' });
@@ -93,13 +102,14 @@ export function uebernahmePlanen(person: string, datei: AltDatei | null | undefi
  * (Archiv) und vor der Übernahme auch zukünftige (dann mit `wartet: true`, damit die Oberfläche sie als „wartet auf
  * Übernahme“ zeigt und nichts verschwindet). Kennung `archiv:<person>:<id>`.
  */
-export type ArchivBlock = PlanBlockSicht & { wartet?: true; /** Hatte eine Apple-Kopie — die steht als eigener Termin im Kalender (Ansicht blendet den Block dann aus). */ gespiegelt?: true };
+export type ArchivBlock = PlanBlockSicht & { wartet?: true; /** Hatte eine Apple-Kopie — die steht als eigener Termin im Kalender (Ansicht blendet den Block dann aus). */ gespiegelt?: true; /** Bei der Übernahme übersprungen (F1 #4) — bleibt Archiv, wartet nicht mehr. */ uebersprungen?: true };
 export function archivBloecke(person: string, datei: AltDatei | null | undefined, stand: UebernahmeStand, von: string, bis: string, jetztWand: string): ArchivBlock[] {
   const schonMap = stand.personen[person]?.bloecke ?? {};
+  const weg = stand.personen[person]?.uebersprungen ?? {};
   return altBloecke(datei)
     .filter(b => !schonMap[b.id] && b.date >= von && b.date < bis)
     .map(b => {
       const { appleUid: _a, ...rest } = b;
-      return { ...rest, id: `archiv:${person}:${b.id}`, quelle: 'archiv' as const, wer: person, ...(istZukuenftig(b, jetztWand) ? { wartet: true as const } : {}), ...(b.appleUid ? { gespiegelt: true as const } : {}) };
+      return { ...rest, id: `archiv:${person}:${b.id}`, quelle: 'archiv' as const, wer: person, ...(weg[b.id] ? { uebersprungen: true as const } : istZukuenftig(b, jetztWand) ? { wartet: true as const } : {}), ...(b.appleUid ? { gespiegelt: true as const } : {}) };
     });
 }

@@ -16,7 +16,7 @@ import { LISTEN, type Familie } from '@/lib/familie/typen';
 import type { ListenOp } from '@/lib/sync';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { familieSpiegelNachziehen } from '@/lib/kalender/spiegel-server';
+import { familieSpiegelNachziehen, spiegelHinweiseMelden } from '@/lib/kalender/spiegel-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,8 +56,12 @@ async function antwort(f: Familie, person: string, haushalt: string) {
 async function spiegelNachziehen(haushalt: string, person: string): Promise<void> {
   try {
     if (haushalt !== await haushaltDesInhabers()) return;
-    await familieSpiegelNachziehen(haushalt, { art: 'person', person });
-  } catch { /* Die Änderung in der Familie steht — der Spiegel wird beim nächsten Mal nachgezogen. */ }
+    // F1 #5: Einträge, die nicht gingen, melden (Server-Protokoll + Glocke der Person) — nie mehr still.
+    await spiegelHinweiseMelden(await familieSpiegelNachziehen(haushalt, { art: 'person', person }), person);
+  } catch (e) {
+    // Die Änderung in der Familie steht — der Spiegel wird beim nächsten Mal nachgezogen. Protokoll ohne Inhalte.
+    console.warn(`[spiegel] Familie nicht nachgezogen: ${e instanceof Error ? `${e.name}: ${e.message.slice(0, 160)}` : 'Fehler'}`);
+  }
 }
 
 export async function GET(req: Request) {

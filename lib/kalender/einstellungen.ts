@@ -66,6 +66,20 @@ const zahl = (v: unknown, min: number, max: number, sonst: number) => {
 };
 const text = (v: unknown, sonst: string) => String(v ?? '').trim().slice(0, 60) || sonst;
 
+/**
+ * Teil-Änderung (F1 #8, PUT { teil }) auf den aktuellen Stand legen — rein: oberste Ebene ersetzt, einfache Objekte
+ * (kalender, dauer, space, belegt, steuerVorlage) je Schlüssel gemischt. Das Ergebnis geht danach durch `einstellungenSauber`.
+ */
+export function einstellungenTeilMischen(aktuell: KalenderEinstellungen, teil: Record<string, unknown>): Partial<KalenderEinstellungen> {
+  const objekt = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+  const raus: Record<string, unknown> = { ...aktuell };
+  for (const [k, v] of Object.entries(teil)) {
+    const alt = (aktuell as unknown as Record<string, unknown>)[k];
+    raus[k] = objekt(alt) && objekt(v) ? { ...alt, ...v } : v;
+  }
+  return raus as Partial<KalenderEinstellungen>;
+}
+
 export function einstellungenSauber(d: Partial<KalenderEinstellungen> | null): KalenderEinstellungen {
   const L = EINSTELLUNGEN_LEER;
   const sicht = ['alle', 'kevin', 'malin', 'beide'].includes(String(d?.standardSicht)) ? d!.standardSicht! : L.standardSicht;

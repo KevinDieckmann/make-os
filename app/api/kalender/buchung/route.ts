@@ -7,8 +7,11 @@
 //                                                       `einladen` (K3): Gast als echte Einladung — nur mit Bestätigung,
 //                                                       an eine unbestätigte Adresse nur mit `adresseUnbestaetigt` (#76).
 //                                                       Platz inzwischen belegt → 409 { konflikt: true } (#73), dann nur
-//                                                       mit `trotzKonflikt`.
+//                                                       mit `trotzKonflikt`. Läuft die Freigabe schon → 409 { laeuft };
+//                                                       inzwischen abgesagt/abgelehnt/abgelaufen → 409 { verworfen } (F1).
 //      { aktion: 'ablehnen', id, grund? }               Buchender sieht den Status (und den Grund) auf seiner Seite
+//      { aktion: 'termin-geloest', id }                 (F1 #12) nach „Termin entfernen“ (DELETE /api/kalender/termin):
+//                                                       Verweis auf den Termin an einer NICHT bestätigten Buchung lösen.
 //      { aktion: 'mail-link', id }                      (#76) einmaliger Bestätigungslink für die E-Mail-Adresse →
 //                                                       { token, pfad, bis } — die Oberfläche baut daraus den Mail-ENTWURF
 //                                                       (mailto); verschickt wird nur per Klick in der Mail-App. Ein neuer
@@ -133,6 +136,25 @@ export async function POST(req: Request) {
     }, jetzt);
     if (fehler) return nein(fehler, status);
     await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['status'] }], { art: 'person', person });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (b.aktion === 'termin-geloest') {
+    // F1 #12: Der Termin einer abgesagten/abgelehnten/abgelaufenen Buchung ist aus dem Kalender entfernt — der Verweis
+    // fällt weg (sonst zeigt die Leiste weiter „Termin entfernen“ und die Verbindungsprüfung „Termin fehlt in Apple“).
+    const id = typeof b.id === 'string' && ID.test(b.id) ? b.id : '';
+    let fehler = '', status = 400, geaendert = false;
+    await aendereBuchungBestand(bs => {
+      const x = bs.buchungen.find(y => y.id === id);
+      if (!x) { fehler = 'Buchung nicht gefunden.'; status = 404; return bs; }
+      if (x.status === 'bestaetigt') { fehler = 'Eine bestätigte Buchung behält ihren Termin — erst absagen.'; status = 409; return bs; }
+      if (!x.terminUid) return bs;
+      geaendert = true;
+      const { terminUid: _u, terminKalender: _k, ...rest } = x;
+      return { ...bs, buchungen: bs.buchungen.map(y => (y.id === id ? rest : y)) };
+    }, jetzt);
+    if (fehler) return nein(fehler, status);
+    if (geaendert) await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['terminUid'] }], { art: 'person', person });
     return NextResponse.json({ ok: true });
   }
 

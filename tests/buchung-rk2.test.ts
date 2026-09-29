@@ -29,7 +29,8 @@ vi.mock('@/lib/kalender/icloud', async () => ({
   verbunden: () => ic.verbunden,
   ladeStand: async () => stand(),
   frischerStand: async () => stand(),
-  abgleichen: async (opt: { erzwingen?: boolean } = {}) => { if (ic.abgleichFehler) throw new Error('iCloud nicht erreichbar'); if (opt.erzwingen) ic.erzwungen++; return stand(); },
+  // F1 #13: der Zielkalender allein (`nur`) zählt wie ein erzwungener Abgleich.
+  abgleichen: async (opt: { erzwingen?: boolean; nur?: string } = {}) => { if (ic.abgleichFehler) throw new Error('iCloud nicht erreichbar'); if (opt.erzwingen || opt.nur) ic.erzwungen++; return stand(); },
   termineImZeitraum: (_s: unknown, von: string, bis: string) => ic.termine.filter(t => t.start.slice(0, 10) < bis && t.ende.slice(0, 10) >= von).map(t => ({ ...t, href: '', kalenderId: '', serie: false, mitTeilnehmern: false, bearbeitbar: true })),
   anlegen: async (e: { titel: string; kalender: string; start: string; ende: string; notiz?: string; art?: string; beschaeftigt?: boolean; gaeste?: { email: string }[] }) => {
     ic.angelegt++;

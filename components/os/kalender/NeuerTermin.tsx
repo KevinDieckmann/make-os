@@ -33,6 +33,7 @@ import { tagPlus, ausWandzeit } from '@/lib/kalender/zeit';
 import { ART_INFO, TERMIN_ARTEN, ARBEITSORTE, SICHTBARKEIT_LABEL, ERINNERUNG_VORLAGEN, ERINNERUNG_MAX, erinnerungText, type Sichtbarkeit } from '@/lib/kalender/arten';
 import { ZONEN, gmtText, ausWandzeitIn } from '@/lib/kalender/zeitzone';
 import { wiederholungVorlagen, wiederholungBeschreiben, wochentagVon, wochentagNr, WOCHENTAGE, TAG_KURZ, type Wiederholung, type WiederholungFreq } from '@/lib/kalender/wiederholung';
+import { neueTerminUid } from '@/lib/kalender/eingabe';
 import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, plusMin, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
 import { FarbPunkte, WER_FARBE, WER_LABEL, type Wer } from './teile';
 import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
@@ -75,7 +76,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
   };
 
   const speichern = async (roh: Formular = f, bestaetigt = false) => {
-    const x = schnellAnwenden(roh);
+    let x = schnellAnwenden(roh);
     if (x !== roh) setF(x);
     const fe = formularFehler(x);
     if (fe) { setFehler(fe); return; }
@@ -89,7 +90,11 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
       schreibe(null); setLaeuft(false); onAngelegt({ aufgabeId: id }); onZu();
       return;
     }
-    const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...a.koerper, ...(bestaetigt ? { einladungBestaetigt: true } : {}) }) })
+    // F1 #6: feste UID vor dem ersten Senden — im Entwurf gemerkt, damit ein zweites Senden denselben Termin meint.
+    if (!x.uid) { x = { ...x, uid: neueTerminUid() }; setFRoh(x); }
+    schreibe({ f: x, am: new Date().toISOString() });
+    const koerper = { ...a.koerper, uid: x.uid };
+    const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...koerper, ...(bestaetigt ? { einladungBestaetigt: true } : {}) }) })
       .then(async res => ({ status: res.status, d: await res.json().catch(() => ({})) })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung — dein Entwurf bleibt gemerkt.' } }));
     setLaeuft(false);
     if (r.d.ok) { schreibe(null); setFrage(null); onAngelegt({ uid: r.d.uid, ...(r.d.gaeste ? { gaeste: r.d.gaeste } : {}), ...(r.d.hinweis ? { hinweis: r.d.hinweis } : {}) }); onZu(); return; }

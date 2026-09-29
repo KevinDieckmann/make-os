@@ -74,6 +74,14 @@ describe('Reservieren', () => {
     const viele: Buchung[] = Array.from({ length: GRENZEN.offeneJeSeite }, (_, i) => ({ id: `bu-v-${i}`, seiteId: SEITE.id, start: '2026-10-08T10:00:00', ende: '2026-10-08T10:30:00', status: 'angefragt', name: 'x', email: `x${i}@example.invalid`, einwilligung: { wortlaut: '', version: '', am: '' }, tokenHash: '', angelegt: '', reserviertBis: '', statusAm: '' }));
     expect(reservieren(bestand({ buchungen: viele }), SEITE.id, EIN, [], {}, ctx())).toMatchObject({ ok: false, status: 429 });
   });
+  it('F1 #13: höchstens GRENZEN.neueJeStunde neue Buchungen je Seite und Stunde (auch abgelaufene zählen) → 429', () => {
+    const neu = (i: number, vorMin: number): Buchung => ({ id: `bu-n-${i}`, seiteId: SEITE.id, start: '2026-10-08T10:00:00', ende: '2026-10-08T10:30:00', status: 'abgelaufen', name: 'x', email: `n${i}@example.invalid`, einwilligung: { wortlaut: '', version: '', am: '' }, tokenHash: '', angelegt: new Date(JETZT.getTime() - vorMin * 60_000).toISOString(), reserviertBis: '', statusAm: '' });
+    const volleStunde = Array.from({ length: GRENZEN.neueJeStunde }, (_, i) => neu(i, 50));
+    expect(reservieren(bestand({ buchungen: volleStunde }), SEITE.id, EIN, [], {}, ctx())).toMatchObject({ ok: false, status: 429 });
+    // Älter als eine Stunde zählt nicht mehr.
+    const alt = Array.from({ length: GRENZEN.neueJeStunde }, (_, i) => neu(i, 61));
+    expect(reservieren(bestand({ buchungen: alt }), SEITE.id, EIN, [], {}, ctx()).ok).toBe(true);
+  });
 });
 
 describe('Eingabe des Gastes', () => {

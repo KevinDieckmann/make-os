@@ -8,16 +8,21 @@
 //   zurück     `kalenderWiederherstellen` — Probelauf ohne `bestaetigt` (zählt nur), mit `bestaetigt` legt es NUR
 //              Fehlendes ohne Gäste neu an (PUT If-None-Match, nie überschreiben, Teilnehmer-Sperre), protokolliert
 //              je Termin (UID, nie Titel). Aufruf nur von Hand (app/api/kalender/sicherung).
+//   F1 (Prüfer 1 #11): Die Sicherung trägt je Termin auch `von` (wer ihn in MAKE OS anlegte) und `privat` aus
+//              `kalender-bezug` — beides steht nicht (verlässlich) im Termin selbst. Beim Zurückspielen kommen sie wieder in
+//              den Bezug (sonst wäre ein privater Termin für die andere Person plötzlich lesbar); der Probelauf nennt die
+//              Zahl (`bezug`) und die gesperrten Buchungstermine (`buchung`).
 
 import { promises as fs } from 'fs';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { archivSchreiben, archivLesen, archivOrdner } from '@/lib/store/archiv';
 import { protokolliere, type Wer as ProtokollWer } from '@/lib/store/aenderungsprotokoll';
 import { verbunden, ladeStand, holeAlleObjekte, objektWiederherstellen, KalenderFehler, type KalenderEintrag } from './icloud';
-import { kalenderKennung } from './bezug';
+import { kalenderKennung, terminSchluessel } from './bezug';
+import { ladeBezuege, bezugSetzen } from './bezug-server';
 import { uidVon } from './ics';
 import { wandzeit, tagPlus } from './zeit';
-import { exportIcs, objekteAusIcs, wiederherstellPlan, exportDatei, exportDateiTeile, abgelaufen, sicherungFaellig, type WiederherstellPlan } from './sicherung';
+import { exportIcs, objekteAusIcs, wiederherstellPlan, exportDatei, exportDateiTeile, abgelaufen, sicherungFaellig, buchungsTermin, type WiederherstellPlan } from './sicherung';
 
 export const SICHERUNG_SPEICHER = 'kalender-sicherung';
 
@@ -29,7 +34,9 @@ export interface SicherungStand {
   /** Kalender, deren Sicherung zuletzt scheiterte (Name + Grund) — der HOI zeigt sie. */
   fehler?: { kalender: string; grund: string }[];
 }
-interface ArchivInhalt { kalender: string; id: string; at: string; termine: number; ics: string }
+/** Je UID: wer den Termin in MAKE OS anlegte und ob er privat ist (aus `kalender-bezug`, F1 #11) — nur, wo bekannt. */
+type BezugSicherung = Record<string, { von?: string; privat?: true }>;
+interface ArchivInhalt { kalender: string; id: string; at: string; termine: number; ics: string; bezug?: BezugSicherung }
 
 export async function ladeSicherungStand(): Promise<SicherungStand> {
   const s = await loadJson<SicherungStand>(SICHERUNG_SPEICHER).catch(() => null);
@@ -49,6 +56,7 @@ export async function kalenderSicherungTaeglich(jetzt = new Date(), opt: { erzwi
     if (!opt.erzwingen && !sicherungFaellig(alt.letzterTag, wand)) return null;
     const stand = await ladeStand();
     if (!stand.at) return null;
+    const bezuege = await ladeBezuege().catch(() => null);
     const tag = wand.slice(0, 10), at = jetzt.toISOString();
     const dateien: SicherungStand['dateien'] = [];
     const fehler: NonNullable<SicherungStand['fehler']> = [];
@@ -57,7 +65,14 @@ export async function kalenderSicherungTaeglich(jetzt = new Date(), opt: { erzwi
         const objekte = await holeAlleObjekte(k);
         const x = exportIcs(objekte, k.name);
         const kennung = kalenderKennung(k.id);
-        const datei = await archivSchreiben(exportDatei(kennung, tag), { kalender: k.name, id: k.id, at, termine: x.termine, ics: x.ics } satisfies ArchivInhalt);
+        // `von` und `privat` je UID mitsichern (F1 #11) — unter dem Schlüssel Kalender + UID, alte Einträge unter der UID.
+        const bezug: BezugSicherung = {};
+        for (const o of objekte) {
+          const uid = uidVon(o.ics);
+          const b = uid ? bezuege?.bezuege[terminSchluessel(kennung, uid)] ?? bezuege?.bezuege[uid] : undefined;
+          if (uid && b && (b.von || b.privat)) bezug[uid] = { ...(b.von ? { von: b.von } : {}), ...(b.privat ? { privat: true as const } : {}) };
+        }
+        const datei = await archivSchreiben(exportDatei(kennung, tag), { kalender: k.name, id: k.id, at, termine: x.termine, ics: x.ics, ...(Object.keys(bezug).length ? { bezug } : {}) } satisfies ArchivInhalt);
         dateien.push({ kalender: k.name, kennung, datei, at, termine: x.termine });
       } catch (e) { fehler.push({ kalender: k.name, grund: (e instanceof Error ? e.message : 'unbekannt').slice(0, 200) }); }
     }
@@ -77,7 +92,8 @@ async function aufraeumen(heute: string): Promise<number> {
   return weg.length;
 }
 
-export interface WiederherstellErgebnis { kalender: string; datei: string; probelauf: boolean; plan: { fehlt: number; gesperrt: number; geaendert: number; gleich: number; neu: number }; angelegt?: number; schonDa?: number; fehler?: number }
+/** `plan.buchung`: davon gesperrt, weil Termin einer Buchung · `plan.bezug`: so viele der fehlenden bekommen `von`/privat zurück (F1 #11). */
+export interface WiederherstellErgebnis { kalender: string; datei: string; probelauf: boolean; plan: { fehlt: number; gesperrt: number; buchung: number; geaendert: number; gleich: number; neu: number; bezug: number }; angelegt?: number; schonDa?: number; fehler?: number }
 
 /**
  * Eine Sicherung eines Kalenders zurückspielen. Ohne `bestaetigt`: nur Probelauf (zählt, schreibt nichts). Mit
@@ -100,15 +116,24 @@ export async function kalenderWiederherstellen(kalenderName: string, opt: { date
   const gesichert = objekteAusIcs(inhalt.ics);
   const ist = (await holeAlleObjekte(kal)).map(o => ({ uid: uidVon(o.ics) ?? '', ics: o.ics })).filter(o => o.uid);
   const plan: WiederherstellPlan = wiederherstellPlan(gesichert, ist);
-  const kurz = { fehlt: plan.fehlt.length, gesperrt: plan.gesperrt.length, geaendert: plan.geaendert.length, gleich: plan.gleich, neu: plan.neu };
+  const nachUid = new Map(gesichert.map(o => [o.uid, o.ics] as const));
+  const bezug = inhalt.bezug ?? {};
+  const kurz = {
+    fehlt: plan.fehlt.length, gesperrt: plan.gesperrt.length, buchung: plan.gesperrt.filter(u => buchungsTermin(nachUid.get(u) ?? '')).length,
+    geaendert: plan.geaendert.length, gleich: plan.gleich, neu: plan.neu, bezug: plan.fehlt.filter(u => bezug[u]).length,
+  };
   if (!opt.bestaetigt) return { kalender: kal.name, datei: eintrag.datei, probelauf: true, plan: kurz };
   let angelegt = 0, schonDa = 0, fehler = 0;
-  const nachUid = new Map(gesichert.map(o => [o.uid, o.ics] as const));
   for (const uid of plan.fehlt) {
     try {
       const r = await objektWiederherstellen(kal, uid, nachUid.get(uid)!);
-      if (r === 'angelegt') { angelegt++; await protokolliere('kalender', [{ liste: 'wiederherstellung', op: 'neu', id: `${kennung}|${uid}`, felder: [eintrag.datei] }], opt.wer); }
-      else schonDa++;
+      if (r === 'angelegt') {
+        angelegt++;
+        // `von`/privat zurück in den Bezug (F1 #11) — ohne sie wäre ein privater Termin für die andere Person lesbar.
+        const b = bezug[uid];
+        if (b) await bezugSetzen(terminSchluessel(kennung, uid), { ...(b.von ? { von: b.von } : {}), ...(b.privat ? { privat: true } : {}) }).catch(() => { /* die Verbindungsprüfung meldet den Rest */ });
+        await protokolliere('kalender', [{ liste: 'wiederherstellung', op: 'neu', id: `${kennung}|${uid}`, felder: [eintrag.datei, ...(b ? Object.keys(b) : [])] }], opt.wer);
+      } else schonDa++;
     } catch { fehler++; }
   }
   return { kalender: kal.name, datei: eintrag.datei, probelauf: false, plan: kurz, angelegt, schonDa, fehler };

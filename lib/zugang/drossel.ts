@@ -14,18 +14,21 @@ interface Eintrag { fehl: number; erster: number; gesperrtBis: number }
 const stand = new Map<string, Eintrag>();
 
 /** Darf dieser Schlüssel es gerade versuchen? Sonst: wie viele Sekunden warten. */
-export function pruefe(schluessel: string, jetzt = Date.now()): { erlaubt: boolean; warteSek: number } {
+export function pruefe(schluessel: string, jetzt: number = Date.now()): { erlaubt: boolean; warteSek: number } {
   const e = stand.get(schluessel);
   if (!e) return { erlaubt: true, warteSek: 0 };
   if (jetzt - e.erster > FENSTER_MS && jetzt >= e.gesperrtBis) { stand.delete(schluessel); return { erlaubt: true, warteSek: 0 }; }
   return jetzt < e.gesperrtBis ? { erlaubt: false, warteSek: Math.ceil((e.gesperrtBis - jetzt) / 1000) } : { erlaubt: true, warteSek: 0 };
 }
 
-/** Ein Fehlversuch: ab dem sechsten wird die Wartezeit jedes Mal doppelt so lang. */
-export function fehlschlag(schluessel: string, jetzt = Date.now()): void {
+/**
+ * Ein Fehlversuch: ab dem sechsten wird die Wartezeit jedes Mal doppelt so lang. `frei` (F1 #13): eigenes Budget für
+ * Zähler, die keine Fehlversuche sind (z. B. Aufrufe der öffentlichen Buchungsseite) — Standard 5.
+ */
+export function fehlschlag(schluessel: string, jetzt: number = Date.now(), frei: number = FREI): void {
   const alt = stand.get(schluessel);
   const e: Eintrag = alt && jetzt - alt.erster <= FENSTER_MS ? { ...alt, fehl: alt.fehl + 1 } : { fehl: 1, erster: jetzt, gesperrtBis: 0 };
-  if (e.fehl > FREI) e.gesperrtBis = jetzt + Math.min(30_000 * 2 ** (e.fehl - FREI - 1), MAX_MS);
+  if (e.fehl > frei) e.gesperrtBis = jetzt + Math.min(30_000 * 2 ** (e.fehl - frei - 1), MAX_MS);
   stand.set(schluessel, e);
   if (stand.size > 5000) for (const [k, v] of Array.from(stand.entries())) if (jetzt - v.erster > FENSTER_MS && jetzt >= v.gesperrtBis) stand.delete(k);
 }
@@ -45,6 +48,24 @@ export function adresse(req: Request): string {
   const letzte = xff?.split(',').map(s => s.trim()).filter(Boolean).pop();
   return letzte || req.headers.get('x-real-ip') || 'unbekannt';
 }
+
+/**
+ * Netz einer Adresse für die Drosselung öffentlicher Seiten (F1 #13): IPv4 wie sie ist, IPv6 auf das /64 gekürzt — ein
+ * Anschluss bekommt meist ein ganzes /64 und könnte sonst mit jeder Anfrage eine neue Adresse nehmen.
+ */
+export function netzVon(ip: string): string {
+  const v = ip.trim().replace(/^\[|\]$/g, '').split('%')[0];
+  if (!v.includes(':')) return v;
+  const v4 = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(v);
+  if (v4) return v4[1];
+  const [kopf, rumpf] = v.split('::');
+  const a = kopf ? kopf.split(':') : [];
+  const b = rumpf !== undefined && rumpf ? rumpf.split(':') : [];
+  const voll = rumpf !== undefined ? [...a, ...Array<string>(Math.max(0, 8 - a.length - b.length)).fill('0'), ...b] : a;
+  return `${voll.slice(0, 4).map(x => (parseInt(x, 16) || 0).toString(16)).join(':')}::/64`;
+}
+/** `adresse(req)` als Netz (IPv6 /64) — für die Drosselung der öffentlichen Buchungsseite. */
+export const adresseNetz = (req: Request): string => netzVon(adresse(req));
 
 /** Nur für Tests. */
 export function _zuruecksetzen(): void { stand.clear(); }

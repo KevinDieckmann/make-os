@@ -51,7 +51,8 @@ export const DATENSCHUTZ_HINWEIS = [
 
 // ── Grenzen ─────────────────────────────────────────────────────────────────
 
-export const GRENZEN = { name: 80, email: 160, firma: 160, anliegen: 1000, titel: 80, ort: 300, verantwortlich: 300, kalender: 100, seiten: 30, buchungen: 2000, offeneJeSeite: 60 } as const;
+/** `neueJeStunde` (F1 #13): so viele neue (vorläufige) Buchungen je Seite und Stunde — gegen Fluten über viele Adressen. */
+export const GRENZEN = { name: 80, email: 160, firma: 160, anliegen: 1000, titel: 80, ort: 300, verantwortlich: 300, kalender: 100, seiten: 30, buchungen: 2000, offeneJeSeite: 60, neueJeStunde: 20 } as const;
 /** So lange hält eine vorläufige Buchung ihren Platz. */
 export const RESERVIERT_MIN = 30;
 /** Zu schnell ausgefüllt (Sekunden seit dem Laden der Seite) → Maschine. */
@@ -289,6 +290,9 @@ export function reservieren(bestand: BuchungBestand, seiteId: string, e: Buchung
   if (bestand.buchungen.length >= GRENZEN.buchungen) return { ok: false, status: 413, fehler: 'Gerade sind keine Buchungen möglich.' };
   const offeneSeite = bestand.buchungen.filter(b => b.seiteId === seite.id && OFFEN.includes(b.status) && haeltPlatz(b, jetztIso));
   if (offeneSeite.length >= GRENZEN.offeneJeSeite) return { ok: false, status: 429, fehler: 'Gerade sind zu viele Anfragen offen — bitte später noch einmal.' };
+  // F1 #13: neue Buchungen je Seite und Stunde (auch schon abgelaufene vorläufige zählen — sie belegten den Platz).
+  const vorStunde = ctx.jetzt.getTime() - 3_600_000;
+  if (bestand.buchungen.filter(b => b.seiteId === seite.id && Date.parse(b.angelegt) >= vorStunde).length >= GRENZEN.neueJeStunde) return { ok: false, status: 429, fehler: 'Gerade kommen sehr viele Anfragen — bitte in einer Stunde noch einmal.' };
   if (offeneSeite.some(b => b.email === e.email)) return { ok: false, status: 409, fehler: 'Mit dieser E-Mail-Adresse ist schon eine Anfrage offen — bitte den Status-Link dieser Anfrage nutzen.' };
   const ende = ausWandzeit(e.start).getTime() + seite.dauerMin * 60_000;
   const plaetze = plaetzeFuerSeite(seite, belegungen, bestand, ctx.jetzt, feiertage, ctx.heute);
@@ -362,6 +366,13 @@ export function nameTeilen(name: string): { vorname: string; nachname: string } 
 
 /** Marke im Termin (Notiz), an der ein angelegter Termin wiedererkannt wird — idempotente Freigabe. */
 export const terminMarke = (buchungId: string) => `MAKE-OS-Buchung ${buchungId}`;
+
+/**
+ * Feste, echte UID des Termins einer Buchung (F1, Prüfer 1 #1): zwei Freigaben gleichzeitig (Doppelklick, Kevin und
+ * Malin) oder eine Wiederaufnahme nach einem Absturz legen so nie zwei Termine an — iCloud nimmt die UID nur einmal
+ * (PUT mit If-None-Match, lib/kalender/icloud.ts `anlegen` → `schonDa`). Format passt zu `UID_FEST` (A–Z, 0–9, . _ -).
+ */
+export const buchungTerminUid = (buchungId: string) => `makeos-buchung-${buchungId.replace(/[^A-Za-z0-9._-]/g, '-')}`.slice(0, 120);
 
 /** Tag „Termin vorbereiten“: der Werktag davor bzw. heute, wenn das schon vorbei ist. */
 export function vorbereitenTag(start: string, heute: string): string {

@@ -13,7 +13,7 @@
 // Falsches Token → 404 und zählt als Fehlgriff (Drosselung je Adresse).
 
 import { NextResponse } from 'next/server';
-import { pruefe, fehlschlag, adresse } from '@/lib/zugang/drossel';
+import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { melde } from '@/lib/meldungen/melden';
 import { slugOk, statusSicht, mailLinkGueltig, OFFEN, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
 import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, tokenPasst, mailTokenPasst, TOKEN_OK } from '@/lib/kalender/buchung-speicher';
@@ -29,7 +29,8 @@ const LINK_UNGUELTIG = { ok: false, fehler: 'Dieser Bestätigungslink ist ungül
 
 export async function POST(req: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
-  const schluessel = `buchung-status:${adresse(req)}`;
+  // Je Netz (IPv6 /64, F1 #13) — wie die Buchungsseite.
+  const schluessel = `buchung-status:${adresseNetz(req)}`;
   const p = pruefe(schluessel);
   if (!p.erlaubt) return antwort({ ok: false, fehler: `Zu viele Versuche — bitte in ${Math.ceil(p.warteSek / 60)} Min. noch einmal.` }, 429, { 'Retry-After': String(p.warteSek) });
   const laenge = Number(req.headers.get('content-length') ?? '');

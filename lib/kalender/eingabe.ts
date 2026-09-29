@@ -39,6 +39,15 @@ const WAND = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/;
 export const wand = (v: unknown): string | undefined => (typeof v === 'string' && WAND.test(v) ? (v.length === 10 ? `${v}T00:00:00` : v.length === 16 ? `${v}:00` : v) : undefined);
 export const text = (v: unknown, n: number): string | undefined => (typeof v === 'string' ? v.replace(/\u0000/g, '').trim().slice(0, n) : undefined);
 
+/**
+ * Feste, echte Termin-UID (A–Z, 0–9, . _ -; 8–121 Zeichen) — für idempotente Vorgänge: Server-Läufe (Übernahme, Spiegel,
+ * Buchung) und seit F1 #6 auch das Anlegen aus dem Browser (die UID entsteht dort und liegt im Entwurf; ein zweites
+ * Senden nach „Keine Verbindung“ legt nichts doppelt an). Geprüft hier und in lib/kalender/icloud.ts `anlegen`.
+ */
+export const UID_FEST = /^[A-Za-z0-9][A-Za-z0-9._-]{7,120}$/;
+/** Neue UID für einen Termin aus dem Browser (F1 #6) — passt zu `UID_FEST`. */
+export const neueTerminUid = (): string => `makeos-t-${globalThis.crypto.randomUUID()}`;
+
 export interface AnlegeEingabe {
   titel: string; start: string; ende: string; ganztags: boolean;
   kalender?: string; wer?: Wer;
@@ -54,6 +63,8 @@ export interface AnlegeEingabe {
   /** Gäste (K3) — nur mit `einladungBestaetigt` geschrieben. */
   gaeste: GastEingabe[];
   einladungBestaetigt: boolean;
+  /** F1 #6: feste UID aus dem Browser (`UID_FEST`) — zweites Senden = derselbe Termin. */
+  uid?: string;
 }
 
 /** POST-Körper prüfen. */
@@ -83,6 +94,7 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
   const farbe = farbeSauber(b.farbe);
   const g = gaestePruefen(b.gaeste);
   if (!g.ok) return g;
+  if (b.uid !== undefined && (typeof b.uid !== 'string' || !UID_FEST.test(b.uid))) return { ok: false, fehler: 'Ungültige Termin-Kennung.' };
   // Gäste nur an echten Terminen (Abwesend, Fokuszeit, Arbeitsort laden niemanden ein).
   if (g.gaeste.length && art !== 'termin') return { ok: false, fehler: 'Gäste gibt es nur an Terminen.' };
   return {
@@ -96,6 +108,7 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
       ...(art === 'block' && istBlockArt(b.blockArt) ? { blockArt: b.blockArt } : {}),
       bezug: kennungenVon(b.bezug && typeof b.bezug === 'object' ? b.bezug as BezugKennungen : {}),
       gaeste: g.gaeste, einladungBestaetigt: b.einladungBestaetigt === true,
+      ...(typeof b.uid === 'string' ? { uid: b.uid } : {}),
     },
   };
 }

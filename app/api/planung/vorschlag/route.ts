@@ -13,6 +13,7 @@ import { resolveVitals, vitalsHint } from '@/lib/vitals';
 import { personAus } from '@/lib/zoe/raum';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
+import { ausWandzeit, minutenVon } from '@/lib/kalender/zeit';
 import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
@@ -43,10 +44,8 @@ export async function POST(req: Request) {
 
   // Die 7 Tage der Zielwoche.
   const tage: string[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(`${woche}T12:00:00`); d.setDate(d.getDate() + i);
-    tage.push(localDay(d));
-  }
+  // Kalendertage rein rechnen (F1 #14) — kein Date aus einer Wandzeit.
+  for (let i = 0; i < 7; i++) tage.push(tagePlus(woche, i));
   const tagSet = new Set(tage);
 
   // Feste Termine (iCloud-Stand, auch die Blöcke — K5) für genau diese Woche (dedupliziert). Seit 29.09. (Paket R-Z, #K4) über denselben
@@ -71,8 +70,10 @@ export async function POST(req: Request) {
     const key = `${e.t.toLowerCase().trim()}|${e.s.slice(0, 16)}`;
     if (gesehen.has(key)) continue;
     gesehen.add(key);
-    const s = new Date(e.s), en = e.e ? new Date(e.e) : null;
-    fest.push({ date, startMin: s.getHours() * 60 + s.getMinutes(), dauerMin: en ? Math.max(15, Math.round((en.getTime() - s.getTime()) / 60000)) : 60, titel: e.t, ...(e.fremd ? { fremd: true } : {}) });
+    // F1 #14: Berliner Wandzeit — nie über new Date(wandzeit) (hinge an der Zone des Servers); Dauer über den echten
+    // Zeitpunkt (`ausWandzeit`, richtig auch an der Zeitumstellung).
+    const dauerMin = e.e ? Math.max(15, Math.round((ausWandzeit(e.e).getTime() - ausWandzeit(e.s).getTime()) / 60000)) : 60;
+    fest.push({ date, startMin: minutenVon(e.s), dauerMin, titel: e.t, ...(e.fremd ? { fremd: true } : {}) });
   }
 
   const offen = (tasksState?.tasks ?? []).filter(t => t.status !== 'done');

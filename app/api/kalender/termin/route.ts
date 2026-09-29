@@ -1,8 +1,12 @@
 // ─── Kalender — Termin anlegen, ändern, löschen (iCloud) ────────────────────
 // POST   { titel, kalender? | wer?, start, ende, ganztags?, ort?, notiz?,
 //          art?, farbe?, beschaeftigt?, sichtbarkeit?, zone?, wiederholung?, erinnerungenMin?, arbeitsort?, blockArt?, bezug?,
-//          gaeste?: [{ email, name?, kontaktId? }], einladungBestaetigt? }
-//                                         → { uid, kalender, gaeste?, crm?, werbesperre? }
+//          gaeste?: [{ email, name?, kontaktId? }], einladungBestaetigt?, uid? }
+//                                         → { uid, kalender, gaeste?, crm?, werbesperre?, schonDa?, hinweis? }
+//          F1 (Prüfer 1 #6): `uid` (Format `UID_FEST`, lib/kalender/eingabe.ts) erzeugt der Browser und merkt sie im
+//          Entwurf — ein zweites Senden nach verlorener Antwort findet den Termin (`schonDa` = Erfolg, nichts doppelt).
+//          Was NACH dem gelungenen iCloud-Schreiben scheitert (Bezug, Protokoll, CRM), kommt als `hinweis`, nie als 502 —
+//          sonst sendet der Browser erneut, obwohl der Termin längst steht. Dasselbe beim PATCH (Bezug zu groß → hinweis).
 // PATCH  { uid, stand?, titel?, start?, ende?, ort?, notiz?, art?, farbe?, beschaeftigt?, sichtbarkeit?, bezug?,
 //          gaeste?, antwort?: 'zugesagt'|'abgesagt'|'vielleicht', einladungBestaetigt? }
 //          Termin-Felder nur für Einzeltermine; `bezug` (nur Kennungen) geht auch bei Serien —
@@ -115,6 +119,7 @@ export async function POST(req: Request) {
   const kalender = e.kalender || einst.kalender[wer];
   try {
     const r = await anlegen({
+      ...(e.uid ? { uid: e.uid } : {}),
       titel: e.titel, kalender, start: e.start, ende: e.ende, ganztags: e.ganztags,
       ...(e.ort ? { ort: e.ort } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.wiederholung ? { wiederholung: e.wiederholung } : {}),
       erinnerungenMin: e.erinnerungenMin, art: e.art, ...(e.farbe ? { farbe: e.farbe } : {}), beschaeftigt: e.beschaeftigt,
@@ -130,8 +135,17 @@ export async function POST(req: Request) {
     try {
       bezug = await bezugSetzen(r.schluessel, { ...e.bezug, ...(gastKontakte.length ? { gastKontakte } : {}), von: z.person, tag, ...(e.art !== 'termin' ? { art: e.art } : {}), ...(e.sichtbarkeit === 'privat' ? { privat: true } : {}), ...(e.farbe ? { farbe: e.farbe } : {}) });
     } catch { hinweis = 'Termin angelegt — der Bezug zu MAKE OS ließ sich gerade nicht speichern (Art und Sichtbarkeit stehen im Termin).'; }
-    await protokolliere('kalender', [{ liste: 'termine', op: 'neu', id: r.schluessel, felder: ['art', ...(Object.keys(e.bezug)), ...(gastKontakte.length ? ['gastKontakte'] : [])] }], werAus(req));
-    await einladungProtokoll(req, r.schluessel, 'neu', r.gaeste);
+    // Protokoll erst nach dem iCloud-Schreiben: ein Fehler hier wird zum Hinweis (F1 #6); ein zweites Senden (`schonDa`)
+    // protokolliert nicht noch einmal.
+    if (!r.schonDa) {
+      try {
+        await protokolliere('kalender', [{ liste: 'termine', op: 'neu', id: r.schluessel, felder: ['art', ...(Object.keys(e.bezug)), ...(gastKontakte.length ? ['gastKontakte'] : [])] }], werAus(req));
+        await einladungProtokoll(req, r.schluessel, 'neu', r.gaeste);
+      } catch (err) {
+        console.warn(`[kalender] Protokoll nach dem Anlegen offen: ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);
+        hinweis ??= 'Termin angelegt — der Eintrag im Änderungsprotokoll ließ sich gerade nicht schreiben.';
+      }
+    }
     // CRM: der Termin wird zur Aktivität „Meeting“ (nur echte Termine; Serien → Signal-Lauf je Vorkommen).
     let crm: { neu: number; eingeschraenkt: number } | undefined;
     const kontakte = kontakteVon(bezug);
@@ -139,7 +153,7 @@ export async function POST(req: Request) {
       crm = await terminAktivitaetenSetzen({ id: r.schluessel, uid: r.uid, titel: e.titel, start: startBerlin, ...(e.sichtbarkeit === 'privat' ? { privat: true } : {}), kontaktIds: kontakte, ...(bezug?.dealId ? { dealId: bezug.dealId } : {}), von: z.person }, werAus(req))
         .catch(() => { hinweis = 'Termin angelegt — die Aktivität im CRM entsteht beim nächsten Abgleich.'; return undefined; });
     }
-    return NextResponse.json({ ok: true, uid: r.uid, schluessel: r.schluessel, kalender: r.kalender, ...(r.gaeste ? { gaeste: r.gaeste } : {}), ...(g.werbesperre ? { werbesperre: g.werbesperre } : {}), ...(crm ? { crm } : {}), ...(hinweis ? { hinweis } : {}) });
+    return NextResponse.json({ ok: true, uid: r.uid, schluessel: r.schluessel, kalender: r.kalender, ...(r.gaeste ? { gaeste: r.gaeste } : {}), ...(g.werbesperre ? { werbesperre: g.werbesperre } : {}), ...(crm ? { crm } : {}), ...(r.schonDa ? { schonDa: true } : {}), ...(hinweis ? { hinweis } : {}) });
   } catch (err) { return antwortFehler(err, z.person); }
 }
 
@@ -170,10 +184,14 @@ export async function PATCH(req: Request) {
     if (!ziel) return NextResponse.json({ ok: false, fehler: 'Termin nicht gefunden — vielleicht gerade in Apple gelöscht.' }, { status: 404 });
     const bestand = await ladeBezuege().catch(() => null);
     const alt = bezugVon(bestand, { id: ziel.schluessel });
+    let hinweis: string | undefined;
+    /** F1 #6: iCloud ist schon geschrieben — was danach scheitert, ist ein Hinweis, kein Fehler (sonst sendet der Browser erneut). */
+    let geschrieben = false;
     if (felder.length || g) {
       const r = await aendern(uid, { ...termin, ...(g ? { gaeste: g.gaeste.map(x => ({ email: x.email, ...(x.name ? { name: x.name } : {}) })) } : {}) }, { ...(stand ? { stand } : {}), einladungBestaetigt });
       ziel = { schluessel: r.schluessel, uid: r.uid, eindeutig: r.eindeutig };
-      await einladungProtokoll(req, ziel.schluessel, 'geaendert', r.gaeste);
+      geschrieben = true;
+      await einladungProtokoll(req, ziel.schluessel, 'geaendert', r.gaeste).catch(() => { hinweis = 'Termin geändert — der Eintrag im Änderungsprotokoll ließ sich gerade nicht schreiben.'; });
     }
     const schluessel = ziel.schluessel;
     // Sicherung (Art, privat) und Bezüge nachziehen — Kennungen nie in den Termin.
@@ -186,12 +204,18 @@ export async function PATCH(req: Request) {
       ...(termin.farbe !== undefined ? { farbe: termin.farbe ?? null } : {}),
       ...(termin.start ? { tag: termin.start.slice(0, 10) } : {}),
     };
-    const neu = Object.keys(teil).length ? await bezugSetzen(schluessel, teil, undefined, { altSchluessel: ziel.uid, altBehalten: !ziel.eindeutig }) : alt ?? null;
-    await protokolliere('kalender', [{ liste: 'termine', op: 'geaendert', id: schluessel, felder: [...felder, ...Object.keys(bezug ?? {}), ...(g ? ['gaeste'] : [])] }], werAus(req));
+    let neu: TerminBezug | null = alt ?? null;
+    try {
+      neu = Object.keys(teil).length ? await bezugSetzen(schluessel, teil, undefined, { altSchluessel: ziel.uid, altBehalten: !ziel.eindeutig }) : alt ?? null;
+      await protokolliere('kalender', [{ liste: 'termine', op: 'geaendert', id: schluessel, felder: [...felder, ...Object.keys(bezug ?? {}), ...(g ? ['gaeste'] : [])] }], werAus(req));
+    } catch (err) {
+      // Nur ein Bezug geändert (nichts in iCloud) → Fehler wie bisher (413 bei zu groß). Sonst: Termin steht, Hinweis.
+      if (!geschrieben) throw err;
+      hinweis = err instanceof BezugZuGross ? 'Termin geändert — der Bezug zu MAKE OS ist zu groß und blieb wie vorher.' : 'Termin geändert — Bezug oder Protokoll ließen sich gerade nicht speichern.';
+    }
     // CRM-Folgen einer Bezug-Änderung: neue Kontakte → Meeting-Aktivität, gelöste (Termin noch in der Zukunft) → weg.
     const vorher = new Set(kontakteVon(alt)), nachher = kontakteVon(neu);
     const dazu = nachher.filter(k => !vorher.has(k)), weg = [...vorher].filter(k => !nachher.includes(k));
-    let hinweis: string | undefined;
     if (dazu.length || weg.length) {
       const t = await terminLesen(schluessel).catch(() => null);
       if (t && !t.serie && t.art !== 'abwesend' && t.art !== 'fokus' && t.art !== 'arbeitsort') {

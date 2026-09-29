@@ -4,12 +4,14 @@
 // POST { aktion: 'wiederherstellen', kalender, datei?, bestaetigt: true }
 //                                              → legt NUR fehlende Termine ohne Gäste neu an (nie überschreiben,
 //                                                Teilnehmer-Sperre); ohne `bestaetigt: true` → 409 mit dem Probelauf.
-// Nur für den Haushalt des Inhabers und nur von Hand: der Dienstweg (ZOE, Takt, Skripte) bekommt 403.
+// Nur für den Haushalt des Inhabers und nur von Hand: der Dienstweg (ZOE, Takt, Skripte) bekommt 403. Build-Kennung wie
+// jede Schreibaktion im Kalender (F1 #10, `bauPruefen`).
 // Die tägliche Sicherung selbst läuft im Takt (lib/kalender/sicherung-server.ts). Regeln: lib/kalender/sicherung.ts.
 
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { istDienst } from '@/lib/zugang/dienst';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeSicherungStand, kalenderWiederherstellen } from '@/lib/kalender/sicherung-server';
 import { KalenderFehler } from '@/lib/kalender/icloud';
@@ -27,6 +29,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   if (istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Zurückspielen nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
+  // F1 #10: ein Fenster mit altem Bau (vor einem Update) spielt nichts zurück — erst neu laden (409 `neuLaden`).
+  const alt = bauPruefen(req); if (alt) return alt;
   let b: Record<string, unknown>;
   try { const x = await req.json(); b = x && typeof x === 'object' ? x as Record<string, unknown> : {}; } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const kalender = text(b.kalender, 100);

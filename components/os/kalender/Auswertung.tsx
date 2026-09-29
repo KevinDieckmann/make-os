@@ -14,6 +14,9 @@ import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
 import { Karte, Ueberschrift, Knopf, Leer, LEUCHT } from '../schlank';
 import { Fenster } from '../Fenster';
 import { MandantLink } from '../crm/MandantLink';
+import Link from 'next/link';
+import { useCrmVerweise } from '../aufgaben/hilfe';
+import { bezugName, bezugLink } from '@/lib/aufgaben/crm-verweise';
 
 export const KENNZAHL: { id: keyof Minuten; label: string; farbe: string }[] = [
   { id: 'meetings', label: 'Meetings', farbe: LEUCHT.puls },
@@ -107,6 +110,8 @@ export function AuswertungFenster({ start, onZu }: { start: string; onZu: () => 
 /** Inhalt der ausführlichen Ansicht (rein darstellend — Render-Test). */
 export function AuswertungInhalt({ a }: { a: AuswertungAntwort }) {
   const w = a.woche;
+  // Kontakt-Namen nur laden, wenn es Kontakte gibt (F1 #15).
+  const verweise = useCrmVerweise(w.kontakte.length > 0);
   const maxTag = Math.max(60, ...w.tage.map(t => t.meetings + t.fokus + t.abwesend));
   const WT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   const abschnitt = (titel: string) => <div style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase', margin: '14px 0 6px' }}>{titel}</div>;
@@ -141,7 +146,8 @@ export function AuswertungInhalt({ a }: { a: AuswertungAntwort }) {
       </div>
       {(w.jeBlock ?? []).length > 0 && <>{abschnitt('Blöcke je Art')}{(w.jeBlock ?? []).map(x => <Zeile2 key={x.art} links={BLOCK_NAME[x.art] ?? x.art} rechts={stundenAus(x.minuten)} />)}</>}
       {abschnitt('Meistbesuchte Kontakte')}
-      {w.kontakte.length ? w.kontakte.slice(0, 5).map(k => <Zeile2 key={k.id} links={k.id} rechts={`${k.termine} Termine · ${stundenAus(k.minuten)}`} />)
+      {/* F1 #15: Namen statt Kennungen — dieselbe Auflösung wie „Verknüpfen“ am Termin (useCrmVerweise). */}
+      {w.kontakte.length ? w.kontakte.slice(0, 5).map(k => <Zeile2 key={k.id} links={<Link href={bezugLink('kontaktId', k.id)} style={{ color: C.ink, textDecoration: 'none' }}>{bezugName(verweise, 'kontaktId', k.id) ?? (verweise ? 'nicht mehr im CRM' : '…')}</Link>} rechts={`${k.termine} Termine · ${stundenAus(k.minuten)}`} />)
         : <div style={{ color: C.inkLeise, fontSize: 12.5 }}>Erscheint, sobald Termine mit CRM-Kontakten verknüpft sind.</div>}
       {abschnitt('Vorwochen')}
       <div style={{ display: 'grid', gridTemplateColumns: `auto repeat(${KENNZAHL.length}, 1fr)`, gap: '4px 10px', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>

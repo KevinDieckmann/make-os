@@ -8,6 +8,10 @@
 //   · Nachziehen nach jeder Änderung im Modul — /api/crm/bestand (Events: Datum, Uhrzeit, Titel, Ort, Status) und
 //     /api/familie (Dates, Gespräche, Einstellungen), im Hintergrund; ein Fehler kostet die Änderung im Modul nie.
 // Nur mit iCloud; nur Einzeltermine, die MAKE OS ändern darf (`bearbeitbar`) — sonst bleibt es beim Hinweis.
+// F1 (Prüfer 1 #5): Das Nachziehen läuft JE EINTRAG in try/catch — ein Termin, der nicht mehr geht (Serie, Gäste, nur
+// lesbar, Konflikt), hält die anderen nicht auf; was geklappt hat, wird gespeichert (Teilergebnis). Die Fehler kommen
+// als `hinweise` zurück (Kennung + technischer Grund, nie Titel oder Adressen) und gehen über `spiegelHinweiseMelden`
+// ins Server-Protokoll und — wenn eine Person die Änderung ausgelöst hat — in ihre Glocke. Nie mehr still.
 
 import { verbunden, ladeStand, termineImZeitraum, findeObjekt, KalenderFehler, HOLEN_VON, HOLEN_BIS, type IcloudStand } from './icloud';
 import { termineAus, type Termin } from './ics';
@@ -19,6 +23,8 @@ import { ladeFamilie, familieName } from '@/lib/familie/speicher';
 import { naechstesGespraech } from '@/lib/familie/logik';
 import { updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { fehlerGrund } from '@/lib/store/absichten';
+import { melde } from '@/lib/meldungen/melden';
 import type { Familie } from '@/lib/familie/typen';
 import type { Wer as ProtokollWer } from '@/lib/store/aenderungsprotokoll';
 
@@ -34,6 +40,22 @@ export function terminNachUid(s: IcloudStand, uid: string): Termin | null {
 }
 
 export interface SpiegelLage { lage: 'da' | 'fehlt' | 'schein' | 'keiner' | 'ohne-icloud'; uid?: string; grund?: string; bearbeitbar?: boolean }
+
+/** Ein Eintrag, dessen Termin sich nicht nachziehen ließ (F1 #5) — nur Kennung und technischer Grund. */
+export interface SpiegelHinweis { art: SpiegelArt; id: string; grund: string }
+export interface SpiegelErgebnis { geprueft: number; hinweise: SpiegelHinweis[] }
+
+/**
+ * Hinweise melden (F1 #5): Server-Protokoll (für den Head of IT und die Logs — Kennung + Grund, nie Titel/Adressen)
+ * und, wenn eine Person die Änderung ausgelöst hat, die Glocke. Wirft nie.
+ */
+export async function spiegelHinweiseMelden(hinweise: readonly SpiegelHinweis[], an?: string): Promise<void> {
+  if (!hinweise.length) return;
+  console.warn(`[spiegel] ${hinweise.length} Termin(e) nicht nachgezogen: ${hinweise.map(h => `${h.art}:${h.id} (${h.grund})`).join(' · ').slice(0, 600)}`);
+  if (!an) return;
+  const was = Array.from(new Set(hinweise.map(h => (h.art === 'event' ? 'Event' : h.art === 'date' ? 'Date' : 'Paar-Gespräch'))));
+  await melde({ an, art: 'kalender', titel: `${hinweise.length} Kalender-Termin${hinweise.length === 1 ? '' : 'e'} (${was.join(', ')}) ließ${hinweise.length === 1 ? '' : 'en'} sich nicht nachziehen — bitte im Kalender prüfen.`, link: '/os/kalender' });
+}
 
 /** Ein Spiegel mit dem Soll abgleichen (ändern oder löschen). Liefert, ob die UID im Modul bleiben soll. */
 async function abgleichen(s: IcloudStand, uid: string, soll: Soll, wer: ProtokollWer): Promise<'bleibt' | 'weg'> {
@@ -100,26 +122,32 @@ export async function eventSpiegelAnlegen(id: string, person: string, wer: Proto
   return { uid: r.uid };
 }
 
-/** Events mit Termin nachziehen (nach einer Änderung im CRM). `ids` null = alle. Liefert die Zahl der geprüften. */
-export async function eventSpiegelNachziehen(ids: readonly string[] | null, wer: ProtokollWer): Promise<number> {
-  if (!verbunden()) return 0;
+/**
+ * Events mit Termin nachziehen (nach einer Änderung im CRM). `ids` null = alle. Liefert die Zahl der geprüften und die
+ * Hinweise der Einträge, die nicht gingen (F1 #5: je Eintrag abgefangen — die übrigen laufen weiter).
+ */
+export async function eventSpiegelNachziehen(ids: readonly string[] | null, wer: ProtokollWer): Promise<SpiegelErgebnis> {
+  if (!verbunden()) return { geprueft: 0, hinweise: [] };
   const events = (await ladeCrm()).events.filter(e => e.kalenderUid && (!ids || ids.includes(e.id)));
-  if (!events.length) return 0;
+  if (!events.length) return { geprueft: 0, hinweise: [] };
+  const hinweise: SpiegelHinweis[] = [];
   let s = await ladeStand();
   for (const e of events) {
-    let uid = e.kalenderUid!;
-    if (istScheinUid(uid)) {
-      // Befund 4: die erfundene Kennung durch die echte ersetzen — nur bei eindeutigem Treffer (Tag + Titel).
-      const t = scheinAufloesen(termineImZeitraum(s, e.datum, tagPlus(e.datum, 1)), e);
-      if (!t || !t.bearbeitbar) continue;
-      uid = t.uid;
-      await terminAendernServer(uid, {}, wer, { eventId: e.id });
-      await eventUidSetzen(e.id, uid, wer);
-      s = await ladeStand();
-    }
-    if (await abgleichen(s, uid, eventSoll(e), wer) === 'weg') await eventUidSetzen(e.id, null, wer);
+    try {
+      let uid = e.kalenderUid!;
+      if (istScheinUid(uid)) {
+        // Befund 4: die erfundene Kennung durch die echte ersetzen — nur bei eindeutigem Treffer (Tag + Titel).
+        const t = scheinAufloesen(termineImZeitraum(s, e.datum, tagPlus(e.datum, 1)), e);
+        if (!t || !t.bearbeitbar) continue;
+        uid = t.uid;
+        await terminAendernServer(uid, {}, wer, { eventId: e.id });
+        await eventUidSetzen(e.id, uid, wer);
+        s = await ladeStand();
+      }
+      if (await abgleichen(s, uid, eventSoll(e), wer) === 'weg') await eventUidSetzen(e.id, null, wer);
+    } catch (err) { hinweise.push({ art: 'event', id: e.id, grund: fehlerGrund(err) }); }
   }
-  return events.length;
+  return { geprueft: events.length, hinweise };
 }
 
 /** Zuletzt im Takt nachgezogen (Prozess-Merker) — der Abgleich läuft höchstens alle 30 Minuten. */
@@ -134,7 +162,10 @@ export const SPIEGEL_TAKT_MS = 30 * 60_000;
 export async function eventSpiegelImTakt(jetzt = Date.now()): Promise<number> {
   if (!verbunden() || jetzt - taktZuletzt < SPIEGEL_TAKT_MS) return 0;
   taktZuletzt = jetzt;
-  return eventSpiegelNachziehen(null, { art: 'system' });
+  const r = await eventSpiegelNachziehen(null, { art: 'system' });
+  // Im Takt löst niemand aus — nur das Server-Protokoll (F1 #5), keine Glocke alle 30 Minuten.
+  await spiegelHinweiseMelden(r.hinweise);
+  return r.geprueft;
 }
 
 // ── Familie (Dates, Paar-Gespräche) ─────────────────────────────────────────
@@ -169,13 +200,21 @@ export async function familieSpiegelAnlegen(h: string, art: Exclude<SpiegelArt, 
   return { uid: r.uid };
 }
 
-/** Dates und Paar-Gespräche nachziehen (nach einer Änderung in der Familie). */
-export async function familieSpiegelNachziehen(h: string, wer: ProtokollWer, heute = localDay()): Promise<void> {
-  if (!verbunden()) return;
+/**
+ * Dates und Paar-Gespräche nachziehen (nach einer Änderung in der Familie). F1 #5: je Eintrag abgefangen; was ging,
+ * wird gespeichert (Teilergebnis), der Rest kommt als Hinweis zurück.
+ */
+export async function familieSpiegelNachziehen(h: string, wer: ProtokollWer, heute = localDay()): Promise<SpiegelHinweis[]> {
+  if (!verbunden()) return [];
   const f = await ladeFamilie(h);
   let s = await ladeStand();
+  const hinweise: SpiegelHinweis[] = [];
+  /** Einen Eintrag abgleichen — ein Fehler wird zum Hinweis, nie zum Abbruch der übrigen. */
+  const einzeln = async (art: SpiegelArt, id: string, f2: () => Promise<'bleibt' | 'weg'>): Promise<'bleibt' | 'weg'> => {
+    try { return await f2(); } catch (err) { hinweise.push({ art, id, grund: fehlerGrund(err) }); return 'bleibt'; }
+  };
   const datesWeg: string[] = [];
-  for (const d of f.dates) if (d.kalenderUid && await abgleichen(s, d.kalenderUid, dateSoll(d), wer) === 'weg') datesWeg.push(d.id);
+  for (const d of f.dates) if (d.kalenderUid && await einzeln('date', d.id, () => abgleichen(s, d.kalenderUid!, dateSoll(d), wer)) === 'weg') datesWeg.push(d.id);
   const termine = { ...(f.einstellungen.kalenderTermine ?? {}) };
   const termineWeg: string[] = [];
   let umgezogen: { von: string; nach: string; uid: string } | null = null;
@@ -187,18 +226,20 @@ export async function familieSpiegelNachziehen(h: string, wer: ProtokollWer, heu
     const soll = gespraechSoll(umzug.nach, f.einstellungen.gespraech);
     const ist = terminNachUid(s, uid);
     if (ist?.bearbeitbar && soll.art === 'soll') {
-      await terminAendernServer(uid, { start: soll.t.start, ende: soll.t.ende }, wer);
-      umgezogen = { ...umzug, uid };
-      delete termine[umzug.von]; termine[umzug.nach] = uid;
-      s = await ladeStand();
+      try {
+        await terminAendernServer(uid, { start: soll.t.start, ende: soll.t.ende }, wer);
+        umgezogen = { ...umzug, uid };
+        delete termine[umzug.von]; termine[umzug.nach] = uid;
+        s = await ladeStand();
+      } catch (err) { hinweise.push({ art: 'gespraech', id: umzug.von, grund: fehlerGrund(err) }); }
     }
   }
   for (const [datum, uid] of Object.entries(termine)) {
     if (datum < heute) continue;
     const soll = gespraechSoll(datum, f.einstellungen.gespraech, f.gespraeche.find(g => g.datum === datum)?.status);
-    if (await abgleichen(s, uid, soll, wer) === 'weg') termineWeg.push(datum);
+    if (await einzeln('gespraech', datum, () => abgleichen(s, uid, soll, wer)) === 'weg') termineWeg.push(datum);
   }
-  if (!datesWeg.length && !termineWeg.length && !umgezogen) return;
+  if (!datesWeg.length && !termineWeg.length && !umgezogen) return hinweise;
   // Nur die eigenen Änderungen auf den AKTUELLEN Stand legen (dazwischen gemerkte Termine bleiben).
   await familieAendern(h, x => {
     const t = { ...(x.einstellungen.kalenderTermine ?? {}) };
@@ -210,4 +251,5 @@ export async function familieSpiegelNachziehen(h: string, wer: ProtokollWer, heu
       einstellungen: { ...x.einstellungen, kalenderTermine: t },
     };
   });
+  return hinweise;
 }

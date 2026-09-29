@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, ClipboardCheck, Hourglass, PhoneForwarded, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
@@ -86,6 +86,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   ueberfaellig: { Icon: AlertTriangle, label: 'Überfällig', farbe: C.kritisch },
   zoe: { Icon: Sparkles, label: 'ZOE', farbe: C.aktiv },
   buchung: { Icon: CalendarPlus, label: 'Terminanfrage', farbe: C.aktiv },
+  // F1 (29.09.): ein Kalender-Spiegel ließ sich nicht nachziehen (lib/kalender/spiegel-server.ts).
+  kalender: { Icon: CalendarX, label: 'Kalender', farbe: C.achtung },
   sammel: { Icon: Layers, label: 'Weitere', farbe: C.inkDim },
   // K2 (29.09.): Geburtstag am Vortag und am Tag — abgeleitet, nie gespeichert.
   geburtstag: { Icon: Cake, label: 'Geburtstag', farbe: '#FF7EB6' },

@@ -9,6 +9,9 @@
 //                 geändert hat und was Gäste trägt. Geschrieben wird nur mit Bestätigung, nur Fehlendes (nie
 //                 überschreiben), und nie Termine mit Teilnehmern (Teilnehmer-Sperre: iCloud würde sonst Einladungen
 //                 an Dritte verschicken — die gehen nur einzeln von Hand).
+//                 F1 (Prüfer 1 #11): gesperrt sind auch Termine einer Buchung (feste UID `makeos-buchung-…` oder die Marke
+//                 „MAKE-OS-Buchung …“ in der Notiz) — sie gehören zu einem Vorgang (Freigabe, Absage); ein zurückgespielter
+//                 Termin einer abgesagten Buchung stünde sonst wieder im Kalender.
 // Nur Termine (VEVENT). Rein: kein Netz, keine Platte, keine Uhr.
 
 import ICAL from 'ical.js';
@@ -65,13 +68,16 @@ export function objekteAusIcs(ics: string): SicherungsObjekt[] {
   return raus;
 }
 
+/** Termin einer Buchung (lib/kalender/buchung.ts `buchungTerminUid` / `terminMarke`)? — nie automatisch zurückspielen. */
+export const buchungsTermin = (ics: string): boolean => { const g = glatt(ics); return /^UID:makeos-buchung-/m.test(g) || /MAKE-OS-Buchung /.test(g); };
+
 /** Trägt das Objekt Teilnehmer (ATTENDEE)? — dann nie automatisch zurückspielen (Teilnehmer-Sperre). */
 export const mitTeilnehmern = (ics: string): boolean => /^ATTENDEE[;:]/m.test(glatt(ics).replace(/BEGIN:VALARM[\s\S]*?END:VALARM/g, ''));
 
 export interface WiederherstellPlan {
   /** In der Sicherung, in iCloud nicht (mehr) da — und ohne Gäste: das würde die Wiederherstellung anlegen. */
   fehlt: string[];
-  /** Fehlt ebenfalls, trägt aber Gäste — gesperrt (nur einzeln von Hand, iCloud schickte sonst Einladungen). */
+  /** Fehlt ebenfalls, trägt aber Gäste oder gehört zu einer Buchung — gesperrt (nur einzeln von Hand). */
   gesperrt: string[];
   /** In beiden, aber inzwischen geändert — bleibt, wie es in iCloud ist (nie überschreiben). */
   geaendert: string[];
@@ -89,7 +95,7 @@ export function wiederherstellPlan(sicherung: readonly SicherungsObjekt[], ist: 
   for (const o of sicherung) {
     inSicherung.add(o.uid);
     const da = jetzt.get(o.uid);
-    if (da === undefined) (mitTeilnehmern(o.ics) ? plan.gesperrt : plan.fehlt).push(o.uid);
+    if (da === undefined) (mitTeilnehmern(o.ics) || buchungsTermin(o.ics) ? plan.gesperrt : plan.fehlt).push(o.uid);
     else if (vevents(da) === vevents(o.ics)) plan.gleich++;
     else plan.geaendert.push(o.uid);
   }

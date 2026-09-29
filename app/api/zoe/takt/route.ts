@@ -58,7 +58,8 @@ export async function POST() {
   // Tägliche Voll-Sicherung je Kalender (R-K1 #K5) — nachts ab 03:00, einmal je Tag, nie blockierend.
   void kalenderSicherungTaeglich().catch(() => { /* Fehler stehen im Stand kalender-sicherung */ });
   // Event-Termine im Takt nachziehen (K6a) — auch Änderungen am Event ohne Bestand-PATCH (ZOE, Heads); alle 30 Min.
-  void eventSpiegelImTakt().catch(() => { /* beim nächsten Takt */ });
+  // F1 #5: die Hinweise je Event protokolliert eventSpiegelImTakt selbst; ein Fehler des ganzen Laufs hier (nie Titel).
+  void eventSpiegelImTakt().catch(e => console.warn(`[spiegel] Takt: ${e instanceof Error ? `${e.name}: ${e.message.slice(0, 160)}` : 'Fehler'}`));
   void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });
