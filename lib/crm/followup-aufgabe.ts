@@ -5,10 +5,11 @@
 //   · Bestehende Follow-ups mit `aufgabeId` bleiben verknüpft, der Abgleich läuft serverseitig in beide Richtungen und
 //     ist idempotent: Aufgabe erledigt → Follow-up erledigt (hier, eingehängt in lib/aufgaben/speicher.ts nach jedem
 //     Schreiben); Follow-up erledigt → Aufgabe erledigt (app/api/crm/followup über `aufgabeErledigenNachFollowUp`).
-// Rein: `neuErledigt`, `followupsErledigen`, `aufgabenAlsFaellig`. Server: `followupsNachAufgaben`, `aufgabeErledigenNachFollowUp`.
+// Rein (auch im Browser): `neuErledigt`, `followupsErledigen`, `aufgabenAlsFaellig`. Server (lib/crm/followup-aufgabe-server.ts):
+// `followupsNachAufgaben`, `aufgabeErledigenNachFollowUp` — getrennt, damit kein Server-Modul ins Browser-Bündel gerät.
 
 import type { Task, TasksState } from '@/types/tasks';
-import type { CrmBestand, FollowUp } from './typen';
+import type { CrmBestand } from './typen';
 
 /** Aufgaben, die in diesem Schreiben erledigt wurden (vorher nicht erledigt, jetzt erledigt). */
 export function neuErledigt(vorher: Pick<TasksState, 'tasks'>, nachher: Pick<TasksState, 'tasks'>): string[] {
@@ -44,39 +45,4 @@ export function aufgabenAlsFaellig(tasks: readonly Task[], heute: string, horizo
       };
     })
     .sort((a, b) => a.faellig.localeCompare(b.faellig));
-}
-
-/** Nach jedem Aufgaben-Schreiben: erledigte Aufgaben → ihre offenen Follow-ups erledigt. Wirft nie (das Schreiben der Aufgabe steht schon). */
-export async function followupsNachAufgaben(vorher: Pick<TasksState, 'tasks'>, nachher: Pick<TasksState, 'tasks'>, person: string): Promise<number> {
-  const fertig = neuErledigt(vorher, nachher);
-  if (!fertig.length) return 0;
-  try {
-    const { ladeCrm, aendereCrm } = await import('./speicher');
-    const c0 = await ladeCrm();
-    if (!(c0.followups ?? []).some(f => f.aufgabeId && fertig.includes(f.aufgabeId) && f.status === 'offen')) return 0;
-    let n = 0;
-    const jetzt = new Date().toISOString();
-    await aendereCrm(c => { const r = followupsErledigen(c, fertig, person, jetzt); n = r.erledigt.length; return r.crm; }, { art: person === 'system' ? 'system' : 'person', ...(person !== 'system' ? { person } : {}) });
-    return n;
-  } catch (e) {
-    console.error('[followup-aufgabe] Follow-ups nicht nachgezogen:', e instanceof Error ? e.message : e);
-    return 0;
-  }
-}
-
-/** Follow-up erledigt → die verknüpfte Aufgabe erledigt (über den Aufgaben-Schreibweg, Verlauf „durch System“). Idempotent. */
-export async function aufgabeErledigenNachFollowUp(f: Pick<FollowUp, 'aufgabeId'>, person: string): Promise<boolean> {
-  if (!f.aufgabeId) return false;
-  try {
-    const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
-    const id = f.aufgabeId;
-    const r = await systemAufgabenAendern(stand => {
-      const t = stand.tasks.find(x => x.id === id);
-      return t && t.status !== 'done' && t.status !== 'cancelled' && !t.geloeschtAm ? { teile: [{ id, felder: { status: 'done' } }] } : {};
-    }, { person });
-    return r.ok;
-  } catch (e) {
-    console.error('[followup-aufgabe] Aufgabe nicht erledigt:', e instanceof Error ? e.message : e);
-    return false;
-  }
 }

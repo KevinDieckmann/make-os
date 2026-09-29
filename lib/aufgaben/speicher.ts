@@ -24,7 +24,7 @@ import { abhaengigAngleichen, kreisBei } from './abhaengig';
 import { verlaufFuer, verlaufAnhaengen, type VerlaufWer } from './verlauf';
 import { serienBeimErledigen, folgeinstanzenBeimOeffnen, serieUeberspringen } from './serie';
 import { berlinerTag } from './wiederholung';
-import { followupsNachAufgaben } from '@/lib/crm/followup-aufgabe';
+import { followupsNachAufgaben } from '@/lib/crm/followup-aufgabe-server';
 import { dateienBereichNachziehen } from './umzug-dateien';
 
 export const AUFGABEN_SPEICHER = 'tasks';

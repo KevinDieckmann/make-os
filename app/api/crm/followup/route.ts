@@ -35,7 +35,7 @@ import { wer } from '@/lib/crm/team';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import type { CrmBestand, FollowUp, FollowUpArt, FollowUpBezugArt } from '@/lib/crm/typen';
 import { neueKennung } from '@/lib/kennung';
-import { aufgabeErledigenNachFollowUp } from '@/lib/crm/followup-aufgabe';
+import { aufgabeErledigenNachFollowUp } from '@/lib/crm/followup-aufgabe-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
