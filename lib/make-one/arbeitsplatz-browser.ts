@@ -16,6 +16,21 @@ export function personLesen(): Person {
   } catch { return ''; }
 }
 
+/** Steht der Browser auf der Anmeldeseite? Dort fragen die Kontexte nichts ab (ohne Sitzung gäbe es nur 401, 29.09.). */
+export function aufAnmeldeseite(): boolean {
+  try { return window.location.pathname === '/anmelden' || window.location.pathname.startsWith('/anmelden/'); } catch { return false; }
+}
+
+/** Angemeldet aus Sicht des Browsers: Namens-Zettel da und nicht auf der Anmeldeseite — erst dann abfragen. */
+export function angemeldetImBrowser(): boolean {
+  return !!personLesen() && !aufAnmeldeseite();
+}
+
+/** Den lesbaren Namens-Zettel vergessen (die Sitzung ist nicht mehr gültig — der Server antwortete 401). */
+export function werVergessen(): void {
+  try { document.cookie = 'make-os-wer=; Max-Age=0; path=/'; } catch { /* egal */ }
+}
+
 /** @deprecated Seit 23.09. setzt der Login die Person. Bleibt als Leerlauf, bis alle Aufrufer weg sind. */
 export function personSpiegeln(_person?: Person): void { /* nichts mehr zu spiegeln */ }
 

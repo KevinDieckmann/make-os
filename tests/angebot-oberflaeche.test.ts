@@ -54,6 +54,24 @@ describe('Angebots-Tool zeichnet', () => {
     expect(liste).toContain('1 offen');
     expect(liste).toContain('Anna Beispiel · Muster GmbH');
   });
+  // Sichtprüfung 29.09., F2: bei 375 px war das Blatt abgeschnitten — das Raster ohne Spaltenvorgabe wuchs auf die
+  // Mindestbreite der Positions-Tabelle. Jetzt: Raster `minmax(0, 1fr)`, Blatt `width: 100%` + `min-width: 0`, die
+  // Tabelle scrollt in sich (overflow-x: auto).
+  it('schmal: Ansicht und Vorschau schrumpfen, das Blatt bleibt in der Breite, die Tabelle scrollt in sich (F2)', async () => {
+    const { Ansicht } = await import('@/components/os/crm/angebot/Ansicht');
+    const { Vorschau } = await import('@/components/os/crm/angebot/Vorschau');
+    const { angebotDokument } = await import('@/lib/crm/angebot-dokument');
+    const ansicht = renderToStaticMarkup(h(Ansicht, { a: A, api, daten, onOeffnen: () => {}, onListe: () => {} }));
+    expect(ansicht).toMatch(/^<div style="display:grid;grid-template-columns:minmax\(0, 1fr\);gap:14px;min-width:0"/);
+    const blatt = /<div role="document"[^>]*style="([^"]*)"/.exec(ansicht)?.[1] ?? '';
+    expect(blatt).toContain('width:100%');
+    expect(blatt).toContain('min-width:0');
+    expect(ansicht).toContain('overflow-x:auto');
+    const dok = angebotDokument({ ...A, nummer: undefined, status: 'entwurf' } as Angebot, A.absender!, A.empfaenger!, '2026-09-28');
+    const vorschau = renderToStaticMarkup(h(Vorschau, { dok, mail: { an: '', betreff: '', text: '' }, setMail: () => {}, ampel: { hinweise: [] }, luecken: [], nachfassen: '', setNachfassen: () => {}, onZurueck: () => {}, onSenden: async () => {} }));
+    expect(vorschau).toMatch(/grid-template-columns:(minmax\(0, 1fr\)|minmax\(300px, 380px\) minmax\(0, 1fr\))/);
+    expect(vorschau).not.toMatch(/grid-template-columns:1fr[;"]/);
+  });
   it('AngebotStart: ohne Kennung die Liste, mit Kennung die Ansicht', async () => {
     const mod = await import('@/components/os/crm/angebot/angebot-daten');
     vi.spyOn(mod, 'useAngebote').mockReturnValue(daten);

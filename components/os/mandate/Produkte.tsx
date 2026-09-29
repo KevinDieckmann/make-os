@@ -17,7 +17,7 @@
 import { WEG } from '@/lib/wege';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { preisBasisVon, planungFehlt, margeVon, type PreisBasis } from '@/lib/finanzen/produkte';
+import { preisBasisVon, planungFehlt, margeVon, einheitFuerBasis, produktEinheit, type PreisBasis } from '@/lib/finanzen/produkte';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, LEUCHT } from '../schlank';
@@ -36,7 +36,7 @@ const STUFE: Record<Leistung['stufe'], string> = { einstieg: 'Einstieg', kern: '
 const TYP_LABEL: Record<Leistung['typ'], string> = { diagnose: 'Diagnose', workshop: 'Workshop', retainer: 'Retainer', sprint: 'Sprint', vermittlung: 'Vermittlung', software: 'Software' };
 const ART: { id: UnterlageArt; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'vertrag', label: 'Vertrag' }, { id: 'deck', label: 'Deck' }, { id: 'onepager', label: 'Onepager' }, { id: 'sonstiges', label: 'Sonstiges' }];
 const statusFarbe = (s: Leistung['status']) => (s === 'aktiv' ? LEUCHT.gut : s === 'entwurf' ? LEUCHT.achtung : C.inkLeise);
-const preisText = (l: Leistung) => (l.preis.betrag ? `${euro(l.preis.betrag)}${l.preis.bis ? `–${euro(l.preis.bis)}` : ''} ${l.preis.einheit}` : 'Preis offen');
+const preisText = (l: Leistung) => (l.preis.betrag ? `${euro(l.preis.betrag)}${l.preis.bis ? `–${euro(l.preis.bis)}` : ''} ${produktEinheit(l)}` : 'Preis offen');
 const klein = { fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 } as const;
 const BASIS: { id: PreisBasis; label: string }[] = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }];
 
@@ -168,7 +168,8 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
       </Feldzeile>
       <Feldzeile label="Basis">
         <div style={{ display: 'grid', gap: 4 }}>
-          <Pillen liste={BASIS} aktiv={basis} onWahl={b => setze({ preis: { ...l.preis, basis: b } })} />
+          {/* Basis wählen zieht die Einheit mit, wenn sie einer anderen Basis widerspricht (einmalig → „pauschal netto“ statt „Monat netto“). */}
+          <Pillen liste={BASIS} aktiv={basis} onWahl={b => setze({ preis: { ...l.preis, basis: b, einheit: einheitFuerBasis(l.preis.einheit, b) } })} />
           {!l.preis.basis && basis && <div style={klein}>aus der Einheit „{l.preis.einheit}“ abgeleitet — anklicken macht es fest.</div>}
         </div>
       </Feldzeile>

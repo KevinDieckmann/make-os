@@ -73,13 +73,25 @@ export function zuordnungSaeubern(
 }
 
 /**
- * Die Einheit eines Blocks: mit Mandat die am Block gespeicherte (sie kam aus dem Mandat), sonst die der Aufgabe (live),
- * sonst die am Block gespeicherte.
+ * Die Einheit eines Blocks. Mit Mandat (am Block oder an seiner Aufgabe): die Einheit des Mandats LIVE (Mandat → Deal →
+ * Produkt, `einheitAusBezug` in `mandatKurzListe`) — so zählt ein Block auch dann richtig, wenn die Gesellschaft des Mandats
+ * erst nach dem Block gesetzt wurde (Sichtprüfung 29.09.: „ohne Einheit“ trotz Mandat); sonst die am Block gespeicherte
+ * (sie kam beim Speichern aus dem Mandat). Ohne Mandat: die der Aufgabe (live), sonst die am Block gespeicherte.
  */
-export function einheitVonBlock(b: Pick<FokusBlock, 'aufgabeId' | 'einheit' | 'mandatId'>, aufgaben: ReadonlyMap<string, AufgabeKurz>): string | undefined {
-  if (b.mandatId && einheitName(b.einheit)) return einheitName(b.einheit);
+export function einheitVonBlock(b: Pick<FokusBlock, 'aufgabeId' | 'einheit' | 'mandatId'>, aufgaben: ReadonlyMap<string, AufgabeKurz>, mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null): string | undefined {
   const a = b.aufgabeId ? aufgaben.get(b.aufgabeId) : undefined;
+  const mandatId = b.mandatId ?? a?.mandatId;
+  if (mandatId) {
+    const live = einheitName(mandate?.get(mandatId)?.einheit);
+    if (live) return live;
+    if (b.mandatId && einheitName(b.einheit)) return einheitName(b.einheit);
+  }
   return einheitName(a?.einheit) ?? einheitName(b.einheit);
+}
+
+/** Tragen Blöcke oder Aufgaben ein Mandat? Dann lohnt es, die Mandate (CRM) für die Auswertung zu laden. */
+export function brauchtMandate(dateien: readonly ZeitDatei[], aufgaben: readonly AufgabeKurz[]): boolean {
+  return aufgaben.some(a => !!a.mandatId) || dateien.some(d => Object.values(d.tage ?? {}).some(t => (t.bloecke ?? []).some(b => !!b.mandatId)));
 }
 
 // ── Zeitraum (Berliner Wandzeit) ────────────────────────────────────────────
@@ -153,7 +165,7 @@ export function bloeckeImZeitraum(d: ZeitDatei, von: string, bis: string): Fokus
 }
 
 /** Blöcke → Zeilen: die drei Kerneinheiten immer, eigene nur mit Zeit (nach Zeit), „ohne Einheit“ immer zuletzt. */
-export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<string, AufgabeKurz>): EinheitAuswertung {
+export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<string, AufgabeKurz>, mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null): EinheitAuswertung {
   const topf = new Map<string, { label: string; sek: number; bloecke: number; aufgaben: Map<string, number>; ohneAufgabeSek: number }>();
   const holen = (id: string, label: string) => {
     let t = topf.get(id);
@@ -164,7 +176,7 @@ export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<
   holen(EINHEIT_OHNE, 'ohne Einheit');
   let sek = 0;
   for (const b of bloecke) {
-    const e = einheitVonBlock(b, aufgaben);
+    const e = einheitVonBlock(b, aufgaben, mandate);
     const t = e ? holen(norm(e), e) : holen(EINHEIT_OHNE, 'ohne Einheit');
     t.sek += b.sek; t.bloecke += 1; sek += b.sek;
     if (b.aufgabeId) t.aufgaben.set(b.aufgabeId, (t.aufgaben.get(b.aufgabeId) ?? 0) + b.sek);
@@ -193,6 +205,7 @@ export function zeitJeEinheit(
   aufgaben: readonly AufgabeKurz[],
   zeitraum: Zeitraum,
   stichtag: string,
+  mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null,
 ): ZeitJeEinheit {
   const { von, bis, label } = zeitraumVon(zeitraum, stichtag);
   const karte = new Map(aufgaben.map(a => [a.id, a]));
@@ -200,7 +213,7 @@ export function zeitJeEinheit(
   const jePerson = personen.map(p => {
     const b = bloeckeImZeitraum(p.datei, von, bis);
     alle.push(...b);
-    return { person: p.person, name: p.name, auswertung: auswerten(b, karte) };
+    return { person: p.person, name: p.name, auswertung: auswerten(b, karte, mandate) };
   });
-  return { zeitraum, von, bis, label, personen: jePerson, gesamt: auswerten(alle, karte) };
+  return { zeitraum, von, bis, label, personen: jePerson, gesamt: auswerten(alle, karte, mandate) };
 }

@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { AngebotBasis, AngebotPosition, Leistung } from '@/lib/crm/typen';
+import { produktEinheit } from '@/lib/finanzen/produkte';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { feld } from '../../schlank';
@@ -52,7 +53,7 @@ export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, au
           <button key={p.id} disabled={aus} onClick={() => { const von = p.gesellschaft !== 'offen' ? p.gesellschaft as Gesellschaftskennung : null; onDazu(positionAusProdukt(p, neueId('p'), { kleinunternehmer: kleinunternehmer(von ?? gesellschaft) }), von); }} className="fassbar"
             style={{ textAlign: 'left', cursor: aus ? 'default' : 'pointer', padding: '12px 13px', borderRadius: 12, border: `1px solid ${andere ? 'rgba(255,255,255,.08)' : `${LEUCHT.gut}55`}`, background: andere ? 'rgba(255,255,255,.03)' : `${LEUCHT.gut}12`, color: C.ink, display: 'grid', gap: 4 }}>
             <span style={{ fontSize: TYP.bedien, fontWeight: 700, lineHeight: 1.3 }}>+ {p.angebot?.titel?.trim() || p.name}</span>
-            <span style={{ fontSize: 12.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{p.preis.betrag ? `${euroCent(Math.round(p.preis.betrag * 100))} ${p.preis.einheit}` : 'Preis offen'}</span>
+            <span style={{ fontSize: 12.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{p.preis.betrag ? `${euroCent(Math.round(p.preis.betrag * 100))} ${produktEinheit(p)}` : 'Preis offen'}</span>
             <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {textFehlt && <span style={{ fontSize: 11, color: LEUCHT.achtung, fontWeight: 700 }}>Text fehlt</span>}
               {andere && <span style={{ fontSize: 11, color: C.inkLeise }}>andere Gesellschaft</span>}

@@ -2,7 +2,7 @@
 // ─── Aufgaben: Schnell anlegen ganz oben (28.09. abends, Kevin + Malin) ─────
 // Titel tippen, dann per Klick zuordnen: Space, Projekt, Gruppe (28.09. spät), Liste oder übergeordnete Aufgabe — vorbelegt mit dem, was
 // gerade offen ist; Enter legt an. Neues Projekt / neue Liste direkt aus der Auswahl („+ neu …“, `onNeu`).
-// Kürzel wie bisher (lib/make-one/schnell-anlegen.ts): !! kritisch · ! hoch · heute/morgen/mo–so/24.09. · #projekt · @malin/@beide.
+// Kürzel wie bisher (lib/make-one/schnell-anlegen.ts): !! kritisch · ! hoch · heute/morgen/mo–so/24.09. · #projekt · @Name (aus dem Team)/@beide.
 // Nicht zugeordnet → „Sonstige“.
 // 29.09. (Paket T2): Schalter „🔒 nur ich“; Vorschau dessen, was erkannt wurde („Fr 02.10. · kritisch · @Malin“), BEVOR
 // gespeichert wird (#21); „@beide“ = ich verantwortlich + die andere beteiligt (kein „Beide“ mehr); ohne @ = ich.
@@ -12,7 +12,7 @@ import { Lock } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Knopf, feld, LEUCHT } from '../schlank';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
-import { parseSchnell, schnellVorschau } from '@/lib/make-one/schnell-anlegen';
+import { parseSchnell, schnellVorschau, schnellZustaendigkeit, type SchnellPerson } from '@/lib/make-one/schnell-anlegen';
 import { sonstigeProjektId, istSonstigeProjekt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
 import type { TasksState } from '@/types/tasks';
 import type { AufgabenAktion } from '@/context/TasksContext';
@@ -66,23 +66,26 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
     .sort((a, b) => a.title.localeCompare(b.title, 'de'))
     .map(t => ({ id: t.id, label: t.title })), [state.tasks, spaceId, projektId, listeId, listen]);
 
-  const erkannt = text.trim() ? parseSchnell(text.trim(), projekte) : null;
+  // @Name aus dem Team (29.09., F4): Vorname, Kurzname, Speichername — nicht mehr fest @kevin/@malin.
+  const schnellPersonen = useMemo<SchnellPerson[]>(() => personen.map(x => ({ speicher: x.speicher, namen: x.namen })), [personen]);
+  const erkannt = text.trim() ? parseSchnell(text.trim(), projekte, undefined, schnellPersonen) : null;
   const vorschau = erkannt ? schnellVorschau(erkannt, projekte, Object.fromEntries(personen.map(x => [x.speicher, x.name]))) : [];
   const anlegen = () => {
     const roh = text.trim();
     if (!roh) { eingabe.current?.focus(); return; }
-    const p = parseSchnell(roh, projekte);
+    const p = parseSchnell(roh, projekte, undefined, schnellPersonen);
     if (!p.title) return;
     const pid = p.projectId ?? projektId;
-    // Eine Verantwortliche (29.09.): ohne @ = ich; „@beide“ = ich + die andere beteiligt.
-    const selbst = (ich || personen[0]?.speicher || 'kevin') as Owner;
+    // Eine Verantwortliche (29.09.): ohne @ = ich; erste @Person verantwortlich, weitere beteiligt; „@beide“ = ich + alle anderen.
+    const selbst = ich || personen[0]?.speicher || 'kevin';
     // „Nur ich“ gehört der Anlegerin — zuständig kann nur sie sein, Beteiligte gibt es dann nicht (Server-Regel T1).
-    const assignee = nurIch || !p.zustaendigGetippt || p.assignee === 'both' ? selbst : p.assignee;
-    const beteiligte = !nurIch && p.zustaendigGetippt && p.assignee === 'both' ? personen.map(x => x.speicher).filter(x => x !== selbst) : undefined;
+    const z = schnellZustaendigkeit(p, selbst, personen.map(x => x.speicher), nurIch);
     const id = aufgabeAnlegen(dispatch, state, {
       spaceId, projectId: pid, listeId: pid === projektId && listeId !== SONST ? listeId : undefined, parentId: parentId ?? undefined,
-    }, { title: p.title, priority: p.priority, assignee, dueDate: p.dueDate, ...(beteiligte?.length ? { beteiligte } : {}), ...(nurIch ? { sichtbarkeit: 'nur-ich' as const } : {}) });
+    }, { title: p.title, priority: p.priority, assignee: z.assignee as Owner, dueDate: p.dueDate, ...(z.beteiligte?.length ? { beteiligte: z.beteiligte } : {}), ...(nurIch ? { sichtbarkeit: 'nur-ich' as const } : {}) });
     setText('');
+    // „nur ich“ gilt für GENAU diese Aufgabe (29.09., F3) — danach wieder aus, sonst wird die nächste still privat.
+    setNurIch(false);
     setHinweis(`Angelegt: „${p.title}“${p.dueDate ? ` · fällig ${vorschau[0] ?? ''}` : ''}${nurIch ? ' · nur ich' : ''}`);
     setTimeout(() => setHinweis(null), 2500);
     onAngelegt?.(id);
@@ -93,7 +96,7 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
     <Karte i={0} akzent={LEUCHT.achtung}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <input ref={eingabe} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
-          aria-label="Neue Aufgabe" placeholder="Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @malin)"
+          aria-label="Neue Aufgabe" placeholder={`Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @${personen.find(x => x.speicher !== ich)?.name ?? 'Name'})`}
           style={{ ...feld, fontSize: TYP.body, flex: '1 1 240px', minWidth: 0, width: 'auto' }} />
         <button type="button" aria-pressed={nurIch} onClick={() => setNurIch(n => !n)} className="fassbar" title="Nur ich: niemand sonst sieht die Aufgabe"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 44, padding: '0 12px', borderRadius: 12, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, whiteSpace: 'nowrap',

@@ -7,10 +7,13 @@
 // wie möglich“ bekam vorher Sonntag als Frist. Ausgeschriebene Wochentage („freitag“) gelten überall. Datum „TT.MM.“ bzw.
 // „TT.MM.JJJJ“ nur, wenn es den Kalendertag gibt („31.02.“ bleibt im Titel, mit Hinweis). `schnellVorschau` zeigt vor dem
 // Speichern, was erkannt wurde („Fr 02.10.“).
+// Seit 29.09. abends (Sichtprüfung F4): „@Name“ kommt aus dem Team (Konten des Haushalts, Vorname/Kurzname/Speichername,
+// Umlaut-tolerant: @jürgen = @juergen = @jurgen) statt fest @kevin/@malin. Die erste erkannte Person ist verantwortlich,
+// weitere sind beteiligt; „@beide“/„@alle“ = ich verantwortlich + alle anderen beteiligt (es gibt keine „beide“-Zuständigkeit
+// mehr, lib/aufgaben/zustaendig.ts). Unbekannte @Wörter bleiben im Titel. Ohne @ = ich (`schnellZustaendigkeit`).
 
 import { localDay } from '@/lib/zeit';
 import { istTag, kurzTag, tagPlus, wochentag } from '@/lib/aufgaben/wiederholung';
-import type { Owner } from '@/types/common';
 import type { Priority } from '@/types/common';
 
 // ── Datums-Kurzhelfer fürs Schnellanlegen und die Zeilen-Aktionen ──
@@ -31,22 +34,61 @@ export interface SchnellErgebnis {
   priority: Priority;
   dueDate?: string;
   projectId?: string;
-  assignee: Owner | 'both';
-  /** Wurde die Zuständigkeit ausdrücklich getippt (@…)? Sonst ist `assignee` nur der alte Standard. */
+  /** Die erste getippte Person (@Name, Speichername) — sonst entscheidet `schnellZustaendigkeit` (= ich). */
+  zustaendig?: string;
+  /** Weitere getippte Personen (Speichernamen, ohne die Verantwortliche). */
+  beteiligte: string[];
+  /** „@beide“ / „@alle“: alle anderen Personen des Haushalts sind beteiligt. */
+  alleBeteiligt: boolean;
+  /** Wurde eine Zuständigkeit ausdrücklich getippt (@Person, @beide, @alle)? */
   zustaendigGetippt: boolean;
   /** Ein getipptes Datum, das es nicht gibt (z. B. „31.02.“) — bleibt im Titel. */
   datumUngueltig?: string;
 }
 
-/** Schnell-Anlegen mit Kürzeln: !! kritisch · ! hoch · heute/morgen/übermorgen · [am|bis] mo–so · freitag · TT.MM.[JJJJ] · #projekt · @malin/@beide */
-export function parseSchnell(rein: string, projekte: { id: string; title: string }[], heute: string = localDay()): SchnellErgebnis {
+/** Eine Person mit Konto für „@Name“ — aus dem Team (`usePersonen`: Vorname, Kurzname, Speichername). */
+export interface SchnellPerson { speicher: string; namen: readonly string[] }
+/** Rückfall, solange das Team nicht geladen ist — dieselben Speichernamen wie `usePersonen` (Regel 11: keine Namen im Code). */
+const STANDARD_PERSONEN: readonly SchnellPerson[] = [{ speicher: 'kevin', namen: ['kevin'] }, { speicher: 'malin', namen: ['malin'] }];
+const ALLE_WOERTER = new Set(['beide', 'alle']);
+
+/** Umlaut-tolerante Schlüssel eines Namens: „Jürgen“ → { juergen, jurgen }. */
+function namensSchluessel(n: string): string[] {
+  const k = n.trim().toLowerCase();
+  if (!k) return [];
+  const umschrieben = k.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+  const ohneZeichen = k.replace(/ß/g, 'ss').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return Array.from(new Set([k, umschrieben, ohneZeichen]));
+}
+
+/** Die Person zu einem getippten Namen — nur bei genau einem Treffer. */
+export function personZuName(name: string, personen: readonly SchnellPerson[]): string | undefined {
+  const s = new Set(namensSchluessel(name));
+  if (!s.size) return undefined;
+  const treffer = personen.filter(p => [p.speicher, ...p.namen].some(n => namensSchluessel(n).some(k => s.has(k))));
+  return treffer.length === 1 ? treffer[0].speicher : undefined;
+}
+
+/** Schnell-Anlegen mit Kürzeln: !! kritisch · ! hoch · heute/morgen/übermorgen · [am|bis] mo–so · freitag · TT.MM.[JJJJ] · #projekt · @Name/@beide */
+export function parseSchnell(rein: string, projekte: { id: string; title: string }[], heute: string = localDay(), personen: readonly SchnellPerson[] = STANDARD_PERSONEN): SchnellErgebnis {
   let s = ` ${rein.trim()} `;
   let priority: Priority = 'medium';
   if (s.includes('!!')) { priority = 'critical'; s = s.replace('!!', ' '); }
   else if (s.includes('!')) { priority = 'high'; s = s.replace('!', ' '); }
-  let assignee: Owner | 'both' = 'kevin';
-  let zustaendigGetippt = false;
-  s = s.replace(/\s@(malin|beide|kevin)\b/i, (_, w) => { zustaendigGetippt = true; assignee = w.toLowerCase() === 'beide' ? 'both' : (w.toLowerCase() as Owner); return ' '; });
+  const getippt: string[] = [];
+  let alleBeteiligt = false;
+  s = s.replace(/(\s)@([\p{L}\p{N}][\p{L}\p{N}._-]*)/gu, (ganz, vor: string, wort: string) => {
+    const name = wort.replace(/[._-]+$/, '');
+    const rest = wort.slice(name.length);
+    if (ALLE_WOERTER.has(name.toLowerCase())) { alleBeteiligt = true; return `${vor}${rest}`; }
+    const p = personZuName(name, personen);
+    if (!p) return ganz;
+    if (!getippt.includes(p)) getippt.push(p);
+    return `${vor}${rest}`;
+  });
+  const zustaendig = getippt[0];
+  const beteiligte = getippt.slice(1);
+  const zustaendigGetippt = !!zustaendig || alleBeteiligt;
   let projectId: string | undefined;
   s = s.replace(/\s#(\S+)/, (_, w) => {
     const p = projekte.find(x => x.title.toLowerCase().includes(String(w).toLowerCase()));
@@ -75,7 +117,18 @@ export function parseSchnell(rein: string, projekte: { id: string; title: string
     if (!wahl) { datumUngueltig = ganz.trim(); return ganz; }
     dueDate = wahl; return ' ';
   });
-  return { title: s.replace(/\s+/g, ' ').trim(), priority, dueDate, projectId, assignee, zustaendigGetippt, ...(datumUngueltig ? { datumUngueltig } : {}) };
+  return { title: s.replace(/\s+/g, ' ').trim(), priority, dueDate, projectId, ...(zustaendig ? { zustaendig } : {}), beteiligte, alleBeteiligt, zustaendigGetippt, ...(datumUngueltig ? { datumUngueltig } : {}) };
+}
+
+/**
+ * Wer ist verantwortlich, wer beteiligt? Eine Verantwortliche (29.09.): die erste getippte Person, sonst ich.
+ * „@beide“/„@alle“ → alle anderen `personen` beteiligt. `nurIch` → nur ich, keine Beteiligten (Server-Regel T1).
+ */
+export function schnellZustaendigkeit(p: Pick<SchnellErgebnis, 'zustaendig' | 'beteiligte' | 'alleBeteiligt'>, ich: string, personen: readonly string[], nurIch = false): { assignee: string; beteiligte?: string[] } {
+  if (nurIch) return { assignee: ich };
+  const assignee = p.zustaendig ?? ich;
+  const beteiligte = Array.from(new Set((p.alleBeteiligt ? personen : p.beteiligte).filter(x => x && x !== assignee)));
+  return beteiligte.length ? { assignee, beteiligte } : { assignee };
 }
 
 const PRIO_TEXT: Record<Priority, string> = { critical: 'kritisch', high: 'hoch', medium: '', low: 'niedrig' };
@@ -85,7 +138,9 @@ export function schnellVorschau(p: SchnellErgebnis, projekte: { id: string; titl
   const teile: string[] = [];
   if (p.dueDate) teile.push(kurzTag(p.dueDate));
   if (PRIO_TEXT[p.priority]) teile.push(PRIO_TEXT[p.priority]);
-  if (p.zustaendigGetippt) teile.push(p.assignee === 'both' ? '@beide' : `@${namen[p.assignee] ?? p.assignee}`);
+  if (p.zustaendig) teile.push(`@${namen[p.zustaendig] ?? p.zustaendig}`);
+  for (const b of p.beteiligte) teile.push(`+${namen[b] ?? b}`);
+  if (p.alleBeteiligt) teile.push('+ alle beteiligt');
   if (p.projectId) teile.push(`#${projekte.find(x => x.id === p.projectId)?.title ?? p.projectId}`);
   return teile;
 }

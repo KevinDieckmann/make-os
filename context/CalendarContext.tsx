@@ -4,7 +4,7 @@ import {
   createContext, useContext, useReducer, useEffect, useState,
   type Dispatch, type ReactNode,
 } from 'react';
-import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
+import { angemeldetImBrowser } from '@/lib/make-one/arbeitsplatz-browser';
 import type { CalendarState, CalendarAction, CalendarEvent, CalendarView } from '@/types/calendar';
 import { MOCK_CALENDAR_EVENTS } from '@/lib/mock-data/calendar-events';
 import { navigateDate, parseISO } from '@/lib/date-utils';
@@ -88,7 +88,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     if (!alive) return;
     // Noch keine Sitzung: alle zwei Sekunden nachsehen, nach der Anmeldung
     // kommt der Kalender dann von selbst. (23.09.)
-    if (!personLesen()) { warten = setTimeout(laden, 2000); return; }
+    if (!angemeldetImBrowser()) { warten = setTimeout(laden, 2000); return; }
     setSyncStatus('loading');
     fetch('/api/apple-calendar')
       .then(r => {

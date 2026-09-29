@@ -22,8 +22,8 @@ import { uebernehmen } from './struktur';
 import { alsStand, orgZuordnung, darfSehen } from './sicht';
 import { aufgabenSchreiben, AUFGABEN_BESTAND } from './umbau';
 import {
-  aufgabenArchivieren, aufgabenZurueck, aufgabenVorschau, imArchiv, leerErfasst, LAUF_ID,
-  type AufgabenAuswahl, type AufgabenErfasst, type AufgabenVorschau,
+  aufgabenArchivieren, aufgabenZurueck, aufgabenVorschau, imArchiv, leerErfasst, LAUF_ID, archivSicht,
+  type AufgabenAuswahl, type ArchivAufgabe, type ArchivProjekt, type ArchivSerie, type AufgabenErfasst, type AufgabenVorschau,
 } from './neustart';
 import {
   zieleHerausnehmen, zieleZurueck, zieleZahl, zieleDatei, meilensteineHerausnehmen, meilensteineZurueck, meilensteineDatei,
@@ -224,8 +224,7 @@ async function protokollAufgaben(e: Pick<AufgabenErfasst, 'projekte' | 'gruppen'
 
 // ── Archiv lesen ──────────────────────────────────────────────────────────
 
-export interface ArchivAufgabe { id: string; titel: string; spaceId?: string; projektId: string; erledigt: boolean; unter: number; zurueck: boolean }
-export interface ArchivProjekt { id: string; titel: string; spaceId?: string; farbe?: string; aufgaben: number; zurueck: boolean }
+export type { ArchivAufgabe, ArchivProjekt, ArchivSerie };
 export interface ArchivLaufSicht {
   id: string; am: string; von: string; status: NeustartLauf['status'];
   projekte: ArchivProjekt[];
@@ -233,7 +232,7 @@ export interface ArchivLaufSicht {
   aufgaben: ArchivAufgabe[];
   ziele: { speicher: string; horizont: ZielHorizont; id: string; titel: string; erledigt: boolean; zurueck: boolean }[];
   meilensteine: { id: string; titel: string; faellig?: string; erledigt: boolean; zurueck: boolean }[];
-  serien: { art: 'aufgabe' | 'liste'; titel: string; regel: string; zurueck: boolean }[];
+  serien: ArchivSerie[];
   /** Noch im Archiv (für „Alles zurückholen“). */
   offen: number;
 }
@@ -247,25 +246,14 @@ export async function neustartArchiv(person: string | null): Promise<ArchivLaufS
   const laeufe = bestand(await loadJson<NeustartBestand>(name)).laeufe;
   if (!laeufe.length) return [];
   const tasks = uebernehmen(alsStand(await loadJson<TasksState>(AUFGABEN_BESTAND)), await orgZuordnung()).state;
-  const projektNach = new Map(tasks.projects.map(p => [p.id, p]));
   const alleNachId = new Map(tasks.tasks.map(t => [t.id, t]));
   const sichtbar = (t: TasksState['tasks'][number]) => darfSehen(t, person, alleNachId);
   return laeufe.slice().reverse().map(l => {
     const vomLauf = (x: { archiviertAm?: string; archivId?: string } | undefined) => !!x && imArchiv(x) && x.archivId === l.id;
-    const archivierteProjekte = new Set(l.aufgaben.projekte);
-    const projekte: ArchivProjekt[] = l.aufgaben.projekte.map(id => projektNach.get(id)).filter((p): p is NonNullable<typeof p> => !!p).map(p => ({
-      id: p.id, titel: p.title, ...(p.spaceId ? { spaceId: p.spaceId } : {}), farbe: p.color,
-      aufgaben: tasks.tasks.filter(t => t.projectId === p.id && !t.parentId && vomLauf(t) && sichtbar(t)).length, zurueck: !vomLauf(p),
-    }));
-    const inLauf = new Set(l.aufgaben.aufgaben);
-    const aufgaben: ArchivAufgabe[] = tasks.tasks
-      .filter(t => inLauf.has(t.id) && !t.parentId && sichtbar(t) && (!archivierteProjekte.has(t.projectId) || !vomLauf(projektNach.get(t.projectId))))
-      .map(t => ({ id: t.id, titel: t.title, ...(t.spaceId ? { spaceId: t.spaceId } : {}), projektId: t.projectId, erledigt: t.status === 'done' || t.status === 'cancelled', unter: tasks.tasks.filter(u => u.parentId === t.id && inLauf.has(u.id)).length, zurueck: !vomLauf(t) }));
+    // Projekte, lose Aufgaben und Serien rein (lib/aufgaben/neustart.ts `archivSicht`, Sichtprüfung 29.09., F6).
+    const { projekte, aufgaben, serien } = archivSicht(tasks, l.id, l.aufgaben, sichtbar);
     const ziele = l.ziele.map(z => ({ speicher: z.speicher, horizont: z.horizont, id: z.ziel.id, titel: z.ziel.titel, erledigt: !!z.ziel.erledigt, zurueck: !!z.zurueckAm }));
     const meilensteine = l.meilensteine.map(m => ({ id: m.meilenstein.id, titel: m.meilenstein.titel, ...(m.meilenstein.faellig ? { faellig: m.meilenstein.faellig } : {}), erledigt: !!m.meilenstein.erledigt, zurueck: !!m.zurueckAm }));
-    const nachId = new Map(tasks.tasks.map(t => [t.id, t]));
-    const listeNach = new Map((tasks.listen ?? []).map(x => [x.id, x]));
-    const serien = l.aufgaben.pausiert.filter(s => s.art === 'liste' || (nachId.get(s.id) ? sichtbar(nachId.get(s.id)!) : false)).map(s => ({ art: s.art, titel: s.titel, regel: s.wiederholung.regel, zurueck: s.art === 'liste' ? !vomLauf(listeNach.get(s.id)) : !vomLauf(nachId.get(s.id)) }));
     const offen = tasks.tasks.filter(vomLauf).length + tasks.projects.filter(vomLauf).length + ziele.filter(z => !z.zurueck).length + meilensteine.filter(m => !m.zurueck).length;
     return { id: l.id, am: l.am, von: l.von, status: l.status, projekte, aufgaben, ziele, meilensteine, serien, offen };
   });

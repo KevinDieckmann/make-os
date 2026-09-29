@@ -61,7 +61,9 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   }
 
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
+    // Raster ohne Spaltenvorgabe wächst auf die Mindestbreite seines breitesten Kinds (die Positions-Tabelle im Blatt) —
+    // `minmax(0, 1fr)` + `minWidth: 0` halten es auf Bildschirmbreite (Sichtprüfung 29.09., F2: bei 375 px abgeschnitten).
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, minWidth: 0 }}>
       {meldungStart && (
         <Karte i={0} akzent={LEUCHT.gut}>
           <div style={{ display: 'grid', gap: 8, fontSize: TYP.bedien, lineHeight: 1.5 }}>
@@ -85,7 +87,7 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           <span style={{ flex: 1 }} />
           <button onClick={onListe} style={link}>alle Angebote ›</button>
         </div>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6, lineHeight: 1.6, overflowWrap: 'anywhere' }}>
           {[gesellschaftLabel(a.gesellschaft), a.gestelltAm ? `gestellt ${datumDe(a.gestelltAm.slice(0, 10))}` : '', `gültig bis ${datumDe(a.gueltigBis)}`, a.angenommenAm ? `angenommen ${datumDe(a.angenommenAm)}` : '', a.abgelehntAm ? `abgelehnt ${datumDe(a.abgelehntAm)}${a.grund ? ` — ${a.grund}` : ''}` : '', a.abgelaufenAm ? `abgelaufen ${datumDe(a.abgelaufenAm)}` : '', a.personGeloest ? 'Personenbezug gelöst (Art. 17)' : ''].filter(Boolean).join(' · ')}
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8, fontSize: 12.5 }}>
@@ -126,4 +128,5 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   );
 }
 
-const link = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0, textDecoration: 'none' } as const;
+// Verweise (Kontakt, Deal, Versionen) dürfen umbrechen — lange Deal-Titel schoben sonst die Kopfzeile über den Rand.
+const link = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0, textDecoration: 'none', textAlign: 'left', whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' } as const;

@@ -206,3 +206,53 @@ export function aufgabenVorschau(state: TasksState): AufgabenVorschau {
     bleiben: state.tasks.filter(t => !t.geloeschtAm && !t.parentId && !imArchiv(t) && bleibtBeimNeustart(t, nachId)).map(t => ({ id: t.id, titel: t.title })),
   };
 }
+
+// ── Archiv-Ansicht (rein, 29.09. abends — Sichtprüfung F6) ────────────────
+export interface ArchivAufgabe { id: string; titel: string; spaceId?: string; projektId: string; erledigt: boolean; unter: number; zurueck: boolean }
+export interface ArchivProjekt { id: string; titel: string; spaceId?: string; farbe?: string; aufgaben: number; zurueck: boolean }
+export interface ArchivSerie { art: 'aufgabe' | 'liste'; titel: string; regel: string; zurueck: boolean }
+
+/**
+ * Projekte, Aufgaben ohne Projekt und ruhende Serien EINES Laufs für die Ansicht „Archiv“ — Titel aus dem aktuellen Bestand.
+ *  · Eine Aufgabe gehört zu ihrem Projekt, wenn der Lauf das Projekt mitgenommen hat — auch nachdem alles wiederhergestellt
+ *    ist (vorher rutschten nach „Alles wiederherstellen“ alle Projekt-Aufgaben nach „Aufgaben ohne Projekt“). Lose steht sie
+ *    nur, wenn ihr Projekt nicht mit diesem Lauf ging ODER die Hülle schon zurück ist, sie selbst aber noch im Archiv liegt
+ *    (dann ist sie nur einzeln zurückzuholen).
+ *  · Serien: eine Serie einmal (Schlüssel = Serien-Kennung, wie die Vorschau) — das erledigte Original und die neue Instanz
+ *    derselben Serie sind EINE Serie. „läuft wieder“, sobald keine ihrer Aufgaben mehr im Archiv liegt.
+ * `sichtbar` = Sichtfilter „nur ich“ (fremde „nur ich“-Aufgaben erscheinen nicht).
+ */
+export function archivSicht(state: Pick<TasksState, 'projects' | 'tasks' | 'listen'>, laufId: string, erfasst: AufgabenErfasst, sichtbar: (t: Task) => boolean = () => true): { projekte: ArchivProjekt[]; aufgaben: ArchivAufgabe[]; serien: ArchivSerie[] } {
+  const vomLauf = (x: Archivierbar | undefined) => !!x && imArchiv(x) && x.archivId === laufId;
+  const projektNach = new Map(state.projects.map(p => [p.id, p]));
+  const nachId = new Map(state.tasks.map(t => [t.id, t]));
+  const listeNach = new Map((state.listen ?? []).map(x => [x.id, x]));
+  const archivierteProjekte = new Set(erfasst.projekte);
+  const inLauf = new Set(erfasst.aufgaben);
+  const haupt = state.tasks.filter(t => inLauf.has(t.id) && !t.parentId && sichtbar(t));
+  const lose = (t: Task) => !archivierteProjekte.has(t.projectId) || (!vomLauf(projektNach.get(t.projectId)) && vomLauf(t));
+  const projekte: ArchivProjekt[] = erfasst.projekte.map(id => projektNach.get(id)).filter((p): p is Project => !!p).map(p => ({
+    id: p.id, titel: p.title, ...(p.spaceId ? { spaceId: p.spaceId } : {}), farbe: p.color,
+    aufgaben: haupt.filter(t => t.projectId === p.id && !lose(t)).length, zurueck: !vomLauf(p),
+  }));
+  const aufgaben: ArchivAufgabe[] = haupt.filter(lose).map(t => ({
+    id: t.id, titel: t.title, ...(t.spaceId ? { spaceId: t.spaceId } : {}), projektId: t.projectId, erledigt: t.status === 'done' || t.status === 'cancelled',
+    unter: state.tasks.filter(u => u.parentId === t.id && inLauf.has(u.id)).length, zurueck: !vomLauf(t),
+  }));
+  const je = new Map<string, { eintraege: PausierteSerie[] }>();
+  for (const s of erfasst.pausiert) {
+    if (s.art === 'aufgabe') { const t = nachId.get(s.id); if (!t || !sichtbar(t)) continue; }
+    const k = s.art === 'liste' ? `l:${s.id}` : `a:${nachId.get(s.id)?.serieId ?? s.id}`;
+    const e = je.get(k) ?? { eintraege: [] };
+    e.eintraege.push(s);
+    je.set(k, e);
+  }
+  const serien: ArchivSerie[] = Array.from(je.values()).map(({ eintraege }) => {
+    // Für die Anzeige steht die offene Instanz (sonst die erste) — ihr Titel, ihre Regel.
+    const offenAm = eintraege.find(s => s.art === 'aufgabe' && (() => { const t = nachId.get(s.id); return !!t && t.status !== 'done' && t.status !== 'cancelled'; })());
+    const s = offenAm ?? eintraege[0];
+    const ruht = eintraege.some(x => (x.art === 'liste' ? vomLauf(listeNach.get(x.id)) : vomLauf(nachId.get(x.id))));
+    return { art: s.art, titel: s.art === 'aufgabe' ? nachId.get(s.id)?.title ?? s.titel : listeNach.get(s.id)?.titel ?? s.titel, regel: s.wiederholung.regel, zurueck: !ruht };
+  });
+  return { projekte, aufgaben, serien };
+}

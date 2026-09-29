@@ -27,7 +27,9 @@ import { useTeam } from '@/hooks/useTeam';
 import { delegierbar, delegiertAn as delegiertAnTeam, personZuKurz } from '@/lib/make-one/team-typen';
 import { wertVon, STANDARD_MODUS, type ReglerId } from '@/lib/make-one/kompass-data';
 import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
-import { parseSchnell, tagInT } from '@/lib/make-one/schnell-anlegen';
+import { parseSchnell, tagInT, schnellZustaendigkeit } from '@/lib/make-one/schnell-anlegen';
+import { usePersonen } from '@/components/os/aufgaben/hilfe';
+import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, Haken, feld, prioFarbe, LEUCHT } from './schlank';
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
@@ -85,6 +87,7 @@ export function AufgabenView() {
   const { state, dispatch, ready } = useTasks();
   // Team aus den Daten (28.09., U4): Speicher team--<haushalt> über /api/team — Rückfall Rollen-Platzhalter.
   const { team } = useTeam();
+  const personen = usePersonen();
   const [seg, setSeg] = useState<'offen' | 'erledigt' | 'alle'>('offen');
   const [ansicht, setAnsicht] = useState<Ansicht>('jetzt');
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -258,12 +261,14 @@ export function AufgabenView() {
 
   function schnellAnlegen() {
     if (!neuTitel.trim()) return;
-    const p = parseSchnell(neuTitel, state.projects);
+    const p = parseSchnell(neuTitel, state.projects, undefined, personen);
     if (!p.title) return;
+    // @Name aus dem Team, eine Verantwortliche (29.09., F4): ohne @ = ich, „@beide“ = ich + die anderen beteiligt.
+    const z = schnellZustaendigkeit(p, personLesen() || personen[0]?.speicher || 'kevin', personen.map(x => x.speicher));
     dispatch({ type: 'ADD_TASK', payload: {
       projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}), ...(imBusiness && neuEinheit ? { einheit: neuEinheit } : {}),
       title: p.title, description: '', status: 'todo', priority: p.priority,
-      assignee: p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0,
+      assignee: z.assignee as Owner, ...(z.beteiligte ? { beteiligte: z.beteiligte } : {}), tags: [], subTasks: [], dependencies: [], sortOrder: 0,
       ...(p.dueDate ? { dueDate: p.dueDate } : {}),
     } });
     setNeuTitel('');
@@ -277,7 +282,7 @@ export function AufgabenView() {
   function anlegenMitFeldern() {
     const roh = neuTitel.trim();
     if (!roh) return;
-    const p = parseSchnell(roh, state.projects);
+    const p = parseSchnell(roh, state.projects, undefined, personen);
     dispatch({ type: 'ADD_TASK', payload: {
       projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}), ...(imBusiness && neuEinheit ? { einheit: neuEinheit } : {}),
       title: p.title || roh, description: '', status: 'todo',
@@ -762,7 +767,7 @@ export function AufgabenView() {
         <div style={{ display: 'flex', gap: 8 }}>
           <input value={neuTitel} onChange={e => setNeuTitel(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { if (neuAuf) anlegenMitFeldern(); else schnellAnlegen(); } }}
-            placeholder="Neue Aufgabe … (Enter)  ·  !! kritisch  ·  ! hoch  ·  heute / morgen / fr / 15.08.  ·  #capos  ·  @malin"
+            placeholder="Neue Aufgabe … (Enter)  ·  !! kritisch  ·  ! hoch  ·  heute / morgen / fr / 15.08.  ·  #capos  ·  @Name"
             aria-label="Neue Aufgabe anlegen"
             style={{ ...feld, flex: 1, minWidth: 0, width: 'auto', fontSize: TYP.body, boxShadow: neuAuf ? `0 0 0 1px ${C.aktiv}55` : undefined }} />
           {imBusiness && !neuAuf && <span style={{ alignSelf: 'center' }}><EinheitWahl wert={neuEinheit} setzen={setNeuEinheit} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der neuen Aufgabe" merken /></span>}

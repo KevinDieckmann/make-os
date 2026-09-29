@@ -11,7 +11,8 @@ import { NextResponse } from 'next/server';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { merken } from '@/lib/store/memo';
 import { ladeZeit, aufgabenKurz, zeitBloeckeStand } from '@/lib/zeitmessung/speicher';
-import { zeitJeEinheit, berlinTag, type Zeitraum } from '@/lib/zeitmessung/einheiten';
+import { zeitJeEinheit, berlinTag, brauchtMandate, type Zeitraum } from '@/lib/zeitmessung/einheiten';
+import { mandateKurz } from '@/lib/planung/mandat-server';
 import { zeitPersonenVon } from '@/lib/zeitmessung/personen';
 
 export const runtime = 'nodejs';
@@ -30,7 +31,9 @@ export async function GET(req: Request) {
   const { schluessel, personen } = await zeitPersonenVon(person);
   const daten = await merken(`zeit-einheiten:${schluessel}:${zeitraum}:${stichtag}:${zeitBloeckeStand()}`, 60_000, async () => {
     const [aufgaben, dateien] = await Promise.all([aufgabenKurz(), Promise.all(personen.map(p => ladeZeit(p.person)))]);
-    return zeitJeEinheit(personen.map((p, i) => ({ ...p, datei: dateien[i] })), aufgaben, zeitraum, stichtag);
+    // Einheit eines Blocks mit Mandat live aus dem Mandat (29.09.) — das CRM nur lesen, wenn überhaupt ein Mandat vorkommt.
+    const mandate = brauchtMandate(dateien, aufgaben) ? await mandateKurz() : null;
+    return zeitJeEinheit(personen.map((p, i) => ({ ...p, datei: dateien[i] })), aufgaben, zeitraum, stichtag, mandate);
   });
   return NextResponse.json({ ok: true, ich: person, ...daten }, { headers: { 'Cache-Control': 'no-store' } });
 }

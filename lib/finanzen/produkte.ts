@@ -25,6 +25,23 @@ export function preisBasisVon(l: Pick<Leistung, 'preis'>): PreisBasis | null {
 }
 export const RHYTHMUS_AUS_BASIS: Record<PreisBasis, Rhythmus> = { monat: 'monatlich', jahr: 'jaehrlich', einmalig: 'einmalig' };
 
+/** Einheit, die zur Basis passt (29.09., Sichtprüfung): „Monat netto“ · „Jahr netto“ · „pauschal netto“. */
+export const EINHEIT_VORGABE: Record<PreisBasis, string> = { monat: 'Monat netto', jahr: 'Jahr netto', einmalig: 'pauschal netto' };
+
+/**
+ * Die Einheit zur Basis: eine eingetragene Einheit bleibt, solange sie nicht einer ANDEREN Basis widerspricht — ein Produkt
+ * „einmalig“ mit „Monat netto“ (die Vorgabe beim Anlegen) zeigt „pauschal netto“. Leer → Vorgabe der Basis.
+ */
+export function einheitFuerBasis(einheit: string | undefined, basis: PreisBasis | null): string {
+  const e = (einheit ?? '').trim();
+  if (!basis) return e;
+  if (!e) return EINHEIT_VORGABE[basis];
+  const ausText = preisBasisVon({ preis: { betrag: 0, einheit: e } });
+  return ausText && ausText !== basis ? EINHEIT_VORGABE[basis] : e;
+}
+/** Anzeige-Einheit eines Produkts (Katalog, Angebots-Produktwahl, Liste). */
+export const produktEinheit = (l: Pick<Leistung, 'preis'>): string => einheitFuerBasis(l.preis.einheit, preisBasisVon(l));
+
 /**
  * Einheit der Planung aus der Gesellschaft des Produkts (28.09., eine Einheitenliste):
  * kdc · kdv · ug wie im CRM — die Selbstständigkeit ist eine eigene Achse im Baukasten

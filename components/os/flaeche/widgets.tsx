@@ -18,7 +18,10 @@ import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { wartetAuf } from '@/lib/aufgaben/abhaengig';
-import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
+import { parseSchnell, schnellZustaendigkeit } from '@/lib/make-one/schnell-anlegen';
+import { usePersonen } from '@/components/os/aufgaben/hilfe';
+import type { Owner } from '@/types/common';
+import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
 import { TAGE, MAHLZEITEN, type ErnaehrungFile } from '@/lib/ernaehrung/modell';
@@ -88,6 +91,7 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
   const router = useRouter();
   const heute = localDay();
   const { state, dispatch } = useTasks();
+  const personen = usePersonen();
   const [neu, setNeu] = useState('');
   // Ohne Einstellung gilt der Space der Fläche (28.09. abends) — auf Privat-Flächen nie Business-Aufgaben und umgekehrt.
   const n = num(e.anzahl, 8), nur = str(e.nur, 'dran'), sp = str(e.space, spaceAusFlaeche(seite)), eh = str(e.einheit, 'alle');
@@ -101,18 +105,20 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
     .sort((a, b) => ((a.dueDate ?? '9') < (b.dueDate ?? '9') ? -1 : 1)).slice(0, n);
   const projekt = (id: string) => state.projects.find(p => p.id === id)?.title ?? '';
   const anlegen = () => {
-    const p = parseSchnell(neu.trim(), state.projects); if (!p.title) return;
+    const p = parseSchnell(neu.trim(), state.projects, undefined, personen); if (!p.title) return;
+    // @Name aus dem Team, eine Verantwortliche (29.09., F4): ohne @ = ich, „@beide“ = ich + die anderen beteiligt.
+    const z = schnellZustaendigkeit(p, personLesen() || personen[0]?.speicher || 'kevin', personen.map(x => x.speicher));
     const space = sp === 'privat' || sp === 'business' ? sp : eh !== 'alle' ? 'business' : undefined;
     // Aufgaben-Space (28.09. abends): Privat → privat; Business → die Firma der Einheit, sonst KD Ventures; ohne Projekt → „Sonstige“.
     const spaceId = space === 'privat' ? 'privat' : space === 'business' ? (gesellschaftAusEinheit(eh) ?? 'kdv') : undefined;
     const einheit = spaceId ? einheitVonSpace(spaceId) : undefined;
-    dispatch({ type: 'ADD_TASK', payload: { projectId: p.projectId ?? (spaceId ? sonstigeProjektId(spaceId) : state.projects[0]?.id ?? ''), ...(space ? { space } : {}), ...(spaceId ? { spaceId } : {}), ...(einheit ? { einheit } : {}), title: p.title, description: '', status: 'todo', priority: p.priority, assignee: p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0, dueDate: p.dueDate ?? heute } });
+    dispatch({ type: 'ADD_TASK', payload: { projectId: p.projectId ?? (spaceId ? sonstigeProjektId(spaceId) : state.projects[0]?.id ?? ''), ...(space ? { space } : {}), ...(spaceId ? { spaceId } : {}), ...(einheit ? { einheit } : {}), title: p.title, description: '', status: 'todo', priority: p.priority, assignee: z.assignee as Owner, ...(z.beteiligte ? { beteiligte: z.beteiligte } : {}), tags: [], subTasks: [], dependencies: [], sortOrder: 0, dueDate: p.dueDate ?? heute } });
     setNeu('');
   };
   return (
     <Karte i={i}>
       <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href={sp === 'alle' ? '/os/aufgaben' : `/os/aufgaben?space=${sp}`} style={link}>{offen.length} offen ›</Link>}>{titel ?? `${nur === 'alle' ? 'Aufgaben' : 'Aufgaben heute'}${sp === 'alle' ? '' : ` · ${SPACE_LABEL[sp as 'privat' | 'business']}`}${eh === 'alle' ? '' : eh === 'ohne' ? ' · ohne Einheit' : ` · ${eh}`}`}</Ueberschrift>
-      <input value={neu} onChange={x => setNeu(x.target.value)} onKeyDown={x => { if (x.key === 'Enter') anlegen(); }} placeholder="Neue Aufgabe für heute … (!! kritisch · fr · #projekt · @malin)" style={{ ...feld, marginBottom: 6 }} />
+      <input value={neu} onChange={x => setNeu(x.target.value)} onKeyDown={x => { if (x.key === 'Enter') anlegen(); }} placeholder="Neue Aufgabe für heute … (!! kritisch · fr · #projekt · @Name)" style={{ ...feld, marginBottom: 6 }} />
       <Liste>
         {liste.length === 0 && <Leer>{offen.length ? 'Nichts fällig, nichts kritisch.' : 'Keine Aufgaben. Eine Zeile oben, Enter — oder ZOE sagen.'}</Leer>}
         {liste.map(t => (

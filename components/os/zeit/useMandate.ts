@@ -28,10 +28,13 @@ function holen(): Promise<MandateStand> {
   return unterwegs;
 }
 
-/** Die Mandate als Kurzform (und ob es Zugang gibt) — geteilt von allen Chips und Links im Fenster. */
-export function useMandate(): MandateStand & { geladen: boolean; karte: ReadonlyMap<string, MandatKurz> } {
+/**
+ * Die Mandate als Kurzform (und ob es Zugang gibt) — geteilt von allen Chips und Links im Fenster.
+ * `an = false`: nichts abrufen (z. B. der Fokus-Kopf, solange kein Mandat zugeordnet ist — er steht auf jeder Seite).
+ */
+export function useMandate(an = true): MandateStand & { geladen: boolean; karte: ReadonlyMap<string, MandatKurz> } {
   const [w, setW] = useState<MandateStand | null>(zwischen?.w ?? null);
-  useEffect(() => { let aktiv = true; void holen().then(x => { if (aktiv) setW(x); }); return () => { aktiv = false; }; }, []);
+  useEffect(() => { if (!an) return; let aktiv = true; void holen().then(x => { if (aktiv) setW(x); }); return () => { aktiv = false; }; }, [an]);
   const karte = useMemo(() => new Map((w?.mandate ?? []).map(m => [m.id, m])), [w]);
   return { mandate: w?.mandate ?? [], zugang: w?.zugang ?? false, geladen: !!w, karte };
 }

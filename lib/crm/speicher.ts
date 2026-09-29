@@ -9,7 +9,7 @@ import { protokolliere, bestandDiff, listenDiff, type Aenderung, type Wer } from
 import type { Kontakt } from '@/lib/make-one/crm';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
-import { firmaIdsErgaenzen } from './firmen-bezug';
+import { firmaIdsErgaenzen, firmaIdsNachziehen } from './firmen-bezug';
 import { localDay } from '@/lib/zeit';
 import { crmKonflikte, loeschSperren, type CrmKonflikt, type LoeschSperre, type VerweisKontext } from './crm-stand';
 import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe, type FollowUp } from './typen';
@@ -681,7 +681,9 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
     const kontakte = (await loadJson<Kartei>('kontakte'))?.kontakte ?? [];
     const roh = await personenImLauf.run(kontakte, () => mut(basis));
     const jetzt = new Date().toISOString();
-    const neu = roh === basis ? roh : crmFolgen(basis, roh, jetzt, person);
+    // Firmen-Kennungen auch am ERGEBNIS nachziehen (29.09., F1): gespeicherter Stand = gelesener Stand (`ladeCrm`),
+    // sonst weicht der Fingerabdruck ab und die nächste Änderung desselben Eintrags bekommt 409.
+    const neu = roh === basis ? roh : firmaIdsNachziehen(basis, crmFolgen(basis, roh, jetzt, person));
     const weg = geloeschteDeals(basis, neu);
     if (karteiBetroffen(kontakte, weg)) {
       // Absichtsprotokoll (29.09., Paket D-C #17): die Kartei wird HIER (innen) geschrieben, das CRM erst danach. Scheitert

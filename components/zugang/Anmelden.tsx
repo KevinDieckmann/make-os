@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, MIKRO } from '@/lib/make-one/design';
 import { feld as feldBasis } from '@/components/os/schlank';
+import { personLesen, werVergessen } from '@/lib/make-one/arbeitsplatz-browser';
 
 type Art = 'anmelden' | 'einrichten' | 'beitreten';
 
@@ -34,8 +35,11 @@ export function Anmelden() {
   const [laeuft, setLaeuft] = useState(false);
 
   useEffect(() => {
-    // Schon angemeldet? Dann gleich weiter — die Maske wäre nur im Weg.
-    fetch('/api/konto/ich').then(r => (r.ok ? r.json() : null)).then(d => { if (d?.ich) window.location.assign(zu); }).catch(() => {});
+    // Schon angemeldet? Dann gleich weiter — die Maske wäre nur im Weg. Nur nachfragen, wenn der Namens-Zettel es nahelegt
+    // (ohne Sitzung gäbe es nur ein 401 in der Konsole, 29.09.); antwortet der Server nein, den alten Zettel vergessen.
+    if (personLesen()) {
+      fetch('/api/konto/ich').then(r => { if (!r.ok) { werVergessen(); return null; } return r.json(); }).then(d => { if (d?.ich) window.location.assign(zu); }).catch(() => {});
+    }
     fetch('/api/konto/status').then(r => r.json()).then(d => {
       setEingerichtet(!!d.eingerichtet);
       if (!d.eingerichtet) setArt('einrichten');

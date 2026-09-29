@@ -16,7 +16,7 @@ const AKZENT = '#21B5AA';
 export function Blatt({ d, logoUrl }: { d: AngebotDokument; logoUrl?: string | null }) {
   const rechts = { textAlign: 'right' as const, whiteSpace: 'nowrap' as const };
   return (
-    <div role="document" aria-label={`Angebot ${d.nummer}`} style={{ background: PAPIER, color: TINTE, borderRadius: 6, boxShadow: '0 12px 40px -12px rgba(0,0,0,.6)', padding: 'clamp(18px, 4vw, 44px)', fontFamily: 'Helvetica, Arial, sans-serif', fontSize: 12.5, lineHeight: 1.45, maxWidth: 820, margin: '0 auto', position: 'relative', overflowWrap: 'anywhere' }}>
+    <div role="document" aria-label={`Angebot ${d.nummer}`} style={{ background: PAPIER, color: TINTE, borderRadius: 6, boxShadow: '0 12px 40px -12px rgba(0,0,0,.6)', padding: 'clamp(18px, 4vw, 44px)', fontFamily: 'Helvetica, Arial, sans-serif', fontSize: 12.5, lineHeight: 1.45, width: '100%', maxWidth: 820, minWidth: 0, boxSizing: 'border-box', margin: '0 auto', position: 'relative', overflowWrap: 'anywhere' }}>
       {d.entwurf && <div aria-hidden style={{ position: 'absolute', top: 14, right: 18, fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: '#C0561A' }}>ENTWURF</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div>
@@ -40,7 +40,9 @@ export function Blatt({ d, logoUrl }: { d: AngebotDokument; logoUrl?: string | n
       <h2 style={{ fontSize: 18, fontWeight: 700, margin: '28px 0 10px' }}>Angebot: {d.titel}</h2>
       {d.einleitung && <div style={{ whiteSpace: 'pre-wrap', marginBottom: 16 }}>{d.einleitung}</div>}
 
-      <div style={{ overflowX: 'auto' }}>
+      {/* Schmal (375 px): die Tabelle behält ihre 520 px und scrollt in sich — das Blatt selbst bleibt so breit wie der Bildschirm
+          (Blatt `width: 100%` + `minWidth: 0`, die umgebenden Raster `minmax(0, 1fr)`; Sichtprüfung 29.09., F2). */}
+      <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
           <thead>
             <tr style={{ color: LEISE, fontSize: 11, fontWeight: 700, textAlign: 'left' }}>

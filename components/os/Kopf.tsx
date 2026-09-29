@@ -23,6 +23,8 @@ import { zeitText, teile } from '@/lib/zeitmessung/modell';
 import { gemerkterFokus, fokusMerken, fokusAbgleichen, FOKUS_MERKER, FOKUS_EREIGNIS, type LaufenderFokus } from '@/lib/zeitmessung/fokus-laufend';
 import { useTasks } from '@/context/TasksContext';
 import { ZuordnungWahl, type Zuordnung } from './zeit/Zuordnung';
+import { useMandate } from './zeit/useMandate';
+import { fokusTitel } from '@/lib/zeitmessung/fokus-regeln';
 import { WEG } from '@/lib/wege';
 import { zeitSchluessel } from '@/lib/zeitmessung/bereich';
 import { Glocke } from './Glocke';
@@ -181,6 +183,8 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
   const [laufend, setLaufend] = useState<LaufenderFokus | null>(null);
   const [jetzt, setJetzt] = useState(0);
   const { state } = useTasks();
+  // Mandat im Kopf nennen (29.09.) — die Mandate nur laden, wenn eins zugeordnet ist (der Kopf steht auf jeder Seite).
+  const { karte: mandate } = useMandate(!!laufend?.mandatId);
   useEffect(() => {
     const lesen = () => { setLaufend(gemerkterFokus()); setJetzt(Date.now()); };
     lesen();
@@ -230,10 +234,11 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
   if (laufend) {
     const sek = Math.max(0, Math.round((jetzt - Date.parse(laufend.von)) / 1000));
     const aufgabe = laufend.aufgabeId ? state.tasks.find(t => t.id === laufend.aufgabeId)?.title : undefined;
-    const text = aufgabe ? (aufgabe.length > 22 ? `${aufgabe.slice(0, 21)}…` : aufgabe) : laufend.label;
+    const titel = fokusTitel(laufend, aufgabe, laufend.mandatId ? mandate.get(laufend.mandatId) : null);
+    const text = titel.length > 22 ? `${titel.slice(0, 21)}…` : titel;
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flex: '0 0 auto', minWidth: 0 }}>
-        <button onClick={stoppen} title={`Fokus „${aufgabe ?? laufend.label}“ beenden`} className="fassbar fokus-laeuft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, border: `1px solid ${C.aktiv}66`, background: `${C.aktiv}14`, color: C.ink, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+        <button onClick={stoppen} title={`Fokus „${titel}“ beenden`} className="fassbar fokus-laeuft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, border: `1px solid ${C.aktiv}66`, background: `${C.aktiv}14`, color: C.ink, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
           <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 8px ${C.aktiv}` }} />
           <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{uhr(sek)}</span>
           <span className="wachstum-kopf-label" style={{ fontSize: 12, color: C.inkDim }}>{text}</span>

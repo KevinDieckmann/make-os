@@ -36,3 +36,14 @@ export function laufendAbgleich(server: LaufenderFokus | null, lokal: LaufenderF
   if (lokal) return { art: 'hochladen', laufend: lokal };
   return { art: 'nichts', laufend: null };
 }
+
+/**
+ * Was der Fokus-Kopf nennt (29.09., Sichtprüfung): die Aufgabe, sonst das Mandat („Firma · Titel“), sonst der Bereich.
+ * Vorher stand bei zugeordnetem Mandat nur der Bereich da („Fokus „MAKE OS““).
+ */
+export function fokusTitel(l: Pick<LaufenderFokus, 'label' | 'mandatId'>, aufgabe?: string, mandat?: { firma: string; titel: string } | null): string {
+  if (aufgabe?.trim()) return aufgabe.trim();
+  if (l.mandatId && mandat) return `${mandat.firma} · ${mandat.titel}`;
+  if (l.mandatId) return 'Mandat';
+  return l.label || 'Fokus';
+}

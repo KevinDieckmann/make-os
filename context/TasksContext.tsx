@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react';
-import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
+import { personLesen, aufAnmeldeseite } from '@/lib/make-one/arbeitsplatz-browser';
 import type { TasksState, TasksAction, Project, Task, SubTask, AufgabenListe, AufgabenStatus, AufgabenGruppe, AufgabenVorlage, VerlaufEintrag } from '@/types/tasks';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';
 import { abhaengigAngleichen } from '@/lib/aufgaben/abhaengig';
@@ -494,7 +494,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     const laden = () => {
       if (!alive) return;
       // Noch keine Sitzung (z. B. Anmeldeseite): alle zwei Sekunden nachsehen (23.09.).
-      const ich = personLesen();
+      // Auf /anmelden nie (29.09.): ein alter Namens-Zettel hätte sonst 401 von /api/state/tasks geholt.
+      const ich = aufAnmeldeseite() ? '' : personLesen();
       if (!ich) { warten = setTimeout(laden, 2000); return; }
       person.current = ich;
       fetch(`${WEG}?papierkorb=1`)

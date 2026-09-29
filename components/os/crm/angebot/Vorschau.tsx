@@ -28,7 +28,7 @@ export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, nachfass
   const gesperrt = !!ampel.sperre || absenderFehlt;
   const f = { ...feld, fontSize: TYP.bedien, padding: '8px 11px' } as const;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: breit ? 'minmax(300px, 380px) minmax(0, 1fr)' : '1fr', gap: 16, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: breit ? 'minmax(300px, 380px) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 16, alignItems: 'start', minWidth: 0 }}>
       <div style={{ display: 'grid', gap: 12, position: breit ? 'sticky' : undefined, top: 12 }}>
         <Karte i={0}>
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkDim, marginBottom: 10 }}>Mail-Entwurf</div>

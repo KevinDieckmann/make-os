@@ -12,7 +12,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { SITZUNG_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
+import { SITZUNG_COOKIE, WER_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
 import { standGueltig } from '@/lib/zugang/stand-pruefung';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
@@ -94,7 +94,11 @@ export async function middleware(req: NextRequest) {
   const ziel = req.nextUrl.clone();
   ziel.pathname = '/anmelden';
   ziel.search = pfad && pfad !== '/' ? `?zu=${encodeURIComponent(pfad)}` : '';
-  return NextResponse.redirect(ziel);
+  const weiter = NextResponse.redirect(ziel);
+  // Sitzung ungültig (abgelaufen, Passwort anderswo geändert): den lesbaren Namens-Zettel mit wegräumen — sonst hielten die
+  // Kontexte im Browser (Aufgaben, Kalender) die Person für angemeldet und fragten auf /anmelden mit 401 an (29.09.).
+  if (req.cookies.get(WER_COOKIE)?.value) weiter.cookies.set(WER_COOKIE, '', { maxAge: 0, path: '/' });
+  return weiter;
 }
 
 // Alles schützen. Frei bleiben nur Next-interne Assets (kompilierter Code,

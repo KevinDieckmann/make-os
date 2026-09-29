@@ -249,7 +249,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
 
   const statusText = { ruhig: 'noch nicht gespeichert', wartet: 'Änderung …', speichert: 'speichert …', gespeichert: 'Entwurf gespeichert', fehler: 'nicht gespeichert' }[status];
   return (
-    <div style={{ display: 'grid', gap: 14, paddingBottom: 8 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, paddingBottom: 8, minWidth: 0 }}>
       {meldung && <Karte i={0} akzent={LEUCHT.achtung}><div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: TYP.bedien, color: C.inkDim }}><span>{meldung}</span><button onClick={() => setMeldung(null)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer' }}>ok</button></div></Karte>}
       {meine && (
         <Karte i={0} akzent={LEUCHT.achtung}>

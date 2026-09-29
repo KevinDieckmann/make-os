@@ -3,7 +3,7 @@
 // gedreht — seitdem gilt: diese Sorte Logik wird getestet.
 
 import { describe, expect, it } from 'vitest';
-import { parseSchnell, tagInT } from '@/lib/make-one/schnell-anlegen';
+import { parseSchnell, tagInT, schnellZustaendigkeit, schnellVorschau, personZuName } from '@/lib/make-one/schnell-anlegen';
 import { localDay } from '@/lib/zeit';
 
 const PROJEKTE = [
@@ -23,10 +23,16 @@ describe('parseSchnell', () => {
     expect(parseSchnell('Angebot schreiben', PROJEKTE).priority).toBe('medium');
   });
 
-  it('weist @malin und @beide korrekt zu', () => {
-    expect(parseSchnell('Rechnung prüfen @malin', PROJEKTE).assignee).toBe('malin');
-    expect(parseSchnell('Wochenplanung @beide', PROJEKTE).assignee).toBe('both');
-    expect(parseSchnell('Ohne Kürzel', PROJEKTE).assignee).toBe('kevin');
+  it('weist @malin und @beide korrekt zu (eine Verantwortliche, 29.09.)', () => {
+    expect(parseSchnell('Rechnung prüfen @malin', PROJEKTE).zustaendig).toBe('malin');
+    const beide = parseSchnell('Wochenplanung @beide', PROJEKTE);
+    expect(beide).toMatchObject({ title: 'Wochenplanung', alleBeteiligt: true, zustaendigGetippt: true });
+    expect(beide.zustaendig).toBeUndefined();
+    expect(schnellZustaendigkeit(beide, 'kevin', ['kevin', 'malin'])).toEqual({ assignee: 'kevin', beteiligte: ['malin'] });
+    // Ohne @ = ich — kein fester Rückfall auf eine Person.
+    const ohne = parseSchnell('Ohne Kürzel', PROJEKTE);
+    expect(ohne.zustaendigGetippt).toBe(false);
+    expect(schnellZustaendigkeit(ohne, 'malin', ['kevin', 'malin'])).toEqual({ assignee: 'malin' });
   });
 
   it('setzt heute/morgen als Datum', () => {
@@ -55,7 +61,7 @@ describe('parseSchnell', () => {
     const p = parseSchnell('!! Vertrag gegenlesen morgen @malin #capos', PROJEKTE);
     expect(p).toMatchObject({
       title: 'Vertrag gegenlesen', priority: 'critical',
-      assignee: 'malin', projectId: 'p-capos', dueDate: tagInT(1),
+      zustaendig: 'malin', projectId: 'p-capos', dueDate: tagInT(1),
     });
   });
 });
@@ -83,9 +89,43 @@ describe('parseSchnell ohne erfundene Fristen (#21)', () => {
     expect(parseSchnell('Schalttag 29.02.', PROJEKTE, HEUTE).dueDate).toBe('2028-02-29');
   });
   it('Vorschau vor dem Speichern: „Fr 02.10.“, Priorität, Person, Projekt', async () => {
-    const { schnellVorschau } = await import('@/lib/make-one/schnell-anlegen');
     const p = parseSchnell('!! Vertrag fr @malin #capos', PROJEKTE, HEUTE);
     expect(schnellVorschau(p, PROJEKTE, { malin: 'Malin' })).toEqual(['Fr 02.10.', 'kritisch', '@Malin', '#CapOS Aufbau']);
     expect(schnellVorschau(parseSchnell('Nur Text', PROJEKTE, HEUTE), PROJEKTE)).toEqual([]);
+  });
+});
+
+// Sichtprüfung 29.09., F4: @Name aus dem Team statt fest @kevin/@malin — Vorname, Kurzname, Speichername, Umlaut-tolerant.
+describe('@Name aus dem Team (F4)', () => {
+  const HEUTE = '2026-09-29';
+  // Erfundene Personen des Haushalts (wie `usePersonen` sie liefert).
+  const TEAM = [
+    { speicher: 'kevin', namen: ['Kevin', 'KD', 'kevin'] },
+    { speicher: 'malin', namen: ['Malin', 'malin'] },
+    { speicher: 'juergen', namen: ['Jürgen', 'JB', 'juergen'] },
+  ];
+  it('Vorname, Kurzname und Umlaut-Schreibweisen treffen dieselbe Person', () => {
+    for (const w of ['@Jürgen', '@jürgen', '@juergen', '@jurgen', '@JB']) {
+      const p = parseSchnell(`Bericht ${w} lesen`, PROJEKTE, HEUTE, TEAM);
+      expect(p, w).toMatchObject({ zustaendig: 'juergen', title: 'Bericht lesen' });
+    }
+    expect(personZuName('kd', TEAM)).toBe('kevin');
+  });
+  it('erste Person verantwortlich, weitere beteiligt; unbekannte @Wörter bleiben im Titel', () => {
+    const p = parseSchnell('Angebot @malin @jürgen @unbekannt prüfen', PROJEKTE, HEUTE, TEAM);
+    expect(p).toMatchObject({ zustaendig: 'malin', beteiligte: ['juergen'], title: 'Angebot @unbekannt prüfen' });
+    expect(schnellZustaendigkeit(p, 'kevin', TEAM.map(x => x.speicher))).toEqual({ assignee: 'malin', beteiligte: ['juergen'] });
+    expect(schnellVorschau(p, PROJEKTE, { malin: 'Malin', juergen: 'Jürgen' })).toEqual(['@Malin', '+Jürgen']);
+  });
+  it('„@alle“/„@beide“ = ich + alle anderen; „nur ich“ = nur ich ohne Beteiligte', () => {
+    const p = parseSchnell('Jour fixe @alle', PROJEKTE, HEUTE, TEAM);
+    expect(p.title).toBe('Jour fixe');
+    expect(schnellZustaendigkeit(p, 'malin', TEAM.map(x => x.speicher))).toEqual({ assignee: 'malin', beteiligte: ['kevin', 'juergen'] });
+    expect(schnellZustaendigkeit(parseSchnell('Privat @malin', PROJEKTE, HEUTE, TEAM), 'kevin', TEAM.map(x => x.speicher), true)).toEqual({ assignee: 'kevin' });
+  });
+  it('mehrdeutige Namen und E-Mail-Adressen werden nicht zugeordnet', () => {
+    const doppelt = [{ speicher: 'a', namen: ['Kim'] }, { speicher: 'b', namen: ['Kim'] }];
+    expect(parseSchnell('Frage @kim', PROJEKTE, HEUTE, doppelt)).toMatchObject({ title: 'Frage @kim', zustaendigGetippt: false });
+    expect(parseSchnell('Mail an info@malin.test', PROJEKTE, HEUTE, TEAM)).toMatchObject({ title: 'Mail an info@malin.test', zustaendigGetippt: false });
   });
 });

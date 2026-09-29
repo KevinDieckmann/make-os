@@ -88,9 +88,11 @@ export function WiederholungWahl({ wert, basis, onChange, vorschau = 'nach-basis
     setze({ rotation: [erste, ...personen.map(p => p.speicher).filter(p => p !== erste)] });
   };
 
+  // Schmal (375 px, Sichtprüfung 29.09.): die Auswahl ist so breit wie ihre längste Option („Werktage (ohne Feiertage NRW)“)
+  // und ragte über den Kartenrand — sie darf schrumpfen (`maxWidth: 100%`, `minWidth: 0`), die Wochentage umbrechen.
   return (
-    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-      <select value={wert?.regel ?? ''} aria-label="Wiederholung" onChange={e => onChange(e.target.value ? mitRegel(e.target.value as WiederholungRegel, wert, bezug) : undefined)} style={klein}>
+    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', maxWidth: '100%', minWidth: 0 }}>
+      <select value={wert?.regel ?? ''} aria-label="Wiederholung" onChange={e => onChange(e.target.value ? mitRegel(e.target.value as WiederholungRegel, wert, bezug) : undefined)} style={{ ...klein, maxWidth: '100%', minWidth: 0, textOverflow: 'ellipsis' }}>
         <option value="">nie</option>
         {REGELN.map(r => <option key={r} value={r}>{r === 'werktage' ? 'Werktage (ohne Feiertage NRW)' : REGEL_LABEL[r]}</option>)}
       </select>
@@ -102,7 +104,7 @@ export function WiederholungWahl({ wert, basis, onChange, vorschau = 'nach-basis
         </label>
       )}
       {wert?.regel === 'woechentlich' && (
-        <span role="group" aria-label="Wochentage" style={{ display: 'inline-flex', gap: 3 }}>
+        <span role="group" aria-label="Wochentage" style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 3, maxWidth: '100%' }}>
           {WOCHE.map(d => {
             const an = wert.wochentage?.includes(d) ?? false;
             return (

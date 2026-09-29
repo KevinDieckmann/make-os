@@ -65,3 +65,43 @@ export function firmaIdsErgaenzen<B extends Pick<CrmBestand, 'firmen' | 'chancen
 export function firmenName(c: Pick<Chance, 'firmaId' | 'firma'>, firmen: Firma[]): string | undefined {
   return firmaVonDeal(c, firmen)?.name ?? c.firma;
 }
+
+/**
+ * Firmen-Kennungen nach einer Änderung nachziehen (29.09., Sichtprüfung F1) — IN der Sperre, vor dem Schreiben:
+ *  · Anzeigename (Mandat `kunde`, Deal `firma`) geändert, Kennung aber nicht mitgeändert → die Kennung passt nur noch,
+ *    wenn ihre Firma genau so heißt; sonst neu auflösen (eindeutiger Treffer) bzw. entfernen, wenn es keinen gibt.
+ *    Eine ausdrücklich mitgeschickte neue Kennung gewinnt immer.
+ *  · danach fehlende Kennungen ergänzen (`firmaIdsErgaenzen`) — dieselbe Regel wie `ladeCrm`. So ist der
+ *    gespeicherte Stand gleich dem gelesenen; sonst wich der Fingerabdruck ab und die nächste Änderung bekam 409.
+ * Gibt denselben Bestand zurück, wenn nichts zu tun war.
+ */
+export function firmaIdsNachziehen<B extends Pick<CrmBestand, 'firmen' | 'chancen' | 'mandate'>>(vorher: Pick<CrmBestand, 'chancen' | 'mandate'>, nachher: B): B {
+  const altC = new Map((vorher.chancen ?? []).map(c => [c.id, c]));
+  const altM = new Map((vorher.mandate ?? []).map(m => [m.id, m]));
+  const firmen = nachher.firmen ?? [];
+  const neuAufloesen = <T extends { firmaId?: string }>(e: T, name: string | undefined): T => {
+    const jetzt = e.firmaId ? firmen.find(f => f.id === e.firmaId) : undefined;
+    if (jetzt && norm(jetzt.name) === norm(name) && norm(name)) return e;
+    const f = firmaNachName(firmen, name);
+    if (f) return f.id === e.firmaId ? e : { ...e, firmaId: f.id };
+    if (!e.firmaId) return e;
+    const { firmaId: _weg, ...rest } = e;
+    return rest as T;
+  };
+  let geaendert = false;
+  const chancen = (nachher.chancen ?? []).map(c => {
+    const a = altC.get(c.id);
+    if (!a || norm(a.firma) === norm(c.firma) || a.firmaId !== c.firmaId) return c;
+    const n = neuAufloesen(c, c.firma);
+    if (n !== c) geaendert = true;
+    return n;
+  });
+  const mandate = (nachher.mandate ?? []).map(m => {
+    const a = altM.get(m.id);
+    if (!a || norm(a.kunde) === norm(m.kunde) || a.firmaId !== m.firmaId) return m;
+    const n = neuAufloesen(m, m.kunde);
+    if (n !== m) geaendert = true;
+    return n;
+  });
+  return firmaIdsErgaenzen(geaendert ? { ...nachher, chancen, mandate } : nachher).bestand;
+}
