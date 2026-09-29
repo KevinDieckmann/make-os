@@ -531,6 +531,8 @@ const ROUTEN: Record<string, () => Promise<Record<string, unknown>>> = {
   '/api/crm/import': () => import('@/app/api/crm/import/route'),
   '/api/tasks/create': () => import('@/app/api/tasks/create/route'),
   '/api/heads/[head]': () => import('@/app/api/heads/[head]/route'),
+  // 29.09. (#K2): Kalender-Vorschläge des Kalender-Agenten — anlegen nur über den Termin-Schreibweg (lib/zoe/kalender-vorschlag.ts).
+  '/api/kalender/termin': () => import('@/app/api/kalender/termin/route'),
 };
 
 /**

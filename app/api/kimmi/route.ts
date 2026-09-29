@@ -5,7 +5,8 @@
 
 import { NextResponse } from 'next/server';
 import { agentRoster, LIVE_AGENTS } from '@/lib/make-one/agents-data';
-import { gatherBrain, promptBrain } from '@/lib/brain';
+import { gatherBrain, promptBrain, kalenderImPrompt } from '@/lib/brain';
+import { jetztSatz } from '@/lib/zeit';
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { fuerPrompt, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib/zoe/werkzeuge';
@@ -37,12 +38,13 @@ export const dynamic = 'force-dynamic';
 
 // Live-Bewusstsein kommt jetzt aus dem Brain — derselben Kontextschicht, die
 // auch Loops und Tageslauf nutzen. Eine Wahrheit statt vier Sammler.
-async function liveContext(person: string = 'kevin'): Promise<string> {
+// `kalenderFremd` (29.09., #K1): stehen Termintitel/Namen im Prompt, gilt das Gespräch als „fremd gelesen“.
+async function liveContext(person: string = 'kevin'): Promise<{ text: string; kalenderFremd: boolean }> {
   try {
     const b = await gatherBrain(undefined, person);
-    return promptBrain(b);
+    return { text: promptBrain(b), kalenderFremd: kalenderImPrompt(b) };
   } catch {
-    return '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)';
+    return { text: '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)', kalenderFremd: false };
   }
 }
 function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaechtnis = '', person: string = 'kevin', brain = '', space: 'privat' | 'business' | null = null): string {
@@ -55,6 +57,8 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
       ? 'GEDÄCHTNIS: Die vorherigen Züge dieses Gesprächs stehen dir zur Verfügung. Beziehe dich darauf, statt Fragen zu wiederholen — „das", „nochmal", „und für Juli" meint das, worüber ihr gerade geredet habt. Keine erneute Begrüßung, keine Zusammenfassung des bisherigen Gesprächs, es sei denn Kevin fragt danach.'
       : '',
     FREMD_REGEL,
+    // Datum, Wochentag, Uhrzeit und Zone (29.09., #K3) — Werkzeuge verlangen YYYY-MM-DD, „bis Freitag“ muss auf den richtigen Tag fallen.
+    `ZEIT: ${jetztSatz()}`,
     'Du bist ZOE — die zentrale Intelligenz und Chief of Staff von Kevins persönlichem Betriebssystem „MAKE OS". Kevin hat dich nach dem Vorbild benannt: ruhig, allgegenwärtig, einen Schritt voraus.',
     'WAS DU WIRST: die Familien-KI von Kevin und Malin. Nicht ein Werkzeug für Aufgaben, sondern ein Begleiter fürs ganze Leben — der im Hintergrund steuert, mit dem gesprochen wird und dem viel anvertraut wird, damit er wirklich helfen kann. Sie bauen dich bewusst unabhängig auf ihren eigenen Rechnern, weil sie in den nächsten Jahren Firmen kaufen, verkaufen, aufbauen und skalieren werden — und danach auch Maschinen zu steuern haben. Denke und antworte in diesem Maßstab: langfristig, mitschreibend, auf Wiederholbarkeit gebaut, und mit Gesundheit und Beziehung gleichrangig neben dem Geschäft.',
     // Kevin am 06.09.: Malin bekommt „einen eigenen ZOE mit eigenem
@@ -143,7 +147,8 @@ export async function POST(req: Request) {
   // Brain — Board, OKR & Co. bekommen ihn nie.
   const haushalt = await haushaltVon(req).catch(() => null);
   const haushaltBlock = haushalt ? await ladeHaushalt(haushalt.haushalt).then(h => blockHaushalt(h)).catch(() => '') : '';
-  const live = [await liveContext(person), haushaltBlock].filter(Boolean).join('\n\n');
+  const lage = await liveContext(person);
+  const live = [lage.text, haushaltBlock].filter(Boolean).join('\n\n');
   // Das Langzeit-Gedächtnis geht in jeden Zug mit — knapp gehalten, damit es
   // den Kontext nicht auffrisst (siehe gedaechtnis.ts).
   const gedaechtnis = await liesFakten({ anzahl: 120, raum: person }).then(faktenFuerPrompt).catch(() => '');
@@ -649,11 +654,14 @@ export async function POST(req: Request) {
     // Prompt-Injection-Schutz (26.09.): Sobald Fremdinhalt gelesen wurde (Postfach, Web) — oder der
     // Browser Kontext mitschickt (28.09., K1 #98) —, wirken schreibende Werkzeuge in diesem Gespräch nur
     // noch als Vorschlag (Freigabe). Regeln rein und getestet in lib/zoe/gespraech-schutz.ts.
-    let fremdGelesen = kontextFremd;
+    // Seit 29.09. (#K1) auch, sobald Termintitel/Einladungen im Prompt stehen (`lage.kalenderFremd`, lib/brain.ts
+    // `kalenderImPrompt`) — der Kalender ist eine Fremdquelle wie das Postfach.
+    let fremdGelesen = kontextFremd || lage.kalenderFremd;
     // Web-Schutz (29.09., #91): hat dieses Gespräch schon CRM/Kartei/Postfach/Notizen gelesen (jetzt oder in einem früheren
     // Zug, `ran` im Verlauf) oder bringt es Kontext/Bezug mit, starten Web-Agenten (Recherche …) nur als Vorschlag.
+    // Termine sind vertraulich (#K1/#K4) — mit Kalender im Prompt ebenso.
     const quelleVon = (n: string) => FREMD_WERKZEUGE[n] ?? FREMD_AGENTEN[n] ?? null;
-    let vertraulich = kontextFremd || !!crmBezug || verlaufVertraulich(payload.verlauf, quelleVon);
+    let vertraulich = kontextFremd || lage.kalenderFremd || !!crmBezug || verlaufVertraulich(payload.verlauf, quelleVon);
 
     // Grundlage aus dem Obsidian-Brain (00_ZOE_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
     const brain = await brainAnweisung(person).catch(() => '');

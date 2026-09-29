@@ -27,6 +27,8 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   aufgabe: async () => (await import('./aufgaben-werkzeuge')).AUFGABE_STAPEL_ART,
   // Paket C7: ZOE hat in der Markttraktion etwas vorbereitet — übernehmen über die normalen CRM-Schreibwege (lib/zoe/crm-vorschlag.ts).
   crm: async () => (await import('./crm-vorschlag')).CRM_STAPEL_ART,
+  // Paket R-Z (#K2): der Kalender-Agent hat Blöcke vorgeschlagen — anlegen über den Termin-Schreibweg (lib/zoe/kalender-vorschlag.ts).
+  kalender: async () => (await import('./kalender-vorschlag')).KALENDER_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

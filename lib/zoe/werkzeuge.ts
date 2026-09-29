@@ -11,7 +11,8 @@
 import { speicherFuer } from '@/lib/zoe/raum';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagePlus } from '@/lib/zeit';
+import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
 import { GRENZEN, UG_FIRMA, rechnungSchutz, sauberFile, type Rechnung as FpRechnung } from '@/lib/finanzen/finanzplan-bestand';
 import { firmaAusAngabe, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { FaktArt } from './gedaechtnis';
@@ -38,20 +39,17 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person = 
   const art = (PLAN_ARTEN as readonly string[]).includes(String(input.art)) ? String(input.art) : 'block';
   const ende = startMin + dauerMin;
 
-  // Feste Termine beider Kalender an diesem Tag — nichts wird überplant.
-  const [cal, kem] = await Promise.all([
-    loadJson<{ events?: { title?: string; startDate?: string; endDate?: string; allDay?: boolean }[] }>('calendar-cache'),
-    loadJson<{ events?: { title?: string; start?: string; end?: string }[] }>('kemaris-calendar'),
-  ]);
-  const fest = [
-    ...(cal?.events ?? []).filter(e => !e.allDay && e.startDate?.slice(0, 10) === date).map(e => ({ titel: e.title ?? '', s: e.startDate!, e: e.endDate })),
-    ...(kem?.events ?? []).filter(e => e.start?.slice(0, 10) === date).map(e => ({ titel: e.title ?? '', s: e.start!, e: e.end })),
-  ].map(x => {
-    const s = new Date(x.s);
-    const sMin = s.getHours() * 60 + s.getMinutes();
-    const eMin = x.e ? (d => d.getHours() * 60 + d.getMinutes())(new Date(x.e)) : sMin + 60;
-    return { titel: x.titel, s: sMin, e: Math.max(eMin, sMin + 15) };
-  });
+  // Feste Termine beider Kalender an diesem Tag — nichts wird überplant. Seit 29.09. (#K4) über denselben Lesepfad wie
+  // die Kalender-Sicht, für die Person gefiltert: private Termine der anderen Person heißen hier nur „Belegt“.
+  const kal = await termineFuerZoe(person, date, tagePlus(date, 1));
+  const fest = [...kal.termine, ...kal.kemaris]
+    .filter(t => !t.ganztags && t.start.slice(0, 10) === date)
+    .map(t => {
+      const s = new Date(t.start);
+      const sMin = s.getHours() * 60 + s.getMinutes();
+      const eMin = t.ende ? (d => d.getHours() * 60 + d.getMinutes())(new Date(t.ende)) : sMin + 60;
+      return { titel: t.titel, s: sMin, e: Math.max(eMin, sMin + 15) };
+    });
   const kollision = fest.find(f => startMin < f.e && f.s < ende);
   if (kollision) return `Kollision mit festem Termin „${kollision.titel}" (${hhmm(kollision.s)}–${hhmm(kollision.e)}) am ${date} — nicht eingeplant. Schlage Kevin eine freie Zeit vor.`;
 

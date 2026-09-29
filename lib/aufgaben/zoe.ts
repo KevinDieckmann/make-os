@@ -265,9 +265,5 @@ export function nurGewaehlt(v: ZoeVorschlagInhalt, felder: ReadonlySet<ZoeFeld>)
   };
 }
 
-const WOCHENTAG_LANG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-/** „Heute ist Dienstag, 29.09.2026 (Zeitzone Europe/Berlin).“ — für den Prompt (#96). */
-export function heuteSatz(heute: string): string {
-  const w = new Date(`${heute}T12:00:00Z`).getUTCDay();
-  return `Heute ist ${WOCHENTAG_LANG[w]}, ${tagText(heute)} (Zeitzone Europe/Berlin).`;
-}
+/** „Heute ist Dienstag, 29.09.2026 (Zeitzone Europe/Berlin).“ — für den Prompt (#96); lebt seit 29.09. (#K3) in lib/zeit.ts. */
+export { heuteSatz } from '@/lib/zeit';

@@ -41,3 +41,21 @@ export function tagVon(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso.slice(0, 10) : localDay(d);
 }
+
+// ── Datum im Prompt (29.09., Paket R-Z #K3) ──────────────────────────────────
+// Ohne Datum rechnet ein Modell „bis Freitag“ oder „morgen früh“ um 00:30 auf den falschen Tag. Der Satz stand erst nur
+// im Aufgabenlauf (lib/aufgaben/zoe.ts); jetzt hier, damit ZOE-Gespräch und Läufe denselben benutzen.
+
+const WOCHENTAG_LANG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+const UHR_FORMAT = new Intl.DateTimeFormat('de-DE', { timeZone: ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
+/** „Heute ist Dienstag, 29.09.2026 (Zeitzone Europe/Berlin).“ — `heute` = Berliner Tag (YYYY-MM-DD). */
+export function heuteSatz(heute: string): string {
+  const w = new Date(`${heute.slice(0, 10)}T12:00:00Z`).getUTCDay();
+  return `Heute ist ${WOCHENTAG_LANG[w]}, ${heute.slice(8, 10)}.${heute.slice(5, 7)}.${heute.slice(0, 4)} (Zeitzone Europe/Berlin).`;
+}
+
+/** Datum + Berliner Uhrzeit für einen Systemprompt, mit der Regel für relative Angaben. */
+export function jetztSatz(d = new Date()): string {
+  return `${heuteSatz(localDay(d))} Es ist ${UHR_FORMAT.format(d)} Uhr. Relative Angaben („morgen“, „bis Freitag“, „nächste Woche“) rechnest du von diesem Datum aus um, nie von einem angenommenen.`;
+}

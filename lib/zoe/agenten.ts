@@ -165,7 +165,8 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         const d = await post('/api/kalender/analyse', {}, 120_000);
         if (!d.briefing && !d.vorschlaege) return fehl(`Kalender fehlgeschlagen: ${kuerze(d.error, 200)}`);
         const v = (d.vorschlaege ?? []).map((x: { title: string; date: string; startHour: number }) => `${x.title} ${x.date} ${x.startHour}:00`).join(' · ');
-        return gut(`KALENDER-ANALYSE:\n${d.briefing ?? ''}\nKonflikte: ${(d.conflicts ?? []).length}\nVorschläge: ${v || 'keine'}${d.eingetragen ? '\n(Blöcke wurden automatisch eingetragen — Kalender-Agent steht auf autonom.)' : '\n(Eintragen braucht Kevins Klick — Kalender-Agent steht auf Freigabe.)'}`);
+        // 29.09. (#K2): der Agent trägt nie selbst ein — die Blöcke liegen im Freigabe-Stapel (Art „kalender“).
+        return gut(`KALENDER-ANALYSE:\n${d.briefing ?? ''}\nKonflikte: ${(d.conflicts ?? []).length}\nVorschläge: ${v || 'keine'}${d.gestapelt ? `\n(${d.gestapelt} Blöcke liegen im Freigabe-Stapel — eingetragen wird erst per Klick. Behaupte nicht, sie stünden schon im Kalender.)` : v ? '\n(Nichts eingetragen — Eintragen braucht einen Klick.)' : ''}`);
       }
 
       // ── Neu ab 07.09.: die Agenten, die ZOE bisher nicht erreichte ──

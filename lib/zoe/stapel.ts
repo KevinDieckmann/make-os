@@ -37,7 +37,7 @@ export const ANSPRUCH_MS = 10 * 60_000;
  * Arten von Vorschlägen mit eigenem Bezug (28.09., C4). Neue Art: hier ergänzen und in lib/zoe/stapel-arten.ts
  * ihre Freigabe eintragen — der Stapel (Route, Ansicht) behandelt dann alle Arten gleich.
  */
-export type StapelArt = 'aufgabe' | 'crm';
+export type StapelArt = 'aufgabe' | 'crm' | 'kalender';
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {

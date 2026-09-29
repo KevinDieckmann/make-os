@@ -38,6 +38,7 @@ const GRUPPE: Record<string, { label: string; href: string; farbe: string }> = {
   fokus: { label: 'Fokus & Ziele', href: '/os/wachstum', farbe: LEUCHT.schlaf }, aufgaben: { label: 'Aufgaben', href: '/os/aufgaben', farbe: LEUCHT.achtung },
   kunden: { label: 'Mandate', href: '/os/mandate', farbe: LEUCHT.business }, planer: { label: 'Planung', href: '/os/planung/woche', farbe: LEUCHT.puls },
   inbox: { label: 'Postfach', href: '/os/inbox', farbe: LEUCHT.puls }, gesundheit: { label: 'Gesundheit', href: '/os/gesundheit', farbe: LEUCHT.gut },
+  kalender: { label: 'Kalender', href: '/os/kalender', farbe: LEUCHT.schlaf },
 };
 const STATUS: Record<string, { label: string; farbe: string }> = {
   offen: { label: 'offen', farbe: LEUCHT.achtung }, laeuft: { label: 'läuft', farbe: LEUCHT.puls }, fertig: { label: 'fertig', farbe: LEUCHT.gut }, fehler: { label: 'Fehler', farbe: LEUCHT.kritisch },

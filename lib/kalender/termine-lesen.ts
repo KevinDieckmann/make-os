@@ -17,6 +17,8 @@ export interface GeleseneTermine {
   quelle: 'icloud' | 'mac' | 'leer';
   termine: (TerminMitBezug & { wer: Wer })[];
   kalender: { name: string; farbe?: string; schreibbar: boolean; wer: Wer }[];
+  /** Zeitpunkt des gelesenen Stands (iCloud-Abgleich bzw. Mac-Lieferung) — für die Frische (ZOE, 29.09. #K4). */
+  stand?: string | null;
 }
 
 /** Termine im Zeitraum [von, bis) — Berliner Tage. */
@@ -24,13 +26,14 @@ export async function termineLesen(einst: KalenderEinstellungen, von: string, bi
   let termine: Termin[] = [];
   let quelle: GeleseneTermine['quelle'] = 'leer';
   let kalender: { name: string; farbe?: string; schreibbar: boolean }[] = [];
+  let stand: string | null = null;
   if (verbunden()) {
     const s = await ladeStand();
-    if (s.at) { termine = termineImZeitraum(s, von, bis); quelle = 'icloud'; }
+    if (s.at) { termine = termineImZeitraum(s, von, bis); quelle = 'icloud'; stand = s.at; }
     kalender = s.kalender.map(k => ({ name: k.name, ...(k.farbe ? { farbe: k.farbe } : {}), schreibbar: k.schreibbar }));
   } else {
     const c = await loadJson<{ events?: MacEv[]; at?: string }>(CACHE);
-    if (c?.at) quelle = 'mac';
+    if (c?.at) { quelle = 'mac'; stand = c.at; }
     termine = (c?.events ?? []).filter(e => e.title && e.startDate && e.startDate.slice(0, 10) < bis && (e.endDate ?? e.startDate).slice(0, 10) >= von).map((e, i) => ({
       id: e.id ?? `mac-${i}`, uid: e.id ?? `mac-${i}`, href: '', titel: e.title!, start: e.startDate!, ende: e.endDate ?? e.startDate!, ganztags: !!e.allDay,
       kalender: (e.calendarName ?? 'Kalender').trim(), kalenderId: '', ...(e.location ? { ort: e.location } : {}), serie: false, mitTeilnehmern: false, bearbeitbar: false,
@@ -39,5 +42,5 @@ export async function termineLesen(einst: KalenderEinstellungen, von: string, bi
     kalender = Array.from(new Set(termine.map(t => t.kalender))).map(name => ({ name, schreibbar: false }));
   }
   const bezuege = await ladeBezuege().catch(() => null);
-  return { quelle, termine: termine.map(t => ({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) })), kalender: kalender.map(k => ({ ...k, wer: wemGehoert(einst, k.name) })) };
+  return { quelle, stand, termine: termine.map(t => ({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) })), kalender: kalender.map(k => ({ ...k, wer: wemGehoert(einst, k.name) })) };
 }

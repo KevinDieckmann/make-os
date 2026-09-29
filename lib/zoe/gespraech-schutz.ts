@@ -34,7 +34,8 @@ export function nurVorschlag(name: string, input: Record<string, unknown> | unde
 // statt zu laufen, landet der Auftrag als Vorschlag im Stapel (über `starte_auftraege`, Freigabe per Klick).
 
 /** Agenten, die nur lesen und rechnen (keine Wirkung, nichts nach außen) — sie laufen auch nach Fremdtext. */
-export const AGENTEN_LESEND = new Set(['board', 'okr', 'controlling', 'fokus', 'crm']);
+// „kalender“ seit 29.09. (#K2): der Kalender-Agent schreibt nie mehr selbst — seine Vorschläge landen im Freigabe-Stapel.
+export const AGENTEN_LESEND = new Set(['board', 'okr', 'controlling', 'fokus', 'crm', 'kalender']);
 /** Agenten, die Text an eine Websuche oder ein fremdes Verzeichnis geben (Drittdienst). */
 export const WEB_AGENTEN = new Set(['research', 'content', 'prospect', 'prospecting']);
 /**
@@ -42,7 +43,9 @@ export const WEB_AGENTEN = new Set(['research', 'content', 'prospect', 'prospect
  * einen davon benutzt, darf danach kein Web-Agent mehr ohne Freigabe laufen — sonst könnten CRM-Inhalte in einer
  * Suchanfrage bei einem Drittdienst landen (#91).
  */
-export const VERTRAULICHE_QUELLEN = new Set(['postfach', 'kontakte', 'crm', 'bank', 'notizen', 'gedaechtnis', 'projekt-unterlagen', 'aufgaben', 'arbeitsbestaende', 'markttraktion', 'crm-ablage', 'meeting']);
+export const VERTRAULICHE_QUELLEN = new Set(['postfach', 'kontakte', 'crm', 'bank', 'notizen', 'gedaechtnis', 'projekt-unterlagen', 'aufgaben', 'arbeitsbestaende', 'markttraktion', 'crm-ablage', 'meeting',
+  // 29.09. (#K1/#K4): Termine (Arzt, Reha, Mandanten) sind vertraulich.
+  'kalender']);
 
 /** Soll dieser Agent nur als Vorschlag (Stapel) gestartet werden statt zu laufen? */
 export function agentNurVorschlag(agent: string, fremdGelesen: boolean, vertraulich: boolean): boolean {

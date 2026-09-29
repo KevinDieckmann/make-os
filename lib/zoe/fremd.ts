@@ -22,7 +22,15 @@ export const FREMD_WERKZEUGE: Record<string, string> = {
   crm_suche: 'markttraktion', kontakt_akte: 'markttraktion', firma_akte: 'markttraktion', pipeline: 'markttraktion', mandate_lage: 'markttraktion',
   angebote_lage: 'markttraktion', kampagnen_lage: 'markttraktion', events_lage: 'markttraktion', marketing_lage: 'markttraktion', kennzahlen: 'markttraktion',
   sales_lage: 'markttraktion', qualifizierung_lage: 'markttraktion', stammdaten_lage: 'markttraktion', datenqualitaet: 'markttraktion', crm_datei_lesen: 'crm-ablage', heads_lage: 'markttraktion',
+  // 29.09. (#K1): plan_block nennt bei einer Kollision den Titel des festen Termins — Titel können aus Einladungen Dritter stammen.
+  plan_block: 'kalender',
 };
+
+/**
+ * Der Kalender ist eine Fremdquelle (29.09., #K1): Termintitel, Orte und Notizen können aus Einladungen Dritter stammen.
+ * Stehen Termine im ZOE-Prompt (lib/brain.ts `kalenderImPrompt`), gilt das Gespräch von Anfang an als „fremd gelesen“.
+ */
+export const KALENDER_QUELLE = 'kalender';
 
 /**
  * Werkzeuge, die ihre Antwort SELBST kapseln (eigene Kopfzeile + `fremd()`-Block, lib/zoe/aufgaben-unterlagen.ts):
@@ -39,4 +47,6 @@ export const FREMD_AGENTEN: Record<string, string> = {
   research: 'web', content: 'web', prospect: 'web', prospecting: 'web',
   inbox: 'postfach', meeting: 'meeting',
   crm: 'crm', outreach: 'crm',
+  // 29.09. (#K1): die Kalender-Analyse fasst Termintitel zusammen.
+  kalender: 'kalender',
 };
