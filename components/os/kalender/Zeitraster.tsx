@@ -95,10 +95,16 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
   const halten = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setAufzug = (a: Aufzug | null) => { aufzugRef.current = a; setAufzugRoh(a); };
   // Jetzt-Linie in Berliner Wandzeit (R-K1 #7) — nicht in der Zone des Browsers (unterwegs in New York läge sie sonst falsch).
-  const [jetztMin, setJetztMin] = useState(() => minutenVon(wandzeit(new Date())));
-  useEffect(() => { const t = setInterval(() => setJetztMin(minutenVon(wandzeit(new Date()))), 60_000); return () => clearInterval(t); }, []);
+  // Erst im Browser setzen (sonst Hydration-Mismatch, wenn Server und Browser in verschiedenen Minuten zeichnen).
+  const [jetztMin, setJetztMin] = useState<number | null>(null);
+  useEffect(() => {
+    const setzen = () => setJetztMin(minutenVon(wandzeit(new Date())));
+    setzen();
+    const t = setInterval(setzen, 60_000);
+    return () => clearInterval(t);
+  }, []);
   // Beim ersten Zeichnen auf 7 Uhr rollen (bzw. eine Stunde vor jetzt, wenn heute sichtbar ist).
-  useEffect(() => { const r = rollen.current; if (!r) return; const ziel = tage.includes(heute) ? Math.max(0, jetztMin - 60) : 7 * 60; r.scrollTop = ziel * PX_MIN; }, [tage.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const r = rollen.current; if (!r) return; const ziel = tage.includes(heute) ? Math.max(0, minutenVon(wandzeit(new Date())) - 60) : 7 * 60; r.scrollTop = ziel * PX_MIN; }, [tage.length]); // eslint-disable-line react-hooks/exhaustive-deps
   // Touch: solange aufgezogen wird, darf die Liste nicht rollen (nicht-passiver Hörer — React-Hörer sind passiv).
   useEffect(() => {
     const r = rollen.current; if (!r) return;
@@ -313,7 +319,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                 <div key={t.tag} data-spalte={t.tag} onPointerDown={e => lueckeDruck(e, ti)} onPointerMove={lueckeZug} onPointerUp={lueckeLos} onPointerCancel={lueckeAbbruch}
                   onDragOver={e => aufgabeUeber(e, ti)} onDragLeave={() => setAblage(a => (a?.tag === ti ? null : a))} onDrop={e => aufgabeAb(e, t.tag, true)}
                   style={{ position: 'relative', borderLeft: '1px solid rgba(255,255,255,.05)', background: t.abwesendGanz ? SCHRAFFUR : h ? 'rgba(255,255,255,.02)' : undefined, cursor: 'copy', touchAction: aufzug?.aktiv ? 'none' : 'pan-y', userSelect: 'none' }}>
-                  {h && <div style={{ position: 'absolute', left: 0, right: 0, top: jetztMin * PX_MIN, borderTop: `2px solid ${LEUCHT.kritisch}`, zIndex: 3, pointerEvents: 'none' }}><span style={{ position: 'absolute', left: -5, top: -5, width: 8, height: 8, borderRadius: '50%', background: LEUCHT.kritisch }} /></div>}
+                  {h && jetztMin != null && <div style={{ position: 'absolute', left: 0, right: 0, top: jetztMin * PX_MIN, borderTop: `2px solid ${LEUCHT.kritisch}`, zIndex: 3, pointerEvents: 'none' }}><span style={{ position: 'absolute', left: -5, top: -5, width: 8, height: 8, borderRadius: '50%', background: LEUCHT.kritisch }} /></div>}
                   {/* #86: Zeitumstellung — Ende Oktober gibt es 02:00–03:00 zweimal, Ende März gar nicht. */}
                   {t.umstellung && (
                     <div role="note" title={t.umstellung === 'doppelt' ? 'Zeitumstellung: 02:00–03:00 gibt es heute zweimal (erst Sommer-, dann Winterzeit). Termine in dieser Stunde können übereinander liegen.' : 'Zeitumstellung: 02:00–03:00 gibt es heute nicht (die Uhr springt von 2 auf 3 Uhr).'}
@@ -340,7 +346,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                     const versetzt = z && z.art === 'move' && z.neuTag !== ti;
                     const abwesend = ev.art === 'abwesend', fokus = ev.art === 'fokus', frei = ev.beschaeftigt === false;
                     const f = ev.maskiert ? C.inkLeise : abwesend ? LEUCHT.kritisch : farbe(ev);
-                    const laeuftJetzt = fokus && h && jetztMin >= l.von && jetztMin < l.bis;
+                    const laeuftJetzt = fokus && h && jetztMin != null && jetztMin >= l.von && jetztMin < l.bis;
                     const darfZiehen = ziehbar(ev);
                     // J-Zusatz: die Dauer eines mehrtägigen Termins ändert nur sein letztes Segment.
                     const mehr = mehrtaegig(ev);
