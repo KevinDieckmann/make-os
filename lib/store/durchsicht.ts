@@ -3,7 +3,8 @@
 // erst auf, wenn ihn jemand brauchte — dann steckte er schon in allen Sicherungen. Der Takt stößt
 // deshalb einmal am Tag (ab 4 Uhr, nach der Sicherung) diese Durchsicht an:
 //   · jeden Bestand <name>.json roh lesen, entschlüsseln (Hülle v1/v2), parsen (Zeit gemessen), Zeilen zählen;
-//   · Hüllen-Fassung und Schemaversion zählen (alte Hüllen/alte Form = Migration offen);
+//   · Hüllen-Fassung und Schemaversion zählen (alte Hüllen/alte Form = Migration offen) — „alt“ heißt: nicht im Format des
+//     Modus MAKE_OS_FORMAT (kompatibel: eine v2-Hülle; v2: eine v1-Hülle). `_v` zählt nur im Format v2 (kompatibel schreibt es nie);
 //   · Zeilenzahl-Sprünge gegen den Vortag melden (−20 % und mehr bzw. Bestand verschwunden);
 //   · die Verbindungsprüfung des CRM laufen lassen (nur Zähler je Schwere, repariert nichts);
 //   · liegengebliebene .tmp-Reste zählen;
@@ -15,7 +16,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { datenOrdner, rohOeffnen, updateJson, loadJson } from './local-db';
 import { aktuelleVersion } from './schema';
-import { schluesselRing } from './huelle.mjs';
+import { schluesselRing, schreibVersion } from './huelle.mjs';
 import { parseMessen } from './messwerte';
 import { localDay } from '@/lib/zeit';
 
@@ -94,8 +95,8 @@ export async function durchsicht(jetzt = new Date(), vorherJe: Record<string, nu
       parseMessen(name, ms, g.text.length);
       if (ms >= 50) langsam.push({ name, ms: Math.round(ms), mb: Math.round((g.text.length / 1_048_576) * 100) / 100 });
       if (g.version === 0 && schluesselRing().aktiv) klartext++; // nur mit Migrationsschalter lesbar
-      if (g.version === 1) alteHuellen++;
-      if (daten && typeof daten === 'object' && !Array.isArray(daten)) {
+      if (g.version && g.version !== schreibVersion()) alteHuellen++;
+      if (schreibVersion() === 2 && daten && typeof daten === 'object' && !Array.isArray(daten)) {
         const v = (daten as { _v?: unknown })._v;
         if ((typeof v === 'number' ? v : 0) < aktuelleVersion(name)) alteForm++;
       }

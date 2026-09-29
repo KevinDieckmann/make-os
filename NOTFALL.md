@@ -54,6 +54,21 @@ Zeigt der Head of IT „Abgebrochene Vorgänge“ **rot** (nach 3 Versuchen nich
    sind idempotent, bereits erledigte laufen nicht noch einmal. Ein Art.-17-Vorgang steht bis dahin im Löschprotokoll auf
    „unvollständig“.
 
+### Rückweg zum alten Stand nach einem Upload (Kompatibilitätsmodus, seit 29.09. abends)
+
+Solange `MAKE_OS_FORMAT` nicht auf `v2` steht (Standard: „kompatibel“, HOI gelb „Kompatibilitätsmodus“), schreibt die neue
+App im Format des alten Stands aeb4964 — zurück geht es ohne Datenverlust der gemeinsamen Daten:
+1. Prüfen: `grep -c '^MAKE_OS_DATEN_SCHLUESSEL=' /srv/make-os/app/.env` → `1` (der alte Stand liest den Schlüssel NUR aus der
+   `.env`, keine Schlüssel-Datei). `grep '^MAKE_OS_FORMAT=' .env` → leer oder `kompatibel`.
+2. `cd /srv/make-os/app && docker compose stop app arbeiter`
+3. Optional zur Sicherheit: `docker compose run --rm -T --no-deps app node scripts/daten-verschluesselung.mjs --verschluesseln </dev/null`
+   (stellt übrig gebliebene v2-Hüllen/„MKOSDAT2“ auf v1 um; meldet am Ende „0 Fehler“).
+4. Altes Bild: `docker tag make-os:aeb4964 make-os:aktuell && docker compose up -d --no-build`, dann `main` per Revert auf
+   aeb4964 bringen (sonst rollt die nächste Action wieder aus).
+Was dabei verloren geht (nur Neues, das der alte Stand nicht kennt): DEPLOY.md › Schreibformat.
+**Nach der Umstellung auf v2** (`MAKE_OS_FORMAT=v2` + `docker compose up -d`, optional Skript `--verschluesseln` bei
+angehaltener App — DEPLOY.md) gibt es diesen Weg nicht mehr: zurück nur mit der Sicherung von vor der Umstellung.
+
 ## 3 · Jährliche Übung (und nach jeder Rotation)
 
 Ohne Server-Zugriff, nur mit Mac + Passwort-Manager: Schritt 2 mit `--app` (`deploy/sicherung-probe.sh <archiv>

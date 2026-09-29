@@ -7,3 +7,5 @@ export function binAusPfad(pfad: string): { haushalt: string; id: string } | nul
 export function binSchreiben(klar: Buffer | Uint8Array, schluessel: Schluessel, haushalt: string, id: string): Buffer;
 export function binV1Schreiben(klar: Buffer | Uint8Array, key: Buffer): Buffer;
 export function binOeffnen(b: Buffer, ring: SchluesselRing, haushalt: string, id: string): { klar: Buffer; version: 1 | 2; kid: string };
+export function binImModus(klar: Buffer | Uint8Array, schluessel: Schluessel, haushalt: string, id: string, env?: NodeJS.ProcessEnv): Buffer;
+export function binAktuell(geoeffnet: { version: 1 | 2; kid: string }, aktiv: Schluessel | null, env?: NodeJS.ProcessEnv): boolean;

@@ -13,6 +13,12 @@
 //   · nie kürzen: Listen nicht beschneiden, unbekannte Felder durchreichen.
 // Bestände ohne Eintrag stehen auf Version 1 (fehlendes `_v` = Version 0 → 1 ohne Änderung).
 // Arrays auf oberster Ebene tragen kein `_v`.
+//
+// Kompatibilitätsmodus (29.09. abends, MAKE_OS_FORMAT, lib/store/huelle.mjs `formatModus`): im Standard „kompatibel“
+// schreibt local-db `_v` NICHT (`ohneVersion`) — der alte Online-Stand aeb4964 kennt das Feld nicht, und Bestände, deren
+// Schlüssel Personen oder Tage sind, sähen dort einen Eintrag „_v“. Gelesen und migriert wird trotzdem (fehlendes `_v`
+// = Version 0 → Migrationen laufen beim Lesen jedes Mal, sie sind rein und idempotent). Erst mit MAKE_OS_FORMAT=v2 landet
+// `_v` auf der Platte.
 
 export const SCHEMA_FELD = '_v';
 
@@ -60,7 +66,14 @@ export function migriere<T>(name: string, daten: T): { daten: T; von: number; na
   return { daten: d as T, von, nach };
 }
 
-/** Zum Schreiben: `_v` = aktuelle Version (hinten angehängt). Arrays und Nicht-Objekte bleiben, wie sie sind. */
+/** Zum Schreiben im Kompatibilitätsmodus: `_v` heraus (nie auf die Platte). Arrays und Nicht-Objekte bleiben, wie sie sind. */
+export function ohneVersion<T>(daten: T): T {
+  if (!istObjekt(daten) || !(SCHEMA_FELD in daten)) return daten;
+  const { [SCHEMA_FELD]: _alt, ...rest } = daten;
+  return rest as T;
+}
+
+/** Zum Schreiben (Format v2): `_v` = aktuelle Version (hinten angehängt). Arrays und Nicht-Objekte bleiben, wie sie sind. */
 export function mitVersion<T>(name: string, daten: T): T {
   if (!istObjekt(daten)) return daten;
   const { [SCHEMA_FELD]: _alt, ...rest } = daten;

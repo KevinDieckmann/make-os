@@ -2,8 +2,10 @@
 // ─── MAKE OS · Bestände auf einmal ver- oder entschlüsseln (26.09., seit 29.09. v2-Hülle) ─
 // Der Store verschlüsselt beim SCHREIBEN. Damit nach dem Einschalten nichts im Klartext liegen
 // bleibt (auch Tagessicherungen, Archiv, Dateiablage), läuft dieses Skript einmal:
-//   node scripts/daten-verschluesselung.mjs --verschluesseln   (alles in die v2-Hülle mit dem aktiven Schlüssel;
-//                                                                v1-Hüllen und alte Schlüssel werden mit umgestellt)
+//   node scripts/daten-verschluesselung.mjs --verschluesseln   (alles in die Hülle des Schreibformats MAKE_OS_FORMAT mit
+//                                                                dem aktiven Schlüssel: kompatibel (Standard) = v1 wie der
+//                                                                alte Online-Stand aeb4964, v2 = Schlüssel-ID + AAD; Hüllen
+//                                                                im anderen Format und alte Schlüssel werden mit umgestellt)
 //   node scripts/daten-verschluesselung.mjs --entschluesseln   (Notfall/Umzug: alles zurück in Klartext)
 // Schlüssel: MAKE_OS_DATEN_SCHLUESSEL bzw. MAKE_OS_DATEN_SCHLUESSEL_DATEI (aktiv), zum Lesen alter
 // Hüllen zusätzlich MAKE_OS_DATEN_SCHLUESSEL_ALT / …_ALT_DATEI (lib/store/huelle.mjs).
@@ -20,8 +22,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
 import { atomarSchreiben } from '../lib/store/atomar.mjs';
-import { schluesselRing, huellenVersion, huelleSchreiben, huelleOeffnen, aadAlternativen } from '../lib/store/huelle.mjs';
-import { binVersion, binOeffnen, binSchreiben } from '../lib/store/datei-huelle.mjs';
+import { schluesselRing, huellenVersion, huelleImModus, huelleOeffnen, huelleAktuell, formatModus } from '../lib/store/huelle.mjs';
+import { binVersion, binOeffnen, binImModus, binAktuell } from '../lib/store/datei-huelle.mjs';
 import { skriptSperreOderAbbruch } from '../lib/store/schreiber.mjs';
 
 const modus = process.argv[2];
@@ -45,6 +47,7 @@ const belegt = p => new Promise(ok => {
 });
 const laufend = (await Promise.all(PORTE.map(async p => ((await belegt(p)) ? p : null)))).filter(Boolean);
 if (laufend.length) console.warn(`WARNUNG: Auf Port ${laufend.join(', ')} läuft eine App — Dev-Server/Prüfbau teilen denselben Datenordner. Erst anhalten, sonst kann sie mitten in der Umstellung schreiben.`);
+if (modus === '--verschluesseln') console.log(`Schreibformat: ${formatModus() === 'v2' ? 'v2 (Schlüssel-ID + AAD, „MKOSDAT2“)' : 'kompatibel (v1, „MKOSDAT1“ — alter Stand aeb4964 kann lesen)'} — MAKE_OS_FORMAT`);
 
 let getan = 0, gelassen = 0, fehler = 0;
 // ZOE hieß bis 27.09. Jarvis (Go-Live-Prüfung 29.09.): die App übernimmt `jarvis-X.json` beim ersten Lesen als `zoe-X.json`.
@@ -72,10 +75,10 @@ async function datei(ordner, n) {
   let neu = null;
   try {
     if (modus === '--verschluesseln') {
-      // Aktueller Schlüssel und richtige AAD (unter dem Altnamen jarvis-… verschlüsselt → neu schreiben).
-      if (v === 2 && o.kid === ring.aktiv.kid && (!aadAlternativen(aad).length || !huelleOeffnen(o, ring, aad).aadAlt)) { gelassen++; return; }
+      // Format des Modus, aktueller Schlüssel und (v2) richtige AAD (unter dem Altnamen jarvis-… verschlüsselt → neu schreiben).
+      if (huelleAktuell(o, ring, aad)) { gelassen++; return; }
       const klar = v ? huelleOeffnen(o, ring, aad).text : roh;
-      neu = huelleSchreiben(klar, ring.aktiv, aad);
+      neu = huelleImModus(klar, ring.aktiv, aad);
     } else if (v) neu = huelleOeffnen(o, ring, aad).text;
   } catch { fehler++; console.error('Schlüssel passt nicht:', p); return; }
   if (neu === null) { gelassen++; return; }
@@ -90,7 +93,7 @@ for (const ordner of [DATEN, path.join(DATEN, 'backup'), path.join(DATEN, 'archi
 
 // Dateiablage (lib/dateien/ablage.ts): dateien/<haushalt>/<id>.bin — Hülle v1 „MKOSDAT1“ (ohne Schlüssel-ID) oder seit
 // 29.09. v2 „MKOSDAT2“ (Schlüssel-ID + AAD Haushalt/Kennung), gemeinsamer Code in lib/store/datei-huelle.mjs.
-// Beim Lesen: v2 nach Schlüssel-ID, v1 mit allen Schlüsseln des Rings (aktiv zuerst). Geschrieben wird v2.
+// Beim Lesen: v2 nach Schlüssel-ID, v1 mit allen Schlüsseln des Rings (aktiv zuerst). Geschrieben wird im Format des Modus.
 async function ablageDatei(p, haushalt, id) {
   const roh = await fs.readFile(p);
   let neu = null;
@@ -98,8 +101,8 @@ async function ablageDatei(p, haushalt, id) {
     let o;
     try { o = binOeffnen(roh, ring, haushalt, id); } catch { fehler++; console.error('Schlüssel passt nicht:', p); return; }
     if (modus === '--entschluesseln') neu = o.klar;
-    else if (o.version !== 2 || o.kid !== ring.aktiv.kid) neu = binSchreiben(o.klar, ring.aktiv, haushalt, id);
-  } else if (modus === '--verschluesseln') neu = binSchreiben(roh, ring.aktiv, haushalt, id);
+    else if (!binAktuell(o, ring.aktiv)) neu = binImModus(o.klar, ring.aktiv, haushalt, id);
+  } else if (modus === '--verschluesseln') neu = binImModus(roh, ring.aktiv, haushalt, id);
   if (neu === null) { gelassen++; return; }
   await atomarSchreiben(p, neu);
   getan++;

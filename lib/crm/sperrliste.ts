@@ -18,12 +18,18 @@
 // umgerechnet (`sperrlisteMigrieren`, Löschfristen-Lauf): ihre v1-Hashes werden durch v2 ersetzt. Ohne Pepper bleibt
 // alles v1 (Warnung im Head of IT).
 //
+// Kompatibilitätsmodus (29.09. abends, MAKE_OS_FORMAT — Standard „kompatibel“, lib/store/huelle.mjs): der alte Online-Stand
+// aeb4964 prüft nur v1. Damit eine Sperre auch nach einem Rückweg dorthin greift, tragen NEUE Einträge dann BEIDE Werte
+// (v2 und v1), und bestehende v1-Hashes werden NICHT umgerechnet (`sperrlisteUmrechnen` tut nichts; der Löschfristen-Lauf
+// überspringt die Umrechnung und holt sie nach, sobald MAKE_OS_FORMAT=v2 gilt). Geprüft wird wie immer gegen beide.
+//
 // Der Haushalt ist der des Inhabers — die Kartei (`kontakte`) gehört genau ihm.
 // Ohne eingetragenen Haushalt heißt er „haupt“; wird später einer eingetragen,
 // liest `sperrlisteLaden` den alten Stand mit (nie ein stiller Verlust).
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
+import { formatModus } from '@/lib/store/huelle.mjs';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { identitaetsMerkmale, type Kontakt } from '@/lib/make-one/crm';
@@ -53,8 +59,16 @@ export const sperrHashV1 = (merkmal: string) => shaHex(`make-os-sperre-v1|${merk
 export const sperrHashV2 = (merkmal: string) => hmacHex('make-os-sperre-v2', merkmal);
 /** Ein Merkmal in der AKTUELLEN Version gehasht (v2 mit Pepper, sonst v1). */
 export const sperrHash = (merkmal: string) => sperrHashV2(merkmal) ?? sperrHashV1(merkmal);
-/** Alle Hashes einer Person in der aktuellen Version (für NEUE Einträge). Leer, wenn sie kein Merkmal trägt. */
-export const sperrHashes = (k: Person) => identitaetsMerkmale(k).map(sperrHash);
+/**
+ * Alle Hashes einer Person für NEUE Einträge (Sperrliste, Grabsteine). Format v2: nur die aktuelle Version (v2 mit Pepper,
+ * sonst v1). Kompatibel: v2 UND v1 — so greift die Sperre auch im alten Stand aeb4964, der nur v1 kennt.
+ * Leer, wenn die Person kein Merkmal trägt.
+ */
+export const sperrHashes = (k: Person) => {
+  const m = identitaetsMerkmale(k);
+  const aktuell = m.map(sperrHash);
+  return formatModus() === 'v2' ? aktuell : Array.from(new Set([...aktuell, ...m.map(sperrHashV1)]));
+};
 /** Alle Hashes einer Person in JEDER Version (v2 und v1) — geprüft wird immer gegen beide. */
 export const sperrHashesAlle = (k: Person) => { const m = identitaetsMerkmale(k); return Array.from(new Set([...m.map(sperrHash), ...m.map(sperrHashV1)])); };
 
@@ -94,10 +108,11 @@ export function sperrTreffer(eintraege: SperrEintrag[], k: Person): SperrEintrag
 /**
  * Einmalige Umrechnung v1 → v2 (29.09., #71), solange die Kontakte existieren: trägt ein Eintrag v1-Hashes einer Person
  * der Kartei, werden sie durch deren v2-Hashes ersetzt. v1-Hashes, zu denen es keine Person mehr gibt (gelöschte),
- * bleiben stehen und werden weiter geprüft. Ohne Pepper: nichts zu tun. Rein; liefert die Zahl umgerechneter Einträge.
+ * bleiben stehen und werden weiter geprüft. Ohne Pepper oder im Kompatibilitätsmodus (der alte Stand prüft nur v1):
+ * nichts zu tun. Rein bis auf den Modus; liefert die Zahl umgerechneter Einträge.
  */
 export function sperrlisteUmrechnen(eintraege: SperrEintrag[], kontakte: readonly Person[]): { eintraege: SperrEintrag[]; umgerechnet: number } {
-  if (!kontakte.length || !eintraege.length || sperrHashV2('probe') === null) return { eintraege, umgerechnet: 0 };
+  if (formatModus() !== 'v2' || !kontakte.length || !eintraege.length || sperrHashV2('probe') === null) return { eintraege, umgerechnet: 0 };
   const v1zuV2 = new Map<string, string>();
   for (const k of kontakte) for (const m of identitaetsMerkmale(k)) v1zuV2.set(sperrHashV1(m), sperrHash(m));
   let umgerechnet = 0;

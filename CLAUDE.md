@@ -60,13 +60,21 @@ lokal, Route `/os`, Port 3001.
    liefert nur `zweiterFaktorAn`). Anmelden: Passwort → `{ zweiterFaktor: true }` → Passwort + `code`.
    Cookie heißt in Produktion `__Host-make-os-sitzung` (SITZUNG_COOKIE), Server-Admin: `ssh make@… sudo`.
 9. **Bestände verschlüsselt** (`lib/store/local-db.ts`, Hülle in `lib/store/huelle.mjs`): mit `MAKE_OS_DATEN_SCHLUESSEL`
-   (bzw. `…_DATEI`) liegt auf der Platte nur die Hülle v2 `{ __verschluesselt: 2, kid, iv, tag, daten }` mit AAD =
-   Bestandsname (v1 bleibt lesbar; einzige Ausnahme: `jarvis-…` ↔ `zoe-…` gelten als gleichwertig — `aadAlternativen`,
+   (bzw. `…_DATEI`) liegt auf der Platte nur eine Hülle. **Welche, entscheidet `MAKE_OS_FORMAT` (29.09. abends):** Standard
+   (ohne Variable) „kompatibel“ = v1 `{ __verschluesselt: 1, iv, tag, daten }` wie der alte Online-Stand aeb4964, Dateiablage
+   „MKOSDAT1“, kein `_v`, Sperrliste neue Einträge v1+v2 ohne Umrechnung — der Rückweg zum alten Stand bleibt offen (HOI gelb).
+   `v2` = Hülle `{ __verschluesselt: 2, kid, iv, tag, daten }` mit AAD =
+   Bestandsname (gelesen werden immer beide; einzige Ausnahme: `jarvis-…` ↔ `zoe-…` gelten als gleichwertig — `aadAlternativen`,
    eine so gelesene Hülle wird mit dem richtigen Namen neu geschrieben; jede weitere Umbenennung von Beständen muss
    ebenso neu verschlüsseln, nie nur `rename`); Lesen ohne/mit falschem Schlüssel wirft (nie null), Klartext bei gesetztem Schlüssel
    auch (`KlartextBestand`, nur `MAKE_OS_KLARTEXT_MIGRATION=1` lässt ihn einmal durch). Wer `.data`-Dateien direkt liest,
    nimmt `rohOeffnen(roh, bestandsname)`. Umstellen/zurück: `scripts/daten-verschluesselung.mjs` (bricht bei laufender
    App ab); Rotation im Betrieb: `deploy/datenschluessel-rotieren-live.sh`. Tests biegen den Ordner mit `MAKE_OS_DATEN_DIR` um.
+   Hüllen NIE direkt mit `huelleSchreiben`/`binSchreiben` schreiben, sondern mit `huelleImModus`/`binImModus` (Format des
+   Modus); „schon aktuell?“ über `huelleAktuell`/`binAktuell`. Umstellen auf v2 = `.env` `MAKE_OS_FORMAT=v2` +
+   `docker compose up -d` + optional Skript `--verschluesseln` bei angehaltener App (DEPLOY.md › Schreibformat, NOTFALL.md);
+   danach ist der Rückweg zum alten Stand nur noch per Sicherung. Tests laufen im Format v2 (`vitest.config.ts`), den
+   Standard prüft `tests/format-kompatibel.test.ts` (mit dem wörtlich übernommenen Lesecode von aeb4964).
 10. **Kartei-Zugang & Änderungsprotokoll (28.09., K1):** `/api/state/{kontakte,kunden,prospects,netzwerk,stammdaten,aenderungen}`
    nur über `karteiZugang` (Haushalt des Inhabers; Dienstweg mit Person nur für eine Person dieses Haushalts). Das
    Änderungsprotokoll schreibt nur der Server (`lib/store/aenderungsprotokoll.ts`, Monatsdateien, nur anhängend, nie
@@ -529,8 +537,10 @@ lokal, Route `/os`, Port 3001.
     wird geprüft, 30 s Zeitlimit (`SperreZeitlimit`, 503). Nur Dateien NEBEN einem Bestand unter dessen Sperre: `mitBestandSperre`.
   - Neue Kennungen nur über `neueKennung(praefix)` (`lib/kennung.ts`, `<präfix>-<uuid>`) — nie `Date.now()` (Wächter
     `tests/kennungen.test.ts`). Kennungen tragen keine Zeit; sortieren nach dem Zeitfeld.
-  - `_v` ist ein reservierter Schlüssel (Schemaversion, schreibt local-db, Leser sehen ihn nie). Formänderung eines Bestands =
-    Eintrag in `lib/store/schema.ts` (Version hoch, Migration rein und idempotent, mit Test).
+  - `_v` ist ein reservierter Schlüssel (Schemaversion, schreibt local-db nur im Format v2 — im Kompatibilitätsmodus nie,
+    Leser sehen ihn nie). Formänderung eines Bestands = Eintrag in `lib/store/schema.ts` (Version hoch, Migration rein und
+    idempotent, mit Test) — im Kompatibilitätsmodus läuft sie bei jedem Lesen (kein `_v`) und bricht den Rückweg für diesen
+    Bestand (der alte Stand kennt die neue Form nicht): Formänderungen erst nach der Umstellung auf v2.
   - Skripte, die in `.data` schreiben, rufen `skriptSperreOderAbbruch(ordner)` (`lib/store/schreiber.mjs`) — die App hält
     `.schreiber` mit Herzschlag. Neue Dienstwege der Datenschicht liegen unter `/api/intern/*` (nur Dienstweg bzw. Inhaber).
   - Wiederholbare Wirkungen aus dem Browser (anlegen, buchen) nehmen eine `anfrageId` und laufen über `einmalig()`
@@ -558,8 +568,8 @@ lokal, Route `/os`, Port 3001.
     Weiterleitung alter Kennungen: `kennung-alias--<haushalt>` (`lib/crm/kennung-alias.ts`, `app/os/markttraktion/page.tsx`).
     Wer Kontakt-Kennungen in einem NEUEN Bestand hält: Umzug erfasst ihn über die Tokenersetzung automatisch — außer er
     steht in `UMZUG_EIGENE` (person-bestaende.ts).
-  - Dateiablage schreibt Hülle v2 „MKOSDAT2“ (Schlüssel-ID + AAD Haushalt/Kennung, `lib/store/datei-huelle.mjs`), liest
-    v1 + v2 über den Schlüsselring; Kennungen `d-<uuid>`.
+  - Dateiablage schreibt im Format des Modus (kompatibel „MKOSDAT1“, v2 „MKOSDAT2“ mit Schlüssel-ID + AAD Haushalt/Kennung,
+    `lib/store/datei-huelle.mjs` `binImModus`), liest v1 + v2 über den Schlüsselring; Kennungen `d-<uuid>`.
 
 ## Agenten — Querliegendes
 - Jeder Modellaufruf geht durch `lib/anthropic.ts askText`: dort sitzt der Guthaben-Schalter (`guthabenLeer()`, 30 min Pause nach „credit balance too low“). Nie eigene Aufrufe an die API daneben bauen.

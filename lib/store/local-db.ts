@@ -9,13 +9,16 @@
 //     Module teilen sie. Wiedereintritt (derselbe Bestand in seiner eigenen Sperre) und falsche
 //     Rangfolge (kontakte vor crm) werfen sofort, statt still zu verklemmen; wer länger als 30 s auf
 //     eine Sperre wartet, bekommt `SperreZeitlimit` mit Messwert.
-//   · Verschlüsselung: v2-Hülle mit Schlüssel-ID + AAD (lib/store/huelle.mjs), v1 bleibt lesbar,
-//     Schlüsselring für die Rotation im laufenden Betrieb. Klartext bei gesetztem Schlüssel wird
-//     abgelehnt (`KlartextBestand`), außer mit MAKE_OS_KLARTEXT_MIGRATION=1 (#55).
+//   · Verschlüsselung: Hülle nach dem Schreibformat MAKE_OS_FORMAT (lib/store/huelle.mjs `formatModus`) — Standard
+//     „kompatibel“ = v1 wie der alte Online-Stand aeb4964 (Rückweg offen), „v2“ = mit Schlüssel-ID + AAD. Gelesen werden
+//     immer beide; eine Hülle im anderen Format wird beim nächsten Schreiben umgestellt. Schlüsselring für die Rotation
+//     im laufenden Betrieb. Klartext bei gesetztem Schlüssel wird abgelehnt (`KlartextBestand`), außer mit
+//     MAKE_OS_KLARTEXT_MIGRATION=1 (#55).
 //   · Lesefehler werfen (`BestandNichtLesbar`), kaputtes JSON wird beiseitegelegt und blockiert
 //     Schreibungen (`BestandBeschaedigt`) — auch in saveJson; scheitert das Beiseitelegen, wird
 //     geworfen statt überschrieben (#7/#86).
-//   · Schemaversion `_v` je Objekt-Bestand beim Schreiben, Migrationen aus lib/store/schema.ts beim Lesen.
+//   · Schemaversion `_v` je Objekt-Bestand beim Schreiben (nur Format v2 — kompatibel schreibt kein `_v`),
+//     Migrationen aus lib/store/schema.ts beim Lesen.
 //   · JSON ohne Einrückung auf der Platte (Lesen bleibt tolerant), Lesecache mit LRU und Gesamtdeckel.
 //   · Messwerte (Sperrwartezeit, Schreibdauer, Parse-Zeit) für den Head of IT (lib/store/messwerte.ts).
 //   · Betrieb: Schreibpause für die Sicherung (≤ 30 s) und Abschaltung (SIGTERM) — lib/store/betrieb.ts.
@@ -28,10 +31,10 @@ import { createDecipheriv } from 'crypto';
 import { atomarSchreiben, atomarKopieren, ordnerSync as ordnerSyncKern, tmpName } from './atomar.mjs';
 import {
   HUELLE as HUELLE_KERN, SchluesselFehlt as SchluesselFehltKern, EntschluesselungFehlgeschlagen,
-  schluesselRing, huellenVersion, huelleSchreiben, huelleOeffnen, huelleV1Schreiben, aadAlternativen,
+  schluesselRing, huellenVersion, huelleOeffnen, huelleV1Schreiben, huelleImModus, huelleAktuell, formatModus, schreibVersion,
 } from './huelle.mjs';
 import { messe, zaehle, parseMessen } from './messwerte';
-import { migriere, mitVersion } from './schema';
+import { migriere, mitVersion, ohneVersion } from './schema';
 import { localDay } from '@/lib/zeit';
 
 // Tests dürfen den Ordner umbiegen — nie die echten Bestände anfassen (26.09.).
@@ -51,7 +54,7 @@ export type SchluesselFehlt = SchluesselFehltKern;
 export function datenSchluessel(): Buffer | null {
   return schluesselRing().aktiv?.key ?? null;
 }
-/** Altformat (v1, ohne Schlüssel-ID/AAD) — nur noch für Kompatibilität; neue Schreibungen gehen über die v2-Hülle. */
+/** v1-Hülle (ohne Schlüssel-ID/AAD) mit EINEM Schlüssel — Altaufrufer und Tests; Bestände schreiben über `huelleImModus`. */
 export function verschluesseln(text: string, key: Buffer): string {
   return huelleV1Schreiben(text, key);
 }
@@ -248,6 +251,7 @@ async function ohneUeberschreiben(von: string, nach: string): Promise<'ok' | 'da
  * und liegt noch die alte Datei, wird sie EINMAL übernommen — Daten auf dem Server bleiben so ohne Migration erhalten.
  * Seit 29.09. (Go-Live-Prüfung): eine v2-Hülle trägt den Bestandsnamen als AAD. Ein bloßes Umbenennen ließe sie unter
  * `zoe-…` mit der AAD `jarvis-…` liegen — darum wird sie mit dem aktiven Schlüssel unter dem NEUEN Namen neu verschlüsselt
+ * (im aktuellen Schreibformat — kompatibel: v1 ohne AAD)
  * (atomar: Temp-Datei mit fsync, dann ohne Überschreiben an den neuen Namen, erst danach die alte Datei weg).
  * Ohne aktiven Schlüssel (nur Alt-Schlüssel) oder bei v1/Klartext wird wie bisher nur umbenannt; die Hülle liest
  * die AAD ohnehin tolerant (huelle.mjs `aadAlternativen`) und die nächste Schreibung stellt sie um.
@@ -264,7 +268,7 @@ async function altenNamenUebernehmen(name: string, file: string): Promise<boolea
   if (aktiv && siehtWieHuelleAus(roh)) {
     try {
       const o: unknown = JSON.parse(roh);
-      if (huellenVersion(o) === 2) neu = huelleSchreiben(huelleOeffnen(o, schluesselRing(), altName).text, aktiv, name);
+      if (huellenVersion(o) === 2) neu = huelleImModus(huelleOeffnen(o, schluesselRing(), altName).text, aktiv, name);
     } catch { /* nicht lesbar: unverändert übernehmen — der Leser meldet den Fehler danach laut */ }
   }
   try {
@@ -408,19 +412,22 @@ async function schreibeDatei(name: string, dest: string, text: string): Promise<
   await taeglicheSicherung(name, dest);
   // Nur der Besitzer liest die Bestände (26.09.) — auf dem Server ist das der Container-Nutzer = make.
   const aktiv = schluesselRing().aktiv;
-  await atomarSchreiben(dest, aktiv ? huelleSchreiben(text, aktiv, name) : text);
+  await atomarSchreiben(dest, aktiv ? huelleImModus(text, aktiv, name) : text);
   Z.zaehler.set(name, (Z.zaehler.get(name) ?? 0) + 1);
-  try { merkeGelesen(name, await fs.stat(dest), { text, version: aktiv ? 2 : 0, kid: aktiv?.kid ?? null }); } catch { cacheWeg(name); }
+  try { merkeGelesen(name, await fs.stat(dest), { text, version: aktiv ? schreibVersion() : 0, kid: aktiv?.kid ?? null }); } catch { cacheWeg(name); }
   messe('schreiben', performance.now() - t0);
   standErhoehen(name);
 }
 
-/** Unverändert? Dann nicht schreiben — außer die Datei liegt nicht in der aktuellen Hülle (Klartext → verschlüsseln, v1/alter Schlüssel → v2). */
+/**
+ * Unverändert? Dann nicht schreiben — außer die Datei liegt nicht in der aktuellen Hülle (Klartext → verschlüsseln,
+ * alter Schlüssel → aktiver, anderes Format → das des Modus: kompatibel v2 → v1, Format v2 v1 → v2).
+ */
 function unveraendert(vorher: Gelesen | null, text: string): boolean {
   if (!vorher || vorher.text !== text || vorher.aadAlt) return false;
   const aktiv = schluesselRing().aktiv;
   if (!aktiv) return vorher.version === 0;
-  return vorher.version === 2 && vorher.kid === aktiv.kid;
+  return vorher.version === schreibVersion() && vorher.kid === aktiv.kid;
 }
 
 // ── Sperren ───────────────────────────────────────────────────────────────────
@@ -521,8 +528,11 @@ export async function mitBestandSperre<T>(name: string, fn: () => Promise<T>): P
   return mitSperre(name, async () => { aenderungFertig(); return fn(); });
 }
 
-/** Zum Schreiben: Schemaversion dran, ohne Einrückung (#76 — Lesen bleibt tolerant). */
-const zuText = (name: string, daten: unknown) => JSON.stringify(mitVersion(name, daten));
+/**
+ * Zum Schreiben, ohne Einrückung (#76 — Lesen bleibt tolerant). Format v2: Schemaversion `_v` dran; kompatibel: `_v`
+ * heraus — der alte Stand aeb4964 kennt es nicht (Bestände mit Personen-/Tages-Schlüsseln sähen einen Eintrag „_v“).
+ */
+const zuText = (name: string, daten: unknown) => JSON.stringify(formatModus() === 'v2' ? mitVersion(name, daten) : ohneVersion(daten));
 
 /** Schreibt eine Sammlung atomar — und serialisiert gleichzeitige Schreiber derselben Sammlung.
  *  Liest vorher wie updateJson: kaputtes JSON wird beiseitegelegt statt überschrieben (#7). */
@@ -607,8 +617,9 @@ export function datenschichtLage(): { laufend: number; pause: boolean; abschaltu
 }
 
 /**
- * Eine Bestandsdatei (Bestand, Tagessicherung) in die aktuelle Hülle bringen — für die Rotation im laufenden Betrieb.
- * Läuft in der Schreibsperre des Bestands, nie über Klartext auf der Platte. Liefert, was geschah.
+ * Eine Bestandsdatei (Bestand, Tagessicherung) in die aktuelle Hülle bringen (aktiver Schlüssel, Format des Modus:
+ * kompatibel v1, sonst v2) — für die Rotation im laufenden Betrieb. Läuft in der Schreibsperre des Bestands, nie über
+ * Klartext auf der Platte. Liefert, was geschah.
  */
 export async function bestandUmschluesseln(name: string): Promise<{ bestand: 'neu' | 'schon' | 'fehlt'; sicherungen: number; fehler: string[] }> {
   pruefeName(name);
@@ -622,11 +633,11 @@ export async function bestandUmschluesseln(name: string): Promise<{ bestand: 'ne
       let o: unknown = null;
       try { o = JSON.parse(roh); } catch { throw new Error('kein JSON'); }
       const v = huellenVersion(o);
-      // Aktueller Schlüssel UND richtige AAD? Den Altnamen (jarvis-…) erkennt nur das Öffnen — nur bei zoe-… nötig.
-      if (v === 2 && (o as { kid?: string }).kid === aktiv.kid && (!aadAlternativen(name).length || !huelleOeffnen(o, schluesselRing(), name).aadAlt)) return 'schon';
+      // Format des Modus, aktueller Schlüssel UND (v2) richtige AAD? Den Altnamen (jarvis-…) erkennt nur das Öffnen.
+      if (huelleAktuell(o, schluesselRing(), name)) return 'schon';
       const text = v ? huelleOeffnen(o, schluesselRing(), name).text : roh;
       JSON.parse(text);
-      await atomarSchreiben(pfad, huelleSchreiben(text, aktiv, name));
+      await atomarSchreiben(pfad, huelleImModus(text, aktiv, name));
       return 'neu';
     };
     let bestand: 'neu' | 'schon' | 'fehlt' = 'fehlt';

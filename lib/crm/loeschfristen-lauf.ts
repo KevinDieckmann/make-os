@@ -40,6 +40,7 @@ import path from 'path';
 import { ENTSCHEIDUNGEN_PRAEFIX } from '@/lib/zoe/entscheidungen';
 import { protokollKennungV1, protokollKennung } from '@/lib/store/aenderungsprotokoll';
 import { pepperFingerabdruck } from '@/lib/datenschutz/pepper';
+import { formatModus } from '@/lib/store/huelle.mjs';
 import { sperrlisteMigrieren } from './sperrliste';
 import { loeschprotokollBereinigen } from './loeschprotokoll';
 
@@ -175,9 +176,11 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
   });
 
   // 7 · Fingerabdrücke v1 → v2 (29.09., #71/#68) — einmal je Pepper, nur für Kontakte, die es noch gibt.
+  // Nicht im Kompatibilitätsmodus (MAKE_OS_FORMAT, Standard): der alte Stand aeb4964 prüft Sperren nur mit v1 und löst im
+  // Änderungsprotokoll nur v1-Kennungen auf. Die Marke bleibt dann ungesetzt — nach der Umstellung auf v2 läuft es von selbst.
   await schritt('migration-v2', async () => {
     const pf = pepperFingerabdruck();
-    if (!pf) return;
+    if (!pf || formatModus() !== 'v2') return;
     const m = (await loadJson<Migration>(MIGRATION_SPEICHER)) ?? {};
     if (m.v2?.pepper === pf) return;
     const sperr = await sperrlisteMigrieren(kontakte);

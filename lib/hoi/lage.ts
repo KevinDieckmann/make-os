@@ -81,6 +81,12 @@ export interface DatenschichtLage {
   tmpReste: number;
   fremderSchreiber: { pid: number; host: string } | null;
   schluesselQuelle: 'datei' | 'umgebung' | 'keiner';
+  /**
+   * Schreibformat der Hüllen (29.09. abends, MAKE_OS_FORMAT): kompatibel (Standard) = v1 wie der alte Online-Stand aeb4964,
+   * Rückweg offen; v2 = Schlüssel-ID + AAD. `formatUnbekannt`: in der Variable steht ein Wert, den es nicht gibt.
+   */
+  format?: 'kompatibel' | 'v2';
+  formatUnbekannt?: boolean;
 }
 /**
  * Ergebnis der Nachtsicherung (deploy/sicherung.sh). Seit 29.09. (Go-Live-Prüfung): `stufe` warnung = Archiv liegt
@@ -217,6 +223,8 @@ export function datenschichtBefunde(innen: InnenLage, host: HostLage | null, jet
     if (d.tmpReste) b.push({ id: 'tmp-reste', bereich: 'app', label: 'Liegengebliebene .tmp-Dateien', ampel: 'gelb', wert: String(d.tmpReste), satz: 'abgebrochene Schreibungen — nach Prüfung löschen, sie füllen sonst die Platte' });
     if (d.fremderSchreiber) b.push({ id: 'schreiber', bereich: 'app', label: 'Zweiter Schreiber im Datenordner', ampel: 'gelb', wert: `PID ${d.fremderSchreiber.pid} auf ${d.fremderSchreiber.host}`, satz: 'zwei Prozesse schreiben in dieselben Bestände (lokal: Dev-Server und Prüfbau) — einen anhalten' });
     if (d.schluesselQuelle === 'umgebung') b.push({ id: 'schluessel-quelle', bereich: 'sicherheit', label: 'Datenschlüssel', ampel: 'gelb', wert: 'aus der Umgebung (.env)', satz: 'Empfehlung: als Datei 0400 unter /srv/make-os/schluessel/daten und aus der .env nehmen (NOTFALL.md) — dann nicht mehr in docker inspect sichtbar' });
+    if (d.format === 'kompatibel') b.push({ id: 'format', bereich: 'sicherheit', label: 'Schreibformat der Daten', ampel: 'gelb', wert: `Kompatibilitätsmodus${d.formatUnbekannt ? ' (MAKE_OS_FORMAT unbekannt → kompatibel)' : ''}`, satz: 'Kompatibilitätsmodus — Rückweg zum alten Stand möglich; nach stabilen Tagen auf v2 umstellen (.env MAKE_OS_FORMAT=v2, DEPLOY.md)' });
+    else if (d.format === 'v2') b.push({ id: 'format', bereich: 'sicherheit', label: 'Schreibformat der Daten', ampel: 'gruen', wert: 'v2 (Schlüssel-ID + AAD)', satz: 'vertauschte oder umbenannte Dateien fallen beim Lesen auf — zurück zum alten Stand nur per Sicherung' });
     const w = d.sperrWarten, sc = d.schreiben;
     const wartenRot = d.zaehler.sperrZeitlimit > 0;
     const wartenGelb = (w.p99 ?? 0) > 5000 || (sc.p99 ?? 0) > 2000;
@@ -243,7 +251,7 @@ export function datenschichtBefunde(innen: InnenLage, host: HostLage | null, jet
     if (ds.fehler) teile.push(`${ds.fehler} unlesbar`);
     if (ds.spruenge.length) teile.push(`Sprung: ${ds.spruenge.slice(0, 3).map(x => `${x.name} ${x.vorher}→${x.nachher}`).join(', ')}`);
     if (v) teile.push(`Verbindungen: ${v.fehler} Fehler, ${v.warnung} Warnungen`);
-    if (ds.alteHuellen || ds.alteForm) teile.push(`alt: ${ds.alteHuellen} Hüllen v1, ${ds.alteForm} Form`);
+    if (ds.alteHuellen || ds.alteForm) teile.push(`alt: ${ds.alteHuellen} Hüllen im anderen Format, ${ds.alteForm} Form`);
     b.push({ id: 'durchsicht', bereich: 'app', label: 'Durchsicht der Bestände', ampel: rot ? 'rot' : gelb ? 'gelb' : 'gruen', wert: teile.join(' · '), satz: rot ? 'ein Bestand ist nicht lesbar oder liegt im Klartext — sofort prüfen' : ds.spruenge.length ? 'ein Bestand ist über Nacht deutlich geschrumpft — gewollt? sonst aus backup/ zurückholen (Einzel-Restore)' : alt > 30 ? 'die Durchsicht ist nicht gelaufen — Takt/Arbeiter prüfen' : 'alles entschlüsselt, geparst und gezählt' });
   }
   return b;

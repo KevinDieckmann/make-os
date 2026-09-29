@@ -1,7 +1,8 @@
 // ─── Datenschlüssel im laufenden Betrieb umstellen (29.09., Paket D-A #52) ─────
 // Nur Dienstweg (deploy/datenschluessel-rotieren-live.sh ruft das im App-Container). Liest die Schlüsseldateien
 // neu (aktiv = neuer Schlüssel, …_ALT = alter) und bringt Bestand für Bestand — in dessen Schreibsperre — in die
-// v2-Hülle mit dem aktiven Schlüssel. Antwort: nur Zähler und Schlüssel-ID (nie ein Schlüssel).
+// Hülle des Schreibformats (MAKE_OS_FORMAT: kompatibel = v1 wie aeb4964, sonst v2) mit dem aktiven Schlüssel.
+// Antwort: nur Zähler und Schlüssel-ID (nie ein Schlüssel).
 
 import { NextResponse } from 'next/server';
 import { istDienst } from '@/lib/zugang/dienst';

@@ -4,22 +4,23 @@
 // Lauf genau dort ab). Jetzt:
 //   1. neuer Schlüssel = aktiv (…_DATEI), der alte = …_ALT_DATEI — beide lesbar (Schlüsselring, huelle.mjs);
 //   2. diese Funktion geht Bestand für Bestand durch, jeweils IN dessen Schreibsperre: öffnen (alt oder neu),
-//      mit dem neuen Schlüssel als v2-Hülle neu schreiben (atomar) — nie Klartext auf der Platte;
+//      mit dem neuen Schlüssel im Schreibformat MAKE_OS_FORMAT neu schreiben (kompatibel = v1 wie aeb4964, sonst v2;
+//      atomar) — nie Klartext auf der Platte;
 //      dazu die Tagessicherungen je Bestand, das Archiv und die Dateiablage (.bin, unter der Sperre der
 //      Ablage-Metadaten beider Ablagen — ein gleichzeitiges Löschen kann keine Datei „wiederbeleben“);
 //   3. erst wenn alles `fehler: []` meldet, den alten Schlüssel vom Server nehmen (Passwort-Manager behält ihn
 //      für ältere Sicherungen).
 // Aufruf: POST /api/intern/umschluesseln (Dienstweg) — deploy/datenschluessel-rotieren-live.sh macht alles.
 // Die Dateiablage liest .bin seit 29.09. (Paket D-C) über den Schlüsselring (lib/store/datei-huelle.mjs) — auch
-// zwischen Schritt 1 und dem Umschlüsseln der Ablage bleibt jede Datei abrufbar. Umgeschrieben wird in die Hülle v2
-// (Schlüssel-ID + AAD Haushalt/Kennung).
+// zwischen Schritt 1 und dem Umschlüsseln der Ablage bleibt jede Datei abrufbar. Umgeschrieben wird in die Hülle des
+// Modus (kompatibel „MKOSDAT1“, v2 „MKOSDAT2“ mit Schlüssel-ID + AAD Haushalt/Kennung).
 
 import { promises as fs } from 'fs';
 import path from 'path';
 import { datenOrdner, bestandUmschluesseln, mitBestandSperre } from './local-db';
 import { atomarSchreiben } from './atomar.mjs';
-import { schluesselRing, schluesselNeuLaden, huellenVersion, huelleOeffnen, huelleSchreiben } from './huelle.mjs';
-import { binOeffnen, binSchreiben, binVersion } from './datei-huelle.mjs';
+import { schluesselRing, schluesselNeuLaden, huellenVersion, huelleOeffnen, huelleImModus, huelleAktuell } from './huelle.mjs';
+import { binOeffnen, binImModus, binAktuell, binVersion } from './datei-huelle.mjs';
 
 const NAME_OK = /^[a-z0-9][a-z0-9-]*$/;
 const HAUSHALT_OK = /^[a-z0-9][a-z0-9-]{0,63}$/;
@@ -34,7 +35,7 @@ export interface UmschluesselErgebnis {
   fehler: string[];
 }
 
-/** Alles in die v2-Hülle mit dem aktiven Schlüssel bringen. `neuLaden` liest die Schlüsseldateien sofort neu. */
+/** Alles in die Hülle des Modus (kompatibel v1, sonst v2) mit dem aktiven Schlüssel bringen. `neuLaden` liest die Schlüsseldateien sofort neu. */
 export async function allesUmschluesseln(neuLaden = true): Promise<UmschluesselErgebnis> {
   if (neuLaden) schluesselNeuLaden();
   const ring = schluesselRing();
@@ -61,11 +62,11 @@ export async function allesUmschluesseln(neuLaden = true): Promise<UmschluesselE
     const p = path.join(ordner, 'archiv', n);
     try {
       const roh = await fs.readFile(p, 'utf8');
-      const o = JSON.parse(roh) as { kid?: string };
+      const o: unknown = JSON.parse(roh);
       const v = huellenVersion(o);
-      if (v === 2 && o.kid === aktiv.kid) { r.archiv.schon++; continue; }
+      if (huelleAktuell(o, ring, `archiv/${n}`)) { r.archiv.schon++; continue; }
       const text = v ? huelleOeffnen(o, ring, `archiv/${n}`).text : roh;
-      await atomarSchreiben(p, huelleSchreiben(text, aktiv, `archiv/${n}`));
+      await atomarSchreiben(p, huelleImModus(text, aktiv, `archiv/${n}`));
       r.archiv.neu++;
     } catch (e) { r.fehler.push(`archiv/${n}: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}`); }
   }
@@ -79,11 +80,11 @@ export async function allesUmschluesseln(neuLaden = true): Promise<UmschluesselE
         const id = n.slice(0, -4);
         try {
           const b = await fs.readFile(p);
-          if (!binVersion(b)) { await atomarSchreiben(p, binSchreiben(b, aktiv, h, id)); r.ablage.neu++; continue; }
+          if (!binVersion(b)) { await atomarSchreiben(p, binImModus(b, aktiv, h, id)); r.ablage.neu++; continue; }
           let o: { klar: Buffer; version: 1 | 2; kid: string };
           try { o = binOeffnen(b, ring, h, id); } catch { r.fehler.push(`dateien/${h}/${n}: kein Schlüssel passt`); continue; }
-          if (o.version === 2 && o.kid === aktiv.kid) { r.ablage.schon++; continue; }
-          await atomarSchreiben(p, binSchreiben(o.klar, aktiv, h, id));
+          if (binAktuell(o, aktiv)) { r.ablage.schon++; continue; }
+          await atomarSchreiben(p, binImModus(o.klar, aktiv, h, id));
           r.ablage.neu++;
         } catch (e) { if ((e as NodeJS.ErrnoException)?.code !== 'ENOENT') r.fehler.push(`dateien/${h}/${n}: ${e instanceof Error ? e.message.slice(0, 80) : String(e)}`); }
       }

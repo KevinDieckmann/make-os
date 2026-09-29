@@ -9,7 +9,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { loadJson, datenOrdner, datenSchluessel, datenschichtLage } from '@/lib/store/local-db';
 import { messBild } from '@/lib/store/messwerte';
-import { schluesselQuelle } from '@/lib/store/huelle.mjs';
+import { schluesselQuelle, formatModus, formatModusUnbekannt } from '@/lib/store/huelle.mjs';
 import { fremderSchreiber } from '@/lib/store/betrieb';
 import { tmpResteZaehlen, DURCHSICHT_SPEICHER, type DurchsichtErgebnis } from '@/lib/store/durchsicht';
 import { lies, stand } from '@/lib/zoe/auftraege';
@@ -62,6 +62,7 @@ async function datenschicht(): Promise<DatenschichtLage> {
     sperrWarten: m.sperrWarten, sperrHalten: m.sperrHalten, schreiben: m.schreiben, zaehler: m.zaehler, parseLangsam: m.parseLangsam,
     sicherungFehler: l.sicherungFehler, klartext: l.klartext, tmpReste: await tmpResteZaehlen(datenOrdner()).catch(() => 0),
     fremderSchreiber: fremderSchreiber(), schluesselQuelle: schluesselQuelle(),
+    format: formatModus(), formatUnbekannt: formatModusUnbekannt(),
   };
 }
 

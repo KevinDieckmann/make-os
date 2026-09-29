@@ -15,8 +15,10 @@
 // `datei.verschluesselt` hält nur fest, wie die Datei abgelegt wurde. Hochgeladene
 // Dateien können nicht mit MKOSDAT1 beginnen (Typprüfung am Inhalt: PDF/PNG/JPG/DOCX; bei den
 // Aufgaben-Dateien lehnt `aufgabenTypErkennen` Text, der mit MKOSDAT beginnt, ausdrücklich ab).
-// Seit 29.09. (Paket D-C): neue Dateien als Hülle v2 „MKOSDAT2“ mit Schlüssel-ID und AAD (Haushalt/Kennung) —
-// lib/store/datei-huelle.mjs; gelesen wird über den Schlüsselring (v1 und v2, aktiver UND alte Schlüssel), damit
+// Seit 29.09. (Paket D-C): Hülle v2 „MKOSDAT2“ mit Schlüssel-ID und AAD (Haushalt/Kennung) — lib/store/datei-huelle.mjs.
+// Geschrieben wird nach MAKE_OS_FORMAT (29.09. abends): kompatibel (Standard) = „MKOSDAT1“ wie der alte Online-Stand
+// aeb4964 (der „MKOSDAT2“ nicht lesen kann), v2 = „MKOSDAT2“. Gelesen wird über den Schlüsselring (v1 und v2, aktiver
+// UND alte Schlüssel), damit
 // eine Rotation im laufenden Betrieb keine Datei kurz unlesbar macht. Kennungen `d-<uuid>` (ohne Zeitanteil).
 // Der Inhalt selbst (Schreiben/Lesen/Entfernen) liegt in `inhaltAblegen`/`inhaltLaden`/`inhaltEntfernen` —
 // dieselben Wege nutzt die Aufgaben-Ablage (lib/dateien/aufgaben-ablage.ts, 28.09. C2): gleicher Ordner,
@@ -33,7 +35,7 @@ import path from 'path';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import { schluesselRing, SchluesselFehlt } from '@/lib/store/huelle.mjs';
-import { binOeffnen, binSchreiben, binVersion } from '@/lib/store/datei-huelle.mjs';
+import { binOeffnen, binImModus, binVersion } from '@/lib/store/datei-huelle.mjs';
 import { neueKennung } from '@/lib/kennung';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -106,8 +108,9 @@ export async function inhaltAblegen(haushalt: string, id: string, bytes: Buffer)
   const aktiv = schluesselRing().aktiv;
   const ordner = haushaltOrdner(haushalt);
   await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
-  // v2: Schlüssel-ID + AAD (Haushalt/Kennung) — eine unter anderem Namen/Haushalt abgelegte Datei öffnet sich nicht.
-  await atomarSchreiben(dateiPfad(haushalt, id), aktiv ? binSchreiben(bytes, aktiv, haushalt, id) : bytes);
+  // Format des Modus: kompatibel „MKOSDAT1“ (alter Stand lesbar), v2 „MKOSDAT2“ mit Schlüssel-ID + AAD (Haushalt/Kennung) —
+  // dann öffnet sich eine unter anderem Namen/Haushalt abgelegte Datei nicht.
+  await atomarSchreiben(dateiPfad(haushalt, id), aktiv ? binImModus(bytes, aktiv, haushalt, id) : bytes);
   return !!aktiv;
 }
 /** Inhalt lesen (Hülle v1/v2 → über den Schlüsselring entschlüsselt, sonst wie abgelegt) — null, wenn die Datei fehlt. */

@@ -1,7 +1,7 @@
 # Go-Live-Checkliste — Stand `entwicklung` (ab 3db3020) (29.09.2026)
 
 **Urteil: Ja, mit Bedingungen.** Im Code blockiert nichts (tsc, Lint, 2.579 Tests, Produktionsbau grün; Trockenlauf auf einer verschlüsselten Kopie der lokalen Daten: alles lesbar, alle Zahlen gleich, Neustart und harter Absturz ok).
-**Wichtig: Der Upload ist eine Einbahnstraße.** Die neue Version schreibt Bestände in der neuen Verschlüsselung (v2). Der alte Stand (aeb4964) kann v2 nicht lesen. Zurück geht es nur mit der Daten-Sicherung von vor dem Upload (Schritt V7) oder mit dem getesteten Rückweg-Skript (unten).
+**Rückweg offen (Kompatibilitätsmodus, seit 29.09. abends):** Ohne `MAKE_OS_FORMAT` (bzw. `=kompatibel`) schreibt die neue Version im Format des alten Stands aeb4964 (v1-Hülle, „MKOSDAT1“, kein `_v`, Sperrliste v1+v2) — zurück geht es ohne Verlust der gemeinsamen Daten (NOTFALL.md › Rückweg). Voraussetzung: der Datenschlüssel bleibt als `MAKE_OS_DATEN_SCHLUESSEL=` in der `.env`. Erst `MAKE_OS_FORMAT=v2` (nach stabilen Tagen, DEPLOY.md › Schreibformat) macht den Upload zur Einbahnstraße; danach zurück nur mit einer Sicherung.
 
 Alle Befehle auf dem Server als `make`, im Ordner `/srv/make-os/app`, außer wo „am Mac“ steht. Werte (Schlüssel, Passwörter) nie in Chat oder Dateien im Repo.
 
@@ -26,11 +26,11 @@ Am Mac: `cd ~/Claude/Projects/MakeOS && git push origin entwicklung:main && git 
 4. Kurztest: anmelden · Aufgabe anlegen, abhaken, „Rückgängig“ · CRM Kontakt öffnen, ein Feld ändern · Angebot nur Entwurf + Vorschau (Stellen verbraucht eine Nummer) · Glocke · eine ZOE-Frage · Finanzplan öffnen · `/os/hoi` (kein „Klartext-Bestand abgelehnt“, „Abgebrochene Vorgänge: keine“).
 5. Sicherung einmal von Hand: `bash /srv/make-os/app/deploy/sicherung.sh` → muss „ok“ bzw. „warnung (Übergangs-Verschlüsselung)“ melden.
 6. Nur bei Treffern aus V5: `docker compose stop app arbeiter && docker compose run --rm -T --no-deps app node scripts/daten-verschluesselung.mjs --verschluesseln </dev/null && docker compose up -d`, danach `MAKE_OS_KLARTEXT_MIGRATION` aus der `.env` und `docker compose up -d`.
-7. **Erst jetzt entscheiden, ob es bleibt.** Rückweg bei Fehler: `docker compose stop app arbeiter` → `daten` beiseitelegen → Sicherung aus V7 entpacken → `docker tag make-os:aeb4964 make-os:aktuell && docker compose up -d --no-build` → `main` per Revert auf aeb4964 bringen (sonst rollt die nächste Action wieder aus). Alles seit dem Upload ist dann verloren. Alternative ohne Datenverlust (im Trockenlauf getestet): App anhalten, mit dem neuen Bild `node scripts/daten-verschluesselung.mjs --entschluesseln`, altes Bild starten, dann dessen Skript `--verschluesseln`.
+7. **Erst jetzt entscheiden, ob es bleibt.** Rückweg bei Fehler (Kompatibilitätsmodus, ohne Datenverlust): NOTFALL.md › Rückweg — `docker compose stop app arbeiter` → optional mit dem neuen Bild `node scripts/daten-verschluesselung.mjs --verschluesseln` (stellt Reste auf v1) → `docker tag make-os:aeb4964 make-os:aktuell && docker compose up -d --no-build` → `main` per Revert auf aeb4964 bringen (sonst rollt die nächste Action wieder aus). Neues, das der alte Stand nicht kennt (neue Aufgabenfelder, Papierkorb/Archiv, ZOE-Herkunft an Aktivitäten, Buchungsort UG), geht dabei verloren (DEPLOY.md › Schreibformat). Notweg: Sicherung aus V7 zurückspielen (alles seit dem Upload verloren).
 
 ## Am ersten Tag
 1. Erst nach grünem Kurztest: Aufgaben › Überblick › **„Neu anfangen …“** (Vorschau prüfen, „NEU ANFANGEN“ tippen). Alles wird archiviert, nicht gelöscht; zurück unter Aufgaben › Archiv › „Neu angefangen“. Ab hier bedeutet ein Rückweg per Sicherung, die neue Planung zu verlieren.
-2. **Nicht** am selben Tag: Kennungs-Umzug der Kontakte, Schlüssel als Datei, `MAKE_OS_APP_SPIEGEL=an`.
+2. **Nicht** am selben Tag: Kennungs-Umzug der Kontakte, Schlüssel als Datei, `MAKE_OS_APP_SPIEGEL=an`. Kennungs-Umzug, Schlüssel als Datei und Rotation erst nach der Umstellung auf `MAKE_OS_FORMAT=v2` (sonst ist der Rückweg zu). Die Umstellung selbst: nach stabilen Tagen, DEPLOY.md › Schreibformat.
 3. Innerhalb der Woche: Healthchecks-Adresse nach `/srv/make-os/.healthchecks-sicherung`, Logrotate (`deploy/logrotate-make-os`), Mac-Abholung der Sicherung (`authorized_keys` ändert Kevin selbst), Vault-Umzug nach `VAULT_UMZUG_ANLEITUNG.md`, AVV mit dem KI-Anbieter ablegen.
 4. Nächster Morgen: HOI „Sicherung geprüft“, Tagesstart gelaufen, Durchsicht ab 4 Uhr erledigt. Gelbe Hinweise (Pepper, Schlüssel in der Umgebung, Healthcheck, Abholung) sind erwartet, bis die Punkte oben erledigt sind.
 

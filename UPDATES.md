@@ -4,6 +4,15 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Upload umkehrbar: Kompatibilitätsmodus (29.09.2026 abends, nur lokal)
+
+- **Neuer Schalter `MAKE_OS_FORMAT`** (Standard ohne Variable: `kompatibel`). Die neue Version schreibt dann genau im Format
+  des heutigen Online-Stands (v1-Hülle, „MKOSDAT1“, kein `_v`; Sperrliste neue Einträge v1 + v2, keine Umrechnung) — der
+  alte Stand kann alles lesen, ein Rückweg geht ohne Sicherung. HOI gelb „Kompatibilitätsmodus“.
+- **Nach stabilen Tagen** auf v2 umstellen: `.env` `MAKE_OS_FORMAT=v2` + `docker compose up -d` (+ optional Skript
+  `--verschluesseln` bei angehaltener App). Danach zurück nur per Sicherung. Anleitung: DEPLOY.md › Schreibformat,
+  NOTFALL.md › Rückweg. Bis dahin: Schlüssel in der `.env` lassen, kein Kennungs-Umzug, keine Rotation.
+
 ## Go-Live-Prüfung: Nachbesserungen (29.09.2026, nur lokal — Commits f6a7901 + Doku)
 
 - **ZOE-Bestände bleiben lesbar:** Dateien, die noch `jarvis-…` heißen, werden beim ersten Lesen als `zoe-…` übernommen und

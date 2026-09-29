@@ -12,6 +12,10 @@ const wurzel = path.dirname(fileURLToPath(import.meta.url));
 // Tests ohne TZ rechneten nachts in der Zone des Rechners bzw. der CI (UTC). Wer eine andere Zone prüfen will,
 // setzt process.env.TZ im Test selbst (tests/zeit-berlin.test.ts).
 process.env.TZ = 'Europe/Berlin';
+// Schreibformat (29.09. abends, Kompatibilitätsmodus): die Tests laufen im Format v2 — so prüfen die bestehenden Tests
+// weiter Schlüssel-ID, AAD, „MKOSDAT2“ und `_v`. Den Standard „kompatibel“ (ohne Variable) prüft
+// tests/format-kompatibel.test.ts ausdrücklich (setzt MAKE_OS_FORMAT selbst).
+process.env.MAKE_OS_FORMAT ??= 'v2';
 
 export default defineConfig({
   resolve: {
@@ -23,6 +27,6 @@ export default defineConfig({
   oxc: { jsx: { runtime: 'automatic' } },
   test: {
     include: ['tests/**/*.test.ts'],
-    env: { TZ: 'Europe/Berlin' },
+    env: { TZ: 'Europe/Berlin', MAKE_OS_FORMAT: process.env.MAKE_OS_FORMAT },
   },
 });

@@ -182,9 +182,47 @@ Passwort bzw. age). Zurückholen braucht deshalb beides: Sicherung entpacken, `.
 fertig — oder zum Umzug einmal `--entschluesseln`.
 
 **Hülle seit 29.09. (Paket D-A):** v2 mit Schlüssel-ID und AAD (Bestandsname trägt den Haushalt) — eine unter fremdem
-Namen zurückgespielte Datei scheitert laut. v1-Hüllen bleiben lesbar und werden beim nächsten Schreiben v2. Klartext
+Namen zurückgespielte Datei scheitert laut. Welche Hülle geschrieben wird, entscheidet das Schreibformat (nächster
+Absatz); gelesen werden immer v1 und v2. Klartext
 bei gesetztem Schlüssel wird abgelehnt (HOI rot „Klartext-Bestand abgelehnt“); nur für eine bewusste Übernahme
 `MAKE_OS_KLARTEXT_MIGRATION=1` setzen, danach wieder entfernen.
+
+**Schreibformat `MAKE_OS_FORMAT` — Kompatibilitätsmodus (seit 29.09. abends):** der alte Online-Stand aeb4964 kennt nur
+die v1-Hülle und „MKOSDAT1“ (eine v2-Hülle läse er still als Klartext-Objekt und überschriebe sie), prüft die Sperrliste
+nur mit SHA-256 v1 und kennt das Feld `_v` nicht. Deshalb schreibt die App **ohne Variable (Standard) bzw. mit
+`MAKE_OS_FORMAT=kompatibel`** genau im alten Format:
+- Bestände, Tagessicherungen, Archiv: v1-Hülle `{ __verschluesselt: 1, iv, tag, daten }` (gleiche Schlüsselableitung wie
+  aeb4964); eine gelesene v2-Hülle wird bei der nächsten Schreibung wieder v1. Kein `_v` auf der Platte.
+- Dateiablage: „MKOSDAT1“ (v2-Dateien werden weiter gelesen).
+- Sperrliste: neue Einträge tragen v1 UND v2 (mit Pepper), bestehende v1-Einträge werden nicht umgerechnet — die Sperre
+  greift so auch im alten Stand. Grabsteine liegen außerhalb des Datenordners (der alte Stand ignoriert sie).
+- Rotation im Betrieb und `scripts/daten-verschluesselung.mjs --verschluesseln` schreiben ebenfalls v1/„MKOSDAT1“.
+- Der Head of IT zeigt gelb „Kompatibilitätsmodus — Rückweg zum alten Stand möglich; nach stabilen Tagen auf v2 umstellen“.
+
+**Rückweg zum alten Stand, solange kompatibel** (App anhalten, altes Bild starten — NOTFALL.md › Rückweg): Voraussetzung
+ist, dass der aktuelle Datenschlüssel als `MAKE_OS_DATEN_SCHLUESSEL=` in der `.env` steht (aeb4964 kennt keine
+Schlüssel-Datei und keinen Schlüsselring). Deshalb im Kompatibilitätsmodus den Schlüssel NICHT auf die Datei umstellen
+und nicht rotieren. Was der alte Stand nicht kennt, geht beim Zurückgehen verloren bzw. wird ignoriert: neue Felder an
+Aufgaben (Verlauf, Kommentare, Listen, Unteraufgaben, Papierkorb/Archiv — der alte Stand zeigt gelöschte/archivierte
+Aufgaben wieder als offen und entfernt die neuen Felder bei seiner nächsten Schreibung), neue Aktivitätsfelder an
+Kontakten (ZOE-Herkunft), Buchungsort `ug` (wird „privat“), Mandatsbezug an Meilensteinen; nach einem Kennungs-Umzug
+funktionieren alte Links nicht mehr (die Daten selbst bleiben stimmig). Für einen sauberen Rückweg also keinen
+Kennungs-Umzug im Kompatibilitätsmodus.
+
+**Umstellen auf v2** (nach stabilen Tagen, nur auf Kevins Wort):
+```bash
+cd /srv/make-os/app
+echo 'MAKE_OS_FORMAT=v2' >> .env          # bzw. eine vorhandene Zeile MAKE_OS_FORMAT=… ändern
+docker compose up -d                       # App und Arbeiter lesen die neue Umgebung
+# optional, damit sofort ALLES v2 ist (sonst stellt jede Schreibung ihren Bestand um):
+docker compose stop app arbeiter
+docker compose run --rm -T --no-deps app node scripts/daten-verschluesselung.mjs --verschluesseln </dev/null
+docker compose up -d
+```
+Ab da schreibt die App v2 (Schlüssel-ID + AAD, „MKOSDAT2“, `_v`), rechnet die Sperrliste einmal je Pepper auf v2 um
+(Löschfristen-Lauf) und der HOI zeigt „Schreibformat: v2“ grün. **Danach geht es zum alten Stand nur noch per Sicherung**
+(von vor der Umstellung). Zurück in den Kompatibilitätsmodus (`MAKE_OS_FORMAT=kompatibel` + `--verschluesseln`) bringt die
+Hüllen wieder auf v1, aber nicht umgerechnete Sperrlisten-Einträge und `_v` in nicht wieder geschriebenen Beständen zurück.
 
 **Schlüssel als Datei statt in der Umgebung (empfohlen, #50):** in der `.env` sieht ihn `docker inspect` und jeder mit
 Docker-Zugriff. Umstellen (als make, eigene Terminal-App):
