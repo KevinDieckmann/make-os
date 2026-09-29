@@ -176,6 +176,20 @@ export const absichtenTilgen: Wirkung = (cur, m) => {
   return { neu: n ? { ...cur, absichten: neu } : cur, n };
 };
 
+/**
+ * Kalender-Bezüge (29.09., K1): nur Kennungen je Termin (`bezuege[uid] = { kontaktId?, … }`). Die Kontakt-Kennung der
+ * Person fällt weg; der Eintrag bleibt (andere Bezüge, Sicherung von Art/privat). Titel stehen hier nie.
+ */
+export const kalenderBezugOhne: Wirkung = (cur, m) => {
+  const alt = (cur?.bezuege && typeof cur.bezuege === 'object' ? cur.bezuege : {}) as Record<string, Obj>;
+  let n = 0;
+  const bezuege: Record<string, Obj> = {};
+  for (const [k, e] of Object.entries(alt)) {
+    if (e?.kontaktId === m.id) { n++; const { kontaktId: _weg, ...rest } = e; bezuege[k] = rest; } else bezuege[k] = e;
+  }
+  return { neu: n ? { ...cur, bezuege } : cur, n };
+};
+
 export interface WeitererSpeicher { name: string; muster: RegExp; behandlung: 'entfernen' | 'tilgen'; wirkung: Wirkung }
 
 /**
@@ -194,6 +208,7 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'microsoft-inbox', muster: /^microsoft-inbox$/, behandlung: 'entfernen', wirkung: eintraegeRaus('emails') },
   { name: 'calendar-cache', muster: /^calendar-cache$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'kemaris-calendar', muster: /^kemaris-calendar$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'kalender-bezug', muster: /^kalender-bezug$/, behandlung: 'entfernen', wirkung: kalenderBezugOhne },
   { name: 'meetings', muster: /^meetings$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'zoe-verlauf', muster: /^zoe-verlauf$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'zoe-gedaechtnis', muster: /^zoe-gedaechtnis$/, behandlung: 'entfernen', wirkung: eintraegeRaus('fakten') },

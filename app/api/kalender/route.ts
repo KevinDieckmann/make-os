@@ -4,6 +4,9 @@
 //     dem System, Apple-Erinnerungen (vom Mac), die Kalender und der Stand.
 // POST { aktion: 'abgleichen' } → sofort mit iCloud abgleichen.
 // Nur für den Haushalt (Kevin & Malin) und den Dienstweg.
+// Seit 29.09. (K1): Termine tragen Art, Farbe, frei/beschäftigt, Sichtbarkeit, Zone, Stand (ETag) und ihren Bezug
+// (`kalender-bezug`, lib/kalender/bezug.ts); private Termine der ANDEREN Person kommen nur als „Belegt“ (`maskieren`).
+// Fristen tragen `bereich` (privat/business) — die Oberfläche filtert nach Sicht und Bereich.
 
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
@@ -18,6 +21,8 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
 import { localDay } from '@/lib/zeit';
 import type { Termin } from '@/lib/kalender/ics';
+import { ladeBezuege } from '@/lib/kalender/bezug-server';
+import { mitBezug, maskieren, type BezugBestand } from '@/lib/kalender/bezug';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,7 +32,8 @@ const TAG = /^\d{4}-\d{2}-\d{2}$/;
 interface MacEv { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; location?: string }
 
 export async function GET(req: Request) {
-  if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  const zugang = await kalenderZugang(req);
+  if (!zugang) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const q = new URL(req.url).searchParams;
   const heute = localDay();
   const von = TAG.test(q.get('von') ?? '') ? q.get('von')! : tagPlus(heute, -1);
@@ -60,10 +66,12 @@ export async function GET(req: Request) {
     termine = (c?.events ?? []).filter(e => e.title && e.startDate && e.startDate.slice(0, 10) < bis && (e.endDate ?? e.startDate).slice(0, 10) >= von).map((e, i) => ({
       id: e.id ?? `mac-${i}`, uid: e.id ?? `mac-${i}`, href: '', titel: e.title!, start: e.startDate!, ende: e.endDate ?? e.startDate!, ganztags: !!e.allDay,
       kalender: (e.calendarName ?? 'Kalender').trim(), kalenderId: '', ...(e.location ? { ort: e.location } : {}), serie: false, mitTeilnehmern: false, bearbeitbar: false,
+      art: 'termin' as const, beschaeftigt: !e.allDay, sichtbarkeit: 'standard' as const,
     }));
     kalender = Array.from(new Set(termine.map(t => t.kalender))).map(name => ({ name, schreibbar: false, wer: wemGehoert(einst, name) }));
   }
 
+  const bezuege: BezugBestand | null = await ladeBezuege().catch(() => null);
   const [meilensteine, bauplan, crm, finanzplan, rem] = await Promise.all([
     loadJson<{ meilensteine?: Quellen['meilensteine'] }>('meilensteine').catch(() => null),
     ladeBauplan().catch(() => null),
@@ -81,7 +89,8 @@ export async function GET(req: Request) {
     ok: true, von, bis, quelle, stand, ...(fehler ? { fehler } : {}),
     icloud: verbunden(), konto: kontoAnzeige(),
     kalender, einstellungen: einst,
-    termine: termine.map(t => ({ ...t, wer: wemGehoert(einst, t.kalender) })),
+    // Bezug + Sicherung anwenden, dann für die ansehende Person maskieren (privat der anderen → „Belegt“).
+    termine: termine.map(t => maskieren({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, zugang.person)),
     fristen: fristen(quellen, von, bis),
     erinnerungen: erinnerungen(rem?.daten, von, bis, wandzeit),
     erinnerungenStand: rem?.at ?? null,

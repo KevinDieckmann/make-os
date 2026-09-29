@@ -26,6 +26,8 @@ export const dynamic = 'force-dynamic';
 
 interface NewTask {
   title?: string; description?: string; projectId?: string; owner?: Owner; priority?: Priority; dueDate?: string; space?: string; einheit?: string;
+  /** Uhrzeit der Deadline „HH:MM“ (29.09., Kalender K1) — nur mit dueDate. */
+  dueTime?: string;
   spaceId?: string; listeId?: string; parentId?: string; bezug?: unknown; startDate?: string;
   /** Seit 29.09.: Beteiligte (Speichernamen) und „nur ich“. */
   beteiligte?: unknown; sichtbarkeit?: string;
@@ -81,6 +83,7 @@ export async function POST(req: Request) {
       ...(body.sichtbarkeit === 'nur-ich' ? { sichtbarkeit: 'nur-ich' as const } : {}),
     };
     if (!dueDate) delete basis.dueDate;
+    if (dueDate && typeof body.dueTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(body.dueTime)) basis.dueTime = body.dueTime;
     // Space: ausdrücklich, sonst wie bei Altaufgaben (Privat/Business, Einheit, Ort, Projekt).
     basis.spaceId = istSpaceId(body.spaceId) ? body.spaceId : spaceFuerAltAufgabe(basis, projekt, orgs);
     if (!basis.projectId) basis.projectId = sonstigeProjektId(basis.spaceId);

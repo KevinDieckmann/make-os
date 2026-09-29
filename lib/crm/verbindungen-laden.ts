@@ -29,6 +29,10 @@ import type { PlanungBezug } from './verbindungen-planung';
 import { ZIEL_HORIZONTE } from '@/lib/planung/typen';
 import { HEADS } from '@/lib/heads/prompt';
 import { standName } from '@/lib/heads/stand';
+import { ladeStand, objekteKurz, holfenster, SPEICHER as ICLOUD_SPEICHER } from '@/lib/kalender/icloud';
+import { ladeBezuege, BEZUG_SPEICHER } from '@/lib/kalender/bezug-server';
+import { kennungenVon } from '@/lib/kalender/bezug';
+import type { KalenderPruefBestand } from './verbindungen-kalender';
 
 interface Quellen { haushalt: string | null; personen: string[] }
 
@@ -43,7 +47,7 @@ async function quellen(): Promise<Quellen> {
 
 /** Die Speicher, deren Stand das ETag der Prüfung bestimmt. */
 function speicherNamen(q: Quellen): string[] {
-  return ['kontakte', CRM_SPEICHER, 'finanzplan', 'tasks', 'ordnung', KONFLIKT_SPEICHER, 'liquiplan', ...HEADS.map(h => standName(h)),
+  return ['kontakte', CRM_SPEICHER, 'finanzplan', 'tasks', 'ordnung', KONFLIKT_SPEICHER, 'liquiplan', ICLOUD_SPEICHER, BEZUG_SPEICHER, ...HEADS.map(h => standName(h)),
     ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`, `${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`] : []),
     ...q.personen.map(p => speicherFuer('zeit', p)), ...zieleSpeicher(q)];
 }
@@ -74,6 +78,19 @@ async function ladePlanung(q: Quellen): Promise<NonNullable<VerbindungsBestaende
   };
 }
 
+/**
+ * Kalender (29.09., K1): UIDs aller iCloud-Objekte (+ ob X-MAKE-ART im Text steht), das Holfenster des Stands und die
+ * Einträge in `kalender-bezug` — nur Kennungen, UIDs und Tage, nie Titel.
+ */
+export async function ladeKalenderPruefung(): Promise<KalenderPruefBestand> {
+  const [s, b] = await Promise.all([ladeStand(), ladeBezuege()]);
+  return {
+    fenster: holfenster(s),
+    objekte: objekteKurz(s).map(o => ({ uid: o.uid, mitArt: !!o.zusatz?.art })),
+    bezuege: Object.entries(b.bezuege).map(([schluessel, x]) => ({ schluessel, ...(x.tag ? { tag: x.tag } : {}), ...(x.art ? { art: x.art } : {}), kennungen: kennungenVon(x) })),
+  };
+}
+
 const dateiOrdner = (h: string) => path.join(datenOrdner(), 'dateien', h);
 
 /** Stand aller beteiligten Speicher plus Ordner der Ablage — Grundlage für das ETag (304 ohne Rechnen). */
@@ -97,10 +114,11 @@ async function aufPlatte(h: string): Promise<string[]> {
 export async function ladeVerbindungsBestaende(heute: string): Promise<VerbindungsBestaende & { haushalt: string | null }> {
   const q = await quellen();
   // Seit 28.09. abends: Planposten-Kennungen (Mandat → Liquiditätsplan) und Head-Vorschläge (nur Kennung, Person, Status).
-  const [liquiplan, heads, planung] = await Promise.all([
+  const [liquiplan, heads, planung, kalender] = await Promise.all([
     loadJson<{ posten?: { id: string }[] }>('liquiplan'),
     Promise.all(HEADS.map(async h => ({ head: h, stand: await loadJson<{ vorschlaege?: { id: string; kontakt_id?: string | null; status?: string }[] }>(standName(h)) }))),
     ladePlanung(q),
+    ladeKalenderPruefung().catch(() => null),
   ]);
   const [kontakte, crm, finanz, tasks, ordnung, einheiten, konflikte, ablage, dateien, zeiten, aufgabenAblage] = await Promise.all([
     loadJson<{ kontakte?: Kontakt[] }>('kontakte'),
@@ -130,6 +148,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     konflikte: konflikte ?? null,
     liquiplan: liquiplan ? { posten: (Array.isArray(liquiplan.posten) ? liquiplan.posten : []).map(p => p.id) } : null,
     planung,
+    kalender,
     heads: heads.map(h => ({ head: h.head, vorschlaege: (Array.isArray(h.stand?.vorschlaege) ? h.stand!.vorschlaege : []).map(v => ({ id: v.id, ...(v.kontakt_id ? { kontakt_id: v.kontakt_id } : {}), ...(v.status ? { status: v.status } : {}) })) })),
   };
 }

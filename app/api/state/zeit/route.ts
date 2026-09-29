@@ -1,7 +1,7 @@
 // ─── MAKE OS — Zeit & Fokus ─────────────────────────────────────────────────
 // GET  → das Bild der Person: heute und die letzten 7 Tage je Space und Bereich,
 //        bewusste Fokus-Zeit, Fokus-Tage, die letzten Blöcke.
-// POST { aktion: 'fokus', von, bis, schluessel, label, aufgabeId?, einheit?, mandatId?, firmaId? } → ein bewusster Block ist zu Ende.
+// POST { aktion: 'fokus', von, bis, schluessel, label, aufgabeId?, einheit?, mandatId?, firmaId?, terminUid? } → ein bewusster Block ist zu Ende.
 // POST { aktion: 'zuordnen', von, aufgabeId?, einheit?, mandatId?, firmaId? } → einen eigenen Block nachträglich einer Aufgabe/Einheit/einem Mandat
 //        zuordnen (leer = Zuordnung entfernen). Säuberung: lib/zeitmessung/einheiten.ts `zuordnungSaeubern`.
 // POST { aktion: 'umbuchen', von, space: 'privat'|'business' } → einen eigenen Block in den anderen Space umbuchen
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   // Schreiben nur mit ausdrücklicher Person (Sitzung oder Dienstweg mit Person) — nie der Rückfall auf „kevin“.
   const person = personStreng(req);
   if (!person) return NextResponse.json({ ok: false, error: 'Keine Person.' }, { status: 401 });
-  let b: { aktion?: string; von?: unknown; bis?: unknown; schluessel?: unknown; label?: unknown; aufgabeId?: unknown; einheit?: unknown; mandatId?: unknown; firmaId?: unknown; space?: unknown };
+  let b: { aktion?: string; von?: unknown; bis?: unknown; schluessel?: unknown; label?: unknown; aufgabeId?: unknown; einheit?: unknown; mandatId?: unknown; firmaId?: unknown; space?: unknown; terminUid?: unknown };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion === 'umbuchen') {
     const von = iso(b.von);
@@ -71,6 +71,8 @@ export async function POST(req: Request) {
   // Eine verschwundene Aufgabe kostet nicht den Block: dann eben ohne Aufgabe (die Einheit bleibt, wenn gewählt).
   const aufgabe = await aufgabeZu(b.aufgabeId);
   const zuordnung = zuordnungSaeubern(schluessel, b, aufgabe ?? undefined, await mandateFuerBezug({ ...b, mandatId: aufgabe?.mandatId ?? b.mandatId }));
-  const d = await fokusAbschliessen(person, { von, bis, schluessel, label: typeof b.label === 'string' ? b.label : '', ...zuordnung });
+  // Aus einer Fokuszeit im Kalender (29.09., K1): die Termin-UID bleibt am Block (Verbindungsprüfung `zeit-termin-tot`).
+  const terminUid = typeof b.terminUid === 'string' && /^[^\u0000-\u001f\u007f]{1,300}$/.test(b.terminUid) ? b.terminUid : undefined;
+  const d = await fokusAbschliessen(person, { von, bis, schluessel, label: typeof b.label === 'string' ? b.label : '', ...zuordnung, ...(terminUid ? { terminUid } : {}) });
   return NextResponse.json({ ok: true, bild: bild(d, localDay()) }, { headers: { 'Cache-Control': 'no-store' } });
 }

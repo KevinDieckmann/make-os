@@ -218,7 +218,7 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
     // statt dass die Fokus-Zeit still verloren geht.
     let status = 0, grund = '';
     try {
-      const r = await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'fokus', von: l.von, bis: new Date().toISOString(), schluessel: l.schluessel, label: l.label, aufgabeId: l.aufgabeId, einheit: l.einheit, mandatId: l.mandatId }) });
+      const r = await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'fokus', von: l.von, bis: new Date().toISOString(), schluessel: l.schluessel, label: l.label, aufgabeId: l.aufgabeId, einheit: l.einheit, mandatId: l.mandatId, terminUid: l.terminUid }) });
       status = r.status;
       if (!r.ok) grund = String(((await r.json().catch(() => ({}))) as { error?: string }).error ?? '');
     } catch { status = 0; }

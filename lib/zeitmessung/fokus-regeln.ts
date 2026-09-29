@@ -8,6 +8,8 @@ import type { LaufenderFokus } from './fokus-laufend';
 
 const SCHLUESSEL = /^(privat|business|gemeinsam):[a-z0-9-]{1,40}$/;
 const KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
+/** iCloud-UID einer Fokuszeit (29.09., K1) — ohne Steuerzeichen, begrenzt. */
+const TERMIN_UID = /^[^\u0000-\u001f\u007f]{1,300}$/;
 
 /** Einen laufenden Fokus säubern — null, wenn Beginn/Schlüssel fehlen oder der Beginn in der Zukunft/älter als 7 Tage liegt. */
 export function laufendSaeubern(v: unknown, jetztMs = Date.now()): LaufenderFokus | null {
@@ -24,6 +26,7 @@ export function laufendSaeubern(v: unknown, jetztMs = Date.now()): LaufenderFoku
     ...(typeof o.aufgabeId === 'string' && KENNUNG.test(o.aufgabeId) ? { aufgabeId: o.aufgabeId } : {}),
     ...(typeof o.einheit === 'string' && o.einheit.trim() ? { einheit: o.einheit.trim().slice(0, 40) } : {}),
     ...(typeof o.mandatId === 'string' && KENNUNG.test(o.mandatId) ? { mandatId: o.mandatId } : {}),
+    ...(typeof o.terminUid === 'string' && TERMIN_UID.test(o.terminUid) ? { terminUid: o.terminUid } : {}),
   };
 }
 

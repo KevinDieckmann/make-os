@@ -11,6 +11,8 @@
 //                                ganze Datensätze gelöscht.
 //                                Seit 28.09. (Mandat an Zielen und Zeit) auch Ziele (gemeinsam + je Person),
 //                                Meilensteine und Fokus-Blöcke: tote Mandats-/Firmen-Bezüge entfernen.
+//                                Seit 29.09. (Kalender K1): `kalender-bezug` (Einträge zu gelöschten Terminen, tote
+//                                Kennungen) und Fokus-Blöcke aus gelöschten Fokuszeiten (`terminUid`).
 //
 // Zugang: Haushalt des Inhabers UND eine benannte Person (Sitzung oder Dienstweg mit
 // x-make-person) — Default-Deny, kein Rückfall auf ein Erstkonto. Antworten tragen nur
@@ -34,6 +36,10 @@ import { verbindungenPruefen, verbindungenReparieren, verbindungsAmpel, istRepar
 import { ladeVerbindungsBestaende, verbindungsStand, aufgabenBezugZurueckschreiben } from '@/lib/crm/verbindungen-laden';
 import { zieleDateiBereinigen, meilensteinDateiBereinigen, zeitDateiBereinigen } from '@/lib/crm/verbindungen-planung';
 import { zeitAendern } from '@/lib/zeitmessung/speicher';
+import { toteTermine, toteKennungen, zeitDateiTermineBereinigen } from '@/lib/crm/verbindungen-kalender';
+import { ladeKalenderPruefung } from '@/lib/crm/verbindungen-laden';
+import { bezuegeBereinigen } from '@/lib/kalender/bezug-server';
+import type { BezugFeld } from '@/lib/kalender/bezug';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -109,8 +115,29 @@ export async function POST(req: Request) {
     if (speicher.has('meilensteine')) {
       await updateJson<{ meilensteine?: unknown }>('meilensteine', cur => (cur ? meilensteinDateiBereinigen(cur, lebend).datei : cur as unknown as { meilensteine?: unknown }));
     }
-    if (speicher.has('zeit')) {
+    if (speicher.has('zeit') && ids.includes('zeit-mandat-tot')) {
       for (const p of alt.fokus ?? []) await zeitAendern(p.person, d => zeitDateiBereinigen(d, lebend).datei);
+    }
+  }
+  // Kalender (29.09., K1): auf dem frischen Stand (iCloud-UIDs, Bezüge, CRM, Aufgaben) neu gerechnet — je Speicher eine Sperre.
+  if (speicher.has('kalender-bezug') || (speicher.has('zeit') && ids.includes('zeit-termin-tot'))) {
+    const kal = await ladeKalenderPruefung();
+    const tot = toteTermine(kal, alt.fokus);
+    if (speicher.has('kalender-bezug')) {
+      const lebend: Partial<Record<BezugFeld, ReadonlySet<string>>> = {
+        kontaktId: new Set(stand.kontakte.map(x => x.id)), firmaId: new Set(stand.crm.firmen.map(x => x.id)), mandatId: new Set(stand.crm.mandate.map(x => x.id)),
+        dealId: new Set(stand.crm.chancen.map(x => x.id)), eventId: new Set(stand.crm.events.map(x => x.id)),
+        ...(alt.aufgaben ? { aufgabeId: new Set(alt.aufgaben.liste.map(t => t.id)) } : {}),
+      };
+      const totJeFeld: Partial<Record<BezugFeld, Set<string>>> = {};
+      if (ids.includes('kalender-bezug-kennung-tot')) {
+        for (const x of kal.bezuege) for (const f of toteKennungen(x.kennungen, lebend)) (totJeFeld[f] ??= new Set()).add(x.kennungen[f]!);
+      }
+      await bezuegeBereinigen(ids.includes('termin-uid-tot') ? tot.bezuege : [], totJeFeld);
+    }
+    if (speicher.has('zeit') && ids.includes('zeit-termin-tot') && tot.bloecke.length) {
+      const weg = new Set(tot.bloecke);
+      for (const p of alt.fokus ?? []) await zeitAendern(p.person, d => zeitDateiTermineBereinigen(d, weg).datei);
     }
   }
   // Aufgaben (28.09. spät): nur `bezug` der betroffenen Aufgaben, auf dem aktuellen Stand in der Sperre.

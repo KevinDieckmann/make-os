@@ -464,6 +464,42 @@ lokal, Route `/os`, Port 3001.
 - Schnelleingabe `lib/kalender/schnell.ts` (rein, getestet) — neue Muster dort ergänzen, nie im Dialog parsen.
 - Serien/Erinnerungen entstehen beim Anlegen (`rruleText`, VALARM); Ändern von Serien bleibt in Apple (`aendereTermin` lehnt ab).
 
+## Kalender — Termin-Modell und Datenhaltung (K1, 29.09.2026, KALENDER_PLAN.md / KALENDER_VERBINDUNGEN.md 4)
+- **Wo was liegt (eine Wahrheit):** iCloud (VEVENT) ist die Wahrheit für den Termin — Titel, Zeit, Zone (TZID + VTIMEZONE),
+  ganztags, Ort, Notiz, Serie, Erinnerungen (mehrere VALARM), frei/beschäftigt (`TRANSP`, immer ausdrücklich geschrieben),
+  Sichtbarkeit (`CLASS`), Farbe (`COLOR`, RFC 7986: CSS-Name aus `TERMIN_FARBEN`), Art (`X-MAKE-ART`: termin|abwesend|fokus|arbeitsort).
+  Der Arbeitsort steht im Titel („Home“, „Büro“ … `arbeitsortAusTitel`). **Bezüge zu MAKE OS stehen NIE im Termin**, nur im
+  verschlüsselten Neben-Bestand `kalender-bezug` (`lib/kalender/bezug.ts` rein, `bezug-server.ts` Sperre): Schlüssel `uid`
+  bzw. `uid::RECURRENCE-ID`, Inhalt nur Kennungen (`kontaktId/firmaId/mandatId/dealId/aufgabeId/eventId`), `von` (wer angelegt
+  hat = Eigentümer für „privat“), `tag` (Starttag) und eine **Sicherung** von Art und „privat“ — Apple verliert X-Eigenschaften
+  und CLASS, wenn man in Apple bearbeitet. Lesen (`mitBezug`): iCloud gewinnt, die Sicherung füllt nur Fehlendes; privat gilt,
+  wenn EINE Seite privat sagt. Abgleich nach jedem iCloud-Lauf (`bezuegeAbgleichen` in `abgleichen`): Termine mit X-MAKE-ART
+  ohne Eintrag bekommen ihre Sicherung. Register: `kalender-bezug` (dritte, entfernen → `kalenderBezugOhne`), `kalender-icloud`
+  (ausgenommen: Spiegel, Löschung nur in Apple).
+- **Aufgabe als Termin = dieselbe Aufgabe** (kein iCloud-Termin, keine Kopie): `Task.dueDate` + `Task.dueTime` („HH:MM“, nur mit
+  Deadline — Säuberung, Schreibweg und Systemschreiber entfernen sie ohne Deadline; Verlauf „2026-10-02 14:30“). Angelegt über
+  `aufgabeAnlegen` (TasksContext — ausstehend bis der Server bestätigt).
+- **Fokuszeit ↔ Zeitmessung:** „Fokus starten“ am Termin → `fokusFuerTermin` (lib/zeitmessung/fokus-laufend.ts): Label = Titel,
+  Bereich `fokuszeit`, Aufgabe/Mandat/Einheit wie im Fokus-Kopf, `terminUid` am laufenden Fokus und am Block (bleibt beim
+  Umzuordnen). Läuft schon ein Fokus, wird nichts ersetzt.
+- **Termin-Route** `/api/kalender/termin`: Eingaben rein in `lib/kalender/eingabe.ts`; Build-Kennung (`bauPruefen`); jede
+  Schreibaktion ins Änderungsprotokoll (`kalender`/`termine`, UID + Feldnamen, nie Titel); PATCH/DELETE mit `stand` (ETag aus
+  GET) → veraltet 409 `{ konflikt, aktuell }` (`KalenderKonflikt`) statt still überschreiben. Bezug-Änderungen gehen auch an
+  Serien/Einladungen (nur Neben-Bestand, kein iCloud-Schreiben); Termin-Felder dort weiter nur in Apple.
+- **Privat:** GET `/api/kalender` maskiert private Termine der ANDEREN Person (`maskieren`: „Belegt“, ohne Ort/Notiz/Bezug/Farbe,
+  nie änderbar). `calendar-cache` trägt `art`, `beschaeftigt`, `privat`, `von` — die Leser (Heute, ZOE, Signale) müssen selbst
+  maskieren (K6). Fristen tragen `bereich`; Sicht/Bereich filtert die Oberfläche.
+- **Verfügbarkeit an EINER Stelle:** `verfuegbarkeitFuer(person, von, bis)` (lib/kalender/verfuegbarkeit.ts, rein in
+  `verfuegbarkeit-regeln.ts`): Abwesend (ganz/zeitlich, Titel nur wenn nicht privat), Arbeitsort, beschäftigt (TRANSP), Soll-
+  Arbeitszeit aus der Wochenvorlage (`routinen.bloecke`, art business), Feiertage NRW; `istFrei`. Gemeinsamer Kalender:
+  Abwesend/Arbeitsort nur für `von`. Genutzt von K4 (freie Zeit, Buchung), künftig Heute/Glocke/ZOE.
+- **Zeitzonen** (`lib/kalender/zeitzone.ts`): intern bleibt alles Berliner Wandzeit; eine andere Zone nur beim Anlegen
+  (Eingabe in jener Zone, TZID + VTIMEZONE aus den Zonendaten der Laufzeit) und in der Anzeige („GMT-04“). Nie `new Date(wandzeit)`.
+- **Wiederholung voll** (`lib/kalender/wiederholung.ts`, client-sicher): Intervall, Wochentage, Monatstag/letzter Tag/n-ter
+  Wochentag, Anzahl, bis (ganztägig: UNTIL als Datum); Vorlagen wie Google (`wiederholungVorlagen`), Text `wiederholungBeschreiben`.
+- **Verbindungsprüfung** (`lib/crm/verbindungen-kalender.ts`): `termin-uid-tot` (Bezug zu in Apple gelöschtem Termin, nur im
+  Holfenster eines gelungenen Stands), `kalender-bezug-kennung-tot`, `termin-art-verloren` (Hinweis), `zeit-termin-tot`.
+
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — bei Zweifel Datei löschen, der Takt baut neu.
 - Suche immer über `suche()` in `lib/zoe/vault.ts` (nimmt den Index, sonst Dateisuche). Sicht (`darfSehen`) gilt VOR dem Ranking — nie nachträglich filtern.

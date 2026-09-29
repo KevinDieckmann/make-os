@@ -21,3 +21,19 @@ export function DatumFeld({ wert, onWert, label, style, min }: { wert?: string; 
       style={{ minHeight: 36, ...style }} />
   );
 }
+
+/** Uhrzeit „HH:MM“, übernommen bei Blur oder Enter (leer = ohne Uhrzeit) — Deadline-Uhrzeit (29.09., Kalender K1). */
+export function UhrzeitFeld({ wert, onWert, label, style }: { wert?: string; onWert: (zeit: string | undefined) => void; label: string; style?: CSSProperties }) {
+  const [v, setV] = useState(wert ?? '');
+  useEffect(() => { setV(wert ?? ''); }, [wert]);
+  const uebernehmen = () => {
+    if (v === (wert ?? '')) return;
+    if (!v) { onWert(undefined); return; }
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) onWert(v); else setV(wert ?? '');
+  };
+  return (
+    <input type="time" step={300} value={v} aria-label={label} onChange={e => setV(e.target.value)} onBlur={uebernehmen}
+      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); } if (e.key === 'Escape') setV(wert ?? ''); }}
+      style={{ minHeight: 36, ...style }} />
+  );
+}

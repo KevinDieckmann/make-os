@@ -53,6 +53,7 @@ const PRIO: readonly Priority[] = ['low', 'medium', 'high', 'critical'];
 const KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 const PERSON = /^[a-z0-9-]{1,40}$/;
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
+const UHRZEIT = /^([01]\d|2[0-3]):[0-5]\d$/;
 const FARBE = /^#[0-9a-fA-F]{6}$/;
 const S = (v: unknown, n: number) => (typeof v === 'string' ? v.replace(/\u0000/g, '').slice(0, n) : undefined);
 const kennung = (v: unknown): string | undefined => (typeof v === 'string' && KENNUNG.test(v) ? v : undefined);
@@ -135,6 +136,8 @@ export function taskSauber(o: unknown): Task | null {
     assignee: (S(t.assignee, 40) ?? 'kevin') as Owner,
     tags: Array.isArray(t.tags) ? (t.tags.map(x => String(x).slice(0, 40)) as unknown as Task['tags']) : [],
     dueDate: S(t.dueDate, 40), completedAt: S(t.completedAt, 40),
+    // Uhrzeit der Deadline (29.09., Kalender K1) — nur „HH:MM“ und nur mit Deadline.
+    dueTime: typeof t.dueTime === 'string' && UHRZEIT.test(t.dueTime) && typeof t.dueDate === 'string' && t.dueDate ? t.dueTime : undefined,
     // Space (26.09.): Abweichung vom Ort — nur privat|business, sonst weg (wird aus spaceId abgeleitet, wenn gesetzt).
     space: t.space === 'privat' || t.space === 'business' ? t.space : undefined,
     subTasks: Array.isArray(t.subTasks) ? (t.subTasks as Record<string, unknown>[]).filter(x => x && typeof x === 'object').map(x => ({ id: String(x.id ?? '').slice(0, 80), taskId: id, title: String(x.title ?? '').slice(0, 300), completed: x.completed === true, sortOrder: Number(x.sortOrder) || 0, createdAt: S(x.createdAt, 40) ?? jetzt, updatedAt: S(x.updatedAt, 40) ?? jetzt })) : [],

@@ -34,6 +34,7 @@ export function systemOps(stand: TasksState, a: SystemAenderungen, personen: rea
     const d = deadlineAlsTag(t.dueDate);
     if (d && istTag(d)) t.dueDate = d; else delete t.dueDate;
     if (t.startDate && (!istTag(t.startDate) || (t.dueDate && t.startDate > t.dueDate))) delete t.startDate;
+    if (t.dueTime && !t.dueDate) delete t.dueTime;
     if (personen.length && t.assignee !== 'both' && !personen.includes(t.assignee)) t.assignee = personen[0] as Task['assignee'];
     ops.tasks.push({ op: 'upsert', eintrag: t } as Op<Task>);
   }

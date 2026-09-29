@@ -50,6 +50,7 @@ import { wertelistenVollstaendig, wertelistenPruefen, WERT_MIN, WERT_MAX } from 
 
 import { tagVon } from '@/lib/zeit';
 import { PRUEFUNGEN_PLANUNG, planungPruefen, planungReparieren, type PlanungBestand } from './verbindungen-planung';
+import { PRUEFUNGEN_KALENDER, kalenderPruefen, kalenderReparieren, type KalenderPruefBestand, type KalenderLebend } from './verbindungen-kalender';
 // ── Eingang ─────────────────────────────────────────────────────────────────
 
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
@@ -88,12 +89,14 @@ export interface VerbindungsBestaende {
   heads?: { head: string; vorschlaege: { id: string; kontakt_id?: string | null; status?: string }[] }[] | null;
   /** Ziele und Meilensteine — nur Kennung und Mandats-/Firmen-Bezug (28.09.). null = nicht geprüft. */
   planung?: PlanungBestand | null;
+  /** Kalender (29.09., K1): iCloud-UIDs, Holfenster, Einträge `kalender-bezug` — nur Kennungen. null = nicht geprüft. */
+  kalender?: KalenderPruefBestand | null;
 }
 
 // ── Befunde ─────────────────────────────────────────────────────────────────
 
 export type Schwere = 'fehler' | 'warnung' | 'hinweis';
-export type VerbindungsBereich = 'kennungen' | 'kontakte' | 'firmen' | 'deals' | 'mandate' | 'rechnungen' | 'followup' | 'events' | 'marketing' | 'datenschutz' | 'aufgaben' | 'zeit' | 'planung' | 'dateien' | 'import' | 'angebote';
+export type VerbindungsBereich = 'kennungen' | 'kontakte' | 'firmen' | 'deals' | 'mandate' | 'rechnungen' | 'followup' | 'events' | 'marketing' | 'datenschutz' | 'aufgaben' | 'zeit' | 'planung' | 'dateien' | 'import' | 'angebote' | 'kalender';
 /** Wofür die Beispiel-Kennungen stehen — die Oberfläche macht daraus Links. */
 export type BeispielArt = 'kontakt' | 'firma' | 'deal' | 'mandat' | 'rechnung' | 'followup' | 'event' | 'kampagne' | 'beitrag' | 'newsletter' | 'segment' | 'antrag' | 'aufgabe' | 'datei' | 'kennung' | 'angebot' | 'produkt';
 
@@ -198,6 +201,8 @@ export const PRUEFUNGEN = {
   'einwilligung-beleg-tot': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat eine Einwilligung', 'Personen haben Einwilligungen')}, deren Beleg (Dateiablage) es nicht mehr gibt — Nachweis nach Art. 7 Abs. 1 DSGVO fehlt; Beleg neu ablegen.` },
   // Mandat an Zielen und Zeit (28.09.): ziel-/meilenstein-/zeit-mandat-tot — lib/crm/verbindungen-planung.ts.
   ...PRUEFUNGEN_PLANUNG,
+  // Kalender (29.09., K1): termin-uid-tot, kalender-bezug-kennung-tot, termin-art-verloren, zeit-termin-tot — lib/crm/verbindungen-kalender.ts.
+  ...PRUEFUNGEN_KALENDER,
 } as const satisfies Record<string, Pruefung>;
 
 export type PruefungId = keyof typeof PRUEFUNGEN;
@@ -236,6 +241,12 @@ function mengen(b: VerbindungsBestaende) {
   };
 }
 type Mengen = ReturnType<typeof mengen>;
+
+/** Lebende Kennungen für die Kalender-Bezüge (Aufgaben nur, wenn geladen). */
+const kalenderLebend = (b: VerbindungsBestaende, m: Mengen): KalenderLebend => ({
+  kontaktId: m.kontakte, firmaId: m.firmen, mandatId: m.mandate, dealId: m.chancen, eventId: m.events,
+  ...(b.aufgaben ? { aufgabeId: new Set(liste(b.aufgaben.liste).map(t => t.id)) } : {}),
+});
 
 const kontaktTot = (id: string | undefined, m: Mengen) => !!id && !m.kontakte.has(id);
 /** Die Felder des Aufgaben-Bezugs, deren Kennung es nicht (mehr) gibt. */
@@ -530,6 +541,8 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
 
   // Mandat an Zielen und Zeit (28.09.): Ziele, Meilensteine, Fokus-Blöcke mit totem Mandat/Firma.
   planungPruefen(b, { mandate: m.mandate, firmen: m.firmen }, melde);
+  // Kalender (29.09., K1): Bezüge, gelöschte Termine, verlorene Art, Fokus-Blöcke aus gelöschten Fokuszeiten.
+  kalenderPruefen(b, kalenderLebend(b, m), melde);
 
   // Import-Konflikte
   if (b.konflikte) {
@@ -588,7 +601,7 @@ function leadOhneDeal<L extends { status: string; chanceId?: string; sqlAm?: str
   return { ...ohne, status: 'qualifizierung' } as L;
 }
 
-export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien' | 'tasks' | 'ziele' | 'meilensteine' | 'zeit';
+export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien' | 'tasks' | 'ziele' | 'meilensteine' | 'zeit' | 'kalender-bezug';
 export interface Aenderung { befundId: PruefungId; speicher: ReparaturSpeicher; anzahl: number; text: string }
 
 /**
@@ -825,6 +838,9 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
   // Mandat an Zielen und Zeit (28.09.): tote Mandats-/Firmen-Bezüge an Zielen, Meilensteinen, Fokus-Blöcken entfernen.
   const planung = planungReparieren(b, will, { mandate: m.mandate, firmen: m.firmen });
   aenderungen.push(...planung.aenderungen);
+  // Kalender (29.09., K1): Einträge zu gelöschten Terminen, tote Kennungen, Fokus-Blöcke aus gelöschten Fokuszeiten.
+  const kal = kalenderReparieren({ ...b, fokus: planung.fokus }, will, kalenderLebend(b, m));
+  aenderungen.push(...kal.aenderungen);
 
-  return { aenderungen, bestaende: { ...b, crm, kontakte, konflikte, dateien, aufgaben, planung: planung.planung, fokus: planung.fokus } };
+  return { aenderungen, bestaende: { ...b, crm, kontakte, konflikte, dateien, aufgaben, planung: planung.planung, fokus: kal.fokus, kalender: kal.kalender } };
 }

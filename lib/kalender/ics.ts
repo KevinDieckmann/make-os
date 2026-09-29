@@ -7,9 +7,22 @@
 // Was MAKE OS bewusst NICHT ändert (nur in Apple): Serientermine und Termine
 // mit Teilnehmern — bei denen würde iCloud Einladungen verschicken, und
 // MAKE OS versendet nie etwas.
+//
+// Seit 29.09. (K1, Google-Vorbild) trägt ein Termin auch — und NUR diese Standard-/
+// Nahezu-Standard-Eigenschaften (Datenregel KALENDER_VERBINDUNGEN.md 4a): Art (X-MAKE-ART),
+// eigene Farbe (COLOR, RFC 7986), frei/beschäftigt (TRANSP), Sichtbarkeit (CLASS), Zeitzone
+// (TZID + VTIMEZONE aus lib/kalender/zeitzone.ts), mehrere Erinnerungen (VALARM). Der
+// Arbeitsort steht im Titel („Home“, „Büro“ …). Bezüge zu MAKE OS (Aufgabe, Mandat,
+// Kontakt …) stehen NIE im Termin, nur im Neben-Bestand `kalender-bezug` (lib/kalender/bezug.ts).
 
 import ICAL from 'ical.js';
 import { wandzeit, ausWandzeit, ZONE } from './zeit';
+import { rruleText, type Wiederholung } from './wiederholung';
+import { istIcsArt, beschaeftigtStandard, farbeSauber, farbeHex, arbeitsortAusTitel, arbeitsortTitel, erinnerungenSauber, istSichtbarkeit, type IcsArt, type Sichtbarkeit, type Arbeitsort } from './arten';
+import { vtimezoneText, ausWandzeitIn } from './zeitzone';
+
+export { rruleText };
+export type { Wiederholung, WiederholungFreq } from './wiederholung';
 
 export interface KalenderObjekt { href: string; etag?: string; ics: string }
 export interface KalenderInfo { id: string; name: string; farbe?: string; schreibbar?: boolean }
@@ -33,7 +46,29 @@ export interface Termin {
   mitTeilnehmern: boolean;
   /** In MAKE OS verschieben/umbenennen/löschen erlaubt */
   bearbeitbar: boolean;
+  // ── seit 29.09. (K1) ──
+  /** Art (X-MAKE-ART) — ohne Angabe „termin“. */
+  art: IcsArt;
+  /** Eigene Farbe des Termins (COLOR) als #RRGGBB — sonst gilt `farbe` (die des Kalenders). */
+  farbeEigen?: string;
+  /** Die gespeicherte Farb-Kennung (CSS3-Name der Palette oder Hex) — zum Wiederschreiben. */
+  farbeId?: string;
+  /** Beschäftigt (TRANSP:OPAQUE) oder frei (TRANSPARENT); ohne Angabe nach Art/ganztags. */
+  beschaeftigt: boolean;
+  /** CLASS: privat → in geteilten Sichten nur „Belegt“ für die andere Person. */
+  sichtbarkeit: Sichtbarkeit;
+  /** TZID des Beginns, wenn nicht Europe/Berlin (Anzeige „GMT-04“). */
+  zone?: string;
+  /** Erinnerungen in Minuten vor Beginn (relative VALARM-Auslöser). */
+  erinnerungen?: number[];
+  /** Nur Art „arbeitsort“: der Ort, gelesen aus dem Titel. */
+  arbeitsort?: Arbeitsort;
+  /** ETag des iCloud-Objekts — der Stand für Änderungen (veraltet → 409 statt still überschreiben). */
+  stand?: string;
 }
+
+/** Was ein VEVENT selbst über Art, Farbe und Sichtbarkeit sagt (X-MAKE-ART, COLOR, CLASS). */
+export interface IcsZusatz { art?: IcsArt; farbe?: string; sichtbarkeit?: Sichtbarkeit }
 
 // Europe/Berlin einmal fest hinterlegen — falls ein Objekt seine Zone nicht mitliefert.
 const BERLIN_VTZ = `BEGIN:VCALENDAR
@@ -87,6 +122,45 @@ function parse(ics: string): ICAL.Component | null {
 
 const kurz = (v: unknown, n: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : undefined);
 
+/** Die Zusätze eines VEVENT (rein aus dem Text, ohne Neben-Bestand). */
+function zusatzVon(v: ICAL.Component): IcsZusatz & { transp?: 'OPAQUE' | 'TRANSPARENT'; markiert: boolean } {
+  const x = (n: string) => { const w = v.getFirstPropertyValue(n); return typeof w === 'string' ? w.trim() : undefined; };
+  const artRoh = x('x-make-art')?.toLowerCase();
+  const klasse = x('class')?.toUpperCase();
+  const transp = x('transp')?.toUpperCase();
+  const sichtbarkeit: Sichtbarkeit | undefined = klasse === 'PRIVATE' || klasse === 'CONFIDENTIAL' ? 'privat' : klasse === 'PUBLIC' ? 'oeffentlich' : undefined;
+  return {
+    ...(istIcsArt(artRoh) ? { art: artRoh } : {}),
+    ...(farbeSauber(x('color')) ? { farbe: farbeSauber(x('color')) } : {}),
+    ...(sichtbarkeit ? { sichtbarkeit } : {}),
+    ...(transp === 'OPAQUE' || transp === 'TRANSPARENT' ? { transp } : {}),
+    markiert: istIcsArt(artRoh),
+  };
+}
+
+/** Erinnerungen (Minuten vor Beginn) aus den VALARMs — nur relative Auslöser vor/zu Beginn. */
+function erinnerungenVon(v: ICAL.Component): number[] {
+  const raus: number[] = [];
+  for (const a of v.getAllSubcomponents('valarm')) {
+    const t = a.getFirstPropertyValue('trigger');
+    if (t && typeof t === 'object' && 'toSeconds' in t) { const sek = (t as ICAL.Duration).toSeconds(); if (sek <= 0) raus.push(Math.round(-sek / 60)); }
+  }
+  return erinnerungenSauber(raus);
+}
+
+/**
+ * Art/Farbe/Sichtbarkeit aus einem iCalendar-Text (erstes VEVENT ohne RECURRENCE-ID) — null, wenn der Termin kein
+ * X-MAKE-ART trägt. Grundlage des Abgleichs mit der Sicherung im Neben-Bestand (lib/kalender/bezug.ts).
+ */
+export function icsZusatz(ics: string): IcsZusatz | null {
+  const comp = parse(ics);
+  const vs = comp?.getAllSubcomponents('vevent') ?? [];
+  const v = vs.find(x => !x.hasProperty('recurrence-id')) ?? vs[0];
+  if (!v) return null;
+  const { transp: _t, markiert, ...z } = zusatzVon(v);
+  return markiert ? z : null;
+}
+
 /**
  * Alle Termine eines Objekts, die in [von, bis) liegen (Berliner Tage
  * YYYY-MM-DD). Serien werden aufgefaltet, Ausnahmen (verschobene oder
@@ -107,6 +181,7 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
   const raus: Termin[] = [];
 
   const fuege = (e: ICAL.Event, start: ICAL.Time, ende: ICAL.Time, rid?: ICAL.Time) => {
+    const z = zusatzVon(e.component);
     const s = alsWand(start);
     const en = alsWand(ende && ende.compare(start) > 0 ? ende : start);
     const sT = start.isDate ? ausWandzeit(s).getTime() : start.toJSDate().getTime();
@@ -120,6 +195,8 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
       ort: kurz(e.location, 300), notiz: kurz(e.description, 2000),
       serie, mitTeilnehmern,
       bearbeitbar: !serie && !mitTeilnehmern && kal.schreibbar !== false,
+      ...zusatzFelder(z, start, e.component),
+      ...(obj.etag ? { stand: obj.etag } : {}),
     });
   };
 
@@ -143,6 +220,38 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
   return raus;
 }
 
+/** Die K1-Felder eines Vorkommens aus seinem VEVENT. */
+function zusatzFelder(z: ReturnType<typeof zusatzVon>, start: ICAL.Time, v: ICAL.Component): Pick<Termin, 'art' | 'farbeEigen' | 'farbeId' | 'beschaeftigt' | 'sichtbarkeit' | 'zone' | 'erinnerungen' | 'arbeitsort'> {
+  const art = z.art ?? 'termin';
+  const tzid = !start.isDate ? start.zone?.tzid : undefined;
+  const er = erinnerungenVon(v);
+  return {
+    art,
+    ...(z.farbe ? { farbeId: z.farbe, farbeEigen: farbeHex(z.farbe) } : {}),
+    beschaeftigt: z.transp ? z.transp === 'OPAQUE' : beschaeftigtStandard(art, start.isDate),
+    sichtbarkeit: z.sichtbarkeit ?? 'standard',
+    ...(tzid && !['UTC', 'floating', 'Z', ZONE].includes(tzid) ? { zone: tzid } : {}),
+    ...(er.length ? { erinnerungen: er } : {}),
+    ...(art === 'arbeitsort' ? { arbeitsort: arbeitsortAusTitel(String(v.getFirstPropertyValue('summary') ?? '')) } : {}),
+  };
+}
+
+/** Kurzbild eines Objekts (ein Parse): UID, Starttag (Berlin) und was es selbst über Art/Farbe/Sichtbarkeit sagt. */
+export function objektKurz(ics: string): { uid?: string; tag?: string; zusatz: IcsZusatz | null } {
+  const comp = parse(ics);
+  const vs = comp?.getAllSubcomponents('vevent') ?? [];
+  const v = vs.find(x => !x.hasProperty('recurrence-id')) ?? vs[0];
+  if (!v) return { zusatz: null };
+  const uid = v.getFirstPropertyValue('uid');
+  const start = v.getFirstPropertyValue('dtstart');
+  const { transp: _t, markiert, ...z } = zusatzVon(v);
+  return {
+    ...(typeof uid === 'string' ? { uid } : {}),
+    ...(start instanceof ICAL.Time ? { tag: alsWand(start).slice(0, 10) } : {}),
+    zusatz: markiert ? z : null,
+  };
+}
+
 /** UID eines Objekts — ohne Auffalten (auch bei langen Serien billig). */
 export function uidVon(ics: string): string | undefined {
   return /^UID(?:;[^:\r\n]*)?:(.+)$/m.exec(ics.replace(/\r?\n[ \t]/g, ''))?.[1]?.trim();
@@ -161,10 +270,6 @@ export function nichtBearbeitbar(ics: string): string | null {
 /** Text für eine iCalendar-Eigenschaft: ohne Steuerzeichen, begrenzt. */
 const sauber = (s: string, n: number) => s.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
 
-export type WiederholungFreq = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
-/** Serie (27.09.): wie Google Kalender — täglich/wöchentlich/monatlich/jährlich, Abstand, Ende nach Anzahl oder bis Datum, Wochentage. */
-export interface Wiederholung { freq: WiederholungFreq; intervall?: number; anzahl?: number; bis?: string; tage?: ('MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU')[] }
-
 export interface NeuerTermin {
   uid: string;
   titel: string;
@@ -178,24 +283,42 @@ export interface NeuerTermin {
   wiederholung?: Wiederholung;
   /** Erinnerung in Minuten vor Beginn — als VALARM (DISPLAY), Apple/iPhone melden sie. */
   erinnerungMin?: number;
+  // ── seit 29.09. (K1) ──
+  /** Mehrere Erinnerungen (Minuten vor Beginn) — zusammen mit `erinnerungMin`. */
+  erinnerungenMin?: number[];
+  art?: IcsArt;
+  /** Farb-Kennung der Palette (lib/kalender/arten.ts TERMIN_FARBEN) → COLOR. */
+  farbe?: string;
+  /** Ohne Angabe: nach Art und ganztags (beschaeftigtStandard). */
+  beschaeftigt?: boolean;
+  sichtbarkeit?: Sichtbarkeit;
+  /** IANA-Zone, in der `start`/`ende` gemeint sind (Standard Europe/Berlin). */
+  zone?: string;
+  /** Nur Art „arbeitsort“: wird der Titel. */
+  arbeitsort?: Arbeitsort;
 }
 
-/** RRULE-Text aus der Wiederholung (rein, getestet). */
-export function rruleText(w: Wiederholung): string {
-  const teile = [`FREQ=${w.freq}`];
-  if (w.intervall && w.intervall > 1) teile.push(`INTERVAL=${Math.min(365, Math.round(w.intervall))}`);
-  if (w.tage?.length && w.freq === 'WEEKLY') teile.push(`BYDAY=${Array.from(new Set(w.tage)).join(',')}`);
-  if (w.anzahl && w.anzahl > 0) teile.push(`COUNT=${Math.min(999, Math.round(w.anzahl))}`);
-  else if (w.bis && /^\d{4}-\d{2}-\d{2}$/.test(w.bis)) teile.push(`UNTIL=${w.bis.replace(/-/g, '')}T215959Z`);
-  return teile.join(';');
+/** Die Zone für ical.js — Berlin fest hinterlegt, andere aus den Zonendaten der Laufzeit (einmal registriert). */
+function zoneFuer(zone: string, jahr: number): ICAL.Timezone {
+  if (zone === ZONE) return berlin();
+  if (zone === 'UTC') return ICAL.Timezone.utcTimezone;
+  if (!ICAL.TimezoneService.has(zone)) {
+    const vtz = new ICAL.Component(ICAL.parse(`BEGIN:VCALENDAR\r\n${vtimezoneText(zone, jahr)}\r\nEND:VCALENDAR`)).getFirstSubcomponent('vtimezone')!;
+    ICAL.TimezoneService.register(vtz);
+  }
+  return ICAL.TimezoneService.get(zone)!;
 }
 
-function zeitFuer(wand: string, ganztags: boolean): ICAL.Time {
+/** Wandzeit → ical.js-Zeit: ganztags als Datum; sonst in `zone` gemeint (Standard Berlin). */
+function zeitFuer(wand: string, ganztags: boolean, zone: string = ZONE): ICAL.Time {
   if (ganztags) {
     const [j, m, t] = wand.slice(0, 10).split('-').map(Number);
     return ICAL.Time.fromData({ year: j, month: m, day: t, isDate: true });
   }
-  return ICAL.Time.fromJSDate(ausWandzeit(wand), true).convertToZone(berlin());
+  if (zone === ZONE) return ICAL.Time.fromJSDate(ausWandzeit(wand), true).convertToZone(berlin());
+  const tz = zoneFuer(zone, Number(wand.slice(0, 4)));
+  const utc = ICAL.Time.fromJSDate(ausWandzeitIn(wand, zone), true);
+  return zone === 'UTC' ? utc : utc.convertToZone(tz);
 }
 
 function setzeZeit(v: ICAL.Component, name: 'dtstart' | 'dtend', t: ICAL.Time) {
@@ -212,6 +335,31 @@ function mitBerlinZone(comp: ICAL.Component) {
   }
 }
 
+/** Die VTIMEZONE einer anderen Zone mitschicken (Apple und jeder andere Client rechnen damit). */
+function mitZone(comp: ICAL.Component, zone: string, jahr: number) {
+  if (zone === ZONE) { mitBerlinZone(comp); return; }
+  if (zone === 'UTC' || comp.getAllSubcomponents('vtimezone').some(z => z.getFirstPropertyValue('tzid') === zone)) return;
+  comp.addSubcomponent(new ICAL.Component(ICAL.parse(`BEGIN:VCALENDAR\r\n${vtimezoneText(zone, jahr)}\r\nEND:VCALENDAR`)).getFirstSubcomponent('vtimezone')!);
+}
+
+/** Art, Farbe, Sichtbarkeit in ein VEVENT schreiben (nur die übergebenen; `null`/„standard“ entfernt). */
+function zusaetzeSetzen(v: ICAL.Component, z: { art?: IcsArt; farbe?: string | null; sichtbarkeit?: Sichtbarkeit }) {
+  const setze = (name: string, wert: string | undefined) => { v.removeAllProperties(name); if (wert) v.updatePropertyWithValue(name, wert); };
+  if (z.art !== undefined) setze('x-make-art', z.art);
+  if (z.farbe !== undefined) setze('color', farbeSauber(z.farbe));
+  if (z.sichtbarkeit !== undefined) setze('class', z.sichtbarkeit === 'privat' ? 'PRIVATE' : z.sichtbarkeit === 'oeffentlich' ? 'PUBLIC' : undefined);
+}
+
+function alarmeSetzen(v: ICAL.Component, minuten: number[], titel: string) {
+  for (const min of erinnerungenSauber(minuten)) {
+    const a = new ICAL.Component('valarm');
+    a.updatePropertyWithValue('action', 'DISPLAY');
+    a.updatePropertyWithValue('description', sauber(titel, 300) || 'Termin');
+    const p = new ICAL.Property('trigger', a); p.setValue(ICAL.Duration.fromString(`${min > 0 ? '-' : ''}PT${min}M`)); a.addProperty(p);
+    v.addSubcomponent(a);
+  }
+}
+
 /** Ein neuer Termin als iCalendar-Text (ohne Teilnehmer — MAKE OS lädt niemanden ein). */
 export function baueTermin(t: NeuerTermin, jetzt = new Date()): string {
   berlin();
@@ -225,26 +373,30 @@ export function baueTermin(t: NeuerTermin, jetzt = new Date()): string {
   v.updatePropertyWithValue('dtstamp', stempel);
   v.updatePropertyWithValue('created', stempel);
   v.updatePropertyWithValue('last-modified', stempel);
-  v.updatePropertyWithValue('summary', sauber(t.titel, 300) || 'Termin');
-  setzeZeit(v, 'dtstart', zeitFuer(t.start, !!t.ganztags));
-  setzeZeit(v, 'dtend', zeitFuer(t.ende, !!t.ganztags));
+  const art: IcsArt = t.art ?? 'termin';
+  const titel = art === 'arbeitsort' && t.arbeitsort ? arbeitsortTitel(t.arbeitsort) : t.titel;
+  v.updatePropertyWithValue('summary', sauber(titel, 300) || 'Termin');
+  const zone = t.zone ?? ZONE;
+  setzeZeit(v, 'dtstart', zeitFuer(t.start, !!t.ganztags, zone));
+  setzeZeit(v, 'dtend', zeitFuer(t.ende, !!t.ganztags, zone));
   if (t.ort) v.updatePropertyWithValue('location', sauber(t.ort, 300));
   if (t.notiz) v.updatePropertyWithValue('description', sauber(t.notiz, 2000));
-  if (t.wiederholung) v.updatePropertyWithValue('rrule', ICAL.Recur.fromString(rruleText(t.wiederholung)));
-  if (t.erinnerungMin !== undefined && t.erinnerungMin >= 0) {
-    const a = new ICAL.Component('valarm');
-    a.updatePropertyWithValue('action', 'DISPLAY');
-    a.updatePropertyWithValue('description', sauber(t.titel, 300) || 'Termin');
-    const min = Math.min(60 * 24 * 14, Math.round(t.erinnerungMin));
-    const p = new ICAL.Property('trigger', a); p.setValue(ICAL.Duration.fromString(`${min > 0 ? '-' : ''}PT${min}M`)); a.addProperty(p);
-    v.addSubcomponent(a);
-  }
-  if (!t.ganztags) mitBerlinZone(cal);
+  if (t.wiederholung) v.updatePropertyWithValue('rrule', ICAL.Recur.fromString(rruleText(t.wiederholung, !!t.ganztags)));
+  // Frei/beschäftigt immer ausdrücklich — Apple, Google und die freie-Zeit-Suche lesen TRANSP.
+  v.updatePropertyWithValue('transp', (t.beschaeftigt ?? beschaeftigtStandard(art, !!t.ganztags)) ? 'OPAQUE' : 'TRANSPARENT');
+  zusaetzeSetzen(v, { art, ...(t.farbe ? { farbe: t.farbe } : {}), ...(t.sichtbarkeit && t.sichtbarkeit !== 'standard' ? { sichtbarkeit: t.sichtbarkeit } : {}) });
+  const min = [...(t.erinnerungenMin ?? []), ...(t.erinnerungMin !== undefined && t.erinnerungMin >= 0 ? [Math.min(60 * 24 * 14, Math.round(t.erinnerungMin))] : [])];
+  alarmeSetzen(v, min, titel);
+  if (!t.ganztags) mitZone(cal, zone, Number(t.start.slice(0, 4)));
   cal.addSubcomponent(v);
   return cal.toString();
 }
 
-export interface Aenderung { titel?: string; start?: string; ende?: string; ort?: string | null; notiz?: string | null }
+export interface Aenderung {
+  titel?: string; start?: string; ende?: string; ort?: string | null; notiz?: string | null;
+  // ── seit 29.09. (K1) ── (Arbeitsort ändern = Titel ändern)
+  art?: IcsArt; farbe?: string | null; beschaeftigt?: boolean; sichtbarkeit?: Sichtbarkeit;
+}
 
 /**
  * Einen bestehenden Einzeltermin ändern — alles andere (Alarme, Notizen,
@@ -262,6 +414,9 @@ export function aendereTermin(ics: string, a: Aenderung, jetzt = new Date()): { 
   const ev = new ICAL.Event(v);
   const ganztags = ev.startDate.isDate;
   if (a.titel !== undefined) v.updatePropertyWithValue('summary', sauber(a.titel, 300) || 'Termin');
+  if (a.beschaeftigt !== undefined) v.updatePropertyWithValue('transp', a.beschaeftigt ? 'OPAQUE' : 'TRANSPARENT');
+  if (a.sichtbarkeit !== undefined && !istSichtbarkeit(a.sichtbarkeit)) return { fehler: 'Unbekannte Sichtbarkeit.' };
+  zusaetzeSetzen(v, { ...(a.art !== undefined ? { art: a.art } : {}), ...(a.farbe !== undefined ? { farbe: a.farbe } : {}), ...(a.sichtbarkeit !== undefined ? { sichtbarkeit: a.sichtbarkeit } : {}) });
   if (a.ort !== undefined) { if (a.ort) v.updatePropertyWithValue('location', sauber(a.ort, 300)); else v.removeAllProperties('location'); }
   if (a.notiz !== undefined) { if (a.notiz) v.updatePropertyWithValue('description', sauber(a.notiz, 2000)); else v.removeAllProperties('description'); }
   if (a.start || a.ende) {

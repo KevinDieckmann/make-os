@@ -285,6 +285,8 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
           if (alt?.verlauf) n.verlauf = alt.verlauf; else delete n.verlauf;
           // „Wartet auf“: wer sich geändert hat (abhaengigVon oder das alte dependencies), gewinnt.
           n = abhaengigAngleichen(n, alt ?? null);
+          // Uhrzeit nur mit Deadline (29.09., Kalender K1): wer die Deadline leert, leert die Uhrzeit mit.
+          if (n.dueTime && !n.dueDate) delete n.dueTime;
           // ZOE-Auftraggeberin (C4): wer sie ändert, IST sie — der Server setzt die schreibende Person, nie eine behauptete.
           if (n.zoe?.von && n.zoe.von !== alt?.zoe?.von) n = { ...n, zoe: { ...n.zoe, von: opt.person } };
           // Eigene Felder typgerecht gegen die Definitionen des Projekts — geprüft wird nur, was neu gesetzt wird (A6).

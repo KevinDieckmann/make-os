@@ -21,7 +21,11 @@ export type ZeitSpace = SpaceId | 'gemeinsam';
  * sehen“) optional mit `aufgabeId` und `einheit` — beides nur im Business, gesäubert im Schreibweg
  * (lib/zeitmessung/einheiten.ts `zuordnungSaeubern`). Altbestand ohne die Felder bleibt gültig („ohne Einheit“).
  */
-export interface FokusBlock { von: string; bis: string; schluessel: string; label: string; sek: number; aufgabeId?: string; einheit?: string; mandatId?: string; firmaId?: string }
+export interface FokusBlock {
+  von: string; bis: string; schluessel: string; label: string; sek: number; aufgabeId?: string; einheit?: string; mandatId?: string; firmaId?: string;
+  /** Aus welcher Fokuszeit im Kalender gestartet (iCloud-UID, 29.09. K1) — keine Zuordnung, bleibt beim Umzuordnen; Prüfung `zeit-termin-tot`. */
+  terminUid?: string;
+}
 /**
  * Zuordnung eines Blocks — nur die gesetzten Felder werden gespeichert. Seit 28.09. („Mandat an Zielen und Zeit“) auch
  * `mandatId`/`firmaId` (nur im Business): Zeit je Mandat für Abrechnung und Auslastung (lib/zeitmessung/mandate.ts).
@@ -89,13 +93,13 @@ const mitZuordnung = (b: Omit<FokusBlock, ZuordnungsFeld>, z: BlockZuordnung): F
 };
 
 /** Ein bewusster Fokus-Block ist zu Ende: Sekunden gutschreiben und den Block merken. Die Zuordnung muss schon gesäubert sein. */
-export function fokusVerbuchen(d: ZeitDatei, block: { von: string; bis: string; schluessel: string; label: string } & BlockZuordnung): ZeitDatei {
+export function fokusVerbuchen(d: ZeitDatei, block: { von: string; bis: string; schluessel: string; label: string; terminUid?: string } & BlockZuordnung): ZeitDatei {
   const sek = Math.min(MAX_FOKUS_SEK, ganz((Date.parse(block.bis) - Date.parse(block.von)) / 1000));
   if (!Number.isFinite(sek) || sek <= 0) return d;
   const tag = tagVon(block.von);
   const alt = d.tage[tag] ?? leererTag();
   const { von, bis, schluessel, label } = block;
-  const neu = mitZuordnung({ von, bis, schluessel, label: label.slice(0, 60), sek }, block);
+  const neu = mitZuordnung({ von, bis, schluessel, label: label.slice(0, 60), sek, ...(block.terminUid ? { terminUid: block.terminUid.slice(0, 300) } : {}) }, block);
   const t: ZeitTag = { ...alt, bewusst: { ...alt.bewusst }, bloecke: [...alt.bloecke, neu].slice(-60) };
   t.bewusst[block.schluessel] = ganz((t.bewusst[block.schluessel] ?? 0) + sek);
   return { ...d, tage: { ...d.tage, [tag]: t } };

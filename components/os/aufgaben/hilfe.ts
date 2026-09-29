@@ -71,6 +71,8 @@ export const listeTitel = (state: TasksState, id: string | undefined): string =>
 export interface Ziel { spaceId: string; projectId?: string; listeId?: string; parentId?: string }
 export interface Neu {
   title: string; priority?: Priority; assignee?: Owner; dueDate?: string; bezug?: AufgabeBezug; description?: string;
+  /** Uhrzeit der Deadline „HH:MM“ (29.09., Kalender K1) — nur mit dueDate. */
+  dueTime?: string;
   /** 29.09.: „nur ich“ (nur die Anlegerin sieht sie) und Beteiligte neben der einen Verantwortlichen. */
   sichtbarkeit?: Task['sichtbarkeit']; beteiligte?: string[];
 }
@@ -93,6 +95,7 @@ export function aufgabeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksS
     ...(eltern ? { parentId: eltern.id } : {}),
     ...(bezug ? { bezug } : {}),
     ...(neu.dueDate ? { dueDate: neu.dueDate } : {}),
+    ...(neu.dueDate && neu.dueTime ? { dueTime: neu.dueTime } : {}),
     // Unteraufgaben erben die Sichtbarkeit ohnehin (Server); gesetzt wird sie an der Hauptaufgabe.
     ...(neu.sichtbarkeit === 'nur-ich' && !eltern ? { sichtbarkeit: 'nur-ich' as const } : {}),
     ...(neu.beteiligte?.length ? { beteiligte: neu.beteiligte } : {}),

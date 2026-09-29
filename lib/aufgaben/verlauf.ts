@@ -24,7 +24,9 @@ export function verlaufFuer(alt: Task | undefined, neu: Task, wer: VerlaufWer, j
   if (sa.id !== sn.id) raus.push(e('status', { vorher: sa.label, nachher: sn.label }));
   if (alt.assignee !== neu.assignee) raus.push(e('zustaendig', { vorher: alt.assignee, nachher: neu.assignee }));
   if (alt.priority !== neu.priority) raus.push(e('prioritaet', { vorher: PRIO_LABEL[alt.priority] ?? alt.priority, nachher: PRIO_LABEL[neu.priority] ?? neu.priority }));
-  if ((alt.dueDate ?? '') !== (neu.dueDate ?? '')) raus.push(e('deadline', { ...(alt.dueDate ? { vorher: alt.dueDate.slice(0, 10) } : {}), ...(neu.dueDate ? { nachher: neu.dueDate.slice(0, 10) } : {}) }));
+  // Uhrzeit der Deadline (29.09., Kalender K1) gehört zur Deadline: „2026-10-02 14:30“.
+  const dl = (t: { dueDate?: string; dueTime?: string }) => (t.dueDate ? `${t.dueDate.slice(0, 10)}${t.dueTime ? ` ${t.dueTime}` : ''}` : '');
+  if ((alt.dueDate ?? '') !== (neu.dueDate ?? '') || (alt.dueTime ?? '') !== (neu.dueTime ?? '')) raus.push(e('deadline', { ...(alt.dueDate ? { vorher: dl(alt) } : {}), ...(neu.dueDate ? { nachher: dl(neu) } : {}) }));
   if ((alt.startDate ?? '') !== (neu.startDate ?? '')) raus.push(e('start', { ...(alt.startDate ? { vorher: alt.startDate } : {}), ...(neu.startDate ? { nachher: neu.startDate } : {}) }));
   if (alt.title !== neu.title) raus.push(e('titel'));
   if ((alt.description ?? '').trim() !== (neu.description ?? '').trim()) raus.push(e('beschreibung'));

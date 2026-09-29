@@ -46,6 +46,11 @@ export interface Task extends Timestamps {
   angelegtVon?: string;
   tags: Tag[];
   dueDate?: string;
+  /**
+   * Uhrzeit der Deadline „HH:MM“ (Berliner Wandzeit) — nur mit `dueDate` (29.09., Kalender K1: „Aufgabe“ im Anlege-Dialog
+   * ist DIESE Aufgabe, keine Kopie; der Kalender zeigt sie an ihrer Zeit). Ohne `dueDate` entfernt der Schreibweg sie.
+   */
+  dueTime?: string;
   subTasks: SubTask[];
   dependencies: Dependency[];
   sortOrder: number;

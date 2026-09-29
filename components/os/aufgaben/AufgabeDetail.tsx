@@ -38,7 +38,7 @@ import { ZoeAufgabe } from './ZoeAufgabe';
 import { wiederholungSetzen } from '@/lib/aufgaben/serie';
 import { anlegerinVon } from '@/lib/aufgaben/zustaendig';
 import { useHandlung, NachElternFrist } from './Handlung';
-import { DatumFeld } from './DatumFeld';
+import { DatumFeld, UhrzeitFeld } from './DatumFeld';
 import { NurIchZeichen, titelStil, AbgebrochenSchild } from './Zeichen';
 
 const PRIO: WahlEintrag<Priority>[] = [
@@ -156,6 +156,9 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
             <DatumFeld wert={t.startDate} onWert={d => handlung.verschieben(t, { startDate: d }, 'Start geändert')} style={datumFeld} label="Startdatum" /></label>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>Deadline
             <DatumFeld wert={t.dueDate} onWert={d => handlung.verschieben(t, { dueDate: d }, d ? 'verschoben' : 'ohne Deadline')} style={datumFeld} label="Deadline" /></label>
+          {/* Uhrzeit der Deadline (29.09., Kalender K1) — dieselbe Aufgabe steht im Kalender an dieser Zeit. */}
+          {t.dueDate && <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>um
+            <UhrzeitFeld wert={t.dueTime} onWert={z => handlung.verschieben(t, { dueTime: z }, z ? 'Uhrzeit gesetzt' : 'ohne Uhrzeit')} style={datumFeld} label="Uhrzeit der Deadline" /></label>}
           {eltern && <NachElternFrist unter={t} eltern={eltern} />}
         </Feld>
         {!eltern && <Feld label="Wiederholt">

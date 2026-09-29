@@ -64,7 +64,7 @@ let bloeckeStand = 0;
 export const zeitBloeckeStand = (): number => bloeckeStand;
 
 /** Ein bewusster Fokus-Block ist zu Ende. Die Zuordnung muss gesäubert sein (`zuordnungSaeubern`). */
-export async function fokusAbschliessen(person: Person, block: { von: string; bis: string; schluessel: string; label: string } & BlockZuordnung): Promise<ZeitDatei> {
+export async function fokusAbschliessen(person: Person, block: { von: string; bis: string; schluessel: string; label: string; terminUid?: string } & BlockZuordnung): Promise<ZeitDatei> {
   const d = await updateJson<ZeitDatei>(speicherFuer(NAME, person), current => aufraeumen(fokusVerbuchen(current ?? LEER_ZEIT, block), localDay()));
   bloeckeStand++;
   return d;

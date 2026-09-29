@@ -14,8 +14,11 @@ import { laufendAbgleich, laufendSaeubern } from './fokus-regeln';
 export const FOKUS_MERKER = 'make-fokus';
 export const FOKUS_EREIGNIS = 'make-fokus-geaendert';
 
-/** Der laufende Block — seit 28.09. auch mit Mandat (`mandatId`, nur im Business; Firma/Einheit leitet der Server ab). */
-export interface LaufenderFokus { von: string; schluessel: string; label: string; aufgabeId?: string; einheit?: string; mandatId?: string }
+/**
+ * Der laufende Block — seit 28.09. auch mit Mandat (`mandatId`, nur im Business; Firma/Einheit leitet der Server ab),
+ * seit 29.09. (Kalender K1) mit `terminUid`, wenn er aus einer Fokuszeit im Kalender gestartet wurde.
+ */
+export interface LaufenderFokus { von: string; schluessel: string; label: string; aufgabeId?: string; einheit?: string; mandatId?: string; terminUid?: string }
 
 export function gemerkterFokus(): LaufenderFokus | null {
   try {
@@ -62,4 +65,20 @@ export function fokusFuerAufgabe(a: { id: string; einheit?: string }, pfad = win
   const bereich = bereichVon(pfad, suche);
   fokusMerken({ von: new Date().toISOString(), schluessel: schluesselFuer('business', bereich.id), label: bereich.label, ...zuordnung });
   return 'gestartet';
+}
+
+/**
+ * Fokus aus einer Fokuszeit im Kalender (29.09., K1): startet einen Block mit dem Titel des Termins als Label, im Space
+ * des Kalenders (mit Aufgabe/Mandat/Einheit: Business), Bereich „fokuszeit“, und merkt die Termin-UID. Läuft schon ein
+ * Fokus, wird NICHTS ersetzt (sonst ginge dessen Zeit verloren) — `laeuft` mit seinem Label.
+ */
+export function fokusFuerTermin(t: { uid: string; titel: string; space: 'privat' | 'business' }, z: { aufgabeId?: string; einheit?: string; mandatId?: string } = {}): { art: 'gestartet' } | { art: 'laeuft'; label: string } {
+  const l = gemerkterFokus();
+  if (l) return { art: 'laeuft', label: l.label };
+  const business = t.space === 'business' || !!(z.aufgabeId || z.mandatId || z.einheit);
+  fokusMerken({
+    von: new Date().toISOString(), schluessel: schluesselFuer(business ? 'business' : 'privat', 'fokuszeit'), label: t.titel.slice(0, 80), terminUid: t.uid,
+    ...(business && z.aufgabeId ? { aufgabeId: z.aufgabeId } : {}), ...(business && z.einheit ? { einheit: z.einheit } : {}), ...(business && z.mandatId ? { mandatId: z.mandatId } : {}),
+  });
+  return { art: 'gestartet' };
 }
