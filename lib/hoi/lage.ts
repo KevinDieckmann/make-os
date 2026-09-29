@@ -67,6 +67,8 @@ export interface InnenLage {
    * ausdrücklich konfigurierten Ordner (Server: eigenes Volume, sonst gehen sie mit dem Container verloren)?
    */
   datenschutz?: { pepper: boolean; grabsteinOrdner: boolean; produktion: boolean };
+  /** Absichtsprotokoll (29.09., Paket D-C #17): offene und gescheiterte Vorgänge über mehrere Bestände. */
+  absichten?: { offen: number; faellig: number; gescheitert: number; arten: string[]; aeltesteMinuten: number | null };
 }
 
 export interface Quantile { p50: number | null; p99: number | null; n: number }
@@ -202,6 +204,13 @@ export function datenschichtBefunde(innen: InnenLage, host: HostLage | null, jet
     b.push({ id: 'sperren', bereich: 'app', label: 'Schreibsperren und Schreibdauer', ampel: wartenRot ? 'rot' : wartenGelb ? 'gelb' : 'gruen', wert: `Warten p50 ${ms(w.p50)} · p99 ${ms(w.p99)} · Schreiben p99 ${ms(sc.p99)} · 409: ${d.zaehler['409']} · 413: ${d.zaehler['413']}`, satz: wartenRot ? `${d.zaehler.sperrZeitlimit}× Zeitlimit (30 s) — ein Vorgang hält eine Sperre zu lange` : wartenGelb ? 'Schreibungen stauen sich — großer Import, PDF in der Sperre oder volle Platte?' : 'kein Stau' });
     const langsam = d.parseLangsam[0];
     if (langsam && langsam.maxMs >= 200) b.push({ id: 'parse', bereich: 'app', label: 'Parse-Zeit größter Bestand', ampel: langsam.maxMs >= 1000 ? 'rot' : 'gelb', wert: `${langsam.bestand} ${ms(langsam.maxMs)} · ${langsam.mb} MB`, satz: 'wird der Bestand zu groß? SQLite-Auslöser 1 (DATENARCHITEKTUR.md) prüfen' });
+  }
+
+  const ab = innen.absichten;
+  if (ab) {
+    if (ab.gescheitert) b.push({ id: 'absichten', bereich: 'app', label: 'Abgebrochene Vorgänge', ampel: 'rot', wert: `${ab.gescheitert} gescheitert (${ab.arten.join(', ') || '?'})${ab.offen ? ` · ${ab.offen} offen` : ''}`, satz: 'nach 3 Versuchen nicht fertig — halber Stand über mehrere Bestände: Ursache im Log (docker compose logs app | grep absichten), beheben, dann im Head of IT erneut anstoßen (NOTFALL.md „Absichten“)' });
+    else if (ab.offen) b.push({ id: 'absichten', bereich: 'app', label: 'Abgebrochene Vorgänge', ampel: (ab.aeltesteMinuten ?? 0) > 60 ? 'gelb' : 'gruen', wert: `${ab.offen} offen${ab.aeltesteMinuten != null ? ` · älteste ${ab.aeltesteMinuten} min` : ''}`, satz: (ab.aeltesteMinuten ?? 0) > 60 ? 'wartet auf Wiederaufnahme (Takt, Start, Durchsicht) — länger als eine Stunde: Log prüfen' : 'wird gleich fertiggestellt' });
+    else b.push({ id: 'absichten', bereich: 'app', label: 'Abgebrochene Vorgänge', ampel: 'gruen', wert: 'keine', satz: 'alle Vorgänge über mehrere Bestände abgeschlossen (Absichtsprotokoll)' });
   }
 
   const ds = innen.durchsicht;

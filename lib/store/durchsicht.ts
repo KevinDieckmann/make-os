@@ -6,7 +6,8 @@
 //   · Hüllen-Fassung und Schemaversion zählen (alte Hüllen/alte Form = Migration offen);
 //   · Zeilenzahl-Sprünge gegen den Vortag melden (−20 % und mehr bzw. Bestand verschwunden);
 //   · die Verbindungsprüfung des CRM laufen lassen (nur Zähler je Schwere, repariert nichts);
-//   · liegengebliebene .tmp-Reste zählen.
+//   · liegengebliebene .tmp-Reste zählen;
+//   · vorher offene Absichten fertigstellen (Absichtsprotokoll, Paket D-C #17) und ihre Zahl festhalten.
 // Ergebnis im Bestand `hoi-durchsicht` (Rauschen, nur Zahlen und Bestandsnamen, keine Inhalte); der Head of IT
 // macht daraus Befunde. Liest ohne Sperre (nur lesen) und schreibt nie in fremde Bestände.
 
@@ -39,6 +40,8 @@ export interface DurchsichtErgebnis {
   langsam: { name: string; ms: number; mb: number }[];
   tmpReste: number;
   verbindungen: { fehler: number; warnung: number; hinweis: number } | { nichtGeprueft: string };
+  /** Absichtsprotokoll (Paket D-C #17): in dieser Durchsicht fertiggestellte bzw. noch offene/gescheiterte Vorgänge. */
+  absichten?: { aufgenommen: number; fertig: number; offen: number; gescheitert: number };
 }
 interface DurchsichtSpeicher { letzter?: DurchsichtErgebnis; zeilen?: { tag: string; je: Record<string, number> }[] }
 
@@ -126,13 +129,23 @@ export async function durchsichtLauf(jetzt = new Date(), erzwingen = false): Pro
   const alt = (await loadJson<DurchsichtSpeicher>(DURCHSICHT_SPEICHER)) ?? {};
   if (!erzwingen && alt.letzter?.tag === heute) return { ok: true, uebersprungen: true, text: 'heute schon gelaufen' };
   const vortag = [...(alt.zeilen ?? [])].filter(z => z.tag < heute).sort((a, b) => a.tag.localeCompare(b.tag)).pop();
-  const { ergebnis, je } = await durchsicht(jetzt, vortag?.je ?? {});
+  // Zuerst abgebrochene Vorgänge fertigstellen (Paket D-C #17) — dann zählt die Durchsicht den fertigen Stand.
+  let absichten: DurchsichtErgebnis['absichten'];
+  try {
+    const { offeneFertigstellen, absichtenLage, MINDEST_ALTER_MS } = await import('./absichten-fortsetzen');
+    const f = await offeneFertigstellen({ mindestAlterMs: MINDEST_ALTER_MS, jetzt });
+    const l = await absichtenLage(jetzt);
+    absichten = { aufgenommen: f.gefunden, fertig: f.fertig, offen: l.offen, gescheitert: l.gescheitert };
+  } catch (e) { console.error('[durchsicht] Absichten nicht fertiggestellt:', e instanceof Error ? e.message : e); }
+  const { ergebnis: roh, je } = await durchsicht(jetzt, vortag?.je ?? {});
+  const ergebnis: DurchsichtErgebnis = absichten ? { ...roh, absichten } : roh;
   await updateJson<DurchsichtSpeicher>(DURCHSICHT_SPEICHER, cur => {
     const zeilen = [...(cur?.zeilen ?? []).filter(z => z.tag !== heute), { tag: heute, je }].sort((a, b) => a.tag.localeCompare(b.tag));
     // Nur die Zahlen der letzten 31 Tage — ältere Tage fallen heraus (keine Inhalte, reine Zähler).
     return { letzter: ergebnis, zeilen: zeilen.slice(-TAGE_BEHALTEN) };
   });
   const v = 'fehler' in ergebnis.verbindungen ? `Verbindungen ${ergebnis.verbindungen.fehler} Fehler/${ergebnis.verbindungen.warnung} Warnungen` : 'Verbindungen nicht geprüft';
-  const text = `${ergebnis.bestaende} Bestände, ${ergebnis.zeilen} Zeilen, ${ergebnis.fehler.length} unlesbar, ${ergebnis.spruenge.length} Sprünge, ${ergebnis.klartext} Klartext, ${ergebnis.alteHuellen} alte Hüllen, ${ergebnis.tmpReste} .tmp-Reste, ${v} (${ergebnis.dauerMs} ms)`;
+  const a = ergebnis.absichten ? `, Absichten ${ergebnis.absichten.fertig} fertiggestellt/${ergebnis.absichten.offen} offen/${ergebnis.absichten.gescheitert} gescheitert` : '';
+  const text = `${ergebnis.bestaende} Bestände, ${ergebnis.zeilen} Zeilen, ${ergebnis.fehler.length} unlesbar, ${ergebnis.spruenge.length} Sprünge, ${ergebnis.klartext} Klartext, ${ergebnis.alteHuellen} alte Hüllen, ${ergebnis.tmpReste} .tmp-Reste, ${v}${a} (${ergebnis.dauerMs} ms)`;
   return { ok: ergebnis.fehler.length === 0, text, ergebnis };
 }

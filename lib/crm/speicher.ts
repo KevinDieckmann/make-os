@@ -602,6 +602,62 @@ function firmenZusammenfuehren(b: CrmBestand, ops: ListenOp[]): ListenOp[] {
 }
 
 type Kartei = { kontakte?: Kontakt[] } & Record<string, unknown>;
+
+// ── Folgen gelöschter Deals in der Kartei — mit Absichtsprotokoll (29.09., Paket D-C #17) ──
+type LeadStand = { id: string; lead?: Kontakt['lead']; geaendertAm?: string };
+interface FolgenAbsicht { karteiGeschrieben(nachher: LeadStand[]): Promise<void>; ausgleichen(): Promise<void>; abschliessen(): Promise<void> }
+export const CRM_FOLGEN_SCHRITTE = ['kartei', 'crm'] as const;
+
+async function crmFolgenBeginnen(weg: string[], vorherLeads: LeadStand[], person?: string): Promise<FolgenAbsicht> {
+  const { absichtBeginnen, schrittAbhaken, absichtAbschliessen, absichtTest } = await import('@/lib/store/absichten');
+  const { karteiHaushalt } = await import('./sperrliste');
+  const h = await karteiHaushalt();
+  const { absicht } = await absichtBeginnen(h, { art: 'crm-folgen', schluessel: `deals:${[...weg].sort().join(',')}`.slice(0, 400), schritte: CRM_FOLGEN_SCHRITTE, daten: { weg, vorherLeads }, ...(person ? { person } : {}) });
+  const a = { ...absicht, schritte: absicht.schritte.map(x => ({ ...x })), daten: { ...absicht.daten } };
+  return {
+    karteiGeschrieben: async nachherLeads => {
+      await schrittAbhaken(h, a.id, 'kartei', { nachherLeads });
+      a.daten.nachherLeads = nachherLeads;
+      a.schritte = a.schritte.map(x => (x.name === 'kartei' ? { ...x, erledigt: new Date().toISOString() } : x));
+      absichtTest.nachAbhaken?.('crm-folgen', 'kartei');
+    },
+    ausgleichen: () => crmFolgenFortsetzen(h, a),
+    abschliessen: async () => { await schrittAbhaken(h, a.id, 'crm'); await absichtAbschliessen(h, a.id, 'fertig'); },
+  };
+}
+
+/**
+ * Wiederaufnahme bzw. Ausgleich: stehen die gelöschten Deals NICHT mehr im CRM, hat das CRM-Schreiben gewirkt → die
+ * Kartei-Folgen (idempotent) sicher anwenden. Stehen sie noch da, scheiterte es → die zurückgesetzten Leads
+ * zurückholen — nur dort, wo der Lead noch genau so steht, wie die Folge ihn hinterließ (sonst hat ihn jemand geändert).
+ * In der CRM-Sperre (Rangfolge crm → kontakte), ohne das CRM zu schreiben.
+ */
+export async function crmFolgenFortsetzen(haushalt: string, a: import('@/lib/store/absichten').Absicht): Promise<void> {
+  const { absichtAbschliessen } = await import('@/lib/store/absichten');
+  const weg = new Set(Array.isArray(a.daten.weg) ? (a.daten.weg as string[]) : []);
+  const vorher = new Map((Array.isArray(a.daten.vorherLeads) ? (a.daten.vorherLeads as LeadStand[]) : []).map(v => [v.id, v]));
+  const nachher = new Map((Array.isArray(a.daten.nachherLeads) ? (a.daten.nachherLeads as LeadStand[]) : []).map(v => [v.id, v]));
+  const karteiFolgen = (stehen: boolean) => updateJson<Kartei>('kontakte', k => {
+    const liste = k?.kontakte ?? [];
+    if (!stehen) {
+      const r = kontaktLeadsOhneDeals(liste, weg, new Date().toISOString(), localDay(), a.person);
+      return r.geaendert.length ? { ...(k ?? {}), kontakte: r.kontakte } : (k ?? { kontakte: [] });
+    }
+    let n = 0;
+    const neu = liste.map(x => {
+      const v = vorher.get(x.id), f = nachher.get(x.id);
+      if (!v || !f || JSON.stringify(x.lead ?? null) !== JSON.stringify(f.lead ?? null)) return x;
+      n++;
+      const { lead: _l, geaendertAm: _g, ...rest } = x;
+      return { ...rest, ...(v.lead ? { lead: v.lead } : {}), ...(v.geaendertAm ? { geaendertAm: v.geaendertAm } : {}) } as Kontakt;
+    });
+    return n ? { ...(k ?? {}), kontakte: neu } : (k ?? { kontakte: [] });
+  });
+  if ((await loadJson<CrmBestand>(CRM_SPEICHER)) === null) await karteiFolgen(false);
+  else await updateJsonAsync<CrmBestand>(CRM_SPEICHER, async cur => { await karteiFolgen((cur?.chancen ?? []).some(c => weg.has(c.id))); return cur as CrmBestand; });
+  await absichtAbschliessen(haushalt, a.id, 'fertig');
+}
+
 const personVon = (w?: Wer) => (w?.person && /^[a-z0-9-]{1,40}$/.test(w.person) ? w.person : undefined);
 
 /**
@@ -617,6 +673,7 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
   // Schreibweg über diese Stelle. Wer: ausdrücklich übergeben, sonst aus der laufenden Anfrage (lib/store/aenderungsprotokoll.ts).
   let aenderungen: Aenderung[] = [];
   let karteiAenderungen: Aenderung[] = [];
+  let folgenAbsicht = null as FolgenAbsicht | null;
   const person = personVon(protokollWer);
   const fertig = await updateJsonAsync<CrmBestand>(CRM_SPEICHER, async cur => {
     // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
@@ -627,17 +684,31 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
     const neu = roh === basis ? roh : crmFolgen(basis, roh, jetzt, person);
     const weg = geloeschteDeals(basis, neu);
     if (karteiBetroffen(kontakte, weg)) {
+      // Absichtsprotokoll (29.09., Paket D-C #17): die Kartei wird HIER (innen) geschrieben, das CRM erst danach. Scheitert
+      // das CRM-Schreiben (oder bricht der Prozess ab), wären Personen-Leads zurückgesetzt, obwohl der Deal noch steht —
+      // die Absicht hält den Vorher-Stand der Leads, damit `crmFolgenFortsetzen` ihn zurückholen kann.
+      const vorherLeads = kontakte.filter(k => !!k.lead?.chanceId && weg.has(k.lead.chanceId)).map(k => ({ id: k.id, lead: k.lead, geaendertAm: k.geaendertAm }));
+      folgenAbsicht = await crmFolgenBeginnen(Array.from(weg), vorherLeads, person);
+      let nachherLeads: LeadStand[] = [];
       await updateJson<Kartei>('kontakte', k => {
         const vorher = k?.kontakte ?? [];
         const r = kontaktLeadsOhneDeals(vorher, weg, jetzt, localDay(new Date(jetzt)), person);
         if (!r.geaendert.length) return k ?? { kontakte: [] };
         karteiAenderungen = listenDiff(vorher, r.kontakte);
+        const ids = new Set(r.geaendert);
+        nachherLeads = r.kontakte.filter(x => ids.has(x.id)).map(x => ({ id: x.id, lead: x.lead, geaendertAm: x.geaendertAm }));
         return { ...(k ?? {}), kontakte: r.kontakte };
       });
+      await folgenAbsicht.karteiGeschrieben(nachherLeads);
     }
     aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>);
     return neu;
+  }).catch(async (e: unknown) => {
+    // CRM nicht geschrieben, Kartei womöglich schon: sofort ausgleichen (sonst holt es die Wiederaufnahme nach).
+    if (folgenAbsicht) await folgenAbsicht.ausgleichen().catch(() => { /* bleibt offen → Wiederaufnahme */ });
+    throw e;
   });
+  if (folgenAbsicht) await folgenAbsicht.abschliessen();
   await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
   if (karteiAenderungen.length) await protokolliere('kontakte', karteiAenderungen, protokollWer);
   return fertig;

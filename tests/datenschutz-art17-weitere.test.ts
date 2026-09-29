@@ -149,7 +149,8 @@ describe('Art. 17 über alle weiteren Speicher (#69/#30/#93)', () => {
     // Löschprotokoll: nur lp-ID, Tag, Grund, wer
     const prot = (await db.loadJson<{ eintraege: Record<string, string>[] }>('crm-loeschprotokoll'))!.eintraege;
     expect(prot).toHaveLength(1);
-    expect(Object.keys(prot[0]).sort()).toEqual(['datum', 'grund', 'id', 'von']);
+    expect(Object.keys(prot[0]).sort()).toEqual(['datum', 'grund', 'id', 'status', 'von']);
+    expect(prot[0].status).toBe('vollstaendig'); // Paket D-C #21
     expect(prot[0].id).toMatch(/^lp-/);
     // Grabstein außerhalb des Datenordners — nur Fingerabdrücke
     const g = readFileSync(path.join(ordner, '.grabsteine-test', 'grabsteine.json'), 'utf8');

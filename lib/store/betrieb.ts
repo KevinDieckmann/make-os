@@ -8,6 +8,7 @@
 //     dürfen noch 20 s schreiben (mehrstufige Abläufe werden fertig), danach lehnt die Datenschicht
 //     neue Schreibungen mit 503 ab (`SchreibenGesperrt`). Next schließt parallel den Server und
 //     wartet auf offene Anfragen. Beim Beenden verschwindet das Lockfile (nur das eigene).
+//   · 5 s nach dem Start: offene Absichten fertigstellen (lib/store/absichten-fortsetzen.ts, Paket D-C #17).
 
 import { datenOrdner, abschaltungBeginnen, warteBisStill, datenschichtLage } from './local-db';
 import { schreiberSetzen, schreiberHerz, schreiberEntfernenSync, HERZ_MS, type SchreiberEintrag } from './schreiber.mjs';
@@ -32,6 +33,15 @@ export async function betriebStarten(): Promise<void> {
     schreiberHerz(ordner, B.start, 'app').then(r => { B.fremd = r.fremd; }).catch(() => {});
   }, HERZ_MS);
   B.herz.unref?.();
+
+  // Absichtsprotokoll (29.09., Paket D-C #17): abgebrochene Vorgänge über mehrere Bestände (Art. 17, Import, Dubletten,
+  // Kennungs-Umzug, Angebot) wenige Sekunden nach dem Start fertigstellen — nicht blockierend, wirft nie.
+  const nachStart = setTimeout(() => {
+    void import('./absichten-fortsetzen').then(m => m.offeneFertigstellen()).then(r => {
+      if (r.gefunden) console.log(`[MAKE OS] Absichten beim Start: ${r.gefunden} aufgenommen, ${r.fertig} fertig, ${r.weiterOffen} weiter offen, ${r.gescheitert} gescheitert.`);
+    }).catch(e => console.error('[MAKE OS] Absichten beim Start nicht fertiggestellt:', e instanceof Error ? e.message : e));
+  }, 5_000);
+  nachStart.unref?.();
 
   const beenden = (signal: string) => {
     abschaltungBeginnen();

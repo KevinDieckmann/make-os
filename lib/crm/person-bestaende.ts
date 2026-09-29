@@ -65,8 +65,16 @@
 //
 // Jede Funktion ist idempotent (zweimal laufen ändert nichts mehr) und nimmt je
 // Speicher genau EINE Schreibsperre (updateJson). Reine Teile sind exportiert und getestet.
+//
+// 29.09. (Paket D-C #17/#21/#35): `personEntfernen` ist ein Vorgang mit Absichtsprotokoll (lib/store/absichten.ts) —
+// 13 Schritte, jeder idempotent und abgehakt, Name/Adressen liegen bis zum Ende in der Absicht; ein scheiternder Bestand
+// hält die anderen nicht auf (Löschprotokoll „unvollständig“), die Wiederaufnahme vollendet. `personenUmbiegen` biegt
+// viele Paare in EINER Sperre je Speicher um (Kennungs-Umzug; mit `umzug: true` auch Läufe, übrige Bestände, Fingerabdrücke).
+//   absichten--<haushalt>         andere Absichten getilgt, die eigene Art.-17-Absicht bleibt bis zum Abschluss (person-weitere)
+//   kennung-alias--<haushalt>     Zeilen der Person raus; ihre alten Kennungen bekommen vorher eigene Grabsteine
 
 import { promises as fs } from 'fs';
+import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from './typen';
@@ -85,6 +93,8 @@ import { CRM_LISTEN } from './typen';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { sperren } from './sperrliste';
 import { merkmaleVon, weitereEntfernen, weitereAufzaehlen } from './person-weitere';
+import { neueProtokollId } from './loeschprotokoll';
+import { kennungenErsetzen, fingerabdrueckeErsetzen, umkehren, vorkommendePaare } from './kennungen-ersetzen';
 import type { AufgabeBezug, AufgabeKommentar } from '@/types/tasks';
 
 // ── Reine Helfer ─────────────────────────────────────────────────────────────
@@ -365,117 +375,282 @@ export interface PersonBericht {
   aufgabenPruefen: string[];
   /** Grabstein gesetzt (29.09., #70) — false: Schreiben scheiterte (Löschung trotzdem geschehen, Warnung). Fehlt = nicht verlangt. */
   grabstein?: boolean;
-  /** Speicher, in denen das Tilgen scheiterte (29.09.) — ein zweiter Lauf räumt nach. */
+  /** Speicher bzw. Schritte, in denen das Tilgen scheiterte (29.09.) — die Wiederaufnahme holt sie nach. */
   fehler?: string[];
+  /** Je Schritt des Art.-17-Vorgangs: erledigt („ok“), schon früher erledigt („schon“) oder gescheitert („fehler“) — #21. */
+  schritte?: Record<string, 'ok' | 'schon' | 'fehler'>;
+  /** Alle Schritte bestätigt? false = Löschprotokoll „unvollständig“, die Absicht bleibt offen und wird wieder aufgenommen. */
+  vollstaendig?: boolean;
+  /** Protokoll-ID des Löschprotokolls (nur, wenn verlangt). */
+  protokollId?: string;
 }
 const zaehle = (b: PersonBericht, name: string, n: number) => { if (n) b.speicher[name] = (b.speicher[name] ?? 0) + n; };
 
+// ── Art. 17 als Vorgang mit Absichtsprotokoll (29.09., Paket D-C #17/#21) ────
+// Vorher: etwa zehn einzelne Sperren nacheinander, die Kartei zuerst. Brach der Lauf danach ab (Absturz, Deploy,
+// beschädigter Bestand), war die Person aus der Kartei weg — und mit ihr der Name: ein zweiter Lauf tilgte nur noch
+// nach der Kennung, Namen in Deal-Titeln, Heads und Aufgaben blieben; das Löschprotokoll wurde nie geschrieben.
+// Jetzt liegt VOR dem ersten Schritt eine Absicht (lib/store/absichten.ts) mit allem, was die Schritte brauchen
+// (Kennung, Name, Adressen, HubSpot, Firma, alte Kennungen aus dem Umzug, Protokoll-ID). Jeder Schritt ist idempotent
+// und wird abgehakt; ein gescheiterter Bestand hält die anderen nicht auf (#21) — das Löschprotokoll steht dann auf
+// „unvollständig“ (mit den Schrittnamen), und die Wiederaufnahme (Start, Takt, nächtliche Durchsicht) holt es nach.
+
+type Bekannt = Pick<Kontakt, 'vorname' | 'nachname'> & Partial<Pick<Kontakt, 'email' | 'emails' | 'hubspotId' | 'firma'>>;
+/** Nur die Merkmale, die die Schritte brauchen (Name, Adressen, HubSpot, Firma) — nicht der ganze Kontakt. */
+const merkmalFelder = (k: Bekannt | Kontakt | undefined | null): Bekannt | null => (k ? {
+  vorname: k.vorname ?? '', nachname: k.nachname ?? '',
+  ...(k.email ? { email: k.email } : {}), ...(k.emails?.length ? { emails: k.emails } : {}),
+  ...(k.hubspotId ? { hubspotId: k.hubspotId } : {}), ...(k.firma ? { firma: k.firma } : {}),
+} : null);
+
+export const ART17_SCHRITTE = ['protokoll', 'kartei', 'sperrliste', 'grabstein', 'laeufe', 'crm', 'ablage', 'konflikte', 'heads', 'signale', 'tasks', 'weitere', 'index'] as const;
+type Art17Schritt = (typeof ART17_SCHRITTE)[number];
+/** Welche Schritte auf einen anderen warten (braucht dessen Ergebnis). */
+const WARTET_AUF: Partial<Record<Art17Schritt, Art17Schritt>> = { tasks: 'heads' };
+
+export interface Art17Optionen {
+  /** false: keinen Grabstein setzen (die Grabstein-Anwendung selbst). */
+  grabstein?: boolean;
+  /** Löschprotokoll schreiben (nur Protokoll-ID, Tag, Grund, wer) — die Route Art. 17. Nur, wenn die Kartei die Person noch kennt. */
+  protokoll?: { datum: string; grund: string; von: string };
+  /** Wer den Vorgang auslöste (für die Absicht). */
+  person?: string;
+}
+
 /**
- * Art. 17: die Person aus ALLEN Speichern entfernen (auch aus der Kartei). Idempotent. Liefert, was wo geändert wurde.
- * Der Löschprotokoll-Eintrag bleibt Sache der Route.
+ * Art. 17: die Person aus ALLEN Speichern entfernen (auch aus der Kartei). Idempotent. Liefert, was wo geändert wurde,
+ * je Schritt ok/fehler und ob alles bestätigt ist. `bekannt`: der Aufrufer hat die Kartei schon selbst geleert (PATCH
+ * /api/state/kontakte, op 'delete') und reicht die Merkmale nach.
  */
-export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorname' | 'nachname'> & Partial<Pick<Kontakt, 'email' | 'emails' | 'hubspotId' | 'firma'>>, opt: { grabstein?: boolean } = {}): Promise<PersonBericht> {
-  const b: PersonBericht = { speicher: {}, aufgabenPruefen: [] };
-  if (!id) return b;
-  let kontakt: Kontakt | undefined;
-  let andereNamen: string[] = [];
-  await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
-    const f = cur ?? { kontakte: [] };
-    kontakt = f.kontakte.find(k => k.id === id);
-    andereNamen = f.kontakte.filter(k => k.id !== id).map(k => (vollerName(k) ?? '').toLowerCase()).filter(Boolean);
-    if (!kontakt) return f;
-    zaehle(b, 'kontakte', 1);
-    return { ...f, kontakte: f.kontakte.filter(k => k.id !== id) };
+export async function personEntfernen(id: string, bekannt?: Bekannt, opt: Art17Optionen = {}): Promise<PersonBericht> {
+  if (!id) return { speicher: {}, aufgabenPruefen: [] };
+  const { karteiHaushalt } = await import('./sperrliste');
+  const haushalt = await karteiHaushalt();
+  const vorab = ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(k => k.id === id);
+  const person = merkmalFelder(vorab ?? bekannt);
+  const { alteKennungenVon } = await import('./kennung-alias');
+  const { absichtBeginnen, absichtenLaden, absichtDatenSetzen, fluechtigeAbsicht, istOffen } = await import('@/lib/store/absichten');
+  const schritte = [...ART17_SCHRITTE];
+  const daten = {
+    id, person, alteKennungen: await alteKennungenVon(id), grabstein: opt.grabstein !== false,
+    ...(opt.protokoll && vorab ? { protokoll: opt.protokoll, protokollId: neueProtokollId() } : {}),
+  };
+  // Nichts Schützenswertes (Person unbekannt, keine offene Absicht): ein zweiter Lauf räumt nur nach der Kennung —
+  // flüchtig, ohne Spur im Absichtsprotokoll (idempotent ohne Änderung).
+  const offen = (await absichtenLaden(haushalt)).find(a => a.art === 'art17' && a.schluessel === id && istOffen(a));
+  if (!person && !offen) return art17Lauf(haushalt, fluechtigeAbsicht({ art: 'art17', schluessel: id, schritte, daten }), false);
+  const { absicht, neu } = await absichtBeginnen(haushalt, { art: 'art17', schluessel: id, schritte, daten, ...(opt.person ? { person: opt.person } : {}) });
+  // Eine offene Absicht (z. B. vom Kartei-Löschen) bekommt das Löschprotokoll nachgereicht, wenn die Route es jetzt verlangt.
+  if (!neu && opt.protokoll && !absicht.daten.protokollId && (vorab || absicht.daten.person)) {
+    const p = { protokoll: opt.protokoll, protokollId: neueProtokollId() };
+    await absichtDatenSetzen(haushalt, absicht.id, p);
+    Object.assign(absicht.daten, p);
+  }
+  return art17Lauf(haushalt, absicht, true);
+}
+
+/**
+ * Vor dem Löschen in der Kartei (PATCH /api/state/kontakte, op 'delete'): die Absicht mit den Merkmalen festhalten.
+ * `quelle: 'kartei'` — die Wiederaufnahme vollendet sie nur, wenn die Kartei die Person wirklich nicht mehr hat.
+ */
+export async function art17Vormerken(id: string, k: Kontakt, opt: { person?: string; quelle: 'kartei' }): Promise<void> {
+  const { karteiHaushalt } = await import('./sperrliste');
+  const { alteKennungenVon } = await import('./kennung-alias');
+  const { absichtBeginnen } = await import('@/lib/store/absichten');
+  await absichtBeginnen(await karteiHaushalt(), {
+    art: 'art17', schluessel: id, schritte: ART17_SCHRITTE, ...(opt.person ? { person: opt.person } : {}),
+    daten: { id, person: merkmalFelder(k), alteKennungen: await alteKennungenVon(id), grabstein: true, quelle: opt.quelle },
   });
-  // Name für die Freitext-Suche (Heads, Aufgaben) — gibt es den Kontakt nicht mehr (zweiter Lauf), bleibt es bei der Kennung.
-  // `bekannt`: der Aufrufer hat die Kartei schon selbst geleert (PATCH /api/state/kontakte, op 'delete') und reicht den Namen nach.
-  const name = vollerName(kontakt ?? bekannt);
+}
 
-  // Sperrliste (K2 #60): nur Hashes der Merkmale — ein erneuter Import der Liste legt die Person nicht wieder an.
-  const person = kontakt ?? bekannt;
-  if (person && await sperren([person], 'loeschung', new Date().toISOString())) zaehle(b, 'crm-sperrliste', 1);
-  // Grabstein AUSSERHALB des Datenordners (29.09., #70): ein Restore holt die Person nicht zurück. Nur, wenn wirklich
-  // eine Person gelöscht wurde — hier oder vom Aufrufer (`bekannt`, PATCH der Kartei); ein zweiter Lauf ohne Person und
-  // die Grabstein-Anwendung selbst (`grabstein: false`) setzen keinen neuen.
-  if (person && opt.grabstein !== false) {
-    try {
-      const { grabsteinFuer, grabsteinSetzen } = await import('@/lib/datenschutz/grabsteine');
-      await grabsteinSetzen(grabsteinFuer(id, person, new Date().toISOString()));
-      b.grabstein = true;
-    } catch (e) {
-      b.grabstein = false;
-      console.error('[art17] Grabstein nicht geschrieben:', e instanceof Error ? e.message : e);
+/** Eine Vormerkung verfällt (das Löschen fand nicht statt) — nur, solange die Kartei noch nicht angefasst ist. */
+export async function art17Verwerfen(id: string, quelle: 'kartei'): Promise<void> {
+  const { karteiHaushalt } = await import('./sperrliste');
+  const { absichtenLaden, absichtAbschliessen, istOffen, schrittErledigt } = await import('@/lib/store/absichten');
+  const h = await karteiHaushalt();
+  for (const a of await absichtenLaden(h)) {
+    if (a.art === 'art17' && a.schluessel === id && istOffen(a) && a.daten.quelle === quelle && !schrittErledigt(a, 'kartei')) await absichtAbschliessen(h, a.id, 'verworfen');
+  }
+}
+
+/**
+ * Wiederaufnahme einer offenen Art.-17-Absicht (lib/store/absichten-fortsetzen.ts). Ist die Kartei noch nicht
+ * angefasst und steht die Person noch darin, gilt: eingeschränkt (Art. 18) → nie löschen; nur vorgemerkt beim
+ * Kartei-Löschen (`quelle: 'kartei'`) → das Löschen fand nicht statt, die Absicht verfällt. Ein Löschverlangen über
+ * die Route Art. 17 wird dagegen vollendet.
+ */
+export async function art17Fortsetzen(haushalt: string, absicht: import('@/lib/store/absichten').Absicht): Promise<PersonBericht | null> {
+  const { schrittErledigt, absichtAbschliessen } = await import('@/lib/store/absichten');
+  if (!schrittErledigt(absicht, 'kartei')) {
+    const k = ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(x => x.id === (absicht.daten.id ?? absicht.schluessel));
+    if (k && (k.eingeschraenkt || absicht.daten.quelle === 'kartei')) { await absichtAbschliessen(haushalt, absicht.id, 'verworfen'); return null; }
+  }
+  return art17Lauf(haushalt, absicht, true);
+}
+
+async function art17Lauf(haushalt: string, absicht: import('@/lib/store/absichten').Absicht, speichern: boolean): Promise<PersonBericht> {
+  const { mitVorgang, absichtAbschliessen, TestAbbruch } = await import('@/lib/store/absichten');
+  return mitVorgang(haushalt, absicht, async v => {
+    const b: PersonBericht = { speicher: {}, aufgabenPruefen: [], schritte: {} };
+    const id = v.daten<string>('id') ?? absicht.schluessel;
+    const lauf = async <T>(name: Art17Schritt, fn: () => Promise<T>, daten?: (r: T) => Record<string, unknown>) => {
+      const vor = WARTET_AUF[name];
+      if (vor && !v.erledigt(vor)) { b.schritte![name] = 'fehler'; return; }
+      if (v.erledigt(name)) { b.schritte![name] = 'schon'; return; }
+      try { await v.schritt(name, fn, daten); b.schritte![name] = 'ok'; }
+      catch (e) {
+        if (e instanceof TestAbbruch) throw e;
+        b.schritte![name] = 'fehler';
+        console.error(`[art17] Schritt ${name}:`, e instanceof Error ? e.message : e);
+      }
+    };
+    const protokoll = v.daten<{ datum: string; grund: string; von: string }>('protokoll');
+    const protokollId = v.daten<string>('protokollId');
+    const { loeschungVermerken } = await import('./loeschprotokoll');
+
+    // 1. Löschprotokoll „läuft“ — vor der ersten Wirkung (so ist eine begonnene Löschung auch nach einem Absturz belegt).
+    await lauf('protokoll', async () => { if (protokoll && protokollId) await loeschungVermerken({ id: protokollId, ...protokoll, status: 'laeuft' }); });
+
+    // 2. Kartei: Eintrag raus. Die Merkmale aus der Sperre (aktueller als der Vorab-Stand) wandern in die Absicht.
+    await lauf('kartei', async () => {
+      let kontakt: Kontakt | undefined;
+      let andereNamen: string[] = [];
+      await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+        const f = cur ?? { kontakte: [] };
+        kontakt = f.kontakte.find(k => k.id === id);
+        andereNamen = f.kontakte.filter(k => k.id !== id).map(k => (vollerName(k) ?? '').toLowerCase()).filter(Boolean);
+        if (!kontakt) return f;
+        return { ...f, kontakte: f.kontakte.filter(k => k.id !== id) };
+      });
+      if (kontakt) zaehle(b, 'kontakte', 1);
+      const p = merkmalFelder(kontakt) ?? v.daten<Bekannt | null>('person') ?? null;
+      const name = vollerName(p ?? undefined);
+      return { person: p, namensgleich: !!name && andereNamen.includes(name.toLowerCase()) };
+    }, r => r);
+    const person = v.daten<Bekannt | null>('person') ?? null;
+    const name = vollerName(person ?? undefined);
+    const namensgleich = !!v.daten<boolean>('namensgleich');
+
+    // 3. Sperrliste (K2 #60): nur Hashes der Merkmale — ein erneuter Import der Liste legt die Person nicht wieder an.
+    await lauf('sperrliste', async () => { if (person && await sperren([person], 'loeschung', new Date().toISOString())) zaehle(b, 'crm-sperrliste', 1); });
+
+    // 4. Grabstein AUSSERHALB des Datenordners (#70) — auch für alte Kennungen aus dem Kennungs-Umzug (ein Restore von
+    //    vor dem Umzug brächte die Person unter der alten Kennung zurück).
+    if (person && v.daten<boolean>('grabstein') !== false) {
+      await lauf('grabstein', async () => {
+        const { grabsteinFuer, grabsteinSetzen } = await import('@/lib/datenschutz/grabsteine');
+        const am = new Date().toISOString();
+        await grabsteinSetzen(grabsteinFuer(id, person, am));
+        // Alte Kennungen je als eigener Grabstein nur mit der Kennung (die Merkmale trägt schon der erste) — sonst
+        // vereinte `grabsteinSetzen` sie über die gleichen Merkmale zu EINEM Eintrag mit nur einer Kennung.
+        for (const k of v.daten<string[]>('alteKennungen') ?? []) await grabsteinSetzen(grabsteinFuer(k, null, am));
+      });
+      b.grabstein = v.erledigt('grabstein');
+    } else await lauf('grabstein', async () => undefined);
+
+    // 5. Import-Läufe (K2 #25): der Vorher-Stand der Person verschwindet aus jedem Lauf.
+    await lauf('laeufe', async () => {
+      for (const h of await laufHaushalte()) {
+        await updateJson<LaufBestand>(laufName(h), cur => {
+          let n = 0;
+          const laeufe = (cur?.laeufe ?? []).map(l => { const r = laufOhne(l, id); n += r.n; return r.lauf; });
+          zaehle(b, laufName(h), n);
+          return n ? { laeufe } : (cur ?? { laeufe: [] });
+        });
+      }
+    });
+
+    // 6. CRM: Kennung raus UND der volle Name aus Deal-Titeln und Kundennamen — in EINER Sperre. Gibt es eine andere
+    //    Person mit demselben vollen Namen, nur dort, wo die gelöschte verknüpft war.
+    await lauf('crm', async () => {
+      const vorher = await ladeCrm();
+      if (enthaeltKennung(vorher, id) || crmNenntNamen(vorher, name, namensgleich ? crmVerknuepft(vorher, id) : undefined)) {
+        await aendereCrm(c => { const nur = namensgleich ? crmVerknuepft(c, id) : undefined; return crmNamenTilgen(crmOhne(c, id), name, nur); });
+        zaehle(b, 'crm', 1);
+      }
+    });
+
+    // 7. Dateiablage (alle Haushalte) — Eintrag zuerst, dann die Datei (ein Fehler hinterlässt höchstens eine verwaiste,
+    //    verschlüsselte Datei, die die Verbindungsprüfung meldet).
+    await lauf('ablage', async () => {
+      for (const h of await ablageHaushalte()) {
+        let weg: DateiEintrag[] = [];
+        await updateJson<{ eintraege: DateiEintrag[] }>(ablageName(h), cur => {
+          const r = ablageOhne(cur?.eintraege ?? [], id);
+          weg = r.weg;
+          zaehle(b, `crm-dateien--${h}`, r.weg.length + r.geloest);
+          return r.weg.length || r.geloest ? { ...(cur ?? {}), eintraege: r.eintraege } : (cur ?? { eintraege: [] });
+        });
+        for (const e of weg) if (e.datei) await fs.unlink(dateiPfad(h, e.id)).catch(() => {});
+      }
+    });
+
+    await lauf('konflikte', async () => {
+      if (await da(KONFLIKT_SPEICHER)) await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, cur => { const r = konflikteOhne(cur ?? leererKonfliktStand(), id); zaehle(b, KONFLIKT_SPEICHER, r.n); return r.stand; });
+    });
+
+    // 8. Heads — die Aufgaben entfernter Vorschläge (Kennungen) braucht der Aufgaben-Schritt: sie wandern in die Absicht.
+    await lauf('heads', async () => {
+      const headAufgaben: string[] = [];
+      for (const h of HEADS) {
+        if (await da(standName(h))) await updateJson<HeadStand>(standName(h), cur => { const r = headStandOhne({ ...leererStand(), ...(cur ?? {}) }, id, name); headAufgaben.push(...r.aufgaben); zaehle(b, standName(h), r.n); return r.n ? r.stand : (cur as HeadStand); });
+        if (await da(replayName(h))) await updateJson<ReplayStand>(replayName(h), cur => { const r = replayOhne(cur ?? { faelle: [] }, id, name); zaehle(b, replayName(h), r.n); return r.stand; });
+      }
+      return headAufgaben;
+    }, headAufgaben => ({ headAufgaben: Array.from(new Set([...(v.daten<string[]>('headAufgaben') ?? []), ...headAufgaben])) }));
+
+    await lauf('signale', async () => {
+      if (await da('crm-signale')) await updateJson<SignalStand>('crm-signale', cur => { const r = signaleOhne(cur ?? {}, id); zaehle(b, 'crm-signale', r.n); return r.stand; });
+    });
+
+    await lauf('tasks', async () => {
+      if (!(await da('tasks'))) return;
+      const headAufgaben = v.daten<string[]>('headAufgaben') ?? [];
+      await updateJson<Tasks>('tasks', cur => {
+        const f = cur ?? { tasks: [] };
+        const r = aufgabenAnonymisieren(f.tasks ?? [], id, headAufgaben, name);
+        zaehle(b, 'tasks', r.n);
+        b.aufgabenPruefen = r.pruefen;
+        return r.n ? { ...f, tasks: r.tasks } : f;
+      });
+    });
+
+    // 9. Alle weiteren Speicher (#69) — Register lib/crm/speicher-register.ts, Umsetzung lib/crm/person-weitere.ts —
+    //    und die Weiterleitungstabelle des Kennungs-Umzugs (alte Kennung trägt die E-Mail).
+    await lauf('weitere', async () => {
+      const w = await weitereEntfernen(merkmaleVon(id, person));
+      for (const [s, n] of Object.entries(w.speicher)) zaehle(b, s, n);
+      const { aliasOhnePerson, aliasName } = await import('./kennung-alias');
+      const { karteiHaushalt } = await import('./sperrliste');
+      zaehle(b, aliasName(await karteiHaushalt()), await aliasOhnePerson([id, ...(v.daten<string[]>('alteKennungen') ?? [])]));
+      if (w.fehler.length) { b.fehler = w.fehler; throw new Error(`weitere Speicher gescheitert: ${w.fehler.join(', ')}`); }
+    });
+
+    // 10. Abgeleitete Stände sofort nachziehen (#99): Such-Index (inkrementell; secure_delete überschreibt die freien
+    //     Seiten) und — falls eingeschaltet — der _App-Spiegel. Fehler hier machen die Löschung nicht unvollständig
+    //     (der Takt zieht den Index ohnehin nach) — deshalb im Schritt aufgefangen.
+    await lauf('index', async () => {
+      if (!Object.keys(b.speicher).length) return;
+      try { const { appIndexAktualisieren } = await import('@/lib/brain/app-index'); await appIndexAktualisieren(true); }
+      catch (e) { console.error('[art17] Such-Index nicht nachgezogen (der Takt holt es nach):', e instanceof Error ? e.message : e); }
+      if (process.env.MAKE_OS_APP_SPIEGEL?.trim() === 'an') {
+        try { const { appSpiegel } = await import('@/lib/brain/app-spiegel'); await appSpiegel({ erzwingen: true }); }
+        catch (e) { console.error('[art17] _App-Spiegel nicht neu erzeugt:', e instanceof Error ? e.message : e); }
+      }
+    });
+
+    // Abschluss: Löschprotokoll-Status (#21) und Absicht. Unvollständig → die Absicht bleibt mit ihren Daten offen.
+    const fehlend = ART17_SCHRITTE.filter(s => !v.erledigt(s));
+    b.vollstaendig = fehlend.length === 0;
+    if (fehlend.length && !b.fehler) b.fehler = fehlend;
+    if (protokoll && protokollId) {
+      b.protokollId = protokollId;
+      try { await loeschungVermerken({ id: protokollId, ...protokoll, status: b.vollstaendig ? 'vollstaendig' : 'unvollstaendig', ...(fehlend.length ? { fehlend } : {}) }); }
+      catch (e) { console.error('[art17] Löschprotokoll-Status nicht nachgetragen:', e instanceof Error ? e.message : e); }
     }
-  }
-  const merkmale = merkmaleVon(id, person);
-
-  // Import-Läufe (K2 #25): der Vorher-Stand der Person verschwindet aus jedem Lauf.
-  for (const h of await laufHaushalte()) {
-    await updateJson<LaufBestand>(laufName(h), cur => {
-      let n = 0;
-      const laeufe = (cur?.laeufe ?? []).map(l => { const r = laufOhne(l, id); n += r.n; return r.lauf; });
-      zaehle(b, laufName(h), n);
-      return n ? { laeufe } : (cur ?? { laeufe: [] });
-    });
-  }
-
-  // CRM: Kennung raus (person-verweise.ts) UND der volle Name aus Deal-Titeln und Kundennamen (K2, 28.09.) — in EINER Sperre.
-  // Gibt es eine andere Person mit demselben vollen Namen, nur dort, wo die gelöschte verknüpft war.
-  const namensgleich = !!name && andereNamen.includes(name.toLowerCase());
-  const vorher = await ladeCrm();
-  if (enthaeltKennung(vorher, id) || crmNenntNamen(vorher, name, namensgleich ? crmVerknuepft(vorher, id) : undefined)) {
-    await aendereCrm(c => { const nur = namensgleich ? crmVerknuepft(c, id) : undefined; return crmNamenTilgen(crmOhne(c, id), name, nur); });
-    zaehle(b, 'crm', 1);
-  }
-
-  for (const h of await ablageHaushalte()) {
-    let weg: DateiEintrag[] = [];
-    await updateJson<{ eintraege: DateiEintrag[] }>(ablageName(h), cur => {
-      const r = ablageOhne(cur?.eintraege ?? [], id);
-      weg = r.weg;
-      zaehle(b, `crm-dateien--${h}`, r.weg.length + r.geloest);
-      return r.weg.length || r.geloest ? { ...(cur ?? {}), eintraege: r.eintraege } : (cur ?? { eintraege: [] });
-    });
-    // Dateien physisch entfernen (erst NACH dem Eintrag — ein Fehler hier hinterlässt höchstens eine verwaiste, verschlüsselte Datei).
-    for (const e of weg) if (e.datei) await fs.unlink(dateiPfad(h, e.id)).catch(() => {});
-  }
-
-  if (await da(KONFLIKT_SPEICHER)) await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, cur => { const r = konflikteOhne(cur ?? leererKonfliktStand(), id); zaehle(b, KONFLIKT_SPEICHER, r.n); return r.stand; });
-
-  const headAufgaben: string[] = [];
-  for (const h of HEADS) {
-    if (await da(standName(h))) await updateJson<HeadStand>(standName(h), cur => { const r = headStandOhne({ ...leererStand(), ...(cur ?? {}) }, id, name); headAufgaben.push(...r.aufgaben); zaehle(b, standName(h), r.n); return r.n ? r.stand : (cur as HeadStand); });
-    if (await da(replayName(h))) await updateJson<ReplayStand>(replayName(h), cur => { const r = replayOhne(cur ?? { faelle: [] }, id, name); zaehle(b, replayName(h), r.n); return r.stand; });
-  }
-
-  if (await da('crm-signale')) await updateJson<SignalStand>('crm-signale', cur => { const r = signaleOhne(cur ?? {}, id); zaehle(b, 'crm-signale', r.n); return r.stand; });
-
-  if (await da('tasks')) {
-    await updateJson<Tasks>('tasks', cur => {
-      const f = cur ?? { tasks: [] };
-      const r = aufgabenAnonymisieren(f.tasks ?? [], id, headAufgaben, name);
-      zaehle(b, 'tasks', r.n);
-      b.aufgabenPruefen = r.pruefen;
-      return r.n ? { ...f, tasks: r.tasks } : f;
-    });
-  }
-
-  // Alle weiteren Speicher (29.09., #69) — Register lib/crm/speicher-register.ts, Umsetzung lib/crm/person-weitere.ts.
-  const w = await weitereEntfernen(merkmale);
-  for (const [name, n] of Object.entries(w.speicher)) zaehle(b, name, n);
-  if (w.fehler.length) b.fehler = w.fehler;
-
-  // Abgeleitete Stände sofort nachziehen (#99): Such-Index der Arbeitsbestände (inkrementell; secure_delete überschreibt
-  // die freien Seiten) und — falls eingeschaltet — der _App-Spiegel im Vault. Fehler hier machen die Löschung nicht rückgängig.
-  if (Object.keys(b.speicher).length) {
-    try { const { appIndexAktualisieren } = await import('@/lib/brain/app-index'); await appIndexAktualisieren(true); }
-    catch (e) { console.error('[art17] Such-Index nicht nachgezogen (der Takt holt es nach):', e instanceof Error ? e.message : e); }
-    if (process.env.MAKE_OS_APP_SPIEGEL?.trim() === 'an') {
-      try { const { appSpiegel } = await import('@/lib/brain/app-spiegel'); await appSpiegel({ erzwingen: true }); }
-      catch (e) { console.error('[art17] _App-Spiegel nicht neu erzeugt:', e instanceof Error ? e.message : e); }
-    }
-  }
-  return b;
+    if (speichern) await absichtAbschliessen(haushalt, absicht.id, b.vollstaendig ? 'fertig' : 'unvollstaendig', ['protokollId']);
+    return b;
+  }, { speichern });
 }
 
 /**
@@ -483,20 +658,177 @@ export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorna
  * Dubletten-Route beide Einträge zusammen und löscht `alt`). Idempotent.
  */
 export async function personUmbiegen(alt: string, neu: string): Promise<PersonBericht> {
+  return personenUmbiegen(new Map([[alt, neu]]));
+}
+
+// ── Viele Kennungen auf einmal umbiegen (29.09., Paket D-C #35: Kennungs-Umzug) ──
+// Derselbe Weg wie beim Zusammenführen (die strukturierten `…Um`-Funktionen je Speicher), aber je Speicher EINE Sperre
+// für alle Paare. Im Umzug (`umzug: true`) zusätzlich: Resttexte (Links `?k=c-…` in Notizen), Import- und
+// Zusammenführ-Läufe (mit nachgezogenen Fingerabdrücken, damit „rückgängig“ weiter geht), alle übrigen Bestände mit
+// alten Kennungen (ZOE-Stapel/-Verlauf/-Gedächtnis, Meldungen, Netzwerk …) und die Protokoll-Fingerabdrücke
+// (Änderungsprotokoll, ZOE-Entscheidungen: `c2#hmac(alt)` → `c2#hmac(neu)`). Die Kartei selbst macht der Aufrufer.
+
+export const UMBIEGEN_TEILE = ['crm', 'ablage', 'konflikte', 'heads', 'signale', 'tasks'] as const;
+export const UMZUG_TEILE = [...UMBIEGEN_TEILE, 'laeufe', 'weitere', 'fingerabdruecke'] as const;
+export type UmbiegenTeil = (typeof UMZUG_TEILE)[number];
+
+/** Bestände, die der Umzug NICHT pauschal anfasst: eigene Schritte, das Protokoll des Umzugs selbst, Fingerabdrücke. */
+const UMZUG_EIGENE = /^(kontakte|crm|tasks|crm-dateien--.*|crm-import-konflikte|head-.*|heads-replay-.*|crm-signale|crm-import-laeufe--.*|absichten--.*|kennung-alias--.*|aenderungsprotokoll--.*|zoe-entscheidungen--.*)$/;
+
+export interface UmbiegenOptionen {
+  umzug?: boolean;
+  /** Jeden Teil als Schritt eines Vorgangs ausführen (Absichtsprotokoll) — ohne: direkt nacheinander. */
+  schritt?: (teil: UmbiegenTeil, fn: () => Promise<void>) => Promise<void>;
+}
+
+export async function personenUmbiegen(paare: ReadonlyMap<string, string>, opt: UmbiegenOptionen = {}): Promise<PersonBericht> {
   const b: PersonBericht = { speicher: {}, aufgabenPruefen: [] };
-  if (!alt || !neu || alt === neu) return b;
-  if (enthaeltKennung(await ladeCrm(), alt)) { await aendereCrm(c => crmUm(c, alt, neu)); zaehle(b, 'crm', 1); }
-  for (const h of await ablageHaushalte()) {
-    await updateJson<{ eintraege: DateiEintrag[] }>(ablageName(h), cur => { const r = ablageUm(cur?.eintraege ?? [], alt, neu); zaehle(b, `crm-dateien--${h}`, r.n); return r.n ? { ...(cur ?? {}), eintraege: r.eintraege } : (cur ?? { eintraege: [] }); });
-  }
-  if (await da(KONFLIKT_SPEICHER)) await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, cur => { const r = konflikteUm(cur ?? leererKonfliktStand(), alt, neu); zaehle(b, KONFLIKT_SPEICHER, r.n); return r.stand; });
-  for (const h of HEADS) {
-    if (await da(standName(h))) await updateJson<HeadStand>(standName(h), cur => { const r = headStandUm({ ...leererStand(), ...(cur ?? {}) }, alt, neu); zaehle(b, standName(h), r.n); return r.n ? r.stand : (cur as HeadStand); });
-    if (await da(replayName(h))) await updateJson<ReplayStand>(replayName(h), cur => { const r = replayUm(cur ?? { faelle: [] }, alt, neu); zaehle(b, replayName(h), r.n); return r.stand; });
-  }
-  if (await da('crm-signale')) await updateJson<SignalStand>('crm-signale', cur => { const r = signaleUm(cur ?? {}, alt, neu); zaehle(b, 'crm-signale', r.n); return r.stand; });
-  if (await da('tasks')) await updateJson<Tasks>('tasks', cur => { const f = cur ?? { tasks: [] }; const r = aufgabenUm(f.tasks ?? [], alt, neu); zaehle(b, 'tasks', r.n); return r.n ? { ...f, tasks: r.tasks } : f; });
+  const p = new Map(Array.from(paare).filter(([a, n]) => a && n && a !== n));
+  if (!p.size) return b;
+  const teil = opt.schritt ?? ((_t: UmbiegenTeil, fn: () => Promise<void>) => fn());
+  /** Welche Paare kommen in diesem Wert vor? Im Umzug über EINEN Durchgang, sonst je Paar (Kennungen beliebiger Form). */
+  const vorhanden = (wert: unknown): [string, string][] => (opt.umzug ? vorkommendePaare(wert, p) : Array.from(p).filter(([a]) => enthaeltKennung(wert, a)));
+  const rest = <T>(wert: T): T => (opt.umzug ? kennungenErsetzen(wert, p).wert : wert);
+
+  await teil('crm', async () => {
+    const vor = vorhanden(await ladeCrm());
+    if (!vor.length) return;
+    await aendereCrm(c => { let x = c; for (const [a, n] of vorhanden(c)) x = crmUm(x, a, n); return rest(x); });
+    zaehle(b, 'crm', vor.length);
+  });
+  await teil('ablage', async () => {
+    for (const h of await ablageHaushalte()) {
+      await updateJson<{ eintraege: DateiEintrag[] }>(ablageName(h), cur => {
+        let l = cur?.eintraege ?? [], n = 0;
+        for (const [a, x] of vorhanden(l)) { const r = ablageUm(l, a, x); l = r.eintraege; n += r.n; }
+        const r2 = kennungenErsetzen(l, opt.umzug ? p : new Map());
+        zaehle(b, `crm-dateien--${h}`, n || r2.n);
+        return n || r2.n ? { ...(cur ?? {}), eintraege: r2.wert } : (cur ?? { eintraege: [] });
+      });
+    }
+  });
+  await teil('konflikte', async () => {
+    if (!(await da(KONFLIKT_SPEICHER))) return;
+    await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, cur => {
+      let st = cur ?? leererKonfliktStand(), n = 0;
+      for (const [a, x] of vorhanden(st)) { const r = konflikteUm(st, a, x); st = r.stand; n += r.n; }
+      zaehle(b, KONFLIKT_SPEICHER, n);
+      return rest(st);
+    });
+  });
+  await teil('heads', async () => {
+    for (const h of HEADS) {
+      if (await da(standName(h))) await updateJson<HeadStand>(standName(h), cur => {
+        let st = { ...leererStand(), ...(cur ?? {}) }, n = 0;
+        for (const [a, x] of vorhanden({ v: st.vorschlaege, b: st.berichte })) { const r = headStandUm(st, a, x); st = r.stand; n += r.n; }
+        zaehle(b, standName(h), n);
+        return n ? rest(st) : (cur as HeadStand);
+      });
+      if (await da(replayName(h))) await updateJson<ReplayStand>(replayName(h), cur => {
+        let st = cur ?? { faelle: [] }, n = 0;
+        for (const [a, x] of vorhanden(st.faelle)) { const r = replayUm(st, a, x); st = r.stand; n += r.n; }
+        zaehle(b, replayName(h), n);
+        return rest(st);
+      });
+    }
+  });
+  await teil('signale', async () => {
+    if (!(await da('crm-signale'))) return;
+    await updateJson<SignalStand>('crm-signale', cur => {
+      let st = cur ?? {}, n = 0;
+      for (const [a, x] of vorhanden(st)) { const r = signaleUm(st, a, x); st = r.stand; n += r.n; }
+      zaehle(b, 'crm-signale', n);
+      return rest(st);
+    });
+  });
+  await teil('tasks', async () => {
+    if (!(await da('tasks'))) return;
+    await updateJson<Tasks>('tasks', cur => {
+      const f = cur ?? { tasks: [] };
+      let l = f.tasks ?? [], n = 0;
+      for (const [a, x] of vorhanden(l)) { const r = aufgabenUm(l, a, x); l = r.tasks; n += r.n; }
+      const r2 = kennungenErsetzen(l, opt.umzug ? p : new Map());
+      zaehle(b, 'tasks', n || r2.n);
+      return n || r2.n ? { ...f, tasks: r2.wert } : f;
+    });
+  });
+  if (!opt.umzug) return b;
+
+  await teil('laeufe', async () => {
+    const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+    for (const h of await laufHaushalte()) {
+      const laeufe = (await loadJson<LaufBestand>(laufName(h)))?.laeufe ?? [];
+      if (!vorkommendePaare(laeufe, p).length) continue;
+      const listen = new Map<string, Awaited<ReturnType<typeof schnappschussListe>>>();
+      for (const s of Array.from(new Set(laeufe.flatMap(l => (l.zusammen?.verweise ?? []).map(v => v.speicher))))) listen.set(s, await schnappschussListe(s));
+      await updateJson<LaufBestand>(laufName(h), cur => {
+        const r = laeufeUmziehen(cur?.laeufe ?? [], p, kontakte, s => listen.get(s) ?? null);
+        zaehle(b, laufName(h), r.n);
+        return r.n ? { laeufe: r.laeufe } : (cur ?? { laeufe: [] });
+      });
+    }
+  });
+  await teil('weitere', async () => {
+    for (const name of await alleBestandsNamen()) {
+      if (UMZUG_EIGENE.test(name)) continue;
+      const cur = await loadJson<unknown>(name);
+      if (cur === null || !vorkommendePaare(cur, p).length) continue;
+      let n = 0;
+      await updateJson<unknown>(name, c => { const r = kennungenErsetzen(c, p); n = r.n; return r.wert; });
+      zaehle(b, name, n);
+    }
+  });
+  await teil('fingerabdruecke', async () => {
+    const { protokollKennung, protokollKennungen } = await import('@/lib/store/aenderungsprotokoll');
+    const tabelle = new Map<string, string>();
+    for (const [a, n] of Array.from(p)) for (const f of protokollKennungen(a)) if (f !== a) tabelle.set(f, protokollKennung(n));
+    for (const name of await alleBestandsNamen()) {
+      if (!/^(aenderungsprotokoll|zoe-entscheidungen)--[a-z0-9-]+--\d{4}-\d{2}$/.test(name)) continue;
+      let n = 0;
+      await updateJson<unknown>(name, c => { const r = fingerabdrueckeErsetzen(c, tabelle); n = r.n; return r.wert; });
+      zaehle(b, name, n);
+    }
+  });
   return b;
+}
+
+async function alleBestandsNamen(): Promise<string[]> {
+  const namen = await fs.readdir(datenOrdner()).catch(() => [] as string[]);
+  return namen.filter(n => /^[a-z0-9][a-z0-9-]*\.json$/.test(n)).map(n => n.slice(0, -5)).sort();
+}
+
+/**
+ * Import- und Zusammenführ-Läufe umziehen (rein): alle Kennungen ersetzen UND die Fingerabdrücke „danach“ nachziehen —
+ * sonst meldete „rückgängig“ jeden umgezogenen Eintrag als „seitdem geändert“. Nachgezogen wird nur, wo der Eintrag
+ * (auf die alten Kennungen zurückgerechnet) noch genau dem gespeicherten Fingerabdruck entspricht.
+ */
+export function laeufeUmziehen(laeufe: readonly import('./import-lauf').ImportLauf[], paare: ReadonlyMap<string, string>, kontakte: readonly Kontakt[], liste: (speicher: string) => ({ id: string } & Record<string, unknown>)[] | null): { laeufe: import('./import-lauf').ImportLauf[]; n: number } {
+  const rueck = umkehren(paare);
+  const nachId = new Map(kontakte.map(k => [k.id, k]));
+  /** Neuer Fingerabdruck, wenn der jetzige Eintrag (zurückgerechnet) dem alten entspricht — sonst der alte. */
+  const nachziehen = (fp: string, e: Record<string, unknown> | undefined) => {
+    if (!e) return fp;
+    const vorher = kennungenErsetzen(e, rueck).wert;
+    return fingerabdruck(vorher) === fp ? fingerabdruck(kennungenErsetzen(vorher, paare).wert) : fp;
+  };
+  let n = 0;
+  const neu = laeufe.map(l => {
+    const nachher = Object.fromEntries(Object.entries(l.nachher ?? {}).map(([id, fp]) => {
+      const k = nachId.get(id) ?? nachId.get(paare.get(id) ?? '');
+      return [id, nachziehen(fp, k as unknown as Record<string, unknown> | undefined)];
+    }));
+    const verweise = l.zusammen?.verweise.map(s => {
+      if (s.nachher === null) return s;
+      const e = (liste(s.speicher) ?? []).find(x => x.id === s.id || x.id === paare.get(s.id));
+      return { ...s, nachher: nachziehen(s.nachher, e) };
+    });
+    const mitAbdruck = { ...l, nachher, ...(l.zusammen && verweise ? { zusammen: { ...l.zusammen, verweise } } : {}) };
+    const r = kennungenErsetzen(mitAbdruck, paare);
+    const geaendert = r.n > 0 || JSON.stringify(mitAbdruck) !== JSON.stringify(l);
+    if (geaendert) n++;
+    return geaendert ? r.wert : l;
+  });
+  return { laeufe: neu, n };
 }
 
 /**

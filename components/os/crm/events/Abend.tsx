@@ -27,6 +27,7 @@ import { VisitenkarteKnopf } from '../Visitenkarte';
 import { neueFirma } from '../Firmen';
 import { kartenDubletten, firmaZurKarte, kontaktAusKarte, emailNormal, type VisitenkartenDaten } from '@/lib/crm/visitenkarte';
 import { domainVon, bestehendeFirma } from '@/lib/crm/firmen';
+import { neueKontaktKennung } from '@/lib/kennung';
 
 function GrossKnopf({ an, farbe, onClick, children }: { an: boolean; farbe: string; onClick: () => void; children: string }) {
   return (
@@ -181,7 +182,7 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
         firma = { ...neueFirma(d.firma), ...(d.webseite ? { webseite: d.webseite } : {}), ...(domain ? { domain } : {}) };
         await api.setze('firmen', firma as unknown as { id: string } & Record<string, unknown>);
       }
-      const id = `c-neu-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+      const id = neueKontaktKennung(); // Paket D-C #35: `c-<uuid>`
       const k = kontaktAusKarte(d, { id, heute: crm.heute, jetzt: new Date().toISOString(), von: api.ich, herkunft: 'veranstaltung', firma, anlass: `Per Visitenkarte am Einlass angelegt — ${e.titel}` });
       await api.kontaktSetzen(k);
       await eintragen(id);

@@ -24,6 +24,7 @@ import { stationenSaeubern, stationenSynchron, STATIONEN_MAX, type Station } fro
 import { werteSaeubern, mehrfachSynchron, hatTyp, kategorieBeginnt, MEHRFACH_MAX } from '@/lib/crm/mehrfach';
 import { emailsSaeubern, emailsSynchron, alleAdressen, adresseAnhaengen, hatAdresse, EMAILS_MAX, type EmailAdresse } from '@/lib/crm/emails';
 import { einwilligungSaeubern } from '@/lib/crm/einwilligung';
+import { neueKontaktKennung } from '@/lib/kennung';
 import { einschraenkungSaeubern } from '@/lib/crm/einschraenkung';
 
 export const STUFEN = [
@@ -529,15 +530,11 @@ export function ausZeile(z: Record<string, string>, heute: string): Kontakt {
   // Lifecycle (28.09.): die HubSpot-Spalte LIFECYCLE belegt die Phase nur vor — gesetzt wird sie von Hand.
   const phase = lifecycleAusListe(k.lifecycle);
   if (phase) k.phase = phase;
-  k.id = 'c-' + schluessel(k).replace(/[^a-z0-9]/g, '').slice(0, 40) + '-' + kurzHash(schluessel(k));
+  // Kennung (29.09., Paket D-C #35): zufällig `c-<uuid>` — nie mehr aus E-Mail/Name (trug die Adresse lesbar in URLs,
+  // Logs, Protokolle; nach Art. 17 kam dieselbe Kennung wieder). Wiedererkannt wird über den fachlichen Schlüssel
+  // (`schluessel`, Index in `importieren`), nicht über die Kennung — deshalb bleibt der Import idempotent.
+  k.id = neueKontaktKennung();
   return k;
-}
-
-/** Kleiner, deterministischer Hash — damit die ID stabil bleibt und lesbar ist. */
-function kurzHash(t: string): string {
-  let h = 2166136261;
-  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return (h >>> 0).toString(36).slice(0, 6);
 }
 
 // ── Online gewinnt (Kevins Entscheidung 27.09.) ──────────────────────────────

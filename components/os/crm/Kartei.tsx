@@ -48,6 +48,7 @@ import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
 import { typenVon, kategorienVon, labelsVon, enthaeltEinenVon } from '@/lib/crm/mehrfach';
 import { alleAdressen, hatAdresse } from '@/lib/crm/emails';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { neueKontaktKennung } from '@/lib/kennung';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
@@ -360,7 +361,7 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
     if (!ok) return;
     let firmaId = firma?.id;
     if (!firmaId && e.firma.trim()) { const f = { ...neueFirma(e.firma), ...(e.webseite ? { webseite: e.webseite } : {}) }; firmaId = f.id; await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>); }
-    const id = `c-neu-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    const id = neueKontaktKennung(); // Paket D-C #35: `c-<uuid>` — keine Zeit, keine E-Mail in der Kennung
     const herk = HERKUNFT.find(h => h.id === e.herkunft);
     await api.kontaktSetzen({
       id, vorname: e.vorname.trim(), nachname: e.nachname.trim(), ...(e.email.trim() ? { email: e.email.trim().toLowerCase() } : {}), ...(e.telefon.trim() ? { telefon: e.telefon.trim() } : {}),

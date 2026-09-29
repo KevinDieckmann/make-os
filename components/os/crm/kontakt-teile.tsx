@@ -423,10 +423,13 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
  * Ergebnis des Löschens (Art. 17) als Hinweis zum Abarbeiten (W3, 28.09.): Deals, an denen nur diese Person hing,
  * und Aufgaben, die sie nur beim Namen nennen (nicht geändert). Nichts offen → null.
  */
-function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; aufgabenPruefen?: string[] }): string | null {
+function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; aufgabenPruefen?: string[]; vollstaendig?: boolean; hinweis?: string; warnung?: string }): string | null {
   const deals = r.dealsOhnePerson ?? [];
   const aufgaben = r.aufgabenPruefen ?? [];
   const teile = [
+    // Paket D-C (#21): nicht alle Bestände bestätigt — das Löschprotokoll steht auf „unvollständig“, MAKE OS holt es nach.
+    r.vollstaendig === false ? (r.hinweis ?? 'Nicht alle Bestände bestätigt — wird automatisch nachgeholt.') : '',
+    r.warnung ?? '',
     deals.length ? `${deals.length === 1 ? '1 Deal hat' : `${deals.length} Deals haben`} jetzt keine Person mehr: ${deals.slice(0, 5).map(d => `„${d.titel}“`).join(', ')}${deals.length > 5 ? ' …' : ''} — unter Deals eine Person zuordnen oder den Deal schließen.` : '',
     aufgaben.length ? `${aufgaben.length === 1 ? '1 Aufgabe nennt' : `${aufgaben.length} Aufgaben nennen`} den Namen noch (nicht geändert) — bitte unter Aufgaben prüfen.` : '',
   ].filter(Boolean);

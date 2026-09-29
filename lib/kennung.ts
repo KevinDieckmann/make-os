@@ -7,7 +7,10 @@
 // Läuft im Server UND im Browser: `crypto.randomUUID()` gibt es im Browser nur in sicheren
 // Kontexten (HTTPS, localhost) — sonst wird die UUID aus `crypto.getRandomValues()` gebaut.
 // Kennungen tragen KEINE Zeit mehr: wer nach Zeit sortieren will, nimmt das Zeitfeld des Eintrags.
-// Kontakt-Kennungen (`c-<mail>`) stellt ein eigenes Paket um.
+// Kontakt-Kennungen: seit 29.09. (Paket D-C #35) ebenfalls `c-<uuid>` (`neueKontaktKennung`) — vorher `c-<E-Mail oder
+// Name+Firma>-<Hash>` (trug die Adresse lesbar in URLs, Logs und Protokolle; nach Art. 17 kam dieselbe Kennung wieder).
+// Der fachliche Schlüssel (`schluessel` in lib/make-one/crm.ts) bleibt nur Such-/Dubletten-Index. Den Altbestand stellt
+// der Kennungs-Umzug um (lib/crm/kennungen-umzug.ts, mit Weiterleitung alter Links über lib/crm/kennung-alias.ts).
 
 /** Eine zufällige UUID v4 (Kleinbuchstaben, mit Bindestrichen). */
 export function zufallsUuid(): string {
@@ -25,3 +28,12 @@ export function zufallsUuid(): string {
 export function neueKennung(praefix: string): string {
   return `${praefix}-${zufallsUuid()}`;
 }
+
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const KONTAKT_NEU = new RegExp(`^c-${UUID}$`);
+/** Kennung für einen neuen Kontakt: `c-<uuid>` (keine E-Mail, kein Name, nie wiederverwendet). */
+export const neueKontaktKennung = (): string => neueKennung('c');
+/** Trägt der Kontakt schon die zufällige Kennung? */
+export const istNeueKontaktKennung = (id: string): boolean => KONTAKT_NEU.test(id);
+/** Alte Kontakt-Kennung (aus E-Mail/Name gebildet oder `c-neu-<zeit>`) — Kandidat für den Kennungs-Umzug. */
+export const istAlteKontaktKennung = (id: string): boolean => /^c-[a-z0-9-]{1,62}$/.test(id) && !KONTAKT_NEU.test(id);

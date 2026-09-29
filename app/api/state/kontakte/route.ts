@@ -38,7 +38,7 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { zahlungZusammenfuehren, ibanBehalten } from '@/lib/crm/zahlung';
-import { personEntfernen } from '@/lib/crm/person-bestaende';
+import { personEntfernen, art17Vormerken, art17Verwerfen } from '@/lib/crm/person-bestaende';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { firmaWechselAnwenden, firmaWechselFehlt, istFirmaWechsel, FIRMA_WECHSEL_FEHLT } from '@/lib/crm/stationen';
 import { datenschutzStempeln, pruefeDatenschutz } from '@/lib/crm/datenschutz-stempel';
@@ -106,6 +106,10 @@ export async function PATCH(req: Request) {
   // vorher blieben Deals, Follow-ups, Dateien, Head-Vorschläge … mit der toten Kennung stehen. Namen vorher merken (Freitext-Suche).
   const loeschIds = ops.flatMap(o => (o.op === 'delete' && o.id ? [o.id] : []));
   const geloeschtVorher = loeschIds.length ? new Map(((await loadJson<Bestand>('kontakte'))?.kontakte ?? []).filter(k => loeschIds.includes(k.id)).map(k => [k.id, k])) : new Map<string, Kontakt>();
+  // Absichtsprotokoll (29.09., Paket D-C #17): VOR dem Löschen in der Kartei die Merkmale festhalten — bricht der Lauf
+  // nach dem Kartei-Schreiben ab, räumt die Wiederaufnahme alle übrigen Speicher (mit Name/Adressen) nach. Wird das
+  // Löschen abgelehnt (Art. 18, Stand), verfällt die Vormerkung.
+  for (const [id, k] of Array.from(geloeschtVorher)) if (!k.eingeschraenkt) await art17Vormerken(id, k, { person, quelle: 'kartei' });
 
   /** Ergebnisse eines `teil` — beim anschließenden Vereinen ist ihre IBAN schon entschieden. */
   const ausTeil = new WeakSet<Kontakt>();
@@ -193,12 +197,19 @@ export async function PATCH(req: Request) {
       return wechsel > MASSEN_GRENZE ? `${wechsel} Kontakte würden die Stufe wechseln — das braucht eine ausdrückliche Bestätigung.` : null;
     },
   });
-  if (!r.ok) return NextResponse.json({ error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte.map(k => ({ ...k, aktuell: k.aktuell ? sicht(k.aktuell as Kontakt, ich) : undefined })) } : {}) }, { status: 409 });
+  if (!r.ok) {
+    for (const id of Array.from(geloeschtVorher.keys())) await art17Verwerfen(id, 'kartei');
+    return NextResponse.json({ error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte.map(k => ({ ...k, aktuell: k.aktuell ? sicht(k.aktuell as Kontakt, ich) : undefined })) } : {}) }, { status: 409 });
+  }
   // Sperrliste (K2 #60/#64): neue Sperren eintragen (idempotent), mit Nachweis aufgehobene austragen.
   const geschrieben = new Set((r.zeilen ?? []).map(z => z.id));
   const gesperrt = (r.next?.kontakte ?? []).filter(k => geschrieben.has(k.id) && k.werbesperre);
   if (gesperrt.length) await sperren(gesperrt, 'werbesperre', heute);
   for (const k of aufgehoben) await entsperren(k);
-  for (const id of loeschIds) if (geloeschtVorher.has(id) && !(r.next?.kontakte ?? []).some(k => k.id === id)) await personEntfernen(id, geloeschtVorher.get(id));
+  for (const id of loeschIds) {
+    if (!geloeschtVorher.has(id)) continue;
+    if (!(r.next?.kontakte ?? []).some(k => k.id === id)) await personEntfernen(id, geloeschtVorher.get(id), { person });
+    else await art17Verwerfen(id, 'kartei'); // nicht gelöscht → die Vormerkung verfällt
+  }
   return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen ?? [], stand: pipelineStand(r.next?.kontakte ?? []), ...(neuGesperrt.length ? { hinweis: SPERR_HINWEIS, gesperrtNeu: neuGesperrt } : {}) });
 }

@@ -96,6 +96,14 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     if (h >= 4 && d.letzter?.tag !== heute) raus.push({ id: 'durchsicht', grund: 'Durchsicht der Bestände steht aus', auftrag: { art: 'agent', name: 'durchsicht', anlass: 'Takt: Durchsicht' } });
   } catch (err) { console.error('[MAKE OS] Durchsicht-Takt übersprungen:', err); }
 
+  // 00b) Abgebrochene Vorgänge (Absichtsprotokoll, Paket D-C #17): offene Absichten, die älter als 10 Minuten und nicht
+  //      im Rückzug nach einem Fehlversuch sind, fertigstellen — auch nachts. Ohne KI.
+  try {
+    const { absichtenLage, MINDEST_ALTER_MS } = await import('@/lib/store/absichten-fortsetzen');
+    const l = await absichtenLage(jetzt, MINDEST_ALTER_MS);
+    if (l.faellig) raus.push({ id: 'absichten', grund: `${l.faellig} abgebrochene${l.faellig === 1 ? 'r Vorgang' : ' Vorgänge'} fertigstellen`, auftrag: { art: 'agent', name: 'absichten', anlass: 'Takt: Absichten' } });
+  } catch (err) { console.error('[MAKE OS] Absichten-Takt übersprungen:', err); }
+
   if (h < VON || h >= BIS) return raus;
 
   // 0) Der Gesundheits-Takt (23.09.) — VOR allem anderen und unabhängig vom

@@ -28,6 +28,10 @@
 //  · (c) „inzwischen verknüpft“ prüft CRM, Dateiablage, Head-Vorschläge, Termin-Signale und Aufgaben;
 //    „rückgängig“ schreibt ins Änderungsprotokoll.
 //
+// Paket D-C (29.09., #17): der schreibende Import ist ein Vorgang mit Absichtsprotokoll — Kartei → Konflikte → Segment →
+// Firmen → Lauf (lib/crm/absichten-crm.ts `importNachlauf`); bricht er ab, stellt die Wiederaufnahme ihn fertig. Neue
+// Kontakte tragen `c-<uuid>` (wiedererkannt über den fachlichen Schlüssel).
+//
 // Der Pfad ist auf den Leadordner beschränkt. Die Schnittstelle ist zwar
 // schlüsselgeschützt, aber „lies mir beliebige Dateien" darf trotzdem keine
 // Route können — Default-Deny, wie überall in dieser Software.
@@ -42,15 +46,14 @@ import { homedir } from 'node:os';
 import { loadJson, schrumpftZuStark, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { csvLesenMitBefund, trennerVon } from '@/lib/make-one/csv';
 import { importieren, pipelineStand, istStammdatenFeld, saeubereKontakt, teilAnwenden, bezuegeSynchron, serverStempel, VON_HAND_MAX, type Kontakt } from '@/lib/make-one/crm';
-import { firmenAbgleichen } from '@/lib/crm/abgleich';
 import { aendereCrm } from '@/lib/crm/speicher';
-import { KONFLIKT_SPEICHER, leererKonfliktStand, konflikteZusammenfuehren, SEGMENT_VERNETZEN_ID, segmentVernetzen, type KonfliktStand } from '@/lib/crm/import-konflikte';
+import { KONFLIKT_SPEICHER, leererKonfliktStand, type KonfliktStand } from '@/lib/crm/import-konflikte';
 import { localDay } from '@/lib/zeit';
 import { logRun } from '@/lib/agent-log';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { importPruefen } from '@/lib/crm/import-pruefung';
 import { karteiHaushalt, sperrlisteLaden, sperrlisteNachtragen, sperrPruefer } from '@/lib/crm/sperrliste';
-import { kontaktAbdruck, laeufeLaden, laufAblegen, laufFirmenSetzen, laufKurz, laufName, laufNachherSetzen, neueLaufId, rueckgaengigRechnen, firmenRueckgaengig, istImportLauf, LAUF_ID_OK, type ImportLauf, type LaufBestand } from '@/lib/crm/import-lauf';
+import { kontaktAbdruck, laeufeLaden, laufAblegen, laufKurz, laufName, neueLaufId, rueckgaengigRechnen, firmenRueckgaengig, istImportLauf, LAUF_ID_OK, type ImportLauf, type LaufBestand } from '@/lib/crm/import-lauf';
 import { verknuepfungsBestaende, verknuepftIn } from '@/lib/crm/person-bestaende';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { loeschSperren, type VerweisKontext } from '@/lib/crm/crm-stand';
@@ -59,6 +62,11 @@ import { firmaWechselAnwenden, firmaWechselFehlt, istFirmaWechsel, hauptStation,
 import { bestehendeFirma, firmenId } from '@/lib/crm/firmen';
 import { listePatchen } from '@/lib/store/patch-liste';
 import { protokolliere, listenDiff, type Wer } from '@/lib/store/aenderungsprotokoll';
+import { absichtBeginnen, absichtAbschliessen, mitVorgang } from '@/lib/store/absichten';
+import { IMPORT_SCHRITTE, importNachlauf } from '@/lib/crm/absichten-crm';
+
+/** Der Import würde den Bestand halbieren — nichts geschrieben (die Absicht verfällt). */
+class ImportAbgelehnt extends Error {}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -137,51 +145,50 @@ export async function POST(req: Request) {
   // Änderungsprotokoll (28.09.): der Import schreibt als `import` (mit der auslösenden Person) — Kennung + Feldnamen, nie Werte.
   const alsImport: Wer = { art: 'import', person: wer.person };
   let protokollVorher: Kontakt[] = [], protokollNachher: Kontakt[] = [];
-  await updateJsonAsync<Bestand>('kontakte', async cur => {
-    const vorher = cur?.kontakte ?? [];
-    const ergebnis = importieren(vorher, zeilen, heute, { gesperrt });
-    r = ergebnis;
-    if (schrumpftZuStark(vorher.length, ergebnis.kontakte.length, 20)) { abgelehnt = true; return cur ?? { kontakte: [] }; }
-    const alt = new Map(vorher.map(k => [k.id, k]));
-    lauf.neu = ergebnis.neuIds;
-    lauf.vorher = ergebnis.kontakte.flatMap(k => { const a = alt.get(k.id); return a && kontaktAbdruck(a) !== kontaktAbdruck(k) ? [a] : []; });
-    if (lauf.neu.length || lauf.vorher.length) { await laufAblegen(haushalt, lauf); mitLauf = true; }
-    protokollVorher = vorher; protokollNachher = ergebnis.kontakte;
-    return { ...(cur ?? {}), kontakte: ergebnis.kontakte };
-  });
-  if (!abgelehnt) await protokolliere('kontakte', listenDiff(protokollVorher, protokollNachher), alsImport);
-  if (abgelehnt || !r) return NextResponse.json({ error: 'Abgelehnt: der Import hätte den Bestand halbiert.' }, { status: 409 });
-  r = r as ReturnType<typeof importieren>;
-
-  // Konflikte NICHT anwenden — ablegen, damit sie in Stammdaten › Austausch einzeln entschieden werden.
+  // Absichtsprotokoll (29.09., Paket D-C #17): VOR dem Kartei-Schreiben — die Schritte danach (Konflikte, Segment,
+  // Firmen, Lauf) stellt die Wiederaufnahme fertig, falls der Lauf abbricht (lib/crm/absichten-crm.ts).
+  const { absicht } = await absichtBeginnen(haushalt, { art: 'import', schluessel: lauf.id, schritte: IMPORT_SCHRITTE, daten: { laufId: lauf.id, quelle }, person: wer.person });
   const jetzt = new Date().toISOString();
-  const konfliktStand: KonfliktStand = { konflikte: r.konflikte, moeglicheDubletten: r.moeglicheDubletten, ohneBesitzer: r.ohneBesitzer, stand: jetzt, quelle };
-  // (a) Zusammenführen statt ersetzen: offene Konflikte früherer Listen bleiben; je Person und Feld gilt der jüngste Listenwert.
-  await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, cur => konflikteZusammenfuehren(cur, konfliktStand));
-
-  // Beim ersten Import das Marketing-Segment „Vernetzen“ anlegen — kalte Leads gehen dorthin, nicht in den Vertrieb.
-  await aendereCrm(c => (c.segmente.some(s => s.id === SEGMENT_VERNETZEN_ID) ? c : { ...c, segmente: [...c.segmente, segmentVernetzen(jetzt)] }), alsImport);
-
-  // Firmen als eigene Stammdaten: neue anlegen, Personen verknüpfen, leere Felder füllen.
-  const firmenVorher = new Set((await ladeCrm()).firmen.map(f => f.id));
-  const firmen = await firmenAbgleichen(alsImport);
-  // Fingerabdrücke NACH dem Firmen-Abgleich — so, wie der Import die Kontakte hinterließ.
-  const nachher = (await loadJson<Bestand>('kontakte'))?.kontakte ?? [];
-  if (mitLauf) {
-    await laufNachherSetzen(haushalt, lauf.id, nachher);
-    // W7: neu angelegte Firmen, an denen Personen dieses Laufs hängen (so zählt keine Firma mit, die jemand anders
-    // zufällig gleichzeitig anlegte) — mit Fingerabdruck, damit „rückgängig“ sie nur unverändert zurücknimmt.
-    const laufPersonen = new Set([...lauf.neu, ...lauf.vorher.map(v => v.id)]);
-    const ihreFirmen = new Set(nachher.filter(k => laufPersonen.has(k.id)).flatMap(k => [k.firmaId, ...(k.stationen ?? []).map(st => st.firmaId)]).filter((x): x is string => !!x));
-    const neueFirmen = (await ladeCrm()).firmen.filter(f => !firmenVorher.has(f.id) && ihreFirmen.has(f.id));
-    await laufFirmenSetzen(haushalt, lauf.id, neueFirmen as unknown as ({ id: string } & Record<string, unknown>)[]);
+  let firmen: Awaited<ReturnType<typeof importNachlauf>>['firmen'];
+  let nachher: Kontakt[] = [];
+  try {
+    await mitVorgang(haushalt, absicht, async v => {
+      await v.schritt('kartei', async () => {
+        await updateJsonAsync<Bestand>('kontakte', async cur => {
+          const vorher = cur?.kontakte ?? [];
+          const ergebnis = importieren(vorher, zeilen, heute, { gesperrt });
+          r = ergebnis;
+          if (schrumpftZuStark(vorher.length, ergebnis.kontakte.length, 20)) { abgelehnt = true; return cur ?? { kontakte: [] }; }
+          const alt = new Map(vorher.map(k => [k.id, k]));
+          lauf.neu = ergebnis.neuIds;
+          lauf.vorher = ergebnis.kontakte.flatMap(k => { const a = alt.get(k.id); return a && kontaktAbdruck(a) !== kontaktAbdruck(k) ? [a] : []; });
+          if (lauf.neu.length || lauf.vorher.length) { await laufAblegen(haushalt, lauf); mitLauf = true; }
+          protokollVorher = vorher; protokollNachher = ergebnis.kontakte;
+          return { ...(cur ?? {}), kontakte: ergebnis.kontakte };
+        });
+        if (abgelehnt || !r) throw new ImportAbgelehnt();
+        const x = r as ReturnType<typeof importieren>;
+        return { konfliktStand: { konflikte: x.konflikte, moeglicheDubletten: x.moeglicheDubletten, ohneBesitzer: x.ohneBesitzer, stand: jetzt, quelle } as KonfliktStand, mitLauf };
+      }, d => d);
+      await protokolliere('kontakte', listenDiff(protokollVorher, protokollNachher), alsImport);
+      const n = await importNachlauf(v, alsImport);
+      firmen = n.firmen; nachher = n.nachher;
+    });
+  } catch (e) {
+    if (e instanceof ImportAbgelehnt) {
+      await absichtAbschliessen(haushalt, absicht.id, 'verworfen');
+      return NextResponse.json({ error: 'Abgelehnt: der Import hätte den Bestand halbiert.' }, { status: 409 });
+    }
+    throw e; // die Absicht bleibt offen — die Wiederaufnahme stellt den Import fertig
   }
+  await absichtAbschliessen(haushalt, absicht.id, 'fertig', ['laufId']);
+  r = r as unknown as ReturnType<typeof importieren>;
   await logRun('crm', `Import: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert, ${r.konflikte.length} Konflikte, ${r.gesperrt} gesperrt übersprungen`, { quelle, zeilen: zeilen.length, moeglicheDubletten: r.moeglicheDubletten.length, ohneBesitzer: r.ohneBesitzer, ...(mitLauf ? { lauf: lauf.id } : {}) });
   return NextResponse.json({
     ok: true, zeilen: zeilen.length, neu: r.neu, aktualisiert: r.aktualisiert, unveraendert: r.unveraendert,
     konflikte: r.konflikte, moeglicheDubletten: r.moeglicheDubletten, ohneBesitzer: r.ohneBesitzer, gesperrt: r.gesperrt, weitereAdressen: r.weitereAdressen,
     warnungen: pruefung.warnungen, pruefung: pruefung.zaehler, ...(mitLauf ? { laufId: lauf.id } : {}),
-    firmen, stand: pipelineStand(nachher),
+    firmen: firmen ?? null, stand: pipelineStand(nachher),
   });
 }
 

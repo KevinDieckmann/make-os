@@ -46,6 +46,8 @@ export const KONTAKTE_LESER_ERLAUBT: Readonly<Record<string, string>> = {
   'lib/crm/deal-anlegen.ts': 'Deal anlegen — lehnt eingeschränkte Personen selbst ab (Art. 18).',
   'lib/crm/lead-heben.ts': 'Lead → SQL — prüft die Einschränkung selbst.',
   'lib/crm/angebot-server.ts': 'Angebote — sperrt eingeschränkte Empfänger selbst (Art. 18).',
+  'lib/crm/absichten-crm.ts': 'Absichtsprotokoll (Paket D-C) — prüft nach einem Abbruch nur, ob Import/Zusammenführung gewirkt hat (Kennungen, Fingerabdrücke).',
+  'lib/crm/kennungen-umzug.ts': 'Kennungs-Umzug (Paket D-C #35) — stellt die Kennung JEDER Person um, auch eingeschränkter (keine Verarbeitung zur Ansprache).',
   'lib/zoe/crm-sicht.ts': 'ZOE-Sicht — blendet eingeschränkte Personen selbst aus (nur „n ausgeblendet“).',
   'lib/brain/app-index.ts': 'Such-Index — liest nur die Kennungen eingeschränkter Personen, um ihren Bezug auszuschließen.',
   'lib/brain/app-material.ts': 'App → Brain — liest nur die Kennungen eingeschränkter Personen, um sie auszublenden.',

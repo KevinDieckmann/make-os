@@ -63,8 +63,13 @@ describe('Import', () => {
     expect(zusammenfuehren(alt, neu, HEUTE).kontakt.notiz).toBe('wichtig');
   });
 
-  it('gibt jedem Kontakt eine stabile ID', () => {
-    expect(ausZeile(zeile(), HEUTE).id).toBe(ausZeile(zeile(), '2027-01-01').id);
+  // Paket D-C (#35): die Kennung ist zufällig (c-<uuid>, nie aus E-Mail/Name) — wiedererkannt wird über den fachlichen
+  // Schlüssel (Import-Index), nicht über die Kennung.
+  it('gibt jedem Kontakt eine zufällige Kennung ohne E-Mail — gleiche Zeile, gleicher Schlüssel', () => {
+    const a = ausZeile(zeile(), HEUTE), b = ausZeile(zeile(), '2027-01-01');
+    expect(a.id).toMatch(/^c-[0-9a-f]{8}-[0-9a-f]{4}-4/);
+    expect(a.id).not.toBe(b.id);
+    expect(schluessel(a)).toBe(schluessel(b));
   });
 
   it('leitet die Stufe aus dem Wenigen ab, das die Liste weiß', () => {

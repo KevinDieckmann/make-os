@@ -274,5 +274,46 @@ describe('Gesellschaften-Route', () => {
   });
 });
 
+describe('Absichtsprotokoll beim Stellen (Paket D-C #17)', () => {
+  const stellen = async (id: string) => {
+    const a = (await crm()).angebote.find(x => x.id === id)!;
+    const { standVon } = await import('@/lib/crm/crm-stand');
+    return post({ aktion: 'stellen', id, stand: standVon(a) });
+  };
+  const vermerke = async (nummer: string) => (await kontakte()).find(x => x.id === 'c-dora1')!.aktivitaeten.filter(x => (x.text ?? '').startsWith(`Angebot ${nummer} gesendet`)).length;
+  it('Abbruch nach dem Festschreiben → Wiederaufnahme holt den Kontakt-Vermerk nach, genau einmal', async () => {
+    const ab = await import('@/lib/store/absichten');
+    const fort = await import('@/lib/store/absichten-fortsetzen');
+    await neuerEntwurf({ kontaktId: 'c-dora1' }, 'ang-abbruch1');
+    ab.absichtTest.nachAbhaken = (art, s) => { if (art === 'angebot-stellen' && s === 'festschreiben') throw new ab.TestAbbruch(s); };
+    try { expect((await stellen('ang-abbruch1')).status).toBe(500); } finally { ab.absichtTest.nachAbhaken = null; }
+    const a = (await crm()).angebote.find(x => x.id === 'ang-abbruch1')!;
+    expect(a.status).toBe('gestellt');
+    expect(await vermerke(a.nummer!)).toBe(0); // halber Stand
+    const r = await fort.offeneFertigstellen();
+    expect(r.fertig).toBeGreaterThanOrEqual(1);
+    expect(await vermerke(a.nummer!)).toBe(1);
+    await fort.offeneFertigstellen(); // nichts mehr offen, nichts doppelt
+    expect(await vermerke(a.nummer!)).toBe(1);
+  });
+  it('Abbruch vor dem Festschreiben → Angebot bleibt Entwurf, ein verwaistes PDF (Beleg) wird entfernt, die Absicht verfällt', async () => {
+    const ab = await import('@/lib/store/absichten');
+    const fort = await import('@/lib/store/absichten-fortsetzen');
+    await neuerEntwurf({ kontaktId: 'c-dora1' }, 'ang-abbruch2');
+    ab.absichtTest.vorSchritt = (art, s) => { if (art === 'angebot-stellen' && s === 'festschreiben') throw new ab.TestAbbruch(s); };
+    try { expect((await stellen('ang-abbruch2')).status).toBe(500); } finally { ab.absichtTest.vorSchritt = null; }
+    expect((await crm()).angebote.find(x => x.id === 'ang-abbruch2')!.status).toBe('entwurf');
+    // So sähe ein Abbruch ZWISCHEN Ablegen und CRM-Schreiben aus: ein Angebots-PDF mit Bezug, aber kein gestelltes Angebot.
+    const waise = await ablage.ablegen('test-haus', 'kevin', { art: 'angebot', titel: 'Waise', kontaktId: 'c-dora1' }, { bytes: Buffer.from('%PDF-1.4\n%%EOF\n'), name: 'w.pdf', typ: 'application/pdf' }, undefined, { angebotId: 'ang-abbruch2' });
+    await fort.offeneFertigstellen();
+    expect((await ablage.ablageListe('test-haus')).some(e => e.id === waise.id)).toBe(false);
+    expect(await ablage.inhaltLaden('test-haus', waise.id)).toBeNull();
+    const h = (await ab.absichtenLaden('test-haus')).find(x => x.art === 'angebot-stellen' && x.status === 'verworfen');
+    expect(h).toBeTruthy();
+    // danach geht das Stellen ganz normal
+    expect((await stellen('ang-abbruch2')).status).toBe(200);
+  });
+});
+
 // Deal-Typ nur für Lesbarkeit der Erwartungen.
 export type _D = Chance;

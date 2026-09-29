@@ -159,6 +159,23 @@ const mapRaus: Wirkung = (cur, m) => {
   return { neu: n ? neu : cur, n };
 };
 
+/**
+ * Absichtsprotokoll (Paket D-C #17): in ANDEREN Absichten (Import, Umzug …) wird die Person getilgt; die eigene
+ * Art.-17-Absicht der Person bleibt unberührt — sie braucht Name und Adressen bis zum letzten Schritt und wird beim
+ * Abschluss ohnehin geleert.
+ */
+export const absichtenTilgen: Wirkung = (cur, m) => {
+  const l = liste(cur, 'absichten') as { art?: string; daten?: { id?: unknown } }[];
+  let n = 0;
+  const neu = l.map(a => {
+    if (a?.art === 'art17' && a.daten?.id === m.id) return a;
+    const t = tilgeTief(a, m);
+    n += t.n;
+    return t.wert;
+  });
+  return { neu: n ? { ...cur, absichten: neu } : cur, n };
+};
+
 export interface WeitererSpeicher { name: string; muster: RegExp; behandlung: 'entfernen' | 'tilgen'; wirkung: Wirkung }
 
 /**
@@ -190,6 +207,7 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'agent-log', muster: /^agent-log$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'client-fehler', muster: /^client-fehler$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'meldungen--*', muster: /^meldungen--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'absichten--*', muster: /^absichten--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: absichtenTilgen },
 ];
 
 /** Welcher weitere Speicher gilt für diesen Bestandsnamen? */

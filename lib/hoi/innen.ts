@@ -4,6 +4,7 @@
 // die letzte Meldung der GitHub-Aktion (Speicher hoi-aussen). Zusammengeführt
 // von lib/hoi/lage.ts (rein, getestet).
 
+import { absichtenLage, MINDEST_ALTER_MS } from '@/lib/store/absichten-fortsetzen';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { loadJson, datenOrdner, datenSchluessel, datenschichtLage } from '@/lib/store/local-db';
@@ -97,6 +98,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     ki: { schluessel: hasAnthropicKey(), guthabenLeerSeit: guthabenStand().leerSeit },
     datenschicht: ds, sicherungLauf: sl, durchsicht: dk,
     datenschutz: { pepper: pepperGesetzt(), grabsteinOrdner: grabsteinOrdnerKonfiguriert(), produktion: process.env.NODE_ENV === 'production' },
+    absichten: await absichtenLage(new Date(jetzt), MINDEST_ALTER_MS),
   };
 }
 

@@ -5,7 +5,8 @@
 // Wiederholbar: feste Kennungen; was schon da ist, bleibt, wie es ist (eigene
 // Änderungen gehen nie verloren). Ansprechpartner kommen in die Kartei.
 
-import { schluessel, type Kontakt, type Lebensphase } from '@/lib/make-one/crm';
+import { type Kontakt, type Lebensphase } from '@/lib/make-one/crm';
+import { neueKontaktKennung } from '@/lib/kennung';
 import type { CrmBestand, Mandat, Leistung, ChancenArt, Gesellschaft, LeistungTyp } from './typen';
 
 export interface BrainDaten {
@@ -69,8 +70,7 @@ export function ausBrain(d: BrainDaten, bestand: CrmBestand, kartei: Kontakt[], 
         kreis: phase === 'kunde' ? 'A' : 'B', besitzer: person === 'malin' ? 'beide' : 'kevin', lebensphase: phase, anrede: 'Sie', stufe: phase === 'kunde' ? 'gewonnen' : 'gespraech',
         aktivitaeten: [{ am: jetzt, art: 'system', text: `Aus dem Brain übernommen (${firma})`, von: person }], importiertAm: heute, geaendertAm: heute,
       };
-      const key = schluessel(k);
-      k.id = `c-${key.replace(/[^a-z0-9]/g, '').slice(0, 40)}-${hash(key)}`;
+      k.id = neueKontaktKennung(); // Paket D-C #35: zufällig, nie aus Name/E-Mail (wiedererkannt wird über den Namen, oben)
       kontakte.push(k); idsHier.push(k.id); neu.kontakte++;
     }
     kundeKontakte.set(norm(ku.name), idsHier);

@@ -73,7 +73,7 @@ describe('Register aller Bestände (#74)', () => {
     }
   });
   it('jeder Eintrag hat einen Grund; entfernen/tilgen ist wirklich umgesetzt', () => {
-    const KERN = new Set(['kontakte', 'crm', 'crm-dateien--*', 'crm-import-konflikte', 'crm-import-laeufe--*', 'head-*', 'heads-replay-*', 'crm-signale', 'tasks']);
+    const KERN = new Set(['kontakte', 'crm', 'crm-dateien--*', 'crm-import-konflikte', 'crm-import-laeufe--*', 'head-*', 'heads-replay-*', 'crm-signale', 'tasks', 'kennung-alias--*']);
     const weitere = new Set(WEITERE_SPEICHER.map(s => s.name));
     for (const e of SPEICHER_REGISTER) {
       expect(e.grund.length, e.muster).toBeGreaterThan(10);

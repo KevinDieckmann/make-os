@@ -283,7 +283,18 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
 
   let ergebnis: { a: Angebot; pdf: { id: string; name: string } } | null = null;
   let geaendert = false;
-  await aendereCrmAsync(async b => {
+  // Absichtsprotokoll (29.09., Paket D-C #17): festschreiben (CRM + Ablage in EINER Sperre) und danach die Aktivität am
+  // Kontakt sind zwei Bestände. Bricht der Lauf dazwischen ab, fehlte der Kontakt-Vermerk; scheitert das CRM-Schreiben
+  // nach dem Ablegen, bliebe ein verwaistes Angebots-PDF (Beleg, nicht löschbar). Die Wiederaufnahme
+  // (`angebotFortsetzen`) holt den Vermerk nach bzw. räumt das verwaiste PDF weg.
+  const { karteiHaushalt } = await import('./sperrliste');
+  const { absichtBeginnen, absichtAbschliessen, mitVorgang } = await import('@/lib/store/absichten');
+  const ah = await karteiHaushalt();
+  const { absicht } = await absichtBeginnen(ah, {
+    art: 'angebot-stellen', schluessel: p.id, schritte: ANGEBOT_SCHRITTE, person: p.person,
+    daten: { angebotId: p.id, kontaktId: k.id, nummer, ...(dealId ? { dealId } : {}), nachfassen, heute, jetzt: jetztIso, person: p.person, haushalt: p.haushalt },
+  });
+  const festschreiben = () => aendereCrmAsync(async b => {
     const liste = b.angebote ?? [];
     const a = liste.find(x => x.id === p.id);
     // Zwischen Reservierung und Festschreiben geändert (anderes Fenster, zweites „Stellen“)? Dann nichts festschreiben.
@@ -316,29 +327,96 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
     const followups = [...(b.followups ?? []).filter(f => f.id !== fu.id), fu];
     return { ...b, angebote, chancen, followups };
   }, p.wer);
-  if (geaendert) {
-    await reservierungLoesen();
-    throw new AngebotFehler('Wurde inzwischen geändert — neu geladen, bitte noch einmal.', 409, { grund: 'inzwischen geändert' });
+  let e: { a: Angebot; pdf: { id: string; name: string } } | null = null;
+  try {
+    await mitVorgang(ah, absicht, async v => {
+      await v.schritt('festschreiben', async () => {
+        await festschreiben();
+        if (geaendert) throw new AngebotFehler('Wurde inzwischen geändert — neu geladen, bitte noch einmal.', 409, { grund: 'inzwischen geändert' });
+        e = ergebnis as { a: Angebot; pdf: { id: string; name: string } } | null;
+        if (!e) throw new AngebotFehler('Nicht gestellt.', 500);
+      });
+      // 4. Kontakt: Aktivität „Angebot gesendet (Nummer)“, Stufe vorwärts, Wiedervorlage = Nachfassen, Lifecycle gehoben.
+      await v.schritt('kontakt', () => angebotKontaktVermerk({ kontaktId: k.id, nummer, titel: r0.a.titel, dealId, nachfassen, heute, jetzt: jetztIso, person: p.person, wer: p.wer }));
+    });
+  } catch (err) {
+    if (err instanceof AngebotFehler) {
+      // Festschreiben fand nicht statt (Stand geändert / nichts gestellt) → Reservierung lösen, Absicht verfällt.
+      await absichtAbschliessen(ah, absicht.id, 'verworfen');
+      await reservierungLoesen();
+    }
+    throw err; // sonst bleibt die Absicht offen — die Wiederaufnahme holt den Rest nach
   }
-  const e = ergebnis as { a: Angebot; pdf: { id: string; name: string } } | null;
-  if (!e) throw new AngebotFehler('Nicht gestellt.', 500);
+  await absichtAbschliessen(ah, absicht.id, 'fertig');
+  const fertig = e as { a: Angebot; pdf: { id: string; name: string } } | null;
+  if (!fertig) throw new AngebotFehler('Nicht gestellt.', 500);
+  const mail = mailVorlage({ anrede: k.anrede, vorname: k.vorname, nachname: k.nachname, titel: fertig.a.titel, nummer: fertig.a.nummer, gueltigBis: fertig.a.gueltigBis, absender: v.name });
+  return { angebot: mitStand(fertig.a), pdf: fertig.pdf, mail: { ...(k.email ? { an: k.email } : {}), ...mail }, ...(dealId ? { dealId } : {}), hinweise };
+}
 
-  // 4. Kontakt: Aktivität „Angebot gesendet (Nummer)“, Stufe vorwärts (nie zurück), Wiedervorlage = Nachfassen, Lifecycle gehoben.
+export const ANGEBOT_SCHRITTE = ['festschreiben', 'kontakt'] as const;
+
+/**
+ * Aktivität „Angebot <Nummer> gesendet“ am Kontakt — idempotent: steht sie schon (gleiche Nummer), bleibt alles, wie es
+ * ist (die Wiederaufnahme darf sie nicht doppelt anlegen). Stufe nur vorwärts, Wiedervorlage = Nachfassen, Lifecycle gehoben.
+ */
+export async function angebotKontaktVermerk(p: { kontaktId: string; nummer: string; titel: string; dealId?: string; nachfassen: string; heute: string; jetzt: string; person: string; wer?: Wer }): Promise<void> {
   const rang = (s: Kontakt['stufe']) => KONTAKT_STUFEN.indexOf(s);
+  const kopf = `Angebot ${p.nummer} gesendet`;
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
+    const x0 = f.kontakte.find(x => x.id === p.kontaktId);
+    if (!x0 || x0.eingeschraenkt || (x0.aktivitaeten ?? []).some(a => (a.text ?? '').startsWith(kopf))) return f;
     return {
       ...f, kontakte: f.kontakte.map(x => {
-        if (x.id !== k.id || x.eingeschraenkt) return x;
+        if (x.id !== p.kontaktId) return x;
         const stufe = rang(x.stufe) < rang('angebot') && x.stufe !== 'verloren' && x.stufe !== 'ruht' ? 'angebot' as const : undefined;
-        const neu = wendeAktivitaetAn(x, { art: 'mail', text: `Angebot ${e.a.nummer} gesendet — ${e.a.titel}`, von: p.person, ...(dealId ? { bezug: dealId } : {}), ...(stufe ? { stufe } : {}), wiedervorlage: nachfassen }, heute, jetztIso, tagePlus);
+        const neu = wendeAktivitaetAn(x, { art: 'mail', text: `${kopf} — ${p.titel}`, von: p.person, ...(p.dealId ? { bezug: p.dealId } : {}), ...(stufe ? { stufe } : {}), wiedervorlage: p.nachfassen }, p.heute, p.jetzt, tagePlus);
         const phase = phaseHeben(x.phase, 'angebot');
         return phase && phase !== x.phase ? { ...neu, phase } : neu;
       }),
     };
   }, p.wer);
-  const mail = mailVorlage({ anrede: k.anrede, vorname: k.vorname, nachname: k.nachname, titel: e.a.titel, nummer: e.a.nummer, gueltigBis: e.a.gueltigBis, absender: v.name });
-  return { angebot: mitStand(e.a), pdf: e.pdf, mail: { ...(k.email ? { an: k.email } : {}), ...mail }, ...(dealId ? { dealId } : {}), hinweise };
+}
+
+/**
+ * Wiederaufnahme „Angebot stellen“: war das Festschreiben noch nicht abgehakt, entscheidet der Bestand — ist das Angebot
+ * mit der reservierten Nummer gestellt, hat es gewirkt (weiter mit dem Kontakt-Vermerk); steht es noch als Entwurf,
+ * fand es nicht statt: ein beim Abbruch schon abgelegtes PDF (Beleg mit `angebotId`, nicht das `pdfDateiId` eines
+ * gestellten Angebots) wird entfernt, die Absicht verfällt.
+ */
+export async function angebotFortsetzen(haushalt: string, a: import('@/lib/store/absichten').Absicht): Promise<void> {
+  const { absichtAbschliessen, schrittAbhaken, schrittErledigt, mitVorgang } = await import('@/lib/store/absichten');
+  const d = a.daten as { angebotId: string; kontaktId: string; nummer: string; dealId?: string; nachfassen: string; heute: string; jetzt: string; person: string; haushalt: string };
+  const ang = ((await ladeCrm()).angebote ?? []).find(x => x.id === d.angebotId);
+  if (!schrittErledigt(a, 'festschreiben')) {
+    if (!ang || ang.nummer !== d.nummer || istEntwurf(ang)) {
+      await verwaistePdfsEntfernen(d.haushalt, d.angebotId, ang?.pdfDateiId);
+      await absichtAbschliessen(haushalt, a.id, 'verworfen');
+      return;
+    }
+    await schrittAbhaken(haushalt, a.id, 'festschreiben');
+    a = { ...a, schritte: a.schritte.map(s => (s.name === 'festschreiben' ? { ...s, erledigt: new Date().toISOString() } : s)) };
+  }
+  await mitVorgang(haushalt, a, async v => {
+    await v.schritt('kontakt', () => angebotKontaktVermerk({ kontaktId: d.kontaktId, nummer: d.nummer, titel: ang?.titel ?? '', dealId: d.dealId, nachfassen: d.nachfassen, heute: d.heute, jetzt: d.jetzt, person: d.person, wer: { art: 'system' } }));
+  });
+  await absichtAbschliessen(haushalt, a.id, 'fertig');
+}
+
+/** Angebots-PDFs eines NICHT gestellten Angebots (Abbruch zwischen Ablegen und CRM-Schreiben) aus der Ablage nehmen. */
+async function verwaistePdfsEntfernen(haushalt: string, angebotId: string, behalten?: string): Promise<number> {
+  const { ablageName, inhaltEntfernen } = await import('@/lib/dateien/ablage');
+  const { updateJson } = await import('@/lib/store/local-db');
+  if ((await loadJson(ablageName(haushalt))) === null) return 0;
+  let weg: string[] = [];
+  await updateJson<{ eintraege: { id: string; angebotId?: string; art?: string }[] }>(ablageName(haushalt), cur => {
+    const l = cur?.eintraege ?? [];
+    weg = l.filter(x => x.angebotId === angebotId && x.art === 'angebot' && x.id !== behalten).map(x => x.id);
+    return weg.length ? { ...(cur ?? {}), eintraege: l.filter(x => !weg.includes(x.id)) } : (cur ?? { eintraege: [] });
+  });
+  for (const id of weg) await inhaltEntfernen(haushalt, id);
+  return weg.length;
 }
 
 // ── Antwort des Kunden ───────────────────────────────────────────────────────

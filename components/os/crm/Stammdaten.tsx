@@ -27,6 +27,7 @@ import { Wertelisten } from './stammdaten/Wertelisten';
 import { Austausch } from './stammdaten/Austausch';
 import { Verweise } from './stammdaten/Verweise';
 import { Verbindungen } from './stammdaten/Verbindungen';
+import { KennungenUmzug } from './stammdaten/KennungenUmzug';
 import { Loeschfristen } from './stammdaten/Loeschfristen';
 import { NachweisOffenKarte } from './stammdaten/NachweisOffen';
 import { Gesellschaften } from './stammdaten/Gesellschaften';
@@ -104,6 +105,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
       {unter === 'qualitaet' && (
         <>
           <Verbindungen i={0} onGeaendert={() => { void laden(); void api.laden(); }} />
+          <KennungenUmzug i={1} onGeaendert={() => { void laden(); void api.laden(); }} />
           <Karte i={1}>
             <Ueberschrift rechts={`${d.qualitaet.kontakte} Personen`}>Vollständigkeit</Ueberschrift>
             <div style={{ display: 'grid', gap: 9 }}>

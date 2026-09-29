@@ -15,6 +15,8 @@
 //    Vorher-Stand und Fingerabdruck danach. Rückgängig nur, solange nichts davon seitdem geändert wurde — sonst 409
 //    mit Grund, nichts angefasst.
 //  · (h) Ablehnen statt still kürzen (private Notizen), Ergebnis durch `saeubereKontakt`/`kontaktZuGross` — zu groß 409.
+//  · Paket D-C (29.09., #17/#33): Absicht VOR dem Kartei-Schreiben (lib/crm/absichten-crm.ts) — bricht der Lauf danach ab,
+//    biegt die Wiederaufnahme die Verweise um; ein abgelehnter/nicht gefundener Fall verwirft die Absicht.
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
@@ -28,6 +30,11 @@ import { laeufeLaden, laufAblegen, laufName, neueLaufId, LAUF_ID_OK, type LaufBe
 import { zusammenLauf, rueckgaengigGruende } from '@/lib/crm/zusammenfuehren-lauf';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { protokolliere, listenDiff, type Wer } from '@/lib/store/aenderungsprotokoll';
+import { absichtBeginnen, absichtAbschliessen, absichtenLaden, istOffen, mitVorgang } from '@/lib/store/absichten';
+import { ZUSAMMEN_SCHRITTE, zusammenfuehrenFortsetzen } from '@/lib/crm/absichten-crm';
+
+/** Die Zusammenführung fand nicht statt (abgelehnt oder Kontakt weg) — die Absicht verfällt. */
+class NichtZusammengefuehrt extends Error {}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -75,7 +82,14 @@ export async function POST(req: Request) {
   let ergebnis: Kontakt | null = null;
   let abgelehnt: { status: number; fehler: string } | null = null;
   let vorher: Kontakt[] = [], nachher: Kontakt[] = [];
-  await updateJsonAsync<{ kontakte: Kontakt[] }>('kontakte', async cur => {
+  // Absichtsprotokoll (29.09., Paket D-C #17/#33): VOR dem Kartei-Schreiben. Bricht der Lauf danach ab, biegt die
+  // Wiederaufnahme die Verweise um (lib/crm/absichten-crm.ts) — nie zeigen Deals/Ablage/Aufgaben auf die gelöschte Kennung.
+  // Eine offene Absicht desselben Paars (abgebrochener Versuch) wird erst fertiggestellt bzw. verworfen.
+  const schluessel = `${weg}>${behalten}`;
+  const alt = (await absichtenLaden(haushalt)).find(a => a.art === 'zusammenfuehren' && a.schluessel === schluessel && istOffen(a));
+  if (alt) await zusammenfuehrenFortsetzen(haushalt, alt);
+  const { absicht } = await absichtBeginnen(haushalt, { art: 'zusammenfuehren', schluessel, schritte: ZUSAMMEN_SCHRITTE, daten: { behalten, weg, laufId }, person });
+  const karteiSchritt = async () => updateJsonAsync<{ kontakte: Kontakt[] }>('kontakte', async cur => {
     const f = cur ?? { kontakte: [] };
     const a = f.kontakte.find(x => x.id === behalten), b = f.kontakte.find(x => x.id === weg);
     if (!a || !b) return f;
@@ -98,12 +112,25 @@ export async function POST(req: Request) {
     nachher = f.kontakte.filter(x => x.id !== b.id).map(x => (x.id === a.id ? sauber : x));
     return { ...f, kontakte: nachher };
   });
-  const nein = abgelehnt as { status: number; fehler: string } | null;
-  if (nein) return NextResponse.json({ ok: false, fehler: nein.fehler }, { status: nein.status });
-  if (!ergebnis) return NextResponse.json({ ok: false, fehler: 'Kontakt nicht gefunden.' }, { status: 404 });
-  await protokolliere('kontakte', listenDiff(vorher, nachher), wer);
-  const umgebogen = await personUmbiegen(weg, behalten);
-  return NextResponse.json({ ok: true, kontakt: fuerPerson(ergebnis, person), speicher: umgebogen.speicher, laufId });
+  let umgebogen: Awaited<ReturnType<typeof personUmbiegen>> | undefined;
+  try {
+    await mitVorgang(haushalt, absicht, async v => {
+      await v.schritt('kartei', async () => {
+        await karteiSchritt();
+        if (abgelehnt || !ergebnis) throw new NichtZusammengefuehrt();
+      });
+      await protokolliere('kontakte', listenDiff(vorher, nachher), wer);
+      umgebogen = await v.schritt('verweise', () => personUmbiegen(weg, behalten));
+    });
+  } catch (e) {
+    if (!(e instanceof NichtZusammengefuehrt)) throw e; // Absicht bleibt offen — die Wiederaufnahme biegt die Verweise um
+    await absichtAbschliessen(haushalt, absicht.id, 'verworfen');
+    const nein = abgelehnt as { status: number; fehler: string } | null;
+    if (nein) return NextResponse.json({ ok: false, fehler: nein.fehler }, { status: nein.status });
+    return NextResponse.json({ ok: false, fehler: 'Kontakt nicht gefunden.' }, { status: 404 });
+  }
+  await absichtAbschliessen(haushalt, absicht.id, 'fertig', ['laufId']);
+  return NextResponse.json({ ok: true, kontakt: fuerPerson(ergebnis as unknown as Kontakt, person), speicher: umgebogen?.speicher ?? {}, laufId });
 }
 
 /**

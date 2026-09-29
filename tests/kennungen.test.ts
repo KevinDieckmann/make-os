@@ -34,11 +34,8 @@ describe('Wächter: keine Millisekunden-Kennungen im Code', () => {
   // Ausnahmen mit Grund — alles andere nimmt neueKennung() aus lib/kennung.ts.
   const AUSNAHMEN: Record<string, string> = {
     'lib/zugang/konten.ts': 'Speichername-Zusatz bei Namensgleichheit, keine Datensatz-Kennung',
-    'components/os/crm/Kartei.tsx': 'Kontakt-Kennungen (c-…) stellt ein eigenes Paket um',
-    'components/os/crm/events/Abend.tsx': 'Kontakt-Kennungen (c-…) stellt ein eigenes Paket um',
     // Pakete, die parallel an diesen Dateien arbeiten (29.09.) — übernehmen neueKennung selbst:
-    'lib/dateien/ablage.ts': 'Paket Dateiablage (neueDateiId, schon mit 4 Zufallsbytes)',
-    'lib/zoe/stapel.ts': 'Paket S2', 'lib/zoe/protokoll.ts': 'Paket S2', 'lib/zoe/crm-vorschlag.ts': 'Paket S2',
+    'lib/zoe/crm-vorschlag.ts': 'Paket S2',
     'components/os/aufgaben/hilfe.ts': 'Paket Aufgaben',
   };
   it('Date.now().toString(36) als Kennung nur in den Ausnahmen', () => {
@@ -46,5 +43,31 @@ describe('Wächter: keine Millisekunden-Kennungen im Code', () => {
     const funde = dateien.filter(f => !AUSNAHMEN[f] && !f.startsWith('lib/aufgaben/') && !f.startsWith('lib/meldungen/') && !f.startsWith('lib/brain/'))
       .filter(f => { try { return /`[a-z-]*-?\$\{Date\.now\(\)\.toString\(36\)\}|\$\{p(?:raefix)?\}-?\$\{Date\.now\(\)/.test(readFileSync(f, 'utf8')); } catch { return false; } });
     expect(funde).toEqual([]);
+  });
+});
+
+describe('Kontakt-Kennungen (Paket D-C #35)', () => {
+  it('neue Kontakte: c-<uuid>, nie aus E-Mail oder Zeit; alte Formen erkannt', async () => {
+    const { neueKontaktKennung, istNeueKontaktKennung, istAlteKontaktKennung } = await import('@/lib/kennung');
+    const k = neueKontaktKennung();
+    expect(k).toMatch(/^c-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(istNeueKontaktKennung(k)).toBe(true);
+    expect(istAlteKontaktKennung(k)).toBe(false);
+    for (const alt of ['c-annaexampleinvalid-1x2y3z', 'c-neu-mfx1a2b3c', 'c-weg']) { expect(istAlteKontaktKennung(alt)).toBe(true); expect(istNeueKontaktKennung(alt)).toBe(false); }
+    expect(istAlteKontaktKennung('d-abc')).toBe(false);
+    // passt in die bestehenden Säuberer (Kontakt-Kennung /^c-[a-z0-9-]{4,60}$/)
+    expect(k).toMatch(/^c-[a-z0-9-]{4,60}$/);
+  });
+  it('Import legt neue Kontakte mit c-<uuid> an — der fachliche Schlüssel bleibt nur Index (zweiter Import: nichts neu)', async () => {
+    const { importieren } = await import('@/lib/make-one/crm');
+    const zeilen = [{ VORNAME: 'Testa', NACHNAME: 'Kennung', EMAIL: 'testa.kennung@example.invalid', FIRMA: 'Probe GmbH' }];
+    const r1 = importieren([], zeilen, '2026-09-29');
+    expect(r1.neu).toBe(1);
+    const id = r1.kontakte[0].id;
+    expect(id).toMatch(/^c-[0-9a-f]{8}-/);
+    expect(id).not.toContain('testa');
+    const r2 = importieren(r1.kontakte, zeilen, '2026-09-29');
+    expect(r2.neu).toBe(0);
+    expect(r2.kontakte.map(k => k.id)).toEqual([id]);
   });
 });

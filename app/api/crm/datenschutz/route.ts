@@ -8,7 +8,8 @@
 // POST { id, grund } → Löschen nach Art. 17: Person raus aus ALLEN Speichern
 //              (lib/crm/person-bestaende.ts, 28.09.; weitere Speicher seit 29.09. lib/crm/person-weitere.ts).
 //              Ins Löschprotokoll kommt nur eine Protokoll-ID (`lp-…`, nie die Kennung — sie trägt die
-//              E-Mail), Tag, Grund und wer (lib/crm/loeschprotokoll.ts). Dazu ein Grabstein AUSSERHALB
+//              E-Mail), Tag, Grund, wer und der Status (läuft/vollständig/unvollständig, Paket D-C #21 — Absichtsprotokoll
+//              lib/store/absichten.ts, Wiederaufnahme lib/store/absichten-fortsetzen.ts) (lib/crm/loeschprotokoll.ts). Dazu ein Grabstein AUSSERHALB
 //              des Datenordners (lib/datenschutz/grabsteine.ts) — ein Restore holt die Person nicht zurück. Eine Werbesperre ist
 //              meist die bessere Wahl (Art. 21): dann bleibt „nicht anschreiben“
 //              erhalten. Deshalb fragt die Oberfläche das vorher ab. Eine eingeschränkte
@@ -39,7 +40,6 @@ import { einschraenkungSetzen, einschraenkungAufheben } from '@/lib/crm/einschra
 import { LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristenSpeichern, verlaengerungPruefen, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { istDienst } from '@/lib/zugang/dienst';
-import { loeschungFesthalten } from '@/lib/crm/loeschprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -177,14 +177,16 @@ export async function POST(req: Request) {
   // Ablaufprüfung W3 (28.09.): Deals, an denen NUR diese Person hing, stehen danach ohne Person da — vorher merken,
   // danach mit dem Titel melden (gelesen NACH dem Löschen: ein Titel mit dem Namen ist dann schon bereinigt).
   const nurSie = new Set((await ladeCrm()).chancen.filter(c => c.kontaktIds.length === 1 && c.kontaktIds[0] === id).map(c => c.id));
-  const bericht = await personEntfernen(id);
-  if (!Object.keys(bericht.speicher).length) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
-  // Nur Protokoll-ID, Tag, Grund, Person — nie die Kennung (29.09., #30). Ein zweiter Lauf (Reste) protokolliert nur, wenn die Kartei die Person noch hatte.
-  const protokollId = bericht.speicher.kontakte ? await loeschungFesthalten({ datum: heute, grund: (grund || 'Art. 17 DSGVO').slice(0, 200), von }) : null;
+  // Paket D-C (#17/#21): ein Vorgang mit Absichtsprotokoll — Löschprotokoll (nur Protokoll-ID, Tag, Grund, Person, nie
+  // die Kennung) steht VOR der ersten Wirkung auf „läuft“; scheitert ein Bestand, laufen die anderen weiter, das
+  // Protokoll steht auf „unvollständig“ und die Wiederaufnahme holt es nach. Die Antwort nennt jeden Schritt.
+  // Ein zweiter Lauf (Reste) protokolliert nur, wenn die Kartei die Person noch hatte.
+  const bericht = await personEntfernen(id, undefined, { protokoll: { datum: heute, grund: (grund || 'Art. 17 DSGVO').slice(0, 200), von }, person: von });
+  if (!Object.keys(bericht.speicher).length && bericht.vollstaendig !== false && !bericht.protokollId) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
   const dealsOhnePerson = nurSie.size ? (await ladeCrm()).chancen.filter(c => nurSie.has(c.id) && !c.kontaktIds.length).map(c => ({ id: c.id, titel: c.titel })) : [];
   return NextResponse.json({
-    ok: true, speicher: bericht.speicher, aufgabenPruefen: bericht.aufgabenPruefen, dealsOhnePerson, protokollId,
-    ...(bericht.grabstein === false ? { warnung: 'Grabstein nicht geschrieben — ein Restore könnte die Person zurückholen. Bitte den Head of IT prüfen.' } : {}),
-    ...(bericht.fehler?.length ? { nachzuholen: bericht.fehler } : {}),
+    ok: true, vollstaendig: bericht.vollstaendig !== false, schritte: bericht.schritte ?? {}, speicher: bericht.speicher, aufgabenPruefen: bericht.aufgabenPruefen, dealsOhnePerson, protokollId: bericht.protokollId ?? null,
+    ...(bericht.grabstein === false ? { warnung: 'Grabstein nicht geschrieben — ein Restore könnte die Person zurückholen. Wird automatisch nachgeholt; bitte den Head of IT prüfen.' } : {}),
+    ...(bericht.vollstaendig === false ? { nachzuholen: bericht.fehler ?? [], hinweis: `Nicht alle Bestände bestätigt (${(bericht.fehler ?? []).join(', ')}) — das Löschprotokoll steht auf „unvollständig“, MAKE OS holt es automatisch nach (Head of IT zeigt den Stand).` } : {}),
   });
 }

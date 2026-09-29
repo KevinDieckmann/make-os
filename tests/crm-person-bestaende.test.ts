@@ -218,7 +218,8 @@ describe('Art. 15 und Art. 17 über alle Speicher', () => {
     expect((await db.loadJson<{ kommend: Record<string, unknown> }>('crm-signale'))!.kommend).toHaveProperty('c-bleibt');
     // Ins Protokoll nur Kennung, Datum, Grund.
     const prot = (await db.loadJson<{ eintraege: Record<string, unknown>[] }>('crm-loeschprotokoll'))!.eintraege;
-    expect(Object.keys(prot[0]).sort()).toEqual(['datum', 'grund', 'id', 'von']);
+    expect(Object.keys(prot[0]).sort()).toEqual(['datum', 'grund', 'id', 'status', 'von']);
+    expect(prot[0].status).toBe('vollstaendig'); // Paket D-C #21
   });
 
   it('idempotent: ein zweiter Lauf ändert nichts mehr (404, kein zweiter Protokolleintrag)', async () => {
