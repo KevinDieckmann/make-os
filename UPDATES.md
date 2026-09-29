@@ -4,6 +4,36 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Go-Live-Prüfung: Nachbesserungen (29.09.2026, nur lokal — Commits f6a7901 + Doku)
+
+- **ZOE-Bestände bleiben lesbar:** Dateien, die noch `jarvis-…` heißen, werden beim ersten Lesen als `zoe-…` übernommen und
+  dabei mit dem neuen Namen neu verschlüsselt (vorher nur umbenannt — mit der Verschlüsselung v2 wären sie danach
+  unlesbar gewesen). Schon umbenannte Dateien mit altem Namen in der Verschlüsselung werden gelesen und von selbst
+  umgestellt; `scripts/daten-verschluesselung.mjs` benennt `jarvis-…` vor dem Verschlüsseln selbst um.
+- **Die Nachtsicherung fällt nie ganz aus:** fehlt am Server age oder `sicherung.pub`, sichert sie mit dem bisherigen
+  openssl-Weg und `/srv/make-os/.sicherung-passwort` (`.tar.gz.enc`, wie der heutige Online-Stand) — Head of IT rot „age fehlt —
+  Sicherung nur mit Übergangs-Verschlüsselung“, Ping an Healthchecks als Fehler. Fehlt auch das Passwort: keine Sicherung
+  (nie unverschlüsselt), HOI rot. Ist bei der Prüfung eine einzelne Datei nicht lesbar, bleibt das Archiv trotzdem liegen:
+  HOI rot „teilweise“ mit den Dateinamen (keine Inhalte), Ping als Fehler. Probe-Restore, Mac-Abholung und
+  `wiederherstellen.sh` lesen beide Formate.
+- **Alte Browser-Tabs** bekommen nach dem Upload beim Speichern: „MAKE OS wurde gerade aktualisiert. Bitte die Seite neu laden.
+  Die letzte Eingabe wurde nicht gespeichert — bitte danach noch einmal eingeben.“ Neue Tabs sagen zusätzlich, dass offene
+  Aufgaben-Änderungen gemerkt bleiben (CRM-Eingaben nicht).
+
+### Go-Live: VOR dem Upload am Server (einzige Anleitung — die Pakete unten verweisen hierher)
+1. **Grabstein-Ordner** (Art. 17): `ssh make@2.28.108.162 'sudo install -d -m 700 -o make -g make /srv/make-os/grabsteine'`.
+   Volume und `MAKE_OS_GRABSTEINE_DIR=/grabsteine` setzt `compose.yml` — in der `.env` **nichts** eintragen. Ohne den Ordner
+   legt Docker ihn als root an und Grabsteine scheitern (Warnung beim Löschen).
+2. **age für die Nachtsicherung:**
+   - am Server: `ssh make@2.28.108.162 'command -v age || sudo apt-get install -y age'`
+   - am Mac: `brew install age` → `age-keygen -o ~/make-os-sicherung.txt` → die Datei (privater Schlüssel) in beide
+     Passwort-Manager + Papier in den Tresor, **nie auf den Server**
+   - nur die Zeile `age1…` (öffentlicher Schlüssel, steht in der Datei und wird beim Erzeugen angezeigt) nach
+     `/srv/make-os/sicherung.pub`: `ssh make@2.28.108.162 "echo 'age1…' > /srv/make-os/sicherung.pub"`
+   - `/srv/make-os/.sicherung-passwort` **liegen lassen**: ältere `.enc`-Archive brauchen es, und es ist der Übergang,
+     falls age einmal fehlt.
+3. Dann Upload wie immer (push auf `main`). Nach der ersten Nacht im HOI: „Sicherung geprüft“ grün (nicht „Übergangs-Verschlüsselung“).
+
 ## Absichtsprotokoll, zufällige Kontakt-Kennungen, Dateiablage v2 (29.09.2026, Paket D-C, nur lokal — Commits 21a6cf5 · 7d40037 · 94d2b5a)
 
 Kevin: Kontakt-Kennungen auf zufällige umstellen (Vorschau, Rückweg, alte Links leiten weiter). Alles mit Tests, nichts am Server.
@@ -24,9 +54,7 @@ Kevin: Kontakt-Kennungen auf zufällige umstellen (Vorschau, Rückweg, alte Link
   Schlüsselwechsel im Betrieb bleibt jede Datei lesbar. ZOE-Vorschläge und Dateien tragen Kennungen ohne Zeitstempel.
 
 **Was Kevin am Server tun muss (erst auf dein Wort, in dieser Reihenfolge):**
-1. **VOR dem Upload:** `ssh make@2.28.108.162 'sudo install -d -m 700 -o make -g make /srv/make-os/grabsteine'` — das Volume steht
-   jetzt in `compose.yml`; ohne den Ordner legt Docker ihn als root an und Grabsteine (Art. 17) scheitern (Warnung beim Löschen).
-   Eine `MAKE_OS_GRABSTEINE_DIR`-Zeile in der `.env` ist dann unnötig (compose setzt sie).
+1. **VOR dem Upload:** Grabstein-Ordner anlegen — ganz oben › „Go-Live: VOR dem Upload am Server“, Schritt 1.
 2. Upload wie immer (push auf `main`).
 3. **Nach dem Upload, wenn niemand im CRM arbeitet:** Stammdaten › Datenqualität › Kontakt-Kennungen → Vorschau ansehen →
    „Umstellen …“. Danach andere offene Fenster einmal neu laden. (DEPLOY.md › Kennungs-Umzug)
@@ -106,8 +134,8 @@ Kevin: „Top 1 %“ und „ZOE schreibt nur über den Stapel“. Alles mit Test
 1. **Pepper erzeugen und setzen:** im Terminal `openssl rand -hex 32` → in `/srv/make-os/app/.env` als `MAKE_OS_PEPPER=…`
    (Vorlage `deploy/env.server.beispiel`), zusätzlich in beide Passwort-Manager + Papier. **Nie wechseln.** Lokal zum
    Ausprobieren in `.env.local` ebenso (eigener Wert).
-2. **Grabstein-Ordner am Server:** `/srv/make-os/grabsteine` anlegen (Besitzer make), Volume in `compose.yml` einbinden und
-   `MAKE_OS_GRABSTEINE_DIR=/grabsteine` setzen (DEPLOY.md › Datenschutz: Pepper und Grabsteine).
+2. **Grabstein-Ordner am Server:** VOR dem Upload — ganz oben › „Go-Live: VOR dem Upload am Server“, Schritt 1 (Volume und
+   Variable stehen schon in `compose.yml`, nichts in die `.env`).
 3. **Vault umziehen:** Schritt für Schritt nach `VAULT_UMZUG_ANLEITUNG.md` (vorher die offenen Änderungen festhalten,
    dann `~/Desktop/MAKE` → `~/Vaults/MAKE`, Obsidian neu öffnen, Abgleich-Dienst laden). Claude fasst den Vault nicht an.
 4. Auftragsverarbeitungsvertrag mit dem KI-Anbieter ablegen (weiter offen).
@@ -143,7 +171,8 @@ Kevin: „Wir wollen Top 1 % sein.“ Die Datenschicht und der Betrieb gegen die
 - **Verschlüsselung v2:** Schlüssel-ID + AAD (vertauschte/zurückgespielte Dateien fallen auf), Klartext bei gesetztem
   Schlüssel wird abgelehnt, Schlüssel als Datei statt in der `.env`, **Rotation ohne Unterbrechung**
   (`deploy/datenschluessel-rotieren-live.sh`).
-- **Sicherung:** nachts mit kurzer Schreibpause, geprüft (jeder Bestand entschlüsselt/gezählt), age Pflicht, ohne
+- **Sicherung:** nachts mit kurzer Schreibpause, geprüft (jeder Bestand entschlüsselt/gezählt), age (ohne age seit der
+  Go-Live-Prüfung openssl-Übergang mit HOI rot), ohne
   `backup/` (wuchs quadratisch), Generationen 14 täglich / 8 wöchentlich / 12 monatlich, Status + Dead-Man-Ping immer.
 - **Auf euren Mac:** der Mac holt jeden Morgen das neueste Archiv ab (nur lesend, Prüfsumme), HOI warnt ab 48 h.
 - **Wiederherstellen:** Probe-Restore startet die App im Probe-Ordner und misst die Zeit; Einzel-Restore holt einzelne
@@ -155,8 +184,8 @@ Kevin: „Wir wollen Top 1 % sein.“ Die Datenschicht und der Betrieb gegen die
 - **Schema:** jeder Bestand trägt `_v`, Migrationsrahmen in `lib/store/schema.ts`; Wächter, dass die CRM-Säuberer jedes Feld kennen.
 
 ### Was Kevin auf dem Server tun muss (erst nach dem Hochladen, in dieser Reihenfolge)
-1. **age-Empfänger** (falls noch nicht): am Mac `brew install age` → `age-keygen -o ~/make-os-sicherung.txt`; die Datei in
-   beide Passwort-Manager + Papier; Zeile `age1…` nach `/srv/make-os/sicherung.pub`. Ohne sie bricht die Sicherung ab (HOI rot).
+1. **age-Empfänger:** VOR dem Upload — ganz oben › „Go-Live: VOR dem Upload am Server“, Schritt 2. (Fehlt er doch, sichert
+   die Nacht nur mit der Übergangs-Verschlüsselung und der HOI zeigt rot.)
 2. **Healthcheck (Pflicht):** Prüfung bei Healthchecks.io anlegen (1 Tag, Kulanz 2 h), Adresse nach `/srv/make-os/.healthchecks-sicherung`.
 3. **Logrotate:** `sudo install -m 644 /srv/make-os/app/deploy/logrotate-make-os /etc/logrotate.d/make-os`.
 4. **Schlüssel als Datei** (DEPLOY.md › Verschlüsselung): Datei `/srv/make-os/schluessel/daten` (0400), Zeile aus der `.env`
