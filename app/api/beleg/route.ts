@@ -13,6 +13,7 @@ import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { loadJson } from '@/lib/store/local-db';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { UG_NAME } from '@/lib/einheiten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,7 @@ const SYSTEM = [
   'Du liest einen Beleg (Rechnung, Quittung, Kontoauszug-Ausschnitt) für Kevins privates Betriebssystem und gibst die Zahlen strukturiert zurück.',
   'WICHTIG: Nichts erfinden. Was du nicht sicher lesen kannst, lässt du weg und schreibst das Feld in "unsicher". Ein fehlendes Feld ist besser als eine geratene Zahl in einer Buchhaltung.',
   'RICHTUNG: "eingang" = Kevin/seine Firma muss zahlen (Lieferantenrechnung, Quittung, Einkauf). "ausgang" = Kevin hat die Rechnung gestellt, jemand schuldet ihm Geld. Im Zweifel "unklar".',
-  'Kevins Firmen: KD Ventures UG, Kevin Dieckmann Consulting, KEMARIS. Steht eine davon als Absender/Rechnungssteller → "ausgang". Steht eine davon als Empfänger → "eingang".',
+  `Kevins Firmen: KD Ventures UG, Kevin Dieckmann Consulting, ${UG_NAME}, KEMARIS. Steht eine davon als Absender/Rechnungssteller → "ausgang". Steht eine davon als Empfänger → "eingang".`,
   'BETRÄGE als Zahl ohne Währungszeichen, Punkt als Dezimaltrennung (1234.56). Deutsche Schreibweise 1.234,56 also korrekt umrechnen.',
   'DATUM immer als YYYY-MM-DD.',
   'KATEGORIE: ein kurzes deutsches Wort, das zur Buchhaltung passt (z. B. Software, Büro, Reise, Beratung, Miete, Versicherung, Telefon, Fortbildung, Bewirtung).',
