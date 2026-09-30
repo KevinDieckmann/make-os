@@ -17,6 +17,7 @@ import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type S
 import type { ErnaehrungFile } from '@/lib/make-one/ernaehrung-data';
 import { TAGE } from '@/lib/make-one/ernaehrung-data';
 import { WEG } from '@/lib/wege';
+import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
 
 export type GesundheitsIndex = IndexErgebnis;
 
@@ -215,8 +216,10 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
   meilensteine(b) {
     const alle = b.meilensteine.filter(m => m.bereich === 'gesundheit');
     if (!alle.length) return { luecke: 'Keine Gesundheits-Meilensteine', details: [{ titel: 'Meilenstein anlegen', href: WEG.jahr() }] };
-    const offen = alle.filter(m => !m.erledigt);
-    if (!offen.length) return { wert: 100, anzeige: '100 %', quelle: 'alle Gesundheits-Meilensteine erledigt', details: [{ titel: 'Nächste Etappe setzen', href: WEG.jahr(), ampel: 'gruen' }] };
+    // Nur bis Ende des laufenden Jahres (30.09., wie im Business-Index) — Geplantes fürs nächste Jahr ist kein Rückstand.
+    const offen = alle.filter(m => !m.erledigt && zaehltImKurs(m, b.heute));
+    if (!offen.length && !alle.some(m => m.erledigt)) return { luecke: 'Keine Gesundheits-Meilensteine in diesem Jahr', details: [{ titel: 'Meilenstein anlegen', href: WEG.jahr() }] };
+    if (!offen.length) return { wert: 100, anzeige: '100 %', quelle: 'alle Gesundheits-Meilensteine dieses Jahres erledigt', details: [{ titel: 'Nächste Etappe setzen', href: WEG.jahr(), ampel: 'gruen' }] };
     const ueber = (m: { faellig?: string }) => !!m.faellig && m.faellig < b.heute;
     const w = offen.reduce((s, m) => s + (ueber(m) ? 0 : m.fortschritt), 0) / offen.length;
     return { wert: w, anzeige: pz(w), quelle: `Ø Fortschritt ${offen.length} offener Etappen${offen.filter(ueber).length ? `, ${offen.filter(ueber).length} überfällig (zählt 0)` : ''}`,

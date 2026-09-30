@@ -60,7 +60,7 @@ export interface Quellen {
 export function fristen(q: Quellen, von: string, bis: string, heute: string = von): Frist[] {
   const raus: Frist[] = [];
   for (const m of q.meilensteine ?? []) {
-    if (imZeitraum(m.faellig, von, bis)) raus.push({ id: `ms-${m.id}`, art: 'meilenstein', tag: m.faellig.slice(0, 10), titel: m.titel, unter: m.bereich, href: '/os/planung/jahr', erledigt: !!m.erledigt, bereich: (m.space ?? m.bereich) === 'business' ? 'business' : 'privat' });
+    if (imZeitraum(m.faellig, von, bis)) raus.push({ id: `ms-${m.id}`, art: 'meilenstein', tag: m.faellig.slice(0, 10), titel: m.titel, unter: m.bereich, href: `/os/planung/jahr?m=${encodeURIComponent(m.id)}`, erledigt: !!m.erledigt, bereich: (m.space ?? m.bereich) === 'business' ? 'business' : 'privat' });
   }
   for (const e of q.etappen ?? []) {
     if (imZeitraum(e.ziel, von, bis)) raus.push({ id: `et-${e.id}`, art: 'etappe', tag: e.ziel, titel: e.name, unter: 'Bauplan-Etappe', href: '/os/bauplan?s=plan', bereich: 'business' });

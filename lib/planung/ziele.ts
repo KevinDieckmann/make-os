@@ -7,6 +7,7 @@ import { sauberEinheit } from './einheiten';
 import { bezugSaeubern } from './mandat';
 import type { Ziel } from './typen';
 import { neueKennung } from '@/lib/kennung';
+import { istPlanJahr, zielJahr } from './zeitstrahl';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -31,9 +32,20 @@ export function sauberZiel(roh: unknown): Ziel | null {
   const wert = Number(z.zielwert);
   if (isFinite(wert) && wert > 0) aus.zielwert = Math.round(wert * 10) / 10;
   if (typeof z.termin === 'string' && ISO_TAG.test(z.termin)) aus.termin = z.termin;
+  // Planungsjahr (30.09.): nur ein plausibles Jahr — sonst leitet `zielJahr()` es aus Frist bzw. laufendem Jahr ab.
+  if (istPlanJahr(z.jahr)) aus.jahr = z.jahr;
   if (typeof z.abgeleitetVon === 'string' && z.abgeleitetVon) aus.abgeleitetVon = z.abgeleitetVon.slice(0, 80);
   if (aus.abgeleitetVon && z.angepasst === true) aus.angepasst = true;
   // Mandat an Zielen (28.09.): nur im Business, nur die Form der Kennungen — Firma/Einheit leitet der Schreibweg ab.
   Object.assign(aus, bezugSaeubern(z, aus.space === 'business'));
   return aus;
+}
+
+/**
+ * Jahresziele ohne `jahr` bekommen es beim Schreiben (30.09.): das Jahr der Frist, sonst das laufende. Läuft im
+ * PATCH der Jahresziele in derselben Sperre — so bleibt ein Ziel von 2026 auch im Januar 2027 ein Ziel von 2026
+ * (ohne Stempel läse `zielJahr()` es dann als 2027). Unveränderte Einträge bleiben dieselben Objekte.
+ */
+export function jahrStempeln(liste: readonly Ziel[], laufend: number): Ziel[] {
+  return liste.map(z => (istPlanJahr(z.jahr) ? z : { ...z, jahr: zielJahr(z, laufend) }));
 }

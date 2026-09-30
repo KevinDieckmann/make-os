@@ -12,6 +12,7 @@ import type { Scope, Schwelle } from './register';
 import type { ZeitBild } from '@/lib/zeitmessung/modell';
 import { fzMessen } from '@/lib/zeitmessung/kennzahlen';
 import type { FinanceState } from '@/lib/make-one/finance-data';
+import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
 import { computeMetrics } from '@/lib/make-one/finance-data';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { vorschau, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
@@ -535,13 +536,18 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
   meilensteine(b) {
     const alle = b.meilensteine.filter(m => m.bereich === 'business');
     if (!alle.length) return { luecke: 'Keine Business-Meilensteine', details: [{ titel: 'Meilenstein anlegen', href: WEG.jahr() }] };
-    const offen = alle.filter(m => !m.erledigt);
-    if (!offen.length) return { wert: 100, anzeige: '100 %', quelle: 'alle Business-Meilensteine erledigt', details: [{ titel: 'Nächsten Meilenstein setzen', href: WEG.jahr(), ampel: 'gruen' }] };
+    // Nur bis Ende des laufenden Jahres (30.09.): Geplantes fürs nächste Jahr ist kein Rückstand — es steht in der Quelle.
+    const offenAlle = alle.filter(m => !m.erledigt);
+    const offen = offenAlle.filter(m => zaehltImKurs(m, b.heute));
+    const spaeter = offenAlle.length - offen.length;
+    const spaeterText = spaeter ? ` · ${spaeter} später geplant (zählt ab dem Jahr)` : '';
+    if (!offen.length && !alle.some(m => m.erledigt)) return { luecke: `Keine Business-Meilensteine in diesem Jahr${spaeterText}`, details: [{ titel: 'Meilenstein anlegen', href: WEG.jahr() }] };
+    if (!offen.length) return { wert: 100, anzeige: '100 %', quelle: `alle Business-Meilensteine dieses Jahres erledigt${spaeterText}`, details: [{ titel: 'Nächsten Meilenstein setzen', href: WEG.jahr(), ampel: 'gruen' }] };
     const istUeber = (m: { faellig?: string }) => !!m.faellig && m.faellig < b.heute;
     const ueber = offen.filter(istUeber).length;
     const w = offen.reduce((s, m) => s + (istUeber(m) ? 0 : m.fortschritt), 0) / offen.length;
     const reihe = offen.slice().sort((x, y) => Number(istUeber(y)) - Number(istUeber(x)) || x.fortschritt - y.fortschritt);
-    return { wert: w, anzeige: pz(w), quelle: `Ø Fortschritt ${offen.length} offener Meilensteine${ueber ? `, ${ueber} überfällig (zählt 0)` : ''}`,
+    return { wert: w, anzeige: pz(w), quelle: `Ø Fortschritt ${offen.length} offener Meilensteine${ueber ? `, ${ueber} überfällig (zählt 0)` : ''}${spaeterText}`,
       details: reihe.slice(0, 3).map(m => ({ titel: m.titel ?? 'Meilenstein', wert: `${Math.round(m.fortschritt)} %`, unter: istUeber(m) ? `überfällig seit ${tagKurz(m.faellig!)}` : m.faellig ? `fällig ${tagKurz(m.faellig)}` : 'ohne Termin', href: WEG.jahr(), ampel: istUeber(m) ? 'rot' : m.fortschritt >= 70 ? 'gruen' : m.fortschritt >= 40 ? 'gelb' : 'rot' })) };
   },
 

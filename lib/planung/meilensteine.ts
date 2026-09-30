@@ -27,6 +27,7 @@ export function meilensteinSpace(m: { space?: unknown; bereich?: unknown }): Spa
 export const bereichAusSpace = (s: SpaceId): MeilensteinBereich => (s === 'privat' ? 'gesundheit' : 'business');
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
+const ZIEL_KENNUNG = /^[A-Za-z0-9_~:.-]{1,80}$/;
 
 /** Einen Meilenstein säubern (Schreibweg der Route) — null, wenn der Titel fehlt. */
 export function sauberMeilenstein(roh: unknown): Meilenstein | null {
@@ -53,6 +54,8 @@ export function sauberMeilenstein(roh: unknown): Meilenstein | null {
     ...(typeof m.abgeleitetVon === 'string' && m.abgeleitetVon ? { abgeleitetVon: m.abgeleitetVon.slice(0, 80), ...(m.angepasst === true ? { angepasst: true } : {}) } : {}),
     // Mandat an Meilensteinen (28.09.): nur im Business, nur die Form — Firma/Einheit leitet der Schreibweg ab.
     ...bezugSaeubern(m, space === 'business'),
+    // Ziel-Bezug (30.09.): nur die Form der Kennung — ob das Ziel noch lebt, entscheidet die Anzeige.
+    ...(typeof m.zielId === 'string' && ZIEL_KENNUNG.test(m.zielId) ? { zielId: m.zielId } : {}),
   };
 }
 

@@ -8,24 +8,43 @@ import Link from 'next/link';
 // Jahr. Das Bauteil dafür ist components/os/planung/ZieleMeilensteine.tsx —
 // dasselbe steht auch in Woche und Tag.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile/Haken/Zahl).
-
-import { useCallback, useEffect, useRef, useState } from 'react';
+// 30.09. (Kevin: „bis Ende nächsten Jahres gucken und planen“, „einzeln nach vorne und hinten scrollen“):
+// Im Jahr EIN Stand (usePlanung hier, ans Bauteil gereicht) für Zeitstrahl, Forecast, Fokus und Listen.
+//   · Zeitstrahl = Fenster aus ganzen Monaten (planung/useStrahlFenster.ts): Zeitraum-Wahl (Standard „Bis Ende
+//     nächsten Jahres“), Blättern ‹ › / Tasten / Wischen, „Heute“, alles in der Adresse (`?raum=`, `?ab=`).
+//     Marker: Meilensteine (offen + erledigt leise), Jahresziele mit Frist ohne eigenen Meilenstein, Projekt-Fristen;
+//     Quartale als Bänder. Klick auf eine Stelle / „+ Meilenstein“ legt an (vorbelegt: Datum, Bereich, Einheit),
+//     Klick auf einen Meilenstein öffnet ihn — beides über EINE Stelle (`oeffneMeilenstein`).
+//   · Planungsjahr (`?jahr=`): mindestens laufendes + nächstes; Ziele, Meilensteine, Fokus und Forecast je Jahr.
+//     Das Nachladen beim Blättern entfällt: Meilensteine/Ziele/Projekte kommen je einmal ganz (ein Bestand), gefiltert
+//     wird rein nach Fenster.
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { NORDSTERN } from '@/lib/make-one/nordstern-data';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT, Segmente, Knopf } from './schlank';
 import { useZiel, useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
-import { SPACE_LABEL, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
+import { SPACE_LABEL, SPACE_FARBE, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
 import { EinheitMarke } from './aufgaben/Einheit';
 import { zeitraum } from '@/lib/planung/zeitraum';
-import type { Meilenstein, Ziel } from '@/lib/planung/typen';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
+import { passtEinheit } from '@/lib/planung/einheiten';
+import { hatTermin } from '@/lib/planung/kaskade';
+import { STRAHL_RAEUME, type StrahlRaum, beginntText, jahrAus, jahrLage, meilensteinImJahr, meilensteinJahr, monatsTicks, planJahre, quartale, zielJahr, type JahrLage } from '@/lib/planung/zeitstrahl';
+import { fokusImJahr, fokusJahrSchluessel } from '@/lib/planung/jahr-fokus';
+import { bereichVonSpace } from '@/lib/aufgaben/struktur';
+import { imPapierkorb } from '@/lib/aufgaben/papierkorb';
+import { imArchiv } from '@/lib/aufgaben/neustart';
+import { WEG } from '@/lib/wege';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
-import type { PlanungStand } from './planung/usePlanung';
+import { usePlanung } from './planung/usePlanung';
+import { useStrahlFenster, adresseSetzen } from './planung/useStrahlFenster';
+import { useMeilensteinFenster } from './planung/MeilensteinFenster';
+import { useRueckgaengig } from './planung/Rueckgaengig';
 import { NeuAnfangenKnopf } from './aufgaben/NeuAnfangen';
 
 type Horizont = 'monat' | 'quartal' | 'jahr';
@@ -33,7 +52,7 @@ type Horizont = 'monat' | 'quartal' | 'jahr';
 const META: Record<Horizont, { titel: string; claim: string; hinweis: string }> = {
   monat: { titel: 'Monatsplanung', claim: 'Was diesen Monat zählt.', hinweis: '3–5 Ziele — mehr ist Verzettelung.' },
   quartal: { titel: 'Quartalsplanung', claim: 'Die Etappe zum Jahresziel.', hinweis: 'Welche 3 Dinge müssen in 3 Monaten stehen?' },
-  jahr: { titel: 'Jahresplanung & Ziele', claim: 'Das Jahr, an dem du dich misst.', hinweis: 'Nordstern + Meilensteine + deine Jahresziele — Zahlen und Termine kaskadieren nach unten.' },
+  jahr: { titel: 'Jahresplanung & Ziele', claim: 'Das Jahr, an dem du dich misst.', hinweis: 'Nordstern + Meilensteine + deine Jahresziele — Zahlen und Termine kaskadieren nach unten, das nächste Jahr planst du schon jetzt.' },
 };
 /** Eine Farbe je Horizont — dieselbe wie auf der Wachstums-Seite. */
 const HFARBE: Record<Horizont, string> = { jahr: LEUCHT.schlaf, quartal: LEUCHT.puls, monat: LEUCHT.gut };
@@ -45,32 +64,44 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const zielM = useZiel('m');
   const meta = META[horizont];
   const heute = localDay();
-  const zr = zeitraum(horizont, heute);
+  const laufend = Number(heute.slice(0, 4));
   const farbe = HFARBE[horizont];
   const { state: tasksState } = useTasks();
+  const istJahr = horizont === 'jahr';
 
-  // Der Stand kommt aus dem Ziele/Meilensteine-Bauteil (usePlanung) — hier nur für Forecast, Zeitstrahl, Fokus.
-  const [ziele, setZiele] = useState<Ziel[]>([]);
-  const [ms, setMs] = useState<Meilenstein[]>([]);
-  const [fokusAlle, setFokusAlle] = useState<Record<string, string>>({});
-  const [geladen, setGeladen] = useState(false);
-  const fokusSetzenRef = useRef<PlanungStand['fokusSetzen'] | null>(null);
-  const onStand = useCallback((s: PlanungStand) => { setZiele(s.ziele); setMs(s.ms); setFokusAlle(s.fokus); setGeladen(s.geladen); fokusSetzenRef.current = s.fokusSetzen; }, []);
+  // EIN Stand für Zeitstrahl, Forecast, Fokus und die Listen darunter (30.09. — vorher reichte das Bauteil ihn hoch).
+  const p = usePlanung(horizont);
+  const { ziele, ms, fokus: fokusAlle, geladen } = p;
+  const rueck = useRueckgaengig();
+
+  // Planungsjahr (30.09.): aus der Adresse (`?jahr=`), ein verlinkter Meilenstein zieht in sein Jahr.
+  const [planJahr, setPlanJahrRoh] = useState(laufend);
+  useEffect(() => { const j = jahrAus(new URLSearchParams(window.location.search).get('jahr'), laufend); if (j) setPlanJahrRoh(j); }, [laufend]);
+  useEffect(() => {
+    if (!istJahr || !zielM) return;
+    const m = ms.find(x => x.id === zielM);
+    if (m && !meilensteinImJahr(m, planJahr, laufend)) { const j = meilensteinJahr(m); if (j) setPlanJahrRoh(j); }
+  }, [istJahr, zielM, ms]); // eslint-disable-line react-hooks/exhaustive-deps -- nur beim Ankommen
+  const setPlanJahr = (j: number) => { setPlanJahrRoh(j); adresseSetzen({ jahr: j === laufend ? null : String(j) }); };
+  const [extraJahre, setExtraJahre] = useState<number[]>([]);
+  const jahre = useMemo(() => planJahre(laufend, [...ziele.map(z => zielJahr(z, laufend)), ...ms.map(meilensteinJahr), ...extraJahre, planJahr]), [laufend, ziele, ms, extraJahre, planJahr]);
+  const zr = istJahr ? { von: `${planJahr}-01-01`, bis: `${planJahr}-12-31`, label: String(planJahr) } : zeitraum(horizont, heute);
 
   // Ziele je Space (26.09., Kevin): Privat, Business, gemeinsam (ohne Space) — der Filter folgt der Adresse oder dem Merker.
   const { space: aktiverSpace, ausAdresse: spaceAusAdresse } = useSpace();
   const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
   useEffect(() => { setSpaceFilter(spaceAusAdresse ?? aktiverSpace); }, [spaceAusAdresse, aktiverSpace]);
-  const zieleImSpace = ziele.filter(z => spaceFilter === 'alle' || !z.space || z.space === spaceFilter);
-  // Fokus je Space (26.09.): im Space der Space-Satz, ohne Space der gemeinsame.
-  const fokusKey = fokusSchluessel(horizont, spaceFilter === 'alle' ? null : spaceFilter);
-  const fokus = fokusAlle[fokusKey] ?? '';
+  // Einheit (nur Business) — hier gehalten, damit das Anlegen am Zeitstrahl sie vorbelegt.
+  const [einheitFilter, setEinheitFilter] = useState('alle');
+  const imBusiness = spaceFilter === 'business';
+  const zieleImSpace = ziele.filter(z => (spaceFilter === 'alle' || !z.space || z.space === spaceFilter) && (!istJahr || zielJahr(z, laufend) === planJahr));
+  // Fokus je Space (26.09.) und im Jahr je Jahr (30.09., lib/planung/jahr-fokus.ts): im Space der Space-Satz, ohne Space der gemeinsame.
+  const fokusBasis = fokusSchluessel(horizont, spaceFilter === 'alle' ? null : spaceFilter);
+  const fokusKey = istJahr ? fokusJahrSchluessel(fokusBasis, planJahr) : fokusBasis;
+  const fokus = istJahr ? fokusImJahr(fokusAlle, fokusBasis, planJahr, laufend) : (fokusAlle[fokusKey] ?? '');
   useZuZiel(zielM, geladen);
 
-  function fokusSetzen(v: string) {
-    setFokusAlle(a => ({ ...a, [fokusKey]: v }));
-    fokusSetzenRef.current?.(fokusKey, v);
-  }
+  function fokusSetzen(v: string) { p.fokusSetzen(fokusKey, v); }
 
   // Aufgaben, die in diesem Zeitraum fällig sind.
   const faellig = tasksState.tasks
@@ -79,12 +110,23 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
 
   const schnitt = zieleImSpace.length ? Math.round(zieleImSpace.reduce((s, z) => s + (z.erledigt ? 100 : z.fortschritt), 0) / zieleImSpace.length) : null;
 
-  // Zeitstrahl: Ticks je Horizont, darauf offene Meilensteine + (Monat) fällige Aufgaben.
+  // ── Meilenstein öffnen / anlegen — EINE Stelle (später die Detailseite des Pakets „meilensteine“) ──
+  const msFenster = useMeilensteinFenster(p, rueck, heute);
+  const oeffneMeilenstein = useCallback((id: string) => msFenster.oeffne(id), [msFenster]);
+  const vorgabe = (tag?: string) => ({
+    faellig: tag ?? (planJahr === laufend ? heute : `${planJahr}-01-15`),
+    space: spaceFilter === 'alle' ? 'business' as const : spaceFilter,
+    ...(imBusiness && einheitFilter !== 'alle' ? { einheit: einheitFilter } : {}),
+  });
+
+  // ── Zeitstrahl ──
+  const fensterJahr = useStrahlFenster(planJahr);
   const MON_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
   const p2 = (n: number) => String(n).padStart(2, '0');
+  const strahl = istJahr ? fensterJahr.fenster : zr;
   const ticks: StrahlTick[] = (() => {
+    if (istJahr) return monatsTicks(strahl.von, strahl.bis);
     const y = zr.von.slice(0, 4);
-    if (horizont === 'jahr') return MON_KURZ.map((l, i) => ({ date: `${y}-${p2(i + 1)}-01`, label: l }));
     if (horizont === 'quartal') {
       const m0 = Number(zr.von.slice(5, 7));
       return [0, 1, 2].map(i => ({ date: `${y}-${p2(m0 + i)}-01`, label: MON_KURZ[m0 + i - 1] }));
@@ -92,9 +134,30 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     const letzter = Number(zr.bis.slice(8));
     return [1, 8, 15, 22, 29].filter(t => t <= letzter).map(t => ({ date: `${zr.von.slice(0, 8)}${p2(t)}`, label: `${t}.` }));
   })();
+  const imFilter = (space: SpaceId, einheit?: string) => (spaceFilter === 'alle' || space === spaceFilter) && (!imBusiness || passtEinheit(einheit, einheitFilter));
   const strahlMarker: StrahlMarker[] = ms
-    .filter(m => !m.erledigt && m.faellig && (spaceFilter === 'alle' || meilensteinSpace(m) === spaceFilter))
-    .map(m => ({ date: m.faellig!, label: m.titel, farbe: meilensteinSpace(m) === 'privat' ? LEUCHT.gut : LEUCHT.achtung, symbol: '◇', href: horizont === 'jahr' ? undefined : `/os/planung/jahr?m=${encodeURIComponent(m.id)}` }));
+    .filter(m => m.faellig && (istJahr || !m.erledigt) && imFilter(meilensteinSpace(m), m.einheit))
+    .map(m => ({
+      id: m.id, date: m.faellig!, label: m.titel, farbe: meilensteinSpace(m) === 'privat' ? LEUCHT.gut : LEUCHT.achtung,
+      symbol: m.erledigt ? '✓' : '◇', blass: m.erledigt,
+      titel: `${m.titel} · ${m.faellig!.slice(8)}.${m.faellig!.slice(5, 7)}.${m.faellig!.slice(0, 4)}${m.erledigt ? ' · erledigt' : ` · ${m.fortschritt} %`}`,
+      href: istJahr ? undefined : `/os/planung/jahr?m=${encodeURIComponent(m.id)}`,
+    }));
+  if (istJahr) {
+    // Jahresziele mit Frist, die (noch) keinen eigenen Meilenstein haben (z. B. gelöst oder persönlich) — die übrigen stehen als Meilenstein da.
+    for (const z of ziele) {
+      if (!hatTermin(z) || z.erledigt || ms.some(m => m.abgeleitetVon === z.id) || !imFilter(z.space ?? (spaceFilter === 'alle' ? 'business' : spaceFilter), z.einheit)) continue;
+      strahlMarker.push({ date: z.termin!, label: z.titel, farbe: z.space ? SPACE_FARBE[z.space] : farbe, symbol: '◎', titel: `Jahresziel · ${z.titel} · bis ${z.termin!.slice(8)}.${z.termin!.slice(5, 7)}.${z.termin!.slice(0, 4)}` });
+    }
+    // Projekt-Fristen (Ende, sonst Deadline) — offene Projekte, nicht im Papierkorb/Archiv.
+    for (const pr of tasksState.projects) {
+      const frist = pr.ende ?? pr.dueDate;
+      if (!frist || !/^\d{4}-\d{2}-\d{2}/.test(frist) || pr.archived || imPapierkorb(pr) || imArchiv(pr) || pr.status === 'abgeschlossen') continue;
+      const sp: SpaceId = pr.spaceId ? bereichVonSpace(pr.spaceId) : pr.category === 'business' ? 'business' : 'privat';
+      if (!imFilter(sp, undefined) || (imBusiness && einheitFilter !== 'alle')) continue;
+      strahlMarker.push({ date: frist.slice(0, 10), label: pr.title, farbe: C.inkDim, symbol: '▣', titel: `Projekt · ${pr.title} · Ende ${frist.slice(8, 10)}.${frist.slice(5, 7)}.${frist.slice(0, 4)}`, href: pr.spaceId ? WEG.aufgaben({ s: pr.spaceId, p: pr.id }) : WEG.aufgaben() });
+    }
+  }
   if (horizont === 'monat') {
     const proTag: Record<string, string[]> = {};
     faellig.forEach(t => { proTag[t.dueDate!] = [...(proTag[t.dueDate!] ?? []), t.title]; });
@@ -105,21 +168,23 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     });
   }
 
-  // Forecast: Zeit verstrichen vs. Fortschritt — ehrlich gerechnet, nicht geraten.
-  const verstrichen = (() => {
+  // Forecast: Zeit verstrichen vs. Fortschritt — ehrlich gerechnet, nicht geraten. Im Jahr je Planungsjahr (30.09.):
+  // läuft · beginnt in n Monaten (keine 0 % „Zeit vorbei“) · abgeschlossen.
+  const lage: JahrLage = (() => {
+    if (istJahr) return jahrLage(planJahr, heute, schnitt);
     const von = new Date(`${zr.von}T00:00:00`).getTime();
     const bis = new Date(`${zr.bis}T23:59:59`).getTime();
     const jetzt = Date.now();
-    if (jetzt <= von) return 0;
-    if (jetzt >= bis) return 100;
-    return Math.round(((jetzt - von) / (bis - von)) * 100);
+    const verstrichen = jetzt <= von ? 0 : jetzt >= bis ? 100 : Math.round(((jetzt - von) / (bis - von)) * 100);
+    return { art: 'laeuft', verstrichen, schnitt, prognose: schnitt != null && verstrichen > 5 ? Math.min(150, Math.round((schnitt / verstrichen) * 100)) : null };
   })();
-  const prognose = schnitt != null && verstrichen > 5 ? Math.min(150, Math.round((schnitt / verstrichen) * 100)) : null;
+  const prognose = lage.art === 'laeuft' ? lage.prognose : null;
   const prognoseFarbe = prognose == null ? C.inkLeise : prognose >= 95 ? LEUCHT.gut : prognose >= 70 ? LEUCHT.achtung : LEUCHT.kritisch;
+  const msImJahr = istJahr ? ms.filter(m => meilensteinImJahr(m, planJahr, laufend) && imFilter(meilensteinSpace(m), m.einheit)) : [];
 
-  const fokusTitel = `${horizont === 'jahr' ? 'Fokus des Jahres' : horizont === 'quartal' ? 'Fokus des Quartals' : 'Fokus des Monats'}${spaceFilter === 'alle' ? ' · gemeinsam' : ` · ${SPACE_LABEL[spaceFilter]}`}`;
+  const fokusTitel = `${istJahr ? `Fokus des Jahres ${planJahr}` : horizont === 'quartal' ? 'Fokus des Quartals' : 'Fokus des Monats'}${spaceFilter === 'alle' ? ' · gemeinsam' : ` · ${SPACE_LABEL[spaceFilter]}`}`;
   // Karten-Indizes fürs gestaffelte Erscheinen (das Ziele/Meilensteine-Bauteil belegt drei).
-  const hatForecast = schnitt != null && prognose != null;
+  const hatForecast = lage.art === 'zukunft' || (lage.art === 'vorbei' && schnitt != null) || (schnitt != null && prognose != null);
   const hatNordstern = horizont === 'jahr' && spaceFilter !== 'privat';
   const kForecast = 1, kNordstern = kForecast + (hatForecast ? 1 : 0), kZM = kNordstern + (hatNordstern ? 1 : 0), kAufgaben = kZM + 3;
 
@@ -131,6 +196,18 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     >
       <PlanerLeiste aktiv={horizont} />
 
+      {/* Planungsjahr (30.09.): laufendes + nächstes (und belegte) — Ziele, Meilensteine, Fokus und Forecast je Jahr */}
+      {istJahr && (
+        <div role="group" aria-label="Planungsjahr" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Planungsjahr</span>
+          <Segmente liste={jahre.map(j => ({ id: String(j), label: j === laufend ? `${j} · jetzt` : String(j) }))} aktiv={String(planJahr)} onWahl={j => setPlanJahr(Number(j))} />
+          {jahre[jahre.length - 1] < laufend + 5 && (
+            <button type="button" className="fassbar" onClick={() => { const n = jahre[jahre.length - 1] + 1; setExtraJahre(e => [...e, n]); setPlanJahr(n); }} title="Ein weiteres Jahr planen"
+              style={{ background: 'none', border: '1px dashed rgba(255,255,255,.18)', borderRadius: 10, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '7px 12px', cursor: 'pointer' }}>+ {jahre[jahre.length - 1] + 1}</button>
+          )}
+        </div>
+      )}
+
       {/* Fokus dieses Horizonts — die eine Richtung, gegen die geplant wird */}
       <Karte i={0} akzent={farbe}>
         <Ueberschrift farbe={farbe} rechts="Sichtbar im Wochenplaner und in der Tagesplanung — ZOE plant dagegen.">{fokusTitel}</Ueberschrift>
@@ -139,21 +216,63 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
           style={{ ...feld, fontWeight: 600 }} />
       </Karte>
 
-      {/* Zeitstrahl — der Zeitraum als Linie: Heute-Anker, Meilensteine, Fälligkeiten */}
-      <Zeitstrahl von={zr.von} bis={zr.bis} ticks={ticks} marker={strahlMarker} />
+      {/* Zeitstrahl — der Zeitraum als Linie: Heute-Anker, Meilensteine, Fälligkeiten. Im Jahr: Fenster zum Blättern, Anlegen per Klick. */}
+      {istJahr ? (
+        <Zeitstrahl von={strahl.von} bis={strahl.bis} ticks={ticks} marker={strahlMarker} label={`Zeitstrahl ${fensterJahr.fenster.label}`}
+          baender={quartale(strahl.von, strahl.bis)}
+          onBlaettern={fensterJahr.blaettern} onBreite={fensterJahr.setBreite}
+          onMarker={m => { if (m.id) oeffneMeilenstein(m.id); }}
+          onTag={tag => msFenster.oeffneNeu(vorgabe(tag))}
+          kopf={
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Segmente umbrechen liste={STRAHL_RAEUME.map(r => ({ id: r.id, label: r.label }))} aktiv={fensterJahr.raum} onWahl={(r: StrahlRaum) => fensterJahr.setRaum(r)} />
+              <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{fensterJahr.fenster.label}</span>
+              <span style={{ display: 'inline-flex', gap: 8, marginLeft: 'auto' }}>
+                <Knopf leise aus={fensterJahr.heuteSichtbar} onClick={fensterJahr.zuHeute}>Heute</Knopf>
+                <Knopf onClick={() => msFenster.oeffneNeu(vorgabe())}>+ Meilenstein</Knopf>
+              </span>
+            </div>
+          } />
+      ) : (
+        <Zeitstrahl von={zr.von} bis={zr.bis} ticks={ticks} marker={strahlMarker} />
+      )}
 
-      {/* Forecast — Zeit vs. Fortschritt, deterministisch */}
+      {/* Forecast — Zeit vs. Fortschritt, deterministisch; im Jahr je Planungsjahr */}
       {hatForecast && (
         <Karte i={kForecast}>
-          <Ueberschrift farbe={prognoseFarbe}>Forecast</Ueberschrift>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
-            <Zahl wert={String(verstrichen)} label="% der Zeit vorbei" />
-            <Zahl wert={String(schnitt)} label="% Ziele im Schnitt" farbe={col(schnitt)} />
-            <Zahl wert={String(prognose)} label="% am Ende bei diesem Tempo" farbe={prognoseFarbe} />
-          </div>
-          <p style={{ fontSize: TYP.body, fontWeight: 600, color: prognoseFarbe, margin: '14px 0 0' }}>
-            → bei diesem Tempo ~{prognose} % am Ende{prognose < 95 ? ' — nachschärfen oder Ziel ehrlich kürzen' : ' — Kurs hält'}
-          </p>
+          {lage.art === 'zukunft' ? (
+            <>
+              <Ueberschrift farbe={LEUCHT.puls}>Forecast · {planJahr}</Ueberschrift>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
+                <Zahl wert={String(lage.monate >= 1 ? lage.monate : lage.tage)} label={lage.monate >= 1 ? (lage.monate === 1 ? 'Monat bis zum Start' : 'Monate bis zum Start') : (lage.tage === 1 ? 'Tag bis zum Start' : 'Tage bis zum Start')} farbe={LEUCHT.puls} />
+                <Zahl wert={String(zieleImSpace.length)} label={zieleImSpace.length === 1 ? 'Ziel geplant' : 'Ziele geplant'} />
+                <Zahl wert={String(msImJahr.length)} label={msImJahr.length === 1 ? 'Meilenstein geplant' : 'Meilensteine geplant'} />
+              </div>
+              <p style={{ fontSize: TYP.body, fontWeight: 600, color: C.inkDim, margin: '14px 0 0' }}>
+                → {planJahr} {beginntText(lage)} — jetzt planen, dann gilt ab Januar der Forecast gegen die Zeit.
+              </p>
+            </>
+          ) : lage.art === 'vorbei' ? (
+            <>
+              <Ueberschrift farbe={col(schnitt ?? 0)}>Ergebnis · {planJahr}</Ueberschrift>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
+                <Zahl wert="100" label="% der Zeit vorbei" />
+                <Zahl wert={String(schnitt)} label="% Ziele erreicht (Ø)" farbe={col(schnitt ?? 0)} />
+              </div>
+            </>
+          ) : (
+            <>
+              <Ueberschrift farbe={prognoseFarbe}>Forecast{istJahr ? ` · ${planJahr}` : ''}</Ueberschrift>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
+                <Zahl wert={String(lage.verstrichen)} label="% der Zeit vorbei" />
+                <Zahl wert={String(schnitt)} label="% Ziele im Schnitt" farbe={col(schnitt ?? 0)} />
+                <Zahl wert={String(prognose)} label="% am Ende bei diesem Tempo" farbe={prognoseFarbe} />
+              </div>
+              <p style={{ fontSize: TYP.body, fontWeight: 600, color: prognoseFarbe, margin: '14px 0 0' }}>
+                → bei diesem Tempo ~{prognose} % am Ende{(prognose ?? 0) < 95 ? ' — nachschärfen oder Ziel ehrlich kürzen' : ' — Kurs hält'}
+              </p>
+            </>
+          )}
         </Karte>
       )}
 
@@ -166,7 +285,11 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       )}
 
       {/* Ziele links, Meilensteine rechts — Priorität per Pfeil, Erledigtes unten, Einheiten im Business, Kaskade aus dem Jahr */}
-      <ZieleMeilensteine horizont={horizont} farbe={farbe} spaceFilter={spaceFilter} onSpace={setSpaceFilter} onStand={onStand} zielM={zielM} i={kZM} />
+      <ZieleMeilensteine horizont={horizont} farbe={farbe} spaceFilter={spaceFilter} onSpace={setSpaceFilter} zielM={zielM} i={kZM}
+        planung={p} planJahr={planJahr} einheitFilter={einheitFilter} onEinheit={setEinheitFilter} rueckgaengig={rueck}
+        onMsOeffnen={istJahr ? oeffneMeilenstein : undefined} />
+      {msFenster.fenster}
+      {rueck.hinweis}
 
       {/* Aufgaben im Zeitraum */}
       <Karte i={kAufgaben}>

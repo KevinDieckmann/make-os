@@ -13,8 +13,13 @@
 // und am Eintrag (aktive Mandate, „Firma · Mandatstitel“) — Firma und Einheit kommen
 // dann aus dem Mandat (der Server leitet sie beim Speichern ab, lib/planung/mandat.ts).
 // Am Eintrag führt „›“ neben dem Chip in die Mandatsakte (MandantLink, 28.09.); beim Anlegen nicht.
+// Seit 30.09. (Kevin: „bis Ende nächsten Jahres planen“): im Jahr zeigt das Bauteil das gewählte
+// Planungsjahr (`planJahr`) — Jahresziele nach `zielJahr`, Meilensteine nach `meilensteinImJahr`
+// (lib/planung/zeitstrahl.ts); neue Jahresziele tragen `jahr`, Meilensteine ohne Datum im nächsten
+// Jahr das Zeitfenster „2027“. Die Jahresseite reicht ihren Stand (`planung`), den Einheiten-Filter und
+// `onMsOeffnen` (das Meilenstein-Fenster) herein; Löschen zeigt „Rückgängig“ (wie Aufgaben).
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { useSpace } from '@/hooks/useSpace';
@@ -23,6 +28,9 @@ import { passtEinheit } from '@/lib/planung/einheiten';
 import { meilensteinSpace, bereichAusSpace } from '@/lib/planung/meilensteine';
 import { offenErledigt, verschiebe, naechsterRang } from '@/lib/planung/rang';
 import { imZeitraum } from '@/lib/planung/zeitraum';
+import { meilensteinImJahr, zielJahr } from '@/lib/planung/zeitstrahl';
+import { ohneStand } from '@/lib/make-one/liste-stand';
+import { useRueckgaengig, type Rueckgaengig } from './Rueckgaengig';
 import type { Meilenstein, Ziel, ZielHorizont } from '@/lib/planung/typen';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT } from '../schlank';
 import { zielRahmen } from '../ziel';
@@ -51,40 +59,58 @@ export interface ZieleMeilensteineProps {
   /** Von außen gesteuert (Horizont-Seite) — sonst hält das Bauteil den Space selbst. */
   spaceFilter?: SpaceFilter;
   onSpace?: (s: SpaceFilter) => void;
-  /** Der Stand (Ziele, Meilensteine, Fokus) für die Seite drumherum — Forecast, Zeitstrahl. */
-  onStand?: (s: PlanungStand) => void;
   /** Aus einem Link (?m=) hervorgehobener Meilenstein. */
   zielM?: string | null;
   /** Karten-Index fürs gestaffelte Erscheinen. */
   i?: number;
   /** Kompakt (Woche/Tag): ohne Space-Wechsel je Zeile, kürzere Texte. */
   kompakt?: boolean;
+  /** Der Stand von der Seite (30.09., Jahresplanung) — sonst lädt das Bauteil selbst. */
+  planung?: PlanungStand;
+  /** Nur im Jahr: das gewählte Planungsjahr (Standard: das laufende). */
+  planJahr?: number;
+  /** Einheiten-Filter von außen gesteuert (die Jahresseite belegt damit das Anlegen am Zeitstrahl vor). */
+  einheitFilter?: string;
+  onEinheit?: (e: string) => void;
+  /** Meilenstein im Fenster öffnen (Bearbeiten, Verschieben) — sonst nur Umbenennen in der Zeile. */
+  onMsOeffnen?: (id: string) => void;
+  /** Hinweis mit „Rückgängig“ von der Seite — sonst ein eigener. */
+  rueckgaengig?: Rueckgaengig;
 }
 
-export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter: spaceProp, onSpace, onStand, zielM, i = 0, kompakt }: ZieleMeilensteineProps) {
-  const p = usePlanung(horizont);
+export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter: spaceProp, onSpace, zielM, i = 0, kompakt, planung, planJahr: planJahrProp, einheitFilter: einheitProp, onEinheit, onMsOeffnen, rueckgaengig }: ZieleMeilensteineProps) {
+  const eigen = usePlanung(horizont, !planung);
+  const p = planung ?? eigen;
+  const eigenerHinweis = useRueckgaengig();
+  const rueck = rueckgaengig ?? eigenerHinweis;
+  const laufend = Number(p.heute.slice(0, 4));
+  const planJahr = horizont === 'jahr' ? (planJahrProp ?? laufend) : laufend;
+  const zeitLabel = horizont === 'jahr' ? String(planJahr) : p.zr.label;
+  // Der jüngste Stand für „Rückgängig“ (das Zurückholen läuft später, nach anderen Änderungen).
+  const stand = useRef(p); stand.current = p;
   const { space: aktiverSpace, ausAdresse: spaceAusAdresse, setzen: spaceSetzen } = useSpace();
   const [spaceEigen, setSpaceEigen] = useState<SpaceFilter>('alle');
   useEffect(() => { if (!spaceProp) setSpaceEigen(spaceAusAdresse ?? aktiverSpace); }, [spaceProp, spaceAusAdresse, aktiverSpace]);
   const spaceFilter = spaceProp ?? spaceEigen;
   const setSpace = (s: SpaceFilter) => { if (onSpace) onSpace(s); else setSpaceEigen(s); if (s !== 'alle') spaceSetzen(s); };
-  const [einheitFilter, setEinheitFilter] = useState<string>('alle');
+  const [einheitEigen, setEinheitEigen] = useState<string>('alle');
+  const einheitFilter = einheitProp ?? einheitEigen;
+  const setEinheitFilter = (e: string) => { if (onEinheit) onEinheit(e); else setEinheitEigen(e); };
   const [einheitNeu, setEinheitNeu] = useState<string | null>(null);
-  // Nur bei echten Änderungen nach außen melden — sonst dreht sich Eltern-Stand ↔ Kind im Kreis.
-  useEffect(() => { onStand?.(p); }, [p.ziele, p.ms, p.fokus, p.geladen]); // eslint-disable-line react-hooks/exhaustive-deps
   const heute = localDay();
   const imBusiness = spaceFilter === 'business';
 
   // ── Ziele im Filter ──
-  const zieleSicht = useMemo(() => p.ziele.filter(z => (spaceFilter === 'alle' || !z.space || z.space === spaceFilter) && (!imBusiness || passtEinheit(z.einheit, einheitFilter))), [p.ziele, spaceFilter, imBusiness, einheitFilter]);
+  const zieleSicht = useMemo(() => p.ziele.filter(z => (spaceFilter === 'alle' || !z.space || z.space === spaceFilter) && (!imBusiness || passtEinheit(z.einheit, einheitFilter))
+    && (horizont !== 'jahr' || zielJahr(z, laufend) === planJahr)), [p.ziele, spaceFilter, imBusiness, einheitFilter, horizont, laufend, planJahr]);
   const { offen: zOffen, erledigt: zErledigt } = useMemo(() => offenErledigt(zieleSicht), [zieleSicht]);
 
   // ── Meilensteine im Zeitraum und Filter ──
   const msSicht = useMemo(() => p.ms.filter(m => {
     const spaceOk = spaceFilter === 'alle' || meilensteinSpace(m) === spaceFilter;
-    const zeitOk = horizont === 'jahr' ? (!m.faellig || m.faellig >= p.zr.von || m.erledigt) : imZeitraum(m.faellig, p.zr);
+    const zeitOk = horizont === 'jahr' ? meilensteinImJahr(m, planJahr, laufend) : imZeitraum(m.faellig, p.zr);
     return spaceOk && zeitOk && (!imBusiness || passtEinheit(m.einheit, einheitFilter));
-  }), [p.ms, spaceFilter, horizont, p.zr, imBusiness, einheitFilter]);
+  }), [p.ms, spaceFilter, horizont, p.zr, imBusiness, einheitFilter, planJahr, laufend]);
   const { offen: mOffen, erledigt: mErledigt } = useMemo(() => offenErledigt(msSicht), [msSicht]);
 
   // ── Neu anlegen ──
@@ -119,6 +145,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
       ...(imBusiness && neu.mandatId ? { mandatId: neu.mandatId } : {}),
       ...(horizont === 'jahr' && isFinite(zahl) && zahl > 0 ? { zielwert: zahl } : {}),
       ...(horizont === 'jahr' && neu.termin ? { termin: neu.termin } : {}),
+      // Planungsjahr (30.09.): das gewählte — auch wenn die Frist schon ins Folgejahr fällt.
+      ...(horizont === 'jahr' ? { jahr: planJahr } : {}),
     };
     p.persistZiele([...p.ziele, z]);
     setNeu({ titel: '', zahl: '', termin: '', einheit: neu.einheit, mandatId: neu.mandatId });
@@ -127,22 +155,32 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const t = msNeu.titel.trim();
     if (!t) return;
     const faellig = msNeu.faellig || (horizont === 'jahr' ? '' : p.zr.bis);
+    // Ohne Datum in einem anderen als dem laufenden Jahr: das Jahr als Zeitfenster — sonst stünde er im laufenden.
+    const zeitfenster = horizont === 'jahr' && !faellig && planJahr !== laufend ? String(planJahr) : undefined;
     // Seit 28.09. das echte Feld `space`; `bereich` nur gespiegelt für ältere Leser.
     const space: SpaceId = spaceFilter !== 'alle' ? spaceFilter : msNeu.space;
     const einheit = space === 'business' && imBusiness ? (msNeu.einheit || (einheitFilter !== 'alle' ? einheitFilter : '')) : '';
     const mandatId = space === 'business' ? msNeu.mandatId : '';
-    p.persistMs([...p.ms, { id: neueKennung('ms'), titel: t, space, bereich: bereichAusSpace(space), faellig: faellig || undefined, fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}), ...(mandatId ? { mandatId } : {}) }]);
+    p.persistMs([...p.ms, { id: neueKennung('ms'), titel: t, space, bereich: bereichAusSpace(space), faellig: faellig || undefined, ...(zeitfenster ? { zeitfenster } : {}), fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}), ...(mandatId ? { mandatId } : {}) }]);
     setMsNeu({ titel: '', faellig: '', space, einheit: msNeu.einheit, mandatId: msNeu.mandatId });
   };
 
   // ── Ändern ──
   const zPatch = (id: string, patch: Partial<Ziel>, angepasst = false) => p.persistZiele(p.ziele.map(z => (z.id === id ? { ...z, ...patch, ...(angepasst && z.abgeleitetVon ? { angepasst: true } : {}) } : z)));
   const zErledigen = (z: Ziel) => zPatch(z.id, z.erledigt ? { erledigt: false, erledigtAm: undefined } : { erledigt: true, erledigtAm: heute, fortschritt: 100 });
-  const zLoeschen = (id: string) => p.persistZiele(p.ziele.filter(z => z.id !== id));
+  const zLoeschen = (id: string) => {
+    const alt = p.ziele.find(z => z.id === id);
+    p.persistZiele(p.ziele.filter(z => z.id !== id));
+    if (alt) rueck.melden(`Ziel „${alt.titel}“ gelöscht`, () => { if (!stand.current.ziele.some(z => z.id === id)) stand.current.persistZiele([...stand.current.ziele, ohneStand(alt as Ziel & { stand?: string })]); });
+  };
   const zBewegen = (id: string, r: 'auf' | 'ab') => p.persistZiele(verschiebe(p.ziele, id, r, zOffen.map(z => z.id)));
   const mPatch = (id: string, patch: Partial<Meilenstein>, angepasst = false) => p.persistMs(p.ms.map(m => (m.id === id ? { ...m, ...patch, ...(angepasst && m.abgeleitetVon ? { angepasst: true } : {}) } : m)));
   const mErledigen = (m: Meilenstein) => mPatch(m.id, m.erledigt ? { erledigt: false, erledigtAm: undefined } : { erledigt: true, erledigtAm: heute, fortschritt: 100 }, true);
-  const mLoeschen = (id: string) => p.persistMs(p.ms.filter(m => m.id !== id));
+  const mLoeschen = (id: string) => {
+    const alt = p.ms.find(m => m.id === id);
+    p.persistMs(p.ms.filter(m => m.id !== id));
+    if (alt) rueck.melden(`„${alt.titel}“ gelöscht`, () => { if (!stand.current.ms.some(m => m.id === id)) stand.current.persistMs([...stand.current.ms, ohneStand(alt as Meilenstein & { stand?: string })]); });
+  };
   const mBewegen = (id: string, r: 'auf' | 'ab') => p.persistMs(verschiebe(p.ms, id, r, mOffen.map(m => m.id)));
 
   // ── Titel bearbeiten (Stift) ──
@@ -163,6 +201,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     if (!business || (!e.mandatId && (!mandatZugang || kompakt || e.erledigt))) return null;
     return <MandatWahl klein wert={e.mandatId} aus={!!e.erledigt} setzen={setzen} />;
   };
+  /** Ziel-Bezug am Meilenstein: der Name des Jahresziels (verschwundene Ziele zeigen nichts). */
+  const zielName = (id: string): ReactNode => { const z = p.ziele.find(x => x.id === id); return z ? <span style={{ color: farbe }}>→ {z.titel}</span> : null; };
   const unterZeile = (teile: ReactNode[]) => { const t = teile.filter(Boolean); return t.length ? <>{t.map((x, k) => <span key={k}>{k > 0 ? ' · ' : ''}{x}</span>)}</> : undefined; };
 
   // ── Zeilen ──
@@ -215,7 +255,10 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
           links={<Haken an={m.erledigt} farbe={bf} onChange={() => mErledigen(m)} />}
           titel={bearbeite?.id === m.id ? titelFeld(m.id, t => mPatch(m.id, { titel: t }, true)) : <span style={{ color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none' }}>{m.titel}</span>}
           unter={unterZeile([
-            wann ? <span style={{ color: spaet ? LEUCHT.kritisch : undefined }}>{spaet ? 'überfällig ' : ''}{wann}</span> : null,
+            wann ? (onMsOeffnen && !m.erledigt
+              ? <button onClick={() => onMsOeffnen(m.id)} title="Datum ändern" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', color: spaet ? LEUCHT.kritisch : 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{spaet ? 'überfällig ' : ''}{wann}</button>
+              : <span style={{ color: spaet ? LEUCHT.kritisch : undefined }}>{spaet ? 'überfällig ' : ''}{wann}</span>) : null,
+            m.zielId ? zielName(m.zielId) : null,
             einheitChip({ einheit: m.einheit, space: sp }),
             mandatChip(m, sp === 'business', x => mPatch(m.id, mandatFelder(x), true)),
             spaceFilter === 'alle' && (kompakt || m.erledigt) ? <span style={{ color: bf }}>{SPACE_LABEL[sp]}</span> : null,
@@ -234,7 +277,9 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
                   <input type="range" min={0} max={100} step={5} value={m.fortschritt} aria-label="Fortschritt" onChange={e => mPatch(m.id, { fortschritt: Number(e.target.value) })} style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', accentColor: col(m.fortschritt) }} />
                   <span style={{ ...prozent, color: col(m.fortschritt) }}>{m.fortschritt} %</span>
                   <PfeilRang label={m.titel} obenAus={pos === 0} untenAus={pos === n - 1} onAuf={() => mBewegen(m.id, 'auf')} onAb={() => mBewegen(m.id, 'ab')} />
-                  <button onClick={() => setBearbeite({ id: m.id, text: m.titel })} aria-label="Meilenstein umbenennen" title="umbenennen" style={loeschen}>✎</button>
+                  {onMsOeffnen
+                    ? <button onClick={() => onMsOeffnen(m.id)} aria-label={`„${m.titel}“ bearbeiten`} title="bearbeiten, verschieben" style={loeschen}>✎</button>
+                    : <button onClick={() => setBearbeite({ id: m.id, text: m.titel })} aria-label="Meilenstein umbenennen" title="umbenennen" style={loeschen}>✎</button>}
                 </>
               )}
               {m.abgeleitetVon && !m.angepasst
@@ -261,6 +306,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   return (
     <>
       {p.hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{p.hinweis}</div>}
+      {!rueckgaengig && eigenerHinweis.hinweis}
       {/* Filter: Space · Einheiten (Business) */}
       <div className="os-auf" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', ['--i' as string]: i }}>
         {(['privat', 'business', 'alle'] as const).map(k => (
@@ -298,7 +344,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             <Knopf onClick={zielAnlegen}>+ Ziel</Knopf>
           </div>
           {!p.geladen ? <Leer>lade …</Leer>
-            : !zOffen.length && !zErledigt.length ? <Leer>{zieleAlle ? `Keine Ziele${spaceHinweis}${imBusiness && einheitFilter !== 'alle' ? ` für ${einheitFilter}` : ''}.` : `Noch keine Ziele für ${p.zr.label}${spaceHinweis}. Was soll am Ende stehen?`}</Leer>
+            : !zOffen.length && !zErledigt.length ? <Leer>{zieleAlle ? `Keine Ziele${spaceHinweis}${imBusiness && einheitFilter !== 'alle' ? ` für ${einheitFilter}` : ''}.` : `Noch keine Ziele für ${zeitLabel}${spaceHinweis}. Was soll am Ende stehen?`}</Leer>
             : !zOffen.length ? <Leer>Alles erledigt{spaceHinweis} — was kommt als Nächstes?</Leer>
             : <Liste>{zOffen.map((z, k) => zielZeile(z, k, zOffen.length))}</Liste>}
           {erledigtBereich(zErledigt.map((z, k) => zielZeile(z, k, zErledigt.length)), zErledigt.length)}
@@ -321,8 +367,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             {msBusiness && mandatZugang && <MandatWahl ohneLink wert={msNeu.mandatId || undefined} setzen={m => setMsNeu({ ...msNeu, mandatId: m?.id ?? '', einheit: m?.einheit ?? msNeu.einheit })} />}
             <Knopf onClick={msAnlegen}>+ Meilenstein</Knopf>
           </div>
-          {!mOffen.length && !mErledigt.length ? <Leer>Noch kein Meilenstein für {p.zr.label}{spaceHinweis}.{horizont === 'jahr' ? ' Ein Jahresziel mit Termin legt ihn von selbst an.' : ''}</Leer>
-            : !mOffen.length ? <Leer>Alle Meilensteine für {p.zr.label} erledigt.</Leer>
+          {!mOffen.length && !mErledigt.length ? <Leer>Noch kein Meilenstein für {zeitLabel}{spaceHinweis}.{horizont === 'jahr' ? ' Ein Jahresziel mit Termin legt ihn von selbst an.' : ''}</Leer>
+            : !mOffen.length ? <Leer>Alle Meilensteine für {zeitLabel} erledigt.</Leer>
             : <Liste>{mOffen.map((m, k) => msZeile(m, k, mOffen.length))}</Liste>}
           {erledigtBereich(mErledigt.map((m, k) => msZeile(m, k, mErledigt.length)), mErledigt.length)}
         </Karte>

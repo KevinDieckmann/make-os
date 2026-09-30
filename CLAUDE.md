@@ -290,6 +290,14 @@ lokal, Route `/os`, Port 3001.
   „heute dran“ je Person in `lib/planung/routinen.ts` (`heuteFaellig`, `sichtbarFuer`). Blöcke (Wochenvorlage je Person) liegen
   als `bloecke` im selben Bestand — geschrieben nur per `PATCH { bloecke: ops }`, nur eigene Blöcke (`personStreng`, sonst 403). Wer Routinen liest, filtert mit `sichtbarFuer(…, person)`.
 - Home-Widget `routinen-heute` (Einstellung `space`) in `components/os/flaeche/widgets.tsx`, im `HOME_STANDARD` je Space.
+- **Zeitstrahl & Planungsjahr (30.09.):** Rechnung rein in `lib/planung/zeitstrahl.ts` (Fenster aus ganzen Monaten `ab`+`monate`,
+  `standardAb`/`heuteAb`, `abAus` ±50 Jahre, `monatsTicks` mit Jahreswechsel, `quartale`, `stapeln` mit „+n“-Bündeln,
+  `zielJahr`/`meilensteinJahr`/`meilensteinImJahr`, `jahrLage` für den Forecast, `planTag` für ZOE, `zaehltImKurs` für die Indizes)
+  — Ansichten rechnen nichts davon selbst. Jahresziele: optional `jahr`, lesen NUR über `zielJahr()`; der Ziele-PATCH (Jahr)
+  stempelt es (`jahrStempeln`), die Kaskade nimmt nur das laufende Jahr. Fokus je Jahr nur über `lib/planung/jahr-fokus.ts`
+  (laufendes Jahr doppelt, ausgeliefert via `fokusFuerLaufendesJahr`). Meilenstein öffnen/anlegen: `useMeilensteinFenster`
+  (`components/os/planung/MeilensteinFenster.tsx`), auf der Jahresseite über EINE Stelle `oeffneMeilenstein` — kein zweiter
+  Schreibweg, keine Aufgaben-Logik dort. `Zeitstrahl` bleibt ohne neue Props wie bisher (Aufgaben, Bauplan).
 - Tests `tests/planung-*.test.ts`. Sichtprüfung nur mit Wegwerfkonto; Ziele/Meilensteine/Routinen sind GETEILTE Bestände —
   Schreibtests nur über `fuer: 'ich'` (persönlicher Ziele-Speicher), nie in `ziele`/`meilensteine`/`routinen` selbst.
 

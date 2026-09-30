@@ -4,6 +4,50 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Zeitstrahl bis Ende nächsten Jahres, Planen im nächsten Jahr, Meilensteine am Zeitstrahl (30.09.2026, nur lokal)
+
+Kevin: „Ich muss immer in die Zukunft gucken und dann auch einen Zeitstrahl haben, damit ich bis Ende nächsten Jahres gucken und
+planen kann.“ — „einzeln nach vorne und einzeln nach hinten scrollen“ — „dass wir die Meilensteine reinbekommen“.
+
+- **Zeitstrahl (Jahr & Ziele):** Zeitraum-Wahl „Dieses Jahr · Bis Ende nächsten Jahres · Ab heute 18 Monate“, Standard **bis Ende
+  nächsten Jahres** (Jan dieses – Dez nächstes Jahr). Das sichtbare Fenster sind ganze Monate (12/24/18, am Handy 6) und lässt
+  sich ohne Grenze blättern: Pfeile ‹ › (Umschalt = Quartal), Tasten ← → (Zeitstrahl fokussiert), Umschalt+Mausrad bzw.
+  Trackpad waagerecht, Ziehen/Wischen. Knopf „Heute“ springt zurück. Adresse: `?raum=` und `?ab=2026-10` (Neuladen behält die
+  Stelle); die Wahl wird je Gerät gemerkt (`make-planung-raum`). Monatsachse mit Jahreswechsel (Trennlinie + Jahreszahl),
+  Quartale als Bänder, HEUTE-Linie. Marker: Meilensteine (Erledigtes leise), Jahresziele mit Frist ohne eigenen Meilenstein,
+  Projekt-Fristen. Viele Marker: bis 5 Reihen, der Rest als „+n“ (Klick zeigt die Liste) — nichts überlappt; jeder Marker hat den
+  vollen Titel als Tooltip. Rechnung rein in `lib/planung/zeitstrahl.ts`, Zustand in `components/os/planung/useStrahlFenster.ts`.
+- **Meilensteine anlegen am Zeitstrahl:** Klick auf eine Stelle (Tag unter dem Zeiger) oder „+ Meilenstein“ öffnet das Fenster,
+  vorbelegt mit Datum, Bereich (Privat/Business) und Einheit aus dem aktiven Filter. Felder: Titel, Datum, Bereich, Einheit,
+  Mandat (nur mit aktiven Mandaten), „Zahlt auf Ziel ein“ (neu: `zielId`), Fortschritt, erledigt, Messlatte. **„Speichern +
+  nächster“** (bzw. Enter im Titel) lässt das Fenster offen, Datum/Bereich/Einheit bleiben stehen. Klick auf einen Marker (und
+  ✎ bzw. das Datum in der Liste) öffnet Bearbeiten/Verschieben — EINE Stelle `oeffneMeilenstein` (für die spätere Detailseite).
+  Löschen mit „Rückgängig“ (10 s, wie Aufgaben), auch für ✕ in der Liste. Geschrieben wird nur über den vorhandenen Schreibweg
+  (PATCH `/api/state/meilensteine` mit Stand).
+- **Planungsjahr:** Auswahl „2026 · jetzt · 2027 · + 2028“ (mind. laufendes + nächstes, belegte Jahre dazu), Adresse `?jahr=`.
+  Jahresziele tragen optional `jahr` (fehlt = Jahr der Frist, sonst laufendes; der Schreibweg stempelt es). Nur Ziele des
+  laufenden Jahres kaskadieren in Quartal/Monat/Woche/Tag; Termin-Ziele werden Meilensteine auch im nächsten Jahr. „Fokus des
+  Jahres“ je Jahr (`business:jahr:2027`; das laufende Jahr steht zusätzlich unter dem alten Schlüssel). Forecast je Jahr:
+  läuft · „beginnt in 3 Monaten“ (keine 0 %) · Ergebnis.
+- **Verbindungen:** Business-/Gesundheits-Index zählen im Meilenstein-Kurs nur bis Ende des laufenden Jahres („n später
+  geplant“); ZOE `setze_meilenstein` verschiebt (`faellig`, auch nächstes Jahr; abgeleitete werden „angepasst“), `setze_fokus`
+  nimmt `jahr`; Brain nennt Daten außerhalb des laufenden Jahres mit Jahr; Kalender-Fristen verlinken direkt auf den Meilenstein
+  (`?m=`), die Jahresseite springt dann in sein Jahr.
+- **Tests:** `tests/planung-zeitstrahl.test.ts` (Fenster über den Jahreswechsel, 29.02., Standard, Grenzen der Adresse,
+  Heute-Sprung, Jahr-Ableitung, Filter, Forecast, Stapeln, Fokus je Jahr, Kaskade), `tests/planung-naechstes-jahr.test.ts`
+  (Routen + ZOE), `tests/business-index.test.ts` (Kurs ohne Geplantes).
+- **Rückweg:** GO_LIVE_CHECKLISTE.md › Rückweg (was af4679a davon verwirft).
+
+**Prüfliste nach dem Upload:**
+1. Jahr & Ziele: Zeitstrahl zeigt Jan dieses bis Dez nächsten Jahres, „2027“ am Jahreswechsel, HEUTE-Linie; ‹ › blättert je Monat,
+   Adresse zeigt `?ab=…`, Neuladen bleibt dort, „Heute“ springt zurück.
+2. Klick in den Zeitstrahl bei einem Monat im nächsten Jahr → Fenster mit diesem Datum; zwei Meilensteine mit „Speichern +
+   nächster“ anlegen → beide stehen im Zeitstrahl, Datum/Einheit blieben stehen.
+3. Klick auf einen Marker → Bearbeiten; Datum ändern → Marker wandert; Löschen → „Rückgängig“ holt ihn zurück.
+4. Planungsjahr „2027“: Forecast „beginnt in n Monaten“, Fokus des Jahres 2027 eigen, neues Jahresziel erscheint nur unter 2027.
+5. Handy: Zeitstrahl 6 Monate, Wischen blättert, keine seitliche Rolle der Seite.
+6. Business-Index › Meilenstein-Kurs: Meilensteine des nächsten Jahres ziehen nicht herunter („später geplant“).
+
 ## Umbenennung: MAKE OS UG → MAKE Innovation GmbH (30.09.2026, nur lokal)
 
 Kevin: „Ändere bitte überall in der Software MAKE UG in MAKE Innovation GmbH.“ Gemeint ist die Gesellschaft mit der

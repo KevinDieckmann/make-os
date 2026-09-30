@@ -22,6 +22,8 @@ import { WERKZEUGE } from './werkzeuge';
 import { firmaAusAngabe, finanzOrtName, istGesellschaft, kontoName } from '@/lib/einheiten';
 import { AUFGABEN_REGISTER } from './aufgaben-werkzeuge';
 import { ARBEIT_REGISTER } from './arbeit-werkzeug';
+import { fokusImJahr } from '@/lib/planung/jahr-fokus';
+import { localDay } from '@/lib/zeit';
 import { CRM_VORSCHLAG_REGISTER } from './crm-vorschlag';
 
 export type Risiko = 'frei' | 'freigabe' | 'nie';
@@ -142,12 +144,15 @@ async function vsZiele(i: Record<string, unknown>): Promise<Vorschau> {
 
 async function vsMeilenstein(i: Record<string, unknown>): Promise<Vorschau> {
   const suche = text(i.titel).toLowerCase();
-  const m = await loadJson<{ meilensteine?: { titel: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine');
+  const m = await loadJson<{ meilensteine?: { titel: string; fortschritt: number; erledigt: boolean; faellig?: string }[] }>('meilensteine');
   const treffer = (m?.meilensteine ?? []).find(x => x.titel.toLowerCase().includes(suche));
+  const tag = (d?: string) => (d ? `${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : 'ohne Datum');
+  const faellig = typeof i.faellig === 'string' && i.faellig ? text(i.faellig, 10) : '';
+  const nachher = [faellig ? `fällig ${tag(faellig)}` : '', i.erledigt === true ? 'abgehakt' : i.fortschritt != null ? `${Number(i.fortschritt)} %` : ''].filter(Boolean).join(' · ');
   return {
     titel: treffer ? `Meilenstein „${treffer.titel}"` : `Meilenstein „${text(i.titel)}" — kein Treffer`,
-    vorher: treffer ? (treffer.erledigt ? 'erledigt' : `${treffer.fortschritt} %`) : undefined,
-    nachher: i.erledigt === true ? 'abgehakt' : i.fortschritt != null ? `${Number(i.fortschritt)} %` : 'unverändert',
+    vorher: treffer ? [faellig ? `fällig ${tag(treffer.faellig)}` : '', treffer.erledigt ? 'erledigt' : `${treffer.fortschritt} %`].filter(Boolean).join(' · ') : undefined,
+    nachher: nachher || 'unverändert',
   };
 }
 
@@ -156,11 +161,15 @@ async function vsFokus(i: Record<string, unknown>): Promise<Vorschau> {
   const z = await loadJson<{ fokus?: Record<string, string> }>('ziele');
   const sp = i.space === 'privat' || i.space === 'business' ? String(i.space) : null;
   const key = sp ? `${sp}:${h}` : h;
+  // Fokus des Jahres je Jahr (30.09.): vorher = der Satz dieses Jahres.
+  const laufend = Number(localDay().slice(0, 4));
+  const jahr = h === 'jahr' && i.jahr != null && Number.isInteger(Number(i.jahr)) ? Number(i.jahr) : null;
+  const alt = h === 'jahr' ? fokusImJahr(z?.fokus, key, jahr ?? laufend, laufend) : (z?.fokus?.[key] ?? '');
   return {
-    titel: `Fokus (${h}${sp ? `, ${sp}` : ''}) setzen`,
-    vorher: z?.fokus?.[key] ? `„${z.fokus[key]}"` : 'nicht gesetzt',
+    titel: `Fokus (${h}${jahr && jahr !== laufend ? ` ${jahr}` : ''}${sp ? `, ${sp}` : ''}) setzen`,
+    vorher: alt ? `„${alt}"` : 'nicht gesetzt',
     nachher: `„${text(i.text, 300)}"`,
-    zurueck: { werkzeug: 'setze_fokus', eingabe: { horizont: h, ...(sp ? { space: sp } : {}), text: z?.fokus?.[key] ?? '' } },
+    zurueck: { werkzeug: 'setze_fokus', eingabe: { horizont: h, ...(sp ? { space: sp } : {}), ...(jahr ? { jahr } : {}), text: alt } },
   };
 }
 

@@ -11,6 +11,7 @@
 import type { Meilenstein, Ziel, ZieleDatei, ZielHorizont } from './typen';
 import { sortiertNachRang } from './rang';
 import { bereichAusSpace } from './meilensteine';
+import { zielJahr } from './zeitstrahl';
 
 export type Unterhorizont = Exclude<ZielHorizont, 'jahr'>;
 export const UNTERHORIZONTE: readonly Unterhorizont[] = ['quartal', 'monat', 'woche', 'tag'];
@@ -103,10 +104,15 @@ export function loesen(z: Ziel): Ziel {
   return rest;
 }
 
-/** Die ganze Datei: alle Unterebenen aus den Jahreszielen nachziehen. */
+/**
+ * Die ganze Datei: alle Unterebenen aus den Jahreszielen nachziehen. Nur Ziele des laufenden Jahres (`zielJahr`,
+ * 30.09.) kaskadieren — ein Zahlenziel für nächstes Jahr verteilt sich erst ab dessen Januar auf Quartal/Monat/Woche/Tag
+ * (die nächste Änderung im neuen Jahr zieht es nach); Abgeleitetes des Vorjahres fällt dann weg.
+ */
 export function kaskadeAnwenden(datei: ZieleDatei, jahr: number): ZieleDatei {
   const aus: ZieleDatei = { ...datei };
-  for (const h of UNTERHORIZONTE) aus[h] = ebeneAbleiten(datei.jahr ?? [], datei[h] ?? [], h, jahr);
+  const imJahr = (datei.jahr ?? []).filter(z => zielJahr(z, jahr) === jahr);
+  for (const h of UNTERHORIZONTE) aus[h] = ebeneAbleiten(imJahr, datei[h] ?? [], h, jahr);
   return aus;
 }
 
@@ -114,7 +120,7 @@ export const meilensteinId = (zielId: string) => `ms~${zielId}`;
 
 /**
  * Jahresziele mit Datum als Meilensteine (Fälligkeit = Termin → liegt im
- * passenden Quartal). Bestehende abgeleitete Meilensteine werden nachgezogen
+ * passenden Quartal — auch im nächsten Jahr, 30.09.: hier wird nicht nach Jahr gefiltert). Bestehende abgeleitete Meilensteine werden nachgezogen
  * (Fortschritt/Rang bleiben), angepasste bleiben, verwaiste fallen weg.
  */
 export function meilensteineAbleiten(jahrZiele: readonly Ziel[], meilensteine: readonly Meilenstein[]): Meilenstein[] {

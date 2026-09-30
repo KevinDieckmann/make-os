@@ -25,6 +25,8 @@ import type { PlanArt } from '@/types/planer';
 import { blockAnlegen } from '@/lib/planung/bloecke-server';
 import { verbunden as icloudVerbunden } from '@/lib/kalender/icloud';
 import { blockKollision } from '@/lib/planung/bloecke';
+import { planTag } from '@/lib/planung/zeitstrahl';
+import { fokusSchreibSchluessel } from '@/lib/planung/jahr-fokus';
 
 // ── ZOE plant: Block in den Kalender der Person (Kevins Ansage: „dass da auch drin geplant werden kann"). Seit F2 M8
 // (29.09., Kevin: „ZOE schreibt nur über den Stapel“) ist `plan_block` freigabepflichtig (Register, Gruppe „kalender“):
@@ -176,19 +178,29 @@ async function erfasseZahlung(input: Record<string, unknown>): Promise<string> {
 async function setzeMeilenstein(input: Record<string, unknown>): Promise<string> {
   const suche = String(input.titel ?? '').trim().toLowerCase();
   if (!suche) return 'Fehlgeschlagen: titel fehlt.';
-  const fortschritt = isFinite(Number(input.fortschritt)) ? Math.max(0, Math.min(100, Math.round(Number(input.fortschritt)))) : undefined;
+  const fortschritt = input.fortschritt != null && isFinite(Number(input.fortschritt)) ? Math.max(0, Math.min(100, Math.round(Number(input.fortschritt)))) : undefined;
   const erledigt = input.erledigt === true;
+  // Verschieben (30.09.): jedes echte Datum bis 10 Jahre um heute — ausdrücklich auch im nächsten Jahr.
+  const faellig = input.faellig != null && input.faellig !== '' ? planTag(input.faellig, localDay()) : undefined;
+  if (faellig === null) return 'Fehlgeschlagen: faellig als Datum YYYY-MM-DD angeben (höchstens 10 Jahre voraus).';
   let ergebnis = '';
-  await updateJson<{ meilensteine: { titel: string; fortschritt: number; erledigt: boolean; erledigtAm?: string }[] }>('meilensteine', current => {
+  await updateJson<{ meilensteine: { titel: string; fortschritt: number; erledigt: boolean; erledigtAm?: string; faellig?: string; abgeleitetVon?: string; angepasst?: boolean }[] }>('meilensteine', current => {
     const f = current ?? { meilensteine: [] };
     const m = (f.meilensteine ?? []).find(x => x.titel.toLowerCase().includes(suche));
     if (!m) {
       ergebnis = `Kein Meilenstein passt zu „${input.titel}". Offene: ${(f.meilensteine ?? []).filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
       return f;
     }
-    if (erledigt) { m.erledigt = true; m.fortschritt = 100; m.erledigtAm = localDay(); ergebnis = `Meilenstein „${m.titel}" abgehakt ✓`; }
-    else if (fortschritt != null) { m.fortschritt = fortschritt; ergebnis = `Meilenstein „${m.titel}" auf ${fortschritt}% gesetzt.`; }
-    else ergebnis = `Nichts geändert — fortschritt oder erledigt angeben.`;
+    const teile: string[] = [];
+    if (faellig) {
+      m.faellig = faellig;
+      // Aus einem Jahresziel abgeleitet: das eigene Datum gilt — sonst zöge die Kaskade den Termin des Ziels zurück.
+      if (m.abgeleitetVon) m.angepasst = true;
+      teile.push(`auf ${faellig.slice(8)}.${faellig.slice(5, 7)}.${faellig.slice(0, 4)} verschoben`);
+    }
+    if (erledigt) { m.erledigt = true; m.fortschritt = 100; m.erledigtAm = localDay(); teile.push('abgehakt ✓'); }
+    else if (fortschritt != null) { m.fortschritt = fortschritt; teile.push(`auf ${fortschritt}% gesetzt`); }
+    ergebnis = teile.length ? `Meilenstein „${m.titel}" ${teile.join(' und ')}.` : `Nichts geändert — fortschritt, erledigt oder faellig angeben.`;
     return f;
   });
   return `Erfasst: ${ergebnis}`;
@@ -199,13 +211,18 @@ async function setzeFokus(input: Record<string, unknown>): Promise<string> {
   if (!['tag', 'woche', 'monat', 'quartal', 'jahr'].includes(h)) return 'Fehlgeschlagen: horizont tag|woche|monat|quartal|jahr nötig.';
   // Fokus je Space (26.09.): ohne Angabe der gemeinsame Satz, sonst „privat:jahr“ / „business:jahr“.
   const space = input.space === 'privat' || input.space === 'business' ? String(input.space) : null;
+  // Fokus des Jahres je Jahr (30.09., lib/planung/jahr-fokus.ts): `jahr` nur beim Horizont Jahr, höchstens 10 Jahre um heute.
+  const laufend = Number(localDay().slice(0, 4));
+  const jahr = h === 'jahr' && input.jahr != null ? Number(input.jahr) : laufend;
+  if (!Number.isInteger(jahr) || Math.abs(jahr - laufend) > 10) return 'Fehlgeschlagen: jahr als Jahreszahl angeben (höchstens 10 Jahre um heute).';
   const key = space ? `${space}:${h}` : h;
+  const schluessel = h === 'jahr' ? fokusSchreibSchluessel(`${key}:${jahr}`, laufend) : [key];
   const text = String(input.text ?? '').slice(0, 300);
   await updateJson<{ fokus?: Record<string, string> } & Record<string, unknown>>('ziele', current => {
     const f = current ?? {};
-    return { ...f, fokus: { ...(f.fokus ?? {}), [key]: text } };
+    return { ...f, fokus: { ...(f.fokus ?? {}), ...Object.fromEntries(schluessel.map(k => [k, text])) } };
   });
-  return `Erfasst: Fokus (${h}${space ? `, ${space}` : ''}) = „${text}". Steht auf Home, in der Übersicht und lenkt die Planung.`;
+  return `Erfasst: Fokus (${h}${h === 'jahr' && jahr !== laufend ? ` ${jahr}` : ''}${space ? `, ${space}` : ''}) = „${text}". ${h === 'jahr' && jahr !== laufend ? `Gilt ab Januar ${jahr}.` : 'Steht auf Home, in der Übersicht und lenkt die Planung.'}`;
 }
 
 // ── Gesundheit (23.09.): die Griffe, die ein Satz auslöst ───────────────────

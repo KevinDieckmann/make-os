@@ -45,7 +45,11 @@ function hinweisAus(e: SchreibErgebnis<unknown>): string | null {
 
 const kopf = { 'Content-Type': 'application/json' };
 
-export function usePlanung(horizont: ZielHorizont): PlanungStand {
+/**
+ * `aktiv = false` (30.09.): der Hook lädt nichts — für Bauteile, denen die Seite ihren Stand schon reicht
+ * (Jahresplanung: EIN Stand für Zeitstrahl, Forecast und Listen, nichts doppelt geladen).
+ */
+export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
   const heute = localDay();
   const zr = useMemo(() => zeitraum(horizont, heute), [horizont, heute]);
   const [ziele, setZiele] = useState<ZielZeile[]>([]);
@@ -85,20 +89,21 @@ export function usePlanung(horizont: ZielHorizont): PlanungStand {
   }, [msSchreiber, msZeigen]);
 
   useEffect(() => {
-    let aktiv = true;
+    if (!aktiv) return;
+    let lebt = true;
     setGeladen(false);
     fetch('/api/state/ziele', { cache: 'no-store' }).then(r => r.json()).then(d => {
-      if (!aktiv) return;
+      if (!lebt) return;
       const l: ZielZeile[] = Array.isArray(d[horizont]) ? d[horizont] : [];
       zieleSchreiber.kenne(l);
       zieleZeigen(zieleSchreiber.sicht() ?? l);
       setFokus(d.fokus && typeof d.fokus === 'object' ? d.fokus : {});
       setGeladen(true);
-    }).catch(() => { if (aktiv) setGeladen(true); });
+    }).catch(() => { if (lebt) setGeladen(true); });
     ladeMs();
-    fetch('/api/planung/einheiten').then(r => r.json()).then(d => { if (aktiv && Array.isArray(d.einheiten)) setEinheiten(d.einheiten); }).catch(() => {});
-    return () => { aktiv = false; };
-  }, [horizont, ladeMs, zieleSchreiber, zieleZeigen, runde]);
+    fetch('/api/planung/einheiten').then(r => r.json()).then(d => { if (lebt && Array.isArray(d.einheiten)) setEinheiten(d.einheiten); }).catch(() => {});
+    return () => { lebt = false; };
+  }, [aktiv, horizont, ladeMs, zieleSchreiber, zieleZeigen, runde]);
 
   /** Die Ansicht reicht die neue Liste — hier wird daraus je Ziel eine Änderung (nie der ganze Horizont). */
   const persistZiele = useCallback((next: Ziel[]) => {

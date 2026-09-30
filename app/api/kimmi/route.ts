@@ -465,11 +465,12 @@ export async function POST(req: Request) {
       },
       {
         name: 'setze_meilenstein',
-        description: 'Setzt Fortschritt oder erledigt an einem Meilenstein („setz F&F auf 80%", „Infiltration abhaken"). titel = Teil des Meilenstein-Namens.',
+        description: 'Setzt Fortschritt, erledigt oder das Datum an einem Meilenstein („setz F&F auf 80%", „Infiltration abhaken", „schieb den Launch auf März nächsten Jahres"). titel = Teil des Meilenstein-Namens. Daten im nächsten Jahr sind ausdrücklich erlaubt.',
         input_schema: { type: 'object', properties: {
           titel: { type: 'string' },
           fortschritt: { type: 'number', description: '0–100' },
           erledigt: { type: 'boolean' },
+          faellig: { type: 'string', description: 'Neues Datum YYYY-MM-DD (verschieben) — auch im nächsten Jahr' },
         }, required: ['titel'] },
       },
       {
@@ -478,6 +479,7 @@ export async function POST(req: Request) {
         input_schema: { type: 'object', properties: {
           horizont: { type: 'string', enum: ['tag', 'woche', 'monat', 'quartal', 'jahr'] },
           space: { type: 'string', enum: ['privat', 'business'], description: 'Optional: Fokus nur für diesen Space' },
+          jahr: { type: 'number', description: 'Nur bei horizont=jahr: für welches Jahr (Standard das laufende; z. B. das nächste Jahr vorplanen)' },
           text: { type: 'string' },
         }, required: ['horizont', 'text'] },
       },

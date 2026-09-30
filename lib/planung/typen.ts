@@ -34,6 +34,13 @@ export interface Ziel {
   zielwert?: number;
   /** Ziel mit Datum (YYYY-MM-DD) — wird als Meilenstein im passenden Quartal angelegt. */
   termin?: string;
+  /**
+   * Planungsjahr eines Jahresziels (30.09., Kevin: „bis Ende nächsten Jahres planen“). Fehlt im Altbestand —
+   * lesen immer über `zielJahr()` (lib/planung/zeitstrahl.ts: `jahr`, sonst Jahr der Frist, sonst das laufende).
+   * Der Schreibweg der Jahresziele stempelt es (lib/planung/ziele.ts `jahrStempeln`); nur Ziele des laufenden
+   * Jahres kaskadieren in Quartal/Monat/Woche/Tag.
+   */
+  jahr?: number;
   /** Id des Jahresziels, aus dem dieses Ziel abgeleitet ist. */
   abgeleitetVon?: string;
   /** Abgeleitet, aber von Hand geändert — die Kaskade rechnet es nicht mehr neu. */
@@ -78,6 +85,11 @@ export interface Meilenstein {
   /** Mandat an Zielen und Zeit (28.09., wie am Ziel) — nur im Business; Firma und Einheit kommen aus dem Mandat. */
   mandatId?: string;
   firmaId?: string;
+  /**
+   * Ziel-Bezug (30.09.): das Jahresziel, auf das dieser Meilenstein einzahlt — nur ein Verweis zum Anzeigen.
+   * Nicht zu verwechseln mit `abgeleitetVon` (Kaskade: aus einem Termin-Ziel entstanden, wird nachgezogen).
+   */
+  zielId?: string;
 }
 
 export type Rhythmus = 'taeglich' | '3x-woche' | 'woechentlich' | 'monatlich' | 'quartal' | 'halbjahr' | 'jaehrlich';

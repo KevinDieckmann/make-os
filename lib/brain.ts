@@ -234,7 +234,9 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     meilensteine: (() => {
       const ms = (val(meilR)?.meilensteine ?? []).filter(m => m.bereich === 'business');
       if (!ms.length) return [...MILESTONES];
-      return ms.map(m => `${m.titel}${m.erledigt ? ' ✓' : ` (${m.faellig ? m.faellig.slice(8) + '.' + m.faellig.slice(5, 7) + '.' : m.zeitfenster ?? 'offen'}${m.fortschritt ? `, ${m.fortschritt}%` : ''})`}`);
+      // Datum mit Jahr, sobald es nicht das laufende ist (30.09.: Meilensteine im nächsten Jahr sind sonst nicht unterscheidbar).
+      const tag = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4) !== heute.slice(0, 4) ? d.slice(0, 4) : ''}`;
+      return ms.map(m => `${m.titel}${m.erledigt ? ' ✓' : ` (${m.faellig ? tag(m.faellig) : m.zeitfenster ?? 'offen'}${m.fortschritt ? `, ${m.fortschritt}%` : ''})`}`);
     })(),
     team: teamZeilenAus(val(teamR) ?? platzhalterTeam()),
     geld: (() => {

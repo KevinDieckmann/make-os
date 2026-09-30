@@ -17,7 +17,8 @@ import { personAus, speicherFuer } from '@/lib/zoe/raum';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ZIEL_HORIZONTE, istZielHorizont, type Ziel, type ZielHorizont, type ZieleDatei, type Meilenstein } from '@/lib/planung/typen';
 import { kaskadeAnwenden, meilensteineAbleiten } from '@/lib/planung/kaskade';
-import { sauberZiel } from '@/lib/planung/ziele';
+import { sauberZiel, jahrStempeln } from '@/lib/planung/ziele';
+import { fokusFuerLaufendesJahr, fokusSchreibSchluessel, istJahrFokusSchluessel } from '@/lib/planung/jahr-fokus';
 import { mitMandatBezug } from '@/lib/planung/mandat';
 import { mandateFuerBezug } from '@/lib/planung/mandat-server';
 import { localDay } from '@/lib/zeit';
@@ -30,8 +31,12 @@ export type { Ziel, ZielHorizont as Horizont };
 export type FokusHorizont = ZielHorizont;
 
 const LEER: ZieleDatei = { tag: [], woche: [], monat: [], quartal: [], jahr: [], fokus: {} };
-/** Fokus-Schlüssel: Horizont oder Priorität, optional je Space („privat:jahr“, „business:prio:umsatz“) — 26.09. */
-const FOKUS_SCHLUESSEL = /^(?:(?:privat|business):)?(?:tag|woche|monat|quartal|jahr|prio:[a-z0-9-]{1,40})$/;
+/**
+ * Fokus-Schlüssel: Horizont oder Priorität, optional je Space („privat:jahr“, „business:prio:umsatz“) — 26.09.;
+ * seit 30.09. das Jahr auch je Jahr („business:jahr:2027“, lib/planung/jahr-fokus.ts; ±10 Jahre).
+ */
+const FOKUS_SCHLUESSEL = /^(?:(?:privat|business):)?(?:tag|woche|monat|quartal|jahr(?::\d{4})?|prio:[a-z0-9-]{1,40})$/;
+const laufendesJahr = () => Number(localDay().slice(0, 4));
 /** Höchstzahl Ziele je Horizont — darüber wird abgelehnt, nie gekürzt (28.09.). */
 const JE_HORIZONT = 100;
 
@@ -65,7 +70,8 @@ export async function GET(req: Request) {
 
 /** Jede Zeile trägt ihren Stand (Fingerabdruck) — der Browser schickt ihn mit jeder Änderung zurück. */
 function mitStaenden(f: ZieleDatei): ZieleDatei {
-  const aus: ZieleDatei = { ...f };
+  // Fokus des laufenden Jahres unter dem Schlüssel ohne Jahr — der vorgeplante Satz gilt ab Januar (30.09.).
+  const aus: ZieleDatei = { ...f, fokus: fokusFuerLaufendesJahr(f.fokus, laufendesJahr()) };
   for (const h of ZIEL_HORIZONTE) aus[h] = mitStand(f[h] ?? []);
   return aus;
 }
@@ -84,12 +90,14 @@ export async function PUT(req: Request) {
   if (Array.isArray(body.ziele)) {
     return NextResponse.json({ ok: false, error: 'Ziele bitte einzeln ändern (PATCH { horizont, ops }) — Seite neu laden.' }, { status: 409 });
   }
-  if (typeof body.fokus !== 'string' || !h || !FOKUS_SCHLUESSEL.test(h)) {
+  if (typeof body.fokus !== 'string' || !h || !FOKUS_SCHLUESSEL.test(h) || (/(?:^|:)jahr:\d{4}$/.test(h) && !istJahrFokusSchluessel(h, laufendesJahr()))) {
     return NextResponse.json({ ok: false, error: 'horizont + fokus (tag|woche|monat|quartal|jahr|prio:<thema>) nötig.' }, { status: 400 });
   }
   const next = await updateJson<ZieleDatei>(sp.name, current => {
     const basis = datei(current);
-    basis.fokus = { ...basis.fokus, [h]: (body.fokus as string).slice(0, 300) };
+    // Das laufende Jahr steht mit und ohne Jahr (alte Leser, alter Online-Stand), andere Jahre nur mit (30.09.).
+    const text = (body.fokus as string).slice(0, 300);
+    basis.fokus = { ...basis.fokus, ...Object.fromEntries(fokusSchreibSchluessel(h, laufendesJahr()).map(k => [k, text])) };
     return basis;
   });
   return NextResponse.json({ ok: true, fuer: sp.fuer, ...mitStaenden(datei(next)) });
@@ -117,7 +125,7 @@ export async function PATCH(req: Request) {
   const mandate = await mandateFuerBezug(body.ops);
   const ops = opsLesen<Ziel>(body.ops, e => { const z = sauberZiel(e); return z && mitMandatBezug(z, mandate, z.space === 'business'); }, JE_HORIZONT * 2);
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, JE_HORIZONT * 2) }, { status: Array.isArray(body.ops) ? 413 : 400 });
-  const jahr = Number(localDay().slice(0, 4));
+  const jahr = laufendesJahr();
 
   const r = await listePatchen<Ziel, ZieleDatei & Record<string, unknown>>(sp.name, h, ops, 6, undefined, {
     // Grenze je Horizont: ablehnen, nie kürzen.
@@ -126,7 +134,8 @@ export async function PATCH(req: Request) {
       const neu = new Set(o.filter(x => x.op === 'upsert' && !ids.has(x.eintrag!.id)).map(x => x.eintrag!.id));
       return liste.length + neu.size > JE_HORIZONT && neu.size > 0 ? `Abgelehnt: höchstens ${JE_HORIZONT} Ziele je Horizont.` : null;
     },
-    danach: f => kaskadeAnwenden(datei(f), jahr) as ZieleDatei & Record<string, unknown>,
+    // Jahresziele ohne `jahr` bekommen es beim Schreiben (30.09., lib/planung/ziele.ts) — erst dann die Kaskade (nur das laufende Jahr).
+    danach: f => { const d = datei(f); if (h === 'jahr') d.jahr = jahrStempeln(d.jahr, jahr); return kaskadeAnwenden(d, jahr) as ZieleDatei & Record<string, unknown>; },
   });
   if (!r.ok) {
     const aktuell = datei(await loadJson<ZieleDatei>(sp.name));

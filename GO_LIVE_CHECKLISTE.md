@@ -119,6 +119,17 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   neuen Text. Eine Widget-Einstellung „nur MAKE Innovation GmbH“ zeigt im alten Stand nur die Aufgaben mit dem neuen Namen.
   ZOE im alten Stand ordnet eine freie Angabe „MAKE Innovation“ der Selbstständigkeit zu (nur neue Eingaben). Nach einem
   erneuten Upload fügt sich alles wieder zusammen (die Altnamen werden erkannt).
+- **Zeitstrahl & Planen im nächsten Jahr (30.09.):** keine Formänderung, nur optionale Zusatzfelder. af4679a/677400e
+  - verwerfen `jahr` am Jahresziel beim nächsten Speichern dieses Ziels — im alten Stand stehen Ziele fürs nächste Jahr
+    zwischen denen des laufenden, und ein **Zahlenziel fürs nächste Jahr kaskadiert dort sofort** in Quartal/Monat/Woche/Tag des
+    laufenden Jahres (vor dem Rückweg solche Zahlenziele notieren oder die Zahl kurz herausnehmen);
+  - verwerfen `zielId` (Ziel-Bezug am Meilenstein) beim nächsten Speichern des Meilensteins — Datum, Bereich, Einheit bleiben;
+  - zeigen Meilensteine des nächsten Jahres in der Jahresliste des laufenden Jahres (alter Filter „ab 1. Januar“) und nur bis
+    Dezember auf dem Zeitstrahl; der Business-/Gesundheits-Index zählt sie wieder mit 0 % in den Kurs;
+  - kennen den **Fokus je Jahr** nicht: `…jahr:<Jahr>`-Schlüssel bleiben gespeichert, werden aber nicht gezeigt; der Fokus des
+    laufenden Jahres steht wie bisher unter `jahr`/`privat:jahr`/`business:jahr` (die neue Version schreibt ihn doppelt).
+    Wird der Fokus im alten Stand geändert und danach wieder die neue Version eingespielt, gilt der zuletzt in der NEUEN
+    Version gespeicherte Satz (`…jahr:<Jahr>`) — dann einmal auf der Jahresseite prüfen.
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

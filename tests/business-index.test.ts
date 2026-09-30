@@ -126,6 +126,11 @@ describe('Die Kennzahlen', () => {
     const auftraege = [...Array(8)].map((_, i) => ({ status: 'fertig', beendet: `2026-09-${10 + i}T10:00:00Z`, anlass: 'ZOE' })).concat([{ status: 'fertig', beendet: '2026-09-20T10:00:00Z', anlass: 'Takt: Morgenlauf' }]);
     expect(wert('delegation', leer({ auftraege }))).toBe(2);
     expect(wert('meilensteine', leer({ meilensteine: [{ bereich: 'business', fortschritt: 80, erledigt: false }, { bereich: 'business', faellig: '2026-09-01', fortschritt: 90, erledigt: false }, { bereich: 'gesundheit', fortschritt: 0, erledigt: false }] }))).toBe(40);
+    // 30.09.: fürs nächste Jahr Geplantes (0 %) zieht den Kurs nicht herunter; nur Geplantes → Lücke statt 100 %.
+    const naechstes = { bereich: 'business', faellig: '2027-03-01', fortschritt: 0, erledigt: false };
+    expect(wert('meilensteine', leer({ meilensteine: [{ bereich: 'business', fortschritt: 80, erledigt: false }, naechstes] }))).toBe(80);
+    expect((mess('meilensteine', leer({ meilensteine: [{ bereich: 'business', fortschritt: 80, erledigt: false }, naechstes] })) as { quelle: string }).quelle).toMatch(/1 später geplant/);
+    expect(mess('meilensteine', leer({ meilensteine: [naechstes] }))).toHaveProperty('luecke');
   });
   it('Markttraktion: Win Rate ab 10 Entscheidungen, Sales Cycle, Kündigungsrate, NRR aus dem Verlauf, CAC', () => {
     const ang = (am: string) => [{ stufe: 'bedarf' as const, am, von: 'k' }, { stufe: 'angebot' as const, am, von: 'k' }];
