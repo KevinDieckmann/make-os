@@ -14,11 +14,12 @@ import Link from 'next/link';
 //     nächsten Jahres“), Blättern ‹ › / Tasten / Wischen, „Heute“, alles in der Adresse (`?raum=`, `?ab=`).
 //     Marker: Meilensteine (offen + erledigt leise), Jahresziele mit Frist ohne eigenen Meilenstein, Projekt-Fristen;
 //     Quartale als Bänder. Klick auf eine Stelle / „+ Meilenstein“ legt an (vorbelegt: Datum, Bereich, Einheit),
-//     Klick auf einen Meilenstein öffnet ihn — beides über EINE Stelle (`oeffneMeilenstein`).
+//     Klick auf einen Meilenstein öffnet seine Detailseite (`oeffneMeilenstein` → WEG.meilenstein, Paket „meilensteine“).
 //   · Planungsjahr (`?jahr=`): mindestens laufendes + nächstes; Ziele, Meilensteine, Fokus und Forecast je Jahr.
 //     Das Nachladen beim Blättern entfällt: Meilensteine/Ziele/Projekte kommen je einmal ganz (ein Bestand), gefiltert
 //     wird rein nach Fenster.
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
@@ -110,9 +111,11 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
 
   const schnitt = zieleImSpace.length ? Math.round(zieleImSpace.reduce((s, z) => s + (z.erledigt ? 100 : z.fortschritt), 0) / zieleImSpace.length) : null;
 
-  // ── Meilenstein öffnen / anlegen — EINE Stelle (später die Detailseite des Pakets „meilensteine“) ──
+  // ── Meilenstein öffnen / anlegen — EINE Stelle: öffnen = die Detailseite (Aufgaben, Verlauf, Dateien, Notizen —
+  // WEG.meilenstein, 30.09.), anlegen = das Fenster (dort auch Bearbeiten/Verschieben/Löschen mit „Rückgängig“) ──
   const msFenster = useMeilensteinFenster(p, rueck, heute);
-  const oeffneMeilenstein = useCallback((id: string) => msFenster.oeffne(id), [msFenster]);
+  const router = useRouter();
+  const oeffneMeilenstein = useCallback((id: string) => router.push(WEG.meilenstein(id)), [router]);
   const vorgabe = (tag?: string) => ({
     faellig: tag ?? (planJahr === laufend ? heute : `${planJahr}-01-15`),
     space: spaceFilter === 'alle' ? 'business' as const : spaceFilter,
@@ -287,7 +290,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       {/* Ziele links, Meilensteine rechts — Priorität per Pfeil, Erledigtes unten, Einheiten im Business, Kaskade aus dem Jahr */}
       <ZieleMeilensteine horizont={horizont} farbe={farbe} spaceFilter={spaceFilter} onSpace={setSpaceFilter} zielM={zielM} i={kZM}
         planung={p} planJahr={planJahr} einheitFilter={einheitFilter} onEinheit={setEinheitFilter} rueckgaengig={rueck}
-        onMsOeffnen={istJahr ? oeffneMeilenstein : undefined} />
+        onMsOeffnen={istJahr ? msFenster.oeffne : undefined} />
       {msFenster.fenster}
       {rueck.hinweis}
 

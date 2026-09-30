@@ -172,23 +172,25 @@ export function vorschauArt(typ: string): 'bild' | 'pdf' | null {
 
 const txt = (v: unknown, n: number) => { const t = String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n); return t || undefined; };
 
-export interface AufgabenMeta { projektId?: string; aufgabeId?: string; bereich?: Bereich; notiz?: string }
+/** `listeId` (30.09.): Datei an einer Liste des Projekts — so hängen Dateien am Meilenstein (seine Liste, lib/planung/meilenstein-aufgaben.ts). */
+export interface AufgabenMeta { projektId?: string; aufgabeId?: string; listeId?: string; bereich?: Bereich; notiz?: string }
 /** Bezug + Bereich + Beschreibung aus dem Netz, gesäubert. Ob es Projekt/Aufgabe gibt, prüft der Server. */
 export function aufgabenMetaSaeubern(roh: unknown): AufgabenMeta {
   if (!roh || typeof roh !== 'object') return {};
   const o = roh as Record<string, unknown>;
-  const projektId = kennung(o.projektId), aufgabeId = kennung(o.aufgabeId), notiz = txt(o.notiz ?? o.beschreibung, 600);
-  return { ...(projektId ? { projektId } : {}), ...(aufgabeId ? { aufgabeId } : {}), ...(istBereich(o.bereich) ? { bereich: o.bereich } : {}), ...(notiz ? { notiz } : {}) };
+  const projektId = kennung(o.projektId), aufgabeId = kennung(o.aufgabeId), listeId = kennung(o.listeId), notiz = txt(o.notiz ?? o.beschreibung, 600);
+  return { ...(projektId ? { projektId } : {}), ...(aufgabeId ? { aufgabeId } : {}), ...(listeId && !aufgabeId ? { listeId } : {}), ...(istBereich(o.bereich) ? { bereich: o.bereich } : {}), ...(notiz ? { notiz } : {}) };
 }
 
-interface MitBezug { projektId?: string; aufgabeId?: string; hochgeladenAm: string }
+interface MitBezug { projektId?: string; aufgabeId?: string; listeId?: string; hochgeladenAm: string }
 /**
  * Einträge einer Aufgabe (nur ihre) bzw. eines Projekts (die des Projekts UND seiner Aufgaben). Neueste zuerst.
  * Ohne Projekt und ohne Aufgabe: nichts — es gibt keine „alle Dateien“-Sicht über Bereiche hinweg.
  */
-export function aufgabenDateienFuer<T extends MitBezug>(liste: readonly T[], f: { projektId?: string; aufgabeId?: string }): T[] {
+export function aufgabenDateienFuer<T extends MitBezug>(liste: readonly T[], f: { projektId?: string; aufgabeId?: string; listeId?: string }): T[] {
   if (!f.projektId && !f.aufgabeId) return [];
-  return liste.filter(e => (f.aufgabeId ? e.aufgabeId === f.aufgabeId : e.projektId === f.projektId))
+  // Mit `listeId` (30.09., Meilenstein): nur die Dateien an dieser Liste.
+  return liste.filter(e => (f.aufgabeId ? e.aufgabeId === f.aufgabeId : e.projektId === f.projektId && (!f.listeId || e.listeId === f.listeId)))
     .sort((a, b) => b.hochgeladenAm.localeCompare(a.hochgeladenAm));
 }
 

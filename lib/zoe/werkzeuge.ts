@@ -9,6 +9,9 @@
 // die Route.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { aufgabenVonMeilenstein, fortschrittAusAufgaben } from '@/lib/planung/meilenstein-aufgaben';
+import { zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
+import { ladeAufgaben } from '@/lib/aufgaben/speicher';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
@@ -184,7 +187,9 @@ async function setzeMeilenstein(input: Record<string, unknown>): Promise<string>
   const faellig = input.faellig != null && input.faellig !== '' ? planTag(input.faellig, localDay()) : undefined;
   if (faellig === null) return 'Fehlgeschlagen: faellig als Datum YYYY-MM-DD angeben (höchstens 10 Jahre voraus).';
   let ergebnis = '';
-  await updateJson<{ meilensteine: { titel: string; fortschritt: number; erledigt: boolean; erledigtAm?: string; faellig?: string; abgeleitetVon?: string; angepasst?: boolean }[] }>('meilensteine', current => {
+  // Fortschritt-Regel (30.09., lib/planung/meilenstein-aufgaben.ts): mit Aufgaben rechnet er sich aus ihnen — dann nicht von Hand.
+  const aufgaben = await ladeAufgaben();
+  await updateJson<{ meilensteine: { id: string; titel: string; fortschritt: number; erledigt: boolean; erledigtAm?: string; faellig?: string; abgeleitetVon?: string; angepasst?: boolean }[] }>('meilensteine', current => {
     const f = current ?? { meilensteine: [] };
     const m = (f.meilensteine ?? []).find(x => x.titel.toLowerCase().includes(suche));
     if (!m) {
@@ -198,11 +203,15 @@ async function setzeMeilenstein(input: Record<string, unknown>): Promise<string>
       if (m.abgeleitetVon) m.angepasst = true;
       teile.push(`auf ${faellig.slice(8)}.${faellig.slice(5, 7)}.${faellig.slice(0, 4)} verschoben`);
     }
+    const errechnet = m.id ? fortschrittAusAufgaben(aufgabenVonMeilenstein(aufgaben, m.id)) : null;
     if (erledigt) { m.erledigt = true; m.fortschritt = 100; m.erledigtAm = localDay(); teile.push('abgehakt ✓'); }
+    else if (fortschritt != null && errechnet !== null) teile.push(`nicht von Hand gesetzt — der Fortschritt rechnet sich aus seinen Aufgaben (${errechnet} %); Aufgaben abhaken oder den Meilenstein als erledigt setzen`);
     else if (fortschritt != null) { m.fortschritt = fortschritt; teile.push(`auf ${fortschritt}% gesetzt`); }
     ergebnis = teile.length ? `Meilenstein „${m.titel}" ${teile.join(' und ')}.` : `Nichts geändert — fortschritt, erledigt oder faellig angeben.`;
     return f;
   });
+  // Ziele mit Meilensteinen ziehen nach (Mittelwert, lib/planung/meilenstein-aufgaben-server.ts).
+  await zieleNachziehen();
   return `Erfasst: ${ergebnis}`;
 }
 
@@ -541,6 +550,15 @@ async function erfassePlanposten(input: Record<string, unknown>): Promise<string
  * Die Route hat eine eigene Dublettensperre — dieselbe Aufgabe zweimal
  * anzulegen ist also auch dann ausgeschlossen, wenn zwei Wege sie erzeugen.
  */
+/** Meilenstein aus einer Angabe (Kennung oder Teil des Titels, offene zuerst) — sonst undefined. */
+async function meilensteinAus(v: unknown): Promise<string | undefined> {
+  const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  if (!s) return undefined;
+  const l = (await loadJson<{ meilensteine?: { id: string; titel: string; erledigt?: boolean }[] }>('meilensteine'))?.meilensteine ?? [];
+  const m = l.find(x => x.id === v) ?? l.filter(x => !x.erledigt).find(x => x.titel.toLowerCase().includes(s)) ?? l.find(x => x.titel.toLowerCase().includes(s));
+  return m?.id;
+}
+
 async function erstelleAufgabe(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
   const title = String(input.title ?? '').trim().slice(0, 300);
   if (!title) return 'Fehlgeschlagen: title fehlt.';
@@ -556,7 +574,10 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     space: input.space === 'privat' || input.space === 'business' ? String(input.space) : undefined,
     // Einheit (27.09.): nur Business — Kerneinheit oder eigene; die Route säubert und verwirft sie bei Privat.
     einheit: typeof input.einheit === 'string' && input.einheit.trim() && input.space !== 'privat' ? input.einheit.trim().slice(0, 40) : undefined,
+    // Meilenstein (30.09.): Teil des Namens → die Aufgabe landet in seiner Liste (Space/Projekt/Liste vom Meilenstein).
+    meilensteinId: await meilensteinAus(input.meilenstein),
   };
+  if (input.meilenstein !== undefined && input.meilenstein !== '' && !body.meilensteinId) return `Fehlgeschlagen: kein Meilenstein passt zu „${String(input.meilenstein).slice(0, 80)}“.`;
   try {
     const r = await fetch(`${origin}/api/tasks/create`, {
       method: 'POST',
@@ -567,7 +588,7 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     const d = await r.json();
     if (!d.ok) return `Aufgabe nicht angelegt: ${String(d.error ?? '').slice(0, 160)}`;
     if (d.duplikat) return `Gab es schon: „${title}" steht bereits offen im Board — keine zweite angelegt.`;
-    return `Angelegt: „${title}"${body.priority !== 'medium' ? ` (${body.priority})` : ''}${body.dueDate ? `, fällig ${body.dueDate}` : ''}${body.einheit ? ` · ${body.einheit}` : ''}. Steht im Board.`;
+    return `Angelegt: „${title}"${body.priority !== 'medium' ? ` (${body.priority})` : ''}${body.dueDate ? `, fällig ${body.dueDate}` : ''}${body.einheit ? ` · ${body.einheit}` : ''}${body.meilensteinId ? ' · am Meilenstein' : ''}. Steht im Board.`;
   } catch (err) {
     return `Aufgabe nicht angelegt: ${err instanceof Error ? err.message.slice(0, 140) : 'Fehler'}`;
   }

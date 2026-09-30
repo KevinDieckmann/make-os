@@ -101,6 +101,11 @@ export const WEG = {
   event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => `${markttraktion('event', undefined, id)}${r ? `${id ? '&' : '?'}r=${r}` : ''}`,
   stammdaten: (tab?: string) => markttraktion('stammdaten', tab),
   jahr: () => '/os/planung/jahr',
+  /**
+   * Ein Meilenstein im Detail (30.09.): Aufgaben (echte Aufgaben mit Unteraufgaben), Verlauf, Dateien & Links, Notizen.
+   * `r` = Abschnitt, der geöffnet/angesprungen wird. Der Zeitstrahl und alle Listen verlinken nur hierüber.
+   */
+  meilenstein: (id: string, r?: 'aufgaben' | 'verlauf' | 'dateien' | 'notizen') => q(`/os/planung/meilenstein/${encodeURIComponent(id)}`, { r }),
   agenten: () => '/os/agenten',
   aufgabe: (id: string) => q('/os/aufgaben', { offen: id }),
   /**

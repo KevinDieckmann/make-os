@@ -1,6 +1,7 @@
 // ─── Aufgaben · Dateien an Projekten und Aufgaben (28.09., Paket C2) ─────────
 // GET    ?projektId=…            → Einträge des Projekts und seiner Aufgaben (nur Metadaten, ETag/304)
 // GET    ?aufgabeId=…            → Einträge der Aufgabe
+// GET    ?projektId=…&listeId=…  → Einträge an einer Liste (30.09., Dateien am Meilenstein)
 // GET    ?id=d-…                 → Datei herunterladen (attachment, nosniff, CSP-Sandbox)
 // POST   multipart: `datei` (PDF, PNG, JPG, WEBP, HEIC, DOCX, XLSX, PPTX, CSV, TXT, MD; ≤ 25 MB) + `meta` (JSON
 //        { projektId, aufgabeId?, bereich, notiz? })                         → Eintrag
@@ -67,10 +68,10 @@ export async function GET(req: Request) {
         },
       });
     }
-    const projektId = q.get('projektId') ?? undefined, aufgabeId = q.get('aufgabeId') ?? undefined;
-    if ((projektId && !AUFGABEN_KENNUNG.test(projektId)) || (aufgabeId && !AUFGABEN_KENNUNG.test(aufgabeId))) return fehler('Unzulässige Kennung.', 400);
+    const projektId = q.get('projektId') ?? undefined, aufgabeId = q.get('aufgabeId') ?? undefined, listeId = q.get('listeId') ?? undefined;
+    if ((projektId && !AUFGABEN_KENNUNG.test(projektId)) || (aufgabeId && !AUFGABEN_KENNUNG.test(aufgabeId)) || (listeId && !AUFGABEN_KENNUNG.test(listeId))) return fehler('Unzulässige Kennung.', 400);
     if (!projektId && !aufgabeId) return fehler('projektId oder aufgabeId fehlt.', 400);
-    const eintraege = aufgabenDateienFuer(await aufgabenDateienListe(z.haushalt), { projektId, aufgabeId });
+    const eintraege = aufgabenDateienFuer(await aufgabenDateienListe(z.haushalt), { projektId, aufgabeId, listeId });
     const etag = `"${createHash('sha256').update(JSON.stringify(eintraege)).digest('base64url').slice(0, 27)}"`;
     const kopf = { 'Cache-Control': 'no-store, private', ETag: etag };
     if (req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: kopf });

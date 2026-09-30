@@ -22,6 +22,8 @@ import { fokusFuerLaufendesJahr, fokusSchreibSchluessel, istJahrFokusSchluessel 
 import { mitMandatBezug } from '@/lib/planung/mandat';
 import { mandateFuerBezug } from '@/lib/planung/mandat-server';
 import { localDay } from '@/lib/zeit';
+import { meilensteinStrukturSichern, meilensteinListenArchivieren, zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -146,7 +148,20 @@ export async function PATCH(req: Request) {
 
   // Termin-Ziele des geteilten Bestands werden Meilensteine (der Meilenstein-Bestand ist gemeinsam).
   if (h === 'jahr' && sp.fuer === 'wir') {
-    await updateJson<{ meilensteine: Meilenstein[] }>('meilensteine', cur => ({ ...(cur ?? {}), meilensteine: meilensteineAbleiten(next.jahr, Array.isArray(cur?.meilensteine) ? cur!.meilensteine : []) }));
+    let vorher: string[] = [];
+    const ms = await updateJson<{ meilensteine: Meilenstein[] }>('meilensteine', cur => { vorher = (cur?.meilensteine ?? []).map(m => m.id); return { ...(cur ?? {}), meilensteine: meilensteineAbleiten(next.jahr, Array.isArray(cur?.meilensteine) ? cur!.meilensteine : []) }; });
+    // Meilenstein ↔ Aufgaben (30.09.): abgeleitete Meilensteine bekommen ihre Aufgaben-Liste wie alle anderen; fällt einer
+    // mit seinem Ziel weg, wird seine Liste archiviert (Aufgaben bleiben).
+    const jetzt = new Set((ms.meilensteine ?? []).map(m => m.id));
+    const abgeleitet = (ms.meilensteine ?? []).filter(m => m.abgeleitetVon).map(m => m.id);
+    if (abgeleitet.length) await meilensteinStrukturSichern(abgeleitet, { person: personStreng(req) });
+    const weg = vorher.filter(id => !jetzt.has(id));
+    if (weg.length) await meilensteinListenArchivieren(weg, { person: personStreng(req) });
+  }
+  // Ziel-Fortschritt aus Meilensteinen (30.09.): hat ein Ziel Meilensteine, gilt ihr Mittelwert (auch nach einer Änderung von Hand).
+  if (sp.fuer === 'wir' && await zieleNachziehen()) {
+    const f = datei(await loadJson<ZieleDatei>(sp.name));
+    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, ...mitStaenden(f) });
   }
   return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, ...mitStaenden(next) });
 }

@@ -14,6 +14,10 @@ import type { Meilenstein } from '@/lib/planung/typen';
 import { sauberMeilensteine, meilensteinSpace } from '@/lib/planung/meilensteine';
 import { mitMandatBezug, type MandatKurz } from '@/lib/planung/mandat';
 import { mandateFuerBezug } from '@/lib/planung/mandat-server';
+import { fortschrittAnwenden } from '@/lib/planung/meilenstein-aufgaben';
+import { meilensteinStrukturSichern, meilensteinListenArchivieren, zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
+import { ladeAufgaben } from '@/lib/aufgaben/speicher';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,6 +61,8 @@ export async function PUT(req: Request) {
       { status: 409 },
     );
   }
+  // Meilenstein ↔ Aufgaben (30.09.): jeder Meilenstein hat seine Liste im Aufgaben-Bestand (idempotent).
+  await meilensteinStrukturSichern(null, { person: personStreng(req) });
   return NextResponse.json({ ok: true, meilensteine: next.meilensteine });
 }
 
@@ -71,7 +77,11 @@ export async function PATCH(req: Request) {
   const mandate = await mandateFuerBezug(body.ops);
   const ops = opsLesen<Meilenstein>(body.ops, e => sauberListe([e], mandate)[0] ?? null, 160);
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, 160) }, { status: Array.isArray(body.ops) ? 413 : 400 });
+  // Fortschritt-Regel (30.09., lib/planung/meilenstein-aufgaben.ts): hat ein Meilenstein Aufgaben, gilt der errechnete
+  // Wert — ein mitgeschickter Wert von Hand wird in derselben Sperre überschrieben.
+  const aufgaben = await ladeAufgaben();
   const r = await listePatchen<Meilenstein, MeilensteinFile & Record<string, unknown>>('meilensteine', 'meilensteine', ops, 6, undefined, {
+    danach: f => ({ ...f, meilensteine: fortschrittAnwenden(Array.isArray(f.meilensteine) ? f.meilensteine : [], aufgaben).liste }),
     pruefen: (liste, o) => {
       const ids = new Set(liste.map(m => m.id));
       const neu = new Set(o.filter(x => x.op === 'upsert' && !ids.has(x.eintrag!.id)).map(x => x.eintrag!.id)).size;
@@ -83,5 +93,14 @@ export async function PATCH(req: Request) {
     const status = r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.konflikte?.length || r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
     return NextResponse.json({ ok: false, error: r.fehler, konflikte: r.konflikte ?? [], meilensteine: mitStand(Array.isArray(aktuell?.meilensteine) ? aktuell!.meilensteine : []) }, { status });
   }
+  // Meilenstein ↔ Aufgaben (30.09.): neue/geänderte bekommen ihre Liste (Space, Titel, Reihenfolge nachgezogen), gelöschte
+  // archivieren ihre Liste (Aufgaben bleiben; kommt der Meilenstein zurück, wird sie wieder aktiv). Ziele ziehen nach.
+  const person = personStreng(req);
+  const lebend = new Set((r.next?.meilensteine ?? []).map(m => m.id));
+  const upserts = ops.filter(o => o.op === 'upsert').map(o => o.eintrag!.id).filter(id => lebend.has(id));
+  const weg = ops.filter(o => o.op === 'delete').map(o => o.id!).filter(id => !lebend.has(id));
+  if (upserts.length) await meilensteinStrukturSichern(upserts, { person });
+  if (weg.length) await meilensteinListenArchivieren(weg, { person });
+  await zieleNachziehen(r.next?.meilensteine ?? []);
   return NextResponse.json({ ok: true, angewandt: r.angewandt, meilensteine: mitStand(r.next?.meilensteine ?? []) });
 }

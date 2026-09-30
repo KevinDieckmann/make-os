@@ -130,6 +130,11 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
     laufenden Jahres steht wie bisher unter `jahr`/`privat:jahr`/`business:jahr` (die neue Version schreibt ihn doppelt).
     Wird der Fokus im alten Stand geändert und danach wieder die neue Version eingespielt, gilt der zuletzt in der NEUEN
     Version gespeicherte Satz (`…jahr:<Jahr>`) — dann einmal auf der Jahresseite prüfen.
+- **Meilensteine im Detail (30.09.):** Projekt „Meilensteine“ und die Listen `lm-…` bleiben (af4679a kennt Projekte/Listen), die
+  Aufgaben darin auch — nur die Detailseite, der Verlauf/die Notizen/Links (`meilenstein-raum--<haushalt>`, af4679a liest ihn nie
+  und schreibt ihn nie) und die Rechenregel fehlen; der Fortschritt bleibt auf dem zuletzt errechneten Wert stehen (dann wieder von
+  Hand). `zielId` am Meilenstein fällt beim nächsten Speichern eines Meilensteins weg. Dateien an der Liste (`listeId`) erscheinen
+  als Dateien des Projekts „Meilensteine“. Nach einem erneuten Upload stimmt alles wieder (Verweise nur per Kennung).
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

@@ -40,6 +40,8 @@ import { anlegerinVon } from '@/lib/aufgaben/zustaendig';
 import { useHandlung, NachElternFrist } from './Handlung';
 import { DatumFeld, UhrzeitFeld } from './DatumFeld';
 import { NurIchZeichen, titelStil, AbgebrochenSchild } from './Zeichen';
+import { BeitragsVerlauf } from '../austausch/BeitragsVerlauf';
+import { MeilensteinVerweis } from '../planung/MeilensteinVerweis';
 
 const PRIO: WahlEintrag<Priority>[] = [
   { id: 'critical', label: 'Kritisch', punkt: LEUCHT.kritisch }, { id: 'high', label: 'Hoch', punkt: LEUCHT.achtung },
@@ -112,6 +114,8 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
         {eltern && <><span aria-hidden>›</span><button onClick={() => onOeffnen(eltern.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>{eltern.title}</button></>}
         <button onClick={onSchliessen} aria-label="Schließen" className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px' }}>×</button>
       </div>
+      {/* Meilenstein (30.09.): liegt die Aufgabe in der Liste eines Meilensteins, führt der Link dorthin. */}
+      <div style={{ marginTop: -4, marginBottom: 6 }}><MeilensteinVerweis listeId={t.listeId} /></div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
         <div style={{ paddingTop: 8 }}><Haken an={t.status === 'done'} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} /></div>
         <textarea value={titel} onChange={e => setTitel(e.target.value)} rows={1} aria-label="Titel"
@@ -318,51 +322,19 @@ function CrmVerknuepfung({ task: t, aendern }: { task: Task; aendern: (teil: Par
   );
 }
 
-// ── Kommentare mit @-Erwähnung ──────────────────────────────────────────────
+// ── Kommentare mit @-Erwähnung (seit 30.09. über das gemeinsame Bauteil components/os/austausch/BeitragsVerlauf) ──
 function Kommentare({ task: t, ich, personen, aendern }: { task: Task; ich: string; personen: readonly Person[]; aendern: (teil: Partial<Task>) => void }) {
-  const [text, setText] = useState('');
   const liste = t.kommentare ?? [];
-  // Angefangenes @-Wort am Ende → Vorschläge zum Antippen.
-  const angefangen = /(^|\s)@([\p{L}\p{N}_-]*)$/u.exec(text)?.[2]?.toLocaleLowerCase('de-DE');
-  const vorschlaege = angefangen !== undefined ? personen.filter(p => p.speicher !== ich && p.namen.some(n => n.toLocaleLowerCase('de-DE').startsWith(angefangen))) : [];
-  const senden = () => {
-    const v = text.trim();
-    if (!v || !ich) return;
-    const k: AufgabeKommentar = { id: neueKennung('k'), von: ich, text: v, am: new Date().toISOString(), erwaehnt: erwaehnungen(v, personen) };
-    if (!k.erwaehnt?.length) delete k.erwaehnt;
-    aendern({ kommentare: [...liste, k] });
-    setText('');
-  };
-  const name = (s: string) => personen.find(p => p.speicher === s)?.name ?? s;
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ ...mikro, marginBottom: 6 }}>Kommentare{liste.filter(k => !k.entfernt).length ? ` · ${liste.filter(k => !k.entfernt).length}` : ''}</div>
-      {liste.map(k => (
-        <div key={k.id} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 12, color: C.inkLeise }}>
-            <b style={{ color: C.inkDim, fontWeight: 600 }}>{name(k.von)}</b><span>{zeit(k.am)}</span>
-            {/* Weich entfernen (29.09., #76): der Kommentar bleibt gespeichert, angezeigt wird „Kommentar entfernt“. */}
-            {k.von === ich && !k.entfernt && <button onClick={() => aendern({ kommentare: liste.map(x => (x.id === k.id ? { ...x, entfernt: { am: new Date().toISOString(), von: ich } } : x)) })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, fontFamily: SCHRIFT.text }}>entfernen</button>}
-          </div>
-          {k.entfernt ? <div style={{ fontSize: TYP.bedien, color: C.inkLeise, fontStyle: 'italic', marginTop: 3 }}>Kommentar entfernt</div> : <div style={{ fontSize: TYP.bedien, color: C.ink, whiteSpace: 'pre-wrap', marginTop: 3, lineHeight: 1.5 }}>
-            {k.text.split(/(@[\p{L}\p{N}_-]+)/u).map((s, n) => (s.startsWith('@') && erwaehnungen(s, personen).length ? <b key={n} style={{ color: C.aktiv, fontWeight: 600 }}>{s}</b> : <span key={n}>{s}</span>))}
-          </div>}
-        </div>
-      ))}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginTop: 8 }}>
-        <textarea value={text} onChange={e => setText(e.target.value)} rows={2} aria-label="Kommentar"
-          onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); senden(); } }}
-          placeholder="Kommentar … @ erwähnt jemanden (⌘ + Enter sendet)" style={{ ...feld, fontSize: TYP.bedien, resize: 'vertical', flex: 1, minWidth: 0, width: 'auto', padding: '8px 12px' }} />
-        <Knopf onClick={senden} aus={!text.trim() || !ich}>Senden</Knopf>
-      </div>
-      {vorschlaege.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          {vorschlaege.map(p => (
-            <button key={p.speicher} onClick={() => setText(x => x.replace(/@([\p{L}\p{N}_-]*)$/u, `@${p.name} `))} className="fassbar"
-              style={{ border: `1px solid ${C.aktiv}66`, background: `${C.aktiv}14`, color: C.aktiv, borderRadius: 999, padding: '3px 10px', fontSize: 12.5, cursor: 'pointer', fontFamily: SCHRIFT.text }}>@{p.name}</button>
-          ))}
-        </div>
-      )}
+      <BeitragsVerlauf liste={liste} ich={ich} personen={personen}
+        onSenden={v => {
+          const k: AufgabeKommentar = { id: neueKennung('k'), von: ich, text: v, am: new Date().toISOString(), erwaehnt: erwaehnungen(v, personen) };
+          if (!k.erwaehnt?.length) delete k.erwaehnt;
+          aendern({ kommentare: [...liste, k] });
+        }}
+        // Weich entfernen (29.09., #76): der Kommentar bleibt gespeichert, angezeigt wird „Kommentar entfernt“.
+        onEntfernen={id => aendern({ kommentare: liste.map(x => (x.id === id ? { ...x, entfernt: { am: new Date().toISOString(), von: ich } } : x)) })} />
     </div>
   );
 }

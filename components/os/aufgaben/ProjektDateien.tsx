@@ -33,7 +33,8 @@ function vorpruefen(f: File): string | null {
   return null;
 }
 
-export function ProjektDateien({ projektId, aufgabeId, space }: { projektId: string; aufgabeId?: string; space: 'privat' | 'business' }) {
+/** `listeId` (30.09.): nur die Dateien an dieser Liste des Projekts — so zeigt der Meilenstein seine Dateien. */
+export function ProjektDateien({ projektId, aufgabeId, listeId, space }: { projektId: string; aufgabeId?: string; listeId?: string; space: 'privat' | 'business' }) {
   const { rehydrate } = useTasks();
   const [eintraege, setEintraege] = useState<Eintrag[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export function ProjektDateien({ projektId, aufgabeId, space }: { projektId: str
   const [bild, setBild] = useState<{ url: string; name: string } | null>(null);
   const etag = useRef<string | null>(null);
   const waehler = useRef<HTMLInputElement>(null);
-  const abfrage = aufgabeId ? `aufgabeId=${encodeURIComponent(aufgabeId)}` : `projektId=${encodeURIComponent(projektId)}`;
+  const abfrage = aufgabeId ? `aufgabeId=${encodeURIComponent(aufgabeId)}` : `projektId=${encodeURIComponent(projektId)}${listeId ? `&listeId=${encodeURIComponent(listeId)}` : ''}`;
 
   const laden = useCallback(async (frisch = false) => {
     try {
@@ -81,7 +82,7 @@ export function ProjektDateien({ projektId, aufgabeId, space }: { projektId: str
         const form = new FormData();
         form.append('datei', f, f.name);
         // An einer Aufgabe bestimmt der Server das Projekt aus der Aufgabe (auch „Sonstige“) — nur der Bereich geht zur Prüfung mit.
-        form.append('meta', JSON.stringify({ ...(aufgabeId ? { aufgabeId } : { projektId }), bereich: space }));
+        form.append('meta', JSON.stringify({ ...(aufgabeId ? { aufgabeId } : { projektId, ...(listeId ? { listeId } : {}) }), bereich: space }));
         const r = await fetch(WEG, { method: 'POST', body: form });
         const d = await r.json().catch(() => ({ ok: false, fehler: `Hochladen fehlgeschlagen (${r.status}).` }));
         if (!r.ok || !d.ok) probleme.push(`„${f.name}“: ${d.fehler ?? 'nicht gespeichert.'}`); else gut++;

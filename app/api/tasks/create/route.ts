@@ -23,6 +23,11 @@ import { sichtFuer } from '@/lib/aufgaben/sicht';
 import type { Task, TaskStatus } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 
+import { loadJson } from '@/lib/store/local-db';
+import type { Meilenstein } from '@/lib/planung/typen';
+import { meilensteinAufgabenSpace, meilensteinListeId, meilensteinProjektId } from '@/lib/planung/meilenstein-aufgaben';
+import { meilensteinStrukturSichern } from '@/lib/planung/meilenstein-aufgaben-server';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +38,8 @@ interface NewTask {
   spaceId?: string; listeId?: string; parentId?: string; bezug?: unknown; startDate?: string;
   /** Seit 29.09.: Beteiligte (Speichernamen) und „nur ich“. */
   beteiligte?: unknown; sichtbarkeit?: string;
+  /** Seit 30.09.: Aufgabe am Meilenstein — landet in seiner Liste (Space/Projekt/Liste aus lib/planung/meilenstein-aufgaben.ts). */
+  meilensteinId?: string;
 }
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 /** Grenzen wie im Schreibweg (lib/aufgaben/saeubern.ts) — darüber 413 statt still zu kürzen. */
@@ -65,6 +72,14 @@ export async function POST(req: Request) {
   if (!owner && !zugang.person) return NextResponse.json({ ok: false, error: 'owner fehlt (Systemlauf ohne Person).' }, { status: 400 });
   const assignee: Owner = owner ?? (zugang.person as Owner);
 
+  // Aufgabe am Meilenstein (30.09.): seine Liste sichern (idempotent) und dort anlegen — Space/Projekt/Liste kommen von ihm.
+  if (body.meilensteinId !== undefined) {
+    const ms = typeof body.meilensteinId === 'string' ? ((await loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'))?.meilensteine ?? []).find(m => m.id === body.meilensteinId) : undefined;
+    if (!ms) return NextResponse.json({ ok: false, error: 'Diesen Meilenstein gibt es nicht (mehr).' }, { status: 404 });
+    await meilensteinStrukturSichern([ms.id], { person: zugang.person });
+    const sp = meilensteinAufgabenSpace(ms);
+    body.spaceId = sp; body.projectId = meilensteinProjektId(sp); body.listeId = meilensteinListeId(ms.id);
+  }
   const wer = werAus(req);
   let ergebnis: { id: string; duplikat?: boolean } = { id: '' };
   // Über den EINEN Schreibweg (29.09., Paket T1): Server-Felder (Anlegerin, Zeitstempel), eine Verantwortliche („both“ →

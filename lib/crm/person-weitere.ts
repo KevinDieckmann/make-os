@@ -246,6 +246,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'agent-log', muster: /^agent-log$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'client-fehler', muster: /^client-fehler$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'meldungen--*', muster: /^meldungen--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  // Austausch am Meilenstein (30.09.): Nachrichten, Notiz, Link-Titel können Dritte nennen — getilgt, der Raum bleibt.
+  { name: 'meilenstein-raum--*', muster: /^meilenstein-raum--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'absichten--*', muster: /^absichten--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: absichtenTilgen },
   // Terminbuchungen (29.09., K4): die Buchungen der Person fallen weg (Name, Adresse, Kontakt-Kennung); Seiten bleiben.
   { name: 'buchung--*', muster: /^buchung--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('buchungen') },

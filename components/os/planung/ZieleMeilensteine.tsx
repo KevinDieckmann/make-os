@@ -39,6 +39,10 @@ import { usePlanung, type PlanungStand } from './usePlanung';
 import { MandatWahl, useMandate } from '../zeit/MandatWahl';
 import type { MandatKurz } from '@/lib/planung/mandat';
 import { neueKennung } from '@/lib/kennung';
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
+import { useTasks } from '@/context/TasksContext';
+import { aufgabenVonMeilenstein, aufgabenStand, wirksamerFortschritt, fortschrittErrechnet, meilensteineVonZiel } from '@/lib/planung/meilenstein-aufgaben';
 
 type SpaceFilter = SpaceId | 'alle';
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
@@ -88,6 +92,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const zeitLabel = horizont === 'jahr' ? String(planJahr) : p.zr.label;
   // Der jüngste Stand für „Rückgängig“ (das Zurückholen läuft später, nach anderen Änderungen).
   const stand = useRef(p); stand.current = p;
+  // Meilenstein ↔ Aufgaben (30.09.): Fortschritt aus den Aufgaben, sobald es welche gibt; Ziel aus seinen Meilensteinen.
+  const { state: tasksState } = useTasks();
   const { space: aktiverSpace, ausAdresse: spaceAusAdresse, setzen: spaceSetzen } = useSpace();
   const [spaceEigen, setSpaceEigen] = useState<SpaceFilter>('alle');
   useEffect(() => { if (!spaceProp) setSpaceEigen(spaceAusAdresse ?? aktiverSpace); }, [spaceProp, spaceAusAdresse, aktiverSpace]);
@@ -207,6 +213,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
 
   // ── Zeilen ──
   const zielZeile = (z: Ziel, pos: number, n: number) => {
+    const zMs = meilensteineVonZiel(z.id, p.ms);
     const v = z.erledigt ? 100 : z.fortschritt;
     const f = z.space ? SPACE_FARBE[z.space] : farbe;
     return (
@@ -219,6 +226,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
           spaceFilter === 'alle' && z.space ? <span style={{ color: SPACE_FARBE[z.space] }}>{SPACE_LABEL[z.space]}</span> : null,
           z.termin ? `bis ${dtKurz(z.termin)}` : null,
           horizont === 'jahr' && z.zielwert ? `Ziel ${z.zielwert}` : null,
+          zMs.length ? <span title={zMs.map(x => x.titel).join(' · ')}>{zMs.length === 1 ? <Link href={WEG.meilenstein(zMs[0].id)} style={{ color: 'inherit' }}>1 Meilenstein</Link> : `${zMs.length} Meilensteine`}</span> : null,
           herkunft(z, 'Jahresziel'),
           z.erledigt && z.erledigtAm ? `erledigt ${dtKurz(z.erledigtAm)}` : null,
         ])}
@@ -230,7 +238,9 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             )}
             {!z.erledigt && (
               <>
-                <input type="range" min={0} max={100} step={5} value={v} aria-label="Fortschritt" onChange={e => zPatch(z.id, { fortschritt: Number(e.target.value) })} style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', accentColor: col(v) }} />
+                {zMs.length
+                  ? <span title="Aus den Meilensteinen dieses Ziels" style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', height: 5, borderRadius: 4, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${v}%`, background: col(v) }} /></span>
+                  : <input type="range" min={0} max={100} step={5} value={v} aria-label="Fortschritt" onChange={e => zPatch(z.id, { fortschritt: Number(e.target.value) })} style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', accentColor: col(v) }} />}
                 <span style={{ ...prozent, color: col(v) }}>{v} %</span>
                 <PfeilRang label={z.titel} obenAus={pos === 0} untenAus={pos === n - 1} onAuf={() => zBewegen(z.id, 'auf')} onAb={() => zBewegen(z.id, 'ab')} />
                 <button onClick={() => setBearbeite({ id: z.id, text: z.titel })} aria-label="Ziel umbenennen" title="umbenennen" style={loeschen}>✎</button>
@@ -249,11 +259,14 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const bf = sp === 'privat' ? LEUCHT.gut : LEUCHT.business;
     const spaet = !!m.faellig && m.faellig < heute && !m.erledigt;
     const wann = m.faellig ? dtKurz(m.faellig) : (m.zeitfenster ?? '');
+    const mv = wirksamerFortschritt(m, tasksState);
+    const ausAufgaben = fortschrittErrechnet(m.id, tasksState);
+    const ms = aufgabenStand(aufgabenVonMeilenstein(tasksState, m.id));
     return (
       <div key={m.id} id={`ziel-${m.id}`} style={zielRahmen(zielM === m.id, bf)}>
         <Zeile
           links={<Haken an={m.erledigt} farbe={bf} onChange={() => mErledigen(m)} />}
-          titel={bearbeite?.id === m.id ? titelFeld(m.id, t => mPatch(m.id, { titel: t }, true)) : <span style={{ color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none' }}>{m.titel}</span>}
+          titel={bearbeite?.id === m.id ? titelFeld(m.id, t => mPatch(m.id, { titel: t }, true)) : <Link href={WEG.meilenstein(m.id)} title="Meilenstein öffnen — Aufgaben, Verlauf, Dateien, Notizen" style={{ color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none' }}>{m.titel}</Link>}
           unter={unterZeile([
             wann ? (onMsOeffnen && !m.erledigt
               ? <button onClick={() => onMsOeffnen(m.id)} title="Datum ändern" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', color: spaet ? LEUCHT.kritisch : 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{spaet ? 'überfällig ' : ''}{wann}</button>
@@ -262,6 +275,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             einheitChip({ einheit: m.einheit, space: sp }),
             mandatChip(m, sp === 'business', x => mPatch(m.id, mandatFelder(x), true)),
             spaceFilter === 'alle' && (kompakt || m.erledigt) ? <span style={{ color: bf }}>{SPACE_LABEL[sp]}</span> : null,
+            ms.gesamt ? <Link href={WEG.meilenstein(m.id)} style={{ color: 'inherit' }}>{ms.erledigt}/{ms.gesamt} Aufgaben</Link> : null,
             m.messlatte ? `Messlatte: ${m.messlatte}` : null,
             herkunft(m, 'Jahresziel'),
             m.erledigt && m.erledigtAm ? `erledigt ${dtKurz(m.erledigtAm)}` : null,
@@ -274,8 +288,10 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               )}
               {!m.erledigt && (
                 <>
-                  <input type="range" min={0} max={100} step={5} value={m.fortschritt} aria-label="Fortschritt" onChange={e => mPatch(m.id, { fortschritt: Number(e.target.value) })} style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', accentColor: col(m.fortschritt) }} />
-                  <span style={{ ...prozent, color: col(m.fortschritt) }}>{m.fortschritt} %</span>
+                  {ausAufgaben
+                    ? <span title="Aus den Aufgaben des Meilensteins" style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', height: 5, borderRadius: 4, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${mv}%`, background: col(mv) }} /></span>
+                    : <input type="range" min={0} max={100} step={5} value={m.fortschritt} aria-label="Fortschritt" onChange={e => mPatch(m.id, { fortschritt: Number(e.target.value) })} style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', accentColor: col(m.fortschritt) }} />}
+                  <span style={{ ...prozent, color: col(mv) }}>{mv} %</span>
                   <PfeilRang label={m.titel} obenAus={pos === 0} untenAus={pos === n - 1} onAuf={() => mBewegen(m.id, 'auf')} onAb={() => mBewegen(m.id, 'ab')} />
                   {onMsOeffnen
                     ? <button onClick={() => onMsOeffnen(m.id)} aria-label={`„${m.titel}“ bearbeiten`} title="bearbeiten, verschieben" style={loeschen}>✎</button>

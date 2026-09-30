@@ -33,7 +33,7 @@ export const aufgabenAblageName = (haushalt: string) => {
 };
 
 /** Ein Eintrag der Aufgaben-Ablage: immer mit Projekt, Bereich und Datei. */
-export type AufgabenDatei = DateiEintrag & { projektId: string; bereich: Bereich; datei: NonNullable<DateiEintrag['datei']> };
+export type AufgabenDatei = DateiEintrag & { projektId: string; bereich: Bereich; datei: NonNullable<DateiEintrag['datei']>; /** Liste des Projekts (30.09., Dateien am Meilenstein). */ listeId?: string };
 interface AblageDatei { eintraege: AufgabenDatei[] }
 
 /** Alle Einträge des Haushalts (nur Metadaten). */
@@ -99,11 +99,16 @@ export interface NeueAufgabenDatei { bytes: Buffer; name: string; typ: AufgabenD
 export async function aufgabenDateiAblegen(haushalt: string, person: string, metaRoh: unknown, datei: NeueAufgabenDatei, jetzt = new Date().toISOString()): Promise<AufgabenDatei> {
   const meta = aufgabenMetaSaeubern(metaRoh);
   const bezug = await bezugAufloesen(meta.projektId, meta.aufgabeId, person);
+  // Datei an einer Liste (30.09.): die Liste muss im Projekt liegen.
+  if (meta.listeId && !bezug.aufgabeId) {
+    const st = await ladeAufgabenSicht(person);
+    if (!(st.listen ?? []).some(l => l.id === meta.listeId && l.projektId === bezug.projektId)) throw new AblageFehler('Diese Liste gibt es in dem Projekt nicht (mehr).', 404);
+  }
   if (meta.bereich && meta.bereich !== bezug.bereich) throw new AblageFehler(`Das Projekt liegt im Bereich ${bezug.bereich === 'privat' ? 'Privat' : 'Business'} — Privat und Business bleiben getrennt.`, 409);
   const id = neueDateiId();
   const verschluesselt = await inhaltAblegen(haushalt, id, datei.bytes);
   const eintrag: AufgabenDatei = {
-    id, art: 'sonstig', projektId: bezug.projektId, ...(bezug.aufgabeId ? { aufgabeId: bezug.aufgabeId } : {}), bereich: bezug.bereich,
+    id, art: 'sonstig', projektId: bezug.projektId, ...(bezug.aufgabeId ? { aufgabeId: bezug.aufgabeId } : meta.listeId ? { listeId: meta.listeId } : {}), bereich: bezug.bereich,
     datei: { name: datei.name, typ: datei.typ, groesse: datei.bytes.length, verschluesselt },
     ...(meta.notiz ? { notiz: meta.notiz } : {}), hochgeladenAm: jetzt, hochgeladenVon: person,
   };

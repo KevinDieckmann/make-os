@@ -4,6 +4,49 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Meilensteine im Detail: Aufgaben, Verlauf, Dateien & Links, Notizen (30.09.2026, nur lokal)
+
+Kevin: „Wenn wir neue Meilensteine aufmachen, müssen darin neue Untertasks erstellt werden, wir müssen dort Informationen teilen
+können … ein Chat mit Kommentarfunktion für mich und Malin … das muss sauber in die Struktur genommen werden.“
+
+- **Detailseite** `/os/planung/meilenstein/<id>` (nur über `WEG.meilenstein(id, r)`): Kopf mit Titel, Bereich/Firma, Datum, Ziel,
+  Messlatte, Abhaken, Fortschritt; „bearbeiten“ öffnet das Meilenstein-Fenster des Zeitstrahls (Verschieben, Löschen mit
+  „Rückgängig“ — kein zweites Formular). Reiter **Aufgaben · Verlauf · Dateien & Links · Notizen** (`?r=`), am Handy eine Spalte.
+  Geöffnet wird sie über den Titel in Ziele & Planung, den Marker im Zeitstrahl (`oeffneMeilenstein`), „gehört zu Meilenstein …“
+  an jeder Aufgabe und die Glocke.
+- **Echte Aufgaben am Meilenstein:** Jeder Meilenstein hat automatisch eine **Liste** im Aufgaben-Bereich seiner Firma/Einheit:
+  Space (Privat · Selbstständigkeit · KD Ventures · Gesellschaft `ug` · Mandant `m-<firma>` bei Mandat, sonst KD Ventures) →
+  Projekt **„Meilensteine“** → Liste „<Titel>“ → Aufgabe → Unteraufgabe. Die Liste entsteht im Schreibweg des Meilensteins
+  (auch Zeitstrahl-Schnellanlage und Kaskade), spätestens beim Öffnen. Die Aufgaben sind ganz normale Aufgaben (Heute, Kalender,
+  Glocke, Aufgaben-Seite, Serien, Dateien, Kommentare …). Titel/Datum/Bereich ändern → die Liste zieht mit (auch mit ihren Aufgaben
+  in einen anderen Space). Meilenstein gelöscht → Liste archiviert, Aufgaben bleiben; „Rückgängig“ holt Meilenstein + Liste zurück.
+- **Fortschritt (eine Regel):** sobald ein Meilenstein Aufgaben hat, rechnet er sich aus ihnen (jede Hauptaufgabe zählt 1,
+  sonst Anteil erledigter Unteraufgaben; „abgebrochen“, Papierkorb, Archiv zählen nicht) — sonst von Hand. Ziele mit
+  Meilensteinen (`zielId`, bzw. aus der Kaskade) stehen auf dem Mittelwert ihrer Meilensteine. Der Server schreibt beides nach
+  jedem Aufgaben-/Meilenstein-Schreiben nach (Brain, Risiko, Business-/Gesundheits-Index lesen es unverändert).
+- **Verlauf (Chat):** Nachrichten, Antworten, eigene bearbeiten/entfernen (weich), @Erwähnung → Glocke („… hat dich am Meilenstein
+  „X“ erwähnt“, Link in den Verlauf), Antwort → Glocke bei der Verfasserin. Fremde Nachrichten sind unveränderlich. Dasselbe
+  Bauteil wie die Kommentare der Aufgaben (`components/os/austausch/BeitragsVerlauf.tsx`).
+- **Dateien & Links:** Dateien in der verschlüsselten Aufgaben-Ablage an der Liste des Meilensteins (`listeId`), Links nur http(s).
+  **Notizen:** Ziel · Hintergrund · Entscheidungen, beide bearbeiten, veralteter Stand → 409, kurzer Verlauf (wer/wann, nie Text).
+- **ZOE:** `create_task` nimmt `meilenstein` (Aufgabe landet in seiner Liste), `setze_meilenstein` setzt keinen Fortschritt von
+  Hand, wenn es Aufgaben gibt. Der Knopf „ZOE: zusammenfassen / nächste Schritte“ ist **noch nicht gebaut** (offen).
+- **Tests:** `tests/meilenstein-aufgaben.test.ts` (Fortschritt, Liste je Space/Mandat, Verweis nur per Kennung, Ziel-Mittelwert,
+  Verlauf/Erwähnung/Rechte/413/409, Links, Rückweg-Verträglichkeit, Register, Routen).
+- **Rückweg:** GO_LIVE_CHECKLISTE.md › Rückweg.
+
+**Prüfliste nach dem Upload:**
+1. Ziele & Planung › Jahr: Meilenstein anlegen → Titel anklicken → Detailseite; Aufgaben › Space der Firma zeigt Projekt
+   „Meilensteine“ mit der Liste.
+2. Im Detail drei Aufgaben anlegen, eine mit zwei Unteraufgaben; eine Unteraufgabe und eine Aufgabe abhaken → Fortschritt 50 %,
+   derselbe Wert in der Liste unter Ziele & Planung (dort ohne Schieberegler).
+3. Aufgabe öffnen → „gehört zu Meilenstein …“ führt zurück.
+4. Malin schreibt im Verlauf „@Kevin …“ → Kevins Glocke zeigt die Erwähnung, Klick springt in den Verlauf; Kevin kann Malins
+   Nachricht nicht bearbeiten.
+5. Datei anhängen, Link anlegen, Notiz speichern (zweites Fenster mit altem Stand → Hinweis „inzwischen geändert“).
+6. „bearbeiten“ → Einheit wechseln → die Aufgaben stehen danach in der anderen Firma; Löschen → „Rückgängig“ → alles wieder da.
+7. Handy (375 px): Kopf, Reiter und Verlauf ohne seitliches Rollen.
+
 ## Zeitstrahl bis Ende nächsten Jahres, Planen im nächsten Jahr, Meilensteine am Zeitstrahl (30.09.2026, nur lokal)
 
 Kevin: „Ich muss immer in die Zukunft gucken und dann auch einen Zeitstrahl haben, damit ich bis Ende nächsten Jahres gucken und

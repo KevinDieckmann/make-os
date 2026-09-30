@@ -433,6 +433,10 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
   // Umzug Privat ↔ Business (29.09., #4): der Bereich der Dateien an umgezogenen Aufgaben zieht mit.
   await dateienBereichNachziehen(vorher, nachher, opt.haushalt, echtePerson ? opt.person : SYSTEM);
   if (erg.entfernt && opt.haushalt) await papierkorbDateienEntfernen(opt.haushalt, opt.person, erg.entfernt);
+  // Meilensteine (30.09.): Aufgaben in einer Meilenstein-Liste geändert → Fortschritt von Meilenstein und Ziel nachziehen
+  // (lib/planung/meilenstein-aufgaben-server.ts; wirft nie, schreibt nur bei echter Änderung).
+  try { await (await import('@/lib/planung/meilenstein-aufgaben-server')).nachAufgabenSchreiben(vorher, nachher, echtePerson ? opt.person : SYSTEM); }
+  catch (e) { console.error('[aufgaben] Meilenstein-Fortschritt nicht nachgezogen —', e instanceof Error ? e.message : e); }
   return erg;
 }
 

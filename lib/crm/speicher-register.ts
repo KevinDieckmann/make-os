@@ -131,6 +131,8 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('routinen', 'Eigene Routinen des Haushalts.'),
   H('ziele', 'Eigene Ziele/Fokus des Haushalts.'),
   H('meilensteine', 'Eigene Meilensteine des Haushalts.'),
+  // Austausch am Meilenstein (30.09.): Verlauf, Notiz, Links — Texte können Dritte nennen (Kunden, Partner) → getilgt.
+  T('meilenstein-raum--*', 'Verlauf/Notiz/Links je Meilenstein — bleiben, Namen/Adressen der Person getilgt (lib/crm/person-weitere.ts).'),
   H('kompass', 'Eigener Kompass des Haushalts.'),
   H('wochenplan', 'Alter Wochenplan (Kevin, bis 29.09., K5) — nur noch Archiv; liest allein die Übernahme in den Kalender.'),
   H('anwesenheit', 'Wer vom Haushalt gerade online ist.'),

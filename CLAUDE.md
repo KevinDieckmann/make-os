@@ -301,6 +301,33 @@ lokal, Route `/os`, Port 3001.
 - Tests `tests/planung-*.test.ts`. Sichtprüfung nur mit Wegwerfkonto; Ziele/Meilensteine/Routinen sind GETEILTE Bestände —
   Schreibtests nur über `fuer: 'ich'` (persönlicher Ziele-Speicher), nie in `ziele`/`meilensteine`/`routinen` selbst.
 
+## Meilensteine im Detail — Aufgaben, Verlauf, Dateien, Notizen (30.09., nur lokal)
+- **Meilenstein ↔ Aufgaben (EINE Quelle, nur per Kennung):** Aufgaben am Meilenstein sind echte Aufgaben im Bestand `tasks`.
+  Jeder Meilenstein hat seine Liste `meilensteinListeId(id)` (`lm-…`, rein aus der Kennung abgeleitet) im Projekt
+  `meilensteinProjektId(space)` („Meilensteine“, `pm-<space>`) des Space `meilensteinAufgabenSpace(m)` (Privat → privat, Mandat →
+  `m-<firmaId>`, Einheit → kdc/kdv/ug, sonst kdv). Eine Aufgabe gehört dazu, solange sie in dieser Liste liegt — KEIN Feld an der
+  Aufgabe, keine Kopie. Regeln rein in `lib/planung/meilenstein-aufgaben.ts`, Schreiben in `…-server.ts`
+  (`meilensteinStrukturSichern` über `aufgabenAendern` als Systemlauf, idempotent). Die Liste entsteht im Schreibweg des
+  Meilensteins (PATCH/PUT `/api/state/meilensteine`, Kaskade in `/api/state/ziele`) und „lazy“ in GET `/api/planung/meilenstein`;
+  Titel/Datum/Space ändern → Liste zieht nach (samt Aufgaben bei Space-Wechsel). Gelöschter Meilenstein → Liste `archiviert`
+  (Aufgaben bleiben); zurückgeholt (Rückgängig) → wieder aktiv. „Neu anfangen“-Archiv (`archiviertAm`) bleibt unberührt.
+  Neue Anleger: `/api/tasks/create` mit `meilensteinId`, ZOE `create_task` mit `meilenstein`.
+- **Fortschritt-Regel:** hat ein Meilenstein zählende Aufgaben, gilt `fortschrittAusAufgaben` (Hauptaufgabe = 1, sonst Anteil
+  erledigter Unteraufgaben; abgebrochen/Papierkorb/Archiv zählen nicht), sonst der Wert von Hand; erledigt = 100. Der Server
+  schreibt ihn in `fortschritt` (nach jedem Aufgaben-Schreiben mit berührter Meilenstein-Liste — Haken in `aufgabenAendern` — und
+  in der Sperre des Meilenstein-PATCH). Ziele: `zielId` (bzw. `abgeleitetVon` aus der Kaskade) → Mittelwert der Meilensteine
+  (`zieleNachziehen`). Ansichten zeigen dann keinen Schieberegler. Neue Leser nehmen `wirksamerFortschritt`.
+- **Austausch** `meilenstein-raum--<haushalt>` (Register „tilgen“, Art. 17 über `person-weitere.ts`): Verlauf in der Form der
+  Aufgaben-Kommentare (+ `antwortAuf`, `bearbeitetAm`, `zoe`), Notiz mit Stand (409) + Verlauf ohne Text, Links nur http(s).
+  Regeln rein in `lib/planung/meilenstein-raum.ts` (`anwenden`): fremde Nachrichten unveränderlich (403), eigene weich entfernen,
+  Erwähnungen rechnet der Server aus dem Text → `melde` (Link `WEG.meilenstein(id, 'verlauf')`), Grenzen → 413. Route
+  `/api/planung/meilenstein` (GET/POST): nur Haushalt des Inhabers mit Person, `bauPruefen`, Körper ≤ 128 KB. UI-Bauteil für
+  Kommentare UND Verlauf: `components/os/austausch/BeitragsVerlauf.tsx` (nie ein zweites). Dateien: Aufgaben-Ablage mit `listeId`.
+- **Oberfläche:** `components/os/planung/MeilensteinDetail.tsx` (Seite `app/os/planung/meilenstein/[id]`), Bearbeiten nur im
+  Meilenstein-Fenster (`useMeilensteinFenster`), Link „gehört zu …“ an Aufgaben `MeilensteinVerweis.tsx`. Zeitstrahl-Marker →
+  `oeffneMeilenstein` → `WEG.meilenstein(id)`. Offen: ZOE-Knopf „zusammenfassen / nächste Schritte“, Befund „Liste ohne Meilenstein“
+  in der Verbindungsprüfung (rein vorbereitet: `listenOhneMeilenstein`). Tests `tests/meilenstein-aufgaben.test.ts`.
+
 ## Ernährung & Einkauf zu zweit (seit 26.09.2026, online)
 - Modell `lib/ernaehrung/modell.ts` (rein): Profile je Person (Konto = nur selbst, Gast = Haushalt), Stammliste
   (bevorzugte Lebensmittel + Hinweis), Vorrat, Gerichte (Rezepte), Plan + `planGerichte`, Einkauf mit Menge/Kategorie/
