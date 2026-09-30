@@ -13,7 +13,7 @@ import { Pillen } from '../crm/teile';
 import type { Monatsabschluss } from '@/lib/business/messen';
 import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
 
-// Die eine Einheitenliste (28.09.): Selbstständigkeit · KD Ventures · MAKE OS UG.
+// Die eine Einheitenliste (28.09.): Selbstständigkeit · KD Ventures · MAKE Innovation GmbH.
 type Firma = Gesellschaftskennung;
 const FIRMA_LISTE: { id: Firma; label: string }[] = KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label }));
 const leer = (): Record<Firma, string> => ({ kdc: '', kdv: '', ug: '' });

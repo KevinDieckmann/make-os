@@ -4,6 +4,40 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Umbenennung: MAKE OS UG → MAKE Innovation GmbH (30.09.2026, nur lokal)
+
+Kevin: „Ändere bitte überall in der Software MAKE UG in MAKE Innovation GmbH.“ Gemeint ist die Gesellschaft mit der
+Kennung `ug` (früher „Neue UG“, zuletzt „MAKE OS UG“). **Nicht** gemeint: die KD Ventures UG (kdv) — die bleibt eine UG.
+
+- **Eine Quelle:** Der Name steht nur noch in `lib/einheiten.ts` (`UG_NAME` = „MAKE Innovation GmbH“, `UG_KURZ` = „MAKE“ für
+  enge Stellen wie „Töpfe MAKE“, „Runway MAKE“, „MAKE frei“, Chips im Wochenplan). Alle Oberflächen, ZOE-Werkzeugtexte,
+  Steuer-Hinweise, Finanzplanung, Cockpit, Filter und Fehlermeldungen beziehen ihn von dort.
+- **Kennung bleibt:** `ug` in Daten, Spaces, FinanzOrt, Adressen (`?scope=ug`) und Code-Namen (`rechneUG`, `steuerUG`,
+  `UG_FIRMA`) — keine Datenmigration. Der Rechenkern rechnet unverändert (nur zwei Anzeigetexte folgen dem Namen).
+- **Alte Namen werden erkannt:** „MAKE OS UG“, „MAKE UG“, „Neue UG“, „UG“ (Liste `UG_ALTNAMEN`) gelten beim Lesen als `ug` und
+  werden mit dem neuen Namen angezeigt — Aufgaben, Ziele/Meilensteine, Zeit je Einheit, Wochenplan-Blöcke, Widget-Einstellungen,
+  Finanzplan-Konto. Gespeichert wird der neue Name beim nächsten Schreiben (nur der Text ändert sich, keine Form).
+- **Gesellschaften-Stammdaten:** Ohne gespeicherte Firmierung gilt „MAKE Innovation GmbH“ als Vorschlag und Absender. Eine
+  gespeicherte Firmierung wird nie still überschrieben — nennt sie noch eine UG, steht in Markttraktion › Stammdaten ›
+  Gesellschaften der Hinweis „Firmierung noch als UG gespeichert — auf MAKE Innovation GmbH ändern?“ mit Knopf.
+- **Nebenbei behoben:** Auf „Zahlen“ standen offene Belege der KD Ventures als „Selbstständigkeit“ — jetzt mit dem richtigen Namen.
+- **Tests:** `tests/umbenennung-make.test.ts` (Altnamen → `ug` → neuer Name, KD Ventures UG bleibt kdv, Finanzplan-Konto,
+  Widget-Einstellung, Gesellschaften-Hinweis, Wächter: „MAKE OS UG“ nur noch in `lib/einheiten.ts`, „MAKE Innovation GmbH“ in
+  keinem Code außerhalb `lib/einheiten.ts`).
+
+**Prüfliste nach dem Upload:**
+1. Aufgaben › Business: Filter-Pille heißt „MAKE Innovation GmbH“, alte Aufgaben der UG sind darin (keine zweite Pille).
+2. Finanzplanung › Business: Unterseite „MAKE Innovation GmbH“, Töpfe heißen „Töpfe MAKE“, Konto im Finanzplan zeigt den neuen Namen.
+3. Finanzen › Steuern: Zeile „Steuern MAKE Innovation GmbH …“ mit „noch nicht hinterlegt“ (keine neue Steuerregel — UG und GmbH
+   rechnen gleich).
+4. Stammdaten › Gesellschaften: Karte „MAKE Innovation GmbH“; steht der Hinweis da, Firmierung per Knopf ändern.
+
+**Hinweis für Kevin (selbst prüfen, nichts davon ist erfunden oder vorbelegt):** In den Gesellschaften-Stammdaten Firmierung,
+**Registergericht + HRB-Nummer** (eine GmbH hat eine neue HRB bzw. einen geänderten Eintrag), Geschäftsführung, Steuernummer/
+USt-IdNr., Bank/Kontoinhaber und Fußtext der MAKE Innovation GmbH prüfen. Das Angebots-Kürzel der Gesellschaft ist weiterhin
+„MOS“ (Vorgabe) — wer ein anderes will (z. B. „MAKE“), trägt es dort unter „Kürzel“ ein; die laufende Nummer je Jahr bleibt.
+Bausteine, die schon „Umsatz UG (Regler)“ heißen, behalten ihren gespeicherten Namen (neue heißen „Umsatz MAKE (Regler)“).
+
 ## Upload-Prüfung U1: Rückweg sicher, nichts ungefragt nach iCloud (29.09.2026 spät, nur lokal)
 
 - **Familie stürzt im alten Stand nicht mehr ab:** Wichtige Tage mit Verweis auf einen Menschen tragen das Datum wieder mit

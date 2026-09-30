@@ -5,7 +5,7 @@
 
 import type { Einheit, FinanzDaten, Zeile } from '@/lib/finanzen/rechenkern';
 import { histIndex } from '@/lib/finanzen/rechenkern';
-import { finanzOrtAusKern, finanzOrtName } from '@/lib/einheiten';
+import { UG_KURZ, finanzOrtAusKern, finanzOrtName } from '@/lib/einheiten';
 
 export const KAL = ['Jan', 'Feb', 'Mrz', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'] as const;
 
@@ -27,9 +27,9 @@ export const RECHENZEILEN: Record<string, string> = {
 };
 
 // ── Aufbau (Kevin 27.09. abends: acht Bereiche, die alten Unterseiten leben darunter weiter) ──
-// Lage → Planen (Szenarien bauen · Treiber & Annahmen) → Privat → Business (UG · KD Ventures · Selbstständigkeit)
+// Lage → Planen (Szenarien bauen · Treiber & Annahmen) → Privat → Business (MAKE Innovation GmbH · KD Ventures · Selbstständigkeit)
 // → Gesamt (Gesamt · Entwicklung · Geldfluss) → Buchungen & Check (Buchungen · Budget · Wochen-Check · Zu erledigen ·
-// Kalender & Verträge · Schulden) → Ziele & Töpfe (Ziele · Töpfe UG) → Protokoll. Alte `?u=`-Werte lösen weiter auf.
+// Kalender & Verträge · Schulden) → Ziele & Töpfe (Ziele · Töpfe MAKE) → Protokoll. Alte `?u=`-Werte lösen weiter auf.
 export type Bereich = 'lage' | 'planen' | 'privat' | 'business' | 'gesamt' | 'buchungen' | 'ziele' | 'protokoll';
 export type Unterseite =
   | 'lage' | 'check' | 'budget' | 'buchungen' | 'privat' | 'ug' | 'toepfe' | 'kdv' | 'selbst' | 'szenarien' | 'ziele'
@@ -38,10 +38,10 @@ export const BEREICHE: { id: Bereich; label: string; unter: { id: Unterseite; la
   { id: 'lage', label: 'Lage', unter: [{ id: 'lage', label: 'Lage' }] },
   { id: 'planen', label: 'Planen', unter: [{ id: 'planen', label: 'Szenarien bauen' }, { id: 'szenarien', label: 'Treiber & Annahmen' }] },
   { id: 'privat', label: 'Privat', unter: [{ id: 'privat', label: 'Privat' }] },
-  { id: 'business', label: 'Business', unter: [{ id: 'ug', label: 'MAKE OS UG' }, { id: 'kdv', label: 'KD Ventures' }, { id: 'selbst', label: 'Selbstständigkeit' }] },
+  { id: 'business', label: 'Business', unter: [{ id: 'ug', label: finanzOrtName('ug') }, { id: 'kdv', label: 'KD Ventures' }, { id: 'selbst', label: 'Selbstständigkeit' }] },
   { id: 'gesamt', label: 'Gesamt', unter: [{ id: 'gesamt', label: 'Gesamt' }, { id: 'entwicklung', label: 'Entwicklung' }, { id: 'geldfluss', label: 'Geldfluss' }] },
   { id: 'buchungen', label: 'Buchungen & Check', unter: [{ id: 'buchungen', label: 'Buchungen' }, { id: 'budget', label: 'Budget' }, { id: 'check', label: 'Wochen-Check' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }] },
-  { id: 'ziele', label: 'Ziele & Töpfe', unter: [{ id: 'ziele', label: 'Ziele' }, { id: 'toepfe', label: 'Töpfe UG' }] },
+  { id: 'ziele', label: 'Ziele & Töpfe', unter: [{ id: 'ziele', label: 'Ziele' }, { id: 'toepfe', label: `Töpfe ${UG_KURZ}` }] },
   { id: 'protokoll', label: 'Protokoll', unter: [{ id: 'protokoll', label: 'Protokoll' }] },
 ];
 export const bereichVon = (u: Unterseite): Bereich => BEREICHE.find(b => b.unter.some(x => x.id === u))?.id ?? 'lage';

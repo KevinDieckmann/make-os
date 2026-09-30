@@ -19,7 +19,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { WERKZEUGE } from './werkzeuge';
-import { firmaAusAngabe, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
+import { firmaAusAngabe, finanzOrtName, istGesellschaft, kontoName } from '@/lib/einheiten';
 import { AUFGABEN_REGISTER } from './aufgaben-werkzeuge';
 import { ARBEIT_REGISTER } from './arbeit-werkzeug';
 import { CRM_VORSCHLAG_REGISTER } from './crm-vorschlag';
@@ -61,7 +61,7 @@ const eur = (n: unknown) => {
     ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(z))
     : '—';
 };
-// Dieselbe Zuordnung wie die Ausführung (lib/einheiten.ts, 28.09.: auch die MAKE OS UG).
+// Dieselbe Zuordnung wie die Ausführung (lib/einheiten.ts, 28.09.: auch die MAKE Innovation GmbH).
 const firma = (rein: unknown) => firmaAusAngabe(rein);
 const text = (v: unknown, n = 120) => String(v ?? '').trim().slice(0, n);
 
@@ -74,7 +74,7 @@ async function vsKontostand(i: Record<string, unknown>): Promise<Vorschau> {
   const f = await loadJson<{ firmen?: { id: string; name: string; kontostand: number | null }[] }>('finanzplan');
   const treffer = (f?.firmen ?? []).find(x => x.id === fid);
   return {
-    titel: `Kontostand ${treffer?.name ?? fid} setzen`,
+    titel: `Kontostand ${treffer ? kontoName(treffer.id, treffer.name) : fid} setzen`,
     vorher: treffer?.kontostand != null ? eur(treffer.kontostand) : 'nicht gesetzt',
     nachher: eur(i.betrag),
     ...(treffer?.kontostand != null

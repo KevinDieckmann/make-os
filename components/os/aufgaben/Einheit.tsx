@@ -2,7 +2,7 @@
 
 // ─── MAKE OS — Aufgaben: Business-Einheit als Chip + Menü (27.09.) ──────────
 // Kevin: Aufgaben im Business immer zwischen Selbstständigkeit, KD Ventures und
-// MAKE OS UG unterscheiden. Sichtbar ist nur der gesetzte Wert als Chip (farbig
+// MAKE Innovation GmbH unterscheiden. Sichtbar ist nur der gesetzte Wert als Chip (farbig
 // dezent je Kerneinheit, eigene grau); ein Klick öffnet das Menü mit der
 // Werteliste des Haushalts, „ohne Einheit“ und „+ neu“ (legt die Einheit über
 // /api/planung/einheiten an). Seit 27.09. spät baut EinheitWahl auf dem einen

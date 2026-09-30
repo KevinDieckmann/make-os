@@ -18,6 +18,7 @@ import { bruecke, ENTNAHME_KATEGORIEN } from '../haushalt/gesamt';
 import { vollMonate, monatVon, tageZwischen, tagPlus, monatPlus } from '../haushalt/monat';
 import { steuertermine, type SteuerEinstellung, type Termin } from './steuertermine';
 import { auffaelligkeiten, type Auffaelligkeit } from './auffaellig';
+import { kontoName } from '@/lib/einheiten';
 
 export type Schwere = 'hoch' | 'mittel' | 'niedrig';
 export interface Hinweis { schwere: Schwere; bereich: 'business' | 'haushalt' | 'gesamt' | 'daten' | 'steuern'; text: string; quelle: string }
@@ -72,7 +73,7 @@ export function baueFinanzbild(e: Eingaben) {
   else if (kasse.quelle === 'manuell') h('mittel', 'daten', 'Business-Kasse nur als manuelle Zahl, keine Kontostände je Firma.', 'finance.cash');
   else if (kasse.alter_tage != null && kasse.alter_tage > 14) h('mittel', 'daten', `Ältester Business-Kontostand ist ${kasse.alter_tage} Tage alt (${tagDe(kasse.stand!)}).`, 'finanzplan.firmen');
   // Ein Stand ohne Datum ist nicht geprüft — Runway und Liquidität hängen trotzdem daran.
-  const ohneDatum = firmen.filter(f => typeof f.kontostand === 'number' && !f.stand).map(f => f.name);
+  const ohneDatum = firmen.filter(f => typeof f.kontostand === 'number' && !f.stand).map(f => kontoName(f.id, f.name));
   if (ohneDatum.length) h('mittel', 'daten', `Kontostand ohne Datum: ${ohneDatum.join(', ')} — unbestätigt, Runway und Liquidität rechnen damit.`, 'finanzplan.firmen');
 
   // ── Business: Liquidität 12 Wochen (dieselbe Kurve wie Zahlen) ──────────

@@ -26,12 +26,12 @@ describe('Zeit je Einheit — Säuberung der Zuordnung', () => {
   });
 
   it('die Einheit der Aufgabe gewinnt vor der direkt gewählten', () => {
-    expect(zuordnungSaeubern('business:aufgaben', { aufgabeId: 'a1', einheit: 'Selbstständigkeit' }, A('a1', { einheit: 'MAKE OS UG' })))
-      .toEqual({ aufgabeId: 'a1', einheit: 'MAKE OS UG' });
+    expect(zuordnungSaeubern('business:aufgaben', { aufgabeId: 'a1', einheit: 'Selbstständigkeit' }, A('a1', { einheit: 'MAKE Innovation GmbH' })))
+      .toEqual({ aufgabeId: 'a1', einheit: 'MAKE Innovation GmbH' });
   });
 
   it('Aufgabe ohne Einheit: die direkte Wahl bleibt, Namen werden vereinheitlicht', () => {
-    expect(zuordnungSaeubern('business:aufgaben', { aufgabeId: 'a1', einheit: 'Neue UG' }, A('a1'))).toEqual({ aufgabeId: 'a1', einheit: 'MAKE OS UG' });
+    expect(zuordnungSaeubern('business:aufgaben', { aufgabeId: 'a1', einheit: 'Neue UG' }, A('a1'))).toEqual({ aufgabeId: 'a1', einheit: 'MAKE Innovation GmbH' });
     expect(zuordnungSaeubern('business:aufgaben', { einheit: '  kdv ' })).toEqual({ einheit: 'KD Ventures' });
     expect(zuordnungSaeubern('business:aufgaben', { einheit: 'Kunde Nord' })).toEqual({ einheit: 'Kunde Nord' });
   });
@@ -64,10 +64,10 @@ describe('Zeit je Einheit — Modell: verbuchen und nachträglich zuordnen', () 
 
   it('blockZuordnen ersetzt die Zuordnung, lässt Sekunden und Summen stehen und entfernt sie mit leerer Wahl', () => {
     const d = fokusVerbuchen(LEER_ZEIT, { von, bis, schluessel: 'business:aufgaben', label: 'Aufgaben' });
-    const r = blockZuordnen(d, von, { aufgabeId: 'a1', einheit: 'MAKE OS UG' });
+    const r = blockZuordnen(d, von, { aufgabeId: 'a1', einheit: 'MAKE Innovation GmbH' });
     expect(r.gefunden).toBe(true);
     const tag = Object.keys(r.datei.tage)[0];
-    expect(r.datei.tage[tag].bloecke[0]).toMatchObject({ aufgabeId: 'a1', einheit: 'MAKE OS UG', sek: 3600 });
+    expect(r.datei.tage[tag].bloecke[0]).toMatchObject({ aufgabeId: 'a1', einheit: 'MAKE Innovation GmbH', sek: 3600 });
     expect(r.datei.tage[tag].bewusst).toEqual(d.tage[tag].bewusst);
     const leer = blockZuordnen(r.datei, von, {});
     expect(leer.datei.tage[tag].bloecke[0]).not.toHaveProperty('aufgabeId');
@@ -87,7 +87,7 @@ describe('Zeit je Einheit — Ableitung aus der Aufgabe', () => {
   it('die Einheit kommt live aus der Aufgabe, sonst aus dem Block', () => {
     expect(einheitVonBlock({ aufgabeId: 'a1', einheit: 'KD Ventures' }, karte(A('a1', { einheit: 'Selbstständigkeit' })))).toBe('Selbstständigkeit');
     expect(einheitVonBlock({ aufgabeId: 'a1', einheit: 'KD Ventures' }, karte(A('a1')))).toBe('KD Ventures');
-    expect(einheitVonBlock({ aufgabeId: 'weg', einheit: 'ug' }, karte())).toBe('MAKE OS UG');
+    expect(einheitVonBlock({ aufgabeId: 'weg', einheit: 'ug' }, karte())).toBe('MAKE Innovation GmbH');
     expect(einheitVonBlock({}, karte())).toBeUndefined();
   });
 });
@@ -128,8 +128,8 @@ describe('Zeit je Einheit — Auswertung', () => {
 
   it('Monatsgrenze nach Berliner Zeit', () => {
     const d = datei(
-      B('2026-09-30T21:30:00Z', 60, { einheit: 'MAKE OS UG' }), // 30.09. 23:30 Berlin → September
-      B('2026-09-30T22:30:00Z', 30, { einheit: 'MAKE OS UG' }), // 01.10. 00:30 Berlin → Oktober
+      B('2026-09-30T21:30:00Z', 60, { einheit: 'MAKE Innovation GmbH' }), // 30.09. 23:30 Berlin → September
+      B('2026-09-30T22:30:00Z', 30, { einheit: 'MAKE Innovation GmbH' }), // 01.10. 00:30 Berlin → Oktober
     );
     expect(zeitJeEinheit([{ person: 'p', name: 'P', datei: d }], [], 'monat', '2026-09-15').gesamt.sek).toBe(3600);
     expect(zeitJeEinheit([{ person: 'p', name: 'P', datei: d }], [], 'monat', '2026-10-15').gesamt.sek).toBe(1800);
@@ -145,7 +145,7 @@ describe('Zeit je Einheit — Auswertung', () => {
     ];
     const a = auswerten(bloeckeImZeitraum(datei(...b), '2026-09-21', '2026-09-27'), karte(...aufgaben));
     expect(a.zeilen.map(z => [z.label, z.art, z.sek / 60])).toEqual([
-      ['Selbstständigkeit', 'kern', 0], ['KD Ventures', 'kern', 60], ['MAKE OS UG', 'kern', 0], ['Kunde Nord', 'eigen', 30], ['ohne Einheit', 'ohne', 35],
+      ['Selbstständigkeit', 'kern', 0], ['KD Ventures', 'kern', 60], ['MAKE Innovation GmbH', 'kern', 0], ['Kunde Nord', 'eigen', 30], ['ohne Einheit', 'ohne', 35],
     ]);
     expect(a.sek).toBe(125 * 60);
     expect(a.bloecke).toBe(4);
@@ -169,13 +169,13 @@ describe('Zeit je Einheit — Auswertung', () => {
 
   it('je Person und gesamt; ohne Blöcke alles null', () => {
     const p1 = datei(B('2026-09-22T08:00:00Z', 60, { aufgabeId: 'a2' }));
-    const p2 = datei(B('2026-09-23T08:00:00Z', 30, { aufgabeId: 'a2' }), B('2026-09-23T09:00:00Z', 30, { einheit: 'MAKE OS UG' }));
+    const p2 = datei(B('2026-09-23T08:00:00Z', 30, { aufgabeId: 'a2' }), B('2026-09-23T09:00:00Z', 30, { einheit: 'MAKE Innovation GmbH' }));
     const r = zeitJeEinheit([{ person: 'p1', name: 'Eins', datei: p1 }, { person: 'p2', name: 'Zwei', datei: p2 }, { person: 'p3', name: 'Drei', datei: LEER_ZEIT }], aufgaben, 'woche', '2026-09-27');
     const s = (a: typeof r.gesamt, l: string) => a.zeilen.find(z => z.label === l)!.sek / 60;
     expect(r.personen.map(p => p.person)).toEqual(['p1', 'p2', 'p3']);
     expect(s(r.personen[0].auswertung, 'Selbstständigkeit')).toBe(60);
     expect(s(r.personen[1].auswertung, 'Selbstständigkeit')).toBe(30);
-    expect(s(r.personen[1].auswertung, 'MAKE OS UG')).toBe(30);
+    expect(s(r.personen[1].auswertung, 'MAKE Innovation GmbH')).toBe(30);
     expect(s(r.gesamt, 'Selbstständigkeit')).toBe(90);
     expect(r.gesamt.sek).toBe(120 * 60);
     expect(r.personen[2].auswertung.sek).toBe(0);
@@ -202,7 +202,7 @@ describe('Zeit je Einheit — Umbuchen Privat ↔ Business', () => {
   });
 
   it('zurück nach Privat verwirft Aufgabe und Einheit und zählt nicht mehr im Business', () => {
-    const b = blockZuordnen(blockUmbuchen(privat, von, 'business').datei, von, { aufgabeId: 'a1', einheit: 'MAKE OS UG' }).datei;
+    const b = blockZuordnen(blockUmbuchen(privat, von, 'business').datei, von, { aufgabeId: 'a1', einheit: 'MAKE Innovation GmbH' }).datei;
     const r = blockUmbuchen(b, von, 'privat');
     const x = r.datei.tage[tag].bloecke[0];
     expect(x.schluessel).toBe('privat:gesundheit');

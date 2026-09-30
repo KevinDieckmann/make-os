@@ -57,7 +57,7 @@ describe('Mandat — Säuberung (nur Form, nur Business)', () => {
 
 describe('Mandat — Kurzform und Ableitung der Einheit', () => {
   it('Einheit aus der Gesellschaft: Mandat, sonst Deal, sonst Produkt; Firma aus dem CRM, sonst Kunde', () => {
-    expect(KARTE.get('m-ug')).toMatchObject({ firma: 'Nord GmbH', firmaId: 'f-nord', einheit: 'MAKE OS UG', aktiv: true, honorarMonat: 3000 });
+    expect(KARTE.get('m-ug')).toMatchObject({ firma: 'Nord GmbH', firmaId: 'f-nord', einheit: 'MAKE Innovation GmbH', aktiv: true, honorarMonat: 3000 });
     expect(KARTE.get('m-deal')).toMatchObject({ firma: 'Süd AG', einheit: 'KD Ventures', honorarMonat: 1000 });
     expect(KARTE.get('m-alt')).toMatchObject({ firma: 'Ohne Firma KG', einheit: 'Selbstständigkeit', aktiv: false });
     expect(KARTE.get('m-alt')).not.toHaveProperty('honorarMonat');
@@ -73,8 +73,8 @@ describe('Mandat — Kurzform und Ableitung der Einheit', () => {
   });
 
   it('mitMandatBezug: Firma und Einheit aus dem Mandat — das Mandat gewinnt vor einer gesetzten Einheit', () => {
-    expect(mitMandatBezug({ mandatId: 'm-ug', einheit: 'KD Ventures' }, KARTE, true)).toEqual({ mandatId: 'm-ug', firmaId: 'f-nord', einheit: 'MAKE OS UG' });
-    expect(mitMandatBezug({ mandatId: 'm-ug' }, MANDATE, true)).toEqual({ mandatId: 'm-ug', firmaId: 'f-nord', einheit: 'MAKE OS UG' });
+    expect(mitMandatBezug({ mandatId: 'm-ug', einheit: 'KD Ventures' }, KARTE, true)).toEqual({ mandatId: 'm-ug', firmaId: 'f-nord', einheit: 'MAKE Innovation GmbH' });
+    expect(mitMandatBezug({ mandatId: 'm-ug' }, MANDATE, true)).toEqual({ mandatId: 'm-ug', firmaId: 'f-nord', einheit: 'MAKE Innovation GmbH' });
   });
 
   it('mitMandatBezug: unbekanntes Mandat oder keine Mandate → unverändert; nicht Business → Bezug fällt weg', () => {
@@ -92,12 +92,12 @@ describe('Mandat — Kurzform und Ableitung der Einheit', () => {
     expect(mandatWahlListe(MANDATE, 'm-alt').map(e => e.id)).toEqual(['m-ug', 'm-deal', 'm-alt']);
     expect(mandatWahlListe(MANDATE, 'm-alt').at(-1)?.hinweis).toContain('nicht aktiv');
     expect(mandatWahlListe(MANDATE, 'm-weg').at(-1)).toEqual({ id: 'm-weg', label: 'Mandat (gelöscht)' });
-    expect(mandatWahlListe(MANDATE)[0]).toMatchObject({ hinweis: 'MAKE OS UG' });
+    expect(mandatWahlListe(MANDATE)[0]).toMatchObject({ hinweis: 'MAKE Innovation GmbH' });
   });
 
   it('Kaskade: abgeleitete Ziele und Termin-Meilensteine tragen das Mandat des Jahresziels', () => {
-    const jahr = { id: 'z-j', titel: 'Neukunden', fortschritt: 0, space: 'business' as const, einheit: 'MAKE OS UG', mandatId: 'm-ug', firmaId: 'f-nord', zielwert: 12, termin: '2026-12-01' };
-    expect(abgeleitetesZiel(jahr, 'quartal', 2026)).toMatchObject({ mandatId: 'm-ug', firmaId: 'f-nord', einheit: 'MAKE OS UG' });
+    const jahr = { id: 'z-j', titel: 'Neukunden', fortschritt: 0, space: 'business' as const, einheit: 'MAKE Innovation GmbH', mandatId: 'm-ug', firmaId: 'f-nord', zielwert: 12, termin: '2026-12-01' };
+    expect(abgeleitetesZiel(jahr, 'quartal', 2026)).toMatchObject({ mandatId: 'm-ug', firmaId: 'f-nord', einheit: 'MAKE Innovation GmbH' });
     expect(meilensteineAbleiten([jahr], [])[0]).toMatchObject({ mandatId: 'm-ug', firmaId: 'f-nord', space: 'business' });
     expect(abgeleitetesZiel({ ...jahr, mandatId: undefined, firmaId: undefined }, 'monat', 2026)).not.toHaveProperty('mandatId');
   });
@@ -108,14 +108,14 @@ describe('Zeit — Zuordnung mit Mandat', () => {
 
   it('Mandat gewinnt vor der Einheit der Aufgabe; Firma kommt aus dem Mandat', () => {
     expect(zuordnungSaeubern('business:aufgaben', { aufgabeId: 'a1', mandatId: 'm-ug' }, A('a1', { einheit: 'KD Ventures' }), KARTE))
-      .toEqual({ aufgabeId: 'a1', einheit: 'MAKE OS UG', mandatId: 'm-ug', firmaId: 'f-nord' });
+      .toEqual({ aufgabeId: 'a1', einheit: 'MAKE Innovation GmbH', mandatId: 'm-ug', firmaId: 'f-nord' });
     expect(zuordnungSaeubern('business:aufgaben', { mandatId: 'm-deal', einheit: 'Selbstständigkeit' }, undefined, KARTE))
       .toEqual({ einheit: 'KD Ventures', mandatId: 'm-deal', firmaId: 'f-sued' });
   });
 
   it('Aufgabe mit Mandat (bezug.mandatId, 28.09. abends): der Block übernimmt es — samt Firma und Einheit aus dem Mandat', () => {
     expect(zuordnungSaeubern('business:aufgaben', { aufgabeId: 'a1' }, A('a1', { einheit: 'Kunden', mandatId: 'm-ug' }), KARTE))
-      .toEqual({ aufgabeId: 'a1', einheit: 'MAKE OS UG', mandatId: 'm-ug', firmaId: 'f-nord' });
+      .toEqual({ aufgabeId: 'a1', einheit: 'MAKE Innovation GmbH', mandatId: 'm-ug', firmaId: 'f-nord' });
     // Ohne Aufgabe (nicht gefunden) nichts vom Mandat der Aufgabe.
     expect(zuordnungSaeubern('business:aufgaben', { aufgabeId: 'a1' }, undefined, KARTE)).toEqual({});
     // aufgabeKurz liest das Mandat aus dem Bezug der gespeicherten Aufgabe.
@@ -130,12 +130,12 @@ describe('Zeit — Zuordnung mit Mandat', () => {
 
   it('Einheit eines Blocks: mit Mandat die gespeicherte (aus dem Mandat), sonst live die der Aufgabe', () => {
     const aufgaben = new Map([['a1', A('a1', { einheit: 'KD Ventures' })]]);
-    expect(einheitVonBlock({ aufgabeId: 'a1', einheit: 'MAKE OS UG', mandatId: 'm-ug' }, aufgaben)).toBe('MAKE OS UG');
-    expect(einheitVonBlock({ aufgabeId: 'a1', einheit: 'MAKE OS UG' }, aufgaben)).toBe('KD Ventures');
+    expect(einheitVonBlock({ aufgabeId: 'a1', einheit: 'MAKE Innovation GmbH', mandatId: 'm-ug' }, aufgaben)).toBe('MAKE Innovation GmbH');
+    expect(einheitVonBlock({ aufgabeId: 'a1', einheit: 'MAKE Innovation GmbH' }, aufgaben)).toBe('KD Ventures');
   });
 
   it('Nachträglich zuordnen ersetzt auch das Mandat; nach Privat umbuchen nimmt es mit weg', () => {
-    const d = fokusVerbuchen(LEER_ZEIT, { von: '2026-09-28T08:00:00.000Z', bis: '2026-09-28T09:00:00.000Z', schluessel: 'business:aufgaben', label: 'x', mandatId: 'm-ug', firmaId: 'f-nord', einheit: 'MAKE OS UG' });
+    const d = fokusVerbuchen(LEER_ZEIT, { von: '2026-09-28T08:00:00.000Z', bis: '2026-09-28T09:00:00.000Z', schluessel: 'business:aufgaben', label: 'x', mandatId: 'm-ug', firmaId: 'f-nord', einheit: 'MAKE Innovation GmbH' });
     const b = Object.values(d.tage)[0].bloecke[0];
     expect(b).toMatchObject({ mandatId: 'm-ug', firmaId: 'f-nord', sek: 3600 });
     const neu = blockZuordnen(d, b.von, { einheit: 'Kunden' }).datei;
@@ -166,7 +166,7 @@ describe('Zeit je Mandat — Summen, Berliner Woche und Monat, grober Satz', () 
     expect(a.sek).toBe((120 + 60 + 90 + 30 + 15) * 60);
     expect(a.mitMandatSek).toBe((120 + 60 + 90 + 15) * 60);
     expect(a.zeilen.map(z => [z.id, z.sek / 60])).toEqual([['m-ug', 180], ['m-deal', 90], ['m-weg', 15], [MANDAT_OHNE, 30]]);
-    expect(a.zeilen[0]).toMatchObject({ label: 'Nord GmbH · Retainer', einheit: 'MAKE OS UG', bloecke: 2, honorarMonat: 3000, honorarZeitraum: 3000, euroJeStunde: 1000 });
+    expect(a.zeilen[0]).toMatchObject({ label: 'Nord GmbH · Retainer', einheit: 'MAKE Innovation GmbH', bloecke: 2, honorarMonat: 3000, honorarZeitraum: 3000, euroJeStunde: 1000 });
     expect(a.zeilen[2]).toMatchObject({ label: 'Mandat (gelöscht)', art: 'geloescht', firmaId: 'f-x' });
     expect(a.zeilen.at(-1)).toMatchObject({ label: 'ohne Mandat', art: 'ohne' });
   });
@@ -208,7 +208,7 @@ describe('Verbindungsprüfung — Mandat an Zielen und Zeit', () => {
     ziele: [{ speicher: 'ziele', ziele: [{ id: 'z-1', mandatId: 'm-ug', firmaId: 'f-nord' }, { id: 'z-2', mandatId: 'm-weg', firmaId: 'f-nord' }] }, { speicher: 'ziele-eigen--malin', ziele: [{ id: 'z-3', firmaId: 'f-weg' }] }],
     meilensteine: [{ id: 'ms-1' }, { id: 'ms-2', mandatId: 'm-weg' }],
   });
-  const fokus = () => [{ person: 'kevin', bloecke: [{ von: 'a', bis: 'b', schluessel: 'business:x', label: 'x', sek: 60, mandatId: 'm-weg', firmaId: 'f-nord', einheit: 'MAKE OS UG' }, { von: 'c', bis: 'd', schluessel: 'business:x', label: 'x', sek: 60, mandatId: 'm-ug' }] }];
+  const fokus = () => [{ person: 'kevin', bloecke: [{ von: 'a', bis: 'b', schluessel: 'business:x', label: 'x', sek: 60, mandatId: 'm-weg', firmaId: 'f-nord', einheit: 'MAKE Innovation GmbH' }, { von: 'c', bis: 'd', schluessel: 'business:x', label: 'x', sek: 60, mandatId: 'm-ug' }] }];
 
   it('meldet tote Mandate/Firmen an Zielen, Meilensteinen und Fokus-Blöcken — nur Kennungen', () => {
     const funde: [string, string][] = [];
@@ -227,7 +227,7 @@ describe('Verbindungsprüfung — Mandat an Zielen und Zeit', () => {
     expect(r.aenderungen.map(a => [a.befundId, a.speicher, a.anzahl])).toEqual([['ziel-mandat-tot', 'ziele', 2], ['meilenstein-mandat-tot', 'meilensteine', 1], ['zeit-mandat-tot', 'zeit', 1]]);
     expect(r.planung!.ziele[0].ziele[1]).toEqual({ id: 'z-2', firmaId: 'f-nord' });
     expect(r.planung!.ziele[1].ziele[0]).toEqual({ id: 'z-3' });
-    expect(r.fokus![0].bloecke[0]).toEqual({ von: 'a', bis: 'b', schluessel: 'business:x', label: 'x', sek: 60, firmaId: 'f-nord', einheit: 'MAKE OS UG' });
+    expect(r.fokus![0].bloecke[0]).toEqual({ von: 'a', bis: 'b', schluessel: 'business:x', label: 'x', sek: 60, firmaId: 'f-nord', einheit: 'MAKE Innovation GmbH' });
     const zwei = planungReparieren({ planung: r.planung, fokus: r.fokus }, new Set(['ziel-mandat-tot', 'meilenstein-mandat-tot', 'zeit-mandat-tot']), lebend);
     expect(zwei.aenderungen).toEqual([]);
     // nur gewählte Befunde

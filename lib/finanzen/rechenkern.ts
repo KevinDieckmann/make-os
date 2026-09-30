@@ -1,5 +1,6 @@
 // ─── MAKE OS — Finanzplanung jetzt: Rechenkern v3 ───────────────────────────
-// Eine Rechnung für alles: MAKE OS UG · KD Ventures · Privat · Gruppe.
+// Eine Rechnung für alles: MAKE Innovation GmbH (Kennung ug) · KD Ventures · Privat · Gruppe.
+// (30.09.: nur Anzeigetexte auf den neuen Namen aus lib/einheiten.ts — Namen und Formeln unverändert.)
 // Deterministisch und client-safe (keine Server-Importe), damit Seite, Routen
 // und ZOE dieselben Zahlen sehen. Gleiche Logik wie Finanzplan v4 (Excel),
 // dort gegengerechnet. Monat 1 = Okt 26 … 27 = Dez 28.
@@ -19,6 +20,7 @@
 // Finanz-Cockpit (Spalte einheit) befüllt.
 
 import type { Planszenario } from './szenarien';
+import { UG_KURZ, UG_NAME } from '@/lib/einheiten';
 
 export type Einheit = 'privat' | 'selbststaendigkeit' | 'ug' | 'kdv';
 
@@ -159,7 +161,7 @@ export function est2026(zve: number): number {
   return Math.floor(0.45 * x - 19470.38);
 }
 
-// ── MAKE OS UG + KD Ventures ───────────────────────────────────────────────
+// ── MAKE Innovation GmbH (ug) + KD Ventures ───────────────────────────────────────────────
 export interface MonatUG {
   m: number;
   ob: number; retainer: number; astarna: number; events: number; umsatz: number;
@@ -413,13 +415,13 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, 1, 'Sachkosten', -u.sach, 'ug');
     add(m, 10, 'Umsatzsteuer an Finanzamt', -u.ustZahlung, 'ug');
     add(m, 1, 'Björn-Rate', -u.bjoern, 'kdv');
-    add(m, 31, 'Ertragsteuer UG', -u.steuer, 'ug');
+    add(m, 31, `Ertragsteuer ${UG_KURZ}`, -u.steuer, 'ug');
     add(m, 5, 'Eingang One Banking', u.ob, 'ug');
     add(m, 15, 'Eingang Retainer', u.retainerEingang * 1.19, 'ug');
     add(m, 15, 'Eingang aus Bausteinen', u.bausteineEingang * (1 + d.annahmen.ust), 'ug');
     add(m, d.annahmen.gehaltTag ?? 28, 'Weitere Stellen inkl. Arbeitgeber', -u.stellen, 'ug');
     add(m, 1, 'Ausschüttung an Privat', -u.ausschuettung, 'ug');
-    add(m, 1, 'Ausschüttung aus der UG (netto)', p.ausschuettung, 'privat');
+    add(m, 1, `Ausschüttung aus der ${UG_NAME} (netto)`, p.ausschuettung, 'privat');
     add(m, 1, 'Bausteine privat', p.bausteineEin - p.bausteineAus, 'privat');
   }
   return out.sort((a, b) => a.datum.localeCompare(b.datum));

@@ -10,7 +10,7 @@
 // Liste über die Grenze wachsen lassen will, bekommt eine Ablehnung mit Text.
 
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
-import { firmaFuerGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
+import { UG_NAME, firmaFuerGesellschaft, kontoName, type Gesellschaftskennung } from '@/lib/einheiten';
 import { zuordnungName } from './haushalt/entflechtung';
 import { neueKennung } from '@/lib/kennung';
 
@@ -104,11 +104,11 @@ const cent = (v: unknown): number => (isFinite(Number(v)) ? Math.round(Number(v)
 
 // ── Das UG-Konto (28.09., Querschnitt-Prüfung) ──────────────────────────────
 // Die Firmen-Kennungen im Finanzplan sind die drei Gesellschaften aus lib/einheiten.ts
-// (kdc Selbstständigkeit · kdv KD Ventures · ug MAKE OS UG); Rechnungen aus UG-Mandaten
+// (kdc Selbstständigkeit · kdv KD Ventures · ug MAKE Innovation GmbH); Rechnungen aus ug-Mandaten
 // landen seitdem bei ug (firmaFuerGesellschaft) statt bei kdc.
 
-/** Das Konto der MAKE OS UG — leer (ohne Bank und Stand, zählt 0 €), bis jemand es pflegt. */
-export const UG_FIRMA: Firma = { id: 'ug', name: 'MAKE OS UG', bank: '', kontostand: null, stand: null };
+/** Das Konto der MAKE Innovation GmbH — leer (ohne Bank und Stand, zählt 0 €), bis jemand es pflegt. Name aus lib/einheiten.ts. */
+export const UG_FIRMA: Firma = { id: 'ug', name: UG_NAME, bank: '', kontostand: null, stand: null };
 
 /**
  * Ein bestehender Plan ohne UG-Konto bekommt es beim Schreiben dazu — aber nur, sobald ein
@@ -163,7 +163,8 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
   return {
     firmen: (Array.isArray(f?.firmen) ? f!.firmen : []).map(x => ({
       id: String(x.id ?? '').slice(0, 40) || `f-${Math.random().toString(36).slice(2, 8)}`,
-      name: String(x.name ?? '').slice(0, 120),
+      // Konto `ug` mit Altnamen (UG_ALTNAMEN) heißt beim Lesen wie in lib/einheiten.ts (30.09.) — gespeichert beim nächsten Schreiben.
+      name: kontoName(String(x.id ?? ''), String(x.name ?? '').slice(0, 120)),
       bank: String(x.bank ?? '').slice(0, 60),
       kontostand: x.kontostand == null || !isFinite(Number(x.kontostand)) ? null : Math.round(Number(x.kontostand)),
       stand: typeof x.stand === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.stand) ? x.stand : null,

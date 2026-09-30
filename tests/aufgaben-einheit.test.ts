@@ -1,5 +1,5 @@
 // Business-Einheit an Aufgaben (27.09., Kevin: „im Business immer zwischen Selbstständigkeit,
-// KD Ventures und MAKE OS UG unterscheiden“): Säuberung im Schreibweg, Ableitung für System-
+// KD Ventures und MAKE Innovation GmbH unterscheiden“): Säuberung im Schreibweg, Ableitung für System-
 // Aufgaben aus der Gesellschaft, Filterlogik, Vorgabe. Eigener Datenordner — nie der echte Bestand.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -26,7 +26,7 @@ const aufgabe = (id: string, extra: Record<string, unknown> = {}) => ({ id, titl
 
 describe('Einheit — Säuberung (rein)', () => {
   it('Business: Name vereinheitlicht, Privat verworfen, zu kurz verworfen, lang gekappt', () => {
-    expect(aufgabeEinheit({ id: 'a', title: 'Angebot', projectId: 'proj-kdm', space: 'business', einheit: 'neue ug' })).toBe('MAKE OS UG');
+    expect(aufgabeEinheit({ id: 'a', title: 'Angebot', projectId: 'proj-kdm', space: 'business', einheit: 'neue ug' })).toBe('MAKE Innovation GmbH');
     expect(aufgabeEinheit({ id: 'a', title: 'Angebot', projectId: 'proj-kdm', einheit: 'kdv' })).toBe('KD Ventures');
     expect(aufgabeEinheit({ id: 'a', title: 'Angebot', projectId: 'proj-kdm', space: 'privat', einheit: 'KD Ventures' })).toBeUndefined();
     expect(aufgabeEinheit({ id: 'a', title: 'Wohnung kündigen', projectId: 'x', einheit: 'KD Ventures' })).toBeUndefined();
@@ -49,7 +49,7 @@ describe('Einheit — Ableitung für System-Aufgaben', () => {
     leistungen: [{ id: 'p1', gesellschaft: 'kdc' }],
   };
   it('Mandat vor Deal vor Produkt; „offen“ ohne Bezug ergibt keine Einheit', () => {
-    expect(einheitAusBezug(crm, { mandatId: 'm1' })).toBe('MAKE OS UG');
+    expect(einheitAusBezug(crm, { mandatId: 'm1' })).toBe('MAKE Innovation GmbH');
     expect(einheitAusBezug(crm, { chanceId: 'd1' })).toBe('KD Ventures');
     expect(einheitAusBezug(crm, { mandatId: 'm2' })).toBe('KD Ventures');
     expect(einheitAusBezug(crm, { chanceId: 'd2' })).toBe('Selbstständigkeit');
@@ -76,21 +76,21 @@ describe('Einheit — Filter und Vorgabe (rein)', () => {
   it('Filter: alle · Einheit (Schreibweise egal) · ohne', () => {
     expect(passtEinheitFilter(undefined, EINHEIT_ALLE)).toBe(true);
     expect(passtEinheitFilter('KD Ventures', 'KD Ventures')).toBe(true);
-    expect(passtEinheitFilter('Neue UG', 'MAKE OS UG')).toBe(true);
-    expect(passtEinheitFilter('KD Ventures', 'MAKE OS UG')).toBe(false);
+    expect(passtEinheitFilter('Neue UG', 'MAKE Innovation GmbH')).toBe(true);
+    expect(passtEinheitFilter('KD Ventures', 'MAKE Innovation GmbH')).toBe(false);
     expect(passtEinheitFilter(undefined, EINHEIT_OHNE)).toBe(true);
     expect(passtEinheitFilter('Kunden', EINHEIT_OHNE)).toBe(false);
     expect(passtEinheitFilter(undefined, 'KD Ventures')).toBe(false);
   });
   it('Pillen: Alle · drei Kerneinheiten · genutzte eigene · ohne — mit Anzahl', () => {
-    const o = einheitFilterOptionen(['KD Ventures', 'KD Ventures', 'Kunden', undefined, 'Pilot GmbH'], ['Selbstständigkeit', 'KD Ventures', 'MAKE OS UG', 'Kunden', 'Leerlauf']);
-    expect(o.map(x => x.label)).toEqual(['Alle', 'Selbstständigkeit', 'KD Ventures', 'MAKE OS UG', 'Kunden', 'Pilot GmbH', 'ohne Einheit']);
+    const o = einheitFilterOptionen(['KD Ventures', 'KD Ventures', 'Kunden', undefined, 'Pilot GmbH'], ['Selbstständigkeit', 'KD Ventures', 'MAKE Innovation GmbH', 'Kunden', 'Leerlauf']);
+    expect(o.map(x => x.label)).toEqual(['Alle', 'Selbstständigkeit', 'KD Ventures', 'MAKE Innovation GmbH', 'Kunden', 'Pilot GmbH', 'ohne Einheit']);
     expect(o.find(x => x.id === 'KD Ventures')?.anzahl).toBe(2);
     expect(o.find(x => x.id === EINHEIT_OHNE)?.anzahl).toBe(1);
     expect(o[0].anzahl).toBe(5);
   });
   it('Vorgabe: gesetzter Filter, sonst zuletzt gewählt; „ohne“ → keine', () => {
-    expect(vorgabeEinheit('MAKE OS UG', 'KD Ventures')).toBe('MAKE OS UG');
+    expect(vorgabeEinheit('MAKE Innovation GmbH', 'KD Ventures')).toBe('MAKE Innovation GmbH');
     expect(vorgabeEinheit(EINHEIT_ALLE, 'kdv')).toBe('KD Ventures');
     expect(vorgabeEinheit(EINHEIT_ALLE, null)).toBeUndefined();
     expect(vorgabeEinheit(EINHEIT_OHNE, 'KD Ventures')).toBeUndefined();
@@ -99,7 +99,7 @@ describe('Einheit — Filter und Vorgabe (rein)', () => {
     expect(einheitKurz('KD Ventures')).toBe('KDV');
     expect(einheitKurz('Ein sehr langer Kundenname')).toBe('Ein sehr lang…');
     expect(einheitFarbe('Kunden')).toBe(EINHEIT_GRAU);
-    expect(einheitFarbe('MAKE OS UG')).not.toBe(EINHEIT_GRAU);
+    expect(einheitFarbe('MAKE Innovation GmbH')).not.toBe(EINHEIT_GRAU);
   });
 });
 
@@ -130,7 +130,7 @@ describe('Einheit — Schreibweg /api/state/tasks und /api/tasks/create', () => 
     expect(r.status).toBe(200);
     const l = await lies();
     const e = (id: string) => l.find(t => t.id === id);
-    expect(e('b-ug')?.einheit).toBe('MAKE OS UG');
+    expect(e('b-ug')?.einheit).toBe('MAKE Innovation GmbH');
     expect(e('b-kdc')?.einheit).toBe('Selbstständigkeit');
     expect(e('b-eigen')?.einheit).toBe('Pilot GmbH');
     expect('einheit' in (e('p-1') ?? {})).toBe(false);
@@ -143,7 +143,7 @@ describe('Einheit — Schreibweg /api/state/tasks und /api/tasks/create', () => 
 
   it('PUT: über einen vorhandenen Bestand 409 „neu laden“ (29.09., A2) — beim leeren Erststart säubert er genauso', async () => {
     const alt = await lies();
-    const koerper = { projects: [{ id: 'proj-kdm', title: 'KD' }], tasks: [...alt.filter(t => t.id !== 'b-ug'), aufgabe('b-ug', { space: 'business', einheit: 'kdv' }), aufgabe('p-2', { space: 'privat', einheit: 'MAKE OS UG' })] };
+    const koerper = { projects: [{ id: 'proj-kdm', title: 'KD' }], tasks: [...alt.filter(t => t.id !== 'b-ug'), aufgabe('b-ug', { space: 'business', einheit: 'kdv' }), aufgabe('p-2', { space: 'privat', einheit: 'MAKE Innovation GmbH' })] };
     const abgelehnt = await tasks.PUT(req('/api/state/tasks', koerper, 'PUT'));
     expect(abgelehnt.status).toBe(409);
     expect(((await abgelehnt.json()) as { neuLaden?: boolean }).neuLaden).toBe(true);
@@ -161,7 +161,7 @@ describe('Einheit — Schreibweg /api/state/tasks und /api/tasks/create', () => 
     const a = await (await anlegen.POST(req('/api/tasks/create', { title: 'Vertrag UG prüfen', space: 'business', einheit: 'ug' }, 'POST'))).json();
     const b = await (await anlegen.POST(req('/api/tasks/create', { title: 'Geschenk kaufen', space: 'privat', einheit: 'KD Ventures' }, 'POST'))).json();
     const l = await lies();
-    expect(l.find(t => t.id === a.id)?.einheit).toBe('MAKE OS UG');
+    expect(l.find(t => t.id === a.id)?.einheit).toBe('MAKE Innovation GmbH');
     expect('einheit' in (l.find(t => t.id === b.id) ?? {})).toBe(false);
   });
 });

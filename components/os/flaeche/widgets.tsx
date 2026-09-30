@@ -482,7 +482,7 @@ const TAGE_WAHL: EinstellungDef = { k: 'tage', label: 'Zeitraum', art: 'wahl', o
 // Wo die Zeit hingeht: heute, die letzten 7 Tage und der bewusste Anteil je Modus,
 // darunter die Bereiche nach Zeit. Quelle: Anwesenheit + Fokus-Zähler (/api/state/zeit).
 // 27.09. spät: Einstellung „nach Einheit“ — bewusste Business-Zeit dieser Woche je Selbstständigkeit · KD Ventures ·
-// MAKE OS UG · eigene · ohne Einheit (gleiche Rechnung wie die Karte auf der Seite Fokus).
+// MAKE Innovation GmbH · eigene · ohne Einheit (gleiche Rechnung wie die Karte auf der Seite Fokus).
 function ZeitWidget(p: WidgetProps) {
   return str(p.e.nach, 'bereich') === 'einheit' ? <ZeitEinheitWidget {...p} /> : <ZeitBereichWidget {...p} />;
 }
@@ -645,7 +645,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'fokus', label: 'Wochenfokus', beschreibung: 'Worauf es diese Woche ankommt', bereich: 'Tag', breite: 2, voreinstellung: { horizont: 'woche' } },
   { art: 'zeit', label: 'Zeit & Fokus · Privat', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'zeit', label: 'Zeit & Fokus · Business', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2, voreinstellung: { space: 'business' } },
-  { art: 'zeit', label: 'Zeit je Einheit', beschreibung: 'Bewusste Business-Zeit je Selbstständigkeit · KD Ventures · MAKE OS UG · ohne Einheit', bereich: 'Business', breite: 2, voreinstellung: { space: 'business', nach: 'einheit' } },
+  { art: 'zeit', label: 'Zeit je Einheit', beschreibung: `Bewusste Business-Zeit je ${KERN_EINHEITEN_NAMEN.join(' · ')} · ohne Einheit`, bereich: 'Business', breite: 2, voreinstellung: { space: 'business', nach: 'einheit' } },
   { art: 'koerper', label: 'Körper', beschreibung: WIDGETS.koerper.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen', label: 'Routinen & Streak', beschreibung: WIDGETS.routinen.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen-heute', label: 'Routinen heute · Privat', beschreibung: 'Heute fällige private Routinen — eigene und gemeinsame, abhakbar', bereich: 'Tag', breite: 2, voreinstellung: { space: 'privat' } },

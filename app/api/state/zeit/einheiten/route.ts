@@ -1,6 +1,6 @@
 // ─── MAKE OS — Zeit & Fokus: Zeit je Business-Einheit (27.09. spät) ─────────
 // GET ?zeitraum=woche|monat&stichtag=YYYY-MM-DD → Stunden je Selbstständigkeit ·
-// KD Ventures · MAKE OS UG · eigene · ohne Einheit, je Person des Haushalts und
+// KD Ventures · MAKE Innovation GmbH · eigene · ohne Einheit, je Person des Haushalts und
 // gesamt, dazu die Top-Aufgaben je Einheit. Nur bewusste Business-Blöcke.
 // Rechnung rein in lib/zeitmessung/einheiten.ts. Ohne Haushalt nur die eigene Zeit.
 // Tempo: einmal je Haushalt/Zeitraum rechnen und merken (`merken`); der Schlüssel

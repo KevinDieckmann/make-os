@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Finanzplanung jetzt — Planen ────────────────────────────────────────────
-// Privat (Blatt mit IST-Historie) · MAKE OS UG · Töpfe UG (Profit First) ·
+// Privat (Blatt mit IST-Historie) · MAKE Innovation GmbH (Kennung ug) · Töpfe MAKE (Profit First) ·
 // KD Ventures · Selbstständigkeit 2026 · Szenarien (Vergleich S1–S5, Treiber
 // und Annahmen bearbeitbar) · Ziele (mit „Was wäre wenn“). Alle Zahlen kommen
 // aus dem Rechenkern; das Blatt schreibt nur Zellen-Überschreibungen.
@@ -11,6 +11,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Raster, Spalten, Spalte, Knopf, LEUCHT, feld, Haken } from '../schlank';
 import type { Szenario, Zeile } from '@/lib/finanzen/rechenkern';
 import { wert, sollBudget, key, istSchnitt, toepfeUG, rechneSelbst, zielStaende } from '@/lib/finanzen/rechenkern';
+import { UG_NAME, UG_KURZ } from '@/lib/einheiten';
 import { BUDGET_GRUPPEN, eur, prozent, letzterVoller, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfen';
 import { usePlan, rechne } from './daten';
 import { Blatt, type BlattZeile, type DatenZeile, type ZeilenListe } from './Blatt';
@@ -18,7 +19,7 @@ import { ZeileDialog, neueZeileOp } from './ZeileDialog';
 import { Geld, Kachel, Kacheln, Etikett, StatusPille, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, AnteilBalken, Dialog, Feld, Formular, Legende, KUPFER, LILA, Nichts, Schalter } from './teile';
 import { Stapel, Linie, MiniLinie } from './diagramme';
 
-/** Blatt + Zeilen-Dialog + neue Zeile — für Privat und UG gemeinsam. */
+/** Blatt + Zeilen-Dialog + neue Zeile — für Privat und die MAKE Innovation GmbH (ug) gemeinsam. */
 function useZeilenDialog() {
   const { aendere } = usePlan();
   const [offen, setOffen] = useState<string | null>(null);
@@ -77,14 +78,14 @@ export function Privat() {
       </Kacheln>
       <Karte i={1}>
         <Blatt zeilen={zeilen} titel={`Privat · ${sz.name}`} hist extra={extra} werkzeuge={<Etikett einheit="privat" text="Kevin & Malin" />} onZeile={zd.oeffne} onNeueZeile={zd.neu} onDrill={(i, z) => geh('buchungen', { monat: i, zeile: z })} />
-        <Hinweis>Lila Spalten = IST aus den Buchungen (Klick öffnet die Buchungen dahinter). Der laufende Monat bleibt bei Durchschnitten draußen. Brutto kommt aus der UG; Netto ist eine Näherung aus der Tabelle in den Annahmen.</Hinweis>
+        <Hinweis>Lila Spalten = IST aus den Buchungen (Klick öffnet die Buchungen dahinter). Der laufende Monat bleibt bei Durchschnitten draußen. Brutto kommt aus der {UG_NAME}; Netto ist eine Näherung aus der Tabelle in den Annahmen.</Hinweis>
       </Karte>
       {zd.dialog}
     </>
   );
 }
 
-// ── MAKE OS UG ───────────────────────────────────────────────────────────────
+// ── MAKE Innovation GmbH (Kennung ug; die Funktion heißt weiter UG) ──────────
 export function UG() {
   const { d, ug, sz } = usePlan();
   const zd = useZeilenDialog();
@@ -116,14 +117,14 @@ export function UG() {
   ];
   return (
     <Karte i={0}>
-      <Blatt zeilen={zeilen} titel={`MAKE OS UG · ${sz.name}`} werkzeuge={<Etikett einheit="ug" />} onZeile={zd.oeffne} onNeueZeile={zd.neu} />
+      <Blatt zeilen={zeilen} titel={`${UG_NAME} · ${sz.name}`} werkzeuge={<Etikett einheit="ug" />} onZeile={zd.oeffne} onNeueZeile={zd.neu} />
       <Hinweis>Umsatzzeilen und Gehälter kommen aus dem Szenario (Planen › Szenarien); eine überschriebene Zelle gewinnt. Ertragsteuer als Näherung — Hinweis, keine Steuerberatung.</Hinweis>
       {zd.dialog}
     </Karte>
   );
 }
 
-// ── Töpfe UG ─────────────────────────────────────────────────────────────────
+// ── Töpfe MAKE (Kennung ug) ──────────────────────────────────────────────────
 export function Toepfe() {
   const { d, ug, aendere } = usePlan();
   const t = toepfeUG(ug, d.einstellungen.reserveMonate);
@@ -131,7 +132,7 @@ export function Toepfe() {
   return (
     <>
       <Karte i={0}>
-        <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>Reserve <Auswahl wert={String(d.einstellungen.reserveMonate)} onWahl={v => void aendere([{ pfad: '/einstellungen/reserveMonate', alt: d.einstellungen.reserveMonate, neu: Number(v) }], 'Reserve UG')} optionen={[0, 1, 2, 3].map(n => ({ id: String(n), label: `${n} Monatskosten` }))} titel="Reserve in Monatskosten" /></span>}>Wem gehört das Geld auf dem UG-Konto</Ueberschrift>
+        <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>Reserve <Auswahl wert={String(d.einstellungen.reserveMonate)} onWahl={v => void aendere([{ pfad: '/einstellungen/reserveMonate', alt: d.einstellungen.reserveMonate, neu: Number(v) }], `Reserve ${UG_KURZ}`)} optionen={[0, 1, 2, 3].map(n => ({ id: String(n), label: `${n} Monatskosten` }))} titel="Reserve in Monatskosten" /></span>}>Wem gehört das Geld auf dem {UG_KURZ}-Konto</Ueberschrift>
         <Legende eintraege={[{ farbe: farben[0], text: 'USt (Finanzamt)' }, { farbe: farben[1], text: 'Steuerrücklage' }, { farbe: farben[2], text: 'Reserve' }, { farbe: farben[3], text: 'frei' }]} />
         <div style={{ marginTop: 8 }}><Stapel stapel={t.map(x => [x.ust, x.steuer, x.reserve, x.frei])} labels={d.monate} farben={farben} namen={['USt', 'Steuer', 'Reserve', 'frei']} /></div>
         <Hinweis>Profit First, angepasst: Jeder Eingang wird gedanklich verteilt — erst Finanzamt, dann Steuer, dann Reserve, der Rest ist frei. Vorschlag: bei der Bank je Topf ein Unterkonto und einmal im Monat umbuchen.</Hinweis>
@@ -151,14 +152,14 @@ export function KDV() {
   const { ug, sz } = usePlan();
   const U = (m: number) => ug[m - 1];
   const zeilen: BlattZeile[] = [
-    { grp: 'Einnahmen' }, { name: 'Umlage aus MAKE OS UG', get: m => U(m).kdvUmlage, ind: true }, { name: 'Partnerdarlehen-Rate von der UG', get: m => U(m).kdvBjoernEin, ind: true }, { name: 'KEMARIS Ausstieg', get: m => U(m).kdvExit, ind: true },
+    { grp: 'Einnahmen' }, { name: `Umlage aus ${UG_NAME}`, get: m => U(m).kdvUmlage, ind: true }, { name: `Partnerdarlehen-Rate von der ${UG_NAME}`, get: m => U(m).kdvBjoernEin, ind: true }, { name: 'KEMARIS Ausstieg', get: m => U(m).kdvExit, ind: true },
     { grp: 'Ausgaben' }, { name: 'Holdingkosten', get: m => -U(m).kdvHolding, ind: true }, { name: 'Partnerdarlehen-Tilgung', get: m => -U(m).kdvBjoern, ind: true }, { name: 'Partnerdarlehen-Ablösung', get: m => -U(m).kdvAbloesung, ind: true }, { name: 'Steuer auf Ausstieg', get: m => -U(m).kdvExitSteuer, ind: true },
     { grp: 'Stand' }, { name: 'Kontostand KD Ventures', stock: true, sum: true, key: true, get: m => U(m).kdvKonto }, { name: 'Partnerdarlehen offen', stock: true, get: m => U(m).bjoernRest },
   ];
   return (
     <Karte i={0}>
       <Blatt zeilen={zeilen} titel={`KD Ventures · ${sz.name}`} werkzeuge={<Etikett einheit="kdv" />} />
-      <Hinweis>KD Ventures rechnet aus der UG (Umlage, Partnerdarlehen-Rate) und dem Szenario (Ausstieg, Ablösung). Treiber unter Planen › Szenarien, Beträge unter „Annahmen für alle“.</Hinweis>
+      <Hinweis>KD Ventures rechnet aus der {UG_NAME} (Umlage, Partnerdarlehen-Rate) und dem Szenario (Ausstieg, Ablösung). Treiber unter Planen › Szenarien, Beträge unter „Annahmen für alle“.</Hinweis>
     </Karte>
   );
 }
@@ -204,7 +205,7 @@ export function Selbst() {
               {zeile('zu versteuern', <><Geld v={r.zve} /> €</>)}
               {zeile('Einkommensteuer 2026 (Näherung)', <><Geld v={r.est} farbe={r.est > 0 ? LEUCHT.achtung : undefined} /> €</>, true)}
               {zeile('Kontostand heute', <ZahlFeld wert={s.kontoStart} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/kontoStart', alt: s.kontoStart, neu: v ?? 0 }], 'Selbstständigkeit Kontostand')} titel="Kontostand" />)}
-              {zeile('Darlehen an die UG', <ZahlFeld wert={s.darlehenAnUG} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/darlehenAnUG', alt: s.darlehenAnUG, neu: v ?? 0 }], 'Selbstständigkeit Darlehen an UG')} titel="Darlehen an die UG" />)}
+              {zeile(`Darlehen an die ${UG_NAME}`, <ZahlFeld wert={s.darlehenAnUG} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/darlehenAnUG', alt: s.darlehenAnUG, neu: v ?? 0 }], `Selbstständigkeit Darlehen an ${UG_KURZ}`)} titel={`Darlehen an die ${UG_NAME}`} />)}
               {zeile('Sicherheit Steuer', <ZahlFeld wert={s.sicherheit} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/sicherheit', alt: s.sicherheit, neu: v ?? 0 }], 'Selbstständigkeit Sicherheit')} titel="Sicherheit Steuer" />)}
               {zeile('Frei nach Abschluss', <><Geld v={r.frei} /> €</>, true)}
               {zeile('Ablösung', <ZahlFeld wert={s.consorsAbloesung} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/consorsAbloesung', alt: s.consorsAbloesung, neu: v ?? 0 }], 'Selbstständigkeit Ablösung')} titel="Ablösung" />)}
@@ -219,7 +220,7 @@ export function Selbst() {
 }
 
 // ── Szenarien ────────────────────────────────────────────────────────────────
-const ANNAHMEN: [string, string, number][] = [['kevinBrutto', 'Kevin brutto', 0], ['kevinAb', 'Kevin ab Monat', 0], ['malinBrutto', 'Malin brutto', 0], ['malinAb', 'Malin ab Monat', 0], ['agAnteil', 'Arbeitgeberanteil', 4], ['stammkapital', 'Stammkapital', 0], ['gruendungskosten', 'Gründungskosten', 0], ['darlehenKevin', 'Darlehen Kevin an UG', 0], ['darlehenRueckMonat', 'Rückzahlung in Monat', 0], ['retainerVerzug', 'Retainer-Zahlungsverzug (Monate)', 0], ['astarnaProvision', 'ASTARNA Provision', 0], ['steuerUG', 'Ertragsteuer UG', 4], ['ust', 'Umsatzsteuer', 4], ['steuerMonat', 'Steuer gezahlt im Kalendermonat', 0], ['holdingKosten', 'Holdingkosten', 0], ['holdingAb', 'Holding ab Monat', 0], ['kdvStart', 'KD Ventures Start', 0], ['bjoernBetrag', 'Partnerdarlehen', 0], ['bjoernRate', 'Partnerdarlehen Rate', 0], ['bjoernRateVon', 'Partnerdarlehen Rate ab Monat', 0], ['bjoernRateBis', 'Partnerdarlehen Rate bis Monat', 0], ['bjoernSchluss', 'Partnerdarlehen Schlussrate', 0], ['bjoernSchlussMonat', 'Schlussrate in Monat', 0], ['bjoernZinsMonat', 'Partnerdarlehen Zins je Monat', 0], ['bjoernZinsDeckel', 'Partnerdarlehen Zins-Deckel', 0], ['exitSteuer', 'Steuer auf Ausstieg', 4], ['gehaltTag', 'Gehaltstag', 0]];
+const ANNAHMEN: [string, string, number][] = [['kevinBrutto', 'Kevin brutto', 0], ['kevinAb', 'Kevin ab Monat', 0], ['malinBrutto', 'Malin brutto', 0], ['malinAb', 'Malin ab Monat', 0], ['agAnteil', 'Arbeitgeberanteil', 4], ['stammkapital', 'Stammkapital', 0], ['gruendungskosten', 'Gründungskosten', 0], ['darlehenKevin', `Darlehen Kevin an ${UG_KURZ}`, 0], ['darlehenRueckMonat', 'Rückzahlung in Monat', 0], ['retainerVerzug', 'Retainer-Zahlungsverzug (Monate)', 0], ['astarnaProvision', 'ASTARNA Provision', 0], ['steuerUG', `Ertragsteuer ${UG_KURZ}`, 4], ['ust', 'Umsatzsteuer', 4], ['steuerMonat', 'Steuer gezahlt im Kalendermonat', 0], ['holdingKosten', 'Holdingkosten', 0], ['holdingAb', 'Holding ab Monat', 0], ['kdvStart', 'KD Ventures Start', 0], ['bjoernBetrag', 'Partnerdarlehen', 0], ['bjoernRate', 'Partnerdarlehen Rate', 0], ['bjoernRateVon', 'Partnerdarlehen Rate ab Monat', 0], ['bjoernRateBis', 'Partnerdarlehen Rate bis Monat', 0], ['bjoernSchluss', 'Partnerdarlehen Schlussrate', 0], ['bjoernSchlussMonat', 'Schlussrate in Monat', 0], ['bjoernZinsMonat', 'Partnerdarlehen Zins je Monat', 0], ['bjoernZinsDeckel', 'Partnerdarlehen Zins-Deckel', 0], ['exitSteuer', 'Steuer auf Ausstieg', 4], ['gehaltTag', 'Gehaltstag', 0]];
 const FARBEN_SZ = [KUPFER, LEUCHT.achtung, LEUCHT.kritisch, LEUCHT.puls, LILA, C.inkDim, C.ink];
 
 export function Szenarien() {
@@ -254,7 +255,7 @@ export function Szenarien() {
           </tbody>
         </Tabelle>
         <div style={{ marginTop: 12 }}>
-          <Legende eintraege={alle.map(({ s: x }, i) => ({ farbe: FARBEN_SZ[i % FARBEN_SZ.length], text: `${x.name} — UG frei` }))} />
+          <Legende eintraege={alle.map(({ s: x }, i) => ({ farbe: FARBEN_SZ[i % FARBEN_SZ.length], text: `${x.name} — ${UG_KURZ} frei` }))} />
           <Linie labels={d.monate} tick={3} serien={alle.map(({ s: x, ug }, i) => ({ name: x.name, farbe: FARBEN_SZ[i % FARBEN_SZ.length], werte: ug.map(u => u.frei), breite: x.id === sz.id ? 2.6 : 1.3 }))} />
         </div>
       </Karte>
@@ -291,7 +292,7 @@ export function Szenarien() {
                 <tbody>{ereignisse.map(e => (
                   <tr key={e.id}>
                     <td style={TD}><TextFeld wert={e.name} onFertig={t => setze(`ereignisse/id=${e.id}/name`, e.name, t, `Ereignis ${e.name}`)} breite={150} titel="Was" /></td>
-                    <td style={TD}><Auswahl wert={e.einheit} onWahl={v => setze(`ereignisse/id=${e.id}/einheit`, e.einheit, v, `Ereignis ${e.name} · Einheit`)} optionen={[{ id: 'privat', label: 'Privat' }, { id: 'ug', label: 'UG' }]} titel="Einheit" /></td>
+                    <td style={TD}><Auswahl wert={e.einheit} onWahl={v => setze(`ereignisse/id=${e.id}/einheit`, e.einheit, v, `Ereignis ${e.name} · Einheit`)} optionen={[{ id: 'privat', label: 'Privat' }, { id: 'ug', label: `${UG_KURZ}` }]} titel="Einheit" /></td>
                     <td style={TDr}><ZahlFeld wert={e.betrag} dezimal={0} breite={96} onFertig={v => setze(`ereignisse/id=${e.id}/betrag`, e.betrag, v ?? 0, `Ereignis ${e.name}`)} titel="Betrag" /></td>
                     <td style={TD}><MonatWahl wert={e.monat} onWahl={m => setze(`ereignisse/id=${e.id}/monat`, e.monat, m, `Ereignis ${e.name} · Monat`)} monate={d.monate} /></td>
                     <td style={TD}><KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: p(`ereignisse/id=${e.id}`), alt: e.name }], `Ereignis ${e.name} entfernt`)} titel="Ereignis entfernen">−</KnopfKlein></td>
@@ -312,7 +313,7 @@ export function Szenarien() {
           <Karte i={4}>
             <Ueberschrift>Aktives Szenario</Ueberschrift>
             <Kacheln min={140}>
-              <Kachel label="Tiefpunkt UG frei" wert={<><Geld v={Math.min(...ugAktiv.map(u => u.frei))} /> €</>} />
+              <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} wert={<><Geld v={Math.min(...ugAktiv.map(u => u.frei))} /> €</>} />
               <Kachel label="Retainer" wert={`${ugAktiv[2]?.retainerAnzahl ?? 0} → ${ugAktiv[8]?.retainerAnzahl ?? 0}`} unter="Dez 26 → Jun 27" />
               <Kachel label="Ereignisse" wert={String(ereignisse.length)} unter="in diesem Szenario" />
             </Kacheln>
@@ -329,7 +330,7 @@ export function Szenarien() {
 }
 
 // ── Ziele ────────────────────────────────────────────────────────────────────
-const QUELLEN = [{ id: 'privat.angespart', label: 'Privat angespart' }, { id: 'ug.frei', label: 'UG frei verfügbar' }, { id: 'kdv.bjoern', label: 'Partnerdarlehen offen' }, { id: 'gruppe', label: 'Freies Geld Gruppe' }] as const;
+const QUELLEN = [{ id: 'privat.angespart', label: 'Privat angespart' }, { id: 'ug.frei', label: `${UG_KURZ} frei verfügbar` }, { id: 'kdv.bjoern', label: 'Partnerdarlehen offen' }, { id: 'gruppe', label: 'Freies Geld Gruppe' }] as const;
 
 export function Ziele() {
   const { d, ug, pr, aendere } = usePlan();

@@ -12,7 +12,7 @@
 
 export type SaeuleId = 'fh' | 'ud' | 'mt' | 'fz';
 // Sichten (28.09., eine Einheitenliste): Gesamt + die drei Gesellschaften aus lib/einheiten.ts —
-// die MAKE OS UG ist eine eigene Sicht; Namen kommen von dort (kdc heißt „Selbstständigkeit“).
+// die MAKE Innovation GmbH ist eine eigene Sicht; Namen kommen von dort (kdc heißt „Selbstständigkeit“).
 export type Scope = 'gesamt' | Gesellschaftskennung;
 export const SCOPES: { id: Scope; label: string }[] = [
   { id: 'gesamt', label: 'Gesamt' },

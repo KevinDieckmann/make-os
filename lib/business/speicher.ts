@@ -19,7 +19,7 @@ import { localDay } from '@/lib/zeit';
 import { SCOPES, schwelleSauber, type Scope, type Schwelle } from './register';
 import { mrrJeKunde, type Bestand, type Monatsabschluss } from './messen';
 import { berechne, type Ampel, type BusinessIndex } from './index';
-import { GESELLSCHAFTEN, type Gesellschaftskennung } from '@/lib/einheiten';
+import { GESELLSCHAFTEN, UG_NAME, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export const EINSTELLUNGEN = 'business-einstellungen';
 export const ABSCHLUESSE = 'business-abschluesse';
@@ -42,7 +42,7 @@ export interface BusinessVerlauf {
   mrr: Record<string, Partial<Record<Scope, Record<string, number>>>>;
 }
 
-/** Die Firmen mit Einstellungen und Monatsabschluss — die eine Einheitenliste (28.09.: auch die MAKE OS UG). */
+/** Die Firmen mit Einstellungen und Monatsabschluss — die eine Einheitenliste (28.09.: auch die MAKE Innovation GmbH). */
 const FIRMEN = GESELLSCHAFTEN;
 
 /** Zählt eigene Schreibvorgänge — Zwischenspeicher (ZOE, Head of Finance) wissen so, wann sie neu rechnen müssen. */
@@ -103,7 +103,7 @@ export const ABSCHLUSS_FELDER = ['umsatz', 'kosten', 'personal', 'marketingVertr
 export async function speichereAbschluss(roh: Record<string, unknown>, von: string): Promise<{ ok: true; eintrag: Monatsabschluss } | { ok: false; fehler: string }> {
   const firma = FIRMEN.find(f => f === roh.firma);
   const monat = typeof roh.monat === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(roh.monat) ? roh.monat : null;
-  if (!firma) return { ok: false, fehler: 'Firma fehlt (Selbstständigkeit, KD Ventures oder MAKE OS UG).' };
+  if (!firma) return { ok: false, fehler: `Firma fehlt (Selbstständigkeit, KD Ventures oder ${UG_NAME}).` };
   if (!monat) return { ok: false, fehler: 'Monat im Format JJJJ-MM fehlt.' };
   if (monat > localDay().slice(0, 7)) return { ok: false, fehler: 'Ein Abschluss für die Zukunft geht nicht.' };
   let eintrag!: Monatsabschluss;
@@ -152,7 +152,7 @@ async function ladeRohFrisch(heute: string) {
   ]);
   // V1-Export: nur die Business-Teile. Umsatz/Kosten = Selbständigkeit (Consulting);
   // Fixkosten getrennt: s = Selbständigkeit, u = „KD Management UG“ = Gründungsname der
-  // KD Ventures UG (CLAUDE.md) → kdv, NICHT die MAKE OS UG. Private Kredite (p.sch) bleiben draußen.
+  // KD Ventures UG (CLAUDE.md) → kdv, NICHT die MAKE Innovation GmbH. Private Kredite (p.sch) bleiben draußen.
   const g = grund?.roh ? lesen(grund.roh, grund.stand) : null;
   const fixS = (grund?.roh?.s?.fixk ?? []).length, fixU = (grund?.roh?.u?.fixk ?? []).length;
   const fixListe = g?.fixkosten ?? [];

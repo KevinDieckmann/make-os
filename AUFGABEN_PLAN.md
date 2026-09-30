@@ -1,7 +1,7 @@
 # Aufgaben — Umbau wie Monday/ClickUp (Kevin + Malin, 28.09. abends)
 
 ## Kevins Entscheidungen (28.09.)
-- **Spaces:** Privat = ein Space „Privat“, Projekte darin. Business: **Firmen fest** (Selbstständigkeit · KD Ventures · MAKE OS UG) + **Mandanten automatisch** — jede CRM-Firma mit aktivem Mandat bekommt einen Space (verknüpft mit der Firma); endet das Mandat, wandert der Space ins Archiv.
+- **Spaces:** Privat = ein Space „Privat“, Projekte darin. Business: **Firmen fest** (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH — bis 30.09. „MAKE OS UG“, Kennung `ug`) + **Mandanten automatisch** — jede CRM-Firma mit aktivem Mandat bekommt einen Space (verknüpft mit der Firma); endet das Mandat, wandert der Space ins Archiv.
 - **Ebenen:** Bereich (Privat | Business → Firma | Mandant) → Space → **Projekt** (z. B. Buchhaltung) → **Liste** (z. B. Januar, Februar) → **Aufgabe** (aufklappbar) → **Unteraufgabe** (z. B. der einzelne Beleg). Ohne Liste: „Sonstige“. Ohne Projekt: „Sonstige“ im Space.
 - **Status:** Offen · In Arbeit · Wartend · Erledigt fest; je Space eigene Status dazu (Farbe, Reihenfolge, Grundstatus als Bedeutung).
 - **Felder:** Status, Deadline, Beschreibung, Zuständig, Priorität, Verknüpfung mit CRM (Kontakt, Firma, Mandat, Deal), Kommentare mit @-Erwähnung.

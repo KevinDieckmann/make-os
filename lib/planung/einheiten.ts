@@ -1,6 +1,6 @@
 // ─── MAKE OS — Planung: Business-Einheiten ──────────────────────────────────
 // Kevin (27.09.): Ziele und Meilensteine im Business nach Einheit zuordnen und
-// filtern — vorbelegt Selbstständigkeit · KD Ventures · MAKE OS UG (lib/einheiten.ts,
+// filtern — vorbelegt Selbstständigkeit · KD Ventures · MAKE Innovation GmbH (lib/einheiten.ts,
 // eine Quelle mit Aufgaben und CRM) · Kunden, weitere frei
 // anlegbar. Die Liste gehört dem Haushalt (Speicher planung-einheiten--<h>).
 // Privat kennt keine Einheiten.
@@ -53,5 +53,9 @@ export function sauberEinheitenDatei(roh: unknown): EinheitenDatei {
   return { eigene: einheitenListe(eigene).slice(EINHEITEN_STANDARD.length) };
 }
 
-/** Passt ein Eintrag zum Einheiten-Filter? `alle` lässt alles durch. */
-export const passtEinheit = (einheit: string | undefined, filter: string | 'alle'): boolean => filter === 'alle' || (einheit ?? '') === filter;
+/**
+ * Passt ein Eintrag zum Einheiten-Filter? `alle` lässt alles durch. Seit 30.09. über `einheitName` auf beiden
+ * Seiten — ein gespeicherter Altname (z. B. „Neue UG“ → MAKE Innovation GmbH) passt weiter zum heutigen Namen.
+ */
+export const passtEinheit = (einheit: string | undefined, filter: string | 'alle'): boolean =>
+  filter === 'alle' || norm(einheitName(einheit) ?? '') === norm(einheitName(filter) ?? filter);

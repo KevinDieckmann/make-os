@@ -1,6 +1,6 @@
 // ─── Business-Index — messen (rein, getestet) ───────────────────────────────
 // Jede Kennzahl aus dem Bestand, getrennt nach Sicht (gesamt · Selbstständigkeit ·
-// KD Ventures · MAKE OS UG — lib/einheiten.ts, seit 28.09.). Privates zählt nie. Fehlt etwas, gibt es keinen Schätzwert,
+// KD Ventures · MAKE Innovation GmbH — lib/einheiten.ts, seit 28.09.). Privates zählt nie. Fehlt etwas, gibt es keinen Schätzwert,
 // sondern eine Messlücke.
 //
 // Ist-Zahlen je Monat (Umsatz, Kosten, Personal …) in dieser Reihenfolge:
@@ -89,7 +89,7 @@ const pz = (n: number) => `${zahl(n, 1)} %`;
 const firmenLabel = (id: string) => (istGesellschaft(id) ? finanzOrtName(id) : undefined);
 
 /**
- * Die Firmen einer Sicht. Gesamt = Selbstständigkeit + KD Ventures und die MAKE OS UG,
+ * Die Firmen einer Sicht. Gesamt = Selbstständigkeit + KD Ventures und die MAKE Innovation GmbH,
  * sobald sie einen Monatsabschluss hat (28.09.): „Gesamt vollständig“ heißt „alle Firmen
  * mit Abschluss im Monat“ — eine UG ohne jeden Abschluss darf die Gesamtsicht nicht
  * auf „nur 2 von 3 Firmen“ kippen (die Summen blieben sonst nicht gleich).

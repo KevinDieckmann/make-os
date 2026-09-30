@@ -8,7 +8,7 @@
 //   2. Tagesform — die echte Recovery von heute, auf Wunsch mit KI-Einordnung
 //   3. Worauf die Energie geht — die Fokus-Regler je Säule (gepflegt im Kompass)
 //   4. Zeit je Einheit + Fokus-Blöcke (27.09. spät) — bewusste Business-Zeit je Selbstständigkeit ·
-//      KD Ventures · MAKE OS UG, Blöcke nachträglich einer Aufgabe/Einheit zuordnen
+//      KD Ventures · MAKE Innovation GmbH, Blöcke nachträglich einer Aufgabe/Einheit zuordnen
 //   5. Zeit je Mandat (28.09., „Mandat an Zielen und Zeit“) — für Abrechnung und Auslastung
 
 import Link from 'next/link';

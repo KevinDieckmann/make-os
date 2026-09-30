@@ -12,7 +12,7 @@
 // Zu zweit (25.09.): Je Mandat ist jemand zuständig (ohne Eintrag Kevin als
 // Sales-Verantwortung) — Filter „Alle · Meins · Malin“, Plakette, Zeile je
 // Person, Übergeben. Änderungen gehen als Einzelfelder raus (api.teil).
-// 28.09.: Filter nach Gesellschaft (Alle · Selbstständigkeit · KD Ventures · MAKE OS UG)
+// 28.09.: Filter nach Gesellschaft (Alle · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH)
 // neben dem Personen-Filter; „+ Mandat“ übernimmt die gefilterte Gesellschaft. Rechnungen
 // aus dem Honorar landen bei der Gesellschaft des Mandats (firmaFuerGesellschaft).
 
@@ -66,7 +66,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const [liqui, setLiqui] = useState<{ mandate: LiquiLage[]; freiePosten: { id: string; titel: string; betrag: number }[] } | null>(null);
   const [alle, setAlle] = useState(false);
   const [wahl, setWahl] = useWerFilter('kunden');
-  // Filter nach Gesellschaft (28.09.): Alle · Selbstständigkeit · KD Ventures · MAKE OS UG — zusätzlich zur Person.
+  // Filter nach Gesellschaft (28.09.): Alle · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH — zusätzlich zur Person.
   const [ges, setGes] = useState<GesellschaftFilter>('alle');
   // Kommt man über einen Link auf ein Mandat, springt die Liste einmal dorthin.
   useZuZiel(useZiel('k'), !!api.crm);

@@ -44,7 +44,7 @@ async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<type
   }
   return istStand({
     heute: bild.stichtag,
-    firmen: (fp?.firmen ?? []).map(f => ({ id: f.id, name: f.name, kontostand: f.kontostand ?? null, stand: f.stand ?? null })),
+    firmen: (fp?.firmen ?? []).map(f => ({ id: f.id, name: kontoName(f.id, f.name), kontostand: f.kontostand ?? null, stand: f.stand ?? null })),
     offeneRechnungen: (fp?.rechnungen ?? []).filter(r => r.status === 'gestellt' && r.firmaId !== 'privat').map(r => ({ kunde: r.kunde, faellig: r.faellig })),
     leereControllingMonate: bild.business.controlling ? bild.business.controlling.leere_monate : null,
     grundlageStand: bild.business.grundlage?.stand ?? null,
@@ -87,6 +87,7 @@ export async function GET(req: Request) {
 }
 
 import { istDienst as dienst } from '@/lib/zugang/dienst';
+import { kontoName } from '@/lib/einheiten';
 const ohneBetraege = (t: string) => t.replace(/[+−-]?\d{1,3}(?:\.\d{3})*(?:,\d+)?\s?(?:€|EUR)/g, '…').replace(/\s{2,}/g, ' ').trim();
 
 export async function POST(req: Request) {

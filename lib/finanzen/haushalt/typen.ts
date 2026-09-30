@@ -13,7 +13,7 @@ import { FINANZ_ORT_IDS, finanzOrtAus, finanzOrtName, type FinanzOrt } from '@/l
 
 // Einheit (28.09., eine Einheitenliste): die Kennungen aus lib/einheiten.ts — privat · kdc · kdv · ug.
 // VORHER hieß es hier privat · selbststaendigkeit · ug, und `ug` war die „KD Management UG“ =
-// Gründungsname der KD Ventures UG (CLAUDE.md), NICHT die MAKE OS UG. Gespeicherte Bestände
+// Gründungsname der KD Ventures UG (CLAUDE.md), NICHT die MAKE Innovation GmbH. Gespeicherte Bestände
 // ohne Fassungs-Marke werden deshalb beim Lesen übersetzt: selbststaendigkeit → kdc, ug → kdv
 // (`haushaltEinheitAusAlt`, `einheitenLesen` in speicher.ts); geschrieben wird die neue Fassung.
 export type Einheit = FinanzOrt;
@@ -155,7 +155,7 @@ export function zuCent(wert: unknown): number | null {
 }
 
 /**
- * Einheit aus einer EINGABE (Oberfläche, API) — neues Vokabular der einen Liste (`ug` = MAKE OS UG),
+ * Einheit aus einer EINGABE (Oberfläche, API) — neues Vokabular der einen Liste (`ug` = MAKE Innovation GmbH),
  * Namen und Altnamen („Selbstständigkeit“, „KD Management UG“) werden erkannt. Leer = privat.
  * Unbekanntes wird abgewiesen, nicht geraten.
  */

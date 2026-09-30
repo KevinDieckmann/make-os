@@ -50,7 +50,7 @@ export interface ZugeordneteRechnung {
   perName: boolean;
   /** Das Mandat, aus dem sie stammt (wenn bekannt). */
   mandat?: Mandat;
-  /** Einheit (Selbstständigkeit · KD Ventures · MAKE OS UG) — aus dem Mandat, sonst aus der Firma der Rechnung. */
+  /** Einheit (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH) — aus dem Mandat, sonst aus der Firma der Rechnung. */
   einheit?: string;
   ueberfaellig: boolean;
   /** Tage zwischen Fälligkeit und Zahlung (positiv = zu spät), nur bei bezahlten mit beiden Daten. */

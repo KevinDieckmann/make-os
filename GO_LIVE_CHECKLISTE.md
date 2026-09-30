@@ -112,6 +112,13 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
 - Event- und Familien-Termine, die die neue Version angelegt hat, bleiben in Apple, ziehen aber nicht mehr nach.
 - Art. 17 in der Rückweg-Zeit: af4679a kennt `kalender-bezug` und `buchung--…` nicht — wer in der Zeit gelöscht wird, dessen
   Einträge dort bleiben. Nach dem nächsten Upload die Löschung dieser Personen noch einmal auslösen.
+- **Umbenennung MAKE OS UG → MAKE Innovation GmbH (30.09.):** af4679a/677400e kennen den neuen Namen nicht. Nichts geht
+  verloren (keine feste Namensliste verwirft ihn), aber: Aufgaben, Ziele, Wochenplan-Blöcke und Zeit-Blöcke, die inzwischen
+  „MAKE Innovation GmbH“ tragen, erscheinen dort als **eigene Einheit** (grau, eigene Filter-Pille bzw. eigene Zeile in „Zeit je
+  Einheit“) neben „MAKE OS UG“ — der Space `ug` bleibt richtig. Das Finanzplan-Konto und eine geänderte Firmierung zeigen den
+  neuen Text. Eine Widget-Einstellung „nur MAKE Innovation GmbH“ zeigt im alten Stand nur die Aufgaben mit dem neuen Namen.
+  ZOE im alten Stand ordnet eine freie Angabe „MAKE Innovation“ der Selbstständigkeit zu (nur neue Eingaben). Nach einem
+  erneuten Upload fügt sich alles wieder zusammen (die Altnamen werden erkannt).
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

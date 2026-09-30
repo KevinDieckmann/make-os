@@ -29,6 +29,7 @@ import { AUFGABEN_DATEI_WERKZEUGE } from '@/lib/zoe/aufgaben-unterlagen';
 import { AUFGABEN_WERKZEUG_DEFS } from '@/lib/zoe/aufgaben-werkzeuge';
 import { ARBEIT_WERKZEUG_DEFS } from '@/lib/zoe/arbeit-werkzeug';
 import { CRM_WERKZEUG_DEFS, crmBezugAus, crmBezugHinweis } from '@/lib/zoe/crm-werkzeug-defs';
+import { UG_NAME } from '@/lib/einheiten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -176,7 +177,7 @@ export async function POST(req: Request) {
           wer: { type: 'string', enum: ['kevin', 'malin', 'both'], description: 'Wer macht es (optional, Standard Kevin)' },
           faellig: { type: 'string', description: 'Fällig am, YYYY-MM-DD (optional)' },
           space: { type: 'string', enum: ['privat', 'business'], description: 'Privat oder Business — Standard: der aktive Space' },
-          einheit: { type: 'string', description: 'Nur bei Business: zu welcher Einheit die Aufgabe gehört — „Selbstständigkeit“ (Kevin Dieckmann Consulting), „KD Ventures“ (die Beteiligungsgesellschaft) oder „MAKE OS UG“; auch eine eigene Einheit des Haushalts (z. B. „Kunden“). Nur setzen, wenn es aus dem Gespräch klar ist; bei Privat weglassen.' },
+          einheit: { type: 'string', description: `Nur bei Business: zu welcher Einheit die Aufgabe gehört — „Selbstständigkeit“ (Kevin Dieckmann Consulting), „KD Ventures“ (die Beteiligungsgesellschaft) oder „${UG_NAME}“; auch eine eigene Einheit des Haushalts (z. B. „Kunden“). Nur setzen, wenn es aus dem Gespräch klar ist; bei Privat weglassen.` },
         },
         required: ['title'],
       },
@@ -281,7 +282,7 @@ export async function POST(req: Request) {
       input_schema: {
         type: 'object',
         properties: {
-          sicht: { type: 'string', enum: ['gesamt', 'kdc', 'kdv', 'ug'], description: 'gesamt (Standard), kdc = Selbstständigkeit (Kevin Dieckmann Consulting), kdv = KD Ventures, ug = MAKE OS UG' },
+          sicht: { type: 'string', enum: ['gesamt', 'kdc', 'kdv', 'ug'], description: `gesamt (Standard), kdc = Selbstständigkeit (Kevin Dieckmann Consulting), kdv = KD Ventures, ug = ${UG_NAME}` },
           kennzahl: { type: 'string', enum: BUSINESS_KENNZAHLEN.map(k => k.id), description: BUSINESS_KENNZAHLEN.map(k => `${k.id} = ${k.label}`).join('; ') },
         },
       },
@@ -303,7 +304,7 @@ export async function POST(req: Request) {
       input_schema: {
         type: 'object',
         properties: {
-          firma: { type: 'string', enum: ['kdc', 'kdv', 'ug'], description: 'kdc = Selbstständigkeit (Consulting), kdv = KD Ventures, ug = MAKE OS UG' },
+          firma: { type: 'string', enum: ['kdc', 'kdv', 'ug'], description: `kdc = Selbstständigkeit (Consulting), kdv = KD Ventures, ug = ${UG_NAME}` },
           monat: { type: 'string', description: 'YYYY-MM (ein abgeschlossener Monat)' },
           umsatz: { type: 'number' }, kosten: { type: 'number', description: 'Kosten gesamt' }, personal: { type: 'number', description: 'davon Personal' },
           marketingVertrieb: { type: 'number', description: 'davon Marketing & Vertrieb' }, afa: { type: 'number', description: 'Abschreibungen' },
@@ -428,7 +429,7 @@ export async function POST(req: Request) {
           rhythmus: { type: 'string', enum: ['einmalig', 'monatlich', 'quartal', 'jaehrlich'], description: 'Wie oft — Standard monatlich' },
           ab: { type: 'string', description: 'Ab wann, YYYY-MM-DD (Standard heute)' },
           kategorie: { type: 'string', enum: ['mandat', 'produkt', 'sonstige-ein', 'personal', 'raum', 'steuern', 'kredite', 'betrieb'], description: 'Wofür es zählt (nur Firmen — Privates gehört in die Haushaltsfinanzen)' },
-          firma: { type: 'string', enum: ['kdv', 'kdc', 'ug', 'kemaris'], description: 'Welche Firma (kdc = Selbstständigkeit, kdv = KD Ventures, ug = MAKE OS UG)' },
+          firma: { type: 'string', enum: ['kdv', 'kdc', 'ug', 'kemaris'], description: `Welche Firma (kdc = Selbstständigkeit, kdv = KD Ventures, ug = ${UG_NAME})` },
           sicher: { type: 'boolean', description: 'false, wenn der Posten noch unsicher ist (nur bei Einnahmen relevant)' },
         }, required: ['titel', 'betrag'] },
       },
@@ -436,7 +437,7 @@ export async function POST(req: Request) {
         name: 'setze_kontostand',
         description: 'Setzt den Kontostand einer Firma in der Finanzplanung. Nutze das sofort, wenn Kevin einen Kontostand nennt („Kontostand KDC 18.500").',
         input_schema: { type: 'object', properties: {
-          firma: { type: 'string', description: 'kdv (KD Ventures), ug (MAKE OS UG) oder kdc (Selbstständigkeit, Kevin Dieckmann Consulting) — bei Unklarheit kdc' },
+          firma: { type: 'string', description: `kdv (KD Ventures), ug (${UG_NAME}) oder kdc (Selbstständigkeit, Kevin Dieckmann Consulting) — bei Unklarheit kdc` },
           betrag: { type: 'number', description: 'Kontostand in Euro' },
         }, required: ['betrag'] },
       },

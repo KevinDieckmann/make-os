@@ -13,6 +13,7 @@ import { zielStaende, zahlungskalender, istSchnitt, sollBudget } from '@/lib/fin
 import type { ZielStand } from '@/lib/finanzen/rechenkern';
 import { eur, prozent, tagKurz, datumLang, plusTage, offeneBuchungen, heuteIndex, letzterVoller, tageIm, achse, monatLabel, neueKennung, postenOffen } from '@/lib/finanzen/plan/hilfen';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
+import { UG_KURZ } from '@/lib/einheiten';
 import { entscheidungen } from '@/lib/finanzen/szenarien';
 import { usePlan } from './daten';
 import { Geld, Kachel, Kacheln, Etikett, StatusPille, PersonMarke, AnteilBalken, KnopfKlein, Auswahl, ampel, personName, KUPFER, LILA, Nichts, Hinweis, Legende } from './teile';
@@ -44,8 +45,8 @@ function LageKopf() {
     <>
       <Kacheln min={230}>
         <Kachel label="Frei verfügbar diesen Monat" punkt={aw.frei.gesamt >= 5000 ? LEUCHT.gut : aw.frei.gesamt >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.gesamt} /> €</>}
-          unter={<>UG frei <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
-        <Kachel label="Runway" punkt={rwFarbe(Math.min(aw.runway.ug ?? 99, aw.runway.privat ?? 99))} wert={<>UG {rw(aw.runway.ug, aw.runway.horizont)} · Privat {rw(aw.runway.privat, aw.runway.horizont)}</>} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
+          unter={<>{UG_KURZ} frei <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
+        <Kachel label="Runway" punkt={rwFarbe(Math.min(aw.runway.ug ?? 99, aw.runway.privat ?? 99))} wert={<>{UG_KURZ} {rw(aw.runway.ug, aw.runway.horizont)} · Privat {rw(aw.runway.privat, aw.runway.horizont)}</>} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
         <Kachel label="Ziele im Plan" punkt={aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${aw.ziele.imPlan} / ${aw.ziele.gesamt}`} unter={aw.ziele.gesamt ? `${aw.ziele.gekippt} gekippt · ${aw.ziele.knapp} knapp` : 'noch keine Ziele'} />
       </Kacheln>
       <Karte i={0} akzent={C.aktiv}>
@@ -77,7 +78,7 @@ export function Lage() {
   const flexIst = flexZ.reduce((a, z) => a + (h.zeilen[z.id]?.[ji] ?? 0), 0), flexPlan = flexZ.reduce((a, z) => a + sollBudget(z, 1, d.plan), 0);
   const flexUeber = flexZ.map(z => ({ z, ist: istSchnitt(h.zeilen[z.id], 3, L) })).filter(x => x.ist > x.z.soll * 1.1);
   const warn: [string, string][] = [];
-  const minus = ug.filter(u => u.frei < 0); if (minus.length) warn.push([LEUCHT.kritisch, `UG ${minus.length} Monate unter null frei — erster: ${monatLabel(d, minus[0].m)}`]);
+  const minus = ug.filter(u => u.frei < 0); if (minus.length) warn.push([LEUCHT.kritisch, `${UG_KURZ} ${minus.length} Monate unter null frei — erster: ${monatLabel(d, minus[0].m)}`]);
   const eng = pr.filter(p => p.luft < 0);
   if (eng.length) warn.push([LEUCHT.kritisch, `Privat in ${eng.length} Monaten im Minus — erster: ${monatLabel(d, eng[0].m)}`]);
   else if (pr.some(p => p.luft < 100)) warn.push([LEUCHT.achtung, `Privat auf Kante: ${pr.filter(p => p.luft < 100).length} Monate unter 100 € Luft`]);
@@ -116,7 +117,7 @@ export function Lage() {
             <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Wo sollten wir stehen?</div>
             {zeile(`Flexibel ${lab[ji] ?? ''} bis Tag ${tag}`, <><Geld v={flexIst} farbe={flexIst > (flexPlan * tag) / tim * 1.05 ? LEUCHT.achtung : LEUCHT.gut} /> / <Geld v={(flexPlan * tag) / tim} farbe={C.inkDim} /> €</>)}
             {zeile('Privat Luft ab Okt', <><Geld v={pr[0]?.luft} /> €</>)}
-            {zeile('UG frei Dez 26', <><Geld v={ug[2]?.frei} /> €</>)}
+            {zeile(`${UG_KURZ} frei Dez 26`, <><Geld v={ug[2]?.frei} /> €</>)}
             {ng && zeile('Notgroschen Dez 27', <><Geld v={pr[14]?.angespart} farbe={ng.status === 'verfehlt' ? LEUCHT.achtung : LEUCHT.gut} /> / <Geld v={ng.ziel.ziel} farbe={C.inkDim} /> €</>)}
           </div>
           <div>
@@ -131,8 +132,8 @@ export function Lage() {
         </Raster>
       </Karte>
       <Kacheln min={170}>
-        <Kachel label="Tiefpunkt UG frei" punkt={ampel(kz.minFrei >= 1000, kz.minFrei >= 0)} wert={<><Geld v={kz.minFrei} /> €</>} unter={monatLabel(d, kz.minMonat)} />
-        <Kachel label="UG frei Dez 27" punkt={ampel(kz.freiDez27 >= 20000, kz.freiDez27 >= 0)} wert={<><Geld v={kz.freiDez27} /> €</>} unter="nach Steuern und USt" />
+        <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={ampel(kz.minFrei >= 1000, kz.minFrei >= 0)} wert={<><Geld v={kz.minFrei} /> €</>} unter={monatLabel(d, kz.minMonat)} />
+        <Kachel label={`${UG_KURZ} frei Dez 27`} punkt={ampel(kz.freiDez27 >= 20000, kz.freiDez27 >= 0)} wert={<><Geld v={kz.freiDez27} /> €</>} unter="nach Steuern und USt" />
         <Kachel label="Privat Luft" punkt={ampel(kz.privatLuftMin >= 250, kz.privatLuftMin >= 0)} wert={<><Geld v={kz.privatLuftMin} /> €</>} unter="schlechtester Monat" />
         {ng && <Kachel label="Notgroschen" punkt={ng.status === 'verfehlt' ? LEUCHT.achtung : LEUCHT.gut} wert={<><Geld v={pr[14]?.angespart} /> €</>} unter={<>Dez 27 · Ziel <Geld v={ng.ziel.ziel} farbe={C.inkDim} /> €{ng.erreichtMonat ? ` · erreicht ${monatLabel(d, ng.erreichtMonat)}` : ''}</>} />}
         <Kachel label="Ankermandat Jun 27" punkt={ampel(kz.obAnteilJun27 < 0.3, kz.obAnteilJun27 < 0.4)} wert={prozent(kz.obAnteilJun27)} unter="vom Umsatz · Ziel unter 30 %" />
@@ -141,9 +142,9 @@ export function Lage() {
       <Spalten verhaeltnis="3:2">
         <Spalte>
           <Karte i={1}>
-            <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: 'UG frei' }, { farbe: LILA, text: 'Privat angespart' }, { farbe: LEUCHT.puls, text: 'KD Ventures' }, { farbe: C.ink, text: 'Gruppe' }]} />}>Geld der Familie — {sz.name}</Ueberschrift>
+            <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LILA, text: 'Privat angespart' }, { farbe: LEUCHT.puls, text: 'KD Ventures' }, { farbe: C.ink, text: 'Gruppe' }]} />}>Geld der Familie — {sz.name}</Ueberschrift>
             <Linie labels={lab} heute={hi - 1} tick={4} serien={[
-              { name: 'UG frei', farbe: KUPFER, werte: [...leerVor, ...ug.map(u => u.frei)], breite: 2.4 },
+              { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: [...leerVor, ...ug.map(u => u.frei)], breite: 2.4 },
               { name: 'Privat angespart', farbe: LILA, werte: [...leerVor, ...pr.map(p => p.angespart)] },
               { name: 'KD Ventures', farbe: LEUCHT.puls, werte: [...leerVor, ...ug.map(u => u.kdvKonto)], breite: 1.4 },
               { name: 'Gruppe', farbe: C.ink, werte: [...leerVor, ...ug.map((u, i) => u.frei + u.kdvKonto + pr[i].angespart)], gestrichelt: true, breite: 1.4 },

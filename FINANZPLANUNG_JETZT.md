@@ -1,5 +1,8 @@
 # Finanzplanung jetzt — Plan und Stand (27.09.2026, abends: Szenario-Baukasten)
 
+> 30.09.: Die Gesellschaft `ug` heißt **MAKE Innovation GmbH** (kurz „MAKE“, vorher „MAKE OS UG“). Anzeigenamen kommen aus
+> `lib/einheiten.ts` (`UG_NAME`/`UG_KURZ`); Kennungen und Code-Namen im Rechenkern (`ug`, `rechneUG`, `MonatUG`, `steuerUG`) bleiben.
+
 Kevin: „Unsere privaten Finanzen und die Firmenfinanzen in einem Szenario planen. Die Zahlen sind echt. Als ‚Finanzplanung jetzt‘
 links unter die Agenten, die ganze Systematik, in unserem Design, sofort funktional. Malin sieht alles. Später wandern die Teile
 unter Privat › Finanzen und Business — jetzt erst ein eigener Bereich.“
@@ -16,10 +19,10 @@ Startbestand `finanzen-plan.json` (🔒 echte Zahlen, nie ins Repo — kommt per
 | Lage | Lage | Frei verfügbar diesen Monat · Runway · Ziele im Plan — und was jetzt zu entscheiden ist (mit Sprung ins Feld) |
 | Planen | Szenarien bauen · Treiber & Annahmen | Szenario = Basis + Bausteine + Annahmen; Regler; Vergleich; Arbeitsplan |
 | Privat | Privat | Das Privat-Blatt (IST-Historie + Plan) |
-| Business | MAKE OS UG · KD Ventures · Selbstständigkeit | Die Gesellschaften getrennt |
+| Business | MAKE Innovation GmbH · KD Ventures · Selbstständigkeit | Die Gesellschaften getrennt |
 | Gesamt | Gesamt · Entwicklung · Geldfluss | Übergänge (Gehalt, Ausschüttung), Mindestumsatz, Steuerrücklage, Gruppe je Monat |
 | Buchungen & Check | Buchungen · Budget · Wochen-Check · Zu erledigen · Kalender & Verträge · Schulden | IST, Tempo, Verpflichtungen, Rhythmus |
-| Ziele & Töpfe | Ziele · Töpfe UG | Ziele mit Tempo, Profit-First-Töpfe |
+| Ziele & Töpfe | Ziele · Töpfe MAKE | Ziele mit Tempo, Profit-First-Töpfe |
 | Protokoll | Protokoll | Wer hat was geändert |
 
 Die 17 alten Unterseiten leben darunter weiter; alte `?u=`-Adressen lösen auf (`bereichVon` in `lib/finanzen/plan/hilfen.ts`). Bei einem Bereich mit nur
@@ -31,10 +34,10 @@ der Git-Geschichte (82e43c2).
 - **Basis** = der Ist-Plan des Dokuments (Zeilen `privatBudget`/`sachkosten`/…, Zellen-Überschreibungen `plan`, gemeinsame `annahmen`) + ein
   **Treiber-Szenario** des Rechenkerns (`basis` = `d.szenarien[].id`, Kevins S1–S5 mit One Banking, Retainern, ASTARNA, Events, KEMARIS-Ausstieg).
 - **Umsatzbaustein** = Produkt/Leistung × Kunde/Segment × Preis netto × Menge × Rhythmus (monatlich · jährlich · einmalig) × Start × Laufzeit ×
-  Zahlungsziel, Einheit UG · Privat · KD Ventures. `produktId` zeigt auf den Katalog; ohne = „ohne Produkt“.
+  Zahlungsziel, Einheit MAKE · Privat · KD Ventures. `produktId` zeigt auf den Katalog; ohne = „ohne Produkt“.
 - **Kostenbaustein** = Art (Stelle · Software · Miete · Rate · Sonstiges) × Betrag × Menge × Rhythmus × Start × Laufzeit, Einheit wie oben.
   Stelle = Brutto, der Kern rechnet den Arbeitgeberanteil dazu; Software → Sachkosten; Miete/Rate wirken meist privat.
-- **Annahmen je Szenario** (`PlanAnnahmen`): Kevin/Malin brutto, Steuerquote UG, Vorgabe Zahlungsziel, Ausschüttung UG → Privat ab Monat (brutto) und
+- **Annahmen je Szenario** (`PlanAnnahmen`): Kevin/Malin brutto, Steuerquote MAKE, Vorgabe Zahlungsziel, Ausschüttung MAKE → Privat ab Monat (brutto) und
   **pauschale Steuer auf die Ausschüttung** (`ausschuettungSteuer`, Vorgabe 26,4 % = Kapitalertragsteuer + Soli, Kevin 27.09.; Hinweis, keine
   Steuerberatung). Leer = wie im Dokument bzw. Vorgabe.
 - **Regler** (Was wäre wenn) sind gewöhnliche Bausteine mit `regler`-Marke bzw. Annahmen — die Oberfläche findet sie wieder, die Rechnung nicht.
@@ -42,23 +45,23 @@ der Git-Geschichte (82e43c2).
 
 **Rechenweg.** `reihen(ps, N)` löst Bausteine in Monatsreihen `Zusatz` auf (Index = Plan-Monat − 1): `ugUmsatz` (Leistung, Gewinn), `ugEingang`
 (Kasse, um das Zahlungsziel verschoben; USt kommt wie beim Retainer obendrauf), `ugPersonal` (Brutto weiterer Stellen), `ugSach`, `ausschuettung` (brutto,
-verlässt die UG-Kasse), `ausschuettungSteuer` (= brutto × Quote; privat kommt brutto − Steuer an, `MonatPrivat.ausschuettung` ist netto,
+verlässt die MAKE-Kasse), `ausschuettungSteuer` (= brutto × Quote; privat kommt brutto − Steuer an, `MonatPrivat.ausschuettung` ist netto,
 `ausschuettungSteuer` der Abzug), `privatEin`/`privatAus`, `kdvEin`/`kdvAus`. `annahmenMit()` legt die Szenario-Annahmen über `d.annahmen`. `rechneMit(d, ps, treiber?)` ruft
 `rechneUG(d', sz, x)` und `rechnePrivat(d', ug, sz, x)` — der Kern **addiert** die Reihen nur (`+ zx(x?.…, i)`); ohne Zusatz rechnet er Zeile für Zeile wie
 bisher (Test „ohne Planszenario rechnet der Kern exakt wie bisher“). Neue Kern-Felder: `MonatUG.bausteineUmsatz/bausteineEingang/stellen/bausteineSach/
 ausschuettung/kdvBausteineEin/kdvBausteineAus`, `MonatPrivat.ausschuettung/bausteineEin/bausteineAus`; `toepfeUG` zählt Stellen zu den laufenden Kosten,
 der Zahlungskalender zeigt Bausteine, Stellen und Ausschüttung.
 
-**Auswertung** (`auswertung(d, ug, pr)`): `m0` = Plan-Monat von „jetzt“ (vor Okt 26 = 1) · **frei verfügbar** = UG frei (nach Steuer/USt) + KD-Ventures-Konto
-+ (bekannte private Kontostände aus den Posten + Luft des Monats; fehlende Konten werden gezählt) · **Runway** UG = Monate ab jetzt bis `frei < 0`, Privat =
+**Auswertung** (`auswertung(d, ug, pr)`): `m0` = Plan-Monat von „jetzt“ (vor Okt 26 = 1) · **frei verfügbar** = MAKE frei (nach Steuer/USt) + KD-Ventures-Konto
++ (bekannte private Kontostände aus den Posten + Luft des Monats; fehlende Konten werden gezählt) · **Runway** MAKE = Monate ab jetzt bis `frei < 0`, Privat =
 bis (Konten + kumulierte Luft) < 0, sonst null (= über den Horizont) · **Ziele** im Plan/knapp/gekippt aus `zielStaende` · **Mindestumsatz** = Personal inkl.
 Stellen + Sachkosten + Holding je Monat (jetzt, Ø 12 Monate, gegen Umsatz Ø 12) · **Steuer** Rücklage jetzt, USt offen, nächste Ertragsteuerzahlung ·
-**Übergänge** Gehälter brutto/netto, Ausschüttung brutto/Steuer/netto (Gesamt zeigt alle drei; die Steuer steht auch in der Steuerrücklage-Kachel). `entscheidungen()` leitet daraus Punkte ab (UG unter null, Privat im Minus, Runway < 6, Umsatz unter
+**Übergänge** Gehälter brutto/netto, Ausschüttung brutto/Steuer/netto (Gesamt zeigt alle drei; die Steuer steht auch in der Steuerrücklage-Kachel). `entscheidungen()` leitet daraus Punkte ab (MAKE unter null, Privat im Minus, Runway < 6, Umsatz unter
 Mindestumsatz, Ziele gekippt/knapp, Steuer fällig, Konten fehlen, Buchungen offen, kein Arbeitsplan) — kritisch zuerst, jeder mit Sprung
 (`?u=planen&sz=…&feld=umsatz|privat`, `ziele`, `toepfe`, `posten`, `buchungen`, `gesamt`). `vergleich(d, [null, ps…], 3)` rechnet bis zu drei
 Spalten (null = Basis).
 
-**Arbeitsplan.** `arbeitsplan` (Kennung) im Dokument; `rechne()` in der Oberfläche und `kennzahlenVon()` (ZOE) rechnen immer mit ihm — Privat-Blatt, UG,
+**Arbeitsplan.** `arbeitsplan` (Kennung) im Dokument; `rechne()` in der Oberfläche und `kennzahlenVon()` (ZOE) rechnen immer mit ihm — Privat-Blatt, MAKE,
 KDV, Gesamt, Lage, Treiber-Vergleich (dort mit den Bausteinen des Arbeitsplans je Treiber). Ohne Arbeitsplan gilt der reine Treiber (`aktiv`). Klick auf
 einen Treiber setzt `aktiv` und die `basis` des Arbeitsplans.
 
@@ -71,7 +74,7 @@ Kennung, gelöschtes Planszenario → Arbeitsplan null, gelöschter Treiber → 
 **Oberfläche.** `components/os/finanzplan/Baukasten.tsx` (Planen › Szenarien bauen): Szenario-Pillen (★ = Arbeitsplan), + Szenario (Dialog mit Treiber),
 Duplizieren/Umbenennen/Löschen, Treiber wählen; Karten Umsatzbausteine (Tabelle, Produkt-Auswahl, Kunde, Wo, Preis, Menge, Rhythmus, ab, Monate,
 Zahlungsziel, Summe im Plan; Chips „+ Produkt“ aus dem Katalog — gelb, wenn dem Produkt etwas fehlt — und „Ist-Basis“ aus Mandaten/gewonnenen Deals),
-Kostenbausteine (+ Stelle · Software · Miete · Rate), Annahmen dieses Szenarios, Regler; rechts Wirkung gegen Basis (Kacheln + Linie UG frei/Privat
+Kostenbausteine (+ Stelle · Software · Miete · Rate), Annahmen dieses Szenarios, Regler; rechts Wirkung gegen Basis (Kacheln + Linie MAKE frei/Privat
 angespart, gestrichelt = Basis), Ziele/Mindestumsatz; unten Vergleich nebeneinander (Basis + bis zu zwei, ★ Arbeitsplan je Spalte). Felder speichern bei
 Enter/Verlassen (sofort lokal gerechnet), Regler beim Loslassen. `Gesamt.tsx`: Kacheln (frei jetzt, Mindestumsatz-Deckung, Steuerrücklage, USt, Gehälter,
 Ausschüttung, Selbstständigkeit 2026), Linie, Blatt „Gesamt je Monat“. `Ueberblick.tsx › LageKopf`: drei Zahlen + „Was jetzt zu entscheiden ist“ +
@@ -80,7 +83,7 @@ Ausschüttung, Selbstständigkeit 2026), Linie, Blatt „Gesamt je Monat“. `Ue
 ## Produkte → Deals → Mandate → Planung (Kevin: „clean von vorne bis hinten“)
 - **Produkt** (`Leistung`, Katalog im CRM, Seite `/os/mandate?s=produkte`) trägt, was die Planung braucht: `preis.betrag`, `preis.basis`
   (monat · jahr · einmalig — neu, additiv in `lib/crm/typen.ts`; fehlt sie, leitet `preisBasisVon()` sie aus der Freitext-Einheit ab, „festklicken“ speichert
-  sie), `laufzeitMonate` (neu), `aufwand { anteil, stunden }` (neu, Marge), `gesellschaft` (→ Plan-Einheit: kdv → KD Ventures, sonst UG), `status`.
+  sie), `laufzeitMonate` (neu), `aufwand { anteil, stunden }` (neu, Marge), `gesellschaft` (→ Plan-Einheit: kdv → KD Ventures, sonst MAKE), `status`.
   `planungFehlt(l)` nennt, was fehlt — auf der Produktseite als „für die Planung fehlt: …“, im Kopf als Zähler, im Baukasten als gelber Chip.
 - **Deal** (`Chance`, `leistungId`, `wert {betrag, basis, laufzeitMonate}`) → **Mandat** (`leistungId`, `honorar {betrag, basis}`, `start/ende`,
   `mindestlaufzeitMonate`, `gesellschaft`): aktive Mandate und gewonnene Deals ohne Mandat sind die **Ist-Basis** (`istBasisVorschlaege()`), per Klick ein
@@ -168,4 +171,4 @@ Alles nur lokal auf `entwicklung`; nichts gepusht. Sichtprüfung im Dev-Server s
 5. Finanz-Cockpit abschalten oder als Import-Werkzeug behalten; danach die Buchungen aus dem Haushalts-Import hier hinein (ein IST).
 6. ZOE/Startfläche an `?nur=kennzahlen` anschließen; Export-Route; Schnellsuche und `lib/wege.ts` ergänzen.
 7. vitest: `esbuild: { jsx: 'automatic' }` in `vitest.config.ts`, damit der Ansichten-Test ins Repo kann.
-8. Danach: Privat-Teile unter Privat › Finanzen, UG/KD Ventures unter Business.
+8. Danach: Privat-Teile unter Privat › Finanzen, MAKE/KD Ventures unter Business.

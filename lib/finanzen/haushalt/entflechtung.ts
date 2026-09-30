@@ -13,13 +13,13 @@ import { GESELLSCHAFTEN, finanzOrtName, istGesellschaft, type Gesellschaftskennu
 export type Quelle = 'firma' | 'zahlung' | 'merkposten' | 'rechnung' | 'buchung' | 'planposten';
 
 // Zuordnen: die drei Gesellschaften aus der EINEN Einheitenliste (lib/einheiten.ts,
-// kdc · kdv · ug — vorher fehlte die MAKE OS UG) plus KEMARIS. KEMARIS ist keine
+// kdc · kdv · ug — vorher fehlte die MAKE Innovation GmbH) plus KEMARIS. KEMARIS ist keine
 // Finanz-Einheit (nicht in FINANZ_ORTE), aber eine eigene Organisation (die
 // Beteiligung, lib/make-one/organisation-data.ts), und ZOE ordnet Planposten
 // ausdrücklich `kemaris` zu (lib/zoe/werkzeuge.ts) — darum bleibt sie hier wählbar.
 export type Zuordnung = Gesellschaftskennung | 'kemaris';
 export type Aktion = 'dublette' | 'uebernehmen' | 'entfernen' | 'behalten' | Zuordnung;
-/** Alle Zuordnungs-Aktionen in fester Reihenfolge (Selbstständigkeit · KD Ventures · MAKE OS UG · KEMARIS). */
+/** Alle Zuordnungs-Aktionen in fester Reihenfolge (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH · KEMARIS). */
 export const ZUORDNUNGEN: readonly Zuordnung[] = [...GESELLSCHAFTEN, 'kemaris'];
 export const istZuordnung = (a: unknown): a is Zuordnung => ZUORDNUNGEN.includes(a as Zuordnung);
 /** Anzeigename des Ziels einer Zuordnung — Gesellschaften über finanzOrtName, sonst KEMARIS. */

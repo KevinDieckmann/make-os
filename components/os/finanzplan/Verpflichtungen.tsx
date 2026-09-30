@@ -13,6 +13,7 @@ import type { Einheit, Posten, Schuld } from '@/lib/finanzen/rechenkern';
 import { tilgungsplan, zahlungskalender, istSchnitt, sollBudget } from '@/lib/finanzen/rechenkern';
 import { EINHEIT_LABEL, KAL, monatLabel, tagKurz, plusTage, letzterVoller, neueKennung, postenOffen, personKennung } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
+import { UG_NAME } from '@/lib/einheiten';
 import { ZeileDialog } from './ZeileDialog';
 import { Geld, Kachel, Kacheln, Etikett, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Nichts, eingabeStil, KUPFER, Pillen } from './teile';
 import { Linie } from './diagramme';
@@ -38,7 +39,7 @@ export function Schulden() {
       <Kacheln min={170}>
         <Kachel label="Schulden heute" wert={<><Geld v={heute} /> €</>} unter={<>inkl. Partnerdarlehen <Geld v={d.annahmen.bjoernBetrag} farbe={C.inkDim} /> €</>} />
         <Kachel label="Privat schuldenfrei" wert={freiPrivat === null ? '—' : freiPrivat === 0 ? 'jetzt' : monatLabel(d, freiPrivat)} unter={freiPrivat === null ? 'ohne Rate kein Datum' : 'bei den eingetragenen Raten'} />
-        <Kachel label="Partnerdarlehen getilgt" wert={darlehenFrei} unter={`über die UG · Szenario ${sz.name}`} />
+        <Kachel label="Partnerdarlehen getilgt" wert={darlehenFrei} unter={`über die ${UG_NAME} · Szenario ${sz.name}`} />
         <Kachel label="Ungeklärt" wert={String(unklar.length)} punkt={unklar.length ? LEUCHT.achtung : LEUCHT.gut} unter={<><Geld v={unklar.reduce((a, s) => a + s.rest, 0)} farbe={C.inkDim} /> € ohne Plan</>} />
       </Kacheln>
       <Karte i={0}>

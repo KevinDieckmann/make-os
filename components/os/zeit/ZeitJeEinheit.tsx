@@ -2,7 +2,7 @@
 
 // ─── Zeit & Fokus — Zeit je Einheit und die Fokus-Blöcke (27.09. spät) ──────
 // Kevin: „Fokus-Blöcke einer Aufgabe zuordnen, damit wir die Zeit je Einheit
-// sehen (Selbstständigkeit · KD Ventures · MAKE OS UG).“
+// sehen (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH).“
 //   EinheitBalken       — die Zeilen: Einheit, Balken, Zeit, Top-Aufgaben (auch im Widget `zeit`)
 //   ZeitJeEinheitKarte  — Woche/Monat, blättern, je Person und gesamt (Seite Fokus)
 //   FokusBloeckeKarte   — die eigenen Blöcke der letzten 7 Tage: Business zuordnen, Privat ins Business umbuchen

@@ -1,4 +1,5 @@
 import { zufallsUuid } from '@/lib/kennung';
+import { einheitName, gesellschaftAusEinheit } from '@/lib/einheiten';
 // ─── MAKE OS — Flächen: Seiten, die man sich selbst gestaltet ───────────────
 // Kevin (26.09.): „Alle Widgets immer zu bearbeiten, andere hinzufügen können;
 // seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am
@@ -45,7 +46,9 @@ export function sauberEinstellungen(e: unknown): Einstellungen {
   for (const [k, v] of Object.entries(e as Record<string, unknown>).slice(0, 20)) {
     const key = s(k, 40); if (!key) continue;
     if (typeof v === 'boolean' || (typeof v === 'number' && isFinite(v))) aus[key] = v;
-    else if (typeof v === 'string') aus[key] = v.slice(0, 400);
+    // Einheit eines Widgets (30.09.): Altnamen der Kerneinheiten (UG_ALTNAMEN, z. B. „Neue UG“) auf den heutigen Namen
+    // (lib/einheiten.ts) — sonst passt die Auswahl nicht mehr. Eigene Einheiten und „alle“/„ohne“ bleiben.
+    else if (typeof v === 'string') aus[key] = key === 'einheit' && gesellschaftAusEinheit(v) ? einheitName(v) ?? v : v.slice(0, 400);
   }
   return aus;
 }

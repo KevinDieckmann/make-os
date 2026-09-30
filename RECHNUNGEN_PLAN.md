@@ -5,7 +5,7 @@
 **Kevins Entscheidung:** MAKE OS stellt selbst Rechnungen (statt extern im Buchhaltungsprogramm). Pflicht zur E-Rechnung im B2B spätestens 2028 (bei mehr als 800 T€ Vorjahresumsatz 2027); Empfang schon seit 2025. Rechtliche Punkte sind Recherche-Stand, keine Steuerberatung — vor dem ersten echten Einsatz einmal mit dem Steuerberater abstimmen.
 
 ## Ziel
-Aus Angebot oder Mandat wird mit wenigen Klicks eine korrekte Rechnung je Gesellschaft (Selbstständigkeit · KD Ventures · MAKE OS UG): fortlaufende Nummer, Pflichtangaben nach § 14 UStG, PDF und strukturierte E-Rechnung (ZUGFeRD bzw. XRechnung, EN 16931), unveränderbar nach dem Stellen, Korrektur nur per Storno und neuer Rechnung (GoBD). Der Zahlungseingang schließt den Vorgang; Umsatz-Reiter, Finanzplan und Liquidität lesen dieselbe Quelle.
+Aus Angebot oder Mandat wird mit wenigen Klicks eine korrekte Rechnung je Gesellschaft (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH): fortlaufende Nummer, Pflichtangaben nach § 14 UStG, PDF und strukturierte E-Rechnung (ZUGFeRD bzw. XRechnung, EN 16931), unveränderbar nach dem Stellen, Korrektur nur per Storno und neuer Rechnung (GoBD). Der Zahlungseingang schließt den Vorgang; Umsatz-Reiter, Finanzplan und Liquidität lesen dieselbe Quelle.
 
 ## Bausteine
 1. **Rechnungssteller je Gesellschaft** (Stammdaten, nur im Datenspeicher, nie im Code): Name, Anschrift, Steuernummer und/oder USt-IdNr., Bankverbindung, Kleinunternehmer ja/nein, Logo, Standard-Zahlungsziel, Fußtext.

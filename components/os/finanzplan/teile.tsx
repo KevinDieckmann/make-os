@@ -52,7 +52,7 @@ export function Kacheln({ children, min = 150 }: { children: ReactNode; min?: nu
   return <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`, gap: 10, marginBottom: 14 }}>{children}</div>;
 }
 
-/** Kleines Etikett für die Einheit (Privat · UG · KD Ventures · Selbstständigkeit). */
+/** Kleines Etikett für die Einheit (Privat · MAKE Innovation GmbH · KD Ventures · Selbstständigkeit) — Namen aus lib/einheiten.ts. */
 export function Etikett({ einheit, text }: { einheit?: Einheit; text?: string }) {
   const f = einheit ? EINHEIT_FARBE[einheit] : C.inkLeise;
   return <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '.04em', padding: '2px 8px', borderRadius: 999, background: `${f}1F`, color: f, whiteSpace: 'nowrap' }}>{text ?? (einheit ? EINHEIT_LABEL[einheit] : '')}</span>;

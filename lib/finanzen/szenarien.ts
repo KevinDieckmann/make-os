@@ -9,7 +9,7 @@
 // Bausteine:
 //   Umsatz  = Kunde/Segment × Produkt/Leistung × Preis × Menge × Start × Laufzeit
 //             (monatlich · jährlich · einmalig), Einheit aus der einen Liste
-//             (lib/einheiten.ts: MAKE OS UG · Selbstständigkeit · KD Ventures · Privat),
+//             (lib/einheiten.ts: MAKE Innovation GmbH · Selbstständigkeit · KD Ventures · Privat),
 //             Zahlungsziel in Monaten (UG/Selbstständigkeit: Leistung zählt sofort in den
 //             Gewinn, das Geld kommt später — USt obendrauf wie beim Retainer).
 //
@@ -30,7 +30,7 @@ import type { Annahmen, FinanzDaten, MonatPrivat, MonatUG, Szenario, ZielStand, 
 import { rechneUG, rechnePrivat, kennzahlen, zielStaende, planMonat, kalMonat } from './rechenkern';
 import type { Unterseite } from './plan/hilfen';
 import { eur } from './plan/hilfen';
-import { finanzOrtName, type FinanzOrt, type KernEinheit } from '@/lib/einheiten';
+import { UG_KURZ, UG_NAME, finanzOrtName, type FinanzOrt, type KernEinheit } from '@/lib/einheiten';
 
 export type Rhythmus = 'monatlich' | 'jaehrlich' | 'einmalig';
 export type BausteinArt = 'umsatz' | 'kosten';
@@ -250,16 +250,16 @@ export function entscheidungen(d: FinanzDaten, g: Pick<Gerechnet, 'ug' | 'pr' | 
   const minus = ug.filter(u => u.frei < -0.5);
   if (minus.length) {
     const tief = ug.reduce((a, u) => (u.frei < a.frei ? u : a), ug[0]);
-    out.push({ id: 'ug-minus', stufe: 'kritisch', text: `UG ab ${monat(minus[0].m)} unter null frei — Tiefpunkt ${eur(tief.frei)} € im ${monat(tief.m)}.`, hinweis: 'Umsatzbaustein anlegen (Kunde × Produkt × Preis) oder Kosten und Gehälter im Szenario senken.', ziel: { u: 'planen', params: { ...psParam, feld: 'umsatz' } } });
+    out.push({ id: 'ug-minus', stufe: 'kritisch', text: `${UG_KURZ} ab ${monat(minus[0].m)} unter null frei — Tiefpunkt ${eur(tief.frei)} € im ${monat(tief.m)}.`, hinweis: 'Umsatzbaustein anlegen (Kunde × Produkt × Preis) oder Kosten und Gehälter im Szenario senken.', ziel: { u: 'planen', params: { ...psParam, feld: 'umsatz' } } });
   }
   const eng = pr.filter(p => p.luft < -0.5);
-  if (eng.length) out.push({ id: 'privat-minus', stufe: 'kritisch', text: `Privat in ${eng.length} Monaten im Minus — erster ${monat(eng[0].m)} (${eur(eng[0].luft)} €).`, hinweis: 'Fixkosten und Raten prüfen, Ausschüttung aus der UG oder Gehalt im Szenario anpassen.', ziel: { u: 'planen', params: { ...psParam, feld: 'privat' } } });
+  if (eng.length) out.push({ id: 'privat-minus', stufe: 'kritisch', text: `Privat in ${eng.length} Monaten im Minus — erster ${monat(eng[0].m)} (${eur(eng[0].luft)} €).`, hinweis: `Fixkosten und Raten prüfen, Ausschüttung aus der ${UG_NAME} oder Gehalt im Szenario anpassen.`, ziel: { u: 'planen', params: { ...psParam, feld: 'privat' } } });
   else if (aw.runway.privat != null && aw.runway.privat < 6) out.push({ id: 'privat-runway', stufe: 'achtung', text: `Privat trägt noch ${aw.runway.privat} Monate, dann rutschen die Konten unter null.`, ziel: { u: 'privat' } });
-  if (!minus.length && aw.runway.ug != null && aw.runway.ug < 6) out.push({ id: 'ug-runway', stufe: 'achtung', text: `UG-Runway ${aw.runway.ug} Monate — danach fehlt frei verfügbares Geld.`, ziel: { u: 'planen', params: { ...psParam, feld: 'umsatz' } } });
-  if (aw.mindestumsatz.umsatzSchnitt12 < aw.mindestumsatz.schnitt12 - 0.5) out.push({ id: 'mindestumsatz', stufe: 'achtung', text: `Umsatz der nächsten 12 Monate (Ø ${eur(aw.mindestumsatz.umsatzSchnitt12)} €) liegt unter den laufenden UG-Kosten (Ø ${eur(aw.mindestumsatz.schnitt12)} €).`, hinweis: 'Mindestumsatz je Monat = Personal + Sachkosten + Holding. Was fehlt, kommt aus Kapital oder Bausteinen.', ziel: { u: 'gesamt' } });
+  if (!minus.length && aw.runway.ug != null && aw.runway.ug < 6) out.push({ id: 'ug-runway', stufe: 'achtung', text: `${UG_KURZ}-Runway ${aw.runway.ug} Monate — danach fehlt frei verfügbares Geld.`, ziel: { u: 'planen', params: { ...psParam, feld: 'umsatz' } } });
+  if (aw.mindestumsatz.umsatzSchnitt12 < aw.mindestumsatz.schnitt12 - 0.5) out.push({ id: 'mindestumsatz', stufe: 'achtung', text: `Umsatz der nächsten 12 Monate (Ø ${eur(aw.mindestumsatz.umsatzSchnitt12)} €) liegt unter den laufenden ${UG_KURZ}-Kosten (Ø ${eur(aw.mindestumsatz.schnitt12)} €).`, hinweis: 'Mindestumsatz je Monat = Personal + Sachkosten + Holding. Was fehlt, kommt aus Kapital oder Bausteinen.', ziel: { u: 'gesamt' } });
   for (const z of aw.ziele.staende.filter(z => z.status === 'verfehlt').slice(0, 2)) out.push({ id: `ziel-${z.ziel.id}`, stufe: 'achtung', text: `Ziel „${z.ziel.name}“ kippt: ${eur(z.ziel.ziel)} € bis ${z.ziel.bis.slice(5)}/${z.ziel.bis.slice(2, 4)} wird im Plan nicht erreicht.`, ziel: { u: 'ziele' } });
   for (const z of aw.ziele.staende.filter(z => z.status === 'knapp').slice(0, 1)) out.push({ id: `ziel-${z.ziel.id}`, stufe: 'info', text: `Ziel „${z.ziel.name}“ ist knapp — erreicht ${z.erreichtMonat ? monat(z.erreichtMonat) : '—'}.`, ziel: { u: 'ziele' } });
-  if (aw.steuer.naechsteZahlung && aw.steuer.naechsteZahlung.monat - aw.m0 <= 3) out.push({ id: 'steuer', stufe: 'info', text: `Ertragsteuer UG im ${monat(aw.steuer.naechsteZahlung.monat)}: ${eur(aw.steuer.naechsteZahlung.betrag)} € (Näherung, keine Steuerberatung) — Rücklage prüfen.`, ziel: { u: 'toepfe' } });
+  if (aw.steuer.naechsteZahlung && aw.steuer.naechsteZahlung.monat - aw.m0 <= 3) out.push({ id: 'steuer', stufe: 'info', text: `Ertragsteuer ${UG_KURZ} im ${monat(aw.steuer.naechsteZahlung.monat)}: ${eur(aw.steuer.naechsteZahlung.betrag)} € (Näherung, keine Steuerberatung) — Rücklage prüfen.`, ziel: { u: 'toepfe' } });
   if (aw.frei.kontenFehlen) out.push({ id: 'konten', stufe: 'info', text: `${aw.frei.kontenFehlen} private Kontostände fehlen — „frei verfügbar“ ist bis dahin eine Schätzung.`, ziel: { u: 'posten' } });
   const offen = d.buchungen.filter(b => b.z === 'x.offen').length;
   if (offen >= 20) out.push({ id: 'buchungen', stufe: 'info', text: `${offen} Buchungen ohne Zuordnung — das IST ist unscharf.`, ziel: { u: 'buchungen' } });

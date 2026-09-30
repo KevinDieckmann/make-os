@@ -13,19 +13,19 @@ import type { Rechnung } from '@/lib/make-one/liquiditaet';
 import { UST_REGEL, aufCent, ustAusBrutto } from '@/lib/finanzen/ust';
 import type { Beleg } from '@/lib/finanzen/haushalt/typen';
 import { WEG } from '@/lib/wege';
-import { FINANZ_ORT_IDS, finanzOrtName, type FinanzOrt, type Gesellschaftskennung } from '@/lib/einheiten';
+import { FINANZ_ORT_IDS, UG_KURZ, UG_NAME, finanzOrtName, type FinanzOrt, type Gesellschaftskennung } from '@/lib/einheiten';
 
-// Die eine Einheitenliste (28.09., lib/einheiten.ts): Privat · Selbstständigkeit · KD Ventures · MAKE OS UG.
-// Die MAKE OS UG ist eine Körperschaft — sie wird NICHT wie die Selbstständigkeit gerechnet. Solange ihre
+// Die eine Einheitenliste (28.09., lib/einheiten.ts): Privat · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH.
+// Die MAKE Innovation GmbH (Kennung ug; bis 30.09. „UG“ — steuerlich dasselbe, keine neue Regel) ist eine Körperschaft — sie wird NICHT wie die Selbstständigkeit gerechnet. Solange ihre
 // Steuerlogik (Rechtsform, USt-Rhythmus, Vorauszahlungen) nicht hinterlegt ist, steht sie überall mit dabei,
 // aber ohne Fristen und mit „noch nicht hinterlegt“ statt einer geschätzten Zahl.
 export type Einheit = FinanzOrt;
 export const EINHEIT_LABEL: Record<Einheit, string> = { kdc: finanzOrtName('kdc'), kdv: finanzOrtName('kdv'), ug: finanzOrtName('ug'), privat: finanzOrtName('privat') };
-/** Für die MAKE OS UG ist noch keine Steuerlogik hinterlegt (28.09.) — anzeigen, nicht rechnen. */
-/** Firmen MIT hinterlegter Steuerlogik — die MAKE OS UG fehlt hier bewusst (UG_NICHT_HINTERLEGT). */
+/** Für die MAKE Innovation GmbH ist noch keine Steuerlogik hinterlegt (28.09.) — anzeigen, nicht rechnen. */
+/** Firmen MIT hinterlegter Steuerlogik — die MAKE Innovation GmbH fehlt hier bewusst (UG_NICHT_HINTERLEGT). */
 export type SteuerFirma = Exclude<Gesellschaftskennung, 'ug'>;
 export const STEUER_FIRMEN: readonly SteuerFirma[] = ['kdc', 'kdv'];
-export const UG_NICHT_HINTERLEGT = 'Steuerlogik der MAKE OS UG (Körperschaft) noch nicht hinterlegt — keine Fristen, keine Schätzung.';
+export const UG_NICHT_HINTERLEGT = `Steuerlogik der ${UG_NAME} (Körperschaft) noch nicht hinterlegt — keine Fristen, keine Schätzung.`;
 
 export interface FirmaSteuer {
   rechtsform: 'freiberuf' | 'einzel' | 'ug' | 'gmbh';
@@ -229,8 +229,8 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<S
     const vz = gezahlt(e.vorauszahlung.kst, [3, 6, 9, 12]) + gezahlt(e.vorauszahlung.gewstKdv, [2, 5, 8, 11]);
     z.push({ id: 'kst', einheit: 'kdv', titel: `Körperschaft- und Gewerbesteuer ${jahr}`, betrag: Math.max(0, kst + gew - vz), formel: `${Math.round(gv.hochgerechnet).toLocaleString('de-DE')} € Gewinn × (15,825 % KSt+Soli${e.kdv.gewerbe ? ` + ${(3.5 * e.hebesatz / 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} % GewSt` : ''}) − ${Math.round(vz).toLocaleString('de-DE')} € Vorauszahlungen`, href: R });
   }
-  // MAKE OS UG: sichtbar, aber nicht gerechnet (Körperschaft ≠ Selbstständigkeit) — Betrag bleibt leer.
-  z.push({ id: 'ug', einheit: 'ug', titel: `Steuern MAKE OS UG ${jahr}`, betrag: null, formel: 'Körperschaft-, Gewerbe- und Umsatzsteuer der UG', luecke: `${UG_NICHT_HINTERLEGT}${ug.rechnungen ? ` ${ug.rechnungen} UG-Rechnung${ug.rechnungen === 1 ? '' : 'en'} zählen noch in keiner Umsatzsteuer.` : ''}`, href: R });
+  // MAKE Innovation GmbH: sichtbar, aber nicht gerechnet (Körperschaft ≠ Selbstständigkeit) — Betrag bleibt leer.
+  z.push({ id: 'ug', einheit: 'ug', titel: `Steuern ${UG_NAME} ${jahr}`, betrag: null, formel: `Körperschaft-, Gewerbe- und Umsatzsteuer der ${UG_NAME}`, luecke: `${UG_NICHT_HINTERLEGT}${ug.rechnungen ? ` ${ug.rechnungen} ${UG_KURZ}-Rechnung${ug.rechnungen === 1 ? '' : 'en'} zählen noch in keiner Umsatzsteuer.` : ''}`, href: R });
   const je = Object.fromEntries(FINANZ_ORT_IDS.map(x => {
     const soll = z.filter(y => y.einheit === x).reduce((s, y) => s + (y.betrag ?? 0), 0);
     const ist = e.ruecklageIst[x] ?? null;

@@ -16,7 +16,7 @@ import { eur } from '@/lib/make-one/finance-data';
 import { vorschau, businessFirmen, nurBusiness, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT } from './schlank';
-import { istGesellschaft } from '@/lib/einheiten';
+import { GESELLSCHAFTEN, finanzOrtKurz, finanzOrtName, istFinanzOrt, istGesellschaft } from '@/lib/einheiten';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { IndexStreifen, STREIFEN } from './business/IndexStreifen';
 
@@ -153,7 +153,8 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
 }
 
 /**
- * Rechnungen und fehlende Belege der Selbstständigkeit und der UG (24.09.).
+ * Rechnungen und fehlende Belege der Gesellschaften (24.09.; seit 28.09. die eine Einheitenliste,
+ * 30.09. Namen aus lib/einheiten.ts — vorher stand dort fest „UG“, und KD Ventures erschien als Selbstständigkeit).
  * Sie stehen in Malins Datenmodell bei den Haushaltsfinanzen (Spalte einheit)
  * und sind deshalb nur für Haushaltsmitglieder lesbar — andere sehen die
  * Karte nicht.
@@ -165,12 +166,12 @@ function BelegeBusiness() {
   const heute = localDay();
   return (
     <Karte i={5}>
-      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen?s=steuern#ust" style={{ color: C.inkLeise, textDecoration: 'none' }}>erledigen ›</Link>}>Rechnungen & Belege · Selbstständigkeit / UG</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen?s=steuern#ust" style={{ color: C.inkLeise, textDecoration: 'none' }}>erledigen ›</Link>}>Rechnungen & Belege · {GESELLSCHAFTEN.map(finanzOrtKurz).join(' / ')}</Ueberschrift>
       <Liste>
         {!liste.length && <Leer>Nichts offen.</Leer>}
         {liste.slice(0, 8).map(b => (
           <Zeile key={b.id} links={<span style={{ fontSize: 12, color: C.inkLeise, width: 56 }}>{b.art === 'rechnung' ? 'Rechnung' : 'Beleg'}</span>}
-            titel={b.empfaenger || b.bezeichnung} unter={`${b.bezeichnung}${b.faellig_am ? ` · fällig ${b.faellig_am.slice(8, 10)}.${b.faellig_am.slice(5, 7)}.` : ''} · ${b.einheit === 'ug' ? 'UG' : 'Selbstständigkeit'}`}
+            titel={b.empfaenger || b.bezeichnung} unter={`${b.bezeichnung}${b.faellig_am ? ` · fällig ${b.faellig_am.slice(8, 10)}.${b.faellig_am.slice(5, 7)}.` : ''} · ${istFinanzOrt(b.einheit) ? finanzOrtName(b.einheit) : b.einheit}`}
             rechts={b.betrag ? <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: b.faellig_am && b.faellig_am < heute ? LEUCHT.kritisch : C.ink }}>{(b.betrag / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span> : undefined} />
         ))}
       </Liste>

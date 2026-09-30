@@ -2,7 +2,7 @@
 // ─── Aufgaben-Überblick (Kevin 28.09. ~22:30) ───────────────────────────────
 // Oben vier Kacheln: meine offenen · heute fällig · überfällig · wartet auf Freigabe (Platz für ZOEs Stapel, Paket C4).
 // Ein Klick auf eine Kachel zeigt ihre Aufgaben darunter. Dann je Bereich eine Karte — Privat, die Firmen
-// (Selbstständigkeit · KD Ventures · MAKE OS UG), die Mandanten — mit offenen/fälligen Aufgaben und den Projekten.
+// (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH), die Mandanten — mit offenen/fälligen Aufgaben und den Projekten.
 // Jede Karte öffnet ihren Space, jedes Projekt seine Projektseite. Rechnung rein in lib/aufgaben/uebersicht.ts.
 
 import { useMemo, useState, type CSSProperties } from 'react';

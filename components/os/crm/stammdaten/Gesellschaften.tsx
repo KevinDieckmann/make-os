@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Stammdaten › Gesellschaften — Absender der Angebote (28.09.) ────────────
-// Je Gesellschaft (Selbstständigkeit · KD Ventures · MAKE OS UG): Firmierung, Anschrift,
+// Je Gesellschaft (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH): Firmierung, Anschrift,
 // Kontakt, Steuernummer/USt-IdNr., Geschäftsführung/Register, Bank (IBAN nur maskiert),
 // Kleinunternehmer, Zahlungsziel, Gültigkeit, Nummernformat, Logo (PNG/JPG in der
 // Dateiablage) und Fußtext. Gespeichert wird feldweise mit Stand (409 → neu geladen);
@@ -11,11 +11,11 @@
 // was nicht gespeichert wurde, steht als „nicht gespeichert“ da (erneut speichern / verwerfen).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { KERN_EINHEITEN } from '@/lib/einheiten';
+import { KERN_EINHEITEN, UG_NAME } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip } from '../../schlank';
 import { Feldzeile, Feld } from '../teile';
-import { mitVorgaben, type Gesellschaft } from '@/lib/crm/gesellschaften';
+import { mitVorgaben, firmierungNochUG, firmierungVorschlag, type Gesellschaft } from '@/lib/crm/gesellschaften';
 import { nummerAusFormat, NUMMER_VORGABE } from '@/lib/crm/angebote';
 import { gesellschaftKette, type GesellschaftAntwort } from '@/lib/crm/gesellschaft-kette';
 
@@ -99,6 +99,15 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
         </div>
       )}
       {unterwegs > 0 && <div aria-live="polite" style={{ ...klein, marginBottom: 6 }}>speichert …</div>}
+      {firmierungNochUG(g) && (
+        // Umbenennung 30.09.: nie still überschreiben — Hinweis + Knopf über den normalen Schreibweg (Stand/409).
+        <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: 10, borderRadius: 12, marginBottom: 10, border: `1px solid ${LEUCHT.achtung}55`, background: `${LEUCHT.achtung}10` }}>
+          <span style={{ flex: '1 1 220px', minWidth: 0, fontSize: TYP.bedien, color: C.inkDim, overflowWrap: 'anywhere' }}>
+            Firmierung noch als UG gespeichert („{g.firmierung}“) — auf {UG_NAME} ändern? Register (HRB) und Geschäftsführung bitte selbst prüfen.
+          </span>
+          <Knopf leise onClick={() => void setze({ firmierung: UG_NAME }, 'Firmierung')}>auf {UG_NAME} ändern</Knopf>
+        </div>
+      )}
       {ungespeichert.length > 0 && (
         <div style={{ display: 'grid', gap: 6, padding: 10, borderRadius: 12, marginBottom: 10, border: `1px solid ${LEUCHT.achtung}55`, background: `${LEUCHT.achtung}10` }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: LEUCHT.achtung }}>Nicht gespeichert</div>
@@ -111,7 +120,7 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
           ))}
         </div>
       )}
-      {feld('Firmierung', 'firmierung', 'z. B. KD Ventures UG (haftungsbeschränkt)')}
+      {feld('Firmierung', 'firmierung', firmierungVorschlag(g.id) ? `Vorschlag: ${firmierungVorschlag(g.id)}` : 'z. B. KD Ventures UG (haftungsbeschränkt)')}
       {feld('Straße', 'strasse')}
       <Feldzeile label="PLZ · Ort"><span style={{ display: 'flex', gap: 8 }}><Feld wert={g.plz ?? ''} platzhalter="PLZ" breite={90} onFertig={t => void setze({ plz: t.trim() }, 'PLZ')} /><Feld wert={g.ort ?? ''} platzhalter="Ort" onFertig={t => void setze({ ort: t.trim() }, 'Ort')} /></span></Feldzeile>
       {feld('Land', 'land', 'Deutschland (leer lassen)')}

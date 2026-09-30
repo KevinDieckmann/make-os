@@ -1,6 +1,6 @@
 // ─── MAKE OS — Finanzplan (lokal) ───────────────────────────────────────────
 // Der lebende Finanz-Organismus: die eigenen Firmen (KD Ventures, Kevin Dieckmann
-// Consulting, seit 28.09. auch die MAKE OS UG) mit Konten (Geschäftskonten, Stand von Hand — Anbindung steht im Bauplan),
+// Consulting, seit 28.09. auch die MAKE Innovation GmbH) mit Konten (Geschäftskonten, Stand von Hand — Anbindung steht im Bauplan),
 // die Rechnungs-Pipeline (geplant → gestellt → bezahlt) und Merkposten wie ein
 // Partnerdarlehen. Das Controlling (/os/controlling) bleibt die Ist-Buchhaltung
 // je Monat — hier lebt die Planung/Verwaltung davor.

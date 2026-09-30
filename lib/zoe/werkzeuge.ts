@@ -90,9 +90,9 @@ async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: 
 // knapp bestätigt und erscheint sofort in Finanzplanung/Meilensteinen/Markttraktion.
 
 const eurW = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n || 0));
-// Die eine Einheitenliste (28.09.): kdc · kdv · ug aus lib/einheiten.ts — „MAKE OS“/„UG“ → ug, bei Unklarheit kdc.
+// Die eine Einheitenliste (28.09.): kdc · kdv · ug aus lib/einheiten.ts — „MAKE“/„UG“ → ug (MAKE Innovation GmbH), bei Unklarheit kdc.
 const firmaId = (rein: unknown): Gesellschaftskennung => firmaAusAngabe(rein);
-/** Schreibt ZOE etwas auf die UG, bekommt ein Plan ohne UG-Konto es dazu (wie ugFirmaNachziehen im Schreibweg der Route). */
+/** Schreibt ZOE etwas auf die MAKE Innovation GmbH (ug), bekommt ein Plan ohne UG-Konto es dazu (wie ugFirmaNachziehen im Schreibweg der Route). */
 const mitUgKonto = <F extends { firmen?: { id: string }[] }>(f: F, fid: string): F => (fid === UG_FIRMA.id && Array.isArray(f.firmen) && f.firmen.length && !f.firmen.some(x => x.id === UG_FIRMA.id) ? { ...f, firmen: [...f.firmen, { ...UG_FIRMA }] } : f);
 /** Privates gehört seit 24.09. in die Haushaltsfinanzen, nicht in den Finanzplan der Firmen. */
 const istPrivatAngabe = (rein: unknown) => /privat|haushalt|malin|n26/i.test(String(rein ?? ''));

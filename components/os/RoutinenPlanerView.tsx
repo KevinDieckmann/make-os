@@ -23,6 +23,7 @@ import { EinheitWahl, useEinheiten } from './aufgaben/Einheit';
 import { Wahl, type WahlEintrag } from './crm/Wahl';
 import { einheitFarbe, einheitKurz, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
 import { EINHEIT_MIN, EINHEIT_MAX } from '@/lib/planung/einheiten';
+import { einheitName } from '@/lib/einheiten';
 import { rhythmusKurz, naechstesMalNach } from '@/lib/planung/rhythmus';
 import { PlanerLeiste } from './PlanerLeiste';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './schlank';
@@ -52,7 +53,7 @@ interface Person { speicher: string; name: string }
 
 /**
  * Einheit am Block (28.09.): dieselbe Auswahl wie bei Routinen (Werteliste des Haushalts,
- * „ohne Einheit“, „+ neu“), nur schmal — der Chip zeigt das Kürzel (Selbst. · KDV · UG),
+ * „ohne Einheit“, „+ neu“), nur schmal — der Chip zeigt das Kürzel (Selbst. · KDV · MAKE),
  * das Menü den vollen Namen daneben. Passt so in die schmalen Wochentag-Spalten.
  */
 function BlockEinheit({ wert, setzen, einheiten, anlegen }: { wert?: string; setzen: (e: string | undefined) => void; einheiten: readonly string[]; anlegen: (name: string) => Promise<string | null> }) {
@@ -339,7 +340,7 @@ export function RoutinenPlanerView() {
                   {/* Einheit (28.09., nur Business): kleines Kürzel — bei eigenen Blöcken per Klick wählbar. */}
                   {b.art === 'business' && (blockEigen
                     ? <div style={{ marginTop: 3, paddingLeft: 13 }}><BlockEinheit wert={b.einheit} setzen={e => persistBloecke(bloecke.map(x => (x.id === b.id ? { ...x, einheit: e } : x)))} einheiten={einheiten} anlegen={einheitAnlegen} /></div>
-                    : b.einheit ? <div style={{ marginTop: 2, paddingLeft: 13 }}><span title={`Einheit: ${b.einheit}`} style={{ fontSize: 11, fontWeight: 600, color: einheitFarbe(b.einheit) }}>{einheitKurz(b.einheit)}</span></div> : null)}
+                    : b.einheit ? <div style={{ marginTop: 2, paddingLeft: 13 }}><span title={`Einheit: ${einheitName(b.einheit) ?? b.einheit}`} style={{ fontSize: 11, fontWeight: 600, color: einheitFarbe(b.einheit) }}>{einheitKurz(b.einheit)}</span></div> : null)}
                   </div>
                 ))}
               </div>

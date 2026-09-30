@@ -57,7 +57,7 @@ export interface Task extends Timestamps {
   completedAt?: string;
   /** Abweichung vom Ort (26.09.): Privat oder Business — ohne Angabe gibt der Ort den Space vor. */
   space?: 'privat' | 'business';
-  /** Business-Einheit (27.09.): Selbstständigkeit · KD Ventures · MAKE OS UG oder eine eigene Einheit des Haushalts — nur im Business; Privat verwirft der Schreibweg. */
+  /** Business-Einheit (27.09.): Selbstständigkeit · KD Ventures · MAKE Innovation GmbH (Namen aus lib/einheiten.ts) oder eine eigene Einheit des Haushalts — nur im Business; Privat verwirft der Schreibweg. */
   einheit?: string;
   // ── Aufgaben-Modell wie Monday/ClickUp (28.09. abends, lib/aufgaben/struktur.ts) ──
   /** Aufgaben-Space: `privat` · `kdc` · `kdv` · `ug` · `m-<firmaId>` (Mandant). `space`/`einheit` werden daraus abgeleitet. */

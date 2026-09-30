@@ -22,6 +22,11 @@ lokal, Route `/os`, Port 3001.
   größte Beteiligung und das größte Gut.
 - **Synonyme im Sprachgebrauch:** „die Selbständigkeit" = Kevin Dieckmann
   Consulting (Einzelunternehmen) · „die Beteiligungsgesellschaft" = KD Ventures UG.
+- **MAKE Innovation GmbH (seit 30.09., vorher „MAKE OS UG“/„Neue UG“)** = die Gesellschaft mit der Kennung `ug`
+  (kurz „MAKE“). Kevin: „Ändere bitte überall in der Software MAKE UG in MAKE Innovation GmbH.“ Die Kennung `ug`
+  bleibt überall (Daten, Spaces, FinanzOrt, Adressen, Code-Namen wie `rechneUG`/`steuerUG`); der Name steht NUR in
+  `lib/einheiten.ts` (`UG_NAME`, `UG_KURZ`), Altnamen in `UG_ALTNAMEN` werden beim Lesen erkannt. Nicht verwechseln
+  mit der KD Ventures UG (kdv) — die bleibt eine UG. Wächter: `tests/umbenennung-make.test.ts`.
 - **Malin ist Gesundheits-Beauftragte** (Sport, Ernährung, Hyrox-Pro-Ziel) —
   Gesundheitsthemen laufen über sie.
 - **Kritisch pulsiert:** Priorisierung nach Eisenhower; kritische Aufgaben
@@ -271,9 +276,9 @@ lokal, Route `/os`, Port 3001.
   `ms~<ziel>`. `angepasst` = nicht mehr nachziehen; Löschen nur nach „lösen“. Neue Ableitungsregeln dort ergänzen, nie in der Ansicht.
 - **Einheiten** (nur Business): `lib/planung/einheiten.ts` (Standard Selbstständigkeit · KD Ventures · Kunden), Speicher
   `planung-einheiten--<haushalt>` über `/api/planung/einheiten`. Privat trägt nie eine Einheit.
-- **Einheiten-Regel (27.09.):** Business-Einheiten nur aus `lib/einheiten.ts` (Kern: Selbstständigkeit · KD Ventures · MAKE OS UG =
+- **Einheiten-Regel (27.09.):** Business-Einheiten nur aus `lib/einheiten.ts` (Kern: Selbstständigkeit · KD Ventures · MAKE Innovation GmbH =
   kdc · kdv · ug) + `lib/planung/einheiten.ts` (Werteliste je Haushalt) — nie eigene Listen oder Schreibweisen.
-- **Finanzen: EINE Einheitenliste (28.09.):** `FinanzOrt = 'privat' | kdc | kdv | ug` + `FINANZ_ORTE`/`GESELLSCHAFTEN`/`finanzOrtName`/`finanzOrtAus` (Altwerte)/`firmaAusAngabe` (ZOE) in `lib/einheiten.ts` — Cockpit (Sicht `ug`), Steuern, Baukasten, Privat-Finanzen, Buchungen-`ort`, ZOE, Kontaktakte nutzen nur diese. Selbstständigkeit = eigene Achse; der Rechenkern v3 hat keine kdc-Achse → kdc-Bausteine rechnen über die UG-Kanäle (`kernKanal`, einzige Stelle), Kern-Name `selbststaendigkeit` ↔ kdc nur über `finanzOrtAusKern`/`kernEinheitAus`. Steuern: UG sichtbar, aber ohne Fristen/Schätzung (`UG_NICHT_HINTERLEGT`, `STEUER_FIRMEN` = kdc/kdv). Privat-Finanzen: Dateien ohne Marke `einheiten: 2` sprechen das alte Vokabular (`ug` = KD Management UG = **kdv**!) und werden beim Lesen übersetzt (`einheitenLesen`, `haushaltEinheitAusAlt`), geschrieben wird die neue Fassung; Eingaben über `einheitAus` (neues Vokabular). Summen-Regression: `tests/finanz-einheiten-summen.test.ts`.
+- **Finanzen: EINE Einheitenliste (28.09.):** `FinanzOrt = 'privat' | kdc | kdv | ug` + `FINANZ_ORTE`/`GESELLSCHAFTEN`/`finanzOrtName`/`finanzOrtAus` (Altwerte)/`firmaAusAngabe` (ZOE) in `lib/einheiten.ts` — Cockpit (Sicht `ug`), Steuern, Baukasten, Privat-Finanzen, Buchungen-`ort`, ZOE, Kontaktakte nutzen nur diese. Selbstständigkeit = eigene Achse; der Rechenkern v3 hat keine kdc-Achse → kdc-Bausteine rechnen über die UG-Kanäle (`kernKanal`, einzige Stelle), Kern-Name `selbststaendigkeit` ↔ kdc nur über `finanzOrtAusKern`/`kernEinheitAus`. Steuern: MAKE Innovation GmbH (ug) sichtbar, aber ohne Fristen/Schätzung (`UG_NICHT_HINTERLEGT`, `STEUER_FIRMEN` = kdc/kdv). Privat-Finanzen: Dateien ohne Marke `einheiten: 2` sprechen das alte Vokabular (`ug` = KD Management UG = **kdv**!) und werden beim Lesen übersetzt (`einheitenLesen`, `haushaltEinheitAusAlt`), geschrieben wird die neue Fassung; Eingaben über `einheitAus` (neues Vokabular). Summen-Regression: `tests/finanz-einheiten-summen.test.ts`.
 - **Aufgaben tragen `einheit`** (nur Business, `types/tasks.ts`): Säuberung im Schreibweg (`aufgabeEinheit` in `lib/aufgaben/einheit.ts`,
   genutzt von `/api/state/tasks` und `/api/tasks/create`; Privat/Ort-privat verwirft). System-Aufgaben mit Deal/Mandat/Produkt dahinter:
   `einheitAusBezug(crm, …)` (Heads), Steuer-Aufgaben `steuerEinheit`; ohne Bezug keine Einheit. Oberfläche: `components/os/aufgaben/Einheit.tsx`

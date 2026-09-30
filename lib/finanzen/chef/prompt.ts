@@ -9,6 +9,8 @@
 // Der System-Text bleibt stabil (gecacht); Datum und Daten stehen nur in der
 // Nutzernachricht.
 
+import { UG_NAME } from '@/lib/einheiten';
+
 export const MODI = ['tagescheck', 'wochenreview', 'monatsabschluss', 'steuercheck', 'frage'] as const;
 export type Modus = typeof MODI[number];
 
@@ -151,7 +153,7 @@ export const DEFINITIONEN: Record<string, string> = {
   'business.liquiditaet_12_wochen': 'Vorschau aus Kontoständen, gestellten Rechnungen, offenen Zahlungen und Planposten, nur Business. davon_unsicher = geplante, nicht gestellte Eingänge.',
   'business.forderungen': 'Gestellte, noch nicht bezahlte Ausgangsrechnungen; ueberfaellig mit Tagen seit Fälligkeit.',
   'business.zahlungen': 'Offene eigene Zahlungen (Business), naechste_14_tage inkl. überfälliger.',
-  'business.grundlage': 'Export aus Malins V1-Finanz-Dashboard (Selbstständigkeit, netto). entnahmen = Privatentnahmen. groesster_kunde über 12 Monate. eingangsrechnungen_offen = offene Rechnungen an die UG.',
+  'business.grundlage': `Export aus Malins V1-Finanz-Dashboard (Selbstständigkeit, netto). entnahmen = Privatentnahmen. groesster_kunde über 12 Monate. eingangsrechnungen_offen = offene Rechnungen an die KD Ventures UG (im V1-Export „u“, Gründungsname KD Management UG — nicht die ${UG_NAME}).`,
   'business.abgleich_controlling_grundlage': 'Monate, in denen Controlling-Umsatz und Grundlage-Umsatz netto um mehr als 5 % abweichen.',
   'steuern.termine_60_tage': 'Berechnete Fristen (inkl. § 108 AO Werktagsregel) aus einstellungen.steuer. Beträge stehen hier nicht.',
   haushalt: 'Letzte drei volle Monate, Euro pro Monat. sockel = feste monatliche Last inkl. Raten. luft = Einnahmen-Schnitt minus Sockel. sparquote = (Einnahmen − Ausgaben) / Einnahmen. fixkostenquote = Fixkosten / Einnahmen. schuldendienstquote = Raten / Einnahmen. faellig = fällige Raten und Rechnungen als Text.',

@@ -546,21 +546,21 @@ import { EINHEIT_LABEL as STEUER_LABEL } from '../lib/steuern/rechnen';
 
 describe('Die eine Einheitenliste (lib/einheiten.ts)', () => {
   it('Privat + drei Gesellschaften in fester Reihenfolge — überall dieselben Namen', () => {
-    expect(FINANZ_ORTE.map(o => [o.id, o.label])).toEqual([['privat', 'Privat'], ['kdc', 'Selbstständigkeit'], ['kdv', 'KD Ventures'], ['ug', 'MAKE OS UG']]);
+    expect(FINANZ_ORTE.map(o => [o.id, o.label])).toEqual([['privat', 'Privat'], ['kdc', 'Selbstständigkeit'], ['kdv', 'KD Ventures'], ['ug', 'MAKE Innovation GmbH']]);
     expect(SCOPES.map(s => s.id)).toEqual(['gesamt', ...GESELLSCHAFTEN]);
-    expect(STEUER_LABEL).toEqual({ kdc: 'Selbstständigkeit', kdv: 'KD Ventures', ug: 'MAKE OS UG', privat: 'Privat' });
-    expect(EINHEIT_NAME).toEqual({ privat: 'Privat', kdc: 'Selbstständigkeit', kdv: 'KD Ventures', ug: 'MAKE OS UG' });
+    expect(STEUER_LABEL).toEqual({ kdc: 'Selbstständigkeit', kdv: 'KD Ventures', ug: 'MAKE Innovation GmbH', privat: 'Privat' });
+    expect(EINHEIT_NAME).toEqual({ privat: 'Privat', kdc: 'Selbstständigkeit', kdv: 'KD Ventures', ug: 'MAKE Innovation GmbH' });
     expect(Object.keys(BAUSTEIN_EINHEIT_LABEL).sort()).toEqual(['kdc', 'kdv', 'privat', 'ug']);
   });
   it('Altwerte werden übersetzt, Unbekanntes nicht geraten', () => {
     expect(['selbststaendigkeit', 'Selbstständigkeit', 'selbst', 'Consulting', 'Kevin Dieckmann Consulting'].map(finanzOrtAus)).toEqual(['kdc', 'kdc', 'kdc', 'kdc', 'kdc']);
     expect(['KD Management UG', 'KD Ventures UG', 'KDV'].map(finanzOrtAus)).toEqual(['kdv', 'kdv', 'kdv']);
-    expect(['Neue UG', 'ug', 'MAKE OS UG'].map(finanzOrtAus)).toEqual(['ug', 'ug', 'ug']);
+    expect(['Neue UG', 'ug', 'MAKE OS UG', 'MAKE Innovation GmbH'].map(finanzOrtAus)).toEqual(['ug', 'ug', 'ug', 'ug']);
     expect(finanzOrtAus('Kemaris')).toBeUndefined();
     expect(finanzOrtAus('')).toBeUndefined();
   });
-  it('ZOE-Zuruf: Ventures vor UG, MAKE OS/UG → ug, sonst Selbstständigkeit', () => {
-    expect(['KD Ventures UG', 'kdv', 'Ventures', 'MAKE OS UG', 'die UG', 'ug', 'KDC', 'Consulting', '', 'irgendwas'].map(firmaAusAngabe))
+  it('ZOE-Zuruf: Ventures vor UG, MAKE/UG → ug, sonst Selbstständigkeit', () => {
+    expect(['KD Ventures UG', 'kdv', 'Ventures', 'MAKE Innovation GmbH', 'die UG', 'ug', 'KDC', 'Consulting', '', 'irgendwas'].map(firmaAusAngabe))
       .toEqual(['kdv', 'kdv', 'kdv', 'ug', 'ug', 'ug', 'kdc', 'kdc', 'kdc', 'kdc']);
   });
   it('Rechenkern-Namen bleiben: selbststaendigkeit ↔ kdc, sonst gleich', () => {
@@ -569,7 +569,7 @@ describe('Die eine Einheitenliste (lib/einheiten.ts)', () => {
   });
 });
 
-describe('Cockpit: die MAKE OS UG als eigene Sicht', () => {
+describe('Cockpit: die MAKE Innovation GmbH als eigene Sicht', () => {
   it('UG-Sicht zählt UG-Rechnungen, -Mandate und -Planposten; Beratertage-Kennzahlen gelten dort nicht', () => {
     const w = werteVon(berechne(bestand('ug')));
     expect(w).toMatchInlineSnapshot(`
@@ -643,12 +643,12 @@ describe('Steuern: UG sichtbar, aber nicht wie die Selbstständigkeit gerechnet'
     const p = prognose(STANDARD_STEUERN, HEUTE, { kdc: null, kdv: null }, {}, { rechnungen: 2 });
     const z = p.zeilen.find(x => x.einheit === 'ug')!;
     expect(z.betrag).toBeNull();
-    expect(z.luecke).toMatch(/noch nicht hinterlegt.*2 UG-Rechnungen/);
+    expect(z.luecke).toMatch(/noch nicht hinterlegt.*2 MAKE-Rechnungen/);
     expect(p.je.ug).toEqual({ soll: 0, ist: null, deckung: null });
   });
   it('Beleg-Punkte nennen die Einheit aus der einen Liste', () => {
     const bp = belegPunkte([], [{ id: 'b1', stand: 1, art: 'beleg', bezeichnung: 'Q', empfaenger: null, betrag: null, faellig_am: null, verursacher: null, einheit: 'ug', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null }], HEUTE);
-    expect(bp[0].unter).toBe('MAKE OS UG');
+    expect(bp[0].unter).toBe('MAKE Innovation GmbH');
   });
 });
 
@@ -660,7 +660,7 @@ describe('Privat-Finanzen: Altbestand beim Lesen übersetzt, nie verworfen', () 
     expect(neu.einheiten).toBe(2);
     expect(alt.buchungen[2].einheit).toBe('ug'); // rein: der Bestand selbst bleibt unangetastet
   });
-  it('mit Marke: ug ist die MAKE OS UG und bleibt ug; Konten im Stamm werden übersetzt', () => {
+  it('mit Marke: ug ist die MAKE Innovation GmbH und bleibt ug; Konten im Stamm werden übersetzt', () => {
     expect(einheitenLesen('belege', { belege: [{ id: 'x', einheit: 'ug' }], einheiten: 2 }).belege[0].einheit).toBe('ug');
     expect(einheitenLesen('stamm', { konten: [{ id: 'k', einheit: 'ug' }], kategorien: [] }).konten[0].einheit).toBe('kdv');
   });

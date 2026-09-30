@@ -22,7 +22,7 @@ export async function sichtenFuerChef(heute = localDay()) {
   // Der letzte volle Monat: fehlt sein Abschluss (und für Consulting auch die Grundlage)?
   const d = new Date(`${heute}T12:00:00`); d.setDate(1); d.setMonth(d.getMonth() - 1);
   const vormonat = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  // Die MAKE OS UG wird erst angemahnt, wenn sie überhaupt Abschlüsse führt (wie die Gesamtsicht, messen.ts).
+  // Die MAKE Innovation GmbH wird erst angemahnt, wenn sie überhaupt Abschlüsse führt (wie die Gesamtsicht, messen.ts).
   const pflicht = GESELLSCHAFTEN.filter(f => f !== 'ug' || roh.abschluesse.some(a => a.firma === 'ug'));
   const abschlussFehlt = pflicht
     .filter(f => !roh.abschluesse.some(a => a.firma === f && a.monat === vormonat) && !(f === 'kdc' && roh.grundlageMonate.some(m => m.monat === vormonat)))

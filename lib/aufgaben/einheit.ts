@@ -1,6 +1,6 @@
 // ─── MAKE OS — Aufgaben: Business-Einheit (27.09.) ──────────────────────────
 // Kevin: „Aufgaben im Business immer zwischen Selbstständigkeit, KD Ventures
-// und MAKE OS UG unterscheiden können — überall, wo es möglich und nötig ist.“
+// und MAKE Innovation GmbH unterscheiden können — überall, wo es möglich und nötig ist.“
 // Namen kommen NUR aus lib/einheiten.ts (Kerneinheiten) und der Werteliste des
 // Haushalts (lib/planung/einheiten.ts, eigene). Privat trägt nie eine Einheit.
 // Hier: Säuberung im Schreibweg, Ableitung für System-Aufgaben (Deal/Mandat/
@@ -19,7 +19,7 @@ export function einheitFarbe(name: string | null | undefined): string {
   return g ? EINHEIT_FARBE[g] : EINHEIT_GRAU;
 }
 
-/** Kurzform für enge Stellen (Planer-Pillen): Kerneinheit → „Selbst.“/„KDV“/„UG“, eigene gekürzt. */
+/** Kurzform für enge Stellen (Planer-Pillen): Kerneinheit → „Selbst.“/„KDV“/„MAKE“, eigene gekürzt. */
 export function einheitKurz(name: string | null | undefined): string | undefined {
   const g = gesellschaftAusEinheit(name);
   if (g) return KERN_EINHEITEN.find(e => e.id === g)?.kurz;
@@ -31,7 +31,7 @@ type AufgabeMitOrt = { id: string; title: string; description?: string; projectI
 
 /**
  * Die Einheit einer Aufgabe, wie sie gespeichert wird: nur im Business, Namen
- * über `einheitName` vereinheitlicht („Neue UG“ → „MAKE OS UG“), 2–40 Zeichen.
+ * über `einheitName` vereinheitlicht (Altnamen wie „Neue UG“ → „MAKE Innovation GmbH“), 2–40 Zeichen.
  * Alles andere → undefined (das Feld fällt weg).
  */
 export function aufgabeEinheit(t: AufgabeMitOrt, orgZuordnung: Record<string, string> = {}): string | undefined {
@@ -76,7 +76,7 @@ export function passtEinheitFilter(einheit: string | null | undefined, filter: E
 export interface EinheitOption { id: EinheitFilter; label: string; farbe: string; anzahl: number }
 
 /**
- * Die Filter-Pillen im Business: Alle · Selbstständigkeit · KD Ventures · MAKE OS UG
+ * Die Filter-Pillen im Business: Alle · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH
  * · (eigene, sobald eine Aufgabe sie trägt) · ohne Einheit. `anzahl` zählt die übergebenen Aufgaben.
  */
 export function einheitFilterOptionen(genutzt: readonly (string | null | undefined)[], liste: readonly string[] = []): EinheitOption[] {

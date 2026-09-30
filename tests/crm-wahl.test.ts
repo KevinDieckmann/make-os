@@ -68,10 +68,10 @@ describe('Wahl · Lage im Fenster', () => {
 });
 
 describe('Gesellschaften aus der einen Quelle', () => {
-  it('MAKE OS UG statt „Neue UG“, Kennungen bleiben, „offen“ zuletzt', () => {
+  it('MAKE Innovation GmbH statt „Neue UG“/„MAKE OS UG“, Kennungen bleiben, „offen“ zuletzt', () => {
     expect(GESELLSCHAFT_WAHL.map(g => g.id)).toEqual(['kdc', 'kdv', 'ug', 'offen']);
-    expect(GESELLSCHAFT_WAHL.find(g => g.id === 'ug')?.label).toBe('MAKE OS UG');
-    expect(GESELLSCHAFT_WAHL.some(g => g.label === 'Neue UG')).toBe(false);
+    expect(GESELLSCHAFT_WAHL.find(g => g.id === 'ug')?.label).toBe('MAKE Innovation GmbH');
+    expect(GESELLSCHAFT_WAHL.some(g => g.label === 'Neue UG' || g.label === 'MAKE OS UG')).toBe(false);
   });
 });
 

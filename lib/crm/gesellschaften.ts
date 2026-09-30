@@ -1,6 +1,6 @@
 // ─── Markttraktion · Gesellschaften als Absender (rein, client-sicher, 28.09.) ─
 // Kevin 28.09. (Angebots-Tool): je Gesellschaft — Selbstständigkeit · KD Ventures ·
-// MAKE OS UG (kdc · kdv · ug, lib/einheiten.ts) — Firmierung, Anschrift, Kontakt,
+// MAKE Innovation GmbH (kdc · kdv · ug, lib/einheiten.ts) — Firmierung, Anschrift, Kontakt,
 // Steuernummer/USt-IdNr., Bank, Kleinunternehmer, Zahlungsziel, Gültigkeit von
 // Angeboten, Nummernformat, Logo und Fußtext. Die Werte stehen NUR im Datenspeicher
 // `gesellschaften--<haushalt>` (verschlüsselt wie jeder Bestand), nie im Code.
@@ -11,7 +11,7 @@
 // volle IBAN (der Kunde soll zahlen können) — es entsteht nur auf dem Server.
 
 import type { Gesellschaftskennung } from '@/lib/einheiten';
-import { KERN_EINHEITEN } from '@/lib/einheiten';
+import { KERN_EINHEITEN, UG_NAME } from '@/lib/einheiten';
 import { ibanGueltig, ibanGrundform, ibanMaskiert } from './zahlung';
 import { GESELLSCHAFTEN, KURZ_VORGABE, NUMMER_VORGABE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE, nummernformatOk, istGesellschaft } from './angebote';
 
@@ -29,7 +29,7 @@ export interface Gesellschaft {
   web?: string;
   steuernummer?: string;
   ustId?: string;
-  /** Pflichtangaben auf Geschäftsbriefen einer UG (§ 35a GmbHG): Geschäftsführung, Registergericht + Nummer. */
+  /** Pflichtangaben auf Geschäftsbriefen einer GmbH/UG (§ 35a GmbHG): Geschäftsführung, Registergericht + Nummer. */
   geschaeftsfuehrung?: string;
   register?: string;
   bank?: GesellschaftBank;
@@ -139,3 +139,17 @@ export function gesellschaftLuecken(g: Gesellschaft): string[] {
 }
 
 export const istGesellschaftId = istGesellschaft;
+
+// ── Umbenennung 30.09.: die MAKE-Gesellschaft heißt MAKE Innovation GmbH (Kennung `ug` bleibt) ──
+// Der Vorschlag für die Firmierung kommt aus lib/einheiten.ts (UG_NAME) — `mitVorgaben` nimmt ihn, solange
+// nichts gespeichert ist. Eine GESPEICHERTE Firmierung wird nie still überschrieben: nennt sie noch eine UG,
+// zeigt die Stammdaten-Karte einen Hinweis mit Knopf (normaler Schreibweg mit Stand/409). Register (HRB),
+// Geschäftsführung und alle Pflichtangaben pflegt Kevin — hier wird nichts erfunden.
+
+/** Vorschlag für die Firmierung einer Gesellschaft, solange keine gespeichert ist — nur für `ug` (MAKE Innovation GmbH). */
+export const firmierungVorschlag = (id: Gesellschaftskennung): string | undefined => (id === 'ug' ? UG_NAME : undefined);
+
+/** Nennt die gespeicherte Firmierung der MAKE-Gesellschaft (`ug`) noch eine UG? Dann Hinweis „auf MAKE Innovation GmbH ändern?“. */
+export function firmierungNochUG(g: Pick<Gesellschaft, 'id' | 'firmierung'>): boolean {
+  return g.id === 'ug' && !!g.firmierung && /\bUG\b|unternehmergesellschaft|haftungsbeschränkt/i.test(g.firmierung);
+}

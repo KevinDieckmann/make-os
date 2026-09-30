@@ -16,6 +16,7 @@ import type { Beleg, Schuld } from '@/lib/finanzen/haushalt/typen';
 import { eur, zuCent, EINHEITEN, EINHEIT_NAME } from '@/lib/finanzen/haushalt/typen';
 import { laufzeit, schuldenfreiAm, sondertilgung } from '@/lib/finanzen/haushalt/schulden';
 import { datumDe, tagPlus, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
+import { KERN_EINHEITEN_NAMEN } from '@/lib/einheiten';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, Spalten, Spalte, LEUCHT } from '../schlank';
 import { Dialog, Feld, Hinweis, Kachel, Kacheln, Leiste, auswahl, type HaushaltDaten, type Op, type PatchErgebnis } from './gemeinsam';
 
@@ -192,7 +193,7 @@ export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
                 {fehlerzeile(b, true)}
               </div>
             ))}
-            {anderswo > 0 && <Hinweis>{anderswo} weitere offene Rechnung{anderswo === 1 ? '' : 'en'} oder Belege gehören zur Selbstständigkeit oder UG — die stehen unter Business.</Hinweis>}
+            {anderswo > 0 && <Hinweis>{anderswo} weitere offene Rechnung{anderswo === 1 ? '' : 'en'} oder Belege gehören zu einer Gesellschaft ({KERN_EINHEITEN_NAMEN.join(' · ')}) — die stehen unter Business.</Hinweis>}
           </Karte>
         </Spalte>
       </Spalten>

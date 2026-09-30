@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Finanzplanung jetzt — das Blatt (Excel-Gefühl) ──────────────────────────
-// Ein Raster für Privat, UG, KD Ventures und Gruppe: Zeilen mit Gruppen,
+// Ein Raster für Privat, MAKE (Kennung ug), KD Ventures und Gruppe: Zeilen mit Gruppen,
 // Monate als Spalten (davor auf Wunsch die IST-Historie in Lila), rechts die
 // Summe. Zelle anklicken oder Ziffer tippen → bearbeiten; Enter übernimmt,
 // Tab übernimmt und geht nach rechts, Pfeile bewegen die Auswahl, Entf setzt

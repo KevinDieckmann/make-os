@@ -26,7 +26,7 @@ describe('Rechnung aus dem Mandat → Firma der Gesellschaft', () => {
     expect(firmaFuerGesellschaft('irgendwas')).toBe('kdc');
   });
   it('Einheiten-Namen werden erkannt (eine Quelle mit lib/einheiten.ts)', () => {
-    expect(firmaFuerGesellschaft('MAKE OS UG')).toBe('ug');
+    expect(firmaFuerGesellschaft('MAKE Innovation GmbH')).toBe('ug');
     expect(firmaFuerGesellschaft('KD Ventures')).toBe('kdv');
   });
 });
@@ -35,7 +35,7 @@ describe('UG-Konto im Finanzplan', () => {
   it('ein neuer Plan startet mit drei leeren Konten (kdv, kdc, ug)', () => {
     expect(SEED.firmen.map(f => f.id)).toEqual(['kdv', 'kdc', 'ug']);
     const ug = SEED.firmen.find(f => f.id === 'ug')!;
-    expect(ug).toEqual({ id: 'ug', name: 'MAKE OS UG', bank: '', kontostand: null, stand: null });
+    expect(ug).toEqual({ id: 'ug', name: 'MAKE Innovation GmbH', bank: '', kontostand: null, stand: null });
   });
   const plan = (firmen: FinanzplanFile['firmen'], rechnungen: FinanzplanFile['rechnungen'] = []): FinanzplanFile => ({ ...SEED, firmen, rechnungen });
   const alt = [
@@ -78,8 +78,8 @@ describe('UG-Konto im Finanzplan', () => {
 });
 
 describe('Mandate nach Gesellschaft filtern', () => {
-  it('Alle · Selbstständigkeit · KD Ventures · MAKE OS UG in fester Reihenfolge', () => {
-    expect(GESELLSCHAFT_FILTER.map(g => g.label)).toEqual(['Alle', 'Selbstständigkeit', 'KD Ventures', 'MAKE OS UG']);
+  it('Alle · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH in fester Reihenfolge', () => {
+    expect(GESELLSCHAFT_FILTER.map(g => g.label)).toEqual(['Alle', 'Selbstständigkeit', 'KD Ventures', 'MAKE Innovation GmbH']);
     expect(GESELLSCHAFT_FILTER.map(g => g.id)).toEqual(['alle', 'kdc', 'kdv', 'ug']);
   });
   it('„Alle“ lässt alles durch, auch „offen“; sonst nur die gewählte Gesellschaft', () => {
@@ -117,15 +117,15 @@ describe('Meilensteine: echtes space-Feld', () => {
   it('aus einem Jahresziel abgeleitete Meilensteine tragen space und bereich', () => {
     const [m] = meilensteineAbleiten([{ id: 'z1', titel: 'Hyrox', fortschritt: 0, space: 'privat', termin: '2026-12-01' }], []);
     expect(m).toMatchObject({ space: 'privat', bereich: 'gesundheit', faellig: '2026-12-01' });
-    const [b] = meilensteineAbleiten([{ id: 'z2', titel: 'Launch', fortschritt: 0, space: 'business', termin: '2026-11-01', einheit: 'MAKE OS UG' }], []);
-    expect(b).toMatchObject({ space: 'business', bereich: 'business', einheit: 'MAKE OS UG' });
+    const [b] = meilensteineAbleiten([{ id: 'z2', titel: 'Launch', fortschritt: 0, space: 'business', termin: '2026-11-01', einheit: 'MAKE Innovation GmbH' }], []);
+    expect(b).toMatchObject({ space: 'business', bereich: 'business', einheit: 'MAKE Innovation GmbH' });
   });
 });
 
 describe('Wochenvorlage: Einheit am Block', () => {
   const basis = { owner: 'kevin', wochentag: 1, von: '09:00', bis: '18:00' };
   it('Business-Block behält die Einheit, in der festen Schreibweise', () => {
-    expect(sauberBlock({ ...basis, art: 'business', einheit: 'UG' })).toMatchObject({ art: 'business', einheit: 'MAKE OS UG' });
+    expect(sauberBlock({ ...basis, art: 'business', einheit: 'UG' })).toMatchObject({ art: 'business', einheit: 'MAKE Innovation GmbH' });
     expect(sauberBlock({ ...basis, art: 'business', einheit: 'Kunden' })).toMatchObject({ einheit: 'Kunden' });
   });
   it('ohne Einheit bleibt der Block wie bisher (optional)', () => {

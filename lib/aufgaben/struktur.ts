@@ -43,7 +43,7 @@ export const MANDANT_EINHEIT = 'Kunden';
 export const PRIVAT_FARBE = '#D9A45B';
 export const MANDANT_FARBE = '#6E7EF5';
 
-/** Die festen Spaces = die eine Liste aus lib/einheiten.ts (Privat · Selbstständigkeit · KD Ventures · MAKE OS UG). */
+/** Die festen Spaces = die eine Liste aus lib/einheiten.ts (Privat · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH). */
 export const FESTE_SPACES: readonly AufgabenSpace[] = FINANZ_ORTE.map(o => (o.id === 'privat'
   ? { id: o.id, label: o.label, bereich: 'privat' as const, art: 'privat' as const, farbe: PRIVAT_FARBE }
   : { id: o.id, label: o.label, bereich: 'business' as const, art: 'firma' as const, farbe: EINHEIT_FARBE[o.id] }));

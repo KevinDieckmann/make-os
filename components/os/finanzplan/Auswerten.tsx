@@ -11,6 +11,7 @@ import { Karte, Ueberschrift, Spalten, Spalte, LEUCHT } from '../schlank';
 import { istSchnitt, sollBudget, wert } from '@/lib/finanzen/rechenkern';
 import { achse, letzterVoller, prozent } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
+import { UG_NAME } from '@/lib/einheiten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, Auswahl, Hinweis, Legende, PersonMarke, KUPFER, LILA, Nichts, Pillen } from './teile';
 import { Linie, Fluss, type FlussKante } from './diagramme';
 import { Blatt } from './Blatt';
@@ -106,7 +107,7 @@ export function Geldfluss() {
   return (
     <>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-        <Pillen liste={[{ id: 'privat' as const, label: 'Privat' }, { id: 'ug' as const, label: 'MAKE OS UG' }]} aktiv={art} onWahl={a => { setArt(a); if (a === 'ug' && m < 1) setM(3); }} />
+        <Pillen liste={[{ id: 'privat' as const, label: 'Privat' }, { id: 'ug' as const, label: UG_NAME }]} aktiv={art} onWahl={a => { setArt(a); if (a === 'ug' && m < 1) setM(3); }} />
         <Auswahl wert={String(m)} onWahl={v => setM(Number(v))} optionen={optionen} titel="Monat" />
         <span style={{ fontSize: 12.5, color: C.inkLeise }}>{sz.name}</span>
       </div>
@@ -119,7 +120,7 @@ export function Geldfluss() {
         <Ueberschrift>Gruppe je Monat</Ueberschrift>
         <Blatt titel="Gruppe" zeilen={[
           { grp: 'Stand' },
-          { name: 'MAKE OS UG frei', stock: true, get: mm => ug[mm - 1].frei, ind: true },
+          { name: `${UG_NAME} frei`, stock: true, get: mm => ug[mm - 1].frei, ind: true },
           { name: 'KD Ventures', stock: true, get: mm => ug[mm - 1].kdvKonto, ind: true },
           { name: 'Privat angespart', stock: true, get: mm => pr[mm - 1].angespart, ind: true },
           { name: 'Partnerdarlehen offen', stock: true, get: mm => -ug[mm - 1].bjoernRest, ind: true },

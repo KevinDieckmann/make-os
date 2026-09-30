@@ -26,7 +26,7 @@ interface Antwort {
 }
 
 const EINHEIT_FARBE: Record<Einheit, string> = { kdc: LEUCHT.business, kdv: LEUCHT.schlaf, ug: LEUCHT.puls, privat: LEUCHT.geld };
-/** Die eine Einheitenliste (28.09.): Selbstständigkeit · KD Ventures · MAKE OS UG · Privat. */
+/** Die eine Einheitenliste (28.09.): Selbstständigkeit · KD Ventures · MAKE Innovation GmbH · Privat. */
 const EINHEITEN: Einheit[] = ['kdc', 'kdv', 'ug', 'privat'];
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n));
 const deutsch = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}`;

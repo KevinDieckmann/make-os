@@ -23,7 +23,7 @@ describe('Spaces', () => {
       { id: 'm3', firmaId: 'f-ohne', status: 'angebot' }, { id: 'm4', firmaId: 'f-alt', status: 'pausiert' },
     ],
   };
-  it('fest: Privat, Selbstständigkeit, KD Ventures, MAKE OS UG — Mandanten aus aktiven Mandaten, beendet → Archiv', () => {
+  it('fest: Privat, Selbstständigkeit, KD Ventures, MAKE Innovation GmbH — Mandanten aus aktiven Mandaten, beendet → Archiv', () => {
     const s = alleSpaces(crm);
     expect(s.map(x => x.id)).toEqual(['privat', 'kdc', 'kdv', 'ug', 'm-f-aktiv', 'm-f-alt']);
     expect(s.find(x => x.id === 'm-f-aktiv')).toMatchObject({ art: 'mandant', firmaId: 'f-aktiv', bereich: 'business', label: 'Beispiel Aktiv GmbH' });
@@ -42,7 +42,7 @@ describe('Spaces', () => {
     expect(['business', 'm-', 'M-f-x', 'kemaris', ''].some(istSpaceId)).toBe(false);
     expect(einheitVonSpace('privat')).toBeUndefined();
     expect(einheitVonSpace('kdc')).toBe('Selbstständigkeit');
-    expect(einheitVonSpace('ug')).toBe('MAKE OS UG');
+    expect(einheitVonSpace('ug')).toBe('MAKE Innovation GmbH');
     expect(einheitVonSpace('m-f-abc')).toBe(MANDANT_EINHEIT);
   });
   it('spaceVonAufgabe folgt spaceId (alle alten Leser)', () => {
@@ -57,7 +57,7 @@ describe('Übernahme des Altbestands', () => {
     tasks: [
       aufgabe('t-biz', { projectId: 'proj-kdm', title: 'Vertrag prüfen' }),
       aufgabe('t-priv', { projectId: 'proj-privat', title: 'Wohnung streichen' }),
-      aufgabe('t-ug', { projectId: 'proj-kdm', title: 'Gesellschafterliste', space: 'business', einheit: 'MAKE OS UG' }),
+      aufgabe('t-ug', { projectId: 'proj-kdm', title: 'Gesellschafterliste', space: 'business', einheit: 'MAKE Innovation GmbH' }),
       aufgabe('t-sb', { projectId: 'proj-sb', title: 'Belege sammeln' }),
       aufgabe('t-ohne', { projectId: 'proj-weg', title: 'Irgendwas', space: 'privat' }),
       aufgabe('t-sub', { projectId: 'proj-privat', title: 'Umzug', subTasks: [
@@ -75,7 +75,7 @@ describe('Übernahme des Altbestands', () => {
     expect(t['t-biz']).toMatchObject({ spaceId: 'kdv', space: 'business', einheit: 'KD Ventures' });
     expect(t['t-priv']).toMatchObject({ spaceId: 'privat', space: 'privat' });
     expect(t['t-priv'].einheit).toBeUndefined();
-    expect(t['t-ug']).toMatchObject({ spaceId: 'ug', einheit: 'MAKE OS UG' });
+    expect(t['t-ug']).toMatchObject({ spaceId: 'ug', einheit: 'MAKE Innovation GmbH' });
     expect(t['t-sb']).toMatchObject({ spaceId: 'kdc', einheit: 'Selbstständigkeit' });
     // Projekt gibt es nicht mehr → bleibt stehen, der Baum zeigt es unter „Sonstige“.
     expect(t['t-ohne']).toMatchObject({ spaceId: 'privat', projectId: 'proj-weg' });

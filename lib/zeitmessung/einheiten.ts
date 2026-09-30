@@ -1,6 +1,6 @@
 // ─── Zeit & Fokus — Zeit je Business-Einheit (27.09. spät, rein, getestet) ──
 // Kevin: „Fokus-Blöcke einer Aufgabe zuordnen, damit wir die Zeit je Einheit
-// sehen (Selbstständigkeit · KD Ventures · MAKE OS UG).“
+// sehen (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH).“
 //
 // Hier liegt beides, was dafür gerechnet wird — ohne Dateizugriff:
 //   1. die Säuberung einer Zuordnung im Schreibweg (`zuordnungSaeubern`):
