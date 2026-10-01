@@ -12,7 +12,10 @@ describe('Caddyfile: Referrer-/Permissions-Policy', () => {
   it('allgemein nur als Vorgabe („?“) — nie ein harter Überschreiber', () => {
     expect(caddy).toMatch(/^\s*\?Referrer-Policy strict-origin-when-cross-origin$/m);
     expect(caddy).toMatch(/^\s*\?Permissions-Policy /m);
-    expect(caddy).not.toMatch(/^\s*Referrer-Policy strict-origin-when-cross-origin$/m);
+    // Im Software-Block nie hart überschreiben (die statische Landingpage setzt ihre Köpfe selbst hart — dort gibt es keine App).
+    const a = caddy.indexOf('{$MAKE_OS_DOMAIN} {');
+    const appBlock = caddy.slice(a, caddy.indexOf('\n}\n', a));
+    expect(appBlock).not.toMatch(/^\s*Referrer-Policy strict-origin-when-cross-origin$/m);
   });
   it('Buchungspfade: dieselben strengen Werte wie die App', () => {
     expect(caddy).toMatch(/@buchung path \/buchen \/buchen\/\* \/api\/buchung \/api\/buchung\/\*/);
@@ -100,7 +103,12 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     } else {
       const { fehler, platzhalter } = pruefeWebsite(join(process.cwd(), 'website'));
       expect(fehler, fehler.join('\n')).toEqual([]);
-      expect(platzhalter.map(p => `${p.datei}:${p.zeile} ${p.text}`), 'Landingpage aktiv, aber nicht freigabefähig').toEqual([]);
+      // Vorschau (01.10., Kevin: „nur für mich und Malin“): mit offenen Platzhaltern nur, solange Suchmaschinen draußen bleiben.
+      if (platzhalter.length) {
+        const kopf = aktiv.get('(landingpage_koepfe)') ?? '';
+        expect(kopf, 'Vorschau ohne noindex').toMatch(/^X-Robots-Tag "noindex, nofollow"$/m);
+        expect(readFileSync(join(process.cwd(), 'website', 'robots.txt'), 'utf8'), 'Vorschau ohne robots.txt').toMatch(/^Disallow: \/$/m);
+      }
     }
   });
 
