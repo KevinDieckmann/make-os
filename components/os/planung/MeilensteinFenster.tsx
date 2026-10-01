@@ -15,6 +15,8 @@
 // Aufgaben-Logik gehört NICHT hierher (Paket „meilensteine“: Detailseite).
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 import { bereichAusSpace, meilensteinSpace } from '@/lib/planung/meilensteine';
@@ -35,6 +37,25 @@ export interface MsVorgabe { faellig?: string; space?: SpaceId; einheit?: string
 interface Form {
   titel: string; faellig: string; space: SpaceId; einheit: string; mandatId: string; zielId: string;
   fortschritt: number; erledigt: boolean; messlatte: string;
+  /** Nur beim Anlegen (01.10., Kevin: „dahinter muss etwas sein“): erste Aufgaben, eine je Zeile — echte Aufgaben in der Meilenstein-Liste. */
+  aufgaben: string;
+}
+const AUFGABEN_MAX = 30;
+/** Die ersten Aufgaben aus dem Textfeld: je Zeile eine, leer und doppelt raus, höchstens 30, je 300 Zeichen (wie der Schreibweg). */
+export function ersteAufgaben(text: string): string[] {
+  const seen = new Set<string>();
+  return text.split(/\r?\n/).map(z => z.replace(/^\s*[-•*]\s*/, '').trim()).filter(z => z && z.length <= 300 && !seen.has(z.toLowerCase()) && seen.add(z.toLowerCase())).slice(0, AUFGABEN_MAX);
+}
+/** Legt die Aufgaben nacheinander über den EINEN Schreibweg an (/api/tasks/create mit meilensteinId → seine Liste). */
+async function aufgabenAnlegen(meilensteinId: string, titel: string[]): Promise<number> {
+  let ok = 0;
+  for (const t of titel) {
+    try {
+      const r = await fetch('/api/tasks/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: t, meilensteinId }) });
+      if (r.ok) ok++;
+    } catch { /* gezählt: die Zahl unten sagt, was fehlt */ }
+  }
+  return ok;
 }
 const NEU_EINHEIT = '__neu__';
 const wahl: CSSProperties = { ...feld, colorScheme: 'dark', cursor: 'pointer' };
@@ -44,9 +65,9 @@ const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LE
 function formAus(m: Meilenstein | null, v: MsVorgabe): Form {
   if (m) {
     const sp = meilensteinSpace(m);
-    return { titel: m.titel, faellig: m.faellig ?? '', space: sp, einheit: m.einheit ?? '', mandatId: m.mandatId ?? '', zielId: m.zielId ?? '', fortschritt: m.fortschritt, erledigt: m.erledigt, messlatte: m.messlatte ?? '' };
+    return { titel: m.titel, faellig: m.faellig ?? '', space: sp, einheit: m.einheit ?? '', mandatId: m.mandatId ?? '', zielId: m.zielId ?? '', fortschritt: m.fortschritt, erledigt: m.erledigt, messlatte: m.messlatte ?? '', aufgaben: '' };
   }
-  return { titel: '', faellig: v.faellig ?? '', space: v.space ?? 'business', einheit: v.space === 'privat' ? '' : v.einheit ?? '', mandatId: '', zielId: '', fortschritt: 0, erledigt: false, messlatte: '' };
+  return { titel: '', faellig: v.faellig ?? '', space: v.space ?? 'business', einheit: v.space === 'privat' ? '' : v.einheit ?? '', mandatId: '', zielId: '', fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '' };
 }
 
 export interface MeilensteinFensterApi {
@@ -60,6 +81,7 @@ export interface MeilensteinFensterApi {
 
 /** Das Fenster samt Schreiben über `planung.persistMs`. `rueck` zeigt nach dem Löschen „Rückgängig“. */
 export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig, heute: string): MeilensteinFensterApi {
+  const router = useRouter();
   const [zustand, setZustand] = useState<{ id: string | null; vorgabe: MsVorgabe; runde: number } | null>(null);
   // Der jüngste Stand für Rückgängig (das Zurückholen läuft später, nach anderen Änderungen).
   const stand = useRef(planung); stand.current = planung;
@@ -69,7 +91,8 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
 
   const bestehend = zustand?.id ? planung.ms.find(m => m.id === zustand.id) ?? null : null;
 
-  const speichern = (f: Form) => {
+  /** Speichert; bei einem neuen Meilenstein die Kennung (sonst null). */
+  const speichern = (f: Form): Meilenstein | null => {
     const p = stand.current;
     const business = f.space === 'business';
     const felder = {
@@ -88,10 +111,21 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
         ...(felder.mandatId ? {} : { firmaId: undefined }),
         ...(m.abgeleitetVon ? { angepasst: true } : {}),
       })));
-      return;
+      return null;
     }
     const offen = offenErledigt(p.ms).offen;
-    p.persistMs([...p.ms, { id: neueKennung('ms'), ...felder, ...(f.erledigt ? { erledigtAm: heute } : {}), rang: naechsterRang(offen) }]);
+    const neu: Meilenstein = { id: neueKennung('ms'), ...felder, ...(f.erledigt ? { erledigtAm: heute } : {}), rang: naechsterRang(offen) };
+    return neu;
+  };
+  /** Neu anlegen: sofort speichern (abwartbar), dann die ersten Aufgaben anlegen; `oeffnen` führt ins Detail (Reiter Aufgaben). */
+  const anlegen = async (neu: Meilenstein, f: Form, oeffnen: boolean): Promise<string | null> => {
+    const p = stand.current;
+    const ok = await p.persistMsJetzt([...p.ms, neu]);
+    if (!ok) return 'Nicht gespeichert — bitte noch einmal.';
+    const titel = ersteAufgaben(f.aufgaben);
+    const angelegt = titel.length ? await aufgabenAnlegen(neu.id, titel) : 0;
+    if (oeffnen) { setZustand(null); router.push(WEG.meilenstein(neu.id, 'aufgaben')); }
+    return angelegt < titel.length ? `${titel.length - angelegt} von ${titel.length} Aufgaben nicht angelegt — im Meilenstein nachtragen.` : null;
   };
 
   const loeschen = () => {
@@ -105,7 +139,12 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
 
   const fenster = zustand && (zustand.id === null || bestehend) ? (
     <MeilensteinForm key={zustand.runde} m={bestehend} vorgabe={zustand.vorgabe} planung={planung}
-      onSpeichern={(f, weiter) => { speichern(f); if (!weiter) setZustand(null); }}
+      onSpeichern={async (f, weiter) => {
+        const neu = speichern(f);
+        if (!neu) { if (!weiter) setZustand(null); return null; }
+        return anlegen(neu, f, !weiter);
+      }}
+      onOeffnen={bestehend ? () => { setZustand(null); router.push(WEG.meilenstein(bestehend.id, 'aufgaben')); } : undefined}
       onLoeschen={bestehend && (!bestehend.abgeleitetVon || bestehend.angepasst) ? loeschen : undefined}
       onZu={() => setZustand(null)} />
   ) : null;
@@ -115,10 +154,13 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
   return { oeffneNeu, oeffne, fenster };
 }
 
-function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onZu }: {
+function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffnen, onZu }: {
   m: Meilenstein | null; vorgabe: MsVorgabe; planung: PlanungStand;
-  onSpeichern: (f: Form, weiter: boolean) => void; onLoeschen?: () => void; onZu: () => void;
+  /** Antwort: Hinweistext (z. B. Aufgaben nicht angelegt) oder null. */
+  onSpeichern: (f: Form, weiter: boolean) => Promise<string | null>; onLoeschen?: () => void; onOeffnen?: () => void; onZu: () => void;
 }) {
+  const [laeuft, setLaeuft] = useState(false);
+  const [meldung, setMeldung] = useState<string | null>(null);
   const [f, setF] = useState<Form>(() => formAus(m, vorgabe));
   const [angelegt, setAngelegt] = useState(0);
   const [fehlt, setFehlt] = useState(false);
@@ -133,12 +175,15 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onZu }:
   const zielWahl: Ziel[] = planung.ziele.filter(z => !z.abgeleitetVon && (z.id === f.zielId || ((!z.space || z.space === f.space) && zielJahr(z, laufend) === jahr && !z.erledigt)));
 
   const setze = (patch: Partial<Form>) => setF(x => ({ ...x, ...patch }));
-  const los = (weiter: boolean) => {
+  const los = async (weiter: boolean) => {
+    if (laeuft) return;
     if (!f.titel.trim()) { setFehlt(true); titelRef.current?.focus(); return; }
-    onSpeichern(f, weiter);
-    if (weiter) {
-      // Schnell-Eingabe: Datum, Bereich, Einheit (und Mandat/Ziel) bleiben stehen — nur Titel und Stand neu.
-      setF(x => ({ ...x, titel: '', fortschritt: 0, erledigt: false, messlatte: '' }));
+    setLaeuft(true); setMeldung(null);
+    const hinweis = await onSpeichern(f, weiter).finally(() => setLaeuft(false));
+    setMeldung(hinweis);
+    if (weiter && !(hinweis && hinweis.startsWith('Nicht gespeichert'))) {
+      // Schnell-Eingabe: Datum, Bereich, Einheit (und Mandat/Ziel) bleiben stehen — nur Titel, Aufgaben und Stand neu.
+      setF(x => ({ ...x, titel: '', fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '' }));
       setAngelegt(n => n + 1); setFehlt(false);
       titelRef.current?.focus();
     }
@@ -151,7 +196,7 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onZu }:
       {/* Kein <form>: die Knöpfe (Knopf) sind type=submit — Enter im Titel speichert (neu: und nächster). */}
       <div style={{ display: 'grid', gap: 12 }}>
         <label style={beschriftung}>Titel
-          <input ref={titelRef} autoFocus value={f.titel} onChange={e => { setze({ titel: e.target.value }); setFehlt(false); }} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); los(!m); } }} placeholder="Woran erkennen wir den Schritt?" aria-invalid={fehlt || undefined}
+          <input ref={titelRef} autoFocus value={f.titel} onChange={e => { setze({ titel: e.target.value }); setFehlt(false); }} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void los(!m); } }} placeholder="Woran erkennen wir den Schritt?" aria-invalid={fehlt || undefined}
             style={{ ...feld, fontWeight: 600, ...(fehlt ? { borderColor: LEUCHT.kritisch } : {}) }} maxLength={200} />
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 12 }}>
@@ -205,15 +250,23 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onZu }:
             <input type="checkbox" checked={f.erledigt} onChange={e => setze({ erledigt: e.target.checked })} style={{ width: 18, height: 18, accentColor: LEUCHT.gut }} /> erledigt
           </label>
         </div>
+        {!m && (
+          <label style={beschriftung}>Erste Aufgaben (optional, eine je Zeile)
+            <textarea value={f.aufgaben} onChange={e => setze({ aufgaben: e.target.value })} rows={4} placeholder={'Vertrag entwerfen\nTermin mit Steuerberater\nKonto eröffnen'} style={{ ...feld, resize: 'vertical', minHeight: 90, fontFamily: 'inherit' }} />
+            <span style={{ fontSize: 12, color: C.inkLeise }}>Werden echte Aufgaben im Meilenstein — Unteraufgaben, Fristen und Verantwortliche danach im Meilenstein.</span>
+          </label>
+        )}
         <label style={beschriftung}>Messlatte (optional)
           <input value={f.messlatte} onChange={e => setze({ messlatte: e.target.value })} placeholder="Woran messen wir „fertig“?" style={feld} maxLength={300} />
         </label>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+          {meldung && <span style={{ fontSize: 12, color: LEUCHT.achtung, flexBasis: '100%' }}>{meldung}</span>}
           {angelegt > 0 && <span style={{ fontSize: 12, color: LEUCHT.gut, marginRight: 'auto' }}>{angelegt} angelegt — Datum und Einheit bleiben stehen</span>}
+          {onOeffnen && <Knopf leise onClick={onOeffnen}>Aufgaben & Verlauf öffnen ›</Knopf>}
           {onLoeschen && <span style={{ marginRight: angelegt ? 0 : 'auto' }}><Knopf leise onClick={onLoeschen}>Löschen</Knopf></span>}
           <Knopf leise onClick={onZu}>{angelegt ? 'Fertig' : 'Abbrechen'}</Knopf>
-          {!m && <Knopf leise onClick={() => los(true)}>Speichern + nächster</Knopf>}
-          <Knopf onClick={() => los(false)}>Speichern</Knopf>
+          {!m && <Knopf leise onClick={() => void los(true)}>{laeuft ? 'speichert …' : 'Speichern + nächster'}</Knopf>}
+          <Knopf onClick={() => void los(false)}>{laeuft ? 'speichert …' : m ? 'Speichern' : 'Speichern & öffnen'}</Knopf>
         </div>
       </div>
     </Fenster>

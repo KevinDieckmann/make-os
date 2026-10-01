@@ -88,14 +88,15 @@ export async function POST(req: Request) {
     const state = sichtFuer(aufgabenSicht(state0), zugang.person);
     // Duplikat-Schutz: gleiche (normalisierte) Überschrift + noch offen → nicht doppelt anlegen (der Papierkorb zählt nicht).
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
-    const vorhanden = state.tasks.find(t => istOffen(t) && !t.parentId && norm(t.title) === norm(title));
+    // Am Meilenstein (30.09.) nur in seiner Liste prüfen — sonst landete „Vertrag prüfen“ bei einer gleichnamigen Aufgabe woanders.
+    const vorhanden = state.tasks.find(t => istOffen(t) && !t.parentId && norm(t.title) === norm(title) && (body.meilensteinId === undefined || t.listeId === body.listeId));
     if (vorhanden) { ergebnis = { id: vorhanden.id, duplikat: true }; return keineOps(); }
     const projekt = state.projects.find(p => p.id === body.projectId);
     const eltern = body.parentId ? state.tasks.find(t => t.id === body.parentId) : undefined;
     const basis: Task = {
       // Kollisionsfrei: nicht an array.length koppeln (bricht nach Löschungen).
       id: `mtg-${now.replace(/[^0-9]/g, '').slice(0, 14)}-${randomUUID().slice(0, 8)}`,
-      projectId: projekt?.id ?? '', title, description: beschreibung || 'Aus Meeting übernommen.',
+      projectId: projekt?.id ?? '', title, description: beschreibung || (body.meilensteinId !== undefined ? '' : 'Aus Meeting übernommen.'),
       status: 'todo' as TaskStatus, priority, assignee, tags: [], dueDate, subTasks: [], dependencies: [],
       // max+1 statt length: nach Löschungen sonst doppelte Sortierwerte.
       sortOrder: state0.tasks.reduce((mx, t) => Math.max(mx, t.sortOrder ?? 0), -1) + 1,

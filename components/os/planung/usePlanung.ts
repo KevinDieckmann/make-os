@@ -27,6 +27,8 @@ export interface PlanungStand {
   einheiten: string[];
   persistZiele: (next: Ziel[]) => void;
   persistMs: (next: Meilenstein[]) => void;
+  /** Wie persistMs, aber sofort gesendet und abwartbar (true = gespeichert) — für „Speichern & öffnen“. */
+  persistMsJetzt: (next: Meilenstein[]) => Promise<boolean>;
   fokusSetzen: (schluessel: string, wert: string) => void;
   einheitAnlegen: (name: string) => Promise<string | null>;
   /** Hinweis nach einem abgelehnten Speichern (z. B. „inzwischen geändert“) — sonst null. */
@@ -134,6 +136,17 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
     }, 500);
   }, [msSchreiber, msZeigen]);
 
+  const persistMsJetzt = useCallback(async (next: Meilenstein[]) => {
+    if (!msSchreiber.geladen) return false;
+    msSchreiber.aendern(msRef.current, next as MsZeile[]);
+    msZeigen(next as MsZeile[]);
+    clearTimeout(msTimer.current);
+    const e = await msSchreiber.senden();
+    setHinweis(hinweisAus(e));
+    if (e.sicht && !e.nichts) msZeigen(e.sicht);
+    return e.ok;
+  }, [msSchreiber, msZeigen]);
+
   // Beim Verlassen: Offenes noch senden (die Absichten liegen im Schreiber).
   useEffect(() => () => {
     clearTimeout(zieleTimer.current); clearTimeout(msTimer.current);
@@ -159,5 +172,5 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
     } catch { return null; }
   }, []);
 
-  return { heute, zr, geladen, ziele, fokus, ms, einheiten, persistZiele, persistMs, fokusSetzen, einheitAnlegen, hinweis };
+  return { heute, zr, geladen, ziele, fokus, ms, einheiten, persistZiele, persistMs, persistMsJetzt, fokusSetzen, einheitAnlegen, hinweis };
 }
