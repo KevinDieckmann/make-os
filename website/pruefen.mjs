@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ─── MAKE Innovation GmbH · Landingpage: Freigabe-Prüfung (01.10.2026, v2 mit Logo und Produkten) ────
+// ─── MAKE Innovation GmbH · Landingpage: Freigabe-Prüfung (01.10.2026, v3: Markttraktion, Make.One, Beteiligungen) ─
 // Die Seite unter makeinnovation.de geht erst online, wenn Kevin sie gesehen und freigegeben hat. Dieser
 // Prüfschritt sagt, ob sie freigabefähig ist:
 //   · Platzhalter: steht irgendwo noch „[[KEVIN:“, ist die Seite NICHT freigabefähig (Impressum/Datenschutz
@@ -8,11 +8,16 @@
 //   · Bau-Regeln, die die strenge CSP der Freigabe-Fassung voraussetzt: keine Inline-Skripte, Skripte nur als eigene
 //     Datei aus js/ (und die lesen, speichern und senden nichts), keine Inline-Stile, keine fremden Quellen
 //     (Schriften, Bilder, Stile nur vom eigenen Server), keine Tracker.
-//   · Pflichtteile je Seite: lang="de", Titel, genau eine H1, Anmelden-Knopf, Impressum + Datenschutz im Fuß.
+//   · Pflichtteile je Seite: lang="de", Titel, genau eine H1, Login-Knopf, Impressum + Datenschutz im Fuß.
 //   · Jeder eigene Link, jedes srcset und jede url() in CSS zeigt auf eine vorhandene Datei bzw. einen Anker.
 //   · Logo: alle Dateien aus assets/logo/ da (scripts/website-logo.mjs), die Bühne zeichnet dieselbe Bildmarke.
-//   · Produkte: Markttraktion und Make.One aktiv mit Mail-Knopf, genau EIN „Coming Soon“ — bei Development.
-//   · Inhalt: nur MAKE — keine anderen Firmen-, Produkt- oder Projektnamen (SPERRLISTE), dazu Wortregeln.
+//   · Angebote: Interim CSO, Interim Head of Sales, Events & Netzwerk gleichwertig mit „Erstgespräch anfragen“, genau
+//     EIN „Coming Soon“ — bei Development. Make.One und Make.Beteiligungen mit ihrem Mail-Knopf (Betreff).
+//   · Erstgespräch: das Ziel steht an GENAU einer Stelle (#erstgespraech-link) — heute die vorbereitete Mail, später
+//     die Buchungsseite. Alle anderen Knöpfe zeigen auf #erstgespraech (data-erstgespraech; js/erstgespraech.js
+//     übernimmt das Ziel).
+//   · Inhalt: nur MAKE — keine anderen Firmen-, Produkt- oder Projektnamen (SPERRLISTE), der Name der Software
+//     steht nirgends im Ordner (auch nicht in LIESMICH/LOGO.md), keine Preise, dazu Wortregeln.
 // Aufruf: node website/pruefen.mjs   → Ausgang 0 = freigabefähig, 1 = nicht freigabefähig.
 // Ohne Abhängigkeiten (läuft so auch auf dem Server oder in der CI).
 
@@ -30,16 +35,34 @@ const SEITEN_MIT_PFLICHT = ['index.html', 'impressum.html', 'datenschutz.html'];
 export const NICHT_OEFFENTLICH = ['LIESMICH.md', 'pruefen.mjs', 'logo-entwuerfe.html', 'assets/logo/LOGO.md'];
 /** Dieselben Dateien als Namen für `file_server { hide … }` (Caddy vergleicht Namen ohne Pfad). */
 export const VERSTECKT = NICHT_OEFFENTLICH.map(d => d.split('/').pop());
+/**
+ * Ziel des Erstgesprächs (#erstgespraech-link): heute eine Mail mit diesem Betreff (die Buchungsseite der Software ist
+ * noch nicht so weit), später die öffentliche Buchungsseite (app/buchen/[slug]; Slug wie SLUG in lib/kalender/buchung.ts).
+ */
+export const ERSTGESPRAECH_MAIL = /^mailto:hello@makeinnovation\.de\?subject=Erstgespr%C3%A4ch%20%E2%80%93%20Markttraktion&amp;body=[^"]+$/;
+export const BUCHUNG_BASIS = 'https://app.makeinnovation.de/buchen/';
+export const BUCHUNG_MUSTER = /^https:\/\/app\.makeinnovation\.de\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}$/;
+/** Mail-Knöpfe mit Betreff, die auf der Startseite stehen müssen (Betreff kodiert wie im href). */
+export const MAIL_BETREFFE = {
+  'Make.One – Einladung': 'Make.One%20%E2%80%93%20Einladung',
+  'Make.Beteiligungen – Projekt': 'Make.Beteiligungen%20%E2%80%93%20Projekt',
+};
+/** Navigation im Kopf der Startseite (Kevin 01.10.). */
+export const NAVIGATION = ['#markttraktion', '#make-one', '#beteiligungen', '#ueber-uns', '#kontakt'];
 /** Logo-Dateien (erzeugt von scripts/website-logo.mjs). */
-export const LOGO_DATEIEN = ['bildmarke.svg', 'bildmarke-hell.svg', 'kachel.svg', 'quer.svg', 'quer-hell.svg', 'kompakt.svg', 'kompakt-hell.svg',
+export const LOGO_DATEIEN = ['bildmarke.svg', 'bildmarke-hell.svg', 'wortmarke.svg', 'wortmarke-hell.svg', 'kachel.svg', 'quer.svg', 'quer-hell.svg', 'kompakt.svg', 'kompakt-hell.svg',
   'gross.svg', 'gross-hell.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-512.png', 'LOGO.md'].map(d => `assets/logo/${d}`);
-/** Produkte auf der Startseite: Kennung des <article> → aktiv (mit Mail-Knopf) oder „Coming Soon“. */
-export const PRODUKTE = { 'produkt-markttraktion': 'aktiv', 'produkt-make-one': 'aktiv', 'produkt-development': 'bald' };
+/** Angebote auf der Startseite: Kennung des <article> → aktiv (mit „Erstgespräch anfragen“) oder „Coming Soon“. */
+export const ANGEBOTE = { 'angebot-interim-cso': 'aktiv', 'angebot-head-of-sales': 'aktiv', 'angebot-events': 'aktiv', 'angebot-development': 'bald' };
 /**
  * Auf der Seite steht nur MAKE: keine anderen Firmen, Marken oder Projekte (Kevin 01.10.). Die Muster sind absichtlich
  * mit Zeichenklassen geschrieben, damit eine Textsuche über website/ die Namen nirgends findet — auch hier nicht.
  */
-export const SPERRLISTE = /\b(?:Cap[O]S|POIN[C]AP|K[S]I|Capital[ ]Readiness|AST[A]RNA|KEM[A]RIS|Conn[e]ct|One[ ]?B[a]nking)\b/i;
+export const SPERRLISTE = /\b(?:Cap[O]S|POIN[C]AP|K[S]I|Capital[ ]Readiness|AST[A]RNA|KEM[A]RIS|Conn[e]ct|One[ ]?B[a]nking|Infin[i]ty)\b/i;
+/** Der Name der Software kommt erst auf die Seite, wenn sie marktreif ist (Kevin 01.10.) — gilt für den ganzen Ordner. */
+export const SOFTWARE_NAME = /\bMAKE[ ]?O[S]\b/i;
+/** Keine Preise auf der Seite (Kevin 01.10.). */
+export const PREISE = /€|\bEUR\b|\bEuro\b|\bPreis(?:e|liste)?\b|\bTagessatz|\bHonorar/i;
 /** Wortregeln (Geschmack der Marke): diese Wörter stehen nicht auf der Seite. */
 export const VERBOTENE_WOERTER = /\b(?:Dashboard|Tool|Tools|Disruption|Reporting|einfach zu bedienen)\b/i;
 /** Was ein Skript der Seite nicht darf: nichts lesen, speichern, senden oder nachladen. */
@@ -91,6 +114,11 @@ export function pruefeWebsite(ordner) {
     }
   }
 
+  for (const [d, text] of inhalt) {
+    const m = SOFTWARE_NAME.exec(text);
+    if (m) fehler.push(`${d}:${zeileVon(text, m.index)}: Name der Software — kommt erst auf die Seite, wenn sie marktreif ist`);
+  }
+
   // Platzhalter in allem, was ausgeliefert wird (LIESMICH erklärt sie nur).
   for (const d of [...html, ...css]) {
     const text = inhalt.get(d);
@@ -129,8 +157,8 @@ export function pruefeWebsite(ordner) {
     }
     for (const m of text.matchAll(/<link\b[^>]*\shref="([^"]*)"/g)) if (/^(https?:)?\/\//.test(m[1])) fehler.push(`${d}: fremde Quelle ${m[1]}`);
     if (pflicht) {
-      if (!text.includes(`href="${ANMELDEN}"`)) fehler.push(`${d}: Anmelden-Knopf (${ANMELDEN}) fehlt`);
-      if (!/class="knopf anmelden"/.test(text)) fehler.push(`${d}: Anmelden-Knopf im Kopf fehlt`);
+      if (!text.includes(`href="${ANMELDEN}"`)) fehler.push(`${d}: Login-Knopf (${ANMELDEN}) fehlt`);
+      if (!text.includes(`<a class="knopf anmelden" href="${ANMELDEN}">Login</a>`)) fehler.push(`${d}: Login-Knopf im Kopf fehlt (klein, nur „Login“)`);
       if (!text.includes('href="impressum.html"')) fehler.push(`${d}: Link auf impressum.html fehlt`);
       if (!text.includes('href="datenschutz.html"')) fehler.push(`${d}: Link auf datenschutz.html fehlt`);
       if (!text.includes('MAKE Innovation GmbH')) fehler.push(`${d}: Firmenname fehlt`);
@@ -139,13 +167,22 @@ export function pruefeWebsite(ordner) {
     for (const m of text.matchAll(/\s(?:href|src)="([^"]*)"/g)) {
       const ziel = m[1];
       if (/^(https?:|mailto:|tel:)/.test(ziel)) continue;
+      if (ziel.includes('[[KEVIN:')) { fehler.push(`${d}: Platzhalter als Link ${ziel}`); continue; }
       const [pfadTeil, frag] = ziel.split('#');
       const datei = pfadTeil === '' ? d : pfadTeil === '/' ? 'index.html' : pfadTeil.replace(/^\//, '');
       if (!dateien.includes(datei)) { fehler.push(`${d}: Link auf ${ziel} — Datei fehlt`); continue; }
       if (frag && datei.endsWith('.html') && !anker(inhalt.get(datei)).has(frag)) fehler.push(`${d}: Anker #${frag} fehlt in ${datei}`);
     }
-    // Externe Links: nur bewusst gesetzte (Anmelden). Alles andere wäre neu und muss hier eingetragen werden.
-    for (const m of text.matchAll(/\shref="(https?:[^"]*)"/g)) if (m[1] !== ANMELDEN) fehler.push(`${d}: unerwarteter externer Link ${m[1]}`);
+    // Externe Links: nur bewusst gesetzte (Login, Buchungsseite). Alles andere wäre neu und muss hier eingetragen werden.
+    for (const m of text.matchAll(/\shref="(https?:[^"]*)"/g)) if (m[1] !== ANMELDEN && !m[1].startsWith(BUCHUNG_BASIS)) fehler.push(`${d}: unerwarteter externer Link ${m[1]}`);
+    // Buchungsseite (später): nur als Ziel des Erstgesprächs auf der Startseite, nirgends sonst.
+    const buchung = Array.from(text.matchAll(/<a\b[^>]*\shref="(https:\/\/app\.makeinnovation\.de\/buchen\/[^"]*)"[^>]*>/g));
+    for (const [tag, url] of buchung) {
+      if (d !== 'index.html' || !/\sid="erstgespraech-link"/.test(tag)) fehler.push(`${d}: Buchungslink — nur als Ziel des Erstgesprächs (#erstgespraech-link auf der Startseite)`);
+      else if (!BUCHUNG_MUSTER.test(url)) fehler.push(`${d}: Buchungslink ${url} — Slug wie in lib/kalender/buchung.ts erwartet`);
+    }
+    // Weitere Erstgespräch-Knöpfe tragen data-erstgespraech und zeigen ohne Skript auf #erstgespraech.
+    for (const m of text.matchAll(/<a\b[^>]*\sdata-erstgespraech\b[^>]*>/g)) if (!/\shref="(?:index\.html)?#erstgespraech"/.test(m[0])) fehler.push(`${d}: Knopf mit data-erstgespraech zeigt nicht auf #erstgespraech`);
   }
   if (html.includes('index.html')) {
     const index = inhalt.get('index.html');
@@ -153,21 +190,38 @@ export function pruefeWebsite(ordner) {
     // Logo im Kopf, Favicons im <head>.
     if (!/<header class="kopf">[\s\S]*?src="assets\/logo\/quer\.svg"[\s\S]*?<\/header>/.test(index)) fehler.push('index.html: Logo (assets/logo/quer.svg) fehlt im Kopf');
     for (const f of ['favicon.svg', 'assets/logo/favicon-32.png', 'assets/logo/apple-touch-icon.png']) if (!index.includes(`href="${f}"`)) fehler.push(`index.html: <link> auf ${f} fehlt`);
-    // Produkte: aktiv = Abzeichen „Verfügbar“ + Mail-Knopf mit Betreff; bald = genau das eine „Coming Soon“.
+    // Navigation im Kopf.
+    const nav = /<nav class="haupt"[\s\S]*?<\/nav>/.exec(index)?.[0] ?? '';
+    for (const z of NAVIGATION) if (!nav.includes(`href="${z}"`)) fehler.push(`index.html: Navigation ohne ${z}`);
+    // Angebote: aktiv = „Erstgespräch anfragen“; bald = genau das eine „Coming Soon“, ohne Knopf.
     const bloecke = new Map(Array.from(index.matchAll(/<article\b[^>]*\sid="([^"]+)"[^>]*>([\s\S]*?)<\/article>/g), m => [m[1], m[0]]));
-    for (const [id, art] of Object.entries(PRODUKTE)) {
+    for (const [id, art] of Object.entries(ANGEBOTE)) {
       const b = bloecke.get(id);
-      if (!b) { fehler.push(`index.html: Produkt #${id} fehlt`); continue; }
-      const mail = b.includes(`href="${KONTAKT}?subject=`);
-      if (art === 'aktiv' && (!b.includes('class="abzeichen aktiv"') || !mail)) fehler.push(`index.html: #${id} ist aktiv — Abzeichen „Verfügbar“ und Mail-Knopf mit Betreff nötig`);
-      if (art === 'bald' && (!b.includes('class="abzeichen bald">Coming Soon<') || mail)) fehler.push(`index.html: #${id} ist „Coming Soon“ — Abzeichen nötig, kein Mail-Knopf`);
+      if (!b) { fehler.push(`index.html: Angebot #${id} fehlt`); continue; }
+      const knopf = /<a\b[^>]*\shref="#erstgespraech"[^>]*\sdata-erstgespraech/.test(b);
+      if (art === 'aktiv' && !knopf) fehler.push(`index.html: #${id} — Knopf „Erstgespräch anfragen“ (href="#erstgespraech" data-erstgespraech) fehlt`);
+      if (art === 'bald' && (!b.includes('class="abzeichen bald">Coming Soon<') || /<a\b/.test(b))) fehler.push(`index.html: #${id} ist „Coming Soon“ — Abzeichen nötig, kein Knopf`);
     }
     const bald = (index.match(/Coming Soon/g) ?? []).length;
-    const sollBald = Object.values(PRODUKTE).filter(a => a === 'bald').length;
+    const sollBald = Object.values(ANGEBOTE).filter(a => a === 'bald').length;
     if (bald !== sollBald) fehler.push(`index.html: ${bald} × „Coming Soon“ (erwartet ${sollBald} — nur MAKE Innovation Development)`);
+    // Erstgespräch: das Ziel steht genau einmal (#erstgespraech-link) — vorbereitete Mail oder Buchungsseite.
+    if (!/\sid="erstgespraech"/.test(index)) fehler.push('index.html: Abschnitt #erstgespraech fehlt');
+    const ziele = Array.from(index.matchAll(/<a\b[^>]*\sid="erstgespraech-link"[^>]*>/g), m => /\shref="([^"]*)"/.exec(m[0])?.[1] ?? '');
+    if (ziele.length !== 1) fehler.push(`index.html: ${ziele.length} × #erstgespraech-link — genau einer`);
+    else if (!ERSTGESPRAECH_MAIL.test(ziele[0]) && !BUCHUNG_MUSTER.test(ziele[0])) fehler.push(`index.html: Ziel des Erstgesprächs ${ziele[0].slice(0, 60)} — Mail mit Betreff „Erstgespräch – Markttraktion“ oder Buchungsseite`);
+    const erstMails = (index.match(/subject=Erstgespr%C3%A4ch%20%E2%80%93%20Markttraktion/g) ?? []).length;
+    if (erstMails > 1) fehler.push(`index.html: ${erstMails} × Erstgespräch-Mail — das Ziel steht nur in #erstgespraech-link`);
+    for (const [name, betreff] of Object.entries(MAIL_BETREFFE)) if (!index.includes(`href="${KONTAKT}?subject=${betreff}"`)) fehler.push(`index.html: Mail-Knopf „${name}“ fehlt`);
+    const p = PREISE.exec(index.replace(/<[^>]+>/g, ' '));
+    if (p) fehler.push(`index.html: „${p[0]}“ — keine Preise auf der Seite`);
     // Die Bühne zeichnet dieselbe Bildmarke wie assets/logo/bildmarke.svg (sonst laufen zwei Logos auseinander).
     const zeichen = /<svg class="zeichen"[\s\S]*?<\/svg>/.exec(index)?.[0] ?? '';
-    const pfade = s => Array.from(s.matchAll(/<path\b[^>]*\sd="([^"]+)"[^>]*\sstroke="([^"]+)"/g), m => `${m[1]}|${m[2]}`).sort().join(' ');
+    // Formen: Pfade (d + Strich- oder Füllfarbe) und Kreise (Lage, Radius, Farbe) — ohne Klassen und Clip-Kennungen.
+    const attr = (t, n) => new RegExp(`\\s${n}="([^"]+)"`).exec(t)?.[1] ?? '';
+    const pfade = s => Array.from(s.matchAll(/<(path|circle)\b[^>]*>/g), ([t, art]) => art === 'path'
+      ? `p ${attr(t, 'd')}|${attr(t, 'stroke')}|${attr(t, 'fill')}`
+      : `c ${attr(t, 'cx')} ${attr(t, 'cy')} ${attr(t, 'r')}|${attr(t, 'fill')}`).sort().join(' ');
     if (dateien.includes('assets/logo/bildmarke.svg') && pfade(zeichen) !== pfade(inhalt.get('assets/logo/bildmarke.svg')))
       fehler.push('index.html: Bühnen-Zeichen weicht von assets/logo/bildmarke.svg ab — Block aus `node scripts/website-logo.mjs --buehne` übernehmen');
   }

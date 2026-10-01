@@ -30,7 +30,8 @@ describe('Caddyfile: Referrer-/Permissions-Policy', () => {
 // sslip bleibt Rückfall), NICHT als zweite Adresse im Block. makeinnovation.de + www leiten VORERST
 // auf die Anmeldung um; die Freigabe-Fassung (Landingpage aus /srv/website) steht kommentiert darunter und wird hier
 // schon mitgeprüft. Aktiv werden darf sie nur, wenn website/pruefen.mjs „freigabefähig“ meldet.
-import { pruefeWebsite } from '../website/pruefen.mjs';
+import { pruefeWebsite, BUCHUNG_BASIS, BUCHUNG_MUSTER } from '../website/pruefen.mjs';
+import { slugOk } from '@/lib/kalender/buchung';
 import { join } from 'node:path';
 
 const roh = readFileSync('deploy/caddy/Caddyfile', 'utf8');
@@ -127,6 +128,16 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     expect(koepfe).toMatch(/^X-Frame-Options DENY$/m);
     // Die Köpfe gelten auch für die 404-Seite (eigene Route-Kette).
     expect(seite).toMatch(/handle_errors \{[\s\S]*import landingpage_koepfe[\s\S]*rewrite \* \/404\.html/);
+  });
+
+  it('Landingpage v3 (später): „Erstgespräch anfragen“ kann auf die Buchungsseite der Software zeigen — dort gelten die strengen Buchungs-Köpfe', () => {
+    // Der Link geht an app.makeinnovation.de (Software-Block über MAKE_OS_DOMAIN), Pfad /buchen/<slug> → @buchung.
+    expect(BUCHUNG_BASIS).toBe('https://app.makeinnovation.de/buchen/');
+    expect(caddy).toMatch(/@buchung path \/buchen \/buchen\/\* /);
+    // Das Slug-Muster der Prüfung ist dasselbe wie in der Software (lib/kalender/buchung.ts).
+    for (const slug of ['erstgespraech-0123456789abcdef01234567', 'kevin-30-min-aaaaaaaaaaaaaaaaaaaaaaaa', 'Gross-0123456789abcdef01234567', 'ohne-kennung', 'x-0123456789abcdef0123456']) {
+      expect(BUCHUNG_MUSTER.test(BUCHUNG_BASIS + slug), slug).toBe(slugOk(slug));
+    }
   });
 
   it('compose: Caddy liest die Landingpage nur lesend aus dem Repo-Ordner', () => {

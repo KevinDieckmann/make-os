@@ -4,6 +4,28 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Landingpage v3: Positionierung „Innovation in Deutschland fördern“ (01.10.2026, nur lokal — Branch `website-v3`)
+
+Kevin 01.10.: „Wir wollen Innovation in Deutschland fördern — deshalb haben wir das Make.One-Netzwerk gegründet.“
+Angebot: Markttraktion. Die Software kommt NICHT auf die Seite (weder Name noch Beschreibung), oben rechts nur „Login“.
+Keine Kunden-/Firmennamen, keine Preise, Anrede Du. Look, Farben, Schriften, Knöpfe und Technik-Regeln wie v2.
+
+- **Seite** `website/index.html`: Kopf (Markttraktion · Make.One · Make.Beteiligungen · Über uns · Kontakt, „Login“),
+  Bühne, Für wen (3 Zielgruppen), Markttraktion (Interim CSO · Interim Head of Sales · Events & Netzwerk gleichwertig,
+  Development als schmale „Coming Soon“-Zeile), So arbeiten wir (Analyse → Aufbau → Skalierung), Make.One (Einladung
+  anfragen), Make.Beteiligungen (Projekt einreichen, „nur ganz wenige Kooperationen“, kein Anlage-/Finanzierungsangebot),
+  Über uns, Erstgespräch, Kontakt. Hauptweg „Erstgespräch anfragen“ = vorbereitete Mail (Betreff „Erstgespräch –
+  Markttraktion“); das Ziel steht an EINER Stelle (`#erstgespraech-link`), `js/erstgespraech.js` übernimmt es für alle
+  Knöpfe mit `data-erstgespraech` — später mit einer Zeile auf die Buchungsseite umstellen (website/LIESMICH.md).
+- **Logo** (`scripts/website-logo.mjs`): Bildmarke = M aus v2 mit geteiltem Punkt in der Mitte (links Grün, rechts Rot);
+  Wortmarke = MAKE · roter + grüner Punkt · INNOVATION; neue Dateien `wortmarke(-hell).svg`; Entwürfe B/C entfallen.
+- **Datenschutz/Impressum/404**: „Login“ statt Produktname, zweites Skript genannt.
+- **Prüfung** `website/pruefen.mjs`: Sperrliste + Infinity, Name der Software im ganzen Ordner gesperrt, keine Preise,
+  Angebote/Navigation/Mail-Betreffe, Ziel des Erstgesprächs genau einmal (Mail oder Buchungsseite mit gültigem Slug). Tests angepasst
+  (`tests/website-landingpage.test.ts`, `tests/caddy-buchung-koepfe.test.ts`: Slug-Muster = `slugOk` der Software).
+
+Offen vor Freigabe: ein Satz zu Kevins Vertriebserfahrung, Impressum-/Datenschutz-Angaben (website/LIESMICH.md).
+
 ## Landingpage v2: neues MAKE-Logo, Produkte, Markttraktion (01.10.2026, nur lokal — Branch `website-v2`)
 
 Kevin: „Wir müssen die Landingpage anders aufbauen … das MAKE-Logo auf jeden Fall mega gut aufbauen … Als Produkte
