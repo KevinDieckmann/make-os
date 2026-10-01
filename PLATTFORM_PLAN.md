@@ -25,6 +25,17 @@ Eure echte Instanz zeigt private Daten — für Vorführungen ungeeignet. Deshal
 - Voraussetzung: die Beispieldaten müssen die heute fest eingebauten Personen (`kevin`/`malin`) nutzen — Stufe 0
   geht also **vor** dem großen Umbau, mit zwei erfundenen Demo-Personen auf diesen Kennungen.
 
+## Testkunden & Interessenten (Kevin, 01.10.: „dürfen nie unsere Daten sehen, sollen aber ihren eigenen Space aufbauen können“)
+- **Nie ein Konto auf unserer Instanz.** Unsere Instanz (app.makeinnovation.de) bleibt nur für Kevin & Malin. Grund: Die
+  Software ist heute auf einen Haushalt gebaut; die Prüfung S1 hat noch ~50 Lese-Stellen mit Rückfall auf „kevin“ gefunden —
+  ein fremdes Konto auf unserer Instanz wäre ein Risiko, egal wie gut die Rechte sind.
+- **Jeder Testkunde bekommt eine eigene Instanz** (eigener Container, eigener Datenordner, eigene Schlüssel, eigene Adresse wie
+  `kundenname.makeinnovation.de`) — physisch getrennt, nicht nur per Rechte. Start **leer** (eigener Space aufbauen) oder auf
+  Wunsch mit Beispieldaten; Lizenz „Test“ mit Ablaufdatum (siehe Lizenzen), danach nur lesen + Export.
+- **Demo-Instanz** (Stufe 0) bleibt zusätzlich für Vorführungen — mit erfundenen Daten, nächtlich zurückgesetzt.
+- Technisch heißt das: Paket 2 (Einrichtung beim ersten Start) und eine einfache Form von Paket 4 (Instanz von Hand per
+  Skript anlegen) werden für Testkunden vorgezogen; auf einem Server können mehrere kleine Instanzen nebeneinander laufen.
+
 ## Stufe 1–4 — Marktreife (später, auf Kevins Wort)
 | Paket | Inhalt | Warum |
 |---|---|---|

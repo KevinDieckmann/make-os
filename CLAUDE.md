@@ -44,6 +44,9 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Bereiche (Kalender, Aufgaben, Finanzen, ZOE) andocken — so, dass eine Instanz „nur Markttraktion“ zeigen kann.
 - **Instanz-fähig:** Adressen, Domains, Namen, Schlüssel kommen aus der Umgebung/Einrichtung, nie fest im Code.
 - **Zeigbar:** Alles muss mit erfundenen Beispieldaten (Demo-Instanz) vorführbar sein, ohne echte Daten.
+- **Testkunden nie auf unserer Instanz** (Kevin: „dürfen nie unsere Daten sehen, sollen aber ihren eigenen Space aufbauen
+  können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
+  Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.
 
 ## Eiserne Regeln
 1. **Privates bleibt hier.** Gesundheits-, Journal- und Finanzdaten gehören
