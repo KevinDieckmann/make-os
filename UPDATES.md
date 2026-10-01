@@ -4,6 +4,32 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Domain makeinnovation.de + Landingpage der MAKE Innovation GmbH (01.10.2026, nur lokal — Branch `website`)
+
+Kevin hat `makeinnovation.de` (IONOS) gekauft: Software unter `app.makeinnovation.de`, auf `makeinnovation.de` + `www`
+eine Landingpage der MAKE Innovation GmbH mit „Anmelden“-Knopf — online erst nach Kevins Freigabe.
+
+- **Landingpage** `website/` (statisch, kein JS, keine Cookies, kein Tracking, Schriften selbst gehostet, CI aus
+  `lib/make-one/design.ts` + Logo F aus `homepage/`): `index.html` (Bühne „Zwei Welten. Ein System.“, Was wir machen,
+  Gründer MA + KE, Kontakt `hello@makeinnovation.de`), `impressum.html` (§ 5 DDG), `datenschutz.html` (passend zum
+  tatsächlichen Verhalten), `404.html`. Offene Angaben als gelbe `[[KEVIN: …]]`-Platzhalter — Liste in `website/LIESMICH.md`.
+- **Freigabe-Prüfung** `node website/pruefen.mjs`: „nicht freigabefähig“, solange ein Platzhalter steht; prüft dazu
+  CSP-Tauglichkeit (keine Skripte/Inline-Stile/fremden Quellen), Pflichtlinks und tote Links. Test:
+  `tests/website-landingpage.test.ts`.
+- **Caddy:** Software-Block unverändert `{$MAKE_OS_DOMAIN}` — `app.makeinnovation.de` kommt über die Server-.env
+  (`MAKE_OS_DOMAIN` als kommagetrennte Liste, am 01.10. gesetzt). Neuer Block `makeinnovation.de, www.makeinnovation.de`
+  **vorerst** `redir https://app.makeinnovation.de/anmelden 302`; Freigabe-Fassung (www → 301, `file_server` aus
+  `/srv/website`, strenge CSP, 404, Caching) kommentiert darunter. `compose.yml`: Caddy bekommt `./website:/srv/website:ro`.
+  `.dockerignore`: `website` (gehört nicht ins App-Bild). `tests/caddy-buchung-koepfe.test.ts` erweitert (Hosts,
+  Umleitung, Freigabe-Fassung, keine Schwächung der Buchungsköpfe, aktive Freigabe nur bei grüner Prüfung).
+- **Doku:** `DEPLOY.md` › „Domain makeinnovation.de“ (DNS, Reihenfolge, Zertifikate, Umstellung `MAKE_OS_ADRESSE` und
+  ihre Folgen), `deploy/env.server.beispiel` (Liste in `MAKE_OS_DOMAIN`).
+
+**Was nach dem Upload zu tun ist (nur auf Kevins Wort):** DNS bei IONOS setzen (A für `app`, `@`, `www`; Parkseiten-
+und AAAA-Einträge entfernen) → nach dem Ausrollen `curl -sI https://makeinnovation.de` = 302 auf die Anmeldung,
+`https://app.makeinnovation.de/anmelden` = 200 → erst dann `MAKE_OS_ADRESSE` umstellen (neue Anmeldung je Gerät,
+OAuth-Rückruf bei Whoop/Microsoft, GitHub-Variable). Landingpage-Freigabe ist ein eigener, späterer Schritt.
+
 ## Meilensteine im Detail: Aufgaben, Verlauf, Dateien & Links, Notizen (30.09.2026, nur lokal)
 
 Kevin: „Wenn wir neue Meilensteine aufmachen, müssen darin neue Untertasks erstellt werden, wir müssen dort Informationen teilen

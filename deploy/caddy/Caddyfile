@@ -7,6 +7,11 @@
 # setzt) — die öffentliche Buchungsseite (/buchen…, /api/buchung…) hat eigene, strengere Werte in next.config.mjs
 # (`no-referrer`: die Status-Adresse trägt das Token im Fragment; keine Kamera/Mikrofon). Früher überschrieb Caddy sie
 # mit den allgemeinen. Für diese Pfade setzt Caddy dieselben strengen Werte zusätzlich ausdrücklich.
+#
+# Domain makeinnovation.de (01.10., DEPLOY.md › „Domain makeinnovation.de“): Die Software antwortet zusätzlich unter
+# app.makeinnovation.de — das steht NICHT hier, sondern in der Server-.env: MAKE_OS_DOMAIN darf eine kommagetrennte
+# Liste sein, z. B. MAKE_OS_DOMAIN="app.makeinnovation.de, 2-28-108-162.sslip.io" (sslip bleibt Rückfall). Eine Adresse
+# zusätzlich hier einzutragen, die schon in MAKE_OS_DOMAIN steht, ließe Caddy nicht starten (doppelte Site-Adresse).
 {$MAKE_OS_DOMAIN} {
 	encode zstd gzip
 	header {
@@ -25,3 +30,64 @@
 	}
 	reverse_proxy app:3000
 }
+
+# ─── makeinnovation.de + www — die Landingpage der MAKE Innovation GmbH ──────────────────────────────────────
+# VORERST (bis Kevin die Landingpage gesehen und freigegeben hat): beide Adressen leiten auf die Anmeldung um.
+# 302 = vorläufig — Browser merken sich die Umleitung nicht, die Freigabe wirkt sofort.
+# HSTS hier bewusst OHNE includeSubDomains: auf der Hauptdomain gälte es sonst für jede künftige Subdomain
+# (z. B. Mail-Autokonfiguration des Domain-Anbieters), auch für solche, die kein HTTPS sprechen.
+makeinnovation.de, www.makeinnovation.de {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	redir https://app.makeinnovation.de/anmelden 302
+}
+
+# ▼ FREIGABE-FASSUNG — erst aktivieren, wenn `node website/pruefen.mjs` „freigabefähig“ meldet (website/LIESMICH.md).
+# Dann: den VORERST-Block oben löschen, die Zeilen bis „▲“ entkommentieren (nur das führende „# “ entfernen),
+# `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile` und `… caddy reload …`.
+# tests/caddy-buchung-koepfe.test.ts prüft diese Fassung schon jetzt mit und lässt sie aktiv nur bei grüner Prüfung zu.
+# (landingpage_koepfe) {
+# 	header {
+# 		Strict-Transport-Security "max-age=31536000"
+# 		X-Content-Type-Options nosniff
+# 		Referrer-Policy strict-origin-when-cross-origin
+# 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+# 		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+# 		X-Frame-Options DENY
+# 		Cross-Origin-Opener-Policy same-origin
+# 		Cross-Origin-Resource-Policy same-origin
+# 		-Server
+# 	}
+# }
+# www.makeinnovation.de {
+# 	header -Server
+# 	redir https://makeinnovation.de{uri} 301
+# }
+# makeinnovation.de {
+# 	root * /srv/website
+# 	encode zstd gzip
+# 	import landingpage_koepfe
+# 	# Arbeitsdateien im Ordner werden nie ausgeliefert (Namen wie NICHT_OEFFENTLICH in website/pruefen.mjs).
+# 	@intern path /LIESMICH.md /pruefen.mjs /*.md /*.mjs
+# 	respond @intern 404
+# 	# Caching: Seiten immer frisch nachfragen (ETag/Last-Modified von file_server), Schriften lange, Stile/Bilder einen Tag.
+# 	@seiten path / /*.html
+# 	header @seiten Cache-Control "no-cache"
+# 	@schriften path /assets/fonts/*
+# 	header @schriften Cache-Control "public, max-age=2592000, immutable"
+# 	@stile path /css/* /favicon.svg
+# 	header @stile Cache-Control "public, max-age=86400"
+# 	file_server {
+# 		hide LIESMICH.md pruefen.mjs
+# 	}
+# 	# Unbekannte Adressen: eigene 404-Seite mit denselben Köpfen (der Fehlerweg ist eine eigene Route-Kette).
+# 	handle_errors {
+# 		root * /srv/website
+# 		import landingpage_koepfe
+# 		rewrite * /404.html
+# 		file_server
+# 	}
+# }
+# ▲ FREIGABE-FASSUNG

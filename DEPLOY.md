@@ -346,3 +346,69 @@ Die Action baut das Docker-Image auf dem GitHub-Rechner (`docker build`) und sch
 leer = Altweg (ziehen + auf dem Server bauen). Die Action prüft an der Ausgabe `ausrollen-v2`, ob das neue Skript schon
 auf dem Server liegt; sonst hat der Altweg gebaut. Vorteil: kein Bau auf dem 1-CPU-Server, die App bleibt beim Ausrollen
 flott; Rückfall bleibt möglich (`ssh make@… ` ohne Modus).
+
+## Domain makeinnovation.de (01.10.2026)
+
+Kevin hat `makeinnovation.de` bei IONOS gekauft. Ziel: die Software unter **app.makeinnovation.de**, auf
+**makeinnovation.de + www** die Landingpage der MAKE Innovation GmbH mit „Anmelden“-Knopf — die geht aber erst online,
+wenn Kevin sie gesehen und freigegeben hat (`website/LIESMICH.md`). Bis dahin leiten beide auf die Anmeldung um.
+Die sslip-Adresse (`2-28-108-162.sslip.io`) bleibt als Rückfall bestehen.
+
+**So ist es in Caddy verdrahtet**
+- **Software:** Der Block heißt weiter `{$MAKE_OS_DOMAIN} { … }`. `MAKE_OS_DOMAIN` darf eine **kommagetrennte Liste**
+  sein; auf dem Server steht seit 01.10. `MAKE_OS_DOMAIN="app.makeinnovation.de, 2-28-108-162.sslip.io"` in
+  `/srv/make-os/app/.env`. `app.makeinnovation.de` steht deshalb **nicht** zusätzlich in der Caddyfile — dieselbe
+  Adresse zweimal lässt Caddy nicht starten (Wächter: `tests/caddy-buchung-koepfe.test.ts`). Eine geänderte `.env`
+  wirkt erst mit `docker compose up -d caddy` (Container wird mit der neuen Umgebung neu erzeugt).
+- **Hauptdomain:** eigener Block `makeinnovation.de, www.makeinnovation.de` — **vorerst** `redir
+  https://app.makeinnovation.de/anmelden 302`. Darunter kommentiert die Freigabe-Fassung (www → 301, Landingpage aus
+  `/srv/website` read-only, strenge CSP, 404-Seite, Caching). `compose.yml` bindet dafür `./website:/srv/website:ro`
+  ein — compose läuft in `/srv/make-os/app`, der Ordner kommt also mit `ausrollen.sh ziehen` auf den Server.
+  `makeinnovation.de`/`www` gehören **nie** in `MAKE_OS_DOMAIN`.
+- HSTS: Software wie bisher mit `includeSubDomains` (gilt nur für `*.app.makeinnovation.de`); die Hauptdomain bewusst
+  **ohne** — sonst müsste jede künftige Subdomain (z. B. Mail-Autokonfiguration bei IONOS) HTTPS sprechen.
+
+**DNS bei IONOS** (Domains & SSL → makeinnovation.de → DNS)
+
+| Typ | Host | Wert |
+|---|---|---|
+| A | `app` | `2.28.108.162` |
+| A | `@` | `2.28.108.162` |
+| A | `www` | `2.28.108.162` (oder CNAME `www` → `makeinnovation.de`) |
+
+- IONOS legt für `@` und `www` eigene Standard-Einträge an (Parkseite, oft auch **AAAA**). Diese **entfernen** bzw.
+  ersetzen. Ein AAAA-Eintrag, der nicht auf unseren Server zeigt, lässt die Zertifikatsprüfung scheitern (Let's Encrypt
+  fragt zuerst über IPv6). AAAA nur setzen, wenn der Server IPv6 hat und 80/443 dort erreichbar sind.
+- MX-, SPF-/TXT- und Autodiscover-Einträge für `hello@makeinnovation.de` **nicht anfassen**.
+- Optional CAA: `0 issue "letsencrypt.org"` und `0 issue "sectigo.com"` (Caddys zweiter Aussteller ZeroSSL) — oder gar
+  keinen CAA-Eintrag.
+
+**Reihenfolge**
+1. DNS setzen und abwarten, bis es überall stimmt: `dig +short A app.makeinnovation.de` (ebenso `makeinnovation.de`,
+   `www.makeinnovation.de`) → `2.28.108.162`; `dig +short AAAA …` → leer.
+2. `.env` auf dem Server: `MAKE_OS_DOMAIN` als Liste (siehe oben, am 01.10. gesetzt) → `docker compose up -d caddy`.
+3. Caddyfile + `compose.yml` mit dem neuen Block ausrollen (**nur auf Kevins Wort**). Weil sich `compose.yml`
+   ändert, erzeugt `docker compose up -d` (Ausroll-Modus `bild`) den Caddy-Container neu; ändert sich später nur die
+   Caddyfile: `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile` und `… caddy reload …`.
+4. **Zertifikate** holt Caddy selbst (Ports 80/443 offen, Let's Encrypt, Rückfall ZeroSSL). Prüfen:
+   `docker compose logs caddy | grep -i "certificate obtained"`;
+   `curl -sI https://app.makeinnovation.de/anmelden` → 200 mit HSTS;
+   `curl -sI https://makeinnovation.de` → 302, `location: https://app.makeinnovation.de/anmelden`.
+   Stimmt DNS noch nicht, versucht Caddy es mit wachsendem Abstand erneut — die sslip-Adresse läuft davon unberührt.
+5. **Erst wenn das Zertifikat für `app.makeinnovation.de` da ist:** `MAKE_OS_ADRESSE=https://app.makeinnovation.de` in
+   der `.env`, dann `docker compose up -d --force-recreate app arbeiter`. Folgen — vorher einplanen:
+   - **Neue Anmeldung je Gerät:** Das Sitzungs-Cookie heißt `__Host-make-os-sitzung` und gilt nur für genau den Host.
+     Unter `app.makeinnovation.de` meldet sich jedes Gerät einmal neu an (mit zweitem Faktor); Home-Bildschirm-App
+     dort neu hinzufügen. Unter sslip bleiben bestehende Sitzungen gültig.
+   - **OAuth-Rückruf:** `REDIRECT_URI` (`lib/oauth.ts`) = `MAKE_OS_ADRESSE` + `/api/oauth/callback`. Bei Whoop
+     (Developer Dashboard) und Microsoft (Azure → App-Registrierung → Authentifizierung → Umleitungs-URIs)
+     `https://app.makeinnovation.de/api/oauth/callback` **vor** der Umstellung zusätzlich eintragen; die alte erst
+     entfernen, wenn alles läuft. Danach Verbindungen bei Bedarf einmal neu verbinden.
+   - **GitHub-Variable** `MAKE_OS_ADRESSE` (Repo → Settings → Secrets and variables → Actions → Variables) auf
+     `https://app.makeinnovation.de` — sonst prüft der HOI-Außenblick (`hoi-aussenblick.yml`) weiter die sslip-Adresse.
+   - Einladungslinks (`lib/innen.ts aussenAdresse`), Links ins Brain und im Scoreboard nutzen ab dann die neue Adresse;
+     schon verschickte sslip-Links (auch Buchungsseiten) funktionieren weiter. Der CSRF-Schutz (`middleware.ts`)
+     erkennt beide Adressen über den Host-Kopf.
+   - Rückweg: `MAKE_OS_ADRESSE` wieder auf die sslip-Adresse, `docker compose up -d --force-recreate app arbeiter`.
+6. **Landingpage freigeben** (später, eigener Schritt): `website/LIESMICH.md` — Platzhalter füllen →
+   `node website/pruefen.mjs` grün → Kevin gibt frei → Caddyfile auf die Freigabe-Fassung → ausrollen → `caddy reload`.

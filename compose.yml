@@ -1,7 +1,7 @@
 # ─── MAKE OS auf dem Server ─────────────────────────────────────────────────
 # app      — die Oberfläche und alle Schnittstellen (next start, Port 3000 intern)
 # arbeiter — der Takt: holt jede Minute fällige Läufe (Tagesstart, Head of Finance …)
-# caddy    — HTTPS von allein (Let's Encrypt) für MAKE_OS_DOMAIN
+# caddy    — HTTPS von allein (Let's Encrypt) für MAKE_OS_DOMAIN, app.makeinnovation.de und makeinnovation.de (+ www)
 #
 # Ordner auf dem Server (server-einrichten.sh legt sie an):
 #   /srv/make-os/daten   → .data   (alles, was ihr eingebt)
@@ -89,6 +89,10 @@ services:
       # Ein Ordner statt einer Datei: git ersetzt Dateien beim Aktualisieren — eine einzeln
       # eingebundene Datei sähe der Container dann nicht (Caddy läse die alte Fassung).
       - ./deploy/caddy:/etc/caddy:ro
+      # Landingpage der MAKE Innovation GmbH (01.10.): statische Dateien aus dem Repo-Ordner website/ — compose läuft
+      # in /srv/make-os/app, „./website“ ist also /srv/make-os/app/website (kommt mit `ausrollen.sh ziehen`). Nur lesen.
+      # Ausgeliefert wird sie erst mit der Freigabe-Fassung der Caddyfile; bis dahin leitet makeinnovation.de um.
+      - ./website:/srv/website:ro
       - caddy_daten:/data
       - caddy_konfig:/config
     depends_on: [app]

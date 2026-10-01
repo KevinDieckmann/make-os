@@ -11,3 +11,5 @@ tests
 public/pdf.worker.min.mjs
 # Klickdummys aus dem Juli — nicht im Bild, nicht ausgeliefert (26.09.)
 prototype
+# Landingpage makeinnovation.de — liest Caddy aus dem Repo-Ordner (compose.yml), gehört nicht ins App-Bild (01.10.)
+website
