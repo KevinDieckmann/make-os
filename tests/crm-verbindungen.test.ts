@@ -134,6 +134,9 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['werbesperre-followup', b => { b.kontakte[0].werbesperre = { seit: HEUTE, grund: 'Widerspruch' }; }, 1, 'fu-1'],
   ['aufgabe-einheit-ungueltig', b => { b.aufgaben!.liste[1].einheit = 'KD Ventures'; b.aufgaben!.liste.push({ id: 't-3', title: 'x', projectId: 'p', space: 'business', einheit: 'Erfundene Einheit', status: 'todo' }); }, 2, 't-2'],
   ['aufgabe-ohne-einheit', b => { b.aufgaben!.liste.push({ id: 't-4', title: 'x', projectId: 'p', status: 'todo' }, { id: 't-5', title: 'y', projectId: 'p', status: 'done' }); }, 1, 't-4'],
+  // Mehrstufige Unteraufgaben (01.10.): verwaistes Elternteil; Kreis (die kleinste Kennung wird Hauptaufgabe) bzw. zu tiefe Kette.
+  ['aufgabe-eltern-fehlt', b => { b.aufgaben!.liste.push({ id: 't-6', title: 'x', projectId: 'p-1', space: 'business', einheit: 'KD Ventures', status: 'todo', parentId: 't-weg' }); }, 1, 't-6'],
+  ['aufgabe-ebene-ungueltig', b => { const t = (id: string, parentId: string) => ({ id, title: 'x', projectId: 'p-1', space: 'business' as const, einheit: 'KD Ventures', status: 'todo', parentId }); b.aufgaben!.liste.push(t('t-k1', 't-k2'), t('t-k2', 't-k1')); }, 1, 't-k1'],
   // CRM-Bezug der Aufgaben (28.09. spät): je totem Feld eine Aufgabe, die lebende zählt nicht.
   ['aufgabe-bezug-tot', b => { const t = (id: string, bezug: object) => ({ id, title: 'x', projectId: 'p-1', space: 'business' as const, einheit: 'KD Ventures', status: 'todo', bezug }); b.aufgaben!.liste.push(t('t-bk', { kontaktId: 'c-weg1' }), t('t-bf', { firmaId: 'f-weg' }), t('t-bm', { mandatId: 'm-weg' }), t('t-bd', { dealId: 'd-weg' }), t('t-ok', { kontaktId: 'c-anna1', firmaId: 'f-alpha', mandatId: 'm-1', dealId: 'd-1' })); }, 4, 't-bk'],
   ['aufgabe-verweis-tot', b => { b.crm.followups[0].aufgabeId = 't-weg'; b.crm.events[0].checkliste = [{ id: 'c1', text: 'x', tageVorher: 3, erledigt: false, aufgabeId: 't-weg2' }]; }, 2, 't-weg'],
@@ -228,6 +231,15 @@ describe('Verbindungsprüfung — je Prüfung ein Fall', () => {
       { id: 't-kaputt', title: 'z', projectId: 'p', status: 'todo', spaceId: 'gibt es nicht', space: 'business' },
     ); });
     expect(finde(b, 'aufgabe-ohne-einheit')).toMatchObject({ anzahl: 1, beispiele: ['t-kaputt'] });
+  });
+  it('Ebenen (01.10.): eine Kette bis zur Grenze ist in Ordnung, die sechste Ebene wird gemeldet; Kreis und verwaistes Elternteil auch', () => {
+    const kurz = (id: string, parentId?: string) => ({ id, title: 'x', projectId: 'p-1', space: 'business' as const, einheit: 'KD Ventures', status: 'todo', ...(parentId ? { parentId } : {}) });
+    const kette = (n: number) => Array.from({ length: n }, (_, i) => kurz(`k${i + 1}`, i ? `k${i}` : undefined));
+    const ebenen = (liste: ReturnType<typeof kurz>[]) => mit(x => { x.aufgaben!.liste.push(...liste); }) && verbindungenPruefen(mit(x => { x.aufgaben!.liste.push(...liste); })).map(f => f.id).filter(i => i === 'aufgabe-ebene-ungueltig' || i === 'aufgabe-eltern-fehlt');
+    expect(ebenen(kette(5))).toEqual([]);
+    expect(ebenen(kette(6))).toEqual(['aufgabe-ebene-ungueltig']);
+    expect(ebenen([kurz('a', 'b'), kurz('b', 'a')])).toEqual(['aufgabe-ebene-ungueltig']);
+    expect(ebenen([kurz('a', 'weg')])).toEqual(['aufgabe-eltern-fehlt']);
   });
   it('eine stornierte Rechnung zählt nicht als gestellt (28.09., K3)', () => {
     expect(finde(mit(() => {}), 'mandat-ohne-rechnung')).toBeUndefined();

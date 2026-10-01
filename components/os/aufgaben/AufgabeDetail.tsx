@@ -10,6 +10,11 @@
 // Status „Abgebrochen“ (grau, durchgestrichen), Serien-Extras (ab Erledigung, im Wechsel, Feiertage NRW, diese überspringen,
 // Serie beenden), Erledigen/Löschen/Verschieben mit Rückfrage + „Rückgängig“ (Handlung.tsx), Datumsfelder speichern beim
 // Verlassen, Warnung „Unteraufgabe nach Hauptfrist“.
+// Mehrstufig (01.10., Kevin: „bei dem HOS unter Produkten … Beschreibungen machen können“): jede Ebene hat das volle Detail
+// (Beschreibung, Notiz, Status …), Brotkrumen zeigen die ganze Kette, die Liste der direkten Unteraufgaben mit Anlegen steht
+// auf jeder Ebene bis `AUFGABEN_EBENEN_MAX`, „in Unteraufgabe umwandeln“/„umhängen“/„zur Hauptaufgabe machen“ überall
+// (Auswahl nur, was ohne Kreis und unter der Grenze passt — `elternKandidaten`). Ort, Sichtbarkeit und Serie stehen an der
+// Hauptaufgabe; alle Ebenen darunter erben sie.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react';
 import { Lock } from 'lucide-react';
@@ -28,7 +33,8 @@ import { suchPasst } from '@/lib/text/such-norm';
 import type { Task, TasksState, AufgabeKommentar } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
-import { aufgabeAnlegen, projektAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, useCrmVerweise, neueKennung, tagKurz, type Person } from './hilfe';
+import { aufgabeAnlegen, projektAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, umhaengenTeil, useCrmVerweise, neueKennung, tagKurz, type Person } from './hilfe';
+import { kette, nachIdKarte, kinderKarte, nachfahren, elternKandidaten, pfadText, darfUnteraufgabe, ebeneVon, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
 import { NotizEditor } from './Notiz';
 import { FeldWerte } from './EigeneFelder';
 import { VerlaufListe } from './VerlaufListe';
@@ -76,8 +82,15 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
   const handlung = useHandlung(dispatch, state.statusEigen);
   const alleSpaces = spacesOderFest(spaces);
   const space = alleSpaces.find(s => s.id === t.spaceId);
-  const eltern = t.parentId ? state.tasks.find(x => x.id === t.parentId) : undefined;
-  const unter = state.tasks.filter(x => x.parentId === t.id).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const nachId = useMemo(() => nachIdKarte(state.tasks), [state.tasks]);
+  const kinder = useMemo(() => kinderKarte(state.tasks), [state.tasks]);
+  const eltern = t.parentId ? nachId.get(t.parentId) : undefined;
+  // Die ganze Kette über der Aufgabe (Hauptaufgabe zuerst) — Brotkrumen, „Unteraufgabe von …“.
+  const vorKette = kette(t, nachId);
+  const ebene = ebeneVon(t, nachId);
+  const darfUnter = darfUnteraufgabe(t, nachId);
+  const unter = (kinder.get(t.id) ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const teilbaum = nachfahren(t.id, kinder);
   const eigene = state.statusEigen ?? [];
   const status = statusVon(t, eigene);
   const statusWahl: WahlEintrag<string>[] = statusListe(t.spaceId, eigene).map(s => ({ id: s.id, label: s.label, punkt: s.farbe, ...(s.eigen ? { hinweis: 'eigener Status' } : {}) }));
@@ -98,7 +111,9 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
   const projekt = state.projects.find(p => p.id === t.projectId);
   const gruppe = (() => { const l = listen.find(x => x.id === t.listeId); return l?.gruppeId ? (state.gruppen ?? []).find(g => g.id === l.gruppeId) : undefined; })();
   const wartet = t.status !== 'done' ? wartetAuf(t, state.tasks) : [];
-  const elternWahl: WahlEintrag<string>[] = !eltern ? state.tasks.filter(x => x.projectId === t.projectId && x.spaceId === t.spaceId && !x.parentId && x.id !== t.id && x.status !== 'done').sort((a, b) => a.title.localeCompare(b.title, 'de')).map(x => ({ id: x.id, label: x.title })) : [];
+  // Neues Elternteil (jede Ebene): gleicher Space + Projekt, offen, kein eigener Nachfahre, Teilbaum passt unter die Grenze.
+  const elternWahl: WahlEintrag<string>[] = elternKandidaten(t, state.tasks)
+    .map(x => ({ id: x.id, label: pfadText(x, nachId) })).sort((a, b) => a.label.localeCompare(b.label, 'de'));
   const [titel, setTitel] = useState(t.title);
   useEffect(() => { setTitel(t.title); }, [t.id, t.title]);
   const [neuUnter, setNeuUnter] = useState('');
@@ -111,7 +126,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
         <span aria-hidden>›</span><span>{state.projects.find(p => p.id === t.projectId)?.title ?? 'Sonstige'}</span>
         {gruppe && <><span aria-hidden>›</span><span style={{ color: gruppe.farbe }}>{gruppe.titel}</span></>}
         <span aria-hidden>›</span><span>{listen.find(l => l.id === t.listeId)?.titel ?? 'Sonstige'}</span>
-        {eltern && <><span aria-hidden>›</span><button onClick={() => onOeffnen(eltern.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>{eltern.title}</button></>}
+        {vorKette.map(v => <span key={v.id} style={{ display: 'contents' }}><span aria-hidden>›</span><button onClick={() => onOeffnen(v.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</button></span>)}
         <button onClick={onSchliessen} aria-label="Schließen" className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px' }}>×</button>
       </div>
       {/* Meilenstein (30.09.): liegt die Aufgabe in der Liste eines Meilensteins, führt der Link dorthin. */}
@@ -190,15 +205,16 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
               onNeu={async titel => listeAnlegen(dispatch, state, t.projectId, titel)} neuMax={80} />
           </Feld>
         )}
-        {!eltern && elternWahl.length > 0 && !unter.length && (
+        {!eltern && elternWahl.length > 0 && (
           <Feld label="Ebene">
-            <Wahl klein label="Unteraufgabe von" leer="in Unteraufgabe umwandeln" liste={elternWahl} wert={null} onWahl={id => aendern({ parentId: id })} />
+            <Wahl klein label="Unteraufgabe von" leer={unter.length ? 'samt Unteraufgaben in Unteraufgabe umwandeln' : 'in Unteraufgabe umwandeln'} liste={elternWahl} wert={null} onWahl={id => aendern(umhaengenTeil(state, id))} />
           </Feld>
         )}
         {eltern && (
           <Feld label="Ebene">
-            <span style={{ fontSize: 12.5, color: C.inkDim }}>Unteraufgabe von „{eltern.title}“</span>
-            <button onClick={() => aendern({ parentId: undefined })} className="fassbar" style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '3px 10px', color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>herauslösen</button>
+            <span style={{ fontSize: 12.5, color: C.inkDim }}>Ebene {ebene} · Unteraufgabe von „{eltern.title}“</span>
+            {elternWahl.length > 0 && <Wahl klein label="Umhängen unter" leer="umhängen" liste={elternWahl} wert={null} onWahl={id => aendern(umhaengenTeil(state, id))} />}
+            <button onClick={() => aendern(umhaengenTeil(state, null))} className="fassbar" title={teilbaum.length ? `Ihre ${teilbaum.length} Unteraufgabe${teilbaum.length === 1 ? '' : 'n'} kommen mit` : undefined} style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '3px 10px', minHeight: 30, color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>zur Hauptaufgabe machen</button>
           </Feld>
         )}
       </div>
@@ -218,19 +234,24 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
       <div style={{ ...mikro, margin: '16px 0 6px' }}>Notiz</div>
       <NotizEditor key={t.id} wert={t.notiz} max={AUFGABEN_GRENZEN.notiz} zeile={{ liste: 'tasks', id: t.id }} onSpeichern={n => aendern({ notiz: n })} platzhalter="Gedanken, Checkliste, Links zur Aufgabe …" />
 
-      {!eltern && (
+      {/* Unteraufgaben auf jeder Ebene (01.10.) — Liste der direkten, Anlegen bis zur Grenze. */}
+      {(unter.length > 0 || darfUnter) && (
         <>
           <div style={{ ...mikro, margin: '16px 0 6px', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Unteraufgaben</span>{unter.length > 0 && <span>{fortschritt(unter).fertig}/{unter.length}</span>}
+            <span>Unteraufgaben{eltern ? ` · Ebene ${ebene + 1}` : ''}</span>{unter.length > 0 && <span>{fortschritt(unter).fertig}/{fortschritt(unter).gesamt}</span>}
           </div>
-          {unter.length > 0 && <div aria-hidden style={{ height: 4, borderRadius: 3, background: 'rgba(255,255,255,.07)', overflow: 'hidden', marginBottom: 4 }}><div style={{ height: '100%', width: `${Math.round((fortschritt(unter).fertig / unter.length) * 100)}%`, background: LEUCHT.gut }} /></div>}
+          {unter.length > 0 && fortschritt(unter).gesamt > 0 && <div aria-hidden style={{ height: 4, borderRadius: 3, background: 'rgba(255,255,255,.07)', overflow: 'hidden', marginBottom: 4 }}><div style={{ height: '100%', width: `${Math.round((fortschritt(unter).fertig / fortschritt(unter).gesamt) * 100)}%`, background: LEUCHT.gut }} /></div>}
           {unter.map(u => {
             const us = statusVon(u, eigene);
             const aendernU = (teil: Partial<Task>) => dispatch({ type: 'UPDATE_TASK', payload: { id: u.id, ...teil } });
+            const uu = kinder.get(u.id) ?? [];
+            const uf = fortschritt(uu);
             return (
               <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', flexWrap: 'wrap' }}>
                 <Haken an={u.status === 'done'} onChange={() => handlung.erledigen(u)} farbe={prioFarbe(u.priority)} label={u.title} />
-                <button onClick={() => onOeffnen(u.id)} className="fassbar" style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', ...titelStil(u), fontFamily: SCHRIFT.text, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.title}</button>
+                <button onClick={() => onOeffnen(u.id)} className="fassbar" title="Öffnen — Beschreibung, Notiz, eigene Unteraufgaben" style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', minHeight: 36, cursor: 'pointer', ...titelStil(u), fontFamily: SCHRIFT.text, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {u.title}{uf.gesamt > 0 && <span style={{ color: C.inkLeise, fontSize: 12, marginLeft: 8, fontVariantNumeric: 'tabular-nums' }}>{uf.fertig}/{uf.gesamt}</span>}{u.description?.trim() ? <span title="Mit Beschreibung" style={{ color: C.inkLeise, fontSize: 12, marginLeft: 6 }}>¶</span> : null}
+                </button>
                 <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Wahl klein label="Status" liste={statusWahl} wert={us.id} farbe={us.farbe} onWahl={id => handlung.statusSetzen(u, id)} />
                   <Wahl klein label="Zuständig" liste={personen.map(p => ({ id: p.speicher as Owner, label: p.name }))} wert={u.assignee} farbe={C.inkDim} onWahl={a => aendernU({ assignee: a })} />
@@ -240,13 +261,17 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
               </div>
             );
           })}
-          <input value={neuUnter} onChange={e => setNeuUnter(e.target.value)} aria-label="Neue Unteraufgabe"
-            onKeyDown={e => { if (e.key === 'Enter' && neuUnter.trim()) { aufgabeAnlegen(dispatch, state, { spaceId: t.spaceId ?? 'privat', parentId: t.id }, { title: neuUnter.trim(), assignee: t.assignee, bezug: t.bezug }); setNeuUnter(''); } }}
-            placeholder="+ Unteraufgabe (Enter = nächste)" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px', marginTop: 6 }} />
+          {darfUnter ? (
+            <input value={neuUnter} onChange={e => setNeuUnter(e.target.value)} aria-label="Neue Unteraufgabe"
+              onKeyDown={e => { if (e.key === 'Enter' && neuUnter.trim()) { aufgabeAnlegen(dispatch, state, { spaceId: t.spaceId ?? 'privat', parentId: t.id }, { title: neuUnter.trim(), assignee: t.assignee, bezug: t.bezug }); setNeuUnter(''); } }}
+              placeholder="+ Unteraufgabe (Enter = nächste)" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px', marginTop: 6 }} />
+          ) : (
+            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Tiefste Ebene ({AUFGABEN_EBENEN_MAX}) erreicht — weitere Schritte als Checkliste in der Notiz („- [ ] …“).</div>
+          )}
         </>
       )}
 
-      {t.spaceId !== 'privat' && <ZeitJeAufgabeZeile ids={[t.id, ...unter.map(u => u.id)]} personen={personen} />}
+      {t.spaceId !== 'privat' && <ZeitJeAufgabeZeile ids={[t.id, ...teilbaum.map(u => u.id)]} personen={personen} />}
 
       <div style={{ marginTop: 16 }} />
       <ProjektDateien projektId={t.projectId} aufgabeId={t.id} space={t.spaceId === 'privat' ? 'privat' : 'business'} />

@@ -55,6 +55,7 @@ import { PRUEFUNGEN_BUCHUNG, buchungenPruefen, type BuchungenStand } from '@/lib
 import { PRUEFUNGEN_SPIEGEL, spiegelPruefen, type SpiegelStand } from '@/lib/kalender/spiegel-verbindungen';
 import { PRUEFUNGEN_TERMINE, terminePruefen, termineReparieren, type TermineStand } from './verbindungen-termine';
 import { PRUEFUNGEN_FAMILIE, familiePruefen, familieReparieren, type FamilieTageStand } from './verbindungen-familie';
+import { elternOrdnen, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
 // ── Eingang ─────────────────────────────────────────────────────────────────
 
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
@@ -66,6 +67,8 @@ export interface AufgabeKurz {
   spaceId?: string;
   /** CRM-Bezug (Kontakt, Firma, Mandat, Deal) — nur Kennungen. */
   bezug?: AufgabeBezug;
+  /** Übergeordnete Aufgabe (mehrstufige Unteraufgaben, 01.10.) — für „verwaiste Eltern“, Kreise und zu tiefe Ketten. */
+  parentId?: string;
 }
 
 export interface VerbindungsBestaende {
@@ -185,6 +188,8 @@ export const PRUEFUNGEN = {
   'aufgabe-einheit-ungueltig': { schwere: 'warnung', bereich: 'aufgaben', reparierbar: false, art: 'aufgabe', text: n => `${n} ${e(n, 'Aufgabe trägt', 'Aufgaben tragen')} eine Einheit, die es in der Liste nicht gibt (oder liegen privat).` },
   'aufgabe-ohne-einheit': { schwere: 'hinweis', bereich: 'aufgaben', reparierbar: false, art: 'aufgabe', text: n => `${n} offene Business-${e(n, 'Aufgabe hat', 'Aufgaben haben')} keine Einheit.` },
   'aufgabe-bezug-tot': { schwere: 'fehler', bereich: 'aufgaben', reparierbar: true, art: 'aufgabe', text: n => `${n} ${e(n, 'Aufgabe zeigt', 'Aufgaben zeigen')} auf Kontakt, Firma, Mandat oder Deal, den es nicht mehr gibt — Reparieren entfernt den Verweis.` },
+  'aufgabe-eltern-fehlt': { schwere: 'hinweis', bereich: 'aufgaben', reparierbar: false, art: 'aufgabe', text: n => `${n} ${e(n, 'Unteraufgabe zeigt', 'Unteraufgaben zeigen')} auf eine übergeordnete Aufgabe, die es nicht mehr gibt — sie ${e(n, 'steht', 'stehen')} als Hauptaufgabe da und ${e(n, 'wird', 'werden')} beim nächsten Speichern so abgelegt (nichts geht verloren).` },
+  'aufgabe-ebene-ungueltig': { schwere: 'warnung', bereich: 'aufgaben', reparierbar: false, art: 'aufgabe', text: n => `${n} ${e(n, 'Aufgabe liegt', 'Aufgaben liegen')} in einem Kreis oder tiefer als ${AUFGABEN_EBENEN_MAX} Ebenen — die Anzeige ordnet sie (Kreis aufgebrochen bzw. eine Ebene höher), beim nächsten Speichern wird es so abgelegt.` },
   'aufgabe-verweis-tot': { schwere: 'hinweis', bereich: 'aufgaben', reparierbar: false, art: 'kennung', text: n => `${n} gelöschte ${e(n, 'Aufgabe wird', 'Aufgaben werden')} noch aus Follow-ups, Kampagnen oder Event-Checklisten genannt.` },
   'fokus-aufgabe-tot': { schwere: 'hinweis', bereich: 'zeit', reparierbar: false, art: 'kennung', text: n => `${n} gelöschte ${e(n, 'Aufgabe hängt', 'Aufgaben hängen')} noch an Fokus-Blöcken — die Zeit zählt mit der gespeicherten Einheit weiter.` },
   'datei-verweis-tot': { schwere: 'fehler', bereich: 'dateien', reparierbar: false, art: 'datei', text: n => `${n} ${e(n, 'Eintrag der Dateiablage zeigt', 'Einträge der Dateiablage zeigen')} auf Kontakt, Firma, Mandat, Deal oder Rechnung, die es nicht mehr gibt.` },
@@ -486,6 +491,11 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
         if (!business || !erlaubt.has(name)) melde('aufgabe-einheit-ungueltig', t.id);
       } else if (business && t.status !== 'done' && !istSpaceId(t.spaceId)) melde('aufgabe-ohne-einheit', t.id); // mit Space: Einheit aus dem Space
       if (bezugTot(t.bezug, m).length) melde('aufgabe-bezug-tot', t.id);
+    }
+    // Ebenen (01.10.): verwaiste Eltern, Kreise, zu tiefe Ketten im gespeicherten Stand (`elternOrdnen` = dieselbe Regel wie die Übernahme).
+    for (const [id] of Array.from(elternOrdnen(aufgaben).entries())) {
+      const t = aufgaben.find(x => x.id === id);
+      melde(t?.parentId && !ids.has(t.parentId) ? 'aufgabe-eltern-fehlt' : 'aufgabe-ebene-ungueltig', id);
     }
     const verweis = (aid: string | undefined) => { if (aid && !ids.has(aid)) melde('aufgabe-verweis-tot', aid); };
     for (const f of liste(crm.followups)) verweis(f.aufgabeId);

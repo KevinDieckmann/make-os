@@ -255,7 +255,7 @@ export const REGISTER: Record<string, Eintrag> = {
       const wer = typeof i.wer === 'string' ? i.wer : '';
       return !wer || (person && wer === person) ? 'frei' : 'freigabe';
     },
-    vorschau: schlicht('Aufgabe anlegen', i => `„${text(i.title, 200)}"${i.priority && i.priority !== 'medium' ? ` (${String(i.priority)})` : ''}${i.einheit && i.space !== 'privat' ? ` · ${text(i.einheit, 40)}` : ''}`),
+    vorschau: schlicht('Aufgabe anlegen', i => `„${text(i.title, 200)}"${i.priority && i.priority !== 'medium' ? ` (${String(i.priority)})` : ''}${i.einheit && i.space !== 'privat' ? ` · ${text(i.einheit, 40)}` : ''}${typeof i.unter === 'string' && i.unter.trim() ? ` · Unteraufgabe von „${text(i.unter, 80)}"` : ''}`),
   },
   // K6a (29.09.): freie Zeit nur LESEN (freieZeitFuer — Zeiten, nie Titel).
   freie_zeit: {

@@ -16,6 +16,7 @@ import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 import { suchPasst } from '@/lib/text/such-norm';
 import { istTag, tageZwischen } from '@/lib/aufgaben/ansichten';
 import { tagPlus } from './zeit';
+import { vorfahren } from '@/lib/aufgaben/ebenen';
 
 export type Sicht = 'alle' | 'kevin' | 'malin' | 'beide';
 export type Bereich = 'alle' | 'privat' | 'business';
@@ -62,9 +63,9 @@ export function aufgabenFuerKalender(tasks: readonly Task[], von: string, bis: s
   for (const t of tasks) {
     const due = t.dueDate?.slice(0, 10);
     if (!istTag(due) || !imKalenderSichtbar(t, f.ich)) continue;
-    // Eltern im Papierkorb/„nur ich“ fremd → die Unteraufgabe auch nicht.
+    // Eltern im Papierkorb/„nur ich“ fremd → die Unteraufgabe auch nicht — auf jeder Ebene (mehrstufig, 01.10.): ein Vorfahre genügt.
     const eltern = t.parentId ? nachId.get(t.parentId) : undefined;
-    if (eltern && (eltern.geloeschtAm || eltern.archiviertAm || (eltern.sichtbarkeit === 'nur-ich' && eltern.angelegtVon !== f.ich))) continue;
+    if (t.parentId && vorfahren(t, nachId).some(v => v.geloeschtAm || v.archiviertAm || (v.sichtbarkeit === 'nur-ich' && v.angelegtVon !== f.ich))) continue;
     const start = istTag(t.startDate) && t.startDate < due ? t.startDate : undefined;
     if ((start ?? due) >= bis || due < von) continue;
     if (!aufgabeInSicht(t, f.sicht) || !imBereich(t, f.bereich)) continue;

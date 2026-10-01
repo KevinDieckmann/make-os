@@ -15,6 +15,7 @@
 // lib/aufgaben/neustart-server.ts.
 
 import type { AufgabenGruppe, AufgabenListe, Project, Task, TasksState, Wiederholung } from '@/types/tasks';
+import { wurzelVon, nachIdKarte, nachfahren, nachfahrenIn, kinderKarte, mitVerbliebenenVorfahren } from './ebenen';
 
 type Archivierbar = { archiviertAm?: string; archivId?: string };
 export const imArchiv = (x: Archivierbar | null | undefined): boolean => !!x?.archiviertAm;
@@ -31,8 +32,8 @@ const offen = (t: Pick<Task, 'status'>) => t.status !== 'done' && t.status !== '
 /** Bleibt diese Aufgabe beim Neustart stehen? (Papierkorb ohnehin; offene Modul-Aufgaben samt ihren Unteraufgaben.) */
 export function bleibtBeimNeustart(t: Task, nachId: ReadonlyMap<string, Task>): boolean {
   if (t.geloeschtAm) return true;
-  const eltern = t.parentId ? nachId.get(t.parentId) : undefined;
-  const wurzel = eltern ?? t;
+  // Mehrstufig (01.10.): entscheidend ist die Hauptaufgabe (Wurzel), nicht nur das direkte Elternteil.
+  const wurzel = wurzelVon(t, nachId);
   return istModulAufgabe(wurzel) && offen(wurzel);
 }
 
@@ -46,7 +47,7 @@ export function ohneArchiv<T extends TasksState>(state: T): T {
   return {
     ...state,
     projects: state.projects.filter(p => !projekte.has(p.id)),
-    tasks: tasks.filter(t => !t.parentId || bleibt.has(t.parentId)),
+    tasks: mitVerbliebenenVorfahren(tasks, bleibt),
     listen: listen.filter(l => !imArchiv(l) && !projekte.has(l.projektId)),
     gruppen: gruppen.filter(g => !imArchiv(g) && !projekte.has(g.projektId)),
   };
@@ -143,10 +144,11 @@ export function aufgabenZurueck(state: TasksState, laufId: string, auswahl: Aufg
   } else {
     const t0 = state.tasks.find(x => x.id === auswahl.id);
     if (t0) {
-      // Eine Unteraufgabe kommt nur mit ihrer Hauptaufgabe (sonst hinge sie an etwas Unsichtbarem).
-      const wurzel = t0.parentId ? state.tasks.find(x => x.id === t0.parentId) ?? t0 : t0;
+      // Eine Unteraufgabe kommt nur mit ihrer Hauptaufgabe (sonst hinge sie an etwas Unsichtbarem) — auf jeder Ebene
+      // (01.10.): die Wurzel samt ihrem ganzen Teilbaum, soweit er mit diesem Lauf ging.
+      const wurzel = wurzelVon(t0, nachIdKarte(state.tasks));
       a.add(wurzel.id);
-      for (const x of state.tasks) if (x.parentId === wurzel.id && vomLauf(x)) a.add(x.id);
+      for (const x of nachfahrenIn(wurzel.id, state.tasks)) if (vomLauf(x)) a.add(x.id);
       // Die Hülle: Projekt, Liste und Gruppe, falls sie noch im Archiv liegen — ohne deren übrige Aufgaben.
       p.add(wurzel.projectId);
       const liste = wurzel.listeId ? listeNach.get(wurzel.listeId) : undefined;
@@ -229,6 +231,7 @@ export function archivSicht(state: Pick<TasksState, 'projects' | 'tasks' | 'list
   const listeNach = new Map((state.listen ?? []).map(x => [x.id, x]));
   const archivierteProjekte = new Set(erfasst.projekte);
   const inLauf = new Set(erfasst.aufgaben);
+  const kinder = kinderKarte(state.tasks);
   const haupt = state.tasks.filter(t => inLauf.has(t.id) && !t.parentId && sichtbar(t));
   const lose = (t: Task) => !archivierteProjekte.has(t.projectId) || (!vomLauf(projektNach.get(t.projectId)) && vomLauf(t));
   const projekte: ArchivProjekt[] = erfasst.projekte.map(id => projektNach.get(id)).filter((p): p is Project => !!p).map(p => ({
@@ -237,7 +240,7 @@ export function archivSicht(state: Pick<TasksState, 'projects' | 'tasks' | 'list
   }));
   const aufgaben: ArchivAufgabe[] = haupt.filter(lose).map(t => ({
     id: t.id, titel: t.title, ...(t.spaceId ? { spaceId: t.spaceId } : {}), projektId: t.projectId, erledigt: t.status === 'done' || t.status === 'cancelled',
-    unter: state.tasks.filter(u => u.parentId === t.id && inLauf.has(u.id)).length, zurueck: !vomLauf(t),
+    unter: nachfahren(t.id, kinder).filter(u => inLauf.has(u.id)).length, zurueck: !vomLauf(t),
   }));
   const je = new Map<string, { eintraege: PausierteSerie[] }>();
   for (const s of erfasst.pausiert) {

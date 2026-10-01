@@ -34,11 +34,12 @@ interface Antwort { ok?: boolean; error?: string; ergebnis?: string; konflikt?: 
  * Freigabe je Feld (#94): „alt → neu“ mit Häkchen. `aufgabe` = der jetzige Stand (fehlt er, nur „neu“). Was seit dem
  * Vorschlag geändert wurde (#95), steht rot daneben — abwählen oder bewusst überschreiben.
  */
-export function FreigabeFelder({ inhalt, aufgabe, stand, eigene = [], gewaehlt, onWahl }: {
+export function FreigabeFelder({ inhalt, aufgabe, stand, eigene = [], bestand, gewaehlt, onWahl }: {
   inhalt: ZoeVorschlagInhalt; aufgabe?: Task; stand?: ZoeStand | null; eigene?: readonly AufgabenStatus[];
+  /** Alle Aufgaben — entscheidet „Unteraufgaben“ oder „Checkliste“ (unterste Ebene, 01.10.). */ bestand?: readonly Task[];
   gewaehlt: ReadonlySet<ZoeFeld>; onWahl: (f: ReadonlySet<ZoeFeld>) => void;
 }) {
-  const zeilen = aufgabe ? vorschlagAenderungen(aufgabe, inhalt, eigene) : vorschlagAenderungen({ status: 'todo' }, inhalt, eigene).map(z => ({ ...z, alt: '' }));
+  const zeilen = aufgabe ? vorschlagAenderungen(aufgabe, inhalt, eigene, bestand) : vorschlagAenderungen({ status: 'todo' }, inhalt, eigene).map(z => ({ ...z, alt: '' }));
   const konflikte = aufgabe ? standAbweichung(stand ?? null, aufgabe, inhalt, eigene) : [];
   return (
     <div role="group" aria-label="Was übernommen wird" style={{ display: 'grid', gap: 4 }}>
@@ -183,7 +184,7 @@ export function ZoeAufgabe({ task: t, ich, personen }: { task: Task; ich: string
         vorschlag?.inhalt && vorschlag.status === 'offen' ? (
           <div style={{ display: 'grid', gap: 10 }}>
             <VorschlagInhalt v={vorschlag.inhalt} />
-            <FreigabeFelder inhalt={vorschlag.inhalt} aufgabe={t} stand={vorschlag.stand} eigene={state.statusEigen ?? []} gewaehlt={gewaehlt} onWahl={setGewaehlt} />
+            <FreigabeFelder inhalt={vorschlag.inhalt} aufgabe={t} stand={vorschlag.stand} eigene={state.statusEigen ?? []} bestand={state.tasks} gewaehlt={gewaehlt} onWahl={setGewaehlt} />
             <input value={grund} onChange={e => setGrund(e.target.value)} maxLength={400} aria-label="Grund fürs Ablehnen"
               placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px' }} />
             {hinweisAuf && hinweisFeld}

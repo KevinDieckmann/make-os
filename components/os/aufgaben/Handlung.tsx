@@ -2,7 +2,7 @@
 // ─── Aufgaben-Handlungen mit Rückfrage und „Rückgängig“ (29.09., Paket T2) ─────
 // Eine Stelle für Handlungen, die man bereuen kann:
 //   · Erledigen / Status „Erledigt“ mit offenen Unteraufgaben (#66): „mit erledigen · offen lassen · abbrechen“ — auch beim
-//     Ablegen auf „Erledigt“ im Board.
+//     Ablegen auf „Erledigt“ im Board. Seit 01.10. für den ganzen Teilbaum (alle Ebenen darunter).
 //   · Deadline der Hauptaufgabe verschieben, Unteraufgaben haben eigene Deadlines (#68): „Unteraufgaben mitverschieben
 //     (Abstand halten)“ oder nur diese.
 //   · Nach Löschen (Papierkorb), Erledigen, Status und Verschieben: Hinweis unten mit „Rückgängig“ (10 s, #87).
@@ -17,6 +17,7 @@ import { istOffen, statusTeil, statusListe, bereichVonSpace } from '@/lib/aufgab
 import { berlinerTag, kurzTag, tagPlus, tageZwischen } from '@/lib/aufgaben/wiederholung';
 import { serieLaeuft, serieUeberspringen } from '@/lib/aufgaben/serie';
 import { aufgabeUmfang, umfangText } from '@/lib/aufgaben/papierkorb';
+import { nachfahrenIn } from '@/lib/aufgaben/ebenen';
 import type { AufgabenStatus, Task } from '@/types/tasks';
 import { dateienZaehlen } from './Papierkorb';
 
@@ -45,7 +46,8 @@ export interface Handlungen {
 
 const Ctx = createContext<Handlungen | null>(null);
 
-const offeneUnter = (t: Task, alle: readonly Task[]) => alle.filter(x => x.parentId === t.id && istOffen(x));
+/** Offene Unteraufgaben im GANZEN Teilbaum (mehrstufig seit 01.10.) — die Rückfrage gilt für alle Ebenen darunter. */
+const offeneUnter = (t: Task, alle: readonly Task[]) => nachfahrenIn(t.id, alle).filter(istOffen);
 const zahl = (n: number, eins: string, viele: string) => `${n} ${n === 1 ? eins : viele}`;
 const fertigTeil = (_t: Task): Partial<Task> => ({ status: 'done', statusId: undefined, completedAt: new Date().toISOString() });
 /** Die alten Werte der Felder, die ein Teil ändert (undefined = Feld fehlte). */
@@ -169,7 +171,8 @@ export function HandlungProvider({ children }: { children: ReactNode }) {
 
   const verschieben = useCallback((t: Task, teil: Partial<Task>, was = 'verschoben') => {
     const alt = vorher(t, teil);
-    const unter = stateRef.current.tasks.filter(x => x.parentId === t.id && x.dueDate && istOffen(x));
+    // Alle Ebenen darunter (01.10.) — „Abstand halten“ gilt für den ganzen Teilbaum.
+    const unter = nachfahrenIn(t.id, stateRef.current.tasks).filter(x => x.dueDate && istOffen(x));
     const tun = (mitUnter: boolean) => {
       upd(t.id, teil);
       const d = t.dueDate && teil.dueDate ? tageZwischen(t.dueDate, teil.dueDate) : 0;

@@ -30,6 +30,7 @@ import { AUFGABEN_WERKZEUG_DEFS } from '@/lib/zoe/aufgaben-werkzeuge';
 import { ARBEIT_WERKZEUG_DEFS } from '@/lib/zoe/arbeit-werkzeug';
 import { CRM_WERKZEUG_DEFS, crmBezugAus, crmBezugHinweis } from '@/lib/zoe/crm-werkzeug-defs';
 import { UG_NAME } from '@/lib/einheiten';
+import { AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -173,6 +174,7 @@ export async function POST(req: Request) {
         properties: {
           title: { type: 'string', description: 'Kurzer, klarer Aufgabentitel (imperativ)' },
           meilenstein: { type: 'string', description: 'Optional: Teil des Namens eines Meilensteins — die Aufgabe landet dann in seiner Aufgaben-Liste (Space kommt vom Meilenstein, space/einheit weglassen).' },
+          unter: { type: 'string', description: `Optional: die übergeordnete Aufgabe (Titel oder Pfad „Hauptaufgabe › Unteraufgabe“) — die neue wird deren Unteraufgabe, auf jeder Ebene bis ${AUFGABEN_EBENEN_MAX} Ebenen; Ort kommt von dort (space/einheit/meilenstein weglassen).` },
           priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], description: 'Priorität' },
           why: { type: 'string', description: '1 kurzer Satz Kontext/Begründung (optional)' },
           wer: { type: 'string', enum: ['kevin', 'malin', 'both'], description: 'Wer macht es (optional, Standard Kevin)' },

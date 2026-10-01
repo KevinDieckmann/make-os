@@ -7,13 +7,16 @@
 // Paket T2 (29.09.): 🔒 „nur ich“, „abgebrochen“ grau/durchgestrichen, Priorität/überfällig auch als Zeichen (#88), Haken mit
 // Titel (#62), Erledigen/Löschen über den HandlungProvider (Rückfrage bei offenen Unteraufgaben, „Rückgängig“), Wartende
 // über EINE Karte je Render (#84), lange Listen in Stücken zu 200 Zeilen („weitere zeigen“).
+// Mehrstufig (01.10., Kevin: „Unteraufgaben bei dem HOS unter Produkten“): jede Ebene klappt auf, zeigt n/m ihrer direkten
+// Unteraufgaben und hat „+ Unteraufgabe“ bis zur Grenze `AUFGABEN_EBENEN_MAX` (lib/aufgaben/ebenen.ts); tiefer eingerückt.
 
 import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { MessageSquare, Link2, ChevronRight, Lock, Sparkles, StickyNote } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Haken, Punkt, feld, prioFarbe } from '../schlank';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
-import { statusVon, fortschritt, sonstigeProjektId, type BaumProjekt, type BaumAufgabe, type BaumListe } from '@/lib/aufgaben/struktur';
+import { statusVon, fortschritt, sonstigeProjektId, nachReihe, type BaumProjekt, type BaumAufgabe, type BaumListe } from '@/lib/aufgaben/struktur';
+import { kinderKarte, vorfahren, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
 import { useHandlung } from './Handlung';
 import { NurIchZeichen, PrioZeichen, FristZeichen, titelStil, AbgebrochenSchild } from './Zeichen';
 import type { Task, TasksState } from '@/types/tasks';
@@ -77,13 +80,16 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   const handlung = useHandlung(dispatch, state.statusEigen);
   // Einmal je Render (#84): Kennung → Aufgabe, für „wartet auf …“ jeder Zeile.
   const nachId = useMemo(() => new Map(state.tasks.map(x => [x.id, x])), [state.tasks]);
+  // Kinder je Aufgabe (alle Ebenen, einmal je Render), sortiert wie die Liste.
+  const kinder = useMemo(() => { const k = kinderKarte(state.tasks); for (const l of Array.from(k.values())) l.sort(nachReihe); return k; }, [state.tasks]);
   const wartetAuf = (t: Task): Task[] => (t.abhaengigVon ?? []).map(id => nachId.get(id)).filter((x): x is Task => !!x && x.status !== 'done');
   const [auf, setAuf] = useState<Set<string>>(new Set());
   useEffect(() => { try { setZu(new Set(JSON.parse(lies(ZU_MERKER) ?? '[]') as string[])); } catch { /* egal */ } }, []);
-  // Die offene Aufgabe ist eine Unteraufgabe → ihr Elternteil aufklappen.
+  // Die offene Aufgabe ist eine Unteraufgabe → alle ihre Vorfahren aufklappen (jede Ebene).
   useEffect(() => {
-    const t = offenId ? state.tasks.find(x => x.id === offenId) : undefined;
-    if (t?.parentId && !auf.has(t.parentId)) setAuf(a => new Set(a).add(t.parentId!));
+    const t = offenId ? nachId.get(offenId) : undefined;
+    const kette = t ? vorfahren(t, nachId).map(x => x.id).filter(id => !auf.has(id)) : [];
+    if (kette.length) setAuf(a => { const n = new Set(a); for (const id of kette) n.add(id); return n; });
   }, [offenId]); // eslint-disable-line react-hooks/exhaustive-deps
   const umschalten = (menge: Set<string>, setze: (s: Set<string>) => void, id: string, merker?: string) => {
     const n = new Set(menge); if (n.has(id)) n.delete(id); else n.add(id);
@@ -118,17 +124,21 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     );
   };
 
-  const zeile = (a: BaumAufgabe, tiefe = 0): ReactNode => {
+  /** Eine Zeile samt (aufgeklappt) ihren Unteraufgaben — rekursiv bis zur Grenze. `tiefe` 0 = Hauptaufgabe. */
+  const zeile = (a: BaumAufgabe, tiefe = 0, gesehen: ReadonlySet<string> = new Set()): ReactNode => {
     const t = a.task;
     const aufgeklappt = auf.has(t.id);
     const istOffen = offenId === t.id;
+    const darfUnter = tiefe + 1 < AUFGABEN_EBENEN_MAX;
+    const klappbar = a.unter.length > 0 || darfUnter;
+    const weiter = new Set(gesehen).add(t.id);
     return (
       <div key={t.id}>
-        <div className="zeile" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px', paddingLeft: 4 + tiefe * 26, borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44, background: istOffen ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: istOffen ? 10 : 0 }}>
-          {tiefe === 0 && (
-            <button onClick={() => umschalten(auf, setAuf, t.id)} aria-label={aufgeklappt ? 'Unteraufgaben zuklappen' : 'Unteraufgaben aufklappen'} aria-expanded={aufgeklappt} className="fassbar"
+        <div className="zeile" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px', paddingLeft: 4 + tiefe * (breit ? 26 : 16), borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44, background: istOffen ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: istOffen ? 10 : 0 }}>
+          {klappbar ? (
+            <button onClick={() => umschalten(auf, setAuf, t.id)} aria-label={aufgeklappt ? `Unteraufgaben von „${t.title}“ zuklappen` : `Unteraufgaben von „${t.title}“ aufklappen`} aria-expanded={aufgeklappt} className="fassbar"
               style={{ ...klappKnopf, color: a.unter.length ? C.inkDim : 'rgba(255,255,255,.18)' }}>{chevron(!aufgeklappt)}</button>
-          )}
+          ) : <span aria-hidden style={{ width: 22, flex: '0 0 auto' }} />}
           <Haken an={t.status === 'done'} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} />
           <button id={`oeffnen-${t.id}`} onClick={() => onOeffnen(istOffen ? null : t.id)} aria-expanded={istOffen} className="fassbar" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 2px', minHeight: 40, cursor: 'pointer', fontFamily: SCHRIFT.text, display: 'grid', gap: 2 }}>
             <span style={{ fontSize: tiefe ? TYP.bedien : 14.5, fontWeight: tiefe ? 500 : 550, ...titelStil(t), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
@@ -136,9 +146,11 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
           </button>
           {breit && meta(t, a.unter, false)}
         </div>
-        {tiefe === 0 && aufgeklappt && <>
-          {a.unter.map(u => zeile({ task: u, unter: [] }, 1))}
-          <NeuZeile einzug={30} platzhalter="+ Unteraufgabe (Enter = nächste)" onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, parentId: t.id }, { title, assignee: t.assignee, bezug: t.bezug })} />
+        {aufgeklappt && <>
+          {a.unter.filter(u => !weiter.has(u.id)).map(u => zeile({ task: u, unter: kinder.get(u.id) ?? [] }, tiefe + 1, weiter))}
+          {darfUnter
+            ? <NeuZeile einzug={30 + tiefe * (breit ? 26 : 16)} platzhalter={`+ Unteraufgabe${tiefe ? ` zu „${t.title.slice(0, 40)}“` : ''} (Enter = nächste)`} onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, parentId: t.id }, { title, assignee: t.assignee, bezug: t.bezug })} />
+            : <div style={{ fontSize: 12, color: C.inkLeise, padding: `4px 0 6px ${30 + tiefe * (breit ? 26 : 16)}px` }}>Tiefste Ebene ({AUFGABEN_EBENEN_MAX}) — weitere Schritte als Checkliste in der Notiz.</div>}
         </>}
       </div>
     );

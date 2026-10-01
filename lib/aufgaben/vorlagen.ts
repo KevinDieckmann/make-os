@@ -17,6 +17,7 @@ import { bereichVonSpace, einheitVonSpace, firmaVonSpace, istSonstigeProjekt, so
 import { istTag, tagPlus, tageZwischen, titelMitPlatzhaltern } from './wiederholung';
 import { istWerktag, werktagAbOder, werktagePlus } from './feiertage';
 import { STARTVORLAGEN } from './vorlagen-start';
+import { AUFGABEN_EBENEN_MAX, nachfahren } from './ebenen';
 
 export { STARTVORLAGEN };
 
@@ -86,8 +87,9 @@ function alsVorlageAufgabe(t: Task, kinder: Map<string, Task[]>, bezug: string |
   if (OWNER.includes(t.assignee)) r.zustaendig = t.assignee;
   const due = tagDer(t.dueDate);
   if (bezug && due) { const v = werktage ? werktageZwischen(werktagAbOder(bezug, 'NRW'), due) : tageZwischen(bezug, due); if (Math.abs(v) <= 3650) r.versatzTage = v; }
-  if (tiefe === 0) {
-    const u = (kinder.get(t.id) ?? []).sort(nachReihe).map(k => alsVorlageAufgabe(k, kinder, bezug, 1, werktage));
+  // Mehrstufig (01.10.): Unteraufgaben aller Ebenen bis zur Grenze (Hauptaufgabe = Tiefe 0).
+  if (tiefe + 1 < AUFGABEN_EBENEN_MAX) {
+    const u = (kinder.get(t.id) ?? []).sort(nachReihe).map(k => alsVorlageAufgabe(k, kinder, bezug, tiefe + 1, werktage));
     if (u.length) r.unter = u;
   }
   return r;
@@ -133,7 +135,7 @@ export function vorlageAusListe(state: TasksState, listeId: string, o: Speichern
   const inListe = state.tasks.filter(t => t.listeId === l.id && t.projectId === l.projektId);
   const kinder = kinderVon(state.tasks.filter(t => t.projectId === l.projektId));
   const oben = inListe.filter(t => !t.parentId).sort(nachReihe);
-  const bezug = o.bezugsTag ?? bezugsTagVon([...oben, ...oben.flatMap(t => kinder.get(t.id) ?? [])]);
+  const bezug = o.bezugsTag ?? bezugsTagVon([...oben, ...oben.flatMap(t => nachfahren(t.id, kinder))]);
   const aufgaben = oben.map(t => alsVorlageAufgabe(t, kinder, bezug, 0, o.werktage));
   return { id: o.id, art: 'liste', titel: (o.titel ?? l.titel).trim().slice(0, 120) || l.titel, inhalt: aufgaben.length ? { aufgaben, ...(o.werktage ? { versatzArt: 'werktage' as const } : {}) } : {}, ...(o.spaceId ? { spaceId: o.spaceId } : {}), angelegt: o.jetzt ?? new Date().toISOString(), version: 1 };
 }
@@ -179,10 +181,19 @@ export function aufgabenAusVorlage(liste: readonly VorlageAufgabe[], z: Aufgaben
     ...(z.vorlageId ? { vorlageId: z.vorlageId } : {}),
     ...(z.vorlageId && z.vorlageVersion ? { vorlageVersion: z.vorlageVersion } : {}),
   });
+  // Unteraufgaben aller Ebenen (01.10.): Kennung je Ebene `<eltern>-u<n>` (Ebene 2 wie bisher `…-a1-u1`).
+  const unterAnlegen = (eltern: VorlageAufgabe, elternId: string, tiefe: number) => {
+    if (tiefe >= AUFGABEN_EBENEN_MAX) return;
+    (eltern.unter ?? []).forEach((u, k) => {
+      const uid = `${elternId}-u${k + 1}`;
+      raus.push({ ...basis(u, uid, k), parentId: elternId });
+      unterAnlegen(u, uid, tiefe + 1);
+    });
+  };
   liste.forEach((a, i) => {
     const id = `${z.praefix}-a${i + 1}`;
     raus.push(basis(a, id, (z.sortStart ?? 0) + i));
-    (a.unter ?? []).forEach((u, k) => raus.push({ ...basis(u, `${id}-u${k + 1}`, k), parentId: id }));
+    unterAnlegen(a, id, 1);
   });
   return raus;
 }

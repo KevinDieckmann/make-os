@@ -20,6 +20,7 @@ import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
 import { abhaengigAngleichen } from './abhaengig';
 import { beideAufloesen, anlegerinVon } from './zustaendig';
 import { berlinerTag, istTag } from './wiederholung';
+import { elternOrdnen, ebeneVon, wurzelVon, kinderKarte, nachfahren } from './ebenen';
 
 // ── Spaces ─────────────────────────────────────────────────────────────────
 
@@ -216,8 +217,10 @@ export function deadlineAlsTag(d: string | undefined): string | undefined {
  *  1. Projekte ohne gültigen Space bekommen ihn (`spaceFuerAltProjekt`).
  *  2. Aufgaben ohne gültigen Space bekommen ihn (`spaceFuerAltAufgabe`).
  *  3. Alte `subTasks[]` werden echte Unteraufgaben (`parentId`), die Liste am Elternteil wird leer.
- *  4. Unteraufgaben: eine Ebene (Enkel hängen am obersten Elternteil), sie erben Space/Projekt/Liste;
- *     fehlt das Elternteil, wird sie eine normale Aufgabe.
+ *  4. Unteraufgaben (seit 01.10. mehrstufig, bis `AUFGABEN_EBENEN_MAX` — lib/aufgaben/ebenen.ts): sie erben Space/Projekt/
+ *     Liste von der Hauptaufgabe (Wurzel); fehlt das Elternteil, wird sie eine normale Aufgabe; ein Kreis wird aufgebrochen,
+ *     eine zu tiefe Kette am Vorfahren der vorletzten Ebene eingehängt (`elternOrdnen`). Bis 30.09. hängte die Übernahme
+ *     Enkel an das oberste Elternteil — der alte Stand (Rückweg) macht das weiter (GO_LIVE_CHECKLISTE.md › Rückweg).
  *  5. Liste passt nicht zum Projekt → keine Liste („Sonstige“); eigener Status fehlt, liegt in einem anderen Space
  *     oder passt nicht zum Grundstatus (jemand hat `status` direkt gesetzt) → entfernt.
  *  6. `space`/`einheit` aus dem Space.
@@ -276,26 +279,27 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}, 
     alle.push(t);
   }
 
-  // 4–7: Unteraufgaben ordnen, Felder ableiten.
-  const nachId = new Map(alle.map(t => [t.id, t]));
-  const vorhanden = new Set(nachId.keys());
-  const oberster = (t: Task): Task | undefined => {
-    let p = t.parentId ? nachId.get(t.parentId) : undefined;
-    const gesehen = new Set<string>([t.id]);
-    while (p?.parentId && !gesehen.has(p.id)) { gesehen.add(p.id); const n = nachId.get(p.parentId); if (!n) break; p = n; }
-    return p && p.id !== t.id ? p : undefined;
-  };
-  const tasks = alle.map(t0 => {
+  // 4–7: Unteraufgaben ordnen (Kreise/Tiefe, ebenen.ts), Felder ableiten. Wurzeln zuerst, damit jede Unteraufgabe den
+  // schon abgeleiteten Ort ihrer Hauptaufgabe erbt (sonst bräuchte es einen zweiten Lauf — idempotent in EINEM).
+  const ordnung = elternOrdnen(alle);
+  const elternVon = (t: Task): string | undefined => (ordnung.has(t.id) ? ordnung.get(t.id) : t.parentId);
+  const elternKarte = new Map(alle.map(t => [t.id, { id: t.id, parentId: elternVon(t) }]));
+  const vorhanden = new Set(elternKarte.keys());
+  const ebeneVonId = (id: string) => ebeneVon(elternKarte.get(id)!, elternKarte);
+  const reihe = alle.map((t, i) => ({ t, i, e: ebeneVonId(t.id) })).sort((a, b) => a.e - b.e || a.i - b.i);
+  const fertig = new Map<string, Task>();
+  for (const { t: t0 } of reihe) {
     let t = t0;
     const setze = (teil: Partial<Task>) => {
       const n = { ...t, ...teil };
       for (const k of Object.keys(teil) as (keyof Task)[]) if (teil[k] === undefined) delete n[k];
       if (JSON.stringify(n) !== JSON.stringify(t)) { t = n; geaendert = true; }
     };
-    if (t.parentId) {
-      const eltern = oberster(t);
-      if (!eltern) setze({ parentId: undefined });
-      else setze({ parentId: eltern.id, spaceId: eltern.spaceId, projectId: eltern.projectId, listeId: eltern.listeId });
+    const pid = elternVon(t);
+    if (pid !== t.parentId) setze({ parentId: pid });
+    if (pid) {
+      const wurzel = fertig.get(wurzelVon(elternKarte.get(t.id)!, elternKarte).id);
+      if (wurzel) setze({ spaceId: wurzel.spaceId, projectId: wurzel.projectId, listeId: wurzel.listeId });
     }
     const spaceId = t.spaceId as string;
     // Projekt „Sonstige“ eines anderen Space → Sonstige des eigenen.
@@ -324,8 +328,10 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}, 
       const a = abhaengigAngleichen(t, null, vorhanden);
       setze({ dependencies: a.dependencies, abhaengigVon: a.abhaengigVon });
     }
-    return t;
-  });
+    fertig.set(t.id, t);
+  }
+  // Bestandsreihenfolge bleibt (nur die Rechnung lief Wurzeln zuerst).
+  const tasks = alle.map(t => fertig.get(t.id) ?? t);
   const vorlagen = Array.isArray(roh.vorlagen) ? roh.vorlagen : [];
   const state: TasksState = { ...roh, projects, tasks, listen, statusEigen, gruppen, vorlagen };
   if (!Array.isArray(roh.listen) || !Array.isArray(roh.statusEigen) || !Array.isArray(roh.gruppen) || !Array.isArray(roh.vorlagen)) geaendert = true;
@@ -355,18 +361,19 @@ export const nachReihe = (a: { sortOrder?: number; createdAt?: string; id?: stri
 
 /**
  * Der Baum eines Space: Projekte (eigene, dann fremde mit Aufgaben hier, zuletzt „Sonstige“) → Listen (in
- * Reihenfolge, dann „Sonstige“) → Aufgaben → Unteraufgaben. `zeigen` filtert die Aufgaben; eine Aufgabe erscheint,
- * wenn sie selbst oder eine Unteraufgabe passt. Leere Listen/Projekte bleiben stehen (man legt sie ja zum Füllen an),
+ * Reihenfolge, dann „Sonstige“) → Aufgaben → direkte Unteraufgaben (`unter`; tiefere Ebenen holt die Oberfläche über
+ * `kinderKarte`, lib/aufgaben/ebenen.ts). `zeigen` filtert die Aufgaben; eine Aufgabe erscheint, wenn sie selbst oder
+ * eine Unteraufgabe (auf jeder Ebene) passt. Leere Listen/Projekte bleiben stehen (man legt sie ja zum Füllen an),
  * außer „Sonstige“ und fremde Projekte.
  */
 export function baum(state: TasksState, spaceId: string, zeigen: (t: Task) => boolean = () => true, leereZeigen = true): BaumProjekt[] {
   const imSpace = state.tasks.filter(t => t.spaceId === spaceId);
-  const kinder = new Map<string, Task[]>();
-  for (const t of imSpace) if (t.parentId) kinder.set(t.parentId, [...(kinder.get(t.parentId) ?? []), t]);
+  const kinder = kinderKarte(imSpace);
   // Eine Menge statt „some“ je Zeile (29.09., #84): O(n) statt O(n²) bei ein paar tausend Aufgaben.
   const imSpaceIds = new Set(imSpace.map(t => t.id));
   const oben = imSpace.filter(t => !t.parentId || !imSpaceIds.has(t.parentId));
-  const sichtbar = oben.filter(t => zeigen(t) || (kinder.get(t.id) ?? []).some(zeigen));
+  // Mehrstufig (01.10.): eine Aufgabe erscheint, wenn sie selbst oder irgendein Nachfahre passt.
+  const sichtbar = oben.filter(t => zeigen(t) || nachfahren(t.id, kinder).some(zeigen));
   const offen = (l: BaumAufgabe[]) => l.filter(a => a.task.status !== 'done').length;
   const projekte = state.projects.filter(p => p.spaceId === spaceId && !p.archived);
   const eigeneIds = new Set(projekte.map(p => p.id));

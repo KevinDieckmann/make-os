@@ -64,7 +64,10 @@ export interface Task extends Timestamps {
   spaceId?: AufgabenSpaceId;
   /** Liste im Projekt (z. B. „Januar“) — fehlt = „Sonstige“ des Projekts. */
   listeId?: ID;
-  /** Übergeordnete Aufgabe (eine Ebene): die Unteraufgabe erbt Space, Projekt und Liste. */
+  /**
+   * Übergeordnete Aufgabe: die Unteraufgabe erbt Space, Projekt und Liste (von der Hauptaufgabe). Seit 01.10. mehrstufig —
+   * darf auf eine Unteraufgabe zeigen, bis `AUFGABEN_EBENEN_MAX` Ebenen, ohne Kreis (lib/aufgaben/ebenen.ts).
+   */
   parentId?: ID;
   /** Eigener Status des Space — `status` trägt dann dessen Grundstatus (`basis`). */
   statusId?: ID;
@@ -246,7 +249,7 @@ export interface VorlageAufgabe {
   notiz?: string;
   /** Vorbelegte Werte eigener Felder (je Feld-Kennung, Betrag in Cent). */
   felder?: Record<string, FeldWert>;
-  /** Unteraufgaben (eine Ebene). */
+  /** Unteraufgaben — seit 01.10. mehrstufig bis `AUFGABEN_EBENEN_MAX` (lib/aufgaben/ebenen.ts; Hauptaufgabe = Ebene 1). */
   unter?: VorlageAufgabe[];
 }
 /** Inhalt einer Vorlage: bei `projekt` Gruppen, Listen, Felder, Notiz; bei `liste` nur `aufgaben`. */

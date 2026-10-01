@@ -12,6 +12,7 @@
 import type { Task, TasksState, ZoeStatus, AufgabenStatus, TaskStatus } from '@/types/tasks';
 import { statusTeil, grundVon } from './struktur';
 import { istTag } from './wiederholung';
+import { darfUnteraufgabe, nachIdKarte } from './ebenen';
 
 export const ZOE_STATUS_LABEL: Record<ZoeStatus, string> = {
   offen: 'bei ZOE', in_arbeit: 'ZOE arbeitet', wartet_freigabe: 'wartet auf Freigabe', freigegeben: 'freigegeben', abgelehnt: 'abgelehnt',
@@ -161,11 +162,22 @@ export function vorschlagZeile(v: ZoeVorschlagInhalt): string {
   return teile.join(' · ') || 'ohne Änderung';
 }
 
+/**
+ * Werden vorgeschlagene Unteraufgaben zur Checkliste in der Notiz? Mehrstufig (01.10.): nur, wenn unter `t` keine weitere
+ * Ebene erlaubt ist. Ohne Bestand (`bestand` fehlt) wie früher: jede Unteraufgabe.
+ */
+export function alsChecklisteBei(t: { id?: string; parentId?: string }, bestand?: readonly Pick<Task, 'id' | 'parentId'>[]): boolean {
+  if (!t.parentId) return false;
+  if (!bestand || !t.id) return true;
+  return !darfUnteraufgabe({ id: t.id, parentId: t.parentId }, nachIdKarte(bestand));
+}
+
 export type AnwendenErgebnis = { ok: true; task: Task; neue: Task[] } | { ok: false; fehler: string };
 
 /**
  * Freigabe (rein): die Vorschläge in die Aufgabe übernehmen — Entwurf an die Notiz anhängen, Unteraufgaben anlegen
- * (bei einer Unteraufgabe als Checkliste in der Notiz, es gibt nur eine Ebene), Status/Deadline setzen,
+ * (seit 01.10. auf jeder Ebene; nur auf der untersten erlaubten Ebene — `AUFGABEN_EBENEN_MAX` — als Checkliste in der Notiz;
+ * ohne `geschwister` (kein Bestand bekannt) wie früher bei jeder Unteraufgabe als Checkliste), Status/Deadline setzen,
  * `zoe.status = freigegeben`. Nichts wird gelöscht oder überschrieben außer Status und Deadline.
  */
 export function vorschlagAnwenden(t: Task, v: ZoeVorschlagInhalt, opt: {
@@ -174,7 +186,7 @@ export function vorschlagAnwenden(t: Task, v: ZoeVorschlagInhalt, opt: {
   if (v.aufgabeId !== t.id) return { ok: false, fehler: 'Der Vorschlag gehört zu einer anderen Aufgabe.' };
   let notiz = t.notiz ?? '';
   const block: string[] = [];
-  const alsCheckliste = !!t.parentId && !!v.unteraufgaben?.length;
+  const alsCheckliste = alsChecklisteBei(t, opt.geschwister) && !!v.unteraufgaben?.length;
   if (v.entwurf) block.push(v.entwurf);
   if (alsCheckliste) block.push(v.unteraufgaben!.map(u => `- [ ] ${u}`).join('\n'));
   if (block.length) {
@@ -225,10 +237,10 @@ const tagText = (d?: string) => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.sli
 const statusText = (s: TaskStatus | undefined, statusId: string | undefined, eigene: readonly AufgabenStatus[]) => (statusId ? eigene.find(x => x.id === statusId)?.label : undefined) ?? grundVon(s).label;
 
 /** Was die Freigabe an DIESER Aufgabe ändert — alt (jetzt) → neu, je Feld (für die Häkchen). */
-export function vorschlagAenderungen(t: Pick<Task, 'status' | 'statusId' | 'dueDate' | 'notiz' | 'parentId'>, v: ZoeVorschlagInhalt, eigene: readonly AufgabenStatus[] = []): ZoeFeldAenderung[] {
+export function vorschlagAenderungen(t: Pick<Task, 'status' | 'statusId' | 'dueDate' | 'notiz' | 'parentId'> & { id?: string }, v: ZoeVorschlagInhalt, eigene: readonly AufgabenStatus[] = [], bestand?: readonly Pick<Task, 'id' | 'parentId'>[]): ZoeFeldAenderung[] {
   const raus: ZoeFeldAenderung[] = [];
   if (v.entwurf) raus.push({ feld: 'notiz', label: 'Notiz', alt: t.notiz?.trim() ? `${t.notiz.trim().length.toLocaleString('de-DE')} Zeichen` : 'leer', neu: `+ Entwurf (${v.entwurf.length.toLocaleString('de-DE')} Zeichen) angehängt` });
-  if (v.unteraufgaben?.length) raus.push({ feld: 'unteraufgaben', label: t.parentId ? 'Checkliste' : 'Unteraufgaben', alt: '', neu: `+ ${v.unteraufgaben.length}: ${v.unteraufgaben.slice(0, 3).join(' · ')}${v.unteraufgaben.length > 3 ? ' …' : ''}` });
+  if (v.unteraufgaben?.length) raus.push({ feld: 'unteraufgaben', label: alsChecklisteBei(t, bestand) ? 'Checkliste' : 'Unteraufgaben', alt: '', neu: `+ ${v.unteraufgaben.length}: ${v.unteraufgaben.slice(0, 3).join(' · ')}${v.unteraufgaben.length > 3 ? ' …' : ''}` });
   if (v.status) raus.push({ feld: 'status', label: 'Status', alt: statusText(t.status, t.statusId, eigene), neu: grundVon(v.status).label });
   if (v.deadline) raus.push({ feld: 'deadline', label: 'Deadline', alt: tagText(t.dueDate?.slice(0, 10)), neu: tagText(v.deadline) });
   return raus;

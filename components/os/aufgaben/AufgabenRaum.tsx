@@ -39,6 +39,7 @@ import { ZoeAufgabenSicht } from './ZoeAufgabe';
 import { NeuAnfangenKnopf } from './NeuAnfangen';
 import { HandlungProvider } from './Handlung';
 import { suchPasst } from '@/lib/text/such-norm';
+import { kette, nachIdKarte } from '@/lib/aufgaben/ebenen';
 import { imArchiv } from '@/lib/aufgaben/neustart';
 import { projektAnlegen, spacesOderFest, usePersonen, useIch } from './hilfe';
 import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
@@ -226,6 +227,7 @@ export function AufgabenRaum() {
                 <button key={t.id} id={`oeffnen-${t.id}`} onClick={() => gehe({ ansicht: 'space', s: t.spaceId, a: t.id })} className="fassbar"
                   style={{ display: 'flex', width: '100%', gap: 10, alignItems: 'baseline', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '9px 2px', minHeight: 44, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: t.status === 'done' || t.status === 'cancelled' ? C.inkLeise : C.ink }}>
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.status === 'done' || t.status === 'cancelled' ? 'line-through' : 'none' }}>{t.title}</span>
+                  {t.parentId && <span title="Teil von" style={{ fontSize: 12, color: C.inkLeise, minWidth: 0, maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>in {kette(t, nachIdKarte(state.tasks)).map(x => x.title).join(' › ')}</span>}
                   <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{spaces.find(x => x.id === t.spaceId)?.label ?? ''}</span>
                 </button>
               ))}

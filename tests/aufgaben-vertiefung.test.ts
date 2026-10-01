@@ -61,8 +61,9 @@ describe('Säuberung der neuen Felder', () => {
     expect(zoeSauber({ status: 'offen', von: 'malin', hinweis: '  kurz  ' })).toEqual({ status: 'offen', von: 'malin', hinweis: 'kurz' });
     expect(zoeSauber({ status: 'offen', von: 'Mal In' })).toEqual({ status: 'offen' });
     expect(() => zoeSauber({ status: 'offen', hinweis: 'x'.repeat(AUFGABEN_GRENZEN.zoeHinweis + 1) })).toThrow(ZuGross);
-    const v = vorlageSauber({ id: 'v', art: 'projekt', titel: 'Launch', inhalt: { gruppen: [{ titel: 'Marketing' }], listen: [{ titel: 'Woche 1', gruppe: 'Marketing', aufgaben: [{ titel: 'Pressetext', versatzTage: 3, unter: [{ titel: 'Entwurf', unter: [{ titel: 'zu tief' }] }] }] }] } })!;
-    expect(v.inhalt.listen![0].aufgaben[0]).toEqual({ titel: 'Pressetext', versatzTage: 3, unter: [{ titel: 'Entwurf' }] });
+    const v = vorlageSauber({ id: 'v', art: 'projekt', titel: 'Launch', inhalt: { gruppen: [{ titel: 'Marketing' }], listen: [{ titel: 'Woche 1', gruppe: 'Marketing', aufgaben: [{ titel: 'Pressetext', versatzTage: 3, unter: [{ titel: 'Entwurf', unter: [{ titel: 'E3', unter: [{ titel: 'E4', unter: [{ titel: 'E5', unter: [{ titel: 'zu tief (Ebene 6)' }] }] }] }] }] }] }] } })!;
+    // Mehrstufig (01.10.): Hauptaufgabe + 4 Unterebenen = 5 Ebenen bleiben, die sechste fällt weg.
+    expect(v.inhalt.listen![0].aufgaben[0]).toEqual({ titel: 'Pressetext', versatzTage: 3, unter: [{ titel: 'Entwurf', unter: [{ titel: 'E3', unter: [{ titel: 'E4', unter: [{ titel: 'E5' }] }] }] }] });
     expect(() => vorlageSauber({ id: 'v', art: 'liste', titel: 'Groß', inhalt: { notiz: 'x'.repeat(AUFGABEN_GRENZEN.vorlageZeichen + 1) } })).toThrow(ZuGross);
   });
 });

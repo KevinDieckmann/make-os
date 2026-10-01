@@ -11,6 +11,7 @@ import { einheitVonSpace, firmaVonSpace, sonstigeProjektId, istSonstigeProjekt, 
 import type { Task, TasksState, AufgabeBezug, Project } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
+import { wurzelVon } from '@/lib/aufgaben/ebenen';
 
 export const neueKennung = (p: string): string => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
@@ -154,4 +155,18 @@ export function umzugTeil(state: TasksState, t: Task, ziel: { spaceId?: string; 
     spaceId, projectId, listeId, space: spaceId === 'privat' ? 'privat' : 'business', einheit: einheitVonSpace(spaceId),
     ...(statusFremd ? { statusId: undefined } : {}),
   };
+}
+
+/**
+ * Umhängen (01.10., mehrstufige Unteraufgaben): unter ein neues Elternteil (jede Ebene) — der Ort kommt von dessen
+ * Hauptaufgabe, der eigene Teilbaum zieht im Kontext mit (UPDATE_TASK). `null` = zur Hauptaufgabe machen (Ort bleibt).
+ * Ob es passt (Kreis, Tiefe), prüfen `elternKandidaten` (Auswahl) und der Server (lib/aufgaben/ebenen.ts `elternPruefen`).
+ */
+export function umhaengenTeil(state: TasksState, elternId: string | null): Partial<Task> {
+  if (!elternId) return { parentId: undefined };
+  const nachId = new Map(state.tasks.map(t => [t.id, t]));
+  const e = nachId.get(elternId);
+  if (!e) return { parentId: elternId };
+  const w = wurzelVon(e, nachId);
+  return { parentId: elternId, spaceId: w.spaceId, projectId: w.projectId, listeId: w.listeId };
 }

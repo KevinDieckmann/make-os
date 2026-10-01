@@ -30,6 +30,7 @@ import {
   appDatenLaden, aufgabeSichtbar, privatAufgabe, privatProjekt, imPapierkorb, material, materialLeer, materialMarkdown, entscheidungZeile,
   md, zitat, link, stunden, monatVon, vormonatVon, einstellungLesen, einstellungName, zeitBestaende, type AppDaten,
 } from './app-material';
+import { kinderKarte, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
 
 export const SPIEGEL_ORDNER = '_App';
 export const SPIEGEL_KOPF = 'Automatisch aus MAKE OS — nicht von Hand bearbeiten.';
@@ -48,22 +49,26 @@ function kopf(felder: { scope: 'intern' | 'privat'; art: string; appId?: string 
 
 // ── Aufgaben-Listen ────────────────────────────────────────────────────────
 
-function aufgabeZeile(t: Task, unter: Task[]): string {
+/** Eine Aufgabe als Checklisten-Zeile; `unter(t)` liefert die direkten Unteraufgaben — mehrstufig (01.10.) je Ebene eingerückt. */
+function aufgabeZeile(t: Task, unter: (t: Task) => Task[], ebene = 0, gesehen: ReadonlySet<string> = new Set()): string {
   const offen = t.status !== 'done' && t.status !== 'cancelled';
-  const extra = [offen && t.dueDate ? `fällig ${t.dueDate.slice(0, 10)}` : '', !offen && t.completedAt ? `erledigt ${tagVon(t.completedAt)}` : '', t.assignee ? `zuständig ${md(t.assignee, 30)}` : '']
+  const extra = ebene ? '' : [offen && t.dueDate ? `fällig ${t.dueDate.slice(0, 10)}` : '', !offen && t.completedAt ? `erledigt ${tagVon(t.completedAt)}` : '', t.assignee ? `zuständig ${md(t.assignee, 30)}` : '']
     .filter(Boolean).join(' · ');
-  const kinder = unter.map(u => `    - [${u.status === 'done' ? 'x' : ' '}] ${link(u.title, WEG.aufgabe(u.id))}`).join('\n');
-  return `- [${offen ? ' ' : 'x'}] ${link(t.title, WEG.aufgabe(t.id))}${extra ? ` · ${extra}` : ''}${kinder ? `\n${kinder}` : ''}`;
+  const weiter = new Set(gesehen).add(t.id);
+  const kinder = ebene + 1 < AUFGABEN_EBENEN_MAX ? unter(t).filter(u => !weiter.has(u.id)).map(u => aufgabeZeile(u, unter, ebene + 1, weiter)).join('\n') : '';
+  const zeile = ebene ? `${'    '.repeat(ebene)}- [${t.status === 'done' ? 'x' : ' '}] ${link(t.title, WEG.aufgabe(t.id))}` : `- [${offen ? ' ' : 'x'}] ${link(t.title, WEG.aufgabe(t.id))}${extra ? ` · ${extra}` : ''}`;
+  return `${zeile}${kinder ? `\n${kinder}` : ''}`;
 }
 
 function aufgabenBlock(aufgaben: Task[], alle: Task[], d: AppDaten): string {
   const haupt = aufgaben.filter(t => !t.parentId);
-  const unter = (t: Task) => alle.filter(u => u.parentId === t.id && aufgabeSichtbar(u, d));
+  const kinder = kinderKarte(alle);
+  const unter = (t: Task) => (kinder.get(t.id) ?? []).filter(u => aufgabeSichtbar(u, d));
   const offen = haupt.filter(t => t.status !== 'done' && t.status !== 'cancelled').sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || a.title.localeCompare(b.title, 'de'));
   const erledigt = haupt.filter(t => t.status === 'done').sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
   return [
-    `## Offene Aufgaben (${offen.length})`, '', offen.length ? offen.map(t => aufgabeZeile(t, unter(t))).join('\n') : '_keine_', '',
-    `## Erledigte Aufgaben (${erledigt.length})`, '', erledigt.length ? erledigt.slice(0, ERLEDIGT_MAX).map(t => aufgabeZeile(t, [])).join('\n') : '_keine_',
+    `## Offene Aufgaben (${offen.length})`, '', offen.length ? offen.map(t => aufgabeZeile(t, unter)).join('\n') : '_keine_', '',
+    `## Erledigte Aufgaben (${erledigt.length})`, '', erledigt.length ? erledigt.slice(0, ERLEDIGT_MAX).map(t => aufgabeZeile(t, () => [])).join('\n') : '_keine_',
     ...(erledigt.length > ERLEDIGT_MAX ? ['', `_… und ${erledigt.length - ERLEDIGT_MAX} ältere erledigte — vollständig in der App._`] : []), '',
   ].join('\n');
 }

@@ -27,6 +27,7 @@ import type { AufgabenListe, Project, Task, TasksState } from '@/types/tasks';
 import { meilensteinSpace } from './meilensteine';
 import { finanzOrtAus, istGesellschaft } from '@/lib/einheiten';
 import { istMandantSpace, mandantSpaceId, istAbgeschlossen } from '@/lib/aufgaben/struktur';
+import { anteilFertig, kinderKarte } from '@/lib/aufgaben/ebenen';
 
 /** FNV-1a (32 Bit) als Basis 36 — stabil in Browser und Server. */
 function fnv(t: string): string {
@@ -97,18 +98,17 @@ export function aufgabenStand(aufgaben: readonly Task[], heute = ''): AufgabenSt
 
 /**
  * Der errechnete Fortschritt (0–100) aus den Aufgaben — null, wenn es keine zählende Aufgabe gibt (dann gilt der Wert
- * von Hand). Gewichtet: jede Hauptaufgabe 1; erledigt = 1, sonst Anteil erledigter Unteraufgaben.
+ * von Hand). Gewichtet: jede Hauptaufgabe 1; erledigt = 1, sonst Anteil fertig ihrer Unteraufgaben — seit 01.10. rekursiv
+ * über alle Ebenen (`anteilFertig`, lib/aufgaben/ebenen.ts: eine Unteraufgabe mit eigenen Unteraufgaben zählt mit deren
+ * Anteil). Für eine Ebene genau die alte Regel.
  */
 export function fortschrittAusAufgaben(aufgaben: readonly Task[]): number | null {
   const n = aufgaben.filter(t => t.status !== 'cancelled');
-  const haupt = n.filter(t => !t.parentId || !n.some(x => x.id === t.parentId));
+  const ids = new Set(n.map(t => t.id));
+  const haupt = n.filter(t => !t.parentId || !ids.has(t.parentId));
   if (!haupt.length) return null;
-  let summe = 0;
-  for (const h of haupt) {
-    if (h.status === 'done') { summe += 1; continue; }
-    const u = n.filter(t => t.parentId === h.id);
-    if (u.length) summe += u.filter(t => t.status === 'done').length / u.length;
-  }
+  const kinder = kinderKarte(n);
+  const summe = haupt.reduce((s, h) => s + anteilFertig(h, kinder), 0);
   return Math.round((100 * summe) / haupt.length);
 }
 

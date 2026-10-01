@@ -20,18 +20,30 @@ const leer = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEig
 export const alsStand = (roh: TasksState | null | undefined): TasksState => (roh && Array.isArray(roh.tasks) ? roh : { ...leer(), ...(roh ?? {}), tasks: [] });
 
 // ── Sichtbarkeit „nur ich“ (29.09., Kevin) — der EINE Filter für alle Lesepfade ──────────────
-// Eine Aufgabe mit `sichtbarkeit: 'nur-ich'` sieht nur ihre Anlegerin (`angelegtVon`); ihre Unteraufgaben erben das
-// (sichtbar nur, wenn die Eltern es sind). Ohne Person (Systemlauf) sieht man KEINE „nur ich“-Aufgabe. Wer eine fremde
+// Eine Aufgabe mit `sichtbarkeit: 'nur-ich'` sieht nur ihre Anlegerin (`angelegtVon`); ihre Unteraufgaben auf allen
+// Ebenen erben das (sichtbar nur, wenn alle Vorfahren es sind). Ohne Person (Systemlauf) sieht man KEINE „nur ich“-Aufgabe. Wer eine fremde
 // „nur ich“-Aufgabe schreiben will, bekommt 404 (lib/aufgaben/speicher.ts) — als gäbe es sie nicht.
 
 /** Ist die Aufgabe selbst als „nur ich“ markiert? */
 export const istNurIch = (t: Pick<Task, 'sichtbarkeit'> | undefined | null): boolean => t?.sichtbarkeit === 'nur-ich';
 
-/** Darf `person` die Aufgabe sehen? `nachId` = alle Aufgaben (für die Eltern einer Unteraufgabe). */
+/**
+ * Darf `person` die Aufgabe sehen? `nachId` = alle Aufgaben (für die Vorfahren einer Unteraufgabe). Seit 01.10. (mehrstufige
+ * Unteraufgaben) gilt die ganze Kette: liegt IRGENDEIN Vorfahre auf „nur ich“ einer anderen Person, ist auch der Enkel
+ * unsichtbar. Kreisfest (gesehene Einträge, höchstens 64 Schritte).
+ */
 export function darfSehen(t: Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>, person: string | null | undefined, nachId?: ReadonlyMap<string, Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>>): boolean {
-  if (istNurIch(t) && (!person || t.angelegtVon !== person)) return false;
-  const eltern = t.parentId ? nachId?.get(t.parentId) : undefined;
-  if (eltern && istNurIch(eltern) && (!person || eltern.angelegtVon !== person)) return false;
+  const fremd = (x: Pick<Task, 'sichtbarkeit' | 'angelegtVon'>) => istNurIch(x) && (!person || x.angelegtVon !== person);
+  if (fremd(t)) return false;
+  const gesehen = new Set<string>();
+  let pid = t.parentId;
+  for (let n = 0; pid && n < 64 && !gesehen.has(pid); n++) {
+    gesehen.add(pid);
+    const e = nachId?.get(pid);
+    if (!e) break;
+    if (fremd(e)) return false;
+    pid = e.parentId;
+  }
   return true;
 }
 

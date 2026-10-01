@@ -11,7 +11,8 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { aufgabenVonMeilenstein, fortschrittAusAufgaben } from '@/lib/planung/meilenstein-aufgaben';
 import { zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
-import { ladeAufgaben } from '@/lib/aufgaben/speicher';
+import { ladeAufgaben, ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
+import { elternAusText } from '@/lib/aufgaben/ebenen';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
@@ -578,17 +579,25 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     meilensteinId: await meilensteinAus(input.meilenstein),
   };
   if (input.meilenstein !== undefined && input.meilenstein !== '' && !body.meilensteinId) return `Fehlgeschlagen: kein Meilenstein passt zu „${String(input.meilenstein).slice(0, 80)}“.`;
+  // Unteraufgabe auf jeder Ebene (01.10.): `unter` = Titel/Pfad/Kennung der übergeordneten Aufgabe — gesucht nur in dem, was die
+  // Person sehen darf („nur ich“). Den Ort erbt sie von dort; Tiefe/Kreis prüft der Schreibweg (bis AUFGABEN_EBENEN_MAX).
+  let parentId: string | undefined;
+  if (typeof input.unter === 'string' && input.unter.trim()) {
+    const e = elternAusText((await ladeAufgabenSicht(person ?? null)).tasks, input.unter.slice(0, 300));
+    if ('fehler' in e) return `Aufgabe nicht angelegt: ${e.fehler}`;
+    parentId = e.id;
+  }
   try {
     const r = await fetch(`${origin}/api/tasks/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}) },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, ...(parentId ? { parentId } : {}) }),
       signal: AbortSignal.timeout(30_000),
     });
     const d = await r.json();
     if (!d.ok) return `Aufgabe nicht angelegt: ${String(d.error ?? '').slice(0, 160)}`;
     if (d.duplikat) return `Gab es schon: „${title}" steht bereits offen im Board — keine zweite angelegt.`;
-    return `Angelegt: „${title}"${body.priority !== 'medium' ? ` (${body.priority})` : ''}${body.dueDate ? `, fällig ${body.dueDate}` : ''}${body.einheit ? ` · ${body.einheit}` : ''}${body.meilensteinId ? ' · am Meilenstein' : ''}. Steht im Board.`;
+    return `Angelegt: „${title}"${parentId ? ' als Unteraufgabe' : ''}${body.priority !== 'medium' ? ` (${body.priority})` : ''}${body.dueDate ? `, fällig ${body.dueDate}` : ''}${body.einheit ? ` · ${body.einheit}` : ''}${body.meilensteinId ? ' · am Meilenstein' : ''}. Steht im Board.`;
   } catch (err) {
     return `Aufgabe nicht angelegt: ${err instanceof Error ? err.message.slice(0, 140) : 'Fehler'}`;
   }

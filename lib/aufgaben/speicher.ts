@@ -26,6 +26,7 @@ import { serienBeimErledigen, folgeinstanzenBeimOeffnen, serieUeberspringen } fr
 import { berlinerTag } from './wiederholung';
 import { followupsNachAufgaben } from '@/lib/crm/followup-aufgabe-server';
 import { dateienBereichNachziehen } from './umzug-dateien';
+import { elternPruefen, nachIdKarte, kinderKarte, vorfahren } from './ebenen';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
@@ -359,6 +360,24 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
     for (const [art, max, was] of [['tasks', AUFGABEN_GRENZEN.aufgaben, 'Aufgaben'], ['projects', AUFGABEN_GRENZEN.projekte, 'Projekte'], ['listen', AUFGABEN_GRENZEN.listen, 'Listen'], ['statusEigen', AUFGABEN_GRENZEN.status, 'eigene Status'], ['gruppen', AUFGABEN_GRENZEN.gruppen, 'Gruppen'], ['vorlagen', AUFGABEN_GRENZEN.vorlagen, 'Vorlagen']] as const) {
       const n = (roh2[art] ?? []).length;
       if (n > max && n > (vorher[art] ?? []).length) { erg = { ok: false, status: 413, fehler: `Abgelehnt: höchstens ${max} ${was}.`, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+    }
+    // Mehrstufige Unteraufgaben (01.10.): wer ein (neues) Elternteil bekommt, wird gegen den ENDSTAND dieser Änderung geprüft
+    // (so dürfen Eltern und Kinder in einem Paket kommen) — Elternteil vorhanden und nicht im Papierkorb/Archiv, kein Kreis,
+    // höchstens AUFGABEN_EBENEN_MAX Ebenen samt eigenem Teilbaum. Die Übernahme würde es sonst still „reparieren“.
+    {
+      const nachIdE = nachIdKarte(roh2.tasks), kinderE = kinderKarte(roh2.tasks), altE = nachIdKarte(vorher.tasks);
+      for (const o of ops.tasks) {
+        if (o.op !== 'upsert') continue;
+        const t = nachIdE.get(o.eintrag!.id);
+        const alt = t ? altE.get(t.id) : undefined;
+        if (!t?.parentId || (alt && alt.parentId === t.parentId)) continue;
+        const f = elternPruefen(t, t.parentId, nachIdE, kinderE, x => !x.geloeschtAm && !(x as Task).archiviertAm);
+        if (!f) continue;
+        erg = f.art === 'kreis'
+          ? { ok: false, status: 409, fehler: f.text, kreis: [t.id, ...vorfahren(nachIdE.get(t.parentId)!, nachIdE).map(x => x.id).filter(x => x !== t.id)].slice(0, 10), angewandt: 0, zeilen: [] }
+          : { ok: false, status: 400, fehler: f.text, angewandt: 0, zeilen: [] };
+        throw ABBRUCH;
+      }
     }
     const loesch = ops.tasks.filter(o => o.op === 'delete').length;
     if (vorher.tasks.length >= 10 && loesch > vorher.tasks.length / 2 && !opt.massenLoeschung) {

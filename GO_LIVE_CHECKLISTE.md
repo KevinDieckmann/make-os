@@ -135,6 +135,15 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   und schreibt ihn nie) und die Rechenregel fehlen; der Fortschritt bleibt auf dem zuletzt errechneten Wert stehen (dann wieder von
   Hand). `zielId` am Meilenstein fällt beim nächsten Speichern eines Meilensteins weg. Dateien an der Liste (`listeId`) erscheinen
   als Dateien des Projekts „Meilensteine“. Nach einem erneuten Upload stimmt alles wieder (Verweise nur per Kennung).
+- **Mehrstufige Unteraufgaben (bis 5 Ebenen, 01.10.):** keine Formänderung — `parentId` gab es schon, es darf jetzt auf eine
+  Unteraufgabe zeigen. af4679a/6111e71 kennt nur zwei Ebenen: seine Übernahme (`uebernehmen`, läuft bei jedem Lesen) hängt jede
+  tiefere Unteraufgabe beim nächsten Speichern an die **oberste** Aufgabe (Ebene 2) und gibt ihr deren Space/Projekt/Liste —
+  Titel, Beschreibung, Notiz, Status, Zuständige, Dateien, Kommentare, Verlauf und Papierkorb-Stand (`geloeschtMit`) bleiben
+  erhalten, **nur die Zwischenebene geht verloren** (die Reihenfolge der Kinder bleibt über `sortOrder`). Fortschritt am
+  Meilenstein und „n/m“ zählen dort nur die flachen Unteraufgaben (der Meilenstein-Wert steht ohnehin auf dem zuletzt
+  errechneten Stand, siehe oben). Vor dem Rückweg: Aufgaben mit Ebene 3+ in der Aufgaben-Seite kurz notieren, wenn die Gliederung
+  wichtig ist; nach einem erneuten Upload bleibt es flach (nichts wird von selbst wieder tief). Kreise können im alten Stand
+  nicht entstehen; die neue Version lehnt sie ab (Meldung „Abgelehnt: … kann nicht unter ihrer eigenen Unteraufgabe liegen“).
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

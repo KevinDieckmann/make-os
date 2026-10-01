@@ -9,6 +9,8 @@
 // Anlegerin, Datumsprüfung, „nur ich“, Verlauf durch den Server).
 // S1 (29.09.): nie still gekürzt — Titel über 300, Einheit über 40, Beschreibung über 4000 Zeichen → 413; ohne
 // ausdrückliche Person (Systemlauf) muss `owner` genannt sein (400) — kein Rückfall auf „kevin“ (Regel 5).
+// 01.10.: `parentId` darf auf eine Unteraufgabe jeder Ebene zeigen (bis AUFGABEN_EBENEN_MAX, lib/aufgaben/ebenen.ts — der
+// Schreibweg lehnt tiefer ab: 400); unbekanntes/unsichtbares Elternteil → 404 (vorher still als Hauptaufgabe angelegt).
 
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
@@ -81,7 +83,7 @@ export async function POST(req: Request) {
     body.spaceId = sp; body.projectId = meilensteinProjektId(sp); body.listeId = meilensteinListeId(ms.id);
   }
   const wer = werAus(req);
-  let ergebnis: { id: string; duplikat?: boolean } = { id: '' };
+  let ergebnis: { id: string; duplikat?: boolean; elternFehlt?: boolean } = { id: '' };
   // Über den EINEN Schreibweg (29.09., Paket T1): Server-Felder (Anlegerin, Zeitstempel), eine Verantwortliche („both“ →
   // Anlegerin + Beteiligte), Prüfregeln (Datum, Person), Verlauf „angelegt“, Protokoll, Meldungen (gebündelt).
   const r = await aufgabenAendern(state0 => {
@@ -89,10 +91,12 @@ export async function POST(req: Request) {
     // Duplikat-Schutz: gleiche (normalisierte) Überschrift + noch offen → nicht doppelt anlegen (der Papierkorb zählt nicht).
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
     // Am Meilenstein (30.09.) nur in seiner Liste prüfen — sonst landete „Vertrag prüfen“ bei einer gleichnamigen Aufgabe woanders.
-    const vorhanden = state.tasks.find(t => istOffen(t) && !t.parentId && norm(t.title) === norm(title) && (body.meilensteinId === undefined || t.listeId === body.listeId));
-    if (vorhanden) { ergebnis = { id: vorhanden.id, duplikat: true }; return keineOps(); }
-    const projekt = state.projects.find(p => p.id === body.projectId);
+    // Mehrstufig (01.10.): mit Elternteil (jede Ebene) zählt nur, was schon unter DIESEM Elternteil steht.
     const eltern = body.parentId ? state.tasks.find(t => t.id === body.parentId) : undefined;
+    if (body.parentId && !eltern) { ergebnis = { id: '', elternFehlt: true }; return keineOps(); }
+    const vorhanden = state.tasks.find(t => istOffen(t) && (eltern ? t.parentId === eltern.id : !t.parentId) && norm(t.title) === norm(title) && (eltern || body.meilensteinId === undefined || t.listeId === body.listeId));
+    if (vorhanden) { ergebnis = { id: vorhanden.id, duplikat: true }; return keineOps(); }
+    const projekt = state.projects.find(p => p.id === (eltern ? eltern.projectId : body.projectId));
     const basis: Task = {
       // Kollisionsfrei: nicht an array.length koppeln (bricht nach Löschungen).
       id: `mtg-${now.replace(/[^0-9]/g, '').slice(0, 14)}-${randomUUID().slice(0, 8)}`,
@@ -112,13 +116,16 @@ export async function POST(req: Request) {
     };
     if (!dueDate) delete basis.dueDate;
     if (dueDate && typeof body.dueTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(body.dueTime)) basis.dueTime = body.dueTime;
-    // Space: ausdrücklich, sonst wie bei Altaufgaben (Privat/Business, Einheit, Ort, Projekt).
-    basis.spaceId = istSpaceId(body.spaceId) ? body.spaceId : spaceFuerAltAufgabe(basis, projekt, orgs);
+    // Space: ausdrücklich, sonst wie bei Altaufgaben (Privat/Business, Einheit, Ort, Projekt). Mit Elternteil erbt die
+    // Unteraufgabe den Ort (die Übernahme im Schreibweg zieht ihn ohnehin von der Hauptaufgabe nach; Tiefe/Kreis prüft er).
+    basis.spaceId = eltern?.spaceId ?? (istSpaceId(body.spaceId) ? body.spaceId : spaceFuerAltAufgabe(basis, projekt, orgs));
+    if (eltern) { basis.projectId = eltern.projectId; if (eltern.listeId) basis.listeId = eltern.listeId; else delete basis.listeId; }
     if (!basis.projectId) basis.projectId = sonstigeProjektId(basis.spaceId);
     ergebnis = { id: basis.id };
     return { ...keineOps(), tasks: [{ op: 'upsert', eintrag: basis }] };
   }, { person: zugang.person ?? 'system', wer, orgs, jetzt: now });
   if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: r.status });
+  if (ergebnis.elternFehlt) return NextResponse.json({ ok: false, error: 'Die übergeordnete Aufgabe gibt es nicht (mehr).' }, { status: 404 });
   if (ergebnis.duplikat) return NextResponse.json({ ok: true, id: ergebnis.id, duplikat: true, hinweis: 'Gibt es schon als offene Aufgabe — nicht doppelt angelegt.' });
   return NextResponse.json({ ok: true, id: ergebnis.id });
 }

@@ -18,6 +18,7 @@ import type { TasksState } from '@/types/tasks';
 import type { AufgabenAktion } from '@/context/TasksContext';
 import { aufgabeAnlegen, projektAnlegen, listeAnlegen, gruppeAnlegen, projekteImSpace, spacesOderFest, usePersonen, useIch } from './hilfe';
 import type { Owner } from '@/types/common';
+import { nachIdKarte, darfUnteraufgabe, pfadText } from '@/lib/aufgaben/ebenen';
 
 const SONST = '__sonstige__';
 const ALLE = '__alle__';
@@ -61,10 +62,14 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
   const gruppenListe: WahlEintrag<string>[] = [{ id: ALLE, label: 'ohne Gruppe' }, ...gruppen.map(g => ({ id: g.id, label: g.titel, punkt: g.farbe }))];
   const listen = (state.listen ?? []).filter(l => l.projektId === projektId && !l.archiviert && (gruppeId === ALLE || l.gruppeId === gruppeId)).sort((a, b) => a.sortOrder - b.sortOrder);
   const listenListe: WahlEintrag<string>[] = [...listen.map(l => ({ id: l.id, label: l.titel })), { id: SONST, label: 'Sonstige' }];
-  const elternListe: WahlEintrag<string>[] = useMemo(() => state.tasks
-    .filter(t => t.spaceId === spaceId && !t.parentId && t.status !== 'done' && t.projectId === projektId && (listeId === SONST ? !t.listeId || !listen.some(l => l.id === t.listeId) : t.listeId === listeId))
-    .sort((a, b) => a.title.localeCompare(b.title, 'de'))
-    .map(t => ({ id: t.id, label: t.title })), [state.tasks, spaceId, projektId, listeId, listen]);
+  // Übergeordnete Aufgabe auf jeder Ebene (01.10.): alle offenen im Ort, unter denen noch eine Ebene Platz hat — mit Pfad.
+  const elternListe: WahlEintrag<string>[] = useMemo(() => {
+    const nachId = nachIdKarte(state.tasks);
+    return state.tasks
+      .filter(t => t.spaceId === spaceId && t.status !== 'done' && t.status !== 'cancelled' && t.projectId === projektId && (listeId === SONST ? !t.listeId || !listen.some(l => l.id === t.listeId) : t.listeId === listeId) && darfUnteraufgabe(t, nachId))
+      .map(t => ({ id: t.id, label: pfadText(t, nachId) }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'de'));
+  }, [state.tasks, spaceId, projektId, listeId, listen]);
 
   // @Name aus dem Team (29.09., F4): Vorname, Kurzname, Speichername — nicht mehr fest @kevin/@malin.
   const schnellPersonen = useMemo<SchnellPerson[]>(() => personen.map(x => ({ speicher: x.speicher, namen: x.namen })), [personen]);

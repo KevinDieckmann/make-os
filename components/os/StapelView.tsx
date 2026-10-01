@@ -150,7 +150,7 @@ export function StapelView() {
                       {v.bezug?.art === 'aufgabe' && <AufgabeVorschlag v={v} />}
                       {aufgabenInhalt(v) && (
                         <div style={{ marginTop: 10 }}>
-                          <FreigabeFelder inhalt={aufgabenInhalt(v)!} aufgabe={aufgabenStand.tasks.find(t => t.id === v.bezug!.id)} stand={zoeStandLesen(v.eingabe._stand)} eigene={aufgabenStand.statusEigen ?? []}
+                          <FreigabeFelder inhalt={aufgabenInhalt(v)!} aufgabe={aufgabenStand.tasks.find(t => t.id === v.bezug!.id)} stand={zoeStandLesen(v.eingabe._stand)} eigene={aufgabenStand.statusEigen ?? []} bestand={aufgabenStand.tasks}
                             gewaehlt={haekchen[v.id] ?? alleFelder(aufgabenInhalt(v)!)} onWahl={f => setHaekchen(h => ({ ...h, [v.id]: f }))} />
                         </div>
                       )}

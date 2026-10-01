@@ -9,6 +9,7 @@ import type {
 } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import { istSpaceId, istSonstigeProjekt, TASK_STATUS } from './struktur';
+import { AUFGABEN_EBENEN_MAX } from './ebenen';
 
 /** Grenzen je Aufgabe/Bestand — darüber 413 mit Text. */
 export const AUFGABEN_GRENZEN = {
@@ -439,8 +440,9 @@ function vorlageAufgabeSauber(o: unknown, tiefe: number, zaehler: { n: number })
   const v = Number(a.versatzTage); if (Number.isInteger(v) && Math.abs(v) <= 3650) r.versatzTage = v;
   const n = notizSauber(a.notiz, 'Notiz in der Vorlage'); if (n) r.notiz = n;
   const f = feldWerteSauber(a.felder); if (f) r.felder = f;
-  if (tiefe === 0 && Array.isArray(a.unter)) {
-    const u = a.unter.map(x => vorlageAufgabeSauber(x, 1, zaehler)).filter((x): x is VorlageAufgabe => !!x);
+  // Mehrstufig (01.10.): Unteraufgaben bis zur Grenze (Hauptaufgabe = Tiefe 0); tiefer fällt weg (die Zahl-Grenze zählt alle).
+  if (tiefe + 1 < AUFGABEN_EBENEN_MAX && Array.isArray(a.unter)) {
+    const u = a.unter.map(x => vorlageAufgabeSauber(x, tiefe + 1, zaehler)).filter((x): x is VorlageAufgabe => !!x);
     if (u.length) r.unter = u;
   }
   return r;

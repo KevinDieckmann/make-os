@@ -4,6 +4,22 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Mehrstufige Unteraufgaben bis 5 Ebenen (01.10.2026, nur lokal — Branch `tiefe`)
+
+Kevin 01.10.: „Wir brauchen nochmal Unteraufgaben, also bei dem HOS unter Produkten. Da müssen wir nochmal Beschreibungen machen können.“
+`parentId` darf jetzt auf eine Unteraufgabe zeigen — bis `AUFGABEN_EBENEN_MAX` = 5 Ebenen (Hauptaufgabe = 1), jede Ebene mit vollem Detail.
+
+- **Modell/Schreibweg** (`lib/aufgaben/ebenen.ts`, `speicher.ts`, `/api/tasks/create`): keine Formänderung; der Server lehnt zu tief (400), Kreis (409) und
+  fehlendes Elternteil (400, create 404) mit klarer Meldung ab, nichts gespeichert. Kinder erben den Ort von der Hauptaufgabe, Umhängen zieht den Teilbaum
+  mit. Die Übernahme heilt Altbestand (Kreis aufbrechen, zu tiefe Kette kappen) ohne Verlust.
+- **Anzeige:** Baum (aufklappen je Ebene, n/m, „+ Unteraufgabe“ bis zur Grenze), Detail (Brotkrumen der Kette, direkte Unteraufgaben, Beschreibung auf
+  jeder Ebene, umhängen/zur Hauptaufgabe machen), Schnell-Anlegen, Tabelle, Suche, Kalender, Meilenstein-Detail.
+- **Logik rekursiv:** Erledigt-Rückfrage, Fortschritt/Meilenstein, Papierkorb/Wiederherstellen/Archiv/„Neu anfangen“, Serien, Vorlagen, „nur ich“,
+  Verbindungsprüfung (2 neue Prüfungen), Brain-Spiegel; ZOE `create_task` mit `unter` (nur über den Stapel).
+- **Rückweg:** der Online-Stand (zwei Ebenen) hängt tiefere Unteraufgaben beim nächsten Speichern an die oberste Aufgabe — Titel, Beschreibung, Notiz,
+  Status bleiben, nur die Zwischenebene geht verloren (`GO_LIVE_CHECKLISTE.md` › Rückweg).
+- **Tests:** `tests/aufgaben-ebenen.test.ts` (47), angepasst `aufgaben-struktur`, `aufgaben-vertiefung`, `crm-verbindungen`.
+
 ## Landingpage v3: Positionierung „Innovation in Deutschland fördern“ (01.10.2026, nur lokal — Branch `website-v3`)
 
 Kevin 01.10.: „Wir wollen Innovation in Deutschland fördern — deshalb haben wir das Make.One-Netzwerk gegründet.“

@@ -208,19 +208,26 @@ export function vergleiche(a: string | number | null, b: string | number | null,
   return richtung === 'auf' ? r : -r;
 }
 
-export interface TabellenZeile { task: Task; tiefe: 0 | 1; /** Anzahl Unteraufgaben im Kontext (nur Tiefe 0). */ unter: number }
+export interface TabellenZeile {
+  task: Task;
+  /** 0 = oben (Aufgabe bzw. Unteraufgabe ohne Elternteil im Kontext), 1 = deren Unteraufgabe … (mehrstufig seit 01.10.). */
+  tiefe: number;
+  /** Anzahl direkter Unteraufgaben im Kontext (jede Ebene — für den Aufklapp-Pfeil). */
+  unter: number;
+}
 
 /**
  * Die Zeilen der Tabelle. `aufgaben` kommt in der Vorgabe-Reihenfolge (wie die Liste); ohne Sortierung bleibt sie.
- * Oben stehen Aufgaben (und Unteraufgaben, deren Aufgabe nicht im Kontext steht); Unteraufgaben folgen ihrer
- * Aufgabe, wenn sie aufgeklappt ist (`auf`), in derselben Sortierung. Stabil (gleiche Werte behalten die Vorgabe).
+ * Oben stehen Aufgaben (und Unteraufgaben, deren Elternteil nicht im Kontext steht); Unteraufgaben folgen ihrem
+ * Elternteil, wenn es aufgeklappt ist (`auf`), in derselben Sortierung — auf jeder Ebene (01.10.). Stabil (gleiche
+ * Werte behalten die Vorgabe). Kreisfest.
  */
 export function tabelleZeilen(aufgaben: readonly Task[], sort: Sortierung | null, k: SortKontext, auf: ReadonlySet<string>): TabellenZeile[] {
   const ids = new Set(aufgaben.map(t => t.id));
   const kinder = new Map<string, Task[]>();
   const oben: Task[] = [];
   for (const t of aufgaben) {
-    if (t.parentId && ids.has(t.parentId)) kinder.set(t.parentId, [...(kinder.get(t.parentId) ?? []), t]);
+    if (t.parentId && ids.has(t.parentId) && t.parentId !== t.id) kinder.set(t.parentId, [...(kinder.get(t.parentId) ?? []), t]);
     else oben.push(t);
   }
   const ordne = (l: Task[]): Task[] => {
@@ -229,11 +236,15 @@ export function tabelleZeilen(aufgaben: readonly Task[], sort: Sortierung | null
     return [...l].sort((a, b) => vergleiche(werte.get(a.id) ?? null, werte.get(b.id) ?? null, sort.richtung));
   };
   const raus: TabellenZeile[] = [];
-  for (const t of ordne(oben)) {
+  const gesehen = new Set<string>();
+  const zeile = (t: Task, tiefe: number) => {
+    if (gesehen.has(t.id)) return;
+    gesehen.add(t.id);
     const u = kinder.get(t.id) ?? [];
-    raus.push({ task: t, tiefe: 0, unter: u.length });
-    if (auf.has(t.id)) for (const x of ordne(u)) raus.push({ task: x, tiefe: 1, unter: 0 });
-  }
+    raus.push({ task: t, tiefe, unter: u.length });
+    if (auf.has(t.id)) for (const x of ordne(u)) zeile(x, tiefe + 1);
+  };
+  for (const t of ordne(oben)) zeile(t, 0);
   return raus;
 }
 

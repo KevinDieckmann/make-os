@@ -165,20 +165,20 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
         const offen = auf.has(t.id);
         return (
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: tiefe * 22, minWidth: 0 }}>
-            {tiefe === 0 && unter > 0 ? (
+            {unter > 0 ? (
               <button onClick={() => setAuf(a => { const n = new Set(a); if (n.has(t.id)) n.delete(t.id); else n.add(t.id); return n; })} aria-expanded={offen}
                 aria-label={offen ? `Unteraufgaben von „${t.title}“ zuklappen` : `${unter} Unteraufgaben von „${t.title}“ aufklappen`} className="fassbar"
                 style={{ width: 22, height: 22, display: 'grid', placeItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: C.inkDim, padding: 0, flex: '0 0 auto' }}>
                 <ChevronRight size={14} style={{ transform: offen ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease' }} />
               </button>
-            ) : <span style={{ width: tiefe ? 0 : 22, flex: '0 0 auto' }} />}
+            ) : <span style={{ width: 22, flex: '0 0 auto' }} />}
             <Punkt farbe={prioFarbe(t.priority)} groesse={7} />
             <PrioZeichen p={t.priority} />
             <button id={`oeffnen-${t.id}`} onClick={() => onOeffnen(t.id)} className="fassbar" title={t.title}
               style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: tiefe ? 12.5 : 13.5, fontWeight: tiefe ? 500 : 600, ...titelStil(t), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</button>
             {t.sichtbarkeit === 'nur-ich' && <NurIchZeichen />}
             {t.wiederholung && <span title="wiederkehrend" aria-label="wiederkehrend" style={{ color: C.inkLeise, display: 'inline-flex' }}><Repeat size={12} /></span>}
-            {tiefe === 0 && unter > 0 && <span style={{ fontSize: 11.5, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{unter}</span>}
+            {unter > 0 && <span style={{ fontSize: 11.5, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{unter}</span>}
           </span>
         );
       }

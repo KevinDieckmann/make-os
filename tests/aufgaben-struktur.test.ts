@@ -94,7 +94,7 @@ describe('Übernahme des Altbestands', () => {
     expect(zwei.state.tasks).toHaveLength(eins.tasks.length);
     expect(JSON.stringify(zwei.state)).toBe(JSON.stringify(eins));
   });
-  it('Unteraufgaben: eine Ebene, erben Space/Projekt/Liste; ohne Elternteil werden sie normale Aufgaben', () => {
+  it('Unteraufgaben: mehrstufig (01.10.), erben Space/Projekt/Liste von der Hauptaufgabe; ohne Elternteil werden sie normale Aufgaben', () => {
     const st: TasksState = {
       projects: [projekt('p1', 'business')], listen: [{ id: 'l-jan', projektId: 'p1', titel: 'Januar', sortOrder: 0 }], statusEigen: [],
       tasks: [
@@ -106,7 +106,7 @@ describe('Übernahme des Altbestands', () => {
     };
     const t = Object.fromEntries(uebernehmen(st).state.tasks.map(x => [x.id, x]));
     expect(t.b).toMatchObject({ parentId: 'a', spaceId: 'kdv', projectId: 'p1', listeId: 'l-jan', space: 'business' });
-    expect(t.c).toMatchObject({ parentId: 'a', spaceId: 'kdv', listeId: 'l-jan' });
+    expect(t.c).toMatchObject({ parentId: 'b', spaceId: 'kdv', projectId: 'p1', listeId: 'l-jan', space: 'business' }); // Enkel bleibt unter b (vorher: an a gehängt)
     expect(t.d.parentId).toBeUndefined();
     expect(t.d.projectId).toBe('p-x');
   });

@@ -2,7 +2,7 @@
 // Kevin: „Alle Infos müssen immer sauber gespeichert werden.“ Löschen war endgültig: ein Projekt nahm Notiz,
 // Beschreibung und eigene Felder mit, Dateien blieben verwaist. Jetzt:
 //   · „Löschen“ legt in den Papierkorb (`geloeschtAm`). Ein Projekt nimmt seine Aufgaben mit (`geloeschtMit` =
-//     Projekt), eine Aufgabe ihre Unteraufgaben (`geloeschtMit` = Aufgabe). Notiz, Felder, Listen, Gruppen und Dateien
+//     Projekt), eine Aufgabe ihren ganzen Teilbaum (seit 01.10. alle Ebenen; `geloeschtMit` = Aufgabe). Notiz, Felder, Listen, Gruppen und Dateien
 //     bleiben am Eintrag stehen.
 //   · Wiederherstellen holt die ganze Kette zurück. Liegt das Projekt einer einzeln gelöschten Aufgabe selbst im
 //     Papierkorb (oder ist es weg), landet sie in „Sonstige“ ihres Space; eine Unteraufgabe ohne Eltern wird eine
@@ -16,6 +16,7 @@
 import type { Task, TasksState } from '@/types/tasks';
 import { sonstigeProjektId } from './struktur';
 import { ohneArchiv } from './neustart';
+import { nachfahrenIn, mitVerbliebenenVorfahren, vorfahren, nachIdKarte } from './ebenen';
 
 export const PAPIERKORB_TAGE = 30;
 const TAG_MS = 86_400_000;
@@ -38,8 +39,8 @@ function ohnePapierkorb<T extends TasksState>(state: T): T {
   return {
     ...state,
     projects: state.projects.filter(p => !weg.has(p.id)),
-    // Unteraufgaben, deren Eltern im Papierkorb liegen, sieht niemand (sie gehen immer mit).
-    tasks: tasks.filter(t => !t.parentId || bleibt.has(t.parentId)),
+    // Unteraufgaben, deren Eltern (auf irgendeiner Ebene) im Papierkorb liegen, sieht niemand (sie gehen immer mit).
+    tasks: mitVerbliebenenVorfahren(tasks, bleibt),
     listen: (state.listen ?? []).filter(l => !weg.has(l.projektId)),
     gruppen: (state.gruppen ?? []).filter(g => !weg.has(g.projektId)),
   };
@@ -60,7 +61,8 @@ export function projektUmfang(state: TasksState, projektId: string, dateien = 0)
 
 export function aufgabeUmfang(state: TasksState, taskId: string, dateien = 0): Umfang {
   const t = state.tasks.find(x => x.id === taskId);
-  const unter = state.tasks.filter(x => x.parentId === taskId && !imPapierkorb(x));
+  // Mehrstufig (01.10.): der ganze Teilbaum geht mit — gezählt werden alle Ebenen.
+  const unter = nachfahrenIn(taskId, state.tasks).filter(x => !imPapierkorb(x));
   return {
     aufgaben: 0, unteraufgaben: unter.length, notiz: !!t?.notiz?.trim() || unter.some(u => !!u.notiz?.trim()), beschreibung: !!t?.description?.trim(),
     felder: Object.keys(t?.felder ?? {}).length, listen: 0, dateien,
@@ -101,11 +103,11 @@ export function projektInPapierkorb(state: TasksState, id: string, jetzt: string
   return { ...state, projects: state.projects.map(x => (x.id === id ? { ...x, geloeschtAm: jetzt, updatedAt: jetzt } : x)), tasks: verweiseLoesen(tasks, mit, jetzt) };
 }
 
-/** Aufgabe in den Papierkorb — ihre Unteraufgaben gehen mit. */
+/** Aufgabe in den Papierkorb — ihr ganzer Teilbaum (alle Ebenen, 01.10.) geht mit (`geloeschtMit` = diese Aufgabe). */
 export function aufgabeInPapierkorb(state: TasksState, id: string, jetzt: string): TasksState {
   const t0 = state.tasks.find(x => x.id === id);
   if (!t0 || imPapierkorb(t0)) return state;
-  const unter = new Set(state.tasks.filter(t => t.parentId === id && !imPapierkorb(t)).map(t => t.id));
+  const unter = new Set(nachfahrenIn(id, state.tasks).filter(t => !imPapierkorb(t)).map(t => t.id));
   const tasks = state.tasks.map(t => {
     if (t.id === id) { const n: Task = { ...t, geloeschtAm: jetzt, updatedAt: jetzt }; delete n.geloeschtMit; return n; }
     return unter.has(t.id) ? { ...t, geloeschtAm: jetzt, geloeschtMit: id, updatedAt: jetzt } : t;
@@ -135,7 +137,8 @@ export function wiederherstellen(state: TasksState, art: 'projekt' | 'aufgabe', 
   const projekt = state.projects.find(p => p.id === t0.projectId);
   const projektWeg = !!projekt && imPapierkorb(projekt);
   const eltern = t0.parentId ? state.tasks.find(x => x.id === t0.parentId) : undefined;
-  const elternWeg = !!t0.parentId && (!eltern || imPapierkorb(eltern));
+  // Mehrstufig (01.10.): liegt das Elternteil ODER ein weiterer Vorfahre im Papierkorb, wird sie eine Hauptaufgabe.
+  const elternWeg = !!t0.parentId && (!eltern || imPapierkorb(eltern) || vorfahren(eltern, nachIdKarte(state.tasks)).some(imPapierkorb));
   return {
     ...state,
     tasks: state.tasks.map(t => {

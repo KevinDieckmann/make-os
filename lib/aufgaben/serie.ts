@@ -40,6 +40,7 @@ import {
   standardMuster, tagPlus, tageZwischen, titelMitPlatzhaltern,
 } from './wiederholung';
 import { aufgabenAusVorlage, vorlageFinden } from './vorlagen';
+import { kinderKarte, nachfahrenIn, AUFGABEN_EBENEN_MAX } from './ebenen';
 
 export const SERIE_PRAEFIX = 'serie:';
 
@@ -168,8 +169,19 @@ function instanzAm(t: Task, alle: readonly Task[], serie: string, basis: string,
     ...(t.sichtbarkeit ? { sichtbarkeit: t.sichtbarkeit } : {}), ...(t.angelegtVon ? { angelegtVon: t.angelegtVon } : {}),
   });
   if (inst.beteiligte && !inst.beteiligte.length) delete inst.beteiligte;
-  const unter = alle.filter(x => x.parentId === t.id && (!x.geloeschtAm || x.geloeschtMit === t.id)).sort(nachReihe)
-    .map((u, i) => kopie(u, `${id}-u${i + 1}`, { parentId: id, dueDate: verschoben(u.dueDate, delta), startDate: verschoben(u.startDate, delta) }));
+  // Mehrstufig (01.10.): der ganze Teilbaum kommt mit, zurückgesetzt. Kennungen je Ebene `<eltern>-u<n>` (Ebene 2 wie
+  // bisher `<instanz>-u1`, Ebene 3 `<instanz>-u1-u1` …) — fest, damit ein zweiter Lauf nichts doppelt anlegt.
+  const kinder = kinderKarte(alle.filter(x => !x.geloeschtAm || x.geloeschtMit === t.id));
+  const unter: Task[] = [];
+  const kopiere = (altId: string, neuId: string, tiefe: number) => {
+    if (tiefe > AUFGABEN_EBENEN_MAX) return;
+    [...(kinder.get(altId) ?? [])].sort(nachReihe).forEach((u, i) => {
+      const nid = `${neuId}-u${i + 1}`;
+      unter.push(kopie(u, nid, { parentId: neuId, dueDate: verschoben(u.dueDate, delta), startDate: verschoben(u.startDate, delta) }));
+      kopiere(u.id, nid, tiefe + 1);
+    });
+  };
+  kopiere(t.id, id, 2);
   return [inst, ...unter];
 }
 
@@ -209,7 +221,7 @@ export function folgeinstanzenBeimOeffnen(vorher: readonly Task[], nachher: read
       const unberuehrt = (x.verlauf ?? []).every(v => v.was === 'angelegt') && x.updatedAt === x.createdAt && (!seit || x.createdAt >= seit);
       if (!unberuehrt || x.kommentare?.length) continue;
       weg.add(x.id);
-      for (const u of nachher) if (u.parentId === x.id) weg.add(u.id);
+      for (const u of nachfahrenIn(x.id, nachher)) weg.add(u.id);
     }
   }
   return Array.from(weg);

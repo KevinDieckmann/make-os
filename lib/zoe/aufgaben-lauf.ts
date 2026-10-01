@@ -20,6 +20,7 @@ import { ladeAufgabenSicht, ladeAufgabenUngefiltert } from '@/lib/aufgaben/speic
 import { darfSehen } from '@/lib/aufgaben/sicht';
 import { wartetAuf } from '@/lib/aufgaben/abhaengig';
 import { statusVon } from '@/lib/aufgaben/struktur';
+import { kette, nachIdKarte } from '@/lib/aufgaben/ebenen';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { melde } from '@/lib/meldungen/melden';
 import { WEG } from '@/lib/wege';
@@ -125,13 +126,14 @@ const SCHEMA = {
  * stehen außerhalb (ihre eigenen Worte an ZOE), begrenzt.
  */
 export function auftragText(t: Task, ctx: { state: Pick<TasksState, 'tasks' | 'projects' | 'statusEigen'>; heute: string; crm?: string; hinweis?: string | null; abgelehnt?: string | null; /** Unterlagen aus der Aufgaben-Ablage (schon begrenzt). */ dateien?: string }): string {
-  const eltern = t.parentId ? ctx.state.tasks.find(x => x.id === t.parentId) : undefined;
+  // Mehrstufig (01.10.): die ganze Kette („Produkte › HOS“), nicht nur das direkte Elternteil.
+  const pfad = kette(t, nachIdKarte(ctx.state.tasks));
   const unter = ctx.state.tasks.filter(x => x.parentId === t.id);
   const projekt = ctx.state.projects.find(p => p.id === t.projectId);
   const aufgabe = [
     `Titel: ${t.title}`,
     `Status: ${statusVon(t, ctx.state.statusEigen ?? []).label} · Priorität: ${t.priority}${t.dueDate ? ` · Deadline: ${t.dueDate.slice(0, 10)}` : ''}${t.startDate ? ` · Start: ${t.startDate}` : ''}`,
-    ...(eltern ? [`Teil von: ${eltern.title}`] : []),
+    ...(pfad.length ? [`Teil von: ${pfad.map(x => x.title).join(' › ')}`] : []),
     // Blockiert (29.09., #36): worauf die Aufgabe noch wartet — ZOE soll das berücksichtigen, nicht drängen.
     ...(wartetAuf(t, ctx.state.tasks).length ? [`Wartet noch auf: ${wartetAuf(t, ctx.state.tasks).slice(0, 10).map(x => x.title).join(' · ')}`] : []),
     ...(t.description?.trim() ? [`Beschreibung:\n${schnitt(t.description, AUFTRAG_TEXT_MAX)}`] : []),

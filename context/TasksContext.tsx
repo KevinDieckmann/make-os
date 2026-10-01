@@ -13,6 +13,7 @@ import {
 } from '@/lib/aufgaben/abgleich';
 import { istNeuLaden, NEU_LADEN_EREIGNIS } from '@/lib/bau/kennung';
 import { SpeicherHinweis } from '@/components/os/aufgaben/SpeicherHinweis';
+import { nachfahrenIn } from '@/lib/aufgaben/ebenen';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -92,7 +93,10 @@ export function tasksReducer(state: TasksState, action: AufgabenAktion): TasksSt
     }
     case 'ADD_TASK_MIT_ID':
       return { ...state, tasks: [...state.tasks.filter(t => t.id !== action.payload.id), { ...action.payload, createdAt: now, updatedAt: now }] };
-    case 'UPDATE_TASK':
+    case 'UPDATE_TASK': {
+      // Mehrstufig (01.10.): der ganze Teilbaum zieht mit, wenn die Aufgabe umzieht (Space/Projekt/Liste).
+      const umzug = 'spaceId' in action.payload || 'projectId' in action.payload || 'listeId' in action.payload;
+      const teilbaum = umzug ? new Set(nachfahrenIn(action.payload.id, state.tasks).map(t => t.id)) : new Set<string>();
       return {
         ...state,
         // Wer eine Aufgabe nach Privat schiebt, nimmt ihr die Business-Einheit (27.09.) — der Schreibweg verwirft sie ohnehin.
@@ -102,14 +106,15 @@ export function tasksReducer(state: TasksState, action: AufgabenAktion): TasksSt
             // „Wartet auf“: abhaengigVon und das alte dependencies gleich halten (wer sich geändert hat, gewinnt).
             return 'abhaengigVon' in action.payload || 'dependencies' in action.payload ? abhaengigAngleichen(n, t) : n;
           }
-          // Unteraufgaben ziehen mit, wenn das Elternteil umzieht (Space/Projekt/Liste) — der Server erzwingt es ohnehin.
-          if (t.parentId === action.payload.id && ('spaceId' in action.payload || 'projectId' in action.payload || 'listeId' in action.payload)) {
+          // Unteraufgaben (alle Ebenen) ziehen mit, wenn das Elternteil umzieht (Space/Projekt/Liste) — der Server erzwingt es ohnehin.
+          if (teilbaum.has(t.id)) {
             const p = action.payload;
             return mitTeil(t, { ...('spaceId' in p ? { spaceId: p.spaceId } : {}), ...('projectId' in p ? { projectId: p.projectId } : {}), ...('listeId' in p ? { listeId: p.listeId } : {}), updatedAt: now });
           }
           return t;
         }),
       };
+    }
     case 'DELETE_TASK':
       // Seit 29.09. (A7): in den Papierkorb — Unteraufgaben gehen mit; wer auf sie wartete, wartet nicht mehr auf einen Geist.
       return aufgabeInPapierkorb(state, action.payload.id, now);
