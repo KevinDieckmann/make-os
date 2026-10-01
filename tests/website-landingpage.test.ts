@@ -1,12 +1,12 @@
-// ─── Landingpage makeinnovation.de: Freigabe-Prüfung (01.10.) ───────────────────────────────────────────────────
+// ─── Landingpage makeinnovation.de: Freigabe-Prüfung (01.10., v2: Logo, Produkte, Sperrliste) ────────────────
 // website/pruefen.mjs entscheidet, ob die Seite online darf. Hier wird geprüft, dass der Prüfer selbst stimmt:
 // Bau-Regeln heute grün (nur die Platzhalter halten die Freigabe auf), Platzhalter und Regelbrüche werden erkannt.
 // Ob heute noch Platzhalter offen sind, prüft dieser Test bewusst NICHT — das ist Kevins Freigabe, kein Fehler.
 import { describe, it, expect, afterAll } from 'vitest';
-import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH } from '../website/pruefen.mjs';
+import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, PRODUKTE } from '../website/pruefen.mjs';
 
 const ORDNER = join(process.cwd(), 'website');
 const kopien: string[] = [];
@@ -49,6 +49,57 @@ describe('website/pruefen.mjs', () => {
     expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/gelbe Platzhalter-Markierung/);
   });
 
+  it('Logo-Dateien sind da, die Bühne zeichnet dieselbe Bildmarke, Kopf und Favicons zeigen darauf', () => {
+    for (const d of LOGO_DATEIEN) expect(existsSync(join(ORDNER, d)), d).toBe(true);
+    const k = kopie();
+    fuellen(k);
+    ersetze(k, 'index.html', 'd="M48 184L48 64L120 136"', 'd="M50 176L50 72L119 141"');
+    rmSync(join(k, 'assets/logo/kompakt.svg'));
+    const f = pruefeWebsite(k).fehler.join('\n');
+    expect(f).toMatch(/Bühnen-Zeichen weicht von assets\/logo\/bildmarke\.svg ab/);
+    expect(f).toMatch(/srcset assets\/logo\/kompakt\.svg — Datei fehlt/);
+    expect(f).toMatch(/assets\/logo\/kompakt\.svg: fehlt/);
+  });
+
+  it('Produkte: Markttraktion und Make.One aktiv, genau ein „Coming Soon“ — bei Development', () => {
+    expect(PRODUKTE).toEqual({ 'produkt-markttraktion': 'aktiv', 'produkt-make-one': 'aktiv', 'produkt-development': 'bald' });
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    expect(index.match(/Coming Soon/g)).toHaveLength(1);
+    expect(index).toContain('href="mailto:hello@makeinnovation.de?subject=Make.One%20%E2%80%93%20Einladung%20anfragen"');
+    const k = kopie();
+    fuellen(k);
+    // Make.One wieder auf „Coming Soon“ zu setzen, fällt auf — ebenso ein fehlender Mail-Knopf.
+    ersetze(k, 'index.html', /(<article[^>]*id="produkt-make-one"[\s\S]*?)<span class="abzeichen aktiv">Verfügbar<\/span>/, '$1<span class="abzeichen bald">Coming Soon</span>');
+    ersetze(k, 'index.html', 'href="mailto:hello@makeinnovation.de?subject=Make.One%20%E2%80%93%20Einladung%20anfragen"', 'href="#kontakt"');
+    const f = pruefeWebsite(k).fehler.join('\n');
+    expect(f).toMatch(/#produkt-make-one ist aktiv/);
+    expect(f).toMatch(/2 × „Coming Soon“/);
+  });
+
+  it('auf der Seite steht nur MAKE: fremde Namen und gesperrte Wörter fallen auf', () => {
+    const k = kopie();
+    fuellen(k);
+    const fremd = ['Cap' + 'OS', 'POIN' + 'CAP', 'KEM' + 'ARIS', 'AST' + 'ARNA', 'Conn' + 'ect', 'One' + 'Banking', 'K' + 'SI', 'Capital ' + 'Readiness'];
+    for (const [i, name] of fremd.entries()) {
+      const k2 = kopie();
+      fuellen(k2);
+      ersetze(k2, i % 2 ? 'impressum.html' : 'index.html', '</main>', `<p>${name}</p></main>`);
+      expect(pruefeWebsite(k2).fehler.join('\n'), name).toMatch(/fremder Name/);
+    }
+    ersetze(k, 'index.html', '</main>', '<p>Unser Dash' + 'board</p></main>');
+    expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/Wortregeln/);
+  });
+
+  it('Skripte nur als eigene Datei aus js/ — und die lesen, speichern und senden nichts', () => {
+    const k = kopie();
+    fuellen(k);
+    ersetze(k, 'impressum.html', '</body>', '<script>alert(1)</script></body>');
+    writeFileSync(join(k, 'js/menue.js'), readFileSync(join(k, 'js/menue.js'), 'utf8') + "\nfetch('/x');\n");
+    const f = pruefeWebsite(k).fehler.join('\n');
+    expect(f).toMatch(/impressum\.html: <script> — nur eigene Dateien aus js\//);
+    expect(f).toMatch(/js\/menue\.js: „fetch“/);
+  });
+
   it('erkennt, was die strenge CSP brechen oder Daten abfließen lassen würde', () => {
     const k = kopie();
     fuellen(k);
@@ -76,7 +127,9 @@ describe('website/pruefen.mjs', () => {
     expect(ANMELDEN).toBe('https://app.makeinnovation.de/anmelden');
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
     expect(index).toContain('href="mailto:hello@makeinnovation.de"');
-    // Dieselben Namen versteckt die Freigabe-Fassung der Caddyfile.
-    expect(readFileSync('deploy/caddy/Caddyfile', 'utf8')).toContain(`hide ${NICHT_OEFFENTLICH.join(' ')}`);
+    // Dieselben Dateien versteckt die Freigabe-Fassung der Caddyfile (hide nach Namen, @intern nach Pfad).
+    const caddy = readFileSync('deploy/caddy/Caddyfile', 'utf8');
+    expect(caddy).toContain(`hide ${VERSTECKT.join(' ')}`);
+    for (const d of NICHT_OEFFENTLICH) expect(caddy).toMatch(new RegExp(`@intern path [^\\n]*/${d.replace(/\./g, '\\.')}( |$)`, 'm'));
   });
 });

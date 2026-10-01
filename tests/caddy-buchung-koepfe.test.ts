@@ -111,8 +111,11 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     expect(seite).toMatch(/^root \* \/srv\/website$/m);
     expect(seite).toMatch(/^encode zstd gzip$/m);
     expect(seite).toMatch(/^import landingpage_koepfe$/m);
-    expect(seite).toMatch(/^hide LIESMICH\.md pruefen\.mjs$/m);
+    expect(seite).toMatch(/^hide LIESMICH\.md pruefen\.mjs logo-entwuerfe\.html LOGO\.md$/m);
     expect(seite).toMatch(/^respond @intern 404$/m);
+    // Arbeitsdateien (Logo-Entwürfe, LOGO.md) antworten 404 — auch in Unterordnern.
+    expect(seite).toMatch(/^@intern path \/LIESMICH\.md \/pruefen\.mjs \/logo-entwuerfe\.html \/assets\/logo\/LOGO\.md \*\.md \*\.mjs$/m);
+    expect(seite).toMatch(/^@stile path \/css\/\* \/js\/\* \/favicon\.svg \/assets\/logo\/\*$/m);
     expect(seite).toMatch(/^header @seiten Cache-Control "no-cache"$/m);
     expect(seite).not.toMatch(/reverse_proxy|browse/);
     const koepfe = f.get('(landingpage_koepfe)') ?? '';

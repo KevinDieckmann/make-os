@@ -69,18 +69,18 @@ makeinnovation.de, www.makeinnovation.de {
 # 	root * /srv/website
 # 	encode zstd gzip
 # 	import landingpage_koepfe
-# 	# Arbeitsdateien im Ordner werden nie ausgeliefert (Namen wie NICHT_OEFFENTLICH in website/pruefen.mjs).
-# 	@intern path /LIESMICH.md /pruefen.mjs /*.md /*.mjs
+# 	# Arbeitsdateien im Ordner werden nie ausgeliefert (wie NICHT_OEFFENTLICH in website/pruefen.mjs; *.md/*.mjs in jeder Tiefe).
+# 	@intern path /LIESMICH.md /pruefen.mjs /logo-entwuerfe.html /assets/logo/LOGO.md *.md *.mjs
 # 	respond @intern 404
-# 	# Caching: Seiten immer frisch nachfragen (ETag/Last-Modified von file_server), Schriften lange, Stile/Bilder einen Tag.
+# 	# Caching: Seiten immer frisch nachfragen (ETag/Last-Modified von file_server), Schriften lange, Stile/Skript/Logo einen Tag.
 # 	@seiten path / /*.html
 # 	header @seiten Cache-Control "no-cache"
 # 	@schriften path /assets/fonts/*
 # 	header @schriften Cache-Control "public, max-age=2592000, immutable"
-# 	@stile path /css/* /favicon.svg
+# 	@stile path /css/* /js/* /favicon.svg /assets/logo/*
 # 	header @stile Cache-Control "public, max-age=86400"
 # 	file_server {
-# 		hide LIESMICH.md pruefen.mjs
+# 		hide LIESMICH.md pruefen.mjs logo-entwuerfe.html LOGO.md
 # 	}
 # 	# Unbekannte Adressen: eigene 404-Seite mit denselben Köpfen (der Fehlerweg ist eine eigene Route-Kette).
 # 	handle_errors {

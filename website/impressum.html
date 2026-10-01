@@ -7,9 +7,12 @@
 <meta name="description" content="Impressum der MAKE Innovation GmbH.">
 <meta name="theme-color" content="#0B0E10">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/logo/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png">
 <link rel="preload" href="assets/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/seite.css">
+<script src="js/menue.js" defer></script>
 </head>
 <body>
 <a class="sprung" href="#inhalt">Zum Inhalt</a>
@@ -17,13 +20,24 @@
 <header class="kopf">
   <div class="wrap">
     <a class="marke" href="index.html" aria-label="MAKE Innovation GmbH — Startseite">
-      <svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="#D13A55" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="#22B577" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span class="wort"><span><span class="ma">MA</span><span class="ke">KE</span></span><span class="zusatz">Innovation</span></span>
+      <picture>
+        <source media="(max-width: 560px)" srcset="assets/logo/kompakt.svg">
+        <img src="assets/logo/quer.svg" width="892" height="144" alt="">
+      </picture>
     </a>
-    <nav aria-label="Seiten">
+    <nav class="haupt" aria-label="Seiten">
       <a href="index.html">Start</a>
+      <a href="index.html#produkte">Produkte</a>
       <a href="index.html#kontakt">Kontakt</a>
     </nav>
+    <details class="menue">
+      <summary><span class="striche" aria-hidden="true"></span>Menü</summary>
+      <nav aria-label="Seiten">
+        <a href="index.html">Start</a>
+        <a href="index.html#produkte">Produkte</a>
+        <a href="index.html#kontakt">Kontakt</a>
+      </nav>
+    </details>
     <a class="knopf anmelden" href="https://app.makeinnovation.de/anmelden">Anmelden <span class="pfeil" aria-hidden="true">→</span></a>
   </div>
 </header>
@@ -67,7 +81,7 @@
 </main>
 
 <footer class="fuss">
-  <div class="wrap">
+  <div class="wrap fuss-unten">
     <span>© 2026 MAKE Innovation GmbH</span>
     <nav aria-label="Rechtliches">
       <a href="impressum.html" aria-current="page">Impressum</a>

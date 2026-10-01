@@ -4,6 +4,29 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Landingpage v2: neues MAKE-Logo, Produkte, Markttraktion (01.10.2026, nur lokal — Branch `website-v2`)
+
+Kevin: „Wir müssen die Landingpage anders aufbauen … das MAKE-Logo auf jeden Fall mega gut aufbauen … Als Produkte
+Markttraktion, MAKE Innovation Development und Make.One unser Netzwerk.“ Danach präzisiert: Markttraktion und Make.One
+aktiv, nur Development „Coming Soon“; Farben/UX wie v1; auf der Seite steht nur MAKE (keine anderen Firmen/Marken).
+
+- **Logo** neu aus Linien auf einem Raster (`scripts/website-logo.mjs` → `website/assets/logo/*`, `website/favicon.svg`,
+  Doku `website/assets/logo/LOGO.md`): Bildmarke = Logo F sauber konstruiert (Strich 24, 45°, Naht in der Fuge),
+  Wortmarke MAKE (Strich 12) mit Personenstrichen, Zusatz INNOVATION (Strich 4); Fassungen quer/kompakt/groß, hell/dunkel,
+  Favicon SVG + PNG 32/180/512. Drei Entwürfe (A Fuge · B Funke · C Kante) in `website/logo-entwuerfe.html` (nie ausgeliefert).
+- **Seite** `website/index.html`: Kopf mit Logo + Menü (Handy: `<details>`, `js/menue.js` schließt es nur), Bühne mit
+  sich zeichnender Bildmarke, Produkte (Markttraktion · Make.One aktiv mit Mail-Knopf, MAKE Innovation Development
+  „Coming Soon“), Markttraktion vertieft (was es löst, Kreislauf, Traktions-Index 50/40/10, Bausteine, Datenschutz und
+  Kontrolle), Über uns MA + KE, Ruf, Kontakt, Fuß mit Spalten. Bewegung nur ohne `prefers-reduced-motion`, ohne
+  Scroll-Zeitleisten sofort sichtbar. Impressum/Datenschutz/404 mit neuem Kopf; Datenschutz nennt das Menü-Skript.
+- **Prüfung** `website/pruefen.mjs`: Skripte nur als eigene Datei aus `js/` (ohne fetch/Speicher/Cookies), Logo-Dateien
+  da, Bühne = `bildmarke.svg`, Produkte (genau ein „Coming Soon“), Sperrliste fremder Namen, Wortregeln, srcset.
+  Caddy-Freigabe-Fassung: `@intern` + `hide` auch für `logo-entwuerfe.html` und `LOGO.md`, Cache für `/js/*` und
+  `/assets/logo/*`. Tests `tests/website-landingpage.test.ts`, `tests/caddy-buchung-koepfe.test.ts`.
+
+**Offen (Kevin):** Platzhalter Make.One (für wen, wie hinein) und Development (ein Satz) zusätzlich zu den v1-Platzhaltern;
+Logo-Entwurf wählen (heute A). Online weiterhin erst nach Freigabe (website/LIESMICH.md).
+
 ## Domain makeinnovation.de + Landingpage der MAKE Innovation GmbH (01.10.2026, nur lokal — Branch `website`)
 
 Kevin hat `makeinnovation.de` (IONOS) gekauft: Software unter `app.makeinnovation.de`, auf `makeinnovation.de` + `www`
