@@ -32,6 +32,19 @@ lokal, Route `/os`, Port 3001.
 - **Kritisch pulsiert:** Priorisierung nach Eisenhower; kritische Aufgaben
   werden im System visuell pulsierend hervorgehoben.
 
+## Plattform-Regel (Kevin, 01.10.2026) — immer mitdenken und so bauen
+MAKE OS wird ein Produkt für **AI CEOs** (eigene Instanz je Kunde, Plan: `PLATTFORM_PLAN.md`); **Markttraktion muss
+immer auch einzeln verkaufbar sein**. Kevin: „Sofort so bauen, dass wir ein richtiges Tool daraus machen können. Immer
+mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
+- **Nichts Persönliches fest einbauen:** keine neuen `'kevin'`/`'malin'`-Sonderfälle, keine festen Firmen, keine privaten
+  Inhalte (Gesundheit, Nordstern, Namen) in Code, Prompts oder Standards — Werte aus Einstellungen/Beständen der Instanz
+  (Personen über die vorhandenen Listen, Firmen über `lib/einheiten.ts`/Gesellschaften). Bestehende Sonderfälle beim
+  Anfassen neutralisieren, wenn es klein geht; sonst im Bericht nennen.
+- **Modular:** Markttraktion (CRM, Kampagnen, Events, Angebote, Kennzahlen) darf nur über klare Schnittstellen an andere
+  Bereiche (Kalender, Aufgaben, Finanzen, ZOE) andocken — so, dass eine Instanz „nur Markttraktion“ zeigen kann.
+- **Instanz-fähig:** Adressen, Domains, Namen, Schlüssel kommen aus der Umgebung/Einrichtung, nie fest im Code.
+- **Zeigbar:** Alles muss mit erfundenen Beispieldaten (Demo-Instanz) vorführbar sein, ohne echte Daten.
+
 ## Eiserne Regeln
 1. **Privates bleibt hier.** Gesundheits-, Journal- und Finanzdaten gehören
    Kevin & Malin. `.env.local` und `.data/` sind gitignored und bleiben es —
