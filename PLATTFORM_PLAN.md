@@ -35,6 +35,18 @@ Eure echte Instanz zeigt private Daten — für Vorführungen ungeeignet. Deshal
 Dazu: AVV mit jedem Kunden, Datenschutzhinweis der App, Abrechnung, Support.
 Reihenfolge: 1 → 3 → 2 → 4. Nach 1 + 3 kann Markttraktion als eigene Instanz für erste Kunden (von Hand) laufen.
 
+## Lizenzen (Kevin, 01.10.: „Ich will Lizenzen vergeben können“)
+- **Lizenz = Vertrag für eine Instanz:** Kunde, **Edition** (`Markttraktion` · `MAKE OS komplett` · später weitere),
+  freigeschaltete **Module**, **Plätze** (Personen/Logins), **Laufzeit** (bis Datum, Verlängerung), Status (aktiv/pausiert/beendet).
+- **Lizenzschlüssel:** von der MAKE Innovation GmbH **signiert** (Ed25519, privater Schlüssel nur bei euch), die Instanz prüft
+  nur die Unterschrift mit dem öffentlichen Schlüssel — offline, ohne Abhängigkeit von eurem Server. Kein Schlüssel = Demo-/Testmodus.
+- **Wirkung in der Instanz:** Modul-Schalter (Paket 3) folgen der Lizenz; Plätze begrenzen neue Logins; nach Ablauf eine
+  Schonfrist (z. B. 14 Tage Hinweis), danach **nur lesen** — nie Daten sperren oder löschen (Kunde behält Zugriff/Export, DSGVO).
+- **Lizenz-Verwaltung bei euch:** Bereich „Lizenzen“ in eurer eigenen Instanz (nur Inhaber): Kunden anlegen, Edition/Module/Plätze/
+  Laufzeit wählen, Schlüssel erzeugen und verlängern, Übersicht (läuft ab, aktiv), Verbindung zum CRM (Kunde = Firma, Mandat/Rechnung).
+- **Einordnung:** Lizenzen kommen mit Paket 3 (Modul-Schalter) — die Schalter sind die Stelle, an der die Lizenz wirkt.
+  Die Verwaltung kann vorher schon gebaut werden (nur Schlüssel erzeugen + Übersicht).
+
 ## Was die Demo zeigen sollte (Investoren-Rundgang, ca. 10 Minuten)
 1. Heute — ein Blick: Termine, Fokus, was ansteht, ZOE-Vorschläge.
 2. Kalender & Planen — Woche, Fokus-Blöcke, Aufgaben im Kalender, Zeitstrahl bis Ende nächsten Jahres.
