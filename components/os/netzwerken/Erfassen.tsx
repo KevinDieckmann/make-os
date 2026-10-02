@@ -7,8 +7,9 @@
 // Das automatische Auslesen der Karte (KI) ist vorbereitet, aber aus (lib/crm/netzwerken-karte.ts).
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FARBE as C, LEUCHT } from '@/lib/make-one/design';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { ArrowRightLeft, CalendarClock, Camera, Euro, ImagePlus, ListChecks, Mic, PenLine, Sparkles, Star, UserCheck, type LucideIcon } from 'lucide-react';
+import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { zufallsUuid } from '@/lib/kennung';
 import { anzeigename } from '@/lib/make-one/crm';
 import { emailNormal, telefonNormal, linkedinNormal, webNormal } from '@/lib/crm/visitenkarte';
@@ -21,7 +22,7 @@ import type { NetzwerkSchritt } from '@/lib/crm/typen';
 import { WEG } from '@/lib/wege';
 import { Fenster } from '../Fenster';
 import type { CrmApi } from '../crm/daten';
-import { Gross, Wahl, Beschriftung, Feldzeile, Hinweis, eingabe, kopfStil, tagText, ZIEL } from './bausteine';
+import { Gross, Wahl, Beschriftung, Feldzeile, Hinweis, Fortschritt, Aktionsleiste, Initialen, LinkChips, type LinkChip, eingabe, kopfStil, tagText, ZIEL } from './bausteine';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Firma } from '@/lib/crm/typen';
 
@@ -82,8 +83,9 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
 
   // Zuständig startet bei der eigenen Person — sobald sie bekannt ist (Kontext lädt nach).
   useEffect(() => { if (zustaendigStart && !e.zustaendig) setE(x => ({ ...x, zustaendig: zustaendigStart })); }, [zustaendigStart, e.zustaendig]);
-  // Beim Phasenwechsel nach oben (am Handy sonst mitten in der Seite).
-  useEffect(() => { oben.current?.scrollIntoView?.({ block: 'start' }); }, [phase]);
+  // Beim Phasenwechsel nach oben (am Handy sonst mitten in der Seite) — nicht beim ersten Zeigen: sonst ist der Event-Kopf sofort weggescrollt.
+  const ersteAnzeige = useRef(true);
+  useEffect(() => { if (ersteAnzeige.current) { ersteAnzeige.current = false; return; } oben.current?.scrollIntoView?.({ block: 'start' }); }, [phase]);
 
   const up = (p: Partial<Entwurf>) => setE(x => ({ ...x, ...p }));
   const feld = (p: Partial<KontaktFelder>) => setE(x => ({ ...x, felder: { ...x.felder, ...p } as Entwurf['felder'] }));
@@ -186,16 +188,14 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
   // ── Darstellung ──
   const punkte = ['Karte', 'Schritt', 'Bestätigen'];
   const phaseNr = phase === 'karte' ? 0 : phase === 'schritt' ? 1 : phase === 'bestaetigen' ? 2 : 3;
+  const personName = gewaehlt ? anzeigename(gewaehlt) : [f.vorname, f.nachname].filter(x => x?.trim()).join(' ').trim();
+  const personFirma = gewaehlt ? gewaehlt.firma : f.firma?.trim();
+  const klarLink: CSSProperties = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, textDecoration: 'underline', minHeight: 44, padding: '0 4px', fontFamily: 'inherit' };
 
   return (
     <div ref={oben} style={{ display: 'grid', gap: 16, scrollMarginTop: 70 }}>
-      {phase !== 'fertig' && (
-        <ol aria-label="Fortschritt" style={{ display: 'flex', gap: 6, listStyle: 'none', margin: 0, padding: 0 }}>
-          {punkte.map((p, i) => (
-            <li key={p} aria-current={i === phaseNr ? 'step' : undefined} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: 700, letterSpacing: '.02em', textTransform: 'uppercase', padding: '9px 2px', borderRadius: 10, whiteSpace: 'nowrap', color: i === phaseNr ? C.aktiv : i < phaseNr ? C.inkDim : C.inkLeise, background: i === phaseNr ? C.aktivSanft : 'rgba(255,255,255,.03)' }}>{i + 1} · {p}</li>
-          ))}
-        </ol>
-      )}
+      {phase !== 'fertig' && <Fortschritt punkte={punkte} nr={phaseNr} />}
+      {phase !== 'karte' && phase !== 'fertig' && <PersonKopf name={personName || 'Person'} firma={personFirma} zusatz={wahl?.titel} />}
 
       {phase === 'karte' && (
         <>
@@ -204,33 +204,41 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
             <input ref={kamera} type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} onChange={x => { const d = x.target.files?.[0]; x.target.value = ''; void fotoDazu(d); }} />
             <input ref={galerie} type="file" accept="image/*" tabIndex={-1} aria-hidden style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} onChange={x => { const d = x.target.files?.[0]; x.target.value = ''; void fotoDazu(d); }} />
             {e.fotos.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
                 {e.fotos.map((x, i) => (
                   <div key={x.id} style={{ position: 'relative' }}>
-                    <button type="button" onClick={() => setGross(x)} aria-label={`Foto ${i + 1} vergrößern`} className="fassbar" style={{ display: 'block', width: '100%', padding: 0, border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, overflow: 'hidden', background: '#000', cursor: 'zoom-in' }}>
+                    <button type="button" onClick={() => setGross(x)} aria-label={`Foto ${i + 1} vergrößern`} className="fassbar" style={{ display: 'block', width: '100%', padding: 0, border: '1px solid rgba(255,255,255,.14)', borderRadius: 14, overflow: 'hidden', background: '#000', cursor: 'zoom-in', boxShadow: '0 10px 26px -14px rgba(0,0,0,.8)' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={x.dataUrl} alt={`Visitenkarte, Foto ${i + 1}`} style={{ display: 'block', width: '100%', aspectRatio: '4 / 3', objectFit: 'contain', background: '#000' }} />
+                      <img src={x.dataUrl} alt={`Visitenkarte, Foto ${i + 1}`} style={{ display: 'block', width: '100%', aspectRatio: '16 / 10', objectFit: 'contain', background: '#000' }} />
                     </button>
                     <button type="button" onClick={() => fotoWeg(x.id)} aria-label={`Foto ${i + 1} löschen`} style={{ position: 'absolute', top: 4, right: 4, width: 44, height: 44, borderRadius: 22, border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', fontSize: 22, lineHeight: 1, cursor: 'pointer' }}>×</button>
                   </div>
                 ))}
               </div>
             )}
-            {e.fotos.length === 0 && <Gross ton="haupt" onClick={() => kamera.current?.click()}><span aria-hidden>📷</span> Visitenkarte fotografieren</Gross>}
+            {e.fotos.length === 0 && (
+              <button type="button" onClick={() => kamera.current?.click()} className="fassbar" style={{ display: 'grid', justifyItems: 'center', gap: 8, width: '100%', minHeight: 132, boxSizing: 'border-box', padding: '20px 16px', borderRadius: 18, cursor: 'pointer', fontFamily: SCHRIFT.text, color: C.aktiv,
+                border: `1.5px dashed ${TIEF.rand(C.aktiv)}`, background: `linear-gradient(160deg, ${C.aktiv}1F, ${C.aktiv}08)` }}>
+                <span aria-hidden style={{ width: 48, height: 48, borderRadius: 24, display: 'grid', placeItems: 'center', background: TIEF.flaeche(C.aktiv), border: `1px solid ${TIEF.rand(C.aktiv)}` }}><Camera size={24} /></span>
+                <span style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.2 }}>Visitenkarte fotografieren</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 500 }}>Vorderseite — die Rückseite ist optional</span>
+              </button>
+            )}
             {e.fotos.length === 1 && !e.rueckseiteWeg && (
-              <div style={{ display: 'grid', gap: 8 }}>
-                <Gross onClick={() => kamera.current?.click()}>Rückseite fotografieren</Gross>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <Gross onClick={() => kamera.current?.click()} kleinerAbstand>Rückseite fotografieren</Gross>
                 <Gross onClick={() => up({ rueckseiteWeg: true })} kleinerAbstand>Überspringen</Gross>
               </div>
             )}
             {e.fotos.length >= 1 && (e.fotos.length > 1 || e.rueckseiteWeg) && e.fotos.length < MAX_BILDER && <Gross onClick={() => kamera.current?.click()} kleinerAbstand>+ weiteres Foto</Gross>}
-            {e.fotos.length === 0 && <button type="button" onClick={() => galerie.current?.click()} style={{ background: 'none', border: 'none', color: C.inkDim, fontSize: 14, textDecoration: 'underline', cursor: 'pointer', minHeight: 44 }}>oder ein Foto aus der Mediathek wählen</button>}
+            {e.fotos.length === 0 && <button type="button" onClick={() => galerie.current?.click()} style={{ ...klarLink, color: C.inkDim, justifySelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 6 }}><ImagePlus size={16} aria-hidden /> oder ein Foto aus der Mediathek wählen</button>}
             {fotoFehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fotoFehler}</Hinweis>}
-            <div style={{ fontSize: 13, color: C.inkLeise, lineHeight: 1.5 }}>Die Fotos werden verkleinert und verschlüsselt an der Person abgelegt. Die Felder trägst du von Hand ein — das automatische Auslesen kommt später.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Die Fotos werden verkleinert und verschlüsselt an der Person abgelegt. Die Felder trägst du von Hand ein — das automatische Auslesen kommt später.</div>
           </section>
 
-          {/* Felder */}
+          {/* Person */}
           <section aria-label="Angaben zur Person" style={{ display: 'grid', gap: 12 }}>
+            <Beschriftung>Person</Beschriftung>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
               <Feldzeile label="Vorname"><input value={f.vorname ?? ''} onChange={x => feld({ vorname: x.target.value })} autoComplete="off" autoCapitalize="words" style={eingabe} aria-label="Vorname" /></Feldzeile>
               <Feldzeile label="Nachname *"><input value={f.nachname ?? ''} onChange={x => feld({ nachname: x.target.value })} autoComplete="off" autoCapitalize="words" style={eingabe} aria-label="Nachname" /></Feldzeile>
@@ -253,7 +261,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                       ) : (
                         <>
                           <b>Kennen wir schon:</b> {x.name}{x.firma ? ` · ${x.firma}` : ''} · zuständig {x.zustaendig}{x.zuletzt ? ` · zuletzt ${tagText(x.zuletzt)}` : ''}
-                          <div style={{ fontSize: 13, color: C.inkDim, marginTop: 2 }}>({t.grund})</div>
+                          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>({t.grund})</div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
                             <Gross ton="gut" onClick={() => up({ vorhandenId: t.kontakt.id })} kleinerAbstand>Diesen nehmen</Gross>
                             <Gross onClick={() => up({ neuErzwingen: true })} kleinerAbstand>Trotzdem neu</Gross>
@@ -265,7 +273,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                 })}
               </div>
             ) : null}
-            {e.neuErzwingen && !gewaehlt && treffer.length > 0 && <div style={{ fontSize: 13, color: C.inkLeise }}>Als neue Person erfasst, obwohl es ähnliche gibt. <button type="button" onClick={() => up({ neuErzwingen: false })} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 13, textDecoration: 'underline', minHeight: 44 }}>Treffer wieder zeigen</button></div>}
+            {e.neuErzwingen && !gewaehlt && treffer.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Als neue Person erfasst, obwohl es ähnliche gibt. <button type="button" onClick={() => up({ neuErzwingen: false })} style={klarLink}>Treffer wieder zeigen</button></div>}
 
             <Feldzeile label="Firma">
               <input value={f.firma ?? ''} onChange={x => { feld({ firma: x.target.value }); up({ firmaId: undefined, firmaNeu: false }); }} autoComplete="off" autoCapitalize="words" style={eingabe} aria-label="Firma" />
@@ -273,18 +281,29 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
             {!leer(f.firma) && !e.vorhandenId && (
               <div style={{ display: 'grid', gap: 8 }}>
                 {firmaVerknuepft ? (
-                  <Hinweis farbe={LEUCHT.gut}>✓ Bestehende Firma: <b>{firmaVerknuepft.name}</b>. <button type="button" onClick={() => up({ firmaNeu: true, firmaId: undefined })} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 14, textDecoration: 'underline', minHeight: 44 }}>Stattdessen neue anlegen</button></Hinweis>
+                  <Hinweis farbe={LEUCHT.gut}>✓ Bestehende Firma: <b>{firmaVerknuepft.name}</b>. <button type="button" onClick={() => up({ firmaNeu: true, firmaId: undefined })} style={klarLink}>Stattdessen neue anlegen</button></Hinweis>
                 ) : (
                   <>
                     {vorschlaege.filter(v => !v.exakt).map(v => <Gross key={v.firma.id} onClick={() => { feld({ firma: v.firma.name }); up({ firmaId: v.firma.id, firmaNeu: false }); }} kleinerAbstand>Bestehende Firma nehmen: {v.firma.name}</Gross>)}
-                    <div style={{ fontSize: 13, color: C.inkLeise }}>{e.firmaNeu || !vorschlaege.length ? `Neue Firma „${f.firma!.trim()}“ wird angelegt.` : `Oder neue Firma „${f.firma!.trim()}“ anlegen (so lassen).`}</div>
+                    <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{e.firmaNeu || !vorschlaege.length ? `Neue Firma „${f.firma!.trim()}“ wird angelegt.` : `Oder neue Firma „${f.firma!.trim()}“ anlegen (so lassen).`}</div>
                   </>
                 )}
               </div>
             )}
+            <Feldzeile label="Position"><input value={f.position ?? ''} onChange={x => feld({ position: x.target.value })} autoComplete="off" style={eingabe} aria-label="Position" /></Feldzeile>
+            <div>
+              <Beschriftung>Anrede</Beschriftung>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <Wahl an={f.anrede === 'Du'} onClick={() => feld({ anrede: 'Du' })}>Du</Wahl>
+                <Wahl an={f.anrede === 'Sie'} onClick={() => feld({ anrede: 'Sie' })}>Sie</Wahl>
+              </div>
+            </div>
+          </section>
 
+          {/* Erreichbar */}
+          <section aria-label="Erreichbarkeit" style={{ display: 'grid', gap: 12 }}>
+            <Beschriftung>Erreichbar</Beschriftung>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
-              <Feldzeile label="Position"><input value={f.position ?? ''} onChange={x => feld({ position: x.target.value })} autoComplete="off" style={eingabe} aria-label="Position" /></Feldzeile>
               <Feldzeile label="E-Mail" fehler={mailFehler}><input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={f.email ?? ''} onChange={x => feld({ email: x.target.value })} style={eingabe} aria-label="E-Mail" /></Feldzeile>
               <Feldzeile label="Telefon" fehler={telFehler}><input type="tel" inputMode="tel" value={f.telefon ?? ''} onChange={x => feld({ telefon: x.target.value })} style={eingabe} aria-label="Telefon" /></Feldzeile>
               <Feldzeile label="Handy" fehler={mobilFehler}><input type="tel" inputMode="tel" value={f.mobil ?? ''} onChange={x => feld({ mobil: x.target.value })} style={eingabe} aria-label="Handy" /></Feldzeile>
@@ -299,39 +318,43 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                 </div>
               )}
             </div>
-            <div>
-              <Beschriftung>Anrede</Beschriftung>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Wahl an={f.anrede === 'Du'} onClick={() => feld({ anrede: 'Du' })}>Du</Wahl>
-                <Wahl an={f.anrede === 'Sie'} onClick={() => feld({ anrede: 'Sie' })}>Sie</Wahl>
-              </div>
-            </div>
           </section>
 
+          {offline && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Kein Netz erkannt — du kannst trotzdem erfassen, alles wird gesendet, sobald Netz da ist. „Kennen wir schon?“ prüft dann nur, was zuletzt geladen wurde.</div>}
           {!wahl && <Hinweis farbe={LEUCHT.achtung} rolle="alert">Bitte oben zuerst „Heute bei“ wählen — damit die Person dem Event zugeordnet wird.</Hinweis>}
-          {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
-          <Gross ton="haupt" onClick={weiter1}>Weiter: nächster Schritt</Gross>
-          {offline && <div style={{ fontSize: 13, color: C.inkLeise }}>Kein Netz erkannt — du kannst trotzdem erfassen, alles wird gesendet, sobald Netz da ist. „Kennen wir schon?“ prüft dann nur, was zuletzt geladen wurde.</div>}
+          <Aktionsleiste>
+            {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
+            <Gross ton="haupt" onClick={weiter1}>Weiter: nächster Schritt</Gross>
+          </Aktionsleiste>
         </>
       )}
 
       {phase === 'schritt' && (
         <>
           <section aria-label="Nächster Schritt" style={{ display: 'grid', gap: 10 }}>
-            <h2 style={{ ...kopfStil, fontSize: 18 }}>Nächster Schritt <span style={{ color: LEUCHT.achtung }}>*</span></h2>
+            <h2 style={{ ...kopfStil, fontSize: TYP.titel }}>Nächster Schritt <span style={{ color: LEUCHT.achtung }}>*</span></h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-              {SCHRITTE.map(s => <Wahl key={s.id} an={sch === s.id} onClick={() => up({ schritt: s.id })}>{s.label}</Wahl>)}
+              {SCHRITTE.map(s => {
+                const an = sch === s.id;
+                const Symbol = SCHRITT_SYMBOL[s.id];
+                return (
+                  <button key={s.id} type="button" aria-pressed={an} onClick={() => up({ schritt: s.id })} className="fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 60, padding: '10px 12px', borderRadius: 14, cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 600, lineHeight: 1.25,
+                    border: `1px solid ${an ? TIEF.rand(C.aktiv) : 'rgba(255,255,255,.1)'}`, background: an ? TIEF.flaeche(C.aktiv) : 'rgba(255,255,255,.04)', color: an ? C.aktiv : C.ink }}>
+                    <Symbol size={20} aria-hidden style={{ flex: '0 0 auto', opacity: an ? 1 : 0.7 }} /><span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{s.label}</span>
+                  </button>
+                );
+              })}
             </div>
-            {sch && <div style={{ fontSize: 13, color: C.inkDim }}>{SCHRITTE.find(s => s.id === sch)!.kurz}.</div>}
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, minHeight: 20 }}>{sch ? `${SCHRITTE.find(s => s.id === sch)!.kurz}.` : 'Ohne nächsten Schritt verliert sich die Person — einer genügt.'}</div>
           </section>
 
           <section aria-label="Zuständig" style={{ display: 'grid', gap: 8 }}>
             <Beschriftung>Wer ist zuständig?</Beschriftung>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {[...personen].sort((a, b) => Number(b.id === ich) - Number(a.id === ich)).map(p => <Wahl key={p.id} an={e.zustaendig === p.id} onClick={() => up({ zustaendig: p.id, ...(sch === 'termin' ? { termin: { ...e.termin, start: '' } } : {}) })}>{p.name}{p.id === ich ? ' (ich)' : ''}</Wahl>)}
-              {!personen.length && <span style={{ fontSize: 14, color: C.inkLeise }}>Personen werden geladen …</span>}
+              {!personen.length && <span style={{ fontSize: TYP.body, color: C.inkLeise }}>Personen werden geladen …</span>}
             </div>
-            {e.zustaendig && e.zustaendig !== ich && <div style={{ fontSize: 13, color: C.inkDim }}>{nameVon(e.zustaendig)} bekommt eine Meldung{sch === 'termin' ? ' mit dem Termin' : ''} und sieht es beim nächsten Öffnen.</div>}
+            {e.zustaendig && e.zustaendig !== ich && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{nameVon(e.zustaendig)} bekommt eine Meldung{sch === 'termin' ? ' mit dem Termin' : ''} und sieht es beim nächsten Öffnen.</div>}
           </section>
 
           {sch === 'termin' && (
@@ -345,7 +368,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                 <Wahl klein an={e.followupFaellig === followupFrist(followupFrist(heute))} onClick={() => up({ followupFaellig: followupFrist(followupFrist(heute)) })}>in 4 Werktagen</Wahl>
               </div>
               <Feldzeile label="oder ein anderer Tag"><input type="date" value={e.followupFaellig} min={heute} onChange={x => up({ followupFaellig: x.target.value })} style={eingabe} aria-label="Frist" /></Feldzeile>
-              <div style={{ fontSize: 13, color: C.inkDim }}>Fällig am {e.followupFaellig ? tagText(e.followupFaellig) : '—'} bei {nameVon(e.zustaendig)}.</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Fällig am {e.followupFaellig ? tagText(e.followupFaellig) : '—'} bei {nameVon(e.zustaendig)}.</div>
             </section>
           )}
           {sch === 'vermitteln' && (
@@ -376,17 +399,19 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
           {sch === 'nur-kontakt' && <Hinweis>Nur der Kontakt wird gespeichert — „Kennengelernt bei {wahl?.titel ?? 'dem Event'}“ steht im Verlauf.</Hinweis>}
 
           <section aria-label="Info" style={{ display: 'grid', gap: 10 }}>
-            <Beschriftung rechts={`${e.info.length}/${INFO_MAX}`}>Info zum Gespräch</Beschriftung>
-            <textarea value={e.info} onChange={x => up({ info: x.target.value })} rows={5} placeholder="Worüber habt ihr gesprochen? Was wurde zugesagt?" style={{ ...eingabe, resize: 'vertical', minHeight: 120 }} aria-label="Info zum Gespräch" />
-            <div style={{ fontSize: 13, color: C.inkDim }}><span aria-hidden>🎤</span> Diktieren über die Tastatur — am iPhone das Mikrofon-Symbol unten rechts auf der Tastatur antippen.</div>
+            <Beschriftung rechts={`${e.info.length}/${INFO_MAX}`}>Info zum Gespräch (optional)</Beschriftung>
+            <textarea value={e.info} onChange={x => up({ info: x.target.value })} rows={4} placeholder="Worüber habt ihr gesprochen? Was wurde zugesagt?" style={{ ...eingabe, resize: 'vertical', minHeight: 104 }} aria-label="Info zum Gespräch" />
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', alignItems: 'center', gap: 6 }}><Mic size={14} aria-hidden /> Diktieren: am iPhone das Mikrofon-Symbol auf der Tastatur antippen.</div>
             <Sprachnotiz wert={e.aufnahme} onWert={a => up({ aufnahme: a })} />
           </section>
 
-          {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
-          <div style={{ display: 'grid', gap: 8 }}>
-            <Gross ton="haupt" onClick={weiter2}>Weiter: bestätigen</Gross>
-            <Gross onClick={() => { setPhase('karte'); setFehler(null); }} kleinerAbstand>Zurück</Gross>
-          </div>
+          <Aktionsleiste>
+            {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
+            <div style={{ display: 'grid', gridTemplateColumns: '104px 1fr', gap: 8 }}>
+              <Gross onClick={() => { setPhase('karte'); setFehler(null); }}>Zurück</Gross>
+              <Gross ton="haupt" onClick={weiter2}>Weiter: bestätigen</Gross>
+            </div>
+          </Aktionsleiste>
         </>
       )}
 
@@ -404,22 +429,24 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
               ['Zuständig', nameVon(e.zustaendig)],
               ['Info', e.info.trim() || '—'],
             ] as [string, string][]).map(([k, v], i) => (
-              <div key={k} style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, 120px) 1fr', gap: 12, padding: '11px 14px', borderTop: i ? '1px solid rgba(255,255,255,.06)' : undefined, fontSize: 15, lineHeight: 1.45 }}>
-                <span style={{ color: C.inkLeise, fontSize: 13 }}>{k}</span><span style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{v}</span>
+              <div key={k} style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, 120px) 1fr', gap: 12, padding: '11px 14px', borderTop: i ? '1px solid rgba(255,255,255,.06)' : undefined, fontSize: TYP.body, lineHeight: 1.45 }}>
+                <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{k}</span><span style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap', fontWeight: k === 'Nächster Schritt' ? 700 : 400 }}>{v}</span>
               </div>
             ))}
           </section>
           {!e.vorhandenId && <Hinweis>Quelle „{NETZWERKEN_QUELLE}“ · <b>keine Werbe-Einwilligung</b> — {KEINE_EINWILLIGUNG}. Die Danke-Mail liegt ab morgen als Entwurf bereit; verschickt wird nur per Klick.</Hinweis>}
           {offline && <Hinweis farbe={LEUCHT.achtung}>Kein Netz erkannt — die Erfassung bleibt auf dem Gerät und wird gesendet, sobald Netz da ist.</Hinweis>}
-          {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
-          <div style={{ display: 'grid', gap: 8 }}>
-            <Gross ton="gut" onClick={() => void speichern()} aus={speichert}>{speichert ? 'Speichert …' : '✓ Bestätigen und speichern'}</Gross>
-            <Gross onClick={() => { setPhase('schritt'); setFehler(null); }} kleinerAbstand>Zurück</Gross>
-          </div>
+          <Aktionsleiste>
+            {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
+            <div style={{ display: 'grid', gridTemplateColumns: '104px 1fr', gap: 8 }}>
+              <Gross onClick={() => { setPhase('schritt'); setFehler(null); }}>Zurück</Gross>
+              <Gross ton="gut" onClick={() => void speichern()} aus={speichert}>{speichert ? 'Speichert …' : '✓ Speichern'}</Gross>
+            </div>
+          </Aktionsleiste>
         </>
       )}
 
-      {phase === 'fertig' && gesendetId && <Fertig id={gesendetId} warte={warte} onNochEine={nochEine} onBericht={onBericht} />}
+      {phase === 'fertig' && gesendetId && <Fertig id={gesendetId} warte={warte} name={personName || 'Person'} zustaendig={nameVon(e.zustaendig)} foto={e.fotos[0]?.dataUrl ?? null} onNochEine={nochEine} onBericht={onBericht} />}
 
       {gross && (
         <Fenster titel={`Foto ${e.fotos.findIndex(x => x.id === gross.id) + 1}`} onZu={() => setGross(null)} breit={900}>
@@ -432,29 +459,81 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
   );
 }
 
-/** Nach dem Speichern: was gerade passiert — gesendet, wartet aufs Netz oder abgelehnt. */
-function Fertig({ id, warte, onNochEine, onBericht }: { id: string; warte: Warte; onNochEine: () => void; onBericht: () => void }) {
+const SCHRITT_SYMBOL: Record<NetzwerkSchritt, LucideIcon> = {
+  termin: CalendarClock, qualifizieren: Star, followup: ListChecks, vermitteln: ArrowRightLeft, andere: PenLine, angebot: Euro, makeone: Sparkles, 'nur-kontakt': UserCheck,
+};
+
+/** Wer gerade erfasst wird — oben in Schritt 2 und 3, damit man nie raten muss, für wen der Schritt gilt. */
+function PersonKopf({ name, firma, zusatz }: { name: string; firma?: string; zusatz?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 14, border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.03)' }}>
+      <Initialen name={name} />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{name}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, overflowWrap: 'anywhere' }}>{[firma, zusatz].filter(Boolean).join(' · ') || '—'}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Der Platzhalter, wenn die Karte nicht fotografiert wurde: eine gezeichnete Visitenkarte mit den Initialen. */
+function KartenPlatzhalter({ name }: { name: string }) {
+  return (
+    <div style={{ width: '100%', height: '100%', boxSizing: 'border-box', borderRadius: 14, padding: 14, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 12, alignContent: 'center', alignItems: 'center', background: 'linear-gradient(145deg, #1D252A, #12171A)', border: '1px solid rgba(255,255,255,.16)', boxShadow: '0 14px 30px -12px rgba(0,0,0,.8)' }}>
+      <Initialen name={name} groesse={44} farbe={C.aktiv} />
+      <div style={{ display: 'grid', gap: 7 }}>
+        <span style={{ height: 8, width: '78%', borderRadius: 4, background: 'rgba(255,255,255,.34)' }} />
+        <span style={{ height: 6, width: '52%', borderRadius: 3, background: 'rgba(255,255,255,.16)' }} />
+      </div>
+      <span style={{ gridColumn: '1 / -1', height: 5, width: '64%', borderRadius: 3, background: 'rgba(255,255,255,.1)' }} />
+    </div>
+  );
+}
+
+/** Nach dem Speichern: was gerade passiert — gesendet, wartet aufs Netz oder abgelehnt. Bei „gesendet“ landet die Karte in der Kartei. */
+function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht }: { id: string; warte: Warte; name: string; zustaendig: string; foto: string | null; onNochEine: () => void; onBericht: () => void }) {
   const e = warte.eintraege.find(x => x.id === id);
   const a = warte.antworten[id];
   const wartet = e?.status === 'wartet';
   const fehlt = e?.status === 'fehler';
+  const verlinkt: CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ZIEL, borderRadius: 14, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)', color: C.ink, textDecoration: 'none', fontWeight: 700, fontSize: 16 };
+  const verknuepfungen: LinkChip[] = [];
   return (
     <section aria-label="Gespeichert" style={{ display: 'grid', gap: 14 }}>
       {!e ? (
-        <Hinweis farbe={LEUCHT.gut} rolle="status"><b style={{ fontSize: 17 }}>✓ Gespeichert</b>
-          {a?.zusammengefuehrt ? <div style={{ marginTop: 6 }}>Die Person gab es schon — die Erfassung hängt an der bestehenden.</div> : null}
-          {(a?.hinweise ?? []).map((h, i) => <div key={i} style={{ marginTop: 6, color: C.inkDim }}>{h}</div>)}
-        </Hinweis>
+        <>
+          {/* Highlight a: das Foto (oder ein Platzhalter) schrumpft in den Chip — danach steht nur noch der Chip da. */}
+          <div className="netz-buehne" aria-hidden>
+            <div className="netz-karte-landet">
+              {foto
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={foto} alt="" style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(255,255,255,.18)', boxShadow: '0 14px 30px -12px rgba(0,0,0,.8)' }} />
+                : <KartenPlatzhalter name={name} />}
+            </div>
+          </div>
+          <div role="status" className="netz-chip-ein" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 16, border: `1px solid ${TIEF.rand(LEUCHT.gut)}`, background: TIEF.flaeche(LEUCHT.gut) }}>
+            <span className="netz-haken-kreis" aria-hidden style={{ width: 32, height: 32, borderRadius: 16, flex: '0 0 auto', display: 'grid', placeItems: 'center', background: LEUCHT.gut, color: C.grund }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round"><path className="netz-haken" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+            </span>
+            <span style={{ minWidth: 0, fontSize: TYP.body, lineHeight: 1.4, overflowWrap: 'anywhere' }}><b>Gespeichert</b> · {name} · zuständig {zustaendig}</span>
+          </div>
+          {a?.zusammengefuehrt ? <div style={{ fontSize: TYP.body, color: C.inkDim }}>Die Person gab es schon — die Erfassung hängt an der bestehenden.</div> : null}
+          {(a?.hinweise ?? []).map((h, i) => <div key={i} style={{ fontSize: TYP.body, color: C.inkDim }}>{h}</div>)}
+        </>
       ) : fehlt ? (
         <Hinweis farbe={LEUCHT.achtung} rolle="alert"><b>Noch nicht ganz gespeichert.</b><div style={{ marginTop: 6 }}>{e.hinweis}</div></Hinweis>
       ) : (
         <Hinweis farbe={LEUCHT.achtung} rolle="status"><b style={{ fontSize: 17 }}>Auf dem Gerät gespeichert</b><div style={{ marginTop: 6 }}>{warte.laeuft ? 'Wird gerade gesendet …' : (e.hinweis ?? 'Wird gesendet, sobald Netz da ist.')}</div>{warte.neuLaden && <div style={{ marginTop: 6 }}>MAKE OS wurde aktualisiert — bitte die Seite neu laden. Die Erfassung bleibt auf dem Gerät.</div>}</Hinweis>
       )}
       {fehlt && e && <div style={{ display: 'grid', gap: 8 }}><Gross ton="haupt" onClick={() => void warte.erneut(e.id)}>Erneut versuchen</Gross><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></div>}
-      {!wartet && !fehlt && a?.kontaktId && <Link href={WEG.akte(a.kontaktId)} className="fassbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ZIEL, borderRadius: 14, border: '1px solid rgba(255,255,255,.12)', color: C.ink, textDecoration: 'none', fontWeight: 700, fontSize: 16 }}>Zur Person ›</Link>}
-      {!wartet && !fehlt && a?.angebotId && <Link href={WEG.angebot({ angebotId: a.angebotId })} className="fassbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ZIEL, borderRadius: 14, border: '1px solid rgba(255,255,255,.12)', color: C.ink, textDecoration: 'none', fontWeight: 700, fontSize: 16 }}>Angebots-Entwurf öffnen ›</Link>}
-      <Gross ton="haupt" onClick={onNochEine}>Nächste Karte</Gross>
-      <Gross onClick={onBericht} kleinerAbstand>Heute erfasst ansehen</Gross>
+      {!wartet && !fehlt && a?.kontaktId && <Link href={WEG.akte(a.kontaktId)} className="fassbar" style={verlinkt}>Zum Kontakt ›</Link>}
+      {/* Platz für die Verknüpfungen der Erfassung (Termin · Deal · Follow-up · Event): eine Zeile Chips, leer = unsichtbar. */}
+      {!wartet && !fehlt && <LinkChips links={verknuepfungen} />}
+      {!wartet && !fehlt && a?.angebotId && <Link href={WEG.angebot({ angebotId: a.angebotId })} className="fassbar" style={verlinkt}>Angebots-Entwurf öffnen ›</Link>}
+      <Aktionsleiste>
+        <Gross ton="haupt" onClick={onNochEine}>Nächste Karte</Gross>
+        <Gross onClick={onBericht} kleinerAbstand>Heute erfasst ansehen</Gross>
+      </Aktionsleiste>
     </section>
   );
 }

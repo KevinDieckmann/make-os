@@ -7,7 +7,8 @@
 // wird mit der ersten Erfassung mitgeschickt (`eventNeu`, der Server legt es dann an).
 
 import { useMemo, useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
+import { CalendarPlus, ChevronRight } from 'lucide-react';
+import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { Fenster } from '../Fenster';
 import { neueId } from '../crm/daten';
 import type { CrmApi } from '../crm/daten';
@@ -16,6 +17,7 @@ import type { Event } from '@/lib/crm/typen';
 const KEINE_EVENTS: Event[] = [];
 import { neuesEvent } from '@/lib/crm/netzwerken';
 import { Gross, Hinweis, eingabe, Feldzeile, tagText, ZIEL } from './bausteine';
+import { AbendZaehler, abendZahlen } from './zaehler';
 
 /** Die gemerkte Wahl: das Event und der Tag, für den sie gilt. */
 export interface EventWahl { eventId: string; titel: string; datum: string; ort?: string; /** Noch nicht auf dem Server (ohne Netz angelegt). */ lokal?: boolean; tag: string }
@@ -26,18 +28,30 @@ function abstandTage(datum: string, heute: string): number { return Math.abs(Mat
 export function EventModus({ api, ich, heute, wahl, setWahl }: { api: CrmApi; ich: string | null; heute: string; wahl: EventWahl | null; setWahl: (w: EventWahl | null) => void }) {
   const [offen, setOffen] = useState(false);
   const gueltig = wahl && wahl.tag === heute ? wahl : null;
+  // Highlight b: die Zahlen des Abends — aus den Teilnahmen des Events, null solange die Kartei lädt (der Platz bleibt reserviert).
+  const teilnahmen = api.crm?.stand.teilnahmen;
+  const zahlen = useMemo(() => (gueltig && teilnahmen ? abendZahlen(teilnahmen, gueltig.eventId) : null), [gueltig, teilnahmen]);
+  const ton = LEUCHT.beziehung;
   return (
     <>
-      <button type="button" onClick={() => setOffen(true)} className="fassbar" aria-label={gueltig ? `Heute bei ${gueltig.titel} — wechseln` : 'Event wählen oder anlegen'}
-        style={{ width: '100%', minHeight: 64, boxSizing: 'border-box', textAlign: 'left', cursor: 'pointer', padding: '12px 16px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 12, fontFamily: SCHRIFT.text, color: C.ink,
-          border: `1px solid ${gueltig ? `${LEUCHT.beziehung}66` : 'rgba(255,255,255,.14)'}`, background: gueltig ? `${LEUCHT.beziehung}14` : 'rgba(255,255,255,.04)' }}>
-        <span style={{ minWidth: 0, flex: 1 }}>
-          <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: gueltig ? LEUCHT.beziehung : C.inkLeise }}>Heute bei</span>
-          <span style={{ display: 'block', fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{gueltig ? gueltig.titel : 'Event wählen oder anlegen'}</span>
-          {gueltig && <span style={{ display: 'block', fontSize: 13, color: C.inkDim, marginTop: 2 }}>{tagText(gueltig.datum)}{gueltig.ort ? ` · ${gueltig.ort}` : ''}{gueltig.lokal ? ' · wird beim Speichern angelegt' : ''}</span>}
-        </span>
-        <span aria-hidden style={{ fontSize: 13, color: C.inkDim, whiteSpace: 'nowrap' }}>{gueltig ? 'wechseln ›' : '›'}</span>
-      </button>
+      <div style={{ borderRadius: 20, padding: gueltig ? '14px 16px 14px' : 0, display: 'grid', gap: 12, boxSizing: 'border-box',
+        border: `1px solid ${gueltig ? TIEF.rand(ton) : 'rgba(255,255,255,.14)'}`,
+        background: gueltig ? `linear-gradient(150deg, ${ton}26 0%, ${ton}0D 46%, rgba(255,255,255,.02) 100%)` : 'rgba(255,255,255,.04)',
+        boxShadow: gueltig ? `inset 0 1px 0 rgba(255,255,255,.07), 0 16px 36px -22px ${ton}` : 'none' }}>
+        <button type="button" onClick={() => setOffen(true)} className="fassbar" aria-label={gueltig ? `Heute bei ${gueltig.titel} — wechseln` : 'Event wählen oder anlegen'}
+          style={{ width: '100%', minHeight: gueltig ? 56 : 68, boxSizing: 'border-box', textAlign: 'left', cursor: 'pointer', padding: gueltig ? 0 : '14px 16px', background: 'none', border: 'none', borderRadius: 18, display: 'flex', alignItems: 'center', gap: 12, fontFamily: SCHRIFT.text, color: C.ink }}>
+          {!gueltig && <span aria-hidden style={{ width: 40, height: 40, borderRadius: 20, flex: '0 0 auto', display: 'grid', placeItems: 'center', color: C.aktiv, background: C.aktivSanft, border: `1px solid ${TIEF.rand(C.aktiv)}` }}><CalendarPlus size={20} /></span>}
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={{ display: 'block', fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: gueltig ? ton : C.inkLeise }}>Heute bei</span>
+            <span style={{ display: 'block', fontFamily: SCHRIFT.display, fontSize: gueltig ? 19 : 17, fontWeight: 700, letterSpacing: '-.015em', lineHeight: 1.25, marginTop: 2, overflowWrap: 'anywhere' }}>{gueltig ? gueltig.titel : 'Event wählen oder anlegen'}</span>
+            <span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 3, lineHeight: 1.4 }}>
+              {gueltig ? `${tagText(gueltig.datum)}${gueltig.ort ? ` · ${gueltig.ort}` : ''}${gueltig.lokal ? ' · wird beim Speichern angelegt' : ''}` : 'Jede erfasste Karte wird ihm zugeordnet.'}
+            </span>
+          </span>
+          <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: TYP.bedien, fontWeight: 600, color: gueltig ? C.inkDim : C.aktiv, whiteSpace: 'nowrap' }}><ChevronRight size={18} /></span>
+        </button>
+        {gueltig && <AbendZaehler zahlen={zahlen} eventTitel={gueltig.titel} farbe={ton} />}
+      </div>
       {offen && <EventWahlFenster api={api} ich={ich} heute={heute} onZu={() => setOffen(false)} onWahl={w => { setWahl(w); setOffen(false); }} />}
     </>
   );

@@ -2105,3 +2105,14 @@ Offen (bewusst): `public/make-os.html` (Juli-Klickdummy) könnte ganz raus — K
   vorher bei Apple ein app-spezifisches Passwort „MAKE OS“ anlegen (appleid.apple.com → Anmelden & Sicherheit), dann
   `ssh -t make@2.28.108.162 sudo bash /srv/make-os/app/deploy/icloud-verbinden.sh <apple-id>` (fragt dann nur das App-Passwort)
   — Alternative ohne Terminal: eine Eingabe „iCloud verbinden“ unter System (nur Inhaber, verschlüsselt gespeichert), wenn gewünscht.
+
+## Netzwerken · Schliff für Kunden-Demo (03.10.2026, nur lokal — Branch `netz-schliff`)
+
+Kevin 03.10.: „Wenn man das aufmacht, soll das etwas hermachen — potenzielle Kunden sehen das.“ Nur Darstellung und Ablauf, keine Server-/Datenlogik, keine Funktion entfernt.
+
+- **Handy zuerst (375/390/430 px):** Erfassen mit Schritt-Leiste (Kreise + Linie), Person-Kopf in Schritt 2/3, Schritt-Kacheln mit Symbol, Felder gruppiert (Person · Erreichbar), große Foto-Fläche; die Hauptaktion je Schritt hängt am Handy knapp über der Leiste (`.netz-aktion`, weicht der Tastatur, am Rechner normal am Ende), „Zurück“ daneben leiser. Karte → speichern bei „Nur Kontakt“: **4 Tipps** nach dem Foto (Weiter · Nur Kontakt · Weiter · Speichern). Leere Zustände (Heute, Karten) mit Symbol, Satz und Weg; Ladezustände mit festem Platz; am Rechner `max-width` 640 zentriert.
+- **Highlight a — Karte landet in der Kartei:** nach „gesendet“ schrumpft das Kartenfoto (oder ein gezeichneter Platzhalter) in den Chip „Gespeichert · Name · zuständig Person“, darunter „Zum Kontakt ›“.
+- **Highlight b — Abend-Zähler** (`components/os/netzwerken/zaehler.tsx`) im Event-Kopf: Kontakte · Termine · Follow-ups zählen sanft hoch (rAF, ≈ 0,75 s), Ring „n von m mit festem Folgeschritt“; gerechnet aus den Teilnahmen des Events (dieselbe Quelle wie der Abendbericht).
+- **Highlight c — Visitenkarten-Vollbild:** ruhiger Verlauf aus den Profilfarben (`color-mix`), beim Öffnen ein einmaliger Lichtschimmer hinter dem QR-Feld (Code unberührt, dunkel auf weiß), Wake Lock mit Hinweis „Bildschirm bleibt an“. Kein MAKE-Branding (Test `netzwerken-ansicht` grün).
+- **Kontaktakte am Handy:** Schnellleiste mit einheitlichen Symbolen (lucide), weicher Rand als Wisch-Hinweis, Kopf mit Schließen im geöffneten Feld.
+- Alles reines CSS/Transition, **„Bewegung reduzieren“ schaltet aus** (Endzustand steht sofort da). Test: `tests/netzwerken-schliff.test.ts`.

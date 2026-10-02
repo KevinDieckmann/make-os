@@ -19,6 +19,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { ArrowRightLeft, CalendarClock, Euro, ListChecks, Mail, Mic, PenLine, Phone, Sparkles, Star, X } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, LEUCHT } from '../../schlank';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -34,10 +35,13 @@ import { DealAnlegen } from '../DealAnlegen';
 type Aktion = 'anruf' | 'mail' | 'termin' | 'notiz' | 'followup' | 'qualifizieren' | 'vermitteln' | 'einladen';
 
 const MIN = 44;
+/** Ein Symbol je Weg — gleiche Strichstärke und Größe statt gemischter Zeichen (Schliff 03.10.). */
+const SYM = { size: 18, strokeWidth: 2 } as const;
+const AKTION_TITEL: Record<Aktion, string> = { anruf: 'Anruf festhalten', mail: 'Mail', termin: 'Termin', notiz: 'Notiz', followup: 'Follow-up', qualifizieren: 'Qualifizieren', vermitteln: 'Vermitteln', einladen: 'Make.One einladen' };
 const pille = (an: boolean, aus: boolean, farbe?: string): CSSProperties => ({
   flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: MIN, padding: '0 14px', borderRadius: 999, textDecoration: 'none', whiteSpace: 'nowrap', scrollSnapAlign: 'start',
   border: `1px solid ${an ? (farbe ?? C.aktiv) : 'rgba(255,255,255,.14)'}`, background: an ? `${farbe ?? C.aktiv}22` : 'rgba(255,255,255,.05)', color: aus ? C.inkLeise : an ? (farbe ?? C.aktiv) : C.ink,
-  fontFamily: SCHRIFT.text, fontSize: 14, fontWeight: 700, cursor: aus ? 'default' : 'pointer', opacity: aus ? 0.5 : 1,
+  fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 700, cursor: aus ? 'default' : 'pointer', opacity: aus ? 0.5 : 1,
 });
 
 /** „Make.One einladen“: ein kommendes Event wählen, die Person als Gast vormerken. */
@@ -94,6 +98,19 @@ export function SchnellLeiste({ k, api, heute, ampel }: { k: Kontakt; api: CrmAp
     ro.observe(kopf);
     return () => ro.disconnect();
   }, []);
+  // Ob links/rechts noch Knöpfe verborgen sind — dort blendet der Streifen weich aus (Hinweis: wischbar).
+  const streifen = useRef<HTMLDivElement>(null);
+  const [rand, setRand] = useState({ links: false, rechts: true });
+  useEffect(() => {
+    const el = streifen.current;
+    if (!el) return;
+    const messen = () => setRand({ links: el.scrollLeft > 4, rechts: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+    messen();
+    el.addEventListener('scroll', messen, { passive: true });
+    window.addEventListener('resize', messen);
+    return () => { el.removeEventListener('scroll', messen); window.removeEventListener('resize', messen); };
+  }, []);
+  const maske = `linear-gradient(to right, transparent 0, #000 ${rand.links ? 28 : 0}px, #000 calc(100% - ${rand.rechts ? 32 : 0}px), transparent 100%)`;
   useEffect(() => { setAktion(null); setMeldung(null); }, [k.id]);
   useEffect(() => { if (!meldung) return; const t = setTimeout(() => setMeldung(null), 4500); return () => clearTimeout(t); }, [meldung]);
   // Ein Feld, das unter dem mitlaufenden Streifen aufgeht, soll im Bild sein.
@@ -129,26 +146,30 @@ export function SchnellLeiste({ k, api, heute, ampel }: { k: Kontakt; api: CrmAp
     <>
       {/* Mitlaufender Streifen: nur die Knöpfe — das Feld darunter wandert mit dem Inhalt. */}
       <div role="toolbar" data-testid="schnell-leiste" aria-label="Schnellaktionen am Kontakt" style={{ position: 'sticky', top: oben, zIndex: 20, background: C.grund, margin: '0 calc(-1 * clamp(18px,4vw,48px))', padding: '8px clamp(18px,4vw,48px)', borderBottom: `1px solid ${C.linie}`, minWidth: 0 }}>
-        <div role="tablist" aria-label="Aktion wählen" style={{ minWidth: 0, maxWidth: '100%', display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', scrollSnapType: 'x proximity', WebkitOverflowScrolling: 'touch' }}>
+        <div ref={streifen} role="tablist" aria-label="Aktion wählen" style={{ minWidth: 0, maxWidth: '100%', display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', scrollSnapType: 'x proximity', WebkitOverflowScrolling: 'touch', maskImage: maske, WebkitMaskImage: maske } as CSSProperties}>
           {telHref && !grund('anruf')
-            ? <a href={telHref} title={`Anrufen · ${tel?.grund ?? ''}`} style={{ ...pille(false, false, LEUCHT.gut), border: `1px solid ${LEUCHT.gut}66`, background: `${LEUCHT.gut}18` }}><span aria-hidden>☏</span>Anrufen</a>
-            : <span title={grund('anruf') ?? (telefon ? tel?.grund : 'Kein Telefon eingetragen')} aria-disabled="true" style={pille(false, true)}><span aria-hidden>☏</span>Anrufen</span>}
-          {knopf('anruf', 'Anruf festhalten', '✎')}
-          {knopf('mail', 'Mail', '✉')}
-          {knopf('termin', 'Termin', '◷')}
-          {knopf('notiz', 'Notiz', '🎙')}
-          {knopf('followup', 'Follow-up', '✓')}
-          {knopf('qualifizieren', 'Qualifizieren', '★')}
-          {knopf('vermitteln', 'Vermitteln', '⇄')}
+            ? <a href={telHref} title={`Anrufen · ${tel?.grund ?? ''}`} style={{ ...pille(false, false, LEUCHT.gut), border: `1px solid ${LEUCHT.gut}66`, background: `${LEUCHT.gut}18` }}><span aria-hidden><Phone {...SYM} /></span>Anrufen</a>
+            : <span title={grund('anruf') ?? (telefon ? tel?.grund : 'Kein Telefon eingetragen')} aria-disabled="true" style={pille(false, true)}><span aria-hidden><Phone {...SYM} /></span>Anrufen</span>}
+          {knopf('anruf', 'Anruf festhalten', <PenLine {...SYM} />)}
+          {knopf('mail', 'Mail', <Mail {...SYM} />)}
+          {knopf('termin', 'Termin', <CalendarClock {...SYM} />)}
+          {knopf('notiz', 'Notiz', <Mic {...SYM} />)}
+          {knopf('followup', 'Follow-up', <ListChecks {...SYM} />)}
+          {knopf('qualifizieren', 'Qualifizieren', <Star {...SYM} />)}
+          {knopf('vermitteln', 'Vermitteln', <ArrowRightLeft {...SYM} />)}
           {art18
-            ? <span title={grund('angebot')} aria-disabled="true" style={pille(false, true)}><span aria-hidden>€</span>Angebot</span>
-            : <Link href={WEG.angebot({ kontaktId: k.id, firmaId: k.firmaId })} style={pille(false, false)}><span aria-hidden>€</span>Angebot</Link>}
-          {knopf('einladen', 'Make.One einladen', '✦')}
+            ? <span title={grund('angebot')} aria-disabled="true" style={pille(false, true)}><span aria-hidden><Euro {...SYM} /></span>Angebot</span>
+            : <Link href={WEG.angebot({ kontaktId: k.id, firmaId: k.firmaId })} style={pille(false, false)}><span aria-hidden><Euro {...SYM} /></span>Angebot</Link>}
+          {knopf('einladen', 'Make.One einladen', <Sparkles {...SYM} />)}
         </div>
       </div>
-      {meldung && <div role="status" style={{ fontSize: 13, color: LEUCHT.gut, marginTop: 10 }}>{meldung}</div>}
+      {meldung && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.gut, marginTop: 10, padding: '10px 14px', borderRadius: 12, border: `1px solid ${LEUCHT.gut}55`, background: `${LEUCHT.gut}12`, lineHeight: 1.45 }}>✓ {meldung}</div>}
       {aktion && (
-        <div ref={feld} style={{ marginTop: 10, padding: 12, borderRadius: 14, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', display: 'grid', gap: 8, scrollMarginTop: oben + 70 }}>
+        <div ref={feld} style={{ marginTop: 10, padding: '4px 12px 12px', borderRadius: 14, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', display: 'grid', gap: 8, scrollMarginTop: oben + 70 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise }}>{AKTION_TITEL[aktion]}</span>
+            <button type="button" onClick={() => setAktion(null)} aria-label={`${AKTION_TITEL[aktion]} schließen`} style={{ minHeight: MIN, minWidth: MIN, display: 'grid', placeItems: 'center', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', borderRadius: 12 }}><X size={18} aria-hidden /></button>
+          </div>
           {aktion === 'anruf' && <AnrufAktion k={k} api={api} heute={heute} telHref={telHref} anlassNoetig={tel?.farbe === 'gelb'} onFertig={fertig} onAbbruch={() => setAktion(null)} />}
           {aktion === 'mail' && <EmailAktion k={k} api={api} mailOk={mailOk} mailHref={mailHref} onFertig={fertig} />}
           {aktion === 'termin' && <MeetingAktion k={k} api={api} heute={heute} onFertig={fertig} onAbbruch={() => setAktion(null)} />}

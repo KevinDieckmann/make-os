@@ -7,6 +7,7 @@
 // die Abschrift folgt später (KI) — bis dahin steht am Kontakt „Abschrift folgt (KI)“.
 
 import { useEffect, useRef, useState } from 'react';
+import { Mic } from 'lucide-react';
 import { FARBE as C, LEUCHT } from '@/lib/make-one/design';
 import { Gross, Hinweis, ZIEL } from './bausteine';
 import { MAX_AUDIO_BYTES } from '@/lib/crm/netzwerken';
@@ -80,7 +81,7 @@ export function Sprachnotiz({ wert, onWert }: { wert: Aufnahme | null; onWert: (
     <div style={{ display: 'grid', gap: 10 }}>
       <input ref={datei} type="file" accept="audio/*" capture tabIndex={-1} aria-hidden style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
         onChange={x => { const f = x.target.files?.[0]; x.target.value = ''; ausDatei(f); }} />
-      {!wert && !nimmtAuf && <Gross onClick={() => void beginnen()}><span aria-hidden>🎙</span> Sprachnotiz aufnehmen</Gross>}
+      {!wert && !nimmtAuf && <Gross onClick={() => void beginnen()}><Mic size={18} aria-hidden /> Sprachnotiz aufnehmen</Gross>}
       {nimmtAuf && (
         <div role="status" aria-live="polite" style={{ display: 'grid', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 16, color: LEUCHT.kritisch, fontWeight: 700 }}>

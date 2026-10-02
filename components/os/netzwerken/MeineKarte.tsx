@@ -8,7 +8,8 @@
 // Am Handy (375 px): eine Spalte, alle Ziele ≥ 44 px, Eingaben 16 px (kein Zoom beim Antippen in Safari).
 
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Maximize2, Pencil, Share2, IdCard } from 'lucide-react';
+import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, LEUCHT } from '../schlank';
 import { neueKennung } from '@/lib/kennung';
 import {
@@ -17,6 +18,7 @@ import {
 } from '@/lib/netzwerken/karte';
 import { saeubereSvg } from '@/lib/netzwerken/svg';
 import { KartenAnsicht, QrVollbild } from './QrKarte';
+import { Leerzustand } from './bausteine';
 import { aktivLesen, aktivMerken, useKarten, type Gesellschaftsvorschlag } from './karten-daten';
 
 const MIN = 44; // kleinstes Ziel am Handy
@@ -283,11 +285,23 @@ export function MeineKarte() {
   );
 
   // Beim Wechsel der Person bleibt die Auswahl stehen — nur der Inhalt darunter lädt neu.
-  if (!d.geladen) return <Seite titel="Meine Visitenkarte"><div style={{ display: 'grid', gap: 14, maxWidth: 640, margin: '0 auto', width: '100%' }}>{personenWahl}<Karte i={0}><Leer>Lädt …</Leer></Karte></div></Seite>;
-  if (d.fehler && !karten.length) return <Seite titel="Meine Visitenkarte"><Karte i={0}><Leer>{d.fehler}</Leer></Karte></Seite>;
+  // Ladezustand mit festem Platz: ein grauer Kartenumriss in der Größe der echten Karte — nichts springt, wenn sie da ist.
+  if (!d.geladen) return (
+    <Seite titel="Meine Visitenkarten">
+      <div style={{ display: 'grid', gap: 14, maxWidth: 640, margin: '0 auto', width: '100%' }}>
+        {personenWahl}
+        <div role="status" aria-label="Lädt" style={{ display: 'grid', gap: 12 }}>
+          <div aria-hidden style={{ height: 40, width: '62%', borderRadius: 12, background: 'rgba(255,255,255,.04)' }} />
+          <div aria-hidden style={{ height: 470, borderRadius: 22, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.05)' }} />
+          <div aria-hidden style={{ height: 56, borderRadius: 16, background: 'rgba(255,255,255,.04)' }} />
+        </div>
+      </div>
+    </Seite>
+  );
+  if (d.fehler && !karten.length) return <Seite titel="Meine Visitenkarten"><Karte i={0}><Leer>{d.fehler}</Leer></Karte></Seite>;
 
   return (
-    <Seite titel="Meine Visitenkarte" unter="Der QR-Code für unterwegs — wer ihn scannt, hat dich als Kontakt.">
+    <Seite titel="Meine Visitenkarten" unter="Der QR-Code für unterwegs — wer ihn scannt, hat dich als Kontakt.">
       <div style={{ display: 'grid', gap: 14, maxWidth: 640, margin: '0 auto', width: '100%' }}>
         {personenWahl}
         {d.fuerAndere && <div style={{ ...klein, padding: '8px 12px', borderRadius: 10, background: 'rgba(255,255,255,.04)' }}>Du bearbeitest die Profile von {andere ?? 'einer anderen Person'} — sie erscheinen dort unter „Meine Visitenkarte“.</div>}
@@ -303,7 +317,8 @@ export function MeineKarte() {
                 {nachRang(karten).map(k => {
                   const an = k.id === aktiv.id;
                   return <button key={k.id} role="tab" aria-selected={an} type="button" onClick={() => waehlen(k.id)}
-                    style={{ ...knopfStil, flex: '0 0 auto', whiteSpace: 'nowrap', ...(an ? { background: `${C.aktiv}22`, border: `1px solid ${C.aktiv}66`, color: C.aktiv } : {}) }}>{kartenTitel(k)}</button>;
+                    style={{ ...knopfStil, flex: '0 0 auto', whiteSpace: 'nowrap', ...(an ? { background: `${C.aktiv}22`, border: `1px solid ${C.aktiv}66`, color: C.aktiv } : {}) }}>
+                    <span aria-hidden style={{ width: 12, height: 12, borderRadius: 4, flex: '0 0 auto', background: k.hintergrund ?? STANDARD_DESIGN.hintergrund, border: `3px solid ${k.farbe ?? STANDARD_DESIGN.akzent}`, boxSizing: 'border-box', outline: '1px solid rgba(255,255,255,.2)' }} />{kartenTitel(k)}</button>;
                 })}
               </div>
             </div>
@@ -311,23 +326,21 @@ export function MeineKarte() {
             <KartenAnsicht karte={aktiv} />
             {warnungen.length > 0 && <div role="alert" style={{ fontSize: 13, color: LEUCHT.achtung, lineHeight: 1.45 }}>⚠ {warnungen[0]} Unter „Bearbeiten“ anpassen.</div>}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-              <button type="button" onClick={() => setVollbild(true)} style={{ ...knopfStil, background: `${C.aktiv}22`, border: `1px solid ${C.aktiv}66`, color: C.aktiv }}>Vollbild</button>
-              <button type="button" onClick={() => void teilen(aktiv, setMeldung)} style={knopfStil}>vCard teilen</button>
-              <button type="button" onClick={() => setBearbeiten({ id: aktiv.id, start: entwurfAus(aktiv) })} disabled={d.offline} style={{ ...knopfStil, ...(d.offline ? { opacity: 0.5 } : {}) }}>Bearbeiten</button>
+            {/* Eine Hauptaktion: der Code groß auf den Bildschirm. Teilen und Bearbeiten sind leiser. */}
+            <button type="button" onClick={() => setVollbild(true)} className="fassbar" style={{ ...knopfStil, minHeight: 56, fontSize: 17, fontWeight: 700, borderRadius: 16, ...TIEF.knopf(C.aktiv) }}><Maximize2 size={20} aria-hidden />Vollbild zeigen</button>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+              <button type="button" onClick={() => void teilen(aktiv, setMeldung)} style={knopfStil}><Share2 size={16} aria-hidden />vCard teilen</button>
+              <button type="button" onClick={() => setBearbeiten({ id: aktiv.id, start: entwurfAus(aktiv) })} disabled={d.offline} style={{ ...knopfStil, ...(d.offline ? { opacity: 0.5 } : {}) }}><Pencil size={16} aria-hidden />Bearbeiten</button>
             </div>
             <div style={klein}>Der QR-Code enthält nur die Angaben dieses Profils — Kontaktprogramm des Handys öffnet „Kontakt speichern“.</div>
           </>
         )}
 
         {karten.length === 0 && !bearbeiten && (
-          <Karte i={1}>
-            <Ueberschrift>{d.fuerAndere ? `Noch keine Karte für ${andere ?? 'diese Person'}` : 'Noch keine Visitenkarte'}</Ueberschrift>
-            <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.55, marginBottom: 14 }}>Lege ein Profil an — z. B. eins je Firma, für die du unterwegs bist. Name, Rolle und Erreichbarkeit trägst du selbst ein; sie liegen nur in deinem Konto.</div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => neu(true)} style={{ ...knopfStil, background: `${C.aktiv}22`, border: `1px solid ${C.aktiv}66`, color: C.aktiv }}>Erstes Profil anlegen</button>
-            </div>
-          </Karte>
+          <Leerzustand symbol={<IdCard size={26} />} titel={d.fuerAndere ? `Noch keine Karte für ${andere ?? 'diese Person'}` : 'Noch keine Visitenkarte'}
+            aktion={<button type="button" onClick={() => neu(true)} className="fassbar" style={{ ...knopfStil, width: '100%', minHeight: 52, fontSize: 16, fontWeight: 700, borderRadius: 14, ...TIEF.knopf(C.aktiv) }}>Erstes Profil anlegen</button>}>
+            Lege ein Profil an — z. B. eins je Firma, für die du unterwegs bist. Name, Rolle und Erreichbarkeit trägst du selbst ein; sie liegen nur in deinem Konto. Danach zeigst du den QR-Code mit einem Tipp im Vollbild.
+          </Leerzustand>
         )}
 
         {bearbeiten && (
