@@ -344,6 +344,20 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   `oeffneMeilenstein` → `WEG.meilenstein(id)`. Offen: ZOE-Knopf „zusammenfassen / nächste Schritte“, Befund „Liste ohne Meilenstein“
   in der Verbindungsprüfung (rein vorbereitet: `listenOhneMeilenstein`). Tests `tests/meilenstein-aufgaben.test.ts`.
 
+## Ziel ↔ Meilenstein — Kette und Abhängigkeiten (01.10., nur lokal)
+- **Regeln EINMAL rein** in `lib/planung/meilenstein-kette.ts` (client-/server-sicher): `wartetAuf` am Meilenstein (optional, ≤ `KETTE_MAX` = 10, keine Kreise —
+  `kreisBei` aus `lib/aufgaben/abhaengig.ts` wiederverwendet), `kettePruefen` (Schreibweg), `ketteOrdnen` (Stufen, parallele nebeneinander), `verschiebeInKette`/
+  `zieheInKette` (Pfeile/Ziehen; eine Abhängigkeit geht vor), `wartet`/`wartetText` (Anzeige-Status, nie gespeichert), `datumVorVorgaenger` (nur Warnung),
+  `ohneMeilenstein`/`verweiseZurueck`/`ohneToteVerweise`/`zielVerweiseLoesen` (Verbindungen), `zielFortschrittLive`. Ansichten rechnen davon nichts selbst.
+- **Schreibweg:** `/api/state/meilensteine` PATCH prüft über der Liste NACH den Änderungen (`listeNachOps` → `kettePruefen`: Kreis/unbekannt → 409, > 10 → 413) und
+  räumt in derselben Sperre tote Verweise (`danach`); `teil` läuft durch dieselbe Säuberung. `/api/state/ziele` PATCH löst bei gelöschten Zielen nur `zielId`
+  der Meilensteine (nie mitlöschen) und räumt Verweise auf wegfallende abgeleitete Meilensteine. ZOE `setze_meilenstein` (Stapel): `ziel`, `wartet_auf`.
+- **Oberfläche:** Ziel-Detail `/os/planung/ziel/<id>` (`WEG.ziel`, `ZielDetail.tsx`, Probe des Horizonts, dann `usePlanung(horizont)`); Löschen nur über
+  `loescheMeilenstein`/`loescheZiel` (mit „Rückgängig“, Kette/Bezug mit). `usePlanung.alleZiele` (alle Horizonte, nur lesen) für Brotkrumen und Namen.
+  Meilenstein-Fenster: `MsVorgabe.zielId`/`wartetAuf`, Feld „Wartet auf“. Glocke/Kalender: die Frist sagt „wartet noch auf …“ (`lib/kalender/eintraege.ts`).
+- **Rückweg:** af4679a verwirft `wartetAuf`, Ziel-`messlatte` und `zielId` beim nächsten Speichern (GO_LIVE_CHECKLISTE › Rückweg); Wächter-Fixture
+  `tests/fixtures/alt-af4679a/meilensteine.ts`/`ziele.ts` (wörtlich alt). Verbindungsprüfung: `meilenstein-ziel-tot`, `meilenstein-wartet-tot`. Tests `tests/ziel-kette-0110.test.ts`.
+
 ## Ernährung & Einkauf zu zweit (seit 26.09.2026, online)
 - Modell `lib/ernaehrung/modell.ts` (rein): Profile je Person (Konto = nur selbst, Gast = Haushalt), Stammliste
   (bevorzugte Lebensmittel + Hinweis), Vorrat, Gerichte (Rezepte), Plan + `planGerichte`, Einkauf mit Menge/Kategorie/

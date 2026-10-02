@@ -18,6 +18,9 @@
 // (lib/planung/zeitstrahl.ts); neue Jahresziele tragen `jahr`, Meilensteine ohne Datum im nächsten
 // Jahr das Zeitfenster „2027“. Die Jahresseite reicht ihren Stand (`planung`), den Einheiten-Filter und
 // `onMsOeffnen` (das Meilenstein-Fenster) herein; Löschen zeigt „Rückgängig“ (wie Aufgaben).
+// Seit 01.10. (Ziel ↔ Meilenstein): der Ziel-Titel führt ins Ziel-Detail (`WEG.ziel`), der Ziel-Bezug am Meilenstein ebenso;
+// ein Meilenstein, der noch auf einen offenen Vorgänger wartet, sagt es in der Zeile; Löschen räumt die Kette mit
+// (`loescheMeilenstein`), ein gelöschtes Ziel lässt seine Meilensteine stehen („ohne Ziel“).
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -29,7 +32,6 @@ import { meilensteinSpace, bereichAusSpace } from '@/lib/planung/meilensteine';
 import { offenErledigt, verschiebe, naechsterRang } from '@/lib/planung/rang';
 import { imZeitraum } from '@/lib/planung/zeitraum';
 import { meilensteinImJahr, zielJahr } from '@/lib/planung/zeitstrahl';
-import { ohneStand } from '@/lib/make-one/liste-stand';
 import { useRueckgaengig, type Rueckgaengig } from './Rueckgaengig';
 import type { Meilenstein, Ziel, ZielHorizont } from '@/lib/planung/typen';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT } from '../schlank';
@@ -43,6 +45,9 @@ import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabenVonMeilenstein, aufgabenStand, wirksamerFortschritt, fortschrittErrechnet, meilensteineVonZiel } from '@/lib/planung/meilenstein-aufgaben';
+import { wartetText } from '@/lib/planung/meilenstein-kette';
+import { loescheMeilenstein } from './meilenstein-loeschen';
+import { loescheZiel } from './ziel-loeschen';
 
 type SpaceFilter = SpaceId | 'alle';
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
@@ -174,19 +179,11 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   // ── Ändern ──
   const zPatch = (id: string, patch: Partial<Ziel>, angepasst = false) => p.persistZiele(p.ziele.map(z => (z.id === id ? { ...z, ...patch, ...(angepasst && z.abgeleitetVon ? { angepasst: true } : {}) } : z)));
   const zErledigen = (z: Ziel) => zPatch(z.id, z.erledigt ? { erledigt: false, erledigtAm: undefined } : { erledigt: true, erledigtAm: heute, fortschritt: 100 });
-  const zLoeschen = (id: string) => {
-    const alt = p.ziele.find(z => z.id === id);
-    p.persistZiele(p.ziele.filter(z => z.id !== id));
-    if (alt) rueck.melden(`Ziel „${alt.titel}“ gelöscht`, () => { if (!stand.current.ziele.some(z => z.id === id)) stand.current.persistZiele([...stand.current.ziele, ohneStand(alt as Ziel & { stand?: string })]); });
-  };
+  const zLoeschen = (id: string) => { loescheZiel(stand, id, rueck); };
   const zBewegen = (id: string, r: 'auf' | 'ab') => p.persistZiele(verschiebe(p.ziele, id, r, zOffen.map(z => z.id)));
   const mPatch = (id: string, patch: Partial<Meilenstein>, angepasst = false) => p.persistMs(p.ms.map(m => (m.id === id ? { ...m, ...patch, ...(angepasst && m.abgeleitetVon ? { angepasst: true } : {}) } : m)));
   const mErledigen = (m: Meilenstein) => mPatch(m.id, m.erledigt ? { erledigt: false, erledigtAm: undefined } : { erledigt: true, erledigtAm: heute, fortschritt: 100 }, true);
-  const mLoeschen = (id: string) => {
-    const alt = p.ms.find(m => m.id === id);
-    p.persistMs(p.ms.filter(m => m.id !== id));
-    if (alt) rueck.melden(`„${alt.titel}“ gelöscht`, () => { if (!stand.current.ms.some(m => m.id === id)) stand.current.persistMs([...stand.current.ms, ohneStand(alt as Meilenstein & { stand?: string })]); });
-  };
+  const mLoeschen = (id: string) => { loescheMeilenstein(stand, id, rueck); };
   const mBewegen = (id: string, r: 'auf' | 'ab') => p.persistMs(verschiebe(p.ms, id, r, mOffen.map(m => m.id)));
 
   // ── Titel bearbeiten (Stift) ──
@@ -208,7 +205,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     return <MandatWahl klein wert={e.mandatId} aus={!!e.erledigt} setzen={setzen} />;
   };
   /** Ziel-Bezug am Meilenstein: der Name des Jahresziels (verschwundene Ziele zeigen nichts). */
-  const zielName = (id: string): ReactNode => { const z = p.ziele.find(x => x.id === id); return z ? <span style={{ color: farbe }}>→ {z.titel}</span> : null; };
+  const zielName = (id: string): ReactNode => { const z = p.alleZiele.find(x => x.id === id); return z ? <Link href={WEG.ziel(z.id)} title="Zum Ziel — Meilensteine als Kette" style={{ color: farbe, textDecoration: 'none' }}>→ {z.titel}</Link> : null; };
   const unterZeile = (teile: ReactNode[]) => { const t = teile.filter(Boolean); return t.length ? <>{t.map((x, k) => <span key={k}>{k > 0 ? ' · ' : ''}{x}</span>)}</> : undefined; };
 
   // ── Zeilen ──
@@ -219,14 +216,14 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     return (
       <Zeile key={z.id}
         links={<Haken an={!!z.erledigt} farbe={f} onChange={() => zErledigen(z)} />}
-        titel={bearbeite?.id === z.id ? titelFeld(z.id, t => zPatch(z.id, { titel: t }, true)) : <span style={{ fontWeight: 600, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none' }}>{z.titel}</span>}
+        titel={bearbeite?.id === z.id ? titelFeld(z.id, t => zPatch(z.id, { titel: t }, true)) : <Link href={WEG.ziel(z.id)} title="Ziel öffnen — Meilensteine als Kette, Beschreibung, Messlatte" style={{ fontWeight: 600, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none' }}>{z.titel}</Link>}
         unter={unterZeile([
           einheitChip(z),
           mandatChip(z, z.space === 'business', m => zPatch(z.id, mandatFelder(m), true)),
           spaceFilter === 'alle' && z.space ? <span style={{ color: SPACE_FARBE[z.space] }}>{SPACE_LABEL[z.space]}</span> : null,
           z.termin ? `bis ${dtKurz(z.termin)}` : null,
           horizont === 'jahr' && z.zielwert ? `Ziel ${z.zielwert}` : null,
-          zMs.length ? <span title={zMs.map(x => x.titel).join(' · ')}>{zMs.length === 1 ? <Link href={WEG.meilenstein(zMs[0].id)} style={{ color: 'inherit' }}>1 Meilenstein</Link> : `${zMs.length} Meilensteine`}</span> : null,
+          zMs.length ? <Link href={WEG.ziel(z.id)} title={zMs.map(x => x.titel).join(' · ')} style={{ color: 'inherit' }}>{zMs.length === 1 ? '1 Meilenstein' : `${zMs.length} Meilensteine`}{zMs.some(x => !x.erledigt && wartetText(x, p.ms)) ? ' · Kette' : ''}</Link> : null,
           herkunft(z, 'Jahresziel'),
           z.erledigt && z.erledigtAm ? `erledigt ${dtKurz(z.erledigtAm)}` : null,
         ])}
@@ -254,6 +251,9 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     );
   };
 
+  /** „wartet noch auf …“ (Kette) — nur im Text, nie gespeichert. */
+  const wartetHinweis = (m: Meilenstein): ReactNode => { const t = wartetText(m, p.ms); return t ? <span style={{ color: LEUCHT.achtung }}>{t}</span> : null; };
+
   const msZeile = (m: Meilenstein, pos: number, n: number) => {
     const sp = meilensteinSpace(m);
     const bf = sp === 'privat' ? LEUCHT.gut : LEUCHT.business;
@@ -272,6 +272,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               ? <button onClick={() => onMsOeffnen(m.id)} title="Datum ändern" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', color: spaet ? LEUCHT.kritisch : 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{spaet ? 'überfällig ' : ''}{wann}</button>
               : <span style={{ color: spaet ? LEUCHT.kritisch : undefined }}>{spaet ? 'überfällig ' : ''}{wann}</span>) : null,
             m.zielId ? zielName(m.zielId) : null,
+            wartetHinweis(m),
             einheitChip({ einheit: m.einheit, space: sp }),
             mandatChip(m, sp === 'business', x => mPatch(m.id, mandatFelder(x), true)),
             spaceFilter === 'alle' && (kompakt || m.erledigt) ? <span style={{ color: bf }}>{SPACE_LABEL[sp]}</span> : null,

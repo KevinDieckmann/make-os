@@ -148,7 +148,10 @@ async function vsMeilenstein(i: Record<string, unknown>): Promise<Vorschau> {
   const treffer = (m?.meilensteine ?? []).find(x => x.titel.toLowerCase().includes(suche));
   const tag = (d?: string) => (d ? `${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : 'ohne Datum');
   const faellig = typeof i.faellig === 'string' && i.faellig ? text(i.faellig, 10) : '';
-  const nachher = [faellig ? `fällig ${tag(faellig)}` : '', i.erledigt === true ? 'abgehakt' : i.fortschritt != null ? `${Number(i.fortschritt)} %` : ''].filter(Boolean).join(' · ');
+  // Ziel und Kette (01.10.): was die Vorschau zusätzlich nennt (Freigabe im Stapel, nie direkt).
+  const ziel = i.ziel !== undefined ? (text(i.ziel) ? `Ziel „${text(i.ziel, 80)}“` : 'ohne Ziel-Bezug') : '';
+  const wartet = Array.isArray(i.wartet_auf) ? (i.wartet_auf.length ? `wartet auf ${i.wartet_auf.slice(0, 10).map(x => `„${text(x, 80)}“`).join(', ')}` : 'wartet auf niemanden') : '';
+  const nachher = [faellig ? `fällig ${tag(faellig)}` : '', i.erledigt === true ? 'abgehakt' : i.fortschritt != null ? `${Number(i.fortschritt)} %` : '', ziel, wartet].filter(Boolean).join(' · ');
   return {
     titel: treffer ? `Meilenstein „${treffer.titel}"` : `Meilenstein „${text(i.titel)}" — kein Treffer`,
     vorher: treffer ? [faellig ? `fällig ${tag(treffer.faellig)}` : '', treffer.erledigt ? 'erledigt' : `${treffer.fortschritt} %`].filter(Boolean).join(' · ') : undefined,

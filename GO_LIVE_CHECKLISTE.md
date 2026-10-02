@@ -144,6 +144,16 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   errechneten Stand, siehe oben). Vor dem Rückweg: Aufgaben mit Ebene 3+ in der Aufgaben-Seite kurz notieren, wenn die Gliederung
   wichtig ist; nach einem erneuten Upload bleibt es flach (nichts wird von selbst wieder tief). Kreise können im alten Stand
   nicht entstehen; die neue Version lehnt sie ab (Meldung „Abgelehnt: … kann nicht unter ihrer eigenen Unteraufgabe liegen“).
+- **Ziel ↔ Meilenstein (01.10.):** nur optionale Zusatzfelder, keine Formänderung. Der Säuberer des Online-Stands (af4679a) verwirft sie beim
+  nächsten Speichern des jeweiligen Eintrags — und sonst nichts (geprüft mit dem wörtlich kopierten alten Säuberer, `tests/ziel-kette-0110.test.ts`):
+  - `wartetAuf` am Meilenstein („wartet auf“, die Kette im Ziel-Detail): die Abhängigkeiten sind weg, die Meilensteine bleiben mit Titel,
+    Datum, Rang, Einheit, Aufgaben und Verlauf; die Kette ist dort einfach flach (nichts wartet mehr, kein „wartet“-Hinweis in Glocke/Kalender).
+    Vor dem Rückweg die Abhängigkeiten wichtiger Ziele notieren, wenn sie nach dem nächsten Upload wieder gebraucht werden;
+  - `messlatte` am Ziel (Ziel-Detail): fällt weg; die Beschreibung (`notiz`) bleibt (bis 400 Zeichen, dieselbe Grenze wie im alten Stand);
+  - `zielId` am Meilenstein (30.09., siehe oben): der Ziel-Bezug fällt weg — dann stehen die Meilensteine dort ohne Ziel.
+  Die neue Seite `/os/planung/ziel/<id>` gibt es im alten Stand nicht (Links aus der Liste fehlen dort ohnehin). Kein neuer Bestand, kein
+  Eintrag im Speicher-Register (Art. 17 unverändert: die Felder liegen in `ziele`/`meilensteine`). Nach einem erneuten Upload: Ziel-Zuordnung
+  und Abhängigkeiten neu setzen — die Verbindungsprüfung meldet nur tote Verweise, keine fehlenden.
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

@@ -4,6 +4,25 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Ziel ↔ Meilenstein: Kette mit Abhängigkeiten (01.10.2026, nur lokal — Branch `ziele`)
+
+Kevin 01.10.: „Verknüpfe die Zielebene mit der Meilenstein-Ebene. Wir haben Ziele, und darunter kann man Meilensteine planen. Mehrere
+Meilensteine zu einem Ziel, in Abhängigkeit.“ Der Ziel-Bezug (`zielId`, 30.09.) und der Ziel-Fortschritt als Mittelwert waren da — neu ist die Ebene dazwischen.
+
+- **Ziel-Detail** `/os/planung/ziel/<id>` (`WEG.ziel`, `components/os/planung/ZielDetail.tsx`, Ziele aller Horizonte): Kopf (Titel, Horizont/Jahr, Frist,
+  Bereich/Einheit, Messlatte, Beschreibung, Fortschritt aus den Meilensteinen), die Meilensteine als **geordnete Kette** (jeder nach seinen Vorgängern,
+  parallele nebeneinander; Reihenfolge per ▲▼ oder Ziehen, eine Abhängigkeit geht vor), je Meilenstein Datum, Fortschritt, n/m Aufgaben, Status
+  „dran / wartet / erledigt“, „+ danach“ und „+ Meilenstein zu diesem Ziel“ (das Meilenstein-Fenster, vorbelegt mit Ziel, Bereich, Einheit, Datum).
+  Verlinkt: Ziel-Titel und Ziel-Bezug in Ziele & Planung, Brotkrumen „Ziele & Planung › Ziel › Meilenstein“, Zeitstrahl-Marker (◎ Ziel, Hover am Meilenstein).
+- **Abhängigkeiten** `Meilenstein.wartetAuf` (optional, höchstens 10, keine Kreise — Kreislogik dieselbe wie bei Aufgaben): Schreibweg und ZOE lehnen Kreis,
+  unbekannten Vorgänger und Grenze ab (409/413, nichts gespeichert); „wartet“ ist nur ein Anzeige-Status; liegt das Datum vor dem eines Vorgängers, warnt das
+  Fenster (kein Blockieren); Frist im Kalender/Glocke/Heute sagt „… wartet noch auf …“. Fenster: Feld „Wartet auf“ (bevorzugt aus demselben Ziel, ohne Kreis-Kandidaten).
+- **Verbindungen:** Meilenstein löschen räumt `wartetAuf` der anderen (Server in derselben Sperre; Rückgängig holt Verweise zurück); Ziel löschen löst nur
+  `zielId` (Meilensteine bleiben, Hinweis + Rückgängig); Verbindungsprüfung `meilenstein-ziel-tot` / `meilenstein-wartet-tot` (reparierbar); ZOE `setze_meilenstein`
+  kennt `ziel` und `wartet_auf` (nur über den Stapel); die Kaskade lässt `wartetAuf` am abgeleiteten Meilenstein stehen.
+- **Rückweg:** af4679a verwirft `wartetAuf`, `messlatte` (Ziel) und `zielId` beim nächsten Speichern, sonst nichts (`GO_LIVE_CHECKLISTE.md` › Rückweg). Kein neuer Speicher.
+- **Tests:** `tests/ziel-kette-0110.test.ts` (Fixture `tests/fixtures/alt-af4679a/meilensteine.ts`, `ziele.ts`).
+
 ## Mehrstufige Unteraufgaben bis 5 Ebenen (01.10.2026, nur lokal — Branch `tiefe`)
 
 Kevin 01.10.: „Wir brauchen nochmal Unteraufgaben, also bei dem HOS unter Produkten. Da müssen wir nochmal Beschreibungen machen können.“

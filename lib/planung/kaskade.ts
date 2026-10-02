@@ -151,6 +151,8 @@ export function meilensteineAbleiten(jahrZiele: readonly Ziel[], meilensteine: r
       ...(erledigt && (bisher?.erledigtAm ?? z.erledigtAm) ? { erledigtAm: bisher?.erledigtAm ?? z.erledigtAm } : {}),
       ...(bisher?.rang != null ? { rang: bisher.rang } : {}),
       ...(bisher?.messlatte ? { messlatte: bisher.messlatte } : {}),
+      // Kette (01.10.): „wartet auf“ bleibt beim Nachziehen stehen (wer es setzt, ändert den Meilenstein → „angepasst“, dann greift das hier nie).
+      ...(bisher?.wartetAuf?.length ? { wartetAuf: bisher.wartetAuf } : {}),
       ...(z.einheit ? { einheit: z.einheit } : {}),
       ...(z.space === 'business' && z.mandatId ? { mandatId: z.mandatId } : {}),
       ...(z.space === 'business' && z.firmaId ? { firmaId: z.firmaId } : {}),

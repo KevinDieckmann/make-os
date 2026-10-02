@@ -10,6 +10,8 @@ import { neueKennung } from '@/lib/kennung';
 import { istPlanJahr, zielJahr } from './zeitstrahl';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
+/** Länge der Notiz/Beschreibung eines Ziels (wie bisher — der alte Stand kürzt nicht anders). */
+export const ZIEL_NOTIZ_MAX = 400;
 
 export function sauberZiel(roh: unknown): Ziel | null {
   const z = (roh ?? {}) as Partial<Ziel> & Record<string, unknown>;
@@ -21,7 +23,9 @@ export function sauberZiel(roh: unknown): Ziel | null {
     fortschritt: Math.max(0, Math.min(100, Math.round(Number(z.fortschritt) || 0))),
     erledigt: z.erledigt === true,
   };
-  if (z.notiz) aus.notiz = String(z.notiz).slice(0, 400);
+  if (z.notiz) aus.notiz = String(z.notiz).slice(0, ZIEL_NOTIZ_MAX);
+  // Messlatte (01.10., Ziel-Detail): woran „erreicht“ gemessen wird — optional, wie am Meilenstein.
+  if (typeof z.messlatte === 'string' && z.messlatte.trim()) aus.messlatte = z.messlatte.trim().slice(0, 300);
   if (typeof z.erledigtAm === 'string' && ISO_TAG.test(z.erledigtAm)) aus.erledigtAm = z.erledigtAm;
   if (istSpace(z.space)) aus.space = z.space;
   const rang = Number(z.rang);

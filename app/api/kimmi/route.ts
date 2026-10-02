@@ -468,12 +468,14 @@ export async function POST(req: Request) {
       },
       {
         name: 'setze_meilenstein',
-        description: 'Setzt Fortschritt, erledigt oder das Datum an einem Meilenstein („setz F&F auf 80%", „Infiltration abhaken", „schieb den Launch auf März nächsten Jahres"). titel = Teil des Meilenstein-Namens. Daten im nächsten Jahr sind ausdrücklich erlaubt.',
+        description: 'Setzt Fortschritt, erledigt oder das Datum an einem Meilenstein („setz F&F auf 80%", „Infiltration abhaken", „schieb den Launch auf März nächsten Jahres") — und ordnet ihn ein: ziel (Ziel, auf das er einzahlt) und wartet_auf (Meilensteine, die zuerst fertig sein müssen: „der Launch wartet auf den Vertrag“). titel = Teil des Meilenstein-Namens. Daten im nächsten Jahr sind ausdrücklich erlaubt.',
         input_schema: { type: 'object', properties: {
           titel: { type: 'string' },
           fortschritt: { type: 'number', description: '0–100' },
           erledigt: { type: 'boolean' },
           faellig: { type: 'string', description: 'Neues Datum YYYY-MM-DD (verschieben) — auch im nächsten Jahr' },
+          ziel: { type: 'string', description: 'Teil des Ziel-Titels, auf das der Meilenstein einzahlt — leer löst den Bezug' },
+          wartet_auf: { type: 'array', items: { type: 'string' }, description: 'Teile der Titel der Meilensteine, die zuerst erledigt sein müssen (höchstens 10; keine Kreise) — leere Liste löst die Kette' },
         }, required: ['titel'] },
       },
       {

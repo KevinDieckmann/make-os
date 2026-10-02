@@ -64,9 +64,17 @@ function zieleSpeicher(q: Quellen): string[] {
 
 /** Nur Kennung und Bezug — nie Titel oder Inhalte. */
 const bezugVon = (x: unknown): PlanungBezug | null => {
-  const o = (x && typeof x === 'object' ? x : null) as { id?: unknown; mandatId?: unknown; firmaId?: unknown } | null;
+  const o = (x && typeof x === 'object' ? x : null) as { id?: unknown; mandatId?: unknown; firmaId?: unknown; zielId?: unknown; wartetAuf?: unknown } | null;
   if (!o || typeof o.id !== 'string') return null;
-  return { id: o.id, ...(typeof o.mandatId === 'string' && o.mandatId ? { mandatId: o.mandatId } : {}), ...(typeof o.firmaId === 'string' && o.firmaId ? { firmaId: o.firmaId } : {}) };
+  const wartet = Array.isArray(o.wartetAuf) ? o.wartetAuf.filter((k): k is string => typeof k === 'string') : [];
+  return {
+    id: o.id,
+    ...(typeof o.mandatId === 'string' && o.mandatId ? { mandatId: o.mandatId } : {}),
+    ...(typeof o.firmaId === 'string' && o.firmaId ? { firmaId: o.firmaId } : {}),
+    // Kette (01.10.): nur Kennungen — Ziel-Bezug und Vorgänger der Meilensteine.
+    ...(typeof o.zielId === 'string' && o.zielId ? { zielId: o.zielId } : {}),
+    ...(wartet.length ? { wartetAuf: wartet } : {}),
+  };
 };
 const bezuege = (l: unknown): PlanungBezug[] => (Array.isArray(l) ? l.map(bezugVon).filter((x): x is PlanungBezug => !!x) : []);
 

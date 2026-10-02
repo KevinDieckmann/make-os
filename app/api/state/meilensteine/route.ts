@@ -15,6 +15,7 @@ import { sauberMeilensteine, meilensteinSpace } from '@/lib/planung/meilensteine
 import { mitMandatBezug, type MandatKurz } from '@/lib/planung/mandat';
 import { mandateFuerBezug } from '@/lib/planung/mandat-server';
 import { fortschrittAnwenden } from '@/lib/planung/meilenstein-aufgaben';
+import { kettePruefen, listeNachOps, ohneToteVerweise } from '@/lib/planung/meilenstein-kette';
 import { meilensteinStrukturSichern, meilensteinListenArchivieren, zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
 import { ladeAufgaben } from '@/lib/aufgaben/speicher';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -22,6 +23,8 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Seit 01.10. (Ziel ↔ Meilenstein): `wartetAuf` (Kette, lib/planung/meilenstein-kette.ts) — der Schreibweg lehnt zu viele
+// Vorgänger, unbekannte Vorgänger und Kreise ab (409/413) und räumt Verweise auf gelöschte Meilensteine in derselben Sperre.
 // Seit 27.09. zusätzlich (additiv, alte Einträge bleiben gültig): `rang` (Priorität per Pfeil),
 // `einheit` (Business-Einheit, nur Bereich Business), `abgeleitetVon`/`angepasst` (aus einem
 // Jahresziel mit Termin — lib/planung/kaskade.ts). Der Typ liegt in lib/planung/typen.ts.
@@ -48,8 +51,12 @@ export async function PUT(req: Request) {
   let body: { meilensteine?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (Array.isArray(body.meilensteine) && body.meilensteine.length > GRENZE) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${GRENZE} Meilensteine.` }, { status: 413 });
-  const sauber = sauberListe(body.meilensteine, await mandateFuerBezug(body.meilensteine));
-  if (!sauber.length) return NextResponse.json({ ok: false, error: 'meilensteine darf nicht leer sein.' }, { status: 400 });
+  const gesaeubert = sauberListe(body.meilensteine, await mandateFuerBezug(body.meilensteine));
+  if (!gesaeubert.length) return NextResponse.json({ ok: false, error: 'meilensteine darf nicht leer sein.' }, { status: 400 });
+  // Kette (01.10.): Verweise ins Leere fallen weg (die Liste ist ja gerade DER Bestand), Kreise und zu viele Vorgänger lehnt der Weg ab.
+  const sauber = ohneToteVerweise(gesaeubert).liste;
+  const kette = kettePruefen(sauber, sauber.map(m => m.id));
+  if (kette) return NextResponse.json({ ok: false, error: kette }, { status: kette.startsWith('Abgelehnt: höchstens') ? 413 : 409 });
   // Vorher ersetzte jeder PUT die Liste bedingungslos — ein Client mit halbem
   // Stand hätte alle Meilensteine gelöscht.
   const { ok, next, verloren } = await updateGeschuetztListen<MeilensteinFile>(
@@ -81,12 +88,18 @@ export async function PATCH(req: Request) {
   // Wert — ein mitgeschickter Wert von Hand wird in derselben Sperre überschrieben.
   const aufgaben = await ladeAufgaben();
   const r = await listePatchen<Meilenstein, MeilensteinFile & Record<string, unknown>>('meilensteine', 'meilensteine', ops, 6, undefined, {
-    danach: f => ({ ...f, meilensteine: fortschrittAnwenden(Array.isArray(f.meilensteine) ? f.meilensteine : [], aufgaben).liste }),
+    // Ein gelöschter Meilenstein verschwindet auch aus „wartet auf“ der anderen (01.10.) — Rückgängig legt den Verweis wieder an.
+    danach: f => ({ ...f, meilensteine: ohneToteVerweise(fortschrittAnwenden(Array.isArray(f.meilensteine) ? f.meilensteine : [], aufgaben).liste).liste }),
     pruefen: (liste, o) => {
       const ids = new Set(liste.map(m => m.id));
       const neu = new Set(o.filter(x => x.op === 'upsert' && !ids.has(x.eintrag!.id)).map(x => x.eintrag!.id)).size;
-      return neu && liste.length + neu > GRENZE ? `Abgelehnt: höchstens ${GRENZE} Meilensteine.` : null;
+      if (neu && liste.length + neu > GRENZE) return `Abgelehnt: höchstens ${GRENZE} Meilensteine.`;
+      // Kette (01.10.): über der Liste NACH den Änderungen — Grenze, unbekannte Vorgänger, Kreise.
+      const { nachher, beruehrt } = listeNachOps(liste, o);
+      return kettePruefen(nachher, beruehrt, liste);
     },
+    // `teil`-Änderungen laufen durch dieselbe Säuberung wie ganze Einträge (vorher ungeprüft).
+    teil: (alt, felder) => sauberListe([{ ...alt, ...felder }])[0] ?? null,
   });
   if (!r.ok) {
     const aktuell = await loadJson<MeilensteinFile>('meilensteine');

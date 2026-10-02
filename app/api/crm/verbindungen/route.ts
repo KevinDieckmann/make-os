@@ -129,14 +129,15 @@ export async function POST(req: Request) {
   }
   // Mandat an Zielen und Zeit (28.09.): tote Bezüge gegen den frischen CRM-Stand — je Speicher eine Sperre.
   if (speicher.has('ziele') || speicher.has('meilensteine') || speicher.has('zeit')) {
-    const lebend = { mandate: new Set(stand.crm.mandate.map(x => x.id)), firmen: new Set(stand.crm.firmen.map(x => x.id)) };
+    // Ziele für den Ziel-Bezug der Meilensteine (01.10.): alle Bestände, alle Horizonte.
+    const lebend = { mandate: new Set(stand.crm.mandate.map(x => x.id)), firmen: new Set(stand.crm.firmen.map(x => x.id)), ziele: new Set((alt.planung?.ziele ?? []).flatMap(s => s.ziele.map(z => z.id))) };
     if (speicher.has('ziele')) {
       for (const s of alt.planung?.ziele ?? []) {
         await updateJson<Record<string, unknown>>(s.speicher, cur => (cur ? zieleDateiBereinigen(cur, lebend).datei : cur as unknown as Record<string, unknown>));
       }
     }
     if (speicher.has('meilensteine')) {
-      await updateJson<{ meilensteine?: unknown }>('meilensteine', cur => (cur ? meilensteinDateiBereinigen(cur, lebend).datei : cur as unknown as { meilensteine?: unknown }));
+      await updateJson<{ meilensteine?: unknown }>('meilensteine', cur => (cur ? meilensteinDateiBereinigen(cur, lebend, new Set(ids)).datei : cur as unknown as { meilensteine?: unknown }));
     }
     if (speicher.has('zeit') && ids.includes('zeit-mandat-tot')) {
       for (const p of alt.fokus ?? []) await zeitAendern(p.person, d => zeitDateiBereinigen(d, lebend).datei);

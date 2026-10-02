@@ -11,6 +11,8 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { aufgabenVonMeilenstein, fortschrittAusAufgaben } from '@/lib/planung/meilenstein-aufgaben';
 import { zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
+import { kettePruefen } from '@/lib/planung/meilenstein-kette';
+import { ZIEL_HORIZONTE, type ZieleDatei } from '@/lib/planung/typen';
 import { ladeAufgaben, ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
 import { elternAusText } from '@/lib/aufgaben/ebenen';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
@@ -179,6 +181,15 @@ async function erfasseZahlung(input: Record<string, unknown>): Promise<string> {
   return `Erfasst: Zahlung an ${an} über ${eurW(betrag)}${faellig ? `, fällig ${faellig}` : ''} — steht in der Prioritätenliste.`;
 }
 
+/** Eine Auswahl per Namensteil: genau ein Treffer (ein exakter Name gewinnt), sonst ein Fehlertext. */
+function treffer<T extends { id: string; titel: string }>(liste: readonly T[], teil: string, was: string): T | string {
+  const s = teil.trim().toLowerCase();
+  const exakt = liste.filter(x => x.titel.trim().toLowerCase() === s);
+  const l = exakt.length === 1 ? exakt : liste.filter(x => x.titel.toLowerCase().includes(s));
+  if (l.length === 1) return l[0];
+  return l.length ? `${was} „${teil}“ ist nicht eindeutig (${l.slice(0, 4).map(x => x.titel).join(' · ')}) — genauer benennen.` : `Kein ${was} passt zu „${teil}“.`;
+}
+
 async function setzeMeilenstein(input: Record<string, unknown>): Promise<string> {
   const suche = String(input.titel ?? '').trim().toLowerCase();
   if (!suche) return 'Fehlgeschlagen: titel fehlt.';
@@ -187,15 +198,42 @@ async function setzeMeilenstein(input: Record<string, unknown>): Promise<string>
   // Verschieben (30.09.): jedes echte Datum bis 10 Jahre um heute — ausdrücklich auch im nächsten Jahr.
   const faellig = input.faellig != null && input.faellig !== '' ? planTag(input.faellig, localDay()) : undefined;
   if (faellig === null) return 'Fehlgeschlagen: faellig als Datum YYYY-MM-DD angeben (höchstens 10 Jahre voraus).';
+  // Ziel und Kette (01.10., Ziel ↔ Meilenstein): `ziel` = Teil des Ziel-Titels (leer = Bezug lösen), `wartet_auf` = Teile der
+  // Titel der Vorgänger (leere Liste = Kette lösen). Gilt wie alles hier nur über den Stapel (Register: freigabepflichtig).
+  const zielText = input.ziel !== undefined ? String(input.ziel ?? '').trim() : undefined;
+  const wartetRoh = input.wartet_auf !== undefined ? (Array.isArray(input.wartet_auf) ? input.wartet_auf : [input.wartet_auf]).map(x => String(x ?? '').trim()).filter(Boolean) : undefined;
+  let zielWahl: { id: string; titel: string } | null | string = null;
+  if (zielText) {
+    const zd = await loadJson<ZieleDatei>('ziele');
+    const alle = ZIEL_HORIZONTE.flatMap(h => (Array.isArray(zd?.[h]) ? zd![h] : []).filter(z => !z.abgeleitetVon));
+    zielWahl = treffer(alle, zielText, 'Ziel');
+    if (typeof zielWahl === 'string') return `Fehlgeschlagen: ${zielWahl}`;
+  }
   let ergebnis = '';
   // Fortschritt-Regel (30.09., lib/planung/meilenstein-aufgaben.ts): mit Aufgaben rechnet er sich aus ihnen — dann nicht von Hand.
   const aufgaben = await ladeAufgaben();
-  await updateJson<{ meilensteine: { id: string; titel: string; fortschritt: number; erledigt: boolean; erledigtAm?: string; faellig?: string; abgeleitetVon?: string; angepasst?: boolean }[] }>('meilensteine', current => {
+  type Ms = { id: string; titel: string; fortschritt: number; erledigt: boolean; erledigtAm?: string; faellig?: string; abgeleitetVon?: string; angepasst?: boolean; zielId?: string; wartetAuf?: string[] };
+  await updateJson<{ meilensteine: Ms[] }>('meilensteine', current => {
     const f = current ?? { meilensteine: [] };
-    const m = (f.meilensteine ?? []).find(x => x.titel.toLowerCase().includes(suche));
+    const liste = f.meilensteine ?? [];
+    const m = liste.find(x => x.titel.toLowerCase().includes(suche));
     if (!m) {
-      ergebnis = `Kein Meilenstein passt zu „${input.titel}". Offene: ${(f.meilensteine ?? []).filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
+      ergebnis = `Fehlgeschlagen: Kein Meilenstein passt zu „${input.titel}". Offene: ${liste.filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
       return f;
+    }
+    // Kette zuerst prüfen — nichts wird halb geändert.
+    let wartetNeu: string[] | undefined;
+    if (wartetRoh) {
+      const ids: string[] = [];
+      for (const t of wartetRoh) {
+        const w = treffer(liste.filter(x => x.id !== m.id), t, 'Meilenstein');
+        if (typeof w === 'string') { ergebnis = `Fehlgeschlagen: ${w}`; return f; }
+        if (!ids.includes(w.id)) ids.push(w.id);
+      }
+      wartetNeu = ids;
+      const nachher = liste.map(x => (x.id === m.id ? { ...x, wartetAuf: ids } : x));
+      const grund = kettePruefen(nachher, [m.id], liste);
+      if (grund) { ergebnis = `Fehlgeschlagen: ${grund.replace(/^Abgelehnt: /, '')}`; return f; }
     }
     const teile: string[] = [];
     if (faellig) {
@@ -204,16 +242,26 @@ async function setzeMeilenstein(input: Record<string, unknown>): Promise<string>
       if (m.abgeleitetVon) m.angepasst = true;
       teile.push(`auf ${faellig.slice(8)}.${faellig.slice(5, 7)}.${faellig.slice(0, 4)} verschoben`);
     }
+    if (zielText !== undefined) {
+      if (zielWahl && typeof zielWahl !== 'string') { m.zielId = zielWahl.id; teile.push(`zahlt auf das Ziel „${zielWahl.titel}“ ein`); }
+      else { delete m.zielId; teile.push('ohne Ziel-Bezug'); }
+      if (m.abgeleitetVon) m.angepasst = true;
+    }
+    if (wartetNeu) {
+      if (wartetNeu.length) { m.wartetAuf = wartetNeu; teile.push(`wartet auf ${wartetNeu.map(id => `„${liste.find(x => x.id === id)?.titel}“`).join(', ')}`); }
+      else { delete m.wartetAuf; teile.push('wartet auf niemanden mehr'); }
+      if (m.abgeleitetVon) m.angepasst = true;
+    }
     const errechnet = m.id ? fortschrittAusAufgaben(aufgabenVonMeilenstein(aufgaben, m.id)) : null;
     if (erledigt) { m.erledigt = true; m.fortschritt = 100; m.erledigtAm = localDay(); teile.push('abgehakt ✓'); }
     else if (fortschritt != null && errechnet !== null) teile.push(`nicht von Hand gesetzt — der Fortschritt rechnet sich aus seinen Aufgaben (${errechnet} %); Aufgaben abhaken oder den Meilenstein als erledigt setzen`);
     else if (fortschritt != null) { m.fortschritt = fortschritt; teile.push(`auf ${fortschritt}% gesetzt`); }
-    ergebnis = teile.length ? `Meilenstein „${m.titel}" ${teile.join(' und ')}.` : `Nichts geändert — fortschritt, erledigt oder faellig angeben.`;
+    ergebnis = teile.length ? `Meilenstein „${m.titel}" ${teile.join(' und ')}.` : `Nichts geändert — fortschritt, erledigt, faellig, ziel oder wartet_auf angeben.`;
     return f;
   });
   // Ziele mit Meilensteinen ziehen nach (Mittelwert, lib/planung/meilenstein-aufgaben-server.ts).
   await zieleNachziehen();
-  return `Erfasst: ${ergebnis}`;
+  return ergebnis.startsWith('Fehlgeschlagen') ? ergebnis : `Erfasst: ${ergebnis}`;
 }
 
 async function setzeFokus(input: Record<string, unknown>): Promise<string> {

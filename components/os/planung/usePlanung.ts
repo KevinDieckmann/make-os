@@ -14,14 +14,19 @@ import { ListenSchreiber, type SchreibErgebnis } from '@/lib/make-one/liste-stan
 import { localDay } from '@/lib/zeit';
 import { EINHEITEN_STANDARD } from '@/lib/planung/einheiten';
 import { zeitraum, type Zeitraum } from '@/lib/planung/zeitraum';
-import type { Meilenstein, Ziel, ZielHorizont } from '@/lib/planung/typen';
+import { ZIEL_HORIZONTE, type Meilenstein, type Ziel, type ZielHorizont } from '@/lib/planung/typen';
 import { NEU_ANGEFANGEN } from '@/components/os/aufgaben/NeuAnfangen';
+
+/** Ein Ziel aus irgendeinem Horizont, kurz — für Brotkrumen, Auswahl und das Ziel-Detail (01.10.). */
+export interface ZielKurz { id: string; titel: string; horizont: ZielHorizont; fortschritt: number; erledigt: boolean }
 
 export interface PlanungStand {
   heute: string;
   zr: Zeitraum;
   geladen: boolean;
   ziele: Ziel[];
+  /** Alle Ziele des geteilten Bestands, alle Horizonte (nur lesen) — der Hook schreibt weiter nur den eigenen Horizont. */
+  alleZiele: ZielKurz[];
   fokus: Record<string, string>;
   ms: Meilenstein[];
   einheiten: string[];
@@ -29,6 +34,8 @@ export interface PlanungStand {
   persistMs: (next: Meilenstein[]) => void;
   /** Wie persistMs, aber sofort gesendet und abwartbar (true = gespeichert) — für „Speichern & öffnen“. */
   persistMsJetzt: (next: Meilenstein[]) => Promise<boolean>;
+  /** Meilensteine frisch vom Server holen (z. B. nachdem ein gelöschtes Ziel ihren Ziel-Bezug gelöst hat). */
+  msNeuLaden: () => Promise<void>;
   fokusSetzen: (schluessel: string, wert: string) => void;
   einheitAnlegen: (name: string) => Promise<string | null>;
   /** Hinweis nach einem abgelehnten Speichern (z. B. „inzwischen geändert“) — sonst null. */
@@ -36,11 +43,14 @@ export interface PlanungStand {
 }
 
 type ZielZeile = Ziel & { stand?: string };
+const kurzVon = (z: Ziel, horizont: ZielHorizont): ZielKurz => ({ id: z.id, titel: z.titel, horizont, fortschritt: z.erledigt ? 100 : z.fortschritt, erledigt: !!z.erledigt });
 type MsZeile = Meilenstein & { stand?: string };
 
 /** Text für die Ansicht, wenn ein Speichern nicht durchging. */
 function hinweisAus(e: SchreibErgebnis<unknown>): string | null {
   if (e.ok) return null;
+  // Eine ausdrückliche Ablehnung (Kreis, zu viele Vorgänger, Grenze) nennt den Grund — nicht „jemand hat geändert“.
+  if (e.fehler?.startsWith('Abgelehnt')) return e.fehler;
   if (e.status === 409) return 'Jemand hat inzwischen geändert — der aktuelle Stand ist geladen, bitte noch einmal.';
   return e.fehler ?? 'Nicht gespeichert.';
 }
@@ -55,6 +65,7 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
   const heute = localDay();
   const zr = useMemo(() => zeitraum(horizont, heute), [horizont, heute]);
   const [ziele, setZiele] = useState<ZielZeile[]>([]);
+  const [alleZiele, setAlleZiele] = useState<ZielKurz[]>([]);
   const [fokus, setFokus] = useState<Record<string, string>>({});
   const [ms, setMs] = useState<MsZeile[]>([]);
   const [einheiten, setEinheiten] = useState<string[]>([...EINHEITEN_STANDARD]);
@@ -79,16 +90,27 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
     pfad: '/api/state/meilensteine',
     liste: d => (Array.isArray(d.meilensteine) ? (d.meilensteine as MsZeile[]) : null),
   }), []);
+  /** `alleZiele` für den eigenen Horizont nachziehen (die anderen Horizonte bleiben, wie geladen). */
+  const kurzSetzen = useCallback((l: readonly Ziel[]) => setAlleZiele(a => [...a.filter(z => z.horizont !== horizont), ...l.map(z => kurzVon(z, horizont))]), [horizont]);
   const zieleZeigen = useCallback((l: ZielZeile[]) => { zieleRef.current = l; setZiele(l); }, []);
   const msZeigen = useCallback((l: MsZeile[]) => { msRef.current = l; setMs(l); }, []);
 
-  const ladeMs = useCallback(() => {
-    fetch('/api/state/meilensteine', { cache: 'no-store' }).then(r => r.json()).then(d => {
-      if (!Array.isArray(d.meilensteine)) return;
-      msSchreiber.kenne(d.meilensteine);
-      msZeigen(msSchreiber.sicht() ?? d.meilensteine);
-    }).catch(() => {});
-  }, [msSchreiber, msZeigen]);
+  const ladeMs = useCallback((): Promise<void> => fetch('/api/state/meilensteine', { cache: 'no-store' }).then(r => r.json()).then(d => {
+    if (!Array.isArray(d.meilensteine)) return;
+    msSchreiber.kenne(d.meilensteine);
+    msZeigen(msSchreiber.sicht() ?? d.meilensteine);
+  }).catch(() => {}), [msSchreiber, msZeigen]);
+
+  /**
+   * Die Ziele frisch holen (nur die Liste, nie den Fokus): der Server rechnet den Fortschritt der Ziele aus ihren Meilensteinen
+   * nach (30.09.) — ohne Nachladen zeigte die Liste den alten Wert und der nächste Schreibversuch am Ziel bekäme ein 409 (01.10.).
+   */
+  const ladeZiele = useCallback((): Promise<void> => fetch('/api/state/ziele', { cache: 'no-store' }).then(r => r.json()).then(d => {
+    const l: ZielZeile[] = Array.isArray(d[horizont]) ? d[horizont] : [];
+    zieleSchreiber.kenne(l);
+    zieleZeigen(zieleSchreiber.sicht() ?? l);
+    kurzSetzen(l);
+  }).catch(() => {}), [horizont, kurzSetzen, zieleSchreiber, zieleZeigen]);
 
   useEffect(() => {
     if (!aktiv) return;
@@ -100,6 +122,7 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
       zieleSchreiber.kenne(l);
       zieleZeigen(zieleSchreiber.sicht() ?? l);
       setFokus(d.fokus && typeof d.fokus === 'object' ? d.fokus : {});
+      setAlleZiele(ZIEL_HORIZONTE.flatMap(h => (Array.isArray(d[h]) ? (d[h] as Ziel[]) : []).map(z => kurzVon(z, h))));
       setGeladen(true);
     }).catch(() => { if (lebt) setGeladen(true); });
     ladeMs();
@@ -110,18 +133,22 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
   /** Die Ansicht reicht die neue Liste — hier wird daraus je Ziel eine Änderung (nie der ganze Horizont). */
   const persistZiele = useCallback((next: Ziel[]) => {
     if (!zieleSchreiber.geladen) return; // ohne bekannten Stand wird nichts geschrieben
+    // Ein gelöschtes Ziel löst am Server den Ziel-Bezug seiner Meilensteine (01.10.) — danach neu laden (sonst 409 beim nächsten Schreiben).
+    const loescht = next.length < zieleRef.current.length;
     zieleSchreiber.aendern(zieleRef.current, next as ZielZeile[]);
     zieleZeigen(next as ZielZeile[]);
+    kurzSetzen(next);
     clearTimeout(zieleTimer.current);
     zieleTimer.current = setTimeout(() => {
       void zieleSchreiber.senden().then(e => {
         setHinweis(hinweisAus(e));
         if (e.sicht && !e.nichts) zieleZeigen(e.sicht);
         // Termin-Ziele des Jahres sind Meilensteine geworden — den Stand nachladen.
-        if (e.ok && !e.nichts && horizont === 'jahr') ladeMs();
+        if (e.ok && !e.nichts && (horizont === 'jahr' || loescht)) void ladeMs();
+        if (e.sicht) kurzSetzen(e.sicht);
       });
     }, 500);
-  }, [horizont, ladeMs, zieleSchreiber, zieleZeigen]);
+  }, [horizont, kurzSetzen, ladeMs, zieleSchreiber, zieleZeigen]);
 
   const persistMs = useCallback((next: Meilenstein[]) => {
     if (!msSchreiber.geladen) return;
@@ -132,9 +159,10 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
       void msSchreiber.senden().then(e => {
         setHinweis(hinweisAus(e));
         if (e.sicht && !e.nichts) msZeigen(e.sicht);
+        if (e.ok && !e.nichts) void ladeZiele();
       });
     }, 500);
-  }, [msSchreiber, msZeigen]);
+  }, [msSchreiber, msZeigen, ladeZiele]);
 
   const persistMsJetzt = useCallback(async (next: Meilenstein[]) => {
     if (!msSchreiber.geladen) return false;
@@ -144,8 +172,9 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
     const e = await msSchreiber.senden();
     setHinweis(hinweisAus(e));
     if (e.sicht && !e.nichts) msZeigen(e.sicht);
+    if (e.ok && !e.nichts) void ladeZiele();
     return e.ok;
-  }, [msSchreiber, msZeigen]);
+  }, [msSchreiber, msZeigen, ladeZiele]);
 
   // Beim Verlassen: Offenes noch senden (die Absichten liegen im Schreiber).
   useEffect(() => () => {
@@ -172,5 +201,5 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
     } catch { return null; }
   }, []);
 
-  return { heute, zr, geladen, ziele, fokus, ms, einheiten, persistZiele, persistMs, persistMsJetzt, fokusSetzen, einheitAnlegen, hinweis };
+  return { heute, zr, geladen, ziele, alleZiele, fokus, ms, einheiten, persistZiele, persistMs, persistMsJetzt, msNeuLaden: ladeMs, fokusSetzen, einheitAnlegen, hinweis };
 }

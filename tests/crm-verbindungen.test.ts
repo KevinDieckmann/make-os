@@ -74,7 +74,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'aufgabe-bezug-tot', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'zeit-mandat-tot', 'termin-uid-tot', 'kalender-bezug-kennung-tot', 'zeit-termin-tot', 'aktivitaet-termin-tot', 'event-termin-verwaist', 'termin-waise-neu', 'followup-termin-verschoben', 'followup-termin-tot', 'buchung-followup-ohne-termin', 'familie-tag-mensch-tot']);
+    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'aufgabe-bezug-tot', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'meilenstein-ziel-tot', 'meilenstein-wartet-tot', 'zeit-mandat-tot', 'termin-uid-tot', 'kalender-bezug-kennung-tot', 'zeit-termin-tot', 'aktivitaet-termin-tot', 'event-termin-verwaist', 'termin-waise-neu', 'followup-termin-verschoben', 'followup-termin-tot', 'buchung-followup-ohne-termin', 'familie-tag-mensch-tot']);
   });
 });
 
@@ -168,6 +168,9 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   // Mandat an Zielen und Zeit (28.09.)
   ['ziel-mandat-tot', b => { b.planung!.ziele[0].ziele.push({ id: 'z-3', mandatId: 'm-weg' }); b.planung!.ziele.push({ speicher: 'ziele-eigen--malin', ziele: [{ id: 'z-4', firmaId: 'f-weg' }, { id: 'z-5', mandatId: 'm-1' }] }); }, 2, 'z-3'],
   ['meilenstein-mandat-tot', b => { b.planung!.meilensteine.push({ id: 'ms-2', mandatId: 'm-weg', firmaId: 'f-alpha' }); }, 1, 'ms-2'],
+  // Ziel ↔ Meilenstein (01.10.): toter Ziel-Bezug und toter Vorgänger — das Ziel z-1 und der Meilenstein ms-1 leben.
+  ['meilenstein-ziel-tot', b => { b.planung!.meilensteine.push({ id: 'ms-z', zielId: 'z-weg' }, { id: 'ms-z2', zielId: 'z-1' }); }, 1, 'ms-z'],
+  ['meilenstein-wartet-tot', b => { b.planung!.meilensteine.push({ id: 'ms-w', wartetAuf: ['ms-weg', 'ms-1'] }, { id: 'ms-w2', wartetAuf: ['ms-1'] }); }, 1, 'ms-w'],
   // Terminbuchungen (29.09., K4)
   ['buchung-seite-tot', b => { b.buchungen!.buchungen.push({ id: 'bu-2', seiteId: 'bs-weg', status: 'abgelehnt', start: `${HEUTE}T11:00:00` }); }, 1, 'bu-2'],
   ['buchung-kontakt-tot', b => { b.buchungen!.buchungen.push({ id: 'bu-3', seiteId: 'bs-1', status: 'angefragt', kontaktId: 'c-weg1', start: `${HEUTE}T11:00:00` }); }, 1, 'bu-3'],
@@ -299,6 +302,8 @@ describe('Verbindungen reparieren', () => {
     // Mandat an Zielen und Zeit (28.09.): tote Bezüge an Ziel, Meilenstein, Fokus-Block.
     b.planung!.ziele[0].ziele.push({ id: 'z-9', mandatId: 'm-weg', firmaId: 'f-alpha' });
     b.planung!.meilensteine.push({ id: 'ms-9', firmaId: 'f-weg' });
+    // Ziel ↔ Meilenstein (01.10.): toter Ziel-Bezug und toter Vorgänger, daneben lebende.
+    b.planung!.meilensteine.push({ id: 'ms-10', zielId: 'z-weg', wartetAuf: ['ms-1', 'ms-weg'] }, { id: 'ms-11', zielId: 'z-1', wartetAuf: ['ms-1'] });
     b.fokus![0].bloecke.push({ von: HEUTE, bis: HEUTE, schluessel: 'business:x', label: 'x', sek: 60, mandatId: 'm-weg', einheit: 'KD Ventures' });
     // Kalender (29.09., K1): Bezug zu gelöschtem Termin, tote Kennung im Bezug, Fokus-Block aus gelöschter Fokuszeit.
     b.kalender!.bezuege.push({ schluessel: 'U-weg', tag: '2026-10-01', kennungen: { aufgabeId: 't-1' } }, { schluessel: 'U-2', tag: '2026-10-01', kennungen: { mandatId: 'm-weg', aufgabeId: 't-1' } });
@@ -369,6 +374,9 @@ describe('Verbindungen reparieren', () => {
     // Mandat an Zielen und Zeit: nur die tote Kennung geht, der Rest (lebende Firma, Einheit, Sekunden) bleibt.
     expect(n.planung!.ziele[0].ziele.find(z => z.id === 'z-9')).toEqual({ id: 'z-9', firmaId: 'f-alpha' });
     expect(n.planung!.meilensteine.find(m => m.id === 'ms-9')).toEqual({ id: 'ms-9' });
+    // Ziel ↔ Meilenstein: nur die toten Kennungen gehen, lebender Ziel-Bezug und lebender Vorgänger bleiben.
+    expect(n.planung!.meilensteine.find(m => m.id === 'ms-10')).toEqual({ id: 'ms-10', wartetAuf: ['ms-1'] });
+    expect(n.planung!.meilensteine.find(m => m.id === 'ms-11')).toEqual({ id: 'ms-11', zielId: 'z-1', wartetAuf: ['ms-1'] });
     expect(n.planung!.ziele[0].ziele.find(z => z.id === 'z-1')).toEqual({ id: 'z-1', mandatId: 'm-1', firmaId: 'f-alpha' });
     expect(n.fokus![0].bloecke.at(-2)).toMatchObject({ sek: 60, einheit: 'KD Ventures' });
     expect(n.fokus![0].bloecke.at(-2)).not.toHaveProperty('mandatId');

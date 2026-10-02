@@ -29,6 +29,25 @@ export const bereichAusSpace = (s: SpaceId): MeilensteinBereich => (s === 'priva
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const ZIEL_KENNUNG = /^[A-Za-z0-9_~:.-]{1,80}$/;
 
+/** Höchstzahl Vorgänger je Meilenstein (01.10., lib/planung/meilenstein-kette.ts) — darüber wird abgelehnt, nie gekürzt. */
+export const KETTE_MAX = 10;
+
+/**
+ * `wartetAuf` (01.10.) säubern: nur die Form der Kennungen, ohne Doppelte, nie die eigene. Mehr als `KETTE_MAX` bleibt
+ * stehen (eine mehr als erlaubt) — der Schreibweg lehnt das ab (`kettePruefen`), still gekürzt wird nie.
+ * Leer → undefined (das Feld fällt weg). Ob die Vorgänger existieren und kein Kreis entsteht, prüft der Schreibweg.
+ */
+export function sauberWartetAuf(roh: unknown, eigeneId: string): string[] | undefined {
+  if (!Array.isArray(roh)) return undefined;
+  const aus: string[] = [];
+  for (const x of roh) {
+    if (typeof x !== 'string' || !ZIEL_KENNUNG.test(x) || x === eigeneId || aus.includes(x)) continue;
+    aus.push(x);
+    if (aus.length > KETTE_MAX) break;
+  }
+  return aus.length ? aus : undefined;
+}
+
 /** Einen Meilenstein säubern (Schreibweg der Route) — null, wenn der Titel fehlt. */
 export function sauberMeilenstein(roh: unknown): Meilenstein | null {
   const m = (roh && typeof roh === 'object' ? roh : {}) as Partial<Meilenstein> & Record<string, unknown>;
@@ -38,8 +57,10 @@ export function sauberMeilenstein(roh: unknown): Meilenstein | null {
   const space = meilensteinSpace(m);
   // Einheit nur im Business — Privat kennt keine Einheiten.
   const einheit = space === 'business' ? sauberEinheit(m.einheit) : null;
+  const id = String(m.id ?? '').slice(0, 80) || neueKennung('ms');
+  const wartetAuf = sauberWartetAuf(m.wartetAuf, id);
   return {
-    id: String(m.id ?? '').slice(0, 80) || neueKennung('ms'),
+    id,
     titel,
     space,
     bereich: bereichAusSpace(space),
@@ -56,6 +77,8 @@ export function sauberMeilenstein(roh: unknown): Meilenstein | null {
     ...bezugSaeubern(m, space === 'business'),
     // Ziel-Bezug (30.09.): nur die Form der Kennung — ob das Ziel noch lebt, entscheidet die Anzeige.
     ...(typeof m.zielId === 'string' && ZIEL_KENNUNG.test(m.zielId) ? { zielId: m.zielId } : {}),
+    // Abhängigkeit (01.10.): „wartet auf“ andere Meilensteine — nur die Form; Existenz, Kreise, Grenze prüft der Schreibweg.
+    ...(wartetAuf ? { wartetAuf } : {}),
   };
 }
 

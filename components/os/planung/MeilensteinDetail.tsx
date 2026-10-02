@@ -10,6 +10,8 @@
 // → Glocke), Dateien & Links (Aufgaben-Ablage an der Liste), Notizen (Stand/409).
 // Meilenstein-Felder schreibt usePlanung (Einzeländerungen mit Stand), Aufgaben der TasksContext, den Austausch
 // /api/planung/meilenstein. Am Handy: eine Spalte, Abschnitte als Reiter.
+// Seit 01.10. (Ziel ↔ Meilenstein): Brotkrumen „Ziele & Planung › Ziel › Meilenstein“ (das Ziel führt ins Ziel-Detail), im Kopf die
+// Kette — „wartet noch auf …“, Vorgänger und Nachfolger als Links, Warnung, wenn das Datum vor dem eines Vorgängers liegt.
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
@@ -35,6 +37,7 @@ import { ProjektDateien } from '../aufgaben/ProjektDateien';
 import { NotizAnzeige } from '../aufgaben/Notiz';
 import { usePersonen, useIch } from '../aufgaben/hilfe';
 import { useMeilensteinFenster } from './MeilensteinFenster';
+import { datumVorVorgaenger, nachfolger, wartetText } from '@/lib/planung/meilenstein-kette';
 import { useRueckgaengig } from './Rueckgaengig';
 import { BeitragsVerlauf } from '../austausch/BeitragsVerlauf';
 
@@ -142,7 +145,12 @@ export function MeilensteinDetail({ id }: { id: string }) {
   const offeneAufgabe = offen ? state.tasks.find(t => t.id === offen) : undefined;
 
   const zielId = m ? zielVonMeilenstein(m) : undefined;
-  const ziel = zielId ? p.ziele.find(z => z.id === zielId) : undefined;
+  const ziel = zielId ? p.alleZiele.find(z => z.id === zielId) : undefined;
+  // Kette (01.10.): wer zuerst fertig sein muss, wer danach dran ist.
+  const wartetNoch = m ? wartetText(m, p.ms) : null;
+  const vorgaenger = m ? (m.wartetAuf ?? []).map(k => p.ms.find(x => x.id === k)).filter((x): x is Meilenstein => !!x) : [];
+  const danach = m ? nachfolger(m.id, p.ms) : [];
+  const frueher = m ? datumVorVorgaenger(m, p.ms) : [];
 
   // Nicht gefunden erst, wenn der Server es sagt (404) — die Meilensteine laden getrennt von den Zielen.
   if (!m && !raum.fehlt) return <Seite titel="Meilenstein"><Leer>lade …</Leer>{rueck.hinweis}</Seite>;
@@ -164,7 +172,11 @@ export function MeilensteinDetail({ id }: { id: string }) {
 
   return (
     <Seite titel={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>Meilenstein</span>}
-      unter={<Link href={WEG.jahr()} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: TYP.bedien }}>‹ Ziele & Planung</Link>}>
+      unter={<span style={{ fontSize: TYP.bedien }}>
+        <Link href={WEG.jahr()} style={{ color: C.inkLeise, textDecoration: 'none' }}>‹ Ziele & Planung</Link>
+        {ziel && <> › <Link href={WEG.ziel(ziel.id)} title="Zum Ziel — alle Meilensteine als Kette" style={{ color: C.inkLeise, textDecoration: 'none' }}>{ziel.titel}</Link></>}
+        {' › '}<span style={{ color: C.inkDim }}>Meilenstein</span>
+      </span>}>
       {p.hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{p.hinweis}</div>}
       {/* ── Kopf ── */}
       <Karte i={1} akzent={farbe}>
@@ -178,8 +190,16 @@ export function MeilensteinDetail({ id }: { id: string }) {
           {space && space.id !== 'privat' && <Chip farbe={space.farbe}>{space.label}</Chip>}
           {m.einheit && space?.label !== m.einheit && <Chip farbe={SPACE_FARBE.business}>{m.einheit}</Chip>}
           <span style={{ color: spaet ? LEUCHT.kritisch : undefined }}>{m.faellig ? `${spaet ? 'überfällig seit' : 'fällig'} ${m.faellig.slice(8)}.${m.faellig.slice(5, 7)}.${m.faellig.slice(0, 4)}` : m.zeitfenster ?? 'ohne Datum'}</span>
-          {ziel && <span>Ziel: <b style={{ color: C.inkDim, fontWeight: 600 }}>{ziel.titel}</b> · {ziel.erledigt ? 100 : ziel.fortschritt} %</span>}
+          {ziel && <span>Ziel: <Link href={WEG.ziel(ziel.id)} style={{ color: C.inkDim, fontWeight: 600, textDecoration: 'none' }}>{ziel.titel}</Link> · {ziel.erledigt ? 100 : ziel.fortschritt} %</span>}
         </div>
+        {(wartetNoch || vorgaenger.length > 0 || danach.length > 0) && (
+          <div style={{ display: 'grid', gap: 4, marginTop: 8, fontSize: 12.5, color: C.inkLeise }}>
+            {wartetNoch && <span style={{ color: LEUCHT.achtung, fontWeight: 600 }}>{wartetNoch}</span>}
+            {vorgaenger.length > 0 && <span>Wartet auf: {vorgaenger.map((x, k) => <span key={x.id}>{k > 0 ? ', ' : ''}<Link href={WEG.meilenstein(x.id)} style={{ color: x.erledigt ? C.inkLeise : C.inkDim, textDecoration: x.erledigt ? 'line-through' : 'none' }}>{x.titel}</Link></span>)}</span>}
+            {danach.length > 0 && <span>Danach dran: {danach.map((x, k) => <span key={x.id}>{k > 0 ? ', ' : ''}<Link href={WEG.meilenstein(x.id)} style={{ color: C.inkDim }}>{x.titel}</Link></span>)}</span>}
+            {frueher.length > 0 && <span role="status" style={{ color: LEUCHT.achtung }}>Hinweis: Das Datum liegt vor dem von „{frueher[0].titel}“ ({frueher[0].faellig!.slice(8)}.{frueher[0].faellig!.slice(5, 7)}.) — nur eine Warnung, geplant wird, wie du willst.</span>}
+          </div>
+        )}
         {m.messlatte && <div style={{ marginTop: 8, fontSize: TYP.bedien, color: C.inkDim }}><span style={mikro}>Messlatte </span>{m.messlatte}</div>}
         {/* Fortschritt: aus den Aufgaben, sobald es welche gibt — sonst von Hand. */}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>

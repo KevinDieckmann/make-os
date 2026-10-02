@@ -106,6 +106,11 @@ export const WEG = {
    * `r` = Abschnitt, der geöffnet/angesprungen wird. Der Zeitstrahl und alle Listen verlinken nur hierüber.
    */
   meilenstein: (id: string, r?: 'aufgaben' | 'verlauf' | 'dateien' | 'notizen') => q(`/os/planung/meilenstein/${encodeURIComponent(id)}`, { r }),
+  /**
+   * Ein Ziel im Detail (01.10., Ziel ↔ Meilenstein): Kopf (Frist, Messlatte, Fortschritt aus den Meilensteinen), die
+   * Meilensteine als geordnete Kette (mit Abhängigkeiten), „+ Meilenstein zu diesem Ziel“, Beschreibung. Alle Horizonte.
+   */
+  ziel: (id: string) => `/os/planung/ziel/${encodeURIComponent(id)}`,
   agenten: () => '/os/agenten',
   aufgabe: (id: string) => q('/os/aufgaben', { offen: id }),
   /**

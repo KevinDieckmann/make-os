@@ -41,6 +41,8 @@ import { bereichVonSpace } from '@/lib/aufgaben/struktur';
 import { imPapierkorb } from '@/lib/aufgaben/papierkorb';
 import { imArchiv } from '@/lib/aufgaben/neustart';
 import { WEG } from '@/lib/wege';
+import { wartetText } from '@/lib/planung/meilenstein-kette';
+import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 import { usePlanung } from './planung/usePlanung';
 import { useStrahlFenster, adresseSetzen } from './planung/useStrahlFenster';
@@ -138,19 +140,21 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     return [1, 8, 15, 22, 29].filter(t => t <= letzter).map(t => ({ date: `${zr.von.slice(0, 8)}${p2(t)}`, label: `${t}.` }));
   })();
   const imFilter = (space: SpaceId, einheit?: string) => (spaceFilter === 'alle' || space === spaceFilter) && (!imBusiness || passtEinheit(einheit, einheitFilter));
+  /** Der Titel des Ziels, auf das ein Meilenstein einzahlt (Marker-Text; führt die Kette 01.10.). */
+  const zielTitel = (m: { zielId?: string; abgeleitetVon?: string }) => { const id = zielVonMeilenstein(m); return id ? p.alleZiele.find(z => z.id === id)?.titel : undefined; };
   const strahlMarker: StrahlMarker[] = ms
     .filter(m => m.faellig && (istJahr || !m.erledigt) && imFilter(meilensteinSpace(m), m.einheit))
     .map(m => ({
       id: m.id, date: m.faellig!, label: m.titel, farbe: meilensteinSpace(m) === 'privat' ? LEUCHT.gut : LEUCHT.achtung,
       symbol: m.erledigt ? '✓' : '◇', blass: m.erledigt,
-      titel: `${m.titel} · ${m.faellig!.slice(8)}.${m.faellig!.slice(5, 7)}.${m.faellig!.slice(0, 4)}${m.erledigt ? ' · erledigt' : ` · ${m.fortschritt} %`}`,
+      titel: `${m.titel} · ${m.faellig!.slice(8)}.${m.faellig!.slice(5, 7)}.${m.faellig!.slice(0, 4)}${m.erledigt ? ' · erledigt' : ` · ${m.fortschritt} %`}${wartetText(m, ms) ? ` · ${wartetText(m, ms)}` : ''}${zielTitel(m) ? ` · Ziel „${zielTitel(m)}“` : ''}`,
       href: istJahr ? undefined : `/os/planung/jahr?m=${encodeURIComponent(m.id)}`,
     }));
   if (istJahr) {
     // Jahresziele mit Frist, die (noch) keinen eigenen Meilenstein haben (z. B. gelöst oder persönlich) — die übrigen stehen als Meilenstein da.
     for (const z of ziele) {
       if (!hatTermin(z) || z.erledigt || ms.some(m => m.abgeleitetVon === z.id) || !imFilter(z.space ?? (spaceFilter === 'alle' ? 'business' : spaceFilter), z.einheit)) continue;
-      strahlMarker.push({ date: z.termin!, label: z.titel, farbe: z.space ? SPACE_FARBE[z.space] : farbe, symbol: '◎', titel: `Jahresziel · ${z.titel} · bis ${z.termin!.slice(8)}.${z.termin!.slice(5, 7)}.${z.termin!.slice(0, 4)}` });
+      strahlMarker.push({ date: z.termin!, label: z.titel, farbe: z.space ? SPACE_FARBE[z.space] : farbe, symbol: '◎', titel: `Jahresziel · ${z.titel} · bis ${z.termin!.slice(8)}.${z.termin!.slice(5, 7)}.${z.termin!.slice(0, 4)} — Klick öffnet das Ziel`, href: WEG.ziel(z.id) });
     }
     // Projekt-Fristen (Ende, sonst Deadline) — offene Projekte, nicht im Papierkorb/Archiv.
     for (const pr of tasksState.projects) {

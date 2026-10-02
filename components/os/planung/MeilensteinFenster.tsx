@@ -13,6 +13,10 @@
 // Löschen nur mit „Rückgängig“ (wie Aufgaben); Abgeleitetes (aus einem Jahresziel
 // mit Termin) wird beim Ändern „angepasst“ und erst danach löschbar.
 // Aufgaben-Logik gehört NICHT hierher (Paket „meilensteine“: Detailseite).
+// Seit 01.10. (Ziel ↔ Meilenstein, Kevin: „mehrere Meilensteine zu einem Ziel, in Abhängigkeit“): das Fenster lässt sich mit einem
+// Ziel vorbelegen (`MsVorgabe.zielId` — „+ Meilenstein zu diesem Ziel“ im Ziel-Detail) und kennt „wartet auf“: die Vorgänger,
+// bevorzugt aus demselben Ziel, ohne die, die einen Kreis schlössen; liegt das Datum vor dem eines Vorgängers, steht eine
+// Warnung da (kein Blockieren). Löschen räumt die Kette mit (`loescheMeilenstein`, mit „Rückgängig“).
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,7 +27,9 @@ import { bereichAusSpace, meilensteinSpace } from '@/lib/planung/meilensteine';
 import { naechsterRang, offenErledigt } from '@/lib/planung/rang';
 import { zielJahr } from '@/lib/planung/zeitstrahl';
 import type { Meilenstein, Ziel } from '@/lib/planung/typen';
-import { ohneStand } from '@/lib/make-one/liste-stand';
+import { KETTE_MAX, datumVorVorgaenger, wuerdeKreisen } from '@/lib/planung/meilenstein-kette';
+import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
+import { loescheMeilenstein } from './meilenstein-loeschen';
 import { neueKennung } from '@/lib/kennung';
 import { Fenster } from '../Fenster';
 import { Knopf, feld, LEUCHT } from '../schlank';
@@ -32,10 +38,12 @@ import type { PlanungStand } from './usePlanung';
 import type { Rueckgaengig } from './Rueckgaengig';
 
 /** Was das Fenster beim Anlegen vorbelegt (aus Klick-Stelle und aktivem Filter). */
-export interface MsVorgabe { faellig?: string; space?: SpaceId; einheit?: string }
+export interface MsVorgabe { faellig?: string; space?: SpaceId; einheit?: string; /** Ziel, auf das der neue Meilenstein einzahlt (Ziel-Detail). */ zielId?: string; /** Vorgänger, auf die er wartet („+ danach“ in der Kette). */ wartetAuf?: string[] }
 
 interface Form {
   titel: string; faellig: string; space: SpaceId; einheit: string; mandatId: string; zielId: string;
+  /** „wartet auf“ (01.10.): Kennungen der Vorgänger. */
+  wartetAuf: string[];
   fortschritt: number; erledigt: boolean; messlatte: string;
   /** Nur beim Anlegen (01.10., Kevin: „dahinter muss etwas sein“): erste Aufgaben, eine je Zeile — echte Aufgaben in der Meilenstein-Liste. */
   aufgaben: string;
@@ -65,9 +73,9 @@ const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LE
 function formAus(m: Meilenstein | null, v: MsVorgabe): Form {
   if (m) {
     const sp = meilensteinSpace(m);
-    return { titel: m.titel, faellig: m.faellig ?? '', space: sp, einheit: m.einheit ?? '', mandatId: m.mandatId ?? '', zielId: m.zielId ?? '', fortschritt: m.fortschritt, erledigt: m.erledigt, messlatte: m.messlatte ?? '', aufgaben: '' };
+    return { titel: m.titel, faellig: m.faellig ?? '', space: sp, einheit: m.einheit ?? '', mandatId: m.mandatId ?? '', zielId: m.zielId ?? '', wartetAuf: m.wartetAuf ?? [], fortschritt: m.fortschritt, erledigt: m.erledigt, messlatte: m.messlatte ?? '', aufgaben: '' };
   }
-  return { titel: '', faellig: v.faellig ?? '', space: v.space ?? 'business', einheit: v.space === 'privat' ? '' : v.einheit ?? '', mandatId: '', zielId: '', fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '' };
+  return { titel: '', faellig: v.faellig ?? '', space: v.space ?? 'business', einheit: v.space === 'privat' ? '' : v.einheit ?? '', mandatId: '', zielId: v.zielId ?? '', wartetAuf: v.wartetAuf ?? [], fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '' };
 }
 
 export interface MeilensteinFensterApi {
@@ -101,6 +109,8 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
       einheit: business && f.einheit ? f.einheit : undefined,
       mandatId: business && f.mandatId ? f.mandatId : undefined,
       zielId: f.zielId || undefined,
+      // Nur Vorgänger, die es (noch) gibt — ein inzwischen gelöschter fällt hier schon weg.
+      wartetAuf: f.wartetAuf.filter(id => p.ms.some(x => x.id === id)).length ? f.wartetAuf.filter(id => p.ms.some(x => x.id === id)) : undefined,
       messlatte: f.messlatte.trim() ? f.messlatte.trim().slice(0, 300) : undefined,
     };
     if (bestehend) {
@@ -130,10 +140,7 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
 
   const loeschen = () => {
     if (!bestehend) return;
-    const p = stand.current;
-    const alt = ohneStand(bestehend as Meilenstein & { stand?: string });
-    p.persistMs(p.ms.filter(m => m.id !== alt.id));
-    rueck.melden(`„${alt.titel}“ gelöscht`, () => { const q = stand.current; if (!q.ms.some(m => m.id === alt.id)) q.persistMs([...q.ms, alt]); });
+    loescheMeilenstein(stand, bestehend.id, rueck);
     setZustand(null);
   };
 
@@ -174,6 +181,16 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
   // Ziel-Bezug: Jahresziele im Jahr des Datums und im selben Bereich (gemeinsame zählen mit) — der gesetzte bleibt wählbar.
   const zielWahl: Ziel[] = planung.ziele.filter(z => !z.abgeleitetVon && (z.id === f.zielId || ((!z.space || z.space === f.space) && zielJahr(z, laufend) === jahr && !z.erledigt)));
 
+  // Kette (01.10.): wer als Vorgänger in Frage kommt — offene, nicht der Meilenstein selbst, keiner, der einen Kreis schlösse;
+  // die aus demselben Ziel stehen zuerst.
+  const selbst = m?.id ?? null;
+  const kandidaten = planung.ms.filter(k => k.id !== selbst && !f.wartetAuf.includes(k.id) && !k.erledigt && (!selbst || !wuerdeKreisen(selbst, k.id, planung.ms)));
+  const ausZiel = kandidaten.filter(k => !!f.zielId && zielVonMeilenstein(k) === f.zielId);
+  const weitere = kandidaten.filter(k => !ausZiel.includes(k));
+  const vorgaenger = f.wartetAuf.map(id => planung.ms.find(k => k.id === id)).filter((k): k is Meilenstein => !!k);
+  const frueher = datumVorVorgaenger({ wartetAuf: f.wartetAuf, faellig: f.faellig || undefined }, planung.ms);
+  const dtKurz = (iso?: string) => (iso ? `${iso.slice(8)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : 'ohne Datum');
+  const optionText = (k: Meilenstein) => `${k.titel}${k.faellig ? ` · ${dtKurz(k.faellig).slice(0, 6)}` : ''}`;
   const setze = (patch: Partial<Form>) => setF(x => ({ ...x, ...patch }));
   const los = async (weiter: boolean) => {
     if (laeuft) return;
@@ -183,7 +200,7 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
     setMeldung(hinweis);
     if (weiter && !(hinweis && hinweis.startsWith('Nicht gespeichert'))) {
       // Schnell-Eingabe: Datum, Bereich, Einheit (und Mandat/Ziel) bleiben stehen — nur Titel, Aufgaben und Stand neu.
-      setF(x => ({ ...x, titel: '', fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '' }));
+      setF(x => ({ ...x, titel: '', fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '', wartetAuf: [] }));
       setAngelegt(n => n + 1); setFehlt(false);
       titelRef.current?.focus();
     }
@@ -239,6 +256,33 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
             )}
           </div>
         ) : null}
+        {(planung.ms.length > 1 || vorgaenger.length > 0) && (
+          <div style={beschriftung}>Wartet auf (optional)
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {vorgaenger.map(k => (
+                <span key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 4px 4px 10px', borderRadius: 999, background: 'rgba(255,255,255,.07)', color: k.erledigt ? C.inkLeise : C.ink, fontSize: TYP.bedien, fontWeight: 500, letterSpacing: 0, textTransform: 'none' }}>
+                  {k.erledigt ? '✓ ' : ''}{k.titel}
+                  <button type="button" onClick={() => setze({ wartetAuf: f.wartetAuf.filter(x => x !== k.id) })} aria-label={`„${k.titel}“ nicht mehr abwarten`} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, minWidth: 28, minHeight: 28 }}>×</button>
+                </span>
+              ))}
+              {f.wartetAuf.length >= KETTE_MAX
+                ? <span style={{ fontSize: 12, color: LEUCHT.achtung, fontWeight: 500, letterSpacing: 0, textTransform: 'none' }}>höchstens {KETTE_MAX} Vorgänger</span>
+                : kandidaten.length > 0 && (
+                  <select value="" aria-label="Vorgänger hinzufügen" onChange={e => { if (e.target.value) setze({ wartetAuf: [...f.wartetAuf, e.target.value] }); }} style={{ ...wahl, flex: '1 1 200px', minWidth: 0 }}>
+                    <option value="">{vorgaenger.length ? '+ weiterer Vorgänger …' : '+ Vorgänger wählen …'}</option>
+                    {ausZiel.length > 0 && <optgroup label="Aus demselben Ziel">{ausZiel.map(k => <option key={k.id} value={k.id}>{optionText(k)}</option>)}</optgroup>}
+                    {weitere.length > 0 && <optgroup label={ausZiel.length ? 'Weitere Meilensteine' : 'Meilensteine'}>{weitere.map(k => <option key={k.id} value={k.id}>{optionText(k)}</option>)}</optgroup>}
+                  </select>
+                )}
+            </div>
+            {frueher.length > 0 && (
+              <span role="status" style={{ fontSize: 12, color: LEUCHT.achtung, fontWeight: 500, letterSpacing: 0, textTransform: 'none', lineHeight: 1.45 }}>
+                Hinweis: Das Datum liegt vor dem von „{frueher[0].titel}“ ({dtKurz(frueher[0].faellig)}){frueher.length > 1 ? ` und ${frueher.length - 1} weiteren` : ''} — du kannst es trotzdem so planen.
+              </span>
+            )}
+            {vorgaenger.length === 0 && <span style={{ fontSize: 12, color: C.inkLeise, fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>Erst wenn die Vorgänger erledigt sind, ist dieser Meilenstein dran — bis dahin steht er als „wartet“.</span>}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ ...beschriftung, flex: '1 1 220px' }}>Fortschritt
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

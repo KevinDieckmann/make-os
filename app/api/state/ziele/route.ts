@@ -24,6 +24,8 @@ import { mandateFuerBezug } from '@/lib/planung/mandat-server';
 import { localDay } from '@/lib/zeit';
 import { meilensteinStrukturSichern, meilensteinListenArchivieren, zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { ohneToteVerweise, zielVerweiseLoesen } from '@/lib/planung/meilenstein-kette';
+import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -149,7 +151,8 @@ export async function PATCH(req: Request) {
   // Termin-Ziele des geteilten Bestands werden Meilensteine (der Meilenstein-Bestand ist gemeinsam).
   if (h === 'jahr' && sp.fuer === 'wir') {
     let vorher: string[] = [];
-    const ms = await updateJson<{ meilensteine: Meilenstein[] }>('meilensteine', cur => { vorher = (cur?.meilensteine ?? []).map(m => m.id); return { ...(cur ?? {}), meilensteine: meilensteineAbleiten(next.jahr, Array.isArray(cur?.meilensteine) ? cur!.meilensteine : []) }; });
+    // Fällt ein abgeleiteter Meilenstein mit seinem Ziel weg, verschwindet er auch aus „wartet auf“ der anderen (01.10.).
+    const ms = await updateJson<{ meilensteine: Meilenstein[] }>('meilensteine', cur => { vorher = (cur?.meilensteine ?? []).map(m => m.id); return { ...(cur ?? {}), meilensteine: ohneToteVerweise(meilensteineAbleiten(next.jahr, Array.isArray(cur?.meilensteine) ? cur!.meilensteine : [])).liste }; });
     // Meilenstein ↔ Aufgaben (30.09.): abgeleitete Meilensteine bekommen ihre Aufgaben-Liste wie alle anderen; fällt einer
     // mit seinem Ziel weg, wird seine Liste archiviert (Aufgaben bleiben).
     const jetzt = new Set((ms.meilensteine ?? []).map(m => m.id));
@@ -158,10 +161,28 @@ export async function PATCH(req: Request) {
     const weg = vorher.filter(id => !jetzt.has(id));
     if (weg.length) await meilensteinListenArchivieren(weg, { person: personStreng(req) });
   }
+  // Gelöschte Ziele (01.10., Ziel ↔ Meilenstein): ihre Meilensteine bleiben stehen und verlieren nur den Ziel-Bezug (`zielId`) —
+  // nie mitlöschen. Rückgängig im Browser legt Ziel und Bezug wieder an. Nur der geteilte Bestand hat Meilensteine als Kinder.
+  let zielBezugGeloest = 0;
+  if (sp.fuer === 'wir') {
+    const lebend = new Set(ZIEL_HORIZONTE.flatMap(x => next[x].map(z => z.id)));
+    const tot = new Set(ops.filter(o => o.op === 'delete' && o.id && !lebend.has(o.id)).map(o => o.id!));
+    if (tot.size) {
+      let geloest: string[] = [];
+      await updateJson<{ meilensteine?: Meilenstein[] } & Record<string, unknown>>('meilensteine', cur => {
+        const l = Array.isArray(cur?.meilensteine) ? cur!.meilensteine : [];
+        const r = zielVerweiseLoesen(l, tot);
+        geloest = r.geloest;
+        return geloest.length ? { ...(cur ?? {}), meilensteine: r.liste } : (cur ?? { meilensteine: l });
+      });
+      zielBezugGeloest = geloest.length;
+      if (geloest.length) await protokolliere('meilensteine', geloest.map(id => ({ op: 'geaendert' as const, id, felder: ['zielId'] })), werAus(req));
+    }
+  }
   // Ziel-Fortschritt aus Meilensteinen (30.09.): hat ein Ziel Meilensteine, gilt ihr Mittelwert (auch nach einer Änderung von Hand).
   if (sp.fuer === 'wir' && await zieleNachziehen()) {
     const f = datei(await loadJson<ZieleDatei>(sp.name));
-    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, ...mitStaenden(f) });
+    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, ...mitStaenden(f) });
   }
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, ...mitStaenden(next) });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, ...mitStaenden(next) });
 }

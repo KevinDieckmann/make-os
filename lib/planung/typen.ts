@@ -52,6 +52,8 @@ export interface Ziel {
   mandatId?: string;
   /** Die CRM-Firma (Mandant) — aus dem Mandat abgeleitet, nur im Business. */
   firmaId?: string;
+  /** Woran wird „erreicht“ gemessen? (01.10., Ziel-Detail — wie am Meilenstein.) */
+  messlatte?: string;
 }
 
 export interface Meilenstein {
@@ -90,6 +92,12 @@ export interface Meilenstein {
    * Nicht zu verwechseln mit `abgeleitetVon` (Kaskade: aus einem Termin-Ziel entstanden, wird nachgezogen).
    */
   zielId?: string;
+  /**
+   * Abhängigkeit (01.10., Kevin: „mehrere Meilensteine zu einem Ziel, in Abhängigkeit“): Kennungen anderer Meilensteine,
+   * die erst erledigt sein müssen (typischerweise desselben Ziels). Optional, höchstens 10, keine Kreise — Regeln rein in
+   * lib/planung/meilenstein-kette.ts. „wartet“ ist nur ein Anzeige-Status (nie gespeichert).
+   */
+  wartetAuf?: string[];
 }
 
 export type Rhythmus = 'taeglich' | '3x-woche' | 'woechentlich' | 'monatlich' | 'quartal' | 'halbjahr' | 'jaehrlich';
