@@ -4,6 +4,28 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Netzwerken · Meine Visitenkarten, Handy-Leiste, Deal-Ebene am Handy (02.10.2026, nur lokal — Branch `netzwerken-b`)
+
+Kevin/Malin 02.10.: Malin nutzt es unterwegs am iPhone. Paket B baut die Handy-Leiste, die eigenen Visitenkarten mit QR-Code und die Schnellaktionen am Kunden (Paket A baut die Seite `/os/netzwerken`).
+
+- **Handy-Leiste unten:** „Melden“ ist durch **Netzwerken** (Handschlag, `lucide` Handshake) → `/os/netzwerken` ersetzt (`WEG.netzwerken`). „Problem oder Idee melden“ bleibt am Handy
+  erreichbar: Zeile unten im Blatt von Privat/Business (`MeldenZeile`) und Knopf oben rechts auf der System-Seite. Am Rechner: „Netzwerken“ in der Seitenleiste (`EIGEN` in `lib/make-one/spaces.ts`).
+- **Meine Visitenkarte** `/os/netzwerken/karte` (`components/os/netzwerken/MeineKarte.tsx`): je Person mehrere Profile (Name, Rolle, Firma, Mail, Handy, Telefon, Website, LinkedIn, Anschrift), oben
+  „Unterwegs für: …“ (gemerkt), groß der **QR-Code als vCard 3.0** (UTF-8, nur die gesetzten Felder; im Browser erzeugt, `qrcode-generator`, kein Dienst), **Vollbild**, **vCard teilen** (Teilen-Menü
+  mit .vcf, sonst Download). Speicher `visitenkarten--<person>` (Stand/409, Haushalts-Tor, `bauPruefen`, 413 statt Kürzen, Änderungsprotokoll ohne Werte; Register: eigene Daten des Haushalts).
+- **Firmen-Design je Profil:** Logo (SVG wird gesäubert, PNG/JPG/WebP, ≤ ~200 KB), Hintergrund-, Text-, Akzentfarbe, Schrift (System · **Urbanist** lokal · Serif), Kontrastwarnung. Karte und Vollbild zeigen
+  **nur dieses Design** — nichts von MAKE; der QR-Code steht immer dunkel auf weißem Feld. Wer nichts wählt, bekommt die neutrale Karte (weiß/schwarz).
+- **Für andere anlegen:** die Inhaberin/der Inhaber wählt oben „Profile von: … “ und bereitet Profile für eine Person des Haushalts vor (`?fuer=<person>`, nur Inhaber, nur Haushalt, Protokoll mit `wer`).
+- **Deal-Ebene am Handy:** in der Kontaktakte unter 1180 px eine mitlaufende **Schnellaktions-Leiste** (`components/os/crm/kontakt/SchnellLeiste.tsx`, Ziele ≥ 44 px): Anrufen (`tel:`) · Anruf festhalten ·
+  Mail (Entwurf) · Termin · Notiz (mit Diktat) · Follow-up (= Aufgabe) · Qualifizieren (Lead-Status + Runde) · Vermitteln (Deal der Art Vermittlung) · Angebot · Make.One einladen (Gast fürs Event vormerken).
+  Alles über die vorhandenen CRM-Wege; Sperren (Art. 18, Werbesperre, Ampel) wie am Rechner; es geht nichts raus ohne die bekannte Freigabe.
+- **Meine Visitenkarte einrichten (Kurzanleitung):** 1) Handy: unten **Netzwerken** → **Meine Visitenkarte** (oder `/os/netzwerken/karte`). 2) **Erstes Profil anlegen** — „Aus meinem Konto übernehmen“ füllt Name und Mail,
+  dazu Rolle, Firma, Handy. 3) Optional Design: Logo wählen, Farben, Schrift. 4) **Speichern**. 5) Unterwegs: **Vollbild** antippen, das Handy hinhalten — der Gegenüber scannt mit der Kamera und tippt „Kontakt speichern“.
+  Mehrere Firmen: „+ Neues Profil“, oben bei „Unterwegs für:“ umschalten. Ohne Netz zeigt die Seite den zuletzt geladenen Stand (Offline-Abbild); Bearbeiten geht nur mit Verbindung. Abmelden räumt das Abbild weg.
+- **Rückweg:** neuer eigener Bestand, bestehende Bestände unverändert (`GO_LIVE_CHECKLISTE.md` › Rückweg). Neue Abhängigkeit `qrcode-generator` (Dev `jsqr`), Schrift `public/schriften/urbanist-*.woff2` (OFL).
+- **Tests:** `netzwerken-karte` (vCard, QR-Roundtrip mit jsQR, Prüfung, SVG-Säuberung, Kontrast), `netzwerken-route` (Haushalts-Tor, 409, 413, nur eigener Bestand, für andere), `netzwerken-ansicht` (keine MAKE-Marke in Karte/Vollbild),
+  `netzwerken-schnellleiste`, `leiste-melden` (Netzwerken in der Leiste, Melden erreichbar).
+
 ## Ziel ↔ Meilenstein: Kette mit Abhängigkeiten (01.10.2026, nur lokal — Branch `ziele`)
 
 Kevin 01.10.: „Verknüpfe die Zielebene mit der Meilenstein-Ebene. Wir haben Ziele, und darunter kann man Meilensteine planen. Mehrere

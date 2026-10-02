@@ -175,6 +175,11 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   (von Hand überschriebene Monate eines Produkts → der Baustein rechnet wieder nach Preis × Anzahl). **Zahlen bleiben:** `annahmen.steuerUG`, USt-Satz, Ausstieg und Netto-Tabelle liegen
   im bekannten Annahmen-Feld; ein Gesamtsatz, der aus der Aufschlüsselung entstand, bleibt dort stehen. Abgeschaltete Zeilen mit Satz 0 (Einzel-Ertragsteuer, Ausstieg) bleiben im alten Stand
   auf 0 — dort von Hand wieder eintragen (der gemerkte Satz steht nur im verworfenen Profil). Vor dem Rückweg: abgeschaltete Steuerzeilen und überschriebene Produkt-Monate notieren.
+- **Netzwerken › Meine Visitenkarte (02.10., Paket B):** eigener Bestand `visitenkarten--<person>` — af4679a kennt ihn nicht und liest/schreibt ihn nie, er
+  bleibt unverändert liegen (nichts geht verloren, nach einem erneuten Upload sind die Profile wieder da). Im alten Stand fehlen die Seite `/os/netzwerken/karte`, der
+  Knopf „Netzwerken“ in der Handy-Leiste (dort steht wieder „Melden“) und die Schnellaktions-Leiste in der Kontaktakte am Handy; „Problem oder Idee melden“ geht dort
+  wie früher über die Leiste. Das Offline-Abbild der Karte im Browser (`make-karten-cache`) bleibt harmlos liegen. Keine Formänderung bestehender Bestände.
+  Die neue Abhängigkeit `qrcode-generator` (Dev: `jsqr`) braucht auf dem Server `npm ci` beim Bauen des Images; die Schrift Urbanist liegt in `public/schriften/`.
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

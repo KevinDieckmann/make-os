@@ -46,6 +46,7 @@ import { stationenVon } from '@/lib/crm/stationen';
 import { DealAnlegen } from './DealAnlegen';
 import { EntwurfTeil, KREISE, lifecycleFarbe, firmaVerknuepfen, type Setze } from './kontakt-teile';
 import { Klappe, leiseKnopf, type Klappen } from './kontakt-klappe';
+import { useStimme } from '@/hooks/useStimme';
 import { BeanWahl } from './bean-teile';
 import { AufgabenAkte, useAkteAufgaben } from '../aufgaben/AufgabenAkte';
 import { useTasks } from '@/context/TasksContext';
@@ -102,8 +103,10 @@ const AKTIONEN: { id: Aktion; label: string; zeichen: string }[] = [
   { id: 'aufgabe', label: 'Aufgabe', zeichen: '✓' }, { id: 'meeting', label: 'Meeting', zeichen: '◷' },
 ];
 
-export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, bean }: {
+export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, bean, schnellaktionen = true }: {
   k: Kontakt; api: CrmApi; heute: string; ampel: KanalStatus[]; setze: Setze; klappen: Klappen; lifecycle: WahlVorschlag<LifecyclePhase> | null;
+  /** Die runden Schnellaktionen hier zeigen (Rechner). Am Handy stehen sie oben als Leiste (kontakt/SchnellLeiste.tsx, 02.10.) — dann nicht doppelt. */
+  schnellaktionen?: boolean;
   /** BEAN-Kundengruppe (28.09., H4) — aus beanVon, mit den offenen Angeboten der Ablage. */
   bean: BeanErgebnis;
 }) {
@@ -150,7 +153,7 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, 
           {mail && mail.farbe !== 'gruen' && <div style={{ ...klein, marginTop: 4, lineHeight: 1.45 }}>Mail: {mail.grund}</div>}
         </div>
 
-        <div role="toolbar" aria-label="Schnellaktionen" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 4, marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+        {schnellaktionen && <div role="toolbar" aria-label="Schnellaktionen" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 4, marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
           {AKTIONEN.map(a => {
             const an = aktion === a.id, gesperrtHier = aus[a.id];
             return (
@@ -161,9 +164,9 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, 
               </button>
             );
           })}
-        </div>
+        </div>}
         {meldung && <div role="status" style={{ fontSize: 12.5, color: LEUCHT.gut, marginTop: 10 }}>{meldung}</div>}
-        {aktion && (
+        {schnellaktionen && aktion && (
           <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 8 }}>
             {aktion === 'notiz' && <NotizAktion k={k} api={api} onFertig={fertig} onAbbruch={() => setAktion(null)} />}
             {aktion === 'email' && <EmailAktion k={k} api={api} mailOk={mailOk} mailHref={mailHref} onFertig={fertig} />}
@@ -251,13 +254,15 @@ function EmailListe({ k, setze, mail, ampelPunkt }: { k: Kontakt; setze: Setze; 
   );
 }
 
-function Fuss({ children }: { children: ReactNode }) {
+export function Fuss({ children }: { children: ReactNode }) {
   return <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>{children}</div>;
 }
-const Hinweis = ({ children }: { children: ReactNode }) => <div style={{ ...klein, lineHeight: 1.45 }}>{children}</div>;
+export const Hinweis = ({ children }: { children: ReactNode }) => <div style={{ ...klein, lineHeight: 1.45 }}>{children}</div>;
 
-function NotizAktion({ k, api, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; onFertig: (t: string) => void; onAbbruch: () => void }) {
+export function NotizAktion({ k, api, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; onFertig: (t: string) => void; onAbbruch: () => void }) {
   const [text, setText] = useState('');
+  // Sprachnotiz (02.10., Paket B): der Mikrofon-Knopf diktiert in das Feld (Spracherkennung des Browsers, deutsch) — nichts wird aufgezeichnet oder gespeichert, nur der erkannte Text.
+  const stimme = useStimme(satz => setText(t => `${t}${t && !/\s$/.test(t) ? ' ' : ''}${satz}`));
   const [laeuft, setLaeuft] = useState(false);
   const speichern = async () => {
     if (!text.trim() || laeuft) return;
@@ -273,13 +278,20 @@ function NotizAktion({ k, api, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi;
     <>
       <textarea autoFocus rows={3} value={text} onChange={e => setText(e.target.value)} placeholder="Notiz für das Team …" aria-label="Notiz"
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void speichern(); if (e.key === 'Escape') { e.stopPropagation(); onAbbruch(); } }} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} />
-      <Fuss><Knopf aus={!text.trim() || laeuft} onClick={() => void speichern()}>Notiz festhalten</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></Fuss>
+      {stimme.teil && <div aria-live="polite" style={{ ...klein, fontStyle: 'italic' }}>{stimme.teil} …</div>}
+      {stimme.fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{stimme.fehler}</div>}
+      <Fuss>
+        <Knopf aus={!text.trim() || laeuft} onClick={() => void speichern()}>Notiz festhalten</Knopf>
+        {stimme.kannHoeren && <button type="button" onClick={() => (stimme.hoert ? stimme.hoerAuf() : stimme.hoerZu())} aria-pressed={stimme.hoert} aria-label={stimme.hoert ? 'Diktat beenden' : 'Notiz diktieren'} className="fassbar"
+          style={{ minHeight: 44, minWidth: 44, padding: '0 14px', borderRadius: 11, border: `1px solid ${stimme.hoert ? LEUCHT.kritisch : 'rgba(255,255,255,.14)'}`, background: stimme.hoert ? `${LEUCHT.kritisch}22` : 'rgba(255,255,255,.04)', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer' }}>{stimme.hoert ? '● Diktat beenden' : '🎙 Diktieren'}</button>}
+        <Knopf leise onClick={onAbbruch}>Abbrechen</Knopf>
+      </Fuss>
       <Hinweis>Steht im Verlauf (Aktivitäten › Notizen) — für alle im Team.</Hinweis>
     </>
   );
 }
 
-function EmailAktion({ k, api, mailOk, mailHref, onFertig }: { k: Kontakt; api: CrmApi; mailOk: boolean; mailHref: string | null; onFertig: (t: string) => void }) {
+export function EmailAktion({ k, api, mailOk, mailHref, onFertig }: { k: Kontakt; api: CrmApi; mailOk: boolean; mailHref: string | null; onFertig: (t: string) => void }) {
   return (
     <>
       <EntwurfTeil k={k} mailOk={mailOk} ohneTitel />
@@ -293,7 +305,7 @@ function EmailAktion({ k, api, mailOk, mailHref, onFertig }: { k: Kontakt; api: 
   );
 }
 
-function AnrufAktion({ k, api, heute, telHref, anlassNoetig, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; heute: string; telHref: string | null; /** Gelbe Telefon-Ampel (U2 #58): Anlass Pflicht. */ anlassNoetig: boolean; onFertig: (t: string) => void; onAbbruch: () => void }) {
+export function AnrufAktion({ k, api, heute, telHref, anlassNoetig, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; heute: string; telHref: string | null; /** Gelbe Telefon-Ampel (U2 #58): Anlass Pflicht. */ anlassNoetig: boolean; onFertig: (t: string) => void; onAbbruch: () => void }) {
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [text, setText] = useState('');
   const [anlass, setAnlass] = useState('');
@@ -332,7 +344,7 @@ function AnrufAktion({ k, api, heute, telHref, anlassNoetig, onFertig, onAbbruch
  * (und ihre Firma) an — bei aktivem Mandat im Mandanten-Space, sonst in KD Ventures. Sie steht in Aufgaben, in der Glocke,
  * rechts in „Aufgaben“ und in Follow-up › Fällig. Vorher wurde es ein Follow-up, das in den Aufgaben fehlte.
  */
-function AufgabeAktion({ k, api, heute, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; heute: string; onFertig: (t: string) => void; onAbbruch: () => void }) {
+export function AufgabeAktion({ k, api, heute, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; heute: string; onFertig: (t: string) => void; onAbbruch: () => void }) {
   const { state, dispatch } = useTasks();
   const [text, setText] = useState('');
   const [faellig, setFaellig] = useState(plusTage(heute, 2));
@@ -366,7 +378,7 @@ function AufgabeAktion({ k, api, heute, onFertig, onAbbruch }: { k: Kontakt; api
 }
 
 /** „+ Meeting“ (K3): derselbe echte Termin wie im Reiter Aktivitäten (MeetingNeu, kontakt/aktivitaeten-teile.tsx). */
-function MeetingAktion(p: { k: Kontakt; api: CrmApi; heute: string; onFertig: (t: string) => void; onAbbruch: () => void }) {
+export function MeetingAktion(p: { k: Kontakt; api: CrmApi; heute: string; onFertig: (t: string) => void; onAbbruch: () => void }) {
   return <MeetingNeu {...p} />;
 }
 

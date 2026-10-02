@@ -12,7 +12,7 @@
 // Space (lib/make-one/space-regeln.ts); Heute und ZOE sehen beides.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid, Calculator } from 'lucide-react';
+import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid, Calculator, Handshake } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
 
 export type { SpaceId };
@@ -60,6 +60,9 @@ export const EIGEN: SpaceEintrag[] = [
   { href: '/os/agenten', label: 'Agenten', icon: Bot, passt: ['/os/agenten', '/os/stapel', '/os/loop'] },
   // Finanzplanung jetzt (Kevin 27.09.): eigener Bereich unter den Agenten, bis die Teile unter Privat › Finanzen und Business wandern.
   { href: '/os/finanzplan', label: 'Finanzplanung jetzt', icon: Calculator, passt: ['/os/finanzplan'] },
+  // Netzwerken (02.10., Kevin/Malin): unterwegs Kontakte erfassen, Termine und Schritte festhalten, die eigene Visitenkarte
+  // (QR) zeigen — am Handy der feste Knopf unten in der Leiste (Handschlag), am Rechner hier.
+  { href: '/os/netzwerken', label: 'Netzwerken', icon: Handshake, passt: ['/os/netzwerken'] },
 ];
 
 /** Unten links, gesondert: ZOE und Brain (Malin), dann System. */

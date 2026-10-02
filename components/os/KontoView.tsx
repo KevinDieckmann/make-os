@@ -5,6 +5,7 @@
 // Inhaber: Einladen. Das ist die Seite, die aus „Kevin & Malin" ein Produkt
 // macht. Seit 23.09. im schlanken Muster: Listen mit Haarlinien, keine Kästen.
 
+import { karteCacheLeeren } from './netzwerken/karten-daten';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT } from './schlank';
@@ -57,7 +58,8 @@ export function KontoView() {
   async function zfBeginnen() { const r = await zfPost({ aktion: 'beginnen' }); if (r.error) setMeldung(r.error); else setZf({ phase: 'einrichten', geheimnis: r.geheimnis, link: r.link, code: '', passwort: '' }); }
   async function zfBestaetigen() { const r = await zfPost({ aktion: 'bestaetigen', code: zf.code }); if (r.error) setMeldung(r.error); else { setZf({ phase: 'codes', codes: r.codes ?? [], code: '', passwort: '' }); setMeldung('Zweiter Faktor ist an — alle anderen Geräte sind abgemeldet.'); void laden(); } }
   async function zfAus() { const r = await zfPost({ aktion: 'aus', passwort: zf.passwort }); if (r.error) setMeldung(r.error); else { setZf({ phase: 'aus', code: '', passwort: '' }); setMeldung('Zweiter Faktor ist aus.'); void laden(); } }
-  async function abmelden() { await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
+  // Das Offline-Abbild der eigenen Visitenkarten (Netzwerken) bleibt nicht auf einem abgemeldeten Gerät liegen.
+  async function abmelden() { karteCacheLeeren(); await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
   // Alle anderen Geräte raus — dieses bleibt drin (der Server stellt einen neuen Zettel aus).
   async function alleAbmelden() {
     const r = await fetch('/api/konto/abmelden', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true }) }).then(x => x.json()).catch(() => ({ ok: false }));

@@ -9,7 +9,8 @@
 //               BEAN (Wahl: abgeleitet sichtbar, von Hand markiert, 28.09. H4), Score, Typ,
 //               Kategorie, Rollen, Kreis · hält die Beziehung · Kanäle · eine Zeile
 //               Kennzahlen (letzter Kontakt, nächster Schritt, Takt, Gespräche, Deals, Vollständigkeit)
-//   Links       Kontaktdaten · Schnellaktionen (Notiz · E-Mail · Anruf · Aufgabe · Meeting) ·
+//   Links       Kontaktdaten · Schnellaktionen (Notiz · E-Mail · Anruf · Aufgabe · Meeting; unter 1180 px stattdessen
+//               oben die Leiste kontakt/SchnellLeiste.tsx mit allen Wegen am Kunden, 02.10.) ·
 //               wichtigste Infos (KontaktSpalten.tsx)
 //   Mitte       Reiter Über · Aktivitäten · Umsatz · Daten
 //     Über         Zusammenfassung mit Quellen, nächster Schritt, Lead kurz, Beziehung kurz,
@@ -53,6 +54,7 @@ import { BeanWahl, useOffeneAngebote } from './bean-teile';
 import { KontaktUeber } from './KontaktUeber';
 import { AktivitaetenReiter } from './kontakt/AktivitaetenReiter';
 import { UmsatzReiter } from './kontakt/UmsatzReiter';
+import { SchnellLeiste } from './kontakt/SchnellLeiste';
 import { typenVon, kategorienVon, labelsVon } from '@/lib/crm/mehrfach';
 import { personenDerFirma } from '@/lib/crm/stationen';
 import { useNaechsterTermin } from '../kalender/TermineAkte';
@@ -348,12 +350,14 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
       </div>
     </div>
   );
-  const links = <KontaktLinks k={k} api={api} heute={heute} ampel={ampel} setze={setze} klappen={klappen} lifecycle={lcVorschlag} bean={beanErgebnis} />;
+  const links = <KontaktLinks k={k} api={api} heute={heute} ampel={ampel} setze={setze} klappen={klappen} lifecycle={lcVorschlag} bean={beanErgebnis} schnellaktionen={drei} />;
   const rechts = <KontaktRechts k={k} api={api} heute={heute} setze={setze} klappen={klappen} zuFirma={zuFirma} zuAufgabe={anker => waehleReiter('aktivitaeten', 'aufgaben', anker)} />;
 
   return (
     <>
       {kopf}
+      {/* Am Handy (unter 1180 px): die Schnellaktionen als mitlaufende Leiste oben (02.10., Paket B) — am Rechner bleiben sie links. */}
+      {!drei && <SchnellLeiste k={k} api={api} heute={heute} ampel={ampel} />}
       <Hinweise k={k} heute={heute} setze={setze} />
       {drei ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(230px, 270px) minmax(0, 1fr) minmax(240px, 290px)', gap: 14, alignItems: 'start' }}>

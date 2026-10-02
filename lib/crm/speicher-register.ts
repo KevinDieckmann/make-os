@@ -97,6 +97,13 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // CRM-Person (`kontaktId`) verliert bei Art. 17 nur die Verknüpfung (Kennung zeigt ins Leere, der Kalender zeigt dann
   // allein den Familien-Eintrag).
   H('familie--*', 'Familie des Haushalts (Paar, Rituale, Menschen mit Geburtstag) — eigene Daten des Haushalts.'),
+  // Netzwerken (02.10., Paket B): die EIGENEN Visitenkarten je Person — Name, Rolle, Firma, Erreichbarkeit, die die Person
+  // selbst eintippt und freiwillig weitergibt (QR/vCard). Keine Daten Dritter. Art. 15: Auskunft über das Konto, die Person
+  // sieht und exportiert alles selbst (Netzwerken › Meine Visitenkarte, „vCard teilen“). Art. 17: jedes Profil einzeln
+  // löschbar (löscht im Bestand, kein Zweitspeicher); beim Entfernen des Kontos fällt der ganze Bestand `visitenkarten--<person>`
+  // mit. Im Browser liegt nur ein Offline-Abbild (localStorage `make-karten-cache`) — das Abmelden räumt es weg. Das
+  // Änderungsprotokoll nennt Kennung + Feldnamen, nie Werte.
+  H('visitenkarten--*', 'Eigene Visitenkarten je Person (Netzwerken) — eigene Daten der Person, nie Dritte; Art. 17 = Profil löschen bzw. Konto entfernen.'),
   H('ernaehrung', 'Eigene Daten des Haushalts (Essen, Einkauf).'),
   H('ernaehrung-vorschlag', 'Essens-Vorschlag des Haushalts.'),
   // Seit 29.09. (K2) findet der Wächter auch Namen aus Konstanten, Namens-Funktionen und speicherFuer() — diese

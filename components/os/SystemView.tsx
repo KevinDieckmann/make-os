@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { FARBE as C } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile } from './schlank';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
+import { MeldenKnopf } from './Leiste';
+import { TYP } from '@/lib/make-one/design';
 
 const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: string }[] }[] = [
   // Alles, was seit 24.09. abends im Kopf oben liegt — hier noch einmal zum Nachschlagen.
@@ -20,6 +22,7 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
     { href: '/os/finanzen', label: 'Zahlen', was: 'Privat, Business, Gesamt, Head of Finance' },
     { href: '/os/familie', label: 'Familie & Partnerschaft', was: 'wir zwei zuerst, dann die Familie' },
     { href: '/os/markttraktion', label: 'Markttraktion', was: 'Sales, Marketing und Event — Traction-Score, Power Hour, Kampagnen, Kontakte und Firmen' },
+    { href: '/os/netzwerken', label: 'Netzwerken', was: 'unterwegs erfassen, Schritte und Termine — dazu Meine Visitenkarte (QR)' },
   ] },
   { titel: 'ZOE', eintraege: [
     { href: '/os/stapel', label: 'Aufträge & Freigaben', was: 'was vorbereitet ist und auf dich wartet' },
@@ -44,7 +47,9 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
 
 export function SystemView() {
   return (
-    <Seite titel="System" unter="Alles, was nicht täglich ist: ZOE, Zugang, Bauen.">
+    <Seite titel="System" unter="Alles, was nicht täglich ist: ZOE, Zugang, Bauen."
+      // Am Handy steht in der Leiste unten jetzt Netzwerken — „Problem oder Idee melden“ bleibt hier und im Blatt von Privat/Business erreichbar.
+      rechts={<MeldenKnopf zu={false} stil={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 14px', borderRadius: 11, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600 }} />}>
       <Flaeche seite="system">
       {GRUPPEN.map((g, i) => (
         <Kachel key={g.titel} id={g.titel.toLowerCase().replace(/[^a-z0-9]+/g, '-')} titel={g.titel} breite={2}>

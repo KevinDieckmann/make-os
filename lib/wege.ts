@@ -35,6 +35,9 @@ export const WEG = {
   heute: () => '/os/heute',
   uebersicht: (space: 'privat' | 'business') => `/os/uebersicht?space=${space}`,
   menschen: () => '/os/menschen',
+  /** Netzwerken (02.10.): die Seite für unterwegs · „Meine Visitenkarte“ (QR, vCard) — Paket B. */
+  netzwerken: () => '/os/netzwerken',
+  netzwerkenKarte: () => '/os/netzwerken/karte',
   zahlen: (s?: ZahlenReiter) => q('/os/finanzen', { s }),
   /** Business-Cockpit: Sicht (gesamt weglassen), Kennzahl, Abschnitt. */
   business: (o: { f?: string; k?: string; abschnitt?: 'abschluss' | 'einstellungen' | 'modell' | 'verlauf' } = {}) =>

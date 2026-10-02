@@ -10,17 +10,20 @@
 // und Brain, dann „Problem oder Idee melden“ (Kevin/Malin 28.09.: öffnet das
 // Erfassen-Fenster, kein Seitenwechsel), darunter System und das Konto. Inbox
 // und Kalender stehen im Kopf oben und folgen dem Space.
-// Handy: Leiste unten mit Home · Privat · Business · ZOE · Melden · System —
-// Privat/Business öffnen ihre Punkte als Blatt.
+// Handy: Leiste unten mit Home · Privat · Business · ZOE · Netzwerken · System —
+// Privat/Business öffnen ihre Punkte als Blatt. „Netzwerken“ (Handschlag, 02.10.) hat den Platz von „Melden“ übernommen
+// (Malin nutzt es unterwegs); „Problem oder Idee melden“ bleibt am Handy erreichbar: als Zeile unten in beiden Blättern
+// (Privat/Business) und auf der System-Seite, am Rechner unverändert in der Seitenleiste.
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronDown, Settings, LayoutDashboard, PanelLeftClose, PanelLeftOpen, MessageSquareWarning, type LucideIcon } from 'lucide-react';
+import { ChevronDown, Settings, LayoutDashboard, PanelLeftClose, PanelLeftOpen, MessageSquareWarning, Handshake, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SPACES, UNTEN, EIGEN, aktiverSpaceEintrag, type SpaceId, type SpaceEintrag } from '@/lib/make-one/spaces';
 import { useSpace } from '@/hooks/useSpace';
 import { problemMelden } from './bauplan/IdeeErfassen';
+import { WEG } from '@/lib/wege';
 
 const SYSTEM: SpaceEintrag = { href: '/os/system', label: 'System', icon: Settings, passt: ['/os/system', '/os/verbindungen', '/os/konto', '/os/datenbasis', '/os/stammdaten', '/os/bauplan', '/os/roadmap', '/os/onboarding'] };
 /** Unter Home (Kevin 26.09.): Wachstum — die Gesamtansicht, das zentrale Stück. */
@@ -40,6 +43,19 @@ export function MeldenKnopf({ zu, stil }: { zu: boolean; stil: CSSProperties }) 
     <button type="button" onClick={problemMelden} title={MELDEN_LABEL} aria-label={MELDEN_LABEL} className="fassbar" style={stil}>
       <MessageSquareWarning size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} />
       {!zu && <span style={{ lineHeight: 1.3 }}>{MELDEN_LABEL}</span>}
+    </button>
+  );
+}
+
+/**
+ * Handy: „Problem oder Idee melden“ als Zeile unten im Blatt (Privat/Business) — ≥ 44 px hoch. `onWeg` schließt das Blatt,
+ * danach öffnet sich das Erfassen-Fenster wie am Rechner.
+ */
+export function MeldenZeile({ onWeg }: { onWeg: () => void }) {
+  return (
+    <button type="button" onClick={() => { onWeg(); problemMelden(); }} title={MELDEN_LABEL} aria-label={MELDEN_LABEL} className="fassbar"
+      style={{ marginTop: 6, width: '100%', display: 'flex', alignItems: 'center', gap: 9, padding: '12px 10px', minHeight: 44, borderRadius: 10, border: 'none', borderTop: `1px solid ${C.linie}`, background: 'transparent', color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}>
+      <MessageSquareWarning size={16} strokeWidth={1.75} />{MELDEN_LABEL}
     </button>
   );
 }
@@ -172,6 +188,8 @@ export function Leiste() {
                   <Link key={e.href} href={e.href} onClick={() => { setzen(s.id); setOffen(null); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 10px', borderRadius: 10, textDecoration: 'none', color: an ? s.farbe : C.ink, background: an ? `${s.farbe}14` : 'transparent', fontSize: 14, fontWeight: 500 }}><Icon size={16} strokeWidth={1.75} />{e.label}</Link>
                 ); })}
               </div>
+              {/* „Problem oder Idee melden“ ist am Handy nicht mehr in der Leiste (dort steht Netzwerken) — hier bleibt es einen Tipp entfernt. */}
+              <MeldenZeile onWeg={() => setOffen(null)} />
             </div>
           ))}
         </div>
@@ -183,12 +201,11 @@ export function Leiste() {
         {([{ art: 'link' as const, href: '/os', label: 'Home', icon: LayoutDashboard, farbe: C.aktiv, an: pfad === '/os' },
           ...SPACES.map(s => ({ art: 'space' as const, href: s.start, label: s.label, icon: s.icon, farbe: s.farbe, an: space === s.id && pfad !== '/os', id: s.id })),
           { art: 'link' as const, href: '/zoe', label: 'ZOE', icon: UNTEN[0].icon, farbe: C.aktiv, an: pfad.startsWith('/zoe') },
-          { art: 'melden' as const, href: '#melden', label: 'Melden', icon: MessageSquareWarning, farbe: C.aktiv, an: false },
+          { art: 'link' as const, href: WEG.netzwerken(), label: 'Netzwerken', icon: Handshake, farbe: C.aktiv, an: pfad === WEG.netzwerken() || pfad.startsWith(`${WEG.netzwerken()}/`) },
           { art: 'link' as const, href: '/os/system', label: 'System', icon: Settings, farbe: C.aktiv, an: passt(SYSTEM) }]).map(e => {
           const Icon = e.icon;
           const innen = <><Icon size={20} strokeWidth={1.75} /><span>{e.label}</span></>;
           const stil = { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, flex: 1, padding: '6px 0', border: 'none', background: 'none', textDecoration: 'none', color: e.an ? e.farbe : C.inkDim, fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 500, cursor: 'pointer' };
-          if (e.art === 'melden') return <button key={e.label} type="button" onClick={problemMelden} title={MELDEN_LABEL} aria-label={MELDEN_LABEL} className="fassbar" style={stil}>{innen}</button>;
           return e.art === 'space'
             ? <button key={e.label} type="button" onClick={() => setOffen(o => (o === e.id ? null : e.id))} className="fassbar" style={stil}>{innen}</button>
             : <Link key={e.href} href={e.href} className="fassbar" style={stil}>{innen}</Link>;

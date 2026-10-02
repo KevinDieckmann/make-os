@@ -21,7 +21,7 @@ const ARTEN: { id: ChancenArt; label: string }[] = [{ id: 'retainer', label: 'Re
 const BASEN: { id: WertBasis; label: string }[] = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }];
 const QUELLEN: { id: Quelle; label: string }[] = [{ id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }, { id: 'content', label: 'Content' }, { id: 'kampagne', label: 'Kampagne' }, { id: 'outreach', label: 'Ansprache' }, { id: 'bestand', label: 'Bestand' }, { id: 'inbound', label: 'Inbound' }];
 
-export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, quelleBezug, onFertig, onAbbruch, zuDeal }: { api: CrmApi; kontaktId?: string; firmaId?: string; quelle?: Quelle; quelleBezug?: string; onFertig: (chanceId: string) => void; onAbbruch: () => void; zuDeal?: (id: string) => void }) {
+export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, quelleBezug, art: vorgabeArt, onFertig, onAbbruch, zuDeal }: { api: CrmApi; kontaktId?: string; firmaId?: string; quelle?: Quelle; quelleBezug?: string; /** Vorbelegte Art (z. B. „Vermittlung“ aus der Schnellleiste am Handy). */ art?: ChancenArt; onFertig: (chanceId: string) => void; onAbbruch: () => void; zuDeal?: (id: string) => void }) {
   const heute = api.crm?.heute ?? localDay();
   const kontakte = api.kontakte ?? [];
   const firmen = api.crm?.stand.firmen ?? [];
@@ -29,7 +29,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
   const [personen, setPersonen] = useState<string[]>(kontaktId ? [kontaktId] : []);
   const [firma, setFirma] = useState<string | undefined>(firmaId ?? (kontaktId ? kontakte.find(k => k.id === kontaktId)?.firmaId : undefined));
   const [titel, setTitel] = useState('');
-  const [art, setArt] = useState<ChancenArt>('retainer');
+  const [art, setArt] = useState<ChancenArt>(vorgabeArt ?? 'retainer');
   const [betrag, setBetrag] = useState('');
   const [basis, setBasis] = useState<WertBasis>('monat');
   const [laufzeit, setLaufzeit] = useState('');
