@@ -29,6 +29,8 @@ import type { Chance, ChancenArt, Gesellschaft, Lead, Quelle, WertBasis } from '
 import { neueKennung } from '@/lib/kennung';
 
 export interface DealEingabe {
+  /** Feste Kennung für wiederholbare Wege (Netzwerken, 02.10.: `ch-nw-<Erfassung>`) — fehlt sie, entsteht eine neue. */
+  id?: string;
   titel?: string;
   kontaktIds?: string[];
   firmaId?: string;
@@ -134,7 +136,7 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
   // Prüfen (Dublette!) und Schreiben in EINER Schreibsperre — zwei gleichzeitige Anlagen (ZOE + Browser) ergeben sonst zwei offene Deals (Prüfbericht 27.09., Punkt 18).
   let r: DealErgebnis | null = null;
   await aendereCrm(x => {
-    r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, x, tagVon(jetzt)), person, jetzt });
+    r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, x, tagVon(jetzt)), person, jetzt, ...(e.id && idOk(e.id) ? { id: e.id } : {}) });
     if (!r.ok) return x;
     const c = r.chance;
     // Ebene 1 → 2: der Lead der Firma ist jetzt SQL — mit Verweis auf den Deal, in derselben Mutation.

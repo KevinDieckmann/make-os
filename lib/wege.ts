@@ -35,8 +35,7 @@ export const WEG = {
   heute: () => '/os/heute',
   uebersicht: (space: 'privat' | 'business') => `/os/uebersicht?space=${space}`,
   menschen: () => '/os/menschen',
-  /** Netzwerken (02.10.): die Seite für unterwegs · „Meine Visitenkarte“ (QR, vCard) — Paket B. */
-  /** Netzwerken (02.10.): Karte fotografieren, Person erfassen, Abendbericht (`bericht` = Event) — auch am Handy. */
+  /** Netzwerken (02.10.): die Seite für unterwegs (Erfassen, Abendbericht — `bericht` = Event) · `netzwerkenKarte` = „Meine Visitenkarte“ (QR, vCard). */
   netzwerken: (o: { bericht?: string } = {}) => q('/os/netzwerken', { bericht: o.bericht }),
   netzwerkenKarte: () => '/os/netzwerken/karte',
   zahlen: (s?: ZahlenReiter) => q('/os/finanzen', { s }),

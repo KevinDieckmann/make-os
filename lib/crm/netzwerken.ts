@@ -111,6 +111,8 @@ export interface Erfassung {
   followup?: { faellig: string };
   termin?: { art: TerminArt; dauer: number; start: string };
   vermitteln?: { an: string };
+  /** Zu Make.One einladen: das kommende Event, für das die Person als Gast vorgemerkt wird (ohne: Aufgabe + Label). */
+  makeone?: { eventId?: string };
   andere?: { text: string; faellig?: string };
 }
 
@@ -245,6 +247,12 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
     if (an.length < 2) return fehler('An wen vermitteln?');
     if (an.length > 160) return fehler('„An wen“ ist zu lang (höchstens 160 Zeichen).');
     raus.vermitteln = { an };
+  } else if (schritt === 'makeone') {
+    const m = (b.makeone ?? {}) as Record<string, unknown>;
+    if (typeof m.eventId === 'string' && m.eventId) {
+      if (!ID.test(m.eventId)) return fehler('Das gewählte Event ist ungültig.');
+      raus.makeone = { eventId: m.eventId };
+    }
   } else if (schritt === 'andere') {
     const a = (b.andere ?? {}) as Record<string, unknown>;
     const t = text(a.text, 301);
@@ -254,6 +262,9 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
   }
   return { ok: true, wert: raus };
 }
+
+/** Der Berliner Tag eines ISO-Zeitpunkts — „ab dem Folgetag“ zählt in Berlin, nie nach UTC (kurz nach Mitternacht liegt UTC noch am Vortag). */
+export const berlinTag = (iso: string): string => tagVon(wandzeit(new Date(iso)));
 
 /** Wandzeit „YYYY-MM-DDTHH:mm“ + Minuten (ohne Zeitumstellung — Termine dauern 30–60 Minuten). */
 export const wandPlusMinuten = (start: string, minuten: number): string => wandAus(start.slice(0, 10), minutenVon(start) + minuten).slice(0, 16);
@@ -415,7 +426,7 @@ export function dankeZeilen(o: { events: readonly Event[]; teilnahmen: readonly 
     const n = t.netzwerken;
     if (!n || (o.eventId && t.eventId !== o.eventId)) continue;
     if (o.person && n.erfasstVon !== o.person) continue;
-    if (n.erfasstAm.slice(0, 10) >= o.heute) continue;
+    if (berlinTag(n.erfasstAm) >= o.heute) continue;
     const k = nachKontakt.get(t.kontaktId), e = nachEvent.get(t.eventId);
     if (!k || !e || k.eingeschraenkt) continue;
     const s = k.email ? kanalStatus(k, 'mail', {}) : null;
@@ -453,7 +464,7 @@ export function berichtAus(o: { event: Event; teilnahmen: readonly Teilnahme[]; 
     if (k.eingeschraenkt) offen.push('Verarbeitung eingeschränkt (Art. 18)');
     else {
       if (!k.email) offen.push('keine E-Mail — keine Danke-Mail');
-      else if (!n.danke?.rausAm) offen.push(n.erfasstAm.slice(0, 10) < o.heute ? 'Danke-Mail offen' : 'Danke-Mail ab morgen');
+      else if (!n.danke?.rausAm) offen.push(berlinTag(n.erfasstAm) < o.heute ? 'Danke-Mail offen' : 'Danke-Mail ab morgen');
       if (n.schritt === 'followup' && offeneFu.has(k.id)) offen.push('Follow-up offen');
       if (n.schritt === 'qualifizieren' && (!k.lead || k.lead.status === 'qualifizierung')) offen.push('Qualifizierung offen');
       if (n.schritt === 'angebot') offen.push('Angebot nur als Entwurf');

@@ -178,6 +178,17 @@ describe('Danke-Mail', () => {
   });
 });
 
+describe('Folgetag zählt in Berlin', () => {
+  it('eine Erfassung kurz nach Mitternacht Berliner Zeit (UTC noch am Vortag) ist am selben Berliner Tag noch „ab morgen“', () => {
+    const ev: Event = { id: 'ev-1', titel: 'S', format: 'stammtisch', ziel: 'x', datum: '2026-10-03', status: 'durchgefuehrt', geaendert: '2026-10-03' };
+    const te = [{ id: 't1', eventId: 'ev-1', kontaktId: 'c-1', status: 'da', geaendert: 'x', netzwerken: { erfassungId: ID, schritt: 'followup', zustaendig: 'kevin', erfasstVon: 'kevin', erfasstAm: '2026-10-02T22:30:00.000Z' } }] as Teilnahme[];
+    const ko = [k('c-1', 'Anna', 'Eins', 'X', { email: 'a@example.invalid', stufe: 'gespraech' })];
+    expect(dankeZeilen({ events: [ev], teilnahmen: te, kontakte: ko, heute: '2026-10-03' })).toEqual([]);
+    expect(dankeZeilen({ events: [ev], teilnahmen: te, kontakte: ko, heute: '2026-10-04' })).toHaveLength(1);
+    expect(berichtAus({ event: ev, teilnahmen: te, kontakte: ko, heute: '2026-10-03' }).zeilen[0].offen).toContain('Danke-Mail ab morgen');
+  });
+});
+
 describe('Abendbericht', () => {
   const ev: Event = { id: 'ev-1', titel: 'Stammtisch', format: 'stammtisch', ziel: 'x', datum: '2026-10-02', status: 'durchgefuehrt', geaendert: '2026-10-02' };
   const t = (kid: string, schritt: string, zust: string, n: Record<string, unknown> = {}): Teilnahme => ({ id: `t-${kid}`, eventId: 'ev-1', kontaktId: kid, status: 'da', geaendert: '2026-10-02', netzwerken: { erfassungId: ID, schritt, zustaendig: zust, erfasstVon: 'kevin', erfasstAm: `2026-10-02T1${kid.slice(-1)}:00:00.000Z`, ...n } as Teilnahme['netzwerken'] });

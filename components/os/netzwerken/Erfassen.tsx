@@ -18,7 +18,6 @@ import {
 } from '@/lib/crm/netzwerken';
 import { karteAuslesen, ausgelesenesUebernehmen } from '@/lib/crm/netzwerken-karte';
 import type { NetzwerkSchritt } from '@/lib/crm/typen';
-import { MARKE_EVENTS } from '@/lib/crm/marke';
 import { WEG } from '@/lib/wege';
 import { Fenster } from '../Fenster';
 import type { CrmApi } from '../crm/daten';
@@ -54,6 +53,8 @@ interface Entwurf {
   termin: TerminEingabe;
   followupFaellig: string;
   vermittelnAn: string;
+  /** Make.One: das kommende Event, für das die Person vorgemerkt wird. */
+  makeoneEventId?: string;
   andereText: string;
   andereFaellig: string;
 }
@@ -124,6 +125,8 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
   const exakt = vorschlaege.find(v => v.exakt)?.firma;
   const firmaVerknuepft = !e.firmaNeu && (e.firmaId ? firmen.find(x => x.id === e.firmaId) : exakt);
 
+  // Kommende Events (für „Zu Make.One einladen“): nicht das heutige, nicht abgesagt.
+  const kommende = useMemo(() => (api.crm?.stand.events ?? []).filter(ev => ev.id !== wahl?.eventId && ev.datum >= heute && (ev.status === 'idee' || ev.status === 'geplant' || ev.status === 'einladung')).sort((a, b) => a.datum.localeCompare(b.datum)).slice(0, 8), [api.crm, wahl?.eventId, heute]);
   const nachnameOk = !leer(f.nachname) || !!e.vorhandenId;
   const weiter1 = () => {
     if (!wahl) { setFehler('Bitte oben zuerst „Heute bei“ wählen.'); return; }
@@ -166,6 +169,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
         ...(sch === 'followup' ? { followup: { faellig: e.followupFaellig } } : {}),
         ...(sch === 'termin' ? { termin: { art: e.termin.art, dauer: e.termin.dauer, start: e.termin.start } } : {}),
         ...(sch === 'vermitteln' ? { vermitteln: { an: e.vermittelnAn.trim() } } : {}),
+        ...(sch === 'makeone' && e.makeoneEventId ? { makeone: { eventId: e.makeoneEventId } } : {}),
         ...(sch === 'andere' ? { andere: { text: e.andereText.trim(), ...(e.andereFaellig ? { faellig: e.andereFaellig } : {}) } } : {}),
       };
       const name = gewaehlt ? anzeigename(gewaehlt) : [f.vorname, f.nachname].filter(x => x?.trim()).join(' ').trim() || 'Person';
@@ -344,7 +348,12 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
               <div style={{ fontSize: 13, color: C.inkDim }}>Fällig am {e.followupFaellig ? tagText(e.followupFaellig) : '—'} bei {nameVon(e.zustaendig)}.</div>
             </section>
           )}
-          {sch === 'vermitteln' && <Feldzeile label="Vermitteln an …"><input value={e.vermittelnAn} onChange={x => up({ vermittelnAn: x.target.value })} placeholder="Name der Person oder Firma" autoCapitalize="words" style={eingabe} aria-label="Vermitteln an" /></Feldzeile>}
+          {sch === 'vermitteln' && (
+            <section style={{ display: 'grid', gap: 10 }}>
+              <Feldzeile label="Vermitteln an …"><input value={e.vermittelnAn} onChange={x => up({ vermittelnAn: x.target.value })} placeholder="Name der Person oder Firma" autoCapitalize="words" style={eingabe} aria-label="Vermitteln an" /></Feldzeile>
+              <Hinweis>Es entsteht ein Deal der Art „Vermittlung“ in der Pipeline (wie „Vermitteln“ in der Kontaktakte) mit dem nächsten Schritt „Vermitteln an …“.</Hinweis>
+            </section>
+          )}
           {sch === 'andere' && (
             <section style={{ display: 'grid', gap: 10 }}>
               <Feldzeile label="Was soll getan werden?"><input value={e.andereText} onChange={x => up({ andereText: x.target.value })} placeholder="z. B. Studie zuschicken" style={eingabe} aria-label="Aufgabe" /></Feldzeile>
@@ -353,7 +362,17 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
           )}
           {sch === 'qualifizieren' && <Hinweis>Die Person (bzw. ihre Firma) kommt in die Qualifizierungsrunde — Status „Qualifizierung“.</Hinweis>}
           {sch === 'angebot' && <Hinweis>Im Angebots-Tool entsteht ein Entwurf mit Bezug zur Person. Nichts wird gestellt oder verschickt.</Hinweis>}
-          {sch === 'makeone' && <Hinweis>Die Person wird für eine {MARKE_EVENTS}-Einladung vorgemerkt (Label und Aufgabe). Eingeladen wird nicht automatisch — das machst du später von Hand.</Hinweis>}
+          {sch === 'makeone' && (
+            <section style={{ display: 'grid', gap: 10 }}>
+              <Beschriftung>Für welches Event vormerken?</Beschriftung>
+              {kommende.length > 0 ? (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {kommende.map(ev => <Wahl key={ev.id} an={e.makeoneEventId === ev.id} onClick={() => up({ makeoneEventId: e.makeoneEventId === ev.id ? undefined : ev.id })}>{ev.titel} · {tagText(ev.datum)}</Wahl>)}
+                </div>
+              ) : <Hinweis>{api.crm ? 'Kein kommendes Event geplant — die Person wird mit Label und Aufgabe vorgemerkt.' : 'Die Events werden geladen …'}</Hinweis>}
+              <Hinweis>Vorgemerkt wird als Gast („vorgemerkt“, wie „Make.One einladen“ in der Kontaktakte); der Einladungsweg folgt der Ampel (§ 7 UWG). Eingeladen wird nicht von hier — das machst du später von Hand.</Hinweis>
+            </section>
+          )}
           {sch === 'nur-kontakt' && <Hinweis>Nur der Kontakt wird gespeichert — „Kennengelernt bei {wahl?.titel ?? 'dem Event'}“ steht im Verlauf.</Hinweis>}
 
           <section aria-label="Info" style={{ display: 'grid', gap: 10 }}>
@@ -381,7 +400,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
               ['Erreichbar', [f.email, f.telefon, f.mobil].filter(x => x?.trim()).join(' · ') || '—'],
               ['Fotos', e.fotos.length ? `${e.fotos.length} Foto${e.fotos.length === 1 ? '' : 's'}` : 'keine'],
               ['Sprachnotiz', e.aufnahme ? 'ja — Abschrift folgt (KI)' : 'keine'],
-              ['Nächster Schritt', `${schrittLabel(sch ?? '')}${sch === 'termin' ? ` · ${terminArtLabel(e.termin.art)}, ${tagText(e.termin.start.slice(0, 10))} ${e.termin.start.slice(11, 16)} (${e.termin.dauer} Min.)` : sch === 'followup' ? ` · bis ${tagText(e.followupFaellig)}` : sch === 'vermitteln' ? ` · an ${e.vermittelnAn.trim()}` : sch === 'andere' ? ` · ${e.andereText.trim()}` : ''}`],
+              ['Nächster Schritt', `${schrittLabel(sch ?? '')}${sch === 'termin' ? ` · ${terminArtLabel(e.termin.art)}, ${tagText(e.termin.start.slice(0, 10))} ${e.termin.start.slice(11, 16)} (${e.termin.dauer} Min.)` : sch === 'followup' ? ` · bis ${tagText(e.followupFaellig)}` : sch === 'vermitteln' ? ` · an ${e.vermittelnAn.trim()}` : sch === 'andere' ? ` · ${e.andereText.trim()}` : sch === 'makeone' ? ` · ${kommende.find(x => x.id === e.makeoneEventId)?.titel ?? 'ohne Event (Aufgabe)'}` : ''}`],
               ['Zuständig', nameVon(e.zustaendig)],
               ['Info', e.info.trim() || '—'],
             ] as [string, string][]).map(([k, v], i) => (

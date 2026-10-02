@@ -33,6 +33,9 @@ import { kontaktAusKarte, firmaZurKarte, type VisitenkartenDaten } from './visit
 import { domainVon, firmenId, bestehendeFirma } from './firmen';
 import { neuesFollowUp } from './followup';
 import { leereKriterien } from './leads';
+import { dealAnlegen } from './deal-anlegen';
+import { kontextAus } from './segmente';
+import { kanalStatus } from './recht';
 import { angebotSpeichern } from './angebot-server';
 import { terminAktivitaetenSetzen } from './termin-aktivitaet-server';
 import { MARKE_EVENTS } from './marke';
@@ -330,6 +333,15 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
 
   // ── schritt ──
   let angebotId: string | undefined;
+  /** Aufgabe mit Bezug zum Kontakt (feste Kennung `nw-<Erfassung>` — nie doppelt); der Aufgaben-Weg meldet die Zuweisung selbst. */
+  const aufgabeAnlegen = (titel: string, faellig: string) => systemAufgabenAendern(stand => {
+    const id = `nw-${e.erfassungId}`;
+    if (stand.tasks.some(t => t.id === id)) return {};
+    return { neu: [{
+      id, title: titel.slice(0, 300), description: [`Kennengelernt bei „${event.titel}“ (Netzwerken).`, ...(e.info ? [`Info: ${e.info}`] : []), WEG.akte(kontaktId)].join('\n').slice(0, 4000),
+      status: 'todo', priority: 'medium', assignee: e.zustaendig, tags: ['crm', 'netzwerken'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetztIso, updatedAt: jetztIso, dueDate: faellig, bezug: { kontaktId },
+    }] };
+  }, { person: ctx.person, wer: ctx.wer, jetzt: jetztIso });
   await schritt('schritt', async () => {
     const frist = followupFrist(erfasstTag > heute ? heute : erfasstTag);
     switch (e.schritt) {
@@ -355,27 +367,40 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
         }
         break;
       }
-      case 'vermitteln':
-      case 'andere':
+      case 'vermitteln': {
+        // Dieselbe Logik wie „Vermitteln“ in der Kontaktakte (Paket B): ein Deal der Art „Vermittlung“ über den EINEN Anlageweg.
+        const id = `ch-nw-${e.erfassungId}`;
+        if ((await ladeCrm()).chancen.some(c => c.id === id)) break;
+        const r = await dealAnlegen({
+          id, art: 'vermittlung', kontaktIds: [kontaktId], wert: { betrag: 0, basis: 'einmalig' }, schritt: { text: `Vermitteln an ${e.vermitteln!.an}`, datum: frist },
+          quelle: 'event', quelleBezug: e.eventId, besitzer: e.zustaendig, trotzdem: true,
+          notiz: [`Kennengelernt bei „${event.titel}“ (Netzwerken).`, ...(e.info ? [`Info: ${e.info}`] : [])].join('\n'),
+        }, ctx.person, jetztIso, ctx.wer);
+        if (!r.ok) throw new ErfassungFehler(r.fehler, r.status);
+        break;
+      }
       case 'makeone': {
-        const titel = e.schritt === 'vermitteln' ? `Vermitteln: ${name} an ${e.vermitteln?.an}` : e.schritt === 'andere' ? e.andere!.text : `Zu ${MARKE_EVENTS} einladen: ${name}`;
-        const faellig = e.schritt === 'andere' && e.andere?.faellig ? e.andere.faellig : frist;
-        await systemAufgabenAendern(stand => {
-          const id = `nw-${e.erfassungId}`;
-          if (stand.tasks.some(t => t.id === id)) return {};
-          return { neu: [{
-            id, title: titel.slice(0, 300), description: [`Kennengelernt bei „${event.titel}“ (Netzwerken).`, ...(e.info ? [`Info: ${e.info}`] : []), WEG.akte(kontaktId)].join('\n').slice(0, 4000),
-            status: 'todo', priority: 'medium', assignee: e.zustaendig, tags: ['crm', 'netzwerken'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetztIso, updatedAt: jetztIso, dueDate: faellig, bezug: { kontaktId },
-          }] };
-        }, { person: ctx.person, wer: ctx.wer, jetzt: jetztIso });
-        if (e.schritt === 'makeone') {
-          // Vormerkung am Kontakt: das Label (frei vergebbar, filterbar) — die Aufgabe oben ist die Handlung.
-          const label = `${MARKE_EVENTS}-Einladung`;
-          await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
-            const f = cur ?? { kontakte: [] };
-            return { ...f, kontakte: f.kontakte.map(k => (k.id === kontaktId && !k.eingeschraenkt && !(k.labels ?? []).includes(label) ? { ...k, labels: [...(k.labels ?? []), label], geaendertAm: heute } : k)) };
-          }, ctx.wer);
+        // Wie „Make.One einladen“ in der Kontaktakte: Gast für ein KOMMENDES Event vormerken (Teilnahme „vorgemerkt“), der Einladungsweg
+        // folgt der Ampel (Mail nur bei grün, sonst persönlich) — gesendet wird nichts. Ohne wählbares Event: Aufgabe + Label als Vormerkung.
+        const crmJetzt = await ladeCrm();
+        const ziel = e.makeone?.eventId ? crmJetzt.events.find(x => x.id === e.makeone!.eventId && x.id !== e.eventId && x.datum >= heute && (x.status === 'idee' || x.status === 'geplant' || x.status === 'einladung')) : undefined;
+        if (ziel) {
+          const kx = kontextAus(crmJetzt, heute);
+          const einl = kanalStatus(kontakt0, 'einladung', { hatMandat: kx.mitMandat.has(kontaktId), hatChance: kx.mitChance.has(kontaktId) });
+          await aendereCrm(b => (b.teilnahmen.some(t => t.eventId === ziel.id && t.kontaktId === kontaktId) ? b
+            : { ...b, teilnahmen: [...b.teilnahmen, { id: `t-nwm-${e.erfassungId}`, eventId: ziel.id, kontaktId, status: 'vorgemerkt' as const, rolle: 'gast' as const, einladungsweg: einl.farbe === 'gruen' ? 'mail' as const : 'persoenlich' as const, einladenDurch: e.zustaendig, geaendert: jetztIso, geaendertVon: ctx.person }] }), ctx.wer);
+          break;
         }
+        await aufgabeAnlegen(`Zu ${MARKE_EVENTS} einladen: ${name}`, frist);
+        const label = `${MARKE_EVENTS}-Einladung`;
+        await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
+          const f = cur ?? { kontakte: [] };
+          return { ...f, kontakte: f.kontakte.map(k => (k.id === kontaktId && !k.eingeschraenkt && !(k.labels ?? []).includes(label) ? { ...k, labels: [...(k.labels ?? []), label], geaendertAm: heute } : k)) };
+        }, ctx.wer);
+        break;
+      }
+      case 'andere': {
+        await aufgabeAnlegen(e.andere!.text, e.andere?.faellig ?? frist);
         break;
       }
       case 'angebot': {
@@ -424,8 +449,8 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
 
   // ── melden ──
   await schritt('melden', async () => {
-    // Aufgaben-Schritte meldet der Aufgaben-Schreibweg schon („hat dir … zugewiesen“) — keine zweite Meldung.
-    if (e.zustaendig === ctx.person || e.schritt === 'vermitteln' || e.schritt === 'andere' || e.schritt === 'makeone') return;
+    // „Andere“ und Make.One ohne Event sind Aufgaben: die meldet der Aufgaben-Schreibweg schon („hat dir … zugewiesen“) — keine zweite Meldung.
+    if (e.zustaendig === ctx.person || e.schritt === 'andere' || (e.schritt === 'makeone' && !e.makeone?.eventId)) return;
     const namen = new Map((await kontenDesHaushalts(h)).map(k => [k.speicher, k.name]));
     const von = txt(namen.get(ctx.person) ?? ctx.person, 60);
     let titel: string, link: string;

@@ -46,14 +46,16 @@ Kevin/Malin 02.10.: Malin ist morgen auf einer Netzwerkveranstaltung und nutzt M
 
 - **Eine Erfassung = ein Serverlauf** (`POST /api/netzwerken`, `lib/crm/netzwerken-server.ts`, rein: `lib/crm/netzwerken.ts`): Schritte `event → firma → kontakt → dateien → teilnahme → verlauf → schritt → termin → melden`,
   jeder idempotent und einzeln im Journal abgehakt (`netzwerken-erfassungen--<haushalt>`, nur Zufalls-Kennung + Schrittnamen). Dieselbe Erfassung zweimal = nichts doppelt (Test: Abbruch vor/nach jedem Schritt),
-  gleichzeitig gesendet = ein Lauf. Kontakt-Kennung ist `c-<Erfassungs-UUID>`, Termin-UID `makeos-t-nw-<UUID>`, Follow-up `fu-<UUID>`, Aufgabe `nw-<UUID>`, Angebots-Entwurf `ang-nw-<UUID>`.
+  gleichzeitig gesendet = ein Lauf. Kontakt-Kennung ist `c-<Erfassungs-UUID>`, Termin-UID `makeos-t-nw-<UUID>`, Follow-up `fu-<UUID>`, Aufgabe `nw-<UUID>`, Deal `ch-nw-<UUID>`, Make.One-Teilnahme `t-nwm-<UUID>`, Angebots-Entwurf `ang-nw-<UUID>`.
 - **Kontakt/Firma/Event über die vorhandenen Wege:** Quelle „Netzwerken“, Herkunft „Veranstaltung“, Typ „Netzwerk“, Beziehung bei der zuständigen Person, Sperrliste und Datenschutz-Stempel wie die Kartei-Route,
   Firma wird verknüpft (Name ohne Rechtsform/Domain) oder einmal neu angelegt; ein unterwegs angelegtes Event kommt über den Event-Schreibweg (`/api/crm/bestand`), ohne Netz legt es der Server mit der ersten Erfassung an
   (Marke „Netzwerken“). Teilnahme „da“ (`einladenDurch` = zuständig, `eingechecktVon` = Erfasser) — Event-Kennzahlen/Traktions-Index zählen, ein Event von heute gilt als durchgeführt.
 - **Werbe-Einwilligung „keine“:** KEIN Eintrag in `einwilligungen` (jeder Eintrag würde die Kanal-Ampel grün schalten); Vermerk „Visitenkarte, keine Einwilligung (§ 7 UWG)“ in der Aktivität „Kennengelernt bei …“. Test: Ampel für Mail nie grün.
 - **Dublette:** „Kennen wir schon?“ im Browser (tolerant: Mail, Telefon, Name ohne Titel/Umlaute, Firma ohne Rechtsform, 1–2 Buchstaben Abstand); zusätzlich serverseitig: gleiche Mail/Nummer ohne „Trotzdem neu“ legt keine zweite Person an. Art. 18 → 409.
 - **Schritte:** Follow-up = echtes `FollowUp` (Frist wählbar, Standard +2 Werktage); Qualifizieren = Lead-Status „Qualifizierung“ (Firma, sonst Person; ein weiter fortgeschrittener Lead bleibt);
-  Vermitteln/Andere/Make.One = Aufgabe mit Bezug zum Kontakt (Make.One zusätzlich Label „Make.One-Einladung“); Angebot = nur Entwurf im Angebots-Tool; Nur Kontakt = nichts; Termin = Kalender-Termin in der Zeitzone Berlin
+  **Vermitteln = Deal der Art „Vermittlung“** über den einen Anlageweg `dealAnlegen` (wie „Vermitteln“ in der Kontaktakte, Paket B; nächster Schritt „Vermitteln an …“, feste Kennung `ch-nw-<UUID>`; der Lead wird dabei wie überall SQL);
+  **Zu Make.One einladen = Gast „vorgemerkt“** für ein wählbares KOMMENDES Event (wie in der Kontaktakte; Einladungsweg „Mail“ nur bei grüner Ampel, sonst „persönlich“; ohne wählbares Event Rückfall: Label „Make.One-Einladung“ + Aufgabe);
+  Andere = Aufgabe mit Bezug zum Kontakt; Angebot = nur Entwurf im Angebots-Tool; Nur Kontakt = nichts; Termin = Kalender-Termin in der Zeitzone Berlin
   im Kalender der zuständigen Person (Kalender-Einstellungen; ohne Eintrag 409 „kein Kalender“ — die Person ist trotzdem erfasst) + Meeting-Aktivität (K3) + Hinweis bei Überschneidung.
 - **Mitteilung an die andere Person:** gespeicherte Meldung der Art `netzwerken` (Termin gebucht bzw. Person zugeteilt; bei Aufgaben-Schritten meldet der Aufgaben-Weg schon „zugewiesen“), dazu das **Pop-up** (`NetzwerkenPopup`, in `app/os/layout.tsx`):
   einmal als Karte „Öffnen/OK“, danach gelesen. Läuft auf der Abfrage der Glocke (≤ 60 s).

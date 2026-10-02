@@ -276,12 +276,18 @@ describe('Jeder Schritt-Typ erzeugt das Richtige', () => {
     expect((await crm()).firmen.find(x => x.name === 'Beispielwerk Nord GmbH')?.lead?.status).toBe('sql');
   });
 
-  it('Vermitteln: Aufgabe „Vermitteln: … an …“ mit Bezug zum Kontakt', async () => {
-    const r = await senden(erfassung({ schritt: 'vermitteln', vermitteln: { an: 'Frau Muster (Steuerberatung)' } }));
-    const t = ((await db.loadJson<{ tasks: { id: string; title: string; bezug?: { kontaktId?: string }; assignee: string; dueDate?: string }[] }>('tasks'))!).tasks;
-    expect(t).toHaveLength(1);
-    expect(t[0].title).toBe('Vermitteln: Anna Beispiel an Frau Muster (Steuerberatung)');
-    expect(t[0]).toMatchObject({ bezug: { kontaktId: r.d.kontaktId }, assignee: 'kevin', dueDate: '2026-10-06' });
+  it('Vermitteln: ein Deal der Art „Vermittlung“ über den einen Anlageweg (wie in der Kontaktakte), nächster Schritt „Vermitteln an …“, einmal', async () => {
+    const e = erfassung({ schritt: 'vermitteln', vermitteln: { an: 'Frau Muster (Steuerberatung)' }, info: 'Braucht Steuerberatung' });
+    const r = await senden(e);
+    expect(r.status).toBe(200);
+    const c = (await crm()).chancen;
+    expect(c).toHaveLength(1);
+    expect(c[0]).toMatchObject({ id: `ch-nw-${e.erfassungId}`, art: 'vermittlung', kontaktIds: [r.d.kontaktId], besitzer: 'kevin', quelle: 'event', quelleBezug: 'ev-test-1', stufe: 'qualifiziert' });
+    expect(c[0].naechsterSchritt).toEqual({ text: 'Vermitteln an Frau Muster (Steuerberatung)', datum: '2026-10-06' });
+    expect(c[0].notiz).toContain('Braucht Steuerberatung');
+    expect(((await db.loadJson<{ tasks: unknown[] }>('tasks'))!).tasks).toHaveLength(0);
+    await senden(e); // Wiederholung
+    expect((await crm()).chancen).toHaveLength(1);
   });
 
   it('Andere: Aufgabe mit dem eigenen Text und Frist', async () => {
@@ -300,7 +306,21 @@ describe('Jeder Schritt-Typ erzeugt das Richtige', () => {
     expect((await crm()).angebote).toHaveLength(1);
   });
 
-  it('Zu Make.One einladen: Vormerkung (Label) + Aufgabe mit Bezug — keine Einladung', async () => {
+  it('Zu Make.One einladen mit Event: Gast „vorgemerkt“ für das KOMMENDE Event (wie in der Kontaktakte), Einladungsweg nach Ampel — keine Einladung', async () => {
+    await db.saveJson('crm', { ...(await crm()), events: [...(await crm()).events, { id: 'ev-makeone-1', titel: 'Make.One Herbst', format: 'dinner', ziel: 'x', datum: '2026-11-12', status: 'geplant', geaendert: '2026-09-01' }] });
+    const r = await senden(erfassung({ schritt: 'makeone', makeone: { eventId: 'ev-makeone-1' } }));
+    const t = (await crm()).teilnahmen.filter(x => x.eventId === 'ev-makeone-1');
+    expect(t).toMatchObject([{ kontaktId: r.d.kontaktId, status: 'vorgemerkt', rolle: 'gast', einladungsweg: 'persoenlich', einladenDurch: 'kevin' }]); // neue Person: keine Einwilligung → persönlich
+    expect(((await db.loadJson<{ tasks: unknown[] }>('tasks'))!).tasks).toHaveLength(0);
+    expect(puts).toEqual([]);
+    expect((await kontakte())[0].einwilligungen ?? []).toEqual([]);
+    // Das heutige Event bleibt unberührt (Teilnahme „da“ + Angabe), ein vergangenes oder unbekanntes Ziel zählt nicht.
+    expect((await crm()).teilnahmen.filter(x => x.eventId === 'ev-test-1')).toHaveLength(1);
+    const ohneZiel = await senden(erfassung({ schritt: 'makeone', makeone: { eventId: 'ev-test-1' }, kontakt: { vorname: 'Bert', nachname: 'Probe', email: 'bert@example.invalid' } }));
+    expect((await kontakte()).find(k => k.id === ohneZiel.d.kontaktId)?.labels).toContain('Make.One-Einladung'); // nicht kommend → Rückfall
+  });
+
+  it('Zu Make.One einladen ohne Event: Rückfall Label + Aufgabe mit Bezug', async () => {
     const r = await senden(erfassung({ schritt: 'makeone' }));
     const k = (await kontakte()).find(x => x.id === r.d.kontaktId)!;
     expect(k.labels).toContain('Make.One-Einladung');
@@ -316,6 +336,7 @@ describe('Jeder Schritt-Typ erzeugt das Richtige', () => {
     expect(c.followups).toHaveLength(0);
     expect(c.angebote).toHaveLength(0);
     expect(((await db.loadJson<{ tasks: unknown[] }>('tasks'))!).tasks).toHaveLength(0);
+    expect(c.chancen).toHaveLength(0);
     expect((await kontakte())[0].aktivitaeten.some(a => a.art === 'event')).toBe(true);
     expect(puts).toEqual([]);
   });

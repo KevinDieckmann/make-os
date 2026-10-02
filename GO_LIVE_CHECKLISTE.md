@@ -182,7 +182,7 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   Die neue Abhängigkeit `qrcode-generator` (Dev: `jsqr`) braucht auf dem Server `npm ci` beim Bauen des Images; die Schrift Urbanist liegt in `public/schriften/`.
 - **Netzwerken — Erfassen (02.10.):** keine Formänderung, nur optionale Zusatzfelder, eine neue Meldungsart und ein neuer Speicher. af4679a/1818c5c:
   - verwirft `Teilnahme.netzwerken` (Schritt, Zuständigkeit, Info, Danke-Mail-Stand) beim nächsten Speichern der Teilnahme — Abendbericht und Danke-Mail-Entwürfe sind dort leer; Teilnahme „da“, Notiz, `einladenDurch`, Verlauf („Kennengelernt bei …“),
-    Follow-ups, Aufgaben, Termine, Labels und Dateien bleiben;
+    Follow-ups, Aufgaben, Deals (Vermittlung), Gast-Vormerkungen, Termine, Labels und Dateien bleiben;
   - kennt die Meldungsart `netzwerken` nicht → diese Meldungen (Termin gebucht/zugeteilt) verschwinden aus der Glocke; „n Danke-Mails bereit“ (abgeleitet) und das Pop-up gibt es dort nicht;
   - liest/schreibt `netzwerken-erfassungen--<haushalt>` nie (liegt ungenutzt; nach einem erneuten Upload gilt dieselbe Erfassungs-Kennung weiter → nichts doppelt);
   - Sprachnotizen (`audio/*`) liegen als Datei am Kontakt; der alte Stand zeigt sie in der Dateiliste, kann sie aber nicht abspielen (Download geht).
