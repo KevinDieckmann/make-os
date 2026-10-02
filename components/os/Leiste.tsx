@@ -208,7 +208,7 @@ export function Leiste() {
           const Icon = e.icon;
           // Netzwerken (03.10.): wartet etwas auf dem Gerät, steht es als Abzeichen am Knopf („2 warten“).
           const abzeichen = e.label === 'Netzwerken' ? wartezahlText(wartezahl) : null;
-          const innen = <><Icon size={20} strokeWidth={1.75} /><span>{e.label}</span>{abzeichen && <span data-netzwerken-zaehler aria-label={`${abzeichen} auf dem Gerät`} style={{ position: 'absolute', top: -5, left: '50%', marginLeft: 4, padding: '1px 6px', borderRadius: 999, fontSize: 10, fontWeight: 700, lineHeight: 1.4, whiteSpace: 'nowrap', background: wartezahl.wartend ? LEUCHT.achtung : LEUCHT.kritisch, color: C.grund }}>{abzeichen}</span>}</>;
+          const innen = <><Icon size={20} strokeWidth={1.75} /><span>{e.label}</span>{abzeichen && <span data-netzwerken-zaehler aria-label={`${abzeichen} auf dem Gerät`} style={{ position: 'absolute', top: -5, left: '50%', marginLeft: 4, padding: '1px 6px', borderRadius: 999, fontSize: 11, fontWeight: 700, lineHeight: 1.4, whiteSpace: 'nowrap', background: wartezahl.wartend ? LEUCHT.achtung : LEUCHT.kritisch, color: C.grund }}>{abzeichen}</span>}</>;
           const stil = { position: 'relative' as const, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, flex: 1, padding: '6px 0', border: 'none', background: 'none', textDecoration: 'none', color: e.an ? e.farbe : C.inkDim, fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 500, cursor: 'pointer' };
           return e.art === 'space'
             ? <button key={e.label} type="button" onClick={() => setOffen(o => (o === e.id ? null : e.id))} className="fassbar" style={stil}>{innen}</button>

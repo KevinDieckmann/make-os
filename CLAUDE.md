@@ -598,6 +598,15 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
 - **Teilnahme.netzwerken** (`NetzwerkenAngabe`, gesäubert in `speicher.ts` `zusatz` — ohne diese Zeile fiele sie bei jedem Speichern weg) trägt Schritt, Zuständigkeit, Info, Termin und den Danke-Stand; Abendbericht und Danke-Mails lesen NUR sie. `Anstehend.danke` → Glocke („n Danke-Mails bereit“, Art `danke`, abgeleitet) und Heute; die gespeicherte Meldungsart `netzwerken` (Bezug `netzwerken` = Erfassungs-Kennung) zeigt `NetzwerkenPopup` einmal (`useGlockenSicht`, kein zweiter Abruf).
 - **Dateien:** Fotos und Sprachnotizen über `ablegen` (verschlüsselt, `kontaktId`); Sprachnotiz-Typen nur serverseitig aus dem Inhalt (`SPRACHNOTIZ_TYPEN`, nicht im Upload der Oberfläche).
 - Sichtprüfung am Handy (375 px): Produktionsbau (`MAKE_OS_DIST=.next-… next build` + `next start`) mit Test-Datenordner und gemocktem iCloud, bedient über headless Chrome (CDP); der Dev-Modus kompiliert unter Last jede Route minutenlang.
+- **Korrekturen 03.10. (Branch `netz-fix`):**
+  - *Warteschlange:* EINE je Browser (`geteilteWarteschlange`), gesendet vom `NetzwerkenSender` im /os-Rahmen (nicht mehr von der Seite); Seite und Leiste lesen nur (`beiAenderung`, `zaehler.ts`). 5xx → drei Versuche → „Fehler“, nie den Durchlauf abbrechen (nur Status 0/401/429); `teilweise` → „Ohne Termin abschließen“ (`ohneTermin`); `erfasstVon` ↔ Sitzung (409 `andere`). Neue Auslöser dürfen nicht doppelt zählen (`versucht` je `senden()`).
+  - *Termin:* `terminAm`/`terminId` an der Teilnahme erst nach dem Kalender-Schritt; `ohneTermin` macht aus dem Schritt ein Follow-up (+1 Werktag). Nie einen Termin nennen, den es nicht gibt.
+  - *Dubletten:* EINE Regel `zusammenfuehrung` (`lib/crm/netzwerken.ts`) für Firma-Schritt UND Kontakt-Schritt (sonst verwaiste Firmen); Telefon nur mit Nachname; `luekenFuellen` überschreibt nie. Labels: `Netzwerken`, `Dublette prüfen`, `Lead prüfen`.
+  - *Leads:* `leadStellen` im Schritt `schritt` (vor dem Deal): neu → Kontaktiert, Qualifizieren → Qualifizierung, nie über Kein Fit/Ruht/SQL/Kunde, nie Firmen ohne Vertrieb.
+  - *Kennzahlen:* Events mit `marke: Netzwerken` (`istNetzwerkenEvent`, `lib/crm/marke.ts`) bleiben aus allen Event-Kennzahlen/Scoreboard/Index; `netzwerkenZahlen` weist sie getrennt aus. Neue Event-Kennzahlen filtern dort ebenso.
+  - *Links:* Server liefert feste Kennungen, `ergebnisLinks` baut daraus die Sprünge (Fertig-Seite, Abendbericht) — kein zweiter Linkbauer.
+  - *Abmelden:* `vorAbmelden` (KontoView) — Karten-Cache und Warteschlange werden nur bei leerer Warteschlange gelöscht.
+  - Karten-Route (`/api/netzwerken/karten`): Dienstweg 403.
 
 ## Kalender-Oberfläche (components/os/kalender, seit 27.09.)
 - `/os/kalender` = `Kalender.tsx` (Tag/4 Tage/Woche/Monat/Jahr/Termine; Modi Planen/Aufgaben seit K5). Daten nur über `useKalender` (`/api/kalender`), Schreiben nur über `/api/kalender/termin` (iCloud) — nie mehr über `/api/apple-calendar/create`.

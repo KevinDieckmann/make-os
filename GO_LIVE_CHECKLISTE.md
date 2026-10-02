@@ -187,6 +187,13 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   - liest/schreibt `netzwerken-erfassungen--<haushalt>` nie (liegt ungenutzt; nach einem erneuten Upload gilt dieselbe Erfassungs-Kennung weiter → nichts doppelt);
   - Sprachnotizen (`audio/*`) liegen als Datei am Kontakt; der alte Stand zeigt sie in der Dateiliste, kann sie aber nicht abspielen (Download geht).
   Nach einem erneuten Upload: nichts nachzuziehen (Teilnahmen ohne `netzwerken` erscheinen nicht im Bericht — selten, nur für Erfassungen aus der Rückweg-Zeit).
+- **Netzwerken — Korrekturen (03.10., Branch `netz-fix`):** keine Formänderung; af4679a/1818c5c ignorieren oder verwerfen die neuen Zusätze:
+  - `Teilnahme.netzwerken.terminId` (Termin-Sprung im Bericht): der alte Stand verwirft sie beim nächsten Speichern der Teilnahme (nur der Link „Termin öffnen“ fehlt); `followUpAm` aus Netzwerken-Schritten ist ein altes Feld und bleibt;
+  - Labels `Netzwerken`/`Dublette prüfen`/`Lead prüfen` und `rechtsgrundlage: 'berechtigt'` sind alte Felder — bleiben, der alte Stand zeigt sie nur als gewöhnliche Labels. Das Event-Kennzeichen `marke: Netzwerken` kennt der alte Stand nur als Marken-Text: **dort zählen fremde Netzwerken-Events wieder in Erscheinensquote und Folgegespräche** (die Trennung ist neuer Code);
+  - Lead-Status „Kontaktiert“ an Firma/Person und Follow-ups „Termin vereinbaren“ bleiben (alte Felder);
+  - globaler Sender, Abzeichen „n warten“ und Abmelden-Warnung sind reiner Browser-Code und verschwinden mit dem Rückweg. **Vor dem Rückweg alle Handys mit „n warten“ leer senden lassen** — der alte Stand hat keine Seite, die die IndexedDB-Warteschlange sendet;
+  - `/api/netzwerken/karten` verweigert dem Dienstweg (403) — es gab nie einen Aufrufer, der den Schlüssel dafür nutzte.
+  Nach einem erneuten Upload: nichts nachzuziehen.
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

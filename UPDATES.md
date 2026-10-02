@@ -4,6 +4,32 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Netzwerken — Korrekturen aus der Lese-Prüfung (03.10.2026, nur lokal — Branch `netz-fix`, auf `entwicklung` 7f61114)
+
+Veranstaltung heute: die Prüfung fand echte Lücken im Fluss. Behoben, je mit Test (`tests/netzwerken-korrektur.test.ts`, `-abmelden.test.ts`, `-logik.test.ts`, `-route.test.ts`):
+
+- **Offline-Warteschlange global senden:** `components/os/netzwerken/Sender.tsx` läuft auf JEDER /os-Seite (`app/os/layout.tsx`) und sendet beim Öffnen, bei `online`, wenn die Seite sichtbar wird und alle 30 s — ohne Erfassungen auf
+  dem Gerät keine Anfrage. Eine geteilte Warteschlange je Browser (`geteilteWarteschlange`), Zähler-Abzeichen **„n warten“** (sonst „n Fehler“) am Netzwerken-Knopf der Handy-Leiste (`lib/netzwerken/zaehler.ts`).
+  Serverfehler (5xx) an EINER Erfassung: drei Versuche, dann „Fehler“ mit Klartext — der Durchlauf geht mit der nächsten weiter; nur kein Netz (Status 0), 401 und 429 brechen ab. Pro Aufruf wird jede Erfassung höchstens einmal versucht.
+- **Termin-Fehlerfall:** `terminAm`/`terminId` stehen erst NACH erfolgreichem Anlegen an der Teilnahme; Danke-Mail und Bericht nennen nie einen Termin, den es nicht gibt (Bericht: „Termin nicht angelegt“). Bei 409 `teilweise`
+  (kein Kalender/iCloud) bietet die Oberfläche **„Ohne Termin abschließen (stattdessen Follow-up)“**: dieselbe Erfassung mit `ohneTermin` → Follow-up zum nächsten Werktag („Termin vereinbaren“), an der Teilnahme wird daraus „Follow-up“.
+- **Telefon-Dublette:** gleiche Nummer führt nur bei gleichem Nachnamen zusammen, sonst neue Person + Hinweis „Gleiche Nummer wie …“.
+- **Leads:** neue Netzwerken-Leads (ohne Lead oder „Neu“) werden „Kontaktiert“ (stehen in „In Arbeit“); „Qualifizieren“ bleibt „Qualifizierung“; bestehende aktive Status bleiben. **Firma ohne Vertrieb** (Dienstleister/Investor/Wettbewerber, Kein Fit, Ruht, SQL):
+  Lead unverändert, Hinweis „Firma ist als … geführt — Lead nicht geändert“, Label „Lead prüfen“.
+- **Event-Kennzahlen getrennt:** Events mit `marke: Netzwerken` (fremde Veranstaltung, `istNetzwerkenEvent`) zählen nicht in Erscheinensquote, Folgegespräche, Events 90 Tage, Gästemischung, Scoreboard „Durchgeführte Events“ und Traktions-Index; eigene Kennzahl
+  `netzwerken` (nie im Score): „Netzwerken: n Kontakte, n Termine, n Follow-ups“ (90 Tage). Termin/Angebot/Vermitteln/Make.One setzen `followUpAm` = Erfassungstag (gilt als nachgefasst). **Offene Entscheidung:** die 48-h-Kennzahl rechnet Netzwerken-Gäste weiter mit
+  (Frist ab Event-Datum, Tag der Begegnung) — Kevin entscheidet, ob sie ebenfalls getrennt werden soll. Ebenfalls offen: wer an einem EIGENEN Event spontan über Netzwerken als „da“ erfasst wird, zählt dort wie ein Gast mit Zusage.
+- **Dubletten-Folgen:** keine verwaiste Firma, wenn die Erfassung an einer bestehenden Person hängt; Name + Firma ohne Beleg → neue Person, „Gibt es vermutlich schon“, Label „Dublette prüfen“; beim Anhängen (Mail/Nummer + Nachname oder „Diesen nehmen“)
+  werden leere Felder (Telefon, Handy, Position, LinkedIn, Website) gefüllt, nichts überschrieben.
+- **Rechtsgrundlage:** neue Person bekommt `rechtsgrundlage: 'berechtigt'` (B2B-Anbahnung) — weiterhin keine Einwilligung.
+- **Erreichbarkeit:** der Server liefert alle Kennungen (`terminUid`+`terminTag`, `dealId`, `followupId`, `eventId`, `kontaktId`); Fertig-Seite und Abendbericht zeigen sie als Verknüpfungs-Chips (`ergebnisLinks`). Event › Gäste: bei Erfassten aus Netzwerken
+  Schritt/Zuständig + Link „Abendbericht“. Schnellsuche: „Netzwerken“ und „Meine Visitenkarten“. Jede erfasste Person trägt das Label „Netzwerken“ (Kartei-Filter „Label: Netzwerken“).
+- **Visitenkarten-Route:** Dienstweg → 403 wie `/api/netzwerken`; Tests laufen mit echter Sitzung (`x-make-user`).
+- **Abmelden:** warnt „Es warten noch n Erfassungen — erst senden?“ (sendet; geht es nicht, zweite Frage „trotzdem abmelden?“); bei leerer Warteschlange fallen IndexedDB und `make-os-netzwerken-*` weg (`lib/netzwerken/abmelden.ts`). Erfassungen tragen
+  `erfasstVon`; der Server lehnt Senden unter anderer Person mit 409 ab (nichts geschrieben), die Warteschlange hält sie für die richtige Person bereit.
+- **Kleinkram:** Termin in der Vergangenheit abgelehnt (gemessen am Zeitpunkt der Erfassung, 15 Minuten Luft); der Hinweis unterscheidet „belegt“, „außerhalb der Arbeitszeit“ und „Feiertag“ (`terminKonflikt`).
+- **Rückweg:** keine Formänderung; neue optionale Felder (`terminId`, Label, Rechtsgrundlage, `ohneTermin`/`erfasstVon` nur im Browser-Körper). Siehe `GO_LIVE_CHECKLISTE.md` › Rückweg.
+
 ## Netzwerken · Meine Visitenkarten, Handy-Leiste, Deal-Ebene am Handy (02.10.2026, nur lokal — Branch `netzwerken-b`)
 
 Kevin/Malin 02.10.: Malin nutzt es unterwegs am iPhone. Paket B baut die Handy-Leiste, die eigenen Visitenkarten mit QR-Code und die Schnellaktionen am Kunden (Paket A baut die Seite `/os/netzwerken`).

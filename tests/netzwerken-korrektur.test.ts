@@ -19,7 +19,6 @@ type Mod = { GET: (r: Request) => Promise<Response>; POST: (r: Request) => Promi
 let route: Mod;
 let db: typeof import('@/lib/store/local-db');
 let speicher: typeof import('@/lib/crm/speicher');
-let ablage: typeof import('@/lib/dateien/ablage');
 let test: typeof import('@/lib/crm/netzwerken-server').netzwerkenTest;
 
 // ── CalDAV-Attrappe mit zwei Kalendern (Privat Kevin, Privat Malin) ──
@@ -57,9 +56,7 @@ function fakeFetch(url: string, init: RequestInit): Response {
 
 // ── Bausteine ──
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 1, 2, 3, 4, 5, 6, 7, 8]).toString('base64');
-const WEBM = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 1, 2, 3, 4, 5, 6, 7, 8]).toString('base64');
 const kopf = (u: string) => ({ 'content-type': 'application/json', 'x-make-user': u });
-const dienst = (p?: string) => ({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, ...(p ? { 'x-make-person': p } : {}) });
 const anfrage = (body: unknown, h: Record<string, string>) => new Request('http://test/api/netzwerken', { method: 'POST', headers: h, body: JSON.stringify(body) });
 const senden = async (body: unknown, user = 'kevin') => { const r = await route.POST(anfrage(body, kopf(user))); return { status: r.status, d: await r.json() as Record<string, unknown> & { ok: boolean; kontaktId?: string; fehler?: string; hinweise?: string[]; schonDa?: boolean; zusammengefuehrt?: boolean; neu?: boolean; terminUid?: string; angebotId?: string } }; };
 const erfassung = (x: Record<string, unknown> = {}) => ({
@@ -74,7 +71,6 @@ const meldungen = async (p: string) => ((await db.loadJson<{ eintraege: { art: s
 beforeAll(async () => {
   db = await import('@/lib/store/local-db');
   speicher = await import('@/lib/crm/speicher');
-  ablage = await import('@/lib/dateien/ablage');
   test = (await import('@/lib/crm/netzwerken-server')).netzwerkenTest;
   route = (await import('@/app/api/netzwerken/route')) as unknown as Mod;
 });

@@ -22,7 +22,7 @@ import { MARKE_EVENTS } from './marke';
 import { emailNormal, telefonNormal, linkedinNormal, webNormal, text } from './visitenkarte';
 import { mailLink } from './erfassen';
 import { kanalStatus } from './recht';
-import { werktagePlus, tagPlus, tagVon, wandzeit, wandAus, minutenVon } from '@/lib/zeit/kalender-kern';
+import { werktagePlus, tagVon, wandzeit, wandAus, minutenVon } from '@/lib/zeit/kalender-kern';
 import { WEG } from '@/lib/wege';
 
 // ── Festwerte ───────────────────────────────────────────────────────────────
