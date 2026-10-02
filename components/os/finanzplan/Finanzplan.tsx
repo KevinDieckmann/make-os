@@ -14,7 +14,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Undo2 } from 'lucide-react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
-import { BEREICHE, bereichVon, istUnterseite, offeneBuchungen, faelligeZahl, datumLang, type Unterseite } from '@/lib/finanzen/plan/hilfen';
+import { BEREICHE, FRAGE, bereichVon, istUnterseite, offeneBuchungen, faelligeZahl, datumLang, type Unterseite } from '@/lib/finanzen/plan/hilfen';
 import { nettoTabellePlatzhalter } from '@/lib/finanzen/plan/operationen';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
 import { FinanzplanKontext, useFinanzplanDaten, useGerechnet, type PlanKontext } from './daten';
@@ -88,6 +88,8 @@ function FinanzplanInnen() {
             <KnopfKlein onClick={() => void rueckgaengig()} aus={!undoAnzahl} titel="Letzte Änderung zurücknehmen (Cmd+Z)"><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Undo2 size={14} /> Rückgängig{undoAnzahl ? ` (${undoAnzahl})` : ''}</span></KnopfKlein>
           </div>
         }>
+        {/* minWidth 0: die Seite ist ein Raster mit einer Spalte — ohne das zieht die breite Reiterleiste die ganze Seite über das Handy hinaus */}
+        <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
           <BereichLeiste liste={BEREICHE.map(b => ({ id: b.id, label: b.label, zahl: b.id === 'buchungen' ? offen + faellig : 0 }))} aktiv={bereich} onWahl={b => geh(BEREICHE.find(x => x.id === b)!.unter[0].id)} />
         </div>
@@ -96,7 +98,9 @@ function FinanzplanInnen() {
             <Pillen liste={bereichInfo.unter} aktiv={u} onWahl={geh} />
           </div>
         )}
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '0 0 14px' }}>{FRAGE[u]}</div>
         <Ansicht />
+        </div>
       </Seite>
       <Meldungen liste={meldungen} weg={weg} />
     </FinanzplanKontext.Provider>

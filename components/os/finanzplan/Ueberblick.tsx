@@ -15,6 +15,8 @@ import { eur, prozent, tagKurz, datumLang, plusTage, offeneBuchungen, heuteIndex
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { UG_KURZ } from '@/lib/einheiten';
 import { entscheidungen } from '@/lib/finanzen/szenarien';
+import { schwellenVon } from '@/lib/finanzen/schwellen';
+import { luecken } from '@/lib/finanzen/luecken';
 import { usePlan } from './daten';
 import { Geld, Kachel, Kacheln, Etikett, StatusPille, PersonMarke, AnteilBalken, KnopfKlein, Auswahl, ampel, personName, KUPFER, LILA, Nichts, Hinweis, Legende } from './teile';
 import { Linie } from './diagramme';
@@ -39,12 +41,14 @@ function LageKopf() {
   const { d, ug, pr, aw, ps, sz, geh } = usePlan();
   const punkte = entscheidungen(d, { ug, pr, ps }, aw);
   const rw = (r: number | null, h: number) => (r == null ? `> ${h} M` : r === 0 ? 'jetzt' : `${r} M`);
-  const rwFarbe = (r: number | null) => (r == null || r >= 12 ? LEUCHT.gut : r >= 6 ? LEUCHT.achtung : LEUCHT.kritisch);
+  const sw = schwellenVon(d);
+  const rwFarbe = (r: number | null) => (r == null || r >= sw.runwayGutMonate ? LEUCHT.gut : r >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch);
+  const offenPunkte = luecken(d, ug, aw.frei.kontenFehlen).slice(0, 7);
   const stufeFarbe = { kritisch: LEUCHT.kritisch, achtung: LEUCHT.achtung, info: LEUCHT.puls } as const;
   return (
     <>
       <Kacheln min={230}>
-        <Kachel label="Frei verfügbar diesen Monat" punkt={aw.frei.gesamt >= 5000 ? LEUCHT.gut : aw.frei.gesamt >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.gesamt} /> €</>}
+        <Kachel label="Frei verfügbar diesen Monat" punkt={aw.frei.gesamt >= sw.freiGut ? LEUCHT.gut : aw.frei.gesamt >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.gesamt} /> €</>}
           unter={<>{UG_KURZ} frei <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
         <Kachel label="Runway" punkt={rwFarbe(Math.min(aw.runway.ug ?? 99, aw.runway.privat ?? 99))} wert={<>{UG_KURZ} {rw(aw.runway.ug, aw.runway.horizont)} · Privat {rw(aw.runway.privat, aw.runway.horizont)}</>} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
         <Kachel label="Ziele im Plan" punkt={aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${aw.ziele.imPlan} / ${aw.ziele.gesamt}`} unter={aw.ziele.gesamt ? `${aw.ziele.gekippt} gekippt · ${aw.ziele.knapp} knapp` : 'noch keine Ziele'} />
@@ -60,12 +64,25 @@ function LageKopf() {
         )) : <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: LEUCHT.gut }} />Nichts drängt — die Zahlen tragen den Plan.</div>}
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Rechnet mit {ps ? <>dem Arbeitsplan <b style={{ color: C.inkDim }}>{ps.name}</b> auf Treiber {sz.name}</> : <>dem Treiber <b style={{ color: C.inkDim }}>{sz.name}</b> ohne Bausteine</>} · Stichtag {datumLang(d.einstellungen.heute)}.</div>
       </Karte>
+      {offenPunkte.length > 0 && (
+        <Karte i={1}>
+          <Ueberschrift rechts={<span style={{ color: C.inkLeise, fontSize: 12 }}>{offenPunkte.length} Punkt{offenPunkte.length === 1 ? '' : 'e'}</span>}>Noch offen in der Planung</Ueberschrift>
+          {offenPunkte.map(p => (
+            <div key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien, lineHeight: 1.45 }}>
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'transparent', border: `2px solid ${C.inkLeise}`, flex: '0 0 auto', marginTop: 5 }} />
+              <span style={{ flex: 1 }}>{p.text}{p.hinweis && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2 }}>{p.hinweis}</div>}</span>
+              <KnopfKlein onClick={() => geh(p.ziel.u, p.ziel.params)}>Ausfüllen ›</KnopfKlein>
+            </div>
+          ))}
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Das sind keine Fehler der Rechnung — es sind die Stellen, an denen der Plan noch nicht eure Zahlen trägt. Jeder Punkt verschwindet, sobald das Feld gefüllt ist.</div>
+        </Karte>
+      )}
     </>
   );
 }
 
 export function Lage() {
-  const { d, ug, pr, kz, h, sz, aendere, geh, person } = usePlan();
+  const { d, ug, pr, kz, h, sz, ps, aw, aendere, geh, person } = usePlan();
   const zs = zielStaende(d, ug, pr);
   const ng = zs.find(z => z.ziel.id === 'g.notgroschen') ?? zs.find(z => z.ziel.quelle === 'privat.angespart');
   const offen = offeneBuchungen(d);
@@ -77,15 +94,17 @@ export function Lage() {
   const flexZ = d.privatBudget.filter(z => z.typ === 'flex');
   const flexIst = flexZ.reduce((a, z) => a + (h.zeilen[z.id]?.[ji] ?? 0), 0), flexPlan = flexZ.reduce((a, z) => a + sollBudget(z, 1, d.plan), 0);
   const flexUeber = flexZ.map(z => ({ z, ist: istSchnitt(h.zeilen[z.id], 3, L) })).filter(x => x.ist > x.z.soll * 1.1);
+  const sw = schwellenVon(d);
+  const imKopf = new Set(entscheidungen(d, { ug, pr, ps }, aw).map(p => p.id));
   const warn: [string, string][] = [];
-  const minus = ug.filter(u => u.frei < 0); if (minus.length) warn.push([LEUCHT.kritisch, `${UG_KURZ} ${minus.length} Monate unter null frei — erster: ${monatLabel(d, minus[0].m)}`]);
+  const minus = ug.filter(u => u.frei < 0); if (minus.length && !imKopf.has('ug-minus')) warn.push([LEUCHT.kritisch, `${UG_KURZ} ${minus.length} Monate unter null frei — erster: ${monatLabel(d, minus[0].m)}`]);
   const eng = pr.filter(p => p.luft < 0);
-  if (eng.length) warn.push([LEUCHT.kritisch, `Privat in ${eng.length} Monaten im Minus — erster: ${monatLabel(d, eng[0].m)}`]);
-  else if (pr.some(p => p.luft < 100)) warn.push([LEUCHT.achtung, `Privat auf Kante: ${pr.filter(p => p.luft < 100).length} Monate unter 100 € Luft`]);
+  if (eng.length && !imKopf.has('privat-minus')) warn.push([LEUCHT.kritisch, `Privat in ${eng.length} Monaten im Minus — erster: ${monatLabel(d, eng[0].m)}`]);
+  else if (!eng.length && pr.some(p => p.luft < sw.privatLuftKnapp)) warn.push([LEUCHT.achtung, `Privat auf Kante: ${pr.filter(p => p.luft < sw.privatLuftKnapp).length} Monate unter ${eur(sw.privatLuftKnapp)} € Luft`]);
   if (flexUeber.length) warn.push([LEUCHT.achtung, `Flexibel über Plan (Ø 3 Monate): ${flexUeber.map(x => x.z.name).join(' · ')}`]);
-  if (kz.obAnteilJun27 >= 0.3) warn.push([LEUCHT.achtung, `Ankermandat Juni 27 bei ${prozent(kz.obAnteilJun27)} des Umsatzes — Ziel unter 30 %`]);
-  if (offen) warn.push([LEUCHT.achtung, `${offen} Buchungen ohne Zuordnung — IST ist dort unscharf`]);
-  if (konten.length - kontenBekannt.length) warn.push([LEUCHT.achtung, `${konten.length - kontenBekannt.length} Kontostände fehlen`]);
+  if (kz.obAnteilJun27 >= sw.ankerAnteilMax && kz.obAnteilJun27 > 0) warn.push([LEUCHT.achtung, `Ankermandat Juni 27 bei ${prozent(kz.obAnteilJun27)} des Umsatzes — Ziel unter ${prozent(sw.ankerAnteilMax)}`]);
+  if (offen && !imKopf.has('buchungen')) warn.push([LEUCHT.achtung, `${offen} Buchungen ohne Zuordnung — IST ist dort unscharf`]);
+  if (konten.length - kontenBekannt.length && !imKopf.has('konten')) warn.push([LEUCHT.achtung, `${konten.length - kontenBekannt.length} Kontostände fehlen`]);
   const termine = zahlungskalender(d, ug, pr, 14);
   const hi = d.historie.length, lab = achse(d);
   const leerVor = Array<number | null>(hi).fill(null);
@@ -125,19 +144,18 @@ export function Lage() {
             <EntscheidungFeld />
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
               <KnopfKlein onClick={() => geh('check')}>Wochen-Check öffnen</KnopfKlein>
-              <KnopfKlein farbe={C.inkDim} onClick={() => geh('planen')}>Planungsrunde</KnopfKlein>
               <span style={{ fontSize: 12, color: C.inkLeise }}>{letzterCheck ? `letzter Check ${datumLang(letzterCheck.datum)}` : 'noch kein Check'}</span>
             </div>
           </div>
         </Raster>
       </Karte>
       <Kacheln min={170}>
-        <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={ampel(kz.minFrei >= 1000, kz.minFrei >= 0)} wert={<><Geld v={kz.minFrei} /> €</>} unter={monatLabel(d, kz.minMonat)} />
-        <Kachel label={`${UG_KURZ} frei Dez 27`} punkt={ampel(kz.freiDez27 >= 20000, kz.freiDez27 >= 0)} wert={<><Geld v={kz.freiDez27} /> €</>} unter="nach Steuern und USt" />
-        <Kachel label="Privat Luft" punkt={ampel(kz.privatLuftMin >= 250, kz.privatLuftMin >= 0)} wert={<><Geld v={kz.privatLuftMin} /> €</>} unter="schlechtester Monat" />
+        <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={ampel(kz.minFrei >= sw.tiefpunktGut, kz.minFrei >= 0)} wert={<><Geld v={kz.minFrei} /> €</>} unter={monatLabel(d, kz.minMonat)} />
+        <Kachel label={`${UG_KURZ} frei Dez 27`} punkt={ampel(kz.freiDez27 >= sw.endeGut, kz.freiDez27 >= 0)} wert={<><Geld v={kz.freiDez27} /> €</>} unter="nach Steuern und USt" />
+        <Kachel label="Privat Luft" punkt={ampel(kz.privatLuftMin >= sw.privatLuftGut, kz.privatLuftMin >= 0)} wert={<><Geld v={kz.privatLuftMin} /> €</>} unter="schlechtester Monat" />
         {ng && <Kachel label="Notgroschen" punkt={ng.status === 'verfehlt' ? LEUCHT.achtung : LEUCHT.gut} wert={<><Geld v={pr[14]?.angespart} /> €</>} unter={<>Dez 27 · Ziel <Geld v={ng.ziel.ziel} farbe={C.inkDim} /> €{ng.erreichtMonat ? ` · erreicht ${monatLabel(d, ng.erreichtMonat)}` : ''}</>} />}
-        <Kachel label="Ankermandat Jun 27" punkt={ampel(kz.obAnteilJun27 < 0.3, kz.obAnteilJun27 < 0.4)} wert={prozent(kz.obAnteilJun27)} unter="vom Umsatz · Ziel unter 30 %" />
-        <Kachel label="Retainer" punkt={ampel(kz.retainerDez26 >= 4, kz.retainerDez26 >= 2)} wert={`${kz.retainerDez26} → ${kz.retainerJun27}`} unter="Dez 26 → Jun 27" />
+        {kz.obAnteilJun27 > 0 && <Kachel label="Ankermandat Jun 27" punkt={ampel(kz.obAnteilJun27 < sw.ankerAnteilMax, kz.obAnteilJun27 < sw.ankerAnteilMax + 0.1)} wert={prozent(kz.obAnteilJun27)} unter={`vom Umsatz · Ziel unter ${prozent(sw.ankerAnteilMax)}`} />}
+        {(kz.retainerDez26 > 0 || kz.retainerJun27 > 0) && <Kachel label="Retainer" punkt={ampel(kz.retainerDez26 >= 4, kz.retainerDez26 >= 2)} wert={`${kz.retainerDez26} → ${kz.retainerJun27}`} unter="Dez 26 → Jun 27" />}
       </Kacheln>
       <Spalten verhaeltnis="3:2">
         <Spalte>

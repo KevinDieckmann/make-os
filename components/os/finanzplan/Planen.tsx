@@ -7,7 +7,7 @@
 // aus dem Rechenkern; das Blatt schreibt nur Zellen-Überschreibungen.
 
 import { useMemo, useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Raster, Spalten, Spalte, Knopf, LEUCHT, feld, Haken } from '../schlank';
 import type { Szenario, Zeile } from '@/lib/finanzen/rechenkern';
 import { wert, sollBudget, key, istSchnitt, toepfeUG, rechneSelbst, zielStaende } from '@/lib/finanzen/rechenkern';
@@ -18,6 +18,10 @@ import { Blatt, type BlattZeile, type DatenZeile, type ZeilenListe } from './Bla
 import { ZeileDialog, neueZeileOp } from './ZeileDialog';
 import { Geld, Kachel, Kacheln, Etikett, StatusPille, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, AnteilBalken, Dialog, Feld, Formular, Legende, KUPFER, LILA, Nichts, Schalter } from './teile';
 import { Stapel, Linie, MiniLinie } from './diagramme';
+import { Geschaeft } from './Geschaeft';
+import { AnnahmenAlle, SchwellenKarte, EinstellungenKarte } from './Annahmen';
+import { SteuerKarte } from './Steuern';
+import { GESELLSCHAFTEN } from '@/lib/einheiten';
 
 /** Blatt + Zeilen-Dialog + neue Zeile — für Privat und die MAKE Innovation GmbH (ug) gemeinsam. */
 function useZeilenDialog() {
@@ -86,43 +90,8 @@ export function Privat() {
 }
 
 // ── MAKE Innovation GmbH (Kennung ug; die Funktion heißt weiter UG) ──────────
-export function UG() {
-  const { d, ug, sz } = usePlan();
-  const zd = useZeilenDialog();
-  const U = (m: number) => ug[m - 1];
-  const gruppen = Array.from(new Set(d.sachkosten.map(z => z.gruppe)));
-  const zeilen: BlattZeile[] = [
-    { grp: 'Umsatz netto' },
-    { name: 'Ankermandat', edit: 'ug.ob', get: m => U(m).ob, ind: true }, { name: 'Retainer', edit: 'ug.retainer', get: m => U(m).retainer, ind: true },
-    { name: 'ASTARNA', edit: 'ug.astarna', get: m => U(m).astarna, ind: true }, { name: 'Events', edit: 'ug.events', get: m => U(m).events, ind: true },
-    { name: 'Umsatz', sum: true, get: m => U(m).umsatz },
-    { grp: 'Personal' },
-    { name: 'Kevin brutto', edit: 'ug.kevin', get: m => U(m).kevinBrutto, ind: true, aus: true }, { name: 'Malin brutto', edit: 'ug.malin', get: m => U(m).malinBrutto, ind: true, aus: true },
-    { name: 'Unterstützung', edit: 'ug.unterstuetzung', get: m => U(m).unterstuetzung, ind: true, aus: true },
-    { name: 'Personal inkl. Arbeitgeber', sum: true, get: m => U(m).kevin + U(m).malin + U(m).unterstuetzung },
-    { grp: 'Sachkosten', add: 'sachkosten' },
-    ...gruppen.flatMap(g => d.sachkosten.filter(z => z.gruppe === g).map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true, aus: true }))),
-    { name: 'Sachkosten inkl. Ereignisse', sum: true, get: m => U(m).sach },
-    { grp: 'Zahlungsfluss' },
-    { name: 'Retainer-Eingang', get: m => U(m).retainerEingang, ind: true }, { name: 'USt vereinnahmt', get: m => U(m).ustEin, ind: true },
-    { name: 'Stammkapital & Darlehen Kevin', get: m => U(m).kapital, ind: true }, { name: 'Einzahlungen', sum: true, get: m => U(m).einzahlungen },
-    { name: 'Gründung', get: m => -U(m).gruendung, ind: true }, { name: 'Holding-Umlage', get: m => -U(m).holding, ind: true },
-    { name: 'USt an Finanzamt', get: m => -U(m).ustZahlung, ind: true }, { name: 'Ertragsteuer', get: m => -U(m).steuer, ind: true },
-    { name: 'Partnerdarlehen-Rate', get: m => -U(m).bjoern, ind: true }, { name: 'Darlehen an Kevin zurück', get: m => -U(m).darlehen, ind: true },
-    { name: 'Auszahlungen', sum: true, get: m => -U(m).auszahlungen },
-    { grp: 'Ergebnis' },
-    { name: 'Gewinn', get: m => U(m).gewinn }, { name: 'Kontostand', stock: true, get: m => U(m).konto },
-    { name: 'Steuerrücklage', stock: true, get: m => -U(m).steuerRuecklage }, { name: 'USt offen', stock: true, get: m => -U(m).ustOffen },
-    { name: 'Frei verfügbar', stock: true, sum: true, key: true, get: m => U(m).frei },
-  ];
-  return (
-    <Karte i={0}>
-      <Blatt zeilen={zeilen} titel={`${UG_NAME} · ${sz.name}`} werkzeuge={<Etikett einheit="ug" />} onZeile={zd.oeffne} onNeueZeile={zd.neu} />
-      <Hinweis>Umsatzzeilen und Gehälter kommen aus dem Szenario (Planen › Szenarien); eine überschriebene Zelle gewinnt. Ertragsteuer als Näherung — Hinweis, keine Steuerberatung.</Hinweis>
-      {zd.dialog}
-    </Karte>
-  );
-}
+// Seit 02.10. das Business-Blatt aus Geschaeft.tsx (Produkte, Kosten, Ergebnis vor/nach Steuern, Break-even, Steuern schaltbar).
+export function UG() { return <Geschaeft ort="ug" />; }
 
 // ── Töpfe MAKE (Kennung ug) ──────────────────────────────────────────────────
 export function Toepfe() {
@@ -148,24 +117,15 @@ export function Toepfe() {
 }
 
 // ── KD Ventures ──────────────────────────────────────────────────────────────
-export function KDV() {
-  const { ug, sz } = usePlan();
-  const U = (m: number) => ug[m - 1];
-  const zeilen: BlattZeile[] = [
-    { grp: 'Einnahmen' }, { name: `Umlage aus ${UG_NAME}`, get: m => U(m).kdvUmlage, ind: true }, { name: `Partnerdarlehen-Rate von der ${UG_NAME}`, get: m => U(m).kdvBjoernEin, ind: true }, { name: 'KEMARIS Ausstieg', get: m => U(m).kdvExit, ind: true },
-    { grp: 'Ausgaben' }, { name: 'Holdingkosten', get: m => -U(m).kdvHolding, ind: true }, { name: 'Partnerdarlehen-Tilgung', get: m => -U(m).kdvBjoern, ind: true }, { name: 'Partnerdarlehen-Ablösung', get: m => -U(m).kdvAbloesung, ind: true }, { name: 'Steuer auf Ausstieg', get: m => -U(m).kdvExitSteuer, ind: true },
-    { grp: 'Stand' }, { name: 'Kontostand KD Ventures', stock: true, sum: true, key: true, get: m => U(m).kdvKonto }, { name: 'Partnerdarlehen offen', stock: true, get: m => U(m).bjoernRest },
-  ];
-  return (
-    <Karte i={0}>
-      <Blatt zeilen={zeilen} titel={`KD Ventures · ${sz.name}`} werkzeuge={<Etikett einheit="kdv" />} />
-      <Hinweis>KD Ventures rechnet aus der {UG_NAME} (Umlage, Partnerdarlehen-Rate) und dem Szenario (Ausstieg, Ablösung). Treiber unter Planen › Szenarien, Beträge unter „Annahmen für alle“.</Hinweis>
-    </Karte>
-  );
-}
+export function KDV() { return <Geschaeft ort="kdv" />; }
 
 // ── Selbstständigkeit 2026 ───────────────────────────────────────────────────
 export function Selbst() {
+  return <><Geschaeft ort="kdc" /><SelbstAbschluss /></>;
+}
+
+/** Abschluss 2026 der Selbstständigkeit: Posten des laufenden Jahres, Einkommensteuer, frei nach Abschluss. */
+function SelbstAbschluss() {
   const { d, aendere } = usePlan();
   const r = rechneSelbst(d); const s = d.selbst;
   const STATUS = ['geplant', 'offen', 'bezahlt', 'unklar'].map(x => ({ id: x, label: x }));
@@ -220,7 +180,6 @@ export function Selbst() {
 }
 
 // ── Szenarien ────────────────────────────────────────────────────────────────
-const ANNAHMEN: [string, string, number][] = [['kevinBrutto', 'Kevin brutto', 0], ['kevinAb', 'Kevin ab Monat', 0], ['malinBrutto', 'Malin brutto', 0], ['malinAb', 'Malin ab Monat', 0], ['agAnteil', 'Arbeitgeberanteil', 4], ['stammkapital', 'Stammkapital', 0], ['gruendungskosten', 'Gründungskosten', 0], ['darlehenKevin', `Darlehen Kevin an ${UG_KURZ}`, 0], ['darlehenRueckMonat', 'Rückzahlung in Monat', 0], ['retainerVerzug', 'Retainer-Zahlungsverzug (Monate)', 0], ['astarnaProvision', 'ASTARNA Provision', 0], ['steuerUG', `Ertragsteuer ${UG_KURZ}`, 4], ['ust', 'Umsatzsteuer', 4], ['steuerMonat', 'Steuer gezahlt im Kalendermonat', 0], ['holdingKosten', 'Holdingkosten', 0], ['holdingAb', 'Holding ab Monat', 0], ['kdvStart', 'KD Ventures Start', 0], ['bjoernBetrag', 'Partnerdarlehen', 0], ['bjoernRate', 'Partnerdarlehen Rate', 0], ['bjoernRateVon', 'Partnerdarlehen Rate ab Monat', 0], ['bjoernRateBis', 'Partnerdarlehen Rate bis Monat', 0], ['bjoernSchluss', 'Partnerdarlehen Schlussrate', 0], ['bjoernSchlussMonat', 'Schlussrate in Monat', 0], ['bjoernZinsMonat', 'Partnerdarlehen Zins je Monat', 0], ['bjoernZinsDeckel', 'Partnerdarlehen Zins-Deckel', 0], ['exitSteuer', 'Steuer auf Ausstieg', 4], ['gehaltTag', 'Gehaltstag', 0]];
 const FARBEN_SZ = [KUPFER, LEUCHT.achtung, LEUCHT.kritisch, LEUCHT.puls, LILA, C.inkDim, C.ink];
 
 export function Szenarien() {
@@ -303,13 +262,7 @@ export function Szenarien() {
           </Karte>
         </Spalte>
         <Spalte>
-          <Karte i={3}>
-            <Ueberschrift>Annahmen für alle Szenarien</Ueberschrift>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
-              {ANNAHMEN.map(([k, n, dez]) => { const v = (a as unknown as Record<string, number | undefined>)[k] ?? 0; return <Feld key={k} label={n}><ZahlFeld wert={v} dezimal={dez} breite="100%" onFertig={x => void aendere([{ pfad: `/annahmen/${k}`, alt: v, neu: x ?? 0 }], `Annahme ${n}`)} titel={n} /></Feld>; })}
-            </div>
-            <Hinweis>Anteile als Dezimalzahl (0,19 = 19 %). Monate zählen ab Okt 26 = 1. Die Netto-Tabelle (Brutto → Netto) steht in den Annahmen des Dokuments und ist eine Näherung — Hinweis, keine Steuerberatung.</Hinweis>
-          </Karte>
+          <AnnahmenAlle i={3} />
           <Karte i={4}>
             <Ueberschrift>Aktives Szenario</Ueberschrift>
             <Kacheln min={140}>
@@ -320,6 +273,10 @@ export function Szenarien() {
           </Karte>
         </Spalte>
       </Spalten>
+      <div style={{ ...MIKRO, margin: '18px 0 8px' }}>Steuern — welche gelten, wie hoch</div>
+      {[...GESELLSCHAFTEN, 'privat' as const].map((o, k) => <SteuerKarte key={o} ort={o} i={5 + k} />)}
+      <EinstellungenKarte i={9} />
+      <SchwellenKarte i={10} />
       {name !== null && (
         <Dialog titel="Szenario umbenennen" onZu={() => setName(null)} aktionen={<><KnopfKlein farbe={C.inkDim} onClick={() => setName(null)}>Abbrechen</KnopfKlein><Knopf aus={!name.trim()} onClick={() => { const n = name.trim(); setName(null); if (n && n !== sz.name) void aendere([{ pfad: p('name'), alt: sz.name, neu: n }], `Szenario umbenannt: ${n}`); }}>Speichern</Knopf></>}>
           <input autoFocus value={name} aria-label="Name des Szenarios" onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { const n = name.trim(); setName(null); if (n && n !== sz.name) void aendere([{ pfad: p('name'), alt: sz.name, neu: n }], `Szenario umbenannt: ${n}`); } }} style={{ ...feld }} />

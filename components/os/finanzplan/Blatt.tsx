@@ -22,7 +22,13 @@ import { usePlan } from './daten';
 import { Kontextmenue, Dialog, KnopfKlein, Schalter, personFarbe, personName, LILA, HAAR, vorzeichenFarbe, Legende, Pillen } from './teile';
 
 export type ZeilenListe = 'sachkosten' | 'privatBudget' | 'privatEinnahmen' | 'privatSchulden';
-export interface GruppenZeile { grp: string; add?: ZeilenListe; addG?: string }
+export interface GruppenZeile {
+  grp: string; add?: ZeilenListe; addG?: string;
+  /** Beim Öffnen eingeklappt (nur die Summenzeilen bleiben sichtbar). */
+  zu?: boolean;
+  /** Name für verborgene Nullzeilen: [Einzahl, Mehrzahl], z. B. ['weitere Steuerzeile', 'weitere Steuerzeilen']. */
+  leerName?: [string, string];
+}
 export interface DatenZeile {
   name: string;
   /** Planwert im Monat m (1 = Okt 26) — kommt aus dem Rechenkern, enthält Überschreibungen. */
@@ -38,6 +44,13 @@ export interface DatenZeile {
   /** Klick auf eine IST-Zelle springt in die Buchungen dieser Zeile. */
   drill?: string;
   z?: Zeile;
+  /**
+   * Eigene Zelle statt Planzelle (02.10.): Klick → bearbeiten, Enter speichert — aber über `setze` (z. B. ein Monat eines
+   * Produkts im Szenario) und nicht als Überschreibung im Plan. `id` muss im Blatt eindeutig sein; nur im Modus „Plan“.
+   */
+  zelle?: { id: string; setze: (m: number, wert: number | null) => void; ueber: (m: number) => boolean };
+  /** Nullzeile: bleibt verborgen („n weitere …“ der Gruppe), solange sie in allen Monaten 0 ist. */
+  optional?: boolean;
 }
 export type BlattZeile = GruppenZeile | DatenZeile;
 export interface ExtraSpalte { h: string; t?: string; get: (r: DatenZeile) => ReactNode }
@@ -47,6 +60,8 @@ type Spalte = { h: true; i: number; label: string } | { h?: false; m: number; la
 
 const istGruppe = (r: BlattZeile): r is GruppenZeile => 'grp' in r;
 const ZELLE_MIN = 74;
+/** Kennung der bearbeitbaren Zelle einer Zeile: Planzelle (`edit`) oder eigene Zelle (`zelle.id`). */
+const eid = (r: DatenZeile): string | undefined => r.edit ?? r.zelle?.id;
 
 export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDrill, werkzeuge }: {
   zeilen: BlattZeile[]; titel: string; hist?: boolean; extra?: ExtraSpalte[];
@@ -56,7 +71,8 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   const [modus, setModus] = useState<Modus>('plan');
   const [jahr, setJahr] = useState<Jahr>('alle');
   const [verlauf, setVerlauf] = useState(true);
-  const [zu, setZu] = useState<Record<string, boolean>>({});
+  const [zu, setZu] = useState<Record<string, boolean>>(() => Object.fromEntries(zeilen.filter((r): r is GruppenZeile => istGruppe(r) && !!r.zu).map(r => [r.grp, true])));
+  const [leerZeigen, setLeerZeigen] = useState<Record<string, boolean>>({});
   const [sel, setSel] = useState<{ e: string; m: number } | null>(null);
   const [bearbeitet, setBearbeitet] = useState<{ e: string; m: number; text: string } | null>(null);
   const [menue, setMenue] = useState<{ x: number; y: number; e: string; m: number } | null>(null);
@@ -77,23 +93,25 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   /** Sichtbare, bearbeitbare Zeilen in Reihenfolge — für Pfeil hoch/runter. */
   const editZeilen = useMemo(() => {
     const out: string[] = []; let zuG = false;
-    for (const r of zeilen) { if (istGruppe(r)) { zuG = !!zu[r.grp]; continue; } if (zuG && !r.sum) continue; if (r.edit) out.push(r.edit); }
+    for (const r of zeilen) { if (istGruppe(r)) { zuG = !!zu[r.grp]; continue; } if (zuG && !r.sum) continue; if (eid(r)) out.push(eid(r)!); }
     return out;
   }, [zeilen, zu]);
-  const zeileVon = useCallback((e: string) => zeilen.find((r): r is DatenZeile => !istGruppe(r) && r.edit === e), [zeilen]);
+  const zeileVon = useCallback((e: string) => zeilen.find((r): r is DatenZeile => !istGruppe(r) && eid(r) === e), [zeilen]);
 
-  const label = (e: string, m: number) => `${modus === 'ist' ? 'IST ' : ''}${zeileName(d, e)} · ${monatLabel(d, m)}`;
+  const label = (e: string, m: number) => `${modus === 'ist' ? 'IST ' : ''}${zeileVon(e)?.zelle ? zeileVon(e)!.name : zeileName(d, e)} · ${monatLabel(d, m)}`;
   const ebene = modus === 'ist' ? 'ist' : 'plan';
   const speicher = ebene === 'ist' ? d.ist : d.plan;
 
   /** Zelle setzen/zurücksetzen. */
   const setzeZelle = useCallback((e: string, m: number, wert: number | null) => {
+    const eigene = zeileVon(e)?.zelle;
+    if (eigene) { eigene.setze(m, wert); return; }
     const k = key(e, m);
     const op: Operation = wert === null ? { pfad: `/${ebene}/${k}` } : { pfad: `/${ebene}/${k}`, neu: wert };
     if (wert === null && !(k in speicher)) return;
     void aendere([{ ...op, alt: speicher[k] }], label(e, m));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aendere, ebene, speicher, d]);
+  }, [aendere, ebene, speicher, d, zeileVon]);
 
   const anzeigeWert = useCallback((r: DatenZeile, m: number): number | null => {
     const k = r.edit ? key(r.edit, m) : null;
@@ -105,11 +123,12 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
 
   const beginne = useCallback((e: string, m: number, start?: string) => {
     const r = zeileVon(e); if (!r) return;
+    if (r.zelle && modus !== 'plan') return;
     const v = anzeigeWert(r, m);
     fertigRef.current = false;
     setSel({ e, m });
     setBearbeitet({ e, m, text: start ?? (v == null ? '' : eur(v, Number.isInteger(v) ? 0 : 2)) });
-  }, [zeileVon, anzeigeWert]);
+  }, [zeileVon, anzeigeWert, modus]);
 
   const uebernehme = useCallback((weiter: boolean) => {
     const b = bearbeitet; if (!b || fertigRef.current) return;
@@ -189,8 +208,26 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
 
   let zuG = false;
   const koerper: ReactNode[] = [];
+  /** Nullzeilen („optional“), die in allen Planmonaten 0 sind — verborgen, bis man „n weitere …“ anklickt. */
+  const leer = new Set<DatenZeile>();
+  for (const r of zeilen) if (!istGruppe(r) && r.optional && d.monate.every((_, i) => Math.abs(r.get(i + 1) ?? 0) < 0.5)) leer.add(r);
+  let aktuelleGruppe = '', verborgen = 0, nullzeilen = 0, leerName: [string, string] = ['weitere Zeile', 'weitere Zeilen'];
+  const leerZeile = () => {
+    if (!nullzeilen) return;
+    const g = aktuelleGruppe, n = nullzeilen, v = verborgen; verborgen = 0; nullzeilen = 0;
+    koerper.push(
+      <tr key={`leer-${g}`}>
+        <td style={{ ...nameStil, paddingLeft: 16, color: C.inkLeise, cursor: 'pointer' }} onClick={() => setLeerZeigen(z => ({ ...z, [g]: !z[g] }))} title={v ? 'Alle Werte sind 0 — anklicken zeigt sie' : 'Nullzeilen wieder verbergen'}>
+          {v ? `▸ ${n} ${n === 1 ? leerName[0] : leerName[1]}` : `▾ ${n === 1 ? 'Nullzeile' : 'Nullzeilen'} verbergen`}
+        </td>
+        <td colSpan={spalten.length + 1 + (extra?.length ?? 0)} style={{ borderBottom: `1px solid ${HAAR}` }} />
+      </tr>,
+    );
+  };
   for (const r of zeilen) {
     if (istGruppe(r)) {
+      leerZeile();
+      aktuelleGruppe = r.grp; if (r.leerName) leerName = r.leerName;
       zuG = !!zu[r.grp];
       koerper.push(
         <tr key={`g-${r.grp}`}>
@@ -204,6 +241,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
       continue;
     }
     if (zuG && !r.sum) continue;
+    if (r.optional && leer.has(r)) { nullzeilen++; if (!leerZeigen[aktuelleGruppe]) { verborgen++; continue; } }
     let summe = 0, letzter = 0, n = 0;
     const zellen = spalten.map((c, j) => {
       const heuteRand = j === erstPlan && erstPlan > 0 ? { boxShadow: `inset 2px 0 0 ${C.aktiv}55` } : undefined;
@@ -214,17 +252,17 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
       }
       const m = c.m; const k = r.edit ? key(r.edit, m) : null;
       const v = anzeigeWert(r, m);
-      const ueberschrieben = !!k && modus !== 'delta' && k in speicher;
+      const ueberschrieben = r.zelle ? modus === 'plan' && r.zelle.ueber(m) : !!k && modus !== 'delta' && k in speicher;
       const meta = k && modus === 'plan' && k in d.plan ? d.meta[k] : undefined;
-      const gewaehlt = !!r.edit && !!sel && sel.e === r.edit && sel.m === m;
-      const bearb = !!r.edit && !!bearbeitet && bearbeitet.e === r.edit && bearbeitet.m === m;
+      const gewaehlt = !!eid(r) && !!sel && sel.e === eid(r) && sel.m === m;
+      const bearb = !!eid(r) && !!bearbeitet && bearbeitet.e === eid(r) && bearbeitet.m === m;
       const hatNotiz = !!k && !!d.notizen[k];
       if (modus === 'plan' && v != null && !Number.isNaN(v)) { summe += v; letzter = v; n++; }
       let farbe: string | undefined = v == null ? C.inkLeise : vorzeichenFarbe(v);
       if (modus === 'delta' && v != null) farbe = v > 0.5 ? (r.aus ? LEUCHT.kritisch : LEUCHT.gut) : v < -0.5 ? (r.aus ? LEUCHT.gut : LEUCHT.kritisch) : C.inkDim;
       const titel = [hatNotiz ? d.notizen[k!] : null, meta ? `${personName(meta.wer)} · ${datumLang(meta.wann.slice(0, 10))}` : ueberschrieben ? 'überschrieben' : null].filter(Boolean).join(' — ') || undefined;
       const stil = zellStil({
-        cursor: r.edit ? 'cell' : 'default',
+        cursor: eid(r) ? 'cell' : 'default',
         color: farbe,
         background: bearb ? 'rgba(255,255,255,.08)' : gewaehlt ? `${C.aktiv}22` : modus === 'ist' && r.edit ? `${LILA}0E` : ueberschrieben && modus === 'plan' ? `${LEUCHT.achtung}12` : undefined,
         outline: gewaehlt ? `1px solid ${C.aktiv}` : undefined, outlineOffset: -1,
@@ -232,14 +270,14 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
         fontWeight: r.sum || r.key ? 700 : 500,
       });
       return (
-        <td key={m} data-e={r.edit ?? undefined} data-m={r.edit ? m : undefined} title={titel} style={stil}
-          onClick={r.edit ? () => beginne(r.edit!, m) : undefined}
+        <td key={m} data-e={eid(r) ?? undefined} data-m={eid(r) ? m : undefined} title={titel} style={stil}
+          onClick={eid(r) ? () => beginne(eid(r)!, m) : undefined}
           onContextMenu={r.edit ? ev => { ev.preventDefault(); setMenue({ x: ev.clientX, y: ev.clientY, e: r.edit!, m }); } : undefined}
           onTouchStart={r.edit ? ev => { const t = ev.touches[0]; druck.current = window.setTimeout(() => setMenue({ x: t.clientX, y: t.clientY, e: r.edit!, m }), 550); } : undefined}
           onTouchEnd={() => { if (druck.current) { clearTimeout(druck.current); druck.current = null; } }}
           onTouchMove={() => { if (druck.current) { clearTimeout(druck.current); druck.current = null; } }}>
           {bearb ? (
-            <input autoFocus value={bearbeitet!.text} inputMode="decimal" aria-label={label(r.edit!, m)} onChange={ev => setBearbeitet(b => (b ? { ...b, text: ev.target.value } : b))}
+            <input autoFocus value={bearbeitet!.text} inputMode="decimal" aria-label={label(eid(r)!, m)} onChange={ev => setBearbeitet(b => (b ? { ...b, text: ev.target.value } : b))}
               onKeyDown={ev => { if (ev.key === 'Enter') { ev.preventDefault(); uebernehme(false); } else if (ev.key === 'Tab') { ev.preventDefault(); uebernehme(true); } else if (ev.key === 'Escape') { fertigRef.current = true; setBearbeitet(null); } }}
               onBlur={() => uebernehme(false)} onFocus={ev => ev.target.select()}
               style={{ ...feld, width: Math.max(ZELLE_MIN - 4, 8 * bearbeitet!.text.length + 20), padding: '2px 6px', borderRadius: 6, fontSize: 12.5, textAlign: 'right', fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', border: `1px solid ${C.aktiv}` }} />
@@ -250,7 +288,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
     });
     const summeWert = n ? (r.stock ? letzter : summe) : null;
     koerper.push(
-      <tr key={r.edit ?? r.name} style={{ background: r.sum ? 'rgba(255,255,255,.025)' : undefined }}>
+      <tr key={eid(r) ?? r.name} style={{ background: r.sum ? 'rgba(255,255,255,.025)' : undefined }}>
         <td style={{ ...nameStil, paddingLeft: r.ind ? 16 : 4, fontWeight: r.sum || r.key ? 700 : 500, color: r.key ? C.aktiv : C.ink }}>
           {r.zeile && onZeile ? <button type="button" onClick={() => onZeile(r.zeile!)} title="Zeile bearbeiten" style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', borderBottom: `1px dotted ${C.inkLeise}` }}>{r.name}</button> : r.name}
         </td>
@@ -261,6 +299,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
     );
   }
 
+  leerZeile();
   return (
     <div ref={wurzel}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>

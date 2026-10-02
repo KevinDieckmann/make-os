@@ -25,6 +25,7 @@ import {
   type Planszenario, type Baustein, type Rhythmus, type KostenArt, type BausteinEinheit, type Regler,
 } from '@/lib/finanzen/szenarien';
 import { bausteinAusProdukt, einheitAusGesellschaft, RHYTHMUS_AUS_BASIS, type ProduktVorschlag, type IstBasisVorschlag } from '@/lib/finanzen/produkte';
+import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { usePlan, rechne, type Gerechnet } from './daten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Dialog, Feld, Formular, Schalter, StatusPille, Legende, Pillen, Nichts, Etikett, KUPFER, LILA } from './teile';
 import { Linie } from './diagramme';
@@ -82,6 +83,7 @@ export function Baukasten() {
   const basis = useMemo(() => rechne(d, undefined, null), [d]);
   const psLive = useMemo(() => (ps ? mitLive(ps, live, m0) : null), [ps, live, m0]);
   const g = useMemo(() => (psLive ? rechne(d, undefined, psLive) : basis), [d, psLive, basis]);
+  const sw = schwellenVon(d);
   const vorschlaege = useVorschlaege();
   const [neu, setNeu] = useState<{ name: string; basis: string } | null>(null);
   const [name, setName] = useState<string | null>(null);
@@ -263,10 +265,10 @@ export function Baukasten() {
             <Ueberschrift>Wirkung — „{ps.name}“ gegen Basis</Ueberschrift>
             <Kacheln min={150}>
               <Kachel label="Frei verfügbar jetzt" wert={<><Geld v={g.aw.frei.gesamt} /> €</>} unter={delta(g.aw.frei.gesamt, basis.aw.frei.gesamt)} />
-              <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={g.kz.minFrei >= 1000 ? LEUCHT.gut : g.kz.minFrei >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.minFrei} /> €</>} unter={<>{monatLabel(d, g.kz.minMonat)} · {delta(g.kz.minFrei, basis.kz.minFrei)}</>} />
-              <Kachel label={`Runway ${UG_KURZ}`} punkt={g.aw.runway.ug == null || g.aw.runway.ug >= 12 ? LEUCHT.gut : g.aw.runway.ug >= 6 ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.ug, g.aw.runway.horizont)} unter={`Basis: ${runwayText(basis.aw.runway.ug, basis.aw.runway.horizont)}`} />
-              <Kachel label="Privat Luft, schlechtester Monat" punkt={g.kz.privatLuftMin >= 250 ? LEUCHT.gut : g.kz.privatLuftMin >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.privatLuftMin} /> €</>} unter={delta(g.kz.privatLuftMin, basis.kz.privatLuftMin)} />
-              <Kachel label="Runway Privat" punkt={g.aw.runway.privat == null || g.aw.runway.privat >= 12 ? LEUCHT.gut : g.aw.runway.privat >= 6 ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.privat, g.aw.runway.horizont)} unter={g.aw.frei.kontenFehlen ? `${g.aw.frei.kontenFehlen} Kontostände fehlen` : `Basis: ${runwayText(basis.aw.runway.privat, basis.aw.runway.horizont)}`} />
+              <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={g.kz.minFrei >= sw.tiefpunktGut ? LEUCHT.gut : g.kz.minFrei >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.minFrei} /> €</>} unter={<>{monatLabel(d, g.kz.minMonat)} · {delta(g.kz.minFrei, basis.kz.minFrei)}</>} />
+              <Kachel label={`Runway ${UG_KURZ}`} punkt={g.aw.runway.ug == null || g.aw.runway.ug >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.ug >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.ug, g.aw.runway.horizont)} unter={`Basis: ${runwayText(basis.aw.runway.ug, basis.aw.runway.horizont)}`} />
+              <Kachel label="Privat Luft, schlechtester Monat" punkt={g.kz.privatLuftMin >= sw.privatLuftGut ? LEUCHT.gut : g.kz.privatLuftMin >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.privatLuftMin} /> €</>} unter={delta(g.kz.privatLuftMin, basis.kz.privatLuftMin)} />
+              <Kachel label="Runway Privat" punkt={g.aw.runway.privat == null || g.aw.runway.privat >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.privat >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.privat, g.aw.runway.horizont)} unter={g.aw.frei.kontenFehlen ? `${g.aw.frei.kontenFehlen} Kontostände fehlen` : `Basis: ${runwayText(basis.aw.runway.privat, basis.aw.runway.horizont)}`} />
               <Kachel label="Ziele im Plan" punkt={g.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${g.aw.ziele.imPlan} / ${g.aw.ziele.gesamt}`} unter={g.aw.ziele.gekippt ? `${g.aw.ziele.gekippt} gekippt` : g.aw.ziele.knapp ? `${g.aw.ziele.knapp} knapp` : 'alle im Plan'} />
               <Kachel label="Gruppe Dez 28" wert={<><Geld v={g.kz.gruppeDez28} /> €</>} unter={delta(g.kz.gruppeDez28, basis.kz.gruppeDez28)} />
               <Kachel label="Steuerrücklage jetzt" wert={<><Geld v={g.aw.steuer.ruecklage} /> €</>} unter="Näherung, keine Steuerberatung" />

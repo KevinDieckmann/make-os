@@ -154,6 +154,12 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   Die neue Seite `/os/planung/ziel/<id>` gibt es im alten Stand nicht (Links aus der Liste fehlen dort ohnehin). Kein neuer Bestand, kein
   Eintrag im Speicher-Register (Art. 17 unverändert: die Felder liegen in `ziele`/`meilensteine`). Nach einem erneuten Upload: Ziel-Zuordnung
   und Abhängigkeiten neu setzen — die Verbindungsprüfung meldet nur tote Verweise, keine fehlenden.
+- **Finanzplanung: Steuerprofil, Schwellen, Monats-Überschreibung (02.10.):** keine Formänderung, nur optionale Zusatzfelder im Plan-Dokument. af4679a/1818c5c
+  bauen das Dokument beim Lesen aus festen Schlüsseln neu (`pruefeDokument`) und kennt daher folgendes nicht — es geht beim nächsten Speichern im alten Stand verloren:
+  `steuern` (Rechtsform, abgeschaltete Steuerzeilen, Aufschlüsselung in KSt/Soli/Gewerbesteuer), `schwellen` (eigene Ampel-Grenzen → wieder die festen Vorgaben) und `ueber` am Baustein
+  (von Hand überschriebene Monate eines Produkts → der Baustein rechnet wieder nach Preis × Anzahl). **Zahlen bleiben:** `annahmen.steuerUG`, USt-Satz, Ausstieg und Netto-Tabelle liegen
+  im bekannten Annahmen-Feld; ein Gesamtsatz, der aus der Aufschlüsselung entstand, bleibt dort stehen. Abgeschaltete Zeilen mit Satz 0 (Einzel-Ertragsteuer, Ausstieg) bleiben im alten Stand
+  auf 0 — dort von Hand wieder eintragen (der gemerkte Satz steht nur im verworfenen Profil). Vor dem Rückweg: abgeschaltete Steuerzeilen und überschriebene Produkt-Monate notieren.
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

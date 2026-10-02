@@ -1,4 +1,4 @@
-# Finanzplanung jetzt — Plan und Stand (27.09.2026, abends: Szenario-Baukasten)
+# Finanzplanung jetzt — Plan und Stand (27.09.2026, abends: Szenario-Baukasten; 02.10.: alle Felder anpassbar, Business-Blätter, Steuern aufgeräumt)
 
 > 30.09.: Die Gesellschaft `ug` heißt **MAKE Innovation GmbH** (kurz „MAKE“, vorher „MAKE OS UG“). Anzeigenamen kommen aus
 > `lib/einheiten.ts` (`UG_NAME`/`UG_KURZ`); Kennungen und Code-Namen im Rechenkern (`ug`, `rechneUG`, `MonatUG`, `steuerUG`) bleiben.
@@ -17,7 +17,7 @@ Startbestand `finanzen-plan.json` (🔒 echte Zahlen, nie ins Repo — kommt per
 | Bereich | Unterseiten | Frage |
 |---|---|---|
 | Lage | Lage | Frei verfügbar diesen Monat · Runway · Ziele im Plan — und was jetzt zu entscheiden ist (mit Sprung ins Feld) |
-| Planen | Szenarien bauen · Treiber & Annahmen | Szenario = Basis + Bausteine + Annahmen; Regler; Vergleich; Arbeitsplan |
+| Planen | Szenarien bauen · Treiber, Annahmen & Steuern | Szenario = Basis + Bausteine + Annahmen; Regler; Vergleich; Arbeitsplan |
 | Privat | Privat | Das Privat-Blatt (IST-Historie + Plan) |
 | Business | MAKE Innovation GmbH · KD Ventures · Selbstständigkeit | Die Gesellschaften getrennt |
 | Gesamt | Gesamt · Entwicklung · Geldfluss | Übergänge (Gehalt, Ausschüttung), Mindestumsatz, Steuerrücklage, Gruppe je Monat |
@@ -79,6 +79,60 @@ angespart, gestrichelt = Basis), Ziele/Mindestumsatz; unten Vergleich nebeneinan
 Enter/Verlassen (sofort lokal gerechnet), Regler beim Loslassen. `Gesamt.tsx`: Kacheln (frei jetzt, Mindestumsatz-Deckung, Steuerrücklage, USt, Gehälter,
 Ausschüttung, Selbstständigkeit 2026), Linie, Blatt „Gesamt je Monat“. `Ueberblick.tsx › LageKopf`: drei Zahlen + „Was jetzt zu entscheiden ist“ +
 „Planungsrunde öffnen“; darunter die bisherige Lage.
+
+## Alle Felder anpassbar · Business-Blätter · Steuern aufräumen (02.10.2026, Branch `finanzen`)
+Kevin: „Businessplanung und die allgemeine fertig machen. Unten stehen so viele Steuern, die wir nicht brauchen. Alle Felder anpassbar.“
+Der **Rechenkern bleibt, wie er ist** (Namen, Formeln; nur drei optionale Felder im Typ `FinanzDaten`). Anpassbar wird über Eingaben, Annahmen und Sichtbarkeit.
+
+**Bestandsaufnahme (Stand 1818c5c).** Fest oder nicht editierbar waren: die Netto-Tabelle (nur angezeigt), Stichtag („heute“) nur per „auf heute setzen“,
+alle Ampel-Grenzen (Runway 6/12 Monate, frei verfügbar 5.000, Tiefpunkt 1.000, Jahresende 20.000, Luft 250/100, Ankeranteil 30 %, 20 offene Buchungen) im Code,
+Steuersätze lagen als 4 von 27 gleichrangigen Feldern in „Treiber & Annahmen“ ohne Bezug zur Rechtsform. Das Business-Blatt der MAKE Innovation GmbH hatte keine
+Produkte (nur Treiber-Zeilen, die nicht zur Umsatzsumme addierten), kein Ergebnis nach Steuern, keinen Break-even; KD Ventures hatte keine einzige editierbare
+Zelle und kein Ergebnis; die Selbstständigkeit nur den Jahresabschluss 2026. „Unten“ standen Steuern an fünf Stellen: UG-Blatt (USt vereinnahmt, USt an Finanzamt,
+Ertragsteuer, Steuerrücklage, USt offen), Gesamt (Steuerrücklage, USt offen, Steuer auf Ausschüttung, zwei Kacheln), Töpfe, KD Ventures (Steuer auf Ausstieg),
+Annahmen-Raster. Lage zeigte dieselben Warnungen zweimal („Was jetzt zu entscheiden ist“ und „Worauf wir achten“), zwei Knöpfe „Planungsrunde“, Kacheln für
+Ankermandat/Retainer auch ohne solche Treiber.
+
+**Welche Steuern gelten?** (`lib/finanzen/steuern.ts`, Karte `components/os/finanzplan/Steuern.tsx` je Gesellschaft in den Business-Blättern und gesammelt unter
+Planen › Treiber, Annahmen & Steuern.) Dokument-Feld `steuern?: { <ort>: { rechtsform?, einzeln?, zeilen?: { <art>: { an?, satz?, hebesatz? } } } }`, ohne Eintrag gilt der Standard:
+- **Rechtsform** bestimmt, welche Zeilen überhaupt vorkommen. MAKE Innovation GmbH und KD Ventures = Kapitalgesellschaft, Selbstständigkeit = Einzelunternehmen (`rechtsformStandard`);
+  wechselbar nur bei der Gesellschaft, an der der Kern die Ertragsteuer hängt (`ug`). Kapital: KSt · Soli · Gewerbesteuer (Messzahl × Hebesatz) · USt (Durchlauf) · Ausschüttung;
+  Einzel: Einkommensteuer-Vorauszahlung pauschal · USt · Ausschüttung; KD Ventures: nur Steuer auf den Ausstieg; Selbstständigkeit: Einkommensteuer (Grundtarif, nur Anzeige-Schalter);
+  Privat: Netto-Tabelle (jetzt editierbar) und Ausschüttung. Was der Plan nicht rechnet (Kirchensteuer …), steht nicht da — kein Schalter ohne Wirkung.
+- **Zwei Ebenen, die Zahl bleibt:** (1) *Sichtbarkeit* — abgeschaltete Zeilen verschwinden aus den Blättern, USt steht als eingeklappter Block „Umsatzsteuer — Durchlauf“,
+  Nullzeilen hinter „n weitere Steuerzeilen ›“ (Blatt: `optional`, `GruppenZeile.zu/leerName`). (2) *Aufschlüsselung* — „Nach Steuerarten einstellen“ verteilt den heutigen Gesamtsatz
+  (`annahmen.steuerUG`) auf KSt + Soli + Gewerbesteuer (Hebesatz = Rest, `aufteilen()`): der Gesamtsatz und jede Zahl bleiben beim Einschalten **exakt gleich** (Test). Erst eine
+  Änderung eines Bestandteils schreibt die Summe in `annahmen.steuerUG` (gleiche Änderung, ein Rückgängig). Pauschale Sätze (Einzel-Ertragsteuer, Ausstieg): „gilt nicht“ = Satz 0, der
+  alte Satz bleibt im Profil gemerkt und kommt beim Einschalten zurück. USt „aus“ ist reine Anzeige (Durchlauf ändert den Gewinn nicht); die Ein-/Auszahlungssummen sagen dann „inkl. USt-Durchlauf“.
+- Steuer-Sätze liegen NUR hier (nicht mehr im Annahmen-Raster): Ertragsteuer-Gesamtsatz, USt-Satz, Zahlmonat, Ausstieg; Ausschüttung gilt je Szenario (Arbeitsplan).
+
+**Business-Blatt je Gesellschaft** (`Geschaeft.tsx`, Rechnung `lib/finanzen/geschaeft.ts` — rechnet nichts neu, was der Kern kennt): Kacheln Umsatz · Kosten · Ergebnis vor/nach Steuern (12 Monate) ·
+Break-even (Monatsergebnis dauerhaft ≥ 0; „insgesamt gedeckt ab“ = Summe) · Runway; **Produkte** (Name, Kunde, Preis netto, Anzahl, Rhythmus, Start, Laufzeit — frei anlegbar, Vorlagen
+„Interim CSO“, „Interim Head of Sales“, „Events“ ohne Preis, `BEISPIEL_PRODUKTE`) und **Kosten** (Stelle mit Arbeitgeberanteil · Software · Miete · Rate · Sonstiges) schreiben in den
+Arbeitsplan — gibt es keinen, legt das erste Produkt ihn in derselben Änderung an; das Blatt je Monat mit Umsatz, Kosten, Ergebnis vor/nach Steuern (Aufwand = Quote × Zuwachs des Jahresgewinns,
+summiert sich auf Quote × Jahresgewinn), Zahlungsfluss, Liquidität, Steuern; **Zelle klicken → ändern** auch bei Produkten/Kosten: Baustein-Feld `ueber` (`m<Plan-Monat>` → Betrag, gilt unabhängig von
+Start/Laufzeit, „aus“ schaltet auch ihn ab; `betragImMonat`). Danach „Welche Steuern gelten?“ und „Annahmen“ der Gesellschaft (`annahmen-felder.ts`, jedes Kern-Feld hat genau einen Ort;
+`ruecklage5a` wirkt im Kern nirgends und ist bewusst kein Feld, `notgroschenMonate` ebenfalls ungenutzt). Selbstständigkeit: eigenes Blatt aus ihren Bausteinen, darunter der Abschluss 2026.
+Hinweis zum Kern: Bausteine der Selbstständigkeit laufen dort über die Kanäle der MAKE Innovation GmbH (Kern v3 hat keine eigene Achse); im UG-Blatt steht eine Zeile „Selbstständigkeit (Kern rechnet hier mit)“, damit die Summen stimmen.
+
+**Allgemeine Planung.** Lage: Karte „Noch offen in der Planung“ (`luecken()` — kein Arbeitsplan, Netto-Tabelle fehlt, Gesellschaft ohne Umsatz, Produkt ohne Preis, Steuern nicht durchgesehen, keine Gehälter, keine Fixkosten,
+Konten, Ziele; jeder Punkt mit Sprung), Warnungen nicht mehr doppelt, ein Knopf „Planungsrunde“, Ankermandat-/Retainer-Kacheln nur, wenn es solche Treiber gibt. Gesamt: Karte „Übergänge einstellen“ (Gehälter, Ausschüttung, Ausschüttungssteuer),
+Steuer-Kacheln/-Zeilen folgen dem Steuerprofil, Steuern als eingeklappte Gruppe. Planen › „Treiber, Annahmen & Steuern“: Annahmen je Gesellschaft, **Netto-Tabelle editierbar** (Schreibweg lehnt unsortierte ab),
+Einstellungen (Stichtag, Reserve), **Ampeln und Schwellen** (`schwellen?`, leer = bisherige Vorgabe; Lage, Baukasten und „Was jetzt zu entscheiden ist“ lesen sie). Unter den Pillen steht je Unterseite eine Frage (`FRAGE`).
+Handy: die Seite war durch die Reiterleiste 717 px breit — `minWidth: 0` am Seitenrahmen, Steuerzeilen als umbrechende Zeilen statt Tabelle; 375 px ohne Seitenscroll.
+
+**Schreibweg.** Neue erlaubte Bereiche `steuern`, `schwellen` (bereinigt nach jeder Änderung: Sätze begrenzt, Unbekanntes verworfen, leer = Schlüssel entfernt), `annahmen/nettoTabelle` wird geprüft; `pruefeDokument` behält die neuen Schlüssel,
+ältere Dokumente ohne sie laufen unverändert. `eur()` zeigt nie „-0“.
+
+**Tests (neu).** `finanzplan-regression` (Goldwerte aus dem unveränderten Kern 1818c5c, zwei Fassungen × mit/ohne Arbeitsplan; Ausblenden/Aufschlüsseln/Schwellen ändern keine Zahl bit-genau), `finanzplan-steuern`, `finanzplan-geschaeft`
+(Break-even, Runway, Steuer-Aufwand, Blatt je Gesellschaft, Produkte, `ueber`, Lücken, Annahmen-Abdeckung), `finanzplan-felder-routen` (Speichern mit Stand/409 für alle neuen Felder), `finanzplan-ansichten` (alle 19 Unterseiten rendern, mit/ohne Arbeitsplan, leer; Business-Blatt und Steuerkarte).
+
+**Offene Entscheidungen für Kevin (Rechenkern — nicht geändert):**
+1. Steuern je Gesellschaft: Der Kern kennt EINE Ertragsteuer-Quote (`steuerUG`, Zahlung im Folgejahr, MAKE Innovation GmbH). Echte Einzelrechnung (KSt/Soli/Gewerbesteuer getrennt, Gewerbesteuer-Freibetrag/Anrechnung, KiSt, eigene Steuer für KD Ventures oder die Selbstständigkeit im Monatsraster) bräuchte neue Formeln. Bis dahin: Summe aus den Bestandteilen.
+2. Selbstständigkeit hat im Kern keine eigene Monatsachse; ihre Bausteine fließen in die UG-Zahlen (wie vorher). Eigene Achse = Kernänderung (`Zusatz` um `kdc*` erweitern).
+3. Einkommensteuer der Selbstständigkeit: Grundtarif 2026 fest (`est2026`); ein pauschaler Satz wäre eine Formeländerung.
+4. `ruecklage5a` und `notgroschenMonate` sind im Kern/der Oberfläche ohne Wirkung — löschen oder anschließen?
+5. Ankermandat/Retainer/Provision (Treiber-Zeilen) tragen Namen aus Kevins Szenarien; für andere Instanzen neutral benennen, sobald der Treiber-Aufbau freigegeben wird.
 
 ## Produkte → Deals → Mandate → Planung (Kevin: „clean von vorne bis hinten“)
 - **Produkt** (`Leistung`, Katalog im CRM, Seite `/os/mandate?s=produkte`) trägt, was die Planung braucht: `preis.betrag`, `preis.basis`

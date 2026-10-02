@@ -27,7 +27,7 @@ export const RECHENZEILEN: Record<string, string> = {
 };
 
 // ── Aufbau (Kevin 27.09. abends: acht Bereiche, die alten Unterseiten leben darunter weiter) ──
-// Lage → Planen (Szenarien bauen · Treiber & Annahmen) → Privat → Business (MAKE Innovation GmbH · KD Ventures · Selbstständigkeit)
+// Lage → Planen (Szenarien bauen · Treiber, Annahmen & Steuern) → Privat → Business (MAKE Innovation GmbH · KD Ventures · Selbstständigkeit)
 // → Gesamt (Gesamt · Entwicklung · Geldfluss) → Buchungen & Check (Buchungen · Budget · Wochen-Check · Zu erledigen ·
 // Kalender & Verträge · Schulden) → Ziele & Töpfe (Ziele · Töpfe MAKE) → Protokoll. Alte `?u=`-Werte lösen weiter auf.
 export type Bereich = 'lage' | 'planen' | 'privat' | 'business' | 'gesamt' | 'buchungen' | 'ziele' | 'protokoll';
@@ -36,7 +36,7 @@ export type Unterseite =
   | 'schulden' | 'posten' | 'kalender' | 'entwicklung' | 'geldfluss' | 'protokoll' | 'planen' | 'gesamt';
 export const BEREICHE: { id: Bereich; label: string; unter: { id: Unterseite; label: string }[] }[] = [
   { id: 'lage', label: 'Lage', unter: [{ id: 'lage', label: 'Lage' }] },
-  { id: 'planen', label: 'Planen', unter: [{ id: 'planen', label: 'Szenarien bauen' }, { id: 'szenarien', label: 'Treiber & Annahmen' }] },
+  { id: 'planen', label: 'Planen', unter: [{ id: 'planen', label: 'Szenarien bauen' }, { id: 'szenarien', label: 'Treiber, Annahmen & Steuern' }] },
   { id: 'privat', label: 'Privat', unter: [{ id: 'privat', label: 'Privat' }] },
   { id: 'business', label: 'Business', unter: [{ id: 'ug', label: finanzOrtName('ug') }, { id: 'kdv', label: 'KD Ventures' }, { id: 'selbst', label: 'Selbstständigkeit' }] },
   { id: 'gesamt', label: 'Gesamt', unter: [{ id: 'gesamt', label: 'Gesamt' }, { id: 'entwicklung', label: 'Entwicklung' }, { id: 'geldfluss', label: 'Geldfluss' }] },
@@ -44,6 +44,28 @@ export const BEREICHE: { id: Bereich; label: string; unter: { id: Unterseite; la
   { id: 'ziele', label: 'Ziele & Töpfe', unter: [{ id: 'ziele', label: 'Ziele' }, { id: 'toepfe', label: `Töpfe ${UG_KURZ}` }] },
   { id: 'protokoll', label: 'Protokoll', unter: [{ id: 'protokoll', label: 'Protokoll' }] },
 ];
+/** Die eine Frage, die jede Unterseite beantwortet — steht klein unter den Pillen (02.10., Navigation verständlich). */
+export const FRAGE: Record<Unterseite, string> = {
+  lage: 'Wo stehen wir, was ist zu entscheiden und was ist noch offen?',
+  planen: 'Szenarien bauen: Produkte, Kosten und Annahmen — und sehen, was sich dadurch ändert.',
+  szenarien: 'Treiber vergleichen, Annahmen eintragen, Steuern und Ampel-Schwellen einstellen.',
+  privat: 'Was kommt privat herein, was geht heraus, was bleibt übrig?',
+  ug: 'Umsatz, Kosten und Ergebnis dieser Gesellschaft — mit Steuern, Break-even und Runway.',
+  kdv: 'Einnahmen, Ausgaben und Kontostand dieser Gesellschaft — mit Steuern und Runway.',
+  selbst: 'Umsatz, Kosten und Ergebnis der Selbstständigkeit — und der Abschluss 2026.',
+  gesamt: 'Alles zusammen: Privat und die Gesellschaften, verbunden über Gehalt und Ausschüttung.',
+  entwicklung: 'Wie entwickeln sich Einnahmen und Ausgaben?',
+  geldfluss: 'Wohin fließt das Geld in einem Monat?',
+  buchungen: 'Was wurde gebucht — und wohin gehört es?',
+  budget: 'Wie weit ist der Monat im Budget?',
+  check: 'Der Wochen-Check: fünf Punkte, beide bestätigen.',
+  posten: 'Offene Posten, Rechnungen und Kontostände.',
+  kalender: 'Was ist wann fällig — Zahlungen, Verträge, Kündigungen.',
+  schulden: 'Restschulden, Raten und was eine Sondertilgung bringt.',
+  ziele: 'Welche Ziele haben wir, und halten wir das Tempo?',
+  toepfe: 'Wem gehört das Geld auf dem Konto der Gesellschaft?',
+  protokoll: 'Wer hat was wann geändert?',
+};
 export const bereichVon = (u: Unterseite): Bereich => BEREICHE.find(b => b.unter.some(x => x.id === u))?.id ?? 'lage';
 export const istUnterseite = (v: unknown): v is Unterseite => BEREICHE.some(b => b.unter.some(x => x.id === v));
 
@@ -52,6 +74,7 @@ const FORMATE = new Map<number, Intl.NumberFormat>();
 /** Betrag in Euro ohne Zeichen: 1.234 · 1.234,50. Leer bei null/NaN. */
 export function eur(v: number | null | undefined, dezimal = 0): string {
   if (v == null || Number.isNaN(v) || !Number.isFinite(v)) return '';
+  if (Math.abs(v) * 10 ** dezimal < 0.5) v = 0; // „-0“ gibt es nicht (Minus vor einer Null, z. B. bei negierten Nullzeilen)
   let f = FORMATE.get(dezimal);
   if (!f) { f = new Intl.NumberFormat('de-DE', { maximumFractionDigits: dezimal, minimumFractionDigits: dezimal }); FORMATE.set(dezimal, f); }
   return f.format(v);

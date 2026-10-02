@@ -29,6 +29,7 @@
 import type { Annahmen, FinanzDaten, MonatPrivat, MonatUG, Szenario, ZielStand, Zusatz } from './rechenkern';
 import { rechneUG, rechnePrivat, kennzahlen, zielStaende, planMonat, kalMonat } from './rechenkern';
 import type { Unterseite } from './plan/hilfen';
+import { schwellenVon } from './schwellen';
 import { eur } from './plan/hilfen';
 import { UG_KURZ, UG_NAME, finanzOrtName, type FinanzOrt, type KernEinheit } from '@/lib/einheiten';
 
@@ -67,6 +68,11 @@ export interface Baustein {
   an: boolean;
   regler?: Regler;
   notiz?: string;
+  /**
+   * Einzelne Monate von Hand überschrieben (02.10., Zelle im Business-Blatt anklicken): Schlüssel `m<Plan-Monat>` → Betrag.
+   * Ein überschriebener Monat gilt unabhängig von Start und Laufzeit; „aus“ (`an: false`) schaltet auch ihn ab. Fehlt: wie bisher.
+   */
+  ueber?: Record<string, number>;
 }
 
 export interface PlanAnnahmen {
@@ -118,7 +124,10 @@ const fin = (v: unknown, sonst = 0): number => (typeof v === 'number' && Number.
 // ── Bausteine in Monatsreihen ────────────────────────────────────────────────
 /** Betrag eines Bausteins im Plan-Monat m — 0, wenn aus, vor dem Start, nach der Laufzeit oder (jährlich) kein Zahlmonat. */
 export function betragImMonat(b: Baustein, m: number): number {
-  if (!b.an || b.start < 1 || m < b.start) return 0;
+  if (!b.an) return 0;
+  const o = b.ueber?.[`m${m}`];
+  if (o !== undefined) return fin(o);
+  if (b.start < 1 || m < b.start) return 0;
   const betrag = fin(b.preis) * fin(b.menge, 1);
   if (b.rhythmus === 'einmalig') return m === b.start ? betrag : 0;
   if (b.laufzeit != null && b.laufzeit > 0 && m >= b.start + b.laufzeit) return 0;
@@ -244,6 +253,7 @@ const RANG: Record<Entscheidung['stufe'], number> = { kritisch: 0, achtung: 1, i
 /** Konkrete Punkte aus den Zahlen — jeder mit Sprung ins passende Feld. Höchstens `max`, kritisch zuerst. */
 export function entscheidungen(d: FinanzDaten, g: Pick<Gerechnet, 'ug' | 'pr' | 'ps'>, aw: Auswertung, max = 6): Entscheidung[] {
   const { ug, pr } = g;
+  const sw = schwellenVon(d);
   const out: Entscheidung[] = [];
   const monat = (m: number) => d.monate[m - 1] ?? `Monat ${m}`;
   const psParam: Record<string, string> = g.ps ? { sz: g.ps.id } : {};
@@ -254,15 +264,15 @@ export function entscheidungen(d: FinanzDaten, g: Pick<Gerechnet, 'ug' | 'pr' | 
   }
   const eng = pr.filter(p => p.luft < -0.5);
   if (eng.length) out.push({ id: 'privat-minus', stufe: 'kritisch', text: `Privat in ${eng.length} Monaten im Minus — erster ${monat(eng[0].m)} (${eur(eng[0].luft)} €).`, hinweis: `Fixkosten und Raten prüfen, Ausschüttung aus der ${UG_NAME} oder Gehalt im Szenario anpassen.`, ziel: { u: 'planen', params: { ...psParam, feld: 'privat' } } });
-  else if (aw.runway.privat != null && aw.runway.privat < 6) out.push({ id: 'privat-runway', stufe: 'achtung', text: `Privat trägt noch ${aw.runway.privat} Monate, dann rutschen die Konten unter null.`, ziel: { u: 'privat' } });
-  if (!minus.length && aw.runway.ug != null && aw.runway.ug < 6) out.push({ id: 'ug-runway', stufe: 'achtung', text: `${UG_KURZ}-Runway ${aw.runway.ug} Monate — danach fehlt frei verfügbares Geld.`, ziel: { u: 'planen', params: { ...psParam, feld: 'umsatz' } } });
+  else if (aw.runway.privat != null && aw.runway.privat < sw.runwayWarnMonate) out.push({ id: 'privat-runway', stufe: 'achtung', text: `Privat trägt noch ${aw.runway.privat} Monate, dann rutschen die Konten unter null.`, ziel: { u: 'privat' } });
+  if (!minus.length && aw.runway.ug != null && aw.runway.ug < sw.runwayWarnMonate) out.push({ id: 'ug-runway', stufe: 'achtung', text: `${UG_KURZ}-Runway ${aw.runway.ug} Monate — danach fehlt frei verfügbares Geld.`, ziel: { u: 'planen', params: { ...psParam, feld: 'umsatz' } } });
   if (aw.mindestumsatz.umsatzSchnitt12 < aw.mindestumsatz.schnitt12 - 0.5) out.push({ id: 'mindestumsatz', stufe: 'achtung', text: `Umsatz der nächsten 12 Monate (Ø ${eur(aw.mindestumsatz.umsatzSchnitt12)} €) liegt unter den laufenden ${UG_KURZ}-Kosten (Ø ${eur(aw.mindestumsatz.schnitt12)} €).`, hinweis: 'Mindestumsatz je Monat = Personal + Sachkosten + Holding. Was fehlt, kommt aus Kapital oder Bausteinen.', ziel: { u: 'gesamt' } });
   for (const z of aw.ziele.staende.filter(z => z.status === 'verfehlt').slice(0, 2)) out.push({ id: `ziel-${z.ziel.id}`, stufe: 'achtung', text: `Ziel „${z.ziel.name}“ kippt: ${eur(z.ziel.ziel)} € bis ${z.ziel.bis.slice(5)}/${z.ziel.bis.slice(2, 4)} wird im Plan nicht erreicht.`, ziel: { u: 'ziele' } });
   for (const z of aw.ziele.staende.filter(z => z.status === 'knapp').slice(0, 1)) out.push({ id: `ziel-${z.ziel.id}`, stufe: 'info', text: `Ziel „${z.ziel.name}“ ist knapp — erreicht ${z.erreichtMonat ? monat(z.erreichtMonat) : '—'}.`, ziel: { u: 'ziele' } });
   if (aw.steuer.naechsteZahlung && aw.steuer.naechsteZahlung.monat - aw.m0 <= 3) out.push({ id: 'steuer', stufe: 'info', text: `Ertragsteuer ${UG_KURZ} im ${monat(aw.steuer.naechsteZahlung.monat)}: ${eur(aw.steuer.naechsteZahlung.betrag)} € (Näherung, keine Steuerberatung) — Rücklage prüfen.`, ziel: { u: 'toepfe' } });
   if (aw.frei.kontenFehlen) out.push({ id: 'konten', stufe: 'info', text: `${aw.frei.kontenFehlen} private Kontostände fehlen — „frei verfügbar“ ist bis dahin eine Schätzung.`, ziel: { u: 'posten' } });
   const offen = d.buchungen.filter(b => b.z === 'x.offen').length;
-  if (offen >= 20) out.push({ id: 'buchungen', stufe: 'info', text: `${offen} Buchungen ohne Zuordnung — das IST ist unscharf.`, ziel: { u: 'buchungen' } });
+  if (offen >= sw.buchungenOffen) out.push({ id: 'buchungen', stufe: 'info', text: `${offen} Buchungen ohne Zuordnung — das IST ist unscharf.`, ziel: { u: 'buchungen' } });
   if (!g.ps) out.push({ id: 'arbeitsplan', stufe: 'info', text: 'Noch kein Arbeitsplan markiert — die Zahlen zeigen den reinen Treiber.', hinweis: 'In der Planungsrunde ein Szenario bauen, vergleichen und als Arbeitsplan setzen.', ziel: { u: 'planen' } });
   return out.sort((a, b) => RANG[a.stufe] - RANG[b.stufe]).slice(0, max);
 }
@@ -330,6 +340,11 @@ export function pruefeBaustein(roh: unknown): Baustein | null {
   if (art === 'kosten') b.kostenArt = KOSTENARTEN.includes(roh.kostenArt as KostenArt) ? (roh.kostenArt as KostenArt) : 'sonstiges';
   if (REGLER.includes(roh.regler as Regler)) b.regler = roh.regler as Regler;
   const notiz = text(roh.notiz, 600); if (notiz) b.notiz = notiz;
+  if (istObjekt(roh.ueber)) {
+    const ueber: Record<string, number> = {};
+    for (const [k, v] of Object.entries(roh.ueber)) if (/^m\d{1,3}$/.test(k) && typeof v === 'number' && Number.isFinite(v)) ueber[k] = v;
+    if (Object.keys(ueber).length) b.ueber = ueber;
+  }
   return b;
 }
 

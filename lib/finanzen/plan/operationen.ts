@@ -18,11 +18,15 @@
 //                              dieses Empfängers (lerneRegel im Rechenkern)
 //   /planszenarien/id=ps1/bausteine/id=b1/preis   Szenario-Baukasten (27.09.)
 //   /arbeitsplan               Kennung des Planszenarios, das als Arbeitsplan gilt (oder null)
+//   /steuern/ug/zeilen/kst/satz   Welche Steuern gelten (02.10., lib/finanzen/steuern.ts) — wird nach jeder Änderung bereinigt
+//   /schwellen/runwayWarnMonate   eigene Ampel-Schwellen (02.10., lib/finanzen/schwellen.ts)
 // Nicht änderbar: version, stand, monate, historie, meta, protokoll.
 
 import type { Aenderung, FinanzDaten, Szenario } from '@/lib/finanzen/rechenkern';
 import { lerneRegel } from '@/lib/finanzen/rechenkern';
 import { pruefePlanszenarien } from '@/lib/finanzen/szenarien';
+import { pruefeSteuern } from '@/lib/finanzen/steuern';
+import { pruefeSchwellen } from '@/lib/finanzen/schwellen';
 import { KAL, istUnterseite } from './hilfen';
 
 import { localDay } from '@/lib/zeit';
@@ -41,7 +45,7 @@ const MAX_TEXT = 4000;
 const MAX_WERT_JSON = 40_000;
 const PROTOKOLL_MAX = 500;
 const GESPERRT = new Set(['version', 'stand', 'monate', 'historie', 'meta', 'protokoll']);
-const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan']);
+const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan', 'steuern', 'schwellen']);
 const GEFAEHRLICH = new Set(['__proto__', 'constructor', 'prototype']);
 
 export class OperationUngueltig extends Error {}
@@ -187,6 +191,14 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
     }
     protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt !== undefined ? alt : op.alt), neu: op.neu === undefined ? 'zurückgesetzt' : kurz(op.neu) });
   }
+  // Steuerprofil und Schwellen bereinigen (Sätze begrenzen, Unbekanntes verwerfen); leer = Schlüssel entfernen.
+  if (ops.some(o => typeof o.pfad === 'string' && (o.pfad.startsWith('/steuern') || o.pfad.startsWith('/schwellen')))) {
+    const st = pruefeSteuern(d.steuern), sw = pruefeSchwellen(d.schwellen);
+    if (st) d.steuern = st; else delete d.steuern;
+    if (sw) d.schwellen = sw; else delete d.schwellen;
+  }
+  // Die Netto-Tabelle muss rechenbar bleiben: mindestens zwei Paare, Brutto aufsteigend.
+  if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/annahmen/nettoTabelle')) && !nettoTabelleOk(d.annahmen.nettoTabelle)) throw new OperationUngueltig('Die Netto-Tabelle braucht mindestens zwei Paare, Brutto von unten nach oben.');
   // Ein gelöschtes Szenario darf nicht aktiv bleiben.
   if (!d.szenarien.length) throw new OperationUngueltig('Ohne Szenario keine Planung.');
   if (!d.szenarien.some(s => s.id === d.aktiv)) d.aktiv = d.szenarien[0].id;
@@ -195,6 +207,17 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
   for (const ps of d.planszenarien ?? []) if (!d.szenarien.some(s => s.id === ps.basis)) ps.basis = d.aktiv;
   d.protokoll = [...protokoll.slice().reverse(), ...(Array.isArray(d.protokoll) ? d.protokoll : [])].slice(0, PROTOKOLL_MAX);
   return { dokument: d, protokoll, meta, nachladen };
+}
+
+/** Brutto → Netto: mindestens zwei Paare, endlich, Brutto streng aufsteigend (sonst teilt `netto()` durch null). */
+export function nettoTabelleOk(t: unknown): boolean {
+  if (!Array.isArray(t) || t.length < 2) return false;
+  for (let i = 0; i < t.length; i++) {
+    const p = t[i];
+    if (!Array.isArray(p) || p.length !== 2 || !zahl(p[0]) || !zahl(p[1]) || p[0] < 0 || p[1] < 0) return false;
+    if (i > 0 && !(p[0] > (t[i - 1] as number[])[0])) return false;
+  }
+  return true;
 }
 
 /** Neuer Stand: Zeitstempel, immer größer als der alte (auch bei zwei Schreibungen in derselben Millisekunde). */
@@ -259,6 +282,8 @@ export function pruefeDokument(roh: unknown): Pruefung {
     version: 3,
     stand: typeof roh.stand === 'string' && roh.stand ? roh.stand : heute,
     monate, aktiv, planszenarien, arbeitsplan,
+    ...(pruefeSteuern(roh.steuern) ? { steuern: pruefeSteuern(roh.steuern) } : {}),
+    ...(pruefeSchwellen(roh.schwellen) ? { schwellen: pruefeSchwellen(roh.schwellen) } : {}),
     schulden: liste(roh.schulden),
     meta: objekt(roh.meta) as FinanzDaten['meta'],
     abschluesse: liste(roh.abschluesse),

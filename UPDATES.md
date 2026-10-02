@@ -23,6 +23,19 @@ Meilensteine zu einem Ziel, in Abhängigkeit.“ Der Ziel-Bezug (`zielId`, 30.09
 - **Rückweg:** af4679a verwirft `wartetAuf`, `messlatte` (Ziel) und `zielId` beim nächsten Speichern, sonst nichts (`GO_LIVE_CHECKLISTE.md` › Rückweg). Kein neuer Speicher.
 - **Tests:** `tests/ziel-kette-0110.test.ts` (Fixture `tests/fixtures/alt-af4679a/meilensteine.ts`, `ziele.ts`).
 
+## Finanzplanung: alle Felder anpassbar, Business-Blätter, Steuern aufgeräumt (02.10.2026, nur lokal — Branch `finanzen`)
+
+Kevin 02.10.: „Businessplanung und die allgemeine fertig machen. Unten stehen so viele Steuern, die wir nicht brauchen. Alle Felder anpassbar.“
+Details und Entscheidungen: `FINANZPLANUNG_JETZT.md` › „Alle Felder anpassbar …“. Rechenkern unverändert (Regressionstest gegen die Werte von 1818c5c).
+
+- **Welche Steuern gelten?** je Gesellschaft: Rechtsform bestimmt die Zeilen (GmbH: KSt + Soli, Gewerbesteuer mit Hebesatz, USt nur als eingeklappter Durchlauf; Einzelunternehmen: Einkommensteuer; Privat: Netto-Tabelle),
+  Schalter und Sätze editierbar, Nullzeilen hinter „n weitere Steuerzeilen“; Aufschlüsseln verteilt den Gesamtsatz, ohne eine Zahl zu ändern.
+- **Business-Blatt je Gesellschaft** (MAKE Innovation GmbH · KD Ventures · Selbstständigkeit): Kacheln (Umsatz, Kosten, Ergebnis vor/nach Steuern, Break-even, Runway), Produkte frei anlegbar (leere Vorlagen), Kosten (Stelle · Software · Miete · Rate),
+  Blatt je Monat mit Zelle-klicken-ändern auch für Produkte, Annahmen der Gesellschaft.
+- **Allgemeine Planung:** „Noch offen in der Planung“ in der Lage, Warnungen nicht mehr doppelt, Übergänge (Gehälter, Ausschüttung) in Gesamt einstellbar, Netto-Tabelle, Stichtag, Reserve und alle Ampel-Schwellen als Felder, eine Frage je Unterseite, Handy ohne Seitenscroll.
+- **Rückweg:** keine Formänderung bestehender Bestände, nur optionale Zusatzfelder — der Online-Stand (af4679a) verwirft sie beim nächsten Speichern (`GO_LIVE_CHECKLISTE.md` › Rückweg). Keine Zahl ändert sich.
+- **Tests:** `finanzplan-regression`, `-steuern`, `-geschaeft`, `-felder-routen`, `-ansichten` (neu).
+
 ## Mehrstufige Unteraufgaben bis 5 Ebenen (01.10.2026, nur lokal — Branch `tiefe`)
 
 Kevin 01.10.: „Wir brauchen nochmal Unteraufgaben, also bei dem HOS unter Produkten. Da müssen wir nochmal Beschreibungen machen können.“

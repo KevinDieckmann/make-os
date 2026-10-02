@@ -20,6 +20,8 @@
 // Finanz-Cockpit (Spalte einheit) befüllt.
 
 import type { Planszenario } from './szenarien';
+import type { Steuern } from './steuern';
+import type { Schwellen } from './schwellen';
 import { UG_KURZ, UG_NAME } from '@/lib/einheiten';
 
 export type Einheit = 'privat' | 'selbststaendigkeit' | 'ug' | 'kdv';
@@ -97,6 +99,10 @@ export interface FinanzDaten {
   planszenarien?: Planszenario[];
   /** Kennung des Planszenarios, das als Arbeitsplan gilt — null/fehlt: der reine Treiber (`aktiv`). */
   arbeitsplan?: string | null;
+  /** Welche Steuern gelten (02.10., Rechtsform und Steuerzeilen je Ort) — nur Anzeige und Aufschlüsselung, der Kern liest weiter `annahmen`. Fehlt in älteren Dokumenten. */
+  steuern?: Steuern;
+  /** Eigene Ampel-Schwellen (02.10.) — fehlt: die bisherigen Vorgaben. */
+  schwellen?: Partial<Schwellen>;
   schulden: Schuld[];
   /** Wer hat eine Planzelle zuletzt geändert: key → {wer, wann}. */
   meta: Record<string, { wer: string; wann: string }>;

@@ -11,16 +11,56 @@
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, LEUCHT } from '../schlank';
 import { rechneSelbst } from '@/lib/finanzen/rechenkern';
-import { monatLabel } from '@/lib/finanzen/plan/hilfen';
+import { monatLabel, prozent } from '@/lib/finanzen/plan/hilfen';
 import { UG_NAME, UG_KURZ } from '@/lib/einheiten';
-import { STEUER_HINWEIS } from '@/lib/finanzen/szenarien';
+import { STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE } from '@/lib/finanzen/szenarien';
+import { zeigeSteuer } from '@/lib/finanzen/steuern';
 import { usePlan } from './daten';
-import { Geld, Kachel, Kacheln, Etikett, Hinweis, Legende, KUPFER, LILA } from './teile';
-import { Blatt, type BlattZeile } from './Blatt';
+import { useArbeitsplan } from './arbeitsplan';
+import { Geld, Kachel, Kacheln, Etikett, Hinweis, Legende, ZahlFeld, MonatWahl, personName, KUPFER, LILA } from './teile';
+import { Blatt, type BlattZeile, type DatenZeile } from './Blatt';
 import { Linie } from './diagramme';
+import { FeldK } from './Annahmen';
+import { ProzentFeld } from './Steuern';
+
+/** Übergänge von der Gesellschaft nach Privat einstellen: Gehälter, Ausschüttung, Steuer darauf — an der Stelle, die gerade gilt (Arbeitsplan, sonst Plan). */
+function UebergaengeKarte() {
+  const { d, aw, aendere } = usePlan();
+  const { ps, schreibe } = useArbeitsplan();
+  const p1 = personName('kevin'), p2 = personName('malin');
+  const gehalt = (k: 'kevinBrutto' | 'malinBrutto', name: string) => {
+    const imPlan = ps?.annahmen[k] !== undefined;
+    const v = ps?.annahmen[k] ?? d.annahmen[k];
+    return (
+      <FeldK label={`${name} brutto je Monat${imPlan ? ' (Arbeitsplan)' : ''}`} breit={170}>
+        <ZahlFeld wert={v} dezimal={0} breite="100%" titel={`${name} brutto`} onFertig={x => {
+          const neu = x ?? 0;
+          if (imPlan && ps) void aendere([{ pfad: `/planszenarien/id=${ps.id}/annahmen/${k}`, alt: v, neu }], `${name} brutto (Arbeitsplan)`);
+          else void aendere([{ pfad: `/annahmen/${k}`, alt: v, neu }], `${name} brutto`);
+        }} />
+      </FeldK>
+    );
+  };
+  const au = ps?.annahmen.ausschuettung;
+  const setzeAu = (neu: { betrag: number; ab: number } | undefined) => void schreibe(id => [{ pfad: `/planszenarien/id=${id}/annahmen/ausschuettung`, alt: au, ...(neu ? { neu } : {}) }], 'Ausschüttung');
+  return (
+    <Karte i={2}>
+      <Ueberschrift>Übergänge einstellen — {UG_KURZ} → Privat</Ueberschrift>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        {gehalt('kevinBrutto', p1)}{gehalt('malinBrutto', p2)}
+        <FeldK label="Ausschüttung je Monat (brutto)" breit={170}><ZahlFeld wert={au?.betrag ?? null} leer platzhalter="keine" dezimal={0} breite="100%" titel="Ausschüttung je Monat" onFertig={v => setzeAu(v ? { betrag: v, ab: au?.ab ?? aw.m0 } : undefined)} /></FeldK>
+        <FeldK label="Ausschüttung ab" breit={150}><MonatWahl wert={au?.ab ?? aw.m0} onWahl={m => setzeAu({ betrag: au?.betrag ?? 0, ab: m })} monate={d.monate} breite={150} /></FeldK>
+        <FeldK label={`Steuer darauf, pauschal (Vorgabe ${prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)})`} breit={190}><ProzentFeld wert={ps?.annahmen.ausschuettungSteuer ?? null} leer platzhalter={String(AUSSCHUETTUNG_STEUER_VORGABE * 100).replace('.', ',')} dezimal={3} breite="100%" titel="Steuer auf die Ausschüttung" onFertig={v => void schreibe(id => [{ pfad: `/planszenarien/id=${id}/annahmen/ausschuettungSteuer`, alt: ps?.annahmen.ausschuettungSteuer, ...(v == null ? {} : { neu: Math.max(0, Math.min(1, v)) }) }], 'Steuer auf die Ausschüttung')} /></FeldK>
+      </div>
+      <Hinweis>Gehälter stehen im Plan; hat der Arbeitsplan eigene Werte, gelten und ändern sich diese. Ausschüttung und ihre Steuer gehören zum Arbeitsplan (ohne Arbeitsplan legt der erste Eintrag einen an). {STEUER_HINWEIS}</Hinweis>
+    </Karte>
+  );
+}
 
 export function Gesamt() {
   const { d, ug, pr, aw, ps, sz } = usePlan();
+  const ertragAn = zeigeSteuer(d, 'ug', 'kst') || zeigeSteuer(d, 'ug', 'est');
+  const ustAn = zeigeSteuer(d, 'ug', 'ust');
   const U = (m: number) => ug[m - 1], P = (m: number) => pr[m - 1];
   const selbst = rechneSelbst(d);
   const m0 = aw.m0;
@@ -36,17 +76,21 @@ export function Gesamt() {
     { grp: `Übergänge ${UG_KURZ} → Privat` },
     { name: 'Gehälter brutto', get: m => U(m).kevinBrutto + U(m).malinBrutto, ind: true },
     { name: 'davon Arbeitgeberanteil', get: m => U(m).kevin + U(m).malin - U(m).kevinBrutto - U(m).malinBrutto, ind: true },
-    { name: 'Ausschüttung brutto', get: m => U(m).ausschuettung, ind: true },
-    { name: 'davon Steuer, pauschal (Näherung)', get: m => -P(m).ausschuettungSteuer, ind: true },
-    { name: 'Ausschüttung netto an Privat', get: m => P(m).ausschuettung, ind: true },
+    { name: 'Ausschüttung brutto', get: m => U(m).ausschuettung, ind: true, optional: true },
+    { name: 'davon Steuer, pauschal (Näherung)', get: m => -P(m).ausschuettungSteuer, ind: true, optional: true },
+    { name: 'Ausschüttung netto an Privat', get: m => P(m).ausschuettung, ind: true, optional: true },
     { grp: UG_NAME },
     { name: 'Umsatz netto', get: m => U(m).umsatz, ind: true },
     { name: 'Mindestumsatz (laufende Kosten)', get: m => kosten(m), ind: true },
     { name: 'Gewinn', sum: true, get: m => U(m).gewinn },
-    { name: 'Steuerrücklage', stock: true, get: m => -U(m).steuerRuecklage, ind: true },
-    { name: 'USt offen', stock: true, get: m => -U(m).ustOffen, ind: true },
     { name: 'Kontostand', stock: true, get: m => U(m).konto },
     { name: 'Frei verfügbar', stock: true, key: true, get: m => U(m).frei },
+    ...(ertragAn || ustAn ? [
+      { grp: 'Steuern (Näherung)', zu: true, leerName: ['weitere Steuerzeile', 'weitere Steuerzeilen'] } as BlattZeile,
+      ...(ertragAn ? [{ name: 'Steuerrücklage', stock: true, sum: true, get: (m: number) => -U(m).steuerRuecklage } as DatenZeile] : []),
+      ...(ertragAn ? [{ name: 'Ertragsteuer-Zahlung', get: (m: number) => -U(m).steuer, ind: true, optional: true } as DatenZeile] : []),
+      ...(ustAn ? [{ name: 'USt offen (Durchlauf)', stock: true, get: (m: number) => -U(m).ustOffen, ind: true, optional: true } as DatenZeile] : []),
+    ] : []),
     { grp: 'KD Ventures' },
     { name: 'Kontostand KD Ventures', stock: true, key: true, get: m => U(m).kdvKonto },
     { name: 'Partnerdarlehen offen', stock: true, get: m => -U(m).bjoernRest, ind: true },
@@ -59,8 +103,7 @@ export function Gesamt() {
       <Kacheln min={170}>
         <Kachel label="Frei verfügbar jetzt" wert={<><Geld v={aw.frei.gesamt} /> €</>} unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} /></>} />
         <Kachel label={`Mindestumsatz ${UG_KURZ} je Monat`} punkt={deckung >= 1 ? LEUCHT.gut : deckung >= 0.8 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.mindestumsatz.schnitt12} /> €</>} unter={<>Ø 12 Monate · Umsatz Ø <Geld v={aw.mindestumsatz.umsatzSchnitt12} farbe={C.inkDim} /> € · Deckung {Math.round(deckung * 100)} %</>} />
-        <Kachel label={`Steuerrücklage ${UG_KURZ} jetzt`} punkt={LEUCHT.achtung} wert={<><Geld v={aw.steuer.ruecklage} /> €</>} unter={<>{aw.steuer.naechsteZahlung ? <>nächste Zahlung {monatLabel(d, aw.steuer.naechsteZahlung.monat)}: <Geld v={aw.steuer.naechsteZahlung.betrag} farbe={C.inkDim} /> €</> : 'keine Zahlung im Planzeitraum'}{aw.steuer.ausschuettung ? <> · Steuer auf Ausschüttung <Geld v={aw.steuer.ausschuettung} farbe={C.inkDim} /> €/M</> : null}</>} />
-        <Kachel label="USt offen" wert={<><Geld v={aw.steuer.ust} /> €</>} unter="geht im Folgemonat ans Finanzamt" />
+        {(ertragAn || ustAn) && <Kachel label={`Steuerrücklage ${UG_KURZ} jetzt`} punkt={LEUCHT.achtung} wert={<><Geld v={aw.steuer.ruecklage} /> €</>} unter={<>{aw.steuer.naechsteZahlung ? <>nächste Zahlung {monatLabel(d, aw.steuer.naechsteZahlung.monat)}: <Geld v={aw.steuer.naechsteZahlung.betrag} farbe={C.inkDim} /> €</> : 'keine Zahlung im Planzeitraum'}{ustAn && aw.steuer.ust ? <> · USt im Durchlauf <Geld v={aw.steuer.ust} farbe={C.inkDim} /> €</> : null}</>} />}
         <Kachel label={`Gehälter ${UG_KURZ} → Privat`} wert={<><Geld v={aw.uebergaenge.gehaelterNetto} /> €</>} unter={<>netto je Monat · brutto <Geld v={aw.uebergaenge.gehaelterBrutto} farbe={C.inkDim} /> €</>} />
         <Kachel label={`Ausschüttung ${UG_KURZ} → Privat`} wert={<><Geld v={aw.uebergaenge.ausschuettungNetto} /> €</>} unter={aw.uebergaenge.ausschuettung ? <>netto je Monat · brutto <Geld v={aw.uebergaenge.ausschuettung} farbe={C.inkDim} /> € · Steuer pauschal <Geld v={aw.uebergaenge.ausschuettungSteuer} farbe={C.inkDim} /> €</> : 'keine im Szenario'} />
         <Kachel label="Selbstständigkeit 2026" wert={<><Geld v={selbst.frei} /> €</>} unter={<>frei nach Abschluss · Steuer <Geld v={selbst.est} farbe={C.inkDim} /> €</>} />
@@ -74,6 +117,7 @@ export function Gesamt() {
           { name: 'Gesamt', farbe: C.ink, werte: ug.map((u, i) => u.frei + u.kdvKonto + pr[i].angespart), gestrichelt: true, breite: 1.4 },
         ]} />
       </Karte>
+      <UebergaengeKarte />
       <Karte i={1}>
         <Blatt zeilen={zeilen} titel="Gesamt je Monat" werkzeuge={<span style={{ display: 'inline-flex', gap: 6 }}><Etikett einheit="privat" /><Etikett einheit="ug" /><Etikett einheit="kdv" /></span>} />
         <Hinweis>Privat und Business bleiben getrennt gerechnet; die Übergänge (Gehalt brutto → netto, Ausschüttung) sind die einzigen Brücken. Mindestumsatz = Personal inkl. Stellen + Sachkosten + Holding je Monat. {STEUER_HINWEIS}</Hinweis>
