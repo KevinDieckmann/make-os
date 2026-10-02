@@ -350,6 +350,8 @@ img, svg { display: block; max-width: 100%; }
 .ent-hell { background: #FFFFFF; }
 .ent-gross svg { width: 140px; height: auto; }
 .ent-quer svg { width: 100%; max-width: 420px; height: auto; }
+.ent-dunkel > svg, .ent-hell > svg { min-width: 0; }
+@media (max-width: 560px) { .ent-dunkel, .ent-hell { padding: var(--l); } }
 .ent-gestapelt svg { width: 220px; height: auto; }
 .ent-icons { grid-column: 1 / -1; justify-content: flex-start; }
 .ent-icons span { display: block; }
