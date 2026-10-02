@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// ─── MAKE Innovation · Logo-Bau (v3, 01.10.2026) ────────────────────────────────────────────────────
-// Eine Quelle für das Logo der Landingpage. Kevin 01.10.: „nicht lange rumdoktern“ —
-//   (a) Wortmarke: „MAKE“, darunter „INNOVATION“, zwischen beiden Zeilen ein roter und ein grüner Punkt.
-//   (b) Bildmarke: das M aus v2 (Entwurf A „Fuge“) mit einem Punkt in der Mitte — der Punkt ist geteilt:
-//       linke Hälfte grün, rechte Hälfte rot (über Kreuz zu den Zügen: MA rot links, KE grün rechts).
+// ─── MAKE Innovation · Logo-Bau (v4, 02.10.2026) ────────────────────────────────────────────────────
+// Eine Quelle für das Logo der Landingpage. Kevin 02.10.: „Mach bei uns nur MAKE und darunter Innovation — mit dem
+// roten Strich unter MA und dem grünen unter KE. Wir haben noch kein gutes Logo, da müssen wir später nochmal ran.“
+//   (a) Wortmarke: „MAKE“ (Linien-Buchstaben), darunter zwei Personenstriche — Rot unter MA, Grün unter KE, mit
+//       kleiner Lücke zwischen A und K —, darunter „INNOVATION“ im Blocksatz auf Breite der Wortmarke.
+//   (b) Bildmarke (das M mit geteiltem Punkt): VORLÄUFIG nur noch für Favicon und App-Kachel (zu klein für eine Wortmarke).
 // Alles ist Linie bzw. Fläche auf einem Raster (keine Schrift im SVG — sieht überall gleich aus, lädt nichts nach).
 // Schreibt:
 //   website/assets/logo/*.svg + favicon-32.png, apple-touch-icon.png, icon-512.png
@@ -15,7 +16,7 @@
 //   node scripts/website-logo.mjs --buehne (gibt den Inline-Block für die Bühne von website/index.html aus)
 //
 // website/pruefen.mjs prüft, dass das Bühnen-Zeichen in website/index.html dieselben Formen trägt wie
-// assets/logo/bildmarke.svg — nach einer Änderung hier also auch den Bühnen-Block übernehmen.
+// assets/logo/wortmarke.svg — nach einer Änderung hier also auch den Bühnen-Block übernehmen.
 
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -84,12 +85,14 @@ function makeInnen(f) {
   return `<path d="${d}" ${linie(WORT.s, f.ink)}/>`;
 }
 
-// ── Die zwei Punkte zwischen MAKE und INNOVATION ─────────────────────────────────────────────────────
-// Durchmesser 12 (= Strich der Wortmarke), linksbündig mit dem M-Stamm, Lücke 8. Rot (MA) links, Grün (KE) rechts.
-const PUNKTE = { r: 6, abstand: 8 };
-function punkteInnen(f, cy) {
-  const a = PUNKTE.r; const b = PUNKTE.r * 3 + PUNKTE.abstand;
-  return `<circle cx="${a}" cy="${cy}" r="${PUNKTE.r}" fill="${f.rot}"/><circle cx="${b}" cy="${cy}" r="${PUNKTE.r}" fill="${f.gruen}"/>`;
+// ── Die zwei Personenstriche unter MAKE ──────────────────────────────────────────────────────────────
+// 4 hoch, 12 unter der Grundlinie (wie v2). Rot (Malin) unter „MA“ (Außenkanten M 0 bis A 176), Grün (Kevin) unter „KE“
+// (K 194 bis E 332) — die Lücke von 18 liegt genau zwischen A und K.
+const STRICHE = { ma: [0, 176], ke: [194, 332], dicke: 4, abstand: 12 };
+function strichInnen(f, { klassen = false } = {}) {
+  const y = WORT.h + STRICHE.abstand;
+  const rect = (n, [a, b], farbe) => `<rect${klassen ? ` class="strich strich-${n}"` : ''} x="${a}" y="${y}" width="${b - a}" height="${STRICHE.dicke}" rx="${STRICHE.dicke / 2}" fill="${farbe}"/>`;
+  return rect('ma', STRICHE.ma, f.rot) + rect('ke', STRICHE.ke, f.gruen);
 }
 
 // ── Zusatz „INNOVATION“ ───────────────────────────────────────────────────────────────────────────────
@@ -119,12 +122,12 @@ function zusatzInnen(f, k, breite) {
   return { innen: `<path d="${pfade.join('')}" ${linie(s, f.zusatz)}/>${kreise.join('')}`, hoehe: 20 * k };
 }
 
-// ── Wortmarke gestapelt: MAKE · Punkte · INNOVATION (Block 332 × 144 = Höhe der Bildmarke) ──────────
-// MAKE 0–72 · Punkte Mitte 93 (87–99) · INNOVATION 114–144 (Faktor 1,5: Versalhöhe 30, Strich 6). Lücken je 15.
-const BLOCK = { h: 144, punkteY: 93, zusatzY: 114, k: 1.5 };
-function wortmarkeBlock(f, { mitZusatz = true } = {}) {
+// ── Wortmarke gestapelt: MAKE · Personenstriche · INNOVATION (Block 332 × 130) ───────────────────────────
+// MAKE 0–72 · Striche 84–88 · INNOVATION 100–130 (Faktor 1,5: Versalhöhe 30, Strich 6). Lücke je 12.
+const BLOCK = { h: 130, zusatzY: 100, k: 1.5 };
+function wortmarkeBlock(f, { mitZusatz = true, klassen = false } = {}) {
   const z = zusatzInnen(f, BLOCK.k, WORT.breite);
-  return makeInnen(f) + punkteInnen(f, BLOCK.punkteY) + (mitZusatz ? `<g transform="translate(0 ${BLOCK.zusatzY})">${z.innen}</g>` : '');
+  return makeInnen(f) + strichInnen(f, { klassen }) + (mitZusatz ? `<g transform="translate(0 ${BLOCK.zusatzY})">${z.innen}</g>` : '');
 }
 
 // ── Anordnungen ───────────────────────────────────────────────────────────────────────────────────────
@@ -137,7 +140,7 @@ export function bildmarke(ton, id = `bm${ton}`) {
   return svg(MARKE_BOX.b, MARKE_BOX.h, marke(FARBEN[ton], id), 'MAKE Innovation');
 }
 
-/** Wortmarke allein: MAKE · Punkte · INNOVATION (332 × 144). */
+/** Wortmarke allein: MAKE · Personenstriche · INNOVATION (332 × 130). */
 export function wortmarke(ton) {
   return svg(WORT.breite, BLOCK.h, wortmarkeBlock(FARBEN[ton]), 'MAKE Innovation');
 }
@@ -150,27 +153,32 @@ export function kachel({ rund = true, id = 'ka' } = {}) {
   return svg(240, 240, `${grund}<g transform="translate(120 120) scale(.82) translate(-120 -124)">${bildmarkeInnen(f, id)}</g>`, 'MAKE Innovation');
 }
 
-/** Quer (Kopf, Fuß): Bildmarke + gestapelte Wortmarke, beide 144 hoch. `kompakt` = ohne INNOVATION (Handy). */
+/** Quer (Kopf, Fuß): die Wortmarke. `kompakt` = ohne INNOVATION (Handy). */
 export function quer(ton, { kompakt = false } = {}) {
   const f = FARBEN[ton];
-  const textX = MARKE_BOX.b + 40;
-  // Kompakt: MAKE + Punkte (0–99) mittig zur Bildmarke.
-  const y = kompakt ? r((BLOCK.h - (BLOCK.punkteY + PUNKTE.r)) / 2) : 0;
-  return svg(textX + WORT.breite, MARKE_BOX.h,
-    marke(f, `qu${ton}${kompakt ? 'k' : ''}`) + `<g transform="translate(${textX} ${y})">${wortmarkeBlock(f, { mitZusatz: !kompakt })}</g>`, 'MAKE Innovation');
+  const h = kompakt ? WORT.h + STRICHE.abstand + STRICHE.dicke : BLOCK.h;
+  return svg(WORT.breite, h, wortmarkeBlock(f, { mitZusatz: !kompakt }), 'MAKE Innovation');
 }
 
-/** Groß (Titel, Druck): Bildmarke mittig über der Wortmarke. */
+/** Groß (Titel, Druck): die Wortmarke mit Schutzzone (rundum 40, transparent). */
 export function gross(ton) {
-  const f = FARBEN[ton];
-  const wortY = MARKE_BOX.h + 40;
-  return svg(WORT.breite, wortY + BLOCK.h,
-    marke(f, `gr${ton}`, (WORT.breite - MARKE_BOX.b) / 2) + `<g transform="translate(0 ${wortY})">${wortmarkeBlock(f)}</g>`, 'MAKE Innovation');
+  const rand = 40;
+  return svg(WORT.breite + 2 * rand, BLOCK.h + 2 * rand, `<g transform="translate(${rand} ${rand})">${wortmarkeBlock(FARBEN[ton])}</g>`, 'MAKE Innovation');
 }
 
-/** Inline-Fassung für die Bühne (Klassen für die Einzeichnen-Animation, dekorativ: aria-hidden). */
+/**
+ * Visitenkarten-Profil (Logo zum Hochladen): Wortmarke + Striche + INNOVATION mit eigenem Grund und Rand (rundum 48),
+ * damit es auf jedem Profil-Hintergrund gleich aussieht. Reines SVG: kein Skript, kein Stil, keine externen Verweise.
+ */
+export function visitenkarte(ton) {
+  const f = FARBEN[ton]; const rand = 48;
+  const b = WORT.breite + 2 * rand; const h = BLOCK.h + 2 * rand;
+  return svg(b, h, `<rect width="${b}" height="${h}" fill="${f.grund}"/><g transform="translate(${rand} ${rand})">${wortmarkeBlock(f)}</g>`, 'MAKE Innovation');
+}
+
+/** Inline-Fassung für die Bühne (Klassen für die Einzeichnen-Animation der Striche, dekorativ: aria-hidden). */
 export function buehne() {
-  return `<svg class="zeichen" viewBox="${MARKE_BOX.x - 24} ${MARKE_BOX.y - 24} ${MARKE_BOX.b + 48} ${MARKE_BOX.h + 48}" aria-hidden="true" focusable="false">${bildmarkeInnen(FARBEN.dunkel, 'buehne', { klassen: true })}</svg>`;
+  return `<svg class="zeichen" viewBox="0 0 ${WORT.breite} ${BLOCK.h}" aria-hidden="true" focusable="false">${wortmarkeBlock(FARBEN.dunkel, { klassen: true })}</svg>`;
 }
 
 // ── Schreiben ─────────────────────────────────────────────────────────────────────────────────────────
@@ -194,16 +202,17 @@ function uebersicht() {
 <main id="inhalt" class="recht entwuerfe">
   <div class="wrap">
     <span class="mikro">Arbeitsdatei · nur lokal</span>
-    <h1>MAKE-Logo (v3)</h1>
-    <p>Bildmarke: das M mit Naht in der Fuge (MA rot links, KE grün rechts), in der Mitte ein geteilter Punkt — links grün, rechts rot. Wortmarke: MAKE, darunter ein roter und ein grüner Punkt, darunter INNOVATION im Blocksatz. Konstruktion, Schutzzone und Mindestgrößen: <code>assets/logo/LOGO.md</code>.</p>
+    <h1>MAKE-Logo (v4)</h1>
+    <p>Wortmarke: MAKE, darunter ein roter Strich unter MA und ein grüner unter KE, darunter INNOVATION im Blocksatz. Die M-Bildmarke dient vorläufig nur als Favicon und App-Kachel — das Logo wird später überarbeitet. Konstruktion, Schutzzone und Mindestgrößen: <code>assets/logo/LOGO.md</code>.</p>
   <section class="ent" aria-labelledby="ent-logo">
     <div class="ent-kopf"><h2 id="ent-logo">Im Einsatz</h2></div>
-    ${zeile('Bildmarke · dunkel und hell', `<div class="ent-dunkel ent-gross">${bildmarke('dunkel', 'u1')}</div><div class="ent-hell ent-gross">${bildmarke('hell', 'u2')}</div>`)}
     ${zeile('Wortmarke · dunkel und hell', `<div class="ent-dunkel ent-gestapelt">${wortmarke('dunkel')}</div><div class="ent-hell ent-gestapelt">${wortmarke('hell')}</div>`)}
+    ${zeile('Bildmarke (vorläufig, nur Favicon/Kachel)', `<div class="ent-dunkel ent-gross">${bildmarke('dunkel', 'u1')}</div><div class="ent-hell ent-gross">${bildmarke('hell', 'u2')}</div>`)}
     ${zeile('Favicon · 64 / 32 / 16 px', `<div class="ent-dunkel ent-icons"><span class="i64">${kachel({ id: 'u3' })}</span><span class="i32">${kachel({ id: 'u4' })}</span><span class="i16">${kachel({ id: 'u5' })}</span></div>`)}
-    ${zeile('Quer (Kopf) · dunkel und hell', `<div class="ent-dunkel ent-quer">${quer('dunkel').replace(/qudunkel/g, 'u6')}</div><div class="ent-hell ent-quer">${quer('hell').replace(/quhell/g, 'u7')}</div>`)}
-    ${zeile('Kompakt (Kopf am Handy)', `<div class="ent-dunkel ent-quer">${quer('dunkel', { kompakt: true }).replace(/qudunkelk/g, 'u8')}</div><div class="ent-hell ent-quer">${quer('hell', { kompakt: true }).replace(/quhellk/g, 'u9')}</div>`)}
-    ${zeile('Groß', `<div class="ent-dunkel ent-gestapelt">${gross('dunkel').replace(/grdunkel/g, 'u10')}</div><div class="ent-hell ent-gestapelt">${gross('hell').replace(/grhell/g, 'u11')}</div>`)}
+    ${zeile('Quer (Kopf, Fuß)', `<div class="ent-dunkel ent-quer">${quer('dunkel')}</div><div class="ent-hell ent-quer">${quer('hell')}</div>`)}
+    ${zeile('Kompakt (Kopf am Handy)', `<div class="ent-dunkel ent-quer">${quer('dunkel', { kompakt: true })}</div><div class="ent-hell ent-quer">${quer('hell', { kompakt: true })}</div>`)}
+    ${zeile('Groß (Bühne, Titel, Druck)', `<div class="ent-dunkel ent-quer">${gross('dunkel')}</div><div class="ent-hell ent-quer">${gross('hell')}</div>`)}
+    ${zeile('Visitenkarten-Profil (zum Hochladen)', `<div class="ent-dunkel ent-quer">${visitenkarte('dunkel')}</div><div class="ent-hell ent-quer">${visitenkarte('hell')}</div>`)}
   </section>
   </div>
 </main>
@@ -226,6 +235,8 @@ async function schreiben() {
     'kompakt-hell.svg': quer('hell', { kompakt: true }),
     'gross.svg': gross('dunkel'),
     'gross-hell.svg': gross('hell'),
+    'visitenkarte-make.svg': visitenkarte('dunkel'),
+    'visitenkarte-make-hell.svg': visitenkarte('hell'),
   };
   for (const [name, inhalt] of Object.entries(dateien)) writeFileSync(join(LOGO, name), KOPF + inhalt + '\n');
   writeFileSync(join(SEITE, 'favicon.svg'), KOPF + kachel() + '\n');

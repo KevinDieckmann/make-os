@@ -51,15 +51,15 @@ describe('website/pruefen.mjs', () => {
     expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/gelbe Platzhalter-Markierung/);
   });
 
-  it('Logo-Dateien sind da, die Bühne zeichnet dieselbe Bildmarke, Kopf und Favicons zeigen darauf', () => {
+  it('Logo-Dateien sind da, die Bühne zeichnet dieselbe Wortmarke, Kopf und Favicons zeigen darauf', () => {
     for (const d of LOGO_DATEIEN) expect(existsSync(join(ORDNER, d)), d).toBe(true);
     const k = kopie();
     fuellen(k);
-    // Ein anderer Punkt in der Bühne fällt genauso auf wie ein anderer Zug.
-    ersetze(k, 'index.html', /(<svg class="zeichen"[\s\S]*?)<circle cx="120" cy="92"/, '$1<circle cx="120" cy="136"');
+    // Ein anderer Strich in der Bühne fällt genauso auf wie ein anderer Buchstabe.
+    ersetze(k, 'index.html', /(<svg class="zeichen"[\s\S]*?)<rect([^>]*) x="194"/, '$1<rect$2 x="190"');
     rmSync(join(k, 'assets/logo/kompakt.svg'));
     const f = pruefeWebsite(k).fehler.join('\n');
-    expect(f).toMatch(/Bühnen-Zeichen weicht von assets\/logo\/bildmarke\.svg ab/);
+    expect(f).toMatch(/Bühnen-Zeichen weicht von assets\/logo\/wortmarke\.svg ab/);
     expect(f).toMatch(/srcset assets\/logo\/kompakt\.svg — Datei fehlt/);
     expect(f).toMatch(/assets\/logo\/kompakt\.svg: fehlt/);
   });

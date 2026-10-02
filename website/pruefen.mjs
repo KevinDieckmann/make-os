@@ -10,7 +10,7 @@
 //     (Schriften, Bilder, Stile nur vom eigenen Server), keine Tracker.
 //   · Pflichtteile je Seite: lang="de", Titel, genau eine H1, Login-Knopf, Impressum + Datenschutz im Fuß.
 //   · Jeder eigene Link, jedes srcset und jede url() in CSS zeigt auf eine vorhandene Datei bzw. einen Anker.
-//   · Logo: alle Dateien aus assets/logo/ da (scripts/website-logo.mjs), die Bühne zeichnet dieselbe Bildmarke.
+//   · Logo: alle Dateien aus assets/logo/ da (scripts/website-logo.mjs), die Bühne zeichnet dieselbe Wortmarke (wortmarke.svg).
 //   · Angebote: Interim CSO, Interim Head of Sales, Events & Netzwerk gleichwertig mit „Erstgespräch anfragen“, genau
 //     EIN „Coming Soon“ — bei Development. Make.One und Make.Beteiligungen mit ihrem Mail-Knopf (Betreff).
 //   · Erstgespräch: das Ziel steht an GENAU einer Stelle (#erstgespraech-link) — heute die vorbereitete Mail, später
@@ -51,7 +51,7 @@ export const MAIL_BETREFFE = {
 export const NAVIGATION = ['#markttraktion', '#make-one', '#beteiligungen', '#ueber-uns', '#kontakt'];
 /** Logo-Dateien (erzeugt von scripts/website-logo.mjs). */
 export const LOGO_DATEIEN = ['bildmarke.svg', 'bildmarke-hell.svg', 'wortmarke.svg', 'wortmarke-hell.svg', 'kachel.svg', 'quer.svg', 'quer-hell.svg', 'kompakt.svg', 'kompakt-hell.svg',
-  'gross.svg', 'gross-hell.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-512.png', 'LOGO.md'].map(d => `assets/logo/${d}`);
+  'gross.svg', 'gross-hell.svg', 'visitenkarte-make.svg', 'visitenkarte-make-hell.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-512.png', 'LOGO.md'].map(d => `assets/logo/${d}`);
 /** Angebote auf der Startseite: Kennung des <article> → aktiv (mit „Erstgespräch anfragen“) oder „Coming Soon“. */
 export const ANGEBOTE = { 'angebot-interim-cso': 'aktiv', 'angebot-head-of-sales': 'aktiv', 'angebot-events': 'aktiv', 'angebot-development': 'bald' };
 /**
@@ -215,15 +215,16 @@ export function pruefeWebsite(ordner) {
     for (const [name, betreff] of Object.entries(MAIL_BETREFFE)) if (!index.includes(`href="${KONTAKT}?subject=${betreff}"`)) fehler.push(`index.html: Mail-Knopf „${name}“ fehlt`);
     const p = PREISE.exec(index.replace(/<[^>]+>/g, ' '));
     if (p) fehler.push(`index.html: „${p[0]}“ — keine Preise auf der Seite`);
-    // Die Bühne zeichnet dieselbe Bildmarke wie assets/logo/bildmarke.svg (sonst laufen zwei Logos auseinander).
+    // Die Bühne zeichnet dieselbe Wortmarke wie assets/logo/wortmarke.svg (sonst laufen zwei Logos auseinander).
     const zeichen = /<svg class="zeichen"[\s\S]*?<\/svg>/.exec(index)?.[0] ?? '';
-    // Formen: Pfade (d + Strich- oder Füllfarbe) und Kreise (Lage, Radius, Farbe) — ohne Klassen und Clip-Kennungen.
+    // Formen: Pfade (d + Strich- oder Füllfarbe), Kreise (Lage, Radius, Farbe) und Striche (Rechtecke) — ohne Klassen.
     const attr = (t, n) => new RegExp(`\\s${n}="([^"]+)"`).exec(t)?.[1] ?? '';
-    const pfade = s => Array.from(s.matchAll(/<(path|circle)\b[^>]*>/g), ([t, art]) => art === 'path'
+    const pfade = s => Array.from(s.matchAll(/<(path|circle|rect)\b[^>]*>/g), ([t, art]) => art === 'path'
       ? `p ${attr(t, 'd')}|${attr(t, 'stroke')}|${attr(t, 'fill')}`
-      : `c ${attr(t, 'cx')} ${attr(t, 'cy')} ${attr(t, 'r')}|${attr(t, 'fill')}`).sort().join(' ');
-    if (dateien.includes('assets/logo/bildmarke.svg') && pfade(zeichen) !== pfade(inhalt.get('assets/logo/bildmarke.svg')))
-      fehler.push('index.html: Bühnen-Zeichen weicht von assets/logo/bildmarke.svg ab — Block aus `node scripts/website-logo.mjs --buehne` übernehmen');
+      : art === 'circle' ? `c ${attr(t, 'cx')} ${attr(t, 'cy')} ${attr(t, 'r')}|${attr(t, 'stroke')}|${attr(t, 'fill')}`
+        : `r ${attr(t, 'x')} ${attr(t, 'y')} ${attr(t, 'width')} ${attr(t, 'height')}|${attr(t, 'fill')}`).sort().join(' ');
+    if (dateien.includes('assets/logo/wortmarke.svg') && pfade(zeichen) !== pfade(inhalt.get('assets/logo/wortmarke.svg')))
+      fehler.push('index.html: Bühnen-Zeichen weicht von assets/logo/wortmarke.svg ab — Block aus `node scripts/website-logo.mjs --buehne` übernehmen');
   }
 
   for (const d of LOGO_DATEIEN) if (!dateien.includes(d)) fehler.push(`${d}: fehlt (node scripts/website-logo.mjs)`);

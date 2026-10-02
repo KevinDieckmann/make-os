@@ -10,14 +10,14 @@ Sie liegt im Repo, Caddy liest sie auf dem Server read-only aus `/srv/make-os/ap
 
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Kopf (Logo, Navigation Markttraktion · Make.One · Make.Beteiligungen · Über uns · Kontakt, Handy-Menü, „Login“), Bühne „Innovation in Deutschland fördern“ mit sich einzeichnender Bildmarke, **Für wen** (KI- & Tech-Startups, Scale-ups, Corporates/Innovationseinheiten), **Markttraktion** (drei gleichwertige Karten: Interim CSO · Interim Head of Sales · Events & Netzwerk; darunter MAKE Innovation Development „Coming Soon“), **So arbeiten wir** (Analyse → Aufbau → Skalierung), **Make.One** (Einladung anfragen), **Make.Beteiligungen** (Projekt einreichen), Über uns MA + KE, **Erstgespräch** (`#erstgespraech`, vorbereitete Mail), Kontakt, Fuß |
+| `index.html` | Kopf (Logo, Navigation Markttraktion · Make.One · Make.Beteiligungen · Über uns · Kontakt, Handy-Menü, „Login“), Bühne „Innovation in Deutschland fördern“ mit sich einzeichnender Wortmarke (zwei Personenstriche), **Für wen** (KI- & Tech-Startups, Scale-ups, Corporates/Innovationseinheiten), **Markttraktion** (drei gleichwertige Karten: Interim CSO · Interim Head of Sales · Events & Netzwerk; darunter MAKE Innovation Development „Coming Soon“), **So arbeiten wir** (Analyse → Aufbau → Skalierung), **Make.One** (Einladung anfragen), **Make.Beteiligungen** (Projekt einreichen), Über uns MA + KE, **Erstgespräch** (`#erstgespraech`, vorbereitete Mail), Kontakt, Fuß |
 | `impressum.html` | Pflichtangaben nach § 5 DDG für die GmbH |
 | `datenschutz.html` | Hinweis passend zum tatsächlichen Verhalten (Hetzner DE, Caddy ohne Zugriffsprotokoll, keine Cookies, mailto) |
 | `404.html` | Seite für unbekannte Adressen (absolute Pfade, weil sie unter jeder Adresse erscheint) |
 | `css/seite.css` | CI-Tokens aus `lib/make-one/design.ts` (Look wie v1); Rot/Grün nur für MA/KE und den dünnen MAKE-Faden; Bewegung nur ohne `prefers-reduced-motion` |
 | `js/menue.js` | schließt das Handy-Menü (`<details>`) nach einem Klick, mit Esc oder per Klick daneben — liest, speichert, sendet nichts |
 | `js/erstgespraech.js` | übernimmt das Ziel aus `#erstgespraech-link` für alle Knöpfe mit `data-erstgespraech` (ohne Skript zeigen sie auf `#erstgespraech`) — liest, speichert, sendet nichts |
-| `assets/logo/` | Logo aus `scripts/website-logo.mjs` (nie von Hand ändern): Bildmarke (M mit geteiltem Punkt), Wortmarke (MAKE · rot/grüner Punkt · INNOVATION), quer, kompakt, groß, hell/dunkel, Favicons — Konstruktion in `assets/logo/LOGO.md` |
+| `assets/logo/` | Logo aus `scripts/website-logo.mjs` (nie von Hand ändern): Wortmarke (MAKE · roter Strich unter MA, grüner unter KE · INNOVATION), quer, kompakt, groß, Visitenkarten-Logo, hell/dunkel; Favicons/Kachel vorläufig noch die M-Bildmarke (Logo wird später überarbeitet) — Konstruktion in `assets/logo/LOGO.md` |
 | `logo-entwuerfe.html` | Logo-Übersicht aller Fassungen (Arbeitsdatei, wird nie ausgeliefert) |
 | `assets/fonts/` | Archivo + Public Sans (SIL Open Font License, selbst gehostet — keine Google-Fonts-Anfrage) |
 | `favicon.svg` | App-Kachel des neuen Logos (= `assets/logo/kachel.svg`) |
@@ -34,7 +34,7 @@ oder die HTML-Datei direkt im Browser öffnen. Logo ändern: `node scripts/websi
 2. **Prüfen:** `node website/pruefen.mjs` → muss **„freigabefähig“** melden (Ausgang 0). Er prüft außerdem: keine
    Skripte, keine Inline-Stile, keine fremden Quellen/Tracker, eine H1 je Seite, Login-Knopf, Impressum- und
    Datenschutz-Link, alle eigenen Links und Anker — dazu: Skripte nur aus `js/` und ohne Speichern/Senden, Logo-Dateien
-   vollständig, Bühnen-Zeichen = `assets/logo/bildmarke.svg`, Navigation, Angebote (drei mit „Erstgespräch anfragen“, genau
+   vollständig, Bühnen-Zeichen = `assets/logo/wortmarke.svg`, Navigation, Angebote (drei mit „Erstgespräch anfragen“, genau
    ein „Coming Soon“ bei Development), Mail-Knöpfe Make.One/Make.Beteiligungen, **Ziel des Erstgesprächs an genau einer Stelle**
    (`#erstgespraech-link`: vorbereitete Mail oder Buchungsseite mit gültigem Slug), **keine Preise**, **Sperrliste**: keine anderen Firmen-, Marken- oder
    Projektnamen (nur MAKE), der Name der Software nirgends im Ordner, Wortregeln (kein „Dashboard“, „Tool“,
