@@ -78,7 +78,7 @@ export function SchwellenKarte({ i = 8 }: { i?: number }) {
           return (
             <FeldK key={f.id} label={`${f.label}${f.einheit === '€' ? ' (€)' : f.einheit === 'Monate' ? ' (Monate)' : ''}`} breit={190}>
               {prozent
-                ? <ProzentFeld wert={eigen ? sw[f.id] : null} leer platzhalter={String(vorgabe * 100).replace('.', ',')} dezimal={0} titel={f.label} breite="100%" onFertig={v => speichere(f.id, v, f.label)} />
+                ? <ProzentFeld wert={eigen ? sw[f.id] : null} leer platzhalter={String(Number((vorgabe * 100).toFixed(4))).replace('.', ',')} dezimal={0} titel={f.label} breite="100%" onFertig={v => speichere(f.id, v, f.label)} />
                 : <ZahlFeld wert={eigen ? sw[f.id] : null} leer platzhalter={eur(vorgabe)} dezimal={0} titel={f.label} breite="100%" onFertig={v => speichere(f.id, v, f.label)} />}
             </FeldK>
           );
