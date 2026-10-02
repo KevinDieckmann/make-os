@@ -18,6 +18,7 @@ import { EventModus, type EventWahl } from './EventModus';
 import { Erfassen } from './Erfassen';
 import { Heute } from './Heute';
 import { useKontext, useWarteschlange } from './useNetzwerken';
+import { OhneTerminKnopf } from './Ergebnis';
 
 type Reiter = 'erfassen' | 'heute';
 
@@ -86,6 +87,7 @@ function Warteschlange({ warte }: { warte: ReturnType<typeof useWarteschlange> }
                 <span><b>{e.anzeige.name}</b> · {e.anzeige.schritt}{e.anzeige.termin ? ` · ${e.anzeige.termin}` : ''} · {e.anzeige.eventTitel}</span>
                 <span style={{ color: e.status === 'fehler' ? LEUCHT.kritisch : C.inkDim }}>{e.hinweis}</span>
                 {e.status === 'fehler' && <span style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}><Gross ton="haupt" onClick={() => void warte.erneut(e.id)} kleinerAbstand>Erneut versuchen</Gross><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></span>}
+                <OhneTerminKnopf e={e} onOhneTermin={x => void warte.ohneTermin(x)} />
               </li>
             ))}
           </ul>

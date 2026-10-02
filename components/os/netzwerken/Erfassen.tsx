@@ -32,6 +32,7 @@ const KEINE_FIRMEN: Firma[] = [];
 import { fotoVorbereiten, dateiAlsBase64, type Foto } from './bild';
 import { Sprachnotiz, type Aufnahme } from './Sprachnotiz';
 import { TerminWahl, type TerminEingabe } from './TerminWahl';
+import { OhneTerminKnopf, linksAusAntwort } from './Ergebnis';
 import type { EventWahl } from './EventModus';
 import type { Person, useWarteschlange } from './useNetzwerken';
 
@@ -160,7 +161,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
       const k: Record<string, string> = {};
       for (const [name, wert] of Object.entries(f)) if (typeof wert === 'string' && wert.trim()) k[name] = wert.trim();
       const koerper: Record<string, unknown> = {
-        erfassungId: e.id, erfasstAm: new Date().toISOString(), eventId: wahl.eventId,
+        erfassungId: e.id, erfasstAm: new Date().toISOString(), eventId: wahl.eventId, ...(ich ? { erfasstVon: ich } : {}),
         ...(wahl.lokal ? { eventNeu: { titel: wahl.titel, datum: wahl.datum, ...(wahl.ort ? { ort: wahl.ort } : {}) } } : {}),
         kontakt: k,
         ...(e.vorhandenId ? { vorhandenKontaktId: e.vorhandenId } : {}), ...(e.neuErzwingen ? { neuErzwingen: true } : {}),
@@ -247,7 +248,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
             {/* Kennen wir schon? */}
             {gewaehlt ? (
               <Hinweis farbe={LEUCHT.gut} rolle="status">
-                <b>✓ Ich nehme {anzeigename(gewaehlt)}</b>{gewaehlt.firma ? ` · ${gewaehlt.firma}` : ''} — diese Person gibt es schon. Karte, Info und nächster Schritt hängen an ihr; die eingetragenen Felder ändern sie nicht.
+                <b>✓ Ich nehme {anzeigename(gewaehlt)}</b>{gewaehlt.firma ? ` · ${gewaehlt.firma}` : ''} — diese Person gibt es schon. Karte, Info und nächster Schritt hängen an ihr; leere Felder (Telefon, Handy, Position, LinkedIn, Website) werden ergänzt, nichts wird überschrieben.
                 <div style={{ marginTop: 10 }}><Gross onClick={() => up({ vorhandenId: undefined })} kleinerAbstand>Doch neu anlegen</Gross></div>
               </Hinweis>
             ) : treffer.length > 0 && !e.neuErzwingen ? (
@@ -446,7 +447,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
         </>
       )}
 
-      {phase === 'fertig' && gesendetId && <Fertig id={gesendetId} warte={warte} name={personName || 'Person'} zustaendig={nameVon(e.zustaendig)} foto={e.fotos[0]?.dataUrl ?? null} onNochEine={nochEine} onBericht={onBericht} />}
+      {phase === 'fertig' && gesendetId && <Fertig id={gesendetId} warte={warte} name={personName || 'Person'} zustaendig={nameVon(e.zustaendig)} foto={e.fotos[0]?.dataUrl ?? null} onNochEine={nochEine} onBericht={onBericht} schritt={sch ?? undefined} />}
 
       {gross && (
         <Fenster titel={`Foto ${e.fotos.findIndex(x => x.id === gross.id) + 1}`} onZu={() => setGross(null)} breit={900}>
@@ -491,13 +492,14 @@ function KartenPlatzhalter({ name }: { name: string }) {
 }
 
 /** Nach dem Speichern: was gerade passiert — gesendet, wartet aufs Netz oder abgelehnt. Bei „gesendet“ landet die Karte in der Kartei. */
-function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht }: { id: string; warte: Warte; name: string; zustaendig: string; foto: string | null; onNochEine: () => void; onBericht: () => void }) {
+function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schritt }: { id: string; warte: Warte; name: string; zustaendig: string; foto: string | null; onNochEine: () => void; onBericht: () => void; schritt?: NetzwerkSchritt }) {
   const e = warte.eintraege.find(x => x.id === id);
   const a = warte.antworten[id];
   const wartet = e?.status === 'wartet';
   const fehlt = e?.status === 'fehler';
   const verlinkt: CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ZIEL, borderRadius: 14, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)', color: C.ink, textDecoration: 'none', fontWeight: 700, fontSize: 16 };
-  const verknuepfungen: LinkChip[] = [];
+  // Termin · Deal · Follow-up · Event aus den Kennungen, die der Server liefert (der Kontakt hat oben seinen eigenen Link).
+  const verknuepfungen: LinkChip[] = linksAusAntwort(a, schritt).filter(l => l.id !== 'kontakt');
   return (
     <section aria-label="Gespeichert" style={{ display: 'grid', gap: 14 }}>
       {!e ? (
@@ -525,7 +527,7 @@ function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht }: { 
       ) : (
         <Hinweis farbe={LEUCHT.achtung} rolle="status"><b style={{ fontSize: 17 }}>Auf dem Gerät gespeichert</b><div style={{ marginTop: 6 }}>{warte.laeuft ? 'Wird gerade gesendet …' : (e.hinweis ?? 'Wird gesendet, sobald Netz da ist.')}</div>{warte.neuLaden && <div style={{ marginTop: 6 }}>MAKE OS wurde aktualisiert — bitte die Seite neu laden. Die Erfassung bleibt auf dem Gerät.</div>}</Hinweis>
       )}
-      {fehlt && e && <div style={{ display: 'grid', gap: 8 }}><Gross ton="haupt" onClick={() => void warte.erneut(e.id)}>Erneut versuchen</Gross><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></div>}
+      {fehlt && e && <div style={{ display: 'grid', gap: 8 }}><Gross ton="haupt" onClick={() => void warte.erneut(e.id)}>Erneut versuchen</Gross><OhneTerminKnopf e={e} onOhneTermin={x => void warte.ohneTermin(x)} /><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></div>}
       {!wartet && !fehlt && a?.kontaktId && <Link href={WEG.akte(a.kontaktId)} className="fassbar" style={verlinkt}>Zum Kontakt ›</Link>}
       {/* Platz für die Verknüpfungen der Erfassung (Termin · Deal · Follow-up · Event): eine Zeile Chips, leer = unsichtbar. */}
       {!wartet && !fehlt && <LinkChips links={verknuepfungen} />}

@@ -7,12 +7,14 @@
 // sind nicht erreichbar. AUSNAHME (Kevin 02.10.): `?fuer=<person>` — die Inhaberin/der Inhaber des Haushalts darf Profile für eine
 // andere Person DES HAUSHALTS anlegen und bearbeiten („für Malin anlegen“); alle anderen bekommen 403, auch wer nur im Haushalt ist.
 // Das Protokoll (listePatchen) nennt Kennung + Feldnamen und `wer` = die schreibende Person, nie Werte. Zugang nur mit Haushalt
-// (wie Familie); schreibend zusätzlich `bauPruefen`. Logos: SVG wird gesäubert (lib/netzwerken/svg.ts), alles Weitere in
+// (wie Familie) UND nur von Hand angemeldet: der Dienstweg (ZOE, Takt, Skripte) bekommt 403 — wie /api/netzwerken (03.10.); ein
+// Visitenkarten-Profil ist eine persönliche Angabe (Name, Rolle, Kontakt) und gehört nie in einen Hintergrundlauf. Schreibend zusätzlich `bauPruefen`. Logos: SVG wird gesäubert (lib/netzwerken/svg.ts), alles Weitere in
 // `pruefeKarte`. Firmen-Vorschläge: Name, Anschrift, Web — nie Bank/Steuer.
 
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
-import { haushaltVon, haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
+import { haushaltVon, haushaltFuer, type HaushaltZugang } from '@/lib/finanzen/haushalt/zugriff';
+import { istDienst } from '@/lib/zugang/dienst';
 import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { loadJson } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
@@ -28,6 +30,12 @@ export const dynamic = 'force-dynamic';
 const KEIN = { ok: false, fehler: 'Visitenkarten gibt es nur für Konten mit Haushalt. Der Inhaber schaltet das unter System → Konto frei.' };
 /** Höchstens so viele Änderungen je Anruf — darüber 413, nie still gekürzt. */
 const OPS_MAX = 40;
+
+/** Die eigene Person mit Haushalt — nur von Hand angemeldet, nie über den Dienstweg (auch nicht mit `x-make-person`). */
+async function eigene(req: Request): Promise<HaushaltZugang | null> {
+  if (istDienst(req)) return null;
+  return haushaltVon(req);
+}
 
 /** Firmen-Vorschläge aus den Gesellschaften des Haushalts: nur Name und öffentliche Kontaktangaben. */
 async function gesellschaften(haushalt: string) {
@@ -60,7 +68,7 @@ async function antwort(ziel: { person: string; fuerAndere: boolean }, z: { perso
 }
 
 export async function GET(req: Request) {
-  const z = await haushaltVon(req);
+  const z = await eigene(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   const ziel = await zielPerson(req, z);
   if (ziel instanceof NextResponse) return ziel;
@@ -68,7 +76,7 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const z = await haushaltVon(req);
+  const z = await eigene(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   const ziel = await zielPerson(req, z);

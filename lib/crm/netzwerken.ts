@@ -23,11 +23,18 @@ import { emailNormal, telefonNormal, linkedinNormal, webNormal, text } from './v
 import { mailLink } from './erfassen';
 import { kanalStatus } from './recht';
 import { werktagePlus, tagPlus, tagVon, wandzeit, wandAus, minutenVon } from '@/lib/zeit/kalender-kern';
+import { WEG } from '@/lib/wege';
 
 // ── Festwerte ───────────────────────────────────────────────────────────────
 
 /** Quelle am Kontakt — wo er herkommt. */
 export const NETZWERKEN_QUELLE = 'Netzwerken';
+/** Label an jeder über „Netzwerken“ erfassten Person — der Kartei-Filter „Label: Netzwerken“ zeigt sie (03.10.). */
+export const LABEL_NETZWERKEN = 'Netzwerken';
+/** Label, wenn eine neue Person vermutlich schon in der Kartei steht (gleicher Name + Firma, ohne Mail/Nummer). */
+export const LABEL_DUBLETTE = 'Dublette prüfen';
+/** Label, wenn der Lead nicht angefasst wurde (Firma ist Dienstleister/Investor/Wettbewerber, Kein Fit, Ruht, SQL). */
+export const LABEL_LEAD_PRUEFEN = 'Lead prüfen';
 /** Vermerk im Verlauf: die Karte wurde gegeben, eine Einwilligung gab es nicht. */
 export const KEINE_EINWILLIGUNG = 'Visitenkarte, keine Einwilligung (§ 7 UWG)';
 export const MAX_BILDER = 6;
@@ -102,6 +109,13 @@ export interface Erfassung {
   vorhandenKontaktId?: string;
   /** „Trotzdem neu“: keine Zusammenführung bei gleicher Mail/Nummer. */
   neuErzwingen?: boolean;
+  /**
+   * Wer erfasst hat (Kennung der angemeldeten Person im Browser). Eine Erfassung liegt unter Umständen auf einem Gerät, an dem
+   * inzwischen jemand anderes angemeldet ist — der Server sendet sie dann NICHT unter fremdem Namen (409, 03.10.). Ohne Angabe: keine Prüfung.
+   */
+  erfasstVon?: string;
+  /** Termin ließ sich nicht anlegen (kein Kalender, iCloud weg): stattdessen mit Follow-up abschließen („Termin vereinbaren“). */
+  ohneTermin?: boolean;
   firmaId?: string;
   bilder: BildEingabe[];
   sprachnotiz?: { typ: string; daten: string; dauerSek?: number };
@@ -125,6 +139,8 @@ const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
 /** Folgefrist für „Follow-up“: zwei Werktage nach dem Tag der Begegnung (Feiertage NRW zählen mit, `werktagePlus`). */
 export const followupFrist = (tag: string): string => werktagePlus(tag, 2);
+/** Folgefrist für „Ohne Termin abschließen“: der nächste Werktag — der Termin soll ja bald vereinbart werden. */
+export const followupFristEinTag = (tag: string): string => werktagePlus(tag, 1);
 
 /** „Anschrift“ → Stadt (PLZ + Ort in der letzten Zeile) — sonst nichts, nie raten. */
 export function stadtAusAnschrift(a: string | undefined): string | undefined {
@@ -224,7 +240,7 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
   if (!PERSON.test(zustaendig)) return fehler('Bitte wählen, wer zuständig ist.');
 
   const raus: Erfassung = { erfassungId, erfasstAm, eventId, ...(eventNeu ? { eventNeu } : {}), kontakt: felder, ...(vorhanden ? { vorhandenKontaktId: vorhanden } : {}),
-    ...(b.neuErzwingen === true ? { neuErzwingen: true } : {}), ...(firmaId ? { firmaId } : {}), bilder, ...(sprachnotiz ? { sprachnotiz } : {}),
+    ...(b.neuErzwingen === true ? { neuErzwingen: true } : {}), ...(typeof b.erfasstVon === 'string' && PERSON.test(b.erfasstVon) ? { erfasstVon: b.erfasstVon } : {}), ...(firmaId ? { firmaId } : {}), bilder, ...(sprachnotiz ? { sprachnotiz } : {}),
     schritt: schritt as NetzwerkSchritt, ...(infoRoh ? { info: infoRoh } : {}), zustaendig };
 
   // Einzelheiten je Schritt
@@ -238,9 +254,12 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
     const dauer = Math.round(Number(t.dauer));
     if (!(DAUERN as readonly number[]).includes(dauer)) return fehler('Die Dauer muss 30, 45 oder 60 Minuten sein.');
     if (typeof t.start !== 'string' || !WAND.test(t.start)) return fehler('Wann soll der Termin sein?');
-    // Nicht vor gestern — ein Termin in der Vergangenheit ist ein Tippfehler.
-    if (t.start.slice(0, 10) < tagPlus(opt.heute, -1)) return fehler('Der Termin liegt in der Vergangenheit.');
+    // Ein Termin in der Vergangenheit ist ein Tippfehler — gemessen am Zeitpunkt der Erfassung (die Warteschlange sendet unter
+    // Umständen später), mit 15 Minuten Luft für „jetzt gleich“. Nicht an der Sendezeit: sonst scheiterte jede liegengebliebene Erfassung.
+    const ab = wandAus(tagVon(wandzeit(new Date(erfasstAm))), minutenVon(wandzeit(new Date(erfasstAm))) - 15).slice(0, 16);
+    if (t.start < ab) return fehler('Der Termin liegt in der Vergangenheit — bitte eine Zeit ab jetzt wählen.');
     raus.termin = { art: t.art as TerminArt, dauer, start: t.start };
+    if (b.ohneTermin === true) raus.ohneTermin = true;
   } else if (schritt === 'vermitteln') {
     const v = (b.vermitteln ?? {}) as Record<string, unknown>;
     const an = text(v.an, 161);
@@ -286,6 +305,7 @@ export function netzwerkenAngabeSaeubern(v: unknown): NetzwerkenAngabe | undefin
   return {
     erfassungId: o.erfassungId, schritt: o.schritt as NetzwerkSchritt, zustaendig, erfasstVon, erfasstAm: am,
     ...(info ? { info } : {}), ...(typeof o.terminAm === 'string' && WAND.test(o.terminAm) ? { terminAm: o.terminAm } : {}),
+    ...(typeof o.terminId === 'string' && o.terminId.length <= 200 && o.terminId.trim() ? { terminId: o.terminId } : {}),
     ...(danke && Object.keys(danke).length ? { danke } : {}),
   };
 }
@@ -361,6 +381,45 @@ export function kennenText(t: Treffer, nameVon: (id: string) => string): { name:
   const k = t.kontakt;
   const zuletzt = k.letzterKontakt ?? [...(k.aktivitaeten ?? [])].filter(a => a.art !== 'system').map(a => a.am.slice(0, 10)).sort().pop();
   return { name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}), zustaendig: nameVon(haeltBeziehung(k)), ...(zuletzt ? { zuletzt } : {}) };
+}
+
+/**
+ * Was passiert beim Anlegen mit einer Person, die der Kartei ähnelt? (Server, 03.10.)
+ *  · `ziel`           gleiche persönliche Mail — oder gleiche Nummer UND gleicher Nachname: nicht doppelt anlegen, anhängen
+ *  · `gleicheNummer`  gleiche Nummer, anderer Nachname (Sammelanschluss, Familie, Zentrale): NEUE Person + Hinweis
+ *  · `vermutlich`     gleicher/ähnlicher Name und Firma, aber ohne Mail/Nummer als Beleg: NEUE Person + Hinweis + Label
+ * `eigeneId` (die feste Kennung der Erfassung) zählt nie als Treffer — ein wiederholter Lauf findet sich nicht selbst.
+ */
+export function zusammenfuehrung(e: Pick<Erfassung, 'kontakt'>, kontakte: readonly Kontakt[], eigeneId: string): { ziel?: Treffer; gleicheNummer?: Treffer; vermutlich?: Treffer } {
+  const nach = normName('', e.kontakt.nachname);
+  const alle = kenntWirSchon({ vorname: e.kontakt.vorname, nachname: e.kontakt.nachname, firma: e.kontakt.firma, email: e.kontakt.email, telefon: e.kontakt.telefon, mobil: e.kontakt.mobil },
+    kontakte.filter(x => !x.eingeschraenkt && x.id !== eigeneId), 8);
+  let gleicheNummer: Treffer | undefined, vermutlich: Treffer | undefined;
+  for (const t of alle) {
+    if (t.staerke === 'mail') return { ziel: t };
+    if (t.staerke === 'telefon') {
+      if (nach && normName('', t.kontakt.nachname) === nach) return { ziel: t };
+      gleicheNummer ??= t;
+    } else if (t.staerke === 'name-firma' || t.staerke === 'aehnlich') vermutlich ??= t;
+  }
+  return { ...(gleicheNummer ? { gleicheNummer } : {}), ...(vermutlich ? { vermutlich } : {}) };
+}
+
+/**
+ * Beim Anhängen an eine bestehende Person: leere Felder aus der Karte füllen (Telefon, Handy, Position, LinkedIn, Website),
+ * nichts überschreiben. Gibt die Person und die Namen der ergänzten Felder zurück.
+ */
+export function luekenFuellen(k: Kontakt, neu: KontaktFelder, heute: string): { kontakt: Kontakt; ergaenzt: string[] } {
+  const leer = (v: unknown) => typeof v !== 'string' || !v.trim();
+  const x: Kontakt = { ...k };
+  const ergaenzt: string[] = [];
+  const setze = (feld: 'telefon' | 'sms' | 'position' | 'linkedin' | 'firmaWebseite', wert: string | undefined, name: string) => {
+    if (wert && leer(x[feld])) { x[feld] = wert; ergaenzt.push(name); }
+  };
+  setze('telefon', neu.telefon, 'Telefon'); setze('sms', neu.mobil, 'Handy'); setze('position', neu.position, 'Position');
+  setze('linkedin', neu.linkedin, 'LinkedIn'); setze('firmaWebseite', neu.webseite, 'Webseite');
+  if (ergaenzt.length) x.geaendertAm = heute;
+  return { kontakt: ergaenzt.length ? x : k, ergaenzt };
 }
 
 /** Passt eine bestehende Firma? Genau (ohne Rechtsform) zuerst, dann Teilübereinstimmung (ab 3 Zeichen). */
@@ -447,7 +506,28 @@ export interface BerichtZeile {
   info?: string; terminAm?: string; erfasstAm: string;
   /** Was noch offen ist — Klartext für die Anzeige. */
   offen: string[];
+  /** Sprünge zu dem, was die Erfassung angelegt hat: Termin, Deal, Follow-up, Event, Person (03.10.). */
+  links: ErgebnisLink[];
 }
+/** Ein Sprung zu etwas, das eine Erfassung angelegt hat. */
+export interface ErgebnisLink { id: 'termin' | 'deal' | 'followup' | 'event' | 'kontakt'; label: string; href: string }
+
+/**
+ * Die Sprünge zu allem, was eine Erfassung angelegt hat — aus Kennungen, die der Server fest vergibt (`ch-nw-<Erfassung>`,
+ * `fu-<Erfassung>`, Termin-Schlüssel). Dieselbe Liste speist die Fertig-Seite und den Abendbericht.
+ */
+export function ergebnisLinks(o: { schritt: NetzwerkSchritt; erfassungId?: string; kontaktId?: string; eventId?: string; terminId?: string; terminAm?: string; dealId?: string; followupId?: string }): ErgebnisLink[] {
+  const l: ErgebnisLink[] = [];
+  if (o.terminId && o.terminAm) l.push({ id: 'termin', label: 'Termin öffnen', href: WEG.termin(o.terminId, o.terminAm.slice(0, 10)) });
+  const deal = o.dealId ?? (o.schritt === 'vermitteln' && o.erfassungId ? `ch-nw-${o.erfassungId}` : undefined);
+  if (deal) l.push({ id: 'deal', label: 'Deal öffnen', href: WEG.deal(deal) });
+  const fu = o.followupId ?? (o.schritt === 'followup' && o.erfassungId ? `fu-${o.erfassungId}` : undefined);
+  if (fu) l.push({ id: 'followup', label: 'Follow-up öffnen', href: WEG.followup() });
+  if (o.eventId) l.push({ id: 'event', label: 'Event öffnen', href: WEG.event(o.eventId) });
+  if (o.kontaktId) l.push({ id: 'kontakt', label: 'Zur Person', href: WEG.akte(o.kontaktId) });
+  return l;
+}
+
 export interface Bericht { event: Event; zeilen: BerichtZeile[]; jePerson: Record<string, number>; offenGesamt: number }
 
 /** Der Bericht eines Events: wen, welcher Schritt, wer zuständig, was offen ist — für beide, sortiert nach Zeit. */
@@ -467,10 +547,12 @@ export function berichtAus(o: { event: Event; teilnahmen: readonly Teilnahme[]; 
       else if (!n.danke?.rausAm) offen.push(berlinTag(n.erfasstAm) < o.heute ? 'Danke-Mail offen' : 'Danke-Mail ab morgen');
       if (n.schritt === 'followup' && offeneFu.has(k.id)) offen.push('Follow-up offen');
       if (n.schritt === 'qualifizieren' && (!k.lead || k.lead.status === 'qualifizierung')) offen.push('Qualifizierung offen');
+      if (n.schritt === 'termin' && !n.terminAm) offen.push('Termin nicht angelegt');
       if (n.schritt === 'angebot') offen.push('Angebot nur als Entwurf');
       if (n.schritt === 'makeone') offen.push(`${MARKE_EVENTS}-Einladung offen`);
     }
-    zeilen.push({ kontaktId: k.id, name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}), schritt: n.schritt, schrittText: schrittLabel(n.schritt), zustaendig: n.zustaendig, erfasstVon: n.erfasstVon, ...(n.info ? { info: n.info } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}), erfasstAm: n.erfasstAm, offen });
+    zeilen.push({ kontaktId: k.id, name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}), schritt: n.schritt, schrittText: schrittLabel(n.schritt), zustaendig: n.zustaendig, erfasstVon: n.erfasstVon, ...(n.info ? { info: n.info } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}), erfasstAm: n.erfasstAm, offen,
+      links: ergebnisLinks({ schritt: n.schritt, erfassungId: n.erfassungId, kontaktId: k.id, eventId: o.event.id, ...(n.terminId ? { terminId: n.terminId } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}) }) });
   }
   zeilen.sort((a, b) => a.erfasstAm.localeCompare(b.erfasstAm));
   const jePerson: Record<string, number> = {};

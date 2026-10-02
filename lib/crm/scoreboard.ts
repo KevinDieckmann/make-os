@@ -27,6 +27,7 @@ import type { KpiAmpel } from './kennzahlen';
 import { echtesGespraech } from './pipeline';
 import type { Traktion, Welt } from './traktion';
 import { followUpBis } from './events';
+import { istNetzwerkenEvent } from './marke';
 import { werIstDran } from './heute';
 import { fuerDich, nameVon, TEAM } from './team';
 import { localDay } from '@/lib/zeit';
@@ -204,7 +205,7 @@ export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: st
     { id: 'beitraege', welt: 'marketing', label: 'Veröffentlichte Beiträge', ziel: SCORE_ZIELE.beitraege, gelbAb: SCORE_ZIELE.beitraege / 2, quelle: 'Redaktionsplan, Status veröffentlicht', ab: abBeitrag, zaehle: anzahl(veroeffentlicht, b => tag(b.datum)) },
     { id: 'content_gespraeche', welt: 'marketing', label: 'Gespräche aus Content', ziel: null, gelbAb: null, quelle: 'Wirkung „Gespräch“ oder „Anfrage“ an Beiträgen, je Person und Beitrag einmal', ab: abContent,
       zaehle: w => new Set(wirkung.filter(x => drin(x.tag, w)).map(x => x.schluessel)).size },
-    { id: 'events', welt: 'event', label: 'Durchgeführte Events', ziel: null, gelbAb: null, quelle: 'Events, die stattgefunden haben', ab: abEvent, zaehle: anzahl(events.filter(e => stattgefunden(e, heute)), e => e.datum) },
+    { id: 'events', welt: 'event', label: 'Durchgeführte Events', ziel: null, gelbAb: null, quelle: 'Events, die stattgefunden haben', ab: abEvent, zaehle: anzahl(events.filter(e => stattgefunden(e, heute) && !istNetzwerkenEvent(e)), e => e.datum) },
     { id: 'nachfassen_48h', welt: 'event', label: 'Nachgefasst binnen 48 h', ziel: SCORE_ZIELE.nachfassen_48h, gelbAb: 60, quote: true, quelle: 'Gäste der Events dieser Woche, deren Frist vorbei ist', ab: abEvent,
       zaehle: w => {
         const g = gaeste.filter(x => drin(x.e.datum, w));

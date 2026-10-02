@@ -18,6 +18,7 @@ import { OFFENE_STUFEN, gesundheit, gesamtwert, echtesGespraech, WIN_RATE } from
 import { verweildauer } from './deal-auswertung';
 import { faellige } from './followup';
 import { eventZahlen, followUpBis } from './events';
+import { istNetzwerkenEvent } from './marke';
 import { art14, ampel as kanalAmpel } from './recht';
 import { berechneModell, type KennzahlDefBasis, type SaeuleDef, type Messung, type Detail, type Ampel, type Schwelle, type IndexErgebnis } from '@/lib/kennzahlen/kern';
 import { WEG } from '@/lib/wege';
@@ -196,7 +197,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   },
   events_90(b) {
     const vor90 = tagMinus(b.heute, 89);
-    const alle = b.crm.events.filter(e => e.status !== 'abgesagt');
+    const alle = b.crm.events.filter(e => e.status !== 'abgesagt' && !istNetzwerkenEvent(e));
     const vorbei = alle.filter(e => (e.status === 'durchgefuehrt' || e.datum < b.heute) && e.datum >= vor90).sort((x, y) => y.datum.localeCompare(x.datum));
     const kommend = alle.filter(e => e.datum >= b.heute && e.status !== 'durchgefuehrt').sort((x, y) => x.datum.localeCompare(y.datum));
     return [...vorbei.slice(0, 2).map(e => { const z = eventZahlen(e, b.crm.teilnahmen, b.kontakte, b.crm.chancen); return eventDetail(e, `${z.da} da`, `${tagKurz(e.datum)} · ${z.folgegespraeche} Folgegespräche`, 'gruen'); }),
@@ -210,15 +211,15 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   },
   folgegespraeche(b) {
     const g = grenzen(b, 'folgegespraeche');
-    return b.crm.events.filter(e => e.status !== 'abgesagt' && (e.status === 'durchgefuehrt' || e.datum < b.heute) && e.datum >= tagMinus(b.heute, 119)).sort((x, y) => y.datum.localeCompare(x.datum)).slice(0, 3)
+    return b.crm.events.filter(e => e.status !== 'abgesagt' && !istNetzwerkenEvent(e) && (e.status === 'durchgefuehrt' || e.datum < b.heute) && e.datum >= tagMinus(b.heute, 119)).sort((x, y) => y.datum.localeCompare(x.datum)).slice(0, 3)
       .map(e => { const z = eventZahlen(e, b.crm.teilnahmen, b.kontakte, b.crm.chancen); return eventDetail(e, `${z.folgegespraeche} Gespräche`, `${tagKurz(e.datum)} · ${z.da} Gäste da`, ampelVon(z.folgegespraeche, g)); });
   },
   erscheinen(b) {
-    return b.crm.events.filter(e => e.status !== 'abgesagt' && (e.status === 'durchgefuehrt' || e.datum < b.heute) && e.datum >= tagMinus(b.heute, 179)).sort((x, y) => y.datum.localeCompare(x.datum)).slice(0, 3)
+    return b.crm.events.filter(e => e.status !== 'abgesagt' && !istNetzwerkenEvent(e) && (e.status === 'durchgefuehrt' || e.datum < b.heute) && e.datum >= tagMinus(b.heute, 179)).sort((x, y) => y.datum.localeCompare(x.datum)).slice(0, 3)
       .map(e => { const z = eventZahlen(e, b.crm.teilnahmen, b.kontakte, b.crm.chancen); return eventDetail(e, z.zugesagt ? `${Math.round((z.da / z.zugesagt) * 100)} %` : '—', `${z.da} da von ${z.zugesagt} Zusagen${z.noShow ? ` · ${z.noShow} nicht gekommen` : ''}`); });
   },
   mischung(b) {
-    const n = b.crm.events.filter(e => e.status !== 'abgesagt' && e.status !== 'durchgefuehrt' && e.datum >= b.heute).sort((x, y) => x.datum.localeCompare(y.datum))[0];
+    const n = b.crm.events.filter(e => e.status !== 'abgesagt' && !istNetzwerkenEvent(e) && e.status !== 'durchgefuehrt' && e.datum >= b.heute).sort((x, y) => x.datum.localeCompare(y.datum))[0];
     return n ? [eventDetail(n, tagKurz(n.datum), 'Gäste und Mischung im Event')] : [];
   },
   ansprechbar(b) {

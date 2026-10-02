@@ -90,7 +90,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
                   </div>
                   {z.info && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, overflowWrap: 'anywhere' }}>{z.info}</div>}
                   {/* Platz für die Verknüpfungen der Zeile (Termin · Deal · Follow-up · Event): eine Zeile Chips, leer = unsichtbar. */}
-                  <LinkChips links={[] as LinkChip[]} />
+                  <LinkChips links={z.links.filter(l => l.id !== 'kontakt') as LinkChip[]} />
                   {z.offen.length > 0 && <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', gap: 6, flexWrap: 'wrap' }}>{z.offen.map(o => <li key={o} style={{ fontSize: TYP.bedien, fontWeight: 600, color: LEUCHT.achtung, background: `${LEUCHT.achtung}1F`, borderRadius: 999, padding: '3px 10px' }}>{o}</li>)}</ul>}
                 </div>
               </article>

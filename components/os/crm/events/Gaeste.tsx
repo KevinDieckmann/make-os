@@ -10,6 +10,7 @@
 // Malin 4“ mit dem, was noch aussteht; der Filter zeigt nur die eigenen.
 // Jede Änderung am Gast geht als Teil-Änderung (nur dieses Feld).
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Chip, Punkt, Leer, LEUCHT } from '../../schlank';
@@ -20,6 +21,8 @@ import { mix, mixGruppe, gaesteVorschlag, einladerMit, arbeitJePerson, type Einl
 import { followUpMoeglich } from '@/lib/crm/event-bruecke';
 import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
 import type { Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
+import { schrittLabel } from '@/lib/crm/netzwerken';
+import { WEG } from '@/lib/wege';
 import { neueId, datum } from '../daten';
 import { Pillen, Feld } from '../teile';
 import { Wahl } from '../Wahl';
@@ -122,6 +125,14 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
             <button onClick={() => { if (window.confirm(`${anzeigename(k)} von der Liste nehmen?`)) void api.weg('teilnahmen', t.id); }} aria-label="Gast entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.body }}>×</button>
           </span>
         </div>
+        {/* Erfasst über „Netzwerken“ (03.10.): nächster Schritt und Zuständigkeit stehen hier, der Abendbericht ist einen Tipp entfernt. */}
+        {t.netzwerken && (
+          <div data-netzwerken-gast style={{ fontSize: 12.5, color: C.inkDim, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+            <Chip farbe={LEUCHT.beziehung}>Netzwerken</Chip>
+            <span>{schrittLabel(t.netzwerken.schritt)}{t.netzwerken.terminAm ? ` · ${t.netzwerken.terminAm.slice(8, 10)}.${t.netzwerken.terminAm.slice(5, 7)}. ${t.netzwerken.terminAm.slice(11, 16)}` : ''} · zuständig {nameVon(t.netzwerken.zustaendig)}</span>
+            <Link href={WEG.netzwerken({ bericht: e.id })} style={{ color: C.aktiv, textDecoration: 'none' }}>Abendbericht ›</Link>
+          </div>
+        )}
         <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}>
           <Pillen einzeilig liste={GAST} aktiv={t.status} farbe={LEUCHT.beziehung}
             onWahl={status => gastSetzen(api, t, { status, ...((status === 'eingeladen' || status === 'zugesagt') && !t.eingeladenAm ? { eingeladenAm: heute } : {}) })} />

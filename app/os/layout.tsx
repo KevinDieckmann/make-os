@@ -13,6 +13,7 @@ import { Mitarbeit } from '@/components/os/Mitarbeit';
 import { WillkommenMalin } from '@/components/os/WillkommenMalin';
 import { Schnellsuche } from '@/components/os/Schnellsuche';
 import { NetzwerkenPopup } from '@/components/os/netzwerken/Popup';
+import { NetzwerkenSender } from '@/components/os/netzwerken/Sender';
 import { IdeeErfassen } from '@/components/os/bauplan/IdeeErfassen';
 import { wache } from '@/lib/zugang/wache';
 
@@ -51,6 +52,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       <Mitarbeit />
       {/* Netzwerken (02.10.): „… hat dir einen Termin gebucht“ — die Karte erscheint einmal, bis sie gelesen ist. */}
       <NetzwerkenPopup />
+      {/* Netzwerken (03.10.): sendet liegengebliebene Erfassungen von JEDER Seite aus (Öffnen, Netz da, sichtbar, alle 30 s) und zählt sie für die Handy-Leiste. */}
+      <NetzwerkenSender />
       {/* Einmaliger Gruß beim allerersten Öffnen. */}
       <WillkommenMalin />
     </div>

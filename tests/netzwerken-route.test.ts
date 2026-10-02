@@ -1,5 +1,6 @@
-// ─── Netzwerken · Meine Visitenkarten, Route + Speicher (02.10., Paket B) ────────
-// Eigener Datenordner, Dienstweg mit Person. Erfundene Konten: Inhaber (kevin), Mitglied (malin) im selben Haushalt, ein
+// ─── Netzwerken · Meine Visitenkarten, Route + Speicher (02.10., Paket B; 03.10.: echte Sitzung statt Dienstweg) ───
+// Eigener Datenordner; die Anfragen tragen `x-make-user` wie nach der Middleware bei angemeldeter Person (die Middleware setzt den Kopf
+// aus dem Sitzungs-Cookie). Der Dienstweg (Schlüssel + Person) bekommt 403 — eigener Test unten. Erfundene Konten: Inhaber (kevin), Mitglied (malin) im selben Haushalt, ein
 // Fremder (fritz) in einem anderen Haushalt, ein Konto ohne Haushalt (gast).
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -14,7 +15,10 @@ delete process.env.MAKE_OS_DATENSCHLUESSEL;
 const ID = (n: number) => `v-3f2b9c1e-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const SVG = (inhalt: string) => `data:image/svg+xml;base64,${Buffer.from(inhalt, 'utf8').toString('base64')}`;
 const req = (person: string, methode: 'GET' | 'PATCH', body?: unknown, query = '') =>
-  new Request(`http://test/api/netzwerken/karten${query}`, { method: methode, headers: { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': person }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  new Request(`http://test/api/netzwerken/karten${query}`, { method: methode, headers: { 'content-type': 'application/json', 'x-make-user': person }, ...(body ? { body: JSON.stringify(body) } : {}) });
+/** Der Dienstweg: Schlüssel und eine Person (so riefen ZOE, Takt und Skripte früher auf). */
+const dienstReq = (person: string | null, methode: 'GET' | 'PATCH', body?: unknown) =>
+  new Request('http://test/api/netzwerken/karten', { method: methode, headers: { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, ...(person ? { 'x-make-person': person } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
 type Antwort = { ok: boolean; fehler?: string; karten?: { id: string; stand: string; [k: string]: unknown }[]; konflikte?: unknown[]; personen?: { person: string }[]; person?: string; fuerAndere?: boolean; konto?: { name: string } | null; gesellschaften?: unknown[] };
 let route: { GET: (r: Request) => Promise<Response>; PATCH: (r: Request) => Promise<Response> };
 let db: typeof import('@/lib/store/local-db');
@@ -33,6 +37,19 @@ beforeAll(async () => {
   route = (await import('@/app/api/netzwerken/karten/route')) as unknown as typeof route;
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
+
+describe('Dienstweg: 403 (03.10.)', () => {
+  it('Schlüssel + Person des Inhabers lesen und schreiben NICHT — Visitenkarten sind persönlich, nie für Hintergrundläufe', async () => {
+    for (const p of ['kevin', 'malin', null]) {
+      expect((await route.GET(dienstReq(p, 'GET'))).status).toBe(403);
+      expect((await route.PATCH(dienstReq(p, 'PATCH', { ops: [neu(1)] }))).status).toBe(403);
+    }
+    // Nichts wurde geschrieben.
+    expect(await db.loadJson('visitenkarten--kevin')).toBeNull();
+    // Dieselbe Person mit echter Sitzung (x-make-user) kommt durch.
+    expect((await holen('kevin')).status).toBe(200);
+  });
+});
 
 describe('Haushalts-Tor und eigener Bestand', () => {
   it('ohne Haushalt oder ohne Person: 403', async () => {
@@ -151,7 +168,7 @@ describe('Stand und 409, Teiländerung, Löschen, Grenzen', () => {
     expect((await schreibe('malin', [neu(400)])).status).toBe(413);
   });
   it('kaputte Eingaben: kein JSON, keine Liste, leere Liste', async () => {
-    const r = await route.PATCH(new Request('http://test/api/netzwerken/karten', { method: 'PATCH', headers: { 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'malin' }, body: '{' }));
+    const r = await route.PATCH(new Request('http://test/api/netzwerken/karten', { method: 'PATCH', headers: { 'x-make-user': 'malin' }, body: '{' }));
     expect(r.status).toBe(400);
     expect((await schreibe('malin', 'x')).status).toBe(400);
     expect((await schreibe('malin', [])).status).toBe(400);

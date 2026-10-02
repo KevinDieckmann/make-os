@@ -19,11 +19,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronDown, Settings, LayoutDashboard, PanelLeftClose, PanelLeftOpen, MessageSquareWarning, Handshake, type LucideIcon } from 'lucide-react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { SPACES, UNTEN, EIGEN, aktiverSpaceEintrag, type SpaceId, type SpaceEintrag } from '@/lib/make-one/spaces';
 import { useSpace } from '@/hooks/useSpace';
 import { problemMelden } from './bauplan/IdeeErfassen';
 import { WEG } from '@/lib/wege';
+import { useWartezahl, wartezahlText } from '@/lib/netzwerken/zaehler';
 
 const SYSTEM: SpaceEintrag = { href: '/os/system', label: 'System', icon: Settings, passt: ['/os/system', '/os/verbindungen', '/os/konto', '/os/datenbasis', '/os/stammdaten', '/os/bauplan', '/os/roadmap', '/os/onboarding'] };
 /** Unter Home (Kevin 26.09.): Wachstum — die Gesamtansicht, das zentrale Stück. */
@@ -68,6 +69,7 @@ export function Leiste() {
   const passt = (e: SpaceEintrag) => e.passt.some(p => pfad === p || pfad.startsWith(`${p}/`));
   const [konto, setKonto] = useState<{ name: string } | null>(null);
   const [offen, setOffen] = useState<SpaceId | null>(null); // Handy-Blatt
+  const wartezahl = useWartezahl(); // Netzwerken (03.10.): wie viele Erfassungen noch auf dem Gerät warten
   // Welcher Kasten aufgeklappt ist — folgt dem Space, reagiert aber sofort auf den Tipp.
   const [auf, setAuf] = useState<SpaceId>(space);
   useEffect(() => { setAuf(space); }, [space]);
@@ -204,8 +206,10 @@ export function Leiste() {
           { art: 'link' as const, href: WEG.netzwerken(), label: 'Netzwerken', icon: Handshake, farbe: C.aktiv, an: pfad === WEG.netzwerken() || pfad.startsWith(`${WEG.netzwerken()}/`) },
           { art: 'link' as const, href: '/os/system', label: 'System', icon: Settings, farbe: C.aktiv, an: passt(SYSTEM) }]).map(e => {
           const Icon = e.icon;
-          const innen = <><Icon size={20} strokeWidth={1.75} /><span>{e.label}</span></>;
-          const stil = { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, flex: 1, padding: '6px 0', border: 'none', background: 'none', textDecoration: 'none', color: e.an ? e.farbe : C.inkDim, fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 500, cursor: 'pointer' };
+          // Netzwerken (03.10.): wartet etwas auf dem Gerät, steht es als Abzeichen am Knopf („2 warten“).
+          const abzeichen = e.label === 'Netzwerken' ? wartezahlText(wartezahl) : null;
+          const innen = <><Icon size={20} strokeWidth={1.75} /><span>{e.label}</span>{abzeichen && <span data-netzwerken-zaehler aria-label={`${abzeichen} auf dem Gerät`} style={{ position: 'absolute', top: -5, left: '50%', marginLeft: 4, padding: '1px 6px', borderRadius: 999, fontSize: 10, fontWeight: 700, lineHeight: 1.4, whiteSpace: 'nowrap', background: wartezahl.wartend ? LEUCHT.achtung : LEUCHT.kritisch, color: C.grund }}>{abzeichen}</span>}</>;
+          const stil = { position: 'relative' as const, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, flex: 1, padding: '6px 0', border: 'none', background: 'none', textDecoration: 'none', color: e.an ? e.farbe : C.inkDim, fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 500, cursor: 'pointer' };
           return e.art === 'space'
             ? <button key={e.label} type="button" onClick={() => setOffen(o => (o === e.id ? null : e.id))} className="fassbar" style={stil}>{innen}</button>
             : <Link key={e.href} href={e.href} className="fassbar" style={stil}>{innen}</Link>;

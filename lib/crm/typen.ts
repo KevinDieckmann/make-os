@@ -364,6 +364,8 @@ export interface NetzwerkenAngabe {
   info?: string;
   /** Termin (Berliner Wandzeit), wenn der Schritt „Termin“ war. */
   terminAm?: string;
+  /** Schlüssel des Termins im Kalender (Link „Termin öffnen“) — erst gesetzt, wenn der Termin wirklich angelegt ist. */
+  terminId?: string;
   /** Danke-Mail: gewählte Anrede und der Tag, an dem sie als „raus“ bestätigt wurde. */
   danke?: { anrede?: 'Du' | 'Sie'; rausAm?: string };
 }

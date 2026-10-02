@@ -6,9 +6,10 @@ import type { Event, Teilnahme, Firma, FollowUp } from '@/lib/crm/typen';
 import {
   erfassungPruefen, kenntWirSchon, kennenText, firmaVorschlaege, followupFrist, dankeEntwurf, dankeMailtoLink, dankeZeilen, dankeOffen, berichtAus,
   netzwerkenAngabeSaeubern, stadtAusAnschrift, wandPlusMinuten, abstand, neuesEvent, SCHRITTE, INFO_MAX, MAX_BILDER,
+  zusammenfuehrung, luekenFuellen, ergebnisLinks, followupFristEinTag,
 } from '@/lib/crm/netzwerken';
 import { karteAuslesen, ausgelesenesUebernehmen, KARTE_AUSLESEN_AN } from '@/lib/crm/netzwerken-karte';
-import { bewerten, Warteschlange, ramSpeicher, WARTET_TEXT, type Sender } from '@/lib/netzwerken/warteschlange';
+import { bewerten, Warteschlange, ramSpeicher, WARTET_TEXT, wartendFuer, type Sender } from '@/lib/netzwerken/warteschlange';
 import { sprachnotizTypErkennen } from '@/lib/dateien/regeln';
 import { anstehendAbleiten, pruefeEingabe, ARTEN } from '@/lib/meldungen/regeln';
 import { kanalStatus } from '@/lib/crm/recht';
@@ -326,29 +327,102 @@ describe('Bewertung und Warteschlange (Offline-Sicherheit)', () => {
     expect(r.wartend).toBe(2);
   });
 
-  it('Server-5xx: bleibt und wird wiederholt; 400: „Fehler“ mit Klartext, geht nicht verloren, die übrigen laufen weiter; „erneut“ gibt frei', async () => {
-    let fehlerFall = true;
-    const s = server(n => (n === 1 ? { status: 500, daten: { ok: false, fehler: 'Gerade nicht möglich' } } : n === 2 ? { status: 400, daten: { ok: false, fehler: 'Nachname fehlt — bitte eintragen.' } } : fehlerFall ? { status: 200 } : { status: 200 }));
-    const q = new Warteschlange(ramSpeicher(), s.sender);
+  it('Server-5xx: bleibt, blockiert die anderen nicht, nach drei Versuchen „Fehler“; 400: „Fehler“ mit Klartext; „erneut“ gibt frei (03.10.)', async () => {
+    let x1Ok = false;
+    // x1 bekommt IMMER 500, bis x1Ok gesetzt ist; x2 immer 400 — der Sender entscheidet nach Kennung.
+    const gesehen = new Set<string>(); const aufrufe: string[] = [];
+    const sender: Sender = async kp => {
+      const id = String(kp.erfassungId); aufrufe.push(id);
+      if (id === 'x1' && !x1Ok) return { status: 500, daten: { ok: false, fehler: 'Gerade nicht möglich' } };
+      if (id === 'x2') return { status: 400, daten: { ok: false, fehler: 'Nachname fehlt — bitte eintragen.' } };
+      gesehen.add(id); return { status: 200, daten: { ok: true } };
+    };
+    const q = new Warteschlange(ramSpeicher(), sender);
     await q.ablegen(koerper('x1'), anzeige, 1);
     await q.ablegen(koerper('x2'), anzeige, 2);
+    await q.ablegen(koerper('x3'), anzeige, 3);
+    // Durchlauf 1: x1 → 500 (Versuch 1), x2 → 400 (Fehler), x3 → gesendet. Ein 500 bricht den Durchlauf NICHT ab.
     const r1 = await q.senden();
-    expect(r1.gesendet).toEqual([]); // 500 → Schluss
-    expect((await q.alle())[0]).toMatchObject({ id: 'x1', status: 'wartet', hinweis: 'Gerade nicht möglich' });
-    const r2 = await q.senden(); // x1: 400 → Fehler, dann x2: 200
-    expect(r2.gesendet.map(e => e.id)).toEqual(['x2']);
-    const rest = await q.alle();
-    expect(rest).toHaveLength(1);
-    expect(rest[0]).toMatchObject({ id: 'x1', status: 'fehler', hinweis: 'Nachname fehlt — bitte eintragen.' });
-    expect(r2.fehler).toBe(1);
-    // ein Fehler wird nicht automatisch wiederholt …
-    const vorher = s.aufrufe.length;
+    expect(r1.gesendet.map(e => e.id)).toEqual(['x3']);
+    expect(r1.fehler).toBe(1);
+    let l = await q.alle();
+    expect(l.find(e => e.id === 'x1')).toMatchObject({ status: 'wartet', versuche: 1, hinweis: 'Gerade nicht möglich' });
+    expect(l.find(e => e.id === 'x2')).toMatchObject({ status: 'fehler', hinweis: 'Nachname fehlt — bitte eintragen.' });
+    // Durchlauf 2 und 3: x1 weiter 500 → nach dem dritten Versuch „Fehler“ mit Klartext.
     await q.senden();
-    expect(s.aufrufe.length).toBe(vorher);
-    // … aber auf Wunsch
-    fehlerFall = false;
+    expect((await q.alle()).find(e => e.id === 'x1')).toMatchObject({ status: 'wartet', versuche: 2 });
+    await q.senden();
+    l = await q.alle();
+    expect(l.find(e => e.id === 'x1')).toMatchObject({ status: 'fehler', versuche: 3 });
+    expect(l.find(e => e.id === 'x1')!.hinweis).toMatch(/nach 3 Versuchen/);
+    // Ein Fehler wird nicht automatisch wiederholt …
+    const vorher = aufrufe.length;
+    await q.senden();
+    expect(aufrufe.length).toBe(vorher);
+    // … aber auf Wunsch (mit frischen drei Versuchen).
+    x1Ok = true;
     await q.erneut('x1');
+    expect((await q.alle()).find(e => e.id === 'x1')).toMatchObject({ status: 'wartet', versuche: 0 });
     expect((await q.senden()).gesendet.map(e => e.id)).toEqual(['x1']);
+  });
+
+  it('nur „kein Netz“ (Status 0) bricht den Durchlauf ab — auch 401 und 429 (03.10.)', async () => {
+    for (const status of [401, 429]) {
+      const s = server(() => ({ status, daten: { ok: false } }));
+      const q = new Warteschlange(ramSpeicher(), s.sender);
+      await q.ablegen(koerper('a'), anzeige, 1); await q.ablegen(koerper('b'), anzeige, 2);
+      await q.senden();
+      expect(s.aufrufe).toEqual(['a']);
+    }
+  });
+
+  it('„teilweise“ (Termin ging nicht): Fehler mit Merkmal, „Ohne Termin abschließen“ sendet dieselbe Erfassung mit ohneTermin', async () => {
+    const gesendet: Record<string, unknown>[] = [];
+    const sender: Sender = async kp => { gesendet.push(kp); return kp.ohneTermin ? { status: 200, daten: { ok: true } } : { status: 409, daten: { ok: false, teilweise: true, fehler: 'Kein Kalender hinterlegt.' } }; };
+    const q = new Warteschlange(ramSpeicher(), sender);
+    await q.ablegen(koerper('t1'), anzeige);
+    await q.senden();
+    expect((await q.alle())[0]).toMatchObject({ status: 'fehler', teilweise: true, hinweis: 'Kein Kalender hinterlegt.' });
+    await q.ohneTermin('t1');
+    expect((await q.alle())[0]).toMatchObject({ status: 'wartet', versuche: 0 });
+    expect((await q.alle())[0].teilweise).toBeUndefined();
+    const r = await q.senden();
+    expect(r.gesendet.map(e => e.id)).toEqual(['t1']);
+    expect(gesendet.at(-1)).toMatchObject({ erfassungId: 't1', ohneTermin: true });
+    expect(bewerten(409, { teilweise: true, fehler: 'x' })).toEqual({ art: 'fehler', text: 'x', teilweise: true });
+  });
+
+  it('andere Person am Gerät (409 andere): wartet, blockiert nichts, wird nie fremd gesendet; Zähler zählt nur die eigenen', async () => {
+    const sender: Sender = async kp => (kp.erfasstVon === 'malin' ? { status: 409, daten: { ok: false, andere: true, fehler: 'Diese Erfassung hat Malin gemacht.' } } : { status: 200, daten: { ok: true } });
+    const q = new Warteschlange(ramSpeicher(), sender);
+    await q.ablegen({ ...koerper('m1'), erfasstVon: 'malin' }, anzeige, 1);
+    await q.ablegen({ ...koerper('k1'), erfasstVon: 'kevin' }, anzeige, 2);
+    const r = await q.senden();
+    expect(r.gesendet.map(e => e.id)).toEqual(['k1']);
+    const l = await q.alle();
+    expect(l).toHaveLength(1);
+    expect(l[0]).toMatchObject({ id: 'm1', status: 'wartet', person: 'malin', hinweis: 'Diese Erfassung hat Malin gemacht.' });
+    expect(wartendFuer(l, 'kevin')).toBe(0);
+    expect(wartendFuer(l, 'malin')).toBe(1);
+    expect(wartendFuer(l, null)).toBe(1);
+    // Kennt die Warteschlange die Person, geht eine fremde Erfassung gar nicht erst raus.
+    const aufrufe: string[] = [];
+    const q2 = new Warteschlange(ramSpeicher(), async kp => { aufrufe.push(String(kp.erfassungId)); return { status: 200, daten: { ok: true } }; });
+    q2.person = 'kevin';
+    await q2.ablegen({ ...koerper('m2'), erfasstVon: 'malin' }, anzeige, 1);
+    await q2.ablegen({ ...koerper('k2'), erfasstVon: 'kevin' }, anzeige, 2);
+    await q2.senden();
+    expect(aufrufe).toEqual(['k2']);
+  });
+
+  it('eine Erfassung wird in EINEM Aufruf höchstens einmal versucht (zwei Auslöser kurz nacheinander zählen nicht doppelt)', async () => {
+    const s = server(() => ({ status: 500, daten: { ok: false, fehler: 'kaputt' } }));
+    const q = new Warteschlange(ramSpeicher(), s.sender);
+    await q.ablegen(koerper('d1'), anzeige);
+    const a = q.senden(); const b = q.senden(); // der zweite läuft in den ersten hinein („nochmal“)
+    await Promise.all([a, b]);
+    expect(s.aufrufe).toEqual(['d1']);
+    expect((await q.alle())[0].versuche).toBe(1);
   });
 
   it('veralteter Tab (neu laden): bleibt liegen, Meldung steht im Ergebnis', async () => {
@@ -370,5 +444,102 @@ describe('Bewertung und Warteschlange (Offline-Sicherheit)', () => {
     await Promise.all([lauf, zweiter]);
     expect((await q.alle())).toEqual([]);
     expect(s.aufrufe.sort()).toEqual(['p1', 'p2']);
+  });
+});
+
+// ── 03.10.: Korrekturen aus der Lese-Prüfung ─────────────────────────────────
+
+describe('Termin in der Vergangenheit (Kleinkram)', () => {
+  const termin = (start: string, x: Record<string, unknown> = {}) => pruefen({ schritt: 'termin', termin: { art: 'video', dauer: 45, start }, ...x });
+  it('gestern, heute früher als jetzt: abgelehnt; ab jetzt (mit 15 Minuten Luft) und später: angenommen', () => {
+    expect(termin('2026-10-01T10:00')).toMatchObject({ ok: false, fehler: expect.stringMatching(/Vergangenheit/) });
+    expect(termin('2026-10-02T07:00')).toMatchObject({ ok: false, fehler: expect.stringMatching(/Vergangenheit/) });
+    expect(termin('2026-10-02T08:30').ok).toBe(false);
+    expect(termin('2026-10-02T08:45').ok).toBe(true);
+    expect(termin('2026-10-02T09:00').ok).toBe(true);
+    expect(termin('2026-10-05T10:00').ok).toBe(true);
+  });
+  it('gemessen am Zeitpunkt der ERFASSUNG, nicht des Sendens: eine liegengebliebene Erfassung scheitert nicht nachträglich', () => {
+    const spaeter = new Date('2026-10-02T18:00:00+02:00');
+    const r = erfassungPruefen(roh({ schritt: 'termin', termin: { art: 'video', dauer: 45, start: '2026-10-02T14:00' }, erfasstAm: '2026-10-02T11:00:00+02:00' }), { jetzt: spaeter, heute: '2026-10-02' });
+    expect(r.ok).toBe(true);
+  });
+  it('erfasstVon und ohneTermin werden gelesen — ohneTermin nur beim Schritt Termin', () => {
+    const r = termin('2026-10-05T10:00', { erfasstVon: 'kevin', ohneTermin: true });
+    expect(r.ok && r.wert).toMatchObject({ erfasstVon: 'kevin', ohneTermin: true });
+    const r2 = pruefen({ erfasstVon: 'Ke vin', ohneTermin: true });
+    expect(r2.ok && r2.wert.erfasstVon).toBeUndefined();
+    expect(r2.ok && r2.wert.ohneTermin).toBeUndefined();
+  });
+  it('Follow-up ohne Termin: nächster Werktag (Freitag → Montag)', () => {
+    expect(followupFristEinTag('2026-10-02')).toBe('2026-10-05');
+    expect(followupFristEinTag('2026-10-05')).toBe('2026-10-06');
+  });
+});
+
+describe('Zusammenführung (Telefon nur mit gleichem Nachnamen, Name+Firma nur ein Hinweis)', () => {
+  const kartei = [
+    k('c-anna', 'Anna', 'Beispiel', 'Beispielwerk GmbH', { email: 'anna@example.invalid', telefon: '+49 30 1234567' }),
+    k('c-zentrale', 'Zentrale', 'Empfang', 'Zentrale AG', { telefon: '+49 221 999000' }),
+    k('c-eva', 'Eva', 'Dublette', 'Dubletten GmbH'),
+  ];
+  const e = (x: Record<string, string>) => ({ kontakt: x });
+  it('gleiche Mail → ziel', () => {
+    expect(zusammenfuehrung(e({ vorname: 'A', nachname: 'Anders', email: 'anna@example.invalid' }), kartei, 'c-neu').ziel?.kontakt.id).toBe('c-anna');
+  });
+  it('gleiche Nummer UND Nachname → ziel; gleiche Nummer, anderer Nachname → nur gleicheNummer (neue Person)', () => {
+    expect(zusammenfuehrung(e({ vorname: 'Anna', nachname: 'Beispiel', telefon: '030 1234567' }), kartei, 'c-neu').ziel?.kontakt.id).toBe('c-anna');
+    const z = zusammenfuehrung(e({ vorname: 'Paul', nachname: 'Müller', telefon: '+49 221 999000' }), kartei, 'c-neu');
+    expect(z.ziel).toBeUndefined();
+    expect(z.gleicheNummer?.kontakt.id).toBe('c-zentrale');
+  });
+  it('Name + Firma ohne Mail/Nummer → vermutlich (neue Person + Hinweis + Label), kein ziel', () => {
+    const z = zusammenfuehrung(e({ vorname: 'Eva', nachname: 'Dublette', firma: 'Dubletten GmbH' }), kartei, 'c-neu');
+    expect(z.ziel).toBeUndefined();
+    expect(z.vermutlich?.kontakt.id).toBe('c-eva');
+  });
+  it('die eigene Kennung der Erfassung zählt nie als Treffer (ein wiederholter Lauf findet sich nicht selbst)', () => {
+    const mitMir = [...kartei, k('c-neu', 'Neu', 'Person', 'Neu GmbH', { email: 'neu@example.invalid' })];
+    expect(zusammenfuehrung(e({ vorname: 'Neu', nachname: 'Person', email: 'neu@example.invalid' }), mitMir, 'c-neu')).toEqual({});
+  });
+});
+
+describe('Lücken füllen beim Anhängen (nichts überschreiben)', () => {
+  it('füllt Telefon, Handy, Position, LinkedIn, Website nur, wenn leer', () => {
+    const alt = k('c-1', 'Bea', 'Bestand', 'B GmbH', { telefon: '+49 30 1111111', position: 'Leiterin' });
+    const r = luekenFuellen(alt, { telefon: '+49 30 9999999', mobil: '+49 171 2345678', position: 'Chefin', linkedin: 'https://www.linkedin.com/in/bea', webseite: 'https://b.example.invalid' }, '2026-10-02');
+    expect(r.ergaenzt).toEqual(['Handy', 'LinkedIn', 'Webseite']);
+    expect(r.kontakt).toMatchObject({ telefon: '+49 30 1111111', position: 'Leiterin', sms: '+49 171 2345678', linkedin: 'https://www.linkedin.com/in/bea', firmaWebseite: 'https://b.example.invalid', geaendertAm: '2026-10-02' });
+    // nichts zu füllen → dieselbe Person, unverändert
+    const r2 = luekenFuellen(r.kontakt, { telefon: '+49 1' }, '2026-10-03');
+    expect(r2.ergaenzt).toEqual([]);
+    expect(r2.kontakt).toBe(r.kontakt);
+  });
+});
+
+describe('Sprünge zu dem, was die Erfassung angelegt hat', () => {
+  it('Termin, Deal, Follow-up, Event, Person — aus festen Kennungen', () => {
+    const l = ergebnisLinks({ schritt: 'termin', erfassungId: ID, kontaktId: 'c-1', eventId: 'ev-1', terminId: 'makeos-t-nw-x', terminAm: '2026-10-05' });
+    expect(l.map(x => x.id)).toEqual(['termin', 'event', 'kontakt']);
+    expect(l[0].href).toContain('/os/kalender');
+    expect(l[0].href).toContain('termin=makeos-t-nw-x');
+    expect(ergebnisLinks({ schritt: 'vermitteln', erfassungId: ID, kontaktId: 'c-1' }).find(x => x.id === 'deal')!.href).toContain(`ch-nw-${ID}`);
+    expect(ergebnisLinks({ schritt: 'followup', erfassungId: ID }).map(x => x.id)).toEqual(['followup']);
+    // Ohne angelegten Termin (kein terminId) kein Termin-Sprung
+    expect(ergebnisLinks({ schritt: 'termin', erfassungId: ID, kontaktId: 'c-1' }).map(x => x.id)).toEqual(['kontakt']);
+  });
+  it('Abendbericht: „Termin nicht angelegt“ als offen, Links je Zeile', () => {
+    const ev = { id: 'ev-1', titel: 'S', format: 'stammtisch', ziel: 'z', datum: '2026-10-02', status: 'durchgefuehrt', geaendert: '2026-09-01' } as Event;
+    const kn = k('c-1', 'Anna', 'A', 'F', { email: 'a@example.invalid' });
+    const tn = (n: Partial<NonNullable<Teilnahme['netzwerken']>>): Teilnahme => ({ id: 't1', eventId: 'ev-1', kontaktId: 'c-1', status: 'da', geaendert: '2026-10-02', netzwerken: { erfassungId: ID, schritt: 'termin', zustaendig: 'malin', erfasstVon: 'kevin', erfasstAm: jetzt.toISOString(), ...n } });
+    const ohne = berichtAus({ event: ev, teilnahmen: [tn({})], kontakte: [kn], heute: '2026-10-02' }).zeilen[0];
+    expect(ohne.offen).toContain('Termin nicht angelegt');
+    expect(ohne.links.map(x => x.id)).toEqual(['event', 'kontakt']);
+    const mit = berichtAus({ event: ev, teilnahmen: [tn({ terminAm: '2026-10-05T10:00', terminId: 'tid' })], kontakte: [kn], heute: '2026-10-02' }).zeilen[0];
+    expect(mit.offen).not.toContain('Termin nicht angelegt');
+    expect(mit.links.map(x => x.id)).toEqual(['termin', 'event', 'kontakt']);
+  });
+  it('terminId bleibt beim Säubern der Angabe erhalten', () => {
+    expect(netzwerkenAngabeSaeubern({ erfassungId: ID, schritt: 'termin', zustaendig: 'malin', erfasstVon: 'kevin', erfasstAm: jetzt.toISOString(), terminAm: '2026-10-05T10:00', terminId: 'tid' })?.terminId).toBe('tid');
   });
 });

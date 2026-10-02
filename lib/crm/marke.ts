@@ -15,3 +15,10 @@ export const MARKE_MAX = 40;
 export const markeVon = (e: Pick<Event, 'marke'>): string => e.marke?.trim() || MARKE_EVENTS;
 /** Wie ein Event nach außen heißt: „Make.One · Stammtisch Maschinenbau“ — für Nachfass-Texte und Export. */
 export const eventName = (e: Pick<Event, 'titel' | 'marke'>): string => `${markeVon(e)} · ${e.titel}`;
+
+/**
+ * Kennzeichen eines Events, das über „Netzwerken“ unterwegs angelegt wurde (fremde Veranstaltung, nicht unsere Marke — 03.10.).
+ * Solche Events zählen NICHT in Erscheinensquote, Folgegespräche je Event und Gästemischung (Kevin: getrennt ausweisen).
+ */
+export const NETZWERKEN_MARKE = 'Netzwerken';
+export const istNetzwerkenEvent = (e: Pick<Event, 'marke'>): boolean => e.marke?.trim() === NETZWERKEN_MARKE;

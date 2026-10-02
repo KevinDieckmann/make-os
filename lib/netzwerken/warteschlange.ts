@@ -1,10 +1,16 @@
 // ─── Netzwerken — Warteschlange (Browser, 02.10.) ────────────────────────────
 // Auf einer Veranstaltung ist das Netz schlecht. Jede Erfassung geht deshalb ZUERST in eine lokale Warteschlange
 // (IndexedDB, Fotos als Base64-Text — das geht auch in Safari am iPhone zuverlässig) und wird DANN gesendet. Klappt das
-// Senden nicht (kein Netz, Server 5xx), bleibt sie liegen und wird beim Wiederkehren des Netzes, beim Öffnen der Seite und
-// alle 30 Sekunden erneut versucht — nie doppelt: die Kennung der Erfassung (UUID) macht den Server idempotent
-// (lib/crm/netzwerken-server.ts). Was der Server ablehnt (400/403/404/413/415), bleibt als „Fehler“ mit Klartext sichtbar und
-// geht nicht verloren; ein veralteter Tab (409 „bitte neu laden“) wartet, bis die Seite neu geladen ist.
+// Senden nicht, bleibt sie liegen und wird beim Wiederkehren des Netzes, beim Öffnen JEDER Seite (Sender im /os-Rahmen,
+// components/os/netzwerken/Sender.tsx) und alle 30 Sekunden erneut versucht — nie doppelt: die Kennung der Erfassung (UUID)
+// macht den Server idempotent (lib/crm/netzwerken-server.ts).
+//   kein Netz (Status 0), abgemeldet (401), zu viele Anfragen (429)  → der ganze Durchlauf bricht ab, alle warten mit
+//   Serverfehler (5xx) an EINER Erfassung  → drei Versuche, dann „Fehler“ mit Klartext; der Durchlauf geht beim nächsten weiter
+//                                            (eine kaputte Erfassung blockiert nie die anderen)
+//   Eingabe/Rechte (400/403/404/413/415)   → „Fehler“ mit Klartext, geht nicht verloren
+//   409 „teilweise“ (Person erfasst, nur der Termin fehlt) → „Fehler“ mit Klartext + „Ohne Termin abschließen“
+//   409 „andere Person“ (am Gerät ist inzwischen jemand anderes angemeldet) → wartet auf die richtige Person, sendet nie fremd
+//   409 „neu laden“ (veralteter Tab) → wartet, bis die Seite neu geladen ist
 // Rein bis auf `indexedDbSpeicher` — getestet mit dem Speicher im Arbeitsspeicher (tests/netzwerken-logik.test.ts).
 
 export type WarteStatus = 'wartet' | 'fehler';
@@ -16,6 +22,10 @@ export interface WarteEintrag {
   status: WarteStatus;
   /** Klartext für die Anzeige: warum es noch liegt. */
   hinweis?: string;
+  /** Wer erfasst hat (`erfasstVon` im Körper) — die Warteschlange zählt und sendet für die angemeldete Person (03.10.). */
+  person?: string;
+  /** „Fehler“, weil der Termin nicht ging (kein Kalender, iCloud weg): die Person ist erfasst, es lässt sich ohne Termin abschließen. */
+  teilweise?: boolean;
   /** Der Körper an POST /api/netzwerken (Bilder als Base64). */
   koerper: Record<string, unknown>;
   /** Kurzform für die Anzeige (ohne Fotos). */
@@ -31,9 +41,15 @@ export interface WarteSpeicher {
 /** Was eine Antwort des Servers für den Eintrag bedeutet. */
 export type Bewertung =
   | { art: 'erledigt' }
-  | { art: 'wiederholen'; grund: string }
+  /** `stopp`: kein Netz/abgemeldet/gedrosselt — alle warten mit; sonst ein Serverfehler an dieser einen Erfassung. */
+  | { art: 'wiederholen'; grund: string; stopp: boolean; teilweise?: boolean }
   | { art: 'neuladen'; grund: string }
-  | { art: 'fehler'; text: string };
+  /** Die Erfassung gehört einer anderen Person dieses Geräts — sie wartet, bis diese angemeldet ist. */
+  | { art: 'andere'; grund: string }
+  | { art: 'fehler'; text: string; teilweise?: boolean };
+
+/** So viele Versuche mit Serverfehler (5xx), dann „Fehler“. */
+export const MAX_SERVER_VERSUCHE = 3;
 
 export const WARTET_TEXT = 'Wird gesendet, sobald Netz da ist.';
 export const NEU_LADEN_WARTE = 'MAKE OS wurde aktualisiert — bitte die Seite neu laden. Die Erfassung bleibt auf dem Gerät.';
@@ -43,14 +59,17 @@ export const NEU_LADEN_WARTE = 'MAKE OS wurde aktualisiert — bitte die Seite n
  * wird wiederholt; was die Eingabe selbst betrifft (400, 404, 413, 415) oder die Rechte (403), nicht.
  */
 export function bewerten(status: number, d: unknown): Bewertung {
-  const o = (d && typeof d === 'object' ? d : {}) as { ok?: unknown; fehler?: unknown; neuLaden?: unknown; teilweise?: unknown };
+  const o = (d && typeof d === 'object' ? d : {}) as { ok?: unknown; fehler?: unknown; neuLaden?: unknown; teilweise?: unknown; andere?: unknown };
   if (status >= 200 && status < 300 && o.ok === true) return { art: 'erledigt' };
   const text = typeof o.fehler === 'string' && o.fehler ? o.fehler : '';
+  const teilweise = o.teilweise === true;
   if (status === 409 && o.neuLaden === true) return { art: 'neuladen', grund: NEU_LADEN_WARTE };
-  if (status === 0 || status === 408 || status === 429 || status >= 500) return { art: 'wiederholen', grund: status >= 500 && text ? text : WARTET_TEXT };
-  if (status === 401) return { art: 'wiederholen', grund: 'Bitte neu anmelden — die Erfassung bleibt auf dem Gerät.' };
-  // 409 mit „teilweise“ (z. B. Kalender nicht verbunden): die Person ist erfasst, ein Rest fehlt — sichtbar, erneut versuchbar.
-  return { art: 'fehler', text: text || `Nicht gespeichert (Fehler ${status}).` };
+  if (status === 409 && o.andere === true) return { art: 'andere', grund: text || 'Diese Erfassung gehört einer anderen Person — sie wird unter deren Konto gesendet.' };
+  if (status === 0 || status === 429) return { art: 'wiederholen', grund: WARTET_TEXT, stopp: true };
+  if (status === 401) return { art: 'wiederholen', grund: 'Bitte neu anmelden — die Erfassung bleibt auf dem Gerät.', stopp: true };
+  if (status === 408 || status >= 500) return { art: 'wiederholen', grund: status >= 500 && text ? text : WARTET_TEXT, stopp: false, ...(teilweise ? { teilweise: true } : {}) };
+  // 409 mit „teilweise“ (z. B. Kalender nicht verbunden): die Person ist erfasst, ein Rest fehlt — sichtbar, „Ohne Termin abschließen“ möglich.
+  return { art: 'fehler', text: text || `Nicht gespeichert (Fehler ${status}).`, ...(teilweise ? { teilweise: true } : {}) };
 }
 
 export function ramSpeicher(): WarteSpeicher {
@@ -91,6 +110,11 @@ export function indexedDbSpeicher(name = 'make-os-netzwerken'): WarteSpeicher | 
   };
 }
 
+/** Wie viele Erfassungen warten für diese Person? (Zähler-Abzeichen, Abmelden.) Ohne Person im Eintrag zählt er für jede. */
+export const wartendFuer = (l: readonly WarteEintrag[], person: string | null): number => l.filter(x => x.status === 'wartet' && (!x.person || !person || x.person === person)).length;
+/** Alles, was für diese Person noch nicht gespeichert ist (wartend ODER Fehler) — wer sich abmeldet, soll das wissen. */
+export const offenFuer = (l: readonly WarteEintrag[], person: string | null): number => l.filter(x => !x.person || !person || x.person === person).length;
+
 export interface SendeErgebnis { gesendet: WarteEintrag[]; wartend: number; fehler: number; neuLaden: boolean; antworten: Record<string, unknown> }
 
 export type Sender = (koerper: Record<string, unknown>) => Promise<{ status: number; daten: unknown }>;
@@ -99,7 +123,20 @@ export class Warteschlange {
   private laeuft = false;
   /** Während eines Laufs kam etwas Neues dazu — danach noch einmal durchgehen. */
   private nochmal = false;
+  private hoerer = new Set<() => void>();
+  /** Die angemeldete Person, sobald bekannt: Erfassungen einer anderen Person werden hier gar nicht erst gesendet (der Server lehnte sie ohnehin ab). */
+  person: string | null = null;
+  /** Antworten des Servers je gesendeter Erfassung (Kennungen für „Zur Person“, Termin, Deal …) — auch wenn ein anderer Aufrufer gesendet hat. */
+  readonly antworten: Record<string, unknown> = {};
+  /** Wie viele Erfassungen seit dem Laden erfolgreich gesendet wurden — die Anzeige lädt dann das CRM neu. */
+  gesendetZahl = 0;
+  /** Der Server sagte „MAKE OS wurde aktualisiert“ — die Seite soll neu geladen werden. */
+  neuLadenNoetig = false;
   constructor(private speicher: WarteSpeicher, private sender: Sender) {}
+
+  /** Meldet jede Änderung am Bestand (abgelegt, gesendet, Fehler, verworfen) — für Zähler-Abzeichen und Anzeige. Gibt die Abmeldung zurück. */
+  beiAenderung(f: () => void): () => void { this.hoerer.add(f); return () => { this.hoerer.delete(f); }; }
+  private geaendert(): void { for (const f of this.hoerer) { try { f(); } catch { /* ein Hörer darf den Lauf nie stören */ } } }
 
   async alle(): Promise<WarteEintrag[]> { return (await this.speicher.alle()).sort((a, b) => a.angelegt - b.angelegt); }
 
@@ -109,17 +146,27 @@ export class Warteschlange {
     if (!id) throw new Error('Erfassung ohne Kennung');
     const da = (await this.speicher.alle()).find(e => e.id === id);
     if (da) return da;
-    const e: WarteEintrag = { id, angelegt: jetzt, versuche: 0, status: 'wartet', hinweis: WARTET_TEXT, koerper, anzeige };
+    const person = typeof koerper.erfasstVon === 'string' && koerper.erfasstVon ? koerper.erfasstVon : undefined;
+    const e: WarteEintrag = { id, angelegt: jetzt, versuche: 0, status: 'wartet', hinweis: WARTET_TEXT, koerper, anzeige, ...(person ? { person } : {}) };
     await this.speicher.setze(e);
+    this.geaendert();
     return e;
   }
 
-  /** Einen Eintrag wieder zum Senden freigeben (nach „Fehler“). */
+  /** Einen Eintrag wieder zum Senden freigeben (nach „Fehler“) — mit frischen drei Versuchen. */
   async erneut(id: string): Promise<void> {
     const e = (await this.speicher.alle()).find(x => x.id === id);
-    if (e) await this.speicher.setze({ ...e, status: 'wartet', hinweis: WARTET_TEXT });
+    if (e) { const { teilweise: _t, ...rest } = e; await this.speicher.setze({ ...rest, versuche: 0, status: 'wartet', hinweis: WARTET_TEXT }); this.geaendert(); }
   }
-  async verwerfen(id: string): Promise<void> { await this.speicher.entferne(id); }
+  /**
+   * „Ohne Termin abschließen“: der Termin ging nicht (kein Kalender, iCloud weg). Dieselbe Erfassung wird mit `ohneTermin` erneut
+   * gesendet — der Server schließt sie dann mit einem Follow-up „Termin vereinbaren“ (nächster Werktag) ab.
+   */
+  async ohneTermin(id: string): Promise<void> {
+    const e = (await this.speicher.alle()).find(x => x.id === id);
+    if (e) { const { teilweise: _t, ...rest } = e; await this.speicher.setze({ ...rest, koerper: { ...e.koerper, ohneTermin: true }, versuche: 0, status: 'wartet', hinweis: WARTET_TEXT }); this.geaendert(); }
+  }
+  async verwerfen(id: string): Promise<void> { await this.speicher.entferne(id); this.geaendert(); }
 
   /**
    * Alles Wartende nacheinander senden, ältestes zuerst. Beim ersten Netzfehler Schluss (das Netz fehlt für alle).
@@ -131,32 +178,41 @@ export class Warteschlange {
     this.laeuft = true;
     try {
       let runde = 0;
+      // Jede Erfassung wird in EINEM Aufruf höchstens einmal versucht — sonst zählten zwei Auslöser kurz nacheinander (Öffnen + Netz da)
+      // als zwei von drei Serverversuchen.
+      const versucht = new Set<string>();
       do {
         this.nochmal = false;
-        const r = await this.lauf(raus);
+        const r = await this.lauf(raus, versucht);
         if (r === 'stopp') break;
       } while (this.nochmal && ++runde < 3);
       const rest = await this.alle();
       raus.wartend = rest.filter(x => x.status === 'wartet').length;
       raus.fehler = rest.filter(x => x.status === 'fehler').length;
       return raus;
-    } finally { this.laeuft = false; }
+    } finally { this.laeuft = false; this.geaendert(); }
   }
 
-  /** Ein Durchgang über alles Wartende — 'stopp', wenn Netz oder Server fehlen. */
-  private async lauf(raus: SendeErgebnis): Promise<'weiter' | 'stopp'> {
-    for (const e of (await this.alle()).filter(x => x.status === 'wartet')) {
+  /** Ein Durchgang über alles Wartende — 'stopp' nur, wenn das Netz fehlt (oder abgemeldet/gedrosselt/veralteter Tab). */
+  private async lauf(raus: SendeErgebnis, versucht: Set<string>): Promise<'weiter' | 'stopp'> {
+    for (const e of (await this.alle()).filter(x => x.status === 'wartet' && !versucht.has(x.id) && (!x.person || !this.person || x.person === this.person))) {
+      versucht.add(e.id);
       let b: Bewertung, daten: unknown = null;
       try {
         const a = await this.sender(e.koerper);
         daten = a.daten;
         b = bewerten(a.status, a.daten);
-      } catch { b = { art: 'wiederholen', grund: WARTET_TEXT }; }
-      if (b.art === 'erledigt') { await this.speicher.entferne(e.id); raus.gesendet.push(e); raus.antworten[e.id] = daten; continue; }
-      if (b.art === 'fehler') { await this.speicher.setze({ ...e, versuche: e.versuche + 1, status: 'fehler', hinweis: b.text }); continue; }
-      await this.speicher.setze({ ...e, versuche: e.versuche + 1, hinweis: b.grund });
-      if (b.art === 'neuladen') raus.neuLaden = true;
-      return 'stopp'; // Netz oder Server fehlen — die übrigen warten mit
+      } catch { b = { art: 'wiederholen', grund: WARTET_TEXT, stopp: true }; }
+      if (b.art === 'erledigt') { await this.speicher.entferne(e.id); raus.gesendet.push(e); raus.antworten[e.id] = daten; this.antworten[e.id] = daten; this.gesendetZahl++; continue; }
+      if (b.art === 'fehler') { await this.speicher.setze({ ...e, versuche: e.versuche + 1, status: 'fehler', hinweis: b.text, ...(b.teilweise ? { teilweise: true } : {}) }); continue; }
+      if (b.art === 'andere') { await this.speicher.setze({ ...e, hinweis: b.grund }); continue; } // wartet auf die richtige Person — die übrigen laufen weiter
+      if (b.art === 'neuladen') { await this.speicher.setze({ ...e, versuche: e.versuche + 1, hinweis: b.grund }); raus.neuLaden = true; this.neuLadenNoetig = true; return 'stopp'; }
+      // wiederholen
+      const versuche = e.versuche + 1;
+      if (b.stopp) { await this.speicher.setze({ ...e, versuche, hinweis: b.grund }); return 'stopp'; } // das Netz fehlt für alle
+      // Serverfehler an dieser Erfassung: nach drei Versuchen „Fehler“ (sichtbar, erneut versuchbar) — die nächste kommt trotzdem dran.
+      if (versuche >= MAX_SERVER_VERSUCHE) await this.speicher.setze({ ...e, versuche, status: 'fehler', hinweis: `Der Server konnte diese Erfassung nach ${MAX_SERVER_VERSUCHE} Versuchen nicht speichern: ${b.grund} Sie bleibt auf dem Gerät.`, ...(b.teilweise ? { teilweise: true } : {}) });
+      else await this.speicher.setze({ ...e, versuche, hinweis: b.grund, ...(b.teilweise ? { teilweise: true } : {}) });
     }
     return 'weiter';
   }
@@ -172,3 +228,12 @@ export const fetchSender = (url = '/api/netzwerken', zeitMs = 90_000): Sender =>
     return { status: r.status, daten };
   } finally { clearTimeout(uhr); }
 };
+
+/**
+ * Die EINE Warteschlange dieses Browsers (IndexedDB, sonst Arbeitsspeicher): Sender im /os-Rahmen, Netzwerken-Seite und Abmelden
+ * teilen sie — so gibt es nur einen Lauf zur Zeit, nie zwei Sender, die dieselbe Erfassung gleichzeitig versuchen.
+ */
+export function geteilteWarteschlange(): Warteschlange {
+  const G = globalThis as unknown as { __makeosNetzwerkenQueue?: Warteschlange };
+  return (G.__makeosNetzwerkenQueue ??= new Warteschlange(indexedDbSpeicher() ?? ramSpeicher(), fetchSender()));
+}
