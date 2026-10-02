@@ -2,8 +2,8 @@
 // Eine Liste für alle Stellen, die Annahmen zeigen (Planen › Annahmen, Business-Blätter): jedes Feld des
 // Rechenkerns (`Annahmen`), das man eintragen kann, mit Beschriftung, Art und Gesellschaft. Die Steuer-Sätze
 // (Ertragsteuer, USt, Zahlmonat, Ausstieg) stehen NICHT hier, sondern in der Karte „Welche Steuern gelten?“
-// (lib/finanzen/steuern.ts) — jedes Feld hat genau einen Ort. `ruecklage5a` ist im Kern ohne Wirkung und
-// bleibt deshalb außen vor (kein Feld, das nichts tut); `nettoTabelle` hat einen eigenen Editor.
+// (lib/finanzen/steuern.ts) — jedes Feld hat genau einen Ort. (`ruecklage5a` war ohne Wirkung und ist seit dem
+// Kern-Umbau 02.10. gelöscht.) `nettoTabelle` hat einen eigenen Editor.
 
 import { UG_KURZ } from '@/lib/einheiten';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
@@ -36,5 +36,4 @@ export function annahmeGruppen(person1: string, person2: string): AnnahmeGruppe[
 
 /** Alle Schlüssel, die die Felder abdecken — der Test prüft, dass kein Kern-Feld ohne Ort bleibt. */
 export const ANNAHMEN_IN_KARTE_STEUER: (keyof Annahmen)[] = ['steuerUG', 'ust', 'steuerMonat', 'exitSteuer'];
-export const ANNAHMEN_OHNE_WIRKUNG: (keyof Annahmen)[] = ['ruecklage5a'];
 export const ANNAHMEN_EIGENER_EDITOR: (keyof Annahmen)[] = ['nettoTabelle'];

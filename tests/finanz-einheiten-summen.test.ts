@@ -344,11 +344,11 @@ const treiber = (over: Partial<Szenario> = {}): Szenario => ({
 function mini(): FinanzDaten {
   return {
     version: 3, stand: HEUTE, monate: monatsLabels(2026, 10, 27), aktiv: 's1', planszenarien: [], arbeitsplan: null, schulden: [], meta: {}, abschluesse: [], historie: monatsLabels(2026, 1, 9),
-    einstellungen: { heute: HEUTE, reserveMonate: 1, notgroschenMonate: 3 },
+    einstellungen: { heute: HEUTE, reserveMonate: 1 },
     buchungen: [], regeln: {}, ziele: [], check: { punkte: [], eintraege: [] }, notizen: {},
     annahmen: {
       kevinBrutto: 1000, kevinAb: 2, malinBrutto: 1000, malinAb: 2, agAnteil: 0.2, stammkapital: 500, gruendungskosten: 100, darlehenKevin: 0, darlehenRueckMonat: 0,
-      retainerVerzug: 0, astarnaProvision: 100, steuerUG: 0.3, ust: 0.19, steuerMonat: 6, ruecklage5a: 0, holdingKosten: 0, holdingAb: 99, kdvStart: 0,
+      retainerVerzug: 0, astarnaProvision: 100, steuerUG: 0.3, ust: 0.19, steuerMonat: 6, holdingKosten: 0, holdingAb: 99, kdvStart: 0,
       bjoernBetrag: 0, bjoernRate: 0, bjoernRateVon: 0, bjoernRateBis: 0, bjoernSchluss: 0, bjoernSchlussMonat: 0, bjoernZinsMonat: 0, bjoernZinsDeckel: 0,
       exitSteuer: 0, nettoTabelle: [[1000, 800], [2000, 1500]], gehaltTag: 28,
     },
@@ -398,7 +398,7 @@ describe('Finanzplanung — Szenarien/Baukasten rechnen wie vorher', () => {
           "ug": 1074,
         },
         "mit": {
-          "kdvKonto": 16150,
+          "kdvKonto": 13645,
           "privatLuft": 53647.6,
           "ugFrei": -48038,
           "ugUmsatz": 51000,
@@ -539,7 +539,7 @@ describe('Buchungen — Zahlungseingang einer bezahlten Rechnung', () => {
 import { FINANZ_ORTE, finanzOrtAus, firmaAusAngabe, finanzOrtAusKern, kernEinheitAus, GESELLSCHAFTEN } from '../lib/einheiten';
 import { SCOPES, kennzahlenFuer } from '../lib/business/register';
 import { einheitAusGesellschaft as planEinheit } from '../lib/finanzen/produkte';
-import { kernKanal, BAUSTEIN_EINHEIT_LABEL } from '../lib/finanzen/szenarien';
+import { BAUSTEIN_EINHEIT_LABEL } from '../lib/finanzen/szenarien';
 import { einheitenLesen } from '../lib/finanzen/haushalt/speicher';
 import { einheitAus, haushaltEinheitAusAlt, EINHEIT_NAME } from '../lib/finanzen/haushalt/typen';
 import { EINHEIT_LABEL as STEUER_LABEL } from '../lib/steuern/rechnen';
@@ -619,18 +619,20 @@ describe('Cockpit: die MAKE Innovation GmbH als eigene Sicht', () => {
   });
 });
 
-describe('Finanzplanung: Selbstständigkeit eigene Achse, der Kern rechnet wie vorher', () => {
+describe('Finanzplanung: Selbstständigkeit eigene Achse im Kern (seit 02.10.)', () => {
   it('Produkt der Selbstständigkeit → Baustein kdc; „offen“ bleibt UG', () => {
     expect((['kdc', 'kdv', 'ug', 'offen'] as const).map(planEinheit)).toEqual(['kdc', 'kdv', 'ug', 'ug']);
-    expect((['kdc', 'kdv', 'ug', 'privat'] as const).map(kernKanal)).toEqual(['ug', 'kdv', 'ug', 'privat']);
   });
-  it('ein kdc-Baustein ergibt im Kern exakt dieselben Zahlen wie derselbe Baustein bei der UG (Kern ohne kdc-Achse)', () => {
+  it('ein kdc-Baustein läuft auf der Achse der Selbstständigkeit: Gewinn und Umsatz von MAKE + Selbstständigkeit zusammen bleiben wie beim Baustein der UG, Privat ändert sich nicht', () => {
     const d = mini();
     const mit = (einheit: 'ug' | 'kdc') => rechneMit(d, { ...planszenario(), bausteine: bausteine().map(b => (b.einheit === 'ug' ? { ...b, einheit } : b)) });
     const a = mit('ug'), b = mit('kdc');
-    expect(b.ug).toEqual(a.ug);
+    a.ug.forEach((u, i) => {
+      expect(u.gewinn + a.kdc[i].gewinn).toBeCloseTo(b.ug[i].gewinn + b.kdc[i].gewinn, 9);
+      expect(u.umsatz + a.kdc[i].umsatz).toBeCloseTo(b.ug[i].umsatz + b.kdc[i].umsatz, 9);
+    });
+    expect(b.kdc.some(k => k.umsatz > 0)).toBe(true); expect(b.ug.every(u => u.bausteineUmsatz === 0)).toBe(true);
     expect(b.pr).toEqual(a.pr);
-    expect(b.kz).toEqual(a.kz);
   });
   it('Kontostand über die Kennung der einen Liste (kdc = selbststaendigkeit)', () => {
     expect(kontostand(mini(), 'kdc')).toEqual(kontostand(mini(), 'selbststaendigkeit'));

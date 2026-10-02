@@ -82,8 +82,8 @@ function LageKopf() {
 }
 
 export function Lage() {
-  const { d, ug, pr, kz, h, sz, ps, aw, aendere, geh, person } = usePlan();
-  const zs = zielStaende(d, ug, pr);
+  const { d, ug, kdc, pr, kz, h, sz, ps, aw, aendere, geh, person } = usePlan();
+  const zs = zielStaende(d, ug, pr, kdc);
   const ng = zs.find(z => z.ziel.id === 'g.notgroschen') ?? zs.find(z => z.ziel.quelle === 'privat.angespart');
   const offen = offeneBuchungen(d);
   const konten = d.posten.filter(p => p.art === 'konto'); const kontenBekannt = konten.filter(p => p.betrag != null);
@@ -105,7 +105,7 @@ export function Lage() {
   if (kz.obAnteilJun27 >= sw.ankerAnteilMax && kz.obAnteilJun27 > 0) warn.push([LEUCHT.achtung, `Ankermandat Juni 27 bei ${prozent(kz.obAnteilJun27)} des Umsatzes — Ziel unter ${prozent(sw.ankerAnteilMax)}`]);
   if (offen && !imKopf.has('buchungen')) warn.push([LEUCHT.achtung, `${offen} Buchungen ohne Zuordnung — IST ist dort unscharf`]);
   if (konten.length - kontenBekannt.length && !imKopf.has('konten')) warn.push([LEUCHT.achtung, `${konten.length - kontenBekannt.length} Kontostände fehlen`]);
-  const termine = zahlungskalender(d, ug, pr, 14);
+  const termine = zahlungskalender(d, ug, pr, 14, kdc);
   const hi = d.historie.length, lab = achse(d);
   const leerVor = Array<number | null>(hi).fill(null);
   const heuteEcht = heuteBerlin();
@@ -164,8 +164,9 @@ export function Lage() {
             <Linie labels={lab} heute={hi - 1} tick={4} serien={[
               { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: [...leerVor, ...ug.map(u => u.frei)], breite: 2.4 },
               { name: 'Privat angespart', farbe: LILA, werte: [...leerVor, ...pr.map(p => p.angespart)] },
-              { name: 'KD Ventures', farbe: LEUCHT.puls, werte: [...leerVor, ...ug.map(u => u.kdvKonto)], breite: 1.4 },
-              { name: 'Gruppe', farbe: C.ink, werte: [...leerVor, ...ug.map((u, i) => u.frei + u.kdvKonto + pr[i].angespart)], gestrichelt: true, breite: 1.4 },
+              { name: 'KD Ventures', farbe: LEUCHT.puls, werte: [...leerVor, ...ug.map(u => u.kdvFrei)], breite: 1.4 },
+              { name: 'Selbstständigkeit', farbe: LEUCHT.achtung, werte: [...leerVor, ...kdc.map(k => k.frei)], breite: 1.4 },
+              { name: 'Gruppe', farbe: C.ink, werte: [...leerVor, ...ug.map((u, i) => u.frei + u.kdvFrei + kdc[i].frei + pr[i].angespart)], gestrichelt: true, breite: 1.4 },
             ]} />
           </Karte>
           <Karte i={3}>

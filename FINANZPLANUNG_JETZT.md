@@ -1,4 +1,4 @@
-# Finanzplanung jetzt — Plan und Stand (27.09.2026, abends: Szenario-Baukasten; 02.10.: alle Felder anpassbar, Business-Blätter, Steuern aufgeräumt)
+# Finanzplanung jetzt — Plan und Stand (27.09.2026, abends: Szenario-Baukasten; 02.10.: alle Felder anpassbar, Business-Blätter, Steuern aufgeräumt; 02.10.: Kern-Umbau)
 
 > 30.09.: Die Gesellschaft `ug` heißt **MAKE Innovation GmbH** (kurz „MAKE“, vorher „MAKE OS UG“). Anzeigenamen kommen aus
 > `lib/einheiten.ts` (`UG_NAME`/`UG_KURZ`); Kennungen und Code-Namen im Rechenkern (`ug`, `rechneUG`, `MonatUG`, `steuerUG`) bleiben.
@@ -82,7 +82,7 @@ Ausschüttung, Selbstständigkeit 2026), Linie, Blatt „Gesamt je Monat“. `Ue
 
 ## Alle Felder anpassbar · Business-Blätter · Steuern aufräumen (02.10.2026, Branch `finanzen`)
 Kevin: „Businessplanung und die allgemeine fertig machen. Unten stehen so viele Steuern, die wir nicht brauchen. Alle Felder anpassbar.“
-Der **Rechenkern bleibt, wie er ist** (Namen, Formeln; nur drei optionale Felder im Typ `FinanzDaten`). Anpassbar wird über Eingaben, Annahmen und Sichtbarkeit.
+Der Rechenkern blieb in diesem Schritt, wie er war (Namen, Formeln; nur drei optionale Felder im Typ `FinanzDaten`) — **am selben Tag hat Kevin den Kern dann ausdrücklich freigegeben: siehe „Kern-Umbau 02.10.“ unten; die Aussagen zu Steuern und Selbstständigkeit in diesem Abschnitt beschreiben den Stand davor.** Anpassbar wird über Eingaben, Annahmen und Sichtbarkeit.
 
 **Bestandsaufnahme (Stand 1818c5c).** Fest oder nicht editierbar waren: die Netto-Tabelle (nur angezeigt), Stichtag („heute“) nur per „auf heute setzen“,
 alle Ampel-Grenzen (Runway 6/12 Monate, frei verfügbar 5.000, Tiefpunkt 1.000, Jahresende 20.000, Luft 250/100, Ankeranteil 30 %, 20 offene Buchungen) im Code,
@@ -113,7 +113,7 @@ Arbeitsplan — gibt es keinen, legt das erste Produkt ihn in derselben Änderun
 summiert sich auf Quote × Jahresgewinn), Zahlungsfluss, Liquidität, Steuern; **Zelle klicken → ändern** auch bei Produkten/Kosten: Baustein-Feld `ueber` (`m<Plan-Monat>` → Betrag, gilt unabhängig von
 Start/Laufzeit, „aus“ schaltet auch ihn ab; `betragImMonat`). Danach „Welche Steuern gelten?“ und „Annahmen“ der Gesellschaft (`annahmen-felder.ts`, jedes Kern-Feld hat genau einen Ort;
 `ruecklage5a` wirkt im Kern nirgends und ist bewusst kein Feld, `notgroschenMonate` ebenfalls ungenutzt). Selbstständigkeit: eigenes Blatt aus ihren Bausteinen, darunter der Abschluss 2026.
-Hinweis zum Kern: Bausteine der Selbstständigkeit laufen dort über die Kanäle der MAKE Innovation GmbH (Kern v3 hat keine eigene Achse); im UG-Blatt steht eine Zeile „Selbstständigkeit (Kern rechnet hier mit)“, damit die Summen stimmen.
+Hinweis zum Kern (Stand vor dem Umbau, überholt): Bausteine der Selbstständigkeit liefen über die Kanäle der MAKE Innovation GmbH; seit dem Kern-Umbau 02.10. haben sie eine eigene Achse und das MAKE-Blatt hat die Zeile „Selbstständigkeit (Kern rechnet hier mit)“ nicht mehr.
 
 **Allgemeine Planung.** Lage: Karte „Noch offen in der Planung“ (`luecken()` — kein Arbeitsplan, Netto-Tabelle fehlt, Gesellschaft ohne Umsatz, Produkt ohne Preis, Steuern nicht durchgesehen, keine Gehälter, keine Fixkosten,
 Konten, Ziele; jeder Punkt mit Sprung), Warnungen nicht mehr doppelt, ein Knopf „Planungsrunde“, Ankermandat-/Retainer-Kacheln nur, wenn es solche Treiber gibt. Gesamt: Karte „Übergänge einstellen“ (Gehälter, Ausschüttung, Ausschüttungssteuer),
@@ -127,12 +127,89 @@ Handy: die Seite war durch die Reiterleiste 717 px breit — `minWidth: 0` am Se
 **Tests (neu).** `finanzplan-regression` (Goldwerte aus dem unveränderten Kern 1818c5c, zwei Fassungen × mit/ohne Arbeitsplan; Ausblenden/Aufschlüsseln/Schwellen ändern keine Zahl bit-genau), `finanzplan-steuern`, `finanzplan-geschaeft`
 (Break-even, Runway, Steuer-Aufwand, Blatt je Gesellschaft, Produkte, `ueber`, Lücken, Annahmen-Abdeckung), `finanzplan-felder-routen` (Speichern mit Stand/409 für alle neuen Felder), `finanzplan-ansichten` (alle 19 Unterseiten rendern, mit/ohne Arbeitsplan, leer; Business-Blatt und Steuerkarte).
 
-**Offene Entscheidungen für Kevin (Rechenkern — nicht geändert):**
+**Offene Entscheidungen für Kevin (Rechenkern) — am 02.10. entschieden, Punkte 1–4 sind im „Kern-Umbau 02.10.“ umgesetzt:**
 1. Steuern je Gesellschaft: Der Kern kennt EINE Ertragsteuer-Quote (`steuerUG`, Zahlung im Folgejahr, MAKE Innovation GmbH). Echte Einzelrechnung (KSt/Soli/Gewerbesteuer getrennt, Gewerbesteuer-Freibetrag/Anrechnung, KiSt, eigene Steuer für KD Ventures oder die Selbstständigkeit im Monatsraster) bräuchte neue Formeln. Bis dahin: Summe aus den Bestandteilen.
 2. Selbstständigkeit hat im Kern keine eigene Monatsachse; ihre Bausteine fließen in die UG-Zahlen (wie vorher). Eigene Achse = Kernänderung (`Zusatz` um `kdc*` erweitern).
 3. Einkommensteuer der Selbstständigkeit: Grundtarif 2026 fest (`est2026`); ein pauschaler Satz wäre eine Formeländerung.
 4. `ruecklage5a` und `notgroschenMonate` sind im Kern/der Oberfläche ohne Wirkung — löschen oder anschließen?
 5. Ankermandat/Retainer/Provision (Treiber-Zeilen) tragen Namen aus Kevins Szenarien; für andere Instanzen neutral benennen, sobald der Treiber-Aufbau freigegeben wird.
+
+## Kern-Umbau 02.10. (Branch `kern`, Kevins ausdrückliche Entscheidung)
+Kevin am 02.10.: den Rechenkern ändern — vier Punkte. Die Regel „Namen/Formeln unverändert bis Kevins Wort“ (CLAUDE.md) ist für genau diese vier Punkte aufgehoben, für alles andere im Kern gilt sie weiter.
+Dazu sein Zusatz: *„Mir ist wichtig, dass ich alles anpassen kann in den Rechnungen, damit ich selber spielen kann.“* — jeder neue Parameter ist ein editierbares Feld mit Vorgabe, nie eine Konstante.
+
+### Was sich ändert
+1. **Steuern einzeln.** `lib/finanzen/ertragsteuer.ts` (rein) ersetzt die EINE Ertragsteuer-Quote. Je Gesellschaft ein Steuerrechner, der Monat für Monat den Gewinn vor Steuern bekommt und Aufwand, Zahlung, Rücklage, Verlustvortrag liefert.
+   - **Kapitalgesellschaft** (MAKE Innovation GmbH, KD Ventures; Rechtsform aus `steuern.ts`, je Gesellschaft wechselbar): Körperschaftsteuer 15 % × Gewinn · Soli 5,5 % × KSt · Gewerbesteuer = Messzahl 3,5 % × Hebesatz × Gewinn.
+     Beispiel (Test): Gewinn 100.000 €, Hebesatz 400 % → KSt 15.000, Soli 825, GewSt 14.000, zusammen 29.825 €.
+   - **Einzelunternehmen** (Selbstständigkeit): Einkommensteuer nach Grundtarif auf (Gewinn − Vorsorge − Sonderausgaben); Gewerbesteuer = Messzahl × Hebesatz × (Gewerbeertrag − Freibetrag 24.500 €); Anrechnung nach § 35 EStG = min(Faktor 4,0 × Messbetrag, Gewerbesteuer, Einkommensteuer). Beispiel (Test): Gewinn 60.000 €, Hebesatz 400 % → Messbetrag 1.242,50, GewSt 4.970, Anrechnung 4.970 → Netto = ESt; bei Hebesatz 500 % bleiben 1.242,50 € Mehrbelastung.
+   - **Verlustvortrag** (einfach): ein Verlust mindert die Gewinne der Folgejahre in voller Höhe, ein Topf für KSt, Gewerbesteuer und Einkommensteuer; Mindestbesteuerung (60 % über 1 Mio. €) nicht abgebildet.
+   - **Zahlung:** Standard wie bisher im `steuerMonat` (Vorgabe Juni) des Folgejahres; Option **Vorauszahlung je Quartal**: ein Viertel der Steuer des Vorjahres im März, Juni, September, Dezember, im Zahlmonat des Folgejahres der Abschluss (Steuer − Vorauszahlungen, kann eine Erstattung sein). Im ersten Planjahr (nur Okt–Dez 26) gibt es mangels Vorjahr keine Vorauszahlungen.
+   - **Rücklage** = aufgelaufene Steuer − bezahlte; `MonatUG.st` / `kdvSt` / `MonatSelbst.st` tragen Aufwand je Steuerart (`kst`, `soli`, `gewst`, `est`, `anrechnung`, `summe`), `zahlung`, `ruecklage`, `verlustvortrag`. `MonatUG.steuer`/`steuerRuecklage` bleiben als Zahlung und Rücklage.
+   - **KD Ventures** bekommt eine eigene Rechnung im Monatsraster: laufendes Ergebnis = Bausteine (Umlage und Partnerdarlehen-Rate heben sich weiter auf), versteuert wie eine GmbH, bezahlt aus dem KDV-Konto; `kdvFrei` = Konto − Rücklage. Die pauschale **Steuer auf den Ausstieg bleibt zusätzlich**; der Ausstieg selbst fließt nicht noch einmal in KSt/GewSt (Näherung für Veräußerungsgewinn, § 8b KStG).
+   - **Vorgabe des Hebesatzes** = aus dem früheren Gesamtsatz `annahmen.steuerUG` abgeleitet (`aufteilen()`: KSt, Soli, Messzahl in der Vorgabe, Hebesatz = Rest) — bei unveränderten Eingaben kommt dieselbe Gesamtquote heraus (Test gegen die alte Formel). Reicht der Gesamtsatz nicht für KSt + Soli, schrumpft die Vorgabe-KSt. `steuerUG` ist jetzt nur noch diese Vorgabe; je Szenario überschreibbar wie bisher.
+2. **Selbstständigkeit eigene Rechnung.** `rechneSelbstAchse` → `MonatSelbst`: Umsatz (Bausteine, Zahlungsziel verschiebt den Eingang, USt obendrauf und im Folgemonat ans Finanzamt), Kosten (Stellen mit Arbeitgeberanteil, Software/Miete/…, dazu Sachkosten-Zeilen mit `einheit: 'selbststaendigkeit'`), Ergebnis vor/nach Steuern, **eigenes Konto** (Start `selbst.kontoStart`), Rücklage, frei = Konto − Rücklage − USt. Bausteine ohne Zuordnung (oder mit unbekannter Einheit) bleiben wie bisher bei MAKE. Das MAKE-Blatt hat die Zeile „Selbstständigkeit (Kern rechnet hier mit)“ nicht mehr.
+   **Entnahme → Privat:** Regel im Szenario (`annahmen.entnahme`): fester Betrag je Monat ab Monat und/oder Anteil am positiven Ergebnis nach Steuern; schon versteuert, keine weitere Steuer; ohne Regel bleibt das Geld im Konto der Selbstständigkeit. Gesamt/Privat: `MonatPrivat.entnahme` zählt zu „verfügbar“; **Gesamt = MAKE + KD Ventures + Selbstständigkeit + Privat** (Kacheln, Linie, Blatt, Ziel „Gruppe“, Lage).
+3. **Einkommensteuer der Selbstständigkeit** nach echtem Grundtarif (`estTarif`, Vorgabe 2026 = `est2026`), einzeln einstellbare Eckwerte. Auf das Ergebnis der Selbstständigkeit minus Vorsorge/Sonderausgaben (Abschluss-Felder) — **keine privaten Einkünfte aufaddiert**: der Kern kennt nur Netto-Beträge (Gehälter über die Netto-Tabelle), nichts Steuerpflichtiges brutto; ein Progressionseffekt der Gehälter wird nicht abgebildet. Soli auf die ESt entfällt (Freigrenze), Kirchensteuer wird nicht gerechnet.
+4. **`ruecklage5a` und `notgroschenMonate` gelöscht** (Typ, Säuberer, Oberfläche, Tests). Dokumente mit den Feldern werden beim Lesen ignoriert (`annahmenOhneAlt`, `einstellungen` wird neu aufgebaut) und beim nächsten Schreiben ohne sie geschrieben.
+
+### Parameter (alle editierbar, leer = Vorgabe)
+| Parameter | Ort | Vorgabe |
+|---|---|---|
+| KSt-Satz · Soli-Satz · Gewerbesteuer-Messzahl · Hebesatz | je Gesellschaft (`steuern[ort].zeilen`) | 15 % · 5,5 % · 3,5 % · aus `steuerUG` abgeleitet |
+| Zeile an/aus (KSt, Soli, GewSt, ESt, USt, Ausstieg) | je Gesellschaft | an |
+| Rechtsform | je Gesellschaft | Kapital (MAKE, KDV) · Einzel (Selbstständigkeit) |
+| Verlustvortrag · Zahlweise · Zahlmonat | je Gesellschaft (`steuern[ort].param`) | an · Folgejahr · `annahmen.steuerMonat` (6) |
+| Gewerbesteuer-Freibetrag · Anrechnungsfaktor § 35 | je Gesellschaft (Einzel) | 24.500 € · 4,0 |
+| Tarif-Eckwerte der Einkommensteuer (13 Felder) | je Gesellschaft (Einzel) | 2026 |
+| Steuer auf den Ausstieg | Plan (`annahmen.exitSteuer`) und Szenario | 25 % (Plan) |
+| Entnahme (Betrag, Anteil, ab Monat) | Szenario (`annahmen.entnahme`) | keine |
+Alles Steuerliche gilt **je Gesellschaft und je Szenario**: im Plan unter `steuern`, im Szenario als Überlagerung `planszenarien[].annahmen.steuern` (nur eingetragene Felder greifen, `steuernMit`). Oberfläche: Karte „Welche Steuern gelten?“ in den drei Business-Blättern und unter Planen › Treiber, Annahmen & Steuern („Gilt für: ganzen Plan / nur Arbeitsplan“); im Baukasten je Szenario; Felder zeigen die Vorgabe als grauen Platzhalter, „↺ zurücksetzen“ leert. Der Schreibweg ist der vorhandene (Stand/409, Protokoll, Rückgängig), die Blätter rechnen sofort neu. Entnahme: Selbstständigkeit-Blatt, Gesamt › Übergänge, Baukasten › Annahmen.
+
+### Näherungen (Hinweis, keine Steuerberatung)
+Bemessungsgrundlage = Gewinn vor Steuern (keine Hinzurechnungen/Kürzungen, Messbetrag nicht auf 100 € gerundet; die Gewerbesteuer mindert die KSt nicht) · Verlustvortrag einfach (siehe oben) · jedes Kalenderjahr für sich · Einkommensteuer ohne private Einkünfte, ohne Soli und Kirchensteuer · Anrechnung vereinfacht als Faktor auf den Messbetrag · Ausstieg nur mit der pauschalen Steuer.
+
+### Vorher-Nachher (erfundene Fixture-Pläne, Kern c83cb1f → Umbau)
+`tests/fixtures/finanz-plan.ts` (`planFix(Ankermandat)`, Arbeitspläne `arbeitsplanFix()` und `arbeitsplanSelbst()`), 27 Plan-Monate, Beträge in €. „A“ = kleiner Umsatz (Ankermandat 4.000 €), „B“ = größerer (14.000 €). Vorher-Zahlen stehen als `tests/fixtures/kern-vorher.json`.
+Ohne Arbeitsplan (A und B) ändert sich **keine Zahl** außer „Frei verfügbar gesamt“ (+ 5.000 €: das Konto der Selbstständigkeit zählt jetzt mit).
+
+| Kennzahl | A Arbeitsplan: vorher | nachher | B Arbeitsplan: vorher | nachher | B Selbstständigkeit: vorher | nachher |
+|---|---|---|---|---|---|---|
+| Ergebnis nach Steuern MAKE (27 Monate) | -151.186 | -153.766 **≠** | -39.508 | -41.668 **≠** | 45.524 | -41.668 **≠** |
+| Ergebnis nach Steuern KD Ventures | 23.750 | 22.350 **≠** | 23.750 | 22.350 **≠** | 23.750 | 22.350 **≠** |
+| Ergebnis nach Steuern Selbstständigkeit | 3.000 | 3.000 | 3.000 | 3.000 | 91.255 | 91.255 |
+| Steuerzahlungen 2026 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Steuerzahlungen 2027 | 1.863 | 1.499 **≠** | 10.263 | 9.899 **≠** | 14.631 | 10.088 **≠** |
+| Steuerzahlungen 2028 | 0 | 672 **≠** | 19.923 | 20.175 **≠** | 34.623 | 30.899 **≠** |
+| Runway MAKE (Monate) | 7 | 5 **≠** | 21 | 21 | über Horizont | 21 **≠** |
+| Runway Privat (Monate) | 0 | 0 | 0 | 0 | 0 | 0 |
+| Frei verfügbar MAKE jetzt | 7.841 | 7.481 **≠** | 15.041 | 14.681 **≠** | 12.785 | 14.681 **≠** |
+| Frei verfügbar Selbstständigkeit jetzt | — | 5.500 **≠** | — | 5.500 **≠** | — | 4.700 **≠** |
+| Frei verfügbar gesamt jetzt | 8.591 | 13.731 **≠** | 15.791 | 20.931 **≠** | 13.535 | 20.131 **≠** |
+| Privat-Luft, schlechtester Monat | -700 | -700 | -700 | -700 | -700 | -700 |
+| Privat-Luft, Summe | 57.952 | 57.952 | 57.952 | 57.952 | 57.952 | 57.952 |
+
+**Erklärung der Abweichungen**
+- *Ergebnis nach Steuern MAKE* — A/B Arbeitsplan: der Baustein „K“ der Selbstständigkeit (500 € × 6 Monate = 3.000 €) liegt nicht mehr in den MAKE-Zahlen; die MAKE-Steuer sinkt um 28 % davon. **B Selbstständigkeit:** vorher steckten 6.000 €/Monat Umsatz der Selbstständigkeit in den MAKE-Zahlen (Ergebnis +45.524, Runway „über Horizont“, Tiefpunkt +12.785), jetzt rechnet MAKE allein (−41.668, Runway 21 Monate, Tiefpunkt −57.168) und die Selbstständigkeit steht für sich (+91.255 nach Steuern). Die Summe von MAKE + Selbstständigkeit vor Steuern ist unverändert (Test).
+- *KD Ventures* (alle Arbeitsplan-Fälle): der Baustein „V“ (200 €/Monat ab Dez 26) wird jetzt wie bei einer GmbH versteuert (28 % von 5.000 € = 1.400 €, gezahlt Juni 27/Juni 28); vorher zahlte KDV nur die pauschale Steuer auf den Ausstieg.
+- *Steuerzahlungen* — 2027/2028 (alle drei Gesellschaften zusammen): A/B Arbeitsplan verschieben sich aus denselben Gründen (MAKE ohne den Gewinn der Selbstständigkeit, dazu die KDV-Zahlung im Juni 28: 672 €). **B Selbstständigkeit:** 2027 14.631 → 10.088, 2028 34.623 → 30.899 — vorher wurde der Gewinn der Selbstständigkeit mit der MAKE-Quote (28 %) versteuert, jetzt mit dem Grundtarif (Einkommensteuer 15.845 € Aufwand über 27 Monate statt 28 % × 107.100 €); die Gewerbesteuer ist bei diesem Hebesatz durch die Anrechnung nach § 35 EStG ausgeglichen (Faktor 4,0 × Messbetrag ≥ Gewerbesteuer).
+- *Frei verfügbar Selbstständigkeit* (neu, nicht vorher): Konto (Start 5.000 €) + Ergebnis − Rücklage − USt. *Frei verfügbar gesamt* nimmt sie als vierten Strom mit — **das ist eine Definitionsänderung** (CLAUDE.md hielt „frei verfügbar“ am 27.09. fest; Kevins Auftrag 02.10. „Gesamt nimmt die Selbstständigkeit als eigenen Strom“). Wer das nicht will: `Auswertung.frei.kdc` aus `frei.gesamt` herausnehmen.
+- *Privat* (Luft Summe/Minimum, Runway Privat): **unverändert**, solange keine Entnahme-Regel gesetzt ist; mit Entnahme steigt „verfügbar“ um den Betrag.
+- Der alte Wächter „Gesamtsatz bleibt beim Aufschlüsseln gleich“ entfällt (es gibt keine Aufschlüsselung mehr, der Kern rechnet die Teile selbst); ersetzt durch „leere Felder = alte Gesamtquote“ (Test gegen die alte Formel) und „von Hand eingetragene Vorgaben = leere Felder (bit-genau)“.
+
+### Regression und Tests
+- `tests/finanzplan-regression.test.ts`: Goldwerte für A/B ohne Plan **unverändert**; mit Arbeitsplan auf die neuen Werte angepasst (Erklärung im Kopf des Tests); neu **„Nicht betroffene Teile bleiben exakt gleich“** gegen `tests/fixtures/kern-vorher-gold.json` (aus dem alten Kern erzeugt, Plan ohne Selbstständigkeit und ohne KDV-Baustein): Privat-Blatt je Monat, Ziele (Verlauf, Erreicht-Monat, Status), Töpfe, Buchungen/IST, MAKE-Konto/frei/Steuer/Rücklage, Kennzahlen, Auswertung (auf 1e-8; die Steuer ist jetzt eine Summe der Einzelsteuern, das ändert nur die letzten Bits).
+- `tests/kern-steuern.test.ts` (88 Tests): Tarif (von Hand und mit Eckwerten), KSt/Soli/GewSt-Beispiele, Verlustvortrag (auch über mehrere Jahre), Freibetrag/Anrechnung, Steuerrechner (Folgejahr, Zahlmonat, Quartal), MAKE und KD Ventures im Kern, Selbstständigkeit-Achse (Konto, USt, ESt, Rücklage, Sachkosten-Zeilen), Entnahme, Gesamt-Summen konsistent (Summe der Gesellschaften = Gesamt), Altdaten, und **für jeden Parameter: geändert wirkt, geleert wirkt wie die Vorgabe, im Szenario = im Plan** (23 Fälle × 2: eingetragen/geleert und Plan/Szenario).
+- Angepasst: `finanzplan-steuern` (neue Felder/Zeilen), `finanzplan-geschaeft` (Blatt aus dem Kern), `finanzplan-ansichten` (Karte, Selbstständigkeit-Blatt, Gesamt), `finanz-einheiten-summen` (kdc-Achse, KDV-Konto), `finanzplan-szenarien`.
+
+### Kompatibilität und Rückweg
+Siehe `GO_LIVE_CHECKLISTE.md` › „Was beim Rückweg wegfällt“ (Eintrag „Kern-Umbau 02.10.“). Kurz: alle neuen Felder sind optional (`steuern`, `schwellen`, `planszenarien[].annahmen.{steuern,exitSteuer,entnahme}`); der Online-Säuberer (1818c5c/af4679a) verwirft sie beim nächsten Schreiben, rechnet dann wieder mit EINER Quote und kdc-Bausteinen in den MAKE-Zahlen — kein Absturz, keine Datenverluste an Plänen.
+
+### Offen / für Kevin
+- „Frei verfügbar gesamt“ mit dem Konto der Selbstständigkeit (siehe oben) bestätigen.
+- Entnahme-Regel je Szenario festlegen (ohne Regel bleibt das Geld in der Selbstständigkeit und Privat sieht nichts davon).
+- Hebesatz je Gemeinde eintragen (bis dahin aus `steuerUG` abgeleitet, ~405 % bei 30 % Gesamtsatz); Rechtsform der Selbstständigkeit prüfen (Freiberuf = Gewerbesteuer-Zeile ausschalten).
+- Mindestbesteuerung beim Verlustvortrag, Progressionseffekt der Gehälter auf die Einkommensteuer — bewusst nicht abgebildet.
 
 ## Produkte → Deals → Mandate → Planung (Kevin: „clean von vorne bis hinten“)
 - **Produkt** (`Leistung`, Katalog im CRM, Seite `/os/mandate?s=produkte`) trägt, was die Planung braucht: `preis.betrag`, `preis.basis`
@@ -151,8 +228,8 @@ Handy: die Seite war durch die Reiterleiste 717 px breit — `minWidth: 0` am Se
   (Datei war für dieses Paket gesperrt) — bis dahin verliert die Produktseite diese drei Felder beim Speichern.
 
 ## Technik
-- **Rechenkern:** `lib/finanzen/rechenkern.ts` — Kevins v3 unverändert übernommen (nur Typ `fokus.entscheidung` ergänzt, zwei Non-Null-Behauptungen
-  im Zahlungskalender aufgelöst). EINE Wahrheit für Seite, Routen und ZOE. Lokal gegen die echte Datei geprüft: Repo-Rechenkern = Mock-up-Rechenkern
+- **Rechenkern:** `lib/finanzen/rechenkern.ts` — Kevins v3, übernommen (nur Typ `fokus.entscheidung` ergänzt, zwei Non-Null-Behauptungen
+  im Zahlungskalender aufgelöst); am 02.10. auf Kevins Wort umgebaut (Abschnitt „Kern-Umbau 02.10.“, Steuern einzeln, Selbstständigkeit-Achse, Einkommensteuer, zwei Felder gelöscht). EINE Wahrheit für Seite, Routen und ZOE. Lokal gegen die echte Datei geprüft: Repo-Rechenkern = Mock-up-Rechenkern
   in allen fünf Szenarien (11.122 Vergleiche, 0 Abweichungen, keine nicht endlichen Werte).
 - **Operationen:** `lib/finanzen/plan/operationen.ts` (rein, getestet) — Pfade `/plan/<zeile>:<monat>`, Listen über `id=<kennung>` oder Index, `/-` hängt an,
   fehlendes `neu` entfernt; gesperrt: version, stand, monate, historie, meta, protokoll. `/regeln/<empfänger>` merkt die Regel und ordnet rückwirkend zu

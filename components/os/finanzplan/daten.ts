@@ -10,7 +10,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAbgleich } from '@/hooks/useAbgleich';
-import type { FinanzDaten, MonatPrivat, MonatUG, Szenario, IstHistorie, Zusatz } from '@/lib/finanzen/rechenkern';
+import type { FinanzDaten, MonatPrivat, MonatSelbst, MonatUG, Szenario, IstHistorie, Zusatz } from '@/lib/finanzen/rechenkern';
 import { kennzahlen, istHistorie } from '@/lib/finanzen/rechenkern';
 import { rechneMit, arbeitsplanVon, auswertung, type Planszenario, type Auswertung } from '@/lib/finanzen/szenarien';
 import { wendeOperationenAn, lies, pfadTeile, OperationUngueltig, type Operation } from '@/lib/finanzen/plan/operationen';
@@ -146,7 +146,7 @@ export interface Gerechnet {
   /** Dokument, wie es gerechnet wurde (Szenario-Annahmen überlagert). */
   dd: FinanzDaten;
   x?: Zusatz;
-  ug: MonatUG[]; pr: MonatPrivat[]; kz: ReturnType<typeof kennzahlen>; h: IstHistorie;
+  ug: MonatUG[]; /** Selbstständigkeit (eigene Achse seit 02.10.). */ kdc: MonatSelbst[]; pr: MonatPrivat[]; kz: ReturnType<typeof kennzahlen>; h: IstHistorie;
   /** Lage in Zahlen: frei verfügbar, Runway, Ziele, Mindestumsatz, Steuer, Übergänge. */
   aw: Auswertung;
 }
@@ -158,7 +158,7 @@ export interface Gerechnet {
  */
 export function rechne(d: FinanzDaten, treiber?: Szenario, ps: Planszenario | null = arbeitsplanVon(d)): Gerechnet {
   const g = rechneMit(d, ps, treiber);
-  return { sz: g.sz, ps: g.ps, dd: g.d, x: g.x, ug: g.ug, pr: g.pr, kz: g.kz, h: istHistorie(d), aw: auswertung(g.d, g.ug, g.pr) };
+  return { sz: g.sz, ps: g.ps, dd: g.d, x: g.x, ug: g.ug, kdc: g.kdc, pr: g.pr, kz: g.kz, h: istHistorie(d), aw: auswertung(g.d, g.ug, g.pr, g.kdc) };
 }
 
 export interface PlanKontext extends Gerechnet {

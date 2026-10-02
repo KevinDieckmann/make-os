@@ -130,6 +130,21 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
     laufenden Jahres steht wie bisher unter `jahr`/`privat:jahr`/`business:jahr` (die neue Version schreibt ihn doppelt).
     Wird der Fokus im alten Stand geändert und danach wieder die neue Version eingespielt, gilt der zuletzt in der NEUEN
     Version gespeicherte Satz (`…jahr:<Jahr>`) — dann einmal auf der Jahresseite prüfen.
+- **Finanzplanung: Kern-Umbau (02.10., Steuern einzeln · Selbstständigkeit eigene Achse · Einkommensteuer · zwei Felder gelöscht):**
+  keine Formänderung am Dokument, nur optionale Zusatzfelder — geprüft am Säuberer von 1818c5c (`pruefeDokument`, `pruefePlanszenarien`; af4679a
+  verhält sich gleich). Der alte Stand **stürzt nicht ab** und liest das neue Dokument weiter:
+  - `steuern` (Rechtsform, Sätze, Hebesatz, Verlustvortrag, Zahlweise, Tarif-Eckwerte je Gesellschaft) und `schwellen` stehen nicht in seiner
+    Wurzelliste → **verworfen beim nächsten Lesen/Schreiben**; ebenso `planszenarien[].annahmen.steuern/exitSteuer/entnahme` (seine
+    Szenario-Annahmen kennen nur Gehälter, `steuerUG`, Zahlungsziel, Ausschüttung + deren Steuer). Nach einem erneuten Upload sind die Felder
+    leer und der Plan rechnet mit den Vorgaben — wer sie eingestellt hat, trägt sie neu ein (vor dem Rückweg notieren: Hebesatz, Zahlweise,
+    Entnahme-Regel, Steuer auf den Ausstieg je Szenario).
+  - `annahmen` reicht er unverändert durch (`steuerUG` bleibt, `ruecklage5a` fehlt — nicht Pflicht), `einstellungen.notgroschenMonate` setzt er auf 3
+    (ohne Wirkung), Bausteine mit `einheit: 'kdc'` kennt er.
+  - **Die Zahlen springen zurück:** der alte Kern rechnet wieder EINE Ertragsteuer-Quote (`steuerUG` auf den Gewinn des Vorjahres), die Bausteine der
+    Selbstständigkeit und ihre Sachkosten-Zeilen laufen in den MAKE-Zahlen, KD Ventures zahlt nur die Steuer auf den Ausstieg, die Einkommensteuer der
+    Selbstständigkeit steht nur im Abschluss 2026. „Frei verfügbar gesamt“ enthält das Konto der Selbstständigkeit dann nicht mehr; eine Entnahme-Regel
+    wirkt nicht mehr. Keine Daten gehen verloren (Pläne, Bausteine, Buchungen, Ziele bleiben).
+  - Hin und zurück ist verlustfrei, solange nichts im alten Stand an `steuern`/Entnahme geändert wurde (er kennt die Felder nicht).
 - **Meilensteine im Detail (30.09.):** Projekt „Meilensteine“ und die Listen `lm-…` bleiben (af4679a kennt Projekte/Listen), die
   Aufgaben darin auch — nur die Detailseite, der Verlauf/die Notizen/Links (`meilenstein-raum--<haushalt>`, af4679a liest ihn nie
   und schreibt ihn nie) und die Rechenregel fehlen; der Fortschritt bleibt auf dem zuletzt errechneten Wert stehen (dann wieder von

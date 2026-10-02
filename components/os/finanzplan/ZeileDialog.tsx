@@ -25,10 +25,10 @@ export function findeZeile(d: { sachkosten: Zeile[]; privatBudget: Zeile[]; priv
 }
 
 /** Neue Zeile anlegen — liefert die Kennung, damit der Aufrufer den Dialog öffnet. */
-export function neueZeileOp(liste: ZeilenListe, gruppe?: string): { op: Operation; id: string } {
+export function neueZeileOp(liste: ZeilenListe, gruppe?: string, einheit?: Zeile['einheit']): { op: Operation; id: string } {
   const typ = gruppe ? (Object.entries(TYP_GRUPPE).find(([, g]) => g === gruppe)?.[0] as Zeile['typ'] | undefined) : undefined;
   const id = neueKennung(PRAEFIX[liste]);
-  const z: Zeile = { id, name: 'Neue Zeile', einheit: EINHEIT[liste], gruppe: gruppe ?? (liste === 'privatSchulden' ? 'Schulden' : liste === 'privatEinnahmen' ? 'Einnahmen' : 'Weitere'), soll: 0, ab: liste === 'sachkosten' ? 2 : 1 };
+  const z: Zeile = { id, name: 'Neue Zeile', einheit: einheit ?? EINHEIT[liste], gruppe: gruppe ?? (liste === 'privatSchulden' ? 'Schulden' : liste === 'privatEinnahmen' ? 'Einnahmen' : 'Weitere'), soll: 0, ab: liste === 'sachkosten' ? 2 : 1 };
   if (liste === 'privatBudget') z.typ = typ ?? 'flex';
   if (z.typ === 'jahr') { z.jahresbetrag = 0; z.faellig = []; }
   return { op: { pfad: `/${liste}/-`, neu: z, feld: `Zeile angelegt (${EINHEIT_LABEL[z.einheit]})` }, id };

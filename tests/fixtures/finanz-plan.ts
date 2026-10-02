@@ -15,8 +15,8 @@ export const treiberFix = (obBetrag: number): Szenario => ({
 export function planFix(obBetrag = 4000): FinanzDaten {
   return {
     version: 3, stand: '2026-09-27', monate: monatsLabels(2026, 10, 27), aktiv: 's1', planszenarien: [], arbeitsplan: null, schulden: [], meta: {}, abschluesse: [], historie: monatsLabels(2026, 1, 9),
-    einstellungen: { heute: '2026-09-27', reserveMonate: 2, notgroschenMonate: 3 }, buchungen: [], regeln: {}, ziele: [], check: { punkte: [], eintraege: [] }, notizen: {},
-    annahmen: { kevinBrutto: 3000, kevinAb: 2, malinBrutto: 2500, malinAb: 3, agAnteil: 0.2, stammkapital: 2500, gruendungskosten: 900, darlehenKevin: 3000, darlehenRueckMonat: 14, retainerVerzug: 1, astarnaProvision: 120, steuerUG: 0.3, ust: 0.19, steuerMonat: 6, ruecklage5a: 0, holdingKosten: 400, holdingAb: 4, kdvStart: 1000, bjoernBetrag: 12000, bjoernRate: 600, bjoernRateVon: 2, bjoernRateBis: 11, bjoernSchluss: 6000, bjoernSchlussMonat: 12, bjoernZinsMonat: 50, bjoernZinsDeckel: 900, exitSteuer: 0.25, nettoTabelle: [[1000, 800], [2000, 1500], [4000, 2700], [6000, 3800]], gehaltTag: 28 },
+    einstellungen: { heute: '2026-09-27', reserveMonate: 2 }, buchungen: [], regeln: {}, ziele: [], check: { punkte: [], eintraege: [] }, notizen: {},
+    annahmen: { kevinBrutto: 3000, kevinAb: 2, malinBrutto: 2500, malinAb: 3, agAnteil: 0.2, stammkapital: 2500, gruendungskosten: 900, darlehenKevin: 3000, darlehenRueckMonat: 14, retainerVerzug: 1, astarnaProvision: 120, steuerUG: 0.3, ust: 0.19, steuerMonat: 6, holdingKosten: 400, holdingAb: 4, kdvStart: 1000, bjoernBetrag: 12000, bjoernRate: 600, bjoernRateVon: 2, bjoernRateBis: 11, bjoernSchluss: 6000, bjoernSchlussMonat: 12, bjoernZinsMonat: 50, bjoernZinsDeckel: 900, exitSteuer: 0.25, nettoTabelle: [[1000, 800], [2000, 1500], [4000, 2700], [6000, 3800]], gehaltTag: 28 },
     sachkosten: [{ id: 'sk1', name: 'Software', einheit: 'ug', gruppe: 'Tools', soll: 250, ab: 1 }, { id: 'sk2', name: 'Büro', einheit: 'ug', gruppe: 'Räume', soll: 400, ab: 3, bis: 20 }],
     privatEinnahmen: [{ id: 'pe1', name: 'Nebenjob', einheit: 'privat', gruppe: 'Einnahmen', soll: 300, ab: 1 }],
     privatBudget: [{ id: 'pb1', name: 'Miete', einheit: 'privat', gruppe: 'Fixkosten', soll: 1200, typ: 'fix', tag: 3 }, { id: 'pb2', name: 'Essen', einheit: 'privat', gruppe: 'Flexibel', soll: 600, typ: 'flex' }, { id: 'pb3', name: 'Versicherung', einheit: 'privat', gruppe: 'Jahreskosten & Puffer', soll: 100, typ: 'jahr', jahresbetrag: 1200, faellig: [3, 9] }, { id: 'pb4', name: 'Rücklage', einheit: 'privat', gruppe: 'Sparen', soll: 200, typ: 'sparen' }],
@@ -41,4 +41,43 @@ export function arbeitsplanFix(): Planszenario {
     ],
     annahmen: { ausschuettung: { betrag: 600, ab: 8 }, steuerUG: 0.28 },
   };
+}
+
+/**
+ * Arbeitsplan mit einer kräftigen Selbstständigkeit (Baustein-Einheit kdc): Umsatz, Software, eine Stelle — und eine
+ * Entnahme-Regel lässt sich von den Tests darübersetzen. Erfundene Zahlen. Gebraucht für den Kern-Umbau 02.10. (Vorher-Nachher-Bericht).
+ */
+export function arbeitsplanSelbst(): Planszenario {
+  const a = arbeitsplanFix();
+  return {
+    ...a, id: 'ps2', name: 'Plan mit Selbstständigkeit',
+    bausteine: [
+      ...a.bausteine.filter(b => b.id !== 'b4'),
+      neuerBaustein('k1', { art: 'umsatz', einheit: 'kdc', name: 'Interim', preis: 6000, start: 1, laufzeit: 24, zahlungsziel: 1 }),
+      neuerBaustein('k2', { art: 'kosten', einheit: 'kdc', kostenArt: 'tool', name: 'Software', preis: 300, start: 1 }),
+      neuerBaustein('k3', { art: 'kosten', einheit: 'kdc', kostenArt: 'stelle', name: 'Assistenz', preis: 1000, start: 4 }),
+    ],
+  };
+}
+
+/** Arbeitsplan ohne Bausteine der Selbstständigkeit und ohne KD-Ventures-Baustein: der Teil des Plans, den der Kern-Umbau 02.10. NICHT berührt (Privat, MAKE ohne Selbstständigkeit, Ziele, Töpfe). */
+export function arbeitsplanOhneSelbst(): Planszenario {
+  const a = arbeitsplanFix();
+  return { ...a, id: 'ps3', name: 'Plan ohne Selbstständigkeit', bausteine: a.bausteine.filter(b => b.einheit !== 'kdc' && b.einheit !== 'kdv') };
+}
+
+/** Plan mit Zielen und Buchungen für die Regressionsprüfung (Ziele, Töpfe, Buchungen müssen nach dem Umbau bit-genau gleich bleiben). */
+export function planGold(): FinanzDaten {
+  const d = planFix(14000);
+  d.ziele = [
+    { id: 'z1', name: 'Rücklage', quelle: 'privat.angespart', ziel: 40000, bis: '2027-12', einheit: 'privat' },
+    { id: 'z2', name: 'MAKE frei', quelle: 'ug.frei', ziel: 5000, bis: '2028-06', einheit: 'ug' },
+    { id: 'z3', name: 'Darlehen', quelle: 'kdv.bjoern', ziel: 0, bis: '2027-09', einheit: 'kdv' },
+    { id: 'z4', name: 'Gruppe', quelle: 'gruppe', ziel: 30000, bis: '2028-12', einheit: 'privat' },
+  ];
+  d.buchungen = [
+    { id: 'b1', d: '2026-05-03', b: -1200, n: 'Vermieter', k: 'giro', z: 'pb1' }, { id: 'b2', d: '2026-05-10', b: -80.5, n: 'Markt', k: 'giro', z: 'pb2' },
+    { id: 'b3', d: '2026-06-01', b: 2000, n: 'Kunde', k: 'giro', z: 'x.einnahme' }, { id: 'b4', d: '2026-06-02', b: -40, n: 'Unbekannt', k: 'giro', z: 'x.offen' },
+  ];
+  return d;
 }

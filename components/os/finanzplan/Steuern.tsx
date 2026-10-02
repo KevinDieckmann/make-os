@@ -2,23 +2,27 @@
 
 // ─── Finanzplanung jetzt — „Welche Steuern gelten?“ ──────────────────────────
 // Kevin 02.10.: „Unten stehen so viele Steuern, die wir nicht brauchen.“ Je Gesellschaft nur die Steuerzeilen, die zur
-// Rechtsform passen — jede mit Schalter und Satz. Die Karte ändert den Plan über dieselben Operationen wie alles andere
-// (Stand/409, Protokoll, Rückgängig). Die Logik steht in lib/finanzen/steuern.ts; hier ist nur die Oberfläche.
-// Steuern sind Näherungen — Hinweis, keine Steuerberatung.
+// Rechtsform passen — jede mit Schalter. Seit dem Kern-Umbau 02.10. rechnet der Plan die Ertragsteuern einzeln, und jeder Wert
+// ist ein Feld mit Vorgabe (Kevin: „alles anpassen, damit ich selber spielen kann“): leer = Vorgabe (grauer Platzhalter),
+// „zurücksetzen“ leert das Feld. Die Felder gelten für den ganzen Plan oder nur für ein Szenario (Überlagerung). Die Karte ändert
+// den Plan über dieselben Operationen wie alles andere (Stand/409, Protokoll, Rückgängig) — die Blätter rechnen sofort neu.
+// Die Logik steht in lib/finanzen/steuern.ts; hier ist nur die Oberfläche. Steuern sind Näherungen — Hinweis, keine Steuerberatung.
 
 import { useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift } from '../schlank';
 import { finanzOrtName, type FinanzOrt } from '@/lib/einheiten';
 import { prozent } from '@/lib/finanzen/plan/hilfen';
-import { STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE } from '@/lib/finanzen/szenarien';
+import { STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE, type Planszenario } from '@/lib/finanzen/szenarien';
 import { nettoTabellePlatzhalter } from '@/lib/finanzen/plan/operationen';
+import { gesamtquote } from '@/lib/finanzen/ertragsteuer';
 import {
-  RECHTSFORM_LABEL, STEUER_STANDARD, gesamtsatzAus, profilVon, rechtsformVon, steuerOps, steuerZeilen, steuerArtenFuer,
-  type Rechtsform, type SteuerAenderung, type SteuerArt,
+  RECHTSFORM_LABEL, rechtsformVon, steuerFelder, steuerOps, steuerParameter, steuerZeilen, steuernMit, steuerArtenFuer,
+  type Rechtsform, type SteuerAenderung, type SteuerArt, type SteuerBereich, type SteuerFeld,
 } from '@/lib/finanzen/steuern';
 import { usePlan } from './daten';
 import { useArbeitsplan } from './arbeitsplan';
+import { FeldK } from './Annahmen';
 import { Tabelle, TH, THr, TD, TDr, ZahlFeld, Auswahl, Schalter, KnopfKlein, Hinweis, Etikett } from './teile';
 
 /** Eine Steuerzeile: Schalter · Name · Satz, darunter ein Satz zur Wirkung. */
@@ -73,89 +77,115 @@ export function NettoTabelle() {
   );
 }
 
+const prozentText = (v: number, dezimal: number) => String(Math.round(v * 10 ** (dezimal + 2)) / 10 ** dezimal).replace('.', ',');
+
+/** Ein Feld der Steuer-Karte: Wert oder grauer Platzhalter (= Vorgabe), „zurücksetzen“ leert es. */
+function SteuerFeldEingabe({ f, setze }: { f: SteuerFeld; setze: (wert: number | boolean | string | null) => void }) {
+  const mitReset = f.gesetzt ? <button type="button" onClick={() => setze(null)} title="Zurück auf die Vorgabe" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', font: 'inherit', fontSize: 11.5, padding: 0, textAlign: 'left' }}>↺ zurücksetzen</button> : null;
+  let eingabe: ReactNode;
+  if (f.art === 'anteil') eingabe = <ProzentFeld wert={f.gesetzt ? (f.wert as number) : null} leer platzhalter={prozentText(f.vorgabe as number, f.dezimal)} dezimal={f.dezimal} breite="100%" titel={f.label} onFertig={v => setze(v == null ? null : Math.max(0, Math.min(1, v)))} />;
+  else if (f.art === 'schalter') eingabe = <Schalter an={f.wert as boolean} onChange={v => setze(v)}>{f.wert ? 'ja' : 'nein'}{!f.gesetzt ? ' (Vorgabe)' : ''}</Schalter>;
+  else if (f.art === 'wahl') eingabe = <Auswahl wert={String(f.wert)} onWahl={v => setze(v)} optionen={f.optionen ?? []} titel={f.label} />;
+  else if (f.art === 'monat') eingabe = <ZahlFeld wert={f.gesetzt ? (f.wert as number) : null} leer platzhalter={String(f.vorgabe)} dezimal={0} breite="100%" titel={f.label} onFertig={v => setze(v == null ? null : Math.max(1, Math.min(12, Math.round(v))))} />;
+  else eingabe = <ZahlFeld wert={f.gesetzt ? (f.wert as number) : null} leer platzhalter={String(f.vorgabe).replace('.', ',')} dezimal={f.dezimal} breite="100%" titel={f.label} onFertig={v => setze(v == null ? null : Math.max(0, v))} />;
+  return <FeldK label={f.label} breit={190}>{eingabe}{mitReset}{f.hinweis && <span style={{ fontSize: 11, color: C.inkLeise, lineHeight: 1.35 }}>{f.hinweis}</span>}</FeldK>;
+}
+
 /**
  * Die Karte für einen Ort. Eingeklappt zeigt sie nur die Überschrift mit Zusammenfassung („GmbH · 3 Steuerzeilen“);
- * `offen` öffnet sie von außen (Sprung aus „Noch offen“).
+ * `offen` öffnet sie von außen (Sprung aus „Noch offen“). `szenario` legt die Karte fest auf ein Szenario (Baukasten);
+ * sonst wählt man oben „Ganzer Plan“ oder „nur Arbeitsplan“.
  */
-export function SteuerKarte({ ort, offen: offenStart = false, i = 0 }: { ort: FinanzOrt; offen?: boolean; i?: number }) {
+export function SteuerKarte({ ort, offen: offenStart = false, i = 0, szenario }: { ort: FinanzOrt; offen?: boolean; i?: number; szenario?: Planszenario }) {
   const { d, aendere } = usePlan();
-  const { ps, schreibe } = useArbeitsplan();
+  const { ps: arbeitsplan, schreibe } = useArbeitsplan();
   const [offen, setOffen] = useState(offenStart);
-  const rf = rechtsformVon(d, ort), p = profilVon(d, ort);
+  const [bereichWahl, setBereichWahl] = useState<'plan' | 'szenario'>('plan');
+  const [tarifOffen, setTarifOffen] = useState(false);
+  const ps = szenario ?? arbeitsplan;
+  const imSzenario = !!szenario || bereichWahl === 'szenario';
+  const schicht = imSzenario ? ps?.annahmen.steuern : d.steuern;
+  const unter = imSzenario ? d.steuern : undefined;
+  // Mit allen Überlagerungen gerechnet wird, was in der Schicht steht: Plan allein oder Plan + dieses Szenario.
+  const dTop = imSzenario ? { ...d, steuern: steuernMit(d.steuern, ps?.annahmen.steuern) } : d;
+  const rf = rechtsformVon(dTop, ort);
   const ausSatz = ps?.annahmen.ausschuettungSteuer ?? AUSSCHUETTUNG_STEUER_VORGABE;
-  const einzeln = !!p.einzeln && rf === 'kapital' && ort === 'ug';
-  // Ohne Aufschlüsselung steht die Ertragsteuer als EINE Zeile da (KSt + Soli + Gewerbesteuer stecken im Gesamtsatz).
-  const zeilen = steuerZeilen(d, ort, ausSatz).filter(z => einzeln || !(z.art === 'kst' || z.art === 'soli' || z.art === 'gewst'));
-  const gesamtZeile = ort === 'ug' && !einzeln && rf === 'kapital';
+  const zeilen = steuerZeilen(dTop, ort, ausSatz);
+  const felder = steuerFelder(dTop, ort, schicht, unter);
+  const sp = steuerParameter(dTop, ort);
   const gelten = zeilen.filter(z => z.an).length;
-  const tu = (a: SteuerAenderung) => { const ops = steuerOps(d, ort, a); if (ops.length) void aendere(ops, ops[0].feld ?? 'Steuern'); };
+  const bereichFuer = (id: string): SteuerBereich => (imSzenario ? { art: 'szenario', id } : { art: 'plan' });
+  /** Eine Änderung schreiben: in den Plan, in ein vorhandenes Szenario — oder, ohne Arbeitsplan, in einen neuen (derselbe Schritt, ein Rückgängig). */
+  const tu = (a: SteuerAenderung) => {
+    if (!imSzenario) { const ops = steuerOps(d, ort, a); if (ops.length) void aendere(ops, ops[0].feld ?? 'Steuern'); return; }
+    if (ps) { const ops = steuerOps(d, ort, a, bereichFuer(ps.id), schicht); if (ops.length) void aendere(ops, ops[0].feld ?? 'Steuern (Szenario)'); return; }
+    void schreibe(id => steuerOps(d, ort, a, bereichFuer(id), schicht), 'Steuern (Szenario)');
+  };
   const annahme = (k: string, alt: number, neu: number, feld: string) => void aendere([{ pfad: `/annahmen/${k}`, alt, neu }], feld);
-  const gesamt = gesamtsatzAus(p);
+  const exitSatz = imSzenario ? ps?.annahmen.exitSteuer : undefined;
 
-  /** Satz-Feld je Steuerart: ins Profil, in die Annahmen oder in den Arbeitsplan. */
   const satzFeld = (z: (typeof zeilen)[number]) => {
     const art = z.art;
-    if (art === 'kst' || art === 'soli') return <ProzentFeld wert={z.satz} titel={`${z.info.label} Satz`} onFertig={v => v != null && tu({ art: 'satz', steuer: art, wert: v })} />;
-    if (art === 'gewst') return (
-      <span style={{ display: 'inline-flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ color: C.inkLeise, fontSize: 12 }}>Messzahl</span><ProzentFeld wert={z.satz} titel="Gewerbesteuer Messzahl" breite={70} onFertig={v => v != null && tu({ art: 'satz', steuer: 'gewst', wert: v })} /></span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ color: C.inkLeise, fontSize: 12 }}>Hebesatz</span><ZahlFeld wert={z.hebesatz ?? 0} dezimal={1} breite={78} titel="Gewerbesteuer Hebesatz in Prozent" onFertig={v => v != null && tu({ art: 'hebesatz', wert: Math.max(0, v) })} /><span style={{ color: C.inkLeise, fontSize: 12.5 }}>%</span></span>
-      </span>
-    );
-    if (art === 'est' && ort === 'ug') return <ProzentFeld wert={d.annahmen.steuerUG} titel="Ertragsteuer pauschal" onFertig={v => v != null && annahme('steuerUG', d.annahmen.steuerUG, v, 'Ertragsteuer-Gesamtsatz')} />;
+    if (art === 'kst' || art === 'soli' || art === 'gewst') return <span style={{ color: C.inkDim, fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>{art === 'gewst' ? `Messzahl ${prozent(z.satz ?? 0, 2)} × Hebesatz ${String(Math.round((z.hebesatz ?? 0) * 10) / 10).replace('.', ',')} %` : prozent(z.satz ?? 0, 2)}</span>;
     if (art === 'ust') return <ProzentFeld wert={d.annahmen.ust} titel="Umsatzsteuer-Satz" onFertig={v => v != null && annahme('ust', d.annahmen.ust, v, 'Umsatzsteuer-Satz')} />;
-    if (art === 'exit') return <ProzentFeld wert={d.annahmen.exitSteuer} titel="Steuer auf den Ausstieg" onFertig={v => v != null && annahme('exitSteuer', d.annahmen.exitSteuer, v, 'Steuer auf den Ausstieg')} />;
+    if (art === 'exit') {
+      if (imSzenario) return <ProzentFeld wert={exitSatz ?? null} leer platzhalter={prozentText(d.annahmen.exitSteuer, 2)} titel="Steuer auf den Ausstieg (Szenario)" onFertig={v => void schreibe(id => [{ pfad: `/planszenarien/id=${ps?.id ?? id}/annahmen/exitSteuer`, alt: exitSatz, ...(v == null ? {} : { neu: Math.max(0, Math.min(1, v)) }) }], 'Steuer auf den Ausstieg (Szenario)')} />;
+      return <ProzentFeld wert={d.annahmen.exitSteuer} titel="Steuer auf den Ausstieg" onFertig={v => v != null && annahme('exitSteuer', d.annahmen.exitSteuer, v, 'Steuer auf den Ausstieg')} />;
+    }
     if (art === 'ausschuettung') return <ProzentFeld wert={ausSatz} dezimal={3} titel="Steuer auf die Ausschüttung, pauschal" onFertig={v => v != null && void schreibe(id => [{ pfad: `/planszenarien/id=${id}/annahmen/ausschuettungSteuer`, alt: ps?.annahmen.ausschuettungSteuer, neu: Math.max(0, Math.min(1, v)) }], 'Steuer auf die Ausschüttung')} />;
     return <span style={{ color: C.inkLeise, fontSize: 12.5 }}>—</span>;
   };
+  const gruppe = (g: SteuerFeld['gruppe']) => felder.filter(f => f.gruppe === g);
+  const feldGrid = (liste: SteuerFeld[]) => <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>{liste.map(f => <SteuerFeldEingabe key={f.id} f={f} setze={w => tu({ art: 'feld', id: f.id, wert: w })} />)}</div>;
+  const tarifGesetzt = gruppe('tarif').filter(f => f.gesetzt);
 
   return (
     <Karte i={i} id={`steuern-${ort}`}>
       <Ueberschrift rechts={<KnopfKlein farbe={offen ? C.inkDim : undefined} onClick={() => setOffen(o => !o)}>{offen ? 'Zuklappen' : 'Anpassen'}</KnopfKlein>}>
-        Welche Steuern gelten? — {finanzOrtName(ort)}
+        Welche Steuern gelten? — {finanzOrtName(ort)}{szenario ? ` · ${szenario.name}` : ''}
       </Ueberschrift>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
         {rf && <Etikett text={RECHTSFORM_LABEL[rf]} />}
-        <span>{zeilen.length || gesamtZeile ? `${gelten + (gesamtZeile ? 1 : 0)} von ${zeilen.length + (gesamtZeile ? 1 : 0)} Steuerzeilen gelten` : 'keine Steuerzeilen'}{ort === 'ug' && !einzeln ? ` · Ertragsteuer insgesamt ${prozent(d.annahmen.steuerUG, 1)}` : ''}{einzeln ? ` · Ertragsteuer insgesamt ${prozent(gesamt, 1)}` : ''}</span>
+        <span>{zeilen.length ? `${gelten} von ${zeilen.length} Steuerzeilen gelten` : 'keine Steuerzeilen'}{rf === 'kapital' && sp.kstAn ? ` · KSt, Soli und Gewerbesteuer zusammen ${prozent(gesamtquote(sp), 1)} vom Gewinn` : ''}</span>
       </div>
       {offen && (
         <div style={{ marginTop: 12 }}>
-          {ort === 'ug' && (
+          {ort !== 'privat' && (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+              {!szenario && (
+                <>
+                  <span style={{ fontSize: 12.5, color: C.inkDim }}>Gilt für</span>
+                  <Auswahl<'plan' | 'szenario'> wert={bereichWahl} onWahl={setBereichWahl} optionen={[{ id: 'plan', label: 'Ganzen Plan (alle Szenarien)' }, { id: 'szenario', label: arbeitsplan ? `Nur Arbeitsplan „${arbeitsplan.name}“` : 'Nur den Arbeitsplan (wird angelegt)' }]} titel="Gilt für" />
+                </>
+              )}
               <span style={{ fontSize: 12.5, color: C.inkDim }}>Rechtsform</span>
               <Auswahl<Rechtsform> wert={rf ?? 'kapital'} onWahl={v => tu({ art: 'rechtsform', wert: v })} optionen={(Object.keys(RECHTSFORM_LABEL) as Rechtsform[]).map(id => ({ id, label: RECHTSFORM_LABEL[id] }))} titel="Rechtsform" />
             </div>
           )}
+          {imSzenario && ort !== 'privat' && <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>Felder, die hier leer bleiben, gelten wie im Plan (grauer Wert). Nur die eingetragenen überlagern den Plan für dieses Szenario.</div>}
           {/* Zeilen statt Tabelle: auf dem Handy brechen sie um, nichts läuft nach rechts hinaus. */}
           <div>
-            {gesamtZeile && (
-              <ZeilenRahmen dim={false} name="Ertragsteuer insgesamt (Körperschaftsteuer, Soli, Gewerbesteuer)" hinweis="auf den Gewinn des Vorjahres; „Nach Steuerarten einstellen“ trennt die drei auf" satz={<ProzentFeld wert={d.annahmen.steuerUG} titel="Ertragsteuer insgesamt" onFertig={v => v != null && annahme('steuerUG', d.annahmen.steuerUG, v, 'Ertragsteuer-Gesamtsatz')} />} />
-            )}
             {zeilen.map(z => (
               <ZeilenRahmen key={z.art} dim={!z.an} name={z.info.label} hinweis={z.hinweis ?? z.info.wirkung}
                 schalter={z.schaltbar ? <Schalter an={z.an} onChange={v => tu({ art: 'an', steuer: z.art as SteuerArt, wert: v })} /> : <span style={{ color: C.inkLeise, fontSize: 12, width: 44, display: 'inline-block' }}>immer</span>}
-                satz={z.quelle === 'annahmen' && !z.schaltbar ? null : satzFeld(z)} />
+                satz={satzFeld(z)} />
             ))}
-            {einzeln && <ZeilenRahmen dim={false} fett name="Ertragsteuer insgesamt" hinweis="Summe der geltenden Zeilen — der Plan rechnet damit" satz={<span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{prozent(gesamt, 2)}</span>} />}
           </div>
-          {ort === 'ug' && rf === 'kapital' && (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
-              {einzeln
-                ? <KnopfKlein farbe={C.inkDim} onClick={() => tu({ art: 'einzeln', wert: false })} titel="Wieder ein einziger Gesamtsatz — der Satz bleibt, wie er ist">Zurück auf einen Gesamtsatz</KnopfKlein>
-                : <KnopfKlein onClick={() => tu({ art: 'einzeln', wert: true })} titel="Verteilt den heutigen Gesamtsatz auf KSt, Soli und Gewerbesteuer — keine Zahl ändert sich">Nach Steuerarten einstellen</KnopfKlein>}
-              <span style={{ fontSize: 12, color: C.inkLeise }}>{einzeln ? `Standard: KSt ${prozent(STEUER_STANDARD.kst, 1)}, Soli ${prozent(STEUER_STANDARD.soli, 1)} auf die KSt, Gewerbesteuer-Messzahl ${prozent(STEUER_STANDARD.messzahl, 1)} × Hebesatz Ihrer Gemeinde.` : 'Beim Aufschlüsseln bleibt der Gesamtsatz gleich; der Hebesatz ergibt sich als Rest.'}</span>
-            </div>
-          )}
-          {ort === 'ug' && (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, fontSize: 12.5, color: C.inkDim }}>
-              Ertragsteuer wird gezahlt im Monat
-              <ZahlFeld wert={d.annahmen.steuerMonat} dezimal={0} breite={64} titel="Kalendermonat der Ertragsteuer-Zahlung (1–12)" onFertig={v => { if (v != null && v >= 1 && v <= 12) annahme('steuerMonat', d.annahmen.steuerMonat, Math.round(v), 'Steuer gezahlt im Kalendermonat'); }} />
-              <span style={{ color: C.inkLeise }}>(1–12, auf den Gewinn des Vorjahres)</span>
+          {gruppe('saetze').length > 0 && <div style={{ marginTop: 12 }}><div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 6 }}>Sätze — leer heißt Vorgabe</div>{feldGrid(gruppe('saetze'))}</div>}
+          {gruppe('regeln').length > 0 && <div style={{ marginTop: 12 }}><div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 6 }}>Regeln</div>{feldGrid(gruppe('regeln'))}</div>}
+          {gruppe('tarif').length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <KnopfKlein farbe={C.inkDim} onClick={() => setTarifOffen(o => !o)}>{tarifOffen ? 'Einkommensteuer-Tarif zuklappen' : 'Einkommensteuer-Tarif (Eckwerte) anpassen'}</KnopfKlein>
+                {tarifGesetzt.length > 0 && <KnopfKlein onClick={() => { const ops = tarifGesetzt.flatMap(f => steuerOps(d, ort, { art: 'feld', id: f.id, wert: null }, imSzenario && ps ? bereichFuer(ps.id) : { art: 'plan' }, schicht)); if (ops.length) void aendere(ops, 'Einkommensteuer-Tarif zurückgesetzt'); }}>↺ alle Eckwerte auf die Vorgabe 2026</KnopfKlein>}
+                <span style={{ fontSize: 12, color: C.inkLeise }}>Grundtarif § 32a EStG, Vorgabe 2026 — die Eckwerte lassen sich einzeln ändern{tarifGesetzt.length ? ` (${tarifGesetzt.length} geändert)` : ''}.</span>
+              </div>
+              {tarifOffen && <div style={{ marginTop: 8 }}>{feldGrid(gruppe('tarif'))}</div>}
             </div>
           )}
           {ort === 'privat' && <div style={{ marginTop: 14 }}><NettoTabelle /></div>}
           {steuerArtenFuer(ort, rf).length === 0 && <div style={{ color: C.inkLeise, fontSize: 12.5 }}>Hier rechnet der Plan keine Steuer.</div>}
-          <Hinweis>{STEUER_HINWEIS} Nicht aufgeführt ist, was der Plan nicht rechnet (zum Beispiel Kirchensteuer). Eine abgeschaltete Zeile verschwindet aus den Blättern, ihr Satz bleibt gespeichert.</Hinweis>
+          <Hinweis>{STEUER_HINWEIS} Nicht aufgeführt ist, was der Plan nicht rechnet (zum Beispiel Kirchensteuer). Eine abgeschaltete Zeile verschwindet aus den Blättern, ihr Satz bleibt gespeichert. Verlustvortrag, Hinzurechnungen und Anrechnung sind vereinfacht (siehe FINANZPLANUNG_JETZT.md).</Hinweis>
         </div>
       )}
     </Karte>

@@ -1,6 +1,15 @@
 // ─── MAKE OS — Finanzplanung jetzt: Rechenkern v3 ───────────────────────────
 // Eine Rechnung für alles: MAKE Innovation GmbH (Kennung ug) · KD Ventures · Privat · Gruppe.
 // (30.09.: nur Anzeigetexte auf den neuen Namen aus lib/einheiten.ts — Namen und Formeln unverändert.)
+// KERN-UMBAU 02.10. (Kevin hat am 02.10. ausdrücklich entschieden, den Kern zu ändern — die Regel „Namen/Formeln unverändert bis
+// Kevins Wort“ ist für genau diese vier Punkte aufgehoben):
+//   1. Ertragsteuern einzeln statt EINER Quote (lib/finanzen/ertragsteuer.ts): MAKE Innovation GmbH und KD Ventures rechnen
+//      Körperschaftsteuer + Soli + Gewerbesteuer, Verlustvortrag, Zahlung im Folgejahr oder Vorauszahlung je Quartal.
+//   2. Selbstständigkeit hat eine eigene Monatsachse (`rechneSelbstAchse`, `MonatSelbst`) — Umsatz, Kosten, Ergebnis, Konto,
+//      Einkommensteuer; ihre Bausteine laufen nicht mehr über die MAKE-Kanäle. Entnahme → Privat.
+//   3. Einkommensteuer der Selbstständigkeit nach dem echten Grundtarif (`estTarif`, Eckwerte einstellbar, Vorgabe 2026).
+//   4. `ruecklage5a` und `notgroschenMonate` sind gelöscht (waren ohne Wirkung); Altdaten mit den Feldern werden beim Lesen ignoriert.
+// Alles Neue ist ein editierbares Feld mit Vorgabe (lib/finanzen/steuern.ts) — leer = wie vorher, soweit es geht.
 // Deterministisch und client-safe (keine Server-Importe), damit Seite, Routen
 // und ZOE dieselben Zahlen sehen. Gleiche Logik wie Finanzplan v4 (Excel),
 // dort gegengerechnet. Monat 1 = Okt 26 … 27 = Dez 28.
@@ -21,6 +30,8 @@
 
 import type { Planszenario } from './szenarien';
 import type { Steuern } from './steuern';
+import { steuerParameter } from './steuern';
+import { estTarif, neuerSteuerrechner, type SteuerMonat } from './ertragsteuer';
 import type { Schwellen } from './schwellen';
 import { UG_KURZ, UG_NAME } from '@/lib/einheiten';
 
@@ -46,6 +57,18 @@ export interface Zusatz {
   ausschuettungSteuer?: number[];
   privatEin?: number[]; privatAus?: number[];
   kdvEin?: number[]; kdvAus?: number[];
+  /** Selbstständigkeit (eigene Achse seit 02.10.): Umsatz netto (Leistung, zählt ins Ergebnis). */
+  kdcUmsatz?: number[];
+  /** Selbstständigkeit: Zahlungseingang dieser Umsätze netto (mit Zahlungsziel verschoben; USt kommt obendrauf). */
+  kdcEingang?: number[];
+  /** Selbstständigkeit: Brutto weiterer Stellen — Arbeitgeberanteil rechnet der Kern dazu. */
+  kdcPersonal?: number[];
+  /** Selbstständigkeit: weitere Sachkosten. */
+  kdcSach?: number[];
+  /** Selbstständigkeit → Privat: feste Entnahme (Kasse der Selbstständigkeit raus, Privat verfügbar rein; nicht im Ergebnis, keine weitere Steuer). */
+  kdcEntnahme?: number[];
+  /** Selbstständigkeit → Privat: Anteil (0–1) am positiven Ergebnis nach Steuern des Monats als Entnahme. */
+  kdcEntnahmeAnteil?: number[];
 }
 const zx = (r: number[] | undefined, i: number): number => r?.[i] ?? 0;
 
@@ -79,8 +102,12 @@ export interface Szenario {
 export interface Annahmen {
   kevinBrutto: number; kevinAb: number; malinBrutto: number; malinAb: number; agAnteil: number;
   stammkapital: number; gruendungskosten: number; darlehenKevin: number; darlehenRueckMonat: number;
-  retainerVerzug: number; astarnaProvision: number; steuerUG: number; ust: number; steuerMonat: number;
-  ruecklage5a: number; holdingKosten: number; holdingAb: number; kdvStart: number;
+  retainerVerzug: number; astarnaProvision: number;
+  /** Früherer Ertragsteuer-Gesamtsatz der MAKE Innovation GmbH — seit 02.10. nur noch die Vorgabe, aus der der Hebesatz abgeleitet wird (die Steuern rechnet der Kern einzeln). */
+  steuerUG: number; ust: number;
+  /** Kalendermonat der Steuerzahlung im Folgejahr (Vorgabe für alle Gesellschaften; je Gesellschaft überschreibbar). */
+  steuerMonat: number;
+  holdingKosten: number; holdingAb: number; kdvStart: number;
   bjoernBetrag: number; bjoernRate: number; bjoernRateVon: number; bjoernRateBis: number;
   bjoernSchluss: number; bjoernSchlussMonat: number; bjoernZinsMonat: number; bjoernZinsDeckel: number;
   exitSteuer: number; nettoTabelle: [number, number][]; gehaltTag?: number;
@@ -99,7 +126,7 @@ export interface FinanzDaten {
   planszenarien?: Planszenario[];
   /** Kennung des Planszenarios, das als Arbeitsplan gilt — null/fehlt: der reine Treiber (`aktiv`). */
   arbeitsplan?: string | null;
-  /** Welche Steuern gelten (02.10., Rechtsform und Steuerzeilen je Ort) — nur Anzeige und Aufschlüsselung, der Kern liest weiter `annahmen`. Fehlt in älteren Dokumenten. */
+  /** Welche Steuern gelten und wie hoch (02.10., Rechtsform, Sätze und Regeln je Ort) — der Kern rechnet damit (`steuerParameter`); leere Felder = Vorgabe. Fehlt in älteren Dokumenten. */
   steuern?: Steuern;
   /** Eigene Ampel-Schwellen (02.10.) — fehlt: die bisherigen Vorgaben. */
   schwellen?: Partial<Schwellen>;
@@ -109,7 +136,7 @@ export interface FinanzDaten {
   abschluesse: { idx: number; wer: string; wann: string; uebertrag: number }[];
   /** IST-Monate vor dem Plan (Jan 26 … Sep 26) — kommen aus den Buchungen. */
   historie: string[];
-  einstellungen: { heute: string; reserveMonate: number; notgroschenMonate: number };
+  einstellungen: { heute: string; reserveMonate: number };
   buchungen: Buchung[]; regeln: Record<string, string>;
   ziele: Ziel[];
   check: { punkte: string[]; eintraege: { datum: string; wer: string[]; erledigt: number[]; notiz: string }[] };
@@ -158,14 +185,7 @@ export function netto(brutto: number, t: [number, number][]): number {
 }
 
 /** Einkommensteuer Grundtarif 2026 (§ 32a EStG). */
-export function est2026(zve: number): number {
-  const x = Math.floor(Math.max(0, zve));
-  if (x <= 12348) return 0;
-  if (x <= 17799) { const y = (x - 12348) / 10000; return Math.floor((914.51 * y + 1400) * y); }
-  if (x <= 69878) { const z = (x - 17799) / 10000; return Math.floor((173.10 * z + 2397) * z + 1034.87); }
-  if (x <= 277825) return Math.floor(0.42 * x - 11135.63);
-  return Math.floor(0.45 * x - 19470.38);
-}
+export function est2026(zve: number): number { return estTarif(zve); }
 
 // ── MAKE Innovation GmbH (ug) + KD Ventures ───────────────────────────────────────────────
 export interface MonatUG {
@@ -183,7 +203,14 @@ export interface MonatUG {
   kdvUmlage: number; kdvBjoernEin: number; kdvExit: number; kdvExitSteuer: number;
   kdvHolding: number; kdvBjoern: number; kdvAbloesung: number; kdvKonto: number; bjoernRest: number;
   kdvBausteineEin: number; kdvBausteineAus: number;
+  /** Ertragsteuer der MAKE Innovation GmbH im Detail (02.10.): Aufwand je Steuerart, Zahlung, Rücklage, Verlustvortrag. `steuer`/`steuerRuecklage` oben sind Zahlung und Rücklage daraus. */
+  st: SteuerMonat;
+  /** KD Ventures (02.10.): laufendes Ergebnis aus Bausteinen (ohne Ausstieg — der hat seine eigene pauschale Steuer), dessen Ertragsteuer im Detail, und frei = Konto minus Rücklage. */
+  kdvGewinn: number; kdvSt: SteuerMonat; kdvFrei: number;
 }
+
+/** Sachkosten-Zeilen, die der Selbstständigkeit zugeordnet sind, laufen dort; alle anderen bei der MAKE Innovation GmbH wie bisher. */
+const istSelbstZeile = (z: Zeile): boolean => z.einheit === 'selbststaendigkeit';
 
 export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz): MonatUG[] {
   const a = d.annahmen, p = d.plan, N = d.monate.length;
@@ -191,6 +218,9 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz): MonatUG[] {
   let konto = 0, kdv = a.kdvStart, rest = a.bjoernBetrag, vorUst = 0;
   const gew: number[] = [];
   const retUmsatz: number[] = [];
+  const stUG = neuerSteuerrechner(steuerParameter(d, 'ug'), jahrVon, kalMonat);
+  const stKdv = neuerSteuerrechner(steuerParameter(d, 'kdv'), jahrVon, kalMonat);
+  const sachZeilen = d.sachkosten.filter(z => !istSelbstZeile(z));
   for (let m = 1; m <= N; m++) {
     const i = m - 1;
     const ob = ov('ug.ob', m, aktiv(sz.ob, m) ? sz.ob.betrag : 0, p);
@@ -212,11 +242,12 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz): MonatUG[] {
     const unterstuetzung = ov('ug.unterstuetzung', m, abAktiv(sz.unterstuetzung, m), p);
     const stellen = bP * (1 + a.agAnteil);
     const einmalig = (sz.ereignisse ?? []).filter(e => e.einheit === 'ug' && e.monat === m).reduce((s, e) => s + e.betrag, 0);
-    const sach = d.sachkosten.reduce((s, z) => s + wert(z, m, p), 0) + einmalig + bS;
+    const sach = sachZeilen.reduce((s, z) => s + wert(z, m, p), 0) + einmalig + bS;
     const gruendung = m === 1 ? a.gruendungskosten : 0;
     const holding = m >= a.holdingAb ? a.holdingKosten : 0;
-    const vorjahr = gew.reduce((s, g, j) => s + (jahrVon(j + 1) === jahrVon(m) - 1 ? g : 0), 0);
-    const steuer = kalMonat(m) === a.steuerMonat ? a.steuerUG * Math.max(0, vorjahr) : 0;
+    const gewinn = umsatz - kevin - malin - unterstuetzung - stellen - sach - gruendung - holding;
+    const st = stUG(m, gewinn);
+    const steuer = st.zahlung;
     const abgeloest = sz.bjoernAbloesen && sz.exit1.monat > 0 && m >= sz.exit1.monat;
     const rateBasis = m === a.bjoernSchlussMonat ? a.bjoernSchluss : (m >= a.bjoernRateVon && m <= a.bjoernRateBis ? a.bjoernRate : 0);
     const bjoern = abgeloest ? 0 : rateBasis;
@@ -227,16 +258,18 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz): MonatUG[] {
 
     const saldo = einzahlungen - auszahlungen;
     konto += saldo;
-    const gewinn = umsatz - kevin - malin - unterstuetzung - stellen - sach - gruendung - holding;
     gew[i] = gewinn;
     const ytd = gew.reduce((s, g, j) => s + (jahrVon(j + 1) === jahrVon(m) ? g : 0), 0);
-    const steuerRuecklage = a.steuerUG * Math.max(0, ytd) + (kalMonat(m) < a.steuerMonat ? a.steuerUG * Math.max(0, vorjahr) : 0);
+    const steuerRuecklage = st.ruecklage;
     const frei = konto - steuerRuecklage - ustEin;
 
     const ex = (m === sz.exit1.monat ? sz.exit1.betrag : 0) + (m === sz.exit2.monat ? sz.exit2.betrag : 0);
     const exSteuer = ex * a.exitSteuer;
     const kdvEin = zx(x?.kdvEin, i), kdvAus = zx(x?.kdvAus, i);
-    kdv += holding + bjoern + ex - holding - bjoern - abloesung - exSteuer + kdvEin - kdvAus;
+    // KD Ventures: Umlage und Partnerdarlehen-Rate heben sich auf; laufendes Ergebnis = Bausteine, dessen Ertragsteuer zahlt das Konto (Ausstieg: eigene pauschale Steuer).
+    const kdvGewinn = kdvEin - kdvAus;
+    const kdvSt = stKdv(m, kdvGewinn);
+    kdv += holding + bjoern + ex - holding - bjoern - abloesung - exSteuer + kdvEin - kdvAus - kdvSt.zahlung;
     rest = abloesung > 0 ? 0 : Math.max(0, rest - (m === a.bjoernSchlussMonat ? a.bjoernSchluss - a.bjoernZinsDeckel : bjoern));
 
     out.push({
@@ -248,6 +281,58 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz): MonatUG[] {
       kdvUmlage: holding, kdvBjoernEin: bjoern, kdvExit: ex, kdvExitSteuer: exSteuer, kdvHolding: holding,
       kdvBjoern: bjoern, kdvAbloesung: abloesung, kdvKonto: kdv, bjoernRest: rest,
       kdvBausteineEin: kdvEin, kdvBausteineAus: kdvAus,
+      st, kdvGewinn, kdvSt, kdvFrei: kdv - kdvSt.ruecklage,
+    });
+    vorUst = ustEin;
+  }
+  return out;
+}
+
+// ── Selbstständigkeit — eigene Monatsachse (02.10.) ───────────────────────────
+export interface MonatSelbst {
+  m: number;
+  /** Umsatz netto (Leistung) und Zahlungseingang netto (mit Zahlungsziel), USt darauf. */
+  umsatz: number; eingang: number; ustEin: number;
+  /** Personal inkl. Arbeitgeberanteil, Sach- und Fixkosten, Kosten gesamt. */
+  personal: number; sach: number; kosten: number;
+  /** Ergebnis vor Steuern, Ertragsteuer im Detail (Einkommensteuer, Gewerbesteuer, Anrechnung), Ergebnis nach Steuern (Aufwand). */
+  gewinn: number; st: SteuerMonat; ergebnisNach: number;
+  ustZahlung: number;
+  /** Entnahme nach Privat (Kasse der Selbstständigkeit raus; keine weitere Steuer). */
+  entnahme: number;
+  einzahlungen: number; auszahlungen: number; saldo: number;
+  /** Eigenes Konto (Start: Kontostand heute aus dem Abschluss), Steuerrücklage, USt offen, frei = Konto − Rücklage − USt. */
+  konto: number; steuerRuecklage: number; ustOffen: number; frei: number;
+}
+
+/**
+ * Die Selbstständigkeit (Einzelunternehmen) für sich: Umsatz und Kosten aus ihren Bausteinen (`Zusatz.kdc*`) und ihren Sachkosten-Zeilen,
+ * Einkommensteuer nach Grundtarif plus Gewerbesteuer (Freibetrag, Anrechnung) über `neuerSteuerrechner`, eigenes Konto, Entnahme nach Privat.
+ * Ohne Zusatz ist sie leer (nur das Konto steht). Der Abschluss 2026 mit seinen Posten (`rechneSelbst`) bleibt eigenständig daneben.
+ */
+export function rechneSelbstAchse(d: FinanzDaten, x?: Zusatz): MonatSelbst[] {
+  const a = d.annahmen, p = d.plan, N = d.monate.length;
+  const st = neuerSteuerrechner(steuerParameter(d, 'kdc'), jahrVon, kalMonat);
+  const zeilen = d.sachkosten.filter(istSelbstZeile);
+  const out: MonatSelbst[] = [];
+  let konto = d.selbst.kontoStart, vorUst = 0;
+  for (let m = 1; m <= N; m++) {
+    const i = m - 1;
+    const umsatz = zx(x?.kdcUmsatz, i), eingang = zx(x?.kdcEingang, i), ustEin = eingang * a.ust;
+    const personal = zx(x?.kdcPersonal, i) * (1 + a.agAnteil);
+    const sach = zeilen.reduce((s, z) => s + wert(z, m, p), 0) + zx(x?.kdcSach, i);
+    const kosten = personal + sach;
+    const gewinn = umsatz - kosten;
+    const s = st(m, gewinn);
+    const nach = gewinn - s.summe;
+    const entnahme = zx(x?.kdcEntnahme, i) + zx(x?.kdcEntnahmeAnteil, i) * Math.max(0, nach);
+    const einzahlungen = eingang + ustEin;
+    const auszahlungen = kosten + vorUst + s.zahlung + entnahme;
+    const saldo = einzahlungen - auszahlungen;
+    konto += saldo;
+    out.push({
+      m, umsatz, eingang, ustEin, personal, sach, kosten, gewinn, st: s, ergebnisNach: nach, ustZahlung: vorUst, entnahme, einzahlungen, auszahlungen, saldo,
+      konto, steuerRuecklage: s.ruecklage, ustOffen: ustEin, frei: konto - s.ruecklage - ustEin,
     });
     vorUst = ustEin;
   }
@@ -263,13 +348,15 @@ export interface MonatPrivat {
   toepfe: Record<string, number>;
   /** Aus Bausteinen (Szenario-Baukasten) — 0 ohne Zusatz. ausschuettung = netto (zählt zu verfuegbar), ausschuettungSteuer = pauschaler Abzug, bausteineAus mindert die Luft. */
   ausschuettung: number; ausschuettungSteuer: number; bausteineEin: number; bausteineAus: number;
+  /** Entnahme aus der Selbstständigkeit (02.10.) — zählt zu verfuegbar, ist dort schon versteuert. 0 ohne Entnahme-Regel. */
+  entnahme: number;
 }
 /** Sollwert einer Budgetzeile: bei Jahreskosten der Monatsanteil. */
 export function sollBudget(z: Zeile, m: number, plan: Record<string, number>): number {
   if (z.typ === 'jahr' && z.jahresbetrag != null && !(key(z.id, m) in plan)) return m >= (z.ab ?? 1) && m <= (z.bis ?? 999) ? z.jahresbetrag / 12 : 0;
   return wert(z, m, plan);
 }
-export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Zusatz): MonatPrivat[] {
+export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Zusatz, kdc?: MonatSelbst[]): MonatPrivat[] {
   const a = d.annahmen, p = d.plan; let kum = 0, spar = 0;
   const topf: Record<string, number> = {};
   return ug.map(u => {
@@ -282,7 +369,8 @@ export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Z
     const malinNetto = ov('p.malinNetto', m, netto(malinBrutto, a.nettoTabelle), p);
     const bEin = zx(x?.privatEin, u.m - 1), bAus = zx(x?.privatAus, u.m - 1);
     const ausschuettungSteuer = Math.min(u.ausschuettung, zx(x?.ausschuettungSteuer, u.m - 1)), ausschuettung = u.ausschuettung - ausschuettungSteuer;
-    const verfuegbar = weitere + kevinNetto + malinNetto + bEin + ausschuettung;
+    const entnahme = kdc?.[u.m - 1]?.entnahme ?? 0;
+    const verfuegbar = weitere + kevinNetto + malinNetto + bEin + ausschuettung + entnahme;
     const teil = (t: string) => d.privatBudget.filter(z => (z.typ ?? 'flex') === t).reduce((s, z) => s + sollBudget(z, m, p), 0);
     const fix = teil('fix'), jahr = teil('jahr'), flex = teil('flex'), sparenSoll = teil('sparen');
     const bedarf = fix + jahr + flex + sparenSoll;
@@ -297,7 +385,7 @@ export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Z
     }
     return { m, einnahmenWeitere: weitere, kevinBrutto, kevinNetto, malinBrutto, malinNetto, verfuegbar, bedarf, schulden, ereignisse,
       luft, luftKum: kum, sparen: sparenSoll + luft, fix, jahr, flex, sparenSoll, sparKum: spar, angespart: kum + spar, toepfe: { ...topf },
-      ausschuettung, ausschuettungSteuer, bausteineEin: bEin, bausteineAus: bAus };
+      ausschuettung, ausschuettungSteuer, bausteineEin: bEin, bausteineAus: bAus, entnahme };
   });
 }
 
@@ -308,7 +396,7 @@ export function rechneSelbst(d: FinanzDaten) {
   const aus = s.posten.filter(x => x.art === 'ausgabe' && !x.aus).reduce((t, x) => t + x.betrag, 0);
   const gewinn = ein - aus;
   const zve = Math.max(0, gewinn - s.vorsorge - s.sonderausgaben);
-  const est = est2026(zve);
+  const est = estTarif(zve, steuerParameter(d, 'kdc').tarif);
   const offen = s.posten.filter(x => x.art === 'einnahme' && !x.aus && x.status !== 'bezahlt').reduce((t, x) => t + x.betrag, 0);
   const offenAus = s.posten.filter(x => x.art === 'ausgabe' && !x.aus && x.status !== 'bezahlt').reduce((t, x) => t + x.betrag, 0);
   const frei = s.kontoStart + offen - offenAus - s.darlehenAnUG - est - s.sicherheit;
@@ -316,7 +404,7 @@ export function rechneSelbst(d: FinanzDaten) {
 }
 
 // ── Kennzahlen für Fokus & Szenarien ───────────────────────────────────────
-export function kennzahlen(ug: MonatUG[], pr: MonatPrivat[]) {
+export function kennzahlen(ug: MonatUG[], pr: MonatPrivat[], kdc?: MonatSelbst[]) {
   let minFrei = Infinity, minMonat = 1, minus = 0;
   ug.forEach(u => { if (u.frei < minFrei) { minFrei = u.frei; minMonat = u.m; } if (u.frei < 0) minus++; });
   const bei = (m: number) => ug[Math.min(m, ug.length) - 1];
@@ -330,7 +418,8 @@ export function kennzahlen(ug: MonatUG[], pr: MonatPrivat[]) {
     retainerDez26: bei(3).retainerAnzahl, retainerJun27: jun27.retainerAnzahl,
     umsatz2027: umsatzJahr(2027), umsatz2028: umsatzJahr(2028),
     privatLuftMin: Math.min(...pr.map(p => p.luft)), privatKumDez28: pr[pr.length - 1].luftKum,
-    gruppeDez28: bei(27).frei + bei(27).kdvKonto + pr[pr.length - 1].angespart,
+    kdcFreiDez28: kdc?.[Math.min(27, kdc.length) - 1]?.frei ?? 0,
+    gruppeDez28: bei(27).frei + bei(27).kdvFrei + (kdc?.[Math.min(27, kdc.length) - 1]?.frei ?? 0) + pr[pr.length - 1].angespart,
     privatAngespartDez27: pr[14].angespart,
     bjoernRestDez27: bei(15).bjoernRest,
   };
@@ -389,10 +478,10 @@ export function toepfeUG(ug: MonatUG[], reserveMonate: number): ToepfeUG[] {
 
 // ── Ziele mit Tempo ────────────────────────────────────────────────────────
 export interface ZielStand { ziel: Ziel; verlauf: number[]; heute: number; erreichtMonat: number | null; bisMonat: number; status: 'erreicht' | 'im Plan' | 'knapp' | 'verfehlt' }
-export function zielStaende(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[]): ZielStand[] {
+export function zielStaende(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], kdc?: MonatSelbst[]): ZielStand[] {
   return d.ziele.map(z => {
     const verlauf = ug.map((u, i) => z.quelle === 'privat.angespart' ? pr[i].angespart : z.quelle === 'ug.frei' ? u.frei
-      : z.quelle === 'kdv.bjoern' ? u.bjoernRest : u.frei + u.kdvKonto + pr[i].angespart);
+      : z.quelle === 'kdv.bjoern' ? u.bjoernRest : u.frei + u.kdvFrei + (kdc?.[i]?.frei ?? 0) + pr[i].angespart);
     const runter = z.quelle === 'kdv.bjoern';
     const idx = verlauf.findIndex(v => runter ? v <= z.ziel + 0.5 : v >= z.ziel);
     const erreichtMonat = idx >= 0 ? idx + 1 : null;
@@ -404,7 +493,7 @@ export function zielStaende(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[]): Z
 
 // ── Zahlungskalender ───────────────────────────────────────────────────────
 export interface Termin { datum: string; text: string; betrag: number; einheit: Einheit }
-export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], tage: number): Termin[] {
+export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], tage: number, kdc?: MonatSelbst[]): Termin[] {
   const heute = new Date(d.einstellungen.heute + 'T00:00:00'); const ende = new Date(heute.getTime() + tage * 864e5);
   const out: Termin[] = [];
   const dat = (m: number, t: number) => { const j = jahrVon(m), mo = kalMonat(m); const tt = Math.min(t, new Date(j, mo, 0).getDate()); return `${j}-${String(mo).padStart(2, '0')}-${String(tt).padStart(2, '0')}`; };
@@ -422,6 +511,7 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, 10, 'Umsatzsteuer an Finanzamt', -u.ustZahlung, 'ug');
     add(m, 1, 'Björn-Rate', -u.bjoern, 'kdv');
     add(m, 31, `Ertragsteuer ${UG_KURZ}`, -u.steuer, 'ug');
+    add(m, 31, 'Ertragsteuer KD Ventures', -u.kdvSt.zahlung, 'kdv');
     add(m, 5, 'Eingang One Banking', u.ob, 'ug');
     add(m, 15, 'Eingang Retainer', u.retainerEingang * 1.19, 'ug');
     add(m, 15, 'Eingang aus Bausteinen', u.bausteineEingang * (1 + d.annahmen.ust), 'ug');
@@ -429,6 +519,14 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, 1, 'Ausschüttung an Privat', -u.ausschuettung, 'ug');
     add(m, 1, `Ausschüttung aus der ${UG_NAME} (netto)`, p.ausschuettung, 'privat');
     add(m, 1, 'Bausteine privat', p.bausteineEin - p.bausteineAus, 'privat');
+    const k = kdc?.[m - 1];
+    if (k) {
+      add(m, 15, 'Eingang Selbstständigkeit', k.eingang + k.ustEin, 'selbststaendigkeit');
+      add(m, 10, 'Umsatzsteuer Selbstständigkeit an Finanzamt', -k.ustZahlung, 'selbststaendigkeit');
+      add(m, 31, 'Steuer Selbstständigkeit', -k.st.zahlung, 'selbststaendigkeit');
+      add(m, 1, 'Entnahme an Privat', -k.entnahme, 'selbststaendigkeit');
+      add(m, 1, 'Entnahme aus der Selbstständigkeit', p.entnahme, 'privat');
+    }
   }
   return out.sort((a, b) => a.datum.localeCompare(b.datum));
 }

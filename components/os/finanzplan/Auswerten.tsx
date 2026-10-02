@@ -73,7 +73,7 @@ export function Entwicklung() {
 const GF: Record<string, string> = { Fixkosten: LEUCHT.puls, 'Jahreskosten & Puffer': KUPFER, Flexibel: C.aktiv, Sparen: LILA, Schulden: LEUCHT.kritisch, Luft: C.ink, Ereignisse: LEUCHT.achtung, Fehlbetrag: LEUCHT.kritisch, 'Nicht zugeordnet': C.inkLeise };
 
 export function Geldfluss() {
-  const { d, ug, pr, h, sz } = usePlan();
+  const { d, ug, kdc, pr, h, sz } = usePlan();
   const [art, setArt] = useState<'privat' | 'ug'>('privat');
   const [m, setM] = useState(1);
   const optionen = [...(art === 'privat' ? d.historie.map((l, j) => ({ id: String(-(j + 1)), label: `${l} IST` })) : []), ...d.monate.map((l, j) => ({ id: String(j + 1), label: l }))];
@@ -98,7 +98,7 @@ export function Geldfluss() {
       Object.entries(nachGruppe).filter(x => x[1] > 0).forEach(([n, v]) => kanten.push({ von: 'Haushalt', nach: n, wert: v, farbe: GF[n] ?? C.inkLeise, sv: 1, sn: 2 }));
     }
   } else {
-    const mm = Math.max(1, m); const u = ug[mm - 1]; const steuer = Math.max(0, u.gewinn) * d.annahmen.steuerUG;
+    const mm = Math.max(1, m); const u = ug[mm - 1]; const steuer = u.st.summe;
     ([['Ankermandat', u.ob], ['Retainer', u.retainer], ['ASTARNA', u.astarna], ['Events', u.events]] as [string, number][]).filter(x => x[1] > 0).forEach(([n, v]) => kanten.push({ von: n, nach: 'Umsatz', wert: v, farbe: C.inkDim, sv: 0, sn: 1 }));
     if (u.gewinn < 0) kanten.push({ von: 'Verlust', nach: 'Umsatz', wert: -u.gewinn, farbe: LEUCHT.kritisch, sv: 0, sn: 1 });
     ([['Kevin', u.kevin], ['Malin', u.malin], ['Unterstützung', u.unterstuetzung], ['Sachkosten', u.sach + u.gruendung], ['Holding', u.holding], ['Steuerrücklage', steuer], ['Gewinn nach Steuer', Math.max(0, u.gewinn - steuer)]] as [string, number][]).filter(x => x[1] > 0)
@@ -121,10 +121,11 @@ export function Geldfluss() {
         <Blatt titel="Gruppe" zeilen={[
           { grp: 'Stand' },
           { name: `${UG_NAME} frei`, stock: true, get: mm => ug[mm - 1].frei, ind: true },
-          { name: 'KD Ventures', stock: true, get: mm => ug[mm - 1].kdvKonto, ind: true },
+          { name: 'KD Ventures (nach Steuerrücklage)', stock: true, get: mm => ug[mm - 1].kdvFrei, ind: true },
+          { name: 'Selbstständigkeit', stock: true, get: mm => kdc[mm - 1].frei, ind: true },
           { name: 'Privat angespart', stock: true, get: mm => pr[mm - 1].angespart, ind: true },
           { name: 'Partnerdarlehen offen', stock: true, get: mm => -ug[mm - 1].bjoernRest, ind: true },
-          { name: 'Freies Geld Gruppe', stock: true, sum: true, key: true, get: mm => ug[mm - 1].frei + ug[mm - 1].kdvKonto + pr[mm - 1].angespart },
+          { name: 'Freies Geld Gruppe', stock: true, sum: true, key: true, get: mm => ug[mm - 1].frei + ug[mm - 1].kdvFrei + kdc[mm - 1].frei + pr[mm - 1].angespart },
         ]} />
       </Karte>
     </>

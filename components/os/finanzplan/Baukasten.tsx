@@ -17,11 +17,11 @@ import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, feld } from '../schlank';
 import { WEG } from '@/lib/wege';
 import { eur, prozent, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfen';
-import { UG_KURZ } from '@/lib/einheiten';
+import { UG_KURZ, GESELLSCHAFTEN } from '@/lib/einheiten';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
 import {
   planszenarienVon, neuesPlanszenario, neuerBaustein, betragImMonat, vergleich, STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE,
-  RHYTHMUS_LABEL, KOSTENART_LABEL, BAUSTEIN_EINHEIT_LABEL, kernKanal,
+  RHYTHMUS_LABEL, KOSTENART_LABEL, BAUSTEIN_EINHEIT_LABEL,
   type Planszenario, type Baustein, type Rhythmus, type KostenArt, type BausteinEinheit, type Regler,
 } from '@/lib/finanzen/szenarien';
 import { bausteinAusProdukt, einheitAusGesellschaft, RHYTHMUS_AUS_BASIS, type ProduktVorschlag, type IstBasisVorschlag } from '@/lib/finanzen/produkte';
@@ -29,6 +29,7 @@ import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { usePlan, rechne, type Gerechnet } from './daten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Dialog, Feld, Formular, Schalter, StatusPille, Legende, Pillen, Nichts, Etikett, KUPFER, LILA } from './teile';
 import { Linie } from './diagramme';
+import { SteuerKarte } from './Steuern';
 
 const RHYTHMEN = (Object.keys(RHYTHMUS_LABEL) as Rhythmus[]).map(id => ({ id, label: RHYTHMUS_LABEL[id] }));
 const KOSTENARTEN = (Object.keys(KOSTENART_LABEL) as KostenArt[]).map(id => ({ id, label: KOSTENART_LABEL[id] }));
@@ -93,6 +94,11 @@ export function Baukasten() {
 
   const P = useCallback((pfad: string) => `/planszenarien/id=${ps?.id}${pfad}`, [ps?.id]);
   const setze = useCallback((pfad: string, alt: unknown, neu: unknown, feld: string) => aendere([{ pfad: P(pfad), alt, neu }], `${ps?.name ?? 'Szenario'} · ${feld}`), [aendere, P, ps?.name]);
+  /** Entnahme der Selbstständigkeit nach einer Teiländerung — ohne Betrag und ohne Anteil entfällt sie ganz. */
+  const entnahmeNeu = (teil: { betrag?: number; anteil?: number; ab?: number }) => {
+    const e = { ...(ps?.annahmen.entnahme ?? { ab: m0 }), ...teil };
+    return (e.betrag ?? 0) > 0 || (e.anteil ?? 0) > 0 ? { ...e, ab: e.ab ?? m0 } : undefined;
+  };
   const bausteinDazu = useCallback((b: Baustein, feld: string) => aendere([{ pfad: P('/bausteine/-'), neu: b }], `${ps?.name ?? 'Szenario'} · ${feld}`), [aendere, P, ps?.name]);
 
   const anlegen = async (n: string, basisId: string, bausteine: Baustein[] = []) => {
@@ -239,14 +245,20 @@ export function Baukasten() {
             <Formular>
               <Feld label={`Kevin brutto (Plan: ${eur(d.annahmen.kevinBrutto)} €)`}><ZahlFeld wert={ps.annahmen.kevinBrutto ?? null} leer platzhalter="wie Plan" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/kevinBrutto', ps.annahmen.kevinBrutto, v ?? undefined, 'Kevin brutto')} titel="Kevin brutto" /></Feld>
               <Feld label={`Malin brutto (Plan: ${eur(d.annahmen.malinBrutto)} €)`}><ZahlFeld wert={ps.annahmen.malinBrutto ?? null} leer platzhalter="wie Plan" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/malinBrutto', ps.annahmen.malinBrutto, v ?? undefined, 'Malin brutto')} titel="Malin brutto" /></Feld>
-              <Feld label={`Steuerquote ${UG_KURZ} (Plan: ${prozent(d.annahmen.steuerUG)})`}><ZahlFeld wert={ps.annahmen.steuerUG ?? null} leer platzhalter="wie Plan" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/steuerUG', ps.annahmen.steuerUG, v ?? undefined, `Steuerquote ${UG_KURZ}`)} titel={`Steuerquote ${UG_KURZ} als Dezimalzahl`} /></Feld>
+              <Feld label={`Ertragsteuer ${UG_KURZ} gesamt, Vorgabe (Plan: ${prozent(d.annahmen.steuerUG)})`}><ZahlFeld wert={ps.annahmen.steuerUG ?? null} leer platzhalter="wie Plan" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/steuerUG', ps.annahmen.steuerUG, v ?? undefined, `Steuerquote ${UG_KURZ}`)} titel={`Steuerquote ${UG_KURZ} als Dezimalzahl`} /></Feld>
               <Feld label={`Zahlungsziel Umsatz ${UG_KURZ}`}><Auswahl wert={String(ps.annahmen.zahlungsziel ?? 0)} onWahl={v => void setze('/annahmen/zahlungsziel', ps.annahmen.zahlungsziel, Number(v) || undefined, 'Zahlungsziel')} optionen={ZIELE} titel="Zahlungsziel" /></Feld>
               <Feld label={`Ausschüttung ${UG_KURZ} → Privat je Monat`}><ZahlFeld wert={ps.annahmen.ausschuettung?.betrag ?? null} leer platzhalter="keine" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/ausschuettung', ps.annahmen.ausschuettung, v ? { betrag: v, ab: ps.annahmen.ausschuettung?.ab ?? m0 } : undefined, 'Ausschüttung')} titel="Ausschüttung je Monat" /></Feld>
               <Feld label="Ausschüttung ab"><MonatWahl wert={ps.annahmen.ausschuettung?.ab ?? m0} onWahl={m => void setze('/annahmen/ausschuettung', ps.annahmen.ausschuettung, { betrag: ps.annahmen.ausschuettung?.betrag ?? 0, ab: m }, 'Ausschüttung ab')} monate={d.monate} /></Feld>
               <Feld label={`Steuer auf Ausschüttung, pauschal (Vorgabe ${prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)})`}><ZahlFeld wert={ps.annahmen.ausschuettungSteuer ?? null} leer platzhalter={String(AUSSCHUETTUNG_STEUER_VORGABE).replace('.', ',')} dezimal={3} breite="100%" onFertig={v => void setze('/annahmen/ausschuettungSteuer', ps.annahmen.ausschuettungSteuer, v == null ? undefined : Math.max(0, Math.min(1, v)), 'Steuer auf Ausschüttung')} titel="Steuerquote auf die Ausschüttung als Dezimalzahl (0,264 = 26,4 %)" /></Feld>
+              <Feld label={`Steuer auf den Ausstieg KD Ventures (Plan: ${prozent(d.annahmen.exitSteuer)})`}><ZahlFeld wert={ps.annahmen.exitSteuer ?? null} leer platzhalter="wie Plan" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/exitSteuer', ps.annahmen.exitSteuer, v == null ? undefined : Math.max(0, Math.min(1, v)), 'Steuer auf den Ausstieg')} titel="Steuer auf den Ausstieg als Dezimalzahl" /></Feld>
+              <Feld label="Entnahme Selbstständigkeit → Privat je Monat"><ZahlFeld wert={ps.annahmen.entnahme?.betrag ?? null} leer platzhalter="keine" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/entnahme', ps.annahmen.entnahme, entnahmeNeu({ betrag: v ?? undefined }), 'Entnahme')} titel="Entnahme je Monat" /></Feld>
+              <Feld label="Entnahme: Anteil am Ergebnis nach Steuern (0–1)"><ZahlFeld wert={ps.annahmen.entnahme?.anteil ?? null} leer platzhalter="keiner" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/entnahme', ps.annahmen.entnahme, entnahmeNeu({ anteil: v == null ? undefined : Math.max(0, Math.min(1, v)) }), 'Entnahme Anteil')} titel="Entnahme als Anteil am Ergebnis nach Steuern" /></Feld>
+              <Feld label="Entnahme ab"><MonatWahl wert={ps.annahmen.entnahme?.ab ?? m0} onWahl={m => void setze('/annahmen/entnahme', ps.annahmen.entnahme, entnahmeNeu({ ab: m }), 'Entnahme ab')} monate={d.monate} /></Feld>
             </Formular>
-            <Hinweis>Leer heißt: wie im Plan (Treiber &amp; Annahmen). Ausschüttung nimmt Geld brutto aus der {UG_KURZ}-Kasse; privat kommt brutto minus pauschale Steuer an (Vorgabe Kapitalertragsteuer + Soli {prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)}), der Abzug steht unter Gesamt bei den Übergängen. {STEUER_HINWEIS}</Hinweis>
+            <Hinweis>Leer heißt: wie im Plan (Treiber &amp; Annahmen). Die Entnahme ist schon versteuert. Alle weiteren Steuer-Sätze und -Regeln dieses Szenarios (Hebesatz, Verlustvortrag, Zahlweise …) stehen darunter je Gesellschaft. Ausschüttung nimmt Geld brutto aus der {UG_KURZ}-Kasse; privat kommt brutto minus pauschale Steuer an (Vorgabe Kapitalertragsteuer + Soli {prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)}), der Abzug steht unter Gesamt bei den Übergängen. {STEUER_HINWEIS}</Hinweis>
           </Karte>
+
+          {GESELLSCHAFTEN.map((o, k) => <SteuerKarte key={o} ort={o} szenario={ps} i={3 + k} />)}
 
           <Karte i={3}>
             <Ueberschrift rechts={Object.keys(live).length ? <span style={{ color: LEUCHT.achtung, fontSize: 12 }}>Loslassen speichert</span> : undefined}>Was wäre, wenn — Regler</Ueberschrift>
@@ -271,7 +283,7 @@ export function Baukasten() {
               <Kachel label="Runway Privat" punkt={g.aw.runway.privat == null || g.aw.runway.privat >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.privat >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.privat, g.aw.runway.horizont)} unter={g.aw.frei.kontenFehlen ? `${g.aw.frei.kontenFehlen} Kontostände fehlen` : `Basis: ${runwayText(basis.aw.runway.privat, basis.aw.runway.horizont)}`} />
               <Kachel label="Ziele im Plan" punkt={g.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${g.aw.ziele.imPlan} / ${g.aw.ziele.gesamt}`} unter={g.aw.ziele.gekippt ? `${g.aw.ziele.gekippt} gekippt` : g.aw.ziele.knapp ? `${g.aw.ziele.knapp} knapp` : 'alle im Plan'} />
               <Kachel label="Gruppe Dez 28" wert={<><Geld v={g.kz.gruppeDez28} /> €</>} unter={delta(g.kz.gruppeDez28, basis.kz.gruppeDez28)} />
-              <Kachel label="Steuerrücklage jetzt" wert={<><Geld v={g.aw.steuer.ruecklage} /> €</>} unter="Näherung, keine Steuerberatung" />
+              <Kachel label="Steuerrücklage jetzt" wert={<><Geld v={g.aw.steuer.ruecklageGesamt} /> €</>} unter="Näherung, keine Steuerberatung" />
             </Kacheln>
             <Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LILA, text: 'Privat angespart' }, { farbe: C.inkLeise, text: 'gestrichelt: Basis' }]} />
             <Linie labels={d.monate} tick={3} hoehe={220} serien={[
@@ -362,7 +374,7 @@ function UmsatzZeile({ b, ps, produkte, setze, summe, monate, entfernen }: { b: 
       <td style={TD}><Auswahl wert={b.rhythmus} onWahl={v => void setze(p('rhythmus'), b.rhythmus, v, `${n} · Rhythmus`)} optionen={RHYTHMEN} titel="Rhythmus" /></td>
       <td style={TD}><MonatWahl wert={b.start} onWahl={m => void setze(p('start'), b.start, m, `${n} · ab`)} monate={monate} /></td>
       <td style={TDr}>{b.rhythmus === 'einmalig' ? <span style={{ color: C.inkLeise }}>—</span> : <ZahlFeld wert={b.laufzeit ?? null} leer platzhalter="offen" dezimal={0} breite={64} onFertig={v => void setze(p('laufzeit'), b.laufzeit, v && v > 0 ? Math.round(v) : undefined, `${n} · Laufzeit`)} titel="Laufzeit in Monaten" />}</td>
-      <td style={TD}>{kernKanal(b.einheit) === 'ug' ? <Auswahl wert={String(ziel)} onWahl={v => void setze(p('zahlungsziel'), b.zahlungsziel, Number(v), `${n} · Zahlungsziel`)} optionen={ZIELE} titel="Zahlungsziel" /> : <span style={{ color: C.inkLeise }}>—</span>}</td>
+      <td style={TD}>{b.einheit === 'ug' || b.einheit === 'kdc' ? <Auswahl wert={String(ziel)} onWahl={v => void setze(p('zahlungsziel'), b.zahlungsziel, Number(v), `${n} · Zahlungsziel`)} optionen={ZIELE} titel="Zahlungsziel" /> : <span style={{ color: C.inkLeise }}>—</span>}</td>
       <td style={TDr}><Geld v={summe} farbe={C.inkDim} /></td>
       <td style={TD}><KnopfKlein farbe={C.inkDim} onClick={entfernen} titel="Baustein entfernen">−</KnopfKlein></td>
     </tr>
@@ -419,7 +431,7 @@ function VergleichTabelle({ spalten, d, alsArbeitsplan }: { spalten: ReturnType<
     { l: 'KD Ventures Dez 28', w: s => <><Geld v={s.g.kz.kdvDez28} /> €</> },
     { l: 'Gruppe Dez 28', w: s => <b><Geld v={s.g.kz.gruppeDez28} /> €</b> },
     { l: 'Ziele im Plan', w: s => <span style={{ color: s.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut }}>{s.aw.ziele.imPlan} / {s.aw.ziele.gesamt}{s.aw.ziele.gekippt ? ` · ${s.aw.ziele.gekippt} gekippt` : ''}</span> },
-    { l: 'Steuerrücklage jetzt', w: s => <><Geld v={s.aw.steuer.ruecklage} farbe={C.inkDim} /> €</> },
+    { l: 'Steuerrücklage jetzt', w: s => <><Geld v={s.aw.steuer.ruecklageGesamt} farbe={C.inkDim} /> €</> },
   ];
   return (
     <Tabelle klein>

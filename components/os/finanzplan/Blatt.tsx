@@ -23,7 +23,7 @@ import { Kontextmenue, Dialog, KnopfKlein, Schalter, personFarbe, personName, LI
 
 export type ZeilenListe = 'sachkosten' | 'privatBudget' | 'privatEinnahmen' | 'privatSchulden';
 export interface GruppenZeile {
-  grp: string; add?: ZeilenListe; addG?: string;
+  grp: string; add?: ZeilenListe; addG?: string; /** Einheit der neuen Zeile (Sachkosten der Selbstständigkeit). */ addE?: Zeile['einheit'];
   /** Beim Öffnen eingeklappt (nur die Summenzeilen bleiben sichtbar). */
   zu?: boolean;
   /** Name für verborgene Nullzeilen: [Einzahl, Mehrzahl], z. B. ['weitere Steuerzeile', 'weitere Steuerzeilen']. */
@@ -65,7 +65,7 @@ const eid = (r: DatenZeile): string | undefined => r.edit ?? r.zelle?.id;
 
 export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDrill, werkzeuge }: {
   zeilen: BlattZeile[]; titel: string; hist?: boolean; extra?: ExtraSpalte[];
-  onZeile?: (id: string) => void; onNeueZeile?: (liste: ZeilenListe, gruppe?: string) => void; onDrill?: (histIdx: number, zeile: string) => void; werkzeuge?: ReactNode;
+  onZeile?: (id: string) => void; onNeueZeile?: (liste: ZeilenListe, gruppe?: string, einheit?: Zeile['einheit']) => void; onDrill?: (histIdx: number, zeile: string) => void; werkzeuge?: ReactNode;
 }) {
   const { d, aendere, verbergen, person } = usePlan();
   const [modus, setModus] = useState<Modus>('plan');
@@ -233,7 +233,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
         <tr key={`g-${r.grp}`}>
           <td style={{ ...nameStil, ...MIKRO, paddingTop: 12, cursor: 'pointer' }} onClick={() => setZu(z => ({ ...z, [r.grp]: !z[r.grp] }))}>
             <span style={{ marginRight: 6 }}>{zuG ? '▸' : '▾'}</span>{r.grp}
-            {r.add && onNeueZeile && <button type="button" onClick={e => { e.stopPropagation(); onNeueZeile(r.add!, r.addG); }} style={{ marginLeft: 10, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 11.5, fontWeight: 600, textTransform: 'none', letterSpacing: 0, padding: 0 }}>+ Zeile</button>}
+            {r.add && onNeueZeile && <button type="button" onClick={e => { e.stopPropagation(); onNeueZeile(r.add!, r.addG, r.addE); }} style={{ marginLeft: 10, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 11.5, fontWeight: 600, textTransform: 'none', letterSpacing: 0, padding: 0 }}>+ Zeile</button>}
           </td>
           <td colSpan={spalten.length + 1 + (extra?.length ?? 0)} style={{ borderBottom: `1px solid ${HAAR}` }} />
         </tr>,

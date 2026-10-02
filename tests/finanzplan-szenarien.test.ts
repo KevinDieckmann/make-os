@@ -23,11 +23,11 @@ const treiber = (over: Partial<Szenario> = {}): Szenario => ({
 function mini(over: Partial<FinanzDaten> = {}): FinanzDaten {
   return {
     version: 3, stand: HEUTE, monate: monatsLabels(2026, 10, 27), aktiv: 's1', planszenarien: [], arbeitsplan: null, schulden: [], meta: {}, abschluesse: [], historie: monatsLabels(2026, 1, 9),
-    einstellungen: { heute: HEUTE, reserveMonate: 1, notgroschenMonate: 3 },
+    einstellungen: { heute: HEUTE, reserveMonate: 1 },
     buchungen: [], regeln: {}, ziele: [], check: { punkte: [], eintraege: [] }, notizen: {},
     annahmen: {
       kevinBrutto: 1000, kevinAb: 2, malinBrutto: 1000, malinAb: 2, agAnteil: 0.2, stammkapital: 500, gruendungskosten: 100, darlehenKevin: 0, darlehenRueckMonat: 0,
-      retainerVerzug: 0, astarnaProvision: 100, steuerUG: 0.3, ust: 0.19, steuerMonat: 6, ruecklage5a: 0, holdingKosten: 0, holdingAb: 99, kdvStart: 0,
+      retainerVerzug: 0, astarnaProvision: 100, steuerUG: 0.3, ust: 0.19, steuerMonat: 6, holdingKosten: 0, holdingAb: 99, kdvStart: 0,
       bjoernBetrag: 0, bjoernRate: 0, bjoernRateVon: 0, bjoernRateBis: 0, bjoernSchluss: 0, bjoernSchlussMonat: 0, bjoernZinsMonat: 0, bjoernZinsDeckel: 0,
       exitSteuer: 0, nettoTabelle: [[1000, 800], [2000, 1500]], gehaltTag: 28,
     },
@@ -129,7 +129,7 @@ describe('Kern mit Zusatz — rechneMit() gegen den reinen Treiber', () => {
   });
   it('Szenario-Annahmen überlagern: Steuerquote 0,5 → Rücklage 450, frei 950; Kevin brutto 2000 → 2400 Personalkosten ab Monat 2', () => {
     const g = rechneMit(d, ps([], { steuerUG: 0.5, kevinBrutto: 2000 }));
-    expect(g.ug[0]).toMatchObject({ steuerRuecklage: 450, frei: 950 });
+    expect(g.ug[0].steuerRuecklage).toBeCloseTo(450, 9); expect(g.ug[0].frei).toBeCloseTo(950, 9);
     expect(g.ug[1].kevin).toBe(2400); expect(g.ug[1].malin).toBe(1200);
     expect(annahmenMit(d.annahmen, { steuerUG: 2 }).steuerUG).toBe(1);
     expect(annahmenMit(d.annahmen, undefined)).toBe(d.annahmen);

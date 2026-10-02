@@ -17,9 +17,10 @@ import {
   KOSTENART_LABEL, RHYTHMUS_LABEL, STEUER_HINWEIS, betragImMonat, neuerBaustein, type Baustein, type KostenArt, type Rhythmus,
 } from '@/lib/finanzen/szenarien';
 import {
-  BEISPIEL_PRODUKTE, KOSTENARTEN_BLATT, bausteineVon, geschaeftsblatt, kdcImKern, kostenFaktor, neuesProdukt, summe12,
+  BEISPIEL_PRODUKTE, KOSTENARTEN_BLATT, bausteineVon, geschaeftsblatt, kostenFaktor, neuesProdukt, summe12,
 } from '@/lib/finanzen/geschaeft';
-import { steuerAnteile, profilVon, rechtsformVon, zeigeSteuer } from '@/lib/finanzen/steuern';
+import { rechtsformVon, zeigeSteuer, steuerParameter } from '@/lib/finanzen/steuern';
+import { gesamtquote } from '@/lib/finanzen/ertragsteuer';
 import { usePlan } from './daten';
 import { useArbeitsplan } from './arbeitsplan';
 import { Geld, Kachel, Kacheln, Etikett, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Schalter, Nichts, personName } from './teile';
@@ -27,6 +28,7 @@ import { Blatt, type BlattZeile, type DatenZeile } from './Blatt';
 import { ZeileDialog, neueZeileOp } from './ZeileDialog';
 import { SteuerKarte } from './Steuern';
 import { FeldK, AnnahmenKarte } from './Annahmen';
+import { EntnahmeFelder } from './Entnahme';
 
 const RHYTHMEN = (Object.keys(RHYTHMUS_LABEL) as Rhythmus[]).map(id => ({ id, label: RHYTHMUS_LABEL[id] }));
 const KOSTEN_NEU: KostenArt[] = ['stelle', 'tool', 'miete', 'sonstiges'];
@@ -105,13 +107,13 @@ const runwayText = (r: number | null, N: number, m0: number) => (r == null ? `ü
 /** Das Business-Blatt einer Gesellschaft. */
 export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
   const ctx = usePlan();
-  const { d, dd, ug, ps, aw, aendere, params, sz } = ctx;
+  const { d, dd, ug, kdc, ps, aw, aendere, params, sz } = ctx;
   const N = d.monate.length, m0 = aw.m0;
-  const U = (m: number) => ug[m - 1];
-  const satz = dd.annahmen.steuerUG;
-  const gb = useMemo(() => geschaeftsblatt(dd, ort, ug, ps, satz, m0), [dd, ort, ug, ps, satz, m0]);
+  const U = (m: number) => ug[m - 1], K = (m: number) => kdc[m - 1];
+  const gb = useMemo(() => geschaeftsblatt(dd, ort, { ug, kdc }, ps, m0), [dd, ort, ug, kdc, ps, m0]);
   const [dialog, setDialog] = useState<string | null>(null);
-  const profil = profilVon(d, ort), rf = rechtsformVon(d, ort);
+  const rf = rechtsformVon(dd, ort);
+  const sp = steuerParameter(dd, ort);
   const steuerOffen = params.get('steuern') === '1';
   const label = finanzOrtName(ort);
 
@@ -127,21 +129,30 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
   const kostenZeilen = (arten: KostenArt[], mitAG = true): DatenZeile[] => gb.kosten.filter(k => arten.includes(k.b.kostenArt ?? 'sonstiges'))
     .map(({ b, werte }): DatenZeile => ({ name: `${KOSTENART_LABEL[b.kostenArt ?? 'sonstiges']} · ${b.name}${b.kostenArt === 'stelle' && mitAG ? ' (inkl. Arbeitgeberanteil)' : ''}`, get: m => werte[m - 1], ind: true, aus: true, zelle: zelleVon(b, mitAG ? kostenFaktor(b, d.annahmen.agAnteil) : 1) }));
   const steuerLeer: [string, string] = ['weitere Steuerzeile', 'weitere Steuerzeilen'];
+  /** Steuer-Aufwand je Steuerart (positiv = Belastung, im Blatt negativ) — nur, was zur Rechtsform gehört und gilt. */
+  const aufwandZeilen = (): DatenZeile[] => {
+    const a = gb.steuerArten;
+    const z = (name: string, reihe: number[], optional = true, vorz = -1): DatenZeile => ({ name, get: (m: number) => vorz * reihe[m - 1], ind: true, optional });
+    const out: DatenZeile[] = [];
+    if (rf === 'kapital') {
+      if (zeigeSteuer(dd, ort, 'kst')) out.push(z('Körperschaftsteuer', a.kst, false));
+      if (zeigeSteuer(dd, ort, 'soli')) out.push(z('Solidaritätszuschlag', a.soli));
+    } else if (zeigeSteuer(dd, ort, 'est')) { out.push(z('Einkommensteuer', a.est, false)); out.push(z('Anrechnung Gewerbesteuer (§ 35 EStG)', a.anrechnung, true, 1)); }
+    if (zeigeSteuer(dd, ort, 'gewst')) out.push(z('Gewerbesteuer', a.gewst, false));
+    if (ort === 'kdv' && zeigeSteuer(dd, ort, 'exit')) out.push(z('Steuer auf den Ausstieg', a.exit));
+    return out;
+  };
+  const ertragAn = (['kst', 'est', 'gewst'] as const).some(art => zeigeSteuer(dd, ort, art));
 
   const zeilen: BlattZeile[] = [];
   if (ort === 'ug') {
     const sachSumme = (m: number) => d.sachkosten.reduce((s, z) => s + wert(z, m, d.plan), 0);
-    const kdc = kdcImKern(ps, N);
-    const anteile = steuerAnteile(profil);
-    const einzeln = !!profil.einzeln && rf === 'kapital';
-    const ertragAn = zeigeSteuer(d, 'ug', 'kst') || zeigeSteuer(d, 'ug', 'est');
-    const ustAn = zeigeSteuer(d, 'ug', 'ust');
+    const ustAn = zeigeSteuer(dd, 'ug', 'ust');
     zeilen.push(
       { grp: 'Umsatz netto', leerName: ['weitere Umsatzzeile', 'weitere Umsatzzeilen'] },
       { name: 'Ankermandat', edit: 'ug.ob', get: m => U(m).ob, ind: true, optional: true }, { name: 'Retainer', edit: 'ug.retainer', get: m => U(m).retainer, ind: true, optional: true },
       { name: 'Provision', edit: 'ug.astarna', get: m => U(m).astarna, ind: true, optional: true }, { name: 'Events', edit: 'ug.events', get: m => U(m).events, ind: true, optional: true },
       ...prodZeilen(),
-      { name: `${finanzOrtName('kdc')} (Kern rechnet hier mit)`, get: m => kdc.umsatz[m - 1], ind: true, optional: true },
       { name: 'Umsatz', sum: true, get: m => U(m).umsatz },
       { grp: 'Kosten', leerName: ['weitere Kostenzeile', 'weitere Kostenzeilen'] },
       { name: `${personName('kevin')} brutto`, edit: 'ug.kevin', get: m => U(m).kevinBrutto, ind: true, aus: true, optional: true }, { name: `${personName('malin')} brutto`, edit: 'ug.malin', get: m => U(m).malinBrutto, ind: true, aus: true, optional: true },
@@ -159,7 +170,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { name: 'Kosten gesamt', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
       { grp: 'Ergebnis' },
       { name: 'Ergebnis vor Steuern', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },
-      ...(ertragAn ? [{ name: 'Ertragsteuer-Aufwand (Näherung)', get: (m: number) => -gb.steuer[m - 1], ind: true, optional: true } as DatenZeile] : []),
+      ...aufwandZeilen(),
       { name: 'Ergebnis nach Steuern', sum: true, key: true, get: m => gb.ergebnisNachSteuern[m - 1] },
       { grp: 'Zahlungsfluss und Liquidität', leerName: ['weitere Zeile', 'weitere Zeilen'] },
       { name: 'Eingang Retainer', get: m => U(m).retainerEingang, ind: true, optional: true },
@@ -175,12 +186,8 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { grp: 'Steuern', leerName: steuerLeer },
       ...(ertragAn ? [
         { name: 'Ertragsteuer-Zahlung', get: (m: number) => -U(m).steuer, ind: true, optional: true } as DatenZeile,
-        ...(einzeln ? [
-          { name: 'davon Körperschaftsteuer', get: (m: number) => -U(m).steuer * anteile.kst, ind: true, optional: true } as DatenZeile,
-          { name: 'davon Solidaritätszuschlag', get: (m: number) => -U(m).steuer * anteile.soli, ind: true, optional: true } as DatenZeile,
-          { name: 'davon Gewerbesteuer', get: (m: number) => -U(m).steuer * anteile.gewst, ind: true, optional: true } as DatenZeile,
-        ] : []),
         { name: 'Steuerrücklage', stock: true, get: (m: number) => -U(m).steuerRuecklage, optional: true } as DatenZeile,
+        { name: 'Verlustvortrag zu Jahresbeginn', stock: true, get: (m: number) => U(m).st.verlustvortrag, ind: true, optional: true } as DatenZeile,
       ] : []),
       ...(ustAn ? [
         { grp: 'Umsatzsteuer — Durchlauf', zu: true, leerName: steuerLeer } as BlattZeile,
@@ -204,27 +211,47 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { name: 'Ausgaben', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
       { grp: 'Ergebnis' },
       { name: 'Ergebnis vor Steuern', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },
-      ...(zeigeSteuer(d, 'kdv', 'exit') ? [{ name: 'Steuer auf den Ausstieg', get: (m: number) => -gb.steuer[m - 1], ind: true, optional: true } as DatenZeile] : []),
+      ...aufwandZeilen(),
       { name: 'Ergebnis nach Steuern', sum: true, key: true, get: m => gb.ergebnisNachSteuern[m - 1] },
       { grp: 'Stand', leerName: ['weitere Zeile', 'weitere Zeilen'] },
       { name: 'Partnerdarlehen-Ablösung', get: m => -U(m).kdvAbloesung, ind: true, optional: true },
-      { name: 'Kontostand KD Ventures', stock: true, sum: true, key: true, get: m => U(m).kdvKonto },
+      { name: 'Ertragsteuer-Zahlung', get: m => -U(m).kdvSt.zahlung, ind: true, optional: true },
+      { name: 'Steuerrücklage', stock: true, get: m => -U(m).kdvSt.ruecklage, ind: true, optional: true },
+      { name: 'Kontostand KD Ventures', stock: true, get: m => U(m).kdvKonto },
+      { name: 'Frei verfügbar', stock: true, sum: true, key: true, get: m => U(m).kdvFrei },
       { name: 'Partnerdarlehen offen', stock: true, get: m => -U(m).bjoernRest, optional: true },
     );
   } else {
+    const fix = d.sachkosten.filter(z => z.einheit === 'selbststaendigkeit');
+    const ustAn = zeigeSteuer(dd, 'kdc', 'ust');
     zeilen.push(
       { grp: 'Umsatz netto' },
       ...prodZeilen(),
       { name: 'Umsatz', sum: true, get: m => gb.umsatz[m - 1] },
       { grp: 'Kosten' },
       ...kostenZeilen(KOSTENARTEN_BLATT),
+      { grp: 'Fixkosten (Sachkosten)', add: 'sachkosten', addG: 'Selbstständigkeit', addE: 'selbststaendigkeit', leerName: ['weitere Fixkostenzeile', 'weitere Fixkostenzeilen'] },
+      ...fix.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true, aus: true, optional: true })),
       { name: 'Kosten gesamt', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
       { grp: 'Ergebnis' },
       { name: 'Ergebnis vor Steuern', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },
-      ...(zeigeSteuer(d, 'kdc', 'est') ? [{ name: 'Einkommensteuer-Aufwand (Näherung)', get: (m: number) => -gb.steuer[m - 1], ind: true, optional: true } as DatenZeile] : []),
+      ...aufwandZeilen(),
       { name: 'Ergebnis nach Steuern', sum: true, key: true, get: m => gb.ergebnisNachSteuern[m - 1] },
-      { grp: 'Liquidität' },
+      { grp: 'Zahlungsfluss und Liquidität', leerName: ['weitere Zeile', 'weitere Zeilen'] },
+      { name: 'Eingang aus Umsatz', get: m => K(m).eingang, ind: true, optional: true },
+      { name: ustAn ? 'Einzahlungen' : 'Einzahlungen (inkl. USt-Durchlauf)', sum: true, get: m => K(m).einzahlungen },
+      { name: 'Steuerzahlung (Einkommen- und Gewerbesteuer)', get: m => -K(m).st.zahlung, ind: true, optional: true },
+      { name: 'Entnahme an Privat', get: m => -K(m).entnahme, ind: true, optional: true },
+      { name: ustAn ? 'Auszahlungen' : 'Auszahlungen (inkl. USt-Durchlauf)', sum: true, get: m => -K(m).auszahlungen },
+      { name: 'Kontostand', stock: true, get: m => K(m).konto },
       { name: gb.liquiditaetName, stock: true, sum: true, key: true, get: m => gb.liquiditaet[m - 1] },
+      { grp: 'Steuern', leerName: steuerLeer },
+      { name: 'Steuerrücklage', stock: true, get: m => -K(m).steuerRuecklage, optional: true },
+      { name: 'Verlustvortrag zu Jahresbeginn', stock: true, get: m => K(m).st.verlustvortrag, ind: true, optional: true },
+      ...(ustAn ? [
+        { grp: 'Umsatzsteuer — Durchlauf', zu: true, leerName: steuerLeer } as BlattZeile,
+        { name: 'USt offen', stock: true, get: (m: number) => -K(m).ustOffen, optional: true } as DatenZeile,
+      ] : []),
     );
   }
 
@@ -239,23 +266,29 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
         <Kachel label="Umsatz, 12 Monate" wert={<><Geld v={u12} /> €</>} unter={`ab ${monatLabel(d, m0)}`} />
         <Kachel label="Kosten, 12 Monate" wert={<><Geld v={k12} /> €</>} unter={<>Ø <Geld v={k12 / 12} farbe={C.inkDim} /> € im Monat</>} />
         <Kachel label="Ergebnis vor Steuern" punkt={v12 >= 0 ? LEUCHT.gut : LEUCHT.kritisch} wert={<><Geld v={v12} /> €</>} unter="12 Monate" />
-        <Kachel label="Ergebnis nach Steuern" punkt={n12 >= 0 ? LEUCHT.gut : LEUCHT.kritisch} wert={<><Geld v={n12} /> €</>} unter={ort === 'ug' ? `Ertragsteuer ${prozent(satz, 1)} (Näherung)` : 'Näherung, keine Steuerberatung'} />
+        <Kachel label="Ergebnis nach Steuern" punkt={n12 >= 0 ? LEUCHT.gut : LEUCHT.kritisch} wert={<><Geld v={n12} /> €</>} unter={rf === 'kapital' && ertragAn ? `Ertragsteuern ${prozent(gesamtquote(sp), 1)} vom Gewinn (Näherung)` : 'Näherung, keine Steuerberatung'} />
         <Kachel label="Break-even" punkt={be.monatlich == null ? LEUCHT.kritisch : be.monatlich <= m0 ? LEUCHT.gut : LEUCHT.achtung} wert={beText} unter={be.kumuliert == null ? 'insgesamt nicht im Plan gedeckt' : `insgesamt gedeckt ab ${monatLabel(d, be.kumuliert)}`} />
         <Kachel label="Runway" punkt={gb.runway == null ? LEUCHT.gut : gb.runway >= 6 ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(gb.runway, N, m0)} unter={<>{gb.liquiditaetName.split(' (')[0]} jetzt <Geld v={liqJetzt} farbe={C.inkDim} /> €</>} />
       </Kacheln>
       <BausteinKarten ort={ort} />
       <Karte i={3}>
         <Blatt zeilen={zeilen} titel={`${label} · ${ps?.name ?? sz.name}`} werkzeuge={<Etikett einheit={ort === 'kdc' ? 'selbststaendigkeit' : ort} />}
-          onZeile={setDialog} onNeueZeile={async (liste, gruppe) => { const { op, id } = neueZeileOp(liste, gruppe); if (await aendere([op], 'Zeile angelegt')) setDialog(id); }} />
+          onZeile={setDialog} onNeueZeile={async (liste, gruppe, einheit) => { const { op, id } = neueZeileOp(liste, gruppe, einheit); if (await aendere([op], 'Zeile angelegt')) setDialog(id); }} />
         <Hinweis>
           Zelle anklicken und tippen: bei Produkten und Kosten gilt der Wert für diesen Monat, bei Fixkosten und Gehältern überschreibt er den Plan (Entf setzt zurück).
-          Leere Zeilen stehen hinter „weitere …“. {ort === 'ug' && 'Der Kern rechnet Bausteine der Selbstständigkeit mit — sie stehen hier als eigene Zeile und dort in ihrem Blatt. '}
-          {ort === 'kdc' && 'Der Abschluss 2026 mit den Posten des laufenden Jahres steht darunter; dieses Blatt zeigt die Bausteine ab Planbeginn. '}
+          Leere Zeilen stehen hinter „weitere …“. {ort === 'kdc' && 'Die Selbstständigkeit rechnet auf eigener Monatsachse (eigenes Konto, Einkommen- und Gewerbesteuer); der Abschluss 2026 mit den Posten des laufenden Jahres steht darunter. '}
           {STEUER_HINWEIS}
         </Hinweis>
         {dialog && <ZeileDialog id={dialog} onZu={() => setDialog(null)} />}
       </Karte>
-      <SteuerKarte ort={ort} offen={steuerOffen} i={4} />
+      {ort === 'kdc' && (
+        <Karte i={4}>
+          <Ueberschrift>Entnahme nach Privat</Ueberschrift>
+          <EntnahmeFelder />
+          <Hinweis>Was Sie aus der Selbstständigkeit nach Privat entnehmen — fester Betrag je Monat und/oder ein Anteil am Ergebnis nach Steuern. Schon versteuert; es erscheint im Privat-Blatt als Einnahme und bleibt sonst im Konto der Selbstständigkeit. Gilt je Szenario (Arbeitsplan).</Hinweis>
+        </Karte>
+      )}
+      <SteuerKarte ort={ort} offen={steuerOffen} i={5} />
       <AnnahmenKarte ort={ort} />
     </>
   );

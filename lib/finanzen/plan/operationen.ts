@@ -19,6 +19,7 @@
 //   /planszenarien/id=ps1/bausteine/id=b1/preis   Szenario-Baukasten (27.09.)
 //   /arbeitsplan               Kennung des Planszenarios, das als Arbeitsplan gilt (oder null)
 //   /steuern/ug/zeilen/kst/satz   Welche Steuern gelten (02.10., lib/finanzen/steuern.ts) — wird nach jeder Änderung bereinigt
+//   /planszenarien/id=ps1/annahmen/steuern/ug/…   dieselben Felder nur für ein Szenario (Überlagerung, ebenso bereinigt)
 //   /schwellen/runwayWarnMonate   eigene Ampel-Schwellen (02.10., lib/finanzen/schwellen.ts)
 // Nicht änderbar: version, stand, monate, historie, meta, protokoll.
 
@@ -197,6 +198,10 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
     if (st) d.steuern = st; else delete d.steuern;
     if (sw) d.schwellen = sw; else delete d.schwellen;
   }
+  // Steuer-Überlagerungen der Szenarien (`annahmen.steuern`) ebenso bereinigen.
+  if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/planszenarien') && o.pfad.includes('/annahmen/steuern'))) {
+    for (const ps of d.planszenarien ?? []) { if (!ps.annahmen?.steuern) continue; const st = pruefeSteuern(ps.annahmen.steuern); if (st) ps.annahmen.steuern = st; else delete ps.annahmen.steuern; }
+  }
   // Die Netto-Tabelle muss rechenbar bleiben: mindestens zwei Paare, Brutto aufsteigend.
   if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/annahmen/nettoTabelle')) && !nettoTabelleOk(d.annahmen.nettoTabelle)) throw new OperationUngueltig('Die Netto-Tabelle braucht mindestens zwei Paare, Brutto von unten nach oben.');
   // Ein gelöschtes Szenario darf nicht aktiv bleiben.
@@ -237,6 +242,12 @@ const liste = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 const objekt = (v: unknown): Beliebig => (istObjekt(v) ? v : {});
 
 const PFLICHT_ANNAHMEN = ['kevinBrutto', 'kevinAb', 'malinBrutto', 'malinAb', 'agAnteil', 'stammkapital', 'gruendungskosten', 'darlehenKevin', 'darlehenRueckMonat', 'retainerVerzug', 'astarnaProvision', 'steuerUG', 'ust', 'steuerMonat', 'holdingKosten', 'holdingAb', 'kdvStart', 'bjoernBetrag', 'bjoernRate', 'bjoernRateVon', 'bjoernRateBis', 'bjoernSchluss', 'bjoernSchlussMonat', 'bjoernZinsMonat', 'bjoernZinsDeckel', 'exitSteuer'];
+
+/** Die Annahmen ohne gelöschte Altfelder (`ruecklage5a`) — alles andere bleibt, wie es ist. */
+function annahmenOhneAlt(a: Record<string, unknown>): FinanzDaten['annahmen'] {
+  const { ruecklage5a: _alt, ...rest } = a;
+  return rest as unknown as FinanzDaten['annahmen'];
+}
 
 function pruefeSzenario(s: unknown, i: number): string | null {
   if (!istObjekt(s)) return `Szenario ${i + 1} ist kein Objekt.`;
@@ -288,13 +299,14 @@ export function pruefeDokument(roh: unknown): Pruefung {
     meta: objekt(roh.meta) as FinanzDaten['meta'],
     abschluesse: liste(roh.abschluesse),
     historie,
-    einstellungen: { heute, reserveMonate: zahl(e.reserveMonate) ? e.reserveMonate : 1, notgroschenMonate: zahl(e.notgroschenMonate) ? e.notgroschenMonate : 3 },
+    einstellungen: { heute, reserveMonate: zahl(e.reserveMonate) ? e.reserveMonate : 1 },
     buchungen: liste(roh.buchungen),
     regeln: objekt(roh.regeln) as Record<string, string>,
     ziele: liste(roh.ziele),
     check: { punkte: liste<string>(c.punkte), eintraege: liste(c.eintraege) },
     notizen: objekt(roh.notizen) as Record<string, string>,
-    annahmen: a as unknown as FinanzDaten['annahmen'],
+    // `ruecklage5a` (Kern-Umbau 02.10. gelöscht, war ohne Wirkung) wird beim Lesen ignoriert — nie abstürzen, nie mitschreiben.
+    annahmen: annahmenOhneAlt(a),
     sachkosten: liste(roh.sachkosten), privatEinnahmen: liste(roh.privatEinnahmen), privatBudget: liste(roh.privatBudget), privatSchulden: liste(roh.privatSchulden),
     szenarien,
     selbst: { posten: liste(s.posten), vorsorge: zahl(s.vorsorge) ? s.vorsorge : 0, sonderausgaben: zahl(s.sonderausgaben) ? s.sonderausgaben : 0, sicherheit: zahl(s.sicherheit) ? s.sicherheit : 0, darlehenAnUG: zahl(s.darlehenAnUG) ? s.darlehenAnUG : 0, consorsAbloesung: zahl(s.consorsAbloesung) ? s.consorsAbloesung : 0, kontoStart: zahl(s.kontoStart) ? s.kontoStart : 0 },
@@ -326,11 +338,11 @@ export function leeresDokument(heute: string): FinanzDaten {
   return {
     version: 3, stand: heute, monate: monatsLabels(2026, 10, 27), aktiv: 'basis', planszenarien: [], arbeitsplan: null,
     schulden: [], meta: {}, abschluesse: [], historie: monatsLabels(2026, 1, 9),
-    einstellungen: { heute, reserveMonate: 1, notgroschenMonate: 3 },
+    einstellungen: { heute, reserveMonate: 1 },
     buchungen: [], regeln: {}, ziele: [], check: { punkte: CHECK_PUNKTE, eintraege: [] }, notizen: {},
     annahmen: {
       kevinBrutto: 0, kevinAb: 1, malinBrutto: 0, malinAb: 1, agAnteil: 0.2, stammkapital: 0, gruendungskosten: 0, darlehenKevin: 0, darlehenRueckMonat: 0,
-      retainerVerzug: 0, astarnaProvision: 0, steuerUG: 0.3, ust: 0.19, steuerMonat: 6, ruecklage5a: 0, holdingKosten: 0, holdingAb: 99, kdvStart: 0,
+      retainerVerzug: 0, astarnaProvision: 0, steuerUG: 0.3, ust: 0.19, steuerMonat: 6, holdingKosten: 0, holdingAb: 99, kdvStart: 0,
       bjoernBetrag: 0, bjoernRate: 0, bjoernRateVon: 0, bjoernRateBis: 0, bjoernSchluss: 0, bjoernSchlussMonat: 0, bjoernZinsMonat: 0, bjoernZinsDeckel: 0,
       exitSteuer: 0, nettoTabelle: [[0, 0], [1, 1]], gehaltTag: 28,
     },

@@ -45,7 +45,7 @@ export const produktEinheit = (l: Pick<Leistung, 'preis'>): string => einheitFue
 /**
  * Einheit der Planung aus der Gesellschaft des Produkts (28.09., eine Einheitenliste):
  * kdc · kdv · ug wie im CRM — die Selbstständigkeit ist eine eigene Achse im Baukasten
- * (gerechnet über die UG-Kanäle des Kerns, `kernKanal`). „offen“ bleibt bei der UG wie bisher.
+ * (seit dem Kern-Umbau 02.10. auch im Kern mit eigener Achse, `rechneSelbstAchse`). „offen“ bleibt bei der UG wie bisher.
  */
 export function einheitAusGesellschaft(g: Leistung['gesellschaft'] | 'offen'): BausteinEinheit {
   return g === 'kdv' || g === 'kdc' ? g : 'ug';

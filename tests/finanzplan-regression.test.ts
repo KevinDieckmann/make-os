@@ -1,14 +1,17 @@
-// ─── Finanzplanung jetzt — Regression: der Rechenkern rechnet wie vorher ─────
-// Kevin 02.10.: „Prüfe genau, dass sich bei unveränderten Eingaben keine Zahl verändert.“ Die Erwartungswerte unten
-// stammen aus dem UNVERÄNDERTEN Rechenkern (Stand 1818c5c, vor „Alle Felder anpassbar“) — erfundener Plan, keine echten Zahlen.
-// Danach wird gezeigt: Steuer-Profil, Ausblenden und Aufschlüsseln verändern keine Zahl; neue optionale Felder ebenso wenig.
+// ─── Finanzplanung jetzt — Regression: der Rechenkern rechnet wie vorher, wo er nicht bewusst geändert wurde ─────
+// Kevin 02.10.: „Prüfe genau, dass sich bei unveränderten Eingaben keine Zahl verändert.“ Erfundener Plan, keine echten Zahlen.
+// Kern-Umbau 02.10. (Kevins Entscheidung: Steuern einzeln, Selbstständigkeit eigene Achse, Einkommensteuer, zwei Felder gelöscht):
+// die Goldwerte der betroffenen Fälle sind angepasst und im Kommentar erklärt; alles andere (Privat, Ziele, Töpfe, Buchungen) stammt
+// aus dem unveränderten Kern c83cb1f und bleibt exakt gleich.
 import { describe, it, expect } from 'vitest';
-import { rechneSelbst } from '../lib/finanzen/rechenkern';
+import { rechneSelbst, toepfeUG, zielStaende, istHistorie } from '../lib/finanzen/rechenkern';
 import type { FinanzDaten } from '../lib/finanzen/rechenkern';
-import { rechneMit } from '../lib/finanzen/szenarien';
+import { rechneMit, auswertung } from '../lib/finanzen/szenarien';
 import { wendeOperationenAn, pruefeDokument } from '../lib/finanzen/plan/operationen';
 import { steuerOps } from '../lib/finanzen/steuern';
-import { planFix, arbeitsplanFix } from './fixtures/finanz-plan';
+import { aufteilen } from '../lib/finanzen/ertragsteuer';
+import { planFix, arbeitsplanFix, arbeitsplanOhneSelbst, planGold } from './fixtures/finanz-plan';
+import goldJson from './fixtures/kern-vorher-gold.json';
 
 const JETZT = '2026-10-02T10:00:00.000Z';
 const kennwerte = (d: FinanzDaten, ps: ReturnType<typeof arbeitsplanFix> | null) => {
@@ -21,22 +24,62 @@ const kennwerte = (d: FinanzDaten, ps: ReturnType<typeof arbeitsplanFix> | null)
   };
 };
 const nah = (a: Record<string, number>, b: Record<string, number>) => { for (const k of Object.keys(b)) expect(a[k], k).toBeCloseTo(b[k], 6); };
+/** Rekursiv gleich — Zahlen auf 1e-8 genau (die Steuer wird jetzt als Summe der Einzelsteuern gebildet, das ändert nur die letzten Bits). */
+function gleich(ist: unknown, soll: unknown, pfad = ''): void {
+  if (typeof soll === 'number') { expect(typeof ist, pfad).toBe('number'); expect(ist as number, pfad).toBeCloseTo(soll, 8); return; }
+  if (Array.isArray(soll)) { expect(Array.isArray(ist), pfad).toBe(true); expect((ist as unknown[]).length, pfad).toBe(soll.length); soll.forEach((x, i) => gleich((ist as unknown[])[i], x, `${pfad}[${i}]`)); return; }
+  if (soll && typeof soll === 'object') { for (const k of Object.keys(soll)) gleich((ist as Record<string, unknown>)[k], (soll as Record<string, unknown>)[k], `${pfad}.${k}`); return; }
+  expect(ist, pfad).toEqual(soll);
+}
 
-describe('Goldwerte aus dem unveränderten Kern (Stand 1818c5c)', () => {
-  it('Fassung A, reiner Treiber', () => {
+describe('Goldwerte nach dem Kern-Umbau 02.10. (Vorher c83cb1f → nachher, Abweichungen erklärt)', () => {
+  // Fassung A/B ohne Plan: bit-genau wie vorher. Mit Arbeitsplan weicht ab, was der Umbau bewusst ändert:
+  //  · umsatz −3.000 / gewinn −3.000: der Baustein „K“ der Selbstständigkeit (500 € × 6 Monate) läuft nicht mehr in den MAKE-Zahlen, sondern auf der eigenen Achse;
+  //  · steuer: die MAKE-Steuer sinkt um 28 % davon (840 bzw. 420 €), dafür zahlt KD Ventures Ertragsteuer auf seinen Baustein „V“ (200 €/Monat ab Dez 26) — vorher nur die pauschale Steuer auf den Ausstieg;
+  //  · kdv27: −728 € (die Ertragsteuer auf „V“ über 25 Monate: 0,28 × 5.000 € = 1.400 € gezahlt bis Dez 28, Rücklage steht im „frei“ von KD Ventures);
+  //  · ust5: die USt auf die Eingänge des Bausteins „K“ steht jetzt in der Selbstständigkeit.
+  it('Fassung A, reiner Treiber — unverändert', () => {
     nah(kennwerte(planFix(4000), null), { umsatz: 106340, steuer: 675, gewinn: -109650, konto27: -113623.6, frei27: -113825, kdv27: 13050, ruecklage12: 0, ust5: 353.4, luftSum: 50420, angespart27: 55820, ausschuettung: 0, ausStr: 0, minFrei: -113825 });
   });
   it('Fassung A, Arbeitsplan mit Bausteinen, Ausschüttung und eigener Quote', () => {
-    nah(kennwerte(planFix(4000), arbeitsplanFix()), { umsatz: 122140, steuer: 1862.84, gewinn: -149323, konto27: -166484.44, frei27: -166685.84, kdv27: 18050, ruecklage12: 0, ust5: 752.4, luftSum: 57952, angespart27: 63352, ausschuettung: 8832, ausStr: 3168, minFrei: -166685.84 });
+    nah(kennwerte(planFix(4000), arbeitsplanFix()), { umsatz: 119140, steuer: 1442.84, gewinn: -152323, konto27: -169064.44, frei27: -169265.84, kdv27: 17322, ruecklage12: 0, ust5: 657.4, luftSum: 57952, angespart27: 63352, ausschuettung: 8832, ausStr: 3168, minFrei: -169265.84 });
   });
-  it('Fassung B (Steuer fällt an), reiner Treiber', () => {
+  it('Fassung B (Steuer fällt an), reiner Treiber — unverändert', () => {
     nah(kennwerte(planFix(14000), null), { umsatz: 246340, steuer: 35247, gewinn: 30350, konto27: -8195.6, frei27: -8397, kdv27: 13050, ruecklage12: 23175, ust5: 353.4, luftSum: 50420, angespart27: 55820, ausschuettung: 0, ausStr: 0, minFrei: -8397 });
   });
   it('Fassung B, Arbeitsplan', () => {
-    nah(kennwerte(planFix(14000), arbeitsplanFix()), { umsatz: 262140, steuer: 30185.4, gewinn: -9323, konto27: -54807, frei27: -55008.4, kdv27: 18050, ruecklage12: 19784.52, ust5: 752.4, luftSum: 57952, angespart27: 63352, ausschuettung: 8832, ausStr: 3168, minFrei: -55008.4 });
+    nah(kennwerte(planFix(14000), arbeitsplanFix()), { umsatz: 259140, steuer: 29345.4, gewinn: -12323, konto27: -56967, frei27: -57168.4, kdv27: 17322, ruecklage12: 19364.52, ust5: 657.4, luftSum: 57952, angespart27: 63352, ausschuettung: 8832, ausStr: 3168, minFrei: -57168.4 });
   });
   it('Selbstständigkeit 2026 (Abschluss) wie vorher', () => {
     expect(rechneSelbst(planFix())).toEqual({ ein: 20000, aus: 4000, gewinn: 16000, zve: 12500, est: 21, frei: -3021, nachConsors: -5021 });
+  });
+});
+
+// Die Teile, die NICHT von den vier Punkten betroffen sind, stammen aus dem unveränderten Kern c83cb1f (tests/fixtures/kern-vorher-gold.json,
+// erzeugt mit dem alten Kern und einem Plan ohne Selbstständigkeit und ohne KD-Ventures-Baustein) und müssen exakt gleich bleiben.
+describe('Nicht betroffene Teile bleiben exakt gleich (Gold aus c83cb1f)', () => {
+  const gold = goldJson as unknown as Record<string, { pr: unknown[]; toepfe: unknown[]; ziele: unknown[]; ist: unknown; ug: Record<string, number>[]; kz: Record<string, number>; awFrei: Record<string, number>; awRunway: unknown }>;
+  const fall: [string, ReturnType<typeof arbeitsplanOhneSelbst> | null][] = [['ohnePlan', null], ['ohneSelbst', arbeitsplanOhneSelbst()]];
+  for (const [name, ps] of fall) {
+    it(`${name}: Privat-Blatt, Ziele, Töpfe, Buchungen, MAKE-Konto`, () => {
+      const g = rechneMit(planGold(), ps), v = gold[name];
+      gleich(JSON.parse(JSON.stringify(g.pr.map(({ entnahme: _e, ...rest }) => rest))), v.pr, 'pr');
+      gleich(JSON.parse(JSON.stringify(toepfeUG(g.ug, 2))), v.toepfe, 'toepfe');
+      // Ziel „Gruppe“ zählt seit dem Umbau auch die Selbstständigkeit mit (eigener Strom) — ihr Konto wird für den Vergleich abgezogen.
+      const ziele = zielStaende(g.d, g.ug, g.pr, g.kdc).map(z => ({ id: z.ziel.id, verlauf: z.ziel.quelle === 'gruppe' ? z.verlauf.map((x, i) => x - g.kdc[i].frei) : z.verlauf, ...(z.ziel.quelle === 'gruppe' ? {} : { erreichtMonat: z.erreichtMonat, status: z.status }) }));
+      gleich(ziele, (v.ziele as { id: string; verlauf: number[] }[]).map(z => (z.id === 'z4' ? { id: z.id, verlauf: z.verlauf } : z)), 'ziele');
+      gleich(JSON.parse(JSON.stringify(istHistorie(g.d))), v.ist, 'ist');
+      g.ug.forEach((u, i) => { for (const k of ['konto', 'frei', 'steuer', 'steuerRuecklage', 'umsatz', 'gewinn', 'kdvKonto']) expect(u[k as 'konto'], `${k} Monat ${i + 1}`).toBeCloseTo(v.ug[i][k], 9); });
+      for (const k of Object.keys(v.kz).filter(k => k !== 'gruppeDez28')) expect((g.kz as unknown as Record<string, number>)[k], k).toBeCloseTo(v.kz[k], 9);
+      expect(g.kz.gruppeDez28).toBeCloseTo(v.kz.gruppeDez28 + g.kdc[26].frei, 9);
+    });
+  }
+  it('Auswertung: frei MAKE/KD Ventures/Privat und Runway wie vorher; Gesamt = vorher + Konto der Selbstständigkeit', () => {
+    const g = rechneMit(planGold(), arbeitsplanOhneSelbst()), aw = auswertung(g.d, g.ug, g.pr, g.kdc), v = gold.ohneSelbst;
+    expect(aw.frei.ug).toBeCloseTo(v.awFrei.ug, 9); expect(aw.frei.kdv).toBeCloseTo(v.awFrei.kdv, 9); expect(aw.frei.privat).toBeCloseTo(v.awFrei.privat, 9);
+    expect(aw.runway).toEqual(v.awRunway);
+    expect(aw.frei.gesamt).toBeCloseTo(v.awFrei.gesamt + aw.frei.kdc, 9);
+    expect(aw.frei.kdc).toBeCloseTo(planGold().selbst.kontoStart, 9);   // ohne Bausteine der Selbstständigkeit steht nur das Konto
   });
 });
 
@@ -52,18 +95,32 @@ describe('Unveränderte Eingaben → unveränderte Zahlen', () => {
     expect(vorher(a)).toBe(v);
     const b = mitOps(a, [...steuerOps(a, 'ug', { art: 'an', steuer: 'ust', wert: true }), ...steuerOps(a, 'kdv', { art: 'an', steuer: 'exit', wert: true })]);
     expect(vorher(b)).toBe(v);
-    expect(vorher(mitOps(d, steuerOps(d, 'kdc', { art: 'an', steuer: 'est', wert: false })))).toBe(v);
+    // Die Einkommensteuer der Selbstständigkeit auszuschalten betrifft nur deren Achse (MAKE und Privat bleiben).
+    const ohneEst = rechneMit(mitOps(d, steuerOps(d, 'kdc', { art: 'an', steuer: 'est', wert: false })), arbeitsplanFix());
+    expect(JSON.stringify({ ug: ohneEst.ug, pr: ohneEst.pr })).toBe(JSON.stringify({ ug: rechneMit(d, arbeitsplanFix()).ug, pr: rechneMit(d, arbeitsplanFix()).pr }));
   });
-  it('Nach Steuerarten aufschlüsseln: der Gesamtsatz und damit jede Zahl bleiben exakt gleich', () => {
+  it('Ohne Eintrag rechnet der Kern die Ertragsteuer mit genau der Gesamtquote von vorher (Vorgabe-Hebesatz aus steuerUG)', () => {
     for (const satz of [0.3, 0.2825, 0.12]) {
       const d = { ...planFix(14000), annahmen: { ...planFix().annahmen, steuerUG: satz } };
-      const ops = steuerOps(d, 'ug', { art: 'einzeln', wert: true });
-      expect(ops.some(o => o.pfad === '/annahmen/steuerUG')).toBe(false);
-      const e = mitOps(d, ops);
-      expect(e.annahmen.steuerUG).toBe(satz);
-      expect(vorher(e)).toBe(vorher(d));
-      // und zurück
-      expect(vorher(mitOps(e, steuerOps(e, 'ug', { art: 'einzeln', wert: false })))).toBe(vorher(d));
+      const { ug } = rechneMit(d, null);
+      const gewinn = (von: number, bis: number) => ug.slice(von - 1, bis).reduce((s, u) => s + u.gewinn, 0);
+      // Alte Formel: Zahlung im Juni (Plan-Monat 9 und 21) = Quote × Gewinn des Vorjahres; Rücklage = Quote × Gewinn seit Jahresbeginn (+ Vorjahr bis zur Zahlung).
+      expect(gewinn(1, 3)).toBeGreaterThan(0); expect(gewinn(4, 15)).toBeGreaterThan(0);
+      expect(ug[8].steuer).toBeCloseTo(satz * gewinn(1, 3), 8);
+      expect(ug[20].steuer).toBeCloseTo(satz * gewinn(4, 15), 8);
+      expect(ug[5].steuerRuecklage).toBeCloseTo(satz * gewinn(1, 3) + satz * gewinn(4, 6), 8);
+    }
+  });
+  it('Die abgeleiteten Vorgaben von Hand eingetragen ergeben bit-genau dieselben Zahlen wie leere Felder', () => {
+    for (const satz of [0.3, 0.2825]) {
+      const d = { ...planFix(14000), annahmen: { ...planFix().annahmen, steuerUG: satz } };
+      const v = aufteilen(satz);
+      const e = mitOps(d, [
+        { pfad: '/steuern/ug/zeilen/kst/satz', neu: v.kst }, { pfad: '/steuern/ug/zeilen/soli/satz', neu: v.soli },
+        { pfad: '/steuern/ug/zeilen/gewst/satz', neu: v.messzahl }, { pfad: '/steuern/ug/zeilen/gewst/hebesatz', neu: v.hebesatz },
+      ]);
+      const ohnePlan = (x: FinanzDaten) => zahlen(rechneMit(x, null));   // mit Arbeitsplan gälte dessen eigene Quote (0,28)
+      expect(ohnePlan(e)).toBe(ohnePlan(d));
     }
   });
   it('Neue optionale Felder (Schwellen, Überschreibung leer) ändern nichts', () => {

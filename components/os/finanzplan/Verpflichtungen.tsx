@@ -135,10 +135,10 @@ export function ZuErledigen() {
 
 // ── Kalender & Verträge ─────────────────────────────────────────────────────
 export function Kalender() {
-  const { d, ug, pr, h, sz } = usePlan();
+  const { d, ug, kdc, pr, h, sz } = usePlan();
   const [zeile, setZeile] = useState<string | null>(null);
   const L = letzterVoller(d);
-  const termine = zahlungskalender(d, ug, pr, 62);
+  const termine = zahlungskalender(d, ug, pr, 62, kdc);
   const wochen = new Map<string, typeof termine>();
   for (const t of termine) { const dt = new Date(`${t.datum}T00:00:00Z`); const mo = new Date(dt); mo.setUTCDate(dt.getUTCDate() - ((dt.getUTCDay() + 6) % 7)); const k = mo.toISOString().slice(0, 10); wochen.set(k, [...(wochen.get(k) ?? []), t]); }
   const vertraege = [...d.privatBudget.filter(z => z.typ === 'fix' || z.typ === 'jahr'), ...d.privatSchulden, ...d.sachkosten];

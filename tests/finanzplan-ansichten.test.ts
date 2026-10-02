@@ -48,26 +48,51 @@ describe('Business-Blatt und Steuerkarte', () => {
     for (const s of ['Break-even', 'Runway', 'Produkte und Umsatz', 'Interim', 'Ergebnis vor Steuern', 'Ergebnis nach Steuern', 'Welche Steuern gelten?', 'Vorlagen (ohne Preis)']) expect(t, s).toContain(s);
     expect(blatt('kdv')).toContain('Ergebnis nach Steuern'); expect(blatt('kdc')).toContain('Liquidität');
   });
-  it('Standard-GmbH: USt nur als eingeklappter Durchlauf, Nullzeilen hinter „weitere …“', () => {
+  it('Standard-GmbH: USt nur als eingeklappter Durchlauf, Einzelsteuern als Zeilen, Nullzeilen hinter „weitere …“', () => {
     const t = blatt('ug');
-    expect(t).toContain('Umsatzsteuer — Durchlauf'); expect(t).not.toContain('davon Körperschaftsteuer');
+    expect(t).toContain('Umsatzsteuer — Durchlauf'); expect(t).toContain('Körperschaftsteuer'); expect(t).toContain('Gewerbesteuer');
+    expect(t).not.toContain('(Kern rechnet hier mit)');
     // Ein leerer Plan: alle Null-Zeilen stehen hinter „weitere …“ statt als Wand aus Nullen.
     const leer = blatt('ug', leeresDokument('2026-10-02'));
     expect(leer).toMatch(/weitere Umsatzzeilen/); expect(leer).toMatch(/weitere Steuerzeilen|weitere Steuerzeile/);
     expect(leer).not.toContain('Ankermandat');
   });
-  it('USt abgeschaltet: der Durchlauf-Block verschwindet; Aufschlüsselung zeigt KSt, Soli, Gewerbesteuer', () => {
+  it('USt abgeschaltet: der Durchlauf-Block verschwindet; Gewerbesteuer abgeschaltet: die Zeile ist weg', () => {
     let d = mitPlan();
     d = wendeOperationenAn(d, steuerOps(d, 'ug', { art: 'an', steuer: 'ust', wert: false }), 'kevin', '2026-10-02T10:00:00.000Z').dokument;
     expect(blatt('ug', d)).not.toContain('Umsatzsteuer — Durchlauf');
-    d = wendeOperationenAn(d, steuerOps(d, 'ug', { art: 'einzeln', wert: true }), 'kevin', '2026-10-02T10:00:00.000Z').dokument;
-    expect(blatt('ug', d)).toContain('davon Körperschaftsteuer');
+    d = wendeOperationenAn(d, steuerOps(d, 'ug', { art: 'an', steuer: 'gewst', wert: false }), 'kevin', '2026-10-02T10:00:00.000Z').dokument;
+    expect(blatt('ug', d)).not.toContain('>Gewerbesteuer<');
     const k = render(d, () => h(SteuerKarte, { ort: 'ug', offen: true }));
-    for (const s of ['Hebesatz', 'Messzahl', 'Zurück auf einen Gesamtsatz', 'keine Steuerberatung']) expect(k, s).toContain(s);
+    for (const s of ['Hebesatz', 'Messzahl', 'Zahlweise', 'Verlust mindert die Folgejahre', 'keine Steuerberatung']) expect(k, s).toContain(s);
   });
-  it('Privat-Karte hat die Netto-Tabelle, KD Ventures nur die Steuer auf den Ausstieg', () => {
+  it('Karte: Felder mit Vorgabe als grauer Platzhalter, eingetragene mit „zurücksetzen“; Einkommensteuer-Tarif nur beim Einzelunternehmen', () => {
+    let d = mitPlan();
+    const leer = render(d, () => h(SteuerKarte, { ort: 'ug', offen: true }));
+    expect(leer).toContain('placeholder="15"'); expect(leer).toContain('placeholder="5,5"'); expect(leer).not.toContain('↺ zurücksetzen');
+    d = wendeOperationenAn(d, steuerOps(d, 'ug', { art: 'feld', id: 'kst.satz', wert: 0.2 }), 'kevin', '2026-10-02T10:00:00.000Z').dokument;
+    expect(render(d, () => h(SteuerKarte, { ort: 'ug', offen: true }))).toContain('↺ zurücksetzen');
+    expect(leer).not.toContain('Einkommensteuer-Tarif');
+    const kdc = render(d, () => h(SteuerKarte, { ort: 'kdc', offen: true }));
+    for (const s of ['Einkommensteuer-Tarif (Eckwerte) anpassen', 'Gewerbesteuer-Freibetrag', 'Anrechnung auf die Einkommensteuer']) expect(kdc, s).toContain(s);
+  });
+  it('Karte im Szenario (Baukasten): „nur dieses Szenario“, leere Felder gelten wie im Plan', () => {
+    const d = mitPlan();
+    const t = render(d, () => h(SteuerKarte, { ort: 'ug', offen: true, szenario: d.planszenarien![0] }));
+    expect(t).toContain('Plan'); expect(t).toContain('gelten wie im Plan');
+  });
+  it('Selbstständigkeit: eigene Achse mit Einzelsteuern, Entnahme-Karte, Konto und Rücklage', () => {
+    const t = blatt('kdc');
+    for (const s of ['Einkommensteuer', 'Entnahme nach Privat', 'Kontostand', 'Steuerrücklage', 'Fixkosten (Sachkosten)', 'Zahlungsfluss und Liquidität']) expect(t, s).toContain(s);
+  });
+  it('Gesamt: Selbstständigkeit als eigener Strom (Block, Linie, Entnahme-Zeile)', () => {
+    const t = render(mitPlan(), Gesamt);
+    for (const s of ['Selbstständigkeit', 'Entnahme', 'Frei verfügbar']) expect(t, s).toContain(s);
+    expect(t).not.toContain('keine Monatsachse');
+  });
+  it('Privat-Karte hat die Netto-Tabelle, KD Ventures KSt, Soli, Gewerbesteuer und die Steuer auf den Ausstieg', () => {
     expect(render(mitPlan(), () => h(SteuerKarte, { ort: 'privat', offen: true }))).toContain('Brutto → Netto');
     const kdv = render(mitPlan(), () => h(SteuerKarte, { ort: 'kdv', offen: true }));
-    expect(kdv).toContain('Steuer auf den Ausstieg'); expect(kdv).not.toContain('Gewerbesteuer');
+    expect(kdv).toContain('Steuer auf den Ausstieg'); expect(kdv).toContain('Gewerbesteuer'); expect(kdv).toContain('Körperschaftsteuer');
   });
 });

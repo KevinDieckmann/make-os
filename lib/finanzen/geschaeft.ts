@@ -1,15 +1,14 @@
 // ─── Finanzplanung jetzt — Business-Blatt je Gesellschaft (rein, getestet) ───
 // Kevin 02.10.: „Businessplanung fertig“ — je Gesellschaft ein vollständiges Blatt: Umsatz aus Produkten,
 // Kosten (fix/variabel, Personal, Software, Miete), Ergebnis vor und nach Steuern, Liquidität, Runway, Break-even.
-// Diese Schicht RECHNET NICHTS NEU, was der Kern schon kennt: Umsatz, Kosten, Gewinn, Konto und frei kommen aus
-// `MonatUG`/`MonatPrivat` (Rechenkern v3, unverändert). Neu und nur Anzeige: Steuer-Aufwand je Monat (Gewinn seit
-// Jahresbeginn × Quote, wie die Rücklage des Kerns), Ergebnis nach Steuern, Break-even-Monat, Runway je Ort.
+// Diese Schicht RECHNET NICHTS NEU, was der Kern schon kennt: Umsatz, Kosten, Gewinn, Steuern (einzeln: KSt, Soli, Gewerbesteuer,
+// Einkommensteuer, Anrechnung), Konto und frei kommen aus `MonatUG`/`MonatSelbst` (Rechenkern, Umbau 02.10.). Neu und nur Anzeige:
+// Ergebnis nach Steuern, Break-even-Monat, Runway je Ort.
 // Alles deterministisch und client-sicher. Steuern sind Näherungen — Hinweis, keine Steuerberatung.
 
 import type { Gesellschaftskennung } from '@/lib/einheiten';
-import type { FinanzDaten, MonatUG } from './rechenkern';
-import { est2026, jahrVon, kalMonat } from './rechenkern';
-import { betragImMonat, kernKanal, neuerBaustein, type Baustein, type KostenArt, type Planszenario, type Rhythmus } from './szenarien';
+import type { FinanzDaten, MonatSelbst, MonatUG } from './rechenkern';
+import { betragImMonat, neuerBaustein, type Baustein, type KostenArt, type Planszenario, type Rhythmus } from './szenarien';
 
 /** Leere Vorlagen für „+ Produkt“ — nur Beispiel-Namen, Preis 0 (Kevin 02.10.: keine echten Preise). Der Name ist frei änderbar. */
 export const BEISPIEL_PRODUKTE: { name: string; rhythmus: Rhythmus; laufzeit?: number }[] = [
@@ -22,49 +21,15 @@ export const BEISPIEL_PRODUKTE: { name: string; rhythmus: Rhythmus; laufzeit?: n
 export const KOSTENARTEN_BLATT: KostenArt[] = ['stelle', 'tool', 'miete', 'rate', 'sonstiges'];
 
 const rund = (v: number) => Math.round(v * 100) / 100;
-const nullen = (n: number) => new Array<number>(n).fill(0);
 
 // ── Bausteine je Gesellschaft ───────────────────────────────────────────────
-/** Bausteine eines Ortes — `kdc` zählt in der Rechnung über die Kanäle der MAKE Innovation GmbH, hat hier aber ein eigenes Blatt. */
+/** Bausteine eines Ortes (jeder Ort hat seit 02.10. eine eigene Achse im Kern). */
 export function bausteineVon(ps: Planszenario | null, ort: Gesellschaftskennung, art: Baustein['art'], mitRegler = false): Baustein[] {
   return (ps?.bausteine ?? []).filter(b => b.einheit === ort && b.art === art && (mitRegler || !b.regler));
 }
-/** Stellen rechnet der Kern mit Arbeitgeberanteil (nur im Kanal der MAKE Innovation GmbH) — so zeigen es auch die Blätter. */
-export const kostenFaktor = (b: Baustein, agAnteil: number): number => (b.kostenArt === 'stelle' && kernKanal(b.einheit) === 'ug' ? 1 + agAnteil : 1);
+/** Stellen rechnet der Kern mit Arbeitgeberanteil (MAKE Innovation GmbH und Selbstständigkeit) — so zeigen es auch die Blätter. */
+export const kostenFaktor = (b: Baustein, agAnteil: number): number => (b.kostenArt === 'stelle' && (b.einheit === 'ug' || b.einheit === 'kdc') ? 1 + agAnteil : 1);
 export const bausteinReihe = (b: Baustein, N: number): number[] => Array.from({ length: N }, (_, i) => betragImMonat(b, i + 1));
-const summiere = (liste: number[][], N: number): number[] => { const s = nullen(N); for (const r of liste) for (let i = 0; i < N; i++) s[i] += r[i] ?? 0; return s; };
-
-/** Wie viel von der Summe im Kern über den UG-Kanal läuft, obwohl der Baustein zur Selbstständigkeit gehört (Kern v3 hat dafür keine eigene Achse). */
-export function kdcImKern(ps: Planszenario | null, N: number): { umsatz: number[]; kosten: number[] } {
-  const u = bausteineVon(ps, 'kdc', 'umsatz').filter(b => kernKanal(b.einheit) === 'ug').map(b => bausteinReihe(b, N));
-  const k = bausteineVon(ps, 'kdc', 'kosten').filter(b => kernKanal(b.einheit) === 'ug').map(b => bausteinReihe(b, N));
-  return { umsatz: summiere(u, N), kosten: summiere(k, N) };
-}
-
-// ── Steuer-Aufwand je Monat (Anzeige) ───────────────────────────────────────
-/**
- * Steuer-Aufwand je Monat: Quote × Zuwachs des Gewinns seit Jahresbeginn (nur positiv) — summiert sich je Jahr auf
- * Quote × Jahresgewinn, wie die Rücklage des Kerns. Mit Verlust im Jahr: 0. (Zahlung und Rücklage stehen im Kern.)
- */
-export function steuerAufwand(gewinn: number[], satz: number): number[] {
-  let ytd = 0, jahr = -1;
-  return gewinn.map((g, i) => {
-    const m = i + 1;
-    if (jahrVon(m) !== jahr || kalMonat(m) === 1) { ytd = 0; jahr = jahrVon(m); }
-    const vor = Math.max(0, ytd); ytd += g;
-    return Math.max(0, ytd) * satz - vor * satz;
-  });
-}
-/** Einkommensteuer-Aufwand je Monat nach Grundtarif auf den Gewinn seit Jahresbeginn (abzüglich Vorsorge und Sonderausgaben je Jahr). Näherung. */
-export function einkommensteuerAufwand(gewinn: number[], abzug: number): number[] {
-  let ytd = 0, jahr = -1;
-  return gewinn.map((g, i) => {
-    const m = i + 1;
-    if (jahrVon(m) !== jahr || kalMonat(m) === 1) { ytd = 0; jahr = jahrVon(m); }
-    const vor = est2026(Math.max(0, ytd - abzug)); ytd += g;
-    return est2026(Math.max(0, ytd - abzug)) - vor;
-  });
-}
 
 // ── Break-even und Runway ───────────────────────────────────────────────────
 export interface BreakEven {
@@ -91,18 +56,23 @@ export function runwayAb(liquiditaet: number[], m0: number): number | null {
 }
 
 // ── Das Blatt ───────────────────────────────────────────────────────────────
+/** Aufwand je Steuerart und Monat (positiv = Belastung; die Anrechnung nach § 35 EStG ist ein positiver Abzug von der Einkommensteuer). */
+export interface SteuerReihen { kst: number[]; soli: number[]; gewst: number[]; est: number[]; anrechnung: number[]; exit: number[] }
+
 export interface Geschaeftsblatt {
   ort: Gesellschaftskennung;
   /** Umsatz je Baustein (Produkt). */
   produkte: { b: Baustein; werte: number[] }[];
-  /** Kosten je Baustein, in der Reihenfolge der Kostenarten. */
+  /** Kosten je Baustein, nach Kostenart geordnet (Stellen inkl. Arbeitgeberanteil, wo der Kern ihn rechnet). */
   kosten: { b: Baustein; werte: number[] }[];
   umsatz: number[];
   /** Alle Kosten dieses Ortes (positiv). */
   kostenSumme: number[];
   ergebnisVorSteuern: number[];
-  /** Ertragsteuer-Aufwand je Monat (positiv); bei KD Ventures die Steuer auf den Ausstieg. */
+  /** Steuer-Aufwand je Monat insgesamt (positiv) — bei KD Ventures Ertragsteuer auf die laufenden Bausteine plus Steuer auf den Ausstieg. */
   steuer: number[];
+  /** Dasselbe nach Steuerarten aufgeschlüsselt. */
+  steuerArten: SteuerReihen;
   ergebnisNachSteuern: number[];
   /** Kontostand bzw. frei verfügbar — je nach Ort (siehe `liquiditaetName`). */
   liquiditaet: number[];
@@ -112,38 +82,37 @@ export interface Geschaeftsblatt {
 }
 
 /**
- * Das Blatt einer Gesellschaft aus dem Rechenergebnis. `satz` ist die Ertragsteuer-Quote, mit der gerechnet wurde (`steuerUG`),
- * `abzug` Vorsorge + Sonderausgaben (Selbstständigkeit). `m0` = „jetzt“ (Plan-Monat).
+ * Das Blatt einer Gesellschaft aus dem Rechenergebnis des Kerns (`ug` = MAKE + KD Ventures, `kdc` = Selbstständigkeit). `m0` = „jetzt“ (Plan-Monat).
  */
-export function geschaeftsblatt(d: Pick<FinanzDaten, 'monate' | 'selbst' | 'annahmen'>, ort: Gesellschaftskennung, ug: MonatUG[], ps: Planszenario | null, satz: number, m0: number): Geschaeftsblatt {
-  const N = d.monate.length;
+export function geschaeftsblatt(d: Pick<FinanzDaten, 'monate' | 'annahmen'>, ort: Gesellschaftskennung, g: { ug: MonatUG[]; kdc: MonatSelbst[] }, ps: Planszenario | null, m0: number): Geschaeftsblatt {
+  const N = d.monate.length, ug = g.ug, kdc = g.kdc;
   const prod = bausteineVon(ps, ort, 'umsatz', true).map(b => ({ b, werte: bausteinReihe(b, N) }));
   const kosten = KOSTENARTEN_BLATT.flatMap(art => bausteineVon(ps, ort, 'kosten', true).filter(b => (b.kostenArt ?? 'sonstiges') === art)).map(b => ({ b, werte: bausteinReihe(b, N).map(v => v * kostenFaktor(b, d.annahmen.agAnteil)) }));
-  let umsatz: number[], kostenSumme: number[], vor: number[], steuer: number[], liq: number[], liqName: string;
+  let umsatz: number[], kostenSumme: number[], vor: number[], arten: SteuerReihen, liq: number[], liqName: string;
+  const reihe = (f: (i: number) => number) => Array.from({ length: N }, (_, i) => f(i));
   if (ort === 'ug') {
-    // Kern: Umsatz = Treiber (Ankermandat, Retainer, …) + Bausteine (auch die der Selbstständigkeit); Kosten = Personal + Stellen + Sach + Holding.
+    // Kern: Umsatz = Treiber (Ankermandat, Retainer, …) + Bausteine der MAKE Innovation GmbH; Kosten = Personal + Stellen + Sach + Holding.
     umsatz = ug.map(u => u.umsatz);
     kostenSumme = ug.map(u => u.kevin + u.malin + u.unterstuetzung + u.stellen + u.sach + u.gruendung + u.holding);
     vor = ug.map(u => u.gewinn);
-    steuer = steuerAufwand(vor, satz);
+    arten = { kst: ug.map(u => u.st.kst), soli: ug.map(u => u.st.soli), gewst: ug.map(u => u.st.gewst), est: ug.map(u => u.st.est), anrechnung: ug.map(u => u.st.anrechnung), exit: reihe(() => 0) };
     liq = ug.map(u => u.frei); liqName = 'Frei verfügbar (nach Steuer und USt)';
   } else if (ort === 'kdv') {
     // Kern: Umlage und Partnerdarlehen-Rate gehen von der MAKE Innovation GmbH ein und als Holdingkosten bzw. Tilgung wieder aus (heben sich auf); dazu Ausstieg und Bausteine.
     umsatz = ug.map(u => u.kdvUmlage + u.kdvBjoernEin + u.kdvExit + u.kdvBausteineEin);
     kostenSumme = ug.map(u => u.kdvHolding + u.kdvBjoern + u.kdvBausteineAus);
     vor = umsatz.map((v, i) => v - kostenSumme[i]);
-    steuer = ug.map(u => u.kdvExitSteuer);
-    liq = ug.map(u => u.kdvKonto); liqName = 'Kontostand KD Ventures';
+    arten = { kst: ug.map(u => u.kdvSt.kst), soli: ug.map(u => u.kdvSt.soli), gewst: ug.map(u => u.kdvSt.gewst), est: ug.map(u => u.kdvSt.est), anrechnung: ug.map(u => u.kdvSt.anrechnung), exit: ug.map(u => u.kdvExitSteuer) };
+    liq = ug.map(u => u.kdvFrei); liqName = 'Frei verfügbar KD Ventures (Konto nach Steuerrücklage)';
   } else {
-    umsatz = summiere(prod.map(p => p.werte), N);
-    kostenSumme = summiere(kosten.map(k => k.werte), N);
-    vor = umsatz.map((v, i) => v - kostenSumme[i]);
-    steuer = einkommensteuerAufwand(vor, d.selbst.vorsorge + d.selbst.sonderausgaben);
-    liq = []; liqName = 'Liquidität (Kontostand heute + Ergebnis nach Steuern)';
+    // Selbstständigkeit: eigene Achse im Kern — Umsatz und Kosten aus ihren Bausteinen und Fixkosten, Einkommensteuer nach Grundtarif, eigenes Konto.
+    umsatz = kdc.map(k => k.umsatz); kostenSumme = kdc.map(k => k.kosten); vor = kdc.map(k => k.gewinn);
+    arten = { kst: kdc.map(k => k.st.kst), soli: kdc.map(k => k.st.soli), gewst: kdc.map(k => k.st.gewst), est: kdc.map(k => k.st.est), anrechnung: kdc.map(k => k.st.anrechnung), exit: reihe(() => 0) };
+    liq = kdc.map(k => k.frei); liqName = 'Frei verfügbar (Konto nach Steuerrücklage und USt)';
   }
+  const steuer = reihe(i => arten.kst[i] + arten.soli[i] + arten.gewst[i] + arten.est[i] - arten.anrechnung[i] + arten.exit[i]);
   const nach = vor.map((v, i) => v - steuer[i]);
-  if (ort === 'kdc') { let k = d.selbst.kontoStart; liq = nach.map(v => (k += v)); }
-  return { ort, produkte: prod, kosten, umsatz, kostenSumme, ergebnisVorSteuern: vor, steuer, ergebnisNachSteuern: nach, liquiditaet: liq, liquiditaetName: liqName, breakEven: breakEven(vor), runway: runwayAb(liq, m0) };
+  return { ort, produkte: prod, kosten, umsatz, kostenSumme, ergebnisVorSteuern: vor, steuer, steuerArten: arten, ergebnisNachSteuern: nach, liquiditaet: liq, liquiditaetName: liqName, breakEven: breakEven(vor), runway: runwayAb(liq, m0) };
 }
 
 /** Summe der nächsten 12 Monate ab `m0` — für die Kacheln. */

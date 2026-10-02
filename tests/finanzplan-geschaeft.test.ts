@@ -4,11 +4,11 @@ import type { FinanzDaten } from '../lib/finanzen/rechenkern';
 import { rechneMit, betragImMonat, reihen, pruefeBaustein, pruefePlanszenarien, neuerBaustein, planszenarienVon } from '../lib/finanzen/szenarien';
 import { wendeOperationenAn, pruefeDokument } from '../lib/finanzen/plan/operationen';
 import {
-  breakEven, runwayAb, steuerAufwand, einkommensteuerAufwand, geschaeftsblatt, bausteineVon, arbeitsplanSichern, neuesProdukt, BEISPIEL_PRODUKTE, kdcImKern, summe12,
+  breakEven, runwayAb, geschaeftsblatt, bausteineVon, arbeitsplanSichern, neuesProdukt, BEISPIEL_PRODUKTE, summe12,
 } from '../lib/finanzen/geschaeft';
 import { luecken } from '../lib/finanzen/luecken';
-import { annahmeGruppen, ANNAHMEN_IN_KARTE_STEUER, ANNAHMEN_OHNE_WIRKUNG, ANNAHMEN_EIGENER_EDITOR } from '../lib/finanzen/annahmen-felder';
-import { planFix, arbeitsplanFix } from './fixtures/finanz-plan';
+import { annahmeGruppen, ANNAHMEN_IN_KARTE_STEUER, ANNAHMEN_EIGENER_EDITOR } from '../lib/finanzen/annahmen-felder';
+import { planFix, arbeitsplanFix, arbeitsplanSelbst } from './fixtures/finanz-plan';
 
 const JETZT = '2026-10-02T10:00:00.000Z';
 const an = (d: FinanzDaten, ops: Parameters<typeof wendeOperationenAn>[1]) => wendeOperationenAn(d, ops, 'kevin', JETZT).dokument;
@@ -32,57 +32,49 @@ describe('Break-even und Runway', () => {
   });
 });
 
-describe('Steuer-Aufwand (Anzeige)', () => {
-  it('summiert sich je Jahr auf Satz × Jahresgewinn (nur positiv, Verlustjahre 0)', () => {
-    const g = new Array(27).fill(0); g[0] = 1000; g[1] = -400; g[2] = 600;            // 2026: Okt–Dez, Gewinn 1200
-    g[3] = -500; g[4] = -500;                                                            // 2027: nur Verlust …
-    for (let i = 5; i < 15; i++) g[i] = 300;                                            // … dann 10 × 300 → Jahr 2027: 2000
-    const s = steuerAufwand(g, 0.3);
-    expect(s.slice(0, 3).reduce((a, b) => a + b, 0)).toBeCloseTo(0.3 * 1200, 9);
-    expect(s.slice(3, 15).reduce((a, b) => a + b, 0)).toBeCloseTo(0.3 * 2000, 9);
-    expect(s[3]).toBe(0);
-  });
-  it('Einkommensteuer-Aufwand: Jahressumme = est2026(Gewinn − Abzug)', () => {
-    const g = new Array(27).fill(0); for (let i = 3; i < 15; i++) g[i] = 3000;       // 2027: 36.000
-    const s = einkommensteuerAufwand(g, 3500).slice(3, 15).reduce((a, b) => a + b, 0);
-    expect(s).toBeGreaterThan(0); expect(s).toBeLessThan(36000 * 0.45);
-  });
-});
-
 describe('Geschäftsblatt je Gesellschaft', () => {
   const d = planFix(14000), ps = arbeitsplanFix();
   const g = rechneMit(d, ps);
-  it('MAKE: Umsatz, Kosten und Ergebnis kommen aus dem Kern; nach Steuern = vor − Aufwand', () => {
-    const b = geschaeftsblatt(g.d, 'ug', g.ug, ps, g.d.annahmen.steuerUG, 1);
+  const blatt = (ort: 'ug' | 'kdv' | 'kdc') => geschaeftsblatt(g.d, ort, g, ps, 1);
+  it('MAKE: Umsatz, Kosten und Ergebnis kommen aus dem Kern; nach Steuern = vor − Einzelsteuern', () => {
+    const b = blatt('ug');
     expect(b.umsatz).toEqual(g.ug.map(u => u.umsatz));
     expect(b.ergebnisVorSteuern).toEqual(g.ug.map(u => u.gewinn));
     b.ergebnisNachSteuern.forEach((v, i) => expect(v).toBeCloseTo(b.ergebnisVorSteuern[i] - b.steuer[i], 9));
+    b.steuer.forEach((v, i) => expect(v).toBeCloseTo(g.ug[i].st.summe, 9));
     expect(b.liquiditaet).toEqual(g.ug.map(u => u.frei));
     b.umsatz.forEach((v, i) => expect(v - b.kostenSumme[i]).toBeCloseTo(b.ergebnisVorSteuern[i], 6));
   });
-  it('Produkte der Gesellschaft stehen als Zeilen; Bausteine der Selbstständigkeit laufen im Kern über die MAKE-Kanäle', () => {
-    const b = geschaeftsblatt(g.d, 'ug', g.ug, ps, 0.3, 1);
+  it('Produkte der Gesellschaft stehen als Zeilen; Bausteine der Selbstständigkeit laufen NICHT mehr in den MAKE-Zahlen', () => {
+    const b = blatt('ug');
     expect(b.produkte.map(p => p.b.id)).toEqual(['b1']);
-    const kdc = kdcImKern(ps, 27);
-    // Umsatz = Treiber (ob + retainer + provision + events) + ug-Bausteine + kdc-Bausteine
-    g.ug.forEach((u, i) => expect(u.umsatz).toBeCloseTo(u.ob + u.retainer + u.astarna + u.events + b.produkte[0].werte[i] + kdc.umsatz[i], 6));
+    // Umsatz = Treiber (ob + retainer + provision + events) + ug-Bausteine — ohne die Selbstständigkeit
+    g.ug.forEach((u, i) => expect(u.umsatz).toBeCloseTo(u.ob + u.retainer + u.astarna + u.events + b.produkte[0].werte[i], 6));
   });
-  it('KD Ventures: Umlage und Rate heben sich auf; Ergebnis = Ausstieg + Bausteine', () => {
-    const b = geschaeftsblatt(g.d, 'kdv', g.ug, ps, 0.3, 1);
+  it('KD Ventures: Umlage und Rate heben sich auf; Ergebnis = Ausstieg + Bausteine; Steuer = Ertragsteuer auf die Bausteine + Steuer auf den Ausstieg', () => {
+    const b = blatt('kdv');
     b.ergebnisVorSteuern.forEach((v, i) => expect(v).toBeCloseTo(g.ug[i].kdvExit + g.ug[i].kdvBausteineEin, 6));
-    expect(b.liquiditaet).toEqual(g.ug.map(u => u.kdvKonto));
-    expect(b.steuer).toEqual(g.ug.map(u => u.kdvExitSteuer));
+    expect(b.liquiditaet).toEqual(g.ug.map(u => u.kdvFrei));
+    b.steuer.forEach((v, i) => expect(v).toBeCloseTo(g.ug[i].kdvExitSteuer + g.ug[i].kdvSt.summe, 9));
   });
-  it('Selbstständigkeit: eigene Bausteine, Liquidität startet beim Kontostand', () => {
-    const b = geschaeftsblatt(g.d, 'kdc', g.ug, ps, 0.3, 1);
+  it('Selbstständigkeit: eigene Bausteine, eigene Achse; Liquidität = frei (Konto nach Rücklage und USt), startet beim Kontostand', () => {
+    const b = blatt('kdc');
     expect(b.umsatz.slice(0, 6)).toEqual([500, 500, 500, 500, 500, 500]); expect(b.umsatz[6]).toBe(0);
-    expect(b.liquiditaet[0]).toBeCloseTo(5000 + b.ergebnisNachSteuern[0], 9);
+    expect(b.liquiditaet).toEqual(g.kdc.map(k => k.frei));
+    expect(g.kdc[0].konto).toBeCloseTo(5000 + 500 * 1.19, 9);   // Konto-Start 5.000 + Eingang 500 (kein Zahlungsziel) + USt
     expect(b.breakEven.monatlich).toBe(1);      // keine Kosten: das Ergebnis ist nie negativ
   });
   it('Stellen zählen im Blatt mit Arbeitgeberanteil (wie im Kern)', () => {
-    const b = geschaeftsblatt(g.d, 'ug', g.ug, ps, 0.3, 1);
+    const b = blatt('ug');
     expect(b.kosten.find(k => k.b.id === 'b2')!.werte[5]).toBeCloseTo(2000 * 1.2, 9);
     expect(b.kosten.find(k => k.b.id === 'b3')!.werte[0]).toBe(99);
+  });
+  it('Selbstständigkeit: Stellen zählen auch dort mit Arbeitgeberanteil (wie im Kern)', () => {
+    const p = arbeitsplanSelbst(), gg = rechneMit(planFix(14000), p);
+    const b = geschaeftsblatt(gg.d, 'kdc', gg, p, 1);
+    expect(b.kosten.find(k => k.b.id === 'k3')!.werte[3]).toBeCloseTo(1000 * 1.2, 9);
+    expect(b.kostenSumme[3]).toBeCloseTo(300 + 1200, 9);
+    expect(b.ergebnisVorSteuern[3]).toBeCloseTo(6000 - 1500, 9);
   });
   it('summe12 nimmt die nächsten zwölf Monate ab „jetzt“', () => {
     expect(summe12([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 2)).toBe(2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11 + 12 + 13);
@@ -126,9 +118,9 @@ describe('Produkte im Business-Blatt', () => {
     expect(pruefePlanszenarien([{ id: 'p', bausteine: [{ id: 'b', art: 'umsatz', ueber: { m2: 9 } }] }], ['s1'])[0].bausteine[0].ueber).toEqual({ m2: 9 });
     const d = { ...planFix(), planszenarien: [arbeitsplanFix()], arbeitsplan: 'ps1' };
     const e = an(d, [{ pfad: '/planszenarien/id=ps1/bausteine/id=b1/ueber/m5', neu: 4242 }]);
-    expect(rechneMit(e, planszenarienVon(e)[0]).ug[4].bausteineUmsatz).toBe(4242 + 500);   // + 500 aus dem Baustein der Selbstständigkeit (Kern-Kanal)
+    expect(rechneMit(e, planszenarienVon(e)[0]).ug[4].bausteineUmsatz).toBe(4242);
     const f = an(e, [{ pfad: '/planszenarien/id=ps1/bausteine/id=b1/ueber/m5' }]);
-    expect(rechneMit(f, planszenarienVon(f)[0]).ug[4].bausteineUmsatz).toBe(1600 + 500);
+    expect(rechneMit(f, planszenarienVon(f)[0]).ug[4].bausteineUmsatz).toBe(1600);
     const p = pruefeDokument(JSON.parse(JSON.stringify(e)));
     expect(p.ok && p.dokument.planszenarien?.[0].bausteine[0].ueber).toEqual({ m5: 4242 });
   });
@@ -162,10 +154,10 @@ describe('Was ist noch offen?', () => {
 });
 
 describe('Annahmen-Felder', () => {
-  it('jedes Feld des Kerns hat genau einen Ort: Feldliste, Steuerkarte, eigener Editor oder „ohne Wirkung“', () => {
+  it('jedes Feld des Kerns hat genau einen Ort: Feldliste, Steuerkarte oder eigener Editor', () => {
     const felder = annahmeGruppen('A', 'B').flatMap(g => g.felder.map(f => f.k));
     const alle = Object.keys(planFix().annahmen);
-    const abgedeckt = new Set<string>([...felder, ...ANNAHMEN_IN_KARTE_STEUER, ...ANNAHMEN_OHNE_WIRKUNG, ...ANNAHMEN_EIGENER_EDITOR]);
+    const abgedeckt = new Set<string>([...felder, ...ANNAHMEN_IN_KARTE_STEUER, ...ANNAHMEN_EIGENER_EDITOR]);
     expect(alle.filter(k => !abgedeckt.has(k))).toEqual([]);
     expect(new Set(felder).size).toBe(felder.length);
   });

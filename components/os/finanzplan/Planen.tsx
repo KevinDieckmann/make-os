@@ -290,8 +290,8 @@ export function Szenarien() {
 const QUELLEN = [{ id: 'privat.angespart', label: 'Privat angespart' }, { id: 'ug.frei', label: `${UG_KURZ} frei verfügbar` }, { id: 'kdv.bjoern', label: 'Partnerdarlehen offen' }, { id: 'gruppe', label: 'Freies Geld Gruppe' }] as const;
 
 export function Ziele() {
-  const { d, ug, pr, aendere } = usePlan();
-  const zs = zielStaende(d, ug, pr);
+  const { d, ug, kdc, pr, aendere } = usePlan();
+  const zs = zielStaende(d, ug, pr, kdc);
   const [plus, setPlus] = useState<Record<string, number>>({});
   const [neu, setNeu] = useState<string | null>(null);
   return (

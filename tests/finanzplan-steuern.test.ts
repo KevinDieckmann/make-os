@@ -2,13 +2,13 @@
 // Standard je Rechtsform, Schalter, Aufschlüsselung, Operationen, Säuberer, Schwellen, Netto-Tabelle.
 import { describe, it, expect } from 'vitest';
 import type { FinanzDaten } from '../lib/finanzen/rechenkern';
-import { rechneMit } from '../lib/finanzen/szenarien';
 import { wendeOperationenAn, pruefeDokument, nettoTabelleOk, OperationUngueltig } from '../lib/finanzen/plan/operationen';
 import {
-  rechtsformStandard, rechtsformVon, steuerArtenFuer, zeigeSteuer, aufteilen, gesamtsatzAus, steuerAnteile, steuerOps, steuerZeilen, pruefeSteuern, STEUER_STANDARD,
+  rechtsformStandard, rechtsformVon, steuerArtenFuer, zeigeSteuer, steuerOps, steuerZeilen, steuerFelder, steuerParameter, steuernMit, pruefeSteuern,
 } from '../lib/finanzen/steuern';
+import { aufteilen, gesamtquote, TARIF_2026 } from '../lib/finanzen/ertragsteuer';
 import { schwellenVon, pruefeSchwellen, SCHWELLEN_VORGABE } from '../lib/finanzen/schwellen';
-import { planFix } from './fixtures/finanz-plan';
+import { planFix, arbeitsplanFix } from './fixtures/finanz-plan';
 
 const JETZT = '2026-10-02T10:00:00.000Z';
 const an = (d: FinanzDaten, ops: Parameters<typeof wendeOperationenAn>[1]) => wendeOperationenAn(d, ops, 'kevin', JETZT).dokument;
@@ -20,69 +20,89 @@ describe('Standard je Rechtsform', () => {
   });
   it('nur die Zeilen, die zur Rechtsform passen', () => {
     expect(steuerArtenFuer('ug', 'kapital')).toEqual(['kst', 'soli', 'gewst', 'ust', 'ausschuettung']);
-    expect(steuerArtenFuer('ug', 'einzel')).toEqual(['est', 'ust', 'ausschuettung']);
-    expect(steuerArtenFuer('kdv', 'kapital')).toEqual(['exit']);
-    expect(steuerArtenFuer('kdc', 'einzel')).toEqual(['est']);
+    expect(steuerArtenFuer('ug', 'einzel')).toEqual(['est', 'gewst', 'ust', 'ausschuettung']);
+    expect(steuerArtenFuer('kdv', 'kapital')).toEqual(['kst', 'soli', 'gewst', 'exit']);
+    expect(steuerArtenFuer('kdc', 'einzel')).toEqual(['est', 'gewst', 'ust']);
     expect(steuerArtenFuer('privat', null)).toEqual(['netto', 'ausschuettung']);
   });
   it('ohne Profil: alles Passende gilt, nichts Unpassendes erscheint', () => {
     const d = planFix();
     expect(zeigeSteuer(d, 'ug', 'kst')).toBe(true); expect(zeigeSteuer(d, 'ug', 'est')).toBe(false);
-    expect(zeigeSteuer(d, 'kdc', 'est')).toBe(true); expect(zeigeSteuer(d, 'kdc', 'ust')).toBe(false); expect(zeigeSteuer(d, 'kdv', 'kst')).toBe(false);
+    expect(zeigeSteuer(d, 'kdc', 'est')).toBe(true); expect(zeigeSteuer(d, 'kdc', 'kst')).toBe(false); expect(zeigeSteuer(d, 'kdc', 'ust')).toBe(true); expect(zeigeSteuer(d, 'kdv', 'kst')).toBe(true);
     expect(rechtsformVon(d, 'ug')).toBe('kapital');
   });
-  it('Rechtsform wechseln zeigt andere Zeilen und schaltet die Aufschlüsselung ab, ohne den Satz anzufassen', () => {
-    let d = an(planFix(), steuerOps(planFix(), 'ug', { art: 'einzeln', wert: true }));
-    d = an(d, steuerOps(d, 'ug', { art: 'rechtsform', wert: 'einzel' }));
-    expect(rechtsformVon(d, 'ug')).toBe('einzel'); expect(d.steuern?.ug?.einzeln).toBe(false); expect(d.annahmen.steuerUG).toBe(0.3);
+  it('Rechtsform wechseln (jede Gesellschaft) zeigt andere Zeilen; die Annahmen bleiben unangetastet', () => {
+    let d = an(planFix(), steuerOps(planFix(), 'ug', { art: 'rechtsform', wert: 'einzel' }));
+    expect(rechtsformVon(d, 'ug')).toBe('einzel'); expect(d.annahmen.steuerUG).toBe(0.3);
     expect(zeigeSteuer(d, 'ug', 'est')).toBe(true); expect(zeigeSteuer(d, 'ug', 'kst')).toBe(false);
-    expect(steuerZeilen(d, 'ug', 0.264).map(z => z.art)).toEqual(['est', 'ust', 'ausschuettung']);
+    expect(steuerZeilen(d, 'ug', 0.264).map(z => z.art)).toEqual(['est', 'gewst', 'ust', 'ausschuettung']);
+    d = an(d, steuerOps(d, 'kdc', { art: 'rechtsform', wert: 'kapital' }));
+    expect(steuerParameter(d, 'kdc').form).toBe('kapital');
   });
 });
 
-describe('Aufschlüsseln', () => {
+describe('Parameter: Vorgabe, Eintrag, Zurücksetzen', () => {
+  it('ohne Eintrag gelten die Vorgaben; der Hebesatz ist aus dem früheren Gesamtsatz abgeleitet', () => {
+    const p = steuerParameter(planFix(), 'ug');
+    expect(p.kst).toBe(0.15); expect(p.soli).toBe(0.055); expect(p.messzahl).toBe(0.035);
+    expect(p.hebesatz).toBeCloseTo(((0.3 - 0.15 * 1.055) / 0.035) * 100, 9);
+    expect(gesamtquote(p)).toBeCloseTo(0.3, 12);
+    expect(p.verlustvortrag).toBe(true); expect(p.zahlweise).toBe('folgejahr'); expect(p.zahlMonat).toBe(6);
+    const k = steuerParameter(planFix(), 'kdc');
+    expect(k.form).toBe('einzel'); expect(k.freibetrag).toBe(24500); expect(k.anrechnung).toBe(4); expect(k.tarif).toEqual(TARIF_2026); expect(k.estAbzug).toBe(3500);
+  });
   it('aufteilen(): die Summe ergibt immer genau den Gesamtsatz, der Hebesatz ist der Rest', () => {
-    for (const g of [0.3, 0.2825, 0.158251, 0.15, 0.05, 0]) expect(gesamtsatzAus(aufteilen(g))).toBeCloseTo(g, 12);
-    const p = aufteilen(0.3);
-    expect(p.zeilen?.gewst?.hebesatz).toBeCloseTo(((0.3 - 0.15 * 1.055) / 0.035) * 100, 9);
-    expect(aufteilen(0.1).zeilen?.gewst?.an).toBe(false);
+    for (const g of [0.3, 0.2825, 0.158251, 0.15, 0.05, 0]) { const a = aufteilen(g); expect(a.kst * (1 + a.soli) + a.messzahl * a.hebesatz / 100).toBeCloseTo(g, 12); }
+    expect(aufteilen(0.3).hebesatz).toBeCloseTo(((0.3 - 0.15 * 1.055) / 0.035) * 100, 9);
+    expect(aufteilen(0.1).hebesatz).toBe(0); expect(aufteilen(0.1).kst).toBeLessThan(0.15);
   });
-  it('Änderung eines Bestandteils schreibt die Summe in annahmen.steuerUG — der Kern rechnet damit', () => {
-    let d = planFix(14000);
-    d = an(d, steuerOps(d, 'ug', { art: 'einzeln', wert: true }));
-    d = an(d, steuerOps(d, 'ug', { art: 'hebesatz', wert: 400 }));
-    expect(d.annahmen.steuerUG).toBeCloseTo(0.15 * 1.055 + 0.035 * 4, 12);
-    const g = rechneMit(d, null);
-    // Zahlung im Juni 28 (Plan-Monat 21) = Satz × Gewinn 2027 (Plan-Monate 4–15), gerechnet mit dem NEUEN Gesamtsatz.
-    const gewinn2027 = g.ug.slice(3, 15).reduce((s, u) => s + u.gewinn, 0);
-    expect(gewinn2027).toBeGreaterThan(0);
-    expect(g.ug[20].steuer).toBeCloseTo(d.annahmen.steuerUG * gewinn2027, 6);
-    expect(g.d.annahmen.steuerUG).toBe(d.annahmen.steuerUG);
+  it('Ein Feld eintragen schreibt unter /steuern/<ort>; „zurücksetzen“ (null) entfernt es wieder — danach gilt die Vorgabe', () => {
+    let d = an(planFix(), steuerOps(planFix(), 'ug', { art: 'feld', id: 'gewst.hebesatz', wert: 400 }));
+    expect(d.steuern?.ug?.zeilen?.gewst?.hebesatz).toBe(400); expect(steuerParameter(d, 'ug').hebesatz).toBe(400);
+    d = an(d, steuerOps(d, 'ug', { art: 'feld', id: 'zahlweise', wert: 'quartal' }));
+    expect(steuerParameter(d, 'ug').zahlweise).toBe('quartal');
+    d = an(d, steuerOps(d, 'ug', { art: 'feld', id: 'gewst.hebesatz', wert: null }));
+    d = an(d, steuerOps(d, 'ug', { art: 'feld', id: 'zahlweise', wert: null }));
+    expect(d.steuern).toBeUndefined();   // leeres Profil verschwindet
+    expect(steuerParameter(d, 'ug')).toEqual(steuerParameter(planFix(), 'ug'));
   });
-  it('Zeile ausschalten nimmt sie aus dem Gesamtsatz; wieder einschalten stellt ihn her (bit-genau)', () => {
-    let d = an(planFix(), steuerOps(planFix(), 'ug', { art: 'einzeln', wert: true }));
-    const vorher = d.annahmen.steuerUG;
-    d = an(d, steuerOps(d, 'ug', { art: 'an', steuer: 'gewst', wert: false }));
-    expect(d.annahmen.steuerUG).toBeCloseTo(0.15 * 1.055, 12);
-    d = an(d, steuerOps(d, 'ug', { art: 'an', steuer: 'gewst', wert: true }));
-    expect(d.annahmen.steuerUG).toBeCloseTo(vorher, 12);
-    const t = steuerAnteile(d.steuern!.ug!);
-    expect(t.kst + t.soli + t.gewst).toBeCloseTo(1, 12);
+  it('steuerFelder(): Wert, Vorgabe und „gesetzt“ je Feld; Tarif-Eckwerte nur bei Einzelunternehmen', () => {
+    const d = an(planFix(), steuerOps(planFix(), 'ug', { art: 'feld', id: 'kst.satz', wert: 0.2 }));
+    const f = steuerFelder(d, 'ug', d.steuern, undefined);
+    const kst = f.find(x => x.id === 'kst.satz')!;
+    expect(kst).toMatchObject({ wert: 0.2, vorgabe: 0.15, gesetzt: true });
+    expect(f.find(x => x.id === 'soli.satz')).toMatchObject({ wert: 0.055, gesetzt: false });
+    expect(f.some(x => x.gruppe === 'tarif')).toBe(false);
+    const k = steuerFelder(planFix(), 'kdc', undefined, undefined);
+    expect(k.filter(x => x.gruppe === 'tarif').length).toBe(13); expect(k.find(x => x.id === 'freibetrag')).toMatchObject({ wert: 24500, gesetzt: false });
+    expect(steuerFelder(planFix(), 'privat', undefined, undefined)).toEqual([]);
   });
-  it('Soli gilt nur mit Körperschaftsteuer', () => {
-    let d = an(planFix(), steuerOps(planFix(), 'ug', { art: 'einzeln', wert: true }));
+  it('Je Szenario: die Überlagerung gilt nur dort, der Platzhalter zeigt den Wert des Plans', () => {
+    let d = an(planFix(), steuerOps(planFix(), 'ug', { art: 'feld', id: 'gewst.hebesatz', wert: 400 }));
+    d = { ...d, planszenarien: [{ ...arbeitsplanFix(), annahmen: {} }] };
+    const ops = steuerOps(d, 'ug', { art: 'feld', id: 'gewst.hebesatz', wert: 500 }, { art: 'szenario', id: 'ps1' }, undefined);
+    expect(ops[0].pfad).toBe('/planszenarien/id=ps1/annahmen/steuern/ug/zeilen/gewst/hebesatz');
+    d = an(d, ops);
+    const ps = d.planszenarien![0];
+    expect(ps.annahmen.steuern?.ug?.zeilen?.gewst?.hebesatz).toBe(500);
+    expect(steuerParameter({ ...d, steuern: steuernMit(d.steuern, ps.annahmen.steuern) }, 'ug').hebesatz).toBe(500);
+    expect(steuerParameter(d, 'ug').hebesatz).toBe(400);
+    const f = steuerFelder({ ...d, steuern: steuernMit(d.steuern, ps.annahmen.steuern) }, 'ug', ps.annahmen.steuern, d.steuern).find(x => x.id === 'gewst.hebesatz')!;
+    expect(f).toMatchObject({ wert: 500, vorgabe: 400, gesetzt: true });
+    // Zurücksetzen räumt die Überlagerung auf
+    const e = an(d, steuerOps(d, 'ug', { art: 'feld', id: 'gewst.hebesatz', wert: null }, { art: 'szenario', id: 'ps1' }, ps.annahmen.steuern));
+    expect(e.planszenarien![0].annahmen.steuern).toBeUndefined();
+  });
+  it('Zeile ausschalten gilt als Parameter (kstAn/gewstAn); Soli nur mit Körperschaftsteuer', () => {
+    let d = an(planFix(), steuerOps(planFix(), 'ug', { art: 'an', steuer: 'gewst', wert: false }));
+    expect(steuerParameter(d, 'ug').gewstAn).toBe(false);
+    expect(gesamtquote(steuerParameter(d, 'ug'))).toBeCloseTo(0.15 * 1.055, 12);
     d = an(d, steuerOps(d, 'ug', { art: 'an', steuer: 'kst', wert: false }));
-    expect(gesamtsatzAus(d.steuern!.ug!)).toBeCloseTo(d.annahmen.steuerUG, 12);
-    expect(d.annahmen.steuerUG).toBeCloseTo(STEUER_STANDARD.messzahl * (((planFix().annahmen.steuerUG - 0.15 * 1.055) / 0.035)), 9);
+    expect(gesamtquote(steuerParameter(d, 'ug'))).toBe(0);
   });
-  it('Pauschale Sätze (Einzel-Rechtsform, Ausstieg): aus = Satz 0, der alte Satz bleibt gemerkt und kommt zurück', () => {
-    let d = an(planFix(), steuerOps(planFix(), 'ug', { art: 'rechtsform', wert: 'einzel' }));
-    d = an(d, steuerOps(d, 'ug', { art: 'an', steuer: 'est', wert: false }));
-    expect(d.annahmen.steuerUG).toBe(0); expect(d.steuern?.ug?.zeilen?.est?.satz).toBe(0.3);
-    d = an(d, steuerOps(d, 'ug', { art: 'an', steuer: 'est', wert: true }));
-    expect(d.annahmen.steuerUG).toBe(0.3);
-    d = an(d, steuerOps(d, 'kdv', { art: 'an', steuer: 'exit', wert: false }));
-    expect(d.annahmen.exitSteuer).toBe(0);
+  it('Steuer auf den Ausstieg: aus = Satz 0, der alte Satz bleibt gemerkt und kommt zurück', () => {
+    let d = an(planFix(), steuerOps(planFix(), 'kdv', { art: 'an', steuer: 'exit', wert: false }));
+    expect(d.annahmen.exitSteuer).toBe(0); expect(d.steuern?.kdv?.zeilen?.exit?.satz).toBe(0.25);
     d = an(d, steuerOps(d, 'kdv', { art: 'an', steuer: 'exit', wert: true }));
     expect(d.annahmen.exitSteuer).toBe(0.25);
   });
