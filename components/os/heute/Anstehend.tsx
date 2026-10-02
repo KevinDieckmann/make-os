@@ -30,8 +30,8 @@ const text: React.CSSProperties = { fontSize: TYP.bedien, overflow: 'hidden', te
 const kopf: React.CSSProperties = { fontSize: 11.5, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 8 };
 
 /** Ist irgendetwas da? (sonst zeigt Heute keine Karte) */
-export const anstehendLeer = (d: Pick<AnstehendDaten, 'nachbereiten' | 'fristen' | 'followups' | 'buchungen' | 'vorschlaege' | 'geburtstage'>) =>
-  !d.nachbereiten.length && !d.fristen.length && !d.followups.length && !d.buchungen.length && !d.vorschlaege.kalender && !d.geburtstage.length;
+export const anstehendLeer = (d: Pick<AnstehendDaten, 'nachbereiten' | 'fristen' | 'followups' | 'buchungen' | 'vorschlaege' | 'geburtstage'> & { danke?: AnstehendDaten['danke'] }) =>
+  !d.nachbereiten.length && !d.fristen.length && !d.followups.length && !d.buchungen.length && !d.vorschlaege.kalender && !d.geburtstage.length && !(d.danke ?? []).length;
 
 /** Was beim Geburtstag rechts steht: Stand aus dem Wichtigen Tag (Familie) bzw. der verknüpften Aufgabe (CRM). */
 function GeschenkRechts({ g, heute, stand, geschenk }: { g: AGeburtstag; heute: string; stand: 'offen' | 'erledigt' | null; geschenk?: (g: AGeburtstag) => void }) {
@@ -69,6 +69,12 @@ export function AnstehendListe({ d, geschenkStandVon, geschenk }: { d: Anstehend
         <Link key={`fu-${f.id}`} href={f.href} style={zeile}>
           <span style={vorne(f.tageUeber > 0 ? LEUCHT.kritisch : LEUCHT.business)}>{f.tageUeber > 0 ? `seit ${f.tageUeber} T.` : f.uhrzeit ?? 'heute'}</span>
           <span style={text}>{f.text}{f.name && !f.text.includes(f.name) ? <span style={{ color: C.inkLeise }}> · {f.name}</span> : null}</span>
+        </Link>
+      ))}
+      {(d.danke ?? []).length > 0 && <div style={kopf}>Netzwerken</div>}
+      {(d.danke ?? []).map(x => (
+        <Link key={x.id} href={x.href} style={zeile} title="Danke-Mails ansehen — verschickt wird erst per Klick">
+          <span style={vorne(LEUCHT.achtung)}>{x.n} Danke-Mail{x.n === 1 ? '' : 's'}</span><span style={text}>bereit — {x.eventTitel}</span>
         </Link>
       ))}
       {(d.buchungen.length > 0 || d.vorschlaege.kalender > 0) && <div style={kopf}>Wartet auf dich</div>}
@@ -127,7 +133,7 @@ export function Anstehend({ i = 0 }: { i?: number }) {
     void fetch('/api/familie', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'tage', op: 'upsert', eintrag }] }) })
       .then(r => (r.ok ? neuLaden() : undefined)).catch(() => {});
   };
-  const zahl = d.nachbereiten.length + d.fristen.length + d.followups.length + d.buchungen.length + (d.vorschlaege.kalender ? 1 : 0) + d.geburtstage.length;
+  const zahl = d.nachbereiten.length + d.fristen.length + d.followups.length + d.buchungen.length + (d.vorschlaege.kalender ? 1 : 0) + d.geburtstage.length + (d.danke ?? []).length;
   return (
     <Karte i={i} akzent={d.fristen.some(f => f.kuendigung) || d.followups.some(f => f.tageUeber > 0) ? LEUCHT.achtung : undefined}>
       <Ueberschrift farbe={LEUCHT.achtung} rechts={<span style={{ fontSize: 12, color: C.inkLeise }}>{zahl}</span>}>Steht an</Ueberschrift>

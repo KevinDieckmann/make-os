@@ -17,6 +17,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
 import { MARKE_MAX } from './marke';
+import { netzwerkenAngabeSaeubern } from './netzwerken';
 import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
 import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
@@ -365,10 +366,11 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
     case 'newsletter': return wer(o.stimme) || o.stimme === 'marke' ? { stimme: String(o.stimme) } : {};
     case 'teilnahmen': {
       const f = o.feedback as Record<string, unknown> | undefined;
-      if (!f || typeof f !== 'object') return {};
-      const note = Number(f.note);
-      const fb = { ...(Number.isFinite(note) && note >= 1 && note <= 5 ? { note: Math.round(note) } : {}), ...(opt(f.text, 600) ? { text: opt(f.text, 600) } : {}), ...(opt(f.am, 25) ? { am: opt(f.am, 25) } : {}) };
-      return Object.keys(fb).length ? { feedback: fb } : {};
+      const note = Number(f?.note);
+      const fb = f && typeof f === 'object' ? { ...(Number.isFinite(note) && note >= 1 && note <= 5 ? { note: Math.round(note) } : {}), ...(opt(f.text, 600) ? { text: opt(f.text, 600) } : {}), ...(opt(f.am, 25) ? { am: opt(f.am, 25) } : {}) } : {};
+      // Netzwerken (02.10.): ohne diese Zeile fiele die Angabe bei jedem Speichern einer Teilnahme weg.
+      const nw = netzwerkenAngabeSaeubern(o.netzwerken);
+      return { ...(Object.keys(fb).length ? { feedback: fb } : {}), ...(nw ? { netzwerken: nw } : {}) };
     }
     default: return {};
   }

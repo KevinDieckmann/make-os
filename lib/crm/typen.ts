@@ -347,6 +347,26 @@ export interface Event {
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
 }
+/** Die Schritte nach dem Kennenlernen (Netzwerken — Erfassen, 02.10.). Liste, Beschriftung und Regeln: lib/crm/netzwerken.ts. */
+export type NetzwerkSchritt = 'termin' | 'qualifizieren' | 'followup' | 'vermitteln' | 'andere' | 'angebot' | 'makeone' | 'nur-kontakt';
+/** Was „Netzwerken“ an der Teilnahme festhält (alles optional im Altbestand; gesäubert in lib/crm/speicher.ts `zusatz`). */
+export interface NetzwerkenAngabe {
+  /** Kennung der Erfassung (Idempotenz — dieselbe Erfassung wirkt nur einmal). */
+  erfassungId: string;
+  schritt: NetzwerkSchritt;
+  /** Wer die Person danach betreut (Speichername). */
+  zustaendig: string;
+  /** Wer sie kennengelernt hat (Speichername). */
+  erfasstVon: string;
+  /** ISO — wann erfasst (die Zeit der Begegnung, nicht des Sendens). */
+  erfasstAm: string;
+  /** Info zum Gespräch (Freitext, höchstens 1.000 Zeichen). */
+  info?: string;
+  /** Termin (Berliner Wandzeit), wenn der Schritt „Termin“ war. */
+  terminAm?: string;
+  /** Danke-Mail: gewählte Anrede und der Tag, an dem sie als „raus“ bestätigt wurde. */
+  danke?: { anrede?: 'Du' | 'Sie'; rausAm?: string };
+}
 export type TeilnahmeStatus = 'vorgemerkt' | 'eingeladen' | 'zugesagt' | 'abgesagt' | 'da' | 'no_show';
 export interface Teilnahme {
   id: string;
@@ -368,6 +388,8 @@ export interface Teilnahme {
   einladenDurch?: string;
   /** Wer beim Einlass „da“ oder „nicht gekommen“ gesetzt hat. */
   eingechecktVon?: string;
+  /** Erfasst über „Netzwerken“ (02.10., lib/crm/netzwerken.ts): nächster Schritt, Zuständigkeit, Danke-Mail — Quelle des Abendberichts. */
+  netzwerken?: NetzwerkenAngabe;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;

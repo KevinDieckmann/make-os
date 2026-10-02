@@ -12,6 +12,7 @@ import { NutzungsMelder } from '@/components/os/NutzungsMelder';
 import { Mitarbeit } from '@/components/os/Mitarbeit';
 import { WillkommenMalin } from '@/components/os/WillkommenMalin';
 import { Schnellsuche } from '@/components/os/Schnellsuche';
+import { NetzwerkenPopup } from '@/components/os/netzwerken/Popup';
 import { IdeeErfassen } from '@/components/os/bauplan/IdeeErfassen';
 import { wache } from '@/lib/zugang/wache';
 
@@ -48,6 +49,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       <IdeeErfassen />
       {/* Zu zweit: wer ist gerade wo (24.09.). */}
       <Mitarbeit />
+      {/* Netzwerken (02.10.): „… hat dir einen Termin gebucht“ — die Karte erscheint einmal, bis sie gelesen ist. */}
+      <NetzwerkenPopup />
       {/* Einmaliger Gruß beim allerersten Öffnen. */}
       <WillkommenMalin />
     </div>

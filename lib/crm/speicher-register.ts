@@ -83,6 +83,8 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // ── Kalender (29.09., K4) ──
   E('buchung--*', 'Buchungsseiten + Terminbuchungen (Name, E-Mail, Firma, Anliegen, Einwilligungs-Nachweis): Buchungen der Person raus (person-weitere.ts); nicht bestätigte/abgelehnte/abgesagte/abgelaufene nach der Frist, bestätigte die Frist nach dem Termin (Löschfristen-Lauf). Im CRM bleiben Anfrage und Aktivität.', 'buchungen'),
   E('kennung-alias--*', 'Weiterleitung alter Kontakt-Kennungen (Kennungs-Umzug, lib/crm/kennung-alias.ts) — Zeilen der Person raus (aliasOhnePerson); ihre alten Kennungen bekommen vorher einen eigenen Grabstein.'),
+  // ── Netzwerken (02.10., Erfassen) ──
+  K('netzwerken-erfassungen--*', 'Journal der Netzwerken-Erfassungen (lib/crm/netzwerken-server.ts): nur Zufalls-Kennung, abgehakte Schrittnamen, Zeiten — bis zum Abschluss dazu die Kennung der Person bzw. des Termins, beim Abschluss geleert (nie fertig gewordene nach 60 Tagen weg); keine Namen, Adressen oder Texte. Fotos/Sprachnotizen liegen in `crm-dateien--*`, Teilnahme und Info in `crm`, Verlauf in `kontakte` — dort greift Art. 17.'),
   // ── Haushalt / Geschäft: bewusst ausgenommen ──
   { muster: 'finanzplan', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Rechnungen/Buchungen — Aufbewahrungspflicht § 147 AO / § 257 HGB (Kundenname auf der Rechnung bleibt).' },
   { muster: 'finanzen-plan--*', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanzplan des Haushalts — Rechnungen: Aufbewahrungspflicht § 147 AO / § 257 HGB.' },

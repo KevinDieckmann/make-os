@@ -180,6 +180,13 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   Knopf „Netzwerken“ in der Handy-Leiste (dort steht wieder „Melden“) und die Schnellaktions-Leiste in der Kontaktakte am Handy; „Problem oder Idee melden“ geht dort
   wie früher über die Leiste. Das Offline-Abbild der Karte im Browser (`make-karten-cache`) bleibt harmlos liegen. Keine Formänderung bestehender Bestände.
   Die neue Abhängigkeit `qrcode-generator` (Dev: `jsqr`) braucht auf dem Server `npm ci` beim Bauen des Images; die Schrift Urbanist liegt in `public/schriften/`.
+- **Netzwerken — Erfassen (02.10.):** keine Formänderung, nur optionale Zusatzfelder, eine neue Meldungsart und ein neuer Speicher. af4679a/1818c5c:
+  - verwirft `Teilnahme.netzwerken` (Schritt, Zuständigkeit, Info, Danke-Mail-Stand) beim nächsten Speichern der Teilnahme — Abendbericht und Danke-Mail-Entwürfe sind dort leer; Teilnahme „da“, Notiz, `einladenDurch`, Verlauf („Kennengelernt bei …“),
+    Follow-ups, Aufgaben, Termine, Labels und Dateien bleiben;
+  - kennt die Meldungsart `netzwerken` nicht → diese Meldungen (Termin gebucht/zugeteilt) verschwinden aus der Glocke; „n Danke-Mails bereit“ (abgeleitet) und das Pop-up gibt es dort nicht;
+  - liest/schreibt `netzwerken-erfassungen--<haushalt>` nie (liegt ungenutzt; nach einem erneuten Upload gilt dieselbe Erfassungs-Kennung weiter → nichts doppelt);
+  - Sprachnotizen (`audio/*`) liegen als Datei am Kontakt; der alte Stand zeigt sie in der Dateiliste, kann sie aber nicht abspielen (Download geht).
+  Nach einem erneuten Upload: nichts nachzuziehen (Teilnahmen ohne `netzwerken` erscheinen nicht im Bericht — selten, nur für Erfassungen aus der Rückweg-Zeit).
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

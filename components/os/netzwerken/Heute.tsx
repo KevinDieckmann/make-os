@@ -1,0 +1,159 @@
+'use client';
+
+// ─── Netzwerken — Abendbericht und Danke-Mails (02.10.) ──────────────────────
+// „Wen habe ich heute kennengelernt, was ist der nächste Schritt, wer ist zuständig, was ist offen?“ — für beide, je Event.
+// Darunter die Danke-Mail-Entwürfe: ab dem Folgetag liegt für jede erfasste Person MIT E-Mail ein Entwurf bereit („Schön, dich/Sie
+// gestern bei … kennengelernt zu haben“, Anrede Du/Sie wählbar). Verschickt wird NICHTS von MAKE OS: „In Mail öffnen“ startet das
+// Mail-Programm des Geräts mit dem fertigen Text (mailto:), gesendet wird dort per Klick; danach „Ist raus“ bestätigt es
+// (Teilnahme „nachgefasst“, Aktivität am Kontakt). Mails an Personen mit Werbesperre oder ohne Adresse gibt es nicht.
+
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
+import { FARBE as C, SCHRIFT, LEUCHT } from '@/lib/make-one/design';
+import { anzeigename } from '@/lib/make-one/crm';
+import { berichtAus, dankeZeilen, dankeOffen, dankeEntwurf, dankeMailtoLink, schrittLabel, type DankeZeile } from '@/lib/crm/netzwerken';
+import { tagPlus, tagVon, wandzeit } from '@/lib/zeit/kalender-kern';
+import { WEG } from '@/lib/wege';
+import type { CrmApi } from '../crm/daten';
+import { Gross, Wahl, Beschriftung, Hinweis, eingabe, kopfStil, tagText } from './bausteine';
+import type { EventWahl } from './EventModus';
+import type { Person } from './useNetzwerken';
+import type { Kontakt } from '@/lib/make-one/crm';
+
+const KEINE: Kontakt[] = [];
+
+export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId }: { api: CrmApi; ich: string | null; personen: Person[]; heute: string; wahl: EventWahl | null; eventId: string | null; setEventId: (id: string) => void }) {
+  const crm = api.crm?.stand;
+  const kontakte = api.kontakte ?? KEINE;
+  const nameVon = (id: string) => personen.find(p => p.id === id)?.name ?? (id ? id.charAt(0).toUpperCase() + id.slice(1) : '—');
+
+  // Events mit Netzwerken-Erfassungen — die jüngsten zuerst.
+  const eventsMit = useMemo(() => {
+    if (!crm) return [];
+    const ids = new Set(crm.teilnahmen.filter(t => t.netzwerken).map(t => t.eventId));
+    return crm.events.filter(e => ids.has(e.id)).sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 8);
+  }, [crm]);
+  const aktiv = eventId ?? (wahl && wahl.tag === heute ? wahl.eventId : null) ?? eventsMit[0]?.id ?? null;
+  const event = crm?.events.find(e => e.id === aktiv);
+
+  const bericht = useMemo(() => (crm && event ? berichtAus({ event, teilnahmen: crm.teilnahmen, kontakte, followups: crm.followups, heute }) : null), [crm, event, kontakte, heute]);
+  const danke = useMemo(() => (crm && event ? dankeZeilen({ events: crm.events, teilnahmen: crm.teilnahmen, kontakte, heute, eventId: event.id }) : []), [crm, event, kontakte, heute]);
+  const absender = personen.find(p => p.id === ich)?.name ?? '';
+
+  if (!api.crm) return <Hinweis>Lädt …</Hinweis>;
+  if (!eventsMit.length) return <Hinweis>Noch niemand über „Netzwerken“ erfasst. Sobald du die erste Karte gespeichert hast, steht hier der Bericht des Tages — und ab dem nächsten Morgen die Danke-Mails.</Hinweis>;
+
+  return (
+    <div style={{ display: 'grid', gap: 18 }}>
+      {eventsMit.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }} aria-label="Event wählen">
+          {eventsMit.map(e => <Wahl key={e.id} klein an={e.id === aktiv} onClick={() => setEventId(e.id)}>{e.titel}</Wahl>)}
+        </div>
+      )}
+      {bericht && event && (
+        <section aria-label="Abendbericht" style={{ display: 'grid', gap: 12 }}>
+          <div>
+            <h2 style={{ ...kopfStil, fontSize: 19 }}>{event.titel}</h2>
+            <div style={{ fontSize: 14, color: C.inkDim, marginTop: 4 }}>
+              {tagText(event.datum)}{event.ort ? ` · ${event.ort}` : ''} · {bericht.zeilen.length} {bericht.zeilen.length === 1 ? 'Person' : 'Personen'} kennengelernt
+              {Object.entries(bericht.jePerson).map(([p, n]) => ` · ${nameVon(p)} ${n}`).join('')}
+              {bericht.offenGesamt ? ` · ${bericht.offenGesamt} offen` : ''}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {bericht.zeilen.map(z => (
+              <article key={z.kontaktId} style={{ padding: '12px 14px', borderRadius: 14, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.03)', display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                  <Link href={WEG.akte(z.kontaktId)} style={{ color: C.ink, fontSize: 16, fontWeight: 700, textDecoration: 'none' }}>{z.name} ›</Link>
+                  {z.firma && <span style={{ fontSize: 14, color: C.inkDim }}>{z.firma}</span>}
+                </div>
+                <div style={{ fontSize: 14, color: C.ink }}>
+                  <span style={{ color: LEUCHT.beziehung, fontWeight: 700 }}>{z.schrittText}</span>
+                  {z.terminAm ? ` · ${tagText(z.terminAm.slice(0, 10))} ${z.terminAm.slice(11, 16)}` : ''}
+                  <span style={{ color: C.inkDim }}> · zuständig {nameVon(z.zustaendig)}{z.erfasstVon !== z.zustaendig ? ` · kennengelernt von ${nameVon(z.erfasstVon)}` : ''}</span>
+                </div>
+                {z.info && <div style={{ fontSize: 14, color: C.inkDim, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{z.info}</div>}
+                {z.offen.length > 0 && <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', gap: 6, flexWrap: 'wrap' }}>{z.offen.map(o => <li key={o} style={{ fontSize: 12.5, fontWeight: 600, color: LEUCHT.achtung, background: `${LEUCHT.achtung}1F`, borderRadius: 999, padding: '3px 10px' }}>{o}</li>)}</ul>}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {event && (
+        <section aria-label="Danke-Mails" style={{ display: 'grid', gap: 12 }}>
+          <div>
+            <h2 style={{ ...kopfStil, fontSize: 19 }}>Danke-Mails</h2>
+            <div style={{ fontSize: 14, color: C.inkDim, marginTop: 4 }}>
+              {danke.length
+                ? `${dankeOffen(danke)} bereit${danke.some(d => !d.mailOk) ? ` · ${danke.filter(d => !d.mailOk).length} ohne Versand (keine Adresse oder gesperrt)` : ''}. Verschickt wird erst per Klick im Mail-Programm.`
+                : event.datum >= heute ? 'Die Entwürfe liegen ab morgen bereit — für jede erfasste Person mit E-Mail-Adresse.' : 'Keine Danke-Mails für dieses Event.'}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: 12 }}>
+            {danke.map(d => <DankeKarte key={d.teilnahme.id} d={d} heute={heute} absender={absender} meine={d.teilnahme.netzwerken?.erfasstVon === ich} vonName={nameVon(d.teilnahme.netzwerken?.erfasstVon ?? '')} api={api} />)}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function DankeKarte({ d, heute, absender, meine, vonName, api }: { d: DankeZeile; heute: string; absender: string; meine: boolean; vonName: string; api: CrmApi }) {
+  const n = d.teilnahme.netzwerken!;
+  const [anrede, setAnrede] = useState<'Du' | 'Sie'>(n.danke?.anrede ?? d.kontakt.anrede ?? 'Sie');
+  const gestern = tagVon(wandzeit(new Date(n.erfasstAm))) === tagPlus(heute, -1);
+  const vorlage = useMemo(() => dankeEntwurf({ vorname: d.kontakt.vorname, nachname: d.kontakt.nachname, anrede, eventTitel: d.event.titel, wann: gestern ? 'gestern' : 'neulich', schritt: n.schritt, terminAm: n.terminAm, absender }), [d.kontakt.vorname, d.kontakt.nachname, anrede, d.event.titel, gestern, n.schritt, n.terminAm, absender]);
+  const [text, setText] = useState<string | null>(null);
+  const [betreff, setBetreff] = useState<string | null>(null);
+  const [geoeffnet, setGeoeffnet] = useState(false);
+  const [laeuft, setLaeuft] = useState(false);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const aktuell = { betreff: betreff ?? vorlage.betreff, text: text ?? vorlage.text };
+  const link = d.mailOk ? dankeMailtoLink(d.kontakt.email, aktuell) : null;
+
+  const raus = async () => {
+    setLaeuft(true); setFehler(null);
+    try {
+      const r = await fetch('/api/netzwerken', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'danke-raus', eventId: d.event.id, kontaktId: d.kontakt.id, anrede }) });
+      const j = await r.json().catch(() => null);
+      if (r.ok && j?.ok) void api.laden(true); else setFehler(typeof j?.fehler === 'string' ? j.fehler : 'Nicht vermerkt — bitte noch einmal.');
+    } catch { setFehler('Ohne Netz nicht vermerkt — bitte später noch einmal „Ist raus“ tippen.'); } finally { setLaeuft(false); }
+  };
+
+  return (
+    <article style={{ padding: '14px', borderRadius: 14, border: `1px solid ${d.raus ? `${LEUCHT.gut}55` : 'rgba(255,255,255,.1)'}`, background: d.raus ? `${LEUCHT.gut}0D` : 'rgba(255,255,255,.03)', display: 'grid', gap: 10 }}>
+      <div>
+        <div style={{ fontSize: 16, fontWeight: 700 }}>{anzeigename(d.kontakt)}</div>
+        <div style={{ fontSize: 13, color: C.inkDim, overflowWrap: 'anywhere' }}>{d.kontakt.email ?? '—'}{d.kontakt.firma ? ` · ${d.kontakt.firma}` : ''}</div>
+      </div>
+      {!d.mailOk ? (
+        <Hinweis farbe={LEUCHT.achtung}>Keine Danke-Mail: {d.mailGrund}.</Hinweis>
+      ) : d.raus ? (
+        <Hinweis farbe={LEUCHT.gut} rolle="status">✓ Danke-Mail raus am {tagText(d.raus)}.</Hinweis>
+      ) : !meine ? (
+        <Hinweis>Diese Danke-Mail schickt {vonName} — sie hat die Person kennengelernt. Du siehst nur den Stand.</Hinweis>
+      ) : (
+        <>
+          <div>
+            <Beschriftung>Anrede</Beschriftung>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Wahl klein an={anrede === 'Du'} onClick={() => { setAnrede('Du'); setText(null); setBetreff(null); }}>Du</Wahl>
+              <Wahl klein an={anrede === 'Sie'} onClick={() => { setAnrede('Sie'); setText(null); setBetreff(null); }}>Sie</Wahl>
+            </div>
+          </div>
+          <input value={aktuell.betreff} onChange={x => setBetreff(x.target.value)} style={eingabe} aria-label="Betreff" />
+          <textarea value={aktuell.text} onChange={x => setText(x.target.value)} rows={9} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5, fontFamily: SCHRIFT.text }} aria-label="Text der Danke-Mail" />
+          <div style={{ display: 'grid', gap: 8 }}>
+            {link && <Gross ton="haupt" href={link} onClick={() => setGeoeffnet(true)}>In Mail öffnen</Gross>}
+            {/* Der Link öffnet das Mail-Programm; `onClick` merkt nur, dass es geöffnet wurde. */}
+            {geoeffnet && <Gross ton="gut" onClick={() => void raus()} aus={laeuft}>{laeuft ? 'Vermerkt …' : '✓ Ist raus'}</Gross>}
+            {!geoeffnet && <button type="button" onClick={() => setGeoeffnet(true)} style={{ background: 'none', border: 'none', color: C.inkDim, fontSize: 14, textDecoration: 'underline', cursor: 'pointer', minHeight: 44 }}>Habe ich schon anders verschickt</button>}
+          </div>
+          {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
+        </>
+      )}
+      <div style={{ fontSize: 12, color: C.inkLeise }}>{schrittLabel(n.schritt)} · {tagText(tagVon(wandzeit(new Date(n.erfasstAm))))}</div>
+    </article>
+  );
+}

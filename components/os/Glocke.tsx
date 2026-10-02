@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
@@ -97,10 +97,13 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   frist: { Icon: Hourglass, label: 'Frist', farbe: C.achtung },
   followup: { Icon: PhoneForwarded, label: 'Follow-up', farbe: C.aktiv },
   vorschlag: { Icon: Sparkles, label: 'ZOE-Vorschlag', farbe: C.aktiv },
+  // Netzwerken (02.10.): jemand hat dir einen Termin gebucht bzw. eine Person zugeteilt (gespeichert) und „Danke-Mails bereit“ (abgeleitet).
+  netzwerken: { Icon: Handshake, label: 'Netzwerken', farbe: C.aktiv },
+  danke: { Icon: Mail, label: 'Danke-Mails', farbe: C.achtung },
 };
 
 function zeitVon(m: Meldung, jetzt: number): string {
-  if (m.virtuell) return m.art === 'faellig' || m.art === 'termin' || m.art === 'nachbereiten' || m.art === 'frist' || m.art === 'followup' || m.art === 'vorschlag' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
+  if (m.virtuell) return m.art === 'faellig' || m.art === 'termin' || m.art === 'nachbereiten' || m.art === 'frist' || m.art === 'followup' || m.art === 'vorschlag' || m.art === 'danke' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
   return vorZeit(m.am, jetzt);
 }
 
@@ -155,6 +158,22 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage
       </label>
     </div>
   );
+}
+
+/**
+ * Der Stand der Glocke für andere Bauteile (02.10., Pop-up „Netzwerken“): dieselbe Abfrage und derselbe Takt der Glocke —
+ * kein zweiter Abruf. `gelesen` markiert Meldungen sofort in der Sicht und speichert danach.
+ */
+export function useGlockenSicht(): { sicht: MeldungenSicht | null; gelesen: (ids: string[]) => void } {
+  const [s, setS] = useState<Stand>(stand);
+  useEffect(() => {
+    const hoer = (n: Stand) => setS(n);
+    hoerer.add(hoer);
+    setS(stand);
+    void laden();
+    return () => { hoerer.delete(hoer); };
+  }, []);
+  return { sicht: s.sicht, gelesen: gelesenMarkieren };
 }
 
 /** Die Glocke im Kopf. */

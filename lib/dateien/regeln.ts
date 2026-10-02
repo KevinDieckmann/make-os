@@ -32,6 +32,14 @@ export const ERLAUBTE_TYPEN = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['docx'],
 } as const;
 export type DateiTyp = keyof typeof ERLAUBTE_TYPEN;
+
+/**
+ * Sprachnotizen (02.10., Netzwerken): Aufnahme am Handy, abgelegt am Kontakt. NICHT über den Upload der Oberfläche
+ * (`typErkennen` bleibt bei den vier Typen oben) — nur der Server-Weg lib/crm/netzwerken-server.ts legt sie ab, und der
+ * Typ kommt aus dem INHALT (`sprachnotizTypErkennen`), nie aus der Angabe des Browsers.
+ */
+export const SPRACHNOTIZ_TYPEN = { 'audio/webm': ['webm'], 'audio/mp4': ['m4a', 'mp4'], 'audio/ogg': ['ogg'], 'audio/mpeg': ['mp3'], 'audio/wav': ['wav'], 'audio/aac': ['aac'] } as const;
+export type SprachnotizTyp = keyof typeof SPRACHNOTIZ_TYPEN;
 export const ANNEHMEN = '.pdf,.png,.jpg,.jpeg,.docx,application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 /** Höchstens 15 MB je Datei. */
@@ -44,7 +52,7 @@ export const DATEI_ID = /^d-[a-z0-9-]{4,60}$/;
 /** Bezüge (Kontakt c-…, Firma f-…, Mandat, Deal, Rechnung r-…). */
 const BEZUG_ID = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
 
-export interface DateiInfo { name: string; /** CRM: die vier Typen oben; Aufgaben-Dateien (C2): AUFGABEN_TYPEN. */ typ: DateiTyp | AufgabenDateiTyp; groesse: number; /** Inhalt liegt als AES-256-GCM-Hülle auf der Platte. */ verschluesselt: boolean }
+export interface DateiInfo { name: string; /** CRM: die vier Typen oben (+ Sprachnotizen, nur Server-Weg); Aufgaben-Dateien (C2): AUFGABEN_TYPEN. */ typ: DateiTyp | SprachnotizTyp | AufgabenDateiTyp; groesse: number; /** Inhalt liegt als AES-256-GCM-Hülle auf der Platte. */ verschluesselt: boolean }
 export interface VertragDaten { vertragsart: Vertragsart; von?: string; bis?: string; /** frei, z. B. „3 Monate zum Quartalsende“. */ kuendigungsfrist?: string }
 export interface AngebotDaten { nummer?: string; datum?: string; betrag?: number; status: AngebotStatus; gueltigBis?: string }
 
@@ -127,6 +135,19 @@ export function typErkennen(name: string, kopf: Uint8Array): DateiTyp | null {
   if (e === 'png' && beginntMit(kopf, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
   if ((e === 'jpg' || e === 'jpeg') && beginntMit(kopf, [0xff, 0xd8, 0xff])) return 'image/jpeg';
   if (e === 'docx' && beginntMit(kopf, [0x50, 0x4b, 0x03, 0x04])) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  return null;
+}
+
+/** Sprachnotiz am Inhalt erkennen: WebM/Matroska (EBML), MP4/M4A (`ftyp`), Ogg, MP3 (ID3 oder Frame-Sync), AAC (ADTS), WAV (RIFF/WAVE). Sonst null. */
+export function sprachnotizTypErkennen(kopf: Uint8Array): SprachnotizTyp | null {
+  const gleich = (ab: number, text: string) => text.split('').every((c, i) => kopf[ab + i] === c.charCodeAt(0));
+  if (beginntMit(kopf, [0x1a, 0x45, 0xdf, 0xa3])) return 'audio/webm';
+  if (gleich(4, 'ftyp')) return 'audio/mp4';
+  if (gleich(0, 'OggS')) return 'audio/ogg';
+  if (gleich(0, 'RIFF') && gleich(8, 'WAVE')) return 'audio/wav';
+  if (gleich(0, 'ID3')) return 'audio/mpeg';
+  if (kopf[0] === 0xff && (kopf[1] & 0xf0) === 0xf0 && (kopf[1] & 0x06) === 0) return 'audio/aac';
+  if (kopf[0] === 0xff && (kopf[1] & 0xe0) === 0xe0) return 'audio/mpeg';
   return null;
 }
 

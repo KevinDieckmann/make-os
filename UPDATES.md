@@ -25,6 +25,47 @@ Kevin/Malin 02.10.: Malin nutzt es unterwegs am iPhone. Paket B baut die Handy-L
 - **Rückweg:** neuer eigener Bestand, bestehende Bestände unverändert (`GO_LIVE_CHECKLISTE.md` › Rückweg). Neue Abhängigkeit `qrcode-generator` (Dev `jsqr`), Schrift `public/schriften/urbanist-*.woff2` (OFL).
 - **Tests:** `netzwerken-karte` (vCard, QR-Roundtrip mit jsQR, Prüfung, SVG-Säuberung, Kontrast), `netzwerken-route` (Haushalts-Tor, 409, 413, nur eigener Bestand, für andere), `netzwerken-ansicht` (keine MAKE-Marke in Karte/Vollbild),
   `netzwerken-schnellleiste`, `leiste-melden` (Netzwerken in der Leiste, Melden erreichbar).
+## Netzwerken — Erfassen auf Veranstaltungen, handyzuerst (02.10.2026, nur lokal — Branch `netzwerken`, Paket A)
+
+Kevin/Malin 02.10.: Malin ist morgen auf einer Netzwerkveranstaltung und nutzt MAKE OS am iPhone (Safari bzw. Home-Bildschirm-App). Neue Seite **`/os/netzwerken`**
+(`WEG.netzwerken`): Visitenkarte fotografieren → Person erfassen → nächster Schritt → fertig, noch auf der Veranstaltung. Die Handy-Leiste („Netzwerken“-Knopf) und „Meine Karte (QR)“
+(`/os/netzwerken/karte`) baut Paket B; die Seite verlinkt oben schon dorthin.
+
+**Kurzanleitung für Malin (auf dem iPhone)**
+1. `/os/netzwerken` öffnen (am besten zum Home-Bildschirm hinzufügen). Oben **„Heute bei“** antippen: ein vorhandenes Event wählen oder **+ Neues Event** (Name, Datum heute, Ort optional).
+2. **Visitenkarte fotografieren** → „Rückseite fotografieren“ oder „Überspringen“ (mehrere Fotos gehen: „+ weiteres Foto“; Foto antippen = groß).
+3. **Felder** ausfüllen (Nachname ist Pflicht; Vorwahl bei Telefon). Taucht eine gleiche Person auf: gelbe Karte **„Kennen wir schon: … zuständig … zuletzt …“** →
+   **Diesen nehmen** (dann hängt alles an der bestehenden Person) oder **Trotzdem neu**. Du/Sie-Anrede wählen.
+4. **Weiter** → **nächster Schritt** (Pflicht): Termin · Qualifizieren · Follow-up · Vermitteln · Andere · Angebot schicken · Zu Make.One einladen · Nur Kontakt.
+   Dazu **Wer ist zuständig** (du oder die andere Person — sie bekommt eine Meldung und ein Pop-up) und **Info**: tippen, diktieren (Mikrofon-Taste der iPhone-Tastatur)
+   oder **Sprachnotiz aufnehmen** (die Abschrift folgt später per KI).
+   Beim **Termin**: Art (Kennenlerngespräch · Telefonat · Videocall), Dauer (30/45/60) und die **freien Zeiten der zuständigen Person** antippen — der Termin landet in DEREN Kalender, ohne Gäste (die Einladung schickst du später per Klick am Termin).
+5. **Bestätigen und speichern.** Ohne Netz: „Wird gesendet, sobald Netz da ist“ — bleibt auf dem Gerät und geht von selbst raus, nie doppelt. Ein gelber Streifen oben zeigt, was noch wartet.
+6. **Abends/Morgen:** Reiter **Heute** = Abendbericht (wen, welcher Schritt, wer zuständig, was offen ist). Ab dem **Folgetag** liegt je Person mit E-Mail ein **Danke-Mail-Entwurf** bereit (Du/Sie wählbar):
+   **In Mail öffnen** startet die Mail-App mit dem fertigen Text, gesendet wird dort per Klick; danach **Ist raus**. Die Glocke sagt „n Danke-Mails bereit“.
+
+- **Eine Erfassung = ein Serverlauf** (`POST /api/netzwerken`, `lib/crm/netzwerken-server.ts`, rein: `lib/crm/netzwerken.ts`): Schritte `event → firma → kontakt → dateien → teilnahme → verlauf → schritt → termin → melden`,
+  jeder idempotent und einzeln im Journal abgehakt (`netzwerken-erfassungen--<haushalt>`, nur Zufalls-Kennung + Schrittnamen). Dieselbe Erfassung zweimal = nichts doppelt (Test: Abbruch vor/nach jedem Schritt),
+  gleichzeitig gesendet = ein Lauf. Kontakt-Kennung ist `c-<Erfassungs-UUID>`, Termin-UID `makeos-t-nw-<UUID>`, Follow-up `fu-<UUID>`, Aufgabe `nw-<UUID>`, Angebots-Entwurf `ang-nw-<UUID>`.
+- **Kontakt/Firma/Event über die vorhandenen Wege:** Quelle „Netzwerken“, Herkunft „Veranstaltung“, Typ „Netzwerk“, Beziehung bei der zuständigen Person, Sperrliste und Datenschutz-Stempel wie die Kartei-Route,
+  Firma wird verknüpft (Name ohne Rechtsform/Domain) oder einmal neu angelegt; ein unterwegs angelegtes Event kommt über den Event-Schreibweg (`/api/crm/bestand`), ohne Netz legt es der Server mit der ersten Erfassung an
+  (Marke „Netzwerken“). Teilnahme „da“ (`einladenDurch` = zuständig, `eingechecktVon` = Erfasser) — Event-Kennzahlen/Traktions-Index zählen, ein Event von heute gilt als durchgeführt.
+- **Werbe-Einwilligung „keine“:** KEIN Eintrag in `einwilligungen` (jeder Eintrag würde die Kanal-Ampel grün schalten); Vermerk „Visitenkarte, keine Einwilligung (§ 7 UWG)“ in der Aktivität „Kennengelernt bei …“. Test: Ampel für Mail nie grün.
+- **Dublette:** „Kennen wir schon?“ im Browser (tolerant: Mail, Telefon, Name ohne Titel/Umlaute, Firma ohne Rechtsform, 1–2 Buchstaben Abstand); zusätzlich serverseitig: gleiche Mail/Nummer ohne „Trotzdem neu“ legt keine zweite Person an. Art. 18 → 409.
+- **Schritte:** Follow-up = echtes `FollowUp` (Frist wählbar, Standard +2 Werktage); Qualifizieren = Lead-Status „Qualifizierung“ (Firma, sonst Person; ein weiter fortgeschrittener Lead bleibt);
+  Vermitteln/Andere/Make.One = Aufgabe mit Bezug zum Kontakt (Make.One zusätzlich Label „Make.One-Einladung“); Angebot = nur Entwurf im Angebots-Tool; Nur Kontakt = nichts; Termin = Kalender-Termin in der Zeitzone Berlin
+  im Kalender der zuständigen Person (Kalender-Einstellungen; ohne Eintrag 409 „kein Kalender“ — die Person ist trotzdem erfasst) + Meeting-Aktivität (K3) + Hinweis bei Überschneidung.
+- **Mitteilung an die andere Person:** gespeicherte Meldung der Art `netzwerken` (Termin gebucht bzw. Person zugeteilt; bei Aufgaben-Schritten meldet der Aufgaben-Weg schon „zugewiesen“), dazu das **Pop-up** (`NetzwerkenPopup`, in `app/os/layout.tsx`):
+  einmal als Karte „Öffnen/OK“, danach gelesen. Läuft auf der Abfrage der Glocke (≤ 60 s).
+- **Danke-Mails:** `Anstehend.danke` (Glocke „n Danke-Mails bereit“, Heute-Karte „Netzwerken“) — abgeleitet, nie gespeichert; Entwurf ohne Werbung; Versand NUR per Einzelklick (`mailto:`); „Ist raus“ vermerkt `Teilnahme.netzwerken.danke`, `followUpAm` (zählt als nachgefasst) und eine Mail-Aktivität ohne Folgen für Stufe/Wiedervorlage.
+- **Fotos und Sprachnotiz** verschlüsselt in der Dateiablage am Kontakt (Art. 17 fällt mit der Person); Sprachnotiz-Typ aus dem Inhalt erkannt (`sprachnotizTypErkennen`), Aktivität „Sprachnotiz — Abschrift folgt (KI)“.
+  `karteAuslesen(bilder)` ist vorbereitet und **aus** (`lib/crm/netzwerken-karte.ts`, `KARTE_AUSLESEN_AN`).
+- **Offline:** IndexedDB-Warteschlange (`lib/netzwerken/warteschlange.ts`, Fotos als Base64), automatischer Wiederversuch beim Öffnen, bei `online`, wenn die Seite sichtbar wird und alle 30 s; 4xx bleibt als „Fehler“ mit Klartext (erneut/verwerfen), alter Tab (409 `neuLaden`) wartet.
+- **Rückweg (Kompatibilitätsmodus):** nur optionale Zusatzfelder, neue Art, neuer Speicher. af4679a verwirft `Teilnahme.netzwerken` beim nächsten Speichern der Teilnahme (Bericht/Danke-Mail leer, Teilnahmen/Verlauf bleiben), kennt die Meldungsart `netzwerken`
+  nicht (Meldungen verschwinden) und liest `netzwerken-erfassungen--*` nie (bleibt liegen). Fotos/Sprachnotizen bleiben in der Ablage. Siehe `GO_LIVE_CHECKLISTE.md` › Rückweg.
+- **Speicher-Register:** `netzwerken-erfassungen--*` (kein Personenbezug, Kennungen nach Abschluss geleert, nie fertige nach 60 Tagen weg).
+- **Tests:** `tests/netzwerken-erfassen.test.ts` (Server, CalDAV-Attrappe mit zwei Kalendern), `tests/netzwerken-logik.test.ts` (rein: Prüfung, Dublette, Danke, Bericht, Warteschlange, Glocke).
+- **Offen:** Offline-Start der Seite braucht einmal Netz (kein Service Worker); automatisches Auslesen der Karte und die Abschrift der Sprachnotiz (KI) kommen in 1–2 Wochen; Danke-Mail-Versand aus MAKE OS selbst erst mit dem Postausgang (`VERSAND_PLAN.md`).
 
 ## Ziel ↔ Meilenstein: Kette mit Abhängigkeiten (01.10.2026, nur lokal — Branch `ziele`)
 

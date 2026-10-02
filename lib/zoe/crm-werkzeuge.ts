@@ -680,6 +680,8 @@ async function crmDateiLesen(i: Eingabe, s: CrmSicht): Promise<string> {
   if (einwilligungenMitBeleg(s.kontakte, id).anzahl > 0) return crmAntwort(`DATEI ${id} · Einwilligungs-Beleg — nur die Angaben, kein Inhalt`, meta, 1, () => '', ABLAGE_QUELLE);
   if (eintrag.gesellschaft) return crmAntwort(`DATEI ${id} · Logo einer Gesellschaft — nur die Angaben`, meta, 1, () => '', ABLAGE_QUELLE);
   if (!eintrag.datei) return crmAntwort(`DATEI ${id} · Eintrag ohne Datei — nur die Angaben`, meta, 1, () => '', ABLAGE_QUELLE);
+  // Sprachnotizen (Netzwerken, 02.10.): kein Text lesbar — die Abschrift folgt (KI), bis dahin nur die Angaben.
+  if (eintrag.datei.typ.startsWith('audio/')) return crmAntwort(`DATEI ${id} · Sprachnotiz — kein Text lesbar (Abschrift folgt), nur die Angaben`, meta, 1, () => '', ABLAGE_QUELLE);
   const d = await lesen(s.haushalt, id);
   if (!d) return `Fehlgeschlagen: Die Datei ${id} liegt nicht (mehr) auf der Platte.`;
   const { textAuslesen, NichtLesbar } = await import('@/lib/dateien/text-auslesen');

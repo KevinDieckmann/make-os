@@ -23,8 +23,10 @@ import { faellige } from '@/lib/crm/followup';
 import { nachbereitung } from '@/lib/crm/erfassen';
 import { zeitenAus } from '@/lib/crm/aktivitaeten';
 import { haeltBeziehung, BEIDE } from '@/lib/crm/team';
+import { dankeZeilen, dankeOffen } from '@/lib/crm/netzwerken';
+import { WEG } from '@/lib/wege';
 import {
-  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, type Anstehend, type ABuchung,
+  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, type Anstehend, type ABuchung, type ADanke,
 } from './anstehend';
 
 const sicher = async <T>(p: Promise<T>, sonst: T): Promise<T> => { try { return await p; } catch { return sonst; } };
@@ -48,6 +50,15 @@ async function vorschlaegeZaehlen(person: string): Promise<{ kalender: number; g
   const imHaushalt = await personImHaushaltDesInhabers(person).catch(() => false);
   const offen = (await lies('offen')).filter(v => vorschlagSichtbar(v, person, imHaushalt));
   return { gesamt: offen.length, kalender: offen.filter(v => v.bezug?.art === 'kalender' || v.gruppe === 'kalender').length };
+}
+
+/** Danke-Mails nach einem Event (Netzwerken, 02.10.): je Event die Zahl der noch nicht verschickten mit Adresse — ab dem Folgetag. */
+function dankeAnstehend(crm: { events: Parameters<typeof dankeZeilen>[0]['events']; teilnahmen: Parameters<typeof dankeZeilen>[0]['teilnahmen'] } | null, kontakte: Parameters<typeof dankeZeilen>[0]['kontakte'], heute: string, person: string): ADanke[] {
+  if (!crm) return [];
+  const zeilen = dankeZeilen({ events: crm.events, teilnahmen: crm.teilnahmen, kontakte, heute, person });
+  const je = new Map<string, typeof zeilen>();
+  for (const z of zeilen) je.set(z.event.id, [...(je.get(z.event.id) ?? []), z]);
+  return Array.from(je.entries()).map(([id, l]) => ({ id: `danke-${id}`, n: dankeOffen(l), eventTitel: l[0].event.titel, href: WEG.netzwerken({ bericht: id }) })).filter(d => d.n > 0);
 }
 
 /** Was für die Person ansteht (heute). */
@@ -82,6 +93,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     buchungen,
     vorschlaege,
     geburtstage: geburtstageVorlauf(geburtstage, person, heute),
+    danke: dankeAnstehend(crm, kontakte, heute, person),
   };
 }
 

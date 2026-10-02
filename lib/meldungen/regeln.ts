@@ -31,9 +31,9 @@ export const GELESEN_IDS_MAX = 2000;
 
 export const PERSON_OK = /^[a-z0-9-]{1,40}$/;
 const BEZUG_ID_OK = /^[A-Za-z0-9_-]{1,80}$/;
-const BEZUG_ARTEN: readonly unknown[] = ['aufgabe', 'buchung', 'buchung-termin'];
+const BEZUG_ARTEN: readonly unknown[] = ['aufgabe', 'buchung', 'buchung-termin', 'netzwerken'];
 export const MELDUNG_ID_OK = /^[A-Za-z0-9:_.-]{1,160}$/;
-export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnung', 'faellig', 'ueberfaellig', 'zoe', 'buchung', 'kalender'];
+export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnung', 'faellig', 'ueberfaellig', 'zoe', 'buchung', 'kalender', 'netzwerken'];
 
 /** Gespeicherte Arten: die fünf der Schnittstelle + die Sammelmeldung der Grenze. */
 export type GespeicherteArt = MeldungArt | 'sammel';
@@ -43,7 +43,8 @@ export type GespeicherteArt = MeldungArt | 'sammel';
  * heute/überfällig, Kalender-Vorschläge von ZOE im Stapel — alle aus lib/heute/anstehend.ts (`anstehendAbleiten`).
  * Offene Buchungsanfragen meldet die Glocke schon beim Eingang (gespeicherte Art „buchung“) — hier nicht doppelt.
  */
-export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag';
+export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag' | 'danke';
+// `danke` (02.10., Netzwerken): „n Danke-Mails bereit“ — ab dem Folgetag eines Events, aus Teilnahme + Kartei abgeleitet.
 
 export interface Meldung {
   id: string;
@@ -273,6 +274,8 @@ export interface AnstehendFuerGlocke {
   followups: readonly { id: string; text: string; name: string; tageUeber: number; href: string }[];
   /** Offene Kalender-Vorschläge von ZOE im Freigabe-Stapel (nur die Zahl). */
   vorschlaege?: { kalender: number };
+  /** Danke-Mails, die bereitliegen (Netzwerken, 02.10.) — je Event eine Zeile mit der Zahl. */
+  danke?: readonly { id: string; n: number; eventTitel: string; href: string }[];
 }
 
 export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; jetztWand: string; am: string; gelesen?: { tag: string; ids: string[] } }): Meldung[] {
@@ -293,6 +296,8 @@ export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; je
   for (const f of a.fristen) dazu('frist', f.id, f.inTagen <= 0 ? `Heute: ${f.titel}` : f.inTagen === 1 ? `Morgen: ${f.titel}` : `In ${f.inTagen} Tagen (${tagKurz(f.tag, o.heute)}): ${f.titel}`, f.href);
   // Die Zahl steckt in der Kennung: kommt ein neuer Vorschlag dazu, meldet sich die Glocke wieder.
   if (a.vorschlaege?.kalender) dazu('vorschlag', `kalender-${a.vorschlaege.kalender}`, `${a.vorschlaege.kalender} Kalender-Vorschl${a.vorschlaege.kalender === 1 ? 'ag' : 'äge'} von ZOE ${a.vorschlaege.kalender === 1 ? 'wartet' : 'warten'} auf Freigabe`, '/os/stapel');
+  // Die Zahl steckt in der Kennung: wird eine Danke-Mail verschickt oder kommt eine dazu, meldet sich die Glocke neu.
+  for (const d of a.danke ?? []) if (d.n > 0) dazu('danke', `${d.id}-${d.n}`, `${d.n} Danke-Mail${d.n === 1 ? '' : 's'} bereit — ${d.eventTitel}`, d.href);
   for (const f of a.followups) dazu('followup', f.id, `${f.tageUeber > 0 ? `Überfällig seit ${f.tageUeber} ${f.tageUeber === 1 ? 'Tag' : 'Tagen'}` : 'Heute'}: ${f.text}${f.name && !f.text.includes(f.name) ? ` (${f.name})` : ''}`, f.href);
   return raus;
 }

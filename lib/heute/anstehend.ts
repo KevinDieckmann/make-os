@@ -42,6 +42,9 @@ export interface AGeburtstag {
   anlass?: { tagId: string; aktion: AnlassAktion; ab: string; erledigt: boolean };
 }
 
+/** Danke-Mails, die zu einem Event bereitliegen (Netzwerken, 02.10.) — nur die Zahl und das Ziel. */
+export interface ADanke { id: string; n: number; eventTitel: string; href: string }
+
 export interface Anstehend {
   heute: string;
   termine: ATermin[];
@@ -51,6 +54,8 @@ export interface Anstehend {
   buchungen: ABuchung[];
   vorschlaege: { kalender: number; gesamt: number };
   geburtstage: AGeburtstag[];
+  /** Danke-Mails nach einem Event (Netzwerken, 02.10.) — fehlt in älteren Ständen. */
+  danke?: ADanke[];
   /**
    * Zeiten der Termine hinter Meetings der letzten Tage (nur Schlüssel, auf die ein Meeting zeigt) — damit die Power Hour
    * „Wie lief's?“ aus der Kartei auf der Seite rechnen kann (lib/crm/erfassen.ts `nachbereitung` mit `termine`).
