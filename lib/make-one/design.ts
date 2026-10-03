@@ -199,3 +199,23 @@ export const FLAECHE_STIL = {
 /** Bedeutung eines Hinweises: gut · achtung · kritisch · info (Bereichsakzent) · neutral. Farbe bedeutet Zustand. */
 export type Bedeutung = 'gut' | 'achtung' | 'kritisch' | 'info' | 'neutral';
 export const BEDEUTUNG_FARBE: Record<Bedeutung, string> = { gut: LEUCHT.gut, achtung: LEUCHT.achtung, kritisch: LEUCHT.kritisch, info: FARBE.aktiv, neutral: FARBE.inkDim };
+
+// ─── Lichtfäden (03.10., DESIGN_STANDARD.md › Lichtfäden) ───────────────────
+/**
+ * Farben der Ziel-Bündel im Lichtfäden-Zeitstrahl, je Space in fester Reihenfolge (nach Rang): die erste ist die
+ * Markierungsfarbe von heute (Business gelb, Privat grün), danach weitere Leuchtfarben. „Ohne Ziel“ = Zeit-Cyan.
+ */
+export const FADEN_FARBEN = {
+  business: [LEUCHT.achtung, LEUCHT.business, LEUCHT.agenten, LEUCHT.beziehung],
+  privat: [LEUCHT.gut, LEUCHT.geld, LEUCHT.schlaf],
+  ohne: LEUCHT.puls,
+} as const;
+/** Glas der schwebenden Markierungen über dem Band (dunkel, leicht durchscheinend). */
+export const LICHT_GLAS = {
+  flaeche: 'rgba(11,14,16,.78)',
+  rand: (f: string) => `${f}59`,
+  schein: (f: string) => `0 0 10px ${f}80`,
+  achse: 'rgba(255,255,255,.08)',
+  /** Karte des Lichtfäden-Zeitstrahls: tiefer als `gehoben`, mit einem leisen Lichtschein unter dem Band. */
+  karte: 'radial-gradient(90% 60% at 50% 70%, rgba(79,195,247,.07), transparent 70%), linear-gradient(165deg, #151A1E 0%, #0B0F12 100%)',
+} as const;
