@@ -83,10 +83,11 @@ describe('Deckel, Schwellen, Temperatur, Gesamtwert', () => {
     expect(q.gedeckeltAuf).toBe(10);
     expect(q.grund).toContain('deckelt');
   });
-  it('Schwelle und „erreicht“: Marketing-Standard ab 20 Punkten', () => {
+  it('Schwelle und „erreicht“: Marketing-Standard ab 35 Punkten', () => {
     const e = standardScoring();
     const m = (aktivitaeten: Kontakt['aktivitaeten']) => scoringRechnen([p({ aktivitaeten })], undefined, HEUTE, { einstellungen: e }).marketing;
-    expect(m([{ am: '2026-09-20T10:00:00Z', art: 'gespraech', von: 'kevin' }])).toMatchObject({ punkte: 30, erreicht: true });
+    expect(m([{ am: '2026-09-20T10:00:00Z', art: 'gespraech', von: 'kevin' }])).toMatchObject({ punkte: 30, erreicht: false });
+    expect(scoringRechnen([p({ email: 'a@example.invalid', telefon: '1', aktivitaeten: [{ am: '2026-09-20T10:00:00Z', art: 'gespraech', von: 'kevin' }] })], undefined, HEUTE, { einstellungen: e }).marketing).toMatchObject({ punkte: 37, erreicht: true });
     expect(m([{ am: '2026-09-20T10:00:00Z', art: 'mail', von: 'kevin' }])).toMatchObject({ punkte: 8, erreicht: false });
   });
   it('Gesamtwert = Anteil an der möglichen Summe, nicht die Summe selbst (Vorschlag: 53 + 70 = 123 möglich)', () => {

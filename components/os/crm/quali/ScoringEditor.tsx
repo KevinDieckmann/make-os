@@ -90,7 +90,7 @@ function KriteriumZeile({ k, seite, onAender, onEntfernen, istMuss }: { k: Scori
           <input type="checkbox" checked={!k.aus} onChange={e => onAender(x => ({ ...x, ...(e.target.checked ? { aus: undefined } : { aus: true }) }))} aria-label={`${k.name} zählt`} style={{ width: 22, height: 22 }} />
         </label>
         <button type="button" onClick={() => setAuf(!auf)} aria-expanded={auf} className="fassbar" style={{ textAlign: 'left', background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: '4px 0', minHeight: 44 }}>
-          <span style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, fontWeight: 600 }}>{k.name}{istMuss && <span style={{ fontSize: 10.5, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '0 6px' }}>Muss</span>}</span>
+          <span style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, fontWeight: 600 }}>{k.name}{istMuss && <span style={{ fontSize: 11, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '0 6px' }}>Muss</span>}</span>
           <span style={{ display: 'block', fontSize: 12, color: C.inkLeise }}>{messung ? `Aus den Daten: ${messung.label}` : 'Frage im Gespräch'}{k.alt ? ' · ersetzt das alte Feld' : ''}{k.gewicht && k.gewicht !== 1 ? ` · Gewicht ×${punkteText(k.gewicht)}` : ''}</span>
         </button>
         <span style={{ fontSize: 12.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>max. {punkteText(max)}</span>

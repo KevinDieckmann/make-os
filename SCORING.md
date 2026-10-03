@@ -37,7 +37,7 @@ Newsletter mit Double-Opt-in (nur mit vollem Nachweis voll) · Empfehlung · Web
 
 ## Standard = die bisherige Rechnung
 
-Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10 = 100; MQL ab 20 Marketing-Punkten; SQL bei Schmerz + Entscheider +
+Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10 = 100; MQL ab 35 Marketing-Punkten (frisches Gespräch + mindestens zwei Wege; „bekannt + erreichbar“ und eine reine Begegnung reichen bewusst nicht — Antwort, Anfrage und Event-Teilnahme schlagen im Lifecycle unabhängig davon an); SQL bei Schmerz + Entscheider +
 Budget **oder** Zeitpunkt (Schwelle 15 = die Mindestsumme dieser Regel). **Bewiesen**, nicht behauptet: `tests/scoring-standard-paritaet.test.ts`
 vergleicht den neuen Kern bei 500 zufälligen Leads Teil für Teil mit der wörtlich übernommenen alten Rechnung
 (`tests/fixtures/lead-score-vor-scoring.ts`) — die Scores ändern sich nicht, solange niemand etwas einstellt.

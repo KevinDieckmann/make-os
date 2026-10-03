@@ -55,7 +55,7 @@ export function Fragen({ einstellungen, score, stufen, antworten, onStufe, onAnt
                   <button type="button" onClick={() => setAuf(offen ? null : k.id)} aria-expanded={offen} className="fassbar"
                     style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto auto', gap: 10, alignItems: 'center', width: '100%', minHeight: 48, padding: '6px 2px', background: 'none', border: 'none', color: C.ink, cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text }}>
                     <span style={{ minWidth: 0 }}>
-                      <span style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, fontWeight: 600 }}>{k.name}{istMuss && <span title="Muss-Kriterium: ohne dieses ist es kein SQL" style={{ fontSize: 10.5, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '0 6px' }}>Muss</span>}</span>
+                      <span style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, fontWeight: 600 }}>{k.name}{istMuss && <span title="Muss-Kriterium: ohne dieses ist es kein SQL" style={{ fontSize: 11, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '0 6px' }}>Muss</span>}</span>
                       <span style={{ display: 'block', fontSize: 12, color: e?.beantwortet && e.herkunft !== 'messung' ? C.inkDim : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {e?.stufeText && e.herkunft !== 'ohne' ? `${e.herkunft === 'messung' ? 'aus der Liste: ' : ''}${e.stufeText}` : 'noch offen'}
                       </span>

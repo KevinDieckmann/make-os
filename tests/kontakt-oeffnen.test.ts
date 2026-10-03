@@ -116,7 +116,7 @@ describe('Lifecycle-Vorschlag — alle Zweige, in dieser Reihenfolge', () => {
     expect(lifecycleVorschlag(k('a'), ev, HEUTE).id).toBe('mql');
     // Warm: Fit „ja“ + echtes Gespräch vor wenigen Tagen + erreichbar.
     const warm = k('a', { eignung: 'ja', email: 'a@example.invalid', telefon: '030 1', aktivitaeten: [akt('2026-09-25T09:00:00Z', 'gespraech')] });
-    expect(lifecycleVorschlag(warm, bestand(), HEUTE)).toMatchObject({ id: 'mql', grund: expect.stringContaining('Score') });
+    expect(lifecycleVorschlag(warm, bestand(), HEUTE)).toMatchObject({ id: 'mql', grund: expect.stringContaining('Marketing-Punkte') });
   });
   it('sonst Lead; ohne Bestand ebenfalls Lead', () => {
     expect(lifecycleVorschlag(k('a'), bestand(), HEUTE)).toMatchObject({ id: 'lead' });

@@ -258,7 +258,11 @@ export function standardScoring(): ScoringEinstellungen {
   return {
     version: SCORING_VERSION, quelle: 'standard',
     marketing: {
-      schwelle: 20,
+      // 35: ein frisches echtes Gespräch (30) und mindestens zwei Wege (E-Mail 4, Telefon 3, LinkedIn 3) — oder mehr. Der Standard soll das
+      // bisherige Verhalten treffen (MQL-Vorschlag erst bei „warm“): ein bekannter Typ (10) + erreichbar (10) und auch eine Begegnung mit
+      // Visitenkarte (zählt als Gespräch, aber nur eine Mail) reichen bewusst nicht — Antwort, Anfrage und Event-Teilnahme schlagen davon
+      // unabhängig als Signale an (lib/crm/vorschlaege.ts). Der Vorschlag misst diese Signale selbst (Schwelle 8).
+      schwelle: 35,
       muss: [],
       teile: [
         { id: 'waerme', name: 'Wärme', kriterien: [{ ...messKriterium('waerme', 'waerme', { gespraech30: 30, gespraech90: 20, gespraech365: 12, antwort: 12, ansprache: 8, typ: 10, antwort_alt: 5, ansprache_alt: 3, keine: 0 }), ohneAntwort: 'keine' }] },
