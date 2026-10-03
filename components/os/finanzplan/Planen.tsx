@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Raster, Spalten, Spalte, Knopf, LEUCHT, feld, Haken } from '../schlank';
+import { Karte, Ueberschrift, Raster, Spalten, Spalte, Knopf, LEUCHT, feld, Haken } from '../ui';
 import type { Szenario, Zeile } from '@/lib/finanzen/rechenkern';
 import { wert, sollBudget, key, istSchnitt, toepfeUG, rechneSelbst, zielStaende } from '@/lib/finanzen/rechenkern';
 import { UG_NAME, UG_KURZ } from '@/lib/einheiten';
@@ -197,14 +197,14 @@ export function Szenarien() {
   return (
     <>
       <Karte i={0}>
-        <Ueberschrift rechts={ps ? <span style={{ color: C.inkLeise, fontSize: 12 }}>gerechnet mit den Bausteinen von „{ps.name}“</span> : undefined}>Treiber im Vergleich — Klick wählt den Treiber{ps ? ' für den Arbeitsplan' : ''}</Ueberschrift>
+        <Ueberschrift rechts={ps ? <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>gerechnet mit den Bausteinen von „{ps.name}“</span> : undefined}>Treiber im Vergleich — Klick wählt den Treiber{ps ? ' für den Arbeitsplan' : ''}</Ueberschrift>
         <Tabelle klein>
           <thead><tr><th style={TH}>Szenario</th><th style={THr}>Tiefpunkt frei</th><th style={THr}>Monate im Minus</th><th style={THr}>frei Dez 26</th><th style={THr}>frei Dez 27</th><th style={THr}>frei Dez 28</th><th style={THr}>Umsatz 2027</th><th style={THr}>OB-Anteil Jun 27</th><th style={THr}>Privat angespart Dez 27</th><th style={THr}>Gruppe Dez 28</th></tr></thead>
           <tbody>
             {alle.map(({ s: x, kz }) => (
               <tr key={x.id} onClick={() => { if (x.id === sz.id) return; void aendere([{ pfad: '/aktiv', alt: d.aktiv, neu: x.id }, ...(ps ? [{ pfad: `/planszenarien/id=${ps.id}/basis`, alt: ps.basis, neu: x.id }] : [])], `Treiber ${x.name} aktiv`); }} style={zeileStil(x.id === sz.id)}>
                 <td style={{ ...TD, fontWeight: x.id === sz.id ? 700 : 500, color: x.id === sz.id ? C.aktiv : C.ink }}>{x.name}</td>
-                <td style={TDr}><Geld v={kz.minFrei} /> <span style={{ color: C.inkLeise, fontSize: 11.5 }}>{monatLabel(d, kz.minMonat)}</span></td>
+                <td style={TDr}><Geld v={kz.minFrei} /> <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{monatLabel(d, kz.minMonat)}</span></td>
                 <td style={{ ...TDr, color: kz.monateMinus ? LEUCHT.kritisch : C.ink }}>{kz.monateMinus}</td>
                 <td style={TDr}><Geld v={kz.freiDez26} /></td><td style={TDr}><Geld v={kz.freiDez27} /></td><td style={TDr}><Geld v={kz.freiDez28} /></td>
                 <td style={TDr}><Geld v={kz.umsatz2027} /></td><td style={TDr}>{prozent(kz.obAnteilJun27)}</td><td style={TDr}><Geld v={kz.privatAngespartDez27} /></td>
@@ -316,12 +316,12 @@ export function Ziele() {
               </Formular>
               {!runter && (
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12.5, color: C.inkDim }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
                     <span style={{ flex: '0 0 auto' }}>Was wäre, wenn wir monatlich mehr zurücklegen</span>
                     <input type="range" min={0} max={1500} step={50} value={p} aria-label="Zusätzlich je Monat" onChange={e => setPlus({ ...plus, [s.ziel.id]: Number(e.target.value) })} style={{ flex: 1, accentColor: C.aktiv }} />
                     <span style={{ width: 64, textAlign: 'right' }}>+<Geld v={p} farbe={C.inkDim} /> €</span>
                   </div>
-                  {p > 0 && <div style={{ fontSize: 12.5, color: neuMonat ? LEUCHT.gut : C.inkLeise, marginTop: 4 }}>{neuMonat ? `→ erreicht ${monatLabel(d, neuMonat)}${s.erreichtMonat ? `, ${s.erreichtMonat - neuMonat} Monate früher` : ''}` : '→ im Planzeitraum weiter nicht erreicht'}</div>}
+                  {p > 0 && <div style={{ fontSize: TYP.bedien, color: neuMonat ? LEUCHT.gut : C.inkLeise, marginTop: 4 }}>{neuMonat ? `→ erreicht ${monatLabel(d, neuMonat)}${s.erreichtMonat ? `, ${s.erreichtMonat - neuMonat} Monate früher` : ''}` : '→ im Planzeitraum weiter nicht erreicht'}</div>}
                 </div>
               )}
               <div style={{ marginTop: 10, textAlign: 'right' }}><KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: `/ziele/id=${s.ziel.id}`, alt: s.ziel.name }], `Ziel entfernt: ${s.ziel.name}`)}>Ziel entfernen</KnopfKlein></div>
@@ -333,7 +333,7 @@ export function Ziele() {
       {neu !== null && (
         <Dialog titel="Neues Ziel" onZu={() => setNeu(null)} aktionen={<><KnopfKlein farbe={C.inkDim} onClick={() => setNeu(null)}>Abbrechen</KnopfKlein><Knopf aus={!neu.trim()} onClick={() => { const n = neu.trim(); setNeu(null); if (n) void aendere([{ pfad: '/ziele/-', neu: { id: neueKennung('g'), name: n, quelle: 'privat.angespart', ziel: 10000, bis: '2027-12', einheit: 'privat' } }], `Ziel angelegt: ${n}`); }}>Anlegen</Knopf></>}>
           <input autoFocus value={neu} placeholder="Name des Ziels" aria-label="Name des Ziels" onChange={e => setNeu(e.target.value)} style={{ ...feld }} />
-          <div style={{ fontSize: 12.5, color: C.inkLeise }}>Betrag, Datum und Messgröße stellst du danach auf der Karte ein.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Betrag, Datum und Messgröße stellst du danach auf der Karte ein.</div>
         </Dialog>
       )}
     </>

@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Chip, Knopf, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Chip, Knopf, feld, LEUCHT, Hinweis } from '../ui';
 import { IndexAnsicht, type IndexDaten } from '../kennzahlen/IndexAnsicht';
 
 export const PRIVAT_FARBE: Record<string, string> = { rl: LEUCHT.geld, ab: LEUCHT.achtung, vs: LEUCHT.schlaf };
@@ -27,7 +27,7 @@ export function PrivatIndex({ stand }: { stand?: unknown }) {
     if (r.ok) { setD(r); setFehler(null); } else setFehler(r.fehler ?? 'Nicht geladen.');
   }, []);
   useEffect(() => { void laden(); }, [laden, stand]);
-  if (fehler) return <Karte i={0}><div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div></Karte>;
+  if (fehler) return <Hinweis art="kritisch">{fehler}</Hinweis>;
   return (
     <IndexAnsicht d={d} name="Privat" chip="Privat-Index" farben={PRIVAT_FARBE} scope="privat" kopfId="index"
       schwelleSenden={schwelle => senden({ schwelle })} onGespeichert={() => void laden()}
@@ -53,9 +53,9 @@ function RuecklageKarte({ r, onGespeichert }: { r: Antwort['ruecklage']; onGespe
           style={{ ...feld, width: 180, fontSize: TYP.body, fontFamily: SCHRIFT.display, fontWeight: 700, padding: '9px 12px', fontVariantNumeric: 'tabular-nums' }} />
         <span style={{ color: C.inkLeise }}>€</span>
         <Knopf farbe={LEUCHT.geld} onClick={() => void speichern()}>Speichern</Knopf>
-        {meldung && <span style={{ fontSize: 12.5, color: meldung.ok ? LEUCHT.gut : LEUCHT.kritisch }}>{meldung.text}</span>}
+        {meldung && <span style={{ fontSize: TYP.bedien, color: meldung.ok ? LEUCHT.gut : LEUCHT.kritisch }}>{meldung.text}</span>}
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Was sofort verfügbar ist (Tagesgeld, Notgroschen) — ohne Depot und Altersvorsorge. Die Kontoauszüge enthalten keine Kontostände, deshalb tragt ihr die Rücklage hier ein; einmal im Monat aktualisieren reicht.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Was sofort verfügbar ist (Tagesgeld, Notgroschen) — ohne Depot und Altersvorsorge. Die Kontoauszüge enthalten keine Kontostände, deshalb tragt ihr die Rücklage hier ein; einmal im Monat aktualisieren reicht.</div>
     </Karte>
   );
 }

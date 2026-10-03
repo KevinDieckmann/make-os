@@ -9,7 +9,7 @@
 
 import { type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Ring, Fortschritt, Chip, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Ring, Fortschritt, Chip, LEUCHT } from '../ui';
 import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlKachel, KennzahlFenster, AMPEL_FARBE, scoreFarbe, type SchwelleSenden } from '../business/teile';
 import { VerlaufKarte, type Serie } from '../business/Verlauf';
@@ -55,7 +55,7 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
 
   return (
     <>
-      <Karte i={i0} akzent={farbe} id={kopfId} style={kopfId ? { scrollMarginTop: 90 } : undefined}>
+      <Karte i={i0} ton={farbe} id={kopfId} style={kopfId ? { scrollMarginTop: 90 } : undefined}>
         {kopfRechts && <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>{kopfRechts}</div>}
         <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 44px)', alignItems: 'center', flexWrap: 'wrap' }}>
           <Ring groesse="gross" wert={pi?.index != null ? String(pi.index) : undefined} anteil={pi?.index != null ? pi.index / 100 : undefined} farbe={farbe} label={pi ? `${name} · ${pi.label}` : 'lädt …'} />
@@ -64,7 +64,7 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
               <Chip farbe={farbe}>{chip}</Chip>
               {trend != null && trend !== 0 && <Chip farbe={trend > 0 ? LEUCHT.gut : LEUCHT.kritisch}>{trend > 0 ? '▲' : '▼'} {Math.abs(trend)} in 30 Tagen</Chip>}
               {chips}
-              {pi && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{Math.round(pi.abdeckung * 100)} % auf echten Daten · {pi.luecken} Messlücke{pi.luecken === 1 ? '' : 'n'}</span>}
+              {pi && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.round(pi.abdeckung * 100)} % auf echten Daten · {pi.luecken} Messlücke{pi.luecken === 1 ? '' : 'n'}</span>}
             </div>
             {zaehlende.map(s => (
               <div key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(70px, 2fr) 40px', gap: 12, alignItems: 'center' }}>
@@ -74,13 +74,13 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
               </div>
             ))}
             {pi?.hebel && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Größter Hebel: <button onClick={() => setOffen(pi.hebel!.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, fontWeight: 700, cursor: 'pointer', fontSize: TYP.bedien, textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.25)' }}>{pi.hebel.label}</button> ({pi.hebel.saeule})</div>}
-            {pi?.saeulen.some(s => s.zuDuenn) && <div style={{ fontSize: 12, color: C.inkLeise }}>* zu wenig Daten (unter 40 % gemessen) — zählt noch nicht in den Index.</div>}
+            {pi?.saeulen.some(s => s.zuDuenn) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>* zu wenig Daten (unter 40 % gemessen) — zählt noch nicht in den Index.</div>}
           </div>
         </div>
         {!!d?.wechsel.length && (
-          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: 12.5 }}>
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: TYP.bedien }}>
             <span style={{ color: C.inkLeise }}>Seit {d.wechsel[0].seit.slice(8)}.{d.wechsel[0].seit.slice(5, 7)}.:</span>
-            {d.wechsel.map(w => <button key={w.id} onClick={() => setOffen(w.id)} style={{ background: `${AMPEL_FARBE[w.nach]}1c`, border: 'none', borderRadius: 999, padding: '4px 10px', color: AMPEL_FARBE[w.nach], cursor: 'pointer', fontSize: 12.5, fontWeight: 600 }}>{alleK.find(x => x.id === w.id)?.label ?? w.id}: {w.von} → {w.nach}</button>)}
+            {d.wechsel.map(w => <button key={w.id} onClick={() => setOffen(w.id)} style={{ background: `${AMPEL_FARBE[w.nach]}1c`, border: 'none', borderRadius: 999, padding: '4px 10px', color: AMPEL_FARBE[w.nach], cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600 }}>{alleK.find(x => x.id === w.id)?.label ?? w.id}: {w.von} → {w.nach}</button>)}
           </div>
         )}
       </Karte>
@@ -92,7 +92,7 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
             <Ueberschrift farbe={farben[s.id]} rechts={<span>{s.kennzahlen.filter(k => k.gemessen).length} von {s.kennzahlen.length} gemessen{s.zuDuenn ? ' · zählt noch nicht' : s.gewicht === 0 ? ' · zählt nicht in den Index' : ''}</span>}>
               {s.label}{s.gewicht > 0 && <> · {Math.round(s.gewicht * 100)} %</>} {s.score != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{s.score}</span>}
             </Ueberschrift>
-            <div style={{ fontSize: 12.5, color: C.inkLeise, margin: '-4px 0 12px' }}>{s.satz}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '-4px 0 12px' }}>{s.satz}</div>
             {saeuleKopf?.(s)}
             <div style={{ display: 'grid', gap: 14 }}>
               {gruppen.map(g => (
@@ -110,7 +110,7 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
 
       {zwischen}
       {d && !ohneVerlauf && d.verlauf.length >= verlaufAb && <VerlaufKarte punkte={d.verlauf} serien={verlaufSerien(zaehlende, farben)} i={i0 + (pi?.saeulen.length ?? 0) + 2} name={name} />}
-      {hinweis && <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.6 }}>{hinweis}</div>}
+      {hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.6 }}>{hinweis}</div>}
 
       {offeneK && d && (
         <KennzahlFenster key={offeneK.k.id} k={offeneK.k} saeule={offeneK.s.label} scope={scope} onZu={() => setOffen(null)} onGespeichert={onGespeichert}

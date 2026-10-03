@@ -20,7 +20,7 @@ import {
   DEFAULT_FINANCE, MONTHS_DE, computeMetrics, mitKasse, geschaeftsKasse, eur,
   type FinanceState,
 } from '@/lib/make-one/finance-data';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, Zahl, Ring, feld, zoneFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, Zahl, Ring, feld, auswahl, zoneFarbe, LEUCHT } from './ui';
 
 /** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
 interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
@@ -31,9 +31,8 @@ const num = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, '')
 const datum = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.`;
 
 const mikro: CSSProperties = { fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
-const eingabe: CSSProperties = { ...feld, width: 'auto', padding: '8px 10px', fontSize: TYP.bedien, borderRadius: 8 };
+const eingabe: CSSProperties = { ...feld, width: 'auto' };
 const zahlFeld: CSSProperties = { ...eingabe, fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums' };
-const auswahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', outline: 'none', cursor: 'pointer' };
 const option: CSSProperties = { background: C.flaeche };
 
 /** Stand am Ende der Woche in Zustandsfarbe. */
@@ -154,9 +153,10 @@ export function ControllingView() {
 
   return (
     <Seite titel="Controlling & Ziele" unter={`Ziel ${s.jahr} · ${eur(s.zielUmsatz)} Umsatz, ${eur(s.zielGewinn)} Gewinn`}
-      rechts={<Knopf onClick={analyse} aus={busy}>{busy ? 'analysiere Lage …' : 'Lage analysieren'}</Knopf>}>
+      rechts={<span className="ui-nur-breit"><Knopf onClick={analyse} aus={busy}>{busy ? 'analysiere Lage …' : 'Lage analysieren'}</Knopf></span>}>
+      <div className="ui-nur-schmal"><Knopf voll onClick={analyse} aus={busy}>{busy ? 'analysiere Lage …' : 'Lage analysieren'}</Knopf></div>
       {/* ── Der Held: liegen wir auf Kurs zum Jahresziel? ── */}
-      <Karte i={0} akzent={m.aktiveMonate > 0 ? (aufKurs ? LEUCHT.gut : LEUCHT.achtung) : undefined}>
+      <Karte i={0} ton={m.aktiveMonate > 0 ? (aufKurs ? LEUCHT.gut : LEUCHT.achtung) : undefined}>
         <Ueberschrift farbe={kursFarbe}>Kurs aufs Jahresziel</Ueberschrift>
         <div style={{ display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap', padding: '6px 0 4px' }}>
           <Ring groesse="gross" wert={m.aktiveMonate > 0 ? String(pct) : undefined} einheit="%" label={`Ziel ${s.jahr}`} farbe={kursFarbe} anteil={pct / 100} />
@@ -200,7 +200,7 @@ export function ControllingView() {
                 <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(20px,2.6vw,24px)', letterSpacing: '-.03em', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                   <span style={{ color: LEUCHT.gut }}>+{eur(v.summeEin)}</span> <span style={{ color: C.inkLeise }}>/</span> <span style={{ color: LEUCHT.achtung }}>−{eur(v.summeAus)}</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: v.unsicher ? LEUCHT.achtung : C.inkDim, marginTop: 4 }}>{v.unsicher ? `rein / raus · davon ${eur(v.unsicher)} unsicher` : 'rein / raus'}</div>
+                <div style={{ fontSize: TYP.bedien, color: v.unsicher ? LEUCHT.achtung : C.inkDim, marginTop: 4 }}>{v.unsicher ? `rein / raus · davon ${eur(v.unsicher)} unsicher` : 'rein / raus'}</div>
               </div>
             </div>
 
@@ -222,7 +222,7 @@ export function ControllingView() {
                   <Link href="/os/finanzen/liquiditaet#kontostaende" style={{ ...zahlFeld, width: 140, display: 'inline-block', textDecoration: 'none', color: f.kontostand == null ? C.inkLeise : C.ink }}>{f.kontostand == null ? 'eintragen ›' : `${eur(f.kontostand)} ›`}</Link>
                 </Feld>
               ))}
-              <div style={{ fontSize: 12, color: C.inkLeise, paddingBottom: 8, lineHeight: 1.5 }}>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, paddingBottom: 8, lineHeight: 1.5 }}>
                 Diese Zahlen sind der Startpunkt der Vorschau — je aktueller, desto ehrlicher die Linie.
               </div>
             </div>

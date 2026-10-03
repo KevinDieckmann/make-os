@@ -15,7 +15,7 @@ import { localDay } from '@/lib/zeit';
 import { eur } from '@/lib/make-one/finance-data';
 import { vorschau, businessFirmen, nurBusiness, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT } from './schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT } from './ui';
 import { GESELLSCHAFTEN, finanzOrtKurz, finanzOrtName, istFinanzOrt, istGesellschaft } from '@/lib/einheiten';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { IndexStreifen, STREIFEN } from './business/IndexStreifen';
@@ -130,7 +130,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
             <Zahl wert={eur(k.ergebnisNetto)} label="Ergebnis" farbe={k.ergebnisNetto >= 0 ? LEUCHT.gut : LEUCHT.kritisch} />
             <Zahl wert={eur(k.umsatzProMonat)} label="Ø je Monat" />
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {k.monate} Monate seit dem ersten Beleg</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {k.monate} Monate seit dem ersten Beleg</div>
         </Karte>
         </Kachel>
       )}
@@ -170,7 +170,7 @@ function BelegeBusiness() {
       <Liste>
         {!liste.length && <Leer>Nichts offen.</Leer>}
         {liste.slice(0, 8).map(b => (
-          <Zeile key={b.id} links={<span style={{ fontSize: 12, color: C.inkLeise, width: 56 }}>{b.art === 'rechnung' ? 'Rechnung' : 'Beleg'}</span>}
+          <Zeile key={b.id} links={<span style={{ fontSize: TYP.bedien, color: C.inkLeise, width: 56 }}>{b.art === 'rechnung' ? 'Rechnung' : 'Beleg'}</span>}
             titel={b.empfaenger || b.bezeichnung} unter={`${b.bezeichnung}${b.faellig_am ? ` · fällig ${b.faellig_am.slice(8, 10)}.${b.faellig_am.slice(5, 7)}.` : ''} · ${istFinanzOrt(b.einheit) ? finanzOrtName(b.einheit) : b.einheit}`}
             rechts={b.betrag ? <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: b.faellig_am && b.faellig_am < heute ? LEUCHT.kritisch : C.ink }}>{(b.betrag / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span> : undefined} />
         ))}

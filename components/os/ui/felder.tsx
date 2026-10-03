@@ -18,6 +18,11 @@ export const feld: CSSProperties = {
   padding: '10px 14px', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, outline: 'none',
 };
 
+/** Auswahlliste (select): wie `feld`, mit sichtbarem Pfeil des Systems (dunkel) — 40 px am Rechner, am Handy 44 px und 16 px über `.ui-seite`. */
+export const auswahl: CSSProperties = {
+  ...feld, minHeight: 40, width: 'auto', maxWidth: '100%', padding: '8px 12px', fontSize: TYP.bedien, appearance: 'auto', WebkitAppearance: 'menulist', colorScheme: 'dark', cursor: 'pointer',
+};
+
 /** Beschriftung über dem Feld, Fehlertext darunter (in ganzen Sätzen). */
 export function Feldzeile({ label, children, fehler }: { label: string; children: ReactNode; fehler?: string }) {
   return (

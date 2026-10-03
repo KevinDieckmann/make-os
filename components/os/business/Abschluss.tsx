@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from '../ui';
 import { Pillen } from '../crm/teile';
 import type { Monatsabschluss } from '@/lib/business/messen';
 import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
@@ -74,14 +74,14 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
         <Pillen liste={FIRMA_LISTE} aktiv={firma} onWahl={setFirma} farbe={LEUCHT.geld} />
         <input type="month" value={monat} max={letzterMonat()} onChange={e => setMonat(e.target.value)} aria-label="Monat" style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '7px 11px', colorScheme: 'dark' }} />
-        {vorhanden && <span style={{ fontSize: 12.5, color: C.inkLeise }}>schon eingetragen — Änderungen überschreiben</span>}
+        {vorhanden && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>schon eingetragen — Änderungen überschreiben</span>}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 10 }}>
         {FELDER.map(f => (
           <label key={f.id} style={{ display: 'grid', gap: 4 }}>
-            <span style={{ fontSize: 12.5, color: C.inkDim, fontWeight: 600 }}>{f.label}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600 }}>{f.label}</span>
             <input inputMode="decimal" value={werte[f.id] ?? ''} onChange={e => setWerte({ ...werte, [f.id]: e.target.value })} placeholder={f.tage ? 'Tage' : '€'} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', fontVariantNumeric: 'tabular-nums' }} />
-            <span style={{ fontSize: 11.5, color: C.inkLeise }}>{f.hilfe}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{f.hilfe}</span>
           </label>
         ))}
       </div>
@@ -92,7 +92,7 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: 
       {meldung && <div style={{ marginTop: 8, fontSize: TYP.bedien, color: meldung.ok ? LEUCHT.gut : LEUCHT.kritisch }}>{meldung.text}</div>}
       {eintraege.length > 0 && (
         <div style={{ overflowX: 'auto', marginTop: 16 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>
             <thead><tr style={{ color: C.inkLeise, textAlign: 'right' }}>
               <th style={{ textAlign: 'left', padding: '4px 8px' }}>Monat</th><th style={{ textAlign: 'left', padding: '4px 8px' }}>Firma</th>
               <th style={{ padding: '4px 8px' }}>Umsatz</th><th style={{ padding: '4px 8px' }}>Kosten</th><th style={{ padding: '4px 8px' }}>Personal</th><th style={{ padding: '4px 8px' }}>Tage</th><th style={{ padding: '4px 8px' }}>EK</th><th />
@@ -100,7 +100,7 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: 
             <tbody>
               {eintraege.map(e => (
                 <tr key={`${e.firma}-${e.monat}`} style={{ borderTop: '1px solid rgba(255,255,255,.06)', textAlign: 'right', color: C.ink }}>
-                  <td style={{ textAlign: 'left', padding: '6px 8px' }}><button onClick={() => { setFirma(e.firma); setMonat(e.monat); }} style={{ background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', padding: 0, fontSize: 12.5 }}>{e.monat}</button></td>
+                  <td style={{ textAlign: 'left', padding: '6px 8px' }}><button onClick={() => { setFirma(e.firma); setMonat(e.monat); }} style={{ background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', padding: 0, fontSize: TYP.bedien }}>{e.monat}</button></td>
                   <td style={{ textAlign: 'left', padding: '6px 8px', color: C.inkDim }}>{FIRMA_LISTE.find(f => f.id === e.firma)?.label}</td>
                   <td style={{ padding: '6px 8px' }}>{euro(e.umsatz)}</td><td style={{ padding: '6px 8px' }}>{euro(e.kosten)}</td><td style={{ padding: '6px 8px' }}>{euro(e.personal)}</td><td style={{ padding: '6px 8px' }}>{e.fakturierteTage != null ? String(e.fakturierteTage).replace('.', ',') : '—'}</td><td style={{ padding: '6px 8px' }}>{euro(e.eigenkapital)}</td>
                   <td style={{ padding: '6px 8px' }}><button onClick={() => void loeschen(e)} aria-label="löschen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 13 }}>✕</button></td>
@@ -139,21 +139,21 @@ export function EinstellungenKarte({ einstellungen, onGespeichert }: { einstellu
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 14 }}>
         {FIRMA_LISTE.map(f => (
           <div key={f.id} style={{ display: 'grid', gap: 8 }}>
-            <span style={{ fontSize: 12.5, color: C.ink, fontWeight: 700 }}>{f.label}</span>
-            <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkDim }}>Köpfe (FTE)</span>
+            <span style={{ fontSize: TYP.bedien, color: C.ink, fontWeight: 700 }}>{f.label}</span>
+            <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Köpfe (FTE)</span>
               <input inputMode="decimal" value={fte[f.id]} onChange={e => setFte({ ...fte, [f.id]: e.target.value })} placeholder="z. B. 1,5" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} /></label>
-            <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkDim }}>Jahresumsatzziel (€)</span>
+            <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Jahresumsatzziel (€)</span>
               <input inputMode="decimal" value={ziele[f.id]} onChange={e => setZiele({ ...ziele, [f.id]: e.target.value })} placeholder="z. B. 250.000" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', fontVariantNumeric: 'tabular-nums' }} /></label>
-            {f.id === 'kdc' && <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkDim }}>Kapazität (Beratertage/Monat)</span>
+            {f.id === 'kdc' && <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Kapazität (Beratertage/Monat)</span>
               <input inputMode="decimal" value={kap[f.id]} onChange={e => setKap({ ...kap, [f.id]: e.target.value })} placeholder="z. B. 15" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', fontVariantNumeric: 'tabular-nums' }} /></label>}
           </div>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
         <Knopf leise onClick={() => void speichern()}>Speichern</Knopf>
-        {meldung && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{meldung}</span>}
+        {meldung && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{meldung}</span>}
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Köpfe: Vollzeit-Köpfe im Geschäft (Kevin 1,0 · Teilzeit anteilig) — für „Umsatz je Kopf“. Kapazität: Tage, die ihr im Monat verkaufen könnt (ohne Vertrieb, Verwaltung, Urlaub) — für die Auslastung. Jahresziele je Firma: für Umsatz-Kurs und Pipeline-Deckung der Firma; das Gesamtziel kommt aus dem Controlling.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Köpfe: Vollzeit-Köpfe im Geschäft (Kevin 1,0 · Teilzeit anteilig) — für „Umsatz je Kopf“. Kapazität: Tage, die ihr im Monat verkaufen könnt (ohne Vertrieb, Verwaltung, Urlaub) — für die Auslastung. Jahresziele je Firma: für Umsatz-Kurs und Pipeline-Deckung der Firma; das Gesamtziel kommt aus dem Controlling.</div>
     </Karte>
   );
 }

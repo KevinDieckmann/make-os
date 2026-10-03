@@ -9,16 +9,16 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Knopf, LEUCHT } from './schlank';
+import { FARBE as C, SCHRIFT, TYP, RAND } from '@/lib/make-one/design';
+import { Seite, Karte, Ueberschrift, Knopf, LEUCHT } from './ui';
 
 export function FinanzDashboardView() {
   const [voll, setVoll] = useState(false);
 
   const schalter = <Knopf leise onClick={() => setVoll(!voll)}>{voll ? '↙ Rahmen zeigen' : '↗ Ganze Seite'}</Knopf>;
   const fenster = (
-    <a href="/finanz-dashboard.html" target="_blank" rel="noopener noreferrer" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-      in eigenem Fenster ›
+    <a href="/finanz-dashboard.html" target="_blank" rel="noopener noreferrer" className="ui-knopf fassbar" style={{ border: `1px solid ${RAND.stark}`, background: 'rgba(255,255,255,.05)', color: C.ink }}>
+      In eigenem Fenster ›
     </a>
   );
 
@@ -37,7 +37,8 @@ export function FinanzDashboardView() {
 
   return (
     <Seite titel="Business-Altbestand" unter="Malins erstes Cockpit (Version 1). Hier wird die Selbstständigkeit noch gepflegt, bis sie ein eigenes Zuhause hat. Eure privaten Finanzen stehen jetzt unter Zahlen → Privat."
-      rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>{schalter}{fenster}</span>}>
+>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '8px 14px' }}>{schalter}{fenster}</div>
       <Karte i={0} akzent={LEUCHT.geld} style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '18px 20px 0' }}>
           <Ueberschrift farbe={LEUCHT.geld}>Finanz-Dashboard</Ueberschrift>

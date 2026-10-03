@@ -13,7 +13,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { Grundlage, Kennzahlen, MonatsZeile, Position } from '@/lib/make-one/grundlage';
 import { MONAT_KURZ } from '@/lib/make-one/grundlage';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, LEUCHT } from './ui';
 
 /** Cent-genau — hier wird ein Kassenbuch gelesen, nicht überschlagen. */
 const eurC = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -21,7 +21,7 @@ const datum = (d?: string) => (d ? `${d.slice(8)}.${d.slice(5, 7)}.` : '—');
 
 const geld: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right', minWidth: 96 };
 const tag: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: C.inkDim, width: 48, flex: '0 0 auto' };
-const leise: CSSProperties = { fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' };
+const leise: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' };
 
 interface Antwort {
   vorhanden: boolean; stand?: string; geladen?: string; hinweis?: string;
@@ -74,7 +74,7 @@ export function GrundlageView() {
         <Karte i={0}>
           <Ueberschrift farbe={LEUCHT.achtung}>Noch keine Grundlage</Ueberschrift>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>{d.hinweis ?? 'Noch keine Grundlage geladen.'}</div>
-          <div style={{ marginTop: 10, fontSize: 12, color: C.inkLeise, lineHeight: 1.6 }}>
+          <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.6 }}>
             Im Finanz-Dashboard exportieren, dann als PUT an <span style={{ fontFamily: SCHRIFT.mono, color: C.inkDim }}>/api/state/grundlage</span> — danach rechnet das System damit.
           </div>
         </Karte>
@@ -98,7 +98,7 @@ export function GrundlageView() {
 
   return (
     <Seite titel="Grundlage" unter={`Malins Kassenbuch · Stand ${stand}`}>
-      <Karte i={0} akzent={LEUCHT.geld}>
+      <Karte i={0} ton={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Ergebnis netto</Ueberschrift>
         <Zahl gross wert={eurC(k.ergebnisNetto)} farbe={k.ergebnisNetto >= 0 ? LEUCHT.gut : LEUCHT.kritisch} label={`${k.monate} Monate: ${MONAT_KURZ(k.vonMonat)}–${MONAT_KURZ(k.bisMonat)}`} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginTop: 14 }}>
@@ -111,7 +111,7 @@ export function GrundlageView() {
           Alle Zahlen auf dieser Seite stammen aus <strong style={{ color: C.ink }}>Malins Finanz-Dashboard</strong> — Stand <strong style={{ color: C.ink }}>{stand}</strong>.
           Gepflegt wird dort, gerechnet wird hier. MAKE OS erfindet nichts dazu.
         </div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 5 }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 5 }}>
           {g.umsatz.length + g.kosten.length + g.entnahmen.length + g.offen.length} Positionen Betrieb · Privatkonto und private Schulden stehen seit 24.09. unter Zahlen → Privat
         </div>
       </Karte>
@@ -132,7 +132,7 @@ export function GrundlageView() {
             <div key={m.monat} style={{ display: 'grid', gap: 5, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
               <Anteil links={`${MONAT_KURZ(m.monat)} ${m.monat.slice(2, 4)}`} anteil={m.umsatzNetto / maxMonat} farbe={LEUCHT.gut} rechts={eurC(m.umsatzNetto)} />
               <Anteil links="" anteil={m.kostenNetto / maxMonat} farbe={LEUCHT.achtung} rechts={`−${eurC(m.kostenNetto)}`} />
-              <div style={{ fontSize: 12, color: C.inkLeise }}>Ergebnis {eurC(m.ergebnis)} · Entnahme {eurC(m.entnahmen)}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ergebnis {eurC(m.ergebnis)} · Entnahme {eurC(m.entnahmen)}</div>
             </div>
           ))}
         </div>
@@ -210,7 +210,7 @@ export function GrundlageView() {
             <Zeile key={a} titel={a} rechts={<span style={{ ...geld, fontWeight: 600, fontSize: 14, color: b.startsWith('0,00') ? LEUCHT.achtung : C.ink }}>{b}</span>} />
           ))}
         </Liste>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
           Neuer Stand aus dem Dashboard? Export dort ziehen und an <span style={{ fontFamily: SCHRIFT.mono, color: C.inkDim }}>/api/state/grundlage</span> schicken —
           die Ableitung rechnet sich neu, das Original bleibt unverändert liegen.
         </div>

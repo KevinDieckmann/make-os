@@ -18,7 +18,7 @@ import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import { localDay } from '@/lib/zeit';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, auswahl, LEUCHT, Hinweis } from './ui';
 import { MandantLink } from './crm/MandantLink';
 import { neueKennung } from '@/lib/kennung';
 
@@ -48,10 +48,9 @@ const KREDIT = LEUCHT.agenten;
 const HAAR = 'rgba(255,255,255,.06)';
 
 const geld: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
-const leise: CSSProperties = { fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' };
+const leise: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' };
 /** Kompaktes Eingabefeld in einer Zeile. */
-const eingabe: CSSProperties = { ...feld, width: 'auto', padding: '7px 10px', fontSize: TYP.bedien, borderRadius: 8 };
-const auswahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', outline: 'none', cursor: 'pointer' };
+const eingabe: CSSProperties = { ...feld, width: 'auto' };
 const option: CSSProperties = { background: C.flaeche };
 const datum = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.`;
 
@@ -69,7 +68,7 @@ function Zeichen({ onClick, aus, label, children }: { onClick: () => void; aus?:
   return (
     <button onClick={onClick} disabled={aus} aria-label={label} title={label} style={{
       width: 28, height: 28, borderRadius: 8, border: 'none', padding: 0, flex: '0 0 auto', display: 'grid', placeItems: 'center',
-      background: 'rgba(255,255,255,.05)', color: aus ? 'rgba(255,255,255,.18)' : C.inkDim, cursor: aus ? 'default' : 'pointer', fontSize: 12, lineHeight: 1,
+      background: 'rgba(255,255,255,.05)', color: aus ? 'rgba(255,255,255,.18)' : C.inkDim, cursor: aus ? 'default' : 'pointer', fontSize: TYP.bedien, lineHeight: 1,
     }}>{children}</button>
   );
 }
@@ -170,7 +169,7 @@ export function FinanzplanungView() {
 
   return (
     <Seite titel="Finanzplanung" unter={`Finanzen · ${datum(heute)}`}>
-      {hinweis && <Karte i={0} akzent={LEUCHT.achtung}><div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: TYP.bedien, color: C.inkDim }}><span>{hinweis}</span><button onClick={() => setHinweis(null)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien }}>ok</button></div></Karte>}
+      {hinweis && <Hinweis art={hinweis.startsWith('Storniert') ? 'gut' : 'achtung'} rolle="status" aktion={<Knopf leise onClick={() => setHinweis(null)}>Schließen</Knopf>}>{hinweis}</Hinweis>}
       {/* ── Finanzmeeting — das Uhrwerk: 2× im Monat, läuft immer wieder durch ── */}
       <Karte i={0} akzent={meetingUeberfaellig ? LEUCHT.kritisch : undefined}>
         <Ueberschrift farbe={meetingUeberfaellig ? LEUCHT.kritisch : agendaOffen ? LEUCHT.achtung : LEUCHT.gut}
@@ -196,7 +195,7 @@ export function FinanzplanungView() {
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 14 }}>
           <Knopf onClick={() => speichern({ ...plan, uhrwerk: { letztesMeeting: heute, agenda: uhrwerk.agenda.map(a => ({ ...a, done: false })) } })}>✓ Meeting abgeschlossen</Knopf>
-          <span style={{ fontSize: 12, color: C.inkLeise }}>stempelt das Datum und setzt die Liste fürs nächste Mal zurück</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>stempelt das Datum und setzt die Liste fürs nächste Mal zurück</span>
         </div>
       </Karte>
 
@@ -273,7 +272,7 @@ export function FinanzplanungView() {
                 <span style={leise}>€</span>
                 {/* Löschen nur geplant (mit Rückfrage); ab gestellt wird storniert — der Eintrag bleibt (28.09., K3). */}
                 {r.status === 'geplant' && <Zeichen onClick={() => setFrage({ id: r.id, art: 'loeschen', grund: '' })} label="Rechnung löschen">✕</Zeichen>}
-                {(r.status === 'gestellt' || r.status === 'bezahlt') && !f && <button onClick={() => setFrage({ id: r.id, art: 'storno', grund: '' })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: C.inkLeise }}>stornieren</button>}
+                {(r.status === 'gestellt' || r.status === 'bezahlt') && !f && <button onClick={() => setFrage({ id: r.id, art: 'storno', grund: '' })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: TYP.bedien, color: C.inkLeise }}>stornieren</button>}
                 {f?.art === 'loeschen' && <span style={{ flexBasis: '100%', display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
                   Geplante Rechnung wirklich löschen?
                   <Knopf farbe={LEUCHT.kritisch} onClick={() => { setFrage(null); speichern({ ...plan, rechnungen: plan.rechnungen.filter(x => x.id !== r.id) }); }}>Löschen</Knopf>
@@ -299,7 +298,7 @@ export function FinanzplanungView() {
                     <input key={name} type={typ} value={(r[name] as string) ?? ''} placeholder={platz} title={platz} aria-label={platz}
                       readOnly={storniert || ((name === 'nummer' || name === 'datum') && fest(r, r[name]))}
                       onChange={e => rechnungAendern(r.id, { [name]: e.target.value || undefined })}
-                      style={{ ...eingabe, width: breite, fontSize: 12, padding: '5px 8px', colorScheme: 'dark', color: r[name] ? C.ink : C.inkLeise }} />
+                      style={{ ...eingabe, width: breite, fontSize: TYP.bedien, padding: '5px 8px', colorScheme: 'dark', color: r[name] ? C.ink : C.inkLeise }} />
                   ))}
                   <span style={leise}>
                     {storniert && `storniert${r.storniertAm ? ` ${datum(r.storniertAm)}` : ''}${r.stornoGrund ? ` · ${r.stornoGrund}` : ''} · `}
@@ -327,7 +326,7 @@ export function FinanzplanungView() {
             setNeu({ kunde: '', titel: '', betrag: '', firmaId: neu.firmaId });
           }}>+ Rechnung</Knopf>
         </div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
           Bezahlt? Der Zahlungseingang wird automatisch als Buchung angelegt; der Monatsumsatz kommt aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss</Link> (Zahlen → Business) — dort zählt er aufs Jahresziel.
         </div>
       </Karte>
@@ -390,7 +389,7 @@ export function FinanzplanungView() {
                   {p.status}
                 </ChipKnopf>
               </div>
-              <div style={{ fontSize: 12.5, color: C.inkDim, margin: '6px 0 10px', lineHeight: 1.45 }}>{p.beschreibung}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '6px 0 10px', lineHeight: 1.45 }}>{p.beschreibung}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input type="number" value={p.preis || ''} placeholder="Preis" aria-label="Preis"
                   onChange={e => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, preis: Number(e.target.value) || 0 } : x) })}

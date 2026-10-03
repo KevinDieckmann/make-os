@@ -12,7 +12,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import type { Kategorie, KategorieTyp, Konto, Regel } from '@/lib/finanzen/haushalt/typen';
 import { eur, zuCent } from '@/lib/finanzen/haushalt/typen';
 import type { KatName } from '@/lib/finanzen/haushalt/einordnung';
-import { Knopf, Segmente, feld, LEUCHT } from '../schlank';
+import { Knopf, Segmente, feld, LEUCHT } from '../ui';
 import { Dialog, Feld, Hinweis, KategorieOptionen, auswahl, type HaushaltDaten, type Op } from './gemeinsam';
 
 type Reiter = 'kategorien' | 'konten' | 'regeln';
@@ -63,7 +63,7 @@ function Kategorien({ h, patch, nutzung, onZusammenlegen }: { h: HaushaltDaten; 
         <Feld label="Budget/Monat"><input inputMode="decimal" value={neu.budget} onChange={e => setNeu({ ...neu, budget: e.target.value })} placeholder="optional" style={klein} /></Feld>
         <Knopf farbe={LEUCHT.geld} aus={!neu.name.trim()} onClick={anlegen}>Anlegen</Knopf>
       </div>
-      <div style={{ fontSize: 12.5, color: C.inkLeise, margin: '6px 0' }}>Doppelte zusammenlegen? <button onClick={onZusammenlegen} style={{ background: 'none', border: 'none', color: LEUCHT.geld, cursor: 'pointer', font: 'inherit', padding: 0 }}>Aufräumen öffnen</button> — Buchungen und Regeln wandern mit.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '6px 0' }}>Doppelte zusammenlegen? <button onClick={onZusammenlegen} style={{ background: 'none', border: 'none', color: LEUCHT.geld, cursor: 'pointer', font: 'inherit', padding: 0 }}>Aufräumen öffnen</button> — Buchungen und Regeln wandern mit.</div>
       {sortiert.map(k => <KategorieZeile key={k.id} k={k} buchungen={nutzung.kat.get(k.id) ?? 0} regeln={nutzung.regel.get(k.id) ?? 0} offen={offen === k.id} onOffen={() => setOffen(offen === k.id ? null : k.id)} patch={patch} />)}
     </div>
   );
@@ -76,7 +76,7 @@ function KategorieZeile({ k, buchungen, regeln, offen, onOffen, patch }: { k: Ka
     <div style={zeile}>
       <button onClick={onOffen} style={{ display: 'flex', gap: 10, alignItems: 'baseline', background: 'none', border: 'none', color: C.ink, cursor: 'pointer', font: 'inherit', padding: 0, textAlign: 'left', minWidth: 0 }}>
         <span style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</span>
-        <span style={{ fontSize: 12.5, color: C.inkLeise, whiteSpace: 'nowrap' }}>{TYPEN.find(t => t.id === k.typ)?.label} · {buchungen === 1 ? '1 Buchung' : `${buchungen} Buchungen`}{k.monatsbudget != null ? ` · Budget ${eur(k.monatsbudget)}` : ''}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{TYPEN.find(t => t.id === k.typ)?.label} · {buchungen === 1 ? '1 Buchung' : `${buchungen} Buchungen`}{k.monatsbudget != null ? ` · Budget ${eur(k.monatsbudget)}` : ''}</span>
       </button>
       {offen && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
@@ -86,7 +86,7 @@ function KategorieZeile({ k, buchungen, regeln, offen, onOffen, patch }: { k: Ka
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Knopf farbe={LEUCHT.geld} aus={!e.name.trim()} onClick={() => { const b = e.budget.trim() ? zuCent(e.budget) : null; void patch('kategorien', [{ op: 'upsert', stand: k.stand, eintrag: { ...k, name: e.name.trim(), typ: e.typ, monatsbudget: b !== null ? Math.abs(b) : null } }]); }}>Speichern</Knopf>
             <Knopf leise aus={belegt} onClick={() => { void patch('kategorien', [{ op: 'delete', id: k.id, stand: k.stand }]); }}>Löschen</Knopf>
-            {belegt && <span style={{ fontSize: 12.5, color: C.inkLeise, alignSelf: 'center' }}>{buchungen} Buchungen, {regeln} Regeln — erst zusammenlegen</span>}
+            {belegt && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, alignSelf: 'center' }}>{buchungen} Buchungen, {regeln} Regeln — erst zusammenlegen</span>}
           </div>
         </div>
       )}
@@ -119,7 +119,7 @@ function KontoZeile({ k, buchungen, offen, onOffen, patch }: { k: Konto; buchung
     <div style={zeile}>
       <button onClick={onOffen} style={{ display: 'flex', gap: 10, alignItems: 'baseline', background: 'none', border: 'none', color: k.aktiv ? C.ink : C.inkLeise, cursor: 'pointer', font: 'inherit', padding: 0, textAlign: 'left', minWidth: 0 }}>
         <span style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}{k.aktiv ? '' : ' (inaktiv)'}</span>
-        <span style={{ fontSize: 12.5, color: C.inkLeise, whiteSpace: 'nowrap' }}>{k.inhaber ?? '–'}{k.bank ? ` · ${k.bank}` : ''}{k.iban_suffix ? ` · …${k.iban_suffix}` : ''} · {buchungen === 1 ? '1 Buchung' : `${buchungen} Buchungen`}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{k.inhaber ?? '–'}{k.bank ? ` · ${k.bank}` : ''}{k.iban_suffix ? ` · …${k.iban_suffix}` : ''} · {buchungen === 1 ? '1 Buchung' : `${buchungen} Buchungen`}</span>
       </button>
       {offen && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
@@ -131,7 +131,7 @@ function KontoZeile({ k, buchungen, offen, onOffen, patch }: { k: Konto; buchung
             <Knopf farbe={LEUCHT.geld} aus={!e.name.trim()} onClick={() => { void patch('konten', [{ op: 'upsert', stand: k.stand, eintrag: { ...k, ...e, name: e.name.trim() } }]); }}>Speichern</Knopf>
             <Knopf leise onClick={() => { void patch('konten', [{ op: 'upsert', stand: k.stand, eintrag: { ...k, aktiv: !k.aktiv } }]); }}>{k.aktiv ? 'Stilllegen' : 'Wieder aktiv'}</Knopf>
             <Knopf leise aus={buchungen > 0} onClick={() => { void patch('konten', [{ op: 'delete', id: k.id, stand: k.stand }]); }}>Löschen</Knopf>
-            {buchungen > 0 && <span style={{ fontSize: 12.5, color: C.inkLeise }}>hat Buchungen — stilllegen statt löschen</span>}
+            {buchungen > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>hat Buchungen — stilllegen statt löschen</span>}
           </div>
         </div>
       )}
@@ -153,7 +153,7 @@ function Regeln({ h, katName, patch }: { h: HaushaltDaten; katName: KatName; pat
         <div key={r.id} style={{ ...zeile, gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr) auto', alignItems: 'center' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.empfaenger || r.muster}</div>
-            <div style={{ fontSize: 12, color: C.inkLeise }}>„{r.muster}“ · {r.treffer_zaehler}× getroffen{r.ist_fixkosten ? ' · Fixkosten' : ''}{r.ist_umbuchung ? ' · Umbuchung' : ''}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>„{r.muster}“ · {r.treffer_zaehler}× getroffen{r.ist_fixkosten ? ' · Fixkosten' : ''}{r.ist_umbuchung ? ' · Umbuchung' : ''}</div>
           </div>
           <select aria-label="Kategorie" value={r.kategorie_id ?? ''} onChange={e => { void setze(r, { kategorie_id: e.target.value || null }); }} style={auswahl}>
             <option value="">— keine —</option><KategorieOptionen kategorien={h.stamm.kategorien} />

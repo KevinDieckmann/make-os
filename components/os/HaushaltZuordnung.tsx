@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Knopf, LEUCHT } from './schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Knopf, LEUCHT } from './ui';
 
 const STANDARD = 'kevin-malin';
 interface K { speicher: string; name: string; rolle: string; haushalt: string | null }

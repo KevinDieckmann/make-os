@@ -7,8 +7,8 @@
 // (Buchungen darauf werden „nicht zugeordnet“).
 
 import { useState } from 'react';
-import { FARBE as C } from '@/lib/make-one/design';
-import { Knopf, LEUCHT } from '../schlank';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { Knopf, LEUCHT } from '../ui';
 import type { Zeile } from '@/lib/finanzen/rechenkern';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
 import { KAL, TYP_LABEL, TYP_GRUPPE, EINHEIT_LABEL, eur, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfen';
@@ -85,7 +85,7 @@ export function ZeileDialog({ id, onZu }: { id: string; onZu: () => void }) {
           <Feld label="Jahresbetrag"><ZahlFeld wert={z.jahresbetrag ?? z.soll * 12} onFertig={v => setZ({ ...z, jahresbetrag: v ?? 0 })} titel="Jahresbetrag" /></Feld>
           <Feld label="Fällig in" breit>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {KAL.map((k, j) => { const an = (z.faellig ?? []).includes(j + 1); return <button key={k} type="button" aria-pressed={an} onClick={() => setZ({ ...z, faellig: an ? (z.faellig ?? []).filter(x => x !== j + 1) : [...(z.faellig ?? []), j + 1].sort((a, b) => a - b) })} style={{ fontSize: 12, fontWeight: 600, padding: '5px 9px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? C.aktiv : 'rgba(255,255,255,.1)'}`, background: an ? `${C.aktiv}22` : 'transparent', color: an ? C.aktiv : C.inkDim }}>{k}</button>; })}
+              {KAL.map((k, j) => { const an = (z.faellig ?? []).includes(j + 1); return <button key={k} type="button" aria-pressed={an} onClick={() => setZ({ ...z, faellig: an ? (z.faellig ?? []).filter(x => x !== j + 1) : [...(z.faellig ?? []), j + 1].sort((a, b) => a - b) })} style={{ fontSize: TYP.bedien, fontWeight: 600, padding: '5px 9px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? C.aktiv : 'rgba(255,255,255,.1)'}`, background: an ? `${C.aktiv}22` : 'transparent', color: an ? C.aktiv : C.inkDim }}>{k}</button>; })}
             </div>
           </Feld>
         </> : <Feld label="Betrag je Monat"><ZahlFeld wert={z.soll} onFertig={v => setZ({ ...z, soll: v ?? 0 })} titel="Betrag je Monat" /></Feld>}

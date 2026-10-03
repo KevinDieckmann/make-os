@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Spalten, Spalte, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Spalten, Spalte, LEUCHT } from '../ui';
 import { istSchnitt, sollBudget, wert } from '@/lib/finanzen/rechenkern';
 import { achse, letzterVoller, prozent } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
@@ -27,7 +27,7 @@ export function Entwicklung() {
   const sch = (a: number[] | undefined) => istSchnitt(a, k, L), vor = (a: number[] | undefined) => istSchnitt(a, k, L - k);
   const fixIst = d.privatBudget.filter(z => z.typ === 'fix').reduce((s, z) => s + sch(h.zeilen[z.id]), 0);
   const e0 = sch(h.einnahmen), a0 = sch(h.ausgaben), e1 = vor(h.einnahmen), a1 = vor(h.ausgaben);
-  const pfeil = (v: number, w: number, gut: boolean) => { if (!w) return null; const dlt = (v - w) / Math.abs(w); const f = Math.abs(dlt) < 0.03 ? C.inkLeise : (dlt > 0) === gut ? LEUCHT.gut : LEUCHT.kritisch; return <span style={{ color: f, fontSize: 12 }}>{dlt > 0 ? '▲' : '▼'} {prozent(Math.abs(dlt))} gegenüber davor</span>; };
+  const pfeil = (v: number, w: number, gut: boolean) => { if (!w) return null; const dlt = (v - w) / Math.abs(w); const f = Math.abs(dlt) < 0.03 ? C.inkLeise : (dlt > 0) === gut ? LEUCHT.gut : LEUCHT.kritisch; return <span style={{ color: f, fontSize: TYP.bedien }}>{dlt > 0 ? '▲' : '▼'} {prozent(Math.abs(dlt))} gegenüber davor</span>; };
   const bewegung = [...d.privatBudget, ...d.privatSchulden].map(z => ({ z, jetzt: sch(h.zeilen[z.id]), vorher: vor(h.zeilen[z.id]) })).filter(x => x.jetzt || x.vorher).sort((a, b) => Math.abs(b.jetzt - b.vorher) - Math.abs(a.jetzt - a.vorher)).slice(0, 8);
   const planLuft = (pr[0]?.luft ?? 0) + (pr[0]?.sparenSoll ?? 0);
   const p3 = pr[3];
@@ -35,7 +35,7 @@ export function Entwicklung() {
     <>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
         <Pillen liste={[{ id: '1' as const, label: 'Letzter Monat' }, { id: '3' as const, label: '3 Monate' }, { id: '6' as const, label: '6 Monate' }]} aktiv={String(k) as '1' | '3' | '6'} onWahl={v => setK(Number(v) as 1 | 3 | 6)} />
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>Durchschnitt je Monat, verglichen mit dem Zeitraum davor · laufender Monat bleibt draußen</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Durchschnitt je Monat, verglichen mit dem Zeitraum davor · laufender Monat bleibt draußen</span>
       </div>
       <Kacheln min={160}>
         <Kachel label="Einnahmen" wert={<><Geld v={e0} /> €</>} unter={pfeil(e0, e1, true) ?? 'kein Vergleich'} />
@@ -109,7 +109,7 @@ export function Geldfluss() {
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
         <Pillen liste={[{ id: 'privat' as const, label: 'Privat' }, { id: 'ug' as const, label: UG_NAME }]} aktiv={art} onWahl={a => { setArt(a); if (a === 'ug' && m < 1) setM(3); }} />
         <Auswahl wert={String(m)} onWahl={v => setM(Number(v))} optionen={optionen} titel="Monat" />
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>{sz.name}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{sz.name}</span>
       </div>
       <Karte i={0}>
         <Ueberschrift>Wohin das Geld fließt</Ueberschrift>

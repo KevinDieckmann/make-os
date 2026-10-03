@@ -7,13 +7,13 @@ import Link from 'next/link';
 // Browser-Dialoge können abgeschaltet sein und liefern dann still „nein“),
 // Meldungen — Fehler bleiben stehen, bis man sie wegklickt.
 
-import { useCallback, useEffect, useState, type ReactNode, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { Haushalt, Kategorie } from '@/lib/finanzen/haushalt/typen';
 import { eur } from '@/lib/finanzen/haushalt/typen';
 import type { Meta } from '@/lib/finanzen/haushalt/speicher';
-import { LEUCHT, Knopf, feld } from '../schlank';
+import { LEUCHT, Knopf, auswahl } from '../ui';
 
 export type HaushaltDaten = Haushalt & { meta: Meta; haushalt: string; person: string };
 export interface Meldung { id: number; art: 'ok' | 'fehler' | 'info'; titel: string; text?: string }
@@ -122,7 +122,7 @@ export function Dialog({ titel, children, onZu, aktionen }: { titel: string; chi
 }
 
 export function Feld({ label, children }: { label: string; children: ReactNode }) {
-  return <label style={{ display: 'grid', gap: 5, fontSize: 12.5, color: C.inkDim }}>{label}{children}</label>;
+  return <label style={{ display: 'grid', gap: 5, fontSize: TYP.bedien, color: C.inkDim }}>{label}{children}</label>;
 }
 
 export function Haken({ an, onChange, children }: { an: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
@@ -134,7 +134,7 @@ export function Haken({ an, onChange, children }: { an: boolean; onChange: (v: b
   );
 }
 
-export const auswahl: CSSProperties = { ...feld, padding: '9px 12px', fontSize: TYP.bedien, appearance: 'auto' };
+export { auswahl };
 
 /** Betrag in Cent, rechtsbündig mit festen Ziffernbreiten. */
 export function Betrag({ cent, farbe, gross, vorzeichen }: { cent: number | null | undefined; farbe?: string; gross?: boolean; vorzeichen?: boolean }) {
@@ -156,7 +156,7 @@ export function KategorieOptionen({ kategorien, nur }: { kategorien: Kategorie[]
 }
 
 export function Hinweis({ children, farbe }: { children: ReactNode; farbe?: string }) {
-  return <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.55, marginTop: 10, ...(farbe ? { color: farbe } : {}) }}>{children}</div>;
+  return <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55, marginTop: 10, ...(farbe ? { color: farbe } : {}) }}>{children}</div>;
 }
 
 /** Kachelzeile: große Zahl, darunter Beschriftung und Zusatz. */
@@ -166,7 +166,7 @@ export function Kachel({ titel, wert, zusatz, farbe, href }: { titel: string; we
     <div style={{ minWidth: 0 }}>
       <div style={{ fontSize: 12, color: C.inkLeise, letterSpacing: '.04em', textTransform: 'uppercase', fontWeight: 700 }}>{titel}</div>
       <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(20px, 2.2vw, 26px)', color: farbe ?? C.ink, fontVariantNumeric: 'tabular-nums', margin: '4px 0 2px', whiteSpace: 'nowrap' }}>{wert}</div>
-      {zusatz && <div style={{ fontSize: 12.5, color: C.inkDim }}>{zusatz}</div>}
+      {zusatz && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{zusatz}</div>}
     </div>
   );
 }

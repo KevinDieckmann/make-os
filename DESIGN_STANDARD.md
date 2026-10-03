@@ -48,7 +48,7 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 | `Hinweis` | Karte nach Bedeutung (`art`), mit `titel` und `aktion` |
 | `Leerzustand`, `Leer` | großer / kleiner leerer Zustand mit Symbol, Satz, Weg |
 | `Erfolg`, `Schritte`, `Fortschritt` | Haken, Schrittanzeige, Balken |
-| `eingabe`, `feld`, `Feldzeile` | Formularfeld 48/16 · kompakt 44 · Feld mit Beschriftung und Fehlertext |
+| `eingabe`, `feld`, `auswahl`, `Feldzeile` | Formularfeld 48/16 · kompakt 44 · Auswahlliste 40/44 · Feld mit Beschriftung und Fehlertext |
 | `Aktionsleiste` | die Hauptaktion unten mitlaufend am Handy, über der Tastatur beim Tippen |
 
 ## Regeln
@@ -73,4 +73,18 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 4. Schriftgrößen 11–12,5 px in Fließtext → `TYP.bedien` (13); Eingaben → `eingabe`/`feld`.
 5. Foto Handy (375) + Rechner (1280) vorher/nachher, Messung: keine Tippziele < 44 px, keine Eingaben < 16 px am Handy, kein seitlicher Überlauf, Konsole sauber.
 
-Stand 03.10.: Muster **Markttraktion** (alle Reiter) und **Netzwerken** umgestellt. Folgen: Zahlen/Finanzen, dann der Rest.
+Stand 03.10.: Muster **Markttraktion** (alle Reiter) und **Netzwerken** umgestellt. Zweiter Bereich: **Zahlen & Finanzen** (siehe unten). Folgt: der Rest.
+
+## Umgestellt: Zahlen & Finanzen (03.10.)
+Alle 51 Dateien des Bereichs hängen an `components/os/ui` (keine Bausteine mehr aus `schlank.tsx`): **Zahlen** (Privat · Business · Steuern · Gesamt · Head of Finance, mit Haushalt-Reitern Übersicht bis Schulden), **Grundlage**, **Liquidität**, **Buchungen**, **Rechnungen & Zahlungen**, **Controlling & Ziele**, **Business-Altbestand** und die **Finanzplanung jetzt** (Lage · Planen · Privat · Business · Gesamt · Buchungen & Check · Ziele & Töpfe · Protokoll, alle 19 Unterseiten). Rechnung, Felder und Funktionen sind unverändert — jedes Feld bleibt anpassbar.
+
+Was für Zahlen gilt (zusätzlich zu den 13 Regeln):
+1. **Zahlen** stehen mit `tabular-nums` rechtsbündig (Tabellen, Kennzahlen, Beträge in `Geld`/`Betrag`); Tabellen laufen in eigenem wischbarem Container (`.ui-tabelle`, Rolle `region`) — am Handy wischt die Tabelle, nie die Seite. Das Blatt der Finanzplanung (Monate als Spalten) hat sticky Namensspalte und Kopf im selben Container.
+2. **Negative Werte** tragen das Minuszeichen UND die Bedeutungsfarbe (rot unter null, gelb für Ausgaben) — nie nur Farbe.
+3. **Kennzahl-Kacheln** = flache Fläche (`FLAECHE_STIL.flach`, Ecke 16), je Ansicht höchstens eine getönte Hero-Karte (`ton`): Lage-Entscheidungen, Index, Saldo, Kurs aufs Jahresziel, Verlauf der Liquidität, Ergebnis der Grundlage, Fristen.
+4. **Diagramme** nutzen Theme-Farben (Kupfer = Geld, Lila = IST, Zustandsfarben); Achsenbeschriftung 12 px, auf schmalem Bildschirm jede zweite/dritte Marke (nie enger als 64 px).
+5. **Eingaben** in Formularen: `feld` (44 px) bzw. `eingabeStil` der Finanzplanung (40 px am Rechner, am Handy erzwingt `.ui-seite` 44 px/16 px); Auswahllisten über `auswahl` (ui/felder.tsx). Ausnahme: der Zellen-Editor im Blatt bleibt 32 px hoch (Tabellenkalkulation) — am Handy ebenfalls 44 px.
+6. **Kopf am Handy:** breite Umschalter (Wochen, Sicht, Bereiche) stehen im Inhalt als EINE wischbare Leiste (`Reiter`/`Segmente`), nicht im Kopf neben dem Titel; Aktionen im Kopf sind Symbole mit Text nur am Rechner (`ui-nur-breit`), eine lange Aktion steht am Handy darunter (`ui-nur-schmal`).
+7. **Fehler** sind `Hinweis art="kritisch"` mit Weg zurück (z. B. „Noch einmal versuchen“), Erfolg `gut`, Erklärungen unter einer Karte bleiben Notiz in `inkDim` (13 px).
+
+Gemeinsame Teile der Finanzplanung (`finanzplan/teile.tsx`: `Kachel`, `Etikett`, `StatusPille`, `Tabelle`, `KnopfKlein`, `Pillen`, `Hinweis`, `Nichts`) und der Haushaltsfinanzen (`haushalt/gemeinsam.tsx`) reichen jetzt die Standard-Bausteine durch — gleiche Namen, damit die Seiten unverändert bleiben. Wächter: `tests/design-finanzen.test.ts`.

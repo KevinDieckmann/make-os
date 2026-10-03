@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Seite, Segmente } from './schlank';
+import { Seite, Reiter } from './ui';
 import { ZahlenBusiness } from './ZahlenView';
 import { HaushaltView } from './haushalt/HaushaltView';
 import { GesamtView } from './haushalt/GesamtView';
@@ -59,8 +59,13 @@ export function FinanzenView() {
       : [{ id: 'business' as Sicht, label: 'Business' }, ...(inhaber ? [{ id: 'steuern' as Sicht, label: 'Steuern' }] : []), { id: 'gesamt' as Sicht, label: 'Gesamt' }, chef];
 
   return (
-    <Seite titel="Zahlen" breit={sicht === 'business' || sicht === 'steuern' || sicht === 'privat' ? 1440 : undefined} unter={UNTER[sicht]}
-      rechts={zugang !== null ? <div style={{ overflowX: 'auto', maxWidth: '100%' }}><Segmente liste={liste} aktiv={sicht} onWahl={s => setze({ s, space: s === 'gesamt' ? (imPrivat ? 'privat' : 'business') : null, t: null, k: null, f: null, monat: null, kat: null, q: null })} /></div> : undefined}>
+    <Seite titel="Zahlen" breit={sicht === 'business' || sicht === 'steuern' || sicht === 'privat' ? 1440 : undefined} unter={UNTER[sicht]}>
+      {/* Eine wischbare Leiste (Standard-Baustein) — am Handy steht der Inhalt gleich darunter, der Kopf bleibt klein. */}
+      {zugang !== null && (
+        <nav aria-label="Zahlen" className="ui-reiter-zeile">
+          <Reiter ariaLabel="Sicht der Zahlen" liste={liste} aktiv={sicht} onWahl={s => setze({ s, space: s === 'gesamt' ? (imPrivat ? 'privat' : 'business') : null, t: null, k: null, f: null, monat: null, kat: null, q: null })} />
+        </nav>
+      )}
       {zugang === null && sicht === 'privat' ? null
         : sicht === 'privat' ? <HaushaltView reiter={p.get('t')} onReiter={t => setze({ t, k: null, monat: null, kat: null, q: null })} />
         : sicht === 'gesamt' ? <GesamtView />

@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Fortschritt, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Fortschritt, LEUCHT } from '../ui';
 import type { Geschaeftsmodell, ModellZeile } from '@/lib/business/modell';
 import { WEG } from '@/lib/wege';
 
@@ -19,11 +19,11 @@ function Zeile({ z, farbe, eingerueckt, rechts }: { z: ModellZeile; farbe: strin
   return (
     <Link href={z.href} className="fassbar" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(60px, 1fr) auto', gap: 12, alignItems: 'center', padding: eingerueckt ? '5px 8px 5px 22px' : '7px 8px', borderRadius: 10, textDecoration: 'none', color: C.ink }}>
       <span style={{ minWidth: 0, display: 'grid' }}>
-        <span style={{ fontSize: eingerueckt ? 12.5 : TYP.bedien, fontWeight: eingerueckt ? 500 : 700, color: eingerueckt ? C.inkDim : C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.titel}</span>
-        {z.unter && <span style={{ fontSize: 11.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.unter}</span>}
+        <span style={{ fontSize: TYP.bedien, fontWeight: eingerueckt ? 500 : 700, color: eingerueckt ? C.inkDim : C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.titel}</span>
+        {z.unter && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.unter}</span>}
       </span>
       <Fortschritt anteil={Math.min(1, z.anteil)} farbe={farbe} />
-      <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: eingerueckt ? 12.5 : TYP.bedien, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap', color: eingerueckt ? C.inkDim : C.ink }}>
+      <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap', color: eingerueckt ? C.inkDim : C.ink }}>
         {rechts ?? `${z.mrr ? `${euro(z.mrr)}/M` : ''}${z.mrr && z.einmalig ? ' · ' : ''}${z.einmalig ? `${euro(z.einmalig)} einm.` : ''}`} <span style={{ color: C.inkLeise, fontWeight: 600 }}>{pz(z.anteil)}</span>
       </span>
     </Link>
@@ -47,7 +47,7 @@ export function ModellKarte({ m, i = 4 }: { m: Geschaeftsmodell; i?: number }) {
             ].map(x => (
               <div key={x.l} style={{ display: 'grid', gap: 2 }}>
                 <span style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, letterSpacing: '-.02em', color: x.f, fontVariantNumeric: 'tabular-nums' }}>{x.w}</span>
-                <span style={{ fontSize: 12, color: C.inkLeise }}>{x.l}</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{x.l}</span>
               </div>
             ))}
           </div>
@@ -59,7 +59,7 @@ export function ModellKarte({ m, i = 4 }: { m: Geschaeftsmodell; i?: number }) {
                 {l.produkte.length > 1 || l.produkte[0]?.titel !== l.titel ? l.produkte.map(p => <Zeile key={p.id} z={p} farbe={`${LINIEN_FARBE[i % LINIEN_FARBE.length]}99`} eingerueckt />) : null}
               </div>
             ))}
-            {m.ohneProdukt > 0 && <div style={{ fontSize: 12, color: LEUCHT.achtung, padding: '4px 8px' }}>{m.ohneProdukt} Mandat{m.ohneProdukt === 1 ? '' : 'e'} ohne Produkt — im Mandat ein Produkt wählen, dann stimmt die Aufteilung.</div>}
+            {m.ohneProdukt > 0 && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, padding: '4px 8px' }}>{m.ohneProdukt} Mandat{m.ohneProdukt === 1 ? '' : 'e'} ohne Produkt — im Mandat ein Produkt wählen, dann stimmt die Aufteilung.</div>}
           </div>
           {m.mandate.length > 0 && (
             <div style={{ display: 'grid', gap: 4 }}>
@@ -69,7 +69,7 @@ export function ModellKarte({ m, i = 4 }: { m: Geschaeftsmodell; i?: number }) {
               ))}
             </div>
           )}
-          <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>
             Anteil = Monatshonorar (einmalige Honorare ÷ 12) am Gesamt. „Trägt x % Fix“ = Monatshonorar ÷ Fixkosten der Sicht. Ein echter Deckungsbeitrag je Mandat braucht die direkten Kosten (Freelancer, Reisen) — die kommen über den Monatsabschluss.
           </div>
         </div>

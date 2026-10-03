@@ -19,7 +19,7 @@ import {
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, auswahl, LEUCHT } from './ui';
 import { finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 import { mandatAusPlanposten, PLANPOSTEN_MANDAT } from '@/lib/crm/mandant-link';
 import { MandantLink } from './crm/MandantLink';
@@ -34,10 +34,9 @@ const RHYTHMUS_LABEL: Record<Rhythmus, string> = {
 const WOCHEN = [{ id: '8', label: '8 Wo.' }, { id: '12', label: '12 Wo.' }, { id: '26', label: '26 Wo.' }, { id: '52', label: '52 Wo.' }, { id: '66', label: '15 Mon.' }];
 
 const geld: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', minWidth: 84, textAlign: 'right' };
-const leise: CSSProperties = { fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' };
+const leise: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' };
 const mikro: CSSProperties = { fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
-const eingabe: CSSProperties = { ...feld, width: 'auto', padding: '8px 10px', fontSize: TYP.bedien, borderRadius: 8 };
-const auswahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', outline: 'none', cursor: 'pointer' };
+const eingabe: CSSProperties = { ...feld, width: 'auto' };
 const option: CSSProperties = { background: C.flaeche };
 const datum = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.`;
 
@@ -254,14 +253,14 @@ export function LiquiditaetView() {
   const ende = v?.wochen.at(-1)?.stand;
 
   return (
-    <Seite titel="Liquidität" unter="Wie viel Geld ist wann da — gerechnet aus Kontoständen, offenen Rechnungen, fälligen Zahlungen und dem, was ihr erwartet. Was hier eingetragen ist, rechnet sofort mit."
-      rechts={<Segmente liste={WOCHEN} aktiv={String(wochen)} onWahl={id => setWochen(Number(id))} />}>
+    <Seite titel="Liquidität" unter="Wie viel Geld ist wann da — gerechnet aus Kontoständen, offenen Rechnungen, fälligen Zahlungen und dem, was ihr erwartet.">
+      <div className="ui-reiter-zeile"><Segmente liste={WOCHEN} aktiv={String(wochen)} onWahl={id => setWochen(Number(id))} /></div>
       {!v && <Karte i={0}><Leer>lädt …</Leer></Karte>}
 
       {v && (
         <>
           {/* Der Verlauf */}
-          <Karte i={0} akzent={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}>
+          <Karte i={0} ton={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}>
             <Ueberschrift farbe={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}
               rechts={plan && plan.firmen.length > 1 ? (
                 <Segmente liste={['alle', ...plan.firmen.map(f => f.id)].map(fid => ({ id: fid, label: fid === 'alle' ? 'Alle Konten' : istGesellschaft(fid) ? finanzOrtName(fid) : plan.firmen.find(f => f.id === fid)?.name.split(' ')[0] ?? fid }))}

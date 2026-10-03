@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/finanzen/haushalt/typen';
 import { AKTION_TEXT, type Aktion, type Pruefposten, type Quelle } from '@/lib/finanzen/haushalt/entflechtung';
-import { Knopf, LEUCHT } from '../schlank';
+import { Knopf, LEUCHT } from '../ui';
 import { Dialog, auswahl } from './gemeinsam';
 
 const QUELLE: Record<Quelle, string> = { firma: 'Konto im Firmen-Finanzplan', zahlung: 'Zahlungen', merkposten: 'Kredite & Merkposten', rechnung: 'Forderungen', buchung: 'Buchungen', planposten: 'Liquiditäts-Planposten' };
@@ -54,10 +54,10 @@ export function PrueflisteDialog({ onZu, laden, melde }: { onZu: () => void; lad
                   <strong style={{ fontSize: TYP.bedien }}>{p.titel}</strong>
                   {p.betrag !== null && <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>{eur(p.betrag)}</span>}
                 </div>
-                <div style={{ fontSize: 12, color: C.inkLeise }}>{p.unter}</div>
-                {p.treffer && <div style={{ fontSize: 12, color: LEUCHT.gut }}>passt zu: {p.treffer}</div>}
-                <div style={{ fontSize: 12, color: C.inkDim }}>{p.grund}</div>
-                <select aria-label="Entscheidung" value={wahl[k]} onChange={e => setWahl(w => ({ ...w, [k]: e.target.value as Aktion }))} style={{ ...auswahl, padding: '5px 8px', fontSize: 12.5 }}>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{p.unter}</div>
+                {p.treffer && <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>passt zu: {p.treffer}</div>}
+                <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{p.grund}</div>
+                <select aria-label="Entscheidung" value={wahl[k]} onChange={e => setWahl(w => ({ ...w, [k]: e.target.value as Aktion }))} style={{ ...auswahl, padding: '5px 8px', fontSize: TYP.bedien }}>
                   {p.aktionen.map(a => <option key={a} value={a}>{AKTION_TEXT[a]}{a === p.vorschlag ? ' (Vorschlag)' : ''}</option>)}
                 </select>
               </div>

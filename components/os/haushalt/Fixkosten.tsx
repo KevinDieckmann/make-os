@@ -20,7 +20,7 @@ import { luft, wiederkehrend, rhythmusVorschlag, type Sockelposten } from '@/lib
 import { inMonaten } from '@/lib/finanzen/haushalt/kennzahlen';
 import { TURNUS_REIHE, normal, turnusName } from '@/lib/finanzen/haushalt/regeln';
 import { monatVon, monatName, vollMonate, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../ui';
 import { Dialog, Feld, Haken, Hinweis, Kachel, Kacheln, KategorieOptionen, Leiste, auswahl, type HaushaltDaten, type Op } from './gemeinsam';
 
 interface Props {
@@ -31,7 +31,7 @@ interface Props {
   laden: () => Promise<void>;
 }
 
-const stift = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '4px 6px', whiteSpace: 'nowrap' } as const;
+const stift = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '4px 6px', whiteSpace: 'nowrap' } as const;
 const chipKnopf = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' } as const;
 
 /** Alle privaten Ausgaben-Buchungen eines Empfängers (der „Posten“) — über alle Monate, nicht nur das Rechenfenster. */
@@ -74,7 +74,7 @@ export function Fixkosten({ h, katName, patch, aktion, melde, laden }: Props) {
 
   return (
     <>
-      <Karte i={1} akzent={l.luft >= 0 ? LEUCHT.gut : LEUCHT.kritisch}>
+      <Karte i={1} ton={l.luft >= 0 ? LEUCHT.gut : LEUCHT.kritisch}>
         <Ueberschrift farbe={LEUCHT.schlaf}>Was euer Leben im Monat kostet</Ueberschrift>
         <Kacheln>
           <Kachel titel="Monatlicher Sockel" wert={eur(s.gesamt)} zusatz="Fixkosten + Kreditraten" />
@@ -114,7 +114,7 @@ export function Fixkosten({ h, katName, patch, aktion, melde, laden }: Props) {
               <div key={x.name} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '6px 12px', padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 600 }}>{x.name}</div>
-                  <div style={{ fontSize: 12, color: C.inkLeise }}>{x.kategorie || 'keine Kategorie'} · {x.monate}× in 12 Monaten · Ø {eur(x.mittel)} {x.schwankung < 0.02 ? '(immer gleich)' : `(±${Math.round(x.schwankung * 100)} %)`}{x.teilweiseMarkiert ? ' · teilweise als Fixkosten markiert' : ''}</div>
+                  <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{x.kategorie || 'keine Kategorie'} · {x.monate}× in 12 Monaten · Ø {eur(x.mittel)} {x.schwankung < 0.02 ? '(immer gleich)' : `(±${Math.round(x.schwankung * 100)} %)`}{x.teilweiseMarkiert ? ' · teilweise als Fixkosten markiert' : ''}</div>
                 </div>
                 <div style={{ textAlign: 'right', fontSize: 13.5, fontVariantNumeric: 'tabular-nums' }}>= {eur(x.proMonat)} / Monat</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{rhythmusChip(x.name, x.ids, x.turnus, x.unsicher)}</div>
@@ -146,9 +146,9 @@ export function Fixkosten({ h, katName, patch, aktion, melde, laden }: Props) {
               </div>
               <div style={{ textAlign: 'right', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
                 <div>{eur(ist)}</div>
-                <div style={{ color: soll === null ? C.inkLeise : farbe, fontSize: 12 }}>{soll === null ? 'kein Budget' : ist > soll ? `${eur(ist - soll)} drüber` : `${eur(soll - ist)} übrig`}</div>
+                <div style={{ color: soll === null ? C.inkLeise : farbe, fontSize: TYP.bedien }}>{soll === null ? 'kein Budget' : ist > soll ? `${eur(ist - soll)} drüber` : `${eur(soll - ist)} übrig`}</div>
               </div>
-              <button onClick={() => setBudget(k)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5 }}>{soll ? 'Ändern' : 'Budget setzen'}</button>
+              <button onClick={() => setBudget(k)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien }}>{soll ? 'Ändern' : 'Budget setzen'}</button>
             </div>
           );
         })}
@@ -167,7 +167,7 @@ function PostenZeile({ p, katName, konto, rhythmusChip, onStift }: { p: Sockelpo
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '6px 12px', padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 600 }}>{p.name}</div>
-        <div style={{ fontSize: 12, color: C.inkLeise }}>{kat || 'keine Kategorie'}{kto ? ` · ${kto}` : ''} · {p.anzahl}× in 12 Monaten · Ø {eur(p.mittel)}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{kat || 'keine Kategorie'}{kto ? ` · ${kto}` : ''} · {p.anzahl}× in 12 Monaten · Ø {eur(p.mittel)}</div>
       </div>
       <div style={{ textAlign: 'right', fontSize: 13.5, fontVariantNumeric: 'tabular-nums' }}>= {eur(p.proMonat)} / Monat</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{rhythmusChip(p.name, p.ids, p.turnus, p.unsicher)}</div>
@@ -224,7 +224,7 @@ function PostenDialog({ name, h, patch, aktion, melde, onZu }: { name: string; h
 
   return (
     <Dialog titel={`„${name}“ bearbeiten`} onZu={onZu} aktionen={<Knopf farbe={LEUCHT.schlaf} aus={laeuft} onClick={() => void speichern()}>{laeuft ? 'Speichert …' : 'Speichern'}</Knopf>}>
-      <div style={{ fontSize: 12.5, color: C.inkDim }}>Gilt für alle <strong>{zeilen.length}</strong> Ausgaben-Buchungen dieses Empfängers ({zeilen.length === 1 ? datumDeKurz(zeilen[0].datum) : `${datumDeKurz(zeilen[zeilen.length - 1].datum)} bis ${datumDeKurz(juengste.datum)}`}). Jede Zeile wird mit ihrem Stand gespeichert — hat jemand inzwischen geändert, kommt eine Rückfrage statt Überschreiben.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Gilt für alle <strong>{zeilen.length}</strong> Ausgaben-Buchungen dieses Empfängers ({zeilen.length === 1 ? datumDeKurz(zeilen[0].datum) : `${datumDeKurz(zeilen[zeilen.length - 1].datum)} bis ${datumDeKurz(juengste.datum)}`}). Jede Zeile wird mit ihrem Stand gespeichert — hat jemand inzwischen geändert, kommt eine Rückfrage statt Überschreiben.</div>
       <Feld label="Name / Empfänger-Anzeige"><input value={e.name} onChange={x => setE({ ...e, name: x.target.value })} style={feld} /></Feld>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Feld label={einheitlich ? 'Betrag je Zahlung' : 'Betrag je Zahlung (Beträge unterschiedlich)'}>
@@ -288,7 +288,7 @@ function RhythmusDialog({ name, ids, aktuell, h, patch, aktion, melde, laden, on
             <input type="radio" name="rhythmus" value={t} checked={wahl === t} onChange={() => setWahl(t)} style={{ accentColor: LEUCHT.schlaf }} />
             <span style={{ flex: 1 }}>{turnusName(t)}</span>
             {t === v.turnus && v.sicher && <Chip farbe={LEUCHT.schlaf}>Vorschlag</Chip>}
-            {t === aktuell && t !== v.turnus && <span style={{ fontSize: 12, color: C.inkLeise }}>bisher</span>}
+            {t === aktuell && t !== v.turnus && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>bisher</span>}
           </label>
         ))}
       </div>
@@ -313,7 +313,7 @@ function BudgetDialog({ k, h, patch, melde, onZu }: { k: Kategorie; h: HaushaltD
     }}>Speichern</Knopf>}>
       <div>{schnitt > 0 ? <>In den letzten drei Monaten habt ihr hier durchschnittlich <strong>{eur(schnitt)}</strong> im Monat variabel ausgegeben (ohne Fixkosten).</> : <span style={{ color: C.inkDim }}>Für diese Kategorie gibt es noch keine variablen Vergangenheitswerte.</span>}</div>
       <Feld label="Monatliches Budget in Euro"><input inputMode="decimal" value={wert} onChange={e => setWert(e.target.value)} style={feld} /></Feld>
-      <div style={{ fontSize: 12.5, color: C.inkLeise }}>Leer lassen und speichern entfernt das Budget wieder.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Leer lassen und speichern entfernt das Budget wieder.</div>
     </Dialog>
   );
 }

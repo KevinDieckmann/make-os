@@ -12,8 +12,8 @@
 // das Blatt zeigt nur, was `get(m)` liefert.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { FARBE as C, SCHRIFT, MIKRO } from '@/lib/make-one/design';
-import { LEUCHT, Knopf, feld } from '../schlank';
+import { FARBE as C, SCHRIFT, MIKRO, TYP, ECKE } from '@/lib/make-one/design';
+import { LEUCHT, Knopf, feld } from '../ui';
 import type { Zeile } from '@/lib/finanzen/rechenkern';
 import { key, jahrVon } from '@/lib/finanzen/rechenkern';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
@@ -202,9 +202,9 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   };
 
   const geldStil: CSSProperties = verbergen ? { filter: 'blur(6px)', userSelect: 'none' } : {};
-  const zellStil = (extraStil?: CSSProperties): CSSProperties => ({ padding: '5px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontFamily: SCHRIFT.display, fontSize: 12.5, minWidth: ZELLE_MIN, whiteSpace: 'nowrap', borderBottom: `1px solid ${HAAR}`, position: 'relative', ...extraStil });
+  const zellStil = (extraStil?: CSSProperties): CSSProperties => ({ padding: '5px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontFamily: SCHRIFT.display, fontSize: TYP.bedien, minWidth: ZELLE_MIN, whiteSpace: 'nowrap', borderBottom: `1px solid ${HAAR}`, position: 'relative', ...extraStil });
   const kopfStil: CSSProperties = { ...MIKRO, fontSize: 11, padding: '6px 8px', textAlign: 'right', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: C.flaeche, zIndex: 2, borderBottom: `1px solid ${HAAR}` };
-  const nameStil: CSSProperties = { position: 'sticky', left: 0, background: C.flaeche, zIndex: 1, padding: '5px 10px 5px 4px', fontSize: 12.5, whiteSpace: 'nowrap', textAlign: 'left', borderBottom: `1px solid ${HAAR}`, minWidth: 150, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' };
+  const nameStil: CSSProperties = { position: 'sticky', left: 0, background: C.flaeche, zIndex: 1, padding: '5px 10px 5px 4px', fontSize: TYP.bedien, whiteSpace: 'nowrap', textAlign: 'left', borderBottom: `1px solid ${HAAR}`, minWidth: 150, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' };
 
   let zuG = false;
   const koerper: ReactNode[] = [];
@@ -233,7 +233,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
         <tr key={`g-${r.grp}`}>
           <td style={{ ...nameStil, ...MIKRO, paddingTop: 12, cursor: 'pointer' }} onClick={() => setZu(z => ({ ...z, [r.grp]: !z[r.grp] }))}>
             <span style={{ marginRight: 6 }}>{zuG ? '▸' : '▾'}</span>{r.grp}
-            {r.add && onNeueZeile && <button type="button" onClick={e => { e.stopPropagation(); onNeueZeile(r.add!, r.addG, r.addE); }} style={{ marginLeft: 10, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 11.5, fontWeight: 600, textTransform: 'none', letterSpacing: 0, padding: 0 }}>+ Zeile</button>}
+            {r.add && onNeueZeile && <button type="button" onClick={e => { e.stopPropagation(); onNeueZeile(r.add!, r.addG, r.addE); }} style={{ marginLeft: 10, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, textTransform: 'none', letterSpacing: 0, padding: 0 }}>+ Zeile</button>}
           </td>
           <td colSpan={spalten.length + 1 + (extra?.length ?? 0)} style={{ borderBottom: `1px solid ${HAAR}` }} />
         </tr>,
@@ -280,7 +280,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
             <input autoFocus value={bearbeitet!.text} inputMode="decimal" aria-label={label(eid(r)!, m)} onChange={ev => setBearbeitet(b => (b ? { ...b, text: ev.target.value } : b))}
               onKeyDown={ev => { if (ev.key === 'Enter') { ev.preventDefault(); uebernehme(false); } else if (ev.key === 'Tab') { ev.preventDefault(); uebernehme(true); } else if (ev.key === 'Escape') { fertigRef.current = true; setBearbeitet(null); } }}
               onBlur={() => uebernehme(false)} onFocus={ev => ev.target.select()}
-              style={{ ...feld, width: Math.max(ZELLE_MIN - 4, 8 * bearbeitet!.text.length + 20), padding: '2px 6px', borderRadius: 6, fontSize: 12.5, textAlign: 'right', fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', border: `1px solid ${C.aktiv}` }} />
+              style={{ ...feld, minHeight: 32, width: Math.max(ZELLE_MIN - 4, 8 * bearbeitet!.text.length + 20), padding: '2px 6px', borderRadius: 6, fontSize: TYP.bedien, textAlign: 'right', fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', border: `1px solid ${C.aktiv}` }} />
           ) : <span style={geldStil}>{v == null ? (modus === 'plan' ? '' : '·') : eur(v)}</span>}
           {hatNotiz && !bearb && <span aria-hidden style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: LEUCHT.business }} />}
         </td>
@@ -310,7 +310,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
         <span style={{ flex: 1 }} />
         <Legende eintraege={[{ farbe: LILA, text: 'IST' }, { farbe: LEUCHT.achtung, text: 'überschrieben' }, { farbe: LEUCHT.business, text: 'Notiz' }, { farbe: personFarbe('kevin'), text: 'Kevin' }, { farbe: personFarbe('malin'), text: 'Malin' }]} />
       </div>
-      <div style={{ overflow: 'auto', maxHeight: '72vh', borderRadius: 12, background: C.flaeche, WebkitOverflowScrolling: 'touch' }}>
+      <div className="ui-tabelle" tabIndex={0} role="region" aria-label={`${titel}, Monate als Spalten — seitwärts wischbar`} style={{ overflow: 'auto', maxHeight: '72vh', borderRadius: ECKE.eingabe, background: C.flaeche }}>
         <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', color: C.ink, fontFamily: SCHRIFT.text }}>
           <thead>
             <tr>
@@ -323,7 +323,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
           <tbody>{koerper}</tbody>
         </table>
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>
         Zelle anklicken oder Ziffer tippen · Enter übernimmt · Tab weiter · Pfeile bewegen · Entf setzt zurück · Rechtsklick oder langer Druck: fortschreiben, Notiz.
         {person && <> Änderungen laufen unter <b style={{ color: personFarbe(person) }}>{personName(person)}</b>.</>}
       </div>

@@ -7,7 +7,7 @@
 // „Verbergen“.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
 
@@ -41,6 +41,8 @@ export function Linie({ serien, labels, heute, tick = 3, hoehe = 230, einheit = 
   let mn = Math.min(0, ...alle), mx = Math.max(0, ...alle); if (mx === mn) mx = mn + 1;
   const pad = (mx - mn) * 0.06; mn -= pad; mx += pad;
   const n = Math.max(1, labels.length);
+  // Achsenbeschriftung nie enger als ~64 px: auf schmalem Bildschirm jede zweite, dritte … Marke (immer ein Vielfaches von `tick`).
+  const schritt = Math.ceil(Math.max(tick, Math.ceil(64 / Math.max(1, (W - L - R) / Math.max(1, n - 1)))) / tick) * tick;
   const x = (i: number) => L + (i * (W - L - R)) / Math.max(1, n - 1);
   const y = (v: number) => T + ((mx - v) * (H - T - B)) / (mx - mn);
   const st = achsenSchritt(mn, mx);
@@ -52,16 +54,16 @@ export function Linie({ serien, labels, heute, tick = 3, hoehe = 230, einheit = 
     <div ref={ref} style={{ position: 'relative', width: '100%' }}>
       {W > 0 && (
         <svg width={W} height={H} style={{ display: 'block', overflow: 'visible' }} onMouseMove={bewege} onMouseLeave={() => setHov(null)} aria-hidden>
-          {linien.map(v => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke={Math.abs(v) < 1e-6 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.06)'} /><text x={L - 6} y={y(v) + 4} fill={C.inkLeise} fontSize="11" textAnchor="end" fontFamily={SCHRIFT.text} style={blur}>{kurz(v)}</text></g>)}
-          {labels.map((l, i) => (i % tick === 0 ? <text key={i} x={x(i)} y={H - 6} fill={C.inkLeise} fontSize="11" textAnchor="middle" fontFamily={SCHRIFT.text}>{l}</text> : null))}
-          {heute != null && heute >= 0 && heute < n && <g><line x1={x(heute)} x2={x(heute)} y1={T} y2={H - B} stroke={C.aktiv} strokeDasharray="2 3" /><text x={x(heute) + 4} y={T + 10} fill={C.aktiv} fontSize="11" fontFamily={SCHRIFT.text}>heute</text></g>}
+          {linien.map(v => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke={Math.abs(v) < 1e-6 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.06)'} /><text x={L - 6} y={y(v) + 4} fill={C.inkLeise} fontSize="12" textAnchor="end" fontFamily={SCHRIFT.text} style={blur}>{kurz(v)}</text></g>)}
+          {labels.map((l, i) => (i % schritt === 0 ? <text key={i} x={x(i)} y={H - 6} fill={C.inkLeise} fontSize="12" textAnchor="middle" fontFamily={SCHRIFT.text}>{l}</text> : null))}
+          {heute != null && heute >= 0 && heute < n && <g><line x1={x(heute)} x2={x(heute)} y1={T} y2={H - B} stroke={C.aktiv} strokeDasharray="2 3" /><text x={x(heute) + 4} y={T + 10} fill={C.aktiv} fontSize="12" fontFamily={SCHRIFT.text}>heute</text></g>}
           {serien.map(s => <path key={s.name} d={pfad(s)} fill="none" stroke={s.farbe} strokeWidth={s.breite ?? 2} strokeDasharray={s.gestrichelt ? '4 4' : undefined} strokeLinejoin="round" strokeLinecap="round" />)}
           {hov != null && <line x1={x(hov)} x2={x(hov)} y1={T} y2={H - B} stroke="rgba(255,255,255,.25)" />}
           {hov != null && serien.map(s => { const v = s.werte[hov]; return v == null ? null : <circle key={s.name} cx={x(hov)} cy={y(v)} r={3.5} fill={s.farbe} />; })}
         </svg>
       )}
       {hov != null && (
-        <div style={{ position: 'absolute', top: 6, left: Math.min(x(hov) + 12, Math.max(0, W - 190)), pointerEvents: 'none', background: C.flaecheHoch, borderRadius: 10, padding: '8px 10px', fontSize: 12, color: C.inkDim, boxShadow: '0 12px 30px -10px rgba(0,0,0,.7)', whiteSpace: 'nowrap', zIndex: 3 }}>
+        <div style={{ position: 'absolute', top: 6, left: Math.min(x(hov) + 12, Math.max(0, W - 190)), pointerEvents: 'none', background: C.flaecheHoch, borderRadius: 10, padding: '8px 10px', fontSize: TYP.bedien, color: C.inkDim, boxShadow: '0 12px 30px -10px rgba(0,0,0,.7)', whiteSpace: 'nowrap', zIndex: 3 }}>
           <div style={{ color: C.ink, fontWeight: 700, marginBottom: 3 }}>{labels[hov]}</div>
           {serien.map(s => (s.werte[hov] == null ? null : <div key={s.name} style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}><span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: s.farbe, marginRight: 6 }} />{s.name}</span><span style={{ fontVariantNumeric: 'tabular-nums', color: C.ink, ...blur }}>{eur(s.werte[hov])}{einheit}</span></div>))}
         </div>
@@ -78,6 +80,7 @@ export function Stapel({ stapel, labels, farben, namen, hoehe = 240, tick = 3 }:
   const tot = stapel.map(s => s.reduce((a, b) => a + Math.max(0, b), 0)), neg = stapel.map(s => s.reduce((a, b) => a + Math.min(0, b), 0));
   const mx = Math.max(1, ...tot), mn = Math.min(0, ...neg);
   const n = Math.max(1, labels.length), bw = (W - L - R) / n;
+  const schritt = Math.ceil(Math.max(tick, Math.ceil(64 / Math.max(1, bw))) / tick) * tick;
   const y = (v: number) => T + ((mx - v) * (H - T - B)) / (mx - mn);
   const st = achsenSchritt(mn, mx);
   const linien: number[] = []; for (let v = Math.ceil(mn / st) * st; v <= mx; v += st) linien.push(v);
@@ -86,7 +89,7 @@ export function Stapel({ stapel, labels, farben, namen, hoehe = 240, tick = 3 }:
     <div ref={ref} style={{ position: 'relative', width: '100%' }}>
       {W > 0 && (
         <svg width={W} height={H} style={{ display: 'block' }} onMouseLeave={() => setHov(null)} aria-hidden>
-          {linien.map(v => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,.06)" /><text x={L - 6} y={y(v) + 4} fill={C.inkLeise} fontSize="11" textAnchor="end" fontFamily={SCHRIFT.text} style={blur}>{kurz(v)}</text></g>)}
+          {linien.map(v => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,.06)" /><text x={L - 6} y={y(v) + 4} fill={C.inkLeise} fontSize="12" textAnchor="end" fontFamily={SCHRIFT.text} style={blur}>{kurz(v)}</text></g>)}
           {stapel.map((s, i) => {
             let auf = 0, ab = 0;
             return (
@@ -96,14 +99,14 @@ export function Stapel({ stapel, labels, farben, namen, hoehe = 240, tick = 3 }:
                   if (v >= 0) { const r = <rect key={k} x={L + i * bw + 1.5} width={Math.max(1, bw - 3)} y={y(auf + v)} height={Math.max(0, y(auf) - y(auf + v))} fill={farben[k]} rx={1.5} />; auf += v; return r; }
                   const r = <rect key={k} x={L + i * bw + 1.5} width={Math.max(1, bw - 3)} y={y(ab)} height={Math.max(0, y(ab + v) - y(ab))} fill={farben[k]} opacity={0.7} rx={1.5} />; ab += v; return r;
                 })}
-                {i % tick === 0 && <text x={L + i * bw + bw / 2} y={H - 6} fill={C.inkLeise} fontSize="11" textAnchor="middle" fontFamily={SCHRIFT.text}>{labels[i]}</text>}
+                {i % schritt === 0 && <text x={L + i * bw + bw / 2} y={H - 6} fill={C.inkLeise} fontSize="12" textAnchor="middle" fontFamily={SCHRIFT.text}>{labels[i]}</text>}
               </g>
             );
           })}
         </svg>
       )}
       {hov != null && (
-        <div style={{ position: 'absolute', top: 6, left: Math.min(L + hov * bw + bw + 6, Math.max(0, W - 190)), pointerEvents: 'none', background: C.flaecheHoch, borderRadius: 10, padding: '8px 10px', fontSize: 12, color: C.inkDim, boxShadow: '0 12px 30px -10px rgba(0,0,0,.7)', whiteSpace: 'nowrap', zIndex: 3 }}>
+        <div style={{ position: 'absolute', top: 6, left: Math.min(L + hov * bw + bw + 6, Math.max(0, W - 190)), pointerEvents: 'none', background: C.flaecheHoch, borderRadius: 10, padding: '8px 10px', fontSize: TYP.bedien, color: C.inkDim, boxShadow: '0 12px 30px -10px rgba(0,0,0,.7)', whiteSpace: 'nowrap', zIndex: 3 }}>
           <div style={{ color: C.ink, fontWeight: 700, marginBottom: 3 }}>{labels[hov]}</div>
           {stapel[hov].map((v, k) => <div key={k} style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}><span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: farben[k], marginRight: 6 }} />{namen[k]}</span><span style={{ fontVariantNumeric: 'tabular-nums', color: C.ink, ...blur }}>{eur(v)} €</span></div>)}
         </div>
@@ -148,7 +151,7 @@ export function Fluss({ kanten, hoehe = 360 }: { kanten: FlussKante[]; hoehe?: n
             return (
               <g key={k.n}>
                 <rect x={k.x} y={k.y} width={knotenB} height={k.h} rx={2} fill={C.inkDim} />
-                <text x={tx} y={ty} fill={C.ink} fontSize={schmal ? 11 : 12} textAnchor={an} fontFamily={SCHRIFT.text}>{k.n}<tspan fill={C.inkDim} fontSize="11" style={blur}> {eur(hoehen(k))}</tspan></text>
+                <text x={tx} y={ty} fill={C.ink} fontSize={schmal ? 12 : 13} textAnchor={an} fontFamily={SCHRIFT.text}>{k.n}<tspan fill={C.inkDim} fontSize="12" style={blur}> {eur(hoehen(k))}</tspan></text>
               </g>
             );
           })}

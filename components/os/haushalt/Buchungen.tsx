@@ -6,14 +6,14 @@
 // änderbar und löschbar. Zuordnen lernt eine Regel — auf Wunsch rückwirkend.
 
 import { useEffect, useMemo, useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, ZIEL, ECKE } from '@/lib/make-one/design';
 import type { Buchung, Turnus } from '@/lib/finanzen/haushalt/typen';
 import { eur, zuCent } from '@/lib/finanzen/haushalt/typen';
 import { summen, type KatName } from '@/lib/finanzen/haushalt/einordnung';
 import { aufschluesselung, monateMitDaten, letzterMonatMitDaten } from '@/lib/finanzen/haushalt/kennzahlen';
 import { monatVon, monatName, datumDe } from '@/lib/finanzen/haushalt/monat';
 import { normal, TURNUS_REIHE, turnusName } from '@/lib/finanzen/haushalt/regeln';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../ui';
 import { Betrag, Dialog, Feld, Haken, Hinweis, KategorieOptionen, Leiste, auswahl, type HaushaltDaten, type Op } from './gemeinsam';
 
 interface Props {
@@ -109,9 +109,9 @@ export function Buchungen({ h, katName, patch, aktion, melde, laden, onImport }:
                 <div key={g.id}>
                   <button onClick={() => setOffen(o => ({ ...o, [g.id]: !o[g.id] }))} aria-expanded={auf_} className="zeile-klick" style={{ display: 'grid', gridTemplateColumns: '14px 1fr auto 56px', gap: 10, alignItems: 'center', width: '100%', border: 'none', background: 'transparent', color: C.ink, font: 'inherit', cursor: 'pointer', padding: '8px 4px', textAlign: 'left' }}>
                     <span style={{ color: C.inkLeise }}>{auf_ ? '▾' : '▸'}</span>
-                    <span style={{ minWidth: 0 }}><strong style={{ fontSize: TYP.body }}>{g.name}</strong> <span style={{ color: C.inkLeise, fontSize: 12 }}>({g.anzahl})</span><Leiste anteil={g.summe / max * 100} farbe={farbe} /></span>
+                    <span style={{ minWidth: 0 }}><strong style={{ fontSize: TYP.body }}>{g.name}</strong> <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>({g.anzahl})</span><Leiste anteil={g.summe / max * 100} farbe={farbe} /></span>
                     <Betrag cent={g.summe} farbe={C.ink} />
-                    <span style={{ fontSize: 12.5, color: C.inkDim, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{g.anteil.toFixed(1).replace('.', ',')} %</span>
+                    <span style={{ fontSize: TYP.bedien, color: C.inkDim, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{g.anteil.toFixed(1).replace('.', ',')} %</span>
                   </button>
                   {auf_ && g.haendler.map(x => (
                     <div key={x.name} style={{ display: 'grid', gridTemplateColumns: '14px 1fr auto 56px', gap: 10, padding: '4px 4px 4px 4px', fontSize: 13, color: C.inkDim }}>
@@ -137,16 +137,16 @@ export function Buchungen({ h, katName, patch, aktion, melde, laden, onImport }:
             <div key={b.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '6px 14px', padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: TYP.body, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.empfaenger || '–'}</div>
-                <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.beschreibung}>{datumDe(b.datum)} · {konto(b.konto_id)}{b.beschreibung && b.beschreibung !== b.empfaenger ? ` · ${b.beschreibung.slice(0, 90)}` : ''}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.beschreibung}>{datumDe(b.datum)} · {konto(b.konto_id)}{b.beschreibung && b.beschreibung !== b.empfaenger ? ` · ${b.beschreibung.slice(0, 90)}` : ''}</div>
               </div>
               <div style={{ textAlign: 'right' }}><Betrag cent={b.betrag} vorzeichen /></div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
-                <select aria-label="Kategorie" value={b.kategorie_id ?? ''} onChange={e => void zuordnen(b, e.target.value)} style={{ ...auswahl, padding: '5px 8px', fontSize: 12.5, maxWidth: 230, color: b.kategorie_id ? C.ink : LEUCHT.achtung }}>
+                <select aria-label="Kategorie" value={b.kategorie_id ?? ''} onChange={e => void zuordnen(b, e.target.value)} style={{ ...auswahl, padding: '5px 8px', fontSize: TYP.bedien, maxWidth: 230, color: b.kategorie_id ? C.ink : LEUCHT.achtung }}>
                   <option value="">— offen —</option><KategorieOptionen kategorien={h.stamm.kategorien} />
                 </select>
                 {b.ist_umbuchung && <Chip farbe={C.inkDim}>Umbuchung</Chip>}
                 {b.ist_fixkosten && <Chip farbe={LEUCHT.schlaf}>Fixkosten{b.turnus !== 'monatlich' ? ` · ${turnusName(b.turnus)}` : ''}</Chip>}
-                {b.notiz && <span style={{ fontSize: 12, color: C.inkLeise }} title={b.notiz}>✎</span>}
+                {b.notiz && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }} title={b.notiz}>✎</span>}
               </div>
               <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                 <button onClick={() => setBearb(b)} style={klein}>Bearbeiten</button>
@@ -169,7 +169,7 @@ export function Buchungen({ h, katName, patch, aktion, melde, laden, onImport }:
   );
 }
 
-const klein = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '4px 6px', fontFamily: SCHRIFT.text } as const;
+const klein = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '8px 10px', minHeight: ZIEL.rechner, borderRadius: ECKE.eingabe, fontFamily: SCHRIFT.text } as const;
 
 function MerkenDialog({ b, katId, katName, aktion, melde, laden, onZu }: { b: Buchung; katId: string; katName: KatName; aktion: Props['aktion']; melde: Props['melde']; laden: () => Promise<void>; onZu: () => void }) {
   const muster = b.empfaenger || b.beschreibung;

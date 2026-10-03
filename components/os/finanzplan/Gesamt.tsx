@@ -9,7 +9,7 @@
 // zusammenhängen.
 
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, LEUCHT } from '../ui';
 import { rechneSelbst } from '@/lib/finanzen/rechenkern';
 import { monatLabel, prozent } from '@/lib/finanzen/plan/hilfen';
 import { UG_NAME, UG_KURZ, finanzOrtName } from '@/lib/einheiten';
