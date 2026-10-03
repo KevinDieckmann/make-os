@@ -13,6 +13,8 @@ import type { Event, EventAnmeldung, EventFuer, EventUebergabe, EventZielperson 
 import { istNetzwerkenEvent } from './marke';
 import { wer as teamWer, BEIDE } from './team';
 import { istKontaktKennung } from '@/lib/kennung';
+import { ausgenommen } from './einschraenkung';
+import type { Kontakt } from '@/lib/make-one/crm';
 
 /** Ist das Event ein BESUCHTES (fremde Veranstaltung)? Dieselbe Regel wie die Trennung der Make.One-Kennzahlen. */
 export const istBesuch = (e: Pick<Event, 'marke'>): boolean => istNetzwerkenEvent(e);
@@ -20,6 +22,8 @@ export const istBesuch = (e: Pick<Event, 'marke'>): boolean => istNetzwerkenEven
 /** Obergrenzen — darüber lehnt der Server mit 413 ab (nie still kürzen, `LISTEN_GRENZEN`). */
 export const ZIELPERSONEN_MAX = 300;
 export const UEBERGABEN_MAX = 100;
+/** Personen je Übergabe im Protokoll (`kontaktIds`) — darüber lehnt die Route ab (413), nie still gekürzt. */
+export const UEBERGABE_KONTAKTE_MAX = 3000;
 export const WER_MAX = 8;
 export const LINK_MAX = 500;
 
@@ -109,7 +113,11 @@ export function zielpersonenSaeubern(v: unknown, max = ZIELPERSONEN_MAX): EventZ
   return raus.length ? raus : undefined;
 }
 
-/** Übergabe-Protokoll säubern: Tag, Person, Anzahl — sonst nichts. */
+/**
+ * Übergabe-Protokoll säubern: Tag, Person, Anzahl — dazu (03.10., netz-recht) optional Empfänger (Firma), Dateiname, Kennungen der
+ * übergebenen Personen (nie Namen) und der Haken „Rolle/Vertrag geklärt“. Die Kennungen kürzt die Säuberung nicht still: mehr als
+ * `UEBERGABE_KONTAKTE_MAX` verwirft den ganzen Eintrag nicht, sondern lässt nur die Liste weg — die Route lehnt so große Übergaben vorher ab.
+ */
 export function uebergabenSaeubern(v: unknown, max = UEBERGABEN_MAX): EventUebergabe[] | undefined {
   if (!Array.isArray(v)) return undefined;
   const raus: EventUebergabe[] = [];
@@ -120,10 +128,29 @@ export function uebergabenSaeubern(v: unknown, max = UEBERGABEN_MAX): EventUeber
     const von = text(o.von, 40);
     const n = Number(o.anzahl);
     if (!/^\d{4}-\d{2}-\d{2}/.test(am) || !/^[a-z0-9-]{1,40}$/.test(von) || !Number.isFinite(n) || n < 0) continue;
-    raus.push({ am, von, anzahl: Math.min(100000, Math.round(n)) });
+    const firma = text(o.empfaengerFirmaId, 70);
+    const datei = text(o.dateiname, 120);
+    const ids = Array.isArray(o.kontaktIds) ? Array.from(new Set(o.kontaktIds.filter((k): k is string => typeof k === 'string' && istKontaktKennung(k)))) : [];
+    raus.push({
+      am, von, anzahl: Math.min(100000, Math.round(n)),
+      ...(FIRMA_ID.test(firma) ? { empfaengerFirmaId: firma } : {}),
+      ...(/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(datei) ? { dateiname: datei } : {}),
+      ...(ids.length && ids.length <= UEBERGABE_KONTAKTE_MAX ? { kontaktIds: ids } : {}),
+      ...(o.avvBzwHinweisBestaetigt === true ? { avvBzwHinweisBestaetigt: true } : {}),
+    });
     if (raus.length >= max) break;
   }
   return raus.length ? raus : undefined;
+}
+
+/**
+ * Ist diese Zielperson inzwischen gesperrt (Art. 18 eingeschränkt oder Werbesperre)? Nur für die ANZEIGE in der Event-Akte
+ * („gesperrt“, ausgegraut) — der Server-Weg der Zielpersonen (Neuaufnahme, Haken) lehnt gesperrte Personen selbst ab
+ * (`personenSchranke`). `null` = nicht gesperrt (oder Person nicht in der Kartei).
+ */
+export function zielpersonGesperrt(k: Pick<Kontakt, 'eingeschraenkt' | 'werbesperre'> | null | undefined): 'eingeschraenkt' | 'werbesperre' | null {
+  if (!k || !ausgenommen(k)) return null;
+  return k.eingeschraenkt ? 'eingeschraenkt' : 'werbesperre';
 }
 
 /** Anmeldestand säubern: nur die vier bekannten Werte. */

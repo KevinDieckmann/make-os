@@ -28,6 +28,7 @@ import { WEG } from '@/lib/wege';
 import { istKontaktKennung } from '@/lib/kennung';
 import { sprachnotizTypErkennen } from '@/lib/dateien/regeln';
 import { istEingeschraenkt } from './einschraenkung';
+import { datenschutzHinweisText, DANKE_FRIST_TAGE, type DatenschutzAngaben } from './netzwerken-recht';
 
 // ── Festwerte ───────────────────────────────────────────────────────────────
 
@@ -125,6 +126,11 @@ export interface Erfassung {
   erfasstVon?: string;
   /** Termin ließ sich nicht anlegen (kein Kalender, iCloud weg): stattdessen mit Follow-up abschließen („Termin vereinbaren“). */
   ohneTermin?: boolean;
+  /**
+   * „Wir haben persönlich gesprochen“ (Haken beim Erfassen, Standard an; 03.10., § 7 UWG): nur dann gibt es einen Danke-Entwurf.
+   * `false` = nur Karte erhalten/mitgenommen, kein Gespräch → kein Entwurf, Datenschutzhinweis beim ersten Kontakt. Fehlt = ja.
+   */
+  gesprochen?: boolean;
   firmaId?: string;
   bilder: BildEingabe[];
   sprachnotiz?: { typ: string; daten: string; dauerSek?: number };
@@ -274,7 +280,7 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
   const zustaendig = typeof b.zustaendig === 'string' ? b.zustaendig : '';
   if (!PERSON.test(zustaendig)) return fehler('Bitte wählen, wer zuständig ist.');
 
-  const raus: Erfassung = { erfassungId, erfasstAm, eventId, ...(eventNeu ? { eventNeu } : {}), kontakt: felder, ...(vorhanden ? { vorhandenKontaktId: vorhanden } : {}),
+  const raus: Erfassung = { erfassungId, erfasstAm, eventId, ...(eventNeu ? { eventNeu } : {}), kontakt: felder, ...(vorhanden ? { vorhandenKontaktId: vorhanden } : {}), ...(b.gesprochen === false ? { gesprochen: false } : {}),
     ...(b.neuErzwingen === true ? { neuErzwingen: true } : {}), ...(typeof b.erfasstVon === 'string' && PERSON.test(b.erfasstVon) ? { erfasstVon: b.erfasstVon } : {}), ...(firmaId ? { firmaId } : {}), bilder, ...(sprachnotiz ? { sprachnotiz } : {}),
     schritt: schritt as NetzwerkSchritt, ...(infoRoh ? { info: infoRoh } : {}), zustaendig };
 
@@ -336,12 +342,13 @@ export function netzwerkenAngabeSaeubern(v: unknown): NetzwerkenAngabe | undefin
   if (!zustaendig || !erfasstVon || !am) return undefined;
   const info = typeof o.info === 'string' ? o.info.slice(0, INFO_MAX) : '';
   const d = o.danke && typeof o.danke === 'object' ? o.danke as Record<string, unknown> : null;
-  const danke = d ? { ...(d.anrede === 'Du' || d.anrede === 'Sie' ? { anrede: d.anrede as 'Du' | 'Sie' } : {}), ...(typeof d.rausAm === 'string' && TAG.test(d.rausAm) ? { rausAm: d.rausAm } : {}) } : null;
+  const danke = d ? { ...(d.anrede === 'Du' || d.anrede === 'Sie' ? { anrede: d.anrede as 'Du' | 'Sie' } : {}), ...(typeof d.rausAm === 'string' && TAG.test(d.rausAm) ? { rausAm: d.rausAm } : {}), ...(typeof d.verzichtetAm === 'string' && TAG.test(d.verzichtetAm) ? { verzichtetAm: d.verzichtetAm } : {}) } : null;
   return {
     erfassungId: o.erfassungId, schritt: o.schritt as NetzwerkSchritt, zustaendig, erfasstVon, erfasstAm: am,
     ...(info ? { info } : {}), ...(typeof o.terminAm === 'string' && WAND.test(o.terminAm) ? { terminAm: o.terminAm } : {}),
     ...(typeof o.terminId === 'string' && o.terminId.length <= 200 && o.terminId.trim() ? { terminId: o.terminId } : {}),
     ...(danke && Object.keys(danke).length ? { danke } : {}),
+    ...(o.neuAngelegt === true ? { neuAngelegt: true as const } : {}), ...(o.kartenfoto === true ? { kartenfoto: true as const } : {}), ...(o.keinGespraech === true ? { keinGespraech: true as const } : {}),
   };
 }
 
@@ -486,7 +493,7 @@ const datumDe = (tag: string) => `${tag.slice(8, 10)}.${tag.slice(5, 7)}.`;
  * eine persönliche Nachricht nach dem Gespräch ist erlaubt, ein Angebot oder eine Einladung per Mail ohne Einwilligung nicht).
  * Versand nur per Einzelklick im Mail-Programm (`dankeMailtoLink`) — MAKE OS verschickt hier nichts.
  */
-export function dankeEntwurf(a: { vorname?: string; nachname?: string; anrede: 'Du' | 'Sie'; eventTitel: string; wann: 'gestern' | 'neulich'; schritt?: NetzwerkSchritt; terminAm?: string; absender: string }): { betreff: string; text: string } {
+export function dankeEntwurf(a: { vorname?: string; nachname?: string; anrede: 'Du' | 'Sie'; eventTitel: string; wann: 'gestern' | 'neulich'; schritt?: NetzwerkSchritt; terminAm?: string; absender: string; /** Kunden-Event: Name der Firma, an die die Kontaktdaten weitergehen (Art. 13: Empfänger nennen). */ kunde?: string; /** Kontaktweg und Seite für die Rechte der Person — Standard: MAKE. */ datenschutz?: DatenschutzAngaben }): { betreff: string; text: string } {
   const du = a.anrede === 'Du';
   const vorname = a.vorname?.trim() ?? '', nachname = a.nachname?.trim() ?? '';
   const ansprache = du ? `Hallo ${vorname || nachname}`.trim() + ',' : `Guten Tag ${[vorname, nachname].filter(Boolean).join(' ')}`.trim() + ',';
@@ -496,7 +503,9 @@ export function dankeEntwurf(a: { vorname?: string; nachname?: string; anrede: '
   if (a.schritt === 'termin' && a.terminAm) schluss = `Wie besprochen: Unser Termin ist am ${WOCHENTAG[new Date(`${a.terminAm.slice(0, 10)}T12:00:00Z`).getUTCDay()]}, ${datumDe(a.terminAm.slice(0, 10))} um ${a.terminAm.slice(11, 16)} Uhr.`;
   else if (a.schritt === 'followup') schluss = du ? 'Ich melde mich in den nächsten Tagen bei dir.' : 'Ich melde mich in den nächsten Tagen bei Ihnen.';
   const gruss = du ? 'Bis bald und viele Grüße' : 'Mit freundlichen Grüßen';
-  return { betreff: `Danke für das Gespräch bei ${a.eventTitel}`, text: [ansprache, '', kennengelernt, dank, ...(schluss ? ['', schluss] : []), '', gruss, a.absender].join('\n') };
+  // Art. 13 DSGVO (03.10.): der Hinweis gehört in die erste Nachricht an die Person — kurz, am Ende, mit Rechten und Empfänger.
+  const hinweis = datenschutzHinweisText({ du, ...(a.kunde ? { kunde: a.kunde } : {}), ...(a.datenschutz ? { angaben: a.datenschutz } : {}) });
+  return { betreff: `Danke für das Gespräch bei ${a.eventTitel}`, text: [ansprache, '', kennengelernt, dank, ...(schluss ? ['', schluss] : []), '', gruss, a.absender, '', '—', hinweis].join('\n') };
 }
 
 /** mailto:-Link mit Betreff und Text — nur für eine plausible Adresse. Das Mail-Programm des Geräts öffnet; gesendet wird dort per Klick. */
@@ -515,6 +524,10 @@ export interface DankeZeile {
   mailGrund?: string;
   /** Schon als „raus“ bestätigt (Tag). */
   raus?: string;
+  /** Bewusst nicht gesendet („Nicht senden“, Tag) — die Zeile bleibt sichtbar, zählt aber nie als offen. */
+  verzichtet?: string;
+  /** Älter als `DANKE_FRIST_TAGE` Tage: kein Entwurf mehr (der Anlass ist weg), nicht mehr in Glocke und Heute. */
+  abgelaufen?: boolean;
 }
 
 /**
@@ -531,16 +544,20 @@ export function dankeZeilen(o: { events: readonly Event[]; teilnahmen: readonly 
     if (!n || (o.eventId && t.eventId !== o.eventId)) continue;
     if (o.person && n.erfasstVon !== o.person) continue;
     if (berlinTag(n.erfasstAm) >= o.heute) continue;
+    // § 7 UWG (03.10.): ohne persönliches Gespräch gibt es keinen Danke-Entwurf.
+    if (n.keinGespraech) continue;
     const k = nachKontakt.get(t.kontaktId), e = nachEvent.get(t.eventId);
     if (!k || !e || k.eingeschraenkt) continue;
     const s = k.email ? kanalStatus(k, 'mail', {}) : null;
     const mailOk = !!k.email && !!s && s.farbe !== 'rot';
-    raus.push({ teilnahme: t, kontakt: k, event: e, mailOk, ...(!k.email ? { mailGrund: 'keine E-Mail' } : s && s.farbe === 'rot' ? { mailGrund: s.grund } : {}), ...(n.danke?.rausAm ? { raus: n.danke.rausAm } : {}) });
+    raus.push({ teilnahme: t, kontakt: k, event: e, mailOk, ...(!k.email ? { mailGrund: 'keine E-Mail' } : s && s.farbe === 'rot' ? { mailGrund: s.grund } : {}), ...(n.danke?.rausAm ? { raus: n.danke.rausAm } : {}),
+      ...(n.danke?.verzichtetAm ? { verzichtet: n.danke.verzichtetAm } : {}), ...(tageZwischenTage(berlinTag(n.erfasstAm), o.heute) > DANKE_FRIST_TAGE ? { abgelaufen: true } : {}) });
   }
   return raus.sort((a, b) => a.event.datum.localeCompare(b.event.datum) || anzeigename(a.kontakt).localeCompare(anzeigename(b.kontakt), 'de'));
 }
-/** Wie viele Danke-Mails warten (mit Adresse, noch nicht „raus“)? */
-export const dankeOffen = (z: readonly DankeZeile[]): number => z.filter(x => x.mailOk && !x.raus).length;
+/** Wie viele Danke-Mails warten (mit Adresse, noch nicht „raus“, nicht verzichtet, nicht älter als 14 Tage)? */
+export const dankeOffen = (z: readonly DankeZeile[]): number => z.filter(x => x.mailOk && !x.raus && !x.verzichtet && !x.abgelaufen).length;
+const tageZwischenTage = (von: string, bis: string): number => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
 
 // ── Abendbericht ─────────────────────────────────────────────────────────────
 
@@ -588,8 +605,10 @@ export function berichtAus(o: { event: Event; teilnahmen: readonly Teilnahme[]; 
     const offen: string[] = [];
     if (k.eingeschraenkt) offen.push('Verarbeitung eingeschränkt (Art. 18)');
     else {
-      if (!k.email) offen.push('keine E-Mail — keine Danke-Mail');
-      else if (!n.danke?.rausAm) offen.push(berlinTag(n.erfasstAm) < o.heute ? 'Danke-Mail offen' : 'Danke-Mail ab morgen');
+      if (n.keinGespraech) offen.push('kein Gespräch — Datenschutzhinweis beim ersten Kontakt geben');
+      else if (!k.email) offen.push('keine E-Mail — Datenschutzhinweis beim ersten Kontakt geben');
+      else if (n.danke?.verzichtetAm && !n.danke.rausAm) offen.push('Danke-Mail nicht gesendet — Datenschutzhinweis beim ersten Kontakt geben');
+      else if (!n.danke?.rausAm) offen.push(tageZwischenTage(berlinTag(n.erfasstAm), o.heute) > DANKE_FRIST_TAGE ? 'Danke-Mail nicht mehr angeboten (älter als 14 Tage) — Datenschutzhinweis beim ersten Kontakt geben' : berlinTag(n.erfasstAm) < o.heute ? 'Danke-Mail offen' : 'Danke-Mail ab morgen');
       if (n.schritt === 'followup' && offeneFu.has(k.id)) offen.push('Follow-up offen');
       if (n.schritt === 'qualifizieren' && (!k.lead || k.lead.status === 'qualifizierung')) offen.push('Qualifizierung offen');
       if (n.schritt === 'termin' && !n.terminAm) offen.push('Termin nicht angelegt');

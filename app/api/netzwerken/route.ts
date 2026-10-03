@@ -5,7 +5,9 @@
 // POST { aktion: 'erfassen', … }     → eine Erfassung: Kontakt + Firma + Fotos + Teilnahme + nächster Schritt (+ Termin, Meldung).
 //                                      Idempotent über `erfassungId` (UUID aus dem Browser): derselbe Körper zweimal tut nichts
 //                                      doppelt, ein abgebrochener Lauf macht beim ersten offenen Schritt weiter (lib/crm/netzwerken-server.ts).
-// POST { aktion: 'danke-raus', eventId, kontaktId, anrede? } → die Danke-Mail wurde im Mail-Programm geschickt (Einzelklick) — vermerken.
+// POST { aktion: 'danke-raus', eventId, kontaktId, anrede? } → die Danke-Mail wurde im Mail-Programm geschickt (Einzelklick) — vermerken
+//                                      (+ Datenschutzhinweis erteilt, Art. 13; wiederholbar: ein Retry holt den zweiten Schreibvorgang nach).
+// POST { aktion: 'danke-verzicht', eventId, kontaktId } → „Nicht senden“: bewusst keine Danke-Mail (nimmt sie aus Glocke und Heute).
 //
 // Zugang: eine angemeldete Person im Haushalt des Inhabers. Der Dienstweg (ZOE, Takt, Skripte) darf hier nie schreiben — eine
 // Erfassung ist eine menschliche Handlung (Kontakt anlegen, Termin buchen, Meldung an die andere Person) — und ohne Person
@@ -20,7 +22,7 @@ import { zuGross } from '@/lib/zugang/umfang';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { localDay } from '@/lib/zeit';
 import { erfassungPruefen, KOERPER_MAX, DAUERN } from '@/lib/crm/netzwerken';
-import { erfassungAusfuehren, dankeRausVermerken, freieVorschlaege, ErfassungFehler } from '@/lib/crm/netzwerken-server';
+import { erfassungAusfuehren, dankeRausVermerken, dankeVerzichten, freieVorschlaege, ErfassungFehler } from '@/lib/crm/netzwerken-server';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -74,7 +76,13 @@ export async function POST(req: Request) {
     const r = await dankeRausVermerken({ eventId, kontaktId, person: z.person, wer: werAus(req), ...(body.anrede === 'Du' || body.anrede === 'Sie' ? { anrede: body.anrede } : {}) });
     return r.ok ? NextResponse.json(r) : fehler(r.fehler, r.status);
   }
-  if (body.aktion !== undefined && body.aktion !== 'erfassen') return fehler('aktion: erfassen oder danke-raus.', 400);
+  if (body.aktion === 'danke-verzicht') {
+    const eventId = typeof body.eventId === 'string' ? body.eventId : '', kontaktId = typeof body.kontaktId === 'string' ? body.kontaktId : '';
+    if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(eventId) || !/^c-[a-z0-9-]{4,60}$/.test(kontaktId)) return fehler('Event oder Person fehlt.', 400);
+    const r = await dankeVerzichten({ eventId, kontaktId, person: z.person, wer: werAus(req) });
+    return r.ok ? NextResponse.json(r) : fehler(r.fehler, r.status);
+  }
+  if (body.aktion !== undefined && body.aktion !== 'erfassen') return fehler('aktion: erfassen, danke-raus oder danke-verzicht.', 400);
 
   const p = erfassungPruefen(body, { heute: localDay() });
   if (!p.ok) return fehler(p.fehler, p.status);

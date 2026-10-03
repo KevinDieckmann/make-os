@@ -366,8 +366,12 @@ export type EventFuer = { art: 'make' } | { art: 'kunde'; firmaId: string; manda
 export type EventAnmeldung = 'geplant' | 'angemeldet' | 'abgesagt' | 'besucht';
 /** Ein Ziel „wen wollen wir treffen“: eine Person oder eine Firma der Kartei; `getroffen` wird beim Event abgehakt. */
 export interface EventZielperson { kontaktId?: string; firmaId?: string; getroffen?: boolean }
-/** Ein Eintrag im Übergabe-Protokoll (An Kunden übergeben). */
-export interface EventUebergabe { am: string; von: string; anzahl: number }
+/**
+ * Ein Eintrag im Übergabe-Protokoll (An Kunden übergeben) — die Übermittlung an einen Dritten (Art. 13/15/19 DSGVO).
+ * Seit 03.10. (netz-recht) optional dazu: Empfänger (Kunden-Firma), Dateiname, Kennungen der übergebenen Personen (fallen bei Art. 17
+ * mit der Person weg — `personEntfernen`) und `avvBzwHinweisBestaetigt` (der Haken im Dialog: Rolle/Vertrag mit dem Kunden geklärt).
+ */
+export interface EventUebergabe { am: string; von: string; anzahl: number; empfaengerFirmaId?: string; dateiname?: string; kontaktIds?: string[]; avvBzwHinweisBestaetigt?: boolean }
 /** Die Schritte nach dem Kennenlernen (Netzwerken — Erfassen, 02.10.). Liste, Beschriftung und Regeln: lib/crm/netzwerken.ts. */
 export type NetzwerkSchritt = 'termin' | 'qualifizieren' | 'followup' | 'vermitteln' | 'andere' | 'angebot' | 'makeone' | 'nur-kontakt';
 /** Was „Netzwerken“ an der Teilnahme festhält (alles optional im Altbestand; gesäubert in lib/crm/speicher.ts `zusatz`). */
@@ -387,8 +391,17 @@ export interface NetzwerkenAngabe {
   terminAm?: string;
   /** Schlüssel des Termins im Kalender (Link „Termin öffnen“) — erst gesetzt, wenn der Termin wirklich angelegt ist. */
   terminId?: string;
-  /** Danke-Mail: gewählte Anrede und der Tag, an dem sie als „raus“ bestätigt wurde. */
-  danke?: { anrede?: 'Du' | 'Sie'; rausAm?: string };
+  /**
+   * Danke-Mail: gewählte Anrede, der Tag, an dem sie als „raus“ bestätigt wurde, bzw. der Tag, an dem bewusst darauf verzichtet wurde
+   * („Nicht senden“, 03.10.) — beides nimmt sie aus Glocke und Heute.
+   */
+  danke?: { anrede?: 'Du' | 'Sie'; rausAm?: string; verzichtetAm?: string };
+  /** An DIESEM Event neu angelegt (nicht vorher bekannt, nicht angehängt) — nur sie gehen ungefragt in den Kunden-Export (03.10.). */
+  neuAngelegt?: true;
+  /** Beim Erfassen wurde die Visitenkarte fotografiert — Herkunftsangabe im Kunden-Export (das Foto selbst fällt nach 6 Monaten). */
+  kartenfoto?: true;
+  /** Es gab KEIN persönliches Gespräch (Haken beim Erfassen) — dann kein Danke-Entwurf (§ 7 UWG), Datenschutzhinweis beim ersten Kontakt. */
+  keinGespraech?: true;
 }
 export type TeilnahmeStatus = 'vorgemerkt' | 'eingeladen' | 'zugesagt' | 'abgesagt' | 'da' | 'no_show';
 export interface Teilnahme {

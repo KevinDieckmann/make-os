@@ -8,6 +8,9 @@
 //   loeschfristVerlaengert  immer der gespeicherte Wert (nur POST /api/crm/datenschutz)
 //   geprueftAm/Von          „Stammdaten geprüft“: geändert → heute + Person; sonst der gespeicherte Wert
 //   hinweisBeiErhebung      neu/anderer Tag → Tag (höchstens heute) + Person; unverändert → gespeichert (mit Person)
+//   rechtsgrundlageNotiz,   Netzwerken (03.10.): nur der Server setzt sie (netzwerken-server.ts, nach dem Stempeln) — was der Browser
+//   kennengelerntFuer,      schickt, fällt weg; der gespeicherte Wert bleibt
+//   datenschutzInformiertAm
 //
 // `pruefeDatenschutz` sagt vorher (in der Schreibsperre), ob eine Änderung abgelehnt wird:
 // neue Einwilligung ohne Wortlaut/Beleg, Bearbeiten einer eingeschränkten Person (Art. 18).
@@ -20,8 +23,11 @@ const PERSON = /^[a-z0-9-]{1,40}$/;
 
 export function datenschutzStempeln(neu: Kontakt, alt: Kontakt | undefined, person: string, jetztIso: string, heute: string): Kontakt {
   const wer = PERSON.test(person) ? person : 'system';
-  const { eingeschraenkt: _e, loeschfristVerlaengert: _l, geprueftAm: _ga, geprueftVon: _gv, hinweisBeiErhebung: hinweis, einwilligungen: _ew, ...rest } = neu;
+  const { eingeschraenkt: _e, loeschfristVerlaengert: _l, geprueftAm: _ga, geprueftVon: _gv, hinweisBeiErhebung: hinweis, einwilligungen: _ew, rechtsgrundlageNotiz: _rn, kennengelerntFuer: _kf, datenschutzInformiertAm: _di, ...rest } = neu;
   const out: Kontakt = { ...rest } as Kontakt;
+  if (alt?.rechtsgrundlageNotiz) out.rechtsgrundlageNotiz = alt.rechtsgrundlageNotiz;
+  if (alt?.kennengelerntFuer?.length) out.kennengelerntFuer = alt.kennengelerntFuer;
+  if (alt?.datenschutzInformiertAm) out.datenschutzInformiertAm = alt.datenschutzInformiertAm;
   if (alt?.eingeschraenkt) out.eingeschraenkt = alt.eingeschraenkt;
   if (alt?.loeschfristVerlaengert) out.loeschfristVerlaengert = alt.loeschfristVerlaengert;
 
