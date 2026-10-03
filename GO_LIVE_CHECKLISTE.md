@@ -151,6 +151,16 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   (Events › Event-Akte › „An Kunden übergeben“ — Tag, Person, Anzahl); wer nach dem Rückweg ein solches Event im alten Stand ändert, trägt es nach dem nächsten Upload neu ein.
   Sichtbar nach dem Rückweg: der Reiter „Events“ ist weg, besuchte Events (`marke: Netzwerken`) stehen wieder in der Make.One-Liste, und die 48-h-Kennzahl der Make.One-Abende
   rechnet ihre Gäste wieder mit (wie vor dieser Änderung). Die CSV-Übergabe selbst liegt nur im Browser-Download — nichts davon im Bestand. Nach einem erneuten Upload: nichts nachzuziehen.
+- **Netzwerken — Recht (03.10., Branch `netz-recht`):** keine Formänderung, nur optionale Felder; der alte Stand (1818c5c) verwirft sie beim nächsten Schreiben desselben Eintrags:
+  - am Kontakt `rechtsgrundlageNotiz`, `kennengelerntFuer`, `datenschutzInformiertAm` (der Säuberer des alten Stands kennt sie nicht) — **vor dem Rückweg notieren:** Personen mit „kennengelernt für <Kunde>“ (Kontakte › Label „Netzwerken“, Akte › Recht);
+  - an der Teilnahme `netzwerken.neuAngelegt`, `kartenfoto`, `keinGespraech`, `danke.verzichtetAm` — sie fehlen dann; **ein späterer Export wüsste nicht mehr, wer neu angelegt war** (alles gälte als Bestand, nur mit Haken). Vor dem Rückweg offene Kunden-Übergaben erledigen;
+  - am Event das erweiterte Übergabe-Protokoll (`empfaengerFirmaId`, `dateiname`, `kontaktIds`, Haken) — der alte Stand kennt `uebergaben` ohnehin nicht (siehe Events);
+  - neuer Bestand `uebergabe-journal--<haushalt>` (Nachweis gelöschter Events): der alte Stand ignoriert die Datei, sie bleibt liegen; Art. 17/15 des alten Stands kennt sie nicht → **vor dem Rückweg keine Art.-17-Löschung durchführen, die mit Übergaben zu tun hat**, oder die Datei danach prüfen; nach einem erneuten Upload gilt sie wieder (Register: „tilgen“);
+  - **Browser-Warteschlange:** IndexedDB wird auf Version 2 gehoben (Speicher `schluessel`), der Körper liegt dort verschlüsselt — der alte Browser-Code öffnet Version 1 und scheitert an der höheren Version (Rückfall: Arbeitsspeicher), kann die Einträge nicht lesen. **Vor dem Rückweg alle Handys leer senden lassen** (Abzeichen „n warten“ muss weg sein); Reste verwirft das Abmelden;
+  - neue Löschfrist-Arten (`netzwerken-*`, `uebergabe-protokolle`) in `crm-loeschfristen`: der alte Stand ignoriert unbekannte Schlüssel; die Prüf-Aufgabe „Kontakte über der Löschfrist“ zählt dort wieder nur die 24-Monats-Fälle;
+  - VVT: die drei nachgetragenen Verarbeitungen (`vv-netzwerken`, `vv-besuche-kunde`, `vv-kunden-export`) bleiben im Verzeichnis stehen (gewöhnliche Einträge) — nichts nachzuziehen;
+  - Kampagnen-Ampel, Danke-Hinweis, Telegram-Text, Fotos ohne Exif und `TRANSKRIPTION_AN` sind Code ohne Daten — verschwinden mit dem Rückweg (Fotos, die schon ohne Exif abgelegt sind, bleiben es).
+  Nach einem erneuten Upload: nichts nachzuziehen (fehlende `neuAngelegt`-Angaben gelten als Bestand — konservativ).
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

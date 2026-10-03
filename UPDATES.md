@@ -4,6 +4,26 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Netzwerken & Events — Recht: Interessenabwägung, Übermittlung an Kunden, Löschfristen (03.10.2026, nur lokal — Branch `netz-recht`)
+
+Kevins Entscheidung 03.10.: Kontakte, die wir als Interim CSO / Head of Sales **für einen Kunden** erfassen, „gehören immer auch uns“ — MAKE ist eigener Verantwortlicher (Art. 6 Abs. 1 lit. f), keine Sperre für die eigene Akquise; die Weitergabe an den Kunden ist eine Übermittlung an einen Dritten. Doku und Interessenabwägung: `DATENSCHUTZ_NETZWERKEN.md`. **Hinweis, keine Rechtsberatung — anwaltlich gegenlesen lassen.**
+
+- **Markierung am Kontakt:** `rechtsgrundlageNotiz` („LIA-Netzwerken v1“, nur bei neu angelegten Personen), `kennengelerntFuer` (Kunde, Event, Tag), `datenschutzInformiertAm` — nur der Server setzt sie; in der Kontaktakte › Recht sichtbar („kennengelernt für <Kunde> bei <Event>“, Datenschutzhinweis erteilt / „Heute persönlich erteilt“).
+- **An Kunden übergeben** (Event-Akte, neuer Dialog): Vorschau — an diesem Event **neu angelegte** Personen gehen mit, **Bestandspersonen nur mit Haken je Person** (Anzahl der Ausgelassenen steht da), „noch nicht informiert“ ist markiert, gesperrte nie; Pflicht-Haken „Rolle und Vertrag mit dem Kunden geklärt“.
+  CSV: Herkunft je Zeile aus den Daten, Telefon ohne Apostroph (streng geprüft), Berliner Tag, Spalte „Datenschutzhinweis erteilt“; nach dem Download „Nach der Weitergabe die Datei löschen.“ Protokoll mit **Empfänger, Dateiname, Kennungen, Haken**; der Browser kann es nicht setzen. Event löschen mit Übergaben: Warnung + Bestätigung, das Protokoll geht ins **Übergabe-Journal** (36 Monate).
+  Die alten Texte „AVV nötig / Auftragsverarbeitung“ sind durch „Übermittlung, eigener Verantwortlicher; Rolle mit dem Anwalt klären“ ersetzt.
+- **Art. 15/17/19:** Auskunft nennt „übergeben am … an <Kunde>“; der Lösch-Bericht sagt „Person wurde am … an <Kunde> übergeben — dort informieren (Art. 19)“ (die Mitteilung schickt ein Mensch).
+- **Art. 13:** die Danke-Mail trägt am Ende den Datenschutzhinweis (bei Kunden-Events mit Empfänger); „Ist raus“ setzt `datenschutzInformiertAm` (zweiter Schreibvorgang wiederholbar). Ohne Mail/Gespräch: Bericht und Follow-up sagen „Datenschutzhinweis beim ersten Kontakt geben“. Selbstprüfung: „Information bei Veranstaltungs-Kontakten“, Verzeichnis prüft die neuen Verarbeitungen.
+- **UWG:** beim Erfassen Haken „Wir haben persönlich gesprochen“ (Standard an; sonst kein Danke-Entwurf); fester Hinweis „Nur Dank und Verabredetes …“, Rückfrage vor „In Mail öffnen“ bei Angebot/Einladung/Newsletter/Rabatt; Danke-Mails nach 14 Tagen nicht mehr in Glocke/Heute; „Nicht senden“.
+- **Hinweistexte (dezent):** Sprachnotiz („Nur eigene Notiz … § 201 StGB, keine sensiblen Angaben“), Foto („Nur die Visitenkarte fotografieren, keine Personen“), Info („keine sensiblen Angaben“), „Auch im Handy speichern“ („liegt dann in Apple Kontakte (iCloud) — Löschen und Auskunft dort selbst“).
+- **VVT:** `vv-netzwerken`, `vv-besuche-kunde`, `vv-kunden-export` werden beim Öffnen von Stammdaten idempotent nachgetragen. **Löschfristen** (Stammdaten › Datenschutz, anpassbar): Kartenfoto 6 Monate, Sprachnotiz 90 Tage, Gesprächs-Info/Zielpersonen 12 Monate nach dem Event (automatisch);
+  Netzwerken-Kontakte ohne Interaktion 12 Monate (nur Prüf-Aufgabe, in der bestehenden Löschfrist-Aufgabe); Übergabe-Protokolle 36 Monate.
+- **Offline-Warteschlange:** im Browser nur noch **verschlüsselt** (AES-GCM, nicht exportierbarer Schlüssel); ab 14 Tagen „Erfassung vom … noch nicht gesendet: senden oder verwerfen“, nach 30 Tagen automatisch verworfen (mit Anzeige); Abmelden löscht nach Bestätigung auch Wartendes (klare Warnung).
+- **Weitere Punkte:** Kampagnen mit Mail/LinkedIn lehnen Personen mit roter Ampel ab, gelbe nur mit Hinweis · Zielpersonen, die später gesperrt werden, stehen ausgegraut („gesperrt“) · Telegram-Meldungen zu Netzwerken ohne Namen („Neue Person zugeteilt — Details in MAKE OS“, der Haken bleibt aus) ·
+  KI-Transkript der Sprachnotiz vorbereitet, **aus** (`TRANSKRIPTION_AN` am Server, erst mit AVV/SCC des Anbieters) · Fotos verlieren Exif/GPS (Browser-Rückfall und Server) · Website-Entwurf `website/datenschutz.html#kontakte` (Platzhalter, **nicht veröffentlicht**).
+- **Rückweg:** nur optionale Felder; der alte Stand verwirft sie beim nächsten Schreiben desselben Eintrags — Details `GO_LIVE_CHECKLISTE.md` › Rückweg.
+- **Was Kevin außerhalb der Software tun muss:** AVV/Verträge (Hetzner, Microsoft, Apple, Anthropic; Vertrag mit dem Kunden und die Rolle klären) · Datenschutzerklärung freigeben (Platzhalter in `website/datenschutz.html`) · VVT als Dokument ablegen · Interessenabwägung anwaltlich prüfen · Pflichtangaben in der Mail-Signatur · Geräteregel für Handys.
+
 ## Events (besuchte Veranstaltungen) neben Make.One (03.10.2026, nur lokal — Branch `events`)
 
 Kevin 03.10.: „Einmal wirklich Make.One und daneben das ganze Thema Events. Dann verbinden wir die beiden Sachen. Dann können auch die Events sauber vernetzt werden, auch wenn wir für Kunden unterwegs sind.“
