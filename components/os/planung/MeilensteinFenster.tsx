@@ -32,7 +32,7 @@ import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { loescheMeilenstein } from './meilenstein-loeschen';
 import { neueKennung } from '@/lib/kennung';
 import { Fenster } from '../Fenster';
-import { Knopf, feld, LEUCHT } from '../schlank';
+import { Knopf, feld, LEUCHT } from '../ui';
 import { MandatWahl, useMandate } from '../zeit/MandatWahl';
 import type { PlanungStand } from './usePlanung';
 import type { Rueckgaengig } from './Rueckgaengig';
@@ -67,7 +67,7 @@ async function aufgabenAnlegen(meilensteinId: string, titel: string[]): Promise<
 }
 const NEU_EINHEIT = '__neu__';
 const wahl: CSSProperties = { ...feld, colorScheme: 'dark', cursor: 'pointer' };
-const beschriftung: CSSProperties = { display: 'grid', gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: C.inkLeise, minWidth: 0 };
+const beschriftung: CSSProperties = { display: 'grid', gap: 6, fontSize: TYP.bedien, fontWeight: 700, letterSpacing: '.04em', color: C.inkLeise, minWidth: 0 };
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
 
 function formAus(m: Meilenstein | null, v: MsVorgabe): Form {
@@ -266,7 +266,7 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
                 </span>
               ))}
               {f.wartetAuf.length >= KETTE_MAX
-                ? <span style={{ fontSize: 12, color: LEUCHT.achtung, fontWeight: 500, letterSpacing: 0, textTransform: 'none' }}>höchstens {KETTE_MAX} Vorgänger</span>
+                ? <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, fontWeight: 500, letterSpacing: 0, textTransform: 'none' }}>höchstens {KETTE_MAX} Vorgänger</span>
                 : kandidaten.length > 0 && (
                   <select value="" aria-label="Vorgänger hinzufügen" onChange={e => { if (e.target.value) setze({ wartetAuf: [...f.wartetAuf, e.target.value] }); }} style={{ ...wahl, flex: '1 1 200px', minWidth: 0 }}>
                     <option value="">{vorgaenger.length ? '+ weiterer Vorgänger …' : '+ Vorgänger wählen …'}</option>
@@ -276,11 +276,11 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
                 )}
             </div>
             {frueher.length > 0 && (
-              <span role="status" style={{ fontSize: 12, color: LEUCHT.achtung, fontWeight: 500, letterSpacing: 0, textTransform: 'none', lineHeight: 1.45 }}>
+              <span role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, fontWeight: 500, letterSpacing: 0, textTransform: 'none', lineHeight: 1.45 }}>
                 Hinweis: Das Datum liegt vor dem von „{frueher[0].titel}“ ({dtKurz(frueher[0].faellig)}){frueher.length > 1 ? ` und ${frueher.length - 1} weiteren` : ''} — du kannst es trotzdem so planen.
               </span>
             )}
-            {vorgaenger.length === 0 && <span style={{ fontSize: 12, color: C.inkLeise, fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>Erst wenn die Vorgänger erledigt sind, ist dieser Meilenstein dran — bis dahin steht er als „wartet“.</span>}
+            {vorgaenger.length === 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>Erst wenn die Vorgänger erledigt sind, ist dieser Meilenstein dran — bis dahin steht er als „wartet“.</span>}
           </div>
         )}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -297,15 +297,15 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
         {!m && (
           <label style={beschriftung}>Erste Aufgaben (optional, eine je Zeile)
             <textarea value={f.aufgaben} onChange={e => setze({ aufgaben: e.target.value })} rows={4} placeholder={'Vertrag entwerfen\nTermin mit Steuerberater\nKonto eröffnen'} style={{ ...feld, resize: 'vertical', minHeight: 90, fontFamily: 'inherit' }} />
-            <span style={{ fontSize: 12, color: C.inkLeise }}>Werden echte Aufgaben im Meilenstein — Unteraufgaben, Fristen und Verantwortliche danach im Meilenstein.</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Werden echte Aufgaben im Meilenstein — Unteraufgaben, Fristen und Verantwortliche danach im Meilenstein.</span>
           </label>
         )}
         <label style={beschriftung}>Messlatte (optional)
           <input value={f.messlatte} onChange={e => setze({ messlatte: e.target.value })} placeholder="Woran messen wir „fertig“?" style={feld} maxLength={300} />
         </label>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
-          {meldung && <span style={{ fontSize: 12, color: LEUCHT.achtung, flexBasis: '100%' }}>{meldung}</span>}
-          {angelegt > 0 && <span style={{ fontSize: 12, color: LEUCHT.gut, marginRight: 'auto' }}>{angelegt} angelegt — Datum und Einheit bleiben stehen</span>}
+          {meldung && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, flexBasis: '100%' }}>{meldung}</span>}
+          {angelegt > 0 && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, marginRight: 'auto' }}>{angelegt} angelegt — Datum und Einheit bleiben stehen</span>}
           {onOeffnen && <Knopf leise onClick={onOeffnen}>Aufgaben & Verlauf öffnen ›</Knopf>}
           {onLoeschen && <span style={{ marginRight: angelegt ? 0 : 'auto' }}><Knopf leise onClick={onLoeschen}>Löschen</Knopf></span>}
           <Knopf leise onClick={onZu}>{angelegt ? 'Fertig' : 'Abbrechen'}</Knopf>

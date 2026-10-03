@@ -10,15 +10,17 @@
 //   4. Zeit je Einheit + Fokus-Blöcke (27.09. spät) — bewusste Business-Zeit je Selbstständigkeit ·
 //      KD Ventures · MAKE Innovation GmbH, Blöcke nachträglich einer Aufgabe/Einheit zuordnen
 //   5. Zeit je Mandat (28.09., „Mandat an Zielen und Zeit“) — für Abrechnung und Auslastung
+//   6. Lichtfäden (03.10.) — übergreifend (Wurzel Gesamt): alle Stränge, Engstellen, eine Ebene tiefer per Tippen
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
-import { Seite, Karte, Ueberschrift, Ring, Chip, Knopf, Leer, feld, zoneFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Ring, Chip, Knopf, Leer, feld, zoneFarbe, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { ZeitJeEinheitKarte, FokusBloeckeKarte } from './zeit/ZeitJeEinheit';
 import { ZeitJeMandatKarte } from './zeit/ZeitJeMandat';
+import { Lichtfaeden } from './lichtfaeden/Lichtfaeden';
 
 type Horizont = 'tag' | 'woche' | 'monat';
 const HORIZONTE: { id: Horizont; label: string; frage: string }[] = [
@@ -87,6 +89,12 @@ export function FokusView() {
       </Karte>
       </Kachel>
 
+      {/* Lichtfäden (03.10., Kevin: „ein Werkzeug, was Fokus anzeigt, weil extrem viele Stränge zusammenlaufen“): übergreifend,
+          Wurzel = Gesamt — Business und Privat in einem Strang, Engstellen der nächsten Wochen; zuerst die eigenen Stränge. */}
+      <Kachel id="lichtfaeden" titel="Lichtfäden" breite={6}>
+        <Lichtfaeden wurzel="gesamt" person="ich" titel="Wo alles zusammenläuft" i={1} />
+      </Kachel>
+
       <Kachel id="tagesform" titel="Tagesform" breite={3}>
       <Karte i={1} akzent={zone ? zoneFarbe(rec) : undefined}>
         <Ueberschrift farbe={zone ? zoneFarbe(rec) : undefined} rechts={<Link href="/os/gesundheit" style={{ color: C.inkLeise, textDecoration: 'none', fontSize: TYP.bedien }}>Gesundheit ›</Link>}>Tagesform</Ueberschrift>
@@ -117,7 +125,7 @@ export function FokusView() {
                 </div>
               );
             })}
-            <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 4 }}>Die Regler bestimmen, welche Aufgaben im Tagesplan als Fokus markiert werden und wie der Wochenplan gewichtet.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>Die Regler bestimmen, welche Aufgaben im Tagesplan als Fokus markiert werden und wie der Wochenplan gewichtet.</div>
           </div>
         ) : <Leer>Noch keine Regler gesetzt — im Kompass einstellen.</Leer>}
       </Karte>

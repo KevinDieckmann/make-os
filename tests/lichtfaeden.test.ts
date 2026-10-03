@@ -1,117 +1,13 @@
-// ─── Lichtfäden (03.10.): Dichte aus echten Daten, Mathematik, Markierungs-Layout, reduzierte Bewegung, Website-Kopie ─
+// ─── Lichtfäden (03.10.): Mathematik, Markierungs-Layout, Helligkeit, reduzierte Bewegung, Website-Kopie ─
+// Modell, Quellen, Baum, Engstellen, Route und Oberfläche der v2 prüfen tests/lichtfaeden-*.test.ts.
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { faedenDichte, lichtText, montag, DICHTE_GEWICHT, OHNE_ZIEL, MAX_ZIEL_BUENDEL, type DichteAufgabe } from '@/lib/lichtfaeden/dichte';
 import { fadenSaaten, versatz, gauss, saettigen, wertBei, kurve, textSaat, zufall, spreizung, LICHTFAEDEN } from '@/lib/lichtfaeden/band';
 import { starteLauf } from '@/lib/lichtfaeden/zeichnen';
-import { ZEITBAND_MASSE, zeitbandMasse, hellBei, type ZeitbandDaten } from '@/lib/lichtfaeden/zeitband';
-import { buendelFarben } from '@/lib/lichtfaeden/farben';
-import { FADEN_FARBEN } from '@/lib/make-one/design';
-import { meilensteinListeId } from '@/lib/planung/meilenstein-aufgaben';
+import { BAND_MASSE, bandMasse, hellBei, dichteBei, sanft, type BandBild } from '@/lib/lichtfaeden/faedenband';
 import { stapeln } from '@/lib/planung/zeitstrahl';
 import { erzeugen, ZIEL } from '../scripts/lichtfaeden-website.mjs';
-
-const RAUM = { von: '2026-01-01', bis: '2027-12-31' };
-const ZIELE = [
-  { id: 'z-a', titel: 'Alpha', space: 'business' as const, rang: 2 },
-  { id: 'z-b', titel: 'Beta', space: 'business' as const, rang: 1 },
-  { id: 'z-p', titel: 'Privat eins', space: 'privat' as const, rang: 1 },
-];
-const MS = [
-  { id: 'm-1', faellig: '2026-11-04', erledigt: false, zielId: 'z-a' },
-  { id: 'm-2', faellig: '2026-03-02', erledigt: true, zielId: 'z-a' },
-  { id: 'm-3', faellig: '2027-02-10', erledigt: false, zielId: 'z-b' },
-  { id: 'm-4', faellig: '2026-11-20', erledigt: false },
-];
-const AUFG: DichteAufgabe[] = [
-  { dueDate: '2026-11-02', status: 'todo', priority: 'high', listeId: meilensteinListeId('m-1') },
-  { dueDate: '2026-11-03', status: 'todo', priority: 'medium', listeId: meilensteinListeId('m-1') },
-  { dueDate: '2026-11-03', status: 'done', priority: 'medium', listeId: meilensteinListeId('m-1') },
-  { dueDate: '2026-11-05', status: 'cancelled', priority: 'medium', listeId: meilensteinListeId('m-1') },
-  { dueDate: '2026-07-01', status: 'todo', priority: 'low' },
-];
-const woche = (d: ReturnType<typeof faedenDichte>, tag: string) => d.wochen.indexOf(montag(tag));
-const b = (d: ReturnType<typeof faedenDichte>, id: string) => d.buendel.find(x => x.id === id)!;
-
-describe('faedenDichte — Dichte je Woche aus echten Daten', () => {
-  it('ist deterministisch: gleiche Daten = gleiche Zahlen (auch bei anderer Reihenfolge)', () => {
-    const a = faedenDichte(ZIELE, MS, AUFG, undefined, RAUM);
-    const c = faedenDichte([...ZIELE].reverse(), [...MS].reverse(), [...AUFG].reverse(), undefined, RAUM);
-    expect(JSON.stringify(a)).toBe(JSON.stringify(faedenDichte(ZIELE, MS, AUFG, undefined, RAUM)));
-    expect(c.buendel.map(x => x.id)).toEqual(a.buendel.map(x => x.id));
-    expect(c.buendel.map(x => x.roh)).toEqual(a.buendel.map(x => x.roh));
-  });
-
-  it('Wochen: Montag bis Ende des Zeitraums, ein Bündel je Ziel (Rang, dann Titel) plus „ohne Ziel“ nur bei Bedarf', () => {
-    const d = faedenDichte(ZIELE, MS, AUFG, undefined, RAUM);
-    expect(d.wochen[0]).toBe('2025-12-29');
-    expect(d.wochen.at(-1)! <= RAUM.bis).toBe(true);
-    expect(d.wochen.length).toBe(105);
-    expect(d.buendel.map(x => x.id)).toEqual(['z-b', 'z-p', 'z-a', OHNE_ZIEL]);
-    expect(faedenDichte(ZIELE.slice(0, 1), [], [], undefined, RAUM).buendel.map(x => x.id)).toEqual(['z-a']);
-  });
-
-  it('Gewichtung: offener Meilenstein 3, erledigter 1, offene Aufgabe 1 (dringend 1,5) über die Liste des Meilensteins; erledigte/abgebrochene zählen nicht', () => {
-    const d = faedenDichte(ZIELE, MS, AUFG, undefined, RAUM);
-    const a = b(d, 'z-a');
-    // Woche ab 02.11.2026: m-1 (3) + hohe Aufgabe (1,5) + mittlere (1) — die erledigte und die abgebrochene nicht.
-    expect(a.roh[woche(d, '2026-11-04')]).toBe(DICHTE_GEWICHT.meilensteinOffen + DICHTE_GEWICHT.aufgabeDringend + DICHTE_GEWICHT.aufgabe);
-    expect(a.roh[woche(d, '2026-03-02')]).toBe(DICHTE_GEWICHT.meilensteinErledigt);
-    expect(a.summe).toBe(3 + 1.5 + 1 + 1);
-    // Ohne Ziel: m-4 (3) + Aufgabe ohne Liste (1)
-    expect(b(d, OHNE_ZIEL).summe).toBe(4);
-    // Dichte: am Meilenstein höher als weit weg, geglättet in die Nachbarwochen, nie über 1
-    const w = woche(d, '2026-11-04');
-    expect(a.dichte[w]).toBeGreaterThan(0.5);
-    expect(a.dichte[w + 1]).toBeGreaterThan(0.1);
-    expect(a.dichte[w + 1]).toBeLessThan(a.dichte[w]);
-    expect(a.dichte[woche(d, '2027-06-01')]).toBeLessThan(0.01);
-    expect(Math.max(...d.buendel.flatMap(x => x.dichte))).toBeLessThanOrEqual(1);
-    expect(d.gesamt[w]).toBe(a.roh[w] + b(d, 'z-b').roh[w] + b(d, 'z-p').roh[w] + b(d, OHNE_ZIEL).roh[w]);
-  });
-
-  it('Ziel-Frist zählt, außer ein Kaskaden-Meilenstein vertritt sie; Termine landen bei „ohne Ziel“', () => {
-    const ziele = [{ id: 'z-f', titel: 'Frist', termin: '2026-06-10' }, { id: 'z-k', titel: 'Kaskade', termin: '2026-06-10' }];
-    const ms = [{ id: 'ms~z-k', faellig: '2026-06-10', erledigt: false, abgeleitetVon: 'z-k' }];
-    const d = faedenDichte(ziele, ms, [], [{ datum: '2026-06-11' }, { datum: '2026-06-12', gewicht: 2 }], RAUM);
-    expect(b(d, 'z-f').summe).toBe(DICHTE_GEWICHT.zielFrist);
-    expect(b(d, 'z-k').summe).toBe(DICHTE_GEWICHT.meilensteinOffen);
-    expect(b(d, OHNE_ZIEL).summe).toBe(DICHTE_GEWICHT.termin + 2);
-  });
-
-  it('Zeitraum: nur was im Fenster liegt zählt — der Rand glättet aber hinein (kein harter Schnitt am Fensterrand)', () => {
-    const raum = { von: '2026-10-01', bis: '2026-12-31' };
-    const d = faedenDichte(ZIELE, [{ id: 'x', faellig: '2026-09-28', erledigt: false, zielId: 'z-a' }, { id: 'y', faellig: '2027-05-01', erledigt: false, zielId: 'z-a' }], [], undefined, raum);
-    const a = b(d, 'z-a');
-    expect(d.wochen[0]).toBe('2026-09-28');
-    expect(a.summe).toBe(3); // die Woche ab 28.09. gehört zum Fenster, Mai 2027 nicht
-    const d2 = faedenDichte(ZIELE, [{ id: 'x', faellig: '2026-09-14', erledigt: false, zielId: 'z-a' }], [], undefined, raum);
-    expect(b(d2, 'z-a').summe).toBe(0);
-    expect(b(d2, 'z-a').dichte[0]).toBeGreaterThan(0); // zwei Wochen vor dem Fenster — der Schein reicht hinein
-    expect(faedenDichte(ZIELE, MS, [], undefined, { von: 'kaputt', bis: '2026-01-01' }).buendel).toEqual([]);
-  });
-
-  it(`höchstens ${MAX_ZIEL_BUENDEL} Ziel-Bündel — der Rest fließt in „Weitere & ohne Ziel“`, () => {
-    const viele = Array.from({ length: 9 }, (_, i) => ({ id: `z${i}`, titel: `Ziel ${i}`, rang: i + 1 }));
-    const ms = viele.map((z, i) => ({ id: `m${i}`, faellig: '2026-05-05', erledigt: false, zielId: z.id }));
-    const d = faedenDichte(viele, ms, [], undefined, RAUM);
-    expect(d.buendel.length).toBe(MAX_ZIEL_BUENDEL + 1);
-    expect(d.buendel.at(-1)!.titel).toBe('Weitere & ohne Ziel');
-    expect(d.buendel.at(-1)!.summe).toBe(3 * 3);
-  });
-
-  it('Textäquivalent nennt je Bündel die dichteste Woche', () => {
-    const t = lichtText(faedenDichte(ZIELE, MS, AUFG, undefined, RAUM));
-    expect(t).toContain('Ziel „Alpha“: am dichtesten in der Woche ab 02.11.2026');
-    expect(t).toContain('Ziel „Privat eins“: ruhig');
-  });
-
-  it('Farben: je Space fortlaufend, erste = Markierungsfarbe von heute, „ohne Ziel“ in Zeit-Cyan', () => {
-    const f = buendelFarben([{ id: 'a', space: 'business' }, { id: 'p', space: 'privat' }, { id: 'b', space: 'business' }, { id: OHNE_ZIEL }]);
-    expect(f).toEqual({ a: FADEN_FARBEN.business[0], p: FADEN_FARBEN.privat[0], b: FADEN_FARBEN.business[1], [OHNE_ZIEL]: FADEN_FARBEN.ohne });
-  });
-});
 
 describe('Lichtfäden — Mathematik', () => {
   it('Saaten und Versatz sind deterministisch und begrenzt', () => {
@@ -146,16 +42,32 @@ describe('Lichtfäden — Mathematik', () => {
   });
 
   it('Helligkeit: Vergangenheit gedämpft, HEUTE leuchtet, Dichte hebt', () => {
-    const d = { heuteX: 500 } as ZeitbandDaten;
+    const d = { heuteX: 500 } as BandBild;
     expect(hellBei(100, d, 0)).toBeLessThan(hellBei(900, d, 0));
     expect(hellBei(500, d, 0)).toBeGreaterThan(hellBei(900, d, 0));
     expect(hellBei(900, d, 1)).toBeGreaterThan(hellBei(900, d, 0));
-    expect(hellBei(100, { heuteX: null, heuteSeite: 'links' } as ZeitbandDaten, 0)).toBeGreaterThan(hellBei(100, { heuteX: null, heuteSeite: 'rechts' } as ZeitbandDaten, 0));
+    expect(hellBei(100, { heuteX: null, heuteSeite: 'links' } as BandBild, 0)).toBeGreaterThan(hellBei(100, { heuteX: null, heuteSeite: 'rechts' } as BandBild, 0));
+  });
+
+  it('Dichte an einer Stelle: Woche 0 beginnt `wochenVersatz` Tage vor dem Fenster, linear zwischen den Wochenmitten', () => {
+    const d = { breite: 70, tage: 70, wochenVersatz: 0 };
+    const b = { dichte: [0, 1, 0, 0, 0, 0, 0, 0, 0, 0] };
+    expect(dichteBei(b, 10.5, d)).toBeCloseTo(1); // Mitte der zweiten Woche (Tag 10,5)
+    expect(dichteBei(b, 3.5, d)).toBeCloseTo(0);
+    expect(dichteBei(b, 7, d)).toBeCloseTo(0.5);
+    expect(dichteBei({ dichte: [0, 1] }, 0, { breite: 70, tage: 70, wochenVersatz: 7 })).toBeCloseTo(0.5); // Fenster beginnt in Woche 1
+    expect(dichteBei({ dichte: [] }, 5, d)).toBe(0);
+  });
+
+  it('Übergang schwingt sanft: 0 → 0, ½ → ½, 1 → 1, monoton', () => {
+    expect(sanft(0)).toBe(0); expect(sanft(1)).toBe(1); expect(sanft(0.5)).toBeCloseTo(0.5);
+    for (let q = 0; q < 1; q += 0.05) expect(sanft(q + 0.05)).toBeGreaterThanOrEqual(sanft(q));
+    expect(sanft(-1)).toBe(0); expect(sanft(2)).toBe(1);
   });
 });
 
 describe('Markierungen über dem Band — ohne Überlappung', () => {
-  for (const [name, m] of Object.entries(ZEITBAND_MASSE)) {
+  for (const [name, m] of Object.entries(BAND_MASSE)) {
     it(`${name}: gleiche Reihe nie überlappend, Reihen nie übereinander, Knopf passt in die Reihe${name === 'handy' ? ', Tippziel ≥ 44 px' : ''}`, () => {
       const r = zufall(42);
       const breite = name === 'handy' ? 320 : 1100;
@@ -177,8 +89,8 @@ describe('Markierungen über dem Band — ohne Überlappung', () => {
     });
   }
   it('Handy-Maße unter 520 px Breite', () => {
-    expect(zeitbandMasse(375)).toBe(ZEITBAND_MASSE.handy);
-    expect(zeitbandMasse(1000)).toBe(ZEITBAND_MASSE.rechner);
+    expect(bandMasse(375)).toBe(BAND_MASSE.handy);
+    expect(bandMasse(1000)).toBe(BAND_MASSE.rechner);
   });
 });
 
