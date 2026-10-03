@@ -4,6 +4,19 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Design-Standard: Privat · ZOE · System (03.10.2026, nur lokal — Branch `design-privat`; Dokument `DESIGN_STANDARD.md` › „Umgestellt: Privat · ZOE · System“)
+
+Vierter Bereich nach Markttraktion, Zahlen & Finanzen und Kern. Reine Darstellung und Struktur — keine Funktion, kein Bestand, kein Feld geändert. Kevins Leitidee „immer der Fokus auf die Ziele“: Wo ein Bereich Ziele hat, steht der Bezug ruhig unter dem Kopf.
+
+- **Umgestellt (49 Dateien über `components/os/ui`):** Gesundheit (Heute · Index · Verlauf · Ernährung · Körper), Journal, Energie, Routinen-Planer, Sport (5 Reiter), Säulen-Seite, Familie & Partnerschaft (Wir zwei · Familie · Rahmen · Paar-Gespräch), Kontakte privat, Kompass, Brain (Fragen · Stöbern · Regeln · Inbox), Privat-Übersicht, Home, Wachstum, Flächen (`flaeche/`), ZOE (Empfang, Aufträge & Freigaben schlank/voll, Agenten, Loops, Head of IT), Konto, System, Verbindungen, Datenbasis, Stammdaten.
+- **Ziel-Bezug:** neuer Baustein `ZielBezug` — Chip „ZAHLT EIN AUF · <Jahresziel> · 45 %“ (Link ins Ziel). Auswahl: Meilensteine des Bereichs (`zielId`) → Stichwort im Zieltitel → oberstes privates Jahresziel (dann ehrlich „OBERSTES ZIEL“). Farbe = die eine Farbregel `zielFarben`. In Gesundheit, Journal, Sport, Säule Gesundheit/Familie, Familie, Kompass, Wachstum, Privat-Übersicht.
+- **Konto:** Passwort, Anmelde-Adressen, Zweiter Faktor, Einladen mit sichtbaren Beschriftungen und untereinander (vorher „altes Passw…“, „neues, min…“ abgeschnitten); Enter schickt ab; „Alle anderen Geräte abmelden“ wandert aus dem Kopf in die Konto-Karte; Zweiter Faktor ist die getönte Karte.
+- **Praxis-Fund N7:** Privat › Übersicht › Rücklage speichert jetzt mit Enter (Formular).
+- **Handy:** Umschalter (Gesundheit 5, Familie 3, Sport 5, Paar-Gespräch-Schritte) als wischbare Leiste im Inhalt statt im Kopf; Schalter, Anspannung 1–5, Wahl-Chips, Journal-Punkte mit 44 px Trefferfläche; **ZOE-Fenster** (Gespräch, Hirn, Senden, Mikro, Anhang, Vorschlags-Chips) ≥ 44 px und Eingabe 16 px, Position unberührt; Empfang: Eingabe 16 px.
+- **Messung (37 Ansichten, 375 px, erfundene Beispieldaten, ohne die globale Kopfzeile von design-kern):** Tippziele < 44 px **616 → 0**, Eingaben < 16 px **140 → 0**, seitlicher Überlauf 0 → 0, Text < 12,5 px (ohne Großbuchstaben-Beschriftungen) **695 → 307**; Rechner 1280 px: **1.089 → 515**; Konsole sauber, kein abgeschnittener Platzhalter. Fotos vorher/nachher: Sandbox-Ordner `scratchpad/design-privat/` (`vergleich.html`).
+- **Test:** `tests/design-privat.test.ts` (kein `schlank`-Import im Bereich, keine Schrift < 13 px außer Beschriftungen, Umschalter im Inhalt, Fehler als Hinweis, Konto-Felder, N7-Formular, Auswahl des Ziel-Bezugs, Baustein hält seinen Platz).
+- **Rückweg:** reiner Oberflächen-Commit, keine neuen Bestände; Zielfarbe und Ziele stammen aus `/api/state/ziele` und `/api/state/meilensteine` (nur lesen).
+
 ## Lichtfäden v2: alle Stränge, jede Ebene, Fokus (03.10.2026, nur lokal — Branch `faeden2`; Technik `LICHTFAEDEN.md`, Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
 
 Kevin 03.10.: „Überarbeite das Ganze nochmal mit den Lichtfäden … ein Werkzeug, was nachher Fokus anzeigt, weil extrem viele Stränge zusammenlaufen.
