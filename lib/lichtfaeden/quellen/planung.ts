@@ -56,6 +56,10 @@ const personVon = (v: string | undefined): string => (!v || v === 'both' || v ==
 const spaceAusAufgabe = (a: Pick<PlanungAufgabe, 'spaceId' | 'space'>): SpaceId => (a.spaceId ? (a.spaceId === 'privat' ? 'privat' : 'business') : a.space ?? 'business');
 const themaAusSpaceId = (spaceId: string | undefined): ThemaId => (spaceId?.startsWith('m-') ? 'mandate' : 'planung');
 
+/** Eigene Ziele einer Person (nicht der gemeinsame Bestand) sind privat: Knoten nur für sie, Stränge für andere „Belegt“. */
+const eigenVon = (z: Pick<PlanungZiel, 'person'>): { person?: string } => (z.person !== BEIDE ? { person: z.person } : {});
+const privatVon = (z: Pick<PlanungZiel, 'person'>): { privat?: true } => (z.person !== BEIDE ? { privat: true } : {});
+
 export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
   const knoten: Knoten[] = [];
   const straenge: Strang[] = [];
@@ -77,7 +81,7 @@ export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
       if (z.firmaId && !bezFirma.has(z.firmaId)) bezFirma.set(z.firmaId, pfad);
       if (z.mandatId && !bezMandat.has(z.mandatId)) bezMandat.set(z.mandatId, pfad);
     }
-    knoten.push({ id: knotenId.ziel(z.id), art: 'ziel', name: z.titel, farbe: z.farbe, eltern: pfad[pfad.length - 2], rang: z.rang ?? 1000 + i, link: WEG.ziel(z.id) });
+    knoten.push({ id: knotenId.ziel(z.id), art: 'ziel', name: z.titel, farbe: z.farbe, eltern: pfad[pfad.length - 2], rang: z.rang ?? 1000 + i, link: WEG.ziel(z.id), ...eigenVon(z) });
   });
 
   // Ziel-Fristen: nur wo kein Kaskaden-Meilenstein die Frist vertritt (wie v1).
@@ -86,7 +90,7 @@ export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
     const tag = tagAus(z.termin);
     const w = wurzelZiel(z.id);
     if (!tag || !w || mitKaskade.has(z.id) || z.abgeleitetVon) continue;
-    straenge.push({ id: `ziel:${z.id}`, quelle: 'ziel', titel: z.titel, pfad: zielPfad.get(w.id)!, person: z.person, zeit: { tag }, gewicht: gewichtVon('ziel', { erledigt: !!z.erledigt }), status: statusVon(!!z.erledigt, tag, d.heute), link: WEG.ziel(z.id) });
+    straenge.push({ id: `ziel:${z.id}`, quelle: 'ziel', titel: z.titel, pfad: zielPfad.get(w.id)!, person: z.person, zeit: { tag }, gewicht: gewichtVon('ziel', { erledigt: !!z.erledigt }), status: statusVon(!!z.erledigt, tag, d.heute), link: WEG.ziel(z.id), ...privatVon(w) });
   }
 
   // Meilensteine: Knoten unter ihrem Ziel (sonst unter dem Thema), Strang an ihrem eigenen Knoten.
@@ -104,9 +108,9 @@ export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
     const eltern = oben[oben.length - 1];
     const j = msZaehler.get(eltern) ?? 0;
     msZaehler.set(eltern, j + 1);
-    knoten.push({ id: knotenId.meilenstein(m.id), art: 'meilenstein', name: m.titel, farbe: abstufen(z?.farbe ?? SPACE_FADEN[space], j), eltern, rang: j, link: WEG.meilenstein(m.id) });
+    knoten.push({ id: knotenId.meilenstein(m.id), art: 'meilenstein', name: m.titel, farbe: abstufen(z?.farbe ?? SPACE_FADEN[space], j), eltern, rang: j, link: WEG.meilenstein(m.id), ...(z ? eigenVon(z) : {}) });
     const tag = tagAus(m.faellig);
-    if (tag) straenge.push({ id: `ms:${m.id}`, quelle: 'meilenstein', titel: m.titel, pfad, person: z?.person ?? BEIDE, zeit: { tag }, gewicht: gewichtVon('meilenstein', { erledigt: !!m.erledigt }), status: statusVon(!!m.erledigt, tag, d.heute), link: WEG.meilenstein(m.id) });
+    if (tag) straenge.push({ id: `ms:${m.id}`, quelle: 'meilenstein', titel: m.titel, pfad, person: z?.person ?? BEIDE, zeit: { tag }, gewicht: gewichtVon('meilenstein', { erledigt: !!m.erledigt }), status: statusVon(!!m.erledigt, tag, d.heute), link: WEG.meilenstein(m.id), ...(z ? privatVon(z) : {}) });
   }
 
   // Aufgaben: nur terminierte, offene (erledigte/abgebrochene binden nichts mehr). „nur ich“ — an der Aufgabe ODER an

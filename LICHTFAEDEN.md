@@ -100,6 +100,9 @@ Nicht angeschlossen (bewusst): Liquiditäts-Planposten (wiederkehrende Prognose,
   zu einem anonymen „belegt“-Gewicht: Titel „Belegt“, kein Link, Pfad nur bis zum Space (kein Thema, kein Ziel), verdeckte
   Kennung. Die Last bleibt sichtbar (Fokus!), der Inhalt nicht. Der Kalender maskiert zusätzlich schon an der Quelle
   (`termineFuerZoe`), „nur ich“ der Familie filtert `sichtFuer`.
+- **Eigene Ziele** (`ziele-eigen--<person>`) gehören ihrer Person: ihr Knoten (und die Knoten ihrer Meilensteine) tragen
+  `person` und fallen für die andere Person weg (`knotenFuerBetrachter`); Ziel-Frist und Meilensteine sind privat und kommen
+  dort nur als „Belegt“ an (Praxis-Fund 04.10.). `ziel:<eigenes Ziel der anderen>` antwortet 404.
 - Finanzen und gemeinsame Ziele gehören dem Haushalt (beide haben vollen Zugriff).
 
 ## Route

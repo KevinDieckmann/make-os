@@ -12,7 +12,7 @@ import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
 import { WEG, eventLink } from '@/lib/wege';
 import type { Meilenstein, RoutinenDatei } from '@/lib/planung/typen';
-import { fuerBetrachter, type Knoten, type Strang } from './modell';
+import { fuerBetrachter, knotenFuerBetrachter, type Knoten, type Strang } from './modell';
 import { planungStraenge, KEINE_BEZUEGE, type PlanungErgebnis, type ZielBezuege } from './quellen/planung';
 import { kalenderStraenge, type KalenderTermin } from './quellen/kalender';
 import { markttraktionStraenge } from './quellen/markttraktion';
@@ -139,7 +139,7 @@ export async function straengeSammeln(betrachter: string, von: string, bis: stri
     sicher(gesundheit(personen, heute), []),
   ]);
   const straenge = [...plan.straenge, ...teile.flat()].map(s => fuerBetrachter(s, betrachter));
-  return { knoten: plan.knoten, straenge, personen, zielWurzel: plan.zielWurzel };
+  return { knoten: knotenFuerBetrachter(plan.knoten, betrachter), straenge, personen, zielWurzel: plan.zielWurzel };
 }
 
 /** Gemerkt je Betrachter, Fenster und Tag (60 s; jede Schreibung in einen Bestand macht es ungültig). */

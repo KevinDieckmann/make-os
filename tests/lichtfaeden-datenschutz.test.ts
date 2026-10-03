@@ -29,7 +29,7 @@ const get = async (person: string, q: string) => {
 const json = async (person: string, q: string) => { const { roh } = await get(person, q); return { roh, d: JSON.parse(roh) as Antwort }; };
 
 /** Titel und Kennungen, die Kevin (der Partner) nie sehen darf. */
-const MALINS_GEHEIMNISSE = ['Geschenk für Kevin', 'Geschenkpapier', 'Schleife binden', 'Ring abholen', 'Jahrestag heimlich', 'Überraschung planen', 't-geheim', 't-kind', 't-enkel', 'v-geheim', 'd-geheim', 'tag-geheim'];
+const MALINS_GEHEIMNISSE = ['Spanisch B1', 'Vokabeltest A2', 'zm-spanisch', 'm-vokabeln', 'Geschenk für Kevin', 'Geschenkpapier', 'Schleife binden', 'Ring abholen', 'Jahrestag heimlich', 'Überraschung planen', 't-geheim', 't-kind', 't-enkel', 'v-geheim', 'd-geheim', 'tag-geheim'];
 /** Eine Altaufgabe „nur ich“ ohne Anlegerin — niemand darf sie sehen. */
 const ALTLAST = ['Altes Tagebuch', 't-alt'];
 
@@ -59,6 +59,10 @@ beforeAll(async () => {
     // Altaufgabe „nur ich“ ohne Anlegerin und ohne Verantwortliche.
     t('t-alt', { dueDate: woche, title: 'Altes Tagebuch', assignee: undefined, sichtbarkeit: 'nur-ich', priority: 'critical' }),
   ] });
+  // Malins EIGENES Ziel (ziele-eigen--malin) mit Frist und Meilenstein — für Kevin privat (Praxis-Fund F4).
+  await db.saveJson('ziele-eigen--malin', { tag: [], woche: [], monat: [], quartal: [], jahr: [{ id: 'zm-spanisch', titel: 'Spanisch B1', fortschritt: 10, space: 'privat', rang: 1, termin: '2026-12-15' }], fokus: {} });
+  const ms = (await db.loadJson<{ meilensteine: unknown[] }>('meilensteine'))!;
+  await db.saveJson('meilensteine', { meilensteine: [...ms.meilensteine, { id: 'm-vokabeln', titel: 'Vokabeltest A2', faellig: '2026-11-25', zielId: 'zm-spanisch', space: 'privat', fortschritt: 0, erledigt: false }] });
   await db.saveJson('familie--test-haus', {
     menschen: [],
     tage: [{ id: 'tag-geheim', von: 'malin', am: '2026-09-01', sichtbarkeit: 'nur-ich', titel: 'Jahrestag heimlich', art: 'jahrestag', datum: '2026-11-11', erledigt: [] }],
@@ -107,14 +111,17 @@ describe('„nur ich“ vererbt sich — die Partnerin sieht keine Titel, Kennun
     // Business: Aufgabe, Kind, Enkel als anonymes Gewicht; die Altaufgabe gar nicht. Familie „nur ich“ der Partnerin kommt
     // gar nicht erst an (`sichtFuer` je Betrachter) — im Privat-Space also kein „Belegt“.
     expect((await json('kevin', 'wurzel=space:business&person=alle')).d.ansicht.buendel.find(b => b.name === 'Belegt')?.anzahl).toBe(3);
-    expect((await json('kevin', 'wurzel=space:privat&person=alle')).d.ansicht.buendel.some(b => b.name === 'Belegt')).toBe(false);
+    // Malins eigenes Ziel: Frist und Meilenstein nur als „Belegt“ (Last bleibt), kein Knoten, kein Link, keine Markierung.
+    expect((await json('kevin', 'wurzel=space:privat&person=alle')).d.ansicht.buendel.find(b => b.name === 'Belegt')?.anzahl).toBe(2);
+    const r = await route.GET(new Request('http://test/api/lichtfaeden?von=2026-10-01&bis=2027-03-31&wurzel=ziel:zm-spanisch', { headers: { 'x-make-user': 'kevin' } }));
+    expect(r.status).toBe(404);
     // Die Meilenstein-Ebene (Blatt) zeigt nur den Meilenstein selbst.
     expect((await json('kevin', 'wurzel=ms:m-1&person=alle')).d.ansicht.buendel.map(b => b.name)).toEqual(['Gemeinsamer Meilenstein']);
   });
 
   it('als Malin: ihre eigenen privaten Stränge mit Titel — die Altaufgabe ohne Anlegerin auch für sie nicht', async () => {
     const roh = (await Promise.all(EBENEN.slice(0, 8).map(q => get('malin', q)))).map(r => r.roh).join('\n');
-    for (const eigen of ['Geschenk für Kevin', 'Geschenkpapier besorgen', 'Schleife binden', 'Jahrestag heimlich', 'Überraschung planen', 'Ring abholen']) expect(roh).toContain(eigen);
+    for (const eigen of ['Spanisch B1', 'Vokabeltest A2', 'Geschenk für Kevin', 'Geschenkpapier besorgen', 'Schleife binden', 'Jahrestag heimlich', 'Überraschung planen', 'Ring abholen']) expect(roh).toContain(eigen);
     for (const alt of ALTLAST) expect(roh).not.toContain(alt);
   });
 });

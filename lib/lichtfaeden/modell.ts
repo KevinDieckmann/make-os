@@ -31,6 +31,9 @@ export interface Knoten {
   rang: number;
   /** Ziel/Meilenstein: wohin ein Klick auf den Namen führt (Detailseite). */
   link?: string;
+  /** Gehört nur dieser Person (eigenes Ziel aus `ziele-eigen--<person>` und seine Meilensteine) — für jede andere Person
+   *  gibt es den Knoten nicht (`knotenFuerBetrachter`); seine Stränge sind privat und kommen dort nur als „Belegt“ an. */
+  person?: string;
 }
 
 export const GESAMT = 'gesamt';
@@ -264,6 +267,12 @@ export function fuerBetrachter(s: Strang, betrachter: string): Strang {
     id: `belegt:${verdeckt(s.id)}`, quelle: 'belegt', titel: 'Belegt', pfad: [GESAMT, space], person: s.person,
     zeit: { tag: s.zeit.tag, ...(s.zeit.bis ? { bis: s.zeit.bis } : {}) }, gewicht: QUELLEN.belegt.gewicht, status: s.status === 'erledigt' ? 'erledigt' : 'offen', privat: true,
   };
+}
+
+/** Die Knoten, die der Betrachter sehen darf: eigene Ziele der ANDEREN Person (und ihre Meilensteine) fallen weg — Name und
+ *  Link stünden sonst in Legende, Brotkrumen und Markierungen (Praxis-Fund 04.10.). Stränge darunter kürzt der Baum. */
+export function knotenFuerBetrachter(knoten: readonly Knoten[], betrachter: string): Knoten[] {
+  return knoten.filter(k => !k.person || k.person === BEIDE || k.person === betrachter);
 }
 
 /** Verdeckte Kennung (FNV-1a) — gleich je Eingang, nicht umkehrbar in den Titel. */
