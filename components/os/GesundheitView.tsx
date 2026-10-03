@@ -243,7 +243,7 @@ export function GesundheitView() {
           <Kachel id="sport" titel="Sport" breite={3}><SportKurz eigene={eigene} /></Kachel>
           <Kachel id="sieben-tage" titel="Sieben Tage Routinen" breite={3}>
           <Karte i={3}>
-            <Ueberschrift rechts={`Ø ${stand?.routinen.quote7 ?? '—'} %`}>Sieben Tage Routinen</Ueberschrift>
+            <Ueberschrift rechts={stand?.routinen.quote7 != null ? `Ø ${Math.round(stand.routinen.quote7 * 100)} %` : 'Ø — %'}>Sieben Tage Routinen</Ueberschrift>
             <Trend werte={sieben.map(t => t.n || null)} max={anzahl} farbe={LEUCHT.gut} hoehe={44} titel={sieben.map(t => `${t.d.slice(8)}.${t.d.slice(5, 7)}. · ${t.n}/${anzahl}`)} />
             <div style={{ marginTop: 16, color: C.inkLeise, fontSize: TYP.bedien, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <span>Bote: {!stand ? '…' : !stand.telegram.konfiguriert ? <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram einrichten</Link> : stand.telegram.gekoppelt ? 'Telegram gekoppelt' : <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram koppeln</Link>}</span>

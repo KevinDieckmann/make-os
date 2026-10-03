@@ -163,3 +163,16 @@ describe('Ziel-Bezug — die reine Auswahl', () => {
     expect(html).toContain('min-height:44px');
   });
 });
+
+describe('Praxis-Funde 04.10.', () => {
+  it('F3: die 7-Tage-Quote der Routinen steht in ganzen Prozent (kein „Ø 0.142857 %“)', () => {
+    const g = lies('components/os/GesundheitView.tsx');
+    expect(g).toContain('Math.round(stand.routinen.quote7 * 100)');
+    expect(g).not.toContain("`Ø ${stand?.routinen.quote7 ?? '—'} %`");
+  });
+  it('F5: Brain — schmal und breit zeigen denselben Reiter-Inhalt (Regeln/Inbox nicht die Stöbern-Liste)', () => {
+    const w = lies('components/os/WissenView.tsx');
+    expect(w.match(/\{reiterInhalt\}/g)?.length).toBe(2);
+    expect(w).not.toContain("modus === 'fragen' ? chatKarte : listeKarte}");
+  });
+});

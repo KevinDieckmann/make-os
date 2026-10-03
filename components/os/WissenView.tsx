@@ -420,6 +420,9 @@ export function WissenView() {
     </Karte>
   );
 
+  // Der Inhalt des gewählten Reiters — EINE Stelle für breit und schmal (Praxis-Fund 04.10.: am Handy zeigten „Regeln“ und
+  // „Inbox“ die Stöbern-Liste, weil der schmale Zweig nur zwei Fälle kannte).
+  const reiterInhalt = modus === 'fragen' ? chatKarte : modus === 'stoebern' ? listeKarte : <><Karte i={0}>{umschalter}</Karte>{modus === 'regeln' ? <Regeln ich={stand?.person ?? 'kevin'} /> : <Inbox ich={stand?.person ?? 'kevin'} oeffne={oeffne} />}</>;
   return (
     <Seite
       titel="Brain"
@@ -428,11 +431,11 @@ export function WissenView() {
     >
       {breit ? (
         <Spalten verhaeltnis="1:1">
-          <Spalte>{modus === 'fragen' ? chatKarte : modus === 'stoebern' ? listeKarte : <><Karte i={0}>{umschalter}</Karte>{modus === 'regeln' ? <Regeln ich={stand?.person ?? 'kevin'} /> : <Inbox ich={stand?.person ?? 'kevin'} oeffne={oeffne} />}</>}</Spalte>
+          <Spalte>{reiterInhalt}</Spalte>
           <Spalte klebt><div ref={lesefenster}>{leseKarte}</div></Spalte>
         </Spalten>
       ) : offen ? leseKarte : (
-        <>{modus === 'fragen' ? chatKarte : listeKarte}{leseKarte}</>
+        <>{reiterInhalt}{leseKarte}</>
       )}
     </Seite>
   );
