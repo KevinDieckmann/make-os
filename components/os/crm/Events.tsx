@@ -36,7 +36,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Pillen, useBreit, LEUCHT } from '../ui';
 import { VORLAGEN, vorlageAnwenden, checklisteStand, einlader, type VorlageId } from '@/lib/crm/eventplanung';
 import { MARKE_EVENTS, nachfassenRest } from '@/lib/crm/events';
-import { istNetzwerkenEvent, OHNE_REIHE, reiheName } from '@/lib/crm/marke';
+import { istNetzwerkenEvent, OHNE_REIHE, reiheName, eventTitelVorschlag } from '@/lib/crm/marke';
 import { reihenFilter, passtReihe, reihenUebersicht, zahlenSumme } from '@/lib/crm/reihen';
 import { TEAM, verantwortlich, zustaendig, anderer, nameVon } from '@/lib/crm/team';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -154,7 +154,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
     // Neue Events tragen die Marke als Vorgabe (27.09.) — im Überblick des Events änderbar.
     // Reihe (03.10.): gewählt im Anlegen, sonst die gefilterte — nie still eine Reihe, die niemand gesehen hat.
     const reihe = neuReihe ?? (reiheAktiv && reiheAktiv !== OHNE_REIHE ? reiheAktiv : undefined);
-    const basis: Event = { id: neueId('ev'), titel: vorlage?.label ?? (reihe ? reiheName(reihe) : 'Neues Event'), format: 'sonstig', ziel: '', datum: plusTage(heute, 42), status: 'idee', marke: MARKE_EVENTS, ...(reihe ? { reihe } : {}), geaendert: new Date().toISOString() };
+    const basis: Event = { id: neueId('ev'), titel: eventTitelVorschlag(reihe, vorlage?.label), format: 'sonstig', ziel: '', datum: plusTage(heute, 42), status: 'idee', marke: MARKE_EVENTS, ...(reihe ? { reihe } : {}), geaendert: new Date().toISOString() };
     const e = vorlage ? vorlageAnwenden(basis, vorlage.id) : basis;
     void api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
     waehle(e.id); setNeu(false); setNeuReihe(undefined);

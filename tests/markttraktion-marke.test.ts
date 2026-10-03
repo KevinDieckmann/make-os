@@ -72,3 +72,24 @@ describe('Nachfass- und Herkunftstexte: EIN Helfer (Review 03.10.)', () => {
     expect(roh).not.toContain('Make.One · Forum Süd');
   });
 });
+
+describe('Praxis-Fund F6: Name und Titel-Vorschlag mit Reihe', () => {
+  it('eventTitelVorschlag: Reihe · Vorlage, sonst was da ist, sonst „Neues Event“', async () => {
+    const { eventTitelVorschlag, eventName } = await import('../lib/crm/marke');
+    expect(eventTitelVorschlag('fokus-innovation', 'Dinner')).toBe('Fokus Innovation · Dinner');
+    expect(eventTitelVorschlag('fokus-innovation', undefined)).toBe('Fokus Innovation');
+    expect(eventTitelVorschlag(undefined, 'Stammtisch')).toBe('Stammtisch');
+    expect(eventTitelVorschlag(undefined, undefined)).toBe('Neues Event');
+    // Kein doppelter Reihenname im Namen nach außen.
+    expect(eventName(ev({ titel: 'Fokus Innovation · Dinner', reihe: 'fokus-innovation' }))).toBe('Make.One · Fokus Innovation · Dinner');
+  });
+  it('keine Oberfläche baut „Marke · Titel“ selbst (die Reihe fiele weg) — eventName/titelMitReihe', async () => {
+    const { readFileSync, readdirSync, statSync } = await import('node:fs');
+    const path = await import('node:path');
+    const w = path.resolve(__dirname, '..');
+    const dateien = (d: string): string[] => readdirSync(path.join(w, d)).flatMap(n => { const r = `${d}/${n}`; return statSync(path.join(w, r)).isDirectory() ? dateien(r) : /\.tsx?$/.test(n) ? [r] : []; });
+    const funde = [...dateien('components'), ...dateien('app')].filter(f => /\$\{markeVon\([^)]*\)\} · \$\{[^}]*titel\}/.test(readFileSync(path.join(w, f), 'utf8')));
+    expect(funde).toEqual([]);
+    for (const f of ['components/os/crm/Events.tsx', 'components/os/crm/events/Start.tsx']) expect(readFileSync(path.join(w, f), 'utf8'), f).toContain('eventTitelVorschlag(');
+  });
+});

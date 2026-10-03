@@ -43,7 +43,7 @@ import { leadZeileFuer } from '@/lib/crm/leads';
 import { lifecycleVorschlagHoeher } from '@/lib/crm/vorschlaege';
 import { beanVon } from '@/lib/crm/bean';
 import { istBesuch } from '@/lib/crm/besuche-form';
-import { markeVon } from '@/lib/crm/marke';
+import { eventName } from '@/lib/crm/marke';
 import { vollstaendigkeit, verbindungen, takt, verlaufZahlen, TEILNAHME_LABEL, KAMPAGNEN_ERGEBNIS_LABEL } from '@/lib/crm/akte';
 import { haeltBeziehung, nameVon } from '@/lib/crm/team';
 import { AKTE_REITER, akteReiter, akteUnter, type AkteReiter } from '@/lib/crm/adresse';
@@ -285,7 +285,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
           {firmenDeals.map(d => <VZeile key={d.id} farbe={OFFENE_STUFEN.includes(d.stufe) ? LEUCHT.business : C.inkLeise} titel={d.titel} zusatz={`${crm?.stufen.find(s => s.id === d.stufe)?.label ?? d.stufe}${d.wert.betrag ? ` · ${euro(d.wert.betrag)}${d.wert.basis === 'monat' ? '/Monat' : ''}` : ''} · ohne diese Person`} am={d.geaendert} heute={heute} onClick={() => router.push(WEG.deal(d.id))} />)}
         </Abschnitt>}
         {v.events.length > 0 && <Abschnitt titel="Events">
-          {v.events.map(e => <VZeile key={e.teilnahme.id} farbe={e.teilnahme.status === 'da' ? LEUCHT.gut : e.teilnahme.status === 'no_show' || e.teilnahme.status === 'abgesagt' ? C.inkLeise : LEUCHT.puls} titel={e.event.titel} zusatz={istBesuch(e.event) ? `besuchtes Event${e.event.fuer?.art === 'kunde' ? ` für ${crm?.stand.firmen.find(f => f.id === (e.event.fuer as { firmaId: string }).firmaId)?.name ?? 'einen Kunden'}` : ''} · ${TEILNAHME_LABEL[e.teilnahme.status]}` : `${markeVon(e.event)} · ${TEILNAHME_LABEL[e.teilnahme.status]}`} am={e.event.datum} heute={heute} onClick={() => router.push(eventLink(e.event))} />)}
+          {v.events.map(e => <VZeile key={e.teilnahme.id} farbe={e.teilnahme.status === 'da' ? LEUCHT.gut : e.teilnahme.status === 'no_show' || e.teilnahme.status === 'abgesagt' ? C.inkLeise : LEUCHT.puls} titel={istBesuch(e.event) ? e.event.titel : eventName(e.event)} zusatz={istBesuch(e.event) ? `besuchtes Event${e.event.fuer?.art === 'kunde' ? ` für ${crm?.stand.firmen.find(f => f.id === (e.event.fuer as { firmaId: string }).firmaId)?.name ?? 'einen Kunden'}` : ''} · ${TEILNAHME_LABEL[e.teilnahme.status]}` : TEILNAHME_LABEL[e.teilnahme.status]} am={e.event.datum} heute={heute} onClick={() => router.push(eventLink(e.event))} />)}
         </Abschnitt>}
         {v.kampagnen.length > 0 && <Abschnitt titel="Kampagnen">
           {v.kampagnen.map(x => <VZeile key={x.kampagne.id} farbe={x.ergebnis === 'gespraech' || x.ergebnis === 'chance' ? LEUCHT.gut : x.ergebnis ? LEUCHT.puls : C.inkLeise} titel={x.kampagne.name} zusatz={x.ergebnis ? KAMPAGNEN_ERGEBNIS_LABEL[x.ergebnis] : 'noch nicht angesprochen'} am={x.am} heute={heute} onClick={() => router.push(WEG.kampagne(x.kampagne.id))} />)}

@@ -36,7 +36,7 @@ import { kanalLeistung, type KanalZeile } from '@/lib/crm/score';
 import type { LeadZeile } from '@/lib/crm/leads';
 import type { Event as CrmEvent } from '@/lib/crm/typen';
 import type { EventZahlen } from '@/lib/crm/events';
-import { MARKE_EVENTS, markeVon, istNetzwerkenEvent } from '@/lib/crm/marke';
+import { MARKE_EVENTS, markeVon, istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, Chip, feld, zoneFarbe, prioFarbe } from '../ui';
 import { heuteFaellig, istGemeinsam, spaceVonRoutine } from '@/lib/planung/routinen';
 import { rhythmusKurz } from '@/lib/planung/rhythmus';
@@ -599,7 +599,7 @@ function EventWidget({ titel, i }: WidgetProps) {
       {e && (
         <Zeile onClick={() => router.push(WEG.event(e.id))}
           links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 18, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: tage !== null && tage <= 7 ? LEUCHT.achtung : LEUCHT.beziehung, width: 52 }}>{tage === 0 ? 'heute' : tage === 1 ? 'morgen' : `${tage} T`}</span>}
-          titel={e.titel}
+          titel={titelMitReihe(e)}
           unter={[markeVon(e), tagKurz(e.datum), e.uhrzeit ? `${e.uhrzeit} Uhr` : '', e.ort, d?.z ? (d.z.zugesagt ? `${d.z.zugesagt} zugesagt` : d.z.eingeladen ? `${d.z.eingeladen} eingeladen` : '') : ''].filter(Boolean).join(' · ')} />
       )}
       {d && !e && <Leer>Kein Event geplant — sechs Wochen Vorlauf, Ziel zuerst.</Leer>}

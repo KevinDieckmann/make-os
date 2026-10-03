@@ -13,7 +13,7 @@ import { CalendarCheck, CalendarPlus } from 'lucide-react';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Chip, Punkt, LEUCHT } from '../../ui';
 import { anmeldungVon, anmeldungLabel, besuchAbgesagt, istBesuch } from '@/lib/crm/besuche-form';
 import { budgetSumme } from '@/lib/crm/eventplanung';
-import { markeVon } from '@/lib/crm/marke';
+import { eventName } from '@/lib/crm/marke';
 import type { Event, EventAnmeldung } from '@/lib/crm/typen';
 import { WEG } from '@/lib/wege';
 import { datum, euro } from '../daten';
@@ -47,7 +47,7 @@ export function BesuchKalender({ crm, onAkte }: Pick<BesuchProps, 'crm'> & { onA
     if (art === 'makeone') {
       return (
         <Zeile key={e.id} onClick={() => router.push(WEG.event(e.id))} links={<Punkt farbe={LEUCHT.beziehung} />}
-          titel={`${markeVon(e)} · ${e.titel}`} unter={`${unter} · eigener Abend — nur lesen, öffnet Make.One`}
+          titel={eventName(e)} unter={`${unter} · eigener Abend — nur lesen, öffnet Make.One`}
           rechts={<Chip farbe={C.inkDim}>Make.One</Chip>} />
       );
     }

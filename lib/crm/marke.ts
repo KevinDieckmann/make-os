@@ -58,6 +58,16 @@ export function titelMitReihe(e: Pick<Event, 'titel' | 'marke' | 'reihe'>): stri
 }
 
 /**
+ * Titel-Vorschlag für ein neues Event (Praxis-Fund 04.10.): mit Reihe und Vorlage „Fokus Innovation · Dinner“ (statt nur
+ * „Dinner“), nur Reihe „Fokus Innovation“, nur Vorlage ihr Name, sonst „Neues Event“. Steht die Reihe im Titel, schreibt
+ * `eventName` sie nicht doppelt.
+ */
+export function eventTitelVorschlag(reihe: string | undefined, vorlage: string | undefined): string {
+  const r = reihe ? reiheName(reihe) : '';
+  return [r, vorlage ?? ''].filter(Boolean).join(' · ') || 'Neues Event';
+}
+
+/**
  * Zählt diese Teilnahme als Anmeldung zu einem EIGENEN Event — die Marketing-Herkunft „event“ (lib/crm/scoring.ts
  * `marketingHerkunft`)? Zugesagt oder da, bei einem Make.One-Abend, nicht persönlich/telefonisch eingeladen (das ist
  * Direktansprache). EINE Regel für Scoring, Qualifizierung und die Kennzahlen je Reihe (lib/crm/reihen.ts).

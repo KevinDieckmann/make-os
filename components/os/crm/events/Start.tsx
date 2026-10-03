@@ -21,7 +21,7 @@ import { Feldzeile } from '../teile';
 import { Wahl as WahlChip } from '../Wahl';
 import { ZustaendigWahl } from '../team';
 import { FORMATE, MarkeWahl, ReiheWahl } from './gemeinsam';
-import { MARKE_EVENTS, reiheName } from '@/lib/crm/marke';
+import { MARKE_EVENTS, reiheName, eventTitelVorschlag } from '@/lib/crm/marke';
 
 type Wahl = VorlageId | 'ohne';
 const OHNE = { id: 'ohne' as const, label: 'Ohne Vorlage' };
@@ -67,7 +67,7 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
     setLaeuft(true);
     const kap = Math.round(Number(kapazitaet));
     const basis: Event = {
-      id: neueId('ev'), titel: titel.trim() || (reihe ? reiheName(reihe) : '') || vorlage?.label || 'Neues Event', format, ziel: ziel.trim(), datum,
+      id: neueId('ev'), titel: titel.trim() || eventTitelVorschlag(reihe, vorlage?.label), format, ziel: ziel.trim(), datum,
       ...(uhrzeit ? { uhrzeit } : {}), ...(ort.trim() ? { ort: ort.trim() } : {}),
       ...(Number.isFinite(kap) && kap > 0 ? { kapazitaet: kap } : {}),
       mixZiel: { zielkunden: mixZiel.zielkunden, kunden: mixZiel.kunden },
