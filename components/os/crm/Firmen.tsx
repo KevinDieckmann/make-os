@@ -2,7 +2,7 @@
 
 import { TermineAkte } from '../kalender/TermineAkte';
 import Link from 'next/link';
-import { WEG } from '@/lib/wege';
+import { WEG, eventLink } from '@/lib/wege';
 
 // ─── Markttraktion · Firmen — ein Unternehmen, alle Beziehungen ─────────────
 // Die Firma ist eigene Stammdaten (lib/crm/firmen.ts): Branche, Größe, Ort,
@@ -16,7 +16,8 @@ import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, 
 import { anzeigename, type Aktivitaet } from '@/lib/make-one/crm';
 import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
 import { dealZuFirma, mandatZuFirma } from '@/lib/crm/firmen-bezug';
-import { eventsFuerKunde, erfassteTeilnahmen } from '@/lib/crm/besuche';
+import { eventsFuerKunde, erfassteTeilnahmen, begegnungenFuerFirma } from '@/lib/crm/besuche';
+import { istBesuch } from '@/lib/crm/besuche-form';
 import type { Firma, FirmaRolle } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, nurFelder } from './daten';
 import { Feldzeile, Pillen, Feld, Verlauf } from './teile';
@@ -154,6 +155,8 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmA
   // die Personen nur, wenn der Eintrag keiner anderen Firma gehört.
   const chancen = crm.stand.chancen.filter(c => gruppenFirmen.some(g => dealZuFirma(c, g)) || (!c.firmaId && c.kontaktIds.some(id => ids.has(id))));
   const mandate = crm.stand.mandate.filter(m => gruppenFirmen.some(g => mandatZuFirma(m, g)) || (!m.firmaId && m.kontaktIds.some(id => ids.has(id))));
+  // Begegnungen bei Events (M15): Personen dieser Firma bei Events (auch fremden) + die Firma als Zielfirma eines besuchten Events.
+  const begegnungen = useMemo(() => begegnungenFuerFirma(crm.stand.events, crm.stand.teilnahmen, api.kontakte ?? [], f.id), [crm.stand.events, crm.stand.teilnahmen, api.kontakte, f.id]);
   // Zeitlinie (28.09.): Aktivitäten, die bei dieser Firma entstanden — auch von Personen, die inzwischen weitergezogen sind.
   const verlauf: Aktivitaet[] = [...personen, ...ehemalig].flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art !== 'system' && aktivitaetZurFirma(k, a, f.id)).map(a => ({ ...a, text: `${anzeigename(k)}: ${a.text ?? ''}`.replace(/: $/, '') }))).sort((a, b) => a.am.localeCompare(b.am));
   const [zuordnen, setZuordnen] = useState('');
@@ -239,6 +242,15 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmA
           <Ueberschrift rechts={`${eventsFuerKunde(crm.stand.events, f.id).length}`}>Events für diesen Kunden</Ueberschrift>
           {eventsFuerKunde(crm.stand.events, f.id).map(e => (
             <Link key={e.id} href={WEG.besuch(e.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{e.titel} <span style={{ color: C.inkLeise }}>· {datum(e.datum, crm.heute)} · {erfassteTeilnahmen(e.id, crm.stand.teilnahmen).length} Kontakte</span></Link>
+          ))}
+        </div>
+      )}
+      {/* Begegnungen bei Events (M15): wer von dieser Firma wo dabei war — über alle Events, auch fremde; die Firma als Ziel steht dabei. */}
+      {begegnungen.length > 0 && (
+        <div>
+          <Ueberschrift rechts={`${begegnungen.length}`}>Begegnungen bei Events</Ueberschrift>
+          {begegnungen.map(b => (
+            <Link key={b.event.id} href={eventLink(b.event)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{b.event.titel} <span style={{ color: C.inkLeise }}>· {datum(b.event.datum, crm.heute)} · {istBesuch(b.event) ? 'besucht' : 'Make.One'}{b.personen.length ? ` · ${b.personen.map(anzeigename).join(', ')}` : ''}{b.ziel && !b.getroffen ? ' · Ziel, noch nicht getroffen' : b.ziel ? ' · Ziel getroffen' : ''}</span></Link>
           ))}
         </div>
       )}

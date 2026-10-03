@@ -16,7 +16,7 @@ import { berichtAus, dankeZeilen, dankeOffen, dankeEntwurf, dankeMailtoLink, sch
 import { DANKE_UWG_HINWEIS, DANKE_FRIST_TAGE, werbeWoerter, datenschutzAngaben } from '@/lib/crm/netzwerken-recht';
 import { fuerFirmaId } from '@/lib/crm/besuche-form';
 import { tagPlus, tagVon, wandzeit } from '@/lib/zeit/kalender-kern';
-import { WEG } from '@/lib/wege';
+import { WEG, eventLink } from '@/lib/wege';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import type { CrmApi } from '../crm/daten';
 import { Gross, Wahl, Beschriftung, Hinweis, Initialen, Leerzustand, LinkChips, type LinkChip, eingabe, kopfStil, tagText } from './bausteine';
@@ -76,7 +76,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
                 {bericht.offenGesamt ? ` · ${bericht.offenGesamt} offen` : ''}
               </div>
               {/* Bericht und Danke-Mails hängen am Event — von hier geht es in seine Akte (Events) bzw. ins Make.One-Event (03.10.). */}
-              <Link href={istBesuch(event) ? WEG.besuch(event.id) : WEG.event(event.id)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none' }}>{istBesuch(event) ? 'Event-Akte öffnen ›' : 'Make.One-Event öffnen ›'}</Link>
+              <Link href={eventLink(event)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none' }}>{istBesuch(event) ? 'Event-Akte öffnen ›' : 'Make.One-Event öffnen ›'}</Link>
             </div>
             {/* Ist es das Event von heute, stehen dieselben Zahlen schon oben im Kopf — nur ältere Events zeigen sie hier. */}
             {!(wahl && wahl.eventId === event.id) && <AbendZaehler zahlen={zahlen} eventTitel={event.titel} farbe={LEUCHT.beziehung} />}
@@ -96,6 +96,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
                     <span style={{ color: C.inkDim }}> · zuständig {nameVon(z.zustaendig)}{z.erfasstVon !== z.zustaendig ? ` · kennengelernt von ${nameVon(z.erfasstVon)}` : ''}</span>
                   </div>
                   {z.info && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, overflowWrap: 'anywhere' }}>{z.info}</div>}
+                  {z.frueher?.map(f => <div key={f.erfasstAm} style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5, overflowWrap: 'anywhere' }}>Davor: {f.schrittText} ({tagText(f.erfasstAm.slice(0, 10))}){f.terminAm ? ` · Termin ${tagText(f.terminAm.slice(0, 10))} ${f.terminAm.slice(11, 16)}` : ''}{f.info ? ` — ${f.info}` : ''}</div>)}
                   {/* Platz für die Verknüpfungen der Zeile (Termin · Deal · Follow-up · Event): eine Zeile Chips, leer = unsichtbar. */}
                   <LinkChips links={z.links.filter(l => l.id !== 'kontakt') as LinkChip[]} />
                   {z.offen.length > 0 && <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', gap: 6, flexWrap: 'wrap' }}>{z.offen.map(o => <li key={o} style={{ fontSize: TYP.bedien, fontWeight: 600, color: LEUCHT.achtung, background: `${LEUCHT.achtung}1F`, borderRadius: 999, padding: '3px 10px' }}>{o}</li>)}</ul>}

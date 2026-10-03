@@ -361,6 +361,8 @@ export interface Event {
   anmeldung?: EventAnmeldung;
   /** Wer von uns hingeht (Team-Kürzel, lib/crm/team.ts). */
   wer?: string[];
+  /** Letzter Tag einer mehrtägigen Veranstaltung (Messe) — fehlt = eintägig. Der Kalender-Spiegel reicht dann bis hierher. */
+  bisDatum?: string;
   /** Link zur Veranstaltung (nur https). */
   link?: string;
   /** Wen wir treffen wollen — Personen/Firmen aus der Kartei; beim Event abhaken (getroffen). Personenbezogen (Art. 15/17: lib/crm/person-verweise.ts). */
@@ -407,6 +409,10 @@ export interface NetzwerkenAngabe {
    * („Nicht senden“, 03.10.) — beides nimmt sie aus Glocke und Heute.
    */
   danke?: { anrede?: 'Du' | 'Sie'; rausAm?: string; verzichtetAm?: string };
+  /** Schritt „Zu Make.One einladen“: das Event, für das die Person vorgemerkt wurde (Teilnahme `t-nwm-<erfassungId>`) — Quelle des Links und des echten Stands im Abendbericht. */
+  makeone?: { eventId: string };
+  /** Frühere Begegnungen derselben Person bei demselben Event (die neuere Angabe gilt, die ältere bleibt hier nachlesbar — nie überschrieben). */
+  vorher?: { erfassungId: string; schritt: NetzwerkSchritt; erfasstAm: string; info?: string; terminAm?: string; terminId?: string }[];
   /** An DIESEM Event neu angelegt (nicht vorher bekannt, nicht angehängt) — nur sie gehen ungefragt in den Kunden-Export (03.10.). */
   neuAngelegt?: true;
   /** Beim Erfassen wurde die Visitenkarte fotografiert — Herkunftsangabe im Kunden-Export (das Foto selbst fällt nach 6 Monaten). */
@@ -414,6 +420,8 @@ export interface NetzwerkenAngabe {
   /** Es gab KEIN persönliches Gespräch (Haken beim Erfassen) — dann kein Danke-Entwurf (§ 7 UWG), Datenschutzhinweis beim ersten Kontakt. */
   keinGespraech?: true;
 }
+/** Woher eine Make.One-Teilnahme kommt: von einer Erfassung auf einem besuchten Event (Netzwerken) — für „kam von <Event>“ in der Gästeliste. */
+export interface TeilnahmeHerkunft { art: 'netzwerken'; eventId: string; erfassungId: string }
 export type TeilnahmeStatus = 'vorgemerkt' | 'eingeladen' | 'zugesagt' | 'abgesagt' | 'da' | 'no_show';
 export interface Teilnahme {
   id: string;
@@ -437,6 +445,8 @@ export interface Teilnahme {
   eingechecktVon?: string;
   /** Erfasst über „Netzwerken“ (02.10., lib/crm/netzwerken.ts): nächster Schritt, Zuständigkeit, Danke-Mail — Quelle des Abendberichts. */
   netzwerken?: NetzwerkenAngabe;
+  /** Vorgemerkt/eingeladen aus „Netzwerken“ heraus: das besuchte Event und die Erfassung, aus der die Person kam (optional, alter Bestand ohne). */
+  herkunft?: TeilnahmeHerkunft;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;

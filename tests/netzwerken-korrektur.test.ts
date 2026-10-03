@@ -234,9 +234,8 @@ describe('5 · Event-Kennzahlen: Netzwerken-Events getrennt', () => {
     // Gerechnet wird über das EINE eigene Event (Stammtisch, ohne Gäste) — das fremde Event zählt weder bei den Folgegesprächen noch bei den Events.
     expect(kp.find(x => x.id === 'folgegespraeche')!.quelle).toContain('aus 1 Event(s)');
     expect(kp.find(x => x.id === 'events_90')!.anzeige).toBe('1');
-    const nw = kp.find(x => x.id === 'netzwerken')!;
-    expect(nw.ampel).toBe('grau'); // nie im Score
-    expect(nw.quelle).toContain('Netzwerken: 5 Kontakte, 1 Termine, 1 Follow-ups');
+    // Keine zweite Rechnung (M2): die Zahlen der besuchten Events kommen allein aus `besuchKennzahlen` (Events-Reiter), nicht aus den Make.One-Kennzahlen.
+    expect(kp.find(x => x.id === 'netzwerken')).toBeUndefined();
     const { IM_SCORE } = await import('@/lib/crm/traktion');
     expect(Object.values(IM_SCORE).flat()).not.toContain('netzwerken');
   });

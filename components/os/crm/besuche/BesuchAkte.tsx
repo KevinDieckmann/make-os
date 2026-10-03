@@ -11,8 +11,8 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Raster, Zahl, Haken, Zeile, Leer, LEUCHT } from '../../schlank';
-import { ANMELDUNGEN, anmeldungVon, anmeldungPatch, fuerVon, zielSchluessel, zielpersonGesperrt } from '@/lib/crm/besuche-form';
-import { besuchWirkung, besuchUrteil, type BesuchKontext } from '@/lib/crm/besuche';
+import { ANMELDUNGEN, anmeldungVon, anmeldungPatch, fuerVon, zielSchluessel, zielpersonGesperrt, linkNormal, LINK_FEHLER } from '@/lib/crm/besuche-form';
+import { besuchWirkung, besuchUrteil, zielGetroffen, type BesuchKontext } from '@/lib/crm/besuche';
 import { UEBERGABE_HINWEIS, ROLLE_HINWEIS } from '@/lib/crm/netzwerken-recht';
 import { budgetSumme } from '@/lib/crm/eventplanung';
 import { berichtAus, EVENT_ZIEL } from '@/lib/crm/netzwerken';
@@ -25,9 +25,10 @@ import { datum, euro } from '../daten';
 import { Feld } from '../teile';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { Kalender } from '../events/Kalender';
+import { Liquiplan } from '../events/Budget';
 import { Notizfeld, Leise, eventLoeschen } from '../events/gemeinsam';
 import { LinkChips, type LinkChip } from '../../netzwerken/bausteine';
-import { FuerWahl, ZielSuche, AvvHinweis, BFeld, zielName, eventSetzen, type BesuchProps } from './gemeinsam';
+import { FuerWahl, ZielSuche, AvvHinweis, BFeld, zielName, eventSetzen, zielAenderung, type BesuchProps } from './gemeinsam';
 import { UebergabeDialog } from './Uebergabe';
 
 const URTEIL_FARBE = { lohnt: LEUCHT.gut, laeuft: LEUCHT.achtung, frueh: C.inkDim, ohne: LEUCHT.kritisch } as const;
@@ -42,7 +43,6 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
   const w = useMemo(() => besuchWirkung(e, ctx), [e, ctx]);
   const urteil = besuchUrteil(e, w, heute);
   const bericht = useMemo(() => berichtAus({ event: e, teilnahmen: crm.stand.teilnahmen, kontakte, followups: crm.stand.followups, heute }), [e, crm.stand.teilnahmen, kontakte, crm.stand.followups, heute]);
-  const erfasstIds = useMemo(() => new Set(bericht.zeilen.map(z => z.kontaktId)), [bericht]);
   const setze = (teil: Partial<Event>) => eventSetzen(api, e, teil);
   const a = anmeldungVon(e);
   const fuer = fuerVon(e);
@@ -52,8 +52,9 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
   const offeneFu = (crm.stand.followups ?? []).filter(f => f.bezug.art === 'event' && f.bezug.id === e.id && f.status === 'offen').length;
   const zielText = e.ziel === EVENT_ZIEL ? '' : e.ziel;
   const ziele = e.zielpersonen ?? [];
-  const getroffen = (z: EventZielperson) => !!z.getroffen || (!!z.kontaktId && erfasstIds.has(z.kontaktId));
-  const zielNeu = (liste: EventZielperson[]) => void setze({ zielpersonen: liste });
+  // Getroffen = von Hand abgehakt oder über „Netzwerken“ erfasst (Person über die Kennung, Zielfirma über jede erfasste Person der Firma) — eine Regel für Akte und Wirkung (`zielGetroffen`).
+  const zielStand = useMemo(() => zielGetroffen(e, crm.stand.teilnahmen, kontakte), [e, crm.stand.teilnahmen, kontakte]);
+  const getroffen = (z: EventZielperson) => zielStand.getroffen.has(zielSchluessel(z));
   const kundenName = fuer.art === 'kunde' ? (firmenMap.get(fuer.firmaId)?.name ?? 'dem Kunden') : null;
 
   const ANMELDE = ANMELDUNGEN.map(x => ({ id: x.id, label: x.label }));
@@ -76,11 +77,12 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
         <BFeld label="Wann & wo">
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Feld typ="date" wert={e.datum} breite={160} platzhalter="Datum" onFertig={d => d && void setze({ datum: d })} />
+            <Feld typ="date" wert={e.bisDatum} breite={160} platzhalter="bis (mehrtägig)" onFertig={d => void setze({ bisDatum: d && d > e.datum ? d : undefined })} />
             <Feld typ="time" wert={e.uhrzeit} breite={120} platzhalter="Uhrzeit" onFertig={u => void setze({ uhrzeit: u || undefined })} />
             <div style={{ flex: 1, minWidth: 160 }}><Feld wert={e.ort} platzhalter="Ort" onFertig={o => void setze({ ort: o || undefined })} /></div>
           </div>
         </BFeld>
-        <BFeld label="Link"><Feld wert={e.link} platzhalter="https://… (Anmeldung, Programm)" onFertig={l => void setze({ link: l.trim() || undefined })} /></BFeld>
+        <BFeld label="Link"><Feld wert={e.link} platzhalter="https://… (Anmeldung, Programm)" onFertig={l => { const t = l.trim(); if (t && !linkNormal(t)) { api.setFehler(LINK_FEHLER); return; } void setze({ link: t ? linkNormal(t) : undefined }); }} /></BFeld>
         <BFeld label="Für wen"><FuerWahl e={e} api={api} crm={crm} /></BFeld>
         <BFeld label="Wer geht hin">
           <WahlMehrfach label="Wer geht hin" leer="+ wer geht hin" liste={TEAM.map(m => ({ id: m.id, label: m.name }))} wert={e.wer ?? []} onWahl={x => void setze({ wer: x })} />
@@ -90,26 +92,27 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
             ? <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{euro(budgetSumme(e))} <span style={{ color: C.inkLeise }}>· aus den Budgetposten des Events</span></span>
             : <Feld typ="number" wert={e.kostenEuro ? String(e.kostenEuro) : ''} breite={150} platzhalter="Euro gesamt" onFertig={k => void setze({ kostenEuro: Number(k) > 0 ? Number(k) : undefined })} />}
         </BFeld>
+        <BFeld label="Liquiplanung"><Liquiplan e={e} kosten={budgetSumme(e)} kompakt /></BFeld>
         <BFeld label="Kalender"><Kalender e={e} /></BFeld>
         {fuer.art === 'kunde' && <div style={{ marginTop: 8 }}><AvvHinweis text={`${UEBERGABE_HINWEIS} ${ROLLE_HINWEIS}`} /></div>}
       </Karte>
 
       <Karte i={2}>
-        <Ueberschrift rechts={ziele.length ? <span>{ziele.filter(getroffen).length} von {ziele.length} getroffen</span> : undefined}>Ziel und wen wir treffen wollen</Ueberschrift>
+        <Ueberschrift rechts={ziele.length ? <span>{zielStand.anzahl} von {ziele.length} getroffen{w.zielQuote !== null ? ` · ${Math.round(w.zielQuote * 100)} % erreicht` : ''}</span> : undefined}>Ziel und wen wir treffen wollen</Ueberschrift>
         <Notizfeld wert={zielText} zeilen={2} gross platzhalter="Ziel des Events — was soll danach anders sein? z. B. drei Gespräche mit Inhabern aus dem Maschinenbau" onFertig={t => { if (t.trim() !== zielText) void setze({ ziel: t.trim() }); }} />
         <div style={{ marginTop: 10 }}>
           {ziele.length === 0 && <Leer>Noch niemand eingetragen — wen wollen wir dort treffen? Suche unten; beim Event wird abgehakt, und wer über „Netzwerken“ erfasst wird, gilt automatisch als getroffen.</Leer>}
           {ziele.map(z => {
             const n = zielName(z, kontaktMap, firmenMap);
-            const abgeleitet = !z.getroffen && getroffen(z);
+            const abgeleitet = zielStand.abgeleitet.has(zielSchluessel(z));
             // Inzwischen gesperrt (Art. 18 / Werbesperre): ausgegraut, nicht abhakbar (der Server nimmt Gesperrte nie neu auf).
             const gesperrt = !!z.kontaktId && !!zielpersonGesperrt(kontaktMap.get(z.kontaktId));
             return (
               <div key={zielSchluessel(z)} style={gesperrt ? { opacity: 0.5 } : undefined} aria-disabled={gesperrt || undefined}><Zeile
-                links={<Haken an={getroffen(z)} farbe={hat(getroffen(z), LEUCHT.gut)} label={n.name} onChange={() => { if (!abgeleitet && !gesperrt) zielNeu(ziele.map(x => (zielSchluessel(x) === zielSchluessel(z) ? { ...x, getroffen: !x.getroffen } : x))); }} />}
+                links={<Haken an={getroffen(z)} farbe={hat(getroffen(z), LEUCHT.gut)} label={n.name} onChange={() => { if (!abgeleitet && !gesperrt) void zielAenderung(api, e, { op: 'getroffen', ...(z.kontaktId ? { kontaktId: z.kontaktId } : { firmaId: z.firmaId }), wert: !z.getroffen }); }} />}
                 titel={n.tot ? n.name : <button type="button" onClick={() => (z.kontaktId ? zuKontakt(z.kontaktId) : z.firmaId && zuFirma(z.firmaId))} style={{ background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontSize: 'inherit', fontWeight: 500, padding: 0, textAlign: 'left' }}>{n.name}</button>}
                 unter={[n.unter, gesperrt ? 'gesperrt (Art. 18 / Werbesperre)' : '', abgeleitet ? 'über Netzwerken erfasst' : ''].filter(Boolean).join(' · ') || undefined}
-                rechts={<Leise onClick={() => zielNeu(ziele.filter(x => zielSchluessel(x) !== zielSchluessel(z)))}>entfernen</Leise>} /></div>
+                rechts={<Leise onClick={() => void zielAenderung(api, e, { op: 'weg', ...(z.kontaktId ? { kontaktId: z.kontaktId } : { firmaId: z.firmaId }) })}>entfernen</Leise>} /></div>
             );
           })}
         </div>
@@ -176,7 +179,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
       <div>
         <Leise onClick={() => {
           const n = (e.uebergaben ?? []).length;
-          if (!window.confirm(`„${e.titel}“ löschen? Die erfassten Personen bleiben in der Kartei, ihre Teilnahme an diesem Event wird entfernt; offene Follow-ups des Events werden abgesagt.${n ? `\n\nACHTUNG: Dieses Event hat ${n} ${n === 1 ? 'Übergabe' : 'Übergaben'} an Kunden im Protokoll. Das Protokoll bleibt als Nachweis (Auskunft Art. 15, Mitteilung Art. 19) 3 Jahre im Übergabe-Journal erhalten — aber das Event ist weg.` : ''}`)) return;
+          if (!window.confirm(`„${e.titel}“ löschen? Die erfassten Personen bleiben in der Kartei, ihre Teilnahme an diesem Event wird entfernt; offene Follow-ups des Events werden abgesagt. Auch der Kalender-Termin und der Planposten in der Liquiplanung werden entfernt, Deals verlieren den Verweis auf das Event.${n ? `\n\nACHTUNG: Dieses Event hat ${n} ${n === 1 ? 'Übergabe' : 'Übergaben'} an Kunden im Protokoll. Das Protokoll bleibt als Nachweis (Auskunft Art. 15, Mitteilung Art. 19) 3 Jahre im Übergabe-Journal erhalten — aber das Event ist weg.` : ''}`)) return;
           void eventLoeschen(api, e, n ? { uebergabenBestaetigt: true } : undefined).then(onZurueck);
         }}>Event löschen</Leise>
       </div>

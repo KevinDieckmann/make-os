@@ -23,6 +23,7 @@
 import { verbunden, ladeStand, termineImZeitraum, findeObjekt, KalenderFehler, HOLEN_VON, HOLEN_BIS, type IcloudStand } from './icloud';
 import { termineAus, type Termin } from './ics';
 import { tagPlus } from './zeit';
+import { ladeEinstellungen } from './einstellungen';
 import { terminAnlegenServer, terminAendernServer, terminLoeschenServer } from './termin-server';
 import { eventSoll, dateSoll, gespraechSoll, spiegelAbweichung, spiegelUid, istScheinUid, scheinAufloesen, gespraecheUmziehen, spiegelMarke, spiegelSchritt, type Soll, type SpiegelArt } from './spiegel';
 import { bezugVon, type BezugBestand, type TerminBezug } from './bezug';
@@ -158,7 +159,11 @@ export async function eventSpiegelAnlegen(id: string, person: string, wer: Proto
     await klickAbgleich(e.kalenderUid, soll, wer);
     return { uid: e.kalenderUid };
   }
-  const r = await terminAnlegenServer({ ...soll.t, wer: 'beide', art: 'termin', beschaeftigt: true, uid: spiegelUid('event', e.id), von: person, bezug: { eventId: e.id }, notiz: 'Aus MAKE OS · Event' }, wer);
+  // Wessen Kalender: geht genau EINE Person hin (Event.wer, besuchte Events), kommt der Termin in deren Kalender, sonst „beide“ (Gemeinsam).
+  const einst = await ladeEinstellungen();
+  const hin = e.wer?.length === 1 ? e.wer[0] : undefined;
+  const kalenderWer = (hin && (einst.kalender as Record<string, string | undefined>)[hin] ? hin : 'beide') as 'beide';
+  const r = await terminAnlegenServer({ ...soll.t, wer: kalenderWer, art: 'termin', beschaeftigt: true, uid: spiegelUid('event', e.id), von: person, bezug: { eventId: e.id }, notiz: 'Aus MAKE OS · Event' }, wer);
   // Marke setzen (und bei `schonDa` auf das Soll bringen) — ab jetzt zieht der Abgleich nur nach Änderungen im Event nach.
   await klickAbgleich(r.uid, soll, wer);
   await eventUidSetzen(e.id, r.uid, wer);
@@ -180,6 +185,20 @@ export async function eventSpiegelLoeschen(id: string, wer: ProtokollWer): Promi
   else if (!terminNachUid(await ladeStand(), e.kalenderUid)) await eventUidSetzen(e.id, null, wer);
   else throw new KalenderFehler('Der Termin lässt sich hier nicht löschen (nicht von MAKE OS angelegt, Serie oder mit Gästen) — bitte in Apple löschen.', 409);
   return { geloescht: r === 'weg' };
+}
+
+/**
+ * Beim LÖSCHEN eines Events (Klick auf „Event löschen“, nie über den Dienstweg): der Spiegel-Termin geht mit — sonst bliebe ein Termin im Kalender, der auf ein
+ * Event zeigt, das es nicht mehr gibt (M8). Wie bei einer Absage: nur unser Spiegel (Bezug `eventId`), nur Einzeltermine, die MAKE OS ändern darf.
+ * Wirft nie: ein nicht erreichbares iCloud darf das Löschen nicht aufhalten — das Ergebnis sagt, was geschah.
+ */
+export async function eventSpiegelBeimLoeschen(e: { id: string; kalenderUid?: string } & Parameters<typeof eventSoll>[0], wer: ProtokollWer): Promise<'weg' | 'keiner' | 'bleibt' | 'ohne-icloud' | 'fehler'> {
+  if (!e.kalenderUid || istScheinUid(e.kalenderUid)) return 'keiner';
+  if (!verbunden()) return 'ohne-icloud';
+  try {
+    const r = await abgleichen(await ladeStand(), e.kalenderUid, eventSoll({ ...e, status: 'abgesagt' }), wer, { bezuege: await ladeBezuege(), gehoert: b => b?.eventId === e.id, loeschenErlaubt: true });
+    return r === 'weg' || !terminNachUid(await ladeStand(), e.kalenderUid) ? 'weg' : 'bleibt';
+  } catch { return 'fehler'; }
 }
 
 /**

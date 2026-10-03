@@ -343,6 +343,7 @@ export const REGISTER: Record<string, Eintrag> = {
   angebote_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Angebote lesen', i => text(i.angebot) || 'alle') },
   kampagnen_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Kampagnen lesen', i => text(i.kampagne) || 'alle') },
   events_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Events lesen', i => text(i.event) || 'alle') },
+  besuche_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Besuchte Events lesen', i => text(i.event) || 'alle') },
   marketing_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Marketing lesen', () => 'Beiträge, Newsletter, Segmente, Kennzahlen') },
   kennzahlen: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Kennzahlen lesen', () => 'Traktions-Index, Kennzahlen, Befunde') },
   sales_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Sales lesen', () => 'Power Hour, Team, Auswertung') },

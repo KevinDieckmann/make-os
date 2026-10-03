@@ -4,7 +4,7 @@
 // Alles hier ist für das iPhone gebaut: Ziele mindestens 48 px hoch, Eingabefelder mit 16 px Schrift (kleiner zoomt iOS
 // beim Antippen die Seite auf), Knöpfe über die ganze Breite. Farben und Schrift aus lib/make-one/design.ts.
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
@@ -57,14 +57,37 @@ export function Hinweis({ farbe = C.inkDim, children, rolle }: { farbe?: string;
   return <div role={rolle} style={{ padding: '12px 14px', borderRadius: 12, border: `1px solid ${farbe === C.inkDim ? 'rgba(255,255,255,.08)' : TIEF.rand(farbe)}`, background: farbe === C.inkDim ? 'rgba(255,255,255,.03)' : TIEF.flaeche(farbe), color: C.ink, fontSize: TYP.body, lineHeight: 1.5 }}>{children}</div>;
 }
 
+// ── Gemerkter Wert (localStorage nur als Komfort) ────────────────────────────
+// `useSyncExternalStore` statt „erst leer rendern, dann im Effekt laden“: der gemerkte Wert steht schon im ersten gemalten Bild — der Kopf „Heute bei“ sprang vorher
+// von der leeren Karte zur gefüllten (Layout-Sprung). Ohne Speicher (privates Fenster, gesperrt) hält ein Arbeitsspeicher-Ersatz den Wert für diese Sitzung.
+const GEMERKT_HOERER = new Set<() => void>();
+const GEMERKT_ZWISCHEN = new Map<string, { roh: string | null; wert: unknown }>();
+const GEMERKT_ERSATZ = new Map<string, unknown>();
+function gemerktLesen(schluessel: string): unknown {
+  let roh: string | null = null;
+  try { roh = window.localStorage.getItem(schluessel); } catch { /* ohne Speicher */ }
+  if (roh === null) return GEMERKT_ERSATZ.get(schluessel);
+  const z = GEMERKT_ZWISCHEN.get(schluessel);
+  if (z && z.roh === roh) return z.wert;   // gleicher Text → derselbe Wert (stabile Kennung für React)
+  let wert: unknown;
+  try { wert = JSON.parse(roh); } catch { wert = undefined; }
+  GEMERKT_ZWISCHEN.set(schluessel, { roh, wert });
+  return wert;
+}
+const gemerktAbonnieren = (f: () => void): (() => void) => {
+  GEMERKT_HOERER.add(f);
+  if (typeof window !== 'undefined') window.addEventListener('storage', f);
+  return () => { GEMERKT_HOERER.delete(f); if (typeof window !== 'undefined') window.removeEventListener('storage', f); };
+};
+
 /** Wert im Browser merken (localStorage nur als Komfort — fehlt es oder wirft es, läuft alles ohne). */
 export function useGemerkt<T>(schluessel: string, start: T): [T, (v: T) => void] {
-  const [wert, setWert] = useState<T>(start);
-  useEffect(() => {
-    try { const roh = window.localStorage.getItem(schluessel); if (roh) setWert(JSON.parse(roh) as T); } catch { /* ohne Speicher */ }
+  const gelesen = useSyncExternalStore(gemerktAbonnieren, () => gemerktLesen(schluessel), () => undefined);
+  const setze = useCallback((v: T) => {
+    try { window.localStorage.setItem(schluessel, JSON.stringify(v)); GEMERKT_ERSATZ.delete(schluessel); } catch { GEMERKT_ERSATZ.set(schluessel, v); }
+    for (const f of Array.from(GEMERKT_HOERER)) f();
   }, [schluessel]);
-  const setze = (v: T) => { setWert(v); try { window.localStorage.setItem(schluessel, JSON.stringify(v)); } catch { /* ohne Speicher */ } };
-  return [wert, setze];
+  return [gelesen === undefined ? start : (gelesen as T), setze];
 }
 
 export const kopfStil: CSSProperties = { fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.2, margin: 0, color: C.ink };
@@ -114,20 +137,31 @@ function useTastaturHoehe(): number {
   const [h, setH] = useState(0);
   useEffect(() => {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null;
-    if (!vv || !window.matchMedia?.('(max-width: 720px)').matches) return;
+    if (!vv || !window.matchMedia) return;
+    // Handy-Breite live beobachten (Drehen, Split View, Fenster ziehen) — nicht nur beim Öffnen: sonst bliebe die Leiste nach dem Drehen falsch.
+    const handy = window.matchMedia('(max-width: 720px)');
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const messen = () => {
+      if (!handy.matches) { setH(0); return; }
       const a = document.activeElement;
       const tippt = !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !!a.closest('.netz-seite');
       const verdeckt = Math.round(document.documentElement.clientHeight - (vv.offsetTop + vv.height));
       setH(tippt && verdeckt > 120 ? verdeckt : 0);
     };
-    // Fokuswechsel kommt vor dem Ausfahren der Tastatur — kurz danach noch einmal messen.
-    const spaeter = () => { messen(); setTimeout(messen, 350); };
+    // Fokuswechsel kommt vor dem Ausfahren der Tastatur — kurz danach noch einmal messen. Der Timer wird gemerkt und beim Aufräumen gelöscht (kein Setzen nach dem Abbau).
+    const spaeter = () => { messen(); if (timer) clearTimeout(timer); timer = setTimeout(messen, 350); };
     vv.addEventListener('resize', messen);
     vv.addEventListener('scroll', messen);
     document.addEventListener('focusin', spaeter);
     document.addEventListener('focusout', spaeter);
-    return () => { vv.removeEventListener('resize', messen); vv.removeEventListener('scroll', messen); document.removeEventListener('focusin', spaeter); document.removeEventListener('focusout', spaeter); };
+    if (handy.addEventListener) handy.addEventListener('change', messen); else handy.addListener?.(messen);
+    messen();
+    return () => {
+      if (timer) clearTimeout(timer);
+      vv.removeEventListener('resize', messen); vv.removeEventListener('scroll', messen);
+      document.removeEventListener('focusin', spaeter); document.removeEventListener('focusout', spaeter);
+      if (handy.removeEventListener) handy.removeEventListener('change', messen); else handy.removeListener?.(messen);
+    };
   }, []);
   return h;
 }

@@ -24,7 +24,7 @@ const LAGE_TEXT: Record<LiquiplanStand['lage'], string> = { ok: 'übernommen', a
  * doppelt. Der Stand kommt von der Route (GET ?liquiplan=), weil das Event
  * selbst kein Feld dafür hat; „übernommen am“ steht im Notiz-Stempel.
  */
-function Liquiplan({ e, kosten }: { e: Event; kosten: number }) {
+export function Liquiplan({ e, kosten, kompakt }: { e: Event; kosten: number; /** In der Akte eines besuchten Events: ohne Überschrift und ohne die lange Erklärung. */ kompakt?: boolean }) {
   const [stand, setStand] = useState<LiquiplanStand | null>(null);
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState('');
@@ -44,7 +44,7 @@ function Liquiplan({ e, kosten }: { e: Event; kosten: number }) {
   const lage = stand?.lage ?? (kann ? 'fehlt' : 'kein-posten');
   return (
     <div>
-      <Ueberschrift rechts={<Chip farbe={LAGE_FARBE[lage]}>{LAGE_TEXT[lage]}</Chip>}>Liquiditätsplanung</Ueberschrift>
+      {kompakt ? <div style={{ marginBottom: 6 }}><Chip farbe={LAGE_FARBE[lage]}>{LAGE_TEXT[lage]}</Chip></div> : <Ueberschrift rechts={<Chip farbe={LAGE_FARBE[lage]}>{LAGE_TEXT[lage]}</Chip>}>Liquiditätsplanung</Ueberschrift>}
       <div style={{ display: 'grid', gap: 8 }}>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
           {stand ? stand.hinweis : kann ? `Noch nicht im Liquiditätsplan — ${euro(kosten)} am ${datum(tag)}.` : !LIQUIPLAN_STATUS.includes(status) ? 'In den Plan geht ein Event ab Status „Geplant“ oder „Einladung läuft“.' : 'Ohne Budget gibt es nichts zu übernehmen — Positionen oder Pauschale eintragen.'}
@@ -55,10 +55,10 @@ function Liquiplan({ e, kosten }: { e: Event; kosten: number }) {
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {kann && lage !== 'ok' && <Knopf aus={laeuft} onClick={() => void uebernehmen()}>{laeuft ? 'überträgt …' : lage === 'abweichend' ? 'Im Liquiditätsplan nachziehen' : 'In die Liquiditätsplanung übernehmen'}</Knopf>}
+          {kann && lage !== 'ok' && <Knopf aus={laeuft} onClick={() => void uebernehmen()}>{laeuft ? 'überträgt …' : lage === 'abweichend' ? 'Im Liquiditätsplan nachziehen' : kompakt ? 'Kosten in die Liquiplanung übernehmen' : 'In die Liquiditätsplanung übernehmen'}</Knopf>}
           {meldung && <span style={{ fontSize: 12.5, color: C.inkDim }}>{meldung}</span>}
         </div>
-        <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Betrag = Summe des Budgets (geht raus), fällig am Eventdatum, Kategorie „marketing/event“. Sicher, sobald die Einladung läuft; geplant zählt mit 80 %. Ändert sich das Budget, steht hier „abweichend“ — nachziehen ist ein Klick, doppelt wird nichts.</div>
+        {!kompakt && <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Betrag = Summe des Budgets (geht raus), fällig am Eventdatum, Kategorie „marketing/event“. Sicher, sobald die Einladung läuft; geplant zählt mit 80 %. Ändert sich das Budget, steht hier „abweichend“ — nachziehen ist ein Klick, doppelt wird nichts.</div>}
       </div>
     </div>
   );

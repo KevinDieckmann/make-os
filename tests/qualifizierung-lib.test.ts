@@ -18,7 +18,7 @@ const tn = (eventId: string, kontaktId: string, status: Teilnahme['status'] = 'd
 
 describe('Herkunft', () => {
   const crm = { ...leer(), firmen: [{ id: 'f-kunde', name: 'Kunde GmbH', rolle: 'kunde', geaendert: '' }], events: [ev('e1', { marke: 'Netzwerken', fuer: { art: 'kunde', firmaId: 'f-kunde' } }), ev('m1')], teilnahmen: [tn('e1', 'c-a1'), tn('m1', 'c-a1'), tn('m1', 'c-a1', 'abgesagt')],
-    kampagnen: [{ id: 'kp-1', name: 'Frühjahr', kontaktIds: ['c-a1'], ergebnisse: [{ kontaktId: 'c-a1', ergebnis: 'gespraech', am: '2026-09-20T10:00:00Z' }] } as never] };
+    kampagnen: [{ id: 'kp-1', name: 'Frühjahr', kontaktIds: ['c-a1'], ergebnisse: [{ kontaktId: 'c-a1', ergebnis: 'gespraech', am: '2026-09-20T10:00:00Z' }] } as never] } as unknown as CrmBestand;
   it('besuchtes Event mit Kunde, Make.One, Kampagne, Empfehlung, letzte Aktivität', () => {
     const p = k('c-a1', { herkunft: 'empfehlung', quelle: 'Frau Muster', aktivitaeten: [{ am: '2026-09-30T10:00:00Z', art: 'anruf', von: 'kevin' }, { am: '2026-10-01T10:00:00Z', art: 'system', von: 'system' }] });
     const h = herkunftVon([p], crm);

@@ -17,12 +17,12 @@
 // Beziehung hält (Abschnitt „Zu zweit“ unten, Regeln in lib/crm/team.ts).
 
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
-import type { CrmBestand, Event, EventFormat, Firma, SegmentKriterien, Teilnahme } from './typen';
+import type { CrmBestand, Event, EventFormat, Firma, SegmentKriterien, Teilnahme, TeilnahmeHerkunft } from './typen';
 import { kanalStatus, type KanalStatus } from './recht';
 import { kontextAus, imSegment } from './segmente';
 import { TEAM, BEIDE, wer, zustaendig, verantwortlich, haeltBeziehung, nameVon } from './team';
 import { markttraktion } from './adresse';
-import { markeVon } from './marke';
+import { markeVon, istNetzwerkenEvent } from './marke';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -492,8 +492,14 @@ export function gaesteVorschlag(kontakte: Kontakt[], crm: CrmBestand, e: Event, 
   const ctx = kontextAus(crm, heute);
   const schon = new Set(crm.teilnahmen.filter(t => t.eventId === e.id).map(t => t.kontaktId));
   const warDa = new Map<string, number>(), nichtGekommen = new Map<string, number>();
+  // Besuchte Events (Netzwerken, 03.10.) zählen hier NICHT: „war schon bei einem Event“ meint unsere Abende. Wen wir dort kennengelernt haben,
+  // steht stattdessen mit dem Grund „Kennengelernt bei <Event>“ im Vorschlag (M3) — eine Begegnung, keine Make.One-Erfahrung.
+  const besuche = new Map(crm.events.filter(istNetzwerkenEvent).map(x => [x.id, x]));
+  const kennengelernt = new Map<string, string>();
   for (const t of crm.teilnahmen) {
     if (t.eventId === e.id) continue;
+    const b = besuche.get(t.eventId);
+    if (b) { if (t.status === 'da' && !kennengelernt.has(t.kontaktId)) kennengelernt.set(t.kontaktId, b.titel); continue; }
     if (t.status === 'da') warDa.set(t.kontaktId, (warDa.get(t.kontaktId) ?? 0) + 1);
     if (t.status === 'no_show') nichtGekommen.set(t.kontaktId, (nichtGekommen.get(t.kontaktId) ?? 0) + 1);
   }
@@ -516,12 +522,62 @@ export function gaesteVorschlag(kontakte: Kontakt[], crm: CrmBestand, e: Event, 
     if ((gruppe === 'zielkunde' && m.fehlen.zielkunden > 0) || (gruppe === 'kunde' && m.fehlen.kunden > 0)) plus(15, 'fehlt in der Mischung');
     if (warDa.get(k.id)) plus(5, 'war schon bei einem Event');
     else if (nichtGekommen.get(k.id)) plus(-10, 'letztes Mal nicht gekommen');
+    if (kennengelernt.has(k.id)) plus(5, `Kennengelernt bei ${kennengelernt.get(k.id)}`);
     if (k.eignung === 'nein') plus(-15, 'Eignung: nein');
     if (!segment && punkte <= 0) continue;
     const ampel = kanalStatus(k, 'einladung', { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) });
     raus.push({ kontakt: k, punkte, gruende, gruppe, weg: ampel.farbe === 'gruen' ? 'mail' : 'persoenlich', ampel });
   }
   return raus.sort((a, b) => b.punkte - a.punkte || anzeigename(a.kontakt).localeCompare(anzeigename(b.kontakt), 'de')).slice(0, n);
+}
+
+// ── Gast vormerken — EINE Stelle (Netzwerken-Server, Kontaktakte „Make.One einladen“) ──────────────
+// Vorher bauten der Server (Schritt „Zu Make.One einladen“) und die Schnellleiste die Vormerkung je für sich — mit anderem
+// `einladenDurch` und ohne den Nachfass-Stempel. Jetzt: die Teilnahme „vorgemerkt“ (Einladungsweg nach Kanal-Ampel), `einladenDurch`
+// (wer einlädt und nachfasst), `herkunft` (aus welcher Begegnung die Person kommt) und der Stempel „nachgefasst“ an den Begegnungen
+// der Person bei besuchten Events — alles aus dieser Datei. Gesendet wird hier nie etwas.
+
+/** Einladungsweg aus der Ampel: Mail nur bei grün (§ 7 UWG), sonst persönlich. */
+export const einladungswegAus = (farbe: KanalStatus['farbe']): 'mail' | 'persoenlich' => (farbe === 'gruen' ? 'mail' : 'persoenlich');
+
+/** Die Begegnung hinter einer Person: die jüngste Teilnahme mit Netzwerken-Angabe. */
+export function netzwerkenHerkunft(teilnahmen: readonly Teilnahme[], kontaktId: string): TeilnahmeHerkunft | undefined {
+  const t = teilnahmen.filter(x => x.kontaktId === kontaktId && x.netzwerken).sort((a, b) => b.netzwerken!.erfasstAm.localeCompare(a.netzwerken!.erfasstAm))[0];
+  return t?.netzwerken ? { art: 'netzwerken', eventId: t.eventId, erfassungId: t.netzwerken.erfassungId } : undefined;
+}
+
+/** Die Teilnahme „vorgemerkt“ — rein, ohne Speicher. */
+export function gastTeilnahme(a: { id: string; eventId: string; kontaktId: string; weg: NonNullable<Teilnahme['einladungsweg']>; einladenDurch?: string; jetztIso: string; person?: string; herkunft?: TeilnahmeHerkunft }): Teilnahme {
+  const durch = wer(a.einladenDurch);
+  return {
+    id: a.id, eventId: a.eventId, kontaktId: a.kontaktId, status: 'vorgemerkt', rolle: 'gast', einladungsweg: a.weg,
+    ...(durch && durch !== BEIDE ? { einladenDurch: durch } : {}), ...(a.herkunft ? { herkunft: a.herkunft } : {}),
+    geaendert: a.jetztIso, ...(a.person ? { geaendertVon: a.person } : {}),
+  };
+}
+
+/**
+ * Die Begegnungen der Person bei besuchten Events gelten als nachgefasst (ein nächster Schritt ist getan): `followUpAm` = `tag`, wo es noch
+ * fehlt und nicht bewusst verzichtet wurde. `nurEvent`: nur die Begegnung bei diesem Event. Gibt die geänderten Teilnahmen zurück (leer = nichts zu tun).
+ */
+export function begegnungenNachgefasst(b: Pick<CrmBestand, 'events' | 'teilnahmen'>, kontaktId: string, tag: string, person: string, jetztIso: string, nurEvent?: string): Teilnahme[] {
+  const besuche = new Set(b.events.filter(istNetzwerkenEvent).map(x => x.id));
+  return b.teilnahmen.filter(t => t.kontaktId === kontaktId && t.status === 'da' && !!t.netzwerken && besuche.has(t.eventId) && (!nurEvent || t.eventId === nurEvent) && !t.followUpAm && !t.nachfassenVerzichtet)
+    .map(t => ({ ...t, followUpAm: tag, geaendert: jetztIso, geaendertVon: person }));
+}
+
+/**
+ * Gast für ein Make.One-Event vormerken — der Serverweg (innerhalb von `aendereCrm`). Gibt es die Person dort schon, bleibt alles, wie es ist.
+ * `nachgefasst` (Tag) stempelt zusätzlich die Begegnungen bei besuchten Events.
+ */
+export function gastVormerken(b: CrmBestand, a: { id: string; eventId: string; kontaktId: string; weg: NonNullable<Teilnahme['einladungsweg']>; einladenDurch?: string; jetztIso: string; person?: string; herkunft?: TeilnahmeHerkunft; nachgefasst?: string }): { bestand: CrmBestand; angelegt: boolean } {
+  const schon = b.teilnahmen.some(t => t.eventId === a.eventId && t.kontaktId === a.kontaktId);
+  let teilnahmen = schon ? b.teilnahmen : [...b.teilnahmen, gastTeilnahme({ ...a, herkunft: a.herkunft ?? netzwerkenHerkunft(b.teilnahmen, a.kontaktId) })];
+  if (a.nachgefasst) {
+    const geaendert = new Map(begegnungenNachgefasst({ events: b.events, teilnahmen }, a.kontaktId, a.nachgefasst, a.person ?? a.einladenDurch ?? 'system', a.jetztIso, a.herkunft?.eventId).map(t => [t.id, t]));
+    if (geaendert.size) teilnahmen = teilnahmen.map(t => geaendert.get(t.id) ?? t);
+  }
+  return { bestand: teilnahmen === b.teilnahmen ? b : { ...b, teilnahmen }, angelegt: !schon };
 }
 
 // ── Kalender-Datei (RFC 5545) ───────────────────────────────────────────────

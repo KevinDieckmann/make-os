@@ -55,8 +55,10 @@ export interface QueueStand {
   eintraege: WarteEintrag[];
   laeuft: boolean;
   neuLaden: boolean;
+  /** Event-Kennungen, die der Server umgehängt hat (gleichnamiges Event desselben Tages gab es schon): Kennung der Erfassung → Kennung auf dem Server. */
+  umgehaengt: Record<string, string>;
   /** Antworten des Servers je Erfassung (z. B. die Kennung der Person für „Zur Person“). */
-  antworten: Record<string, { kontaktId?: string; eventId?: string; hinweise?: string[]; zusammengefuehrt?: boolean; neu?: boolean; terminUid?: string; terminTag?: string; angebotId?: string; dealId?: string; followupId?: string }>;
+  antworten: Record<string, { kontaktId?: string; eventId?: string; hinweise?: string[]; zusammengefuehrt?: boolean; neu?: boolean; terminUid?: string; terminTag?: string; angebotId?: string; makeoneEventId?: string; eventBesuch?: boolean; dealId?: string; followupId?: string }>;
 }
 
 /** Was nach 30 Tagen automatisch verworfen wurde, als Merker im Browser (zeigt die Seite, bis es weggeklickt ist). */
@@ -71,7 +73,7 @@ export function verworfenMerken(neu: readonly VerworfenAlt[]): void {
 export function useWarteschlange(beiGesendet?: (r: SendeErgebnis) => void) {
   const q = useRef<Warteschlange | null>(null);
   if (!q.current) q.current = geteilteWarteschlange();
-  const [stand, setStand] = useState<QueueStand>({ eintraege: [], laeuft: false, neuLaden: false, antworten: {} });
+  const [stand, setStand] = useState<QueueStand>({ eintraege: [], laeuft: false, neuLaden: false, umgehaengt: {}, antworten: {} });
   const rueck = useRef(beiGesendet); rueck.current = beiGesendet;
   const lebt = useRef(true);
   useEffect(() => { lebt.current = true; return () => { lebt.current = false; }; }, []);
@@ -85,7 +87,7 @@ export function useWarteschlange(beiGesendet?: (r: SendeErgebnis) => void) {
       const e = await w.alle();
       if (!lebt.current) return;
       // Was der geteilte Sender (oder ein anderer Aufrufer) gesendet hat, steht in der Warteschlange selbst: Antworten, „neu laden“, Zähler.
-      setStand(s => ({ ...s, eintraege: e, neuLaden: w.neuLadenNoetig || s.neuLaden, antworten: { ...s.antworten, ...(w.antworten as QueueStand['antworten']) } }));
+      setStand(s => ({ ...s, eintraege: e, neuLaden: w.neuLadenNoetig || s.neuLaden, umgehaengt: { ...s.umgehaengt, ...w.umgehaengt }, antworten: { ...s.antworten, ...(w.antworten as QueueStand['antworten']) } }));
       if (w.gesendetZahl !== gesehen.current) { gesehen.current = w.gesendetZahl; rueck.current?.({ gesendet: [], wartend: 0, fehler: 0, neuLaden: false, antworten: {} }); }
     } catch { /* IndexedDB nicht lesbar — die Anzeige bleibt */ }
   }, []);

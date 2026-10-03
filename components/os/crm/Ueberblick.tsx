@@ -64,7 +64,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
       const b = d.bestand;
       return (
         <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 12, display: 'flex', gap: '4px 10px', flexWrap: 'wrap' }}>
-          {zahl(b.kontakte, 'Kontakte', WEG.kontakt())} · {zahl(b.firmen, 'Firmen', WEG.firma())} · {zahl(b.chancen, 'Deals', WEG.deals())} · {zahl(b.mandate, 'Mandate', WEG.mandat())} · {zahl(b.events, 'Events', WEG.event())} · {zahl(b.kampagnen, 'Kampagnen', WEG.kampagne())}
+          {zahl(b.kontakte, 'Kontakte', WEG.kontakt())} · {zahl(b.firmen, 'Firmen', WEG.firma())} · {zahl(b.chancen, 'Deals', WEG.deals())} · {zahl(b.mandate, 'Mandate', WEG.mandat())} · {zahl(b.events, 'Make.One-Abende', WEG.event())} · {zahl(b.besuche ?? 0, 'besuchte Events', WEG.besuch())} · {zahl(b.kampagnen, 'Kampagnen', WEG.kampagne())}
           <button onClick={() => zuBereich('stammdaten')} style={leise}>Stammdaten ›</button>
         </div>
       );

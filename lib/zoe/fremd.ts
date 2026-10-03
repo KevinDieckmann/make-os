@@ -20,7 +20,7 @@ export const FREMD_WERKZEUGE: Record<string, string> = {
   suche_arbeit: 'arbeitsbestaende',
   // 28.09. (C7): die ganze Markttraktion — alle kapseln selbst (Kopfzeile + fremd(), SELBST_GEKAPSELT).
   crm_suche: 'markttraktion', kontakt_akte: 'markttraktion', firma_akte: 'markttraktion', pipeline: 'markttraktion', mandate_lage: 'markttraktion',
-  angebote_lage: 'markttraktion', kampagnen_lage: 'markttraktion', events_lage: 'markttraktion', marketing_lage: 'markttraktion', kennzahlen: 'markttraktion',
+  angebote_lage: 'markttraktion', kampagnen_lage: 'markttraktion', events_lage: 'markttraktion', besuche_lage: 'markttraktion', marketing_lage: 'markttraktion', kennzahlen: 'markttraktion',
   sales_lage: 'markttraktion', qualifizierung_lage: 'markttraktion', stammdaten_lage: 'markttraktion', datenqualitaet: 'markttraktion', crm_datei_lesen: 'crm-ablage', heads_lage: 'markttraktion',
   // 29.09. (#K1): plan_block nennt bei einer Kollision den Titel des festen Termins — Titel können aus Einladungen Dritter stammen.
   plan_block: 'kalender',
@@ -39,7 +39,7 @@ export const KALENDER_QUELLE = 'kalender';
  */
 export const SELBST_GEKAPSELT: ReadonlySet<string> = new Set(['projekt_unterlagen', 'datei_lesen', 'suche_arbeit',
   // Markttraktion (28.09., C7, lib/zoe/crm-werkzeuge.ts) — auch die umgeleiteten suche_kontakt und crm_lage.
-  'suche_kontakt', 'crm_lage', 'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage',
+  'suche_kontakt', 'crm_lage', 'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'besuche_lage',
   'marketing_lage', 'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage']);
 
 /** Agent (run_agent) → Quellenname; Agenten mit reinen Zahlen fehlen bewusst. */

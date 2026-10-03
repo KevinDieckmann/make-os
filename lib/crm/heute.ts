@@ -122,6 +122,8 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   for (const t of crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && !t.nachfassenVerzichtet)) {
     const ev = crm.events.find(e => e.id === t.eventId);
     if (!ev || ev.datum > heute) continue;
+    // Ein offenes echtes Follow-up zu diesem Gast und Event (z. B. aus „Netzwerken“) führt — kein zweiter Eintrag aus demselben Anlass (M1).
+    if ((crm.followups ?? []).some(x => x.status === 'offen' && x.bezug.art === 'event' && x.bezug.id === ev.id && x.kontaktId === t.kontaktId)) continue;
     const bis = followUpBis(ev);
     nimm(nachId.get(t.kontaktId), 'versprechen', bis >= heute ? 55 : 35, bis >= heute ? `Nachfassen nach „${ev.titel}“ bis ${bis}` : `Nachfassen nach „${ev.titel}“ überfällig`, { bezug: ev.id });
   }

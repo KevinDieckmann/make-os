@@ -8,18 +8,19 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { QrCode } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { WEG } from '@/lib/wege';
 import { useCrm } from '../crm/daten';
 import { Gross, Hinweis, ZIEL, kopfStil, useGemerkt } from './bausteine';
-import { EventModus, type EventWahl } from './EventModus';
+import { EventModus, EventWahlFenster, type EventWahl } from './EventModus';
 import { Erfassen } from './Erfassen';
 import { Heute } from './Heute';
 import { useKontext, useWarteschlange } from './useNetzwerken';
 import { OhneTerminKnopf } from './Ergebnis';
-import { NUR_RAM_HINWEIS, altHinweis, verworfenText } from '@/lib/netzwerken/warteschlange';
+import { NUR_RAM_HINWEIS, altHinweis, verworfenText, geteilteWarteschlange, type WarteEintrag } from '@/lib/netzwerken/warteschlange';
+import { lokalAbleiten } from '@/lib/netzwerken/wahl';
 
 type Reiter = 'erfassen' | 'heute';
 
@@ -35,7 +36,12 @@ export function NetzwerkenSeite() {
   useEffect(() => { if (bericht) { setReiter('heute'); setBerichtEvent(bericht); } }, [bericht]);
   const heute = api.crm?.heute ?? k.heute;
   const ich = k.ich ?? api.ich;
-  const gueltig = wahl && wahl.tag === heute ? wahl : null;
+  // `lokal` live aus dem Event-Bestand (H2): steht das Event dort, ist es nicht mehr „lokal“ — Erfassen und Event-Kopf sehen dieselbe Wahl.
+  const ereignisse = api.crm?.stand.events;
+  const gueltig = useMemo(() => (wahl && wahl.tag === heute ? lokalAbleiten(wahl, ereignisse) : null), [wahl, heute, ereignisse]);
+  // Hat der Server die Erfassung an ein gleichnamiges Event desselben Tages gehängt (M7), zieht „Heute bei“ mit um.
+  const umgehaengt = warte.umgehaengt;
+  useEffect(() => { const nach = wahl ? umgehaengt[wahl.eventId] : undefined; if (wahl && nach && nach !== wahl.eventId) { const { lokal: _l, ...rest } = wahl; setWahl({ ...rest, eventId: nach }); } }, [wahl, umgehaengt, setWahl]);
   // „Jetzt erfassen“ aus der Event-Akte (?event=<Event>): „Heute bei“ steht dann schon auf diesem Event (einmal, sobald die Kartei da ist).
   const eventParam = suche.get('event');
   const [vorgewaehlt, setVorgewaehlt] = useState<string | null>(null);
@@ -56,7 +62,7 @@ export function NetzwerkenSeite() {
         <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.45 }}>Karte fotografieren, Person erfassen, nächsten Schritt festlegen — noch auf der Veranstaltung.</div>
       </header>
 
-      <EventModus api={api} ich={ich} heute={heute} wahl={wahl} setWahl={setWahl} />
+      <EventModus api={api} ich={ich} heute={heute} wahl={gueltig} setWahl={setWahl} />
 
       <nav aria-label="Netzwerken" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4, borderRadius: 16, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)' }}>
         {([['erfassen', 'Erfassen'], ['heute', `Heute${warte.fehler ? ' · !' : ''}`]] as const).map(([id, text]) => {
@@ -65,7 +71,7 @@ export function NetzwerkenSeite() {
         })}
       </nav>
 
-      <Warteschlange warte={warte} offline={k.offline} />
+      <Warteschlange warte={warte} offline={k.offline} api={api} ich={ich} heute={heute} />
 
       {api.fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{api.fehler} <button type="button" onClick={() => api.setFehler(null)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.body, textDecoration: 'underline', minHeight: 44 }}>ausblenden</button></Hinweis>}
 
@@ -77,9 +83,11 @@ export function NetzwerkenSeite() {
 }
 
 /** Der Streifen der Warteschlange: was noch auf dem Gerät liegt, warum, und was man tun kann. */
-function Warteschlange({ warte, offline }: { warte: ReturnType<typeof useWarteschlange>; offline: boolean }) {
+function Warteschlange({ warte, offline, api, ich, heute }: { warte: ReturnType<typeof useWarteschlange>; offline: boolean; api: ReturnType<typeof useCrm>; ich: string | null; heute: string }) {
+  const [anderes, setAnderes] = useState<WarteEintrag | null>(null);
   if (!warte.eintraege.length && !warte.neuLaden && !warte.verworfenAlt.length) return null;
   return (
+    <>
     <section aria-label="Warteschlange" style={{ display: 'grid', gap: 10 }}>
       {warte.verworfenAlt.length > 0 && (
         <Hinweis farbe={LEUCHT.achtung} rolle="alert">
@@ -107,6 +115,7 @@ function Warteschlange({ warte, offline }: { warte: ReturnType<typeof useWartesc
                 {altHinweis(e) && e.status === 'wartet' && <span><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></span>}
                 {e.status === 'fehler' && <span style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}><Gross ton="haupt" onClick={() => void warte.erneut(e.id)} kleinerAbstand>Erneut versuchen</Gross><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></span>}
                 <OhneTerminKnopf e={e} onOhneTermin={x => void warte.ohneTermin(x)} />
+                {e.eventFehler && <Gross onClick={() => setAnderes(e)} kleinerAbstand>Anderes Event wählen</Gross>}
               </li>
             ))}
           </ul>
@@ -114,5 +123,7 @@ function Warteschlange({ warte, offline }: { warte: ReturnType<typeof useWartesc
         </Hinweis>
       )}
     </section>
+    {anderes && <EventWahlFenster api={api} ich={ich} heute={heute} onZu={() => setAnderes(null)} onWahl={w => { void geteilteWarteschlange().eventWechseln(anderes.id, { eventId: w.eventId, titel: w.titel, datum: w.datum, ...(w.ort ? { ort: w.ort } : {}), ...(w.fuer ? { fuer: w.fuer } : {}) }).then(() => { setAnderes(null); void warte.senden(); }); }} />}
+    </>
   );
 }

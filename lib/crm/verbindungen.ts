@@ -50,7 +50,7 @@ import { wertelistenVollstaendig, wertelistenPruefen, WERT_MIN, WERT_MAX } from 
 
 import { tagVon } from '@/lib/zeit';
 import { PRUEFUNGEN_PLANUNG, planungPruefen, planungReparieren, type PlanungBestand } from './verbindungen-planung';
-import { PRUEFUNGEN_KALENDER, kalenderPruefen, kalenderReparieren, type KalenderPruefBestand, type KalenderLebend } from './verbindungen-kalender';
+import { PRUEFUNGEN_KALENDER, kalenderPruefen, kalenderReparieren, toteTerminVerweise, type KalenderPruefBestand, type KalenderLebend } from './verbindungen-kalender';
 import { PRUEFUNGEN_BUCHUNG, buchungenPruefen, type BuchungenStand } from '@/lib/kalender/buchung-verbindungen';
 import { PRUEFUNGEN_SPIEGEL, spiegelPruefen, type SpiegelStand } from '@/lib/kalender/spiegel-verbindungen';
 import { PRUEFUNGEN_TERMINE, terminePruefen, termineReparieren, type TermineStand } from './verbindungen-termine';
@@ -170,6 +170,10 @@ export const PRUEFUNGEN = {
   'followup-erledigt-ohne-datum': { schwere: 'warnung', bereich: 'followup', reparierbar: false, art: 'followup', text: n => `${n} ${e(n, 'Follow-up ist', 'Follow-ups sind')} erledigt, aber ohne Datum.` },
   'teilnahme-event-tot': { schwere: 'fehler', bereich: 'events', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat eine Teilnahme', 'Personen haben Teilnahmen')} an einem Event, das es nicht mehr gibt.` },
   'teilnahme-kontakt-tot': { schwere: 'fehler', bereich: 'events', reparierbar: false, art: 'event', text: n => `${n} ${e(n, 'Event führt', 'Events führen')} Teilnahmen von Personen, die es nicht mehr gibt.` },
+  // Besuchte Events (Netzwerken-Verbindungen, 03.10.): Zielpersonen/-firmen, „für wen“ und der Termin einer Erfassung zeigen auf etwas, das es nicht mehr gibt.
+  'event-ziel-tot': { schwere: 'warnung', bereich: 'events', reparierbar: false, art: 'event', text: n => `${n} ${e(n, 'Event nennt', 'Events nennen')} Zielpersonen oder Zielfirmen, die es nicht mehr gibt.` },
+  'event-fuer-tot': { schwere: 'warnung', bereich: 'events', reparierbar: false, art: 'event', text: n => `${n} ${e(n, 'Event läuft', 'Events laufen')} „für“ eine Firma oder ein Mandat, das es nicht mehr gibt (oder das nicht zur Firma passt).` },
+  'netzwerken-termin-tot': { schwere: 'hinweis', bereich: 'events', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Erfassung aus Netzwerken verweist', 'Erfassungen aus Netzwerken verweisen')} auf einen Termin, den es in iCloud nicht mehr gibt (in Apple gelöscht).` },
   'segment-verweis-tot': { schwere: 'warnung', bereich: 'marketing', reparierbar: false, art: 'kennung', text: n => `${n} ${e(n, 'Segment', 'Segmente')}, auf die Events oder Kampagnen zeigen, gibt es nicht mehr.` },
   'segment-kriterien': { schwere: 'warnung', bereich: 'marketing', reparierbar: false, art: 'segment', text: n => `${n} ${e(n, 'Segment filtert', 'Segmente filtern')} mit Werten, die es nicht gibt (Temperatur, Lifecycle, BEAN, Kreis …) — das Kriterium trifft niemanden.` },
   'kampagne-kriterien': { schwere: 'warnung', bereich: 'marketing', reparierbar: false, art: 'kampagne', text: n => `${n} ${e(n, 'Kampagne filtert', 'Kampagnen filtern')} ihre Zielgruppe mit Werten, die es nicht gibt.` },
@@ -459,6 +463,12 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     if (ev && kommend && eingeschraenkt.has(t.kontaktId)) melde('einschraenkung-einladung', ev.id);
   }
   for (const x of liste(crm.events)) if (x.segmentId && !m.segmente.has(x.segmentId)) melde('segment-verweis-tot', x.segmentId);
+  for (const x of liste(crm.events)) {
+    if (liste(x.zielpersonen).some(z => (z.kontaktId && !m.kontakte.has(z.kontaktId)) || (z.firmaId && !m.firmen.has(z.firmaId)))) melde('event-ziel-tot', x.id);
+    const fk = x.fuer?.art === 'kunde' ? x.fuer : undefined;
+    if (fk && (!m.firmen.has(fk.firmaId) || (fk.mandatId && !liste(crm.mandate).some(md => md.id === fk.mandatId && md.firmaId === fk.firmaId)))) melde('event-fuer-tot', x.id);
+  }
+  for (const id of toteTerminVerweise(b.kalender, liste(crm.teilnahmen).filter(t => t.netzwerken?.terminId).map(t => ({ kennung: t.kontaktId, terminId: t.netzwerken!.terminId! })))) melde('netzwerken-termin-tot', id);
 
   // Marketing
   for (const s of liste(crm.segmente)) if (kriterienUngueltig(s.kriterien)) melde('segment-kriterien', s.id);

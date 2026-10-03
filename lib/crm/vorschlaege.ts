@@ -20,6 +20,7 @@ import type { DealRolle, Firma, Chance, CrmBestand } from './typen';
 import { leadScore, scoringKontext } from './score';
 import { leereVerteilung, LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
 import { typenVon, kategorienVon } from './mehrfach';
+import { istNetzwerkenEvent } from './marke';
 
 /** Wie lange ein echtes Gespräch die Person „warm“ hält. */
 export const WARM_TAGE = 90;
@@ -267,12 +268,17 @@ export function lifecycleVorschlag(k: Kontakt, crm: LifecycleBestand | null | un
   // Marketing-Signale: die jüngste Antwort/Anfrage, beim Event dabei, Score warm oder heiß.
   const antwort = (k.aktivitaeten ?? []).filter(a => a.art === 'antwort' && a.von !== 'system' && a.am).sort((a, b) => b.am.localeCompare(a.am))[0];
   if (antwort) return { id: 'mql', grund: `${antwort.text?.startsWith(ANFRAGE_ANFANG) ? 'Anfrage' : 'Antwort'} am ${tagDE(antwort.am.slice(0, 10))}` };
-  const dabei = (crm?.teilnahmen ?? []).some(t => t.kontaktId === k.id && t.status === 'da');
+  // „Beim Event dabei“ meint unsere Abende (Make.One). Wer auf einer BESUCHTEN Veranstaltung kennengelernt wurde, hat nie auf ein Signal von uns reagiert —
+  // das ist eine Begegnung, kein Marketing-Signal (M3): kein MQL, aber der Grund steht dabei.
+  const besuche = new Map((crm?.events ?? []).filter(istNetzwerkenEvent).map(e => [e.id, e]));
+  const dortDa = (crm?.teilnahmen ?? []).filter(t => t.kontaktId === k.id && t.status === 'da');
+  const dabei = dortDa.some(t => !besuche.has(t.eventId));
   if (dabei) return { id: 'mql', grund: 'war bei einem Event dabei' };
+  const kennengelernt = dortDa.map(t => besuche.get(t.eventId)).find(Boolean);
   // Marketing-Schwelle (03.10., Scoring-Einstellungen): genug Signale und Interaktionen — dieselbe Rechnung wie in der Akte und der Runde.
   const mk = leadScore([k], lead, heute, undefined, scoringKontext(crm)).scoring?.marketing;
   if (mk?.erreicht) return { id: 'mql', grund: `Marketing-Punkte ${mk.punkte} · Schwelle ${mk.schwelle}` };
-  return { id: 'lead', grund: 'noch kein Marketing-Signal, kein Deal' };
+  return { id: 'lead', grund: kennengelernt ? `Kennengelernt bei ${kennengelernt.titel} — noch kein Marketing-Signal, kein Deal` : 'noch kein Marketing-Signal, kein Deal' };
 }
 
 /**

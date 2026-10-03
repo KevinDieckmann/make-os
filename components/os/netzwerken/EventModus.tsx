@@ -17,6 +17,10 @@ import { neueId } from '../crm/daten';
 import type { CrmApi } from '../crm/daten';
 import type { Event, EventFuer, Firma } from '@/lib/crm/typen';
 import { heuteBeiAngebot } from '@/lib/crm/besuche';
+import { gleichesBesuchEvent, eventDatumPlausibel } from '@/lib/crm/netzwerken';
+import { istKalendertag } from '@/lib/zeit';
+import { geteilteWarteschlange } from '@/lib/netzwerken/warteschlange';
+import { lokalAbleiten } from '@/lib/netzwerken/wahl';
 import { istBesuch, fuerVon } from '@/lib/crm/besuche-form';
 import { WEG } from '@/lib/wege';
 import { TEAM } from '@/lib/crm/team';
@@ -33,7 +37,9 @@ export interface EventWahl { eventId: string; titel: string; datum: string; ort?
 export function EventModus({ api, ich, heute, wahl, setWahl }: { api: CrmApi; ich: string | null; heute: string; wahl: EventWahl | null; setWahl: (w: EventWahl | null) => void }) {
   const [offen, setOffen] = useState(false);
   const [fuerOffen, setFuerOffen] = useState(false);
-  const gueltig = wahl && wahl.tag === heute ? wahl : null;
+  // `lokal` wird LIVE aus dem Event-Bestand abgeleitet (H2): steht das Event dort schon, ist es nicht mehr „lokal“.
+  const ereignisse = api.crm?.stand.events;
+  const gueltig = useMemo(() => (wahl && wahl.tag === heute ? lokalAbleiten(wahl, ereignisse) : null), [wahl, heute, ereignisse]);
   // Highlight b: die Zahlen des Abends — aus den Teilnahmen des Events, null solange die Kartei lädt (der Platz bleibt reserviert).
   const teilnahmen = api.crm?.stand.teilnahmen;
   const zahlen = useMemo(() => (gueltig && teilnahmen ? abendZahlen(teilnahmen, gueltig.eventId) : null), [gueltig, teilnahmen]);
@@ -79,29 +85,47 @@ export function EventModus({ api, ich, heute, wahl, setWahl }: { api: CrmApi; ic
 
 const KEINE_FIRMEN: Firma[] = [];
 
-/** „Für wen“ am gewählten Event ändern — schreibt nur dieses Feld (api.teil), das Event erbt es an jede Erfassung. */
+/**
+ * „Für wen“ am gewählten Event ändern — schreibt nur dieses Feld (api.teil), das Event erbt es an jede Erfassung. Hängen schon erfasste Personen am
+ * Event, fragt das Fenster vorher nach („n Personen hängen dann an …“). Wartende Erfassungen tragen das neue „für wen“ mit (`fuerUmschreiben`, H2).
+ */
 function FuerFenster({ api, wahl, fuer, firmen, onZu, onGeaendert }: { api: CrmApi; wahl: EventWahl; fuer: EventFuer; firmen: readonly Firma[]; onZu: () => void; onGeaendert: (f: EventFuer) => void }) {
   const [neu, setNeu] = useState<EventFuer>(fuer);
   const [laeuft, setLaeuft] = useState(false);
-  const speichern = async () => {
+  const [fehler, setFehler] = useState<string | null>(null);
+  const [frage, setFrage] = useState(false);
+  const erfasst = (api.crm?.stand.teilnahmen ?? []).filter(t => t.eventId === wahl.eventId && t.netzwerken).length;
+  const zielName = neu.art === 'kunde' ? firmen.find(f => f.id === neu.firmaId)?.name ?? 'diesen Kunden' : 'MAKE selbst';
+  const geaendert = JSON.stringify(neu) !== JSON.stringify(fuer);
+  const speichern = async (bestaetigt = false) => {
     if (!fuerGueltig(neu)) return;
-    setLaeuft(true);
-    // Noch lokal (ohne Netz angelegt): nur merken — `eventNeu` trägt es mit der ersten Erfassung zum Server.
-    if (!wahl.lokal) await api.teil('events', wahl.eventId, { fuer: neu.art === 'kunde' ? neu : '' });
+    // Hängen schon erfasste Personen am Event, ist das mehr als ein Etikett (Export für Kunden, Auftragsverarbeitung): erst nachfragen.
+    if (geaendert && erfasst > 0 && !bestaetigt) { setFrage(true); return; }
+    setLaeuft(true); setFehler(null);
+    try {
+      // Noch lokal (ohne Netz angelegt): nur merken — `eventNeu` trägt es mit der ersten Erfassung zum Server.
+      if (!wahl.lokal) {
+        const r = await api.teil('events', wahl.eventId, { fuer: neu.art === 'kunde' ? neu : '' });
+        if (r === false) { setFehler('Das „Für wen“ ließ sich nicht speichern — bitte noch einmal versuchen.'); setLaeuft(false); return; }
+      }
+      await geteilteWarteschlange().fuerUmschreiben(wahl.eventId, neu);
+    } catch { setFehler('Das „Für wen“ ließ sich nicht speichern — bitte noch einmal versuchen.'); setLaeuft(false); return; }
     setLaeuft(false);
     onGeaendert(neu);
   };
   return (
     <Fenster titel="Für wen?" onZu={onZu} breit={560}>
       <div style={{ display: 'grid', gap: 12 }}>
-        <FuerAuswahl firmen={firmen} wert={neu} onWahl={setNeu} />
-        <Gross ton="haupt" onClick={() => void speichern()} aus={laeuft || !fuerGueltig(neu)}>{laeuft ? 'speichert …' : 'Übernehmen'}</Gross>
+        <FuerAuswahl firmen={firmen} wert={neu} onWahl={x => { setNeu(x); setFrage(false); }} />
+        {frage && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{erfasst === 1 ? 'Eine erfasste Person hängt' : `${erfasst} erfasste Personen hängen`} dann an <b>{zielName}</b> — auch ihr Export „An Kunden übergeben“ ändert sich. Wirklich ändern?</Hinweis>}
+        {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
+        <Gross ton="haupt" onClick={() => void speichern(frage)} aus={laeuft || !fuerGueltig(neu)}>{laeuft ? 'speichert …' : frage ? 'Ja, ändern' : 'Übernehmen'}</Gross>
       </div>
     </Fenster>
   );
 }
 
-function EventWahlFenster({ api, ich, heute, onZu, onWahl }: { api: CrmApi; ich: string | null; heute: string; onZu: () => void; onWahl: (w: EventWahl) => void }) {
+export function EventWahlFenster({ api, ich, heute, onZu, onWahl }: { api: CrmApi; ich: string | null; heute: string; onZu: () => void; onWahl: (w: EventWahl) => void }) {
   const events = api.crm?.stand.events ?? KEINE_EVENTS;
   const firmen = api.crm?.stand.firmen ?? KEINE_FIRMEN;
   const [suche, setSuche] = useState('');
@@ -124,11 +148,14 @@ function EventWahlFenster({ api, ich, heute, onZu, onWahl }: { api: CrmApi; ich:
 
   const waehlen = (e: Event) => onWahl({ eventId: e.id, titel: e.titel, datum: e.datum, ...(e.ort ? { ort: e.ort } : {}), tag: heute, ...(e.fuer?.art === 'kunde' ? { fuer: e.fuer } : {}) });
 
+  // „Gibt es schon: …“ (M7): gleicher Name am gleichen Tag — nie ein zweites Event anlegen, das Doppelte zählt später in jeder Kennzahl.
+  const dublette = useMemo(() => (neu ? gleichesBesuchEvent(events, titel, datum) : undefined), [neu, events, titel, datum]);
   const anlegen = async () => {
     const t = titel.trim();
     if (t.length < 2) { setFehler('Wie heißt das Event?'); return; }
     if (t.length > 160) { setFehler('Der Name ist zu lang (höchstens 160 Zeichen).'); return; }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) { setFehler('Bitte ein Datum wählen.'); return; }
+    if (!istKalendertag(datum)) { setFehler('Bitte ein gültiges Datum wählen.'); return; }
+    if (!eventDatumPlausibel(datum, heute)) { setFehler('Das Datum liegt mehr als ein Jahr entfernt — bitte prüfen.'); return; }
     if (!fuerGueltig(fuer)) { setFehler('Für welchen Kunden? Bitte eine Firma wählen — oder „MAKE selbst“.'); return; }
     setLaeuft(true); setFehler(null);
     const kunde = fuer.art === 'kunde' ? fuer : undefined;
@@ -171,8 +198,9 @@ function EventWahlFenster({ api, ich, heute, onZu, onWahl }: { api: CrmApi; ich:
           <Feldzeile label="Datum"><input type="date" value={datum} onChange={x => setDatum(x.target.value)} style={eingabe} aria-label="Datum" /></Feldzeile>
           <Feldzeile label="Ort (optional)"><input value={ort} onChange={x => setOrt(x.target.value)} placeholder="z. B. Köln, Messehalle 3" style={eingabe} aria-label="Ort" /></Feldzeile>
           <Feldzeile label="Für wen"><FuerAuswahl firmen={firmen} wert={fuer} onWahl={setFuer} /></Feldzeile>
+          {dublette && <Hinweis farbe={LEUCHT.achtung} rolle="status"><b>Gibt es schon:</b> {dublette.titel} · {tagText(dublette.datum)}{dublette.ort ? ` · ${dublette.ort}` : ''}<div style={{ marginTop: 10 }}><Gross ton="gut" onClick={() => waehlen(dublette)} kleinerAbstand>Dieses Event nehmen</Gross></div></Hinweis>}
           {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
-          <Gross ton="haupt" onClick={() => void anlegen()} aus={laeuft}>{laeuft ? 'legt an …' : 'Event anlegen und starten'}</Gross>
+          {!dublette && <Gross ton="haupt" onClick={() => void anlegen()} aus={laeuft}>{laeuft ? 'legt an …' : 'Event anlegen und starten'}</Gross>}
           <Gross onClick={() => { setNeu(false); setFehler(null); }} kleinerAbstand>Zurück zur Liste</Gross>
         </div>
       ) : (

@@ -15,6 +15,37 @@ Kevin 03.10.: „Beim Qualifizierungsbereich derbe reingehen — Karten sauber b
 - **Neu im Code:** Absichtsprotokoll-Art `firma-umhaengen` (Abbruch nach jedem Schritt getestet), Bestand `crm-scoring`, optionale Felder `Lead.stufen`/`wiedervorlage`/`grundArt`/`hauptKontaktId`, Routen `/api/crm/scoring` und neue Aktionen in `/api/crm/lead`.
 - **Rückweg:** nur optionale Felder und ein neuer Bestand — Details `GO_LIVE_CHECKLISTE.md` › Rückweg.
 
+## Netzwerken ↔ Events ↔ Make.One: alles verbunden (03.10.2026, nur lokal — Branch `netz-verbind`)
+
+Kevin: „alle Verbindungen nachziehen, alles muss miteinander verknüpft sein … die Kontakte und Informationen müssen sauber laufen.“ Kontakte von Kunden-Events „gehören immer auch uns“ — es gibt keine Sperre für eigene Akquise; die rechtliche Seite macht `netz-recht`.
+
+- **Gelöschtes Event hängt keine Erfassung mehr (H1):** der Körper trägt IMMER `eventNeu` (Titel, Datum, Ort, für wen). Fehlt das Event beim Senden — auch wenn der Schritt „event“ schon abgehakt war —, legt der Server es daraus neu an
+  (Meldung im Ergebnis); nur ohne `eventNeu` bleibt es beim 404 mit dem Merker `eventFehler`. In der Warteschlange erscheint dann **„Anderes Event wählen“** (`Warteschlange.eventWechseln`: Kennung, Titel, Datum, Ort, für wen werden umgeschrieben,
+  neue Versuche). Ein abgesagtes Event lehnt die Erfassung ab (409, N4); `eventNeu.datum` über ein Jahr entfernt wird nicht angelegt (400).
+- **`lokal` live (H2):** „wird beim Speichern angelegt“ gilt nur, solange das Event im geladenen Bestand fehlt (`lib/netzwerken/wahl.ts`). „Für wen“ ändern schreibt `eventNeu.fuer` aller Wartenden dieses Events mit um (`fuerUmschreiben`); hängen schon erfasste
+  Personen am Event, fragt das Fenster nach („n Personen hängen dann an …“).
+- **Event-Dubletten (M7):** gleicher normierter Titel + gleicher Tag unter anderer Kennung → der Server hängt die Erfassung an das vorhandene besuchte Event und meldet dessen Kennung (Journal merkt sie); „Heute bei“ zieht um. Beim Anlegen (Netzwerken, Events-Reiter): „Gibt es schon: …“ mit „Dieses Event nehmen“.
+- **Make.One in beide Richtungen (H3):** die Vormerkung läuft über EINE Stelle (`gastVormerken`/`gastTeilnahme`, `lib/crm/eventplanung.ts`) — Server, Kontaktakte („Make.One einladen“) und Gästeliste: Einladungsweg nach Ampel, `einladenDurch`, **`Teilnahme.herkunft`**
+  (`{ art: 'netzwerken', eventId, erfassungId }`, Chip „kam von <Event>“ in der Gästeliste mit Sprung in die Event-Akte) und der Stempel „nachgefasst“ an der Begegnung. Antwort und Abendbericht tragen den Link auf die Gästeliste; „offen“ kommt aus dem echten Stand
+  (nur „vorgemerkt“ ist offen, `NetzwerkenAngabe.makeone`). **Werbesperre:** keine Vormerkung, kein Label, keine Aufgabe — Hinweis. **Personen-Schranke auch für Funktions-Änderungen:** `aendereCrm(b => …)` prüft neue Teilnahmen/Kampagnen-Personen/Zielpersonen
+  (Art. 18 nie, Werbesperre nur bei Einladungen — „da“ bleibt erfassbar) → `PersonenSchrankeFehler` (409), nichts geschrieben.
+- **Ein nächster Schritt statt doppeltem Nachfassen (M1):** „Nur Kontakt“ = bewusst ausgelassen (`nachfassenVerzichtet`), „Andere“/„Qualifizieren“ = nachgefasst; „Für dich“ und die Übergaben trennen **Gäste nachfassen** (Make.One) und **Begegnungen bei Events nachfassen**
+  (Ziel: Events-Reiter); offene echte Follow-ups zählen nicht doppelt.
+- **Eine Rechnung (M2):** die Kennzahl `netzwerken` ist aus den Make.One-Kennzahlen raus (Zahlen der besuchten Events nur in `besuchKennzahlen`); der Überblick zählt „Make.One-Abende“ und „besuchte Events“ getrennt und verlinkt richtig; Scoreboard und Traktion filtern besuchte Events.
+- **Begegnung ist kein Make.One-Signal (M3):** Gästevorschlag und Lifecycle sagen „Kennengelernt bei <Event>“ statt „war schon bei einem Event“ / MQL.
+- **Schnellsuche und ZOE (M4):** ⌘K findet Events (besucht = „Event“, Make.One getrennt, Link je nach Art); ZOE hat **`besuche_lage`** (Wirkung, Urteil, erfasste Personen mit offenen Punkten, ohne eingeschränkte), `crm_suche` kennzeichnet beides, `events_lage` bleibt bei Make.One.
+- **Zusammenführen (M5):** Kalender-Bezüge (Termin ↔ Person/Gäste) und offene Erfassungen im Journal ziehen mit um. **Firma der Karte (M6):** eine bestehende Person ohne Firma bekommt sie; nennt die Karte eine andere, bleibt alles und es gibt den Hinweis „Karte nennt andere Firma: …“.
+- **Event löschen räumt auf (M8):** Spiegel-Termin im Kalender (nur auf Klick, nie Dienstweg; geht es nicht, steht „bitte in Apple löschen“), Planposten in der Liquiplanung, Verweis der Deals (Quelle bleibt). **Kosten → Liquiplanung (M9):** Knopf in der Event-Akte.
+- **Links (M10):** `eventLink(event)` (`lib/wege.ts`: besucht → Event-Akte, sonst Make.One); Links zu Angebot und Aufgabe; die Glocke an die andere Person springt zum erzeugten Objekt (Termin · Deal · Angebot · Aufgabe · Follow-up); „Event öffnen“ im Follow-up;
+  die Umleitung auf die Event-Akte behält `r`.
+- **Wirkung ehrlich (M12, M14):** Deals zählen nur mit Quelle Event oder (≤ 180 Tage) für eine dort NEU angelegte Person ohne andere Quelle; fürs Urteil nur nicht verlorene, keine Vermittlung ohne Wert; Berliner Tag; Übersicht/Kennzahlen nur wirklich besuchte Events.
+  **`zielGetroffen`** zentral (Person über Kennung, Zielfirma über jede erfasste Person der Firma) + Zielerreichungsgrad. **Firmenakte (M15):** „Begegnungen bei Events“.
+- **Sprachnotiz (M13):** „Sprachnotiz ohne Abschrift — anhören“ als offener Punkt im Abendbericht/Event-Akte mit Sprung zur Akte (keine KI-Transkription).
+- **Kleinkram (N-Punkte und Technik-Nachtrag):** `istKontaktKennung` überall (Route, Säuberer); **Arbeitslisten** „Dublette prüfen“/„Lead prüfen“ (Befunde + Kartei-Ansichten); Kalender-Spiegel mit `Event.wer`, **`Event.bisDatum`** (mehrtägige Messen) und Hinweis „angemeldet, aber kein Termin im Kalender“ in Glocke/Heute;
+  zweite Begegnung hängt an (`NetzwerkenAngabe.vorher`, Termin bleibt); Verbindungsprüfung kennt Ziele, „für wen“, Termin-Verweise; **Zielpersonen einzeln** auf dem aktuellen Stand (`aktion: 'ziel'`); „Für wen“: Firma muss es geben, Mandat muss zur Firma passen;
+  Link: ohne Schema `https://`, http erlaubt, sonst sichtbare Ablehnung; „Neues Event“ öffnet die Akte nur bei Erfolg; echter Kalendertest für Daten (`istKalendertag`); SVG-Säuberer linear (kein 35-s-Block), `CSS_MAX` 20.000; Tastaturhöhe räumt auf; „Heute bei“ ohne Layout-Sprung (`useSyncExternalStore`); 44-px-Ziele in der Akte am Handy.
+- **Rückweg:** neue optionale Felder (`Teilnahme.herkunft`, `NetzwerkenAngabe.makeone`/`vorher`, `Event.bisDatum`, Journal `eventId`) — der alte Stand verwirft sie beim nächsten Schreiben; Details `GO_LIVE_CHECKLISTE.md` › Rückweg.
+
 ## Netzwerken & Events — Recht: Interessenabwägung, Übermittlung an Kunden, Löschfristen (03.10.2026, nur lokal — Branch `netz-recht`)
 
 Kevins Entscheidung 03.10.: Kontakte, die wir als Interim CSO / Head of Sales **für einen Kunden** erfassen, „gehören immer auch uns“ — MAKE ist eigener Verantwortlicher (Art. 6 Abs. 1 lit. f), keine Sperre für die eigene Akquise; die Weitergabe an den Kunden ist eine Übermittlung an einen Dritten. Doku und Interessenabwägung: `DATENSCHUTZ_NETZWERKEN.md`. **Hinweis, keine Rechtsberatung — anwaltlich gegenlesen lassen.**

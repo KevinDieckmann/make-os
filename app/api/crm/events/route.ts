@@ -29,6 +29,7 @@
 //      Follow-ups des Events abgesagt — in einer Sperre (lib/crm/crm-stand.ts loeschKaskade). Hat das Event Übergaben an Kunden im
 //      Protokoll (03.10.), verlangt der Server `uebergabenBestaetigt: true` (sonst 409 mit Warnung); das Protokoll wandert dann ins
 //      Übergabe-Journal (lib/crm/uebergabe-journal.ts, 36 Monate) — der Nachweis bleibt.
+// POST { aktion: 'ziel', eventId, aenderung } → eine Zielperson/-firma hinzu · weg · getroffen — auf dem aktuellen Stand, nie die ganze Liste (zwei Geräte überschrieben einander).
 // POST { aktion: 'kunden-vorschau', eventId } → „An Kunden übergeben“, Schritt 1 (netz-recht, 03.10.): wer käme mit — Personen, die an diesem
 //      Event NEU angelegt wurden, gehen ungefragt mit; Bestandspersonen (vorher bekannt) nur mit Haken je Person; gesperrte nie; „noch nicht
 //      informiert“ (Datenschutzhinweis, Art. 13) ist markiert. Schreibt nichts.
@@ -56,10 +57,13 @@ import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { istDienst } from '@/lib/zugang/dienst';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { kundenExport, kundenVorschau } from '@/lib/crm/besuche';
-import { istBesuch, UEBERGABEN_MAX, UEBERGABE_KONTAKTE_MAX } from '@/lib/crm/besuche-form';
+import { istBesuch, UEBERGABEN_MAX, UEBERGABE_KONTAKTE_MAX, zielAenderungAus, zielAendern } from '@/lib/crm/besuche-form';
 import { uebergabenInsJournal } from '@/lib/crm/uebergabe-journal';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { istKontaktKennung } from '@/lib/kennung';
+import { PersonenSchrankeFehler } from '@/lib/crm/personen-schranke';
+import type { EventZielperson } from '@/lib/crm/typen';
+import { eventSpiegelBeimLoeschen } from '@/lib/kalender/spiegel-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -135,14 +139,16 @@ export async function POST(req: Request) {
       await uebergabenInsJournal(h.haushalt, e, uebergaben, crm.firmen, 'event-geloescht', jetzt);
     }
     const halter: { r?: CrmAnwendung; ops?: ListenOp[] } = {};
-    await aendereCrm(cur => {
+    await aendereCrm(cur0 => {
+      // Deals, die dieses Event als Quelle nennen, verlieren den Verweis (nicht die Quelle „Event“) — sonst zeigten sie auf ein Event, das es nicht mehr gibt (M8).
+      const cur = cur0.chancen.some(c => c.quelleBezug === eventId) ? { ...cur0, chancen: cur0.chancen.map(c => (c.quelleBezug === eventId ? (({ quelleBezug: _q, ...rest }) => rest)(c) : c)) } : cur0;
       const ops: ListenOp[] = [{ liste: 'events', op: 'delete', id: eventId }];
       // Das Protokoll liegt jetzt im Journal (oben) — erst vom Event lösen, dann gilt die Regel „Event mit Übergaben nicht über den generischen Weg“ nicht mehr.
       const frei = uebergaben.length ? { ...cur, events: cur.events.map(x => { if (x.id !== eventId) return x; const { uebergaben: _u, ...rest } = x; return rest; }) } : cur;
       halter.ops = [...ops, ...loeschKaskade(frei, ops, jetzt)];
       halter.r = wendeCrmAn(frei, halter.ops, jetzt, person);
       // Eine Ablehnung (Sperre, Konflikt) lässt das Event unverändert — auch das Protokoll bleibt dann am Event.
-      return halter.r.sperren.length || halter.r.konflikte.length || halter.r.grenze.length || halter.r.abgelehnt?.length ? cur : halter.r.bestand;
+      return halter.r.sperren.length || halter.r.konflikte.length || halter.r.grenze.length || halter.r.abgelehnt?.length ? cur0 : halter.r.bestand;
     });
     const r = halter.r!;
     if (r.sperren.length) return NextResponse.json({ ok: false, fehler: r.sperren.map(x => x.text).join(' · '), sperren: r.sperren }, { status: 409 });
@@ -151,7 +157,45 @@ export async function POST(req: Request) {
     if (r.abgelehnt?.length) return NextResponse.json({ ok: false, fehler: r.abgelehnt.join(' · ') }, { status: 409 });
     const ops = halter.ops ?? [];
     const teilnahmen = ops.filter(o => o.liste === 'teilnahmen').length, abgesagt = ops.filter(o => o.liste === 'followups').length;
-    return NextResponse.json({ ok: true, teilnahmen, abgesagt, text: `Event gelöscht${teilnahmen ? ` · ${teilnahmen} Teilnahme${teilnahmen === 1 ? '' : 'n'} entfernt` : ''}${abgesagt ? ` · ${abgesagt} offene${abgesagt === 1 ? 's' : ''} Follow-up${abgesagt === 1 ? '' : 's'} abgesagt` : ''}.` });
+    // Alles, was am Event hing (M8): der Spiegel-Termin im Kalender (nur auf Klick, nie über den Dienstweg), der Planposten in der Liquiplanung, der Verweis der Deals.
+    let kalender: Awaited<ReturnType<typeof eventSpiegelBeimLoeschen>> = 'keiner';
+    if (!istDienst(req)) kalender = await eventSpiegelBeimLoeschen(e, werAus(req));
+    const planposten = !!(await loadJson<Liquiplan>('liquiplan'))?.posten?.some(x => x.id === planpostenId(eventId));
+    if (planposten) await updateJson<Liquiplan>('liquiplan', cur => ({ ...(cur ?? {}), posten: (cur?.posten ?? []).filter(x => x.id !== planpostenId(eventId)) }));
+    const dealsOhneVerweis = crm.chancen.filter(c => c.quelleBezug === eventId).length;
+    return NextResponse.json({ ok: true, teilnahmen, abgesagt, kalender, planposten, dealsOhneVerweis, text: `Event gelöscht${teilnahmen ? ` · ${teilnahmen} Teilnahme${teilnahmen === 1 ? '' : 'n'} entfernt` : ''}${abgesagt ? ` · ${abgesagt} offene${abgesagt === 1 ? 's' : ''} Follow-up${abgesagt === 1 ? '' : 's'} abgesagt` : ''}${kalender === 'weg' ? ' · Kalender-Termin entfernt' : kalender === 'bleibt' || kalender === 'fehler' ? ' · Kalender-Termin bleibt — bitte in Apple löschen' : ''}${planposten ? ' · Planposten in der Liquiplanung entfernt' : ''}${dealsOhneVerweis ? ` · ${dealsOhneVerweis} Deal${dealsOhneVerweis === 1 ? '' : 's'} ohne Event-Verweis` : ''}.` });
+  }
+
+  if (b.aktion === 'ziel') {
+    // Zielpersonen einzeln (hinzu · weg · getroffen) auf dem AKTUELLEN Stand — nie die ganze Liste ersetzen (zwei Geräte am Messestand überschrieben einander).
+    // Art. 18: eine eingeschränkte Person kommt nie neu auf die Liste (Personen-Schranke im Schreibweg); Person/Firma müssen es geben.
+    if (!istBesuch(e)) return NextResponse.json({ ok: false, fehler: 'Zielpersonen gibt es nur bei besuchten Events.' }, { status: 400 });
+    const a = zielAenderungAus((b as { aenderung?: unknown }).aenderung);
+    if (!a) return NextResponse.json({ ok: false, fehler: 'aenderung: { op: hinzu | weg | getroffen, kontaktId oder firmaId } nötig.' }, { status: 400 });
+    if (a.op === 'hinzu') {
+      if (a.kontaktId && !(await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).some(k => k.id === a.kontaktId)) return NextResponse.json({ ok: false, fehler: 'Die Person gibt es nicht (mehr).' }, { status: 404 });
+      if (a.firmaId && !crm.firmen.some(f => f.id === a.firmaId)) return NextResponse.json({ ok: false, fehler: 'Die Firma gibt es nicht (mehr).' }, { status: 404 });
+    }
+    let fehler: { status: number; text: string } | undefined;
+    let liste: EventZielperson[] = [];
+    try {
+      await aendereCrm(c => {
+        const x = c.events.find(y => y.id === eventId);
+        if (!x) { fehler = { status: 404, text: 'Event nicht gefunden.' }; return c; }
+        const r = zielAendern(x.zielpersonen, a);
+        liste = r.liste;
+        if (r.fehler) { fehler = r.fehler; return c; }
+        const gleich = JSON.stringify(r.liste) === JSON.stringify(x.zielpersonen ?? []);
+        if (gleich) return c;
+        const { zielpersonen: _z, ...rest } = x;
+        return { ...c, events: c.events.map(y => (y.id === eventId ? { ...rest, ...(r.liste.length ? { zielpersonen: r.liste } : {}), geaendert: jetzt, geaendertVon: person } : y)) };
+      }, werAus(req));
+    } catch (err) {
+      if (err instanceof PersonenSchrankeFehler) return NextResponse.json({ ok: false, fehler: err.message }, { status: 409 });
+      throw err;
+    }
+    if (fehler) return NextResponse.json({ ok: false, fehler: fehler.text }, { status: fehler.status });
+    return NextResponse.json({ ok: true, zielpersonen: liste });
   }
 
   if (b.aktion === 'kunden-vorschau' || b.aktion === 'kunden-uebergabe') {
@@ -296,5 +340,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, geaendert });
   }
 
-  return NextResponse.json({ ok: false, fehler: 'aktion: checkliste-aufgaben, punkt, aufgabe-status, nachfassen, kunden-vorschau, kunden-uebergabe, liquiplan oder loeschen.' }, { status: 400 });
+  return NextResponse.json({ ok: false, fehler: 'aktion: checkliste-aufgaben, punkt, aufgabe-status, nachfassen, ziel, kunden-vorschau, kunden-uebergabe, liquiplan oder loeschen.' }, { status: 400 });
 }

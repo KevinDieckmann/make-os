@@ -15,6 +15,8 @@ import { kontakteUeberFrist } from './loeschfristen';
 import { nichtGeprueft, PRUEFEN_MONATE } from './geprueft';
 import { nachweisOffen } from './einwilligung';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { labelsVon } from './mehrfach';
+import { LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN } from './netzwerken';
 
 export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'followup' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
 
@@ -55,6 +57,12 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string, opt
   if (nw) b.push({ prio: 4, titel: `${nw} Kontakte mit Einwilligung ohne vollständigen Nachweis`, grund: 'Wortlaut, Beleg, Zeitpunkt oder wer fehlt — Mail/Newsletter bleiben gelb, bis ergänzt', bereich: 'stammdaten', ansicht: 'qualitaet' });
   const d = dubletten(kontakte).length;
   if (d) b.push({ prio: 4, titel: `${d} Dubletten zusammenführen`, grund: 'gleicher Name, gleiche Firma oder Kontaktdaten', bereich: 'stammdaten', ansicht: 'qualitaet' });
+  // Arbeitslisten aus „Netzwerken“ (N3): die Erfassung setzt „Dublette prüfen“ (vermutlich schon in der Kartei) und „Lead prüfen“ (Lead nicht angefasst) — ohne diese
+  // Befunde blieben die Labels unsichtbare Marken. Die Kartei hat dazu je eine eigene Ansicht.
+  const dubL = kontakte.filter(k => !ausgenommen(k) && labelsVon(k).includes(LABEL_DUBLETTE)).length;
+  if (dubL) b.push({ prio: 3, titel: `${dubL} Person${dubL > 1 ? 'en' : ''} aus Netzwerken: Dublette prüfen`, grund: 'vermutlich schon in der Kartei — zusammenführen oder das Label entfernen', bereich: 'kontakte', ansicht: 'dublette-pruefen' });
+  const leadL = kontakte.filter(k => !ausgenommen(k) && labelsVon(k).includes(LABEL_LEAD_PRUEFEN)).length;
+  if (leadL) b.push({ prio: 4, titel: `${leadL} Person${leadL > 1 ? 'en' : ''} aus Netzwerken: Lead prüfen`, grund: 'Firma ohne Vertrieb oder Lead schon weiter — kein neuer Lead gesetzt', bereich: 'kontakte', ansicht: 'lead-pruefen' });
   // Events: überfällige Checklistenpunkte (vor dem Termin) — nach dem Event zählt das Nachfassen in der Power Hour.
   const evUeber = crm.events.filter(e => e.status !== 'abgesagt' && e.datum >= heute).map(e => ({ e, n: checklisteFaellig(e, heute).filter(pk => pk.ueberfaellig).length })).filter(x => x.n);
   if (evUeber.length) b.push({ prio: 2, titel: `${evUeber.reduce((a, x) => a + x.n, 0)} Punkte der Event-Checkliste überfällig`, grund: evUeber.map(x => x.e.titel).join(', '), bereich: 'events' });

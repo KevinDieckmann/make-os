@@ -77,24 +77,9 @@ const stufe = (v: number, gruen: number, gelb: number): KpiAmpel => (v >= gruen 
 const prozent = (q: number) => `${Math.round(q * 100)} %`;
 const stattgefunden = (e: Event, heute: string) => e.status !== 'abgesagt' && (e.status === 'durchgefuehrt' || e.datum < heute);
 
-/**
- * „Netzwerken“ (03.10., Kevin: getrennt ausweisen): was unterwegs auf FREMDEN Veranstaltungen entsteht — Events mit dem Kennzeichen
- * `marke: Netzwerken` (lib/crm/marke.ts). Sie zählen nicht in Erscheinensquote, Folgegespräche je Event und Gästemischung:
- * wer sich selbst als „da“ erfasst, hat nie zugesagt, und ein fremdes Event hat keine Gästemischung nach unseren Zielen.
- */
-export function netzwerkenZahlen(crm: CrmBestand, heute: string): { events: number; kontakte: number; termine: number; followups: number } {
-  const vor90 = tagPlus(heute, -89);
-  const fremd = new Map((crm.events ?? []).filter(e => istNetzwerkenEvent(e) && e.status !== 'abgesagt' && e.datum >= vor90).map(e => [e.id, e]));
-  const t = crm.teilnahmen.filter(x => fremd.has(x.eventId) && x.netzwerken);
-  const termine = t.filter(x => x.netzwerken!.schritt === 'termin' && !!x.netzwerken!.terminAm).length;
-  const followups = t.filter(x => x.netzwerken!.schritt === 'followup').length;
-  return { events: new Set(t.map(x => x.eventId)).size, kontakte: t.length, termine, followups };
-}
-
 export function eventKennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string): Kpi[] {
   // Nur EIGENE Events zählen in die Kennzahlen (03.10.) — fremde Veranstaltungen aus „Netzwerken“ stehen getrennt (`netzwerken`).
   const events = (crm.events ?? []).filter(e => !istNetzwerkenEvent(e));
-  const nw = netzwerkenZahlen(crm, heute);
   const vor90 = tagPlus(heute, -89), vor180 = tagPlus(heute, -179);
   const vorbei = events.filter(e => stattgefunden(e, heute));
   const kommend = events.filter(e => e.status !== 'abgesagt' && e.datum >= heute && e.status !== 'durchgefuehrt').sort((a, b) => a.datum.localeCompare(b.datum));
@@ -135,9 +120,7 @@ export function eventKennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: str
     { id: 'mischung', label: 'Gästemischung nächstes Event', wert: m?.ampel ? m.anteil.zielkunde : null, anzeige: m?.ampel ? `${m.anteil.zielkunde} % Zielk.` : '—',
       ampel: m?.ampel ?? 'grau', ziel: m ? `≥ ${m.ziel.zielkunden} % Zielkunden, ≥ ${m.ziel.kunden} % Kunden` : 'Soll je Event',
       quelle: naechstes ? `„${naechstes.titel}“ · ${m?.hinweis ?? ''}` : 'kein Event geplant' },
-    // Getrennt ausgewiesen, nie im Score (nicht in IM_SCORE): fremde Veranstaltungen, 90 Tage.
-    { id: 'netzwerken', label: 'Netzwerken · fremde Veranstaltungen', wert: nw.kontakte || null, anzeige: nw.kontakte ? `${nw.kontakte} Kontakte` : '—', ampel: 'grau', ziel: 'getrennt von den eigenen Events',
-      quelle: nw.kontakte ? `Netzwerken: ${nw.kontakte} Kontakte, ${nw.termine} Termine, ${nw.followups} Follow-ups · ${nw.events} Veranstaltung(en) · 90 Tage` : 'noch nichts über Netzwerken erfasst' },
+    // Besuchte Events (fremde Veranstaltungen, `marke: Netzwerken`) stehen NICHT hier: ihre Zahlen rechnet allein `besuchKennzahlen` (lib/crm/besuche.ts, Reiter „Events") — eine Rechnung, nie zwei (M2).
   ];
 }
 
@@ -154,12 +137,17 @@ export function uebergaben(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const events = new Map(crm.events.map(e => [e.id, e]));
 
   // Event → Sales: Gäste, die da waren und noch nicht nachgefasst sind.
-  const nachfassen = crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && events.has(t.eventId) && nachId.has(t.kontaktId));
+  // Make.One-Gäste und Begegnungen bei besuchten Events getrennt (M2): zwei Zeilen, jede führt in ihren Reiter; bewusst Ausgelassene zählen nie.
+  const offen = crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && !t.nachfassenVerzichtet && events.has(t.eventId) && nachId.has(t.kontaktId));
+  const nachfassen = offen.filter(t => !istNetzwerkenEvent(events.get(t.eventId)!));
+  const begegnungen = offen.filter(t => istNetzwerkenEvent(events.get(t.eventId)!));
   if (nachfassen.length) {
     const ueberfaellig = nachfassen.filter(t => followUpBis(events.get(t.eventId)!) < heute).length;
     liste.push({ id: 'event-nachfassen', von: 'event', an: 'sales', titel: 'Gäste nachfassen', anzahl: nachfassen.length,
       text: `stehen in der Power Hour${ueberfaellig ? ` · ${ueberfaellig} über der 48-Stunden-Frist` : ''}`, ziel: { s: 'followup', a: 'powerhour' } });
   }
+  if (begegnungen.length) liste.push({ id: 'besuche-nachfassen', von: 'event', an: 'sales', titel: 'Begegnungen bei Events nachfassen', anzahl: begegnungen.length,
+    text: 'kennengelernt auf besuchten Veranstaltungen, noch ohne nächsten Schritt', ziel: { s: 'besuche' } });
 
   // Marketing → Sales: Gespräche und Anfragen aus Beiträgen (60 Tage) ohne offene Chance.
   const vor60 = tagPlus(heute, -59);

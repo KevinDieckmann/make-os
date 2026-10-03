@@ -72,14 +72,56 @@ function cssDeklarationen(text: string): string {
   return aus.join(';');
 }
 
-/** Ein <style>-Inhalt: nur einfache Regeln `.klasse, #id, element { … }` — alles andere (@-Regeln, Attributwähler, Kombinatoren) fällt weg. */
+/** Größter <style>-Inhalt, den das Säubern auswertet — darüber fällt das Stylesheet weg (nicht gekürzt: halbe Regeln wären falsch). */
+export const CSS_MAX = 20_000;
+
+/** Alles von `auf` bis `zu` entfernen — linear (indexOf); ein nie geschlossener Anfang bleibt, wie er ist (wie bei der Regex vorher). */
+function ohneBereiche(t: string, auf: string, zu: string, ersatz?: (inhalt: string) => string): string {
+  let aus = '', pos = 0;
+  for (;;) {
+    const i = t.indexOf(auf, pos);
+    if (i < 0) break;
+    const j = t.indexOf(zu, i + auf.length);
+    if (j < 0) break;
+    aus += t.slice(pos, i) + (ersatz ? ersatz(t.slice(i + auf.length, j)) : '');
+    pos = j + zu.length;
+  }
+  return aus + t.slice(pos);
+}
+
+/** <!DOCTYPE …> (auch mit [Teilmenge]) entfernen — linear, ohne Regex mit verschachtelten Wiederholungen. */
+function ohneDoctype(t: string): string {
+  const klein = t.toLowerCase();
+  let aus = '', pos = 0;
+  for (;;) {
+    const i = klein.indexOf('<!doctype', pos);
+    if (i < 0) break;
+    let j = klein.indexOf('>', i);
+    const auf = klein.indexOf('[', i);
+    if (auf >= 0 && (j < 0 || auf < j)) { const zu = klein.indexOf(']', auf); j = zu < 0 ? -1 : klein.indexOf('>', zu); }
+    if (j < 0) break;
+    aus += t.slice(pos, i);
+    pos = j + 1;
+  }
+  return aus + t.slice(pos);
+}
+
+/**
+ * Ein <style>-Inhalt: nur einfache Regeln `.klasse, #id, element { … }` — alles andere (@-Regeln, Attributwähler, Kombinatoren) fällt weg.
+ * Linear (am `}` zerlegt, am `{` getrennt) und auf `CSS_MAX` begrenzt: die Regex vorher war quadratisch — 200 KB ohne „{“ blockierten die Schleife rund 35 Sekunden.
+ */
 function cssRegeln(text: string): string {
-  const roh = text.replace(/\/\*[\s\S]*?\*\//g, '');
+  if (text.length > CSS_MAX) return '';
+  const roh = ohneBereiche(text, '/*', '*/');
   const aus: string[] = [];
-  for (const m of roh.matchAll(/([^{}@]+)\{([^{}]*)\}/g)) {
-    const waehler = m[1].split(',').map(s => s.trim());
-    if (!waehler.length || !waehler.every(s => /^(?:[.#]?[A-Za-z_][\w-]*|\*)$/.test(s))) continue;
-    const dekl = cssDeklarationen(m[2]);
+  for (const stueck of roh.split('}')) {
+    const i = stueck.indexOf('{');
+    if (i < 1 || stueck.indexOf('{', i + 1) >= 0) continue;   // ohne Wähler oder verschachtelt (@media …): fällt weg
+    const waehlerRoh = stueck.slice(0, i);
+    if (waehlerRoh.includes('@')) continue;
+    const waehler = waehlerRoh.split(',').map(x => x.trim());
+    if (!waehler.length || !waehler.every(x => /^(?:[.#]?[A-Za-z_][\w-]*|\*)$/.test(x))) continue;
+    const dekl = cssDeklarationen(stueck.slice(i + 1));
     if (dekl) aus.push(`${waehler.join(',')}{${dekl}}`);
   }
   return aus.join('\n');
@@ -101,7 +143,8 @@ function attributeLesen(roh: string): [string, string][] {
  */
 export function saeubereSvg(eingabe: string): string | null {
   if (typeof eingabe !== 'string' || eingabe.length > 600_000) return null;
-  let t = eingabe.replace(/^﻿/, '').replace(/<\?[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, (_m, s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')).replace(/<!DOCTYPE[^>]*(?:\[[\s\S]*?\])?[^>]*>/gi, '');
+  // Alles linear (indexOf statt Regex mit [\s\S]*?): viele ungeschlossene „<!--“ oder „<?“ machten die Regex quadratisch (Minuten bei 600 KB).
+  let t = ohneDoctype(ohneBereiche(ohneBereiche(ohneBereiche(eingabe.replace(/^﻿/, ''), '<?', '?>'), '<!--', '-->'), '<![CDATA[', ']]>', s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')));
   if (!/<svg[\s>]/i.test(t)) return null;
   t = t.trim();
 
@@ -111,6 +154,7 @@ export function saeubereSvg(eingabe: string): string | null {
   let styleInhalt: string | null = null; // sammelt den Text eines <style>
   let wurzel = false;
   let pos = 0;
+  const letztesGroesser = t.lastIndexOf('>');   // einmal gesucht: ein „<“ dahinter kann kein Tag mehr eröffnen
 
   /** Das oberste offene Element schließen; ein <style> nur mit sicheren Regeln — sonst fällt es ganz weg. */
   const schliesseEins = (): void => {
@@ -133,6 +177,8 @@ export function saeubereSvg(eingabe: string): string | null {
       else if (offen.length && /^(text|tspan|title|desc)$/i.test(offen[offen.length - 1])) ausgabe += maske(entitiesAufloesen(text));
     }
     if (lt === -1) break;
+    // Jedes Tag endet auf „>“: gibt es keins mehr, kann nichts mehr passen (sonst scannt jedes ungeschlossene „<a “ bis zum Ende — quadratisch).
+    if (lt > letztesGroesser) break;
     TAG.lastIndex = lt;
     const m = TAG.exec(t);
     if (!m) { pos = lt + 1; continue; } // ein einzelnes „<“ im Text: überspringen

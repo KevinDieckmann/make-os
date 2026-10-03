@@ -23,7 +23,7 @@ import { termineZuNeuLaden } from '../../kalender/TermineAkte';
 import type { FollowUpArt } from '@/lib/crm/typen';
 import { FOLLOWUP_ARTEN } from '@/lib/crm/followup';
 import { nameVon } from '@/lib/crm/team';
-import { WEG } from '@/lib/wege';
+import { WEG, eventLink } from '@/lib/wege';
 import { kanalStatus } from '@/lib/crm/recht';
 import {
   ERGEBNIS_KURZ, ERGEBNIS_TITEL, ANRUF_ERGEBNISSE, STATUS_LABEL, darfBearbeiten, bezugAufloesen,
@@ -91,7 +91,7 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
   const wann = `${datum(e.tag, heute)}${e.zeit ? ` · ${e.zeit}` : ''}`;
   const zuBezug = () => {
     if (!bezug) return;
-    router.push(bezug.art === 'deal' ? WEG.deal(bezug.id) : bezug.art === 'mandat' ? WEG.mandat(bezug.id) : bezug.art === 'event' ? WEG.event(bezug.id) : bezug.art === 'kampagne' ? WEG.kampagne(bezug.id) : WEG.deal());
+    router.push(bezug.art === 'deal' ? WEG.deal(bezug.id) : bezug.art === 'mandat' ? WEG.mandat(bezug.id) : bezug.art === 'event' ? eventLink(api.crm?.stand.events.find(x => x.id === bezug.id) ?? { id: bezug.id }) : bezug.art === 'kampagne' ? WEG.kampagne(bezug.id) : WEG.deal());
   };
   const [fehler, setFehler] = useState<string | null>(null);
   /** Eigene Notiz ändern/löschen: eigene Aktion mit Anker und Stand — bei 409 kommt der aktuelle Kontakt zurück. */

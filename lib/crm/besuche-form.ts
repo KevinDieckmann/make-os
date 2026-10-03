@@ -83,11 +83,24 @@ export function werSaeubern(v: unknown): string[] | undefined {
   return liste.length ? liste : undefined;
 }
 
-/** Link: nur https, ohne Leerraum — nie javascript: o. Ä. */
-export function linkSaeubern(v: unknown): string | undefined {
-  const t = text(v, LINK_MAX);
-  return /^https:\/\/[^\s]+$/i.test(t) ? t : undefined;
+/** Link-Fehlertext — sichtbar in der Akte und in der Antwort des Servers (nie still verwerfen, der Eintrag ginge sonst unbemerkt verloren). */
+export const LINK_FEHLER = 'Der Link sieht nicht gültig aus — bitte eine Adresse wie https://messe.example/programm oder messe.example/programm eintragen (kein Leerraum, nur http und https).';
+
+/**
+ * Link normalisieren: `https://…` und `http://…` bleiben, eine Adresse OHNE Schema („messe.example/programm“) bekommt `https://` vorangestellt; jedes andere Schema
+ * (`javascript:`, `data:`, `mailto:` …), Leerraum, zu lang oder kein Rechnername mit Punkt → undefined. Ein Port („messe.example:8080/x“) ist kein Schema.
+ */
+export function linkNormal(v: unknown): string | undefined {
+  const roh = String(v ?? '').replace(/\u0000/g, '').trim();
+  if (!roh || roh.length > LINK_MAX || /\s/.test(roh)) return undefined;
+  if (/^https?:\/\/[^\s/?#]+/i.test(roh)) return /^https?:\/\/[^\s/?#]*\.[^\s/?#]*/i.test(roh) || /^https?:\/\/localhost\b/i.test(roh) ? roh : undefined;
+  if (/^[a-z][a-z0-9+.-]*:(?!\d)/i.test(roh)) return undefined;
+  const host = /^[^/?#]+/.exec(roh)?.[0] ?? '';
+  const mitHttps = `https://${roh}`;
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+(:\d{1,5})?$/i.test(host) && mitHttps.length <= LINK_MAX ? mitHttps : undefined;
 }
+/** Wie `linkNormal` — der Name aus dem Säuberer (`zusatz('events')`). */
+export const linkSaeubern = linkNormal;
 
 /** Schlüssel einer Zielperson (für Doppelte und Abhaken). */
 export const zielSchluessel = (z: Pick<EventZielperson, 'kontaktId' | 'firmaId'>): string => (z.kontaktId ? `k:${z.kontaktId}` : `f:${z.firmaId ?? ''}`);
@@ -111,6 +124,41 @@ export function zielpersonenSaeubern(v: unknown, max = ZIELPERSONEN_MAX): EventZ
     if (raus.length >= max) break;
   }
   return raus.length ? raus : undefined;
+}
+
+/** Eine Änderung an der Zielliste eines Events — immer EINE Person/Firma (nie die ganze Liste), damit zwei Geräte einander nicht überschreiben. */
+export type ZielAenderung = { op: 'hinzu' | 'weg'; kontaktId?: string; firmaId?: string } | { op: 'getroffen'; kontaktId?: string; firmaId?: string; wert: boolean };
+
+/** Die Änderung aus dem Netz prüfen (Form) — null, wenn weder eine gültige Person noch eine gültige Firma genannt ist. */
+export function zielAenderungAus(v: unknown): ZielAenderung | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as Record<string, unknown>;
+  const kontaktId = typeof o.kontaktId === 'string' && istKontaktKennung(o.kontaktId) ? o.kontaktId : undefined;
+  const firmaId = typeof o.firmaId === 'string' && FIRMA_ID.test(o.firmaId) ? o.firmaId : undefined;
+  if (!kontaktId === !firmaId) return null;   // genau eins von beiden
+  const ziel = kontaktId ? { kontaktId } : { firmaId: firmaId! };
+  if (o.op === 'hinzu' || o.op === 'weg') return { op: o.op, ...ziel };
+  if (o.op === 'getroffen' && typeof o.wert === 'boolean') return { op: 'getroffen', ...ziel, wert: o.wert };
+  return null;
+}
+
+/**
+ * Die Änderung auf die AKTUELLE Liste anwenden (Server, in der Sperre). `fehler`: 413 über der Grenze (nie gekürzt), 404 für „getroffen“ an einem Eintrag, den es
+ * nicht (mehr) gibt. „hinzu“ bei vorhandenem Eintrag und „weg“ bei fehlendem sind kein Fehler (wiederholbar).
+ */
+export function zielAendern(liste: readonly EventZielperson[] | undefined, a: ZielAenderung): { liste: EventZielperson[]; fehler?: { status: number; text: string } } {
+  const alt = [...(liste ?? [])];
+  const schluessel = zielSchluessel(a);
+  const da = alt.some(z => zielSchluessel(z) === schluessel);
+  if (a.op === 'hinzu') {
+    if (da) return { liste: alt };
+    if (alt.length >= ZIELPERSONEN_MAX) return { liste: alt, fehler: { status: 413, text: `Höchstens ${ZIELPERSONEN_MAX} Zielpersonen je Event.` } };
+    return { liste: [...alt, a.kontaktId ? { kontaktId: a.kontaktId } : { firmaId: a.firmaId! }] };
+  }
+  if (a.op === 'weg') return { liste: alt.filter(z => zielSchluessel(z) !== schluessel) };
+  if (!da) return { liste: alt, fehler: { status: 404, text: 'Diese Zielperson steht nicht (mehr) auf der Liste.' } };
+  const getroffen = a.op === 'getroffen' && a.wert;
+  return { liste: alt.map(z => (zielSchluessel(z) === schluessel ? { ...(z.kontaktId ? { kontaktId: z.kontaktId } : {}), ...(z.firmaId ? { firmaId: z.firmaId } : {}), ...(getroffen ? { getroffen: true } : {}) } : z)) };
 }
 
 /**

@@ -10,21 +10,22 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
 import { firmaIdsErgaenzen, firmaIdsNachziehen } from './firmen-bezug';
-import { localDay } from '@/lib/zeit';
+import { localDay, istKalendertag } from '@/lib/zeit';
+import { istKontaktKennung } from '@/lib/kennung';
 import { crmKonflikte, loeschSperren, type CrmKonflikt, type LoeschSperre, type VerweisKontext } from './crm-stand';
 import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe, type FollowUp } from './typen';
 import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
 import { MARKE_MAX } from './marke';
-import { fuerSaeubern, anmeldungSaeubern, werSaeubern, linkSaeubern, zielpersonenSaeubern, uebergabenSaeubern, ZIELPERSONEN_MAX, UEBERGABEN_MAX, WER_MAX } from './besuche-form';
-import { netzwerkenAngabeSaeubern } from './netzwerken';
+import { fuerSaeubern, anmeldungSaeubern, werSaeubern, linkSaeubern, linkNormal, LINK_FEHLER, zielpersonenSaeubern, uebergabenSaeubern, ZIELPERSONEN_MAX, UEBERGABEN_MAX, WER_MAX } from './besuche-form';
+import { netzwerkenAngabeSaeubern, teilnahmeHerkunftSaeubern } from './netzwerken';
 import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
 import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
-import { personenSchranke, kampagnenHinweise, type PersonSchranke } from './personen-schranke';
+import { personenSchranke, kampagnenHinweise, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
 import { ladeScoring } from './scoring-server';
 import { crmFolgen, geloeschteDeals, karteiBetroffen, kontaktLeadsOhneDeals } from './bestand-folgen';
 import type { Temperatur } from './typen';
@@ -44,7 +45,9 @@ export async function ladeCrm(): Promise<CrmBestand> {
 
 const txt = (v: unknown, n = 300) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
 const opt = (v: unknown, n = 300) => { const t = txt(v, n); return t || undefined; };
-const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+const tag = (v: unknown) => (istKalendertag(v) ? v : undefined);
+/** Kalendertage + n (UTC-Mittag) — für die Obergrenze einer mehrtägigen Veranstaltung (höchstens 30 Tage). */
+const tagePlusSpeicher = (d: string, n: number): string => { const x = new Date(`${d}T12:00:00Z`); if (Number.isNaN(x.getTime())) return ''; x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 const zahl = (v: unknown, min = 0, max = 1e9) => { const n = Number(v); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : 0; };
 const aus = <T extends string>(v: unknown, liste: readonly T[], standard: T): T => (liste.includes(v as T) ? (v as T) : standard);
 const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
@@ -239,7 +242,7 @@ function event(o: Record<string, unknown>, jetzt: string): Event | null {
 }
 
 function teilnahme(o: Record<string, unknown>, jetzt: string): Teilnahme | null {
-  if (!idOk(o.id) || !idOk(o.eventId) || !/^c-[a-z0-9-]{4,60}$/.test(String(o.kontaktId ?? ''))) return null;
+  if (!idOk(o.id) || !idOk(o.eventId) || !istKontaktKennung(String(o.kontaktId ?? ''))) return null;
   return {
     id: String(o.id), eventId: String(o.eventId), kontaktId: String(o.kontaktId),
     status: aus(o.status, ['vorgemerkt', 'eingeladen', 'zugesagt', 'abgesagt', 'da', 'no_show'] as const, 'vorgemerkt'),
@@ -274,7 +277,7 @@ function antrag(o: Record<string, unknown>, jetzt: string, person: string): Antr
   const d = new Date(`${eingang}T12:00:00Z`); const tagNr = d.getUTCDate(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(Math.min(tagNr, new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()));
   return {
     id: String(o.id), art: aus(o.art, ANTRAEGE, 'auskunft'), name: txt(o.name, 160), ...(opt(o.email, 160) ? { email: opt(o.email, 160) } : {}),
-    ...(/^c-[a-z0-9-]{4,60}$/.test(String(o.kontaktId ?? '')) ? { kontaktId: String(o.kontaktId) } : {}),
+    ...(istKontaktKennung(String(o.kontaktId ?? '')) ? { kontaktId: String(o.kontaktId) } : {}),
     eingang, frist: tag(o.frist) ?? d.toISOString().slice(0, 10), status: o.status === 'erledigt' ? 'erledigt' : 'offen',
     ...(opt(o.ergebnis, 600) ? { ergebnis: opt(o.ergebnis, 600) } : {}), ...(tag(o.erledigtAm) ? { erledigtAm: tag(o.erledigtAm) } : {}), von: txt(o.von, 40) || person, geaendert: jetzt,
   };
@@ -370,7 +373,7 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       const fuer = fuerSaeubern(o.fuer), anmeldung = anmeldungSaeubern(o.anmeldung), wer = werSaeubern(o.wer), link = linkSaeubern(o.link);
       const zielpersonen = zielpersonenSaeubern(o.zielpersonen), uebergaben = uebergabenSaeubern(o.uebergaben);
       return { ...(opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {}), ...(opt(o.marke, MARKE_MAX) ? { marke: opt(o.marke, MARKE_MAX) } : {}),
-        ...(fuer ? { fuer } : {}), ...(anmeldung ? { anmeldung } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(zielpersonen ? { zielpersonen } : {}), ...(uebergaben ? { uebergaben } : {}) };
+        ...(fuer ? { fuer } : {}), ...(anmeldung ? { anmeldung } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(tag(o.bisDatum) && String(o.bisDatum) > String(o.datum ?? '') && String(o.bisDatum) <= tagePlusSpeicher(String(o.datum), 30) ? { bisDatum: tag(o.bisDatum) } : {}), ...(zielpersonen ? { zielpersonen } : {}), ...(uebergaben ? { uebergaben } : {}) };
     }
     case 'kampagnen': case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};
     case 'newsletter': return wer(o.stimme) || o.stimme === 'marke' ? { stimme: String(o.stimme) } : {};
@@ -380,7 +383,8 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       const fb = f && typeof f === 'object' ? { ...(Number.isFinite(note) && note >= 1 && note <= 5 ? { note: Math.round(note) } : {}), ...(opt(f.text, 600) ? { text: opt(f.text, 600) } : {}), ...(opt(f.am, 25) ? { am: opt(f.am, 25) } : {}) } : {};
       // Netzwerken (02.10.): ohne diese Zeile fiele die Angabe bei jedem Speichern einer Teilnahme weg.
       const nw = netzwerkenAngabeSaeubern(o.netzwerken);
-      return { ...(Object.keys(fb).length ? { feedback: fb } : {}), ...(nw ? { netzwerken: nw } : {}) };
+      const herkunft = teilnahmeHerkunftSaeubern(o.herkunft);
+      return { ...(Object.keys(fb).length ? { feedback: fb } : {}), ...(nw ? { netzwerken: nw } : {}), ...(herkunft ? { herkunft } : {}) };
     }
     default: return {};
   }
@@ -448,6 +452,20 @@ export function regelnAbgelehnt(b: CrmBestand, ops: ListenOp[]): string[] {
   const raus: string[] = [];
   for (const o of ops) {
     if (o.liste === 'angebote') { raus.push('Angebote werden nur im Angebots-Tool geändert (/api/crm/angebot).'); continue; }
+    if (o.liste === 'events' && o.op !== 'delete') {
+      // „Für wen“ (besuchte Events): die Kunden-Firma muss es geben, das Mandat muss zu ihr gehören — nur wenn sich `fuer` ändert (Altbestand blockiert keine andere Änderung).
+      const rohE = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>;
+      const idE = String(o.op === 'teil' ? o.id : (o.eintrag as { id?: unknown } | undefined)?.id ?? '');
+      // Ein Link, der nicht durchgeht, wird NICHT still verworfen — die Änderung kommt mit Text zurück (409), die Akte zeigt ihn.
+      if (typeof rohE.link === 'string' && rohE.link.trim() && !linkNormal(rohE.link)) raus.push(LINK_FEHLER);
+      const fuer = rohE.fuer && typeof rohE.fuer === 'object' ? fuerSaeubern(rohE.fuer) : undefined;
+      const altE = b.events.find(x => x.id === idE);
+      if (fuer?.art === 'kunde' && JSON.stringify(fuer) !== JSON.stringify(altE?.fuer ?? null)) {
+        if (!b.firmen.some(f => f.id === fuer.firmaId)) raus.push('Für wen: die Kunden-Firma gibt es nicht (mehr) — bitte eine Firma der Kartei wählen.');
+        else if (fuer.mandatId && !b.mandate.some(m => m.id === fuer.mandatId && m.firmaId === fuer.firmaId)) raus.push('Für wen: das Mandat gehört nicht zu dieser Firma.');
+      }
+      continue;
+    }
     // Event mit Übergaben an Kunden (03.10.): der Nachweis (Art. 15/19) darf nicht still mit dem Event verschwinden — löschen geht nur über die
     // Event-Route (`aktion: 'loeschen'`, ausdrückliche Bestätigung, Protokoll wandert ins Übergabe-Journal und ist dann vom Event gelöst).
     if (o.liste === 'events' && o.op === 'delete' && b.events.find(x => x.id === o.id)?.uebergaben?.length) { raus.push('Dieses Event hat Übergaben an Kunden im Protokoll — löschen nur über „Event löschen“ in der Event-Akte (der Nachweis geht ins Übergabe-Journal).'); continue; }
@@ -712,6 +730,12 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
     const basis = firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand;
     const kontakte = (await loadJson<Kartei>('kontakte'))?.kontakte ?? [];
     const roh = await personenImLauf.run(kontakte, () => mut(basis));
+    // Auch eine Funktions-Änderung geht durch die Personen-Schranke (nur NEUE Teilnahmen/Kampagnen-Personen) — wer sie aufruft, bekommt
+    // sonst eine gesperrte Person durch die Hintertür (Art. 18 nie, Werbesperre nicht in Einladung/Kampagne). Nichts wird geschrieben.
+    if (roh !== basis) {
+      const texte = personenSchranke(basis, funktionsOps(basis, roh), kontakte);
+      if (texte.length) throw new PersonenSchrankeFehler(texte);
+    }
     const jetzt = new Date().toISOString();
     // Firmen-Kennungen auch am ERGEBNIS nachziehen (29.09., F1): gespeicherter Stand = gelesener Stand (`ladeCrm`),
     // sonst weicht der Fingerabdruck ab und die nächste Änderung desselben Eintrags bekommt 409.

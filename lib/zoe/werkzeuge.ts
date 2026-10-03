@@ -1034,7 +1034,7 @@ async function haushaltRechnungErfassen(input: Record<string, unknown>, _o: stri
 // auch bei Freigabe aus dem Stapel, Rücknahme und Aufträgen. Ohne Person: KEINE_PERSON (Regel 5).
 export const CRM_WERKZEUGE = ['crm_lage', 'suche_kontakt', 'notiere_kontakt', 'entwurf_ansprache', 'chance_anlegen', 'uebergeben', 'setze_kunde',
   // ZOE sieht und unterstützt die ganze Markttraktion (28.09., C7): lesen (lib/zoe/crm-werkzeuge.ts) und vorschlagen (crm-vorschlag.ts).
-  'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'marketing_lage',
+  'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'besuche_lage', 'marketing_lage',
   'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage', 'crm_vorschlag'] as const;
 /** Agenten, deren Lauf die Kartei liest (run_agent) — nur im Haushalt des Inhabers anbieten. */
 export const CRM_AGENTEN = ['crm', 'outreach', 'prospect', 'head-sales', 'head-marketing', 'head-event'] as const;

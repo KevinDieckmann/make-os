@@ -10,17 +10,28 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Chip, LEUCHT, feld } from '../../schlank';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
-import { fuerVon, fuerFirmaId, zielSchluessel } from '@/lib/crm/besuche-form';
+import { fuerVon, fuerFirmaId, zielSchluessel, type ZielAenderung } from '@/lib/crm/besuche-form';
 import type { Event, EventZielperson, Firma } from '@/lib/crm/typen';
 import type { CrmApi } from '../daten';
 import { Wahl } from '../Wahl';
-import { eventSetzen } from '../events/gemeinsam';
+import { eventSetzen, eventsPost } from '../events/gemeinsam';
 import { MandantLink } from '../MandantLink';
 
 export type CrmStand = NonNullable<CrmApi['crm']>;
 export interface BesuchProps { api: CrmApi; crm: CrmStand; zuKontakt: (id: string) => void; zuFirma: (id: string) => void }
 
 export { eventSetzen };
+
+/**
+ * Eine Zielperson ändern — über den Serverweg (`aktion: 'ziel'`), auf dem AKTUELLEN Stand des Events: hinzu · weg · getroffen. Vorher ging die ganze Liste ohne Stand raus,
+ * und zwei Geräte am Messestand überschrieben einander. Fehlt der Erfolg, steht der Grund im Kopf (nie still).
+ */
+export async function zielAenderung(api: CrmApi, e: Event, a: ZielAenderung): Promise<boolean> {
+  const r = await eventsPost(e.id, { aktion: 'ziel', aenderung: a });
+  if (!r.ok) api.setFehler(typeof r.fehler === 'string' ? r.fehler : 'Nicht gespeichert.');
+  await api.laden(true);
+  return !!r.ok;
+}
 
 /** Feldzeile der Event-Akte: Beschriftung links, am Handy (≤ 560 px, `.bes-zeile` in globals.css) über dem Feld. */
 export function BFeld({ label, children }: { label: string; children: ReactNode }) {
@@ -64,7 +75,7 @@ export function FuerWahl({ e, api, crm }: { e: Event; api: CrmApi; crm: CrmStand
     <div style={{ display: 'grid', gap: 6 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Wahl label="Für wen" liste={eintraege} wert={fuer.art === 'kunde' ? fuer.firmaId : 'make'} farbe={fuer.art === 'kunde' ? LEUCHT.business : C.aktiv}
-          onWahl={id => void eventSetzen(api, e, { fuer: id === 'make' ? undefined : { art: 'kunde', firmaId: id } })} />
+          onWahl={id => { if (!fuerAendernOk(e, crm, id === 'make' ? 'MAKE selbst' : firmen.find(f => f.id === id)?.name ?? 'diesen Kunden')) return; void eventSetzen(api, e, { fuer: id === 'make' ? undefined : { art: 'kunde', firmaId: id } }); }} />
         {fuer.art === 'kunde' && mandatListe.length > 0 && (
           <Wahl label="Mandat" leer="+ Mandat" liste={mandatListe} wert={fuer.mandatId ?? null}
             onWahl={mandatId => void eventSetzen(api, e, { fuer: { art: 'kunde', firmaId: fuer.firmaId, mandatId } })}
@@ -79,6 +90,13 @@ export function FuerWahl({ e, api, crm }: { e: Event; api: CrmApi; crm: CrmStand
       )}
     </div>
   );
+}
+
+/** Hängen schon erfasste Personen am Event, fragt „Für wen ändern“ vorher nach („n Personen hängen dann an …“) — ein Etikett mit Folgen (Export für Kunden, Auftragsverarbeitung). */
+function fuerAendernOk(e: Event, crm: CrmStand, name: string): boolean {
+  const n = crm.stand.teilnahmen.filter(t => t.eventId === e.id && t.netzwerken).length;
+  if (!n) return true;
+  return window.confirm(`${n === 1 ? 'Eine erfasste Person hängt' : `${n} erfasste Personen hängen`} dann an ${name} — auch ihr Export „An Kunden übergeben“ ändert sich. Wirklich ändern?`);
 }
 
 /** Wie eine Zielperson heißt — Person (Name · Firma) oder Firma. */
@@ -101,7 +119,7 @@ export function ZielSuche({ api, crm, e }: { api: CrmApi; crm: CrmStand; e: Even
   const q = suche.trim().toLowerCase();
   const personen = q.length >= 2 ? (api.kontakte ?? []).filter(k => !ausgenommen(k) && !drin.has(`k:${k.id}`) && `${k.vorname} ${k.nachname} ${k.firma ?? ''}`.toLowerCase().includes(q)).slice(0, 5) : [];
   const firmen = q.length >= 2 ? crm.stand.firmen.filter(f => !drin.has(`f:${f.id}`) && f.name.toLowerCase().includes(q)).slice(0, 3) : [];
-  const setze = (z: EventZielperson) => { void eventSetzen(api, e, { zielpersonen: [...(e.zielpersonen ?? []), z] }); setSuche(''); };
+  const setze = (z: EventZielperson) => { void zielAenderung(api, e, { op: 'hinzu', ...(z.kontaktId ? { kontaktId: z.kontaktId } : { firmaId: z.firmaId }) }); setSuche(''); };
   const zeile = { display: 'flex', alignItems: 'center', minHeight: 44, width: '100%', textAlign: 'left' as const, background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '4px 2px', borderBottom: '1px solid rgba(255,255,255,.05)' };
   return (
     <div>

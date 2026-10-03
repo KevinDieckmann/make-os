@@ -21,8 +21,10 @@ import { istDienst } from '@/lib/zugang/dienst';
 import { zuGross } from '@/lib/zugang/umfang';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { localDay } from '@/lib/zeit';
+import { istKontaktKennung } from '@/lib/kennung';
 import { erfassungPruefen, KOERPER_MAX, DAUERN } from '@/lib/crm/netzwerken';
 import { erfassungAusfuehren, dankeRausVermerken, dankeVerzichten, freieVorschlaege, ErfassungFehler } from '@/lib/crm/netzwerken-server';
+import { PersonenSchrankeFehler } from '@/lib/crm/personen-schranke';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -72,7 +74,7 @@ export async function POST(req: Request) {
 
   if (body.aktion === 'danke-raus') {
     const eventId = typeof body.eventId === 'string' ? body.eventId : '', kontaktId = typeof body.kontaktId === 'string' ? body.kontaktId : '';
-    if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(eventId) || !/^c-[a-z0-9-]{4,60}$/.test(kontaktId)) return fehler('Event oder Person fehlt.', 400);
+    if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(eventId) || !istKontaktKennung(kontaktId)) return fehler('Event oder Person fehlt.', 400);
     const r = await dankeRausVermerken({ eventId, kontaktId, person: z.person, wer: werAus(req), ...(body.anrede === 'Du' || body.anrede === 'Sie' ? { anrede: body.anrede } : {}) });
     return r.ok ? NextResponse.json(r) : fehler(r.fehler, r.status);
   }
@@ -91,6 +93,8 @@ export async function POST(req: Request) {
     return NextResponse.json(r);
   } catch (e) {
     if (e instanceof ErfassungFehler) return fehler(e.message, e.status, e.extra);
+    // Die Personen-Schranke des CRM-Bestands (Art. 18, Werbesperre in Einladung/Kampagne) — nie als 500 mit Wiederholung.
+    if (e instanceof PersonenSchrankeFehler) return fehler(e.message, 409);
     console.error('[netzwerken]', e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 200) : 'Fehler');
     // 500: der Browser behält die Erfassung in der Warteschlange und versucht es wieder — jeder Schritt ist wiederholbar.
     return fehler('Gerade nicht möglich — die Erfassung bleibt auf dem Gerät und wird erneut gesendet.', 500);

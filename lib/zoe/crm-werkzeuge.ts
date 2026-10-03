@@ -233,7 +233,9 @@ async function crmSuche(i: Eingabe, s: CrmSicht): Promise<string> {
   if (nur.has('events')) {
     const l = crm.events.filter(e => (!frage || suchPasst([e.titel, e.ort, e.ziel], frage)) && (!f.offen || e.datum >= heute));
     treffer += l.length;
-    teile.push(block(`Events — ${l.length} Treffer`, l.slice(0, n).map(e => `- ${e.id} · ${e.titel} · ${e.datum} · ${e.status}${e.ort ? ` · ${e.ort}` : ''}`)));
+    // Kennzeichnung (M4): „Make.One“ = unser eigener Abend (events_lage), „besucht“ = fremde Veranstaltung aus dem Reiter „Events“ (besuche_lage).
+    const { istNetzwerkenEvent } = await import('@/lib/crm/marke');
+    teile.push(block(`Events — ${l.length} Treffer`, l.slice(0, n).map(e => `- ${e.id} · ${istNetzwerkenEvent(e) ? 'besucht (besuche_lage)' : 'Make.One (events_lage)'} · ${e.titel} · ${e.datum} · ${e.status}${e.ort ? ` · ${e.ort}` : ''}`)));
   }
   const kopf = `MARKTTRAKTION-SUCHE ${frage ? `„${frage.length > 40 ? `${frage.slice(0, 40)}…` : frage}“` : '(ohne Suchwort)'} · ${treffer} Treffer in ${[...nur].join(', ')}${ausgeblendetText(s.eingeschraenkt.size)} · Einzelnes: kontakt_akte, firma_akte, pipeline mit deal`;
   return crmAntwort(kopf, teile.join('\n\n'), i.teil, t => `crm_suche mit denselben Angaben und teil: ${t}`);
@@ -495,6 +497,33 @@ async function eventsLage(i: Eingabe, s: CrmSicht): Promise<string> {
   return crmAntwort(`EVENTS (Make.One) · ${l.length} · kommend ${l.filter(e => e.datum >= s.heute).length}`, block('Events', zeilen), i.teil, t => `events_lage mit teil: ${t}`);
 }
 
+/**
+ * Besuchte Events (Reiter „Events“): fremde Veranstaltungen, Messen, Kunden-Events — getrennt von unseren Make.One-Abenden (`events_lage`).
+ * Wirkung und Urteil kommen aus derselben Rechnung wie die Akte (`besuchUebersicht`); die erfassten Personen aus dem Abendbericht (`berichtAus`,
+ * ohne eingeschränkte Personen — die fehlen in `s.kontakte` ohnehin). Sprachnotizen ohne Abschrift stehen als offener Punkt, nie als Inhalt.
+ */
+async function besucheLage(i: Eingabe, s: CrmSicht): Promise<string> {
+  const { besuchUebersicht, besuchWirkung, besuchUrteil } = await import('@/lib/crm/besuche');
+  const { berichtAus, schrittLabel } = await import('@/lib/crm/netzwerken');
+  const { istBesuch, anmeldungVon, anmeldungLabel, fuerVon } = await import('@/lib/crm/besuche-form');
+  const gefragt = text(i.event, 80);
+  const l = s.crm.events.filter((e: Event) => istBesuch(e) && (!gefragt || e.id === gefragt || suchPasst([e.titel], gefragt)))
+    .sort((a, b) => b.datum.localeCompare(a.datum));
+  const ctx = { teilnahmen: s.crm.teilnahmen, kontakte: s.kontakte, chancen: s.crm.chancen, heute: s.heute };
+  const summe = besuchUebersicht(l, ctx).summe;
+  const firmaName = (id: string) => s.crm.firmen.find(f => f.id === id)?.name ?? id;
+  const zeilen = l.map(e => {
+    const w = besuchWirkung(e, ctx), u = besuchUrteil(e, w, s.heute), f = fuerVon(e);
+    const bericht = berichtAus({ event: e, teilnahmen: s.crm.teilnahmen, kontakte: s.kontakte, followups: s.crm.followups, heute: s.heute });
+    const ausgeblendet = s.crm.teilnahmen.filter(t => t.eventId === e.id && t.netzwerken && s.eingeschraenkt.has(t.kontaktId)).length;
+    const kopf = `- ${e.id} · ${e.titel} · ${e.datum}${e.ort ? ` · ${e.ort}` : ''} · ${anmeldungLabel(anmeldungVon(e))} · ${f.art === 'kunde' ? `für Kunde ${firmaName(f.firmaId)}` : 'für MAKE selbst'}`
+      + `\n  ${w.kontakte} erfasst · nachgefasst ${w.nachgefasst} (offen ${w.nachfassenOffen}) · Termine ${w.termine} · Deals ${w.deals} (Pipeline ${eur(w.pipeline)}, gewonnen ${eur(w.umsatz)}) · Kosten ${eur(w.kosten)}${w.kostenJeKontakt !== null ? ` (${eur(w.kostenJeKontakt)} je Kontakt)` : ''} · Urteil: ${u.label}${w.zielGesamt ? ` · Ziele ${w.zielGetroffen}/${w.zielGesamt}` : ''}`;
+    const personen = l.length <= 3 ? bericht.zeilen.map(z => `\n  - ${z.kontaktId} ${z.name}${z.firma ? ` (${z.firma})` : ''} · ${schrittLabel(z.schritt)} · zuständig ${z.zustaendig}${z.offen.length ? ` · offen: ${z.offen.join('; ')}` : ''}`).join('') + (ausgeblendet ? `\n  ${ausgeblendet} eingeschränkte ausgeblendet` : '') : '';
+    return kopf + personen;
+  });
+  return crmAntwort(`BESUCHTE EVENTS · ${l.length} · erfasst ${summe.kontakte} · Deals ${summe.deals} · Pipeline ${eur(summe.pipeline)}${ausgeblendetText(s.eingeschraenkt.size)}`, block('Besuchte Events', zeilen), i.teil, t => `besuche_lage mit teil: ${t}`);
+}
+
 async function marketingLage(i: Eingabe, s: CrmSicht): Promise<string> {
   const M = await import('@/lib/crm/marketing');
   const { segmentAuswerten, kontextAus } = await import('@/lib/crm/segmente');
@@ -742,6 +771,7 @@ export const CRM_LESE_LAEUFE: Record<string, Lauf> = {
   angebote_lage: sicher(angeboteLage),
   kampagnen_lage: sicher(kampagnenLage),
   events_lage: sicher(eventsLage),
+  besuche_lage: sicher(besucheLage),
   marketing_lage: sicher(marketingLage),
   kennzahlen: sicher(kennzahlenLesen),
   sales_lage: sicher(salesLage),

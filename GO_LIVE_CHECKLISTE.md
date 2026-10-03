@@ -136,6 +136,14 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   - liest/schreibt `netzwerken-erfassungen--<haushalt>` nie (liegt ungenutzt; nach einem erneuten Upload gilt dieselbe Erfassungs-Kennung weiter → nichts doppelt);
   - Sprachnotizen (`audio/*`) liegen als Datei am Kontakt; der alte Stand zeigt sie in der Dateiliste, kann sie aber nicht abspielen (Download geht).
   Nach einem erneuten Upload: nichts nachzuziehen (Teilnahmen ohne `netzwerken` erscheinen nicht im Bericht — selten, nur für Erfassungen aus der Rückweg-Zeit).
+- **Netzwerken ↔ Events ↔ Make.One (03.10., Branch `netz-verbind`):** keine Formänderung, nur optionale Zusatzfelder; 1818c5c verwirft sie beim nächsten Speichern des jeweiligen Eintrags:
+  - `Teilnahme.herkunft` (Make.One-Gast „kam von <Event>“): weg — der Gast bleibt mit Status, Einladungsweg und `einladenDurch`; nur der Chip und der Link in die Event-Akte fehlen;
+  - `Teilnahme.netzwerken.makeone` (Ziel der Vormerkung) und `.vorher` (frühere Begegnungen): weg — der Abendbericht zeigt „Make.One-Einladung offen“ dann nicht mehr aus dem echten Stand; die ältere Angabe einer zweiten Begegnung ist nicht mehr nachlesbar (die Verlauf-Einträge an der Person bleiben);
+  - `Event.bisDatum` (mehrtägige Messe): weg — der Kalender-Spiegel läuft wieder eintägig; vor dem Rückweg die Enddaten wichtiger Messen notieren;
+  - Journal `netzwerken-erfassungen--<haushalt>`: das optionale Feld `eventId` (Event, an das die Erfassung gehängt wurde) ignoriert der alte Stand — eine Wiederholung nach dem Rückweg legt das Event bei Bedarf aus `eventNeu` neu an, nie doppelt (gleicher Titel + Tag wird wiederverwendet);
+  - der alte Stand kennt `eventNeu` immer im Körper (sendet der Browser mit) — ältere Browser-Warteschlangen ohne `eventNeu` enden bei gelöschtem Event wie bisher mit 404 („Anderes Event wählen“ gibt es dort nicht);
+  - `Event löschen` räumt im neuen Stand Kalender-Termin, Planposten und Deal-Verweis ab — der alte nicht (einmal von Hand nachsehen: Kalender „Gemeinsam“, Zahlen › Planung);
+  - ZOE `besuche_lage` und die Schnellsuche nach Events fehlen dort.
 - **Netzwerken — Korrekturen (03.10., Branch `netz-fix`):** keine Formänderung; 1818c5c ignoriert oder verwerfen die neuen Zusätze:
   - `Teilnahme.netzwerken.terminId` (Termin-Sprung im Bericht): der alte Stand verwirft sie beim nächsten Speichern der Teilnahme (nur der Link „Termin öffnen“ fehlt); `followUpAm` aus Netzwerken-Schritten ist ein altes Feld und bleibt;
   - Labels `Netzwerken`/`Dublette prüfen`/`Lead prüfen` und `rechtsgrundlage: 'berechtigt'` sind alte Felder — bleiben, der alte Stand zeigt sie nur als gewöhnliche Labels. Das Event-Kennzeichen `marke: Netzwerken` kennt der alte Stand nur als Marken-Text: **dort zählen fremde Netzwerken-Events wieder in Erscheinensquote und Folgegespräche** (die Trennung ist neuer Code);
