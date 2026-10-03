@@ -5,6 +5,7 @@
 // kein iCloud-Termin, Deadline = Tag, optional Uhrzeit). Der Entwurf liegt bis zur
 // Bestätigung des Servers im Sitzungsspeicher (ENTWURF_SCHLUESSEL).
 
+import type { KalenderBereich } from './bereich';
 import { tagPlus } from './zeit';
 import { ART_INFO, erinnerungenSauber, type TerminArt, type Sichtbarkeit, type Arbeitsort } from './arten';
 import { STANDARD_ZONE } from './zeitzone';
@@ -125,7 +126,7 @@ export type Anfrage =
   | { art: 'termin'; koerper: Record<string, unknown> };
 
 /** Formular → Anfrage (für /api/kalender/termin POST bzw. `aufgabeAnlegen`). */
-export function formularAnfrage(f: Formular): Anfrage {
+export function formularAnfrage(f: Formular, bereich?: KalenderBereich): Anfrage {
   if (f.art === 'aufgabe') {
     return {
       art: 'aufgabe',
@@ -144,7 +145,7 @@ export function formularAnfrage(f: Formular): Anfrage {
       art: f.art, titel: f.titel.trim(), ganztags: f.ganztags,
       start: f.ganztags ? f.tag : `${f.tag}T${f.von}`,
       ende: f.ganztags ? tagPlus(f.bisTag < f.tag ? f.tag : f.bisTag, 1) : `${f.tag}T${f.bis}`,
-      ...(f.kalender ? { kalender: f.kalender } : { wer: f.wer }),
+      ...(f.kalender ? { kalender: f.kalender } : { wer: f.wer, ...(bereich ? { bereich } : {}) }),
       ...(f.ort.trim() && f.art !== 'arbeitsort' ? { ort: f.ort.trim() } : {}),
       ...(f.notiz.trim() ? { notiz: f.notiz.trim() } : {}),
       ...(f.wiederholung ? { wiederholung: f.wiederholung } : {}),

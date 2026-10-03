@@ -22,7 +22,6 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
     { href: '/os/finanzen', label: 'Zahlen', was: 'Privat, Business, Gesamt, Head of Finance' },
     { href: '/os/familie', label: 'Familie & Partnerschaft', was: 'wir zwei zuerst, dann die Familie' },
     { href: '/os/markttraktion', label: 'Markttraktion', was: 'Sales, Marketing und Event — Traction-Score, Power Hour, Kampagnen, Kontakte und Firmen' },
-    { href: '/os/netzwerken', label: 'Netzwerken', was: 'unterwegs erfassen, Schritte und Termine — dazu Meine Visitenkarte (QR)' },
   ] },
   { titel: 'ZOE', eintraege: [
     { href: '/os/stapel', label: 'Aufträge & Freigaben', was: 'was vorbereitet ist und auf dich wartet' },

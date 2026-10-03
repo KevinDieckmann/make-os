@@ -19,7 +19,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { bauPruefen } from '@/lib/bau/pruefen';
-import { EINSTELLUNGEN_LEER, einstellungenSauber, einstellungenTeilMischen, type KalenderEinstellungen } from '@/lib/kalender/einstellungen';
+import { EINSTELLUNGEN_LEER, einstellungenSauber, einstellungenTeilMischen, mitGoogleNamen, type KalenderEinstellungen } from '@/lib/kalender/einstellungen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,7 +32,7 @@ const istObjekt = (v: unknown): v is Record<string, unknown> => !!v && typeof v 
 
 export async function GET(req: Request) {
   if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
-  return NextResponse.json(sauber(await loadJson<Datei>('kalender-einstellungen')));
+  return NextResponse.json(await mitGoogleNamen(sauber(await loadJson<Datei>('kalender-einstellungen'))));
 }
 
 export async function PUT(req: Request) {

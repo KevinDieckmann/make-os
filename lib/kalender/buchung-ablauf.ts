@@ -56,6 +56,7 @@ import { melde } from '@/lib/meldungen/melden';
 import { protokolliere } from '@/lib/store/aenderungsprotokoll';
 import { hatTerminAktivitaet, terminAktivitaetAnwenden } from '@/lib/crm/termin-aktivitaet';
 import { abgleichen, anlegen, ladeStand, termineImZeitraum, verbunden } from './icloud';
+import { kalenderQuelleDa } from './google/namen';
 import { verfuegbarkeitFuer, istFrei } from './verfuegbarkeit';
 import { gaestePruefenCrm } from './gaeste-server';
 import { bezugSetzen } from './bezug-server';
@@ -367,7 +368,7 @@ async function freigebenGesperrt(buchungId: string, von: string, jetzt: Date, op
   const b = bestand.buchungen.find(x => x.id === buchungId);
   const s = b ? bestand.seiten.find(x => x.id === b.seiteId) : undefined;
   if (!b || !s) throw new FreigabeFehler('Buchung nicht gefunden.', 404);
-  if (!b.terminUid && !verbunden()) throw new FreigabeFehler('iCloud ist nicht verbunden — ein fester Termin kann gerade nicht angelegt werden.', 409);
+  if (!b.terminUid && !verbunden() && !(await kalenderQuelleDa())) throw new FreigabeFehler('iCloud ist nicht verbunden — ein fester Termin kann gerade nicht angelegt werden.', 409);
   if (b.status !== 'angefragt' && b.status !== 'bestaetigt') throw new FreigabeFehler(b.status === 'vorlaeufig' ? 'Noch nicht vom Buchenden bestätigt.' : 'Diese Buchung ist nicht mehr offen.');
   const h = await buchungHaushalt();
   // Schon bestätigt und kein Vorgang mehr offen (zweiter Klick nach getaner Freigabe) → nichts zu tun.

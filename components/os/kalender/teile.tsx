@@ -30,6 +30,10 @@ export type Wer = 'kevin' | 'malin' | 'beide';
 export interface KTermin {
   id: string; uid: string; titel: string; start: string; ende: string; ganztags: boolean;
   kalender: string; wer: Wer; ort?: string; notiz?: string; serie: boolean; mitTeilnehmern: boolean; bearbeitbar: boolean;
+  /** Adresse des Kalenders — `google:…` = ein Google Kalender (03.10.), sonst iCloud. */
+  kalenderId?: string;
+  /** Link zum Termin (bei Google der Meet-Link; nur https) — nur lesen. */
+  link?: string;
   // ── seit 29.09. (K1) ──
   art?: IcsArt; farbeEigen?: string; farbeId?: string; beschaeftigt?: boolean; sichtbarkeit?: Sichtbarkeit; zone?: string;
   erinnerungen?: number[]; arbeitsort?: Arbeitsort; stand?: string; bezug?: BezugKennungen; von?: string; maskiert?: true;
@@ -48,6 +52,8 @@ export interface KTermin {
   /** Kontakt-Kennungen der Gäste aus dem CRM (`kalender-bezug`). */
   gastKontakte?: string[];
 }
+/** Termin aus einem Google Kalender (03.10.)? */
+export const istGoogleTermin = (t: Pick<KTermin, 'kalenderId'>): boolean => !!t.kalenderId?.startsWith('google:');
 /** Vorläufiger Eintrag (Buchungsanfrage) — über das Feld `vorlaeufig` (K3: kein Kennungs-Präfix mehr). */
 export const istVorlaeufig = (t: Pick<KTermin, 'vorlaeufig'>): boolean => !!t.vorlaeufig;
 /** Eine Frist wie GET /api/kalender sie liefert (lib/kalender/eintraege.ts `Frist`; K6a: Steuer-Vorlage, `fuer`, `kuendigung`). */
@@ -55,7 +61,9 @@ export interface KFrist { id: string; art: 'meilenstein' | 'etappe' | 'mandat' |
 export interface KErinnerung { id: string; tag: string; zeit?: string; titel: string; liste?: string }
 export interface KalenderStand {
   ok: boolean; quelle: 'icloud' | 'mac' | 'leer'; stand: string | null; fehler?: string; icloud: boolean; konto: string | null;
-  kalender: { name: string; farbe?: string; schreibbar: boolean; wer: Wer }[];
+  kalender: { name: string; farbe?: string; schreibbar: boolean; wer: Wer; quelle?: 'google' }[];
+  /** Google (03.10.): je verbundenem Google-Kalender „letzter Abgleich vor X Min.“ (Name + Alter, nie Tokens/Adressen). */
+  google?: { person: string; kalender: string; abgleich: import('./AbgleichStand').AbgleichInfo }[];
   termine: KTermin[]; fristen: KFrist[]; erinnerungen: KErinnerung[]; erinnerungenStand: string | null;
   einstellungen?: { kalender: Record<Wer, string> };
   /** R-K1 #51: Alter des Stands („letzter Abgleich vor X Min.“, `veraltet` ab 30 Min., Hinweise je Kalender). */
@@ -154,7 +162,7 @@ export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberf
       {termine.map(t => (
         // K2 (29.09.): Quell-Einträge (Feiertage NRW, Geburtstage) tragen eigene Farbe und Hinweis (components/os/kalender/quellen.tsx).
         // K1 (29.09.): Abwesend rot, eigene Farbe je Termin, privat mit Schloss.
-        <Pille key={t.id} farbe={t.art === 'abwesend' ? LEUCHT.kritisch : (t as { farbe?: string }).farbe ?? t.farbeEigen ?? WER_FARBE[t.wer]} titel={`${t.art && t.art !== 'termin' ? `${ART_INFO[t.art].label}: ` : ''}${t.titel} · ${t.kalender}${(t as { hinweis?: string }).hinweis ? ` — ${(t as { hinweis?: string }).hinweis}` : t.bearbeitbar ? '' : ' (nur in Apple änderbar)'}`} onClick={() => onTermin(t)}>
+        <Pille key={t.id} farbe={t.art === 'abwesend' ? LEUCHT.kritisch : (t as { farbe?: string }).farbe ?? t.farbeEigen ?? WER_FARBE[t.wer]} titel={`${t.art && t.art !== 'termin' ? `${ART_INFO[t.art].label}: ` : ''}${t.titel} · ${t.kalender}${(t as { hinweis?: string }).hinweis ? ` — ${(t as { hinweis?: string }).hinweis}` : t.bearbeitbar ? '' : ` (nur in ${istGoogleTermin(t) ? 'Google' : 'Apple'} änderbar)`}`} onClick={() => onTermin(t)}>
           {t.art === 'abwesend' && <span aria-hidden>⊘</span>}{t.sichtbarkeit === 'privat' && <span aria-hidden>🔒</span>}{t.titel}
         </Pille>
       ))}
@@ -204,6 +212,11 @@ export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberf
 export function nurAppleGrund(t: KTermin, icloud = true): string | null {
   if (t.bearbeitbar) return null;
   if (t.maskiert) return `Privater Termin${t.von ? ` von ${WER_LABEL[t.von as Wer] ?? t.von}` : ''} — du siehst nur, dass die Zeit belegt ist.`;
+  if (istGoogleTermin(t)) {
+    if (t.serie) return 'Serientermin — Änderungen bitte in Google Kalender (dort fragt Google „nur dieser oder alle?“).';
+    if (t.mitTeilnehmern && !t.ichOrganisator) return 'Du bist hier Gast — ändern kann nur, wer eingeladen hat. Zusagen oder absagen geht unten (nach Bestätigung).';
+    return 'Dieser Google-Kalender ist nur lesbar (geteilt ohne Schreibrecht).';
+  }
   if (!icloud) return 'iCloud ist noch nicht verbunden — du siehst den zuletzt vom Mac gelieferten Stand. Ändern geht hier, sobald die Verbindung steht.';
   if (t.serie) return 'Serientermin — Änderungen bitte in Apple Kalender (dort fragt Apple „nur dieser oder alle?“).';
   if (t.mitTeilnehmern && !t.ichOrganisator) return 'Du bist hier Gast — ändern kann nur, wer eingeladen hat. Zusagen oder absagen geht unten (nach Bestätigung).';
@@ -357,7 +370,9 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
     <Fenster breit={580} onZu={onZu} titel={<span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ width: 12, height: 12, borderRadius: 4, background: art === 'abwesend' ? LEUCHT.kritisch : farbe, flex: '0 0 auto' }} />{basis.titel}</span>}>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
         {basis.ganztags ? `${tagText(basis.start.slice(0, 10))}${endeTag > basis.start.slice(0, 10) ? ` – ${tagText(new Date(Date.parse(`${endeTag}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10))}` : ''} · ganztägig` : `${tagText(basis.start.slice(0, 10))} · ${uhr(basis.start)}–${uhr(basis.ende)} ${gmtText('Europe/Berlin', ausWandzeit(basis.start))}`}
-        {zonenHinweis ? ` · ${zonenHinweis}` : ''}{' · '}{basis.kalender} ({WER_LABEL[basis.wer]})
+        {zonenHinweis ? ` · ${zonenHinweis}` : ''}{' · '}{basis.kalender} ({WER_LABEL[basis.wer]}){istGoogleTermin(basis) ? ' · Google' : ''}
+        {/* Meet-Link aus Google (nur lesen, nur https) — öffnet in einem neuen Tab, ohne Verweis auf MAKE OS. */}
+        {basis.link && <> · <a href={basis.link} target="_blank" rel="noopener noreferrer" style={{ color: LEUCHT.agenten, textDecoration: 'none', fontWeight: 600, display: 'inline-block', minHeight: 24 }}>Meet-Link öffnen ↗</a></>}
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {art !== 'termin' && <Chip farbe={ART_INFO[art].farbe ?? LEUCHT.puls}>{ART_INFO[art].label}</Chip>}

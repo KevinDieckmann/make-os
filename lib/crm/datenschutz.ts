@@ -127,3 +127,28 @@ export function verarbeitungenNachtragen(vorhanden: readonly Verarbeitung[], jet
   const dazu = verarbeitungenNetzwerken(jetzt).filter(v => !da.has(v.id));
   return dazu.length ? [...vorhanden, ...dazu] : [...vorhanden];
 }
+
+// ── Verarbeitung „Kalender (Google Workspace)“ (03.10., google-kal) — idempotent nachgetragen ──
+// Kevin 03.10.: Business-Termine liegen im Google Kalender der Person. Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
+
+export const VV_KALENDER_GOOGLE_ID = 'vv-kalender-google';
+
+export function verarbeitungKalenderGoogle(jetzt: string): Verarbeitung {
+  return {
+    id: VV_KALENDER_GOOGLE_ID, name: 'Kalender (Google Workspace)',
+    zweck: 'Business-Termine (Gespräche, Events, Fristen mit Zeit) im Google-Kalender der Beteiligten führen und mit MAKE OS in beide Richtungen abgleichen; Verknüpfung mit CRM-Meetings und Follow-ups',
+    personen: 'Gesprächspartner und Teilnehmende, die in Terminen genannt oder eingeladen sind; Kevin, Malin',
+    daten: 'Terminzeit, Titel, Ort, Notiz, Teilnehmer-Adressen mit Antwortstatus, Meet-Link, Erinnerungen — keine Mails, keine Dateien; Verbindung je Person über OAuth (Zugriffstoken nur verschlüsselt auf dem Server)',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Termine mit Vertragspartnern) bzw. lit. f (Geschäftsbetrieb); Einladungen nur nach ausdrücklichem Klick',
+    empfaenger: 'Google Ireland Ltd. / Google LLC (Google Workspace — Auftragsverarbeiter; Datenverarbeitungszusatz in der Workspace-Admin-Konsole bestätigen); Kevin, Malin; Hetzner (Hosting, Spiegel der Termine)',
+    drittland: 'Google: Standardvertragsklauseln bzw. Data Privacy Framework, Datenstandort laut Workspace-Einstellung — prüfen',
+    loeschfrist: 'Wahrheit ist Google (Löschung dort, Art. 17); der Spiegel in MAKE OS baut sich bei jedem Abgleich neu auf und fällt beim Trennen weg; Sicherung des iCloud→Google-Umzugs 30 Tage; Termine mit Personenbezug wie bei iCloud (Löschlauf meldet sie)',
+    toms: 'Zugang nur mit Anmeldung (zwei Konten, zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, Token nie im Browser und nie in Protokollen, OAuth mit PKCE und state, nur die Domain der Firma, Push-Meldungen nur mit Kanal-Token',
+    verantwortlich: UG_NAME, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „Kalender (Google Workspace)“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungKalenderNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_KALENDER_GOOGLE_ID) ? [...vorhanden] : [...vorhanden, verarbeitungKalenderGoogle(jetzt)];
+}

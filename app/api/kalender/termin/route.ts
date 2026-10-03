@@ -38,6 +38,7 @@
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminAufloesen, terminLesen, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
+import { kalenderZiel, googleKalenderNamen } from '@/lib/kalender/google/ziel';
 import { ladeEinstellungen, wemGehoert, type Wer } from '@/lib/kalender/einstellungen';
 import { anlegenPruefen, aendernPruefen, text } from '@/lib/kalender/eingabe';
 import { bezugSetzen, ladeBezuege, BezugZuGross } from '@/lib/kalender/bezug-server';
@@ -76,7 +77,8 @@ async function vorab(req: Request): Promise<{ person: string } | NextResponse> {
   if (!z) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
-  if (!verbunden()) return NextResponse.json({ ok: false, fehler: 'iCloud ist noch nicht verbunden (deploy/icloud-verbinden.sh).' }, { status: 409 });
+  // iCloud ODER ein verbundener Google-Kalender (03.10.) — welcher, entscheidet der Kalender des Termins.
+  if (!verbunden() && !Object.keys(await googleKalenderNamen()).length) return NextResponse.json({ ok: false, fehler: 'Kein Kalender verbunden — iCloud (deploy/icloud-verbinden.sh) oder Google (Kalender › Einstellungen).' }, { status: 409 });
   return { person: z.person };
 }
 
@@ -118,7 +120,9 @@ export async function POST(req: Request) {
   // eigenen Kalender in den Einstellungen und nennt weder Kalender noch `wer`, lehnt der Server ab (400).
   const wer: Wer | null = e.wer ?? (z.person === 'malin' || z.person === 'kevin' ? z.person : null);
   if (!e.kalender && !wer) return NextResponse.json({ ok: false, fehler: 'In welchen Kalender? Bitte einen Kalender wählen.' }, { status: 400 });
-  const kalender = e.kalender || einst.kalender[wer!];
+  // Ohne gewählten Kalender: `bereich` (Standard „privat“ wie bisher) → EINE Zuordnung (`kalenderZiel`): Business → Google Kalender der Person, sonst iCloud.
+  const kalender = e.kalender || (await kalenderZiel(wer!, e.bereich ?? 'privat', einst)).kalender;
+  if (!kalender) return NextResponse.json({ ok: false, fehler: 'Für diese Person ist kein Kalender hinterlegt — bitte einen Kalender wählen.' }, { status: 400 });
   try {
     const r = await anlegen({
       ...(e.uid ? { uid: e.uid } : {}),

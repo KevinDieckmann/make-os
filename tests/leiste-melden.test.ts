@@ -30,8 +30,8 @@ describe('Leiste: Problem oder Idee melden', () => {
     expect(mobil).toContain('>Netzwerken</span>');
     expect(mobil).not.toContain('>Melden</span>');
     expect(mobil).toContain('lucide-handshake');
-    // Am Rechner steht Netzwerken zusätzlich in der Seitenleiste.
-    expect(desktop).toContain('href="/os/netzwerken"');
+    // Am Rechner steht Netzwerken NICHT (Kevin 03.10.: „wirklich nur auf dem Handy“).
+    expect(desktop).not.toContain('href="/os/netzwerken"');
     // Reihenfolge am Handy: Home · Privat · Business · ZOE · Netzwerken · System
     const reihe = ['>Home<', '>Privat<', '>Business<', '>ZOE<', '>Netzwerken<', '>System<'].map(t => mobil.indexOf(t));
     expect(reihe.every(i => i > -1)).toBe(true);
@@ -53,7 +53,7 @@ describe('Leiste: Problem oder Idee melden', () => {
     const { SystemView } = await import('@/components/os/SystemView');
     const html = renderToStaticMarkup(h(SystemView));
     expect(html).toContain(MELDEN_LABEL);
-    expect(html).toContain('href="/os/netzwerken"');
+    expect(html).not.toContain('href="/os/netzwerken"');
   });
 
   it('ein Klick löst make-idee aus — auch eingeklappt (nur Symbol, Name im Tooltip)', async () => {
