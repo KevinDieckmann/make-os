@@ -354,6 +354,12 @@ export interface Event {
   zustaendig?: string;
   /** Veranstaltungsmarke, unter der das Event läuft (Kevin 27.09.: „Make.One“). Fehlt sie, gilt MARKE_EVENTS (lib/crm/events.ts) — abgeleitet, nie zurückgeschrieben. */
   marke?: string;
+  /**
+   * Reihe unter Make.One (03.10., Kevin: „Fokus Innovation = Event-Reihe unter Make.One“) — Kennung aus `EVENT_REIHEN`
+   * (lib/crm/marke.ts), z. B. `fokus-innovation`. Fehlt sie, ist es ein gewöhnlicher Make.One-Abend. Nicht zu verwechseln mit
+   * `format` (Art des Abends: Stammtisch, Dinner …). Nur bei eigenen Abenden; besuchte Events tragen keine Reihe.
+   */
+  reihe?: string;
   // ── Besuchte Events (Reiter „Events“, 03.10., lib/crm/besuche.ts) — alles optional, der Altbestand liest ohne Migration ──
   /** Für wen wir dort sind: MAKE selbst (Standard, fehlt = make) oder ein Kunde (Firma der Kartei, ggf. mit Mandat). */
   fuer?: EventFuer;

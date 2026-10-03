@@ -20,8 +20,8 @@ import { type CrmApi, neueId, plusTage } from '../daten';
 import { Feldzeile } from '../teile';
 import { Wahl as WahlChip } from '../Wahl';
 import { ZustaendigWahl } from '../team';
-import { FORMATE, MarkeWahl } from './gemeinsam';
-import { MARKE_EVENTS } from '@/lib/crm/marke';
+import { FORMATE, MarkeWahl, ReiheWahl } from './gemeinsam';
+import { MARKE_EVENTS, reiheName } from '@/lib/crm/marke';
 
 type Wahl = VorlageId | 'ohne';
 const OHNE = { id: 'ohne' as const, label: 'Ohne Vorlage' };
@@ -44,6 +44,8 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
   const [zustaendig, setZustaendig] = useState<string | undefined>(undefined);
   // Marke (27.09.): Vorgabe Make.One — undefined heißt abgeleitet, gespeichert wird sie beim Anlegen trotzdem ausdrücklich.
   const [marke, setMarke] = useState<string | undefined>(undefined);
+  // Reihe (03.10., z. B. Fokus Innovation): optional — ohne Wahl ein gewöhnlicher Make.One-Abend.
+  const [reihe, setReihe] = useState<string | undefined>(undefined);
   const [laeuft, setLaeuft] = useState(false);
   const hinweis = zielHinweis(ziel);
   const bereit = zielReicht(ziel, hinweis) && /^\d{4}-\d{2}-\d{2}$/.test(datum) && !laeuft;
@@ -65,11 +67,11 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
     setLaeuft(true);
     const kap = Math.round(Number(kapazitaet));
     const basis: Event = {
-      id: neueId('ev'), titel: titel.trim() || vorlage?.label || 'Neues Event', format, ziel: ziel.trim(), datum,
+      id: neueId('ev'), titel: titel.trim() || (reihe ? reiheName(reihe) : '') || vorlage?.label || 'Neues Event', format, ziel: ziel.trim(), datum,
       ...(uhrzeit ? { uhrzeit } : {}), ...(ort.trim() ? { ort: ort.trim() } : {}),
       ...(Number.isFinite(kap) && kap > 0 ? { kapazitaet: kap } : {}),
       mixZiel: { zielkunden: mixZiel.zielkunden, kunden: mixZiel.kunden },
-      status: 'geplant', ...(zustaendig ? { zustaendig } : {}), marke: marke ?? MARKE_EVENTS, geaendert: new Date().toISOString(),
+      status: 'geplant', ...(zustaendig ? { zustaendig } : {}), marke: marke ?? MARKE_EVENTS, ...(reihe ? { reihe } : {}), geaendert: new Date().toISOString(),
     };
     const e = vorlage ? vorlageAnwenden(basis, vorlage.id) : basis;
     await api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
@@ -97,7 +99,7 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
       {!vorlage && <Feldzeile label="Format"><WahlChip label="Format" liste={FORMATE} wert={format} onWahl={setFormat} /></Feldzeile>}
 
       <Feldzeile label="Titel">
-        <input value={titel} onChange={x => setTitel(x.target.value)} placeholder={vorlage ? `z. B. ${vorlage.label} Maschinenbau Rhein-Main` : 'Titel des Events'} aria-label="Titel" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
+        <input value={titel} onChange={x => setTitel(x.target.value)} placeholder={reihe ? `z. B. ${reiheName(reihe)} Hamburg` : vorlage ? `z. B. ${vorlage.label} Maschinenbau Rhein-Main` : 'Titel des Events'} aria-label="Titel" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
       </Feldzeile>
       <Feldzeile label="Wann & wo">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -125,6 +127,7 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
         </div>
       </Feldzeile>
       <Feldzeile label="Marke"><MarkeWahl wert={marke} onWahl={setMarke} /></Feldzeile>
+      <Feldzeile label="Reihe"><ReiheWahl wert={reihe} onWahl={setReihe} /></Feldzeile>
       <Feldzeile label="Zuständig">
         <div style={{ display: 'grid', gap: 4 }}>
           <ZustaendigWahl wert={zustaendig} welt="event" onWahl={setZustaendig} />

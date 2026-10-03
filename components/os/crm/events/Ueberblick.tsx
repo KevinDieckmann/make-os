@@ -15,7 +15,7 @@ import { datum, euro } from '../daten';
 import { Feldzeile, Feld } from '../teile';
 import { Wahl } from '../Wahl';
 import { Person, ZustaendigWahl, Uebergeben } from '../team';
-import { FORMATE, STATUS, MixAnzeige, MarkeWahl, Leise, eventSetzen, eventLoeschen, type ReiterProps, type Reiter } from './gemeinsam';
+import { FORMATE, STATUS, MixAnzeige, MarkeWahl, ReiheWahl, Leise, eventSetzen, eventLoeschen, type ReiterProps, type Reiter } from './gemeinsam';
 
 const tageBis = (von: string, bis: string) => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
 
@@ -136,6 +136,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
           </div>
         </Feldzeile>
         <Feldzeile label="Marke"><MarkeWahl wert={e.marke} onWahl={marke => setze({ marke })} /></Feldzeile>
+        <Feldzeile label="Reihe"><ReiheWahl wert={e.reihe} onWahl={reihe => setze({ reihe })} /></Feldzeile>
         <Feldzeile label="Vorlage">
           <div style={{ display: 'grid', gap: 4 }}>
             <Wahl label="Vorlage" leer="+ Vorlage anwenden" liste={VORLAGEN.map(v => ({ id: v.id, label: v.label }))} wert={(e.vorlage as VorlageId | undefined) ?? null} onWahl={id => setze(vorlageAnwenden(e, id))} />

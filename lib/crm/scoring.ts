@@ -25,7 +25,7 @@ import type { Event, Kampagne, Kriterien, Lead, Qual, Teilnahme } from './typen'
 import { kanalVon } from './kanal';
 import { echtesGespraech } from './pipeline';
 import { hatTyp, kategorieBeginnt } from './mehrfach';
-import { istNetzwerkenEvent } from './marke';
+import { istNetzwerkenEvent, alsMarketingAnmeldung } from './marke';
 import { nachweisLuecken } from './einwilligung';
 
 export const SCORING_VERSION = 1;
@@ -130,11 +130,11 @@ export function marketingHerkunft(personen: readonly Kontakt[], ctx: Pick<Scorin
   if (ctx.kampagnen?.length) { const m = marketingKampagnenPersonen(ctx.kampagnen); if (personen.some(p => m.has(p.id))) dazu('kampagne'); }
   if (ctx.teilnahmen?.length && ctx.events?.length) {
     const events = new Map(ctx.events.map(e => [e.id, e]));
+    // EINE Regel (`alsMarketingAnmeldung`, lib/crm/marke.ts) — dieselbe zählt die „Leads“ je Reihe (lib/crm/reihen.ts).
     for (const t of ctx.teilnahmen) {
-      if (!ids.has(t.kontaktId) || (t.status !== 'zugesagt' && t.status !== 'da')) continue;
+      if (!ids.has(t.kontaktId)) continue;
       const e = events.get(t.eventId);
-      if (!e || istNetzwerkenEvent(e)) continue;
-      if (t.einladungsweg === 'persoenlich' || t.einladungsweg === 'telefon') continue;
+      if (!e || !alsMarketingAnmeldung(t, e)) continue;
       dazu('event'); break;
     }
   }

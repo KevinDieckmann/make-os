@@ -18,7 +18,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { eventsAlsGeloeschtMerken } from './events-geloescht';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
-import { MARKE_MAX } from './marke';
+import { MARKE_MAX, reiheKennung, istNetzwerkenEvent } from './marke';
 import { fuerSaeubern, anmeldungSaeubern, werSaeubern, linkSaeubern, linkNormal, LINK_FEHLER, zielpersonenSaeubern, uebergabenSaeubern, ZIELPERSONEN_MAX, UEBERGABEN_MAX, WER_MAX } from './besuche-form';
 import { netzwerkenAngabeSaeubern, teilnahmeHerkunftSaeubern } from './netzwerken';
 import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
@@ -373,7 +373,9 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
     case 'events': {
       const fuer = fuerSaeubern(o.fuer), anmeldung = anmeldungSaeubern(o.anmeldung), wer = werSaeubern(o.wer), link = linkSaeubern(o.link);
       const zielpersonen = zielpersonenSaeubern(o.zielpersonen), uebergaben = uebergabenSaeubern(o.uebergaben);
-      return { ...(opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {}), ...(opt(o.marke, MARKE_MAX) ? { marke: opt(o.marke, MARKE_MAX) } : {}),
+      // Reihe (03.10., lib/crm/marke.ts): nur eine gültige Kennung, nur bei eigenen Abenden — ein besuchtes Event (Netzwerken) trägt keine.
+      const reihe = istNetzwerkenEvent({ marke: opt(o.marke, MARKE_MAX) }) ? undefined : reiheKennung(o.reihe);
+      return { ...(opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {}), ...(opt(o.marke, MARKE_MAX) ? { marke: opt(o.marke, MARKE_MAX) } : {}), ...(reihe ? { reihe } : {}),
         ...(fuer ? { fuer } : {}), ...(anmeldung ? { anmeldung } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(tag(o.bisDatum) && String(o.bisDatum) > String(o.datum ?? '') && String(o.bisDatum) <= tagePlusSpeicher(String(o.datum), 30) ? { bisDatum: tag(o.bisDatum) } : {}), ...(zielpersonen ? { zielpersonen } : {}), ...(uebergaben ? { uebergaben } : {}) };
     }
     case 'kampagnen': case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};

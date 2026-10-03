@@ -38,7 +38,7 @@ import { OhneTerminKnopf, linksAusAntwort } from './Ergebnis';
 import type { EventWahl } from './EventModus';
 import type { Person, useWarteschlange } from './useNetzwerken';
 import { NUR_RAM_HINWEIS } from '@/lib/netzwerken/warteschlange';
-import { istNetzwerkenEvent } from '@/lib/crm/marke';
+import { istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
 import { handyKarteAusErfassung, handyKarteAusKontakt, handyTeilen, handyMeldung, HANDY_SPEICHER_KEY, type HandyErgebnis } from '@/lib/netzwerken/handy';
 
 type Warte = ReturnType<typeof useWarteschlange>;
@@ -413,7 +413,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
               <Beschriftung>Für welches Event vormerken?</Beschriftung>
               {kommende.length > 0 ? (
                 <div style={{ display: 'grid', gap: 8 }}>
-                  {kommende.map(ev => <Wahl key={ev.id} an={e.makeoneEventId === ev.id} onClick={() => up({ makeoneEventId: e.makeoneEventId === ev.id ? undefined : ev.id })}>{ev.titel} · {tagText(ev.datum)}</Wahl>)}
+                  {kommende.map(ev => <Wahl key={ev.id} an={e.makeoneEventId === ev.id} onClick={() => up({ makeoneEventId: e.makeoneEventId === ev.id ? undefined : ev.id })}>{titelMitReihe(ev)} · {tagText(ev.datum)}</Wahl>)}
                 </div>
               ) : <Hinweis>{api.crm ? 'Kein kommendes Event geplant — die Person wird mit Label und Aufgabe vorgemerkt.' : 'Die Events werden geladen …'}</Hinweis>}
               <Hinweis>Vorgemerkt wird als Gast („vorgemerkt“, wie „Make.One einladen“ in der Kontaktakte); der Einladungsweg folgt der Ampel (§ 7 UWG). Eingeladen wird nicht von hier — das machst du später von Hand.</Hinweis>
@@ -452,7 +452,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
               ['Erreichbar', [f.email, f.telefon, f.mobil].filter(x => x?.trim()).join(' · ') || '—'],
               ['Fotos', e.fotos.length ? `${e.fotos.length} Foto${e.fotos.length === 1 ? '' : 's'}` : 'keine'],
               ['Sprachnotiz', e.aufnahme ? 'ja — Abschrift folgt (KI)' : 'keine'],
-              ['Nächster Schritt', `${schrittLabel(sch ?? '')}${sch === 'termin' ? ` · ${terminArtLabel(e.termin.art)}, ${tagText(e.termin.start.slice(0, 10))} ${e.termin.start.slice(11, 16)} (${e.termin.dauer} Min.)` : sch === 'followup' ? ` · bis ${tagText(e.followupFaellig)}` : sch === 'vermitteln' ? ` · an ${e.vermittelnAn.trim()}` : sch === 'andere' ? ` · ${e.andereText.trim()}` : sch === 'makeone' ? ` · ${kommende.find(x => x.id === e.makeoneEventId)?.titel ?? 'ohne Event (Aufgabe)'}` : ''}`],
+              ['Nächster Schritt', `${schrittLabel(sch ?? '')}${sch === 'termin' ? ` · ${terminArtLabel(e.termin.art)}, ${tagText(e.termin.start.slice(0, 10))} ${e.termin.start.slice(11, 16)} (${e.termin.dauer} Min.)` : sch === 'followup' ? ` · bis ${tagText(e.followupFaellig)}` : sch === 'vermitteln' ? ` · an ${e.vermittelnAn.trim()}` : sch === 'andere' ? ` · ${e.andereText.trim()}` : sch === 'makeone' ? ` · ${(() => { const ev = kommende.find(x => x.id === e.makeoneEventId); return ev ? titelMitReihe(ev) : 'ohne Event (Aufgabe)'; })()}` : ''}`],
               ['Zuständig', nameVon(e.zustaendig)],
               ['Info', e.info.trim() || '—'],
             ] as [string, string][]).map(([k, v], i) => (

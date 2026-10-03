@@ -18,7 +18,7 @@ import { zustaendig } from '@/lib/crm/team';
 import { datum } from '../daten';
 import { Pillen } from '../teile';
 import { Person, AuchHier } from '../team';
-import { FORMATE, type ReiterProps, type Reiter } from './gemeinsam';
+import { FORMATE, ReiheAbzeichen, type ReiterProps, type Reiter } from './gemeinsam';
 import { Ueberblick } from './Ueberblick';
 import { Gaeste } from './Gaeste';
 import { Ablauf } from './Ablauf';
@@ -61,6 +61,7 @@ export function EventDetail({ e, api, zuKontakt }: ReiterProps) {
           <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.2 }}>{e.titel}</div>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Chip farbe={LEUCHT.beziehung}>{markeVon(e)}</Chip>
+            <ReiheAbzeichen e={e} />
             <span>{[datum(e.datum, heute), e.uhrzeit ? `${e.uhrzeit} Uhr` : '', e.ort, FORMATE.find(f => f.id === e.format)?.label].filter(Boolean).join(' · ')}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>

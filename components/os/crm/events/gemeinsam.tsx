@@ -8,17 +8,18 @@
 // Checklisten-Punkte gehen einzeln über /api/crm/events (Checkliste.tsx).
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, RAND, RADIUS } from '@/lib/make-one/design';
 import { feld, Chip, Fortschritt, LEUCHT } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Event, Teilnahme, TeilnahmeStatus, LeadStatus } from '@/lib/crm/typen';
 import { teilAenderung, type Mix, type MixGruppe } from '@/lib/crm/eventplanung';
 import { followUpEingabe, hebtLead, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
-import { MARKE_EVENTS, eventName } from '@/lib/crm/marke';
+import { MARKE_EVENTS, eventName, EVENT_REIHEN, reiheVon, reiheName } from '@/lib/crm/marke';
 import { statusLabel } from '@/lib/crm/leads';
 import { TEAM, BEIDE, anderer, nameVon } from '@/lib/crm/team';
 import { datum, type CrmApi } from '../daten';
 import { Feld, Pillen } from '../teile';
+import { Wahl } from '../Wahl';
 import { Person } from '../team';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
@@ -214,6 +215,33 @@ export function MarkeWahl({ wert, onWahl }: { wert?: string; onWahl: (marke: str
     <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
       <Feld wert={wert ?? ''} breite={180} platzhalter={MARKE_EVENTS} onFertig={t => { const m = t.trim().slice(0, 40); onWahl(m && m !== MARKE_EVENTS ? m : undefined); setOffen(false); }} />
       <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>leer = {MARKE_EVENTS}</span>
+    </span>
+  );
+}
+
+/**
+ * Reihe des Events (03.10., lib/crm/marke.ts): ruhiges Abzeichen — Haarlinie, helle Schrift, keine Farbe (Farbe heißt im
+ * Make.One-Reiter Zustand). Steht in Liste, Akte und Vormerkung; ohne Reihe nichts.
+ */
+export function ReiheAbzeichen({ e }: { e: Pick<Event, 'reihe' | 'marke'> }) {
+  const r = reiheVon(e);
+  if (!r) return null;
+  return <span className="ui-chip" title={`Reihe: ${r.name} (Make.One)`} style={{ border: `1px solid ${RAND.stark}`, borderRadius: RADIUS.pille, color: C.ink, whiteSpace: 'nowrap' }}>{r.name}</span>;
+}
+
+/** Werteliste der Reihen für die Wahl (Kennung → Name). */
+export const REIHEN_WAHL: { id: string; label: string }[] = EVENT_REIHEN.map(r => ({ id: r.id, label: r.name }));
+
+/**
+ * Reihe wählen — im Anlegen und im Überblick. Leer = gewöhnlicher Make.One-Abend; „ohne Reihe“ im Menü nimmt sie wieder weg.
+ * Eine unbekannte Kennung aus dem Bestand bleibt wählbar sichtbar (Rückweg), statt still zu verschwinden.
+ */
+export function ReiheWahl({ wert, onWahl }: { wert?: string; onWahl: (reihe: string | undefined) => void }) {
+  const liste = wert && !REIHEN_WAHL.some(r => r.id === wert) ? [...REIHEN_WAHL, { id: wert, label: reiheName(wert) }] : REIHEN_WAHL;
+  return (
+    <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Wahl label="Reihe" leer="+ Reihe wählen" liste={liste} wert={wert ?? null} onWahl={id => onWahl(id)} onLeeren={() => onWahl(undefined)} leerenLabel="ohne Reihe" />
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{wert ? `läuft als ${MARKE_EVENTS} · ${reiheName(wert)}` : `gewöhnlicher ${MARKE_EVENTS}-Abend`}</span>
     </span>
   );
 }

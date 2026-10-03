@@ -34,6 +34,8 @@ export interface EventZahlen {
   nachgefasst: number; nachfassenOffen: number;
   folgegespraeche: number;
   beeinflusst: number; verursacht: number;
+  /** Wie viele Deals aus dem Event entstanden sind (Quelle „event“ mit diesem Event als Bezug) — ihr Wert steht in `verursacht`. */
+  dealsVerursacht: number;
   /** Budget-Summe, sonst die Pauschale (lib/crm/eventplanung.ts budgetSumme). */
   kosten: number;
   kostenJeFolgegespraech: number | null;
@@ -73,6 +75,7 @@ export function eventZahlen(e: Event, teilnahmen: Teilnahme[], kontakte: Kontakt
     folgegespraeche: folge,
     beeinflusst: Math.round(beeinflusst.reduce((a, c) => a + gesamtwert(c), 0)),
     verursacht: Math.round(verursacht.reduce((a, c) => a + gesamtwert(c), 0)),
+    dealsVerursacht: verursacht.length,
     kosten,
     kostenJeFolgegespraech: kosten && folge ? Math.round(kosten / folge) : null,
     ...feedbackZahlen(t, e.id),

@@ -26,7 +26,7 @@ import { Knopf, LEUCHT } from '../../ui';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kanalLink } from '@/lib/crm/erfassen';
-import { istNetzwerkenEvent } from '@/lib/crm/marke';
+import { istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
 import { kontextAus } from '@/lib/crm/segmente';
 import { gastTeilnahme, netzwerkenHerkunft, begegnungenNachgefasst } from '@/lib/crm/eventplanung';
 import { WEG } from '@/lib/wege';
@@ -77,11 +77,11 @@ function EventEinladen({ k, api, heute, onFertig }: { k: Kontakt; api: CrmApi; h
       {events.map(e => (
         <div key={e.id} style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: MIN }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: TYP.body, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.titel}</div>
+            <div style={{ fontSize: TYP.body, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titelMitReihe(e)}</div>
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{datum(e.datum, heute)}{e.ort ? ` · ${e.ort}` : ''}</div>
           </div>
           {schon.has(e.id) ? <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, flex: '0 0 auto' }}>steht auf der Liste ✓</span>
-            : <Knopf aus={laeuft === e.id} onClick={() => vormerken(e.id, e.titel)}>Vormerken</Knopf>}
+            : <Knopf aus={laeuft === e.id} onClick={() => vormerken(e.id, titelMitReihe(e))}>Vormerken</Knopf>}
           <Link href={WEG.event(e.id, 'gaeste')} aria-label={`Gästeliste ${e.titel}`} style={{ color: C.inkLeise, textDecoration: 'none', minWidth: MIN, minHeight: MIN, display: 'grid', placeItems: 'center' }}>›</Link>
         </div>
       ))}

@@ -24,15 +24,20 @@
 // klappt das Event unter seiner Zeile auf. Das gewählte Event steht in der
 // Adresse (k=…) — Links aus Aufgaben führen direkt hin, und die/der andere
 // sieht „ist gerade bei diesem Event“.
+// Reihen (03.10., Kevin: „Fokus Innovation = Event-Reihe unter Make.One“): ein Event kann in einer Reihe laufen
+// (`Event.reihe`, Werteliste in lib/crm/marke.ts). Liste und Akte tragen dann ein ruhiges Abzeichen, über der Liste steht
+// ein Filter je Reihe, die Kachel „Reihen“ zeigt Events, Gäste, Zusagen, Nachgefasst, Leads und Deals je Reihe
+// (lib/crm/reihen.ts — summiert dieselben Zahlen je Event wie die Wirkung, keine zweite Rechnung).
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Pillen, useBreit, LEUCHT } from '../ui';
 import { VORLAGEN, vorlageAnwenden, checklisteStand, einlader, type VorlageId } from '@/lib/crm/eventplanung';
 import { MARKE_EVENTS, nachfassenRest } from '@/lib/crm/events';
-import { istNetzwerkenEvent } from '@/lib/crm/marke';
+import { istNetzwerkenEvent, OHNE_REIHE, reiheName } from '@/lib/crm/marke';
+import { reihenFilter, passtReihe, reihenUebersicht, zahlenSumme } from '@/lib/crm/reihen';
 import { TEAM, verantwortlich, zustaendig, anderer, nameVon } from '@/lib/crm/team';
 import { anzeigename } from '@/lib/make-one/crm';
 import { WEG } from '@/lib/wege';
@@ -42,7 +47,7 @@ import { HeadPanel } from './HeadPanel';
 import { Person, WerFilter, useWerFilter, passtWer } from './team';
 import { EventDetail } from './events/EventDetail';
 import { Start } from './events/Start';
-import { FORMATE, STATUS } from './events/gemeinsam';
+import { FORMATE, STATUS, ReiheAbzeichen, ReiheWahl } from './events/gemeinsam';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { FLAECHE, kachel, standardVon } from '@/lib/crm/flaechen';
 
@@ -69,6 +74,9 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   const auswahl = onAuswahl ? start ?? null : lokal;
   const [neu, setNeu] = useState(false);
   const [wahl, setWahl] = useWerFilter('event');
+  // Filter je Reihe (null = alle) und die Reihe, mit der „+ Event“ anlegt (Vorgabe: die gefilterte).
+  const [reiheWahl, setReiheWahl] = useState<string | null>(null);
+  const [neuReihe, setNeuReihe] = useState<string | undefined>(undefined);
   const [jetzt] = useState(() => Date.now());
   const ich = api.ich;
 
@@ -77,8 +85,12 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   // Nur unsere eigenen Abende — besuchte Events (Netzwerken) stehen im Reiter „Events“.
   const events = useMemo(() => (crm?.stand.events ?? []).filter(e => !istNetzwerkenEvent(e)).sort((a, b) => b.datum.localeCompare(a.datum)), [crm?.stand.events]);
   const idsEvents = new Set(events.map(e => e.id));
-  const kommendAlle = events.filter(e => e.datum >= heute && e.status !== 'abgesagt').reverse();
-  const vorbeiAlle = events.filter(e => e.datum < heute || e.status === 'abgesagt');
+  const reihenPillen = useMemo(() => reihenFilter(events), [events]);
+  // Eine Reihe, die es (nach Löschen/Umstellen) nicht mehr gibt, filtert nicht weiter — sonst stünde die Liste grundlos leer.
+  const reiheAktiv = reiheWahl !== null && reihenPillen.some(r => r.id === reiheWahl) ? reiheWahl : null;
+  const imFilter = events.filter(e => passtReihe(e, reiheAktiv));
+  const kommendAlle = imFilter.filter(e => e.datum >= heute && e.status !== 'abgesagt').reverse();
+  const vorbeiAlle = imFilter.filter(e => e.datum < heute || e.status === 'abgesagt');
   const passt = (e: Event) => passtWer(wahl, e.zustaendig, 'event', ich);
   const kommend = kommendAlle.filter(passt);
   const vorbei = vorbeiAlle.filter(passt);
@@ -111,11 +123,11 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   const wirkung = useMemo(() => {
     if (!crm) return null;
     const gewesen = events.filter(e => e.datum < heute && e.status !== 'abgesagt');
-    const z = gewesen.map(e => crm.events[e.id]).filter(Boolean);
-    const sum = (f: (x: (typeof z)[number]) => number) => z.reduce((a, x) => a + f(x), 0);
-    const folge = sum(x => x.folgegespraeche), kosten = sum(x => x.kosten);
-    return { events: gewesen.length, da: sum(x => x.da), folge, beeinflusst: sum(x => x.beeinflusst), verursacht: sum(x => x.verursacht), kosten, jeGespraech: kosten && folge ? Math.round(kosten / folge) : null, nachfassenOffen: sum(x => x.nachfassenOffen) };
+    const s = zahlenSumme(gewesen.map(e => crm.events[e.id]));
+    return { events: gewesen.length, da: s.da, folge: s.folgegespraeche, beeinflusst: s.beeinflusst, verursacht: s.verursacht, kosten: s.kosten, jeGespraech: s.kosten && s.folgegespraeche ? Math.round(s.kosten / s.folgegespraeche) : null, nachfassenOffen: s.nachfassenOffen };
   }, [crm, events, heute]);
+  // Je Reihe (Fokus Innovation …): dieselben Zahlen je Event, nur anders gruppiert.
+  const reihen = useMemo(() => (crm ? reihenUebersicht(events, crm.events, crm.stand.teilnahmen, heute) : []), [crm, events, heute]);
 
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
 
@@ -140,10 +152,12 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   const anlegen = (v: VorlageId | null) => {
     const vorlage = VORLAGEN.find(x => x.id === v);
     // Neue Events tragen die Marke als Vorgabe (27.09.) — im Überblick des Events änderbar.
-    const basis: Event = { id: neueId('ev'), titel: vorlage?.label ?? 'Neues Event', format: 'sonstig', ziel: '', datum: plusTage(heute, 42), status: 'idee', marke: MARKE_EVENTS, geaendert: new Date().toISOString() };
+    // Reihe (03.10.): gewählt im Anlegen, sonst die gefilterte — nie still eine Reihe, die niemand gesehen hat.
+    const reihe = neuReihe ?? (reiheAktiv && reiheAktiv !== OHNE_REIHE ? reiheAktiv : undefined);
+    const basis: Event = { id: neueId('ev'), titel: vorlage?.label ?? (reihe ? reiheName(reihe) : 'Neues Event'), format: 'sonstig', ziel: '', datum: plusTage(heute, 42), status: 'idee', marke: MARKE_EVENTS, ...(reihe ? { reihe } : {}), geaendert: new Date().toISOString() };
     const e = vorlage ? vorlageAnwenden(basis, vorlage.id) : basis;
     void api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
-    waehle(e.id); setNeu(false);
+    waehle(e.id); setNeu(false); setNeuReihe(undefined);
   };
 
   const zeile = (e: Event) => {
@@ -161,7 +175,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
       <div key={e.id}>
         <Zeile onClick={() => waehle(breit ? e.id : aktivId === e.id ? null : e.id)} aktiv={aktivId === e.id}
           links={<Punkt farbe={e.status === 'durchgefuehrt' ? LEUCHT.gut : e.status === 'abgesagt' ? C.inkLeise : warnung ? LEUCHT.achtung : LEUCHT.beziehung} />}
-          titel={e.titel} unter={unter}
+          titel={reiheAktiv && reiheAktiv !== OHNE_REIHE ? e.titel : <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}><span>{e.titel}</span><ReiheAbzeichen e={e} /></span>} unter={unter}
           rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }} title={`Zuständig: ${nameVon(wer)}`}><Person id={wer} groesse={20} /><Chip farbe={C.inkDim}>{STATUS.find(s => s.id === e.status)?.label}</Chip></span>} />
         {!breit && aktivId === e.id && <div style={{ padding: '12px 2px 20px', borderBottom: '1px solid rgba(255,255,255,.06)' }}><EventDetail key={e.id} e={e} api={api} zuKontakt={zuKontakt} /></div>}
       </div>
@@ -184,9 +198,16 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
               <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>beide sehen alles und arbeiten mit</span>
             </div>
             <div style={{ marginBottom: 8 }}><WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} /></div>
+            {reihenPillen.length > 0 && (
+              <div style={{ marginBottom: 8 }} role="group" aria-label="Reihe">
+                <Pillen einzeilig liste={[{ id: 'alle', label: `Alle ${events.length}` }, ...reihenPillen.map(r => ({ id: r.id, label: `${r.label} ${r.anzahl}` }))]}
+                  aktiv={reiheAktiv ?? 'alle'} onWahl={id => setReiheWahl(id === 'alle' || id === reiheAktiv ? null : id)} farbe={LEUCHT.beziehung} />
+              </div>
+            )}
             {neu && (
               <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', marginBottom: 12 }}>
                 <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>Mit Vorlage starten: Ablauf, Checkliste mit sechs Wochen Vorlauf, Budgetposten und Soll-Mischung sind vorbereitet — das Ziel setzt du. Läuft unter {MARKE_EVENTS}; zuständig ist erst einmal {nameVon(verantwortlich('event'))}; im Überblick des Events änderbar.</div>
+                <div style={{ marginBottom: 8 }}><ReiheWahl wert={neuReihe ?? (reiheAktiv && reiheAktiv !== OHNE_REIHE ? reiheAktiv : undefined)} onWahl={setNeuReihe} /></div>
                 <Liste>
                   {VORLAGEN.map(v => (
                     <Zeile key={v.id} onClick={() => anlegen(v.id)} titel={v.label} unter={`${v.beschreibung} ${v.kapazitaet} Plätze · Soll ${v.mixZiel.zielkunden} % Zielkunden, ${v.mixZiel.kunden} % Kunden`}
@@ -200,6 +221,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
             <Liste>{kommend.map(zeile)}</Liste>
             {!kommend.length && !neu && (kommendAlle.length
               ? <Leer>Keine kommenden Events {wahl === 'ich' ? 'bei dir' : `bei ${nameVon(wahl)}`} — „Alle“ zeigt {kommendAlle.length === 1 ? 'eins' : kommendAlle.length}.</Leer>
+              : reiheAktiv ? <Leer>Kein kommendes Event {reiheAktiv === OHNE_REIHE ? 'ohne Reihe' : `in „${reiheName(reiheAktiv)}“`} — „+ Event“ legt eins {reiheAktiv === OHNE_REIHE ? 'an' : 'in dieser Reihe an'}.</Leer>
               : <Leer>Kein Event geplant. Sechs Wochen Vorlauf: Ziel, Format, Gästemischung (mindestens 40 % Zielkunden, 20 % Kunden und Multiplikatoren).</Leer>)}
           </Karte>
         </Kachel>
@@ -247,8 +269,36 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
           </Karte>
         </Kachel>
 
+        <Kachel {...K('reihen')}>
+          <Karte i={5}>
+            <Ueberschrift>Reihen</Ueberschrift>
+            <div style={{ display: 'grid', gap: 14 }}>
+              {reihen.map(r => (
+                <div key={r.id} style={{ display: 'grid', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: TYP.body, fontWeight: 700, color: r.id === OHNE_REIHE ? C.inkDim : C.ink }}>{r.name}</span>
+                    <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{r.events ? `${r.events} ${r.events === 1 ? 'Event' : 'Events'} · ${r.vorbei} gewesen · ${r.kommend} geplant` : 'noch kein Event in dieser Reihe'}</span>
+                  </div>
+                  {r.events > 0 ? (
+                    <Raster min={96}>
+                      <Zahl wert={String(r.summe.da)} label="Gäste da" />
+                      <Zahl wert={String(r.summe.zugesagt)} label="Zusagen" />
+                      <Zahl wert={r.nachgefasstQuote === null ? undefined : `${Math.round(r.nachgefasstQuote * 100)} %`} label={`nachgefasst${r.summe.da ? ` (${r.summe.nachgefasst} von ${r.summe.da})` : ''}`} farbe={r.nachgefasstQuote !== null && r.nachgefasstQuote >= 0.9 ? LEUCHT.gut : undefined} />
+                      <Zahl wert={String(r.leads)} label="Leads (Anmeldungen)" />
+                      <Zahl wert={String(r.summe.dealsVerursacht)} label={r.summe.verursacht ? `Deals · ${euro(r.summe.verursacht)}` : 'Deals daraus'} farbe={r.summe.dealsVerursacht ? LEUCHT.business : undefined} />
+                    </Raster>
+                  ) : (
+                    <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Im Überblick eines Events „Reihe“ wählen — oder „+ Event“ mit Reihe anlegen.</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Leads = Personen, die sich zu einem Abend der Reihe angemeldet haben (zugesagt oder da, nicht persönlich eingeladen) — wie die Marketing-Herkunft in der Qualifizierung. Deals = aus dem Event entstanden.</div>
+          </Karte>
+        </Kachel>
+
         <Kachel {...K('vergangen')}>
-          {vorbei.length > 0 ? <Karte i={5}><Ueberschrift>Vergangene Events</Ueberschrift><Liste>{vorbei.map(zeile)}</Liste></Karte> : null}
+          {vorbei.length > 0 ? <Karte i={6}><Ueberschrift>Vergangene Events</Ueberschrift><Liste>{vorbei.map(zeile)}</Liste></Karte> : null}
         </Kachel>
       </Flaeche>
     </>

@@ -22,7 +22,7 @@ import { kanalStatus, type KanalStatus } from './recht';
 import { kontextAus, imSegment } from './segmente';
 import { TEAM, BEIDE, wer, zustaendig, verantwortlich, haeltBeziehung, nameVon } from './team';
 import { markttraktion } from './adresse';
-import { markeVon, istNetzwerkenEvent } from './marke';
+import { markeVon, istNetzwerkenEvent, reiheVon, titelMitReihe } from './marke';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -648,11 +648,13 @@ export function icsText(e: Event, jetzt: string = new Date().toISOString()): str
   if (Number.isFinite(Date.parse(e.geaendert ?? ''))) z.push(`LAST-MODIFIED:${utcStempel(e.geaendert)}`);
   if (start !== null) z.push(`DTSTART;TZID=Europe/Berlin:${lokal(e.datum, start)}`, `DTEND;TZID=Europe/Berlin:${lokal(e.datum, start + dauerMinuten(e, start))}`);
   else z.push(`DTSTART;VALUE=DATE:${e.datum.replace(/-/g, '')}`, `DTEND;VALUE=DATE:${plusTage(e.datum, 1).replace(/-/g, '')}`);
-  z.push(`SUMMARY:${icsEscape(e.titel)}`);
+  // Reihe (03.10.): „Fokus Innovation · Dinner“ im Titel der Gäste-Datei, „Reihe: Fokus Innovation“ in der Beschreibung.
+  z.push(`SUMMARY:${icsEscape(titelMitReihe(e))}`);
   if (e.ort) z.push(`LOCATION:${icsEscape(e.ort)}`);
   const ablauf = [...(e.ablauf ?? [])].sort((a, b) => a.zeit.localeCompare(b.zeit)).map(a => `${a.zeit} ${a.punkt}`.trim());
   // Nach außen tritt die Veranstaltungsmarke auf (27.09.): „Veranstalter: Make.One“ — auch bei Events, die vor der Marke angelegt wurden.
-  const text = [FORMAT_LABEL[e.format] ?? 'Event', `Veranstalter: ${markeVon(e)}`, e.coHost ? `gemeinsam mit ${e.coHost}` : '', ablauf.length ? `\nAblauf:\n${ablauf.join('\n')}` : ''].filter(Boolean).join('\n');
+  const reihe = reiheVon(e);
+  const text = [FORMAT_LABEL[e.format] ?? 'Event', `Veranstalter: ${markeVon(e)}`, reihe ? `Reihe: ${reihe.name}` : '', e.coHost ? `gemeinsam mit ${e.coHost}` : '', ablauf.length ? `\nAblauf:\n${ablauf.join('\n')}` : ''].filter(Boolean).join('\n');
   z.push(`DESCRIPTION:${icsEscape(text)}`);
   z.push(`STATUS:${e.status === 'abgesagt' ? 'CANCELLED' : e.status === 'idee' ? 'TENTATIVE' : 'CONFIRMED'}`, 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR');
   return z.map(falten).join('\r\n') + '\r\n';

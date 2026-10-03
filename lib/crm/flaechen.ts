@@ -44,6 +44,8 @@ export const KACHELN: Record<Welt, KachelDef[]> = {
     // Schmale Karten (⅓) stapeln sich links unter den Events, während rechts das gewählte Event steht (dichtes Raster).
     { id: 'nachfassen', titel: 'Nachfassen offen', breite: 2 },
     { id: 'wirkung', titel: 'Wirkung der Events', breite: 2 },
+    // Reihen (03.10.): Fokus Innovation & Co. — Events, Gäste, Zusagen, Nachgefasst, Leads, Deals je Reihe (lib/crm/reihen.ts).
+    { id: 'reihen', titel: 'Reihen', breite: 2 },
     { id: 'vergangen', titel: 'Vergangene Events', breite: 2 },
   ],
 };

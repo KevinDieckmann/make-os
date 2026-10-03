@@ -481,9 +481,10 @@ async function kampagnenLage(i: Eingabe, s: CrmSicht): Promise<string> {
 
 async function eventsLage(i: Eingabe, s: CrmSicht): Promise<string> {
   const { eventZahlen, nachfassenRest } = await import('@/lib/crm/events');
-  const { eventName, istNetzwerkenEvent } = await import('@/lib/crm/marke');
+  const { eventName, istNetzwerkenEvent, reiheVon } = await import('@/lib/crm/marke');
   // Fremde Veranstaltungen aus „Netzwerken“ sind keine Make.One-Events — hier nicht listen.
-  const l = s.crm.events.filter((e: Event) => !istNetzwerkenEvent(e) && (!i.event || e.id === text(i.event, 80) || suchPasst([e.titel], text(i.event, 80))));
+  // Reihe (03.10.): „Fokus Innovation“ findet alle Abende der Reihe; eventName nennt sie in jeder Zeile.
+  const l = s.crm.events.filter((e: Event) => !istNetzwerkenEvent(e) && (!i.event || e.id === text(i.event, 80) || suchPasst([e.titel, reiheVon(e)?.name ?? ''], text(i.event, 80))));
   const zeilen = l.map(e => {
     const z = eventZahlen(e, s.crm.teilnahmen, s.kontakte, s.crm.chancen);
     const gaeste = s.crm.teilnahmen.filter(t => t.eventId === e.id);
