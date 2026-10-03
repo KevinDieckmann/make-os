@@ -12,6 +12,8 @@ import { FADEN_FARBEN } from '@/lib/make-one/design';
 import type { SpaceId } from '@/lib/make-one/space-regeln';
 import { meilensteinListeId, zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { WEG } from '@/lib/wege';
+import { nurIchBesitzer } from '@/lib/aufgaben/sicht';
+import type { AufgabenSichtbarkeit } from '@/types/tasks';
 import { abstufen } from '../baum';
 import {
   zielFarben,
@@ -30,7 +32,9 @@ export interface PlanungMeilenstein {
 }
 export interface PlanungAufgabe {
   id: string; title: string; status: string; priority?: string; dueDate?: string; assignee?: string;
-  sichtbarkeit?: string; angelegtVon?: string; listeId?: string; spaceId?: string; space?: SpaceId;
+  sichtbarkeit?: AufgabenSichtbarkeit; angelegtVon?: string; listeId?: string; spaceId?: string; space?: SpaceId;
+  /** Elternaufgabe — „nur ich“ vererbt sich über die ganze Kette (lib/aufgaben/sicht.ts `nurIchBesitzer`). */
+  parentId?: string;
 }
 export interface PlanungProjekt {
   id: string; title: string; ende?: string; dueDate?: string; spaceId?: string; category?: string; owner?: string;
@@ -107,18 +111,21 @@ export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
     if (tag) straenge.push({ id: `ms:${m.id}`, quelle: 'meilenstein', titel: m.titel, pfad, person: z?.person ?? BEIDE, zeit: { tag }, gewicht: gewichtVon('meilenstein', { erledigt: !!m.erledigt }), status: statusVon(!!m.erledigt, tag, d.heute), link: WEG.meilenstein(m.id) });
   }
 
-  // Aufgaben: nur terminierte, offene (erledigte/abgebrochene binden nichts mehr).
+  // Aufgaben: nur terminierte, offene (erledigte/abgebrochene binden nichts mehr). „nur ich“ — an der Aufgabe ODER an
+  // einem Vorfahren — macht den Strang privat für genau die Anlegerin (dieselbe Regel wie alle Lesepfade, `darfSehen`);
+  // lässt sich niemand bestimmen (Altaufgabe ohne Anlegerin, widersprüchliche Kette), fällt der Strang ganz weg.
+  const aufgabeNachId = new Map(d.aufgaben.map(a => [a.id, a]));
   for (const a of d.aufgaben) {
     const tag = tagAus(a.dueDate);
     if (!tag || a.status === 'done' || a.status === 'cancelled') continue;
+    const besitzer = nurIchBesitzer(a, aufgabeNachId);
+    if (besitzer === null) continue;
     const msId = a.listeId ? msNachListe.get(a.listeId) : undefined;
     const pfad = msId ? msPfad.get(msId)! : themaPfad(spaceAusAufgabe(a), themaAusSpaceId(a.spaceId));
-    const person = personVon(a.assignee);
-    const nurIch = a.sichtbarkeit === 'nur-ich';
     straenge.push({
-      id: `aufgabe:${a.id}`, quelle: 'aufgabe', titel: a.title, pfad, person: nurIch ? (a.angelegtVon ?? person) : person, zeit: { tag },
+      id: `aufgabe:${a.id}`, quelle: 'aufgabe', titel: a.title, pfad, person: besitzer ?? personVon(a.assignee), zeit: { tag },
       gewicht: gewichtVon('aufgabe', { dringend: a.priority === 'high' || a.priority === 'critical' }), status: statusVon(false, tag, d.heute),
-      link: WEG.aufgabe(a.id), ...(nurIch ? { privat: true } : {}),
+      link: WEG.aufgabe(a.id), ...(besitzer !== undefined ? { privat: true } : {}),
     });
   }
 

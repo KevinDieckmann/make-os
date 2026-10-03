@@ -110,7 +110,7 @@ async function beziehung(person: string, von: string, bis: string, heute: string
     geburtstage: geb.map(g => ({ id: g.id, name: g.name, tag: g.tag, zustaendig: g.zustaendig, href: g.href })),
     tage: sichtFuer(fam?.tage ?? [], person).map(t => ({ id: t.id, titel: t.titel, art: t.art, datum: t.datum, wer: t.wer, von: t.von, nurIch: nurIch(t), erledigt: t.erledigt ?? [] })),
     dates: sichtFuer(fam?.dates ?? [], person).map(x => ({ id: x.id, titel: x.titel, datum: x.datum, status: x.status, planer: x.planer, von: x.von, nurIch: nurIch(x) })),
-    vereinbarungen: sichtFuer(fam?.vereinbarungen ?? [], person).map(v => ({ id: v.id, text: v.text, faellig: v.faellig, status: v.status, wer: v.wer })),
+    vereinbarungen: sichtFuer(fam?.vereinbarungen ?? [], person).map(v => ({ id: v.id, text: v.text, faellig: v.faellig, status: v.status, wer: v.wer, von: v.von, nurIch: nurIch(v) })),
   });
 }
 

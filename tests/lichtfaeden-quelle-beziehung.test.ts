@@ -22,7 +22,8 @@ describe('Familie & Beziehung → Stränge', () => {
       { id: 't-3', titel: 'Überraschung', art: 'sonstig', datum: '12-24', von: 'malin', nurIch: true, erledigt: [] },
     ],
     dates: [{ id: 'd-1', titel: 'Kino', datum: '2026-10-17', status: 'geplant', von: 'kevin' }, { id: 'd-2', titel: 'Abgesagt', datum: '2026-10-18', status: 'abgesagt', von: 'kevin' }],
-    vereinbarungen: [{ id: 'v-1', text: 'Urlaub buchen', faellig: '2026-10-31', status: 'offen', wer: 'kevin' }, { id: 'v-2', text: 'Erledigt', faellig: '2026-10-31', status: 'erledigt' }],
+    vereinbarungen: [{ id: 'v-1', text: 'Urlaub buchen', faellig: '2026-10-31', status: 'offen', wer: 'kevin' }, { id: 'v-2', text: 'Erledigt', faellig: '2026-10-31', status: 'erledigt' },
+      { id: 'v-3', text: 'Ring abholen', faellig: '2026-11-13', status: 'offen', wer: 'beide', von: 'malin', nurIch: true }, { id: 'v-4', text: 'Ohne Anlegerin', faellig: '2026-11-13', status: 'offen', nurIch: true }],
   });
   const st = (id: string) => l.find(x => x.id === id)!;
 
@@ -40,5 +41,8 @@ describe('Familie & Beziehung → Stränge', () => {
     expect(st('date:d-1')).toMatchObject({ quelle: 'date', gewicht: 1.5, person: BEIDE });
     expect(l.some(x => x.id === 'date:d-2' || x.id === 'vereinbarung:v-2')).toBe(false);
     expect(st('vereinbarung:v-1')).toMatchObject({ person: 'kevin', quelle: 'vereinbarung' });
+    // Vereinbarung „nur ich“: privat und der Anlegerin (nicht „beide“) — ohne Anlegerin fällt sie weg.
+    expect(st('vereinbarung:v-3')).toMatchObject({ privat: true, person: 'malin' });
+    expect(l.some(x => x.id === 'vereinbarung:v-4')).toBe(false);
   });
 });

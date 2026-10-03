@@ -47,6 +47,36 @@ export function darfSehen(t: Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parent
   return true;
 }
 
+/**
+ * Wer darf die Aufgabe sehen — dieselbe Regel wie `darfSehen`, nur als Antwort statt als Ja/Nein (für Leser, die ALLE
+ * Aufgaben bekommen und je Betrachter maskieren, z. B. die Lichtfäden):
+ *   · `undefined` — keine „nur ich“-Markierung in der Kette (Aufgabe oder ein Vorfahre): alle dürfen sie sehen.
+ *   · Speichername — genau diese Person (die Anlegerin der „nur ich“-Aufgabe bzw. des „nur ich“-Vorfahren).
+ *   · `null` — niemand: „nur ich“ ohne bestimmbare Anlegerin (Altaufgabe ohne `angelegtVon`) oder zwei „nur ich“ in der
+ *     Kette mit verschiedenen Anlegerinnen. Solche Aufgaben gehören in keine geteilte Sicht.
+ * Es gilt immer: `darfSehen(t, p, nachId) === (b === undefined || b === p)` für jede Person `p`. Kreisfest wie `darfSehen`.
+ */
+export function nurIchBesitzer(t: Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>, nachId?: ReadonlyMap<string, Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>>): string | null | undefined {
+  let besitzer: string | null | undefined;
+  const pruefe = (x: Pick<Task, 'sichtbarkeit' | 'angelegtVon'>): boolean => {
+    if (!istNurIch(x)) return true;
+    if (!x.angelegtVon || (besitzer !== undefined && besitzer !== x.angelegtVon)) { besitzer = null; return false; }
+    besitzer = x.angelegtVon;
+    return true;
+  };
+  if (!pruefe(t)) return null;
+  const gesehen = new Set<string>();
+  let pid = t.parentId;
+  for (let n = 0; pid && n < 64 && !gesehen.has(pid); n++) {
+    gesehen.add(pid);
+    const e = nachId?.get(pid);
+    if (!e) break;
+    if (!pruefe(e)) return null;
+    pid = e.parentId;
+  }
+  return besitzer;
+}
+
 /** Der Bestand, wie `person` ihn sehen darf (null = Systemlauf: ohne alle „nur ich“-Aufgaben). Rein. */
 export function sichtFuer<T extends TasksState>(state: T, person: string | null | undefined): T {
   if (!state.tasks.some(istNurIch)) return state;

@@ -5,8 +5,10 @@
 // Zugang: angemeldete Person im Haushalt des Inhabers (`imHaushaltDesInhabers`, streng, Regel 5). Der Dienstweg ist hier
 // GESPERRT (403): kein Hintergrundlauf braucht die Sicht heute — ZOE liest die Quellen selbst über ihre eigenen Werkzeuge.
 // Wird sie später gebraucht, dann nur lesend mit `x-make-person` (die Privat-Regel hängt am Betrachter).
-// Privat-Regel: Private Stränge der ANDEREN Person (Kalender privat/Gesundheit, „nur ich“-Aufgaben, Familie „nur ich“,
-// Gesundheit) kommen nur als anonymes „belegt“-Gewicht an — ohne Titel, Link, Thema, Ziel (lib/lichtfaeden/modell.ts).
+// Privat-Regel: Private Stränge der ANDEREN Person (Kalender privat/Gesundheit, „nur ich“-Aufgaben samt ALLER Unteraufgaben
+// darunter — `nurIchBesitzer`, dieselbe Regel wie `darfSehen` —, Gesundheit) kommen nur als anonymes „belegt“-Gewicht an —
+// ohne Titel, Link, Thema, Ziel (lib/lichtfaeden/modell.ts). „nur ich“ ohne bestimmbare Anlegerin sieht niemand; Familie
+// „nur ich“ der anderen Person kommt gar nicht erst an. Prüfung: tests/lichtfaeden-datenschutz.test.ts.
 // Schnell: Sammeln gemerkt (60 s, ungültig bei jeder Schreibung), die Ansicht selbst ist reine Rechnung; gzip ab 16 KB.
 // Keine Personendaten in Logs.
 

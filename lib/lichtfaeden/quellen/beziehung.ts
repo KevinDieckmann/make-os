@@ -1,6 +1,7 @@
 // ─── Lichtfäden-Quelle: Familie & Beziehung — rein ──────────────────────────
 // Privat › Familie & Beziehung. Eingang (vom Server, schon mit `sichtFuer` gefiltert — „nur ich“-Einträge der anderen
-// Person kommen gar nicht an; eigene „nur ich“ tragen `privat`):
+// Person kommen gar nicht an; eigene „nur ich“ — Tage, Dates, Vereinbarungen — tragen `privat` und gehören ihrer
+// Anlegerin `von`, damit auch ein späterer gemeinsamer Zwischenspeicher sie nie offen an die andere Person gibt):
 //   · Geburtstage (Familie) aus `geburtstageIm(…, { nur: 'privat' })` — je Vorkommen im Fenster, DIE Quelle für Geburtstage.
 //   · Wichtige Tage außer Geburtstagen (Jahrestag, Gedenktag, Sonstiges): jedes Vorkommen im Fenster (MM-TT jährlich,
 //     ein volles Datum einmal).
@@ -11,7 +12,7 @@ import { BEIDE, gewichtVon, statusVon, tagAus, themaPfad, type Strang } from '..
 export interface BzGeburtstag { id: string; name: string; tag: string; zustaendig?: string; href: string }
 export interface BzTag { id: string; titel: string; art: string; datum: string; wer?: string; von: string; nurIch?: boolean; erledigt: number[] }
 export interface BzDate { id: string; titel: string; datum: string; status: string; planer?: string; nurIch?: boolean; von: string }
-export interface BzVereinbarung { id: string; text: string; faellig: string | null; status: string; wer?: string }
+export interface BzVereinbarung { id: string; text: string; faellig: string | null; status: string; wer?: string; nurIch?: boolean; von?: string }
 export interface BeziehungDaten { geburtstage: BzGeburtstag[]; tage: BzTag[]; dates: BzDate[]; vereinbarungen: BzVereinbarung[]; von: string; bis: string; heute: string; link: string }
 
 const PFAD = themaPfad('privat', 'beziehung');
@@ -54,8 +55,8 @@ export function beziehungStraenge(d: BeziehungDaten): Strang[] {
   }
   for (const v of d.vereinbarungen) {
     const tag = tagAus(v.faellig);
-    if (!tag || v.status !== 'offen') continue;
-    aus.push({ id: `vereinbarung:${v.id}`, quelle: 'vereinbarung', titel: v.text, pfad: PFAD, person: person(v.wer), zeit: { tag }, gewicht: gewichtVon('vereinbarung'), status: statusVon(false, tag, d.heute), link: d.link });
+    if (!tag || v.status !== 'offen' || (v.nurIch && !v.von)) continue;
+    aus.push({ id: `vereinbarung:${v.id}`, quelle: 'vereinbarung', titel: v.text, pfad: PFAD, person: v.nurIch && v.von ? v.von : person(v.wer), zeit: { tag }, gewicht: gewichtVon('vereinbarung'), status: statusVon(false, tag, d.heute), link: d.link, ...(v.nurIch ? { privat: true } : {}) });
   }
   return aus;
 }
