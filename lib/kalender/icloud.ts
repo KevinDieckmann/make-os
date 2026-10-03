@@ -40,6 +40,8 @@ import { mitBezug, kalenderKennung, terminSchluessel, schluesselTeile, type Bezu
 import { ausWandzeit } from './zeit';
 import { ladeBezuege, bezuegeAbgleichen } from './bezug-server';
 import { UID_FEST } from './eingabe';
+import { ueberlagerung, type GoogleKalenderEintrag } from './google/stand';
+import { alleSpeicher } from '@/lib/zugang/konten';
 
 export const SPEICHER = 'kalender-icloud';
 export const CACHE = 'calendar-cache';
@@ -51,7 +53,15 @@ const CACHE_VON = -30, CACHE_BIS = 120;
 /** Ab wann ein Stand als alt gilt und beim Lesen erneuert wird. */
 export const FRISCH_MS = 2 * 60_000;
 
-export interface KalenderEintrag { id: string; name: string; farbe?: string; ctag?: string; schreibbar: boolean }
+export interface KalenderEintrag {
+  id: string; name: string; farbe?: string; ctag?: string; schreibbar: boolean;
+  /** Google (03.10.): dieser Kalender ist die Überlagerung eines Google-Kalenders (lib/kalender/google/stand.ts) — kein CalDAV. */
+  quelle?: 'google';
+  /** Nur Google: wessen Google-Konto. */
+  person?: string;
+  /** Nur Google: die Adresse(n) dieses Kontos (Organisator/Gast?) — sonst gelten die iCloud-Adressen des Stands. */
+  ich?: string[];
+}
 export interface IcloudStand {
   at?: string;
   fehler?: string;
@@ -257,9 +267,33 @@ export async function objektWiederherstellen(kal: Pick<KalenderEintrag, 'id' | '
 // ── Abgleich ────────────────────────────────────────────────────────────────
 
 const LEER: IcloudStand = { kalender: [], objekte: {} };
-export async function ladeStand(): Promise<IcloudStand> {
+/** NUR der iCloud-Stand (so wie er auf der Platte liegt) — für den Abgleich selbst und die Sicherung; alle Leser nehmen `ladeStand`. */
+export async function ladeStandIcloud(): Promise<IcloudStand> {
   const s = await loadJson<IcloudStand>(SPEICHER);
   return s && Array.isArray(s.kalender) ? { ...LEER, ...s } : { ...LEER };
+}
+
+/**
+ * Der Stand für ALLE Leser: iCloud plus die Google-Kalender der verbundenen Personen (03.10.2026, lib/kalender/google/*).
+ * Die Google-Kalender stehen als weitere `KalenderEintrag` (`quelle: 'google'`) mit ihren ICS-Objekten im Stand — Termine,
+ * Bezüge, Verfügbarkeit, Spiegel und Verbindungsprüfung laufen darüber unverändert. Der Kopf des Stands (`at`, `fehler`,
+ * `pauseBis` …) bleibt der von iCloud. Ein Fehler in der Überlagerung kostet nie den iCloud-Stand.
+ */
+export async function ladeStand(): Promise<IcloudStand> {
+  return mitGoogle(await ladeStandIcloud());
+}
+
+/** Google-Kalender über einen iCloud-Stand legen (Überlagerung, nie gespeichert). */
+export async function mitGoogle(s: IcloudStand): Promise<IcloudStand> {
+  try {
+    const g = await ueberlagerung(await alleSpeicher());
+    if (!g.kalender.length) return s;
+    const fremd = new Set(g.kalender.map(k => k.id));
+    return { ...s, kalender: [...s.kalender.filter(k => !fremd.has(k.id)), ...(g.kalender as GoogleKalenderEintrag[])], objekte: { ...s.objekte, ...g.objekte } };
+  } catch (e) {
+    console.warn(`[kalender] Google-Überlagerung nicht lesbar: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`);
+    return s;
+  }
 }
 
 /**
@@ -288,7 +322,7 @@ const beginnMs = (t: Termin) => t.startMs ?? ausWandzeit(t.start).getTime();
 export function termineImZeitraum(s: IcloudStand, von: string, bis: string): Termin[] {
   const raus: Termin[] = [];
   const ich = kontoAdressen(s);
-  for (const k of s.kalender) for (const o of s.objekte[k.id] ?? []) raus.push(...objektTermine(o, k, von, bis, ich));
+  for (const k of s.kalender) for (const o of s.objekte[k.id] ?? []) raus.push(...objektTermine(o, k, von, bis, k.ich ?? ich));
   raus.sort((a, b) => beginnMs(a) - beginnMs(b) || a.titel.localeCompare(b.titel));
   return raus;
 }
@@ -307,7 +341,9 @@ const EINORDNUNG: Record<string, { category: string; owner: string }> = {
  */
 function cacheFormat(t: Termin, bezuege: BezugBestand | null) {
   const m = mitBezug(t, bezuege);
-  const e = EINORDNUNG[t.kalender.trim().toLowerCase()] ?? { category: 'joint', owner: 'both' };
+  // Google (03.10.): der Kalender „MAKE (Google)“ ist der Business-Kalender der Person — `holding` (Leser färben/ordnen danach).
+  const google = /^google:/.test(t.kalenderId) ? kalenderKennung(t.kalenderId).replace(/^google-/, '') : null;
+  const e = google ? { category: 'holding', owner: google } : EINORDNUNG[t.kalender.trim().toLowerCase()] ?? { category: 'joint', owner: 'both' };
   return {
     id: t.id, uid: t.uid, title: t.titel, ...e, startDate: t.start, endDate: t.ende, allDay: t.ganztags,
     calendarName: t.kalender, ...(t.ort ? { location: t.ort } : {}), source: 'icloud', serie: t.serie, bearbeitbar: t.bearbeitbar,
@@ -350,7 +386,7 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
   while (laufend) await laufend.catch(() => {});
   tzMelden();
   laufend = (async () => {
-    const alt = await ladeStand();
+    const alt = await ladeStandIcloud();
     try {
       // Die Adressen (K3) fehlen in Ständen vor dem 30.09. — dann einmal neu entdecken.
       const ort = alt.home && alt.adressen ? { home: alt.home, adressen: alt.adressen } : await entdecke();
@@ -379,8 +415,10 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
       let bezuege: BezugBestand | null = null;
       try { await bezuegeAbgleichen(objekteKurz(neu), neu.at); bezuege = await ladeBezuege(); } catch { /* nächster Lauf */ }
       const heute = localDay();
-      await saveJson(CACHE, { events: termineImZeitraum(neu, tagPlus(heute, CACHE_VON), tagPlus(heute, CACHE_BIS)).map(t => cacheFormat(t, bezuege)), at: neu.at, quelle: 'icloud' });
-      return neu;
+      const gesamt = await mitGoogle(neu);
+      await saveJson(CACHE, { events: termineImZeitraum(gesamt, tagPlus(heute, CACHE_VON), tagPlus(heute, CACHE_BIS)).map(t => cacheFormat(t, bezuege)), at: neu.at, quelle: 'icloud' });
+      // Gespeichert ist nur der iCloud-Stand; die Leser (frischerStand, Routen) bekommen ihn MIT den Google-Kalendern.
+      return gesamt;
     } catch (e) {
       const fehler = e instanceof Error ? e.message.slice(0, 300) : 'iCloud nicht erreichbar.';
       // Die Adresse kann sich ändern — beim nächsten Mal neu suchen.
@@ -398,10 +436,28 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
   return laufend;
 }
 
+/**
+ * Den `calendar-cache` (für ZOE, Morgenlauf und alle Server-Leser) aus dem ganzen Stand neu schreiben — iCloud + Google.
+ * Der iCloud-Abgleich tut das nach jedem Lauf selbst; der Google-Abgleich und jede Google-Schreibung rufen es hier auf,
+ * damit die Leser nicht bis zum nächsten iCloud-Lauf (5 Min.) auf neue Google-Termine warten. Fehler stören nie.
+ */
+export async function cacheNeuSchreiben(): Promise<void> {
+  try {
+    const s = await ladeStand();
+    let bezuege: BezugBestand | null = null;
+    try { bezuege = await ladeBezuege(); } catch { /* ohne Bezug */ }
+    const heute = localDay();
+    await saveJson(CACHE, { events: termineImZeitraum(s, tagPlus(heute, CACHE_VON), tagPlus(heute, CACHE_BIS)).map(t => cacheFormat(t, bezuege)), at: s.at ?? new Date().toISOString(), quelle: 'icloud' });
+  } catch (e) {
+    console.warn(`[kalender] Zwischenspeicher nicht geschrieben: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`);
+  }
+}
+
 /** Stand, der höchstens FRISCH_MS alt ist — sonst erst abgleichen. Fehler → letzter Stand + Hinweis. */
 export async function frischerStand(): Promise<IcloudStand> {
   const s = await ladeStand();
-  if (!naechsterVersuchFaellig(s)) return s;
+  // Ohne iCloud-Zugang (nur Google, 03.10.) gibt es nichts abzugleichen — und kein Fehlerstand soll entstehen.
+  if (!verbunden() || !naechsterVersuchFaellig(s)) return s;
   try { return await abgleichen(); } catch { return ladeStand(); }
 }
 
@@ -415,7 +471,7 @@ export function pauseMs(folge: number, anmeldung: boolean, retryAfterSek?: numbe
 }
 
 /** Frisch genug? Nach einem Fehler erst nach der Pause (`pauseBis`) wieder — ältere Stände ohne Pause wie bisher. */
-export function naechsterVersuchFaellig(s: IcloudStand, jetzt = Date.now()): boolean {
+export function naechsterVersuchFaellig(s: Pick<IcloudStand, 'at' | 'fehlerAt' | 'pauseBis' | 'fehlerAnmeldung'>, jetzt = Date.now()): boolean {
   if (s.at && jetzt - Date.parse(s.at) < FRISCH_MS) return false;
   if (s.fehlerAt && (!s.at || s.fehlerAt > s.at)) {
     if (s.pauseBis && Number.isFinite(Date.parse(s.pauseBis))) return jetzt >= Date.parse(s.pauseBis);
@@ -530,6 +586,8 @@ export async function anlegen(e: NeuEingabe, opt: { einladungBestaetigt?: boolea
   if (e.uid !== undefined && !UID_FEST.test(e.uid)) throw new KalenderFehler('Ungültige Termin-Kennung.', 400);
   const { uid: fest, kalender: _k, ...rest } = e;
   if (fest) { const da = findeObjekt(s, fest); if (da) return { uid: fest, schluessel: da.schluessel, kalender: da.kal.name, gaeste: 0, schonDa: true }; }
+  // Google (03.10.): dieser Kalender gehört einer Person bei Google — dorthin schreibt lib/kalender/google/schreiben.ts.
+  if (kal.quelle === 'google') return (await import('./google/schreiben')).googleAnlegen(kal, { ...rest, uid: fest ?? randomUUID().toUpperCase() }, opt);
   const ich = kontoAdressen(s);
   if (gaeste.length && !ich[0]) throw new KalenderFehler('Ohne iCloud-Adresse keine Einladung — bitte iCloud neu verbinden.', 409);
   const uid = fest ?? randomUUID().toUpperCase();
@@ -562,12 +620,12 @@ export async function terminBekannt(uid: string): Promise<boolean> {
 }
 
 /** Der aktuelle Termin (erstes Vorkommen) eines Objekts — für „Deine Fassung“ bei 409. */
-function aktuellerTermin(s: IcloudStand, uid: string): Termin | null {
+export function aktuellerTermin(s: IcloudStand, uid: string): Termin | null {
   let f: Fund | null = null;
   try { f = findeObjekt(s, uid); } catch { return null; }
   if (!f) return null;
   const heute = localDay();
-  return termineAus(f.obj, f.kal, tagPlus(heute, HOLEN_VON), tagPlus(heute, HOLEN_BIS), kontoAdressen(s))[0] ?? null;
+  return termineAus(f.obj, f.kal, tagPlus(heute, HOLEN_VON), tagPlus(heute, HOLEN_BIS), f.kal.ich ?? kontoAdressen(s))[0] ?? null;
 }
 
 /** Der Termin (erstes Vorkommen im Holfenster) aus dem aktuellen Stand — für die CRM-Folgen einer Bezug-Änderung (K3). */
@@ -585,6 +643,7 @@ export async function aendern(uid: string, a: Aenderung, opt: { stand?: string; 
   const f = findeObjekt(s, uid, true);
   if (!f) throw new KalenderFehler('Termin nicht gefunden — vielleicht gerade in Apple gelöscht.', 404);
   if (!f.kal.schreibbar) throw new KalenderFehler(`„${f.kal.name}“ ist nur lesbar.`, 403);
+  if (f.kal.quelle === 'google') return (await import('./google/schreiben')).googleAendern(f, a, opt);
   if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — deine Fassung ist unten noch da.', aktuellerTermin(s, uid));
   // K3: Post an Gäste nur nach Bestätigung — betroffen sind die bisherigen UND die neuen Gäste (Ausgeladene bekommen eine Absage).
   const ich = kontoAdressen(s);
@@ -612,6 +671,7 @@ export async function loeschen(uid: string, opt: { stand?: string; einladungBest
   const f = findeObjekt(s, uid, true);
   if (!f) return { gaeste: 0 }; // schon weg
   if (!f.kal.schreibbar) throw new KalenderFehler(`„${f.kal.name}“ ist nur lesbar.`, 403);
+  if (f.kal.quelle === 'google') return (await import('./google/schreiben')).googleLoeschen(f, opt);
   if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — bitte erst ansehen.', aktuellerTermin(s, uid));
   const ich = kontoAdressen(s);
   const grund = nichtBearbeitbar(f.obj.ics, ich);
@@ -636,6 +696,7 @@ export async function antwortSenden(uid: string, status: Exclude<Teilnahme, 'off
   const s = await frischerStand();
   const f = findeObjekt(s, uid, true);
   if (!f) throw new KalenderFehler('Termin nicht gefunden — vielleicht gerade in Apple gelöscht.', 404);
+  if (f.kal.quelle === 'google') return (await import('./google/schreiben')).googleAntwort(f, status, opt);
   if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — bitte erst ansehen.', aktuellerTermin(s, uid));
   const ich = kontoAdressen(s);
   const lage = einladungsLage(f.obj.ics, ich);

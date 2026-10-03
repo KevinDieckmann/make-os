@@ -85,7 +85,8 @@ export async function kalenderSicherungTaeglich(jetzt = new Date(), opt: { erzwi
     const tag = wand.slice(0, 10), at = jetzt.toISOString();
     const dateien: SicherungStand['dateien'] = [];
     const fehler: NonNullable<SicherungStand['fehler']> = [];
-    for (const k of stand.kalender) {
+    // Google-Kalender (03.10.) sichert Google selbst (Versionsverlauf/Vault) — nie per CalDAV: nur iCloud-Kalender.
+    for (const k of stand.kalender.filter(x => !x.quelle)) {
       try {
         const objekte = await holeSicherungsObjekte(k);
         const x = exportIcs(objekte, k.name);
@@ -128,7 +129,7 @@ export interface WiederherstellErgebnis { kalender: string; datei: string; probe
 export async function kalenderWiederherstellen(kalenderName: string, opt: { datei?: string; bestaetigt?: boolean; wer: ProtokollWer }): Promise<WiederherstellErgebnis> {
   if (!verbunden()) throw new KalenderFehler('iCloud ist noch nicht verbunden.', 409);
   const stand = await ladeStand();
-  const kal: KalenderEintrag | undefined = stand.kalender.find(k => k.name.trim().toLowerCase() === kalenderName.trim().toLowerCase());
+  const kal: KalenderEintrag | undefined = stand.kalender.find(k => !k.quelle && k.name.trim().toLowerCase() === kalenderName.trim().toLowerCase());
   if (!kal) throw new KalenderFehler(`Kalender „${kalenderName}“ gibt es in iCloud nicht.`, 404);
   const kennung = kalenderKennung(kal.id);
   const s = await ladeSicherungStand();

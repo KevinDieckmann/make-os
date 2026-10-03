@@ -6,6 +6,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { verbunden, ladeStand, termineImZeitraum, CACHE } from './icloud';
+import { googleKalenderNamen } from './google/namen';
 import { wemGehoert, type KalenderEinstellungen, type Wer } from './einstellungen';
 import type { Termin } from './ics';
 import { ladeBezuege } from './bezug-server';
@@ -39,9 +40,11 @@ export async function termineLesen(einst: KalenderEinstellungen, von: string, bi
   let quelle: GeleseneTermine['quelle'] = 'leer';
   let kalender: { name: string; farbe?: string; schreibbar: boolean }[] = [];
   let stand: string | null = null;
-  if (verbunden()) {
+  // iCloud und/oder Google (03.10.): beide stehen im selben Stand (`ladeStand`).
+  const google = Object.keys(await googleKalenderNamen()).length > 0;
+  if (verbunden() || google) {
     const s = await ladeStand();
-    if (s.at) { termine = termineImZeitraum(s, von, bis); quelle = 'icloud'; stand = s.at; }
+    if (s.at || google) { termine = termineImZeitraum(s, von, bis); quelle = 'icloud'; stand = s.at ?? new Date().toISOString(); }
     kalender = s.kalender.map(k => ({ name: k.name, ...(k.farbe ? { farbe: k.farbe } : {}), schreibbar: k.schreibbar }));
   } else {
     const c = await loadJson<{ events?: MacEv[]; at?: string }>(CACHE);

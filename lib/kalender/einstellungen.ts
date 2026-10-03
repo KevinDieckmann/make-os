@@ -37,6 +37,12 @@ export interface KalenderEinstellungen {
   steuerVorlage: SteuerVorlage;
   /** Glocke: Kündigungsfristen so viele Tage vorher melden (K6a). */
   kuendigungVorlaufTage: number;
+  /**
+   * Google (03.10.): Kalendername → Person, für die verbundenen Google-Kalender („MAKE Kevin (Google)“ → kevin). NIE gespeichert —
+   * `ladeEinstellungen` und der GET der Einstellungen-Route legen es beim Lesen dazu (lib/kalender/google/namen.ts); `einstellungenSauber`
+   * lässt es fallen. Wirkt auf die Zuordnung (`zuordnung`) und den Space (Business).
+   */
+  google?: Record<string, string>;
 }
 
 export interface SteuerVorlage { an: boolean }
@@ -103,7 +109,14 @@ export function einstellungenSauber(d: Partial<KalenderEinstellungen> | null): K
 export { spaceVonKalender } from './space';
 
 export async function ladeEinstellungen(): Promise<KalenderEinstellungen> {
-  return einstellungenSauber(await loadJson<KalenderEinstellungen>('kalender-einstellungen'));
+  return mitGoogleNamen(einstellungenSauber(await loadJson<KalenderEinstellungen>('kalender-einstellungen')));
+}
+
+/** Die Google-Kalender (Name → Person) zur Laufzeit dazulegen — gespeichert wird das nie. */
+export async function mitGoogleNamen(e: KalenderEinstellungen): Promise<KalenderEinstellungen> {
+  const { googleNamenZuPerson } = await import('./google/namen');
+  const g = await googleNamenZuPerson();
+  return Object.keys(g).length ? { ...e, google: g } : e;
 }
 
 /**

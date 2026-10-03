@@ -63,6 +63,7 @@ import { typErkennen, sprachnotizTypErkennen, dateinameSaeubern, SPRACHNOTIZ_TYP
 import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { terminAnlegenServer } from '@/lib/kalender/termin-server';
 import { ladeEinstellungen, type Wer as KalenderWer } from '@/lib/kalender/einstellungen';
+import { kalenderZiel } from '@/lib/kalender/google/ziel';
 import { KalenderFehler } from '@/lib/kalender/icloud';
 import { freieZeitFuer, arbeitszeitAus, belegungenAus } from '@/lib/kalender/freie-zeit';
 import { istFrei } from '@/lib/kalender/verfuegbar';
@@ -596,7 +597,8 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
     const t = e.termin;
     const r = await schritt('termin', async () => {
       const einst = await ladeEinstellungen();
-      const kalender = (einst.kalender as Record<string, string | undefined>)[e.zustaendig];
+      // Der Termin ist Business: im Google Kalender der ZUSTÄNDIGEN Person (03.10.), solange sie verbunden ist — sonst wie bisher ihr iCloud-Kalender.
+      const kalender = (await kalenderZiel(e.zustaendig, 'business', einst)).kalender;
       if (!kalender || e.zustaendig === 'beide') throw new ErfassungFehler(`Für diese Person ist in den Kalender-Einstellungen kein Kalender hinterlegt — der Termin wurde nicht angelegt.`, 409, { teilweise: true });
       const ende = wandPlusMinuten(t.start, t.dauer);
       // Ist die Zeit noch frei? Nur ein Hinweis (der Termin steht dann trotzdem) — kein Netz-/Kalenderfehler bricht die Erfassung.

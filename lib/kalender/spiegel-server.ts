@@ -20,7 +20,8 @@
 // als `hinweise` zurück (Kennung + technischer Grund, nie Titel oder Adressen) und gehen über `spiegelHinweiseMelden`
 // ins Server-Protokoll und — wenn eine Person die Änderung ausgelöst hat — in ihre Glocke. Nie mehr still.
 
-import { verbunden, ladeStand, termineImZeitraum, findeObjekt, KalenderFehler, HOLEN_VON, HOLEN_BIS, type IcloudStand } from './icloud';
+import { ladeStand, termineImZeitraum, findeObjekt, KalenderFehler, HOLEN_VON, HOLEN_BIS, type IcloudStand } from './icloud';
+import { kalenderQuelleDa as quelleDa } from './google/namen';
 import { termineAus, type Termin } from './ics';
 import { tagPlus } from './zeit';
 import { ladeEinstellungen } from './einstellungen';
@@ -129,7 +130,7 @@ export async function eventSpiegelLage(id: string): Promise<SpiegelLage> {
   const e = (await ladeCrm()).events.find(x => x.id === id);
   if (!e) throw new KalenderFehler('Event nicht gefunden.', 404);
   const soll = eventSoll(e);
-  if (!verbunden()) return { lage: 'ohne-icloud', ...(e.kalenderUid ? { uid: e.kalenderUid } : {}) };
+  if (!(await quelleDa())) return { lage: 'ohne-icloud', ...(e.kalenderUid ? { uid: e.kalenderUid } : {}) };
   if (!e.kalenderUid) return soll.art === 'keiner' ? { lage: 'keiner', grund: soll.grund } : { lage: 'fehlt' };
   if (istScheinUid(e.kalenderUid)) return { lage: 'schein', uid: e.kalenderUid };
   const t = terminNachUid(await ladeStand(), e.kalenderUid);
@@ -163,7 +164,8 @@ export async function eventSpiegelAnlegen(id: string, person: string, wer: Proto
   const einst = await ladeEinstellungen();
   const hin = e.wer?.length === 1 ? e.wer[0] : undefined;
   const kalenderWer = (hin && (einst.kalender as Record<string, string | undefined>)[hin] ? hin : 'beide') as 'beide';
-  const r = await terminAnlegenServer({ ...soll.t, wer: kalenderWer, art: 'termin', beschaeftigt: true, uid: spiegelUid('event', e.id), von: person, bezug: { eventId: e.id }, notiz: 'Aus MAKE OS · Event' }, wer);
+  // Business (03.10., Google): ein besuchtes Event einer Person kommt in deren Google Kalender (MAKE), sobald sie verbunden ist — sonst wie bisher iCloud.
+  const r = await terminAnlegenServer({ ...soll.t, wer: kalenderWer, bereich: 'business', art: 'termin', beschaeftigt: true, uid: spiegelUid('event', e.id), von: person, bezug: { eventId: e.id }, notiz: 'Aus MAKE OS · Event' }, wer);
   // Marke setzen (und bei `schonDa` auf das Soll bringen) — ab jetzt zieht der Abgleich nur nach Änderungen im Event nach.
   await klickAbgleich(r.uid, soll, wer);
   await eventUidSetzen(e.id, r.uid, wer);
@@ -178,7 +180,7 @@ export async function eventSpiegelLoeschen(id: string, wer: ProtokollWer): Promi
   const e = (await ladeCrm()).events.find(x => x.id === id);
   if (!e) throw new KalenderFehler('Event nicht gefunden.', 404);
   if (e.status !== 'abgesagt') throw new KalenderFehler('Nur der Termin eines abgesagten Events wird hier gelöscht.', 400);
-  if (!verbunden()) throw new KalenderFehler('iCloud ist noch nicht verbunden.', 409);
+  if (!(await quelleDa())) throw new KalenderFehler('iCloud ist noch nicht verbunden.', 409);
   if (!e.kalenderUid || istScheinUid(e.kalenderUid)) throw new KalenderFehler('Kein verknüpfter Termin.', 400);
   const r = await abgleichen(await ladeStand(), e.kalenderUid, eventSoll(e), wer, { bezuege: await ladeBezuege(), gehoert: b => b?.eventId === e.id, loeschenErlaubt: true });
   if (r === 'weg') await eventUidSetzen(e.id, null, wer);
@@ -194,7 +196,7 @@ export async function eventSpiegelLoeschen(id: string, wer: ProtokollWer): Promi
  */
 export async function eventSpiegelBeimLoeschen(e: { id: string; kalenderUid?: string } & Parameters<typeof eventSoll>[0], wer: ProtokollWer): Promise<'weg' | 'keiner' | 'bleibt' | 'ohne-icloud' | 'fehler'> {
   if (!e.kalenderUid || istScheinUid(e.kalenderUid)) return 'keiner';
-  if (!verbunden()) return 'ohne-icloud';
+  if (!(await quelleDa())) return 'ohne-icloud';
   try {
     const r = await abgleichen(await ladeStand(), e.kalenderUid, eventSoll({ ...e, status: 'abgesagt' }), wer, { bezuege: await ladeBezuege(), gehoert: b => b?.eventId === e.id, loeschenErlaubt: true });
     return r === 'weg' || !terminNachUid(await ladeStand(), e.kalenderUid) ? 'weg' : 'bleibt';
@@ -210,7 +212,7 @@ export async function eventSpiegelBeimLoeschen(e: { id: string; kalenderUid?: st
  */
 export async function eventSpiegelNachziehen(ids: readonly string[] | null, wer: ProtokollWer, o: { imTakt?: boolean; heute?: string } = {}): Promise<SpiegelErgebnis & { abgesagt: { id: string; titel: string; zustaendig?: string }[] }> {
   const leer = { geprueft: 0, hinweise: [], abgesagt: [] };
-  if (!verbunden()) return leer;
+  if (!(await quelleDa())) return leer;
   const heute = o.heute ?? localDay();
   const events = (await ladeCrm()).events.filter(e => e.kalenderUid && !istScheinUid(e.kalenderUid) && (!ids || ids.includes(e.id)) && (!o.imTakt || e.datum >= heute));
   if (!events.length) return leer;
@@ -253,7 +255,7 @@ export const SPIEGEL_TAKT_MS = 30 * 60_000;
  * wie jeder Spiegel über `terminAendernServer` (Änderungsprotokoll). Liefert die Zahl der geprüften Events (0 = übersprungen).
  */
 export async function eventSpiegelImTakt(jetzt = Date.now()): Promise<number> {
-  if (!verbunden() || jetzt - taktZuletzt < SPIEGEL_TAKT_MS) return 0;
+  if (jetzt - taktZuletzt < SPIEGEL_TAKT_MS || !(await quelleDa())) return 0;
   taktZuletzt = jetzt;
   const r = await eventSpiegelNachziehen(null, { art: 'system' }, { imTakt: true, heute: localDay(new Date(jetzt)) });
   // Im Takt löst niemand aus — Fehler nur ins Server-Protokoll (F1 #5), keine Glocke alle 30 Minuten. Absagen gehen
@@ -306,7 +308,7 @@ export async function familieSpiegelAnlegen(h: string, art: Exclude<SpiegelArt, 
  * überschrieben nur nach einer Änderung im Modul (Marke).
  */
 export async function familieSpiegelNachziehen(h: string, wer: ProtokollWer, heute = localDay()): Promise<SpiegelHinweis[]> {
-  if (!verbunden()) return [];
+  if (!(await quelleDa())) return [];
   const f = await ladeFamilie(h);
   let s = await ladeStand();
   const bezuege = await ladeBezuege();

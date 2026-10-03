@@ -213,6 +213,13 @@ export const inAppleZaehlen: Wirkung = (cur, m) => {
   return { neu: cur, n: eintraege.filter(e => nenntPerson(e, m)).length };
 };
 
+/** Google-Spiegel (03.10.): `{ events: { id: GEvent } }` — gezählt, nie geändert (Löschung nur in Google). */
+export const inGoogleZaehlen: Wirkung = (cur, m) => {
+  const ev = ((cur ?? {}) as Obj).events;
+  const liste = ev && typeof ev === 'object' ? Object.values(ev as Obj) : [];
+  return { neu: cur, n: liste.filter(e => nenntPerson(e, m)).length };
+};
+
 /**
  * Die weiteren Speicher — Name, Dateimuster, Behandlung. Das Register (lib/crm/speicher-register.ts) verweist hierher;
  * der Wächtertest prüft, dass jede Behandlung „entfernen“/„tilgen“ eine Wirkung hat.
@@ -231,6 +238,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'kalender-icloud', muster: /^kalender-icloud$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
   { name: 'apple-reminders-cache', muster: /^apple-reminders-cache$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
   { name: 'apple-contacts-cache', muster: /^apple-contacts-cache$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
+  // Google Kalender (03.10.): Spiegel der Termine je Person — Wahrheit ist Google (Löschung dort), hier nur gezählt.
+  { name: 'kalender-google--*', muster: /^kalender-google--[a-z0-9-]+$/, behandlung: 'nur-in-apple', wirkung: inGoogleZaehlen },
   { name: 'kemaris-calendar', muster: /^kemaris-calendar$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'kalender-bezug', muster: /^kalender-bezug$/, behandlung: 'entfernen', wirkung: kalenderBezugOhne },
   { name: 'meetings', muster: /^meetings$/, behandlung: 'tilgen', wirkung: tilgen },

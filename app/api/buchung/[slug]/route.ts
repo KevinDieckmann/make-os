@@ -24,6 +24,9 @@ import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { abgleichen, abgleichAlter, ladeStand, verbunden } from '@/lib/kalender/icloud';
+import { googleKalenderNamen, kalenderQuelleDa } from '@/lib/kalender/google/namen';
+import { ladeGoogleStand } from '@/lib/kalender/google/stand';
+import { googleAbgleichen, googleAlter } from '@/lib/kalender/google/abgleich';
 import { verfuegbarkeitFuer } from '@/lib/kalender/verfuegbarkeit';
 import { belegungenAus, sperrTageAus } from '@/lib/kalender/freie-zeit';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
@@ -67,7 +70,9 @@ async function frischAbgleichen(seite: BuchungsSeite): Promise<boolean> {
   try {
     // Wie icloud.ts `kalenderNachName` (Name ohne Groß/Klein, getrimmt).
     const kal = zwingen ? (await ladeStand()).kalender?.find(k => k.name.trim().toLowerCase() === seite.zielKalender.trim().toLowerCase()) : undefined;
-    await abgleichen(!zwingen ? {} : kal ? { nur: kal.id } : { erzwingen: true });
+    // Google (03.10.): die Google-Kalender gehören zum Stand — auch sie vor dem Reservieren frisch lesen (Fehler → nicht buchbar).
+    if (zwingen) for (const p of Object.keys(await googleKalenderNamen())) await googleAbgleichen(p);
+    if (verbunden()) await abgleichen(!zwingen ? {} : kal && kal.quelle !== 'google' ? { nur: kal.id } : { erzwingen: true });
     return true;
   } catch { return false; }
 }
@@ -75,7 +80,12 @@ async function frischAbgleichen(seite: BuchungsSeite): Promise<boolean> {
 /** Ist gerade etwas buchbar? (Verantwortlicher gesetzt, iCloud verbunden, Stand frisch und ohne Fehler) */
 async function buchbar(seite: BuchungsSeite, jetzt: Date): Promise<boolean> {
   if (!seite.verantwortlich || seite.verantwortlich.trim().length < 5) return false;
-  return standBuchbar(verbunden() ? abgleichAlter(await ladeStand(), jetzt.getTime()) : null, verbunden()).ok;
+  // Jede verbundene Quelle muss frisch und fehlerfrei sein: iCloud (wenn verbunden) und jeder Google-Kalender (03.10.).
+  const quellen: { a: ReturnType<typeof abgleichAlter> | null }[] = [];
+  if (verbunden()) quellen.push({ a: abgleichAlter(await ladeStand(), jetzt.getTime()) });
+  for (const p of Object.keys(await googleKalenderNamen())) quellen.push({ a: googleAlter(await ladeGoogleStand(p), jetzt.getTime()) });
+  if (!quellen.length) return false;
+  return quellen.every(q => standBuchbar(q.a, true).ok);
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ slug: string }> }) {
@@ -122,7 +132,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   if (!e.ok) return antwort({ ok: false, fehler: e.fehler }, e.status);
 
   // #73: nie auf einem alten Stand reservieren — erst frisch abgleichen; scheitert das oder ist der Stand nicht frisch → 503.
-  if (!verbunden() || !(await frischAbgleichen(seite)) || !(await buchbar(seite, jetzt))) return antwort({ ok: false, fehler: NICHT_BUCHBAR }, 503, { 'Retry-After': '600' });
+  if (!(await kalenderQuelleDa()) || !(await frischAbgleichen(seite)) || !(await buchbar(seite, jetzt))) return antwort({ ok: false, fehler: NICHT_BUCHBAR }, 503, { 'Retry-After': '600' });
 
   const heute = localDay(jetzt);
   const bis = tagPlus(heute, seite.tageVoraus + 1);
