@@ -7,7 +7,7 @@
 // die Uhrzeit bleibt) — dieselben Regeln wie im Raster (lib/kalender/aufgaben.ts).
 
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { LEUCHT } from '../schlank';
+import { LEUCHT } from '../ui';
 import { FRIST_ZEICHEN, type KTermin, type KFrist, type KErinnerung } from './teile';
 import { ART_FARBE } from '@/types/planer';
 import type { KalenderAufgabe } from '@/lib/kalender/aufgaben';
@@ -37,19 +37,24 @@ export function Monat({ blatt, monat, heute, termine, fristen, erinnerungen, far
           const platzAuf = Math.max(0, MAX - heutige.length);
           const rest = Math.max(0, heutige.length - MAX) + Math.max(0, auf.length - platzAuf);
           return (
-            <div key={tag} onClick={() => onTag(tag)} data-monatstag={tag}
+            <div key={tag} onClick={() => onTag(tag)} data-monatstag={tag} role="button" tabIndex={0} className="ui-monat-zelle ui-kein-ziel" aria-label={`${Number(tag.slice(8, 10))}. — ${heutige.length + auf.length ? `${heutige.length + auf.length} Einträge` : 'frei'}, Tag öffnen`}
+              onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); onTag(tag); } }}
               onDragOver={e => { if (onAufgabeEinplanen && ziehtAufgabe(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
               onDrop={e => { const id = aufgabeAusZiehen(e); if (!id || !onAufgabeEinplanen) return; e.preventDefault(); onAufgabeEinplanen(id, tag, aufgaben.find(a => a.id === id)?.zeit ?? null); }}
               style={{ minWidth: 0, minHeight: 92, padding: '5px 5px 4px', borderRight: '1px solid rgba(255,255,255,.05)', borderBottom: '1px solid rgba(255,255,255,.05)', background: h ? 'rgba(255,255,255,.03)' : undefined, opacity: imMonat ? 1 : .45, cursor: 'pointer', display: 'grid', gridTemplateRows: 'auto 1fr', gap: 3, alignContent: 'start' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', fontSize: 12.5, fontWeight: 700, background: h ? LEUCHT.puls : 'transparent', color: h ? '#0b0b0c' : C.inkDim }}>{Number(tag.slice(8, 10))}</span>
-                {fr.slice(0, 3).map(f => <span key={f.id} title={`${FRIST_ZEICHEN[f.art].label}: ${f.titel}`} style={{ fontSize: 11, color: FRIST_ZEICHEN[f.art].farbe }}>{FRIST_ZEICHEN[f.art].zeichen}</span>)}
-                {er.length > 0 && <span title={`${er.length} Erinnerungen`} style={{ fontSize: 11, color: LEUCHT.schlaf }}>◷{er.length > 1 ? er.length : ''}</span>}
+                {fr.slice(0, 3).map(f => <span key={f.id} title={`${FRIST_ZEICHEN[f.art].label}: ${f.titel}`} style={{ fontSize: 12, color: FRIST_ZEICHEN[f.art].farbe }}>{FRIST_ZEICHEN[f.art].zeichen}</span>)}
+                {er.length > 0 && <span title={`${er.length} Erinnerungen`} style={{ fontSize: 12, color: LEUCHT.schlaf }}>◷{er.length > 1 ? er.length : ''}</span>}
               </div>
-              <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+              <div className="ui-monat-punkte" aria-hidden>
+                {heutige.slice(0, 4).map(t => <span key={t.id} style={{ width: 7, height: 7, borderRadius: '50%', background: farbe(t) }} />)}
+                {heutige.length < 4 && auf.slice(0, 4 - heutige.length).map(a => <span key={a.id} style={{ width: 7, height: 7, borderRadius: 2, border: `1.5px solid ${ART_FARBE.aufgabe}`, boxSizing: 'border-box' }} />)}
+              </div>
+              <div className="ui-monat-pillen" style={{ display: 'grid', gap: 2, minWidth: 0 }}>
                 {heutige.slice(0, MAX).map(t => { const f = farbe(t); return (
-                  <button key={t.id} type="button" onClick={e => { e.stopPropagation(); onOeffnen(t); }} title={`${t.titel} · ${t.ganztags ? 'ganztägig' : t.start.slice(11, 16)} · ${t.kalender}`}
-                    style={{ display: 'flex', gap: 4, alignItems: 'center', minWidth: 0, textAlign: 'left', border: 'none', borderRadius: 5, padding: '1px 5px', fontSize: 11, fontWeight: 600, lineHeight: 1.4, cursor: 'pointer', fontFamily: SCHRIFT.text,
+                  <button key={t.id} type="button" className="ui-kein-ziel" onClick={e => { e.stopPropagation(); onOeffnen(t); }} title={`${t.titel} · ${t.ganztags ? 'ganztägig' : t.start.slice(11, 16)} · ${t.kalender}`}
+                    style={{ display: 'flex', gap: 4, alignItems: 'center', minWidth: 0, textAlign: 'left', border: 'none', borderRadius: 5, padding: '1px 5px', fontSize: 12, fontWeight: 600, lineHeight: 1.4, cursor: 'pointer', fontFamily: SCHRIFT.text,
                       background: t.ganztags ? `${f}2a` : 'transparent', color: t.ganztags ? C.ink : C.inkDim }}>
                     {!t.ganztags && <span style={{ width: 6, height: 6, borderRadius: '50%', background: f, flex: '0 0 auto' }} />}
                     {!t.ganztags && <span style={{ color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{t.start.slice(11, 16)}</span>}
@@ -59,13 +64,13 @@ export function Monat({ blatt, monat, heute, termine, fristen, erinnerungen, far
                 {auf.slice(0, platzAuf).map(a => (
                   <div key={`a:${a.id}`} draggable={!!onAufgabeEinplanen} onDragStart={e => { e.stopPropagation(); aufgabeZiehStart(e, a.id); }} onClick={e => e.stopPropagation()}
                     title={`Aufgabe${a.eltern ? ` (Unteraufgabe von „${a.eltern}“)` : ''}: ${a.title}${a.zeit ? ` · ${a.zeit}` : ''}`}
-                    style={{ display: 'flex', gap: 4, alignItems: 'center', minWidth: 0, padding: '1px 5px', fontSize: 11, fontWeight: 600, color: ART_FARBE.aufgabe, cursor: onAufgabeEinplanen ? 'grab' : 'default' }}>
+                    style={{ display: 'flex', gap: 4, alignItems: 'center', minWidth: 0, padding: '1px 5px', fontSize: 12, fontWeight: 600, color: ART_FARBE.aufgabe, cursor: onAufgabeEinplanen ? 'grab' : 'default' }}>
                     <button type="button" disabled={!onAufgabeHaken} onClick={() => onAufgabeHaken?.(a.id)} aria-label={`„${a.title}“ als erledigt markieren`}
                       style={{ width: 10, height: 10, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, background: 'transparent', padding: 0, flex: '0 0 auto', cursor: onAufgabeHaken ? 'pointer' : 'default' }} />
                     <button type="button" onClick={() => onAufgabe?.(a.id)} style={{ all: 'unset', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{a.eltern ? '↳ ' : ''}{a.zeit ? `${a.zeit} ` : ''}{a.title}</button>
                   </div>
                 ))}
-                {rest > 0 && <span style={{ fontSize: 11, color: C.inkLeise, paddingLeft: 5 }}>+{rest} mehr</span>}
+                {rest > 0 && <span style={{ fontSize: 12, color: C.inkLeise, paddingLeft: 5 }}>+{rest} mehr</span>}
               </div>
             </div>
           );

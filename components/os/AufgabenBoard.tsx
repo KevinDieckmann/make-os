@@ -19,7 +19,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ORG, ORGS } from '@/lib/make-one/organisation-data';
 import { Faelligkeit } from './Faelligkeit';
 import { BlockiertChip } from './Abhaengigkeit';
-import { Segmente, Punkt, Leer, prioFarbe, LEUCHT } from './schlank';
+import { Segmente, Punkt, Leer, prioFarbe, LEUCHT } from './ui';
 import { EinheitMarke } from './aufgaben/Einheit';
 import { spaceVonOrg } from '@/lib/make-one/space-regeln';
 import type { Task, TaskStatus } from '@/types/tasks';
@@ -92,7 +92,7 @@ export function AufgabenBoard({ tasks, heute, orgVon, patchTask, setOrg }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <span style={mikro}>Bahnen</span>
         <Segmente liste={BAHN_WAHL} aktiv={bahnen} onWahl={setBahnen} />
-        <span style={{ fontSize: 12, color: C.inkLeise, marginLeft: 'auto' }}>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise, marginLeft: 'auto' }}>
           Karte greifen und in die Spalte ziehen — in einer Bahn abgelegt, wechselt auch {bahnen === 'firma' ? 'die Firma' : 'die Person'}.
         </span>
       </div>
@@ -103,8 +103,8 @@ export function AufgabenBoard({ tasks, heute, orgVon, patchTask, setOrg }: {
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '0 0 8px', paddingLeft: 2 }}>
               <Punkt farbe={g.farbe} />
               <span style={{ fontSize: TYP.body, fontWeight: 700, color: C.ink }}>{g.titel}</span>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>{g.satz}</span>
-              <span style={{ fontFamily: SCHRIFT.display, fontSize: 12, fontWeight: 700, color: g.tasks.length ? C.inkDim : C.inkLeise, marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{g.tasks.length || '—'}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{g.satz}</span>
+              <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, color: g.tasks.length ? C.inkDim : C.inkLeise, marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{g.tasks.length || '—'}</span>
             </div>
           )}
 
@@ -130,11 +130,11 @@ export function AufgabenBoard({ tasks, heute, orgVon, patchTask, setOrg }: {
                     <span style={{ ...mikro, display: 'inline-flex', alignItems: 'center', gap: 6, color: farbe ?? C.inkLeise }}>
                       {farbe && <Punkt farbe={farbe} groesse={6} />}{sp.titel}
                     </span>
-                    <span style={{ fontFamily: SCHRIFT.display, fontSize: 12, fontWeight: 700, color: drin.length ? C.inkDim : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{drin.length || '—'}</span>
+                    <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, color: drin.length ? C.inkDim : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{drin.length || '—'}</span>
                   </div>
 
                   {drin.length === 0 && (
-                    <div style={{ fontSize: 11, color: C.inkLeise, opacity: 0.7, lineHeight: 1.4, padding: '4px 2px' }}>{sp.satz}</div>
+                    <div style={{ fontSize: TYP.bedien, color: C.inkLeise, opacity: 0.7, lineHeight: 1.4, padding: '4px 2px' }}>{sp.satz}</div>
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -202,7 +202,7 @@ function Kanbankarte({ t, alleTasks, heute, org, greift, anfassen, loslassen, pa
           title="Weiterreichen: Kevin → Beide → Malin"
           className="fassbar"
           style={{
-            fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '3px 9px', borderRadius: 999,
+            fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', padding: '3px 9px', borderRadius: 999,
             border: 'none', background: `${person}22`, color: person, letterSpacing: '.02em',
           }}>{PERSON[t.assignee ?? 'kevin']}</button>
 
@@ -211,7 +211,7 @@ function Kanbankarte({ t, alleTasks, heute, org, greift, anfassen, loslassen, pa
 
         {/* Business-Einheit (27.09.) — Anzeige; ändern im Detail der Liste. */}
         {t.einheit && (t.space ?? spaceVonOrg(org)) === 'business' && <EinheitMarke name={t.einheit} stil={{ marginLeft: 'auto' }} />}
-        {o && <span style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: o.farbe, opacity: 0.9, marginLeft: t.einheit && (t.space ?? spaceVonOrg(org)) === 'business' ? 0 : 'auto' }}>{o.kurz}</span>}
+        {o && <span style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, color: o.farbe, opacity: 0.9, marginLeft: t.einheit && (t.space ?? spaceVonOrg(org)) === 'business' ? 0 : 'auto' }}>{o.kurz}</span>}
       </div>
     </div>
   );

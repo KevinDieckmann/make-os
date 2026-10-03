@@ -6,7 +6,7 @@
 
 import type { CSSProperties } from 'react';
 import { Lock } from 'lucide-react';
-import { FARBE as C, SCHRIFT, LEUCHT } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, LEUCHT, TYP } from '@/lib/make-one/design';
 import type { Task } from '@/types/tasks';
 
 /** Farbe „Abgebrochen“ (wie GRUNDSTATUS in lib/aufgaben/struktur.ts). */
@@ -17,7 +17,7 @@ export const istNurIchTask = (t: Pick<Task, 'sichtbarkeit'>): boolean => t.sicht
 /** 🔒 — nur die Anlegerin sieht diese Aufgabe. */
 export function NurIchZeichen({ groesse = 12, text }: { groesse?: number; text?: boolean }) {
   return (
-    <span title="Nur ich — nur du siehst diese Aufgabe" aria-label="nur ich" role="img" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: LEUCHT.schlaf, flex: '0 0 auto', fontSize: 12, fontWeight: 600 }}>
+    <span title="Nur ich — nur du siehst diese Aufgabe" aria-label="nur ich" role="img" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: LEUCHT.schlaf, flex: '0 0 auto', fontSize: TYP.bedien, fontWeight: 600 }}>
       <Lock size={groesse} aria-hidden />{text && 'nur ich'}
     </span>
   );
@@ -32,7 +32,7 @@ export function titelStil(t: Pick<Task, 'status'>): CSSProperties {
 
 /** „abgebrochen“ als kleines Schild (für Zeilen, in denen der Status sonst nicht steht). */
 export function AbgebrochenSchild() {
-  return <span style={{ color: ABGEBROCHEN_FARBE, border: `1px solid ${ABGEBROCHEN_FARBE}66`, borderRadius: 999, padding: '0 7px', fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', fontFamily: SCHRIFT.text }}>abgebrochen</span>;
+  return <span style={{ color: ABGEBROCHEN_FARBE, border: `1px solid ${ABGEBROCHEN_FARBE}66`, borderRadius: 999, padding: '0 7px', fontSize: TYP.bedien, fontWeight: 600, whiteSpace: 'nowrap', fontFamily: SCHRIFT.text }}>abgebrochen</span>;
 }
 
 const PRIO_TEXT: Record<string, { zeichen: string; wort: string; farbe: string }> = {
@@ -43,7 +43,7 @@ const PRIO_TEXT: Record<string, { zeichen: string; wort: string; farbe: string }
 export function PrioZeichen({ p }: { p: string }) {
   const x = PRIO_TEXT[p];
   if (!x) return null;
-  return <span title={`Priorität ${x.wort}`} aria-label={`Priorität ${x.wort}`} style={{ color: x.farbe, fontWeight: 800, fontFamily: SCHRIFT.display, fontSize: 12.5, flex: '0 0 auto' }}>{x.zeichen}</span>;
+  return <span title={`Priorität ${x.wort}`} aria-label={`Priorität ${x.wort}`} style={{ color: x.farbe, fontWeight: 800, fontFamily: SCHRIFT.display, fontSize: TYP.bedien, flex: '0 0 auto' }}>{x.zeichen}</span>;
 }
 
 /** Überfällig? (offen und Deadline vor heute) */

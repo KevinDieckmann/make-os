@@ -5,7 +5,7 @@
 
 import { useState, type Dispatch } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, feld, Punkt } from '../schlank';
+import { Karte, Ueberschrift, Knopf, SymbolKnopf, feld, Punkt } from '../ui';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { GRUNDSTATUS, statusListe } from '@/lib/aufgaben/struktur';
 import type { TasksState, TaskStatus } from '@/types/tasks';
@@ -42,9 +42,8 @@ export function StatusVerwalten({ state, dispatch, spaceId, spaceLabel, i = 2 }:
               <span style={{ fontSize: TYP.bedien, color: e ? C.ink : C.inkDim, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
               {e ? <>
                 <Wahl klein label="Grundstatus" liste={BASIS} wert={e.basis === 'backlog' ? 'todo' : e.basis} onWahl={b => dispatch({ type: 'UPDATE_STATUS', payload: { id: e.id, basis: b } })} />
-                <button onClick={() => { if (window.confirm(`Status „${e.label}“ entfernen? Aufgaben behalten ihren Grundstatus.`)) dispatch({ type: 'DELETE_STATUS', payload: { id: e.id } }); }}
-                  aria-label={`${e.label} entfernen`} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 15, padding: '0 4px' }}>×</button>
-              </> : <span style={{ fontSize: 12, color: C.inkLeise }}>fest</span>}
+                <SymbolKnopf onClick={() => { if (window.confirm(`Status „${e.label}“ entfernen? Aufgaben behalten ihren Grundstatus.`)) dispatch({ type: 'DELETE_STATUS', payload: { id: e.id } }); }} ariaLabel={`${e.label} entfernen`} gefahr>×</SymbolKnopf>
+              </> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>fest</span>}
             </div>
           );
         })}
@@ -58,7 +57,7 @@ export function StatusVerwalten({ state, dispatch, spaceId, spaceLabel, i = 2 }:
           <Wahl klein label="Grundstatus" liste={BASIS} wert={basis} onWahl={setBasis} />
           <span style={{ marginLeft: 'auto' }}><Knopf onClick={anlegen} aus={!name.trim()}>Status anlegen</Knopf></span>
         </div>
-        <div style={{ fontSize: 12, color: C.inkLeise, fontFamily: SCHRIFT.text, lineHeight: 1.5 }}>Der Grundstatus sagt allen anderen Seiten, was der Status bedeutet — „Abgelegt“ mit Grundstatus Erledigt zählt überall als erledigt.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, fontFamily: SCHRIFT.text, lineHeight: 1.5 }}>Der Grundstatus sagt allen anderen Seiten, was der Status bedeutet — „Abgelegt“ mit Grundstatus Erledigt zählt überall als erledigt.</div>
       </div>
     </Karte>
   );

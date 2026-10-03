@@ -9,7 +9,7 @@
 // Auswahl-Bauteil auf (components/os/crm/Wahl.tsx mit `onNeu`).
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { EINHEITEN_STANDARD, EINHEIT_MIN, EINHEIT_MAX } from '@/lib/planung/einheiten';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { einheitName } from '@/lib/einheiten';
@@ -63,7 +63,7 @@ export function useEinheiten(): { einheiten: string[]; anlegen: (name: string) =
 export function EinheitMarke({ name, stil }: { name?: string | null; stil?: CSSProperties }) {
   const n = einheitName(name);
   if (!n) return null;
-  return <span title={`Einheit: ${n}`} style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: einheitFarbe(n), whiteSpace: 'nowrap', ...stil }}>{n}</span>;
+  return <span title={`Einheit: ${n}`} style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, color: einheitFarbe(n), whiteSpace: 'nowrap', ...stil }}>{n}</span>;
 }
 
 // ── Auswahl: Chip + Menü ────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ export function EinheitFilterPillen({ optionen, wert, setzen }: { optionen: read
         const farbe = o.farbe === EINHEIT_GRAU ? C.aktiv : o.farbe;
         return (
           <button key={o.id} onClick={() => setzen(o.id)} aria-pressed={an} className="fassbar" style={{
-            fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
+            fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
             border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim,
           }}>{o.label}{o.anzahl ? <span style={{ opacity: 0.6, marginLeft: 5, fontVariantNumeric: 'tabular-nums' }}>{o.anzahl}</span> : null}</button>
         );

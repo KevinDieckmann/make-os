@@ -31,7 +31,7 @@ export function AnlaesseZeile({ feiertage, geburtstage, heute }: Stand) {
           🎂 {g.name} hat {wannText(g.tag, heute)} Geburtstag{g.alter !== undefined && g.alter > 0 ? ` (wird ${g.alter})` : ''}
         </Link>
       ))}
-      <span style={{ fontSize: 12, color: C.inkLeise }}>nächste 7 Tage</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>nächste 7 Tage</span>
     </div>
   );
 }

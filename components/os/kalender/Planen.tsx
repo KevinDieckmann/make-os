@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Zahl, Segmente, Chip, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Zahl, Segmente, Chip, feld, LEUCHT } from '../ui';
 import { ART_FARBE, type PlanArt } from '@/types/planer';
 import { useTasks } from '@/context/TasksContext';
 import { einheitKurz } from '@/lib/aufgaben/einheit';
@@ -205,7 +205,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     const an = gewaehlt?.titel === b.titel && gewaehlt.art === b.art && gewaehlt.taskId === b.taskId;
     return (
       <button key={key} type="button" onClick={() => setGewaehlt(an ? null : b)} aria-pressed={an} className="fassbar"
-        style={{ display: 'inline-block', maxWidth: breit ?? '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle', border: `1px solid ${an ? farbe : 'transparent'}`, background: `${farbe}${an ? '40' : '22'}`, color: farbe, borderRadius: 999, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: SCHRIFT.text, boxShadow: an ? `0 0 0 2px ${farbe}33` : undefined }}>{inhalt}</button>
+        style={{ display: 'inline-block', maxWidth: breit ?? '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle', border: `1px solid ${an ? farbe : 'transparent'}`, background: `${farbe}${an ? '40' : '22'}`, color: farbe, borderRadius: 999, padding: '5px 11px', fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', fontFamily: SCHRIFT.text, boxShadow: an ? `0 0 0 2px ${farbe}33` : undefined }}>{inhalt}</button>
     );
   };
 
@@ -225,7 +225,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
         {tage.length > 1 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
             {tage.map((tag, i) => { const h = (stunden.jeTag[tag] ?? 0) / 60; const f = h > 10 ? LEUCHT.kritisch : h > 8 ? LEUCHT.achtung : C.inkLeise; return (
-              <span key={tag} title={h > 10 ? 'überladen — Ruhe braucht Luft' : h > 8 ? 'voll — Pausen ernst nehmen' : 'Auslastung'} style={{ fontSize: 11.5, color: f, fontVariantNumeric: 'tabular-nums', background: 'rgba(255,255,255,.04)', borderRadius: 8, padding: '3px 8px' }}>{WD[i] ?? tag.slice(8)} {fmtH(h * 60)} h</span>
+              <span key={tag} title={h > 10 ? 'überladen — Ruhe braucht Luft' : h > 8 ? 'voll — Pausen ernst nehmen' : 'Auslastung'} style={{ fontSize: TYP.bedien, color: f, fontVariantNumeric: 'tabular-nums', background: 'rgba(255,255,255,.04)', borderRadius: 8, padding: '3px 8px' }}>{WD[i] ?? tag.slice(8)} {fmtH(h * 60)} h</span>
             ); })}
           </div>
         )}
@@ -245,7 +245,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
       {!!uebernahme && !uebernahme.offen && (uebernahme.uebersprungen > 0 || uebernahme.unterbrochen) && (
         <Karte i={1} akzent={LEUCHT.achtung}>
           <Ueberschrift farbe={LEUCHT.achtung}>Alter Wochenplan</Ueberschrift>
-          <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
             {uebernahme.unterbrochen ? 'Die Übernahme wurde unterbrochen (iCloud nicht erreichbar) und läuft von selbst weiter. ' : ''}
             {uebernahme.uebersprungen ? `${uebernahme.uebersprungen} ${uebernahme.uebersprungen === 1 ? 'Block ließ' : 'Blöcke ließen'} sich nicht übernehmen und ${uebernahme.uebersprungen === 1 ? 'bleibt' : 'bleiben'} im Archiv.` : ''}
           </div>
@@ -257,15 +257,15 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
       {!!uebernahme?.offen && (
         <Karte i={1} akzent={LEUCHT.achtung}>
           <Ueberschrift farbe={LEUCHT.achtung}>Alter Wochenplan</Ueberschrift>
-          <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
             {uebernahmeTexte(uebernahme.offen).karte}
           </div>
-          <div role="note" style={{ fontSize: 12.5, color: LEUCHT.achtung, lineHeight: 1.5, marginTop: 8, fontWeight: 600 }}>
+          <div role="note" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.5, marginTop: 8, fontWeight: 600 }}>
             {uebernahmeTexte(uebernahme.offen).warnung}
           </div>
           <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
             {uebernahme.personen.filter(p => p.zukuenftig).map(p => (
-              <div key={p.person} style={{ fontSize: 12, color: C.inkDim }}>
+              <div key={p.person} style={{ fontSize: TYP.bedien, color: C.inkDim }}>
                 <b style={{ color: C.ink }}>{p.person === 'malin' ? 'Malin' : p.person === 'kevin' ? 'Kevin' : p.person}</b>: {p.zukuenftig} künftig{p.mitApple ? ` (${p.mitApple} schon in Apple)` : ''} · {p.vergangen} vergangen (Archiv)
                 <div style={{ color: C.inkLeise }}>{p.beispiele.map(x => `${x.tag.slice(8)}.${x.tag.slice(5, 7)}. ${x.zeit} ${x.titel}`).join(' · ')}</div>
               </div>
@@ -273,36 +273,36 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
           </div>
           <div style={{ marginTop: 10 }}>
             <Knopf farbe={LEUCHT.achtung} aus={uebernahmeLaeuft || !uebernahme.icloud || uebernahme.laeuft} onClick={() => uebernehmen()}>{uebernahmeLaeuft || uebernahme.laeuft ? 'übernimmt …' : uebernahme.icloud ? 'Jetzt übernehmen' : 'Erst iCloud verbinden'}</Knopf>
-            {uebernahme.uebersprungen > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: C.inkLeise }}>{uebernahme.uebersprungen} übersprungen</span>}
+            {uebernahme.uebersprungen > 0 && <span style={{ marginLeft: 8, fontSize: TYP.bedien, color: C.inkLeise }}>{uebernahme.uebersprungen} übersprungen</span>}
           </div>
         </Karte>
       )}
       {!!uebernahme && !uebernahme.offen && !uebernahme.unterbrochen && uebernahme.zuruecknehmbar > 0 && (
-        <div style={{ fontSize: 12, color: C.inkLeise, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span>Alter Wochenplan übernommen ({uebernahme.zuruecknehmbar} {uebernahme.zuruecknehmbar === 1 ? 'Termin' : 'Termine'}).</span>
           <Knopf leise aus={uebernahmeLaeuft} onClick={() => void zuruecknehmen()}>Übernahme zurücknehmen …</Knopf>
         </div>
       )}
       <Karte i={1}>
-        <Ueberschrift rechts={<span style={{ fontSize: 11.5, color: C.inkLeise }}>antippen, dann in den Kalender</span>}>Bausteine</Ueberschrift>
+        <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>antippen, dann in den Kalender</span>}>Bausteine</Ueberschrift>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {BAUSTEINE.map(b => chip(b, ART_FARBE[b.art], `${b.titel} · ${b.dauerMin}m`, `b-${b.art}`))}
         </div>
         <div style={{ marginTop: 12 }}>
-          <Ueberschrift rechts={<Link href={WEG.routinen()} style={{ fontSize: 12, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>planen ›</Link>}>Routinen</Ueberschrift>
+          <Ueberschrift rechts={<Link href={WEG.routinen()} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>planen ›</Link>}>Routinen</Ueberschrift>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {routinen.map(r => chip({ art: 'routine', titel: r.label, dauerMin: r.dauerMin || 30 }, ART_FARBE.routine, r.label, `r-${r.id}`))}
             {!routinen.length && <Leer>Noch keine Routinen — im Routine-Planer anlegen.</Leer>}
           </div>
         </div>
         <div style={{ marginTop: 12 }}>
-          <Ueberschrift rechts={<span style={{ fontSize: 11.5, color: C.inkLeise }}>◎ = <Link href="/os/kompass" style={{ color: C.aktiv, textDecoration: 'none' }}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
+          <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>◎ = <Link href="/os/kompass" style={{ color: C.aktiv, textDecoration: 'none' }}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {offeneAufgaben.map(t => chip({ art: 'aufgabe', titel: t.title, dauerMin: 60, taskId: t.id }, t.imFokus ? LEUCHT.schlaf : ART_FARBE.aufgabe,
               <>{t.priority === 'critical' ? '‼ ' : ''}{t.imFokus ? '◎ ' : ''}{t.einheit ? <span style={{ opacity: 0.75 }}>{einheitKurz(t.einheit)} · </span> : null}{t.title}</>, `a-${t.id}`, 240))}
             {!offeneAufgaben.length && <Leer>Alles eingeplant oder erledigt.</Leer>}
           </div>
-          <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 6, lineHeight: 1.45 }}>Ein Aufgaben-Block reserviert Arbeitszeit — die Deadline der Aufgabe bleibt, wie sie ist.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.45 }}>Ein Aufgaben-Block reserviert Arbeitszeit — die Deadline der Aufgabe bleibt, wie sie ist.</div>
         </div>
       </Karte>
       <Karte i={2}>
@@ -313,11 +313,11 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {(['block', 'fokus', 'reha', 'pause'] as const).map(a => (
               <button key={a} type="button" className="fassbar" onClick={() => setNeuArt(a)} aria-pressed={neuArt === a}
-                style={{ fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 700, padding: '6px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', background: neuArt === a ? `${ART_FARBE[a]}26` : 'rgba(255,255,255,.05)', color: neuArt === a ? ART_FARBE[a] : C.inkDim }}>{ART_LABEL[a]}</button>
+                style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '6px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', background: neuArt === a ? `${ART_FARBE[a]}26` : 'rgba(255,255,255,.05)', color: neuArt === a ? ART_FARBE[a] : C.inkDim }}>{ART_LABEL[a]}</button>
             ))}
           </div>
           <div><Knopf leise onClick={() => setGewaehlt({ art: neuArt, titel: neuTitel.trim() || (neuArt === 'block' ? 'Blockzeit' : ART_LABEL[neuArt]), dauerMin: neuDauer })}>Platzieren</Knopf></div>
-          <div style={{ fontSize: 11.5, color: C.inkLeise, lineHeight: 1.45 }}>Blöcke sind Termine in iCloud (auf allen Geräten), beschäftigt — ziehen verschiebt, im Termin-Fenster „frei“ stellen, wenn er keine Zeit sperren soll.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>Blöcke sind Termine in iCloud (auf allen Geräten), beschäftigt — ziehen verschiebt, im Termin-Fenster „frei“ stellen, wenn er keine Zeit sperren soll.</div>
         </div>
       </Karte>
     </div>
@@ -328,7 +328,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     <div style={{ display: 'grid', gap: 12 }}>
       {(fokus.woche || fokus.monat) && (
         <Karte i={1}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/monat" style={{ fontSize: 12, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Monatsziele ›</Link>}>Fokus</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/monat" style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Monatsziele ›</Link>}>Fokus</Ueberschrift>
           <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(16px,2vw,18px)', fontWeight: 600, lineHeight: 1.4 }}><span style={{ color: LEUCHT.schlaf }}>◎</span> {fokus.woche || fokus.monat}</div>
         </Karte>
       )}

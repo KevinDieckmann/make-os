@@ -13,15 +13,15 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../schlank';
+import { Knopf, feld, LEUCHT, SymbolKnopf } from '../ui';
 import { useCrmVerweise } from '../aufgaben/hilfe';
 import { crmSuchen, bezugName, bezugLink, bezugSetzen, bezugOhne, BEZUG_ARTEN, BEZUG_LABEL } from '@/lib/aufgaben/crm-verweise';
 import { adresseAus, gastDazu, einladungFrage, antwortenZaehlen, TEILNAHME_LABEL, TEILNAHME_ZEICHEN, type GastWahl, type Teilnehmer } from '@/lib/kalender/gaeste';
 import type { BezugKennungen } from '@/lib/kalender/bezug';
 import type { KTermin } from './teile';
 
-const mikro = { fontSize: 12.5, color: C.inkLeise } as const;
-const chip = { display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '3px 4px 3px 10px', fontSize: 12.5, maxWidth: '100%', minWidth: 0 } as const;
+const mikro = { fontSize: TYP.bedien, color: C.inkLeise } as const;
+const chip = { display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '3px 4px 3px 10px', fontSize: TYP.bedien, maxWidth: '100%', minWidth: 0 } as const;
 
 /** Nur die vier CRM-Felder (Aufgabe/Event bleiben, wie sie sind). */
 type CrmBezug = Pick<BezugKennungen, 'kontaktId' | 'firmaId' | 'mandatId' | 'dealId'>;
@@ -45,11 +45,11 @@ export function TerminVerknuepfen({ wert, onWert, aus }: { wert: CrmBezug; onWer
             <span key={a} style={{ ...chip, border: `1px solid ${LEUCHT.business}55`, background: `${LEUCHT.business}14` }}>
               <span style={{ color: C.inkLeise }}>{BEZUG_LABEL[a]}</span>
               <Link href={bezugLink(a, id)} style={{ color: LEUCHT.business, textDecoration: 'none', fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bezugName(verweise, a, id) ?? (verweise ? 'nicht mehr im CRM' : '…')}</Link>
-              {!aus && <button type="button" onClick={() => onWert((bezugOhne(wert, a) ?? {}) as CrmBezug)} aria-label={`${BEZUG_LABEL[a]} lösen`} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, padding: '0 6px' }}>×</button>}
+              {!aus && <SymbolKnopf onClick={() => onWert((bezugOhne(wert, a) ?? {}) as CrmBezug)} ariaLabel={`${BEZUG_LABEL[a]} lösen`} eingebettet>×</SymbolKnopf>}
             </span>
           );
         })}
-        {!aus && !offen && <button type="button" onClick={() => { setOffen(true); setTimeout(() => feldRef.current?.focus(), 0); }} className="fassbar" style={{ border: '1px dashed rgba(255,255,255,.2)', background: 'transparent', color: C.inkDim, borderRadius: 999, padding: '4px 11px', fontSize: 12.5, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+ verknüpfen</button>}
+        {!aus && !offen && <button type="button" onClick={() => { setOffen(true); setTimeout(() => feldRef.current?.focus(), 0); }} className="fassbar" style={{ border: '1px dashed rgba(255,255,255,.2)', background: 'transparent', color: C.inkDim, borderRadius: 999, padding: '4px 11px', fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+ verknüpfen</button>}
       </div>
       {offen && (
         <div>
@@ -62,11 +62,11 @@ export function TerminVerknuepfen({ wert, onWert, aus }: { wert: CrmBezug; onWer
                 style={{ display: 'flex', gap: 10, alignItems: 'baseline', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '8px 4px', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, minWidth: 0 }}>
                 <span style={{ ...mikro, width: 58, flex: '0 0 auto' }}>{BEZUG_LABEL[x.art]}</span>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.name}</span>
-                {x.unter && <span style={{ color: C.inkLeise, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.unter}</span>}
+                {x.unter && <span style={{ color: C.inkLeise, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.unter}</span>}
               </button>
             ))}
             {suche.trim() && verweise && !treffer.length && <span style={{ ...mikro, padding: '6px 4px' }}>Nichts gefunden.</span>}
-            <button type="button" onClick={() => { setOffen(false); setSuche(''); }} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: '6px 4px' }}>fertig</button>
+            <button type="button" onClick={() => { setOffen(false); setSuche(''); }} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '6px 4px' }}>fertig</button>
           </div>
         </div>
       )}
@@ -100,8 +100,8 @@ export function GaesteWahl({ gaeste, onGaeste, antworten, aus, hinweis }: {
               style={{ ...chip, border: `1px solid ${g.werbesperre ? `${LEUCHT.achtung}66` : 'rgba(255,255,255,.14)'}`, background: 'rgba(255,255,255,.04)' }}>
               {s && <span aria-label={TEILNAHME_LABEL[s]} style={{ color: s === 'zugesagt' ? LEUCHT.gut : s === 'abgesagt' ? LEUCHT.kritisch : C.inkLeise, fontWeight: 800 }}>{TEILNAHME_ZEICHEN[s]}</span>}
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{g.name ?? g.email}</span>
-              {g.kontaktId && <span aria-label="aus dem CRM" title="aus dem CRM" style={{ color: LEUCHT.business, fontSize: 11 }}>CRM</span>}
-              {!aus && <button type="button" onClick={() => onGaeste(gaeste.filter(x => x.email !== g.email))} aria-label={`${g.name ?? g.email} entfernen`} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, padding: '0 6px' }}>×</button>}
+              {g.kontaktId && <span aria-label="aus dem CRM" title="aus dem CRM" style={{ color: LEUCHT.business, fontSize: TYP.bedien }}>CRM</span>}
+              {!aus && <SymbolKnopf onClick={() => onGaeste(gaeste.filter(x => x.email !== g.email))} ariaLabel={`${g.name ?? g.email} entfernen`} eingebettet>×</SymbolKnopf>}
             </span>
           ); })}
         </div>
@@ -118,16 +118,16 @@ export function GaesteWahl({ gaeste, onGaeste, antworten, aus, hinweis }: {
                 <button key={g.kontaktId ?? g.email} type="button" role="option" aria-selected={false} onClick={() => dazu(g)} className="fassbar"
                   style={{ display: 'flex', gap: 10, alignItems: 'baseline', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '8px 4px', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, minWidth: 0 }}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
-                  <span style={{ color: C.inkLeise, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.email}</span>
-                  {g.werbesperre && <span style={{ color: LEUCHT.achtung, fontSize: 11.5, whiteSpace: 'nowrap' }}>Werbesperre</span>}
+                  <span style={{ color: C.inkLeise, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.email}</span>
+                  {g.werbesperre && <span style={{ color: LEUCHT.achtung, fontSize: TYP.bedien, whiteSpace: 'nowrap' }}>Werbesperre</span>}
                 </button>
               ))}
             </div>
           )}
         </div>
       )}
-      {gesperrt > 0 && <span role="note" style={{ fontSize: 12, color: LEUCHT.achtung }}>{gesperrt === 1 ? 'Eine Person hat' : `${gesperrt} Personen haben`} eine Werbesperre — ein 1:1-Termin ist keine Werbung und bleibt erlaubt; bitte keine werblichen Inhalte in die Einladung.</span>}
-      {hinweis && <span style={{ fontSize: 12, color: C.inkLeise }}>{hinweis}</span>}
+      {gesperrt > 0 && <span role="note" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{gesperrt === 1 ? 'Eine Person hat' : `${gesperrt} Personen haben`} eine Werbesperre — ein 1:1-Termin ist keine Werbung und bleibt erlaubt; bitte keine werblichen Inhalte in die Einladung.</span>}
+      {hinweis && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{hinweis}</span>}
     </div>
   );
 }
@@ -141,11 +141,11 @@ export function EinladungFrage({ was, adressen, laeuft, onJa, onNein, nein = 'Zu
   return (
     <div role="alertdialog" aria-label={einladungFrage(was, adressen.length)} style={{ display: 'grid', gap: 8, background: `${LEUCHT.achtung}14`, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 12, padding: '10px 12px' }}>
       <b style={{ fontSize: TYP.bedien }}>{einladungFrage(was, adressen.length)}</b>
-      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: C.inkDim, lineHeight: 1.6, maxHeight: 140, overflowY: 'auto', wordBreak: 'break-all' }}>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, maxHeight: 140, overflowY: 'auto', wordBreak: 'break-all' }}>
         {adressen.map(a => <li key={a}>{a}</li>)}
       </ul>
-      {warnung && <span role="note" style={{ fontSize: 12, color: LEUCHT.achtung, lineHeight: 1.45 }}>{warnung}</span>}
-      <span style={{ fontSize: 12, color: C.inkLeise }}>iCloud verschickt die Mail vom Kalenderkonto. Ohne „Senden“ wird nichts gespeichert.</span>
+      {warnung && <span role="note" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.45 }}>{warnung}</span>}
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>iCloud verschickt die Mail vom Kalenderkonto. Ohne „Senden“ wird nichts gespeichert.</span>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Knopf farbe={LEUCHT.achtung} aus={laeuft} onClick={onJa}>{laeuft ? 'sendet …' : was === 'antwort' ? 'Antwort senden' : was === 'absage' ? 'Absage senden und löschen' : 'Senden und speichern'}</Knopf>
         <Knopf leise onClick={onNein}>{nein}</Knopf>

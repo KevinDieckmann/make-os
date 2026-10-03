@@ -9,8 +9,8 @@
 // Am Handy bedienbar: Tasten ≥ 44 px, Eingaben 16 px.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { Knopf, LEUCHT } from '../schlank';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Knopf, LEUCHT } from '../ui';
 import type { Adr, GmailAlias } from '@/lib/gmail/typen';
 
 export interface AntwortDaten {
@@ -71,7 +71,7 @@ export function GmailAntwort({ d, allen, onGesendet, onZu, meldung }: { d: Antwo
     setFehler(r.d.fehler ?? 'Nicht gesendet.');
   };
 
-  const label = { fontSize: 12, color: C.inkLeise, marginBottom: 4, display: 'block' } as const;
+  const label = { fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 4, display: 'block' } as const;
   return (
     <div style={{ marginTop: 14, borderTop: `1px solid ${C.linie}`, paddingTop: 12, display: 'grid', gap: 10 }} data-gmail="antwort">
       <div style={{ fontWeight: 700, fontSize: 13.5 }}>{allen ? 'Allen antworten' : 'Antworten'} · <span style={{ color: C.inkLeise, fontWeight: 500 }}>{d.betreff}</span></div>
@@ -92,7 +92,7 @@ export function GmailAntwort({ d, allen, onGesendet, onZu, meldung }: { d: Antwo
         <Knopf onClick={() => senden(false)} aus={laeuft || !text.trim() || !an.trim()}>{laeuft ? 'sendet …' : 'Senden'}</Knopf>
         <Knopf leise onClick={entwurf} aus={schreibt || laeuft}>{schreibt ? 'ZOE schreibt …' : 'ZOE-Entwurf'}</Knopf>
         <Knopf leise onClick={() => { if (!text.trim() || window.confirm('Entwurf verwerfen?')) { schreibe(d.antwortAuf, ''); onZu(); } }} aus={laeuft}>Verwerfen</Knopf>
-        <span style={{ fontSize: 12, color: C.inkLeise }}>Gesendet wird nur mit dem Klick auf „Senden“.</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gesendet wird nur mit dem Klick auf „Senden“.</span>
       </div>
     </div>
   );

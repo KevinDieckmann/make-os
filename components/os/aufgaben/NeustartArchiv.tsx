@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Leer, Punkt, Knopf } from '../schlank';
+import { Karte, Leer, Punkt, Knopf } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';
 import type { ArchivLaufSicht, NeustartAuswahl } from '@/lib/aufgaben/neustart-server';
@@ -21,8 +21,8 @@ const HORIZONT: Record<string, string> = { jahr: 'Jahr', quartal: 'Quartal', mon
 const ZEIGEN = 30;
 
 function Zurueck({ zurueck, onClick, label }: { zurueck: boolean; onClick: () => Promise<void>; label: string }) {
-  if (zurueck) return <span style={{ marginLeft: 'auto', fontSize: 12, color: LEUCHT.gut }}>zurück ✓</span>;
-  return <span style={{ marginLeft: 'auto' }}><button onClick={() => void onClick()} aria-label={`${label} wiederherstellen`} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, minHeight: 36, padding: '4px 6px' }}>Wiederherstellen</button></span>;
+  if (zurueck) return <span style={{ marginLeft: 'auto', fontSize: TYP.bedien, color: LEUCHT.gut }}>zurück ✓</span>;
+  return <span style={{ marginLeft: 'auto' }}><button onClick={() => void onClick()} aria-label={`${label} wiederherstellen`} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, minHeight: 36, padding: '4px 6px' }}>Wiederherstellen</button></span>;
 }
 
 function Abschnitt({ titel, anzahl, children }: { titel: string; anzahl: number; children: ReactNode }) {
@@ -86,17 +86,17 @@ export function NeustartArchiv({ spaces }: { spaces: readonly AufgabenSpace[] })
           <Karte key={l.id} i={3 + i}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ fontFamily: SCHRIFT.display, fontSize: 16, fontWeight: 700, color: C.ink }}>Neustart vom {new Date(l.am).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Berlin' })}</span>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>{new Date(l.am).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr · {personen.find(p => p.speicher === l.von)?.name ?? l.von}{l.status !== 'fertig' ? ' · nicht abgeschlossen' : ''}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{new Date(l.am).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr · {personen.find(p => p.speicher === l.von)?.name ?? l.von}{l.status !== 'fertig' ? ' · nicht abgeschlossen' : ''}</span>
               <span style={{ marginLeft: 'auto' }}>
-                {l.offen > 0 ? <Knopf leise onClick={() => zurueck(l.id, { art: 'alles' })}>Alles wiederherstellen ({l.offen})</Knopf> : <span style={{ fontSize: 12.5, color: LEUCHT.gut }}>alles zurück ✓</span>}
+                {l.offen > 0 ? <Knopf leise onClick={() => zurueck(l.id, { art: 'alles' })}>Alles wiederherstellen ({l.offen})</Knopf> : <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>alles zurück ✓</span>}
               </span>
             </div>
             <Abschnitt titel="Ziele" anzahl={l.ziele.length}>
               {(kurz(l.ziele) as ArchivLaufSicht['ziele']).map(z => (
                 <div key={`${z.speicher}|${z.horizont}|${z.id}`} style={zeileStil}>
-                  <span style={{ fontSize: 12, color: C.inkLeise, minWidth: 58 }}>{HORIZONT[z.horizont]}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise, minWidth: 58 }}>{HORIZONT[z.horizont]}</span>
                   <span style={{ color: z.erledigt ? C.inkLeise : C.ink, fontSize: 14, textDecoration: z.erledigt ? 'line-through' : undefined }}>{z.titel}</span>
-                  {z.speicher !== 'ziele' && <span style={{ fontSize: 12, color: C.inkLeise }}>persönlich</span>}
+                  {z.speicher !== 'ziele' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>persönlich</span>}
                   <Zurueck zurueck={z.zurueck} label={z.titel} onClick={() => zurueck(l.id, { art: 'ziel', speicher: z.speicher, horizont: z.horizont, id: z.id })} />
                 </div>
               ))}
@@ -105,7 +105,7 @@ export function NeustartArchiv({ spaces }: { spaces: readonly AufgabenSpace[] })
               {(kurz(l.meilensteine) as ArchivLaufSicht['meilensteine']).map(m => (
                 <div key={m.id} style={zeileStil}>
                   <span style={{ color: m.erledigt ? C.inkLeise : C.ink, fontSize: 14, textDecoration: m.erledigt ? 'line-through' : undefined }}>{m.titel}</span>
-                  {m.faellig && <span style={{ fontSize: 12, color: C.inkLeise }}>{tagKurz(m.faellig)}</span>}
+                  {m.faellig && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{tagKurz(m.faellig)}</span>}
                   <Zurueck zurueck={m.zurueck} label={m.titel} onClick={() => zurueck(l.id, { art: 'meilenstein', id: m.id })} />
                 </div>
               ))}
@@ -115,7 +115,7 @@ export function NeustartArchiv({ spaces }: { spaces: readonly AufgabenSpace[] })
                 <div key={p.id} style={zeileStil}>
                   <Punkt farbe={p.farbe ?? C.inkDim} />
                   <span style={{ color: C.ink, fontSize: 14 }}>{p.titel}</span>
-                  <span style={{ fontSize: 12, color: C.inkLeise }}>{spaceLabel(spaces, p.spaceId)} · {p.aufgaben} Aufgabe{p.aufgaben === 1 ? '' : 'n'}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{spaceLabel(spaces, p.spaceId)} · {p.aufgaben} Aufgabe{p.aufgaben === 1 ? '' : 'n'}</span>
                   <Zurueck zurueck={p.zurueck} label={p.titel} onClick={() => zurueck(l.id, { art: 'projekt', id: p.id })} />
                 </div>
               ))}
@@ -124,7 +124,7 @@ export function NeustartArchiv({ spaces }: { spaces: readonly AufgabenSpace[] })
               {(kurz(l.aufgaben) as ArchivLaufSicht['aufgaben']).map(t => (
                 <div key={t.id} style={zeileStil}>
                   <span style={{ color: t.erledigt ? C.inkLeise : C.ink, fontSize: 14, textDecoration: t.erledigt ? 'line-through' : undefined }}>{t.titel}</span>
-                  <span style={{ fontSize: 12, color: C.inkLeise }}>{spaceLabel(spaces, t.spaceId)}{t.unter ? ` · ${t.unter} Unteraufgabe${t.unter === 1 ? '' : 'n'}` : ''}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{spaceLabel(spaces, t.spaceId)}{t.unter ? ` · ${t.unter} Unteraufgabe${t.unter === 1 ? '' : 'n'}` : ''}</span>
                   <Zurueck zurueck={t.zurueck} label={t.titel} onClick={() => zurueck(l.id, { art: 'aufgabe', id: t.id })} />
                 </div>
               ))}
@@ -133,13 +133,13 @@ export function NeustartArchiv({ spaces }: { spaces: readonly AufgabenSpace[] })
               {l.serien.map((s, k) => (
                 <div key={k} style={zeileStil}>
                   <span style={{ color: C.inkDim, fontSize: 13.5 }}>↻ {s.titel}</span>
-                  <span style={{ fontSize: 12, color: C.inkLeise }}>{s.art === 'liste' ? 'Liste · ' : ''}{REGEL_LABEL[s.regel as keyof typeof REGEL_LABEL] ?? s.regel}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 12, color: s.zurueck ? LEUCHT.gut : C.inkLeise }}>{s.zurueck ? 'läuft wieder' : 'ruht'}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{s.art === 'liste' ? 'Liste · ' : ''}{REGEL_LABEL[s.regel as keyof typeof REGEL_LABEL] ?? s.regel}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: TYP.bedien, color: s.zurueck ? LEUCHT.gut : C.inkLeise }}>{s.zurueck ? 'läuft wieder' : 'ruht'}</span>
                 </div>
               ))}
             </Abschnitt>
             {!alle[l.id] && [l.ziele, l.meilensteine, l.projekte, l.aufgaben].some(x => x.length > ZEIGEN) && (
-              <button onClick={() => setAlle(a => ({ ...a, [l.id]: true }))} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, marginTop: 8, fontFamily: SCHRIFT.text }}>alle zeigen</button>
+              <button onClick={() => setAlle(a => ({ ...a, [l.id]: true }))} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, marginTop: 8, fontFamily: SCHRIFT.text }}>alle zeigen</button>
             )}
             {!l.ziele.length && !l.meilensteine.length && !l.projekte.length && !l.aufgaben.length && <Leer>Dieser Neustart hat nichts archiviert.</Leer>}
           </Karte>

@@ -9,13 +9,13 @@
 import Link from 'next/link';
 import { CalendarDays, CircleCheckBig } from 'lucide-react';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { LEUCHT } from './schlank';
+import { LEUCHT } from './ui';
 
 export type ZeitSeite = 'kalender' | 'aufgaben';
 type Ziel = { href: string } | { onClick: () => void };
 
 const KNOPF: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 36, border: 'none', borderRadius: 10,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 40, border: 'none', borderRadius: 10,
   cursor: 'pointer', textDecoration: 'none', transition: 'background .2s ease, color .2s ease', fontFamily: SCHRIFT.text,
 };
 

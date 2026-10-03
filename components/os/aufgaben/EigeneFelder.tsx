@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import { useEffect, useState, type CSSProperties, type Dispatch } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld } from '../schlank';
+import { Knopf, feld } from '../ui';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { AUFGABEN_GRENZEN, euroAlsCent } from '@/lib/aufgaben/saeubern';
 import type { EigenesFeld, FeldTyp, FeldWert, Project, Task } from '@/types/tasks';
@@ -58,14 +58,14 @@ export function FelderVerwalten({ projekt, dispatch, aufgaben }: { projekt: Proj
       {felder.map((f, i) => (
         <div key={f.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
           <input defaultValue={f.name} aria-label="Feldname" onBlur={e => { const v = e.target.value.trim().slice(0, 60); if (v && v !== f.name) setze(felder.map(x => (x.id === f.id ? { ...x, name: v } : x))); }} style={{ ...klein, width: 200, flex: '1 1 160px' }} />
-          <span style={{ fontSize: 12.5, color: C.inkDim }}>{FELD_TYP_LABEL[f.typ]}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{FELD_TYP_LABEL[f.typ]}</span>
           {f.typ === 'auswahl' && <input defaultValue={(f.optionen ?? []).join(', ')} aria-label="Auswahl-Werte" placeholder="Werte, mit Komma getrennt"
             onBlur={e => { const o = Array.from(new Set(e.target.value.split(/[,;\n]/).map(x => x.trim().slice(0, 60)).filter(Boolean))).slice(0, AUFGABEN_GRENZEN.optionen); setze(felder.map(x => (x.id === f.id ? { ...x, ...(o.length ? { optionen: o } : { optionen: undefined }) } : x))); }}
             style={{ ...klein, flex: '2 1 200px', width: 'auto' }} />}
-          <span style={{ fontSize: 12, color: C.inkLeise }}>{genutzt(f.id) ? `an ${genutzt(f.id)} Aufgabe${genutzt(f.id) === 1 ? '' : 'n'}` : ''}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{genutzt(f.id) ? `an ${genutzt(f.id)} Aufgabe${genutzt(f.id) === 1 ? '' : 'n'}` : ''}</span>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
             <button disabled={i === 0} onClick={() => { const n = [...felder]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; setze(n); }} aria-label="nach oben" className="fassbar" style={{ background: 'none', border: 'none', color: i ? C.inkDim : 'rgba(255,255,255,.15)', cursor: i ? 'pointer' : 'default' }}>↑</button>
-            <button onClick={() => { if (window.confirm(`Feld „${f.name}“ entfernen? Die Werte an den Aufgaben bleiben gespeichert, werden aber nicht mehr gezeigt.`)) setze(felder.filter(x => x.id !== f.id)); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>Entfernen</button>
+            <button onClick={() => { if (window.confirm(`Feld „${f.name}“ entfernen? Die Werte an den Aufgaben bleiben gespeichert, werden aber nicht mehr gezeigt.`)) setze(felder.filter(x => x.id !== f.id)); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>Entfernen</button>
           </span>
         </div>
       ))}
@@ -99,8 +99,8 @@ function Eingabe({ f, wert, personen, setze }: { f: EigenesFeld; wert: FeldWert 
       <input value={text} onChange={e => setText(e.target.value)} onBlur={speichern} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} aria-label={f.name}
         inputMode={f.typ === 'zahl' || f.typ === 'betrag' ? 'decimal' : undefined} placeholder={f.typ === 'betrag' ? '0,00 €' : f.typ === 'link' ? 'https://…' : ''} style={{ ...klein, flex: 1, minWidth: 0, width: 'auto' }} />
       {f.typ === 'link' && typeof wert === 'string' && (wert.startsWith('/os/')
-        ? <Link href={wert} style={{ color: C.aktiv, fontSize: 12.5, textDecoration: 'none' }}>öffnen ›</Link>
-        : <a href={wert} target="_blank" rel="noopener noreferrer nofollow" style={{ color: C.aktiv, fontSize: 12.5, textDecoration: 'none' }}>öffnen ›</a>)}
+        ? <Link href={wert} style={{ color: C.aktiv, fontSize: TYP.bedien, textDecoration: 'none' }}>öffnen ›</Link>
+        : <a href={wert} target="_blank" rel="noopener noreferrer nofollow" style={{ color: C.aktiv, fontSize: TYP.bedien, textDecoration: 'none' }}>öffnen ›</a>)}
     </span>
   );
 }
@@ -118,7 +118,7 @@ export function FeldWerte({ task, defs, personen, aendern }: { task: Task; defs:
       <div style={{ display: 'grid', gap: 6 }}>
         {defs.map(f => (
           <div key={f.id} style={{ display: 'grid', gridTemplateColumns: '120px minmax(0,1fr)', alignItems: 'center', gap: 10, minHeight: 34 }}>
-            <span style={{ fontSize: 12.5, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={FELD_TYP_LABEL[f.typ]}>{f.name}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={FELD_TYP_LABEL[f.typ]}>{f.name}</span>
             <div style={{ display: 'flex', minWidth: 0 }}><Eingabe f={f} wert={task.felder?.[f.id]} personen={personen} setze={w => setze(f.id, w)} /></div>
           </div>
         ))}

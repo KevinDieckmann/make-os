@@ -62,6 +62,25 @@ export const SPACE_NAME: Record<SpaceId, string> = { privat: 'Privat', business:
 export const SPACE_FADEN: Record<SpaceId, string> = { privat: FADEN_FARBEN.privat[0], business: FADEN_FARBEN.business[0] };
 /** Bündel der Stränge, die direkt am Wurzelknoten hängen („ohne Ziel“) — Zeit-Cyan wie v1. */
 export const OHNE_FARBE = FADEN_FARBEN.ohne;
+
+/** Die EINE Farbregel für Ziele (Lichtfäden-Bündel, Ziel-Chips an Aufgaben, Legenden): Wurzel-Ziele je Space in
+ *  Rang-Reihenfolge (dann Titel, Kennung) fortlaufend durch `FADEN_FARBEN[space]`; abgeleitete Ziele (Kaskade) tragen die
+ *  Farbe ihres Jahresziels. Erledigte Ziele behalten ihren Platz, damit Farben beim Abhaken nicht springen. */
+export interface ZielFarbRoh { id: string; titel: string; space?: SpaceId; rang?: number; abgeleitetVon?: string }
+export function zielFarben(ziele: readonly ZielFarbRoh[]): Map<string, string> {
+  const nachId = new Map(ziele.map(z => [z.id, z]));
+  const wurzeln = ziele.filter(z => !z.abgeleitetVon || !nachId.has(z.abgeleitetVon))
+    .sort((a, b) => (a.rang ?? 1e9) - (b.rang ?? 1e9) || a.titel.localeCompare(b.titel, 'de') || a.id.localeCompare(b.id));
+  const zaehler: Record<SpaceId, number> = { privat: 0, business: 0 };
+  const aus = new Map<string, string>();
+  for (const z of wurzeln) {
+    const space: SpaceId = z.space ?? 'business';
+    const reihe = FADEN_FARBEN[space];
+    aus.set(z.id, reihe[zaehler[space]++ % reihe.length]);
+  }
+  for (const z of ziele) if (!aus.has(z.id)) aus.set(z.id, (z.abgeleitetVon && aus.get(z.abgeleitetVon)) || OHNE_FARBE);
+  return aus;
+}
 /** Anonyme „belegt“-Stränge der anderen Person: neutrales Grau, nie eine Themenfarbe. */
 export const BELEGT_FARBE = '#9AA7B2';
 

@@ -14,6 +14,7 @@ import { meilensteinListeId, zielVonMeilenstein } from '@/lib/planung/meilenstei
 import { WEG } from '@/lib/wege';
 import { abstufen } from '../baum';
 import {
+  zielFarben,
   BEIDE, gewichtVon, knotenId, statusVon, tagAus, themaPfad, type Knoten, type Strang, type ThemaId,
 } from '../modell';
 
@@ -60,22 +61,20 @@ export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
   // Ziel-Knoten: nur Wurzel-Ziele; Farbe je Space in Rang-Reihenfolge.
   const wurzeln = d.ziele.filter(z => !z.abgeleitetVon || !nachId.has(z.abgeleitetVon))
     .sort((a, b) => (a.rang ?? 1e9) - (b.rang ?? 1e9) || a.titel.localeCompare(b.titel, 'de') || a.id.localeCompare(b.id));
-  const zaehler: Record<SpaceId, number> = { privat: 0, business: 0 };
+  const farben = zielFarben(d.ziele);
   const zielPfad = new Map<string, string[]>();
   const bezFirma = new Map<string, string[]>(), bezMandat = new Map<string, string[]>();
   for (const z of wurzeln) {
     const space: SpaceId = z.space ?? 'business';
     const thema: ThemaId = z.mandatId || z.firmaId ? (space === 'business' ? 'mandate' : 'planung')
       : (msVonZiel.get(z.id) ?? []).some(m => m.bereich === 'gesundheit') && space === 'privat' ? 'gesundheit' : 'planung';
-    const reihe = FADEN_FARBEN[space];
-    const i = zaehler[space]++;
     const pfad = [...themaPfad(space, thema), knotenId.ziel(z.id)];
     zielPfad.set(z.id, pfad);
     if (!z.erledigt) {
       if (z.firmaId && !bezFirma.has(z.firmaId)) bezFirma.set(z.firmaId, pfad);
       if (z.mandatId && !bezMandat.has(z.mandatId)) bezMandat.set(z.mandatId, pfad);
     }
-    knoten.push({ id: knotenId.ziel(z.id), art: 'ziel', name: z.titel, farbe: reihe[i % reihe.length], eltern: pfad[pfad.length - 2], rang: z.rang ?? 1000 + i, link: WEG.ziel(z.id) });
+    knoten.push({ id: knotenId.ziel(z.id), art: 'ziel', name: z.titel, farbe: farben.get(z.id) ?? FADEN_FARBEN[space][0], eltern: pfad[pfad.length - 2], rang: z.rang ?? 1000 + wurzeln.indexOf(z), link: WEG.ziel(z.id) });
   }
 
   // Ziel-Fristen: nur wo kein Kaskaden-Meilenstein die Frist vertritt (wie v1).

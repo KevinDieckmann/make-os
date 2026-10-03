@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import type { SpeicherLage, Konflikt } from '@/context/TasksContext';
 
-const knopf = { background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 999, color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: '3px 10px', whiteSpace: 'nowrap' } as const;
+const knopf = { background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 999, color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '3px 10px', whiteSpace: 'nowrap' } as const;
 const leise = { ...knopf, background: 'none', border: 'none', color: C.inkLeise } as const;
 
 function Sekunden({ bis }: { bis?: number }) {
