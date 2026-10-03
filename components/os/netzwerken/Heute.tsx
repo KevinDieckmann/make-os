@@ -13,6 +13,8 @@ import { ClipboardList } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
 import { berichtAus, dankeZeilen, dankeOffen, dankeEntwurf, dankeMailtoLink, schrittLabel, type DankeZeile } from '@/lib/crm/netzwerken';
+import { DANKE_UWG_HINWEIS, DANKE_FRIST_TAGE, werbeWoerter, datenschutzAngaben } from '@/lib/crm/netzwerken-recht';
+import { fuerFirmaId } from '@/lib/crm/besuche-form';
 import { tagPlus, tagVon, wandzeit } from '@/lib/zeit/kalender-kern';
 import { WEG } from '@/lib/wege';
 import { istBesuch } from '@/lib/crm/besuche-form';
@@ -42,6 +44,8 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
   const bericht = useMemo(() => (crm && event ? berichtAus({ event, teilnahmen: crm.teilnahmen, kontakte, followups: crm.followups, heute }) : null), [crm, event, kontakte, heute]);
   const danke = useMemo(() => (crm && event ? dankeZeilen({ events: crm.events, teilnahmen: crm.teilnahmen, kontakte, heute, eventId: event.id }) : []), [crm, event, kontakte, heute]);
   const absender = personen.find(p => p.id === ich)?.name ?? '';
+  // Kunden-Event: der Name der Firma geht in den Datenschutzhinweis der Danke-Mail (Art. 13: Empfänger nennen).
+  const kundeName = event && crm ? crm.firmen.find(f => f.id === fuerFirmaId(event))?.name : undefined;
 
   if (!api.crm) return <Laedt />;
   if (!eventsMit.length) {
@@ -113,7 +117,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
             </div>
           </div>
           <div style={{ display: 'grid', gap: 12 }}>
-            {danke.map(d => <DankeKarte key={d.teilnahme.id} d={d} heute={heute} absender={absender} meine={d.teilnahme.netzwerken?.erfasstVon === ich} vonName={nameVon(d.teilnahme.netzwerken?.erfasstVon ?? '')} api={api} />)}
+            {danke.map(d => <DankeKarte key={d.teilnahme.id} d={d} heute={heute} absender={absender} meine={d.teilnahme.netzwerken?.erfasstVon === ich} vonName={nameVon(d.teilnahme.netzwerken?.erfasstVon ?? '')} api={api} kunde={kundeName} />)}
           </div>
         </section>
       )}
@@ -130,11 +134,11 @@ function Laedt() {
   );
 }
 
-function DankeKarte({ d, heute, absender, meine, vonName, api }: { d: DankeZeile; heute: string; absender: string; meine: boolean; vonName: string; api: CrmApi }) {
+function DankeKarte({ d, heute, absender, meine, vonName, api, kunde }: { d: DankeZeile; heute: string; absender: string; meine: boolean; vonName: string; api: CrmApi; kunde?: string }) {
   const n = d.teilnahme.netzwerken!;
   const [anrede, setAnrede] = useState<'Du' | 'Sie'>(n.danke?.anrede ?? d.kontakt.anrede ?? 'Sie');
   const gestern = tagVon(wandzeit(new Date(n.erfasstAm))) === tagPlus(heute, -1);
-  const vorlage = useMemo(() => dankeEntwurf({ vorname: d.kontakt.vorname, nachname: d.kontakt.nachname, anrede, eventTitel: d.event.titel, wann: gestern ? 'gestern' : 'neulich', schritt: n.schritt, terminAm: n.terminAm, absender }), [d.kontakt.vorname, d.kontakt.nachname, anrede, d.event.titel, gestern, n.schritt, n.terminAm, absender]);
+  const vorlage = useMemo(() => dankeEntwurf({ vorname: d.kontakt.vorname, nachname: d.kontakt.nachname, anrede, eventTitel: d.event.titel, wann: gestern ? 'gestern' : 'neulich', schritt: n.schritt, terminAm: n.terminAm, absender, ...(kunde ? { kunde } : {}), datenschutz: datenschutzAngaben() }), [d.kontakt.vorname, d.kontakt.nachname, anrede, d.event.titel, gestern, n.schritt, n.terminAm, absender, kunde]);
   const [text, setText] = useState<string | null>(null);
   const [betreff, setBetreff] = useState<string | null>(null);
   const [geoeffnet, setGeoeffnet] = useState(false);
@@ -142,6 +146,23 @@ function DankeKarte({ d, heute, absender, meine, vonName, api }: { d: DankeZeile
   const [fehler, setFehler] = useState<string | null>(null);
   const aktuell = { betreff: betreff ?? vorlage.betreff, text: text ?? vorlage.text };
   const link = d.mailOk ? dankeMailtoLink(d.kontakt.email, aktuell) : null;
+  // § 7 UWG: Wörter wie Angebot/Einladung/Newsletter/Rabatt machen aus dem Dank Werbung — vor dem Öffnen nachfragen, nie blockieren.
+  const werbung = werbeWoerter(`${aktuell.betreff}\n${aktuell.text}`);
+
+  const nichtSenden = async () => {
+    setLaeuft(true); setFehler(null);
+    try {
+      const r = await fetch('/api/netzwerken', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'danke-verzicht', eventId: d.event.id, kontaktId: d.kontakt.id }) });
+      const j = await r.json().catch(() => null);
+      if (r.ok && j?.ok) void api.laden(true); else setFehler(typeof j?.fehler === 'string' ? j.fehler : 'Nicht vermerkt — bitte noch einmal.');
+    } catch { setFehler('Ohne Netz nicht vermerkt — bitte später noch einmal.'); } finally { setLaeuft(false); }
+  };
+  const oeffnen = () => {
+    if (!link) return;
+    if (werbung.length && !window.confirm(`Im Text steht „${werbung.join('“, „')}“. Ohne Einwilligung wäre das Werbung (§ 7 UWG) — in einer Danke-Mail bitte nur Dank und Verabredetes.\n\nTrotzdem im Mail-Programm öffnen?`)) return;
+    window.location.href = link;
+    setGeoeffnet(true);
+  };
 
   const raus = async () => {
     setLaeuft(true); setFehler(null);
@@ -162,6 +183,10 @@ function DankeKarte({ d, heute, absender, meine, vonName, api }: { d: DankeZeile
         <Hinweis farbe={LEUCHT.achtung}>Keine Danke-Mail: {d.mailGrund}.</Hinweis>
       ) : d.raus ? (
         <Hinweis farbe={LEUCHT.gut} rolle="status">✓ Danke-Mail raus am {tagText(d.raus)}.</Hinweis>
+      ) : d.verzichtet ? (
+        <Hinweis>Bewusst nicht gesendet am {tagText(d.verzichtet)}. Der Datenschutzhinweis (Art. 13) ist damit noch nicht erteilt — beim ersten Kontakt nachholen.</Hinweis>
+      ) : d.abgelaufen ? (
+        <Hinweis>Älter als {DANKE_FRIST_TAGE} Tage — dafür gibt es keinen Danke-Entwurf mehr (der Anlass ist weg, eine späte Mail wäre kein Dank mehr). Den Datenschutzhinweis (Art. 13) beim ersten Kontakt geben.</Hinweis>
       ) : !meine ? (
         <Hinweis>Diese Danke-Mail schickt {vonName} — sie hat die Person kennengelernt. Du siehst nur den Stand.</Hinweis>
       ) : (
@@ -173,13 +198,18 @@ function DankeKarte({ d, heute, absender, meine, vonName, api }: { d: DankeZeile
               <Wahl klein an={anrede === 'Sie'} onClick={() => { setAnrede('Sie'); setText(null); setBetreff(null); }}>Sie</Wahl>
             </div>
           </div>
+          <Hinweis>{DANKE_UWG_HINWEIS}</Hinweis>
           <input value={aktuell.betreff} onChange={x => setBetreff(x.target.value)} style={eingabe} aria-label="Betreff" />
           <textarea value={aktuell.text} onChange={x => setText(x.target.value)} rows={9} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5, fontFamily: SCHRIFT.text }} aria-label="Text der Danke-Mail" />
           <div style={{ display: 'grid', gap: 8 }}>
-            {link && <Gross ton="haupt" href={link} onClick={() => setGeoeffnet(true)}>In Mail öffnen</Gross>}
+            {werbung.length > 0 && <Hinweis farbe={LEUCHT.achtung} rolle="alert">Im Text steht „{werbung.join('“, „')}“ — das wäre ohne Einwilligung Werbung (§ 7 UWG). Bitte nur Dank und Verabredetes.</Hinweis>}
+            {link && (werbung.length > 0
+              ? <Gross ton="warn" onClick={oeffnen}>In Mail öffnen (mit Rückfrage)</Gross>
+              : <Gross ton="haupt" href={link} onClick={() => setGeoeffnet(true)}>In Mail öffnen</Gross>)}
             {/* Der Link öffnet das Mail-Programm; `onClick` merkt nur, dass es geöffnet wurde. */}
             {geoeffnet && <Gross ton="gut" onClick={() => void raus()} aus={laeuft}>{laeuft ? 'Vermerkt …' : '✓ Ist raus'}</Gross>}
             {!geoeffnet && <button type="button" onClick={() => setGeoeffnet(true)} style={{ background: 'none', border: 'none', color: C.inkDim, fontSize: TYP.bedien, textDecoration: 'underline', cursor: 'pointer', minHeight: 44 }}>Habe ich schon anders verschickt</button>}
+            {!geoeffnet && <button type="button" onClick={() => void nichtSenden()} disabled={laeuft} style={{ background: 'none', border: 'none', color: C.inkDim, fontSize: TYP.bedien, textDecoration: 'underline', cursor: 'pointer', minHeight: 44 }}>Nicht senden</button>}
           </div>
           {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
         </>

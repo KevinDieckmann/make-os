@@ -391,6 +391,11 @@ export interface PersonBericht {
    * die die Person nennen — NICHT geändert (Löschung nur in Apple, sonst baut der Abgleich sie neu). Anzeige: „in Apple löschen“.
    */
   nurInApple?: Record<string, number>;
+  /**
+   * Übergaben an Kunden (03.10., netz-recht): „Person wurde am … an <Kunde> übergeben — dort informieren (Art. 19)“. Die Löschung wirkt nur bei
+   * uns; der Empfänger muss informiert werden (Mitteilungspflicht Art. 19). Nur Text (Datum, Empfänger, Event) — nie die Person.
+   */
+  uebergaben?: string[];
 }
 const zaehle = (b: PersonBericht, name: string, n: number) => { if (n) b.speicher[name] = (b.speicher[name] ?? 0) + n; };
 
@@ -572,11 +577,19 @@ async function art17Lauf(haushalt: string, absicht: import('@/lib/store/absichte
     //    Person mit demselben vollen Namen, nur dort, wo die gelöschte verknüpft war.
     await lauf('crm', async () => {
       const vorher = await ladeCrm();
+      // Art. 19 (03.10.): an wen wurde die Person übergeben? Vor dem Entfernen lesen (danach fehlt die Kennung im Protokoll) — das Ergebnis wandert
+      // in die Absicht, damit auch ein wiederaufgenommener Lauf den Hinweis noch kennt.
+      const { uebergabenVon, uebergabeHinweisText } = await import('./netzwerken-recht');
+      const { journalUebergabenVon } = await import('./uebergabe-journal');
+      const hinweise = [...uebergabenVon(vorher, id), ...(await journalUebergabenVon(id))].map(uebergabeHinweisText);
       if (enthaeltKennung(vorher, id) || crmNenntNamen(vorher, name, namensgleich ? crmVerknuepft(vorher, id) : undefined)) {
         await aendereCrm(c => { const nur = namensgleich ? crmVerknuepft(c, id) : undefined; return crmNamenTilgen(crmOhne(c, id), name, nur); });
         zaehle(b, 'crm', 1);
       }
-    });
+      return hinweise;
+    }, hinweise => ({ uebergabeHinweise: hinweise }));
+    const uebergabeHinweise = v.daten<string[]>('uebergabeHinweise') ?? [];
+    if (uebergabeHinweise.length) b.uebergaben = uebergabeHinweise;
 
     // 7. Dateiablage (alle Haushalte) — Eintrag zuerst, dann die Datei (ein Fehler hinterlässt höchstens eine verwaiste,
     //    verschlüsselte Datei, die die Verbindungsprüfung meldet).
@@ -888,8 +901,12 @@ export async function personAufzaehlen(id: string) {
   const terminSchluessel = kal.terminSchluesselDerPerson(terminBezuege, buchungen, kontakt?.aktivitaeten);
   const meetings = kal.meetingsAuskunft((await loadJson<{ meetings?: import('./person-auskunft-kalender').MeetingRoh[] }>('meetings'))?.meetings, m, terminSchluessel);
   const verweise = personVerweise(crm, id);
+  // Art. 15 (03.10.): an wen wurde die Person übergeben — Protokoll am Event UND Übergabe-Journal (gelöschte Events).
+  const { uebergabenVon, uebergabeAuskunftText } = await import('./netzwerken-recht');
+  const { journalUebergabenVon } = await import('./uebergabe-journal');
+  const uebergaben = [...uebergabenVon(crm, id), ...(await journalUebergabenVon(id))].map(u => ({ am: u.am, empfaenger: u.empfaenger, event: u.eventTitel, ...(u.dateiname ? { datei: u.dateiname } : {}), text: uebergabeAuskunftText(u) }));
   const terminFollowups = kal.terminFollowupsAuskunft(crm.followups, terminSchluessel, new Set(verweise.followups.map(f => f.id)));
-  return { ...verweise, terminFollowups, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
+  return { ...verweise, uebergaben, terminFollowups, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */

@@ -7,6 +7,7 @@
 // Schritt, Beziehung, Deals & Mandate, Entwurf, Verlauf, Recht und die Matrix
 // aller Stammdaten (Felder aus lib/crm/akte.ts).
 
+import { kennengelerntZeilen } from '@/lib/crm/netzwerken-recht';
 import { useNachfrage } from './Nachfrage';
 import { localDay } from '@/lib/zeit';
 import { DealAnlegen } from './DealAnlegen';
@@ -357,6 +358,8 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
   useEffect(() => { setEw(null); setAuf(null); setHinweisAm(heute); }, [k.id, heute]);
   const gesperrt = !!k.eingeschraenkt;
   const alt = k.geprueftAm && k.geprueftAm < plusMonate(heute, -12);
+  // Netzwerken (03.10.): „kennengelernt für <Kunde> bei <Event>“ aus den Stammdaten des CRM.
+  const kennengelernt = kennengelerntZeilen(k, api.crm?.stand.firmen ?? [], api.crm?.stand.events ?? []);
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <div><Ueberschrift>Einschränkung (Art. 18)</Ueberschrift>
@@ -380,6 +383,13 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
       </div>
       <div><Ueberschrift>Grundlage</Ueberschrift>
         <Feldzeile label="Rechtsgrundlage (Art. 6)"><Wahl label="Rechtsgrundlage" liste={RECHTSGRUNDLAGEN_WAHL} wert={k.rechtsgrundlage} onWahl={(r: Rechtsgrundlage) => void setze({ rechtsgrundlage: r })} /></Feldzeile>
+        {k.rechtsgrundlageNotiz && <Feldzeile label="Interessenabwägung"><span style={{ fontSize: 12.5, color: C.inkDim }}>{k.rechtsgrundlageNotiz} — dokumentiert (DATENSCHUTZ_NETZWERKEN.md): Kontaktpflege nach persönlicher Übergabe, keine Werbung ohne Einwilligung, Widerspruch jederzeit.</span></Feldzeile>}
+        {!!kennengelernt.length && <Feldzeile label="Kennengelernt für"><div style={{ display: 'grid', gap: 2 }}>{kennengelernt.map(t => <span key={t} style={{ fontSize: 12.5, color: C.inkDim }}>{t}</span>)}<span style={{ fontSize: 12, color: C.inkLeise }}>Bei einer Übergabe an den Kunden steht sie mit Empfänger im Protokoll des Events (Auskunft Art. 15, Mitteilung bei Löschung Art. 19).</span></div></Feldzeile>}
+        {(k.rechtsgrundlageNotiz || k.datenschutzInformiertAm) && <Feldzeile label="Datenschutzhinweis (Art. 13)">
+          {k.datenschutzInformiertAm
+            ? <span style={{ fontSize: 12.5, color: C.inkDim }}>erteilt am {datum(k.datenschutzInformiertAm)}</span>
+            : <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: 12.5, color: LEUCHT.achtung }}>noch nicht erteilt — in der Danke-Mail oder beim ersten Kontakt geben</span>{!gesperrt && <Knopf leise onClick={() => void datenschutzAktion(api, { aktion: 'datenschutz-informiert', id: k.id })}>Heute persönlich erteilt</Knopf>}</div>}
+        </Feldzeile>}
         <Feldzeile label="Herkunft (Art. 14)"><Wahl label="Herkunft" liste={HERKUNFT_WAHL} wert={k.herkunft} onWahl={(h: Herkunft) => void setze({ herkunft: h, ...(HERKUNFT.find(x => x.id === h)?.fremd ? { fremddaten: true } : { fremddaten: undefined }) })} /></Feldzeile>
         {k.fremddaten && <Feldzeile label="Informiert"><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkDim }}>{k.art14InformiertAm ? `am ${datum(k.art14InformiertAm)}` : 'noch nicht'}</span>{!k.art14InformiertAm && <Knopf leise onClick={() => void setze({ art14InformiertAm: heute })}>Heute informiert</Knopf>}</div></Feldzeile>}
         <Feldzeile label="Hinweis bei Erhebung">
@@ -456,7 +466,7 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
  * Ergebnis des Löschens (Art. 17) als Hinweis zum Abarbeiten (W3, 28.09.): Deals, an denen nur diese Person hing,
  * und Aufgaben, die sie nur beim Namen nennen (nicht geändert). Nichts offen → null.
  */
-function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; aufgabenPruefen?: string[]; vollstaendig?: boolean; hinweis?: string; warnung?: string; inApple?: number }): string | null {
+function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; aufgabenPruefen?: string[]; vollstaendig?: boolean; hinweis?: string; warnung?: string; inApple?: number; uebergaben?: string[] }): string | null {
   const deals = r.dealsOhnePerson ?? [];
   const aufgaben = r.aufgabenPruefen ?? [];
   const teile = [
@@ -464,6 +474,8 @@ function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; 
     r.vollstaendig === false ? (r.hinweis ?? 'Nicht alle Bestände bestätigt — wird automatisch nachgeholt.') : '',
     r.warnung ?? '',
     deals.length ? `${deals.length === 1 ? '1 Deal hat' : `${deals.length} Deals haben`} jetzt keine Person mehr: ${deals.slice(0, 5).map(d => `„${d.titel}“`).join(', ')}${deals.length > 5 ? ' …' : ''} — unter Deals eine Person zuordnen oder den Deal schließen.` : '',
+    // Art. 19 (03.10.): an Kunden übergeben — der Empfänger muss von der Löschung erfahren.
+    ...(r.uebergaben ?? []),
     aufgaben.length ? `${aufgaben.length === 1 ? '1 Aufgabe nennt' : `${aufgaben.length} Aufgaben nennen`} den Namen noch (nicht geändert) — bitte unter Aufgaben prüfen.` : '',
     // K2 (29.09.): Kalender/Erinnerungen/Kontakte sind Spiegel aus Apple — dort löschen, sonst kommt es mit dem Abgleich zurück.
     r.inApple ? `${r.inApple === 1 ? '1 Eintrag in Apple (Kalender, Erinnerungen oder Kontakte) nennt' : `${r.inApple} Einträge in Apple (Kalender, Erinnerungen oder Kontakte) nennen`} die Person — bitte dort löschen (MAKE OS spiegelt nur).` : '',

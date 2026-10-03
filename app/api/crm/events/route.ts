@@ -25,12 +25,18 @@
 //      in den Liquiditätsplan (Speicher „liquiplan“), Kennung ev-<eventId>:
 //      einmal angelegt, danach nur Betrag und Datum nachgezogen — nie doppelt.
 // GET  ?liquiplan=<eventId> → wo das Event im Plan steht (fehlt · ok · abweichend).
-// POST { aktion: 'loeschen', eventId } → Event löschen MIT Kaskade (28.09., W6): Teilnahmen weg, offene
-//      Follow-ups des Events abgesagt — in einer Sperre (lib/crm/crm-stand.ts loeschKaskade).
-// POST { aktion: 'kunden-uebergabe', eventId } → „An Kunden übergeben“ (Events-Reiter, 03.10.): die Kontakte eines BESUCHTEN
+// POST { aktion: 'loeschen', eventId, uebergabenBestaetigt? } → Event löschen MIT Kaskade (28.09., W6): Teilnahmen weg, offene
+//      Follow-ups des Events abgesagt — in einer Sperre (lib/crm/crm-stand.ts loeschKaskade). Hat das Event Übergaben an Kunden im
+//      Protokoll (03.10.), verlangt der Server `uebergabenBestaetigt: true` (sonst 409 mit Warnung); das Protokoll wandert dann ins
+//      Übergabe-Journal (lib/crm/uebergabe-journal.ts, 36 Monate) — der Nachweis bleibt.
+// POST { aktion: 'kunden-vorschau', eventId } → „An Kunden übergeben“, Schritt 1 (netz-recht, 03.10.): wer käme mit — Personen, die an diesem
+//      Event NEU angelegt wurden, gehen ungefragt mit; Bestandspersonen (vorher bekannt) nur mit Haken je Person; gesperrte nie; „noch nicht
+//      informiert“ (Datenschutzhinweis, Art. 13) ist markiert. Schreibt nichts.
+// POST { aktion: 'kunden-uebergabe', eventId, hinweisBestaetigt: true, bestandIds?: string[] } → Schritt 2: die Kontakte eines BESUCHTEN
 //      Events, das für einen Kunden läuft, als CSV (lib/crm/besuche.ts `kundenExport`) — nur Felder, keine Fotos/Sprachnotizen/
-//      Notizen, nie Personen mit Einschränkung (Art. 18) oder Werbesperre. Nur mit Sitzung (nie über den Dienstweg); jede Übergabe
-//      steht im Protokoll des Events (`uebergaben`: Tag, Person, Anzahl — nie die Kontakte). Kontakte für Kunden = Auftragsverarbeitung (AVV).
+//      Notizen, nie Personen mit Einschränkung (Art. 18) oder Werbesperre. Nur mit Sitzung (nie über den Dienstweg). Jede Übergabe steht im
+//      Protokoll des Events (`uebergaben`: Tag, Person, Anzahl, Empfänger, Dateiname, Kennungen der Personen, Haken „Rolle/Vertrag geklärt“ —
+//      nie Namen). Die Übergabe ist eine Übermittlung an einen Dritten (Art. 13/15/19), MAKE bleibt eigener Verantwortlicher.
 // Alles nur auf Klick von Kevin oder Malin — hier wird nichts versendet.
 
 import { NextResponse } from 'next/server';
@@ -49,8 +55,11 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { istDienst } from '@/lib/zugang/dienst';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
-import { kundenExport } from '@/lib/crm/besuche';
-import { istBesuch, UEBERGABEN_MAX } from '@/lib/crm/besuche-form';
+import { kundenExport, kundenVorschau } from '@/lib/crm/besuche';
+import { istBesuch, UEBERGABEN_MAX, UEBERGABE_KONTAKTE_MAX } from '@/lib/crm/besuche-form';
+import { uebergabenInsJournal } from '@/lib/crm/uebergabe-journal';
+import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
+import { istKontaktKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -103,7 +112,7 @@ function aenderungAus(v: unknown): PunktAenderung | null {
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  let b: { aktion?: string; eventId?: string; punktId?: string; erledigt?: boolean; aenderung?: unknown; teilnahmeId?: string; ergebnis?: string };
+  let b: { aktion?: string; eventId?: string; punktId?: string; erledigt?: boolean; aenderung?: unknown; teilnahmeId?: string; ergebnis?: string; hinweisBestaetigt?: boolean; bestandIds?: unknown; uebergabenBestaetigt?: boolean };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const eventId = String(b.eventId ?? '');
   if (!ID.test(eventId)) return NextResponse.json({ ok: false, fehler: 'eventId nötig.' }, { status: 400 });
@@ -117,12 +126,23 @@ export async function POST(req: Request) {
   if (b.aktion === 'loeschen') {
     // Serverweg (28.09., W6): Event + Kaskade (Teilnahmen weg, offene Follow-ups des Events abgesagt) in EINER Sperre —
     // vorher löschte der Browser Teilnahme für Teilnahme und dann das Event (halbe Stände bei Abbruch, Follow-ups blieben).
+    // Übergaben an Kunden (03.10.): nie ohne ausdrückliches Wort — und der Nachweis (Art. 15/19) geht ins Journal, bevor das Event fällt.
+    const uebergaben = e.uebergaben ?? [];
+    if (uebergaben.length) {
+      if (b.uebergabenBestaetigt !== true) return NextResponse.json({ ok: false, fehler: `Dieses Event hat ${uebergaben.length} ${uebergaben.length === 1 ? 'Übergabe' : 'Übergaben'} an Kunden im Protokoll. Löschen entfernt das Event, das Protokoll bleibt 3 Jahre als Nachweis im Übergabe-Journal.`, uebergaben: uebergaben.length, bestaetigung: true }, { status: 409 });
+      const h = await haushaltFuer(person);
+      if (!h) return NextResponse.json({ ok: false, fehler: 'Kein Haushalt für diese Person.' }, { status: 403 });
+      await uebergabenInsJournal(h.haushalt, e, uebergaben, crm.firmen, 'event-geloescht', jetzt);
+    }
     const halter: { r?: CrmAnwendung; ops?: ListenOp[] } = {};
     await aendereCrm(cur => {
       const ops: ListenOp[] = [{ liste: 'events', op: 'delete', id: eventId }];
-      halter.ops = [...ops, ...loeschKaskade(cur, ops, jetzt)];
-      halter.r = wendeCrmAn(cur, halter.ops, jetzt, person);
-      return halter.r.bestand;
+      // Das Protokoll liegt jetzt im Journal (oben) — erst vom Event lösen, dann gilt die Regel „Event mit Übergaben nicht über den generischen Weg“ nicht mehr.
+      const frei = uebergaben.length ? { ...cur, events: cur.events.map(x => { if (x.id !== eventId) return x; const { uebergaben: _u, ...rest } = x; return rest; }) } : cur;
+      halter.ops = [...ops, ...loeschKaskade(frei, ops, jetzt)];
+      halter.r = wendeCrmAn(frei, halter.ops, jetzt, person);
+      // Eine Ablehnung (Sperre, Konflikt) lässt das Event unverändert — auch das Protokoll bleibt dann am Event.
+      return halter.r.sperren.length || halter.r.konflikte.length || halter.r.grenze.length || halter.r.abgelehnt?.length ? cur : halter.r.bestand;
     });
     const r = halter.r!;
     if (r.sperren.length) return NextResponse.json({ ok: false, fehler: r.sperren.map(x => x.text).join(' · '), sperren: r.sperren }, { status: 409 });
@@ -134,15 +154,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, teilnahmen, abgesagt, text: `Event gelöscht${teilnahmen ? ` · ${teilnahmen} Teilnahme${teilnahmen === 1 ? '' : 'n'} entfernt` : ''}${abgesagt ? ` · ${abgesagt} offene${abgesagt === 1 ? 's' : ''} Follow-up${abgesagt === 1 ? '' : 's'} abgesagt` : ''}.` });
   }
 
-  if (b.aktion === 'kunden-uebergabe') {
+  if (b.aktion === 'kunden-vorschau' || b.aktion === 'kunden-uebergabe') {
     // Personendaten gehen nur an Menschen am Gerät — der Dienstweg (ZOE, Arbeiter) übergibt nie.
     if (istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Kontakte übergibt nur eine angemeldete Person.' }, { status: 403 });
     if (!istBesuch(e) || e.fuer?.art !== 'kunde') return NextResponse.json({ ok: false, fehler: 'Übergeben wird nur bei einem besuchten Event, das für einen Kunden läuft.' }, { status: 400 });
-    // Mit den eingeschränkten: `kundenExport` lässt sie selbst aus und zählt sie (Hinweis „bewusst nicht dabei“) — nie still.
+    // Mit den eingeschränkten: `kundenVorschau`/`kundenExport` markieren bzw. lassen sie selbst aus und zählen sie (Hinweis „bewusst nicht dabei“) — nie still.
     const kontakte = await kontakteFuerVerarbeitung({ mitEingeschraenkten: true });
-    const r = kundenExport({ event: e, teilnahmen: crm.teilnahmen, kontakte });
-    if (!r.anzahl) return NextResponse.json({ ok: false, fehler: `Keine Kontakte zum Übergeben${r.ausgelassen.gesperrt ? ` — ${r.ausgelassen.gesperrt} gesperrte Person${r.ausgelassen.gesperrt === 1 ? '' : 'en'} (Art. 18 / Werbesperre) bleiben bewusst draußen` : ''}.` }, { status: 400 });
-    await aendereCrm(c => ({ ...c, events: c.events.map(x => (x.id === eventId ? { ...x, uebergaben: [...(x.uebergaben ?? []), { am: jetzt, von: person, anzahl: r.anzahl }].slice(-UEBERGABEN_MAX), geaendert: jetzt, geaendertVon: person } : x)) }), werAus(req));
+    const kundeId = e.fuer.firmaId;
+    const kundeName = crm.firmen.find(f => f.id === kundeId)?.name ?? 'dem Kunden';
+    if (b.aktion === 'kunden-vorschau') return NextResponse.json({ ok: true, kunde: { id: kundeId, name: kundeName }, ...kundenVorschau({ event: e, teilnahmen: crm.teilnahmen, kontakte }) }, { headers: { 'Cache-Control': 'no-store' } });
+
+    // Der Haken im Dialog: Rolle und Vertrag mit dem Kunden sind geklärt (kein AVV-Zwang mehr, aber bewusst).
+    if (b.hinweisBestaetigt !== true) return NextResponse.json({ ok: false, fehler: 'Bitte bestätigen, dass Rolle und Vertrag mit dem Kunden geklärt sind.' }, { status: 400 });
+    const bestandIds = Array.isArray(b.bestandIds) ? b.bestandIds : [];
+    if (bestandIds.length > UEBERGABE_KONTAKTE_MAX || bestandIds.some(x => typeof x !== 'string' || !istKontaktKennung(x))) return NextResponse.json({ ok: false, fehler: 'bestandIds: Kennungen der Personen, die ausdrücklich mitgehen sollen.' }, { status: 400 });
+    const r = kundenExport({ event: e, teilnahmen: crm.teilnahmen, kontakte, bestandIds: bestandIds as string[] });
+    if (!r.anzahl) return NextResponse.json({ ok: false, fehler: `Keine Kontakte zum Übergeben${r.ausgelassen.gesperrt ? ` — ${r.ausgelassen.gesperrt} gesperrte Person${r.ausgelassen.gesperrt === 1 ? '' : 'en'} (Art. 18 / Werbesperre) bleiben bewusst draußen` : ''}${r.ausgelassen.bestand ? `; ${r.ausgelassen.bestand} Bestandsperson${r.ausgelassen.bestand === 1 ? '' : 'en'} gehen nur mit Haken mit` : ''}.` }, { status: 400 });
+    if (r.kontaktIds.length > UEBERGABE_KONTAKTE_MAX) return NextResponse.json({ ok: false, fehler: `Mehr als ${UEBERGABE_KONTAKTE_MAX} Personen in einer Übergabe — bitte aufteilen.` }, { status: 413 });
+    // Voll? Dann wandern die ältesten Einträge ins Journal (nie still gekürzt).
+    const h = await haushaltFuer(person);
+    const eintrag = { am: jetzt, von: person, anzahl: r.anzahl, empfaengerFirmaId: kundeId, dateiname: r.dateiname, kontaktIds: r.kontaktIds, avvBzwHinweisBestaetigt: true as const };
+    let verschoben: typeof e.uebergaben = [];
+    await aendereCrm(c => ({ ...c, events: c.events.map(x => {
+      if (x.id !== eventId) return x;
+      const alle = [...(x.uebergaben ?? []), eintrag];
+      verschoben = alle.slice(0, Math.max(0, alle.length - UEBERGABEN_MAX));
+      return { ...x, uebergaben: alle.slice(-UEBERGABEN_MAX), geaendert: jetzt, geaendertVon: person };
+    }) }), werAus(req));
+    if (verschoben?.length && h) await uebergabenInsJournal(h.haushalt, e, verschoben, crm.firmen, 'protokoll-voll', jetzt);
     return NextResponse.json({ ok: true, csv: r.csv, dateiname: r.dateiname, anzahl: r.anzahl, ausgelassen: r.ausgelassen }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
@@ -257,5 +296,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, geaendert });
   }
 
-  return NextResponse.json({ ok: false, fehler: 'aktion: checkliste-aufgaben, punkt, aufgabe-status, nachfassen, kunden-uebergabe, liquiplan oder loeschen.' }, { status: 400 });
+  return NextResponse.json({ ok: false, fehler: 'aktion: checkliste-aufgaben, punkt, aufgabe-status, nachfassen, kunden-vorschau, kunden-uebergabe, liquiplan oder loeschen.' }, { status: 400 });
 }

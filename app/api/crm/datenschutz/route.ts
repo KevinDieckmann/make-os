@@ -19,6 +19,8 @@
 // POST { aktion: 'einschraenken', id, grund, antragId? }        → Art. 18 setzen (U2 #51)
 // POST { aktion: 'einschraenkung-aufheben', id, grund }          → nur mit Grund
 // POST { aktion: 'frist-verlaengern', id, bis, grund }           → Löschfrist der Person verlängern (U2 #52)
+// POST { aktion: 'datenschutz-informiert', id }                 → Datenschutzhinweis (Art. 13) persönlich gegeben, Tag heute (netz-recht, 03.10.;
+//              für Personen ohne Mail oder ohne Gespräch — bei der Danke-Mail setzt der Server den Tag selbst)
 // POST { aktion: 'fristen', fristen: { <art>: Zahl | null } }    → Löschfristen anpassen (Standard nie gespeichert)
 // POST { aktion: 'grabsteine' }  (Dienstweg, auch ohne Person)    → Grabsteine erzwungen anwenden — ruft das
 //              Restore-Skript (deploy/wiederherstellen.sh) nach jedem Zurückspielen ZWINGEND auf (29.09., #70).
@@ -162,6 +164,12 @@ export async function POST(req: Request) {
       return einschraenkungAufheben(k, { grund, von }, heute, jetzt) ?? { fehler: 'Aufheben nur mit Grund.', status: 400 };
     });
   }
+  if (b.aktion === 'datenschutz-informiert') {
+    return kontaktAendern(req, id, ['datenschutzInformiertAm', 'aktivitaeten'], k => (k.datenschutzInformiertAm ? k : {
+      ...k, datenschutzInformiertAm: heute,
+      aktivitaeten: [...(k.aktivitaeten ?? []), { am: jetzt, art: 'system' as const, von, text: 'Datenschutzhinweis (Art. 13) persönlich gegeben' }],
+    }));
+  }
   if (b.aktion === 'frist-verlaengern') {
     const v = verlaengerungPruefen({ bis: b.bis, grund: b.grund }, heute);
     if (!v.ok) return NextResponse.json({ ok: false, fehler: v.fehler }, { status: 400 });
@@ -189,6 +197,8 @@ export async function POST(req: Request) {
   const dealsOhnePerson = nurSie.size ? (await ladeCrm()).chancen.filter(c => nurSie.has(c.id) && !c.kontaktIds.length).map(c => ({ id: c.id, titel: c.titel })) : [];
   return NextResponse.json({
     ok: true, vollstaendig: bericht.vollstaendig !== false, schritte: bericht.schritte ?? {}, speicher: bericht.speicher, aufgabenPruefen: bericht.aufgabenPruefen, dealsOhnePerson, protokollId: bericht.protokollId ?? null,
+    // Art. 19 (03.10.): an wen wurde die Person übergeben — dort ebenfalls informieren (nur Text, nie die Person).
+    ...(bericht.uebergaben?.length ? { uebergaben: bericht.uebergaben } : {}),
     // K2 (29.09.): Apple-Spiegel werden nicht getilgt (der Abgleich baut sie neu) — die Löschung geschieht in Apple.
     ...(bericht.nurInApple && Object.keys(bericht.nurInApple).length ? { inApple: Object.values(bericht.nurInApple).reduce((a, n) => a + n, 0) } : {}),
     ...(bericht.grabstein === false ? { warnung: 'Grabstein nicht geschrieben — ein Restore könnte die Person zurückholen. Wird automatisch nachgeholt; bitte den Head of IT prüfen.' } : {}),

@@ -445,6 +445,9 @@ export function regelnAbgelehnt(b: CrmBestand, ops: ListenOp[]): string[] {
   const raus: string[] = [];
   for (const o of ops) {
     if (o.liste === 'angebote') { raus.push('Angebote werden nur im Angebots-Tool geändert (/api/crm/angebot).'); continue; }
+    // Event mit Übergaben an Kunden (03.10.): der Nachweis (Art. 15/19) darf nicht still mit dem Event verschwinden — löschen geht nur über die
+    // Event-Route (`aktion: 'loeschen'`, ausdrückliche Bestätigung, Protokoll wandert ins Übergabe-Journal und ist dann vom Event gelöst).
+    if (o.liste === 'events' && o.op === 'delete' && b.events.find(x => x.id === o.id)?.uebergaben?.length) { raus.push('Dieses Event hat Übergaben an Kunden im Protokoll — löschen nur über „Event löschen“ in der Event-Akte (der Nachweis geht ins Übergabe-Journal).'); continue; }
     if (o.liste !== 'leistungen' || o.op === 'delete') continue;
     const id = String(o.op === 'teil' ? o.id : (o.eintrag as { id?: unknown } | undefined)?.id ?? '');
     const alt = b.leistungen.find(l => l.id === id);
@@ -562,7 +565,9 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
     const eigene = ops.filter(o => o.liste === l);
     if (!eigene.length) continue;
     const r = wendeAn(b[l] as unknown as Record<string, unknown>[], eigene, 'id', roh => saeubern(l, roh, jetzt, person));
-    (neu as Record<string, unknown>)[l] = r.liste;
+    // Übergabe-Protokoll (03.10., netz-recht): schreibt NUR der Server (Route events › kunden-uebergabe, `aendereCrm` direkt) — der Browser
+    // kann es über diesen generischen Weg weder setzen noch löschen oder fälschen; es gilt immer der gespeicherte Stand.
+    (neu as Record<string, unknown>)[l] = l === 'events' ? uebergabenVomAltstand(b.events, r.liste as unknown as CrmBestand['events']) : r.liste;
     angewandt += r.angewandt;
   }
   // Mutterfirmen (28.09., #7): tote Mutter oder Kreis → nur diese Änderung zurück, mit Fehlertext.
@@ -573,6 +578,16 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
   // Folgen in derselben Sperre (28.09. spät, lib/crm/bestand-folgen.ts): gelöschter Deal → Firmen-Lead zurück auf
   // Qualifizierung; umbenannte Firma → Anzeigename an Mandaten/Deals. Personen-Leads führt `aendereCrm` nach.
   return { bestand: crmFolgen(b, neu, jetzt, person), angewandt, fehler, konflikte: [], sperren: [], grenze: [] };
+}
+
+/** Das Übergabe-Protokoll der Events kommt immer aus dem gespeicherten Stand (Altstand), nie aus dem, was der Browser schickt. */
+function uebergabenVomAltstand(alt: CrmBestand['events'], neu: CrmBestand['events']): CrmBestand['events'] {
+  const vorher = new Map((alt ?? []).map(e => [e.id, e.uebergaben]));
+  return neu.map(e => {
+    const { uebergaben: _vomBrowser, ...ohne } = e;
+    const gespeichert = vorher.get(e.id);
+    return gespeichert?.length ? { ...ohne, uebergaben: gespeichert } : ohne;
+  });
 }
 
 /**

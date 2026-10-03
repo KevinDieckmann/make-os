@@ -10,9 +10,13 @@
 //   besuchJeKunde       Auswertung je Kunde (und „MAKE selbst“)
 //   besuchKennzahlen    die eigenen Kennzahlen der besuchten Events (nie im Score, nie in den Make.One-Kennzahlen)
 //   heuteBeiAngebot     was „Heute bei“ in Netzwerken anbietet: heute, nahe Tage, Rest
-//   kundenExport        „An Kunden übergeben“ — CSV nur mit Feldern, ohne Fotos/Sprachnotizen/Notizen, nie gesperrte Personen
-// Recht: Kontakte, die wir für einen Kunden auf einem Event kennenlernen, verarbeiten wir in dessen Auftrag
-// (Auftragsverarbeitung, Art. 28 DSGVO — AVV mit dem Kunden nötig). Herkunft und „keine Werbe-Einwilligung“ stehen im Export.
+//   kundenVorschau     „An Kunden übergeben“, Schritt 1: wer käme mit (an diesem Event neu angelegt) und wer nur nach Haken (Bestandspersonen)
+//   kundenExport        „An Kunden übergeben“, Schritt 2: CSV nur mit Feldern, ohne Fotos/Sprachnotizen/Notizen, nie gesperrte Personen
+// Recht (Kevin 03.10.): Kontakte, die wir für einen Kunden auf einem Event kennenlernen, gehören auch uns — MAKE ist eigener
+// Verantwortlicher (Art. 6 Abs. 1 lit. f), keine Sperre für die eigene Akquise. Die Weitergabe an den Kunden ist eine ÜBERMITTLUNG an
+// einen Dritten (kein Auftrag): Transparenz in der Danke-Mail (Art. 13), Protokoll mit Empfänger und Personen (Art. 15/19),
+// ungefragt nur Personen, die an DIESEM Event neu angelegt wurden — Bestandspersonen nur mit ausdrücklichem Haken je Person.
+// Herkunft je Zeile steht im Export (aus den Daten, nie pauschal), dazu „keine Werbe-Einwilligung“. Rechtstexte: lib/crm/netzwerken-recht.ts.
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Chance, Event, Teilnahme } from './typen';
@@ -20,7 +24,10 @@ import type { Kpi, KpiAmpel } from './kennzahlen';
 import { gesamtwert, OFFENE_STUFEN } from './pipeline';
 import { budgetSumme } from './eventplanung';
 import { ausgenommen } from './einschraenkung';
-import { istBesuch, besuchAbgesagt, fuerFirmaId } from './besuche-form';
+import { istBesuch, besuchAbgesagt, fuerFirmaId, zielpersonGesperrt } from './besuche-form';
+import { berlinTag } from './netzwerken';
+import { HERKUNFT } from '@/lib/make-one/crm';
+import { KEINE_WERBE_EINWILLIGUNG } from './netzwerken-recht';
 
 const plusTage = (datum: string, n: number): string => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const tageZwischen = (von: string, bis: string): number => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
@@ -210,49 +217,96 @@ export function heuteBeiAngebot(events: readonly Event[], heute: string, o: { zu
 
 // ── An Kunden übergeben ─────────────────────────────────────────────────────
 
-export const EXPORT_SPALTEN = ['Nachname', 'Vorname', 'Firma', 'Position', 'E-Mail', 'Telefon', 'Mobil', 'LinkedIn', 'Webseite', 'Kennengelernt am', 'Veranstaltung', 'Datum der Veranstaltung', 'Herkunft', 'Werbe-Einwilligung'] as const;
-/** Die Herkunft jeder Zeile — bleibt vermerkt, damit der Kunde weiß, woher die Kontakte kommen. */
-export const EXPORT_HERKUNFT = 'Visitenkarte, persönlich auf der Veranstaltung übergeben';
+export const EXPORT_SPALTEN = ['Nachname', 'Vorname', 'Firma', 'Position', 'E-Mail', 'Telefon', 'Mobil', 'LinkedIn', 'Webseite', 'Kennengelernt am', 'Veranstaltung', 'Datum der Veranstaltung', 'Herkunft', 'Datenschutzhinweis erteilt', 'Werbe-Einwilligung'] as const;
 /** Der Vermerk zur Werbung — eine Visitenkarte ist keine Einwilligung (§ 7 UWG). */
-export const EXPORT_KEINE_EINWILLIGUNG = 'keine (Visitenkarte, § 7 UWG)';
-/** Der Hinweis, der überall zu lesen ist, wo Kontakte für Kunden entstehen oder übergeben werden. */
-export const AVV_HINWEIS = 'Kontakte, die wir für einen Kunden kennenlernen, verarbeiten wir in dessen Auftrag (Auftragsverarbeitung, Art. 28 DSGVO) — dafür ist ein AVV mit dem Kunden nötig. Herkunft und „keine Werbe-Einwilligung“ bleiben vermerkt; gesperrte Personen (Art. 18, Werbesperre) gehen nie mit.';
+export const EXPORT_KEINE_EINWILLIGUNG = KEINE_WERBE_EINWILLIGUNG;
+export { UEBERGABE_HINWEIS, ROLLE_HINWEIS, DATEI_LOESCHEN_HINWEIS } from './netzwerken-recht';
 
-/** Ein CSV-Feld: in Anführungszeichen, innere verdoppelt; Zeilenumbrüche zu Leerzeichen; Formel-Anfänge (= + - @) neutralisiert. */
-export function csvFeld(v: string | undefined): string {
+/**
+ * Ein CSV-Feld: in Anführungszeichen, innere verdoppelt; Zeilenumbrüche zu Leerzeichen; Formel-Anfänge (= + - @ Tab) neutralisiert.
+ * Telefonnummern, die streng wie `+49 171 1234567` aussehen, bleiben unverändert (`zahl`) — ein führendes Apostroph würde die Nummer verfälschen.
+ */
+export function csvFeld(v: string | undefined, o: { telefon?: boolean } = {}): string {
   const t = String(v ?? '').replace(/[\r\n]+/g, ' ').trim();
-  const sicher = /^[=+\-@\t]/.test(t) ? `'${t}` : t;
+  const sicher = o.telefon && /^\+[\d ]{6,20}$/.test(t) ? t : /^[=+\-@\t]/.test(t) ? `'${t}` : t;
   return `"${sicher.replace(/"/g, '""')}"`;
 }
 
 const slug = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'event';
+
+/** Herkunft einer Zeile aus den DATEN: neu angelegt (mit/ohne Kartenfoto) oder wiedergetroffen (mit der bisherigen Herkunft der Person). */
+export function exportHerkunft(k: Pick<Kontakt, 'herkunft' | 'quelle'>, t: Pick<Teilnahme, 'netzwerken'>): string {
+  const n = t.netzwerken;
+  if (n?.neuAngelegt) return n.kartenfoto ? 'Persönlich auf der Veranstaltung kennengelernt, Visitenkarte übergeben' : 'Persönlich auf der Veranstaltung kennengelernt';
+  const vorher = HERKUNFT.find(h => h.id === k.herkunft)?.label ?? (k.quelle ? `Quelle: ${k.quelle}` : 'Herkunft nicht vermerkt');
+  return `Bereits bekannt (${vorher}), auf der Veranstaltung wiedergetroffen`;
+}
+
+export interface UebergabeZeile {
+  kontaktId: string; name: string; firma?: string;
+  /** An DIESEM Event neu angelegt (geht ungefragt mit) — sonst Bestandsperson: nur mit Haken. */
+  neu: boolean;
+  /** Datenschutzhinweis (Art. 13) erteilt — sonst im Dialog „noch nicht informiert“. */
+  informiert: boolean;
+  /** Art. 18 oder Werbesperre: geht nie mit. */
+  gesperrt: 'eingeschraenkt' | 'werbesperre' | null;
+  herkunft: string;
+}
+export interface UebergabeVorschau { zeilen: UebergabeZeile[]; fehlend: number }
+
+/** Wer wäre bei einer Übergabe dabei? Nur Teilnahmen „da“ mit Netzwerken-Angabe; Person muss in der Kartei stehen (sonst `fehlend`). */
+export function kundenVorschau(o: { event: Event; teilnahmen: readonly Teilnahme[]; kontakte: readonly Kontakt[] }): UebergabeVorschau {
+  const nachId = new Map(o.kontakte.map(k => [k.id, k]));
+  let fehlend = 0;
+  const zeilen: UebergabeZeile[] = [];
+  const t = o.teilnahmen.filter(x => x.eventId === o.event.id && x.status === 'da' && !!x.netzwerken).sort((a, b) => (a.netzwerken?.erfasstAm ?? '').localeCompare(b.netzwerken?.erfasstAm ?? ''));
+  for (const x of t) {
+    const k = nachId.get(x.kontaktId);
+    if (!k) { fehlend++; continue; }
+    const nameTeile = [k.vorname, k.nachname].filter(Boolean).join(' ').trim();
+    zeilen.push({ kontaktId: k.id, name: nameTeile || k.firma || '—', ...(k.firma ? { firma: k.firma } : {}), neu: !!x.netzwerken?.neuAngelegt, informiert: !!k.datenschutzInformiertAm, gesperrt: zielpersonGesperrt(k), herkunft: exportHerkunft(k, x) });
+  }
+  return { zeilen, fehlend };
+}
 
 export interface KundenExport {
   csv: string;
   dateiname: string;
   /** Zeilen im Export. */
   anzahl: number;
-  /** Nicht dabei: gesperrte Personen (Art. 18 / Werbesperre) und Teilnahmen ohne Person in der Kartei. */
-  ausgelassen: { gesperrt: number; fehlend: number };
+  /** Kennungen der übergebenen Personen — für das Protokoll am Event (Art. 15/19); fallen bei Art. 17 mit der Person weg. */
+  kontaktIds: string[];
+  /** Nicht dabei: gesperrte Personen (Art. 18 / Werbesperre), Teilnahmen ohne Person in der Kartei und Bestandspersonen ohne Haken. */
+  ausgelassen: { gesperrt: number; fehlend: number; bestand: number };
 }
 
 /**
  * Die Kontakte eines Events als CSV für den Kunden — NUR Felder (Name, Firma, Position, Mail, Telefon, Mobil, LinkedIn,
- * Webseite), dazu Datum, Veranstaltung, Herkunft und der Vermerk „keine Werbe-Einwilligung“. Nie: Fotos, Sprachnotizen,
- * Gesprächsnotizen, Kennungen. Nie: Personen mit Einschränkung (Art. 18) oder Werbesperre. Semikolon + BOM (Excel, Deutsch).
+ * Webseite), dazu Datum (Berliner Tag), Veranstaltung, Herkunft je Zeile, „Datenschutzhinweis erteilt“ und der Vermerk „keine
+ * Werbe-Einwilligung“. Nie: Fotos, Sprachnotizen, Gesprächsnotizen, Kennungen. Nie: Personen mit Einschränkung (Art. 18) oder
+ * Werbesperre. Ungefragt nur Personen, die an diesem Event NEU angelegt wurden; Bestandspersonen nur, wenn ihre Kennung in
+ * `bestandIds` steht (der Haken im Dialog). Semikolon + BOM (Excel, Deutsch).
  */
-export function kundenExport(o: { event: Event; teilnahmen: readonly Teilnahme[]; kontakte: readonly Kontakt[] }): KundenExport {
+export function kundenExport(o: { event: Event; teilnahmen: readonly Teilnahme[]; kontakte: readonly Kontakt[]; bestandIds?: readonly string[] }): KundenExport {
   const nachId = new Map(o.kontakte.map(k => [k.id, k]));
-  const ausgelassen = { gesperrt: 0, fehlend: 0 };
+  const haken = new Set(o.bestandIds ?? []);
+  const ausgelassen = { gesperrt: 0, fehlend: 0, bestand: 0 };
   const zeilen: string[] = [];
-  const t = [...erfassteTeilnahmen(o.event.id, o.teilnahmen)].sort((a, b) => (a.netzwerken?.erfasstAm ?? '').localeCompare(b.netzwerken?.erfasstAm ?? ''));
+  const kontaktIds: string[] = [];
+  const t = o.teilnahmen.filter(x => x.eventId === o.event.id && x.status === 'da' && !!x.netzwerken).sort((a, b) => (a.netzwerken?.erfasstAm ?? '').localeCompare(b.netzwerken?.erfasstAm ?? ''));
   for (const x of t) {
     const k = nachId.get(x.kontaktId);
     if (!k) { ausgelassen.fehlend++; continue; }
     if (ausgenommen(k)) { ausgelassen.gesperrt++; continue; }
-    const am = x.netzwerken?.erfasstAm ? x.netzwerken.erfasstAm.slice(0, 10) : o.event.datum;
-    zeilen.push([k.nachname, k.vorname, k.firma, k.position, k.email, k.telefon, k.sms, k.linkedin, k.firmaWebseite, tagDe(am), o.event.titel, tagDe(o.event.datum), EXPORT_HERKUNFT, EXPORT_KEINE_EINWILLIGUNG].map(csvFeld).join(';'));
+    if (!x.netzwerken?.neuAngelegt && !haken.has(k.id)) { ausgelassen.bestand++; continue; }
+    if (kontaktIds.includes(k.id)) continue; // eine Person nur einmal
+    kontaktIds.push(k.id);
+    const am = x.netzwerken?.erfasstAm ? berlinTag(x.netzwerken.erfasstAm) : o.event.datum;
+    zeilen.push([
+      csvFeld(k.nachname), csvFeld(k.vorname), csvFeld(k.firma), csvFeld(k.position), csvFeld(k.email), csvFeld(k.telefon, { telefon: true }), csvFeld(k.sms, { telefon: true }), csvFeld(k.linkedin), csvFeld(k.firmaWebseite),
+      csvFeld(tagDe(am)), csvFeld(o.event.titel), csvFeld(tagDe(o.event.datum)), csvFeld(exportHerkunft(k, x)), csvFeld(k.datenschutzInformiertAm ? tagDe(k.datenschutzInformiertAm) : 'nein'), csvFeld(EXPORT_KEINE_EINWILLIGUNG),
+    ].join(';'));
   }
-  const kopf = EXPORT_SPALTEN.map(csvFeld).join(';');
-  return { csv: `﻿${[kopf, ...zeilen].join('\r\n')}\r\n`, dateiname: `kontakte-${slug(o.event.titel)}-${o.event.datum}.csv`, anzahl: zeilen.length, ausgelassen };
+  const kopf = EXPORT_SPALTEN.map(s => csvFeld(s)).join(';');
+  return { csv: `﻿${[kopf, ...zeilen].join('\r\n')}\r\n`, dateiname: `kontakte-${slug(o.event.titel)}-${o.event.datum}.csv`, anzahl: zeilen.length, kontaktIds, ausgelassen };
 }

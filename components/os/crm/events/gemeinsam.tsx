@@ -87,8 +87,8 @@ export async function nachfassen(api: CrmApi, e: Event, t: Teilnahme, k: Kontakt
  * Event löschen über den Serverweg (28.09., W6): POST /api/crm/events { aktion: 'loeschen' } — Teilnahmen weg,
  * offene Follow-ups des Events abgesagt, alles in EINER Änderung. Meldung als Hinweis bzw. Fehler.
  */
-export async function eventLoeschen(api: CrmApi, e: Event): Promise<void> {
-  const r = await eventsPost(e.id, { aktion: 'loeschen' });
+export async function eventLoeschen(api: CrmApi, e: Event, o: { /** Event mit Übergaben an Kunden: ausdrücklich bestätigt (der Server verlangt es, 03.10.). */ uebergabenBestaetigt?: boolean } = {}): Promise<void> {
+  const r = await eventsPost(e.id, { aktion: 'loeschen', ...(o.uebergabenBestaetigt ? { uebergabenBestaetigt: true } : {}) });
   if (r.ok) api.setHinweis(typeof r.text === 'string' ? r.text : 'Event gelöscht.');
   else api.setFehler(r.fehler ?? 'Nicht gelöscht.');
   await api.laden();
