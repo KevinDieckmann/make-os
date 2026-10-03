@@ -34,7 +34,7 @@ import { imZeitraum } from '@/lib/planung/zeitraum';
 import { meilensteinImJahr, zielJahr } from '@/lib/planung/zeitstrahl';
 import { useRueckgaengig, type Rueckgaengig } from './Rueckgaengig';
 import type { Meilenstein, Ziel, ZielHorizont } from '@/lib/planung/typen';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Hinweis, feld, LEUCHT } from '../ui';
 import { zielRahmen } from '../ziel';
 import { PfeilRang } from './PfeilRang';
 import { usePlanung, type PlanungStand } from './usePlanung';
@@ -54,7 +54,7 @@ const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LE
 const prozent: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', width: 40, textAlign: 'right', flex: '0 0 auto' };
 const loeschen: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, background: 'transparent', border: 'none', cursor: 'pointer', flex: '0 0 auto', padding: '2px 4px' };
 const wahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', outline: 'none', cursor: 'pointer' };
-const pille = (an: boolean, farbe: string): CSSProperties => ({ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim });
+const pille = (an: boolean, farbe: string): CSSProperties => ({ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim });
 const HORIZONT_WORT: Record<ZielHorizont, string> = { tag: 'Tages', woche: 'Wochen', monat: 'Monats', quartal: 'Quartals', jahr: 'Jahres' };
 const NEU_EINHEIT = '__neu__';
 /** Vier Zeilen sichtbar, der Rest scrollt (Zeile ≈ 50 px). */
@@ -231,7 +231,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto', opacity: z.erledigt ? 0.7 : 1 }}>
             {!z.erledigt && !kompakt && spaceFilter === 'alle' && (
               <button onClick={() => zPatch(z.id, { space: z.space === 'privat' ? 'business' : z.space === 'business' ? undefined : 'privat', ...(z.space === 'business' ? { einheit: undefined } : {}) }, true)} title={z.space ? `${SPACE_LABEL[z.space]} — Klick wechselt` : 'gemeinsam — Klick wechselt'}
-                style={{ ...pille(!!z.space, z.space ? SPACE_FARBE[z.space] : C.inkLeise), padding: '2px 8px', fontSize: 11 }}>{z.space ? SPACE_LABEL[z.space] : 'gemeinsam'}</button>
+                style={{ ...pille(!!z.space, z.space ? SPACE_FARBE[z.space] : C.inkLeise), padding: '2px 8px', fontSize: 12 }}>{z.space ? SPACE_LABEL[z.space] : 'gemeinsam'}</button>
             )}
             {!z.erledigt && (
               <>
@@ -244,7 +244,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               </>
             )}
             {z.abgeleitetVon && !z.angepasst
-              ? <button onClick={() => zPatch(z.id, { angepasst: true })} aria-label="Vom Jahresziel lösen" title="Vom Jahresziel lösen — wird ein eigenes Ziel" style={{ ...loeschen, fontSize: 11, color: LEUCHT.agenten }}>lösen</button>
+              ? <button onClick={() => zPatch(z.id, { angepasst: true })} aria-label="Vom Jahresziel lösen" title="Vom Jahresziel lösen — wird ein eigenes Ziel" style={{ ...loeschen, fontSize: 12, color: LEUCHT.agenten }}>lösen</button>
               : <button onClick={() => zLoeschen(z.id)} aria-label="Ziel löschen" style={loeschen}>✕</button>}
           </span>
         } />
@@ -285,7 +285,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto', opacity: m.erledigt ? 0.7 : 1 }}>
               {!m.erledigt && !kompakt && spaceFilter === 'alle' && (
                 <button onClick={() => { const neu: SpaceId = sp === 'privat' ? 'business' : 'privat'; mPatch(m.id, { space: neu, bereich: bereichAusSpace(neu), ...(neu === 'privat' ? { einheit: undefined } : {}) }, true); }} title={`${SPACE_LABEL[sp]} — Klick wechselt`}
-                  style={{ ...pille(true, bf), padding: '2px 8px', fontSize: 11 }}>{SPACE_LABEL[sp]}</button>
+                  style={{ ...pille(true, bf), padding: '2px 8px', fontSize: 12 }}>{SPACE_LABEL[sp]}</button>
               )}
               {!m.erledigt && (
                 <>
@@ -300,7 +300,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
                 </>
               )}
               {m.abgeleitetVon && !m.angepasst
-                ? <button onClick={() => mPatch(m.id, { angepasst: true })} aria-label="Vom Jahresziel lösen" title="Vom Jahresziel lösen — wird ein eigener Meilenstein" style={{ ...loeschen, fontSize: 11, color: LEUCHT.agenten }}>lösen</button>
+                ? <button onClick={() => mPatch(m.id, { angepasst: true })} aria-label="Vom Jahresziel lösen" title="Vom Jahresziel lösen — wird ein eigener Meilenstein" style={{ ...loeschen, fontSize: 12, color: LEUCHT.agenten }}>lösen</button>
                 : <button onClick={() => mLoeschen(m.id)} aria-label="Meilenstein löschen" style={loeschen}>✕</button>}
             </span>
           } />
@@ -322,7 +322,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
 
   return (
     <>
-      {p.hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{p.hinweis}</div>}
+      {p.hinweis && <Hinweis art="achtung" rolle="status">{p.hinweis}</Hinweis>}
       {!rueckgaengig && eigenerHinweis.hinweis}
       {/* Filter: Space · Einheiten (Business) */}
       <div className="os-auf" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', ['--i' as string]: i }}>
@@ -338,7 +338,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               ? <button onClick={() => setEinheitNeu('')} className="fassbar" title="Neue Einheit anlegen" style={{ ...pille(false, SPACE_FARBE.business), borderStyle: 'dashed' }}>+ neu</button>
               : <input autoFocus value={einheitNeu} placeholder="Neue Einheit …" aria-label="Neue Einheit" onChange={e => setEinheitNeu(e.target.value)}
                   onKeyDown={async e => { if (e.key === 'Escape') setEinheitNeu(null); if (e.key === 'Enter') { const s = await p.einheitAnlegen(einheitNeu); if (s) setEinheitFilter(s); setEinheitNeu(null); } }}
-                  onBlur={() => setEinheitNeu(null)} style={{ ...feld, width: 180, padding: '5px 10px', fontSize: 12 }} />}
+                  onBlur={() => setEinheitNeu(null)} style={{ ...feld, width: 180, padding: '5px 10px', fontSize: TYP.bedien }} />}
           </>
         )}
       </div>

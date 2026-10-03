@@ -16,6 +16,43 @@ Kevin 03.10.: „Fokus Innovation = Event-Reihe unter Make.One“ (Leit-Format d
 - **makeinnovation.de:** im Make.One-Kapitel ein Kasten „Unser Innovations-Format — Fokus Innovation“ mit Mail-Knopf; der Link auf fokusinnovation.de kommt erst, wenn die Domain live ist (Kommentar in `website/index.html`).
 - **Tests:** `tests/fokus-innovation-reihe.test.ts` (Werteliste, Säuberung, Schreibweg + 409, Name, Herkunft, ICS, Kennzahlen/Filter je Reihe), `tests/fokus-seite.test.ts` (Prüfer, gemeinsame Dateien, Karte). `website/pruefen.mjs` exportiert jetzt `SKRIPT_VERBOTEN`/`TRACKER` (von `fokus/pruefen.mjs` genutzt).
 - **Rückweg:** nur ein optionales Feld (`GO_LIVE_CHECKLISTE.md` › Rückweg › Fokus Innovation).
+## Lichtfäden v2: alle Stränge, jede Ebene, Fokus (03.10.2026, nur lokal — Branch `faeden2`; Technik `LICHTFAEDEN.md`, Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
+
+Kevin 03.10.: „Überarbeite das Ganze nochmal mit den Lichtfäden … ein Werkzeug, was nachher Fokus anzeigt, weil extrem viele Stränge zusammenlaufen.
+Es gibt es auf jeder Ebene und nachher übergreifend für alles.“ — „Alles läuft immer auf das größte Ziel zusammen.“ Löst v1 (unten) ab.
+
+- **Ein Modell:** Strang = ein Ding, das Zeit bindet (Pfad gesamt → Space → Thema → Ziel → Meilenstein, Person, Gewicht, Status, Link, privat). Quellen:
+  Ziele/Meilensteine/Aufgaben/Projekte, Kalender (iCloud/Google/Mac-Lieferung), Markttraktion (Follow-ups, Deals, Events/Besuche, Make.One-Abende),
+  Finanzen (Zahlungen, Rechnungen, Finanzplanung jetzt, Haushalts-Belege, Steuerfristen), Familie & Beziehung (Geburtstage, wichtige Tage, Dates,
+  Vereinbarungen), Gesundheit (terminierte Routinen, Wettkämpfe). Gewichtstabelle in `LICHTFAEDEN.md`.
+- **Jede Ebene:** Planung › Jahr (Wurzel = Space bzw. Gesamt; Blättern, Heute, Zeitraum, „+ Meilenstein“, Anlegen per Klick bleiben), Ziel-Seite (Wurzel Ziel),
+  Meilenstein-Seite (Wurzel Meilenstein — jeder Strang ein Faden), **Fokus** (`/os/fokus`, neue Kachel „Lichtfäden“, Wurzel Gesamt, zuerst „Ich“).
+- **Bedienung:** Tippen auf ein Bündel = eine Ebene tiefer (die Fäden fächern in 0,7 s aus dem Bündel auf), Brotkrumen „Gesamt › Privat › Gesundheit › …“
+  zurück (sie fließen zusammen), Legende als Knöpfe, Person „Ich · Partner/in · Beide“. **Engstellen:** Wochen, in denen viel zusammenläuft
+  („KW 44: 3 Ziele · 9 Fristen · 4 Termine“), als ruhige Lichtsäule + KW-Knopf im Band und aufklappbare Zeile mit den schwersten Strängen.
+- **Privat-Regel:** private Termine, Gesundheit, „nur ich“-Aufgaben und -Familieneinträge der anderen Person nur als anonymes „Belegt“ (grau, ohne Titel/Link/
+  Thema/Ziel) — die Last bleibt sichtbar, der Inhalt nicht.
+- **Route** `GET /api/lichtfaeden` (Haushalt des Inhabers, Dienstweg 403, gemerkt 60 s, gzip). Kein neuer Bestand.
+- **Design-Standard:** Planung (Jahr/Monat/Quartal), Ziel- und Meilenstein-Seite, Meilenstein-Fenster und Fokus hängen an `components/os/ui`
+  (Hinweise als Karten, Fließtext ≥ 13 px, Tippziele 44 px). Der schlichte `Zeitstrahl` (Monat, Quartal, Aufgaben, Bauplan) verliert die v1-Sonderwege.
+- **Standard-Fix nebenbei:** am Handy überlagerten sich nicht umbrechende `Segmente` (die 44-px-Mindestbreite des Handy-Netzes schlug `max-content`) — jetzt laufen sie seitwärts (eine Zeile in `globals.css`, nur unter `.ui-seite`).
+- **Ersetzt:** `lib/lichtfaeden/{dichte,farben,zeitband}.ts`, `components/os/planung/LichtBand.tsx` → `modell/baum/fokus/faedenband.ts` + `components/os/lichtfaeden/`.
+  Website unverändert (`band.ts`/`zeichnen.ts` gleich, Wächter grün).
+- **Test:** `tests/lichtfaeden-*.test.ts` (Modell, sechs Quellen, Baum/LOD/Dichte/Navigation, Engstellen, Route mit Privat-Regel, Oberfläche/Zeichner).
+- **Rückweg:** reine Darstellung + eine Lese-Route, keine neuen Bestände oder Felder — zurück ohne Datenschritte.
+
+## Lichtfäden v1 (abgelöst durch v2 oben): Zeitstrahl der Planung + roter Faden der Landingpage (03.10.2026, nur lokal — Branch `lichtfaeden`; Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
+
+## Design-Standard: Kern — globale Shell, Aufgaben, Kalender, Inbox (03.10.2026, nur lokal — Branch `design-kern`; Dokument `DESIGN_STANDARD.md` › „Umgestellt: Kern“)
+
+Reine Darstellung und Struktur — keine Funktion, kein Bestand, kein Abgleich geändert.
+
+- **Shell (wirkt überall):** Kopf-Knöpfe 40/44 px (vorher 34), am Handy sieben Ziele in einer Zeile und der Index-Schalter in eigener Zeile (war aus dem Bild gewischt); Leiste links 232 px mit klarer Rangfolge (Kasten 15 · Punkte 13); Leiste unten: ein Space leuchtet nur auf seinen eigenen Seiten (N3 behoben); ZOE-Fenster am 375er mit 8 px Rand statt links abgeschnitten.
+- **Aufgaben, Kalender, Inbox:** alle Dateien (über 60) auf `components/os/ui`; Abhaken-Kreise mit echter 44-px-Fläche, ✕/⋯/Stift als `SymbolKnopf` (nicht mehr 18 × 24 nebeneinander); Mini-Monat mit 44-px-Pfeilen und Tagen; Monatsblatt am Handy mit Punkten; Kalender-Ansichten als wischbare Reiter; Inbox-Thread ohne Überlauf, Mehr-Menü als Fläche.
+- **Ziel-Bezug:** Aufgaben in der Liste eines Meilensteins zeigen das Ziel als Chip in der Ziel-Farbe der Lichtfäden (Baum und Detail) — gelesen aus Aufgabe → Meilenstein → Ziel, nichts gespeichert.
+- **Messung (375 px, 42 Ansichten, erfundene Daten):** Tippziele < 44 px Aufgaben 777 → 0, Kalender 1.290 → 3, Inbox 147 → 0; Eingaben < 16 px Aufgaben 104 → 0, Kalender 23 → 0; kein seitlicher Überlauf, keine Konsolenfehler.
+- **Berührte fremde Stellen:** `crm/Wahl.tsx` (Wahl-Chips 32/36 px statt 26/30, 13 px — gilt auch im CRM), Kopf/Leiste/Glocke/ZOE-Fenster-Position (global), `globals.css`.
+- **Test:** `tests/design-kern.test.ts`. **Rückweg:** reiner Oberflächen-Commit, keine neuen Bestände.
 
 ## Lichtfäden: Zeitstrahl der Planung + roter Faden der Landingpage (03.10.2026, nur lokal — Branch `lichtfaeden`; Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
 

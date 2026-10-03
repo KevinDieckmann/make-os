@@ -784,6 +784,8 @@ nav a:hover { transform: translateX(2px); }
   /* !important, weil viele Altstellen ihre Höhe inline tragen (Inline schlägt Stylesheet). */
   .ui-seite button:not(.treffer44):not(.ui-kein-ziel), .ui-seite [role=button]:not(.ui-kein-ziel), .ui-seite [role=tab], .ui-seite select, .ui-seite a.knopf, .ui-seite a.fassbar, .ui-seite summary { min-height: 44px !important; min-width: 44px; box-sizing: border-box; }
   .ui-seite a.fassbar, .ui-seite a.knopf { display: inline-flex; align-items: center; }
+  /* Segmente laufen seitwärts statt sich zu überlagern: die 44-px-Mindestbreite oben darf ihr `max-content` nicht schlagen (03.10., Lichtfäden-Zeitraum). */
+  .ui-seite .ui-segmente:not(.ui-segmente-umbrechen) .ui-segment { min-width: max-content; }
   .ui-seite input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]), .ui-seite textarea, .ui-seite select { font-size: 16px !important; min-height: 44px !important; box-sizing: border-box; }
   .ui-seite label:has(input[type=checkbox], input[type=radio]) { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box; }
   .ui-seite input[type=checkbox], .ui-seite input[type=radio] { width: 22px; height: 22px; min-height: 0 !important; flex: 0 0 auto; }
@@ -799,4 +801,52 @@ nav a:hover { transform: translateX(2px); }
 @container (max-width: 700px) {
   .kartei-zeile { grid-template-columns: 10px 22px minmax(0, 1.6fr) minmax(0, 1.2fr) 40px 64px; }
   .kartei-zeile > :nth-child(6), .kartei-zeile > :nth-child(7), .kartei-zeile > :nth-child(8) { display: none !important; }
+}
+
+/* ─── Ziel-Bezug (03.10., Design-Standard › Kern): Chip „Ziel · Titel“ — der Titel kürzt, der Chip bleibt eine Zeile ─── */
+.ui-ziel-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+@media (max-width: 720px) { .ui-ziel-text { max-width: 150px; } }
+
+/* ─── Kopf über jeder Seite (03.10., Design-Standard › Kern): Tippziele 40 px am Rechner, 44 px am Handy ─── */
+.kopf-rund { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; box-sizing: border-box; }
+.kopf-score-kreis { width: 44px; height: 44px; box-sizing: border-box; }
+.kopf-knopf { min-width: 44px; min-height: 44px; display: grid; place-items: center; }
+.kopf-pille-knopf { min-height: 40px; }
+.wachstum-kopf-lupe.kopf-knopf { display: none; }
+.kopf-index-zeile { display: none; }
+@media (max-width: 720px) {
+  .wachstum-kopf-lupe.kopf-knopf { display: grid; }
+  .kopf-rund { width: 44px; height: 44px; }
+  .wachstum-kopf-innen { gap: 4px; padding: 6px 12px; }
+  .wachstum-kopf-score { min-width: 44px; }
+  /* Sieben Ziele zu 44 px verteilen sich über die Breite; wer nicht passt (laufender Fokus), wischt — wie bisher */
+  .wachstum-kopf-saeulen { flex: 1 1 auto; justify-content: space-between; gap: 0 !important; }
+  .kopf-pille-knopf, .kopf-pille-pfeil { min-height: 44px; }
+  /* eigene Zeile für den Index-Schalter, über die Breite, in voller Beschriftung */
+  .kopf-index-zeile { display: block; padding: 6px 16px 0; }
+  .kopf-index-zeile .wachstum-kopf-label { display: inline !important; }
+  .kopf-index-zeile .wachstum-kopf-space { display: flex; width: 100%; }
+  .kopf-index-zeile .kopf-pille-knopf { flex: 1; min-width: 0; overflow: hidden; }
+  .kopf-index-zeile .wachstum-kopf-space { overflow: hidden; }
+}
+/* ZOE-Fenster am Handy: bündig mit 8 px Rand links und rechts (vorher 6 px links abgeschnitten) */
+@media (max-width: 720px) { .zoe-fenster { right: 8px !important; width: calc(100vw - 16px) !important; } }
+
+/* ─── Haken und Symbolknöpfe mit echter Trefferfläche (03.10., Design-Standard › Kern) ─── */
+.ui-haken-ziel { flex: 0 0 auto; width: 40px; height: 40px; padding: 0; margin: -6px -4px; display: grid; place-items: center; background: none; border: none; cursor: pointer; border-radius: 12px; }
+.ui-symbol { flex: 0 0 auto; min-width: 40px; min-height: 40px; padding: 0 8px; display: inline-grid; place-items: center; background: none; border: none; border-radius: 12px; cursor: pointer; font-family: inherit; font-size: 16px; line-height: 1; }
+.ui-symbol:hover { background: rgba(255, 255, 255, .06); }
+.ui-symbol:disabled { opacity: .4; cursor: default; }
+.ui-symbole { display: inline-flex; align-items: center; gap: 8px; }
+@media (max-width: 720px), (pointer: coarse) { .ui-haken-ziel { width: 44px; height: 44px; margin: -8px -6px; } .ui-symbol { min-width: 44px; min-height: 44px; } .ui-symbole { gap: 12px; } }
+.ui-symbol-ein { margin: -9px -2px -9px -6px; }
+.ui-mini-monat > button { min-width: 0; }
+@media (max-width: 720px) { .ui-seite .ui-mini-monat > button { min-width: 0 !important; } }
+
+/* ─── Monatsblatt (03.10., Kern): am Handy ganze Tage antippen, Termine als Punkte; die Pillen gehören dem Rechner ─── */
+.ui-monat-punkte { display: none; }
+@media (max-width: 720px) {
+  .ui-monat-pillen { display: none !important; }
+  .ui-monat-punkte { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; min-height: 9px; }
+  .ui-monat-zelle { min-height: 56px !important; padding: 4px 2px !important; justify-items: center; }
 }

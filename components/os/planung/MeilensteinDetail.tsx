@@ -16,7 +16,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Haken, Knopf, Segmente, Leer, Chip, feld, useBreit, LEUCHT } from '../schlank';
+import { Seite, Karte, Haken, Knopf, Segmente, Leer, Chip, Hinweis, feld, useBreit, LEUCHT } from '../ui';
+import { Lichtfaeden } from '../lichtfaeden/Lichtfaeden';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
@@ -47,7 +48,7 @@ const ABSCHNITTE: { id: Abschnitt; label: string }[] = [
 ];
 const istAbschnitt = (v: unknown): v is Abschnitt => ABSCHNITTE.some(a => a.id === v);
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
-const leise: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '6px 8px', minHeight: 36 };
+const leise: CSSProperties = { display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '0 10px', minHeight: 44 };
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
 
 type RaumSicht = Raum & { notizStand: string };
@@ -177,7 +178,7 @@ export function MeilensteinDetail({ id }: { id: string }) {
         {ziel && <> › <Link href={WEG.ziel(ziel.id)} title="Zum Ziel — alle Meilensteine als Kette" style={{ color: C.inkLeise, textDecoration: 'none' }}>{ziel.titel}</Link></>}
         {' › '}<span style={{ color: C.inkDim }}>Meilenstein</span>
       </span>}>
-      {p.hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{p.hinweis}</div>}
+      {p.hinweis && <Hinweis art="achtung" rolle="status">{p.hinweis}</Hinweis>}
       {/* ── Kopf ── */}
       <Karte i={1} akzent={farbe}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -185,7 +186,7 @@ export function MeilensteinDetail({ id }: { id: string }) {
           <h2 style={{ flex: 1, minWidth: 0, margin: 0, padding: '2px 0', fontFamily: SCHRIFT.display, fontSize: TYP.titel + 2, fontWeight: 700, color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none', overflowWrap: 'anywhere' }}>{m.titel}</h2>
           <Knopf leise onClick={() => msFenster.oeffne(m.id)}>bearbeiten</Knopf>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, fontSize: 12.5, color: C.inkLeise }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise }}>
           <Chip farbe={SPACE_FARBE[sp]}>{SPACE_LABEL[sp]}</Chip>
           {space && space.id !== 'privat' && <Chip farbe={space.farbe}>{space.label}</Chip>}
           {m.einheit && space?.label !== m.einheit && <Chip farbe={SPACE_FARBE.business}>{m.einheit}</Chip>}
@@ -193,7 +194,7 @@ export function MeilensteinDetail({ id }: { id: string }) {
           {ziel && <span>Ziel: <Link href={WEG.ziel(ziel.id)} style={{ color: C.inkDim, fontWeight: 600, textDecoration: 'none' }}>{ziel.titel}</Link> · {ziel.erledigt ? 100 : ziel.fortschritt} %</span>}
         </div>
         {(wartetNoch || vorgaenger.length > 0 || danach.length > 0) && (
-          <div style={{ display: 'grid', gap: 4, marginTop: 8, fontSize: 12.5, color: C.inkLeise }}>
+          <div style={{ display: 'grid', gap: 4, marginTop: 8, fontSize: TYP.bedien, color: C.inkLeise }}>
             {wartetNoch && <span style={{ color: LEUCHT.achtung, fontWeight: 600 }}>{wartetNoch}</span>}
             {vorgaenger.length > 0 && <span>Wartet auf: {vorgaenger.map((x, k) => <span key={x.id}>{k > 0 ? ', ' : ''}<Link href={WEG.meilenstein(x.id)} style={{ color: x.erledigt ? C.inkLeise : C.inkDim, textDecoration: x.erledigt ? 'line-through' : 'none' }}>{x.titel}</Link></span>)}</span>}
             {danach.length > 0 && <span>Danach dran: {danach.map((x, k) => <span key={x.id}>{k > 0 ? ', ' : ''}<Link href={WEG.meilenstein(x.id)} style={{ color: C.inkDim }}>{x.titel}</Link></span>)}</span>}
@@ -204,19 +205,23 @@ export function MeilensteinDetail({ id }: { id: string }) {
         {/* Fortschritt: aus den Aufgaben, sobald es welche gibt — sonst von Hand. */}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
           <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12, color: C.inkLeise, marginBottom: 5 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 5 }}>
               <span>{m.erledigt ? 'erledigt' : errechnet !== null ? `aus ${stand.gesamt} Aufgabe${stand.gesamt === 1 ? '' : 'n'}${stand.unter ? ` + ${stand.unter} Unteraufgaben` : ''}` : 'von Hand („bearbeiten“) — mit Aufgaben rechnet er sich selbst'}</span>
               <b style={{ color: col(fortschritt), fontVariantNumeric: 'tabular-nums' }}>{fortschritt} %</b>
             </div>
             <div style={{ height: 7, borderRadius: 5, background: 'rgba(255,255,255,.07)', overflow: 'hidden' }}><div style={{ height: '100%', width: `${fortschritt}%`, background: col(fortschritt), transition: 'width .3s ease' }} /></div>
           </div>
-          <span style={{ fontSize: 12.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{stand.erledigt}/{stand.gesamt} erledigt{stand.faellig ? <b style={{ color: LEUCHT.kritisch }}> · {stand.faellig} fällig</b> : null}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{stand.erledigt}/{stand.gesamt} erledigt{stand.faellig ? <b style={{ color: LEUCHT.kritisch }}> · {stand.faellig} fällig</b> : null}</span>
         </div>
-        {!m.erledigt && errechnet === 100 && <div style={{ marginTop: 8, fontSize: 12.5, color: LEUCHT.gut }}>Alle Aufgaben erledigt — Meilenstein abhaken?</div>}
+        {!m.erledigt && errechnet === 100 && <div style={{ marginTop: 8, fontSize: TYP.bedien, color: LEUCHT.gut }}>Alle Aufgaben erledigt — Meilenstein abhaken?</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
           <Link href={WEG.aufgaben({ s: spaceId, p: projektId, l: listeId })} style={{ ...leise, color: C.aktiv, textDecoration: 'none' }}>in Aufgaben öffnen ›</Link>
         </div>
       </Karte>
+
+      {/* Lichtfäden (03.10.): die feinste Ebene — jeder Strang dieses Meilensteins (Aufgaben, sein Termin) ein eigener Faden;
+          über die Brotkrumen hinauf bis zum Ziel und zum großen Ganzen. */}
+      <Lichtfaeden wurzel={`ms:${m.id}`} titel="Lichtfäden dieses Meilensteins" i={2} />
 
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none', margin: '4px 0 12px' }}>
         <Segmente liste={ABSCHNITTE.map(a => {
@@ -226,7 +231,7 @@ export function MeilensteinDetail({ id }: { id: string }) {
           return { id: a.id, label: n ? `${label}\u00a0·\u00a0${n}` : label };
         })} aktiv={abschnitt} onWahl={wechsle} />
       </div>
-      {raum.fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginBottom: 8 }}>{raum.fehler}</div>}
+      {raum.fehler && <Hinweis art="kritisch" rolle="alert">{raum.fehler}</Hinweis>}
 
       {abschnitt === 'aufgaben' && (
         <HandlungProvider>
@@ -251,7 +256,7 @@ export function MeilensteinDetail({ id }: { id: string }) {
               onBearbeiten={(nid, text) => raum.aktion({ art: 'bearbeiten', id: nid, text })}
               onEntfernen={nid => raum.aktion({ art: 'entfernen', id: nid })} />
           )}
-          <div style={{ marginTop: 12, fontSize: 12, color: C.inkLeise }}>ZOE-Zusammenfassung und Vorschläge für nächste Schritte kommen in einem nächsten Schritt.</div>
+          <div style={{ marginTop: 12, fontSize: TYP.bedien, color: C.inkLeise }}>ZOE-Zusammenfassung und Vorschläge für nächste Schritte kommen in einem nächsten Schritt.</div>
         </Karte>
       )}
 
@@ -285,7 +290,7 @@ function Links({ raum, aktion, laeuft, personen }: { raum: RaumSicht | null; akt
       {links.map(l => (
         <div key={l.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', minWidth: 0 }}>
           <a href={l.url} target="_blank" rel="noopener noreferrer nofollow" style={{ color: C.aktiv, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{l.titel}</a>
-          <span style={{ fontSize: 12, color: C.inkLeise, flex: '0 0 auto' }}>{name(l.von)}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '0 0 auto' }}>{name(l.von)}</span>
           <button onClick={() => { if (window.confirm(`Link „${l.titel}“ entfernen?`)) void aktion({ art: 'link-entfernen', id: l.id }); }} aria-label="Link entfernen" style={leise}>✕</button>
         </div>
       ))}
@@ -309,7 +314,7 @@ function Notizen({ raum, aktion, personen }: { raum: RaumSicht; aktion: (a: Reco
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <span style={mikro}>Notizen</span>
-        {raum.notiz && <span style={{ fontSize: 12, color: C.inkLeise }}>zuletzt {name(raum.notiz.von)}, {wann(raum.notiz.am)}</span>}
+        {raum.notiz && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>zuletzt {name(raum.notiz.von)}, {wann(raum.notiz.am)}</span>}
         {text === null && <button onClick={() => setText(raum.notiz?.text ?? '')} style={{ ...leise, marginLeft: 'auto', color: C.aktiv }}>bearbeiten</button>}
       </div>
       {text === null
@@ -318,7 +323,7 @@ function Notizen({ raum, aktion, personen }: { raum: RaumSicht; aktion: (a: Reco
           <>
             <textarea autoFocus value={text} onChange={e => setText(e.target.value)} rows={12} aria-label="Notiz des Meilensteins"
               placeholder={'## Ziel\n…\n\n## Hintergrund\n…\n\n## Entscheidungen\n- …'} style={{ ...feld, fontSize: TYP.bedien, resize: 'vertical', padding: '10px 12px', lineHeight: 1.5, fontFamily: SCHRIFT.mono }} />
-            {zuLang && <div role="alert" style={{ fontSize: 12, color: LEUCHT.kritisch, marginTop: 4 }}>Zu lang ({text.length} von {RAUM_GRENZEN.notiz} Zeichen) — so wird nichts gespeichert.</div>}
+            {zuLang && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginTop: 4 }}>Zu lang ({text.length} von {RAUM_GRENZEN.notiz} Zeichen) — so wird nichts gespeichert.</div>}
             <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}>
               <Knopf leise onClick={() => setText(null)}>Abbrechen</Knopf>
               <Knopf aus={zuLang} onClick={async () => { if (await aktion({ art: 'notiz', text, stand: raum.notizStand })) setText(null); }}>Speichern</Knopf>
@@ -326,7 +331,7 @@ function Notizen({ raum, aktion, personen }: { raum: RaumSicht; aktion: (a: Reco
           </>
         )}
       {letzte.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: C.inkLeise, display: 'grid', gap: 2 }}>
+        <div style={{ marginTop: 12, fontSize: TYP.bedien, color: C.inkLeise, display: 'grid', gap: 2 }}>
           <span style={mikro}>Verlauf der Notiz</span>
           {letzte.map((v, i) => <span key={i}>{name(v.von)} · {wann(v.am)} · {v.zeichen} Zeichen</span>)}
         </div>

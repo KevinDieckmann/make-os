@@ -8,7 +8,7 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Fenster } from '../Fenster';
-import { Knopf, Segmente, feld } from '../schlank';
+import { Knopf, Segmente, feld } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import type { AufgabenVorlage } from '@/types/tasks';
 import { sonstigeProjektId } from '@/lib/aufgaben/struktur';
@@ -25,12 +25,12 @@ export type VorlagenAuftrag =
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
 const zeile: CSSProperties = { display: 'grid', gridTemplateColumns: '120px minmax(0,1fr)', gap: 10, alignItems: 'center' };
 const eingabe: CSSProperties = { ...feld, fontSize: TYP.bedien, padding: '8px 12px', colorScheme: 'dark' };
-const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '4px 6px' };
+const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '4px 6px' };
 
 function Umfang({ v }: { v: Pick<AufgabenVorlage, 'inhalt'> }) {
   const u = vorlageUmfang(v);
   const teile = [u.gruppen ? `${u.gruppen} Gruppe${u.gruppen === 1 ? '' : 'n'}` : '', u.listen ? `${u.listen} Liste${u.listen === 1 ? '' : 'n'}` : '', `${u.aufgaben} Aufgabe${u.aufgaben === 1 ? '' : 'n'}`, u.unter ? `${u.unter} Unteraufgabe${u.unter === 1 ? '' : 'n'}` : ''].filter(Boolean);
-  return <span style={{ fontSize: 12.5, color: C.inkLeise }}>{teile.join(' · ')}</span>;
+  return <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{teile.join(' · ')}</span>;
 }
 
 /** Der Dialog. Speichern: aus Projekt/Liste; Anlegen: Vorlage wählen → Ziel + Start. */
@@ -82,7 +82,7 @@ function Speichern({ art, id, onSchliessen }: { art: 'projekt' | 'liste'; id: st
         <input type="checkbox" checked={werktage} onChange={e => setWerktage(e.target.checked)} /> Abstand in Werktagen (ohne Wochenende und Feiertage NRW)</label>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <Umfang v={v} />
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>Platzhalter im Namen: {'{Monat}'} {'{Jahr}'} {'{KW}'} {'{Datum}'}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Platzhalter im Namen: {'{Monat}'} {'{Jahr}'} {'{KW}'} {'{Datum}'}</span>
       </div>
       {fehler && <div role="alert" style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler}</div>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -169,7 +169,7 @@ function Anlegen({ spaceId: startSpace, projektId: startProjekt, artStart, onSch
             <input type="date" value={start} onChange={e => setStart(e.target.value || berlinerTag())} style={eingabe} aria-label="Startdatum" /></label>
           <label style={zeile}><span style={mikro}>Name</span>
             <input value={titelJetzt} onChange={e => setTitel(e.target.value)} maxLength={art === 'projekt' ? 120 : 80} style={eingabe} aria-label="Name" /></label>
-          <span style={{ fontSize: 12.5, color: C.inkLeise }}>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
             wird „{titelMitPlatzhaltern(titelJetzt || v.titel, start)}“{u?.letzterVersatz != null ? ` · Deadlines bis ${langTag(tagPlus(start, u.letzterVersatz))}` : ' · ohne Deadlines'}
           </span>
         </div>

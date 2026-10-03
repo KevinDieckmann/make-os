@@ -7,7 +7,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
-import { Karte, Leer, Punkt, Haken, prioFarbe } from '../schlank';
+import { Karte, Leer, Punkt, prioFarbe, HakenZiel } from '../ui';
 import { kachelAufgaben, spaceStaende, wartetNoch, type KachelArt, type SpaceStand } from '@/lib/aufgaben/uebersicht';
 import { zoeAufgaben } from '@/lib/aufgaben/zoe';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';
@@ -34,7 +34,7 @@ const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fo
 
 function Zahlen({ s }: { s: SpaceStand }) {
   return (
-    <span style={{ display: 'inline-flex', gap: 12, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: C.inkDim }}>
+    <span style={{ display: 'inline-flex', gap: 12, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: C.inkDim }}>
       <span><b style={{ color: C.ink, fontFamily: SCHRIFT.display, fontSize: 18 }}>{s.offen}</b> offen</span>
       {s.heute > 0 && <span style={{ color: LEUCHT.achtung }}>{s.heute} heute</span>}
       {s.ueberfaellig > 0 && <span style={{ color: LEUCHT.kritisch }}>{s.ueberfaellig} überfällig</span>}
@@ -49,7 +49,7 @@ function SpaceKarte({ s, i, gehe }: { s: SpaceStand; i: number; gehe: Gehe }) {
       <button onClick={() => gehe({ ansicht: 'space', s: s.space.id })} className="fassbar" style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', marginBottom: 10 }}>
         <Punkt farbe={s.space.farbe} groesse={10} />
         <span style={{ fontFamily: SCHRIFT.display, fontSize: 17, fontWeight: 700, color: C.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.space.label}</span>
-        <span style={{ color: C.aktiv, fontSize: 12.5 }}>öffnen ›</span>
+        <span style={{ color: C.aktiv, fontSize: TYP.bedien }}>öffnen ›</span>
       </button>
       <Zahlen s={s} />
       <div style={{ marginTop: 10, display: 'grid' }}>
@@ -58,11 +58,11 @@ function SpaceKarte({ s, i, gehe }: { s: SpaceStand; i: number; gehe: Gehe }) {
             <Punkt farbe={p.farbe} groesse={7} />
             <span style={{ color: C.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titel}</span>
             {p.gesamt > 0 && <span aria-hidden style={{ width: 42, height: 4, borderRadius: 3, background: 'rgba(255,255,255,.08)', overflow: 'hidden', flex: '0 0 auto' }}><span style={{ display: 'block', height: '100%', width: `${Math.round((p.fertig / p.gesamt) * 100)}%`, background: TIEF.verlauf(LEUCHT.gut) }} /></span>}
-            <span style={{ color: p.ueberfaellig ? LEUCHT.kritisch : C.inkLeise, fontSize: 12, fontVariantNumeric: 'tabular-nums', minWidth: 54, textAlign: 'right' }}>{p.ueberfaellig ? `${p.ueberfaellig} überf.` : `${p.offen} offen`}</span>
+            <span style={{ color: p.ueberfaellig ? LEUCHT.kritisch : C.inkLeise, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', minWidth: 54, textAlign: 'right' }}>{p.ueberfaellig ? `${p.ueberfaellig} überf.` : `${p.offen} offen`}</span>
           </button>
         ))}
-        {!s.projekte.length && <span style={{ fontSize: 12.5, color: C.inkLeise, paddingTop: 4 }}>Noch kein Projekt.</span>}
-        {s.projekte.length > projekte.length && <button onClick={() => gehe({ ansicht: 'space', s: s.space.id })} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, textAlign: 'left', padding: '6px 0', fontFamily: SCHRIFT.text }}>+ {s.projekte.length - projekte.length} weitere Projekte ›</button>}
+        {!s.projekte.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, paddingTop: 4 }}>Noch kein Projekt.</span>}
+        {s.projekte.length > projekte.length && <button onClick={() => gehe({ ansicht: 'space', s: s.space.id })} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, textAlign: 'left', padding: '6px 0', fontFamily: SCHRIFT.text }}>+ {s.projekte.length - projekte.length} weitere Projekte ›</button>}
       </div>
     </Karte>
   );
@@ -85,15 +85,15 @@ export function AufgabenUeberblick({ state, dispatch, spaces, ich, heute, gehe, 
   const handlung = useHandlung(dispatch, state.statusEigen);
   const zeile = (t: Task) => (
     <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-      <Haken an={false} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} />
+      <HakenZiel an={false} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} />
       <PrioZeichen p={t.priority} />
       <button onClick={() => gehe({ ansicht: 'space', s: t.spaceId, a: t.id })} className="fassbar" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', display: 'grid', gap: 1, fontFamily: SCHRIFT.text }}>
         <span style={{ color: C.ink, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-        <span style={{ color: C.inkLeise, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spaceLabel(spaces, t.spaceId)} › {projektTitel(state, t.projectId)}</span>
+        <span style={{ color: C.inkLeise, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spaceLabel(spaces, t.spaceId)} › {projektTitel(state, t.projectId)}</span>
       </button>
       {t.sichtbarkeit === 'nur-ich' && <NurIchZeichen />}
-      {wartetNoch(t, tasks) && <span title="wartet noch auf eine andere Aufgabe" style={{ fontSize: 12, color: LEUCHT.achtung }}>wartet</span>}
-      {t.dueDate && <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute && !wartetNoch(t, tasks) ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.inkLeise }} aria-label={t.dueDate < heute && !wartetNoch(t, tasks) ? `überfällig seit ${tagKurz(t.dueDate)}` : undefined}>{t.dueDate < heute && !wartetNoch(t, tasks) ? '! ' : ''}{tagKurz(t.dueDate)}</span>}
+      {wartetNoch(t, tasks) && <span title="wartet noch auf eine andere Aufgabe" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>wartet</span>}
+      {t.dueDate && <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute && !wartetNoch(t, tasks) ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.inkLeise }} aria-label={t.dueDate < heute && !wartetNoch(t, tasks) ? `überfällig seit ${tagKurz(t.dueDate)}` : undefined}>{t.dueDate < heute && !wartetNoch(t, tasks) ? '! ' : ''}{tagKurz(t.dueDate)}</span>}
     </div>
   );
   return (
@@ -115,7 +115,7 @@ export function AufgabenUeberblick({ state, dispatch, spaces, ich, heute, gehe, 
         <Karte i={1}>
           <div style={{ ...mikro, marginBottom: 6 }}>{KACHELN.find(k => k.id === kachel)!.label}</div>
           {liste.slice(0, 30).map(zeile)}
-          {liste.length > 30 && <div style={{ fontSize: 12, color: C.inkLeise, paddingTop: 6 }}>… und {liste.length - 30} weitere.</div>}
+          {liste.length > 30 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, paddingTop: 6 }}>… und {liste.length - 30} weitere.</div>}
           {!liste.length && <Leer>{KACHELN.find(k => k.id === kachel)!.leer}</Leer>}
         </Karte>
       )}
@@ -157,8 +157,8 @@ export function AufgabenArchiv({ state, dispatch, spaces, heute, gehe }: { state
           <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', flexWrap: 'wrap' }}>
             <Punkt farbe={p.color} />
             <button onClick={() => gehe({ ansicht: 'space', s: p.spaceId, p: p.id })} className="fassbar" style={{ background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 14, padding: 0, textAlign: 'left' }}>{p.title}</button>
-            <span style={{ fontSize: 12, color: C.inkLeise }}>{spaceLabel(spaces, p.spaceId)} · {p.archived ? 'archiviert' : 'abgeschlossen'}</span>
-            <button onClick={() => dispatch({ type: 'UPDATE_PROJECT', payload: { id: p.id, archived: false, status: 'aktiv' } })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>wieder aktiv</button>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{spaceLabel(spaces, p.spaceId)} · {p.archived ? 'archiviert' : 'abgeschlossen'}</span>
+            <button onClick={() => dispatch({ type: 'UPDATE_PROJECT', payload: { id: p.id, archived: false, status: 'aktiv' } })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>wieder aktiv</button>
           </div>
         ))}
         {!projekte.length && <Leer>Kein Projekt im Archiv.</Leer>}
@@ -166,7 +166,7 @@ export function AufgabenArchiv({ state, dispatch, spaces, heute, gehe }: { state
       <NeustartArchiv spaces={spaces} />
       <Papierkorb spaces={spaces} />
       {/* Export (29.09., #81): alles, was du sehen darfst, als eine JSON-Datei (Umzug, Auskunft). Kein Seitenwechsel — ein Download. */}
-      <div style={{ margin: '14px 2px 0', fontSize: 12.5, color: C.inkLeise }}>
+      <div style={{ margin: '14px 2px 0', fontSize: TYP.bedien, color: C.inkLeise }}>
         <a href="/api/aufgaben/export" download style={{ color: C.aktiv, textDecoration: 'none' }}>Alle Aufgaben exportieren (JSON)</a>
         {' '}— Spaces, Projekte, Listen, Aufgaben, Serien, Abhängigkeiten, Kommentare und die Dateiliste.
       </div>

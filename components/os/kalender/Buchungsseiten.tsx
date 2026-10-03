@@ -19,8 +19,8 @@
 import { EinladungFrage } from './verknuepfen';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from '../schlank';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from '../ui';
 import { Fenster } from '../Fenster';
 import { WEG } from '@/lib/wege';
 import { usePersonen } from '../aufgaben/hilfe';
@@ -139,17 +139,17 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
       <Ueberschrift rechts={<Knopf leise onClick={() => oeffnen({ titel: '', dauerMin: 30, aktiv: true })}>+ Seite</Knopf>}>Buchungsseiten</Ueberschrift>
       <div style={{ display: 'grid', gap: 6 }}>
         {(stand?.seiten ?? []).map(s => (
-          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.aktiv ? LEUCHT.gut : C.inkLeise, flex: '0 0 auto' }} />
-            <button onClick={() => oeffnen(s)} style={{ background: 'none', border: 'none', color: s.aktiv ? C.ink : C.inkLeise, cursor: 'pointer', padding: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text, fontSize: 12.5, flex: 1, minWidth: 0 }}>{s.titel}</button>
-            {(!s.verantwortlich || s.verantwortlich.trim().length < 5) && <button onClick={() => oeffnen(s)} title="Ohne Verantwortlichen zeigt die Seite keine Termine (Datenschutz-Hinweis)" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, fontSize: 11, cursor: 'pointer', fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>Verantwortlich fehlt</button>}
-            <button onClick={() => void kopieren(s)} disabled={!s.aktiv} style={{ background: 'none', border: 'none', color: s.aktiv ? LEUCHT.puls : C.inkLeise, cursor: s.aktiv ? 'pointer' : 'default', fontSize: 11.5, fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>{kopiert === s.id ? 'kopiert ✓' : 'Link kopieren'}</button>
+            <button onClick={() => oeffnen(s)} style={{ background: 'none', border: 'none', color: s.aktiv ? C.ink : C.inkLeise, cursor: 'pointer', padding: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, flex: 1, minWidth: 0 }}>{s.titel}</button>
+            {(!s.verantwortlich || s.verantwortlich.trim().length < 5) && <button onClick={() => oeffnen(s)} title="Ohne Verantwortlichen zeigt die Seite keine Termine (Datenschutz-Hinweis)" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>Verantwortlich fehlt</button>}
+            <button onClick={() => void kopieren(s)} disabled={!s.aktiv} style={{ background: 'none', border: 'none', color: s.aktiv ? LEUCHT.puls : C.inkLeise, cursor: s.aktiv ? 'pointer' : 'default', fontSize: TYP.bedien, fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>{kopiert === s.id ? 'kopiert ✓' : 'Link kopieren'}</button>
           </div>
         ))}
-        {stand && !stand.seiten.length && <span style={{ fontSize: 12, color: C.inkLeise }}>Noch keine Buchungsseite — z. B. „30 min mit Kevin“.</span>}
+        {stand && !stand.seiten.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Buchungsseite — z. B. „30 min mit Kevin“.</span>}
       </div>
       {(anfragen.length > 0 || vorlaeufig.length > 0 || kommend.length > 0 || abgesagtMitTermin.length > 0) && (
-        <button onClick={() => setOffen(!offen)} style={{ background: 'none', border: 'none', color: anfragen.length ? LEUCHT.achtung : C.inkDim, fontSize: 12, cursor: 'pointer', padding: 0, marginTop: 10, fontFamily: SCHRIFT.text, fontWeight: 600 }}>
+        <button onClick={() => setOffen(!offen)} style={{ background: 'none', border: 'none', color: anfragen.length ? LEUCHT.achtung : C.inkDim, fontSize: TYP.bedien, cursor: 'pointer', padding: 0, marginTop: 10, fontFamily: SCHRIFT.text, fontWeight: 600 }}>
           {anfragen.length ? `${anfragen.length} ${anfragen.length === 1 ? 'Anfrage' : 'Anfragen'} zum Freigeben` : 'Buchungen'}{offen ? ' ▴' : ' ▾'}
         </button>
       )}
@@ -157,9 +157,9 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
         <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>
           {anfragen.map(x => (
             <div key={x.id} style={{ display: 'grid', gap: 4, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,.03)', border: `1px dashed ${LEUCHT.achtung}66` }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700 }}>{x.name}{x.firma ? ` · ${x.firma}` : ''}</div>
-              <div style={{ fontSize: 11.5, color: C.inkDim }}>{seiteVon(x.seiteId)?.titel ?? 'Seite'} · {zeit(x)}</div>
-              {x.anliegen && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{x.anliegen}</div>}
+              <div style={{ fontSize: TYP.bedien, fontWeight: 700 }}>{x.name}{x.firma ? ` · ${x.firma}` : ''}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{seiteVon(x.seiteId)?.titel ?? 'Seite'} · {zeit(x)}</div>
+              {x.anliegen && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{x.anliegen}</div>}
               <MailStand x={x} onLink={() => void mailLink(x)} />
               {entwurf?.id === x.id && <MailEntwurf e={entwurf} kopiert={textKopiert} onKopieren={() => void textKopieren(entwurf)} onZu={() => setEntwurf(null)} />}
               {einladen === x.id && <EinladungFrage was="einladung" adressen={[x.email]} laeuft={freigabeLaeuft === x.id} onNein={() => setEinladen(null)}
@@ -167,7 +167,7 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
                 onJa={async () => { setEinladen(null); await freigeben(x, { einladen: true }); }} />}
               {konflikt?.id === x.id && (
                 <div role="alertdialog" aria-label="Platz belegt" style={{ display: 'grid', gap: 8, background: `${LEUCHT.kritisch}14`, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 10, padding: '8px 10px' }}>
-                  <span style={{ fontSize: 12, color: C.ink, lineHeight: 1.45 }}>{konflikt.text} Trotzdem freigeben? Dann liegen zwei Termine übereinander.</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.ink, lineHeight: 1.45 }}>{konflikt.text} Trotzdem freigeben? Dann liegen zwei Termine übereinander.</span>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <Knopf farbe={LEUCHT.achtung} aus={!!freigabeLaeuft} onClick={async () => { await freigeben(x, { einladen: konflikt.einladen, trotzKonflikt: true }); }}>Trotzdem freigeben</Knopf>
                     <Knopf leise onClick={async () => { setKonflikt(null); await aktion({ aktion: 'ablehnen', id: x.id, grund: 'Der Termin ist leider nicht mehr frei — bitte einen anderen wählen.' }); }}>Ablehnen</Knopf>
@@ -175,28 +175,28 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
                   </div>
                 </div>
               )}
-              {x.crmHinweis && <div style={{ fontSize: 11.5, color: LEUCHT.achtung }}>{x.crmHinweis}</div>}
+              {x.crmHinweis && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{x.crmHinweis}</div>}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Knopf farbe={LEUCHT.gut} aus={!!freigabeLaeuft} onClick={async () => { await freigeben(x); }}>{freigabeLaeuft === x.id ? 'gibt frei …' : 'Freigeben'}</Knopf>
                 {/* K3: den Gast als echte Einladung — erst nach der Rückfrage mit der Adresse (unbestätigt: mit Warnhinweis). */}
                 <Knopf leise aus={!!freigabeLaeuft} onClick={() => setEinladen(x.id)}>Freigeben + einladen …</Knopf>
                 <Knopf leise onClick={async () => { await aktion({ aktion: 'ablehnen', id: x.id }); }}>Ablehnen</Knopf>
-                {x.kontaktId && <Link href={WEG.kontakt(x.kontaktId)} style={{ fontSize: 11.5, color: C.inkDim }}>Kontakt ›</Link>}
+                {x.kontaktId && <Link href={WEG.kontakt(x.kontaktId)} style={{ fontSize: TYP.bedien, color: C.inkDim }}>Kontakt ›</Link>}
               </div>
-              <span style={{ fontSize: 11, color: C.inkLeise }}>Ins CRM kommt die Person erst mit der Freigabe.</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ins CRM kommt die Person erst mit der Freigabe.</span>
             </div>
           ))}
-          {vorlaeufig.length > 0 && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{vorlaeufig.length} vorläufig reserviert — wartet auf die Bestätigung des Gastes (höchstens 30 Min.).</div>}
+          {vorlaeufig.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{vorlaeufig.length} vorläufig reserviert — wartet auf die Bestätigung des Gastes (höchstens 30 Min.).</div>}
           {kommend.map(x => { const v = stand?.vorschlaege[x.id]; return (
-            <div key={x.id} style={{ fontSize: 12, color: C.inkDim, display: 'grid', gap: 3 }}>
+            <div key={x.id} style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'grid', gap: 3 }}>
               <span><span style={{ color: LEUCHT.gut }}>✓</span> {x.name} · {zeit(x)}</span>
               <MailStand x={x} onLink={() => void mailLink(x)} />
               {entwurf?.id === x.id && <MailEntwurf e={entwurf} kopiert={textKopiert} onKopieren={() => void textKopieren(entwurf)} onZu={() => setEntwurf(null)} />}
-              {v && <Link href={WEG.kontakt(v.kontaktId)} style={{ fontSize: 11.5, color: LEUCHT.puls }}>Vorschlag: {v.text} ›</Link>}
+              {v && <Link href={WEG.kontakt(v.kontaktId)} style={{ fontSize: TYP.bedien, color: LEUCHT.puls }}>Vorschlag: {v.text} ›</Link>}
             </div>
           ); })}
           {abgesagtMitTermin.map(x => (
-            <div key={x.id} style={{ fontSize: 12, color: C.inkDim, display: 'grid', gap: 6 }}>
+            <div key={x.id} style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'grid', gap: 6 }}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span>{STATUS_TEXT[x.status]}: {x.name} · {zeit(x)}</span>
                 <Knopf leise aus={!!entferntLaeuft} onClick={async () => { await terminEntfernen(x); }}>{entferntLaeuft === x.id ? 'entfernt …' : 'Termin entfernen'}</Knopf>
@@ -206,7 +206,7 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
           ))}
         </div>
       )}
-      {meldung && <div style={{ fontSize: 11.5, color: LEUCHT.achtung, marginTop: 8 }}>{meldung}</div>}
+      {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 8 }}>{meldung}</div>}
       {stand && (stand.buchungen.length > 0) && <GastDatenschutz onFertig={laden} />}
       {/* S1 #15: Stand der gelesenen Fassung mitschicken — hat jemand die Seite inzwischen geändert, antwortet der Server 409. */}
       {bearbeiten && <SeiteBearbeiten start={bearbeiten} onZu={() => setBearbeiten(null)} onSpeichern={async s => { if (await aktion({ aktion: 'seite', seite: s, ...(bearbeiten.geaendert ? { stand: bearbeiten.geaendert } : {}) })) setBearbeiten(null); }} onLoeschen={bearbeiten.id ? async () => { if (await aktion({ aktion: 'seite-loeschen', id: bearbeiten.id, ...(bearbeiten.geaendert ? { stand: bearbeiten.geaendert } : {}) })) setBearbeiten(null); } : undefined} fehler={meldung} />}
@@ -216,12 +216,12 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
 
 /** E-Mail-Stand einer Buchung (#76): bestätigt ✓ — oder unbestätigt + „Bestätigungslink senden“. */
 function MailStand({ x, onLink }: { x: BuchungSicht; onLink: () => void }) {
-  if (x.emailBestaetigtAm) return <span style={{ fontSize: 11.5, color: LEUCHT.gut }}>✓ E-Mail bestätigt</span>;
+  if (x.emailBestaetigtAm) return <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>✓ E-Mail bestätigt</span>;
   const offen = x.mailLinkBis && x.mailLinkBis > new Date().toISOString();
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 11.5 }}>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
       <span style={{ color: LEUCHT.achtung }}>E-Mail unbestätigt{offen ? ` · Link offen bis ${x.mailLinkBis!.slice(8, 10)}.${x.mailLinkBis!.slice(5, 7)}.` : ''}</span>
-      <button type="button" onClick={onLink} style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.puls, cursor: 'pointer', fontSize: 11.5, fontFamily: SCHRIFT.text }}>{offen ? 'Neuen Bestätigungslink …' : 'Bestätigungslink senden …'}</button>
+      <button type="button" onClick={onLink} style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.puls, cursor: 'pointer', fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>{offen ? 'Neuen Bestätigungslink …' : 'Bestätigungslink senden …'}</button>
     </div>
   );
 }
@@ -230,14 +230,14 @@ function MailStand({ x, onLink }: { x: BuchungSicht; onLink: () => void }) {
 function MailEntwurf({ e, kopiert, onKopieren, onZu }: { e: Entwurf; kopiert: boolean; onKopieren: () => void; onZu: () => void }) {
   return (
     <div role="region" aria-label="Mail-Entwurf" style={{ display: 'grid', gap: 6, background: 'rgba(255,255,255,.04)', border: `1px solid ${LEUCHT.puls}44`, borderRadius: 10, padding: '8px 10px' }}>
-      <span style={{ fontSize: 11.5, color: C.inkDim }}>Entwurf an <b style={{ color: C.ink }}>{e.an}</b> — „{e.betreff}“</span>
-      <textarea readOnly value={e.text} rows={6} style={{ ...feld, fontSize: 11.5, padding: '6px 8px', resize: 'vertical', fontFamily: SCHRIFT.text }} />
+      <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Entwurf an <b style={{ color: C.ink }}>{e.an}</b> — „{e.betreff}“</span>
+      <textarea readOnly value={e.text} rows={6} style={{ ...feld, fontSize: TYP.bedien, padding: '6px 8px', resize: 'vertical', fontFamily: SCHRIFT.text }} />
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        <a href={e.mailto} style={{ fontSize: 12, fontWeight: 700, color: '#061312', background: LEUCHT.puls, borderRadius: 8, padding: '6px 10px', textDecoration: 'none' }}>In Mail öffnen</a>
+        <a href={e.mailto} style={{ fontSize: TYP.bedien, fontWeight: 700, color: '#061312', background: LEUCHT.puls, borderRadius: 8, padding: '6px 10px', textDecoration: 'none' }}>In Mail öffnen</a>
         <Knopf leise onClick={onKopieren}>{kopiert ? 'kopiert ✓' : 'Text kopieren'}</Knopf>
         <Knopf leise onClick={onZu}>Schließen</Knopf>
       </div>
-      <span style={{ fontSize: 11, color: C.inkLeise }}>MAKE OS verschickt nichts selbst: Die Mail geht erst mit deinem Klick auf „Senden“ in der Mail-App raus. Der Link gilt 7 Tage und nur einmal; ein neuer Link ersetzt diesen.</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>MAKE OS verschickt nichts selbst: Die Mail geht erst mit deinem Klick auf „Senden“ in der Mail-App raus. Der Link gilt 7 Tage und nur einmal; ein neuer Link ersetzt diesen.</span>
     </div>
   );
 }
@@ -253,12 +253,12 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
     zielKalender: start.zielKalender ?? '', ort: start.ort ?? '', verantwortlich: start.verantwortlich ?? '', firma: start.fragen?.firma ?? true, anliegen: start.fragen?.anliegen ?? true, aktiv: start.aktiv ?? true,
   });
   const zahl = (k: keyof typeof s, min: number, max: number) => (e: React.ChangeEvent<HTMLInputElement>) => setS(x => ({ ...x, [k]: Math.max(min, Math.min(max, Number(e.target.value) || min)) }));
-  const zeile = (label: string, kind: React.ReactNode) => <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12, color: C.inkLeise }}>{label}</span>{kind}</label>;
+  const zeile = (label: string, kind: React.ReactNode) => <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{label}</span>{kind}</label>;
   const klein = { ...feld, fontSize: 13, padding: '8px 10px' };
   // Nachtrag F1: Pflichtfelder sagen schon vor dem Speichern, was fehlt — keine Platzhalter, die wie Werte aussehen.
   const fehlt = { titel: !s.titel.trim(), kalender: !s.zielKalender.trim(), verantwortlich: s.verantwortlich.trim().length < 5 };
-  const hinweis = (text: string) => <span role="note" style={{ fontSize: 11.5, color: LEUCHT.achtung }}>{text}</span>;
-  const beispiel = (text: string) => <span style={{ fontSize: 11.5, color: C.inkLeise }}>{text}</span>;
+  const hinweis = (text: string) => <span role="note" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{text}</span>;
+  const beispiel = (text: string) => <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{text}</span>;
   return (
     <Fenster titel={start.id ? 'Buchungsseite bearbeiten' : 'Neue Buchungsseite'} onZu={onZu} breit={620}>
       <div style={{ display: 'grid', gap: 12 }}>
@@ -273,7 +273,7 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
         </div>
         {zeile('Buchbare Zeiten', (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            {WT.map((w, i) => { const an = s.tage.includes(i + 1); return <button key={w} type="button" aria-pressed={an} onClick={() => setS({ ...s, tage: an ? s.tage.filter(t => t !== i + 1) : [...s.tage, i + 1].sort() })} style={{ border: 'none', borderRadius: 7, padding: '5px 8px', fontSize: 12, cursor: 'pointer', background: an ? `${LEUCHT.puls}33` : 'rgba(255,255,255,.05)', color: an ? C.ink : C.inkLeise }}>{w}</button>; })}
+            {WT.map((w, i) => { const an = s.tage.includes(i + 1); return <button key={w} type="button" aria-pressed={an} onClick={() => setS({ ...s, tage: an ? s.tage.filter(t => t !== i + 1) : [...s.tage, i + 1].sort() })} style={{ border: 'none', borderRadius: 7, padding: '5px 8px', fontSize: TYP.bedien, cursor: 'pointer', background: an ? `${LEUCHT.puls}33` : 'rgba(255,255,255,.05)', color: an ? C.ink : C.inkLeise }}>{w}</button>; })}
             <input type="time" value={s.von} onChange={e => setS({ ...s, von: e.target.value })} style={{ ...klein, width: 110 }} />–<input type="time" value={s.bis} onChange={e => setS({ ...s, bis: e.target.value })} style={{ ...klein, width: 110 }} />
           </div>
         ))}
@@ -281,13 +281,13 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
         {zeile('Ort oder Videolink (sieht der Gast erst nach der Freigabe)', <input value={s.ort} maxLength={300} onChange={e => setS({ ...s, ort: e.target.value })} style={klein} />)}
         {zeile('Verantwortlich * (Pflicht — steht im Datenschutz-Hinweis: Name/Firma und Kontakt)', <input value={s.verantwortlich} maxLength={300} required aria-required="true" onChange={e => setS({ ...s, verantwortlich: e.target.value })} style={klein} />)}
         {fehlt.verantwortlich && hinweis('Verantwortlich fehlt — Name/Firma, Anschrift und eine Kontakt-Adresse für den Datenschutz.')}
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
           <label><input type="checkbox" checked={s.firma} onChange={e => setS({ ...s, firma: e.target.checked })} /> nach Firma fragen</label>
           <label><input type="checkbox" checked={s.anliegen} onChange={e => setS({ ...s, anliegen: e.target.checked })} /> nach Anliegen fragen</label>
           <label><input type="checkbox" checked={s.aktiv} onChange={e => setS({ ...s, aktiv: e.target.checked })} /> aktiv (Link erreichbar)</label>
         </div>
-        <div style={{ fontSize: 11.5, color: C.inkLeise }}>Name und E-Mail sind immer Pflicht, ebenso das Häkchen zur Kenntnisnahme des Datenschutzhinweises (Wortlaut und Fassung werden an jeder Buchung gespeichert). Buchungen sind erst fest, wenn ihr sie freigebt.</div>
-        {fehler && <div style={{ fontSize: 12, color: LEUCHT.achtung }}>{fehler}</div>}
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Name und E-Mail sind immer Pflicht, ebenso das Häkchen zur Kenntnisnahme des Datenschutzhinweises (Wortlaut und Fassung werden an jeder Buchung gespeichert). Buchungen sind erst fest, wenn ihr sie freigebt.</div>
+        {fehler && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{fehler}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {onLoeschen && <Knopf leise onClick={onLoeschen}>Löschen</Knopf>}
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>
@@ -333,7 +333,7 @@ function GastDatenschutz({ onFertig }: { onFertig: () => Promise<void> }) {
   };
   return (
     <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
-      <button onClick={() => setAuf(!auf)} style={{ background: 'none', border: 'none', color: C.inkDim, fontSize: 11.5, cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: SCHRIFT.text }}>Datenschutz für Gäste ohne Kontakt{auf ? ' ▴' : ' ▾'}</button>
+      <button onClick={() => setAuf(!auf)} style={{ background: 'none', border: 'none', color: C.inkDim, fontSize: TYP.bedien, cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: SCHRIFT.text }}>Datenschutz für Gäste ohne Kontakt{auf ? ' ▴' : ' ▾'}</button>
       {auf && (
         <div style={{ display: 'grid', gap: 6 }}>
           <input value={email} onChange={e => { setEmail(e.target.value); setFrage(null); setText(''); }} placeholder="E-Mail-Adresse des Gasts" aria-label="E-Mail-Adresse des Gasts" style={feld} />
@@ -342,7 +342,7 @@ function GastDatenschutz({ onFertig }: { onFertig: () => Promise<void> }) {
             <Knopf leise aus={laeuft || !email.trim()} onClick={() => void loeschen(false)}>Löschen (Art. 17) …</Knopf>
           </div>
           {frage && (
-            <div role="alertdialog" aria-label="Löschen bestätigen" style={{ display: 'grid', gap: 6, background: `${LEUCHT.kritisch}14`, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 10, padding: '8px 10px', fontSize: 12, lineHeight: 1.45 }}>
+            <div role="alertdialog" aria-label="Löschen bestätigen" style={{ display: 'grid', gap: 6, background: `${LEUCHT.kritisch}14`, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 10, padding: '8px 10px', fontSize: TYP.bedien, lineHeight: 1.45 }}>
               <span>{frage.buchungen} Buchung(en) dieser Adresse werden endgültig gelöscht. {frage.hinweis}</span>
               <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={bereinigen} onChange={e => setBereinigen(e.target.checked)} />Name und Gastzeilen im Apple-Termin entfernen</label>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -351,7 +351,7 @@ function GastDatenschutz({ onFertig }: { onFertig: () => Promise<void> }) {
               </div>
             </div>
           )}
-          {text && <span style={{ fontSize: 11.5, color: C.inkDim }}>{text}</span>}
+          {text && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{text}</span>}
         </div>
       )}
     </div>

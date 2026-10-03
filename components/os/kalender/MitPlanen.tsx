@@ -12,8 +12,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, LEUCHT } from '../schlank';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Knopf, LEUCHT } from '../ui';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import { usePersonen } from '../aufgaben/hilfe';
 import { FreieZeiten } from './FreieZeiten';
@@ -116,24 +116,24 @@ function MitPlanenKarte({ personen, ich, planen, setPlanen, vorschlaege, feierta
       <Ueberschrift rechts={planen ? <Knopf leise onClick={() => setPlanen(null)}>aus</Knopf> : undefined}>Mit … planen</Ueberschrift>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {personen.map(p => { const an = wahl.includes(p.speicher); return (
-          <button key={p.speicher} onClick={() => umschalten(p.speicher)} aria-pressed={an} style={{ border: `1px solid ${an ? LEUCHT.puls : 'rgba(255,255,255,.1)'}`, background: an ? `${LEUCHT.puls}22` : 'transparent', color: an ? C.ink : C.inkDim, borderRadius: 999, padding: '4px 12px', fontSize: 12.5, cursor: 'pointer', fontFamily: SCHRIFT.text }}>
+          <button key={p.speicher} onClick={() => umschalten(p.speicher)} aria-pressed={an} style={{ border: `1px solid ${an ? LEUCHT.puls : 'rgba(255,255,255,.1)'}`, background: an ? `${LEUCHT.puls}22` : 'transparent', color: an ? C.ink : C.inkDim, borderRadius: 999, padding: '4px 12px', fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>
             {p.name}{p.speicher === ich ? ' (ich)' : ''}
           </button>
         ); })}
       </div>
-      {!planen && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8 }}>Personen wählen — ihre Termine liegen halbtransparent im Raster, darunter die gemeinsamen freien Zeiten.</div>}
+      {!planen && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>Personen wählen — ihre Termine liegen halbtransparent im Raster, darunter die gemeinsamen freien Zeiten.</div>}
       {planen && (
         <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: C.inkLeise }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkLeise }}>
             <label>Dauer <select value={planen.dauer} onChange={e => setPlanen({ ...planen, dauer: Number(e.target.value) })} style={{ background: 'rgba(255,255,255,.05)', color: C.ink, border: 'none', borderRadius: 7, padding: '3px 6px' }}>{DAUERN.map(d => <option key={d} value={d}>{d} Min</option>)}</select></label>
             <label>Puffer <select value={planen.puffer} onChange={e => setPlanen({ ...planen, puffer: Number(e.target.value) })} style={{ background: 'rgba(255,255,255,.05)', color: C.ink, border: 'none', borderRadius: 7, padding: '3px 6px' }}>{[0, 5, 10, 15, 30].map(d => <option key={d} value={d}>{d} Min</option>)}</select></label>
           </div>
-          <div style={{ fontSize: 12, color: C.inkDim, fontWeight: 600 }}>Freie Zeiten · nächste 14 Tage{laedt ? ' · sucht …' : ''}</div>
-          {fehler && <div style={{ fontSize: 12, color: LEUCHT.achtung }}>{fehler}</div>}
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600 }}>Freie Zeiten · nächste 14 Tage{laedt ? ' · sucht …' : ''}</div>
+          {fehler && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{fehler}</div>}
           {vorschlaege && <FreieZeiten vorschlaege={vorschlaege} feiertage={feiertage} onWahl={onWahl} />}
         </div>
       )}
-      <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 10 }}>Zählt: beschäftigte Termine, Abwesend, Feiertage NRW und die Arbeitszeit aus der <Link href={WEG.routinen()} style={{ color: C.inkDim }}>Wochenvorlage</Link> (ohne Vorlage Mo–Fr 9–18).</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Zählt: beschäftigte Termine, Abwesend, Feiertage NRW und die Arbeitszeit aus der <Link href={WEG.routinen()} style={{ color: C.inkDim }}>Wochenvorlage</Link> (ohne Vorlage Mo–Fr 9–18).</div>
     </Karte>
   );
 }

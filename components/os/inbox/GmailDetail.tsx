@@ -13,7 +13,7 @@ import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import type { Owner } from '@/types/common';
-import { Knopf, Chip, LEUCHT } from '../schlank';
+import { Knopf, Chip, LEUCHT } from '../ui';
 import { NeuerTermin } from '../kalender/NeuerTermin';
 import { GmailText } from './GmailText';
 import { GmailAntwort, type AntwortDaten } from './GmailAntwort';
@@ -97,7 +97,7 @@ export function GmailDetail({ nachrichtId, person, meldung, onGeaendert, imFenst
   };
 
   const kopfZeile = (n: Nachricht) => (
-    <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>
+    <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6, overflowWrap: 'anywhere' }}>
       <b style={{ color: C.inkDim }}>{n.kopf.von.name ?? n.kopf.von.email}</b>{n.kopf.von.name ? ` <${n.kopf.von.email}>` : ''} · {datum(n.kopf.am)}
       {n.kopf.an.length > 0 && <> · an {n.kopf.an.slice(0, 3).map(a => a.name ?? a.email).join(', ')}{n.kopf.an.length > 3 ? ` +${n.kopf.an.length - 3}` : ''}{n.kopf.cc.length ? ` (Cc ${n.kopf.cc.length})` : ''}</>}
     </div>
@@ -105,7 +105,7 @@ export function GmailDetail({ nachrichtId, person, meldung, onGeaendert, imFenst
   const taste = (children: React.ReactNode, onClick: () => unknown, leise = true) => <Knopf leise={leise} onClick={onClick}>{children}</Knopf>;
 
   return (
-    <div style={imFenster ? undefined : { padding: '6px 2px 18px 22px', borderBottom: `1px solid ${C.linie}` }} data-gmail="detail">
+    <div style={imFenster ? undefined : { padding: '6px 2px 18px 4px', borderBottom: `1px solid ${C.linie}` }} data-gmail="detail">
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
         {z ? (
           <Chip farbe={z.sperre ? LEUCHT.achtung : LEUCHT.gut}>
@@ -116,7 +116,7 @@ export function GmailDetail({ nachrichtId, person, meldung, onGeaendert, imFenst
         {ungelesen && <Chip farbe={LEUCHT.puls}>ungelesen</Chip>}
       </div>
 
-      <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
         {d.thread.map((n, i) => {
           const letzte = i === d.thread.length - 1;
           const auf = letzte || offen === n.kopf.id;
@@ -153,10 +153,9 @@ export function GmailDetail({ nachrichtId, person, meldung, onGeaendert, imFenst
         {taste('Mehr ▾', () => setMenue(m => !m))}
       </div>
       {menue && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-          {ungelesen ? taste('Als gelesen markieren', () => markieren('gelesen', 'Als gelesen markiert.')) : taste('Als ungelesen markieren', () => markieren('ungelesen', 'Als ungelesen markiert.'))}
-          <a href={`https://mail.google.com/mail/u/${encodeURIComponent(d.eigene)}/#all/${encodeURIComponent(k.threadId)}`} target="_blank" rel="noopener noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '8px 12px', color: C.inkLeise, fontSize: 13, textDecoration: 'none' }}>In Gmail öffnen ›</a>
+        <div role="group" aria-label="Weitere Aktionen" style={{ display: 'grid', gap: 6, marginTop: 8, padding: 8, borderRadius: 16, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
+          {ungelesen ? <Knopf leise voll onClick={() => markieren('gelesen', 'Als gelesen markiert.')}>Als gelesen markieren</Knopf> : <Knopf leise voll onClick={() => markieren('ungelesen', 'Als ungelesen markiert.')}>Als ungelesen markieren</Knopf>}
+          <Knopf leise voll href={`https://mail.google.com/mail/u/${encodeURIComponent(d.eigene)}/#all/${encodeURIComponent(k.threadId)}`}>In Gmail öffnen ›</Knopf>
         </div>
       )}
 
@@ -183,7 +182,7 @@ export function GmailDetail({ nachrichtId, person, meldung, onGeaendert, imFenst
           onGesendet={() => { setAntwort(null); void laden(); void post('/api/gmail', { aktion: 'abgleichen' }).then(() => onGeaendert()); }}
           d={{ antwortAuf: d.antwortAuf, betreff: k.betreff, empfaenger: d.empfaenger, aliase: d.aliase, eigene: d.eigene }} />
       )}
-      <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 10 }}>{vorText(Math.max(0, Math.floor((Date.now() - Date.parse(k.am)) / 60_000)))} · Gmail bleibt das Original — hier liegt nur eine Kopie zum Lesen, Zuordnen und Antworten.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>{vorText(Math.max(0, Math.floor((Date.now() - Date.parse(k.am)) / 60_000)))} · Gmail bleibt das Original — hier liegt nur eine Kopie zum Lesen, Zuordnen und Antworten.</div>
     </div>
   );
 }

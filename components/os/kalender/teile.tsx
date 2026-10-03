@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, Segmente, Chip, feld, LEUCHT } from '../schlank';
+import { Knopf, Segmente, Chip, feld, LEUCHT } from '../ui';
 import { Fenster } from '../Fenster';
 import { ART_FARBE } from '@/types/planer';
 import { ART_INFO, TERMIN_FARBEN, SICHTBARKEIT_LABEL, ARBEITSORTE, arbeitsortTitel, erinnerungText, farbeHex, type IcsArt, type Sichtbarkeit, type Arbeitsort, type ArbeitsortArt } from '@/lib/kalender/arten';
@@ -118,7 +118,7 @@ const uhr = (wand: string) => wand.slice(11, 16);
 /** Ein Eintrag in der Ganztags-Zeile: kleine Pille, farbig nach Art. */
 function Pille({ farbe, titel, children, onClick, href, durch, stil: extra }: { farbe: string; titel?: string; children: React.ReactNode; onClick?: () => void; href?: string; durch?: boolean; stil?: React.CSSProperties }) {
   const stil: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', gap: 5, width: '100%', minWidth: 0, textAlign: 'left', padding: '3px 6px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, lineHeight: 1.3,
+    display: 'flex', alignItems: 'center', gap: 5, width: '100%', minWidth: 0, textAlign: 'left', padding: '3px 6px', borderRadius: 6, fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3,
     background: `${farbe}1c`, color: farbe, border: 'none', cursor: onClick || href ? 'pointer' : 'default', textDecoration: durch ? 'line-through' : 'none', fontFamily: SCHRIFT.text, ...extra,
   };
   const inhalt = <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, display: 'flex', alignItems: 'center', gap: 5 }}>{children}</span>;
@@ -184,7 +184,7 @@ export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberf
         if (!onAufgabeOeffnen) return <Pille key={a.id} farbe={ART_FARBE.aufgabe} titel={titel} onClick={() => onAufgabeHaken(a.id)} durch={a.done} stil={balken}>{haken}{inhalt}</Pille>;
         return (
           <div key={a.id} data-aufgabe={a.id} draggable={!!aufgabenZiehbar} onDragStart={e => aufgabeZiehStart(e, a.id)} title={titel}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, padding: '3px 6px', borderRadius: 6, background: `${ART_FARBE.aufgabe}1c`, color: ART_FARBE.aufgabe, fontSize: 11.5, fontWeight: 600, lineHeight: 1.3, fontFamily: SCHRIFT.text, cursor: aufgabenZiehbar ? 'grab' : 'default', ...balken }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, padding: '3px 6px', borderRadius: 6, background: `${ART_FARBE.aufgabe}1c`, color: ART_FARBE.aufgabe, fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3, fontFamily: SCHRIFT.text, cursor: aufgabenZiehbar ? 'grab' : 'default', ...balken }}>
             <button type="button" onClick={() => onAufgabeHaken(a.id)} aria-label={`„${a.title}“ als erledigt markieren`} title="Abhaken"
               style={{ width: 12, height: 12, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto', background: 'transparent', padding: 0, cursor: 'pointer' }} />
             <button type="button" onClick={() => onAufgabeOeffnen(a.id)} className="fassbar"
@@ -200,7 +200,7 @@ export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberf
         </Pille>
       ))}
       {(rest > 0 || alle) && gesamt > HOECHSTENS && (
-        <button type="button" onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: 11.5, textAlign: 'left', cursor: 'pointer', padding: '1px 6px', fontFamily: SCHRIFT.text }}>
+        <button type="button" onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: TYP.bedien, textAlign: 'left', cursor: 'pointer', padding: '1px 6px', fontFamily: SCHRIFT.text }}>
           {alle ? 'weniger' : `+${rest} mehr`}
         </button>
       )}
@@ -361,7 +361,7 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
   };
 
   const eingabe = { ...feld, fontSize: TYP.bedien, padding: '9px 12px', colorScheme: 'dark' as const };
-  const beschr = { fontSize: 12.5, color: C.inkLeise };
+  const beschr = { fontSize: TYP.bedien, color: C.inkLeise };
   const tagText = (t: string) => new Date(`${t}T12:00:00`).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
   const farbe = farbeHex(f.farbe) ?? basis.farbeEigen ?? kalenderFarbe ?? WER_FARBE[basis.wer];
   // Andere Zone: die Zeit dort zusätzlich nennen („16:00–17:00 · in New York 10:00–11:00 GMT-04“).
@@ -382,7 +382,7 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
         {(basis.erinnerungen ?? []).map(m => <Chip key={m} farbe={C.inkLeise}>{erinnerungText(m)}</Chip>)}
       </div>
       {grund && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '9px 12px', lineHeight: 1.5 }}>{grund}</div>}
-      {wiederhergestellt && !aus && <div style={{ fontSize: 12.5, color: LEUCHT.puls }}>Ungespeicherte Änderung wiederhergestellt.</div>}
+      {wiederhergestellt && !aus && <div style={{ fontSize: TYP.bedien, color: LEUCHT.puls }}>Ungespeicherte Änderung wiederhergestellt.</div>}
       {!basis.maskiert && (<>
         {art === 'arbeitsort' ? (
           <div style={{ display: 'grid', gap: 6 }}><span style={beschr}>Arbeitsort</span>
@@ -435,11 +435,11 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
         )}
         {art === 'fokus' && (
           <div style={{ display: 'grid', gap: 8, background: `${ART_INFO.fokus.farbe}14`, border: `1px solid ${ART_INFO.fokus.farbe}40`, borderRadius: 12, padding: '10px 12px' }}>
-            <span style={{ fontSize: 12.5, color: C.inkDim }}>Fokuszeit — startet die Zeitmessung (wie der Fokus im Kopf). Zählt auf Aufgabe, Mandat oder Einheit:</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Fokuszeit — startet die Zeitmessung (wie der Fokus im Kopf). Zählt auf Aufgabe, Mandat oder Einheit:</span>
             <ZuordnungWahl klein wert={zuordnung} setzen={setZuordnung} />
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <Knopf farbe={ART_INFO.fokus.farbe} onClick={fokusStarten}>▶ Fokus starten</Knopf>
-              {fokusMeldung && <span style={{ fontSize: 12.5, color: C.inkDim }}>{fokusMeldung}</span>}
+              {fokusMeldung && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{fokusMeldung}</span>}
             </div>
           </div>
         )}
@@ -453,7 +453,7 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
           </div>
         </div>
       )}
-      {fehler && !konflikt && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {fehler && !konflikt && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
       {frage && <EinladungFrage was={frage.was} adressen={frage.adressen} laeuft={laeuft} onJa={frage.tun} onNein={() => setFrage(null)} />}
       {!basis.maskiert && !frage && (loeschenFragen && !aus ? (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: `${LEUCHT.kritisch}14`, borderRadius: 10, padding: '9px 12px' }}>

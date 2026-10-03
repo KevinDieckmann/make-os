@@ -11,7 +11,7 @@ import { stundenAus, abweichungText, anteil, termineText, BLOCK_NAME, type Minut
 import type { AuswertungAntwort } from '@/lib/kalender/auswertung-server';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
-import { Karte, Ueberschrift, Knopf, Leer, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Leer, LEUCHT } from '../ui';
 import { Fenster } from '../Fenster';
 import { MandantLink } from '../crm/MandantLink';
 import Link from 'next/link';
@@ -45,13 +45,13 @@ const pfeil = (min: number) => (Math.abs(min) < 3 ? C.inkLeise : min > 0 ? LEUCH
 /** Zwei-Farben-Balken Privat/Business. */
 function SpaceBalken({ privat, business }: { privat: number; business: number }) {
   const p = anteil(privat, privat + business);
-  if (privat + business === 0) return <div style={{ fontSize: 12, color: C.inkLeise }}>Noch keine belegte Zeit.</div>;
+  if (privat + business === 0) return <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine belegte Zeit.</div>;
   return (
     <div>
       <div style={{ display: 'flex', height: 8, borderRadius: 99, overflow: 'hidden', background: 'rgba(255,255,255,.06)' }} aria-label={`Privat ${p} %, Business ${100 - p} %`}>
         <span style={{ width: `${p}%`, background: SPACE_FARBE.privat }} /><span style={{ width: `${100 - p}%`, background: SPACE_FARBE.business }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.inkLeise, marginTop: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>
         <span>Privat {p} % · {stundenAus(privat)}</span><span>Business {100 - p} % · {stundenAus(business)}</span>
       </div>
     </div>
@@ -67,7 +67,7 @@ export function KennzahlZeilen({ a }: { a: AuswertungAntwort }) {
           <span style={{ width: 8, height: 8, borderRadius: 2, background: k.farbe, flex: '0 0 auto', alignSelf: 'center' }} />
           <span style={{ color: C.inkDim, flex: 1 }}>{k.label}</span>
           <b style={{ fontVariantNumeric: 'tabular-nums' }}>{stundenAus(a.woche.minuten[k.id] ?? 0)}</b>
-          <span title="gegenüber dem Schnitt der letzten 4 Wochen" style={{ fontSize: 11.5, color: pfeil(a.abweichung[k.id] ?? 0), width: 62, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{abweichungText(a.abweichung[k.id] ?? 0)}</span>
+          <span title="gegenüber dem Schnitt der letzten 4 Wochen" style={{ fontSize: TYP.bedien, color: pfeil(a.abweichung[k.id] ?? 0), width: 62, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{abweichungText(a.abweichung[k.id] ?? 0)}</span>
         </div>
       ))}
     </div>
@@ -81,11 +81,11 @@ export function AuswertungKarte({ stichtag, i = 5 }: { stichtag: string; i?: num
   return (
     <Karte i={i}>
       <Ueberschrift rechts={a ? <Knopf leise onClick={() => setOffen(true)}>Details</Knopf> : undefined}>Zeit{a ? ` · KW ${a.woche.kw}` : ''}</Ueberschrift>
-      {!a && <div style={{ fontSize: 12.5, color: C.inkLeise }}>{fehler ? 'Auswertung gerade nicht möglich.' : 'rechnet …'}</div>}
+      {!a && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fehler ? 'Auswertung gerade nicht möglich.' : 'rechnet …'}</div>}
       {a && <>
         <KennzahlZeilen a={a} />
         <div style={{ marginTop: 10 }}><SpaceBalken privat={a.woche.space.privat} business={a.woche.space.business} /></div>
-        {a.quelle === 'ohne-kalender' && <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 8 }}>Ohne iCloud nur die Fokus-Zeit aus der Zeitmessung.</div>}
+        {a.quelle === 'ohne-kalender' && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Ohne iCloud nur die Fokus-Zeit aus der Zeitmessung.</div>}
       </>}
       {offen && a && <AuswertungFenster start={stichtag} onZu={() => setOffen(false)} />}
     </Karte>
@@ -118,7 +118,7 @@ export function AuswertungInhalt({ a }: { a: AuswertungAntwort }) {
   return (
     <div style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>
       <KennzahlZeilen a={a} />
-      <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 6 }}>{w.anzahlMeetings} Meetings · Arbeitszeit {stundenAus(w.minuten.arbeitszeit)} (ohne Feiertage) · Abweichung gegenüber dem Schnitt der letzten {a.vorher.length} Wochen</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{w.anzahlMeetings} Meetings · Arbeitszeit {stundenAus(w.minuten.arbeitszeit)} (ohne Feiertage) · Abweichung gegenüber dem Schnitt der letzten {a.vorher.length} Wochen</div>
       {abschnitt('Je Tag')}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, alignItems: 'end', height: 110 }}>
         {w.tage.map((t, i) => (
@@ -128,7 +128,7 @@ export function AuswertungInhalt({ a }: { a: AuswertungAntwort }) {
               <span style={{ height: `${(t.fokus / maxTag) * 100}%`, background: LEUCHT.schlaf }} />
               <span style={{ height: `${(t.abwesend / maxTag) * 100}%`, background: `${LEUCHT.achtung}88` }} />
             </div>
-            <span style={{ textAlign: 'center', fontSize: 11, color: C.inkLeise }}>{WT[i]}</span>
+            <span style={{ textAlign: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>{WT[i]}</span>
           </div>
         ))}
       </div>
@@ -137,21 +137,21 @@ export function AuswertungInhalt({ a }: { a: AuswertungAntwort }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
         <div>
           {abschnitt('Je Firma')}
-          {w.jeEinheit.length ? w.jeEinheit.map(e => <Zeile2 key={e.einheit} links={a.namen.einheiten[e.einheit] ?? e.einheit} rechts={stundenAus(e.minuten)} />) : <div style={{ color: C.inkLeise, fontSize: 12.5 }}>Noch keine Zeit mit Firma — Fokus-Blöcke einer Aufgabe oder Einheit zuordnen.</div>}
+          {w.jeEinheit.length ? w.jeEinheit.map(e => <Zeile2 key={e.einheit} links={a.namen.einheiten[e.einheit] ?? e.einheit} rechts={stundenAus(e.minuten)} />) : <div style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Noch keine Zeit mit Firma — Fokus-Blöcke einer Aufgabe oder Einheit zuordnen.</div>}
         </div>
         <div>
           {abschnitt('Je Mandat')}
-          {w.jeMandat.length ? w.jeMandat.map(m => <Zeile2 key={m.mandatId} links={<MandantLink mandatId={m.mandatId} name={a.namen.mandate[m.mandatId] ?? 'Mandat'} klein />} rechts={stundenAus(m.minuten)} />) : <div style={{ color: C.inkLeise, fontSize: 12.5 }}>Noch keine Zeit mit Mandat.</div>}
+          {w.jeMandat.length ? w.jeMandat.map(m => <Zeile2 key={m.mandatId} links={<MandantLink mandatId={m.mandatId} name={a.namen.mandate[m.mandatId] ?? 'Mandat'} klein />} rechts={stundenAus(m.minuten)} />) : <div style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Noch keine Zeit mit Mandat.</div>}
         </div>
       </div>
       {(w.jeBlock ?? []).length > 0 && <>{abschnitt('Blöcke je Art')}{(w.jeBlock ?? []).map(x => <Zeile2 key={x.art} links={BLOCK_NAME[x.art] ?? x.art} rechts={stundenAus(x.minuten)} />)}</>}
       {abschnitt('Meistbesuchte Kontakte')}
       {/* F1 #15: Namen statt Kennungen — dieselbe Auflösung wie „Verknüpfen“ am Termin (useCrmVerweise). */}
       {w.kontakte.length ? w.kontakte.slice(0, 5).map(k => <Zeile2 key={k.id} links={<Link href={bezugLink('kontaktId', k.id)} style={{ color: C.ink, textDecoration: 'none' }}>{bezugName(verweise, 'kontaktId', k.id) ?? (verweise ? 'nicht mehr im CRM' : '…')}</Link>} rechts={`${termineText(k.termine)} · ${stundenAus(k.minuten)}`} />)
-        : <div style={{ color: C.inkLeise, fontSize: 12.5 }}>Erscheint, sobald Termine mit CRM-Kontakten verknüpft sind.</div>}
+        : <div style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Erscheint, sobald Termine mit CRM-Kontakten verknüpft sind.</div>}
       {abschnitt('Vorwochen')}
-      <div style={{ display: 'grid', gridTemplateColumns: `auto repeat(${KENNZAHL.length}, 1fr)`, gap: '4px 10px', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
-        <span />{KENNZAHL.map(k => <span key={k.id} style={{ color: C.inkLeise, fontSize: 11.5 }}>{k.label}</span>)}
+      <div style={{ display: 'grid', gridTemplateColumns: `auto repeat(${KENNZAHL.length}, 1fr)`, gap: '4px 10px', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>
+        <span />{KENNZAHL.map(k => <span key={k.id} style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{k.label}</span>)}
         {[...a.vorher, w].map(v => [
           <span key={`${v.von}-l`} style={{ color: v === w ? C.ink : C.inkDim, fontWeight: v === w ? 700 : 500 }}>KW {v.kw}</span>,
           ...KENNZAHL.map(k => <span key={`${v.von}-${k.id}`} style={{ fontWeight: v === w ? 700 : 400 }}>{stundenAus(v.minuten[k.id] ?? 0)}</span>),

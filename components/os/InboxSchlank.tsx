@@ -21,7 +21,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { absenderKey } from '@/lib/make-one/inbox-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Hinweis, feld, LEUCHT, Spalten, Spalte, useBreit } from './ui';
 import { GmailDetail } from './inbox/GmailDetail';
 import { GmailVerbinden, type GmailMeta } from './inbox/GmailVerbinden';
 import { threadsAus, zeileMitNachricht, gmailIdAus, type ListeNachricht, type ThreadZeile } from '@/lib/gmail/liste';
@@ -246,8 +246,8 @@ export function InboxSchlank() {
   const detail = (m: Msg, imFenster = false) => m.gm ? (
     <GmailDetail key={m.gm.id} nachrichtId={m.gm.id} person={ich} imFenster={imFenster} meldung={setMeldung} onGeaendert={() => void gmailLaden()} />
   ) : (
-    <div style={imFenster ? undefined : { padding: '6px 2px 18px 22px', borderBottom: `1px solid ${C.linie}` }}>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>{m.senderEmail ?? m.sender} · {m.account} · {new Date(m.receivedAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{triage[fpOf(m)]?.grund ? ` · ${triage[fpOf(m)].grund}` : ''}</div>
+    <div style={imFenster ? undefined : { padding: '6px 2px 18px 4px', borderBottom: `1px solid ${C.linie}` }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>{m.senderEmail ?? m.sender} · {m.account} · {new Date(m.receivedAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{triage[fpOf(m)]?.grund ? ` · ${triage[fpOf(m)].grund}` : ''}</div>
       <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55, maxHeight: 320, overflow: 'auto' }}>{(m.source === 'apple' ? body[m.id] : m.preview) ?? (m.source === 'apple' && m.mbIndex ? 'lädt …' : m.preview ?? '')}</pre>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
         {seg === 'offen' ? (<>
@@ -258,12 +258,12 @@ export function InboxSchlank() {
           {andere.map(p => <span key={p.speicher} title={`Aufgabe für ${p.name} anlegen`}><Knopf leise onClick={() => delegieren(m, p)}>An {p.name.split(' ')[0]}</Knopf></span>)}
           <span title="Außerhalb von MAKE OS abgegeben — nur als delegiert markieren"><Knopf leise onClick={() => setzen([{ id: m.id, status: 'delegiert' }])}>Delegiert (extern)</Knopf></span>
           {!entwurf && <Knopf leise onClick={() => antworten(m)} aus={schreibt}>{schreibt ? 'ZOE schreibt …' : 'Antwort'}</Knopf>}
-          <button onClick={() => blocken(m)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>Absender blocken</button>
+          <button onClick={() => blocken(m)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, minHeight: 40, padding: '0 10px', borderRadius: 10 }}>Absender blocken</button>
         </>) : <Knopf leise onClick={() => setzen([{ id: m.id, status: 'offen' }])}>Wieder öffnen</Knopf>}
       </div>
       {entwurf?.id === m.id && (
         <div style={{ marginTop: 14, borderTop: `1px solid ${C.linie}`, paddingTop: 12 }}>
-          <textarea value={entwurf.text} onChange={e => setEntwurf({ id: m.id, text: e.target.value })} rows={8} style={{ width: '100%', background: C.flaeche, border: 'none', borderRadius: 10, padding: 12, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, lineHeight: 1.55, resize: 'vertical' }} />
+          <textarea value={entwurf.text} onChange={e => setEntwurf({ id: m.id, text: e.target.value })} rows={8} aria-label="Antwort-Entwurf" style={{ ...feld, padding: 12, lineHeight: 1.55, resize: 'vertical', minHeight: 180 }} />
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Knopf onClick={() => inMail(m)}>In Mail öffnen</Knopf>
             <Knopf leise onClick={() => setEntwurf(null)}>Verwerfen</Knopf>
@@ -281,7 +281,7 @@ export function InboxSchlank() {
         links={<Punkt farbe={faelligM(m) ? LEUCHT.achtung : STUFE_FARBE[stufe(m) ?? 'normal']} />}
         titel={<><span style={{ fontWeight: m.isRead ? 400 : 600 }}>{m.sender}</span><span style={{ color: C.inkLeise }}> · {m.subject}{m.gm && m.gm.anzahl > 1 ? ` (${m.gm.anzahl})` : ''}</span></>}
         unter={m.gm ? `${m.gm.zuordnung ? `gehört zu ${m.gm.zuordnung.name}${m.gm.zuordnung.firma ? ` · ${m.gm.zuordnung.firma}` : ''} — ` : ''}${m.preview ?? ''}` : triage[fpOf(m)]?.zeile ?? m.preview}
-        rechts={<span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>} />
+        rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>} />
       {offenId === m.id && !breit && detail(m)}
     </div>
   );
@@ -291,7 +291,7 @@ export function InboxSchlank() {
       rechts={<span style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
         {quellenDa.length > 1 && <Segmente liste={[{ id: 'alle' as const, label: 'Alle' }, ...quellenDa.map(q => ({ id: q, label: QUELLE_LABEL[q] }))]} aktiv={quelleWahl} onWahl={setQuelleWahl} umbrechen />}
         <Segmente liste={SEG} aktiv={seg} onWahl={setSeg} /><Link href="/os/inbox/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Volle Ansicht ›</Link></span>}>
-      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12 }}>{meldung}</div>}
+      {meldung && <div style={{ marginBottom: 12 }}><Hinweis art="info" rolle="status">{meldung}</Hinweis></div>}
       {gmMeta && !gmMeta.bereit && gmMeta.konfiguriert && <GmailVerbinden meta={gmMeta} onGeaendert={() => void gmailLaden()} meldung={setMeldung} />}
       <Spalten verhaeltnis="3:2">
         <Spalte>
@@ -306,8 +306,8 @@ export function InboxSchlank() {
       {rauschen.length > 0 && (
         <Karte i={gruppen.length}>
           <Ueberschrift rechts={<span style={{ display: 'flex', gap: 14 }}>
-            <button onClick={() => setRauschenAuf(a => !a)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 }}>{rauschenAuf ? 'einklappen' : `${rauschen.length} anzeigen`}</button>
-            <button onClick={() => setzen(rauschen.map(m => ({ id: m.id, status: 'erledigt' })))} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 }}>alle erledigen</button>
+            <button onClick={() => setRauschenAuf(a => !a)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '0 8px', minHeight: 40 }}>{rauschenAuf ? 'einklappen' : `${rauschen.length} anzeigen`}</button>
+            <button onClick={() => setzen(rauschen.map(m => ({ id: m.id, status: 'erledigt' })))} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '0 8px', minHeight: 40 }}>alle erledigen</button>
           </span>}>Rauschen</Ueberschrift>
           {rauschenAuf ? <Liste>{rauschen.map(zeile)}</Liste> : <Leer>Newsletter und Automatisches — {rauschen.length} Mails, die keine Entscheidung brauchen.</Leer>}
         </Karte>
@@ -328,14 +328,14 @@ export function InboxSchlank() {
         )}
       </Spalten>
       {gmMeta && (gmMeta.bereit || !gmMeta.konfiguriert) && <GmailVerbinden meta={gmMeta} onGeaendert={() => void gmailLaden()} meldung={setMeldung} />}
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 28 }}>{space && <span style={{ color: C.inkDim, fontWeight: 600 }}>Space {space === 'privat' ? 'Privat' : 'Business'} · </span>}{gmMeta?.bereit ? `Gmail ${gmZeilen.length} Threads · ` : ''}Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 28 }}>{space && <span style={{ color: C.inkDim, fontWeight: 600 }}>Space {space === 'privat' ? 'Privat' : 'Business'} · </span>}{gmMeta?.bereit ? `Gmail ${gmZeilen.length} Threads · ` : ''}Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
       {postfaecher.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10, fontSize: 12, color: C.inkLeise }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise }}>
           <span>Postfächer → Space:</span>
           {postfaecher.map(k => { const sp = spaceVonPostfach(spaces, k); return (
             <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px 4px 10px', borderRadius: 999, background: 'rgba(255,255,255,.04)' }}>
               <span style={{ color: C.inkDim }}>{k}</span>
-              {(['privat', 'business'] as const).map(x => <button key={x} onClick={() => postfachSetzen(k, x)} style={{ border: `1px solid ${sp === x ? SPACE_FARBE[x] : 'rgba(255,255,255,.1)'}`, background: sp === x ? `${SPACE_FARBE[x]}22` : 'transparent', color: sp === x ? SPACE_FARBE[x] : C.inkLeise, borderRadius: 999, padding: '2px 8px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text }}>{SPACE_LABEL[x]}</button>)}
+              {(['privat', 'business'] as const).map(x => <button key={x} onClick={() => postfachSetzen(k, x)} style={{ border: `1px solid ${sp === x ? SPACE_FARBE[x] : 'rgba(255,255,255,.1)'}`, background: sp === x ? `${SPACE_FARBE[x]}22` : 'transparent', color: sp === x ? SPACE_FARBE[x] : C.inkLeise, borderRadius: 999, padding: '2px 12px', minHeight: 40, fontSize: TYP.bedien, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text }}>{SPACE_LABEL[x]}</button>)}
             </span>
           ); })}
         </div>

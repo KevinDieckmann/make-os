@@ -5,7 +5,7 @@
 // eigener Schritt mit Rückfrage (erst dann gehen auch die Dateien). Regeln: lib/aufgaben/papierkorb.ts.
 
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Leer } from '../schlank';
+import { Karte, Leer } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabeUmfang, projektUmfang, umfangText } from '@/lib/aufgaben/papierkorb';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';
@@ -41,14 +41,14 @@ export function Papierkorb({ spaces }: { spaces: readonly AufgabenSpace[] }) {
       <Karte i={3}>
         {papierkorb.map(e => (
           <div key={`${e.art}:${e.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, color: C.inkLeise, minWidth: 58 }}>{e.art === 'projekt' ? 'Projekt' : 'Aufgabe'}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise, minWidth: 58 }}>{e.art === 'projekt' ? 'Projekt' : 'Aufgabe'}</span>
             <span style={{ color: C.ink, fontSize: 14 }}>{e.titel}</span>
-            <span style={{ fontSize: 12, color: C.inkLeise }}>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
               {spaceLabel(spaces, e.spaceId)}{e.mit ? ` · mit ${e.mit} ${e.art === 'projekt' ? (e.mit === 1 ? 'Aufgabe' : 'Aufgaben') : (e.mit === 1 ? 'Unteraufgabe' : 'Unteraufgaben')}` : ''} · gelöscht {tagKurz(e.geloeschtAm.slice(0, 10))} · endgültig ab {tagKurz(e.bisTag)}
             </span>
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8 }}>
-              <button onClick={() => dispatch({ type: 'WIEDERHERSTELLEN', payload: { art: e.art, id: e.id } })} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>Wiederherstellen</button>
-              <button onClick={() => void endgueltig(e.art, e.id, e.titel)} style={{ background: 'none', border: 'none', color: LEUCHT.kritisch, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>Endgültig löschen</button>
+              <button onClick={() => dispatch({ type: 'WIEDERHERSTELLEN', payload: { art: e.art, id: e.id } })} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>Wiederherstellen</button>
+              <button onClick={() => void endgueltig(e.art, e.id, e.titel)} style={{ background: 'none', border: 'none', color: LEUCHT.kritisch, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>Endgültig löschen</button>
             </span>
           </div>
         ))}

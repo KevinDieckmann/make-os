@@ -14,35 +14,30 @@ import Link from 'next/link';
 //     nächsten Jahres“), Blättern ‹ › / Tasten / Wischen, „Heute“, alles in der Adresse (`?raum=`, `?ab=`).
 //     Marker: Meilensteine (offen + erledigt leise), Jahresziele mit Frist ohne eigenen Meilenstein, Projekt-Fristen;
 //     Quartale als Bänder. Klick auf eine Stelle / „+ Meilenstein“ legt an (vorbelegt: Datum, Bereich, Einheit),
-//     Klick auf einen Meilenstein öffnet seine Detailseite (`oeffneMeilenstein` → WEG.meilenstein, Paket „meilensteine“).
+//     Klick auf einen Meilenstein öffnet seine Detailseite (WEG.meilenstein, Paket „meilensteine“).
 //   · Planungsjahr (`?jahr=`): mindestens laufendes + nächstes; Ziele, Meilensteine, Fokus und Forecast je Jahr.
 //     Das Nachladen beim Blättern entfällt: Meilensteine/Ziele/Projekte kommen je einmal ganz (ein Bestand), gefiltert
 //     wird rein nach Fenster.
-// 03.10. (Kevin: „mehrere Elektro-Fäden“): Im Jahr zeigt der Zeitstrahl Lichtfäden — je Ziel ein Bündel in seiner Farbe
-// (lib/lichtfaeden/farben.ts), Dichte je Woche aus Meilensteinen, Ziel-Fristen und offenen Aufgaben (lib/lichtfaeden/dichte.ts).
-// Die Marker tragen ihr Bündel und die Bündelfarbe; Bedienung (Blättern, Heute, Anlegen, Öffnen) bleibt unverändert.
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+// 03.10. (Kevin: „Alle Stränge sollen nachher darein laufen“): Im Jahr stehen die Lichtfäden v2 (components/os/lichtfaeden,
+// LICHTFAEDEN.md) — Wurzel = der gewählte Space (bzw. Gesamt): alle Stränge aus Planung, Kalender, Markttraktion, Finanzen,
+// Familie und Gesundheit, Tippen auf ein Bündel = eine Ebene tiefer. Blättern, Heute, Anlegen per Klick bleiben wie gehabt.
+import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { NORDSTERN } from '@/lib/make-one/nordstern-data';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT, Segmente, Knopf } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT, Segmente, Knopf } from './ui';
 import { useZiel, useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
-import { SPACE_LABEL, SPACE_FARBE, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
+import { SPACE_LABEL, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
 import { EinheitMarke } from './aufgaben/Einheit';
 import { zeitraum } from '@/lib/planung/zeitraum';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { passtEinheit } from '@/lib/planung/einheiten';
-import { hatTermin } from '@/lib/planung/kaskade';
-import { STRAHL_RAEUME, type StrahlRaum, beginntText, jahrAus, jahrLage, meilensteinImJahr, meilensteinJahr, monatsTicks, planJahre, quartale, zielJahr, type JahrLage } from '@/lib/planung/zeitstrahl';
+import { beginntText, jahrAus, jahrLage, meilensteinImJahr, meilensteinJahr, planJahre, zielJahr, type JahrLage } from '@/lib/planung/zeitstrahl';
 import { fokusImJahr, fokusJahrSchluessel } from '@/lib/planung/jahr-fokus';
-import { bereichVonSpace } from '@/lib/aufgaben/struktur';
-import { imPapierkorb } from '@/lib/aufgaben/papierkorb';
-import { imArchiv } from '@/lib/aufgaben/neustart';
 import { WEG } from '@/lib/wege';
 import { wartetText } from '@/lib/planung/meilenstein-kette';
 import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
@@ -52,9 +47,7 @@ import { useStrahlFenster, adresseSetzen } from './planung/useStrahlFenster';
 import { useMeilensteinFenster } from './planung/MeilensteinFenster';
 import { useRueckgaengig } from './planung/Rueckgaengig';
 import { NeuAnfangenKnopf } from './aufgaben/NeuAnfangen';
-import { faedenDichte, lichtText, OHNE_ZIEL, type DichteZiel } from '@/lib/lichtfaeden/dichte';
-import { buendelFarben } from '@/lib/lichtfaeden/farben';
-import type { StrahlLicht } from './Zeitstrahl';
+import { Lichtfaeden } from './lichtfaeden/Lichtfaeden';
 
 type Horizont = 'monat' | 'quartal' | 'jahr';
 
@@ -122,21 +115,17 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   // ── Meilenstein öffnen / anlegen — EINE Stelle: öffnen = die Detailseite (Aufgaben, Verlauf, Dateien, Notizen —
   // WEG.meilenstein, 30.09.), anlegen = das Fenster (dort auch Bearbeiten/Verschieben/Löschen mit „Rückgängig“) ──
   const msFenster = useMeilensteinFenster(p, rueck, heute);
-  const router = useRouter();
-  const oeffneMeilenstein = useCallback((id: string) => router.push(WEG.meilenstein(id)), [router]);
   const vorgabe = (tag?: string) => ({
     faellig: tag ?? (planJahr === laufend ? heute : `${planJahr}-01-15`),
     space: spaceFilter === 'alle' ? 'business' as const : spaceFilter,
     ...(imBusiness && einheitFilter !== 'alle' ? { einheit: einheitFilter } : {}),
   });
 
-  // ── Zeitstrahl ──
+  // ── Zeitstrahl: im Jahr die Lichtfäden (eigenes Fenster zum Blättern), in Monat/Quartal der schlichte Strahl ──
   const fensterJahr = useStrahlFenster(planJahr);
   const MON_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
   const p2 = (n: number) => String(n).padStart(2, '0');
-  const strahl = istJahr ? fensterJahr.fenster : zr;
   const ticks: StrahlTick[] = (() => {
-    if (istJahr) return monatsTicks(strahl.von, strahl.bis);
     const y = zr.von.slice(0, 4);
     if (horizont === 'quartal') {
       const m0 = Number(zr.von.slice(5, 7));
@@ -148,59 +137,14 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const imFilter = (space: SpaceId, einheit?: string) => (spaceFilter === 'alle' || space === spaceFilter) && (!imBusiness || passtEinheit(einheit, einheitFilter));
   /** Der Titel des Ziels, auf das ein Meilenstein einzahlt (Marker-Text; führt die Kette 01.10.). */
   const zielTitel = (m: { zielId?: string; abgeleitetVon?: string }) => { const id = zielVonMeilenstein(m); return id ? p.alleZiele.find(z => z.id === id)?.titel : undefined; };
-  const strahlMarker: StrahlMarker[] = ms
-    .filter(m => m.faellig && (istJahr || !m.erledigt) && imFilter(meilensteinSpace(m), m.einheit))
+  const strahlMarker: StrahlMarker[] = istJahr ? [] : ms
+    .filter(m => m.faellig && !m.erledigt && imFilter(meilensteinSpace(m), m.einheit))
     .map(m => ({
       id: m.id, date: m.faellig!, label: m.titel, farbe: meilensteinSpace(m) === 'privat' ? LEUCHT.gut : LEUCHT.achtung,
-      symbol: m.erledigt ? '✓' : '◇', blass: m.erledigt,
-      titel: `${m.titel} · ${m.faellig!.slice(8)}.${m.faellig!.slice(5, 7)}.${m.faellig!.slice(0, 4)}${m.erledigt ? ' · erledigt' : ` · ${m.fortschritt} %`}${wartetText(m, ms) ? ` · ${wartetText(m, ms)}` : ''}${zielTitel(m) ? ` · Ziel „${zielTitel(m)}“` : ''}`,
-      href: istJahr ? undefined : `/os/planung/jahr?m=${encodeURIComponent(m.id)}`,
+      symbol: '◇',
+      titel: `${m.titel} · ${m.faellig!.slice(8)}.${m.faellig!.slice(5, 7)}.${m.faellig!.slice(0, 4)} · ${m.fortschritt} %${wartetText(m, ms) ? ` · ${wartetText(m, ms)}` : ''}${zielTitel(m) ? ` · Ziel „${zielTitel(m)}“` : ''}`,
+      href: WEG.meilenstein(m.id),
     }));
-  if (istJahr) {
-    // Jahresziele mit Frist, die (noch) keinen eigenen Meilenstein haben (z. B. gelöst oder persönlich) — die übrigen stehen als Meilenstein da.
-    for (const z of ziele) {
-      if (!hatTermin(z) || z.erledigt || ms.some(m => m.abgeleitetVon === z.id) || !imFilter(z.space ?? (spaceFilter === 'alle' ? 'business' : spaceFilter), z.einheit)) continue;
-      strahlMarker.push({ date: z.termin!, label: z.titel, farbe: z.space ? SPACE_FARBE[z.space] : farbe, symbol: '◎', titel: `Jahresziel · ${z.titel} · bis ${z.termin!.slice(8)}.${z.termin!.slice(5, 7)}.${z.termin!.slice(0, 4)} — Klick öffnet das Ziel`, href: WEG.ziel(z.id), buendel: z.id });
-    }
-    // Projekt-Fristen (Ende, sonst Deadline) — offene Projekte, nicht im Papierkorb/Archiv.
-    for (const pr of tasksState.projects) {
-      const frist = pr.ende ?? pr.dueDate;
-      if (!frist || !/^\d{4}-\d{2}-\d{2}/.test(frist) || pr.archived || imPapierkorb(pr) || imArchiv(pr) || pr.status === 'abgeschlossen') continue;
-      const sp: SpaceId = pr.spaceId ? bereichVonSpace(pr.spaceId) : pr.category === 'business' ? 'business' : 'privat';
-      if (!imFilter(sp, undefined) || (imBusiness && einheitFilter !== 'alle')) continue;
-      strahlMarker.push({ date: frist.slice(0, 10), label: pr.title, farbe: C.inkDim, symbol: '▣', titel: `Projekt · ${pr.title} · Ende ${frist.slice(8, 10)}.${frist.slice(5, 7)}.${frist.slice(0, 4)}`, href: pr.spaceId ? WEG.aufgaben({ s: pr.spaceId, p: pr.id }) : WEG.aufgaben() });
-    }
-  }
-  // ── Lichtfäden (nur im Jahr): Bündel je Ziel im Fenster, Dichte aus echten Daten, Marker in Bündelfarbe ──
-  let licht: StrahlLicht | undefined;
-  if (istJahr) {
-    const imFenster = (d?: string) => !!d && d >= strahl.von && d <= strahl.bis;
-    const msFenster = ms.filter(m => imFilter(meilensteinSpace(m), m.einheit));
-    const jahreImFenster = new Set<number>();
-    for (let j = Number(strahl.von.slice(0, 4)); j <= Number(strahl.bis.slice(0, 4)); j++) jahreImFenster.add(j);
-    const zielIds = new Set<string>();
-    for (const m of msFenster) { const z = zielVonMeilenstein(m); if (z && imFenster(m.faellig)) zielIds.add(z); }
-    const bZiele: DichteZiel[] = [];
-    for (const z of ziele) {
-      const passt = imFilter(z.space ?? (spaceFilter === 'alle' ? 'business' : spaceFilter), z.einheit) && jahreImFenster.has(zielJahr(z, laufend));
-      if ((passt && !z.erledigt) || zielIds.has(z.id)) { bZiele.push(z); zielIds.delete(z.id); }
-    }
-    // Ziele anderer Ebenen, auf die ein Meilenstein im Fenster zeigt (nur Titel bekannt).
-    for (const id of zielIds) { const k = p.alleZiele.find(z => z.id === id); if (k) bZiele.push({ id: k.id, titel: k.titel }); }
-    const aufgabenFenster = tasksState.tasks.filter(t => t.dueDate && imFenster(t.dueDate) && !imPapierkorb(t) && !imArchiv(t) && (spaceFilter === 'alle' || spaceVonAufgabe(t) === spaceFilter));
-    const dichte = faedenDichte(bZiele, msFenster, aufgabenFenster, undefined, strahl);
-    const farben = buendelFarben(dichte.buendel);
-    licht = { buendel: dichte.buendel.map(b => ({ id: b.id, farbe: farben[b.id], titel: b.titel, dichte: b.dichte })), text: lichtText(dichte) };
-    const bekannt = new Set(dichte.buendel.map(b => b.id));
-    const zuBuendel = (zielId?: string) => (zielId && bekannt.has(zielId) ? zielId : OHNE_ZIEL);
-    const msNachId = new Map(ms.map(m => [m.id, m]));
-    for (const mk of strahlMarker) {
-      if (mk.symbol === '▣') { mk.buendel = OHNE_ZIEL; continue; }
-      const m = mk.id ? msNachId.get(mk.id) : undefined;
-      mk.buendel = zuBuendel(m ? zielVonMeilenstein(m) : mk.buendel);
-      if (farben[mk.buendel]) mk.farbe = farben[mk.buendel];
-    }
-  }
   if (horizont === 'monat') {
     const proTag: Record<string, string[]> = {};
     faellig.forEach(t => { proTag[t.dueDate!] = [...(proTag[t.dueDate!] ?? []), t.title]; });
@@ -242,11 +186,10 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       {/* Planungsjahr (30.09.): laufendes + nächstes (und belegte) — Ziele, Meilensteine, Fokus und Forecast je Jahr */}
       {istJahr && (
         <div role="group" aria-label="Planungsjahr" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Planungsjahr</span>
+          <span style={{ fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Planungsjahr</span>
           <Segmente liste={jahre.map(j => ({ id: String(j), label: j === laufend ? `${j} · jetzt` : String(j) }))} aktiv={String(planJahr)} onWahl={j => setPlanJahr(Number(j))} />
           {jahre[jahre.length - 1] < laufend + 5 && (
-            <button type="button" className="fassbar" onClick={() => { const n = jahre[jahre.length - 1] + 1; setExtraJahre(e => [...e, n]); setPlanJahr(n); }} title="Ein weiteres Jahr planen"
-              style={{ background: 'none', border: '1px dashed rgba(255,255,255,.18)', borderRadius: 10, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '7px 12px', cursor: 'pointer' }}>+ {jahre[jahre.length - 1] + 1}</button>
+            <Knopf leise titel="Ein weiteres Jahr planen" onClick={() => { const n = jahre[jahre.length - 1] + 1; setExtraJahre(e => [...e, n]); setPlanJahr(n); }}>+ {jahre[jahre.length - 1] + 1}</Knopf>
           )}
         </div>
       )}
@@ -261,21 +204,9 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
 
       {/* Zeitstrahl — der Zeitraum als Linie: Heute-Anker, Meilensteine, Fälligkeiten. Im Jahr: Fenster zum Blättern, Anlegen per Klick. */}
       {istJahr ? (
-        <Zeitstrahl von={strahl.von} bis={strahl.bis} ticks={ticks} marker={strahlMarker} label={`Zeitstrahl ${fensterJahr.fenster.label}`}
-          baender={quartale(strahl.von, strahl.bis)} licht={licht}
-          onBlaettern={fensterJahr.blaettern} onBreite={fensterJahr.setBreite}
-          onMarker={m => { if (m.id) oeffneMeilenstein(m.id); }}
+        <Lichtfaeden wurzel={spaceFilter === 'alle' ? 'gesamt' : `space:${spaceFilter}`} fenster={fensterJahr} titel="Lichtfäden" i={1}
           onTag={tag => msFenster.oeffneNeu(vorgabe(tag))}
-          kopf={
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Segmente umbrechen liste={STRAHL_RAEUME.map(r => ({ id: r.id, label: r.label }))} aktiv={fensterJahr.raum} onWahl={(r: StrahlRaum) => fensterJahr.setRaum(r)} />
-              <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{fensterJahr.fenster.label}</span>
-              <span style={{ display: 'inline-flex', gap: 8, marginLeft: 'auto' }}>
-                <Knopf leise aus={fensterJahr.heuteSichtbar} onClick={fensterJahr.zuHeute}>Heute</Knopf>
-                <Knopf onClick={() => msFenster.oeffneNeu(vorgabe())}>+ Meilenstein</Knopf>
-              </span>
-            </div>
-          } />
+          aktion={<Knopf onClick={() => msFenster.oeffneNeu(vorgabe())}>+ Meilenstein</Knopf>} />
       ) : (
         <Zeitstrahl von={zr.von} bis={zr.bis} ticks={ticks} marker={strahlMarker} />
       )}

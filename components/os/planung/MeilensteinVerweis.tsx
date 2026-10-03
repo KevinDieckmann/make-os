@@ -32,7 +32,7 @@ export function MeilensteinVerweis({ listeId }: { listeId?: string }) {
   if (!m) return null;
   return (
     <Link href={WEG.meilenstein(m.id)} title="Zum Meilenstein — Aufgaben, Verlauf, Dateien, Notizen"
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: C.aktiv, textDecoration: 'none', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: C.aktiv, textDecoration: 'none', fontFamily: SCHRIFT.text, fontSize: 13 }}>
       <Flag size={12} />gehört zu Meilenstein „{m.titel}“
     </Link>
   );

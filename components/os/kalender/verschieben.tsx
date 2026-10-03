@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { LEUCHT } from '../schlank';
+import { LEUCHT, SymbolKnopf } from '../ui';
 import { tagPlus, wandAus } from '@/lib/kalender/zeit';
 import { objektSchluessel } from '@/lib/kalender/bezug';
 import type { KalenderStand, KTermin } from './teile';
@@ -75,7 +75,7 @@ export function useVerschieben({ setDaten, laden, melden }: { setDaten: Dispatch
     <div role="status" aria-live="polite" style={{ position: 'fixed', left: '50%', bottom: 'max(18px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 80, display: 'flex', alignItems: 'center', gap: 12, maxWidth: 'calc(100vw - 32px)', padding: '10px 12px 10px 16px', borderRadius: 12, background: C.flaecheHoch, border: '1px solid rgba(255,255,255,.1)', boxShadow: '0 18px 50px -12px rgba(0,0,0,.8)', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.ink }}>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>„{zuletzt.titel}“ verschoben</span>
       <button type="button" onClick={() => void rueckgaengig()} style={{ flex: '0 0 auto', minHeight: 32, padding: '4px 10px', borderRadius: 8, border: `1px solid ${LEUCHT.puls}80`, background: `${LEUCHT.puls}1f`, color: LEUCHT.puls, fontWeight: 700, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>Rückgängig</button>
-      <button type="button" onClick={weg} aria-label="Hinweis schließen" style={{ flex: '0 0 auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, minWidth: 24, minHeight: 24 }}>✕</button>
+      <SymbolKnopf onClick={weg} ariaLabel="Hinweis schließen">✕</SymbolKnopf>
     </div>
   ) : null;
 

@@ -13,7 +13,7 @@
 import { useCallback, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Haken, prioFarbe, LEUCHT } from '../schlank';
+import { prioFarbe, LEUCHT, HakenZiel } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import { useHandlung, type Handlungen } from '../aufgaben/Handlung';
 import { einplanenTeil } from '@/lib/kalender/aufgaben';
@@ -66,18 +66,18 @@ export function useAufgabenImKalender() {
 export function OhneTerminListe({ aufgaben, onOeffnen, onAbhaken, leer = 'Alle offenen Aufgaben haben eine Deadline.' }: {
   aufgaben: readonly Task[]; onOeffnen: (id: string) => void; onAbhaken: (id: string) => void; leer?: string;
 }) {
-  if (!aufgaben.length) return <div style={{ fontSize: 12.5, color: C.inkLeise }}>{leer}</div>;
+  if (!aufgaben.length) return <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{leer}</div>;
   return (
     <div role="list" aria-label="Aufgaben ohne Termin" style={{ display: 'grid', gap: 3, maxHeight: 280, overflowY: 'auto' }}>
       {aufgaben.map(t => (
         <div key={t.id} role="listitem" draggable onDragStart={e => aufgabeZiehStart(e, t.id)} title={`${t.title} — ins Raster ziehen zum Einplanen`}
           style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 6px', borderRadius: 8, background: `${ART_FARBE.aufgabe}12`, border: `1px solid ${ART_FARBE.aufgabe}33`, cursor: 'grab', fontFamily: SCHRIFT.text, minWidth: 0 }}>
-          <Haken an={false} onChange={() => onAbhaken(t.id)} farbe={prioFarbe(t.priority)} label={t.title} />
+          <HakenZiel an={false} onChange={() => onAbhaken(t.id)} farbe={prioFarbe(t.priority)} label={t.title} />
           <button type="button" onClick={() => onOeffnen(t.id)} className="fassbar"
             style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, color: C.ink, fontSize: TYP.bedien, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text }}>
             {t.parentId ? <span aria-label="Unteraufgabe" style={{ color: C.inkLeise }}>↳ </span> : null}{t.priority === 'critical' ? <span style={{ color: LEUCHT.kritisch }}>‼ </span> : null}{t.title}
           </button>
-          <span aria-hidden style={{ color: C.inkLeise, fontSize: 12 }}>⋮⋮</span>
+          <span aria-hidden style={{ color: C.inkLeise, fontSize: TYP.bedien }}>⋮⋮</span>
         </div>
       ))}
     </div>

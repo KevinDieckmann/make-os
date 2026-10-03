@@ -101,6 +101,10 @@ kennt nur die Hauptadresse); Firmen-Zusammenführungen, die rückgängig sollen,
 `gmail-*`, Business-Termine liegen dann nur in Google); Bestand `events-geloescht` (gelöschte Event-Kennungen, 90 Tage) ist
 additiv, der alte Stand ignoriert ihn.
 
+**Lichtfäden v2 (03.10., Branch `faeden2`):** nur Darstellung und die Lese-Route `GET /api/lichtfaeden` — kein Bestand, kein Feld; beim Rückweg fällt die
+Ansicht weg (Planung › Jahr zeigt dann wieder den alten Zeitstrahl), Daten bleiben unberührt. Kachel „Lichtfäden“ auf Fokus: gespeicherte Flächen-Layouts
+kennen sie im alten Stand nicht — ohne Folgen.
+
 **Was beim Rückweg auf `5202a69` wegfällt oder später doppelt kommen kann** (der Online-Stand verwirft beim nächsten Schreiben, was er nicht kennt).
 Punkte, die schon mit `5202a69` online kamen (Finanzplanung-Kern-Umbau, Netzwerken-Grundpaket bis vCard/iPhone-Fixes), sind
 beim Rückweg auf `5202a69` NICHT betroffen — sie stehen hier nur noch zur Geschichte:
