@@ -4,6 +4,20 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Review-Nacharbeit: eine Quelle durchgesetzt (03./04.10.2026, nur lokal — Branch `review-fix`)
+
+Strenges Code-Review der Stände vom 03.10. (Lichtfäden v2, Design-Standard, Fokus Innovation) — Kevin: „extrem sauber, sonst macht das nachher wieder extremen Aufwand“. Jede „eine Quelle“ steht jetzt mit Wächtertest.
+
+- **Datenschutz (Lichtfäden):** „nur ich“ vererbt sich über die ganze Unteraufgaben-Kette — vorher sah die andere Person Titel und Links von Unteraufgaben privater Aufgaben, eine Altaufgabe „nur ich“ ohne Anlegerin sahen sogar beide offen. Ein Helfer `nurIchBesitzer` (lib/aufgaben/sicht.ts, gleichwertig zu `darfSehen`); ohne bestimmbare Anlegerin fällt der Strang weg. Familie-Vereinbarungen „nur ich“ ebenso privat. Test `tests/lichtfaeden-datenschutz.test.ts` (alle Ebenen inkl. Engstellen, Zwischenspeicher an).
+- **Ziel-Farbe:** rechnet nur noch der Server über ALLE Ziele des Haushalts (`lib/planung/ziel-farben-server.ts`) und liefert `farbe` an jedem Ziel (`GET /api/state/ziele`) und an den Lichtfäden-Knoten — Lichtfäden, Ziel-Chip und Ziel-Bezug zeigen dieselbe Farbe (vorher drei Mengen, drei Farben). Das erste Business-Ziel ist nicht mehr Gelb (Gelb = Engstelle).
+- **Ziel-Seite:** angepasste abgeleitete Ziele zeigten 404 in den Lichtfäden — die Route rechnet jetzt jedes abgeleitete Ziel auf sein Jahresziel um (`wurzelAufloesen`).
+- **Ziel-Bezug („zahlt ein auf“):** keine Stichworte mehr (traf „Profit“ als „fit“), kein Name im Code; Bezug nur über die Thema-Zuordnung der Lichtfäden, sonst ehrlich „Oberstes Ziel“. Space ohne Angabe = Business überall (`spaceVonZiel`).
+- **Ein Schalter** (`components/os/ui`, `onChange(v)`, ohne Beschriftung Pflicht-`ariaLabel`), kein handgebauter `role="switch"` mehr; **ein Breiten-Hook** (`ui/medien.ts`); Shell (Kopf, ZOE, Zeitstrahl) ohne schlank-Importe; ZOE „Normalgröße“ über Klasse.
+- **Lichtfäden-Oberfläche:** Übergang an den Anfrage-Schlüssel gebunden (Person-/Zeitraumwechsel spielt die alte Auffächerung nicht erneut), „heute“ vom Server, Messpunkt nur zur Prüfung, M365-Termine ohne toten Link, Baum ohne quadratische Schritte.
+- **CRM:** ein Helfer für Nachfass-/Herkunftstexte (`nachfassText`, `nachgefasstText`, `eventName` — besuchte Events ohne unsere Marke).
+- **Seiten:** `node scripts/lichtfaeden-website.mjs` schreibt website/ UND fokus/; `fokus/pruefen.mjs` teilt `alleDateien` mit website/; Städte-Wächter.
+- **Rückweg:** keine Bestände, keine Felder gespeichert (`farbe` ist nur Antwort, `sauberZiel` verwirft sie).
+
 ## Fokus Innovation: Reihe unter Make.One + Event-Seite fokusinnovation.de (03.10.2026, nur lokal — Branch `fokus-innovation`)
 
 Kevin 03.10.: „Fokus Innovation = Event-Reihe unter Make.One“ (Leit-Format der Innovations-Abende: Berlin, Hamburg, Bielefeld, Köln, München) — „fokusinnovation.de bekommt eine eigene Event-Seite“.
