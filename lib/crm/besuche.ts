@@ -22,7 +22,7 @@ import { budgetSumme } from './eventplanung';
 import { ausgenommen } from './einschraenkung';
 import { istBesuch, besuchAbgesagt, fuerFirmaId } from './besuche-form';
 
-const plusTage = (datum: string, n: number): string => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const plusTage = (datum: string, n: number): string => { const d = new Date(`${datum}T12:00:00Z`); if (Number.isNaN(d.getTime())) return datum; d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const tageZwischen = (von: string, bis: string): number => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
 const tagDe = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
 

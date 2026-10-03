@@ -59,7 +59,9 @@ export function neuePersonenVerweise(b: CrmBestand, ops: ListenOp[]): NeuerVerwe
       if (!k || k === alt?.kontaktId) continue;
       const eventId = String(roh.eventId ?? alt?.eventId ?? '');
       const titel = (b.events ?? []).find(e => e.id === eventId)?.titel ?? 'Event';
-      raus.push({ liste: 'teilnahmen', id, wo: titel, kontaktIds: [k], werbung: true });
+      // Eine Einladung ist Werbung; wer „da“ war, nicht gekommen ist oder abgesagt hat, wird nicht eingeladen (Art. 18 sperrt trotzdem — 29.10. Netzwerken: Begegnung mit Werbesperre bleibt erfassbar).
+      const status = String(roh.status ?? alt?.status ?? 'vorgemerkt');
+      raus.push({ liste: 'teilnahmen', id, wo: titel, kontaktIds: [k], werbung: !['da', 'no_show', 'abgesagt'].includes(status) });
     } else if (o.liste === 'kampagnen') {
       const alt = (b.kampagnen ?? []).find(k => k.id === id);
       if (o.op === 'teil' && !alt) continue;
@@ -112,4 +114,27 @@ export function personenSchranke(b: CrmBestand, ops: ListenOp[], personen: reado
       : `Kampagne „${v.wo}“: ${personenWort(gesperrt)} mit Werbesperre (Widerspruch, Art. 21 DSGVO) ${gesperrt === 1 ? 'kommt' : 'kommen'} in keine Kampagne — nichts gespeichert.`);
   }
   return eingeschraenkt ? [EINGESCHRAENKT_FEHLER, ...raus] : raus;
+}
+
+/** Eine Funktions-Änderung (`aendereCrm(b => …)`) wurde von der Personen-Schranke abgelehnt — 409 mit Texten, nichts geschrieben. */
+export class PersonenSchrankeFehler extends Error {
+  status = 409;
+  constructor(public texte: string[]) { super(texte.join(' · ')); this.name = 'PersonenSchrankeFehler'; }
+}
+
+/**
+ * Was eine Funktions-Änderung an Teilnahmen und Kampagnen NEU hinzugefügt hat, als Einzel-Ops — damit auch sie durch die Schranke laufen
+ * (der Ops-Weg prüft in `wendeCrmAn`; Server-Funktionen wie „Netzwerken erfassen“ schrieben bisher an der Schranke vorbei).
+ * Gemessen wird am Stand VOR der Änderung; nur neue Einträge bzw. neue Personen in einer Kampagne zählen.
+ */
+export function funktionsOps(vorher: CrmBestand, nachher: CrmBestand): ListenOp[] {
+  const ops: ListenOp[] = [];
+  const tAlt = new Map((vorher.teilnahmen ?? []).map(t => [t.id, t]));
+  for (const t of nachher.teilnahmen ?? []) { const a = tAlt.get(t.id); if (!a || a.kontaktId !== t.kontaktId || a.status !== t.status) ops.push({ liste: 'teilnahmen', op: 'upsert', eintrag: { ...t } as unknown as Record<string, unknown> }); }
+  const kAlt = new Map((vorher.kampagnen ?? []).map(k => [k.id, k]));
+  for (const k of nachher.kampagnen ?? []) {
+    const a = kAlt.get(k.id);
+    if (!a || k.kontaktIds.some(x => !a.kontaktIds.includes(x)) || a.status !== k.status) ops.push({ liste: 'kampagnen', op: 'upsert', eintrag: { ...k } as unknown as Record<string, unknown> });
+  }
+  return ops;
 }

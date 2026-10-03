@@ -46,12 +46,14 @@ import { neuesFollowUp } from './followup';
 import { leereKriterien } from './leads';
 import { dealAnlegen } from './deal-anlegen';
 import { kontextAus } from './segmente';
+import { gastVormerken, einladungswegAus } from './eventplanung';
 import { kanalStatus } from './recht';
 import { angebotSpeichern } from './angebot-server';
 import { terminAktivitaetenSetzen } from './termin-aktivitaet-server';
 import { MARKE_EVENTS, istNetzwerkenEvent } from './marke';
-import { zusammenfuehrung, trifftEingeschraenkte, luekenFuellen, neuesEvent, followupFrist, followupFristEinTag, wandPlusMinuten, schrittLabel, terminArtLabel, stadtAusAnschrift, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG, LABEL_NETZWERKEN, LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN, type Erfassung } from './netzwerken';
-import type { Firma, NetzwerkenAngabe, Teilnahme } from './typen';
+import { besuchAbgesagt } from './besuche-form';
+import { zusammenfuehrung, trifftEingeschraenkte, luekenFuellen, neuesEvent, gleichesBesuchEvent, followupFrist, followupFristEinTag, ergebnisZiel, eventDatumPlausibel, wandPlusMinuten, schrittLabel, terminArtLabel, stadtAusAnschrift, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG, LABEL_NETZWERKEN, LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN, type Erfassung } from './netzwerken';
+import type { CrmBestand, Firma, NetzwerkenAngabe, Teilnahme } from './typen';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
@@ -84,7 +86,11 @@ export const JOURNAL_TAGE = 60;
  * dazu die Kennung der Person (`kontaktId`, nötig, wenn die Erfassung an einer BESTEHENDEN Person hängt) und der Schlüssel
  * des Termins (`terminSchluessel`) — beides wird beim Abschluss geleert.
  */
-export interface JournalEintrag { id: string; angelegt: string; schritte: string[]; fertig?: string; kontaktId?: string; terminSchluessel?: string }
+export interface JournalEintrag {
+  id: string; angelegt: string; schritte: string[]; fertig?: string; kontaktId?: string; terminSchluessel?: string;
+  /** Das Event, an dem die Erfassung wirklich hängt, wenn es von `eventId` des Körpers abweicht (ein gleichnamiges Event gleichen Tages gab es schon — M7). Keine Personendaten, bleibt auch nach dem Abschluss. */
+  eventId?: string;
+}
 interface JournalDatei { eintraege: JournalEintrag[] }
 
 /** Fertige UND nie fertig gewordene Einträge fallen nach 60 Tagen weg (die Kennung der Person verschwindet so spätestens dann). */
@@ -129,6 +135,10 @@ export interface ErfassungErgebnis {
   /** Tag des Termins (YYYY-MM-DD) — für den Sprung in den Kalender. */
   terminTag?: string;
   angebotId?: string;
+  /** Make.One-Event, für das die Person vorgemerkt wurde (Schritt „Zu Make.One einladen“) — für den Sprung in die Gästeliste. */
+  makeoneEventId?: string;
+  /** Das Event ist ein besuchtes (Reiter „Events“) — der Sprung geht dann in die Event-Akte, sonst in den Make.One-Reiter. */
+  eventBesuch?: boolean;
   /** Kennung des Deals (Schritt „Vermitteln“) bzw. des Follow-ups (Schritt „Follow-up“ oder „Ohne Termin abschließen“) — feste Kennungen. */
   dealId?: string;
   followupId?: string;
@@ -176,7 +186,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
   }
 
   const vorher = await journalLesen(h, e.erfassungId);
-  if (vorher?.fertig) return { ok: true, schonDa: true, eventId: e.eventId, hinweise: [] };
+  if (vorher?.fertig) return { ok: true, schonDa: true, eventId: vorher.eventId ?? e.eventId, hinweise: [] };
 
   // Zuständig = Person des Haushalts (nie ein fremdes Konto) — vor jedem Schreiben.
   if (!(await personImHaushaltDesInhabers(e.zustaendig))) throw new ErfassungFehler('Zuständig kann nur eine Person aus eurem Haushalt sein.', 400);
@@ -199,27 +209,57 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
   };
 
   // ── event ──
-  await schritt('event', async () => {
-    let fehlt = false;
+  // Das Event, an dem die Erfassung hängt: der Körper nennt eine Kennung; gab es ein gleichnamiges Event desselben Tages schon (M7), hängt
+  // sie daran (das Journal merkt es sich) — der Client bekommt die echte Kennung in der Antwort und hängt `wahl` um.
+  const eventNeuAnlegen = (b: CrmBestand, id: string): CrmBestand => {
+    const n = e.eventNeu!;
+    if (!eventDatumPlausibel(n.datum, heute)) throw new ErfassungFehler('Das Datum des Events liegt mehr als ein Jahr entfernt — bitte das Event prüfen oder ein anderes wählen.', 400, { eventFehler: true });
+    // „Für“ nur, wenn es die Kunden-Firma (und das Mandat) noch gibt — sonst als MAKE anlegen, nie ein Verweis ins Leere.
+    const nf = n.fuer?.art === 'kunde' ? n.fuer : undefined;
+    const fuer = nf && b.firmen.some(f => f.id === nf.firmaId) && (!nf.mandatId || b.mandate.some(m => m.id === nf.mandatId && m.firmaId === nf.firmaId)) ? nf : undefined;
+    if (n.fuer && !fuer) hinweise.push('Die Kunden-Firma des Events gibt es nicht mehr — das Event wurde ohne „für wen“ angelegt.');
+    return { ...b, events: [...b.events, neuesEvent({ id, titel: n.titel, datum: n.datum, ...(n.ort ? { ort: n.ort } : {}), ...(fuer ? { fuer } : {}), person: ctx.person, heute, jetztIso })] };
+  };
+  const EVENT_WEG = 'Das Event gibt es nicht (mehr) — bitte „Heute bei“ neu wählen.';
+  const eventErsatz = await schritt('event', async () => {
+    let fehlt = false, abgesagt = false;
+    let ersatz: string | undefined;
     await aendereCrm(b => {
-      const ev = b.events.find(x => x.id === e.eventId);
+      let ev = b.events.find(x => x.id === e.eventId);
       if (!ev) {
         if (!e.eventNeu) { fehlt = true; return b; }
-        const neu = neuesEvent({ id: e.eventId, titel: e.eventNeu.titel, datum: e.eventNeu.datum, ...(e.eventNeu.ort ? { ort: e.eventNeu.ort } : {}), ...(e.eventNeu.fuer ? { fuer: e.eventNeu.fuer } : {}), person: ctx.person, heute, jetztIso });
-        return { ...b, events: [...b.events, neu] };
+        const da = gleichesBesuchEvent(b.events, e.eventNeu.titel, e.eventNeu.datum);
+        if (!da) return eventNeuAnlegen(b, e.eventId);
+        ev = da; ersatz = da.id;
       }
+      // Ein abgesagtes Event bekommt keine Begegnung (N4) — sie hinge an einer Veranstaltung, die nicht stattfand.
+      if (besuchAbgesagt(ev)) { abgesagt = true; return b; }
       // Wer „Heute bei“ wählt, ist dort: ein Event von heute oder früher, das noch „geplant“ steht, gilt als durchgeführt.
       if (ev.datum <= heute && (ev.status === 'geplant' || ev.status === 'einladung' || ev.status === 'idee')) {
+        const evId = ev.id;
         // Hat das Event einen Anmeldestand (Events-Reiter, 03.10.), zieht er mit: wer dort erfasst, hat es besucht.
-        return { ...b, events: b.events.map(x => (x.id === ev.id ? { ...x, status: 'durchgefuehrt' as const, ...(x.anmeldung ? { anmeldung: 'besucht' as const } : {}), geaendert: jetztIso, geaendertVon: ctx.person } : x)) };
+        return { ...b, events: b.events.map(x => (x.id === evId ? { ...x, status: 'durchgefuehrt' as const, ...(x.anmeldung ? { anmeldung: 'besucht' as const } : {}), geaendert: jetztIso, geaendertVon: ctx.person } : x)) };
       }
       return b;
     }, ctx.wer);
-    if (fehlt) throw new ErfassungFehler('Das Event gibt es nicht (mehr) — bitte „Heute bei“ neu wählen.', 404);
-  });
-  const crm0 = await ladeCrm();
-  const event = crm0.events.find(x => x.id === e.eventId);
-  if (!event) throw new ErfassungFehler('Das Event gibt es nicht (mehr) — bitte „Heute bei“ neu wählen.', 404);
+    if (fehlt) throw new ErfassungFehler(EVENT_WEG, 404, { eventFehler: true });
+    if (abgesagt) throw new ErfassungFehler('Das Event ist abgesagt — bitte ein anderes Event wählen.', 409, { eventFehler: true });
+    return ersatz;
+  }, id => (id ? { eventId: id } : {}));
+  let eventId = eventErsatz ?? vorher?.eventId ?? e.eventId;
+  let crm0 = await ladeCrm();
+  let event = crm0.events.find(x => x.id === eventId);
+  if (!event) {
+    // Das Event wurde gelöscht, nachdem der Schritt schon abgehakt war (Erfassung hing in der Warteschlange): aus `eventNeu` neu anlegen (H1);
+    // ohne `eventNeu` (ältere Körper) bleibt es beim 404. Die Teilnahme hing am gelöschten Event (Kaskade) — der Schritt läuft noch einmal.
+    if (!e.eventNeu) throw new ErfassungFehler(EVENT_WEG, 404, { eventFehler: true });
+    await aendereCrm(b => (b.events.some(x => x.id === eventId) ? b : eventNeuAnlegen(b, eventId)), ctx.wer);
+    hinweise.push(`Das Event „${e.eventNeu.titel}“ war gelöscht — es wurde neu angelegt.`);
+    erledigt.delete('teilnahme');
+    crm0 = await ladeCrm();
+    event = crm0.events.find(x => x.id === eventId);
+    if (!event) throw new ErfassungFehler(EVENT_WEG, 404, { eventFehler: true });
+  }
 
   const nameDa = e.vorhandenKontaktId !== undefined;
   const firmaName = e.kontakt.firma;
@@ -348,7 +388,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
   };
   await schritt('teilnahme', async () => {
     await aendereCrm(b => {
-      const i = b.teilnahmen.findIndex(t => t.eventId === e.eventId && t.kontaktId === kontaktId);
+      const i = b.teilnahmen.findIndex(t => t.eventId === eventId && t.kontaktId === kontaktId);
       if (i >= 0) {
         const t = b.teilnahmen[i];
         if (t.netzwerken?.erfassungId === e.erfassungId) return b;
@@ -358,7 +398,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
           ...(e.info && !t.notiz ? { notiz: e.info.slice(0, 1500) } : {}), netzwerken: { ...angabe, ...(danke ? { danke } : {}) }, geaendert: jetztIso, geaendertVon: ctx.person };
         return { ...b, teilnahmen: b.teilnahmen.map((x, j) => (j === i ? neu : x)) };
       }
-      return { ...b, teilnahmen: [...b.teilnahmen, { id: `t-${e.erfassungId}`, eventId: e.eventId, kontaktId, status: 'da' as const, rolle: 'gast' as const, einladenDurch: e.zustaendig, eingechecktVon: ctx.person, ...(e.info ? { notiz: e.info.slice(0, 1500) } : {}), netzwerken: angabe, geaendert: jetztIso, geaendertVon: ctx.person }] };
+      return { ...b, teilnahmen: [...b.teilnahmen, { id: `t-${e.erfassungId}`, eventId: eventId, kontaktId, status: 'da' as const, rolle: 'gast' as const, einladenDurch: e.zustaendig, eingechecktVon: ctx.person, ...(e.info ? { notiz: e.info.slice(0, 1500) } : {}), netzwerken: angabe, geaendert: jetztIso, geaendertVon: ctx.person }] };
     }, ctx.wer);
   });
 
@@ -371,16 +411,21 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       let k = f.kontakte[i];
       if (k.eingeschraenkt) return f;
       const text = [`Kennengelernt bei ${event.titel}`, ...(e.info ? [`Info: ${e.info.replace(/\s+/g, ' ')}`] : []), ...(neuAngelegt ? [KEINE_EINWILLIGUNG] : [])].join(' — ');
-      const schon = (art: string, marker: string) => (k.aktivitaeten ?? []).some(a => a.art === art && a.am === e.erfasstAm && a.bezug === e.eventId && (a.text ?? '').includes(marker));
-      if (!schon('event', 'Kennengelernt bei')) k = wendeAktivitaetAn(k, { art: 'event', text: text.slice(0, 2900), von: ctx.person, bezug: e.eventId }, erfasstTag > heute ? heute : erfasstTag, e.erfasstAm, tagPlusLokal);
-      if (e.sprachnotiz && !schon('notiz', 'Sprachnotiz')) k = wendeAktivitaetAn({ ...k }, { art: 'notiz', text: `Sprachnotiz aufgenommen — Abschrift folgt (KI)${e.sprachnotiz.dauerSek ? ` · ${Math.floor(e.sprachnotiz.dauerSek / 60)}:${String(e.sprachnotiz.dauerSek % 60).padStart(2, '0')} min` : ''}`, von: ctx.person, bezug: e.eventId }, erfasstTag > heute ? heute : erfasstTag, e.erfasstAm, tagPlusLokal);
+      const schon = (art: string, marker: string) => (k.aktivitaeten ?? []).some(a => a.art === art && a.am === e.erfasstAm && a.bezug === eventId && (a.text ?? '').includes(marker));
+      if (!schon('event', 'Kennengelernt bei')) k = wendeAktivitaetAn(k, { art: 'event', text: text.slice(0, 2900), von: ctx.person, bezug: eventId }, erfasstTag > heute ? heute : erfasstTag, e.erfasstAm, tagPlusLokal);
+      if (e.sprachnotiz && !schon('notiz', 'Sprachnotiz')) k = wendeAktivitaetAn({ ...k }, { art: 'notiz', text: `Sprachnotiz aufgenommen — Abschrift folgt (KI)${e.sprachnotiz.dauerSek ? ` · ${Math.floor(e.sprachnotiz.dauerSek / 60)}:${String(e.sprachnotiz.dauerSek % 60).padStart(2, '0')} min` : ''}`, von: ctx.person, bezug: eventId }, erfasstTag > heute ? heute : erfasstTag, e.erfasstAm, tagPlusLokal);
       // Jede über „Netzwerken“ erfasste Person trägt das Label — auch eine bestehende (Kartei-Filter „Label: Netzwerken“).
       if (!(k.labels ?? []).includes(LABEL_NETZWERKEN)) k = { ...k, labels: [...(k.labels ?? []), LABEL_NETZWERKEN], geaendertAm: heute };
       return { ...f, kontakte: f.kontakte.map((x, j) => (j === i ? k : x)) };
     }, ctx.wer);
   });
 
+  /** An der Teilnahme dieser Erfassung nachtragen (nur bei der Erfassung, die die Angabe hält — eine spätere Begegnung bleibt unberührt). */
+  const angabeAendern = (f: (a: NetzwerkenAngabe) => NetzwerkenAngabe, zusatz: (t: Teilnahme) => Partial<Teilnahme> = () => ({})) => aendereCrm(bs => ({ ...bs, teilnahmen: bs.teilnahmen.map(t => (t.eventId === eventId && t.kontaktId === kontaktId && t.netzwerken?.erfassungId === e.erfassungId
+    ? { ...t, ...zusatz(t), netzwerken: f(t.netzwerken), geaendert: jetztIso, geaendertVon: ctx.person } : t)) }), ctx.wer);
   // ── schritt ──
+  let makeoneEventId: string | undefined;
+  let makeoneGesperrt = false;
   let angebotId: string | undefined;
   /** Aufgabe mit Bezug zum Kontakt (feste Kennung `nw-<Erfassung>` — nie doppelt); der Aufgaben-Weg meldet die Zuweisung selbst. */
   const aufgabeAnlegen = (titel: string, faellig: string) => systemAufgabenAendern(stand => {
@@ -394,7 +439,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
   /** Der Tag der Begegnung (nie in der Zukunft) — daran hängen Fristen und „nachgefasst“. */
   const begegnungsTag = erfasstTag > heute ? heute : erfasstTag;
   /** Die Begegnung zählt als nachgefasst (Termin, Angebot, Vermitteln, Make.One: ein nächster Schritt ist getan, kein Gast bleibt in der 48-h-Liste hängen). */
-  const nachgefasst = () => aendereCrm(b => ({ ...b, teilnahmen: b.teilnahmen.map(t => (t.eventId === e.eventId && t.kontaktId === kontaktId && !t.followUpAm ? { ...t, followUpAm: begegnungsTag, geaendert: jetztIso, geaendertVon: ctx.person } : t)) }), ctx.wer);
+  const nachgefasst = () => aendereCrm(b => ({ ...b, teilnahmen: b.teilnahmen.map(t => (t.eventId === eventId && t.kontaktId === kontaktId && !t.followUpAm ? { ...t, followUpAm: begegnungsTag, geaendert: jetztIso, geaendertVon: ctx.person } : t)) }), ctx.wer);
   /** Label an der Person (einmal) — z. B. „Lead prüfen“. */
   const labelSetzen = (label: string) => aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
@@ -436,7 +481,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
           const id = `fu-${e.erfassungId}`;
           if ((b.followups ?? []).some(x => x.id === id)) return b;
           const text = `Nachfassen nach „${event.titel}“${e.info ? `: ${e.info.replace(/\s+/g, ' ')}` : ''}`.slice(0, 300);
-          const fu = neuesFollowUp({ id, bezug: { art: 'event', id: e.eventId }, kontaktId, art: 'nachricht', text, faellig: e.followup?.faellig ?? frist, quelle: 'event', zustaendig: e.zustaendig }, kontakt0, ctx.person, jetztIso);
+          const fu = neuesFollowUp({ id, bezug: { art: 'event', id: eventId }, kontaktId, art: 'nachricht', text, faellig: e.followup?.faellig ?? frist, quelle: 'event', zustaendig: e.zustaendig }, kontakt0, ctx.person, jetztIso);
           return { ...b, followups: [...(b.followups ?? []), { ...fu, geaendertVon: ctx.person }] };
         }, ctx.wer);
         break;
@@ -448,7 +493,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
         if ((await ladeCrm()).chancen.some(c => c.id === id)) break;
         const r = await dealAnlegen({
           id, art: 'vermittlung', kontaktIds: [kontaktId], wert: { betrag: 0, basis: 'einmalig' }, schritt: { text: `Vermitteln an ${e.vermitteln!.an}`, datum: frist },
-          quelle: 'event', quelleBezug: e.eventId, besitzer: e.zustaendig, trotzdem: true,
+          quelle: 'event', quelleBezug: eventId, besitzer: e.zustaendig, trotzdem: true,
           notiz: [`Kennengelernt bei „${event.titel}“ (Netzwerken).`, ...(e.info ? [`Info: ${e.info}`] : [])].join('\n'),
         }, ctx.person, jetztIso, ctx.wer);
         if (!r.ok) throw new ErfassungFehler(r.fehler, r.status);
@@ -457,13 +502,18 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       case 'makeone': {
         // Wie „Make.One einladen“ in der Kontaktakte: Gast für ein KOMMENDES Event vormerken (Teilnahme „vorgemerkt“), der Einladungsweg
         // folgt der Ampel (Mail nur bei grün, sonst persönlich) — gesendet wird nichts. Ohne wählbares Event: Aufgabe + Label als Vormerkung.
+        // Eine Person mit Werbesperre (Art. 21) wird NICHT vorgemerkt — weder als Gast noch als Aufgabe/Label: das wäre die Einladung, die sie ausgeschlossen hat.
+        if (kontakt0.werbesperre) { hinweise.push('Werbesperre — nicht für Make.One vorgemerkt (Widerspruch, Art. 21 DSGVO).'); makeoneGesperrt = true; break; }
         const crmJetzt = await ladeCrm();
-        const ziel = e.makeone?.eventId ? crmJetzt.events.find(x => x.id === e.makeone!.eventId && x.id !== e.eventId && !istNetzwerkenEvent(x) && x.datum >= heute && (x.status === 'idee' || x.status === 'geplant' || x.status === 'einladung')) : undefined;
+        const ziel = e.makeone?.eventId ? crmJetzt.events.find(x => x.id === e.makeone!.eventId && x.id !== eventId && !istNetzwerkenEvent(x) && x.datum >= heute && (x.status === 'idee' || x.status === 'geplant' || x.status === 'einladung')) : undefined;
         if (ziel) {
           const kx = kontextAus(crmJetzt, heute);
           const einl = kanalStatus(kontakt0, 'einladung', { hatMandat: kx.mitMandat.has(kontaktId), hatChance: kx.mitChance.has(kontaktId) });
-          await aendereCrm(b => (b.teilnahmen.some(t => t.eventId === ziel.id && t.kontaktId === kontaktId) ? b
-            : { ...b, teilnahmen: [...b.teilnahmen, { id: `t-nwm-${e.erfassungId}`, eventId: ziel.id, kontaktId, status: 'vorgemerkt' as const, rolle: 'gast' as const, einladungsweg: einl.farbe === 'gruen' ? 'mail' as const : 'persoenlich' as const, einladenDurch: e.zustaendig, geaendert: jetztIso, geaendertVon: ctx.person }] }), ctx.wer);
+          // EIN Weg (`gastVormerken`, lib/crm/eventplanung.ts) — dieselbe Teilnahme wie in der Kontaktakte, mit Herkunft und Nachfass-Stempel.
+          await aendereCrm(b => gastVormerken(b, { id: `t-nwm-${e.erfassungId}`, eventId: ziel.id, kontaktId, weg: einladungswegAus(einl.farbe), einladenDurch: e.zustaendig, jetztIso, person: ctx.person,
+            herkunft: { art: 'netzwerken', eventId, erfassungId: e.erfassungId }, nachgefasst: begegnungsTag }).bestand, ctx.wer);
+          makeoneEventId = ziel.id;
+          await angabeAendern(a => ({ ...a, makeone: { eventId: ziel.id } }));
           break;
         }
         await aufgabeAnlegen(`Zu ${MARKE_EVENTS} einladen: ${name}`, frist);
@@ -490,14 +540,11 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       }
       default: break; // 'termin' (eigener Schritt) und 'nur-kontakt' (nichts)
     }
-    if (e.schritt === 'angebot' || e.schritt === 'vermitteln' || e.schritt === 'makeone') await nachgefasst();
+    if (e.schritt === 'angebot' || e.schritt === 'vermitteln' || (e.schritt === 'makeone' && !makeoneGesperrt)) await nachgefasst();
   });
 
   // ── termin ──
   let terminSchluessel = (await journalLesen(h, e.erfassungId))?.terminSchluessel;
-  /** An der Teilnahme dieser Erfassung nachtragen (nur bei der Erfassung, die die Angabe hält — eine spätere Begegnung bleibt unberührt). */
-  const angabeAendern = (f: (a: NetzwerkenAngabe) => NetzwerkenAngabe, zusatz: (t: Teilnahme) => Partial<Teilnahme> = () => ({})) => aendereCrm(bs => ({ ...bs, teilnahmen: bs.teilnahmen.map(t => (t.eventId === e.eventId && t.kontaktId === kontaktId && t.netzwerken?.erfassungId === e.erfassungId
-    ? { ...t, ...zusatz(t), netzwerken: f(t.netzwerken), geaendert: jetztIso, geaendertVon: ctx.person } : t)) }), ctx.wer);
   if (e.schritt === 'termin' && e.termin && e.ohneTermin) {
     // „Ohne Termin abschließen“: der Termin ging nicht (kein Kalender, iCloud weg) — stattdessen ein Follow-up zum nächsten Werktag,
     // damit die Person nicht verloren geht. Aus dem Schritt „Termin“ wird an der Teilnahme „Follow-up“ (Bericht, Danke-Mail).
@@ -506,7 +553,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
         const id = `fu-${e.erfassungId}`;
         if ((b.followups ?? []).some(x => x.id === id)) return b;
         const text = `Termin vereinbaren — kennengelernt bei „${event.titel}“${e.info ? `: ${e.info.replace(/\s+/g, ' ')}` : ''}`.slice(0, 300);
-        const fu = neuesFollowUp({ id, bezug: { art: 'event', id: e.eventId }, kontaktId, art: 'nachricht', text, faellig: followupFristEinTag(begegnungsTag), quelle: 'event', zustaendig: e.zustaendig }, kontakt0, ctx.person, jetztIso);
+        const fu = neuesFollowUp({ id, bezug: { art: 'event', id: eventId }, kontaktId, art: 'nachricht', text, faellig: followupFristEinTag(begegnungsTag), quelle: 'event', zustaendig: e.zustaendig }, kontakt0, ctx.person, jetztIso);
         return { ...b, followups: [...(b.followups ?? []), { ...fu, geaendertVon: ctx.person }] };
       }, ctx.wer);
       await angabeAendern(({ terminAm: _a, terminId: _i, ...rest }) => ({ ...rest, schritt: 'followup' }));
@@ -557,7 +604,8 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       link = terminSchluessel ? WEG.termin(terminSchluessel, e.termin.start.slice(0, 10)) : WEG.kalender(e.termin.start.slice(0, 10));
     } else {
       titel = `${von} hat dir ${name} (${event.titel}) zugeteilt — nächster Schritt: ${schrittLabel(wirklichSchritt)}${e.ohneTermin ? ' (Termin vereinbaren)' : ''}`;
-      link = WEG.akte(kontaktId);
+      // Der Sprung geht zu dem, was die Erfassung angelegt hat (Deal, Angebot, Follow-up …), sonst zur Person (M10).
+      link = ergebnisZiel({ schritt: wirklichSchritt, erfassungId: e.erfassungId, kontaktId });
     }
     await melde({ an: e.zustaendig, art: 'netzwerken', titel: titel.slice(0, 300), link, von: ctx.person, bezug: { art: 'netzwerken', id: e.erfassungId } });
   });
@@ -566,8 +614,8 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
   await journalAendern(h, e.erfassungId, x => { const { kontaktId: _k, terminSchluessel: _t, ...rest } = x; return { ...rest, fertig: jetztIso }; }, jetzt);
 
   return {
-    ok: true, kontaktId, neu: neuAngelegt, ...(kontaktResultat?.zusammengefuehrt ? { zusammengefuehrt: true } : {}), eventId: e.eventId,
-    ...(terminSchluessel && wirklichTermin ? { terminUid: terminSchluessel, ...(e.termin ? { terminTag: e.termin.start.slice(0, 10) } : {}) } : {}), ...(angebotId ? { angebotId } : {}),
+    ok: true, kontaktId, neu: neuAngelegt, ...(kontaktResultat?.zusammengefuehrt ? { zusammengefuehrt: true } : {}), eventId: eventId,
+    ...(terminSchluessel && wirklichTermin ? { terminUid: terminSchluessel, ...(e.termin ? { terminTag: e.termin.start.slice(0, 10) } : {}) } : {}), ...(angebotId ? { angebotId } : {}), ...(makeoneEventId ? { makeoneEventId } : {}), ...(istNetzwerkenEvent(event) ? { eventBesuch: true } : {}),
     ...(wirklichSchritt === 'vermitteln' ? { dealId: `ch-nw-${e.erfassungId}` } : {}), ...(wirklichSchritt === 'followup' ? { followupId: `fu-${e.erfassungId}` } : {}), hinweise,
   };
 }

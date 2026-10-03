@@ -179,7 +179,8 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
       for (const [name, wert] of Object.entries(f)) if (typeof wert === 'string' && wert.trim()) k[name] = wert.trim();
       const koerper: Record<string, unknown> = {
         erfassungId: e.id, erfasstAm: new Date().toISOString(), eventId: wahl.eventId, ...(ich ? { erfasstVon: ich } : {}),
-        ...(wahl.lokal ? { eventNeu: { titel: wahl.titel, datum: wahl.datum, ...(wahl.ort ? { ort: wahl.ort } : {}), ...(wahl.fuer?.art === 'kunde' && wahl.fuer.firmaId ? { fuer: wahl.fuer } : {}) } } : {}),
+        // IMMER mit: wird das Event gelöscht, während die Erfassung wartet (oder war es nur lokal da), legt der Server es daraus neu an — sonst hinge sie ewig (H1).
+        eventNeu: { titel: wahl.titel, datum: wahl.datum, ...(wahl.ort ? { ort: wahl.ort } : {}), ...(wahl.fuer?.art === 'kunde' && wahl.fuer.firmaId ? { fuer: wahl.fuer } : {}) },
         kontakt: k,
         ...(e.vorhandenId ? { vorhandenKontaktId: e.vorhandenId } : {}), ...(e.neuErzwingen ? { neuErzwingen: true } : {}),
         ...(!e.vorhandenId && !e.firmaNeu && (e.firmaId || exakt) ? { firmaId: e.firmaId ?? exakt!.id } : {}),
@@ -514,7 +515,7 @@ function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schr
   const fehlt = e?.status === 'fehler';
   const verlinkt: CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: ZIEL, borderRadius: 14, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)', color: C.ink, textDecoration: 'none', fontWeight: 700, fontSize: 16 };
   // Termin · Deal · Follow-up · Event aus den Kennungen, die der Server liefert (der Kontakt hat oben seinen eigenen Link).
-  const verknuepfungen: LinkChip[] = linksAusAntwort(a, schritt).filter(l => l.id !== 'kontakt');
+  const verknuepfungen: LinkChip[] = linksAusAntwort(a, schritt, id).filter(l => l.id !== 'kontakt');
   return (
     <section aria-label="Gespeichert" style={{ display: 'grid', gap: 14 }}>
       {!e ? (
@@ -550,7 +551,6 @@ function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schr
       {!wartet && !fehlt && a?.kontaktId && <Link href={WEG.akte(a.kontaktId)} className="fassbar" style={verlinkt}>Zum Kontakt ›</Link>}
       {/* Platz für die Verknüpfungen der Erfassung (Termin · Deal · Follow-up · Event): eine Zeile Chips, leer = unsichtbar. */}
       {!wartet && !fehlt && <LinkChips links={verknuepfungen} />}
-      {!wartet && !fehlt && a?.angebotId && <Link href={WEG.angebot({ angebotId: a.angebotId })} className="fassbar" style={verlinkt}>Angebots-Entwurf öffnen ›</Link>}
       <HandyKnopf handy={handy} hervor={hervor} />
       <Aktionsleiste>
         <Gross ton="haupt" onClick={onNochEine}>Nächste Karte</Gross>

@@ -28,6 +28,7 @@ import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kanalLink } from '@/lib/crm/erfassen';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { kontextAus } from '@/lib/crm/segmente';
+import { gastTeilnahme, netzwerkenHerkunft, begegnungenNachgefasst } from '@/lib/crm/eventplanung';
 import { WEG } from '@/lib/wege';
 import { handyKarteAusKontakt, handyTeilen, handyMeldung } from '@/lib/netzwerken/handy';
 import { type CrmApi, neueId, datum } from '../daten';
@@ -62,7 +63,11 @@ function EventEinladen({ k, api, heute, onFertig }: { k: Kontakt; api: CrmApi; h
   const vormerken = async (eventId: string, titel: string) => {
     setLaeuft(eventId);
     try {
-      await api.setze('teilnahmen', { id: neueId('t'), eventId, kontaktId: k.id, status: 'vorgemerkt', rolle: 'gast', einladungsweg: weg });
+      // EINE Vormerkung (`gastTeilnahme`, lib/crm/eventplanung.ts) wie bei „Netzwerken“ — mit einladenDurch, Herkunft und dem Stempel „nachgefasst“ an den Begegnungen bei besuchten Events.
+      const jetzt = new Date().toISOString();
+      const ok = await api.setze('teilnahmen', gastTeilnahme({ id: neueId('t'), eventId, kontaktId: k.id, weg, jetztIso: jetzt, ...(api.ich ? { einladenDurch: api.ich } : {}), herkunft: netzwerkenHerkunft(crm.stand.teilnahmen, k.id) }) as unknown as { id: string } & Record<string, unknown>);
+      if (!ok) return;
+      for (const t of begegnungenNachgefasst(crm.stand, k.id, heute, api.ich ?? 'system', jetzt)) await api.teil('teilnahmen', t.id, { followUpAm: heute });
       onFertig(`Für „${titel}“ vorgemerkt — Einladung ${weg === 'mail' ? 'per Mail möglich (Ampel grün)' : 'bitte persönlich oder telefonisch (Ampel)'}.`);
     } finally { setLaeuft(null); }
   };

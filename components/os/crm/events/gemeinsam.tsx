@@ -40,14 +40,14 @@ export type Reiter = 'ueberblick' | 'gaeste' | 'ablauf' | 'checkliste' | 'budget
 export interface ReiterProps { e: Event; api: CrmApi; zuKontakt: (id: string) => void }
 
 /** Event ändern: nur die geänderten Felder (api.teil). Unverändertes geht gar nicht erst raus. */
-export function eventSetzen(api: CrmApi, e: Event, teil: Partial<Event>): Promise<void> {
+export function eventSetzen(api: CrmApi, e: Event, teil: Partial<Event>): Promise<boolean> {
   const felder = teilAenderung(e, teil);
-  return Object.keys(felder).length ? api.teil('events', e.id, felder) : Promise.resolve();
+  return Object.keys(felder).length ? api.teil('events', e.id, felder) : Promise.resolve(true);
 }
 /** Teilnahme ändern (Status, Notiz, Nachfassen, Weg, lädt ein …): nur diese Felder — zwei Geräte am Einlass stören sich nicht. */
-export function gastSetzen(api: CrmApi, t: Teilnahme, teil: Partial<Teilnahme>): Promise<void> {
+export function gastSetzen(api: CrmApi, t: Teilnahme, teil: Partial<Teilnahme>): Promise<boolean> {
   const felder = teilAenderung(t, teil);
-  return Object.keys(felder).length ? api.teil('teilnahmen', t.id, felder) : Promise.resolve();
+  return Object.keys(felder).length ? api.teil('teilnahmen', t.id, felder) : Promise.resolve(true);
 }
 
 // ── Brücke Teilnahme → Lead → Follow-up (lib/crm/event-bruecke.ts) ──────────

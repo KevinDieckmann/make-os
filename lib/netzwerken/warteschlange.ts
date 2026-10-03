@@ -13,6 +13,8 @@
 //   409 „neu laden“ (veralteter Tab) → wartet, bis die Seite neu geladen ist
 // Rein bis auf `indexedDbSpeicher` — getestet mit dem Speicher im Arbeitsspeicher (tests/netzwerken-logik.test.ts).
 
+import type { EventFuer } from '@/lib/crm/typen';
+
 export type WarteStatus = 'wartet' | 'fehler';
 export interface WarteEintrag {
   /** Kennung der Erfassung (UUID) — zugleich Schlüssel in der Warteschlange. */
@@ -26,6 +28,8 @@ export interface WarteEintrag {
   person?: string;
   /** „Fehler“, weil der Termin nicht ging (kein Kalender, iCloud weg): die Person ist erfasst, es lässt sich ohne Termin abschließen. */
   teilweise?: boolean;
+  /** „Fehler“, weil das Event nicht (mehr) passt (gelöscht, abgesagt, Datum falsch): die Erfassung lässt sich einem anderen Event zuordnen (`eventWechseln`). */
+  eventFehler?: boolean;
   /** Der Körper an POST /api/netzwerken (Bilder als Base64). */
   koerper: Record<string, unknown>;
   /** Kurzform für die Anzeige (ohne Fotos). */
@@ -51,7 +55,7 @@ export type Bewertung =
   | { art: 'neuladen'; grund: string }
   /** Die Erfassung gehört einer anderen Person dieses Geräts — sie wartet, bis diese angemeldet ist. */
   | { art: 'andere'; grund: string }
-  | { art: 'fehler'; text: string; teilweise?: boolean };
+  | { art: 'fehler'; text: string; teilweise?: boolean; eventFehler?: boolean };
 
 /** So viele Versuche mit Serverfehler (5xx), dann „Fehler“. */
 export const MAX_SERVER_VERSUCHE = 3;
@@ -64,7 +68,7 @@ export const NEU_LADEN_WARTE = 'MAKE OS wurde aktualisiert — bitte die Seite n
  * wird wiederholt; was die Eingabe selbst betrifft (400, 404, 413, 415) oder die Rechte (403), nicht.
  */
 export function bewerten(status: number, d: unknown): Bewertung {
-  const o = (d && typeof d === 'object' ? d : {}) as { ok?: unknown; fehler?: unknown; neuLaden?: unknown; teilweise?: unknown; andere?: unknown };
+  const o = (d && typeof d === 'object' ? d : {}) as { ok?: unknown; fehler?: unknown; neuLaden?: unknown; teilweise?: unknown; andere?: unknown; eventFehler?: unknown };
   if (status >= 200 && status < 300 && o.ok === true) return { art: 'erledigt' };
   const text = typeof o.fehler === 'string' && o.fehler ? o.fehler : '';
   const teilweise = o.teilweise === true;
@@ -74,7 +78,7 @@ export function bewerten(status: number, d: unknown): Bewertung {
   if (status === 401) return { art: 'wiederholen', grund: 'Bitte neu anmelden — die Erfassung bleibt auf dem Gerät.', stopp: true };
   if (status === 408 || status >= 500) return { art: 'wiederholen', grund: status >= 500 && text ? text : WARTET_TEXT, stopp: false, ...(teilweise ? { teilweise: true } : {}) };
   // 409 mit „teilweise“ (z. B. Kalender nicht verbunden): die Person ist erfasst, ein Rest fehlt — sichtbar, „Ohne Termin abschließen“ möglich.
-  return { art: 'fehler', text: text || `Nicht gespeichert (Fehler ${status}).`, ...(teilweise ? { teilweise: true } : {}) };
+  return { art: 'fehler', text: text || `Nicht gespeichert (Fehler ${status}).`, ...(teilweise ? { teilweise: true } : {}), ...(o.eventFehler === true ? { eventFehler: true } : {}) };
 }
 
 export function ramSpeicher(): WarteSpeicher {
@@ -169,6 +173,11 @@ export class Warteschlange {
   person: string | null = null;
   /** Antworten des Servers je gesendeter Erfassung (Kennungen für „Zur Person“, Termin, Deal …) — auch wenn ein anderer Aufrufer gesendet hat. */
   readonly antworten: Record<string, unknown> = {};
+  /**
+   * Event-Kennungen, die der Server umgehängt hat (M7): gab es ein gleichnamiges Event desselben Tages schon, hängt die Erfassung daran und meldet
+   * dessen Kennung zurück — `von` (Körper) → `nach` (Server). Die Oberfläche hängt ihre Auswahl („Heute bei“) danach um.
+   */
+  readonly umgehaengt: Record<string, string> = {};
   /** Wie viele Erfassungen seit dem Laden erfolgreich gesendet wurden — die Anzeige lädt dann das CRM neu. */
   gesendetZahl = 0;
   /** Der Server sagte „MAKE OS wurde aktualisiert“ — die Seite soll neu geladen werden. */
@@ -200,7 +209,7 @@ export class Warteschlange {
   /** Einen Eintrag wieder zum Senden freigeben (nach „Fehler“) — mit frischen drei Versuchen. */
   async erneut(id: string): Promise<void> {
     const e = (await this.speicher.alle()).find(x => x.id === id);
-    if (e) { const { teilweise: _t, ...rest } = e; await this.speicher.setze({ ...rest, versuche: 0, status: 'wartet', hinweis: WARTET_TEXT }); this.geaendert(); }
+    if (e) { const { teilweise: _t, eventFehler: _f, ...rest } = e; await this.speicher.setze({ ...rest, versuche: 0, status: 'wartet', hinweis: WARTET_TEXT }); this.geaendert(); }
   }
   /**
    * „Ohne Termin abschließen“: der Termin ging nicht (kein Kalender, iCloud weg). Dieselbe Erfassung wird mit `ohneTermin` erneut
@@ -209,6 +218,34 @@ export class Warteschlange {
   async ohneTermin(id: string): Promise<void> {
     const e = (await this.speicher.alle()).find(x => x.id === id);
     if (e) { const { teilweise: _t, ...rest } = e; await this.speicher.setze({ ...rest, koerper: { ...e.koerper, ohneTermin: true }, versuche: 0, status: 'wartet', hinweis: WARTET_TEXT }); this.geaendert(); }
+  }
+  /**
+   * „Anderes Event wählen“ (H1): das Event dieser Erfassung ist gelöscht, abgesagt oder falsch — die Erfassung wird einem anderen Event zugeordnet
+   * (Kennung, Titel, Datum, Ort, für wen) und noch einmal gesendet. `eventNeu` steht immer im Körper, damit der Server das Event bei Bedarf anlegen kann.
+   */
+  async eventWechseln(id: string, ziel: { eventId: string; titel: string; datum: string; ort?: string; fuer?: EventFuer }): Promise<void> {
+    const e = (await this.speicher.alle()).find(x => x.id === id);
+    if (!e) return;
+    const { teilweise: _t, eventFehler: _f, ...rest } = e;
+    const eventNeu = { titel: ziel.titel, datum: ziel.datum, ...(ziel.ort ? { ort: ziel.ort } : {}), ...(ziel.fuer?.art === 'kunde' ? { fuer: ziel.fuer } : {}) };
+    await this.speicher.setze({ ...rest, koerper: { ...e.koerper, eventId: ziel.eventId, eventNeu }, anzeige: { ...e.anzeige, eventTitel: ziel.titel }, versuche: 0, status: 'wartet', hinweis: WARTET_TEXT });
+    this.geaendert();
+  }
+  /**
+   * „Für wen“ des Events wurde geändert (H2): alles Wartende bei diesem Event trägt es mit (`eventNeu.fuer`) — legt der Server das Event erst jetzt an,
+   * entsteht es mit dem richtigen Kunden. Gibt zurück, wie viele Erfassungen geändert wurden.
+   */
+  async fuerUmschreiben(eventId: string, fuer: EventFuer): Promise<number> {
+    let n = 0;
+    for (const e of await this.speicher.alle()) {
+      const neu = e.koerper.eventNeu;
+      if (e.koerper.eventId !== eventId || !neu || typeof neu !== 'object') continue;
+      const { fuer: _alt, ...rest } = neu as Record<string, unknown>;
+      await this.speicher.setze({ ...e, koerper: { ...e.koerper, eventNeu: { ...rest, ...(fuer.art === 'kunde' ? { fuer } : {}) } } });
+      n++;
+    }
+    if (n) this.geaendert();
+    return n;
   }
   async verwerfen(id: string): Promise<void> { await this.speicher.entferne(id); this.geaendert(); }
 
@@ -247,8 +284,8 @@ export class Warteschlange {
         daten = a.daten;
         b = bewerten(a.status, a.daten);
       } catch { b = { art: 'wiederholen', grund: WARTET_TEXT, stopp: true }; }
-      if (b.art === 'erledigt') { await this.speicher.entferne(e.id); raus.gesendet.push(e); raus.antworten[e.id] = daten; this.antworten[e.id] = daten; this.gesendetZahl++; continue; }
-      if (b.art === 'fehler') { await this.speicher.setze({ ...e, versuche: e.versuche + 1, status: 'fehler', hinweis: b.text, ...(b.teilweise ? { teilweise: true } : {}) }); continue; }
+      if (b.art === 'erledigt') { const nach = (daten as { eventId?: unknown } | null)?.eventId, von = e.koerper.eventId; if (typeof nach === 'string' && typeof von === 'string' && nach !== von) this.umgehaengt[von] = nach; await this.speicher.entferne(e.id); raus.gesendet.push(e); raus.antworten[e.id] = daten; this.antworten[e.id] = daten; this.gesendetZahl++; continue; }
+      if (b.art === 'fehler') { await this.speicher.setze({ ...e, versuche: e.versuche + 1, status: 'fehler', hinweis: b.text, ...(b.teilweise ? { teilweise: true } : {}), ...(b.eventFehler ? { eventFehler: true } : {}) }); continue; }
       if (b.art === 'andere') { await this.speicher.setze({ ...e, hinweis: b.grund }); continue; } // wartet auf die richtige Person — die übrigen laufen weiter
       if (b.art === 'neuladen') { await this.speicher.setze({ ...e, versuche: e.versuche + 1, hinweis: b.grund }); raus.neuLaden = true; this.neuLadenNoetig = true; return 'stopp'; }
       // wiederholen

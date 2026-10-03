@@ -17,12 +17,12 @@ import { Ueberschrift, Knopf, Chip, Punkt, Leer, LEUCHT } from '../../schlank';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
-import { mix, mixGruppe, gaesteVorschlag, einladerMit, arbeitJePerson, type EinladerQuelle } from '@/lib/crm/eventplanung';
+import { mix, mixGruppe, gaesteVorschlag, einladerMit, arbeitJePerson, gastTeilnahme, netzwerkenHerkunft, type EinladerQuelle } from '@/lib/crm/eventplanung';
 import { followUpMoeglich } from '@/lib/crm/event-bruecke';
 import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
 import type { Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
 import { schrittLabel } from '@/lib/crm/netzwerken';
-import { WEG } from '@/lib/wege';
+import { WEG, eventLink } from '@/lib/wege';
 import { neueId, datum } from '../daten';
 import { Pillen, Feld } from '../teile';
 import { Wahl } from '../Wahl';
@@ -64,7 +64,8 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
 
   const bez = (k: Kontakt) => ({ hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) });
   const wegFuer = (k: Kontakt): Weg => (kanalStatus(k, 'einladung', bez(k)).farbe === 'gruen' ? 'mail' : 'persoenlich');
-  const vormerken = (k: Kontakt) => api.setze('teilnahmen', { id: neueId('t'), eventId: e.id, kontaktId: k.id, status: 'vorgemerkt', rolle: 'gast', einladungsweg: wegFuer(k) });
+  // Dieselbe Vormerkung wie in der Kontaktakte und bei „Netzwerken“ (`gastTeilnahme`): Einladungsweg nach Ampel, Herkunft aus einer Begegnung bei einem besuchten Event.
+  const vormerken = (k: Kontakt) => api.setze('teilnahmen', gastTeilnahme({ id: neueId('t'), eventId: e.id, kontaktId: k.id, weg: wegFuer(k), jetztIso: new Date().toISOString(), herkunft: netzwerkenHerkunft(crm.stand.teilnahmen, k.id) }) as unknown as { id: string } & Record<string, unknown>);
   const alleAusSegment = async () => {
     if (!segment || !ausSegment.length) return;
     const liste = ausSegment.slice(0, 60);
@@ -133,6 +134,16 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
             <Link href={WEG.netzwerken({ bericht: e.id })} style={{ color: C.aktiv, textDecoration: 'none' }}>Abendbericht ›</Link>
           </div>
         )}
+        {/* Aus „Netzwerken“ vorgemerkt (H3): von welchem besuchten Event die Person kommt — der Chip führt in die Event-Akte. */}
+        {t.herkunft && (() => {
+          const quelle = crm.stand.events.find(x => x.id === t.herkunft!.eventId);
+          return (
+            <div data-herkunft style={{ fontSize: 12.5, color: C.inkDim, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+              <Chip farbe={LEUCHT.beziehung}>kam von {quelle?.titel ?? 'einem besuchten Event'}</Chip>
+              {quelle && <Link href={eventLink(quelle)} style={{ color: C.aktiv, textDecoration: 'none' }}>Event-Akte ›</Link>}
+            </div>
+          );
+        })()}
         <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}>
           <Pillen einzeilig liste={GAST} aktiv={t.status} farbe={LEUCHT.beziehung}
             onWahl={status => gastSetzen(api, t, { status, ...((status === 'eingeladen' || status === 'zugesagt') && !t.eingeladenAm ? { eingeladenAm: heute } : {}) })} />

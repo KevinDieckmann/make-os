@@ -389,7 +389,13 @@ export interface NetzwerkenAngabe {
   terminId?: string;
   /** Danke-Mail: gewählte Anrede und der Tag, an dem sie als „raus“ bestätigt wurde. */
   danke?: { anrede?: 'Du' | 'Sie'; rausAm?: string };
+  /** Schritt „Zu Make.One einladen“: das Event, für das die Person vorgemerkt wurde (Teilnahme `t-nwm-<erfassungId>`) — Quelle des Links und des echten Stands im Abendbericht. */
+  makeone?: { eventId: string };
+  /** Frühere Begegnungen derselben Person bei demselben Event (die neuere Angabe gilt, die ältere bleibt hier nachlesbar — nie überschrieben). */
+  vorher?: { erfassungId: string; schritt: NetzwerkSchritt; erfasstAm: string; info?: string }[];
 }
+/** Woher eine Make.One-Teilnahme kommt: von einer Erfassung auf einem besuchten Event (Netzwerken) — für „kam von <Event>“ in der Gästeliste. */
+export interface TeilnahmeHerkunft { art: 'netzwerken'; eventId: string; erfassungId: string }
 export type TeilnahmeStatus = 'vorgemerkt' | 'eingeladen' | 'zugesagt' | 'abgesagt' | 'da' | 'no_show';
 export interface Teilnahme {
   id: string;
@@ -413,6 +419,8 @@ export interface Teilnahme {
   eingechecktVon?: string;
   /** Erfasst über „Netzwerken“ (02.10., lib/crm/netzwerken.ts): nächster Schritt, Zuständigkeit, Danke-Mail — Quelle des Abendberichts. */
   netzwerken?: NetzwerkenAngabe;
+  /** Vorgemerkt/eingeladen aus „Netzwerken“ heraus: das besuchte Event und die Erfassung, aus der die Person kam (optional, alter Bestand ohne). */
+  herkunft?: TeilnahmeHerkunft;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;

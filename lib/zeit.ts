@@ -21,6 +21,13 @@ export function localDay(d = new Date()): string {
   return `${j}-${m}-${t}`;
 }
 
+/** Ein echter Kalendertag „YYYY-MM-DD“ — nicht nur die Form: „2026-13-45“ und „2026-02-30“ sind keiner (Roundtrip über UTC). */
+export function istKalendertag(v: unknown): v is string {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(`${v}T12:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
+
 /** Kalendertage ± n — reine Datumsrechnung (UTC-Mittag), unabhängig von Zeitzone und Zeitumstellung. */
 export function tagePlus(start: string, tage: number): string {
   const d = new Date(`${start.slice(0, 10)}T12:00:00Z`);

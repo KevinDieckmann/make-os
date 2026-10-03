@@ -14,17 +14,18 @@
 // schalten). Der Vermerk `KEINE_EINWILLIGUNG` steht im Verlauf; Herkunft „Veranstaltung“, Quelle „Netzwerken“.
 
 import { anzeigename, normName, normFirma, normTelefon, istSammelAdresse, type Kontakt } from '@/lib/make-one/crm';
-import type { Event, EventAnmeldung, EventFuer, Firma, FollowUp, NetzwerkenAngabe, NetzwerkSchritt, Teilnahme } from './typen';
+import type { Event, EventAnmeldung, EventFuer, Firma, FollowUp, NetzwerkenAngabe, NetzwerkSchritt, Teilnahme, TeilnahmeHerkunft } from './typen';
 import { fuerSaeubern, werSaeubern, linkSaeubern } from './besuche-form';
 import { alleAdressen } from './emails';
 import { firmenSchluessel, bestehendeFirma } from './firmen';
 import { haeltBeziehung } from './team';
-import { MARKE_EVENTS, istNetzwerkenEvent } from './marke';
+import { MARKE_EVENTS, NETZWERKEN_MARKE, istNetzwerkenEvent } from './marke';
 import { emailNormal, telefonNormal, linkedinNormal, webNormal, text } from './visitenkarte';
 import { mailLink } from './erfassen';
 import { kanalStatus } from './recht';
 import { werktagePlus, tagVon, wandzeit, wandAus, minutenVon } from '@/lib/zeit/kalender-kern';
-import { WEG } from '@/lib/wege';
+import { WEG, eventLink } from '@/lib/wege';
+import { istKalendertag } from '@/lib/zeit';
 import { istKontaktKennung } from '@/lib/kennung';
 import { sprachnotizTypErkennen } from '@/lib/dateien/regeln';
 import { istEingeschraenkt } from './einschraenkung';
@@ -53,7 +54,7 @@ export const KOERPER_MAX = 20 * 1024 * 1024;
 export const ERFASSUNG_ALTER_TAGE = 14;
 /** Die Kennung einer Erfassung — eine UUID, im Browser erzeugt (`zufallsUuid`). */
 export const ERFASSUNG_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const TAG = /^\d{4}-\d{2}-\d{2}$/;
+const TAG = { test: (v: unknown): boolean => istKalendertag(v) };
 const WAND = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const PERSON = /^[a-z0-9-]{1,40}$/;
 const ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
@@ -91,6 +92,25 @@ export function neuesEvent(o: { id: string; titel: string; datum: string; ort?: 
     ...(fuer ? { fuer } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(o.anmeldung ? { anmeldung: o.anmeldung } : {}),
   };
 }
+
+/** Schlüssel eines Event-Titels: ohne Groß-/Kleinschreibung, Umlaute, Satzzeichen und Leerraum — „Unternehmer-Stammtisch Köln“ = „unternehmer stammtisch koeln“. */
+export const eventTitelSchluessel = (t: string): string => String(t ?? '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
+/**
+ * Gibt es dieses besuchte Event schon (gleicher normierter Titel + gleiches Datum, nur Netzwerken-Events, nie ein abgesagtes)? Eine
+ * Stelle für Server (Schritt „event“ verwendet es wieder) und Oberfläche („Gibt es schon: …“ beim Anlegen) — so entstehen keine Doppelten (M7).
+ */
+export function gleichesBesuchEvent(events: readonly Event[], titel: string, datum: string, ausser?: string): Event | undefined {
+  const s = eventTitelSchluessel(titel);
+  if (s.length < 2) return undefined;
+  return events.find(x => x.id !== ausser && istNetzwerkenEvent(x) && x.datum === datum && eventTitelSchluessel(x.titel) === s && x.status !== 'abgesagt' && x.anmeldung !== 'abgesagt');
+}
+
+/** Ein Datum, das mehr als ein Jahr von heute entfernt liegt, ist ein Tippfehler (Jahr vertippt) — nie ein Event dort anlegen (N4). */
+export const EVENT_DATUM_TAGE = 366;
+export const eventDatumPlausibel = (datum: string, heute: string): boolean => {
+  const tage = Math.abs(Date.parse(`${datum}T12:00:00Z`) - Date.parse(`${heute}T12:00:00Z`)) / 864e5;
+  return Number.isFinite(tage) && tage <= EVENT_DATUM_TAGE;
+};
 
 export type TerminArt = 'kennenlernen' | 'telefonat' | 'video';
 export const TERMIN_ARTEN: readonly { id: TerminArt; label: string }[] = [
@@ -335,6 +355,15 @@ export function netzwerkenAngabeSaeubern(v: unknown): NetzwerkenAngabe | undefin
   const am = typeof o.erfasstAm === 'string' && Number.isFinite(Date.parse(o.erfasstAm)) ? o.erfasstAm.slice(0, 30) : undefined;
   if (!zustaendig || !erfasstVon || !am) return undefined;
   const info = typeof o.info === 'string' ? o.info.slice(0, INFO_MAX) : '';
+  const mo = o.makeone && typeof o.makeone === 'object' ? (o.makeone as Record<string, unknown>).eventId : undefined;
+  const makeone = typeof mo === 'string' && ID.test(mo) ? { eventId: mo } : undefined;
+  // Frühere Begegnungen (N6): jede mit gültiger Kennung; die Liste wächst nur um echte Erfassungen (nie gekürzt).
+  const vorher = (Array.isArray(o.vorher) ? o.vorher : []).flatMap(x => {
+    const v = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
+    if (typeof v.erfassungId !== 'string' || !ERFASSUNG_ID.test(v.erfassungId) || !SCHRITT_IDS.includes(String(v.schritt)) || typeof v.erfasstAm !== 'string' || !Number.isFinite(Date.parse(v.erfasstAm))) return [];
+    const i = typeof v.info === 'string' ? v.info.slice(0, INFO_MAX) : '';
+    return [{ erfassungId: v.erfassungId, schritt: v.schritt as NetzwerkSchritt, erfasstAm: v.erfasstAm.slice(0, 30), ...(i ? { info: i } : {}) }];
+  });
   const d = o.danke && typeof o.danke === 'object' ? o.danke as Record<string, unknown> : null;
   const danke = d ? { ...(d.anrede === 'Du' || d.anrede === 'Sie' ? { anrede: d.anrede as 'Du' | 'Sie' } : {}), ...(typeof d.rausAm === 'string' && TAG.test(d.rausAm) ? { rausAm: d.rausAm } : {}) } : null;
   return {
@@ -342,7 +371,16 @@ export function netzwerkenAngabeSaeubern(v: unknown): NetzwerkenAngabe | undefin
     ...(info ? { info } : {}), ...(typeof o.terminAm === 'string' && WAND.test(o.terminAm) ? { terminAm: o.terminAm } : {}),
     ...(typeof o.terminId === 'string' && o.terminId.length <= 200 && o.terminId.trim() ? { terminId: o.terminId } : {}),
     ...(danke && Object.keys(danke).length ? { danke } : {}),
+    ...(makeone ? { makeone } : {}), ...(vorher.length ? { vorher } : {}),
   };
+}
+
+/** `Teilnahme.herkunft` säubern (gültige Kennungen, sonst nichts) — ohne diese Zeile in `zusatz('teilnahmen')` fiele sie bei jedem Speichern weg. */
+export function teilnahmeHerkunftSaeubern(v: unknown): TeilnahmeHerkunft | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  if (o.art !== 'netzwerken' || typeof o.eventId !== 'string' || !ID.test(o.eventId) || typeof o.erfassungId !== 'string' || !ERFASSUNG_ID.test(o.erfassungId)) return undefined;
+  return { art: 'netzwerken', eventId: o.eventId, erfassungId: o.erfassungId };
 }
 
 // ── „Kennen wir schon?“ ──────────────────────────────────────────────────────
@@ -555,22 +593,34 @@ export interface BerichtZeile {
   links: ErgebnisLink[];
 }
 /** Ein Sprung zu etwas, das eine Erfassung angelegt hat. */
-export interface ErgebnisLink { id: 'termin' | 'deal' | 'followup' | 'event' | 'kontakt'; label: string; href: string }
+export interface ErgebnisLink { id: 'termin' | 'deal' | 'followup' | 'event' | 'kontakt' | 'makeone' | 'angebot' | 'aufgabe'; label: string; href: string }
 
 /**
  * Die Sprünge zu allem, was eine Erfassung angelegt hat — aus Kennungen, die der Server fest vergibt (`ch-nw-<Erfassung>`,
- * `fu-<Erfassung>`, Termin-Schlüssel). Dieselbe Liste speist die Fertig-Seite und den Abendbericht.
+ * `fu-<Erfassung>`, `ang-nw-<Erfassung>`, `nw-<Erfassung>`, Termin-Schlüssel) und dem Make.One-Event der Vormerkung (`makeoneEventId`: Gästeliste
+ * des Abends). Dieselbe Liste speist die Fertig-Seite und den Abendbericht — und die Meldung an die andere Person (`ergebnisZiel`).
  */
-export function ergebnisLinks(o: { schritt: NetzwerkSchritt; erfassungId?: string; kontaktId?: string; eventId?: string; terminId?: string; terminAm?: string; dealId?: string; followupId?: string; /** Besuchtes Event (Events-Reiter, 03.10.): der Sprung geht direkt in die Event-Akte statt über die Weiterleitung von Make.One. */ besuch?: boolean }): ErgebnisLink[] {
+export function ergebnisLinks(o: { schritt: NetzwerkSchritt; erfassungId?: string; kontaktId?: string; eventId?: string; terminId?: string; terminAm?: string; dealId?: string; followupId?: string; angebotId?: string; makeoneEventId?: string; /** Der Schritt „Andere“ bzw. „Zu Make.One einladen“ ohne Event hat eine Aufgabe angelegt. */ aufgabe?: boolean; /** Besuchtes Event (Events-Reiter, 03.10.): der Sprung geht direkt in die Event-Akte statt über die Weiterleitung von Make.One. */ besuch?: boolean }): ErgebnisLink[] {
   const l: ErgebnisLink[] = [];
   if (o.terminId && o.terminAm) l.push({ id: 'termin', label: 'Termin öffnen', href: WEG.termin(o.terminId, o.terminAm.slice(0, 10)) });
   const deal = o.dealId ?? (o.schritt === 'vermitteln' && o.erfassungId ? `ch-nw-${o.erfassungId}` : undefined);
   if (deal) l.push({ id: 'deal', label: 'Deal öffnen', href: WEG.deal(deal) });
   const fu = o.followupId ?? (o.schritt === 'followup' && o.erfassungId ? `fu-${o.erfassungId}` : undefined);
   if (fu) l.push({ id: 'followup', label: 'Follow-up öffnen', href: WEG.followup() });
-  if (o.eventId) l.push({ id: 'event', label: o.besuch ? 'Event-Akte' : 'Event öffnen', href: o.besuch ? WEG.besuch(o.eventId) : WEG.event(o.eventId) });
+  const angebot = o.angebotId ?? (o.schritt === 'angebot' && o.erfassungId ? `ang-nw-${o.erfassungId}` : undefined);
+  if (angebot) l.push({ id: 'angebot', label: 'Angebots-Entwurf öffnen', href: WEG.angebot({ angebotId: angebot, ...(o.kontaktId ? { kontaktId: o.kontaktId } : {}) }) });
+  if (o.makeoneEventId) l.push({ id: 'makeone', label: `Gästeliste ${MARKE_EVENTS}`, href: WEG.event(o.makeoneEventId, 'gaeste') });
+  const aufgabe = o.aufgabe ?? (o.schritt === 'andere');
+  if (aufgabe && o.erfassungId) l.push({ id: 'aufgabe', label: 'Aufgabe öffnen', href: WEG.aufgabe(`nw-${o.erfassungId}`) });
+  if (o.eventId) l.push({ id: 'event', label: o.besuch ? 'Event-Akte' : 'Event öffnen', href: eventLink({ id: o.eventId, ...(o.besuch ? { marke: NETZWERKEN_MARKE } : {}) }) });
   if (o.kontaktId) l.push({ id: 'kontakt', label: 'Zur Person', href: WEG.akte(o.kontaktId) });
   return l;
+}
+
+/** Wohin die Meldung an die andere Person springt: das, was die Erfassung angelegt hat (Termin → Deal → Angebot → Aufgabe → Follow-up), sonst die Person. */
+export function ergebnisZiel(o: { schritt: NetzwerkSchritt; erfassungId: string; kontaktId: string; terminId?: string; terminAm?: string; aufgabe?: boolean }): string {
+  const l = ergebnisLinks({ schritt: o.schritt, erfassungId: o.erfassungId, kontaktId: o.kontaktId, ...(o.terminId ? { terminId: o.terminId } : {}), ...(o.terminAm ? { terminAm: o.terminAm } : {}), ...(o.aufgabe !== undefined ? { aufgabe: o.aufgabe } : {}) });
+  return (l.find(x => x.id !== 'kontakt' && x.id !== 'event') ?? l.find(x => x.id === 'kontakt'))!.href;
 }
 
 export interface Bericht { event: Event; zeilen: BerichtZeile[]; jePerson: Record<string, number>; offenGesamt: number }
@@ -594,10 +644,18 @@ export function berichtAus(o: { event: Event; teilnahmen: readonly Teilnahme[]; 
       if (n.schritt === 'qualifizieren' && (!k.lead || k.lead.status === 'qualifizierung')) offen.push('Qualifizierung offen');
       if (n.schritt === 'termin' && !n.terminAm) offen.push('Termin nicht angelegt');
       if (n.schritt === 'angebot') offen.push('Angebot nur als Entwurf');
-      if (n.schritt === 'makeone') offen.push(`${MARKE_EVENTS}-Einladung offen`);
+      if (n.schritt === 'makeone') {
+        // Der echte Stand der Vormerkung (nicht „immer offen“): nur „vorgemerkt“ ist noch zu tun; eingeladen/zugesagt/da ist es nicht mehr.
+        const gast = n.makeone ? o.teilnahmen.find(x => x.eventId === n.makeone!.eventId && x.kontaktId === k.id) : undefined;
+        if (k.werbesperre) offen.push(`${MARKE_EVENTS}: Werbesperre — nicht vorgemerkt`);
+        else if (!n.makeone) offen.push(`${MARKE_EVENTS}-Einladung offen (Aufgabe)`);
+        else if (!gast) offen.push(`${MARKE_EVENTS}: Vormerkung nicht mehr da`);
+        else if (gast.status === 'vorgemerkt') offen.push(`${MARKE_EVENTS}-Einladung offen`);
+      }
     }
     zeilen.push({ kontaktId: k.id, name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}), schritt: n.schritt, schrittText: schrittLabel(n.schritt), zustaendig: n.zustaendig, erfasstVon: n.erfasstVon, ...(n.info ? { info: n.info } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}), erfasstAm: n.erfasstAm, offen,
-      links: ergebnisLinks({ schritt: n.schritt, erfassungId: n.erfassungId, kontaktId: k.id, eventId: o.event.id, besuch: istNetzwerkenEvent(o.event), ...(n.terminId ? { terminId: n.terminId } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}) }) });
+      links: ergebnisLinks({ schritt: n.schritt, erfassungId: n.erfassungId, kontaktId: k.id, eventId: o.event.id, besuch: istNetzwerkenEvent(o.event), ...(n.terminId ? { terminId: n.terminId } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}),
+        ...(n.makeone ? { makeoneEventId: n.makeone.eventId } : {}), aufgabe: n.schritt === 'andere' || (n.schritt === 'makeone' && !n.makeone && !k.werbesperre) }) });
   }
   zeilen.sort((a, b) => a.erfasstAm.localeCompare(b.erfasstAm));
   const jePerson: Record<string, number> = {};

@@ -148,28 +148,30 @@ export function useCrm() {
   const schreibe = useCallback((op: { liste: CrmListe; op: 'upsert' | 'teil' | 'delete'; id: string; eintrag?: Record<string, unknown>; felder?: Record<string, unknown> }, sonst: string) => {
     unterwegs.current++;
     neuerVersuch();
-    let neuLaden = false;
-    return nacheinander(async () => {
+    let neuLaden = false, ok = false;
+    return nacheinander(async (): Promise<boolean> => {
       try {
         const stand = zeilen.current.get(`${op.liste}:${op.id}`);
         const senden = op.op === 'upsert' ? { liste: op.liste, op: 'upsert', eintrag: ohneStand(op.eintrag ?? {}) } : op.op === 'teil' ? { liste: op.liste, op: 'teil', id: op.id, felder: op.felder } : { liste: op.liste, op: 'delete', id: op.id };
         const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ ...senden, ...(stand ? { stand } : {}) }] }) }).then(x => x.json());
         neuLaden = schreibAntwort(r, sonst);
+        ok = !!r.ok;
       } catch { fehlschlag(`${sonst.replace(/\.$/, '')} — keine Verbindung.`); }
       finally { unterwegs.current--; }
       if (neuLaden) await laden(true);
+      return ok;
     });
   }, [nacheinander, schreibAntwort, laden]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** CRM-Eintrag anlegen/ändern (ganzer Eintrag) — ein bestehender nur mit Stand (sonst 409, dann neu geladen). */
-  const setze = useCallback(async (liste: CrmListe, eintrag: { id: string } & Record<string, unknown>) => {
+  const setze = useCallback(async (liste: CrmListe, eintrag: { id: string } & Record<string, unknown>): Promise<boolean> => {
     setCrm(alt => {
       if (!alt) return alt;
       const l = alt.stand[liste] as unknown as { id: string }[];
       const neu = l.some(x => x.id === eintrag.id) ? l.map(x => (x.id === eintrag.id ? eintrag : x)) : [...l, eintrag];
       return { ...alt, stand: { ...alt.stand, [liste]: neu } };
     });
-    await schreibe({ liste, op: 'upsert', id: eintrag.id, eintrag }, 'Nicht gespeichert.');
+    return schreibe({ liste, op: 'upsert', id: eintrag.id, eintrag }, 'Nicht gespeichert.');
   }, [schreibe]);
 
   /**
@@ -177,10 +179,10 @@ export function useCrm() {
    * überschreiben Kevin und Malin am selben Eintrag nie die Felder der/des anderen.
    * Mit Stand (28.09., K4): hat inzwischen jemand anders denselben Eintrag geändert, kommt 409 → Hinweis, neu geladen.
    */
-  const teil = useCallback(async (liste: CrmListe, id: string, felder: Record<string, unknown>) => {
+  const teil = useCallback(async (liste: CrmListe, id: string, felder: Record<string, unknown>): Promise<boolean> => {
     setCrm(alt => (alt ? { ...alt, stand: { ...alt.stand, [liste]: (alt.stand[liste] as unknown as { id: string }[]).map(x => (x.id === id ? { ...x, ...felder } : x)) } } : alt));
     // Der Server wendet die Regeln an (27.09.): ein abgelehnter Stufenwechsel kommt als Fehlertext, der Stand ist der aktuelle.
-    await schreibe({ liste, op: 'teil', id, felder }, 'Nicht gespeichert.');
+    return schreibe({ liste, op: 'teil', id, felder }, 'Nicht gespeichert.');
   }, [schreibe]);
 
   /** An Kevin oder Malin übergeben (/api/crm/uebergabe) — danach neu laden. */
@@ -195,8 +197,8 @@ export function useCrm() {
   }, [laden]);
 
   /** Löschen — der Server lehnt Firmen/Mandate mit Verweisen ab (409, Text mit Anzahlen) und Deals mit Geschichte. */
-  const weg = useCallback(async (liste: CrmListe, id: string) => {
-    await schreibe({ liste, op: 'delete', id }, 'Nicht gelöscht.');
+  const weg = useCallback(async (liste: CrmListe, id: string): Promise<boolean> => {
+    return schreibe({ liste, op: 'delete', id }, 'Nicht gelöscht.');
   }, [schreibe]);
 
   /**

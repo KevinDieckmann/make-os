@@ -19,6 +19,7 @@
 
 import { mandateLink, markttraktion, dealAkte, angebotLink, type AngebotAdresse } from '@/lib/crm/adresse';
 import { aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
+import { istNetzwerkenEvent } from '@/lib/crm/marke';
 
 const q = (basis: string, p: Record<string, string | undefined | null>, hash?: string) => {
   const s = new URLSearchParams();
@@ -128,3 +129,9 @@ export const WEG = {
     return aufgabenLink({ ...o, s, bereich: o.bereich ?? o.space, ansicht: o.b === 'archiv' ? 'archiv' : s && o.b !== 'ueberblick' ? 'space' : 'ueberblick' });
   },
 } as const;
+
+/**
+ * Wohin ein Event führt (M10): ein BESUCHTES Event (Reiter „Events“, `marke: Netzwerken`) in seine Akte, unser eigenes Make.One-Event in
+ * den Make.One-Reiter. Überall, wo ein Event verlinkt wird und die Art nicht feststeht, nur über diese Funktion — nie `WEG.event` für ein besuchtes.
+ */
+export const eventLink = (e: { id: string; marke?: string }, r?: Parameters<typeof WEG.event>[1]): string => (istNetzwerkenEvent(e) ? WEG.besuch(e.id) : WEG.event(e.id, r));
