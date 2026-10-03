@@ -33,7 +33,7 @@ import { haushaltsPersonen } from '@/lib/aufgaben/sicht';
 import { WEG } from '@/lib/wege';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { ladeFamilie, familieName } from '@/lib/familie/speicher';
-import { naechstesGespraech } from '@/lib/familie/logik';
+import { naechstesGespraech, sichtFuer } from '@/lib/familie/logik';
 import { updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { fehlerGrund } from '@/lib/store/absichten';
@@ -280,7 +280,8 @@ export async function familieSpiegelAnlegen(h: string, art: Exclude<SpiegelArt, 
   let soll: Soll;
   let vorhanden: string | undefined;
   if (art === 'date') {
-    const d = f.dates.find(x => x.id === id);
+    // Nur ein Date, das `person` sehen darf („nur ich“ der anderen Person gibt es für sie nicht — wie in GET /api/familie).
+    const d = sichtFuer(f.dates, person).find(x => x.id === id);
     if (!d) throw new KalenderFehler('Date nicht gefunden.', 404);
     soll = dateSoll(d); vorhanden = d.kalenderUid;
   } else {

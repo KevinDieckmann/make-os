@@ -15,13 +15,15 @@ import { localDay } from '@/lib/zeit';
 import { ladeStand, chatsFuerPerson, sendeAnPerson, telegramKonfiguriert } from '@/lib/telegram';
 import { faelligeSlots, markiere, morgenText, mittagText, abendText, wochenText, type Slot, type TaktStand } from './takt';
 import { hautTrend, streakStand, routineQuote, type HautLog, type StreakLog, type RoutinenLog } from './eintraege';
+import { sichtbarFuer } from '@/lib/planung/routinen';
 
-interface Routine { id: string; label: string; wann: string; aktiv: boolean }
+interface Routine { id: string; label: string; wann: string; aktiv: boolean; owner?: string }
 
 
-async function routinen(): Promise<Routine[]> {
+/** Aktive Routinen, die `person` sieht — eigene und gemeinsame (`sichtbarFuer`, Praxis-Fund 04.10.). */
+async function routinen(person: Person): Promise<Routine[]> {
   const f = await loadJson<{ routinen?: Routine[] }>('routinen');
-  return (f?.routinen ?? []).filter(r => r.aktiv);
+  return sichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), person);
 }
 
 /** Ob der Streak für diese Person Thema ist: Kevins erklärtes Ziel (29.07.),
@@ -61,7 +63,7 @@ async function haushaltZeilen(person: Person): Promise<string> {
 export async function nachrichtFuer(person: Person, slot: Slot, origin: string): Promise<string> {
   const heute = localDay();
   const name = (await namenVon())[person] ?? nameVon(person);
-  const alle = await routinen();
+  const alle = await routinen(person);
   if (slot === 'morgen') {
     if (person === 'kevin') await whoopHolen(origin);
     const v = await resolveVitals(heute, person);

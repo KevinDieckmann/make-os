@@ -97,7 +97,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
     // Blöcke von heute und morgen (K5: Kalender-Termine der Art Fokus/Block + Archiv des alten Wochenplans).
     fetch(`/api/planung/bloecke?von=${heute}&bis=${tagPlusK(heute, 2)}`).then(r => r.json()).then(d => setBloecke(Array.isArray(d.bloecke) ? d.bloecke : [])).catch(() => {});
     Promise.all([
-      fetch('/api/state/routinen').then(r => r.json()).catch(() => ({ routinen: [] })),
+      fetch('/api/state/routinen?sicht=ich').then(r => r.json()).catch(() => ({ routinen: [] })),
       fetch('/api/state/health').then(r => r.json()).catch(() => ({ log: {} })),
     ]).then(([r, h]) => {
       const aktiv = ((r.routinen ?? []) as { id: string; aktiv: boolean }[]).filter(x => x.aktiv);

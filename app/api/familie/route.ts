@@ -39,17 +39,23 @@ async function mitglieder(haushalt: string) {
   return k.konten.filter(x => x.haushalt === haushalt).map(x => ({ person: x.speicher, name: x.name.split(' ')[0] || x.speicher }));
 }
 
+/**
+ * Die Antwort für `person`. Der Sicht-Filter läuft EINMAL hier am Anfang (Praxis-Fund 04.10.: `wichtigeTage` und die Agenda
+ * bekamen den ROHEN Bestand → „nur ich“-Einträge der Partnerin standen im Klartext in der Antwort). Jede Ableitung bekommt
+ * nur noch den gefilterten Bestand `s` — den rohen `f` sieht hier nichts mehr.
+ */
 async function antwort(f: Familie, person: string, haushalt: string) {
+  const s = sicht(f, person);
   const heute = heuteBerlin();
   const woche = Math.floor(Date.parse(`${heute}T12:00:00Z`) / (7 * 864e5));
   return {
-    ok: true, person, familie: sicht(f, person),
-    rhythmus: pflegeRhythmus(f, heute),
-    gespraech: naechstesGespraech(f.einstellungen, heute, f.gespraeche),
-    tage: wichtigeTage(f.tage, heute, 60, f.menschen),
-    kontakte: kontaktFaellig(f.menschen, heute),
+    ok: true, person, familie: s,
+    rhythmus: pflegeRhythmus(s, heute),
+    gespraech: naechstesGespraech(s.einstellungen, heute, s.gespraeche),
+    tage: wichtigeTage(s.tage, heute, 60, s.menschen),
+    kontakte: kontaktFaellig(s.menschen, heute),
     frage: LOVEMAP_FRAGEN[woche % LOVEMAP_FRAGEN.length],
-    agenda: agendaVorbereiten(f, heute, person),
+    agenda: agendaVorbereiten(s, heute, person),
     mitglieder: await mitglieder(haushalt),
     heute,
   };

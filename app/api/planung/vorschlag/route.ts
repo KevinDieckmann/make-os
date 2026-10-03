@@ -25,7 +25,8 @@ import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { neueKennung } from '@/lib/kennung';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
-interface RoutineDef { label: string; wann: 'morgen' | 'tag' | 'abend'; dauerMin: number; aktiv: boolean }
+import { sichtbarFuer } from '@/lib/planung/routinen';
+interface RoutineDef { label: string; wann: 'morgen' | 'tag' | 'abend'; dauerMin: number; aktiv: boolean; owner?: string }
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -92,7 +93,8 @@ export async function POST(req: Request) {
   offen.sort((a, b) => (rank[a.priority] ?? 9) - (rank[b.priority] ?? 9) || boost(b) - boost(a) || (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'));
 
   // Routinen aus dem Planer (Fallback: alte Konstante) — nur aktive.
-  const rAlle: RoutineDef[] = (routinenF?.routinen ?? ROUTINE_ITEMS.map(r => ({ label: r.label, wann: (r.when === 'abend' ? 'abend' : 'morgen') as RoutineDef['wann'], dauerMin: 15, aktiv: true }))).filter(r => r.aktiv);
+  // Nur eigene und gemeinsame Routinen dieser Person (`sichtbarFuer`, Praxis-Fund 04.10.).
+  const rAlle: RoutineDef[] = sichtbarFuer<RoutineDef>((routinenF?.routinen ?? ROUTINE_ITEMS.map((r): RoutineDef => ({ label: r.label, wann: r.when === 'abend' ? 'abend' : 'morgen', dauerMin: 15, aktiv: true }))).filter(r => r.aktiv), person);
   const rMorgen = rAlle.filter(r => r.wann === 'morgen').map(r => r.label);
   const rTag = rAlle.filter(r => r.wann === 'tag');
   const rAbend = rAlle.filter(r => r.wann === 'abend').map(r => r.label);

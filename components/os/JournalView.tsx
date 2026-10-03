@@ -54,7 +54,7 @@ export function JournalView() {
   // „Kein Cannabis“ ist der Streak, „Bewegt / Reha“ die Reha-Routine — beides landet dort, wo es zählt.
   const nebenwirkung = (id: string, an: boolean) => {
     if (id === 'keincannabis' && an) fetch('/api/state/streak', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eintrag: { sauber: true } }) }).catch(() => {});
-    if (id === 'bewegt' && an) fetch('/api/state/routinen').then(r => r.json()).then(d => {
+    if (id === 'bewegt' && an) fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => {
       const reha = (d.routinen ?? []).find((r: { id: string; label: string; aktiv: boolean }) => r.aktiv && /reha|mobil|beweg/i.test(`${r.id} ${r.label}`));
       if (!reha) return;
       return fetch('/api/state/health').then(r => r.json()).then(h => { const log = h.log ?? {}; const tag = new Set<string>(log[today] ?? []); tag.add(reha.id); return fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...log, [today]: Array.from(tag) }) }); });

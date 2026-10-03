@@ -297,8 +297,10 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
   const { speicherFuer } = await import('./raum');
   if (!person) return KEINE_PERSON;
   const wer = person;
-  const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean }[] }>('routinen');
-  const alle = (f?.routinen ?? []).filter(r => r.aktiv);
+  const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean; owner?: string }[] }>('routinen');
+  // Nur Routinen, die diese Person sieht (eigene + gemeinsame) — nie die der anderen abhaken oder aufzählen.
+  const { sichtbarFuer } = await import('@/lib/planung/routinen');
+  const alle = sichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), wer);
   const zurufe = Array.isArray(input.routinen) ? (input.routinen as unknown[]).map(String) : [String(input.routine ?? '')];
   const ids = zurufe.map(z => routineAusZuruf(z, alle)).filter((x): x is string => !!x);
   if (!ids.length) return `Keine Routine passt zu „${zurufe.join(', ')}". Es gibt: ${alle.map(r => r.label).join(' · ')}`;

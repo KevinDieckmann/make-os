@@ -86,7 +86,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   useEffect(() => {
     if (!aktiv) return;
     fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich?.speicher === 'malin') setIch('malin'); }).catch(() => {});
-    fetch('/api/state/routinen').then(r => r.json()).then(d => setRoutinen(((d.routinen ?? []) as { id: string; label: string; dauerMin: number; aktiv: boolean }[]).filter(x => x.aktiv))).catch(() => {});
+    fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => setRoutinen(((d.routinen ?? []) as { id: string; label: string; dauerMin: number; aktiv: boolean }[]).filter(x => x.aktiv))).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
     fetch('/api/state/ziele').then(r => r.json()).then(d => setZiele({ fokus: d.fokus ?? {} })).catch(() => {});
   }, [aktiv]);

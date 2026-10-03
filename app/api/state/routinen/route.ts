@@ -22,7 +22,7 @@ import { listePatchen, opsLesen, opsFehler, type ListenOp, type PatchErgebnis } 
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
-import { sauberRoutine, sauberBlock } from '@/lib/planung/routinen';
+import { sauberRoutine, sauberBlock, sichtbarFuer } from '@/lib/planung/routinen';
 import type { Block, Routine, RoutinenDatei } from '@/lib/planung/typen';
 
 export const runtime = 'nodejs';
@@ -46,11 +46,18 @@ const antwort = (f: RoutinenDatei | null | undefined) => ({
   bloecke: mitStand(bloeckeVon(f)),
 });
 
-export async function GET() {
-  const f = await loadJson<RoutinenDatei>('routinen');
+/**
+ * GET: der ganze gemeinsame Bestand (Routinen-Planer — Besitz je Zeile sichtbar). `?sicht=ich` (Praxis-Fund 04.10.): nur die
+ * Routinen der angemeldeten Person und die gemeinsamen (`sichtbarFuer`) — für alle persönlichen Zählungen (Tagesplan,
+ * Ritual, Energie, Planen, Journal). Ohne Person bei `sicht=ich`: nur die gemeinsamen.
+ */
+export async function GET(req: Request) {
+  let f = await loadJson<RoutinenDatei>('routinen');
   if (!f || !Array.isArray(f.routinen) || !f.routinen.length) {
-    const next = await updateJson<RoutinenDatei>('routinen', cur => ({ ...(cur ?? {}), routinen: seed() }));
-    return NextResponse.json(antwort(next));
+    f = await updateJson<RoutinenDatei>('routinen', cur => ({ ...(cur ?? {}), routinen: seed() }));
+  }
+  if (new URL(req.url).searchParams.get('sicht') === 'ich') {
+    return NextResponse.json(antwort({ ...f, routinen: sichtbarFuer(f.routinen ?? [], personStreng(req) ?? '') }));
   }
   return NextResponse.json(antwort(f));
 }

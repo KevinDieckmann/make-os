@@ -69,7 +69,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
       .then(d => setEtappen((d.meilensteine ?? []).filter((m: Meilenstein) => m.bereich === 'gesundheit' && !m.erledigt))).catch(() => {});
     fetch('/api/state/ernaehrung').then(r => r.json())
       .then(d => setEssenGeplant(Object.values(d.plan ?? {}).reduce((s: number, t) => s + ['fruehstueck', 'mittag', 'abend'].filter(k => (t as Record<string, string>)[k]?.trim()).length, 0))).catch(() => {});
-    fetch('/api/state/routinen').then(r => r.json())
+    fetch('/api/state/routinen?sicht=ich').then(r => r.json())
       .then(d => setRoutinen((d.routinen ?? []).filter((x: { aktiv: boolean; kategorie: string }) => x.aktiv && x.kategorie === 'gesundheit'))).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

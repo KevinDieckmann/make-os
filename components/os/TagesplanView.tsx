@@ -100,7 +100,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     // Archiv: Blöcke des alten Wochenplans an diesem Tag, die (noch) nicht übernommen sind — nur lesen.
     fetch(`/api/planung/bloecke?von=${heute}&bis=${tagPlus(heute, 1)}`).then(r => r.json())
       .then(d => setArchiv(((d.bloecke ?? []) as (PlanBlockSicht & { gespiegelt?: true })[]).filter(b => b.quelle === 'archiv' && !b.gespiegelt))).catch(() => setArchiv([]));
-    fetch('/api/state/routinen').then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: Routine) => x.aktiv))).catch(() => {});
+    fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: Routine) => x.aktiv))).catch(() => {});
     fetch('/api/state/health').then(r => r.json()).then(d => setHlog(d.log ?? {})).catch(() => {});
     fetch('/api/state/ziele').then(r => r.json()).then(d => { setFokusAlle(d.fokus ?? {}); setZiele((d.monat ?? []).filter((z: { erledigt?: boolean }) => !z.erledigt)); }).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
