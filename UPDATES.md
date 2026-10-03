@@ -4,6 +4,18 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Design-Standard: Netzwerken-Look überall — Muster Markttraktion (03.10.2026, nur lokal — Branch `design`; Dokument `DESIGN_STANDARD.md`)
+
+Kevin 03.10.: „Du hast bei dem Netzwerken das Ganze noch ein bisschen edler gebaut … ich möchte, dass du den Standard überall reinbringst.“ Entscheidung: erst Muster, dann alles — dies ist der Teil „Standard + Markttraktion komplett“; Zahlen/Finanzen und der Rest folgen. Reine Darstellung, keine Funktions- oder Datenänderung, **nichts auf dem Server nötig**.
+
+- **Standard:** `DESIGN_STANDARD.md` (Befund „Warum wirkt Netzwerken edler?“, Token, Bausteine, 13 Regeln, Umstell-Rezept). Token in `lib/make-one/design.ts` (`ZIEL`, `ECKE`, `RAND`, `FLAECHE_STIL`, `BEDEUTUNG_FARBE`). Bausteine in `components/os/ui` (`Seite`, `Karte` gehoben/flach/`ton`, `Knopf` mit `haupt`, `Pillen`/`Segmente`/`Reiter`, `Hinweis` nach Bedeutung, `Leerzustand`/`Leer`, `Kennzahl`/`Zahl`+`Raster`, `Zeile`, Eingaben …). `schlank.tsx` bleibt für Altseiten unverändert — Umstellen = Import `../schlank` → `../ui` (gleiche Namen).
+- **Netzwerken** hängt an denselben Bausteinen (`netzwerken/bausteine.tsx` reicht nur noch durch); Aussehen unverändert (Fotos Handy/Rechner im Vergleich).
+- **Markttraktion (alle Reiter):** kompakter Kopf am Handy (Titel + Aktionen in einer Zeile, Satz darunter, ZOE als Symbol), **eine** wischbare Leiste statt zwei Zeilen (Kopf von 312–357 px auf 204–223 px), Rechner: Schnellknöpfe in der Reiterleiste statt eigener dritter Zeile; Fließtext ≥ 13 px (rund 760 Stellen), 25 Meldungen als Hinweis-Karten, Kennzahlen als Kacheln (am Handy zwei nebeneinander), die wichtige Karte je Ansicht in Bereichsfarbe (`ton`), Hauptaktion 48 px (+ Person/Firma/Deal/Follow-up/Event), Wer-Filter als Segmente, Deal-Stufen ohne Überlappung (Treppe wischbar, „Weiter, wenn“ als Hinweis), Kartei-Tabelle richtet sich nach der Kartenbreite (Container-Abfrage), Leerzustände mit Symbol (Kontakte, Events).
+- **Handy-Netz:** `.ui-seite` (nur unter dem Anker der Seiten im Standard) erzwingt Tippziele ≥ 44 px (Links über eine unsichtbare Trefferfläche) und Eingaben 16 px. Messung Markttraktion (41 Ansichten + Netzwerken, 375 px): Tippziele < 44 px **1.671 → 0**, Eingaben < 16 px **90 → 0**, kein seitlicher Überlauf, Konsole ohne Fehler.
+- **Offen (nicht in diesem Paket):** die globale Kopfzeile (Wachstum/Suche/Heute/Inbox … 34 px) und der Business-Index-Streifen gehören dem Kern, nicht der Markttraktion; Flächen-Seiten (`components/os/flaeche`) und `kennzahlen/` tragen noch `schlank.tsx`.
+- **Test:** `tests/design-standard.test.ts` (Token, Bausteine, Netz nur unter `.ui-seite`, Markttraktion/Netzwerken hängen am Standard, Dokumentation nennt jeden Baustein); `tests/spaces.test.ts` an „Netzwerken nur am Handy“ (0488c71) angepasst.
+- **Rückweg:** reiner Oberflächen-Commit, ohne neue Bestände oder Felder.
+
 ## Google Kalender für Business/MAKE (03.10.2026, nur lokal — Branch `google-kal`; Einrichtung `GOOGLE_KALENDER_EINRICHTEN.md`)
 
 Kevin 03.10.: „Wir haben nur den Kalender bei Google für MAKE und alles andere läuft über MAKE OS.“ Business-/MAKE-Termine je Person ↔ Google Kalender der Person, in beide Richtungen, nahezu sofort; Privat/Familie/Gemeinsam bleiben MAKE OS + iCloud.

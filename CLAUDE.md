@@ -151,6 +151,13 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
 - Startseite heißt „Dashboard". Interne Navigation immer `next/link`, nie `<a>`.
 - Charts: die drei Teals (health/planning/finance) nie gemeinsam als Serien —
   Finanzen im Chart = Kupfer `#DE9E63`.
+- **Design-Standard (03.10., Kevin: „Den Standard von Netzwerken überall reinbringen“) — `DESIGN_STANDARD.md` ist verbindlich:** gemeinsame
+  Bausteine in `components/os/ui` (ein Import `from '../ui'`: `Seite`, `Karte` gehoben/flach/`ton`, `Knopf` mit `haupt`, `Pillen`/`Segmente`/`Reiter`,
+  `Hinweis art=gut|achtung|kritisch|info`, `Leerzustand`/`Leer`, `Kennzahl`/`Zahl`+`Raster`, `Zeile`, `eingabe`/`feld`), Token `ZIEL`/`ECKE`/`RAND`/`FLAECHE_STIL`/
+  `BEDEUTUNG_FARBE` in `lib/make-one/design.ts` — keine Literale in Seiten. Eine Hauptaktion je Ansicht (48 px), Ziele ≥ 44 px, Eingaben 16 px am Handy,
+  Hinweise als Karten nach Bedeutung, Leerzustand mit Symbol + Satz + Weg, Fließtext ≥ 13 px (11 px nur als Beschriftung in Großbuchstaben). `.ui-seite` fängt Altbausteine
+  am Handy ab (globals.css, nur unter dem Anker — nie ein Seitenhammer). Umgestellt: **Netzwerken, Markttraktion (alle Reiter)**; als Nächstes Zahlen/Finanzen, dann der Rest —
+  Rezept „Umstellen einer Seite“ steht im Dokument (Import `../schlank` → `../ui`, gleiche Namen). `schlank.tsx` bleibt für Altseiten unverändert. Wächter `tests/design-standard.test.ts`.
 
 ## Live-Betrieb (seit 25.09.2026)
 - **Server:** Hetzner, `https://2-28-108-162.sslip.io` (IP 2.28.108.162, Admin `ssh make@…` + `sudo` — root-Login ist seit 26.09. aus,
