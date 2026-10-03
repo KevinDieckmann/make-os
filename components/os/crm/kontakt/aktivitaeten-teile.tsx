@@ -143,6 +143,8 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
               {e.hinweis && <span>{e.hinweis}</span>}
               {/* K3: Meeting aus einem Kalendertermin — Zeit und Ort kommen aus dem Termin; Klick öffnet ihn. */}
               {e.aktivitaet?.terminUid && <Link href={WEG.termin(e.aktivitaet.terminUid, e.tag)} style={{ color: C.aktiv, textDecoration: 'none' }}>im Kalender ›</Link>}
+              {/* Gmail (03.10.): der Eintrag trägt nur Betreff + Link — die Mail selbst liegt im Spiegel der Person, die sie hat. */}
+              {e.aktivitaet?.mailLink && <Link href={e.aktivitaet.mailLink} style={{ color: C.aktiv, textDecoration: 'none' }}>in der Inbox ›</Link>}
               {e.anlass && <span>Anlass: {e.anlass}</span>}
             </div>
             {bearbeiten != null ? (

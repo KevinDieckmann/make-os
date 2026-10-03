@@ -478,7 +478,7 @@ function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; 
     ...(r.uebergaben ?? []),
     aufgaben.length ? `${aufgaben.length === 1 ? '1 Aufgabe nennt' : `${aufgaben.length} Aufgaben nennen`} den Namen noch (nicht geändert) — bitte unter Aufgaben prüfen.` : '',
     // K2 (29.09.): Kalender/Erinnerungen/Kontakte sind Spiegel aus Apple — dort löschen, sonst kommt es mit dem Abgleich zurück.
-    r.inApple ? `${r.inApple === 1 ? '1 Eintrag in Apple oder Google (Kalender, Erinnerungen oder Kontakte) nennt' : `${r.inApple} Einträge in Apple oder Google (Kalender, Erinnerungen oder Kontakte) nennen`} die Person — bitte dort löschen (MAKE OS spiegelt nur).` : '',
+    r.inApple ? `${r.inApple === 1 ? '1 Eintrag in Apple oder Google (Kalender, Erinnerungen, Kontakte oder Gmail) nennt' : `${r.inApple} Einträge in Apple oder Google (Kalender, Erinnerungen, Kontakte oder Gmail) nennen`} die Person — bitte dort löschen (MAKE OS spiegelt nur).` : '',
   ].filter(Boolean);
   return teile.length ? `Gelöscht.\n${teile.join('\n')}` : null;
 }
