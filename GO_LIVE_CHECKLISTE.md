@@ -187,6 +187,21 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 
+## Google Kalender (03.10.2026, Branch `google-kal`) — Umgebung, Einrichtung, Rückweg
+**Ohne Zutun ändert sich beim Upload nichts:** solange `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` fehlen, ist Google sichtbar aus („noch nicht eingerichtet“), iCloud läuft wie bisher.
+- **Neue Umgebungsvariablen (nur Server-`.env`, nie ins Repo):** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_ERLAUBTE_DOMAIN` (z. B. `makeinnovation.de`), optional `GOOGLE_RUECKRUF_URL`
+  (sonst `MAKE_OS_ADRESSE` + `/api/google/rueckruf`). Setzen: `ssh -t make@2.28.108.162 sudo bash /srv/make-os/app/deploy/google-verbinden.sh` (fragt verdeckt, startet neu). Komplett in `GOOGLE_KALENDER_EINRICHTEN.md`.
+- **Nach dem Upload prüfen (nichts eingeben, nur ansehen):** `docker compose logs app --since 5m | grep -i "kalender-google"` → leer oder nur `Push-Kanal …` (ohne bestätigte Domain bei Google ist das erwartbar, Rückfall = Abfrage alle 5 Min.).
+  Verdächtig: `Google-Überlagerung nicht lesbar` oder wiederholte `Abgleich: …`-Zeilen.
+- **Neue Bestände (nur dieser Stand schreibt sie, der alte ignoriert sie):** `google-verbindung--<person>`, `google-oauth-zustand`, `kalender-google--<person>`, `kalender-umzug-sicherung--<person>`.
+  Geänderte Formen: nur optionale Felder (`Termin.link`, `KalenderEintrag.quelle/person/ich` — nie gespeichert; `kalender-einstellungen` trägt nie etwas von Google). Der iCloud-Bestand `kalender-icloud` hat dieselbe Form wie vorher.
+- **Rückweg auf den Online-Stand (`5202a69`/`1818c5c`), wenn Google schon benutzt wurde:**
+  1. **Vorher je Person in MAKE OS „Trennen“** (Kalender › Einstellungen › Google Kalender): widerruft den Zugriff bei Google, stoppt den Push-Kanal. (Ohne das läuft der Kanal bis zu ~7 Tage weiter und ruft die dann unbekannte Adresse auf — harmlos, Google gibt auf; das Token bliebe aber gültig, bis es bei <https://myaccount.google.com/permissions> entzogen ist.)
+  2. Was der alte Stand nicht kennt, fällt weg: die Google-Termine verschwinden aus der Oberfläche (sie bleiben in Google), der Kalender „MAKE … (Google)“ ist weg, `kalender-bezug`-Einträge `google-<person>|…` bleiben ungenutzt liegen (kommen nach erneutem Upload + Verbinden zurück, die UIDs sind dieselben).
+  3. **Umgezogene Termine** (iCloud → Google) fehlen im alten Stand in iCloud — sie stehen nur noch in Google; Meetings/Follow-ups zeigen im alten Stand auf einen Termin, den es dort nicht gibt (Verbindungsprüfung „Termin fehlt“, harmlos). Die Sicherung des Umzugs (`kalender-umzug-sicherung--<person>`, 30 Tage) hält den iCloud-Text jedes Termins; zurückgespielt wird er nur auf Anweisung (Entwickler: `objektWiederherstellen`, `lib/kalender/icloud.ts`).
+  4. Neue Business-Termine, die ab dem Upload in Google angelegt wurden, stehen nur in Google; der alte Stand legt wieder alles in iCloud an.
+- **Datenschutz:** AVV (Datenverarbeitungszusatz) in der Workspace-Admin-Konsole bestätigen; Verzeichnis nach Art. 30 bekommt „Kalender (Google Workspace)“ automatisch, sobald Google eingerichtet ist (System › Datenschutz öffnen).
+
 ## Am ersten Tag
 1. **Wochenplan-Übernahme** (falls sie noch nicht gemacht wurde; mit diesem Upload hat sie nichts zu tun): erst nach ein paar stabilen Tagen: Kalender › Planen › Karte „Alter
    Wochenplan“ → Vorschau → „Jetzt übernehmen“ (die Rückfrage wiederholt den Hinweis). Bis dahin stehen die alten Blöcke
