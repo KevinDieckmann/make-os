@@ -16,6 +16,7 @@ Kevin 03.10.: „Fokus Innovation = Event-Reihe unter Make.One“ (Leit-Format d
 - **makeinnovation.de:** im Make.One-Kapitel ein Kasten „Unser Innovations-Format — Fokus Innovation“ mit Mail-Knopf; der Link auf fokusinnovation.de kommt erst, wenn die Domain live ist (Kommentar in `website/index.html`).
 - **Tests:** `tests/fokus-innovation-reihe.test.ts` (Werteliste, Säuberung, Schreibweg + 409, Name, Herkunft, ICS, Kennzahlen/Filter je Reihe), `tests/fokus-seite.test.ts` (Prüfer, gemeinsame Dateien, Karte). `website/pruefen.mjs` exportiert jetzt `SKRIPT_VERBOTEN`/`TRACKER` (von `fokus/pruefen.mjs` genutzt).
 - **Rückweg:** nur ein optionales Feld (`GO_LIVE_CHECKLISTE.md` › Rückweg › Fokus Innovation).
+
 ## Lichtfäden v2: alle Stränge, jede Ebene, Fokus (03.10.2026, nur lokal — Branch `faeden2`; Technik `LICHTFAEDEN.md`, Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
 
 Kevin 03.10.: „Überarbeite das Ganze nochmal mit den Lichtfäden … ein Werkzeug, was nachher Fokus anzeigt, weil extrem viele Stränge zusammenlaufen.
