@@ -6,7 +6,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE } from '../website/pruefen.mjs';
+import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE, QUELLEN_LINKS } from '../website/pruefen.mjs';
 
 const ORDNER = join(process.cwd(), 'website');
 const kopien: string[] = [];
@@ -38,7 +38,7 @@ describe('website/pruefen.mjs', () => {
     const k = kopie();
     fuellen(k);
     expect(pruefeWebsite(k)).toEqual({ fehler: [], platzhalter: [], freigabefaehig: true });
-    ersetze(k, 'datenschutz.html', 'Die Postfächer betreibt Beispielwert', 'Die Postfächer betreibt [[KEVIN: Anbieter]]');
+    ersetze(k, 'datenschutz.html', 'abgesichert. Beispielwert', 'abgesichert. [[KEVIN: Anbieter]]');
     const r = pruefeWebsite(k);
     expect(r.freigabefaehig).toBe(false);
     expect(r.platzhalter).toEqual([expect.objectContaining({ datei: 'datenschutz.html', text: 'Anbieter' })]);
@@ -47,7 +47,7 @@ describe('website/pruefen.mjs', () => {
   it('gelbe Markierung ohne Platzhalter darin fällt auf', () => {
     const k = kopie();
     fuellen(k);
-    ersetze(k, 'datenschutz.html', 'Die Postfächer betreibt Beispielwert', 'Die Postfächer betreibt <span class="ph">Anbieter</span>');
+    ersetze(k, 'datenschutz.html', 'abgesichert. Beispielwert', 'abgesichert. <span class="ph">Anbieter</span>');
     expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/gelbe Platzhalter-Markierung/);
   });
 
@@ -193,5 +193,21 @@ describe('website/pruefen.mjs', () => {
     const caddy = readFileSync('deploy/caddy/Caddyfile', 'utf8');
     expect(caddy).toContain(`hide ${VERSTECKT.join(' ')}`);
     for (const d of NICHT_OEFFENTLICH) expect(caddy).toMatch(new RegExp(`@intern path [^\\n]*/${d.replace(/\./g, '\\.')}( |$)`, 'm'));
+  });
+
+  it('belegte Zahlen: jede Kachel hat eine Fußnote mit geprüftem Quellenlink — fremde Links und lose Zahlen fallen auf', () => {
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    expect(index.match(/<li class="zahl /g)).toHaveLength(4);
+    for (const u of QUELLEN_LINKS) expect(index).toContain(`href="${u}" rel="noopener noreferrer"`);
+    const k = kopie();
+    fuellen(k);
+    ersetze(k, 'index.html', QUELLEN_LINKS[3], 'https://example.org/zahl');
+    ersetze(k, 'index.html', '<sup><a href="#fn-1" aria-label="Quelle 1">1</a></sup>', '');
+    ersetze(k, 'index.html', ' rel="noopener noreferrer"', '');
+    const f = pruefeWebsite(k).fehler.join('\n');
+    expect(f).toMatch(/unerwarteter externer Link https:\/\/example\.org\/zahl/);
+    expect(f).toMatch(/Zahlen-Kachel ohne Zahl oder ohne Fußnote/);
+    expect(f).toMatch(/ohne rel="noopener noreferrer"/);
+    expect(f).toMatch(/Fußnote ohne genau einen geprüften Quellenlink/);
   });
 });
