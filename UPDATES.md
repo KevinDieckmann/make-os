@@ -17,6 +17,7 @@ Strenges Code-Review der Stände vom 03.10. (Lichtfäden v2, Design-Standard, Fo
 - **CRM:** ein Helfer für Nachfass-/Herkunftstexte (`nachfassText`, `nachgefasstText`, `eventName` — besuchte Events ohne unsere Marke).
 - **Seiten:** `node scripts/lichtfaeden-website.mjs` schreibt website/ UND fokus/; `fokus/pruefen.mjs` teilt `alleDateien` mit website/; Städte-Wächter.
 - **Rückweg:** keine Bestände, keine Felder gespeichert (`farbe` ist nur Antwort, `sauberZiel` verwirft sie).
+- **Praxis-Funde 04.10. (mit erledigt):** **F1** `GET /api/familie` filtert die Sicht EINMAL am Anfang — „nur ich“-Tage, -Vereinbarungen, -Themen der Partnerin stehen nicht mehr in `tage`/Agenda (war ONLINE, f0c5526). **F2** Routinen nur eigene + gemeinsame (`sichtbarFuer`) im Gesundheits-Index, Telegram-Takt, ZOE-Abhaken, Tagesvorschlag; `GET /api/state/routinen?sicht=ich` für persönliche Zählungen (war ONLINE). **F4** eigene Ziele der anderen Person in den Lichtfäden nur als „Belegt“. **F3** Routinen-Quote in Prozent. **F5** Brain-Reiter am Handy. **F6** Make.One-Name mit Reihe überall, Titel-Vorschlag „Fokus Innovation · Dinner“. **F7** Index (Business, Privat, Gesundheit, Traktion) erst ab 40 % des Säulen-Gewichts, sonst „Noch keine Daten“ + Teilwert-Hinweis. Dazu Handy-Tippziele, Kopf-Suche bei 1280 px, Abschneiden (Ziel-Chip, Fokus-Frage), ZOE-Senden leer aus.
 
 ## Fokus Innovation: Reihe unter Make.One + Event-Seite fokusinnovation.de (03.10.2026, nur lokal — Branch `fokus-innovation`)
 
