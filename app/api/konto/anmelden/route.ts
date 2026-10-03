@@ -2,7 +2,7 @@
 // E-Mail + Passwort → Sitzung. Bei falschen Angaben immer dieselbe Antwort,
 // egal ob die E-Mail existiert: sonst könnte man Konten erraten.
 import { NextResponse } from 'next/server';
-import { ladeKonten, aendereKonten, emailSauber, passwortStimmt } from '@/lib/zugang/konten';
+import { aendereKonten, emailSauber, passwortStimmt, kontoZuEmail } from '@/lib/zugang/konten';
 import { codePruefen, wiederherstellungPruefen } from '@/lib/zugang/totp';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
@@ -17,13 +17,15 @@ export async function POST(req: Request) {
   let b: { email?: string; passwort?: string; code?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const email = emailSauber(b.email);
-  // Bremse gegen Raten (lib/zugang/drossel.ts): je Adresse und je Paar Adresse+E-Mail — nicht je E-Mail
-  // allein, sonst könnte jemand mit Kevins Adresse dessen Anmeldung dauerhaft sperren (26.09.).
+  // Bremse gegen Raten (lib/zugang/drossel.ts): je Adresse (IP) und je Paar IP + KONTO — nicht je E-Mail
+  // allein, sonst könnte jemand mit Kevins Adresse dessen Anmeldung dauerhaft sperren (26.09.). Das Paar zählt je Konto
+  // (03.10.): wer sich mit der Haupt- und den weiteren Adressen abwechselt, teilt sich EIN Versuchsbudget, der Alias
+  // verdoppelt die Versuche nicht. Unbekannte Adressen zählen je eingegebenem Text (sie führen in kein Konto).
   const adr = adresse(req);
-  const schluessel = [`ip:${adr}`, `paar:${adr}|${email ?? '-'}`];
+  const konto = email ? await kontoZuEmail(email) : undefined;
+  const schluessel = [`ip:${adr}`, `paar:${adr}|${konto ? `konto:${konto.speicher}` : (email ?? '-')}`];
   const warte = Math.max(...schluessel.map(s => pruefe(s).warteSek));
   if (warte > 0) return NextResponse.json({ error: `Zu viele Versuche — bitte in ${warte > 90 ? `${Math.ceil(warte / 60)} Minuten` : `${warte} Sekunden`} erneut.` }, { status: 429, headers: { 'Retry-After': String(warte) } });
-  const konto = email ? (await ladeKonten()).konten.find(k => k.email === email) : undefined;
   // Auch ohne Treffer einmal hashen, damit die Antwortzeit nichts verrät.
   const ok = konto ? await passwortStimmt(String(b.passwort ?? ''), konto) : (await passwortStimmt('x', { hash: '00', salz: '00' }), false);
   if (!konto || !ok) {

@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
@@ -100,6 +100,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   // Netzwerken (02.10.): jemand hat dir einen Termin gebucht bzw. eine Person zugeteilt (gespeichert) und „Danke-Mails bereit“ (abgeleitet).
   netzwerken: { Icon: Handshake, label: 'Netzwerken', farbe: C.aktiv },
   danke: { Icon: Mail, label: 'Danke-Mails', farbe: C.achtung },
+  // 03.10.: etwas am eigenen Zugang wurde geändert (Anmelde-Adresse).
+  sicherheit: { Icon: ShieldCheck, label: 'Sicherheit', farbe: C.achtung },
 };
 
 function zeitVon(m: Meldung, jetzt: number): string {

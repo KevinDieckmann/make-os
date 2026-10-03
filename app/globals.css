@@ -582,5 +582,19 @@ nav a:hover { transform: translateX(2px); }
      Nur hier — die geteilten Komponenten bleiben für den Rest der App, wie sie sind. Der Haken (`treffer44`) hat seine eigene Trefferfläche. */
   .bes-akte button:not(.treffer44), .bes-neu button:not(.treffer44), .bes-akte select, .bes-neu select { min-height: 44px; min-width: 44px; box-sizing: border-box; padding-inline: 8px; }
 }
+/* Konto › Anmelde-Adressen (03.10.): Zeilen mit Adresse und Knöpfen; am Handy stapeln sich Text und Knöpfe, Eingaben 16 px (sonst zoomt iOS), alle Tippziele ≥ 44 px. */
+.konto-adressen { display: grid; }
+.konto-adresse { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 2px; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.konto-adresse-text { display: grid; gap: 2px; min-width: 0; flex: 1 1 220px; overflow-wrap: anywhere; }
+.konto-adresse-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; }
+.konto-adressen-neu { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-top: 14px; }
+@media (max-width: 560px) {
+  .konto-adressen-neu { grid-template-columns: minmax(0, 1fr); }
+  .konto-adressen input, .konto-adressen-neu input { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }
+  .konto-adresse-knoepfe, .konto-adresse-knoepfe > * { width: 100%; }
+}
+.konto-adresse-knoepfe button, .konto-adressen-neu button { min-height: 44px; min-width: 44px; box-sizing: border-box; }
+.konto-adressen-neu input { min-height: 44px; box-sizing: border-box; }
+
 /* Das Wahl-Blatt (Portal außerhalb der Akte, nur am Handy): das Suchfeld mit 16 px, sonst zoomt iOS beim Antippen. */
 .wahl-blatt input { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }

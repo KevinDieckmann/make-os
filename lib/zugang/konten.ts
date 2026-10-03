@@ -24,7 +24,13 @@ export interface Konto {
   id: string;
   /** Name der persönlichen Bestände — stabil, nie ändern. */
   speicher: string;
+  /** Hauptadresse — alte Bilder lesen nur dieses Feld; Anzeige (Begrüßung, Visitenkarte, Team) nimmt immer sie. */
   email: string;
+  /**
+   * Weitere Anmelde-Adressen (03.10., höchstens `MAX_WEITERE_EMAILS`): führen ins selbe Konto, mit demselben Passwort und
+   * demselben zweiten Faktor. Optional — Konten ohne das Feld bleiben gültig, ohne Umstellung.
+   */
+  weitereEmails?: string[];
   name: string;
   rolle: Rolle;
   hash: string;
@@ -51,7 +57,7 @@ export interface Konto {
 }
 
 /** `speicher`: vom Inhaber festgelegter Speichername (z. B. „malin“, damit bestehende Bestände am Konto hängen). */
-export interface Einladung { code: string; von: string; bis: string; speicher?: string }
+export interface Einladung { code: string; von: string; bis: string; speicher?: string; /** Optional (03.10.): für diese Adresse ausgesprochen — sie ist damit bis zum Ablauf reserviert. */ email?: string }
 /** Namen, die nur über eine gebundene Einladung vergeben werden — nie durch den frei gewählten Vornamen. */
 export const RESERVIERTE_SPEICHER = ['kevin', 'malin'];
 
@@ -75,6 +81,36 @@ export function speicherName(name: string, vergeben: string[]): string {
 export function emailSauber(e: unknown): string | null {
   const s = String(e ?? '').trim().toLowerCase();
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s) && s.length <= 160 ? s : null;
+}
+
+/** Wie viele weitere Anmelde-Adressen ein Konto neben der Hauptadresse haben darf. */
+export const MAX_WEITERE_EMAILS = 3;
+
+/** Alle Adressen eines Kontos, Hauptadresse zuerst — klein, ohne Doppelte. */
+export function alleAdressen(k: Pick<Konto, 'email' | 'weitereEmails'>): string[] {
+  const roh = [k.email, ...(Array.isArray(k.weitereEmails) ? k.weitereEmails : [])];
+  const aus: string[] = [];
+  for (const a of roh) { const s = typeof a === 'string' ? a.trim().toLowerCase() : ''; if (s && !aus.includes(s)) aus.push(s); }
+  return aus;
+}
+
+/** Das Konto, das diese Adresse als Haupt- ODER weitere Anmelde-Adresse trägt (Groß-/Kleinschreibung egal). Die einzige Stelle für „Adresse → Konto“. */
+export function kontoMitAdresse<K extends Pick<Konto, 'email' | 'weitereEmails'>>(konten: readonly K[], email: unknown): K | undefined {
+  const e = emailSauber(email);
+  return e ? konten.find(k => alleAdressen(k).includes(e)) : undefined;
+}
+
+/** Ist die Adresse in dieser Instanz schon vergeben — an ein Konto (Haupt oder weitere) oder an eine offene Einladung? `ausser` = Speicher, dessen eigene Adressen nicht zählen. */
+export function adresseVergeben(stand: KontenStand, email: string, ausser?: string, jetzt: number = Date.now()): boolean {
+  const e = email.trim().toLowerCase();
+  if (stand.konten.some(k => k.speicher !== ausser && alleAdressen(k).includes(e))) return true;
+  return stand.einladungen.some(i => !!i.email && i.email.trim().toLowerCase() === e && Date.parse(i.bis) > jetzt);
+}
+
+/** Maskiert für Protokolle und Meldungen: k***@makeinnovation.de. */
+export function adresseMaskiert(email: string): string {
+  const [lokal, domain] = String(email).split('@');
+  return domain ? `${(lokal ?? '').slice(0, 1)}***@${domain}` : '***';
 }
 
 /** Mindestens 10 Zeichen. Keine Zusammensetzungsregeln — Länge schlägt Sonderzeichen. */
@@ -132,6 +168,11 @@ export async function aendereKonten(mut: (s: KontenStand) => KontenStand): Promi
     const s = current && Array.isArray(current.konten) ? { konten: current.konten, einladungen: Array.isArray(current.einladungen) ? current.einladungen : [] } : leererStand();
     return mut(s);
   });
+}
+
+/** Konto zu einer Anmelde-Adresse (Haupt- oder weitere). */
+export async function kontoZuEmail(email: unknown): Promise<Konto | undefined> {
+  return kontoMitAdresse((await ladeKonten()).konten, email);
 }
 
 export async function kontoFuerSpeicher(speicher: string): Promise<Konto | undefined> {

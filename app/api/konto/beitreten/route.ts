@@ -2,7 +2,7 @@
 // Code + E-Mail + Name + Passwort → Konto als Mitglied. Der Speichername kommt
 // aus dem Vornamen: Malin wird „malin" — und findet ihre bestehenden Bestände.
 import { NextResponse } from 'next/server';
-import { ladeKonten, aendereKonten, emailSauber, passwortTauglich, passwortHashen, speicherName, RESERVIERTE_SPEICHER, type Konto } from '@/lib/zugang/konten';
+import { ladeKonten, aendereKonten, emailSauber, adresseVergeben, passwortTauglich, passwortHashen, speicherName, RESERVIERTE_SPEICHER, type Konto } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { neueKennung } from '@/lib/kennung';
@@ -28,12 +28,19 @@ export async function POST(req: Request) {
   const einladung = s0.einladungen.find(e => e.code === code && Date.parse(e.bis) > Date.now());
   if (!einladung) { fehlschlag(ip); return NextResponse.json({ error: 'Einladungscode unbekannt oder abgelaufen.' }, { status: 403 }); }
   erfolg(ip);
-  if (s0.konten.some(k => k.email === email)) return NextResponse.json({ error: 'Diese E-Mail hat schon ein Konto — bitte anmelden.' }, { status: 409 });
+  // Eine auf eine Adresse ausgestellte Einladung gilt nur für sie (03.10.).
+  if (einladung.email && einladung.email.toLowerCase() !== email) return NextResponse.json({ error: 'Diese Einladung gilt für eine andere E-Mail-Adresse.' }, { status: 400 });
+  // Vergeben = Haupt- ODER weitere Adresse eines Kontos, oder für eine andere offene Einladung reserviert (die eigene zählt nicht).
+  const ohneEigene = { ...s0, einladungen: s0.einladungen.filter(e => e.code !== code) };
+  if (adresseVergeben(ohneEigene, email)) return NextResponse.json({ error: 'Diese E-Mail hat schon ein Konto — bitte anmelden.' }, { status: 409 });
 
   const { hash, salz } = await passwortHashen(b.passwort);
   let konto: Konto | undefined;
+  let doppelt = false;
   await aendereKonten(s => {
     if (!s.einladungen.some(e => e.code === code)) return s;
+    // Gleichzeitig vergeben (zwischen Prüfung und Schreiben)? Dann nichts anlegen.
+    if (adresseVergeben({ ...s, einladungen: s.einladungen.filter(e => e.code !== code) }, email)) { doppelt = true; return s; }
     // Der Speichername kommt aus der Einladung (vom Inhaber gebunden) — sonst aus dem Vornamen,
     // aber nie ein reservierter Name: „Malin“ als Vorname übernimmt nicht Malins Bestände (26.09.).
     const vergeben = s.konten.map(k => k.speicher);
@@ -41,6 +48,7 @@ export async function POST(req: Request) {
     konto = { id: neueKennung('k'), speicher: gebunden ?? speicherName(name, [...vergeben, ...RESERVIERTE_SPEICHER]), email, name, rolle: 'mitglied', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] }, eingeladenVon: einladung.von };
     return { konten: [...s.konten, konto], einladungen: s.einladungen.filter(e => e.code !== code) };
   });
+  if (doppelt) return NextResponse.json({ error: 'Diese E-Mail hat schon ein Konto — bitte anmelden.' }, { status: 409 });
   if (!konto) return NextResponse.json({ error: 'Der Code wurde gerade eingelöst.' }, { status: 409 });
   return mitSitzung(konto);
 }
