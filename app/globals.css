@@ -539,6 +539,9 @@ nav a:hover { transform: translateX(2px); }
 }
 .ui-nur-breit { display: inline; }
 @media (max-width: 720px) { .ui-nur-breit { display: none; } }
+/* Gegenstück: nur am Handy sichtbar (z. B. eine Aktion, die im kompakten Kopf keinen Platz hat und darunter steht) */
+.ui-nur-schmal { display: none; }
+@media (max-width: 720px) { .ui-nur-schmal { display: block; } }
 
 /* ─── Urbanist (SIL OFL 1.1, Lizenz: public/schriften/URBANIST-OFL.txt) — lokal gebündelt, nur für Visitenkarten (02.10., Paket B). ─
    Eine Firmenkarte darf in der Schrift ihrer Firma erscheinen; geladen wird die Datei erst, wenn ein Profil sie wählt. */
@@ -669,7 +672,7 @@ nav a:hover { transform: translateX(2px); }
 .ui-abschnitt { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; margin: 0 0 12px; }
 .ui-abschnitt-titel { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 700; color: #A2ADB0; letter-spacing: .09em; text-transform: uppercase; min-width: 0; }
 .ui-abschnitt-punkt { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
-.ui-abschnitt-rechts { font-size: 13px; color: #86918F; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; text-align: right; }
+.ui-abschnitt-rechts { min-width: 0; max-width: 100%; font-size: 13px; color: #86918F; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; text-align: right; }
 .ui-titel { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .ui-beschriftung { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #86918F; margin: 2px 0 6px; }
 .ui-beschriftung-rechts { text-transform: none; letter-spacing: 0; font-weight: 500; }
@@ -724,7 +727,11 @@ nav a:hover { transform: translateX(2px); }
 .ui-pillen-einzeilig > * { flex: 0 0 auto; }
 .ui-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; font-size: 12px; font-weight: 700; letter-spacing: .02em; }
 .ui-segmente { display: flex; gap: 4px; padding: 4px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .06); }
-.ui-segmente-umbrechen { flex-wrap: wrap; }
+.ui-segmente { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ui-segmente::-webkit-scrollbar { display: none; }
+.ui-segment { min-width: max-content; }
+.ui-segmente-umbrechen { flex-wrap: wrap; overflow-x: visible; }
+.ui-segmente-umbrechen .ui-segment { min-width: 0; }
 .ui-segment { flex: 1 1 0; min-height: 40px; padding: 6px 14px; border-radius: 12px; cursor: pointer; font-family: var(--schrift-text), -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 700; white-space: nowrap; }
 .ui-segmente-umbrechen .ui-segment { flex: 1 1 auto; }
 @media (max-width: 720px), (pointer: coarse) { .ui-segment { min-height: 44px; } }
@@ -735,6 +742,13 @@ nav a:hover { transform: translateX(2px); }
 .ui-reiter-knopf { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 6px 14px; border-radius: 12px; cursor: pointer; white-space: nowrap; font-size: 14px; font-weight: 600; }
 .ui-reiter-punkt { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
 @media (max-width: 720px), (pointer: coarse) { .ui-reiter-knopf { min-height: 44px; } }
+
+/* Tabellen (Zahlen & Finanzen): im eigenen wischbaren Container — am Handy wischt die Tabelle, die Seite nie. Zahlen stehen mit festen Ziffern rechtsbündig. */
+.ui-tabelle { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; scrollbar-width: thin; border-radius: 12px; }
+.ui-tabelle:focus-visible { outline: 2px solid #58D9CD; outline-offset: 2px; }
+.ui-tabelle table { font-variant-numeric: tabular-nums; }
+/* Zähler in einem Reiter (offene Buchungen): gelbe Pille, Zahl mit festen Ziffern */
+.fp-zaehler { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; margin-left: 7px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; background: rgba(255, 201, 60, .2); color: #FFC93C; }
 
 /* Hinweis, Leerzustand */
 .ui-hinweis { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; color: #E8ECEA; font-size: 15px; line-height: 1.5; min-width: 0; overflow-wrap: anywhere; }

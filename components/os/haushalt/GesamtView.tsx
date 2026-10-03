@@ -11,14 +11,14 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/finanzen/haushalt/typen';
 import { bruecke, type BusinessZahlen } from '@/lib/finanzen/haushalt/gesamt';
 import { datumDe } from '@/lib/finanzen/haushalt/monat';
-import { Karte, Ueberschrift, Leer, Knopf, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, feld, LEUCHT } from '../ui';
 import { useHaushalt, Meldungen, Hinweis } from './gemeinsam';
 
 function Stufe({ n, titel, wert, quelle, farbe, stark, href }: { n: string; titel: string; wert: string; quelle: string; farbe?: string; stark?: boolean; href?: string }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 12, alignItems: 'baseline', padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
       <span style={{ color: C.inkLeise, fontSize: 13, textAlign: 'center' }}>{n}</span>
-      <div><div style={{ fontSize: TYP.body, fontWeight: stark ? 700 : 500 }}>{href ? <Link href={href} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.3)' }}>{titel} ›</Link> : titel}</div><div style={{ fontSize: 12, color: C.inkLeise }}>{quelle}</div></div>
+      <div><div style={{ fontSize: TYP.body, fontWeight: stark ? 700 : 500 }}>{href ? <Link href={href} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.3)' }}>{titel} ›</Link> : titel}</div><div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{quelle}</div></div>
       <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: stark ? 20 : 15, color: farbe ?? C.ink, whiteSpace: 'nowrap' }}>{wert}</span>
     </div>
   );
@@ -39,7 +39,7 @@ export function GesamtView() {
   const q = h.meta.steuerquote;
   return (
     <>
-      <Karte i={1} akzent={b.deckung === null ? undefined : b.deckung >= 100 ? LEUCHT.gut : LEUCHT.kritisch}>
+      <Karte i={1} ton={b.deckung === null ? undefined : b.deckung >= 100 ? LEUCHT.gut : LEUCHT.kritisch}>
         <Ueberschrift farbe={LEUCHT.geld}>Was die Selbstständigkeit mindestens bringen muss</Ueberschrift>
         <Stufe n="1" href={WEG.privat('fixkosten')} titel="Privater Sockel" wert={`${eur(b.sockel, false)} / Monat`} quelle="Fixkosten + Kreditraten, 12 volle Monate · Zahlen → Privat → Fixkosten" />
         <Stufe n="−" href={WEG.privat('einnahmen')} titel="Planbares Einkommen ohne Kevins Entnahme" wert={`${eur(b.planbarOhneEntnahme, false)} / Monat`} quelle="Gehalt & andere planbare Eingänge, Schnitt der letzten 3 vollen Monate" />
@@ -51,7 +51,7 @@ export function GesamtView() {
           <Stufe n="↔" href={WEG.abschluss()} titel="Tatsächlicher Umsatz" wert={`${eur(b.umsatzIst, false)} / Monat`} quelle={`netto, Schnitt über ${business!.monate} Monate der Grundlage${b.deckung !== null ? ` · deckt ${b.deckung.toFixed(0)} % des Mindestumsatzes` : ''}`} farbe={b.deckung === null ? undefined : b.deckung >= 100 ? LEUCHT.gut : LEUCHT.kritisch} />
         )}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 14 }}>
-          <label style={{ display: 'grid', gap: 5, fontSize: 12.5, color: C.inkDim }}>Steuerrücklage in % (Annahme)
+          <label style={{ display: 'grid', gap: 5, fontSize: TYP.bedien, color: C.inkDim }}>Steuerrücklage in % (Annahme)
             <input inputMode="decimal" value={quote} onChange={e => setQuote(e.target.value)} placeholder="z. B. 30" style={{ ...feld, width: 140 }} />
           </label>
           <Knopf leise onClick={async () => { const n = quote.trim() === '' ? null : Number(quote.replace(',', '.')); const d = await aktion({ aktion: 'steuerquote', steuerquote: n }); if (d?.ok) { melde('ok', 'Annahme gespeichert'); await laden(); } }}>Übernehmen</Knopf>

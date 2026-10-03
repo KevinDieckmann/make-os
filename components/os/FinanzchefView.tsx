@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { bloecke } from '@/lib/make-one/markdown';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Punkt, Chip, Knopf, Segmente, Zahl, feld, LEUCHT } from './schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Punkt, Chip, Knopf, Segmente, Zahl, feld, LEUCHT, Hinweis as HinweisKarte } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { block } from './WissenView';
 import { useAbgleich } from '@/hooks/useAbgleich';
@@ -87,7 +87,7 @@ export function FinanzchefView() {
   }
 
   const bericht = useMemo(() => (s ? s.berichte.find(b => b.id === gewaehlt) ?? s.berichte.find(b => b.modus !== 'frage') ?? s.berichte[0] ?? null : null), [s, gewaehlt]);
-  if (!s) return <Karte><Leer>{fehler ?? 'Lade den Head of Finance …'}</Leer></Karte>;
+  if (!s) return fehler ? <HinweisKarte art="kritisch">{fehler}</HinweisKarte> : <Karte><Leer>Lade den Head of Finance …</Leer></Karte>;
   const a = bericht?.antwort;
   const unbelegt = bericht?.pruefung.unbelegt.map(u => u.text) ?? [];
   const offen = s.vorschlaege.filter(v => v.status === 'offen');
@@ -143,8 +143,8 @@ export function FinanzchefView() {
           <input value={frage} onChange={e => setFrage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && frage.trim() && !laeuft) starte('frage', frage.trim()); }} placeholder={s.umfang === 'business' ? 'Frag den Head of Finance — z. B. „Reicht die Liquidität bis Dezember?“' : 'Frag den Head of Finance — z. B. „Wofür geben wir im Monat am meisten aus?“'} aria-label="Frage an den Head of Finance" style={{ ...feld, flex: 1, minWidth: 0 }} />
           <Knopf onClick={() => frage.trim() && starte('frage', frage.trim())} aus={!!laeuft || !frage.trim()}>Fragen</Knopf>
         </div>
-        {laeuft && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: LEUCHT.geld }}>{laeuft}</div>}
-        {fehler && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
+        {laeuft && <div role="status" style={{ marginTop: 10, fontSize: TYP.bedien, color: LEUCHT.geld }}>{laeuft}</div>}
+        {fehler && <div style={{ marginTop: 10 }}><HinweisKarte art="kritisch">{fehler}</HinweisKarte></div>}
       </Karte>
       </Kachel>
 
@@ -253,7 +253,7 @@ export function FinanzchefView() {
           <Karte i={3}>
             <Ueberschrift>Fristen · 60 Tage</Ueberschrift>
             {s.lage.termine.length ? s.lage.termine.map(t => <Zeile key={`${t.datum}${t.art}`} links={<span style={{ fontVariantNumeric: 'tabular-nums', color: C.inkDim, fontSize: TYP.bedien, minWidth: 44 }}>{datum(t.datum)}</span>} titel={t.titel} unter={t.hinweis} />) : <Leer>Keine Steuertermine in den nächsten 60 Tagen — laut Einstellung unten.</Leer>}
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Gerechnet aus der Einstellung, inkl. Wochenend- und Feiertagsregel. Hinweis, keine Steuerberatung.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Gerechnet aus der Einstellung, inkl. Wochenend- und Feiertagsregel. Hinweis, keine Steuerberatung.</div>
           </Karte>
           </Kachel>
 
@@ -270,7 +270,7 @@ function IstStand({ liste }: { liste: Schritt[] }) {
   if (!liste.length) return null;
   const BEREICH: Record<Schritt['bereich'], string> = { privat: 'Privat', business: 'Business', gemeinsam: 'Gemeinsam' };
   return (
-    <Karte i={0} akzent={offen.length ? LEUCHT.achtung : LEUCHT.gut}>
+    <Karte i={0} ton={offen.length ? LEUCHT.achtung : LEUCHT.gut}>
       <Ueberschrift farbe={offen.length ? LEUCHT.achtung : LEUCHT.gut} rechts={<Knopf leise onClick={() => setAuf(!auf)}>{auf ? 'zuklappen' : 'zeigen'}</Knopf>}>
         Ist-Stand · {liste.length - offen.length} von {liste.length} erledigt
       </Ueberschrift>
@@ -338,7 +338,7 @@ function Einstellung({ e, onGespeichert }: { e: ChefEinstellung; onGespeichert: 
             <Knopf onClick={speichern} farbe={LEUCHT.geld}>Speichern</Knopf>
             {gespeichert && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Gespeichert</span>}
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise }}>Die Annahmen steuern den Fristenkalender. Was im Bescheid steht, gilt — im Zweifel mit dem Steuerberater klären.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Die Annahmen steuern den Fristenkalender. Was im Bescheid steht, gilt — im Zweifel mit dem Steuerberater klären.</div>
         </div>
       )}
     </Karte>

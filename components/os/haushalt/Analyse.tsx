@@ -11,7 +11,7 @@ import { eur } from '@/lib/finanzen/haushalt/typen';
 import type { KatName } from '@/lib/finanzen/haushalt/einordnung';
 import { kennzahlen, schuldenbild, bewertungSparquote } from '@/lib/finanzen/haushalt/kennzahlen';
 import { vollMonate, monatKurz, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
-import { Karte, Ueberschrift, Leer, Segmente, Spalten, Spalte, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Segmente, Spalten, Spalte, LEUCHT } from '../ui';
 import { Hinweis, Kachel, Kacheln, Leiste, type HaushaltDaten } from './gemeinsam';
 
 type Zeitraum = '1' | '6' | '12';
@@ -68,8 +68,8 @@ export function Analyse({ h, katName }: { h: HaushaltDaten; katName: KatName }) 
                 <Ueberschrift>Feste und bewegliche Kosten</Ueberschrift>
                 {[{ n: 'Fixkosten', w: k.fixProMonat, a: fixAnteil, vw: v.fixProMonat, f: LEUCHT.kritisch }, { n: 'Variable Kosten', w: k.varProMonat, a: 100 - fixAnteil, vw: v.varProMonat, f: LEUCHT.puls }].map(r => (
                   <div key={r.n} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 12 }}>
-                    <div><strong style={{ fontSize: TYP.body }}>{r.n}</strong> <span style={{ color: C.inkLeise, fontSize: 12 }}>{r.a.toFixed(0)} %</span><Leiste anteil={r.a} farbe={r.f} /></div>
-                    <div style={{ textAlign: 'right' }}><div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{eur(r.w)}</div><div style={{ fontSize: 12, color: C.inkLeise }}>davor {eur(r.vw)}</div></div>
+                    <div><strong style={{ fontSize: TYP.body }}>{r.n}</strong> <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{r.a.toFixed(0)} %</span><Leiste anteil={r.a} farbe={r.f} /></div>
+                    <div style={{ textAlign: 'right' }}><div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{eur(r.w)}</div><div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>davor {eur(r.vw)}</div></div>
                   </div>
                 ))}
                 <Hinweis>Fixkosten sind der Teil, den ihr kurzfristig nicht ändern könnt. Je höher ihr Anteil, desto weniger Spielraum, wenn etwas dazwischenkommt. Aktuell binden sie <strong style={{ color: C.ink }}>{k.fixquote.toFixed(0)} %</strong> eurer Einnahmen.</Hinweis>
@@ -97,7 +97,7 @@ export function Analyse({ h, katName }: { h: HaushaltDaten; katName: KatName }) 
                 <div style={{ display: 'grid', gap: 10 }}>
                   {verlauf.map(r => (
                     <div key={r.m} style={{ display: 'grid', gridTemplateColumns: '56px 1fr 96px', gap: 10, alignItems: 'center' }}>
-                      <span style={{ fontSize: 12.5, color: C.inkDim }}>{monatKurz(r.m)}</span>
+                      <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{monatKurz(r.m)}</span>
                       <div>
                         <div title={`Einnahmen ${eur(r.ein)}`} style={{ height: 6, borderRadius: 3, width: `${r.ein / maxV * 100}%`, background: TIEF.fuellung(LEUCHT.gut), marginBottom: 3 }} />
                         <div title={`Ausgaben ${eur(r.aus)}`} style={{ height: 6, borderRadius: 3, width: `${r.aus / maxV * 100}%`, background: TIEF.fuellung(LEUCHT.achtung) }} />

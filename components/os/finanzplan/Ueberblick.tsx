@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Raster, Spalten, Spalte, Haken, Knopf, LEUCHT, feld, Leer } from '../schlank';
+import { Karte, Ueberschrift, Raster, Spalten, Spalte, Haken, Knopf, LEUCHT, feld, Leer } from '../ui';
 import { zielStaende, zahlungskalender, istSchnitt, sollBudget } from '@/lib/finanzen/rechenkern';
 import type { ZielStand } from '@/lib/finanzen/rechenkern';
 import { eur, prozent, tagKurz, datumLang, plusTage, offeneBuchungen, heuteIndex, letzterVoller, tageIm, achse, monatLabel, neueKennung, postenOffen } from '@/lib/finanzen/plan/hilfen';
@@ -31,7 +31,7 @@ export function ZielKurz({ s, bjoernStart }: { s: ZielStand; bjoernStart: number
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 5 }}><span style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{s.ziel.name}</span><StatusPille status={s.status} /></div>
       <AnteilBalken anteil={Math.max(0, Math.min(1, p))} farbe={farbe} hoehe={6} />
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4 }}>Ziel <Geld v={s.ziel.ziel} farbe={C.inkDim} /> € bis {s.ziel.bis.slice(5)}/{s.ziel.bis.slice(2, 4)} · {s.erreichtMonat ? `erreicht ${monatLabel(d, s.erreichtMonat)}` : 'im Planzeitraum nicht erreicht'}</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>Ziel <Geld v={s.ziel.ziel} farbe={C.inkDim} /> € bis {s.ziel.bis.slice(5)}/{s.ziel.bis.slice(2, 4)} · {s.erreichtMonat ? `erreicht ${monatLabel(d, s.erreichtMonat)}` : 'im Planzeitraum nicht erreicht'}</div>
     </div>
   );
 }
@@ -53,28 +53,28 @@ function LageKopf() {
         <Kachel label="Runway" punkt={rwFarbe(Math.min(aw.runway.ug ?? 99, aw.runway.privat ?? 99))} wert={<>{UG_KURZ} {rw(aw.runway.ug, aw.runway.horizont)} · Privat {rw(aw.runway.privat, aw.runway.horizont)}</>} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
         <Kachel label="Ziele im Plan" punkt={aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${aw.ziele.imPlan} / ${aw.ziele.gesamt}`} unter={aw.ziele.gesamt ? `${aw.ziele.gekippt} gekippt · ${aw.ziele.knapp} knapp` : 'noch keine Ziele'} />
       </Kacheln>
-      <Karte i={0} akzent={C.aktiv}>
+      <Karte i={0} ton={C.aktiv}>
         <Ueberschrift rechts={<Knopf onClick={() => geh('planen')}>Planungsrunde öffnen ›</Knopf>}>Was jetzt zu entscheiden ist</Ueberschrift>
         {punkte.length ? punkte.map(p => (
           <div key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien, lineHeight: 1.45 }}>
             <span className={p.stufe === 'kritisch' ? 'zeit-puls' : undefined} style={{ width: 9, height: 9, borderRadius: '50%', background: stufeFarbe[p.stufe], flex: '0 0 auto', marginTop: 5, boxShadow: `0 0 8px ${stufeFarbe[p.stufe]}55` }} />
-            <span style={{ flex: 1 }}>{p.text}{p.hinweis && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2 }}>{p.hinweis}</div>}</span>
+            <span style={{ flex: 1 }}>{p.text}{p.hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{p.hinweis}</div>}</span>
             <KnopfKlein onClick={() => geh(p.ziel.u, p.ziel.params)}>Öffnen ›</KnopfKlein>
           </div>
         )) : <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: LEUCHT.gut }} />Nichts drängt — die Zahlen tragen den Plan.</div>}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Rechnet mit {ps ? <>dem Arbeitsplan <b style={{ color: C.inkDim }}>{ps.name}</b> auf Treiber {sz.name}</> : <>dem Treiber <b style={{ color: C.inkDim }}>{sz.name}</b> ohne Bausteine</>} · Stichtag {datumLang(d.einstellungen.heute)}.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Rechnet mit {ps ? <>dem Arbeitsplan <b style={{ color: C.inkDim }}>{ps.name}</b> auf Treiber {sz.name}</> : <>dem Treiber <b style={{ color: C.inkDim }}>{sz.name}</b> ohne Bausteine</>} · Stichtag {datumLang(d.einstellungen.heute)}.</div>
       </Karte>
       {offenPunkte.length > 0 && (
         <Karte i={1}>
-          <Ueberschrift rechts={<span style={{ color: C.inkLeise, fontSize: 12 }}>{offenPunkte.length} Punkt{offenPunkte.length === 1 ? '' : 'e'}</span>}>Noch offen in der Planung</Ueberschrift>
+          <Ueberschrift rechts={<span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{offenPunkte.length} Punkt{offenPunkte.length === 1 ? '' : 'e'}</span>}>Noch offen in der Planung</Ueberschrift>
           {offenPunkte.map(p => (
             <div key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien, lineHeight: 1.45 }}>
               <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'transparent', border: `2px solid ${C.inkLeise}`, flex: '0 0 auto', marginTop: 5 }} />
-              <span style={{ flex: 1 }}>{p.text}{p.hinweis && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2 }}>{p.hinweis}</div>}</span>
+              <span style={{ flex: 1 }}>{p.text}{p.hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{p.hinweis}</div>}</span>
               <KnopfKlein onClick={() => geh(p.ziel.u, p.ziel.params)}>Ausfüllen ›</KnopfKlein>
             </div>
           ))}
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Das sind keine Fehler der Rechnung — es sind die Stellen, an denen der Plan noch nicht eure Zahlen trägt. Jeder Punkt verschwindet, sobald das Feld gefüllt ist.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Das sind keine Fehler der Rechnung — es sind die Stellen, an denen der Plan noch nicht eure Zahlen trägt. Jeder Punkt verschwindet, sobald das Feld gefüllt ist.</div>
         </Karte>
       )}
     </>
@@ -117,7 +117,7 @@ export function Lage() {
   return (
     <>
       {d.einstellungen.heute !== heuteEcht && (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim, marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12 }}>
           Stichtag der Rechnung: <b style={{ color: C.ink }}>{datumLang(d.einstellungen.heute)}</b>
           <KnopfKlein onClick={() => void aendere([{ pfad: '/einstellungen/heute', alt: d.einstellungen.heute, neu: heuteEcht }], 'Stichtag auf heute gesetzt')}>auf heute setzen ({datumLang(heuteEcht)})</KnopfKlein>
         </div>
@@ -127,7 +127,7 @@ export function Lage() {
         <Raster min={260}>
           <div>
             <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Wo stehen wir heute?</div>
-            {zeile('Auf den Konten', <><Geld v={kontenBekannt.reduce((a, p) => a + (p.betrag ?? 0), 0)} /> €{konten.length - kontenBekannt.length ? <span style={{ color: LEUCHT.achtung, fontSize: 12 }}> · {konten.length - kontenBekannt.length} fehlen</span> : null}</>)}
+            {zeile('Auf den Konten', <><Geld v={kontenBekannt.reduce((a, p) => a + (p.betrag ?? 0), 0)} /> €{konten.length - kontenBekannt.length ? <span style={{ color: LEUCHT.achtung, fontSize: TYP.bedien }}> · {konten.length - kontenBekannt.length} fehlen</span> : null}</>)}
             {zeile('Uns geschuldet', <><Geld v={forderungen.reduce((a, p) => a + (p.betrag ?? 0), 0)} /> €</>)}
             {zeile('Zu zahlen', <><Geld v={zuZahlen.reduce((a, p) => a + (p.betrag ?? 0), 0)} /> €</>)}
             {zeile('Schulden', <><Geld v={schulden} /> €</>)}
@@ -144,7 +144,7 @@ export function Lage() {
             <EntscheidungFeld />
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
               <KnopfKlein onClick={() => geh('check')}>Wochen-Check öffnen</KnopfKlein>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>{letzterCheck ? `letzter Check ${datumLang(letzterCheck.datum)}` : 'noch kein Check'}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{letzterCheck ? `letzter Check ${datumLang(letzterCheck.datum)}` : 'noch kein Check'}</span>
             </div>
           </div>
         </Raster>
@@ -198,7 +198,7 @@ export function Lage() {
                 <Haken an={false} onChange={() => void aendere([{ pfad: `/fokus/schritte/id=${s.id}/erledigt`, alt: false, neu: true }], `Schritt erledigt: ${s.text}`)} />
                 <span style={{ flex: 1 }}>{s.text}</span>
                 <PersonMarke wer={s.wer} />
-                <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{tagKurz(s.bis)}</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{tagKurz(s.bis)}</span>
               </div>
             ))}
             {!d.fokus.schritte.some(s => !s.erledigt) && <Nichts>Keine offenen Schritte.</Nichts>}
@@ -210,7 +210,7 @@ export function Lage() {
             </div>
             {d.fokus.regeln.length > 0 && <>
               <div style={{ ...MIKRO, marginTop: 16, marginBottom: 6 }}>Finanzregeln</div>
-              {d.fokus.regeln.map((r, i) => <div key={i} style={{ fontSize: 12.5, color: C.inkDim, padding: '3px 0', lineHeight: 1.45 }}>{r}</div>)}
+              {d.fokus.regeln.map((r, i) => <div key={i} style={{ fontSize: TYP.bedien, color: C.inkDim, padding: '3px 0', lineHeight: 1.45 }}>{r}</div>)}
             </>}
           </Karte>
         </Spalte>
@@ -274,7 +274,7 @@ export function Check() {
             <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
               <Haken an={e.erledigt.includes(i)} onChange={() => void setzeEintrag({ erledigt: e.erledigt.includes(i) ? e.erledigt.filter(x => x !== i) : [...e.erledigt, i] }, `Check: ${p}`)} />
               <span style={{ flex: 1, fontSize: TYP.bedien }}>{p}</span>
-              <span style={{ fontSize: 12, color: C.inkLeise, textAlign: 'right' }}>{fakten[i] ?? ''}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise, textAlign: 'right' }}>{fakten[i] ?? ''}</span>
             </div>
           ))}
           {!d.check.punkte.length && <Leer>Noch keine Check-Punkte hinterlegt.</Leer>}
@@ -282,7 +282,7 @@ export function Check() {
           <textarea rows={4} value={notizFokus ? notiz : (e.notiz || notiz)} aria-label="Notizen zum Check" onFocus={() => { setNotiz(e.notiz || notiz); setNotizFokus(true); }} onChange={ev => setNotiz(ev.target.value)}
             onBlur={() => { setNotizFokus(false); if (notiz !== e.notiz) void setzeEintrag({ notiz }, 'Check-Notiz'); }} style={{ ...feld, resize: 'vertical', fontSize: TYP.bedien, lineHeight: 1.5 }} />
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12.5, color: C.inkDim }}>Bestätigt:</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Bestätigt:</span>
             {['kevin', 'malin'].map(w => <span key={w} style={{ opacity: e.wer.map(x => x.toLowerCase()).includes(w) ? 1 : 0.35 }}><PersonMarke wer={w} mitName /></span>)}
             <span style={{ flex: 1 }} />
             <Knopf onClick={bestaetigen}>Als {personName(ich)} bestätigen</Knopf>

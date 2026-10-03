@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, LEUCHT } from '../ui';
 import { finanzOrtName, type Gesellschaftskennung } from '@/lib/einheiten';
 import { monatLabel, neueKennung, prozent } from '@/lib/finanzen/plan/hilfen';
 import { wert } from '@/lib/finanzen/rechenkern';
@@ -56,7 +56,7 @@ function BausteinZeile({ b, ps }: { b: Baustein; ps: { id: string } }) {
       <FeldK label="nächste 12 M"><span style={{ padding: '8px 2px', fontSize: TYP.bedien }}><Geld v={umsatz ? summe : -summe * kostenFaktor(b, d.annahmen.agAnteil)} farbe={C.inkDim} /> €</span></FeldK>
       <KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: `/planszenarien/id=${ps.id}/bausteine/id=${b.id}`, alt: b.name }], `${n} entfernt`)} titel="Entfernen">−</KnopfKlein>
       {b.ueber && Object.keys(b.ueber).length > 0 && (
-        <span style={{ flex: '1 1 100%', fontSize: 12, color: LEUCHT.achtung }}>
+        <span style={{ flex: '1 1 100%', fontSize: TYP.bedien, color: LEUCHT.achtung }}>
           {Object.keys(b.ueber).length} Monat{Object.keys(b.ueber).length === 1 ? '' : 'e'} im Blatt von Hand überschrieben ·{' '}
           <button type="button" onClick={() => setze('ueber', b.ueber, undefined, 'Überschreibungen zurückgesetzt')} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', font: 'inherit', padding: 0 }}>alle zurücksetzen</button>
         </span>
@@ -85,7 +85,7 @@ function BausteinKarten({ ort }: { ort: Gesellschaftskennung }) {
           <span style={{ ...MIKRO, marginRight: 4 }}>Vorlagen (ohne Preis)</span>
           {BEISPIEL_PRODUKTE.map(v => (
             <button key={v.name} type="button" onClick={() => dazu(neuesProdukt(neueKennung('b'), ort, { name: v.name, rhythmus: v.rhythmus, laufzeit: v.laufzeit, start: m0 }), `Produkt ${v.name} angelegt`)} className="fassbar"
-              style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: C.ink }}>+ {v.name}</button>
+              style={{ fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: C.ink }}>+ {v.name}</button>
           ))}
         </div>
         <Hinweis>

@@ -11,13 +11,13 @@
 // nicht nur als Meldung unten rechts (die am Handy leicht untergeht).
 
 import { useMemo, useState } from 'react';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { FARBE as C, TYP, ZIEL, ECKE } from '@/lib/make-one/design';
 import type { Beleg, Schuld } from '@/lib/finanzen/haushalt/typen';
 import { eur, zuCent, EINHEITEN, EINHEIT_NAME } from '@/lib/finanzen/haushalt/typen';
 import { laufzeit, schuldenfreiAm, sondertilgung } from '@/lib/finanzen/haushalt/schulden';
 import { datumDe, tagPlus, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { KERN_EINHEITEN_NAMEN } from '@/lib/einheiten';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, Spalten, Spalte, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, Spalten, Spalte, LEUCHT, Hinweis as HinweisKarte } from '../ui';
 import { Dialog, Feld, Hinweis, Kachel, Kacheln, Leiste, auswahl, type HaushaltDaten, type Op, type PatchErgebnis } from './gemeinsam';
 
 interface Props {
@@ -27,7 +27,7 @@ interface Props {
   patchMitFehler?: (teil: string, ops: Op[]) => Promise<PatchErgebnis>;
   melde: (art: 'ok' | 'fehler' | 'info', titel: string, text?: string) => void;
 }
-const klein = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '4px 6px' } as const;
+const klein = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '8px 10px', minHeight: ZIEL.rechner, borderRadius: ECKE.eingabe } as const;
 
 export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
   const heute = heuteBerlin();
@@ -71,10 +71,7 @@ export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
   }
 
   const fehlerzeile = (b: Beleg, an: boolean) => zeilenFehler[b.id] ? (
-    <div role="alert" style={{ marginTop: 6, fontSize: 12.5, color: LEUCHT.kritisch, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-      <span>Nicht gespeichert: {zeilenFehler[b.id]}</span>
-      <button style={{ ...klein, color: LEUCHT.kritisch, textDecoration: 'underline' }} onClick={() => void bezahlt(b, an)}>Noch einmal</button>
-    </div>
+    <div style={{ marginTop: 6 }}><HinweisKarte art="kritisch" titel="Nicht gespeichert" aktion={<Knopf leise onClick={() => bezahlt(b, an)}>Noch einmal versuchen</Knopf>}>{zeilenFehler[b.id]}</HinweisKarte></div>
   ) : null;
 
   return (
@@ -98,11 +95,11 @@ export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
                 return (
                   <div key={x.id} style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                      <div style={{ minWidth: 0 }}><strong>{x.bezeichnung}</strong> <span style={{ fontSize: 12, color: C.inkLeise }}>{x.glaeubiger ?? ''}</span></div>
-                      <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{eur(x.restbetrag)} <span style={{ color: C.inkLeise, fontSize: 12 }}>von {eur(x.startbetrag)}</span></span>
+                      <div style={{ minWidth: 0 }}><strong>{x.bezeichnung}</strong> <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{x.glaeubiger ?? ''}</span></div>
+                      <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{eur(x.restbetrag)} <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>von {eur(x.startbetrag)}</span></span>
                     </div>
                     <Leiste anteil={anteil} farbe={LEUCHT.gut} />
-                    <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       <span>Rate {eur(x.rate)}</span>{x.zinssatz ? <span>{x.zinssatz.toLocaleString('de-DE')} % Zins</span> : null}
                       {x.naechste_faelligkeit && <span style={{ color: x.naechste_faelligkeit <= heute ? LEUCHT.kritisch : undefined }}>fällig {datumDe(x.naechste_faelligkeit)}</span>}
                       <span style={{ color: l.monate === null ? LEUCHT.achtung : undefined }}>{l.monate === null ? l.grund : `${l.monate} Monate · bis ${schuldenfreiAm(l.monate, heute)}`}</span>
@@ -133,10 +130,10 @@ export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
                 return (
                   <div key={b.id} style={{ padding: '9px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                      <div style={{ minWidth: 0 }}><strong>{b.empfaenger || '–'}</strong> <span style={{ fontSize: 12.5, color: C.inkDim }}>{b.bezeichnung}</span></div>
+                      <div style={{ minWidth: 0 }}><strong>{b.empfaenger || '–'}</strong> <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{b.bezeichnung}</span></div>
                       <span style={{ fontVariantNumeric: 'tabular-nums', color: b.betrag ? C.ink : LEUCHT.achtung }}>{b.betrag ? eur(b.betrag) : 'Betrag fehlt'}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: spaet ? LEUCHT.kritisch : C.inkDim, marginTop: 4 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: spaet ? LEUCHT.kritisch : C.inkDim, marginTop: 4 }}>
                       <span>{b.faellig_am ? `fällig ${datumDe(b.faellig_am)}${spaet ? ' · überfällig' : ''}` : 'ohne Fälligkeit'}</span>{b.verursacher && <span>· {b.verursacher}</span>}
                       <span style={{ flex: 1 }} />
                       <button style={{ ...klein, color: LEUCHT.gut, fontWeight: 700, opacity: laeuft[b.id] ? 0.5 : 1 }} disabled={!!laeuft[b.id]} onClick={() => void bezahlt(b, true)}>{laeuft[b.id] ? 'Speichert …' : 'Bezahlt'}</button>
@@ -160,10 +157,10 @@ export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
                   {bezahlteR.map(b => (
                     <div key={b.id} style={{ padding: '8px 2px', borderBottom: '1px solid rgba(255,255,255,.05)', opacity: 0.7 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                        <div style={{ minWidth: 0 }}><strong>{b.empfaenger || '–'}</strong> <span style={{ fontSize: 12.5, color: C.inkDim }}>{b.bezeichnung}</span></div>
+                        <div style={{ minWidth: 0 }}><strong>{b.empfaenger || '–'}</strong> <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{b.bezeichnung}</span></div>
                         <span style={{ fontVariantNumeric: 'tabular-nums' }}>{b.betrag ? eur(b.betrag) : '–'}</span>
                       </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim, marginTop: 4 }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>
                         <Chip farbe={LEUCHT.gut}>bezahlt {datumDe(b.bezahlt_am)}</Chip>
                         {b.faellig_am && <span>war fällig {datumDe(b.faellig_am)}</span>}
                         <span style={{ flex: 1 }} />
@@ -187,7 +184,7 @@ export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <input type="checkbox" aria-label="erledigt" checked={b.erledigt} disabled={!!laeuft[b.id]} onChange={e => void bezahlt(b, e.target.checked)} />
                   <span style={{ flex: 1, textDecoration: b.erledigt ? 'line-through' : undefined, color: b.erledigt ? C.inkLeise : C.ink }}>{b.bezeichnung}</span>
-                  <span style={{ fontSize: 12.5, color: b.faellig_am && b.faellig_am < heute ? LEUCHT.kritisch : C.inkDim }}>{datumDe(b.faellig_am)}</span>
+                  <span style={{ fontSize: TYP.bedien, color: b.faellig_am && b.faellig_am < heute ? LEUCHT.kritisch : C.inkDim }}>{datumDe(b.faellig_am)}</span>
                   <button style={klein} onClick={() => setBelegForm(b)}>Bearbeiten</button>
                 </div>
                 {fehlerzeile(b, true)}
@@ -255,7 +252,7 @@ function SonderDialog({ s, patch, melde, onZu }: { s: Schuld; patch: Props['patc
           <div>Zinsen gespart: <strong style={{ color: LEUCHT.gut }}>{eur(r.zinsenGespart)}</strong></div>
         </div>
       ) : <div style={{ color: LEUCHT.achtung }}>Nicht berechenbar — Rate oder Zinssatz fehlen.</div>}
-      <div style={{ fontSize: 12.5, color: C.inkLeise }}>Zum Rechnen genügt die Eingabe. Erst „Übernehmen“ ändert den Restbetrag.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Zum Rechnen genügt die Eingabe. Erst „Übernehmen“ ändert den Restbetrag.</div>
     </Dialog>
   );
 }

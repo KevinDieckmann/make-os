@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift } from '../schlank';
+import { Karte, Ueberschrift } from '../ui';
 import { SAEULE_FARBE } from './teile';
 
 export interface VerlaufPunkt { tag: string; index: number | null; saeulen: Record<string, number | null> }
@@ -49,7 +49,7 @@ export function VerlaufKarte({ punkte, serien = SERIEN, i = 4, name = 'Business-
       <Ueberschrift rechts={n ? <span>seit {tagKurz(punkte[0].tag)} · {n} Tag{n === 1 ? '' : 'e'}</span> : undefined}>Verlauf</Ueberschrift>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
         {serien.map(s => (
-          <span key={s.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: C.inkDim }}>
+          <span key={s.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: TYP.bedien, color: C.inkDim }}>
             <span aria-hidden style={{ width: 16, height: s.id === 'index' ? 3 : 2, borderRadius: 2, background: s.farbe }} />{s.label}
           </span>
         ))}
@@ -81,7 +81,7 @@ export function VerlaufKarte({ punkte, serien = SERIEN, i = 4, name = 'Business-
           })}
         </svg>
         {aktiv && zeige != null && (
-          <div style={{ position: 'absolute', top: 6, left: `min(max(${(x(zeige) / W) * 100}% - 90px, 0px), calc(100% - 190px))`, width: 180, pointerEvents: 'none', background: C.flaecheHoch, border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: '8px 10px', fontSize: 12.5, color: C.ink, boxShadow: '0 10px 30px -10px rgba(0,0,0,.7)' }}>
+          <div style={{ position: 'absolute', top: 6, left: `min(max(${(x(zeige) / W) * 100}% - 90px, 0px), calc(100% - 190px))`, width: 180, pointerEvents: 'none', background: C.flaecheHoch, border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: '8px 10px', fontSize: TYP.bedien, color: C.ink, boxShadow: '0 10px 30px -10px rgba(0,0,0,.7)' }}>
             <div style={{ color: C.inkDim, marginBottom: 4 }}>{tagKurz(aktiv.tag)}</div>
             {serien.map(s => (
               <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontVariantNumeric: 'tabular-nums' }}>

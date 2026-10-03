@@ -12,7 +12,7 @@ import { eur, zuCent } from '@/lib/finanzen/haushalt/typen';
 import { artVon, KREDIT, type KatName, type Topf } from '@/lib/finanzen/haushalt/einordnung';
 import { einnahmebild, letzterMonatMitDaten } from '@/lib/finanzen/haushalt/kennzahlen';
 import { monatVon, monatName, datumDe } from '@/lib/finanzen/haushalt/monat';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../ui';
 import { Betrag, Dialog, Feld, Haken, Hinweis, Kachel, Kacheln, Leiste, auswahl, type HaushaltDaten, type Op } from './gemeinsam';
 
 const TOPF: Record<Topf, { name: string; farbe: string; etikett?: string }> = {
@@ -62,7 +62,7 @@ export function Einnahmen({ h, katName, patch, aktion, melde, laden }: Props) {
   const max = e.arten[0]?.summe || 1;
   return (
     <>
-      <Karte i={1} akzent={LEUCHT.gut}>
+      <Karte i={1} ton={LEUCHT.gut}>
         <Ueberschrift farbe={LEUCHT.gut} rechts={f.monat ? monatName(f.monat) : 'alle Monate'}>Einnahmen</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 16 }}>
           <select aria-label="Monat" value={f.monat} onChange={x => setF({ ...f, monat: x.target.value })} style={auswahl}><option value="">Alle Monate</option>{monate.map(m => <option key={m} value={m}>{monatName(m)}</option>)}</select>
@@ -90,11 +90,11 @@ export function Einnahmen({ h, katName, patch, aktion, melde, laden }: Props) {
             {e.arten.map(a => (
               <div key={a.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 56px', gap: 12, alignItems: 'center' }}>
                 <div style={{ minWidth: 0 }}>
-                  <strong style={{ fontSize: TYP.body }}>{a.name}</strong>{' '}{TOPF[a.topf].etikett && <Chip farbe={TOPF[a.topf].farbe}>{TOPF[a.topf].etikett}</Chip>} <span style={{ color: C.inkLeise, fontSize: 12 }}>({a.anzahl})</span>
+                  <strong style={{ fontSize: TYP.body }}>{a.name}</strong>{' '}{TOPF[a.topf].etikett && <Chip farbe={TOPF[a.topf].farbe}>{TOPF[a.topf].etikett}</Chip>} <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>({a.anzahl})</span>
                   <Leiste anteil={a.summe / max * 100} farbe={TOPF[a.topf].farbe} />
                 </div>
                 <Betrag cent={a.summe} farbe={C.ink} />
-                <span style={{ fontSize: 12.5, color: C.inkDim, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{a.anteil.toFixed(1).replace('.', ',')} %</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{a.anteil.toFixed(1).replace('.', ',')} %</span>
               </div>
             ))}
           </div>
@@ -110,15 +110,15 @@ export function Einnahmen({ h, katName, patch, aktion, melde, laden }: Props) {
             <div key={b.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '6px 14px', padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.empfaenger || '–'}</div>
-                <div style={{ fontSize: 12, color: C.inkLeise }}>{datumDe(b.datum)} · {konto(b.konto_id)}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{datumDe(b.datum)} · {konto(b.konto_id)}</div>
               </div>
               <Betrag cent={b.betrag} vorzeichen />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <select aria-label="Art" value={b.kategorie_id ?? ''} onChange={x => void artSetzen(b, x.target.value)} style={{ ...auswahl, padding: '5px 8px', fontSize: 12.5, maxWidth: 280, color: b.kategorie_id ? C.ink : LEUCHT.achtung }}>
+                <select aria-label="Art" value={b.kategorie_id ?? ''} onChange={x => void artSetzen(b, x.target.value)} style={{ ...auswahl, padding: '5px 8px', fontSize: TYP.bedien, maxWidth: 280, color: b.kategorie_id ? C.ink : LEUCHT.achtung }}>
                   <option value="">— offen —</option><ArtOptionen kategorien={h.stamm.kategorien} />
                 </select>
                 {schuld && <Chip farbe={LEUCHT.kritisch}>als Schuld angelegt</Chip>}
-                {katName(b.kategorie_id) === KREDIT && !schuld && <button onClick={() => setKredit(b)} style={{ background: 'none', border: 'none', color: LEUCHT.achtung, cursor: 'pointer', fontSize: 12.5 }}>Schuld anlegen</button>}
+                {katName(b.kategorie_id) === KREDIT && !schuld && <button onClick={() => setKredit(b)} style={{ background: 'none', border: 'none', color: LEUCHT.achtung, cursor: 'pointer', fontSize: TYP.bedien }}>Schuld anlegen</button>}
               </div>
             </div>
           );

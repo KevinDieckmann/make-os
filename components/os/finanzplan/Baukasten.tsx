@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, feld } from '../schlank';
+import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, feld } from '../ui';
 import { WEG } from '@/lib/wege';
 import { eur, prozent, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfen';
 import { UG_KURZ, GESELLSCHAFTEN } from '@/lib/einheiten';
@@ -176,7 +176,7 @@ export function Baukasten() {
         <KnopfKlein farbe={C.inkDim} onClick={() => setName(ps.name)}>Umbenennen</KnopfKlein>
         {loeschen ? <KnopfKlein farbe={LEUCHT.kritisch} onClick={() => { setLoeschen(false); void aendere([{ pfad: `/planszenarien/id=${ps.id}`, alt: ps.name }], `Szenario „${ps.name}“ gelöscht`); setGewaehlt(null); }}>Wirklich löschen</KnopfKlein> : <KnopfKlein farbe={LEUCHT.kritisch} onClick={() => setLoeschen(true)}>Löschen</KnopfKlein>}
       </div>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim, marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim, marginBottom: 14 }}>
         <span>Basis: Fixkosten und Zeilen des Plans + Treiber</span>
         <Auswahl wert={ps.basis} onWahl={v => void setze('/basis', ps.basis, v, 'Treiber')} optionen={d.szenarien.map(s => ({ id: s.id, label: s.name }))} titel="Treiber-Szenario" />
         <span style={{ color: C.inkLeise }}>Treiber und gemeinsame Annahmen: <button type="button" onClick={() => geh('szenarien')} style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', font: 'inherit' }}>Treiber &amp; Annahmen ›</button></span>
@@ -202,13 +202,13 @@ export function Baukasten() {
                   {vorschlaege.produkte.map(p => (
                     <button key={p.id} type="button" title={p.fehlt.length ? `Für die Planung fehlt: ${p.fehlt.join(', ')} — auf der Produktseite ergänzen` : `${p.einheit}${p.laufzeit ? ` · ${p.laufzeit} Monate` : ''}`}
                       onClick={() => void bausteinDazu(bausteinAusProdukt(neueKennung('b'), p, { start: m0 }), `Umsatz aus Produkt ${p.name}`)}
-                      style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${p.fehlt.length ? `${LEUCHT.achtung}66` : 'rgba(255,255,255,.12)'}`, background: 'transparent', color: p.fehlt.length ? LEUCHT.achtung : C.ink }}>
+                      style={{ fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${p.fehlt.length ? `${LEUCHT.achtung}66` : 'rgba(255,255,255,.12)'}`, background: 'transparent', color: p.fehlt.length ? LEUCHT.achtung : C.ink }}>
                       + {p.name}{p.preis ? ` · ${eur(p.preis)} € ${p.basis ? RHYTHMUS_LABEL[RHYTHMUS_AUS_BASIS[p.basis]] : ''}` : ' · Preis offen'}{p.status === 'entwurf' ? ' · Entwurf' : ''}
                     </button>
                   ))}
                 </div>
-              ) : <div style={{ fontSize: 12.5, color: C.inkLeise }}>Keine Produkte im Katalog — Bausteine gehen auch frei.</div>}
-              <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Produkte sind die eine Quelle: Preis, Basis und Laufzeit pflegst du auf der <Link href={WEG.produkt()} style={{ color: C.aktiv }}>Produktseite ›</Link>. Gelb = dort fehlt etwas für die Planung.</div>
+              ) : <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine Produkte im Katalog — Bausteine gehen auch frei.</div>}
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Produkte sind die eine Quelle: Preis, Basis und Laufzeit pflegst du auf der <Link href={WEG.produkt()} style={{ color: C.aktiv }}>Produktseite ›</Link>. Gelb = dort fehlt etwas für die Planung.</div>
               {vorschlaege.istBasis.length > 0 && (
                 <>
                   <div style={{ ...MIKRO, marginTop: 12, marginBottom: 6 }}>Ist-Basis: aktive Mandate und gewonnene Deals</div>
@@ -216,7 +216,7 @@ export function Baukasten() {
                     {vorschlaege.istBasis.map(v => (
                       <button key={`${v.quelle}-${v.quelleId}`} type="button" title={`${v.quelle === 'mandat' ? 'Mandat' : 'Gewonnener Deal'} · ${v.titel}${v.produkt ? ` · ${v.produkt}` : ' · ohne Produkt'}`}
                         onClick={() => void bausteinDazu(istBaustein(v), `Umsatz aus ${v.quelle === 'mandat' ? 'Mandat' : 'Deal'} ${v.kunde}`)}
-                        style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${LEUCHT.geld}55`, background: 'transparent', color: C.ink }}>
+                        style={{ fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${LEUCHT.geld}55`, background: 'transparent', color: C.ink }}>
                         + {v.kunde} · {eur(v.betrag)} € {RHYTHMUS_LABEL[v.rhythmus]}
                       </button>
                     ))}
@@ -261,7 +261,7 @@ export function Baukasten() {
           {GESELLSCHAFTEN.map((o, k) => <SteuerKarte key={o} ort={o} szenario={ps} i={3 + k} />)}
 
           <Karte i={3}>
-            <Ueberschrift rechts={Object.keys(live).length ? <span style={{ color: LEUCHT.achtung, fontSize: 12 }}>Loslassen speichert</span> : undefined}>Was wäre, wenn — Regler</Ueberschrift>
+            <Ueberschrift rechts={Object.keys(live).length ? <span style={{ color: LEUCHT.achtung, fontSize: TYP.bedien }}>Loslassen speichert</span> : undefined}>Was wäre, wenn — Regler</Ueberschrift>
             <ReglerZeile label={`Umsatz ${UG_KURZ} je Monat zusätzlich`} wert={reglerWert('regler:umsatz')} min={0} max={20000} schritt={250} einheit="€" onLive={v => setLive(l => ({ ...l, 'regler:umsatz': v }))} onFest={() => reglerFest('regler:umsatz')} />
             <ReglerZeile label="Kevin brutto" wert={reglerWert('kevinBrutto')} min={0} max={10000} schritt={100} einheit="€" onLive={v => setLive(l => ({ ...l, kevinBrutto: v }))} onFest={() => reglerFest('kevinBrutto')} />
             <ReglerZeile label="Malin brutto" wert={reglerWert('malinBrutto')} min={0} max={10000} schritt={100} einheit="€" onLive={v => setLive(l => ({ ...l, malinBrutto: v }))} onFest={() => reglerFest('malinBrutto')} />
@@ -298,11 +298,11 @@ export function Baukasten() {
             {g.aw.ziele.staende.length ? g.aw.ziele.staende.map(s => (
               <div key={s.ziel.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien }}>
                 <span style={{ flex: 1 }}>{s.ziel.name}</span>
-                <span style={{ color: C.inkLeise, fontSize: 12 }}>{s.erreichtMonat ? monatLabel(d, s.erreichtMonat) : '—'}</span>
+                <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{s.erreichtMonat ? monatLabel(d, s.erreichtMonat) : '—'}</span>
                 <StatusPille status={s.status === 'verfehlt' ? 'gekippt' : s.status} />
               </div>
             )) : <Nichts>Keine Ziele — unter Ziele &amp; Töpfe anlegen.</Nichts>}
-            <div style={{ marginTop: 10, display: 'flex', gap: 10, fontSize: 12.5, color: C.inkDim, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: 10, display: 'flex', gap: 10, fontSize: TYP.bedien, color: C.inkDim, flexWrap: 'wrap' }}>
               <span>Mindestumsatz {UG_KURZ} Ø 12 M: <Geld v={g.aw.mindestumsatz.schnitt12} /> €</span>
               <span>· Umsatz Ø 12 M: <Geld v={g.aw.mindestumsatz.umsatzSchnitt12} farbe={g.aw.mindestumsatz.umsatzSchnitt12 < g.aw.mindestumsatz.schnitt12 ? LEUCHT.achtung : LEUCHT.gut} /> €</span>
             </div>
@@ -311,8 +311,8 @@ export function Baukasten() {
       </Spalten>
 
       <Karte i={4}>
-        <Ueberschrift rechts={<span style={{ color: C.inkLeise, fontSize: 12 }}>Klick wählt ab oder an</span>}>Nebeneinander — bis zu drei Szenarien</Ueberschrift>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>{vgPillen.map(p => <span key={p.id} style={{ fontSize: 12, padding: '3px 9px', borderRadius: 999, border: `1px solid ${vgAn(p.id) ? C.aktiv : 'rgba(255,255,255,.08)'}`, color: vgAn(p.id) ? C.aktiv : C.inkLeise, cursor: 'pointer' }} onClick={() => vgWahl(p.id)}>{vgAn(p.id) ? '✓ ' : ''}{p.label}</span>)}</div>
+        <Ueberschrift rechts={<span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Klick wählt ab oder an</span>}>Nebeneinander — bis zu drei Szenarien</Ueberschrift>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>{vgPillen.map(p => <span key={p.id} style={{ fontSize: TYP.bedien, padding: '3px 9px', borderRadius: 999, border: `1px solid ${vgAn(p.id) ? C.aktiv : 'rgba(255,255,255,.08)'}`, color: vgAn(p.id) ? C.aktiv : C.inkLeise, cursor: 'pointer' }} onClick={() => vgWahl(p.id)}>{vgAn(p.id) ? '✓ ' : ''}{p.label}</span>)}</div>
         <VergleichTabelle spalten={vg} d={d} alsArbeitsplan={alsArbeitsplan} />
       </Karte>
 
@@ -336,7 +336,7 @@ function NeuDialog({ neu, setNeu, treiber, onOk }: { neu: { name: string; basis:
     <Dialog titel="Neues Szenario" onZu={() => setNeu(null)} aktionen={<><KnopfKlein farbe={C.inkDim} onClick={() => setNeu(null)}>Abbrechen</KnopfKlein><Knopf aus={!neu.name.trim()} onClick={onOk}>Anlegen</Knopf></>}>
       <input autoFocus value={neu.name} placeholder="Name, z. B. „Zwei neue Retainer ab Januar“" aria-label="Name des Szenarios" onChange={e => setNeu({ ...neu, name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter' && neu.name.trim()) onOk(); }} style={{ ...feld }} />
       <Feld label="Treiber-Szenario als Basis"><Auswahl wert={neu.basis} onWahl={v => setNeu({ ...neu, basis: v })} optionen={treiber.map(s => ({ id: s.id, label: s.name }))} titel="Treiber" /></Feld>
-      <div style={{ fontSize: 12.5, color: C.inkLeise }}>Bausteine und Annahmen kommen danach — alles live gerechnet, alles rückgängig.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Bausteine und Annahmen kommen danach — alles live gerechnet, alles rückgängig.</div>
     </Dialog>
   );
 }
@@ -360,12 +360,12 @@ function UmsatzZeile({ b, ps, produkte, setze, summe, monate, entfernen }: { b: 
     <tr style={{ opacity: b.an ? 1 : 0.5 }}>
       <td style={TD}><Schalter an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} /></td>
       <td style={TD}>
-        <select value={b.produktId && produkte.some(x => x.id === b.produktId) ? b.produktId : '__frei'} aria-label="Produkt" onChange={e => produktWahl(e.target.value)} style={{ ...feld, fontSize: 12.5, padding: '6px 8px', borderRadius: 10, width: 170, appearance: 'auto' }} title={produkt?.fehlt.length ? `Für die Planung fehlt: ${produkt.fehlt.join(', ')}` : undefined}>
+        <select value={b.produktId && produkte.some(x => x.id === b.produktId) ? b.produktId : '__frei'} aria-label="Produkt" onChange={e => produktWahl(e.target.value)} style={{ ...feld, fontSize: TYP.bedien, padding: '6px 8px', borderRadius: 10, width: 170, appearance: 'auto' }} title={produkt?.fehlt.length ? `Für die Planung fehlt: ${produkt.fehlt.join(', ')}` : undefined}>
           <option value="__frei">{b.produktId && !produkte.some(x => x.id === b.produktId) ? `${b.produkt ?? 'Produkt'} (nicht im Katalog)` : 'ohne Produkt'}</option>
           {produkte.map(x => <option key={x.id} value={x.id}>{x.name}{x.status === 'entwurf' ? ' (Entwurf)' : ''}</option>)}
         </select>
         {!b.produktId && <TextFeld wert={b.name} onFertig={t => void setze(p('name'), b.name, t, `${n} · Name`)} breite={170} titel="Name" platzhalter="Was wird verkauft?" />}
-        {produkt?.fehlt.length ? <div style={{ fontSize: 11, color: LEUCHT.achtung, marginTop: 2 }}>fehlt im Produkt: {produkt.fehlt.join(', ')}</div> : null}
+        {produkt?.fehlt.length ? <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 2 }}>fehlt im Produkt: {produkt.fehlt.join(', ')}</div> : null}
       </td>
       <td style={TD}><TextFeld wert={b.kunde ?? ''} onFertig={t => void setze(p('kunde'), b.kunde, t || undefined, `${n} · Kunde`)} breite={150} titel="Kunde oder Segment" platzhalter="Kunde / Segment" /></td>
       <td style={TD}><Auswahl wert={b.einheit} onWahl={v => void setze(p('einheit'), b.einheit, v, `${n} · Wo`)} optionen={EINHEITEN} titel="Wo" /></td>
@@ -404,7 +404,7 @@ function KostenZeile({ b, setze, summe, monate, entfernen }: { b: Baustein; setz
 function ReglerZeile({ label, wert, min, max, schritt, einheit, prozent: pz, onLive, onFest }: { label: string; wert: number; min: number; max: number; schritt: number; einheit: string; prozent?: boolean; onLive: (v: number) => void; onFest: () => void }) {
   const { verbergen } = usePlan();
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) minmax(120px, 2fr) 90px', gap: 10, alignItems: 'center', padding: '6px 0', fontSize: 12.5, color: C.inkDim }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) minmax(120px, 2fr) 90px', gap: 10, alignItems: 'center', padding: '6px 0', fontSize: TYP.bedien, color: C.inkDim }}>
       <span>{label}</span>
       <input type="range" min={min} max={max} step={schritt} value={wert} aria-label={label} onChange={e => onLive(Number(e.target.value))} onPointerUp={onFest} onKeyUp={onFest} onBlur={onFest} onTouchEnd={onFest} style={{ width: '100%', accentColor: C.aktiv }} />
       <span style={{ textAlign: 'right', fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', color: C.ink, ...(verbergen ? { filter: 'blur(6px)' } : {}) }}>{pz ? prozent(wert) : `${wert > 0 && min < 0 ? '+' : ''}${eur(wert)} ${einheit}`}</span>
@@ -419,7 +419,7 @@ function VergleichTabelle({ spalten, d, alsArbeitsplan }: { spalten: ReturnType<
     { l: 'Treiber', w: s => <span style={{ color: C.inkDim }}>{s.treiber}</span> },
     { l: 'Bausteine', w: s => <span style={{ color: C.inkDim }}>{s.ps ? `${s.ps.bausteine.filter(b => b.an).length} an` : '—'}</span> },
     { l: 'Frei verfügbar jetzt', w: s => <><Geld v={s.aw.frei.gesamt} /> €</> },
-    { l: `Tiefpunkt ${UG_KURZ} frei`, w: s => <><Geld v={s.g.kz.minFrei} /> € <span style={{ color: C.inkLeise, fontSize: 11 }}>{monatLabel(d, s.g.kz.minMonat)}</span></> },
+    { l: `Tiefpunkt ${UG_KURZ} frei`, w: s => <><Geld v={s.g.kz.minFrei} /> € <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{monatLabel(d, s.g.kz.minMonat)}</span></> },
     { l: `Monate ${UG_KURZ} im Minus`, w: s => <span style={{ color: s.g.kz.monateMinus ? LEUCHT.kritisch : C.ink }}>{s.g.kz.monateMinus}</span> },
     { l: `Runway ${UG_KURZ}`, w: s => runway(s.aw.runway.ug, s.aw.runway.horizont) },
     { l: `${UG_KURZ} frei Dez 27`, w: s => <><Geld v={s.g.kz.freiDez27} /> €</> },

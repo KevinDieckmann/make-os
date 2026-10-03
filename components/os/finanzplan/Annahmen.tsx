@@ -7,7 +7,7 @@
 
 import type { ReactNode } from 'react';
 import { FARBE as C, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift } from '../schlank';
+import { Karte, Ueberschrift } from '../ui';
 import { finanzOrtName, GESELLSCHAFTEN, type Gesellschaftskennung } from '@/lib/einheiten';
 import { annahmeGruppen, type AnnahmeFeld } from '@/lib/finanzen/annahmen-felder';
 import { SCHWELLEN_FELDER, SCHWELLEN_VORGABE, schwellenVon, type Schwellen } from '@/lib/finanzen/schwellen';

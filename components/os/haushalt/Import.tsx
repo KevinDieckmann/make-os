@@ -10,11 +10,11 @@
 // geladen, wenn jemand wirklich eine PDF wählt.
 
 import { useState } from 'react';
-import { FARBE as C } from '@/lib/make-one/design';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/finanzen/haushalt/typen';
 import { zeilenAusTextItems } from '@/lib/finanzen/haushalt/import';
 import { datumDe } from '@/lib/finanzen/haushalt/monat';
-import { Knopf, feld, LEUCHT } from '../schlank';
+import { Knopf, feld, LEUCHT } from '../ui';
 import { Dialog, Feld, auswahl, type HaushaltDaten } from './gemeinsam';
 
 interface Vorschau {
@@ -97,7 +97,7 @@ export function ImportDialog({ h, aktion, laden, melde, onZu }: {
       <Feld label="Datei — N26-PDF oder CSV"><input type="file" accept=".pdf,.csv,.txt" onChange={e => { setDatei(e.target.files?.[0] ?? null); setV(null); }} style={{ color: C.inkDim }} /></Feld>
       {!datei && <Feld label="…oder Text aus dem PDF einfügen"><textarea rows={3} value={text} onChange={e => { setText(e.target.value); setV(null); }} placeholder="Beschreibung 01.09.2026 -12,34€" style={{ ...feld, resize: 'vertical' }} /></Feld>}
       {stand && <div style={{ color: LEUCHT.achtung }}>{stand}</div>}
-      {!v && !stand && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Bereits vorhandene Buchungen werden erkannt und nicht doppelt angelegt. Zuerst wird nur geprüft — geschrieben wird erst nach „übernehmen“.</div>}
+      {!v && !stand && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Bereits vorhandene Buchungen werden erkannt und nicht doppelt angelegt. Zuerst wird nur geprüft — geschrieben wird erst nach „übernehmen“.</div>}
       {v && (
         <div style={{ display: 'grid', gap: 6, fontSize: 13.5, fontVariantNumeric: 'tabular-nums' }}>
           <div>{v.gefunden} Buchungen gelesen{v.zeitraum ? ` (${datumDe(v.zeitraum.von)} bis ${datumDe(v.zeitraum.bis)})` : ''}.</div>

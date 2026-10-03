@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Spalten, Spalte, Haken, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Spalten, Spalte, Haken, LEUCHT } from '../ui';
 import type { Einheit, Posten, Schuld } from '@/lib/finanzen/rechenkern';
 import { tilgungsplan, zahlungskalender, istSchnitt, sollBudget } from '@/lib/finanzen/rechenkern';
 import { EINHEIT_LABEL, KAL, monatLabel, tagKurz, plusTage, letzterVoller, neueKennung, postenOffen, personKennung } from '@/lib/finanzen/plan/hilfen';
@@ -58,7 +58,7 @@ export function Schulden() {
             </tr>
             {plaene.map(({ s, t, t0 }) => (
               <tr key={s.id}>
-                <td style={TD}><TextFeld wert={s.name} onFertig={v => setze(s, 'name', s.name, v, 'Name')} breite={160} titel="Name" />{s.notiz && <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 3, maxWidth: 240 }}>{s.notiz}</div>}</td>
+                <td style={TD}><TextFeld wert={s.name} onFertig={v => setze(s, 'name', s.name, v, 'Name')} breite={160} titel="Name" />{s.notiz && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, maxWidth: 240 }}>{s.notiz}</div>}</td>
                 <td style={TD}><Auswahl wert={s.einheit} onWahl={v => setze(s, 'einheit', s.einheit, v, 'Einheit')} optionen={EINHEITEN} titel="Einheit" /></td>
                 <td style={TD}><Auswahl wert={s.status} onWahl={v => setze(s, 'status', s.status, v, 'Status')} optionen={[{ id: 'läuft', label: 'läuft' }, { id: 'unklar', label: 'unklar' }, { id: 'getilgt', label: 'getilgt' }]} titel="Status" /></td>
                 <td style={TDr}><ZahlFeld wert={s.rest} onFertig={v => setze(s, 'rest', s.rest, v ?? 0, 'Rest')} breite={100} titel="Rest" /></td>
@@ -66,7 +66,7 @@ export function Schulden() {
                 <td style={TDr}><ZahlFeld wert={s.zins} onFertig={v => setze(s, 'zins', s.zins, v ?? 0, 'Zins')} breite={64} titel="Zins in Prozent" /></td>
                 <td style={TD}><MonatWahl wert={s.start} onWahl={m => setze(s, 'start', s.start, m, 'erste Rate')} monate={d.monate} /></td>
                 <td style={TD}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><input type="range" min={0} max={500} step={10} value={sonder[s.id] ?? 0} aria-label="Sondertilgung je Monat" onChange={e => setSonder({ ...sonder, [s.id]: Number(e.target.value) })} style={{ width: 90, accentColor: C.aktiv }} /><Geld v={sonder[s.id] ?? 0} farbe={C.inkDim} /></span></td>
-                <td style={TD}>{t.frei === null ? <span style={{ color: C.inkLeise }}>—</span> : t.frei === 0 ? 'jetzt' : monatLabel(d, t.frei)}{(sonder[s.id] ?? 0) > 0 && t0.frei !== t.frei && t0.frei && t.frei ? <span style={{ color: LEUCHT.gut, fontSize: 11.5 }}> {t0.frei - t.frei} M früher</span> : null}</td>
+                <td style={TD}>{t.frei === null ? <span style={{ color: C.inkLeise }}>—</span> : t.frei === 0 ? 'jetzt' : monatLabel(d, t.frei)}{(sonder[s.id] ?? 0) > 0 && t0.frei !== t.frei && t0.frei && t.frei ? <span style={{ color: LEUCHT.gut, fontSize: TYP.bedien }}> {t0.frei - t.frei} M früher</span> : null}</td>
                 <td style={TDr}><Geld v={t.zinsen} farbe={C.inkLeise} /></td>
                 <td style={TD}><KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: `/schulden/id=${s.id}`, alt: s.name }], `Schuld entfernt: ${s.name}`)} titel="Schuld entfernen">−</KnopfKlein></td>
               </tr>
@@ -181,7 +181,7 @@ export function Kalender() {
                     const faellig = z.typ === 'jahr' && z.faellig?.length ? `fällig ${z.faellig.map(f => KAL[f - 1]).join(', ')}` : '';
                     return (
                       <tr key={z.id}>
-                        <td style={TD}><button type="button" onClick={() => setZeile(z.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, font: 'inherit', cursor: 'pointer', borderBottom: `1px dotted ${C.inkLeise}`, textAlign: 'left' }}>{z.name}</button>{faellig && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{faellig}</div>}</td>
+                        <td style={TD}><button type="button" onClick={() => setZeile(z.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, font: 'inherit', cursor: 'pointer', borderBottom: `1px dotted ${C.inkLeise}`, textAlign: 'left' }}>{z.name}</button>{faellig && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{faellig}</div>}</td>
                         <td style={TD}><Etikett einheit={z.einheit} /></td>
                         <td style={TDr}><Geld v={mo} /></td>
                         <td style={TDr}><Geld v={mo * 12} farbe={C.inkLeise} /></td>

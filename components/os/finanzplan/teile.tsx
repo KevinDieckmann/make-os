@@ -7,8 +7,8 @@
 // „Verbergen“ überall greift.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { FARBE as C, SCHRIFT, TYP, MIKRO, TIEF } from '@/lib/make-one/design';
-import { LEUCHT, feld } from '../schlank';
+import { FARBE as C, SCHRIFT, TYP, MIKRO, TIEF, FLAECHE_STIL, ECKE, ZIEL } from '@/lib/make-one/design';
+import { LEUCHT, feld, Knopf, Chip, Pillen as UiPillen, Leer, Hinweis as UiHinweis } from '../ui';
 import { mitglied, nameVon } from '@/lib/crm/team';
 import type { Einheit } from '@/lib/finanzen/rechenkern';
 import { EINHEIT_LABEL, eur, parseBetrag, personKennung } from '@/lib/finanzen/plan/hilfen';
@@ -41,10 +41,10 @@ export function Geld({ v, dezimal = 0, farbe, plus, einheit = '', gross, stil }:
 /** Kennzahl-Kachel: Beschriftung, große Zahl, Zusatz — optional mit Zustandspunkt. */
 export function Kachel({ label, wert, unter, punkt, farbe }: { label: ReactNode; wert: ReactNode; unter?: ReactNode; punkt?: string; farbe?: string }) {
   return (
-    <div style={{ minWidth: 0, padding: '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,.03)', boxShadow: farbe ? `inset 3px 0 0 ${farbe}` : undefined }}>
+    <div style={{ minWidth: 0, padding: '12px 14px', ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, boxShadow: farbe ? `inset 3px 0 0 ${farbe}` : undefined }}>
       <div style={{ ...MIKRO, display: 'flex', alignItems: 'center', gap: 7 }}>{punkt && <span style={{ width: 8, height: 8, borderRadius: '50%', background: punkt, boxShadow: `0 0 8px ${punkt}55`, flex: '0 0 auto' }} />}{label}</div>
       <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(20px,2.4vw,26px)', letterSpacing: '-.03em', lineHeight: 1.1, margin: '6px 0 3px', color: C.ink, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{wert}</div>
-      {unter && <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.4 }}>{unter}</div>}
+      {unter && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{unter}</div>}
     </div>
   );
 }
@@ -55,23 +55,23 @@ export function Kacheln({ children, min = 150 }: { children: ReactNode; min?: nu
 /** Kleines Etikett für die Einheit (Privat · MAKE Innovation GmbH · KD Ventures · Selbstständigkeit) — Namen aus lib/einheiten.ts. */
 export function Etikett({ einheit, text }: { einheit?: Einheit; text?: string }) {
   const f = einheit ? EINHEIT_FARBE[einheit] : C.inkLeise;
-  return <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '.04em', padding: '2px 8px', borderRadius: 999, background: `${f}1F`, color: f, whiteSpace: 'nowrap' }}>{text ?? (einheit ? EINHEIT_LABEL[einheit] : '')}</span>;
+  return <Chip farbe={f}>{text ?? (einheit ? EINHEIT_LABEL[einheit] : '')}</Chip>;
 }
 
 /** Statuspille für Ziele und Abschlüsse. */
 export function StatusPille({ status }: { status: string }) {
   const f = status === 'erreicht' || status === 'im Plan' || status === 'abgeschlossen' ? LEUCHT.gut : status === 'knapp' ? LEUCHT.achtung : status === 'verfehlt' ? LEUCHT.kritisch : C.inkDim;
-  return <span style={{ display: 'inline-block', fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: `${f}22`, color: f, whiteSpace: 'nowrap' }}>{status}</span>;
+  return <Chip farbe={f}>{status}</Chip>;
 }
 
 /** Plakette der Person (Kevin türkis, Malin lila), klein. */
 export function PersonMarke({ wer, mitName }: { wer: string | null | undefined; mitName?: boolean }) {
   const k = personKennung(wer);
-  if (k === 'beide') return <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', fontSize: 12, color: C.inkDim }}><PersonMarke wer="kevin" /><PersonMarke wer="malin" />{mitName && 'Beide'}</span>;
+  if (k === 'beide') return <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}><PersonMarke wer="kevin" /><PersonMarke wer="malin" />{mitName && 'Beide'}</span>;
   const f = personFarbe(k); const n = personName(k);
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkDim, whiteSpace: 'nowrap' }}>
-      <span title={n} style={{ width: 18, height: 18, borderRadius: '50%', display: 'inline-grid', placeItems: 'center', background: `${f}26`, color: f, border: `1px solid ${f}66`, fontSize: 11, fontWeight: 700 }}>{n.charAt(0)}</span>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'nowrap' }}>
+      <span title={n} style={{ width: 18, height: 18, borderRadius: '50%', display: 'inline-grid', placeItems: 'center', background: `${f}26`, color: f, border: `1px solid ${f}66`, fontSize: TYP.bedien, fontWeight: 700 }}>{n.charAt(0)}</span>
       {mitName && n}
     </span>
   );
@@ -84,8 +84,9 @@ export const TD: CSSProperties = { padding: '7px 8px', borderBottom: `1px solid 
 export const TDr: CSSProperties = { ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
 export const TDleise: CSSProperties = { ...TD, color: C.inkLeise };
 
-export function Tabelle({ children, klein }: { children: ReactNode; klein?: boolean }) {
-  return <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: klein ? 12.5 : TYP.bedien }}>{children}</table></div>;
+/** Tabelle in eigenem wischbaren Container (Handy: seitwärts wischen, die Seite selbst scrollt nie seitwärts). `klein` bleibt als Name erhalten, ändert aber nichts mehr — die Schrift steht auf Bedienstufe. */
+export function Tabelle({ children }: { children: ReactNode; klein?: boolean }) {
+  return <div className="ui-tabelle" tabIndex={0} role="region" aria-label="Tabelle, seitwärts wischbar"><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{children}</table></div>;
 }
 /** Gruppen-Überschrift in einer Tabelle. */
 export function Gruppenzeile({ text, spalten }: { text: string; spalten: number }) {
@@ -93,7 +94,7 @@ export function Gruppenzeile({ text, spalten }: { text: string; spalten: number 
 }
 
 // ── Eingaben ────────────────────────────────────────────────────────────────
-export const eingabeStil: CSSProperties = { ...feld, fontSize: TYP.bedien, padding: '7px 10px', borderRadius: 10 };
+export const eingabeStil: CSSProperties = { ...feld, minHeight: ZIEL.rechner, fontSize: TYP.bedien, padding: '7px 10px', borderRadius: ECKE.eingabe };
 export const auswahlStil: CSSProperties = { ...eingabeStil, appearance: 'auto', width: 'auto', minWidth: 0 };
 
 /** Betrag-Feld: übernimmt beim Verlassen oder Enter; leer = null; Unsinn wird verworfen. */
@@ -141,7 +142,7 @@ export function MonatWahl({ wert, onWahl, monate, aus, leer, breite = 104 }: { w
 
 export function Schalter({ an, onChange, children }: { an: boolean; onChange: (v: boolean) => void; children?: ReactNode }) {
   return (
-    <button type="button" role="switch" aria-checked={an} onClick={() => onChange(!an)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 30, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.inkDim, fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>
+    <button type="button" role="switch" aria-checked={an} onClick={() => onChange(!an)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: ZIEL.rechner, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.inkDim, fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>
       <span aria-hidden style={{ width: 30, height: 18, borderRadius: 999, position: 'relative', background: an ? C.aktiv : 'rgba(255,255,255,.14)', transition: 'background .2s ease', flex: '0 0 auto' }}>
         <span style={{ position: 'absolute', top: 2, left: an ? 14 : 2, width: 14, height: 14, borderRadius: '50%', background: C.grund, transition: 'left .2s ease' }} />
       </span>
@@ -150,13 +151,15 @@ export function Schalter({ an, onChange, children }: { an: boolean; onChange: (v
   );
 }
 
+/** Kleiner Knopf der Finanzplanung — der Standard-Knopf (40 px am Rechner, 44 px am Handy); `farbe` tönt ihn, ohne `farbe` Türkis. */
 export function KnopfKlein({ children, onClick, farbe, aus, titel }: { children: ReactNode; onClick?: () => void; farbe?: string; aus?: boolean; titel?: string }) {
-  const f = farbe ?? C.aktiv;
-  return <button type="button" onClick={onClick} disabled={aus} title={titel} className="fassbar" style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 700, padding: '5px 10px', borderRadius: 9, cursor: aus ? 'default' : 'pointer', whiteSpace: 'nowrap', ...(aus ? { border: '1px solid transparent', background: 'rgba(255,255,255,.06)', color: C.inkLeise } : TIEF.knopf(f)) }}>{children}</button>;
+  return <Knopf onClick={onClick} aus={aus} farbe={farbe} titel={titel}>{children}</Knopf>;
 }
 
+/** Erklärung unter einer Karte (Notiz in ganzen Sätzen). Mit Zustandsfarbe (`farbe`) wird daraus eine Hinweis-Karte nach Bedeutung. */
 export function Hinweis({ children, farbe }: { children: ReactNode; farbe?: string }) {
-  return <div style={{ fontSize: 12.5, color: farbe ?? C.inkLeise, lineHeight: 1.55, marginTop: 10 }}>{children}</div>;
+  if (farbe && farbe !== C.inkLeise && farbe !== C.inkDim) return <div style={{ marginTop: 10 }}><UiHinweis farbe={farbe}>{children}</UiHinweis></div>;
+  return <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginTop: 10 }}>{children}</div>;
 }
 
 /** Waagrechter Anteil-Balken, optional mit Markierung (heute) — Budget-Tempo. */
@@ -208,7 +211,7 @@ export function Meldungen({ liste, weg }: { liste: Meldung[]; weg: (id: number) 
                 <button onClick={() => weg(m.id)} aria-label="Schließen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14 }}>✕</button>
               </span>
             </div>
-            {m.text && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 3, whiteSpace: 'pre-wrap', lineHeight: 1.45, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.text}</div>}
+            {m.text && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 3, whiteSpace: 'pre-wrap', lineHeight: 1.45, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.text}</div>}
           </div>
         );
       })}
@@ -235,7 +238,7 @@ export function Dialog({ titel, children, onZu, aktionen, breit }: { titel: stri
 }
 
 export function Feld({ label, children, breit }: { label: string; children: ReactNode; breit?: boolean }) {
-  return <label style={{ display: 'grid', gap: 5, fontSize: 12.5, color: C.inkDim, ...(breit ? { gridColumn: '1 / -1' } : {}) }}>{label}{children}</label>;
+  return <label style={{ display: 'grid', gap: 5, fontSize: TYP.bedien, color: C.inkDim, ...(breit ? { gridColumn: '1 / -1' } : {}) }}>{label}{children}</label>;
 }
 
 /** Zwei-Spalten-Formular, das auf dem Handy eine Spalte wird. */
@@ -243,41 +246,17 @@ export function Formular({ children }: { children: ReactNode }) {
   return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>{children}</div>;
 }
 
-/** Bereiche mit Zähler-Plakette (Monat: offene Buchungen · Verpflichtungen: fällig). */
-export function BereichLeiste<T extends string>({ liste, aktiv, onWahl }: { liste: { id: T; label: string; zahl?: number }[]; aktiv: T; onWahl: (id: T) => void }) {
-  return (
-    <div role="tablist" style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,.06)', borderRadius: 12, padding: 3, overflowX: 'auto', maxWidth: '100%' }}>
-      {liste.map(s => {
-        const an = aktiv === s.id;
-        return (
-          <button key={s.id} role="tab" aria-selected={an} onClick={() => onWahl(s.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, whiteSpace: 'nowrap', transition: 'background .2s ease, color .2s ease', background: an ? C.ink : 'transparent', color: an ? C.grund : C.inkDim }}>
-            {s.label}
-            {!!s.zahl && <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: an ? `${LEUCHT.achtung}` : `${LEUCHT.achtung}33`, color: an ? C.grund : LEUCHT.achtung }}>{s.zahl}</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Pillen zum Umschalten — gleiche Form wie in der Markttraktion, ohne deren Modulgraph im Bündel. */
+/** Pillen zum Umschalten — der Standard-Baustein (44 px am Handy, `einzeilig` wischt seitwärts); der Klick bleibt in der Pille (Karten mit eigenem Klick). */
 export function Pillen<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv, einzeilig }: { liste: { id: T; label: string }[] | readonly { id: T; label: string }[]; aktiv: T | null | undefined; onWahl: (id: T) => void; farbe?: string; einzeilig?: boolean }) {
-  return (
-    <div style={{ display: 'flex', gap: 4, flexWrap: einzeilig ? 'nowrap' : 'wrap', whiteSpace: einzeilig ? 'nowrap' : undefined, overflowX: einzeilig ? 'auto' : undefined, maxWidth: '100%' }}>
-      {liste.map(l => {
-        const an = l.id === aktiv;
-        return <button key={l.id} type="button" onClick={e => { e.stopPropagation(); onWahl(l.id); }} className="fassbar" aria-pressed={an} style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim, whiteSpace: 'nowrap' }}>{l.label}</button>;
-      })}
-    </div>
-  );
+  return <span onClick={e => e.stopPropagation()} style={{ display: 'block', minWidth: 0 }}><UiPillen liste={[...liste]} aktiv={aktiv} onWahl={onWahl} farbe={farbe} einzeilig={einzeilig} /></span>;
 }
 
 /** Leerer Zustand in einer Karte. */
 export function Nichts({ children }: { children: ReactNode }) {
-  return <div style={{ padding: '10px 2px', color: C.inkLeise, fontSize: TYP.bedien, lineHeight: 1.55 }}>{children}</div>;
+  return <Leer>{children}</Leer>;
 }
 
 /** Legende: Farbpunkt + Text. */
 export function Legende({ eintraege }: { eintraege: { farbe: string; text: string }[] }) {
-  return <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: C.inkDim }}>{eintraege.map(e => <span key={e.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: 3, background: e.farbe }} />{e.text}</span>)}</div>;
+  return <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>{eintraege.map(e => <span key={e.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: 3, background: e.farbe }} />{e.text}</span>)}</div>;
 }

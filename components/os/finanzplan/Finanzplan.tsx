@@ -13,12 +13,12 @@ import { Suspense, useCallback, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Undo2 } from 'lucide-react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Seite, LEUCHT } from '../schlank';
+import { Seite, Knopf, Reiter, Pillen, LEUCHT } from '../ui';
 import { BEREICHE, FRAGE, bereichVon, istUnterseite, offeneBuchungen, faelligeZahl, datumLang, type Unterseite } from '@/lib/finanzen/plan/hilfen';
 import { nettoTabellePlatzhalter } from '@/lib/finanzen/plan/operationen';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
 import { FinanzplanKontext, useFinanzplanDaten, useGerechnet, type PlanKontext } from './daten';
-import { Meldungen, KnopfKlein, PersonMarke, personName, BereichLeiste, Pillen } from './teile';
+import { Meldungen, PersonMarke, personName } from './teile';
 import { Einrichtung } from './Einrichtung';
 import { Lage, Check } from './Ueberblick';
 import { Privat, UG, Toepfe, KDV, Selbst, Szenarien, Ziele } from './Planen';
@@ -70,7 +70,7 @@ function FinanzplanInnen() {
 
   const kontext = useMemo<PlanKontext | null>(() => (d && g ? { d, ...g, person, verbergen, aendere, melde, geh, params } : null), [d, g, person, verbergen, aendere, melde, geh, params]);
 
-  if (zustand === 'laedt') return <Seite titel="Finanzplanung jetzt"><div style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Lädt …</div></Seite>;
+  if (zustand === 'laedt') return <Seite titel="Finanzplanung jetzt"><div style={{ color: C.inkDim, fontSize: TYP.bedien }} role="status">Lädt …</div></Seite>;
   if (!d || !g || !kontext) return <Einrichtung zustand={zustand === 'kein' ? 'kein' : zustand === 'fehler' ? 'fehler' : 'leer'} onFertig={() => void laden()} />;
 
   const Ansicht = ANSICHT[u];
@@ -81,25 +81,22 @@ function FinanzplanInnen() {
     <FinanzplanKontext.Provider value={kontext}>
       <Seite titel="Finanzplanung jetzt"
         unter={<span>Stand {datumLang(d.stand.slice(0, 10))} · {g.ps ? <>Arbeitsplan <b style={{ color: C.ink }}>{g.ps.name}</b> auf Treiber <b style={{ color: C.ink }}>{g.sz.name}</b></> : <>Treiber <b style={{ color: C.ink }}>{g.sz.name}</b> · noch kein Arbeitsplan</>}{nettoTabellePlatzhalter(d) && <span style={{ color: LEUCHT.achtung }}> · Netto-Tabelle fehlt (Netto = Brutto)</span>}</span>}
-        rechts={
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span title={`Du planst als ${personName(person)}`}><PersonMarke wer={person} mitName /></span>
-            <KnopfKlein onClick={() => setVerbergen(!verbergen)} farbe={verbergen ? LEUCHT.achtung : C.inkDim} titel="Alle Beträge verwischen — für Bildschirm teilen oder Café">{verbergen ? <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Eye size={14} /> Zeigen</span> : <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><EyeOff size={14} /> Verbergen</span>}</KnopfKlein>
-            <KnopfKlein onClick={() => void rueckgaengig()} aus={!undoAnzahl} titel="Letzte Änderung zurücknehmen (Cmd+Z)"><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Undo2 size={14} /> Rückgängig{undoAnzahl ? ` (${undoAnzahl})` : ''}</span></KnopfKlein>
-          </div>
+        rechts={<>
+          <span className="ui-nur-breit" title={`Du planst als ${personName(person)}`}><PersonMarke wer={person} mitName /></span>
+          <Knopf leise onClick={() => setVerbergen(!verbergen)} ariaLabel={verbergen ? 'Beträge zeigen' : 'Beträge verbergen'} farbe={verbergen ? LEUCHT.achtung : undefined} titel="Alle Beträge verwischen — für Bildschirm teilen oder Café">{verbergen ? <><Eye size={16} /><span className="ui-nur-breit">Zeigen</span></> : <><EyeOff size={16} /><span className="ui-nur-breit">Verbergen</span></>}</Knopf>
+          <Knopf leise onClick={() => void rueckgaengig()} aus={!undoAnzahl} ariaLabel="Letzte Änderung rückgängig" titel="Letzte Änderung zurücknehmen (Cmd+Z)"><Undo2 size={16} /><span className="ui-nur-breit">Rückgängig{undoAnzahl ? ` (${undoAnzahl})` : ''}</span></Knopf>
+        </>
         }>
         {/* minWidth 0: die Seite ist ein Raster mit einer Spalte — ohne das zieht die breite Reiterleiste die ganze Seite über das Handy hinaus */}
         <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-          <BereichLeiste liste={BEREICHE.map(b => ({ id: b.id, label: b.label, zahl: b.id === 'buchungen' ? offen + faellig : 0 }))} aktiv={bereich} onWahl={b => geh(BEREICHE.find(x => x.id === b)!.unter[0].id)} />
-        </div>
-        {bereichInfo.unter.length > 1 && (
-          <div style={{ marginBottom: 14 }}>
-            <Pillen liste={bereichInfo.unter} aktiv={u} onWahl={geh} />
-          </div>
-        )}
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '0 0 14px' }}>{FRAGE[u]}</div>
+        <div className="ui-karten">
+        <nav aria-label="Finanzplanung" className="ui-reiter-zeile">
+          <Reiter ariaLabel="Bereiche der Finanzplanung" liste={BEREICHE.map(b => ({ id: b.id, label: b.id === 'buchungen' && offen + faellig > 0 ? <>{b.label}<span className="fp-zaehler" aria-label={`${offen + faellig} offen`}>{offen + faellig}</span></> : b.label }))} aktiv={bereich} onWahl={b => geh(BEREICHE.find(x => x.id === b)!.unter[0].id)} />
+        </nav>
+        {bereichInfo.unter.length > 1 && <Pillen einzeilig liste={bereichInfo.unter} aktiv={u} onWahl={geh} />}
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{FRAGE[u]}</div>
         <Ansicht />
+        </div>
         </div>
       </Seite>
       <Meldungen liste={meldungen} weg={weg} />

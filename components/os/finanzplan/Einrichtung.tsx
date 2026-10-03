@@ -8,7 +8,7 @@
 
 import { useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Knopf, LEUCHT, Raster } from '../schlank';
+import { Seite, Karte, Ueberschrift, Knopf, LEUCHT, Raster, Hinweis } from '../ui';
 
 export function Einrichtung({ zustand, onFertig }: { zustand: 'leer' | 'kein' | 'fehler'; onFertig: () => void }) {
   const datei = useRef<HTMLInputElement>(null);
@@ -52,7 +52,7 @@ export function Einrichtung({ zustand, onFertig }: { zustand: 'leer' | 'kein' | 
           <input ref={datei} type="file" accept="application/json,.json" aria-label="finanzen-plan.json wählen" onChange={() => setFehler(null)} style={{ display: 'block', marginBottom: 12, color: C.inkDim, fontSize: TYP.bedien }} />
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <Knopf onClick={hochladen} aus={laeuft}>{laeuft ? 'Lädt …' : ersetzen ? 'Hochladen und ersetzen' : 'Hochladen'}</Knopf>
-            {ersetzen && <span style={{ fontSize: 12.5, color: LEUCHT.achtung }}>Es gibt schon einen Plan — der nächste Upload ersetzt ihn.</span>}
+            {ersetzen && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Es gibt schon einen Plan — der nächste Upload ersetzt ihn.</span>}
           </div>
         </Karte>
         <Karte i={1}>
@@ -61,8 +61,8 @@ export function Einrichtung({ zustand, onFertig }: { zustand: 'leer' | 'kein' | 
           <Knopf leise onClick={() => void sende(JSON.stringify({ leer: true, ersetzen }))} aus={laeuft}>Leer beginnen</Knopf>
         </Karte>
       </Raster>
-      {fehler && <div role="alert" style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${LEUCHT.kritisch}14`, color: LEUCHT.kritisch, fontSize: TYP.bedien, boxShadow: `inset 3px 0 0 ${LEUCHT.kritisch}` }}>{fehler}</div>}
-      {zustand === 'fehler' && !fehler && <div role="alert" style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${LEUCHT.kritisch}14`, color: LEUCHT.kritisch, fontSize: TYP.bedien }}>Der Plan konnte nicht geladen werden — Seite neu laden oder den Server prüfen.</div>}
+      {fehler && <div style={{ marginTop: 14 }}><Hinweis art="kritisch">{fehler}</Hinweis></div>}
+      {zustand === 'fehler' && !fehler && <div style={{ marginTop: 14 }}><Hinweis art="kritisch" titel="Der Plan konnte nicht geladen werden">Bitte laden Sie die Seite neu oder prüfen Sie den Server.</Hinweis></div>}
     </Seite>
   );
 }

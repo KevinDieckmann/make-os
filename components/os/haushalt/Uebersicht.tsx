@@ -12,7 +12,7 @@ import { eur } from '@/lib/finanzen/haushalt/typen';
 import { summen, einordnen, istAusgabe, type KatName } from '@/lib/finanzen/haushalt/einordnung';
 import { letzterMonatMitDaten, wichtig, offeneBelege } from '@/lib/finanzen/haushalt/kennzahlen';
 import { monatVon, monatPlus, monatName, datumDe, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Punkt, Spalten, Spalte, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Punkt, Spalten, Spalte, LEUCHT } from '../ui';
 import { Betrag, Kachel, Kacheln, Hinweis, type HaushaltDaten } from './gemeinsam';
 
 function vergleich(jetzt: number, vorher: number, mehrIstGut: boolean) {

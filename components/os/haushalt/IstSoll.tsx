@@ -10,7 +10,7 @@ import { eur, zuCent } from '@/lib/finanzen/haushalt/typen';
 import type { KatName } from '@/lib/finanzen/haushalt/einordnung';
 import { istWert, sollWert } from '@/lib/finanzen/haushalt/kennzahlen';
 import { monatVon, monatName, tageImMonat, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
-import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from '../ui';
 import { Dialog, Feld, Haken, Hinweis, Leiste, auswahl, type HaushaltDaten, type Op } from './gemeinsam';
 
 const MEHR_IST_GUT: Record<Posten, boolean> = { Umsatz: true, Sparrate: true, Ausgaben: false, Tilgung: false };
@@ -63,14 +63,14 @@ export function IstSoll({ h, katName, patch, melde }: Props) {
       {zeilen.map(z => (
         <div key={z.p} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 12, padding: '12px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
           <div style={{ minWidth: 0 }}>
-            <strong style={{ fontSize: TYP.body }}>{z.p}</strong> <span style={{ fontSize: 12, color: C.inkLeise }}>{ERKLAERT[z.p]}</span>
+            <strong style={{ fontSize: TYP.body }}>{z.p}</strong> <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{ERKLAERT[z.p]}</span>
             {z.soll ? <Leiste anteil={Math.min(100, Math.abs(z.ist / z.soll) * 100)} farbe={z.gut ? LEUCHT.gut : LEUCHT.kritisch} /> : null}
             <div style={{ fontSize: 13, color: C.inkDim, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>
               Ist {eur(z.ist)} · Soll {z.soll === null ? <span style={{ color: C.inkLeise }}>nicht geplant</span> : eur(z.soll)}
               {z.abw !== null && <span style={{ color: z.gut ? LEUCHT.gut : LEUCHT.kritisch }}> · {z.abw > 0 ? '+' : ''}{eur(z.abw)}</span>}
             </div>
           </div>
-          <button onClick={() => setSetzen(z.p)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, alignSelf: 'center' }}>Planwert setzen</button>
+          <button onClick={() => setSetzen(z.p)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, alignSelf: 'center' }}>Planwert setzen</button>
         </div>
       ))}
       <Hinweis>Umbuchungen zwischen euren Konten und auf Sparziele sind nicht enthalten.</Hinweis>

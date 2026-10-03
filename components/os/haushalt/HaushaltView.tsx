@@ -7,10 +7,10 @@
 // Nur für Personen, denen der Inhaber einen Haushalt zugeordnet hat.
 
 import { useEffect, useMemo, useState } from 'react';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { FARBE as C, TYP, RAND } from '@/lib/make-one/design';
 import { katNamen } from '@/lib/finanzen/haushalt/einordnung';
 import { heuteBerlin, tageZwischen, datumDe } from '@/lib/finanzen/haushalt/monat';
-import { Karte, Leer, Knopf, Segmente, LEUCHT } from '../schlank';
+import { Karte, Leer, Knopf, Reiter, LEUCHT } from '../ui';
 import { useHaushalt, Meldungen } from './gemeinsam';
 import { Uebersicht } from './Uebersicht';
 import { Buchungen } from './Buchungen';
@@ -53,15 +53,15 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
 
   return (
     <>
-      {/* minWidth 0 + Umbruch: sonst macht diese Leiste auf dem Handy die ganze Seite breiter als den Bildschirm */}
-      <div className="os-auf" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', minWidth: 0 }}>
-        <div style={{ overflowX: 'auto', maxWidth: '100%', minWidth: 0, paddingBottom: 2 }}><Segmente liste={REITER} aktiv={aktiv} onWahl={onReiter} /></div>
-        <div style={{ display: 'flex', gap: '8px 14px', alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkLeise, minWidth: 0 }}>
-          {juengste && <span style={{ color: alt !== null && alt > 40 ? LEUCHT.achtung : C.inkLeise }}>Letzte Buchung {datumDe(juengste)}</span>}
-          {pruefAnzahl > 0 && <button onClick={() => setPruefAuf(true)} style={{ background: 'none', border: 'none', color: LEUCHT.achtung, cursor: 'pointer', font: 'inherit', padding: 0 }} title="Private Einträge, die noch in den Business-Speichern stehen">Aufräumen ({pruefAnzahl})</button>}
-          <button onClick={() => setStammAuf(true)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', font: 'inherit', padding: 0 }} title="Konten, Kategorien und Regeln anlegen, ändern, löschen">Konten & Kategorien</button>
-          <button onClick={() => setUmzugAuf(true)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', font: 'inherit', padding: 0 }} title="Probelauf und Übernahme aus Malins Supabase">{h.meta.umzug ? `Aus Malins Cockpit (${datumDe(h.meta.umzug.zeit.slice(0, 10))})` : 'Aus Malins Cockpit'}</button>
-          <a href="/api/haushalt/sicherung" style={{ color: C.inkDim, textDecoration: 'none' }} title="Alle Haushaltsdaten als JSON — im Format von Malins Sicherung">Sicherung ↓</a>
+      {/* Eine wischbare Reiterleiste (Standard-Baustein); darunter Stand und Werkzeuge — am Handy brechen sie um, nichts schiebt die Seite breiter. */}
+      <nav aria-label="Haushaltsfinanzen" className="ui-reiter-zeile os-auf"><Reiter ariaLabel="Bereiche der Haushaltsfinanzen" liste={REITER} aktiv={aktiv} onWahl={onReiter} /></nav>
+      <div className="os-auf" style={{ display: 'flex', gap: '8px 12px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', minWidth: 0, fontSize: TYP.bedien, color: C.inkDim }}>
+        {juengste && <span style={{ color: alt !== null && alt > 40 ? LEUCHT.achtung : C.inkDim }}>Letzte Buchung {datumDe(juengste)}</span>}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0, marginLeft: 'auto' }}>
+          {pruefAnzahl > 0 && <Knopf leise farbe={LEUCHT.achtung} onClick={() => setPruefAuf(true)} titel="Private Einträge, die noch in den Business-Speichern stehen">Aufräumen ({pruefAnzahl})</Knopf>}
+          <Knopf leise onClick={() => setStammAuf(true)} titel="Konten, Kategorien und Regeln anlegen, ändern, löschen">Konten &amp; Kategorien</Knopf>
+          <Knopf leise onClick={() => setUmzugAuf(true)} titel="Probelauf und Übernahme aus Malins Supabase">{h.meta.umzug ? `Aus Malins Cockpit (${datumDe(h.meta.umzug.zeit.slice(0, 10))})` : 'Aus Malins Cockpit'}</Knopf>
+          <a href="/api/haushalt/sicherung" className="ui-knopf fassbar" style={{ border: `1px solid ${RAND.stark}`, background: 'rgba(255,255,255,.05)', color: C.ink }} title="Alle Haushaltsdaten als JSON — im Format von Malins Sicherung">Sicherung ↓</a>
           {!leer && <Knopf farbe={LEUCHT.geld} onClick={() => setImportAuf(true)}>Kontoauszug einlesen</Knopf>}
         </div>
       </div>

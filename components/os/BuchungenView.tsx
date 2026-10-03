@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, feld, LEUCHT, Raster, Wahl } from './ui';
 import { KERN_EINHEITEN, istGesellschaft } from '@/lib/einheiten';
 
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; konto?: string; ort?: string; rechnungId?: string }
@@ -85,32 +85,26 @@ export function BuchungenView() {
 
   return (
     <Seite titel="Buchungen" unter={geladen ? `${sichtbar.length} ${sichtbar.length === 1 ? 'Buchung' : 'Buchungen'}${kategorien.length ? ` · ${kategorien.length} Kategorien` : ''}` : undefined}
-      rechts={<input value={suche} onChange={e => setSuche(e.target.value)} placeholder="suchen …" aria-label="Buchungen durchsuchen" style={{ ...feld, width: 'min(100%, 200px)', padding: '9px 14px' }} />}>
-      <Karte i={0} akzent={LEUCHT.geld}>
+      >
+      <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Buchungen durchsuchen …" aria-label="Buchungen durchsuchen" type="search" style={{ ...feld, width: '100%', maxWidth: 420 }} />
+      <Karte i={0} ton={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Saldo der Auswahl</Ueberschrift>
         <Zahl gross wert={hat ? `${saldo >= 0 ? '+' : ''}${eur(saldo)}` : undefined} farbe={saldo >= 0 ? LEUCHT.gut : LEUCHT.kritisch} label={hat ? `aus ${sichtbar.length} ${sichtbar.length === 1 ? 'Buchung' : 'Buchungen'}` : 'keine Buchung in dieser Auswahl'} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginTop: 14 }}>
+        <div style={{ marginTop: 14 }}><Raster min={150}>
           <Zahl wert={hat ? `+${eur(ein)}` : undefined} farbe={LEUCHT.gut} label="reingekommen" />
           <Zahl wert={hat ? `−${eur(aus)}` : undefined} farbe={LEUCHT.achtung} label="rausgegangen" />
-        </div>
+        </Raster></div>
 
         {/* Wo die Buchung hingehört — Privat getrennt, Firmen einzeln oder zusammen */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 18 }}>
+        <div className="ui-pillen ui-pillen-einzeilig" style={{ marginTop: 18 }}>
           {ORTE.map(o => {
             const n = alle.filter(b => o.trifft(b.ort)).length;
-            const an = ort === o.id;
-            return (
-              <Knopf key={o.id} leise={!an} aus={!n && o.id !== 'alle'} onClick={() => setOrt(o.id)}>
-                {o.label} <span style={{ opacity: .6, fontWeight: 600 }}>{n}</span>
-              </Knopf>
-            );
+            return <span key={o.id} style={!n && o.id !== 'alle' ? { opacity: .5 } : undefined}><Wahl klein an={ort === o.id} onClick={() => setOrt(o.id)}>{o.label} <span style={{ opacity: .7, fontVariantNumeric: 'tabular-nums' }}>{n}</span></Wahl></span>;
           })}
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
-          <Knopf leise={monat !== 'alle'} onClick={() => setMonat('alle')}>alle Monate</Knopf>
-          {monate.map(m => (
-            <Knopf key={m} leise={monat !== m} onClick={() => setMonat(m)}>{monatLabel(m)}</Knopf>
-          ))}
+        <div className="ui-pillen ui-pillen-einzeilig" style={{ marginTop: 8 }}>
+          <Wahl klein an={monat === 'alle'} onClick={() => setMonat('alle')}>alle Monate</Wahl>
+          {monate.map(m => <Wahl key={m} klein an={monat === m} onClick={() => setMonat(m)}>{monatLabel(m)}</Wahl>)}
         </div>
       </Karte>
 
@@ -153,7 +147,7 @@ export function BuchungenView() {
           ))}
           {sichtbar.length > 300 && <Leer>+{sichtbar.length - 300} weitere — Monat oder Kategorie wählen</Leer>}
         </Liste>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
           Buchungen kommen aus dem Beleg-Werkzeug (ZOE), aus bezahlten <Link href="/os/finanzen/planung" style={{ color: C.inkDim }}>Rechnungen</Link> und aus dem Altbestand des Finanz-Dashboards.
         </div>
       </Karte>

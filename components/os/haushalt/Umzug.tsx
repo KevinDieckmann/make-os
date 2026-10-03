@@ -13,7 +13,7 @@ import { eur } from '@/lib/finanzen/haushalt/typen';
 import { datumDe, monatKurz } from '@/lib/finanzen/haushalt/monat';
 import type { Umzugsbericht } from '@/lib/finanzen/haushalt/supabase-umzug';
 import type { DateiBericht } from '@/lib/finanzen/haushalt/datei-umzug';
-import { Knopf, feld, LEUCHT } from '../schlank';
+import { Knopf, feld, LEUCHT } from '../ui';
 import { Dialog, Feld } from './gemeinsam';
 
 const NAMEN: Record<string, string> = { konten: 'Konten', kategorien: 'Kategorien', zuordnungsregeln: 'Zuordnungen', schulden: 'Schulden', planwerte: 'Planwerte', belege: 'Rechnungen & Belege', buchungen: 'Buchungen' };
@@ -89,7 +89,7 @@ export function UmzugDialog({ onZu, laden, melde }: { onZu: () => void; laden: (
           <div style={{ color: C.inkDim }}>Melde dich mit deinem Zugang zu Malins Cockpit an. MAKE OS liest dann alles — Buchungen, Zuordnungen, Schulden, Rechnungen, Budgets — und prüft es gegen die Zeilenzahlen, die Supabase selbst meldet. Das ist nur ein Probelauf: euer Haushalt in MAKE OS bleibt unberührt.</div>
           <Feld label="E-Mail (Zugang zu Malins Cockpit)"><input type="email" autoComplete="off" value={email} onChange={e => setEmail(e.target.value)} style={feld} /></Feld>
           <Feld label="Passwort"><input type="password" autoComplete="off" value={passwort} onChange={e => setPasswort(e.target.value)} style={feld} /></Feld>
-          <div style={{ fontSize: 12.5, color: C.inkLeise }}>Das Passwort geht nur an Supabase und wird nicht gespeichert.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Passwort geht nur an Supabase und wird nicht gespeichert.</div>
         </>
       )}
       {bericht && (
@@ -115,10 +115,10 @@ export function UmzugDialog({ onZu, laden, melde }: { onZu: () => void; laden: (
           {stimmt ? <div style={{ color: LEUCHT.gut }}>✓ Jede Tabelle vollständig gelesen — die Zeilenzahlen stimmen mit Supabase überein.</div> : <div style={{ color: LEUCHT.kritisch }}>✕ Nicht alles gelesen. So nicht übernehmen.</div>}
           {abgewiesen > 0 && <div style={{ color: LEUCHT.achtung }}>{abgewiesen} Zeile{abgewiesen === 1 ? '' : 'n'} abgewiesen: {bericht.abgewiesen.slice(0, 5).map(a => `${NAMEN[a.tabelle]} (${a.grund})`).join(' · ')}{abgewiesen > 5 ? ' …' : ''}</div>}
           {bericht.hinweise.map(h => <div key={h} style={{ color: LEUCHT.achtung }}>{h}</div>)}
-          {Object.keys(bericht.unbekannteFelder).length > 0 && <div style={{ color: C.inkLeise, fontSize: 12.5 }}>Felder, die MAKE OS nicht kennt und nicht übernimmt: {Object.entries(bericht.unbekannteFelder).map(([t, f]) => `${NAMEN[t]}: ${f!.join(', ')}`).join(' · ')}</div>}
+          {Object.keys(bericht.unbekannteFelder).length > 0 && <div style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Felder, die MAKE OS nicht kennt und nicht übernimmt: {Object.entries(bericht.unbekannteFelder).map(([t, f]) => `${NAMEN[t]}: ${f!.join(', ')}`).join(' · ')}</div>}
           <button onClick={() => setSummenAuf(!summenAuf)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', textAlign: 'left', padding: 0, font: 'inherit' }}>{summenAuf ? '▾' : '▸'} Summen je Konto und Monat zum Gegenprüfen mit den Kontoauszügen</button>
           {summenAuf && (
-            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'grid', gridTemplateColumns: '60px 1fr auto auto', gap: '2px 12px', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: C.inkDim }}>
+            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'grid', gridTemplateColumns: '60px 1fr auto auto', gap: '2px 12px', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: C.inkDim }}>
               {bericht.summen.map(s => <span key={`${s.konto}${s.monat}`} style={{ display: 'contents' }}><span>{monatKurz(s.monat)}</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.konto}</span><span>{s.anzahl}×</span><span>{eur(s.summe)}</span></span>)}
             </div>
           )}
@@ -126,7 +126,7 @@ export function UmzugDialog({ onZu, laden, melde }: { onZu: () => void; laden: (
             <input type="checkbox" checked={bestaetigt} onChange={e => setBestaetigt(e.target.checked)} style={{ marginTop: 3 }} />
             <span>Malins Cockpit ist eingefroren (docs/make-orga/einfrieren.sql) — ab jetzt pflegen wir nur noch in MAKE OS.</span>
           </label>
-          <button onClick={() => { setBericht(null); setBestaetigt(false); }} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', textAlign: 'left', padding: 0, font: 'inherit', fontSize: 12.5 }}>Neuen Probelauf machen</button>
+          <button onClick={() => { setBericht(null); setBestaetigt(false); }} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', textAlign: 'left', padding: 0, font: 'inherit', fontSize: TYP.bedien }}>Neuen Probelauf machen</button>
         </div>
       )}
     </Dialog>

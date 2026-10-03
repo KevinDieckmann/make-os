@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Balken, Knopf, feld, LEUCHT } from '../schlank';
+import { Balken, Knopf, feld, auswahl, LEUCHT } from '../ui';
 import { Fenster } from '../Fenster';
 import type { KennzahlStand, Ampel, Detail } from '@/lib/kennzahlen/kern';
 
@@ -33,11 +33,11 @@ export function DetailListe({ details, dicht, onKlick }: { details: Detail[]; di
           <>
             <span aria-hidden style={{ width: dicht ? 6 : 7, height: dicht ? 6 : 7, borderRadius: '50%', background: f, flex: '0 0 auto', marginTop: dicht ? 6 : 7 }} />
             <span style={{ minWidth: 0, flex: 1, display: 'grid' }}>
-              <span style={{ fontSize: dicht ? 12 : TYP.bedien, fontWeight: 600, color: C.ink, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: dicht ? 2 : 3, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' }}>{d.titel}</span>
-              {d.unter && <span style={{ fontSize: dicht ? 11.5 : 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: dicht ? 'nowrap' : 'normal' }}>{d.unter}</span>}
+              <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.ink, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: dicht ? 2 : 3, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' }}>{d.titel}</span>
+              {d.unter && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: dicht ? 'nowrap' : 'normal' }}>{d.unter}</span>}
             </span>
-            {d.wert && <span style={{ fontSize: dicht ? 12 : TYP.bedien, fontWeight: 700, color: d.ampel && d.ampel !== 'gruen' ? f : C.inkDim, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: '0 0 auto' }}>{d.wert}</span>}
-            {d.href && <span aria-hidden style={{ color: C.inkLeise, fontSize: dicht ? 12 : 13, flex: '0 0 auto' }}>›</span>}
+            {d.wert && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: d.ampel && d.ampel !== 'gruen' ? f : C.inkDim, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: '0 0 auto' }}>{d.wert}</span>}
+            {d.href && <span aria-hidden style={{ color: C.inkLeise, fontSize: TYP.bedien, flex: '0 0 auto' }}>›</span>}
           </>
         );
         const stil = { display: 'flex', alignItems: 'flex-start', gap: 8, padding: dicht ? '4px 6px' : '8px 10px', margin: dicht ? '0 -6px' : 0, borderRadius: 9, textDecoration: 'none', minWidth: 0, background: dicht ? 'transparent' : 'rgba(255,255,255,.025)' } as const;
@@ -58,29 +58,29 @@ export function KennzahlKachel({ k, onOeffnen }: { k: KennzahlStand; onOeffnen: 
       <button type="button" onClick={onOeffnen} className="fassbar" title="Formel, Schwellen, alle Punkte und Verlauf"
         style={{ display: 'grid', gap: 6, alignContent: 'start', textAlign: 'left', minWidth: 0, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, color: C.ink }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.label}</span>
+          <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.label}</span>
           <span title={AMPEL_TEXT[k.ampel]} style={{ width: 9, height: 9, borderRadius: '50%', flex: '0 0 auto', background: f, boxShadow: k.gemessen ? `0 0 8px ${f}33` : undefined }} />
         </div>
         {k.gemessen ? (
           <>
             <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(19px,2.2vw,22px)', fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', color: k.ampel === 'gruen' ? C.ink : f }}>{k.anzeige}</div>
-            <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{k.quelle}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{k.quelle}</div>
           </>
         ) : (
           <>
             <div style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, color: C.inkLeise }}>—</div>
-            <div style={{ fontSize: 12, color: C.inkDim, lineHeight: 1.4 }}>{k.quelle}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{k.quelle}</div>
           </>
         )}
       </button>
       {punkte.length > 0 && (
         <div style={{ borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 6 }}>
           <DetailListe details={punkte} dicht />
-          {k.details.length > 3 && <button type="button" onClick={onOeffnen} style={{ background: 'none', border: 'none', padding: '4px 0 0', color: C.inkLeise, cursor: 'pointer', fontSize: 11.5 }}>+ {k.details.length - 3} weitere</button>}
+          {k.details.length > 3 && <button type="button" onClick={onOeffnen} style={{ background: 'none', border: 'none', padding: '4px 0 0', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>+ {k.details.length - 3} weitere</button>}
         </div>
       )}
       {!k.gemessen && k.pflegen && !punkte.some(d => d.href === k.pflegen!.href) && (
-        <Link href={k.pflegen.href} style={{ fontSize: 12, color: LEUCHT.puls, fontWeight: 600, textDecoration: 'none' }}>{k.pflegen.text} ›</Link>
+        <Link href={k.pflegen.href} style={{ fontSize: TYP.bedien, color: LEUCHT.puls, fontWeight: 600, textDecoration: 'none' }}>{k.pflegen.text} ›</Link>
       )}
     </div>
   );
@@ -108,18 +108,18 @@ function SchwellenAnpassen({ k, scope, onGespeichert, senden: sender = businessS
   if (!offen) return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       <Knopf leise onClick={() => setOffen(true)}>Schwellen anpassen</Knopf>
-      {k.angepasst && <span style={{ fontSize: 12.5, color: LEUCHT.achtung }}>eigene Schwellen · Standard: {schwellenText({ ...k, gruen: k.standard.gruen, rot: k.standard.rot })}</span>}
+      {k.angepasst && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>eigene Schwellen · Standard: {schwellenText({ ...k, gruen: k.standard.gruen, rot: k.standard.rot })}</span>}
     </div>
   );
-  const eingabe = { ...feld, width: 120, fontSize: TYP.bedien, padding: '8px 11px' };
+  const eingabe = { ...feld, width: 120 };
   return (
     <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.07)' }}>
-      <div style={{ fontSize: 12.5, color: C.inkDim }}>{k.richtung === 'hoch' ? 'Mehr ist besser: grün ab …, rot unter …' : 'Weniger ist besser: grün bis …, rot über …'} · Standard: {schwellenText({ ...k, gruen: k.standard.gruen, rot: k.standard.rot })}</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k.richtung === 'hoch' ? 'Mehr ist besser: grün ab …, rot unter …' : 'Weniger ist besser: grün bis …, rot über …'} · Standard: {schwellenText({ ...k, gruen: k.standard.gruen, rot: k.standard.rot })}</div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: LEUCHT.gut, fontWeight: 600 }}>grün {k.richtung === 'hoch' ? 'ab' : 'bis'}</span><input inputMode="decimal" value={gruen} onChange={e => setGruen(e.target.value)} style={eingabe} /></label>
-        <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: LEUCHT.kritisch, fontWeight: 600 }}>rot {k.richtung === 'hoch' ? 'unter' : 'über'}</span><input inputMode="decimal" value={rot} onChange={e => setRot(e.target.value)} style={eingabe} /></label>
-        {scope !== 'privat' && <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkDim, fontWeight: 600 }}>gilt für</span>
-          <select value={sicht} onChange={e => setSicht(e.target.value)} style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '8px 11px' }}>
+        <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, fontWeight: 600 }}>grün {k.richtung === 'hoch' ? 'ab' : 'bis'}</span><input inputMode="decimal" value={gruen} onChange={e => setGruen(e.target.value)} style={eingabe} /></label>
+        <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, fontWeight: 600 }}>rot {k.richtung === 'hoch' ? 'unter' : 'über'}</span><input inputMode="decimal" value={rot} onChange={e => setRot(e.target.value)} style={eingabe} /></label>
+        {scope !== 'privat' && <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600 }}>gilt für</span>
+          <select value={sicht} onChange={e => setSicht(e.target.value)} style={auswahl}>
             <option value="alle">alle Sichten</option>
             <option value={scope}>nur {SICHT_LABEL[scope] ?? scope}</option>
           </select>
@@ -130,7 +130,7 @@ function SchwellenAnpassen({ k, scope, onGespeichert, senden: sender = businessS
         {k.angepasst && <Knopf leise onClick={() => void senden({ id: k.id, sicht, zuruecksetzen: true })}>Standard wiederherstellen</Knopf>}
         <Knopf leise onClick={() => setOffen(false)}>Schließen</Knopf>
       </div>
-      {meldung && <div style={{ fontSize: 12.5, color: meldung.ok ? LEUCHT.gut : LEUCHT.kritisch }}>{meldung.text}</div>}
+      {meldung && <div style={{ fontSize: TYP.bedien, color: meldung.ok ? LEUCHT.gut : LEUCHT.kritisch }}>{meldung.text}</div>}
     </div>
   );
 }
@@ -149,7 +149,7 @@ export function KennzahlFenster({ k, saeule, verlauf, scope, onZu, onGespeichert
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: SCHRIFT.display, fontSize: 34, fontWeight: 700, letterSpacing: '-.03em', color: k.gemessen ? C.ink : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{k.anzeige ?? '—'}</span>
         <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: f }}>{AMPEL_TEXT[k.ampel]}</span>
-        {k.punkte != null && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{k.punkte} von 100 Punkten</span>}
+        {k.punkte != null && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{k.punkte} von 100 Punkten</span>}
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
         {zeile('Säule', `${saeule} · ${k.gruppe}`)}

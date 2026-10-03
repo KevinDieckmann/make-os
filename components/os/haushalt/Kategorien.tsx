@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import type { Zusammenlegung } from '@/lib/finanzen/haushalt/kategorien';
-import { Knopf, LEUCHT } from '../schlank';
+import { Knopf, LEUCHT } from '../ui';
 import { Dialog, Haken } from './gemeinsam';
 
 export function KategorienDialog({ aktion, laden, melde, onZu }: {

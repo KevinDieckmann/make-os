@@ -11,6 +11,7 @@ import { useArbeitsplan } from './arbeitsplan';
 import { ZahlFeld, MonatWahl } from './teile';
 import { FeldK } from './Annahmen';
 import { ProzentFeld } from './Steuern';
+import { TYP } from '@/lib/make-one/design';
 
 export function EntnahmeFelder() {
   const { d, aw } = usePlan();
@@ -25,7 +26,7 @@ export function EntnahmeFelder() {
       <FeldK label="Entnahme je Monat (fest)" breit={170}><ZahlFeld wert={en?.betrag ?? null} leer platzhalter="keine" dezimal={0} breite="100%" titel="Entnahme der Selbstständigkeit je Monat" onFertig={v => setze({ betrag: v ?? undefined, anteil: en?.anteil, ab: en?.ab ?? aw.m0 })} /></FeldK>
       <FeldK label="Anteil am Ergebnis nach Steuern" breit={190}><ProzentFeld wert={en?.anteil ?? null} leer platzhalter="keiner" dezimal={1} breite="100%" titel="Anteil am Ergebnis nach Steuern als Entnahme" onFertig={v => setze({ betrag: en?.betrag, anteil: v == null ? undefined : Math.max(0, Math.min(1, v)), ab: en?.ab ?? aw.m0 })} /></FeldK>
       <FeldK label="Entnahme ab" breit={150}><MonatWahl wert={en?.ab ?? aw.m0} onWahl={m => setze({ betrag: en?.betrag, anteil: en?.anteil, ab: m })} monate={d.monate} breite={150} /></FeldK>
-      {en && <span style={{ alignSelf: 'flex-end', fontSize: 12, color: '#8d8d93', paddingBottom: 9 }}>{[en.betrag ? `${Math.round(en.betrag)} € fest` : null, en.anteil ? `${prozent(en.anteil, 1)} vom Ergebnis` : null].filter(Boolean).join(' + ')}</span>}
+      {en && <span style={{ alignSelf: 'flex-end', fontSize: TYP.bedien, color: '#8d8d93', paddingBottom: 9 }}>{[en.betrag ? `${Math.round(en.betrag)} € fest` : null, en.anteil ? `${prozent(en.anteil, 1)} vom Ergebnis` : null].filter(Boolean).join(' + ')}</span>}
     </div>
   );
 }

@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, Chip } from '../schlank';
+import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, Chip } from '../ui';
 import { sollBudget, tempo, histIndex } from '@/lib/finanzen/rechenkern';
 import type { Buchung } from '@/lib/finanzen/rechenkern';
 import { achse, heuteIndex, tageIm, planMonatAus, eur, prozent, tagKurz, zeileName, alleZeilen, offeneBuchungen, SONDER_ZEILEN, BUDGET_GRUPPEN, neueKennung } from '@/lib/finanzen/plan/hilfen';
@@ -174,9 +174,9 @@ export function Buchungen() {
               const zl = alleZeilen(d).find(x => x.id === z); const soll = zl ? sollBudget(zl, 1, {}) : 0;
               return (
                 <div key={z} onClick={() => setZeile(zeile === z ? 'alle' : z)} style={{ marginBottom: 9, cursor: 'pointer', opacity: zeile !== 'alle' && zeile !== z ? 0.5 : 1 }}>
-                  <div style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, alignItems: 'baseline' }}><span style={{ flex: 1 }}>{zeileName(d, z)}</span><Geld v={v} /><span style={{ color: C.inkLeise, fontSize: 11.5, width: 42, textAlign: 'right' }}>{prozent(v / gesamt)}</span></div>
+                  <div style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, alignItems: 'baseline' }}><span style={{ flex: 1 }}>{zeileName(d, z)}</span><Geld v={v} /><span style={{ color: C.inkLeise, fontSize: TYP.bedien, width: 42, textAlign: 'right' }}>{prozent(v / gesamt)}</span></div>
                   <AnteilBalken anteil={v / gesamt} farbe={soll && v > soll ? LEUCHT.achtung : C.aktiv} hoehe={5} />
-                  {soll > 0 && <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 2 }}>Plan ab Okt: <Geld v={soll} farbe={C.inkLeise} /> €</div>}
+                  {soll > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>Plan ab Okt: <Geld v={soll} farbe={C.inkLeise} /> €</div>}
                 </div>
               );
             })}
@@ -220,7 +220,7 @@ export function Buchungen() {
             <Feld label="Planzeile"><ZeilenAuswahl wert={neu.z} onWahl={z => setNeu({ ...neu, z })} breite="100%" /></Feld>
             <Feld label="Notiz" breit><TextFeld wert={neu.notiz} onFertig={t => setNeu({ ...neu, notiz: t })} titel="Notiz" /></Feld>
           </Formular>
-          <div style={{ fontSize: 12.5, color: C.inkLeise }}>Von Hand für Bargeld und alles, was noch fehlt. Später kommt das aus dem Kontoauszug-Import.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Von Hand für Bargeld und alles, was noch fehlt. Später kommt das aus dem Kontoauszug-Import.</div>
         </Dialog>
       )}
     </>
