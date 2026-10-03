@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fadenSaaten, versatz, gauss, saettigen, wertBei, kurve, textSaat, zufall, spreizung, LICHTFAEDEN } from '@/lib/lichtfaeden/band';
 import { starteLauf } from '@/lib/lichtfaeden/zeichnen';
-import { BAND_MASSE, bandMasse, hellBei, dichteBei, sanft, type BandBild } from '@/lib/lichtfaeden/faedenband';
+import { BAND_MASSE, bandMasse, hellBei, dichteBei, sanft, engstellenGruppen, type BandBild } from '@/lib/lichtfaeden/faedenband';
 import { stapeln } from '@/lib/planung/zeitstrahl';
 import { erzeugen, ZIEL } from '../scripts/lichtfaeden-website.mjs';
 
@@ -57,6 +57,13 @@ describe('Lichtfäden — Mathematik', () => {
     expect(dichteBei(b, 7, d)).toBeCloseTo(0.5);
     expect(dichteBei({ dichte: [0, 1] }, 0, { breite: 70, tage: 70, wochenVersatz: 7 })).toBeCloseTo(0.5); // Fenster beginnt in Woche 1
     expect(dichteBei({ dichte: [] }, 5, d)).toBe(0);
+  });
+
+  it('Engstellen-Knöpfe: benachbarte Wochen werden EIN Knopf „KW 42–44“, entfernte bleiben einzeln', () => {
+    const g = engstellenGruppen([{ x: 100, kw: 42 }, { x: 110, kw: 43 }, { x: 121, kw: 44 }, { x: 400, kw: 3 }], 64);
+    expect(g.map(x => x.label)).toEqual(['KW 42–44', 'KW 3']);
+    expect(g[0].x).toBeCloseTo(110.33, 1);
+    expect(engstellenGruppen([], 64)).toEqual([]);
   });
 
   it('Übergang schwingt sanft: 0 → 0, ½ → ½, 1 → 1, monoton', () => {

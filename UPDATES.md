@@ -23,6 +23,7 @@ Es gibt es auf jeder Ebene und nachher übergreifend für alles.“ — „Alles
 - **Route** `GET /api/lichtfaeden` (Haushalt des Inhabers, Dienstweg 403, gemerkt 60 s, gzip). Kein neuer Bestand.
 - **Design-Standard:** Planung (Jahr/Monat/Quartal), Ziel- und Meilenstein-Seite, Meilenstein-Fenster und Fokus hängen an `components/os/ui`
   (Hinweise als Karten, Fließtext ≥ 13 px, Tippziele 44 px). Der schlichte `Zeitstrahl` (Monat, Quartal, Aufgaben, Bauplan) verliert die v1-Sonderwege.
+- **Standard-Fix nebenbei:** am Handy überlagerten sich nicht umbrechende `Segmente` (die 44-px-Mindestbreite des Handy-Netzes schlug `max-content`) — jetzt laufen sie seitwärts (eine Zeile in `globals.css`, nur unter `.ui-seite`).
 - **Ersetzt:** `lib/lichtfaeden/{dichte,farben,zeitband}.ts`, `components/os/planung/LichtBand.tsx` → `modell/baum/fokus/faedenband.ts` + `components/os/lichtfaeden/`.
   Website unverändert (`band.ts`/`zeichnen.ts` gleich, Wächter grün).
 - **Test:** `tests/lichtfaeden-*.test.ts` (Modell, sechs Quellen, Baum/LOD/Dichte/Navigation, Engstellen, Route mit Privat-Regel, Oberfläche/Zeichner).

@@ -171,6 +171,8 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('journal', 'Eigenes Journal des Haushalts.'),
   H('routinen', 'Eigene Routinen des Haushalts.'),
   H('ziele', 'Eigene Ziele/Fokus des Haushalts.'),
+  H('ziele-eigen', 'Persönliche Ziele der ersten Person (Altname ohne Suffix) — eigene Planung, keine Dritten (gelesen u. a. von den Lichtfäden).'),
+  H('ziele-eigen--*', 'Persönliche Ziele je Person — eigene Planung, keine Dritten.'),
   H('meilensteine', 'Eigene Meilensteine des Haushalts.'),
   // Austausch am Meilenstein (30.09.): Verlauf, Notiz, Links — Texte können Dritte nennen (Kunden, Partner) → getilgt.
   T('meilenstein-raum--*', 'Verlauf/Notiz/Links je Meilenstein — bleiben, Namen/Adressen der Person getilgt (lib/crm/person-weitere.ts).'),

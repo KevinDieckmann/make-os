@@ -62,6 +62,25 @@ export function hellBei(x: number, d: Pick<BandBild, 'heuteX' | 'heuteSeite'>, d
   return zeit * (0.55 + 0.85 * dichte) + schnitt;
 }
 
+/**
+ * Engstellen-Knöpfe, die sich im Band überlappen würden (benachbarte Wochen liegen nur wenige Pixel auseinander), zu EINEM
+ * Knopf zusammenfassen: „KW 42–44“. Eingabe nach x sortiert; `abstand` = Mindestabstand der Mitten (Knopfbreite).
+ */
+export function engstellenGruppen<T extends { x: number; kw: number }>(liste: readonly T[], abstand: number): { x: number; label: string; teile: T[] }[] {
+  const aus: { x: number; label: string; teile: T[] }[] = [];
+  for (const e of liste) {
+    const g = aus[aus.length - 1];
+    if (g && e.x - g.teile[g.teile.length - 1].x < abstand) g.teile.push(e);
+    else aus.push({ x: e.x, label: '', teile: [e] });
+  }
+  for (const g of aus) {
+    g.x = g.teile.reduce((s, e) => s + e.x, 0) / g.teile.length;
+    const a = g.teile[0].kw, b = g.teile[g.teile.length - 1].kw;
+    g.label = a === b ? `KW ${a}` : `KW ${a}–${b}`;
+  }
+  return aus;
+}
+
 /** Dichte eines Bündels an der Stelle x (Wochen linear zwischen ihren Mitten). */
 export function dichteBei(b: Pick<BandBuendel, 'dichte'>, x: number, d: Pick<BandBild, 'breite' | 'tage' | 'wochenVersatz'>): number {
   const n = b.dichte.length;

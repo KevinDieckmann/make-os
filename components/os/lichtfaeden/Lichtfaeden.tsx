@@ -76,10 +76,10 @@ export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenste
   return (
     <Karte i={i} className="licht-karte" style={{ background: LICHT_GLAS.karte }} ariaLabel={titel}>
       <Ueberschrift rechts={personWahl.length ? <Segmente liste={personWahl} aktiv={person} onWahl={setPerson} /> : undefined}>{titel}</Ueberschrift>
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
         {aktuell && <Brotkrumen pfad={aktuell.pfad} onWahl={onKrume} oben={oben} />}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Segmente umbrechen liste={STRAHL_RAEUME.map(r => ({ id: r.id, label: r.label }))} aktiv={fenster.raum} onWahl={(r: StrahlRaum) => fenster.setRaum(r)} />
+          <Segmente liste={STRAHL_RAEUME.map(r => ({ id: r.id, label: r.label }))} aktiv={fenster.raum} onWahl={(r: StrahlRaum) => fenster.setRaum(r)} />
           <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{fenster.fenster.label}</span>
           <span style={{ display: 'inline-flex', gap: 8, marginLeft: 'auto' }}>
             <Knopf leise aus={fenster.heuteSichtbar} onClick={fenster.zuHeute}>Heute</Knopf>

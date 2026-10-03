@@ -52,7 +52,7 @@ export const THEMEN: Record<SpaceId, readonly ThemaDef[]> = {
   ],
   business: [
     { id: 'planung', name: 'Ziele & Planung', farbe: LEUCHT.planung },
-    { id: 'markttraktion', name: 'Markttraktion', farbe: LEUCHT.business },
+    { id: 'markttraktion', name: 'Markttraktion', farbe: LEUCHT.beziehung },
     { id: 'mandate', name: 'Mandate', farbe: LEUCHT.agenten },
     { id: 'finanzen', name: 'Finanzen', farbe: '#DE9E63' },
   ],

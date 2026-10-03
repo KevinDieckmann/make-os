@@ -14,7 +14,7 @@ import { localDay } from '@/lib/zeit';
 import { anteilIm, monatsTicks, quartale, stapeln, tagBeiAnteil, tageZwischen } from '@/lib/planung/zeitstrahl';
 import { FAEDEN, faedenDeckeln, type Ansicht, type Buendel, type Marke } from '@/lib/lichtfaeden/baum';
 import type { Engstelle } from '@/lib/lichtfaeden/fokus';
-import { bandMasse, faedenband, type BandBild, type BandBuendel, type BandUebergang, type BandVerbinder, type Faedenband as Zeichner } from '@/lib/lichtfaeden/faedenband';
+import { bandMasse, engstellenGruppen, faedenband, type BandBild, type BandBuendel, type BandUebergang, type BandVerbinder, type Faedenband as Zeichner } from '@/lib/lichtfaeden/faedenband';
 import { bewegungReduziert } from '@/lib/lichtfaeden/zeichnen';
 import { useBlaettern } from './useBlaettern';
 
@@ -22,6 +22,7 @@ const FUSS = 46;
 const QUARTAL_H = 24;
 const ZEIT = LEUCHT.puls;
 const ENGSTELLE = LEUCHT.achtung;
+const ENG_BREITE = 60;
 const tagKurz = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4) !== localDay().slice(0, 4) ? d.slice(0, 4) : ''}`;
 
 /** Der Übergang, den die Hülle beim Ebenenwechsel mitgibt: `vorher` = die Bündel der verlassenen Ebene. */
@@ -217,15 +218,16 @@ export function Faedenband({ ansicht, engstellen, uebergang, hervor, onHervor, o
           );
         })}
 
-        {/* Engstellen — ruhige Marker am unteren Bandrand: ein Knopf je Woche */}
-        {engstellen.map((e, i) => {
-          const x = (engX[i].x0 + engX[i].x1) / 2;
+        {/* Engstellen — ruhige Marker am unteren Bandrand: ein Knopf je Woche, benachbarte Wochen zusammengefasst („KW 42–44“) */}
+        {engstellenGruppen(engstellen.map((e, i) => ({ ...e, x: (engX[i].x0 + engX[i].x1) / 2 })), ENG_BREITE + 4).map(g => {
+          const w = g.teile.length > 1 ? ENG_BREITE + 26 : ENG_BREITE;
+          const text = g.teile.map(e => e.text).join(' · ');
           return (
-            <button key={e.woche} data-strahl-eintrag type="button" className="licht-engstelle" onClick={ev => { ev.stopPropagation(); onEngstelle?.(e.woche); }}
-              aria-label={`Engstelle ${e.text}`} title={e.text}
-              style={{ position: 'absolute', left: Math.max(0, Math.min(breite - 56, x - 28)), top: achseY - masse.knopf - 2, width: 56, height: masse.knopf, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 22, padding: '0 8px', borderRadius: 999, background: LICHT_GLAS.flaeche, border: `1px solid ${LICHT_GLAS.rand(ENGSTELLE)}`, color: ENGSTELLE, fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 700, letterSpacing: '.04em', fontVariantNumeric: 'tabular-nums' }}>
-                <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', background: ENGSTELLE, boxShadow: LICHT_GLAS.schein(ENGSTELLE) }} />KW {e.kw}
+            <button key={g.teile[0].woche} data-strahl-eintrag type="button" className="licht-engstelle" onClick={ev => { ev.stopPropagation(); onEngstelle?.(g.teile[0].woche); }}
+              aria-label={`Engstelle ${text}`} title={g.teile.map(e => e.text).join('\n')}
+              style={{ position: 'absolute', left: Math.max(0, Math.min(breite - w, g.x - w / 2)), top: achseY - masse.knopf - 2, width: w, height: masse.knopf, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 22, padding: '0 8px', borderRadius: 999, background: LICHT_GLAS.flaeche, border: `1px solid ${LICHT_GLAS.rand(ENGSTELLE)}`, color: ENGSTELLE, fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 700, letterSpacing: '.04em', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', background: ENGSTELLE, boxShadow: LICHT_GLAS.schein(ENGSTELLE) }} />{g.label}
               </span>
             </button>
           );
