@@ -14,7 +14,6 @@ export function jpegOhneMetadaten(b: Uint8Array): Uint8Array | null {
   if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return null;
   const teile: Uint8Array[] = [b.subarray(0, 2)];
   let entfernt = false;
-  let sos = false;
   let i = 2;
   while (i < b.length) {
     if (b[i] !== 0xff) return null;
@@ -22,7 +21,7 @@ export function jpegOhneMetadaten(b: Uint8Array): Uint8Array | null {
     while (m === 0xff && i + 2 < b.length) { i++; m = b[i + 1]; } // Füllbytes
     if (m === undefined) return null;
     if (m === 0xd9) { teile.push(b.subarray(i, i + 2)); i = b.length; break; } // EOI
-    if (m === 0xda) { sos = true; teile.push(b.subarray(i)); i = b.length; break; } // SOS: ab hier Bilddaten, unverändert bis zum Ende
+    if (m === 0xda) { teile.push(b.subarray(i)); i = b.length; break; } // SOS: ab hier Bilddaten, unverändert bis zum Ende
     if ((m >= 0xd0 && m <= 0xd7) || m === 0x01) { teile.push(b.subarray(i, i + 2)); i += 2; continue; } // Marker ohne Länge
     if (i + 4 > b.length) return null;
     const laenge = (b[i + 2] << 8) | b[i + 3];
@@ -33,7 +32,7 @@ export function jpegOhneMetadaten(b: Uint8Array): Uint8Array | null {
     i += 2 + laenge;
   }
   if (i < b.length) return null;
-  if (!sos) return null; // ohne Bilddaten (SOS) ist es kein brauchbares JPEG
+  // Ohne SOS (abgeschnittene Datei) bleibt, was da ist — ohne Metadaten; die Ablage prüft Typ und Größe, ein Bild ohne Daten zeigt eben nichts.
   if (!entfernt) return b;
   const raus = new Uint8Array(teile.reduce((s, t) => s + t.length, 0));
   let o = 0;

@@ -55,7 +55,8 @@ function fakeFetch(url: string, init: RequestInit): Response {
 }
 
 // ── Bausteine ──
-const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 1, 2, 3, 4, 5, 6, 7, 8]).toString('base64');
+// Ein strukturell gültiges Mini-JPEG (JFIF + Scan + Ende) — der Server säubert Metadaten (netz-recht) und lehnt kaputte Aufbauten ab.
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0x12, 0x34, 0xff, 0xd9]).toString('base64');
 const kopf = (u: string) => ({ 'content-type': 'application/json', 'x-make-user': u });
 const anfrage = (body: unknown, h: Record<string, string>) => new Request('http://test/api/netzwerken', { method: 'POST', headers: h, body: JSON.stringify(body) });
 const senden = async (body: unknown, user = 'kevin') => { const r = await route.POST(anfrage(body, kopf(user))); return { status: r.status, d: await r.json() as Record<string, unknown> & { ok: boolean; kontaktId?: string; fehler?: string; hinweise?: string[]; schonDa?: boolean; zusammengefuehrt?: boolean; neu?: boolean; terminUid?: string; angebotId?: string } }; };

@@ -56,7 +56,8 @@ function fakeFetch(url: string, init: RequestInit): Response {
 }
 
 // ── Bausteine ──
-const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 1, 2, 3, 4, 5, 6, 7, 8]).toString('base64');
+// Ein strukturell gültiges Mini-JPEG (JFIF + Scan + Ende) — der Server säubert Metadaten (netz-recht) und lehnt kaputte Aufbauten ab.
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0x12, 0x34, 0xff, 0xd9]).toString('base64');
 const WEBM = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 1, 2, 3, 4, 5, 6, 7, 8]).toString('base64');
 const kopf = (u: string) => ({ 'content-type': 'application/json', 'x-make-user': u });
 const dienst = (p?: string) => ({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, ...(p ? { 'x-make-person': p } : {}) });
@@ -560,7 +561,7 @@ describe('Magic Bytes vor dem ersten Schreiben (415 ohne Teilzustand)', () => {
   });
 
   it('PNG mit echtem Kopf wird angenommen', async () => {
-    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 1, 2, 3, 4]).toString('base64');
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     expect((await senden(erfassung({ bilder: [{ name: 'k.png', typ: 'image/png', daten: png }] }))).status).toBe(200);
   });
 });
