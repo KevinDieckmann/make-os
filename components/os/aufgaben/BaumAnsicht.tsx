@@ -41,7 +41,7 @@ export function Aktionen({ breit, children }: { breit: boolean; children: ReactN
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', flex: '0 0 auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
       {auf && children}
-      <button onClick={() => setAuf(a => !a)} aria-label={auf ? 'Aktionen schließen' : 'Aktionen'} aria-expanded={auf} className="fassbar" style={{ ...leiseKnopf, minWidth: 40, fontSize: 18, lineHeight: 1 }}>{auf ? '×' : '⋯'}</button>
+      <button onClick={() => setAuf(a => !a)} aria-label={auf ? 'Aktionen schließen' : 'Aktionen'} aria-expanded={auf} className="fassbar" style={{ ...leiseKnopf, minWidth: 44, minHeight: 44, fontSize: 18, lineHeight: 1 }}>{auf ? '×' : '⋯'}</button>
     </span>
   );
 }

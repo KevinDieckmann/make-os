@@ -192,6 +192,10 @@ export function AufgabenRaum() {
 
   // Darstellung (Liste · Board · Tabelle · Kalender · ZOE): am Rechner im Kopf, am Handy als eigene wischbare Zeile im Inhalt (Standard: breite Umschalter nicht im Kopf).
   const darstellungWahl = <Segmente liste={[{ id: 'liste', label: 'Liste' }, { id: 'board', label: 'Board' }, { id: 'tabelle', label: 'Tabelle' }, { id: 'kalender', label: 'Kalender' }, { id: 'zoe', label: 'ZOE' }]} aktiv={darstellung} onWahl={a => gehe({ ...adresse, darstellung: a === 'liste' ? undefined : a }, 'replace')} />;
+  const nebenWege = <>
+    <Link href={bereichGemerkt === 'privat' ? '/os/aufgaben/board?space=privat' : '/os/aufgaben/board?space=business'} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Zeitstrahl ›</Link>
+    {!raum && <NeuAnfangenKnopf klein />}
+  </>;
   const titel = raum ? `Aufgaben · ${raum.label}` : adresse.ansicht === 'archiv' ? 'Aufgaben · Archiv' : 'Aufgaben';
   const treffer = adresse.ansicht === 'ueberblick' && suche.trim() ? state.tasks.filter(t => suchPasst([t.title, t.description], suche)).slice(0, 40) : [];
   return (
@@ -202,11 +206,15 @@ export function AufgabenRaum() {
         <KalenderAufgabenSchalter aktiv="aufgaben" aufgaben={{ href: aktuell }}
           kalender={{ href: kalenderLink({ ...(raumId ? { space: bereichVonSpace(raumId), as: raumId } : {}), ...(projektId ? { ap: projektId } : {}), ...(filter.wer !== 'alle' ? { wer: filter.wer } : {}) }) }} />
         {raum && <span className="ui-nur-breit">{darstellungWahl}</span>}
-        <Link href={bereichGemerkt === 'privat' ? '/os/aufgaben/board?space=privat' : '/os/aufgaben/board?space=business'} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Zeitstrahl ›</Link>
-        {!raum && <NeuAnfangenKnopf klein />}
+        <span className="ui-nur-breit"><span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>{nebenWege}</span></span>
       </span>
     }>
-      {raum && <div className="ui-nur-schmal">{darstellungWahl}</div>}
+      <div className="ui-nur-schmal">
+        <div style={{ display: 'grid', gap: 8 }}>
+          {raum && darstellungWahl}
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>{nebenWege}</div>
+        </div>
+      </div>
       <AufgabenLeiste adresse={adresse} spaces={spaces} offenJe={offenJe} gehe={gehe} />
       <SchnellAnlegen state={state} dispatch={dispatch} spaces={spaces} vorbelegt={vorbelegt} />
 

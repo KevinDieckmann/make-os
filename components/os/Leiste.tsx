@@ -85,7 +85,7 @@ export function Leiste() {
 
   /** Ein Kasten (Home, Wachstum, Space, Agenten): Symbol + Text, eingeklappt nur das Symbol. */
   const kastenStil = (an: boolean, farbe: string): CSSProperties => ({
-    width: '100%', display: 'flex', alignItems: 'center', justifyContent: zu ? 'center' : 'flex-start', gap: 10, padding: zu ? '11px 0' : '11px 12px', borderRadius: 12, cursor: 'pointer', textAlign: 'left', textDecoration: 'none', marginBottom: 6,
+    width: '100%', display: 'flex', alignItems: 'center', justifyContent: zu ? 'center' : 'flex-start', gap: 10, padding: zu ? '11px 0' : '11px 10px', borderRadius: 12, cursor: 'pointer', textAlign: 'left', textDecoration: 'none', marginBottom: 6,
     border: `1px solid ${an ? `${farbe}66` : 'rgba(255,255,255,.08)'}`, background: an ? `${farbe}1C` : 'rgba(255,255,255,.025)', color: an ? farbe : C.ink,
     fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 700, minHeight: 44, boxSizing: 'border-box', transition: 'background .2s ease, color .2s ease, border-color .2s ease',
   });
@@ -120,7 +120,7 @@ export function Leiste() {
       </Link>
     );
   };
-  const breite = zu ? 68 : 220;
+  const breite = zu ? 68 : 232;
 
   return (
     <>

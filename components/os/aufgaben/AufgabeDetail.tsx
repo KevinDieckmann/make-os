@@ -56,12 +56,12 @@ const PRIO: WahlEintrag<Priority>[] = [
 ];
 const SONST = '__sonstige__';
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
-const datumFeld: CSSProperties = { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '4px 12px', minHeight: 40, colorScheme: 'dark' };
+const datumFeld: CSSProperties = { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '4px 12px', minHeight: 40, maxWidth: '100%', colorScheme: 'dark' };
 const zeit = (iso: string) => { try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
 function Feld({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '96px minmax(0,1fr)', alignItems: 'center', gap: 10, minHeight: 34 }}>
+    <div className="ui-eigenschaft" style={{ gridTemplateColumns: undefined, minHeight: 34 }}>
       <span style={mikro}>{label}</span>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', minWidth: 0 }}>{children}</div>
     </div>

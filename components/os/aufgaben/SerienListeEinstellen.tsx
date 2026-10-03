@@ -109,7 +109,7 @@ export function ListeSerieKnopf({ listeId }: { listeId: string }) {
     <>
       <button onClick={() => setAuf(true)} className="fassbar" aria-label={w ? `Wiederkehrend: ${wiederholungText(w)} — einstellen` : 'Als wiederkehrende Liste einstellen'}
         title={w ? `wiederkehrend: ${wiederholungText(w)}${w.naechste ? ` · nächste Liste ${kurzTag(w.naechste)}` : ''}` : 'wiederkehrend einstellen'}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', minWidth: 40, minHeight: 40, borderRadius: 10, fontSize: 16, lineHeight: 1, fontWeight: 700, color: w ? C.aktiv : 'rgba(255,255,255,.28)', fontFamily: SCHRIFT.text }}>↻</button>
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', minWidth: 44, minHeight: 44, borderRadius: 10, fontSize: 16, lineHeight: 1, fontWeight: 700, color: w ? C.aktiv : 'rgba(255,255,255,.28)', fontFamily: SCHRIFT.text }}>↻</button>
       {auf && <SerienListeEinstellen liste={liste} onSchliessen={() => setAuf(false)} />}
     </>
   );

@@ -28,7 +28,7 @@ import { tagPlus, wandAus } from '@/lib/kalender/zeit';
 import { montagVon, monatsblatt } from '@/lib/kalender/layout';
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, Chip, feld, LEUCHT, useBreit } from '../ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, Reiter, Chip, feld, LEUCHT, useBreit } from '../ui';
 import { useKalender, TerminFenster, WER_FARBE, WER_LABEL, type KTermin, type Wer } from './teile';
 import { Zeitraster } from './Zeitraster';
 import { Monat } from './Monat';
@@ -305,7 +305,7 @@ export function Kalender() {
         <div style={{ marginTop: 8 }}><Segmente liste={[{ id: 'alle', label: 'Alles' }, { id: 'privat', label: 'Privat' }, { id: 'business', label: 'Business' }] as { id: Bereich; label: string }[]} aktiv={bereich} onWahl={setBereich} umbrechen /></div>
         <div style={{ display: 'grid', gap: 4, marginTop: 10 }}>
           {(daten?.kalender ?? []).map(k => (
-            <label key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40, fontSize: TYP.bedien, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
+            <label key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, fontSize: TYP.bedien, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
               <input type="checkbox" checked={!aus.has(k.name)} onChange={() => setAus(s => { const n = new Set(s); if (n.has(k.name)) n.delete(k.name); else n.add(k.name); return n; })} />
               <span style={{ width: 10, height: 10, borderRadius: 3, background: k.farbe ?? WER_FARBE[k.wer] }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</span>
@@ -315,7 +315,7 @@ export function Kalender() {
           ))}
           {!daten?.kalender.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Kalender geladen.</span>}
           {QUELL_KALENDER.map(k => (
-            <label key={k.name} title={k.hinweis} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40, fontSize: TYP.bedien, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
+            <label key={k.name} title={k.hinweis} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, fontSize: TYP.bedien, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
               <input type="checkbox" checked={!aus.has(k.name)} onChange={() => setAus(s => { const n = new Set(s); if (n.has(k.name)) n.delete(k.name); else n.add(k.name); return n; })} />
               <span style={{ width: 10, height: 10, borderRadius: 3, background: k.farbe }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</span>
@@ -397,7 +397,7 @@ export function Kalender() {
         {/* Modus (K5): Kalender · Planen — dasselbe Raster (nur auf der Kalender-Seite des Umschalters). */}
         {modus !== 'aufgaben' && <Segmente liste={[{ id: 'kalender' as Modus, label: 'Kalender' }, { id: 'planen' as Modus, label: 'Planen' }]} aktiv={modus} onWahl={setModus} />}
         {/* Sechs Ansichten passen am Handy nicht nebeneinander — die Leiste rollt statt die Seite zu verbreitern. */}
-        {modus !== 'aufgaben' && <div style={{ maxWidth: '100%', overflowX: 'auto' }}><Segmente liste={(modus === 'planen' ? ANSICHTEN.filter(a => MIT_RASTER.includes(a.id)) : ANSICHTEN).map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>}
+        {modus !== 'aufgaben' && <div className="ui-reiter-zeile" style={{ maxWidth: '100%' }}><Reiter ariaLabel="Ansicht des Kalenders" liste={(modus === 'planen' ? ANSICHTEN.filter(a => MIT_RASTER.includes(a.id)) : ANSICHTEN).map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>}
         {!breit && <ErstellenMenue breit={false} onArt={a => setNeu(neuVon(a))} />}
       </div>
       <div style={{ minHeight: 0, ...(modus === 'aufgaben' ? { overflowY: 'auto' as const } : {}) }}>

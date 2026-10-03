@@ -120,7 +120,7 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
     const zeitraum = b.eintrag.start !== b.eintrag.ende ? `${datumKurz(b.eintrag.start)}–${datumKurz(b.eintrag.ende)}` : datumKurz(b.eintrag.ende);
     const ist = offenId === t.id;
     return (
-      <button key={`${t.id}-${b.von}`} type="button" draggable onDragStart={ziehStart(t.id)} onDragEnd={ziehEnde} onClick={() => onOeffnen(t.id)} className="fassbar" data-aufgabe={t.id}
+      <button key={`${t.id}-${b.von}`} type="button" draggable onDragStart={ziehStart(t.id)} onDragEnd={ziehEnde} onClick={() => onOeffnen(t.id)} className="fassbar ui-kein-ziel" data-aufgabe={t.id}
         aria-label={`${t.title} · Deadline ${datumLang(b.eintrag.ende)}${b.eintrag.start !== b.eintrag.ende ? ` · Start ${datumLang(b.eintrag.start)}` : ''} · ${statusVon(t, eigene).label}${rot ? ' · überfällig' : ''}${b.eintrag.wiederkehrend ? ' · wiederkehrend' : ''}`}
         title={`${t.title} · ${zeitraum}${rot ? ' · überfällig' : ''}`}
         style={{
@@ -214,7 +214,7 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
       {!ohne.length ? <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '4px 2px' }}>Alle Aufgaben haben eine Deadline.</div> : (
         <div style={{ display: 'grid', gap: 6, maxHeight: 520, overflowY: 'auto' }}>
           {ohne.map(t => (
-            <button key={t.id} type="button" draggable onDragStart={ziehStart(t.id)} onDragEnd={ziehEnde} onClick={() => onOeffnen(t.id)} className="fassbar" data-aufgabe={t.id}
+            <button key={t.id} type="button" draggable onDragStart={ziehStart(t.id)} onDragEnd={ziehEnde} onClick={() => onOeffnen(t.id)} className="fassbar ui-kein-ziel" data-aufgabe={t.id}
               aria-label={`${t.title} · ohne Datum — öffnen; auf einen Tag ziehen setzt die Deadline`}
               style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', background: offenId === t.id ? 'rgba(255,255,255,.07)' : C.flaeche, border: `1px solid ${offenId === t.id ? `${C.aktiv}55` : 'rgba(255,255,255,.05)'}`, borderRadius: 10, padding: '7px 10px', cursor: 'grab', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: t.status === 'done' ? C.inkLeise : C.ink, minWidth: 0, opacity: zieht === t.id ? .4 : 1 }}>
               <Punkt farbe={farbe(t)} groesse={7} />

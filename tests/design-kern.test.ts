@@ -184,6 +184,11 @@ describe('Kalender', () => {
 });
 
 describe('Inbox', () => {
+  it('Thread bricht lange Adressen um (kein Überlauf) und das Mehr-Menü ist eine Fläche mit ganzen Knöpfen', () => {
+    const g = lies('components/os/inbox/GmailDetail.tsx');
+    expect(g).toContain("gridTemplateColumns: 'minmax(0, 1fr)'");
+    expect(g).toContain('aria-label="Weitere Aktionen"');
+  });
   it('Antwort-Entwurf im Standard-Feld, Meldungen als Hinweis-Karte', () => {
     const i = lies('components/os/InboxSchlank.tsx');
     expect(i).toContain('aria-label="Antwort-Entwurf"');

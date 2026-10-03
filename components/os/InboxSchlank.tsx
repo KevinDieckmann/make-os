@@ -246,7 +246,7 @@ export function InboxSchlank() {
   const detail = (m: Msg, imFenster = false) => m.gm ? (
     <GmailDetail key={m.gm.id} nachrichtId={m.gm.id} person={ich} imFenster={imFenster} meldung={setMeldung} onGeaendert={() => void gmailLaden()} />
   ) : (
-    <div style={imFenster ? undefined : { padding: '6px 2px 18px 22px', borderBottom: `1px solid ${C.linie}` }}>
+    <div style={imFenster ? undefined : { padding: '6px 2px 18px 4px', borderBottom: `1px solid ${C.linie}` }}>
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>{m.senderEmail ?? m.sender} · {m.account} · {new Date(m.receivedAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{triage[fpOf(m)]?.grund ? ` · ${triage[fpOf(m)].grund}` : ''}</div>
       <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55, maxHeight: 320, overflow: 'auto' }}>{(m.source === 'apple' ? body[m.id] : m.preview) ?? (m.source === 'apple' && m.mbIndex ? 'lädt …' : m.preview ?? '')}</pre>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
