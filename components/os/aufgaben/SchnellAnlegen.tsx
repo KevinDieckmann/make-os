@@ -10,8 +10,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { Lock } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Knopf, feld, LEUCHT } from '../ui';
-import { useHandy } from '@/hooks/useHandy';
+import { Karte, Knopf, feld, LEUCHT, useHandy } from '../ui';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { parseSchnell, schnellVorschau, schnellZustaendigkeit, type SchnellPerson } from '@/lib/make-one/schnell-anlegen';
 import { sonstigeProjektId, istSonstigeProjekt, type AufgabenSpace } from '@/lib/aufgaben/struktur';

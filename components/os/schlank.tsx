@@ -20,8 +20,6 @@ export { LEUCHT };
  * Wachstums-Kopf nimmt dieselbe Breite, damit beide Kanten übereinander stehen.
  */
 export const SEITE_BREIT = 1440;
-/** Ab dieser Fensterbreite stehen Spalten nebeneinander (200 px Leiste + ~1000 px Fläche). */
-export const SPALTEN_AB = 1180;
 const HAAR = 'rgba(255,255,255,.06)';
 
 export function Seite({ titel, unter, rechts, children, breit = SEITE_BREIT }: { titel: ReactNode; unter?: ReactNode; rechts?: ReactNode; children: ReactNode; breit?: number }) {
@@ -68,17 +66,6 @@ export function Raster({ children, min = 360 }: { children: ReactNode; min?: num
 /** Teilt eine Liste abwechselnd auf zwei Spalten — für viele gleichartige Karten (Abteilungen, Gruppen). */
 export function aufZwei<T>(liste: T[]): [T[], T[]] {
   return [liste.filter((_, i) => i % 2 === 0), liste.filter((_, i) => i % 2 === 1)];
-}
-/** Ist genug Platz für Spalten? Für Ansichten, die sich dann anders verhalten (Lesefenster statt Aufklappen). */
-export function useBreit(): boolean {
-  const [breit, setBreit] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia(`(min-width: ${SPALTEN_AB}px)`);
-    const an = () => setBreit(mq.matches);
-    an(); mq.addEventListener('change', an);
-    return () => mq.removeEventListener('change', an);
-  }, []);
-  return breit;
 }
 
 export function Ueberschrift({ children, rechts, farbe }: { children: ReactNode; rechts?: ReactNode; farbe?: string }) {

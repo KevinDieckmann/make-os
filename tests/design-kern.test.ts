@@ -29,13 +29,31 @@ const BEREICH = [
   ...dateien('components/os/aufgaben'), ...dateien('components/os/kalender'), ...dateien('components/os/inbox'),
   'components/os/AufgabenView.tsx', 'components/os/AufgabenBoard.tsx', 'components/os/InboxSchlank.tsx', 'components/os/InboxView.tsx', 'components/os/KalenderAufgabenSchalter.tsx',
 ];
-const SHELL = ['components/os/Kopf.tsx', 'components/os/Leiste.tsx', 'components/os/Glocke.tsx'];
+const SHELL = ['components/os/Kopf.tsx', 'components/os/Leiste.tsx', 'components/os/Glocke.tsx', 'components/os/ZoePanel.tsx'];
+/** Ohne eigene schlank-Importe (auch der Zeitstrahl — Achsenbeschriftung darf aber klein bleiben wie Rasterzellen). */
+const OHNE_SCHLANK = [...SHELL, 'components/os/Zeitstrahl.tsx'];
 
 describe('Aufgaben, Kalender und Inbox hängen am Standard', () => {
   it('der Bereich hat die erwarteten Dateien', () => { expect(BEREICH.length).toBeGreaterThanOrEqual(60); });
 
-  it('keine Datei holt Bausteine mehr aus schlank.tsx (alles über ui)', () => {
-    expect(BEREICH.filter(f => /from '(\.\.\/|\.\/)schlank'/.test(lies(f)))).toEqual([]);
+  it('keine Datei holt Bausteine mehr aus schlank.tsx (alles über ui) — auch die Shell nicht (Kopf, Leiste, Glocke, ZOE, Zeitstrahl)', () => {
+    expect([...BEREICH, ...OHNE_SCHLANK].filter(f => /from '(\.\.\/|\.\/)+schlank'/.test(lies(f)))).toEqual([]);
+  });
+
+  it('Handy/Spalten: EIN Hook (ui/medien.ts) — kein hooks/useHandy, kein eigenes matchMedia für die Breite in ui/ und der Shell', () => {
+    expect(() => lies('hooks/useHandy.ts')).toThrow();
+    // Ein eigener Breiten-Hook = matchMedia(…width…) mit Hörer auf 'change'.
+    const breite = /matchMedia\([^)]*width[^)]*\)[\s\S]{0,240}addEventListener\('change'/;
+    const fremd = [...dateien('components/os/ui', /\.tsx?$/), ...OHNE_SCHLANK, 'components/os/crm/Akte.tsx', 'components/os/crm/SchnellErfassen.tsx', 'components/os/crm/quali/hilfen.ts']
+      .filter(f => !f.endsWith('ui/medien.ts') && breite.test(lies(f)));
+    expect(fremd).toEqual([]);
+  });
+
+  it('ZOE: „Normalgröße“ wird über eine Klasse versteckt, nicht über den title-Text', () => {
+    const css = lies('app/globals.css');
+    expect(css).not.toContain('[title="Normalgröße"]');
+    expect(css).toContain('.zoe-normalgroesse { display: none !important; }');
+    expect(lies('components/os/ZoePanel.tsx')).toContain('className="zoe-normalgroesse"');
   });
 
   it('Fließtext steht nicht unter 13 px — außer Beschriftungen in Großbuchstaben', () => {

@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { klickSperren, type KlickSperre } from '@/lib/make-one/klick-sperre';
+import { useHandy } from './medien';
 import { FARBE as C, SCHRIFT, TIEF, TYP, LEUCHT, RAND, ECKE } from '@/lib/make-one/design';
 
 export type KnopfTon = 'haupt' | 'leise' | 'gut' | 'warn';
@@ -219,14 +220,14 @@ export function Aktionsleiste({ children }: { children: ReactNode }) {
  *  Feld getippt wird, sitzt die Hauptaktion direkt über der Tastatur (statt am Ende der Seite). 0 = keine Tastatur/kein Handy. */
 function useTastaturHoehe(): number {
   const [h, setH] = useState(0);
+  // Handy-Breite live (Drehen, Split View, Fenster ziehen) — über den EINEN Hook (ui/medien.ts); ändert sie sich, wird neu gemessen.
+  const handy = useHandy();
   useEffect(() => {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null;
-    if (!vv || !window.matchMedia) return;
-    // Handy-Breite live beobachten (Drehen, Split View, Fenster ziehen) — nicht nur beim Öffnen: sonst bliebe die Leiste nach dem Drehen falsch.
-    const handy = window.matchMedia('(max-width: 720px)');
+    if (!vv) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const messen = () => {
-      if (!handy.matches) { setH(0); return; }
+      if (!handy) { setH(0); return; }
       const a = document.activeElement;
       const tippt = !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !!a.closest('.ui-seite');
       const verdeckt = Math.round(document.documentElement.clientHeight - (vv.offsetTop + vv.height));
@@ -238,15 +239,13 @@ function useTastaturHoehe(): number {
     vv.addEventListener('scroll', messen);
     document.addEventListener('focusin', spaeter);
     document.addEventListener('focusout', spaeter);
-    if (handy.addEventListener) handy.addEventListener('change', messen); else handy.addListener?.(messen);
     messen();
     return () => {
       if (timer) clearTimeout(timer);
       vv.removeEventListener('resize', messen); vv.removeEventListener('scroll', messen);
       document.removeEventListener('focusin', spaeter); document.removeEventListener('focusout', spaeter);
-      if (handy.removeEventListener) handy.removeEventListener('change', messen); else handy.removeListener?.(messen);
     };
-  }, []);
+  }, [handy]);
   return h;
 }
 

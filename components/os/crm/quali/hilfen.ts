@@ -11,6 +11,7 @@ import { leads, type LeadZeile } from '@/lib/crm/leads';
 import { standardZumRechnen, type ScoringEinstellungen } from '@/lib/crm/scoring';
 import type { AblageHinweis } from '@/lib/crm/herkunft';
 import type { CrmApi } from '../daten';
+import { useMedien } from '../../ui/medien';
 
 /** Die geltenden Einstellungen — vom Server mit dem CRM-Stand geliefert, sonst der Standard. */
 export function useScoringEinstellungen(api: CrmApi): ScoringEinstellungen {
@@ -25,14 +26,7 @@ export function useLeadZeilen(api: CrmApi): LeadZeile[] | null {
 
 /** Ist der Bildschirm schmal (Handy)? Dann wird aus dem Seitenfenster ein Blatt von unten. */
 export function useSchmal(grenze = 1000): boolean {
-  const [schmal, setSchmal] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${grenze}px)`);
-    const an = () => setSchmal(mq.matches);
-    an(); mq.addEventListener('change', an);
-    return () => mq.removeEventListener('change', an);
-  }, [grenze]);
-  return schmal;
+  return useMedien(`(max-width: ${grenze}px)`);
 }
 
 export interface LeadAntwort { ok: boolean; fehler?: string; text?: string; lead?: unknown; plan?: unknown; vorschau?: unknown; followup?: boolean; fremd?: Record<string, number>; an?: string }

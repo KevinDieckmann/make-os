@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
-import { Knopf, feld, Chip, LEUCHT, Hinweis } from '../ui';
+import { Knopf, feld, Chip, LEUCHT, Hinweis, useHandy, HANDY_BIS } from '../ui';
 import { anzeigename, findeKontakte, STUFE_LABEL, type Kontakt, type Ergebnis, type AktivitaetArt } from '@/lib/make-one/crm';
 import { haeltBeziehung, BEIDE } from '@/lib/crm/team';
 import type { ChancenStufe, WertBasis } from '@/lib/crm/typen';
@@ -38,17 +38,8 @@ const ARTEN: { id: Art; label: string; ergebnisse?: Ergebnis[]; start?: Ergebnis
   { id: 'linkedin', label: 'LinkedIn' }, { id: 'mail', label: 'Mail' }, { id: 'notiz', label: 'Notiz' },
 ];
 
-/** Handy: der Dialog nimmt die ganze Fläche. */
-function useSchmal(): boolean {
-  const [schmal, setSchmal] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 720px)');
-    const an = () => setSchmal(mq.matches);
-    an(); mq.addEventListener('change', an);
-    return () => mq.removeEventListener('change', an);
-  }, []);
-  return schmal;
-}
+/** Handy: der Dialog nimmt die ganze Fläche (der EINE Hook, ui/medien.ts). */
+const useSchmal = useHandy;
 
 const titelKlein = { fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, margin: '0 0 6px' } as const;
 
@@ -86,7 +77,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
     vorher.current = document.activeElement as HTMLElement | null;
     setSuche(''); setMarkiert(0); setPersonId(kontaktId ?? null); setGesucht(false); setArt('gespraech'); setErgebnis('gespraech'); setAnlass('');
     setChance(null); setAngelegt(null); setLaeuft(false); setFertig(''); setFehler('');
-    const handy = window.matchMedia('(max-width: 720px)').matches;
+    const handy = window.matchMedia(`(max-width: ${HANDY_BIS}px)`).matches; // einmal beim Öffnen gelesen
     const t = setTimeout(() => { if (!kontaktId || !handy) sucheRef.current?.focus(); }, 30);
     // Die Seite dahinter scrollt nicht mit.
     const alt = document.body.style.overflow;

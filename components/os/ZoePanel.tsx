@@ -21,13 +21,13 @@ import Link from 'next/link';
 // Sprechen von selbst wieder zu — ein echtes Gespräch ohne Tastatur.
 //
 // 24.09.: auf das lebendige Muster umgezogen — Flächen wie die Karten, Chips,
-// Knöpfe und Eingabe aus schlank.tsx, ZOE-Lila für ihn, Teal für die
+// Knöpfe und Eingabe aus dem Standard (components/os/ui), ZOE-Lila für ihn, Teal für die
 // Bedienung, Grün/Gelb/Rot für Zustand. Die Logik ist unverändert.
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
-import { Chip, Knopf, feld, LEUCHT } from './schlank';
+import { Chip, Knopf, feld, LEUCHT } from './ui';
 import { useSpace } from '@/hooks/useSpace';
 import { useStimme } from '@/hooks/useStimme';
 import { fuerStimme, titelAus, wannText, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
@@ -70,7 +70,7 @@ const MIN_W = 320, MIN_H = 380;
 
 /** Klickbare Pille im Chip-Stil — leuchtet in der Farbe, wenn sie „an" ist. */
 const chip = (farbe: string, an = true): CSSProperties => ({
-  display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 700, letterSpacing: '.02em',
+  display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, letterSpacing: '.02em',
   lineHeight: 1.2, whiteSpace: 'nowrap', background: an ? `${farbe}22` : 'rgba(255,255,255,.06)', color: an ? farbe : C.inkDim,
   border: 'none', borderRadius: 999, padding: '5px 11px', cursor: 'pointer', textDecoration: 'none',
 });
@@ -449,16 +449,16 @@ export function ZoePanel() {
             ☰{alle.length ? ` ${alle.length}` : ''}
           </button>
           {convo.length > 0 && <button onClick={neuesGespraech} title="Neues Gespräch (das alte bleibt im Verlauf)" style={knopf()}>Neu</button>}
-          <button onClick={() => setFenster(f => ({ ...f, w: STANDARD.w, h: STANDARD.h, right: STANDARD.right, bottom: STANDARD.bottom }))} title="Normalgröße"
-            style={{ ...rund, width: 26, height: 26, borderRadius: 8, fontSize: 12, lineHeight: 1 }}>◱</button>
-          <button onClick={() => { stimme.schweig(); stimme.hoerAuf(); setFenster(f => ({ ...f, offen: false })); }} title="Schließen — ZOE bleibt als Icon da"
-            style={{ ...rund, width: 26, height: 26, borderRadius: 8, fontSize: 12, lineHeight: 1 }}>—</button>
+          <button onClick={() => setFenster(f => ({ ...f, w: STANDARD.w, h: STANDARD.h, right: STANDARD.right, bottom: STANDARD.bottom }))} title="Normalgröße" aria-label="Normalgröße"
+            className="zoe-normalgroesse" style={{ ...rund, width: 26, height: 26, borderRadius: 8, fontSize: TYP.bedien, lineHeight: 1 }}>◱</button>
+          <button onClick={() => { stimme.schweig(); stimme.hoerAuf(); setFenster(f => ({ ...f, offen: false })); }} title="Schließen — ZOE bleibt als Icon da" aria-label="ZOE schließen"
+            style={{ ...rund, width: 26, height: 26, borderRadius: 8, fontSize: TYP.bedien, lineHeight: 1 }}>—</button>
         </div>
       </div>
 
       {/* Bezug aus der Markttraktion (28.09., C7): ZOE liest dort selbst nach und schlägt nur vor. */}
       {bezug && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${HAAR}`, fontSize: 12, color: C.inkDim }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${HAAR}`, fontSize: TYP.bedien, color: C.inkDim }}>
           <span style={{ color: J, fontWeight: 700 }}>Bezug</span>
           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{CRM_BEZUG_LABEL[bezug.art]}{bezug.id ? ` · ${bezug.id}` : ''}</span>
           <button onClick={() => setBezug(null)} title="Bezug lösen" aria-label="Bezug lösen" style={{ background: 'transparent', border: 0, color: C.inkLeise, cursor: 'pointer', fontSize: 13 }}>✕</button>
@@ -474,7 +474,7 @@ export function ZoePanel() {
             <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderTop: `1px solid rgba(255,255,255,.05)`, background: g.id === gespraechId ? `${J}14` : 'transparent' }}>
               <button onClick={() => oeffne(g)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 0, cursor: 'pointer', padding: 0, fontFamily: SCHRIFT.text }}>
                 <div style={{ fontSize: TYP.bedien, fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.titel}</div>
-                <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 2 }}>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>
                   {heute ? wannText(g.zuletzt, heute) : g.zuletzt.slice(0, 10)} · {g.nachrichten.length} Nachrichten
                 </div>
               </button>
@@ -525,7 +525,7 @@ export function ZoePanel() {
               )}
             </div>
         )}
-        {thinking && <div style={{ fontSize: 12, color: C.inkLeise }}><span style={{ ...lbl, color: J }}>ZOE</span> denkt nach …</div>}
+        {thinking && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}><span style={{ ...lbl, color: J }}>ZOE</span> denkt nach …</div>}
       </div>
       )}
 
@@ -533,18 +533,18 @@ export function ZoePanel() {
       <div style={{ padding: '10px 12px 12px', borderTop: `1px solid ${HAAR}`, background: 'rgba(255,255,255,.03)' }}>
         {/* ── Beleg: gelesen, noch nicht gebucht ── */}
         {belegLaeuft && belegLaeuft !== 'speichern' && (
-          <div style={{ fontSize: 12, fontWeight: 600, color: C.aktiv, marginBottom: 7 }}>
+          <div style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.aktiv, marginBottom: 7 }}>
             liest {belegLaeuft} …
           </div>
         )}
         {belegFehler && (
-          <div style={{ fontSize: 12, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 12, padding: '8px 11px', marginBottom: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 12, padding: '8px 11px', marginBottom: 8, lineHeight: 1.5 }}>
             {belegFehler}
             <button onClick={() => setBelegFehler(null)} style={{ marginLeft: 7, background: 'transparent', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button>
           </div>
         )}
         {belegGebucht && (
-          <div style={{ fontSize: 12, color: LEUCHT.gut, background: `${LEUCHT.gut}14`, borderRadius: 12, padding: '8px 11px', marginBottom: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut, background: `${LEUCHT.gut}14`, borderRadius: 12, padding: '8px 11px', marginBottom: 8, lineHeight: 1.5 }}>
             Übernommen: {belegGebucht}
             <button onClick={() => setBelegGebucht(null)} style={{ marginLeft: 7, background: 'transparent', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button>
           </div>
@@ -554,7 +554,7 @@ export function ZoePanel() {
             <div style={{ ...lbl, marginBottom: 6 }}>
               Beleg gelesen · {beleg.dateiname}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 10px', fontSize: 12.5 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 10px', fontSize: TYP.bedien }}>
               <span style={{ color: C.inkLeise }}>Partner</span><span style={{ color: C.ink }}>{beleg.partner || '—'}</span>
               <span style={{ color: C.inkLeise }}>Betrag</span>
               <span style={zahl}>
@@ -570,7 +570,7 @@ export function ZoePanel() {
               </span>
             </div>
             {!!beleg.unsicher?.length && (
-              <div style={{ fontSize: 11.5, color: LEUCHT.achtung, marginTop: 7, lineHeight: 1.45 }}>
+              <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 7, lineHeight: 1.45 }}>
                 Nicht sicher gelesen: {beleg.unsicher.join(' · ')} — bitte prüfen.
               </div>
             )}
@@ -586,7 +586,7 @@ export function ZoePanel() {
           </div>
         )}
         {stimme.hoert && (
-          <div style={{ fontSize: 12, fontWeight: 600, color: LEUCHT.kritisch, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 7 }}>
+          <div style={{ fontSize: TYP.bedien, fontWeight: 600, color: LEUCHT.kritisch, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 7 }}>
             <span className="zoe-orb-kern" style={{ width: 7, height: 7, borderRadius: '50%', background: LEUCHT.kritisch, boxShadow: `0 0 8px ${LEUCHT.kritisch}33`, display: 'inline-block' }} />
             {stimme.teil ? stimme.teil : 'Ich höre …'}
           </div>

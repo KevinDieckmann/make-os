@@ -31,9 +31,9 @@ import { localDay } from '@/lib/zeit';
 import { nachOben } from '../Verlauf';
 import { useRouter } from 'next/navigation';
 import { WEG, eventLink } from '@/lib/wege';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Chip, Punkt, Knopf, LEUCHT, SPALTEN_AB } from '../ui';
+import { Karte, Ueberschrift, Leer, Chip, Punkt, Knopf, LEUCHT, useBreit } from '../ui';
 import { anzeigename, STUFE_LABEL, type Kontakt, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -62,17 +62,8 @@ import { typenVon, kategorienVon, labelsVon } from '@/lib/crm/mehrfach';
 import { personenDerFirma } from '@/lib/crm/stationen';
 import { useNaechsterTermin } from '../kalender/TermineAkte';
 
-/** Drei Spalten ab SPALTEN_AB, sonst untereinander. */
-function useDrei(): boolean {
-  const [drei, setDrei] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia(`(min-width: ${SPALTEN_AB}px)`);
-    const an = () => setDrei(mq.matches);
-    an(); mq.addEventListener('change', an);
-    return () => mq.removeEventListener('change', an);
-  }, []);
-  return drei;
-}
+/** Drei Spalten ab SPALTEN_AB, sonst untereinander (der EINE Hook, ui/medien.ts). */
+const useDrei = useBreit;
 
 const reiterMerker = (personId: string) => `mt-akte-reiter-${personId}`;
 /** Ab dieser Breite der Mitte stehen Karten in zwei Spalten (Über, Daten). */

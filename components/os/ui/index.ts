@@ -9,4 +9,5 @@ export { eingabe, feld, auswahl, Feldzeile } from './felder';
 // Ziel-Bezug: `ZielChip`/`useZielBezug` = je Aufgabe (Kern), `ZielBezug` = je Bereich/Seite (Privat: Gesundheit, Familie, Kompass …).
 export { ZielChip, useZielBezug } from './ziel';
 export { ZielBezug } from './ziel-bezug';
-export { Ring, Balken, Punkt, Haken, Spalten, Spalte, aufZwei, useBreit, useHochzaehlen, LEUCHT, SPALTEN_AB, zoneFarbe, prioFarbe } from '../schlank';
+export { useHandy, useBreit, useMedien, HANDY_BIS, SPALTEN_AB } from './medien';
+export { Ring, Balken, Punkt, Haken, Spalten, Spalte, aufZwei, useHochzaehlen, LEUCHT, zoneFarbe, prioFarbe } from '../schlank';

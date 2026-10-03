@@ -18,7 +18,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { LEUCHT } from './schlank';
+import { LEUCHT } from './ui';
 import { localDay } from '@/lib/zeit';
 import { anteilIm, stapeln, tageZwischen } from '@/lib/planung/zeitstrahl';
 
