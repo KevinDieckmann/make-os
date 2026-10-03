@@ -18,6 +18,9 @@ import Link from 'next/link';
 //   · Planungsjahr (`?jahr=`): mindestens laufendes + nächstes; Ziele, Meilensteine, Fokus und Forecast je Jahr.
 //     Das Nachladen beim Blättern entfällt: Meilensteine/Ziele/Projekte kommen je einmal ganz (ein Bestand), gefiltert
 //     wird rein nach Fenster.
+// 03.10. (Kevin: „mehrere Elektro-Fäden“): Im Jahr zeigt der Zeitstrahl Lichtfäden — je Ziel ein Bündel in seiner Farbe
+// (lib/lichtfaeden/farben.ts), Dichte je Woche aus Meilensteinen, Ziel-Fristen und offenen Aufgaben (lib/lichtfaeden/dichte.ts).
+// Die Marker tragen ihr Bündel und die Bündelfarbe; Bedienung (Blättern, Heute, Anlegen, Öffnen) bleibt unverändert.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -49,6 +52,9 @@ import { useStrahlFenster, adresseSetzen } from './planung/useStrahlFenster';
 import { useMeilensteinFenster } from './planung/MeilensteinFenster';
 import { useRueckgaengig } from './planung/Rueckgaengig';
 import { NeuAnfangenKnopf } from './aufgaben/NeuAnfangen';
+import { faedenDichte, lichtText, OHNE_ZIEL, type DichteZiel } from '@/lib/lichtfaeden/dichte';
+import { buendelFarben } from '@/lib/lichtfaeden/farben';
+import type { StrahlLicht } from './Zeitstrahl';
 
 type Horizont = 'monat' | 'quartal' | 'jahr';
 
@@ -154,7 +160,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     // Jahresziele mit Frist, die (noch) keinen eigenen Meilenstein haben (z. B. gelöst oder persönlich) — die übrigen stehen als Meilenstein da.
     for (const z of ziele) {
       if (!hatTermin(z) || z.erledigt || ms.some(m => m.abgeleitetVon === z.id) || !imFilter(z.space ?? (spaceFilter === 'alle' ? 'business' : spaceFilter), z.einheit)) continue;
-      strahlMarker.push({ date: z.termin!, label: z.titel, farbe: z.space ? SPACE_FARBE[z.space] : farbe, symbol: '◎', titel: `Jahresziel · ${z.titel} · bis ${z.termin!.slice(8)}.${z.termin!.slice(5, 7)}.${z.termin!.slice(0, 4)} — Klick öffnet das Ziel`, href: WEG.ziel(z.id) });
+      strahlMarker.push({ date: z.termin!, label: z.titel, farbe: z.space ? SPACE_FARBE[z.space] : farbe, symbol: '◎', titel: `Jahresziel · ${z.titel} · bis ${z.termin!.slice(8)}.${z.termin!.slice(5, 7)}.${z.termin!.slice(0, 4)} — Klick öffnet das Ziel`, href: WEG.ziel(z.id), buendel: z.id });
     }
     // Projekt-Fristen (Ende, sonst Deadline) — offene Projekte, nicht im Papierkorb/Archiv.
     for (const pr of tasksState.projects) {
@@ -163,6 +169,36 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       const sp: SpaceId = pr.spaceId ? bereichVonSpace(pr.spaceId) : pr.category === 'business' ? 'business' : 'privat';
       if (!imFilter(sp, undefined) || (imBusiness && einheitFilter !== 'alle')) continue;
       strahlMarker.push({ date: frist.slice(0, 10), label: pr.title, farbe: C.inkDim, symbol: '▣', titel: `Projekt · ${pr.title} · Ende ${frist.slice(8, 10)}.${frist.slice(5, 7)}.${frist.slice(0, 4)}`, href: pr.spaceId ? WEG.aufgaben({ s: pr.spaceId, p: pr.id }) : WEG.aufgaben() });
+    }
+  }
+  // ── Lichtfäden (nur im Jahr): Bündel je Ziel im Fenster, Dichte aus echten Daten, Marker in Bündelfarbe ──
+  let licht: StrahlLicht | undefined;
+  if (istJahr) {
+    const imFenster = (d?: string) => !!d && d >= strahl.von && d <= strahl.bis;
+    const msFenster = ms.filter(m => imFilter(meilensteinSpace(m), m.einheit));
+    const jahreImFenster = new Set<number>();
+    for (let j = Number(strahl.von.slice(0, 4)); j <= Number(strahl.bis.slice(0, 4)); j++) jahreImFenster.add(j);
+    const zielIds = new Set<string>();
+    for (const m of msFenster) { const z = zielVonMeilenstein(m); if (z && imFenster(m.faellig)) zielIds.add(z); }
+    const bZiele: DichteZiel[] = [];
+    for (const z of ziele) {
+      const passt = imFilter(z.space ?? (spaceFilter === 'alle' ? 'business' : spaceFilter), z.einheit) && jahreImFenster.has(zielJahr(z, laufend));
+      if ((passt && !z.erledigt) || zielIds.has(z.id)) { bZiele.push(z); zielIds.delete(z.id); }
+    }
+    // Ziele anderer Ebenen, auf die ein Meilenstein im Fenster zeigt (nur Titel bekannt).
+    for (const id of zielIds) { const k = p.alleZiele.find(z => z.id === id); if (k) bZiele.push({ id: k.id, titel: k.titel }); }
+    const aufgabenFenster = tasksState.tasks.filter(t => t.dueDate && imFenster(t.dueDate) && !imPapierkorb(t) && !imArchiv(t) && (spaceFilter === 'alle' || spaceVonAufgabe(t) === spaceFilter));
+    const dichte = faedenDichte(bZiele, msFenster, aufgabenFenster, undefined, strahl);
+    const farben = buendelFarben(dichte.buendel);
+    licht = { buendel: dichte.buendel.map(b => ({ id: b.id, farbe: farben[b.id], titel: b.titel, dichte: b.dichte })), text: lichtText(dichte) };
+    const bekannt = new Set(dichte.buendel.map(b => b.id));
+    const zuBuendel = (zielId?: string) => (zielId && bekannt.has(zielId) ? zielId : OHNE_ZIEL);
+    const msNachId = new Map(ms.map(m => [m.id, m]));
+    for (const mk of strahlMarker) {
+      if (mk.symbol === '▣') { mk.buendel = OHNE_ZIEL; continue; }
+      const m = mk.id ? msNachId.get(mk.id) : undefined;
+      mk.buendel = zuBuendel(m ? zielVonMeilenstein(m) : mk.buendel);
+      if (farben[mk.buendel]) mk.farbe = farben[mk.buendel];
     }
   }
   if (horizont === 'monat') {
@@ -226,7 +262,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       {/* Zeitstrahl — der Zeitraum als Linie: Heute-Anker, Meilensteine, Fälligkeiten. Im Jahr: Fenster zum Blättern, Anlegen per Klick. */}
       {istJahr ? (
         <Zeitstrahl von={strahl.von} bis={strahl.bis} ticks={ticks} marker={strahlMarker} label={`Zeitstrahl ${fensterJahr.fenster.label}`}
-          baender={quartale(strahl.von, strahl.bis)}
+          baender={quartale(strahl.von, strahl.bis)} licht={licht}
           onBlaettern={fensterJahr.blaettern} onBreite={fensterJahr.setBreite}
           onMarker={m => { if (m.id) oeffneMeilenstein(m.id); }}
           onTag={tag => msFenster.oeffneNeu(vorgabe(tag))}
