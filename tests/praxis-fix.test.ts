@@ -344,7 +344,7 @@ describe('M10 · besuchte Events: Erfassung = besucht; Follow-up-Quote mit Defin
       tn('a', 'ev-a', { followUpAm: '2026-10-01', ...nw({ neuAngelegt: true }) }),            // am Eventtag: zählt
       tn('b', 'ev-a', { followUpAm: '2026-10-03', ...nw({ neuAngelegt: true }) }),            // am 2. Tag: zählt
       tn('c', 'ev-a', { followUpAm: '2026-10-09', ...nw({ neuAngelegt: true }) }),            // zu spät: zählt nicht
-      tn('d', 'ev-a', { nachfassenVerzichtet: true, ...nw({ neuAngelegt: true }) }),          // „Nur Kontakt“: nicht im Nenner
+      tn('d', 'ev-a', { nachfassenVerzichtet: '2026-10-01', ...nw({ neuAngelegt: true }) }),          // „Nur Kontakt“: nicht im Nenner
     ];
     const w = besuchWirkung(e, ctx(z, '2026-10-12'));
     expect(w.kontakte).toBe(4);
@@ -359,7 +359,7 @@ describe('M10 · besuchte Events: Erfassung = besucht; Follow-up-Quote mit Defin
   });
   it('lauter „Nur Kontakt“: keine Quote statt 0 %', () => {
     const e = ev({ datum: '2026-10-01', status: 'durchgefuehrt', anmeldung: 'besucht' });
-    const w = besuchWirkung(e, ctx([tn('a', 'ev-a', { nachfassenVerzichtet: true, ...nw({ neuAngelegt: true }) })], '2026-10-12'));
+    const w = besuchWirkung(e, ctx([tn('a', 'ev-a', { nachfassenVerzichtet: '2026-10-01', ...nw({ neuAngelegt: true }) })], '2026-10-12'));
     expect(w.followupQuote).toBeNull();
   });
 });
