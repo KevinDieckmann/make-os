@@ -246,7 +246,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
     if (abgesagt) throw new ErfassungFehler('Das Event ist abgesagt — bitte ein anderes Event wählen.', 409, { eventFehler: true });
     return ersatz;
   }, id => (id ? { eventId: id } : {}));
-  let eventId = eventErsatz ?? vorher?.eventId ?? e.eventId;
+  const eventId = eventErsatz ?? vorher?.eventId ?? e.eventId;
   let crm0 = await ladeCrm();
   let event = crm0.events.find(x => x.id === eventId);
   if (!event) {

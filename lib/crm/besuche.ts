@@ -106,7 +106,6 @@ const dealZaehlt = (c: Chance): boolean => c.stufe !== 'verloren' && c.stufe !==
  */
 export function besuchWirkung(e: Event, ctx: BesuchKontext): BesuchWirkung {
   const t = erfassteTeilnahmen(e.id, ctx.teilnahmen);
-  const ids = new Set(t.map(x => x.kontaktId));
   const neu = new Set(t.filter(x => x.netzwerken && ctx.kontakte.some(k => k.id === x.kontaktId && k.id === `c-${x.netzwerken!.erfassungId}` && k.quelle === NETZWERKEN_QUELLE)).map(x => x.kontaktId));
   const bis = plusTage(e.datum, DEAL_FENSTER_TAGE);
   const deals = ctx.chancen.filter(c => (c.quelle === 'event' && c.quelleBezug === e.id)
