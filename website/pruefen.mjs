@@ -57,6 +57,8 @@ export const VERSTECKT = NICHT_OEFFENTLICH.map(d => d.split('/').pop());
  */
 export const ERSTGESPRAECH_MAIL = /^mailto:hello@makeinnovation\.de\?subject=Erstgespr%C3%A4ch%20%E2%80%93%20Markttraktion&amp;body=[^"]+$/;
 export const BUCHUNG_BASIS = 'https://app.makeinnovation.de/buchen/';
+/** Eigene Schwester-Seite (04.10.): Fokus Innovation, Reihe von Make.One (Ordner fokus/). */
+export const FOKUS_SEITE = 'https://fokusinnovation.de';
 export const BUCHUNG_MUSTER = /^https:\/\/app\.makeinnovation\.de\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}$/;
 /** Mail-Knöpfe mit Betreff, die auf der Startseite stehen müssen (Betreff kodiert wie im href). */
 export const MAIL_BETREFFE = {
@@ -211,7 +213,7 @@ export function pruefeWebsite(ordner) {
       if (frag && datei.endsWith('.html') && !anker(inhalt.get(datei)).has(frag)) fehler.push(`${d}: Anker #${frag} fehlt in ${datei}`);
     }
     // Externe Links: nur bewusst gesetzte (Login, Buchungsseite). Alles andere wäre neu und muss hier eingetragen werden.
-    for (const m of text.matchAll(/\shref="(https?:[^"]*)"/g)) if (m[1] !== ANMELDEN && !m[1].startsWith(BUCHUNG_BASIS) && !(d === 'index.html' && QUELLEN_LINKS.includes(m[1]))) fehler.push(`${d}: unerwarteter externer Link ${m[1]}`);
+    for (const m of text.matchAll(/\shref="(https?:[^"]*)"/g)) if (m[1] !== ANMELDEN && m[1] !== FOKUS_SEITE && !m[1].startsWith(BUCHUNG_BASIS) && !(d === 'index.html' && QUELLEN_LINKS.includes(m[1]))) fehler.push(`${d}: unerwarteter externer Link ${m[1]}`);
     // Quellenlinks: nur als Fußnote einer Zahl, mit rel="noopener noreferrer"; jede Zahl hat eine Fußnote, jede Fußnote einen Beleg.
     for (const [tag, url] of Array.from(text.matchAll(/<a\b[^>]*\shref="(https?:[^"]*)"[^>]*>/g), m => [m[0], m[1]])) {
       if (QUELLEN_LINKS.includes(url) && !/\srel="noopener noreferrer"/.test(tag)) fehler.push(`${d}: Quellenlink ${url} ohne rel="noopener noreferrer"`);

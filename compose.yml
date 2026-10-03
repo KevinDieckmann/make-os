@@ -93,6 +93,8 @@ services:
       # in /srv/make-os/app, „./website“ ist also /srv/make-os/app/website (kommt mit `ausrollen.sh ziehen`). Nur lesen.
       # Ausgeliefert wird sie erst mit der Freigabe-Fassung der Caddyfile; bis dahin leitet makeinnovation.de um.
       - ./website:/srv/website:ro
+      # Event-Seite „Fokus Innovation“ (04.10.): statische Dateien aus fokus/ — nur lesen, wie website/.
+      - ./fokus:/srv/fokus:ro
       - caddy_daten:/data
       - caddy_konfig:/config
     depends_on: [app]

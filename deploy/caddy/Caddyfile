@@ -81,3 +81,34 @@ makeinnovation.de {
 	}
 }
 # ▲ FREIGABE-FASSUNG
+
+# ─── fokusinnovation.de + www — Event-Seite „Fokus Innovation“ (Ordner fokus/, Kevin 04.10.) ─────────────────────
+# VORSCHAU wie makeinnovation.de: noindex über landingpage_koepfe + fokus/robots.txt (Disallow). Erst wenn beworben wird und
+# `node fokus/pruefen.mjs` „freigabefähig“ meldet: noindex entfernen (eigene Kopf-Gruppe) und fokus/robots.txt öffnen.
+www.fokusinnovation.de {
+	header -Server
+	redir https://fokusinnovation.de{uri} 301
+}
+fokusinnovation.de {
+	root * /srv/fokus
+	encode zstd gzip
+	import landingpage_koepfe
+	# Arbeitsdateien werden nie ausgeliefert (wie NICHT_OEFFENTLICH in fokus/pruefen.mjs).
+	@intern path /LIESMICH.md /pruefen.mjs *.md *.mjs
+	respond @intern 404
+	@seiten path / /*.html
+	header @seiten Cache-Control "no-cache"
+	@schriften path /assets/fonts/*
+	header @schriften Cache-Control "public, max-age=2592000, immutable"
+	@stile path /css/* /js/* /favicon.svg /assets/logo/* /assets/film/*
+	header @stile Cache-Control "public, max-age=86400"
+	file_server {
+		hide LIESMICH.md pruefen.mjs
+	}
+	handle_errors {
+		root * /srv/fokus
+		import landingpage_koepfe
+		rewrite * /404.html
+		file_server
+	}
+}

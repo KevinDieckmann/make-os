@@ -112,6 +112,21 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     }
   });
 
+  it('fokusinnovation.de (04.10.): www → 301, Seite read-only aus /srv/fokus mit denselben strengen Köpfen, Vorschau mit noindex + robots.txt', () => {
+    const www = aktiv.get('www.fokusinnovation.de');
+    expect(www).toMatch(/^redir https:\/\/fokusinnovation\.de\{uri\} 301$/m);
+    const seite = aktiv.get('fokusinnovation.de') ?? '';
+    expect(seite).toMatch(/^root \* \/srv\/fokus$/m);
+    expect(seite).toMatch(/^import landingpage_koepfe$/m);
+    expect(seite).toMatch(/^respond @intern 404$/m);
+    expect(seite).toMatch(/^hide LIESMICH\.md pruefen\.mjs$/m);
+    expect(seite).not.toMatch(/reverse_proxy|browse/);
+    const kopf = aktiv.get('(landingpage_koepfe)') ?? '';
+    expect(kopf, 'Vorschau ohne noindex').toMatch(/^X-Robots-Tag "noindex, nofollow"$/m);
+    expect(readFileSync(join(process.cwd(), 'fokus', 'robots.txt'), 'utf8')).toMatch(/^Disallow: \/$/m);
+    expect(readFileSync(join(process.cwd(), 'compose.yml'), 'utf8')).toMatch(/^\s+- \.\/fokus:\/srv\/fokus:ro$/m);
+  });
+
   it('Freigabe-Fassung (kommentiert oder aktiv): www → 301, Landingpage read-only mit strengen Köpfen', () => {
     const f = freigabeAktiv ? aktiv : bloecke(freigabeFassung());
     const www = f.get('www.makeinnovation.de');
