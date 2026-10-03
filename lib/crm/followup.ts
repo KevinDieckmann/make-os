@@ -18,6 +18,7 @@ import type { CrmBestand, FollowUp, FollowUpArt, FollowUpBezugArt, Wertelisten }
 import { OFFENE_STUFEN } from './pipeline';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
 import { followUpBis } from './events';
+import { nachfassText } from './marke';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { reviewZaehlt } from './review';
 
@@ -149,7 +150,7 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     if (!frei(t.kontaktId, f)) continue;
     // Ein echtes Event-Follow-up zu diesem Gast (etwa nach „+3 Tage“) ersetzt den virtuellen Eintrag.
     if ((crm.followups ?? []).some(x => x.status === 'offen' && x.bezug.art === 'event' && x.bezug.id === ev.id && x.kontaktId === t.kontaktId)) continue;
-    raus.push(mach({ id: `v:nachfassen:${t.id}`, virtuell: true, quelle: 'nachfassen', art: 'nachricht', text: `Nachfassen nach „${ev.titel}“`, faellig: f, kontaktId: t.kontaktId, name: nameVon(t.kontaktId), ...(firmaVon(t.kontaktId) ? { firma: firmaVon(t.kontaktId) } : {}), bezug: { art: 'event', id: ev.id, titel: ev.titel }, zustaendig: t.einladenDurch ?? zustaendig(ev.zustaendig, 'event') }));
+    raus.push(mach({ id: `v:nachfassen:${t.id}`, virtuell: true, quelle: 'nachfassen', art: 'nachricht', text: nachfassText(ev), faellig: f, kontaktId: t.kontaktId, name: nameVon(t.kontaktId), ...(firmaVon(t.kontaktId) ? { firma: firmaVon(t.kontaktId) } : {}), bezug: { art: 'event', id: ev.id, titel: ev.titel }, zustaendig: t.einladenDurch ?? zustaendig(ev.zustaendig, 'event') }));
   }
   // 5 · Review am Mandat
   // Dieselbe Regel wie die Kalender-Frist (`reviewZaehlt`, F2 M1) — in Glocke/Heute führt DIESER Eintrag.

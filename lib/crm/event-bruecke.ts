@@ -25,7 +25,8 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import type { Event, Lead, LeadStatus, Teilnahme, FollowUpArt, FollowUpBezugArt, FollowUpQuelle } from './typen';
 import { abgeleitet, leereKriterien, statusLabel } from './leads';
-import { followUpBis, eventName } from './events';
+import { followUpBis } from './events';
+import { nachfassText } from './marke';
 import { budgetSumme } from './eventplanung';
 
 // ── 1 · Lead heben ──────────────────────────────────────────────────────────
@@ -96,10 +97,10 @@ export interface FollowUpEingabe {
  * Event (followUpBis), Quelle „event“. Zuständig ist, wer eingetragen einlädt
  * und nachfasst; ohne Eintrag entscheidet die Route (wer die Beziehung hält).
  */
-export function followUpEingabe(e: Pick<Event, 'id' | 'titel' | 'datum' | 'marke'>, t: Pick<Teilnahme, 'kontaktId' | 'einladenDurch'>): FollowUpEingabe {
+export function followUpEingabe(e: Pick<Event, 'id' | 'titel' | 'datum' | 'marke' | 'reihe'>, t: Pick<Teilnahme, 'kontaktId' | 'einladenDurch'>): FollowUpEingabe {
   return {
     aktion: 'anlegen', kontaktId: t.kontaktId, bezug: { art: 'event', id: e.id }, art: 'nachricht',
-    text: `Nachfassen nach „${eventName(e)}“`.slice(0, 300), faellig: followUpBis(e), quelle: 'event',
+    text: nachfassText(e).slice(0, 300), faellig: followUpBis(e), quelle: 'event',
     ...(t.einladenDurch ? { zustaendig: t.einladenDurch } : {}),
   };
 }

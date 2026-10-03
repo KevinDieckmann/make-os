@@ -17,8 +17,14 @@ export const markeVon = (e: Pick<Event, 'marke'>): string => e.marke?.trim() || 
  * Wie ein Event nach außen heißt: „Make.One · Stammtisch Maschinenbau“ — für Nachfass-Texte, Export, Herkunft und ZOE.
  * Läuft es in einer Reihe (03.10., z. B. Fokus Innovation), steht die Reihe vor dem Titel: „Make.One · Fokus Innovation · Dinner“;
  * nennt der Titel sie schon („Fokus Innovation Hamburg“), nicht doppelt: „Make.One · Fokus Innovation Hamburg“.
+ * Ein besuchtes Event (Netzwerken, fremde Veranstaltung) trägt nicht unsere Marke — es heißt, wie es heißt (der Titel).
  */
-export const eventName = (e: Pick<Event, 'titel' | 'marke' | 'reihe'>): string => `${markeVon(e)} · ${titelMitReihe(e)}`;
+export const eventName = (e: Pick<Event, 'titel' | 'marke' | 'reihe'>): string => (istNetzwerkenEvent(e) ? e.titel : `${markeVon(e)} · ${titelMitReihe(e)}`);
+
+/** DER Nachfass-Text zu einem Event (Follow-up-Ebene, Heute, Netzwerken, Teilnahme-Brücke): „Nachfassen nach „Make.One · …““. */
+export const nachfassText = (e: Pick<Event, 'titel' | 'marke' | 'reihe'>): string => `Nachfassen nach „${eventName(e)}“`;
+/** DER Text der Aktivität nach dem Nachfassen: „Nachgefasst nach „…“ — Gespräch“. */
+export const nachgefasstText = (e: Pick<Event, 'titel' | 'marke' | 'reihe'>, ergebnis?: string | null): string => `Nachgefasst nach „${eventName(e)}“${ergebnis ? ` — ${ergebnis}` : ''}`;
 
 // ── Reihen unter Make.One (03.10.) ───────────────────────────────────────────
 // Kevin: „Fokus Innovation = Event-Reihe unter Make.One“ — das Leit-Format der Innovations-Abende (Berlin, Hamburg, Bielefeld,

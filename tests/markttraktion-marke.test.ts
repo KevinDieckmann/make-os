@@ -39,3 +39,36 @@ describe('Marke Make.One', () => {
     expect(followUpEingabe(ev(), { kontaktId: 'c-a' }).text).toBe('Nachfassen nach „Make.One · Stammtisch Maschinenbau“');
   });
 });
+
+describe('Nachfass- und Herkunftstexte: EIN Helfer (Review 03.10.)', () => {
+  it('nachfassText/nachgefasstText: Marke + Reihe; ein besuchtes Event (Netzwerken) heißt wie es heißt', async () => {
+    const { nachfassText, nachgefasstText, NETZWERKEN_MARKE } = await import('../lib/crm/marke');
+    expect(nachfassText(ev())).toBe('Nachfassen nach „Make.One · Stammtisch Maschinenbau“');
+    expect(nachfassText(ev({ titel: 'Dinner', reihe: 'fokus-innovation' }))).toBe('Nachfassen nach „Make.One · Fokus Innovation · Dinner“');
+    expect(nachfassText(ev({ marke: NETZWERKEN_MARKE, titel: 'IHK-Abend' }))).toBe('Nachfassen nach „IHK-Abend“');
+    expect(nachgefasstText(ev(), 'Gespräch')).toBe('Nachgefasst nach „Make.One · Stammtisch Maschinenbau“ — Gespräch');
+    expect(nachgefasstText(ev(), null)).toBe('Nachgefasst nach „Make.One · Stammtisch Maschinenbau“');
+    // Die Teilnahme-Brücke nimmt die Reihe mit (Pick enthält 'reihe').
+    expect(followUpEingabe(ev({ titel: 'Dinner', reihe: 'fokus-innovation' }), { kontaktId: 'k-1' }).text).toBe('Nachfassen nach „Make.One · Fokus Innovation · Dinner“');
+  });
+
+  it('kein Ort baut den Nachfass-Text selbst; die Herkunft nutzt eventName (keine „Make.One“-Regex)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const path = await import('node:path');
+    const w = path.resolve(__dirname, '..');
+    const lies = (f: string) => readFileSync(path.join(w, f), 'utf8');
+    for (const f of ['lib/crm/followup.ts', 'lib/crm/heute.ts', 'lib/crm/netzwerken-server.ts', 'lib/crm/event-bruecke.ts', 'components/os/crm/events/gemeinsam.tsx']) {
+      expect(lies(f), f).not.toMatch(/`Nachfassen nach „\$\{|`Nachgefasst nach „\$\{/);
+    }
+    expect(lies('lib/crm/herkunft.ts')).not.toMatch(/Make\\\.One/);
+  });
+
+  it('Herkunft: ein Event mit eigener Marke steht mit seiner Marke da (nicht „Make.One · Marke · …“)', async () => {
+    const { herkunftVon } = await import('../lib/crm/herkunft');
+    const k = { id: 'k-1', name: 'Erika Beispiel', stufe: 'kontakt', letzterKontakt: '2026-11-06' } as unknown as import('../lib/make-one/crm').Kontakt;
+    const crm = { events: [ev({ marke: 'Forum Süd' })], teilnahmen: [{ id: 't-1', eventId: 'ev-1', kontaktId: 'k-1', status: 'da' }], kampagnen: [], firmen: [] } as unknown as Parameters<typeof herkunftVon>[1];
+    const roh = JSON.stringify(herkunftVon([k], crm));
+    expect(roh).toContain('Forum Süd · Stammtisch Maschinenbau');
+    expect(roh).not.toContain('Make.One · Forum Süd');
+  });
+});

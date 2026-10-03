@@ -14,7 +14,7 @@ import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Event, Teilnahme, TeilnahmeStatus, LeadStatus } from '@/lib/crm/typen';
 import { teilAenderung, type Mix, type MixGruppe } from '@/lib/crm/eventplanung';
 import { followUpEingabe, hebtLead, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
-import { MARKE_EVENTS, eventName, EVENT_REIHEN, reiheVon, reiheName } from '@/lib/crm/marke';
+import { MARKE_EVENTS, nachgefasstText, EVENT_REIHEN, reiheVon, reiheName } from '@/lib/crm/marke';
 import { statusLabel } from '@/lib/crm/leads';
 import { TEAM, BEIDE, anderer, nameVon } from '@/lib/crm/team';
 import { datum, type CrmApi } from '../daten';
@@ -71,7 +71,7 @@ export async function nachfassen(api: CrmApi, e: Event, t: Teilnahme, k: Kontakt
   const label = ergebnis === 'gespraech' ? 'Gespräch' : ergebnis === 'termin' ? 'Termin' : null;
   await api.aktivitaet({
     id: k.id, art: ergebnis === 'erledigt' ? 'event' : ergebnis, bezug: e.id,
-    text: label ? `Nachgefasst nach „${eventName(e)}“ — ${label}` : `Nachgefasst nach „${eventName(e)}“`,
+    text: nachgefasstText(e, label),
     ...(hebtLead(ergebnis) ? { ergebnis } : {}),
   });
   const r = await eventsPost(e.id, { aktion: 'nachfassen', teilnahmeId: t.id, ergebnis });

@@ -40,7 +40,7 @@ const kurzDatum = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
 /** Besuchtes Event als Text: Name, Tag, und wenn es für einen Kunden lief, dessen Name. */
 function eventText(e: Event, besucht: boolean, firmaName: (id: string) => string | undefined): string {
   const f = e.fuer && e.fuer.art === 'kunde' ? firmaName(e.fuer.firmaId) ?? 'einen Kunden' : undefined;
-  return `${besucht ? `Besuchtes Event · ${e.titel}` : `Make.One · ${eventName(e).replace(/^Make\.One · /, '')}`} · ${kurzDatum(e.datum)}${f ? ` · für Kunde ${f}` : ''}`;
+  return `${besucht ? `Besuchtes Event · ${e.titel}` : eventName(e)} · ${kurzDatum(e.datum)}${f ? ` · für Kunde ${f}` : ''}`;
 }
 
 export function herkunftVon(

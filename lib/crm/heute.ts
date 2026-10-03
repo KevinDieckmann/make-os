@@ -22,6 +22,7 @@ import { gesundheit, gesamtwert, OFFENE_STUFEN } from './pipeline';
 import { besterKanal, kanalStatus, type KanalStatus } from './recht';
 import { mandatLage } from './kunden';
 import { followUpBis } from './events';
+import { nachfassText } from './marke';
 import { taktVon, dealWiedervorlagen } from './followup';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
 import { hatTyp } from './mehrfach';
@@ -125,7 +126,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     // Ein offenes echtes Follow-up zu diesem Gast und Event (z. B. aus „Netzwerken“) führt — kein zweiter Eintrag aus demselben Anlass (M1).
     if ((crm.followups ?? []).some(x => x.status === 'offen' && x.bezug.art === 'event' && x.bezug.id === ev.id && x.kontaktId === t.kontaktId)) continue;
     const bis = followUpBis(ev);
-    nimm(nachId.get(t.kontaktId), 'versprechen', bis >= heute ? 55 : 35, bis >= heute ? `Nachfassen nach „${ev.titel}“ bis ${bis}` : `Nachfassen nach „${ev.titel}“ überfällig`, { bezug: ev.id });
+    nimm(nachId.get(t.kontaktId), 'versprechen', bis >= heute ? 55 : 35, bis >= heute ? `${nachfassText(ev)} bis ${bis}` : `${nachfassText(ev)} überfällig`, { bezug: ev.id });
   }
   // 1b Echte Follow-ups (27.09.): die Follow-up-Ebene führt — was dort fällig ist, liegt auch hier oben (Prüfbericht, Punkt 1).
   for (const f of (crm.followups ?? []).filter(f => f.status === 'offen' && f.faellig <= heute && f.kontaktId)) {

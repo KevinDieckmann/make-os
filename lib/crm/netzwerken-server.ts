@@ -51,7 +51,7 @@ import { gastVormerken, einladungswegAus } from './eventplanung';
 import { kanalStatus } from './recht';
 import { angebotSpeichern } from './angebot-server';
 import { terminAktivitaetenSetzen } from './termin-aktivitaet-server';
-import { MARKE_EVENTS, istNetzwerkenEvent } from './marke';
+import { MARKE_EVENTS, istNetzwerkenEvent, nachfassText } from './marke';
 import { besuchAbgesagt } from './besuche-form';
 import { zusammenfuehrung, trifftEingeschraenkte, luekenFuellen, neuesEvent, gleichesBesuchEvent, followupFrist, followupFristEinTag, ergebnisZiel, angabeMitVorher, eventDatumPlausibel, wandPlusMinuten, schrittLabel, terminArtLabel, stadtAusAnschrift, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG, LABEL_NETZWERKEN, LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN, type Erfassung } from './netzwerken';
 import type { CrmBestand, Firma, NetzwerkenAngabe, Teilnahme } from './typen';
@@ -511,7 +511,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
           if ((b.followups ?? []).some(x => x.id === id)) return b;
           // Ohne Mail (oder ohne Gespräch) gibt es keine Danke-Mail mit dem Datenschutzhinweis (Art. 13) — dann beim ersten Kontakt mündlich nachholen.
           const hinweisNoetig = !kontakt0.email || e.gesprochen === false;
-          const text = `Nachfassen nach „${event.titel}“${hinweisNoetig ? ' (Datenschutzhinweis geben)' : ''}${e.info ? `: ${e.info.replace(/\s+/g, ' ')}` : ''}`.slice(0, 300);
+          const text = `${nachfassText(event)}${hinweisNoetig ? ' (Datenschutzhinweis geben)' : ''}${e.info ? `: ${e.info.replace(/\s+/g, ' ')}` : ''}`.slice(0, 300);
           const fu = neuesFollowUp({ id, bezug: { art: 'event', id: eventId }, kontaktId, art: 'nachricht', text, faellig: e.followup?.faellig ?? frist, quelle: 'event', zustaendig: e.zustaendig }, kontakt0, ctx.person, jetztIso);
           return { ...b, followups: [...(b.followups ?? []), { ...fu, geaendertVon: ctx.person }] };
         }, ctx.wer);
