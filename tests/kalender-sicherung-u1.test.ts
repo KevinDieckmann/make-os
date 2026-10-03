@@ -100,6 +100,9 @@ describe('M4: nie gleich nach dem Start, nie in der Pause, gestaffelt', () => {
 
 describe('N2: unlesbarer Stand', () => {
   it('bricht ab und überschreibt nichts', async () => {
+    // Ein Takt aus dem Test davor startet die Sicherung im Hintergrund — unter Last ist sie hier noch nicht fertig und die
+    // Sicherung meldet sonst „läuft schon“ (null) statt zu werfen. Erst warten, bis sie durch ist (03.10.).
+    await vi.waitFor(() => expect(sv.sicherungLaeuft()).toBe(false), { timeout: 30_000, interval: 50 });
     const datei = path.join(ic.ordner, 'kalender-sicherung.json');
     const kaputt = JSON.stringify({ __verschluesselt: 2, kid: 'x', iv: 'AAAAAAAAAAAAAAAA', tag: 'AAAAAAAAAAAAAAAAAAAAAA==', daten: 'kaputt' });
     writeFileSync(datei, kaputt);
