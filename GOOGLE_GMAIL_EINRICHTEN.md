@@ -18,7 +18,7 @@ in Gmail, MAKE OS hält eine Kopie zum Lesen, Zuordnen und Antworten.
 Dauer: etwa 20 Minuten (Teil A), Pub/Sub (Teil B) weitere 15 Minuten, DNS (Teil D) 30 Minuten plus Wartezeit.
 
 > **REIHENFOLGE bei der Umstellung von IONOS (Teil D) — nicht vertauschen:**
-> 1. Gmail-Konten aktiv, **`hello@` als Alias/Gruppe** angelegt und getestet (D1–D3)
+> 1. Gmail-Konten aktiv, **`hello@` als Gruppe (Kevin + Malin)** angelegt und getestet (D1–D3)
 > 2. alte Mails mitnehmen, wenn gewünscht (D4)
 > 3. **erst dann** SPF, DKIM, DMARC und **zuletzt der MX** bei IONOS (D5)
 > Wer den MX zuerst umstellt, verliert Mails an `hello@`, solange es bei Google noch nicht existiert.
@@ -140,12 +140,16 @@ Kontaktzuordnung) stehen in der Inbox oben rechts.
 Admin-Konsole → **Verzeichnis** → **Nutzer**: `kevin@…` und `malin@…` sind aktiv (Lizenz zugewiesen).
 
 ### D2. `hello@makeinnovation.de` ZUERST anlegen
-- **Ein Mensch liest hello@** (Kevin): Admin-Konsole → **Verzeichnis → Nutzer → Kevin → Nutzerinformationen → Alternative E-Mail-Adressen**
-  → Alias `hello` hinzufügen. Der Alias erscheint in Gmail unter **Einstellungen → Konten → Senden als** (kann bis zu einem Tag dauern) und
-  damit automatisch in MAKE OS beim Antworten („Von“-Auswahl; bei einer Mail an `hello@` wird `hello@` als Absender vorgeschlagen).
-- **Beide lesen hello@:** Admin-Konsole → **Verzeichnis → Gruppen → Gruppe erstellen** → `hello@makeinnovation.de`, Mitglieder Kevin und Malin,
-  Zugriff „Kollaboratives Postfach“ bzw. E-Mail-Liste; wer als `hello@` antworten soll, richtet in Gmail **Senden als** für die Gruppe ein
-  (Gruppen-Einstellung „Mitglieder dürfen als Gruppe senden“). Nur was in Gmail unter „Senden als“ steht, bietet MAKE OS an.
+**Entschieden (Kevin 03.10.): `hello@` ist eine Gruppe — Kevin und Malin lesen beide jede Anfrage.**
+1. Admin-Konsole → **Verzeichnis → Gruppen → Gruppe erstellen**: Name „MAKE Innovation · Anfragen“, E-Mail `hello@makeinnovation.de`,
+   Mitglieder **Kevin** und **Malin** (je als Mitglied).
+2. Gruppeneinstellungen → **Wer kann Beiträge posten**: „Externe Nutzer“ erlauben (sonst kommen Mails von außen nicht an) →
+   **Wer kann als Gruppe E-Mails senden**: „Gruppenmitglieder“ (bzw. „Mitglieder dürfen als Gruppe senden“).
+3. Jede Person in Gmail: **Einstellungen → Konten → Senden als → Weitere E-Mail-Adresse hinzufügen** → `hello@makeinnovation.de`
+   (Name „MAKE Innovation“). Erst dann bietet MAKE OS beim Antworten `hello@` als Absender an („Von“-Auswahl; bei einer Mail an `hello@`
+   wird `hello@` vorgeschlagen).
+4. Hinweis: Jede Anfrage liegt danach in beiden Postfächern bzw. MAKE-OS-Spiegeln — wer antwortet, sieht man im Gesendet-Ordner und im
+   Verlauf der Kontaktakte; vorher kurz abstimmen, wer übernimmt.
 
 ### D3. Zustellung testen, **bevor** der MX umzieht
 Von einem fremden Konto eine Mail an `kevin@makeinnovation.de.test-google-a.com` und `hello@makeinnovation.de.test-google-a.com` schicken
