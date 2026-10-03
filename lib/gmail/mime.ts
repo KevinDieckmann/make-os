@@ -157,7 +157,7 @@ export function adressenLesen(kopf: string | undefined | null, max: number = GMA
   return raus;
 }
 
-/** Eine Adresse für eine Kopfzeile: `Name <a@b.de>` (Name als RFC-2047-Wort bzw. in Anführungszeichen), Name ohne Umbrüche. */
+/** Eine Adresse für eine Kopfzeile: `Name <adresse@beispiel.invalid>` (Name als RFC-2047-Wort bzw. in Anführungszeichen), Name ohne Umbrüche. */
 export function adresseBauen(a: Adr): string {
   const name = zeilenfrei(a.name ?? '');
   if (!name) return a.email;

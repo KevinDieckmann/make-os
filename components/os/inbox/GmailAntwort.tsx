@@ -26,7 +26,8 @@ const lese = (id: string): string => { try { return window.sessionStorage.getIte
 const schreibe = (id: string, t: string) => { try { if (t) window.sessionStorage.setItem(KEY(id), t); else window.sessionStorage.removeItem(KEY(id)); } catch { /* voll/privat */ } };
 const zuListe = (t: string): Adr[] => t.split(/[,;\s]+/).map(x => x.trim().replace(/^<|>$/g, '')).filter(Boolean).map(email => ({ email }));
 const zuText = (l: readonly Adr[]) => l.map(a => a.email).join(', ');
-const neueId = () => `gmail-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+// Eine Kennung je Editor (bleibt bei einem Netz-Retry gleich → der Server sendet nichts doppelt) — UUID, nie die Uhrzeit.
+const neueId = () => `gmail-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Array.from({ length: 4 }, () => Math.random().toString(36).slice(2, 10)).join('-')}`;
 
 const eingabe = { width: '100%', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '10px 12px', color: C.ink, fontFamily: SCHRIFT.text, fontSize: 16, minHeight: 44 } as const;
 
