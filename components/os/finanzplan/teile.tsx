@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO, TIEF, FLAECHE_STIL, ECKE, ZIEL } from '@/lib/make-one/design';
-import { LEUCHT, feld, Knopf, Chip, Pillen as UiPillen, Leer, Hinweis as UiHinweis } from '../ui';
+import { LEUCHT, feld, Knopf, Chip, Pillen as UiPillen, Leer, Hinweis as UiHinweis, Schalter } from '../ui';
 import { mitglied, nameVon } from '@/lib/crm/team';
 import type { Einheit } from '@/lib/finanzen/rechenkern';
 import { EINHEIT_LABEL, eur, parseBetrag, personKennung } from '@/lib/finanzen/plan/hilfen';
@@ -140,16 +140,8 @@ export function MonatWahl({ wert, onWahl, monate, aus, leer, breite = 104 }: { w
   );
 }
 
-export function Schalter({ an, onChange, children }: { an: boolean; onChange: (v: boolean) => void; children?: ReactNode }) {
-  return (
-    <button type="button" role="switch" aria-checked={an} onClick={() => onChange(!an)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: ZIEL.rechner, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.inkDim, fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>
-      <span aria-hidden style={{ width: 30, height: 18, borderRadius: 999, position: 'relative', background: an ? C.aktiv : 'rgba(255,255,255,.14)', transition: 'background .2s ease', flex: '0 0 auto' }}>
-        <span style={{ position: 'absolute', top: 2, left: an ? 14 : 2, width: 14, height: 14, borderRadius: '50%', background: C.grund, transition: 'left .2s ease' }} />
-      </span>
-      {children}
-    </button>
-  );
-}
+/** Der Schalter der Finanzplanung IST der Standard-Schalter (components/os/ui › Schalter) — hier nur durchgereicht. */
+export { Schalter };
 
 /** Kleiner Knopf der Finanzplanung — der Standard-Knopf (40 px am Rechner, 44 px am Handy); `farbe` tönt ihn, ohne `farbe` Türkis. */
 export function KnopfKlein({ children, onClick, farbe, aus, titel }: { children: ReactNode; onClick?: () => void; farbe?: string; aus?: boolean; titel?: string }) {

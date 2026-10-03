@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { klickSperren, type KlickSperre } from '@/lib/make-one/klick-sperre';
-import { FARBE as C, SCHRIFT, TIEF, LEUCHT, RAND, ECKE } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TIEF, TYP, LEUCHT, RAND, ECKE } from '@/lib/make-one/design';
 
 export type KnopfTon = 'haupt' | 'leise' | 'gut' | 'warn';
 
@@ -153,15 +153,58 @@ export function Reiter<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv
 }
 
 /**
- * Ein/Aus-Schalter (Rolle switch): sichtbar klein und ruhig (40 × 24), die Tippfläche 56 × 44 — Standard für Routinen, Freigaben, Einstellungen.
+ * DER Ein/Aus-Schalter (Rolle switch) — der einzige in MAKE OS (Review 03.10.; Wächter: kein `role="switch"` außerhalb von ui/).
+ * Sichtbar klein und ruhig (Schiene 40 × 24), die Tippfläche mindestens 44 hoch. `onChange(v)` bekommt den NEUEN Zustand.
+ * Drei Formen:
+ *   · ohne Beschriftung — dann ist `ariaLabel` Pflicht (der Typ erzwingt es): Tabellen, Zeilen mit eigenem Titel.
+ *   · mit Beschriftung (`children`) — Schiene, dann der Text; der Text ist der Name des Schalters.
+ *   · `karte` — eine ganze Zeile als Fläche (fett die Beschriftung, darunter `beschreibung`, optional `symbol` vorn), Schiene
+ *     rechts; für Entscheidungen mit Folgen (Netzwerken: „Wir haben persönlich gesprochen“).
  * Farbe der Schiene im „an“-Zustand = Bereichsfarbe (Standard Aktiv-Türkis).
  */
-export function Schalter({ an, onChange, aus, farbe = C.aktiv, ariaLabel, titel }: { an: boolean; onChange?: () => void; aus?: boolean; farbe?: string; ariaLabel?: string; titel?: string }) {
+interface SchalterBasis { an: boolean; onChange: (v: boolean) => void; aus?: boolean; farbe?: string; titel?: string; testId?: string }
+type Beschriftet = { children: NonNullable<ReactNode>; ariaLabel?: string };
+export type SchalterProps = SchalterBasis & (
+  | (Beschriftet & { karte?: false; beschreibung?: undefined; symbol?: undefined })
+  | (Beschriftet & { karte: true; beschreibung?: ReactNode; symbol?: ReactNode })
+  | { children?: undefined; ariaLabel: string; karte?: false; beschreibung?: undefined; symbol?: undefined }
+);
+
+function Schiene({ an, farbe, aus }: { an: boolean; farbe: string; aus?: boolean }) {
   return (
-    <button type="button" role="switch" aria-checked={an} aria-label={ariaLabel} title={titel} onClick={onChange} disabled={aus} className="treffer44 ui-schalter"
-      style={{ width: 56, height: 44, minHeight: 44, border: 'none', padding: 0, position: 'relative', flex: '0 0 auto', background: 'none', cursor: aus ? 'default' : 'pointer' }}>
-      <span aria-hidden style={{ position: 'absolute', top: 10, left: 8, width: 40, height: 24, borderRadius: 12, background: an ? farbe : C.linie, transition: 'background .18s ease' }} />
-      <span aria-hidden style={{ position: 'absolute', top: 13, left: an ? 27 : 11, width: 18, height: 18, borderRadius: '50%', background: an ? C.grund : C.inkDim, transition: 'left .18s cubic-bezier(.22,1,.36,1)' }} />
+    <span aria-hidden className="ui-schalter-schiene" style={{ position: 'relative', flex: '0 0 auto', width: 40, height: 24, borderRadius: 12, background: an ? farbe : C.linie, opacity: aus ? 0.55 : 1, transition: 'background .18s ease' }}>
+      <span style={{ position: 'absolute', top: 3, left: an ? 19 : 3, width: 18, height: 18, borderRadius: '50%', background: an ? C.grund : C.inkDim, transition: 'left .18s cubic-bezier(.22,1,.36,1)' }} />
+    </span>
+  );
+}
+
+export function Schalter(p: SchalterProps) {
+  const { an, onChange, aus, farbe = C.aktiv, titel, testId } = p;
+  const gemeinsam = { type: 'button' as const, role: 'switch', 'aria-checked': an, 'aria-label': p.ariaLabel, title: titel, disabled: aus, onClick: () => onChange(!an), 'data-testid': testId };
+  if (p.karte) {
+    return (
+      <button {...gemeinsam} className="fassbar ui-schalter ui-schalter-karte"
+        style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 44, padding: '10px 14px', borderRadius: 14, textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.body, color: aus ? C.inkLeise : C.ink, cursor: aus ? 'default' : 'pointer',
+          border: `1px solid ${an ? TIEF.rand(farbe) : 'rgba(255,255,255,.12)'}`, background: an ? TIEF.flaeche(farbe) : 'rgba(255,255,255,.04)' }}>
+        {p.symbol}
+        <span style={{ flex: 1, minWidth: 0 }}><b>{p.children}</b>{p.beschreibung && <span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{p.beschreibung}</span>}</span>
+        <Schiene an={an} farbe={farbe} aus={aus} />
+      </button>
+    );
+  }
+  if (p.children !== undefined) {
+    return (
+      <button {...gemeinsam} className="fassbar ui-schalter"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 44, background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: aus ? 'default' : 'pointer', color: aus ? C.inkLeise : C.inkDim, fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>
+        <Schiene an={an} farbe={farbe} aus={aus} />
+        <span style={{ minWidth: 0 }}>{p.children}</span>
+      </button>
+    );
+  }
+  return (
+    <button {...gemeinsam} className="treffer44 ui-schalter"
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 44, minHeight: 44, border: 'none', padding: 0, flex: '0 0 auto', background: 'none', cursor: aus ? 'default' : 'pointer' }}>
+      <Schiene an={an} farbe={farbe} aus={aus} />
     </button>
   );
 }

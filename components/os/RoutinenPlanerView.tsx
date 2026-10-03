@@ -248,7 +248,7 @@ export function RoutinenPlanerView() {
                 return (
                   <div key={r.id} className="zeile" style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: r.aktiv ? 1 : 0.45, transition: 'opacity .2s ease' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <Schalter an={r.aktiv} farbe={LEUCHT.gut} onChange={() => patch(r.id, { aktiv: !r.aktiv })} titel={r.aktiv ? 'aktiv — klicken zum Pausieren' : 'pausiert — klicken zum Aktivieren'} ariaLabel={r.aktiv ? 'aktiv' : 'pausiert'} />
+                      <Schalter an={r.aktiv} farbe={LEUCHT.gut} onChange={v => patch(r.id, { aktiv: v })} titel={r.aktiv ? 'aktiv — klicken zum Pausieren' : 'pausiert — klicken zum Aktivieren'} ariaLabel={`Routine ${r.label} aktiv`} />
                       <Punkt farbe={katFarbe(r.kategorie)} groesse={8} />
                       <input value={r.label} onChange={e => patch(r.id, { label: e.target.value })} aria-label="Routine"
                         style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 500 }} />

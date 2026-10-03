@@ -167,7 +167,7 @@ export function SteuerKarte({ ort, offen: offenStart = false, i = 0, szenario }:
           <div>
             {zeilen.map(z => (
               <ZeilenRahmen key={z.art} dim={!z.an} name={z.info.label} hinweis={z.hinweis ?? z.info.wirkung}
-                schalter={z.schaltbar ? <Schalter an={z.an} onChange={v => tu({ art: 'an', steuer: z.art as SteuerArt, wert: v })} /> : <span style={{ color: C.inkLeise, fontSize: TYP.bedien, width: 44, display: 'inline-block' }}>immer</span>}
+                schalter={z.schaltbar ? <Schalter an={z.an} onChange={v => tu({ art: 'an', steuer: z.art as SteuerArt, wert: v })} ariaLabel={`${z.info.label} berechnen`} /> : <span style={{ color: C.inkLeise, fontSize: TYP.bedien, width: 44, display: 'inline-block' }}>immer</span>}
                 satz={satzFeld(z)} />
             ))}
           </div>

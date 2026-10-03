@@ -198,7 +198,7 @@ export function Buchungen() {
                       <td style={TD}><Etikett text={b.k} /></td>
                       <td style={TDr}><Geld v={b.b} dezimal={2} farbe={b.b > 0 ? LEUCHT.gut : undefined} /></td>
                       <td style={TD}><ZeilenAuswahl wert={b.z} onWahl={z => zuordnen(b, z)} offen={b.z === 'x.offen'} /></td>
-                      <td style={TD}><Schalter an={merken[b.id] ?? true} onChange={v => setMerken({ ...merken, [b.id]: v })} /></td>
+                      <td style={TD}><Schalter an={merken[b.id] ?? true} onChange={v => setMerken({ ...merken, [b.id]: v })} ariaLabel={`Zuordnung für ${b.n} merken`} /></td>
                     </tr>
                   ))}
                   {!liste.length && <tr><td colSpan={6} style={TDleise}>Keine Buchungen für diese Auswahl.</td></tr>}

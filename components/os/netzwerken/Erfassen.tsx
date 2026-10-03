@@ -21,6 +21,7 @@ import { karteAuslesen, ausgelesenesUebernehmen } from '@/lib/crm/netzwerken-kar
 import type { NetzwerkSchritt } from '@/lib/crm/typen';
 import { WEG } from '@/lib/wege';
 import { Fenster } from '../Fenster';
+import { Schalter } from '../ui';
 import type { CrmApi } from '../crm/daten';
 import { Gross, Wahl, Beschriftung, Feldzeile, Hinweis, Fortschritt, Aktionsleiste, Initialen, LinkChips, useGemerkt, type LinkChip, eingabe, kopfStil, tagText, ZIEL } from './bausteine';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -575,14 +576,10 @@ function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schr
 /** „Wir haben persönlich gesprochen“ (§ 7 UWG): nur dann gibt es morgen einen Danke-Entwurf. Standard an; ohne Gespräch beim ersten Kontakt den Datenschutzhinweis geben. */
 export function GespraechSchalter({ an, onUm }: { an: boolean; onUm: (v: boolean) => void }) {
   return (
-    <button type="button" role="switch" aria-checked={an} onClick={() => onUm(!an)} className="fassbar" data-testid="gespraech-schalter"
-      style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: ZIEL, padding: '10px 14px', borderRadius: 14, textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.body, color: C.ink, cursor: 'pointer',
-        border: `1px solid ${an ? TIEF.rand(C.aktiv) : 'rgba(255,255,255,.12)'}`, background: an ? TIEF.flaeche(C.aktiv) : 'rgba(255,255,255,.04)' }}>
-      <span style={{ flex: 1, minWidth: 0 }}><b>Wir haben persönlich gesprochen</b><span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{an ? 'Danke-Entwurf ab morgen. Aus = keine Danke-Mail.' : 'Aus: keine Danke-Mail — nur Karte erhalten. Datenschutzhinweis beim ersten Kontakt geben.'}</span></span>
-      <span aria-hidden style={{ flex: '0 0 auto', width: 44, height: 26, borderRadius: 13, position: 'relative', background: an ? C.aktiv : 'rgba(255,255,255,.18)' }}>
-        <span style={{ position: 'absolute', top: 3, left: an ? 21 : 3, width: 20, height: 20, borderRadius: 10, background: '#fff', transition: 'left .15s' }} />
-      </span>
-    </button>
+    <Schalter karte an={an} onChange={onUm} testId="gespraech-schalter"
+      beschreibung={an ? 'Danke-Entwurf ab morgen. Aus = keine Danke-Mail.' : 'Aus: keine Danke-Mail — nur Karte erhalten. Datenschutzhinweis beim ersten Kontakt geben.'}>
+      Wir haben persönlich gesprochen
+    </Schalter>
   );
 }
 
@@ -591,15 +588,11 @@ export function HandySchalter({ an, onUm, grund }: { an: boolean; onUm: (v: bool
   const aus = !!grund;
   return (
     <div style={{ display: 'grid', gap: 6 }}>
-      <button type="button" role="switch" aria-checked={an} disabled={aus} onClick={() => onUm(!an)} className="fassbar" data-testid="handy-schalter"
-        style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: ZIEL, padding: '10px 14px', borderRadius: 14, textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.body, color: aus ? C.inkLeise : C.ink, cursor: aus ? 'default' : 'pointer',
-          border: `1px solid ${an ? TIEF.rand(C.aktiv) : 'rgba(255,255,255,.12)'}`, background: an ? TIEF.flaeche(C.aktiv) : 'rgba(255,255,255,.04)' }}>
-        <BookUser size={20} aria-hidden style={{ flex: '0 0 auto', color: an ? C.aktiv : C.inkDim }} />
-        <span style={{ flex: 1, minWidth: 0 }}><b>Auch im Handy speichern</b><span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{aus ? grund : 'Danach liegt der Kontakt-Knopf bereit — die Daten bleiben im Browser. Im Handy liegt er dann in Apple Kontakte (iCloud) — Löschen und Auskunft dort selbst.'}</span></span>
-        <span aria-hidden style={{ flex: '0 0 auto', width: 44, height: 26, borderRadius: 13, position: 'relative', background: an ? C.aktiv : 'rgba(255,255,255,.18)' }}>
-          <span style={{ position: 'absolute', top: 3, left: an ? 21 : 3, width: 20, height: 20, borderRadius: 10, background: '#fff', transition: 'left .15s' }} />
-        </span>
-      </button>
+      <Schalter karte an={an} onChange={onUm} aus={aus} testId="handy-schalter"
+        symbol={<BookUser size={20} aria-hidden style={{ flex: '0 0 auto', color: an ? C.aktiv : C.inkDim }} />}
+        beschreibung={aus ? grund : 'Danach liegt der Kontakt-Knopf bereit — die Daten bleiben im Browser. Im Handy liegt er dann in Apple Kontakte (iCloud) — Löschen und Auskunft dort selbst.'}>
+        Auch im Handy speichern
+      </Schalter>
     </div>
   );
 }

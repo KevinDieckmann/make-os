@@ -44,7 +44,7 @@ function BausteinZeile({ b, ps }: { b: Baustein; ps: { id: string } }) {
   let summe = 0; for (let m = m0; m < m0 + 12 && m <= d.monate.length; m++) summe += betragImMonat(b, m);
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,.05)', opacity: b.an ? 1 : 0.5 }}>
-      <FeldK label="an"><Schalter an={b.an} onChange={v => setze('an', b.an, v, v ? 'an' : 'aus')} /></FeldK>
+      <FeldK label="an"><Schalter an={b.an} onChange={v => setze('an', b.an, v, v ? 'an' : 'aus')} ariaLabel={`${n} rechnet mit`} /></FeldK>
       <FeldK label={umsatz ? 'Produkt' : KOSTENART_LABEL[b.kostenArt ?? 'sonstiges']} breit={170}><TextFeld wert={b.name} onFertig={t => setze('name', b.name, t.trim() || b.name, 'Name')} titel="Name" platzhalter={umsatz ? 'Was wird verkauft?' : 'Wofür?'} /></FeldK>
       {umsatz && <FeldK label="Kunde / Segment" breit={140}><TextFeld wert={b.kunde ?? ''} onFertig={t => setze('kunde', b.kunde, t.trim() || undefined, 'Kunde')} titel="Kunde oder Segment" platzhalter="optional" /></FeldK>}
       <FeldK label={umsatz ? 'Preis netto €' : b.kostenArt === 'stelle' ? 'Brutto € je Monat' : 'Betrag €'}><ZahlFeld wert={b.preis} dezimal={0} breite={92} titel={umsatz ? 'Preis netto' : b.kostenArt === 'stelle' ? 'Brutto je Monat (Arbeitgeberanteil kommt dazu)' : 'Betrag'} onFertig={v => setze('preis', b.preis, v ?? 0, 'Preis')} /></FeldK>

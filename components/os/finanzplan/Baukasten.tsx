@@ -358,7 +358,7 @@ function UmsatzZeile({ b, ps, produkte, setze, summe, monate, entfernen }: { b: 
   const ziel = b.zahlungsziel ?? ps.annahmen.zahlungsziel ?? 0;
   return (
     <tr style={{ opacity: b.an ? 1 : 0.5 }}>
-      <td style={TD}><Schalter an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} /></td>
+      <td style={TD}><Schalter an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} ariaLabel={`${n} rechnet mit`} /></td>
       <td style={TD}>
         <select value={b.produktId && produkte.some(x => x.id === b.produktId) ? b.produktId : '__frei'} aria-label="Produkt" onChange={e => produktWahl(e.target.value)} style={{ ...feld, fontSize: TYP.bedien, padding: '6px 8px', borderRadius: 10, width: 170, appearance: 'auto' }} title={produkt?.fehlt.length ? `Für die Planung fehlt: ${produkt.fehlt.join(', ')}` : undefined}>
           <option value="__frei">{b.produktId && !produkte.some(x => x.id === b.produktId) ? `${b.produkt ?? 'Produkt'} (nicht im Katalog)` : 'ohne Produkt'}</option>
@@ -386,7 +386,7 @@ function KostenZeile({ b, setze, summe, monate, entfernen }: { b: Baustein; setz
   const n = `Baustein ${b.name}`;
   return (
     <tr style={{ opacity: b.an ? 1 : 0.5 }}>
-      <td style={TD}><Schalter an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} /></td>
+      <td style={TD}><Schalter an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} ariaLabel={`${n} rechnet mit`} /></td>
       <td style={TD}><Auswahl wert={b.kostenArt ?? 'sonstiges'} onWahl={v => void setze(p('kostenArt'), b.kostenArt, v, `${n} · Art`)} optionen={KOSTENARTEN} titel="Art" /></td>
       <td style={TD}><TextFeld wert={b.name} onFertig={t => void setze(p('name'), b.name, t, `${n} · Name`)} breite={160} titel="Name" /></td>
       <td style={TD}><Auswahl wert={b.einheit} onWahl={v => void setze(p('einheit'), b.einheit, v, `${n} · Wo`)} optionen={EINHEITEN} titel="Wo" /></td>

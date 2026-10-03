@@ -34,7 +34,7 @@ import {
   type Unter, type AktFilter, type Eintrag,
 } from '@/lib/crm/aktivitaeten';
 import type { CrmApi } from '../daten';
-import { Karte, Leer, Knopf, feld, LEUCHT } from '../../ui';
+import { Karte, Leer, Knopf, feld, LEUCHT, Schalter } from '../../ui';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { AktivitaetKarte, NeuFormular, NEU_KNOEPFE, KATEGORIE_FARBE, type NeuArt } from './aktivitaeten-teile';
 import { useTerminZeiten, useNaechsterTermin } from '../../kalender/TermineAkte';
@@ -178,11 +178,7 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
           <Wahl label="Zeitraum" liste={ZEITRAEUME} wert={filter.zeitraum} onWahl={zeitraum => setze({ zeitraum })} klein farbe={filter.zeitraum === 'beginn' ? C.inkDim : C.aktiv} />
           <Wahl label="Aktivität zugewiesen" liste={PERSONEN_FILTER} wert={filter.person} onWahl={person => setze({ person })} onLeeren={() => setze({ person: null })} leerenLabel="alle Personen" leer="Person: alle" klein />
           {aktiv === 'alle' && systemZahl > 0 && (
-            <button type="button" role="switch" aria-checked={filter.system} onClick={() => setze({ system: !filter.system })} className="fassbar"
-              style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '3px 9px', minHeight: 26, borderRadius: 999, cursor: 'pointer',
-                border: `1px solid ${filter.system ? C.aktiv : 'rgba(255,255,255,.1)'}`, background: filter.system ? `${C.aktiv}1A` : 'transparent', color: filter.system ? C.aktiv : C.inkDim }}>
-              {filter.system ? '✓ ' : ''}Systemereignisse zeigen ({systemZahl})
-            </button>
+            <Schalter an={filter.system} onChange={system => setze({ system })}>Systemereignisse zeigen ({systemZahl})</Schalter>
           )}
           <span style={{ flex: 1 }} />
           {filterGesetzt(filter) && <button type="button" onClick={() => setFilter(FILTER_START)} className="fassbar" style={{ ...leiseKnopf, color: C.aktiv }}>Filter zurücksetzen</button>}
