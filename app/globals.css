@@ -389,7 +389,7 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 720px) {
   .zoe-fenster button { min-height: 44px; min-width: 44px; box-sizing: border-box; }
   .zoe-fenster textarea, .zoe-fenster input:not([type=file]):not([type=hidden]), .zoe-fenster select { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }
-  .zoe-fenster a[href] { min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; }
+  .zoe-hirn-link { min-height: 44px; box-sizing: border-box; }
   .zoe-fenster button[title="Normalgröße"] { display: none; }
 }
 

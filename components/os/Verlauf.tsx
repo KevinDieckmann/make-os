@@ -117,7 +117,7 @@ export function useZurueck() {
 export function ZurueckKnopf({ ersatz, children = 'Zurück', onClick }: { ersatz: string; children?: ReactNode; onClick?: () => void }) {
   const zurueck = useZurueck();
   return (
-    <button onClick={() => (onClick ? onClick() : zurueck(ersatz))} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px 8px 11px', borderRadius: 11, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700 }}>
+    <button onClick={() => (onClick ? onClick() : zurueck(ersatz))} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '8px 14px 8px 11px', borderRadius: 11, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700 }}>
       <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>‹</span> {children}
     </button>
   );
