@@ -138,7 +138,7 @@ describe('4 · Planungsdaten im Browser: ein Zwischenspeicher', () => {
   });
   it('der Ziel-Bezug baut seinen Chip aus dem Baustein `Chip` (kein Handbau)', () => {
     const t = lies('components/os/ui/ziel-bezug.tsx');
-    expect(t).toContain('<Chip farbe={e.farbe}>');
+    expect(t).toContain('<Chip farbe={e.farbe} umbrechen>'); // bricht am Handy um statt abzuschneiden (Praxis 04.10.)
     expect(t).not.toMatch(/TIEF\.flaeche|borderRadius: 999/);
   });
   it('kein Durchreiche-Wrapper: lib/aufgaben/ziel-bezug.ts reicht die Farbregel nicht weiter', () => {

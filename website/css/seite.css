@@ -113,7 +113,7 @@ img, svg { display: block; max-width: 100%; }
 }
 @media (max-width: 560px) {
   .marke img { height: 26px; } /* kompakt.svg (ohne INNOVATION) */
-  .kopf .anmelden { padding: 0 12px; }
+  .kopf .anmelden { padding: 0 12px; min-height: 44px; }
 }
 
 /* ── Knöpfe (wie v1) ── */

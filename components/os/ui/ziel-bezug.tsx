@@ -40,10 +40,10 @@ export function ZielBezug({ bereich, max = 1 }: { bereich: BezugBereich; max?: n
       {eintraege.map(e => (
         <Link key={e.id} href={WEG.ziel(e.id)} className="fassbar ui-ziel-chip" aria-label={`${e.grund === 'rang' ? 'Oberstes Ziel' : 'Zahlt ein auf'}: ${e.titel}, ${e.fortschritt} Prozent`}
           style={{ display: 'inline-flex', alignItems: 'center', minHeight: ZEILE_HOEHE, maxWidth: '100%', minWidth: 0, textDecoration: 'none' }}>
-          <Chip farbe={e.farbe}>
+          <Chip farbe={e.farbe} umbrechen>
             <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: e.farbe, flex: '0 0 auto' }} />
             <span style={{ fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, flex: '0 0 auto' }}>{e.grund === 'rang' ? 'Oberstes Ziel' : 'Zahlt ein auf'}</span>
-            <span className="ui-ziel-text" style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.ink }}>{e.titel}</span>
+            <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.ink, minWidth: 0 }}>{e.titel}</span>
             <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: e.fortschritt >= 60 ? LEUCHT.gut : C.inkDim, flex: '0 0 auto' }}>{e.fortschritt} %</span>
           </Chip>
         </Link>

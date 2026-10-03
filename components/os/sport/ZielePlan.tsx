@@ -53,7 +53,7 @@ export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportSta
       </Karte>
 
       <Karte i={1}>
-        <Ueberschrift rechts={<button type="button" onClick={() => setNeu(n => !n)} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700 }}>{neu ? 'Schließen' : '+ Ziel'}</button>}>Alle Ziele</Ueberschrift>
+        <Ueberschrift rechts={<button type="button" onClick={() => setNeu(n => !n)} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{neu ? 'Schließen' : '+ Ziel'}</button>}>Alle Ziele</Ueberschrift>
         {neu && <ZielFormular heute={heute} stand={stand} onSpeichern={async z => { const ok = await schicke([{ op: 'ziel', eintrag: z }], 'Ziel gespeichert.'); if (ok) setNeu(false); }} />}
         {!stand.ziele.length && !neu && <Leer>Saisonziele mit Datum: Hyrox am Tag X, 10 km unter Y, Kraftziel Z.</Leer>}
         {stand.ziele.map(z => (
@@ -72,7 +72,7 @@ export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportSta
       </Karte>
 
       <Karte i={2} akzent={dl?.jetzt ? LEUCHT.achtung : undefined}>
-        <Ueberschrift rechts={wocheBearbeiten ? undefined : <button type="button" onClick={() => setWocheBearbeiten(stand.woche)} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700 }}>Ändern</button>}>Wochenstruktur</Ueberschrift>
+        <Ueberschrift rechts={wocheBearbeiten ? undefined : <button type="button" onClick={() => setWocheBearbeiten(stand.woche)} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>Ändern</button>}>Wochenstruktur</Ueberschrift>
         {wocheBearbeiten ? (
           <>
             <WochenRaster woche={wocheBearbeiten} onWoche={setWocheBearbeiten} />

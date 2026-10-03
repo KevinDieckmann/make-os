@@ -217,3 +217,25 @@ describe('Inbox', () => {
     expect(i).toContain('<Hinweis art="info"');
   });
 });
+
+describe('Praxis-Funde 04.10. (Handy-Tippziele, Kopf, Abschneiden)', () => {
+  it('Tippziele ≥ 44 px: Planer-Reiter, Rückgängig, „Alle gelesen“, Sport-Kopfknöpfe, Finanzplan-Datei, Website-Login', () => {
+    expect(lies('components/os/PlanerLeiste.tsx').match(/className="planer-reiter"/g)?.length).toBe(2);
+    expect(lies('app/globals.css')).toMatch(/\.planer-reiter \{ display: inline-flex !important; align-items: center; min-height: 44px;/);
+    expect(lies('components/os/planung/Rueckgaengig.tsx')).toContain("minHeight: 44 }}>Rückgängig</button>");
+    expect(lies('components/os/Glocke.tsx')).toMatch(/padding: '4px 10px', minHeight: 44/);
+    for (const f of ['ZielePlan', 'RunningTeil', 'GymTeil', 'HyroxTeil']) expect(lies(`components/os/sport/${f}.tsx`), f).toContain('minHeight: 44, minWidth: 44');
+    expect(lies('components/os/finanzplan/Einrichtung.tsx')).toMatch(/type="file"[\s\S]{0,300}minHeight: 44/);
+    expect(readFileSync(path.join(wurzel, 'website/css/seite.css'), 'utf8')).toContain('.kopf .anmelden { padding: 0 12px; min-height: 44px; }');
+  });
+  it('Tagesplan und Produkte & Mandate hängen am Standard (ui-seite: Eingaben 16 px, Reiter 44 px am Handy)', () => {
+    expect(lies('components/os/TagesplanView.tsx')).toMatch(/from '\.\/ui';/);
+    expect(lies('components/os/mandate/ProdukteMandate.tsx')).toMatch(/import \{ Seite, Segmente, LEUCHT \} from '\.\.\/ui';/);
+  });
+  it('Kopf-Suche wird am schmalen Rechner nicht zerquetscht; ZOE sendet nichts Leeres; Fokus-Frage nicht abgeschnitten', () => {
+    expect(lies('components/os/Kopf.tsx')).toContain("flex: '1 1000 520px', minWidth: 150,");
+    expect(lies('app/globals.css')).toContain('.wachstum-kopf-suche .kopf-kuerzel { display: none; }');
+    expect(lies('components/os/ZoePanel.tsx')).toContain('disabled={thinking || !ask.trim()}');
+    expect(lies('components/os/FokusView.tsx')).toContain('placeholder="eintragen …"');
+  });
+});

@@ -27,7 +27,7 @@ export function GymTeil({ stand, heute, schicke }: { stand: SportStand; heute: s
   return (
     <>
       <Karte i={0} ton={F}>
-        <Ueberschrift farbe={F} rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700 }}>{offen ? 'Schließen' : '+ Einheit'}</button>}>Einheiten</Ueberschrift>
+        <Ueberschrift farbe={F} rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : '+ Einheit'}</button>}>Einheiten</Ueberschrift>
         {(offen || bearbeite) && <EinheitFormular heute={heute} start={bearbeite ?? undefined} uebungen={uebungen} vorlagen={vorlagen} einheiten={stand.gym.einheiten}
           onSpeichern={async (e, alsVorlage) => {
             const ops: Op[] = [{ op: 'gym', eintrag: e }];

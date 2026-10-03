@@ -126,7 +126,7 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage
           Meldungen{sicht.ungelesen ? ` · ${sicht.ungelesen} neu` : ''}
         </span>
         <button type="button" onClick={alleGelesen} disabled={!sicht.ungelesen} className="fassbar"
-          style={{ background: 'none', border: 'none', padding: '4px 6px', borderRadius: 8, cursor: sicht.ungelesen ? 'pointer' : 'default', color: sicht.ungelesen ? C.aktiv : C.inkLeise, font: 'inherit', fontSize: TYP.bedien, fontWeight: 600 }}>
+          style={{ background: 'none', border: 'none', padding: '4px 10px', minHeight: 44, borderRadius: 8, cursor: sicht.ungelesen ? 'pointer' : 'default', color: sicht.ungelesen ? C.aktiv : C.inkLeise, font: 'inherit', fontSize: TYP.bedien, fontWeight: 600 }}>
           Alle gelesen
         </button>
       </div>

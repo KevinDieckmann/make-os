@@ -24,6 +24,7 @@ import { geteilteWarteschlange } from '@/lib/netzwerken/warteschlange';
 import { lokalAbleiten } from '@/lib/netzwerken/wahl';
 import { istBesuch, fuerVon } from '@/lib/crm/besuche-form';
 import { WEG } from '@/lib/wege';
+import { markeVon, titelMitReihe } from '@/lib/crm/marke';
 import { TEAM } from '@/lib/crm/team';
 import { FuerAuswahl, fuerGueltig } from './FuerAuswahl';
 
@@ -176,9 +177,9 @@ export function EventWahlFenster({ api, ich, heute, onZu, onWahl }: { api: CrmAp
   const knopf = (e: Event) => (
     <button key={e.id} type="button" onClick={() => waehlen(e)} className="fassbar"
       style={{ minHeight: ZIEL + 8, textAlign: 'left', padding: '10px 14px', borderRadius: 14, cursor: 'pointer', border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, fontFamily: SCHRIFT.text }}>
-      <span style={{ display: 'block', fontSize: 16, fontWeight: 600, overflowWrap: 'anywhere' }}>{e.titel}</span>
+      <span style={{ display: 'block', fontSize: 16, fontWeight: 600, overflowWrap: 'anywhere' }}>{titelMitReihe(e)}</span>
       <span style={{ display: 'block', fontSize: TYP.bedien, color: e.datum === heute ? LEUCHT.gut : C.inkLeise, marginTop: 2 }}>
-        {e.datum === heute ? 'heute' : tagText(e.datum)}{e.ort ? ` · ${e.ort}` : ''}{!istBesuch(e) ? ' · Make.One' : kundeVon(e) ? ` · für ${kundeVon(e)}` : ''}
+        {e.datum === heute ? 'heute' : tagText(e.datum)}{e.ort ? ` · ${e.ort}` : ''}{!istBesuch(e) ? ` · ${markeVon(e)}` : kundeVon(e) ? ` · für ${kundeVon(e)}` : ''}
       </span>
     </button>
   );

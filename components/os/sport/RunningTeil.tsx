@@ -61,7 +61,7 @@ export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heut
       </Karte>
 
       <Karte i={2}>
-        <Ueberschrift rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700 }}>{offen ? 'Schließen' : '+ Lauf'}</button>}>Läufe</Ueberschrift>
+        <Ueberschrift rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : '+ Lauf'}</button>}>Läufe</Ueberschrift>
         {(offen || bearbeite) && <LaufFormular heute={heute} start={bearbeite ?? undefined} onSpeichern={async l => { const ok = await schicke([{ op: 'lauf', eintrag: l }], 'Lauf gespeichert.'); if (ok) { setOffen(false); setBearbeite(null); } }} onAbbruch={() => { setOffen(false); setBearbeite(null); }} />}
         {!stand.laeufe.length && !offen && <Leer>Datum, Distanz, Zeit, Art und Gefühl — die Pace rechnet sich von selbst. Ein Import (Apple Health, Strava) kann später andocken.</Leer>}
         {stand.laeufe.slice(0, 40).map(l => (

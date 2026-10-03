@@ -393,6 +393,11 @@ nav a:hover { transform: translateX(2px); }
   .zoe-normalgroesse { display: none !important; }
 }
 
+/* Planer-Reiter (Tag · Woche · Monat · Quartal · Jahr & Ziele · Routinen, Tage-Blättern) am Handy: 44 px Tippziel (Praxis 04.10.: 34 px). */
+@media (max-width: 720px), (pointer: coarse) {
+  .planer-reiter { display: inline-flex !important; align-items: center; min-height: 44px; box-sizing: border-box; }
+}
+
 /* Heute auf dem Handy (23.09.): Ring oben, die fünf Säulen als Reihe darunter */
 @media (max-width: 720px) {
   .heute-kopf { grid-template-columns: 1fr !important; justify-items: center; }
@@ -463,6 +468,8 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 720px) { .wachstum-kopf-innen { gap: 12px; padding: 8px 16px; } }
 .wachstum-kopf-lupe { display: none; }
 @media (max-width: 720px) { .wachstum-kopf-suche { display: none !important; } .wachstum-kopf-lupe { display: block; } }
+/* Kopf-Suche am schmalen Rechner (1280 px, Business mit Index-Chip): mindestens 150 px, das ⌘K-Kürzel weicht, statt Symbol und Text zu überlagern (Praxis 04.10.). */
+@media (max-width: 1366px) { .wachstum-kopf-suche .kopf-kuerzel { display: none; } .wachstum-kopf-space .kopf-pille-zusatz { display: none; } }
 
 /* Zu zweit (24.09.): „Malin ist auch hier“ — auf dem Handy über der unteren Leiste. */
 /* Am Handy nur „ist auch hier“ (die Warnung zählt), „ist in …“ würde Inhalt und Hauptaktion verdecken. */

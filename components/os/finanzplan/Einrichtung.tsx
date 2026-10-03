@@ -49,7 +49,7 @@ export function Einrichtung({ zustand, onFertig }: { zustand: 'leer' | 'kein' | 
         <Karte i={0} akzent={C.aktiv}>
           <Ueberschrift>Startbestand hochladen</Ueberschrift>
           <div style={{ fontSize: TYP.body, lineHeight: 1.6, color: C.inkDim, marginBottom: 12 }}>Die Datei <code style={{ fontFamily: SCHRIFT.mono, fontSize: 13, color: C.ink }}>finanzen-plan.json</code> (Finanzmodul v3, mit Szenarien, Annahmen und Buchungen). Sie bleibt auf dem eigenen Server — Kevin und Malin sehen dann denselben Plan.</div>
-          <input ref={datei} type="file" accept="application/json,.json" aria-label="finanzen-plan.json wählen" onChange={() => setFehler(null)} style={{ display: 'block', marginBottom: 12, color: C.inkDim, fontSize: TYP.bedien }} />
+          <input ref={datei} type="file" accept="application/json,.json" aria-label="finanzen-plan.json wählen" onChange={() => setFehler(null)} style={{ display: 'block', marginBottom: 12, minHeight: 44, color: C.inkDim, fontSize: TYP.bedien }} />
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <Knopf onClick={hochladen} aus={laeuft}>{laeuft ? 'Lädt …' : ersetzen ? 'Hochladen und ersetzen' : 'Hochladen'}</Knopf>
             {ersetzen && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Es gibt schon einen Plan — der nächste Upload ersetzt ihn.</span>}

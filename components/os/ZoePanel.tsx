@@ -611,8 +611,9 @@ export function ZoePanel() {
             style={{ ...rund, fontSize: 15, cursor: thinking || belegLaeuft ? 'default' : 'pointer' }}>📎</button>
           <input ref={dateiWahl} type="file" accept="image/*,application/pdf" hidden
             onChange={e => { const f = e.target.files?.[0]; if (f) void belegLesen(f); e.target.value = ''; }} />
-          <button onClick={() => ask.trim() && !thinking && send(ask.trim())} aria-label="Senden" disabled={thinking}
-            style={{ ...rund, background: thinking ? 'rgba(255,255,255,.08)' : C.aktiv, color: thinking ? C.inkLeise : C.grund, fontSize: 15, fontWeight: 700, cursor: thinking ? 'default' : 'pointer', boxShadow: thinking ? undefined : `0 6px 18px -6px ${C.aktiv}99` }}>↑</button>
+          {/* Leer oder während ZOE denkt: aus (Praxis 04.10. — vorher immer aktiv, auch ohne Text). */}
+          <button onClick={() => ask.trim() && !thinking && send(ask.trim())} aria-label="Senden" disabled={thinking || !ask.trim()}
+            style={{ ...rund, background: thinking || !ask.trim() ? 'rgba(255,255,255,.08)' : C.aktiv, color: thinking || !ask.trim() ? C.inkLeise : C.grund, fontSize: 15, fontWeight: 700, cursor: thinking || !ask.trim() ? 'default' : 'pointer', boxShadow: thinking || !ask.trim() ? undefined : `0 6px 18px -6px ${C.aktiv}99` }}>↑</button>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'center' }}>
           {['Plane meinen Tag', 'Was ist heute wichtig?', 'Was kann ich abgeben?'].map(c => (

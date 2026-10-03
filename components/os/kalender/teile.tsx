@@ -391,7 +391,7 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
           </div>
         ) : (
           <label style={{ display: 'grid', gap: 4 }}><span style={beschr}>Titel</span>
-            <input value={f.titel} disabled={aus} onChange={e => setF({ ...f, titel: e.target.value })} style={eingabe} /></label>
+            <input value={f.titel} disabled={aus} onChange={e => setF({ ...f, titel: e.target.value })} aria-label="Titel" style={eingabe} /></label>
         )}
         {!basis.ganztags && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -15,7 +15,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Knopf, Punkt } from '../schlank';
 // Sales › 3 · Kunden zeigt nur noch die Kurzfassung und verlinkt hierher.
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Seite, Segmente, LEUCHT } from '../schlank';
+import { Seite, Segmente, LEUCHT } from '../ui';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { mandateLink, markttraktion } from '@/lib/crm/adresse';
 import { useCrm } from '../crm/daten';

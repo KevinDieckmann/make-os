@@ -120,11 +120,11 @@ function SpaceSchalter({ space, ausAdresse, setzen }: { space: SpaceId; ausAdres
   };
   return (
     <span className="wachstum-kopf-space" style={{ display: 'inline-flex', alignItems: 'stretch', minHeight: 40, borderRadius: 999, border: `1px solid ${s.farbe}44`, background: `${s.farbe}12`, color: C.ink, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
-      <button onClick={wechseln} title={`Zu ${spaceVon(anderer).label} wechseln`} className="fassbar kopf-pille-knopf" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 6px 7px 14px', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', borderRadius: '999px 0 0 999px' }}>
+      <button onClick={wechseln} title={`${s.index.label} ${w?.index != null ? Math.round(w.index) : '—'}${w?.label ? ` · ${w.label}` : ''} — zu ${spaceVon(anderer).label} wechseln`} className="fassbar kopf-pille-knopf" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 6px 7px 14px', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', borderRadius: '999px 0 0 999px' }}>
         <span className="wachstum-kopf-label" style={{ fontSize: TYP.bedien, color: s.farbe, fontWeight: 700 }}>{s.index.label}</span>
         <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, color: farbe, fontVariantNumeric: 'tabular-nums' }}>{w?.index != null ? Math.round(w.index) : '—'}</span>
-        {w?.label && <span className="wachstum-kopf-label" style={{ fontSize: TYP.bedien, color: C.inkDim }}>· {w.label}</span>}
-        {zeit && <span className="wachstum-kopf-label" title={`Heute im ${s.label}-Modus`} style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>· {zeitText(zeit[space] ?? 0)}</span>}
+        {w?.label && <span className="wachstum-kopf-label kopf-pille-zusatz" style={{ fontSize: TYP.bedien, color: C.inkDim }}>· {w.label}</span>}
+        {zeit && <span className="wachstum-kopf-label kopf-pille-zusatz" title={`Heute im ${s.label}-Modus`} style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>· {zeitText(zeit[space] ?? 0)}</span>}
       </button>
       <Link href={s.index.ziel} title={`${s.index.label} öffnen`} aria-label={`${s.index.label} öffnen`} className="kopf-pille-pfeil" style={{ display: 'grid', placeItems: 'center', minWidth: 44, color: C.inkLeise, textDecoration: 'none' }}><ArrowUpRight size={14} strokeWidth={2} /></Link>
     </span>
@@ -274,10 +274,10 @@ export function Kopf() {
         <WachstumsZahl />
         {/* Suchfeld im aktiven Space — auf dem Handy nur die Lupe. Es gibt zuerst nach (flex-shrink 1000), damit ein laufender
             Fokus-Zähler rechts den Kopf nicht überlaufen lässt (27.09. spät). */}
-        <button onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1000 520px', minWidth: 0, maxWidth: 960, margin: '0 auto', padding: '9px 14px', minHeight: 44, borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
+        <button onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1000 520px', minWidth: 150, maxWidth: 960, margin: '0 auto', padding: '9px 14px', minHeight: 44, borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
           <Search size={15} strokeWidth={1.9} style={{ flex: '0 0 auto' }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sp.suche}</span>
-          <span className="nur-tastatur" style={{ fontSize: TYP.mikro, border: '1px solid rgba(255,255,255,.12)', borderRadius: 6, padding: '1px 6px', color: C.inkLeise }}>⌘K</span>
+          <span className="nur-tastatur kopf-kuerzel" style={{ flex: '0 0 auto', fontSize: TYP.mikro, border: '1px solid rgba(255,255,255,.12)', borderRadius: 6, padding: '1px 6px', color: C.inkLeise }}>⌘K</span>
         </button>
         <div className="wachstum-kopf-saeulen" style={{ display: 'flex', gap: 12, marginLeft: 'auto', alignItems: 'center', minWidth: 0 }}>
           <button className="wachstum-kopf-lupe kopf-knopf" onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>

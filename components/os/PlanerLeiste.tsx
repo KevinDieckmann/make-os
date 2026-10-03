@@ -73,7 +73,7 @@ export function PlanerLeiste({ aktiv, tag }: { aktiv: Horizont; tag?: string }) 
     <div style={{ marginBottom: 16 }}>
       <div style={pille}>
         {HORIZONTE.map(h => (
-          <Link key={h.id} href={mit(h.href)} style={reiter(aktiv === h.id)}>{h.label}</Link>
+          <Link key={h.id} href={mit(h.href)} className="planer-reiter" style={reiter(aktiv === h.id)}>{h.label}</Link>
         ))}
       </div>
 
@@ -87,7 +87,7 @@ export function PlanerLeiste({ aktiv, tag }: { aktiv: Horizont; tag?: string }) 
               const d = tagPlus(heute, n);
               const an = d === anker;
               return (
-                <Link key={n} href={mit(`/os/planung?tag=${d}`)} style={reiter(an, true)}>{tagLabel(d, heute)}</Link>
+                <Link key={n} href={mit(`/os/planung?tag=${d}`)} className="planer-reiter" style={reiter(an, true)}>{tagLabel(d, heute)}</Link>
               );
             })}
             <button onClick={() => springe(1)} aria-label="Tag vor" style={{ ...reiter(false, true), padding: '6px 10px' }}>›</button>

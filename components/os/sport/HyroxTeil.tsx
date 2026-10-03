@@ -71,7 +71,7 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
       </Karte>
 
       <Karte i={2}>
-        <Ueberschrift rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700 }}>{offen ? 'Schließen' : '+ Einheit'}</button>}>Stationszeiten erfassen</Ueberschrift>
+        <Ueberschrift rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : '+ Einheit'}</button>}>Stationszeiten erfassen</Ueberschrift>
         {(offen || bearbeite) && <EinheitFormular heute={heute} start={bearbeite ?? undefined} onSpeichern={async e => { const ok = await schicke([{ op: 'hyrox', eintrag: e }], 'Einheit gespeichert.'); if (ok) { setOffen(false); setBearbeite(null); } }} onAbbruch={() => { setOffen(false); setBearbeite(null); }} />}
         {!stand.hyrox.length && !offen && <Leer>Training, Simulation oder Wettkampf — Stationen einzeln oder nur die Gesamtzeit.</Leer>}
         {stand.hyrox.slice(0, 30).map(e => {

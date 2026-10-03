@@ -26,7 +26,7 @@ import { useTasks } from '@/context/TasksContext';
 import { einheitKurz } from '@/lib/aufgaben/einheit';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, KATEGORIE_ZU_SAEULE, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT } from './ui';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }

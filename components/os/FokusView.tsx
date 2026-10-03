@@ -80,7 +80,9 @@ export function FokusView() {
               <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600 }}>
                 {h.label}{gespeichert === h.id && <span style={{ color: LEUCHT.gut, letterSpacing: 0, textTransform: 'none' }}>gespeichert</span>}
               </span>
-              <input value={entwurf[h.id] ?? ''} placeholder={h.frage} onChange={e => setEntwurf({ ...entwurf, [h.id]: e.target.value })}
+              {/* Die Frage steht als Text über dem Feld — als Platzhalter wurde sie am Handy abgeschnitten (Praxis 04.10.). */}
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{h.frage}</span>
+              <input value={entwurf[h.id] ?? ''} placeholder="eintragen …" onChange={e => setEntwurf({ ...entwurf, [h.id]: e.target.value })}
                 onBlur={() => void speichern(h.id)} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                 style={{ ...feld, fontSize: h.id === 'tag' ? 17 : TYP.body, fontWeight: h.id === 'tag' ? 600 : 400 }} aria-label={`Fokus ${h.label}`} />
             </label>
