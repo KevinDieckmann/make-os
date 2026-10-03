@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MAKE Innovation GmbH — Markttraktion und Make.One</title>
-<meta name="description" content="Wir wollen Innovation in Deutschland fördern — deshalb haben wir das Make.One-Netzwerk gegründet. Unser Angebot: Markttraktion — Interim CSO, Interim Head of Sales, Events und Netzwerk.">
+<title>MAKE Innovation — Beratung und Netzwerk für Innovation in Deutschland</title>
+<meta name="description" content="MAKE Innovation, eine Marke der KEMARIS Innovation GmbH: Vertriebsleitung auf Zeit (Interim CSO, Interim Head of Sales), Events und Netzwerk-Strategie — und Make.One, das Netzwerk für junge und erfahrene Entscheider der Wirtschaft.">
+<meta name="robots" content="noindex">
 <meta name="theme-color" content="#0B0E10">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="assets/logo/favicon-32.png" sizes="32x32" type="image/png">
@@ -14,6 +15,8 @@
 <link rel="stylesheet" href="css/seite.css">
 <script src="js/menue.js" defer></script>
 <script src="js/erstgespraech.js" defer></script>
+<script src="js/formationen.js" defer></script>
+<script src="js/neuronen.js" defer></script>
 </head>
 <body>
 <a class="sprung" href="#inhalt">Zum Inhalt</a>
@@ -21,26 +24,27 @@
 
 <header class="kopf">
   <div class="wrap">
-    <a class="marke" href="index.html" aria-label="MAKE Innovation GmbH — Startseite">
+    <a class="marke" href="index.html" aria-label="MAKE Innovation — Startseite">
       <picture>
-        <source media="(max-width: 560px)" srcset="assets/logo/kompakt.svg" width="332" height="88">
-        <img src="assets/logo/quer.svg" width="332" height="130" alt="">
+        <source media="(max-width: 560px)" srcset="assets/logo/kompakt.svg" width="277" height="79">
+        <img src="assets/logo/quer.svg" width="548" height="79" alt="">
       </picture>
     </a>
     <nav class="haupt" aria-label="Abschnitte">
-      <a href="#markttraktion">Markttraktion</a>
+      <a href="#markttraktion">Beratung</a>
       <a href="#make-one">Make.One</a>
-      <a href="#beteiligungen">Make.Beteiligungen</a>
-      <a href="#ueber-uns">Über uns</a>
+      <a href="#beteiligungen">Beteiligungen</a>
+      <a href="#ueber-uns">Warum wir</a>
       <a href="#kontakt">Kontakt</a>
     </nav>
     <details class="menue">
       <summary><span class="striche" aria-hidden="true"></span>Menü</summary>
       <nav aria-label="Abschnitte">
-        <a href="#markttraktion">Markttraktion</a>
+        <a href="#lage">Die Lage</a>
+        <a href="#markttraktion">Beratung</a>
         <a href="#make-one">Make.One</a>
-        <a href="#beteiligungen">Make.Beteiligungen</a>
-        <a href="#ueber-uns">Über uns</a>
+        <a href="#beteiligungen">Beteiligungen</a>
+        <a href="#ueber-uns">Warum wir</a>
         <a href="#kontakt">Kontakt</a>
         <a href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen</a>
       </nav>
@@ -50,70 +54,87 @@
 </header>
 
 <main id="inhalt">
-  <section class="buehne" aria-labelledby="titel">
-    <div class="wrap">
-      <div>
-        <span class="mikro">MAKE Innovation GmbH · Malin &amp; Kevin</span>
-        <h1 id="titel">Innovation in Deutschland <span class="ruhig">fördern.</span></h1>
-        <p class="satz">Deshalb haben wir das <b>Make.One</b>-Netzwerk gegründet. Und weil gute Ideen Kunden brauchen, bringen wir mit, was wir am besten können: <b>Markttraktion</b> — Vertrieb mit System, eine Bühne und die richtigen Menschen am Tisch.</p>
-        <div class="knoepfe">
-          <a class="knopf gross" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a>
-          <a class="knopf gross leise" href="#make-one">Make.One kennenlernen</a>
-        </div>
-        <ul class="fakten" aria-label="Kurz">
-          <li>Für KI- &amp; Tech-Startups, Scale-ups und Innovationseinheiten</li>
-          <li>Vertriebsleitung auf Zeit</li>
-          <li>Netzwerk auf Einladung</li>
-        </ul>
+<div class="reise">
+  <!-- Die Neuronen-Bühne (js/neuronen.js + js/formationen.js): sticky, hinter dem Text. Am Anfang das Logo; beim Scrollen
+       lösen sich die zwei Striche in Teilchen auf, die je Kapitel (data-formation) ein Bild formen. Ohne Skript bleiben
+       Logo und Standbild stehen. Rein dekorativ — der Inhalt steht im Text (siehe .unsichtbar). -->
+  <div class="buehne" aria-hidden="true">
+    <img class="standbild" src="assets/buehne/standbild.svg" width="600" height="600" alt="">
+    <canvas></canvas>
+    <svg class="zeichen" viewBox="0 0 276.76 106" aria-hidden="true" focusable="false"><path class="make" d="M0 0L10.5 0L10.5 64L0 64ZM57.34 0L67.84 0L67.84 64L57.34 64ZM0 0L10.75 0L33.92 47.38L57.09 0L67.84 0L36.55 64L31.3 64ZM107.95 0L113.73 0L142.84 64L132.23 64L110.84 16.98L89.45 64L78.84 64ZM94.63 40.96L127.05 40.96L127.05 49.99L94.63 49.99ZM166.84 0L177.34 0L177.34 64L166.84 64ZM205.73 0L220.6 0L172.09 45.35L172.09 31.45ZM177.96 26.88L190.87 26.88L220.6 64L207.69 64ZM232.6 0L243.1 0L243.1 64L232.6 64ZM232.6 0L276.76 0L276.76 10.5L232.6 10.5ZM232.6 53.5L276.76 53.5L276.76 64L232.6 64ZM232.6 26.32L270.58 26.32L270.58 35.77L232.6 35.77Z" fill="#ECEFED"/><rect class="strich strich-ma" x="0" y="76" width="146.84" height="3" fill="#C9465C"/><rect class="strich strich-ke" x="162.84" y="76" width="113.92" height="3" fill="#2FA878"/><g class="knoten"><path d="M154.84 72.5A5 5 0 0 0 154.84 82.5Z" fill="#C9465C"/><path d="M154.84 72.5A5 5 0 0 1 154.84 82.5Z" fill="#2FA878"/></g><path class="zusatz" d="M0 91L2.3 91L2.3 104.5L0 104.5ZM21.8 91L24.1 91L24.1 104.5L21.8 104.5ZM30.3 91L32.6 91L32.6 104.5L30.3 104.5ZM21.8 91L24.3 91L32.6 104.5L30.1 104.5ZM52.1 91L54.4 91L54.4 104.5L52.1 104.5ZM60.6 91L62.9 91L62.9 104.5L60.6 104.5ZM52.1 91L54.6 91L62.9 104.5L60.4 104.5ZM115.81 91L118.09 91L121.88 100.41L125.67 91L127.96 91L122.51 104.5L121.25 104.5ZM153.57 91L154.84 91L160.96 104.5L158.63 104.5L154.21 94.73L149.78 104.5L147.46 104.5ZM150.82 99.64L157.59 99.64L157.59 101.62L150.82 101.62ZM180.46 91L191.26 91L191.26 93.3L180.46 93.3ZM184.71 91L187.01 91L187.01 104.5L184.71 104.5ZM210.76 91L213.06 91L213.06 104.5L210.76 104.5ZM265.96 91L268.26 91L268.26 104.5L265.96 104.5ZM274.46 91L276.76 91L276.76 104.5L274.46 104.5ZM265.96 91L268.46 91L276.76 104.5L274.26 104.5ZM89.35 90.8A6.95 6.95 0 1 1 89.35 104.7A6.95 6.95 0 1 1 89.35 90.8ZM89.35 93.19A4.56 4.56 0 1 0 89.35 102.31A4.56 4.56 0 1 0 89.35 93.19ZM239.51 90.8A6.95 6.95 0 1 1 239.51 104.7A6.95 6.95 0 1 1 239.51 90.8ZM239.51 93.19A4.56 4.56 0 1 0 239.51 102.31A4.56 4.56 0 1 0 239.51 93.19Z" fill="#9AA5A8"/></svg>
+  </div>
+  <p class="unsichtbar">Begleitend zum Text zeigt eine ruhige Animation, wie sich die zwei Linien des Logos — Rot für Malin, Grün für Kevin — in ein Netz aus Neuronen auflösen: erst verstreuter Lärm, dann zwei Stränge, die sich zu einem Impuls verbinden, eine wachsende Struktur, Runden von Menschen, wenige ausgewählte Knoten und ein gemeinsamer Kern. Am Ende fließt das Netz zurück in das Logo.</p>
+
+  <section class="kapitel held" id="start" data-formation="logo" aria-labelledby="titel">
+    <div class="wrap"><div class="inhalt">
+      <span class="mikro">Innovation in Deutschland fördern</span>
+      <h1 id="titel">Innovation braucht <span class="ruhig">Umsetzung.</span></h1>
+      <p class="satz">MAKE Innovation verbindet <b>Beratung, die Vertrieb führt</b>, mit einem <b>Netzwerk, das Türen öffnet</b>. Für Unternehmen, die Neues in den Markt bringen — und für die Menschen, die dort entscheiden.</p>
+      <div class="knoepfe">
+        <a class="knopf gross" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a>
+        <a class="knopf gross leise" href="#markttraktion">Was wir tun</a>
       </div>
-      <svg class="zeichen" viewBox="0 0 332 130" aria-hidden="true" focusable="false"><path d="M6 66L6 6L42 42L78 6L78 66M106 66L138 6L170 66M116 48L160 48M200 6L200 66M250 6L200 46M216 33.2L252 66M326 6L280 6L280 66L326 66M280 35L320 35" fill="none" stroke="#E8ECEA" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><rect class="strich strich-ma" x="0" y="84" width="176" height="4" rx="2" fill="#D13A55"/><rect class="strich strich-ke" x="194" y="84" width="138" height="4" rx="2" fill="#22B577"/><g transform="translate(0 100)"><path d="M3 3L3 27M19.22 27L19.22 3L40.22 27L40.22 3M56.44 27L56.44 3L77.44 27L77.44 3M133.89 3L145.89 27L157.89 3M174.11 27L186.11 3L198.11 27M178.61 19.5L193.61 19.5M214.33 3L235.33 3M224.83 3L224.83 27M251.56 3L251.56 27M308 27L308 3L329 27L329 3" fill="none" stroke="#A2ADB0" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="105.67" cy="15" r="12.75" fill="none" stroke="#A2ADB0" stroke-width="6"/><circle cx="279.78" cy="15" r="12.75" fill="none" stroke="#A2ADB0" stroke-width="6"/></g></svg>
-    </div>
+      <ul class="fakten" aria-label="Kurz">
+        <li>Interim CSO &amp; Head of Sales</li>
+        <li>Make.One — Netzwerk auf Einladung</li>
+        <li>Gegründet von Malin &amp; Kevin</li>
+      </ul>
+    </div></div>
   </section>
 
-  <section class="abschnitt" id="fuer-wen" aria-labelledby="fuer-wen-titel">
-    <div class="wrap">
-      <div class="kopfzeile">
-        <span class="mikro">Für wen</span>
-        <h2 id="fuer-wen-titel">Für alle, die Neues in den Markt bringen.</h2>
-      </div>
-      <div class="karten">
-        <div class="karte zeigen">
-          <span class="nr">01</span>
-          <h3>KI- &amp; Tech-Startups</h3>
-          <p>Das Produkt ist stark, der Vertrieb noch nicht planbar. Wir bauen ihn mit euch auf — von den ersten Zielkunden bis zur wiederholbaren Pipeline.</p>
-        </div>
-        <div class="karte zeigen">
-          <span class="nr">02</span>
-          <h3>Scale-ups</h3>
-          <p>Der Vertrieb wächst schneller als seine Struktur. Wir schaffen klare Prozesse, Rollen und Kennzahlen, damit Wachstum steuerbar bleibt.</p>
-        </div>
-        <div class="karte zeigen">
-          <span class="nr">03</span>
-          <h3>Corporates &amp; Innovationseinheiten</h3>
-          <p>Neue Lösungen entstehen im Haus — Nachfrage entsteht nicht von selbst. Wir bringen sie vor die richtigen Entscheider und verbinden euch mit dem Netzwerk.</p>
-        </div>
-      </div>
-    </div>
+  <section class="kapitel" id="lage" data-formation="laerm" aria-labelledby="lage-titel">
+    <div class="wrap"><div class="inhalt">
+      <span class="mikro"><span class="nr">01</span> Die Lage</span>
+      <h2 id="lage-titel">Das Fundament ist stark. <span class="ruhig">Aber der Boden bewegt sich.</span></h2>
+      <p class="einleitung">Der deutsche Mittelstand hat Substanz: Produkte, die funktionieren, Kunden, die bleiben, Unternehmerinnen und Unternehmer, die Verantwortung tragen. Doch mehrere Veränderungen treffen gleichzeitig ein — und jede für sich wäre schon Arbeit genug.</p>
+      <ul class="lage-liste">
+        <li class="zeigen"><h3>Fachkräfte</h3><p>Gute Leute fehlen, im Vertrieb besonders. Stellen bleiben offen, Erfahrung geht in den Ruhestand — und mit ihr Kontakte, die nirgends aufgeschrieben sind.</p></li>
+        <li class="zeigen"><h3>Vertrieb</h3><p>Kunden informieren sich selbst, entscheiden später und in größeren Runden. Was früher ein Anruf war, ist heute ein Prozess über Monate.</p></li>
+        <li class="zeigen"><h3>KI-Umbruch</h3><p>Künstliche Intelligenz verändert Produkte, Abläufe und Erwartungen — schneller, als die meisten Strategien geschrieben werden.</p></li>
+        <li class="zeigen"><h3>Nachfolge</h3><p>In vielen Unternehmen steht der Generationswechsel an. Wer übergibt oder übernimmt, braucht ein Geschäft, das auch morgen Kunden gewinnt.</p></li>
+        <li class="zeigen"><h3>Tempo</h3><p>Märkte drehen sich in Quartalen, nicht in Jahrzehnten. Neue Wettbewerber kommen oft von dort, wo niemand hingeschaut hat.</p></li>
+        <li class="zeigen"><h3>Bürokratie</h3><p>Auflagen, Nachweise und Formulare binden Zeit und Köpfe — genau die Kraft, die für Kunden und Neues fehlt.</p></li>
+      </ul>
+      <p class="schluss">Keine dieser Fragen löst ein Gutachten. Man löst sie, indem man anfängt — mit einem klaren Plan und Menschen, die umsetzen.</p>
+    </div></div>
   </section>
 
-  <section class="abschnitt tief" id="markttraktion" aria-labelledby="markttraktion-titel">
-    <div class="wrap">
-      <div class="kopfzeile">
-        <span class="mikro">Markttraktion · Was wir am besten können</span>
-        <h2 id="markttraktion-titel">Aus Innovation <span class="ruhig">wird Nachfrage.</span></h2>
-        <span class="faden" aria-hidden="true"></span>
-        <p>Drei Bausteine, einzeln oder zusammen. Die Interim-Mandate führt Kevin Dieckmann persönlich.</p>
-      </div>
+  <section class="kapitel" id="innovation" data-formation="impuls" aria-labelledby="innovation-titel">
+    <div class="wrap"><div class="inhalt">
+      <span class="mikro"><span class="nr">02</span> Warum Innovation</span>
+      <h2 id="innovation-titel">Innovation ist keine Kür mehr. <span class="ruhig">Sie ist die Antwort.</span></h2>
+      <p class="einleitung">Wenn Fachkräfte fehlen, wird Produktivität zur Überlebensfrage. Wenn Kunden anders kaufen, muss Vertrieb neu gebaut werden. Wenn Technologie Märkte verschiebt, gewinnt, wer früher lernt.</p>
+      <p>Innovation heißt für uns deshalb nicht Labor und Hochglanz, sondern: neue Lösungen so in den Markt bringen, dass sie Kunden finden. Deutschland hat Ideen, Ingenieurskunst und einen starken Mittelstand. Was oft fehlt, ist der Weg vom guten Produkt zum zahlenden Kunden. <b>Genau dort setzen wir an.</b></p>
+      <ol class="prinzipien">
+        <li class="zeigen"><h3>Klar entscheiden</h3><p>Zielkunden, Angebot, Kanäle: wenige Dinge richtig statt vieler halb.</p></li>
+        <li class="zeigen"><h3>Im Markt lernen</h3><p>Testen in echten Gesprächen, nicht in Meetings. Was wirkt, wird ausgebaut.</p></li>
+        <li class="zeigen"><h3>Konsequent umsetzen</h3><p>Ein wöchentlicher Rhythmus, klare Kennzahlen, sichtbare Ergebnisse.</p></li>
+      </ol>
+    </div></div>
+  </section>
+
+  <section class="kapitel" id="markttraktion" data-formation="pfad" aria-labelledby="markttraktion-titel">
+    <div class="wrap"><div class="inhalt">
+      <span class="mikro"><span class="nr">03</span> Consulting &amp; Beratung</span>
+      <h2 id="markttraktion-titel">Beratung, die mitarbeitet. <span class="ruhig">Aus Innovation wird Nachfrage.</span></h2>
+      <span class="faden" aria-hidden="true"></span>
+      <p class="einleitung">Wir schreiben keine Konzepte für die Schublade. Wir übernehmen Verantwortung in Ihrem Unternehmen — als Vertriebsleitung auf Zeit, mit klarer Agenda und Ergebnissen, die Sie messen können. Die Interim-Mandate führt Kevin Dieckmann persönlich.</p>
+      <ul class="fuer" aria-label="Für wen">
+        <li>KI- &amp; Tech-Startups</li>
+        <li>Scale-ups</li>
+        <li>Mittelstand &amp; Innovationseinheiten</li>
+      </ul>
+
       <div class="angebote">
         <article class="angebot zeigen" id="angebot-interim-cso" aria-labelledby="cso-name">
           <span class="rolle">Strategische Vertriebsleitung auf Zeit</span>
           <h3 id="cso-name">Interim CSO</h3>
-          <p>Für innovative KI- und Tech-Firmen, die Vertrieb auf Führungsebene brauchen, bevor eine feste Stelle passt. Kevin übernimmt die strategische Vertriebsleitung — verteilt und sehr strukturiert.</p>
+          <p>Für innovative Unternehmen, die Vertrieb auf Führungsebene brauchen, bevor eine feste Stelle passt. Kevin übernimmt die strategische Vertriebsleitung — verteilt über die Woche und sehr strukturiert.</p>
           <ul>
             <li>ca. 2 Tage pro Woche, verteilt über die Woche</li>
             <li>wöchentliche Calls mit klarer Agenda</li>
             <li>Laufzeit 6–12 Monate</li>
-            <li>inklusive Zugang zu den Make.One-Events und Sichtbarkeit — Bühne und Netzwerk</li>
+            <li>inklusive Zugang zu den Make.One-Veranstaltungen — Bühne und Netzwerk</li>
           </ul>
           <div class="aktionen">
             <a class="knopf" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen</a>
@@ -123,11 +144,11 @@
         <article class="angebot zeigen" id="angebot-head-of-sales" aria-labelledby="hos-name">
           <span class="rolle">Sales-Aufbau auf Zeit</span>
           <h3 id="hos-name">Interim Head of Sales</h3>
-          <p>Baut klare, messbare Sales-Strukturen auf und stellt euren Vertrieb auf ein sauberes Fundament — <a href="#so-arbeiten-wir">in drei Phasen</a>: Analyse, Aufbau, Skalierung.</p>
+          <p>Baut klare, messbare Vertriebsstrukturen auf und stellt Ihren Vertrieb auf ein sauberes Fundament — <a href="#so-arbeiten-wir">in drei Phasen</a>: Analyse, Aufbau, Skalierung.</p>
           <ul>
             <li>Prozesse, Rollen und Kennzahlen, die bleiben</li>
             <li>Leadgenerierung, die planbar wird</li>
-            <li>Übergabe an euer festes Team</li>
+            <li>Übergabe an Ihr festes Team</li>
             <li>Laufzeit 6–12 Monate, mit Kevin Dieckmann</li>
           </ul>
           <div class="aktionen">
@@ -137,11 +158,11 @@
 
         <article class="angebot zeigen" id="angebot-events" aria-labelledby="events-name">
           <span class="rolle">Bühne · Begegnung · Matchmaking</span>
-          <h3 id="events-name">Events &amp; Netzwerk</h3>
-          <p>Gute Produkte brauchen die richtigen Menschen im Raum. Wir schaffen die Begegnungen dafür — im eigenen Netzwerk und bei euch.</p>
+          <h3 id="events-name">Events &amp; Netzwerk-Strategie</h3>
+          <p>Gute Produkte brauchen die richtigen Menschen im Raum. Wir planen die Begegnungen dafür — im eigenen Netzwerk und bei Ihnen.</p>
           <ul>
-            <li>eigene Make.One-Events: Stammtisch, Dinner, Workshop, Webinar</li>
-            <li>Events für Kunden — geplant und durchgeführt</li>
+            <li>eigene Make.One-Formate: Stammtisch, Dinner, Workshop, Webinar</li>
+            <li>Veranstaltungen für Kunden — geplant und durchgeführt</li>
             <li>Bühne: vor Entscheidern und Partnern präsentieren</li>
             <li>Matchmaking: gezielt passende Entscheider zusammenbringen</li>
           </ul>
@@ -151,108 +172,114 @@
         </article>
       </div>
 
-      <article class="angebot bald" id="angebot-development" aria-labelledby="development-name">
-        <span class="abzeichen bald">Coming Soon</span>
-        <h3 id="development-name">MAKE Innovation Development</h3>
-        <p>Wir entwickeln Software für Unternehmen.</p>
-      </article>
-    </div>
-  </section>
+      <h3 class="unterkopf">Themen, die wir mitbringen</h3>
+      <ul class="themen">
+        <li class="zeigen"><b>Go-to-Market</b><span>Zielkunden, Personas und Ausschlusskriterien schärfen; Angebot und Botschaft auf den Punkt bringen.</span></li>
+        <li class="zeigen"><b>Vertriebsprozess &amp; CRM</b><span>Eine saubere Datenbasis, klare Stufen vom ersten Kontakt bis zum Abschluss, Kennzahlen je Stufe.</span></li>
+        <li class="zeigen"><b>Leadgenerierung</b><span>Die Kanäle finden, die wirken — mit Webinaren, Veranstaltungen und gezielter Ansprache.</span></li>
+        <li class="zeigen"><b>Empfehlungsgeschäft</b><span>Netzwerken mit System: Empfehlungen mit Struktur statt Zufall.</span></li>
+        <li class="zeigen"><b>Sales-Unterlagen</b><span>Vom Pitch-Deck bis zum Angebot — klar, überzeugend, einheitlich.</span></li>
+        <li class="zeigen"><b>Team &amp; Übergabe</b><span>Rollen, Gesprächsstandard und Einarbeitung — damit es ohne uns weiterläuft.</span></li>
+      </ul>
 
-  <section class="abschnitt" id="so-arbeiten-wir" aria-labelledby="phasen-titel">
-    <div class="wrap">
-      <div class="kopfzeile">
-        <span class="mikro">So arbeiten wir</span>
-        <h2 id="phasen-titel">Drei Phasen. <span class="ruhig">Ein Fundament, das bleibt.</span></h2>
-        <p>So läuft ein Interim-Mandat — als CSO oder als Head of Sales. Jede Phase endet mit Ergebnissen, die ihr seht und messen könnt.</p>
+      <div class="phasen" id="so-arbeiten-wir">
+        <h3 class="unterkopf">So arbeiten wir: drei Phasen, ein Fundament, das bleibt.</h3>
+        <ol class="kreislauf drei">
+          <li class="zeigen">
+            <h4>Analyse</h4>
+            <p>Wir sichten Ihre Datenbasis und bringen sie sauber ins CRM, schärfen Zielkunden und Personas samt Ausschlusskriterien und prüfen, woher Ihre Leads kommen und welche Kanäle wirken. Dazu ein Blick auf Ihre Sales-Unterlagen — vom Pitch-Deck bis zum Angebot.</p>
+          </li>
+          <li class="zeigen">
+            <h4>Aufbau</h4>
+            <p>Wir erhöhen die Leadgenerierung über die passenden Kanäle, Webinare und Veranstaltungen und machen Netzwerken systematisch. Dazu ein einheitlicher Gesprächsstandard und eine klare Kundenreise vom Lead bis zum Fürsprecher, mit Kennzahlen je Stufe.</p>
+          </li>
+          <li class="zeigen">
+            <h4>Skalierung</h4>
+            <p>Ein wöchentlicher Rhythmus aus Calls und Kennzahlen-Review hält alles in Bewegung. Rollen werden klar verteilt, die Arbeit geht an Ihr festes Team über — und laufende Messung zeigt, wo nachgesteuert werden muss.</p>
+          </li>
+        </ol>
+        <p class="kreislauf-fuss">Woche für Woche: ein Call, ein Blick auf die Kennzahlen, die nächsten Schritte.</p>
       </div>
-      <ol class="kreislauf drei">
-        <li class="zeigen">
-          <h3>Analyse</h3>
-          <p>Wir sichten eure Datenbasis und bringen sie sauber ins CRM, schärfen Zielkunden und Personas samt Ausschlusskriterien und prüfen, woher eure Leads kommen und welche Kanäle wirken. Dazu ein Blick auf eure Sales-Unterlagen — vom Pitch-Deck bis zum Angebot.</p>
-        </li>
-        <li class="zeigen">
-          <h3>Aufbau</h3>
-          <p>Wir erhöhen die Leadgenerierung über die passenden Kanäle, Webinare und Events und machen Netzwerken systematisch — Empfehlungen mit Struktur statt Zufall. Dazu ein einheitlicher Gesprächsstandard und eine klare Kundenreise vom Lead bis zum Fürsprecher, mit Kennzahlen je Stufe.</p>
-        </li>
-        <li class="zeigen">
-          <h3>Skalierung</h3>
-          <p>Ein wöchentlicher Rhythmus aus Calls und Kennzahlen-Review hält alles in Bewegung. Rollen werden klar verteilt, die Arbeit geht an euer festes Team über — und laufende Messung zeigt, wo nachgesteuert werden muss.</p>
-        </li>
-      </ol>
-      <p class="kreislauf-fuss">Woche für Woche: ein Call, ein Blick auf die Kennzahlen, die nächsten Schritte.</p>
-    </div>
+    </div></div>
   </section>
 
-  <section class="abschnitt tief" id="make-one" aria-labelledby="make-one-titel">
-    <div class="wrap">
-      <div class="zweispaltig">
-        <div class="text">
-          <span class="mikro">Make.One · Das Netzwerk</span>
-          <h2 id="make-one-titel">Make.One. <span class="ruhig">Für Innovation in Deutschland.</span></h2>
-          <span class="faden" aria-hidden="true"></span>
-          <p>Wir haben Make.One gegründet, um Innovation in Deutschland zu fördern. Hier treffen sich die, die Neues bauen, und die, die es in den Markt tragen — Gründerinnen und Gründer, Entscheider aus Unternehmen, Partner.</p>
-          <p>Der Zugang ist kuratiert: auf Einladung oder per Bewerbung. Später auch als Mitgliedschaft.</p>
-          <p><a class="knopf" href="mailto:hello@makeinnovation.de?subject=Make.One%20%E2%80%93%20Einladung">Einladung anfragen <span class="pfeil" aria-hidden="true">→</span></a></p>
+  <section class="kapitel" id="make-one" data-formation="kreise" aria-labelledby="make-one-titel">
+    <div class="wrap"><div class="inhalt">
+      <span class="mikro"><span class="nr">04</span> Make.One — das Netzwerk</span>
+      <h2 id="make-one-titel">Make.One. <span class="ruhig">Wo junge und erfahrene Entscheider sich begegnen.</span></h2>
+      <span class="faden" aria-hidden="true"></span>
+      <p class="einleitung">Wir haben Make.One gegründet, um Innovation in Deutschland zu fördern. Es bringt zusammen, wer Neues baut, und wer Erfahrung, Zugang und Urteilsvermögen mitbringt: Gründerinnen und Gründer, Unternehmerinnen und Unternehmer, Führungskräfte aus Mittelstand und Konzern.</p>
+      <p>Die einen bringen Tempo und neue Ideen, die anderen Erfahrung und Netzwerk. An einem Tisch entsteht, was keiner allein schafft.</p>
+      <div class="loesungen formate">
+        <div class="loesung zeigen">
+          <span class="nr">Stammtisch</span>
+          <h3>Ungezwungen ins Gespräch kommen</h3>
+          <p>Ohne Programm, mit Menschen, die an ähnlichen Fragen arbeiten.</p>
         </div>
-        <div class="loesungen">
-          <div class="loesung zeigen">
-            <span class="nr">Stammtisch</span>
-            <h3>Ungezwungen ins Gespräch kommen</h3>
-            <p>Ohne Programm, mit Menschen, die an ähnlichen Fragen arbeiten.</p>
-          </div>
-          <div class="loesung zeigen">
-            <span class="nr">Dinner</span>
-            <h3>Eine kleine Runde an einem Tisch</h3>
-            <p>Zeit für echte Gespräche statt Visitenkarten.</p>
-          </div>
-          <div class="loesung zeigen">
-            <span class="nr">Workshop</span>
-            <h3>Gemeinsam an einer konkreten Frage arbeiten</h3>
-            <p>Mit Ergebnissen, die man mitnimmt.</p>
-          </div>
-          <div class="loesung zeigen">
-            <span class="nr">Webinar</span>
-            <h3>Wissen teilen, von überall</h3>
-            <p>Kompakt, mit Raum für Fragen.</p>
-          </div>
+        <div class="loesung zeigen">
+          <span class="nr">Dinner</span>
+          <h3>Eine kleine Runde an einem Tisch</h3>
+          <p>Zeit für echte Gespräche statt Visitenkarten.</p>
+        </div>
+        <div class="loesung zeigen">
+          <span class="nr">Workshop</span>
+          <h3>Gemeinsam an einer konkreten Frage arbeiten</h3>
+          <p>Mit Ergebnissen, die man mitnimmt.</p>
+        </div>
+        <div class="loesung zeigen">
+          <span class="nr">Webinar</span>
+          <h3>Wissen teilen, von überall</h3>
+          <p>Kompakt, mit Raum für Fragen.</p>
         </div>
       </div>
-    </div>
+      <ul class="merkmale">
+        <li><b>Regelmäßig</b> — wiederkehrende Formate statt einzelner Termine.</li>
+        <li><b>Kuratiert</b> — auf Einladung oder per Bewerbung.</li>
+        <li><b>Generationen verbinden</b> — junge und erfahrene Entscheider an einem Tisch.</li>
+        <li><b>Später als Mitgliedschaft</b> — für alle, die dauerhaft dabei sein wollen.</li>
+      </ul>
+      <p class="aktion"><a class="knopf" href="mailto:hello@makeinnovation.de?subject=Make.One%20%E2%80%93%20Einladung">Einladung anfragen <span class="pfeil" aria-hidden="true">→</span></a></p>
+    </div></div>
   </section>
 
-  <section class="abschnitt" id="beteiligungen" aria-labelledby="beteiligungen-titel">
-    <div class="wrap">
+  <section class="kapitel" id="beteiligungen" data-formation="fokus" aria-labelledby="beteiligungen-titel">
+    <div class="wrap"><div class="inhalt">
+      <span class="mikro"><span class="nr">05</span> Make.Beteiligungen</span>
+      <h2 id="beteiligungen-titel">Wenige Projekte. <span class="ruhig">Mit allem, was wir haben.</span></h2>
+      <p class="einleitung">Wir suchen innovative Projekte, die wir mit Netzwerk, Sichtbarkeit und systematischem Vertrieb nach vorne bringen. Dafür gehen wir nur ganz wenige Kooperationen ein — kuratiert, Qualität vor Menge. Ob und in welcher Form wir zusammenarbeiten, als Kooperation oder Beteiligung, entscheiden wir im Einzelfall.</p>
       <div class="kasten zeigen">
-        <div class="text">
-          <span class="mikro">Make.Beteiligungen</span>
-          <h2 id="beteiligungen-titel">Wenige Projekte. <span class="ruhig">Mit allem, was wir haben.</span></h2>
-          <p>Wir suchen innovative Projekte, die wir mit Netzwerk, Sichtbarkeit und systematischem Sales nach vorne bringen. Dafür gehen wir nur ganz wenige Kooperationen ein — kuratiert, Qualität vor Menge.</p>
-          <p>Ob und in welcher Form wir zusammenarbeiten, als Kooperation oder Beteiligung, entscheiden wir im Einzelfall.</p>
-          <p><a class="knopf" href="mailto:hello@makeinnovation.de?subject=Make.Beteiligungen%20%E2%80%93%20Projekt">Projekt einreichen <span class="pfeil" aria-hidden="true">→</span></a></p>
-        </div>
         <div>
-          <span class="mikro">Was in deine Mail gehört</span>
+          <span class="mikro">Was in Ihre Mail gehört</span>
           <ul class="haken">
             <li><b>Pitch-Deck</b> — als PDF oder Link.</li>
             <li><b>Stand</b> — Produkt, Markt, erste Kunden.</li>
             <li><b>Team</b> — wer macht was.</li>
             <li><b>Link</b> — Website oder Demo.</li>
           </ul>
+          <p class="aktion"><a class="knopf" href="mailto:hello@makeinnovation.de?subject=Make.Beteiligungen%20%E2%80%93%20Projekt">Projekt einreichen <span class="pfeil" aria-hidden="true">→</span></a></p>
           <p class="fussnote">Make.Beteiligungen ist keine Anlageberatung und kein Finanzierungsangebot. Wir versprechen keine Rendite und sagen keine Finanzierung zu.</p>
         </div>
       </div>
-    </div>
+      <article class="angebot bald" id="angebot-development" aria-labelledby="development-name">
+        <span class="abzeichen bald">Coming Soon</span>
+        <h3 id="development-name">MAKE Innovation Development</h3>
+        <p>Wir entwickeln Software für Unternehmen.</p>
+      </article>
+    </div></div>
   </section>
 
-  <section class="abschnitt tief" id="ueber-uns" aria-labelledby="ueber-uns-titel">
-    <div class="wrap gruender">
-      <div class="text">
-        <span class="mikro">Über uns</span>
-        <h2 id="ueber-uns-titel" class="make-zeile" aria-label="MAKE — Malin und Kevin"><span class="ma">MA</span><span class="plus" aria-hidden="true">+</span><span class="ke">KE</span></h2>
-        <p>MAKE steht für <b>MA</b>lin und <b>KE</b>vin. Als Business-Paar haben wir die MAKE Innovation GmbH gegründet, weil wir Innovation in Deutschland voranbringen wollen — mit Vertrieb, Netzwerk und Bühne.</p>
-        <p>Die Interim-Mandate als CSO und Head of Sales führt Kevin persönlich. <span class="ph">[[KEVIN: Ein Satz zu deiner Vertriebserfahrung — Stationen oder Schwerpunkte, ohne Kundennamen]]</span></p>
-      </div>
+  <section class="kapitel" id="ueber-uns" data-formation="kern" aria-labelledby="ueber-uns-titel">
+    <div class="wrap"><div class="inhalt">
+      <span class="mikro"><span class="nr">06</span> Warum MAKE</span>
+      <h2 id="ueber-uns-titel">Warum Sie mit uns arbeiten sollten.</h2>
+      <p class="einleitung">MAKE steht für <b class="ma">MA</b>lin und <b class="ke">KE</b>vin. Als Gründerpaar haben wir MAKE Innovation aufgebaut, weil wir Innovation in Deutschland voranbringen wollen — mit Vertrieb, Netzwerk und Bühne.</p>
+      <ul class="staerken">
+        <li class="zeigen"><h3>Umsetzung statt Folien</h3><p>Wir arbeiten in Ihrem Unternehmen mit: ca. zwei Tage pro Woche, ein wöchentlicher Call, Kennzahlen, die alle sehen.</p></li>
+        <li class="zeigen"><h3>Vertrieb aus der Praxis</h3><p>Kevin führt jedes Interim-Mandat persönlich — als Unternehmer und Berater, nicht als Beobachter von außen. <span class="ph">[[KEVIN: Ein Satz zu deiner Vertriebserfahrung — Stationen oder Schwerpunkte, ohne Kundennamen]]</span></p></li>
+        <li class="zeigen"><h3>Netzwerk inklusive</h3><p>Mit Make.One bringen wir Sie mit Entscheidern zusammen. Beim Interim CSO ist der Zugang zu unseren Veranstaltungen Teil des Mandats.</p></li>
+        <li class="zeigen"><h3>Struktur, die bleibt</h3><p>Prozesse, Rollen und Kennzahlen gehen an Ihr Team über. Das Ziel ist ein Vertrieb, der ohne uns weiterläuft.</p></li>
+        <li class="zeigen"><h3>Zwei Blickwinkel</h3><p>Zahlen und Ordnung auf der einen Seite, Vertrieb, Netzwerk und Bühne auf der anderen. Zusammen sehen wir mehr.</p></li>
+      </ul>
       <div class="personen">
         <div class="person malin zeigen">
           <div class="bild" aria-hidden="true">M</div>
@@ -263,51 +290,48 @@
           <div><b>Kevin Dieckmann</b><span>Mitgründer · Unternehmer und Berater. Interim CSO und Head of Sales.</span></div>
         </div>
       </div>
-    </div>
+    </div></div>
   </section>
 
-  <section class="ruf" id="erstgespraech" aria-labelledby="erstgespraech-titel">
-    <div class="wrap">
-      <span class="mikro">Erstgespräch</span>
-      <h2 id="erstgespraech-titel">Lass uns sprechen.</h2>
-      <p>Im Erstgespräch klären wir, wo euer Vertrieb steht und welcher Baustein passt. Schreib uns kurz, wer ihr seid, worum es geht und wann es euch passt — wir melden uns mit einem Termin.</p>
-      <div class="knoepfe">
-        <!-- Ziel des Erstgesprächs: steht NUR hier (alle Knöpfe mit data-erstgespraech übernehmen es, js/erstgespraech.js).
-             Später auf die Buchungsseite umstellen: nur dieses href ersetzen (website/LIESMICH.md). -->
-        <a class="knopf gross" id="erstgespraech-link" href="mailto:hello@makeinnovation.de?subject=Erstgespr%C3%A4ch%20%E2%80%93%20Markttraktion&amp;body=Hallo%20Malin%2C%20hallo%20Kevin%2C%0A%0AFirma%3A%0AWorum%20es%20geht%3A%0A2%E2%80%933%20Terminvorschl%C3%A4ge%3A%0A%0AViele%20Gr%C3%BC%C3%9Fe%0A">Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a>
-      </div>
-      <p class="klein">Firma, worum es geht, 2–3 Terminvorschläge — die Mail ist schon vorbereitet.</p>
-    </div>
-  </section>
-
-  <section class="abschnitt" id="kontakt" aria-labelledby="kontakt-titel">
-    <div class="wrap">
-      <div class="kopfzeile">
-        <span class="mikro">Kontakt</span>
-        <h2 id="kontakt-titel">Schreib uns.</h2>
-        <p>Fragen zu Markttraktion, Make.One oder Make.Beteiligungen — eine Mail genügt.</p>
+  <section class="kapitel schluss-kapitel" id="kontakt" data-formation="logo" aria-labelledby="erstgespraech-titel">
+    <div class="wrap"><div class="inhalt">
+      <div class="ruf" id="erstgespraech">
+        <span class="mikro"><span class="nr">07</span> Erstgespräch</span>
+        <h2 id="erstgespraech-titel">Lassen Sie uns sprechen.</h2>
+        <p>Im Erstgespräch klären wir, wo Ihr Vertrieb steht und welcher Baustein passt. Schreiben Sie uns kurz, wer Sie sind, worum es geht und wann es Ihnen passt — wir melden uns mit einem Termin.</p>
+        <div class="knoepfe">
+          <!-- Ziel des Erstgesprächs: steht NUR hier (alle Knöpfe mit data-erstgespraech übernehmen es, js/erstgespraech.js).
+               Später auf die Buchungsseite umstellen: nur dieses href ersetzen (website/LIESMICH.md). -->
+          <a class="knopf gross" id="erstgespraech-link" href="mailto:hello@makeinnovation.de?subject=Erstgespr%C3%A4ch%20%E2%80%93%20Markttraktion&amp;body=Hallo%20Malin%2C%20hallo%20Kevin%2C%0A%0AFirma%3A%0AWorum%20es%20geht%3A%0A2%E2%80%933%20Terminvorschl%C3%A4ge%3A%0A%0AViele%20Gr%C3%BC%C3%9Fe%0A">Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a>
+          <a class="knopf gross leise" href="mailto:hello@makeinnovation.de?subject=Pitch-Deck%20%E2%80%93%20MAKE%20Innovation">Pitch-Deck anfordern</a>
+        </div>
+        <p class="klein">Firma, worum es geht, 2–3 Terminvorschläge — die Mail ist schon vorbereitet. Unsere Unternehmensvorstellung senden wir Ihnen gern auf Anfrage.</p>
       </div>
       <div class="kontakt">
+        <span class="mikro">Kontakt</span>
+        <p>Fragen zu Beratung, Make.One oder Make.Beteiligungen — eine Mail genügt.</p>
         <a class="mail" href="mailto:hello@makeinnovation.de">hello@makeinnovation.de</a>
         <a class="knopf leise" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a>
       </div>
-    </div>
+    </div></div>
   </section>
+</div>
 </main>
 
 <footer class="fuss">
   <div class="wrap">
     <div class="fuss-spalten">
       <div class="fuss-marke">
-        <img src="assets/logo/quer.svg" width="332" height="130" alt="MAKE Innovation">
-        <p>Markttraktion und Netzwerk für Innovation aus Deutschland.</p>
+        <img src="assets/logo/quer.svg" width="548" height="79" alt="MAKE Innovation">
+        <p class="absender"><b>MAKE Innovation</b><small>eine Marke der KEMARIS Innovation GmbH</small></p>
+        <p>Beratung und Netzwerk für Innovation aus Deutschland.</p>
       </div>
       <div>
-        <h4>Markttraktion</h4>
+        <h4>Beratung</h4>
         <ul>
           <li><a href="#angebot-interim-cso">Interim CSO</a></li>
           <li><a href="#angebot-head-of-sales">Interim Head of Sales</a></li>
-          <li><a href="#angebot-events">Events &amp; Netzwerk</a></li>
+          <li><a href="#angebot-events">Events &amp; Netzwerk-Strategie</a></li>
           <li class="bald">MAKE Innovation Development <small>bald</small></li>
         </ul>
       </div>
@@ -316,7 +340,7 @@
         <ul>
           <li><a href="#make-one">Make.One</a></li>
           <li><a href="#beteiligungen">Make.Beteiligungen</a></li>
-          <li><a href="#ueber-uns">Über uns</a></li>
+          <li><a href="#ueber-uns">Warum wir</a></li>
           <li><a href="#kontakt">Kontakt</a></li>
         </ul>
       </div>
@@ -330,7 +354,7 @@
       </div>
     </div>
     <div class="fuss-unten">
-      <span>© 2026 MAKE Innovation GmbH</span>
+      <span class="absender"><span>© 2026 MAKE Innovation</span><small>eine Marke der KEMARIS Innovation GmbH</small></span>
       <a href="mailto:hello@makeinnovation.de">hello@makeinnovation.de</a>
     </div>
   </div>

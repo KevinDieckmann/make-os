@@ -38,16 +38,16 @@ describe('website/pruefen.mjs', () => {
     const k = kopie();
     fuellen(k);
     expect(pruefeWebsite(k)).toEqual({ fehler: [], platzhalter: [], freigabefaehig: true });
-    ersetze(k, 'impressum.html', 'HRB Beispielwert', 'HRB [[KEVIN: Nummer]]');
+    ersetze(k, 'datenschutz.html', 'Die Postfächer betreibt Beispielwert', 'Die Postfächer betreibt [[KEVIN: Anbieter]]');
     const r = pruefeWebsite(k);
     expect(r.freigabefaehig).toBe(false);
-    expect(r.platzhalter).toEqual([expect.objectContaining({ datei: 'impressum.html', text: 'Nummer' })]);
+    expect(r.platzhalter).toEqual([expect.objectContaining({ datei: 'datenschutz.html', text: 'Anbieter' })]);
   });
 
   it('gelbe Markierung ohne Platzhalter darin fällt auf', () => {
     const k = kopie();
     fuellen(k);
-    ersetze(k, 'impressum.html', 'HRB Beispielwert', 'HRB <span class="ph">12345</span>');
+    ersetze(k, 'datenschutz.html', 'Die Postfächer betreibt Beispielwert', 'Die Postfächer betreibt <span class="ph">Anbieter</span>');
     expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/gelbe Platzhalter-Markierung/);
   });
 
@@ -56,7 +56,7 @@ describe('website/pruefen.mjs', () => {
     const k = kopie();
     fuellen(k);
     // Ein anderer Strich in der Bühne fällt genauso auf wie ein anderer Buchstabe.
-    ersetze(k, 'index.html', /(<svg class="zeichen"[\s\S]*?)<rect([^>]*) x="194"/, '$1<rect$2 x="190"');
+    ersetze(k, 'index.html', /(<svg class="zeichen"[\s\S]*?<rect class="strich strich-ke") x="[\d.]+"/, '$1 x="190"');
     rmSync(join(k, 'assets/logo/kompakt.svg'));
     const f = pruefeWebsite(k).fehler.join('\n');
     expect(f).toMatch(/Bühnen-Zeichen weicht von assets\/logo\/wortmarke\.svg ab/);
@@ -140,6 +140,15 @@ describe('website/pruefen.mjs', () => {
     }
     ersetze(k, 'index.html', '</main>', '<p>Unser Dash' + 'board</p></main>');
     expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/Wortregeln/);
+    // Firmierung (Kevin 03.10.): eine GmbH namens MAKE Innovation gibt es nicht; jede Seite trägt die Marke der KEMARIS Innovation GmbH.
+    const k3 = kopie();
+    fuellen(k3);
+    expect(pruefeWebsite(k3).fehler).toEqual([]);
+    ersetze(k3, 'impressum.html', '</main>', '<p>MAKE Innovation ' + 'GmbH</p></main>');
+    ersetze(k3, '404.html', /eine Marke der KEMARIS Innovation GmbH/g, 'MAKE');
+    const f3 = pruefeWebsite(k3).fehler.join('\n');
+    expect(f3).toMatch(/impressum\.html:\d+: „MAKE Innovation GmbH“ — die GmbH ist nicht eingetragen/);
+    expect(f3).toMatch(/404\.html: Firmierung/);
   });
 
   it('Skripte nur als eigene Datei aus js/ — und die lesen, speichern und senden nichts', () => {

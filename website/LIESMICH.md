@@ -1,58 +1,87 @@
-# Landingpage makeinnovation.de — MAKE Innovation GmbH
+# Landingpage makeinnovation.de — MAKE Innovation (eine Marke der KEMARIS Innovation GmbH)
 
-Statische Seite (HTML + eine CSS-Datei + zwei kleine eigene Skripte, keine Cookies, kein Tracking, kein Speicher im
-Browser, Schriften selbst gehostet). Stand v3 (01.10.2026): neue Positionierung — „Wir wollen Innovation in Deutschland
-fördern — deshalb haben wir das Make.One-Netzwerk gegründet.“ Angebot: **Markttraktion**. Der Name der Software steht
-bewusst nirgends auf der Seite (erst, wenn sie marktreif ist); oben rechts nur ein kleiner Knopf „Login“.
+Statische Seite (HTML + eine CSS-Datei + vier kleine eigene Skripte, keine Cookies, kein Tracking, kein Speicher im
+Browser, Schriften selbst gehostet). Stand **v4 (03.10.2026)**: „Innovation braucht Umsetzung.“ — Beratung (Interim CSO,
+Interim Head of Sales, Events & Netzwerk-Strategie), Make.One als Netzwerk für junge und erfahrene Entscheider,
+Make.Beteiligungen und Development kompakt, „Warum wir“. Dazu die **Neuronen-Bühne**: oben das Logo, beim Scrollen
+lösen sich Rot und Grün in Neuronen auf, die je Kapitel ein Bild formen; im Kontakt fließt das Netz zurück ins Logo.
+Der Name der Software steht bewusst nirgends auf der Seite; oben rechts nur ein kleiner Knopf „Login“.
+
+**Firmierung (Kevin 03.10., rechtlich):** Eine GmbH unter dem Namen „MAKE Innovation“ ist nicht eingetragen. Überall steht
+„MAKE Innovation“ und darunter klein „eine Marke der KEMARIS Innovation GmbH“; Impressum und Datenschutz nennen die
+Kemaris Innovation GmbH (Schönefeld, HRB 19873, AG Cottbus). `pruefen.mjs` hält das fest.
+
 Sie liegt im Repo, Caddy liest sie auf dem Server read-only aus `/srv/make-os/app/website` (compose.yml → `/srv/website`).
-**Online geht sie erst, wenn Kevin sie gesehen und freigegeben hat** — bis dahin leiten `makeinnovation.de` und
-`www.makeinnovation.de` auf `https://app.makeinnovation.de/anmelden` um (302).
+Sie ist als **nicht indexierte Vorschau** aktiv (`X-Robots-Tag: noindex`, `robots.txt` sperrt, jede Seite trägt
+`<meta name="robots" content="noindex">`).
 
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Kopf (Logo, Navigation Markttraktion · Make.One · Make.Beteiligungen · Über uns · Kontakt, Handy-Menü, „Login“), Bühne „Innovation in Deutschland fördern“ mit sich einzeichnender Wortmarke (zwei Personenstriche), **Für wen** (KI- & Tech-Startups, Scale-ups, Corporates/Innovationseinheiten), **Markttraktion** (drei gleichwertige Karten: Interim CSO · Interim Head of Sales · Events & Netzwerk; darunter MAKE Innovation Development „Coming Soon“), **So arbeiten wir** (Analyse → Aufbau → Skalierung), **Make.One** (Einladung anfragen), **Make.Beteiligungen** (Projekt einreichen), Über uns MA + KE, **Erstgespräch** (`#erstgespraech`, vorbereitete Mail), Kontakt, Fuß |
-| `impressum.html` | Pflichtangaben nach § 5 DDG für die GmbH |
-| `datenschutz.html` | Hinweis passend zum tatsächlichen Verhalten (Hetzner DE, Caddy ohne Zugriffsprotokoll, keine Cookies, mailto) |
+| `index.html` | Kopf (Logo quer, Navigation Beratung · Make.One · Beteiligungen · Warum wir · Kontakt, Handy-Menü, „Login“), dann die **Reise**: sticky Bühne (`.buehne`: Canvas, Logo-SVG, Standbild) hinter acht Kapiteln (`.kapitel`, je `data-formation`): Start (Logo) · 01 Die Lage (laerm) · 02 Warum Innovation (impuls) · 03 Consulting & Beratung `#markttraktion` (pfad; Angebote, Themen, drei Phasen `#so-arbeiten-wir`) · 04 Make.One (kreise) · 05 Make.Beteiligungen + Development „Coming Soon“ (fokus) · 06 Warum MAKE `#ueber-uns` (kern) · 07 Erstgespräch `#erstgespraech` + Kontakt `#kontakt` (Logo). Fuß mit Firmierung |
+| `impressum.html` | Pflichtangaben nach § 5 DDG (Kemaris Innovation GmbH), Verantwortlich nach § 18 Abs. 2 MStV |
+| `datenschutz.html` | Hinweis passend zum tatsächlichen Verhalten (Hetzner DE, Caddy ohne Zugriffsprotokoll, keine Cookies, mailto, Bühne rechnet nur im Browser); Verantwortliche: Kemaris Innovation GmbH |
 | `404.html` | Seite für unbekannte Adressen (absolute Pfade, weil sie unter jeder Adresse erscheint) |
-| `css/seite.css` | CI-Tokens aus `lib/make-one/design.ts` (Look wie v1); Rot/Grün nur für MA/KE und den dünnen MAKE-Faden; Bewegung nur ohne `prefers-reduced-motion` |
-| `js/menue.js` | schließt das Handy-Menü (`<details>`) nach einem Klick, mit Esc oder per Klick daneben — liest, speichert, sendet nichts |
-| `js/erstgespraech.js` | übernimmt das Ziel aus `#erstgespraech-link` für alle Knöpfe mit `data-erstgespraech` (ohne Skript zeigen sie auf `#erstgespraech`) — liest, speichert, sendet nichts |
-| `assets/logo/` | Logo aus `scripts/website-logo.mjs` (nie von Hand ändern): Wortmarke (MAKE · roter Strich unter MA, grüner unter KE · INNOVATION), quer, kompakt, groß, Visitenkarten-Logo, hell/dunkel; Favicons/Kachel vorläufig noch die M-Bildmarke (Logo wird später überarbeitet) — Konstruktion in `assets/logo/LOGO.md` |
-| `logo-entwuerfe.html` | Logo-Übersicht aller Fassungen (Arbeitsdatei, wird nie ausgeliefert) |
+| `css/seite.css` | CI-Tokens aus `lib/make-one/design.ts`; Rot/Grün (edler, wie Logo v5) nur für Personen, Logo und Bühne; Bewegung nur ohne `prefers-reduced-motion` |
+| `js/formationen.js` | Geometrie der Bühne (sechs Formationen, ohne DOM — läuft auch in Node für das Standbild) |
+| `js/neuronen.js` | die Bühne: Canvas 2D, mischt die Formationen entlang des Scrollens, Logo ↔ Netz überblenden; pausiert außerhalb des Bildes; `prefers-reduced-motion` = ein Standbild je Kapitel; liest, speichert, sendet nichts |
+| `js/menue.js` | schließt das Handy-Menü (`<details>`) nach einem Klick, mit Esc oder per Klick daneben |
+| `js/erstgespraech.js` | übernimmt das Ziel aus `#erstgespraech-link` für alle Knöpfe mit `data-erstgespraech` |
+| `assets/buehne/standbild.svg` | Standbild der Bühne ohne Skript/Canvas (`node website/standbild.mjs`) |
+| `assets/logo/` | Logo v5 „Synapse“ aus `scripts/website-logo.mjs` (nie von Hand ändern) — Konstruktion in `assets/logo/LOGO.md` |
+| `logo-entwuerfe.html` | drei Logo-Entwürfe + alle Fassungen (Arbeitsdatei, wird nie ausgeliefert) |
+| `standbild.mjs` | erzeugt das Standbild (Arbeitsdatei; Caddy liefert `*.mjs` nie aus) |
 | `assets/fonts/` | Archivo + Public Sans (SIL Open Font License, selbst gehostet — keine Google-Fonts-Anfrage) |
-| `favicon.svg` | App-Kachel des neuen Logos (= `assets/logo/kachel.svg`) |
+| `favicon.svg` | App-Kachel (= `assets/logo/kachel.svg`) |
 | `pruefen.mjs` | Freigabe-Prüfung (wird nie ausgeliefert) |
 
+## Die Neuronen-Bühne — Dramaturgie
+
+| Kapitel | Formation | Bild |
+|---|---|---|
+| Start | Logo | Das Logo steht (SVG). Beim ersten Scrollen werden Striche und Buchstaben zu Teilchen. |
+| 01 Die Lage | `laerm` | zerfasertes Netz: viele kleine Inseln, meist grau — Lärm, wenig Verbindung |
+| 02 Warum Innovation | `impuls` | Rot und Grün laufen als zwei Stränge zusammen, ein Impuls läuft durch den Knoten und gemeinsam weiter |
+| 03 Beratung | `pfad` | Struktur: drei wachsende Gitter (Analyse, Aufbau, Skalierung), Spalten Rot/Grün, ein Pfad darüber |
+| 04 Make.One | `kreise` | Runden von Menschen, Rot und Grün gemischt, mit Brücken verbunden |
+| 05 Beteiligungen | `fokus` | ein ruhiger Ring (der Markt), darin drei dichte, ausgewählte Knoten |
+| 06 Warum MAKE | `kern` | Rot und Grün verschmelzen spiralförmig zu einem stabilen Kern, dreht sich sehr langsam |
+| 07 Kontakt | Logo | das Netz fließt zurück in das Logo |
+
+Desktop (≥ 1100 px): Text links, Bühne rechts. Schmaler: Bühne als ruhiges oberes Band, das Netz gedimmt hinter dem Text.
+Ruhig wie die frühere Bühne („wie ein Auge“): dünne Linien, kein Glühen, langsame Drift; die Verwandlung folgt dem Scrollen.
+
 Lokal ansehen: `python3 -m http.server 3013 -d website` über einen Eintrag in `.claude/launch.json` (nicht per Bash),
-oder die HTML-Datei direkt im Browser öffnen. Logo ändern: `node scripts/website-logo.mjs` (Bühnen-Block mit `--buehne`).
+oder die HTML-Datei direkt im Browser öffnen. Logo ändern: `node scripts/website-logo.mjs`, danach den Bühnen-Block
+(`node scripts/website-logo.mjs --buehne`) in `index.html` übernehmen. Formationen ändern: danach `node website/standbild.mjs`.
 
 ## Freigabe — in dieser Reihenfolge
 
 1. **Platzhalter füllen.** Jeder offene Wert steht gelb markiert als `<span class="ph">[[KEVIN: …]]</span>` in der Seite.
    Beim Füllen das **ganze** `<span class="ph">…</span>` durch den Text ersetzen (sonst bleibt die gelbe Markierung —
    die Prüfung meldet das). Abschnitte, die nicht zutreffen (z. B. USt-IdNr.), ganz streichen.
-2. **Prüfen:** `node website/pruefen.mjs` → muss **„freigabefähig“** melden (Ausgang 0). Er prüft außerdem: keine
+2. **Prüfen:** `node website/pruefen.mjs` → muss **„freigabefähig“** melden (Ausgang 0). Er prüft außerdem: Firmierung
+   „eine Marke der KEMARIS Innovation GmbH“ auf jeder Seite und **nirgends eine GmbH namens MAKE Innovation**, Beschreibung und — solange
+   `robots.txt` sperrt — `noindex` je Seite, keine
    Skripte, keine Inline-Stile, keine fremden Quellen/Tracker, eine H1 je Seite, Login-Knopf, Impressum- und
    Datenschutz-Link, alle eigenen Links und Anker — dazu: Skripte nur aus `js/` und ohne Speichern/Senden, Logo-Dateien
    vollständig, Bühnen-Zeichen = `assets/logo/wortmarke.svg`, Navigation, Angebote (drei mit „Erstgespräch anfragen“, genau
    ein „Coming Soon“ bei Development), Mail-Knöpfe Make.One/Make.Beteiligungen, **Ziel des Erstgesprächs an genau einer Stelle**
    (`#erstgespraech-link`: vorbereitete Mail oder Buchungsseite mit gültigem Slug), **keine Preise**, **Sperrliste**: keine anderen Firmen-, Marken- oder
-   Projektnamen (nur MAKE), der Name der Software nirgends im Ordner, Wortregeln (kein „Dashboard“, „Tool“,
+   Projektnamen (nur MAKE; KEMARIS nur in der Firmierung), der Name der Software nirgends im Ordner, Wortregeln (kein „Dashboard“, „Tool“,
    „Reporting“, „Disruption“, „einfach zu bedienen“).
 3. **Kevin sieht die Seite lokal an** und gibt sie ausdrücklich frei.
-4. **Caddyfile umstellen** (`deploy/caddy/Caddyfile`): den Block „VORERST“ (`makeinnovation.de, www.makeinnovation.de`
-   mit `redir … 302`) löschen und die **FREIGABE-FASSUNG** zwischen `▼` und `▲` entkommentieren (nur das führende `# `
-   entfernen). `npx vitest run tests/caddy-buchung-koepfe.test.ts` — der Test lässt die aktive Freigabe-Fassung nur
-   zu, wenn `pruefen.mjs` grün ist (sonst schlägt die CI fehl und nichts wird ausgerollt).
+4. **Vorschau beenden** (erst, wenn die Seite beworben wird): in `deploy/caddy/Caddyfile` die Zeile `X-Robots-Tag` entfernen,
+   `website/robots.txt` öffnen (`Disallow:` leer) und in allen Seiten `<meta name="robots" content="noindex">` streichen
+   (`pruefen.mjs` verlangt das Meta-Tag nur, solange `robots.txt` sperrt). `npx vitest run tests/caddy-buchung-koepfe.test.ts`.
 5. **Hochladen nur auf Kevins Wort** (wie immer: `entwicklung` → `main`). Danach auf dem Server einmal
    `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile` und
    `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile` (Caddy lädt eine geänderte Caddyfile nicht
    von selbst). Prüfen: `curl -sI https://makeinnovation.de` → 200 mit `content-security-policy`,
    `curl -sI https://www.makeinnovation.de` → 301 auf `https://makeinnovation.de/`.
 
-## Offene Platzhalter (Stand 01.10.2026, v3)
+## Offene Platzhalter (Stand 03.10.2026, v4)
 
-- **Startseite:** ein Satz zu Kevins Vertriebserfahrung (Über uns, ohne Kundennamen)
+- **Startseite › Warum MAKE:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
 
 ## Später auf Buchungsseite umstellen
 
@@ -67,15 +96,15 @@ Anliegen, eigener Hinweis vor dem Absenden) und im Abschnitt „Cookies und Spei
 
 ## Offene Platzhalter — Rechtstexte
 
-- **Impressum:** Straße/Hausnummer · PLZ/Ort · Geschäftsführung (Vor- und Nachnamen) · Telefonnummer · Registergericht ·
-  HRB-Nummer · USt-IdNr. (oder Abschnitt streichen)
+- **Impressum:** vollständig (KEMARIS-Impressum, 03.10.). Eine USt-IdNr. ist nicht bekannt und steht deshalb nicht da —
+  falls es eine gibt, als Abschnitt „Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG“ ergänzen.
 - **Datenschutz:** AV-Vertrag mit Hetzner bestätigt? · E-Mail-Anbieter für `hello@makeinnovation.de` (Name, Sitz, AV-Vertrag) ·
-  eigener Datenschutzhinweis der App unter `app.makeinnovation.de` (gibt es heute noch nicht — anlegen oder Satz anpassen)
+  eigener Datenschutzhinweis der App unter `app.makeinnovation.de` · Drittland-Verträge (Microsoft, Apple, Anthropic) ·
+  Abschnitt „Geschäftskontakte und Veranstaltungen“ anwaltlich gegenlesen
 
 ## Bitte zusätzlich prüfen (kein Platzhalter, aber Kevins Entscheidung)
 
-- Impressum › Verbraucherstreitbeilegung: der Satz „nicht bereit und nicht verpflichtet …“ ist die übliche Fassung —
-  bestätigen oder streichen.
+- Impressum › Verbraucherstreitbeilegung/Universalschlichtungsstelle: wörtlich aus dem KEMARIS-Impressum übernommen.
 - **Make.Beteiligungen:** bewusst vorsichtig formuliert („Kooperation oder Beteiligung im Einzelfall“, Hinweis „keine
   Anlageberatung, kein Finanzierungsangebot, keine Rendite- oder Finanzierungszusage“). Vor der Freigabe juristisch
   gegenlesen lassen.
@@ -84,7 +113,8 @@ Anliegen, eigener Hinweis vor dem Absenden) und im Abschnitt „Cookies und Spei
 - Die Make.One-Formate (Stammtisch, Dinner, Workshop, Webinar) haben je einen allgemeinen Satz, keine Termine oder Orte.
 - Gründer-Texte: MAKE = Malin + Kevin, Malins Zeile aus v2 (Kevins Worte, 27.09.). Ohne Fotos — Initialen in
   Personenfarbe. Fotos nur, wenn ihr sie freigebt (dann als Datei in `assets/`, `img-src 'self'` erlaubt das).
-- Anrede „du“ (bzw. „ihr“ für Teams) wie in den Rechtstexten.
+- Anrede seit v4 „Sie“ (Entscheider der Wirtschaft; Kevin 03.10.: „Warum Sie mit uns arbeiten sollten“), auch in den Rechtstexten.
+- Die Kapitel „Die Lage“ und „Warum Innovation“ nennen bewusst keine Zahlen. Wenn Zahlen dazukommen, nur belegte mit Quelle.
 
 > **Hinweis, keine Rechtsberatung:** Impressum und Datenschutzhinweis sind nach bestem Wissen aus dem tatsächlichen
 > Verhalten der Seite und des Servers abgeleitet (Stand Oktober 2026: § 5 DDG, DSGVO, TDDDG; die frühere Pflicht zum
