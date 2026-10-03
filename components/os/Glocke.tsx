@@ -126,7 +126,7 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage
           Meldungen{sicht.ungelesen ? ` · ${sicht.ungelesen} neu` : ''}
         </span>
         <button type="button" onClick={alleGelesen} disabled={!sicht.ungelesen} className="fassbar"
-          style={{ background: 'none', border: 'none', padding: '4px 6px', borderRadius: 8, cursor: sicht.ungelesen ? 'pointer' : 'default', color: sicht.ungelesen ? C.aktiv : C.inkLeise, font: 'inherit', fontSize: 12, fontWeight: 600 }}>
+          style={{ background: 'none', border: 'none', padding: '4px 6px', borderRadius: 8, cursor: sicht.ungelesen ? 'pointer' : 'default', color: sicht.ungelesen ? C.aktiv : C.inkLeise, font: 'inherit', fontSize: TYP.bedien, fontWeight: 600 }}>
           Alle gelesen
         </button>
       </div>
@@ -145,7 +145,7 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage
                   </span>
                   <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
                     <span style={{ fontSize: TYP.bedien, lineHeight: 1.35, color: m.gelesen ? C.inkDim : C.ink, fontWeight: m.gelesen ? 400 : 600, overflowWrap: 'anywhere' }}>{m.titel}</span>
-                    <span style={{ fontSize: 11, color: C.inkLeise }}>{a.label} · {zeitVon(m, jetzt)}{(() => { const l = m.bezug?.art === 'aufgabe' ? lage?.(m.bezug.id) : null; return l ? <b style={{ color: l === 'erledigt' ? C.inkDim : C.kritisch, fontWeight: 600 }}> · Aufgabe {LAGE_TEXT[l]}</b> : null; })()}</span>
+                    <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{a.label} · {zeitVon(m, jetzt)}{(() => { const l = m.bezug?.art === 'aufgabe' ? lage?.(m.bezug.id) : null; return l ? <b style={{ color: l === 'erledigt' ? C.inkDim : C.kritisch, fontWeight: 600 }}> · Aufgabe {LAGE_TEXT[l]}</b> : null; })()}</span>
                   </span>
                   {!m.gelesen && <span aria-label="ungelesen" style={{ width: 8, height: 8, marginTop: 6, borderRadius: '50%', background: C.kritisch, boxShadow: `0 0 8px ${C.kritisch}` }} />}
                 </Link>
@@ -154,7 +154,7 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage
           })}
         </ul>
       )}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderTop: `1px solid ${C.linie}`, fontSize: 12, color: C.inkLeise, cursor: 'pointer' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderTop: `1px solid ${C.linie}`, fontSize: TYP.bedien, color: C.inkLeise, cursor: 'pointer' }}>
         <input type="checkbox" checked={sicht.einstellungen.telegram} onChange={e => telegram(e.target.checked)} style={{ accentColor: C.aktiv }} />
         <span>Auch per Telegram — folgt; es wird noch nichts gesendet.</span>
       </label>
@@ -254,18 +254,18 @@ export function Glocke() {
       <button ref={knopf} type="button" onClick={() => { setAuf(a => !a); if (!auf) void laden(); }}
         aria-haspopup="dialog" aria-expanded={auf}
         aria-label={rot ? `Meldungen — ${zahl} ungelesen` : 'Meldungen'} title={rot ? `${zahl} neue Meldung${zahl === 1 ? '' : 'en'}` : 'Meldungen'}
-        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', flex: '0 0 auto' }}>
+        className="kopf-knopf" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', flex: '0 0 auto' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <div className={puls ? 'glocke-puls' : undefined}
-            style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center', border: `2px solid ${rot ? C.kritisch : auf ? C.aktiv : 'rgba(255,255,255,.1)'}`, color: rot ? C.kritisch : auf ? C.aktiv : C.inkDim, boxShadow: rot ? `0 0 12px ${C.kritisch}55` : 'none' }}>
+          <div className={`kopf-rund${puls ? ' glocke-puls' : ''}`}
+            style={{ position: 'relative', border: `2px solid ${rot ? C.kritisch : auf ? C.aktiv : 'rgba(255,255,255,.1)'}`, color: rot ? C.kritisch : auf ? C.aktiv : C.inkDim, boxShadow: rot ? `0 0 12px ${C.kritisch}55` : 'none' }}>
             <Bell size={15} strokeWidth={1.9} />
             {rot && (
-              <span aria-hidden style={{ position: 'absolute', top: -6, right: -8, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999, display: 'grid', placeItems: 'center', background: C.kritisch, color: '#fff', fontFamily: SCHRIFT.display, fontSize: 11, fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums', boxShadow: `0 0 0 2px ${C.grund}` }}>
+              <span aria-hidden style={{ position: 'absolute', top: -6, right: -8, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999, display: 'grid', placeItems: 'center', background: C.kritisch, color: '#fff', fontFamily: SCHRIFT.display, fontSize: TYP.mikro, fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums', boxShadow: `0 0 0 2px ${C.grund}` }}>
                 {zahl > 99 ? '99+' : zahl}
               </span>
             )}
           </div>
-          <span className="wachstum-kopf-label" style={{ fontSize: 11, color: rot ? C.kritisch : auf ? C.aktiv : C.inkLeise }}>Meldungen</span>
+          <span className="wachstum-kopf-label" style={{ fontSize: TYP.mikro, color: rot ? C.kritisch : auf ? C.aktiv : C.inkLeise }}>Meldungen</span>
         </div>
       </button>
       {auf && ort && typeof document !== 'undefined' && createPortal(

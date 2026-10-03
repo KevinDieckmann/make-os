@@ -396,7 +396,7 @@ export function ZoePanel() {
         const f = e.dataTransfer.files?.[0];
         if (f) void belegLesen(f);
       }}
-      style={{ position: 'fixed', right: fenster.right, bottom: fenster.bottom, width: `min(${fenster.w}px, calc(100vw - 16px))`, height: `min(${fenster.h}px, calc(100vh - 16px))`, zIndex: 70, display: 'flex', flexDirection: 'column', background: FLAECHE, border: `1px solid ${ueberDatei ? C.aktiv : HAAR}`, borderRadius: 20, boxShadow: `0 24px 70px rgba(0,0,0,.55), 0 0 40px -10px ${J}40, inset 0 1px 0 rgba(255,255,255,.06)`, overflow: 'hidden', color: C.ink, fontFamily: SCHRIFT.text }}>
+      style={{ position: 'fixed', right: fenster.right, bottom: fenster.bottom, width: `min(${fenster.w}px, calc(100vw - ${fenster.right + 8}px))`, height: `min(${fenster.h}px, calc(100vh - ${fenster.bottom + 8}px))`, zIndex: 70, display: 'flex', flexDirection: 'column', background: FLAECHE, border: `1px solid ${ueberDatei ? C.aktiv : HAAR}`, borderRadius: 20, boxShadow: `0 24px 70px rgba(0,0,0,.55), 0 0 40px -10px ${J}40, inset 0 1px 0 rgba(255,255,255,.06)`, overflow: 'hidden', color: C.ink, fontFamily: SCHRIFT.text }}>
       {ueberDatei && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 5, background: `${C.aktiv}14`, border: `2px dashed ${C.aktiv}`, borderRadius: 20, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
           <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv }}>Beleg loslassen — ich lese die Zahlen heraus</span>

@@ -9,7 +9,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import { werktagAbOder } from '@/lib/aufgaben/feiertage';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { Wiederholung, WiederholungRegel } from '@/types/tasks';
 import {
   berlinerTag, ersterTermin, istTag, kurzTag, naechsterTermin, tagPlus, wiederholungText, wochentag, REGEL_LABEL, WOCHENTAGE_KURZ,
@@ -26,8 +26,8 @@ const EINHEIT: Record<WiederholungRegel, [string, string]> = { taeglich: ['Tag',
 /** Mo … So (Anzeige-Reihenfolge), Werte wie `Wiederholung.wochentage` (0 = Sonntag). */
 const WOCHE = [1, 2, 3, 4, 5, 6, 0];
 
-const klein: CSSProperties = { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '4px 10px', minHeight: 30, colorScheme: 'dark' };
-const leise: CSSProperties = { fontSize: 12.5, color: C.inkLeise, display: 'inline-flex', alignItems: 'center', gap: 6 };
+const klein: CSSProperties = { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '4px 10px', minHeight: 30, colorScheme: 'dark' };
+const leise: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, display: 'inline-flex', alignItems: 'center', gap: 6 };
 
 /** Standard beim Wechsel der Regel: Wochentag bzw. Monatstag des Bezugstags; Intervall und „bis“ bleiben. */
 function mitRegel(regel: WiederholungRegel, alt: Wiederholung | undefined, bezug: string): Wiederholung {
@@ -130,7 +130,7 @@ export function WiederholungWahl({ wert, basis, onChange, vorschau = 'nach-basis
           <input type="date" value={wert.bis ?? ''} min={bezug} onChange={e => setze({ bis: e.target.value || undefined })} aria-label="Wiederholen bis" style={klein} />
         </label>
       )}
-      {wert && <span style={{ fontSize: 12.5, color: naechste ? C.inkDim : C.inkLeise }}>{wert.serieBeendet ? 'Serie beendet' : wert.ab === 'erledigt' ? 'nächste: gerechnet ab dem Tag der Erledigung' : naechste ? `nächste: ${kurzTag(naechste)}` : 'Serie endet'}</span>}
+      {wert && <span style={{ fontSize: TYP.bedien, color: naechste ? C.inkDim : C.inkLeise }}>{wert.serieBeendet ? 'Serie beendet' : wert.ab === 'erledigt' ? 'nächste: gerechnet ab dem Tag der Erledigung' : naechste ? `nächste: ${kurzTag(naechste)}` : 'Serie endet'}</span>}
       {wert && extras && (
         <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', flexBasis: '100%' }}>
           <select value={wert.ab ?? 'faellig'} aria-label="Rhythmus rechnen ab" onChange={e => setze({ ab: e.target.value === 'erledigt' ? 'erledigt' : undefined })} style={klein}>

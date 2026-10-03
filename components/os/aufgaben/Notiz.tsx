@@ -7,7 +7,7 @@
 import Link from 'next/link';
 import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Haken, Knopf, feld } from '../schlank';
+import { Knopf, feld, HakenZiel } from '../ui';
 import { notizBloecke, checkUmschalten, checkStand, type Inline } from '@/lib/aufgaben/notiz';
 import { useEntwurf } from './useEntwurf';
 
@@ -46,7 +46,7 @@ export function NotizAnzeige({ text, onText, leer = 'Noch keine Notiz.' }: { tex
             {b.punkte.map(p => (
               <li key={p.zeile} style={{ display: p.check !== null ? 'flex' : 'list-item', gap: 10, alignItems: 'flex-start', padding: '2px 0' }}>
                 {p.check !== null && (onText
-                  ? <span style={{ marginTop: 1 }}><Haken an={p.check} onChange={() => onText(checkUmschalten(text ?? '', p.zeile))} /></span>
+                  ? <span style={{ marginTop: 1 }}><HakenZiel an={p.check} onChange={() => onText(checkUmschalten(text ?? '', p.zeile))} /></span>
                   : <span aria-hidden style={{ color: p.check ? C.aktiv : C.inkLeise }}>{p.check ? '☑' : '☐'}</span>)}
                 <span style={{ color: p.check ? C.inkLeise : C.ink, textDecoration: p.check ? 'line-through' : 'none' }}><Zeilen teile={p.inhalt} /></span>
               </li>
@@ -83,8 +83,8 @@ export function NotizEditor({ wert, onSpeichern, max, zeile, feldName = 'notiz',
   return (
     <div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-        {stand.gesamt > 0 && !bearbeiten && <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>Checkliste {stand.fertig}/{stand.gesamt}</span>}
-        {bearbeiten && !e.wiederhergestellt && <span style={{ fontSize: 12, color: e.zuLang ? '#FF5C5C' : C.inkLeise }}>{e.zuLang ? 'nicht gespeichert — zu lang' : e.ungespeichert ? 'speichert …' : 'gespeichert'}</span>}
+        {stand.gesamt > 0 && !bearbeiten && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>Checkliste {stand.fertig}/{stand.gesamt}</span>}
+        {bearbeiten && !e.wiederhergestellt && <span style={{ fontSize: TYP.bedien, color: e.zuLang ? '#FF5C5C' : C.inkLeise }}>{e.zuLang ? 'nicht gespeichert — zu lang' : e.ungespeichert ? 'speichert …' : 'gespeichert'}</span>}
         <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
           {bearbeiten
             ? <>{e.text !== startWert && !e.wiederhergestellt && <Knopf leise onClick={() => { e.setText(startWert); }}>Änderungen zurücknehmen</Knopf>}<Knopf onClick={fertig} aus={e.zuLang || e.wiederhergestellt}>Fertig</Knopf></>
@@ -92,7 +92,7 @@ export function NotizEditor({ wert, onSpeichern, max, zeile, feldName = 'notiz',
         </span>
       </div>
       {bearbeiten && e.wiederhergestellt && (
-        <div role="alert" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: '#FFC93C', marginBottom: 8 }}>
+        <div role="alert" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: '#FFC93C', marginBottom: 8 }}>
           <span style={{ flex: 1 }}>Ungespeicherter Entwurf aus dieser Sitzung wiederhergestellt — er weicht vom gespeicherten Stand ab.</span>
           <Knopf leise onClick={() => { e.verwerfen(); setBearbeiten(false); }}>Verwerfen</Knopf>
           <Knopf onClick={e.uebernehmen} aus={e.zuLang}>Entwurf speichern</Knopf>
@@ -103,7 +103,7 @@ export function NotizEditor({ wert, onSpeichern, max, zeile, feldName = 'notiz',
           <textarea autoFocus value={e.text} onChange={x => e.setText(x.target.value)} onBlur={e.jetzt} aria-label="Notiz" placeholder={platzhalter}
             onKeyDown={x => { if (x.key === 'Enter' && (x.metaKey || x.ctrlKey)) { x.preventDefault(); fertig(); } if (x.key === 'Escape') fertig(); }}
             rows={10} style={{ ...feld, fontFamily: SCHRIFT.mono, fontSize: 13, lineHeight: 1.55, resize: 'vertical', minHeight: 180 }} />
-          <div style={{ display: 'flex', gap: 10, fontSize: 12, color: e.zuLang ? '#FF5C5C' : C.inkLeise, marginTop: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 10, fontSize: TYP.bedien, color: e.zuLang ? '#FF5C5C' : C.inkLeise, marginTop: 6, flexWrap: 'wrap' }}>
             <span>{HILFE}</span>
             <span role={e.zuLang ? 'alert' : undefined} style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{e.zuLang ? `Zu lang — NICHT gespeichert: ${e.text.length.toLocaleString('de-DE')} von ${max.toLocaleString('de-DE')} Zeichen. Bitte kürzen oder aufteilen.` : 'speichert von selbst · ⌘ + Enter schließt'}</span>
           </div>

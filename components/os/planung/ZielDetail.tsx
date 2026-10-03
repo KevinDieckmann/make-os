@@ -14,7 +14,8 @@
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Haken, Knopf, Leer, Chip, feld, LEUCHT } from '../schlank';
+import { Seite, Karte, Ueberschrift, Haken, Knopf, Leer, Chip, Hinweis, feld, LEUCHT } from '../ui';
+import { Lichtfaeden } from '../lichtfaeden/Lichtfaeden';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
@@ -33,7 +34,7 @@ import { loescheZiel } from './ziel-loeschen';
 
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
-const leise: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '6px 8px', minHeight: 36 };
+const leise: CSSProperties = { display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '0 10px', minHeight: 44 };
 const dt = (iso: string) => `${iso.slice(8)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
 const dtKurz = (iso: string) => `${iso.slice(8)}.${iso.slice(5, 7)}.`;
 
@@ -153,17 +154,17 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <Link href={WEG.meilenstein(m.id)} title="Meilenstein öffnen — Aufgaben, Verlauf, Dateien, Notizen"
               style={{ fontWeight: 600, fontSize: TYP.body, color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none', overflowWrap: 'anywhere' }}>{m.titel}</Link>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4, fontSize: 12.5, color: C.inkLeise }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4, fontSize: TYP.bedien, color: C.inkLeise }}>
               <span style={{ color: status.f, fontWeight: 700 }}>{status.t}</span>
               {m.faellig ? <span style={{ color: spaet ? LEUCHT.kritisch : undefined }}>{spaet ? 'überfällig seit ' : ''}{dt(m.faellig)}</span> : <span>{m.zeitfenster ?? 'ohne Datum'}</span>}
               {as.gesamt > 0 && <Link href={WEG.meilenstein(m.id, 'aufgaben')} style={{ color: 'inherit' }}>{as.erledigt}/{as.gesamt} Aufgaben</Link>}
             </div>
-            {wartetNoch && <div style={{ marginTop: 6, fontSize: 12.5, color: LEUCHT.achtung }}>{wartetNoch}</div>}
-            {frueher.length > 0 && <div role="status" style={{ marginTop: 4, fontSize: 12.5, color: LEUCHT.achtung }}>Hinweis: liegt vor dem Datum von „{frueher[0].titel}“ ({dtKurz(frueher[0].faellig!)}).</div>}
-            {danach.length > 0 && <div style={{ marginTop: 4, fontSize: 12.5, color: C.inkLeise }}>danach: {danach.map((x, k) => <Fragment key={x.id}>{k > 0 ? ', ' : ''}<a href={`#ziel-${x.id}`} style={{ color: 'inherit' }}>{x.titel}</a></Fragment>)}</div>}
+            {wartetNoch && <div style={{ marginTop: 6, fontSize: TYP.bedien, color: LEUCHT.achtung }}>{wartetNoch}</div>}
+            {frueher.length > 0 && <div role="status" style={{ marginTop: 4, fontSize: TYP.bedien, color: LEUCHT.achtung }}>Hinweis: liegt vor dem Datum von „{frueher[0].titel}“ ({dtKurz(frueher[0].faellig!)}).</div>}
+            {danach.length > 0 && <div style={{ marginTop: 4, fontSize: TYP.bedien, color: C.inkLeise }}>danach: {danach.map((x, k) => <Fragment key={x.id}>{k > 0 ? ', ' : ''}<a href={`#ziel-${x.id}`} style={{ color: 'inherit' }}>{x.titel}</a></Fragment>)}</div>}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
               <span style={{ flex: 1, height: 5, borderRadius: 4, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${mv}%`, background: col(mv), transition: 'width .3s ease' }} /></span>
-              <b style={{ fontFamily: SCHRIFT.display, fontSize: 12.5, color: col(mv), fontVariantNumeric: 'tabular-nums', minWidth: 38, textAlign: 'right' }}>{mv} %</b>
+              <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, color: col(mv), fontVariantNumeric: 'tabular-nums', minWidth: 38, textAlign: 'right' }}>{mv} %</b>
             </div>
           </div>
           <PfeilRang label={m.titel} obenAus={obenAus} untenAus={untenAus} onAuf={() => bewegen(m, 'auf')} onAb={() => bewegen(m, 'ab')} />
@@ -179,7 +180,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
   return (
     <Seite titel={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>Ziel</span>}
       unter={<><Link href={horizontWeg(horizont)} style={{ color: C.inkLeise, textDecoration: 'none' }}>‹ Ziele & Planung</Link> › {HORIZONT_NAME[horizont]}</>}>
-      {p.hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{p.hinweis}</div>}
+      {p.hinweis && <Hinweis art="achtung" rolle="status">{p.hinweis}</Hinweis>}
       {/* ── Kopf ── */}
       <Karte i={1} akzent={farbe}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -192,7 +193,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
             : <h2 style={{ flex: 1, minWidth: 0, margin: 0, padding: '2px 0', fontFamily: SCHRIFT.display, fontSize: TYP.titel + 2, fontWeight: 700, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none', overflowWrap: 'anywhere' }}>{z.titel}</h2>}
           {titel === null && <Knopf leise onClick={() => setTitel(z.titel)}>umbenennen</Knopf>}
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, fontSize: 12.5, color: C.inkLeise }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise }}>
           <Chip farbe={farbe}>{HORIZONT_NAME[horizont]}{horizont === 'jahr' ? ` ${jahr}` : ''}</Chip>
           {space && <Chip farbe={SPACE_FARBE[space]}>{SPACE_LABEL[space]}</Chip>}
           {z.einheit && space === 'business' && <Chip farbe={SPACE_FARBE.business}>{z.einheit}</Chip>}
@@ -210,11 +211,11 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
           <textarea value={notizText} onChange={e => setNotiz(e.target.value.slice(0, ZIEL_NOTIZ_MAX))} rows={3} placeholder="Worum geht es, was soll am Ende stehen?"
             onBlur={() => { if (notiz !== null && notiz.trim() !== (z.notiz ?? '')) zPatch({ notiz: notiz.trim() || undefined }); setNotiz(null); }}
             style={{ ...feld, resize: 'vertical', minHeight: 70, fontFamily: 'inherit', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }} />
-          <span style={{ fontSize: 12, color: C.inkLeise, textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>{notizText.length}/{ZIEL_NOTIZ_MAX}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>{notizText.length}/{ZIEL_NOTIZ_MAX}</span>
         </label>
         {/* Fortschritt: aus den Meilensteinen, sobald es welche gibt — sonst von Hand. */}
         <div style={{ marginTop: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12, color: C.inkLeise, marginBottom: 5 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 5 }}>
             <span>{z.erledigt ? 'erledigt' : live !== null ? `aus ${kinder.length} Meilenstein${kinder.length === 1 ? '' : 'en'} · ${offen} offen` : 'von Hand — mit Meilensteinen rechnet er sich selbst'}</span>
             <b style={{ color: col(fortschritt), fontVariantNumeric: 'tabular-nums' }}>{fortschritt} %</b>
           </div>
@@ -229,14 +230,19 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
         </div>
       </Karte>
 
+      {/* ── Lichtfäden (03.10.): alles, was auf dieses Ziel einzahlt — Meilensteine, Aufgaben, Termine, Deals, Rechnungen mit
+           demselben Mandat/derselben Firma — als Fäden; Tippen auf einen Meilenstein fächert ihn auf. Abgeleitete Ziele zeigen
+           ihr Jahresziel (dort laufen die Stränge zusammen). ── */}
+      <Lichtfaeden wurzel={`ziel:${abgeleitet && z.abgeleitetVon ? z.abgeleitetVon : z.id}`} titel="Lichtfäden dieses Ziels" i={2} />
+
       {/* ── Die Kette ── */}
-      <Karte i={2} akzent={LEUCHT.achtung}>
+      <Karte i={3} akzent={LEUCHT.achtung}>
         <Ueberschrift farbe={LEUCHT.achtung} rechts={kinder.length ? `${offen} offen · ${kinder.length - offen} erledigt` : undefined}>Meilensteine — die Kette zu diesem Ziel</Ueberschrift>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-          <span style={{ fontSize: 12.5, color: C.inkLeise, flex: '1 1 260px' }}>Von oben nach unten: erst die Vorgänger, dann die, die auf sie warten; was nebeneinander steht, geht gleichzeitig. Reihenfolge per ▲▼ oder Ziehen.</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 260px' }}>Von oben nach unten: erst die Vorgänger, dann die, die auf sie warten; was nebeneinander steht, geht gleichzeitig. Reihenfolge per ▲▼ oder Ziehen.</span>
           <Knopf onClick={() => msFenster.oeffneNeu(vorgabe())}>+ Meilenstein zu diesem Ziel</Knopf>
         </div>
-        {hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginBottom: 8 }}>{hinweis}</div>}
+        {hinweis && <div style={{ marginBottom: 8 }}><Hinweis art="achtung" rolle="status">{hinweis}</Hinweis></div>}
         {!kinder.length
           ? <Leer>Noch kein Meilenstein. Teile das Ziel in Schritte — mit „+ Meilenstein zu diesem Ziel“ (Datum, erste Aufgaben) und lege fest, was auf was wartet.</Leer>
           : kette.stufen.map((stufe, si) => (

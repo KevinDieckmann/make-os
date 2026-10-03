@@ -96,8 +96,8 @@ export interface WahlMehrfachProps<T extends string> extends Gemeinsam<T> {
 
 // ── Aussehen ─────────────────────────────────────────────────────────────────
 const chipGrund = (klein?: boolean): CSSProperties => ({
-  display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: SCHRIFT.text, fontSize: klein ? 12 : 12.5, fontWeight: 600,
-  padding: klein ? '3px 9px' : '5px 11px', minHeight: klein ? 26 : 30, borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1.2, maxWidth: '100%',
+  display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600,
+  padding: klein ? '4px 11px' : '6px 12px', minHeight: klein ? 32 : 36, borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1.2, maxWidth: '100%',
 });
 const gesetztStil = (farbe: string, klein?: boolean): CSSProperties => ({ ...chipGrund(klein), border: `1px solid ${farbe}66`, background: `${farbe}1A`, color: farbe });
 const leerStil = (klein?: boolean): CSSProperties => ({ ...chipGrund(klein), fontWeight: 500, border: '1px dashed rgba(255,255,255,.2)', background: 'transparent', color: C.inkDim });

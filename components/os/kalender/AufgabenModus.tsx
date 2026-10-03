@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Segmente, Haken, Chip, feld, prioFarbe, LEUCHT, useBreit } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Segmente, Chip, feld, prioFarbe, LEUCHT, useBreit, HakenZiel } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import { useIch, spacesOderFest, spaceLabel, projekteImSpace } from '../aufgaben/hilfe';
 import { aufgabenVorfiltern, faelligGruppen, FAELLIG_GRUPPEN, type WerFilter, type FaelligGruppe } from '@/lib/kalender/modus';
@@ -69,10 +69,10 @@ export function AufgabenModus({ heute, woche, sicht, bereich, suche, filter, onF
       <div key={a.id} draggable={breit} onDragStart={e => aufgabeZiehStart(e, a.id)} data-aufgabe={a.id}
         style={{ display: 'grid', gap: 6, padding: '8px 4px', borderTop: '1px solid rgba(255,255,255,.05)', cursor: breit ? 'grab' : undefined }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
-          <Haken an={false} onChange={() => k3.abhaken(a.id)} farbe={prioFarbe(a.priority ?? '')} label={a.title} />
+          <HakenZiel an={false} onChange={() => k3.abhaken(a.id)} farbe={prioFarbe(a.priority ?? '')} label={a.title} />
           <div style={{ minWidth: 0, flex: 1 }}>
             <Link href={WEG.aufgabe(a.id)} style={{ color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.eltern ? <span style={{ color: C.inkLeise }}>↳ </span> : null}{a.priority === 'critical' ? '‼ ' : ''}{a.title}</Link>
-            <div style={{ fontSize: 12, color: C.inkLeise, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {a.tag && <span style={{ fontVariantNumeric: 'tabular-nums' }}>{tagKurz(a.tag, heute)}{a.zeit ? ` · ${a.zeit}` : ''}</span>}
               {a.spaceId && <span>{spaceLabel(spaces, a.spaceId)}</span>}
               {a.eltern && <span>zu „{a.eltern}“</span>}
@@ -107,7 +107,7 @@ export function AufgabenModus({ heute, woche, sicht, bereich, suche, filter, onF
               </select>
             )}
             <Segmente liste={[{ id: 'alle' as WerFilter, label: 'Alle' }, { id: 'meine' as WerFilter, label: 'Meine' }, { id: 'beteiligt' as WerFilter, label: 'Beteiligt' }]} aktiv={filter.wer} onWahl={w => onFilter({ ...filter, wer: w })} />
-            <Link href={WEG.aufgaben({ ...(filter.as ? { s: filter.as } : {}), ...(filter.ap ? { p: filter.ap } : {}) })} style={{ marginLeft: 'auto', fontSize: 12.5, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>In den Aufgaben öffnen ›</Link>
+            <Link href={WEG.aufgaben({ ...(filter.as ? { s: filter.as } : {}), ...(filter.ap ? { p: filter.ap } : {}) })} style={{ marginLeft: 'auto', fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>In den Aufgaben öffnen ›</Link>
           </div>
         </Karte>
         {!ready && <Leer>Aufgaben laden …</Leer>}
@@ -122,13 +122,13 @@ export function AufgabenModus({ heute, woche, sicht, bereich, suche, filter, onF
       {breit && (
         <Karte i={1}>
           <Ueberschrift>Woche</Ueberschrift>
-          <div style={{ fontSize: 11.5, color: C.inkLeise, marginBottom: 8, lineHeight: 1.45 }}>Aufgabe hierher ziehen — die Deadline wird dieser Tag (Uhrzeit bleibt).</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8, lineHeight: 1.45 }}>Aufgabe hierher ziehen — die Deadline wird dieser Tag (Uhrzeit bleibt).</div>
           <div style={{ display: 'grid', gap: 6 }}>
             {woche.map((tag, i) => (
               <div key={tag} data-tag={tag} onDragOver={e => { if (!ziehtAufgabe(e)) return; e.preventDefault(); setZiehtUeber(tag); }} onDragLeave={() => setZiehtUeber(z => (z === tag ? null : z))} onDrop={e => abgelegt(e, tag)}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', borderRadius: 10, border: `1px dashed ${ziehtUeber === tag ? LEUCHT.puls : 'rgba(255,255,255,.12)'}`, background: ziehtUeber === tag ? `${LEUCHT.puls}1c` : tag === heute ? 'rgba(255,255,255,.05)' : 'transparent', fontFamily: SCHRIFT.text }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: tag === heute ? LEUCHT.puls : C.inkDim, minWidth: 72 }}>{WD[i]} {tagKurz(tag, heute)}</span>
-                <span style={{ marginLeft: 'auto', fontSize: 12, color: C.inkLeise }}>{jeTag.get(tag) ?? 0}</span>
+                <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: tag === heute ? LEUCHT.puls : C.inkDim, minWidth: 72 }}>{WD[i]} {tagKurz(tag, heute)}</span>
+                <span style={{ marginLeft: 'auto', fontSize: TYP.bedien, color: C.inkLeise }}>{jeTag.get(tag) ?? 0}</span>
               </div>
             ))}
           </div>

@@ -28,7 +28,7 @@ import { tagPlus, wandAus } from '@/lib/kalender/zeit';
 import { montagVon, monatsblatt } from '@/lib/kalender/layout';
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Segmente, Chip, feld, LEUCHT, useBreit } from '../schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, Reiter, Chip, feld, LEUCHT, useBreit } from '../ui';
 import { useKalender, TerminFenster, WER_FARBE, WER_LABEL, type KTermin, type Wer } from './teile';
 import { Zeitraster } from './Zeitraster';
 import { Monat } from './Monat';
@@ -91,7 +91,7 @@ function ErstellenMenue({ onArt, breit }: { onArt: (a: TerminArt) => void; breit
     <div ref={box} style={{ position: 'relative', display: 'inline-flex' }}>
       <button type="button" onClick={() => setAuf(a => !a)} aria-haspopup="menu" aria-expanded={auf} className="fassbar"
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: breit ? '10px 18px' : '8px 14px', borderRadius: 14, border: `1px solid ${LEUCHT.puls}80`, background: `${LEUCHT.puls}24`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 18px -8px rgba(0,0,0,.6)' }}>
-        <span aria-hidden style={{ fontSize: 18, lineHeight: 1, color: LEUCHT.puls }}>+</span> Erstellen <span aria-hidden style={{ fontSize: 11, color: C.inkLeise }}>▾</span>
+        <span aria-hidden style={{ fontSize: 18, lineHeight: 1, color: LEUCHT.puls }}>+</span> Erstellen <span aria-hidden style={{ fontSize: TYP.bedien, color: C.inkLeise }}>▾</span>
       </button>
       {auf && (
         <div role="menu" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 40, minWidth: 190, display: 'grid', padding: 6, borderRadius: 12, background: C.flaeche, border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 18px 50px -12px rgba(0,0,0,.75)' }}>
@@ -284,14 +284,14 @@ export function Kalender() {
       {planen.leiste}
       <Karte i={1}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <button onClick={() => setAnker(a => monatPlus(a, -1))} aria-label="Vormonat" style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 16 }}>‹</button>
+          <SymbolKnopf onClick={() => setAnker(a => monatPlus(a, -1))} ariaLabel="Vormonat">‹</SymbolKnopf>
           <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14 }}>{MONATE[Number(anker.slice(5, 7)) - 1]} {anker.slice(0, 4)}</span>
-          <button onClick={() => setAnker(a => monatPlus(a, 1))} aria-label="Folgemonat" style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 16 }}>›</button>
+          <SymbolKnopf onClick={() => setAnker(a => monatPlus(a, 1))} ariaLabel="Folgemonat">›</SymbolKnopf>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center' }}>
-          {['M', 'D', 'M', 'D', 'F', 'S', 'S'].map((w, i) => <span key={i} style={{ fontSize: 11, color: C.inkLeise }}>{w}</span>)}
+        <div className="ui-mini-monat" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '2px 0', textAlign: 'center' }}>
+          {['M', 'D', 'M', 'D', 'F', 'S', 'S'].map((w, i) => <span key={i} style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{w}</span>)}
           {miniBlatt.map(tag => { const im = tag.slice(0, 7) === anker.slice(0, 7); const gew = ansicht === 'tag' ? tag === anker : ansicht === 'woche' || ansicht === 'vier' ? tage.includes(tag) : false; return (
-            <button key={tag} onClick={() => { setAnker(tag); if (ansicht === 'monat' || ansicht === 'agenda' || ansicht === 'jahr') setAnsicht('tag'); }} style={{ position: 'relative', border: 'none', borderRadius: 7, padding: '4px 0', fontSize: 11.5, cursor: 'pointer', fontFamily: SCHRIFT.text,
+            <button key={tag} onClick={() => { setAnker(tag); if (ansicht === 'monat' || ansicht === 'agenda' || ansicht === 'jahr') setAnsicht('tag'); }} aria-label={`${Number(tag.slice(8, 10))}. ${MONATE[Number(tag.slice(5, 7)) - 1]}${tag === heute ? ', heute' : ''}${tageMitTermin.has(tag) ? ', mit Terminen' : ''}`} aria-pressed={gew} style={{ position: 'relative', border: 'none', borderRadius: 10, padding: '4px 0', minHeight: 40, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text,
               background: tag === heute ? LEUCHT.puls : gew ? 'rgba(255,255,255,.08)' : 'transparent', color: tag === heute ? '#0b0b0c' : im ? C.ink : C.inkLeise, fontWeight: tag === heute ? 700 : 500 }}>
               {Number(tag.slice(8, 10))}{tageMitTermin.has(tag) && tag !== heute && <span style={{ position: 'absolute', left: '50%', bottom: 1, width: 3, height: 3, borderRadius: '50%', background: LEUCHT.puls, transform: 'translateX(-50%)' }} />}
             </button>
@@ -305,48 +305,48 @@ export function Kalender() {
         <div style={{ marginTop: 8 }}><Segmente liste={[{ id: 'alle', label: 'Alles' }, { id: 'privat', label: 'Privat' }, { id: 'business', label: 'Business' }] as { id: Bereich; label: string }[]} aktiv={bereich} onWahl={setBereich} umbrechen /></div>
         <div style={{ display: 'grid', gap: 4, marginTop: 10 }}>
           {(daten?.kalender ?? []).map(k => (
-            <label key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
+            <label key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, fontSize: TYP.bedien, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
               <input type="checkbox" checked={!aus.has(k.name)} onChange={() => setAus(s => { const n = new Set(s); if (n.has(k.name)) n.delete(k.name); else n.add(k.name); return n; })} />
               <span style={{ width: 10, height: 10, borderRadius: 3, background: k.farbe ?? WER_FARBE[k.wer] }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</span>
-              {k.quelle === 'google' && <span title="Dieser Kalender liegt bei Google (Workspace) und gleicht in beide Richtungen ab" style={{ fontSize: 11, fontWeight: 700, color: C.inkLeise, border: '1px solid rgba(255,255,255,.18)', borderRadius: 4, padding: '0 4px', lineHeight: '14px' }}>G</span>}
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: C.inkLeise }}>{WER_LABEL[k.wer]}{k.schreibbar ? '' : ' · 🔒'}</span>
+              {k.quelle === 'google' && <span title="Dieser Kalender liegt bei Google (Workspace) und gleicht in beide Richtungen ab" style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.inkLeise, border: '1px solid rgba(255,255,255,.18)', borderRadius: 4, padding: '0 4px', lineHeight: '14px' }}>G</span>}
+              <span style={{ marginLeft: 'auto', fontSize: TYP.bedien, color: C.inkLeise }}>{WER_LABEL[k.wer]}{k.schreibbar ? '' : ' · 🔒'}</span>
             </label>
           ))}
-          {!daten?.kalender.length && <span style={{ fontSize: 12, color: C.inkLeise }}>Noch keine Kalender geladen.</span>}
+          {!daten?.kalender.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Kalender geladen.</span>}
           {QUELL_KALENDER.map(k => (
-            <label key={k.name} title={k.hinweis} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
+            <label key={k.name} title={k.hinweis} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, fontSize: TYP.bedien, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>
               <input type="checkbox" checked={!aus.has(k.name)} onChange={() => setAus(s => { const n = new Set(s); if (n.has(k.name)) n.delete(k.name); else n.add(k.name); return n; })} />
               <span style={{ width: 10, height: 10, borderRadius: 3, background: k.farbe }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</span>
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: C.inkLeise }}>🔒</span>
+              <span style={{ marginLeft: 'auto', fontSize: TYP.bedien, color: C.inkLeise }}>🔒</span>
             </label>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
           {([['fristen', 'Fristen', LEUCHT.agenten], ['erinnerungen', 'Erinnerungen', LEUCHT.schlaf], ['aufgaben', 'Aufgaben', LEUCHT.achtung]] as const).map(([id, label, f]) => (
-            <button key={id} onClick={() => setEbenen(e => ({ ...e, [id]: !e[id] }))} style={{ border: `1px solid ${ebenen[id] ? f : 'rgba(255,255,255,.1)'}`, background: ebenen[id] ? `${f}22` : 'transparent', color: ebenen[id] ? f : C.inkLeise, borderRadius: 999, padding: '3px 10px', fontSize: 11.5, cursor: 'pointer', fontFamily: SCHRIFT.text }}>{label}</button>
+            <button key={id} onClick={() => setEbenen(e => ({ ...e, [id]: !e[id] }))} style={{ border: `1px solid ${ebenen[id] ? f : 'rgba(255,255,255,.1)'}`, background: ebenen[id] ? `${f}22` : 'transparent', color: ebenen[id] ? f : C.inkLeise, borderRadius: 999, padding: '3px 14px', minHeight: 40, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>{label}</button>
           ))}
         </div>
-        <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 10 }}>{quelleText}{daten?.stand ? ` · Stand ${new Date(daten.stand).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : ''}{daten?.fehler ? ` · ${daten.fehler}` : ''}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>{quelleText}{daten?.stand ? ` · Stand ${new Date(daten.stand).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : ''}{daten?.fehler ? ` · ${daten.fehler}` : ''}</div>
         <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
           {live && <Knopf leise aus={abgleich} onClick={() => void jetztAbgleichen()}>{abgleich ? 'gleicht ab …' : daten?.icloud && mitGoogle ? '↻ Abgleichen' : mitGoogle ? '↻ Mit Google abgleichen' : '↻ Mit iCloud abgleichen'}</Knopf>}
-          {modus !== 'planen' && <button type="button" onClick={() => setModus('planen')} style={{ fontSize: 12, color: C.inkDim, alignSelf: 'center', background: 'none', border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>Woche planen (Blöcke) ›</button>}
+          {modus !== 'planen' && <button type="button" onClick={() => setModus('planen')} style={{ fontSize: TYP.bedien, color: C.inkDim, alignSelf: 'center', background: 'none', border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>Woche planen (Blöcke) ›</button>}
         </div>
       </Karte>
       {ebenen.aufgaben && (
         <Karte i={2}>
           <Ueberschrift>Ohne Termin</Ueberschrift>
           <OhneTerminListe aufgaben={ohne} onOeffnen={ka.oeffnen} onAbhaken={ka.abhaken} />
-          {ohne.length > 0 && <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 6 }}>{breit ? 'Ins Raster ziehen plant ein (Deadline + Uhrzeit).' : 'Einplanen: Aufgabe öffnen und Deadline setzen.'}</div>}
+          {ohne.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{breit ? 'Ins Raster ziehen plant ein (Deadline + Uhrzeit).' : 'Einplanen: Aufgabe öffnen und Deadline setzen.'}</div>}
         </Karte>
       )}
       {k4.karten}
       <Karte i={3} akzent={analyse?.conflicts?.length ? LEUCHT.kritisch : undefined}>
         <Ueberschrift rechts={<Knopf leise aus={analysiert || !daten} onClick={() => void analysieren()}>{analysiert ? 'analysiert …' : 'Woche prüfen'}</Knopf>}>Kalender-Agent</Ueberschrift>
-        {!analyse && <div style={{ fontSize: 12.5, color: C.inkDim }}>Konflikte finden, Reha- und Fokus-Blöcke in freie Lücken vorschlagen — eintragen tust du.</div>}
+        {!analyse && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Konflikte finden, Reha- und Fokus-Blöcke in freie Lücken vorschlagen — eintragen tust du.</div>}
         {analyse?.briefing && <div style={{ fontSize: TYP.bedien, lineHeight: 1.55, marginBottom: 8 }}>{analyse.briefing}</div>}
-        {!!analyse?.gestapelt && <Link href="/os/stapel" style={{ display: 'inline-block', fontSize: 12.5, color: LEUCHT.agenten, textDecoration: 'none', fontWeight: 600, marginBottom: 8 }}>{analyse.gestapelt === 1 ? '1 Vorschlag' : `${analyse.gestapelt} Vorschläge`} im Stapel ›</Link>}
+        {!!analyse?.gestapelt && <Link href="/os/stapel" style={{ display: 'inline-block', fontSize: TYP.bedien, color: LEUCHT.agenten, textDecoration: 'none', fontWeight: 600, marginBottom: 8 }}>{analyse.gestapelt === 1 ? '1 Vorschlag' : `${analyse.gestapelt} Vorschläge`} im Stapel ›</Link>}
         {!!analyse?.conflicts?.length && <Liste>{analyse.conflicts.map((c, i) => <Zeile key={i} links={<Punkt farbe={LEUCHT.kritisch} />} titel={<><b>{c.a}</b> ⨯ <b>{c.b}</b></>} unter={`${c.date} · ${c.overlap}`} />)}</Liste>}
         {!!analyse?.vorschlaege?.length && (
           <Liste>
@@ -362,22 +362,22 @@ export function Kalender() {
           <div style={{ display: 'grid', gap: 10 }}>
             <GoogleVerbindung onGeaendert={() => void laden()} />
             {(['kevin', 'malin', 'beide'] as Wer[]).map(w => (
-              <label key={w} style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12, color: C.inkLeise }}>Kalender {WER_LABEL[w]}</span>
+              <label key={w} style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender {WER_LABEL[w]}</span>
                 <input value={einst.kalender[w]} onChange={e => einstSetzen({ kalender: { ...einst.kalender, [w]: e.target.value } })} placeholder="Name wie in der Kalender-App" style={{ ...feld, fontSize: 13 }} /></label>
             ))}
-            <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12, color: C.inkLeise }}>Standarddauer Termin (Min.)</span>
+            <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Standarddauer Termin (Min.)</span>
               <input type="number" min={5} max={600} step={5} value={einst.dauer.termin} onChange={e => einstSetzen({ dauer: { ...einst.dauer, termin: Number(e.target.value) || 60 } })} style={{ ...feld, width: 100, fontSize: 13 }} /></label>
             <div style={{ display: 'grid', gap: 4 }}>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>Kalender → Space</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender → Space</span>
               {(daten?.kalender ?? []).map(k => { const sp = spaceVonKalender(einst, k.name); return (
-                <div key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
+                <div key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien }}>
                   <span style={{ flex: 1, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</span>
-                  {(['privat', 'business'] as const).map(s => <button key={s} onClick={() => einstSetzen({ space: { ...einst.space, [k.name]: s } })} style={{ border: `1px solid ${sp === s ? SPACE_FARBE[s] : 'rgba(255,255,255,.1)'}`, background: sp === s ? `${SPACE_FARBE[s]}22` : 'transparent', color: sp === s ? SPACE_FARBE[s] : C.inkLeise, borderRadius: 999, padding: '2px 8px', fontSize: 11, cursor: 'pointer' }}>{s === 'privat' ? 'Privat' : 'Business'}</button>)}
+                  {(['privat', 'business'] as const).map(s => <button key={s} onClick={() => einstSetzen({ space: { ...einst.space, [k.name]: s } })} style={{ border: `1px solid ${sp === s ? SPACE_FARBE[s] : 'rgba(255,255,255,.1)'}`, background: sp === s ? `${SPACE_FARBE[s]}22` : 'transparent', color: sp === s ? SPACE_FARBE[s] : C.inkLeise, borderRadius: 999, padding: '2px 12px', minHeight: 40, fontSize: TYP.bedien, cursor: 'pointer' }}>{s === 'privat' ? 'Privat' : 'Business'}</button>)}
                 </div>
               ); })}
             </div>
             <EinstellungenBelegt kalender={daten?.kalender ?? []} einst={einst} setzen={einstSetzen} />
-            <div style={{ fontSize: 11.5, color: C.inkLeise }}>Namen müssen genau so heißen wie in der Kalender-App. iCloud verbinden: System › Konto.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Namen müssen genau so heißen wie in der Kalender-App. iCloud verbinden: System › Konto.</div>
           </div>
         )}
       </Karte>
@@ -388,16 +388,16 @@ export function Kalender() {
     <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minHeight: 0, minWidth: 0, height: breit ? 'calc(100vh - 190px)' : undefined }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Knopf leise onClick={() => setAnker(heute)}>Heute</Knopf>
-        <button onClick={() => springe(-1)} aria-label="zurück" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>‹</button>
-        <button onClick={() => springe(1)} aria-label="weiter" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>›</button>
-        <span style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', marginRight: 'auto' }}>{titel}{laedt && <span style={{ fontSize: 11, color: C.inkLeise, fontWeight: 400, marginLeft: 8 }}>lädt …</span>}{daten?.icloud && <span style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={daten.abgleich} /></span>}{(daten?.google ?? []).map(g => <span key={g.person} style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={g.abgleich} quelle="Google" bezeichnung={g.kalender} /></span>)}</span>
+        <button onClick={() => springe(-1)} aria-label="zurück" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 40, height: 40, cursor: 'pointer', fontSize: 18 }}>‹</button>
+        <button onClick={() => springe(1)} aria-label="weiter" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 40, height: 40, cursor: 'pointer', fontSize: 18 }}>›</button>
+        <span style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', marginRight: 'auto' }}>{titel}{laedt && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 400, marginLeft: 8 }}>lädt …</span>}{daten?.icloud && <span style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={daten.abgleich} /></span>}{(daten?.google ?? []).map(g => <span key={g.person} style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={g.abgleich} quelle="Google" bezeichnung={g.kalender} /></span>)}</span>
         {/* Umschalter Kalender | Aufgaben (Kevin 29.09., wie Google) — vor der Suche, damit er am Handy in der ersten Zeile bleibt. */}
         <KalenderAufgabenSchalter aktiv={modus === 'aufgaben' ? 'aufgaben' : 'kalender'} kalender={{ onClick: () => setModus(modus === 'planen' ? 'planen' : 'kalender') }} aufgaben={{ onClick: () => setModus('aufgaben') }} tasten={{ kalender: 'k', aufgaben: 'u' }} />
         <input value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'aufgaben' ? 'Aufgaben suchen …' : 'Suchen …'} aria-label={modus === 'aufgaben' ? 'Aufgaben suchen' : 'Termine suchen'} style={{ ...feld, width: breit ? 180 : '100%', fontSize: 13, padding: '7px 11px' }} />
         {/* Modus (K5): Kalender · Planen — dasselbe Raster (nur auf der Kalender-Seite des Umschalters). */}
         {modus !== 'aufgaben' && <Segmente liste={[{ id: 'kalender' as Modus, label: 'Kalender' }, { id: 'planen' as Modus, label: 'Planen' }]} aktiv={modus} onWahl={setModus} />}
         {/* Sechs Ansichten passen am Handy nicht nebeneinander — die Leiste rollt statt die Seite zu verbreitern. */}
-        {modus !== 'aufgaben' && <div style={{ maxWidth: '100%', overflowX: 'auto' }}><Segmente liste={(modus === 'planen' ? ANSICHTEN.filter(a => MIT_RASTER.includes(a.id)) : ANSICHTEN).map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>}
+        {modus !== 'aufgaben' && <div className="ui-reiter-zeile" style={{ maxWidth: '100%' }}><Reiter ariaLabel="Ansicht des Kalenders" liste={(modus === 'planen' ? ANSICHTEN.filter(a => MIT_RASTER.includes(a.id)) : ANSICHTEN).map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>}
         {!breit && <ErstellenMenue breit={false} onArt={a => setNeu(neuVon(a))} />}
       </div>
       <div style={{ minHeight: 0, ...(modus === 'aufgaben' ? { overflowY: 'auto' as const } : {}) }}>
@@ -419,7 +419,7 @@ export function Kalender() {
 
   return (
     <Seite titel="Kalender" unter={modus === 'aufgaben' ? 'Aufgaben nach Fälligkeit — abhaken, öffnen, einplanen (Datum wählen oder auf einen Tag ziehen). Tastatur: k Kalender · u Aufgaben.' : modus === 'planen' ? 'Planen: Bausteine, Routinen und Aufgaben antippen und in den Kalender klicken — jeder Block ist ein Termin in iCloud. Tastatur: p Kalender/Planen · t heute · ← → blättern.' : 'Tag, 4 Tage, Woche, Monat, Jahr, Termine — iCloud direkt, dazu Feiertage NRW, Geburtstage, Fristen, Erinnerungen und Aufgaben mit Datum. Tastatur: t heute · ← → blättern · d/x/w/m/y/a Ansicht · c erstellen · p planen.'} rechts={<Chip farbe={LEUCHT.puls}>{daten?.icloud && mitGoogle ? 'iCloud + Google · live' : mitGoogle ? 'Google · live' : daten?.icloud ? 'iCloud · live' : 'nur lesen'}</Chip>}>
-      {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center' }}>{meldung}<button onClick={() => setMeldung(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>}
+      {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center' }}>{meldung}<span style={{ marginLeft: 'auto' }}><SymbolKnopf onClick={() => setMeldung(null)} ariaLabel="Hinweis schließen">✕</SymbolKnopf></span></div>}
       {!daten && !laedt && <Leer>Kalender wird geladen …</Leer>}
       {planen.kopf && <div style={{ marginBottom: 12 }}>{planen.kopf}</div>}
       <div style={{ display: 'grid', gridTemplateColumns: breit ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: 'start' }}>

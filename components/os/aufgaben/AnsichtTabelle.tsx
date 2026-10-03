@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { ChevronRight, Columns3, Repeat } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Leer, Punkt, prioFarbe } from '../schlank';
+import { Karte, Leer, Punkt, prioFarbe } from '../ui';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { baum, statusListe, statusVon } from '@/lib/aufgaben/struktur';
 import { bezugName, bezugLink, BEZUG_ARTEN, BEZUG_LABEL } from '@/lib/aufgaben/crm-verweise';
@@ -39,8 +39,8 @@ const merke = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
 
 const kopfStil: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, textAlign: 'left', padding: '8px 8px', whiteSpace: 'nowrap', borderBottom: '1px solid rgba(255,255,255,.08)', background: C.flaeche };
 const zelle: CSSProperties = { padding: '5px 8px', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien, color: C.inkDim, verticalAlign: 'middle', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-const eingabe: CSSProperties = { background: 'transparent', border: '1px solid transparent', borderRadius: 8, color: C.ink, fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '4px 6px', width: '100%', minHeight: 28, colorScheme: 'dark' };
-const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '4px 6px' };
+const eingabe: CSSProperties = { background: 'transparent', border: '1px solid transparent', borderRadius: 8, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '4px 6px', width: '100%', minHeight: 28, colorScheme: 'dark' };
+const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '4px 6px' };
 const PRIO_WAHL: WahlEintrag<Priority>[] = PRIORITAETEN.map(p => ({ id: p.id, label: p.label, punkt: p.farbe }));
 
 /** Text/Zahl/Betrag/Link: eine Eingabe, die erst beim Verlassen (oder Enter) speichert; Escape verwirft. */
@@ -153,7 +153,7 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
         style={{ ...kopfStil, width: s.breite, ...(i === 0 ? { position: 'sticky', left: 0, zIndex: 2 } : {}) }}>
         <button onClick={() => setSort(naechsteSortierung(sort, s.id))} className="fassbar" title={s.projektTitel ? `Eigenes Feld im Projekt ${s.projektTitel} — sortieren` : 'Sortieren'}
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit', color: an ? C.aktiv : 'inherit', display: 'inline-flex', gap: 5, alignItems: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</span>{pfeil && <span aria-hidden style={{ fontSize: 11 }}>{pfeil}</span>}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</span>{pfeil && <span aria-hidden style={{ fontSize: TYP.bedien }}>{pfeil}</span>}
         </button>
       </th>
     );
@@ -178,7 +178,7 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
               style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: tiefe ? 12.5 : 13.5, fontWeight: tiefe ? 500 : 600, ...titelStil(t), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</button>
             {t.sichtbarkeit === 'nur-ich' && <NurIchZeichen />}
             {t.wiederholung && <span title="wiederkehrend" aria-label="wiederkehrend" style={{ color: C.inkLeise, display: 'inline-flex' }}><Repeat size={12} /></span>}
-            {unter > 0 && <span style={{ fontSize: 11.5, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{unter}</span>}
+            {unter > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{unter}</span>}
           </span>
         );
       }
@@ -217,7 +217,7 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
         if (!w.length) return <span style={{ color: C.inkLeise }}>–</span>;
         return (
           <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', minWidth: 0 }} title={`wartet auf: ${w.map(x => x.title).join(', ')}`}>
-            <button onClick={() => onOeffnen(w[0].id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: LEUCHT.achtung, fontFamily: SCHRIFT.text, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>⧗ {w[0].title}</button>
+            <button onClick={() => onOeffnen(w[0].id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: LEUCHT.achtung, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>⧗ {w[0].title}</button>
             {w.length > 1 && <span style={{ color: C.inkLeise }}>+{w.length - 1}</span>}
           </span>
         );
@@ -231,7 +231,7 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
   return (
     <Karte i={2} style={{ padding: 0, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px 6px', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12.5, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{aufgaben.filter(t => !t.parentId).length} Aufgaben{sort ? ' · sortiert' : ''}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{aufgaben.filter(t => !t.parentId).length} Aufgaben{sort ? ' · sortiert' : ''}</span>
         {sort && <button onClick={() => setSort(null)} style={leiseKnopf}>Sortierung aufheben</button>}
         <button onClick={() => setWaehler(w => !w)} aria-expanded={waehler} className="fassbar" style={{ ...leiseKnopf, marginLeft: 'auto', display: 'inline-flex', gap: 5, alignItems: 'center', color: waehler ? C.aktiv : C.inkLeise }}>
           <Columns3 size={14} /> Spalten{aus.size ? ` (${spalten.length - sichtbar.length} aus)` : ''}
@@ -242,7 +242,7 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
           {spalten.filter(s => !s.immer).map(s => {
             const an = !aus.has(s.id);
             return (
-              <label key={s.id} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: an ? C.ink : C.inkLeise, border: `1px solid ${an ? `${C.aktiv}66` : 'rgba(255,255,255,.1)'}`, borderRadius: 999, padding: '4px 10px', cursor: 'pointer' }}>
+              <label key={s.id} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: an ? C.ink : C.inkLeise, border: `1px solid ${an ? `${C.aktiv}66` : 'rgba(255,255,255,.1)'}`, borderRadius: 999, padding: '4px 10px', cursor: 'pointer' }}>
                 <input type="checkbox" checked={an} onChange={() => umschalten(s.id)} style={{ accentColor: C.aktiv }} />{s.label}
               </label>
             );

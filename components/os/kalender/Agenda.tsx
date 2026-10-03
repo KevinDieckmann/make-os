@@ -8,7 +8,7 @@
 // als „läuft weiter“ mit dem Ende, damit die Reise am Samstag nicht unsichtbar ist.
 
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Liste, Zeile, Leer, Punkt, Chip, Haken, prioFarbe, LEUCHT } from '../schlank';
+import { Liste, Zeile, Leer, Punkt, Chip, Haken, prioFarbe, LEUCHT } from '../ui';
 import { FRIST_ZEICHEN, WER_LABEL, type KTermin, type KFrist, type KErinnerung } from './teile';
 import type { KalenderAufgabe } from '@/lib/kalender/aufgaben';
 import { letzterTag, laeuftWeiter } from '@/lib/kalender/layout';

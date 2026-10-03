@@ -164,6 +164,29 @@ describe('Netzwerken und Markttraktion hängen am Standard', () => {
   });
 });
 
+describe('Planung, Fokus und Lichtfäden hängen am Standard (03.10., „Fokus auf die Ziele, visualisiert durch die Lichtfäden“)', () => {
+  const PLANUNG = ['components/os/HorizontView.tsx', 'components/os/FokusView.tsx', ...dateien('components/os/planung'), ...dateien('components/os/lichtfaeden')];
+  it('keine Bausteine mehr aus schlank.tsx', () => {
+    expect(PLANUNG.filter(f => /from '(\.\.?\/)+schlank'/.test(lies(f)))).toEqual([]);
+  });
+  it('Fließtext nicht unter 13 px — außer Beschriftungen in Großbuchstaben (Chips/Achsen 12 px erlaubt)', () => {
+    const funde: string[] = [];
+    for (const f of PLANUNG) lies(f).split('\n').forEach((z, i) => { if (/fontSize: (9|10|11|11\.5|12\.5)(?![\d.])/.test(z) && !z.includes('uppercase') && !z.includes('PfeilRang')) funde.push(`${f}:${i + 1}`); });
+    expect(funde.filter(f => !f.startsWith('components/os/planung/PfeilRang.tsx'))).toEqual([]);
+  });
+  it('Seitenhinweise sind Hinweis-Karten (kein „<div role=\"status\" style={{ … color: LEUCHT.achtung }}>“ mehr)', () => {
+    const funde: string[] = [];
+    for (const f of PLANUNG) lies(f).split('\n').forEach((z, i) => { if (/<div role="(status|alert)" style=\{\{ fontSize: [^,]+, color: LEUCHT\.(achtung|kritisch)( \}|, marginBottom)/.test(z)) funde.push(`${f}:${i + 1}`); });
+    expect(funde).toEqual([]);
+  });
+  it('die Lichtfäden-Karte steht auf Jahr, Ziel, Meilenstein und Fokus', () => {
+    expect(lies('components/os/HorizontView.tsx')).toMatch(/<Lichtfaeden wurzel=\{spaceFilter === 'alle' \? 'gesamt'/);
+    expect(lies('components/os/planung/ZielDetail.tsx')).toContain('<Lichtfaeden wurzel={`ziel:');
+    expect(lies('components/os/planung/MeilensteinDetail.tsx')).toContain('<Lichtfaeden wurzel={`ms:');
+    expect(lies('components/os/FokusView.tsx')).toContain('<Lichtfaeden wurzel="gesamt"');
+  });
+});
+
 describe('Dokumentation', () => {
   it('DESIGN_STANDARD.md nennt jeden Baustein und jeden Token', () => {
     const md = lies('DESIGN_STANDARD.md');

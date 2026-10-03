@@ -10,7 +10,7 @@
 import { useMemo, useState, type Dispatch } from 'react';
 import { MessageSquare, ListChecks } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Punkt, prioFarbe } from '../schlank';
+import { Punkt, prioFarbe } from '../ui';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { statusListe, statusVon, fortschritt } from '@/lib/aufgaben/struktur';
 import type { Task, TasksState } from '@/types/tasks';
@@ -48,7 +48,7 @@ export function StatusBoard({ state, dispatch, spaceId, aufgaben, personen, heut
     <>
       {!spalten.some(s => s.basis === 'cancelled') && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-4px 0 6px' }}>
-          <button onClick={() => setAbgebrochenZeigen(true)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, minHeight: 32 }}>+ Spalte „Abgebrochen“</button>
+          <button onClick={() => setAbgebrochenZeigen(true)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, minHeight: 32 }}>+ Spalte „Abgebrochen“</button>
         </div>
       )}
       <div style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(250px, 1fr)', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollSnapType: 'x proximity' }}>
@@ -72,7 +72,7 @@ export function StatusBoard({ state, dispatch, spaceId, aufgaben, personen, heut
                         <span style={{ marginTop: 6 }}><Punkt farbe={prioFarbe(t.priority)} groesse={7} /></span>
                         <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.35, ...titelStil(t) }}>{t.title}</span>
                       </button>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4, fontSize: 12, color: C.inkLeise, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4, fontSize: TYP.bedien, color: C.inkLeise, alignItems: 'center' }}>
                         <PrioZeichen p={t.priority} />
                         {t.sichtbarkeit === 'nur-ich' && <NurIchZeichen />}
                         <span>{projektTitel(state, t.projectId)}</span>
@@ -85,7 +85,7 @@ export function StatusBoard({ state, dispatch, spaceId, aufgaben, personen, heut
                     </div>
                   );
                 })}
-                {!karten.length && <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '8px 4px' }}>hierher ziehen oder „Status ▾“ an der Karte</div>}
+                {!karten.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '8px 4px' }}>hierher ziehen oder „Status ▾“ an der Karte</div>}
               </div>
             </section>
           );

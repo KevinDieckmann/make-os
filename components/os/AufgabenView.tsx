@@ -30,7 +30,7 @@ import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
 import { parseSchnell, tagInT, schnellZustaendigkeit } from '@/lib/make-one/schnell-anlegen';
 import { usePersonen } from '@/components/os/aufgaben/hilfe';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, Haken, feld, prioFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, feld, prioFarbe, LEUCHT, SymbolKnopf, HakenZiel } from './ui';
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 import { EinheitWahl, EinheitFilterPillen, useEinheiten, einheitGemerkt, einheitMerken } from './aufgaben/Einheit';
@@ -48,8 +48,8 @@ const HAAR = 'rgba(255,255,255,.06)';
 const FLAECHE = 'rgba(255,255,255,.04)';
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise };
 const wahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark' };
-const textKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 };
-const zahl: CSSProperties = { fontFamily: SCHRIFT.display, fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: C.inkLeise };
+const textKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: 0 };
+const zahl: CSSProperties = { fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: C.inkLeise };
 
 const PRIO: Record<Priority, { c: string; t: string }> = {
   critical: { c: prioFarbe('critical'), t: 'kritisch' },
@@ -474,7 +474,7 @@ export function AufgabenView() {
         {optionen.map(o => (
           <Pille key={o.id} an={o.aktiv} farbe={o.farbe} onClick={() => { waehle(o.id); zu(); }}>{o.aktiv ? '✓ ' : ''}{o.label}</Pille>
         ))}
-        <button onClick={zu} title="Auswahl schließen" style={{ ...textKnopf, marginLeft: 'auto', padding: '4px 6px' }}>✕</button>
+        <SymbolKnopf onClick={zu} ariaLabel="Auswahl schließen">✕</SymbolKnopf>
       </div>
     );
   }
@@ -494,7 +494,7 @@ export function AufgabenView() {
         <div onClick={() => setOffenId(auf ? null : t.id)} className="zeile-klick"
           style={{ display: 'flex', gap: 12, padding: '11px 6px', margin: '0 -6px', alignItems: 'flex-start', cursor: 'pointer', background: auf ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: 10 }}>
           {nummer && <span style={{ fontFamily: SCHRIFT.display, fontSize: 16, fontWeight: 700, color: nummer.farbe, width: 18, flex: '0 0 auto', textAlign: 'center', marginTop: 2, textShadow: `0 0 14px ${nummer.farbe}33`, fontVariantNumeric: 'tabular-nums' }}>{nummer.n}</span>}
-          <Haken an={done} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={kritisch ? LEUCHT.kritisch : prioFarbe(t.priority)} />
+          <HakenZiel an={done} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={kritisch ? LEUCHT.kritisch : prioFarbe(t.priority)} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: TYP.body, fontWeight: 500, color: done ? C.inkLeise : blockiert ? LEUCHT.achtung : C.ink, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.35, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
               {kritisch && <span className="krit-puls" style={{ display: 'inline-flex' }}><Punkt farbe={LEUCHT.kritisch} groesse={8} /></span>}
@@ -514,12 +514,12 @@ export function AufgabenView() {
                 const e = einschaetzen(t);
                 return (
                   <span title={`${WER_LABEL[e.wer]} — ${e.warum}${e.beitrag ? ` · ZOE: ${e.beitrag}` : ''}`}
-                    style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: WER_FARBE[e.wer], opacity: 0.9 }}>
+                    style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, color: WER_FARBE[e.wer], opacity: 0.9 }}>
                     {e.wer === 'zoe' ? '⚡' : e.wer === 'gemeinsam' ? '◐' : '☺'} {dauerText(e.dauer)}
                   </span>
                 );
               })()}
-              {zeigeThema && <span style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: ORG[meineOrg(t)]?.farbe, opacity: 0.85 }}>{ORG[meineOrg(t)]?.kurz}</span>}
+              {zeigeThema && <span style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, color: ORG[meineOrg(t)]?.farbe, opacity: 0.85 }}>{ORG[meineOrg(t)]?.kurz}</span>}
               {istBusiness(t) && (t.einheit || !done) && <EinheitWahl wert={t.einheit} setzen={e => patchTask(t.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} />}
               {meineStich(t).slice(0, 3).map(sid => (
                 <Pille key={sid} klein an={stichFilter === sid} title={`„${STICHWORT[sid]?.label}" — klicken, um die Stichworte zu ändern`}
@@ -534,17 +534,17 @@ export function AufgabenView() {
                   Sonst muss man für jede Deadline erst die Zeile aufklappen. */}
               {!done && <Faelligkeit klein spaetPuls wert={t.dueDate} setzen={d => patchTask(t.id, { dueDate: d })} />}
               {done && t.dueDate && <span style={zahl}>{t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span>}
-              <span style={{ fontSize: 11, color: C.inkLeise }}>{projName(t.projectId)}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{projName(t.projectId)}</span>
               <button onClick={e => { e.stopPropagation(); setMenue(m => m?.id === t.id && m.feld === 'wer' ? null : { id: t.id, feld: 'wer' }); }}
                 title="Zuweisung ändern — Kevin, Malin oder beide"
-                style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: t.assignee === 'kevin' ? C.inkLeise : PERSON_FARBE[t.assignee], background: 'transparent', border: 'none', padding: '1px 4px', cursor: 'pointer' }}>
+                style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, color: t.assignee === 'kevin' ? C.inkLeise : PERSON_FARBE[t.assignee], background: 'transparent', border: 'none', padding: '1px 4px', cursor: 'pointer' }}>
                 · {OWNER[t.assignee] ?? t.assignee}
               </button>
               {delegiertAn(t.description) && <Chip farbe={LEUCHT.achtung}>→ delegiert an {delegiertAn(t.description)}</Chip>}
               {fromInbox(t.description) && <Chip farbe={LEUCHT.puls}>aus Inbox</Chip>}
             </div>
           </div>
-          <span style={{ fontSize: 12, color: C.inkLeise, flex: '0 0 auto', marginTop: 4 }}>{auf ? '▾' : '▸'}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '0 0 auto', marginTop: 4 }}>{auf ? '▾' : '▸'}</span>
         </div>
 
         {/* Auswahl direkt unter der Zeile — ohne die Aufgabe aufklappen zu müssen */}
@@ -630,7 +630,7 @@ export function AufgabenView() {
                 {(['privat', 'business'] as const).map(k => (
                   <Pille key={k} an={spaceVonAufgabe(t, orgZuord) === k} farbe={SPACE_FARBE[k]} title={t.space ? 'von Hand gesetzt' : 'aus dem Ort'} onClick={() => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, space: k } })}>{SPACE_LABEL[k]}</Pille>
                 ))}
-                {t.space && <button onClick={() => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, space: undefined } })} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>wieder aus dem Ort</button>}
+                {t.space && <button onClick={() => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, space: undefined } })} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: TYP.bedien, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>wieder aus dem Ort</button>}
               </div>
 
               {istBusiness(t) && <>
@@ -682,17 +682,17 @@ export function AufgabenView() {
                 {meineStich(t).map(sid => {
                   const gesetzt = (handStich[t.id] ?? []).includes(sid);
                   return (
-                    <span key={sid} style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, color: C.inkDim, background: 'rgba(255,255,255,.06)', borderRadius: 999, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span key={sid} style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, background: 'rgba(255,255,255,.06)', borderRadius: 999, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       {STICHWORT[sid]?.label}
                       {gesetzt
-                        ? <button onClick={() => ordnungSpeichern({ stichworte: { [t.id]: (handStich[t.id] ?? []).filter(x => x !== sid) } })} aria-label="Stichwort entfernen" style={{ ...textKnopf, fontSize: 11, lineHeight: 1 }}>✕</button>
+                        ? <SymbolKnopf onClick={() => ordnungSpeichern({ stichworte: { [t.id]: (handStich[t.id] ?? []).filter(x => x !== sid) } })} ariaLabel="Stichwort entfernen" eingebettet>✕</SymbolKnopf>
                         : <span title="automatisch erkannt" style={{ display: 'inline-flex' }}><Punkt farbe={C.aktiv} groesse={6} /></span>}
                     </span>
                   );
                 })}
                 <select value="" onChange={e => { if (e.target.value) ordnungSpeichern({ stichworte: { [t.id]: [...(handStich[t.id] ?? []), e.target.value] } }); }}
                   aria-label="Stichwort hinzufügen"
-                  style={{ ...wahl, borderRadius: 999, color: C.inkLeise, padding: '3px 10px', fontSize: 12, maxWidth: 140 }}>
+                  style={{ ...wahl, borderRadius: 999, color: C.inkLeise, padding: '3px 10px', fontSize: TYP.bedien, maxWidth: 140 }}>
                   <option value="">+ Stichwort</option>
                   {STICHWORTE.filter(w => !meineStich(t).includes(w.id)).map(w => (
                     <option key={w.id} value={w.id}>{w.label}</option>
@@ -710,7 +710,7 @@ export function AufgabenView() {
                 const e = einschaetzen(t);
                 return (
                   <span title={`${e.warum}${e.beitrag ? ` · Erster Schritt: ${e.beitrag}` : ''}`}
-                    style={{ fontSize: 12, color: WER_FARBE[e.wer], minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    style={{ fontSize: TYP.bedien, color: WER_FARBE[e.wer], minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                     {WER_LABEL[e.wer]} · ≈ {dauerText(e.dauer)}{e.beitrag ? ` — ${e.beitrag}` : ''}
                   </span>
                 );
@@ -806,7 +806,7 @@ export function AufgabenView() {
             )}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <Knopf onClick={anlegenMitFeldern} aus={!neuTitel.trim()}>Aufgabe anlegen</Knopf>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
                 {neuTitel.trim() ? 'Enter legt sie auch an.' : 'Titel oben eintippen.'}
               </span>
             </div>
@@ -837,7 +837,7 @@ export function AufgabenView() {
             {eigeneFilter.map(f => (
               <Pille key={f.id} an={aktiverFilter === f.id} onClick={() => setAktiverFilter(aktiverFilter === f.id ? null : f.id)}>{f.name}</Pille>
             ))}
-            <Link href="/os/kompass" style={{ fontSize: 12, color: C.inkLeise, textDecoration: 'none', padding: '5px 4px' }}>
+            <Link href="/os/kompass" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', padding: '5px 4px' }}>
               {eigeneFilter.length ? '+ verwalten' : '+ eigenen Filter anlegen'}
             </Link>
           </div>
@@ -894,7 +894,7 @@ export function AufgabenView() {
           </button>
           {ordnungAuf && (
             <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 12, color: C.inkDim, lineHeight: 1.55, marginBottom: 4 }}>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 4 }}>
                 Was zuerst zählt, wenn alles wichtig ist. Diese Reihenfolge sortiert jede Ansicht —
                 nur <b style={{ color: LEUCHT.kritisch }}>kritische</b> Aufgaben brechen sie, weil sie alles andere blockieren.
               </div>
@@ -926,8 +926,8 @@ export function AufgabenView() {
               {stichAuf ? '▾' : '▸'} Stichworte{!stichAuf && stichStand.length ? ` · ${stichStand.length}` : ''}
             </button>
             {stichAuf
-              ? <span style={{ fontSize: 12, color: C.inkLeise }}>anklicken und alles dazu am Stück wegarbeiten — Dringendstes zuerst</span>
-              : stichFilter && <span style={{ fontSize: 12, color: C.aktiv }}>gefiltert: {STICHWORT[stichFilter]?.label ?? stichFilter}</span>}
+              ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>anklicken und alles dazu am Stück wegarbeiten — Dringendstes zuerst</span>
+              : stichFilter && <span style={{ fontSize: TYP.bedien, color: C.aktiv }}>gefiltert: {STICHWORT[stichFilter]?.label ?? stichFilter}</span>}
             {stichAuf && (
               <input value={stichSuche} onChange={e => setStichSuche(e.target.value)} placeholder="suchen …"
                 aria-label="Stichwort suchen"
@@ -956,7 +956,7 @@ export function AufgabenView() {
                         title={`${s.offen} offen${s.kritisch ? ` · ${s.kritisch} kritisch` : ''}${s.spaet ? ` · ${s.spaet} überfällig` : ''}`}>
                         {s.wort.label}
                         {s.offen > 0 && <span style={{ ...zahl, marginLeft: 6, color: farbe }}>{s.offen}</span>}
-                        {s.wort.kpi && <span style={{ ...zahl, marginLeft: 4, fontSize: 11 }}>KPI</span>}
+                        {s.wort.kpi && <span style={{ ...zahl, marginLeft: 4, fontSize: TYP.bedien }}>KPI</span>}
                       </Pille>
                     );
                   })}
@@ -979,13 +979,13 @@ export function AufgabenView() {
       </Karte>
 
       {/* ─── Delegations-Vorschläge: Kevin behält nur, was nur er kann ─── */}
-      {deleg && delegVon && <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Runde von ZOE · {new Date(delegVon).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</div>}
+      {deleg && delegVon && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Runde von ZOE · {new Date(delegVon).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</div>}
       {deleg && (
         <Karte i={ki++} akzent={C.aktiv}>
           <Ueberschrift farbe={C.aktiv} rechts={<>
             <span style={{ color: C.aktiv }}>{deleg.filter(v => v.empfehlung === 'abgeben').length} abgebbar · {deleg.filter(v => v.empfehlung === 'bleibt').length} bleiben bei dir</span>
             {delegPrivat > 0 && <span>{delegPrivat} private ausgeblendet</span>}
-            <button onClick={() => setDeleg(null)} aria-label="Delegations-Runde schließen" style={textKnopf}>✕</button>
+            <SymbolKnopf onClick={() => setDeleg(null)} ariaLabel="Delegations-Runde schließen">✕</SymbolKnopf>
           </>}>Delegations-Runde</Ueberschrift>
           {/* Sortieren — nach der Runde will man das Ergebnis ordnen können */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
@@ -1000,7 +1000,7 @@ export function AufgabenView() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{v.titel}</span>
                   <Chip farbe={C.aktiv}>→ {v.an}</Chip>
-                  <span style={{ fontSize: 12, color: C.inkLeise }}>{v.warum}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{v.warum}</span>
                 </div>
                 {v.uebergabe && <div style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '6px 0 8px', lineHeight: 1.5 }}>„{v.uebergabe}“</div>}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: v.uebergabe ? 0 : 8 }}>
@@ -1016,7 +1016,7 @@ export function AufgabenView() {
             ))}
           </Liste>
           {deleg.filter(v => v.empfehlung === 'bleibt').length > 0 && (
-            <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.6, marginTop: 10 }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.6, marginTop: 10 }}>
               <b style={{ color: C.inkDim }}>Bleibt bei dir:</b> {deleg.filter(v => v.empfehlung === 'bleibt').map(v => v.titel).join(' · ')}
             </div>
           )}
@@ -1084,14 +1084,14 @@ export function AufgabenView() {
             return (
               <Karte key={b.id} i={ki++} akzent={farbe}>
                 <Ueberschrift farbe={farbe} rechts={offen.length ? `${offen.length}` : '—'}>{b.titel}</Ueberschrift>
-                <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.45 }}>{b.satz}</div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8, fontSize: 11, fontWeight: 600 }}>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>{b.satz}</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8, fontSize: TYP.bedien, fontWeight: 600 }}>
                   <span style={{ color: kritisch ? LEUCHT.kritisch : C.inkLeise }}>{kritisch} kritisch</span>
                   <span style={{ color: spaet ? LEUCHT.kritisch : C.inkLeise }}>{spaet} überfällig</span>
                   <span style={{ color: C.inkLeise }}>{dauerText(minuten)}</span>
                   {!!zoe && <span style={{ color: WER_FARBE.zoe }}>⚡ {zoe}</span>}
                 </div>
-                <div style={{ fontSize: 11, color: C.inkLeise, marginTop: 6, marginBottom: 6 }}>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, marginBottom: 6 }}>
                   Übergeben: in der Zeile auf den Namen klicken
                 </div>
                 {offen.length
@@ -1111,7 +1111,7 @@ export function AufgabenView() {
             return (
               <Karte key={b.id} i={ki++} akzent={drin.length ? b.farbe : undefined}>
                 <Ueberschrift farbe={b.farbe} rechts={drin.length ? `${drin.length}` : '—'}>{bi + 1} · {b.label}</Ueberschrift>
-                <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.45, marginBottom: 6 }}>{b.satz}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45, marginBottom: 6 }}>{b.satz}</div>
                 {drin.length
                   ? <Liste>{drin.map((t, i) => zeile(t, i + 1))}</Liste>
                   : <Leer>Nichts offen hier.</Leer>}
@@ -1218,14 +1218,14 @@ export function AufgabenView() {
                     );
                   })}
                 </Liste>
-                {items.length > 10 && <div style={{ fontSize: 11, color: C.inkLeise, marginTop: 8 }}>+{items.length - 10} weitere</div>}
+                {items.length > 10 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>+{items.length - 10} weitere</div>}
               </div>
             ))}
           </div>
         )}
       </Karte>
 
-      <div style={{ fontSize: 12, color: C.inkLeise, padding: '0 2px' }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '0 2px' }}>
         Aufgaben werden lokal auf deinem Mac gespeichert · Erinnerungen live aus iCloud.
       </div>
     </Seite>
@@ -1243,8 +1243,8 @@ function Pille({ an, farbe, leise, klein, gross, aus, onClick, title, aria, clas
   const f = farbe ?? C.aktiv;
   return (
     <button onClick={onClick} title={title} aria-label={aria} disabled={aus} className={`fassbar${className ? ` ${className}` : ''}`} style={{
-      fontFamily: SCHRIFT.text, fontSize: gross ? TYP.bedien : klein ? 11 : 12, fontWeight: an || gross ? 700 : 500,
-      padding: gross ? '9px 15px' : klein ? '2px 9px' : '5px 11px', borderRadius: gross ? 11 : 999, border: 'none',
+      fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: an || gross ? 700 : 500, minHeight: 40, minWidth: 40,
+      padding: gross ? '9px 15px' : klein ? '4px 12px' : '6px 14px', borderRadius: gross ? 11 : 999, border: 'none',
       cursor: aus ? 'default' : 'pointer', whiteSpace: 'nowrap', letterSpacing: '.02em', transition: 'background .2s ease, color .2s ease',
       background: an ? `${f}22` : 'rgba(255,255,255,.06)', color: an ? f : aus ? 'rgba(255,255,255,.18)' : leise ? C.inkLeise : C.inkDim,
       opacity: aus ? .7 : 1,

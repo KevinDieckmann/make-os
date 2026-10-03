@@ -11,7 +11,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Fenster } from '../Fenster';
-import { Knopf } from '../schlank';
+import { Knopf, SymbolKnopf } from '../ui';
 import { useTasks, type AufgabenAktion } from '@/context/TasksContext';
 import { istOffen, statusTeil, statusListe, bereichVonSpace } from '@/lib/aufgaben/struktur';
 import { berlinerTag, kurzTag, tagPlus, tageZwischen } from '@/lib/aufgaben/wiederholung';
@@ -228,7 +228,7 @@ export function HandlungProvider({ children }: { children: ReactNode }) {
           display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px 10px 16px', borderRadius: 14, background: C.flaecheHoch, border: '1px solid rgba(255,255,255,.1)', boxShadow: '0 16px 40px -12px rgba(0,0,0,.7)', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.ink }}>
           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hinweis.text}</span>
           {hinweis.rueck && <button onClick={() => { const r = hinweis.rueck; setHinweis(null); r?.(); }} className="fassbar" style={{ background: 'none', border: `1px solid ${C.aktiv}66`, borderRadius: 10, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '8px 12px', minHeight: 40 }}>Rückgängig</button>}
-          <button onClick={() => setHinweis(null)} aria-label="Hinweis schließen" className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 18, minWidth: 36, minHeight: 36 }}>×</button>
+          <SymbolKnopf onClick={() => setHinweis(null)} ariaLabel="Hinweis schließen">×</SymbolKnopf>
         </div>
       )}
     </Ctx.Provider>
@@ -254,5 +254,5 @@ export function useHandlung(dispatch: Dispatch<AufgabenAktion>, statusEigen?: re
 /** Kleiner Warnhinweis: Unteraufgabe nach der Deadline der Hauptaufgabe (#68). */
 export function NachElternFrist({ unter, eltern }: { unter: Pick<Task, 'dueDate'>; eltern?: Pick<Task, 'dueDate'> }) {
   if (!unter.dueDate || !eltern?.dueDate || unter.dueDate <= eltern.dueDate) return null;
-  return <span role="note" title="Deadline liegt nach der Deadline der Hauptaufgabe" style={{ color: LEUCHT.achtung, fontSize: 12, whiteSpace: 'nowrap' }}>⚠ nach Hauptfrist</span>;
+  return <span role="note" title="Deadline liegt nach der Deadline der Hauptaufgabe" style={{ color: LEUCHT.achtung, fontSize: TYP.bedien, whiteSpace: 'nowrap' }}>⚠ nach Hauptfrist</span>;
 }

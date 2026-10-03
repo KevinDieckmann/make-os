@@ -20,7 +20,7 @@
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, Segmente, feld, LEUCHT } from '../schlank';
+import { Knopf, Segmente, feld, LEUCHT, SymbolKnopf } from '../ui';
 import { Fenster } from '../Fenster';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { MandatWahl } from '../zeit/MandatWahl';
@@ -111,7 +111,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
 
   // ── Teile ──
   const eingabe = { ...feld, fontSize: TYP.bedien, padding: '9px 12px', colorScheme: 'dark' as const };
-  const beschr = { fontSize: 12.5, color: C.inkLeise };
+  const beschr = { fontSize: TYP.bedien, color: C.inkLeise };
   const zeile = { display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center' };
   const art = f.art;
   const schreibbar = kalender.filter(k => k.schreibbar);
@@ -155,9 +155,9 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
           aria-label="Titel" style={{ ...eingabe, fontSize: 18, fontFamily: SCHRIFT.display, padding: '12px 14px', background: 'transparent', borderWidth: '0 0 1px', borderRadius: 0 }} />
       )}
       {schnell && schnell.erkannt.length > 0 && (
-        <div style={{ ...zeile, fontSize: 12.5, color: LEUCHT.gut }}>
+        <div style={{ ...zeile, fontSize: TYP.bedien, color: LEUCHT.gut }}>
           erkannt: {schnell.erkannt.join(' · ')}
-          <button type="button" onClick={() => setF(schnellAnwenden(f))} style={{ background: 'none', border: `1px solid ${LEUCHT.gut}66`, color: LEUCHT.gut, borderRadius: 999, padding: '1px 10px', cursor: 'pointer', fontSize: 12 }}>übernehmen</button>
+          <button type="button" onClick={() => setF(schnellAnwenden(f))} style={{ background: 'none', border: `1px solid ${LEUCHT.gut}66`, color: LEUCHT.gut, borderRadius: 999, padding: '1px 10px', cursor: 'pointer', fontSize: TYP.bedien }}>übernehmen</button>
         </div>
       )}
       <div role="tablist" aria-label="Art" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -188,11 +188,11 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
             <input type="time" step={300} value={f.von} onChange={e => { const v = e.target.value; if (v) setF({ ...f, ...vonAendern(f, v, art === 'fokus' ? fokusDauer : standardDauer) }); }} style={eingabe} /></label>
           {art !== 'aufgabe' && <label style={{ display: 'grid', gap: 4, flex: '0 1 104px' }}><span style={beschr}>Bis</span>
             <input type="time" step={300} value={f.bis} onChange={e => setF({ ...f, bis: e.target.value })} style={eingabe} /></label>}
-          {art !== 'aufgabe' && <button type="button" onClick={() => setVoll(true)} title="Zeitzone ändern (Weitere Optionen)" style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: 12.5, cursor: 'pointer', paddingBottom: 10 }}>{f.zone === 'Europe/Berlin' ? gmt : `${ZONEN.find(z => z.id === f.zone)?.label ?? f.zone} · ${gmt}`}</button>}
+          {art !== 'aufgabe' && <button type="button" onClick={() => setVoll(true)} title="Zeitzone ändern (Weitere Optionen)" style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: TYP.bedien, cursor: 'pointer', paddingBottom: 10 }}>{f.zone === 'Europe/Berlin' ? gmt : `${ZONEN.find(z => z.id === f.zone)?.label ?? f.zone} · ${gmt}`}</button>}
         </>}
         {art === 'aufgabe'
-          ? <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: C.inkDim, paddingBottom: 10 }}><input type="checkbox" checked={f.aufgabe.mitZeit} onChange={e => setF({ ...f, ganztags: false, aufgabe: { ...f.aufgabe, mitZeit: e.target.checked } })} /> mit Uhrzeit</label>
-          : art !== 'arbeitsort' && <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: C.inkDim, paddingBottom: 10 }}><input type="checkbox" checked={f.ganztags} onChange={e => setF({ ...f, ganztags: e.target.checked, bisTag: f.tag, erinnerungen: e.target.checked ? [] : f.erinnerungen })} /> ganztägig</label>}
+          ? <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, paddingBottom: 10 }}><input type="checkbox" checked={f.aufgabe.mitZeit} onChange={e => setF({ ...f, ganztags: false, aufgabe: { ...f.aufgabe, mitZeit: e.target.checked } })} /> mit Uhrzeit</label>
+          : art !== 'arbeitsort' && <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, paddingBottom: 10 }}><input type="checkbox" checked={f.ganztags} onChange={e => setF({ ...f, ganztags: e.target.checked, bisTag: f.tag, erinnerungen: e.target.checked ? [] : f.erinnerungen })} /> ganztägig</label>}
       </div>
 
       {/* Wiederholung (nicht für Aufgaben — die haben ihre eigene Serie im Aufgaben-Modell) */}
@@ -213,7 +213,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
                 <div role="group" aria-label="Wochentage" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   {WOCHENTAGE.map(t => { const an = (w.tage ?? []).includes(t); return (
                     <button key={t} type="button" aria-pressed={an} onClick={() => { const tage = an ? (w.tage ?? []).filter(x => x !== t) : [...(w.tage ?? []), t]; setW({ tage: tage.length ? tage : [t] }); }}
-                      style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, background: an ? LEUCHT.puls : 'rgba(255,255,255,.06)', color: an ? '#0b0b0c' : C.inkDim }}>{TAG_KURZ[t]}</button>
+                      style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 700, background: an ? LEUCHT.puls : 'rgba(255,255,255,.06)', color: an ? '#0b0b0c' : C.inkDim }}>{TAG_KURZ[t]}</button>
                   ); })}
                 </div>
               )}
@@ -231,7 +231,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
                 {w.bis && <input type="date" value={w.bis} min={f.tag} onChange={e => setW({ bis: e.target.value })} aria-label="Endet am" style={{ ...eingabe, width: 'auto' }} />}
                 {w.anzahl && <><input type="number" min={1} max={999} value={w.anzahl} onChange={e => setW({ anzahl: Math.max(1, Number(e.target.value) || 1) })} aria-label="Anzahl" style={{ ...eingabe, width: 80 }} /><span style={beschr}>Termine</span></>}
               </div>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>{wiederText}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{wiederText}</span>
             </div>
           )}
         </div>
@@ -239,20 +239,20 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
 
       {/* Aufgabe: wohin */}
       {art === 'aufgabe' && (
-        <div style={{ ...zeile, fontSize: 12.5, color: C.inkLeise }}>
+        <div style={{ ...zeile, fontSize: TYP.bedien, color: C.inkLeise }}>
           <span>in</span>
           <Wahl klein label="Space" liste={spaceListe} wert={f.aufgabe.spaceId} onWahl={id => setF({ ...f, aufgabe: { spaceId: id, mitZeit: f.aufgabe.mitZeit } })} />
           <span aria-hidden>›</span>
           <Wahl klein label="Projekt" liste={projektListe} wert={projektId} onWahl={id => setF({ ...f, aufgabe: { ...f.aufgabe, projectId: istSonstigeProjekt(id) ? undefined : id, listeId: undefined } })} />
           {!istSonstigeProjekt(projektId) && <><span aria-hidden>›</span>
             <Wahl klein label="Liste" liste={listenListe} wert={f.aufgabe.listeId ?? ''} onWahl={id => setF({ ...f, aufgabe: { ...f.aufgabe, listeId: id || undefined } })} /></>}
-          <span style={{ flexBasis: '100%', fontSize: 12 }}>Wird eine Aufgabe (kein Kalendertermin) — der Kalender zeigt sie an ihrer {f.aufgabe.mitZeit ? 'Uhrzeit' : 'Deadline'}.</span>
+          <span style={{ flexBasis: '100%', fontSize: TYP.bedien }}>Wird eine Aufgabe (kein Kalendertermin) — der Kalender zeigt sie an ihrer {f.aufgabe.mitZeit ? 'Uhrzeit' : 'Deadline'}.</span>
         </div>
       )}
 
       {/* Fokuszeit: worauf sie zählt (nur Kennungen → kalender-bezug) */}
       {art === 'fokus' && (
-        <div style={{ ...zeile, fontSize: 12.5, color: C.inkLeise }}>
+        <div style={{ ...zeile, fontSize: TYP.bedien, color: C.inkLeise }}>
           <span>zählt auf</span>
           <Wahl klein label="Aufgabe" leer="+ Aufgabe" leerenLabel="ohne Aufgabe" liste={aufgabenWahl} wert={f.fokus.aufgabeId} onWahl={id => setF({ ...f, fokus: { ...f.fokus, aufgabeId: id } })} onLeeren={() => setF({ ...f, fokus: { ...f.fokus, aufgabeId: undefined } })} />
           <MandatWahl klein wert={f.fokus.mandatId} setzen={m => setF({ ...f, fokus: { ...f.fokus, mandatId: m?.id } })} />
@@ -290,7 +290,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
 
       {/* Beschäftigt · Sichtbarkeit · Erinnerungen — kurz als Zeile, voll mit allen Schaltern */}
       {art !== 'aufgabe' && (!voll ? (
-        <div style={{ fontSize: 12.5, color: C.inkDim }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>
           {beschaeftigt ? 'Beschäftigt' : 'Frei'} · {SICHTBARKEIT_LABEL[f.sichtbarkeit]} · {f.erinnerungen.length ? f.erinnerungen.map(erinnerungText).join(', ') : 'keine Erinnerung'}
           {f.zone !== 'Europe/Berlin' && !f.ganztags ? ` · Zeitzone ${ZONEN.find(z => z.id === f.zone)?.label ?? f.zone}` : ''}
         </div>
@@ -308,7 +308,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
               {(['standard', 'privat', 'oeffentlich'] as Sichtbarkeit[]).map(s => <option key={s} value={s}>{SICHTBARKEIT_LABEL[s]}</option>)}
             </select>
           </div>
-          {f.sichtbarkeit === 'privat' && <span style={{ fontSize: 12, color: C.inkLeise }}>Privat: die andere Person sieht nur „Belegt“.</span>}
+          {f.sichtbarkeit === 'privat' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Privat: die andere Person sieht nur „Belegt“.</span>}
           <div style={{ display: 'grid', gap: 6 }}>
             <span style={beschr}>Erinnerungen (auf iPhone und Mac)</span>
             {f.erinnerungen.map((m, i) => (
@@ -316,15 +316,15 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
                 <select value={m} onChange={e => setF({ ...f, erinnerungen: f.erinnerungen.map((x, j) => (j === i ? Number(e.target.value) : x)) })} aria-label={`Erinnerung ${i + 1}`} style={{ ...eingabe, width: 'auto' }}>
                   {Array.from(new Set([...ERINNERUNG_VORLAGEN, m])).sort((a, b) => a - b).map(v => <option key={v} value={v}>{erinnerungText(v)}</option>)}
                 </select>
-                <button type="button" onClick={() => setF({ ...f, erinnerungen: f.erinnerungen.filter((_, j) => j !== i) })} aria-label="Erinnerung entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 16 }}>×</button>
+                <SymbolKnopf onClick={() => setF({ ...f, erinnerungen: f.erinnerungen.filter((_, j) => j !== i) })} ariaLabel="Erinnerung entfernen">×</SymbolKnopf>
               </div>
             ))}
-            {f.erinnerungen.length < ERINNERUNG_MAX && <button type="button" onClick={() => setF({ ...f, erinnerungen: [...f.erinnerungen, f.erinnerungen.length ? 60 : 10] })} style={{ justifySelf: 'start', background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>+ Erinnerung hinzufügen</button>}
+            {f.erinnerungen.length < ERINNERUNG_MAX && <button type="button" onClick={() => setF({ ...f, erinnerungen: [...f.erinnerungen, f.erinnerungen.length ? 60 : 10] })} style={{ justifySelf: 'start', background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>+ Erinnerung hinzufügen</button>}
           </div>
         </div>
       ))}
 
-      {fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
       {frage && <EinladungFrage was="einladung" adressen={frage.adressen} laeuft={laeuft} onJa={() => void speichern(frage.x, true)} onNein={() => setFrage(null)} />}
       {!frage && <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
         {art !== 'aufgabe' ? <Knopf leise onClick={() => setVoll(v => !v)}>{voll ? 'Weniger Optionen' : 'Weitere Optionen'}</Knopf> : <span />}
@@ -333,7 +333,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
           <Knopf farbe={LEUCHT.puls} aus={laeuft} onClick={() => void speichern()}>{laeuft ? 'speichert …' : f.gaeste.length && art === 'termin' ? 'Speichern …' : 'Speichern'}</Knopf>
         </div>
       </div>}
-      <span style={{ fontSize: 12, color: C.inkLeise }}>{art === 'aufgabe' ? 'Landet in den Aufgaben — dieselbe Aufgabe, keine Kopie.' : art === 'termin' && f.gaeste.length ? 'Landet in iCloud — die Gäste bekommen die Einladung erst nach deiner Bestätigung.' : 'Landet in iCloud — auf iPhone und Mac sichtbar. Ohne Gäste kein Versand.'}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{art === 'aufgabe' ? 'Landet in den Aufgaben — dieselbe Aufgabe, keine Kopie.' : art === 'termin' && f.gaeste.length ? 'Landet in iCloud — die Gäste bekommen die Einladung erst nach deiner Bestätigung.' : 'Landet in iCloud — auf iPhone und Mac sichtbar. Ohne Gäste kein Versand.'}</span>
     </Fenster>
   );
 }

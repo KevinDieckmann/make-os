@@ -18,6 +18,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { zoneFarbe } from './schlank';
 import { Sun, Inbox as InboxIcon, Search, CalendarDays, ArrowUpRight, Timer, Square, Tag } from 'lucide-react';
 import { useSpace } from '@/hooks/useSpace';
+import { useHandy } from '@/hooks/useHandy';
 import { spaceVon, type SpaceId } from '@/lib/make-one/spaces';
 import { zeitText, teile } from '@/lib/zeitmessung/modell';
 import { gemerkterFokus, fokusMerken, fokusAbgleichen, FOKUS_MERKER, FOKUS_EREIGNIS, type LaufenderFokus } from '@/lib/zeitmessung/fokus-laufend';
@@ -57,11 +58,11 @@ function WachstumsZahl() {
   }, []);
   const farbe = w?.index != null ? zoneFarbe(w.index) : C.inkLeise;
   return (
-    <Link href={WEG.wachstum()} title={w?.label ? `Wachstums-Score · ${w.label} — Bereich Wachstum öffnen` : 'Bereich Wachstum öffnen'} className="wachstum-kopf-score fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: C.ink, flex: '0 0 auto' }}>
-      <span style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', border: `2px solid ${farbe}`, boxShadow: w?.index != null ? `0 0 14px ${farbe}33` : 'none', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', color: farbe }}>{w?.index != null ? Math.round(w.index) : '—'}</span>
+    <Link href={WEG.wachstum()} title={w?.label ? `Wachstums-Score · ${w.label} — Bereich Wachstum öffnen` : 'Bereich Wachstum öffnen'} className="wachstum-kopf-score fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: C.ink, flex: '0 0 auto', minHeight: 44 }}>
+      <span className="kopf-score-kreis" style={{ borderRadius: '50%', display: 'grid', placeItems: 'center', border: `2px solid ${farbe}`, boxShadow: w?.index != null ? `0 0 14px ${farbe}33` : 'none', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', color: farbe }}>{w?.index != null ? Math.round(w.index) : '—'}</span>
       <span className="wachstum-kopf-label" style={{ display: 'grid', lineHeight: 1.15 }}>
-        <span style={{ fontSize: 11, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.05em' }}>Wachstum</span>
-        <span style={{ fontSize: 12, color: w?.label ? C.inkDim : C.inkLeise, fontWeight: 600 }}>{w ? (w.label || 'keine Messung') : '…'}</span>
+        <span style={{ fontSize: TYP.mikro, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.08em' }}>Wachstum</span>
+        <span style={{ fontSize: TYP.bedien, color: w?.label ? C.inkDim : C.inkLeise, fontWeight: 600 }}>{w ? (w.label || 'keine Messung') : '…'}</span>
       </span>
     </Link>
   );
@@ -119,14 +120,14 @@ function SpaceSchalter({ space, ausAdresse, setzen }: { space: SpaceId; ausAdres
     if (ausAdresse) router.push(spaceVon(anderer).start);
   };
   return (
-    <span className="wachstum-kopf-space" style={{ display: 'inline-flex', alignItems: 'stretch', borderRadius: 999, border: `1px solid ${s.farbe}44`, background: `${s.farbe}12`, color: C.ink, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
-      <button onClick={wechseln} title={`Zu ${spaceVon(anderer).label} wechseln`} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 6px 7px 12px', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', borderRadius: '999px 0 0 999px' }}>
-        <span className="wachstum-kopf-label" style={{ fontSize: 12, color: s.farbe, fontWeight: 700 }}>{s.index.label}</span>
-        <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, color: farbe, fontVariantNumeric: 'tabular-nums' }}>{w?.index != null ? Math.round(w.index) : '—'}</span>
-        {w?.label && <span className="wachstum-kopf-label" style={{ fontSize: 12, color: C.inkDim }}>· {w.label}</span>}
-        {zeit && <span className="wachstum-kopf-label" title={`Heute im ${s.label}-Modus`} style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>· {zeitText(zeit[space] ?? 0)}</span>}
+    <span className="wachstum-kopf-space" style={{ display: 'inline-flex', alignItems: 'stretch', minHeight: 40, borderRadius: 999, border: `1px solid ${s.farbe}44`, background: `${s.farbe}12`, color: C.ink, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+      <button onClick={wechseln} title={`Zu ${spaceVon(anderer).label} wechseln`} className="fassbar kopf-pille-knopf" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 6px 7px 14px', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', borderRadius: '999px 0 0 999px' }}>
+        <span className="wachstum-kopf-label" style={{ fontSize: TYP.bedien, color: s.farbe, fontWeight: 700 }}>{s.index.label}</span>
+        <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, color: farbe, fontVariantNumeric: 'tabular-nums' }}>{w?.index != null ? Math.round(w.index) : '—'}</span>
+        {w?.label && <span className="wachstum-kopf-label" style={{ fontSize: TYP.bedien, color: C.inkDim }}>· {w.label}</span>}
+        {zeit && <span className="wachstum-kopf-label" title={`Heute im ${s.label}-Modus`} style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>· {zeitText(zeit[space] ?? 0)}</span>}
       </button>
-      <Link href={s.index.ziel} title={`${s.index.label} öffnen`} aria-label={`${s.index.label} öffnen`} style={{ display: 'grid', placeItems: 'center', padding: '0 10px 0 2px', color: C.inkLeise, textDecoration: 'none' }}><ArrowUpRight size={14} strokeWidth={2} /></Link>
+      <Link href={s.index.ziel} title={`${s.index.label} öffnen`} aria-label={`${s.index.label} öffnen`} className="kopf-pille-pfeil" style={{ display: 'grid', placeItems: 'center', minWidth: 44, color: C.inkLeise, textDecoration: 'none' }}><ArrowUpRight size={14} strokeWidth={2} /></Link>
     </span>
   );
 }
@@ -165,15 +166,14 @@ function FokusZuordnenKnopf({ wert, setzen }: { wert: Zuordnung; setzen: (z: Zuo
   const gesetzt = !!(wert.aufgabeId || wert.einheit || wert.mandatId);
   return (
     <span ref={feldRef} className="wachstum-kopf-label" style={{ position: 'relative', display: 'inline-flex' }}>
-      <button type="button" onClick={() => setAuf(a => !a)} aria-expanded={auf} aria-label="Fokus einer Aufgabe, einem Mandat oder einer Einheit zuordnen" title={gesetzt ? 'Zuordnung ändern' : 'Einer Aufgabe, einem Mandat oder einer Einheit zuordnen'} className="fassbar"
-        style={{ ...rund(gesetzt), width: 30, height: 30, position: 'relative', cursor: 'pointer', background: 'none' }}>
+      <button type="button" onClick={() => setAuf(a => !a)} aria-expanded={auf} aria-label="Fokus einer Aufgabe, einem Mandat oder einer Einheit zuordnen" title={gesetzt ? 'Zuordnung ändern' : 'Einer Aufgabe, einem Mandat oder einer Einheit zuordnen'} className="fassbar kopf-rund" style={{ ...rund(gesetzt), position: 'relative', cursor: 'pointer', background: 'none', padding: 0 }}>
         <Tag size={14} strokeWidth={1.9} />
       </button>
       {auf && (
         <span role="group" aria-label="Fokus zuordnen" style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, zIndex: 40, display: 'grid', gap: 8, padding: '12px 14px', minWidth: 280, maxWidth: 380, borderRadius: 14, background: C.flaeche, border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 18px 50px -12px rgba(0,0,0,.75)' }}>
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Fokus zuordnen</span>
           <ZuordnungWahl klein wert={wert} setzen={setzen} />
-          <span style={{ fontSize: 12, color: C.inkLeise }}>Zählt auf das Mandat und seine Einheit — sonst auf die Einheit der Aufgabe oder die gewählte.</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Zählt auf das Mandat und seine Einheit — sonst auf die Einheit der Aufgabe oder die gewählte.</span>
         </span>
       )}
     </span>
@@ -239,10 +239,10 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
     const text = titel.length > 22 ? `${titel.slice(0, 21)}…` : titel;
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flex: '0 0 auto', minWidth: 0 }}>
-        <button onClick={stoppen} title={`Fokus „${titel}“ beenden`} className="fassbar fokus-laeuft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, border: `1px solid ${C.aktiv}66`, background: `${C.aktiv}14`, color: C.ink, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+        <button onClick={stoppen} title={`Fokus „${titel}“ beenden`} className="fassbar fokus-laeuft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 14px', minHeight: 40, borderRadius: 999, border: `1px solid ${C.aktiv}66`, background: `${C.aktiv}14`, color: C.ink, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
           <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 8px ${C.aktiv}` }} />
           <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{uhr(sek)}</span>
-          <span className="wachstum-kopf-label" style={{ fontSize: 12, color: C.inkDim }}>{text}</span>
+          <span className="wachstum-kopf-label" style={{ fontSize: TYP.bedien, color: C.inkDim }}>{text}</span>
           <Square size={10} fill="currentColor" strokeWidth={0} style={{ color: C.inkLeise }} />
         </button>
         {teile(laufend.schluessel).space === 'business' && (
@@ -252,50 +252,56 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
     );
   }
   return (
-    <button onClick={starten} title="Fokus starten — bewusste Zeit für diesen Bereich" aria-label="Fokus starten" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div style={rund(false)}><Timer size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: 11, color: C.inkLeise }}>Fokus</span></div>
+    <button onClick={starten} title="Fokus starten — bewusste Zeit für diesen Bereich" aria-label="Fokus starten" className="kopf-knopf" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div className="kopf-rund" style={rund(false)}><Timer size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: TYP.mikro, color: C.inkLeise }}>Fokus</span></div>
     </button>
   );
 }
 
-const rund = (an: boolean) => ({ width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center', border: `2px solid ${an ? C.aktiv : 'rgba(255,255,255,.1)'}`, color: an ? C.aktiv : C.inkDim } as const);
+/** Runder Kopf-Knopf: Größe über `.kopf-rund` (globals.css: 40 px am Rechner, 44 px am Handy), hier nur Farbe/Rand nach Zustand. */
+const rund = (an: boolean) => ({ border: `2px solid ${an ? C.aktiv : 'rgba(255,255,255,.1)'}`, color: an ? C.aktiv : C.inkDim } as const);
 
 export function Kopf() {
   const pfad = usePathname() ?? '';
   const { space, ausAdresse, setzen } = useSpace();
   const sp = spaceVon(space);
+  const handy = useHandy();
   const suchen = () => window.dispatchEvent(new CustomEvent('make-suche', { detail: { space } }));
   return (
+    <>
     <div className="wachstum-kopf os-auf">
       <div className="wachstum-kopf-innen">
         {/* Ganz links der Wachstums-Score als Zahl (Kevin 26.09. spät), dann das Suchfeld ausgeglichen in der Mitte */}
         <WachstumsZahl />
         {/* Suchfeld im aktiven Space — auf dem Handy nur die Lupe. Es gibt zuerst nach (flex-shrink 1000), damit ein laufender
             Fokus-Zähler rechts den Kopf nicht überlaufen lässt (27.09. spät). */}
-        <button onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1000 520px', minWidth: 0, maxWidth: 960, margin: '0 auto', padding: '9px 14px', borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
+        <button onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1000 520px', minWidth: 0, maxWidth: 960, margin: '0 auto', padding: '9px 14px', minHeight: 44, borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
           <Search size={15} strokeWidth={1.9} style={{ flex: '0 0 auto' }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sp.suche}</span>
-          <span className="nur-tastatur" style={{ fontSize: 11, border: '1px solid rgba(255,255,255,.12)', borderRadius: 6, padding: '1px 6px', color: C.inkLeise }}>⌘K</span>
+          <span className="nur-tastatur" style={{ fontSize: TYP.mikro, border: '1px solid rgba(255,255,255,.12)', borderRadius: 6, padding: '1px 6px', color: C.inkLeise }}>⌘K</span>
         </button>
         <div className="wachstum-kopf-saeulen" style={{ display: 'flex', gap: 12, marginLeft: 'auto', alignItems: 'center', minWidth: 0 }}>
-          <button className="wachstum-kopf-lupe" onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div style={rund(false)}><Search size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: 11, color: C.inkLeise }}>Suche</span></div>
+          <button className="wachstum-kopf-lupe kopf-knopf" onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div className="kopf-rund" style={rund(false)}><Search size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: TYP.mikro, color: C.inkLeise }}>Suche</span></div>
           </button>
           {SCHNELL(space).map(({ href, label, Icon, passt }) => {
             const an = passt.some(p => pfad === p || pfad.startsWith(`${p}/`) || (p !== '/os/heute' && pfad.startsWith(p)));
             return (
-              <Link key={href} href={href} title={label} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div style={rund(an)}><Icon size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: 11, color: an ? C.aktiv : C.inkLeise }}>{label}</span></div>
+              <Link key={href} href={href} title={label} aria-label={label} className="kopf-knopf" style={{ textDecoration: 'none', color: 'inherit' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div className="kopf-rund" style={rund(an)}><Icon size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: TYP.mikro, color: an ? C.aktiv : C.inkLeise }}>{label}</span></div>
               </Link>
             );
           })}
           {/* Glocke (28.09. abends): Zuweisungen, Kommentare/Erwähnungen, fällig/überfällig — rot bei Ungelesenem */}
           <Glocke />
           <FokusZaehler pfad={pfad} space={space} />
-          <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.06)', margin: '0 2px' }} />
-          <SpaceSchalter space={space} ausAdresse={ausAdresse} setzen={setzen} />
+          {!handy && <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.06)', margin: '0 2px' }} />}
+          {!handy && <SpaceSchalter space={space} ausAdresse={ausAdresse} setzen={setzen} />}
         </div>
       </div>
     </div>
+    {/* Handy (03.10.): der Index-Schalter steht in einer eigenen, mitlaufenden Zeile — in der Kopfzeile ist neben sieben 44-px-Zielen kein Platz. */}
+    {handy && <div className="kopf-index-zeile"><SpaceSchalter space={space} ausAdresse={ausAdresse} setzen={setzen} /></div>}
+    </>
   );
 }

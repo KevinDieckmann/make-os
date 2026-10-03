@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Knopf, Chip, Leer, Ueberschrift, feld } from '../schlank';
+import { Karte, Knopf, Chip, Leer, Ueberschrift, feld } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import {
   zoeAufgaben, auftraggeberinVon, darfAnZoe, vorschlagZeile, vorschlagAenderungen, standAbweichung, nurGewaehlt, ZOE_STATUS_LABEL,
@@ -53,7 +53,7 @@ export function FreigabeFelder({ inhalt, aufgabe, stand, eigene = [], bestand, g
             <span style={{ color: C.inkLeise }}>{z.label}</span>
             <span style={{ minWidth: 0, overflowWrap: 'anywhere', textDecoration: an ? 'none' : 'line-through' }}>
               {z.alt && <span style={{ color: C.inkDim }}>{z.alt} → </span>}<b style={{ fontWeight: 600 }}>{z.neu}</b>
-              {k && <span role="note" style={{ display: 'block', color: LEUCHT.kritisch, fontSize: 12 }}>⚠ inzwischen geändert: beim Vorschlag {k.damals}, jetzt {k.jetzt}</span>}
+              {k && <span role="note" style={{ display: 'block', color: LEUCHT.kritisch, fontSize: TYP.bedien }}>⚠ inzwischen geändert: beim Vorschlag {k.damals}, jetzt {k.jetzt}</span>}
             </span>
           </label>
         );
@@ -99,7 +99,7 @@ function VorschlagInhalt({ v }: { v: ZoeVorschlagInhalt }) {
       {(v.status || v.deadline) && (
         <div>{v.status && <>Status → <b style={{ color: C.ink }}>{grundVon(v.status).label}</b></>}{v.status && v.deadline && ' · '}{v.deadline && <>Deadline → <b style={{ color: C.ink }}>{v.deadline.slice(8, 10)}.{v.deadline.slice(5, 7)}.{v.deadline.slice(0, 4)}</b></>}</div>
       )}
-      {v.begruendung && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Warum: {v.begruendung}</div>}
+      {v.begruendung && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Warum: {v.begruendung}</div>}
     </div>
   );
 }
@@ -160,10 +160,10 @@ export function ZoeAufgabe({ task: t, ich, personen }: { task: Task; ich: string
             <Knopf onClick={() => tun({ aktion: 'geben', ...(hinweis.trim() ? { hinweis: hinweis.trim() } : {}) }, 'Liegt jetzt bei ZOE — sie bereitet einen Vorschlag vor.')}>
               {status === 'abgelehnt' ? 'Nochmal an ZOE geben' : status === 'freigegeben' ? 'Wieder an ZOE geben' : 'An ZOE geben'}
             </Knopf>
-            {!hinweisAuf && <button onClick={() => setHinweisAuf(true)} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>+ Hinweis</button>}
+            {!hinweisAuf && <button onClick={() => setHinweisAuf(true)} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>+ Hinweis</button>}
           </div>
           {hinweisAuf && hinweisFeld}
-          {!status && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>ZOE bereitet vor (Entwurf, Unteraufgaben, Status/Deadline) — übernommen wird erst nach deiner Freigabe. Sie schickt nichts nach außen.</div>}
+          {!status && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>ZOE bereitet vor (Entwurf, Unteraufgaben, Status/Deadline) — übernommen wird erst nach deiner Freigabe. Sie schickt nichts nach außen.</div>}
         </>
       )}
 
@@ -171,7 +171,7 @@ export function ZoeAufgabe({ task: t, ich, personen }: { task: Task; ich: string
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {meins && <Knopf aus={!ki} onClick={() => tun({ aktion: 'arbeiten', max: 1 }, '')}>ZOE jetzt arbeiten lassen</Knopf>}
           {meins && <Knopf leise onClick={() => tun({ aktion: 'zurueck' }, 'Von ZOE zurückgeholt.')}>Zurückholen</Knopf>}
-          {!ki && <span style={{ fontSize: 12, color: C.inkLeise }}>ZOE kann gerade nicht arbeiten (kein Modell verfügbar).</span>}
+          {!ki && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>ZOE kann gerade nicht arbeiten (kein Modell verfügbar).</span>}
         </div>
       )}
 
@@ -196,7 +196,7 @@ export function ZoeAufgabe({ task: t, ich, personen }: { task: Task; ich: string
                 ? tun({ aktion: 'ablehnen', stapelId: vorschlag.id, nochmal: true, ...(grund.trim() ? { grund: grund.trim() } : {}), ...(hinweis.trim() ? { hinweis: hinweis.trim() } : {}) }, 'Abgelehnt — ZOE versucht es noch einmal.')
                 : setHinweisAuf(true))}>{hinweisAuf ? 'Ablehnen und nochmal' : 'Nochmal mit Hinweis …'}</Knopf>
             </div>
-            <div style={{ fontSize: 12, color: C.inkLeise }}>Freigeben übernimmt: {vorschlagZeile(vorschlag.inhalt)}. Auch im Stapel unter Aufträge & Freigaben.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Freigeben übernimmt: {vorschlagZeile(vorschlag.inhalt)}. Auch im Stapel unter Aufträge & Freigaben.</div>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
@@ -206,8 +206,8 @@ export function ZoeAufgabe({ task: t, ich, personen }: { task: Task; ich: string
         )
       )}
 
-      {status === 'abgelehnt' && meins && vorschlag?.grund && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Abgelehnt: {vorschlag.grund}</div>}
-      {meldung && <div role="status" style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
+      {status === 'abgelehnt' && meins && vorschlag?.grund && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Abgelehnt: {vorschlag.grund}</div>}
+      {meldung && <div role="status" style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
     </div>
   );
 }
@@ -251,7 +251,7 @@ export function ZoeAufgabenSicht({ state, personen, ich, offenId, onOeffnen, i =
             border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', fontFamily: SCHRIFT.text, color: C.ink,
           }}>
             <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: TYP.bedien }}>{t.title}</span>
-            {a && <span style={{ fontSize: 12, color: C.inkLeise }}>{ownerLabel(a, personen)}</span>}
+            {a && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{ownerLabel(a, personen)}</span>}
             <Chip farbe={ZOE_FARBE[t.zoe!.status]}>{ZOE_STATUS_LABEL[t.zoe!.status]}</Chip>
           </button>
         );
@@ -261,8 +261,8 @@ export function ZoeAufgabenSicht({ state, personen, ich, offenId, onOeffnen, i =
   return (
     <Karte i={i} akzent={s.wartet.length ? LEUCHT.achtung : undefined}>
       <Ueberschrift farbe={s.wartet.length ? LEUCHT.achtung : C.inkLeise} rechts={<Knopf aus={!ki || !meineOffen} onClick={arbeiten}>ZOE jetzt arbeiten lassen</Knopf>}>Bei ZOE</Ueberschrift>
-      <div style={{ fontSize: 12.5, color: C.inkLeise }}>ZOE bereitet vor, ihr gebt frei. Sie schickt nichts nach außen und löscht nichts.{!ki ? ' Gerade ist kein Modell verfügbar.' : meineOffen ? ` ${meineOffen} deiner Aufgaben warten auf ihren Lauf.` : ''}</div>
-      {meldung && <div role="status" style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>ZOE bereitet vor, ihr gebt frei. Sie schickt nichts nach außen und löscht nichts.{!ki ? ' Gerade ist kein Modell verfügbar.' : meineOffen ? ` ${meineOffen} deiner Aufgaben warten auf ihren Lauf.` : ''}</div>
+      {meldung && <div role="status" style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
       {!s.alle.length && <Leer>Noch keine Aufgabe bei ZOE. In einer Aufgabe „An ZOE geben“ tippen.</Leer>}
       {s.alle.length > 0 && (
         <>
@@ -280,8 +280,8 @@ export function ZoeAufgabenSicht({ state, personen, ich, offenId, onOeffnen, i =
             return (
               <div key={c.charge} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '8px 2px', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien }}>
                 <span style={{ color: C.ink }}>{c.art === 'sammel' ? 'Sammelfreigabe' : 'ZOE-Lauf'} · {new Date(c.am).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })}</span>
-                <span style={{ color: C.inkLeise, fontSize: 12.5, flex: 1, minWidth: 0 }}>{c.eintraege.length} Übernahme{c.eintraege.length === 1 ? '' : 'n'}{offen < c.eintraege.length ? ` · ${c.eintraege.length - offen} zurückgenommen` : ''}</span>
-                {offen > 0 ? <Knopf leise onClick={() => chargeZurueck(c.charge, offen)}>Charge rückgängig</Knopf> : <span style={{ fontSize: 12, color: LEUCHT.gut }}>zurückgenommen ✓</span>}
+                <span style={{ color: C.inkLeise, fontSize: TYP.bedien, flex: 1, minWidth: 0 }}>{c.eintraege.length} Übernahme{c.eintraege.length === 1 ? '' : 'n'}{offen < c.eintraege.length ? ` · ${c.eintraege.length - offen} zurückgenommen` : ''}</span>
+                {offen > 0 ? <Knopf leise onClick={() => chargeZurueck(c.charge, offen)}>Charge rückgängig</Knopf> : <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>zurückgenommen ✓</span>}
               </div>
             );
           })}

@@ -6,8 +6,8 @@
 // 403 je Kalender, gekürzte Antwort 507). Ab 30 Min. hebt die Anzeige sich ab (Achtung-Farbe) — dieselbe Grenze, ab der
 // die Buchungsseite keine Plätze mehr zeigt (lib/kalender/buchung.ts `standBuchbar`).
 
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { LEUCHT } from '../schlank';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { LEUCHT } from '../ui';
 
 export interface AbgleichInfo { letzter: string | null; vorMin: number | null; veraltet: boolean; fehler?: string; anmeldung?: true; hinweise?: { kalender: string; grund: string }[]; naechsterVersuch?: string }
 
@@ -29,13 +29,13 @@ export function AbgleichStand({ a, quelle = 'iCloud', bezeichnung }: { a?: Abgle
     a.naechsterVersuch ? `Nächster Versuch ${new Date(a.naechsterVersuch).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : '',
   ].filter(Boolean).join(' · ');
   return (
-    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontFamily: SCHRIFT.text, fontSize: 11.5, fontWeight: 500 }}>
+    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 500 }}>
       <span role={warn ? 'status' : undefined} title={titel || undefined}
         style={{ color: warn ? LEUCHT.achtung : C.inkLeise, ...(warn ? { background: `${LEUCHT.achtung}1a`, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '1px 8px' } : {}) }}>
         {bezeichnung ? `${bezeichnung}: ` : ''}{a.anmeldung ? `${quelle}-Anmeldung abgelehnt · ` : a.fehler ? 'Abgleich gescheitert · ' : ''}{abgleichText(a.vorMin)}
       </span>
       {(a.hinweise ?? []).map(h => (
-        <span key={`${h.kalender}:${h.grund}`} role="note" style={{ color: LEUCHT.achtung, fontSize: 11.5 }}>„{h.kalender}“: {h.grund}</span>
+        <span key={`${h.kalender}:${h.grund}`} role="note" style={{ color: LEUCHT.achtung, fontSize: TYP.bedien }}>„{h.kalender}“: {h.grund}</span>
       ))}
     </span>
   );

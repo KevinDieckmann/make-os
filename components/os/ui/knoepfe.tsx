@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { klickSperren, type KlickSperre } from '@/lib/make-one/klick-sperre';
-import { FARBE as C, SCHRIFT, TIEF, LEUCHT, RAND } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TIEF, LEUCHT, RAND, ECKE } from '@/lib/make-one/design';
 
 export type KnopfTon = 'haupt' | 'leise' | 'gut' | 'warn';
 
@@ -205,4 +205,29 @@ function useTastaturHoehe(): number {
     };
   }, []);
   return h;
+}
+
+/**
+ * Abhaken-Kreis mit echter Trefferfläche (03.10., Kern): sichtbar bleibt das 24-px-Feld, tippbar ist ein 44-px-Quadrat (Rechner 40) —
+ * kein Hilfs-Pseudoelement mehr, das sich mit dem Nachbarn überlagert. Dieselbe Optik wie `Haken` (schlank.tsx), Bedeutung der Farbe = Priorität/Zustand.
+ */
+export function HakenZiel({ an, onChange, farbe, label }: { an: boolean; onChange: () => void; farbe?: string; label?: string }) {
+  const f = farbe ?? C.inkLeise;
+  return (
+    <button type="button" onClick={e => { e.stopPropagation(); onChange(); }} aria-pressed={an} className="ui-haken-ziel fassbar"
+      aria-label={label ? `„${label}“ ${an ? 'wieder öffnen' : 'als erledigt markieren'}` : an ? 'erledigt' : 'offen'}>
+      <span aria-hidden style={{ width: 24, height: 24, borderRadius: ECKE.eingabe - 4, display: 'grid', placeItems: 'center', boxSizing: 'border-box', transition: 'background .2s ease', border: `2px solid ${an ? TIEF.rand(LEUCHT.gut) : f}`, background: an ? TIEF.flaeche(LEUCHT.gut) : 'transparent', color: LEUCHT.gut, fontSize: 13, fontWeight: 800 }}>{an ? '✓' : ''}</span>
+    </button>
+  );
+}
+
+/**
+ * Kleiner Symbolknopf (✕, Stift, Mehr ⋯) mit Tippziel 40 px (Handy 44) — Zweitaktionen stehen mit Abstand (`ui-symbole`), gefährliche (löschen) nie
+ * direkt neben der häufigen. `gefahr` färbt die Beschriftung rot, `ariaLabel` ist Pflicht (das Zeichen allein sagt nichts).
+ */
+export function SymbolKnopf({ children, onClick, ariaLabel, titel, gefahr, aus, eingebettet }: { children: ReactNode; onClick?: () => unknown; ariaLabel: string; titel?: string; gefahr?: boolean; aus?: boolean; /** In einer Pille/Chip: das Tippziel ragt über die Pille hinaus, statt sie aufzublähen. */ eingebettet?: boolean }) {
+  return (
+    <button type="button" onClick={() => { void onClick?.(); }} disabled={aus} aria-label={ariaLabel} title={titel ?? ariaLabel} className={`ui-symbol fassbar${eingebettet ? ' ui-symbol-ein' : ''}`}
+      style={{ color: gefahr ? LEUCHT.kritisch : C.inkDim }}>{children}</button>
+  );
 }

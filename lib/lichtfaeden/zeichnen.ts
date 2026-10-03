@@ -1,6 +1,6 @@
 // ─── Lichtfäden — der Zeichner (Canvas 2D, ohne Framework, 03.10.2026) ──────
-// Zeichnet Bündel feiner Fäden entlang einer abgetasteten Leitkurve (band.ts) — für den Zeitstrahl der Planung
-// (lib/lichtfaeden/zeitband.ts) und für den Faden der Website (website/js/faden.js, über die übersetzte Fassung
+// Zeichnet Bündel feiner Fäden entlang einer abgetasteten Leitkurve (band.ts) — für das Fädenband aller Ebenen
+// (lib/lichtfaeden/faedenband.ts) und für den Faden der Website (website/js/faden.js, über die übersetzte Fassung
 // website/js/lichtfaeden.js). Kein WebGL, keine Bibliothek.
 //   · Leistung wie die Neuronen-Bühne: gleiche Farbe + gleiche Deckkraft-Stufe = EIN Path2D und EIN Strich („Eimer“).
 //     Ein Bündel mit 22 Fäden kostet so eine Handvoll Striche statt tausender.

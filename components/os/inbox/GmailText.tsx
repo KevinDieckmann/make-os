@@ -35,7 +35,7 @@ export function GmailText({ text, bilder, gekuerzt, stil }: { text: string; bild
           : <Fragment key={i}>{s.text}</Fragment>))}
       </div>
       {(bilder || gekuerzt) ? (
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>
           {bilder ? `${bilder} ${bilder === 1 ? 'Bild' : 'Bilder'} aus der Mail ${bilder === 1 ? 'wurde' : 'wurden'} nicht geladen (Schutz vor Tracking). ` : ''}
           {gekuerzt ? 'Der Text ist sehr lang und hier gekürzt — den Rest gibt es in Gmail.' : ''}
         </div>

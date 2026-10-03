@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { monatsblatt } from '@/lib/kalender/layout';
 import type { JahrVerdichtet } from '@/lib/kalender/jahr';
-import { LEUCHT } from '../schlank';
+import { LEUCHT } from '../ui';
 import type { KalenderStand } from './teile';
 import { FEIERTAG_FARBE, GEBURTSTAG_FARBE, type QuellTermin } from './quellen';
 
@@ -77,7 +77,7 @@ export function Jahr({ jahr, heute, daten, quellen, kalenderAn, farbe, onTag }: 
           <section key={name} aria-label={`${name} ${jahr}`} style={{ border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, padding: '10px 10px 8px', background: 'rgba(255,255,255,.015)' }}>
             <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 13.5, marginBottom: 6 }}>{name}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, textAlign: 'center' }}>
-              {['M', 'D', 'M', 'D', 'F', 'S', 'S'].map((w, k) => <span key={k} style={{ fontSize: 11, color: C.inkLeise }}>{w}</span>)}
+              {['M', 'D', 'M', 'D', 'F', 'S', 'S'].map((w, k) => <span key={k} style={{ fontSize: 12, color: C.inkLeise }}>{w}</span>)}
               {blatt.slice(0, wochen * 7).map(tag => {
                 const im = Number(tag.slice(5, 7)) === i + 1;
                 if (!im) return <span key={tag} />;
@@ -86,7 +86,7 @@ export function Jahr({ jahr, heute, daten, quellen, kalenderAn, farbe, onTag }: 
                 const titel = [x?.feiertag, ...(x?.geburtstage ?? []).map(g => `Geburtstag: ${g}`), ...(x?.ganztags ?? []), x?.termine ? `${x.termine} Termin${x.termine > 1 ? 'e' : ''}` : ''].filter(Boolean).join(' · ');
                 return (
                   <button key={tag} type="button" onClick={() => onTag(tag)} title={titel || undefined} aria-label={`${Number(tag.slice(8, 10))}. ${name}${titel ? ` — ${titel}` : ''}`}
-                    style={{ position: 'relative', border: 'none', borderRadius: 7, padding: '4px 0 6px', fontSize: 11.5, cursor: 'pointer', fontFamily: SCHRIFT.text, fontVariantNumeric: 'tabular-nums',
+                    style={{ position: 'relative', border: 'none', borderRadius: 7, padding: '4px 0 6px', fontSize: 12, cursor: 'pointer', fontFamily: SCHRIFT.text, fontVariantNumeric: 'tabular-nums',
                       background: h ? LEUCHT.puls : x?.feiertag ? `${FEIERTAG_FARBE}29` : 'transparent', color: h ? '#0b0b0c' : x?.feiertag ? FEIERTAG_FARBE : C.ink, fontWeight: h || x?.feiertag ? 700 : 500 }}>
                     {Number(tag.slice(8, 10))}
                     <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 1, display: 'flex', justifyContent: 'center', gap: 2 }}>

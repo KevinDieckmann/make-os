@@ -16,7 +16,7 @@ import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { FAECHER, FACH, fachVon, absenderKey } from '@/lib/make-one/inbox-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, Punkt, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, Punkt, feld, LEUCHT, SymbolKnopf } from './ui';
 
 // ─── Normalisierte Nachricht (Apple Mail live + M365 Snapshot) ───────────────
 type Source = 'apple' | 'ms';
@@ -80,19 +80,19 @@ const srcColor = (s: Source) => (s === 'apple' ? LEUCHT.geld : LEUCHT.business);
 const srcLabel = (m: Msg) => (m.source === 'apple' ? m.account : 'M365 · KEMARIS');
 
 const wahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark' };
-const textKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 };
+const textKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: 0 };
 const verweis: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', whiteSpace: 'nowrap' };
 
 /** Kürzel-Taste am Knopf — das einzige Monospace der Seite. */
 const Taste = ({ k }: { k: string }) => (
-  <span style={{ fontFamily: SCHRIFT.mono, fontSize: 11, fontWeight: 700, marginLeft: 7, padding: '1px 6px', borderRadius: 6, background: 'rgba(127,127,127,.28)' }}>{k}</span>
+  <span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, fontWeight: 700, marginLeft: 7, padding: '1px 6px', borderRadius: 6, background: 'rgba(127,127,127,.28)' }}>{k}</span>
 );
 
 /** Absender-Kürzel in Quellfarbe; ungelesen leuchtet. */
 const Avatar = ({ m, glanz }: { m: Msg; glanz?: boolean }) => {
   const f = srcColor(m.source);
   return (
-    <span style={{ width: 32, height: 32, borderRadius: 10, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, color: f, background: `${f}22`, boxShadow: glanz ? `0 0 12px ${f}33` : undefined }}>
+    <span style={{ width: 32, height: 32, borderRadius: 10, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontSize: TYP.bedien, fontWeight: 700, color: f, background: `${f}22`, boxShadow: glanz ? `0 0 12px ${f}33` : undefined }}>
       {initials(m.sender)}
     </span>
   );
@@ -516,7 +516,7 @@ export function InboxView() {
         titel={<><span style={{ fontWeight: ungelesen ? 700 : 500 }}>{m.sender}</span><span style={{ color: C.inkLeise, fontWeight: 400 }}> · {m.subject}</span></>}
         unter={[tr?.zeile ? `✨ ${tr.zeile}` : m.preview, tr?.grund, srcLabel(m)].filter(Boolean).join(' · ')}
         rechts={<span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flex: '0 0 auto' }}>
-          <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>
           {istWiedervorlage(m.id) && <Chip farbe={LEUCHT.achtung}>⏰ Wiedervorlage</Chip>}
           {DONE.has(st) && <Chip farbe={C.inkLeise}>{st === 'aufgabe' ? '→ Aufgabe' : st === 'delegiert' ? 'delegiert' : 'erledigt ✓'}</Chip>}
         </span>} />
@@ -565,7 +565,7 @@ export function InboxView() {
             {/* Kopf mit Fortschritt */}
             <Ueberschrift farbe={LEUCHT.gut} rechts={<>
               {!zeroFertig && <span style={{ color: C.ink, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{zero!.pos + 1} von {zero!.queue.length}</span>}
-              <button onClick={() => setZero(null)} title="Beenden (Esc)" aria-label="Beenden" style={textKnopf}>✕</button>
+              <SymbolKnopf onClick={() => setZero(null)} ariaLabel="Beenden">✕</SymbolKnopf>
             </>}>Zero-Durchlauf</Ueberschrift>
             <Fortschritt anteil={zero!.queue.length ? zero!.pos / zero!.queue.length : 0} farbe={LEUCHT.gut} />
 
@@ -577,7 +577,7 @@ export function InboxView() {
                     <Avatar m={zeroMail} />
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: TYP.body, fontWeight: 700 }}>{zeroMail.sender}</div>
-                      <div style={{ fontSize: 12, color: C.inkLeise }}>{srcLabel(zeroMail)} · {relTime(zeroMail.receivedAt)}</div>
+                      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{srcLabel(zeroMail)} · {relTime(zeroMail.receivedAt)}</div>
                     </div>
                     {triage[fpOf(zeroMail)]?.stufe === 'wichtig' && <Chip farbe={LEUCHT.gut}>Wichtig</Chip>}
                   </div>
@@ -633,7 +633,7 @@ export function InboxView() {
                 Lag schon als Aufgabe im Board: <b>{doppelt.titel.slice(0, 70)}</b> — Mail als erledigt markiert, keine zweite Aufgabe angelegt.
               </span>
               <Link href="/os/aufgaben" style={verweis}>zur Aufgabe ›</Link>
-              <button onClick={() => setDoppelt(null)} aria-label="Hinweis schließen" style={textKnopf}>✕</button>
+              <SymbolKnopf onClick={() => setDoppelt(null)} ariaLabel="Hinweis schließen">✕</SymbolKnopf>
             </div>
           </Karte>
         )}
@@ -671,7 +671,7 @@ export function InboxView() {
                   links={<Punkt farbe={LEUCHT.gut} />}
                   titel={<><span style={{ fontWeight: 600 }}>{m.sender}</span><span style={{ color: C.inkLeise, fontWeight: 400 }}> · {m.subject}</span></>}
                   unter={triage[fpOf(m)]?.zeile ? `✨ ${triage[fpOf(m)]!.zeile}` : undefined}
-                  rechts={<span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>} />
+                  rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>} />
               ))}
             </Liste>
           </Karte>
@@ -699,13 +699,13 @@ export function InboxView() {
               </span>
             )}
           </div>
-          {fachFilter !== 'alle' && FACH[fachFilter] && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{FACH[fachFilter].satz}</div>}
+          {fachFilter !== 'alle' && FACH[fachFilter] && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>{FACH[fachFilter].satz}</div>}
         </Karte>
 
         {/* Türsteher: je Absender EINE Entscheidung — danach nie wieder gefragt */}
         {screenerAuf && screener.length > 0 && (
           <Karte i={karte++} akzent={LEUCHT.achtung}>
-            <Ueberschrift farbe={LEUCHT.achtung} rechts={<button onClick={() => setScreenerAuf(false)} aria-label="Türsteher schließen" style={textKnopf}>✕</button>}>Türsteher</Ueberschrift>
+            <Ueberschrift farbe={LEUCHT.achtung} rechts={<SymbolKnopf onClick={() => setScreenerAuf(false)} ariaLabel="Türsteher schließen">✕</SymbolKnopf>}>Türsteher</Ueberschrift>
             <Leer>Wer darf dich erreichen? Einmal entscheiden — Geblockte verschwinden dauerhaft aus dem Postfach.</Leer>
             <div style={{ maxHeight: 340, overflowY: 'auto' }}>
               <Liste>
@@ -734,14 +734,14 @@ export function InboxView() {
                 <Link key={s.id} href={s.href} className="zeile zeile-klick fassbar" style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '11px 6px', margin: '0 -6px', minHeight: 50, borderBottom: `1px solid ${HAAR}`, borderRadius: 10, textDecoration: 'none', color: C.ink }}>
                   <Punkt farbe={s.stufe === 'rot' ? LEUCHT.kritisch : LEUCHT.achtung} />
                   <span style={{ fontSize: TYP.body, fontWeight: 500, flex: 1, minWidth: 0 }}>{s.text}</span>
-                  <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{s.label} ›</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{s.label} ›</span>
                 </Link>
               ))}
               {meldungen.map(l => (
                 <Link key={`${l.agent}-${l.ts}`} href={agentHref(l.agent)} className="zeile zeile-klick fassbar" style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '11px 6px', margin: '0 -6px', minHeight: 50, borderBottom: `1px solid ${HAAR}`, borderRadius: 10, textDecoration: 'none', color: C.ink }}>
                   <Punkt farbe={LEUCHT.agenten} />
                   <span style={{ fontSize: TYP.body, fontWeight: 500, flex: 1, minWidth: 0, color: C.inkDim }}><b style={{ color: C.ink }}>{l.agent}</b> · {l.title}</span>
-                  <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{relTime(l.ts)}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{relTime(l.ts)}</span>
                 </Link>
               ))}
             </Liste>
@@ -771,7 +771,7 @@ export function InboxView() {
                   <Avatar m={selMsg} />
                   <div style={{ minWidth: 0, flex: '1 1 160px' }}>
                     <div style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{selMsg.sender}</div>
-                    {selMsg.senderEmail && <div style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selMsg.senderEmail}</div>}
+                    {selMsg.senderEmail && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selMsg.senderEmail}</div>}
                   </div>
                   {selTriage && <Chip farbe={STUFE_META[selTriage.stufe].farbe}>{STUFE_META[selTriage.stufe].label}</Chip>}
                   {selMsg.importance === 'high' && <Chip farbe={LEUCHT.kritisch}>wichtig</Chip>}
@@ -822,9 +822,9 @@ export function InboxView() {
                         <Knopf onClick={() => openInMail(selMsg)}>In Apple Mail öffnen →</Knopf>
                         <Knopf leise onClick={() => makeDraft(selMsg)}>↻ Neu entwerfen</Knopf>
                         <Knopf leise onClick={() => { navigator.clipboard?.writeText(draftText); setDraftInfo('kopiert.'); }}>Kopieren</Knopf>
-                        {draftInfo && <span style={{ fontSize: 12, color: (draftInfo.startsWith('✓') || draftInfo === 'kopiert.') ? LEUCHT.gut : C.inkLeise }}>{draftInfo}</span>}
+                        {draftInfo && <span style={{ fontSize: TYP.bedien, color: (draftInfo.startsWith('✓') || draftInfo === 'kopiert.') ? LEUCHT.gut : C.inkLeise }}>{draftInfo}</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Versand machst du selbst in Mail — MAKE sendet nie ungefragt.</div>
+                      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Versand machst du selbst in Mail — MAKE sendet nie ungefragt.</div>
                     </div>
                   )}
                 </div>

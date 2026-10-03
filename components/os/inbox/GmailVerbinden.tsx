@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Knopf, LEUCHT } from '../schlank';
+import { Karte, Knopf, LEUCHT } from '../ui';
 import { vorText } from '@/lib/gmail/liste';
 
 export interface GmailMeta {
@@ -69,7 +69,7 @@ export function GmailVerbinden({ meta, onGeaendert, meldung }: { meta: GmailMeta
     onGeaendert();
   };
 
-  const klein = { fontSize: 12.5, color: C.inkLeise } as const;
+  const klein = { fontSize: TYP.bedien, color: C.inkLeise } as const;
   const kasten = hinweis && <div role="status" style={{ fontSize: 13, color: hinweis.achtung ? LEUCHT.achtung : C.ink, background: hinweis.achtung ? `${LEUCHT.achtung}14` : 'rgba(255,255,255,.04)', borderRadius: 9, padding: '8px 10px', marginBottom: 10 }}>{hinweis.text}</div>;
   if (!meta) return kasten || null;
 
