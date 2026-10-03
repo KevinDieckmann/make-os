@@ -17,7 +17,7 @@ import { rollenVon, ROLLE_LABEL, type Kontakt, type Rolle } from '@/lib/make-one
 import { echtesGespraech, OFFENE_STUFEN, STUFEN } from './pipeline';
 import { normiere, type WahlVorschlag } from './wahl';
 import type { DealRolle, Firma, Chance, CrmBestand } from './typen';
-import { leadScore, warmPlus, temperaturLabel } from './score';
+import { leadScore, scoringKontext } from './score';
 import { leereVerteilung, LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
 import { typenVon, kategorienVon } from './mehrfach';
 
@@ -231,7 +231,7 @@ export function anredeVorschlag(k: Pick<Kontakt, 'anrede' | 'kategorie' | 'kateg
 
 // ── Lifecycle (28.09., Kevin: HubSpot-Vorbild) ──────────────────────────────
 /** Was der Lifecycle-Vorschlag vom Bestand braucht — Teilnahmen und Firmen dürfen fehlen. */
-export type LifecycleBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & Partial<Pick<CrmBestand, 'firmen' | 'teilnahmen'>>;
+export type LifecycleBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & Partial<Pick<CrmBestand, 'firmen' | 'teilnahmen' | 'events' | 'scoring'>>;
 
 /** Anfragen landen als Aktivität „antwort“ mit diesem Anfang (wie ANFRAGE_PRAEFIX in marketing.ts — hier ohne Import, sonst ein Kreis über segmente.ts). */
 const ANFRAGE_ANFANG = 'Anfrage über ';
@@ -243,7 +243,7 @@ const tagDE = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
  *   aktives Mandat → Kunde · offener Deal in Angebot/Abschluss → Angebot · sonst offener Deal → Opportunity ·
  *   beendetes Mandat oder gewonnener Deal (ohne aktives Mandat) → Follow Up ·
  *   Lead-Status SQL (Firma vor Person) → SQL · Marketing-Signal (Antwort/Anfrage, beim Event dabei,
- *   Score warm/heiß) → MQL · sonst Lead.
+ *   Marketing-Schwelle der Scoring-Einstellungen erreicht) → MQL · sonst Lead.
  * Deals und Mandate zählen, wenn die Person daran hängt; der Score ist der der Person selbst
  * (mit dem Lead der Firma). Nie still gespeichert — der Wahl-Chip zeigt ihn, ein Klick übernimmt.
  */
@@ -269,8 +269,9 @@ export function lifecycleVorschlag(k: Kontakt, crm: LifecycleBestand | null | un
   if (antwort) return { id: 'mql', grund: `${antwort.text?.startsWith(ANFRAGE_ANFANG) ? 'Anfrage' : 'Antwort'} am ${tagDE(antwort.am.slice(0, 10))}` };
   const dabei = (crm?.teilnahmen ?? []).some(t => t.kontaktId === k.id && t.status === 'da');
   if (dabei) return { id: 'mql', grund: 'war bei einem Event dabei' };
-  const score = leadScore([k], lead, heute);
-  if (warmPlus(score.temperatur)) return { id: 'mql', grund: `Score der Person ${score.punkte} · ${temperaturLabel(score.temperatur)}` };
+  // Marketing-Schwelle (03.10., Scoring-Einstellungen): genug Signale und Interaktionen — dieselbe Rechnung wie in der Akte und der Runde.
+  const mk = leadScore([k], lead, heute, undefined, scoringKontext(crm)).scoring?.marketing;
+  if (mk?.erreicht) return { id: 'mql', grund: `Marketing-Punkte ${mk.punkte} · Schwelle ${mk.schwelle}` };
   return { id: 'lead', grund: 'noch kein Marketing-Signal, kein Deal' };
 }
 

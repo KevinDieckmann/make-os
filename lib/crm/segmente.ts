@@ -4,7 +4,7 @@
 // Kanal-Kriterium zählen nur die, die über diesen Kanal zulässig erreichbar
 // sind (Ampel grün); ohne Kanal zeigt die Auswertung die Aufteilung.
 
-import { leadScore } from './score';
+import { leadScore, scoringKontext } from './score';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Firma, SegmentKriterien } from './typen';
 import { kanalStatus } from './recht';
@@ -27,7 +27,7 @@ export function kontextAus(crm: CrmBestand, heute: string): SegmentKontext {
     mitChance: new Set(crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds)),
     mitMandat: new Set(crm.mandate.filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds)),
     heute,
-    bestand: { mandate: crm.mandate, chancen: crm.chancen, firmen: crm.firmen, teilnahmen: crm.teilnahmen },
+    bestand: { mandate: crm.mandate, chancen: crm.chancen, firmen: crm.firmen, teilnahmen: crm.teilnahmen, events: crm.events, ...(crm.scoring ? { scoring: crm.scoring } : {}) },
   };
 }
 
@@ -55,7 +55,7 @@ export function imSegment(k: Kontakt, kr: SegmentKriterien, ctx: SegmentKontext)
   if (kr.label?.length && !enthaeltEinenVon(labelsVon(k), kr.label)) return false;
   if (kr.mitChance !== undefined && ctx.mitChance.has(k.id) !== kr.mitChance) return false;
   if (kr.ohneKontaktSeitTagen && k.letzterKontakt && tage(k.letzterKontakt, ctx.heute) < kr.ohneKontaktSeitTagen) return false;
-  if (kr.temperatur?.length && !kr.temperatur.includes(leadScore([k], f?.lead ?? k.lead, ctx.heute).temperatur)) return false;
+  if (kr.temperatur?.length && !kr.temperatur.includes(leadScore([k], f?.lead ?? k.lead, ctx.heute, undefined, scoringKontext(ctx.bestand)).temperatur)) return false;
   // Lifecycle (28.09., H4): die gesetzte Phase, sonst „Lead“ — ein Vorschlag zählt nicht.
   if (kr.lifecycle?.length && !kr.lifecycle.includes(lifecycleVon(k, null, ctx.heute).phase)) return false;
   // BEAN (28.09., H4): von Hand, sonst abgeleitet aus Mandaten und Deals. Segmente rechnen überall gleich

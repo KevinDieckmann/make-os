@@ -18,7 +18,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, CrmListe } from './typen';
 import type { Welt } from './traktion';
-import { leads, sqlBereit } from './leads';
+import { leads, salesBereit } from './leads';
 import { nachbereitung } from './erfassen';
 import { faellige, fuerPerson as faelligeFuer } from './followup';
 
@@ -136,9 +136,9 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   if (nachfassen) l.push({ id: 'nachfassen', welt: 'event', titel: 'Gäste nachfassen', anzahl: nachfassen, text: 'die du eingeladen hast oder deren Beziehung du hältst', ziel: { s: 'event' } });
   // Ebene 1 → 2: Leads, die SQL-bereit sind, aber noch keinen Deal haben — und Leads in Qualifizierung.
   const meineLeads = leads(kontakte, crm, heute).filter(z => z.besitzer === person || z.besitzer === BEIDE);
-  const sqlOffen = meineLeads.filter(z => sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
+  const sqlOffen = meineLeads.filter(z => salesBereit(z) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
   if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Schmerz, Entscheider und Budget/Zeitpunkt geklärt', ziel: { s: 'firmen', a: 'leads' } });
-  const inQuali = meineLeads.filter(z => z.status === 'qualifizierung' && !sqlBereit(z.kriterien)).length;
+  const inQuali = meineLeads.filter(z => z.status === 'qualifizierung' && !salesBereit(z)).length;
   if (inQuali) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQuali, text: 'eine Kernfrage klären bringt sie zum SQL', ziel: { s: 'firmen', a: 'leads' } });
   const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, 'sales', person));
   const kpOffen = kampagnen.reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);

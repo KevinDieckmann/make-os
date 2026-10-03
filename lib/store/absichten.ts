@@ -36,9 +36,10 @@ export const GRENZE_VERSUCHE = 3;
 export const HALTEN_TAGE = 30;
 
 /** `buchung` (29.09., K4): Terminbuchung als EIN CRM-Vorgang — Anfrage bzw. Freigabe (lib/kalender/buchung-ablauf.ts).
+ *  `firma-umhaengen` (03.10., Qualifizierung): Lead und Deals zur neuen Firma bzw. Firmen zusammenführen (lib/crm/firma-umhaengen-server.ts).
  *  `wochenplan-uebernahme` (29.09., K5): alte Wochenplan-Blöcke → iCloud-Termine (lib/planung/wochenplan-uebernahme-server.ts). */
-export type AbsichtArt = 'art17' | 'zusammenfuehren' | 'import' | 'kennungen-umzug' | 'kennungen-rueckweg' | 'crm-folgen' | 'angebot-stellen' | 'buchung' | 'wochenplan-uebernahme';
-export const ABSICHT_ARTEN: readonly AbsichtArt[] = ['art17', 'zusammenfuehren', 'import', 'kennungen-umzug', 'kennungen-rueckweg', 'crm-folgen', 'angebot-stellen', 'buchung', 'wochenplan-uebernahme'];
+export type AbsichtArt = 'art17' | 'zusammenfuehren' | 'import' | 'kennungen-umzug' | 'kennungen-rueckweg' | 'crm-folgen' | 'angebot-stellen' | 'buchung' | 'wochenplan-uebernahme' | 'firma-umhaengen';
+export const ABSICHT_ARTEN: readonly AbsichtArt[] = ['art17', 'zusammenfuehren', 'import', 'kennungen-umzug', 'kennungen-rueckweg', 'crm-folgen', 'angebot-stellen', 'buchung', 'wochenplan-uebernahme', 'firma-umhaengen'];
 /**
  * offen          läuft oder wartet auf Wiederaufnahme
  * fertig         alle Schritte abgehakt

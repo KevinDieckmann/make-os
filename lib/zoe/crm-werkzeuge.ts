@@ -565,7 +565,8 @@ async function salesLage(i: Eingabe, s: CrmSicht): Promise<string> {
 }
 
 async function qualifizierungLage(i: Eingabe, s: CrmSicht): Promise<string> {
-  const { leads, zuQualifizieren, trichter, fehltBisSql, KRITERIEN } = await import('@/lib/crm/leads');
+  const { leads, zuQualifizieren, trichter, fehltBisSqlZeile } = await import('@/lib/crm/leads');
+  const { gespraechsFragen, standardScoring } = await import('@/lib/crm/scoring');
   const { temperaturVerteilung } = await import('@/lib/crm/score');
   const { kreisKandidaten } = await import('@/lib/crm/runden');
   const { netzRunde } = await import('@/lib/crm/netzwerk');
@@ -581,8 +582,8 @@ async function qualifizierungLage(i: Eingabe, s: CrmSicht): Promise<string> {
   const koerper = [
     `Trichter: ${Object.entries(tr).map(([a, b]) => `${a} ${typeof b === 'number' ? b : JSON.stringify(b)}`).join(' · ')}`,
     `Temperatur: ${Object.entries(tv).map(([a, b]) => `${a} ${b}`).join(' · ')} · Lifecycle: ${Object.entries(lv.je).map(([a, b]) => `${a} ${b}`).join(' · ')} (${lv.gesetzt} von Hand)`,
-    `Kernfragen: ${KRITERIEN.map(k => `${k.id} = ${k.frage}`).join(' · ')}`,
-    block('Qualifizierungsrunde (dran)', runde.slice(0, anzahl(i.anzahl, 15, 40)).map(z => `- ${z.id} · ${z.name} (${z.art}) · ${z.status} · Score ${z.score.punkte} ${z.score.temperatur} · BEAN ${z.bean} · Kanal ${z.kanal} · fehlt bis SQL: ${fehltBisSql(z.kriterien).join(', ') || 'nichts'}${z.antworten ? ` · Antworten: ${Object.entries(z.antworten).filter(([, v]) => v).map(([a, b]) => `${a}: ${b}`).join(' | ')}` : ''}${z.ohneBesitzer ? ' · ohne Zuständig' : ''}`)),
+    `Fragen im Gespräch (Sales-Scoring; SQL ab ${(crm.scoring ?? standardScoring()).sales.schwelle} Punkten und erfüllten Muss-Kriterien, MQL ab ${(crm.scoring ?? standardScoring()).marketing.schwelle} Marketing-Punkten): ${gespraechsFragen(crm.scoring ?? standardScoring()).map(f => `${f.kriterium.id} = ${f.kriterium.hinweis ?? f.kriterium.name}`).join(' · ')}`,
+    block('Qualifizierungsrunde (dran)', runde.slice(0, anzahl(i.anzahl, 15, 40)).map(z => `- ${z.id} · ${z.name} (${z.art}) · ${z.status} · Score ${z.score.punkte} ${z.score.temperatur} · BEAN ${z.bean} · Kanal ${z.kanal} · fehlt bis SQL: ${fehltBisSqlZeile(z).join(', ') || 'nichts'}${z.antworten ? ` · Antworten: ${Object.entries(z.antworten).filter(([, v]) => v).map(([a, b]) => `${a}: ${b}`).join(' | ')}` : ''}${z.ohneBesitzer ? ' · ohne Zuständig' : ''}`)),
     block('Kreis-Runde (ohne Kreis)', kreis.slice(0, 20).map(x => `- ${x.kontakt.id} ${anzeigename(x.kontakt)} · ${x.grund}${x.wichtig ? ' · wichtig' : ''}`)),
     block(`Vernetzen-Runde (${person})`, netz.karten.slice(0, 20).map(x => `- ${x.kontakt.id} ${anzeigename(x.kontakt)} · ${x.stufe}: ${x.grund}`)),
   ].join('\n\n');

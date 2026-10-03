@@ -38,6 +38,7 @@ export const KONTAKTE_LESER_ERLAUBT: Readonly<Record<string, string>> = {
   'app/api/crm/umzug/route.ts': 'Umzugs-Kopie des ganzen Bestands ins Archiv (Frist 30 Tage).',
   'app/api/crm/stammdaten/route.ts': 'Stammdaten › Datenschutz: Löschfristen, Verbindungsprüfung, Qualität — mit Kennzeichnung.',
   'app/api/state/aenderungen/route.ts': 'Fingerabdrücke im Änderungsprotokoll auflösen — nur Kennungen.',
+  'lib/crm/firma-umhaengen-server.ts': 'Firma wechseln/zusammenführen: braucht die ganze Kartei, um Art. 18 selbst zu prüfen — eine eingeschränkte Person lehnt den Vorgang ab (409), sie wird nie umgehängt.',
   'lib/crm/loeschfristen-lauf.ts': 'Löschfristen — eingeschränkte Personen werden ausdrücklich nicht angefasst.',
   'lib/crm/person-bestaende.ts': 'Art. 15/17 über alle Speicher.',
   'lib/datenschutz/grabsteine.ts': 'Grabsteine nach einem Restore anwenden — jede Person der Kartei prüfen.',
