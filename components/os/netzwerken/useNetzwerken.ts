@@ -7,7 +7,7 @@
 //                      JEDER Seite — beide teilen EINE Warteschlange (`geteilteWarteschlange`)
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { geteilteWarteschlange, type Warteschlange, type WarteEintrag, type SendeErgebnis } from '@/lib/netzwerken/warteschlange';
+import { geteilteWarteschlange, VERWORFEN_KEY, type Warteschlange, type WarteEintrag, type SendeErgebnis, type VerworfenAlt } from '@/lib/netzwerken/warteschlange';
 
 export interface Person { id: string; name: string; kalender: boolean }
 interface Kontext { ich: string | null; personen: Person[]; heute: string; geladen: boolean; offline: boolean }
@@ -59,6 +59,15 @@ export interface QueueStand {
   antworten: Record<string, { kontaktId?: string; eventId?: string; hinweise?: string[]; zusammengefuehrt?: boolean; neu?: boolean; terminUid?: string; terminTag?: string; angebotId?: string; dealId?: string; followupId?: string }>;
 }
 
+/** Was nach 30 Tagen automatisch verworfen wurde, als Merker im Browser (zeigt die Seite, bis es weggeklickt ist). */
+export function verworfenLesen(): VerworfenAlt[] {
+  try { const l = JSON.parse(window.localStorage.getItem(VERWORFEN_KEY) ?? '[]') as unknown; return Array.isArray(l) ? (l as VerworfenAlt[]).filter(x => x && typeof x.name === 'string') : []; } catch { return []; }
+}
+export function verworfenMerken(neu: readonly VerworfenAlt[]): void {
+  if (!neu.length) return;
+  try { window.localStorage.setItem(VERWORFEN_KEY, JSON.stringify([...verworfenLesen(), ...neu].slice(-20))); } catch { /* ohne Speicher */ }
+}
+
 export function useWarteschlange(beiGesendet?: (r: SendeErgebnis) => void) {
   const q = useRef<Warteschlange | null>(null);
   if (!q.current) q.current = geteilteWarteschlange();
@@ -71,6 +80,8 @@ export function useWarteschlange(beiGesendet?: (r: SendeErgebnis) => void) {
   const lesen = useCallback(async () => {
     try {
       const w = q.current!;
+      // Älter als 30 Tage: automatisch verworfen (mit Anzeige) — beim Öffnen und bei jeder Aktualisierung, nicht erst beim Senden.
+      verworfenMerken(await w.altVerwerfen());
       const e = await w.alle();
       if (!lebt.current) return;
       // Was der geteilte Sender (oder ein anderer Aufrufer) gesendet hat, steht in der Warteschlange selbst: Antworten, „neu laden“, Zähler.
@@ -115,5 +126,8 @@ export function useWarteschlange(beiGesendet?: (r: SendeErgebnis) => void) {
   const fehler = stand.eintraege.filter(e => e.status === 'fehler').length;
   // Fiel der Speicher auf dem Gerät aus, liegt die Erfassung nur im Arbeitsspeicher — die Oberfläche sagt dann: Seite offen lassen.
   const nurImRam = q.current!.nurImArbeitsspeicher() && stand.eintraege.length > 0;
-  return { ...stand, wartend, fehler, nurImRam, ablegen, senden, erneut, ohneTermin, verwerfen };
+  const [verworfenAlt, setVerworfenAlt] = useState<VerworfenAlt[]>([]);
+  useEffect(() => { setVerworfenAlt(verworfenLesen()); }, [stand.eintraege]);
+  const verworfenAusblenden = useCallback(() => { try { window.localStorage.removeItem(VERWORFEN_KEY); } catch { /* ohne Speicher */ } setVerworfenAlt([]); }, []);
+  return { ...stand, wartend, fehler, nurImRam, verworfenAlt, verworfenAusblenden, ablegen, senden, erneut, ohneTermin, verwerfen };
 }

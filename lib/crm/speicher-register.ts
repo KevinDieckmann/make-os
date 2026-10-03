@@ -90,14 +90,18 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):
   //   IndexedDB `make-os-netzwerken` (Speicher `warteschlange`) = die Offline-Warteschlange der Erfassungen (lib/netzwerken/warteschlange.ts).
   //   Sie trägt bis zum erfolgreichen Senden den GANZEN Körper der Erfassung — Daten Dritter (Name, Firma, Mail, Telefon, Foto der
-  //   Visitenkarte als Base64, Sprachnotiz) — UNVERSCHLÜSSELT auf dem Gerät (der Browser bietet dort kein Schlüsselmaterial; geschützt nur
-  //   durch Gerätesperre und Browser-Profil). Sie wird je Erfassung gelöscht, sobald der Server sie gespeichert hat (Art. 5 Abs. 1 lit. e:
-  //   kein Vorrat), nie älter als 14 Tage sendbar (`ERFASSUNG_ALTER_TAGE`), und beim ABMELDEN geräumt (`netzwerkenAufraeumen`) — warten noch
-  //   Erfassungen, fragt das Abmelden zuerst, ob gesendet werden soll. Fällt IndexedDB aus (privates Fenster, Speicher voll), liegt die Erfassung
-  //   nur im Arbeitsspeicher der Seite (`ausfallsicher`) und verschwindet beim Schließen — die Oberfläche sagt dann „Bitte Seite offen lassen, bis
-  //   gesendet“. Auf der Server-Seite gilt für das, was ankommt, `crm`/`crm-dateien--*` (oben) und Art. 17 wie für jede Person der Kartei.
-  //   localStorage `make-os-netzwerken-*` hält nur Merker (Event-Wahl, „wer bin ich“, Zähler) ohne Daten Dritter; `make-karten-cache` das
-  //   Offline-Abbild der EIGENEN Visitenkarten. Beides räumt das Abmelden.
+  //   Visitenkarte als Base64, Sprachnotiz). Seit dem 03.10. (netz-recht) liegt dieser Körper dort NUR VERSCHLÜSSELT: AES-GCM mit einem NICHT
+  //   exportierbaren WebCrypto-Schlüssel, der selbst in IndexedDB (Speicher `schluessel`) steckt — wer die Datenbank kopiert, hat ohne den Browser
+  //   nichts; ohne WebCrypto (kein sicherer Kontext) geht die Erfassung in den Arbeitsspeicher, nie unverschlüsselt auf die Platte. Je Erfassung
+  //   wird sie gelöscht, sobald der Server sie gespeichert hat (Art. 5 Abs. 1 lit. e: kein Vorrat); ab 14 Tagen warnt die Oberfläche („senden oder
+  //   verwerfen“), nach 30 Tagen wird sie AUTOMATISCH verworfen (mit Anzeige); der Server nimmt Zeitpunkte nur bis 14 Tage zurück
+  //   (`ERFASSUNG_ALTER_TAGE`). ABMELDEN räumt: warten noch Erfassungen, fragt es zuerst, ob gesendet werden soll; „trotzdem abmelden“ LÖSCHT
+  //   sie samt Datenbank und Schlüssel vom Gerät (klare Warnung) — nur die Erfassung einer anderen Person auf demselben Gerät bleibt für sie
+  //   liegen. Fällt IndexedDB aus (privates Fenster, Speicher voll), liegt die Erfassung nur im Arbeitsspeicher der Seite (`ausfallsicher`) und
+  //   verschwindet beim Schließen — die Oberfläche sagt dann „Bitte Seite offen lassen, bis gesendet“. Auf der Server-Seite gilt für das, was
+  //   ankommt, `crm`/`crm-dateien--*` (oben) und Art. 17 wie für jede Person der Kartei.
+  //   localStorage `make-os-netzwerken-*` hält nur Merker (Event-Wahl, „wer bin ich“, Zähler, Hinweis „nach 30 Tagen verworfen“ mit Name/Datum der
+  //   verworfenen Erfassung) — die Merker räumt das Abmelden; `make-karten-cache` ist das Offline-Abbild der EIGENEN Visitenkarten.
   // ── Haushalt / Geschäft: bewusst ausgenommen ──
   { muster: 'finanzplan', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Rechnungen/Buchungen — Aufbewahrungspflicht § 147 AO / § 257 HGB (Kundenname auf der Rechnung bleibt).' },
   { muster: 'finanzen-plan--*', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanzplan des Haushalts — Rechnungen: Aufbewahrungspflicht § 147 AO / § 257 HGB.' },
