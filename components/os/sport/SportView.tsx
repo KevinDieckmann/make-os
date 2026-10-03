@@ -10,7 +10,7 @@ import { useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Segmente, Leer, LEUCHT } from '../schlank';
+import { Seite, Karte, Segmente, Leer, Hinweis, ZielBezug } from '../ui';
 import { useSport } from './daten';
 import { Einstieg } from './Einstieg';
 import { ZielePlan } from './ZielePlan';
@@ -36,9 +36,11 @@ export function SportView() {
 
   return (
     <Seite titel="Sport" unter={<span>Hyrox · Running · Gym · Erholung — <Link href={WEG.gesundheit()} style={stilLink}>Gesundheit</Link></span>}
-      rechts={<div style={{ maxWidth: '100%', overflowX: 'auto', paddingBottom: 2 }}><Segmente liste={REITER} aktiv={reiter} onWahl={geheZu} /></div>}>
-      {meldung && <div role="status" style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 50, background: C.flaecheHoch, color: C.ink, borderRadius: 999, padding: '10px 18px', fontSize: TYP.bedien, fontWeight: 600, boxShadow: '0 12px 32px rgba(0,0,0,.45)' }}>{meldung}</div>}
-      {fehler && <Karte i={0}><div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler}</div></Karte>}
+      >
+      <Segmente liste={REITER} aktiv={reiter} onWahl={geheZu} />
+      <ZielBezug bereich="training" />
+      {meldung && <div role="status" style={{ position: 'fixed', left: '50%', bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))', transform: 'translateX(-50%)', zIndex: 50, background: C.flaecheHoch, color: C.ink, borderRadius: 999, padding: '10px 18px', fontSize: TYP.bedien, fontWeight: 600, boxShadow: '0 12px 32px rgba(0,0,0,.45)' }}>{meldung}</div>}
+      {fehler && <Hinweis art="kritisch" titel="Der Sport konnte nicht geladen werden">{fehler}</Hinweis>}
       {!d && !fehler && <Karte i={0}><Leer>…</Leer></Karte>}
       {d && !d.stand.einstieg.fertig && <Einstieg heute={d.heute} onFertig={ops => schicke(ops, 'Dein Plan steht.')} />}
       {d && d.stand.einstieg.fertig && (

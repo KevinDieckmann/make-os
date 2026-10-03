@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Segmente, Zahl, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Segmente, Zahl, Hinweis, feld, LEUCHT } from '../ui';
 
 interface Vorschlag { id: string; titel: string; text: string; ziel: 'neu' | 'ergaenzung' | 'regel'; zielNotiz?: string; zielOrdner?: string; begruendung: string; quelle: string; vertraulichkeit: string; erstelltVon: string; erstelltAm: string; status: string; entschiedenVon?: string; entschiedenAm?: string; grund?: string }
 interface IndexStand { ok: boolean; notizen: number; chunks: number; vektoren: number; letzterLauf: string | null; dauerMs: number | null; embeddings?: { aktiv: boolean; modell: string; hinweis: string | null; offen: number } }
@@ -48,8 +48,8 @@ export function Inbox({ ich, oeffne }: { ich: string; oeffne: (id: string) => vo
     <>
       <Karte i={1} akzent={welche === 'offen' && liste?.length ? LEUCHT.achtung : undefined}>
         <Ueberschrift rechts={<Segmente liste={[{ id: 'offen', label: 'Offen' }, { id: 'erledigt', label: 'Angenommen' }, { id: 'abgelehnt', label: 'Abgelehnt' }]} aktiv={welche} onWahl={w => setWelche(w as typeof welche)} />}>Vorschläge von ZOE</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>ZOE schreibt nichts von selbst ins Brain — er legt es hier ab, mit Begründung und Quelle. Annehmen macht daraus Wissen mit deinem Namen dran.</div>
-        {meldung && <div style={{ color: C.inkDim, fontSize: TYP.bedien, marginBottom: 8 }}>{meldung}</div>}
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>ZOE schreibt nichts von selbst ins Brain — er legt es hier ab, mit Begründung und Quelle. Annehmen macht daraus Wissen mit deinem Namen dran.</div>
+        {meldung && <div style={{ marginBottom: 10 }}><Hinweis art="info">{meldung}</Hinweis></div>}
         {liste === null && <Leer>Lese die Inbox …</Leer>}
         {liste && !liste.length && <Leer>{welche === 'offen' ? 'Nichts offen. Die nächtliche Konsolidierung legt hier ab, was der Tag hinterlässt.' : 'Noch nichts.'}</Leer>}
         <Liste>
@@ -62,7 +62,7 @@ export function Inbox({ ich, oeffne }: { ich: string; oeffne: (id: string) => vo
               {offen === v.id && (
                 <div style={{ padding: '6px 2px 14px 26px', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'grid', gap: 8 }}>
                   <div style={{ fontSize: TYP.bedien, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{v.text}</div>
-                  <div style={{ fontSize: 12, color: C.inkLeise }}>Begründung: {v.begruendung || '—'} · Quelle: {v.quelle || '—'}{v.zielNotiz && <> · Ziel: <button onClick={() => oeffne(v.zielNotiz!)} style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.agenten, cursor: 'pointer', font: 'inherit' }}>{v.zielNotiz}</button></>}</div>
+                  <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Begründung: {v.begruendung || '—'} · Quelle: {v.quelle || '—'}{v.zielNotiz && <> · Ziel: <button onClick={() => oeffne(v.zielNotiz!)} style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.agenten, cursor: 'pointer', font: 'inherit' }}>{v.zielNotiz}</button></>}</div>
                   {welche === 'offen' && (
                     <>
                       <input value={grund[v.id] ?? ''} onChange={e => setGrund(g => ({ ...g, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — bleibt am Vorschlag" aria-label="Grund" style={{ ...feld, fontSize: 13 }} />
@@ -86,7 +86,7 @@ export function Inbox({ ich, oeffne }: { ich: string; oeffne: (id: string) => vo
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               <Zahl wert={String(index.notizen)} label="Notizen" /><Zahl wert={String(index.chunks)} label="Abschnitte" /><Zahl wert={String(index.vektoren)} label="Embeddings" farbe={index.vektoren ? LEUCHT.gut : undefined} />
             </div>
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>
               Letzter Abgleich {wann(index.letzterLauf)}{index.dauerMs ? ` (${index.dauerMs} ms)` : ''} · alle 10 Minuten vom Takt. Volltext (FTS5) sofort; Embeddings ({index.embeddings?.modell ?? '—'}) {index.embeddings?.aktiv ? (index.embeddings.hinweis ? `pausiert: ${index.embeddings.hinweis}` : `${index.embeddings.offen} Abschnitte offen`) : 'aus'}.
             </div>
           </>
@@ -95,8 +95,8 @@ export function Inbox({ ich, oeffne }: { ich: string; oeffne: (id: string) => vo
 
       <Karte i={3}>
         <Ueberschrift rechts={<Knopf leise aus={busy === 'kons'} onClick={async () => { setBusy('kons'); const d = await fetch('/api/brain/konsolidierung', { method: 'POST' }).then(r => r.json()).catch(() => ({ ok: false, text: 'Nicht erreichbar.' })); setBusy(null); setMeldung(d.text ?? d.fehler ?? ''); void laden(); void ladeIndex(); }}>{busy === 'kons' ? 'läuft …' : 'Jetzt verdichten'}</Knopf>}>Nächtliche Konsolidierung</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim }}>Ab 21 Uhr verdichtet ZOE den Tag — neue Fakten, sein Log, geänderte Protokolle — zu höchstens fünf Vorschlägen. Ohne KI-Guthaben als Regelwerk (die Fakten des Tages als ein Vorschlag).</div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Zuletzt: {konsolidierung?.letzterTag ?? 'noch nie'}{konsolidierung?.letztesErgebnis ? ` · ${konsolidierung.letztesErgebnis}` : ''}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Ab 21 Uhr verdichtet ZOE den Tag — neue Fakten, sein Log, geänderte Protokolle — zu höchstens fünf Vorschlägen. Ohne KI-Guthaben als Regelwerk (die Fakten des Tages als ein Vorschlag).</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Zuletzt: {konsolidierung?.letzterTag ?? 'noch nie'}{konsolidierung?.letztesErgebnis ? ` · ${konsolidierung.letztesErgebnis}` : ''}</div>
       </Karte>
     </>
   );

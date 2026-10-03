@@ -5,7 +5,7 @@
 
 import Link from 'next/link';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { MeldenKnopf } from './Leiste';
 import { TYP } from '@/lib/make-one/design';

@@ -152,6 +152,20 @@ export function Reiter<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv
   );
 }
 
+/**
+ * Ein/Aus-Schalter (Rolle switch): sichtbar klein und ruhig (40 × 24), die Tippfläche 56 × 44 — Standard für Routinen, Freigaben, Einstellungen.
+ * Farbe der Schiene im „an“-Zustand = Bereichsfarbe (Standard Aktiv-Türkis).
+ */
+export function Schalter({ an, onChange, aus, farbe = C.aktiv, ariaLabel, titel }: { an: boolean; onChange?: () => void; aus?: boolean; farbe?: string; ariaLabel?: string; titel?: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={an} aria-label={ariaLabel} title={titel} onClick={onChange} disabled={aus} className="treffer44 ui-schalter"
+      style={{ width: 56, height: 44, minHeight: 44, border: 'none', padding: 0, position: 'relative', flex: '0 0 auto', background: 'none', cursor: aus ? 'default' : 'pointer' }}>
+      <span aria-hidden style={{ position: 'absolute', top: 10, left: 8, width: 40, height: 24, borderRadius: 12, background: an ? farbe : C.linie, transition: 'background .18s ease' }} />
+      <span aria-hidden style={{ position: 'absolute', top: 13, left: an ? 27 : 11, width: 18, height: 18, borderRadius: '50%', background: an ? C.grund : C.inkDim, transition: 'left .18s cubic-bezier(.22,1,.36,1)' }} />
+    </button>
+  );
+}
+
 /** Die Hauptaktion des Schritts: am Handy unten mitlaufend (globals.css › .ui-aktion), sonst ganz normal am Ende. */
 export function Aktionsleiste({ children }: { children: ReactNode }) {
   const ueber = useTastaturHoehe();

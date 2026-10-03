@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT, TIEF } from '@/lib/make-one/design';
-import { Karte, Knopf, Chip, Fortschritt } from '../schlank';
+import { Karte, Knopf, Chip, Fortschritt } from '../ui';
 import { Feld, Raster, Zeitfeld, Zahlfeld, Hinweis, klein, SPORT_FARBE, de } from './teile';
 import { WOCHENTAGE, WOCHENTAG_LABEL, PLAN_LABEL, neueId, type Disziplin, type Op, type PlanArt, type Woche } from '@/lib/sport/modell';
 import { vorschlagWoche, planUmfang, wochenBis } from '@/lib/sport/plan';
@@ -59,7 +59,7 @@ export function Einstieg({ heute, onFertig }: { heute: string; onFertig: (ops: O
 
   const SCHRITTE = ['Ziel', 'Datum & Zeit', 'Ausgang', 'Woche', 'Fertig'];
   return (
-    <Karte i={0} akzent={farbe}>
+    <Karte i={0} ton={farbe}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.titel }}>Dein Start</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{SCHRITTE.map((s, i) => <Chip key={s} farbe={i === schritt ? farbe : i < schritt ? C.inkDim : C.inkLeise}>{i + 1} · {s}</Chip>)}</div>
@@ -73,7 +73,7 @@ export function Einstieg({ heute, onFertig }: { heute: string; onFertig: (ops: O
             {ZIELE.map(z => (
               <button key={z.id} type="button" onClick={() => setArt(z.id)} aria-pressed={art === z.id} className="fassbar" style={{ textAlign: 'left', padding: 16, borderRadius: 14, cursor: 'pointer', border: `1px solid ${art === z.id ? TIEF.rand(FARBE_JE[z.id]) : 'rgba(255,255,255,.08)'}`, background: art === z.id ? TIEF.flaeche(FARBE_JE[z.id]) : 'rgba(255,255,255,.03)', color: C.ink }}>
                 <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, color: art === z.id ? FARBE_JE[z.id] : C.ink }}>{z.titel}</div>
-                <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 4, lineHeight: 1.45 }}>{z.text}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4, lineHeight: 1.45 }}>{z.text}</div>
               </button>
             ))}
           </div>
@@ -151,10 +151,10 @@ export function WochenRaster({ woche, onWoche }: { woche: Woche; onWoche: (w: Wo
         return (
           <div key={t} style={{ borderRadius: 12, padding: 10, background: p.art === 'frei' ? 'rgba(255,255,255,.03)' : TIEF.flaeche(f), border: `1px solid ${p.art === 'frei' ? 'rgba(255,255,255,.06)' : `${f}40`}` }}>
             <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 13, color: p.art === 'frei' ? C.inkLeise : f, marginBottom: 6 }}>{WOCHENTAG_LABEL[t]}</div>
-            <select value={p.art} aria-label={`${WOCHENTAG_LABEL[t]}: Art`} onChange={e => onWoche({ ...woche, [t]: { ...p, art: e.target.value as PlanArt, dauerMin: ['ruhe', 'frei'].includes(e.target.value) ? undefined : (p.dauerMin ?? 45) } })} style={{ ...klein, padding: '6px 8px', fontSize: 12.5, colorScheme: 'dark' }}>
+            <select value={p.art} aria-label={`${WOCHENTAG_LABEL[t]}: Art`} onChange={e => onWoche({ ...woche, [t]: { ...p, art: e.target.value as PlanArt, dauerMin: ['ruhe', 'frei'].includes(e.target.value) ? undefined : (p.dauerMin ?? 45) } })} style={{ ...klein, padding: '6px 8px', fontSize: TYP.bedien, colorScheme: 'dark' }}>
               {ARTEN.map(a => <option key={a} value={a}>{PLAN_LABEL[a]}</option>)}
             </select>
-            {p.art !== 'ruhe' && p.art !== 'frei' && <input type="number" min={10} max={300} step={5} value={p.dauerMin ?? ''} aria-label={`${WOCHENTAG_LABEL[t]}: Minuten`} onChange={e => onWoche({ ...woche, [t]: { ...p, dauerMin: Number(e.target.value) || undefined } })} placeholder="min" style={{ ...klein, padding: '6px 8px', fontSize: 12.5, marginTop: 6 }} />}
+            {p.art !== 'ruhe' && p.art !== 'frei' && <input type="number" min={10} max={300} step={5} value={p.dauerMin ?? ''} aria-label={`${WOCHENTAG_LABEL[t]}: Minuten`} onChange={e => onWoche({ ...woche, [t]: { ...p, dauerMin: Number(e.target.value) || undefined } })} placeholder="min" style={{ ...klein, padding: '6px 8px', fontSize: TYP.bedien, marginTop: 6 }} />}
           </div>
         );
       })}

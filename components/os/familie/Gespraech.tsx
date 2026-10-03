@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Liste, Zeile, Haken, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Liste, Zeile, Haken, Reiter, LEUCHT } from '../ui';
 import { AGENDA } from '@/lib/familie/katalog';
 import type { Gespraech as G } from '@/lib/familie/typen';
 import { type FamilieApi, datumLang } from './daten';
@@ -62,13 +62,12 @@ export function Gespraech({ api, onZu }: { api: FamilieApi; onZu: () => void }) 
   );
 
   return (
-    <Karte i={0} akzent={ROSA}>
+    <Karte i={0} ton={ROSA}>
       <Ueberschrift farbe={ROSA} rechts={<Symbol titel="Schließen" onClick={onZu}>✕</Symbol>}>Paar-Gespräch · {datumLang(g.datum)}</Ueberschrift>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
-        {AGENDA.map((x, i) => (
-          <button key={x.id} onClick={() => { setSchritt(i); setEnde(false); }} style={{ fontSize: 12, fontWeight: 600, padding: '6px 11px', borderRadius: 999, cursor: 'pointer', border: 'none', background: !ende && i === schritt ? ROSA : i < schritt || ende ? `${ROSA}22` : 'rgba(255,255,255,.05)', color: !ende && i === schritt ? C.grund : i < schritt || ende ? ROSA : C.inkDim }}>{i + 1} · {x.titel}</button>
-        ))}
-        <button onClick={() => setEnde(true)} style={{ fontSize: 12, fontWeight: 600, padding: '6px 11px', borderRadius: 999, cursor: 'pointer', border: 'none', background: ende ? ROSA : 'rgba(255,255,255,.05)', color: ende ? C.grund : C.inkDim }}>Abschluss</button>
+      <div className="ui-reiter-zeile" style={{ marginBottom: 14 }}>
+        <Reiter ariaLabel="Schritte des Paar-Gesprächs" farbe={ROSA} aktiv={ende ? 'ende' : AGENDA[schritt]?.id}
+          liste={[...AGENDA.map((x, i) => ({ id: x.id as string, label: `${i + 1} · ${x.titel}` })), { id: 'ende', label: 'Abschluss' }]}
+          onWahl={id => { if (id === 'ende') setEnde(true); else { setSchritt(AGENDA.findIndex(x => x.id === id)); setEnde(false); } }} />
       </div>
 
       {!ende ? (

@@ -7,10 +7,10 @@
 // Team einmal einzutragen. Keine automatische Übernahme aus alten Ständen.
 
 import { useState } from 'react';
-import { FARBE as C } from '@/lib/make-one/design';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { useTeam } from '@/hooks/useTeam';
 import { KURZ_OK, kurzAus, type TeamEintrag, type TeamPerson } from '@/lib/make-one/team-typen';
-import { Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Leer, feld, LEUCHT } from './schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Leer, feld, LEUCHT } from './ui';
 import { neueKennung } from '@/lib/kennung';
 
 type Entwurf = { id?: string; name: string; kurz: string; rolle: string; bereich: string; email: string; kreis: 'kern' | 'partner'; aktiv: boolean; stand?: string; konto: boolean };
@@ -73,7 +73,7 @@ export function TeamKarte({ i = 3 }: { i?: number }) {
           </div>
         </div>
       )}
-      {meldung && <p style={{ fontSize: 12, color: LEUCHT.achtung, margin: '0 0 8px' }}>{meldung}</p>}
+      {meldung && <p style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, margin: '0 0 8px' }}>{meldung}</p>}
       <Liste>
         {[...kern, ...partner].map(p => (
           <Zeile key={p.id}
@@ -90,7 +90,7 @@ export function TeamKarte({ i = 3 }: { i?: number }) {
             } />
         ))}
       </Liste>
-      <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0' }}>Die Grundlage für jede Delegation. Kevin und Malin kommen aus den Konten; das Kurzwort steht im Marker „Delegiert an …“.</p>
+      <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '10px 0 0' }}>Die Grundlage für jede Delegation. Kevin und Malin kommen aus den Konten; das Kurzwort steht im Marker „Delegiert an …“.</p>
     </Karte>
   );
 }

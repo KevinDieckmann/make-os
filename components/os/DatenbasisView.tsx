@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, Fortschritt, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, Fortschritt, LEUCHT } from './ui';
 
 type Ton = 'ok' | 'acht' | 'fehlt' | 'neutral';
 const TON_FARBE: Record<Ton, string> = { ok: LEUCHT.gut, acht: LEUCHT.achtung, fehlt: LEUCHT.kritisch, neutral: C.inkLeise };
@@ -120,7 +120,7 @@ export function DatenbasisView() {
   return (
     <Seite titel="Datenbasis" unter={<>Eine Wahrheit, drei Ebenen: <b style={{ color: C.ink, fontWeight: 600 }}>eingeben</b> was nur ihr wisst, <b style={{ color: C.ink, fontWeight: 600 }}>verbinden</b> was automatisch fließen kann, <b style={{ color: C.ink, fontWeight: 600 }}>Agenten</b> arbeiten lassen. Jede Zeile springt direkt ins richtige Feld.</>}>
       {/* Ampel-Kopf */}
-      <Karte i={0} akzent={zeilen ? ampel : undefined}>
+      <Karte i={0} ton={zeilen ? ampel : undefined}>
         <Ueberschrift farbe={zeilen ? ampel : C.inkLeise} rechts={zeilen ? `${gepflegtN} von ${zeilen.length} gepflegt` : undefined}>Was das System trägt</Ueberschrift>
         {!zeilen ? (
           <Leer>prüfe die Stores …</Leer>
@@ -181,7 +181,7 @@ export function DatenbasisView() {
           <Zahl wert={agenten ? String(agenten.live) : undefined} label="Agenten live" farbe={LEUCHT.agenten} />
           <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: '1 1 220px' }}>Autonomie, Modell & Freigaben je Agent einstellbar</span>
         </div>
-        <p style={{ fontSize: 12, color: C.inkLeise, margin: '16px 0 0', lineHeight: 1.55 }}>
+        <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '16px 0 0', lineHeight: 1.55 }}>
           Faustregel: Rot heute klären · Gelb diese Woche · Grün läuft. Das Finanz-Uhrwerk (2× im Monat) und das Tagesritual halten die Basis danach von selbst frisch.
         </p>
       </Karte>

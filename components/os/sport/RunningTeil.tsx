@@ -3,7 +3,7 @@
 // ─── Sport — Running: Läufe, Wochenkilometer, Bestzeiten, Zielpace ──────────
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, LEUCHT } from '../ui';
 import { Feld, Raster, Zeitfeld, Zahlfeld, Pillen, Skala, Hinweis, Weg, klein, de, datumLang, datumKurz, SPORT_FARBE } from './teile';
 import { paceSekProKm, formatPace, formatZeit, wochenKilometer, kmTrend, bestzeiten, riegel, zielPace, trainingsPaces } from '@/lib/sport/pace';
 import { LAUF_ARTEN, neueId, type Lauf, type LaufArt, type Op, type SportStand } from '@/lib/sport/modell';
@@ -25,7 +25,7 @@ export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heut
 
   return (
     <>
-      <Karte i={0} akzent={F}>
+      <Karte i={0} ton={F}>
         <Ueberschrift farbe={F} rechts={trend != null ? `Trend ${trend > 0 ? '+' : ''}${trend} % (4 gegen 4 Wochen)` : undefined}>Wochenkilometer · 12 Wochen</Ueberschrift>
         <Balken werte={wochen.map(w => (w.km ? w.km : null))} max={Math.max(1, ...wochen.map(w => w.km))} farbe={F} hoehe={56} titel={wochen.map(w => `ab ${datumKurz(w.montag)} · ${de(w.km)} km · ${w.laeufe} Läufe`)} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, marginTop: 14 }}>
@@ -48,7 +48,7 @@ export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heut
           {[{ d: 5, b: best5, label: '5 km' }, { d: 10, b: best10, label: '10 km' }, { d: 21.1, b: best21, label: 'Halbmarathon' }].map(x => (
             <div key={x.d}>
               <Zahl wert={x.b ? formatZeit(x.b.sek) : undefined} label={x.label} farbe={F} />
-              <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 2 }}>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>
                 {x.b ? `${formatPace(paceSekProKm(x.d, x.b.sek))} min/km · ${datumKurz(x.b.datum)}${x.b.hochgerechnet ? ' · hochgerechnet' : ''}`
                   : x.d === 10 && best5 ? `≈ ${formatZeit(riegel(best5.sek, 5, 10))} aus 5 km (Riegel)`
                   : x.d === 21.1 && best10 ? `≈ ${formatZeit(riegel(best10.sek, 10, 21.1))} aus 10 km (Riegel)`
@@ -68,10 +68,10 @@ export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heut
           <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <button type="button" onClick={() => { setBearbeite(l); setOffen(false); }} style={{ all: 'unset', cursor: 'pointer', fontSize: TYP.body, fontWeight: 500 }}>{datumLang(l.datum)} · {de(l.distanzKm, 2)} km</button>
-              <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatZeit(l.dauerSek)}{l.gefuehl ? ` · Gefühl ${l.gefuehl}/5` : ''}{l.quelle !== 'hand' ? ` · ${l.quelle}` : ''}{l.notiz ? ` · ${l.notiz}` : ''}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatZeit(l.dauerSek)}{l.gefuehl ? ` · Gefühl ${l.gefuehl}/5` : ''}{l.quelle !== 'hand' ? ` · ${l.quelle}` : ''}{l.notiz ? ` · ${l.notiz}` : ''}</div>
             </div>
             <Chip farbe={l.art === 'intervall' || l.art === 'tempo' || l.art === 'wettkampf' ? F : C.inkDim}>{ART_LABEL[l.art]}</Chip>
-            <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, fontVariantNumeric: 'tabular-nums' }}>{formatPace(paceSekProKm(l.distanzKm, l.dauerSek))}<span style={{ fontSize: 11, color: C.inkLeise, fontWeight: 500 }}> /km</span></span>
+            <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, fontVariantNumeric: 'tabular-nums' }}>{formatPace(paceSekProKm(l.distanzKm, l.dauerSek))}<span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 500 }}> /km</span></span>
             <Weg onClick={() => { if (confirm('Lauf entfernen?')) void schicke([{ op: 'lauf-weg', id: l.id }], 'Entfernt.'); }} />
           </div>
         ))}
@@ -90,7 +90,7 @@ function LaufFormular({ heute, start, onSpeichern, onAbbruch }: { heute: string;
         <Feld label="Datum"><input type="date" value={l.datum} max={heute} onChange={e => setL(x => ({ ...x, datum: e.target.value }))} style={{ ...klein, colorScheme: 'dark' }} /></Feld>
         <Feld label="Distanz"><Zahlfeld wert={l.distanzKm} onWert={n => setL(x => ({ ...x, distanzKm: n }))} einheit="km" placeholder="z. B. 8,5" /></Feld>
         <Feld label="Zeit"><Zeitfeld wert={l.dauerSek} onWert={n => setL(x => ({ ...x, dauerSek: n }))} placeholder="mm:ss" /></Feld>
-        <Feld label="Pace"><div style={{ ...klein, color: pace ? C.ink : C.inkLeise, fontFamily: SCHRIFT.display, fontWeight: 700 }}>{formatPace(pace)} <span style={{ fontSize: 11, color: C.inkLeise, fontWeight: 500 }}>min/km</span></div></Feld>
+        <Feld label="Pace"><div style={{ ...klein, color: pace ? C.ink : C.inkLeise, fontFamily: SCHRIFT.display, fontWeight: 700 }}>{formatPace(pace)} <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 500 }}>min/km</span></div></Feld>
         <Feld label="Art" breit><Pillen liste={LAUF_ARTEN} wert={l.art} onWert={art => setL(x => ({ ...x, art }))} farbe={F} /></Feld>
         <Feld label="Gefühl (1 zäh … 5 fliegt)" breit><Skala wert={l.gefuehl} onWert={n => setL(x => ({ ...x, gefuehl: n }))} /></Feld>
         <Feld label="Notiz" breit><input value={l.notiz ?? ''} onChange={e => setL(x => ({ ...x, notiz: e.target.value || undefined }))} placeholder="Strecke, Wetter, was auffiel" style={klein} /></Feld>

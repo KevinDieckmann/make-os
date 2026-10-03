@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Hinweis, feld, LEUCHT } from './ui';
 
 interface Vorschlag {
   id: string; zeit: string; werkzeug: string; gruppe: string;
@@ -73,7 +73,7 @@ const HAAR = 'rgba(255,255,255,.07)';
 const uhr = (iso: string) => { try { return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
 /** Leiser Textknopf in einer Zeile — „vergessen", wie im schlanken Stapel. */
-const textKnopf: React.CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 };
+const textKnopf: React.CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: 0 };
 const zahlStil: React.CSSProperties = { fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em', fontSize: TYP.body };
 
 export function StapelView() {
@@ -198,10 +198,10 @@ export function StapelView() {
 
   return (
     <Seite titel="Aufträge & Freigaben · voll" unter="Alles, was ZOE vorbereitet hat — mit Protokoll, Rückgängig und Feldern zum Ändern."
-      rechts={<Link href="/os/stapel" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Schlanker Stapel ›</Link>}>
+      rechts={<Knopf leise href="/os/stapel">Schlanker Stapel ›</Knopf>}>
 
       {/* ── Der Kopf: die eine Zahl, der Satz dazu, der große Knopf ── */}
-      <Karte i={n++} akzent={laedt ? undefined : offen.length ? LEUCHT.achtung : LEUCHT.gut}>
+      <Karte i={n++} ton={laedt ? undefined : offen.length ? LEUCHT.achtung : LEUCHT.gut}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap' }}>
           <Zahl gross wert={laedt || offen.length === 0 ? undefined : String(offen.length)}
             label={laedt ? 'lädt …' : offen.length === 0 ? 'nichts offen' : offen.length === 1 ? 'Vorschlag offen' : 'Vorschläge offen'}
@@ -225,7 +225,7 @@ export function StapelView() {
         </div>
       </Karte>
 
-      {meldung && <div style={{ fontSize: TYP.bedien, color: C.aktiv, padding: '0 2px' }}>{meldung}</div>}
+      {meldung && <Hinweis art="info" rolle="status">{meldung}</Hinweis>}
 
       {/* ── Was gerade läuft ────────────────────────────────────────────
           Nur sichtbar, wenn wirklich etwas läuft oder gerade fertig wurde.
@@ -274,7 +274,7 @@ export function StapelView() {
                 <div key={v.id} style={{ padding: '12px 2px 16px', borderBottom: idx < drin.length - 1 ? `1px solid ${HAAR}` : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 600, letterSpacing: '-.01em', color: C.ink }}>{v.titel}</span>
-                    <span style={{ fontSize: 12, color: C.inkLeise }}>{uhr(v.zeit)}</span>
+                    <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{uhr(v.zeit)}</span>
                   </div>
 
                   {/* Vorher → Nachher: aus demselben Lesevorgang wie die Ausführung */}
@@ -363,9 +363,9 @@ export function StapelView() {
               </div>
               {kosten.jeZweck.slice(0, 3).map(z => (
                 <div key={z.zweck} style={{ display: 'grid', gridTemplateColumns: 'minmax(80px,130px) 1fr auto', alignItems: 'center', gap: 10, padding: '4px 0' }}>
-                  <span style={{ fontSize: 12.5, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.zweck}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.zweck}</span>
                   <Fortschritt anteil={z.cent / Math.max(kosten.jeZweck[0]?.cent ?? 1, 1)} farbe={LEUCHT.geld} />
-                  <span style={{ fontFamily: SCHRIFT.display, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: C.inkDim, textAlign: 'right', whiteSpace: 'nowrap' }}>{(z.cent / 100).toFixed(2)} $ · {z.anzahl}×</span>
+                  <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: C.inkDim, textAlign: 'right', whiteSpace: 'nowrap' }}>{(z.cent / 100).toFixed(2)} $ · {z.anzahl}×</span>
                 </div>
               ))}
             </Karte>

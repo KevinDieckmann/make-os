@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Knopf, LEUCHT } from './schlank';
+import { Knopf, Hinweis, LEUCHT } from './ui';
 
 interface Ergebnis { ok: boolean; error?: string; quelle?: string; tage?: number; neu?: number; von?: string; bis?: string; letzter?: { rec?: number; sleep?: number; hrv?: number; rhr?: number } }
 
@@ -58,11 +58,11 @@ export function WhoopImport({ onFertig, kurz }: { onFertig?: () => void; kurz?: 
         <input ref={datei} type="file" accept=".zip,.csv" onChange={gewaehlt} style={{ display: 'none' }} />
       </div>
       {ergebnis && (
-        <div style={{ fontSize: TYP.bedien, lineHeight: 1.5, color: ergebnis.ok ? LEUCHT.gut : LEUCHT.kritisch }}>
+        <Hinweis art={ergebnis.ok ? 'gut' : 'kritisch'}>
           {ergebnis.ok
             ? <>Eingelesen: {ergebnis.tage} Tage bis {datum(ergebnis.bis)}{ergebnis.neu ? `, ${ergebnis.neu} neu` : ', alle schon bekannt'}.{ergebnis.letzter?.rec != null && <> Letzter Tag: Recovery {ergebnis.letzter.rec} %{ergebnis.letzter.sleep != null && `, Schlaf ${String(ergebnis.letzter.sleep).replace('.', ',')} h`}.</>}</>
             : ergebnis.error}
-        </div>
+        </Hinweis>
       )}
     </div>
   );

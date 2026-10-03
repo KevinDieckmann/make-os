@@ -24,7 +24,7 @@ import {
   gerichteFiltern, tagsHaeufig, imPlan, gerichtZuName, zutatenAusText, schritteAusText,
   type ErnaehrungFile, type Mahlzeiten, type Tag, type Mahlzeit, type Op, type Gericht, type EinkaufPosten, type Profil, type Kategorie, type PlanGerichte,
 } from '@/lib/ernaehrung/modell';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT, useBreit } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT, useBreit, Hinweis } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { bildVerkleinern } from '@/lib/bilder/client';
 
@@ -171,7 +171,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
     void patch([{ liste: 'einkauf', op: 'upsert', eintrag: { ...postenAus(t, daten.lebensmittel, { menge, quelle: 'hand', ...extra }) } }]);
   }
 
-  if (fehler) return <Karte i={0}><Leer>{fehler}</Leer></Karte>;
+  if (fehler) return <Hinweis art="kritisch" titel="Die Ernährung konnte nicht geladen werden">{fehler}</Hinweis>;
   if (!daten) return eingebettet ? <Leer>lade …</Leer> : <Seite titel="Ernährung" unter="Die Woche, die ihr durchhaltet."><Karte i={0}><Leer>lade …</Leer></Karte></Seite>;
 
   const heuteIdx = (new Date().getDay() + 6) % 7;
@@ -193,7 +193,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
     <Flaeche seite="ernaehrung">
         {/* ── Essens-Woche ── */}
         <Kachel id="woche" titel="Essens-Woche" breite={4}>
-        <Karte i={0} akzent={LEUCHT.gut}>
+        <Karte i={0} ton={LEUCHT.gut}>
           <Ueberschrift farbe={geplantN >= 15 ? LEUCHT.gut : LEUCHT.achtung} rechts={<Chip farbe={geplantN >= 15 ? LEUCHT.gut : C.inkLeise}>{geplantN}/21 geplant</Chip>}>Essens-Woche</Ueberschrift>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
             <Knopf onClick={zoePlant} aus={denkt} farbe={LEUCHT.agenten}>{denkt ? 'ZOE plant …' : '✨ ZOE plant die Woche'}</Knopf>
@@ -239,7 +239,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
               </div>
             ))}
           </div>
-          {vorschlag && <p style={{ fontSize: 12, color: LEUCHT.achtung, margin: '10px 0 0' }}>Vorschau — mit „Übernehmen“ wird sie euer Plan.</p>}
+          {vorschlag && <p style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, margin: '10px 0 0' }}>Vorschau — mit „Übernehmen“ wird sie euer Plan.</p>}
         </Karte>
         </Kachel>
 
@@ -290,7 +290,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
               onKeyDown={e => { if (e.key === 'Enter' && neuGericht.trim() && !rezeptLaeuft) { setFormular(null); void gerichtVonZoe(neuGericht.trim(), '', ''); } }}
               placeholder={rezeptLaeuft ? `ZOE schreibt „${neuGericht.trim()}“ …` : 'Neues Gericht … Enter — ZOE schreibt das Rezept'}
               style={{ ...klein, flex: '1 1 220px', borderColor: rezeptLaeuft ? LEUCHT.agenten : undefined }} />
-            <span style={{ fontSize: 12, color: C.inkLeise, display: 'inline-flex', gap: 8 }}>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'inline-flex', gap: 8 }}>
               <button type="button" onClick={() => { setFormular(f => (f === 'neu' ? null : 'neu')); setOffen(null); setGewaehlt(null); }} style={{ ...nackt, padding: 0, textDecoration: 'underline', color: formular === 'neu' ? LEUCHT.gut : C.inkLeise }}>von Hand</button>
               <button type="button" onClick={() => { setFormular(f => (f === 'neu-text' ? null : 'neu-text')); setOffen(null); setGewaehlt(null); }} style={{ ...nackt, padding: 0, textDecoration: 'underline', color: formular === 'neu-text' ? LEUCHT.gut : C.inkLeise }}>Text einfügen</button>
             </span>
@@ -307,7 +307,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
               {tagsOben.map(t => <button key={t} type="button" onClick={() => setTagFilter(f => (f === t ? '' : t))} style={{ ...nackt, padding: '4px 10px', borderRadius: 999, background: tagFilter === t ? `${LEUCHT.gut}22` : 'rgba(255,255,255,.05)', color: tagFilter === t ? LEUCHT.gut : C.inkDim }}>{t}</button>)}
             </div>
           )}
-          {meld && !formular && <p style={{ fontSize: 12, color: LEUCHT.gut, margin: '0 0 8px' }}>{meld}</p>}
+          {meld && !formular && <p style={{ fontSize: TYP.bedien, color: LEUCHT.gut, margin: '0 0 8px' }}>{meld}</p>}
           <div style={{ maxHeight: 460, overflowY: 'auto' }}>
             <Liste>
               {bibliothek.map(g => {
@@ -328,7 +328,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             {!daten.gerichte.length && <Leer>Noch keine Gerichte. Oben den Namen tippen, Enter — ZOE schreibt das Rezept. Die Wochenrezepte von ZOE landen hier von selbst.</Leer>}
             {daten.gerichte.length > 0 && !bibliothek.length && <Leer>Nichts passt zu Suche oder Filter.</Leer>}
           </div>
-          <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0', lineHeight: 1.5 }}>Ein Klick öffnet Rezept, Foto, Notiz und „in den Plan“. Lieblinge plant ZOE gern wieder ein; steht ein Plan-Feld genauso wie ein Gericht hier, hängt das Rezept automatisch dran.</p>
+          <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '10px 0 0', lineHeight: 1.5 }}>Ein Klick öffnet Rezept, Foto, Notiz und „in den Plan“. Lieblinge plant ZOE gern wieder ein; steht ein Plan-Feld genauso wie ein Gericht hier, hängt das Rezept automatisch dran.</p>
         </Karte>
         </Kachel>
 
@@ -343,7 +343,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
             <input value={neuGast} onChange={e => setNeuGast(e.target.value)} placeholder="Gast oder Kind hinzufügen (Name)" style={{ ...klein, width: 240 }}
               onKeyDown={e => { if (e.key === 'Enter' && neuGast.trim()) { void patch([{ liste: 'profile', op: 'upsert', eintrag: { person: `gast-${neuGast.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || neueId('g')}`, name: neuGast.trim(), konto: false } }]); setNeuGast(''); } }} />
-            <span style={{ fontSize: 12, color: C.inkLeise }}>Gäste plant ZOE mit, wenn ihr sie oben anklickt.</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gäste plant ZOE mit, wenn ihr sie oben anklickt.</span>
           </div>
         </Karte>
         </Kachel>
@@ -353,7 +353,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
         <Karte i={1} akzent={LEUCHT.geld}>
           <Ueberschrift farbe={LEUCHT.geld} rechts={<Chip farbe={offene.length ? LEUCHT.achtung : LEUCHT.gut}>{offene.length} offen</Chip>}>Einkaufsliste</Ueberschrift>
           {b && (
-            <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>
               Lebensmittel {b.monat.slice(5, 7)}/{b.monat.slice(0, 4)}: <b style={{ color: budgetFarbe }}>{euro(b.ausgegeben)}</b>{b.budget ? <> von {euro(b.budget)} Budget</> : ' — kein Budget gesetzt'} · <Link href="/os/finanzen?s=privat&t=buchungen" style={link}>Zahlen ›</Link>
             </div>
           )}
@@ -362,7 +362,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             {daten.einkauf.some(p => p.erledigt) && <Knopf leise onClick={() => { void patch([{ feld: 'erledigtInVorrat', von: daten.ich }]); melde('Eingekauftes liegt jetzt im Vorrat.'); }}>Eingekauft → Vorrat</Knopf>}
             {daten.einkauf.some(p => p.erledigt) && <Knopf leise onClick={() => void patch([{ feld: 'erledigtWeg' }])}>Abgehakte entfernen</Knopf>}
           </div>
-          {meld && <p style={{ fontSize: 12, color: LEUCHT.gut, margin: '0 0 8px' }}>{meld}</p>}
+          {meld && <p style={{ fontSize: TYP.bedien, color: LEUCHT.gut, margin: '0 0 8px' }}>{meld}</p>}
           <div style={{ maxHeight: 520, overflowY: 'auto' }}>
             {gruppiert(daten.einkauf).map(gr => (
               <div key={gr.kategorie} style={{ marginBottom: 8 }}>
@@ -386,7 +386,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           </div>
           {stammSchnell.length > 0 && (
             <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>Schnell:</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Schnell:</span>
               {stammSchnell.map(l => <button key={l.id} type="button" onClick={() => postenHinzu(l.name, { quelle: 'stamm' })} style={{ ...nackt, padding: '4px 10px', borderRadius: 999, background: 'rgba(255,255,255,.05)', color: C.inkDim }}>+ {l.name}</button>)}
             </div>
           )}
@@ -456,7 +456,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             <summary style={{ cursor: 'pointer', fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600 }}>Grundsätze anzeigen & bearbeiten</summary>
             <Grundsaetze wert={daten.grundsaetze} onFertig={wert => void patch([{ feld: 'grundsaetze', wert }])} />
           </details>
-          <p style={{ fontSize: 12, color: C.inkLeise, margin: '14px 0 0', lineHeight: 1.5 }}>
+          <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '14px 0 0', lineHeight: 1.5 }}>
             Alltagsküche, kein Medizin- oder Ernährungsrat — Unverträglichkeiten und Krankheiten gehören zu Arzt/Ernährungsberatung.
             {!eingebettet && <>{' '}<Link href="/os/gesundheit" style={link}>Gesundheit ›</Link></>}
           </p>
@@ -491,7 +491,7 @@ function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft,
         <Chip farbe={C.inkDim}>{g.portionen} Portionen</Chip>
         {g.fuer.length > 0 && <Chip farbe={LEUCHT.schlaf}>für {g.fuer.map(nameVon).join(' & ')}</Chip>}
         {g.tags.map(t => <Chip key={t} farbe={C.inkLeise}>{t}</Chip>)}
-        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 10, fontSize: 12 }}>
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 10, fontSize: TYP.bedien }}>
           <button type="button" onClick={bearbeiten} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>bearbeiten</button>
           {sicher
             ? <span style={{ color: LEUCHT.kritisch }}>wirklich? <button type="button" onClick={loeschen} style={{ ...nackt, padding: 0, color: LEUCHT.kritisch, textDecoration: 'underline' }}>löschen</button> · <button type="button" onClick={() => setSicher(false)} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>nein</button></span>
@@ -505,8 +505,8 @@ function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft,
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={bildUrl(g)} alt={g.name} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 14, display: 'block' }} />
           <div style={{ position: 'absolute', right: 8, bottom: 8, display: 'flex', gap: 6 }}>
-            <button type="button" onClick={() => dateiRef.current?.click()} style={{ ...nackt, padding: '5px 10px', borderRadius: 999, background: 'rgba(0,0,0,.55)', color: C.ink, fontSize: 12 }}>Foto ändern</button>
-            <button type="button" onClick={fotoWeg} style={{ ...nackt, padding: '5px 10px', borderRadius: 999, background: 'rgba(0,0,0,.55)', color: C.ink, fontSize: 12 }}>✕</button>
+            <button type="button" onClick={() => dateiRef.current?.click()} style={{ ...nackt, padding: '5px 10px', borderRadius: 999, background: 'rgba(0,0,0,.55)', color: C.ink, fontSize: TYP.bedien }}>Foto ändern</button>
+            <button type="button" onClick={fotoWeg} style={{ ...nackt, padding: '5px 10px', borderRadius: 999, background: 'rgba(0,0,0,.55)', color: C.ink, fontSize: TYP.bedien }}>✕</button>
           </div>
         </div>
       ) : (
@@ -530,7 +530,7 @@ function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft,
             {g.zubereitung.map((s, i) => <li key={i}>{s}</li>)}
           </ol>
           {!g.zubereitung.length && <Leer>Keine Schritte eingetragen.</Leer>}
-          <div style={{ marginTop: 10, fontSize: 12, color: C.inkLeise }}>
+          <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise }}>
             {g.quelle === 'zoe' ? 'von ZOE' : 'von Hand'}
             {neuSchreiben && <> · <button type="button" onClick={neuSchreiben} disabled={laeuft} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>{laeuft ? 'schreibt …' : 'neu schreiben lassen'}</button></>}
           </div>
@@ -549,7 +549,7 @@ function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft,
             <select value={ziel.k} onChange={e => setZiel(z => ({ ...z, k: e.target.value as Mahlzeit }))} aria-label="Mahlzeit" style={{ ...klein, width: 'auto', colorScheme: 'dark' }}>{MAHLZEITEN.map(m => <option key={m.k} value={m.k}>{m.label}</option>)}</select>
             <Knopf leise onClick={einplanen}>einplanen</Knopf>
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{wo.length ? `Diese Woche: ${wo.map(w => `${TAG_LABEL[w.tag]} ${MAHLZEITEN.find(m => m.k === w.mahlzeit)?.label}`).join(', ')}` : 'Diese Woche noch nicht eingeplant.'}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{wo.length ? `Diese Woche: ${wo.map(w => `${TAG_LABEL[w.tag]} ${MAHLZEITEN.find(m => m.k === w.mahlzeit)?.label}`).join(', ')}` : 'Diese Woche noch nicht eingeplant.'}</div>
         </div>
       </div>
     </div>
@@ -594,7 +594,7 @@ function GerichtForm({ g, art, nameStart = '', personen, onSpeichern, onAbbruch,
             <input value={f.tags} onChange={e => set('tags', e.target.value)} placeholder="Tags (schnell, abends, Meal-Prep)" style={{ ...klein, flex: '1 1 180px' }} />
           </div>
           {personen.length > 0 && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12, color: C.inkLeise }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>
               für:
               {personen.map(p => <button key={p.id} type="button" onClick={() => set('fuer', f.fuer.includes(p.id) ? f.fuer.filter(x => x !== p.id) : [...f.fuer, p.id])} style={{ ...wahl, background: f.fuer.includes(p.id) ? `${LEUCHT.schlaf}22` : 'rgba(255,255,255,.05)', color: f.fuer.includes(p.id) ? LEUCHT.schlaf : C.inkDim }}>{p.name}</button>)}
             </div>
@@ -626,9 +626,9 @@ function ProfilKarte({ person, name, profil, darf, konto, patch, weg }: { person
   return (
     <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 26, height: 26, borderRadius: 999, background: `${LEUCHT.schlaf}33`, color: LEUCHT.schlaf, display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, fontFamily: SCHRIFT.display }}>{kuerzel(name)}</span>
+        <span style={{ width: 26, height: 26, borderRadius: 999, background: `${LEUCHT.schlaf}33`, color: LEUCHT.schlaf, display: 'grid', placeItems: 'center', fontSize: TYP.bedien, fontWeight: 700, fontFamily: SCHRIFT.display }}>{kuerzel(name)}</span>
         <b style={{ fontSize: TYP.body }}>{name}</b>
-        <span style={{ fontSize: 12, color: C.inkLeise }}>{konto ? (darf ? 'dein Profil' : 'pflegt sie/er selbst') : 'Gast'}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{konto ? (darf ? 'dein Profil' : 'pflegt sie/er selbst') : 'Gast'}</span>
         {weg && <button type="button" onClick={weg} title="Gast entfernen" style={{ ...nackt, marginLeft: 'auto' }}>✕</button>}
       </div>
       <textarea value={f.bedarf} readOnly={ro} onChange={e => aendern('bedarf', e.target.value)} rows={3} placeholder={ro ? 'noch nichts eingetragen' : 'Bedürfnisse & Regeln in deinen Worten — z. B. anti-entzündlich, wenig Zucker, abends leicht, viel Eiweiß'} style={{ ...stil, resize: 'vertical', lineHeight: 1.5 }} />

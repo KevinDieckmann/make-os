@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, Hinweis, LEUCHT } from './ui';
 import type { Befund, Ampel } from '@/lib/hoi/lage';
 import type { Lage } from '@/lib/hoi/innen';
 
@@ -41,10 +41,10 @@ export function HoiView() {
   return (
     <Seite titel="Head of IT" unter="Server, App, Sicherheit und der Blick von außen — in Ampeln. Nichts davon ist eine Person oder ein Inhalt, nur Zähler und Zustände."
       rechts={<Knopf leise onClick={() => void laden()} aus={laedt}>{laedt ? 'lädt …' : 'Neu lesen'}</Knopf>}>
-      {fehler && <Karte i={0} akzent={LEUCHT.kritisch}><div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ color: LEUCHT.kritisch }}>{fehler}</span><Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div></Karte>}
+      {fehler && <Hinweis art="kritisch" titel="Der Blick auf die IT ist nicht angekommen" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal versuchen</Knopf>}>{fehler}</Hinweis>}
       {lage && g && (
         <>
-          <Karte i={0} akzent={FARBE[g.ampel]}>
+          <Karte i={0} ton={g.ampel === 'grau' ? undefined : FARBE[g.ampel]}>
             <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
               <Punkt farbe={FARBE[g.ampel]} groesse={16} />
               <div style={{ fontSize: TYP.titel, fontWeight: 700 }}>{WORT[g.ampel]}</div>
@@ -55,7 +55,7 @@ export function HoiView() {
                 <Zahl wert={String(g.grau)} label="ohne Daten" />
               </div>
             </div>
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>
               Stand {new Date(lage.zeit).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}{!lage.produktion ? ' · Entwicklungsmodus: Verschlüsselung und CSP gelten nur auf dem Server' : ''} · aktualisiert sich alle 5 Minuten
             </div>
           </Karte>
@@ -65,7 +65,7 @@ export function HoiView() {
               return (
                 <Karte key={b.id} i={i + 1}>
                   <Ueberschrift rechts={liste.length ? <Punkt farbe={FARBE[liste.some(x => x.ampel === 'rot') ? 'rot' : liste.some(x => x.ampel === 'gelb') ? 'gelb' : liste.every(x => x.ampel === 'grau') ? 'grau' : 'gruen']} /> : undefined}>{b.label}</Ueberschrift>
-                  <div style={{ fontSize: 12, color: C.inkLeise, marginTop: -4, marginBottom: 8 }}>{b.was}</div>
+                  <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: -4, marginBottom: 8 }}>{b.was}</div>
                   {liste.length ? (
                     <Liste>
                       {liste.map(x => <Zeile key={x.id} links={<Punkt farbe={FARBE[x.ampel]} />} titel={<span>{x.label} <span style={{ color: C.inkDim, fontWeight: 400 }}>· {x.wert}</span></span>} unter={x.satz} />)}
@@ -78,7 +78,7 @@ export function HoiView() {
           <Karte i={7}>
             <Ueberschrift>Kurzbericht</Ueberschrift>
             <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{lage.kurz}</pre>
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Derselbe Text geht an Telegram, wenn etwas rot wird — sobald der Bote läuft.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Derselbe Text geht an Telegram, wenn etwas rot wird — sobald der Bote läuft.</div>
           </Karte>
           <Karte i={8}>
             <Ueberschrift>So sieht der HOI hin</Ueberschrift>

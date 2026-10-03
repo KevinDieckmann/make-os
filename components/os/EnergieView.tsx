@@ -13,7 +13,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, LEUCHT, Spalten, Spalte } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, LEUCHT, Spalten, Spalte } from './ui';
 
 interface Termin { titel: string; date: string; zeit: string }
 interface Meilenstein { id?: string; titel: string; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; bereich: string }
@@ -106,7 +106,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
                     Reha {reha.length}× {reha.length === 0 ? '— Bandscheibe braucht täglich' : reha.length < 5 ? '— Luft nach oben' : '✓'}
                   </span>}
                   rechts={leer
-                    ? <span style={{ fontSize: 12, color: LEUCHT.achtung, whiteSpace: 'nowrap' }}>nichts geplant — <Link href="/os/kalender?modus=planen" style={link}>Blöcke reinziehen ›</Link></span>
+                    ? <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>nichts geplant — <Link href="/os/kalender?modus=planen" style={link}>Blöcke reinziehen ›</Link></span>
                     : <Chip farbe={LEUCHT.gut}>{einheiten.length + term.length + ms.length} geplant</Chip>} />
                 {!leer && (
                   <div style={{ padding: '4px 2px 12px 23px' }}>
@@ -133,7 +133,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
             );
           })}
         </Liste>
-        <p style={{ fontSize: 12, color: C.inkLeise, margin: '12px 0 0', lineHeight: 1.5 }}>
+        <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '12px 0 0', lineHeight: 1.5 }}>
           Geplant wird im <Link href="/os/kalender?modus=planen" style={link}>Wochenplaner</Link> (Reha-Baustein reinziehen) — hier siehst du, ob die 4 Wochen tragen.
         </p>
       </Abschnitt>

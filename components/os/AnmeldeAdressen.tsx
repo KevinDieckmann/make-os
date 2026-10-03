@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from './schlank';
+import { Karte, Ueberschrift, Knopf, Hinweis, Feldzeile, feld, LEUCHT } from './ui';
 
 const MAX_WEITERE = 3;
 
@@ -33,11 +33,11 @@ export function AnmeldeAdressen({ email, weitere, i = 1, geaendert }: { email: s
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginBottom: 6 }}>Alle Adressen melden dich im selben Konto an — mit demselben Passwort und demselben zweiten Faktor. Jede Änderung bestätigst du mit deinem aktuellen Passwort.</div>
       <div className="konto-adressen">
         <div className="konto-adresse">
-          <div className="konto-adresse-text"><span style={{ fontSize: TYP.body, fontWeight: 500 }}>{email}</span><span style={{ fontSize: 12.5, color: C.inkLeise }}>Hauptadresse · Anzeige in MAKE OS</span></div>
+          <div className="konto-adresse-text"><span style={{ fontSize: TYP.body, fontWeight: 500 }}>{email}</span><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Hauptadresse · Anzeige in MAKE OS</span></div>
         </div>
         {weitere.map(a => (
           <div className="konto-adresse" key={a}>
-            <div className="konto-adresse-text"><span style={{ fontSize: TYP.body, fontWeight: 500 }}>{a}</span><span style={{ fontSize: 12.5, color: C.inkLeise }}>weitere Adresse</span></div>
+            <div className="konto-adresse-text"><span style={{ fontSize: TYP.body, fontWeight: 500 }}>{a}</span><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>weitere Adresse</span></div>
             <span className="konto-adresse-knoepfe">
               <Knopf leise aus={ohnePw} onClick={() => senden('haupt', a, 'Hauptadresse gewechselt.')}>Als Hauptadresse</Knopf>
               <Knopf leise aus={ohnePw} onClick={() => senden('weg', a, 'Adresse entfernt.')}>Entfernen</Knopf>
@@ -45,13 +45,16 @@ export function AnmeldeAdressen({ email, weitere, i = 1, geaendert }: { email: s
           </div>
         ))}
       </div>
-      <div className="konto-adressen-neu">
-        <input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={voll ? `Höchstens ${MAX_WEITERE} weitere Adressen` : 'Adresse hinzufügen'} aria-label="Neue Anmelde-Adresse" value={neu} disabled={voll}
-          onChange={e => setNeu(e.target.value)} style={feld} autoComplete="off" />
-        <input type="password" placeholder="aktuelles Passwort" aria-label="Aktuelles Passwort zur Bestätigung" value={pw} onChange={e => setPw(e.target.value)} style={feld} autoComplete="current-password" />
-        <Knopf onClick={() => senden('hinzu', neu, 'Adresse hinzugefügt.')} aus={voll || !neu.trim() || ohnePw}>Hinzufügen</Knopf>
-      </div>
-      {meldung && <div role="status" style={{ fontSize: TYP.bedien, marginTop: 10, color: meldung.gut ? LEUCHT.gut : LEUCHT.kritisch }}>{meldung.text}</div>}
+      <form className="konto-feldreihe" style={{ marginTop: 14 }} onSubmit={e => { e.preventDefault(); if (!(voll || !neu.trim() || ohnePw)) void senden('hinzu', neu, 'Adresse hinzugefügt.'); }}>
+        <Feldzeile label={voll ? `Höchstens ${MAX_WEITERE} weitere Adressen` : 'Neue Anmelde-Adresse'}>
+          <input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={neu} disabled={voll} onChange={e => setNeu(e.target.value)} style={feld} autoComplete="off" />
+        </Feldzeile>
+        <Feldzeile label="Aktuelles Passwort zur Bestätigung">
+          <input type="password" value={pw} onChange={e => setPw(e.target.value)} style={feld} autoComplete="current-password" />
+        </Feldzeile>
+        <Knopf typ="submit" aus={voll || !neu.trim() || ohnePw}>Hinzufügen</Knopf>
+      </form>
+      {meldung && <div style={{ marginTop: 10 }}><Hinweis art={meldung.gut ? 'gut' : 'kritisch'}>{meldung.text}</Hinweis></div>}
     </Karte>
   );
 }

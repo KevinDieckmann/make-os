@@ -7,8 +7,7 @@
 // Konzept: docs/konzepte/familie-und-partnerschaft.md
 
 import { useState } from 'react';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Segmente, Leer, Knopf, LEUCHT } from '../schlank';
+import { Seite, Karte, Ueberschrift, Segmente, Leer, Knopf, Hinweis, ZielBezug, Wahl as UiWahl, feld, LEUCHT } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useFamilie, WOCHENTAGE, type FamilieApi } from './daten';
 import { WirZwei } from './WirZwei';
@@ -25,10 +24,13 @@ export function FamilieView() {
   const d = api.d;
 
   return (
-    <Seite titel="Familie & Partnerschaft" unter="Erst wir zwei, dann die Familie. Gemessen wird, was ihr gemeinsam tut — nie eine Person."
-      rechts={d ? <Segmente liste={[{ id: 'wir', label: 'Wir zwei' }, { id: 'familie', label: 'Familie' }, { id: 'rahmen', label: 'Rahmen' }]} aktiv={bereich} onWahl={b => { setBereich(b); setGespraech(false); }} /> : undefined}>
+    <Seite titel="Familie & Partnerschaft" unter="Erst wir zwei, dann die Familie. Gemessen wird, was ihr gemeinsam tut — nie eine Person.">
+      {d && <Segmente liste={[{ id: 'wir', label: 'Wir zwei' }, { id: 'familie', label: 'Familie' }, { id: 'rahmen', label: 'Rahmen' }]} aktiv={bereich} onWahl={b => { setBereich(b); setGespraech(false); }} />}
+      <ZielBezug bereich="beziehung" />
       {!d ? (
-        <Karte i={0}><Leer>{api.fehler ?? 'Lädt …'}</Leer></Karte>
+        api.fehler
+          ? <Hinweis art="kritisch" titel="Familie & Partnerschaft konnte nicht geladen werden">{api.fehler}</Hinweis>
+          : <Karte i={0}><Leer>Lädt …</Leer></Karte>
       ) : gespraech ? (
         <Gespraech api={api} onZu={() => setGespraech(false)} />
       ) : bereich === 'wir' ? (
@@ -38,7 +40,7 @@ export function FamilieView() {
       ) : (
         <Rahmen api={api} />
       )}
-      {d && api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}
+      {d && api.fehler && <Hinweis art="kritisch">{api.fehler}</Hinweis>}
     </Seite>
   );
 }
@@ -48,12 +50,12 @@ function Rahmen({ api }: { api: FamilieApi }) {
   const e = d.familie.einstellungen;
   const setze = (teil: Partial<typeof e>) => api.felder({ einstellungen: { ...e, ...teil } });
   const [ausnahme, setAusnahme] = useState(e.ausnahmeBis ?? '');
-  const zeit = (v: string, onW: (x: string) => void, label: string) => <input type="time" value={v} aria-label={label} onChange={x => onW(x.target.value)} style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '8px 10px', color: C.ink }} />;
+  const zeit = (v: string, onW: (x: string) => void, label: string) => <input type="time" value={v} aria-label={label} onChange={x => onW(x.target.value)} style={{ ...feld, width: 'auto', colorScheme: 'dark' }} />;
   return (
     <>
       <Flaeche seite="familie-rahmen">
       <Kachel id="gespraech" titel="Unser Paar-Gespräch" breite={3}>
-      <Karte i={0} akzent={LEUCHT.beziehung}>
+      <Karte i={0} ton={LEUCHT.beziehung}>
         <Ueberschrift farbe={LEUCHT.beziehung}>Unser Paar-Gespräch</Ueberschrift>
         <Klein>Ein fester Termin pro Woche, 30 bis 45 Minuten, immer mit derselben Agenda. Er ist wichtiger als jedes Business-Meeting — und wird genauso geschützt.</Klein>
         <div style={{ marginTop: 12 }}>
@@ -73,11 +75,10 @@ function Rahmen({ api }: { api: FamilieApi }) {
         <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
           {e.businessFrei.map((b, i) => (
             <Reihe key={i}>
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {WOCHENTAGE.map((w, t) => {
                   const an = b.tage.includes(t);
-                  return <button key={w} onClick={() => setze({ businessFrei: e.businessFrei.map((x, j) => (j === i ? { ...x, tage: an ? x.tage.filter(y => y !== t) : [...x.tage, t].sort() } : x)) })}
-                    aria-pressed={an} style={{ width: 34, height: 30, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, border: `1px solid ${an ? LEUCHT.beziehung : 'rgba(255,255,255,.1)'}`, background: an ? `${LEUCHT.beziehung}22` : 'transparent', color: an ? LEUCHT.beziehung : C.inkDim }}>{w.slice(0, 2)}</button>;
+                  return <UiWahl key={w} klein an={an} farbe={LEUCHT.beziehung} onClick={() => setze({ businessFrei: e.businessFrei.map((x, j) => (j === i ? { ...x, tage: an ? x.tage.filter(y => y !== t) : [...x.tage, t].sort() } : x)) })}>{w.slice(0, 2)}</UiWahl>;
                 })}
               </div>
               {zeit(b.von, von => setze({ businessFrei: e.businessFrei.map((x, j) => (j === i ? { ...x, von } : x)) }), 'von')}
@@ -95,7 +96,7 @@ function Rahmen({ api }: { api: FamilieApi }) {
         <Ueberschrift>Ausnahmezeit</Ueberschrift>
         <Klein>Urlaub, Krankheit, Geburt, Umzug: Der Rhythmus pausiert, statt euch zu bewerten.</Klein>
         <Reihe>
-          <input type="date" value={ausnahme} aria-label="Pausiert bis" onChange={x => setAusnahme(x.target.value)} style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '8px 10px', color: C.ink, marginTop: 10 }} />
+          <input type="date" value={ausnahme} aria-label="Pausiert bis" onChange={x => setAusnahme(x.target.value)} style={{ ...feld, width: 'auto', colorScheme: 'dark', marginTop: 10 }} />
           <Knopf leise onClick={() => setze({ ausnahmeBis: ausnahme || null })}>Pausieren bis dahin</Knopf>
           {e.ausnahmeBis && <Knopf leise onClick={() => { setAusnahme(''); setze({ ausnahmeBis: null }); }}>Pause beenden</Knopf>}
         </Reihe>

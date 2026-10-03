@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Segmente, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Segmente, Hinweis, feld, LEUCHT } from '../ui';
 
 type Prio = 0 | 1 | 2 | 3;
 type Gilt = 'kevin' | 'malin' | 'beide' | 'zoe';
@@ -54,15 +54,15 @@ export function Regeln({ ich }: { ich: string }) {
 
   return (
     <>
-      <Karte i={1} akzent={LEUCHT.agenten}>
-        <Ueberschrift rechts={konst ? <span style={{ fontSize: 12, color: C.inkLeise }}>Stand {konst.stand ?? '—'}{konst.geaendertVon ? ` · ${konst.geaendertVon}` : ''} · {konst.zeilen} Zeilen</span> : undefined}>Konstitution</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>Werte, Rangfolge, harte Grenzen — höchstens {maxZeilen} Zeilen, denn sie ist in JEDEM ZOE-Gespräch geladen. Details gehören in Regeln.</div>
-        {fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien, marginBottom: 8 }}>{fehler}</div>}
+      <Karte i={1} ton={LEUCHT.agenten}>
+        <Ueberschrift rechts={konst ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Stand {konst.stand ?? '—'}{konst.geaendertVon ? ` · ${konst.geaendertVon}` : ''} · {konst.zeilen} Zeilen</span> : undefined}>Konstitution</Ueberschrift>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>Werte, Rangfolge, harte Grenzen — höchstens {maxZeilen} Zeilen, denn sie ist in JEDEM ZOE-Gespräch geladen. Details gehören in Regeln.</div>
+        {fehler && <div style={{ marginBottom: 10 }}><Hinweis art="kritisch" titel="Die Regeln konnten nicht gelesen werden">{fehler}</Hinweis></div>}
         {!konstOffen && (konst?.text ? <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: TYP.bedien, lineHeight: 1.55, color: C.ink }}>{konst.text}</pre> : <Leer>Noch keine Konstitution. Schreib in wenigen Sätzen, was für ZOE immer gilt.</Leer>)}
         {konstOffen && (
           <div style={{ display: 'grid', gap: 8 }}>
             <textarea value={konstText} onChange={e => setKonstText(e.target.value)} rows={12} aria-label="Konstitution" style={{ ...feld, resize: 'vertical', lineHeight: 1.5, fontSize: TYP.bedien }} />
-            <div style={{ fontSize: 12, color: zeilen > maxZeilen ? LEUCHT.kritisch : C.inkLeise }}>{zeilen} / {maxZeilen} Zeilen</div>
+            <div style={{ fontSize: TYP.bedien, color: zeilen > maxZeilen ? LEUCHT.kritisch : C.inkLeise }}>{zeilen} / {maxZeilen} Zeilen</div>
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
@@ -73,21 +73,21 @@ export function Regeln({ ich }: { ich: string }) {
 
       <Karte i={2}>
         <Ueberschrift rechts={<Knopf leise onClick={() => setNeu(neu ? null : { titel: '', text: '', prioritaet: 2, giltFuer: 'beide', quelle: '', privat: false })}>{neu ? 'Abbrechen' : '+ Regel'}</Knopf>}>Regelregister</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>Priorität: hart › Sicherheit & Privatsphäre › Haus-Regel › Vorliebe. Nur <b style={{ color: C.ink }}>aktive</b> Regeln liest ZOE — aktiv schalten heißt freigeben, mit deinem Namen dran.</div>
-        {meldung && <div style={{ color: LEUCHT.achtung, fontSize: TYP.bedien, marginBottom: 8 }}>{meldung}</div>}
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>Priorität: hart › Sicherheit & Privatsphäre › Haus-Regel › Vorliebe. Nur <b style={{ color: C.ink }}>aktive</b> Regeln liest ZOE — aktiv schalten heißt freigeben, mit deinem Namen dran.</div>
+        {meldung && <div style={{ marginBottom: 10 }}><Hinweis art="achtung">{meldung}</Hinweis></div>}
         {neu && (
           <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', marginBottom: 12 }}>
             <input value={neu.titel} onChange={e => setNeu({ ...neu, titel: e.target.value })} placeholder="Titel — kurz, wie eine Überschrift" aria-label="Titel der Regel" style={{ ...feld }} />
             <textarea value={neu.text} onChange={e => setNeu({ ...neu, text: e.target.value })} rows={4} placeholder="Die Regel selbst — konkret genug, dass ZOE danach handeln kann." aria-label="Text der Regel" style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>Priorität</span><Segmente liste={PRIO.map(p => ({ id: String(p.id), label: p.label }))} aktiv={String(neu.prioritaet)} onWahl={id => setNeu({ ...neu, prioritaet: Number(id) as Prio })} />
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Priorität</span><Segmente liste={PRIO.map(p => ({ id: String(p.id), label: p.label }))} aktiv={String(neu.prioritaet)} onWahl={id => setNeu({ ...neu, prioritaet: Number(id) as Prio })} />
             </div>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>Gilt für</span><Segmente liste={GILT} aktiv={neu.giltFuer} onWahl={id => setNeu({ ...neu, giltFuer: id as Gilt })} />
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gilt für</span><Segmente liste={GILT} aktiv={neu.giltFuer} onWahl={id => setNeu({ ...neu, giltFuer: id as Gilt })} />
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
               <input value={neu.quelle} onChange={e => setNeu({ ...neu, quelle: e.target.value })} placeholder="Quelle (optional): Gespräch, Datum, Entscheidung" aria-label="Quelle" style={{ ...feld, flex: 1, minWidth: 200 }} />
-              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: C.inkDim }}><input type="checkbox" checked={neu.privat} onChange={e => setNeu({ ...neu, privat: e.target.checked })} /> nur ich sehe sie</label>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}><input type="checkbox" checked={neu.privat} onChange={e => setNeu({ ...neu, privat: e.target.checked })} /> nur ich sehe sie</label>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <Knopf farbe={LEUCHT.gut} aus={!neu.titel.trim() || !neu.text.trim()} onClick={async () => { const d = await post({ aktion: 'anlegen', titel: neu.titel, text: neu.text, prioritaet: neu.prioritaet, giltFuer: neu.giltFuer, quelle: neu.quelle, status: 'aktiv', scope: neu.privat ? 'privat' : 'intern' }); if (d.ok) setNeu(null); }}>Anlegen und freigeben</Knopf>
@@ -108,7 +108,7 @@ export function Regeln({ ich }: { ich: string }) {
               {offen === r.id && (
                 <div style={{ padding: '6px 2px 14px 26px', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'grid', gap: 8 }}>
                   <div style={{ fontSize: TYP.bedien, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{r.text}</div>
-                  {r.quelle && <div style={{ fontSize: 12, color: C.inkLeise }}>Quelle: {r.quelle}</div>}
+                  {r.quelle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Quelle: {r.quelle}</div>}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {r.status !== 'aktiv' && <Knopf farbe={LEUCHT.gut} onClick={() => void post({ aktion: 'aendern', id: r.id, felder: { status: 'aktiv' } })}>Freigeben als {ich}</Knopf>}
                     {r.status === 'aktiv' && <Knopf leise onClick={() => void post({ aktion: 'aendern', id: r.id, felder: { status: 'entwurf' } })}>Zurück auf Entwurf</Knopf>}

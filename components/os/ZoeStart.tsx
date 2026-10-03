@@ -22,7 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ZurueckKnopf } from './Verlauf';
-import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO } from '@/lib/make-one/design';
+import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO, ZIEL } from '@/lib/make-one/design';
 import { ZoeHirn, TON } from './ZoeHirn';
 import { useStimme } from '@/hooks/useStimme';
 import { useLautstaerke } from '@/hooks/useLautstaerke';
@@ -342,7 +342,7 @@ export function ZoeStart() {
                     animationDelay: `${1.1 + i * 0.07}s`,
                     fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim,
                     background: 'transparent', border: `1px solid ${C.linie}`,
-                    borderRadius: RADIUS.pille, padding: `7px ${A.l}px`, cursor: 'pointer',
+                    borderRadius: RADIUS.pille, padding: `7px ${A.l}px`, minHeight: ZIEL.handy, cursor: 'pointer',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = `${ton.farbe}66`; e.currentTarget.style.color = C.ink; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = C.linie; e.currentTarget.style.color = C.inkDim; }}
@@ -418,7 +418,7 @@ export function ZoeStart() {
               width: '100%', background: C.flaeche,
               border: `1px solid ${stimme.hoert ? `${ton.farbe}66` : C.linie}`,
               borderRadius: RADIUS.pille, padding: `0 ${A.xl}px`, height: 46,
-              color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, outline: 'none',
+              color: C.ink, fontFamily: SCHRIFT.text, fontSize: 16, outline: 'none', // 16 px: iOS zoomt sonst beim Antippen
               transition: 'border-color .3s ease, background .3s ease',
             }}
             onFocus={e => { e.currentTarget.style.borderColor = `${ton.farbe}88`; }}
@@ -453,7 +453,7 @@ export function ZoeStart() {
           href="/os"
           className="fassbar"
           style={{
-            marginTop: A.m, flex: '0 0 auto',
+            marginTop: A.m, flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', minHeight: ZIEL.handy, padding: '0 12px',
             fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none',
           }}
         >Weiter zu Heute ›</Link>

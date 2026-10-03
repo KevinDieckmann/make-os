@@ -16,7 +16,7 @@ import {
   type AgentStatus, type Autonomy, type ModelTier, type DeptAgent,
 } from '@/lib/make-one/agents-data';
 import { AgentenHirn } from './AgentenHirn';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Ring, Zahl, LEUCHT, Spalten, Spalte, aufZwei } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Ring, Zahl, Hinweis, LEUCHT, Spalten, Spalte, aufZwei } from './ui';
 
 interface Cfg { autonomy?: Autonomy; enabled?: boolean; model?: ModelTier; buildNext?: boolean }
 type CfgMap = Record<string, Cfg>;
@@ -29,7 +29,7 @@ const her = (iso: string) => { const min = Math.floor((Date.now() - Date.parse(i
 
 function Wahl({ an, farbe, onClick, children }: { an: boolean; farbe: string; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className="fassbar" style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '6px 11px', borderRadius: 9, cursor: 'pointer', border: 'none', background: an ? `${farbe}22` : 'rgba(255,255,255,.05)', color: an ? farbe : C.inkDim, transition: 'background .15s ease, color .15s ease' }}>{children}</button>
+    <button onClick={onClick} className="fassbar" style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '6px 11px', borderRadius: 9, cursor: 'pointer', border: 'none', background: an ? `${farbe}22` : 'rgba(255,255,255,.05)', color: an ? farbe : C.inkDim, transition: 'background .15s ease, color .15s ease' }}>{children}</button>
   );
 }
 
@@ -68,7 +68,7 @@ export function AgentenView() {
                   <div key={a.id} style={{ opacity: e.enabled ? 1 : .55 }}>
                     <Zeile onClick={() => setOffen(auf ? null : a.id)} aktiv={auf}
                       links={<Punkt farbe={statusFarbe(a.status)} />}
-                      titel={<>{a.name}{e.buildNext && <span style={{ color: LEUCHT.achtung, marginLeft: 8, fontSize: 12 }}>★ bauen</span>}</>}
+                      titel={<>{a.name}{e.buildNext && <span style={{ color: LEUCHT.achtung, marginLeft: 8, fontSize: TYP.bedien }}>★ bauen</span>}</>}
                       unter={a.role}
                       rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Chip farbe={statusFarbe(a.status)}>{STATUS_LABEL[a.status]}</Chip><Chip farbe={autoFarbe(e.autonomy)}>{AUTONOMY_LABEL[e.autonomy]}</Chip></span>} />
                     {auf && (
@@ -77,7 +77,7 @@ export function AgentenView() {
                           <div>
                             <div style={{ fontSize: 11.5, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 7 }}>Autonomie</div>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{AUTONOMY_ORDER.map(au => <Wahl key={au} an={e.autonomy === au} farbe={autoFarbe(au)} onClick={() => patch(a.id, { autonomy: au })}>{AUTONOMY_LABEL[au]}</Wahl>)}</div>
-                            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6, maxWidth: 420, lineHeight: 1.45 }}>{e.autonomy === 'autonom' ? 'Wirkt sofort: Ergebnisse werden direkt angewendet, ohne Rückfrage.' : 'Ergebnisse werden vorgelegt, du bestätigst per Klick.'}</div>
+                            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, maxWidth: 420, lineHeight: 1.45 }}>{e.autonomy === 'autonom' ? 'Wirkt sofort: Ergebnisse werden direkt angewendet, ohne Rückfrage.' : 'Ergebnisse werden vorgelegt, du bestätigst per Klick.'}</div>
                           </div>
                           <div>
                             <div style={{ fontSize: 11.5, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 7 }}>Modell</div>
@@ -91,7 +91,7 @@ export function AgentenView() {
                             </div>
                           </div>
                         </div>
-                        {a.gate && <div style={{ fontSize: 12, color: LEUCHT.achtung }}>Freigabe-Gate: {a.gate}</div>}
+                        {a.gate && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Freigabe-Gate: {a.gate}</div>}
                         <div>
                           <div style={{ fontSize: 11.5, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Funktionen</div>
                           {a.funktionen.map(f => <div key={f} style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}><span style={{ color: d.color }}>›</span>{f}</div>)}
@@ -100,7 +100,7 @@ export function AgentenView() {
                           <div style={{ fontSize: 11.5, color: LEUCHT.agenten, letterSpacing: '.06em', textTransform: 'uppercase' }}>So würde ich ihn bauen</div>
                           <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginTop: 5 }}>{a.bauplan}</div>
                         </div>
-                        {a.href && <div><Link href={a.href} style={{ textDecoration: 'none' }}><Knopf>Agent öffnen ›</Knopf></Link></div>}
+                        {a.href && <div><Knopf href={a.href}>Agent öffnen ›</Knopf></div>}
                       </div>
                     )}
                   </div>
@@ -115,7 +115,7 @@ export function AgentenView() {
     <Seite titel="Agenten" unter={`${ORCHESTRATOR.name} dirigiert · ${DEPARTMENTS.length} Abteilungen · ${live} von ${alle.length} live`}>
       <Spalten verhaeltnis="1:1">
         <Spalte>
-      <Karte i={0} akzent={LEUCHT.agenten}>
+      <Karte i={0} ton={LEUCHT.agenten}>
         <Ueberschrift farbe={LEUCHT.agenten} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>Agenten-Score</Ueberschrift>
         <div style={{ display: 'flex', gap: 'clamp(16px,3vw,32px)', alignItems: 'center', flexWrap: 'wrap' }}>
           <Ring label="Agenten" wert={score != null ? String(score) : undefined} farbe={LEUCHT.agenten} anteil={score != null ? score / 100 : undefined} />
@@ -156,9 +156,7 @@ export function AgentenView() {
             <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, color: LEUCHT.agenten, flex: '0 0 auto' }}>{i + 1}</span>{zeile}
           </div>
         ))}
-        <div style={{ display: 'flex', gap: 10, marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${LEUCHT.achtung}12` }}>
-          <span style={{ color: LEUCHT.achtung }}>⚠</span><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>{REALITAET}</div>
-        </div>
+        <div style={{ marginTop: 14 }}><Hinweis art="achtung">{REALITAET}</Hinweis></div>
       </Karte>
     </Seite>
   );

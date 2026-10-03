@@ -6,7 +6,7 @@
 // mit dem, was zu diesem Space gehört. Jede Person gestaltet es über „Anpassen“.
 
 import { useSearchParams } from 'next/navigation';
-import { Seite } from './schlank';
+import { Seite, ZielBezug } from './ui';
 import { Flaeche } from './flaeche/Flaeche';
 import { spaceVon } from '@/lib/make-one/spaces';
 import type { StandardPlatz } from '@/lib/flaeche/modell';
@@ -42,6 +42,7 @@ export function SpaceUebersichtView() {
   const s = spaceVon(space);
   return (
     <Seite titel={s.label} unter={space === 'privat' ? 'Dein privater Überblick: Familie, Gesundheit, Zahlen, Aufgaben — über „Anpassen“ frei gestaltbar.' : 'Dein Business-Überblick: Index, Markttraktion, Aufgaben, Termine — über „Anpassen“ frei gestaltbar.'}>
+      {space === 'privat' && <ZielBezug bereich="privat" max={2} />}
       <Flaeche key={space} seite={`uebersicht-${space}`} widgets={STANDARD[space]} />
     </Seite>
   );
