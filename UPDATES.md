@@ -4,6 +4,20 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Praxis-Funde behoben: Handy-Layout, wahre Texte, gelöschte Events, Kennzahlen (03.10.2026, nur lokal — Branch `praxis-fix`)
+
+Die Praxis-Prüfung (Produktionsbau, Handy 375 px) fand Layout-Fehler und einige unwahre Texte; alles unten ist behoben und getestet (`tests/praxis-fix.test.ts`).
+
+- **Handy-Layout (H1–H3):** „An Kunden übergeben“, Qualifizierung und Gesprächsmodus sind nicht mehr breiter als das Fenster — Ursache war die automatische Spaltenbreite des Grids (`Fenster` hat jetzt `minmax(0,1fr)`), dazu umbrechende Zeilen/Chips nur dort, wo es gebraucht wird (`Zeile`/`Chip` mit Prop `umbrechen`, nie global).
+- **Wahre Texte (H4, Art. 13/14):** Der Danke-Entwurf unterscheidet **neu angelegt** („kennengelernt“, Visitenkarte, Weitergabe an den Kunden — nur bei neu Angelegten, nie bei Gesperrten) von **Bestandsperson** („wiedergesehen“, kein Visitenkarten-Satz, keine Ankündigung) und **gesprochen** von nicht gesprochen. „Gestern“ gilt für den Tag des Events, sonst steht „am 08.10.“. In der Kunden-CSV folgt die Herkunft dem Haken „persönlich gesprochen“; die Spalte „Werbe-Einwilligung“ sagt „keine (Visitenkarte, § 7 UWG)“ nur bei Visitenkarten-Erfassung, sonst den echten Stand der Kartei.
+- **Firma zur Karte (M1):** Name gewinnt; die gleiche Mail-Domain gilt nur bei passendem Namen (ein anderer Firmenname = neue Firma), freie Anbieter nie. Server und Bestätigen-Schritt rechnen mit **derselben** Funktion (`firmaZurKarte`); ohne Firmennamen gibt es nur einen Vorschlag auf Klick (`firmaVorschlagAusDomain`).
+- **Gelöschte Events (M2):** Jede Löschung merkt die Kennung 90 Tage (`events-geloescht`, Register-Eintrag). `eventNeu` einer wartenden Erfassung gilt nur für ein Event, das der Server nie hatte — sonst 404 mit `eventFehler` („Anderes Event wählen“).
+- **Qualifizierung:** SQL-bereite Leads ohne Entscheidung bleiben oben in der Runde („SQL bereit — Entscheidung offen“, M3); beim Schließen des Gesprächs auf dem Ergebnis-Schirm kommt eine Rückfrage. „Firma wechseln“ bei Firmen-Lead mit mehreren Personen ohne Vorauswahl (M7). „Raus“/„Parken“ bei SQL oder Deal: Hinweis vorab, Knopf gesperrt (M8, eine Regel `ausscheidenGesperrt`).
+- **Handy-Bedienung (M4–M6):** Tippziele ≥ 44 px und 16-px-Eingaben nur für die geprüften Bereiche (Klassen `.quali-flaeche`, `.quali-seite`, `.os-fenster`, `.deal-anlegen`, `.bes-akte`), die Aktionszeile der Runde lässt Platz für den ZOE-Knopf.
+- **Kennzahlen besuchter Events (M10):** Ein Event mit Erfassungen zählt als besucht — unabhängig vom Datum (`zaehltAlsBesucht`). **Follow-up-Quote** = Anteil der erfassten Personen, bei denen innerhalb von 2 Tagen nach dem Event nachgefasst wurde (Follow-up, Termin, Gespräch, Danke-Mail raus); „Nur Kontakt“ (bewusster Verzicht) zählt nicht mit. Die Definition steht als Tooltip und unter den Kennzahlen.
+- **Weiteres:** Liquiplanung-Hinweis mit direktem Link und deutschem Datum (M11); „Wir haben persönlich gesprochen“ steht sichtbar über „Weiter“ und im Bestätigen-Schritt, „Aus = keine Danke-Mail“ (M12); ein Abbrechen im Neues-Event-Formular; Streutext unter „Für wen“; Erklärung für „zu früh“ und „n offene Punkte“; E-Mail-Umbruch nach @ und Punkt; „Kennengelernt für“ nicht doppelt; Danke-Betreff und Text wachsen mit, „Datenschutzhinweis ist enthalten ✓“ steht darüber; Firmenakte sagt „angemeldet“ statt „besucht“ bei künftigem Event; Weitere Person: Besitzer ist die handelnde Person; Abgeben-Meldung mit Namen; Meldungs-Pop-up unter der Kopfzeile.
+- **Rückweg:** reine Programm-Änderungen; neu nur der Bestand `events-geloescht` (additiv, der alte Stand ignoriert ihn).
+
 ## Mehrere Anmelde-Adressen je Konto (03.10.2026, nur lokal — Branch `konto-mail`)
 
 Kevin 03.10.: Die neuen Firmen-Adressen @makeinnovation.de werden Standard, die alten sollen weitergehen — „wir können uns mit kevin@makeinnovation.de anmelden oder mit der alten Adresse, Malin umgekehrt genauso.“

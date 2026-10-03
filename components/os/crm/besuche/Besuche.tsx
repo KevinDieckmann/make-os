@@ -45,7 +45,7 @@ export function Besuche({ api, zuKontakt, zuFirma, ansicht, k, onAnsicht, onAkte
 
   return (
     <>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="bes-akte" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ overflowX: 'auto', scrollbarWidth: 'none', flex: '1 1 auto' }}>
           <Pillen einzeilig farbe={WELT_FARBE.event} liste={ANSICHTEN} aktiv={aktiv} onWahl={onAnsicht} />
         </div>

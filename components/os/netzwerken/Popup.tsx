@@ -15,7 +15,7 @@ import { useGlockenSicht } from '../Glocke';
 
 export function NetzwerkenPopup() {
   const { sicht, gelesen } = useGlockenSicht();
-  // Auf der Netzwerken-Seite liegt unten die Hauptaktion (Weiter/Speichern) — dort erscheint die Karte oben statt darüber.
+  // Auf der Netzwerken-Seite liegt unten die Hauptaktion (Weiter/Speichern) — dort erscheint die Karte oben statt darüber, UNTER der Kopfzeile (Kopfhöhe + Statusleiste), damit sie die Knöpfe der Kopfzeile nicht verdeckt.
   const oben = (usePathname() ?? '').startsWith('/os/netzwerken');
   // Was diese Seite schon geschlossen hat, bleibt zu — auch bevor die Antwort des Servers „gelesen“ meldet.
   const zu = useRef(new Set<string>());
@@ -25,7 +25,7 @@ export function NetzwerkenPopup() {
   const schliessen = () => { zu.current.add(m.id); gelesen([m.id]); };
   return (
     <div role="alertdialog" aria-labelledby="nw-popup-titel" aria-live="assertive" data-netzwerken-popup
-      style={{ position: 'fixed', left: 12, right: 12, ...(oben ? { top: 'calc(12px + env(safe-area-inset-top))' } : { bottom: 'calc(84px + env(safe-area-inset-bottom))' }), zIndex: 95, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+      style={{ position: 'fixed', left: 12, right: 12, ...(oben ? { top: 'calc(76px + env(safe-area-inset-top))' } : { bottom: 'calc(84px + env(safe-area-inset-bottom))' }), zIndex: 95, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ pointerEvents: 'auto', width: 'min(440px, 100%)', borderRadius: 18, background: C.flaeche, border: `1px solid ${LEUCHT.beziehung}66`, boxShadow: '0 18px 50px -12px rgba(0,0,0,.8)', padding: '14px 16px', display: 'grid', gap: 12, fontFamily: SCHRIFT.text, color: C.ink }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <span aria-hidden style={{ width: 36, height: 36, borderRadius: 11, display: 'grid', placeItems: 'center', flex: '0 0 auto', background: `${LEUCHT.beziehung}1F`, color: LEUCHT.beziehung }}><Handshake size={18} /></span>

@@ -113,7 +113,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
         <Karte i={0} akzent={LEUCHT.business}>
           <Ueberschrift farbe={LEUCHT.business} rechts={karten.length ? <span style={{ fontSize: 12.5, color: C.inkLeise }}>{Math.min(pos + 1, karten.length)} von {karten.length}{erledigt ? ` · ${erledigt} geprüft` : ''}</span> : undefined}>Qualifizierungsrunde</Ueberschrift>
           <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: woher er kommt, wie weit er ist, die Fragen — und im Gespräch Schritt für Schritt bis zum Ergebnis. Kontakt und Firma öffnen rechts zur Bearbeitung; wer qualifiziert, übernimmt nicht zugeordnete Leads. Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="quali-aktionen" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={WER} aktiv={wer} onWahl={setWer} farbe={LEUCHT.business} /></div>
             <button type="button" onClick={() => setNurNeu(!nurNeu)} aria-pressed={nurNeu} title="BEAN „Neu“: kein Mandat, kein offenes Angebot — Leads zum Qualifizieren" className="fassbar"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', minHeight: 36, borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 600,
