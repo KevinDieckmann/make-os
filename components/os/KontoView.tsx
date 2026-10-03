@@ -13,8 +13,11 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEU
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { HaushaltZuordnung } from './HaushaltZuordnung';
 import { TeamKarte } from './TeamKarte';
+import { AnmeldeAdressen } from './AnmeldeAdressen';
 
-interface Ich { speicher: string; email: string; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
+interface Ich { speicher: string; email: string; weitereEmails?: string[]; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
+/** Anzeige im „Zuletzt“-Protokoll; unbekannte Arten erscheinen unverändert. */
+const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt' };
 interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean }
 interface Telegram { konfiguriert: boolean; bot?: string; chats: number; code?: string; minuten?: number; fehler?: string }
 
@@ -27,7 +30,7 @@ export function KontoView() {
   const [einladung, setEinladung] = useState<{ code: string; stunden: number; link: string } | null>(null);
   const [tg, setTg] = useState<Telegram | null>(null);
 
-  const [anmeldungen, setAnmeldungen] = useState<{ zeit: string; art: string; ok: boolean; adresse: string }[]>([]);
+  const [anmeldungen, setAnmeldungen] = useState<{ zeit: string; art: string; ok: boolean; adresse: string; detail?: string }[]>([]);
   const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
   const ladeTg = () => fetch('/api/telegram/koppeln').then(r => r.json()).then(d => setTg(t => ({ ...d, code: t?.code, minuten: t?.minuten }))).catch(() => {});
   useEffect(() => { void laden(); void ladeTg(); }, []);
@@ -49,8 +52,9 @@ export function KontoView() {
   }
   async function tgWeg() { await fetch('/api/telegram/koppeln', { method: 'DELETE' }).catch(() => {}); setTg(null); void ladeTg(); }
   const [fuer, setFuer] = useState('');
+  const [fuerMail, setFuerMail] = useState('');
   async function einladen() {
-    const r = await fetch('/api/konto/einladen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fuer }) }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    const r = await fetch('/api/konto/einladen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fuer, ...(fuerMail.trim() ? { email: fuerMail.trim() } : {}) }) }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
     if (r.code) setEinladung({ code: r.code, stunden: r.stunden, link: `${r.adresse || window.location.origin}/anmelden?code=${r.code}` }); else setMeldung(r.error ?? 'Fehler');
   }
   // Zweiter Faktor (26.09.): einrichten → Code bestätigen → Wiederherstellungscodes einmal zeigen.
@@ -75,7 +79,7 @@ export function KontoView() {
   return (
     <Seite titel={<>Konto <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{ich.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'}</span></>} rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf leise onClick={alleAbmelden}>Alle anderen Geräte abmelden</Knopf><Knopf leise onClick={abmelden}>Abmelden</Knopf></span>}>
       <Karte i={0}><div style={{ fontSize: TYP.body }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: 13 }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
-        {anmeldungen.length > 0 && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${e.art}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
+        {anmeldungen.length > 0 && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${ART_TEXT[e.art] ?? e.art}${e.detail ? ` ${e.detail}` : ''}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
       {meldung && <div style={{ fontSize: TYP.bedien, color: meldung.includes('nicht') || meldung.includes('Fehler') ? LEUCHT.kritisch : LEUCHT.gut, marginTop: 10 }}>{meldung}</div>}</Karte>
       <Flaeche seite="konto">
       <Kachel id="zugang" titel="Name & Passwort" breite={3}>
@@ -93,6 +97,9 @@ export function KontoView() {
         <Knopf leise onClick={() => speichern({ passwortAlt: pw.alt, passwortNeu: pw.neu }, 'Passwort geändert.')} aus={pw.neu.length < 10 || !pw.alt}>Ändern</Knopf>
       </div>
       </Karte>
+      </Kachel>
+      <Kachel id="adressen" titel="Anmelde-Adressen" breite={3}>
+        <AnmeldeAdressen email={ich.email} weitere={ich.weitereEmails ?? []} i={2} geaendert={() => void laden()} />
       </Kachel>
       <Kachel id="zwei-faktor" titel="Zweiter Faktor" breite={3}>
       <Karte i={2} akzent={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung}>
@@ -141,6 +148,7 @@ export function KontoView() {
                 </div>
               </div>
             ) : <Zeile titel="Jemanden einladen" unter={'Die Person öffnet den Link, trägt Vorname, E-Mail und Passwort ein — fertig. Für Malin hier „Malin“ eintragen: dann hängen ihre bisherigen Bestände am Konto (ohne diese Bindung bekommt niemand ihren Namen).'} rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input value={fuer} onChange={e => setFuer(e.target.value)} placeholder="Vorname (optional)" aria-label="Für wen" style={{ ...feld, width: 150, padding: '8px 10px', fontSize: TYP.bedien }} /><Knopf onClick={einladen}>Link erzeugen</Knopf></span>} />}
+            {!einladung && <div className="konto-adressen-neu" style={{ gridTemplateColumns: 'minmax(0,1fr)' }}><input type="email" inputMode="email" autoCapitalize="none" value={fuerMail} onChange={e => setFuerMail(e.target.value)} placeholder="E-Mail der Person (optional) — reserviert die Adresse für die Einladung" aria-label="E-Mail der eingeladenen Person" style={feld} autoComplete="off" /></div>}
           </Liste>
         </Karte>
         </Kachel>

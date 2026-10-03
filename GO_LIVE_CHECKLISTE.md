@@ -178,6 +178,12 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   - **Standard und MQL-Begriff (Kevin 03.10.):** der Standard ist jetzt der geschärfte Vorschlag (Marketing 8, Sales 28, Muss-Regeln, Temperatur 5/12/25), die alte Rechnung nur noch als Fassung „Bisherige Rechnung (bis 03.10.)“ wählbar; MQL gibt es nur für Leads mit Marketing-Herkunft (Kampagne, Newsletter mit Double-Opt-in, Anfrage, Content, eigenes Event). Das sind Rechenregeln, **keine Daten** — nichts davon wird gespeichert (Lifecycle-Phasen bleiben nur Vorschläge, von Hand gesetzte Phasen ändern sich nicht). Der Rückweg rechnet wieder mit der alten Formel; nichts nachzuziehen. Wer vorher eigene Einstellungen gespeichert hatte (Datei `crm-scoring`), behält sie in beiden Richtungen;
   - Oberfläche, Editor, Gesprächsmodus, Herkunft sind Code ohne Daten.
   Nach einem erneuten Upload: nichts nachzuziehen (fehlende Stufen = „noch offen“, es gilt der neue Standard, bis `crm-scoring` gelesen wird).
+- **Mehrere Anmelde-Adressen (03.10., Branch `konto-mail`):** keine Formänderung, nur optionale Felder; der alte Stand (1818c5c) liest am Konto nur `email` und behält Zusatzfelder beim Schreiben (`...k`):
+  - Konto `weitereEmails` (höchstens drei): der alte Stand ignoriert sie — **dort meldet sich nur die Hauptadresse (`email`) an.** **Vor dem Rückweg** (System › Konto › Anmelde-Adressen) die **Hauptadresse auf die gewünschte stellen** („Als Hauptadresse“), sonst geht beim alten Bild nur die bisherige Hauptadresse. Die Konten selbst bleiben unversehrt (Passwort, zweiter Faktor, Speichername ändern sich nicht).
+  - Einladung `email` (reservierte Adresse): der alte Stand ignoriert sie — die Einladung gilt dort für jede Adresse.
+  - Sicherheitsprotokoll `anmeldungen`: neue Arten `adresse-hinzu`/`adresse-haupt`/`adresse-weg` mit `detail` (maskierte Adresse) — der alte Stand zeigt sie roh an, nichts bricht.
+  - Glocke: Meldungsart `sicherheit` — der alte Säuberer verwirft Meldungen unbekannter Art beim nächsten Schreiben (nur die Hinweise „Anmelde-Adresse geändert“ gehen verloren, das Protokoll bleibt).
+  Nach einem erneuten Upload: nichts nachzuziehen (die weiteren Adressen stehen noch in `konten.json`, solange das alte Bild sie nicht überschrieben hat; sonst unter Konto neu eintragen).
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

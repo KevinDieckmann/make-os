@@ -4,8 +4,10 @@
 
 import { updateJson, loadJson } from '@/lib/store/local-db';
 
-export type AnmeldeArt = 'anmelden' | 'passwort' | 'alle-abgemeldet' | 'abmelden' | 'zweiter-faktor-an' | 'zweiter-faktor-aus';
-export interface Anmeldung { zeit: string; speicher: string | null; art: AnmeldeArt; ok: boolean; adresse: string }
+export type AnmeldeArt = 'anmelden' | 'passwort' | 'alle-abgemeldet' | 'abmelden' | 'zweiter-faktor-an' | 'zweiter-faktor-aus'
+  /** Anmelde-Adressen (03.10.): hinzugefügt, zur Hauptadresse gemacht, entfernt — `detail` nennt die Adresse nur maskiert. */
+  | 'adresse-hinzu' | 'adresse-haupt' | 'adresse-weg';
+export interface Anmeldung { zeit: string; speicher: string | null; art: AnmeldeArt; ok: boolean; adresse: string; /** Nur bei Adress-Änderungen: die betroffene Adresse maskiert (k***@example.invalid). */ detail?: string }
 const STORE = 'anmeldungen';
 const MAX = 300;
 

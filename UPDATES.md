@@ -4,6 +4,17 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Mehrere Anmelde-Adressen je Konto (03.10.2026, nur lokal — Branch `konto-mail`)
+
+Kevin 03.10.: Die neuen Firmen-Adressen @makeinnovation.de werden Standard, die alten sollen weitergehen — „wir können uns mit kevin@makeinnovation.de anmelden oder mit der alten Adresse, Malin umgekehrt genauso.“
+
+- **Modell:** `Konto.email` bleibt die **Hauptadresse** (Anzeige: Begrüßung, Visitenkarten-Vorbefüllung, Team; alte Bilder lesen nur sie). Neu optional `Konto.weitereEmails` (höchstens 3, klein/getrimmt wie `emailSauber`). Alle Adressen führen ins selbe Konto — gleiches Passwort, gleicher zweiter Faktor. Alte Konten ohne das Feld gelten unverändert; ohne weitere Adressen steht das Feld gar nicht in `konten.json`.
+- **Eine Suche:** `kontoMitAdresse`/`kontoZuEmail` (`lib/zugang/konten.ts`) für „Adresse → Konto“ — Anmelden (auch mit zweitem Faktor) nutzt sie; `adresseVergeben` prüft Eindeutigkeit über alle Konten (Haupt + weitere) und offene Einladungen (Beitreten, Einladen, Hinzufügen, jeweils in der Konten-Sperre).
+- **Sicherheit:** die Anmelde-Bremse zählt das Paar IP + **Konto** (nicht den eingegebenen Text) — ein Alias verdoppelt die Versuche nicht; die IP-Bremse, die Code-Bremse je Konto und die einheitliche 401-Antwort bleiben.
+- **Einstellungen:** System › Konto › Kachel „Anmelde-Adressen“ (Liste, Adresse hinzufügen, Als Hauptadresse, Entfernen; die Hauptadresse und damit nie die letzte lässt sich nicht entfernen). Jede Änderung nur mit dem aktuellen Passwort (Bremse `pw:<person>` wie „Passwort ändern“), nur für das eigene Konto (`POST /api/konto/adressen`, Dienstweg 403), protokolliert (Sicherheitsprotokoll mit maskierter Adresse, „Zuletzt:“ auf der Kontoseite) und als Glocken-Meldung („Sicherheit“) ans Konto.
+- **Einladen:** optional die Adresse der eingeladenen Person — bis zum Ablauf reserviert und einzige zulässige Adresse beim Beitreten.
+- **Rückweg:** nur optionale Felder — Details `GO_LIVE_CHECKLISTE.md` › Rückweg (vorher die gewünschte Adresse zur Hauptadresse machen).
+
 ## Qualifizierung & Scoring (03.10.2026, nur lokal — Branch `quali`)
 
 Kevin 03.10.: „Beim Qualifizierungsbereich derbe reingehen — Karten sauber bearbeiten, Firma ändern, Kontakt zusammenführen … und das Leadscoring mit in die Markttraktion.“ Methode, Standard, Vorschlag und Begründung: **`SCORING.md`**.
