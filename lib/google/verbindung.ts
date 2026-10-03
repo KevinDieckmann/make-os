@@ -2,8 +2,8 @@
 // Kevin 03.10.: „Wir haben nur den Kalender bei Google für MAKE und alles andere läuft über MAKE OS.“ — je Person eine
 // feste Verbindung zum Google-Workspace-Konto (Domain makeinnovation.de). Diese Datei ist der ALLGEMEINE Unterbau und
 // kennt keinen Kalender: OAuth 2.0 (Authorization-Code + PKCE + `state`), Token-Bestand, Erneuern, Widerruf, Domain-
-// Prüfung, Scope-Verwaltung. Der Kalender-Abgleich (lib/kalender/google/*) setzt darauf auf — jedes weitere Google-Modul
-// (z. B. Gmail für die Inbox) trägt sich nur in `GOOGLE_FUNKTIONEN` ein und holt sein Token über `googleZugriffstoken`.
+// Prüfung, Scope-Verwaltung. Der Kalender-Abgleich (lib/kalender/google/*) und Gmail (lib/gmail/*, seit 03.10.) setzen darauf
+// auf — jedes weitere Google-Modul trägt sich nur in `GOOGLE_FUNKTIONEN` ein und holt sein Token über `googleZugriffstoken`.
 //
 // Inkrementelle Autorisierung: Scopes gehören zu FUNKTIONEN und werden einzeln zugeschaltet. Jede Anmeldung schickt
 // `include_granted_scopes=true` — Google ergänzt die neuen Scopes zu den bereits gewährten, es bleibt EINE Verbindung und
@@ -35,11 +35,17 @@ import { adresseMaskiert } from '@/lib/zugang/konten';
  *   basis      `openid email`: nur um die Adresse des Kontos zu erfahren (Domain-Prüfung, Anzeige). Keine Daten.
  *   kalender   `calendar.events` (Termine lesen, anlegen, ändern, löschen) + `calendar.readonly` (die Kalenderliste, um
  *              den Kalender zu wählen). Kein `calendar` (Kalender anlegen/löschen/Freigaben) — das braucht MAKE OS nie.
- * Ein weiteres Modul (z. B. Gmail) trägt sich hier ein: `gmail: { scopes: [...], text: '…' }` — Rest unverändert.
+ *   gmail      NUR `gmail.modify` (03.10.): Nachrichten lesen, als gelesen markieren, Labels setzen (Archivieren), senden
+ *              (`users.messages.send` akzeptiert `gmail.modify`), `history.list`, `users.watch`, `sendAs.list`, Anhänge lesen.
+ *              Bewusst NICHT `mail.google.com/` (Vollzugriff inkl. endgültigem Löschen) und kein zusätzliches `gmail.send`
+ *              (wäre durch `gmail.modify` schon abgedeckt, nur ein weiterer Haken). `gmail.modify` kann Nachrichten nicht
+ *              endgültig löschen und keine Einstellungen (Weiterleitung, Filter, Delegation) ändern.
+ * Ein weiteres Modul trägt sich hier ein: `xyz: { scopes: [...], text: '…' }` — Rest unverändert.
  */
 export const GOOGLE_FUNKTIONEN = {
   basis: { scopes: ['openid', 'email'], text: 'Adresse des Kontos prüfen' },
   kalender: { scopes: ['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/calendar.readonly'], text: 'Kalender: Termine lesen und schreiben' },
+  gmail: { scopes: ['https://www.googleapis.com/auth/gmail.modify'], text: 'Gmail: Mails lesen, zuordnen, Antworten senden (nur auf Klick)' },
 } as const satisfies Record<string, { scopes: readonly string[]; text: string }>;
 export type GoogleFunktion = keyof typeof GOOGLE_FUNKTIONEN;
 export const istGoogleFunktion = (v: unknown): v is GoogleFunktion => typeof v === 'string' && Object.prototype.hasOwnProperty.call(GOOGLE_FUNKTIONEN, v);
@@ -64,8 +70,8 @@ export interface GoogleKonfig { clientId: string; clientSecret: string; rueckruf
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
-/** Hierhin dürfen Google-Zugangsdaten gehen — sonst nirgends. */
-export const GOOGLE_HOSTS: readonly string[] = ['accounts.google.com', 'oauth2.googleapis.com', 'www.googleapis.com'];
+/** Hierhin dürfen Google-Zugangsdaten gehen — sonst nirgends. `gmail.googleapis.com` = die Gmail API (03.10.). */
+export const GOOGLE_HOSTS: readonly string[] = ['accounts.google.com', 'oauth2.googleapis.com', 'www.googleapis.com', 'gmail.googleapis.com'];
 export const googleHost = (u: string): boolean => { try { const x = new URL(u); return x.protocol === 'https:' && GOOGLE_HOSTS.includes(x.hostname); } catch { return false; } };
 
 export const RUECKRUF_PFAD = '/api/google/rueckruf';
@@ -210,7 +216,7 @@ export async function tokenWiderrufen(token: string): Promise<boolean> {
 
 // ── Anmelden: Start und Rückruf ─────────────────────────────────────────────
 
-interface ZustandBestand { eintraege: Record<string, { person: string; verifier: string; funktionen: GoogleFunktion[]; at: number }> }
+interface ZustandBestand { eintraege: Record<string, { person: string; verifier: string; funktionen: GoogleFunktion[]; at: number; /** Was DIESE Anmeldung neu wollte (ohne `basis`) — der Rückruf richtet nur das ein. */ angefordert?: GoogleFunktion[] }> }
 const ZUSTAND_MS = 15 * 60_000;
 const hash = (s: string) => createHash('sha256').update(s).digest('hex');
 
@@ -226,26 +232,29 @@ export async function verbindungStarten(person: string, funktionen: readonly Goo
   const gewollt = Array.from(new Set<GoogleFunktion>([...(alt?.status === 'verbunden' ? alt.funktionen : []), ...funktionen, 'basis']));
   const state = b64url(randomBytes(32));
   const { verifier, challenge } = pkcePaar();
+  const angefordert = Array.from(new Set(funktionen.filter(f => f !== 'basis')));
   await updateJson<ZustandBestand>(ZUSTAND, cur => {
     const eintraege = Object.fromEntries(Object.entries(cur?.eintraege ?? {}).filter(([, v]) => jetzt - v.at < ZUSTAND_MS));
-    eintraege[hash(state)] = { person, verifier, funktionen: gewollt, at: jetzt };
+    eintraege[hash(state)] = { person, verifier, funktionen: gewollt, at: jetzt, angefordert };
     return { eintraege };
   });
-  return { url: autorisierungsUrl({ konfig, state, challenge, scopes: scopesFuer(gewollt) }) };
+  // Ist schon ein Konto verbunden, schlägt Google genau dieses vor (`login_hint`) — eine zweite Funktion ergänzt die Verbindung,
+  // sie ersetzt sie nicht durch ein anderes Konto.
+  return { url: autorisierungsUrl({ konfig, state, challenge, scopes: scopesFuer(gewollt), ...(alt?.status === 'verbunden' ? { loginHint: alt.email } : {}) }) };
 }
 
 /** `state` einlösen (einmalig) — null, wenn unbekannt/abgelaufen. */
-async function zustandEinloesen(state: string, jetzt: number): Promise<{ person: string; verifier: string; funktionen: GoogleFunktion[] } | null> {
+async function zustandEinloesen(state: string, jetzt: number): Promise<{ person: string; verifier: string; funktionen: GoogleFunktion[]; angefordert: GoogleFunktion[] } | null> {
   if (!/^[A-Za-z0-9_-]{20,100}$/.test(state)) return null;
   const schluessel = hash(state);
   const f = await loadJson<ZustandBestand>(ZUSTAND);
   const e = f?.eintraege?.[schluessel];
   if (!e) return null;
   await updateJson<ZustandBestand>(ZUSTAND, cur => { const eintraege = { ...(cur?.eintraege ?? {}) }; delete eintraege[schluessel]; return { eintraege }; });
-  return jetzt - e.at <= ZUSTAND_MS ? { person: e.person, verifier: e.verifier, funktionen: e.funktionen } : null;
+  return jetzt - e.at <= ZUSTAND_MS ? { person: e.person, verifier: e.verifier, funktionen: e.funktionen, angefordert: e.angefordert ?? e.funktionen.filter(f => f !== 'basis') } : null;
 }
 
-export interface Abschluss { email: string; funktionen: GoogleFunktion[]; fehlendeScopes: string[] }
+export interface Abschluss { email: string; funktionen: GoogleFunktion[]; fehlendeScopes: string[]; /** Die Funktionen, die DIESE Anmeldung neu wollte (z. B. nur `gmail`) — der Rückruf richtet nur diese ein. */ angefordert: GoogleFunktion[] }
 
 /**
  * Rückruf: Code gegen Tokens tauschen. `person` = die Person der SITZUNG — gehört der `state` einer anderen, wird nichts
@@ -289,7 +298,7 @@ export async function verbindungAbschliessen(person: string, code: string, state
     scopes, funktionen, verbundenAm: anderesKonto || !alt || alt.status === 'getrennt' ? new Date(jetzt).toISOString() : alt.verbundenAm, erneuertAm: new Date(jetzt).toISOString(), status: 'verbunden',
   };
   await saveJson(verbindungName(person), neu);
-  return { email, funktionen, fehlendeScopes: fehlende };
+  return { email, funktionen, fehlendeScopes: fehlende, angefordert: z.angefordert };
 }
 
 // ── Zugriffstoken ───────────────────────────────────────────────────────────

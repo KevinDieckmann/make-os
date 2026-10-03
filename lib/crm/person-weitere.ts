@@ -201,7 +201,11 @@ export const kalenderBezugOhne: Wirkung = (cur, m) => {
  * Abgleich baut den Spiegel aus Apple neu. Der Löschlauf ändert ihn NICHT, sondern zählt die Einträge, die die Person
  * nennen (`nurInApple`), und meldet „n Einträge in Apple nennen die Person — dort löschen“. Register: „ausgenommen“.
  */
-export interface WeitererSpeicher { name: string; muster: RegExp; behandlung: 'entfernen' | 'tilgen' | 'nur-in-apple'; wirkung: Wirkung }
+export interface WeitererSpeicher {
+  name: string; muster: RegExp; behandlung: 'entfernen' | 'tilgen' | 'nur-in-apple'; wirkung: Wirkung;
+  /** Spiegel eines Originals bei einem Anbieter (Gmail, 03.10.): im Spiegel wird entfernt, die entfernten Einträge zählen zusätzlich in „dort löschen“ (`nurInApple`) — das Original bleibt beim Anbieter. */
+  original?: true;
+}
 
 /** Einträge eines Apple-Spiegels, die die Person nennen — gezählt, nie geändert. `{events}`, `{daten}`, `{objekte: {kal: [...]}}`. */
 export const inAppleZaehlen: Wirkung = (cur, m) => {
@@ -218,6 +222,18 @@ export const inGoogleZaehlen: Wirkung = (cur, m) => {
   const ev = ((cur ?? {}) as Obj).events;
   const liste = ev && typeof ev === 'object' ? Object.values(ev as Obj) : [];
   return { neu: cur, n: liste.filter(e => nenntPerson(e, m)).length };
+};
+
+/**
+ * Gmail-Spiegel (03.10.): Einträge einer Objekt-Map (`koepfe`, `texte`: Nachrichten-Kennung → Eintrag), die die Person nennen, fallen weg.
+ * Das Original bleibt in Gmail — dort löschen die Personen selbst (die Antwort des Art.-17-Laufs zählt es als „dort löschen“).
+ */
+export const mapEintraegeRaus = (feld: string): Wirkung => (cur, m) => {
+  const alt = (cur && typeof cur[feld] === 'object' && cur[feld] && !Array.isArray(cur[feld]) ? cur[feld] : {}) as Obj;
+  let n = 0;
+  const neu: Obj = {};
+  for (const [k, v] of Object.entries(alt)) { if (nenntPerson(v, m)) { n++; continue; } neu[k] = v; }
+  return { neu: n ? { ...cur, [feld]: neu } : cur, n };
 };
 
 /**
@@ -240,6 +256,9 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'apple-contacts-cache', muster: /^apple-contacts-cache$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
   // Google Kalender (03.10.): Spiegel der Termine je Person — Wahrheit ist Google (Löschung dort), hier nur gezählt.
   { name: 'kalender-google--*', muster: /^kalender-google--[a-z0-9-]+$/, behandlung: 'nur-in-apple', wirkung: inGoogleZaehlen },
+  // Gmail in der Inbox (03.10.): Spiegel je Person (Köpfe, Texte) — Nachrichten, die die Person nennen, raus; das Original bleibt in Gmail.
+  { name: 'gmail-stand--*', muster: /^gmail-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
+  { name: 'gmail-text--*', muster: /^gmail-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },
   { name: 'kemaris-calendar', muster: /^kemaris-calendar$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'kalender-bezug', muster: /^kalender-bezug$/, behandlung: 'entfernen', wirkung: kalenderBezugOhne },
   { name: 'meetings', muster: /^meetings$/, behandlung: 'tilgen', wirkung: tilgen },
@@ -300,6 +319,7 @@ export async function weitereEntfernen(m: PersonMerkmale): Promise<{ speicher: R
         return r.n ? r.neu : cur;
       });
       if (n) speicher[name] = n;
+      if (n && s.original) nurInApple[name] = n;
     } catch (e) {
       fehler.push(name);
       console.error(`[art17] ${name}:`, e instanceof Error ? e.message : e);

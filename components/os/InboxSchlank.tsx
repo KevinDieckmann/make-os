@@ -9,20 +9,27 @@ import type { Owner } from '@/types/common';
 // rauschen), fällige Wiedervorlagen stehen oben, Rauschen ist eingeklappt und
 // geht in einem Zug weg. Je Mail: Erledigt · Aufgabe · Morgen · Montag ·
 // Antwort (ZOE schreibt, Apple Mail öffnet — gesendet wird von Hand).
+// Gmail (03.10.): Google Workspace als weitere Quelle (je Person der EIGENE Spiegel) — Threads, „gehört zu …“, Antworten im Thread per
+// Einzelklick, Aufgabe/Follow-up/Termin/Kontakt aus der Mail (components/os/inbox/Gmail*.tsx, lib/gmail/*). Einstufung ohne Modell.
 // Tasten wie gehabt: j/k wandern, e erledigt, a Aufgabe, s morgen.
 // Fächer, Screener und der Zero-Durchlauf des alten Baus: /os/inbox/voll.
 
 import { useLinkAuswahl } from './Verlauf';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { absenderKey } from '@/lib/make-one/inbox-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
+import { GmailDetail } from './inbox/GmailDetail';
+import { GmailVerbinden, type GmailMeta } from './inbox/GmailVerbinden';
+import { threadsAus, zeileMitNachricht, gmailIdAus, type ListeNachricht, type ThreadZeile } from '@/lib/gmail/liste';
 
-type Source = 'apple' | 'ms';
-interface Msg { id: string; source: Source; account: string; sender: string; senderEmail?: string; subject: string; preview?: string; receivedAt: string; isRead: boolean; importance?: string; mbIndex?: number }
+type Source = 'apple' | 'ms' | 'gmail';
+interface Msg { id: string; source: Source; account: string; sender: string; senderEmail?: string; subject: string; preview?: string; receivedAt: string; isRead: boolean; importance?: string; mbIndex?: number; /** Gmail: der Thread dieser Zeile. */ gm?: ThreadZeile }
+const GMAIL_KONTO = 'MAKE Workspace · Gmail';
+const QUELLE_LABEL: Record<Source, string> = { gmail: 'Gmail', apple: 'Apple Mail', ms: 'Microsoft 365' };
 type StatusMap = Record<string, { status: string; at: string; bis?: string }>;
 type Stufe = 'wichtig' | 'normal' | 'rauschen';
 type TriageMap = Record<string, { stufe: Stufe; zeile: string; grund: string }>;
@@ -60,15 +67,21 @@ export function InboxSchlank() {
   const [triage, setTriage] = useState<TriageMap>({});
   const [absender, setAbsender] = useState<Record<string, { status: string }>>({});
   const [quelle, setQuelle] = useState<{ apple: string; ms: string }>({ apple: 'lädt …', ms: 'lädt …' });
+  // Gmail (03.10.): Stand der Verbindung, die Person der Sitzung, die Quelle als Filter.
+  const [gmMeta, setGmMeta] = useState<GmailMeta | null>(null);
+  const [gmZeilen, setGmZeilen] = useState<ThreadZeile[]>([]);
+  const [ich, setIch] = useState('');
+  const [quelleWahl, setQuelleWahl] = useState<'alle' | Source>('alle');
   const [seg, setSeg] = useState<Segment>('offen');
   // Space aus der Adresse (26.09., Malin): Privat = Apple-Postfächer, Business = Microsoft 365 — bis Adressen einzeln zugeordnet sind.
   const [space, setSpace] = useState<'privat' | 'business' | null>(null);
   useEffect(() => { const q = new URLSearchParams(window.location.search).get('space'); setSpace(q === 'privat' || q === 'business' ? q : null); }, []);
   const [spaces, setSpaces] = useState<SpaceEinstellungen>(SPACE_EINSTELLUNGEN_LEER);
   useEffect(() => { fetch('/api/state/spaces').then(r => r.json()).then(d => setSpaces(spaceEinstellungenSauber(d))).catch(() => {}); }, []);
-  const postfach = (m: Msg) => (m.source === 'apple' ? m.account : 'M365 · KEMARIS');
+  const postfach = (m: Msg) => (m.source === 'apple' || m.source === 'gmail' ? m.account : 'M365 · KEMARIS');
   const postfachSetzen = (konto: string, sp: 'privat' | 'business') => { const next = { postfaecher: { ...spaces.postfaecher, [konto]: sp } }; setSpaces(next); fetch('/api/state/spaces', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {}); };
-  const msgsImSpace = useMemo(() => msgs.filter(m => !space || spaceVonPostfach(spaces, postfach(m)) === space), [msgs, space, spaces]);
+  const msgsImSpace = useMemo(() => msgs.filter(m => (!space || spaceVonPostfach(spaces, postfach(m)) === space) && (quelleWahl === 'alle' || m.source === quelleWahl)), [msgs, space, spaces, quelleWahl]);
+  const quellenDa = useMemo(() => Array.from(new Set(msgs.map(m => m.source))), [msgs]);
   const postfaecher = useMemo(() => Array.from(new Set(msgs.map(postfach))), [msgs]);
   // Offene Mail im Link (?offen=): Zurück schließt sie wieder, statt die Seite zu verlassen (25.09.).
   const [offenId, setOffenId] = useLinkAuswahl('offen');
@@ -84,10 +97,29 @@ export function InboxSchlank() {
 
   const merge = (a: Msg[], b: Msg[]) => { const m = new Map<string, Msg>(); a.concat(b).forEach(x => m.set(x.id, x)); return Array.from(m.values()).sort((x, y) => y.receivedAt.localeCompare(x.receivedAt)); };
 
+  // Gmail: der EIGENE Spiegel (Threads). Wird nach jeder Änderung und alle 90 Sekunden (solange die Seite sichtbar ist) neu geholt.
+  const gmailLaden = useCallback(async () => {
+    const d = await fetch('/api/gmail', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    if (!d?.ok) { setGmMeta(null); setMsgs(p => p.filter(m => m.source !== 'gmail')); setGmZeilen([]); return; }
+    setGmMeta({ konfiguriert: !!d.konfiguriert, verbunden: !!d.verbunden, bereit: !!d.bereit, konto: d.konto, getrennt: d.getrennt, abgleich: d.abgleich, push: d.push, einrichten: d.einrichten });
+    const zeilen = threadsAus(Array.isArray(d.nachrichten) ? d.nachrichten as ListeNachricht[] : []);
+    setGmZeilen(zeilen);
+    const gm: Msg[] = zeilen.map(z => ({
+      id: `gmail-${z.id}`, source: 'gmail' as const, account: GMAIL_KONTO, sender: z.gegenueber.name ?? z.gegenueber.email, senderEmail: z.gegenueber.email,
+      subject: z.juengste.betreff || '(kein Betreff)', preview: z.juengste.ausschnitt, receivedAt: z.juengste.am, isRead: !z.ungelesen, gm: z,
+    }));
+    setMsgs(p => merge(p.filter(m => m.source !== 'gmail'), gm));
+  }, []);
+  useEffect(() => {
+    void gmailLaden();
+    const t = setInterval(() => { if (document.visibilityState === 'visible') void gmailLaden(); }, 90_000);
+    return () => clearInterval(t);
+  }, [gmailLaden]);
+
   useEffect(() => {
     fetch('/api/state/inbox').then(r => r.json()).then(d => setStatus(d.status ?? {})).catch(() => {});
     fetch('/api/inbox/triage').then(r => r.json()).then(d => setTriage(d.triage ?? {})).catch(() => {});
-    fetch('/api/konto/ich').then(r => r.json()).then(d => setAndere(Array.isArray(d.andere) ? d.andere.map((k: { speicher: string; name: string }) => ({ speicher: k.speicher, name: k.name })) : [])).catch(() => {});
+    fetch('/api/konto/ich').then(r => r.json()).then(d => { if (typeof d.ich?.speicher === 'string') setIch(d.ich.speicher); setAndere(Array.isArray(d.andere) ? d.andere.map((k: { speicher: string; name: string }) => ({ speicher: k.speicher, name: k.name })) : []); }).catch(() => {});
     fetch('/api/state/inbox-absender').then(r => r.json()).then(d => setAbsender(d.bekannt ?? {})).catch(() => {});
     fetch('/api/microsoft').then(r => r.json()).then(d => {
       const ms: Msg[] = (d.emails ?? []).map((e: Record<string, unknown>) => ({
@@ -110,7 +142,8 @@ export function InboxSchlank() {
   // ZOE stuft alles Uneingeteilte ein — einmal je Mail, Ergebnis liegt im Cache.
   useEffect(() => {
     if (laedt || !msgs.length) return;
-    const neu = msgs.filter(m => !triage[fpOf(m)] && !angefragt.current.has(fpOf(m)));
+    // Gmail geht NIE in die gemeinsame Einstufung (Betreff/Absender stünden im Schlüssel für das andere Konto) — dafür gibt es lib/gmail/liste.ts.
+    const neu = msgs.filter(m => !m.gm && !triage[fpOf(m)] && !angefragt.current.has(fpOf(m)));
     if (!neu.length) return;
     neu.forEach(m => angefragt.current.add(fpOf(m)));
     fetch('/api/inbox/triage', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -121,7 +154,18 @@ export function InboxSchlank() {
 
   const istOffen = (id: string) => { const e = status[id]; if (!e || OFFEN.has(e.status)) return !(e?.status === 'snoozed' && e.bis && e.bis > heute); return false; };
   const istFaellig = (id: string) => status[id]?.status === 'snoozed' && !!status[id]?.bis && status[id]!.bis! <= heute;
-  const stufe = (m: Msg): Stufe | undefined => triage[fpOf(m)]?.stufe;
+  const stufe = (m: Msg): Stufe | undefined => (m.gm ? m.gm.stufe : triage[fpOf(m)]?.stufe);
+  // Gmail: „offen“ = im Posteingang, „erledigt“ = archiviert (Label INBOX weg) — der Zustand lebt in Gmail, nicht in der Status-Karte.
+  const offenM = (m: Msg) => (m.gm ? m.gm.offen : istOffen(m.id));
+  const faelligM = (m: Msg) => (m.gm ? false : istFaellig(m.id));
+  const erledigtM = (m: Msg) => (m.gm ? !m.gm.offen : ERLEDIGT.has(status[m.id]?.status ?? ''));
+  const blockiert = (m: Msg) => !m.gm && absender[absenderKey(m)]?.status === 'geblockt';
+  const gmailArchiv = async (m: Msg) => {
+    if (!m.gm) return;
+    const r = await fetch('/api/gmail', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'markieren', id: m.gm.juengste.id, was: 'archivieren' }) }).then(x => x.json()).catch(() => ({ ok: false }));
+    setMeldung(r.ok ? `Archiviert: ${m.subject}` : String(r.fehler ?? 'Archivieren ging nicht.'));
+    void gmailLaden();
+  };
 
   const setzen = (ops: { id: string; status: string | null; bis?: string }[]) => {
     const at = new Date().toISOString();
@@ -163,19 +207,19 @@ export function InboxSchlank() {
     setMeldung(`${m.sender} kommt nicht mehr in die Inbox.`);
   };
 
-  const sichtbar = useMemo(() => msgsImSpace.filter(m => seg === 'offen' ? istOffen(m.id) && absender[absenderKey(m)]?.status !== 'geblockt' : ERLEDIGT.has(status[m.id]?.status ?? ''))
-    .sort((a, b) => (istFaellig(b.id) ? 1 : 0) - (istFaellig(a.id) ? 1 : 0) || (RANG[stufe(a) ?? 'normal'] - RANG[stufe(b) ?? 'normal']) || b.receivedAt.localeCompare(a.receivedAt)),
+  const sichtbar = useMemo(() => msgsImSpace.filter(m => seg === 'offen' ? offenM(m) && !blockiert(m) : erledigtM(m))
+    .sort((a, b) => (faelligM(b) ? 1 : 0) - (faelligM(a) ? 1 : 0) || (RANG[stufe(a) ?? 'normal'] - RANG[stufe(b) ?? 'normal']) || b.receivedAt.localeCompare(a.receivedAt)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [msgsImSpace, status, triage, absender, seg]);
   const gruppen = seg === 'offen'
     ? [
-      { titel: 'Wiedervorlage', liste: sichtbar.filter(m => istFaellig(m.id)) },
-      { titel: 'Wichtig', liste: sichtbar.filter(m => !istFaellig(m.id) && stufe(m) === 'wichtig') },
-      { titel: 'Normal', liste: sichtbar.filter(m => !istFaellig(m.id) && (stufe(m) ?? 'normal') === 'normal') },
+      { titel: 'Wiedervorlage', liste: sichtbar.filter(m => faelligM(m)) },
+      { titel: 'Wichtig', liste: sichtbar.filter(m => !faelligM(m) && stufe(m) === 'wichtig') },
+      { titel: 'Normal', liste: sichtbar.filter(m => !faelligM(m) && (stufe(m) ?? 'normal') === 'normal') },
     ]
     : [{ titel: 'Erledigt', liste: sichtbar.slice(0, 40) }];
-  const rauschen = seg === 'offen' ? sichtbar.filter(m => !istFaellig(m.id) && stufe(m) === 'rauschen') : [];
-  const offenZahl = msgs.filter(m => istOffen(m.id) && absender[absenderKey(m)]?.status !== 'geblockt').length;
+  const rauschen = seg === 'offen' ? sichtbar.filter(m => !faelligM(m) && stufe(m) === 'rauschen') : [];
+  const offenZahl = msgs.filter(m => offenM(m) && !blockiert(m)).length;
 
   // Tasten: j/k wandern, Enter öffnet, e erledigt, a Aufgabe, s morgen.
   useEffect(() => {
@@ -188,7 +232,8 @@ export function InboxSchlank() {
       if (k === 'k' || ev.key === 'ArrowUp') { ev.preventDefault(); setOffenId(alle[Math.max(0, idx - 1)].id); return; }
       if (k === 'escape') { setOffenId(null); return; }
       if (idx < 0) return; const m = alle[idx]; const weiter = () => setOffenId(alle[Math.min(alle.length - 1, idx + 1)]?.id ?? null);
-      if (k === 'e') { ev.preventDefault(); setzen([{ id: m.id, status: 'erledigt' }]); weiter(); }
+      if (k === 'e') { ev.preventDefault(); if (m.gm) void gmailArchiv(m); else setzen([{ id: m.id, status: 'erledigt' }]); weiter(); }
+      else if (m.gm) return; // Gmail: Aufgabe/Follow-up/Termin über das Menü der Mail (mit Bezug zur Person)
       else if (k === 'a') { ev.preventDefault(); aufgabe(m); weiter(); }
       else if (k === 's') { ev.preventDefault(); setzen([{ id: m.id, status: 'snoozed', bis: tagIn(1) }]); weiter(); }
     }
@@ -198,7 +243,9 @@ export function InboxSchlank() {
 
   // Als Funktion, nicht als Bauteil: sonst baut React die Ansicht bei jedem
   // Tastendruck neu und das Antwortfeld verliert den Fokus (24.09.).
-  const detail = (m: Msg, imFenster = false) => (
+  const detail = (m: Msg, imFenster = false) => m.gm ? (
+    <GmailDetail key={m.gm.id} nachrichtId={m.gm.id} person={ich} imFenster={imFenster} meldung={setMeldung} onGeaendert={() => void gmailLaden()} />
+  ) : (
     <div style={imFenster ? undefined : { padding: '6px 2px 18px 22px', borderBottom: `1px solid ${C.linie}` }}>
       <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>{m.senderEmail ?? m.sender} · {m.account} · {new Date(m.receivedAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{triage[fpOf(m)]?.grund ? ` · ${triage[fpOf(m)].grund}` : ''}</div>
       <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55, maxHeight: 320, overflow: 'auto' }}>{(m.source === 'apple' ? body[m.id] : m.preview) ?? (m.source === 'apple' && m.mbIndex ? 'lädt …' : m.preview ?? '')}</pre>
@@ -226,13 +273,14 @@ export function InboxSchlank() {
     </div>
   );
 
-  const offenMsg = offenId ? msgs.find(m => m.id === offenId) ?? null : null;
+  // `?offen=gmail-<Nachrichten-Kennung>` (Link aus dem Verlauf der Kontaktakte) zeigt die Zeile, in deren Thread die Mail steht.
+  const offenMsg = offenId ? msgs.find(m => m.id === offenId) ?? (gmailIdAus(offenId) ? msgs.find(m => m.gm && m.gm.id === zeileMitNachricht(gmZeilen, gmailIdAus(offenId)!)?.id) : undefined) ?? null : null;
   const zeile = (m: Msg) => (
     <div key={m.id}>
       <Zeile onClick={() => oeffnen(m)} aktiv={offenId === m.id}
-        links={<Punkt farbe={istFaellig(m.id) ? LEUCHT.achtung : STUFE_FARBE[stufe(m) ?? 'normal']} />}
-        titel={<><span style={{ fontWeight: m.isRead ? 400 : 600 }}>{m.sender}</span><span style={{ color: C.inkLeise }}> · {m.subject}</span></>}
-        unter={triage[fpOf(m)]?.zeile ?? m.preview}
+        links={<Punkt farbe={faelligM(m) ? LEUCHT.achtung : STUFE_FARBE[stufe(m) ?? 'normal']} />}
+        titel={<><span style={{ fontWeight: m.isRead ? 400 : 600 }}>{m.sender}</span><span style={{ color: C.inkLeise }}> · {m.subject}{m.gm && m.gm.anzahl > 1 ? ` (${m.gm.anzahl})` : ''}</span></>}
+        unter={m.gm ? `${m.gm.zuordnung ? `gehört zu ${m.gm.zuordnung.name}${m.gm.zuordnung.firma ? ` · ${m.gm.zuordnung.firma}` : ''} — ` : ''}${m.preview ?? ''}` : triage[fpOf(m)]?.zeile ?? m.preview}
         rechts={<span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>} />
       {offenId === m.id && !breit && detail(m)}
     </div>
@@ -240,8 +288,11 @@ export function InboxSchlank() {
 
   return (
     <Seite titel={<>Inbox {offenZahl > 0 && <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{offenZahl} offen</span>}</>}
-      rechts={<span style={{ display: 'flex', gap: 14, alignItems: 'center' }}><Segmente liste={SEG} aktiv={seg} onWahl={setSeg} /><Link href="/os/inbox/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Volle Ansicht ›</Link></span>}>
+      rechts={<span style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        {quellenDa.length > 1 && <Segmente liste={[{ id: 'alle' as const, label: 'Alle' }, ...quellenDa.map(q => ({ id: q, label: QUELLE_LABEL[q] }))]} aktiv={quelleWahl} onWahl={setQuelleWahl} umbrechen />}
+        <Segmente liste={SEG} aktiv={seg} onWahl={setSeg} /><Link href="/os/inbox/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Volle Ansicht ›</Link></span>}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12 }}>{meldung}</div>}
+      {gmMeta && !gmMeta.bereit && gmMeta.konfiguriert && <GmailVerbinden meta={gmMeta} onGeaendert={() => void gmailLaden()} meldung={setMeldung} />}
       <Spalten verhaeltnis="3:2">
         <Spalte>
       {laedt && !sichtbar.length && !rauschen.length && <Karte i={0}><Leer>{msgs.length ? `Microsoft 365: nichts offen. Apple Mail antwortet gleich …` : `Apple Mail antwortet gleich · Microsoft 365 ${quelle.ms} …`}</Leer></Karte>}
@@ -267,7 +318,7 @@ export function InboxSchlank() {
             <Karte i={1} akzent={offenMsg ? LEUCHT.puls : undefined}>
               {offenMsg ? (
                 <>
-                  <Ueberschrift farbe={istFaellig(offenMsg.id) ? LEUCHT.achtung : STUFE_FARBE[stufe(offenMsg) ?? 'normal']} rechts={relTime(offenMsg.receivedAt)}>{offenMsg.sender}</Ueberschrift>
+                  <Ueberschrift farbe={faelligM(offenMsg) ? LEUCHT.achtung : STUFE_FARBE[stufe(offenMsg) ?? 'normal']} rechts={relTime(offenMsg.receivedAt)}>{offenMsg.sender}</Ueberschrift>
                   <div style={{ fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3, margin: '2px 0 12px' }}>{offenMsg.subject}</div>
                   {detail(offenMsg, true)}
                 </>
@@ -276,7 +327,8 @@ export function InboxSchlank() {
           </Spalte>
         )}
       </Spalten>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 28 }}>{space && <span style={{ color: C.inkDim, fontWeight: 600 }}>Space {space === 'privat' ? 'Privat' : 'Business'} · </span>}Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
+      {gmMeta && (gmMeta.bereit || !gmMeta.konfiguriert) && <GmailVerbinden meta={gmMeta} onGeaendert={() => void gmailLaden()} meldung={setMeldung} />}
+      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 28 }}>{space && <span style={{ color: C.inkDim, fontWeight: 600 }}>Space {space === 'privat' ? 'Privat' : 'Business'} · </span>}{gmMeta?.bereit ? `Gmail ${gmZeilen.length} Threads · ` : ''}Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
       {postfaecher.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10, fontSize: 12, color: C.inkLeise }}>
           <span>Postfächer → Space:</span>

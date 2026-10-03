@@ -37,7 +37,9 @@ import { tagVon } from '@/lib/zeit';
 export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'heads-replay' | 'signale' | 'aenderungsprotokoll' | 'aktivitaeten-geloeschte'
   | 'zoe-arbeitslisten' | 'zoe-entscheidungen' | 'zoe-verlauf' | 'zoe-gedaechtnis' | 'postfach-caches' | 'kalender-caches' | 'archiv-umzug' | 'netzwerk' | 'grabsteine' | 'sicherungen' | 'buchungen'
   // Netzwerken (03.10., netz-recht): Medien, Veranstaltungs-Kontakte ohne Interaktion, Gesprächs-Info, Übergabe-Protokolle.
-  | 'netzwerken-karten' | 'netzwerken-sprachnotizen' | 'netzwerken-kontakte' | 'netzwerken-info' | 'uebergabe-protokolle';
+  | 'netzwerken-karten' | 'netzwerken-sprachnotizen' | 'netzwerken-kontakte' | 'netzwerken-info' | 'uebergabe-protokolle'
+  // Gmail in der Inbox (03.10., Branch gmail): der Mail-Spiegel je Person (Köpfe + Texte) — Gmail bleibt das Original.
+  | 'mail-spiegel';
 export type Einheit = 'tage' | 'monate';
 
 export interface FristDef {
@@ -75,6 +77,8 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'netzwerken-kontakte', titel: 'Netzwerken: Kontakte ohne weitere Interaktion', einheit: 'monate', standard: 12, min: 6, max: 60, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch gelöscht: Personen aus Netzwerken ohne Beziehung, Deal und Aktivität seit der Frist zählen in die Löschfrist-Aufgabe (prüfen: löschen oder begründen).' },
   { id: 'netzwerken-info', titel: 'Netzwerken: Gesprächs-Info und Zielpersonen', einheit: 'monate', standard: 12, min: 3, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Info zum Gespräch (Teilnahme) und die Personen auf der Zielliste eines Events fallen 12 Monate nach dem Event weg — Teilnahme, Termin und Kennzahlen bleiben.' },
   { id: 'uebergabe-protokolle', titel: 'Übergabe-Protokolle (Kunden-Events)', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2, Art. 15, Art. 19 DSGVO', hinweis: 'Nachweis, wann welche Personen an welchen Kunden übergeben wurden (am Event bzw. im Übergabe-Journal) — danach weg.' },
+  // 03.10. (gmail): Gmail-Spiegel je Person — nur eine Kopie zum Lesen/Zuordnen/Antworten in MAKE OS; das Original bleibt bei Google.
+  { id: 'mail-spiegel', titel: 'Mail-Spiegel (Gmail in der Inbox)', einheit: 'tage', standard: 180, min: 30, max: 730, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Kopie der Gmail-Nachrichten je Person (Kopf, Ausschnitt, Text) — ältere fallen im Spiegel weg, in Gmail bleiben sie (dort gilt die Aufbewahrung des Postfachs). Anhänge liegen nie im Spiegel.' },
   { id: 'sicherungen', titel: 'Tageskopien und Nachtsicherungen', einheit: 'tage', standard: 14, min: 14, max: 14, wirkung: 'fest', anzeige: '14 Tage', norm: 'Art. 5 Abs. 1 lit. e, Art. 32 DSGVO', hinweis: 'Gelöschte Personen stehen bis zum Ablauf noch in Sicherungen („beyond use“) — nach jedem Zurückspielen wenden die Grabsteine die Löschung erneut an.' },
 ];
 

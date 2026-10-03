@@ -23,7 +23,9 @@ const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitr
 const CSP_MELDEWEG = /^\/api\/hoi\/csp$/;
 // Google (03.10.): Push-Meldungen des Kalenders (events.watch) kommen von Googles Servern — ohne Sitzung, ohne Origin. Die Route
 // prüft Kanal-Kennung + Token + Ressourcen-ID selbst und liefert nie Daten (lib/kalender/google/kanal.ts). Nur POST.
-const GOOGLE_MELDEWEG = /^\/api\/kalender\/google\/meldung$/;
+// Gmail (03.10.): die Pub/Sub-Push-Subscription ruft `POST /api/google/gmail/meldung` — ebenfalls ohne Sitzung und ohne Origin; die Route prüft
+// das OIDC-Token von Google (Signatur, Aussteller, Audience, Dienstkonto) selbst und liefert nie Daten (lib/gmail/meldung.ts).
+const GOOGLE_MELDEWEG = /^\/api\/(kalender\/google|google\/gmail)\/meldung$/;
 // Öffentliche Buchungsseite (29.09., K4): NUR diese Pfade sind ohne Sitzung offen — die Seite einer Buchungsadresse,
 // ihre Status-Seite und genau deren zwei Schnittstellen. Adresse = lesbarer Vorsatz + 96 Bit Zufall (lib/kalender/buchung.ts
 // `slugOk`); alles andere (auch /buchen ohne Adresse oder tiefere Pfade) bleibt zu. Die Routen drosseln selbst.

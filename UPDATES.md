@@ -16,6 +16,19 @@ Kevin 03.10.: „Du hast bei dem Netzwerken das Ganze noch ein bisschen edler ge
 - **Test:** `tests/design-standard.test.ts` (Token, Bausteine, Netz nur unter `.ui-seite`, Markttraktion/Netzwerken hängen am Standard, Dokumentation nennt jeden Baustein); `tests/spaces.test.ts` an „Netzwerken nur am Handy“ (0488c71) angepasst.
 - **Rückweg:** reiner Oberflächen-Commit, ohne neue Bestände oder Felder.
 
+## Gmail in der Inbox (03.10.2026, nur lokal — Branch `gmail`; Einrichtung `GOOGLE_GMAIL_EINRICHTEN.md`)
+
+Kevin 03.10.: Mails ziehen von IONOS zu Gmail; „bei uns in der Inbox bekommen wir die Antworten und formulieren das Ganze … Google ist nur die Verlängerung.“ Gewählt: **Lesen & zuordnen, Antworten per Klick, Aufgaben aus Mails.**
+
+- **Eine Google-Verbindung, eine Freigabe mehr:** `gmail.modify` (nur diese — kein Vollzugriff, kein Löschen, keine Einstellungen); inkrementell über „Gmail verbinden“ in der Inbox, der Kalender bleibt unberührt. Trennen räumt auf.
+- **Lesen:** je Person der eigene Spiegel (letzte 30 Tage, dann `history.list`, 404 → Neuabgleich), alle 2 Minuten, mit Pub/Sub-Push in Echtzeit (optional). Text statt HTML, Bilder nie geladen, Anhänge nur auf Klick, Aufbewahrung 180 Tage (Frist „Mail-Spiegel“).
+- **Zuordnen:** „gehört zu …“ (alle Adressen der Kontakte → Firma/Deal), Verlaufszeile in der Kontaktakte (Betreff + Link in die Inbox), unbekannter Absender → „Kontakt anlegen“ (Anfrage über Mail = Marketing-Lead). Art. 18/Werbesperre: Anzeige ja, kein Verlauf, kein ZOE-Entwurf, kein Senden an Eingeschränkte.
+- **Antworten:** Editor in der Inbox, Antwort im Thread, Absender = eigene Adresse/„Senden als“-Alias (z. B. `hello@`), optional ZOE-Entwurf mit Brain — **gesendet wird nur auf den Einzelklick** (ZOE/Takt/Skripte: 403); § 7-UWG-Rückfrage bei werblichem Text.
+- **Aufgaben aus Mails:** je Mail Aufgabe, Follow-up, Termin (Business → Google Kalender), Kontakt anlegen, Erledigt (archivieren) — über die vorhandenen Schreibwege.
+- **Recht/Betrieb:** Register + Art. 15/17 im Spiegel (Original bleibt in Gmail → Hinweis „dort löschen“), VVT „E-Mail (Google Workspace)“, HOI-Befund `gmail`, Anleitung mit Pub/Sub und der IONOS-Umstellung (MX/SPF/DKIM/DMARC; **hello@ ZUERST, MX zuletzt**).
+- **Neu auf dem Server (alles optional, ohne sie läuft Gmail per Abfrage):** `GMAIL_PUBSUB_THEMA`, `GMAIL_PUSH_DIENSTKONTO`, `GMAIL_PUSH_AUDIENCE` — `deploy/google-verbinden.sh` fragt sie ab. Neue Bestände `gmail-stand--<person>`, `gmail-text--<person>`; neue Frist `mail-spiegel`; neues optionales Feld `Aktivitaet.mailLink`.
+- **Rückweg:** nur neue Bestände und optionale Felder — Details `GO_LIVE_CHECKLISTE.md` › „Gmail in der Inbox“.
+
 ## Google Kalender für Business/MAKE (03.10.2026, nur lokal — Branch `google-kal`; Einrichtung `GOOGLE_KALENDER_EINRICHTEN.md`)
 
 Kevin 03.10.: „Wir haben nur den Kalender bei Google für MAKE und alles andere läuft über MAKE OS.“ Business-/MAKE-Termine je Person ↔ Google Kalender der Person, in beide Richtungen, nahezu sofort; Privat/Familie/Gemeinsam bleiben MAKE OS + iCloud.
