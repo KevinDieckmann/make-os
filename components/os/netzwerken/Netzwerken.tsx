@@ -56,7 +56,7 @@ export function NetzwerkenSeite() {
         })}
       </nav>
 
-      <Warteschlange warte={warte} />
+      <Warteschlange warte={warte} offline={k.offline} />
 
       {api.fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{api.fehler} <button type="button" onClick={() => api.setFehler(null)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.body, textDecoration: 'underline', minHeight: 44 }}>ausblenden</button></Hinweis>}
 
@@ -68,7 +68,7 @@ export function NetzwerkenSeite() {
 }
 
 /** Der Streifen der Warteschlange: was noch auf dem Gerät liegt, warum, und was man tun kann. */
-function Warteschlange({ warte }: { warte: ReturnType<typeof useWarteschlange> }) {
+function Warteschlange({ warte, offline }: { warte: ReturnType<typeof useWarteschlange>; offline: boolean }) {
   if (!warte.eintraege.length && !warte.neuLaden) return null;
   return (
     <section aria-label="Warteschlange" style={{ display: 'grid', gap: 10 }}>
@@ -80,8 +80,8 @@ function Warteschlange({ warte }: { warte: ReturnType<typeof useWarteschlange> }
       )}
       {warte.eintraege.length > 0 && (
         <Hinweis farbe={warte.fehler ? LEUCHT.kritisch : LEUCHT.achtung} rolle="status">
-          <b>{warte.wartend ? `${warte.wartend} ${warte.wartend === 1 ? 'Erfassung wird' : 'Erfassungen werden'} gesendet, sobald Netz da ist` : 'Nicht alles ist gespeichert'}</b>
-          {warte.laeuft ? ' — sendet gerade …' : ''}
+          <b>{warte.wartend ? `${warte.wartend} ${warte.wartend === 1 ? 'Erfassung wartet' : 'Erfassungen warten'} auf dem Gerät` : 'Nicht alles ist gespeichert'}</b>
+          {warte.wartend ? (warte.laeuft ? ' — wird gerade gesendet …' : offline ? ' — kein Netz, geht automatisch raus, sobald Netz da ist' : ' — wird gesendet') : ''}
           {warte.nurImRam && <div style={{ marginTop: 6 }}><b>{NUR_RAM_HINWEIS}</b></div>}
           <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
             {warte.eintraege.map(e => (
@@ -93,7 +93,7 @@ function Warteschlange({ warte }: { warte: ReturnType<typeof useWarteschlange> }
               </li>
             ))}
           </ul>
-          {warte.wartend > 0 && !warte.laeuft && <div style={{ marginTop: 10 }}><Gross onClick={() => void warte.senden()} kleinerAbstand>Jetzt senden</Gross></div>}
+          {warte.wartend > 0 && !warte.laeuft && !offline && <div style={{ marginTop: 10 }}><Gross onClick={() => void warte.senden()} kleinerAbstand>Jetzt senden</Gross></div>}
         </Hinweis>
       )}
     </section>

@@ -1,10 +1,10 @@
 // ─── Netzwerken — Foto im Browser verkleinern (02.10.) ───────────────────────
-// Eine Karte bleibt bei 1600 px Kante gut lesbar, der Upload bleibt klein (200–600 KB statt 4 MB vom iPhone). Ausgabe ist
+// Eine Karte bleibt bei 1400 px Kante gut lesbar (auch für das spätere Auslesen), der Upload bleibt klein (150–350 KB statt 4 MB vom iPhone). Ausgabe ist
 // immer JPEG (weißer Grund, damit transparente PNGs nicht schwarz werden); Base64 ohne Präfix für den Körper der Erfassung,
 // die Data-URL für die Vorschau. Kann der Browser das Format nicht öffnen und ist es klein genug, geht das Original mit.
 
-export const MAX_KANTE = 1600;
-export const JPEG_QUALITAET = 0.85;
+export const MAX_KANTE = 1400;
+export const JPEG_QUALITAET = 0.78;
 /** Größte Datei, die unverkleinert mitgeht (Rückfall) — der Server nimmt höchstens 3 MB je Foto. */
 const ORIGINAL_MAX = 2.5 * 1024 * 1024;
 

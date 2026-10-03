@@ -453,6 +453,8 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 720px) { .wachstum-kopf-suche { display: none !important; } .wachstum-kopf-lupe { display: block; } }
 
 /* Zu zweit (24.09.): „Malin ist auch hier“ — auf dem Handy über der unteren Leiste. */
+/* Am Handy nur „ist auch hier“ (die Warnung zählt), „ist in …“ würde Inhalt und Hauptaktion verdecken. */
+@media (max-width: 767px) { .os-mitarbeit-fern { display: none !important; } }
 @media (max-width: 767px) { .os-mitarbeit { bottom: 84px !important; left: 12px !important; right: auto !important; justify-items: start !important; } }
 
 /* Bauplan-Board (25.09.): fünf Spalten passen auf einen Laptop; am Handy
@@ -567,3 +569,5 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 720px) { .netz-aktion { bottom: calc(-8px + env(safe-area-inset-bottom, 0px)); padding-right: 76px; } } /* rechts bleibt Platz für den ZOE-Knopf, der über der Leiste schwebt */
 .netz-seite:has(input:focus, textarea:focus, select:focus) .netz-aktion { position: static; }
 .netz-seite:has(input:focus, textarea:focus, select:focus) .netz-aktion::before { display: none; }
+/* iPhone mit offener Tastatur: die Aktion hängt direkt über der Tastatur (Abstand setzt Aktionsleiste per visualViewport). */
+.netz-seite .netz-aktion.netz-aktion-tastatur { position: fixed !important; left: 0; right: 0; margin: 0; padding: 8px 14px; z-index: 70; box-shadow: 0 -10px 24px -12px rgba(0, 0, 0, .9); }

@@ -214,7 +214,9 @@ export function Glocke() {
 
   const platzieren = useCallback(() => {
     const r = knopf.current?.getBoundingClientRect();
-    if (r) setOrt({ top: Math.round(r.bottom + 10), right: Math.max(16, Math.round(window.innerWidth - r.right)) });
+    // Am Handy ist das Feld fast so breit wie der Bildschirm: rechts so weit einrücken, dass links nie etwas abgeschnitten wird.
+    const breite = Math.min(400, window.innerWidth - 32);
+    if (r) setOrt({ top: Math.round(r.bottom + 10), right: Math.max(16, Math.min(Math.round(window.innerWidth - r.right), window.innerWidth - breite - 16)) });
   }, []);
 
   useEffect(() => {

@@ -53,7 +53,7 @@ export const FARBE = {
 
   ink: '#E8ECEA',
   inkDim: '#A2ADB0',
-  inkLeise: '#6E7A7D',
+  inkLeise: '#86918F', // 03.10.: von #6E7A7D angehoben — ≥ 5:1 auf Grund und Fläche (WCAG AA), auch bei Hallenlicht lesbar
 
   /** Interaktiv: Links, aktive Schalter, Fokus. */
   aktiv: '#58D9CD',

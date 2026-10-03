@@ -32,7 +32,7 @@ export function Gross({ children, onClick, ton = 'leise', aus, href, kleinerAbst
 export function Wahl({ an, onClick, children, farbe = C.aktiv, klein }: { an: boolean; onClick: () => void; children: ReactNode; farbe?: string; klein?: boolean }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={an} className="fassbar" style={{
-      minHeight: klein ? 40 : ZIEL, padding: klein ? '8px 14px' : '10px 16px', borderRadius: 14, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: klein ? 14 : 15, fontWeight: 600, lineHeight: 1.25, textAlign: 'center',
+      minHeight: klein ? 44 : ZIEL, padding: klein ? '8px 14px' : '10px 16px', borderRadius: 14, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: klein ? 14 : 15, fontWeight: 600, lineHeight: 1.25, textAlign: 'center',
       border: `1px solid ${an ? TIEF.rand(farbe) : 'rgba(255,255,255,.1)'}`, background: an ? TIEF.flaeche(farbe) : 'rgba(255,255,255,.04)', color: an ? farbe : C.ink,
     }}>{children}</button>
   );
@@ -104,7 +104,32 @@ export function Fortschritt({ punkte, nr }: { punkte: readonly string[]; nr: num
 
 /** Die Hauptaktion des Schritts: am Handy unten mitlaufend (globals.css › .netz-aktion), sonst ganz normal am Ende. */
 export function Aktionsleiste({ children }: { children: ReactNode }) {
-  return <div className="netz-aktion">{children}</div>;
+  const ueber = useTastaturHoehe();
+  return <div className={ueber ? 'netz-aktion netz-aktion-tastatur' : 'netz-aktion'} style={ueber ? { bottom: ueber } : undefined}>{children}</div>;
+}
+
+/** Am iPhone schiebt die Bildschirmtastatur die Seite nicht hoch — `visualViewport` sagt, wie viel sie verdeckt. Solange ein
+ *  Feld getippt wird, sitzt die Hauptaktion direkt über der Tastatur (statt am Ende der Seite). 0 = keine Tastatur/kein Handy. */
+function useTastaturHoehe(): number {
+  const [h, setH] = useState(0);
+  useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    if (!vv || !window.matchMedia?.('(max-width: 720px)').matches) return;
+    const messen = () => {
+      const a = document.activeElement;
+      const tippt = !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !!a.closest('.netz-seite');
+      const verdeckt = Math.round(document.documentElement.clientHeight - (vv.offsetTop + vv.height));
+      setH(tippt && verdeckt > 120 ? verdeckt : 0);
+    };
+    // Fokuswechsel kommt vor dem Ausfahren der Tastatur — kurz danach noch einmal messen.
+    const spaeter = () => { messen(); setTimeout(messen, 350); };
+    vv.addEventListener('resize', messen);
+    vv.addEventListener('scroll', messen);
+    document.addEventListener('focusin', spaeter);
+    document.addEventListener('focusout', spaeter);
+    return () => { vv.removeEventListener('resize', messen); vv.removeEventListener('scroll', messen); document.removeEventListener('focusin', spaeter); document.removeEventListener('focusout', spaeter); };
+  }, []);
+  return h;
 }
 
 /** Freundlicher leerer Zustand: Symbol, ein Satz, was jetzt zu tun ist — und ein Weg dorthin. */

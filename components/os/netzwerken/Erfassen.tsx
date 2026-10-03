@@ -84,6 +84,8 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
   const kamera = useRef<HTMLInputElement>(null);
   const galerie = useRef<HTMLInputElement>(null);
   const oben = useRef<HTMLDivElement>(null);
+  const trefferRef = useRef<HTMLDivElement>(null);
+  const nachnameRef = useRef<HTMLInputElement>(null);
 
   // Zuständig startet bei der eigenen Person — sobald sie bekannt ist (Kontext lädt nach).
   useEffect(() => { if (zustaendigStart && !e.zustaendig) setE(x => ({ ...x, zustaendig: zustaendigStart })); }, [zustaendigStart, e.zustaendig]);
@@ -119,11 +121,16 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
   const webFehler = !leer(f.webseite) && !webNormal(f.webseite) ? 'Die Webseite sieht nicht gültig aus.' : undefined;
   const linkFehler = !leer(f.linkedin) && !linkedinNormal(f.linkedin) ? 'Bitte die Profil-Adresse (linkedin.com/in/…).' : undefined;
   const felderOk = !mailFehler && !telFehler && !mobilFehler && !webFehler && !linkFehler;
+  // „Mehr“ geht von selbst auf, wenn dort ein Feld markiert ist — versteckte Fehler würden „Weiter“ sonst rätselhaft blockieren.
+  const mehrAuf = mehr || !!(telFehler || webFehler || linkFehler);
+  const mehrGefuellt = !leer(f.position) || !leer(f.telefon) || !leer(f.webseite) || !leer(f.linkedin) || !leer(f.anschrift);
 
   // ── Kennen wir schon? — bei jeder Eingabe (billig genug für ein paar hundert Personen) ──
   const treffer = useMemo(() => kenntWirSchon({ vorname: f.vorname, nachname: f.nachname, firma: f.firma, email: emailNormal(f.email) ?? f.email, telefon: f.telefon, mobil: f.mobil }, kontakte), [f.vorname, f.nachname, f.firma, f.email, f.telefon, f.mobil, kontakte]);
   const starkOffen = !e.vorhandenId && !e.neuErzwingen && treffer.some(t => !t.gesperrt && (t.staerke === 'mail' || t.staerke === 'telefon' || t.staerke === 'name-firma'));
   const gewaehlt = e.vorhandenId ? kontakte.find(k => k.id === e.vorhandenId) : undefined;
+  /** Treffer über Mail/Telefon, aber mit anderem Namen (z. B. Zentrale) — das soll man vor „Diesen nehmen“ sehen. */
+  const nameWeichtAb = (k: Kontakt) => !leer(f.nachname) && !!k.nachname && k.nachname.trim().toLowerCase() !== (f.nachname ?? '').trim().toLowerCase();
 
   // ── Auch im Handy speichern (03.10.): vCard aus den erfassten Feldern — liegt lokal vor, auch solange die Erfassung noch wartet ──
   const [handyAn, setHandyAn] = useGemerkt<boolean>(HANDY_SPEICHER_KEY, false);
@@ -143,9 +150,9 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
   const nachnameOk = !leer(f.nachname) || !!e.vorhandenId;
   const weiter1 = () => {
     if (!wahl) { setFehler('Bitte oben zuerst „Heute bei“ wählen.'); return; }
-    if (!nachnameOk) { setFehler('Der Nachname fehlt — bitte eintragen.'); return; }
+    if (!nachnameOk) { setFehler('Der Nachname fehlt — bitte eintragen.'); nachnameRef.current?.focus(); return; }
     if (!felderOk) { setFehler('Bitte die markierten Felder prüfen oder leeren.'); return; }
-    if (starkOffen) { setFehler('Diese Person gibt es vielleicht schon — bitte „Diesen nehmen“ oder „Trotzdem neu“ wählen.'); return; }
+    if (starkOffen) { setFehler('Diese Person gibt es vielleicht schon — bitte oben „Diesen nehmen“ oder „Trotzdem neu“ wählen.'); trefferRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); return; }
     setFehler(null); setPhase('schritt');
   };
 
@@ -220,7 +227,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                   <div key={x.id} style={{ position: 'relative' }}>
                     <button type="button" onClick={() => setGross(x)} aria-label={`Foto ${i + 1} vergrößern`} className="fassbar" style={{ display: 'block', width: '100%', padding: 0, border: '1px solid rgba(255,255,255,.14)', borderRadius: 14, overflow: 'hidden', background: '#000', cursor: 'zoom-in', boxShadow: '0 10px 26px -14px rgba(0,0,0,.8)' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={x.dataUrl} alt={`Visitenkarte, Foto ${i + 1}`} style={{ display: 'block', width: '100%', aspectRatio: '16 / 10', objectFit: 'contain', background: '#000' }} />
+                      <img src={x.dataUrl} alt={`Visitenkarte, Foto ${i + 1}`} style={{ display: 'block', width: '100%', aspectRatio: '16 / 10', objectFit: 'cover', background: '#000' }} />
                     </button>
                     <button type="button" onClick={() => fotoWeg(x.id)} aria-label={`Foto ${i + 1} löschen`} style={{ position: 'absolute', top: 4, right: 4, width: 44, height: 44, borderRadius: 22, border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', fontSize: 22, lineHeight: 1, cursor: 'pointer' }}>×</button>
                   </div>
@@ -244,15 +251,15 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
             {e.fotos.length >= 1 && (e.fotos.length > 1 || e.rueckseiteWeg) && e.fotos.length < MAX_BILDER && <Gross onClick={() => kamera.current?.click()} kleinerAbstand>+ weiteres Foto</Gross>}
             {e.fotos.length === 0 && <button type="button" onClick={() => galerie.current?.click()} style={{ ...klarLink, color: C.inkDim, justifySelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 6 }}><ImagePlus size={16} aria-hidden /> oder ein Foto aus der Mediathek wählen</button>}
             {fotoFehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fotoFehler}</Hinweis>}
-            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Die Fotos werden verkleinert und verschlüsselt an der Person abgelegt. Die Felder trägst du von Hand ein — das automatische Auslesen kommt später.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Fotos werden verkleinert und verschlüsselt an der Person abgelegt. Felder bitte von Hand eintragen — das Auslesen kommt später.</div>
           </section>
 
-          {/* Person */}
+          {/* Person — zuerst, was man für den nächsten Schritt wirklich braucht: Name, Firma, E-Mail, Handy. Der Rest liegt unter „Mehr“. */}
           <section aria-label="Angaben zur Person" style={{ display: 'grid', gap: 12 }}>
             <Beschriftung>Person</Beschriftung>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
-              <Feldzeile label="Vorname"><input value={f.vorname ?? ''} onChange={x => feld({ vorname: x.target.value })} autoComplete="off" autoCapitalize="words" style={eingabe} aria-label="Vorname" /></Feldzeile>
-              <Feldzeile label="Nachname *"><input value={f.nachname ?? ''} onChange={x => feld({ nachname: x.target.value })} autoComplete="off" autoCapitalize="words" style={eingabe} aria-label="Nachname" /></Feldzeile>
+              <Feldzeile label="Vorname"><input value={f.vorname ?? ''} onChange={x => feld({ vorname: x.target.value })} autoComplete="off" autoCapitalize="words" enterKeyHint="next" style={eingabe} aria-label="Vorname" /></Feldzeile>
+              <Feldzeile label="Nachname *"><input ref={nachnameRef} value={f.nachname ?? ''} onChange={x => feld({ nachname: x.target.value })} autoComplete="off" autoCapitalize="words" enterKeyHint="next" style={eingabe} aria-label="Nachname" /></Feldzeile>
             </div>
 
             {/* Kennen wir schon? */}
@@ -262,7 +269,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                 <div style={{ marginTop: 10 }}><Gross onClick={() => up({ vorhandenId: undefined })} kleinerAbstand>Doch neu anlegen</Gross></div>
               </Hinweis>
             ) : treffer.length > 0 && !e.neuErzwingen ? (
-              <div style={{ display: 'grid', gap: 10 }}>
+              <div ref={trefferRef} style={{ display: 'grid', gap: 10, scrollMarginTop: 80 }}>
                 {treffer.map(t => {
                   const x = kennenText(t, nameVon);
                   return (
@@ -272,7 +279,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                       ) : (
                         <>
                           <b>Kennen wir schon:</b> {x.name}{x.firma ? ` · ${x.firma}` : ''} · zuständig {x.zustaendig}{x.zuletzt ? ` · zuletzt ${tagText(x.zuletzt)}` : ''}
-                          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>({t.grund})</div>
+                          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>({t.grund}{nameWeichtAb(t.kontakt) ? ' — der Name weicht ab, evtl. Zentrale oder Kollege' : ''})</div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
                             <Gross ton="gut" onClick={() => up({ vorhandenId: t.kontakt.id })} kleinerAbstand>Diesen nehmen</Gross>
                             <Gross onClick={() => up({ neuErzwingen: true })} kleinerAbstand>Trotzdem neu</Gross>
@@ -301,31 +308,28 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                 )}
               </div>
             )}
-            <Feldzeile label="Position"><input value={f.position ?? ''} onChange={x => feld({ position: x.target.value })} autoComplete="off" style={eingabe} aria-label="Position" /></Feldzeile>
-            <div>
-              <Beschriftung>Anrede</Beschriftung>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <Wahl an={f.anrede === 'Du'} onClick={() => feld({ anrede: 'Du' })}>Du</Wahl>
-                <Wahl an={f.anrede === 'Sie'} onClick={() => feld({ anrede: 'Sie' })}>Sie</Wahl>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
+              <Feldzeile label="E-Mail" fehler={mailFehler}><input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="next" value={f.email ?? ''} onChange={x => feld({ email: x.target.value })} style={eingabe} aria-label="E-Mail" /></Feldzeile>
+              <Feldzeile label="Handy" fehler={mobilFehler}><input type="tel" inputMode="tel" enterKeyHint="done" value={f.mobil ?? ''} onChange={x => feld({ mobil: x.target.value })} style={eingabe} aria-label="Handy" /></Feldzeile>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: '0 0 auto' }}>Anrede</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, flex: 1 }}>
+                <Wahl klein an={f.anrede === 'Du'} onClick={() => feld({ anrede: 'Du' })}>Du</Wahl>
+                <Wahl klein an={f.anrede === 'Sie'} onClick={() => feld({ anrede: 'Sie' })}>Sie</Wahl>
               </div>
             </div>
-          </section>
-
-          {/* Erreichbar */}
-          <section aria-label="Erreichbarkeit" style={{ display: 'grid', gap: 12 }}>
-            <Beschriftung>Erreichbar</Beschriftung>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
-              <Feldzeile label="E-Mail" fehler={mailFehler}><input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={f.email ?? ''} onChange={x => feld({ email: x.target.value })} style={eingabe} aria-label="E-Mail" /></Feldzeile>
-              <Feldzeile label="Telefon" fehler={telFehler}><input type="tel" inputMode="tel" value={f.telefon ?? ''} onChange={x => feld({ telefon: x.target.value })} style={eingabe} aria-label="Telefon" /></Feldzeile>
-              <Feldzeile label="Handy" fehler={mobilFehler}><input type="tel" inputMode="tel" value={f.mobil ?? ''} onChange={x => feld({ mobil: x.target.value })} style={eingabe} aria-label="Handy" /></Feldzeile>
-              <Feldzeile label="Webseite" fehler={webFehler}><input type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={f.webseite ?? ''} onChange={x => feld({ webseite: x.target.value })} style={eingabe} aria-label="Webseite" /></Feldzeile>
-            </div>
             <div>
-              <Wahl klein an={mehr} onClick={() => setMehr(m => !m)}>{mehr ? 'Weniger' : 'Mehr: Anschrift, LinkedIn'}</Wahl>
-              {mehr && (
+              <Wahl klein an={mehrAuf} onClick={() => setMehr(m => !m)}>{mehrAuf ? 'Weniger' : `Mehr: Position, Telefon, Webseite${mehrGefuellt ? ' ✓' : ''}`}</Wahl>
+              {mehrAuf && (
                 <div style={{ display: 'grid', gap: 12, marginTop: 10 }}>
-                  <Feldzeile label="Anschrift (optional)"><textarea value={f.anschrift ?? ''} onChange={x => feld({ anschrift: x.target.value })} rows={3} autoComplete="off" style={{ ...eingabe, resize: 'vertical' }} aria-label="Anschrift" /></Feldzeile>
+                  <Feldzeile label="Position"><input value={f.position ?? ''} onChange={x => feld({ position: x.target.value })} autoComplete="off" style={eingabe} aria-label="Position" /></Feldzeile>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
+                    <Feldzeile label="Telefon (Festnetz)" fehler={telFehler}><input type="tel" inputMode="tel" value={f.telefon ?? ''} onChange={x => feld({ telefon: x.target.value })} style={eingabe} aria-label="Telefon" /></Feldzeile>
+                    <Feldzeile label="Webseite" fehler={webFehler}><input type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={f.webseite ?? ''} onChange={x => feld({ webseite: x.target.value })} style={eingabe} aria-label="Webseite" /></Feldzeile>
+                  </div>
                   <Feldzeile label="LinkedIn (optional)" fehler={linkFehler}><input type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={f.linkedin ?? ''} onChange={x => feld({ linkedin: x.target.value })} style={eingabe} aria-label="LinkedIn" /></Feldzeile>
+                  <Feldzeile label="Anschrift (optional)"><textarea value={f.anschrift ?? ''} onChange={x => feld({ anschrift: x.target.value })} rows={3} autoComplete="off" style={{ ...eingabe, resize: 'vertical' }} aria-label="Anschrift" /></Feldzeile>
                 </div>
               )}
             </div>
@@ -458,7 +462,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
         </>
       )}
 
-      {phase === 'fertig' && gesendetId && <Fertig id={gesendetId} warte={warte} name={personName || 'Person'} zustaendig={nameVon(e.zustaendig)} foto={e.fotos[0]?.dataUrl ?? null} onNochEine={nochEine} onBericht={onBericht} schritt={sch ?? undefined} handy={handy} hervor={handyAn} />}
+      {phase === 'fertig' && gesendetId && <Fertig id={gesendetId} warte={warte} name={personName || 'Person'} zustaendig={nameVon(e.zustaendig)} foto={e.fotos[0]?.dataUrl ?? null} onNochEine={nochEine} onBericht={onBericht} schritt={sch ?? undefined} handy={handy} hervor={handyAn} offline={offline} />}
 
       {gross && (
         <Fenster titel={`Foto ${e.fotos.findIndex(x => x.id === gross.id) + 1}`} onZu={() => setGross(null)} breit={900}>
@@ -503,7 +507,7 @@ function KartenPlatzhalter({ name }: { name: string }) {
 }
 
 /** Nach dem Speichern: was gerade passiert — gesendet, wartet aufs Netz oder abgelehnt. Bei „gesendet“ landet die Karte in der Kartei. */
-function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schritt, handy, hervor }: { handy: HandyErgebnis; hervor: boolean; id: string; warte: Warte; name: string; zustaendig: string; foto: string | null; onNochEine: () => void; onBericht: () => void; schritt?: NetzwerkSchritt }) {
+function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schritt, handy, hervor, offline }: { offline: boolean; handy: HandyErgebnis; hervor: boolean; id: string; warte: Warte; name: string; zustaendig: string; foto: string | null; onNochEine: () => void; onBericht: () => void; schritt?: NetzwerkSchritt }) {
   const e = warte.eintraege.find(x => x.id === id);
   const a = warte.antworten[id];
   const wartet = e?.status === 'wartet';
@@ -536,7 +540,11 @@ function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schr
       ) : fehlt ? (
         <Hinweis farbe={LEUCHT.achtung} rolle="alert"><b>Noch nicht ganz gespeichert.</b><div style={{ marginTop: 6 }}>{e.hinweis}</div>{warte.nurImRam && <div style={{ marginTop: 6 }}><b>{NUR_RAM_HINWEIS}</b></div>}</Hinweis>
       ) : (
-        <Hinweis farbe={LEUCHT.achtung} rolle="status"><b style={{ fontSize: 17 }}>{warte.nurImRam ? 'Noch nicht gesendet' : 'Auf dem Gerät gespeichert'}</b><div style={{ marginTop: 6 }}>{warte.laeuft ? 'Wird gerade gesendet …' : (e.hinweis ?? 'Wird gesendet, sobald Netz da ist.')}</div>{warte.nurImRam && <div style={{ marginTop: 6 }}><b>{NUR_RAM_HINWEIS}</b></div>}{warte.neuLaden && <div style={{ marginTop: 6 }}>MAKE OS wurde aktualisiert — bitte die Seite neu laden. Die Erfassung bleibt auf dem Gerät.</div>}</Hinweis>
+        // Eine Zeile statt einer zweiten Box: die Einzelheiten (Liste, „Jetzt senden“, Neu laden) stehen oben im Streifen der Warteschlange.
+        <div role="status" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 16, border: `1px solid ${TIEF.rand(LEUCHT.achtung)}`, background: TIEF.flaeche(LEUCHT.achtung) }}>
+          <span aria-hidden style={{ width: 10, height: 10, borderRadius: 5, flex: '0 0 auto', background: LEUCHT.achtung, boxShadow: `0 0 10px ${LEUCHT.achtung}66` }} />
+          <span style={{ minWidth: 0, fontSize: TYP.body, lineHeight: 1.4, overflowWrap: 'anywhere' }}><b>{warte.nurImRam ? 'Noch nicht gesendet' : 'Auf dem Gerät gespeichert'}</b> · {name} — {warte.laeuft ? 'wird gerade gesendet …' : offline ? 'kein Netz, geht automatisch raus' : 'wird gesendet'}</span>
+        </div>
       )}
       {fehlt && e && <div style={{ display: 'grid', gap: 8 }}><Gross ton="haupt" onClick={() => void warte.erneut(e.id)}>Erneut versuchen</Gross><OhneTerminKnopf e={e} onOhneTermin={x => void warte.ohneTermin(x)} /><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></div>}
       {!wartet && !fehlt && a?.kontaktId && <Link href={WEG.akte(a.kontaktId)} className="fassbar" style={verlinkt}>Zum Kontakt ›</Link>}

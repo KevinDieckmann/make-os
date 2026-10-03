@@ -42,13 +42,14 @@ export function Mitarbeit() {
     const t = setInterval(melden, 60_000);
     return () => { weg = true; clearInterval(t); };
   }, [pfad, space]);
-  if (!andere.length) return null;
+  // Auf der Netzwerken-Seite (Handy, eine Hand, Aktionsleiste unten) stört die schwebende Pille nur.
+  if (!andere.length || pfad.startsWith('/os/netzwerken')) return null;
   return (
     <div style={{ position: 'fixed', right: 96, bottom: 26, zIndex: 60, display: 'grid', gap: 6, justifyItems: 'end', pointerEvents: 'none' }} className="os-mitarbeit">
       {andere.map(a => {
         const hier = a.pfad.split('?')[0] === pfad;
         return (
-          <Link key={a.person} href={a.pfad} style={{ pointerEvents: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, textDecoration: 'none',
+          <Link key={a.person} href={a.pfad} className={hier ? undefined : 'os-mitarbeit-fern'} style={{ pointerEvents: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, textDecoration: 'none',
             background: 'rgba(20,24,26,.92)', border: `1px solid ${hier ? LEUCHT.beziehung : 'rgba(255,255,255,.08)'}`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: 12.5, boxShadow: '0 6px 20px -8px rgba(0,0,0,.6)' }}
             title={hier ? 'Ihr seid auf derselben Seite — ändert nicht gleichzeitig denselben Eintrag.' : 'Klick: dorthin wechseln'}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: LEUCHT.beziehung, boxShadow: `0 0 8px ${LEUCHT.beziehung}33` }} />
