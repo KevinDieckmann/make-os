@@ -13,7 +13,7 @@ import { Karte, Ueberschrift, Ring, Fortschritt, Chip, LEUCHT } from '../ui';
 import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlKachel, KennzahlFenster, AMPEL_FARBE, scoreFarbe, type SchwelleSenden } from '../business/teile';
 import { VerlaufKarte, type Serie } from '../business/Verlauf';
-import type { IndexErgebnis, SaeulenStand } from '@/lib/kennzahlen/kern';
+import { MIN_ABDECKUNG, type IndexErgebnis, type SaeulenStand } from '@/lib/kennzahlen/kern';
 import type { Wechsel, VerlaufPunkt } from '@/lib/kennzahlen/speicher';
 
 export interface IndexDaten { pi: IndexErgebnis; vor30: number | null; wechsel: Wechsel[]; verlauf: VerlaufPunkt[] }
@@ -65,6 +65,7 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
               {trend != null && trend !== 0 && <Chip farbe={trend > 0 ? LEUCHT.gut : LEUCHT.kritisch}>{trend > 0 ? '▲' : '▼'} {Math.abs(trend)} in 30 Tagen</Chip>}
               {chips}
               {pi && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.round(pi.abdeckung * 100)} % auf echten Daten · {pi.luecken} Messlücke{pi.luecken === 1 ? '' : 'n'}</span>}
+              {pi?.teil && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Erst {pi.teil.saeulen} von {pi.teil.von} Säulen haben genug Daten (Teilwert {pi.teil.wert}) — der Index zählt ab {Math.round(MIN_ABDECKUNG * 100)} % des Gewichts.</span>}
             </div>
             {zaehlende.map(s => (
               <div key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(70px, 2fr) 40px', gap: 12, alignItems: 'center' }}>

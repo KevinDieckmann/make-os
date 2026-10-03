@@ -2,7 +2,9 @@
 // Business-Index (25.09.) und Privat-Index (25.09.) rechnen gleich: jede
 // Kennzahl → 0–100 über ihre Schwellen (rot 20 · grün 100 · linear), Säule =
 // Mittel ihrer gemessenen Kennzahlen (zählt ab 40 % Abdeckung), Gesamt =
-// gewichtetes Mittel der zählenden Säulen. Hinter jeder Kennzahl stehen
+// gewichtetes Mittel der zählenden Säulen — aber nur, wenn die zählenden Säulen zusammen mindestens MIN_ABDECKUNG des
+// Gewichts tragen (Praxis-Fund 04.10.: „Privat-Index 100 · Souverän“ aus EINER von vier Säulen). Darunter: kein Index,
+// „Noch keine Daten“, und der Teilwert steht als Hinweis in `teil`. Hinter jeder Kennzahl stehen
 // Details: die 2–3 Punkte, aus denen sie besteht — jeder mit Weg dorthin, wo
 // man handelt (Kevin: „Verbindungen, die nicht enden“).
 
@@ -59,6 +61,8 @@ export interface IndexErgebnis {
   scope: string; stand: string;
   index: number | null; label: string;
   abdeckung: number;
+  /** Nur gesetzt, wenn zu wenige Säulen zählen: der Wert aus den zählenden Säulen — als Hinweis, nie als Index. */
+  teil: { wert: number; saeulen: number; von: number } | null;
   saeulen: SaeulenStand[];
   hebel: { id: string; label: string; saeule: string } | null;
   luecken: number;
@@ -99,9 +103,14 @@ export function berechneModell<B>(m: {
   // Säulen mit Gewicht 0 (z. B. „Grundlage“ der Markttraktion) werden gezeigt, zählen aber nicht.
   const zaehlt = saeulen.filter(s => s.score != null && !s.zuDuenn && s.gewicht > 0);
   const gw = zaehlt.reduce((a, s) => a + s.gewicht, 0);
-  const index = gw <= 0 ? null
+  const gesamtGewicht = saeulen.reduce((a, s) => a + Math.max(0, s.gewicht), 0);
+  const wert = gw <= 0 ? null
     : m.geometrisch ? Math.round(Math.exp(zaehlt.reduce((a, s) => a + s.gewicht * Math.log(Math.max(1, s.score as number)), 0) / gw))
     : Math.round(zaehlt.reduce((a, s) => a + (s.score as number) * s.gewicht, 0) / gw);
+  // Mindestabdeckung auch für das Gesamt — dieselbe Schwelle wie je Säule.
+  const genug = gesamtGewicht > 0 && gw / gesamtGewicht >= MIN_ABDECKUNG;
+  const index = genug ? wert : null;
+  const teil = !genug && wert != null ? { wert, saeulen: zaehlt.length, von: saeulen.filter(s => s.gewicht > 0).length } : null;
   const abdeckung = saeulen.reduce((a, s) => a + (s.zuDuenn || s.score == null ? 0 : s.abdeckung) * s.gewicht, 0);
   let hebel: IndexErgebnis['hebel'] = null, best = -1;
   for (const s of zaehlt) for (const k of s.kennzahlen) {
@@ -110,7 +119,7 @@ export function berechneModell<B>(m: {
     if (h > best && (k.punkte as number) < 100) { best = h; hebel = { id: k.id, label: k.label, saeule: s.label }; }
   }
   return {
-    scope: m.scope, stand: m.stand, index, label: indexLabel(index), abdeckung: Math.round(abdeckung * 100) / 100,
+    scope: m.scope, stand: m.stand, index, label: indexLabel(index), abdeckung: Math.round(abdeckung * 100) / 100, teil,
     saeulen, hebel, luecken: saeulen.reduce((a, s) => a + s.kennzahlen.filter(k => !k.gemessen).length, 0),
   };
 }

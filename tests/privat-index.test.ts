@@ -110,3 +110,21 @@ describe('Privat-Index', () => {
     expect(privatFrisch({ heute: '2026-11-01', haushalt })).toBe(false);
   });
 });
+
+describe('Mindestabdeckung auch für das Gesamt (Praxis-Fund 04.10.)', () => {
+  it('eine von vier Säulen mit Daten → kein Index, „Noch keine Daten“, Teilwert als Hinweis; ab 40 % des Gewichts zählt er', async () => {
+    const { berechneModell, MIN_ABDECKUNG } = await import('@/lib/kennzahlen/kern');
+    const saeulen = ['a', 'b', 'c', 'd'].map(id => ({ id, label: id, gewicht: 0.25, satz: '' }));
+    const kennzahlen = saeulen.map(s => ({ id: `k-${s.id}`, label: s.id, saeule: s.id, gruppe: '', einheit: 'punkte' as const, richtung: 'hoch' as const, gruen: 80, rot: 20, formel: '', quelle: '', luecke: '', direkt: true }));
+    const mit = (n: number) => berechneModell({ saeulen, kennzahlen, bestand: null, stand: '2026-10-04', scope: 'privat',
+      messen: Object.fromEntries(kennzahlen.map((k, i) => [k.id, () => (i < n ? { wert: 100, anzeige: '100', quelle: 'test' } : { luecke: 'fehlt' })])) });
+    const eine = mit(1);
+    expect(eine.index).toBeNull();
+    expect(eine.label).toBe('Noch keine Daten');
+    expect(eine.teil).toEqual({ wert: 100, saeulen: 1, von: 4 });
+    expect(MIN_ABDECKUNG).toBe(0.4);
+    const zwei = mit(2);
+    expect(zwei.index).toBe(100);
+    expect(zwei.teil).toBeNull();
+  });
+});
