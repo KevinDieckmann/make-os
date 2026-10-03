@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# ─── MAKE OS · Google Kalender einrichten (auf dem Server) ───────────────────
+# ─── MAKE OS · Google (Kalender + Gmail) einrichten (auf dem Server) ─────────
 # Einmal ausführen — vom Mac aus, im Terminal:
 #   ssh -t make@2.28.108.162 sudo bash /srv/make-os/app/deploy/google-verbinden.sh
 # Es fragt Client-ID und Client-Geheimnis der Google-Anwendung (Einfügen, das Geheimnis bleibt unsichtbar) und die
 # erlaubte Domain (Vorgabe: makeinnovation.de), schreibt sie in /srv/make-os/app/.env (nur für den Nutzer make lesbar)
 # und startet MAKE OS neu. Danach verbindet sich jede Person selbst: MAKE OS › Kalender › Einstellungen › „Google
-# Kalender verbinden“.
+# Kalender verbinden“ bzw. in der Inbox „Gmail verbinden“.
+# Optional (Gmail-Echtzeit per Pub/Sub, GOOGLE_GMAIL_EINRICHTEN.md Teil B): Thema, Dienstkonto und Zielgruppe der Push-Subscription —
+# Enter überspringt; ohne sie fragt MAKE OS Gmail alle 2 Minuten ab (nichts geht verloren).
 #
 # Die Werte stammen aus der Google Cloud Console (GOOGLE_KALENDER_EINRICHTEN.md, Schritt 5) — NIE in den Chat, NIE ins
 # Repo. Das Geheimnis erscheint nirgends: nicht auf dem Bildschirm, nicht in der Prozessliste, nicht im Log.
 #
-# Entfernen: dieses Skript mit --entfernen (löscht die drei Zeilen; verbundene Konten sollten vorher in MAKE OS getrennt
+# Entfernen: dieses Skript mit --entfernen (löscht die Zeilen; verbundene Konten sollten vorher in MAKE OS getrennt
 # werden, sonst bleibt der Zugriff bei Google bestehen — dort unter myaccount.google.com › Sicherheit widerrufbar).
 set -euo pipefail
 cd /srv/make-os/app
@@ -20,7 +22,7 @@ ENV_DATEI=/srv/make-os/app/.env
 schreibe_env() { # $1 = zusätzliche Zeilen (leer beim Entfernen)
   local tmp; tmp="$(mktemp /srv/make-os/.env-neu.XXXXXX)"   # außerhalb des Git-Ordners, gleiches Laufwerk
   chmod 600 "$tmp"
-  grep -v -E '^GOOGLE_(CLIENT_ID|CLIENT_SECRET|ERLAUBTE_DOMAIN)=' "$ENV_DATEI" > "$tmp" || true
+  grep -v -E '^(GOOGLE_(CLIENT_ID|CLIENT_SECRET|ERLAUBTE_DOMAIN)|GMAIL_(PUBSUB_THEMA|PUSH_DIENSTKONTO|PUSH_AUDIENCE))=' "$ENV_DATEI" > "$tmp" || true
   [[ -n "$1" ]] && printf '%s\n' "$1" >> "$tmp"
   chown --reference="$ENV_DATEI" "$tmp"
   mv "$tmp" "$ENV_DATEI"
@@ -63,10 +65,29 @@ read -rp "Erlaubte Domain für die Google-Konten [makeinnovation.de]: " DOMAIN
 DOMAIN="$(printf '%s' "${DOMAIN:-makeinnovation.de}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
 if [[ ! "$DOMAIN" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$ ]]; then unset SECRET; echo "Abbruch: „$DOMAIN“ sieht nicht wie eine Domain aus."; exit 1; fi
 
+echo
+echo "Gmail-Echtzeit (Pub/Sub) — optional, Enter überspringt (dann Abfrage alle 2 Minuten):"
+read -rp "Pub/Sub-Thema (projects/<Projekt-ID>/topics/<Name>) [überspringen]: " THEMA
+THEMA="$(printf '%s' "$THEMA" | tr -d '[:space:]')"
+PUSH_ZEILEN=""
+if [[ -n "$THEMA" ]]; then
+  if [[ ! "$THEMA" =~ ^projects/[a-z][a-z0-9-]{4,60}/topics/[A-Za-z][A-Za-z0-9._~%+-]{2,254}$ ]]; then unset SECRET; echo "Abbruch: „$THEMA“ sieht nicht wie ein Pub/Sub-Thema aus (projects/…/topics/…)."; exit 1; fi
+  read -rp "Dienstkonto der Push-Subscription (…@….iam.gserviceaccount.com): " PUSHKONTO
+  PUSHKONTO="$(printf '%s' "$PUSHKONTO" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+  if [[ ! "$PUSHKONTO" =~ ^[a-z0-9._-]+@[a-z0-9.-]+\.gserviceaccount\.com$ ]]; then unset SECRET; echo "Abbruch: „$PUSHKONTO“ sieht nicht wie ein Dienstkonto aus."; exit 1; fi
+  read -rp "Zielgruppe/Audience der Subscription [Enter = die Webhook-Adresse]: " AUDIENCE
+  AUDIENCE="$(printf '%s' "$AUDIENCE" | tr -d '[:space:]')"
+  PUSH_ZEILEN="
+GMAIL_PUBSUB_THEMA=${THEMA}
+GMAIL_PUSH_DIENSTKONTO=${PUSHKONTO}"
+  if [[ -n "$AUDIENCE" ]]; then PUSH_ZEILEN="${PUSH_ZEILEN}
+GMAIL_PUSH_AUDIENCE=${AUDIENCE}"; fi
+fi
+
 schreibe_env "GOOGLE_CLIENT_ID=${CLIENT_ID}
 GOOGLE_CLIENT_SECRET=${SECRET}
-GOOGLE_ERLAUBTE_DOMAIN=${DOMAIN}"
+GOOGLE_ERLAUBTE_DOMAIN=${DOMAIN}${PUSH_ZEILEN}"
 unset SECRET
 echo "Gespeichert (nur für den Nutzer make lesbar)."
 neu_starten
-echo "Fertig. Jede Person verbindet sich jetzt selbst: MAKE OS › Kalender › Einstellungen › „Google Kalender verbinden“."
+echo "Fertig. Jede Person verbindet sich jetzt selbst: MAKE OS › Kalender › Einstellungen › „Google Kalender verbinden“ bzw. Inbox › „Gmail verbinden“."

@@ -7,6 +7,9 @@ Privat, Familie und Gemeinsam bleiben in MAKE OS und iCloud.
 **Du brauchst:** das Workspace-**Admin**-Konto der Domain `makeinnovation.de` (für Schritte 1–6) und später je Person das eigene
 Konto (Schritt 8). Dauer: etwa 20 Minuten. Es kostet nichts, und weil die App „Intern“ bleibt, prüft Google sie nicht.
 
+**Gmail (die Post in der Inbox)** ist eine eigene, spätere Freigabe über dieselbe Verbindung — Schritt für Schritt in `GOOGLE_GMAIL_EINRICHTEN.md`
+(Gmail API, ein weiterer Bereich, optional Pub/Sub, die Umstellung der Mail-Adresse von IONOS). Hier geht es nur um den Kalender.
+
 **Wichtig:** Client-ID und Client-Geheimnis kommen **nie in den Chat** und nie ins Repo — du gibst sie in Schritt 6 selbst am
 Server ein (das Skript fragt sie verdeckt ab).
 
