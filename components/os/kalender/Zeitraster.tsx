@@ -30,7 +30,7 @@ import { LEUCHT } from '../schlank';
 import { spaltenLegen, ziehSpanne, spanneText, rasterLage, zeitumstellung, letzterTag, verschiebeDifferenz, endeAmTag, startMinute } from '@/lib/kalender/layout';
 import { ART_INFO, ARBEITSORTE } from '@/lib/kalender/arten';
 import { ART_FARBE } from '@/types/planer';
-import { GanztagsZelle, WER_FARBE, WER_LABEL, istVorlaeufig, type KTermin, type KFrist, type KErinnerung, type Wer } from './teile';
+import { GanztagsZelle, WER_FARBE, WER_LABEL, istVorlaeufig, istGoogleTermin, type KTermin, type KFrist, type KErinnerung, type Wer } from './teile';
 import { ganztagsAm, mitZeitAm, zeitAusMinuten, type KalenderAufgabe } from '@/lib/kalender/aufgaben';
 import { aufgabeZiehStart, aufgabeAusZiehen, ziehtAufgabe } from './aufgaben';
 import { wandAus, wandzeit, minutenVon } from '@/lib/kalender/zeit';
@@ -368,7 +368,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                     const mehr = mehrtaegig(ev);
                     const darfDauer = darfZiehen && (!mehr || letzterTag(ev) === t.tag);
                     return (
-                      <div key={ev.id} role="button" tabIndex={0} data-termin={ev.id} title={`${ev.art && ev.art !== 'termin' ? `${ART_INFO[ev.art].label}: ` : ''}${ev.titel} · ${mehr ? `${kurz(ev.start)} – ${kurz(ev.ende)}` : `${uhr(l.von)}–${uhr(l.bis)}`} · ${ev.kalender}${ev.bearbeitbar ? '' : ' (nur in Apple änderbar)'}`}
+                      <div key={ev.id} role="button" tabIndex={0} data-termin={ev.id} title={`${ev.art && ev.art !== 'termin' ? `${ART_INFO[ev.art].label}: ` : ''}${ev.titel} · ${mehr ? `${kurz(ev.start)} – ${kurz(ev.ende)}` : `${uhr(l.von)}–${uhr(l.bis)}`} · ${ev.kalender}${ev.bearbeitbar ? '' : ` (nur in ${istGoogleTermin(ev) ? 'Google' : 'Apple'} änderbar)`}`}
                         onPointerDown={e => anfassen(e, ev, ti, 'move')} onPointerMove={bewegen} onPointerUp={e => { e.stopPropagation(); loslassen(ev); }} onPointerCancel={ziehAbbruch}
                         onClick={e => { e.stopPropagation(); if (!darfZiehen) onOeffnen(ev); }} onKeyDown={e => { if (e.key === 'Enter') onOeffnen(ev); }}
                         style={{ position: 'absolute', top: von * PX_MIN, height: Math.max(MIN_HOEHE, (bis - von) * PX_MIN - 2), left: `calc(${s.links}% + 2px)`, width: `calc(${s.breite}% - 4px)`,
@@ -431,7 +431,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
           </div>
         </div>
       </div>
-      <div style={{ fontSize: 11, color: C.inkLeise, padding: '6px 10px', borderTop: '1px solid rgba(255,255,255,.05)', fontFamily: SCHRIFT.text }}>Klick in eine Lücke legt an · aufziehen wählt die Zeit (am Handy kurz halten) · anfassen verschiebt · untere Kante ändert die Dauer · Aufgaben: Haken erledigt, ziehen plant ein · 🔒 nur in Apple änderbar · 👥 mit Gästen</div>
+      <div style={{ fontSize: 11, color: C.inkLeise, padding: '6px 10px', borderTop: '1px solid rgba(255,255,255,.05)', fontFamily: SCHRIFT.text }}>Klick in eine Lücke legt an · aufziehen wählt die Zeit (am Handy kurz halten) · anfassen verschiebt · untere Kante ändert die Dauer · Aufgaben: Haken erledigt, ziehen plant ein · 🔒 nur in Apple/Google änderbar · 👥 mit Gästen</div>
     </div>
   );
 }

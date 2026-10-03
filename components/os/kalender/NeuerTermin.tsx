@@ -44,11 +44,13 @@ interface Entwurf { f: Formular; am: string }
 const lese = (): Entwurf | null => { try { const v = window.sessionStorage.getItem(ENTWURF_SCHLUESSEL); return v ? JSON.parse(v) as Entwurf : null; } catch { return null; } };
 const schreibe = (e: Entwurf | null) => { try { if (e) window.sessionStorage.setItem(ENTWURF_SCHLUESSEL, JSON.stringify(e)); else window.sessionStorage.removeItem(ENTWURF_SCHLUESSEL); } catch { /* voll/privat */ } };
 
-export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, kalender, kalenderStandard, onZu, onAngelegt }: {
+export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, kalender, kalenderStandard, bereich, onZu, onAngelegt }: {
   vorgabe: Vorgabe; heute: string; standardDauer: number; fokusDauer?: number;
-  kalender: { name: string; wer: Wer; schreibbar: boolean; farbe?: string }[];
+  kalender: { name: string; wer: Wer; schreibbar: boolean; farbe?: string; quelle?: 'google' }[];
   /** Welcher Kalender gehört wem (Einstellungen) — für die Farbe „Standard“. */
   kalenderStandard?: Partial<Record<Wer, string>>;
+  /** Aktiver Bereich der Kalenderseite: im Business-Bereich ist der Standard der Google Kalender der Person (03.10.), sofern verbunden. */
+  bereich?: 'privat' | 'business';
   onZu: () => void; onAngelegt: (was: { uid?: string; aufgabeId?: string; gaeste?: number; hinweis?: string }) => void;
 }) {
   const { state, dispatch, spaces } = useTasks();
@@ -75,12 +77,14 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
     };
   };
 
+  /** Der Google Kalender der Person (schreibbar) — Standard im Business-Bereich. */
+  const googleStandard = (w: Wer): string | undefined => kalender.find(k => k.quelle === 'google' && k.schreibbar && k.wer === w)?.name;
   const speichern = async (roh: Formular = f, bestaetigt = false) => {
     let x = schnellAnwenden(roh);
     if (x !== roh) setF(x);
     const fe = formularFehler(x);
     if (fe) { setFehler(fe); return; }
-    const a = formularAnfrage(x);
+    const a = formularAnfrage(x, bereich === 'business' && googleStandard(x.wer) ? 'business' : undefined);
     // Gäste: erst die Rückfrage — ohne „Senden“ geht nichts an iCloud.
     if (a.art === 'termin' && x.gaeste.length && !bestaetigt) { setFehler(null); setFrage({ adressen: x.gaeste.map(g => g.email), x }); return; }
     setLaeuft(true); setFehler(null);
@@ -111,7 +115,8 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
   const zeile = { display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center' };
   const art = f.art;
   const schreibbar = kalender.filter(k => k.schreibbar);
-  const kalName = f.kalender || kalenderStandard?.[f.wer] || '';
+  const kalStandardName = bereich === 'business' ? googleStandard(f.wer) ?? kalenderStandard?.[f.wer] : kalenderStandard?.[f.wer];
+  const kalName = f.kalender || kalStandardName || '';
   const kalFarbe = kalender.find(k => k.name === kalName)?.farbe ?? WER_FARBE[f.wer];
   const gmt = gmtText(f.zone, f.ganztags ? ausWandzeit(`${f.tag}T12:00:00`) : ausWandzeitIn(`${f.tag}T${f.von}:00`, f.zone));
   const vorlagen = wiederholungVorlagen(f.tag);
@@ -274,8 +279,8 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
             <Segmente liste={(['kevin', 'malin', 'beide'] as Wer[]).map(x => ({ id: x, label: WER_LABEL[x] }))} aktiv={f.wer} onWahl={x => setF({ ...f, wer: x, kalender: '' })} />
             {schreibbar.length > 0 && (
               <select value={f.kalender} onChange={e => setF({ ...f, kalender: e.target.value })} aria-label="Kalender" style={{ ...eingabe, width: 'auto' }}>
-                <option value="">{kalenderStandard?.[f.wer] ? `${kalenderStandard[f.wer]} (Standard)` : `Standard für ${WER_LABEL[f.wer]}`}</option>
-                {schreibbar.map(k => <option key={k.name} value={k.name}>{k.name}</option>)}
+                <option value="">{kalStandardName ? `${kalStandardName} (Standard)` : `Standard für ${WER_LABEL[f.wer]}`}</option>
+                {schreibbar.map(k => <option key={k.name} value={k.name}>{k.name}{k.quelle === 'google' ? ' · Google' : ''}</option>)}
               </select>
             )}
           </div>
