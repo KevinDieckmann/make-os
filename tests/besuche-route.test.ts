@@ -72,12 +72,18 @@ describe('Schreibweg: die neuen Felder über PATCH /api/crm/bestand', () => {
     const e = (await crm()).events.find(x => x.id === 'ev-neu')!;
     expect(e).toMatchObject({ fuer: { art: 'kunde', firmaId: 'f-kunde1' }, wer: ['kevin', 'malin'], link: 'https://beispiel.example/kongress', zielpersonen: [{ firmaId: 'f-kunde1' }], anmeldung: 'angemeldet', kostenEuro: 450, titel: 'Kongress Beispielstadt' });
   });
-  it('Kunde mit ungültiger Firmenkennung und ein Link mit javascript: werden nicht gespeichert', async () => {
+  it('Ein Link mit javascript: wird mit Text abgelehnt (409), eine ungültige Firmenkennung nicht gespeichert', async () => {
     const r = await bestand.PATCH!(new Request('http://test/api/crm/bestand', { method: 'PATCH', headers: kopf('kevin'), body: JSON.stringify({ ops: [{ liste: 'events', op: 'teil', id: 'ev-besuch-1', felder: { fuer: { art: 'kunde', firmaId: 'kaputt' }, link: 'javascript:alert(1)' } }] }) }));
-    expect(r.status).toBe(200);
+    // Ein unmöglicher Link wird nicht mehr still verworfen: die GANZE Änderung kommt mit Text zurück (409), nichts wird gespeichert (Technik-Prüfung 03.10.).
+    expect(r.status).toBe(409);
+    expect(JSON.stringify((await r.json()).fehler)).toContain('Link');
     const e = (await crm()).events.find(x => x.id === 'ev-besuch-1')!;
     expect(e.fuer).toBeUndefined();
     expect(e.link).toBeUndefined();
+    // Ohne den Link: die ungültige Firmenkennung fällt weiter still weg (Säuberer).
+    const r2 = await bestand.PATCH!(new Request('http://test/api/crm/bestand', { method: 'PATCH', headers: kopf('kevin'), body: JSON.stringify({ ops: [{ liste: 'events', op: 'teil', id: 'ev-besuch-1', felder: { fuer: { art: 'kunde', firmaId: 'kaputt' } } }] }) }));
+    expect(r2.status).toBe(200);
+    expect((await crm()).events.find(x => x.id === 'ev-besuch-1')!.fuer).toBeUndefined();
   });
 });
 
