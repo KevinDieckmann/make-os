@@ -4,6 +4,17 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Design-Standard: Zahlen & Finanzen (03.10.2026, nur lokal — Branch `design-finanzen`; Dokument `DESIGN_STANDARD.md` › „Umgestellt: Zahlen & Finanzen“)
+
+Zweiter Bereich nach der Markttraktion. Reine Darstellung und Struktur — keine Rechnung, kein Feld, keine Funktion geändert; die Finanzplanung bleibt in jedem Feld anpassbar.
+
+- **Umgestellt (51 Dateien, alle über `components/os/ui`):** Zahlen (Privat mit Haushalt-Reitern · Business · Steuern · Gesamt · Head of Finance), Grundlage, Liquidität, Buchungen, Rechnungen & Zahlungen, Controlling & Ziele, Business-Altbestand (Rahmen; das eingebettete Alt-Cockpit bleibt wie es ist) und die Finanzplanung jetzt mit allen 19 Unterseiten (Blatt, Szenarien, Diagramme).
+- **Handy:** Kopf kompakt (Titel + Symbol-Aktionen, ein Satz), EINE wischbare Reiterleiste; breite Umschalter (Wochen, Sicht, Bereiche) stehen im Inhalt statt im Kopf; Tabellen und das Blatt in eigenem wischbarem Container; Hero-Karte je Ansicht getönt, Kennzahl-Kacheln flach; Fehler als Hinweis-Karten mit Weg („Noch einmal versuchen“).
+- **Messung (36 Ansichten, 375 px, erfundene Beispielzahlen):** Tippziele < 44 px **1.287 → 0**, Eingaben < 16 px **275 → 0**, seitlicher Überlauf 0 → 0, Text < 12,5 px (ohne Großbuchstaben-Beschriftungen) **1.426 → 232** (Rest: Chips 12 px des Standards, Diagrammachsen 12 px), Zahlen ohne feste Ziffern 2 → 0; Rechner: Text < 12,5 px 1.897 → 249. Konsole sauber (außer der bekannten Firebase-Warnung des eingebetteten Alt-Cockpits, schon vorher).
+- **Neu im Standard:** `auswahl` (Auswahlliste), `.ui-tabelle`, `.ui-nur-schmal`; Segment-Umschalter laufen bei Enge seitwärts statt sich zu überlagern; Diagrammachsen dünnen auf schmalem Bildschirm aus.
+- **Test:** `tests/design-finanzen.test.ts` (kein `schlank`-Import im Bereich, keine Schrift < 13 px außer Beschriftungen, Bausteine der Finanzplanung, Kopf und Reiterleiste).
+- **Rückweg:** reiner Oberflächen-Commit, keine neuen Bestände.
+
 ## Design-Standard: Netzwerken-Look überall — Muster Markttraktion (03.10.2026, nur lokal — Branch `design`; Dokument `DESIGN_STANDARD.md`)
 
 Kevin 03.10.: „Du hast bei dem Netzwerken das Ganze noch ein bisschen edler gebaut … ich möchte, dass du den Standard überall reinbringst.“ Entscheidung: erst Muster, dann alles — dies ist der Teil „Standard + Markttraktion komplett“; Zahlen/Finanzen und der Rest folgen. Reine Darstellung, keine Funktions- oder Datenänderung, **nichts auf dem Server nötig**.

@@ -202,11 +202,11 @@ export function Lage() {
               </div>
             ))}
             {!d.fokus.schritte.some(s => !s.erledigt) && <Nichts>Keine offenen Schritte.</Nichts>}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 6, marginTop: 10, alignItems: 'center' }}>
-              <input value={neu.text} placeholder="Neuer Schritt" aria-label="Neuer Schritt" onChange={e => setNeu({ ...neu, text: e.target.value })} style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', borderRadius: 10 }} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10, alignItems: 'center' }}>
+              <input value={neu.text} placeholder="Neuer Schritt" aria-label="Neuer Schritt" onChange={e => setNeu({ ...neu, text: e.target.value })} style={{ ...feld, flex: '1 1 220px', width: 'auto' }} />
               <Auswahl wert={neu.wer} onWahl={w => setNeu({ ...neu, wer: w })} optionen={[{ id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'beide', label: 'Beide' }]} titel="Wer" />
-              <input type="date" value={neu.bis} aria-label="bis wann" onChange={e => setNeu({ ...neu, bis: e.target.value })} style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', borderRadius: 10, width: 'auto' }} />
-              <Knopf aus={!neu.text.trim()} onClick={async () => { const t = neu.text.trim(); if (!t) return; if (await aendere([{ pfad: '/fokus/schritte/-', neu: { id: neueKennung('st'), text: t, wer: neu.wer, bis: neu.bis || d.einstellungen.heute, erledigt: false } }], `Schritt angelegt: ${t}`)) setNeu({ ...neu, text: '' }); }}>+</Knopf>
+              <input type="date" value={neu.bis} aria-label="bis wann" onChange={e => setNeu({ ...neu, bis: e.target.value })} style={{ ...feld, width: 'auto' }} />
+              <Knopf aus={!neu.text.trim()} onClick={async () => { const t = neu.text.trim(); if (!t) return; if (await aendere([{ pfad: '/fokus/schritte/-', neu: { id: neueKennung('st'), text: t, wer: neu.wer, bis: neu.bis || d.einstellungen.heute, erledigt: false } }], `Schritt angelegt: ${t}`)) setNeu({ ...neu, text: '' }); }} ariaLabel="Schritt anlegen" style={{ minWidth: 44 }}>+</Knopf>
             </div>
             {d.fokus.regeln.length > 0 && <>
               <div style={{ ...MIKRO, marginTop: 16, marginBottom: 6 }}>Finanzregeln</div>
