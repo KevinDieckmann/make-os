@@ -194,6 +194,11 @@ beim Rückweg auf `5202a69` NICHT betroffen — sie stehen hier nur noch zur Ges
   - Sicherheitsprotokoll `anmeldungen`: neue Arten `adresse-hinzu`/`adresse-haupt`/`adresse-weg` mit `detail` (maskierte Adresse) — der alte Stand zeigt sie roh an, nichts bricht.
   - Glocke: Meldungsart `sicherheit` — der alte Säuberer verwirft Meldungen unbekannter Art beim nächsten Schreiben (nur die Hinweise „Anmelde-Adresse geändert“ gehen verloren, das Protokoll bleibt).
   Nach einem erneuten Upload: nichts nachzuziehen (die weiteren Adressen stehen noch in `konten.json`, solange das alte Bild sie nicht überschrieben hat; sonst unter Konto neu eintragen).
+- **Fokus Innovation — Reihe unter Make.One (03.10., Branch `fokus-innovation`):** nur ein neues optionales Feld `Event.reihe` (Kennung, z. B. `fokus-innovation`), keine Formänderung.
+  - der Säuberer des alten Stands (`zusatz('events')`) kennt `reihe` nicht — **beim ersten Schreiben eines Events im alten Stand fällt die Reihe weg**; Events, die nur gelesen werden, behalten sie. **Vor dem Rückweg notieren:** welche Make.One-Events zu Fokus Innovation gehören (Make.One › Filter „Fokus Innovation“); nach einem erneuten Upload dort im Überblick „Reihe“ wieder wählen.
+  - Kennzahlen je Reihe, Abzeichen, Filter, Herkunftstext („Make.One · Fokus Innovation …“) und `dealsVerursacht` in den Event-Zahlen sind Rechnung/Code ohne Daten — verschwinden mit dem Rückweg.
+  - Die Event-Seite `fokus/` liegt nur im Repo; ohne Caddy-Block und DNS (fokus/LIESMICH.md) wird sie nirgends ausgeliefert.
+  Nach einem erneuten Upload: nichts nachzuziehen außer der notierten Reihen.
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

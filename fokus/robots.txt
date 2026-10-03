@@ -1,0 +1,3 @@
+# Vorschau (03.10.2026): noch nicht beworben — Suchmaschinen bitte nicht aufnehmen.
+User-agent: *
+Disallow: /

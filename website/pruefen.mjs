@@ -87,9 +87,9 @@ export const SOFTWARE_NAME = /\bMAKE[ ]?O[S]\b/i;
 export const PREISE = /€|\bEUR\b|\bEuro\b|\bPreis(?:e|liste)?\b|\bTagessatz|\bHonorar/i;
 /** Wortregeln (Geschmack der Marke): diese Wörter stehen nicht auf der Seite. */
 export const VERBOTENE_WOERTER = /\b(?:Dashboard|Tool|Tools|Disruption|Reporting|einfach zu bedienen)\b/i;
-/** Was ein Skript der Seite nicht darf: nichts lesen, speichern, senden oder nachladen. */
-const SKRIPT_VERBOTEN = /\b(?:fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|localStorage|sessionStorage|indexedDB|eval|Function)\b|document\.cookie|import\s*\(|innerHTML|\.src\s*=/;
-const TRACKER = /google-analytics|googletagmanager|gtag\(|fonts\.googleapis|fonts\.gstatic|facebook\.(?:net|com)|hotjar|matomo|plausible|clarity\.ms|doubleclick/i;
+/** Was ein Skript der Seite nicht darf: nichts lesen, speichern, senden oder nachladen (auch fokus/pruefen.mjs nutzt es). */
+export const SKRIPT_VERBOTEN = /\b(?:fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|localStorage|sessionStorage|indexedDB|eval|Function)\b|document\.cookie|import\s*\(|innerHTML|\.src\s*=/;
+export const TRACKER = /google-analytics|googletagmanager|gtag\(|fonts\.googleapis|fonts\.gstatic|facebook\.(?:net|com)|hotjar|matomo|plausible|clarity\.ms|doubleclick/i;
 
 /** Alle Dateien unter `ordner` (relativ, mit „/“). */
 function alleDateien(ordner, basis = ordner) {

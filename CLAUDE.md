@@ -638,6 +638,17 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
 - **Kalender:** kein neuer Weg — der vorhandene Spiegel (`events/Kalender.tsx` → `/api/kalender/spiegel`, `eventSoll`) gilt für jedes Event; die Akte zeigt denselben Knopf. Folgeschritt (nicht gebaut): Hinweis in der Glocke „Event ohne Termin“.
 - Tests: `besuche-adresse`, `besuche-form`, `besuche-wirkung`, `besuche-route`. Doku: `UPDATES.md` › Events, `GO_LIVE_CHECKLISTE.md` › Rückweg.
 
+## Fokus Innovation — Reihe unter Make.One + Event-Seite (03.10., nur lokal, Branch `fokus-innovation`)
+- **Reihe** = drittes Merkmal eines eigenen Abends neben `marke` (Make.One) und `format` (Art des Abends): `Event.reihe` (optional, Kennung aus `EVENT_REIHEN`,
+  lib/crm/marke.ts; `reiheVon`/`reiheName`/`titelMitReihe`, nie bei besuchten Events). Neue Reihe = neue Zeile in `EVENT_REIHEN` (Kennung nie ändern). Name nach außen nur über
+  `eventName`/`titelMitReihe` (Herkunft, Nachfass-Text, ZOE, ICS) — den Kalender-Spiegel (`eventSoll`, Titel) nicht umstellen, sonst ziehen alle Termine nach.
+- **Kennzahlen je Reihe nur in `lib/crm/reihen.ts`** (`reihenUebersicht`, `reihenFilter`, `zahlenSumme` über `eventZahlen`); Leads nach `alsMarketingAnmeldung` (marke.ts) — dieselbe
+  Regel nutzt `marketingHerkunft` (scoring.ts). Nie eine zweite Event-Summe bauen. Oberfläche: `ReiheWahl`/`ReiheAbzeichen` (events/gemeinsam.tsx), Kachel `reihen` (flaechen.ts).
+- **Event-Seite `fokus/`** (fokusinnovation.de, statisch, nicht online): Regeln wie `website/` (keine Inline-Skripte/-Stile, keine Tracker/Formulare, noindex). Gemeinsames NIE von Hand
+  kopieren: `node scripts/fokus-seite.mjs` (Schriften, MAKE-Logo, Lichtfäden-Zeichner über `scripts/lichtfaeden-website.mjs`, Karte inline zwischen KARTE_ANFANG/ENDE, Standbild,
+  Favicon), Prüfung `node fokus/pruefen.mjs` (nutzt die Regeln aus `website/pruefen.mjs`, vergleicht Impressum-Block und geteilte Tokens). Keine erfundenen Termine/Zahlen/Preise
+  („Termin in Planung“). Online-Gang (Caddy-Vorschlag, IONOS-DNS, compose-Mount) in `fokus/LIESMICH.md` — nur auf Kevins Wort. Tests `fokus-innovation-reihe`, `fokus-seite`.
+
 ## Netzwerken ↔ Events ↔ Make.One — die Verbindungen (03.10., nur lokal, Branch `netz-verbind`)
 - **Event beim Erfassen:** der Körper trägt IMMER `eventNeu` (nie nur bei `wahl.lokal`); der Server (`netzwerken-server.ts`, Schritt „event“ + Nachprüfung danach) legt ein fehlendes Event daraus neu an, verwendet ein gleichnamiges besuchtes Event desselben Tages wieder
   (`gleichesBesuchEvent`, `eventTitelSchluessel`; die echte Kennung kommt in der Antwort und im Journal `eventId` zurück — IMMER mit `eventId` (lokale Variable) weiterarbeiten, nie `e.eventId` nach dem Schritt) und lehnt abgesagte Events ab (409). Fehler mit Event-Bezug tragen `eventFehler: true` → Warteschlange „Anderes Event wählen“.
