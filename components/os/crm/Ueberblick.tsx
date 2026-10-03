@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Befund } from '@/lib/crm/befunde';
@@ -41,7 +41,7 @@ const PRIO = { 1: LEUCHT.kritisch, 2: LEUCHT.achtung, 3: LEUCHT.puls, 4: C.inkDi
 interface HeadKurz { id: Welt; name: string; verantwortlich: string; offen: number; status: 'ruhig' | 'beobachten' | 'handeln' | null; zeit: string | null; zusammenfassung: string | null }
 interface Daten { heute: string; ich: string; fuerDich: FuerDich[]; teamFeed: TeamEreignis[]; traktion: Traktion; index: IndexErgebnis; indexVerlauf: IndexVerlauf; uebergaben: Uebergabe[]; befunde: Befund[]; heads: HeadKurz[]; bestand: Record<string, number> }
 
-const leise = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 } as const;
+const leise = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 } as const;
 
 export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: string, a?: string, k?: string) => void }) {
   const [d, setD] = useState<Daten | null>(null);
@@ -63,7 +63,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
     if (s.id === 'grundlage') {
       const b = d.bestand;
       return (
-        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 12, display: 'flex', gap: '4px 10px', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12, display: 'flex', gap: '4px 10px', flexWrap: 'wrap' }}>
           {zahl(b.kontakte, 'Kontakte', WEG.kontakt())} · {zahl(b.firmen, 'Firmen', WEG.firma())} · {zahl(b.chancen, 'Deals', WEG.deals())} · {zahl(b.mandate, 'Mandate', WEG.mandat())} · {zahl(b.events, 'Make.One-Abende', WEG.event())} · {zahl(b.besuche ?? 0, 'besuchte Events', WEG.besuch())} · {zahl(b.kampagnen, 'Kampagnen', WEG.kampagne())}
           <button onClick={() => zuBereich('stammdaten')} style={leise}>Stammdaten ›</button>
         </div>
@@ -74,7 +74,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
     const v = verantwortlich(w);
     return (
       <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.inkDim, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: C.inkDim, flexWrap: 'wrap' }}>
           <Person id={v} groesse={18} /> verantwortet {nameVon(v)}{v === d.ich ? ' · dein Bereich' : ''}
           <button onClick={() => zuBereich(w === 'sales' ? 'deals' : w)} style={{ ...leise, marginLeft: 'auto' }}>{WELT_LABEL[w]} öffnen ›</button>
         </div>
@@ -85,10 +85,10 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
             {h?.status && <Chip farbe={STATUS[h.status]}>{h.status}</Chip>}
             {!!h?.offen && <Link href="/os/stapel" style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.agenten}>{h.offen} zur Freigabe</Chip></Link>}
           </div>
-          <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {h?.zusammenfassung ?? 'Noch kein Lauf — der Head liest Kartei und Bestand und legt Vorschläge zur Freigabe vor.'}
           </div>
-          {h?.zeit && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{datum(h.zeit, d.heute)}</div>}
+          {h?.zeit && <div style={{ fontSize: 12, color: C.inkLeise }}>{datum(h.zeit, d.heute)}</div>}
         </div>
       </div>
     );
@@ -98,7 +98,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
     <>
       <Flaeche seite="markttraktion-ueberblick">
           <Kachel id="fuer-dich" titel="Für dich" breite={3}>
-          <Karte i={0} akzent={d.fuerDich.length ? LEUCHT.gut : undefined}>
+          <Karte i={0} ton={d.fuerDich.length ? LEUCHT.gut : undefined}>
             <Ueberschrift rechts={<Person id={d.ich} name />}>Für dich</Ueberschrift>
             {!d.fuerDich.length ? <Leer>Bei dir liegt gerade nichts Fälliges — Zeit für die Power Hour oder einen Beitrag.</Leer> : (
               <Liste>
@@ -144,7 +144,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
               <Liste>
                 {d.uebergaben.map(u => (
                   <Zeile key={u.id} onClick={() => zuBereich(u.ziel.s, u.ziel.a)}
-                    links={<span aria-label={`${WELT_LABEL[u.von]} an ${WELT_LABEL[u.an]}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: C.inkLeise }}><Punkt farbe={WELT_FARBE[u.von]} groesse={7} />→<Punkt farbe={WELT_FARBE[u.an]} groesse={7} /></span>}
+                    links={<span aria-label={`${WELT_LABEL[u.von]} an ${WELT_LABEL[u.an]}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: C.inkLeise }}><Punkt farbe={WELT_FARBE[u.von]} groesse={7} />→<Punkt farbe={WELT_FARBE[u.an]} groesse={7} /></span>}
                     titel={<span style={{ whiteSpace: 'normal' }}>{u.titel}</span>}
                     unter={<span style={{ whiteSpace: 'normal' }}>{WELT_LABEL[u.von]} → {WELT_LABEL[u.an]} · {u.text}</span>}
                     rechts={<Chip farbe={WELT_FARBE[u.an]}>{u.anzahl}</Chip>} />
@@ -163,7 +163,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
                   const w = b.ansicht === 'runde-chancen' ? 'sales' : BEFUND_WELT[b.bereich];
                   return <Zeile key={i} onClick={() => zuBereich(b.bereich, b.ansicht)} links={<Punkt farbe={PRIO[b.prio]} />}
                     titel={<span style={{ whiteSpace: 'normal' }}>{b.titel}</span>} unter={<span style={{ whiteSpace: 'normal' }}>{b.grund}</span>}
-                    rechts={<span style={{ fontSize: 11.5, color: w ? WELT_FARBE[w] : C.inkLeise, whiteSpace: 'nowrap' }}>{w ? WELT_LABEL[w] : 'Grundlage'} ›</span>} />;
+                    rechts={<span style={{ fontSize: 12, color: w ? WELT_FARBE[w] : C.inkLeise, whiteSpace: 'nowrap' }}>{w ? WELT_LABEL[w] : 'Grundlage'} ›</span>} />;
                 })}
               </Liste>
             )}

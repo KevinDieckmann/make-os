@@ -11,7 +11,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, LEUCHT } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
@@ -58,7 +58,7 @@ const WEITER: Partial<Record<string, { label: string; href: string }>> = {
   'werte-ausserhalb-wertelisten': { label: 'Wertelisten', href: markttraktion('stammdaten', 'wertelisten') },
 };
 
-const kennung: CSSProperties = { fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: C.inkDim, padding: '2px 8px', borderRadius: 8, background: 'rgba(255,255,255,.04)', textDecoration: 'none', whiteSpace: 'nowrap' };
+const kennung: CSSProperties = { fontSize: TYP.bedien, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: C.inkDim, padding: '2px 8px', borderRadius: 8, background: 'rgba(255,255,255,.04)', textDecoration: 'none', whiteSpace: 'nowrap' };
 
 export function Verbindungen({ i = 0, onGeaendert }: { i?: number; onGeaendert?: () => void }) {
   const [d, setD] = useState<Antwort | null>(null);
@@ -109,8 +109,8 @@ export function Verbindungen({ i = 0, onGeaendert }: { i?: number; onGeaendert?:
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px 10px', marginBottom: 10, flexWrap: 'wrap' }}>
         <Punkt farbe={a.farbe} groesse={11} />
         <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{a.text}</span>
-        {kopf.zahlen && kopf.schwere !== 'hinweis' && <span style={{ fontSize: 12.5, color: C.inkDim }}>{kopf.zahlen}</span>}
-        <span style={{ fontSize: 12, color: C.inkLeise }}>{d.geprueft} Prüfungen über Personen, Firmen, Deals, Mandate, Rechnungen, Follow-ups, Events, Marketing, Aufgaben, Fokus und Ablage</span>
+        {kopf.zahlen && kopf.schwere !== 'hinweis' && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{kopf.zahlen}</span>}
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{d.geprueft} Prüfungen über Personen, Firmen, Deals, Mandate, Rechnungen, Follow-ups, Events, Marketing, Aufgaben, Fokus und Ablage</span>
       </div>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>{meldung}</div>}
       {!d.befunde.length && <Leer>Jede Kennung zeigt auf etwas, das es gibt.</Leer>}
@@ -137,9 +137,9 @@ export function Verbindungen({ i = 0, onGeaendert }: { i?: number; onGeaendert?:
                       const stil = name ? { ...kennung, fontFamily: 'inherit', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' } : kennung;
                       return href ? <Link key={id} href={href} title={id} style={{ ...stil, color: C.aktiv }}>{name ?? id}</Link> : <span key={id} title={id} style={stil}>{name ?? id}</span>;
                     })}
-                    {b.anzahl > b.beispiele.length && <span style={{ fontSize: 12, color: C.inkLeise }}>+ {b.anzahl - b.beispiele.length} weitere</span>}
+                    {b.anzahl > b.beispiele.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>+ {b.anzahl - b.beispiele.length} weitere</span>}
                     <span style={{ flex: 1 }} />
-                    {weiter && <Link href={weiter.href} style={{ fontSize: 12.5, color: C.inkDim }}>{weiter.label} ›</Link>}
+                    {weiter && <Link href={weiter.href} style={{ fontSize: TYP.bedien, color: C.inkDim }}>{weiter.label} ›</Link>}
                     {b.reparierbar && <Knopf leise aus={laeuft} onClick={() => void zeigeVorschau([b.id])}>{b.knopf ?? 'Reparieren'}</Knopf>}
                   </div>
                 </div>

@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../../schlank';
+import { Knopf, feld, LEUCHT } from '../../ui';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Firma } from '@/lib/crm/typen';
 import { bestehendeFirma } from '@/lib/crm/firmen';
@@ -25,8 +25,8 @@ import { neueFirma } from '../Firmen';
 import { FirmenDatalist } from '../FirmenDatalist';
 import type { Setze } from '../kontakt-teile';
 
-const klein = { fontSize: 12, color: C.inkLeise } as const;
-const leise = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: SCHRIFT.text } as const;
+const klein = { fontSize: TYP.bedien, color: C.inkLeise } as const;
+const leise = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, fontFamily: SCHRIFT.text } as const;
 const eingabe = { ...feld, fontSize: TYP.bedien, padding: '8px 11px' };
 
 type Form = { art: 'wechsel' | 'dazu'; name: string; rolle: string; stationArt: StationArt | null; von: string };
@@ -66,7 +66,7 @@ export function StationenTeil({ k, api, heute, setze, zuFirma }: { k: Kontakt; a
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: s.aktiv ? C.ink : C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {name(s.firmaId) ?? s.firmaId}
         </button>
-        {s.haupt && <span style={{ fontSize: 11, fontWeight: 700, color: LEUCHT.gut, border: `1px solid ${LEUCHT.gut}55`, borderRadius: 999, padding: '1px 7px' }}>Haupt</span>}
+        {s.haupt && <span style={{ fontSize: 12, fontWeight: 700, color: LEUCHT.gut, border: `1px solid ${LEUCHT.gut}55`, borderRadius: 999, padding: '1px 7px' }}>Haupt</span>}
         <button type="button" onClick={() => setOffen(offen === i ? null : i)} className="fassbar" style={leise} aria-expanded={offen === i}>{offen === i ? 'fertig' : 'ändern'}</button>
       </div>
       <div style={klein}>{[s.rolle, s.art ? STATION_ART_LABEL[s.art] : null, zeitraum(s)].filter(Boolean).join(' · ') || (s.aktiv ? 'laufend' : 'beendet')}</div>
@@ -106,7 +106,7 @@ export function StationenTeil({ k, api, heute, setze, zuFirma }: { k: Kontakt; a
       )}
       {form ? (
         <div style={{ display: 'grid', gap: 8, marginTop: 8, padding: 10, borderRadius: 10, background: 'rgba(255,255,255,.03)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700 }}>{form.art === 'wechsel' ? 'Firma wechseln — die bisherige Hauptstation endet' : 'Weitere Firma — die Hauptstation bleibt'}</div>
+          <div style={{ fontSize: TYP.bedien, fontWeight: 700 }}>{form.art === 'wechsel' ? 'Firma wechseln — die bisherige Hauptstation endet' : 'Weitere Firma — die Hauptstation bleibt'}</div>
           <input autoFocus list="stationen-firmen" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Firma suchen oder neu …" aria-label="Firma" style={eingabe}
             onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setForm(null); } }} />
           <FirmenDatalist id="stationen-firmen" firmen={firmen} suche={form.name} />

@@ -15,7 +15,7 @@ import { WEG, eventLink } from '@/lib/wege';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../ui';
 import { anzeigename } from '@/lib/make-one/crm';
 import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
@@ -106,8 +106,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
       </div>
-      <Karte i={0}>
-        <Ueberschrift rechts={<Knopf onClick={neu}>+ Deal{neuFuer !== ich ? ` für ${nameVon(neuFuer)}` : ''}</Knopf>}>{wahl === 'alle' ? 'Prognose' : `Prognose · ${wahl === 'ich' ? 'meine' : nameVon(wahl)}`}</Ueberschrift>
+      <Karte i={0} ton={LEUCHT.business}>
+        <Ueberschrift rechts={<Knopf haupt onClick={neu}>+ Deal{neuFuer !== ich ? ` für ${nameVon(neuFuer)}` : ''}</Knopf>}>{wahl === 'alle' ? 'Prognose' : `Prognose · ${wahl === 'ich' ? 'meine' : nameVon(wahl)}`}</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={kurzEuro(p.offen)} label="offen" />
           <Zahl wert={kurzEuro(p.gewichtet)} label="gewichtet" farbe={LEUCHT.business} />
@@ -121,7 +121,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
         {jePerson.length > 1 && (
           <div style={{ display: 'grid', gap: 5, marginTop: 12 }}>
             {jePerson.map(x => (
-              <div key={x.person} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
+              <div key={x.person} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
                 <span style={{ minWidth: 76 }}><Person id={x.person} name groesse={18} /></span>
                 <span>{x.anzahl} {x.anzahl === 1 ? 'Deal' : 'Deals'}</span>
                 <span>gewichtet <b style={{ color: C.ink }}>{kurzEuro(x.gewichtet)}</b></span>
@@ -133,9 +133,9 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
           </div>
         )}
         {meine && (meine.haengt > 0 || meine.ohneSchritt > 0) && (
-          <div style={{ fontSize: 12.5, color: C.ink, marginTop: 10 }}>Als Nächstes: {meine.haengt > 0 ? `${meine.haengt} deiner Deals ${meine.haengt === 1 ? 'hängt' : 'hängen'} — nächsten Schritt mit Datum setzen, übergeben oder parken.` : `${meine.ohneSchritt} deiner Deals ohne nächsten Schritt — einen mit Datum eintragen.`}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.ink, marginTop: 10 }}>Als Nächstes: {meine.haengt > 0 ? `${meine.haengt} deiner Deals ${meine.haengt === 1 ? 'hängt' : 'hängen'} — nächsten Schritt mit Datum setzen, übergeben oder parken.` : `${meine.ohneSchritt} deiner Deals ohne nächsten Schritt — einen mit Datum eintragen.`}</div>
         )}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Wert = Monatshonorar × Laufzeit (ohne Angabe 12 Monate), gewichtet mit der Stufen-Wahrscheinlichkeit. Die Wahrscheinlichkeiten sind vorsichtige Startwerte und werden durch gemessene Quoten ersetzt.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Wert = Monatshonorar × Laufzeit (ohne Angabe 12 Monate), gewichtet mit der Stufen-Wahrscheinlichkeit. Die Wahrscheinlichkeiten sind vorsichtige Startwerte und werden durch gemessene Quoten ersetzt.</div>
       </Karte>
 
       {breit && board && (() => {
@@ -150,7 +150,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
                   <div key={s.id} onDragOver={e => e.preventDefault()} onDrop={e => zieh(e, s.id)} style={{ background: 'rgba(255,255,255,.025)', borderRadius: 14, padding: 10, minHeight: 160 }}>
                     <div title={`Weiter, wenn: ${s.weiterWenn}`} style={{ padding: '2px 4px 10px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkDim }}><span>{s.label}</span><span style={{ color: C.inkLeise }}>{s.p} %</span></div>
-                      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 2 }}>{l.length} · {kurzEuro(js?.wert ?? 0)}{js?.haengt ? <span style={{ color: LEUCHT.kritisch }}> · {js.haengt} hängt</span> : null}</div>
+                      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{l.length} · {kurzEuro(js?.wert ?? 0)}{js?.haengt ? <span style={{ color: LEUCHT.kritisch }}> · {js.haengt} hängt</span> : null}</div>
                     </div>
                     <div style={{ display: 'grid', gap: 8 }}>
                       {l.map(c => {
@@ -161,13 +161,13 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
                               <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3 }}>{c.titel}</span>
                               <Person id={zustaendig(c.besitzer, 'sales')} groesse={16} />
                             </span>
-                            {firmenName(c, crm.stand.firmen) && firmenName(c, crm.stand.firmen) !== c.titel && <span style={{ fontSize: 12, color: C.inkLeise }}>{firmenName(c, crm.stand.firmen)}</span>}
-                            <span style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{wertText(c)}</span>
-                            <span style={{ fontSize: 11.5, color: c.naechsterSchritt && c.naechsterSchritt.datum < crm.heute ? LEUCHT.kritisch : C.inkLeise }}>{c.naechsterSchritt ? `→ ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt'}</span>
+                            {firmenName(c, crm.stand.firmen) && firmenName(c, crm.stand.firmen) !== c.titel && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{firmenName(c, crm.stand.firmen)}</span>}
+                            <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{wertText(c)}</span>
+                            <span style={{ fontSize: 12, color: c.naechsterSchritt && c.naechsterSchritt.datum < crm.heute ? LEUCHT.kritisch : C.inkLeise }}>{c.naechsterSchritt ? `→ ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt'}</span>
                           </button>
                         );
                       })}
-                      {!l.length && <div style={{ fontSize: 12, color: C.inkLeise, padding: '4px' }}>—</div>}
+                      {!l.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '4px' }}>—</div>}
                     </div>
                   </div>
                 );
@@ -175,7 +175,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
               {(['gewonnen', 'verloren', 'geparkt'] as ChancenStufe[]).map(z => (
-                <div key={z} onDragOver={e => e.preventDefault()} onDrop={e => zieh(e, z)} style={{ border: `1px dashed ${z === 'gewonnen' ? LEUCHT.gut : z === 'verloren' ? LEUCHT.kritisch : 'rgba(255,255,255,.2)'}55`, borderRadius: 12, padding: '8px 12px', fontSize: 12, color: C.inkLeise, textAlign: 'center' }}>hierher ziehen: {crm.stufen.find(s => s.id === z)?.label}</div>
+                <div key={z} onDragOver={e => e.preventDefault()} onDrop={e => zieh(e, z)} style={{ border: `1px dashed ${z === 'gewonnen' ? LEUCHT.gut : z === 'verloren' ? LEUCHT.kritisch : 'rgba(255,255,255,.2)'}55`, borderRadius: 12, padding: '8px 12px', fontSize: TYP.bedien, color: C.inkLeise, textAlign: 'center' }}>hierher ziehen: {crm.stufen.find(s => s.id === z)?.label}</div>
               ))}
             </div>
             {sel && offen.some(s => s.id === sel.stufe) && (
@@ -195,11 +195,11 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
         return (
           <Karte key={s.id} i={i + 1}>
             <Ueberschrift rechts={`${s.p} % · ${l.length} · ${kurzEuro(js?.wert ?? 0)}${js?.haengt ? ` · ${js.haengt} hängt` : ''}`}>{s.label}</Ueberschrift>
-            <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Weiter, wenn: {s.weiterWenn}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Weiter, wenn: {s.weiterWenn}</div>
             <Liste>
               {l.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} />)}
             </Liste>
-            {!l.length && <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '6px 0' }}>Kein Deal in dieser Stufe.</div>}
+            {!l.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 0' }}>Kein Deal in dieser Stufe.</div>}
           </Karte>
         );
       })}
@@ -207,16 +207,16 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
       {vorschlaege.length > 0 && (
         <Karte i={1}>
           <Ueberschrift rechts={zuLeads ? <Knopf leise onClick={zuLeads}>Zu den Leads (Firmen)</Knopf> : `${vorschlaege.length} aus der Kartei`}>Im Gespräch, noch kein Deal</Ueberschrift>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Erst qualifizieren (Firmen › Leads: Schmerz, Entscheider, Budget oder Zeitpunkt), dann wird daraus ein Deal. Direkt anlegen nur, wenn die Qualifizierung schon feststeht.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Erst qualifizieren (Firmen › Leads: Schmerz, Entscheider, Budget oder Zeitpunkt), dann wird daraus ein Deal. Direkt anlegen nur, wenn die Qualifizierung schon feststeht.</div>
           <Liste>
             {vorschlaege.slice(0, alleVorschlaege ? 40 : 6).map(k => <Zeile key={k.id} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.stufe === 'angebot' ? 'Angebot' : k.stufe === 'termin' ? 'Termin' : 'im Gespräch'} rechts={<Knopf leise onClick={() => ausKontakt(k)}>+ Deal</Knopf>} />)}
           </Liste>
-          {vorschlaege.length > 6 && <button onClick={() => setAlleVorschlaege(!alleVorschlaege)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>{alleVorschlaege ? 'weniger' : `alle ${vorschlaege.length} zeigen`}</button>}
+          {vorschlaege.length > 6 && <button onClick={() => setAlleVorschlaege(!alleVorschlaege)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{alleVorschlaege ? 'weniger' : `alle ${vorschlaege.length} zeigen`}</button>}
         </Karte>
       )}
 
       <Karte i={7}>
-        <Ueberschrift rechts={<button onClick={() => { if (zeigeZu && gewaehlt && !istOffen(gewaehlt)) setAuswahl(null); setGeschlossen(!zeigeZu); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>{zeigeZu ? 'ausblenden' : `${zu.length} zeigen`}</button>}>Gewonnen · Verloren · Geparkt</Ueberschrift>
+        <Ueberschrift rechts={<button onClick={() => { if (zeigeZu && gewaehlt && !istOffen(gewaehlt)) setAuswahl(null); setGeschlossen(!zeigeZu); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>{zeigeZu ? 'ausblenden' : `${zu.length} zeigen`}</button>}>Gewonnen · Verloren · Geparkt</Ueberschrift>
         {zeigeZu && <Liste>{zu.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} />)}</Liste>}
       </Karte>
     </>
@@ -266,7 +266,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         </div>
       </Feldzeile>
       <div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Stufe</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Stufe</div>
         <Pillen liste={crm.stufen.map(s => ({ id: s.id, label: s.label }))} aktiv={c.stufe} onWahl={wechsle} farbe={LEUCHT.business} />
         {wechsel && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
@@ -276,14 +276,14 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
             <Knopf leise onClick={() => setWechsel(null)}>Abbrechen</Knopf>
           </div>
         )}
-        {c.historie.length > 1 && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{c.historie.map(h => `${crm.stufen.find(s => s.id === h.stufe)?.label} ${datum(h.am)}${mitglied(h.von) ? ` (${nameVon(h.von)})` : ''}`).join(' → ')}</div>}
+        {c.historie.length > 1 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{c.historie.map(h => `${crm.stufen.find(s => s.id === h.stufe)?.label} ${datum(h.am)}${mitglied(h.von) ? ` (${nameVon(h.von)})` : ''}`).join(' → ')}</div>}
       </div>
       <Feldzeile label="Titel"><Feld wert={c.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
       <Feldzeile label="Firma">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Wahl label="Firma" liste={[...crm.stand.firmen].sort((a, b) => a.name.localeCompare(b.name)).map(f => ({ id: f.id, label: f.name, ...(f.stadt ? { hinweis: f.stadt } : {}) }))} wert={c.firmaId}
             onWahl={id => { const f = crm.stand.firmen.find(x => x.id === id); if (f) void setze({ firmaId: f.id, firma: f.name }); }} onLeeren={() => void setze({ firmaId: undefined, firma: undefined })} />
-          {!c.firmaId && c.firma && <span style={{ fontSize: 12, color: LEUCHT.achtung }}>„{c.firma}“ ist keiner Firma zugeordnet — oben wählen.</span>}
+          {!c.firmaId && c.firma && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>„{c.firma}“ ist keiner Firma zugeordnet — oben wählen.</span>}
         </div>
       </Feldzeile>
       <Feldzeile label="Art"><Wahl label="Art" liste={ARTEN} wert={c.art} onWahl={art => setze({ art })} /></Feldzeile>
@@ -292,7 +292,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
           <Feld typ="number" wert={c.wert.betrag ? String(c.wert.betrag) : ''} breite={120} platzhalter="Betrag €" onFertig={b => setze({ wert: { ...c.wert, betrag: Number(b) || 0 } })} />
           <Wahl label="Wert-Basis" liste={BASEN} wert={c.wert.basis} onWahl={basis => setze({ wert: { ...c.wert, basis } })} />
           {c.wert.basis !== 'einmalig' && <Feld typ="number" wert={c.wert.laufzeitMonate ? String(c.wert.laufzeitMonate) : ''} breite={110} platzhalter="Monate" onFertig={m => setze({ wert: { ...c.wert, laufzeitMonate: Number(m) || undefined } })} />}
-          <span style={{ fontSize: 12.5, color: C.inkLeise }}>= {euro(gesamtwert(c))}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>= {euro(gesamtwert(c))}</span>
         </div>
       </Feldzeile>
       <Feldzeile label="Nächster Schritt">
@@ -303,11 +303,11 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
       </Feldzeile>
       <Feldzeile label="Entscheidung bis"><Feld typ="date" wert={c.erwartetAm} breite={160} platzhalter="Datum" onFertig={erwartetAm => setze({ erwartetAm: erwartetAm || undefined })} /></Feldzeile>
       <div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Qualifizierung — was noch unklar ist, ist die nächste Frage</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Qualifizierung — was noch unklar ist, ist die nächste Frage</div>
         <div style={{ display: 'grid', gap: 6 }}>
           {QUAL.map(q => (
             <div key={q.id} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 10, alignItems: 'center' }}>
-              <span style={{ fontSize: 12.5, color: C.inkDim }}>{q.label}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{q.label}</span>
               <Pillen liste={[{ id: 'ja', label: 'ja' }, { id: 'unklar', label: 'unklar' }, { id: 'nein', label: 'nein' }]} aktiv={c.qualifizierung[q.id]} onWahl={(v: Qual) => setze({ qualifizierung: { ...c.qualifizierung, [q.id]: v } })}
                 farbe={c.qualifizierung[q.id] === 'ja' ? LEUCHT.gut : c.qualifizierung[q.id] === 'nein' ? LEUCHT.kritisch : LEUCHT.achtung} />
             </div>
@@ -325,7 +325,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
             <Wahl label={c.quelle === 'event' ? 'Event' : c.quelle === 'kampagne' ? 'Kampagne' : 'Beitrag'} leer="+ wählen"
               liste={c.quelle === 'event' ? crm.stand.events.map(x => ({ id: x.id, label: x.titel, hinweis: datum(x.datum) })) : c.quelle === 'kampagne' ? (crm.stand.kampagnen ?? []).map(x => ({ id: x.id, label: x.name })) : (crm.stand.beitraege ?? []).map(x => ({ id: x.id, label: x.titel }))}
               wert={c.quelleBezug} onWahl={quelleBezug => setze({ quelleBezug })} onLeeren={() => setze({ quelleBezug: undefined })} />
-            {c.quelleBezug && <Link href={c.quelle === 'event' ? eventLink(crm?.stand.events.find(x => x.id === c.quelleBezug) ?? { id: c.quelleBezug }) : c.quelle === 'kampagne' ? WEG.kampagne(c.quelleBezug, 'marketing') : WEG.marketing('redaktion', c.quelleBezug)} style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none' }}>öffnen ›</Link>}
+            {c.quelleBezug && <Link href={c.quelle === 'event' ? eventLink(crm?.stand.events.find(x => x.id === c.quelleBezug) ?? { id: c.quelleBezug }) : c.quelle === 'kampagne' ? WEG.kampagne(c.quelleBezug, 'marketing') : WEG.marketing('redaktion', c.quelleBezug)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>öffnen ›</Link>}
           </div>
         </Feldzeile>
       )}
@@ -334,25 +334,25 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
       <Feldzeile label="Personen">
         <div style={{ display: 'grid', gap: 6 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {personen.map(k => <span key={k.id} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><button onClick={() => zuKontakt(k.id)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 999, padding: '5px 10px', color: C.ink, cursor: 'pointer', fontSize: 12.5 }}>{anzeigename(k)}</button><button onClick={() => setze({ kontaktIds: c.kontaktIds.filter(x => x !== k.id) })} aria-label="Person entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>×</button></span>)}
+            {personen.map(k => <span key={k.id} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><button onClick={() => zuKontakt(k.id)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 999, padding: '5px 10px', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien }}>{anzeigename(k)}</button><button onClick={() => setze({ kontaktIds: c.kontaktIds.filter(x => x !== k.id) })} aria-label="Person entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>×</button></span>)}
           </div>
           <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Person hinzufügen …" aria-label="Person hinzufügen" style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '7px 10px', color: C.ink, fontSize: TYP.bedien }} />
-          {treffer.map(k => <button key={k.id} onClick={() => { void setze({ kontaktIds: Array.from(new Set([...c.kontaktIds, k.id])), ...(c.firma ? {} : k.firma ? { firma: k.firma } : {}) }); setSuche(''); }} style={{ textAlign: 'left', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '3px 0' }}>+ {anzeigename(k)}{k.firma ? ` · ${k.firma}` : ''}</button>)}
+          {treffer.map(k => <button key={k.id} onClick={() => { void setze({ kontaktIds: Array.from(new Set([...c.kontaktIds, k.id])), ...(c.firma ? {} : k.firma ? { firma: k.firma } : {}) }); setSuche(''); }} style={{ textAlign: 'left', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '3px 0' }}>+ {anzeigename(k)}{k.firma ? ` · ${k.firma}` : ''}</button>)}
         </div>
       </Feldzeile>
       <Feldzeile label="Notiz"><Feld wert={c.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>
-      {c.grund && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Grund: {c.grund}{c.wiedervorlage ? ` · Wiedervorlage ${datum(c.wiedervorlage)}` : ''}</div>}
+      {c.grund && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Grund: {c.grund}{c.wiedervorlage ? ` · Wiedervorlage ${datum(c.wiedervorlage)}` : ''}</div>}
       {c.stufe === 'gewonnen' && !crm.stand.mandate.some(m => m.chanceId === c.id) && (
         <div style={{ padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.gut}12`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: TYP.bedien }}>Gewonnen — jetzt Kunde: aus dem Deal wird ein Mandat (Vertrag, Kickoff, Health).</span>
           <Knopf farbe={LEUCHT.gut} onClick={async () => { const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: c.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' })); await api.laden(true); if (!r.ok) api.setFehler(r.fehler ?? 'Mandat nicht angelegt.'); }}>Mandat anlegen</Knopf>
         </div>
       )}
-      {c.stufe === 'gewonnen' && crm.stand.mandate.some(m => m.chanceId === c.id) && <div style={{ fontSize: 12.5, color: LEUCHT.gut }}>Mandat angelegt — <Link href={mandateLink('mandate', crm.stand.mandate.find(m => m.chanceId === c.id)!.id)} style={{ color: LEUCHT.gut }}>unter Produkte & Mandate öffnen ›</Link></div>}
+      {c.stufe === 'gewonnen' && crm.stand.mandate.some(m => m.chanceId === c.id) && <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Mandat angelegt — <Link href={mandateLink('mandate', crm.stand.mandate.find(m => m.chanceId === c.id)!.id)} style={{ color: LEUCHT.gut }}>unter Produkte & Mandate öffnen ›</Link></div>}
       {/* Sperre statt Löschen (Konzept): ein Deal mit Geschichte wird verloren oder geparkt — löschen geht nur bei einer Fehlanlage. */}
       {c.historie.length <= 1 && !c.wert.betrag && !(c.notiz ?? '').trim()
-        ? <div><button onClick={() => { if (window.confirm('Fehlanlage löschen? Ein Deal mit Geschichte wird stattdessen als verloren oder geparkt markiert.')) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>Fehlanlage löschen</button></div>
-        : <div style={{ fontSize: 12, color: C.inkLeise }}>Löschen gibt es nicht — ein Deal mit Geschichte wird verloren oder geparkt, damit die Pipeline lernt.</div>}
+        ? <div><button onClick={() => { if (window.confirm('Fehlanlage löschen? Ein Deal mit Geschichte wird stattdessen als verloren oder geparkt markiert.')) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Fehlanlage löschen</button></div>
+        : <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Löschen gibt es nicht — ein Deal mit Geschichte wird verloren oder geparkt, damit die Pipeline lernt.</div>}
     </div>
   );
 }

@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../../schlank';
+import { Knopf, feld, LEUCHT, Hinweis } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { localDay } from '@/lib/zeit';
 import { TEAM, nameVon } from '@/lib/crm/team';
@@ -43,12 +43,12 @@ export function AbgebenDialog({ api, z, onZu, onFertig }: P) {
   };
   return (
     <Fenster titel="Abgeben" onZu={onZu} breit={520}>
-      <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>„{z.name}“ mit {z.personen.length === 1 ? 'seiner Person' : `allen ${z.personen.length} Personen`} geht an die andere Person. Die Übergabe steht im Verlauf, sie bekommt eine Aufgabe mit Link.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>„{z.name}“ mit {z.personen.length === 1 ? 'seiner Person' : `allen ${z.personen.length} Personen`} geht an die andere Person. Die Übergabe steht im Verlauf, sie bekommt eine Aufgabe mit Link.</div>
       <div role="radiogroup" aria-label="An wen" style={{ display: 'grid', gap: 6 }}>
         {TEAM.filter(t => t.id !== z.besitzer || z.besitzer === 'beide').map(t => <button key={t.id} type="button" role="radio" aria-checked={an === t.id} onClick={() => setAn(t.id)} className="fassbar" style={knopfStil(an === t.id)}>{t.name}</button>)}
       </div>
       <textarea value={notiz} onChange={e => setNotiz(e.target.value)} rows={3} maxLength={600} placeholder="Was die andere Person wissen muss (optional) …" aria-label="Notiz zur Übergabe" style={{ ...feld, fontSize: 16, padding: '8px 11px', width: '100%', resize: 'vertical' }} />
-      {meldung && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
+      {meldung && <Hinweis art="kritisch" rolle="alert">{meldung}</Hinweis>}
       <Fuss onZu={onZu} ok laeuft={laeuft} los={() => void los()} text={`An ${nameVon(an)} abgeben`} />
     </Fenster>
   );
@@ -74,7 +74,7 @@ export function ParkenDialog({ api, z, onZu, onFertig }: P) {
   return (
     <Fenster titel="Parken" onZu={onZu} breit={520}>
       <Gesperrt grund={gesperrt} />
-      <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>„{z.name}“ ruht bis zu diesem Tag — dann kommt der Lead von selbst in die Runde zurück (und ein Follow-up erinnert).</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>„{z.name}“ ruht bis zu diesem Tag — dann kommt der Lead von selbst in die Runde zurück (und ein Follow-up erinnert).</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {schnell.map(([l, t]) => <button key={l} type="button" onClick={() => setBis(plusTage(heute, t))} aria-pressed={bis === plusTage(heute, t)} className="fassbar" style={{ ...knopfStil(bis === plusTage(heute, t)), width: 'auto', borderRadius: 999 }}>{l}</button>)}
         <input type="date" value={bis} min={heute} onChange={e => setBis(e.target.value)} aria-label="Wiedervorlage am" style={{ ...feld, width: 'auto', fontSize: 16, padding: '10px 12px' }} />
@@ -83,7 +83,7 @@ export function ParkenDialog({ api, z, onZu, onFertig }: P) {
         {GRUND_PARKEN.map(g => <button key={g.id} type="button" role="radio" aria-checked={art === g.id} onClick={() => setArt(g.id)} className="fassbar" style={knopfStil(art === g.id)}>{g.label}</button>)}
       </div>
       <input value={grund} onChange={e => setGrund(e.target.value)} maxLength={300} placeholder="Ein Satz dazu (optional) …" aria-label="Grund in einem Satz" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
-      {meldung && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
+      {meldung && <Hinweis art="kritisch" rolle="alert">{meldung}</Hinweis>}
       <Fuss onZu={onZu} ok={bis >= heute && !gesperrt} laeuft={laeuft} los={() => void los()} text="Parken" />
     </Fenster>
   );
@@ -106,12 +106,12 @@ export function RausDialog({ api, z, onZu, onFertig }: P) {
   return (
     <Fenster titel="Raus — Kein Fit" onZu={onZu} breit={520}>
       <Gesperrt grund={gesperrt} />
-      <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>„{z.name}“ scheidet aus der Qualifizierung aus. Der Grund fließt in die Auswertung — so sehen Marketing und Sales, woran Leads scheitern. Nichts wird gelöscht.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>„{z.name}“ scheidet aus der Qualifizierung aus. Der Grund fließt in die Auswertung — so sehen Marketing und Sales, woran Leads scheitern. Nichts wird gelöscht.</div>
       <div role="radiogroup" aria-label="Warum Kein Fit" style={{ display: 'grid', gap: 6 }}>
-        {GRUND_RAUS.map(g => <button key={g.id} type="button" role="radio" aria-checked={art === g.id} onClick={() => setArt(g.id)} className="fassbar" style={{ ...knopfStil(art === g.id, LEUCHT.kritisch), display: 'grid', gap: 2 }}><b style={{ fontWeight: 600 }}>{g.label}</b>{g.hinweis && <span style={{ fontSize: 12, color: C.inkDim }}>{g.hinweis}</span>}</button>)}
+        {GRUND_RAUS.map(g => <button key={g.id} type="button" role="radio" aria-checked={art === g.id} onClick={() => setArt(g.id)} className="fassbar" style={{ ...knopfStil(art === g.id, LEUCHT.kritisch), display: 'grid', gap: 2 }}><b style={{ fontWeight: 600 }}>{g.label}</b>{g.hinweis && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{g.hinweis}</span>}</button>)}
       </div>
       <input value={grund} onChange={e => setGrund(e.target.value)} maxLength={300} placeholder="Ein Satz dazu (optional) — steht später an der Firma" aria-label="Grund in einem Satz" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
-      {meldung && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
+      {meldung && <Hinweis art="kritisch" rolle="alert">{meldung}</Hinweis>}
       <Fuss onZu={onZu} ok={!!art && !gesperrt} laeuft={laeuft} los={() => void los()} text="Raus" />
     </Fenster>
   );

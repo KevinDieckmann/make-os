@@ -11,8 +11,8 @@
 // verknüpft, wenn er eindeutig ist.
 
 import { useCallback, useEffect, useState } from 'react';
-import { FARBE as C } from '@/lib/make-one/design';
-import { Knopf, Chip, LEUCHT } from '../../schlank';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { Knopf, Chip, LEUCHT } from '../../ui';
 import type { Event } from '@/lib/crm/typen';
 
 type Lage = 'prueft' | 'da' | 'fehlt' | 'schein' | 'keiner' | 'ohne-icloud' | 'kein-zugang' | 'nicht-erreichbar';
@@ -66,13 +66,13 @@ export function Kalender({ e }: { e: Event }) {
         {lage === 'fehlt' && status !== 'abgesagt' && <Knopf leise aus={laeuft} onClick={() => void anlegen()}>{laeuft ? 'trägt ein …' : warDa ? 'Termin neu anlegen' : 'Termin anlegen (Kalender Gemeinsam)'}</Knopf>}
         <Knopf leise onClick={() => { window.location.href = `/api/crm/events?ics=${encodeURIComponent(id)}`; }}>Kalender-Datei</Knopf>
       </div>
-      {lage === 'fehlt' && warDa && <span style={{ fontSize: 12, color: C.inkLeise }}>Der Termin ist nicht mehr im Kalender (in Apple gelöscht?).</span>}
-      {lage === 'schein' && <span style={{ fontSize: 12, color: C.inkLeise }}>Alter Eintrag ohne echte Kennung — verknüpfen sucht den Termin (Tag + Titel) oder legt ihn neu an.</span>}
-      {lage === 'keiner' && <span style={{ fontSize: 12, color: C.inkLeise }}>{grund || 'Uhrzeit setzen (Überblick), dann lässt sich der Termin anlegen.'}</span>}
-      {lage === 'ohne-icloud' && <span style={{ fontSize: 12, color: C.inkLeise }}>Ohne iCloud kein Termin — die Kalender-Datei geht immer.</span>}
-      {lage === 'kein-zugang' && <span style={{ fontSize: 12, color: C.inkLeise }}>Termin anlegen geht nur im Haushalt des Inhabers — die Kalender-Datei immer.</span>}
-      {lage === 'nicht-erreichbar' && <span style={{ fontSize: 12, color: C.inkLeise }}>Kalender gerade nicht erreichbar — die Kalender-Datei geht immer.</span>}
-      {meldung && <span style={{ fontSize: 12, color: lage === 'da' ? LEUCHT.gut : LEUCHT.achtung }}>{meldung}</span>}
+      {lage === 'fehlt' && warDa && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Der Termin ist nicht mehr im Kalender (in Apple gelöscht?).</span>}
+      {lage === 'schein' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Alter Eintrag ohne echte Kennung — verknüpfen sucht den Termin (Tag + Titel) oder legt ihn neu an.</span>}
+      {lage === 'keiner' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{grund || 'Uhrzeit setzen (Überblick), dann lässt sich der Termin anlegen.'}</span>}
+      {lage === 'ohne-icloud' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ohne iCloud kein Termin — die Kalender-Datei geht immer.</span>}
+      {lage === 'kein-zugang' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Termin anlegen geht nur im Haushalt des Inhabers — die Kalender-Datei immer.</span>}
+      {lage === 'nicht-erreichbar' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender gerade nicht erreichbar — die Kalender-Datei geht immer.</span>}
+      {meldung && <span style={{ fontSize: TYP.bedien, color: lage === 'da' ? LEUCHT.gut : LEUCHT.achtung }}>{meldung}</span>}
     </div>
   );
 }

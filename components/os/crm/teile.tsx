@@ -9,7 +9,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../schlank';
+import { Knopf, feld, LEUCHT, Eigenschaft, Pillen, MehrfachPillen } from '../ui';
 import { NOTIZ_FELDER, ereignisMs, type Aktivitaet, type NotizVorlage, type Ergebnis, type Kontakt } from '@/lib/make-one/crm';
 import type { KanalStatus } from '@/lib/crm/recht';
 import { kanalLink, einwilligungVorlage, einwilligungUebernehmen } from '@/lib/crm/erfassen';
@@ -29,7 +29,7 @@ const KANAL_TUN: Record<string, string> = { telefon: 'anrufen', mail: 'Mail öff
  * nur Telefon, Mailprogramm oder LinkedIn — versendet wird hier nichts.
  */
 export function KanalAmpel({ ampel, ziele }: { ampel: KanalStatus[]; ziele: { telefon?: string; email?: string; linkedin?: string } }) {
-  if (!ampel.length) return <span style={{ fontSize: 12.5, color: C.inkLeise }}>Keine Adresse hinterlegt.</span>;
+  if (!ampel.length) return <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine Adresse hinterlegt.</span>;
   return (
     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
       {ampel.map(s => {
@@ -37,7 +37,7 @@ export function KanalAmpel({ ampel, ziele }: { ampel: KanalStatus[]; ziele: { te
         const h = kanalLink(s, ziele);
         const inhalt = <><span style={{ width: 7, height: 7, borderRadius: '50%', background: f, boxShadow: `0 0 8px ${f}33` }} />{KANAL_LABEL[s.kanal] ?? s.kanal}{h && <span aria-hidden style={{ color: C.inkLeise, fontWeight: 500 }}>↗</span>}</>;
         // Große Tippfläche fürs Handy (min. 32 px), Farbe und Kante aus der Ampel.
-        const stil = { display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, padding: '5px 11px', borderRadius: 999, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: `1px solid ${f}55`, background: `${f}14`, color: s.farbe === 'rot' ? C.inkLeise : C.ink } as const;
+        const stil = { display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, padding: '5px 11px', borderRadius: 999, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none', border: `1px solid ${f}55`, background: `${f}14`, color: s.farbe === 'rot' ? C.inkLeise : C.ink } as const;
         const extern = !!h && h.startsWith('http');
         return h ? <a key={s.kanal} href={h} target={extern ? '_blank' : undefined} rel={extern ? 'noopener noreferrer' : undefined} title={`${KANAL_LABEL[s.kanal] ?? s.kanal} ${KANAL_TUN[s.kanal] ?? ''} · ${s.grund}`} className="fassbar" style={stil}>{inhalt}</a>
           : <span key={s.kanal} title={s.grund} style={stil}>{inhalt}</span>;
@@ -48,7 +48,7 @@ export function KanalAmpel({ ampel, ziele }: { ampel: KanalStatus[]; ziele: { te
 
 export function Grund({ ampel }: { ampel: KanalStatus[] }) {
   const g = ampel.find(s => s.farbe !== 'gruen' && s.kanal !== 'vernetzen');
-  return g ? <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{KANAL_LABEL[g.kanal]}: {g.grund}</div> : null;
+  return g ? <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{KANAL_LABEL[g.kanal]}: {g.grund}</div> : null;
 }
 
 /** Ergebnis-Knöpfe der Power Hour — auch in „+ Aktivität hinzufügen“. Mit `notiz` öffnet sich die Notizvorlage (nächster Schritt Pflicht). */
@@ -67,22 +67,22 @@ const ERG_LABEL: Record<string, string> = { gespraech: 'Gespräch', termin: 'Ter
 export function Verlauf({ liste, name, max = 50, heute, termine }: { liste: Aktivitaet[]; name: (p: string) => string; max?: number; heute?: string; termine?: TerminZeiten }) {
   // Ereigniszeit (U2 #46): jüngstes Ereignis zuerst — `wann ?? am` (ein nachgetragener Anruf steht an seinem Tag).
   const l = liste.map(a => mitTerminZeit(a, termine)).sort((a, b) => ereignisMs(b) - ereignisMs(a)).slice(0, max);
-  if (!l.length) return <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch kein Verlauf. Das erste Gespräch mit der Notizvorlage festhalten.</div>;
+  if (!l.length) return <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch kein Verlauf. Das erste Gespräch mit der Notizvorlage festhalten.</div>;
   return (
     <div style={{ display: 'grid', gap: 0 }}>
       {l.map((a, i) => (
         <div key={i} style={{ display: 'grid', gridTemplateColumns: '78px 1fr', gap: 12, padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-          <div style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{datum(a.wann ?? a.am, heute)}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{datum(a.wann ?? a.am, heute)}</div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: TYP.bedien, color: C.ink }}>
               <b style={{ fontWeight: 600 }}>{ART_LABEL[a.art] ?? a.art}</b>{a.ergebnis && <span style={{ color: C.inkDim }}> · {ERG_LABEL[a.ergebnis]}</span>}
               <span style={{ color: C.inkLeise }}> · </span><span style={{ display: 'inline-flex', verticalAlign: 'middle', gap: 4, alignItems: 'center', color: C.inkLeise }}>{a.von !== 'system' && <Person id={a.von} groesse={14} />}{name(a.von)}</span>
             </div>
-            {a.anlass && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 2 }}><span style={{ color: C.inkLeise }}>Anlass:</span> {a.anlass}</div>}
-            {a.text && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 2, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{a.text}</div>}
+            {a.anlass && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}><span style={{ color: C.inkLeise }}>Anlass:</span> {a.anlass}</div>}
+            {a.text && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{a.text}</div>}
             {a.notiz && (
               <div style={{ display: 'grid', gap: 2, marginTop: 4 }}>
-                {NOTIZ_FELDER.filter(f => a.notiz?.[f.id]).map(f => <div key={f.id} style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.45 }}><span style={{ color: C.inkLeise }}>{f.label}:</span> {a.notiz![f.id]}</div>)}
+                {NOTIZ_FELDER.filter(f => a.notiz?.[f.id]).map(f => <div key={f.id} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 }}><span style={{ color: C.inkLeise }}>{f.label}:</span> {a.notiz![f.id]}</div>)}
               </div>
             )}
           </div>
@@ -143,7 +143,7 @@ export function NotizFormular({ heute, ergebnis, onFertig, onAbbruch, knopf = 'S
             Einwilligung für Mail erhalten
           </button>
           {ja && <input value={wortlaut} aria-label="Wortlaut der Einwilligung" placeholder="Wortlaut: Frage und Antwort" onChange={e => setWortlaut(e.target.value)} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />}
-          <span style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.45 }}>Eine Visitenkarte ist keine Einwilligung — nur ein ausdrückliches Ja mit Wortlaut.</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>Eine Visitenkarte ist keine Einwilligung — nur ein ausdrückliches Ja mit Wortlaut.</span>
         </div>
       )}
       <div style={{ display: 'flex', gap: 8 }}>
@@ -177,37 +177,11 @@ export async function festhalten(api: CrmApi, body: { id: string; art: string } 
   return { ...r, einwilligungGespeichert };
 }
 
-export function Feldzeile({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(110px, 150px) 1fr', gap: 12, alignItems: 'center', padding: '6px 0' }}>
-      <span style={{ fontSize: 12.5, color: C.inkLeise }}>{label}</span>
-      <div style={{ minWidth: 0 }}>{children}</div>
-    </div>
-  );
-}
+/** Zeile „Beschriftung · Wert“ (Standard: `Eigenschaft`) — am Handy steht die Beschriftung über dem Wert. */
+export function Feldzeile({ label, children }: { label: string; children: ReactNode }) { return <Eigenschaft label={label}>{children}</Eigenschaft>; }
 
-/** Mehrere Pillen zugleich an (26.09., Kevin: „immer alles mehrfach klickbar“). */
-export function MehrfachPillen<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv }: { liste: { id: T; label: string }[]; aktiv: T[]; onWahl: (ids: T[]) => void; farbe?: string }) {
-  return (
-    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-      {liste.map(l => {
-        const an = aktiv.includes(l.id);
-        return <button key={l.id} onClick={e => { e.stopPropagation(); onWahl(an ? aktiv.filter(x => x !== l.id) : [...aktiv, l.id]); }} className="fassbar" aria-pressed={an} style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim }}>{an ? '✓ ' : ''}{l.label}</button>;
-      })}
-    </div>
-  );
-}
-
-export function Pillen<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv, einzeilig }: { liste: { id: T; label: string }[]; aktiv: T | null | undefined; onWahl: (id: T) => void; farbe?: string; einzeilig?: boolean }) {
-  return (
-    <div style={{ display: 'flex', gap: 4, flexWrap: einzeilig ? 'nowrap' : 'wrap', whiteSpace: einzeilig ? 'nowrap' : undefined }}>
-      {liste.map(l => {
-        const an = l.id === aktiv;
-        return <button key={l.id} onClick={e => { e.stopPropagation(); onWahl(l.id); }} className="fassbar" style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim }}>{l.label}</button>;
-      })}
-    </div>
-  );
-}
+// Pillen und Mehrfach-Pillen sind seit 03.10. Bausteine des Standards (components/os/ui) — die Namen bleiben für die Markttraktion-Dateien.
+export { Pillen, MehrfachPillen };
 
 /** Kleines Feld, das beim Verlassen speichert. */
 export function Feld({ wert = '', onFertig, platzhalter, typ = 'text', breite }: { wert?: string; onFertig: (t: string) => void; platzhalter?: string; typ?: string; breite?: number | string }) {

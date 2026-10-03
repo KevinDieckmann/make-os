@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useRouter } from 'next/navigation';
 import { localDay } from '@/lib/zeit';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis } from '../ui';
 import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
 import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
 import { type ScoringEinstellungen } from '@/lib/crm/scoring';
@@ -110,25 +110,25 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
   return (
     <>
       <div className="quali-flaeche" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 14, marginRight: offen ? SEITENBLATT_BREITE + 16 : 0, transition: 'margin .2s ease' }}>
-        <Karte i={0} akzent={LEUCHT.business}>
-          <Ueberschrift farbe={LEUCHT.business} rechts={karten.length ? <span style={{ fontSize: 12.5, color: C.inkLeise }}>{Math.min(pos + 1, karten.length)} von {karten.length}{erledigt ? ` · ${erledigt} geprüft` : ''}</span> : undefined}>Qualifizierungsrunde</Ueberschrift>
-          <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: woher er kommt, wie weit er ist, die Fragen — und im Gespräch Schritt für Schritt bis zum Ergebnis. Kontakt und Firma öffnen rechts zur Bearbeitung; wer qualifiziert, übernimmt nicht zugeordnete Leads. Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
+        <Karte i={0} ton={LEUCHT.business}>
+          <Ueberschrift farbe={LEUCHT.business} rechts={karten.length ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.min(pos + 1, karten.length)} von {karten.length}{erledigt ? ` · ${erledigt} geprüft` : ''}</span> : undefined}>Qualifizierungsrunde</Ueberschrift>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: woher er kommt, wie weit er ist, die Fragen — und im Gespräch Schritt für Schritt bis zum Ergebnis. Kontakt und Firma öffnen rechts zur Bearbeitung; wer qualifiziert, übernimmt nicht zugeordnete Leads. Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
           <div className="quali-aktionen" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={WER} aktiv={wer} onWahl={setWer} farbe={LEUCHT.business} /></div>
+            <div><Pillen liste={WER} aktiv={wer} onWahl={setWer} farbe={LEUCHT.business} /></div>
             <button type="button" onClick={() => setNurNeu(!nurNeu)} aria-pressed={nurNeu} title="BEAN „Neu“: kein Mandat, kein offenes Angebot — Leads zum Qualifizieren" className="fassbar"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', minHeight: 36, borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 600,
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', minHeight: 36, borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600,
                 border: `1px solid ${nurNeu ? BEAN_FARBE.N : 'rgba(255,255,255,.14)'}`, background: nurNeu ? `${BEAN_FARBE.N}1F` : 'transparent', color: nurNeu ? BEAN_FARBE.N : C.inkDim }}>
               <BeanBadge bean="N" vonHand={nurNeu} /> Neu {neuZahl}
             </button>
-            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: C.inkDim, cursor: 'pointer', minHeight: 36 }}><input type="checkbox" checked={auchKalt} onChange={e => setAuchKalt(e.target.checked)} /> auch kalte</label>
-            <select value={kanal} onChange={e => setKanal(e.target.value as KanalId | '')} aria-label="Kanal" style={{ ...feld, fontSize: 12.5, padding: '6px 10px', width: 'auto', minHeight: 36 }}>
+            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer', minHeight: 36 }}><input type="checkbox" checked={auchKalt} onChange={e => setAuchKalt(e.target.checked)} /> auch kalte</label>
+            <select value={kanal} onChange={e => setKanal(e.target.value as KanalId | '')} aria-label="Kanal" style={{ ...feld, fontSize: TYP.bedien, padding: '6px 10px', width: 'auto', minHeight: 36 }}>
               <option value="">Jeder Kanal</option>
               {KANAL.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
             </select>
             {karten.length > 0 && <span className="quali-nav" style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}><Knopf leise aus={pos === 0} onClick={() => setPos(p => Math.max(0, p - 1))}>← Zurück</Knopf><Knopf leise aus={pos >= karten.length} onClick={() => setPos(p => Math.min(karten.length, p + 1))}>Weiter →</Knopf></span>}
           </div>
-          {sqlOffen > 0 && <div role="status" style={{ fontSize: 12.5, color: LEUCHT.gut, marginTop: 8, lineHeight: 1.5 }}>{sqlOffen} {sqlOffen === 1 ? 'Lead ist' : 'Leads sind'} SQL-bereit und warten auf deine Entscheidung (Deal, weiter qualifizieren, parken oder raus) — sie stehen oben in der Runde.</div>}
-          {start && d && !startZeile && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, marginTop: 8 }}>Zu diesem Eintrag gibt es keinen Lead (Dienstleister, Investor oder eingeschränkt) — die Runde zeigt die übrigen.</div>}
+          {sqlOffen > 0 && <Hinweis art="gut" rolle="status">{sqlOffen} {sqlOffen === 1 ? 'Lead ist' : 'Leads sind'} SQL-bereit und warten auf deine Entscheidung (Deal, weiter qualifizieren, parken oder raus) — sie stehen oben in der Runde.</Hinweis>}
+          {start && d && !startZeile && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 8 }}>Zu diesem Eintrag gibt es keinen Lead (Dienstleister, Investor oder eingeschränkt) — die Runde zeigt die übrigen.</div>}
         </Karte>
 
         {meldung && (
@@ -199,10 +199,10 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLead
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 6 }}>
             <div style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, letterSpacing: '-.015em', overflowWrap: 'anywhere' }}>{z.name}</div>
-            <div style={{ fontSize: 12.5, color: C.inkDim }}>{[z.art === 'firma' ? 'Firma' : 'Person ohne Firma', z.branche, z.stadt, statusLabel(z.status)].filter(Boolean).join(' · ')}{z.status === 'ruht' && z.wiedervorlage ? ` · Wiedervorlage ${datum(z.wiedervorlage, heute)}` : ''}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{[z.art === 'firma' ? 'Firma' : 'Person ohne Firma', z.branche, z.stadt, statusLabel(z.status)].filter(Boolean).join(' · ')}{z.status === 'ruht' && z.wiedervorlage ? ` · Wiedervorlage ${datum(z.wiedervorlage, heute)}` : ''}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {z.ohneBesitzer ? <Chip farbe={LEUCHT.achtung}>ohne Besitzer</Chip> : <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: C.inkDim }}><Person id={z.besitzer} groesse={18} /> {nameVon(z.besitzer)}</span>}
-              {z.personen.length > 1 && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{z.personen.length} Personen</span>}
+              {z.ohneBesitzer ? <Chip farbe={LEUCHT.achtung}>ohne Besitzer</Chip> : <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}><Person id={z.besitzer} groesse={18} /> {nameVon(z.besitzer)}</span>}
+              {z.personen.length > 1 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{z.personen.length} Personen</span>}
             </div>
           </div>
           <div style={{ flex: '1 1 300px', minWidth: 0 }}><ScoreKopf score={score} /></div>
@@ -220,7 +220,7 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLead
         </div>
 
         <div>
-          <Ueberschrift rechts={<span style={{ fontSize: 12, color: bereit ? LEUCHT.gut : C.inkLeise }}>{bereit ? 'SQL-bereit' : `bis SQL fehlt: ${fehlt.join(', ') || '—'}`}</span>}>Fragen</Ueberschrift>
+          <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: bereit ? LEUCHT.gut : C.inkLeise }}>{bereit ? 'SQL-bereit' : `bis SQL fehlt: ${fehlt.join(', ') || '—'}`}</span>}>Fragen</Ueberschrift>
           <Fragen einstellungen={einstellungen} score={score} stufen={lokal.stufen} antworten={antworten} onStufe={stufeWaehlen} onAntwort={antwortSpeichern} />
         </div>
 
@@ -229,7 +229,7 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLead
           <textarea value={notiz} onChange={e => setNotiz(e.target.value)} onBlur={() => { if (notiz !== (z.notiz ?? '')) void speichern({ notiz }); }} rows={2} maxLength={2000} placeholder="Was man wissen muss, bevor man anruft …" aria-label="Notiz zum Lead" style={{ ...feld, fontSize: 16, padding: '8px 11px', width: '100%', resize: 'vertical' }} />
         </div>
 
-        {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
+        {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
         <div className="quali-aktionen" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Knopf onClick={() => geprueft()} aus={laeuft}>Geprüft → nächster</Knopf>
           {bereit && !z.deal?.offen && <Knopf farbe={LEUCHT.gut} onClick={() => zuLeads(z.id)}>SQL → Deal anlegen</Knopf>}
@@ -267,7 +267,7 @@ export function GruendeKarte({ g, i = 0 }: { g: LeadGruende; i?: number }) {
     <div style={{ display: 'grid', gap: 6 }}>
       <div style={{ fontSize: 11.5, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 700 }}>{titel}</div>
       {z.map(x => (
-        <div key={x.art} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.4fr) 1fr auto', gap: 10, alignItems: 'center', fontSize: 12.5 }}>
+        <div key={x.art} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.4fr) 1fr auto', gap: 10, alignItems: 'center', fontSize: TYP.bedien }}>
           <span style={{ color: x.art === 'ohne' ? C.inkLeise : C.ink }}>{x.label}</span>
           <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,.06)', overflow: 'hidden' }}><div style={{ width: `${(100 * x.anzahl) / max}%`, height: '100%', background: farbe }} /></div>
           <span style={{ fontVariantNumeric: 'tabular-nums', color: C.inkDim }}>{x.anzahl}</span>
@@ -278,7 +278,7 @@ export function GruendeKarte({ g, i = 0 }: { g: LeadGruende; i?: number }) {
   return (
     <Karte i={i}>
       <Ueberschrift rechts={<span>{g.nAus} raus · {g.nGeparkt} geparkt</span>}>Warum Leads ausscheiden oder warten</Ueberschrift>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Aus „Raus — Kein Fit“ und „Parken“: die feste Art des Grundes. „Ohne Angabe“ sind ältere Leads oder verlorene Deals.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Aus „Raus — Kein Fit“ und „Parken“: die feste Art des Grundes. „Ohne Angabe“ sind ältere Leads oder verlorene Deals.</div>
       <div style={{ display: 'grid', gap: 16 }}>{liste('Ausgeschieden (Kein Fit)', g.ausgeschieden, LEUCHT.kritisch)}{liste('Geparkt (ruht)', g.geparkt, LEUCHT.achtung)}</div>
     </Karte>
   );
@@ -291,10 +291,10 @@ export function KanalLeistung({ zeilen, i = 0, titel = 'Kanal-Leistung', rechts 
   return (
     <Karte i={i}>
       <Ueberschrift rechts={rechts}>{titel}</Ueberschrift>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Je Herkunftskanal: wie viele Leads, wie viele davon warm oder heiß, wie viele wurden SQL oder Kunde.</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 140px) 1fr auto auto auto', gap: '6px 12px', alignItems: 'center', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
-        <span style={{ color: C.inkLeise, fontSize: 11.5 }}>Kanal</span><span />
-        <span style={{ color: C.inkLeise, fontSize: 11.5, textAlign: 'right' }}>Leads</span><span style={{ color: C.inkLeise, fontSize: 11.5, textAlign: 'right' }}>warm+</span><span style={{ color: C.inkLeise, fontSize: 11.5, textAlign: 'right' }}>SQL</span>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Je Herkunftskanal: wie viele Leads, wie viele davon warm oder heiß, wie viele wurden SQL oder Kunde.</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 140px) 1fr auto auto auto', gap: '6px 12px', alignItems: 'center', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ color: C.inkLeise, fontSize: 12 }}>Kanal</span><span />
+        <span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>Leads</span><span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>warm+</span><span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>SQL</span>
         {zeilen.map(z => (
           <ContainerZeile key={z.kanal}>
             <span>{z.label}</span>
@@ -322,10 +322,10 @@ export function TemperaturLeistung({ zeilen, i = 0 }: { zeilen: ReturnType<typeo
   return (
     <Karte i={i}>
       <Ueberschrift>SQL- und Gewinnquote je Temperatur</Ueberschrift>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Je Temperatur: wie viele Leads, wie viele wurden SQL oder Kunde, wie viele gewonnen. Quoten ab {MINDESTMENGE} Leads.</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(70px, 120px) auto auto auto', gap: '6px 12px', alignItems: 'center', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
-        <span style={{ color: C.inkLeise, fontSize: 11.5 }}>Temperatur</span>
-        <span style={{ color: C.inkLeise, fontSize: 11.5, textAlign: 'right' }}>Leads</span><span style={{ color: C.inkLeise, fontSize: 11.5, textAlign: 'right' }}>SQL</span><span style={{ color: C.inkLeise, fontSize: 11.5, textAlign: 'right' }}>gewonnen</span>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Je Temperatur: wie viele Leads, wie viele wurden SQL oder Kunde, wie viele gewonnen. Quoten ab {MINDESTMENGE} Leads.</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(70px, 120px) auto auto auto', gap: '6px 12px', alignItems: 'center', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ color: C.inkLeise, fontSize: 12 }}>Temperatur</span>
+        <span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>Leads</span><span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>SQL</span><span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>gewonnen</span>
         {zeilen.map(z => (
           <ContainerZeile key={z.temperatur}>
             <span style={{ color: temperaturFarbe(z.temperatur) }}>{z.label}</span>

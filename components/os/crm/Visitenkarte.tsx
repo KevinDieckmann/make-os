@@ -17,7 +17,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, LEUCHT } from '../schlank';
+import { Knopf, LEUCHT, Hinweis } from '../ui';
 import { KARTEN_FELDER, MAX_BILD_MB, type KartenFeld, type VisitenkartenDaten } from '@/lib/crm/visitenkarte';
 
 export type { VisitenkartenDaten } from '@/lib/crm/visitenkarte';
@@ -127,14 +127,14 @@ export function VisitenkarteKnopf({ onErkannt, gross }: { onErkannt: (d: Visiten
         ) : (
           <Knopf leise={stand.art === 'fertig'} aus={liest} onClick={() => eingabe.current?.click()}>{knopfText}</Knopf>
         )}
-        {liest && <span aria-live="polite" style={{ fontSize: 12.5, color: C.inkLeise }}>Das dauert ein paar Sekunden.</span>}
+        {liest && <span aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das dauert ein paar Sekunden.</span>}
       </div>
 
-      {stand.art === 'fehler' && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.achtung, lineHeight: 1.5 }}>{stand.fehler}</div>}
+      {stand.art === 'fehler' && <Hinweis art="achtung" rolle="alert">{stand.fehler}</Hinweis>}
 
       {stand.art === 'fertig' && (
         <div style={{ display: 'grid', gap: 4, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,.03)' }}>
-          <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 2 }}>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 2 }}>
             Von der Karte übernommen — bitte kurz prüfen{stand.unsicher.length ? '; gelb markiert ist, was unsicher gelesen wurde' : ''}.
           </div>
           {KARTEN_FELDER.filter(f => stand.daten[f.id] || stand.unsicher.includes(f.id)).map(f => {
@@ -142,7 +142,7 @@ export function VisitenkarteKnopf({ onErkannt, gross }: { onErkannt: (d: Visiten
             const wert = stand.daten[f.id];
             return (
               <div key={f.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 110px) 1fr', gap: 10, fontSize: TYP.bedien, alignItems: 'baseline' }}>
-                <span style={{ color: C.inkLeise, fontSize: 12.5 }}>{f.label}</span>
+                <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{f.label}</span>
                 <span style={{ color: unsicher ? LEUCHT.achtung : C.ink, overflowWrap: 'anywhere' }}>
                   {wert ?? 'nicht sicher lesbar — bitte von der Karte abtippen'}{unsicher && wert ? ' · unsicher' : ''}
                 </span>
@@ -152,7 +152,7 @@ export function VisitenkarteKnopf({ onErkannt, gross }: { onErkannt: (d: Visiten
         </div>
       )}
 
-      <div style={{ fontSize: 12, color: C.inkLeise }}>Die Karte kam von der Person selbst — keine Einwilligung für Werbung per Mail.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Die Karte kam von der Person selbst — keine Einwilligung für Werbung per Mail.</div>
     </div>
   );
 }

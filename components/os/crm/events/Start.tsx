@@ -12,7 +12,7 @@
 import { localDay } from '@/lib/zeit';
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../../schlank';
+import { Knopf, feld, LEUCHT } from '../../ui';
 import { VORLAGEN, vorlageAnwenden, zielHinweis, MIX_STANDARD, type VorlageId } from '@/lib/crm/eventplanung';
 import { verantwortlich, nameVon } from '@/lib/crm/team';
 import type { Event } from '@/lib/crm/typen';
@@ -91,7 +91,7 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
       <Feldzeile label="Vorlage">
         <div style={{ display: 'grid', gap: 6 }}>
           <WahlChip label="Vorlage" liste={[...VORLAGEN.map(v => ({ id: v.id as Wahl, label: v.label })), OHNE]} wert={wahl} onWahl={waehle} farbe={LEUCHT.beziehung} />
-          <span style={{ fontSize: 12.5, color: C.inkLeise }}>{vorlage ? `${vorlage.beschreibung} Ablauf, Checkliste (${vorlage.checkliste.length} Punkte) und Budgetposten kommen mit.` : 'Leeres Event — Format, Ablauf und Checkliste baust du selbst auf.'}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{vorlage ? `${vorlage.beschreibung} Ablauf, Checkliste (${vorlage.checkliste.length} Punkte) und Budgetposten kommen mit.` : 'Leeres Event — Format, Ablauf und Checkliste baust du selbst auf.'}</span>
         </div>
       </Feldzeile>
       {!vorlage && <Feldzeile label="Format"><WahlChip label="Format" liste={FORMATE} wert={format} onWahl={setFormat} /></Feldzeile>}
@@ -109,13 +109,13 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
       <Feldzeile label="Ziel *">
         <div style={{ display: 'grid', gap: 4 }}>
           <input value={ziel} onChange={x => setZiel(x.target.value)} placeholder="Messbar und strittig: „drei Folgegespräche mit Inhabern aus dem Maschinenbau binnen 30 Tagen“" aria-label="Ziel" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
-          <span style={{ fontSize: 12.5, color: hinweis ? LEUCHT.achtung : LEUCHT.gut }}>{hinweis ?? 'Gutes Ziel — daran wird das Event nach 30 Tagen gemessen.'}</span>
+          <span style={{ fontSize: TYP.bedien, color: hinweis ? LEUCHT.achtung : LEUCHT.gut }}>{hinweis ?? 'Gutes Ziel — daran wird das Event nach 30 Tagen gemessen.'}</span>
         </div>
       </Feldzeile>
       <Feldzeile label="Rahmen">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input type="number" value={kapazitaet} onChange={x => setKapazitaet(x.target.value)} placeholder="Plätze" aria-label="Plätze" style={{ ...feld, width: 110, fontSize: TYP.bedien, padding: '8px 11px' }} />
-          <span style={{ fontSize: 12.5, color: C.inkLeise }}>Plätze</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Plätze</span>
         </div>
       </Feldzeile>
       <Feldzeile label="Soll-Mischung">
@@ -128,13 +128,13 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
       <Feldzeile label="Zuständig">
         <div style={{ display: 'grid', gap: 4 }}>
           <ZustaendigWahl wert={zustaendig} welt="event" onWahl={setZustaendig} />
-          <span style={{ fontSize: 12, color: C.inkLeise }}>Ohne Wahl verantwortet {nameVon(verantwortlich('event'))} — beide sehen alles und arbeiten mit.</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ohne Wahl verantwortet {nameVon(verantwortlich('event'))} — beide sehen alles und arbeiten mit.</span>
         </div>
       </Feldzeile>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <Knopf farbe={LEUCHT.beziehung} aus={!bereit} onClick={() => void anlegen()}>{laeuft ? 'legt an …' : 'Event anlegen'}</Knopf>
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>Status „Geplant“ — danach: Gäste aus der Kartei, Checkliste als Aufgaben, Budget in die Liquiditätsplanung, Termin in den Kalender.</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Status „Geplant“ — danach: Gäste aus der Kartei, Checkliste als Aufgaben, Budget in die Liquiditätsplanung, Termin in den Kalender.</span>
       </div>
     </div>
   );

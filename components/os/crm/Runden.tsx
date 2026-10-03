@@ -21,7 +21,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Leer, Fortschritt, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Leer, Fortschritt, LEUCHT } from '../ui';
 import { anzeigename, type Kontakt, type Kreis } from '@/lib/make-one/crm';
 import { TEAM, BEIDE, anderer, nameVon, haeltBeziehung, verantwortlich } from '@/lib/crm/team';
 import { QualifizierungsRunde } from './Leads';
@@ -86,8 +86,8 @@ function useInsBild(schluessel: unknown) {
 const T = ({ children }: { children: ReactNode }) => <span className="taste nur-tastatur" style={{ marginLeft: 6 }}>{children}</span>;
 const kurz = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 const tageSeit = (iso: string, heute: string) => Math.round((Date.parse(`${heute}T12:00:00Z`) - Date.parse(`${iso.slice(0, 10)}T12:00:00Z`)) / 864e5);
-const leiseLink = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: 0, fontFamily: SCHRIFT.text } as const;
-const kleinText = { fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 } as const;
+const leiseLink = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, fontFamily: SCHRIFT.text } as const;
+const kleinText = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
 
 function Kopfzeilen({ k, rechts, chips }: { k: Kontakt; rechts: ReactNode; chips: ReactNode }) {
   const wo = [k.position ?? k.jobtitel, k.firma].filter(Boolean).join(' · ');
@@ -147,7 +147,7 @@ function KreisRunde({ api, name, zuKontakt, zurueck }: RundenProps) {
   if (!liste) return <Karte i={0}><Leer>Lädt die Kartei …</Leer></Karte>;
   if (!liste.length) {
     return (
-      <Karte i={0} akzent={LEUCHT.gut}>
+      <Karte i={0} ton={LEUCHT.gut}>
         <Ueberschrift farbe={LEUCHT.gut}>Kreis-Runde</Ueberschrift>
         <Leer>Alle Kontakte haben einen Kreis — der Pflege-Takt greift überall.</Leer>
         <Knopf onClick={zurueck}>Zurück zur Kartei</Knopf>
@@ -161,7 +161,7 @@ function KreisRunde({ api, name, zuKontakt, zurueck }: RundenProps) {
 
   return (
     <>
-      <Karte i={0} akzent={LEUCHT.beziehung}>
+      <Karte i={0} ton={LEUCHT.beziehung}>
         <Ueberschrift farbe={LEUCHT.beziehung} rechts={<span style={{ fontVariantNumeric: 'tabular-nums' }}><b style={{ color: C.ink }}>{Math.min(pos + 1, etappe.length)}</b> von {etappe.length}</span>}>Kreis-Runde</Ueberschrift>
         {!schritte.length && (
           <p style={{ margin: '0 0 12px', fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
@@ -174,7 +174,7 @@ function KreisRunde({ api, name, zuKontakt, zurueck }: RundenProps) {
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
           {KREIS_WAHL.map(w => <Chip key={w.id} farbe={bilanz.jeKreis[w.id] ? LEUCHT.beziehung : C.inkLeise}>{w.id} {bilanz.jeKreis[w.id]}</Chip>)}
           {[...TEAM.map(t => t.id), BEIDE].filter(p => bilanz.jePerson[p]).map(p => (
-            <span key={p} title={`zuständig: ${nameVon(p)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: C.inkDim, marginLeft: 4 }}><Person id={p} groesse={18} />{bilanz.jePerson[p]}</span>
+            <span key={p} title={`zuständig: ${nameVon(p)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: TYP.bedien, color: C.inkDim, marginLeft: 4 }}><Person id={p} groesse={18} />{bilanz.jePerson[p]}</span>
           ))}
           {bilanz.uebersprungen > 0 && <span style={{ ...kleinText, marginLeft: 4 }}>{bilanz.uebersprungen} übersprungen</span>}
           <span style={{ flex: 1 }} />
@@ -270,8 +270,8 @@ function KreisKarte({ kandidat, k, heute, name, kannZurueck, onEntscheid, onZuru
             border: `1px solid ${LEUCHT.beziehung}55`, background: `${LEUCHT.beziehung}14`, color: C.ink, fontFamily: SCHRIFT.text,
           }}>
             <span style={{ fontFamily: SCHRIFT.display, fontSize: 30, fontWeight: 800, color: LEUCHT.beziehung, lineHeight: 1 }}>{w.id}</span>
-            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{w.text}</span>
-            <span style={{ fontSize: 11.5, color: C.inkLeise }}>alle {w.takt} T</span>
+            <span style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{w.text}</span>
+            <span style={{ fontSize: 12, color: C.inkLeise }}>alle {w.takt} T</span>
             <span className="taste nur-tastatur">{w.taste}</span>
           </button>
         ))}

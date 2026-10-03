@@ -5,8 +5,8 @@
 // Scoring-Einstellungen von Marketing und von Sales, also von MQL zu SQL.“ Pillen: Qualifizierung (die Runde) · Scoring, darunter
 // Marketing-Scoring · Sales-Scoring. Die Kennung `qualifizierung` und alle alten Links bleiben (lib/crm/adresse.ts).
 
-import { FARBE as C } from '@/lib/make-one/design';
-import { LEUCHT, Karte } from '../../schlank';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { LEUCHT, Karte } from '../../ui';
 import { Pillen } from '../teile';
 import type { QualiAnsicht } from '@/lib/crm/adresse';
 import type { CrmApi } from '../daten';
@@ -32,7 +32,7 @@ export function QualifizierungScoring({ api, ansicht, start, onAnsicht, zuLeads 
           {z.daten && z.fehler === '' ? null : z.fehler ? <Karte i={0}><div style={{ color: LEUCHT.kritisch, fontSize: 13 }}>{z.fehler}</div></Karte> : null}
           <ScoringSeite api={api} seite={ansicht === 'scoring-sales' ? 'sales' : 'marketing'} z={z} i={1} />
           <ScoringAktionen api={api} z={z} />
-          <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Die Methode und der Grund für den Vorschlag stehen in SCORING.md im Projekt.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Die Methode und der Grund für den Vorschlag stehen in SCORING.md im Projekt.</div>
         </>
       )}
       {teil === 'runde' && <Qualifizierung api={api} start={start} zuLeads={zuLeads} />}

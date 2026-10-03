@@ -18,7 +18,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../../schlank';
+import { Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { ampel } from '@/lib/crm/recht';
 import { kontextAus } from '@/lib/crm/segmente';
@@ -105,14 +105,14 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
         <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
           <b style={{ fontSize: TYP.body, fontWeight: 700 }}>{anzeigename(k)}</b>
           {k.firma && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k.firma}</span>}
-          {k.anrede && <span style={{ fontSize: 12, color: C.inkLeise }}>{k.anrede}</span>}
+          {k.anrede && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{k.anrede}</span>}
         </div>
         <div style={{ fontSize: TYP.bedien, color: t.notiz ? C.ink : C.inkLeise, lineHeight: 1.5, whiteSpace: 'pre-wrap', borderLeft: `2px solid ${LEUCHT.beziehung}55`, paddingLeft: 10 }}>
           {t.notiz ?? 'Keine Notiz vom Abend — beim nächsten Mal im Abend-Modus festhalten.'}
         </div>
         <KanalAmpel ampel={ampel(k, { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) })} ziele={{ telefon: k.telefon ?? k.sms, email: k.email, linkedin: k.linkedin }} />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: C.inkLeise }}>Ergebnis</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ergebnis</span>
           {NACHFASS_ERGEBNISSE.map(x => <span key={x.id} title={x.hinweis}><Knopf leise={!x.hebt} aus={busy} onClick={() => void ergebnis(t, k, x.id)}>{busy ? '…' : x.label}</Knopf></span>)}
           {dealKnopf(t, k)}
           {followUpMoeglich(e, t, heute) && !mitFollowUp.has(k.id) && <Knopf leise aus={busy} onClick={() => void followUp(t)}>Follow-up anlegen</Knopf>}
@@ -133,18 +133,18 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
         {quote !== null && <Chip farbe={quote >= 1 ? LEUCHT.gut : quote >= 0.8 ? LEUCHT.achtung : LEUCHT.kritisch}>{fristgerecht} von {da.length} fristgerecht</Chip>}
         {fb.rueckmeldungen > 0 && <Chip farbe={fb.noteSchnitt !== null && fb.noteSchnitt >= 4 ? LEUCHT.gut : C.inkDim} >{fb.noteSchnitt !== null ? `Ø Note ${note(fb.noteSchnitt)} · ` : ''}{fb.rueckmeldungen} {fb.rueckmeldungen === 1 ? 'Rückmeldung' : 'Rückmeldungen'}</Chip>}
       </span>}>Nachfassen bis {datum(bis, heute)}</Ueberschrift>
-      <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 }}>„Gespräch“ oder „Termin“ hebt den Lead der Firma auf „Im Gespräch“ und schreibt den Verlauf der Person; „Nur erledigt“ lässt den Lead, wie er ist. Der Deal entsteht erst auf „Deal daraus“ — Quelle: dieses Event.</div>
-      {meldung && <div style={{ fontSize: 12.5, color: C.inkDim }}>{meldung}</div>}
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>„Gespräch“ oder „Termin“ hebt den Lead der Firma auf „Im Gespräch“ und schreibt den Verlauf der Person; „Nur erledigt“ lässt den Lead, wie er ist. Der Deal entsteht erst auf „Deal daraus“ — Quelle: dieses Event.</div>
+      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
 
       {gruppen.filter(g => g.liste.length || g.eigene).map(g => (
         <div key={g.person} style={{ display: 'grid', gap: 10 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <Person id={g.person} groesse={22} />
             <span style={{ fontSize: TYP.body, fontWeight: 700, color: C.ink }}>{g.eigene ? 'Deine Gäste' : `Gäste von ${nameVon(g.person)}`}</span>
-            <span style={{ fontSize: 12.5, color: g.liste.length ? fristFarbe(rest) : C.inkLeise }}>{g.liste.length ? `${g.liste.length} offen · ${rest >= 0 ? `${stunden(rest)} bis zur Frist` : `Frist ${stunden(rest)}`}` : 'nichts offen'}</span>
+            <span style={{ fontSize: TYP.bedien, color: g.liste.length ? fristFarbe(rest) : C.inkLeise }}>{g.liste.length ? `${g.liste.length} offen · ${rest >= 0 ? `${stunden(rest)} bis zur Frist` : `Frist ${stunden(rest)}`}` : 'nichts offen'}</span>
           </div>
           {g.liste.map(karte)}
-          {g.eigene && !g.liste.length && offen.length > 0 && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Bei dir ist alles nachgefasst — {offen.length} {offen.length === 1 ? 'Gast liegt' : 'Gäste liegen'} noch bei {nameVon(gruppen.find(x => !x.eigene && x.liste.length)?.person)}.</div>}
+          {g.eigene && !g.liste.length && offen.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Bei dir ist alles nachgefasst — {offen.length} {offen.length === 1 ? 'Gast liegt' : 'Gäste liegen'} noch bei {nameVon(gruppen.find(x => !x.eigene && x.liste.length)?.person)}.</div>}
         </div>
       ))}
       {!offen.length && <Leer>{da.length ? 'Alle nachgefasst. In 30 Tagen zeigt der Überblick, welche Gespräche daraus wurden.' : 'Niemand als „da“ markiert — im Abend-Modus abhaken, wer gekommen ist.'}</Leer>}
@@ -170,7 +170,7 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
         </div>
       )}
       {nichtGekommen.length > 0 && (
-        <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>
           Zugesagt, aber nicht gekommen: {nichtGekommen.map(({ k }) => anzeigename(k)).join(', ')} — ein kurzes „schade, beim nächsten Mal“ hält die Tür offen.
         </div>
       )}

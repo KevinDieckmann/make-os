@@ -9,7 +9,7 @@ import type { Angebot, AngebotsStatus } from '@/lib/crm/typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { anzeigename } from '@/lib/make-one/crm';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste as ListeRahmen, Zeile, Leer, Knopf, Chip, Punkt, feld } from '../../schlank';
+import { Karte, Ueberschrift, Liste as ListeRahmen, Zeile, Leer, Knopf, Chip, Punkt, feld } from '../../ui';
 import { Pillen } from '../teile';
 import type { CrmApi } from '../daten';
 import { suchPasst } from '@/lib/text/such-norm';

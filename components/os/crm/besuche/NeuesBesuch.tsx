@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, LEUCHT, feld } from '../../schlank';
+import { Karte, Ueberschrift, Knopf, LEUCHT, feld, Hinweis } from '../../ui';
 import { neuesEvent, gleichesBesuchEvent } from '@/lib/crm/netzwerken';
 import { istKalendertag } from '@/lib/zeit';
 import { TEAM } from '@/lib/crm/team';
@@ -65,8 +65,8 @@ export function NeuesBesuch({ api, crm, onFertig }: Pick<BesuchProps, 'api' | 'c
           <WahlMehrfach label="Wer geht hin" leer="+ wer geht hin" liste={TEAM.map(m => ({ id: m.id, label: m.name }))} wert={wer} onWahl={setWer} />
         </BFeld>
       </div>
-      {dublette && <div role="status" style={{ fontSize: 13, color: LEUCHT.achtung, margin: '8px 0' }}>Gibt es schon: {dublette.titel} · {dublette.datum.slice(8, 10)}.{dublette.datum.slice(5, 7)}.{dublette.datum.slice(0, 4)} — „Event öffnen“ nimmt dieses.</div>}
-      {fehler && <div role="alert" style={{ fontSize: 13, color: LEUCHT.achtung, margin: '8px 0' }}>{fehler}</div>}
+      {dublette && <Hinweis art="achtung" rolle="status">Gibt es schon: {dublette.titel} · {dublette.datum.slice(8, 10)}.{dublette.datum.slice(5, 7)}.{dublette.datum.slice(0, 4)} — „Event öffnen“ nimmt dieses.</Hinweis>}
+      {fehler && <Hinweis art="achtung" rolle="alert">{fehler}</Hinweis>}
       <div style={{ marginTop: 10 }}><Knopf onClick={anlegen} aus={laeuft}>{laeuft ? 'legt an …' : dublette ? 'Event öffnen' : 'Event anlegen'}</Knopf></div>
     </Karte>
   );

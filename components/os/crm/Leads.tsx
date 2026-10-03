@@ -21,7 +21,7 @@ import { useRouter } from 'next/navigation';
 import { markttraktion } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT, Hinweis } from '../ui';
 import type { LeadStatus, ChancenArt } from '@/lib/crm/typen';
 import { leads, LEAD_STATUS, salesBereit, fehltBisSqlZeile, statusLabel, nichtKalt, type LeadZeile, type Trichter } from '@/lib/crm/leads';
 import { Fragen } from './quali/Fragen';
@@ -66,16 +66,16 @@ export function SalesTrichter({ api, zuBereich, karte, i = 0 }: { api: CrmApi; z
           const neueEbene = i === 0 || t.stufen[i - 1].ebene !== s.ebene;
           return (
             <div key={s.id} style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
-              {i > 0 && <span aria-hidden style={{ alignSelf: 'center', color: C.inkLeise, fontSize: 12 }}>{neueEbene ? '⟩⟩' : '›'}</span>}
+              {i > 0 && <span aria-hidden style={{ alignSelf: 'center', color: C.inkLeise, fontSize: TYP.bedien }}>{neueEbene ? '⟩⟩' : '›'}</span>}
               <button onClick={() => zuBereich(s.ziel.s, s.ziel.a)} className="fassbar" style={{ display: 'grid', gap: 2, textAlign: 'left', padding: '8px 12px', borderRadius: 12, cursor: 'pointer', border: '1px solid rgba(255,255,255,.07)', background: 'rgba(255,255,255,.03)', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 104 }}>
                 <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: neueEbene ? C.inkDim : 'transparent', fontWeight: 600, whiteSpace: 'nowrap' }}>{EBENE[s.ebene]}</span>
                 <span style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.anzahl}</span>
-                <span style={{ fontSize: 12, color: C.inkDim, whiteSpace: 'nowrap' }}>{s.label}{s.wert ? ` · ${euro(s.wert)}` : ''}</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'nowrap' }}>{s.label}{s.wert ? ` · ${euro(s.wert)}` : ''}</span>
               </button>
             </div>
           );
         })}
-        <div style={{ alignSelf: 'center', display: 'grid', gap: 2, fontSize: 12, color: C.inkLeise, paddingLeft: 8, whiteSpace: 'nowrap' }}>
+        <div style={{ alignSelf: 'center', display: 'grid', gap: 2, fontSize: TYP.bedien, color: C.inkLeise, paddingLeft: 8, whiteSpace: 'nowrap' }}>
           <span>Gespräch → SQL <b style={{ color: C.ink }}>{t.gespraechZuSql === null ? '—' : `${t.gespraechZuSql} %`}</b></span>
           <span>SQL → gewonnen <b style={{ color: C.ink }}>{t.sqlZuGewonnen === null ? '—' : `${t.sqlZuGewonnen} %`}</b></span>
         </div>
@@ -85,9 +85,9 @@ export function SalesTrichter({ api, zuBereich, karte, i = 0 }: { api: CrmApi; z
   if (!karte) return leiste;
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.business} rechts={<button onClick={() => zuBereich('firmen', 'leads')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>Leads ›</button>}>Sales-Trichter</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.business} rechts={<button onClick={() => zuBereich('firmen', 'leads')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Leads ›</button>}>Sales-Trichter</Ueberschrift>
       {leiste}
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Ebene 1 qualifiziert bis zum SQL, Ebene 2 schließt, Ebene 3 sind Kunden — jede Stufe ist ein Sprung dorthin.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Ebene 1 qualifiziert bis zum SQL, Ebene 2 schließt, Ebene 3 sind Kunden — jede Stufe ist ein Sprung dorthin.</div>
     </Karte>
   );
 }
@@ -128,7 +128,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
   const liste = (
     <Karte i={1}>
       <Ueberschrift rechts={<WerFilter wahl={wer} onWahl={setWer} ich={ich} />}>Leads · qualifizieren bis SQL</Ueberschrift>
-      <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Qualifizieren, bis es ein SQL ist: Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt. Dann wird es ein Deal in der Pipeline.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Qualifizieren, bis es ein SQL ist: Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt. Dann wird es ein Deal in der Pipeline.</div>
       <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Firma, Person, Branche, Ort …" aria-label="Leads suchen" style={{ ...feld, fontSize: TYP.bedien, padding: '9px 13px', marginBottom: 10 }} />
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={f => { setFilter(f); setWahl(null); }} farbe={LEUCHT.business} /></div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }} title="BEAN: Bestandskunde · Ehemalig · Angebotskunde · Neu">
@@ -144,7 +144,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
               <Person id={z.besitzer} groesse={18} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: TYP.body, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.name}</div>
-                <div style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {[z.art === 'firma' ? z.personen.map(p => p.name).join(', ') : z.personen[0]?.position, z.naechsterSchritt ? `→ ${z.naechsterSchritt.text}` : '', z.letzterKontakt ? `zuletzt ${datum(z.letzterKontakt)}` : ''].filter(Boolean).join(' · ')}
                 </div>
               </div>
@@ -156,7 +156,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
             {!breit && aktiv?.id === z.id && <div style={{ padding: '10px 0 18px' }}><Qualifizierung z={z} api={api} laden={laden} zuKontakt={zuKontakt} zuDeal={zuDeal} /></div>}
           </div>
         ))}
-        {zeilen.length > 120 && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{zeilen.length - 120} weitere — Suche eingrenzen.</div>}
+        {zeilen.length > 120 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>{zeilen.length - 120} weitere — Suche eingrenzen.</div>}
       </div>
     </Karte>
   );
@@ -182,7 +182,7 @@ function KriterienPunkte({ z }: { z: LeadZeile }) {
   return (
     <span title={fragen.map(x => `${x.name}: ${x.stufeText ?? 'offen'}`).join(' · ')} style={{ display: 'inline-flex', gap: 3, alignItems: 'center', flex: '0 0 auto' }}>
       {fragen.map(x => <span key={x.id} style={{ width: 7, height: 7, borderRadius: '50%', background: x.offen || !x.beantwortet ? C.inkLeise : x.punkte >= x.max * 0.6 ? LEUCHT.gut : x.punkte > 0 ? LEUCHT.achtung : LEUCHT.kritisch }} />)}
-      {salesBereit(z) && <span style={{ fontSize: 11, color: LEUCHT.gut, fontWeight: 700, marginLeft: 4 }}>SQL-bereit</span>}
+      {salesBereit(z) && <span style={{ fontSize: 12, color: LEUCHT.gut, fontWeight: 700, marginLeft: 4 }}>SQL-bereit</span>}
     </span>
   );
 }
@@ -213,9 +213,9 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
     <div style={{ display: 'grid', gap: 14 }}>
       <div>
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 20, fontWeight: 700, letterSpacing: '-.015em' }}>{z.name}</div>
-        <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 2 }}>{[z.art === 'firma' ? 'Firma' : 'Person ohne Firma', z.branche, z.stadt].filter(Boolean).join(' · ')}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{[z.art === 'firma' ? 'Firma' : 'Person ohne Firma', z.branche, z.stadt].filter(Boolean).join(' · ')}</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-          {z.personen.map(p => <button key={p.id} onClick={() => zuKontakt(p.id)} style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, padding: '4px 10px', color: C.ink, cursor: 'pointer', fontSize: 12.5 }}>{p.name}{p.position ? <span style={{ color: C.inkLeise }}> · {p.position.slice(0, 40)}</span> : null} ›</button>)}
+          {z.personen.map(p => <button key={p.id} onClick={() => zuKontakt(p.id)} style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, padding: '4px 10px', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien }}>{p.name}{p.position ? <span style={{ color: C.inkLeise }}> · {p.position.slice(0, 40)}</span> : null} ›</button>)}
         </div>
       </div>
 
@@ -234,14 +234,14 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
             setStatus(s); void setze({ status: s });
           }} />
         {nachfrage}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{status === 'sql' ? 'SQL — der Deal läuft unter Deals.' : status === 'kunde' ? 'Kunde — siehe Produkte & Mandate.' : `Weiter, wenn: ${LEAD_STATUS.find(s => s.id === status)?.weiterWenn}`}{z.grund ? ` · Grund: ${z.grund}` : ''}{!z.gesetzt ? ' · Status aus den Personen abgeleitet' : ''}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{status === 'sql' ? 'SQL — der Deal läuft unter Deals.' : status === 'kunde' ? 'Kunde — siehe Produkte & Mandate.' : `Weiter, wenn: ${LEAD_STATUS.find(s => s.id === status)?.weiterWenn}`}{z.grund ? ` · Grund: ${z.grund}` : ''}{!z.gesetzt ? ' · Status aus den Personen abgeleitet' : ''}</div>
       </div>
 
       <div>
         <Ueberschrift rechts={<span>Score {fr.score.punkte}</span>}>Qualifizierung</Ueberschrift>
         <div style={{ marginBottom: 10 }}><StandKette score={fr.score} /></div>
         <Fragen einstellungen={einstellungen} score={fr.score} stufen={fr.lokal.stufen} antworten={fr.antworten} onStufe={(kid, st) => { fr.stufeWaehlen(kid, st); if (['neu', 'kontaktiert', 'im_gespraech'].includes(status)) setStatus('qualifizierung'); }} onAntwort={fr.antwortSpeichern} />
-        {fr.fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 6 }}>{fr.fehler}</div>}
+        {fr.fehler && <Hinweis art="kritisch" rolle="alert">{fr.fehler}</Hinweis>}
       </div>
 
       {!inDeal && status !== 'kunde' && (
@@ -249,7 +249,7 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Punkt farbe={bereit ? LEUCHT.gut : C.inkLeise} />
             <b style={{ fontSize: TYP.body }}>{bereit ? 'SQL-bereit — ab ins Closing' : 'Noch kein SQL'}</b>
-            {!bereit && <span style={{ fontSize: 12.5, color: C.inkDim }}>es fehlt: {fehltText}</span>}
+            {!bereit && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>es fehlt: {fehltText}</span>}
           </div>
           {(bereit || trotzdem) ? (
             <>
@@ -267,18 +267,18 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
                     <input value={deal.schritt} onChange={e => setDeal({ ...deal, schritt: e.target.value })} placeholder="Pflicht — was passiert als Nächstes?" aria-label="Nächster Schritt" style={{ ...eingabe, flex: 1, minWidth: 160 }} />
                     <input type="date" value={deal.datum} onChange={e => setDeal({ ...deal, datum: e.target.value })} aria-label="Datum" style={{ ...eingabe, width: 150 }} />
                   </span>
-                  <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{SCHRITTE.map(s => <button key={s} onClick={() => setDeal({ ...deal, schritt: s })} style={{ background: 'none', border: '1px dashed rgba(255,255,255,.18)', borderRadius: 8, padding: '3px 8px', color: C.inkDim, cursor: 'pointer', fontSize: 12 }}>{s}</button>)}</span>
+                  <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{SCHRITTE.map(s => <button key={s} onClick={() => setDeal({ ...deal, schritt: s })} style={{ background: 'none', border: '1px dashed rgba(255,255,255,.18)', borderRadius: 8, padding: '3px 8px', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien }}>{s}</button>)}</span>
                 </span>
               </Feldzeile>
               <Feldzeile label="Entscheidung bis"><input type="date" value={deal.erwartetAm} onChange={e => setDeal({ ...deal, erwartetAm: e.target.value })} aria-label="Entscheidung bis" style={{ ...eingabe, width: 150 }} /></Feldzeile>
               <Feldzeile label="Führt den Deal"><ZustaendigWahl wert={deal.besitzer} welt="sales" beide={false} onWahl={besitzer => setDeal({ ...deal, besitzer })} /></Feldzeile>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Knopf farbe={LEUCHT.gut} aus={!deal.schritt.trim() || !deal.datum} onClick={zumSql}>Zum SQL → Deal anlegen</Knopf>
-                {!bereit && <span style={{ fontSize: 12, color: LEUCHT.achtung }}>ohne alle Kriterien — wird im Lead vermerkt</span>}
+                {!bereit && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>ohne alle Kriterien — wird im Lead vermerkt</span>}
               </div>
             </>
           ) : (
-            <button onClick={() => setTrotzdem(true)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0, textAlign: 'left' }}>trotzdem schon als SQL übergeben …</button>
+            <button onClick={() => setTrotzdem(true)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, textAlign: 'left' }}>trotzdem schon als SQL übergeben …</button>
           )}
         </div>
       )}
@@ -287,7 +287,7 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
         <Ueberschrift>Notiz zum Lead</Ueberschrift>
         <textarea value={notiz} onChange={e => setNotiz(e.target.value)} onBlur={() => { if (notiz !== (z.notiz ?? '')) void setze({ notiz }); }} rows={3} placeholder="Was wir über die Firma und den Bedarf wissen …" aria-label="Notiz zum Lead" style={{ ...eingabe, width: '100%', lineHeight: 1.5 }} />
       </div>
-      {meldung && <div style={{ fontSize: 12.5, color: C.inkDim }}>{meldung}</div>}
+      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
     </div>
   );
 }
@@ -311,13 +311,13 @@ export function QualifizierungsRunde({ api, zuKontakt, zurueck }: { api: CrmApi;
   const zuDeals = () => router.push(markttraktion('deals'));
   return (
     <>
-      <Karte i={0} akzent={LEUCHT.business}>
+      <Karte i={0} ton={LEUCHT.business}>
         <Ueberschrift farbe={LEUCHT.business} rechts={<span>{Math.min(pos + 1, ids.length)} von {ids.length}</span>}>Qualifizierungs-Runde</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>Je Lead die sechs Kernfragen klären. Sind Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt, wird es ein SQL — und der Deal steht in der Pipeline.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Je Lead die sechs Kernfragen klären. Sind Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt, wird es ein SQL — und der Deal steht in der Pipeline.</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
           <Chip farbe={LEUCHT.gut}>{sql} SQL</Chip>
           <span style={{ flex: 1 }} />
-          <button onClick={zurueck} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5 }}>Zur Kartei</button>
+          <button onClick={zurueck} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien }}>Zur Kartei</button>
           {sql > 0 && <Knopf leise onClick={zuDeals}>Zu den Deals</Knopf>}
         </div>
       </Karte>
@@ -355,7 +355,7 @@ export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
         <KriterienPunkte z={z} />
         <span style={{ color: C.inkDim }}>Score {z.score.punkte}{z.score.scoring ? ` · Sales ${z.score.scoring.sales.punkte}/${z.score.scoring.sales.schwelle}` : ''}{!salesBereit(z) && z.status !== 'sql' && z.status !== 'kunde' ? ` · bis SQL fehlt: ${fehlt.join(', ')}` : ''}</span>
       </div>
-      {z.deal && <Link href={WEG.deal(z.deal.id)} style={{ display: 'block', fontSize: 12.5, color: C.inkDim, marginTop: 6, textDecoration: 'none' }}>Ebene 2 · Deal „{z.deal.titel}“ · {STUFEN.find(s => s.id === z.deal!.stufe)?.label}{z.deal.wert ? ` · ${euro(z.deal.wert)}` : ''} ›</Link>}
+      {z.deal && <Link href={WEG.deal(z.deal.id)} style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, textDecoration: 'none' }}>Ebene 2 · Deal „{z.deal.titel}“ · {STUFEN.find(s => s.id === z.deal!.stufe)?.label}{z.deal.wert ? ` · ${euro(z.deal.wert)}` : ''} ›</Link>}
     </div>
   );
 }

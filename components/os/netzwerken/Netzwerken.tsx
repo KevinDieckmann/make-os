@@ -6,14 +6,14 @@
 // „Meine Karte (QR)“ (/os/netzwerken/karte). Die Warteschlange (IndexedDB) steht als Streifen über allem, solange etwas wartet.
 // Konzept: Kevin/Malin 02.10.; Ablauf und Regeln: lib/crm/netzwerken.ts (rein), lib/crm/netzwerken-server.ts (Server).
 
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { QrCode } from 'lucide-react';
-import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
+import { FARBE as C, LEUCHT, TYP } from '@/lib/make-one/design';
 import { WEG } from '@/lib/wege';
 import { useCrm } from '../crm/daten';
-import { Gross, Hinweis, ZIEL, kopfStil, useGemerkt } from './bausteine';
+import { Gross, Hinweis, useGemerkt } from './bausteine';
+import { Seite, Knopf, Segmente } from '../ui';
 import { EventModus, EventWahlFenster, type EventWahl } from './EventModus';
 import { Erfassen } from './Erfassen';
 import { Heute } from './Heute';
@@ -53,23 +53,11 @@ export function NetzwerkenSeite() {
   }, [eventParam, vorgewaehlt, api.crm, heute, setWahl]);
 
   return (
-    <div className="netz-seite" style={{ maxWidth: 640, margin: '0 auto', padding: '16px 14px 40px', color: C.ink, fontFamily: SCHRIFT.text, display: 'grid', gap: 16 }}>
-      <header style={{ display: 'grid', gap: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <h1 style={{ ...kopfStil, fontSize: 'clamp(24px, 6vw, 30px)' }}>Netzwerken</h1>
-          <Link href={WEG.netzwerkenKarte()} className="fassbar" aria-label="Meine Karte (QR) zeigen" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: ZIEL, padding: '8px 14px', borderRadius: 14, textDecoration: 'none', whiteSpace: 'nowrap', fontSize: TYP.bedien, fontWeight: 600, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.04)', color: C.ink }}><QrCode size={18} aria-hidden style={{ color: C.inkDim }} />Meine Karte</Link>
-        </div>
-        <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.45 }}>Karte fotografieren, Person erfassen, nächsten Schritt festlegen — noch auf der Veranstaltung.</div>
-      </header>
-
+    <Seite className="netz-seite" breit={688} titel="Netzwerken" unter="Karte fotografieren, Person erfassen, nächsten Schritt festlegen — noch auf der Veranstaltung."
+      rechts={<Knopf href={WEG.netzwerkenKarte()} leise ariaLabel="Meine Karte (QR) zeigen"><QrCode size={18} aria-hidden style={{ color: C.inkDim }} />Meine Karte</Knopf>}>
       <EventModus api={api} ich={ich} heute={heute} wahl={gueltig} setWahl={setWahl} />
 
-      <nav aria-label="Netzwerken" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4, borderRadius: 16, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)' }}>
-        {([['erfassen', 'Erfassen'], ['heute', `Heute${warte.fehler ? ' · !' : ''}`]] as const).map(([id, text]) => {
-          const an = reiter === id;
-          return <button key={id} type="button" aria-pressed={an} onClick={() => setReiter(id)} className="fassbar" style={{ minHeight: 44, borderRadius: 12, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 700, border: `1px solid ${an ? TIEF.rand(C.aktiv) : 'transparent'}`, background: an ? TIEF.flaeche(C.aktiv) : 'transparent', color: an ? C.aktiv : C.inkDim }}>{text}</button>;
-        })}
-      </nav>
+      <Segmente liste={[{ id: 'erfassen', label: 'Erfassen' }, { id: 'heute', label: `Heute${warte.fehler ? ' · !' : ''}` }]} aktiv={reiter} onWahl={setReiter} />
 
       <Warteschlange warte={warte} offline={k.offline} api={api} ich={ich} heute={heute} />
 
@@ -78,7 +66,7 @@ export function NetzwerkenSeite() {
       {reiter === 'erfassen'
         ? <Erfassen api={api} ich={ich} personen={k.personen} heute={heute} wahl={gueltig} warte={warte} offline={k.offline} onBericht={() => { setBerichtEvent(gueltig?.eventId ?? null); setReiter('heute'); }} />
         : <Heute api={api} ich={ich} personen={k.personen} heute={heute} wahl={gueltig} eventId={berichtEvent} setEventId={setBerichtEvent} onErfassen={() => setReiter('erfassen')} />}
-    </div>
+    </Seite>
   );
 }
 

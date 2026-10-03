@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { LEUCHT } from '../../schlank';
+import { LEUCHT } from '../../ui';
 
 export interface MenuPunkt { id: string; label: string; hinweis?: string; gefahr?: boolean; onClick: () => void }
 
@@ -42,7 +42,7 @@ export function MehrMenue({ punkte, label = 'Mehr' }: { punkte: MenuPunkt[]; lab
             <button key={p.id} role="menuitem" type="button" onClick={() => { setOffen(false); p.onClick(); }} className="fassbar"
               style={{ display: 'grid', gap: 1, textAlign: 'left', minHeight: 44, padding: '8px 12px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: SCHRIFT.text, color: p.gefahr ? LEUCHT.kritisch : C.ink }}>
               <span style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{p.label}</span>
-              {p.hinweis && <span style={{ fontSize: 11.5, color: C.inkLeise, lineHeight: 1.35 }}>{p.hinweis}</span>}
+              {p.hinweis && <span style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.35 }}>{p.hinweis}</span>}
             </button>
           ))}
         </div>

@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Knopf } from '../../schlank';
+import { Knopf } from '../../ui';
 import { NeuerTermin } from '../../kalender/NeuerTermin';
 import type { Vorgabe } from '@/lib/kalender/formular';
 import type { FreieZeit } from '@/lib/kalender/verfuegbar';
@@ -56,12 +56,12 @@ export function TerminVorschlag({ ich, heute, titel, nummer, kunde, kontaktId, f
     <div style={{ display: 'grid', gap: 6 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Knopf leise aus={laeuft} onClick={() => void suchen()}>{laeuft ? 'sucht …' : 'Termin zum Besprechen vorschlagen'}</Knopf>
-        {fertig && <span style={{ fontSize: 12.5, color: LEUCHT.gut }}>{fertig}</span>}
-        {fehler && <span style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</span>}
+        {fertig && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>{fertig}</span>}
+        {fehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</span>}
       </div>
       {liste && (liste.length ? (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: C.inkLeise }}>Frei ({dauerMin} Min.):</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Frei ({dauerMin} Min.):</span>
           {liste.map(v => (
             <button key={v.start} type="button" onClick={() => setGewaehlt(v)} title="Termin-Entwurf öffnen — angelegt wird erst mit Speichern"
               style={{ border: `1px solid ${LEUCHT.business}66`, background: 'transparent', color: LEUCHT.business, borderRadius: 999, padding: '3px 10px', fontSize: TYP.bedien, cursor: 'pointer' }}>
@@ -69,7 +69,7 @@ export function TerminVorschlag({ ich, heute, titel, nummer, kunde, kontaktId, f
             </button>
           ))}
         </div>
-      ) : <span style={{ fontSize: 12.5, color: C.inkLeise }}>Keine freie Zeit in den nächsten 14 Tagen (Arbeitszeit aus der Wochenvorlage).</span>)}
+      ) : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine freie Zeit in den nächsten 14 Tagen (Arbeitszeit aus der Wochenvorlage).</span>)}
     </div>
   );
 }

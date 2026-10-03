@@ -10,7 +10,7 @@ import { localDay } from '@/lib/zeit';
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
-import { Knopf, LEUCHT, feld } from '../schlank';
+import { Knopf, LEUCHT, feld } from '../ui';
 import { type CrmApi, plusTage } from './daten';
 import { Feldzeile } from './teile';
 import { Wahl } from './Wahl';
@@ -62,12 +62,12 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
       <div style={{ fontSize: TYP.body, fontWeight: 700 }}>Neuer Deal</div>
       <Feldzeile label="Firma">
         {f ? <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{f.name}</span><button onClick={() => setFirma(undefined)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>
-          : <span style={{ fontSize: 12.5, color: C.inkLeise }}>aus der ersten Person, oder unten suchen</span>}
+          : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>aus der ersten Person, oder unten suchen</span>}
       </Feldzeile>
       <Feldzeile label="Personen">
         <div style={{ display: 'grid', gap: 6 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {personen.map(id => { const k = kontakte.find(x => x.id === id); return k ? <span key={id} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(255,255,255,.06)', borderRadius: 999, padding: '3px 10px', fontSize: 12.5 }}>{anzeigename(k)}<button onClick={() => setPersonen(personen.filter(x => x !== id))} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', padding: 0 }}>✕</button></span> : null; })}
+            {personen.map(id => { const k = kontakte.find(x => x.id === id); return k ? <span key={id} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(255,255,255,.06)', borderRadius: 999, padding: '3px 10px', fontSize: TYP.bedien }}>{anzeigename(k)}<button onClick={() => setPersonen(personen.filter(x => x !== id))} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', padding: 0 }}>✕</button></span> : null; })}
           </div>
           <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Person oder Firma suchen …" style={{ ...feld }} autoFocus={!kontaktId} />
           {(treffer.length > 0 || firmenTreffer.length > 0) && (
@@ -97,7 +97,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
       <Feldzeile label="Quelle"><Wahl label="Quelle" liste={QUELLEN} wert={quelle} onWahl={setQuelle} onLeeren={() => setQuelle(undefined)} /></Feldzeile>
       <Feldzeile label="Führt"><ZustaendigWahl wert={besitzer} welt="sales" onWahl={setBesitzer} beide={false} /></Feldzeile>
       {fehler && (
-        <div style={{ fontSize: 12.5, color: LEUCHT.achtung, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <span>{fehler.text}</span>
           {fehler.offen && zuDeal && <Knopf leise onClick={() => zuDeal(fehler.offen!.id)}>Zum offenen Deal</Knopf>}
           {fehler.offen && <Knopf leise onClick={() => void anlegen(true)}>Bewusst zweiten anlegen</Knopf>}

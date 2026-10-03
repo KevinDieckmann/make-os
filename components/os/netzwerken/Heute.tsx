@@ -21,6 +21,7 @@ import { istBesuch } from '@/lib/crm/besuche-form';
 import type { CrmApi } from '../crm/daten';
 import { Gross, Wahl, Beschriftung, Hinweis, Initialen, Leerzustand, LinkChips, type LinkChip, eingabe, kopfStil, tagText } from './bausteine';
 import { AbendZaehler, abendZahlen } from './zaehler';
+import { Karte } from '../ui';
 import type { EventWahl } from './EventModus';
 import type { Person } from './useNetzwerken';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -67,7 +68,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
       )}
       {bericht && event && (
         <section aria-label="Abendbericht" style={{ display: 'grid', gap: 14 }}>
-          <div style={{ padding: '14px 16px', borderRadius: 18, border: '1px solid rgba(255,255,255,.1)', background: 'linear-gradient(150deg, rgba(255,255,255,.06), rgba(255,255,255,.02))', display: 'grid', gap: 12 }}>
+          <Karte dicht style={{ display: 'grid', gap: 12, borderRadius: 18 }}>
             <div>
               <h2 style={{ ...kopfStil, fontSize: TYP.titel }}>{event.titel}</h2>
               <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4, lineHeight: 1.5 }}>
@@ -81,10 +82,10 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
             </div>
             {/* Ist es das Event von heute, stehen dieselben Zahlen schon oben im Kopf — nur ältere Events zeigen sie hier. */}
             {!(wahl && wahl.eventId === event.id) && <AbendZaehler zahlen={zahlen} eventTitel={event.titel} farbe={LEUCHT.beziehung} />}
-          </div>
+          </Karte>
           <div style={{ display: 'grid', gap: 10 }}>
             {bericht.zeilen.map(z => (
-              <article key={z.kontaktId} style={{ padding: '12px 14px', borderRadius: 16, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.03)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <Karte key={z.kontaktId} flach dicht style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 14px' }}>
                 <Initialen name={z.name} />
                 <div style={{ minWidth: 0, flex: 1, display: 'grid', gap: 6 }}>
                   <div>
@@ -102,7 +103,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
                   <LinkChips links={z.links.filter(l => l.id !== 'kontakt') as LinkChip[]} />
                   {z.offen.length > 0 && <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', gap: 6, flexWrap: 'wrap' }}>{z.offen.map(o => <li key={o} style={{ fontSize: TYP.bedien, fontWeight: 600, color: LEUCHT.achtung, background: `${LEUCHT.achtung}1F`, borderRadius: 999, padding: '3px 10px' }}>{o}</li>)}</ul>}
                 </div>
-              </article>
+              </Karte>
             ))}
           </div>
         </section>

@@ -21,7 +21,7 @@ import { FARBE as C, LEUCHT } from '@/lib/make-one/design';
 import { mandantZiel, type MandantZiel } from '@/lib/crm/adresse';
 import { mandantAusName, mandantName, mandantPruefung } from '@/lib/crm/mandant-link';
 import { useMandate } from '../zeit/useMandate';
-import { Punkt } from '../schlank';
+import { Punkt } from '../ui';
 
 export interface MandantLinkProps {
   mandatId?: string | null;

@@ -11,7 +11,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Chip, LEUCHT } from '../../schlank';
+import { Chip, LEUCHT } from '../../ui';
 import { checklisteStand } from '@/lib/crm/eventplanung';
 import { markeVon } from '@/lib/crm/marke';
 import { zustaendig } from '@/lib/crm/team';

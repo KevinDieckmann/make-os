@@ -17,7 +17,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Zahl, Raster, feld, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Zahl, Raster, feld, LEUCHT } from '../../ui';
 import type { NewsletterAusgabe, Beitrag } from '@/lib/crm/typen';
 import { TEAM, anderer, nameVon } from '@/lib/crm/team';
 import {
@@ -83,7 +83,7 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
           <Zahl wert={letzteQuote === null ? undefined : prozent(letzteQuote)} label="Abmeldequote zuletzt" farbe={letzteQuote === null ? undefined : KPI_FARBE[quotenAmpel(letzteQuote)]} />
         </Raster>
         {!empfaenger && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 10 }}>0 Empfänger mit Double-Opt-in — ohne DOI kein Newsletter. Die Einwilligung „Newsletter“ mit Nachweis (Bestätigungsklick) hältst du in der Karteikarte unter „Recht“ fest.</div>}
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>MAKE OS versendet nichts. Ausgabe hier schreiben, Empfänger exportieren (nur Name und Adresse, nur Double-Opt-in), im Versandwerkzeug verschicken — mit Abmeldelink. Danach Empfänger, Antworten und Abmeldungen eintragen. Öffnungsraten sind keine Steuergröße.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>MAKE OS versendet nichts. Ausgabe hier schreiben, Empfänger exportieren (nur Name und Adresse, nur Double-Opt-in), im Versandwerkzeug verschicken — mit Abmeldelink. Danach Empfänger, Antworten und Abmeldungen eintragen. Öffnungsraten sind keine Steuergröße.</div>
       </Karte>
 
       <Karte i={1}>
@@ -153,7 +153,7 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
       <Feldzeile label="Erscheint als">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Wahl label="Erscheint als" leer="+ Absender" liste={STIMMEN_WAHL} wert={a.stimme ?? null} onWahl={s => void teil({ stimme: s })} />
-          {!a.stimme && <span style={{ fontSize: 12, color: C.inkLeise }}>Absender im Versandwerkzeug — Kevin, Malin oder die Marke?</span>}
+          {!a.stimme && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Absender im Versandwerkzeug — Kevin, Malin oder die Marke?</span>}
         </div>
       </Feldzeile>
       <Feldzeile label="Freigabe">
@@ -164,32 +164,32 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
           onAenderung={n => { const f = a.freigabe ? aenderungsWunsch(a.freigabe, a.freigabe.an, n, jetzt()) : null; if (f) void teil({ freigabe: f }); }} />
       </Feldzeile>
       <Feldzeile label="Status"><Wahl label="Status" liste={AUSGABE_STATUS} wert={a.status} farbe={STATUS_FARBE[a.status]} onWahl={statusWahl} /></Feldzeile>
-      {(statusHinweis || (a.status === 'bereit' && sperre)) && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, margin: '2px 0 6px', lineHeight: 1.5 }}>{statusHinweis || `Bereit, aber: ${sperre}`}</div>}
+      {(statusHinweis || (a.status === 'bereit' && sperre)) && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, margin: '2px 0 6px', lineHeight: 1.5 }}>{statusHinweis || `Bereit, aber: ${sperre}`}</div>}
       <Feldzeile label="Datum"><Feld typ="date" breite={170} wert={a.datum ?? ''} platzhalter="Datum" onFertig={d => void teil({ datum: d || null })} /></Feldzeile>
       <div style={{ marginTop: 4 }}><Textfeld wert={a.inhalt} zeilen={10} max={20000} platzhalter="Inhalt der Ausgabe — eine Einsicht, konkret, in deiner Stimme" onFertig={t => void textAendern({ inhalt: t })} /></div>
       <div style={{ marginTop: 6 }}>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 6 }}>Beiträge in dieser Ausgabe</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Beiträge in dieser Ausgabe</div>
         {waehlbar.length ? (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {waehlbar.map(b => <Pillen key={b.id} liste={[{ id: b.id, label: b.titel.length > 48 ? `${b.titel.slice(0, 47)}…` : b.titel }]} aktiv={a.beitragIds.includes(b.id) ? b.id : null}
               onWahl={id => void teil({ beitragIds: a.beitragIds.includes(id) ? a.beitragIds.filter(x => x !== id) : [...a.beitragIds, id].slice(0, 20) })} />)}
           </div>
-        ) : <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch keine Beiträge über das Ideen-Stadium hinaus.</div>}
+        ) : <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Beiträge über das Ideen-Stadium hinaus.</div>}
       </div>
-      {a.status !== 'entwurf' && !empfaenger && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, marginTop: 6 }}>Ohne Empfänger mit Double-Opt-in nicht versenden.</div>}
+      {a.status !== 'entwurf' && !empfaenger && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 6 }}>Ohne Empfänger mit Double-Opt-in nicht versenden.</div>}
       {a.status === 'versendet' && (
         <div style={{ marginTop: 6 }}>
-          <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 4 }}>Zahlen aus dem Versandwerkzeug — von Hand</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 4 }}>Zahlen aus dem Versandwerkzeug — von Hand</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Feld typ="number" breite={130} wert={a.empfaenger == null ? '' : String(a.empfaenger)} platzhalter="Empfänger" onFertig={t => void teil({ empfaenger: zahl(t) })} />
             <Feld typ="number" breite={130} wert={a.antworten == null ? '' : String(a.antworten)} platzhalter="Antworten" onFertig={t => void teil({ antworten: zahl(t) })} />
             <Feld typ="number" breite={130} wert={a.abmeldungen == null ? '' : String(a.abmeldungen)} platzhalter="Abmeldungen" onFertig={t => void teil({ abmeldungen: zahl(t) })} />
-            {q !== null ? <Chip farbe={KPI_FARBE[quotenAmpel(q)]}>Abmeldequote {prozent(q)}</Chip> : <span style={{ fontSize: 12, color: C.inkLeise }}>Quote erscheint mit Empfängern und Abmeldungen · Ziel &lt; 0,5 %</span>}
+            {q !== null ? <Chip farbe={KPI_FARBE[quotenAmpel(q)]}>Abmeldequote {prozent(q)}</Chip> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Quote erscheint mit Empfängern und Abmeldungen · Ziel &lt; 0,5 %</span>}
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Abmeldungen im Versandwerkzeug sind Widerrufe — die Einwilligung in der Karteikarte der Person widerrufen, damit sie aus dem nächsten Export fällt.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Abmeldungen im Versandwerkzeug sind Widerrufe — die Einwilligung in der Karteikarte der Person widerrufen, damit sie aus dem nächsten Export fällt.</div>
         </div>
       )}
-      {a.geaendertVon && <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 4 }}>Zuletzt geändert von {nameVon(a.geaendertVon)} · {datum(a.geaendert.slice(0, 10), heute)}</div>}
+      {a.geaendertVon && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4 }}>Zuletzt geändert von {nameVon(a.geaendertVon)} · {datum(a.geaendert.slice(0, 10), heute)}</div>}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
         <Knopf leise aus={!a.inhalt.trim()} onClick={async () => melde((await kopieren(text)) ? 'Ausgabe kopiert — Versand im Versandwerkzeug, nicht hier.' : 'Kopieren nicht möglich.')}>Ausgabe kopieren</Knopf>
         <Knopf leise onClick={schliessen}>Schließen</Knopf>

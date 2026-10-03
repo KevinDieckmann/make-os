@@ -21,7 +21,7 @@ import { useCallback, useEffect, useId, useState, type CSSProperties } from 'rea
 import Link from 'next/link';
 import { markttraktion } from '@/lib/crm/adresse';
 import { FARBE as C, TYP, leuchtFarbe } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Punkt, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Punkt, LEUCHT } from '../ui';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Scoreboard as ScoreboardDaten, ScoreAmpel, ScoreZeile, VerlaufTag } from '@/lib/crm/scoreboard';
 import type { Welt } from '@/lib/crm/traktion';
@@ -60,7 +60,7 @@ function Verlauf({ tage, heute }: { tage: VerlaufTag[]; heute: string }) {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '4px 0 14px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Traction-Score im Verlauf</span>
         {letzter && <b style={{ fontSize: TYP.body, fontVariantNumeric: 'tabular-nums', color: leuchtFarbe(letzter.score) }}>{letzter.score}</b>}
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>Verlauf entsteht ab morgen — je Tag ein Schnappschuss.</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Verlauf entsteht ab morgen — je Tag ein Schnappschuss.</span>
       </div>
     );
   }
@@ -81,7 +81,7 @@ function Verlauf({ tage, heute }: { tage: VerlaufTag[]; heute: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 0 16px' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>
           <span>Traction-Score · {punkte.length} Tage</span>
           <span>{tagKurz(punkte[0].tag)} – {letzter.tag === heute ? 'heute' : tagKurz(letzter.tag)}</span>
         </div>
@@ -101,7 +101,7 @@ function Verlauf({ tage, heute }: { tage: VerlaufTag[]; heute: string }) {
       </div>
       <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
         <div style={{ fontSize: TYP.zahl, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: farbe, lineHeight: 1 }}>{letzter.score}</div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4, whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4, whiteSpace: 'nowrap' }}>
           {delta === null ? 'Traktion' : `${delta > 0 ? '+' : delta < 0 ? '−' : '±'}${Math.abs(delta)} in 7 Tagen`}
         </div>
       </div>
@@ -144,9 +144,9 @@ function Tabelle({ sb }: { sb: ScoreboardDaten }) {
             <th style={{ ...erste, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Kennzahl</th>
             <th style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, textAlign: 'center', padding: '6px 4px' }}>Ziel</th>
             {sb.wochen.map(w => (
-              <th key={w.von} title={`${tagKurz(w.von)}–${tagKurz(w.bis)}${w.laufend ? ' · laufende Woche' : ''}`} style={{ padding: '6px 3px', textAlign: 'center', fontSize: 12, fontWeight: w.laufend ? 700 : 500, color: w.laufend ? C.ink : C.inkLeise, whiteSpace: 'nowrap', borderRadius: w.laufend ? '8px 8px 0 0' : undefined, background: w.laufend ? LAUFEND_GRUND : undefined }}>
+              <th key={w.von} title={`${tagKurz(w.von)}–${tagKurz(w.bis)}${w.laufend ? ' · laufende Woche' : ''}`} style={{ padding: '6px 3px', textAlign: 'center', fontSize: TYP.bedien, fontWeight: w.laufend ? 700 : 500, color: w.laufend ? C.ink : C.inkLeise, whiteSpace: 'nowrap', borderRadius: w.laufend ? '8px 8px 0 0' : undefined, background: w.laufend ? LAUFEND_GRUND : undefined }}>
                 {w.label}
-                {w.laufend && <div style={{ fontSize: 11, fontWeight: 600, color: LEUCHT.puls, marginTop: 1 }}>läuft</div>}
+                {w.laufend && <div style={{ fontSize: 12, fontWeight: 600, color: LEUCHT.puls, marginTop: 1 }}>läuft</div>}
               </th>
             ))}
           </tr>
@@ -181,12 +181,12 @@ function Gruppe({ welt, zeilen, sb, erste }: { welt: Welt; zeilen: ScoreZeile[];
         <tr key={z.id}>
           <th scope="row" title={z.quelle} style={{ ...erste, fontWeight: 400, paddingLeft: z.person ? 18 : 2 }}>
             {z.person
-              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}><Person id={z.person} groesse={16} />{nameVon(z.person)}</span>
+              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkLeise }}><Person id={z.person} groesse={16} />{nameVon(z.person)}</span>
               : SCORE_ZU_KENNZAHL[z.id]
                 ? <Link href={markttraktion(undefined, undefined, SCORE_ZU_KENNZAHL[z.id])} scroll={false} title="Kennzahl im Traktions-Index öffnen" style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.25)' }}>{z.label}</Link>
                 : <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{z.label}</span>}
           </th>
-          <td title={z.person ? 'Anteil am Teamziel' : z.ziel === null ? 'kein Wochenziel' : 'Ziel je Woche'} style={{ textAlign: 'center', fontSize: 12.5, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '3px 4px' }}>{z.zielText}</td>
+          <td title={z.person ? 'Anteil am Teamziel' : z.ziel === null ? 'kein Wochenziel' : 'Ziel je Woche'} style={{ textAlign: 'center', fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '3px 4px' }}>{z.zielText}</td>
           {z.werte.map((wert, i) => {
             const w = sb.wochen[i];
             const wer = z.person ? ` · ${nameVon(z.person)}` : '';
@@ -217,10 +217,10 @@ export function Scoreboard(_: { api: CrmApi }) {
       <Ueberschrift rechts={<span>{d.scoreboard.wochen.length} Wochen · Ziel je Woche</span>}>Wochen-Scoreboard</Ueberschrift>
       <Verlauf tage={d.verlauf ?? []} heute={d.heute} />
       <Tabelle sb={d.scoreboard} />
-      <p style={{ fontSize: 12, color: C.inkLeise, margin: '12px 0 0', lineHeight: 1.5 }}>
+      <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '12px 0 0', lineHeight: 1.5 }}>
         Rückwirkend aus Power Hours, Verlauf, Chancen, Redaktionsplan und Events. Grün = Ziel erreicht, gelb = mindestens die Hälfte, rot = darunter; die laufende Woche wird erst am Sonntag bewertet. Je Person gilt der Anteil am Teamziel. Grau = noch nicht gemessen.
       </p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, color: C.inkDim, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: TYP.bedien, color: C.inkDim, flexWrap: 'wrap' }}>
         <Punkt farbe={tg?.gekoppelt ? LEUCHT.gut : tg?.konfiguriert ? LEUCHT.achtung : C.inkLeise} groesse={7} />
         {!tg?.konfiguriert
           ? <span>Morgen-Nachricht aufs Handy: <Link href="/os/konto" style={{ color: C.ink }}>Telegram-Bot einrichten (Konto › Der Bote)</Link></span>

@@ -12,7 +12,7 @@ import { useTerminZeiten } from '../kalender/TermineAkte';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../schlank';
+import { Knopf, feld, LEUCHT } from '../ui';
 import { STUFE_LABEL, rollenVon, ROLLE_LABEL, type Kontakt } from '@/lib/make-one/crm';
 import type { Qual } from '@/lib/crm/typen';
 import { zusammenfassung, nummer, type ZfQuelle } from '@/lib/crm/zusammenfassung';
@@ -95,7 +95,7 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
   const score = zeile?.score ?? leadScore([...personen], lead, heute, undefined, scoringKontext(crm?.stand));
   const ph = phaseVon(k, crm?.stand);
   const tk = takt(k, heute);
-  const chip = (text: string, farbe: string) => <span style={{ fontSize: 11.5, fontWeight: 600, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{text}</span>;
+  const chip = (text: string, farbe: string) => <span style={{ fontSize: 12, fontWeight: 600, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{text}</span>;
 
   const zusammen = (
     <Klappe id="ueber-zf" i={1} titel="Zusammenfassung" unter="Aus den Daten gerechnet — die Nummern führen zur Quelle." zu={klappen.istZu('ueber-zf')} umschalten={klappen.umschalten} akzent={LEUCHT.agenten}>
@@ -121,11 +121,11 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
           <Knopf leise aus={!frage.trim() || antwort === 'laedt'} onClick={() => void fragen(true)}>Fragen</Knopf>
           {ki?.ki && <Knopf leise aus={antwort === 'laedt'} onClick={() => void fragen(false)}>Mit ZOE formulieren</Knopf>}
         </div>
-        {antwort === 'laedt' && <div style={{ fontSize: 12.5, color: C.inkLeise }}>ZOE liest die Daten …</div>}
+        {antwort === 'laedt' && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>ZOE liest die Daten …</div>}
         {antwort && antwort !== 'laedt' && (
           <div role="status" style={{ padding: '10px 12px', borderRadius: 10, background: antwort.art === 'ok' ? `${LEUCHT.agenten}12` : 'rgba(255,255,255,.04)', fontSize: TYP.bedien, lineHeight: 1.55, color: antwort.art === 'ok' ? C.ink : C.inkDim, whiteSpace: 'pre-wrap' }}>
             {antwort.text}
-            {antwort.art === 'ok' && <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 6 }}>ZOE · nur aus den Daten dieser Person, ohne private Notiz · nichts gespeichert</div>}
+            {antwort.art === 'ok' && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>ZOE · nur aus den Daten dieser Person, ohne private Notiz · nichts gespeichert</div>}
           </div>
         )}
       </div>
@@ -148,14 +148,14 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
         {score.scoring && <SeitenChip s={score.scoring.sales} name="SQL" kurz />}
       </div>
       {score.scoring && (
-        <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8, lineHeight: 1.5 }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8, lineHeight: 1.5 }}>
           Score {score.punkte} · Sales {score.scoring.sales.punkte} / Schwelle {score.scoring.sales.schwelle}{zeile && !salesBereit(zeile) && status !== 'sql' && status !== 'kunde' ? ` — fehlt: ${fehltBisSqlZeile(zeile).join(', ')}` : ' — SQL-Kriterien erfüllt'}
           {' '}<button type="button" onClick={() => router.push(qualifizierungLink(k.firmaId ?? k.id))} style={leiseKnopf}>In der Runde qualifizieren ›</button>
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '4px 12px', marginTop: 10 }}>
         {(score.scoring?.sales.teile.flatMap(t => t.kriterien).filter(x => x.quelle === 'frage') ?? []).map(x => (
-          <span key={x.id} title={`${x.name}: ${x.stufeText ?? 'offen'}`} aria-label={`${x.name}: ${x.stufeText ?? 'offen'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: x.offen ? C.inkLeise : C.ink }}>
+          <span key={x.id} title={`${x.name}: ${x.stufeText ?? 'offen'}`} aria-label={`${x.name}: ${x.stufeText ?? 'offen'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: TYP.bedien, color: x.offen ? C.inkLeise : C.ink }}>
             <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: x.offen || !x.beantwortet ? QUAL_FARBE.unklar : x.punkte >= x.max * 0.6 ? QUAL_FARBE.ja : x.punkte > 0 ? QUAL_FARBE.unklar : QUAL_FARBE.nein, flex: '0 0 auto' }} />{x.name}
           </span>
         ))}
@@ -172,9 +172,9 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
         {chip(phaseLabel(ph.phase), phaseFarbe(ph.phase))}
         {rollenVon(k).map(r => <span key={r}>{chip(ROLLE_LABEL[r], LEUCHT.business)}</span>)}
         {chip(STUFE_LABEL[k.stufe], C.inkDim)}{k.anrede && chip(k.anrede, C.inkDim)}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkLeise }}><Person id={haeltBeziehung(k)} groesse={16} />zuständig: {nameVon(haeltBeziehung(k))}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkLeise }}><Person id={haeltBeziehung(k)} groesse={16} />zuständig: {nameVon(haeltBeziehung(k))}</span>
       </div>
-      {tk && <div style={{ fontSize: 12.5, color: tk.ueberfaellig ? LEUCHT.achtung : C.inkLeise, marginTop: 8 }}>{tk.ueberfaellig ? 'Takt überschritten — jetzt melden.' : `Nach dem Takt fällig ${datum(tk.faelligAm, heute)}.`}{tk.seit !== null ? ` Seit ${tk.seit} Tagen still.` : ''}</div>}
+      {tk && <div style={{ fontSize: TYP.bedien, color: tk.ueberfaellig ? LEUCHT.achtung : C.inkLeise, marginTop: 8 }}>{tk.ueberfaellig ? 'Takt überschritten — jetzt melden.' : `Nach dem Takt fällig ${datum(tk.faelligAm, heute)}.`}{tk.seit !== null ? ` Seit ${tk.seit} Tagen still.` : ''}</div>}
     </Klappe>
   );
 
@@ -183,7 +183,7 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
   const aktivitaeten = (
     <Klappe id="ueber-letzte" i={5} titel="Letzte Aktivitäten" unter={echte.length ? `${letzte.length} von ${echte.length}` : 'Noch nichts festgehalten.'} zu={klappen.istZu('ueber-letzte')} umschalten={klappen.umschalten}
       rechts={<button type="button" onClick={() => zuReiter('aktivitaeten', 'alle')} style={leiseKnopf}>alle ›</button>}>
-      {letzte.length ? <Verlauf liste={letzte} name={name} heute={heute} max={3} termine={terminZeiten} /> : <div style={{ fontSize: 12.5, color: C.inkLeise }}>Links über die Schnellaktionen festhalten: Notiz, Anruf, Meeting.</div>}
+      {letzte.length ? <Verlauf liste={letzte} name={name} heute={heute} max={3} termine={terminZeiten} /> : <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Links über die Schnellaktionen festhalten: Notiz, Anruf, Meeting.</div>}
     </Klappe>
   );
 

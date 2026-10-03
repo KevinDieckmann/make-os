@@ -10,7 +10,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, feld, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, feld, LEUCHT, Hinweis } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { localDay } from '@/lib/zeit';
 import { MESSUNGEN, type MessungId, type ScoringEinstellungen, type ScoringKriterium, type ScoringMuss, type ScoringSeiteId } from '@/lib/crm/scoring';
@@ -23,7 +23,7 @@ import type { ScoringEntwurf, ScoringDaten } from './ScoringEntwurf';
 import { punkteText, useScoringEinstellungen } from './hilfen';
 
 const TEMPS: Temperatur[] = ['kalt', 'lau', 'warm', 'heiss'];
-const klein = { fontSize: 12.5, color: C.inkDim, lineHeight: 1.55 } as const;
+const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 } as const;
 const label = { fontSize: 11.5, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 700 } as const;
 const eingabe = { ...feld, fontSize: 16, padding: '8px 11px', minHeight: 44 } as const;
 
@@ -57,13 +57,13 @@ export function VorschauKarte({ api, alt, neu, i = 0, titel = 'So würden deine 
             <span style={klein}>{v.wechsler ? `${v.wechsler} ${v.wechsler === 1 ? 'Lead wechselt' : 'Leads wechseln'} Punkte, Temperatur oder Stufe` : 'Nichts ändert sich an den vorhandenen Leads.'}</span>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {TEMPS.map(t => <span key={t} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '4px 10px', borderRadius: 999, border: `1px solid ${temperaturFarbe(t)}44`, fontSize: 12.5 }}><span style={{ color: temperaturFarbe(t), fontWeight: 700 }}>{temperaturLabel(t)}</span>{pfeil(v.temperatur[t][0], v.temperatur[t][1])}</span>)}
+            {TEMPS.map(t => <span key={t} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '4px 10px', borderRadius: 999, border: `1px solid ${temperaturFarbe(t)}44`, fontSize: TYP.bedien }}><span style={{ color: temperaturFarbe(t), fontWeight: 700 }}>{temperaturLabel(t)}</span>{pfeil(v.temperatur[t][0], v.temperatur[t][1])}</span>)}
           </div>
           {v.beispiele.length > 0 && (
             <div style={{ display: 'grid', gap: 4 }}>
               <div style={label}>Beispiele</div>
               {v.beispiele.map(b => (
-                <div key={b.vorher.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 10, fontSize: 12.5, alignItems: 'center' }}>
+                <div key={b.vorher.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 10, fontSize: TYP.bedien, alignItems: 'center' }}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.vorher.name}</span>
                   <span style={{ color: C.inkDim, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{b.vorher.punkte} → <b style={{ color: C.ink }}>{b.nachher.punkte}</b> · {temperaturLabel(b.vorher.temperatur)}{b.vorher.temperatur !== b.nachher.temperatur ? ` → ${temperaturLabel(b.nachher.temperatur)}` : ''}{b.vorher.mql !== b.nachher.mql ? ` · MQL ${b.nachher.mql ? 'neu' : 'weg'}` : ''}{b.vorher.sql !== b.nachher.sql ? ` · SQL ${b.nachher.sql ? 'neu' : 'weg'}` : ''}</span>
                 </div>
@@ -90,10 +90,10 @@ function KriteriumZeile({ k, seite, onAender, onEntfernen, istMuss }: { k: Scori
           <input type="checkbox" checked={!k.aus} onChange={e => onAender(x => ({ ...x, ...(e.target.checked ? { aus: undefined } : { aus: true }) }))} aria-label={`${k.name} zählt`} style={{ width: 22, height: 22 }} />
         </label>
         <button type="button" onClick={() => setAuf(!auf)} aria-expanded={auf} className="fassbar" style={{ textAlign: 'left', background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: '4px 0', minHeight: 44 }}>
-          <span style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, fontWeight: 600 }}>{k.name}{istMuss && <span style={{ fontSize: 11, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '0 6px' }}>Muss</span>}</span>
-          <span style={{ display: 'block', fontSize: 12, color: C.inkLeise }}>{messung ? `Aus den Daten: ${messung.label}` : 'Frage im Gespräch'}{k.alt ? ' · ersetzt das alte Feld' : ''}{k.gewicht && k.gewicht !== 1 ? ` · Gewicht ×${punkteText(k.gewicht)}` : ''}</span>
+          <span style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, fontWeight: 600 }}>{k.name}{istMuss && <span style={{ fontSize: 12, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '0 6px' }}>Muss</span>}</span>
+          <span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkLeise }}>{messung ? `Aus den Daten: ${messung.label}` : 'Frage im Gespräch'}{k.alt ? ' · ersetzt das alte Feld' : ''}{k.gewicht && k.gewicht !== 1 ? ` · Gewicht ×${punkteText(k.gewicht)}` : ''}</span>
         </button>
-        <span style={{ fontSize: 12.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>max. {punkteText(max)}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>max. {punkteText(max)}</span>
         <button type="button" onClick={() => setAuf(!auf)} aria-label={auf ? 'Zuklappen' : 'Aufklappen'} className="fassbar" style={{ width: 44, height: 44, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', transform: auf ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>▾</button>
       </div>
       {auf && (
@@ -117,7 +117,7 @@ function KriteriumZeile({ k, seite, onAender, onEntfernen, istMuss }: { k: Scori
               </div>
             ))}
             {k.quelle === 'frage' && k.stufen.length < 8 && <div><Knopf leise onClick={() => onAender(x => ({ ...x, stufen: [...x.stufen, stufeNeu(x)] }))}>+ Stufe</Knopf></div>}
-            {s_deckel(k) && <div style={{ fontSize: 12, color: C.inkLeise }}>{s_deckel(k)}</div>}
+            {s_deckel(k) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{s_deckel(k)}</div>}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button type="button" onClick={() => (sicher ? onEntfernen() : setSicher(true))} className="fassbar" style={{ minHeight: 44, padding: '8px 14px', borderRadius: 11, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.kritisch, border: `1px solid ${LEUCHT.kritisch}55`, background: sicher ? `${LEUCHT.kritisch}22` : 'transparent' }}>{sicher ? 'Wirklich entfernen?' : 'Kriterium entfernen'}</button>
@@ -144,7 +144,7 @@ function MussEditor({ e, setE }: { e: ScoringEinstellungen; setE: (f: (e: Scorin
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {kriterien.filter(k => k.quelle === 'frage').map(k => { const an = m.kriterien.includes(k.id); return (
                 <button key={k.id} type="button" aria-pressed={an} onClick={() => aender(i, x => { const ids = an ? x.kriterien.filter(y => y !== k.id) : [...x.kriterien, k.id]; return { ...x, kriterien: ids, mindestens: Math.max(1, Math.min(x.mindestens, ids.length || 1)) }; })} className="fassbar"
-                  style={{ minHeight: 40, padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 600, color: C.ink, border: `1px solid ${an ? LEUCHT.achtung : 'rgba(255,255,255,.12)'}`, background: an ? `${LEUCHT.achtung}1F` : 'transparent' }}>{an ? '✓ ' : ''}{k.name}</button>
+                  style={{ minHeight: 40, padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, color: C.ink, border: `1px solid ${an ? LEUCHT.achtung : 'rgba(255,255,255,.12)'}`, background: an ? `${LEUCHT.achtung}1F` : 'transparent' }}>{an ? '✓ ' : ''}{k.name}</button>
               ); })}
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', fontSize: TYP.bedien }}>
@@ -152,7 +152,7 @@ function MussEditor({ e, setE }: { e: ScoringEinstellungen; setE: (f: (e: Scorin
               <span>davon auf einer Stufe mit mindestens</span><Zahlfeld wert={m.stufePunkte} onWert={n => aender(i, x => ({ ...x, stufePunkte: n }))} min={0} max={100} schritt={0.5} breite={72} aria="Mindestpunkte der Stufe" /><span>Punkten</span>
               <button type="button" onClick={() => setE(x => { const n = kopie(x); n.sales.muss = n.sales.muss.filter((_, j) => j !== i); return n; })} className="fassbar" style={{ marginLeft: 'auto', minHeight: 44, padding: '6px 12px', background: 'none', border: 'none', color: LEUCHT.kritisch, cursor: 'pointer', fontSize: TYP.bedien }}>Regel entfernen</button>
             </div>
-            <div style={{ fontSize: 12, color: C.inkLeise }}>{m.kriterien.length ? (m.kriterien.length === 1 ? name(m.kriterien[0]) : m.mindestens === 1 ? m.kriterien.map(name).join(' oder ') : `mindestens ${m.mindestens} von ${m.kriterien.map(name).join(', ')}`) : 'Wähle mindestens ein Kriterium.'}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{m.kriterien.length ? (m.kriterien.length === 1 ? name(m.kriterien[0]) : m.mindestens === 1 ? m.kriterien.map(name).join(' oder ') : `mindestens ${m.mindestens} von ${m.kriterien.map(name).join(', ')}`) : 'Wähle mindestens ein Kriterium.'}</div>
           </div>
         ))}
         {!e.sales.muss.length && <div style={klein}>Keine Muss-Kriterien — dann entscheiden allein die Punkte.</div>}
@@ -212,7 +212,7 @@ export function ScoringSeite({ api, seite, z, i = 0 }: { api: CrmApi; seite: Sco
         <Karte key={t.id} i={i + 2 + ti}>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 10, alignItems: 'center', marginBottom: 6 }}>
             <input value={t.name} onChange={ev => setEntwurf(x => { const k = kopie(x); k[seite].teile[ti].name = ev.target.value; return k; })} maxLength={60} aria-label="Name des Blocks" style={{ ...eingabe, fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 17, background: 'transparent', border: '1px solid transparent', padding: '6px 8px' }} />
-            <span style={{ fontSize: 12.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>Block max. {punkteText(maxPunkte({ ...e, [seite]: { ...s, teile: [t] } } as ScoringEinstellungen, seite))}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>Block max. {punkteText(maxPunkte({ ...e, [seite]: { ...s, teile: [t] } } as ScoringEinstellungen, seite))}</span>
           </div>
           {t.kriterien.map((k, ki) => (
             <KriteriumZeile key={k.id} k={k} seite={seite} istMuss={musse.has(k.id)}
@@ -235,7 +235,7 @@ export function ScoringSeite({ api, seite, z, i = 0 }: { api: CrmApi; seite: Sco
                 <Knopf leise aus={!(neuFrage[t.id] ?? '').trim()} onClick={() => { const n = (neuFrage[t.id] ?? '').trim(); if (n) { setEntwurf(x => kriteriumHinzufuegen(x, 'sales', t.id, frageNeu(x, n))); setNeuFrage(w => ({ ...w, [t.id]: '' })); } }}>+ Frage hinzufügen</Knopf>
               </>
             )}
-            {s.teile.length > 1 && <button type="button" onClick={() => setEntwurf(x => teilEntfernen(x, seite, t.id))} className="fassbar" style={{ marginLeft: 'auto', minHeight: 44, padding: '6px 12px', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>Block entfernen</button>}
+            {s.teile.length > 1 && <button type="button" onClick={() => setEntwurf(x => teilEntfernen(x, seite, t.id))} className="fassbar" style={{ marginLeft: 'auto', minHeight: 44, padding: '6px 12px', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Block entfernen</button>}
           </div>
         </Karte>
       ))}
@@ -292,9 +292,9 @@ export function ScoringAktionen({ api, z }: { api: CrmApi; z: ScoringEntwurf }) 
     <Karte i={0} style={{ position: 'sticky', bottom: 12, zIndex: 20 }}>
       <div style={{ display: 'grid', gap: 10 }}>
         {z.wiederhergestellt && <div role="status" style={{ ...klein, color: LEUCHT.achtung }}>Dein Entwurf von vorhin ist wieder da — noch nicht gespeichert.</div>}
-        {z.hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>✓ {z.hinweis}</div>}
-        {z.fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{z.fehler}</div>}
-        {!z.fehler && z.geaendert && fehlerText && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{fehlerText}{z.fehlerLive.length > 1 ? ` (+ ${z.fehlerLive.length - 1} weitere)` : ''}</div>}
+        {z.hinweis && <Hinweis art="gut" rolle="status">✓ {z.hinweis}</Hinweis>}
+        {z.fehler && <Hinweis art="kritisch" rolle="alert">{z.fehler}</Hinweis>}
+        {!z.fehler && z.geaendert && fehlerText && <Hinweis art="kritisch" rolle="alert">{fehlerText}{z.fehlerLive.length > 1 ? ` (+ ${z.fehlerLive.length - 1} weitere)` : ''}</Hinweis>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Knopf aus={!z.geaendert || z.laeuft || z.fehlerLive.length > 0} onClick={() => z.speichern()}>{z.geaendert ? 'Speichern' : 'Gespeichert'}</Knopf>
           <Knopf leise aus={!z.geaendert} onClick={z.verwerfen}>Verwerfen</Knopf>
@@ -302,7 +302,7 @@ export function ScoringAktionen({ api, z }: { api: CrmApi; z: ScoringEntwurf }) 
           <Knopf leise onClick={() => setDialog('standard')}>Auf Standard zurück</Knopf>
           <Knopf leise onClick={() => setDialog('bisherig')}>Bisherige Rechnung (bis 03.10.)</Knopf>
           {z.daten?.zurueckMoeglich && <Knopf leise aus={z.laeuft} onClick={() => z.aktion('zurueck')}>Letzte Änderung zurücknehmen</Knopf>}
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: C.inkLeise }}>{z.geaendert ? 'Ungespeichert' : `${quelle === 'bisherig' ? 'Bisherige Rechnung' : quelle === 'eigen' ? 'Eigene Fassung' : 'Standard'}${von ? ` · zuletzt ${von.von}, ${von.am.slice(8, 10)}.${von.am.slice(5, 7)}.` : ''}`}</span>
+          <span style={{ marginLeft: 'auto', fontSize: TYP.bedien, color: C.inkLeise }}>{z.geaendert ? 'Ungespeichert' : `${quelle === 'bisherig' ? 'Bisherige Rechnung' : quelle === 'eigen' ? 'Eigene Fassung' : 'Standard'}${von ? ` · zuletzt ${von.von}, ${von.am.slice(8, 10)}.${von.am.slice(5, 7)}.` : ''}`}</span>
         </div>
       </div>
       {dialog && z.daten && <UebernehmenDialog api={api} art={dialog} daten={z.daten} aktuell={aktuell} laeuft={z.laeuft} onZu={() => setDialog(null)} onJa={async () => { await z.aktion(dialog); setDialog(null); }} />}

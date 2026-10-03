@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { feld, LEUCHT } from '../schlank';
+import { feld, LEUCHT, Hinweis } from '../ui';
 import { wertelisteZurWahl, SUCHE_AB, WERT_MIN, WERT_MAX } from '@/lib/crm/wertelisten';
 import { markttraktion } from '@/lib/crm/adresse';
 import Link from 'next/link';
@@ -116,7 +116,7 @@ export function WertelistenWahl({ liste, werte, aktiv, mehrfach, onWahl, api, fa
     return (
       <button key={o.wert} type="button" onClick={e => { e.stopPropagation(); waehle(o.wert); }} className="fassbar" aria-pressed={an}
         title={o.fremd ? 'Bestandswert — steht in keiner Werteliste' : o.fest ? 'Vorbelegt' : 'Eigener Wert'}
-        style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${an ? farbe : o.fremd ? `${LEUCHT.achtung}66` : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : o.fremd ? LEUCHT.achtung : C.inkDim, whiteSpace: 'nowrap' }}>
+        style={{ fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${an ? farbe : o.fremd ? `${LEUCHT.achtung}66` : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : o.fremd ? LEUCHT.achtung : C.inkDim, whiteSpace: 'nowrap' }}>
         {an && mehrfach ? '✓ ' : ''}{o.wert}
       </button>
     );
@@ -132,22 +132,22 @@ export function WertelistenWahl({ liste, werte, aktiv, mehrfach, onWahl, api, fa
       <div role={mehrfach ? 'group' : 'radiogroup'} aria-label={`${LISTE_LABEL[liste]} wählen`}
         style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignContent: 'flex-start', maxHeight: 136, overflowY: 'auto', padding: '2px 2px 2px 0', scrollbarWidth: 'thin' }}>
         {optionen.map(pille)}
-        {!optionen.length && <span style={{ fontSize: 12.5, color: C.inkLeise, padding: '5px 0' }}>Nichts passt zu „{suche}“ — unten „+ neu“.</span>}
+        {!optionen.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '5px 0' }}>Nichts passt zu „{suche}“ — unten „+ neu“.</span>}
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         {neu === null
-          ? <button type="button" onClick={() => { setNeu(suche.trim()); setFehler(null); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: SCHRIFT.text, fontWeight: 600 }}>+ neu</button>
+          ? <button type="button" onClick={() => { setNeu(suche.trim()); setFehler(null); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, fontFamily: SCHRIFT.text, fontWeight: 600 }}>+ neu</button>
           : <>
             <input ref={neuFeld} value={neu} maxLength={WERT_MAX} disabled={laeuft} placeholder={`Neue ${LISTE_LABEL[liste]} (${WERT_MIN}–${WERT_MAX} Zeichen) — Enter legt an`} aria-label={`Neue ${LISTE_LABEL[liste]}`}
               onChange={e => setNeu(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void anlegen(); } if (e.key === 'Escape') { e.stopPropagation(); setNeu(null); setFehler(null); } }}
               style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', flex: 1, minWidth: 180 }} />
-            <button type="button" onClick={() => void anlegen()} disabled={laeuft || !neu.trim()} className="fassbar" style={{ background: 'none', border: `1px solid ${C.aktiv}66`, color: C.aktiv, borderRadius: 999, cursor: laeuft ? 'wait' : 'pointer', fontSize: 12, padding: '4px 10px', fontFamily: SCHRIFT.text, fontWeight: 600, opacity: laeuft || !neu.trim() ? .5 : 1 }}>{laeuft ? 'legt an …' : 'Anlegen'}</button>
-            <button type="button" onClick={() => { setNeu(null); setFehler(null); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: SCHRIFT.text }}>abbrechen</button>
+            <button type="button" onClick={() => void anlegen()} disabled={laeuft || !neu.trim()} className="fassbar" style={{ background: 'none', border: `1px solid ${C.aktiv}66`, color: C.aktiv, borderRadius: 999, cursor: laeuft ? 'wait' : 'pointer', fontSize: TYP.bedien, padding: '4px 10px', fontFamily: SCHRIFT.text, fontWeight: 600, opacity: laeuft || !neu.trim() ? .5 : 1 }}>{laeuft ? 'legt an …' : 'Anlegen'}</button>
+            <button type="button" onClick={() => { setNeu(null); setFehler(null); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, fontFamily: SCHRIFT.text }}>abbrechen</button>
           </>}
-        <Link href={markttraktion('stammdaten', 'wertelisten')} style={{ marginLeft: 'auto', fontSize: 11.5, color: C.inkLeise, textDecoration: 'none' }}>Pflegen ›</Link>
+        <Link href={markttraktion('stammdaten', 'wertelisten')} style={{ marginLeft: 'auto', fontSize: 12, color: C.inkLeise, textDecoration: 'none' }}>Pflegen ›</Link>
       </div>
-      {fehler && <div role="alert" style={{ fontSize: 12, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
     </div>
   );
 }

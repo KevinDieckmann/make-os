@@ -13,7 +13,7 @@
 
 import { useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Karte, Leer, Knopf } from '../../schlank';
+import { Karte, Leer, Knopf } from '../../ui';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import type { BesucheAnsicht } from '@/lib/crm/adresse';
 import { WELT_FARBE } from '../Ueberblick';
@@ -49,7 +49,7 @@ export function Besuche({ api, zuKontakt, zuFirma, ansicht, k, onAnsicht, onAkte
         <div style={{ overflowX: 'auto', scrollbarWidth: 'none', flex: '1 1 auto' }}>
           <Pillen einzeilig farbe={WELT_FARBE.event} liste={ANSICHTEN} aktiv={aktiv} onWahl={onAnsicht} />
         </div>
-        {aktiv === 'kalender' && <Knopf onClick={() => setNeu(!neu)}>{neu ? 'Abbrechen' : '+ Event'}</Knopf>}
+        {aktiv === 'kalender' && <Knopf haupt onClick={() => setNeu(!neu)}>{neu ? 'Abbrechen' : '+ Event'}</Knopf>}
       </div>
       {k && !akteEvent && <div role="status" style={{ fontSize: 13, color: C.inkLeise }}>Dieses Event gibt es unter „Events“ nicht (mehr).</div>}
       {aktiv === 'kalender' && neu && <NeuesBesuch api={api} crm={crm} onFertig={id => { setNeu(false); onAkte(id); }} />}

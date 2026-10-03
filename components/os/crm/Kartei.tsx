@@ -24,7 +24,7 @@ import { useNachfrage } from './Nachfrage';
 import { localDay } from '@/lib/zeit';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT } from '../ui';
 import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -197,8 +197,8 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'personen' ? 'Suchen: Name, Firma, Branche, Ort …  ( / )' : 'Firma, Domain, Branche, Ort …'} aria-label="Suchen" style={{ ...feld, flex: 1, minWidth: 200, padding: '9px 13px', fontSize: TYP.bedien }} />
       {modus === 'personen' && zuRunde && <><Knopf leise onClick={() => zuRunde('kreis')}>Kreis-Runde</Knopf><Knopf leise onClick={() => zuRunde('chancen')}>Qualifizierungs-Runde</Knopf><Knopf leise onClick={() => zuRunde('vernetzen')}>Vernetzen-Runde</Knopf></>}
-      {modus === 'personen' ? <Knopf onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>
-        : <Knopf onClick={async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const da = bestehendeFirma(api.crm?.stand.firmen ?? [], n); if (da) { zuFirma(da.id); return; } const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
+      {modus === 'personen' ? <Knopf haupt onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>
+        : <Knopf haupt onClick={async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const da = bestehendeFirma(api.crm?.stand.firmen ?? [], n); if (da) { zuFirma(da.id); return; } const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
       {nachfrage}
     </div>
   );
@@ -225,11 +225,11 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
               <span><b style={{ color: C.ink }}>{eingegrenzt ? treffer.length : kontakte.length}</b> {eingegrenzt ? 'Treffer' : 'Personen'}</span>
               <span title="Mail oder Telefon vorhanden"><b style={{ color: C.ink }}>{erreichbar}</b> erreichbar</span>
               <span title="Werbung per Mail zulässig (Einwilligung oder Bestandskunde)"><b style={{ color: C.ink }}>{freigegeben}</b> Mail freigegeben</span>
-              {breit && <span style={{ marginLeft: 'auto', color: C.inkLeise, fontSize: 12 }}>/ suchen · j k blättern · Enter öffnen</span>}
+              {breit && <span style={{ marginLeft: 'auto', color: C.inkLeise, fontSize: TYP.bedien }}>/ suchen · j k blättern · Enter öffnen</span>}
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
               <WerFilter wahl={wer} onWahl={w => { setWer(w); setMehr(80); }} ich={ich} zahlen={werZahlen} />
-              <span style={{ fontSize: 12, color: C.inkLeise }}>nach „Zuständig“ · ohne Eintrag bei {nameVon('kevin')} (Sales-Verantwortung)</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>nach „Zuständig“ · ohne Eintrag bei {nameVon('kevin')} (Sales-Verantwortung)</span>
               <span style={{ marginLeft: 'auto' }} title="BEAN: Bestandskunde · Ehemalig · Angebotskunde · Neu — von Hand oder abgeleitet">
                 <Wahl label="BEAN" klein liste={BEAN_IDS.map(b => ({ id: b, label: `${b} · ${BEAN_LABEL[b]} · ${bnZahl.get(b) ?? 0}`, hinweis: BEAN_HINWEIS[b] }))}
                   wert={bn} leer="BEAN: alle ▾" farbe={bn ? BEAN_FARBE[bn] : undefined} onWahl={b => { setBn(b); setMehr(80); }} onLeeren={() => setBn(null)} leerenLabel="alle Gruppen" />
@@ -270,12 +270,12 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
                     ))}
                   </div>
                 )}
-                <div style={{ fontSize: 12, color: C.inkLeise }}>Gleicher Name und ein zweites Merkmal (Firma, Domain, LinkedIn, Telefon). Verlauf, Einwilligungen und die zweite Mailadresse bleiben erhalten; eine Sperre gilt weiter. Vor dem Zusammenführen steht, was wandert; 30 Tage lang rückgängig.</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gleicher Name und ein zweites Merkmal (Firma, Domain, LinkedIn, Telefon). Verlauf, Einwilligungen und die zweite Mailadresse bleiben erhalten; eine Sperre gilt weiter. Vor dem Zusammenführen steht, was wandert; 30 Tage lang rückgängig.</div>
               </div>
             ) : (
-              <>
+              <div className="kartei-liste">
                 {breit && (
-                  <div style={{ display: 'grid', gridTemplateColumns: KARTEI_SPALTEN, gap: 12, padding: '0 8px 6px', fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                  <div className="kartei-zeile" style={{ display: 'grid', gap: 12, padding: '0 8px 6px', fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                     <span /><span /><span>Name</span><span>Firma</span><span title="BEAN-Kundengruppe">BEAN</span><span>Lifecycle</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
                   </div>
                 )}
@@ -290,7 +290,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
                 </div>
                 {treffer.length > mehr && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehr(mehr + 150)}>Weitere {Math.min(150, treffer.length - mehr)} zeigen</Knopf></div>}
                 {!treffer.length && <Leer>Niemand gefunden. Suche zurücksetzen oder eine andere Ansicht wählen.</Leer>}
-              </>
+              </div>
             )}
           </Karte>
         </Spalte>
@@ -306,7 +306,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   );
 }
 
-const KARTEI_SPALTEN = '10px 22px minmax(0,1.6fr) minmax(0,1.2fr) 40px 84px 96px 64px 64px';
+// Die Spalten stehen in globals.css (`.kartei-zeile`): ist die Karte schmal (Rechner mit Leiste, zwei Spalten), fallen Lifecycle, Phase und Kanal weg — Name und Firma bleiben lesbar.
 
 function KarteiZeile({ k, firma, lifecycle, bean, breit, aktiv, markiert, chance, mandat, heute, onClick }: { k: Kontakt; firma?: string; lifecycle?: { phase: LifecyclePhase; vonHand: boolean; grund: string }; bean?: BeanErgebnis; breit: boolean; aktiv: boolean; markiert: boolean; chance: boolean; mandat: boolean; heute: string; onClick: () => void }) {
   const kanal = besterKanal(k, { hatMandat: mandat, hatChance: chance });
@@ -318,7 +318,7 @@ function KarteiZeile({ k, firma, lifecycle, bean, breit, aktiv, markiert, chance
         <Punkt farbe={ausgenommen(k) ? LEUCHT.kritisch : phaseFarbe(k.lebensphase)} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: TYP.body, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{f && <span style={{ color: C.inkLeise }}> · {f}</span>}</div>
-          <div style={{ fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[lifecycle ? LIFECYCLE_KURZ[lifecycle.phase] : '', k.position ?? k.jobtitel, k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : ''].filter(Boolean).join(' · ')}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[lifecycle ? LIFECYCLE_KURZ[lifecycle.phase] : '', k.position ?? k.jobtitel, k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : ''].filter(Boolean).join(' · ')}</div>
         </div>
         {bean && <BeanBadge bean={bean.bean} vonHand={bean.vonHand} grund={bean.grund} />}
         {chance && <Chip farbe={LEUCHT.business}>Deal</Chip>}
@@ -327,26 +327,26 @@ function KarteiZeile({ k, firma, lifecycle, bean, breit, aktiv, markiert, chance
     );
   }
   return (
-    <div onClick={onClick} className="fassbar" title={[anzeigename(k), k.position, f].filter(Boolean).join(' · ')}
-      style={{ display: 'grid', gridTemplateColumns: KARTEI_SPALTEN, gap: 12, alignItems: 'center', padding: '8px 8px', minHeight: 44, borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', fontSize: TYP.bedien,
+    <div onClick={onClick} className="fassbar kartei-zeile" title={[anzeigename(k), k.position, f].filter(Boolean).join(' · ')}
+      style={{ display: 'grid', gap: 12, alignItems: 'center', padding: '8px 8px', minHeight: 44, borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', fontSize: TYP.bedien,
         background: aktiv ? 'rgba(255,255,255,.07)' : markiert ? 'rgba(88,217,205,.07)' : 'transparent', borderRadius: aktiv || markiert ? 8 : 0 }}>
       <Punkt farbe={ausgenommen(k) ? LEUCHT.kritisch : phaseFarbe(k.lebensphase)} groesse={8} />
       <span title={`Zuständig: ${nameVon(haeltBeziehung(k))}${k.besitzer ? '' : ' (Sales-Verantwortung)'}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{k.prio === 'A' && <span style={{ color: LEUCHT.gut, marginLeft: 6, fontSize: 11 }}>A</span>}{a14?.faellig && <span style={{ color: LEUCHT.kritisch, marginLeft: 6, fontSize: 11 }}>Art. 14</span>}</div>
-        <div style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : (k.position ?? k.jobtitel ?? '')}</div>
+        <div style={{ fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{k.prio === 'A' && <span style={{ color: LEUCHT.gut, marginLeft: 6, fontSize: 12 }}>A</span>}{a14?.faellig && <span style={{ color: LEUCHT.kritisch, marginLeft: 6, fontSize: 12 }}>Art. 14</span>}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : (k.position ?? k.jobtitel ?? '')}</div>
       </div>
       <div style={{ color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f ?? '—'}</div>
       <div>{bean ? <BeanBadge bean={bean.bean} vonHand={bean.vonHand} grund={bean.grund} /> : '—'}</div>
       <div title={lifecycle ? `${LIFECYCLE_LABEL[lifecycle.phase]} — ${lifecycle.grund}` : undefined}
-        style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: lifecycle ? lifecycleFarbe(lifecycle.phase) : C.inkLeise, opacity: lifecycle?.vonHand ? 1 : 0.6, fontStyle: lifecycle?.vonHand ? 'normal' : 'italic' }}>
+        style={{ fontSize: TYP.bedien, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: lifecycle ? lifecycleFarbe(lifecycle.phase) : C.inkLeise, opacity: lifecycle?.vonHand ? 1 : 0.6, fontStyle: lifecycle?.vonHand ? 'normal' : 'italic' }}>
         {lifecycle ? LIFECYCLE_KURZ[lifecycle.phase] : '—'}
       </div>
-      <div style={{ color: k.lebensphase && k.lebensphase !== 'kontakt' ? phaseFarbe(k.lebensphase) : C.inkLeise, fontSize: 12, whiteSpace: 'nowrap' }}>{phaseLabel(k.lebensphase)}{k.kreis ? ` · ${k.kreis}` : ''}{chance ? ' ·◆' : ''}</div>
-      <div title={kanal ? `${kanal.kanal}: ${kanal.grund}` : 'kein zulässiger Kanal'} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.inkDim }}>
+      <div style={{ color: k.lebensphase && k.lebensphase !== 'kontakt' ? phaseFarbe(k.lebensphase) : C.inkLeise, fontSize: TYP.bedien, whiteSpace: 'nowrap' }}>{phaseLabel(k.lebensphase)}{k.kreis ? ` · ${k.kreis}` : ''}{chance ? ' ·◆' : ''}</div>
+      <div title={kanal ? `${kanal.kanal}: ${kanal.grund}` : 'kein zulässiger Kanal'} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: TYP.bedien, color: C.inkDim }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: kanal ? AMPEL_FARBE[kanal.farbe] : C.inkLeise }} />{kanal ? ({ telefon: 'Tel', mail: 'Mail', linkedin: 'LI', vernetzen: 'Netz', newsletter: 'NL', einladung: 'Einl' } as Record<string, string>)[kanal.kanal] : '—'}
       </div>
-      <div style={{ textAlign: 'right', fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{k.letzterKontakt ? datum(k.letzterKontakt, heute) : '—'}</div>
+      <div style={{ textAlign: 'right', fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{k.letzterKontakt ? datum(k.letzterKontakt, heute) : '—'}</div>
     </div>
   );
 }
@@ -394,10 +394,10 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
       <Feldzeile label="Lebensphase"><Wahl label="Lebensphase" liste={PHASEN} wert={e.lebensphase} onWahl={lebensphase => setE({ ...e, lebensphase })} /></Feldzeile>
       <Feldzeile label="Herkunft"><Wahl label="Herkunft" liste={HERKUNFT.map(h => ({ id: h.id, label: h.label, ...(h.fremd ? { hinweis: 'Art. 14' } : {}) }))} wert={e.herkunft} onWahl={herkunft => setE({ ...e, herkunft })} onLeeren={() => setE({ ...e, herkunft: undefined })} /></Feldzeile>
       <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={e.anrede} onWahl={a => setE({ ...e, anrede: a as 'Sie' | 'Du' })} /></Feldzeile>
-      {dublette && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dublette)} — nicht doppelt anlegen.</div>}
-      {!dublette && namensgleich && <div style={{ fontSize: 12.5, color: LEUCHT.achtung }}>Achtung: {anzeigename(namensgleich)}{namensgleich.firma ? ` (${namensgleich.firma})` : ''} gibt es schon — gleiche Person?</div>}
-      {e.firma.trim() && !firma && <div style={{ fontSize: 12, color: C.inkLeise }}>Neue Firma „{e.firma.trim()}“ wird mit angelegt.</div>}
-      <div style={{ display: 'flex', gap: 8 }}><Knopf aus={!ok} onClick={anlegen}>Anlegen</Knopf><Knopf leise onClick={() => onFertig(null)}>Abbrechen</Knopf><span style={{ fontSize: 12, color: C.inkLeise, alignSelf: 'center' }}>* Pflichtfeld · Herkunft bestimmt die Art.-14-Pflicht</span></div>
+      {dublette && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dublette)} — nicht doppelt anlegen.</div>}
+      {!dublette && namensgleich && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Achtung: {anzeigename(namensgleich)}{namensgleich.firma ? ` (${namensgleich.firma})` : ''} gibt es schon — gleiche Person?</div>}
+      {e.firma.trim() && !firma && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Neue Firma „{e.firma.trim()}“ wird mit angelegt.</div>}
+      <div style={{ display: 'flex', gap: 8 }}><Knopf aus={!ok} onClick={anlegen}>Anlegen</Knopf><Knopf leise onClick={() => onFertig(null)}>Abbrechen</Knopf><span style={{ fontSize: TYP.bedien, color: C.inkLeise, alignSelf: 'center' }}>* Pflichtfeld · Herkunft bestimmt die Art.-14-Pflicht</span></div>
     </div>
   );
 }

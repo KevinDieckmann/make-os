@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Liste, Zeile, Zahl, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Knopf, Liste, Zeile, Zahl, LEUCHT } from '../../ui';
 import { EXPORTE, EXPORT_INFO } from '@/lib/crm/export';
 import { anzeigename, type Konflikt } from '@/lib/make-one/crm';
 import { leererKonfliktStand, type KonfliktStand } from '@/lib/crm/import-konflikte';
@@ -120,7 +120,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
           <b style={{ color: C.ink }}> Online gewinnt:</b> die Liste füllt nur leere Felder; weicht sie von etwas ab, das hier von Hand gepflegt wurde, landet das in der Konfliktliste unten.
           Neue Zeilen kommen dazu, die Arbeit in der Markttraktion (Stufe, Verlauf, Zuständig, Kreis, Einwilligungen, Werbesperre) bleibt unberührt. Danach laufen der Firmen-Abgleich und die Dublettenprüfung.
         </div>
-        {d.letzterImport && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>Zuletzt: {datum(d.letzterImport.zeit)} — {d.letzterImport.text}</div>}
+        {d.letzterImport && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Zuletzt: {datum(d.letzterImport.zeit)} — {d.letzterImport.text}</div>}
         <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <label className="fassbar" style={{ display: 'inline-block' }}>
             <span style={{ display: 'inline-block', padding: '9px 15px', borderRadius: 11, fontSize: TYP.bedien, fontWeight: 700, cursor: laeuft ? 'default' : 'pointer', background: `${LEUCHT.gut}22`, color: LEUCHT.gut, border: `1px solid ${LEUCHT.gut}55` }}>{laeuft ? 'Rechnet …' : '1 · CSV-Datei wählen'}</span>
@@ -149,14 +149,14 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
               <Zahl wert={String(vorschau.ohneBesitzer)} label="ohne Zuständige/n" />
             </div>
             {(vorschau.gesperrt ?? 0) > 0 && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.ink }}><b>{vorschau.gesperrt} gesperrt übersprungen</b> — stehen auf der Sperrliste (Werbesperre oder gelöscht) und werden nicht angelegt.</div>}
-            {(vorschau.uebergang ?? 0) > 0 && <div style={{ marginTop: 6, fontSize: 12.5, color: C.inkLeise }}>{vorschau.uebergang} bestehende Kontakte über die frühere Schlüsselform wiedererkannt (keine Dubletten).</div>}
+            {(vorschau.uebergang ?? 0) > 0 && <div style={{ marginTop: 6, fontSize: TYP.bedien, color: C.inkLeise }}>{vorschau.uebergang} bestehende Kontakte über die frühere Schlüsselform wiedererkannt (keine Dubletten).</div>}
             {vorschau.pruefung && Object.values(vorschau.pruefung).some(n => n > 0) && (
               <div style={{ marginTop: 10 }}>
                 <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Datei prüfen: {(Object.keys(vorschau.pruefung) as WarnArt[]).filter(a => vorschau.pruefung![a] > 0).map(a => `${vorschau.pruefung![a]} × ${WARN_LABEL[a]}`).join(' · ')}</div>
                 <Liste>
                   {(vorschau.warnungen ?? []).slice(0, 12).map((w, i) => <Zeile key={`${w.zeile}|${w.spalte ?? ''}|${i}`} titel={<>Zeile {w.zeile}{w.spalte ? <span style={{ color: C.inkLeise }}> · {w.spalte}</span> : null}</>} unter={<span style={{ whiteSpace: 'normal' }}>{w.text}</span>} />)}
                 </Liste>
-                {(vorschau.warnungen?.length ?? 0) > 12 && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6 }}>… und weitere — am besten die Datei als CSV aus der Quelle neu speichern (Spalten als Text).</div>}
+                {(vorschau.warnungen?.length ?? 0) > 12 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>… und weitere — am besten die Datei als CSV aus der Quelle neu speichern (Spalten als Text).</div>}
               </div>
             )}
             {vorschau.abgelehnt && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Diese Datei würde den Bestand halbieren — Übernehmen ist gesperrt.</div>}
@@ -170,13 +170,13 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
 
       {(offen.length > 0 || stand.moeglicheDubletten.length > 0 || stand.ohneBesitzer > 0) && (
         <Karte i={1} akzent={offen.length ? LEUCHT.achtung : undefined}>
-          <Ueberschrift rechts={stand.stand ? <span style={{ fontSize: 12.5, color: C.inkLeise }}>Import {datum(stand.stand)}</span> : undefined}>Konflikte entscheiden {offen.length ? `· ${offen.length} offen` : '· alle entschieden'}</Ueberschrift>
+          <Ueberschrift rechts={stand.stand ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Import {datum(stand.stand)}</span> : undefined}>Konflikte entscheiden {offen.length ? `· ${offen.length} offen` : '· alle entschieden'}</Ueberschrift>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Hier steht die Kartei anders als die Liste, und das Feld wurde online von Hand gepflegt. Nichts davon wurde überschrieben — je Zeile entscheiden. Was entschieden ist, fragt der nächste Import bei einer neuen Abweichung wieder.</div>
           {stand.ohneBesitzer > 0 && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.ink }}><b>{stand.ohneBesitzer} ohne Zuständige/n</b> — in der Qualifizierungsrunde übernehmen.</div>}
           {offen.length > 0 && (
             <Liste>
               {offen.slice(0, 60).map(k => (
-                <Zeile key={`${k.kontaktId}|${k.feld}`} titel={<>{name(k.kontaktId)} <span style={{ color: C.inkLeise }}>· {FELD_LABEL[k.feld] ?? k.feld}</span>{k.hinweis && <span title="Die Liste nennt eine andere Firma — beim Übernehmen wird nachgefragt: Jobwechsel, zusätzliche Firma oder Korrektur." style={{ marginLeft: 8, padding: '1px 8px', borderRadius: 999, fontSize: 12, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}66`, background: `${LEUCHT.achtung}14` }}>{k.hinweis}</span>}</>}
+                <Zeile key={`${k.kontaktId}|${k.feld}`} titel={<>{name(k.kontaktId)} <span style={{ color: C.inkLeise }}>· {FELD_LABEL[k.feld] ?? k.feld}</span>{k.hinweis && <span title="Die Liste nennt eine andere Firma — beim Übernehmen wird nachgefragt: Jobwechsel, zusätzliche Firma oder Korrektur." style={{ marginLeft: 8, padding: '1px 8px', borderRadius: 999, fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}66`, background: `${LEUCHT.achtung}14` }}>{k.hinweis}</span>}</>}
                   unter={<span style={{ whiteSpace: 'normal' }}><span style={{ color: C.aktiv }}>online:</span> {wert(k.online)} &nbsp;·&nbsp; <span style={{ color: LEUCHT.achtung }}>Liste:</span> {wert(k.liste)}</span>}
                   rechts={<div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                     <Knopf leise aus={laeuft} onClick={() => void entscheiden(k, 'online')}>Online behalten</Knopf>
@@ -185,7 +185,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
               ))}
             </Liste>
           )}
-          {offen.length > 60 && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>… und {offen.length - 60} weitere — nach dem Entscheiden rücken sie nach.</div>}
+          {offen.length > 60 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>… und {offen.length - 60} weitere — nach dem Entscheiden rücken sie nach.</div>}
           {stand.moeglicheDubletten.length > 0 && (
             <div style={{ marginTop: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -194,7 +194,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
               </div>
               {zeigeDubletten && (
                 <>
-                  <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6 }}>Nur Vorschläge, nichts wurde verschmolzen. Sichere Paare stehen unter Kontakte › Dubletten.</div>
+                  <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Nur Vorschläge, nichts wurde verschmolzen. Sichere Paare stehen unter Kontakte › Dubletten.</div>
                   <Liste>
                     {stand.moeglicheDubletten.slice(0, 40).map((m, i) => (
                       <Zeile key={`${m.kontaktId}|${m.mitId ?? ''}|${i}`} titel={<>{name(m.kontaktId)}{m.mitId ? <span style={{ color: C.inkLeise }}> ↔ {name(m.mitId)}</span> : null}</>} unter={m.grund} />

@@ -10,7 +10,7 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Raster, Zahl, Haken, Zeile, Leer, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Raster, Zahl, Haken, Zeile, Leer, LEUCHT } from '../../ui';
 import { ANMELDUNGEN, anmeldungVon, anmeldungPatch, fuerVon, zielSchluessel, zielpersonGesperrt, linkNormal, LINK_FEHLER } from '@/lib/crm/besuche-form';
 import { besuchWirkung, besuchUrteil, zielGetroffen, FOLLOWUP_QUOTE_DEFINITION, type BesuchKontext } from '@/lib/crm/besuche';
 import { UEBERGABE_HINWEIS, ROLLE_HINWEIS } from '@/lib/crm/netzwerken-recht';
@@ -68,9 +68,9 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
         <Knopf onClick={() => router.push(WEG.netzwerken({ event: e.id }))}>Jetzt erfassen</Knopf>
       </div>
 
-      <Karte i={1} akzent={LEUCHT.beziehung}>
+      <Karte i={1} ton={LEUCHT.beziehung}>
         <Ueberschrift rechts={<span title={urteil.grund} style={{ cursor: 'help' }}><Chip farbe={urteil.art === 'frueh' ? C.inkDim : URTEIL_FARBE[urteil.art]}>{urteil.label}</Chip></span>}>{e.titel}</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5, margin: '-4px 0 6px' }}>{urteil.art === 'frueh' ? `„${urteil.label}“: ${urteil.grund}` : urteil.grund}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5, margin: '-4px 0 6px' }}>{urteil.art === 'frueh' ? `„${urteil.label}“: ${urteil.grund}` : urteil.grund}</div>
         <BFeld label="Titel"><Feld wert={e.titel} onFertig={t => t.trim() && void setze({ titel: t.trim() })} /></BFeld>
         <BFeld label="Anmeldung">
           <Wahl<EventAnmeldung> label="Anmeldung" liste={ANMELDE} wert={a} onWahl={x => void setze(anmeldungPatch(x))} farbe={a === 'besucht' ? LEUCHT.gut : a === 'abgesagt' ? C.inkLeise : C.aktiv} />
@@ -127,9 +127,9 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
           <div key={z.kontaktId} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'grid', gap: 6 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => zuKontakt(z.kontaktId)} className="fassbar" style={{ background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontSize: TYP.body, fontWeight: 600, padding: 0, textAlign: 'left', minHeight: 32 }}>{z.name} ›</button>
-              {z.firma && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{z.firma}</span>}
+              {z.firma && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{z.firma}</span>}
               <Chip farbe={LEUCHT.beziehung}>{z.schrittText}</Chip>
-              {z.offen.length > 0 && <span style={{ fontSize: 12, color: LEUCHT.achtung }}>{z.offen[0]}{z.offen.length > 1 ? ` · +${z.offen.length - 1}` : ''}</span>}
+              {z.offen.length > 0 && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{z.offen[0]}{z.offen.length > 1 ? ` · +${z.offen.length - 1}` : ''}</span>}
             </div>
             <LinkChips links={z.links.filter(l => l.id !== 'kontakt' && l.id !== 'event') as LinkChip[]} />
           </div>
@@ -147,7 +147,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
           {w.umsatz > 0 && <Zahl wert={euro(w.umsatz)} label="gewonnen" farbe={LEUCHT.gut} />}
           {w.kostenJeKontakt !== null && <Zahl wert={euro(w.kostenJeKontakt)} label="Kosten je Kontakt" />}
         </Raster>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>{urteil.grund}{w.nachfassenOffen > 0 ? ` · ${w.nachfassenOffen} noch nachzufassen` : ''}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>{urteil.grund}{w.nachfassenOffen > 0 ? ` · ${w.nachfassenOffen} noch nachzufassen` : ''}</div>
         {(deals.length > 0 || offeneFu > 0) && (
           <div style={{ marginTop: 8 }}>
             {deals.map(c => (
@@ -169,7 +169,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
           {(e.uebergaben ?? []).length > 0 && (
             <div style={{ marginTop: 10, display: 'grid', gap: 2 }}>
               {[...(e.uebergaben ?? [])].reverse().map((u, i) => (
-                <div key={`${u.am}-${i}`} style={{ fontSize: 12.5, color: C.inkLeise }}>{datum(u.am.slice(0, 10), heute)} · {u.anzahl} {u.anzahl === 1 ? 'Kontakt' : 'Kontakte'} · an {(u.empfaengerFirmaId ? firmenMap.get(u.empfaengerFirmaId)?.name : undefined) ?? kundenName}{u.dateiname ? ` · ${u.dateiname}` : ''} · von {TEAM.find(m => m.id === u.von)?.name ?? u.von}</div>
+                <div key={`${u.am}-${i}`} style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{datum(u.am.slice(0, 10), heute)} · {u.anzahl} {u.anzahl === 1 ? 'Kontakt' : 'Kontakte'} · an {(u.empfaengerFirmaId ? firmenMap.get(u.empfaengerFirmaId)?.name : undefined) ?? kundenName}{u.dateiname ? ` · ${u.dateiname}` : ''} · von {TEAM.find(m => m.id === u.von)?.name ?? u.von}</div>
               ))}
             </div>
           )}

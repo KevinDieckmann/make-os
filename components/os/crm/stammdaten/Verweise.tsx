@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Liste, Zeile, Chip, Raster, Zahl, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Knopf, Liste, Zeile, Chip, Raster, Zahl, LEUCHT } from '../../ui';
 import { mandateLink } from '@/lib/crm/adresse';
 import { TEAM, haeltBeziehung } from '@/lib/crm/team';
 import { WELTEN } from '@/lib/crm/traktion';

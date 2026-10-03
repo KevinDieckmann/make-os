@@ -14,7 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CrmApi } from '../daten';
 import { neueId } from '../daten';
-import { Karte, Leer, Knopf } from '../../schlank';
+import { Karte, Leer, Knopf } from '../../ui';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { angebotLink } from '@/lib/crm/adresse';
 import { useAngebote } from './angebot-daten';

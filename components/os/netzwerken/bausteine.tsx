@@ -4,58 +4,16 @@
 // Alles hier ist für das iPhone gebaut: Ziele mindestens 48 px hoch, Eingabefelder mit 16 px Schrift (kleiner zoomt iOS
 // beim Antippen die Seite auf), Knöpfe über die ganze Breite. Farben und Schrift aus lib/make-one/design.ts.
 
-import { useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useSyncExternalStore, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { Check } from 'lucide-react';
-import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { eingabe, Gross, Wahl, Beschriftung, Feldzeile, Hinweis, Initialen, Schritte, Aktionsleiste, Leerzustand } from '../ui';
 
+// Die Bausteine wohnen seit 03.10. im Standard (components/os/ui, DESIGN_STANDARD.md) — hier nur noch die Namen für die Netzwerken-Dateien
+// und das, was nur Netzwerken braucht (gemerkter Wert, Tagtext, Verknüpfungs-Chips).
 export const ZIEL = 48;
-
-export const eingabe: CSSProperties = {
-  width: '100%', minHeight: ZIEL, boxSizing: 'border-box', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 12,
-  padding: '12px 14px', color: C.ink, fontFamily: SCHRIFT.text, fontSize: 16, outline: 'none', WebkitAppearance: 'none', appearance: 'none',
-};
-
-/** Großer Knopf über die ganze Breite. `ton`: Hauptaktion getönt, sonst leise. */
-export function Gross({ children, onClick, ton = 'leise', aus, href, kleinerAbstand, titel }: { children: ReactNode; onClick?: () => void; ton?: 'haupt' | 'leise' | 'gut' | 'warn'; aus?: boolean; href?: string; kleinerAbstand?: boolean; titel?: string }) {
-  const f = ton === 'gut' ? LEUCHT.gut : ton === 'warn' ? LEUCHT.achtung : C.aktiv;
-  const stil: CSSProperties = {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', minHeight: ZIEL + (kleinerAbstand ? 0 : 4), boxSizing: 'border-box', padding: '12px 16px', borderRadius: 14,
-    fontFamily: SCHRIFT.text, fontSize: 16, fontWeight: 700, textAlign: 'center', textDecoration: 'none', cursor: aus ? 'default' : 'pointer',
-    ...(aus ? { border: '1px solid transparent', background: 'rgba(255,255,255,.08)', color: C.inkLeise } : ton === 'leise' ? { border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)', color: C.ink } : TIEF.knopf(f)),
-  };
-  if (href && !aus) return <a href={href} onClick={onClick} className="fassbar" style={stil} title={titel}>{children}</a>;
-  return <button type="button" onClick={aus ? undefined : onClick} disabled={aus} className="fassbar" style={stil} title={titel}>{children}</button>;
-}
-
-/** Wahl-Chip (ein Wert aus mehreren) — mindestens 48 px hoch. */
-export function Wahl({ an, onClick, children, farbe = C.aktiv, klein }: { an: boolean; onClick: () => void; children: ReactNode; farbe?: string; klein?: boolean }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={an} className="fassbar" style={{
-      minHeight: klein ? 44 : ZIEL, padding: klein ? '8px 14px' : '10px 16px', borderRadius: 14, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: klein ? 14 : 15, fontWeight: 600, lineHeight: 1.25, textAlign: 'center',
-      border: `1px solid ${an ? TIEF.rand(farbe) : 'rgba(255,255,255,.1)'}`, background: an ? TIEF.flaeche(farbe) : 'rgba(255,255,255,.04)', color: an ? farbe : C.ink,
-    }}>{children}</button>
-  );
-}
-
-export function Beschriftung({ children, rechts }: { children: ReactNode; rechts?: ReactNode }) {
-  return <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: C.inkLeise, margin: '2px 0 6px' }}><span>{children}</span>{rechts && <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>{rechts}</span>}</div>;
-}
-
-export function Feldzeile({ label, children, fehler }: { label: string; children: ReactNode; fehler?: string }) {
-  return (
-    <label style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-      <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>{label}</span>
-      {children}
-      {fehler && <span role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{fehler}</span>}
-    </label>
-  );
-}
-
-/** Hinweiskarte (gelb/grün/rot/neutral) — Text immer in Satzform, nie ein Kürzel. */
-export function Hinweis({ farbe = C.inkDim, children, rolle }: { farbe?: string; children: ReactNode; rolle?: 'alert' | 'status' }) {
-  return <div role={rolle} style={{ padding: '12px 14px', borderRadius: 12, border: `1px solid ${farbe === C.inkDim ? 'rgba(255,255,255,.08)' : TIEF.rand(farbe)}`, background: farbe === C.inkDim ? 'rgba(255,255,255,.03)' : TIEF.flaeche(farbe), color: C.ink, fontSize: TYP.body, lineHeight: 1.5 }}>{children}</div>;
-}
+export { eingabe, Gross, Wahl, Beschriftung, Feldzeile, Hinweis, Initialen, Aktionsleiste, Leerzustand };
+export { Schritte as Fortschritt };
 
 // ── Gemerkter Wert (localStorage nur als Komfort) ────────────────────────────
 // `useSyncExternalStore` statt „erst leer rendern, dann im Effekt laden“: der gemerkte Wert steht schon im ersten gemalten Bild — der Kopf „Heute bei“ sprang vorher
@@ -94,89 +52,6 @@ export const kopfStil: CSSProperties = { fontFamily: SCHRIFT.display, fontSize: 
 
 /** „Fr 02.10.“ aus einem Tag. */
 export const tagText = (tag: string): string => `${['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(`${tag}T12:00:00Z`).getUTCDay()]} ${tag.slice(8, 10)}.${tag.slice(5, 7)}.`;
-
-/** Kreis mit den Anfangsbuchstaben einer Person — tiefer Akzent statt Neon (Rezept TIEF). */
-export function Initialen({ name, farbe = LEUCHT.beziehung, groesse = 40 }: { name: string; farbe?: string; groesse?: number }) {
-  const teile = name.trim().split(/\s+/).filter(Boolean);
-  const kuerzel = ((teile[0]?.[0] ?? '?') + (teile.length > 1 ? teile[teile.length - 1][0] : '')).toUpperCase();
-  return <span aria-hidden style={{ width: groesse, height: groesse, borderRadius: groesse / 2, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontFamily: SCHRIFT.display, fontSize: groesse > 36 ? 15 : 13, fontWeight: 700, color: farbe, background: TIEF.flaeche(farbe), border: `1px solid ${TIEF.rand(farbe)}` }}>{kuerzel}</span>;
-}
-
-/** Fortschritt in Schritten: Kreise mit Nummer bzw. Haken, dazwischen eine Linie, die sich beim Weitergehen füllt. */
-export function Fortschritt({ punkte, nr }: { punkte: readonly string[]; nr: number }) {
-  return (
-    <ol aria-label="Fortschritt" style={{ display: 'flex', alignItems: 'center', gap: 8, listStyle: 'none', margin: 0, padding: 0 }}>
-      {punkte.map((p, i) => {
-        const fertig = i < nr, jetzt = i === nr;
-        return (
-          <li key={p} aria-current={jetzt ? 'step' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: i < punkte.length - 1 ? '1 1 0' : '0 0 auto', minWidth: 0 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 7, flex: '0 0 auto' }}>
-              <span aria-hidden style={{ width: 24, height: 24, borderRadius: 12, display: 'grid', placeItems: 'center', fontSize: TYP.bedien, fontWeight: 700, fontVariantNumeric: 'tabular-nums', transition: 'background .25s ease, border-color .25s ease, color .25s ease',
-                color: jetzt ? C.aktiv : fertig ? C.grund : C.inkLeise, background: fertig ? C.aktiv : jetzt ? C.aktivSanft : 'transparent', border: `1.5px solid ${fertig || jetzt ? C.aktiv : 'rgba(255,255,255,.16)'}` }}>
-                {fertig ? <Check size={14} strokeWidth={3} /> : i + 1}
-              </span>
-              <span style={{ fontSize: TYP.bedien, fontWeight: jetzt ? 700 : 600, color: jetzt ? C.ink : fertig ? C.inkDim : C.inkLeise, whiteSpace: 'nowrap' }}><span className="sr-only">{i + 1} · </span>{p}</span>
-            </span>
-            {i < punkte.length - 1 && <span aria-hidden style={{ flex: 1, height: 2, borderRadius: 1, minWidth: 8, background: fertig ? C.aktiv : 'rgba(255,255,255,.09)', transition: 'background .3s ease' }} />}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-/** Die Hauptaktion des Schritts: am Handy unten mitlaufend (globals.css › .netz-aktion), sonst ganz normal am Ende. */
-export function Aktionsleiste({ children }: { children: ReactNode }) {
-  const ueber = useTastaturHoehe();
-  return <div className={ueber ? 'netz-aktion netz-aktion-tastatur' : 'netz-aktion'} style={ueber ? { bottom: ueber } : undefined}>{children}</div>;
-}
-
-/** Am iPhone schiebt die Bildschirmtastatur die Seite nicht hoch — `visualViewport` sagt, wie viel sie verdeckt. Solange ein
- *  Feld getippt wird, sitzt die Hauptaktion direkt über der Tastatur (statt am Ende der Seite). 0 = keine Tastatur/kein Handy. */
-function useTastaturHoehe(): number {
-  const [h, setH] = useState(0);
-  useEffect(() => {
-    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
-    if (!vv || !window.matchMedia) return;
-    // Handy-Breite live beobachten (Drehen, Split View, Fenster ziehen) — nicht nur beim Öffnen: sonst bliebe die Leiste nach dem Drehen falsch.
-    const handy = window.matchMedia('(max-width: 720px)');
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const messen = () => {
-      if (!handy.matches) { setH(0); return; }
-      const a = document.activeElement;
-      const tippt = !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !!a.closest('.netz-seite');
-      const verdeckt = Math.round(document.documentElement.clientHeight - (vv.offsetTop + vv.height));
-      setH(tippt && verdeckt > 120 ? verdeckt : 0);
-    };
-    // Fokuswechsel kommt vor dem Ausfahren der Tastatur — kurz danach noch einmal messen. Der Timer wird gemerkt und beim Aufräumen gelöscht (kein Setzen nach dem Abbau).
-    const spaeter = () => { messen(); if (timer) clearTimeout(timer); timer = setTimeout(messen, 350); };
-    vv.addEventListener('resize', messen);
-    vv.addEventListener('scroll', messen);
-    document.addEventListener('focusin', spaeter);
-    document.addEventListener('focusout', spaeter);
-    if (handy.addEventListener) handy.addEventListener('change', messen); else handy.addListener?.(messen);
-    messen();
-    return () => {
-      if (timer) clearTimeout(timer);
-      vv.removeEventListener('resize', messen); vv.removeEventListener('scroll', messen);
-      document.removeEventListener('focusin', spaeter); document.removeEventListener('focusout', spaeter);
-      if (handy.removeEventListener) handy.removeEventListener('change', messen); else handy.removeListener?.(messen);
-    };
-  }, []);
-  return h;
-}
-
-/** Freundlicher leerer Zustand: Symbol, ein Satz, was jetzt zu tun ist — und ein Weg dorthin. */
-export function Leerzustand({ symbol, titel, children, aktion }: { symbol: ReactNode; titel: string; children: ReactNode; aktion?: ReactNode }) {
-  return (
-    <section style={{ display: 'grid', justifyItems: 'center', gap: 10, textAlign: 'center', padding: '28px 18px 22px', borderRadius: 18, border: '1px dashed rgba(255,255,255,.14)', background: 'rgba(255,255,255,.025)' }}>
-      <span aria-hidden style={{ width: 56, height: 56, borderRadius: 28, display: 'grid', placeItems: 'center', color: C.aktiv, background: C.aktivSanft, border: `1px solid ${TIEF.rand(C.aktiv)}` }}>{symbol}</span>
-      <h2 style={{ ...kopfStil, fontSize: TYP.titel }}>{titel}</h2>
-      <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.5, maxWidth: 360 }}>{children}</div>
-      {aktion && <div style={{ width: '100%', maxWidth: 360, marginTop: 4 }}>{aktion}</div>}
-    </section>
-  );
-}
 
 export interface LinkChip { label: string; href: string }
 /** Eine Zeile kleiner Verknüpfungen (Kontakt · Termin · Deal · Follow-up · Event) — Chips mit Ziel ≥ 44 px, leer = nichts. */

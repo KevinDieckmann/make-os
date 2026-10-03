@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { feld, Chip, Fortschritt, LEUCHT } from '../../schlank';
+import { feld, Chip, Fortschritt, LEUCHT } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Event, Teilnahme, TeilnahmeStatus, LeadStatus } from '@/lib/crm/typen';
 import { teilAenderung, type Mix, type MixGruppe } from '@/lib/crm/eventplanung';
@@ -115,10 +115,10 @@ export function Feedback({ api, t, heute, kompakt }: { api: CrmApi; t: Teilnahme
   };
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-      <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{kompakt ? 'Note' : 'Rückmeldung des Gastes'}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{kompakt ? 'Note' : 'Rückmeldung des Gastes'}</span>
       <Pillen liste={NOTEN} aktiv={f.note ? (String(f.note) as '1' | '2' | '3' | '4' | '5') : null} onWahl={n => setze({ note: Number(n) })} farbe={LEUCHT.gut} />
       <div style={{ flex: 1, minWidth: kompakt ? 160 : 220 }}><Feld wert={f.text ?? ''} platzhalter="Ein Satz — was hat der Gast gesagt?" onFertig={text => setze({ text: text.trim() })} /></div>
-      {f.am && <span style={{ fontSize: 11.5, color: C.inkLeise, whiteSpace: 'nowrap' }} title={f.am}>{datum(f.am, heute)}</span>}
+      {f.am && <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }} title={f.am}>{datum(f.am, heute)}</span>}
     </div>
   );
 }
@@ -146,7 +146,7 @@ export function WerTausch({ wert, onWahl, label, standard, ich }: { wert: string
   return (
     <button onClick={x => { x.stopPropagation(); onWahl(naechste); }} className="fassbar"
       title={`${label ? `${label}: ` : ''}${nameVon(wert)}${standard ? ` (${standard})` : ''} — Klick: ${nameVon(naechste)}`}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px 3px 4px', borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(255,255,255,.1)', background: 'transparent', color: C.inkDim, fontSize: 12, fontWeight: 600, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px 3px 4px', borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(255,255,255,.1)', background: 'transparent', color: C.inkDim, fontSize: TYP.bedien, fontWeight: 600, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>
       <Person id={wert} groesse={18} />
       {label && <span style={{ color: C.inkLeise, fontWeight: 500 }}>{label}</span>}
       <span style={{ color: C.ink }}>{nameVon(wert)}</span>
@@ -172,7 +172,7 @@ export function JePerson({ zahlen, einheit }: { zahlen: Record<string, number>; 
 
 /** Kleine Textschaltfläche (Löschen, Zur Person, Mehr zeigen). */
 export function Leise({ children, onClick, farbe }: { children: ReactNode; onClick: () => void; farbe?: string }) {
-  return <button onClick={onClick} style={{ background: 'none', border: 'none', color: farbe ?? C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0, textAlign: 'left' }}>{children}</button>;
+  return <button onClick={onClick} style={{ background: 'none', border: 'none', color: farbe ?? C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, textAlign: 'left' }}>{children}</button>;
 }
 
 /** Suchfeld über die Kartei: Treffer ohne Gesperrte und ohne die, die schon auf der Liste stehen. */
@@ -186,7 +186,7 @@ export function KarteiSuche({ api, e, platzhalter, onWahl }: { api: CrmApi; e: E
     <div>
       <input value={suche} onChange={x => setSuche(x.target.value)} placeholder={platzhalter} aria-label={platzhalter} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
       {treffer.map(k => (
-        <button key={k.id} onClick={() => { onWahl(k.id); setSuche(''); }} style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '5px 0' }}>
+        <button key={k.id} onClick={() => { onWahl(k.id); setSuche(''); }} style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '5px 0' }}>
           + {anzeigename(k)}{k.firma ? ` · ${k.firma}` : ''}{k.kreis ? ` · Kreis ${k.kreis}` : ''}
         </button>
       ))}
@@ -206,14 +206,14 @@ export function MarkeWahl({ wert, onWahl }: { wert?: string; onWahl: (marke: str
     return (
       <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => setOffen(true)} title="Marke ändern" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><Chip farbe={LEUCHT.beziehung}>{marke}</Chip></button>
-        <span style={{ fontSize: 12, color: C.inkLeise }}>{marke === MARKE_EVENTS ? 'unsere Veranstaltungsmarke' : `statt ${MARKE_EVENTS}`}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{marke === MARKE_EVENTS ? 'unsere Veranstaltungsmarke' : `statt ${MARKE_EVENTS}`}</span>
       </span>
     );
   }
   return (
     <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
       <Feld wert={wert ?? ''} breite={180} platzhalter={MARKE_EVENTS} onFertig={t => { const m = t.trim().slice(0, 40); onWahl(m && m !== MARKE_EVENTS ? m : undefined); setOffen(false); }} />
-      <span style={{ fontSize: 12, color: C.inkLeise }}>leer = {MARKE_EVENTS}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>leer = {MARKE_EVENTS}</span>
     </span>
   );
 }
@@ -231,20 +231,20 @@ export function MixAnzeige({ m, onSoll }: { m: Mix; onSoll?: (ziel: { zielkunden
       </div>
       <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{m.n ? `${m.anteil[g]} %` : '—'}</span>
       {soll !== undefined ? (setzen
-        ? <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.inkLeise, fontSize: 12 }}>Soll <Feld typ="number" wert={String(soll)} breite={64} platzhalter="Soll %" onFertig={v => { const n = Math.round(Number(v)); if (Number.isFinite(n) && n >= 0 && n <= 100) setzen(n); }} /></span>
-        : <span style={{ color: C.inkLeise, fontSize: 12 }}>Soll {soll} %</span>) : <span />}
+        ? <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.inkLeise, fontSize: TYP.bedien }}>Soll <Feld typ="number" wert={String(soll)} breite={64} platzhalter="Soll %" onFertig={v => { const n = Math.round(Number(v)); if (Number.isFinite(n) && n >= 0 && n <= 100) setzen(n); }} /></span>
+        : <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Soll {soll} %</span>) : <span />}
     </div>
   );
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         {m.ampel ? <Chip farbe={AMPEL[m.ampel]}>{AMPEL_TEXT[m.ampel]}</Chip> : null}
-        <span style={{ fontSize: 12, color: C.inkLeise }}>{m.basis === 'zugesagt' ? `aus ${m.n} ${m.n === 1 ? 'Zusage' : 'Zusagen'}` : m.basis === 'gaesteliste' ? `aus der Gästeliste (${m.n}) — noch keine Zusagen` : 'noch keine Gäste'}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{m.basis === 'zugesagt' ? `aus ${m.n} ${m.n === 1 ? 'Zusage' : 'Zusagen'}` : m.basis === 'gaesteliste' ? `aus der Gästeliste (${m.n}) — noch keine Zusagen` : 'noch keine Gäste'}</span>
       </div>
       {zeile('zielkunde', m.ziel.zielkunden, onSoll ? n => onSoll({ ...m.ziel, zielkunden: n }) : undefined)}
       {zeile('kunde', m.ziel.kunden, onSoll ? n => onSoll({ ...m.ziel, kunden: n }) : undefined)}
       {zeile('sonstig')}
-      <div style={{ fontSize: 12.5, color: m.ampel === 'rot' ? LEUCHT.achtung : C.inkDim }}>{m.hinweis}</div>
+      <div style={{ fontSize: TYP.bedien, color: m.ampel === 'rot' ? LEUCHT.achtung : C.inkDim }}>{m.hinweis}</div>
     </div>
   );
 }

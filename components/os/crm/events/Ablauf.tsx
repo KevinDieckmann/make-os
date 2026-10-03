@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Leer, feld } from '../../schlank';
+import { Ueberschrift, Knopf, Leer, feld } from '../../ui';
 import { VORLAGEN } from '@/lib/crm/eventplanung';
 import type { Event } from '@/lib/crm/typen';
 import { Feld } from '../teile';

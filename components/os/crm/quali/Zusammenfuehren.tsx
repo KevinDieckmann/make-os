@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../../schlank';
+import { Knopf, feld, LEUCHT } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { dubletten, wanderungText, type Wanderung } from '@/lib/crm/dubletten';
@@ -79,7 +79,7 @@ function Personen({ api, z, onZu, onFertig }: { api: CrmApi; z: LeadZeile; onZu:
   };
   return (
     <>
-      <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>Dieselbe Person doppelt? Der behaltene Eintrag bekommt alles, was ihm fehlt: den ganzen Verlauf, alle Einwilligungen, die Deals. Eine Werbesperre gilt weiter.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Dieselbe Person doppelt? Der behaltene Eintrag bekommt alles, was ihm fehlt: den ganzen Verlauf, alle Einwilligungen, die Deals. Eine Werbesperre gilt weiter.</div>
       {!paar && (
         <>
           <div style={{ display: 'grid', gap: 6 }}>
@@ -87,7 +87,7 @@ function Personen({ api, z, onZu, onFertig }: { api: CrmApi; z: LeadZeile; onZu:
             {paare.length ? paare.map(([a, b]) => (
               <button key={`${a.id}|${b.id}`} type="button" onClick={() => waehle(a, b)} className="fassbar" style={zeile(false)}>
                 <span>{anzeigename(a)} <span style={{ color: C.inkLeise }}>⇄</span> {anzeigename(b)}</span>
-                <span style={{ color: C.inkLeise, fontSize: 12 }}>{[a.firma, b.firma].filter(Boolean).join(' / ')}</span>
+                <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{[a.firma, b.firma].filter(Boolean).join(' / ')}</span>
               </button>
             )) : <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine automatisch erkannten Dubletten — unten selbst eine Person suchen.</div>}
           </div>
@@ -98,7 +98,7 @@ function Personen({ api, z, onZu, onFertig }: { api: CrmApi; z: LeadZeile; onZu:
             )}
             <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Name, Firma oder Mail …" aria-label="Andere Person suchen" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
             {treffer.map(k => { const e = kontakte.find(x => x.id === eigene); return (
-              <button key={k.id} type="button" disabled={!e} onClick={() => e && waehle(e, k)} className="fassbar" style={zeile(false)}><span>{anzeigename(k)}</span><span style={{ color: C.inkLeise, fontSize: 12 }}>{[k.firma, k.email].filter(Boolean).join(' · ')}</span></button>
+              <button key={k.id} type="button" disabled={!e} onClick={() => e && waehle(e, k)} className="fassbar" style={zeile(false)}><span>{anzeigename(k)}</span><span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{[k.firma, k.email].filter(Boolean).join(' · ')}</span></button>
             ); })}
           </div>
         </>
@@ -110,7 +110,7 @@ function Personen({ api, z, onZu, onFertig }: { api: CrmApi; z: LeadZeile; onZu:
             {[paar.behalten, paar.weg].map((k, i) => (
               <button key={k.id} type="button" role="radio" aria-checked={i === 0} onClick={() => i === 1 && setPaar({ behalten: paar.weg, weg: paar.behalten })} className="fassbar" style={zeile(i === 0)}>
                 <span><b>{i === 0 ? 'Bleibt' : 'Geht auf'}:</b> {anzeigename(k)}</span>
-                <span style={{ color: C.inkLeise, fontSize: 12 }}>{[k.firma, k.email, `${(k.aktivitaeten ?? []).filter(a => a.art !== 'system').length} Aktivitäten`].filter(Boolean).join(' · ')}</span>
+                <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{[k.firma, k.email, `${(k.aktivitaeten ?? []).filter(a => a.art !== 'system').length} Aktivitäten`].filter(Boolean).join(' · ')}</span>
               </button>
             ))}
           </div>
@@ -163,19 +163,19 @@ function Firmen({ api, z, onZu, onFertig }: { api: CrmApi; z: LeadZeile; onZu: (
   const gleich = (a: Firma) => a.id === paar?.behalten.id;
   return (
     <>
-      <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>Dieselbe Firma doppelt? Personen, Deals, Mandate, Angebote, Events und Follow-ups wandern zur behaltenen Firma; ihre leeren Felder füllt die andere. Was dort anders stand, steht im Vermerk der Firma.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Dieselbe Firma doppelt? Personen, Deals, Mandate, Angebote, Events und Follow-ups wandern zur behaltenen Firma; ihre leeren Felder füllt die andere. Was dort anders stand, steht im Vermerk der Firma.</div>
       {!paar && (
         <>
           <div style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise }}>Erkannte Dubletten von „{eigene?.name}“</span>
             {paare.length ? paare.map(([a, b]) => { const andere = a.id === eigene?.id ? b : a; return (
-              <button key={andere.id} type="button" onClick={() => eigene && setPaar({ behalten: eigene, weg: andere })} className="fassbar" style={zeile(false)}><span>{andere.name}</span><span style={{ color: C.inkLeise, fontSize: 12 }}>{[andere.domain, andere.stadt].filter(Boolean).join(' · ')}</span></button>
+              <button key={andere.id} type="button" onClick={() => eigene && setPaar({ behalten: eigene, weg: andere })} className="fassbar" style={zeile(false)}><span>{andere.name}</span><span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{[andere.domain, andere.stadt].filter(Boolean).join(' · ')}</span></button>
             ); }) : <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine automatisch erkannte Dublette (gleicher Name ohne Rechtsform oder gleiche Domain) — unten selbst suchen.</div>}
           </div>
           <div style={{ display: 'grid', gap: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise }}>Andere Firma suchen</span>
             <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Firmenname …" aria-label="Andere Firma suchen" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
-            {treffer.map(f => <button key={f.id} type="button" onClick={() => eigene && setPaar({ behalten: eigene, weg: f })} className="fassbar" style={zeile(false)}><span>{f.name}</span><span style={{ color: C.inkLeise, fontSize: 12 }}>{[f.domain, f.stadt].filter(Boolean).join(' · ')}</span></button>)}
+            {treffer.map(f => <button key={f.id} type="button" onClick={() => eigene && setPaar({ behalten: eigene, weg: f })} className="fassbar" style={zeile(false)}><span>{f.name}</span><span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{[f.domain, f.stadt].filter(Boolean).join(' · ')}</span></button>)}
           </div>
         </>
       )}
@@ -183,7 +183,7 @@ function Firmen({ api, z, onZu, onFertig }: { api: CrmApi; z: LeadZeile; onZu: (
         <div style={{ display: 'grid', gap: 12 }}>
           {[paar.behalten, paar.weg].map(f => (
             <button key={f.id} type="button" role="radio" aria-checked={gleich(f)} onClick={() => !gleich(f) && setPaar({ behalten: paar.weg, weg: paar.behalten })} className="fassbar" style={zeile(gleich(f))}>
-              <span><b>{gleich(f) ? 'Bleibt' : 'Geht auf'}:</b> {f.name}</span><span style={{ color: C.inkLeise, fontSize: 12 }}>{[f.domain, f.stadt, f.branche].filter(Boolean).join(' · ')}</span>
+              <span><b>{gleich(f) ? 'Bleibt' : 'Geht auf'}:</b> {f.name}</span><span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{[f.domain, f.stadt, f.branche].filter(Boolean).join(' · ')}</span>
             </button>
           ))}
           {!vorschau && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Vorschau lädt …</div>}

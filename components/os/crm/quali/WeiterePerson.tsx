@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../../schlank';
+import { Knopf, feld, LEUCHT, Hinweis } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { localDay } from '@/lib/zeit';
 import { neueKontaktKennung } from '@/lib/kennung';
@@ -67,7 +67,7 @@ export function WeiterePersonDialog({ api, z, onZu, onFertig }: { api: CrmApi; z
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Dieser Lead hat noch keine Firma. Erst über „Firma wechseln oder neu“ eine Firma zuordnen — dann lässt sich eine weitere Person dazu anlegen.</div>
       ) : (
         <>
-          <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>Neuer Ansprechpartner bei <b style={{ color: C.ink }}>{firma.name}</b> — z. B. die Entscheiderin, von der im Gespräch die Rede war.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Neuer Ansprechpartner bei <b style={{ color: C.ink }}>{firma.name}</b> — z. B. die Entscheiderin, von der im Gespräch die Rede war.</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
             <input value={e.vorname} onChange={x => setE({ ...e, vorname: x.target.value })} placeholder="Vorname" aria-label="Vorname" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
             <input value={e.nachname} onChange={x => setE({ ...e, nachname: x.target.value })} placeholder="Nachname *" aria-label="Nachname" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
@@ -77,10 +77,10 @@ export function WeiterePersonDialog({ api, z, onZu, onFertig }: { api: CrmApi; z
           </div>
           <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44, cursor: 'pointer', fontSize: TYP.bedien }}><input type="checkbox" checked={entscheider} onChange={x => { setEntscheider(x.target.checked); if (x.target.checked) setHaupt(true); }} style={{ width: 22, height: 22 }} />Sie oder er entscheidet (trägt die Frage „Entscheider“ ein, solange dort nichts steht)</label>
           <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44, cursor: 'pointer', fontSize: TYP.bedien }}><input type="checkbox" checked={haupt} onChange={x => setHaupt(x.target.checked)} style={{ width: 22, height: 22 }} />Zum Hauptansprechpartner dieses Leads machen</label>
-          {dublette && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dublette)} — nicht doppelt anlegen.</div>}
-          {!dublette && namensgleich && <div style={{ fontSize: 12.5, color: LEUCHT.achtung }}>Achtung: {anzeigename(namensgleich)}{namensgleich.firma ? ` (${namensgleich.firma})` : ''} gibt es schon — gleiche Person? Dann lieber „Zusammenführen“.</div>}
-          <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Die Angaben stammen aus dem Gespräch, nicht von der Person selbst (Art. 14 DSGVO): die Information an sie steht als Frist an ihrem Kontakt. Eine Einwilligung gibt es dadurch nicht — angesprochen wird nur auf zulässigen Wegen.</div>
-          {meldung && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
+          {dublette && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dublette)} — nicht doppelt anlegen.</div>}
+          {!dublette && namensgleich && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Achtung: {anzeigename(namensgleich)}{namensgleich.firma ? ` (${namensgleich.firma})` : ''} gibt es schon — gleiche Person? Dann lieber „Zusammenführen“.</div>}
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Die Angaben stammen aus dem Gespräch, nicht von der Person selbst (Art. 14 DSGVO): die Information an sie steht als Frist an ihrem Kontakt. Eine Einwilligung gibt es dadurch nicht — angesprochen wird nur auf zulässigen Wegen.</div>
+          {meldung && <Hinweis art="kritisch" rolle="alert">{meldung}</Hinweis>}
         </>
       )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>

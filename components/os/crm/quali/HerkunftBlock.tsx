@@ -7,8 +7,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { FARBE as C } from '@/lib/make-one/design';
-import { Chip, LEUCHT } from '../../schlank';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { Chip, LEUCHT } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { letzteAktivitaetText, type Herkunft, type HerkunftTeil } from '@/lib/crm/herkunft';
 
@@ -39,19 +39,19 @@ export function HerkunftBlock({ h, heute, personName }: { h: Herkunft; heute: st
             </button>
           ))}
           {sprachen.slice(0, 2).map(t => (
-            <label key={t.dateiId} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.inkDim }}>
+            <label key={t.dateiId} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: C.inkDim }}>
               <span>{t.text}</span>
               <audio controls preload="none" src={dateiUrl(t.dateiId!)} style={{ height: 36, maxWidth: 220 }} />
             </label>
           ))}
         </div>
       )}
-      <div style={{ fontSize: 12.5, color: C.inkLeise, overflowWrap: 'anywhere' }}>{letzteAktivitaetText(h, heute, personName)}</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, overflowWrap: 'anywhere' }}>{letzteAktivitaetText(h, heute, personName)}</div>
       {gross && (
         <Fenster titel={gross.text} onZu={() => setGross(null)} breit={720}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={dateiUrl(gross.dateiId!)} alt={gross.text} style={{ width: '100%', maxHeight: '70dvh', objectFit: 'contain', borderRadius: 12, background: 'rgba(255,255,255,.04)' }} />
-          <div style={{ fontSize: 12, color: C.inkLeise }}>Das Foto liegt verschlüsselt in der Dateiablage und wird nur hier angezeigt.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Foto liegt verschlüsselt in der Dateiablage und wird nur hier angezeigt.</div>
         </Fenster>
       )}
     </div>

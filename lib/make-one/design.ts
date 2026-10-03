@@ -161,3 +161,41 @@ export function leuchtFarbe(wert: number | null | undefined): string {
   return LEUCHT.kritisch;
 }
 
+
+// ─── Der Standard (03.10., DESIGN_STANDARD.md) ──────────────────────────────
+// Kevin: „Bei Netzwerken ist das Ganze edler gebaut — den Standard will ich überall.“ Was Netzwerken edel macht, steht hier als
+// Token; gebaut wird es in components/os/ui. Neue Werte nur hier, nie als Literal in einer Seite.
+
+/** Tippziele: Hauptaktion 48, alles andere am Handy mindestens 44, am Rechner 40 (dichte Listen bleiben lesbar). */
+export const ZIEL = { haupt: 48, handy: 44, rechner: 40 } as const;
+
+/** Ecken: Eingabe, Knopf, flache Fläche, gehobene Karte. Pillen bleiben RADIUS.pille. */
+export const ECKE = { eingabe: 12, knopf: 14, flach: 16, karte: 20 } as const;
+
+/** Ränder: Haarlinie (Trenner), Rand einer flachen Fläche, kräftiger Rand (Eingabe, Chip), gestrichelt (Leerzustand). */
+export const RAND = {
+  haar: 'rgba(255,255,255,.07)',
+  flaeche: 'rgba(255,255,255,.08)',
+  stark: 'rgba(255,255,255,.14)',
+  leer: '1px dashed rgba(255,255,255,.14)',
+} as const;
+
+/**
+ * Flächen-Hierarchie in drei Stufen: Grund → Fläche (flach, ein Weißhauch) → gehobene Karte (Verlauf, Lichtkante, Tiefenschatten).
+ * `getoent(farbe)` = die Bereichsfarbe als Hauch in der Fläche (wie „Heute bei“ in Netzwerken): Verlauf, farbiger Rand, weicher Schein.
+ */
+export const FLAECHE_STIL = {
+  eingabe: { background: 'rgba(255,255,255,.05)', border: `1px solid ${RAND.stark}` },
+  flach: { background: 'rgba(255,255,255,.04)', border: `1px solid ${RAND.flaeche}` },
+  leise: { background: 'rgba(255,255,255,.025)', border: `1px solid ${RAND.haar}` },
+  gehoben: { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' },
+  getoent: (f: string) => ({
+    background: `linear-gradient(150deg, ${f}26 0%, ${f}0D 46%, rgba(255,255,255,.02) 100%)`,
+    border: `1px solid ${TIEF.rand(f)}`,
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,.07), 0 16px 36px -22px ${f}`,
+  }),
+} as const;
+
+/** Bedeutung eines Hinweises: gut · achtung · kritisch · info (Bereichsakzent) · neutral. Farbe bedeutet Zustand. */
+export type Bedeutung = 'gut' | 'achtung' | 'kritisch' | 'info' | 'neutral';
+export const BEDEUTUNG_FARBE: Record<Bedeutung, string> = { gut: LEUCHT.gut, achtung: LEUCHT.achtung, kritisch: LEUCHT.kritisch, info: FARBE.aktiv, neutral: FARBE.inkDim };

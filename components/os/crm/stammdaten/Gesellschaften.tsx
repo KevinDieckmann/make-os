@@ -13,14 +13,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KERN_EINHEITEN, UG_NAME } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip } from '../../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip } from '../../ui';
 import { Feldzeile, Feld } from '../teile';
 import { mitVorgaben, firmierungNochUG, firmierungVorschlag, type Gesellschaft } from '@/lib/crm/gesellschaften';
 import { nummerAusFormat, NUMMER_VORGABE } from '@/lib/crm/angebote';
 import { gesellschaftKette, type GesellschaftAntwort } from '@/lib/crm/gesellschaft-kette';
 
 type G = Gesellschaft & { stand: string; luecken: string[] };
-const klein = { fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 } as const;
+const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
 
 export function Gesellschaften({ i = 0 }: { i?: number }) {
   const [liste, setListe] = useState<G[] | null>(null);
@@ -95,7 +95,7 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
       {meldung && (
         <div role="alert" style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: TYP.bedien, color: LEUCHT.kritisch, marginBottom: 8 }}>
           <span style={{ flex: 1 }}>{meldung}</span>
-          <button onClick={() => setMeldung(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>ok</button>
+          <button onClick={() => setMeldung(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>ok</button>
         </div>
       )}
       {unterwegs > 0 && <div aria-live="polite" style={{ ...klein, marginBottom: 6 }}>speichert …</div>}
@@ -110,12 +110,12 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
       )}
       {ungespeichert.length > 0 && (
         <div style={{ display: 'grid', gap: 6, padding: 10, borderRadius: 12, marginBottom: 10, border: `1px solid ${LEUCHT.achtung}55`, background: `${LEUCHT.achtung}10` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: LEUCHT.achtung }}>Nicht gespeichert</div>
+          <div style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.achtung }}>Nicht gespeichert</div>
           {ungespeichert.map(o => (
             <div key={o.schluessel} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
               <span style={{ flex: '1 1 180px', minWidth: 0, overflowWrap: 'anywhere' }}>{o.label}{o.anzeige ? `: ${o.anzeige}` : ''}</span>
               <Knopf leise onClick={() => void setze(o.felder, o.label)}>erneut speichern</Knopf>
-              <button onClick={() => setUngespeichert(l => l.filter(x => x.schluessel !== o.schluessel))} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>verwerfen</button>
+              <button onClick={() => setUngespeichert(l => l.filter(x => x.schluessel !== o.schluessel))} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>verwerfen</button>
             </div>
           ))}
         </div>
@@ -143,7 +143,7 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
               onKeyDown={async e => { if (e.key === 'Enter' && iban.trim()) { if (await setze({ bank: { ...g.bank, iban: iban.trim() } })) setIban(''); } }}
               style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, color: C.ink, fontSize: TYP.bedien, padding: '8px 11px', flex: '1 1 200px' }} />
             {iban.trim() && <Knopf onClick={async () => { if (await setze({ bank: { ...g.bank, iban: iban.trim() } })) setIban(''); }}>IBAN speichern</Knopf>}
-            {g.bank?.iban && <button onClick={() => { if (window.confirm('IBAN entfernen?')) void setze({ bank: { ...g.bank, iban: undefined, ibanEntfernen: true } }, 'IBAN entfernen'); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>entfernen</button>}
+            {g.bank?.iban && <button onClick={() => { if (window.confirm('IBAN entfernen?')) void setze({ bank: { ...g.bank, iban: undefined, ibanEntfernen: true } }, 'IBAN entfernen'); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>entfernen</button>}
           </span>
           <Feld wert={g.bank?.inhaber ?? ''} platzhalter="Kontoinhaber (optional)" onFertig={t => void setze({ bank: { ...g.bank, iban: undefined, inhaber: t.trim() } }, 'Kontoinhaber')} />
         </div>
@@ -172,8 +172,8 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
         <span style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {g.logoDateiId && <img src={`/api/crm/dateien?id=${encodeURIComponent(g.logoDateiId)}`} alt={`Logo ${name}`} style={{ maxHeight: 40, maxWidth: 140, background: '#fff', borderRadius: 6, padding: 4 }} />}
-          <input type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" aria-label="Logo hochladen" onChange={e => { const d = e.target.files?.[0]; if (d) void logoHoch(d); e.target.value = ''; }} style={{ fontSize: 12.5, color: C.inkDim }} />
-          {g.logoDateiId && <button onClick={() => void logoWeg()} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>entfernen</button>}
+          <input type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" aria-label="Logo hochladen" onChange={e => { const d = e.target.files?.[0]; if (d) void logoHoch(d); e.target.value = ''; }} style={{ fontSize: TYP.bedien, color: C.inkDim }} />
+          {g.logoDateiId && <button onClick={() => void logoWeg()} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>entfernen</button>}
         </span>
       </Feldzeile>
       <Feldzeile label="Fußtext">

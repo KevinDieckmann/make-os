@@ -15,7 +15,7 @@ import { localDay } from '@/lib/zeit';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, feld, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, feld, LEUCHT } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Quelle } from '@/lib/crm/typen';
 import { ANFRAGE_KANAELE, GRENZEN, type AnfrageKanal, type AnfrageBezugArt, type AnfrageZeile } from '@/lib/crm/anfragen';
@@ -104,7 +104,7 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
   return (
     <>
       <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
-        <Ueberschrift rechts={<span style={{ fontSize: 12.5, color: C.inkLeise }}>Alles hier bleibt im System — geantwortet wird in deinem Postfach.</span>}>Anfrage erfassen</Ueberschrift>
+        <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Alles hier bleibt im System — geantwortet wird in deinem Postfach.</span>}>Anfrage erfassen</Ueberschrift>
         <div style={{ display: 'grid', gap: 6 }}>
           <Feldzeile label="Wer">
             <div style={{ display: 'grid', gap: 8 }}>
@@ -130,7 +130,7 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
                 <Wahl label="Bezug" liste={BEZUEGE} wert={bezugArt} onWahl={a => { if (a !== bezugArt) { setBezugArt(a); setBezugId(''); } }} />
               {bezugArt !== 'keiner' && (bezugListe.length
                 ? <Wahl label={bezugArt === 'beitrag' ? 'Beitrag' : bezugArt === 'kampagne' ? 'Kampagne' : 'Event'} leer="+ wählen" liste={bezugListe.map(b => ({ id: b.id, label: b.label }))} wert={bezugId || null} onWahl={setBezugId} onLeeren={() => setBezugId('')} />
-                : <span style={{ fontSize: 12.5, color: C.inkLeise }}>{bezugArt === 'beitrag' ? 'Noch kein Beitrag über das Ideen-Stadium hinaus.' : bezugArt === 'kampagne' ? 'Keine laufende Kampagne.' : 'Kein Event.'}</span>)}
+                : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{bezugArt === 'beitrag' ? 'Noch kein Beitrag über das Ideen-Stadium hinaus.' : bezugArt === 'kampagne' ? 'Keine laufende Kampagne.' : 'Kein Event.'}</span>)}
               </span>
             </div>
           </Feldzeile>
@@ -138,7 +138,7 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
           <textarea value={text} rows={3} maxLength={GRENZEN.text} onChange={e => setText(e.target.value)} placeholder="Was wurde angefragt? In den Worten der Person." aria-label="Text der Anfrage" style={{ ...feld, resize: 'vertical', fontSize: TYP.bedien, padding: '9px 12px', lineHeight: 1.5 }} />
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Knopf aus={!bereit || laeuft} onClick={() => void festhalten()}>{laeuft ? '…' : 'Anfrage festhalten'}</Knopf>
-            <span style={{ fontSize: 12, color: C.inkLeise }}>Legt an: Person (falls neu), Verlauf, Einwilligung „Antwort auf Anfrage“, Wirkung am Beitrag, Follow-up „Anfrage beantworten“ heute, Lead → kontaktiert.</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Legt an: Person (falls neu), Verlauf, Einwilligung „Antwort auf Anfrage“, Wirkung am Beitrag, Follow-up „Anfrage beantworten“ heute, Lead → kontaktiert.</span>
           </div>
           {meldung && (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: meldung.fehler ? LEUCHT.achtung : C.inkDim }}>
@@ -191,7 +191,7 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
           </Liste>
         ) : <Leer>Noch keine Anfrage in den letzten 30 Tagen. Kommt eine — über die Webseite, per Mail, auf LinkedIn, aus einer Empfehlung oder nach einem Event — oben festhalten. Dann zählt sie im Trichter, steht als Follow-up an und der Lead beginnt.</Leer>}
         {liste.length > 0 && <div style={{ marginTop: 10 }}><AlsNaechstes>{offen.length ? `${offen.length} ${offen.length === 1 ? 'Anfrage wartet' : 'Anfragen warten'} auf Antwort — heute antworten, dann „Beantwortet“. Wird daraus ein Gespräch: „Deal anlegen“, die Quelle steht dann am Deal.` : 'Alles beantwortet. Aus einem echten Bedarf wird ein Deal — mit Quelle Anfrage, Content oder Kampagne.'}</AlsNaechstes></div>}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Als Anfrage zählt, was hier erfasst wurde (Aktivität „Anfrage über …“ im Verlauf) oder als Wirkung „Anfrage“ an einem Beitrag steht. „Offen“ heißt: das Follow-up „Anfrage beantworten“ der Person ist noch offen — es steht auch unter Follow-up.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Als Anfrage zählt, was hier erfasst wurde (Aktivität „Anfrage über …“ im Verlauf) oder als Wirkung „Anfrage“ an einem Beitrag steht. „Offen“ heißt: das Follow-up „Anfrage beantworten“ der Person ist noch offen — es steht auch unter Follow-up.</div>
       </Karte>
     </>
   );

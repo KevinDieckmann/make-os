@@ -8,7 +8,7 @@
 
 import { useMemo } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Raster, Zahl, Chip, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Raster, Zahl, Chip, LEUCHT } from '../../ui';
 import { besuchJeKunde, erfassteTeilnahmen, FOLLOWUP_QUOTE_DEFINITION, type BesuchKontext } from '@/lib/crm/besuche';
 import { UEBERGABE_HINWEIS, ROLLE_HINWEIS } from '@/lib/crm/netzwerken-recht';
 import { anmeldungVon, anmeldungLabel } from '@/lib/crm/besuche-form';

@@ -515,10 +515,30 @@ nav a:hover { transform: translateX(2px); }
 /* Der Rahmen misst sich selbst (Container-Abfrage): eine Zeile braucht ~1.090 px. */
 .mt-leistenrahmen { container-type: inline-size; display: grid; gap: 4px; margin: -12px 0 -6px; min-width: 0; }
 .mt-nur-schmal { display: none !important; }
+/* Rechner: passt die Leiste nicht in eine Zeile, bricht die zweite Gruppe um, statt abgeschnitten zu werden. */
+@media (min-width: 721px) {
+  .mt-leiste { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
+  .mt-leiste > span[aria-hidden] { display: none; }
+  .mt-leiste > :nth-child(3), .mt-leiste > :last-child { margin-left: auto; }
+}
 @container (max-width: 1100px) {
   .mt-nur-breit { display: none !important; }
   .mt-nur-schmal { display: flex !important; }
 }
+/* Rechner (≥ 721 px): die Schnellknöpfe stehen immer in der Leiste (links die Reiter, rechts daneben die Schnellknöpfe, bei Platzmangel bricht die Welten-Gruppe in eine zweite Zeile um) — nie eine eigene dritte Zeile. */
+@media (min-width: 721px) { .mt-nur-breit { display: flex !important; } .mt-nur-schmal { display: none !important; } }
+/* Handy (03.10., Praxis-Fund: der Kopf fraß zwei Drittel des Bildschirms): EINE wischbare Leiste — die Schnellknöpfe vorn, dann die Reiter —
+   statt zwei Zeilen. Der aktive Reiter bleibt im Bild (Markttraktion.tsx). */
+@media (max-width: 720px) {
+  .mt-nur-breit { display: flex !important; }
+  .mt-nur-schmal { display: none !important; }
+  .mt-leiste > :nth-child(3) { order: -1; }
+  .mt-leiste > span[aria-hidden] { display: none !important; }
+  .mt-leistenrahmen { margin: -4px -16px 0; }
+  .mt-leiste { padding-inline: 16px; }
+}
+.ui-nur-breit { display: inline; }
+@media (max-width: 720px) { .ui-nur-breit { display: none; } }
 
 /* ─── Urbanist (SIL OFL 1.1, Lizenz: public/schriften/URBANIST-OFL.txt) — lokal gebündelt, nur für Visitenkarten (02.10., Paket B). ─
    Eine Firmenkarte darf in der Schrift ihrer Firma erscheinen; geladen wird die Datei erst, wenn ein Profil sie wählt. */
@@ -558,19 +578,6 @@ nav a:hover { transform: translateX(2px); }
 @keyframes kvlSchimmer { 0% { transform: translateX(-120%) skewX(-16deg); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translateX(340%) skewX(-16deg); opacity: 0; } }
 .kvl-schimmer-huelle { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .kvl-schimmer { position: absolute; top: -10%; bottom: -10%; left: 0; width: 34%; opacity: 0; transform: translateX(-120%) skewX(-16deg); animation: kvlSchimmer .8s cubic-bezier(.4, 0, .2, 1) .2s both; }
-
-/* Haupt-Aktion je Schritt: am Handy unten an der Leiste mitlaufend, damit der Weg immer einen Daumen weit ist.
-   Solange ein Feld getippt wird, bleibt sie an ihrem Platz (die Bildschirmtastatur frisst sonst den Platz). */
-.netz-aktion { position: sticky; bottom: 0; z-index: 6; margin: 0 -14px; padding: 6px 14px 10px; display: grid; gap: 8px; background: #0B0E10; }
-.netz-aktion::before { content: ''; position: absolute; left: 0; right: 0; top: -22px; height: 22px; pointer-events: none; background: linear-gradient(to top, #0B0E10, rgba(11, 14, 16, 0)); }
-/* Am Rechner reicht der Platz — dort läuft die Aktion ganz normal am Ende mit. */
-@media (min-width: 721px) { .netz-aktion { position: static; margin: 0; padding: 0; background: none; } .netz-aktion::before { display: none; } }
-/* `main` hat unten 72 px Innenabstand und die Leiste ist ~64 px hoch: der Streifen hängt knapp über ihr (sticky zählt den Innenabstand mit). */
-@media (max-width: 720px) { .netz-aktion { bottom: calc(-8px + env(safe-area-inset-bottom, 0px)); padding-right: 76px; } } /* rechts bleibt Platz für den ZOE-Knopf, der über der Leiste schwebt */
-.netz-seite:has(input:focus, textarea:focus, select:focus) .netz-aktion { position: static; }
-.netz-seite:has(input:focus, textarea:focus, select:focus) .netz-aktion::before { display: none; }
-/* iPhone mit offener Tastatur: die Aktion hängt direkt über der Tastatur (Abstand setzt Aktionsleiste per visualViewport). */
-.netz-seite .netz-aktion.netz-aktion-tastatur { position: fixed !important; left: 0; right: 0; margin: 0; padding: 8px 14px; z-index: 70; box-shadow: 0 -10px 24px -12px rgba(0, 0, 0, .9); }
 
 /* Events (besuchte Veranstaltungen, 03.10.): die Event-Akte am Handy — Beschriftung über dem Feld statt daneben, Eingaben mit 16 px
    (kleiner zoomt iOS beim Antippen die Seite auf) und mindestens 44 px hoch. Am Rechner bleibt es zweispaltig wie in Make.One. */
@@ -617,3 +624,158 @@ nav a:hover { transform: translateX(2px); }
 
 /* Das Wahl-Blatt (Portal außerhalb der Akte, nur am Handy): das Suchfeld mit 16 px, sonst zoomt iOS beim Antippen. */
 .wahl-blatt input { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }
+
+/* ─── Der Standard (ui-*, 03.10., DESIGN_STANDARD.md) ────────────────────────
+   Kevin: „Bei Netzwerken ist das Ganze edler gebaut — den Standard will ich überall.“ Diese Klassen gehören den Bausteinen in components/os/ui;
+   sie wirken nur dort, wo ein Baustein benutzt wird — kein Seitenhammer. Einzige seitenweite Regel: `.ui-seite` (Sicherheitsnetz am Handy, unten). */
+
+/* Seite und Kopf */
+.ui-seite { max-width: var(--ui-breit, 1440px); margin: 0 auto; padding: 30px clamp(18px, 4vw, 48px) 72px; }
+.ui-kopf { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.ui-kopf-text { min-width: 0; flex: 1 1 320px; }
+.ui-kopf-titel { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: clamp(24px, 3vw, 30px); letter-spacing: -.025em; margin: 0; line-height: 1.1; }
+.ui-kopf-punkt { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.ui-kopf-unter { font-size: 15px; color: #A2ADB0; margin-top: 6px; line-height: 1.45; }
+.ui-kopf-aktion { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.ui-karten { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+@media (max-width: 720px) {
+  .ui-seite { padding: 12px 16px 28px; }
+  /* Kopf kompakt: Titel und Aktionen in einer Zeile, darunter der Satz über die ganze Breite (höchstens zwei Zeilen) — der Inhalt kommt zuerst. */
+  .ui-kopf { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; margin-bottom: 10px; }
+  .ui-kopf-text { display: contents; }
+  .ui-kopf-titel { grid-column: 1; grid-row: 1; font-size: 24px; white-space: nowrap; }
+  .ui-kopf-unter { grid-column: 1 / -1; grid-row: 2; font-size: 13px; margin-top: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ui-kopf-aktion { grid-column: 2; grid-row: 1; flex-wrap: nowrap; gap: 8px; }
+  .ui-kopf-aktion .zoe-fragen { padding: 0 !important; width: 44px; height: 44px; min-height: 44px !important; justify-content: center; }
+  .ui-kopf-aktion .zoe-fragen-text { display: none; }
+  .ui-karten { gap: 14px; }
+}
+
+.ui-stufen { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 4px; margin-top: 16px; }
+.ui-stufe { padding: 10px 8px; border-radius: 10px; font-size: 12px; line-height: 1.3; }
+@media (max-width: 720px) { .ui-stufen { grid-template-columns: repeat(var(--n, 5), minmax(112px, 1fr)); overflow-x: auto; scrollbar-width: none; } .ui-stufen::-webkit-scrollbar { display: none; } }
+
+/* Karten */
+.ui-karte { border-radius: 20px; padding: 18px 20px; min-width: 0; box-sizing: border-box; }
+.ui-karte-flach { border-radius: 16px; padding: 14px 16px; }
+/* dicht: 14/16 px Innenabstand — Listenkarten und Hero-Karten (wie in Netzwerken) */
+.ui-karte.ui-karte-dicht { padding: 14px 16px; }
+.ui-karte-klick { cursor: pointer; transition: transform .2s cubic-bezier(.22, 1, .36, 1), border-color .2s ease; }
+.ui-karte-klick:hover { transform: translateY(-1px); }
+@media (max-width: 720px) { .ui-karte { padding: 16px; border-radius: 18px; } .ui-karte-flach { padding: 12px 14px; } }
+.ui-karte:has([aria-modal="true"]) { transform: none !important; }
+
+/* Abschnitt, Titel, Beschriftung */
+.ui-abschnitt { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 12px; }
+.ui-abschnitt-titel { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 700; color: #A2ADB0; letter-spacing: .09em; text-transform: uppercase; min-width: 0; }
+.ui-abschnitt-punkt { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.ui-abschnitt-rechts { font-size: 13px; color: #86918F; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.ui-titel { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.ui-beschriftung { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #86918F; margin: 2px 0 6px; }
+.ui-beschriftung-rechts { text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+/* Kennzahl */
+.ui-kennzahl { display: grid; gap: 2px; padding: 14px 16px; min-width: 0; text-align: left; font-family: inherit; color: inherit; box-sizing: border-box; }
+.ui-kennzahl-klick { cursor: pointer; }
+.ui-kennzahl-wert { font-weight: 700; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.ui-kennzahl-label { font-size: 13px; color: #A2ADB0; margin-top: 4px; line-height: 1.35; }
+.ui-kennzahl-unter { font-size: 12px; color: #86918F; line-height: 1.35; }
+
+/* Kennzahl-Raster: Zahlen als flache Kacheln, am Handy zwei nebeneinander */
+.ui-raster-kacheln { align-items: stretch !important; gap: 10px !important; }
+@media (max-width: 720px) { .ui-raster-kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+.ui-raster-kacheln > .ui-zahl { padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08); box-sizing: border-box; }
+
+/* Liste und Zeile */
+.ui-liste { display: block; }
+.ui-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 2px; border-bottom: 1px solid rgba(255, 255, 255, .06); min-height: 56px; box-sizing: border-box; }
+.ui-zeile-klick { cursor: pointer; padding: 10px 8px; margin: 0 -8px; border-radius: 12px; }
+.ui-zeile-klick:hover { background: rgba(255, 255, 255, .04); }
+.ui-zeile-aktiv { background: rgba(255, 255, 255, .06); border-radius: 12px; }
+.ui-zeile:last-child { border-bottom: 0; }
+.ui-zeile-text { flex: 1 1 150px; min-width: 0; }
+.ui-zeile-rechts { margin-left: auto; min-width: 0; max-width: 100%; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+@media (max-width: 720px) {
+  /* Am Handy brechen Titel und Zusatz um (höchstens zwei Zeilen), statt mit … abgeschnitten zu werden. */
+  .ui-zeile-titel, .ui-zeile-unter { white-space: normal !important; text-overflow: clip !important; overflow: hidden !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+}
+.ui-zeile-titel { font-size: 15px; font-weight: 500; line-height: 1.35; }
+.ui-zeile-unter { font-size: 13px; color: #A2ADB0; margin-top: 2px; line-height: 1.4; }
+.ui-zeile-pfeil { flex: 0 0 auto; color: #86918F; font-size: 20px; line-height: 1; }
+.ui-eigenschaft { display: grid; grid-template-columns: minmax(110px, 150px) 1fr; gap: 12px; align-items: center; padding: 6px 0; }
+.ui-eigenschaft-label { font-size: 13px; color: #86918F; }
+@media (max-width: 560px) { .ui-eigenschaft { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 8px 0; } }
+
+/* Knopf — Hauptaktion 48 px, sonst 40 px (Rechner) / 44 px (Handy) */
+.ui-knopf { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: 12px; box-sizing: border-box;
+  font-family: var(--schrift-text), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 14px; font-weight: 700; line-height: 1.2; text-align: center; text-decoration: none; white-space: nowrap; }
+.ui-knopf-haupt { min-height: 48px; padding: 12px 20px; border-radius: 14px; font-size: 16px; }
+.ui-knopf-voll { width: 100%; }
+@media (max-width: 720px), (pointer: coarse) { .ui-knopf { min-height: 44px; } .ui-knopf-haupt { min-height: 48px; } }
+.ui-knopf:disabled { opacity: .9; }
+
+/* Wahl, Pillen, Segmente, Reiter */
+.ui-wahl { min-height: 48px; padding: 10px 16px; border-radius: 14px; cursor: pointer; font-family: var(--schrift-text), -apple-system, system-ui, sans-serif; font-size: 15px; font-weight: 600; line-height: 1.25; text-align: center; }
+.ui-wahl-klein { min-height: 40px; padding: 7px 14px; font-size: 14px; border-radius: 999px; white-space: nowrap; }
+@media (max-width: 720px), (pointer: coarse) { .ui-wahl-klein { min-height: 44px; } }
+.ui-pillen { display: flex; gap: 8px; flex-wrap: wrap; }
+.ui-pillen-einzeilig { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.ui-pillen-einzeilig::-webkit-scrollbar { display: none; }
+.ui-pillen-einzeilig > * { flex: 0 0 auto; }
+.ui-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; font-size: 12px; font-weight: 700; letter-spacing: .02em; }
+.ui-segmente { display: flex; gap: 4px; padding: 4px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .06); }
+.ui-segmente-umbrechen { flex-wrap: wrap; }
+.ui-segment { flex: 1 1 0; min-height: 40px; padding: 6px 14px; border-radius: 12px; cursor: pointer; font-family: var(--schrift-text), -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.ui-segmente-umbrechen .ui-segment { flex: 1 1 auto; }
+@media (max-width: 720px), (pointer: coarse) { .ui-segment { min-height: 44px; } }
+.ui-reiter-zeile { display: flex; gap: 10px; align-items: center; overflow-x: auto; scrollbar-width: none; padding: 4px 2px; }
+.ui-reiter-zeile::-webkit-scrollbar { display: none; }
+.ui-reiter { display: flex; gap: 2px; flex: 0 0 auto; padding: 4px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .06); }
+.ui-reiter-gruppe { background: transparent; border-color: rgba(255, 255, 255, .09); }
+.ui-reiter-knopf { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 6px 14px; border-radius: 12px; cursor: pointer; white-space: nowrap; font-size: 14px; font-weight: 600; }
+.ui-reiter-punkt { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+@media (max-width: 720px), (pointer: coarse) { .ui-reiter-knopf { min-height: 44px; } }
+
+/* Hinweis, Leerzustand */
+.ui-hinweis { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; color: #E8ECEA; font-size: 15px; line-height: 1.5; min-width: 0; overflow-wrap: anywhere; }
+.ui-hinweis-symbol { flex: 0 0 auto; margin-top: 2px; display: inline-flex; }
+.ui-hinweis-aktion { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.ui-leerzustand { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 28px 18px 22px; border-radius: 18px; border: 1px dashed rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .025); }
+.ui-leerzustand-symbol { width: 56px; height: 56px; border-radius: 28px; display: grid; place-items: center; }
+.ui-leer { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 18px 14px; border-radius: 14px; border: 1px dashed rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .02); color: #A2ADB0; font-size: 14px; line-height: 1.5; }
+.ui-leer-symbol { width: 36px; height: 36px; border-radius: 18px; display: grid; place-items: center; color: #58D9CD; background: rgba(88, 217, 205, .14); border: 1px solid rgba(88, 217, 205, .55); }
+
+/* Bewegung: ein Fortschrittsbalken füllt sich, ein Haken zeichnet sich — beides ruhig, bei „Bewegung reduzieren“ sofort fertig (allgemeine Regel oben) */
+@keyframes uiFuell { from { transform: scaleX(0); } to { transform: none; } }
+.ui-fuell { transform-origin: left; animation: uiFuell 1s cubic-bezier(.22, 1, .36, 1) backwards; }
+@keyframes uiErfolg { 0% { transform: scale(.55); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.ui-erfolg { animation: uiErfolg .38s cubic-bezier(.34, 1.56, .64, 1); }
+
+/* Die Hauptaktion des Schritts: am Handy unten an der Leiste mitlaufend, damit der Weg immer einen Daumen weit ist. */
+.ui-aktion { position: sticky; bottom: 0; z-index: 6; margin: 0 -14px; padding: 6px 14px 10px; display: grid; gap: 8px; background: #0B0E10; }
+.ui-aktion::before { content: ''; position: absolute; left: 0; right: 0; top: -22px; height: 22px; pointer-events: none; background: linear-gradient(to top, #0B0E10, rgba(11, 14, 16, 0)); }
+@media (min-width: 721px) { .ui-aktion { position: static; margin: 0; padding: 0; background: none; } .ui-aktion::before { display: none; } }
+@media (max-width: 720px) { .ui-aktion { bottom: calc(-8px + env(safe-area-inset-bottom, 0px)); padding-right: 76px; } } /* rechts bleibt Platz für den ZOE-Knopf */
+.ui-seite:has(input:focus, textarea:focus, select:focus) .ui-aktion { position: static; }
+.ui-seite:has(input:focus, textarea:focus, select:focus) .ui-aktion::before { display: none; }
+.ui-seite .ui-aktion.ui-aktion-tastatur { position: fixed !important; left: 0; right: 0; margin: 0; padding: 8px 14px; z-index: 70; box-shadow: 0 -10px 24px -12px rgba(0, 0, 0, .9); }
+
+/* Sicherheitsnetz für Seiten im Standard (`.ui-seite`), am Handy: Tippziele ≥ 44 px und Eingaben 16 px auch dort, wo ein Inhalt noch Altbausteine trägt.
+   Bewusst NUR unter `.ui-seite` und den Dialogen (.os-fenster) — die Bausteine selbst halten die Maße schon ein. Checkboxen bekommen ihre Fläche über das Label. */
+@media (max-width: 720px) {
+  /* !important, weil viele Altstellen ihre Höhe inline tragen (Inline schlägt Stylesheet). */
+  .ui-seite button:not(.treffer44):not(.ui-kein-ziel), .ui-seite [role=button]:not(.ui-kein-ziel), .ui-seite [role=tab], .ui-seite select, .ui-seite a.knopf, .ui-seite a.fassbar, .ui-seite summary { min-height: 44px !important; min-width: 44px; box-sizing: border-box; }
+  .ui-seite a.fassbar, .ui-seite a.knopf { display: inline-flex; align-items: center; }
+  .ui-seite input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]), .ui-seite textarea, .ui-seite select { font-size: 16px !important; min-height: 44px !important; box-sizing: border-box; }
+  .ui-seite label:has(input[type=checkbox], input[type=radio]) { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box; }
+  .ui-seite input[type=checkbox], .ui-seite input[type=radio] { width: 22px; height: 22px; min-height: 0 !important; flex: 0 0 auto; }
+}
+
+/* Kartei (Kontakte): die Tabellenspalten richten sich nach der Breite der KARTE, nicht des Fensters (Container-Abfrage) — am Rechner mit Leiste und
+   Akte daneben ist die Karte schmal; dann fallen Lifecycle, Phase und Kanal weg, statt dass Name und Firma auf einen Buchstaben schrumpfen. */
+.kartei-liste { container-type: inline-size; }
+.kartei-zeile { grid-template-columns: 10px 22px minmax(0, 1.6fr) minmax(0, 1.2fr) 40px 84px 96px 64px 64px; }
+@container (max-width: 700px) {
+  .kartei-zeile { grid-template-columns: 10px 22px minmax(0, 1.6fr) minmax(0, 1.2fr) 40px 64px; }
+  .kartei-zeile > :nth-child(6), .kartei-zeile > :nth-child(7), .kartei-zeile > :nth-child(8) { display: none; }
+}

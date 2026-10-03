@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Chip, Haken, Zeile, Leer, LEUCHT } from '../../schlank';
+import { Ueberschrift, Knopf, Chip, Haken, Zeile, Leer, LEUCHT, Hinweis } from '../../ui';
 import { UEBERGABE_HINWEIS, ROLLE_HINWEIS, DATEI_LOESCHEN_HINWEIS } from '@/lib/crm/netzwerken-recht';
 import type { UebergabeZeile } from '@/lib/crm/besuche';
 import type { Event } from '@/lib/crm/typen';
@@ -75,11 +75,11 @@ export function UebergabeDialog({ e, api, onZu }: { e: Event; api: CrmApi; onZu:
     <Fenster titel={`An ${v?.kunde.name ?? 'den Kunden'} übergeben`} onZu={onZu} breit={720}>
       <div className="bes-dialog" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 12, minWidth: 0, overflowWrap: 'anywhere' }}>
         {!v && !fehler && <Leer>Die Vorschau wird geladen …</Leer>}
-        {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
+        {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
         {v && !fertig && (
           <>
             <AvvHinweis text={UEBERGABE_HINWEIS} />
-            <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 }}>{ROLLE_HINWEIS}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{ROLLE_HINWEIS}</div>
             <div>
               <Ueberschrift>Gehen mit — an diesem Event neu angelegt ({neue.length})</Ueberschrift>
               {!neue.length ? <Leer>Niemand wurde an diesem Event neu angelegt.</Leer> : neue.map(z => zeile(z, false))}
@@ -88,18 +88,18 @@ export function UebergabeDialog({ e, api, onZu }: { e: Event; api: CrmApi; onZu:
               <Ueberschrift>Schon bekannt — nur mit Haken ({bestand.length})</Ueberschrift>
               {!bestand.length ? <Leer>Keine Bestandspersonen.</Leer> : (
                 <>
-                  <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 4 }}>Diese Personen kannten wir vorher. Mitgegeben werden sie nur, wenn du sie ausdrücklich ankreuzt.</div>
+                  <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 4 }}>Diese Personen kannten wir vorher. Mitgegeben werden sie nur, wenn du sie ausdrücklich ankreuzt.</div>
                   {bestand.map(z => zeile(z, true))}
                 </>
               )}
             </div>
-            {(gesperrt > 0 || v.fehlend > 0) && <div style={{ fontSize: 12.5, color: C.inkLeise }}>{gesperrt > 0 ? `${gesperrt} gesperrte Person${gesperrt === 1 ? '' : 'en'} (Art. 18 / Werbesperre) bleiben bewusst draußen.` : ''}{gesperrt > 0 && v.fehlend > 0 ? ' ' : ''}{v.fehlend > 0 ? `${v.fehlend} Teilnahme${v.fehlend === 1 ? '' : 'n'} ohne Person in der Kartei.` : ''}</div>}
-            {ohneInfo > 0 && <div role="note" style={{ fontSize: 12.5, color: LEUCHT.achtung, lineHeight: 1.5 }}>{ohneInfo} {ohneInfo === 1 ? 'Person ist' : 'Personen sind'} noch nicht über die Weitergabe informiert (Danke-Mail mit Datenschutzhinweis, Art. 13). Die Übergabe geht trotzdem — aber bewusst.</div>}
+            {(gesperrt > 0 || v.fehlend > 0) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{gesperrt > 0 ? `${gesperrt} gesperrte Person${gesperrt === 1 ? '' : 'en'} (Art. 18 / Werbesperre) bleiben bewusst draußen.` : ''}{gesperrt > 0 && v.fehlend > 0 ? ' ' : ''}{v.fehlend > 0 ? `${v.fehlend} Teilnahme${v.fehlend === 1 ? '' : 'n'} ohne Person in der Kartei.` : ''}</div>}
+            {ohneInfo > 0 && <div role="note" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.5 }}>{ohneInfo} {ohneInfo === 1 ? 'Person ist' : 'Personen sind'} noch nicht über die Weitergabe informiert (Danke-Mail mit Datenschutzhinweis, Art. 13). Die Übergabe geht trotzdem — aber bewusst.</div>}
             <label className="bes-haken-zeile" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: TYP.bedien, color: C.ink, lineHeight: 1.45, cursor: 'pointer', minWidth: 0 }}>
               <input type="checkbox" checked={bestaetigt} onChange={x => setBestaetigt(x.target.checked)} style={{ width: 22, height: 22, marginTop: 1, flex: '0 0 auto' }} />
               <span style={{ minWidth: 0 }}>Rolle und Vertrag mit {v.kunde.name} sind geklärt (steht im Protokoll).</span>
             </label>
-            <div style={{ fontSize: 12.5, color: C.inkLeise }}>Exportiert werden nur Felder (Name, Firma, Position, E-Mail, Telefon, LinkedIn, Webseite) mit Herkunft je Zeile — keine Fotos, keine Sprachnotizen, keine Gesprächsnotizen.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Exportiert werden nur Felder (Name, Firma, Position, E-Mail, Telefon, LinkedIn, Webseite) mit Herkunft je Zeile — keine Fotos, keine Sprachnotizen, keine Gesprächsnotizen.</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap', minWidth: 0 }}>
               <Knopf leise onClick={onZu}>Abbrechen</Knopf>
               <Knopf onClick={uebergeben} aus={laeuft || !mit || !bestaetigt} farbe={LEUCHT.business}>{laeuft ? 'bereitet vor …' : `${mit} ${mit === 1 ? 'Kontakt' : 'Kontakte'} übergeben (CSV)`}</Knopf>

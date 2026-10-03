@@ -12,7 +12,7 @@ import { localDay } from '@/lib/zeit';
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
-import { Knopf, LEUCHT, feld } from '../../schlank';
+import { Knopf, LEUCHT, feld } from '../../ui';
 import { type CrmApi, plusTage } from '../daten';
 import { Feldzeile } from '../teile';
 import { Wahl } from '../Wahl';
@@ -58,7 +58,7 @@ export function DealAusQuelle({ api, kontaktId, quelle, quelleBezug, bezugTitel,
   return (
     <div style={{ display: 'grid', gap: 8, padding: 14, borderRadius: 14, background: 'rgba(255,255,255,.03)', border: `1px solid ${LEUCHT.business}33` }}>
       <div style={{ fontSize: TYP.body, fontWeight: 700 }}>Deal aus {QUELLE_LABEL[quelle]}{bezugTitel ? ` „${bezugTitel}“` : ''}</div>
-      <div style={{ fontSize: 12.5, color: C.inkDim }}>{k ? anzeigename(k) : 'Person nicht gefunden'}{firma ? ` · ${firma.name}` : k?.firma ? ` · ${k.firma}` : ''} — Quelle „{QUELLE_LABEL[quelle]}“ steht am Deal, der Lead wird SQL.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k ? anzeigename(k) : 'Person nicht gefunden'}{firma ? ` · ${firma.name}` : k?.firma ? ` · ${k.firma}` : ''} — Quelle „{QUELLE_LABEL[quelle]}“ steht am Deal, der Lead wird SQL.</div>
       <Feldzeile label="Titel"><input value={titel} onChange={e => setTitel(e.target.value)} placeholder={firma ? `${firma.name} · ${ARTEN.find(a => a.id === art)?.label}` : 'z. B. Acme · Retainer'} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} /></Feldzeile>
       <Feldzeile label="Art"><Wahl label="Art" liste={ARTEN} wert={art} onWahl={setArt} /></Feldzeile>
       <Feldzeile label="Wert">
@@ -74,7 +74,7 @@ export function DealAusQuelle({ api, kontaktId, quelle, quelleBezug, bezugTitel,
         </div>
       </Feldzeile>
       {fehler && (
-        <div style={{ fontSize: 12.5, color: LEUCHT.achtung, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <span>{fehler.text}</span>
           {fehler.offen && zuDeal && <Knopf leise onClick={() => zuDeal(fehler.offen!.id)}>Zum offenen Deal</Knopf>}
           {fehler.offen && <Knopf leise onClick={() => void anlegen(true)}>Bewusst zweiten anlegen</Knopf>}

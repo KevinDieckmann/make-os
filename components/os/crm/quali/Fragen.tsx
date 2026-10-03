@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { feld, LEUCHT } from '../../schlank';
+import { feld, LEUCHT } from '../../ui';
 import type { LeadScore } from '@/lib/crm/score';
 import type { KriteriumErgebnis, ScoringEinstellungen, ScoringKriterium } from '@/lib/crm/scoring';
 import { punkteText } from './hilfen';
@@ -55,17 +55,17 @@ export function Fragen({ einstellungen, score, stufen, antworten, onStufe, onAnt
                   <button type="button" onClick={() => setAuf(offen ? null : k.id)} aria-expanded={offen} className="fassbar"
                     style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto auto', gap: 10, alignItems: 'center', width: '100%', minHeight: 48, padding: '6px 2px', background: 'none', border: 'none', color: C.ink, cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text }}>
                     <span style={{ minWidth: 0 }}>
-                      <span style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, fontWeight: 600 }}>{k.name}{istMuss && <span title="Muss-Kriterium: ohne dieses ist es kein SQL" style={{ fontSize: 11, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '0 6px' }}>Muss</span>}</span>
-                      <span style={{ display: 'block', fontSize: 12, color: e?.beantwortet && e.herkunft !== 'messung' ? C.inkDim : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, fontWeight: 600 }}>{k.name}{istMuss && <span title="Muss-Kriterium: ohne dieses ist es kein SQL" style={{ fontSize: 12, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '0 6px' }}>Muss</span>}</span>
+                      <span style={{ display: 'block', fontSize: TYP.bedien, color: e?.beantwortet && e.herkunft !== 'messung' ? C.inkDim : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {e?.stufeText && e.herkunft !== 'ohne' ? `${e.herkunft === 'messung' ? 'aus der Liste: ' : ''}${e.stufeText}` : 'noch offen'}
                       </span>
                     </span>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: f, fontVariantNumeric: 'tabular-nums' }}>{e ? `${punkteText(e.punkte)}/${punkteText(e.max)}` : ''}</span>
+                    <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: f, fontVariantNumeric: 'tabular-nums' }}>{e ? `${punkteText(e.punkte)}/${punkteText(e.max)}` : ''}</span>
                     <span aria-hidden style={{ color: C.inkLeise, transform: offen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>▾</span>
                   </button>
                   {offen && (
                     <div style={{ display: 'grid', gap: 8, padding: '4px 0 14px' }}>
-                      {k.hinweis && <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>{k.hinweis}</div>}
+                      {k.hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{k.hinweis}</div>}
                       <div role="radiogroup" aria-label={k.name} style={{ display: 'grid', gap: 6 }}>
                         {sortiert(k).map(s => {
                           const an = gewaehlt === s.id;
@@ -78,7 +78,7 @@ export function Fragen({ einstellungen, score, stufen, antworten, onStufe, onAnt
                             </button>
                           );
                         })}
-                        {gewaehlt && <button type="button" onClick={() => onStufe(k.id, null)} className="fassbar" style={{ minHeight: 44, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, textAlign: 'left', padding: '0 4px' }}>Antwort zurücknehmen (offen lassen)</button>}
+                        {gewaehlt && <button type="button" onClick={() => onStufe(k.id, null)} className="fassbar" style={{ minHeight: 44, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, textAlign: 'left', padding: '0 4px' }}>Antwort zurücknehmen (offen lassen)</button>}
                       </div>
                       <textarea value={text[k.id] ?? ''} onChange={ev => setText(a => ({ ...a, [k.id]: ev.target.value }))} onBlur={() => { if ((text[k.id] ?? '') !== (antworten[k.id] ?? '')) onAntwort(k.id, text[k.id] ?? ''); }}
                         rows={2} maxLength={1000} placeholder="Was genau — Zahlen, Beispiel, Zitat …" aria-label={`${k.name} — was genau`} style={{ ...feld, fontSize: 16, padding: '8px 11px', width: '100%', resize: 'vertical' }} />

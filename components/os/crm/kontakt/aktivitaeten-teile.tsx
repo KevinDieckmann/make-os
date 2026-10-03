@@ -29,7 +29,7 @@ import {
   ERGEBNIS_KURZ, ERGEBNIS_TITEL, ANRUF_ERGEBNISSE, STATUS_LABEL, darfBearbeiten, bezugAufloesen,
   type Eintrag, type Kategorie,
 } from '@/lib/crm/aktivitaeten';
-import { Knopf, feld, LEUCHT } from '../../schlank';
+import { Knopf, feld, LEUCHT, Hinweis as Meldung } from '../../ui';
 import { Wahl } from '../Wahl';
 import { NotizFormular, festhalten, hatMailEinwilligung, ERGEBNIS_KNOEPFE } from '../teile';
 import { Person, ZustaendigWahl } from '../team';
@@ -63,9 +63,9 @@ export function ArtSymbol({ e, groesse = 30 }: { e: Pick<Eintrag, 'art' | 'kateg
   );
 }
 
-const kleinChip = (farbe: string): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${farbe}1C`, color: farbe, border: `1px solid ${farbe}44`, whiteSpace: 'nowrap' });
+const kleinChip = (farbe: string): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${farbe}1C`, color: farbe, border: `1px solid ${farbe}44`, whiteSpace: 'nowrap' });
 const ERGEBNIS_FARBE: Partial<Record<Ergebnis, string>> = { gespraech: LEUCHT.gut, termin: LEUCHT.gut, rueckruf: LEUCHT.puls, mailbox: C.inkDim, nicht_erreicht: C.inkDim, kein_bedarf: LEUCHT.achtung, sperre: LEUCHT.kritisch };
-const leiseKnopf: CSSProperties = { background: 'none', border: 'none', padding: '4px 2px', color: C.inkDim, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text };
+const leiseKnopf: CSSProperties = { background: 'none', border: 'none', padding: '4px 2px', color: C.inkDim, fontSize: TYP.bedien, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text };
 const personName = (p?: string) => (p === 'zoe' ? 'ZOE' : p === 'system' ? 'System' : nameVon(p));
 const LANG_AB = 240;
 const istLang = (t?: string) => !!t && (t.length > LANG_AB || t.split('\n').length > 4);
@@ -130,11 +130,11 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
           <button type="button" onClick={() => setOffen(!offen)} aria-expanded={zeigeDetails} className="fassbar"
             style={{ background: 'none', border: 'none', padding: 0, cursor: kompakt ? 'pointer' : 'default', textAlign: 'left', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, minWidth: 0 }}
             disabled={!kompakt}>{e.titel}</button>
-          <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{wann}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{wann}</span>
         </div>
         {zeigeDetails && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4, fontSize: 12.5, color: C.inkLeise }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4, fontSize: TYP.bedien, color: C.inkLeise }}>
               {e.person && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>{e.person !== 'system' && e.person !== 'zoe' && <Person id={e.person} groesse={16} />}{personName(e.person)}</span>}
               {e.ergebnis && <span style={kleinChip(ERGEBNIS_FARBE[e.ergebnis] ?? C.inkDim)} title={ERGEBNIS_TITEL[e.ergebnis]}>{ERGEBNIS_KURZ[e.ergebnis]}</span>}
               {statusChip}
@@ -162,7 +162,7 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
             ) : null}
             {e.notiz && (
               <div style={{ display: 'grid', gap: 2, marginTop: 6 }}>
-                {NOTIZ_FELDER.filter(f => e.notiz?.[f.id]).map(f => <div key={f.id} style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.45 }}><span style={{ color: C.inkLeise }}>{f.label}:</span> {e.notiz![f.id]}</div>)}
+                {NOTIZ_FELDER.filter(f => e.notiz?.[f.id]).map(f => <div key={f.id} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 }}><span style={{ color: C.inkLeise }}>{f.label}:</span> {e.notiz![f.id]}</div>)}
               </div>
             )}
             {(eigene && bearbeiten == null) || (e.quelle === 'followup' && e.status === 'offen' && e.followupId) ? (
@@ -177,7 +177,7 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
                   </>
                 )}
                 {loeschen && (
-                  <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', fontSize: 12.5, color: C.inkDim }}>
+                  <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
                     Notiz wirklich löschen?
                     <button type="button" disabled={laeuft} onClick={() => void weg()} className="fassbar" style={{ ...leiseKnopf, color: LEUCHT.kritisch }}>Ja, löschen</button>
                     <button type="button" onClick={() => setLoeschen(false)} className="fassbar" style={leiseKnopf}>Nein</button>
@@ -185,7 +185,7 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
                 )}
               </div>
             ) : null}
-            {fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 6 }}>{fehler}</div>}
+            {fehler && <Meldung art="kritisch" rolle="alert">{fehler}</Meldung>}
           </>
         )}
       </div>
@@ -203,7 +203,7 @@ export const NEU_KNOEPFE: readonly { id: NeuArt; label: string; kategorie: Kateg
 
 interface FormProps { k: Kontakt; api: CrmApi; heute: string; onFertig: (text: string) => void; onAbbruch: () => void }
 
-const Hinweis = ({ children }: { children: ReactNode }) => <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>{children}</div>;
+const Hinweis = ({ children }: { children: ReactNode }) => <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{children}</div>;
 const Zeile = ({ children }: { children: ReactNode }) => <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>{children}</div>;
 const eingabe = { ...feld, fontSize: TYP.bedien, padding: '9px 12px' } as const;
 const Fuss = ({ ok, laeuft, knopf, onSpeichern, onAbbruch }: { ok: boolean; laeuft: boolean; knopf: string; onSpeichern: () => void; onAbbruch: () => void }) => (
@@ -242,7 +242,7 @@ export function EmailNeu({ k, api, onFertig, onAbbruch }: FormProps) {
   const los = async () => { setLaeuft(true); try { if (await schreiben(api, { id: k.id, art, text: inhalt })) onFertig('Festgehalten.'); } finally { setLaeuft(false); } };
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <Zeile><span style={{ fontSize: 12.5, color: C.inkLeise }}>Was</span><Wahl liste={MAIL_ARTEN} wert={art} onWahl={setArt} label="Art" /></Zeile>
+      <Zeile><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Was</span><Wahl liste={MAIL_ARTEN} wert={art} onWahl={setArt} label="Art" /></Zeile>
       {art !== 'linkedin' && <input value={betreff} onChange={e => setBetreff(e.target.value)} placeholder="Betreff" aria-label="Betreff" style={eingabe} />}
       <textarea value={text} onChange={e => setText(e.target.value)} rows={4} placeholder="Inhalt oder Kernaussage" aria-label="Inhalt" style={{ ...eingabe, resize: 'vertical' }} />
       <Hinweis>Nur festhalten, was außerhalb gesendet oder empfangen wurde — MAKE OS verschickt nichts. Einen Entwurf gibt es oben im Kopf.</Hinweis>
@@ -270,9 +270,9 @@ export function AnrufNeu({ k, api, heute, onFertig, onAbbruch }: FormProps) {
   };
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <Zeile><span style={{ fontSize: 12.5, color: C.inkLeise }}>Ergebnis</span><Wahl liste={liste} wert={ergebnis} onWahl={setErgebnis} label="Ergebnis" /></Zeile>
+      <Zeile><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ergebnis</span><Wahl liste={liste} wert={ergebnis} onWahl={setErgebnis} label="Ergebnis" /></Zeile>
       <input value={anlass} onChange={e => setAnlass(e.target.value)} placeholder={anlassNoetig ? 'Anlass aus der Beziehung (Pflicht — gelbe Telefon-Ampel)' : 'Anlass (optional)'} aria-label="Anlass des Anrufs" style={eingabe} />
-      <Zeile><span style={{ fontSize: 12.5, color: C.inkLeise }}>Wann</span><input type="date" value={wann} max={heute} onChange={e => setWann(e.target.value)} aria-label="Wann war der Anruf (leer = heute)" style={{ ...eingabe, width: 160 }} /></Zeile>
+      <Zeile><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Wann</span><input type="date" value={wann} max={heute} onChange={e => setWann(e.target.value)} aria-label="Wann war der Anruf (leer = heute)" style={{ ...eingabe, width: 160 }} /></Zeile>
       {mitNotiz ? (
         <NotizFormular heute={heute} ergebnis={ergebnis!} knopf={laeuft ? 'Speichert …' : 'Festhalten'} onAbbruch={onAbbruch} einwilligung={!hatMailEinwilligung(k)} anrede={k.anrede}
           onFertig={async x => {
@@ -336,9 +336,9 @@ export function AufgabeNeu({ k, api, heute, onFertig, onAbbruch }: FormProps) {
         <input type="date" value={faellig} min={heute} onChange={e => setFaellig(e.target.value)} aria-label="Fällig am" style={{ ...eingabe, width: 'auto' }} />
         <input type="time" value={uhrzeit} onChange={e => setUhrzeit(e.target.value)} aria-label="Uhrzeit (optional)" style={{ ...eingabe, width: 'auto' }} />
       </Zeile>
-      <Zeile><span style={{ fontSize: 12.5, color: C.inkLeise }}>Zuständig</span><ZustaendigWahl wert={zustaendig} welt="sales" onWahl={setZustaendig} /></Zeile>
+      <Zeile><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Zuständig</span><ZustaendigWahl wert={zustaendig} welt="sales" onWahl={setZustaendig} /></Zeile>
       <Hinweis>Wird ein Follow-up zur Person — es steht auch unter Follow-up und in der Power Hour.</Hinweis>
-      {fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {fehler && <Meldung art="kritisch" rolle="alert">{fehler}</Meldung>}
       <Fuss ok={ok} laeuft={laeuft} knopf="Aufgabe anlegen" onSpeichern={() => void los()} onAbbruch={onAbbruch} />
     </div>
   );

@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, LEUCHT } from '../../ui';
 import { Fenster } from '../../Fenster';
 
 interface Vorschau {
@@ -71,23 +71,23 @@ export function KennungenUmzug({ i = 0, onGeaendert }: { i?: number; onGeaendert
       {v.anzahl > 0 && (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-            {bestaende.slice(0, 12).map(([name, n]) => <span key={name} style={{ fontSize: 12, color: C.inkDim, padding: '2px 8px', borderRadius: 8, background: 'rgba(255,255,255,.04)' }}>{name} · {n}</span>)}
-            {bestaende.length > 12 && <span style={{ fontSize: 12, color: C.inkLeise }}>+ {bestaende.length - 12} weitere Bestände</span>}
+            {bestaende.slice(0, 12).map(([name, n]) => <span key={name} style={{ fontSize: TYP.bedien, color: C.inkDim, padding: '2px 8px', borderRadius: 8, background: 'rgba(255,255,255,.04)' }}>{name} · {n}</span>)}
+            {bestaende.length > 12 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>+ {bestaende.length - 12} weitere Bestände</span>}
           </div>
-          {summe(v.fingerabdruecke) > 0 && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{summe(v.fingerabdruecke)} Protokoll-Fingerabdrücke werden auf die neuen Kennungen umgerechnet.</div>}
+          {summe(v.fingerabdruecke) > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{summe(v.fingerabdruecke)} Protokoll-Fingerabdrücke werden auf die neuen Kennungen umgerechnet.</div>}
           <div style={{ display: 'grid', gap: 4, marginTop: 10 }}>
             {zeilen.map(k => (
-              <div key={k.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12.5 }}>
+              <div key={k.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: TYP.bedien }}>
                 <span style={{ color: C.ink, minWidth: 140 }}>{k.name || '—'}</span>
                 <span style={{ color: C.inkLeise, flex: 1 }}>{Object.entries(k.speicher).map(([s, n]) => `${s} ${n}`).join(' · ')}</span>
               </div>
             ))}
-            {v.jeKennung.length > zeilen.length && <button onClick={() => setAlle(true)} style={{ justifySelf: 'start', background: 'none', border: 0, color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>alle {v.jeKennung.length} zeigen</button>}
+            {v.jeKennung.length > zeilen.length && <button onClick={() => setAlle(true)} style={{ justifySelf: 'start', background: 'none', border: 0, color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>alle {v.jeKennung.length} zeigen</button>}
           </div>
         </>
       )}
-      {v.letzter && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Zuletzt: {v.letzter.art === 'rueckweg' ? 'Rückweg' : 'Umzug'} am {tag(v.letzter.am)} · {v.letzter.anzahl} Kontakte · {v.letzter.person}{v.letzter.status === 'zurueck' ? ' · zurückgenommen' : ''}</div>}
-      {!v.rueckweg.moeglich && v.letzter && v.letzter.status === 'fertig' && v.letzter.art !== 'rueckweg' && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4 }}>Rückweg nicht mehr möglich: {v.rueckweg.gruende.join(' ')}</div>}
+      {v.letzter && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Zuletzt: {v.letzter.art === 'rueckweg' ? 'Rückweg' : 'Umzug'} am {tag(v.letzter.am)} · {v.letzter.anzahl} Kontakte · {v.letzter.person}{v.letzter.status === 'zurueck' ? ' · zurückgenommen' : ''}</div>}
+      {!v.rueckweg.moeglich && v.letzter && v.letzter.status === 'fertig' && v.letzter.art !== 'rueckweg' && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>Rückweg nicht mehr möglich: {v.rueckweg.gruende.join(' ')}</div>}
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
         {v.rueckweg.moeglich && <Knopf leise aus={laeuft} onClick={() => setFrage('rueckweg')}>Rückweg …</Knopf>}

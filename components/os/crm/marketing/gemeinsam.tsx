@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { feld, Knopf, Chip, LEUCHT } from '../../schlank';
+import { feld, Knopf, Chip, LEUCHT } from '../../ui';
 import { anzeigename, findeKontakte, type Kontakt } from '@/lib/make-one/crm';
 import type { Kpi } from '@/lib/crm/kennzahlen';
 import type { Freigabe } from '@/lib/crm/typen';
@@ -30,8 +30,8 @@ export function KpiLeiste({ liste }: { liste: Kpi[] }) {
       {liste.map(k => (
         <div key={k.id} title={k.quelle} style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,.03)', borderLeft: `3px solid ${KPI_FARBE[k.ampel]}` }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: k.ampel === 'grau' ? C.inkDim : C.ink, fontVariantNumeric: 'tabular-nums' }}>{k.anzeige}</div>
-          <div style={{ fontSize: 12, color: C.inkDim, marginTop: 2, lineHeight: 1.35 }}>{k.label}</div>
-          <div style={{ fontSize: 11, color: C.inkLeise, marginTop: 2, lineHeight: 1.35 }}>Ziel {k.ziel} · {k.quelle}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2, lineHeight: 1.35 }}>{k.label}</div>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 2, lineHeight: 1.35 }}>Ziel {k.ziel} · {k.quelle}</div>
         </div>
       ))}
     </div>
@@ -59,7 +59,7 @@ export function PersonWahl({ kontakte, onWahl, platzhalter = 'Person suchen: Nam
           {anzeigename(k)}{k.firma ? <span style={{ color: C.inkLeise }}> · {k.firma}</span> : null}
         </button>
       ))}
-      {q.trim().length >= 2 && !treffer.length && <div style={{ fontSize: 12, color: C.inkLeise, padding: '2px 2px' }}>Niemand gefunden.</div>}
+      {q.trim().length >= 2 && !treffer.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '2px 2px' }}>Niemand gefunden.</div>}
     </div>
   );
 }
@@ -90,7 +90,7 @@ export function AutorStimme({ autor, stimme, groesse = 20 }: { autor: string; st
   return (
     <span title={titel} aria-label={titel} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flex: '0 0 auto' }}>
       <Person id={autor} groesse={groesse} />
-      <span aria-hidden style={{ color: C.inkLeise, fontSize: 11 }}>›</span>
+      <span aria-hidden style={{ color: C.inkLeise, fontSize: 12 }}>›</span>
       <StimmePlakette stimme={stimme} groesse={groesse} />
     </span>
   );
@@ -133,7 +133,7 @@ export function FreigabeBlock({ f, stand, an, ich, heute, ziele, ohne, erledigt,
 }) {
   const [wunsch, setWunsch] = useState(false);
   const [notiz, setNotiz] = useState('');
-  const text = { fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 } as const;
+  const text = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
   const reihe = { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } as const;
   const seit = f?.am ? datum(f.am.slice(0, 10), heute) : null;
   const n = nameVon(an);
@@ -173,7 +173,7 @@ export function FreigabeBlock({ f, stand, an, ich, heute, ziele, ohne, erledigt,
       {stand === 'ok' && an && (
         <div style={reihe}>
           <span style={{ ...text, color: LEUCHT.gut }}>Freigegeben von {n}{seit ? ` · ${seit}` : ''}</span>
-          {ich === an && !erledigt && !wunsch && <button onClick={() => setWunsch(true)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>doch eine Änderung wünschen</button>}
+          {ich === an && !erledigt && !wunsch && <button onClick={() => setWunsch(true)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>doch eine Änderung wünschen</button>}
         </div>
       )}
       {wunsch && (
@@ -182,7 +182,7 @@ export function FreigabeBlock({ f, stand, an, ich, heute, ziele, ohne, erledigt,
             style={{ ...feld, resize: 'vertical', fontSize: TYP.bedien, padding: '9px 12px', lineHeight: 1.5 }} />
           <div style={reihe}>
             <Knopf farbe={LEUCHT.kritisch} aus={!notiz.trim()} onClick={() => { onAenderung(notiz); setWunsch(false); setNotiz(''); }}>Änderung wünschen</Knopf>
-            <button onClick={() => { setWunsch(false); setNotiz(''); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>Abbrechen</button>
+            <button onClick={() => { setWunsch(false); setNotiz(''); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Abbrechen</button>
           </div>
         </div>
       )}

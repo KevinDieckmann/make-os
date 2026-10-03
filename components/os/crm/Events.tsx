@@ -29,7 +29,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../ui';
 import { VORLAGEN, vorlageAnwenden, checklisteStand, einlader, type VorlageId } from '@/lib/crm/eventplanung';
 import { MARKE_EVENTS, nachfassenRest } from '@/lib/crm/events';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
@@ -55,8 +55,8 @@ function Kopf() {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
       <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.2 }}>{MARKE_EVENTS}</span>
-      <span style={{ fontSize: 12.5, color: C.inkLeise }}>Unsere Veranstaltungsmarke — hier laufen unsere eigenen Abende.</span>
-      <Link href={WEG.besuch()} style={{ fontSize: 12.5, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Veranstaltungen, die wir besuchen: Events ›</Link>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Unsere Veranstaltungsmarke — hier laufen unsere eigenen Abende.</span>
+      <Link href={WEG.besuch()} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Veranstaltungen, die wir besuchen: Events ›</Link>
     </div>
   );
 }
@@ -178,10 +178,10 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
 
         <Kachel {...K('events')}>
           <Karte i={1}>
-            <Ueberschrift rechts={<Knopf onClick={() => setNeu(!neu)}>{neu ? 'Abbrechen' : '+ Event'}</Knopf>}>Events</Ueberschrift>
+            <Ueberschrift rechts={<Knopf haupt onClick={() => setNeu(!neu)}>{neu ? 'Abbrechen' : '+ Event'}</Knopf>}>Events</Ueberschrift>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
               <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>Verantwortung <Person id={verantwortlich('event')} name /></span>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>· beide sehen alles und arbeiten mit</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>beide sehen alles und arbeiten mit</span>
             </div>
             <div style={{ marginBottom: 8 }}><WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} /></div>
             {neu && (
@@ -190,9 +190,9 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
                 <Liste>
                   {VORLAGEN.map(v => (
                     <Zeile key={v.id} onClick={() => anlegen(v.id)} titel={v.label} unter={`${v.beschreibung} ${v.kapazitaet} Plätze · Soll ${v.mixZiel.zielkunden} % Zielkunden, ${v.mixZiel.kunden} % Kunden`}
-                      rechts={<span style={{ fontSize: 12, color: C.aktiv, fontWeight: 600 }}>anlegen</span>} />
+                      rechts={<span style={{ fontSize: TYP.bedien, color: C.aktiv, fontWeight: 600 }}>anlegen</span>} />
                   ))}
-                  <Zeile onClick={() => anlegen(null)} titel="Ohne Vorlage" unter="Leeres Event — Format, Ablauf und Checkliste selbst aufbauen" rechts={<span style={{ fontSize: 12, color: C.aktiv, fontWeight: 600 }}>anlegen</span>} />
+                  <Zeile onClick={() => anlegen(null)} titel="Ohne Vorlage" unter="Leeres Event — Format, Ablauf und Checkliste selbst aufbauen" rechts={<span style={{ fontSize: TYP.bedien, color: C.aktiv, fontWeight: 600 }}>anlegen</span>} />
                 </Liste>
               </div>
             )}
@@ -223,7 +223,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
                   return <Zeile key={t.id} onClick={() => router.push(WEG.event(e.id, 'nachfassen'))} links={<Punkt farbe={fristFarbe(rest)} />}
                     titel={<>{name}{firma && <span style={{ color: C.inkLeise }}> · {firma}</span>}</>} unter={`${e.titel} · ${stunden(rest)}`} />;
                 })}
-                {offenListe.length > 6 && <div style={{ fontSize: 12, color: C.inkLeise, padding: '4px 2px' }}>und {offenListe.length - 6} weitere — je Event unter „Nachfassen“.</div>}
+                {offenListe.length > 6 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '4px 2px' }}>und {offenListe.length - 6} weitere — je Event unter „Nachfassen“.</div>}
               </Liste>
             ) : <Leer>Niemand offen — binnen 48 Stunden nach dem Event stehen hier alle, die da waren und noch nicht nachgefasst sind.</Leer>}
           </Karte>
@@ -241,7 +241,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
                   {wirkung.verursacht > 0 && <Zahl wert={euro(wirkung.verursacht)} label="daraus entstanden" farbe={LEUCHT.business} />}
                   {wirkung.jeGespraech !== null && <Zahl wert={euro(wirkung.jeGespraech)} label="Kosten je Folgegespräch" />}
                 </Raster>
-                <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Über alle vergangenen Events unter {MARKE_EVENTS}. Ein Event zählt, wenn danach die richtigen Gespräche stattfinden — Ziel sind drei je Event binnen 30 Tagen.</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Über alle vergangenen Events unter {MARKE_EVENTS}. Ein Event zählt, wenn danach die richtigen Gespräche stattfinden — Ziel sind drei je Event binnen 30 Tagen.</div>
               </>
             ) : <Leer>Noch kein Event durchgeführt. Die Wirkung zeigt sich 30 Tage danach: Folgegespräche, beeinflusste Pipeline, Kosten je Gespräch.</Leer>}
           </Karte>

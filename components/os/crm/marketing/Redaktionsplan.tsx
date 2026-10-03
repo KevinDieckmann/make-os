@@ -23,7 +23,7 @@
 import { localDay } from '@/lib/zeit';
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, feld, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, feld, LEUCHT } from '../../ui';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { Beitrag, MarketingEinstellung } from '@/lib/crm/typen';
 import { BEIDE, anderer, nameVon, verantwortlich } from '@/lib/crm/team';
@@ -118,14 +118,14 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
               <Knopf leise onClick={() => setVersatz(versatz - 1)}>‹</Knopf>
               <span style={{ fontSize: TYP.bedien, color: C.inkDim, minWidth: 150, textAlign: 'center' }}>{fenster.label}</span>
               <Knopf leise onClick={() => setVersatz(versatz + 1)}>›</Knopf>
-              {versatz !== 0 && <button onClick={() => setVersatz(0)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>heute</button>}
+              {versatz !== 0 && <button onClick={() => setVersatz(0)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>heute</button>}
             </span>
           )}
           <span style={{ flex: 1 }} />
           <WerFilter wahl={wer} onWahl={setWer} ich={ich} zahlen={zahlen} />
         </div>
         {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>
           Neue Beiträge schreibt {nameVon(verantwortung)} (Verantwortung Marketing), bis jemand anderes eingetragen ist. Erscheint ein Beitrag im Namen einer Person, die ihn nicht selbst schreibt, gibt sie ihn vor dem Planen frei.
           Beiträge ohne Datum stehen in jeder Ansicht. MAKE OS veröffentlicht nichts — Text kopieren, selbst posten, Status und Wirkung hier eintragen.
         </div>
@@ -154,7 +154,7 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
               <div key={g.person} style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                   <Person id={g.person} name />
-                  <span style={{ fontSize: 12, color: C.inkLeise }}>{g.beitraege.length || ''}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{g.beitraege.length || ''}</span>
                 </div>
                 {g.beitraege.length ? (
                   <Liste>
@@ -166,11 +166,11 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
                         rechts={<Punkt farbe={STATUS_FARBE[b.status]} groesse={7} />} />;
                     })}
                   </Liste>
-                ) : <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '8px 0' }}>Nichts mit Datum in dieser Woche.</div>}
+                ) : <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '8px 0' }}>Nichts mit Datum in dieser Woche.</div>}
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Nach Autor · die Plakette zeigt, in wessen Namen es erscheint. Liegengebliebenes aus früheren Wochen steht mit dabei.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Nach Autor · die Plakette zeigt, in wessen Namen es erscheint. Liegengebliebenes aus früheren Wochen steht mit dabei.</div>
         </Karte>
       </Raster>
 
@@ -206,7 +206,7 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
                 <div key={`${s.kontaktId}-${s.am}-${i}`} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: TYP.bedien, color: C.ink, lineHeight: 1.5 }}>„{s.bedarf}“</div>
-                    <button onClick={() => zuKontakt(s.kontaktId)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>{s.name} · {datum(s.am, heute)}</button>
+                    <button onClick={() => zuKontakt(s.kontaktId)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{s.name} · {datum(s.am, heute)}</button>
                   </div>
                   {drin ? <Chip farbe={LEUCHT.gut}>übernommen</Chip>
                     : <Knopf leise onClick={async () => { const b = ideeAusStimme(s, neueId('bt'), new Date().toISOString()); await api.setze('beitraege', alsEintrag(b)); setMeldung(`Idee „${b.titel}“ angelegt.`); }}>Als Idee übernehmen</Knopf>}
@@ -215,7 +215,7 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
             })}
           </Liste>
         ) : <Leer>Sobald Gesprächsnotizen das Feld „Bedarf / Schmerz“ haben, stehen hier die Themen — echte Probleme, mit eigener Einsicht beantwortet.</Leer>}
-        {stimmen.length > 8 && <button onClick={() => setAlleStimmen(!alleStimmen)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>{alleStimmen ? 'weniger' : `alle ${stimmen.length} zeigen`}</button>}
+        {stimmen.length > 8 && <button onClick={() => setAlleStimmen(!alleStimmen)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{alleStimmen ? 'weniger' : `alle ${stimmen.length} zeigen`}</button>}
       </Karte>
     </>
   );
@@ -281,7 +281,7 @@ function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde
       <Feldzeile label="Erscheint als">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Wahl label="Erscheint als" leer="+ Absender" liste={STIMMEN_WAHL} wert={b.stimme ?? null} onWahl={s => void teil(rollenWechsel(b, { stimme: s }))} />
-          {!b.stimme && <span style={{ fontSize: 12, color: C.inkLeise }}>In wessen Namen erscheint es — Profil, Absender?</span>}
+          {!b.stimme && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>In wessen Namen erscheint es — Profil, Absender?</span>}
         </div>
       </Feldzeile>
       <Feldzeile label="Freigabe">
@@ -292,16 +292,16 @@ function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde
       </Feldzeile>
       <Feldzeile label="Status"><Wahl label="Status" liste={BEITRAG_STATUS} wert={b.status} farbe={STATUS_FARBE[b.status]} onWahl={statusWahl} /></Feldzeile>
       {(statusHinweis || (b.status === 'geplant' && sperre)) && (
-        <div style={{ fontSize: 12.5, color: LEUCHT.achtung, margin: '2px 0 6px', lineHeight: 1.5 }}>{statusHinweis || `Geplant, aber: ${sperre}`}</div>
+        <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, margin: '2px 0 6px', lineHeight: 1.5 }}>{statusHinweis || `Geplant, aber: ${sperre}`}</div>
       )}
       <Feldzeile label="Kanal"><Wahl label="Kanal" liste={BEITRAG_KANAELE} wert={b.kanal} onWahl={kanal => void teil({ kanal })} /></Feldzeile>
-      <Feldzeile label="Säule">{einstellung.saeulen.length ? <Wahl label="Säule" liste={SAEULEN.filter(x => x.id)} wert={b.saeule || null} onWahl={s => void teil({ saeule: s })} onLeeren={() => void teil({ saeule: null })} /> : <span style={{ fontSize: 12.5, color: C.inkLeise }}>Themensäulen legst du unter „Positionierung“ an.</span>}</Feldzeile>
+      <Feldzeile label="Säule">{einstellung.saeulen.length ? <Wahl label="Säule" liste={SAEULEN.filter(x => x.id)} wert={b.saeule || null} onWahl={s => void teil({ saeule: s })} onLeeren={() => void teil({ saeule: null })} /> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Themensäulen legst du unter „Positionierung“ an.</span>}</Feldzeile>
       <Feldzeile label="Datum"><Feld typ="date" breite={170} wert={b.datum ?? ''} platzhalter="Datum" onFertig={d => void teil({ datum: d || null })} /></Feldzeile>
       <Feldzeile label="Link"><Feld wert={b.link ?? ''} platzhalter="https://… (nach dem Veröffentlichen)" onFertig={l => void teil({ link: l.trim() || null })} /></Feldzeile>
       <Feldzeile label="Kosten (€)">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Feld typ="number" breite={140} wert={b.kostenEuro ? String(b.kostenEuro) : ''} platzhalter="0" onFertig={t => { const n = Math.round(Number(t)); void teil({ kostenEuro: Number.isFinite(n) && n > 0 ? n : null }); }} />
-          <span style={{ fontSize: 12, color: C.inkLeise }}>Anzeigen, Produktion, Tools — für „Kosten je Anfrage“ in der Marketing-Strecke.</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Anzeigen, Produktion, Tools — für „Kosten je Anfrage“ in der Marketing-Strecke.</span>
         </div>
       </Feldzeile>
       <div style={{ marginTop: 6 }}><Textfeld wert={b.text ?? ''} zeilen={8} max={8000} platzhalter="Text des Beitrags" onFertig={t => void textAendern({ text: t || null })} /></div>
@@ -310,11 +310,11 @@ function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde
         {b.link && <Knopf leise onClick={() => window.open(b.link, '_blank', 'noopener')}>Link öffnen</Knopf>}
         <Knopf leise onClick={async () => { if (!window.confirm(`Beitrag „${b.titel}“ löschen?`)) return; await api.weg('beitraege', b.id); schliessen(); melde(`„${b.titel}“ gelöscht.`); }}>Löschen</Knopf>
       </div>
-      {b.geaendertVon && <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 8 }}>Zuletzt geändert von {nameVon(b.geaendertVon)} · {datum(b.geaendert.slice(0, 10), heute)}</div>}
+      {b.geaendertVon && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Zuletzt geändert von {nameVon(b.geaendertVon)} · {datum(b.geaendert.slice(0, 10), heute)}</div>}
 
       {b.quellen.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12.5, color: C.inkLeise }}>
-          Thema aus Gesprächen mit: {b.quellen.map((id, i) => <span key={id}>{i ? ', ' : ''}<button onClick={() => zuKontakt(id)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>{name(id)}</button></span>)}
+        <div style={{ marginTop: 12, fontSize: TYP.bedien, color: C.inkLeise }}>
+          Thema aus Gesprächen mit: {b.quellen.map((id, i) => <span key={id}>{i ? ', ' : ''}<button onClick={() => zuKontakt(id)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{name(id)}</button></span>)}
           <span> — Namen nur mit Freigabe der Person nennen.</span>
         </div>
       )}
@@ -335,11 +335,11 @@ function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde
           </div>
         )}
         <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Wirkung</span><Wahl label="Wirkung" liste={WIRKUNG_ARTEN} wert={art} onWahl={setArt} /></span>
+          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Wirkung</span><Wahl label="Wirkung" liste={WIRKUNG_ARTEN} wert={art} onWahl={setArt} /></span>
           <input value={notiz} maxLength={300} onChange={e => setNotiz(e.target.value)} placeholder="Notiz (optional): was hat die Person gesagt?" aria-label="Notiz zur Wirkung" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
           <PersonWahl kontakte={kontakte} onWahl={k => void eintragen(k.id)} platzhalter="Wer? Person suchen und anklicken" />
-          <div style={{ fontSize: 12, color: C.inkLeise }}>{art === 'reaktion' ? 'Reaktionen zählen am Beitrag.' : 'Gespräch und Anfrage stehen zusätzlich im Verlauf der Person — sie zählen als durch Content ausgelöst.'}</div>
-          {hinweis && <div style={{ fontSize: 12.5, color: C.inkDim }}>{hinweis}</div>}
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{art === 'reaktion' ? 'Reaktionen zählen am Beitrag.' : 'Gespräch und Anfrage stehen zusätzlich im Verlauf der Person — sie zählen als durch Content ausgelöst.'}</div>
+          {hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{hinweis}</div>}
         </div>
       </div>
     </Karte>

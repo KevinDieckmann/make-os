@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP, TIEF, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../ui';
 import type { Ergebnis, Aktivitaet } from '@/lib/make-one/crm';
 import type { KanalStatus } from '@/lib/crm/recht';
 import type { TeamTag } from '@/lib/crm/pipeline';
@@ -70,7 +70,7 @@ function TeamZeile({ team }: { team: TeamTag[] }) {
     <div style={{ display: 'grid', gap: 6, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
       <div style={{ fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600 }}>Team · heute / 7 Tage</div>
       {team.map(t => (
-        <div key={t.person} style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
+        <div key={t.person} style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
           <span style={{ minWidth: 76 }}><Person id={t.person} name groesse={18} /></span>
           <span>Power Hours <b style={{ color: t.powerHours.heute ? LEUCHT.gut : C.ink }}>{t.powerHours.heute}</b> / {t.powerHours.woche}</span>
           <span>Gespräche <b style={{ color: t.gespraeche.heute ? LEUCHT.gut : C.ink }}>{t.gespraeche.heute}</b> / {t.gespraeche.woche}</span>
@@ -165,25 +165,25 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
           {lesen ? (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <Knopf onClick={() => setFuer(null)}>Zurück zu deiner Power Hour</Knopf>
-              <span style={{ fontSize: 12.5, color: C.inkLeise }}>So sieht {nameVon(d.person)} die Liste heute. Festhalten kann nur {nameVon(d.person)} selbst — Karten verteilst du über „Übergeben“ oder in der Kartei.</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>So sieht {nameVon(d.person)} die Liste heute. Festhalten kann nur {nameVon(d.person)} selbst — Karten verteilst du über „Übergeben“ oder in der Kartei.</span>
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <Knopf farbe={LEUCHT.gut} aus={!d.karten.length} onClick={() => setFokus({ id: neueId('ph'), start: new Date().toISOString(), bis: Date.now() + 60 * 60_000, ziel: { gespraeche: 4, termine: 1 }, index: 0, ergebnisse: {}, kartenStart: Date.now() })}>Power Hour starten</Knopf>
-              <span style={{ fontSize: 12.5, color: C.inkLeise }}>{d.karten.length ? 'Eine Stunde, Karte für Karte. Ziel: 4 Gespräche, 1 Termin.' : 'Heute liegt keine Karte bei dir.'}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{d.karten.length ? 'Eine Stunde, Karte für Karte. Ziel: 4 Gespräche, 1 Termin.' : 'Heute liegt keine Karte bei dir.'}</span>
             </div>
           )}
           {!lesen && d.ausgefiltert.beiAnderen > 0 && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
               <Person id={andere} groesse={18} />
               <span>{d.ausgefiltert.beiAnderen} {d.ausgefiltert.beiAnderen === 1 ? 'Karte liegt' : 'Karten liegen'} bei {nameVon(andere)} — die ruft niemand doppelt an.</span>
-              {andere !== d.ich && <button onClick={() => setFuer(andere)} style={{ background: 'none', border: 'none', color: LEUCHT.business, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>{nameVon(andere)}s Liste ansehen →</button>}
+              {andere !== d.ich && <button onClick={() => setFuer(andere)} style={{ background: 'none', border: 'none', color: LEUCHT.business, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{nameVon(andere)}s Liste ansehen →</button>}
             </div>
           )}
           {verantwortet && d.team.length > 1 && <TeamZeile team={d.team} />}
-          {!!d.ausgefiltert.ohnePerson && <div style={{ fontSize: 12.5, color: C.inkLeise }}>{d.ausgefiltert.ohnePerson} {d.ausgefiltert.ohnePerson === 1 ? 'fälliger Deal bzw. fälliges Mandat hat' : 'fällige Deals bzw. Mandate haben'} keine Person — auch nicht über die Firma. Unter Deals eine Person zuordnen.</div>}
+          {!!d.ausgefiltert.ohnePerson && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{d.ausgefiltert.ohnePerson} {d.ausgefiltert.ohnePerson === 1 ? 'fälliger Deal bzw. fälliges Mandat hat' : 'fällige Deals bzw. Mandate haben'} keine Person — auch nicht über die Firma. Unter Deals eine Person zuordnen.</div>}
           {(d.ausgefiltert.ohneKanal > 0 || d.ausgefiltert.sperre > 0) && (
-            <div style={{ fontSize: 12.5, color: C.inkLeise }}>Nicht auf der Liste: {d.ausgefiltert.ohneKanal} ohne zulässigen Kanal{d.ausgefiltert.sperre ? ` · ${d.ausgefiltert.sperre} mit Werbesperre` : ''}{d.ausgefiltert.kuerzlich ? ` · ${d.ausgefiltert.kuerzlich} kürzlich gesprochen` : ''}. Grundlage klären in der Kartei.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nicht auf der Liste: {d.ausgefiltert.ohneKanal} ohne zulässigen Kanal{d.ausgefiltert.sperre ? ` · ${d.ausgefiltert.sperre} mit Werbesperre` : ''}{d.ausgefiltert.kuerzlich ? ` · ${d.ausgefiltert.kuerzlich} kürzlich gesprochen` : ''}. Grundlage klären in der Kartei.</div>
           )}
         </div>
       ) : (
@@ -199,7 +199,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
           </span>
         </div>
       )}
-      {meldung && <div style={{ marginTop: 10, fontSize: 12.5, color: C.inkDim }}>{meldung}</div>}
+      {meldung && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
     </Karte>
   );
 
@@ -265,8 +265,8 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
                     ...TIEF.knopf(LEUCHT.gut) }}>
                   Anrufen<span style={{ fontWeight: 600, fontSize: 14, opacity: .75, fontVariantNumeric: 'tabular-nums' }}>{k.telefon}</span>
                 </a>
-                {tel.farbe === 'gelb' && <span style={{ fontSize: 12, color: C.inkLeise }}>Nur mit konkretem Anlass aus der Beziehung — {tel.grund}.</span>}
-                {gewaehlt === k.id && !notizOffen && <span style={{ fontSize: 12.5, color: LEUCHT.gut }}>Wie lief’s? Ergebnis tippen — dann ist es festgehalten.</span>}
+                {tel.farbe === 'gelb' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nur mit konkretem Anlass aus der Beziehung — {tel.grund}.</span>}
+                {gewaehlt === k.id && !notizOffen && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Wie lief’s? Ergebnis tippen — dann ist es festgehalten.</span>}
               </div>
             )}
             {!lesen && (
@@ -371,7 +371,7 @@ function Nachbereiten({ liste, api, heute, zuKontakt }: { liste: Nachbereitung[]
           );
         })}
       </div>
-      {meldung && <div style={{ marginTop: 10, fontSize: 12.5, color: C.inkDim }}>{meldung}</div>}
+      {meldung && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
     </Karte>
   );
 }

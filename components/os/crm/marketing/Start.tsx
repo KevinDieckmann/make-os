@@ -12,7 +12,7 @@
 import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Liste, Zeile, feld, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Liste, Zeile, feld, LEUCHT } from '../../ui';
 import type { Beitrag, MarketingEinstellung } from '@/lib/crm/typen';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
 import { EINSTELLUNG_GRENZEN as G, BEITRAG_KANAELE, STIMMEN_WAHL, SEGMENT_VORLAGEN, vorlageAlsSegment, kriterienText, einstellungAus, leereEinstellung, genitiv } from '@/lib/crm/marketing';
@@ -85,8 +85,8 @@ export function Start({ api, onFertig, onUeberspringen }: { api: CrmApi; onFerti
   );
 
   return (
-    <Karte i={0} akzent={LEUCHT.puls}>
-      <Ueberschrift farbe={LEUCHT.puls} rechts={<button onClick={onUeberspringen} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>Ohne Start zur Übersicht</button>}>Marketing aufsetzen — drei Schritte</Ueberschrift>
+    <Karte i={0} ton={LEUCHT.puls}>
+      <Ueberschrift farbe={LEUCHT.puls} rechts={<button onClick={onUeberspringen} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Ohne Start zur Übersicht</button>}>Marketing aufsetzen — drei Schritte</Ueberschrift>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
         {SCHRITTE.map(s => <Chip key={s.id} farbe={s.id === schritt ? LEUCHT.puls : s.id < schritt ? LEUCHT.gut : C.inkLeise}>{s.id < schritt ? '✓ ' : `${s.id} · `}{s.label}</Chip>)}
       </div>
@@ -99,16 +99,16 @@ export function Start({ api, onFertig, onUeberspringen }: { api: CrmApi; onFerti
       {schritt === 1 && (
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'grid', gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: C.inkDim }}><span>Wofür wir stehen — in einem Absatz *</span><span style={{ fontSize: 11, color: C.inkLeise }}>{e.positionierung.length}/{G.positionierung}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkDim }}><span>Wofür wir stehen — in einem Absatz *</span><span style={{ fontSize: 12, color: C.inkLeise }}>{e.positionierung.length}/{G.positionierung}</span></div>
             {bereich('positionierung', 'Für wen lösen wir welches Problem, und warum gerade wir?')}
           </div>
           <div style={{ display: 'grid', gap: 4 }}>
-            <div style={{ fontSize: 12.5, color: C.inkDim }}>Zielgruppe (ICP)</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Zielgruppe (ICP)</div>
             {bereich('icp', 'Branche, Größe, Rolle, Auslöser — wer ist ein idealer Kunde, wer nicht?', 3)}
           </div>
           <Feldzeile label="Ton"><input value={e.ton} maxLength={G.ton} placeholder="z. B. klar, direkt, keine Floskeln; Sie auf LinkedIn, Du im Newsletter" aria-label="Ton" onChange={x => setE({ ...e, ton: x.target.value })} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} /></Feldzeile>
           <div style={{ display: 'grid', gap: 6 }}>
-            <div style={{ fontSize: 12.5, color: C.inkDim }}>Drei Themensäulen — wiederkehrende Themen mit eigener Einsicht</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Drei Themensäulen — wiederkehrende Themen mit eigener Einsicht</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 6 }}>
               {saeulen.map((s, i) => <input key={i} value={s} maxLength={G.name} placeholder={`Säule ${i + 1}${i === 0 ? ' *' : ''}`} aria-label={`Säule ${i + 1}`} onChange={x => setSaeulen(saeulen.map((y, j) => (j === i ? x.target.value : y)))} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />)}
             </div>
@@ -116,8 +116,8 @@ export function Start({ api, onFertig, onUeberspringen }: { api: CrmApi; onFerti
           {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Knopf aus={laeuft || !e.positionierung.trim() || !saeulen[0]?.trim()} onClick={() => void positionierungSpeichern()}>{laeuft ? 'speichert …' : 'Speichern und weiter'}</Knopf>
-            <button onClick={() => setSchritt(2)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>Später</button>
-            <span style={{ fontSize: 12, color: C.inkLeise }}>Pflicht: die Positionierung und eine Säule. Beschreibungen der Säulen später unter „Positionierung“.</span>
+            <button onClick={() => setSchritt(2)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Später</button>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Pflicht: die Positionierung und eine Säule. Beschreibungen der Säulen später unter „Positionierung“.</span>
           </div>
         </div>
       )}
@@ -127,19 +127,19 @@ export function Start({ api, onFertig, onUeberspringen }: { api: CrmApi; onFerti
           <Feldzeile label="Titel *"><input value={titel} maxLength={200} onChange={x => setTitel(x.target.value)} placeholder="Worum geht es — eine Einsicht, konkret" aria-label="Titel des Beitrags" autoFocus style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} /></Feldzeile>
           <Feldzeile label="Kanal"><Wahl label="Kanal" liste={BEITRAG_KANAELE} wert={kanal} onWahl={setKanal} /></Feldzeile>
           <Feldzeile label="Datum"><input type="date" value={tag} onChange={x => setTag(x.target.value)} aria-label="Datum" style={{ ...feld, width: 170, fontSize: TYP.bedien, padding: '8px 11px' }} /></Feldzeile>
-          <Feldzeile label="Säule">{saeulenWahl.length > 1 ? <Wahl label="Säule" liste={saeulenWahl.filter(x => x.id)} wert={saeule || null} onWahl={setSaeule} onLeeren={() => setSaeule('')} /> : <span style={{ fontSize: 12.5, color: C.inkLeise }}>Ohne Säulen (Schritt 1) — später unter „Positionierung“.</span>}</Feldzeile>
+          <Feldzeile label="Säule">{saeulenWahl.length > 1 ? <Wahl label="Säule" liste={saeulenWahl.filter(x => x.id)} wert={saeule || null} onWahl={setSaeule} onLeeren={() => setSaeule('')} /> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ohne Säulen (Schritt 1) — später unter „Positionierung“.</span>}</Feldzeile>
           <Feldzeile label="Erscheint als"><Wahl label="Erscheint als" leer="+ Absender" liste={STIMMEN_WAHL} wert={stimme} onWahl={setStimme} /></Feldzeile>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
             <Knopf aus={laeuft || !titel.trim()} onClick={() => void beitragAnlegen()}>{laeuft ? '…' : `Als ${tag ? 'Entwurf' : 'Idee'} anlegen und weiter`}</Knopf>
-            <button onClick={() => setSchritt(3)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>Später</button>
-            <span style={{ fontSize: 12, color: C.inkLeise }}>{ich && stimme !== ich && stimme !== 'marke' ? `Erscheint in ${genitiv(nameVon(stimme))} Namen — vor dem Planen braucht es das Okay dieser Person (Redaktionsplan).` : 'Text, Link und Wirkung kommen im Redaktionsplan dazu.'}</span>
+            <button onClick={() => setSchritt(3)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Später</button>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{ich && stimme !== ich && stimme !== 'marke' ? `Erscheint in ${genitiv(nameVon(stimme))} Namen — vor dem Planen braucht es das Okay dieser Person (Redaktionsplan).` : 'Text, Link und Wirkung kommen im Redaktionsplan dazu.'}</span>
           </div>
         </div>
       )}
 
       {schritt === 3 && (
         <div style={{ display: 'grid', gap: 10 }}>
-          {beitragId && <div style={{ fontSize: 12.5, color: LEUCHT.gut }}>Erster Beitrag steht im Redaktionsplan.</div>}
+          {beitragId && <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Erster Beitrag steht im Redaktionsplan.</div>}
           <Liste>
             {vorlagen.map(({ v, anzahl }) => {
               const da = (crm.stand.segmente ?? []).find(s => s.name.trim().toLowerCase() === v.name.toLowerCase());
@@ -149,7 +149,7 @@ export function Start({ api, onFertig, onUeberspringen }: { api: CrmApi; onFerti
           </Liste>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Knopf onClick={onFertig}>{segmentId || crm.stand.segmente.length ? 'Fertig — zur Übersicht' : 'Ohne Segment zur Übersicht'}</Knopf>
-            <span style={{ fontSize: 12, color: C.inkLeise }}>Segmente sind später frei änderbar; aus einem Segment lässt sich direkt eine Kampagne planen.</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Segmente sind später frei änderbar; aus einem Segment lässt sich direkt eine Kampagne planen.</span>
           </div>
         </div>
       )}

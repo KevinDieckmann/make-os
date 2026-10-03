@@ -6,8 +6,8 @@
 // drei Spalten von „Kontakt öffnen“ (Akte.tsx, KontaktSpalten.tsx, KontaktUeber.tsx).
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { Karte } from '../schlank';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Karte } from '../ui';
 
 /** Eingeklappte Abschnitte je Person — im Browser gemerkt, ohne Speicher einfach alles offen. */
 export function useKlappen(personId: string, vorgabeZu: readonly string[] = []) {
@@ -43,10 +43,10 @@ export function Klappe({ id, titel, unter, rechts, akzent, i, zu, umschalten, kl
           <span aria-hidden style={{ display: 'inline-block', width: 12, marginTop: klein ? 3 : 4, fontSize: klein ? 10 : 11, color: C.inkLeise, transform: zu ? 'rotate(-90deg)' : 'none', transition: 'transform .18s ease' }}>▼</span>
           <span style={{ minWidth: 0 }}>
             <span style={{ display: 'block', fontFamily: SCHRIFT.display, fontSize: klein ? 14 : 16, fontWeight: 700, letterSpacing: '-.01em', lineHeight: 1.25 }}>{titel}</span>
-            {unter && !zu && <span style={{ display: 'block', fontSize: 12.5, color: C.inkLeise, marginTop: 3 }}>{unter}</span>}
+            {unter && !zu && <span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3 }}>{unter}</span>}
           </span>
         </button>
-        {rechts && <span style={{ fontSize: 12, color: C.inkLeise, display: 'flex', gap: 10, alignItems: 'center', flex: '0 0 auto', marginTop: klein ? 1 : 3 }}>{rechts}</span>}
+        {rechts && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', gap: 10, alignItems: 'center', flex: '0 0 auto', marginTop: klein ? 1 : 3 }}>{rechts}</span>}
       </div>
       {!zu && <div id={inhaltId}>{children}</div>}
     </Karte>
@@ -54,7 +54,7 @@ export function Klappe({ id, titel, unter, rechts, akzent, i, zu, umschalten, kl
 }
 
 /** Leiser Textknopf in Kopfzeilen („alle ›“, „+ Hinzufügen“). */
-export const leiseKnopf = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: SCHRIFT.text } as const;
+export const leiseKnopf = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, fontFamily: SCHRIFT.text } as const;
 
 /** Breite eines Elements — für Spalten, die sich nach dem Platz in der Mitte richten, nicht nach dem Fenster. */
 export function useBreite<T extends HTMLElement>(): [(el: T | null) => void, number] {

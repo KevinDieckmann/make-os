@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Liste, Zeile, Leer, LEUCHT, feld } from '../../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Liste, Zeile, Leer, LEUCHT, feld } from '../../ui';
 import { fristText, monateZurueck, type FristArt } from '@/lib/crm/loeschfristen';
 import { useNachfrage } from '../Nachfrage';
 import { datum } from '../daten';
@@ -42,8 +42,8 @@ export function Loeschfristen({ d, i, laden, zuKontakt }: { d: StammdatenDaten; 
   const liste = d.speicherbegrenzung;
   return (
     <Karte i={i} akzent={liste.length ? LEUCHT.achtung : undefined}>
-      <Ueberschrift rechts={lf.lauf ? <span style={{ fontSize: 12, color: C.inkLeise }}>Takt-Lauf {datum(lf.lauf.tag, d.heute)}</span> : undefined}>Löschfristen je Datenart</Ueberschrift>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>Werte sind Vorschläge — anpassbar im Rahmen, gespeichert wird nur die Abweichung. Personen werden nie automatisch gelöscht; technische Bestände bereinigt der tägliche Lauf (Protokoll „System“). Hinweis, keine Rechtsberatung.</div>
+      <Ueberschrift rechts={lf.lauf ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Takt-Lauf {datum(lf.lauf.tag, d.heute)}</span> : undefined}>Löschfristen je Datenart</Ueberschrift>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>Werte sind Vorschläge — anpassbar im Rahmen, gespeichert wird nur die Abweichung. Personen werden nie automatisch gelöscht; technische Bestände bereinigt der tägliche Lauf (Protokoll „System“). Hinweis, keine Rechtsberatung.</div>
       <Liste>
         {lf.tabelle.map(f => {
           const w = lf.wirksam[f.id];
@@ -58,14 +58,14 @@ export function Loeschfristen({ d, i, laden, zuKontakt }: { d: StammdatenDaten; 
                       onChange={e => setWert(x => ({ ...x, [f.id]: e.target.value }))}
                       onBlur={() => { const v = Number(wert[f.id]); if (wert[f.id] !== undefined && Number.isInteger(v) && v !== w) void speichern(f.id, v); }}
                       style={{ ...feld, width: 76, fontSize: TYP.bedien, padding: '6px 8px' }} />
-                    <span style={{ fontSize: 12, color: C.inkLeise }}>{einheit}</span>
-                    {abweichend ? <button onClick={() => void speichern(f.id, null)} title={`Standard: ${fristText(f.id, f.standard)}`} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Standard</button>
+                    <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{einheit}</span>
+                    {abweichend ? <button onClick={() => void speichern(f.id, null)} title={`Standard: ${fristText(f.id, f.standard)}`} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Standard</button>
                       : <Chip farbe={f.wirkung === 'automatisch' ? LEUCHT.agenten : LEUCHT.achtung}>{f.wirkung === 'automatisch' ? 'automatisch' : 'Aufgabe'}</Chip>}
                   </span>} />
           );
         })}
       </Liste>
-      {meldung && <div role="status" style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
+      {meldung && <div role="status" style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
       <div style={{ marginTop: 14, fontSize: TYP.bedien, color: liste.length ? LEUCHT.achtung : C.inkLeise }}>
         {liste.length ? `${liste.length} ${liste.length === 1 ? 'Kontakt' : 'Kontakte'} über der Frist (${fristText('kontakte', lf.wirksam.kontakte)} ohne Beziehung und Aktivität) — prüfen: löschen (in der Kontaktseite, Art. 17) oder Frist mit Grund verlängern.` : 'Heute ist niemand über der Frist.'}
       </div>
@@ -73,7 +73,7 @@ export function Loeschfristen({ d, i, laden, zuKontakt }: { d: StammdatenDaten; 
         <div style={{ display: 'grid', gap: 2, marginTop: 6 }}>
           {liste.map(k => (
             <div key={k.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,.04)' }}>
-              <span style={{ fontSize: 12.5, color: C.ink, flex: '1 1 200px' }}>{k.name} <span style={{ color: C.inkLeise }}>· {k.id} · letzte Spur {datum(k.seit)}{k.netzwerken ? ` · aus Netzwerken, ${fristText('netzwerken-kontakte', lf.wirksam['netzwerken-kontakte'])} ohne Interaktion` : ''}</span></span>
+              <span style={{ fontSize: TYP.bedien, color: C.ink, flex: '1 1 200px' }}>{k.name} <span style={{ color: C.inkLeise }}>· {k.id} · letzte Spur {datum(k.seit)}{k.netzwerken ? ` · aus Netzwerken, ${fristText('netzwerken-kontakte', lf.wirksam['netzwerken-kontakte'])} ohne Interaktion` : ''}</span></span>
               <Knopf leise onClick={() => zuKontakt(k.id)}>Zur Person</Knopf>
               <Knopf leise onClick={() => void verlaengern(k.id, k.name)}>Frist verlängern mit Grund</Knopf>
             </div>

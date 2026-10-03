@@ -11,11 +11,11 @@ import type { AngebotBasis, AngebotPosition, Leistung } from '@/lib/crm/typen';
 import { produktEinheit } from '@/lib/finanzen/produkte';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { feld } from '../../schlank';
+import { feld } from '../../ui';
 import { katalog, positionAusProdukt, positionNettoCent, euroCent, centAusEingabe, eingabeAusCent, mengeAusEingabe, mengeText, BASIS_LABEL, UST_SAETZE } from '@/lib/crm/angebote';
 import { neueId } from '../daten';
 
-const klein = { fontSize: 12, color: C.inkLeise } as const;
+const klein = { fontSize: TYP.bedien, color: C.inkLeise } as const;
 const zelle = { ...feld, fontSize: TYP.bedien, padding: '7px 9px', borderRadius: 9 } as const;
 
 /** Enter → nächstes Eingabefeld der Positionsliste (Tab bleibt Tab). */
@@ -53,15 +53,15 @@ export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, au
           <button key={p.id} disabled={aus} onClick={() => { const von = p.gesellschaft !== 'offen' ? p.gesellschaft as Gesellschaftskennung : null; onDazu(positionAusProdukt(p, neueId('p'), { kleinunternehmer: kleinunternehmer(von ?? gesellschaft) }), von); }} className="fassbar"
             style={{ textAlign: 'left', cursor: aus ? 'default' : 'pointer', padding: '12px 13px', borderRadius: 12, border: `1px solid ${andere ? 'rgba(255,255,255,.08)' : `${LEUCHT.gut}55`}`, background: andere ? 'rgba(255,255,255,.03)' : `${LEUCHT.gut}12`, color: C.ink, display: 'grid', gap: 4 }}>
             <span style={{ fontSize: TYP.bedien, fontWeight: 700, lineHeight: 1.3 }}>+ {p.angebot?.titel?.trim() || p.name}</span>
-            <span style={{ fontSize: 12.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{p.preis.betrag ? `${euroCent(Math.round(p.preis.betrag * 100))} ${produktEinheit(p)}` : 'Preis offen'}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{p.preis.betrag ? `${euroCent(Math.round(p.preis.betrag * 100))} ${produktEinheit(p)}` : 'Preis offen'}</span>
             <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {textFehlt && <span style={{ fontSize: 11, color: LEUCHT.achtung, fontWeight: 700 }}>Text fehlt</span>}
-              {andere && <span style={{ fontSize: 11, color: C.inkLeise }}>andere Gesellschaft</span>}
+              {textFehlt && <span style={{ fontSize: 12, color: LEUCHT.achtung, fontWeight: 700 }}>Text fehlt</span>}
+              {andere && <span style={{ fontSize: 12, color: C.inkLeise }}>andere Gesellschaft</span>}
             </span>
           </button>
         ))}
       </div>
-      {l.some(x => x.andere) && !keineEigenen && <button onClick={() => setAlle(!alle)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>{alle ? 'nur Produkte dieser Gesellschaft' : `+ ${l.filter(x => x.andere).length} Produkte anderer Gesellschaften`}</button>}
+      {l.some(x => x.andere) && !keineEigenen && <button onClick={() => setAlle(!alle)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{alle ? 'nur Produkte dieser Gesellschaft' : `+ ${l.filter(x => x.andere).length} Produkte anderer Gesellschaften`}</button>}
     </div>
   );
 }
@@ -74,7 +74,7 @@ export function PositionZeile({ p, nr, onAendern, onWeg, onHoch, kleinunternehme
   return (
     <div style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'grid', gap: 6 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ width: 20, color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>{nr}</span>
+        <span style={{ width: 20, color: C.inkLeise, fontSize: TYP.bedien, textAlign: 'right' }}>{nr}</span>
         <input data-ang-feld value={p.titel} disabled={aus} aria-label="Titel der Position" onChange={e => onAendern({ titel: e.target.value })} onKeyDown={weiter} style={{ ...zelle, flex: '1 1 200px', minWidth: 160, fontWeight: 600 }} />
         <ZahlFeld label="Menge" breite={64} rechts wert={mengeText(p.menge)} onWert={t => { const m = mengeAusEingabe(t); if (m === null) return false; onAendern({ menge: m }); return true; }} />
         <input data-ang-feld value={p.einheit} disabled={aus} aria-label="Einheit" onChange={e => onAendern({ einheit: e.target.value })} onKeyDown={weiter} style={{ ...zelle, width: 78 }} />
@@ -94,7 +94,7 @@ export function PositionZeile({ p, nr, onAendern, onWeg, onHoch, kleinunternehme
             {UST_SAETZE.map(s => <option key={s} value={s}>{s} % USt</option>)}
           </select>
         )}
-        <button onClick={() => setOffen(!offen)} aria-expanded={offen} style={{ background: 'none', border: 'none', color: textFehlt && !p.text.trim() ? LEUCHT.achtung : C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>
+        <button onClick={() => setOffen(!offen)} aria-expanded={offen} style={{ background: 'none', border: 'none', color: textFehlt && !p.text.trim() ? LEUCHT.achtung : C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>
           {offen ? 'Text zuklappen' : p.text.trim() ? `Text (${p.text.trim().split(/\s+/).length} Wörter)` : 'Text ergänzen'}{textFehlt ? ' · Produkt ohne Leistungstext' : ''}
         </button>
         {onHoch && <button onClick={onHoch} disabled={aus} aria-label="Nach oben" title="Nach oben" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 13, padding: '0 4px' }}>↑</button>}

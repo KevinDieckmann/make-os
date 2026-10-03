@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Zahl, Raster, Leer, Chip, feld, LEUCHT } from '../../schlank';
+import { Ueberschrift, Knopf, Zahl, Raster, Leer, Chip, feld, LEUCHT } from '../../ui';
 import { budgetSumme, VORLAGEN } from '@/lib/crm/eventplanung';
 import { LIQUIPLAN_STATUS, type LiquiplanStand } from '@/lib/crm/event-bruecke';
 import type { Event } from '@/lib/crm/typen';
@@ -52,16 +52,16 @@ export function Liquiplan({ e, kosten, kompakt }: { e: Event; kosten: number; /*
           {stand ? stand.hinweis : kann ? `Noch nicht im Liquiditätsplan — ${euro(kosten)} am ${datum(tag)}.` : !LIQUIPLAN_STATUS.includes(status) ? 'In den Plan geht ein Event ab Status „Geplant“ oder „Einladung läuft“.' : 'Ohne Budget gibt es nichts zu übernehmen — Positionen oder Pauschale eintragen.'}
         </div>
         {stand?.vorhanden && (
-          <div style={{ fontSize: 12.5, color: C.inkLeise }}>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
             Posten „{stand.vorhanden.titel}“ · {euro(Math.abs(stand.vorhanden.betrag))} · fällig {datum(stand.vorhanden.ab)} · {stand.vorhanden.sicher ? 'sicher' : `${stand.vorhanden.wahrscheinlich ?? 80} % wahrscheinlich`}{stand.uebernommenAm ? ` · übernommen am ${datum(stand.uebernommenAm)}` : ''}
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {kann && lage !== 'ok' && <Knopf aus={laeuft} onClick={() => void uebernehmen()}>{laeuft ? 'überträgt …' : lage === 'abweichend' ? 'Im Liquiditätsplan nachziehen' : kompakt ? 'Kosten in die Liquiplanung übernehmen' : 'In die Liquiditätsplanung übernehmen'}</Knopf>}
-          {meldung && <span style={{ fontSize: 12.5, color: C.inkDim }}>{meldung}</span>}
+          {meldung && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</span>}
           {stand?.vorhanden && <Link href={WEG.planposten(stand.vorhanden.id)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none' }}>Im Liquiditätsplan öffnen ›</Link>}
         </div>
-        {!kompakt && <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Betrag = Summe des Budgets (geht raus), fällig am Eventdatum, Kategorie „marketing/event“. Sicher, sobald die Einladung läuft; geplant zählt mit 80 %. Ändert sich das Budget, steht hier „abweichend“ — nachziehen ist ein Klick, doppelt wird nichts.</div>}
+        {!kompakt && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Betrag = Summe des Budgets (geht raus), fällig am Eventdatum, Kategorie „marketing/event“. Sicher, sobald die Einladung läuft; geplant zählt mit 80 %. Ändert sich das Budget, steht hier „abweichend“ — nachziehen ist ein Klick, doppelt wird nichts.</div>}
       </div>
     </div>
   );
@@ -134,7 +134,7 @@ export function Budget({ e, api }: ReiterProps) {
           <Feld typ="number" wert={e.kostenEuro ? String(e.kostenEuro) : ''} breite={140} platzhalter="Kosten €" onFertig={k => eventSetzen(api, e, { kostenEuro: Number(k) || undefined })} />
         </Feldzeile>
       )}
-      <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Sobald Positionen einen Betrag haben, ersetzt ihre Summe die Pauschale. Kosten je Folgegespräch: Gespräche mit Gästen innerhalb von 30 Tagen nach dem Event.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Sobald Positionen einen Betrag haben, ersetzt ihre Summe die Pauschale. Kosten je Folgegespräch: Gespräche mit Gästen innerhalb von 30 Tagen nach dem Event.</div>
 
       <Liquiplan e={e} kosten={kosten} />
     </div>

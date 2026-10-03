@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Chip, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Chip, LEUCHT } from '../../ui';
 import { kontaktAkte } from '@/lib/crm/adresse';
 import type { StammdatenDaten } from './typen';
 
@@ -28,7 +28,7 @@ export function NachweisOffenKarte({ d }: { d: StammdatenDaten }) {
       {n.liste.length > 0 && (
         <div style={{ display: 'grid', gap: 2, marginTop: 8 }}>
           {n.liste.map(x => (
-            <Link key={x.id} href={kontaktAkte(x.id, 'daten')} style={{ display: 'block', color: C.inkDim, fontSize: 12.5, padding: '2px 0', textDecoration: 'none' }}>
+            <Link key={x.id} href={kontaktAkte(x.id, 'daten')} style={{ display: 'block', color: C.inkDim, fontSize: TYP.bedien, padding: '2px 0', textDecoration: 'none' }}>
               {x.name} <span style={{ color: C.inkLeise }}>· {x.id} · {x.kanaele.map(k => KANAL[k] ?? k).join(', ')} · fehlt: {x.fehlt.join(', ')}</span> ›
             </Link>
           ))}

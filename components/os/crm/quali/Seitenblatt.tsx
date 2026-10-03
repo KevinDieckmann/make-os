@@ -6,7 +6,7 @@
 // Esc und das Kreuz schließen; Klick daneben schließt nur das Blatt am Handy (am Rechner arbeitet man links weiter).
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useSchmal } from './hilfen';
 
 /** So breit ist die Spalte am Rechner — die Runde lässt diesen Platz frei (`SEITENBLATT_BREITE`). */
@@ -43,7 +43,7 @@ export function Seitenblatt({ titel, unter, onZu, children, kopfRechts }: { tite
         <div style={{ flex: 1, minWidth: 0 }}>
           {schmal && <div aria-hidden style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.18)', margin: '0 auto 10px' }} />}
           <div style={{ fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{titel}</div>
-          {unter && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 3 }}>{unter}</div>}
+          {unter && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3 }}>{unter}</div>}
         </div>
         {kopfRechts}
         <button onClick={onZu} aria-label="Seitenfenster schließen" className="fassbar" style={{ width: 44, height: 44, flex: '0 0 auto', borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>

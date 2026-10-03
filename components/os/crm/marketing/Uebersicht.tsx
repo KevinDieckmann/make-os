@@ -28,7 +28,7 @@
 import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, Knopf, Chip, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Leer, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, Knopf, Chip, LEUCHT } from '../../ui';
 import { anzeigename } from '@/lib/make-one/crm';
 import { kanalStatus, art14 } from '@/lib/crm/recht';
 import { TEAM, BEIDE, nameVon } from '@/lib/crm/team';
@@ -105,12 +105,12 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
   const offeneAnfragen = anfragen.filter(a => a.offen).length;
   const ctx = useMemo(() => (crm ? kontextAus(crm.stand, heute) : null), [crm, heute]);
   const segmente = useMemo(() => (crm && ctx ? (crm.stand.segmente ?? []).map(sg => ({ id: sg.id, name: sg.name, anzahl: segmentAuswerten(kontakte, sg.kriterien, ctx).anzahl })) : []), [crm, ctx, kontakte]);
-  const leiseKnopf = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, padding: 0 } as const;
+  const leiseKnopf = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 } as const;
 
   return (
     <Flaeche seite={FLAECHE.marketing} standard={standardVon('marketing')}>
       <Kachel {...K('strecke')}>
-      <Karte i={0} akzent={LEUCHT.puls}>
+      <Karte i={0} ton={LEUCHT.puls}>
         <Ueberschrift farbe={LEUCHT.puls} rechts={<Pillen liste={[{ id: '30', label: '30 Tage' }, { id: '90', label: '90 Tage' }]} aktiv={String(tage)} onWahl={t => setTage(t === '30' ? 30 : 90)} />}>Marketing-Strecke</Ueberschrift>
         {trichter ? (
           <>
@@ -119,7 +119,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
                 <div key={s.id} style={{ display: 'grid', gap: 6, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.03)', borderLeft: `3px solid ${s.wert === null ? C.inkLeise : STUFEN_FARBE[s.id]}`, alignContent: 'start' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>{i + 1} · {s.label}</div>
                   <Zahl wert={s.wert === null ? undefined : String(s.wert)} label={s.unter} farbe={STUFEN_FARBE[s.id]} />
-                  {s.umwandlung && <div style={{ fontSize: 12, color: s.umwandlung.wert === null ? C.inkLeise : C.inkDim, lineHeight: 1.4 }}>↓ {s.umwandlung.text}</div>}
+                  {s.umwandlung && <div style={{ fontSize: TYP.bedien, color: s.umwandlung.wert === null ? C.inkLeise : C.inkDim, lineHeight: 1.4 }}>↓ {s.umwandlung.text}</div>}
                 </div>
               ))}
             </div>
@@ -154,7 +154,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
                 </AlsNaechstes>
               </div>
             )}
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Reichweite: veröffentlichte Beiträge und versendete Ausgaben. Resonanz: Reaktionen an Beiträgen, je Person und Beitrag einmal. Anfragen: Wirkung „Anfrage“ an Beiträgen und der Anfragen-Eingang, je Person und Tag einmal. Übergabe: Deals mit Quelle Content, Anfrage oder Kampagne — oder mit einer Person, die in den 90 Tagen davor über einen Beitrag oder eine Anfrage kam; ein Deal in der Pipeline ist das SQL. Quoten und Kosten je Stück erst ab {MINDESTMENGE} Fällen.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Reichweite: veröffentlichte Beiträge und versendete Ausgaben. Resonanz: Reaktionen an Beiträgen, je Person und Beitrag einmal. Anfragen: Wirkung „Anfrage“ an Beiträgen und der Anfragen-Eingang, je Person und Tag einmal. Übergabe: Deals mit Quelle Content, Anfrage oder Kampagne — oder mit einer Person, die in den 90 Tagen davor über einen Beitrag oder eine Anfrage kam; ein Deal in der Pipeline ist das SQL. Quoten und Kosten je Stück erst ab {MINDESTMENGE} Fällen.</div>
           </>
         ) : <Leer>Lädt …</Leer>}
       </Karte>
@@ -181,7 +181,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
           {segmente.length ? (
             <Liste>
               {segmente.slice(0, 6).map(sg => <Zeile key={sg.id} onClick={zuAnsicht ? () => zuAnsicht('segmente') : undefined} titel={sg.name} rechts={<span style={{ fontVariantNumeric: 'tabular-nums', color: sg.anzahl ? C.ink : C.inkLeise }}>{sg.anzahl}</span>} />)}
-              {segmente.length > 6 && <div style={{ fontSize: 12, color: C.inkLeise, padding: '4px 2px' }}>und {segmente.length - 6} weitere</div>}
+              {segmente.length > 6 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '4px 2px' }}>und {segmente.length - 6} weitere</div>}
             </Liste>
           ) : <Leer>Noch kein Segment — ein gespeicherter Filter über die Kartei, eine Vorlage reicht. {zuAnsicht ? <button onClick={() => zuAnsicht('segmente')} style={{ ...leiseKnopf, color: C.inkDim }}>Anlegen ›</button> : null}</Leer>}
         </Karte>
@@ -189,11 +189,11 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
 
       <Kachel {...K('netzwerk')}>
         <Karte i={0} akzent={netz.some(n => n.z.schreiben) ? LEUCHT.gut : undefined}>
-          <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ color: LEUCHT.business, textDecoration: 'none', fontSize: 12.5, fontWeight: 600 }}>Vernetzen-Runde ›</Link>}>LinkedIn-Netzwerk</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ color: LEUCHT.business, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600 }}>Vernetzen-Runde ›</Link>}>LinkedIn-Netzwerk</Ueberschrift>
           <div style={{ display: 'grid', gap: 10 }}>
             {netz.map(n => (
               <div key={n.id} style={{ display: 'grid', gap: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.inkDim }}><Person id={n.id} name /><span style={{ color: C.inkLeise }}>· {n.z.vernetzt} vernetzt · {n.z.warten} Anfragen offen</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: C.inkDim }}><Person id={n.id} name /><span style={{ color: C.inkLeise }}>· {n.z.vernetzt} vernetzt · {n.z.warten} Anfragen offen</span></div>
                 <div style={{ fontSize: TYP.bedien, color: C.ink, lineHeight: 1.5 }}>
                   {n.z.schreiben ? <b style={{ color: LEUCHT.gut }}>{n.z.schreiben} angenommen — schreiben. </b> : null}
                   {n.z.nachfassen ? `${n.z.nachfassen} nachfassen. ` : ''}
@@ -203,7 +203,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Erst vernetzen, nach der Annahme schreiben — Texte je Kampagne „LinkedIn: vernetzen & anschreiben“. Den LinkedIn-Export importieren, dann kommen Annahmen von selbst.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Erst vernetzen, nach der Annahme schreiben — Texte je Kampagne „LinkedIn: vernetzen & anschreiben“. Den LinkedIn-Export importieren, dann kommen Annahmen von selbst.</div>
         </Karte>
       </Kachel>
       <Kachel {...K('freigabe')}>
@@ -213,7 +213,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
             <div style={{ display: 'grid', gap: 12 }}>
               {beiWem.map(g => (
                 <div key={g.person}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.inkDim }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: C.inkDim }}>
                     <Person id={g.person} name /> <span style={{ color: C.inkLeise }}>· {g.posten.length} {g.posten.length === 1 ? 'liegt' : 'liegen'} {g.person === BEIDE ? 'bei euch beiden' : `bei ${nameVon(g.person)}`}</span>
                   </div>
                   <Liste>
@@ -249,15 +249,15 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
                   <Zahl wert={p.inIhremNamen === null ? undefined : String(p.inIhremNamen)} label={`in ${genitiv(nameVon(p.person))} Namen`} />
                 </Raster>
                 {p.belege.length > 0 && (
-                  <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>
-                    {p.belege.slice(0, 4).map((b, i) => <span key={b.id}>{i ? ' · ' : ''}{zu ? <button onClick={() => zu('redaktion', b.id)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12, padding: 0 }}>„{b.titel}“</button> : `„${b.titel}“`} {datum(b.datum, heute)}</span>)}
+                  <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>
+                    {p.belege.slice(0, 4).map((b, i) => <span key={b.id}>{i ? ' · ' : ''}{zu ? <button onClick={() => zu('redaktion', b.id)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>„{b.titel}“</button> : `„${b.titel}“`} {datum(b.datum, heute)}</span>)}
                     {p.belege.length > 4 && <span> · und {p.belege.length - 4} weitere</span>}
                   </div>
                 )}
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, lineHeight: 1.5 }}>Gezählt beim Autor (wer schreibt); gemeinsame Beiträge zählen bei beiden. Gespräche/Anfragen aus der Wirkung an ihren Beiträgen, je Person und Beitrag einmal. — heißt: noch nichts, was sich zählen ließe.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, lineHeight: 1.5 }}>Gezählt beim Autor (wer schreibt); gemeinsame Beiträge zählen bei beiden. Gespräche/Anfragen aus der Wirkung an ihren Beiträgen, je Person und Beitrag einmal. — heißt: noch nichts, was sich zählen ließe.</div>
         </Karte>
       </Kachel>
 
@@ -265,7 +265,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
       <Karte i={2}>
         <Ueberschrift rechts="grau = noch nichts gemessen">Wirkung</Ueberschrift>
         {crm ? <KpiLeiste liste={kpis} /> : <Leer>Lädt …</Leer>}
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10 }}>Gemessen an Gesprächen und Chancen, nicht an Likes oder Öffnungsraten. Wirkung trägst du im Redaktionsplan am Beitrag ein.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Gemessen an Gesprächen und Chancen, nicht an Likes oder Öffnungsraten. Wirkung trägst du im Redaktionsplan am Beitrag ein.</div>
       </Karte>
       </Kachel>
 
@@ -278,7 +278,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
           <Zahl wert={`${z.kreisACmail}/${z.kreisAC}`} label="Kreis A–C mit Mail-Grundlage" />
           <Zahl wert={String(z.gesperrt)} label="Werbesperren" farbe={z.gesperrt ? LEUCHT.kritisch : undefined} />
         </Raster>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10 }}>Ziel: Der Anteil von Kreis A–C mit gültiger Mail-Grundlage steigt. Einwilligungen holst du im Gespräch — Wortlaut in der Karteikarte festhalten.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Ziel: Der Anteil von Kreis A–C mit gültiger Mail-Grundlage steigt. Einwilligungen holst du im Gespräch — Wortlaut in der Karteikarte festhalten.</div>
       </Karte>
       </Kachel>
 
@@ -288,7 +288,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
         {z.art14.length ? (
           <div style={{ display: 'grid', gap: 4 }}>
             {z.art14.slice(0, 12).map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ textAlign: 'left', background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '3px 0' }}>{anzeigename(k)}{k.firma ? <span style={{ color: C.inkLeise }}> · {k.firma}</span> : null} <span style={{ color: LEUCHT.kritisch }}>· {art14(k, heute)?.tage} Tage</span></button>)}
-            <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6 }}>Wer aus Recherche oder Listen stammt, muss spätestens beim ersten Kontakt, sonst binnen eines Monats informiert werden. In der Karteikarte „Informiert“ setzen.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Wer aus Recherche oder Listen stammt, muss spätestens beim ersten Kontakt, sonst binnen eines Monats informiert werden. In der Karteikarte „Informiert“ setzen.</div>
           </div>
         ) : <Leer>Nichts fällig. Personen aus Recherche oder Listen in der Karteikarte als „Recherche/Liste“ markieren — dann läuft die Uhr.</Leer>}
       </Karte>
@@ -304,8 +304,8 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
                 <span style={{ color: C.inkDim }}>{QLABEL[q] ?? q}</span><Fortschritt anteil={n / chancenGesamt} farbe={q === 'unbekannt' ? C.inkLeise : LEUCHT.business} /><span style={{ textAlign: 'right' }}>{n}</span>
               </div>
             ))}
-            {z.selbstauskunft.map((s, i) => <div key={i} style={{ fontSize: 12.5, color: C.inkDim }}>„{s.text}“ <span style={{ color: C.inkLeise }}>— {s.titel}</span></div>)}
-            <div style={{ fontSize: 12.5, color: C.inkLeise }}>Die Selbstauskunft („Wie sind Sie auf uns aufmerksam geworden?“) ist ehrlicher als jede Klick-Zuordnung.</div>
+            {z.selbstauskunft.map((s, i) => <div key={i} style={{ fontSize: TYP.bedien, color: C.inkDim }}>„{s.text}“ <span style={{ color: C.inkLeise }}>— {s.titel}</span></div>)}
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Die Selbstauskunft („Wie sind Sie auf uns aufmerksam geworden?“) ist ehrlicher als jede Klick-Zuordnung.</div>
           </div>
         ) : <Leer>Noch keine Deals mit Quelle. Ein Deal aus einer Anfrage oder Kampagne bringt seine Quelle mit — {zuAnsicht ? <button onClick={() => zuAnsicht('anfragen')} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Anfrage erfassen</button> : 'Anfrage erfassen'}.</Leer>}
       </Karte>
@@ -316,11 +316,11 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
         <Ueberschrift>Stimme der Kunden</Ueberschrift>
         {z.stimmen.length ? (
           <div style={{ display: 'grid', gap: 6 }}>
-            {z.stimmen.map((s, i) => <div key={i} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>„{s.bedarf}“ <button onClick={() => zuKontakt(s.id)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>— {s.name}, {datum(s.am)}</button></div>)}
-            <div style={{ fontSize: 12.5, color: C.inkLeise }}>Themen für Beiträge und Newsletter kommen von hier — im Redaktionsplan mit einem Klick als Idee übernehmen.</div>
+            {z.stimmen.map((s, i) => <div key={i} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>„{s.bedarf}“ <button onClick={() => zuKontakt(s.id)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>— {s.name}, {datum(s.am)}</button></div>)}
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Themen für Beiträge und Newsletter kommen von hier — im Redaktionsplan mit einem Klick als Idee übernehmen.</div>
           </div>
         ) : <Leer>Sobald Gesprächsnotizen das Feld „Bedarf / Schmerz“ haben, sammeln sich hier die Themen.</Leer>}
-        {z.alteEinwilligung.length > 0 && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, marginTop: 10 }}>{z.alteEinwilligung.length} Einwilligungen sind älter als zwei Jahre — auffrischen.</div>}
+        {z.alteEinwilligung.length > 0 && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 10 }}>{z.alteEinwilligung.length} Einwilligungen sind älter als zwei Jahre — auffrischen.</div>}
       </Karte>
       </Kachel>
     </Flaeche>

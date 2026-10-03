@@ -34,7 +34,7 @@ import {
   type Unter, type AktFilter, type Eintrag,
 } from '@/lib/crm/aktivitaeten';
 import type { CrmApi } from '../daten';
-import { Karte, Leer, Knopf, feld, LEUCHT } from '../../schlank';
+import { Karte, Leer, Knopf, feld, LEUCHT } from '../../ui';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { AktivitaetKarte, NeuFormular, NEU_KNOEPFE, KATEGORIE_FARBE, type NeuArt } from './aktivitaeten-teile';
 import { useTerminZeiten, useNaechsterTermin } from '../../kalender/TermineAkte';
@@ -59,7 +59,7 @@ const LEER_TEXT: Record<Unter, string> = {
 const NEU_FUER: Record<Exclude<Unter, 'alle'>, NeuArt> = { notizen: 'notiz', emails: 'email', anrufe: 'anruf', aufgaben: 'aufgabe', meetings: 'meeting' };
 const NEU_TITEL: Record<NeuArt, string> = { notiz: 'Neue Notiz', email: 'E-Mail festhalten', anruf: 'Anruf festhalten', meeting: 'Meeting festhalten', aufgabe: 'Neue Aufgabe' };
 
-const leiseKnopf = { background: 'none', border: 'none', padding: '6px 4px', color: C.inkDim, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' } as const;
+const leiseKnopf = { background: 'none', border: 'none', padding: '6px 4px', color: C.inkDim, fontSize: TYP.bedien, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' } as const;
 
 export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReiterProps) {
   // Unter-Reiter: aus der Adresse, sonst hier gemerkt (falls der Aufrufer keine Adresse führt).
@@ -146,10 +146,10 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
           const an = u.id === aktiv;
           return (
             <button key={u.id} role="tab" aria-selected={an} type="button" onClick={() => { waehle(u.id); setNeu(null); }} className="fassbar"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flex: '0 0 auto', padding: '7px 12px', minHeight: 34, borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 600,
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flex: '0 0 auto', padding: '7px 12px', minHeight: 34, borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600,
                 border: `1px solid ${an ? C.aktiv : 'rgba(255,255,255,.1)'}`, background: an ? `${C.aktiv}22` : 'transparent', color: an ? C.aktiv : C.inkDim }}>
               {u.label}
-              <span style={{ fontSize: 11.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '1px 7px', borderRadius: 999, background: an ? `${C.aktiv}22` : 'rgba(255,255,255,.06)', color: an ? C.aktiv : C.inkLeise }}>{zahlen[u.id]}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '1px 7px', borderRadius: 999, background: an ? `${C.aktiv}22` : 'rgba(255,255,255,.06)', color: an ? C.aktiv : C.inkLeise }}>{zahlen[u.id]}</span>
             </button>
           );
         })}
@@ -163,7 +163,7 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
           <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
             {knoepfe.map(b => (
               <button key={b.id} type="button" onClick={() => setNeu(neu === b.id ? null : b.id)} aria-expanded={neu === b.id} className="fassbar"
-                style={{ fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 700, padding: '7px 12px', minHeight: 34, borderRadius: 10, cursor: 'pointer', whiteSpace: 'nowrap',
+                style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '7px 12px', minHeight: 34, borderRadius: 10, cursor: 'pointer', whiteSpace: 'nowrap',
                   border: `1px solid ${KATEGORIE_FARBE[b.kategorie]}55`, background: neu === b.id ? `${KATEGORIE_FARBE[b.kategorie]}22` : `${KATEGORIE_FARBE[b.kategorie]}0F`, color: C.ink }}>{b.label}</button>
             ))}
           </span>
@@ -179,7 +179,7 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
           <Wahl label="Aktivität zugewiesen" liste={PERSONEN_FILTER} wert={filter.person} onWahl={person => setze({ person })} onLeeren={() => setze({ person: null })} leerenLabel="alle Personen" leer="Person: alle" klein />
           {aktiv === 'alle' && systemZahl > 0 && (
             <button type="button" role="switch" aria-checked={filter.system} onClick={() => setze({ system: !filter.system })} className="fassbar"
-              style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '3px 9px', minHeight: 26, borderRadius: 999, cursor: 'pointer',
+              style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '3px 9px', minHeight: 26, borderRadius: 999, cursor: 'pointer',
                 border: `1px solid ${filter.system ? C.aktiv : 'rgba(255,255,255,.1)'}`, background: filter.system ? `${C.aktiv}1A` : 'transparent', color: filter.system ? C.aktiv : C.inkDim }}>
               {filter.system ? '✓ ' : ''}Systemereignisse zeigen ({systemZahl})
             </button>
@@ -193,7 +193,7 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
           )}
         </div>
 
-        {meldung && <div role="status" style={{ marginTop: 10, fontSize: 12.5, color: LEUCHT.gut }}>{meldung}</div>}
+        {meldung && <div role="status" style={{ marginTop: 10, fontSize: TYP.bedien, color: LEUCHT.gut }}>{meldung}</div>}
 
         {/* „+ …“-Formular */}
         {neu && (

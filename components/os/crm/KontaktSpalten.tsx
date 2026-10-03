@@ -17,7 +17,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, Punkt, feld, LEUCHT } from '../schlank';
+import { Knopf, Punkt, feld, LEUCHT, Hinweis as Meldung } from '../ui';
 import type { Kontakt, Ergebnis } from '@/lib/make-one/crm';
 import type { KanalStatus } from '@/lib/crm/recht';
 import type { FollowUpArt } from '@/lib/crm/typen';
@@ -56,7 +56,7 @@ import type { Owner } from '@/types/common';
 import { ZoeVorschlaege } from './ZoeFragen';
 
 const zeile = { display: 'flex', alignItems: 'center', gap: 8, minHeight: 30, fontSize: TYP.bedien, minWidth: 0 } as const;
-const klein = { fontSize: 12, color: C.inkLeise } as const;
+const klein = { fontSize: TYP.bedien, color: C.inkLeise } as const;
 const eingabe = { ...feld, fontSize: TYP.bedien, padding: '8px 11px' };
 
 /**
@@ -131,7 +131,7 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, 
   const ampelPunkt = (s?: KanalStatus) => s ? <span title={s.grund} style={{ width: 7, height: 7, borderRadius: '50%', background: s.farbe === 'gruen' ? LEUCHT.gut : s.farbe === 'gelb' ? LEUCHT.achtung : LEUCHT.kritisch, flex: '0 0 auto' }} /> : null;
   const infoZeile = (label: string, inhalt: ReactNode) => (
     <div style={{ display: 'grid', gridTemplateColumns: '78px minmax(0, 1fr)', gap: 8, alignItems: 'center', minHeight: 34 }}>
-      <span style={{ fontSize: 12.5, color: C.inkLeise }}>{label}</span><div style={{ minWidth: 0 }}>{inhalt}</div>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{label}</span><div style={{ minWidth: 0 }}>{inhalt}</div>
     </div>
   );
   const besitzerListe = [...TEAM.map(t => ({ id: t.id, label: t.name })), { id: BEIDE, label: 'Beide' }];
@@ -148,7 +148,7 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, 
             : <DatenZeile zeichen="☏" titel="Telefon"><span style={klein}>kein Telefon</span></DatenZeile>}
           <DatenZeile zeichen="in" titel="LinkedIn">
             {profil ? <a href={profil} target="_blank" rel="noopener noreferrer" style={{ color: C.ink, textDecoration: 'none' }}>{profil.replace(/^https:\/\/(www\.)?linkedin\.com\/in\//, '').replace(/\/$/, '') || 'Profil'} ↗</a>
-              : <a href={suchLink(k)} target="_blank" rel="noopener noreferrer" style={{ color: LEUCHT.business, textDecoration: 'none', fontSize: 12.5 }}>Auf LinkedIn suchen ↗</a>}
+              : <a href={suchLink(k)} target="_blank" rel="noopener noreferrer" style={{ color: LEUCHT.business, textDecoration: 'none', fontSize: TYP.bedien }}>Auf LinkedIn suchen ↗</a>}
           </DatenZeile>
           {mail && mail.farbe !== 'gruen' && <div style={{ ...klein, marginTop: 4, lineHeight: 1.45 }}>Mail: {mail.grund}</div>}
         </div>
@@ -160,12 +160,12 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, 
               <button key={a.id} type="button" onClick={() => setAktion(an ? null : a.id)} disabled={!!gesperrtHier} aria-pressed={an} title={gesperrtHier ?? a.label} className="fassbar"
                 style={{ display: 'grid', justifyItems: 'center', gap: 5, background: 'none', border: 'none', padding: '2px 0', cursor: gesperrtHier ? 'default' : 'pointer', color: gesperrtHier ? C.inkLeise : C.ink, fontFamily: SCHRIFT.text, opacity: gesperrtHier ? 0.5 : 1 }}>
                 <span aria-hidden style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 16, border: `1px solid ${an ? C.aktiv : 'rgba(255,255,255,.14)'}`, background: an ? `${C.aktiv}22` : 'rgba(255,255,255,.04)', color: an ? C.aktiv : C.ink, transition: 'background .15s ease, border-color .15s ease' }}>{a.zeichen}</span>
-                <span style={{ fontSize: 11.5, fontWeight: 600 }}>{a.label}</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{a.label}</span>
               </button>
             );
           })}
         </div>}
-        {meldung && <div role="status" style={{ fontSize: 12.5, color: LEUCHT.gut, marginTop: 10 }}>{meldung}</div>}
+        {meldung && <Meldung art="gut" rolle="status">{meldung}</Meldung>}
         {schnellaktionen && aktion && (
           <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 8 }}>
             {aktion === 'notiz' && <NotizAktion k={k} api={api} onFertig={fertig} onAbbruch={() => setAktion(null)} />}
@@ -247,7 +247,7 @@ function EmailListe({ k, setze, mail, ampelPunkt }: { k: Kontakt; setze: Setze; 
               <Knopf aus={!neu.trim()} onClick={hinzufuegen}>Hinzufügen</Knopf>
               <Knopf leise onClick={() => { setNeu(null); setFehler(null); }}>Abbrechen</Knopf>
             </Fuss>
-            {fehler && <div role="alert" style={{ fontSize: 12, color: LEUCHT.kritisch }}>{fehler}</div>}
+            {fehler && <Meldung art="kritisch" rolle="alert">{fehler}</Meldung>}
           </div>
         )}
     </>
@@ -279,7 +279,7 @@ export function NotizAktion({ k, api, onFertig, onAbbruch }: { k: Kontakt; api: 
       <textarea autoFocus rows={3} value={text} onChange={e => setText(e.target.value)} placeholder="Notiz für das Team …" aria-label="Notiz"
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void speichern(); if (e.key === 'Escape') { e.stopPropagation(); onAbbruch(); } }} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} />
       {stimme.teil && <div aria-live="polite" style={{ ...klein, fontStyle: 'italic' }}>{stimme.teil} …</div>}
-      {stimme.fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{stimme.fehler}</div>}
+      {stimme.fehler && <Meldung art="kritisch" rolle="alert">{stimme.fehler}</Meldung>}
       <Fuss>
         <Knopf aus={!text.trim() || laeuft} onClick={() => void speichern()}>Notiz festhalten</Knopf>
         {stimme.kannHoeren && <button type="button" onClick={() => (stimme.hoert ? stimme.hoerAuf() : stimme.hoerZu())} aria-pressed={stimme.hoert} aria-label={stimme.hoert ? 'Diktat beenden' : 'Notiz diktieren'} className="fassbar"
@@ -326,10 +326,10 @@ export function AnrufAktion({ k, api, heute, telHref, anlassNoetig, onFertig, on
     <>
       {telHref ? <a href={telHref} className="fassbar" style={{ justifySelf: 'start', fontSize: TYP.bedien, fontWeight: 700, color: C.ink, textDecoration: 'none', padding: '8px 13px', borderRadius: 11, border: `1px solid ${LEUCHT.gut}55`, background: `${LEUCHT.gut}14` }}>☏ Anrufen</a>
         : <Hinweis>Kein freigegebenes Telefon — Kaltanruf nur mit Anlass (Ampel).</Hinweis>}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Ergebnis</span><Wahl label="Ergebnis" klein liste={liste} wert={ergebnis} onWahl={setErgebnis} /></div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ergebnis</span><Wahl label="Ergebnis" klein liste={liste} wert={ergebnis} onWahl={setErgebnis} /></div>
       <input value={anlass} onChange={e => setAnlass(e.target.value)} placeholder={anlassNoetig ? 'Anlass aus der Beziehung (Pflicht — gelbe Ampel)' : 'Anlass (optional)'} aria-label="Anlass des Anrufs" style={eingabe} />
       <input value={text} onChange={e => setText(e.target.value)} placeholder="Kurz: worum ging es?" aria-label="Notiz zum Anruf" style={eingabe} />
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Wann</span><input type="date" value={wann} max={heute} onChange={e => setWann(e.target.value)} aria-label="Wann war der Anruf (leer = heute)" style={{ ...eingabe, width: 150, flex: '0 0 auto' }} /></div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Wann</span><input type="date" value={wann} max={heute} onChange={e => setWann(e.target.value)} aria-label="Wann war der Anruf (leer = heute)" style={{ ...eingabe, width: 150, flex: '0 0 auto' }} /></div>
       <div style={{ display: 'flex', gap: 6 }}>
         <input value={schritt} onChange={e => setSchritt(e.target.value)} placeholder="Nächster Schritt (optional)" aria-label="Nächster Schritt" style={{ ...eingabe, flex: 1, minWidth: 0 }} />
         <input type="date" value={am} min={heute} onChange={e => setAm(e.target.value)} aria-label="Datum des nächsten Schritts" style={{ ...eingabe, width: 136, flex: '0 0 auto' }} />
@@ -370,7 +370,7 @@ export function AufgabeAktion({ k, api, heute, onFertig, onAbbruch }: { k: Konta
         <input type="date" value={faellig} min={heute} onChange={e => setFaellig(e.target.value)} aria-label="Fällig am" style={{ ...eingabe, width: 150 }} />
         <Wahl label="Art" klein liste={FOLLOWUP_ARTEN} wert={art} onWahl={setArt} />
       </div>
-      {fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {fehler && <Meldung art="kritisch" rolle="alert">{fehler}</Meldung>}
       <Fuss><Knopf aus={!text.trim()} onClick={anlegen}>Aufgabe anlegen</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></Fuss>
       <Hinweis>Wird eine Aufgabe mit Bezug auf die Person — in Aufgaben, in Follow-up › Fällig und hier rechts.</Hinweis>
     </>

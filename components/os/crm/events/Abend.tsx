@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Fortschritt, Leer, Chip, LEUCHT } from '../../schlank';
+import { Ueberschrift, Fortschritt, Leer, Chip, LEUCHT } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { einlader } from '@/lib/crm/eventplanung';
 import { TEAM, nameVon } from '@/lib/crm/team';
@@ -75,9 +75,9 @@ export function Abend({ e, api, zuKontakt }: ReiterProps) {
           <button onClick={() => zuKontakt(k.id)} style={{ background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontSize: TYP.body, fontWeight: 700, padding: 0 }}>{anzeigename(k)}</button>
           {k.firma && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k.firma}</span>}
           {t.rolle && t.rolle !== 'gast' && <Chip farbe={LEUCHT.agenten}>{t.rolle === 'co_host' ? 'Co-Host' : 'Speaker'}</Chip>}
-          <span title={`Lädt ein und fasst nach: ${nameVon(gastVon)}`} style={{ display: 'inline-flex', gap: 5, alignItems: 'center', fontSize: 12, color: C.inkLeise }}><Person id={gastVon} groesse={16} />Gast von {nameVon(gastVon)}</span>
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: t.fotofreigabe ? LEUCHT.gut : C.inkLeise }}>
-            <button onClick={() => gastSetzen(api, t, { fotofreigabe: !t.fotofreigabe })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 12.5, padding: 0 }}>
+          <span title={`Lädt ein und fasst nach: ${nameVon(gastVon)}`} style={{ display: 'inline-flex', gap: 5, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}><Person id={gastVon} groesse={16} />Gast von {nameVon(gastVon)}</span>
+          <span style={{ marginLeft: 'auto', fontSize: TYP.bedien, color: t.fotofreigabe ? LEUCHT.gut : C.inkLeise }}>
+            <button onClick={() => gastSetzen(api, t, { fotofreigabe: !t.fotofreigabe })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>
               {t.fotofreigabe ? '✓ Fotos freigegeben' : 'Fotos: nicht freigegeben'}
             </button>
           </span>
@@ -91,7 +91,7 @@ export function Abend({ e, api, zuKontakt }: ReiterProps) {
             </>}
         </div>
         {!spontan && (t.status === 'da' || t.status === 'no_show') && von && (
-          <div title="zuletzt geändert von" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12, color: C.inkLeise }}>
+          <div title="zuletzt geändert von" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>
             <Person id={von} groesse={16} />{t.status === 'da' ? 'eingecheckt' : 'als nicht gekommen markiert'} von {von === api.ich ? 'dir' : nameVon(von)}
           </div>
         )}
@@ -105,11 +105,11 @@ export function Abend({ e, api, zuKontakt }: ReiterProps) {
       <div>
         <Ueberschrift rechts={<span style={{ fontSize: TYP.body, color: C.ink, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{da.length} / {erwartet.length} da</span>}>Einlass</Ueberschrift>
         <Fortschritt anteil={erwartet.length ? da.length / erwartet.length : 0} farbe={LEUCHT.gut} />
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 12.5, color: C.inkLeise }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: TYP.bedien, color: C.inkLeise }}>
           {erwartet.length > 0 && <span>{nochNicht ? `${nochNicht} noch erwartet` : 'Alle Zugesagten sind da oder abgehakt.'}</span>}
           {da.length > 0 && Object.keys(eingechecktVon).length > 0 && <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>eingecheckt von <JePerson zahlen={eingechecktVon} /></span>}
         </div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Zwei Geräte gleichzeitig gehen: jeder Tipp ändert nur diesen Gast, der Stand kommt alle 8 Sekunden neu.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Zwei Geräte gleichzeitig gehen: jeder Tipp ändert nur diesen Gast, der Stand kommt alle 8 Sekunden neu.</div>
       </div>
       {erwartet.length > 0 && (
         <Pillen liste={[{ id: 'alle', label: `Alle ${erwartet.length}` }, { id: 'erwartet', label: `Noch erwartet ${nochNicht}` }, { id: 'da', label: `Da ${da.length}` }]} aktiv={sicht} onWahl={setSicht} farbe={LEUCHT.gut} />
@@ -127,11 +127,11 @@ export function Abend({ e, api, zuKontakt }: ReiterProps) {
         </div>
       )}
       <div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Spontan dabei — aus der Kartei, direkt als „da“:</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Spontan dabei — aus der Kartei, direkt als „da“:</div>
         <KarteiSuche api={api} e={e} platzhalter="Name suchen …" onWahl={kontaktId => api.setze('teilnahmen', { id: neueId('t'), eventId: e.id, kontaktId, status: 'da', rolle: 'gast' })} />
       </div>
       <div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Noch nicht in der Kartei? Visitenkarte fotografieren — neue Person, direkt als „da“:</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Noch nicht in der Kartei? Visitenkarte fotografieren — neue Person, direkt als „da“:</div>
         <SpontanPerKarte e={e} api={api} zuKontakt={zuKontakt} />
       </div>
     </div>
@@ -211,17 +211,17 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
           </div>
           {dubl.mail && (
             <div style={{ display: 'grid', gap: 8 }}>
-              <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dubl.mail)}{dubl.mail.firma ? ` (${dubl.mail.firma})` : ''} — nicht doppelt anlegen.</div>
+              <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dubl.mail)}{dubl.mail.firma ? ` (${dubl.mail.firma})` : ''} — nicht doppelt anlegen.</div>
               <GrossKnopf an farbe={LEUCHT.gut} onClick={() => void bestehend(dubl.mail!)}>{`${anzeigename(dubl.mail)} als da eintragen`}</GrossKnopf>
             </div>
           )}
           {!dubl.mail && dubl.name && (
             <div style={{ display: 'grid', gap: 8 }}>
-              <div style={{ fontSize: 12.5, color: LEUCHT.achtung }}>Achtung: {anzeigename(dubl.name)}{dubl.name.firma ? ` (${dubl.name.firma})` : ''} gibt es schon — gleiche Person?</div>
+              <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Achtung: {anzeigename(dubl.name)}{dubl.name.firma ? ` (${dubl.name.firma})` : ''} gibt es schon — gleiche Person?</div>
               <GrossKnopf an={false} farbe={LEUCHT.gut} onClick={() => void bestehend(dubl.name!)}>{`Ja — ${anzeigename(dubl.name)} als da eintragen`}</GrossKnopf>
             </div>
           )}
-          {!emailOk && <div style={{ fontSize: 12.5, color: LEUCHT.achtung }}>Die E-Mail sieht unvollständig aus — bitte prüfen oder leeren.</div>}
+          {!emailOk && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Die E-Mail sieht unvollständig aus — bitte prüfen oder leeren.</div>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {!dubl.mail && (
               <GrossKnopf an={ok} farbe={LEUCHT.gut} onClick={() => void anlegen()}>
@@ -230,7 +230,7 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
             )}
             <GrossKnopf an={false} farbe={C.inkDim} onClick={() => { setKarte(null); setRunde(r => r + 1); }}>Verwerfen</GrossKnopf>
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise }}>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
             {karte.nachname?.trim() ? 'Herkunft: Veranstaltung · keine Einwilligung — Einladungen per Mail erst nach Double-Opt-in.' : 'Nachname fehlt — bitte eintragen, dann anlegen.'}
           </div>
         </div>

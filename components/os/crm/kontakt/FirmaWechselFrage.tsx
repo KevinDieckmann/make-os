@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Knopf } from '../../schlank';
+import { Knopf } from '../../ui';
 import { FIRMA_WECHSEL_WAHL, type FirmaWechsel } from '@/lib/crm/stationen';
 
 export interface FirmaWechselOptionen {
@@ -44,13 +44,13 @@ function Dialog({ o, onFertig }: { o: Offen; onFertig: (v: FirmaWechsel | null) 
       <div role="dialog" aria-modal="true" aria-label={titel} onClick={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onFertig(null); } }}
         style={{ width: 'min(460px, 100%)', background: C.flaecheHoch, border: `1px solid ${C.linie}`, borderRadius: 16, padding: 18, display: 'grid', gap: 10, fontFamily: SCHRIFT.text, boxShadow: '0 20px 60px rgba(0,0,0,.45)' }}>
         <div style={{ fontSize: TYP.body, fontWeight: 700, color: C.ink }}>{titel}</div>
-        <div style={{ fontSize: 12.5, color: C.inkDim }}>Was ist passiert?</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Was ist passiert?</div>
         <div role="listbox" aria-label="Art der Änderung" style={{ display: 'grid', gap: 6 }}>
           {wahl.map((w, i) => (
             <button key={w.id} ref={i === 0 ? erster : undefined} type="button" role="option" aria-selected={false} onClick={() => onFertig(w.id)} className="fassbar"
               style={{ display: 'grid', gap: 2, textAlign: 'left', padding: '9px 12px', borderRadius: 11, border: `1px solid ${C.aktiv}44`, background: `${C.aktiv}10`, color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text }}>
               <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv }}>{w.id === 'jobwechsel' && !o.nach ? 'Ausgeschieden' : w.label}</span>
-              <span style={{ fontSize: 12, color: C.inkDim }}>{w.id === 'jobwechsel' && !o.nach ? 'die Station endet heute, der Verlauf bleibt' : w.id === 'korrektur' && !o.nach ? 'die Firma war falsch eingetragen — ohne Historie entfernen' : w.hinweis}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{w.id === 'jobwechsel' && !o.nach ? 'die Station endet heute, der Verlauf bleibt' : w.id === 'korrektur' && !o.nach ? 'die Firma war falsch eingetragen — ohne Historie entfernen' : w.hinweis}</span>
             </button>
           ))}
         </div>

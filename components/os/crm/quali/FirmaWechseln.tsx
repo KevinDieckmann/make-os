@@ -11,7 +11,7 @@
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../../schlank';
+import { Knopf, feld, LEUCHT, Hinweis } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { localDay } from '@/lib/zeit';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
@@ -92,7 +92,7 @@ export function FirmaWechselnDialog({ api, z, nachziehen, onZu, onFertig }: { ap
     <Fenster titel={titel} onZu={onZu} breit={640}>
       {!nachziehen && z.personen.length > 1 && (
         <div style={{ display: 'grid', gap: 6 }}>
-          <span style={{ fontSize: 12.5, color: C.inkLeise }}>Wessen Firma ändert sich?{!person && <b style={{ color: LEUCHT.achtung }}> Bitte eine Person wählen.</b>}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Wessen Firma ändert sich?{!person && <b style={{ color: LEUCHT.achtung }}> Bitte eine Person wählen.</b>}</span>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {z.personen.map(p => <button key={p.id} type="button" aria-pressed={personId === p.id} onClick={() => setPersonId(p.id)} className="fassbar" style={chipStil(personId === p.id)}>{p.name}</button>)}
           </div>
@@ -102,11 +102,11 @@ export function FirmaWechselnDialog({ api, z, nachziehen, onZu, onFertig }: { ap
 
       {!nachziehen && (
         <div style={{ display: 'grid', gap: 8 }}>
-          <label style={{ fontSize: 12.5, color: C.inkLeise }} htmlFor="fw-suche">Neue Firma</label>
+          <label style={{ fontSize: TYP.bedien, color: C.inkLeise }} htmlFor="fw-suche">Neue Firma</label>
           {wahl ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ ...chipStil(true), cursor: 'default' }}>{wahl.name}{wahl.id ? '' : ' (neu angelegt)'}</span>
-              <button type="button" onClick={() => { setWahl(null); setSuche(''); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, minHeight: 44 }}>andere wählen</button>
+              <button type="button" onClick={() => { setWahl(null); setSuche(''); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 44 }}>andere wählen</button>
             </div>
           ) : (
             <>
@@ -123,11 +123,11 @@ export function FirmaWechselnDialog({ api, z, nachziehen, onZu, onFertig }: { ap
 
       {!nachziehen && wahl && hatteFirma && (
         <div style={{ display: 'grid', gap: 6 }}>
-          <span style={{ fontSize: 12.5, color: C.inkLeise }}>Was ist passiert?</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Was ist passiert?</span>
           {FIRMA_WECHSEL_WAHL.map(w => (
             <button key={w.id} type="button" role="radio" aria-checked={absicht === w.id} onClick={() => standardFuer(w.id)} className="fassbar"
               style={{ display: 'grid', gap: 2, textAlign: 'left', minHeight: 48, padding: '9px 12px', borderRadius: 11, cursor: 'pointer', fontFamily: SCHRIFT.text, color: C.ink, border: `1px solid ${absicht === w.id ? LEUCHT.business : 'rgba(255,255,255,.1)'}`, background: absicht === w.id ? `${LEUCHT.business}1F` : 'rgba(255,255,255,.03)' }}>
-              <b style={{ fontSize: TYP.bedien }}>{w.label}</b><span style={{ fontSize: 12, color: C.inkDim }}>{w.hinweis}</span>
+              <b style={{ fontSize: TYP.bedien }}>{w.label}</b><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{w.hinweis}</span>
             </button>
           ))}
         </div>
@@ -139,11 +139,11 @@ export function FirmaWechselnDialog({ api, z, nachziehen, onZu, onFertig }: { ap
           <Haken an={leadMit} onChange={setLeadMit} label="Qualifizierung (Lead) mitnehmen" unter={leadText(plan, nameAlt, zielFirma.name)} />
           <Haken an={dealsMit} onChange={setDealsMit} label={`Offene Deals mitnehmen${plan.dealsMit.length ? ` (${plan.dealsMit.length})` : ''}`}
             unter={plan.dealsMit.length || plan.dealsBleiben.length ? [plan.dealsMit.length ? `Ziehen mit: ${plan.dealsMit.map(d => `„${d.titel}“`).join(', ')}.` : '', plan.dealsBleiben.length ? `Bleiben bei ${nameAlt}, weil weitere Personen daran hängen: ${plan.dealsBleiben.map(d => `„${d.titel}“`).join(', ')}.` : ''].filter(Boolean).join(' ') : 'Kein offener Deal betroffen.'} />
-          <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Der Verlauf (Gespräche, Notizen) bleibt an der Person{hatteFirma && absicht !== 'korrektur' ? ` — ${nameAlt} zeigt sie unter „ehemalig“` : ''}. Gespeicherte Deals und Mandate der alten Firma bleiben dort.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Der Verlauf (Gespräche, Notizen) bleibt an der Person{hatteFirma && absicht !== 'korrektur' ? ` — ${nameAlt} zeigt sie unter „ehemalig“` : ''}. Gespeicherte Deals und Mandate der alten Firma bleiben dort.</div>
         </div>
       )}
 
-      {meldung && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
+      {meldung && <Hinweis art="kritisch" rolle="alert">{meldung}</Hinweis>}
       {hakt && (
         <div role="alert" style={{ padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.achtung}14`, border: `1px solid ${LEUCHT.achtung}44`, fontSize: TYP.bedien, display: 'grid', gap: 8 }}>
           <span><b>{person ? anzeigename(person) : 'Die Person'} ist schon umgezogen</b> — Lead und Deals konnten aber nicht nachgezogen werden: {hakt}</span>
@@ -165,7 +165,7 @@ function Haken({ an, onChange, label, unter }: { an: boolean; onChange: (v: bool
   return (
     <label style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 10, alignItems: 'start', cursor: 'pointer', minHeight: 44 }}>
       <input type="checkbox" checked={an} onChange={e => onChange(e.target.checked)} style={{ width: 22, height: 22, marginTop: 2 }} />
-      <span style={{ display: 'grid', gap: 2 }}><b style={{ fontSize: TYP.bedien }}>{label}</b>{unter && <span style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>{unter}</span>}</span>
+      <span style={{ display: 'grid', gap: 2 }}><b style={{ fontSize: TYP.bedien }}>{label}</b>{unter && <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{unter}</span>}</span>
     </label>
   );
 }

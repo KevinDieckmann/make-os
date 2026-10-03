@@ -10,6 +10,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { TEAM, BEIDE, mitglied, nameVon, anderer, verantwortlich, zustaendig as effektiv } from '@/lib/crm/team';
 import type { Welt } from '@/lib/crm/traktion';
+import { Segmente } from '../ui';
 import type { CrmApi } from './daten';
 
 /** Runde Plakette mit Anfangsbuchstaben — „beide“ als zwei überlappende. */
@@ -34,13 +35,13 @@ export function ZustaendigWahl({ wert, welt, onWahl, beide = true }: { wert?: st
         const an = e === id;
         const f = mitglied(id)?.farbe ?? C.inkDim;
         return (
-          <button key={id} onClick={() => onWahl(id)} aria-pressed={an} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 5px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: SCHRIFT.text,
+          <button key={id} onClick={() => onWahl(id)} aria-pressed={an} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 5px', borderRadius: 999, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600, fontFamily: SCHRIFT.text,
             border: `1px solid ${an ? f : 'rgba(255,255,255,.1)'}`, background: an ? `${f}1f` : 'transparent', color: an ? C.ink : C.inkDim }}>
             <Person id={id} groesse={18} />{nameVon(id)}
           </button>
         );
       })}
-      {!wert && <span style={{ fontSize: 11.5, color: C.inkLeise }}>(Verantwortung {nameVon(verantwortlich(welt))})</span>}
+      {!wert && <span style={{ fontSize: 12, color: C.inkLeise }}>(Verantwortung {nameVon(verantwortlich(welt))})</span>}
     </span>
   );
 }
@@ -68,14 +69,10 @@ export function WerFilter({ wahl, onWahl, ich, zahlen }: { wahl: WerWahl; onWahl
     ...(ich ? [{ id: 'ich', label: <><Person id={ich} groesse={16} /> Meins</> }] : []),
     ...(andere && andere !== ich ? [{ id: andere, label: <><Person id={andere} groesse={16} /> {nameVon(andere)}</> }] : []),
   ];
+  // Standard-Baustein `Segmente` (eine Fläche, die aktive Wahl getönt) — Zahl je Eintrag in leiser Schrift.
   return (
-    <span role="group" aria-label="Wer" style={{ display: 'inline-flex', gap: 2, background: 'rgba(255,255,255,.05)', borderRadius: 10, padding: 2 }}>
-      {liste.map(x => (
-        <button key={x.id} onClick={() => onWahl(x.id)} aria-pressed={wahl === x.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: SCHRIFT.text,
-          background: wahl === x.id ? 'rgba(255,255,255,.12)' : 'transparent', color: wahl === x.id ? C.ink : C.inkDim }}>
-          {x.label}{zahlen?.[x.id] !== undefined && <span style={{ color: C.inkLeise, fontWeight: 500 }}>{zahlen[x.id]}</span>}
-        </button>
-      ))}
+    <span role="group" aria-label="Wer" style={{ display: 'inline-block', maxWidth: '100%' }}>
+      <Segmente aktiv={wahl} onWahl={onWahl} umbrechen liste={liste.map(x => ({ id: x.id, label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{x.label}{zahlen?.[x.id] !== undefined && <span style={{ color: C.inkLeise, fontWeight: 500 }}>{zahlen[x.id]}</span>}</span> }))} />
     </span>
   );
 }
@@ -102,7 +99,7 @@ export function Uebergeben({ api, art, id, ids, jetzt, titel, klein }: { api: Cr
       <button onClick={() => { setOffen(true); setMeldung(''); }} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: klein ? '5px 10px' : '8px 13px', borderRadius: 10, cursor: 'pointer', border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, fontSize: TYP.bedien, fontWeight: 600, fontFamily: SCHRIFT.text }}>
         <Person id={jetzt ?? null} groesse={16} /> {titel ?? 'Übergeben'} →
       </button>
-      {meldung && <span style={{ fontSize: 12, color: C.inkDim }}>{meldung}</span>}
+      {meldung && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</span>}
     </span>
   );
   return (
@@ -112,14 +109,14 @@ export function Uebergeben({ api, art, id, ids, jetzt, titel, klein }: { api: Cr
       </div>
       <input value={notiz} onChange={e => setNotiz(e.target.value)} placeholder="Worum geht es? (erscheint im Verlauf und in der Aufgabe)" aria-label="Notiz zur Übergabe" style={feld} />
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <label style={{ fontSize: 12.5, color: C.inkLeise, display: 'inline-flex', gap: 6, alignItems: 'center' }}>bis <input type="date" value={frist} onChange={e => setFrist(e.target.value)} style={{ ...feld, padding: '6px 9px' }} /></label>
+        <label style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'inline-flex', gap: 6, alignItems: 'center' }}>bis <input type="date" value={frist} onChange={e => setFrist(e.target.value)} style={{ ...feld, padding: '6px 9px' }} /></label>
         <span style={{ flex: 1 }} />
-        <button onClick={() => setOffen(false)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>Abbrechen</button>
+        <button onClick={() => setOffen(false)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Abbrechen</button>
         <button onClick={los} disabled={laeuft} className="fassbar" style={{ padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', background: mitglied(an)?.farbe ?? C.aktiv, color: C.grund, fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>
           {laeuft ? 'übergibt …' : `An ${nameVon(an)} übergeben`}
         </button>
       </div>
-      <div style={{ fontSize: 11.5, color: C.inkLeise }}>{an !== BEIDE && an !== ich ? `${nameVon(an)} bekommt eine Aufgabe mit Link${notiz && frist && (art === 'kontakt') ? ' und die Person als nächsten Schritt in die Power Hour' : ''}.` : 'Wird als gemeinsam markiert — keine Aufgabe.'}</div>
+      <div style={{ fontSize: 12, color: C.inkLeise }}>{an !== BEIDE && an !== ich ? `${nameVon(an)} bekommt eine Aufgabe mit Link${notiz && frist && (art === 'kontakt') ? ' und die Person als nächsten Schritt in die Power Hour' : ''}.` : 'Wird als gemeinsam markiert — keine Aufgabe.'}</div>
     </div>
   );
 }
@@ -151,7 +148,7 @@ export function AuchHier({ passt, was = 'hier' }: { passt: (pfad: string) => boo
   const a = useAuchHier(passt);
   if (!a.length) return null;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkDim, padding: '3px 9px 3px 4px', borderRadius: 999, background: 'rgba(255,255,255,.05)' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim, padding: '3px 9px 3px 4px', borderRadius: 999, background: 'rgba(255,255,255,.05)' }}>
       {a.map(x => <Person key={x.person} id={x.person} groesse={16} />)}
       {a.map(x => x.name.split(' ')[0]).join(' und ')} {a.length > 1 ? 'sind' : 'ist'} gerade {was}
     </span>

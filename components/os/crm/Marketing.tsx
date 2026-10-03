@@ -26,7 +26,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { FARBE as C } from '@/lib/make-one/design';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { verantwortlich } from '@/lib/crm/team';
 import { freigabeLage, liegtBei, einstellungAus } from '@/lib/crm/marketing';
 import { anfragenListe } from '@/lib/crm/anfragen';
@@ -97,9 +97,9 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5, color: C.inkLeise }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkLeise }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>Verantwortung: <Person id={fuehrt} name /></span>
-        <span>· beide sehen alles und arbeiten überall mit</span>
+        <span>beide sehen alles und arbeiten überall mit</span>
         <span style={{ flex: 1 }} />
         <AuchHier passt={p => p.includes('s=marketing')} was="im Marketing" />
       </div>

@@ -9,7 +9,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT } from '../../ui';
 import { anmeldungVon, anmeldungLabel, besuchAbgesagt, istBesuch } from '@/lib/crm/besuche-form';
 import { budgetSumme } from '@/lib/crm/eventplanung';
 import { markeVon } from '@/lib/crm/marke';

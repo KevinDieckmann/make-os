@@ -13,7 +13,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Chip, Punkt, Leer, LEUCHT } from '../../schlank';
+import { Ueberschrift, Knopf, Chip, Punkt, Leer, LEUCHT } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
@@ -115,11 +115,11 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
       <div key={t.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.05)', display: 'grid', gap: 7 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => zuKontakt(k.id)} style={{ background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontSize: TYP.body, fontWeight: 500, padding: 0 }}>{anzeigename(k)}</button>
-          <span style={{ fontSize: 12.5, color: C.inkLeise }}>{f?.name ?? k.firma}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{f?.name ?? k.firma}</span>
           <Chip farbe={MIX[g].farbe}>{MIX[g].label}</Chip>
-          {k.kreis && <span style={{ fontSize: 12, color: C.inkLeise }}>Kreis {k.kreis}</span>}
+          {k.kreis && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kreis {k.kreis}</span>}
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-            {t.eingeladenAm && <span style={{ fontSize: 12, color: C.inkLeise }}>eingeladen {datum(t.eingeladenAm, heute)}</span>}
+            {t.eingeladenAm && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>eingeladen {datum(t.eingeladenAm, heute)}</span>}
             {t.status === 'da' && !t.followUpAm && <Knopf leise onClick={() => void nachfassen(api, e, t, k, 'erledigt')}>Nachgefasst</Knopf>}
             {followUpMoeglich(e, t, heute) && (mitFollowUp.has(k.id) ? <Chip farbe={C.inkDim}>Follow-up steht</Chip> : <Knopf leise onClick={() => void followUp(t)}>Follow-up anlegen</Knopf>)}
             {t.followUpAm && <Chip farbe={LEUCHT.gut}>nachgefasst {datum(t.followUpAm)}</Chip>}
@@ -128,7 +128,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
         </div>
         {/* Erfasst über „Netzwerken“ (03.10.): nächster Schritt und Zuständigkeit stehen hier, der Abendbericht ist einen Tipp entfernt. */}
         {t.netzwerken && (
-          <div data-netzwerken-gast style={{ fontSize: 12.5, color: C.inkDim, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+          <div data-netzwerken-gast style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
             <Chip farbe={LEUCHT.beziehung}>Netzwerken</Chip>
             <span>{schrittLabel(t.netzwerken.schritt)}{t.netzwerken.terminAm ? ` · ${t.netzwerken.terminAm.slice(8, 10)}.${t.netzwerken.terminAm.slice(5, 7)}. ${t.netzwerken.terminAm.slice(11, 16)}` : ''} · zuständig {nameVon(t.netzwerken.zustaendig)}</span>
             <Link href={WEG.netzwerken({ bericht: e.id })} style={{ color: C.aktiv, textDecoration: 'none' }}>Abendbericht ›</Link>
@@ -138,7 +138,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
         {t.herkunft && (() => {
           const quelle = crm.stand.events.find(x => x.id === t.herkunft!.eventId);
           return (
-            <div data-herkunft style={{ fontSize: 12.5, color: C.inkDim, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+            <div data-herkunft style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
               <Chip farbe={LEUCHT.beziehung}>kam von {quelle?.titel ?? 'einem besuchten Event'}</Chip>
               {quelle && <Link href={eventLink(quelle)} style={{ color: C.aktiv, textDecoration: 'none' }}>Event-Akte ›</Link>}
             </div>
@@ -155,8 +155,8 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
           <Wahl klein label="Fotofreigabe" leer="+ Fotos" liste={FOTO} wert={t.fotofreigabe === true ? 'ja' : t.fotofreigabe === false ? 'nein' : null} onWahl={x => gastSetzen(api, t, { fotofreigabe: x === 'ja' })} onLeeren={() => gastSetzen(api, t, { fotofreigabe: undefined })} farbe={LEUCHT.puls} />
         </div>
         {ws && ws.farbe !== 'gruen'
-          ? <div style={{ fontSize: 12, color: AMPEL[ws.farbe] }}>● {WEG_LABEL[t.einladungsweg!]}: {ws.grund} — besser persönlich einladen.</div>
-          : !t.einladungsweg && <div title={einl.grund} style={{ fontSize: 12, color: AMPEL[einl.farbe] }}>● Einladung per Mail: {einl.farbe === 'gruen' ? `zulässig (${einl.grund})` : 'nur persönlich'}</div>}
+          ? <div style={{ fontSize: TYP.bedien, color: AMPEL[ws.farbe] }}>● {WEG_LABEL[t.einladungsweg!]}: {ws.grund} — besser persönlich einladen.</div>
+          : !t.einladungsweg && <div title={einl.grund} style={{ fontSize: TYP.bedien, color: AMPEL[einl.farbe] }}>● Einladung per Mail: {einl.farbe === 'gruen' ? `zulässig (${einl.grund})` : 'nur persönlich'}</div>}
         <Feld wert={t.notiz} platzhalter="Notiz (für den Abend und das Nachfassen)" onFertig={notiz => gastSetzen(api, t, { notiz: notiz || undefined })} />
       </div>
     );
@@ -167,16 +167,16 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
       <div>
         <Ueberschrift rechts={`${gaeste.length}${e.kapazitaet ? ` / ${e.kapazitaet} Plätze` : ' Gäste'}`}>Gästeliste</Ueberschrift>
         <MixAnzeige m={m} />
-        {meldung && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
+        {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
       </div>
 
       {gaeste.length > 0 && (
         <div style={{ display: 'grid', gap: 6 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12.5, color: C.inkLeise }}>Wer lädt ein</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Wer lädt ein</span>
             <JePerson zahlen={Object.fromEntries(Object.entries(arbeit).map(([p, a]) => [p, a.gaeste]))} />
           </div>
-          <div style={{ fontSize: 12.5, color: einzuladen.length ? LEUCHT.achtung : C.inkLeise }}>
+          <div style={{ fontSize: TYP.bedien, color: einzuladen.length ? LEUCHT.achtung : C.inkLeise }}>
             {einzuladen.length ? `Noch einzuladen (vorgemerkt): ${einzuladen.join(' · ')} — persönlich, per Mail nur mit grüner Ampel.` : 'Niemand mehr nur vorgemerkt — Zusagen nachhalten, Nachrücker einladen.'}
           </div>
         </div>
@@ -205,7 +205,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
             {segment && <div><Knopf leise aus={laeuft || !ausSegment.length} onClick={alleAusSegment}>{laeuft ? 'merkt vor …' : `Aus Segment übernehmen (${Math.min(60, ausSegment.length)})`}</Knopf></div>}
           </div>
         )}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Kreis A/B, Kunden, Multiplikatoren und Prio A zuerst; wer in der Mischung fehlt, rückt vor. Gesperrte nie. Die Plakette zeigt, wer die Beziehung hält — sie/er lädt ein.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Kreis A/B, Kunden, Multiplikatoren und Prio A zuerst; wer in der Mischung fehlt, rückt vor. Gesperrte nie. Die Plakette zeigt, wer die Beziehung hält — sie/er lädt ein.</div>
         {vorschlaege.slice(0, mehr ? 24 : 8).map(v => (
           <div key={v.kontakt.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
             <Punkt farbe={MIX[v.gruppe].farbe} />
@@ -214,7 +214,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
                 <button onClick={() => zuKontakt(v.kontakt.id)} style={{ background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600, padding: 0 }}>{anzeigename(v.kontakt)}</button>
                 {v.kontakt.firma && <span style={{ color: C.inkLeise }}> · {v.kontakt.firma}</span>}
               </div>
-              <div style={{ fontSize: 12, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.gruende.join(' · ') || MIX[v.gruppe].label}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.gruende.join(' · ') || MIX[v.gruppe].label}</div>
             </div>
             <span title={`Zuständig: ${nameVon(haeltBeziehung(v.kontakt))} — lädt ein: ${nameVon(einladerMit({}, v.kontakt, e).person)}`} style={{ display: 'inline-flex' }}><Person id={haeltBeziehung(v.kontakt)} groesse={20} /></span>
             <span title={v.ampel.grund}><Chip farbe={v.weg === 'mail' ? LEUCHT.gut : C.inkDim}>{v.weg === 'mail' ? 'Mail ok' : 'persönlich'}</Chip></span>

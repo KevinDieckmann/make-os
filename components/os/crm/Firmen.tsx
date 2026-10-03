@@ -12,7 +12,7 @@ import { WEG, eventLink } from '@/lib/wege';
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT } from '../ui';
 import { anzeigename, type Aktivitaet } from '@/lib/make-one/crm';
 import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
 import { dealZuFirma, mandatZuFirma } from '@/lib/crm/firmen-bezug';
@@ -80,14 +80,14 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
       <span style={{ color: x.branche ? C.inkDim : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.branche ?? '—'}</span>
       <span style={{ color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.stadt ?? '—'}</span>
       <span style={{ textAlign: 'right', color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{personenJe.get(x.id) ?? '—'}</span>
-      <span style={{ fontSize: 12, color: rolle(x.rolle).farbe, whiteSpace: 'nowrap' }}>{rolle(x.rolle).label}</span>
+      <span style={{ fontSize: TYP.bedien, color: rolle(x.rolle).farbe, whiteSpace: 'nowrap' }}>{rolle(x.rolle).label}</span>
     </div>
   ) : (
     <div key={x.id}>
       <Zeile onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} aktiv={auswahl === x.id} links={<Punkt farbe={rolle(x.rolle).farbe} />}
         titel={<>{x.name}{x.domain && <span style={{ color: C.inkLeise }}> · {x.domain}</span>}</>}
         unter={[x.branche, x.stadt, x.mitarbeiter ? `${x.mitarbeiter} MA` : ''].filter(Boolean).join(' · ') || 'keine Details'}
-        rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{personenJe.get(x.id) ?? 0} P.</span><Chip farbe={rolle(x.rolle).farbe}>{rolle(x.rolle).label}</Chip></span>} />
+        rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{personenJe.get(x.id) ?? 0} P.</span><Chip farbe={rolle(x.rolle).farbe}>{rolle(x.rolle).label}</Chip></span>} />
       {auswahl === x.id && <div style={{ padding: '8px 0 18px' }}><FirmenKarte f={x} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} /></div>}
     </div>
   );
@@ -191,7 +191,7 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmA
       <Feldzeile label="Mutterfirma">
         <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <Wahl label="Mutterfirma" klein liste={mutterListe} wert={f.mutterId} leer="keine ▾" onWahl={mutterId => setze({ mutterId })} onLeeren={f.mutterId ? () => setze({ mutterId: undefined }) : undefined} leerenLabel="keine Mutterfirma" />
-          {mutter && <button type="button" onClick={() => zuFirma(mutter.id)} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12, padding: 0 }}>öffnen ›</button>}
+          {mutter && <button type="button" onClick={() => zuFirma(mutter.id)} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>öffnen ›</button>}
         </span>
       </Feldzeile>
       {toechter.length > 0 && (
@@ -213,12 +213,12 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmA
         {wechselFrage}
         <Ueberschrift rechts={`${personen.length}`}>Personen · aktuell</Ueberschrift>
         {personen.map(k => { const st = stationIn(k, f.id); return <button key={k.id} onClick={() => zuPerson(k.id)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '7px 0', textAlign: 'left' }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', minWidth: 0 }}><span title={`Zuständig: ${nameVon(haeltBeziehung(k))}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>{anzeigename(k)} <span style={{ color: C.inkLeise }}>{[st?.rolle ?? (k.firmaId === f.id ? k.position ?? k.jobtitel : undefined), st?.art ? STATION_ART_LABEL[st.art] : undefined, st && !st.haupt ? 'weitere Station' : undefined].filter(Boolean).join(' · ')}</span></span><span style={{ color: C.inkLeise }}>{k.letzterKontakt ? datum(k.letzterKontakt) : ''} ›</span></button>; })}
-        {!personen.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Niemand ist aktuell zugeordnet.</div>}
+        {!personen.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Niemand ist aktuell zugeordnet.</div>}
         <input value={zuordnen} onChange={e => setZuordnen(e.target.value)} placeholder="Person zuordnen …" aria-label="Person zuordnen" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', marginTop: 8 }} />
         {kandidaten.map(k => (
-          <div key={k.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim, padding: '3px 0' }}>
+          <div key={k.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim, padding: '3px 0' }}>
             <span>{anzeigename(k)}{k.firma ? ` · bisher ${k.firma}` : ''}</span>
-            <button onClick={() => void zuordnenMit(k)} title={k.firmaId ? 'Jobwechsel, zusätzliche Firma oder Korrektur — wird gefragt' : undefined} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>+ zuordnen</button>
+            <button onClick={() => void zuordnenMit(k)} title={k.firmaId ? 'Jobwechsel, zusätzliche Firma oder Korrektur — wird gefragt' : undefined} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>+ zuordnen</button>
           </div>
         ))}
       </div>
@@ -230,7 +230,7 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmA
       )}
       {(chancen.length > 0 || mandate.length > 0 || gruppe.length > 1) && (
         <div>
-          <Ueberschrift rechts={gruppe.length > 1 ? <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}><input type="checkbox" checked={gruppeAn} onChange={e => setGruppeAn(e.target.checked)} />ganze Gruppe</label> : undefined}>Deals & Mandate</Ueberschrift>
+          <Ueberschrift rechts={gruppe.length > 1 ? <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, cursor: 'pointer' }}><input type="checkbox" checked={gruppeAn} onChange={e => setGruppeAn(e.target.checked)} />ganze Gruppe</label> : undefined}>Deals & Mandate</Ueberschrift>
           {chancen.map(c => <Link key={c.id} href={WEG.deal(c.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{c.titel} <span style={{ color: C.inkLeise }}>· {crm.stufen.find(s => s.id === c.stufe)?.label}{c.wert.betrag ? ` · ${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : ''}` : ''} ›</span></Link>)}
           {mandate.map(m => <Link key={m.id} href={WEG.mandat(m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{m.titel.slice(0, 80)} <span style={{ color: C.inkLeise }}>· Mandat {m.status}{m.honorar.betrag ? ` · ${euro(m.honorar.betrag)}` : ''} ›</span></Link>)}
         </div>
@@ -282,7 +282,7 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmA
         <Ueberschrift>Verlauf aller Personen</Ueberschrift>
         <Verlauf liste={verlauf} name={p => p.charAt(0).toUpperCase() + p.slice(1)} max={15} heute={crm.heute} />
       </div>
-      {!personen.length && !ehemalig.length && !toechter.length && !chancen.length && !mandate.length && <div><button onClick={() => { if (window.confirm(`Firma „${f.name}“ löschen?`)) void api.weg('firmen', f.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Leere Firma löschen</button></div>}
+      {!personen.length && !ehemalig.length && !toechter.length && !chancen.length && !mandate.length && <div><button onClick={() => { if (window.confirm(`Firma „${f.name}“ löschen?`)) void api.weg('firmen', f.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Leere Firma löschen</button></div>}
     </div>
   );
 }

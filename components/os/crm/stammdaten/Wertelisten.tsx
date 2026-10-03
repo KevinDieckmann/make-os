@@ -9,14 +9,14 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Chip, Knopf, Liste, Zeile, LEUCHT, feld } from '../../schlank';
+import { Karte, Ueberschrift, Chip, Knopf, Liste, Zeile, LEUCHT, feld, Hinweis } from '../../ui';
 import { Feld } from '../teile';
 import { euro } from '../daten';
 import { KREISE, KREIS_WORT, ZIEL_FELDER, KADENZ_MIN, KADENZ_MAX, GRUND_MIN, GRUND_MAX, ERGEBNIS_MIN, ERGEBNIS_MAX, WERT_MIN, WERT_MAX } from '@/lib/crm/wertelisten';
 import { HERKUNFT, RECHTSGRUNDLAGEN } from '@/lib/make-one/crm';
 import type { WertelistenAntwort, StammdatenPost } from './typen';
 
-const hinweis = { fontSize: 12, color: C.inkLeise, lineHeight: 1.5 } as const;
+const hinweis = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
 
 /** Eingabe + Knopf für einen neuen Listenwert — Enter oder Klick, danach leer. */
 function NeuerWert({ platzhalter, max, aus, onNeu }: { platzhalter: string; max: number; aus?: boolean; onNeu: (t: string) => void }) {
@@ -77,7 +77,7 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
 
   return (
     <>
-      {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
       <Karte i={0}>
         <Ueberschrift>Deal-Stufen</Ueberschrift>
         <div style={{ ...hinweis, marginBottom: 8 }}>Die Wahrscheinlichkeiten sind vorsichtige Startwerte. Sobald je Stufe genug Abschlüsse da sind, ersetzt du sie durch gemessene Quoten — von Hand gesetzte Werte sind markiert.</div>
@@ -87,12 +87,12 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
               rechts={s.offen ? <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 {s.vonHand && <Chip farbe={LEUCHT.achtung}>von Hand</Chip>}
                 <Feld typ="number" breite={80} wert={String(s.p)} platzhalter="%" onFertig={x => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: x === '' ? null : Number(x) })} />
-                <span style={{ fontSize: 12, color: C.inkLeise }}>%</span>
-                {s.vonHand && <button onClick={() => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: null })} title={`Zurück auf ${s.standard} %`} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>↺ {s.standard}</button>}
+                <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>%</span>
+                {s.vonHand && <button onClick={() => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: null })} title={`Zurück auf ${s.standard} %`} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>↺ {s.standard}</button>}
                 {/* Gemessen (28.09., K4): erst ab MINDESTMENGE Entscheidungen — „übernehmen“ setzt die Quote als eigenen Wert. */}
-                {s.gemessen?.quote != null && <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12, color: C.inkDim, whiteSpace: 'nowrap' }} title={`${s.gemessen.gewonnen} von ${s.gemessen.n} entschiedenen Deals, die diese Stufe erreichten, wurden gewonnen`}>
+                {s.gemessen?.quote != null && <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'nowrap' }} title={`${s.gemessen.gewonnen} von ${s.gemessen.n} entschiedenen Deals, die diese Stufe erreichten, wurden gewonnen`}>
                   gemessen {s.gemessen.quote} % ({s.gemessen.n})
-                  {s.gemessen.quote !== s.p && <button onClick={() => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: s.gemessen!.quote })} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0 }}>übernehmen</button>}
+                  {s.gemessen.quote !== s.p && <button onClick={() => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: s.gemessen!.quote })} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600, padding: 0 }}>übernehmen</button>}
                 </span>}
               </span> : <Chip farbe={C.inkDim}>{s.p} %</Chip>} />
           ))}
@@ -121,8 +121,8 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
                 rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   {eigen && <Chip farbe={LEUCHT.achtung}>eigen</Chip>}
                   <Feld typ="number" breite={80} wert={String(takt)} platzhalter="Tage" onFertig={x => void setzeKadenz(k, x)} />
-                  <span style={{ fontSize: 12, color: C.inkLeise }}>Tage</span>
-                  {eigen && <button onClick={() => void setzeKadenz(k, '')} title={`Zurück auf ${standard} Tage`} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>↺ {standard}</button>}
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Tage</span>
+                  {eigen && <button onClick={() => void setzeKadenz(k, '')} title={`Zurück auf ${standard} Tage`} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>↺ {standard}</button>}
                 </span>} />
             );
           })}
@@ -157,7 +157,7 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
             <Zeile key={z.id} titel={z.label} unter={istText(z.id)}
               rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <Feld typ="number" breite={110} wert={lokal.ziele[z.id] === undefined ? '' : String(lokal.ziele[z.id])} platzhalter="Ziel" onFertig={x => void setzeZiel(z.id, x)} />
-                <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{z.einheit}</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{z.einheit}</span>
               </span>} />
           ))}
         </Liste>

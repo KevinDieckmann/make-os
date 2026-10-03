@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, LEUCHT, feld } from '../schlank';
+import { Knopf, LEUCHT, feld } from '../ui';
 import { ZOE_FRAGEN_EREIGNIS, passtZuBezug, type CrmBezug } from '@/lib/zoe/crm-bezug';
 import { WEG } from '@/lib/wege';
 import { kontaktAkte } from '@/lib/crm/adresse';
@@ -23,9 +23,9 @@ export function zoeFragen(b: CrmBezug) {
 /** Knopf „ZOE fragen“ — klein für Köpfe von Akten und Reitern. */
 export function ZoeFragenKnopf({ bezug, titel = 'ZOE fragen' }: { bezug: CrmBezug; titel?: string }) {
   return (
-    <button type="button" onClick={() => zoeFragen(bezug)} className="fassbar" title="ZOE öffnen — sie liest hier selbst nach und schlägt nur vor"
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${LEUCHT.agenten}1F`, color: LEUCHT.agenten, border: 'none', borderRadius: 999, padding: '5px 12px', fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-      <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', border: `1.5px solid ${LEUCHT.agenten}` }} />{titel}
+    <button type="button" onClick={() => zoeFragen(bezug)} className="fassbar zoe-fragen" aria-label={titel} title="ZOE öffnen — sie liest hier selbst nach und schlägt nur vor"
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${LEUCHT.agenten}1F`, color: LEUCHT.agenten, border: 'none', borderRadius: 999, padding: '8px 14px', minHeight: 40, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', border: `1.5px solid ${LEUCHT.agenten}` }} /><span className="zoe-fragen-text">{titel}</span>
     </button>
   );
 }
@@ -71,22 +71,22 @@ export function ZoeVorschlaege({ art, id, onUebernommen }: { art: 'kontakt' | 'f
         return (
           <div key={v.id} style={{ display: 'grid', gap: 6, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,.03)', border: `1px solid ${LEUCHT.agenten}22` }}>
             <div style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.ink }}>{v.titel}</div>
-            {v.vorher && <div style={{ fontSize: 12, color: C.inkLeise }}>vorher: {v.vorher}</div>}
-            <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>{v.nachher}</div>
-            {t && <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, color: C.inkDim, background: 'rgba(255,255,255,.03)', borderRadius: 8, padding: '8px 10px', maxHeight: 200, overflowY: 'auto', lineHeight: 1.5 }}>{t}</div>}
-            {v.anlass && <div style={{ fontSize: 12, color: C.inkLeise }}>Warum: {v.anlass}</div>}
-            <input value={grund[v.id] ?? ''} onChange={e => setGrund(g => ({ ...g, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional)" aria-label="Grund fürs Ablehnen" style={{ ...feld, padding: '7px 10px', fontSize: 12.5 }} />
+            {v.vorher && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>vorher: {v.vorher}</div>}
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{v.nachher}</div>
+            {t && <div style={{ whiteSpace: 'pre-wrap', fontSize: TYP.bedien, color: C.inkDim, background: 'rgba(255,255,255,.03)', borderRadius: 8, padding: '8px 10px', maxHeight: 200, overflowY: 'auto', lineHeight: 1.5 }}>{t}</div>}
+            {v.anlass && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Warum: {v.anlass}</div>}
+            <input value={grund[v.id] ?? ''} onChange={e => setGrund(g => ({ ...g, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional)" aria-label="Grund fürs Ablehnen" style={{ ...feld, padding: '7px 10px', fontSize: TYP.bedien }} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Knopf onClick={async () => { await entscheiden(v, 'freigeben'); }}>{t ? 'Übernehmen' : 'Freigeben'}</Knopf>
               <Knopf leise onClick={async () => { await entscheiden(v, 'ablehnen'); }}>Ablehnen</Knopf>
-              {t && <button type="button" onClick={() => { void navigator.clipboard?.writeText(t); }} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, fontFamily: SCHRIFT.text }}>Kopieren</button>}
-              {mailto && <a href={mailto} style={{ color: C.aktiv, fontSize: 12.5, textDecoration: 'none' }}>Im Mail-Programm öffnen ↗</a>}
+              {t && <button type="button" onClick={() => { void navigator.clipboard?.writeText(t); }} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>Kopieren</button>}
+              {mailto && <a href={mailto} style={{ color: C.aktiv, fontSize: TYP.bedien, textDecoration: 'none' }}>Im Mail-Programm öffnen ↗</a>}
             </div>
           </div>
         );
       })}
-      {Object.entries(meldung).map(([vid, m]) => <div key={vid} style={{ fontSize: 12, color: m.ok ? LEUCHT.gut : LEUCHT.kritisch }}>{m.text}</div>)}
-      <div style={{ fontSize: 11.5, color: C.inkLeise }}>ZOE schlägt nur vor — erst dein Klick übernimmt. Versendet wird nichts.</div>
+      {Object.entries(meldung).map(([vid, m]) => <div key={vid} style={{ fontSize: TYP.bedien, color: m.ok ? LEUCHT.gut : LEUCHT.kritisch }}>{m.text}</div>)}
+      <div style={{ fontSize: 12, color: C.inkLeise }}>ZOE schlägt nur vor — erst dein Klick übernimmt. Versendet wird nichts.</div>
     </div>
   );
 }
@@ -105,9 +105,9 @@ export function CrmStapelDetail({ v }: { v: { eingabe: Record<string, unknown>; 
     <div style={{ marginTop: 12, display: 'grid', gap: 8, fontSize: TYP.bedien, color: C.inkDim }}>
       {t && <div style={{ whiteSpace: 'pre-wrap', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '10px 12px', maxHeight: 240, overflowY: 'auto', lineHeight: 1.5 }}>{t}</div>}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {t && <button type="button" onClick={() => { void navigator.clipboard?.writeText(t); }} style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontSize: 12.5, fontFamily: SCHRIFT.text }}>Kopieren</button>}
-        {mailto && <a href={mailto} style={{ color: C.aktiv, fontSize: 12.5, textDecoration: 'none' }}>Im Mail-Programm öffnen ↗</a>}
-        {ziel && <Link href={ziel} style={{ color: C.aktiv, fontSize: 12.5, textDecoration: 'none' }}>In der Markttraktion öffnen ›</Link>}
+        {t && <button type="button" onClick={() => { void navigator.clipboard?.writeText(t); }} style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>Kopieren</button>}
+        {mailto && <a href={mailto} style={{ color: C.aktiv, fontSize: TYP.bedien, textDecoration: 'none' }}>Im Mail-Programm öffnen ↗</a>}
+        {ziel && <Link href={ziel} style={{ color: C.aktiv, fontSize: TYP.bedien, textDecoration: 'none' }}>In der Markttraktion öffnen ›</Link>}
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ import { useRouter } from 'next/navigation';
 import { WEG, eventLink } from '@/lib/wege';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Chip, Punkt, Knopf, LEUCHT, SPALTEN_AB } from '../schlank';
+import { Karte, Ueberschrift, Leer, Chip, Punkt, Knopf, LEUCHT, SPALTEN_AB } from '../ui';
 import { anzeigename, STUFE_LABEL, type Kontakt, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -84,7 +84,7 @@ function Kurz({ label, wert, zusatz, farbe, title }: { label: string; wert: Reac
     <span title={title} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, minWidth: 0, maxWidth: '100%' }}>
       <span style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span>
       <b style={{ fontSize: 13, fontWeight: 700, color: farbe ?? C.ink, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{wert}</b>
-      {zusatz && <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{zusatz}</span>}
+      {zusatz && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{zusatz}</span>}
     </span>
   );
 }
@@ -95,7 +95,7 @@ function VZeile({ farbe, titel, zusatz, am, heute, onClick }: { farbe: string; t
     <>
       <Punkt farbe={farbe} groesse={7} />
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b style={{ fontWeight: 600 }}>{titel}</b>{zusatz && <span style={{ color: C.inkLeise }}> · {zusatz}</span>}</span>
-      {am && <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{datum(am, heute)}</span>}
+      {am && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{datum(am, heute)}</span>}
     </>
   );
   const stil = { display: 'flex', alignItems: 'center', gap: 9, padding: '6px 0', fontSize: TYP.bedien, color: C.ink, width: '100%', minHeight: 32 } as const;
@@ -223,10 +223,10 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
   );
 
   const kopf = (
-    <Karte i={0} akzent={pf}>
+    <Karte i={0} ton={pf}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         {zurueckKnopf}
-        <span style={{ fontSize: 12, color: C.inkLeise }}>Kontakt · geändert {datum(k.geaendertAm, heute)}{drei ? ' · Esc schließt' : ''}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kontakt · geändert {datum(k.geaendertAm, heute)}{drei ? ' · Esc schließt' : ''}</span>
       </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div aria-hidden style={{ width: 46, height: 46, borderRadius: '50%', flex: '0 0 auto', display: 'grid', placeItems: 'center', fontFamily: SCHRIFT.display, fontSize: 17, fontWeight: 700, color: pf, background: `${pf}18`, border: `2px solid ${pf}88`, boxShadow: `0 0 24px -6px ${pf}` }}>{initialen}</div>
@@ -247,7 +247,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
             <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe]}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
             {k.werbesperre && <Chip farbe={LEUCHT.kritisch}>Werbesperre</Chip>}
             {k.eingeschraenkt && <Chip farbe={LEUCHT.kritisch}>Eingeschränkt (Art. 18)</Chip>}
-            <span title={`Zuständig: ${nameVon(haeltBeziehung(k))}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkLeise, marginLeft: 4 }}><Person id={haeltBeziehung(k)} groesse={18} />{nameVon(haeltBeziehung(k))}</span>
+            <span title={`Zuständig: ${nameVon(haeltBeziehung(k))}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkLeise, marginLeft: 4 }}><Person id={haeltBeziehung(k)} groesse={18} />{nameVon(haeltBeziehung(k))}</span>
             <AuchHier passt={p => p.includes(`k=${k.id}`)} was="bei dieser Person" />
           </div>
         </div>
@@ -288,7 +288,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
       <div style={{ display: 'grid', gap: 16 }}>
         {v.kollegen.length > 0 && <Abschnitt titel={`Kollegen bei ${firma?.name ?? k.firma ?? 'der Firma'} · ${v.kollegen.length}`}>
           {v.kollegen.slice(0, 12).map(x => <VZeile key={x.id} farbe={x.werbesperre ? LEUCHT.kritisch : phaseFarbe(x.lebensphase)} titel={anzeigename(x)} zusatz={x.position ?? x.jobtitel ?? phaseLabel(x.lebensphase)} am={x.letzterKontakt} heute={heute} onClick={() => zuAkte(x.id)} />)}
-          {v.kollegen.length > 12 && <div style={{ fontSize: 12, color: C.inkLeise }}>… und {v.kollegen.length - 12} weitere in der Firmenkarte.</div>}
+          {v.kollegen.length > 12 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>… und {v.kollegen.length - 12} weitere in der Firmenkarte.</div>}
         </Abschnitt>}
         {firmenDeals.length > 0 && <Abschnitt titel="Deals der Firma">
           {firmenDeals.map(d => <VZeile key={d.id} farbe={OFFENE_STUFEN.includes(d.stufe) ? LEUCHT.business : C.inkLeise} titel={d.titel} zusatz={`${crm?.stufen.find(s => s.id === d.stufe)?.label ?? d.stufe}${d.wert.betrag ? ` · ${euro(d.wert.betrag)}${d.wert.basis === 'monat' ? '/Monat' : ''}` : ''} · ohne diese Person`} am={d.geaendert} heute={heute} onClick={() => router.push(WEG.deal(d.id))} />)}
@@ -305,7 +305,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
         {v.powerHour.length > 0 && <Abschnitt titel="Power Hour">
           {v.powerHour.slice(0, 8).map((p, i) => <VZeile key={i} farbe={LEUCHT.puls} titel={nameVon(p.person)} zusatz={[p.ergebnis, p.notiz].filter(Boolean).join(' · ') || 'auf der Liste'} am={p.datum} heute={heute} onClick={() => router.push(WEG.powerHour())} />)}
         </Abschnitt>}
-        {nichtsVerbunden && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch keine Kollegen, Events, Kampagnen oder Beiträge mit dieser Person.</div>}
+        {nichtsVerbunden && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Kollegen, Events, Kampagnen oder Beiträge mit dieser Person.</div>}
       </div>
     </Klappe>
   );
@@ -323,7 +323,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
       rechts={<>
         <Klappe id="beziehung" i={6} titel="Beziehung" unter="Kreis, Takt, Rollen, Ansprache, Lebensphase — wer sie hält" zu={istZu('beziehung')} umschalten={umschalten}>
           <BeziehungTeil k={k} api={api} setze={setze} ohneTitel />
-          {tk && <div style={{ fontSize: 12.5, color: tk.ueberfaellig ? LEUCHT.achtung : C.inkLeise, marginTop: 6 }}>Takt: alle {tk.tage} Tage · {tk.ueberfaellig ? 'jetzt melden' : `fällig ${datum(tk.faelligAm, heute)}`}{tk.seit !== null ? ` · seit ${tk.seit} T still` : ''}</div>}
+          {tk && <div style={{ fontSize: TYP.bedien, color: tk.ueberfaellig ? LEUCHT.achtung : C.inkLeise, marginTop: 6 }}>Takt: alle {tk.tage} Tage · {tk.ueberfaellig ? 'jetzt melden' : `fällig ${datum(tk.faelligAm, heute)}`}{tk.seit !== null ? ` · seit ${tk.seit} T still` : ''}</div>}
         </Klappe>
         <Klappe id="netzwerk" i={7} titel="Netzwerk" unter="LinkedIn — Profil, Stand je Person, nächster Schritt" zu={istZu('netzwerk')} umschalten={umschalten}>
           <LinkedInTeil k={k} api={api} />
@@ -334,7 +334,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
         </Klappe>
         <Klappe id="antraege" i={9} titel="Betroffenenanträge" unter={v.antraege.length ? `${v.antraege.length} zu dieser Person` : 'Keine Anträge zu dieser Person.'} rechts={<button onClick={() => router.push(WEG.stammdaten('datenschutz'))} style={leiseKnopf}>Alle Anträge ›</button>} zu={istZu('antraege')} umschalten={umschalten}>
           {v.antraege.map(a => <VZeile key={a.id} farbe={a.status === 'offen' ? LEUCHT.kritisch : C.inkLeise} titel={a.art} zusatz={a.status === 'offen' ? `Frist ${datum(a.frist, heute)}` : 'erledigt'} am={a.eingang} heute={heute} onClick={() => router.push(WEG.stammdaten('datenschutz'))} />)}
-          {!v.antraege.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Auskunft, Löschung und Widerspruch werden unter Stammdaten › Datenschutz geführt.</div>}
+          {!v.antraege.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Auskunft, Löschung und Widerspruch werden unter Stammdaten › Datenschutz geführt.</div>}
         </Klappe>
         <Klappe id="privat" i={10} titel="Privat" unter="Nur für dich sichtbar · nie an Agenten" zu={istZu('privat')} umschalten={umschalten}>
           <MatrixTeilInhalt teil="privat" k={k} api={api} setze={setze} zuFirma={zuFirma} />

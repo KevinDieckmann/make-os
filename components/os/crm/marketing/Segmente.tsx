@@ -11,7 +11,7 @@ import { TEMPERATUR } from '@/lib/crm/score';
 import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT } from '../../ui';
 import { anzeigename, HERKUNFT, type Kontakt } from '@/lib/make-one/crm';
 import type { Segment, SegmentKriterien } from '@/lib/crm/typen';
 import { kontextAus, segmentAuswerten, type SegmentAuswertung } from '@/lib/crm/segmente';
@@ -123,7 +123,7 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
               );
             })}
           </Liste>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Angelegt wird erst mit dem Klick — danach frei änderbar.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Angelegt wird erst mit dem Klick — danach frei änderbar.</div>
         </Karte>
       )}
     </>
@@ -172,15 +172,15 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
         <Feldzeile label="Ohne Kontakt seit">
           <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input type="number" min={0} max={3650} value={kr.ohneKontaktSeitTagen ?? ''} placeholder="—" aria-label="Tage ohne Kontakt" onChange={x => { const n = Math.round(Number(x.target.value)); setK({ ohneKontaktSeitTagen: n > 0 ? Math.min(n, 3650) : undefined }); }} style={{ ...feld, width: 110, fontSize: TYP.bedien, padding: '8px 11px' }} />
-            <span style={{ fontSize: 12.5, color: C.inkLeise }}>Tagen (wer noch nie Kontakt hatte, zählt mit)</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Tagen (wer noch nie Kontakt hatte, zählt mit)</span>
           </span>
         </Feldzeile>
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise }}>Gesperrte Personen sind nie Mitglied. Mit „Kanal zulässig“ zählt nur, wer darüber erreichbar sein darf (Ampel grün). Lifecycle: gesetzt, sonst der Vorschlag aus den Daten.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gesperrte Personen sind nie Mitglied. Mit „Kanal zulässig“ zählt nur, wer darüber erreichbar sein darf (Ampel grün). Lifecycle: gesetzt, sonst der Vorschlag aus den Daten.</div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <b style={{ fontSize: TYP.body, fontWeight: 600 }}>{a.anzahl} Personen</b>
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>{kriterienText(kr)}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{kriterienText(kr)}</span>
       </div>
       <KanalZahlen a={a} />
       {mitglieder.length > 0 && (
@@ -190,7 +190,7 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
               {anzeigename(k)}{k.firma ? <span style={{ color: C.inkLeise }}> · {k.firma}</span> : null}{k.kreis ? <span style={{ color: C.inkLeise }}> · Kreis {k.kreis}</span> : null}
             </button>
           ))}
-          {a.anzahl > mitglieder.length && <div style={{ fontSize: 12, color: C.inkLeise, paddingTop: 6 }}>… und {a.anzahl - mitglieder.length} weitere — alle im Export.</div>}
+          {a.anzahl > mitglieder.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, paddingTop: 6 }}>… und {a.anzahl - mitglieder.length} weitere — alle im Export.</div>}
         </div>
       )}
 
@@ -201,8 +201,8 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
         <Knopf leise onClick={() => setE(null)}>Schließen</Knopf>
         {loeschen && <Knopf leise onClick={loeschen}>Löschen</Knopf>}
       </div>
-      {!gespeichert && !e.neu && <div style={{ fontSize: 12, color: LEUCHT.achtung }}>Ungespeicherte Änderungen — Export und Kampagne nutzen den gespeicherten Stand.</div>}
-      <div style={{ fontSize: 12, color: C.inkLeise }}>Der Export enthält Mail-Adressen nur, wo Werbung per Mail zulässig ist (Einwilligung oder Bestandskunde), und keine Privatnotizen.</div>
+      {!gespeichert && !e.neu && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Ungespeicherte Änderungen — Export und Kampagne nutzen den gespeicherten Stand.</div>}
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Der Export enthält Mail-Adressen nur, wo Werbung per Mail zulässig ist (Einwilligung oder Bestandskunde), und keine Privatnotizen.</div>
     </div>
   );
 }

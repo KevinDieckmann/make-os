@@ -12,7 +12,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { LEUCHT, Karte, Ueberschrift } from '../schlank';
+import { LEUCHT, Karte, Ueberschrift } from '../ui';
 import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, BEAN_WAHL, offeneAngebote, type AngebotHinweis, type BeanErgebnis, type BeanId } from '@/lib/crm/bean';
 import { karteiBean } from '@/lib/crm/adresse';
 import { Wahl } from './Wahl';
@@ -47,7 +47,7 @@ export function BeanBadge({ bean, vonHand, grund }: { bean: BeanId; vonHand?: bo
   const f = BEAN_FARBE[bean];
   return (
     <span title={`${BEAN_LABEL[bean]}${grund ? ` — ${grund}` : ''}`} aria-label={`BEAN ${BEAN_LABEL[bean]}`}
-      style={{ display: 'inline-grid', placeItems: 'center', width: 20, height: 20, borderRadius: 6, fontSize: 11, fontWeight: 800, color: f,
+      style={{ display: 'inline-grid', placeItems: 'center', width: 20, height: 20, borderRadius: 6, fontSize: 12, fontWeight: 800, color: f,
         background: vonHand ? `${f}26` : 'transparent', border: `1px ${vonHand ? 'solid' : 'dashed'} ${f}${vonHand ? '88' : '66'}`, flex: '0 0 auto' }}>{bean}</span>
   );
 }
@@ -70,7 +70,7 @@ export function BeanWahl({ wert, ergebnis, onSetze, klein, ohneMarke }: { wert: 
         leer={`${ergebnis.bean} · ${BEAN_LABEL[ergebnis.bean]} ▾`}
         onWahl={b => onSetze(b)} onLeeren={wert ? () => onSetze(undefined) : undefined}
         leerenLabel={`zurück auf automatisch (${auto.bean} · ${BEAN_LABEL[auto.bean]})`} />
-      {!ohneMarke && <span style={{ fontSize: 11, color: C.inkLeise, whiteSpace: 'nowrap' }}>{marke}</span>}
+      {!ohneMarke && <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{marke}</span>}
     </span>
   );
 }
@@ -91,7 +91,7 @@ export function BeanVerteilungKarte({ je, vonHand, i = 0 }: { je: Record<BeanId,
               style={{ display: 'grid', gap: 4, padding: '10px 12px', borderRadius: 12, textDecoration: 'none', color: C.ink, background: `${f}10`, border: `1px solid ${f}33` }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <BeanBadge bean={b} vonHand />
-                <span style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{BEAN_LABEL[b]}</span>
+                <span style={{ fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{BEAN_LABEL[b]}</span>
               </span>
               <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <b style={{ fontSize: 22, fontWeight: 700, color: f, fontVariantNumeric: 'tabular-nums' }}>{je[b]}</b>
@@ -101,7 +101,7 @@ export function BeanVerteilungKarte({ je, vonHand, i = 0 }: { je: Record<BeanId,
           );
         })}
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Abgeleitet aus Mandaten, Deals und offenen Angeboten — von Hand überschreibbar unter „Kontakt öffnen“. Neu = Leads zum Qualifizieren.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Abgeleitet aus Mandaten, Deals und offenen Angeboten — von Hand überschreibbar unter „Kontakt öffnen“. Neu = Leads zum Qualifizieren.</div>
     </Karte>
   );
 }

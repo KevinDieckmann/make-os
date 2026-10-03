@@ -10,7 +10,7 @@
 // Werbesperre/Einschränkung sperrt mit Grund, gelb ist ein Hinweis.
 
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Knopf, feld, useBreit } from '../../schlank';
+import { Karte, Knopf, feld, useBreit } from '../../ui';
 import { Blatt } from './Blatt';
 import type { AngebotDokument } from '@/lib/crm/angebot-dokument';
 
@@ -32,13 +32,13 @@ export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, nachfass
       <div style={{ display: 'grid', gap: 12, position: breit ? 'sticky' : undefined, top: 12 }}>
         <Karte i={0}>
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkDim, marginBottom: 10 }}>Mail-Entwurf</div>
-          <label style={{ display: 'grid', gap: 4, marginBottom: 8 }}><span style={{ fontSize: 12, color: C.inkLeise }}>An</span>
+          <label style={{ display: 'grid', gap: 4, marginBottom: 8 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>An</span>
             <input value={mail.an} onChange={e => setMail({ ...mail, an: e.target.value })} placeholder="E-Mail-Adresse" aria-label="An" style={f} /></label>
-          <label style={{ display: 'grid', gap: 4, marginBottom: 8 }}><span style={{ fontSize: 12, color: C.inkLeise }}>Betreff</span>
+          <label style={{ display: 'grid', gap: 4, marginBottom: 8 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Betreff</span>
             <input value={mail.betreff} onChange={e => setMail({ ...mail, betreff: e.target.value })} aria-label="Betreff" style={f} /></label>
-          <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12, color: C.inkLeise }}>Text</span>
+          <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Text</span>
             <textarea value={mail.text} onChange={e => setMail({ ...mail, text: e.target.value })} rows={11} aria-label="Mailtext" style={{ ...f, lineHeight: 1.5, resize: 'vertical' }} /></label>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>{NUMMER_PLATZHALTER} wird beim Senden durch die Angebotsnummer ersetzt. Das Mail-Programm öffnet sich — <b style={{ color: C.inkDim }}>PDF anhängen und abschicken</b>.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>{NUMMER_PLATZHALTER} wird beim Senden durch die Angebotsnummer ersetzt. Das Mail-Programm öffnet sich — <b style={{ color: C.inkDim }}>PDF anhängen und abschicken</b>.</div>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, fontSize: TYP.bedien, color: C.inkDim, flexWrap: 'wrap' }}>
             Nachfassen am <input type="date" value={nachfassen} onChange={e => setNachfassen(e.target.value)} aria-label="Nachfassen am" style={{ ...f, width: 160 }} />
           </label>
@@ -58,7 +58,7 @@ export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, nachfass
           <Knopf leise onClick={onZurueck}>‹ Zurück</Knopf>
           <Knopf farbe={LEUCHT.gut} aus={gesperrt} onClick={onSenden}>Senden</Knopf>
         </div>
-        <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Senden stellt das Angebot: es bekommt seine Nummer und ist danach festgeschrieben (Änderungen nur als neue Version). Deal, Follow-up und Verlauf ziehen mit.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Senden stellt das Angebot: es bekommt seine Nummer und ist danach festgeschrieben (Änderungen nur als neue Version). Deal, Follow-up und Verlauf ziehen mit.</div>
       </div>
       <Blatt d={dok} logoUrl={logoUrl} />
     </div>

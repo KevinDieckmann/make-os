@@ -17,7 +17,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { Zahlungsdaten, Zahlungsweg } from '@/lib/crm/typen';
 import type { CrmApi } from '../daten';
 import { euro, datum, plusTage } from '../daten';
-import { Karte, Leer, Knopf, Chip, Balken, Zahl, feld, LEUCHT } from '../../schlank';
+import { Karte, Leer, Knopf, Chip, Balken, Zahl, feld, LEUCHT } from '../../ui';
 import { Feldzeile, Feld } from '../teile';
 import { Wahl, type WahlEintrag } from '../Wahl';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -63,8 +63,8 @@ function KachelKarte({ id, i, titel, farbe, kurz, zu, umschalten, rechts, childr
         <button onClick={() => umschalten(id)} aria-expanded={!zu} className="fassbar" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.inkDim, textAlign: 'left' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: farbe, flex: '0 0 auto' }} />
           <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>{titel}</span>
-          {kurz && <span style={{ fontSize: 12.5, color: C.inkLeise, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {kurz}</span>}
-          <span aria-hidden style={{ marginLeft: 'auto', color: C.inkLeise, fontSize: 12 }}>{zu ? '▸' : '▾'}</span>
+          {kurz && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {kurz}</span>}
+          <span aria-hidden style={{ marginLeft: 'auto', color: C.inkLeise, fontSize: TYP.bedien }}>{zu ? '▸' : '▾'}</span>
         </button>
         {!zu && rechts}
       </div>
@@ -78,14 +78,14 @@ function ZeileKlein({ titel, unter, rechts }: { titel: ReactNode; unter?: ReactN
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap' }}>
       <div style={{ flex: '1 1 180px', minWidth: 0 }}>
         <div style={{ fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>{titel}</div>
-        {unter && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2 }}>{unter}</div>}
+        {unter && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{unter}</div>}
       </div>
       {rechts && <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{rechts}</div>}
     </div>
   );
 }
 
-const leiseLink = { color: C.aktiv, fontSize: 12.5, fontWeight: 600, textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', padding: 0 } as const;
+const leiseLink = { color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', padding: 0 } as const;
 const STATUS_FARBE: Record<string, string> = { storniert: C.inkLeise, bezahlt: LEUCHT.gut, gestellt: LEUCHT.puls, geplant: C.inkLeise, offen: LEUCHT.achtung, angenommen: LEUCHT.gut, abgelehnt: C.inkLeise, ueberfaellig: LEUCHT.kritisch };
 
 /** Löschen mit Rückfrage — erst „Löschen“, dann „Wirklich? Ja · Nein“. */
@@ -93,7 +93,7 @@ const STATUS_FARBE: Record<string, string> = { storniert: C.inkLeise, bezahlt: L
 function LoeschKnopf({ onJa, beleg }: { onJa: () => void; beleg?: boolean }) {
   const [frage, setFrage] = useState(false);
   if (!frage) return <button onClick={() => setFrage(true)} style={{ ...leiseLink, color: C.inkLeise }} title={beleg ? 'Hängt an einer Rechnung oder einem Mandat — wird nicht gelöscht, nur vom Bezug gelöst' : undefined}>{beleg ? 'vom Bezug lösen' : 'Löschen'}</button>;
-  return <span style={{ fontSize: 12.5, color: C.inkDim, display: 'inline-flex', gap: 8 }}>{beleg ? 'Von Rechnung/Mandat lösen?' : 'Wirklich löschen?'} <button onClick={() => { setFrage(false); onJa(); }} style={{ ...leiseLink, color: LEUCHT.kritisch }}>Ja</button><button onClick={() => setFrage(false)} style={leiseLink}>Nein</button></span>;
+  return <span style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'inline-flex', gap: 8 }}>{beleg ? 'Von Rechnung/Mandat lösen?' : 'Wirklich löschen?'} <button onClick={() => { setFrage(false); onJa(); }} style={{ ...leiseLink, color: LEUCHT.kritisch }}>Ja</button><button onClick={() => setFrage(false)} style={leiseLink}>Nein</button></span>;
 }
 
 /** Stornieren mit Grund und Rückfrage — ersetzt das Löschen ab „gestellt“ (28.09., K3). */
@@ -122,7 +122,7 @@ function DateiWahl({ datei, setDatei, text = 'PDF wählen' }: { datei: File | nu
     <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
       <input ref={ref} type="file" accept={ANNEHMEN} hidden onChange={e => setDatei(e.target.files?.[0] ?? null)} />
       <Knopf leise onClick={() => ref.current?.click()}>{datei ? 'andere Datei' : text}</Knopf>
-      {datei && <span style={{ fontSize: 12.5, color: datei.size > MAX_DATEI_BYTES ? LEUCHT.kritisch : C.inkDim }}>{datei.name} · {groesseText(datei.size)}{datei.size > MAX_DATEI_BYTES ? ' — zu groß (max. 15 MB)' : ''}</span>}
+      {datei && <span style={{ fontSize: TYP.bedien, color: datei.size > MAX_DATEI_BYTES ? LEUCHT.kritisch : C.inkDim }}>{datei.name} · {groesseText(datei.size)}{datei.size > MAX_DATEI_BYTES ? ' — zu groß (max. 15 MB)' : ''}</span>}
     </span>
   );
 }
@@ -303,10 +303,10 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
       <KachelKarte id="eingang" i={5} titel="Zahlungseingang" farbe={LEUCHT.gut} kurz={bezahlt.length ? `${euro(kennzahlen.bezahlt)} eingegangen` : undefined} zu={zu.has('eingang')} umschalten={umschalten}>
         {planHinweis ?? <>
           {offen.length > 0 && <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 12, color: C.inkLeise, margin: '0 0 4px' }}>Offen</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '0 0 4px' }}>Offen</div>
             {offen.map(z => <OffeneZeile key={z.r.id} z={z} heute={heute} alsBezahlt={alsBezahlt} />)}
           </div>}
-          <div style={{ fontSize: 12, color: C.inkLeise, margin: '4px 0' }}>Eingegangen{kennzahlen.verzugSchnitt != null ? ` · im Schnitt ${kennzahlen.verzugSchnitt > 0 ? `${kennzahlen.verzugSchnitt} Tage nach Fälligkeit` : kennzahlen.verzugSchnitt < 0 ? `${-kennzahlen.verzugSchnitt} Tage vor Fälligkeit` : 'pünktlich'}` : ''}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '4px 0' }}>Eingegangen{kennzahlen.verzugSchnitt != null ? ` · im Schnitt ${kennzahlen.verzugSchnitt > 0 ? `${kennzahlen.verzugSchnitt} Tage nach Fälligkeit` : kennzahlen.verzugSchnitt < 0 ? `${-kennzahlen.verzugSchnitt} Tage vor Fälligkeit` : 'pünktlich'}` : ''}</div>
           {!bezahlt.length ? <Leer>Noch kein Zahlungseingang.</Leer> : bezahlt.map(z => (
             <ZeileKlein key={z.r.id} titel={<>{euro(z.r.betrag)} <span style={{ color: C.inkLeise, fontWeight: 500 }}>· {z.r.nummer ? `Nr. ${z.r.nummer} · ` : ''}{z.r.titel}</span></>}
               unter={`eingegangen ${z.r.bezahltAm ? datum(z.r.bezahltAm, heute) : 'ohne Datum'}${z.r.faellig ? ` · fällig war ${datum(z.r.faellig, heute)}` : ''}${z.perName ? ' · per Name zugeordnet' : ''}`}
@@ -331,21 +331,21 @@ function UmsatzKachel({ i, zu, umschalten, kz, hinweis }: { i: number; zu: boole
         <Zahl wert={euro(kz.ueberfaellig)} label={`überfällig${kz.anzahlUeberfaellig ? ` (${kz.anzahlUeberfaellig})` : ''}`} farbe={kz.ueberfaellig ? LEUCHT.kritisch : undefined} />
         <Zahl wert={euro(kz.monatswert)} label={`Monatswert · ${kz.aktiveMandate} ${kz.aktiveMandate === 1 ? 'aktives Mandat' : 'aktive Mandate'}`} />
       </div>
-      <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>
         {kz.gewonneneDeals ? `${kz.gewonneneDeals} gewonnene ${kz.gewonneneDeals === 1 ? 'Deal' : 'Deals'} · ${euro(kz.gewonnenWert)}` : 'Noch kein gewonnener Deal'}
         {kz.geplant ? ` · ${euro(kz.geplant)} geplant` : ''}
         {kz.perName ? ` · ${kz.perName} ${kz.perName === 1 ? 'Rechnung' : 'Rechnungen'} per Name zugeordnet` : ''}
       </div>
       {hinweis}
       {kz.jeJahr.length > 0 && <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>je Jahr</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>je Jahr</div>
         <Balken werte={kz.jeJahr.map(j => j.bezahlt)} max={maxJahr} farbe={LEUCHT.geld} hoehe={40} titel={kz.jeJahr.map(j => `${j.jahr}: ${euro(j.bezahlt)}`)} />
-        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>{kz.jeJahr.map(j => <span key={j.jahr} style={{ flex: 1, textAlign: 'center', fontSize: 11, color: C.inkLeise }}>{j.jahr}</span>)}</div>
+        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>{kz.jeJahr.map(j => <span key={j.jahr} style={{ flex: 1, textAlign: 'center', fontSize: 12, color: C.inkLeise }}>{j.jahr}</span>)}</div>
       </div>}
       {kz.jeEinheit.length > 0 && <div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>je Einheit</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>je Einheit</div>
         {kz.jeEinheit.map(e => (
-          <div key={e.einheit} style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 150px) 1fr auto', gap: 10, alignItems: 'center', padding: '4px 0', fontSize: 12.5 }}>
+          <div key={e.einheit} style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 150px) 1fr auto', gap: 10, alignItems: 'center', padding: '4px 0', fontSize: TYP.bedien }}>
             <span style={{ color: C.inkDim }}>{e.einheit}</span>
             <span style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,.06)', overflow: 'hidden', display: 'flex' }}>
               <span style={{ width: `${(e.bezahlt / maxEinheit) * 100}%`, background: LEUCHT.geld }} />
@@ -380,7 +380,7 @@ function ZahlungKachel({ i, zu, umschalten, k, api, firma, zahlung, heute }: { i
 
   return (
     <KachelKarte id="zahlung" i={i} titel="Zahlungsmöglichkeiten" farbe={LEUCHT.planung} kurz={z.weg ? `${ZAHLUNGSWEG_LABEL[z.weg]}${z.zielTage != null ? ` · ${z.zielTage} Tage` : ''}` : undefined} zu={zu} umschalten={umschalten}>
-      <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 8 }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>
         {quelle === 'firma' ? `Gilt für alle Personen von ${firma!.name} — gespeichert an der Firma.` : 'Gespeichert an dieser Person (keine Firma hinterlegt).'}
         {luecken.length ? ` Fehlt noch: ${luecken.join(', ')}.` : ''}
       </div>
@@ -406,7 +406,7 @@ function ZahlungKachel({ i, zu, umschalten, k, api, firma, zahlung, heute }: { i
             <input value={ibanNeu} onChange={e => setIbanNeu(e.target.value)} placeholder="IBAN eingeben" aria-label="IBAN" autoComplete="off" spellCheck={false} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(260px, 100%)' }} />
             <Knopf onClick={() => { if (!ibanGueltig(ibanNeu)) { setIbanFehler('Prüfziffer stimmt nicht — bitte prüfen.'); return; } speichern({ iban: ibanNeu }); setIbanNeu(null); }}>Speichern</Knopf>
             <button onClick={() => setIbanNeu(null)} style={leiseLink}>Abbrechen</button>
-            {ibanFehler && <span style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{ibanFehler}</span>}
+            {ibanFehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{ibanFehler}</span>}
           </span>
         )}
       </Feldzeile>}
@@ -414,7 +414,7 @@ function ZahlungKachel({ i, zu, umschalten, k, api, firma, zahlung, heute }: { i
         <Feldzeile label="Mandatsreferenz"><Feld wert={z.sepa?.mandatsreferenz ?? ''} platzhalter="SEPA-Mandatsreferenz" onFertig={t => speichern({ sepa: { ...(z.sepa ?? {}), mandatsreferenz: t.trim() || undefined } })} /></Feldzeile>
         <Feldzeile label="Mandat erteilt am"><Feld typ="date" wert={z.sepa?.datum ?? ''} breite="min(170px, 100%)" onFertig={t => speichern({ sepa: { ...(z.sepa ?? {}), datum: t || undefined } })} /></Feldzeile>
       </>}
-      <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 8 }}>Die IBAN steht nur maskiert hier, liegt verschlüsselt im Bestand und geht in keinen Export und an keinen Agenten.</div>
+      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Die IBAN steht nur maskiert hier, liegt verschlüsselt im Bestand und geht in keinen Export und an keinen Agenten.</div>
     </KachelKarte>
   );
 }
@@ -537,7 +537,7 @@ function RechnungNeu({ k, bezug, zielTage, heute, firmen, schreiben }: { k: Kont
       <Feldzeile label="Datum · fällig"><span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}><input type="date" value={f.datum} onChange={e => setF({ ...f, datum: e.target.value, faellig: e.target.value ? plusTage(e.target.value, zielTage) : f.faellig })} aria-label="Rechnungsdatum" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(160px, 100%)' }} /><input type="date" value={f.faellig} onChange={e => setF({ ...f, faellig: e.target.value })} aria-label="fällig am" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(160px, 100%)' }} /></span></Feldzeile>
       {mandatListe.length > 0 && <Feldzeile label="Mandat"><Wahl<string> liste={mandatListe} wert={f.mandatId} label="Mandat" onWahl={v => { const m = bezug.mandate.find(x => x.id === v); const g = m ? gesellschaftAusEinheit(m.gesellschaft) : undefined; setF({ ...f, mandatId: v, ...(g ? { firmaId: g } : {}) }); }} onLeeren={() => setF({ ...f, mandatId: null })} /></Feldzeile>}
       {eigene.length > 0 && <Feldzeile label="Einheit"><Wahl<string> liste={eigene} wert={f.firmaId} label="Einheit" onWahl={v => setF({ ...f, firmaId: v })} /></Feldzeile>}
-      <div style={{ fontSize: 12, color: C.inkLeise, margin: '4px 0' }}>Geht in den Finanzplan (Kunde „{kundenName(k, bezug.firma)}“){f.mandatId ? ', mit Bezug zum Mandat' : ' — ohne Mandat wird sie per Name zugeordnet'}.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '4px 0' }}>Geht in den Finanzplan (Kunde „{kundenName(k, bezug.firma)}“){f.mandatId ? ', mit Bezug zum Mandat' : ' — ohne Mandat wird sie per Name zugeordnet'}.</div>
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><Knopf onClick={() => void los()} aus={laeuft || !f.betrag}>{laeuft ? 'speichert …' : 'Anlegen'}</Knopf><Knopf leise onClick={() => setOffen(false)}>Abbrechen</Knopf></div>
     </div>
   );

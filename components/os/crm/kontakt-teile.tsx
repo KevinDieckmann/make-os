@@ -13,7 +13,7 @@ import { localDay } from '@/lib/zeit';
 import { DealAnlegen } from './DealAnlegen';
 import { useEffect, useState, type ReactNode, type KeyboardEvent as TastenEreignis } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Punkt, feld, LEUCHT } from '../schlank';
+import { Ueberschrift, Knopf, Punkt, feld, LEUCHT } from '../ui';
 import { WEG } from '@/lib/wege';
 import { anzeigename, STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN, type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt, ROLLEN as KONTAKT_ROLLEN, ROLLE_LABEL, rollenVon, type Rolle } from '@/lib/make-one/crm';
 import type { Firma } from '@/lib/crm/typen';
@@ -117,7 +117,7 @@ export function Hinweise({ k, heute, setze }: { k: Kontakt; heute: string; setze
 export function NaechsterSchrittTeil({ k, heute, setze }: { k: Kontakt; heute: string; setze: Setze }) {
   return (
     <div>
-      <Ueberschrift rechts={k.naechsterSchritt ? <button onClick={() => void setze({ naechsterSchritt: undefined })} style={{ background: 'none', border: 'none', color: LEUCHT.gut, cursor: 'pointer', fontSize: 12 }}>✓ erledigt</button> : undefined}>Nächster Schritt</Ueberschrift>
+      <Ueberschrift rechts={k.naechsterSchritt ? <button onClick={() => void setze({ naechsterSchritt: undefined })} style={{ background: 'none', border: 'none', color: LEUCHT.gut, cursor: 'pointer', fontSize: TYP.bedien }}>✓ erledigt</button> : undefined}>Nächster Schritt</Ueberschrift>
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 1 }}><Feld wert={k.naechsterSchritt?.text} platzhalter="Was als Nächstes passiert" onFertig={text => void setze({ naechsterSchritt: text.trim() ? { text: text.trim(), datum: k.naechsterSchritt?.datum ?? heute } : undefined })} /></div>
         <Feld typ="date" wert={k.naechsterSchritt?.datum} breite={150} platzhalter="Datum" onFertig={d2 => k.naechsterSchritt && void setze({ naechsterSchritt: { ...k.naechsterSchritt, datum: d2 } })} />
@@ -132,8 +132,8 @@ export function BeziehungTeil({ k, api, setze, ohneTitel }: { k: Kontakt; api: C
   // kompakten Zeilen — sichtbar ist nur, was gesetzt ist; Rollen und Anrede schlagen aus den Daten vor.
   const ph = phaseVon(k, api.crm?.stand);
   const firma = k.firmaId ? api.crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;
-  const chip = (text: string, farbe: string) => <span style={{ fontSize: 11.5, fontWeight: 600, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 8px' }}>{text}</span>;
-  const paar = (label: string, inhalt: ReactNode) => <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>{label}</span>{inhalt}</span>;
+  const chip = (text: string, farbe: string) => <span style={{ fontSize: 12, fontWeight: 600, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 8px' }}>{text}</span>;
+  const paar = (label: string, inhalt: ReactNode) => <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{label}</span>{inhalt}</span>;
   const vonHand = k.lebensphase === 'partner' || k.lebensphase === 'multiplikator' ? k.lebensphase : null;
   // Rolle entfernen, die nur über die alte Lebensphase kam → Lebensphase mit leeren, sonst käme sie über rollenVon zurück.
   const rollenSetzen = (rollen: Rolle[]) => void setze({ rollen, ...(vonHand && !rollen.includes(vonHand) ? { lebensphase: undefined } : {}) });
@@ -148,7 +148,7 @@ export function BeziehungTeil({ k, api, setze, ohneTitel }: { k: Kontakt; api: C
       <Feldzeile label="Rollen"><WahlMehrfach label="Rolle" liste={KONTAKT_ROLLEN_WAHL} wert={rollenVon(k)} vorschlag={kontaktRollenVorschlag(k, firma)} farbe={LEUCHT.business} onWahl={rollenSetzen} /></Feldzeile>
       <Feldzeile label="Lebensphase">
         <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {chip(PHASE_LABEL[ph.phase], phaseFarbe(ph.phase))}<span style={{ fontSize: 12, color: C.inkLeise }}>{ph.grund}</span>
+          {chip(PHASE_LABEL[ph.phase], phaseFarbe(ph.phase))}<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{ph.grund}</span>
           <Wahl label="Phase von Hand" leer="von Hand ▾" klein liste={VON_HAND} wert={vonHand} farbe={LEUCHT.agenten}
             onWahl={p => void setze({ lebensphase: p as Lebensphase })} onLeeren={() => void setze({ lebensphase: undefined })} />
         </span>
@@ -180,11 +180,11 @@ function GeburtstagFeld({ k, setze }: { k: Kontakt; setze: Setze }) {
           if (t.trim() && !g) { setFehler(true); return; }
           setFehler(false); void setze({ geburtstag: g });
         }} />
-        {n && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{geburtstagText(k.geburtstag)}{n.inTagen === 0 ? ' · heute' : ` · in ${n.inTagen} Tagen`}{n.alter ? ` · wird ${n.alter}` : ''}</span>}
+        {n && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{geburtstagText(k.geburtstag)}{n.inTagen === 0 ? ' · heute' : ` · in ${n.inTagen} Tagen`}{n.alter ? ` · wird ${n.alter}` : ''}</span>}
         {n && n.inTagen <= 14 && !schonGeplant && <Knopf leise onClick={() => void setze({ naechsterSchritt: { text: gratulieren, datum: n.tag } })}>Gratulieren vormerken</Knopf>}
       </span>
-      {fehler && <span style={{ fontSize: 12, color: LEUCHT.kritisch }}>Kein gültiges Datum — z. B. „3.10.“ oder „3.10.1990“.</span>}
-      {!k.geburtstag && <span style={{ fontSize: 11.5, color: C.inkLeise }}>Optional, nur zum Gratulieren — nicht erfassen, was ihr nicht braucht.</span>}
+      {fehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Kein gültiges Datum — z. B. „3.10.“ oder „3.10.1990“.</span>}
+      {!k.geburtstag && <span style={{ fontSize: 12, color: C.inkLeise }}>Optional, nur zum Gratulieren — nicht erfassen, was ihr nicht braucht.</span>}
     </span>
   );
 }
@@ -208,13 +208,13 @@ export function LinkedInTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
     const text = !s ? 'nicht vernetzt' : s.status === 'vernetzt' ? `vernetzt seit ${datum(s.vernetztAm)}${s.geschriebenAm ? ` · geschrieben ${datum(s.geschriebenAm)}` : ' · noch nicht geschrieben'}` : s.status === 'angefragt' ? `angefragt ${datum(s.angefragtAm)}` : s.status === 'abgelehnt' ? 'abgelehnt' : 'Anfrage zurückgezogen';
     return <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: s?.status === 'vernetzt' ? C.ink : C.inkDim, padding: '3px 0' }}><Person id={p} groesse={18} /><span>{nameVon(p)}: {text}</span></div>;
   };
-  const leise = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: 0, fontFamily: SCHRIFT.text } as const;
+  const leise = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, fontFamily: SCHRIFT.text } as const;
   return (
     <div>
-      <Ueberschrift rechts={<Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: 12 }}>Vernetzen-Runde ›</Link>}>LinkedIn</Ueberschrift>
-      {profil ? <a href={profil} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none', overflowWrap: 'anywhere' }}>{profil.replace('https://www.', '')} ↗</a>
+      <Ueberschrift rechts={<Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: TYP.bedien }}>Vernetzen-Runde ›</Link>}>LinkedIn</Ueberschrift>
+      {profil ? <a href={profil} target="_blank" rel="noopener noreferrer" style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none', overflowWrap: 'anywhere' }}>{profil.replace('https://www.', '')} ↗</a>
         : <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <a href={suchLink(k)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: LEUCHT.business, textDecoration: 'none' }}>Auf LinkedIn suchen ↗</a>
+          <a href={suchLink(k)} target="_blank" rel="noopener noreferrer" style={{ fontSize: TYP.bedien, color: LEUCHT.business, textDecoration: 'none' }}>Auf LinkedIn suchen ↗</a>
           <input value={url} onChange={e => setUrl(e.target.value)} placeholder="Profiladresse einfügen" aria-label="LinkedIn-Profiladresse" onKeyDown={e => { if (e.key === 'Enter' && url.trim()) void tun({ aktion: 'profil', url }); }} style={{ ...feld, flex: 1, minWidth: 160, fontSize: TYP.bedien, padding: '7px 10px' }} />
           {url.trim() && <Knopf leise onClick={() => void tun({ aktion: 'profil', url })}>Speichern</Knopf>}
         </div>}
@@ -224,7 +224,7 @@ export function LinkedInTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
         {(stufe === 'warten' || stufe === 'zurueckziehen') && <><button onClick={() => void tun({ aktion: 'vernetzt' })} style={leise}>Wurde angenommen ✓</button><button onClick={() => void tun({ aktion: 'zurueckgezogen' })} style={leise}>Zurückgezogen</button></>}
         {stufe === 'schreiben' && <Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ ...leise, color: LEUCHT.gut, textDecoration: 'none' }}>Angenommen — in der Runde schreiben ›</Link>}
       </div>
-      {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 4 }}>{fehler}</div>}
+      {fehler && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginTop: 4 }}>{fehler}</div>}
     </div>
   );
 }
@@ -241,7 +241,7 @@ export function DealsTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
       {anlegen && <div style={{ marginBottom: 10 }}><DealAnlegen api={api} kontaktId={k.id} onFertig={() => setAnlegen(false)} onAbbruch={() => setAnlegen(false)} /></div>}
       {chancen.map(c => <Link key={c.id} href={WEG.deal(c.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '5px 0', color: C.ink, textDecoration: 'none' }}><Punkt farbe={crm?.ampel[c.id]?.ampel === 'rot' ? LEUCHT.kritisch : crm?.ampel[c.id]?.ampel === 'gelb' ? LEUCHT.achtung : LEUCHT.gut} groesse={7} /> <b style={{ fontWeight: 600 }}>{c.titel}</b> <span style={{ color: C.inkLeise }}>· {crm?.stufen.find(s => s.id === c.stufe)?.label} · {c.wert.betrag ? euro(c.wert.betrag) + (c.wert.basis === 'monat' ? '/Monat' : '') : 'ohne Wert'} ›</span></Link>)}
       {mandate.map(m => <Link key={m.id} href={mandateLink('mandate', m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '5px 0', color: C.ink, textDecoration: 'none' }}><Punkt farbe={LEUCHT.geld} groesse={7} /> <b style={{ fontWeight: 600 }}>{m.titel.slice(0, 70)}</b> <span style={{ color: C.inkLeise }}>· Mandat {m.status} ›</span></Link>)}
-      {!chancen.length && !mandate.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch kein Deal.</div>}
+      {!chancen.length && !mandate.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch kein Deal.</div>}
     </div>
   );
 }
@@ -261,7 +261,7 @@ export function EntwurfTeil({ k, mailOk, ohneTitel }: { k: Kontakt; mailOk: bool
     <div>
       {!ohneTitel && <Ueberschrift>Entwurf</Ueberschrift>}
       {!entwurf && <Knopf leise onClick={entwerfen}>ZOE entwerfen lassen</Knopf>}
-      {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 6 }}>{fehler}</div>}
+      {fehler && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginTop: 6 }}>{fehler}</div>}
       {entwurf === 'laedt' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>ZOE schreibt …</span>}
       {entwurf && entwurf !== 'laedt' && (
         <div style={{ display: 'grid', gap: 8 }}>
@@ -273,7 +273,7 @@ export function EntwurfTeil({ k, mailOk, ohneTitel }: { k: Kontakt; mailOk: bool
             <Knopf leise onClick={() => { try { void navigator.clipboard.writeText(entwurf.linkedin || entwurf.email); } catch { /* egal */ } }}>Text kopieren</Knopf>
             <Knopf leise onClick={() => setEntwurf(null)}>Verwerfen</Knopf>
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise }}>{mailOk ? entwurf.hinweis : 'Mail ist für diese Person nicht freigegeben (Ampel) — den Text nur für ein persönliches Gespräch oder eine Vernetzungsanfrage ohne Werbung nutzen.'}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{mailOk ? entwurf.hinweis : 'Mail ist für diese Person nicht freigegeben (Ampel) — den Text nur für ein persönliches Gespräch oder eine Vernetzungsanfrage ohne Werbung nutzen.'}</div>
         </div>
       )}
     </div>
@@ -298,7 +298,7 @@ export function VerlaufTeil({ k, api, name, heute, max = 60 }: { k: Kontakt; api
       {notiz && <div style={{ marginBottom: 10 }}><NotizFormular heute={heute} anrede={k.anrede} einwilligung={!hatMailEinwilligung(k)} onAbbruch={() => setNotiz(false)} onFertig={x => { void festhalten(api, { id: k.id, art: 'gespraech', notiz: x.notiz, naechster: x.naechster }, x.einwilligung, heute); setNotiz(false); }} /></div>}
       {arten.length > 1 && <div style={{ marginBottom: 8 }}><Pillen liste={[{ id: 'alle', label: 'Alle' }, ...arten.map(a => ({ id: a, label: a }))] as { id: 'alle' | AktivitaetArt; label: string }[]} aktiv={artFilter} onWahl={setArtFilter} /></div>}
       <Verlauf liste={verlauf} name={name} heute={heute} max={max} termine={terminZeiten} />
-      {verlauf.length > max && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Die jüngsten {max} von {verlauf.length} Einträgen.</div>}
+      {verlauf.length > max && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Die jüngsten {max} von {verlauf.length} Einträgen.</div>}
     </div>
   );
 }
@@ -317,9 +317,9 @@ function EwFormular({ e, setE, heute, knopf, onFertig, onAbbruch, nurEinwilligun
   return (
     <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
       <div style={{ display: 'flex', gap: '8px 18px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Kanal</span><Wahl label="Kanal" liste={EW_KANAL} wert={e.kanal} onWahl={kanal => setE({ ...e, kanal })} /></span>
-        {!nurEinwilligung && <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Grundlage</span><Wahl label="Grundlage" liste={GRUNDLAGEN} wert={e.grundlage} onWahl={grundlage => setE({ ...e, grundlage })} /></span>}
-        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>erteilt am</span><input type="date" value={e.am} max={heute} onChange={x => setE({ ...e, am: x.target.value })} aria-label="Erteilt am" style={{ ...feld, width: 150, fontSize: TYP.bedien }} /></span>
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kanal</span><Wahl label="Kanal" liste={EW_KANAL} wert={e.kanal} onWahl={kanal => setE({ ...e, kanal })} /></span>
+        {!nurEinwilligung && <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Grundlage</span><Wahl label="Grundlage" liste={GRUNDLAGEN} wert={e.grundlage} onWahl={grundlage => setE({ ...e, grundlage })} /></span>}
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>erteilt am</span><input type="date" value={e.am} max={heute} onChange={x => setE({ ...e, am: x.target.value })} aria-label="Erteilt am" style={{ ...feld, width: 150, fontSize: TYP.bedien }} /></span>
       </div>
       <textarea value={e.wortlaut} onChange={x => setE({ ...e, wortlaut: x.target.value })} rows={2} placeholder="Wortlaut (Pflicht): Frage und Antwort bzw. Formulartext — „Darf ich Ihnen … schicken? — Ja“" aria-label="Wortlaut der Einwilligung" style={{ ...feld, fontSize: TYP.bedien, resize: 'vertical' }} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -330,7 +330,7 @@ function EwFormular({ e, setE, heute, knopf, onFertig, onAbbruch, nurEinwilligun
         <Knopf aus={!ewOk(e, heute)} onClick={onFertig}>{knopf}</Knopf>
         <Knopf leise onClick={onAbbruch}>Abbrechen</Knopf>
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise }}>Zeitpunkt und wer erfasst hat, stempelt MAKE OS. Eine Visitenkarte ist keine Einwilligung. Newsletter nur per Double-Opt-in. Hinweis, keine Rechtsberatung.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Zeitpunkt und wer erfasst hat, stempelt MAKE OS. Eine Visitenkarte ist keine Einwilligung. Newsletter nur per Double-Opt-in. Hinweis, keine Rechtsberatung.</div>
     </div>
   );
 }
@@ -365,40 +365,40 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
       <div><Ueberschrift>Einschränkung (Art. 18)</Ueberschrift>
         {k.eingeschraenkt ? (
           <div style={{ display: 'grid', gap: 8 }}>
-            <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>Eingeschränkt seit {datum(k.eingeschraenkt.seit)} von {nameVon(k.eingeschraenkt.von)} — {k.eingeschraenkt.grund}{k.eingeschraenkt.antragId ? ` · Antrag ${k.eingeschraenkt.antragId}` : ''}. Gespeichert bleibt alles; verarbeitet, bearbeitet und angesprochen wird nichts.</div>
+            <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Eingeschränkt seit {datum(k.eingeschraenkt.seit)} von {nameVon(k.eingeschraenkt.von)} — {k.eingeschraenkt.grund}{k.eingeschraenkt.antragId ? ` · Antrag ${k.eingeschraenkt.antragId}` : ''}. Gespeichert bleibt alles; verarbeitet, bearbeitet und angesprochen wird nichts.</div>
             <div><Knopf leise onClick={async () => { const g = await frage('Einschränkung aufheben — Grund', { hinweis: 'z. B. „Richtigkeit geprüft und bestätigt“ — steht im Verlauf.' }); if (g?.trim()) void datenschutzAktion(api, { aktion: 'einschraenkung-aufheben', id: k.id, grund: g.trim() }); }}>Aufheben (mit Grund)</Knopf></div>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12.5, color: C.inkLeise }}>Nicht eingeschränkt.</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nicht eingeschränkt.</span>
             <Knopf leise onClick={async () => { const g = await frage('Verarbeitung einschränken — Grund', { hinweis: 'z. B. „Richtigkeit bestritten (Art. 18 Abs. 1 lit. a)“. Danach: nur aufbewahren, nichts bearbeiten.' }); if (g?.trim()) void datenschutzAktion(api, { aktion: 'einschraenken', id: k.id, grund: g.trim() }); }}>Verarbeitung einschränken</Knopf>
           </div>
         )}
       </div>
       <div><Ueberschrift>Stammdaten geprüft</Ueberschrift>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12.5, color: alt || !k.geprueftAm ? LEUCHT.achtung : C.inkDim }}>{k.geprueftAm ? `zuletzt am ${datum(k.geprueftAm)}${k.geprueftVon ? ` von ${nameVon(k.geprueftVon)}` : ''}${alt ? ' — über 12 Monate her' : ''}` : 'noch nie geprüft'}</span>
+          <span style={{ fontSize: TYP.bedien, color: alt || !k.geprueftAm ? LEUCHT.achtung : C.inkDim }}>{k.geprueftAm ? `zuletzt am ${datum(k.geprueftAm)}${k.geprueftVon ? ` von ${nameVon(k.geprueftVon)}` : ''}${alt ? ' — über 12 Monate her' : ''}` : 'noch nie geprüft'}</span>
           {!gesperrt && <Knopf leise onClick={() => void setze({ geprueftAm: heute })}>Stammdaten geprüft</Knopf>}
         </div>
       </div>
       <div><Ueberschrift>Grundlage</Ueberschrift>
         <Feldzeile label="Rechtsgrundlage (Art. 6)"><Wahl label="Rechtsgrundlage" liste={RECHTSGRUNDLAGEN_WAHL} wert={k.rechtsgrundlage} onWahl={(r: Rechtsgrundlage) => void setze({ rechtsgrundlage: r })} /></Feldzeile>
-        {k.rechtsgrundlageNotiz && <Feldzeile label="Interessenabwägung"><span style={{ fontSize: 12.5, color: C.inkDim }}>{k.rechtsgrundlageNotiz} — dokumentiert (DATENSCHUTZ_NETZWERKEN.md): Kontaktpflege nach persönlicher Übergabe, keine Werbung ohne Einwilligung, Widerspruch jederzeit.</span></Feldzeile>}
-        {!!kennengelernt.length && <Feldzeile label="Kennengelernt für"><div style={{ display: 'grid', gap: 2 }}>{kennengelernt.map(t => <span key={t} style={{ fontSize: 12.5, color: C.inkDim }}>{t.replace(/^kennengelernt für /, '')}</span>)}<span style={{ fontSize: 12, color: C.inkLeise }}>Bei einer Übergabe an den Kunden steht sie mit Empfänger im Protokoll des Events (Auskunft Art. 15, Mitteilung bei Löschung Art. 19).</span></div></Feldzeile>}
+        {k.rechtsgrundlageNotiz && <Feldzeile label="Interessenabwägung"><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k.rechtsgrundlageNotiz} — dokumentiert (DATENSCHUTZ_NETZWERKEN.md): Kontaktpflege nach persönlicher Übergabe, keine Werbung ohne Einwilligung, Widerspruch jederzeit.</span></Feldzeile>}
+        {!!kennengelernt.length && <Feldzeile label="Kennengelernt für"><div style={{ display: 'grid', gap: 2 }}>{kennengelernt.map(t => <span key={t} style={{ fontSize: TYP.bedien, color: C.inkDim }}>{t.replace(/^kennengelernt für /, '')}</span>)}<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Bei einer Übergabe an den Kunden steht sie mit Empfänger im Protokoll des Events (Auskunft Art. 15, Mitteilung bei Löschung Art. 19).</span></div></Feldzeile>}
         {(k.rechtsgrundlageNotiz || k.datenschutzInformiertAm) && <Feldzeile label="Datenschutzhinweis (Art. 13)">
           {k.datenschutzInformiertAm
-            ? <span style={{ fontSize: 12.5, color: C.inkDim }}>erteilt am {datum(k.datenschutzInformiertAm)}</span>
-            : <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: 12.5, color: LEUCHT.achtung }}>noch nicht erteilt — in der Danke-Mail oder beim ersten Kontakt geben</span>{!gesperrt && <Knopf leise onClick={() => void datenschutzAktion(api, { aktion: 'datenschutz-informiert', id: k.id })}>Heute persönlich erteilt</Knopf>}</div>}
+            ? <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>erteilt am {datum(k.datenschutzInformiertAm)}</span>
+            : <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>noch nicht erteilt — in der Danke-Mail oder beim ersten Kontakt geben</span>{!gesperrt && <Knopf leise onClick={() => void datenschutzAktion(api, { aktion: 'datenschutz-informiert', id: k.id })}>Heute persönlich erteilt</Knopf>}</div>}
         </Feldzeile>}
         <Feldzeile label="Herkunft (Art. 14)"><Wahl label="Herkunft" liste={HERKUNFT_WAHL} wert={k.herkunft} onWahl={(h: Herkunft) => void setze({ herkunft: h, ...(HERKUNFT.find(x => x.id === h)?.fremd ? { fremddaten: true } : { fremddaten: undefined }) })} /></Feldzeile>
-        {k.fremddaten && <Feldzeile label="Informiert"><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkDim }}>{k.art14InformiertAm ? `am ${datum(k.art14InformiertAm)}` : 'noch nicht'}</span>{!k.art14InformiertAm && <Knopf leise onClick={() => void setze({ art14InformiertAm: heute })}>Heute informiert</Knopf>}</div></Feldzeile>}
+        {k.fremddaten && <Feldzeile label="Informiert"><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k.art14InformiertAm ? `am ${datum(k.art14InformiertAm)}` : 'noch nicht'}</span>{!k.art14InformiertAm && <Knopf leise onClick={() => void setze({ art14InformiertAm: heute })}>Heute informiert</Knopf>}</div></Feldzeile>}
         <Feldzeile label="Hinweis bei Erhebung">
           {k.hinweisBeiErhebung
-            ? <span style={{ fontSize: 12.5, color: C.inkDim }}>erteilt am {datum(k.hinweisBeiErhebung.am)}{k.hinweisBeiErhebung.von ? ` · vermerkt von ${nameVon(k.hinweisBeiErhebung.von)}` : ''} — Bestandskunden-Werbung per Mail möglich (§ 7 Abs. 3 UWG)</span>
+            ? <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>erteilt am {datum(k.hinweisBeiErhebung.am)}{k.hinweisBeiErhebung.von ? ` · vermerkt von ${nameVon(k.hinweisBeiErhebung.von)}` : ''} — Bestandskunden-Werbung per Mail möglich (§ 7 Abs. 3 UWG)</span>
             : <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input type="date" value={hinweisAm} max={heute} onChange={x => setHinweisAm(x.target.value)} aria-label="Hinweis erteilt am" style={{ ...feld, width: 150, fontSize: TYP.bedien }} />
                 <Knopf leise aus={!hinweisAm || gesperrt} onClick={() => void setze({ hinweisBeiErhebung: { am: hinweisAm } })}>Hinweis vermerken</Knopf>
-                <span style={{ fontSize: 12, color: C.inkLeise }}>Widerspruchsrecht bei Erhebung der Adresse genannt? Ohne Vermerk bleibt die Mail-Ampel für Bestandskunden gelb.</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Widerspruchsrecht bei Erhebung der Adresse genannt? Ohne Vermerk bleibt die Mail-Ampel für Bestandskunden gelb.</span>
               </div>}
         </Feldzeile>
       </div>
@@ -410,17 +410,17 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
             <div key={i} style={{ display: 'grid', gap: 2, fontSize: TYP.bedien, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', color: e.widerrufenAm ? C.inkLeise : C.ink }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <b style={{ fontWeight: 600 }}>{EW_KANAL.find(x => x.id === e.kanal)?.label}</b><span style={{ color: C.inkDim }}>{GRUNDLAGEN.find(x => x.id === e.grundlage)?.label ?? e.grundlage} · erteilt {datum(e.erteiltAm)}</span>
-                {!e.widerrufenAm && (fehlt.length ? <span title={`Fehlt: ${fehlt.join(', ')}`} style={{ fontSize: 11.5, color: LEUCHT.achtung }}>Nachweis unvollständig</span> : <span style={{ fontSize: 11.5, color: LEUCHT.gut }}>Nachweis vollständig</span>)}
-                {!e.widerrufenAm && !gesperrt && <button onClick={() => void setze({ einwilligungen: (k.einwilligungen ?? []).map((x, j) => (j === i ? { ...x, widerrufenAm: heute } : x)) })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Widerruf</button>}
+                {!e.widerrufenAm && (fehlt.length ? <span title={`Fehlt: ${fehlt.join(', ')}`} style={{ fontSize: 12, color: LEUCHT.achtung }}>Nachweis unvollständig</span> : <span style={{ fontSize: 12, color: LEUCHT.gut }}>Nachweis vollständig</span>)}
+                {!e.widerrufenAm && !gesperrt && <button onClick={() => void setze({ einwilligungen: (k.einwilligungen ?? []).map((x, j) => (j === i ? { ...x, widerrufenAm: heute } : x)) })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Widerruf</button>}
               </div>
-              {(e.wortlaut || e.nachweis) && <div style={{ fontSize: 12.5, color: C.inkDim }}>„{(e.wortlaut ?? e.nachweis).slice(0, 240)}“{e.wortlautVersion ? ` (Fassung ${e.wortlautVersion})` : ''}</div>}
-              <div style={{ fontSize: 12, color: C.inkLeise }}>
+              {(e.wortlaut || e.nachweis) && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>„{(e.wortlaut ?? e.nachweis).slice(0, 240)}“{e.wortlautVersion ? ` (Fassung ${e.wortlautVersion})` : ''}</div>}
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
                 {[e.belegRef ? `Beleg: ${e.belegRef}` : 'kein Beleg', e.zeitpunkt ? `erfasst ${zeitKurz(e.zeitpunkt)}${e.erfasstVon ? ` von ${nameVon(e.erfasstVon)}` : ''}` : 'Erfassung ohne Zeitpunkt', e.widerrufenAm ? `widerrufen ${datum(e.widerrufenAm)}${e.widerrufenVon ? ` (${nameVon(e.widerrufenVon)})` : ''}` : ''].filter(Boolean).join(' · ')}
               </div>
             </div>
           );
         })}
-        {!(k.einwilligungen ?? []).length && !ew && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Keine. Einwilligung im Gespräch einholen und Wortlaut + Beleg festhalten.</div>}
+        {!(k.einwilligungen ?? []).length && !ew && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine. Einwilligung im Gespräch einholen und Wortlaut + Beleg festhalten.</div>}
         {ew && <EwFormular e={ew} setE={setEw} heute={heute} knopf="Festhalten" onAbbruch={() => setEw(null)} onFertig={() => { void setze({ einwilligungen: [...(k.einwilligungen ?? []), ewAus(ew)], ...(ew.grundlage === 'einwilligung' && !k.rechtsgrundlage ? { rechtsgrundlage: 'einwilligung' as Rechtsgrundlage } : {}) }); setEw(null); }} />}
       </div>
       <div>
@@ -431,13 +431,13 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
             ? (!gesperrt && <Knopf leise onClick={() => setAuf({ ...EW_LEER(heute), grundlage: 'einwilligung' })}>Sperre aufheben (nur mit neuer Einwilligung)</Knopf>)
             : (
               <div style={{ display: 'grid', gap: 8 }}>
-                <div style={{ fontSize: 12.5, color: C.inkDim }}>Gesperrt seit {datum(k.werbesperre.seit)}. Aufheben nur, wenn die Person ausdrücklich wieder eingewilligt hat — Wortlaut und Beleg werden als Einwilligung festgehalten, der Schritt steht im Verlauf.</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Gesperrt seit {datum(k.werbesperre.seit)}. Aufheben nur, wenn die Person ausdrücklich wieder eingewilligt hat — Wortlaut und Beleg werden als Einwilligung festgehalten, der Schritt steht im Verlauf.</div>
                 <EwFormular e={auf} setE={setAuf} heute={heute} nurEinwilligung knopf="Mit Nachweis aufheben" onAbbruch={() => setAuf(null)} onFertig={() => { void setze({ werbesperre: undefined, einwilligungen: [...(k.einwilligungen ?? []), ewAus(auf)] }); setAuf(null); }} />
               </div>
             )}
       </div>
       {k.loeschfristVerlaengert && <div><Ueberschrift>Löschfrist</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim }}>verlängert bis {datum(k.loeschfristVerlaengert.bis)} — {k.loeschfristVerlaengert.grund} ({nameVon(k.loeschfristVerlaengert.von)}, {datum(k.loeschfristVerlaengert.am)})</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>verlängert bis {datum(k.loeschfristVerlaengert.bis)} — {k.loeschfristVerlaengert.grund} ({nameVon(k.loeschfristVerlaengert.von)}, {datum(k.loeschfristVerlaengert.am)})</div>
       </div>}
       <div>
         <Ueberschrift>Betroffenenrechte</Ueberschrift>
@@ -456,7 +456,7 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
           }}>Löschen (Art. 17)</Knopf>
           {nachfrage}
         </div>
-        {gesperrt && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Löschen erst nach dem Aufheben der Einschränkung — sie heißt „aufbewahren“.</div>}
+        {gesperrt && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Löschen erst nach dem Aufheben der Einschränkung — sie heißt „aufbewahren“.</div>}
       </div>
     </div>
   );
@@ -501,7 +501,7 @@ function plusMonate(tag: string, n: number): string {
 function MatrixRahmen({ label, mittig, children }: { label: string; mittig?: boolean; children: ReactNode }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(92px, 34%) minmax(0, 1fr)', gap: 12, alignItems: mittig ? 'center' : 'baseline', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.045)', minHeight: 34 }}>
-      <span style={{ fontSize: 12.5, color: C.inkLeise }}>{label}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{label}</span>
       <div style={{ minWidth: 0 }}>{children}</div>
     </div>
   );
@@ -531,7 +531,7 @@ export function MatrixZeile({ label, wert, lang, link, onFertig }: { label: stri
               style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, margin: 0, textAlign: 'left', cursor: 'text', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, lineHeight: 1.5, color: leer ? C.inkLeise : C.ink, whiteSpace: lang ? 'pre-wrap' : 'normal', overflowWrap: 'anywhere' }}>
               {leer ? '—' : wert}
             </button>
-            {href && <a href={href} target="_blank" rel="noopener noreferrer" title={`${label} öffnen`} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: 12.5 }}>↗</a>}
+            {href && <a href={href} target="_blank" rel="noopener noreferrer" title={`${label} öffnen`} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: TYP.bedien }}>↗</a>}
           </div>
         )}
     </MatrixRahmen>
@@ -603,11 +603,11 @@ function matrixTeile({ k, api, setze, zuFirma, frage }: MatrixInnen): { inhalt: 
       {firma ? branchenWahl(firma.branchen ?? (firma.branche ? firma.branche.split(' · ').map(x => x.trim()).filter(Boolean) : []), b => void api.teil('firmen', firma.id, { branchen: b, branche: b.join(' · ') }))
         : branchenWahl(k.firmaBranche ? k.firmaBranche.split(' · ').map(x => x.trim()).filter(Boolean) : [], b => void setze({ firmaBranche: b.join(' · ') || undefined }))}
       {firma ? FIRMA_FELDER.filter(m => m.feld !== 'branche').map(m => ff(firma, m)) : FIRMA_FELDER_IMPORT.filter(m => m.feld !== 'firmaBranche').map(kf)}
-      {firma && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Firmenfelder gelten für alle Personen dieser Firma.</div>}
+      {firma && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Firmenfelder gelten für alle Personen dieser Firma.</div>}
     </>,
     herkunft: <>
       {HERKUNFT_FELDER.map(kf)}
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Importiert {datum(k.importiertAm)} · geändert {datum(k.geaendertAm)} · Kennung {k.id}</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Importiert {datum(k.importiertAm)} · geändert {datum(k.geaendertAm)} · Kennung {k.id}</div>
     </>,
     privat: <MatrixRahmen label="Deine Notiz" mittig><Feld wert={k.privatNotiz} onFertig={privatNotiz => void setze({ privatNotiz: privatNotiz || undefined })} /></MatrixRahmen>,
   };
@@ -615,7 +615,7 @@ function matrixTeile({ k, api, setze, zuFirma, frage }: MatrixInnen): { inhalt: 
     inhalt,
     zahl: { einordnung: v.gruppen.einordnung, person: v.gruppen.person, firma: v.gruppen.firma },
     rechts: {
-      firma: firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Firma öffnen ›</button> : undefined,
+      firma: firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Firma öffnen ›</button> : undefined,
       privat: <span>nur für dich sichtbar · nie an Agenten</span>,
     },
   };

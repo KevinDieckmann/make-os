@@ -14,7 +14,7 @@
 import { useNachfrage } from './Nachfrage';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, LEUCHT } from '../ui';
 import { HERKUNFT, RECHTSGRUNDLAGEN } from '@/lib/make-one/crm';
 import type { Antrag, AntragArt, Verarbeitung } from '@/lib/crm/typen';
 import type { Befund } from '@/lib/crm/befunde';
@@ -78,7 +78,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
         <>
           <Karte i={0}>
             <Ueberschrift rechts={<Chip farbe={offenePruefung ? LEUCHT.achtung : LEUCHT.gut}>{d.selbstpruefung.length - offenePruefung} von {d.selbstpruefung.length} erfüllt</Chip>}>Selbstprüfung</Ueberschrift>
-            <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>Aus den echten Beständen gerechnet, nicht abgehakt. Keine Rechtsberatung.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>Aus den echten Beständen gerechnet, nicht abgehakt. Keine Rechtsberatung.</div>
             <Liste>
               {d.selbstpruefung.map(p => (
                 <Zeile key={p.id} links={<Punkt farbe={P_FARBE[p.status]} />} titel={p.titel} unter={`${p.befund} · ${p.norm}`}
@@ -117,7 +117,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Kreis, Anrede und Lebensphase pflegst du in der Karteikarte — sie steuern Power Hour und Entwürfe.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Kreis, Anrede und Lebensphase pflegst du in der Karteikarte — sie steuern Power Hour und Entwürfe.</div>
           </Karte>
           <NachweisOffenKarte d={d} />
           <Karte i={1} akzent={d.qualitaet.nichtGeprueft.length ? LEUCHT.achtung : undefined}>
@@ -125,7 +125,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
             <div style={{ fontSize: TYP.bedien, color: d.qualitaet.nichtGeprueft.length ? LEUCHT.achtung : C.inkLeise, lineHeight: 1.55 }}>
               {d.qualitaet.nichtGeprueft.length ? `${d.qualitaet.nichtGeprueft.length} Kontakte seit über ${d.qualitaet.pruefenMonate} Monaten nicht geprüft (aktive Beziehungen und Leads) — in der Kontaktseite unter Stammdaten › Datenschutz „Stammdaten geprüft“.` : `Alle aktiven Beziehungen und Leads sind in den letzten ${d.qualitaet.pruefenMonate} Monaten geprüft.`}
             </div>
-            {d.qualitaet.nichtGeprueft.map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '2px 0', textAlign: 'left' }}>{k.name} — {k.nie ? `nie geprüft (seit ${datum(k.seit)})` : `zuletzt ${datum(k.seit)}`}</button>)}
+            {d.qualitaet.nichtGeprueft.map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '2px 0', textAlign: 'left' }}>{k.name} — {k.nie ? `nie geprüft (seit ${datum(k.seit)})` : `zuletzt ${datum(k.seit)}`}</button>)}
           </Karte>
           <Karte i={2}>
             <Ueberschrift rechts={<Knopf leise aus={laeuft} onClick={async () => { const r = await post({ aktion: 'firmen-abgleich' }); setMeldung(r.ok ? `Firmen-Abgleich: ${r.neu} neu, ${r.verknuepft} Personen verknüpft, ${r.ergaenzt} ergänzt.` : `Abgleich fehlgeschlagen${r.fehler ? `: ${r.fehler}` : '.'}`); }}>Firmen abgleichen</Knopf>}>Firmen</Ueberschrift>
@@ -156,7 +156,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
                   {Object.entries(d.pflichtangaben.rechtsgrundlage).map(([r, n]) => <Chip key={r} farbe={C.inkDim}>{RECHTSGRUNDLAGEN.find(x => x.id === r)?.label ?? r} · {n}</Chip>)}
                   {d.pflichtangaben.fremddaten > 0 && <Chip farbe={LEUCHT.achtung}>Art.-14-Uhr startet für {d.pflichtangaben.fremddaten}</Chip>}
                 </div>
-                <div style={{ display: 'grid', gap: 3 }}>{d.pflichtangaben.beispiele.map((b, i) => <div key={i} style={{ fontSize: 12.5, color: C.inkLeise }}>z. B. {b.name}: {HERKUNFT.find(x => x.id === b.herkunft)?.label ?? '—'} · {RECHTSGRUNDLAGEN.find(x => x.id === b.rechtsgrundlage)?.label ?? '—'} ({b.grund})</div>)}</div>
+                <div style={{ display: 'grid', gap: 3 }}>{d.pflichtangaben.beispiele.map((b, i) => <div key={i} style={{ fontSize: TYP.bedien, color: C.inkLeise }}>z. B. {b.name}: {HERKUNFT.find(x => x.id === b.herkunft)?.label ?? '—'} · {RECHTSGRUNDLAGEN.find(x => x.id === b.rechtsgrundlage)?.label ?? '—'} ({b.grund})</div>)}</div>
               </div>
             ) : <Leer>Alle Personen haben Herkunft und Rechtsgrundlage.</Leer>}
           </Karte>
@@ -164,15 +164,15 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
           <Karte i={2}>
             <Ueberschrift>Löschkonzept</Ueberschrift>
             <Liste>{d.loeschregeln.map(r => <Zeile key={r.id} titel={r.titel} unter={`${r.frist} · ${r.norm}`} rechts={<Chip farbe={r.aktion.startsWith('Löschen') ? LEUCHT.kritisch : r.aktion.startsWith('Sperren') ? LEUCHT.achtung : C.inkDim}>{r.aktion}</Chip>} />)}</Liste>
-            <div style={{ marginTop: 10, fontSize: 12.5, color: C.inkLeise }}>Aufbewahrungspflichten (HGB/AO) gehen vor. Die Fristen je Datenart und wer darüber liegt: nächste Karte.</div>
+            <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise }}>Aufbewahrungspflichten (HGB/AO) gehen vor. Die Fristen je Datenart und wer darüber liegt: nächste Karte.</div>
           </Karte>
           <Loeschfristen d={d} i={2} laden={() => void laden()} zuKontakt={zuKontakt} />
           <Verzeichnis liste={d.verarbeitungen} api={api} laden={laden} />
           {d.loeschprotokoll.length > 0 && (
             <Karte i={4}>
               <Ueberschrift>Löschprotokoll</Ueberschrift>
-              <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Nur Kennung, Datum, Grund — keine Personendaten.</div>
-              {d.loeschprotokoll.map((e, i) => <div key={i} style={{ fontSize: 12.5, color: C.inkDim, padding: '2px 0' }}>{datum(e.datum)} · {e.id} · {e.grund} · {e.von}</div>)}
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Nur Kennung, Datum, Grund — keine Personendaten.</div>
+              {d.loeschprotokoll.map((e, i) => <div key={i} style={{ fontSize: TYP.bedien, color: C.inkDim, padding: '2px 0' }}>{datum(e.datum)} · {e.id} · {e.grund} · {e.von}</div>)}
             </Karte>
           )}
         </>
@@ -217,13 +217,13 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
       <Ueberschrift rechts={!neu ? <Knopf leise onClick={() => setNeu({ art: 'auskunft', name: '', email: '', eingang: d.heute })}>+ Antrag</Knopf> : undefined}>Betroffenenrechte · {offen.length} offen</Ueberschrift>
       {neu && (
         <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', marginBottom: 10 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Art</span><Wahl label="Art des Antrags" liste={ANTRAG_ART} wert={neu.art} onWahl={art => setNeu({ ...neu, art })} /></div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Art</span><Wahl label="Art des Antrags" liste={ANTRAG_ART} wert={neu.art} onWahl={art => setNeu({ ...neu, art })} /></div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 160 }}><Feld wert={neu.name} platzhalter="Name*" onFertig={name => setNeu({ ...neu, name })} /></div>
             <div style={{ flex: 1, minWidth: 160 }}><Feld wert={neu.email} platzhalter="E-Mail" onFertig={email => setNeu({ ...neu, email })} /></div>
             <Feld typ="date" breite={150} wert={neu.eingang} platzhalter="Eingang" onFertig={eingang => setNeu({ ...neu, eingang })} />
           </div>
-          {neu.name && passend(neu.name) && <div style={{ fontSize: 12, color: LEUCHT.gut }}>In der Kartei gefunden — wird verknüpft.</div>}
+          {neu.name && passend(neu.name) && <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>In der Kartei gefunden — wird verknüpft.</div>}
           <div style={{ display: 'flex', gap: 8 }}>
             <Knopf aus={!neu.name.trim()} onClick={async () => {
               const k = passend(neu.name);
@@ -235,7 +235,7 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
             }}>Anlegen</Knopf>
             <Knopf leise onClick={() => setNeu(null)}>Abbrechen</Knopf>
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise }}>Frist: ein Monat ab Eingang (Art. 12 Abs. 3 DSGVO). Einschränkung (18) mit verknüpfter Person sperrt sie sofort — Aufheben nur mit Grund.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Frist: ein Monat ab Eingang (Art. 12 Abs. 3 DSGVO). Einschränkung (18) mit verknüpfter Person sperrt sie sofort — Aufheben nur mit Grund.</div>
         </div>
       )}
       <Liste>
@@ -261,7 +261,7 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
         })}
       </Liste>
       {!offen.length && !neu && <Leer>Kein offener Antrag.</Leer>}
-      {erledigt.map(a => <div key={a.id} style={{ fontSize: 12.5, color: C.inkLeise, padding: '2px 0' }}>{ANTRAG_ART.find(x => x.id === a.art)?.label} · {a.name} — {a.ergebnis} · {datum(a.erledigtAm)}</div>)}
+      {erledigt.map(a => <div key={a.id} style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '2px 0' }}>{ANTRAG_ART.find(x => x.id === a.art)?.label} · {a.name} — {a.ergebnis} · {datum(a.erledigtAm)}</div>)}
     </Karte>
   );
 }

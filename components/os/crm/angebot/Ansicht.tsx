@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import type { Angebot } from '@/lib/crm/typen';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Knopf, Chip, feld } from '../../schlank';
+import { Karte, Knopf, Chip, feld } from '../../ui';
 import { Wahl } from '../Wahl';
 import type { CrmApi } from '../daten';
 import { verlustgruende } from '@/lib/crm/pipeline';
@@ -65,7 +65,7 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
     // `minmax(0, 1fr)` + `minWidth: 0` halten es auf Bildschirmbreite (Sichtprüfung 29.09., F2: bei 375 px abgeschnitten).
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, minWidth: 0 }}>
       {meldungStart && (
-        <Karte i={0} akzent={LEUCHT.gut}>
+        <Karte i={0} ton={LEUCHT.gut}>
           <div style={{ display: 'grid', gap: 8, fontSize: TYP.bedien, lineHeight: 1.5 }}>
             <div style={{ fontWeight: 700, color: LEUCHT.gut }}>{meldungStart.text}</div>
             <div style={{ color: C.inkDim }}>Das PDF wurde heruntergeladen und das Mail-Programm geöffnet — <b>PDF anhängen und abschicken</b>.</div>
@@ -87,10 +87,10 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           <span style={{ flex: 1 }} />
           <button onClick={onListe} style={link}>alle Angebote ›</button>
         </div>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6, lineHeight: 1.6, overflowWrap: 'anywhere' }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.6, overflowWrap: 'anywhere' }}>
           {[gesellschaftLabel(a.gesellschaft), a.gestelltAm ? `gestellt ${datumDe(a.gestelltAm.slice(0, 10))}` : '', `gültig bis ${datumDe(a.gueltigBis)}`, a.angenommenAm ? `angenommen ${datumDe(a.angenommenAm)}` : '', a.abgelehntAm ? `abgelehnt ${datumDe(a.abgelehntAm)}${a.grund ? ` — ${a.grund}` : ''}` : '', a.abgelaufenAm ? `abgelaufen ${datumDe(a.abgelaufenAm)}` : '', a.personGeloest ? 'Personenbezug gelöst (Art. 17)' : ''].filter(Boolean).join(' · ')}
         </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8, fontSize: 12.5 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8, fontSize: TYP.bedien }}>
           {k && zuKontakt && <button onClick={() => zuKontakt(k.id)} style={link}>Kontakt: {`${k.vorname ?? ''} ${k.nachname ?? ''}`.trim()} ›</button>}
           {deal && zuDeal && <button onClick={() => zuDeal(deal.id)} style={link}>Deal: {deal.titel} ›</button>}
           {vorgaenger && <button onClick={() => onOeffnen(vorgaenger.id)} style={link}>Vorversion {vorgaenger.nummer ?? ''} ›</button>}
@@ -111,7 +111,7 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
         </div>
         {ablehnen && (
           <div style={{ display: 'grid', gap: 8, marginTop: 12, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-            <div style={{ fontSize: 12.5, color: C.inkDim }}>Warum abgelehnt? (Pflicht — der Grund geht als Verlustgrund an den Deal)</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Warum abgelehnt? (Pflicht — der Grund geht als Verlustgrund an den Deal)</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Wahl<string> label="Verlustgrund" liste={verlustgruende(crm.stand.wertelisten).map(x => ({ id: x, label: x }))} wert={grund} onWahl={setGrund} onLeeren={() => setGrund(null)} />
               <input value={grundFrei} onChange={e => setGrundFrei(e.target.value)} placeholder="Ergänzung (optional)" aria-label="Ergänzung zum Grund" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', flex: '1 1 200px' }} />
@@ -129,4 +129,4 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
 }
 
 // Verweise (Kontakt, Deal, Versionen) dürfen umbrechen — lange Deal-Titel schoben sonst die Kopfzeile über den Rand.
-const link = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0, textDecoration: 'none', textAlign: 'left', whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' } as const;
+const link = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, textDecoration: 'none', textAlign: 'left', whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' } as const;

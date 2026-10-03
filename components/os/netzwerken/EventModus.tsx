@@ -11,7 +11,8 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CalendarPlus, ChevronRight } from 'lucide-react';
-import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF, RAND } from '@/lib/make-one/design';
+import { Karte } from '../ui';
 import { Fenster } from '../Fenster';
 import { neueId } from '../crm/daten';
 import type { CrmApi } from '../crm/daten';
@@ -52,10 +53,8 @@ export function EventModus({ api, ich, heute, wahl, setWahl }: { api: CrmApi; ic
   const fuerText = fuer.art === 'kunde' ? `Für ${firmen.find(f => f.id === fuer.firmaId)?.name ?? 'einen Kunden'}` : 'Für MAKE selbst';
   return (
     <>
-      <div style={{ borderRadius: 20, padding: gueltig ? '14px 16px 14px' : 0, display: 'grid', gap: 12, boxSizing: 'border-box',
-        border: `1px solid ${gueltig ? TIEF.rand(ton) : 'rgba(255,255,255,.14)'}`,
-        background: gueltig ? `linear-gradient(150deg, ${ton}26 0%, ${ton}0D 46%, rgba(255,255,255,.02) 100%)` : 'rgba(255,255,255,.04)',
-        boxShadow: gueltig ? `inset 0 1px 0 rgba(255,255,255,.07), 0 16px 36px -22px ${ton}` : 'none' }}>
+      {/* Die EINE wichtige Karte der Seite: in der Bereichsfarbe getönt (Standard: Karte `ton`); ohne Event eine ruhige gestrichelte Fläche. */}
+      <Karte dicht ton={gueltig ? ton : undefined} flach={!gueltig} style={{ display: 'grid', gap: 12, borderRadius: 20, ...(gueltig ? {} : { padding: 0, border: `1px dashed ${RAND.stark}`, background: 'rgba(255,255,255,.04)' }) }}>
         <button type="button" onClick={() => setOffen(true)} className="fassbar" aria-label={gueltig ? `Heute bei ${gueltig.titel} — wechseln` : 'Event wählen oder anlegen'}
           style={{ width: '100%', minHeight: gueltig ? 56 : 68, boxSizing: 'border-box', textAlign: 'left', cursor: 'pointer', padding: gueltig ? 0 : '14px 16px', background: 'none', border: 'none', borderRadius: 18, display: 'flex', alignItems: 'center', gap: 12, fontFamily: SCHRIFT.text, color: C.ink }}>
           {!gueltig && <span aria-hidden style={{ width: 40, height: 40, borderRadius: 20, flex: '0 0 auto', display: 'grid', placeItems: 'center', color: C.aktiv, background: C.aktivSanft, border: `1px solid ${TIEF.rand(C.aktiv)}` }}><CalendarPlus size={20} /></span>}
@@ -76,7 +75,7 @@ export function EventModus({ api, ich, heute, wahl, setWahl }: { api: CrmApi; ic
           </div>
         )}
         {gueltig && <AbendZaehler zahlen={zahlen} eventTitel={gueltig.titel} farbe={ton} />}
-      </div>
+      </Karte>
       {offen && <EventWahlFenster api={api} ich={ich} heute={heute} onZu={() => setOffen(false)} onWahl={w => { setWahl(w); setOffen(false); }} />}
       {fuerOffen && gueltig && <FuerFenster api={api} wahl={gueltig} fuer={fuer} firmen={firmen} onZu={() => setFuerOffen(false)} onGeaendert={f => { setWahl({ ...gueltig, fuer: f }); setFuerOffen(false); }} />}
     </>

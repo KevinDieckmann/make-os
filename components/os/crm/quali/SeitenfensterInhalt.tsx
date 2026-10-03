@@ -9,7 +9,7 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useRef } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../../schlank';
+import { Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../../ui';
 import { anzeigename } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -78,7 +78,7 @@ export function KontaktSeitenfenster({ api, kontaktId, startFirmaId, onZu, zuFir
         <Ueberschrift>Notiz</Ueberschrift>
         <MatrixZeile label="Notiz" lang wert={k.notiz} onFertig={x => void setze({ notiz: x || undefined })} />
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Datenschutz, Verlauf, Umsatz und Anträge stehen in der ganzen Akte. Jede Änderung hier gilt sofort — der Lead-Score rechnet neu.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Datenschutz, Verlauf, Umsatz und Anträge stehen in der ganzen Akte. Jede Änderung hier gilt sofort — der Lead-Score rechnet neu.</div>
       <div><Chip farbe={C.inkDim}>Kennung {k.id.slice(0, 12)}</Chip></div>
     </Seitenblatt>
   );

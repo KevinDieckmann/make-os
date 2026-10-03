@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
-import { Knopf, feld, Chip, LEUCHT } from '../schlank';
+import { Knopf, feld, Chip, LEUCHT, Hinweis } from '../ui';
 import { anzeigename, findeKontakte, STUFE_LABEL, type Kontakt, type Ergebnis, type AktivitaetArt } from '@/lib/make-one/crm';
 import { haeltBeziehung, BEIDE } from '@/lib/crm/team';
 import type { ChancenStufe, WertBasis } from '@/lib/crm/typen';
@@ -196,20 +196,20 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                       <Person id={haeltBeziehung(x)} groesse={20} />
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: 'block', fontSize: TYP.body, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(x)}</span>
-                        <span style={{ display: 'block', fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[x.position ?? x.jobtitel, x.firma].filter(Boolean).join(' · ') || STUFE_LABEL[x.stufe]}</span>
+                        <span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[x.position ?? x.jobtitel, x.firma].filter(Boolean).join(' · ') || STUFE_LABEL[x.stufe]}</span>
                       </span>
                       {x.werbesperre && <Chip farbe={LEUCHT.kritisch}>Sperre</Chip>}
                     </button>
                   ))}
                 </div>
               )}
-              {suche.trim().length >= 2 && !treffer.length && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>Nicht in der Kartei — neue Personen legst du unter Markttraktion › Kontakte an.</div>}
+              {suche.trim().length >= 2 && !treffer.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Nicht in der Kartei — neue Personen legst du unter Markttraktion › Kontakte an.</div>}
               {k && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.business}12`, border: `1px solid ${LEUCHT.business}33` }}>
                   <Person id={haeltBeziehung(k)} groesse={22} />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: TYP.body, fontWeight: 700 }}>{anzeigename(k)}</span>
-                    <span style={{ display: 'block', fontSize: 12.5, color: C.inkDim }}>{[k.firma, STUFE_LABEL[k.stufe]].filter(Boolean).join(' · ')}</span>
+                    <span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim }}>{[k.firma, STUFE_LABEL[k.stufe]].filter(Boolean).join(' · ')}</span>
                   </span>
                   {k.werbesperre && <Chip farbe={LEUCHT.kritisch}>Werbesperre</Chip>}
                 </div>
@@ -231,7 +231,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                     </div>
                   )}
                   {art === 'anruf' && <input value={anlass} onChange={ev => setAnlass(ev.target.value)} placeholder="Anlass des Anrufs (Pflicht bei gelber Telefon-Ampel)" aria-label="Anlass des Anrufs" style={{ ...feld, fontSize: TYP.bedien, marginTop: 10 }} />}
-                  {art === 'anruf' && !ergebnis && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>Mailbox, nicht erreicht, kein Bedarf und Sperre sind mit einem Tipp gespeichert.</div>}
+                  {art === 'anruf' && !ergebnis && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Mailbox, nicht erreicht, kein Bedarf und Sperre sind mit einem Tipp gespeichert.</div>}
                 </div>
 
                 {mitNotiz && (
@@ -245,14 +245,14 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                         <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: `${LEUCHT.achtung}0d`, border: `1px solid ${LEUCHT.achtung}33` }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ ...titelKlein, margin: 0 }}>Deal</h3>
-                            <button onClick={() => setChance(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, minHeight: 32 }}>entfernen</button>
+                            <button onClick={() => setChance(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 32 }}>entfernen</button>
                           </div>
                           <input value={chance.titel} aria-label="Titel des Deals" placeholder="Titel (Firma)" onChange={e => setChance({ ...chance, titel: e.target.value })} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                             <input value={chance.betrag} inputMode="numeric" aria-label="Wert in Euro" placeholder="Wert €" onChange={e => setChance({ ...chance, betrag: e.target.value })} style={{ ...feld, width: 130, fontSize: TYP.bedien, padding: '9px 12px' }} />
                             <Pillen liste={[{ id: 'monat', label: '€ / Monat' }, { id: 'einmalig', label: 'einmalig' }]} aktiv={chance.basis} onWahl={(basis: WertBasis) => setChance({ ...chance, basis })} farbe={LEUCHT.achtung} />
                           </div>
-                          <div style={{ fontSize: 12, color: C.inkLeise }}>Der Deal startet in der Pipeline auf Stufe „SQL“ — der Lead wird SQL (Ebene 1 → 2).</div>
+                          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Der Deal startet in der Pipeline auf Stufe „SQL“ — der Lead wird SQL (Ebene 1 → 2).</div>
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             <input value={chance.schritt} aria-label="Nächster Schritt der Chance" placeholder="Nächster Schritt (sonst der aus der Notiz)" onChange={e => setChance({ ...chance, schritt: e.target.value })} style={{ ...feld, flex: 1, minWidth: 180, fontSize: TYP.bedien, padding: '9px 12px' }} />
                             <input type="date" value={chance.datum} aria-label="Datum des nächsten Schritts" onChange={e => setChance({ ...chance, datum: e.target.value })} style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '9px 12px' }} />
@@ -267,8 +267,8 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                 )}
               </>
             )}
-            {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
-            <div className="nur-tastatur" style={{ fontSize: 12, color: C.inkLeise }}>↑↓ wählen · Enter übernehmen · Esc schließen</div>
+            {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
+            <div className="nur-tastatur" style={{ fontSize: TYP.bedien, color: C.inkLeise }}>↑↓ wählen · Enter übernehmen · Esc schließen</div>
           </>
         )}
       </div>

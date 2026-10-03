@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { markttraktion } from '@/lib/crm/adresse';
 import type { Kampagne } from '@/lib/crm/typen';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Leer, Fortschritt, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Leer, Fortschritt, feld, LEUCHT } from '../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { netzRunde, netzStufe, suchLink, profilAdresse, textFuer, vernetzenStandard, vernetzenAmpel, vorlage as vorlageVon, VORLAGEN, NOTIZ_MAX, type NetzStufe, type VernetzenEinstellung, type VorlageId } from '@/lib/crm/netzwerk';
 import { nameVon } from '@/lib/crm/team';
@@ -30,7 +30,7 @@ const STUFE_TEXT: Record<NetzStufe, string> = { anreichern: 'Profil finden', anf
 const STUFE_FARBE: Record<NetzStufe, string> = { anreichern: LEUCHT.achtung, anfragen: LEUCHT.business, warten: C.inkDim, zurueckziehen: C.inkLeise, schreiben: LEUCHT.gut, nachfassen: LEUCHT.puls, fertig: LEUCHT.gut, raus: C.inkLeise };
 const neuerTab = (url: string) => { try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { /* Popup blockiert — der Link steht daneben */ } };
 const kopieren = async (t: string) => { try { await navigator.clipboard.writeText(t); return true; } catch { return false; } };
-const kleinText = { fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 } as const;
+const kleinText = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
 
 export function VernetzenRunde({ api, kampagneId, zuKontakt, zurueck, zuKampagne }: { api: CrmApi; kampagneId?: string; zuKontakt: (id: string) => void; zurueck: () => void; zuKampagne: (id: string | null) => void }) {
   const ich = api.ich ?? 'kevin';
@@ -61,7 +61,7 @@ export function VernetzenRunde({ api, kampagneId, zuKontakt, zurueck, zuKampagne
 
   return (
     <>
-      <Karte i={0} akzent={LEUCHT.business}>
+      <Karte i={0} ton={LEUCHT.business}>
         <Ueberschrift farbe={LEUCHT.business} rechts={<span style={{ fontVariantNumeric: 'tabular-nums' }}><b style={{ color: C.ink }}>{Math.min(pos + 1, liste.length)}</b> von {liste.length}</span>}>Vernetzen-Runde · Profil {nameVon(ich)}</Ueberschrift>
         <Fortschritt anteil={liste.length ? pos / liste.length : 1} farbe={LEUCHT.business} />
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
@@ -72,7 +72,7 @@ export function VernetzenRunde({ api, kampagneId, zuKontakt, zurueck, zuKampagne
           <Chip farbe={zahlen.anreichern ? LEUCHT.achtung : C.inkLeise}>{zahlen.anreichern} ohne Profil</Chip>
           <Chip farbe={C.inkDim}>{zahlen.vernetzt} vernetzt</Chip>
           <span style={{ flex: 1 }} />
-          <button onClick={zurueck} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: 0, fontFamily: SCHRIFT.text }}>Zur Kartei</button>
+          <button onClick={zurueck} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, fontFamily: SCHRIFT.text }}>Zur Kartei</button>
         </div>
         <div style={{ display: 'grid', gap: 8, marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -141,7 +141,7 @@ function NetzKarte({ k, ich, heute, einst, schritt, weiter, zuKontakt }: {
         {k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
         {k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
         <span style={{ flex: 1 }} />
-        <button onClick={() => zuKontakt(k.id)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: 0, fontFamily: SCHRIFT.text }}>Zur Person →</button>
+        <button onClick={() => zuKontakt(k.id)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, fontFamily: SCHRIFT.text }}>Zur Person →</button>
       </div>
       <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(22px, 4.2vw, 28px)', fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.15, marginTop: 10 }}>{anzeigename(k)}</div>
       {wo && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>{wo}</div>}
@@ -225,7 +225,7 @@ function NetzKarte({ k, ich, heute, einst, schritt, weiter, zuKontakt }: {
             <Knopf onClick={() => weiter(false)}>Weiter</Knopf>
           </div>
         )}
-        {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+        {fehler && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
       </div>
     </Karte>
   );
@@ -311,7 +311,7 @@ export function VernetzenEinstellungen({ k, api }: { k: Kampagne; api: CrmApi })
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {VORLAGEN.map(v => (
             <button key={v.id} onClick={() => { const n = vorlageVon(v.id); setze({ vorlage: v.id as VorlageId, notiz: { ...n.notiz }, ...(v.id === 'eigen' ? {} : { nachricht: { ...n.nachricht } }) }); }} className="fassbar"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${e.vorlage === v.id ? LEUCHT.business : 'rgba(255,255,255,.1)'}`, background: e.vorlage === v.id ? `${LEUCHT.business}22` : 'transparent', color: e.vorlage === v.id ? C.ink : C.inkDim, fontFamily: SCHRIFT.text }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${e.vorlage === v.id ? LEUCHT.business : 'rgba(255,255,255,.1)'}`, background: e.vorlage === v.id ? `${LEUCHT.business}22` : 'transparent', color: e.vorlage === v.id ? C.ink : C.inkDim, fontFamily: SCHRIFT.text }}>
               <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: v.ampel === 'gruen' ? LEUCHT.gut : LEUCHT.achtung }} />{v.label}
             </button>
           ))}

@@ -7,7 +7,7 @@
 // gerade bei wem liegt — Punkte, Einladungen, Nachfassen.
 
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Zahl, Raster, Chip, LEUCHT } from '../../schlank';
+import { Ueberschrift, Zahl, Raster, Chip, LEUCHT } from '../../ui';
 import { mix, zielHinweis, checklisteStand, vorlageAnwenden, VORLAGEN, budgetSumme, arbeitJePerson, punktWer, type VorlageId } from '@/lib/crm/eventplanung';
 import { TEAM, zustaendig } from '@/lib/crm/team';
 import type { Event } from '@/lib/crm/typen';
@@ -63,7 +63,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
         <Feldzeile label="Zuständig">
           <div style={{ display: 'grid', gap: 4 }}>
             <ZustaendigWahl wert={e.zustaendig} welt="event" onWahl={z => setze({ zustaendig: z })} />
-            <span style={{ fontSize: 12, color: C.inkLeise }}>Punkte ohne eigene Person gehen mit; schon angelegte Aufgaben bleiben, wo sie sind.</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Punkte ohne eigene Person gehen mit; schon angelegte Aufgaben bleiben, wo sie sind.</span>
           </div>
         </Feldzeile>
         <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
@@ -78,13 +78,13 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
             ];
             return (
               <div key={m.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
-                <span style={{ minWidth: 110 }}><Person id={m.id} name />{m.id === api.ich ? <span style={{ fontSize: 12, color: C.inkLeise }}> (du)</span> : null}</span>
+                <span style={{ minWidth: 110 }}><Person id={m.id} name />{m.id === api.ich ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}> (du)</span> : null}</span>
                 {teile.length ? teile.map((t, i) => (
                   <span key={t.text} style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
                     {i > 0 && <span style={{ color: C.inkLeise }}>·</span>}
                     <Leise onClick={() => zuReiter(t.reiter)} farbe={t.warn ? LEUCHT.achtung : C.inkDim}>{t.text}</Leise>
                   </span>
-                )) : <span style={{ color: C.inkLeise, fontSize: 12.5 }}>nichts offen</span>}
+                )) : <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>nichts offen</span>}
               </div>
             );
           })}
@@ -94,7 +94,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
       <div>
         <Feldzeile label="Titel"><Feld wert={e.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
         <Feldzeile label="Ziel"><Feld wert={e.ziel} platzhalter="Messbar: „drei Folgegespräche mit Inhabern aus …“" onFertig={ziel => setze({ ziel })} /></Feldzeile>
-        {hinweis && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, margin: '2px 0 4px' }}>{hinweis}</div>}
+        {hinweis && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, margin: '2px 0 4px' }}>{hinweis}</div>}
         <Feldzeile label="Zielgruppe"><Feld wert={e.zielgruppe} platzhalter="Wen genau? z. B. Inhaber Maschinenbau Rhein-Main" onFertig={zielgruppe => setze({ zielgruppe: zielgruppe || undefined })} /></Feldzeile>
       </div>
 
@@ -114,7 +114,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
                 <span style={{ color: C.ink }}>{p.text}</span>
               </div>
             ))}
-            <div style={{ fontSize: 12, color: C.inkLeise }}>{cl.erledigt} von {cl.gesamt} erledigt{cl.ohneAufgabe ? ` · ${cl.ohneAufgabe} noch nicht als Aufgabe` : ''}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{cl.erledigt} von {cl.gesamt} erledigt{cl.ohneAufgabe ? ` · ${cl.ohneAufgabe} noch nicht als Aufgabe` : ''}</div>
           </div>
         ) : <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{cl.gesamt ? 'Checkliste komplett erledigt.' : 'Noch keine Checkliste — eine Vorlage unten legt sechs Wochen Vorlauf an.'}</div>}
       </div>
@@ -139,7 +139,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
         <Feldzeile label="Vorlage">
           <div style={{ display: 'grid', gap: 4 }}>
             <Wahl label="Vorlage" leer="+ Vorlage anwenden" liste={VORLAGEN.map(v => ({ id: v.id, label: v.label }))} wert={(e.vorlage as VorlageId | undefined) ?? null} onWahl={id => setze(vorlageAnwenden(e, id))} />
-            <span style={{ fontSize: 12, color: C.inkLeise }}>Ergänzt Ablauf, Checkliste und Budget — nur, was fehlt. Nichts wird überschrieben.</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ergänzt Ablauf, Checkliste und Budget — nur, was fehlt. Nichts wird überschrieben.</span>
           </div>
         </Feldzeile>
         <Feldzeile label="Notiz"><Feld wert={e.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>

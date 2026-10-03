@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../../schlank';
+import { Knopf, feld, LEUCHT, Hinweis } from '../../ui';
 import { localDay } from '@/lib/zeit';
 import { anzeigename } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel } from '@/lib/crm/recht';
@@ -121,7 +121,7 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {score.scoring && <SeitenChip s={score.scoring.sales} name="SQL" kurz />}
-          <span style={{ fontSize: 12, color: C.inkLeise }}>Score {score.punkte}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Score {score.punkte}</span>
           <div role="progressbar" aria-valuenow={fortschritt} aria-valuemin={0} aria-valuemax={100} aria-label="Fortschritt" style={{ flex: '1 1 80px', height: 4, borderRadius: 2, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}><div style={{ width: `${fortschritt}%`, height: '100%', background: LEUCHT.business, transition: 'width .25s' }} /></div>
         </div>
       </div>
@@ -136,7 +136,7 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
         {erg === 'sql' ? (
           <div style={{ display: 'grid', gap: 10 }}>
             <div style={{ fontSize: TYP.body, fontWeight: 700 }}>Deal anlegen — SQL</div>
-            {!bereit && <div style={{ fontSize: 12.5, color: LEUCHT.achtung }}>Noch nicht alle SQL-Kriterien erfüllt (fehlt: {fehlt.join(', ')}) — der Deal entsteht trotzdem, das steht dann im Lead vermerkt.</div>}
+            {!bereit && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Noch nicht alle SQL-Kriterien erfüllt (fehlt: {fehlt.join(', ')}) — der Deal entsteht trotzdem, das steht dann im Lead vermerkt.</div>}
             <DealAnlegen api={api} {...(partner ? { kontaktId: partner.id } : {})} {...(z.firmaId ? { firmaId: z.firmaId } : {})} quelle="empfehlung"
               onFertig={async () => {
                 if (!bereit) await leadPost({ aktion: 'setze', id: z.id, felder: { notiz: `${z.notiz ? `${z.notiz}\n` : ''}SQL ohne alle Kriterien angelegt (${fehlt.join(', ')} offen).` } });
@@ -149,7 +149,7 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
             <div style={{ fontSize: TYP.body, fontWeight: 700 }}>Weiter qualifizieren — wie geht es weiter?</div>
             <input value={schritt.text} onChange={x => setSchritt({ ...schritt, text: x.target.value })} placeholder="Nächster Schritt (Pflicht)" aria-label="Nächster Schritt" maxLength={300} style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
             <input type="date" value={schritt.datum} min={heute} onChange={x => setSchritt({ ...schritt, datum: x.target.value })} aria-label="Datum" style={{ ...feld, fontSize: 16, padding: '10px 12px', width: 'auto' }} />
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{[['Morgen', 1], ['In 3 Tagen', 3], ['In einer Woche', 7], ['In 2 Wochen', 14]].map(([l, t]) => <button key={l as string} type="button" onClick={() => setSchritt({ ...schritt, datum: plusTage(heute, t as number) })} className="fassbar" style={{ minHeight: 44, padding: '8px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, color: C.inkDim, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.04)' }}>{l}</button>)}</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{[['Morgen', 1], ['In 3 Tagen', 3], ['In einer Woche', 7], ['In 2 Wochen', 14]].map(([l, t]) => <button key={l as string} type="button" onClick={() => setSchritt({ ...schritt, datum: plusTage(heute, t as number) })} className="fassbar" style={{ minHeight: 44, padding: '8px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.04)' }}>{l}</button>)}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf leise onClick={() => setErg(null)}>Zurück</Knopf><Knopf aus={!schritt.text.trim() || !schritt.datum || laeuft} onClick={() => weiterQualifizieren()}>Gespräch festhalten</Knopf></div>
           </div>
         ) : letzte ? (
@@ -174,7 +174,7 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
         ) : aktuelle && (
           <div style={{ display: 'grid', gap: 14 }}>
             <div>
-              <div style={{ fontSize: 12.5, color: C.inkLeise }}>Frage {i + 1} von {fragen.length} · {aktuelle.teil}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Frage {i + 1} von {fragen.length} · {aktuelle.teil}</div>
               <div style={{ fontFamily: SCHRIFT.display, fontSize: 26, fontWeight: 700, letterSpacing: '-.02em', marginTop: 2 }}>{aktuelle.kriterium.name}</div>
               {aktuelle.kriterium.hinweis && <div style={{ fontSize: 17, color: C.inkDim, marginTop: 6, lineHeight: 1.5 }}>{aktuelle.kriterium.hinweis}</div>}
             </div>
@@ -197,16 +197,16 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
               <Knopf leise aus={i === 0} onClick={() => setI(Math.max(0, i - 1))}>← Zurück</Knopf>
               <Knopf onClick={() => { const k = aktuelle.kriterium.id; if ((text[k] ?? '') !== (antworten[k] ?? '')) onAntwort(k, text[k] ?? ''); setI(i + 1); }}>{gewaehlt ? 'Weiter →' : 'Überspringen →'}</Knopf>
             </div>
-            {e && e.herkunft === 'messung' && e.stufeText && <div style={{ fontSize: 12, color: C.inkLeise }}>Aus der Liste vorbelegt: {e.stufeText} — tippen, um es im Gespräch zu bestätigen oder zu ändern.</div>}
+            {e && e.herkunft === 'messung' && e.stufeText && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Aus der Liste vorbelegt: {e.stufeText} — tippen, um es im Gespräch zu bestätigen oder zu ändern.</div>}
           </div>
         )}
 
-        {meldung && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
+        {meldung && <Hinweis art="kritisch" rolle="alert">{meldung}</Hinweis>}
 
         <div style={{ display: 'grid', gap: 6, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.08)' }}>
           <label htmlFor="gm-notiz" style={{ fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 700 }}>Notizen nebenbei</label>
           <textarea id="gm-notiz" value={notiz} onChange={x => { setBeruehrt(true); setNotiz(x.target.value); }} rows={4} maxLength={1500} placeholder="Was im Gespräch fällt — wird als Gespräch an der Person festgehalten, sobald das Ergebnis feststeht." style={{ ...feld, fontSize: 16, padding: '10px 12px', width: '100%', resize: 'vertical', lineHeight: 1.5 }} />
-          <div style={{ fontSize: 12, color: C.inkLeise }}>Im Browser gesichert, bis es festgehalten ist. Gespeichert wird die Notiz an {partner ? anzeigename(partner) : 'der Person'} — Personendaten, bitte nur, was fürs Geschäft nötig ist (nichts zu Gesundheit, Religion, Politik).</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Im Browser gesichert, bis es festgehalten ist. Gespeichert wird die Notiz an {partner ? anzeigename(partner) : 'der Person'} — Personendaten, bitte nur, was fürs Geschäft nötig ist (nichts zu Gesundheit, Religion, Politik).</div>
         </div>
       </div>
       {weg === 'parken' && <ParkenDialog api={api} z={z} onZu={() => setWeg(null)} onFertig={i2 => void nachParkenOderRaus(i2)} />}

@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Knopf, Leer, LEUCHT } from '../../schlank';
+import { Knopf, Leer, LEUCHT } from '../../ui';
 
 export const LADE_FRIST_MS = 8000;
 

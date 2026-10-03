@@ -136,7 +136,7 @@ export function Wahl<T extends string>({ liste, wert, onWahl, onLeeren, label, l
             style={{ ...vorschlagStil(farbe, klein), ...(aus ? aussStil : {}) }}>✓ übernehmen</button>
           <button ref={knopf} type="button" onClick={() => (offen ? schliessen(false) : oeffnen())} onKeyDown={tasteAmChip} disabled={aus} className="fassbar" aria-label={`Andere ${label} wählen`} {...aria}
             style={{ ...leerStil(klein), ...(aus ? aussStil : {}) }}>andere{pfeil}</button>
-          {!klein && <span style={{ fontSize: 12, color: C.inkLeise }}>{v.grund}</span>}
+          {!klein && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{v.grund}</span>}
         </>
       ) : (
         <button ref={knopf} type="button" onClick={() => (offen ? schliessen(false) : oeffnen())} onKeyDown={tasteAmChip} disabled={aus} className="fassbar" aria-label={`${label} wählen`} {...aria}
@@ -192,7 +192,7 @@ export function WahlMehrfach<T extends string>({ liste, wert, onWahl, label, lee
           {wert.length ? '+' : leer ?? `+ ${label}`}
         </button>
       )}
-      {aus && !wert.length && <span style={{ fontSize: 12.5, color: C.inkLeise }}>—</span>}
+      {aus && !wert.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>—</span>}
       {anker && (
         <WahlMenue anker={anker} menuId={menuId} liste={liste} label={label} farbe={farbe} mehrfach
           gewaehlt={wert} vorschlaege={vorschlaege} entfernen={false} fuss={fuss}
@@ -330,7 +330,7 @@ function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewae
           </div>
         )}
         {vorschlaege.length > 0 && !suche && (
-          <div style={{ fontSize: 12, color: C.inkLeise, padding: '4px 8px 2px', lineHeight: 1.4 }}>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '4px 8px 2px', lineHeight: 1.4 }}>
             {vorschlaege.map(v => <div key={v.id}>Vorschlag: <span style={{ color: farbe, fontWeight: 600 }}>{wahlLabel(liste, v.id)}</span> — {v.grund}</div>)}
           </div>
         )}
@@ -362,7 +362,7 @@ function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewae
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {x.art === 'neu' ? 'neu …' : laeuft ? `legt „${x.text}“ an …` : <>„{x.text}“ anlegen</>}
                   </span>
-                  {x.art === 'anlegen' && !laeuft && <span style={{ fontSize: 11, color: C.inkLeise, fontWeight: 500 }}>Enter</span>}
+                  {x.art === 'anlegen' && !laeuft && <span style={{ fontSize: 12, color: C.inkLeise, fontWeight: 500 }}>Enter</span>}
                 </div>
               );
             }
@@ -374,20 +374,20 @@ function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewae
                 <span aria-hidden style={{ width: 16, textAlign: 'center', color: farbe }}>{gew ? '✓' : ''}</span>
                 {x.e.punkt && <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: x.e.punkt, flex: '0 0 auto' }} />}
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.e.label}</span>
-                {vorschlagIds.has(x.e.id) && <span style={{ fontSize: 11, color: farbe, border: `1px dashed ${farbe}88`, borderRadius: 999, padding: '0 6px' }}>Vorschlag</span>}
-                {x.e.hinweis && <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{x.e.hinweis}</span>}
+                {vorschlagIds.has(x.e.id) && <span style={{ fontSize: 12, color: farbe, border: `1px dashed ${farbe}88`, borderRadius: 999, padding: '0 6px' }}>Vorschlag</span>}
+                {x.e.hinweis && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{x.e.hinweis}</span>}
               </div>
             );
           })}
-          {!eintraege.length && <div style={{ padding: '8px 10px', fontSize: 12.5, color: C.inkLeise }}>Nichts passt zu „{suche}“.</div>}
+          {!eintraege.length && <div style={{ padding: '8px 10px', fontSize: TYP.bedien, color: C.inkLeise }}>Nichts passt zu „{suche}“.</div>}
         </div>
-        {fehler && <div role="alert" style={{ padding: '4px 10px 2px', fontSize: 12, color: LEUCHT.kritisch, lineHeight: 1.4 }}>{fehler}</div>}
+        {fehler && <div role="alert" style={{ padding: '4px 10px 2px', fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.4 }}>{fehler}</div>}
         {fuss && (
-          <div onClick={() => onSchliessen(false)} style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '4px 8px 2px', borderTop: '1px solid rgba(255,255,255,.06)', fontSize: 12 }}>{fuss}</div>
+          <div onClick={() => onSchliessen(false)} style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '4px 8px 2px', borderTop: '1px solid rgba(255,255,255,.06)', fontSize: TYP.bedien }}>{fuss}</div>
         )}
         {mehrfach && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 4px 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
-            <button type="button" onClick={() => onSchliessen(true)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: SCHRIFT.text, padding: '6px 8px', minHeight: 32 }}>fertig</button>
+            <button type="button" onClick={() => onSchliessen(true)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600, fontFamily: SCHRIFT.text, padding: '6px 8px', minHeight: 32 }}>fertig</button>
           </div>
         )}
       </div>

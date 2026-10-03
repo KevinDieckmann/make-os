@@ -9,12 +9,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Leer, feld, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Knopf, Leer, feld, LEUCHT } from '../../ui';
 import type { MarketingEinstellung } from '@/lib/crm/typen';
 import { EINSTELLUNG_GRENZEN as G, einstellungAus } from '@/lib/crm/marketing';
 import { type CrmApi, neueId } from '../daten';
 
-const Zaehler = ({ n, max }: { n: number; max: number }) => <span style={{ fontSize: 11, color: n > max * 0.9 ? LEUCHT.achtung : C.inkLeise }}>{n}/{max}</span>;
+const Zaehler = ({ n, max }: { n: number; max: number }) => <span style={{ fontSize: 12, color: n > max * 0.9 ? LEUCHT.achtung : C.inkLeise }}>{n}/{max}</span>;
 
 export function Positionierung({ api }: { api: CrmApi }) {
   const crm = api.crm;
@@ -53,20 +53,20 @@ export function Positionierung({ api }: { api: CrmApi }) {
         <Ueberschrift rechts={knopf}>Positionierung</Ueberschrift>
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'grid', gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: C.inkDim }}><span>Wofür wir stehen — in einem Absatz</span><Zaehler n={e.positionierung.length} max={G.positionierung} /></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkDim }}><span>Wofür wir stehen — in einem Absatz</span><Zaehler n={e.positionierung.length} max={G.positionierung} /></div>
             {bereich('positionierung', 'Für wen lösen wir welches Problem, und warum gerade wir?')}
           </div>
           <div style={{ display: 'grid', gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: C.inkDim }}><span>Zielgruppe (ICP)</span><Zaehler n={e.icp.length} max={G.icp} /></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkDim }}><span>Zielgruppe (ICP)</span><Zaehler n={e.icp.length} max={G.icp} /></div>
             {bereich('icp', 'Branche, Größe, Rolle, Auslöser — wer ist ein idealer Kunde, wer nicht?')}
           </div>
           <div style={{ display: 'grid', gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: C.inkDim }}><span>Ton</span><Zaehler n={e.ton.length} max={G.ton} /></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkDim }}><span>Ton</span><Zaehler n={e.ton.length} max={G.ton} /></div>
             <input value={e.ton} maxLength={G.ton} placeholder="z. B. klar, direkt, keine Floskeln; Sie auf LinkedIn, Du im Newsletter" aria-label="Ton" onChange={x => setE({ ...e, ton: x.target.value })} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
           </div>
         </div>
         {meldung && <div style={{ fontSize: TYP.bedien, color: meldung === 'Gespeichert.' ? LEUCHT.gut : LEUCHT.kritisch, marginTop: 10 }}>{meldung}</div>}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Der Head of Marketing liest diesen Text als deine eigenen Worte — für Themen, Ton und Zielgruppe seiner Vorschläge.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Der Head of Marketing liest diesen Text als deine eigenen Worte — für Themen, Ton und Zielgruppe seiner Vorschläge.</div>
       </Karte>
 
       <Karte i={1}>
@@ -79,7 +79,7 @@ export function Positionierung({ api }: { api: CrmApi }) {
               <div key={s.id} style={{ display: 'grid', gap: 6, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input value={s.name} maxLength={G.name} placeholder="Name der Säule*" aria-label="Name der Säule" onChange={x => saeule(i, { name: x.target.value })} style={{ ...feld, flex: 1, fontSize: TYP.bedien, padding: '8px 11px', fontWeight: 600 }} />
-                  {(nutzung.get(s.id) ?? 0) > 0 && <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{nutzung.get(s.id)} Beiträge</span>}
+                  {(nutzung.get(s.id) ?? 0) > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{nutzung.get(s.id)} Beiträge</span>}
                   <button onClick={() => { if ((nutzung.get(s.id) ?? 0) && !window.confirm(`„${s.name}“ ist ${nutzung.get(s.id)} Beiträgen zugeordnet. Trotzdem entfernen?`)) return; setE({ ...e, saeulen: e.saeulen.filter((_, j) => j !== i) }); }}
                     aria-label="Säule entfernen" title="Säule entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 15, padding: '0 4px' }}>×</button>
                 </div>
@@ -88,7 +88,7 @@ export function Positionierung({ api }: { api: CrmApi }) {
             ))}
           </div>
         ) : <Leer>Drei bis fünf Säulen reichen: wiederkehrende Themen, zu denen du eine eigene Einsicht hast. Jeder Beitrag im Redaktionsplan bekommt eine davon.</Leer>}
-        {e.saeulen.some(s => !s.name.trim()) && <div style={{ fontSize: 12, color: LEUCHT.achtung, marginTop: 8 }}>Säulen ohne Namen werden beim Speichern verworfen.</div>}
+        {e.saeulen.some(s => !s.name.trim()) && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 8 }}>Säulen ohne Namen werden beim Speichern verworfen.</div>}
       </Karte>
     </>
   );

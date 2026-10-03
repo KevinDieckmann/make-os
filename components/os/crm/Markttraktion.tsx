@@ -22,9 +22,9 @@
 // die Datenschicht weiter „crm“ (lib/crm, /api/crm) — das ist die Kartei darunter, nicht der Name.
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
-import { Seite, LEUCHT } from '../schlank';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { FARBE as C, SCHRIFT, TIEF } from '@/lib/make-one/design';
+import { Seite, Knopf, Reiter as ReiterLeiste, LEUCHT } from '../ui';
 import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, LEISTE, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht } from '@/lib/crm/adresse';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import { useCrm } from './daten';
@@ -94,24 +94,9 @@ const UNTER: Record<Bereich, string> = {
   stammdaten: 'Sauber halten, was alles andere trägt: Qualität, Werte, Datenschutz.',
 };
 
+/** Eine Gruppe Reiter der Leiste (Standard-Baustein `Reiter`); `leise` = die zweite Gruppe (Welten) mit eigener Rahmung. */
 function Reiter({ liste, aktiv, onWahl, leise }: { liste: { id: Bereich; label: string; farbe?: string }[]; aktiv: Bereich; onWahl: (b: Bereich) => void; leise?: boolean }) {
-  return (
-    <div role="tablist" style={{ display: 'flex', gap: 2, background: leise ? 'transparent' : 'rgba(255,255,255,.06)', border: leise ? '1px solid rgba(255,255,255,.08)' : 'none', borderRadius: 12, padding: 3, flex: '0 0 auto' }}>
-      {liste.map(b => {
-        const an = aktiv === b.id;
-        return (
-          <button key={b.id} role="tab" aria-selected={an} onClick={() => onWahl(b.id)} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-            fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, transition: 'background .2s ease, color .2s ease',
-            background: an ? C.ink : 'transparent', color: an ? C.grund : C.inkDim,
-          }}>
-            {b.farbe && <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: b.farbe, boxShadow: an ? 'none' : `0 0 8px ${b.farbe}33` }} />}
-            {b.label}
-          </button>
-        );
-      })}
-    </div>
-  );
+  return <ReiterLeiste liste={liste} aktiv={aktiv} onWahl={onWahl} gruppe={leise} />;
 }
 
 /**
@@ -128,8 +113,8 @@ function Schnellknoepfe({ aktiv, onWahl, className }: { aktiv: Bereich; onWahl: 
           <button key={b.id} role="tab" aria-selected={an} onClick={() => onWahl(b.id)} className="mt-schnell"
             style={{
               ['--puls' as string]: f,
-              padding: '7px 16px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
-              fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700,
+              padding: '8px 16px', minHeight: 40, borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
+              fontFamily: SCHRIFT.text, fontSize: 14, fontWeight: 700,
               ...TIEF.knopf(f),
               ...(an ? { background: `${f}3D`, border: `1px solid ${f}`, color: C.ink, boxShadow: `inset 0 0 0 1px ${f}66` } : {}),
             }}>
@@ -145,6 +130,14 @@ export function MarkttraktionSeite() {
   const router = useRouter(); const params = useSearchParams();
   const { s: bereich, a: ansicht } = aufloesen(params.get('s'), params.get('a'));
   const api = useCrm();
+  const leiste = useRef<HTMLElement>(null);
+  // Der aktive Reiter bleibt im sichtbaren Ausschnitt der wischbaren Leiste (am Handy sonst oft ausgeblendet; nur waagerecht, die Seite scrollt nicht mit).
+  useEffect(() => {
+    const n = leiste.current; const el = n?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!n || !el) return;
+    const a = el.getBoundingClientRect(); const z = n.getBoundingClientRect();
+    if (a.left < z.left + 8 || a.right > z.right - 8) n.scrollTo({ left: n.scrollLeft + (a.left - z.left) - 16, behavior: 'smooth' });
+  }, [bereich]);
   const { setFehler, setHinweis } = api;
   const fehlerZu = useCallback(() => setFehler(null), [setFehler]);
   const hinweisZu = useCallback(() => setHinweis(null), [setHinweis]);
@@ -204,17 +197,18 @@ export function MarkttraktionSeite() {
 
   return (
     // „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
-    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>
       {/* „ZOE fragen“ (28.09., C7): mit dem, was gerade offen ist (Kontakt, Firma, Deal, Angebot) oder dem Reiter — ZOE liest selbst nach, schlägt nur vor. */}
       <ZoeFragenKnopf bezug={zoeBezugFuer(bereich, ansicht, kParam)} />
-      <button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, cursor: 'pointer', ...TIEF.knopf(C.aktiv), fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Aktivität hinzufügen</button>
-    </span>}>
+      {/* „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (am Handy kürzer: „+ Aktivität“). */}
+      <Knopf onClick={() => setErfassen(true)} ariaLabel="Aktivität hinzufügen" style={{ whiteSpace: 'nowrap' }}><span>+ Aktivität<span className="ui-nur-breit"> hinzufügen</span></span></Knopf>
+    </>}>
       {/* Breit: eine Zeile, die Schnellknöpfe mittig zwischen links und rechts. Wird es zu eng (Rahmen < 1100 px, z. B. am
           Laptop mit Leiste oder am Handy): die Schnellknöpfe als eigene Zeile oben, darunter die Reiter zum Wischen — nie
           zwei Paare sichtbar zugleich (das andere ist display:none, also auch für Screenreader weg). */}
       <div className="mt-leistenrahmen">
         <Schnellknoepfe aktiv={bereich} onWahl={b => gehe(b)} className="mt-schnellzeile mt-nur-schmal" />
-        <nav aria-label="Markttraktion" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', padding: '8px 2px' }}>
+        <nav aria-label="Markttraktion" ref={leiste} className="ui-reiter-zeile mt-leiste">
           <Reiter liste={LINKS} aktiv={bereich} onWahl={b => gehe(b)} />
           <span aria-hidden style={{ flex: '1 0 8px' }} />
           <Schnellknoepfe aktiv={bereich} onWahl={b => gehe(b)} className="mt-schnellmitte mt-nur-breit" />
@@ -227,7 +221,7 @@ export function MarkttraktionSeite() {
       <FehlerHinweis text={api.fehler} onZu={fehlerZu} />
       <FehlerHinweis text={api.hinweis} onZu={hinweisZu} ton="info" bleibt />
 
-      {bereich === 'firmen' && !akteId && <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={[{ id: 'kartei', label: 'Alle Firmen' }, { id: 'leads', label: 'Leads · qualifizieren' }]} aktiv={ansicht === 'leads' ? 'leads' : 'kartei'} onWahl={a => gehe('firmen', a === 'leads' ? 'leads' : undefined)} /></div>}
+      {bereich === 'firmen' && !akteId && <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={[{ id: 'kartei', label: 'Alle Firmen' }, { id: 'leads', label: 'Leads · qualifizieren' }]} aktiv={ansicht === 'leads' ? 'leads' : 'kartei'} onWahl={a => gehe('firmen', a === 'leads' ? 'leads' : undefined)} /></div>}
       {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Index · Markttraktion" />}
       {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
 
@@ -239,14 +233,14 @@ export function MarkttraktionSeite() {
       )}
       {bereich === 'deals' && (
         <>
-          {dealsAnsicht !== 'akte' && <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} /></div>}
+          {dealsAnsicht !== 'akte' && <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} /></div>}
           {(dealsAnsicht === 'board' || dealsAnsicht === 'liste' || dealsAnsicht === 'akte' || dealsAnsicht === 'auswertung') && <Pipeline api={api} ansicht={dealsAnsicht} zuKontakt={zuKontakt} zuLeads={() => gehe('firmen', 'leads')} zuAkte={id => gehe('deals', 'akte', id)} zurueck={() => zurueckWie(markttraktion('deals'))} />}
           {dealsAnsicht === 'kunden' && <KundenKurz api={api} />}
         </>
       )}
       {bereich === 'followup' && (
         <>
-          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={FOLLOWUP} aktiv={followupAnsicht} onWahl={a => gehe('followup', a === 'faellig' ? undefined : a)} /></div>
+          <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={FOLLOWUP} aktiv={followupAnsicht} onWahl={a => gehe('followup', a === 'faellig' ? undefined : a)} /></div>
           {followupAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
           {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} zuAkte={zuAkte} />}
         </>
@@ -255,7 +249,7 @@ export function MarkttraktionSeite() {
       {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('firmen', 'leads', id)} />}
       {bereich === 'sales' && (
         <>
-          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={salesAnsicht} onWahl={a => gehe('sales', a === 'head' ? undefined : a)} /></div>
+          <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={salesAnsicht} onWahl={a => gehe('sales', a === 'head' ? undefined : a)} /></div>
           {salesAnsicht === 'head' && <SalesStart api={api} zuKontakt={zuKontakt} zuBereich={zuBereich} />}
           {salesAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
           {salesAnsicht === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}

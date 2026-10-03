@@ -23,7 +23,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { dealAkte } from '@/lib/crm/adresse';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT } from '../ui';
 import { anzeigename } from '@/lib/make-one/crm';
 import { kanalStatus } from '@/lib/crm/recht';
 import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
@@ -153,9 +153,9 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
           {d.playbooks.map(p => (
             <div key={p.id} style={{ padding: 14, borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 6, alignContent: 'start' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><b style={{ fontSize: TYP.body }}>{p.name}</b><Chip farbe={p.anzahl ? LEUCHT.business : C.inkLeise}>{p.anzahl} Personen</Chip></div>
-              <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>{p.warum}</div>
-              <div style={{ fontSize: 12, color: C.inkLeise }}>Kanal: {KANAL_LABEL[p.kanal]} · Messgröße: {p.kennzahl} · {p.fuer.map(f => (f === 'head-sales' ? 'Sales' : 'Marketing')).join(' & ')}</div>
-              <div style={{ fontSize: 12, color: C.inkLeise }}>⚖ {p.recht}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.warum}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kanal: {KANAL_LABEL[p.kanal]} · Messgröße: {p.kennzahl} · {p.fuer.map(f => (f === 'head-sales' ? 'Sales' : 'Marketing')).join(' & ')}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>⚖ {p.recht}</div>
               <div><Knopf leise aus={!p.anzahl} onClick={() => planen(p.id)}>Kampagne planen</Knopf></div>
             </div>
           ))}
@@ -195,9 +195,9 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
   return (
     <div style={{ padding: '10px 2px 18px', display: 'grid', gap: 12, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
       {z && <Raster min={110}><Zahl wert={String(z.personen)} label="Personen" /><Zahl wert={String(z.angesprochen)} label="angesprochen" /><Zahl wert={String(z.reagiert)} label="reagiert" /><Zahl wert={String(z.gespraeche)} label="Gespräche" farbe={LEUCHT.gut} /><Zahl wert={String(z.chancen)} label="Chancen" farbe={LEUCHT.business} /></Raster>}
-      {naechstes && <div style={{ fontSize: 12.5, color: C.ink }}>Als Nächstes: {naechstes}</div>}
+      {naechstes && <div style={{ fontSize: TYP.bedien, color: C.ink }}>Als Nächstes: {naechstes}</div>}
       {jePerson.length > 0 && (
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
           {jePerson.map(x => (
             <span key={x.person || 'ohne'} style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
               {x.person ? <Person id={x.person} name groesse={18} /> : <span style={{ color: C.inkLeise }}>ohne Angabe</span>}
@@ -206,7 +206,7 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
           ))}
         </div>
       )}
-      {pb && <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}><b style={{ color: C.ink }}>Warum:</b> {pb.warum} <span style={{ color: C.inkLeise }}>· ⚖ {pb.recht}</span></div>}
+      {pb && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}><b style={{ color: C.ink }}>Warum:</b> {pb.warum} <span style={{ color: C.inkLeise }}>· ⚖ {pb.recht}</span></div>}
       {k.playbook === 'vernetzen' && <VernetzenEinstellungen k={k} api={api} />}
       <Feldzeile label="Zuständig">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -222,12 +222,12 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
       <Feldzeile label="Kosten (€)">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Feld typ="number" breite={140} wert={k.kostenEuro ? String(k.kostenEuro) : ''} platzhalter="0" onFertig={t => { const n = Math.round(Number(t)); setze({ kostenEuro: Number.isFinite(n) && n > 0 ? n : undefined }); }} />
-          <span style={{ fontSize: 12, color: C.inkLeise }}>Anzeigen, Tools, Zukauf — geht in „Kosten je Anfrage“ und „je SQL“ der Marketing-Strecke ein.</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Anzeigen, Tools, Zukauf — geht in „Kosten je Anfrage“ und „je SQL“ der Marketing-Strecke ein.</span>
         </div>
       </Feldzeile>
       <div>
         <Ueberschrift rechts={<Knopf leise onClick={async () => { const r = await post({ aktion: 'aufgaben', id: k.id }); if (r.ok) setHinweis(r.angelegt ? `${r.angelegt} ${r.angelegt === 1 ? 'Aufgabe' : 'Aufgaben'} für ${nameVon(r.an ?? aufgabenAn)} angelegt.` : 'Alle offenen Schritte haben schon eine Aufgabe.'); }}>Offene Schritte als Aufgaben für {nameVon(aufgabenAn)}</Knopf>}>Schritte</Ueberschrift>
-        {hinweis && <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 6 }}>{hinweis}</div>}
+        {hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>{hinweis}</div>}
         {k.schritte.map(s => {
           const faellig = k.start ? plusTage(k.start, s.tag) : null;
           const um = () => setze({ schritte: k.schritte.map(x => (x.id === s.id ? { ...x, erledigt: !x.erledigt } : x)) });
@@ -236,7 +236,7 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
               <input type="checkbox" checked={s.erledigt} onChange={um} aria-label={s.text} />
               <span style={{ flex: 1, color: s.erledigt ? C.inkLeise : C.ink, textDecoration: s.erledigt ? 'line-through' : 'none' }}>{s.text}</span>
               {s.aufgabeId && <Link href={WEG.aufgabe(s.aufgabeId)} style={{ textDecoration: 'none' }}><Chip farbe={C.inkDim}>Aufgabe ›</Chip></Link>}
-              <span style={{ fontSize: 12, color: !s.erledigt && faellig && faellig <= heute ? LEUCHT.achtung : C.inkLeise }}>{faellig ? datum(faellig, heute) : `Tag ${s.tag}`}</span>
+              <span style={{ fontSize: TYP.bedien, color: !s.erledigt && faellig && faellig <= heute ? LEUCHT.achtung : C.inkLeise }}>{faellig ? datum(faellig, heute) : `Tag ${s.tag}`}</span>
             </div>
           );
         })}
@@ -251,9 +251,9 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
             <div key={x.id} style={{ display: 'grid', gap: 6, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.04)' }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <button onClick={() => zuKontakt(x.id)} style={{ background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontSize: TYP.body, padding: 0 }}>{anzeigename(x)}</button>
-                <span style={{ fontSize: 12.5, color: C.inkLeise }}>{x.firma}</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{x.firma}</span>
                 {l?.von && <span title={`zuletzt festgehalten von ${nameVon(l.von)}`} style={{ display: 'inline-flex' }}><Person id={l.von} groesse={16} /></span>}
-                {st && <span title={st.grund} style={{ fontSize: 11.5, color: AMPEL_FARBE[st.farbe] }}>● {KANAL_LABEL[kanal!]}: {st.farbe === 'gruen' ? 'zulässig' : st.farbe === 'gelb' ? 'nur persönlich/mit Anlass' : 'nicht zulässig'}</span>}
+                {st && <span title={st.grund} style={{ fontSize: 12, color: AMPEL_FARBE[st.farbe] }}>● {KANAL_LABEL[kanal!]}: {st.farbe === 'gruen' ? 'zulässig' : st.farbe === 'gelb' ? 'nur persönlich/mit Anlass' : 'nicht zulässig'}</span>}
                 <button onClick={() => setze({ kontaktIds: k.kontaktIds.filter(i => i !== x.id) })} aria-label="Aus der Kampagne nehmen" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>×</button>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -268,14 +268,14 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
             </div>
           );
         })}
-        {personen.length > 12 && <button onClick={() => setAlle(!alle)} style={{ marginTop: 6, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>{alle ? 'weniger' : `alle ${personen.length}`}</button>}
+        {personen.length > 12 && <button onClick={() => setAlle(!alle)} style={{ marginTop: 6, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{alle ? 'weniger' : `alle ${personen.length}`}</button>}
         {!personen.length && <Leer>Keine Personen — über die Suche hinzufügen.</Leer>}
         <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Person hinzufügen …" aria-label="Person hinzufügen" style={{ marginTop: 8, width: '100%', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '8px 11px', color: C.ink, fontSize: TYP.bedien }} />
-        {treffer.map(x => <button key={x.id} onClick={() => { void setze({ kontaktIds: [...k.kontaktIds, x.id] }); setSuche(''); }} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '3px 0' }}>+ {anzeigename(x)}{x.firma ? ` · ${x.firma}` : ''}</button>)}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Jedes Ergebnis landet im Verlauf der Person — mit dir als der Person, die angesprochen hat; „Interesse → Lead“ setzt den Lead der Firma in die Qualifizierung (Ebene 1). Wird daraus ein echter Bedarf: „Deal aus dieser Kampagne“ — der Deal trägt Quelle Kampagne, der Lead wird SQL.</div>
+        {treffer.map(x => <button key={x.id} onClick={() => { void setze({ kontaktIds: [...k.kontaktIds, x.id] }); setSuche(''); }} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '3px 0' }}>+ {anzeigename(x)}{x.firma ? ` · ${x.firma}` : ''}</button>)}
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Jedes Ergebnis landet im Verlauf der Person — mit dir als der Person, die angesprochen hat; „Interesse → Lead“ setzt den Lead der Firma in die Qualifizierung (Ebene 1). Wird daraus ein echter Bedarf: „Deal aus dieser Kampagne“ — der Deal trägt Quelle Kampagne, der Lead wird SQL.</div>
       </div>
       <Feldzeile label="Notiz"><Feld wert={k.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>
-      <div><button onClick={() => { if (window.confirm('Kampagne löschen? Ergebnisse im Verlauf der Personen bleiben.')) void api.weg('kampagnen', k.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Löschen</button></div>
+      <div><button onClick={() => { if (window.confirm('Kampagne löschen? Ergebnisse im Verlauf der Personen bleiben.')) void api.weg('kampagnen', k.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Löschen</button></div>
     </div>
   );
 }

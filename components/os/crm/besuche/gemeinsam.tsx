@@ -7,7 +7,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Chip, LEUCHT, feld } from '../../schlank';
+import { Chip, LEUCHT, feld } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { fuerVon, fuerFirmaId, zielSchluessel, type ZielAenderung } from '@/lib/crm/besuche-form';
@@ -37,7 +37,7 @@ export async function zielAenderung(api: CrmApi, e: Event, a: ZielAenderung): Pr
 export function BFeld({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="bes-zeile">
-      <span style={{ fontSize: 12.5, color: C.inkLeise }}>{label}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{label}</span>
       <div style={{ minWidth: 0 }}>{children}</div>
     </div>
   );
@@ -83,7 +83,7 @@ export function FuerWahl({ e, api, crm }: { e: Event; api: CrmApi; crm: CrmStand
         )}
       </div>
       {fuer.art === 'kunde' && (
-        <span style={{ fontSize: 12, color: C.inkLeise }}>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
           Die Kontakte bleiben in unserer Kartei und sind diesem Kunden zugeordnet.{' '}
           <MandantLink firmaId={fuer.firmaId} {...(fuer.mandatId ? { mandatId: fuer.mandatId } : {})} name={kundenName(e, firmen) ?? undefined} klein>{fuer.mandatId ? 'Mandat öffnen ›' : 'Firmenakte öffnen ›'}</MandantLink>
         </span>
@@ -126,7 +126,7 @@ export function ZielSuche({ api, crm, e }: { api: CrmApi; crm: CrmStand; e: Even
       <input value={suche} onChange={x => setSuche(x.target.value)} placeholder="Person oder Firma aus der Kartei suchen …" aria-label="Zielperson oder Zielfirma suchen" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
       {personen.map(k => <button key={k.id} type="button" onClick={() => setze({ kontaktId: k.id })} style={zeile}>+ {anzeigename(k)}{k.firma ? <span style={{ color: C.inkLeise }}> · {k.firma}</span> : null}</button>)}
       {firmen.map(f => <button key={f.id} type="button" onClick={() => setze({ firmaId: f.id })} style={zeile}>+ {f.name}<span style={{ color: C.inkLeise }}> · Firma</span></button>)}
-      {q.length >= 2 && !personen.length && !firmen.length && <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '8px 2px' }}>Nichts gefunden — oder die Person ist gesperrt (Art. 18 / Werbesperre).</div>}
+      {q.length >= 2 && !personen.length && !firmen.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '8px 2px' }}>Nichts gefunden — oder die Person ist gesperrt (Art. 18 / Werbesperre).</div>}
     </div>
   );
 }
@@ -134,7 +134,7 @@ export function ZielSuche({ api, crm, e }: { api: CrmApi; crm: CrmStand; e: Even
 /** Der Auftragsverarbeitungs-Hinweis (Kontakte für Kunden) — sichtbar in der Event-Akte und im Reiter „Für Kunden“. */
 export function AvvHinweis({ text }: { text: string }) {
   return (
-    <div role="note" style={{ padding: '10px 12px', borderRadius: 12, border: `1px solid ${LEUCHT.achtung}55`, background: `${LEUCHT.achtung}10`, fontSize: 12.5, lineHeight: 1.5, color: C.inkDim }}>
+    <div role="note" style={{ padding: '10px 12px', borderRadius: 12, border: `1px solid ${LEUCHT.achtung}55`, background: `${LEUCHT.achtung}10`, fontSize: TYP.bedien, lineHeight: 1.5, color: C.inkDim }}>
       <b style={{ color: LEUCHT.achtung }}>Datenschutz · </b>{text}
     </div>
   );

@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Chip, Leer, Haken, Fortschritt, feld, LEUCHT } from '../../schlank';
+import { Ueberschrift, Knopf, Chip, Leer, Haken, Fortschritt, feld, LEUCHT } from '../../ui';
 import { checklisteFaellig, checklisteStand, vorlageAnwenden, VORLAGEN, punktAendern, punktWer, arbeitJePerson, type FaelligerPunkt, type PunktAenderung, type ChecklistenPunkt } from '@/lib/crm/eventplanung';
 import { BEIDE, anderer, zustaendig, nameVon } from '@/lib/crm/team';
 import type { Event } from '@/lib/crm/typen';
@@ -127,7 +127,7 @@ export function Checkliste({ e, api }: ReiterProps) {
         <Haken an={p.erledigt} onChange={() => void schicke({ op: 'aendern', id: p.id, felder: { erledigt: !p.erledigt } })} farbe={p.ueberfaellig ? LEUCHT.kritisch : undefined} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: TYP.bedien, color: p.erledigt ? C.inkLeise : C.ink, textDecoration: p.erledigt ? 'line-through' : undefined }}>{p.text}</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: C.inkLeise, marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>
             <WerTausch wert={wer.get(p.id) ?? standard} ich={ich} standard={eigen ? undefined : 'wie Event'} onWahl={person => umverteilen(p, person)} />
             <span>fällig {datum(p.faelligAm, heute)} · {vorlauf(p.tageVorher)}{p.aufgabeId ? <> · <Link href={WEG.aufgabe(p.aufgabeId)} style={{ color: C.inkDim }}>Aufgabe ›</Link></> : ''}</span>
           </div>
@@ -144,15 +144,15 @@ export function Checkliste({ e, api }: ReiterProps) {
       <Ueberschrift rechts={<Knopf leise aus={laeuft || !stand.ohneAufgabe} onClick={alsAufgaben}>{laeuft ? 'legt an …' : `Als Aufgaben anlegen${stand.ohneAufgabe ? ` (${stand.ohneAufgabe})` : ''}`}</Knopf>}>
         Checkliste{stand.ueberfaellig ? ` · ${stand.ueberfaellig} überfällig` : ''}
       </Ueberschrift>
-      {meldung && <div style={{ fontSize: 12.5, color: C.inkDim }}>{meldung}</div>}
+      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
       {liste.length > 0 && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'center' }}>
             <Fortschritt anteil={stand.gesamt ? stand.erledigt / stand.gesamt : 0} farbe={stand.ueberfaellig ? LEUCHT.achtung : LEUCHT.gut} />
-            <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{stand.erledigt} / {stand.gesamt}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{stand.erledigt} / {stand.gesamt}</span>
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-            <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkLeise }}>offen <JePerson zahlen={Object.fromEntries(Object.entries(arbeit).map(([p, a]) => [p, a.punkteOffen]))} /></span>
+            <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkLeise }}>offen <JePerson zahlen={Object.fromEntries(Object.entries(arbeit).map(([p, a]) => [p, a.punkteOffen]))} /></span>
             <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
           </div>
           {naechster && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Für dich als Nächstes: <span style={{ color: C.ink }}>{naechster.text}</span> — {naechster.ueberfaellig ? `seit ${-naechster.tage} ${-naechster.tage === 1 ? 'Tag' : 'Tagen'} überfällig` : `fällig ${datum(naechster.faelligAm, heute)}`}.</div>}
@@ -172,7 +172,7 @@ export function Checkliste({ e, api }: ReiterProps) {
         <input value={text} onChange={x => setText(x.target.value)} onKeyDown={x => { if (x.key === 'Enter') dazu(); }} placeholder="Neuer Punkt, z. B. Co-Host briefen" aria-label="Neuer Punkt"
           style={{ ...feld, flex: 1, minWidth: 200, width: 'auto', fontSize: TYP.bedien, padding: '8px 11px' }} />
         <input type="number" value={tage} onChange={x => setTage(x.target.value)} aria-label="Tage vorher" title="Tage vor dem Event (negativ = danach)" style={{ ...feld, width: 90, fontSize: TYP.bedien, padding: '8px 11px' }} />
-        <span style={{ fontSize: 12, color: C.inkLeise }}>Tage vorher</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Tage vorher</span>
         <WerTausch wert={neuWer ?? standard} ich={ich} standard={neuWer ? undefined : 'wie Event'} onWahl={person => setNeuWer(person === standard ? null : person)} />
         <Knopf leise aus={!text.trim()} onClick={dazu}>+ Punkt</Knopf>
       </div>
@@ -182,7 +182,7 @@ export function Checkliste({ e, api }: ReiterProps) {
           <div style={{ marginTop: 6 }}>{erledigt.map(zeile)}</div>
         </details>
       )}
-      <div style={{ fontSize: 12, color: C.inkLeise }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
         Aufgaben erscheinen in der Aufgabenliste bei der Person des Punktes, mit Fälligkeit, Link zum Event und den Stichworten „crm“ und „event“. Umverteilen nimmt die Aufgabe mit, solange sie offen ist und niemand sie dort von Hand umgehängt hat.
         {!stand.ohneAufgabe && offenAlle.some(p => p.aufgabeId) && <> <Leise onClick={() => void alsAufgaben()}>In der Aufgabenliste Erledigtes übernehmen</Leise></>}
       </div>

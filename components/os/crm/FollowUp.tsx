@@ -14,7 +14,7 @@ import { localDay } from '@/lib/zeit';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, LEUCHT, feld, Haken } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, LEUCHT, feld, Haken } from '../ui';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { type CrmApi, holeMitStand, datum, plusTage } from './daten';
 import { Pillen, Feldzeile, ERGEBNIS_KNOEPFE } from './teile';
@@ -101,18 +101,18 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
 
   return (
     <>
-      <Karte i={0}>
-        <Ueberschrift rechts={<Knopf onClick={() => setNeu(!neu)}>{neu ? 'Schließen' : '+ Follow-up'}</Knopf>}>Was dran ist</Ueberschrift>
+      <Karte i={0} ton={LEUCHT.business}>
+        <Ueberschrift rechts={<Knopf haupt onClick={() => setNeu(!neu)}>{neu ? 'Schließen' : '+ Follow-up'}</Knopf>}>Was dran ist</Ueberschrift>
         <Raster min={130}>
           {GRUPPEN.map(g => { const n = liste.filter(f => f.gruppe === g.id).length + aufgaben.filter(a => aufgabeGruppe(a, d.heute) === g.id).length; return <Zahl key={g.id} wert={String(n)} label={g.label} farbe={n ? g.farbe : undefined} />; })}
           <Zahl wert={d.puenktlich.quote !== null ? `${d.puenktlich.quote} %` : `${d.puenktlich.puenktlich} · ${d.puenktlich.erledigt}`} label={d.puenktlich.quote !== null ? 'pünktlich · 30 Tage' : 'pünktlich · erledigt (Quote ab 5)'} farbe={d.puenktlich.quote !== null ? (d.puenktlich.quote >= 80 ? LEUCHT.gut : d.puenktlich.quote >= 60 ? LEUCHT.achtung : LEUCHT.kritisch) : undefined} />
         </Raster>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
           <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
-          <span style={{ fontSize: 12, color: C.inkLeise }}>Zusagen, Wiedervorlagen, Deal-Schritte, Nachfassen, Reviews und Kadenz — an einer Stelle. Erledigt schreibt eine Aktivität an die Person.</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Zusagen, Wiedervorlagen, Deal-Schritte, Nachfassen, Reviews und Kadenz — an einer Stelle. Erledigt schreibt eine Aktivität an die Person.</span>
         </div>
-        {hinweis && <div style={{ marginTop: 10, fontSize: 12.5, color: C.inkDim }}>{hinweis} <button onClick={() => setHinweis(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>}
-        {fehler && <div style={{ marginTop: 8, fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+        {hinweis && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>{hinweis} <button onClick={() => setHinweis(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>}
+        {fehler && <div style={{ marginTop: 8, fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
         {neu && <NeuesFollowUp api={api} onFertig={async body => { await nachAktion({ aktion: 'anlegen', ...body }); setNeu(false); }} onAbbruch={() => setNeu(false)} />}
       </Karte>
 
@@ -130,8 +130,8 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
                   <Haken an={false} label={a.titel} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: a.aufgabeId } })} />
                   <Chip farbe={LEUCHT.achtung}>Aufgabe</Chip>
                   <Link href={WEG.aufgabe(a.aufgabeId)} style={{ flex: 1, minWidth: 0, color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.titel}</Link>
-                  {a.kontaktId && <button onClick={() => zuKontakt(a.kontaktId!)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Kontakt ›</button>}
-                  <span style={{ fontSize: 12, color: a.tageUeber ? LEUCHT.kritisch : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{a.tageUeber ? `! ${datum(a.faellig, d.heute)}` : datum(a.faellig, d.heute)}</span>
+                  {a.kontaktId && <button onClick={() => zuKontakt(a.kontaktId!)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>Kontakt ›</button>}
+                  <span style={{ fontSize: TYP.bedien, color: a.tageUeber ? LEUCHT.kritisch : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{a.tageUeber ? `! ${datum(a.faellig, d.heute)}` : datum(a.faellig, d.heute)}</span>
                 </div>
               ))}
             </Liste>
@@ -159,7 +159,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
         unter={<>{ART_LABEL[f.art]} · {f.text}{f.bezug.titel && f.bezug.art !== 'kontakt' ? <span style={{ color: C.inkLeise }}> · {f.bezug.titel}</span> : null}</>}
         rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Chip farbe={f.virtuell ? C.inkLeise : LEUCHT.business}>{QUELLE_LABEL[f.quelle] ?? f.quelle}</Chip>
-          <span style={{ fontSize: 12.5, color: f.gruppe === 'ueberfaellig' ? LEUCHT.kritisch : C.inkDim, whiteSpace: 'nowrap' }}>{datum(f.faellig, heute)}{f.uhrzeit ? ` ${f.uhrzeit}` : ''}{f.tageUeber > 0 ? ` · ${f.tageUeber} T` : ''}</span>
+          <span style={{ fontSize: TYP.bedien, color: f.gruppe === 'ueberfaellig' ? LEUCHT.kritisch : C.inkDim, whiteSpace: 'nowrap' }}>{datum(f.faellig, heute)}{f.uhrzeit ? ` ${f.uhrzeit}` : ''}{f.tageUeber > 0 ? ` · ${f.tageUeber} T` : ''}</span>
           <Person id={f.zustaendig} groesse={18} />
         </span>} />
       {offen && (
@@ -173,7 +173,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
             {f.bezug.art === 'event' && <Knopf leise onClick={() => router.push(eventHref ? eventHref(f.bezug.id) : eventLink({ id: f.bezug.id }))}>Event öffnen</Knopf>}
             {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Kontakt öffnen'}</Knopf>}
           </div>
-          {f.verschoben ? <div style={{ fontSize: 12, color: f.verschoben >= 3 ? LEUCHT.kritisch : C.inkLeise }}>{f.verschoben}× verschoben{f.verschoben >= 3 ? ' — ehrlicherweise keine Zusage mehr.' : ''}</div> : null}
+          {f.verschoben ? <div style={{ fontSize: TYP.bedien, color: f.verschoben >= 3 ? LEUCHT.kritisch : C.inkLeise }}>{f.verschoben}× verschoben{f.verschoben >= 3 ? ' — ehrlicherweise keine Zusage mehr.' : ''}</div> : null}
           {erledigen && <Erledigen f={f} heute={heute} eigene={eigene} onFertig={async b => { await aktion({ aktion: 'erledigen', id: f.id, ...b }); setErledigen(false); setOffen(false); }} onAbbruch={() => setErledigen(false)} />}
         </div>
       )}
@@ -205,8 +205,8 @@ function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig;
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <Wahl label="Art" liste={FOLLOWUP_ARTEN} wert={naechster.art} onWahl={art => setNaechster({ ...naechster, art })} aus={kein} />
-            {f.quelle === 'dealwiedervorlage' ? <span style={{ fontSize: 12, color: C.inkLeise }}>Das Datum wird die nächste Wiedervorlage am geparkten Deal; der Text steht danach in der Notiz dieses Follow-ups.</span>
-              : f.bezug.art !== 'chance' ? <label style={{ fontSize: 12.5, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={kein} onChange={e => setKein(e.target.checked)} /> kein nächster Schritt (bewusst)</label> : <span style={{ fontSize: 12, color: C.inkLeise }}>Beim Deal ist der nächste Schritt Pflicht (Deal-Regel).</span>}
+            {f.quelle === 'dealwiedervorlage' ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Datum wird die nächste Wiedervorlage am geparkten Deal; der Text steht danach in der Notiz dieses Follow-ups.</span>
+              : f.bezug.art !== 'chance' ? <label style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={kein} onChange={e => setKein(e.target.checked)} /> kein nächster Schritt (bewusst)</label> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Beim Deal ist der nächste Schritt Pflicht (Deal-Regel).</span>}
           </div>
         </div>
       </Feldzeile>
@@ -279,11 +279,11 @@ function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion, eventH
               <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
                 {l.map(f => (
                   <button key={f.id} onClick={() => (f.bezug.art === 'chance' ? zuDeal(f.bezug.id) : f.kontaktId ? zuAkte(f.kontaktId) : undefined)} className="fassbar" style={{ textAlign: 'left', cursor: 'pointer', border: '1px solid rgba(255,255,255,.06)', background: 'rgba(255,255,255,.03)', borderRadius: 10, padding: '7px 9px', color: C.ink, display: 'grid', gap: 2 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.3, color: f.gruppe === 'ueberfaellig' ? LEUCHT.kritisch : C.ink }}>{f.name}</span>
-                    <span style={{ fontSize: 11.5, color: C.inkLeise }}>{f.uhrzeit ? `${f.uhrzeit} · ` : ''}{ART_LABEL[f.art]} · {f.text}</span>
+                    <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3, color: f.gruppe === 'ueberfaellig' ? LEUCHT.kritisch : C.ink }}>{f.name}</span>
+                    <span style={{ fontSize: 12, color: C.inkLeise }}>{f.uhrzeit ? `${f.uhrzeit} · ` : ''}{ART_LABEL[f.art]} · {f.text}</span>
                   </button>
                 ))}
-                {!l.length && <div style={{ fontSize: 12, color: C.inkLeise }}>—</div>}
+                {!l.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>—</div>}
               </div>
             </div>
           );
@@ -303,11 +303,11 @@ function Kadenz({ api, liste, heute, zuKontakt, aktion }: { api: CrmApi; liste: 
   return (
     <>
       <Karte i={1}>
-        <Ueberschrift rechts={<span style={{ fontSize: 12, color: C.inkLeise }}>Takt änderbar unter Stammdaten › Wertelisten</span>}>Kadenz je Kreis</Ueberschrift>
+        <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Takt änderbar unter Stammdaten › Wertelisten</span>}>Kadenz je Kreis</Ueberschrift>
         <Raster min={150}>
           {kreise.map(x => <Zahl key={x.k} wert={String(x.faellig)} label={`Kreis ${x.k} · ${x.n} Personen · alle ${x.takt} Tage`} farbe={x.faellig ? LEUCHT.achtung : undefined} />)}
         </Raster>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10 }}>{ohne} Personen haben noch keinen Kreis — sie haben keine Kadenz. Kreis setzen: „Kontakt öffnen“ › links unter Wichtigste Infos.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>{ohne} Personen haben noch keinen Kreis — sie haben keine Kadenz. Kreis setzen: „Kontakt öffnen“ › links unter Wichtigste Infos.</div>
       </Karte>
       <Karte i={2}>
         <Ueberschrift rechts={`${kadenz.length}`}>Zu lange nichts gehört</Ueberschrift>
