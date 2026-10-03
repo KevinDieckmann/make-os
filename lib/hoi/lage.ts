@@ -76,6 +76,33 @@ export interface InnenLage {
   kalender?: KalenderLage | null;
   /** Google Kalender (03.10.): je verbundener Person Alter/Fehler des Abgleichs — nur Zähler und Zustände, nie Adressen oder Titel. null = niemand verbunden. */
   kalenderGoogle?: GoogleKalenderLage | null;
+  /** Gmail in der Inbox (03.10.): je verbundener Person Alter/Fehler des Abgleichs und Push — nur Zähler und Zustände, nie Adressen oder Betreffs. null = niemand verbunden. */
+  gmail?: GmailLage | null;
+}
+
+/** Zustand von Gmail (HOI): worst case über alle Personen mit Gmail. */
+export interface GmailLage {
+  personen: number;
+  vorMin: number | null;
+  veraltet: boolean;
+  /** Verbindungen, die Google nicht mehr akzeptiert. */
+  getrennt: number;
+  fehler?: string;
+  push: { aktiv: number; von: number; moeglich: boolean };
+}
+
+/** Befund zu Gmail (rein): getrennt = rot, steht still = gelb/rot, sonst grün. */
+export function gmailBefunde(g: GmailLage | null | undefined): Befund[] {
+  if (!g || !g.personen) return [];
+  const alt = g.vorMin;
+  const ampel: Ampel = g.getrennt ? 'rot' : alt === null || alt >= 180 ? 'rot' : g.veraltet || g.fehler ? 'gelb' : 'gruen';
+  return [{
+    id: 'gmail', bereich: 'app', label: 'Gmail (Inbox)', ampel,
+    wert: `${g.personen} ${g.personen === 1 ? 'Person' : 'Personen'} · ${alt === null ? 'noch nie abgeglichen' : `letzter Abgleich vor ${alt < 120 ? `${alt} min` : `${Math.round(alt / 60)} h`}`} · Push ${g.push.moeglich ? `${g.push.aktiv}/${g.push.von}` : 'aus'}`,
+    satz: g.getrennt ? `${g.getrennt} Google-Verbindung${g.getrennt === 1 ? '' : 'en'} getrennt — in der Inbox („Gmail verbinden“) neu verbinden`
+      : g.veraltet || g.fehler ? `Abgleich steht${g.fehler ? `: ${g.fehler.slice(0, 100)}` : ''} — die Inbox zeigt einen alten Stand`
+      : g.push.moeglich ? 'Abgleich läuft (Push von Google, Rückfall alle 15 Minuten)' : 'Abgleich läuft alle 2 Minuten (kein Push: Pub/Sub nicht eingerichtet oder keine öffentliche HTTPS-Adresse)',
+  }];
 }
 
 /** Zustand der Google-Kalender (HOI): worst case über alle verbundenen Personen. */
@@ -231,6 +258,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   // ── iCloud-Kalender (R-K1 #51/#K5) ──
   b.push(...kalenderBefunde(innen.kalender, jetzt));
   b.push(...googleKalenderBefunde(innen.kalenderGoogle));
+  b.push(...gmailBefunde(innen.gmail));
 
   // ── Außen ──
   const aAlter = alterMin(aussen?.zeit);

@@ -152,3 +152,29 @@ export function verarbeitungKalenderGoogle(jetzt: string): Verarbeitung {
 export function verarbeitungKalenderNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
   return vorhanden.some(v => v.id === VV_KALENDER_GOOGLE_ID) ? [...vorhanden] : [...vorhanden, verarbeitungKalenderGoogle(jetzt)];
 }
+
+// ── Verarbeitung „E-Mail (Google Workspace)“ (03.10., gmail) — idempotent nachgetragen ──
+// Kevin 03.10.: Mails ziehen von IONOS zu Gmail; gelesen, zugeordnet und beantwortet wird in MAKE OS. Hinweis, keine Rechtsberatung —
+// anwaltlich gegenlesen.
+
+export const VV_EMAIL_GOOGLE_ID = 'vv-email-google';
+
+export function verarbeitungEmailGoogle(jetzt: string): Verarbeitung {
+  return {
+    id: VV_EMAIL_GOOGLE_ID, name: 'E-Mail (Google Workspace)',
+    zweck: 'Geschäftliche E-Mails im Postfach (Gmail, Google Workspace) lesen, den Kontakten, Firmen und Deals in MAKE OS zuordnen, beantworten (nur auf Klick) und daraus Aufgaben, Follow-ups und Termine machen',
+    personen: 'Absender und Empfänger geschäftlicher Mails (Interessenten, Kunden, Partner, Dienstleister); Kevin, Malin',
+    daten: 'Absender, Empfänger, Betreff, Datum, Ausschnitt, Textkörper (reiner Text), Anhang-Metadaten (Name, Typ, Größe), Labels, Verknüpfung zu Kontakt/Firma/Deal; je Person ein Spiegel der letzten 30 Tage beim Verbinden, danach laufend; Anhänge liegen nie im Spiegel; Verbindung je Person über OAuth (Zugriffstoken nur verschlüsselt auf dem Server)',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Anbahnung und Durchführung von Verträgen) bzw. lit. f (Geschäftsbetrieb, Interessenabwägung); Antworten nur 1:1 auf Klick, Werbung nur mit Einwilligung (§ 7 UWG); Art. 18 und Werbesperre greifen',
+    empfaenger: 'Google Ireland Ltd. / Google LLC (Google Workspace — Auftragsverarbeiter; Datenverarbeitungszusatz in der Workspace-Admin-Konsole bestätigen); Kevin, Malin (je nur das eigene Postfach); Hetzner (Hosting, Spiegel); Anthropic (ZOE-Entwurf auf Klick, gekapselt, nie bei eingeschränkten Personen)',
+    drittland: 'Google, Anthropic: Standardvertragsklauseln bzw. Data Privacy Framework, Datenstandort laut Workspace-Einstellung — prüfen',
+    loeschfrist: 'Wahrheit ist Gmail (Löschung dort, Art. 17); Spiegel in MAKE OS 180 Tage (Löschfrist „Mail-Spiegel“, einstellbar 30–730 Tage) und beim Trennen sofort; Mails einer Person fallen mit Art. 17 im Spiegel weg (Antwort nennt „dort in Gmail löschen“); Verlaufszeile in der Kontaktakte = Betreff + Link, gilt wie die Kartei',
+    toms: 'Zugang nur mit Anmeldung (zwei Konten, zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, je Person getrennt (nie für das andere Konto lesbar), Token nie im Browser und nie in Protokollen, nur die Scope gmail.modify (kein Löschen, keine Einstellungen), HTML nie gerendert (nur Text), Bilder nie geladen, Anhänge nur als Download auf Klick, Senden nie über den Dienstweg, keine Mail-Inhalte in Logs, Push nur mit OIDC-Token von Google',
+    verantwortlich: UG_NAME, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „E-Mail (Google Workspace)“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungEmailNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_EMAIL_GOOGLE_ID) ? [...vorhanden] : [...vorhanden, verarbeitungEmailGoogle(jetzt)];
+}

@@ -59,6 +59,8 @@ export interface Vorgabe {
   tag: string; von?: string; bis?: string; ganztags?: boolean; wer?: Wer; titel?: string; art?: TerminArt; spaceId?: string;
   /** K3: vorbelegt aus einer CRM-Akte („+ Meeting“). */
   crm?: Formular['crm']; gaeste?: GastWahl[];
+  /** Gmail (03.10.): Notiz vorbelegt („Aus Gmail · Absender“ + Link zur Mail) — nur der Anfang, die Person ergänzt. */
+  notiz?: string;
 }
 
 const plusMin = (hhmm: string, min: number) => { const [h, m] = hhmm.split(':').map(Number); const g = Math.min(23 * 60 + 59, h * 60 + m + min); return `${String(Math.floor(g / 60)).padStart(2, '0')}:${String(g % 60).padStart(2, '0')}`; };
@@ -92,7 +94,7 @@ export function formularStart(v: Vorgabe, standardDauer: number, fokusDauer = 90
   const dauer = art === 'fokus' ? fokusDauer : standardDauer;
   return {
     art, titel: v.titel ?? '', tag: v.tag, von, bis: v.bis ?? plusMin(von, dauer), bisTag: v.tag, ganztags,
-    zone: STANDARD_ZONE, wiederholung: null, ort: '', notiz: '', wer: v.wer ?? 'kevin', kalender: '', farbe: '',
+    zone: STANDARD_ZONE, wiederholung: null, ort: '', notiz: v.notiz ?? '', wer: v.wer ?? 'kevin', kalender: '', farbe: '',
     beschaeftigt: null, sichtbarkeit: 'standard', erinnerungen: ganztags ? [] : [10],
     arbeitsort: { art: 'home' }, fokus: {}, aufgabe: { spaceId: v.spaceId ?? 'privat', mitZeit: !ganztags && !!v.von },
     crm: { ...(v.crm ?? {}) }, gaeste: [...(v.gaeste ?? [])],

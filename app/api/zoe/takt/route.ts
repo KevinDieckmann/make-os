@@ -14,6 +14,7 @@ import { faellig } from '@/lib/zoe/takt';
 import { reihe } from '@/lib/zoe/auftraege';
 import { alleSichten } from '@/lib/business/speicher';
 import { kalenderJobsImTakt } from '@/lib/kalender/takt-jobs';
+import { gmailJobsImTakt } from '@/lib/gmail/takt';
 import { localDay } from '@/lib/zeit';
 import { istDienst } from '@/lib/zugang/dienst';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -62,6 +63,8 @@ export async function POST(req: Request) {
   // nach dem Start), sonst der Event-Spiegel (K6a, alle 30 Min.; U1 B3: nur eigene, künftige Termine, Absagen → Glocke).
   // Nie blockierend; Fehler als eine Zeile `[kalender-sicherung] …` / `[spiegel] …` (lib/kalender/takt-jobs.ts).
   await kalenderJobsImTakt().catch(() => {});
+  // Gmail (03.10.): Abgleich je verbundener Person (alle 2 Min., mit Push alle 15) — nie blockierend, Fehler als eine Zeile `[gmail] …`.
+  void gmailJobsImTakt().catch(() => {});
   void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });

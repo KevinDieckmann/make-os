@@ -19,7 +19,7 @@ import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { anzeigename } from '@/lib/make-one/crm';
-import { pflichtangaben, selbstpruefung, verarbeitungenStart, verarbeitungenNachtragen, verarbeitungKalenderNachtragen, LOESCHREGELN } from '@/lib/crm/datenschutz';
+import { pflichtangaben, selbstpruefung, verarbeitungenStart, verarbeitungenNachtragen, verarbeitungKalenderNachtragen, verarbeitungEmailNachtragen, LOESCHREGELN } from '@/lib/crm/datenschutz';
 import { googleKonfiguriert } from '@/lib/google/verbindung';
 import { netzwerkenKontakteUeberFrist } from '@/lib/crm/netzwerken-loeschen';
 import { befunde } from '@/lib/crm/befunde';
@@ -56,6 +56,8 @@ export async function GET(req: Request) {
   if (verarbeitungenNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungenNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
   // Google Kalender (03.10.): sobald Google eingerichtet ist, gehört „Kalender (Google Workspace)“ ins Verzeichnis (Art. 30).
   if (googleKonfiguriert() && verarbeitungKalenderNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungKalenderNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
+  // 03.10. (gmail): „E-Mail (Google Workspace)“ — ebenfalls, sobald Google eingerichtet ist (idempotent).
+  if (googleKonfiguriert() && verarbeitungEmailNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungEmailNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
   const konten = (await ladeKonten()).konten;
   const vorschlag = pflichtangaben(kontakte, crm);
   const zaehl = (f: (v: (typeof vorschlag)[number]) => string | undefined) => vorschlag.reduce((a, v) => { const x = f(v); if (x) a[x] = (a[x] ?? 0) + 1; return a; }, {} as Record<string, number>);
