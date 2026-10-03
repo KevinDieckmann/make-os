@@ -161,6 +161,14 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   - VVT: die drei nachgetragenen Verarbeitungen (`vv-netzwerken`, `vv-besuche-kunde`, `vv-kunden-export`) bleiben im Verzeichnis stehen (gewöhnliche Einträge) — nichts nachzuziehen;
   - Kampagnen-Ampel, Danke-Hinweis, Telegram-Text, Fotos ohne Exif und `TRANSKRIPTION_AN` sind Code ohne Daten — verschwinden mit dem Rückweg (Fotos, die schon ohne Exif abgelegt sind, bleiben es).
   Nach einem erneuten Upload: nichts nachzuziehen (fehlende `neuAngelegt`-Angaben gelten als Bestand — konservativ).
+- **Qualifizierung & Scoring (03.10., Branch `quali`):** keine Formänderung, nur optionale Felder und ein neuer Bestand; der alte Stand (1818c5c) verwirft sie beim nächsten Schreiben desselben Eintrags:
+  - am Lead (Firma bzw. Person) `stufen`, `wiedervorlage`, `grundArt`, `hauptKontaktId`; `antworten` darf jetzt beliebige Frage-Kennungen tragen (der alte Säuberer behält nur die sechs Kernfragen). Die alten Felder `kriterien` und `fit` werden mitgeschrieben — **Fragen, die nur über Stufen des Vorschlags beantwortet sind, bleiben als ja/nein/unklar erhalten, die Stufe selbst geht verloren**;
+  - **geparkte Leads** (Status „ruht“ mit Wiedervorlage) bleiben im alten Stand „ruht“ ohne Rückkehr in die Runde — **vor dem Rückweg notieren:** Wiedervorlagen (Qualifizierung › Auswertung › „Geparkt“); das Follow-up „Wiedervorlage Qualifizierung“ bleibt ein gewöhnliches Follow-up;
+  - neuer Bestand `crm-scoring` (Einstellungen + 10 frühere Fassungen): der alte Stand ignoriert die Datei, sie bleibt liegen; der alte Stand rechnet mit dem **Standard** (= bisherige Rechnung) — **vor dem Rückweg notieren:** die eigenen Werte (Schwellen, Muss-Regeln, Temperatur-Stufen), falls ein späterer Upload sie wieder braucht;
+  - Absichtsprotokoll-Art `firma-umhaengen`: der alte Stand kennt sie nicht und ließe eine **offene** Absicht liegen (HOI zeigt sie) — **vor dem Rückweg in Stammdaten › Datenqualität bzw. HOI prüfen, dass keine offen ist** (sie wird sonst nicht fertiggestellt);
+  - zusammengeführte Firmen sind weg (Vermerk in der Notiz der behaltenen Firma nennt den Namen) — der Rückweg bringt sie nicht zurück (nur die Sicherung);
+  - Oberfläche, Editor, Gesprächsmodus, Herkunft sind Code ohne Daten.
+  Nach einem erneuten Upload: nichts nachzuziehen (fehlende Stufen = „noch offen“, es gilt der Standard bis `crm-scoring` gelesen wird).
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

@@ -62,7 +62,6 @@ export function KontaktSeitenfenster({ api, kontaktId, startFirmaId, onZu, zuFir
         <Grund ampel={ampel} />
       </div>
       <div>
-        <Ueberschrift>Nächster Schritt</Ueberschrift>
         <NaechsterSchrittTeil k={k} heute={heute} setze={setze} />
       </div>
       {GRUPPEN.map(t => (

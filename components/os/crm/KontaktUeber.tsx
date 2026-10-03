@@ -16,8 +16,11 @@ import { Knopf, feld, LEUCHT } from '../schlank';
 import { STUFE_LABEL, rollenVon, ROLLE_LABEL, type Kontakt } from '@/lib/make-one/crm';
 import type { Qual } from '@/lib/crm/typen';
 import { zusammenfassung, nummer, type ZfQuelle } from '@/lib/crm/zusammenfassung';
-import { KRITERIEN, statusLabel, abgeleitet, geklaert } from '@/lib/crm/leads';
-import { leadScore, temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
+import { statusLabel, abgeleitet } from '@/lib/crm/leads';
+import { leadScore, scoringKontext, temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
+import { leadZeileFuer, fehltBisSqlZeile, salesBereit } from '@/lib/crm/leads';
+import { qualifizierungLink } from '@/lib/crm/adresse';
+import { SeitenChip } from './quali/ScoreAnzeige';
 import { phaseVon } from '@/lib/crm/phase';
 import { takt } from '@/lib/crm/akte';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -87,8 +90,9 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
   const lead = firma?.lead ?? k.lead;
   const offenerDeal = (crm?.stand.chancen ?? []).some(c => OFFENE_STUFEN.includes(c.stufe) && (c.kontaktIds.includes(k.id) || (!!k.firmaId && c.firmaId === k.firmaId)));
   const status = lead?.status ?? abgeleitet([...personen], offenerDeal);
-  const score = leadScore([...personen], lead, heute);
-  const kriterien = lead?.kriterien;
+  // Dieselbe Rechnung wie Leads-Liste und Runde (eine Quelle): Score, Marketing- und Sales-Punkte gegen ihre Schwellen.
+  const zeile = crm ? leadZeileFuer(k, api.kontakte ?? [k], crm.stand, heute) : undefined;
+  const score = zeile?.score ?? leadScore([...personen], lead, heute, undefined, scoringKontext(crm?.stand));
   const ph = phaseVon(k, crm?.stand);
   const tk = takt(k, heute);
   const chip = (text: string, farbe: string) => <span style={{ fontSize: 11.5, fontWeight: 600, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{text}</span>;
@@ -140,17 +144,21 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
       rechts={<button type="button" onClick={() => setLeadOffen(!leadOffen)} style={leiseKnopf}>{leadOffen ? 'weniger' : 'Qualifizieren ›'}</button>}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <span title={score.teile.map(x => `${x.label} ${x.punkte}/${x.max} — ${x.grund}`).join('\n')}>{chip(`Score ${score.punkte} · ${temperaturLabel(score.temperatur)}`, temperaturFarbe(score.temperatur))}</span>
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>{kriterien ? `${geklaert(kriterien)} von 6 Kernfragen mit „ja“` : 'Kernfragen noch offen'}</span>
+        {score.scoring && <SeitenChip s={score.scoring.marketing} name="MQL" kurz />}
+        {score.scoring && <SeitenChip s={score.scoring.sales} name="SQL" kurz />}
       </div>
+      {score.scoring && (
+        <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8, lineHeight: 1.5 }}>
+          Score {score.punkte} · Sales {score.scoring.sales.punkte} / Schwelle {score.scoring.sales.schwelle}{zeile && !salesBereit(zeile) && status !== 'sql' && status !== 'kunde' ? ` — fehlt: ${fehltBisSqlZeile(zeile).join(', ')}` : ' — SQL-Kriterien erfüllt'}
+          {' '}<button type="button" onClick={() => router.push(qualifizierungLink(k.firmaId ?? k.id))} style={leiseKnopf}>In der Runde qualifizieren ›</button>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '4px 12px', marginTop: 10 }}>
-        {KRITERIEN.map(kr => {
-          const w: Qual = kriterien?.[kr.id] ?? 'unklar';
-          return (
-            <span key={kr.id} title={`${kr.frage} — ${w}`} aria-label={`${kr.label}: ${w}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: w === 'unklar' ? C.inkLeise : C.ink }}>
-              <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: QUAL_FARBE[w], flex: '0 0 auto' }} />{kr.label}
-            </span>
-          );
-        })}
+        {(score.scoring?.sales.teile.flatMap(t => t.kriterien).filter(x => x.quelle === 'frage') ?? []).map(x => (
+          <span key={x.id} title={`${x.name}: ${x.stufeText ?? 'offen'}`} aria-label={`${x.name}: ${x.stufeText ?? 'offen'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: x.offen ? C.inkLeise : C.ink }}>
+            <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: x.offen || !x.beantwortet ? QUAL_FARBE.unklar : x.punkte >= x.max * 0.6 ? QUAL_FARBE.ja : x.punkte > 0 ? QUAL_FARBE.unklar : QUAL_FARBE.nein, flex: '0 0 auto' }} />{x.name}
+          </span>
+        ))}
       </div>
       {leadOffen && <div style={{ marginTop: 12 }}><LeadBlock api={api} leadId={k.firmaId ?? k.id} /></div>}
     </Klappe>

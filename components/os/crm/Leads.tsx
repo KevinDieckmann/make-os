@@ -22,8 +22,12 @@ import { markttraktion } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT } from '../schlank';
-import type { LeadStatus, Kriterien, Qual, ChancenArt } from '@/lib/crm/typen';
-import { leads, LEAD_STATUS, KRITERIEN, sqlBereit, fehltBisSql, geklaert, statusLabel, nichtKalt, type LeadZeile, type Trichter } from '@/lib/crm/leads';
+import type { LeadStatus, ChancenArt } from '@/lib/crm/typen';
+import { leads, LEAD_STATUS, salesBereit, fehltBisSqlZeile, statusLabel, nichtKalt, type LeadZeile, type Trichter } from '@/lib/crm/leads';
+import { Fragen } from './quali/Fragen';
+import { useLeadFragen } from './quali/useLeadFragen';
+import { useScoringEinstellungen } from './quali/hilfen';
+import { StandKette } from './quali/ScoreAnzeige';
 import { temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
 import { STUFEN } from '@/lib/crm/pipeline';
 import { type CrmApi, datum, euro, plusTage, holeMitStand } from './daten';
@@ -36,7 +40,6 @@ import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
 
 interface Daten { leads: LeadZeile[]; trichter: Trichter }
 const STATUS_FARBE: Record<LeadStatus, string> = { neu: C.inkLeise, kontaktiert: LEUCHT.puls, im_gespraech: LEUCHT.business, qualifizierung: LEUCHT.achtung, sql: LEUCHT.gut, kunde: LEUCHT.geld, kein_fit: C.inkLeise, ruht: C.inkLeise };
-const Q_FARBE: Record<Qual, string> = { ja: LEUCHT.gut, nein: LEUCHT.kritisch, unklar: 'rgba(255,255,255,.18)' };
 const ARTEN: { id: ChancenArt; label: string }[] = [{ id: 'retainer', label: 'Retainer' }, { id: 'projekt', label: 'Projekt' }, { id: 'workshop', label: 'Workshop' }, { id: 'vermittlung', label: 'Vermittlung' }, { id: 'software', label: 'Software' }];
 const SCHRITTE = ['Bedarfsgespräch mit dem Entscheider', 'Diagnose-Termin vereinbaren', 'Angebot besprechen'];
 
@@ -146,7 +149,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
                 </div>
               </div>
               <BeanBadge bean={z.bean} />
-              <KriterienPunkte k={z.kriterien} />
+              <KriterienPunkte z={z} />
               <span title={z.score.teile.map(t => `${t.label} ${t.punkte}/${t.max} — ${t.grund}`).join('\n')}><Chip farbe={temperaturFarbe(z.score.temperatur)}>{z.score.punkte} · {temperaturLabel(z.score.temperatur)}</Chip></span>
               <Chip farbe={STATUS_FARBE[z.status]}>{statusLabel(z.status)}</Chip>
             </div>
@@ -174,18 +177,20 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
   );
 }
 
-function KriterienPunkte({ k }: { k: Kriterien }) {
+function KriterienPunkte({ z }: { z: LeadZeile }) {
+  const fragen = (z.score.scoring?.sales.teile.flatMap(t => t.kriterien) ?? []).filter(x => x.quelle === 'frage');
   return (
-    <span title={KRITERIEN.map(x => `${x.label}: ${k[x.id]}`).join(' · ')} style={{ display: 'inline-flex', gap: 3, alignItems: 'center', flex: '0 0 auto' }}>
-      {KRITERIEN.map(x => <span key={x.id} style={{ width: 7, height: 7, borderRadius: '50%', background: Q_FARBE[k[x.id]] }} />)}
-      {sqlBereit(k) && <span style={{ fontSize: 11, color: LEUCHT.gut, fontWeight: 700, marginLeft: 4 }}>SQL-bereit</span>}
+    <span title={fragen.map(x => `${x.name}: ${x.stufeText ?? 'offen'}`).join(' · ')} style={{ display: 'inline-flex', gap: 3, alignItems: 'center', flex: '0 0 auto' }}>
+      {fragen.map(x => <span key={x.id} style={{ width: 7, height: 7, borderRadius: '50%', background: x.offen || !x.beantwortet ? C.inkLeise : x.punkte >= x.max * 0.6 ? LEUCHT.gut : x.punkte > 0 ? LEUCHT.achtung : LEUCHT.kritisch }} />)}
+      {salesBereit(z) && <span style={{ fontSize: 11, color: LEUCHT.gut, fontWeight: 700, marginLeft: 4 }}>SQL-bereit</span>}
     </span>
   );
 }
 
 function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; api: CrmApi; laden: () => void; zuKontakt: (id: string) => void; zuDeal: (id?: string) => void }) {
   const heute = api.crm?.heute ?? localDay();
-  const [k, setK] = useState<Kriterien>(z.kriterien);
+  const einstellungen = useScoringEinstellungen(api);
+  const fr = useLeadFragen(api, z, einstellungen);
   const [status, setStatus] = useState<LeadStatus>(z.status);
   const [notiz, setNotiz] = useState(z.notiz ?? '');
   const [meldung, setMeldung] = useState('');
@@ -194,15 +199,8 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
   const { frage, dialog: nachfrage } = useNachfrage();
   const post = (body: Record<string, unknown>) => fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
   const setze = async (felder: Record<string, unknown>) => { const r = await post({ aktion: 'setze', id: z.id, felder }); if (!r.ok) setMeldung(r.fehler); void laden(); };
-  const kriterium = (id: keyof Kriterien, w: Qual) => {
-    const neu = { ...k, [id]: w };
-    setK(neu);
-    // Wer qualifiziert, ist in der Qualifizierung — der Status zieht mit, solange er davor steht.
-    const nachStatus = ['neu', 'kontaktiert', 'im_gespraech'].includes(status) ? 'qualifizierung' : status;
-    if (nachStatus !== status) setStatus(nachStatus as LeadStatus);
-    void setze({ kriterien: { [id]: w }, ...(nachStatus !== status ? { status: nachStatus } : {}) });
-  };
-  const bereit = sqlBereit(k);
+  const bereit = fr.bereit;
+  const fehltText = fr.fehlt.join(', ');
   const zumSql = async () => {
     const r = await post({ aktion: 'sql', id: z.id, trotzdem: !bereit, deal: { titel: deal.titel, art: deal.art, betrag: Number(deal.betrag.replace(',', '.')) || 0, basis: deal.basis, schritt: { text: deal.schritt, datum: deal.datum }, ...(deal.erwartetAm ? { erwartetAm: deal.erwartetAm } : {}), besitzer: deal.besitzer } });
     setMeldung(r.ok ? r.text : r.fehler);
@@ -240,23 +238,10 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
       </div>
 
       <div>
-        <Ueberschrift rechts={<span>{geklaert(k)} von 6 geklärt</span>}>Qualifizierung</Ueberschrift>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {KRITERIEN.map(x => (
-            <div key={x.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 10, alignItems: 'center' }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{x.label}</div>
-                <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.4 }}>{x.frage}</div>
-              </div>
-              <span style={{ display: 'inline-flex', gap: 3 }}>
-                {(['ja', 'unklar', 'nein'] as Qual[]).map(w => (
-                  <button key={w} onClick={() => kriterium(x.id, w)} aria-pressed={k[x.id] === w} style={{ padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: SCHRIFT.text,
-                    border: `1px solid ${k[x.id] === w ? Q_FARBE[w] : 'rgba(255,255,255,.1)'}`, background: k[x.id] === w ? `${w === 'unklar' ? '#ffffff' : Q_FARBE[w]}1f` : 'transparent', color: k[x.id] === w ? C.ink : C.inkDim }}>{w}</button>
-                ))}
-              </span>
-            </div>
-          ))}
-        </div>
+        <Ueberschrift rechts={<span>Score {fr.score.punkte}</span>}>Qualifizierung</Ueberschrift>
+        <div style={{ marginBottom: 10 }}><StandKette score={fr.score} /></div>
+        <Fragen einstellungen={einstellungen} score={fr.score} stufen={fr.lokal.stufen} antworten={fr.antworten} onStufe={(kid, st) => { fr.stufeWaehlen(kid, st); if (['neu', 'kontaktiert', 'im_gespraech'].includes(status)) setStatus('qualifizierung'); }} onAntwort={fr.antwortSpeichern} />
+        {fr.fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 6 }}>{fr.fehler}</div>}
       </div>
 
       {!inDeal && status !== 'kunde' && (
@@ -264,7 +249,7 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Punkt farbe={bereit ? LEUCHT.gut : C.inkLeise} />
             <b style={{ fontSize: TYP.body }}>{bereit ? 'SQL-bereit — ab ins Closing' : 'Noch kein SQL'}</b>
-            {!bereit && <span style={{ fontSize: 12.5, color: C.inkDim }}>es fehlt: {fehltBisSql(k).join(', ')}</span>}
+            {!bereit && <span style={{ fontSize: 12.5, color: C.inkDim }}>es fehlt: {fehltText}</span>}
           </div>
           {(bereit || trotzdem) ? (
             <>
@@ -361,14 +346,14 @@ export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
   const router = useRouter();
   const z = useMemo(() => (api.crm && api.kontakte ? leads(api.kontakte, api.crm.stand, api.crm.heute ?? localDay()).find(x => x.id === leadId) : undefined), [api.crm, api.kontakte, leadId]);
   if (!z) return null;
-  const fehlt = fehltBisSql(z.kriterien);
+  const fehlt = fehltBisSqlZeile(z);
   return (
     <div>
       <Ueberschrift rechts={<Knopf leise onClick={() => router.push(markttraktion('firmen', 'leads', z.id))}>{z.status === 'sql' || z.status === 'kunde' ? 'Zum Lead' : 'Qualifizieren'}</Knopf>}>Lead · Ebene 1{z.art === 'firma' ? ' (Firma)' : ''}</Ueberschrift>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
         <Chip farbe={STATUS_FARBE[z.status]}>{statusLabel(z.status)}</Chip>
-        <KriterienPunkte k={z.kriterien} />
-        <span style={{ color: C.inkDim }}>{geklaert(z.kriterien)} von 6 geklärt{!sqlBereit(z.kriterien) && z.status !== 'sql' && z.status !== 'kunde' ? ` · bis SQL fehlt: ${fehlt.join(', ')}` : ''}</span>
+        <KriterienPunkte z={z} />
+        <span style={{ color: C.inkDim }}>Score {z.score.punkte}{z.score.scoring ? ` · Sales ${z.score.scoring.sales.punkte}/${z.score.scoring.sales.schwelle}` : ''}{!salesBereit(z) && z.status !== 'sql' && z.status !== 'kunde' ? ` · bis SQL fehlt: ${fehlt.join(', ')}` : ''}</span>
       </div>
       {z.deal && <Link href={WEG.deal(z.deal.id)} style={{ display: 'block', fontSize: 12.5, color: C.inkDim, marginTop: 6, textDecoration: 'none' }}>Ebene 2 · Deal „{z.deal.titel}“ · {STUFEN.find(s => s.id === z.deal!.stufe)?.label}{z.deal.wert ? ` · ${euro(z.deal.wert)}` : ''} ›</Link>}
     </div>

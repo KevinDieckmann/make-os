@@ -38,7 +38,8 @@ import { anzeigename, STUFE_LABEL, type Kontakt, rollenVon, ROLLE_LABEL } from '
 import { ampel as kanalAmpel } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { phaseVon } from '@/lib/crm/phase';
-import { leadScore, temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
+import { leadScore, scoringKontext, temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
+import { leadZeileFuer } from '@/lib/crm/leads';
 import { lifecycleVorschlagHoeher } from '@/lib/crm/vorschlaege';
 import { beanVon } from '@/lib/crm/bean';
 import { istBesuch } from '@/lib/crm/besuche-form';
@@ -203,7 +204,8 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
   const ph = phaseVon(k, crm?.stand);
   const pf = phaseFarbe(ph.phase);
   // Lead-Score (27.09.): Firma-Lead vor Personen-Lead, Personen der Firma zählen mit (Wärme, Erreichbarkeit).
-  const scoreAkte = leadScore(personen, firma?.lead ?? k.lead, heute);
+  // Dieselbe Rechnung wie Leads-Liste und Runde (`leadZeileFuer`) — nie ein eigener Score in der Akte.
+  const scoreAkte = (crm ? leadZeileFuer(k, api.kontakte ?? [k], crm.stand, heute)?.score : undefined) ?? leadScore(personen, firma?.lead ?? k.lead, heute, undefined, scoringKontext(crm?.stand));
   // Lifecycle (28.09., H4): ohne gesetzte Phase gilt Lead — ein Vorschlag nur, wenn er höher ist.
   const lcVorschlag = lifecycleVorschlagHoeher(k, crm?.stand, heute);
   // BEAN (28.09., H4): von Hand, sonst abgeleitet — mit den offenen Angeboten aus der Dateiablage.

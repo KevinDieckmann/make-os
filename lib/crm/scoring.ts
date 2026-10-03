@@ -351,7 +351,9 @@ export function vorschlagScoring(): ScoringEinstellungen {
         ] },
       ],
     },
-    temperaturAb: { lau: 25, warm: 50, heiss: 75 },
+    // Der Gesamtwert ist der Anteil an ALLEN möglichen Punkten (hier 123): wer erst wenige der zwölf Fragen beantwortet hat, liegt zwangsläufig
+    // niedrig — deshalb sind die Stufen enger als beim Standard (dort 25 / 50 / 75), damit die Verteilung kalt/lau/warm vergleichbar bleibt.
+    temperaturAb: { lau: 5, warm: 12, heiss: 25 },
   };
 }
 

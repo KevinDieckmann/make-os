@@ -67,6 +67,12 @@ export function herkunftVon(
     const besucht = istNetzwerkenEvent(e);
     teile.push({ art: besucht ? 'event' : 'makeone', text: eventText(e, besucht, firmaName), href: markttraktion(besucht ? 'besuche' : 'event', undefined, e.id), datum: e.datum, kontaktId });
   }
+  // „Kennengelernt für Kunde“ (netz-recht, 03.10.): auf einem Event für einen Kunden getroffen — auch wenn die Teilnahme selbst fehlt.
+  for (const p of personen) for (const kf of p.kennengelerntFuer ?? []) {
+    if (jeEvent.has(kf.eventId)) continue;
+    const e = events.get(kf.eventId);
+    teile.push({ art: 'event', text: `Kennengelernt für Kunde ${firmaName(kf.firmaId) ?? 'einen Kunden'}${e ? ` · ${e.titel}` : ''} · ${kurzDatum(kf.am)}`, ...(e ? { href: markttraktion('besuche', undefined, e.id) } : {}), datum: kf.am, kontaktId: p.id });
+  }
   for (const k of (crm.kampagnen ?? []).filter(x => x.kontaktIds.some(id => ids.has(id)))) {
     const erg = k.ergebnisse.filter(r => ids.has(r.kontaktId)).sort((a, b) => b.am.localeCompare(a.am))[0];
     teile.push({ art: 'kampagne', text: `Kampagne · ${k.name}${erg ? ` · ${tagDE(erg.am.slice(0, 10))}` : ''}`, href: markttraktion('sales', 'kampagnen'), ...(erg ? { datum: erg.am.slice(0, 10) } : {}) });

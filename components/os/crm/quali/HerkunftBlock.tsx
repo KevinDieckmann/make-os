@@ -25,7 +25,7 @@ export function HerkunftBlock({ h, heute, personName }: { h: Herkunft; heute: st
     <div style={{ display: 'grid', gap: 8 }}>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 700 }}>Herkunft</span>
-        <Chip farbe={C.inkDim}>{h.kanalText}</Chip>
+        {!texte.some(t => t.text.toLowerCase().startsWith(h.kanalText.toLowerCase())) && <Chip farbe={C.inkDim}>{h.kanalText}</Chip>}
         {texte.map((t, i) => t.href
           ? <button key={i} type="button" onClick={() => router.push(t.href!)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', minHeight: 32 }}><Chip farbe={FARBE[t.art]}>{t.text} ›</Chip></button>
           : <Chip key={i} farbe={FARBE[t.art]}>{t.text}</Chip>)}

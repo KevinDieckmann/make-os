@@ -4,6 +4,17 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Qualifizierung & Scoring (03.10.2026, nur lokal — Branch `quali`)
+
+Kevin 03.10.: „Beim Qualifizierungsbereich derbe reingehen — Karten sauber bearbeiten, Firma ändern, Kontakt zusammenführen … und das Leadscoring mit in die Markttraktion.“ Methode, Standard, Vorschlag und Begründung: **`SCORING.md`**.
+
+- **Neue Struktur:** der Schnellknopf heißt „Qualifizierung & Scoring“ (Kennung/alte Links bleiben): Qualifizierung (Runde) · Scoring › Marketing (bis MQL) · Sales (MQL → SQL). Einstellungen im eigenen Bestand `crm-scoring` (Stand/409, Dienstweg 403, letzte 10 Fassungen), Editor mit Live-Vorschau („so würden deine aktuellen Leads eingestuft“), „Vorschlag übernehmen“ (mit Wirkung vorher/nachher), „Auf Standard zurück“, „Letzte Änderung zurücknehmen“. **Standard = bisherige Rechnung**, bewiesen durch einen Paritätstest gegen die alte Funktion.
+- **Eine Rechnung:** `lib/crm/scoring.ts` ersetzt die vier festen Teile; Leads-Liste, Runde, Akte (`leadZeileFuer`), Lifecycle-MQL, Segmente, Heads, ZOE und der SQL-Weg lesen dasselbe (`crm.scoring`). Kontaktakte › Über: „Score x · Sales y / Schwelle z — fehlt: …“ mit Sprung in die Runde.
+- **Runde:** Seitenfenster rechts (am Handy Blatt von unten) mit voller Bearbeitung von Kontakt und Firma; je Karte nur Kontakt · Firma · Gespräch starten, Rest unter „Mehr ⋯“; Herkunft (Event + für welchen Kunden, Make.One, Kampagne, Empfehlung, Foto der Visitenkarte, Sprachnotiz, letzte Aktivität); Gesprächsmodus (Fragen der Reihe nach, Notizen nebenbei, Ergebnis SQL / weiter / parken / raus).
+- **Werkzeuge:** Firma wechseln/neu (Jobwechsel · zusätzlich · Korrektur; Lead und offene Deals ziehen mit, Deals mit weiteren Personen bleiben — der Dialog sagt es vorher), Zusammenführen (Personen über die vorhandene Dubletten-Logik, Firmen neu mit Vorschau und Ablehnung bei Verweisen außerhalb), weitere Person (Hauptansprechpartner des Leads), Abgeben, Parken (Wiedervorlage + Follow-up, kommt zurück in die Runde), Raus (Grund-Art → Auswertung).
+- **Neu im Code:** Absichtsprotokoll-Art `firma-umhaengen` (Abbruch nach jedem Schritt getestet), Bestand `crm-scoring`, optionale Felder `Lead.stufen`/`wiedervorlage`/`grundArt`/`hauptKontaktId`, Routen `/api/crm/scoring` und neue Aktionen in `/api/crm/lead`.
+- **Rückweg:** nur optionale Felder und ein neuer Bestand — Details `GO_LIVE_CHECKLISTE.md` › Rückweg.
+
 ## Netzwerken & Events — Recht: Interessenabwägung, Übermittlung an Kunden, Löschfristen (03.10.2026, nur lokal — Branch `netz-recht`)
 
 Kevins Entscheidung 03.10.: Kontakte, die wir als Interim CSO / Head of Sales **für einen Kunden** erfassen, „gehören immer auch uns“ — MAKE ist eigener Verantwortlicher (Art. 6 Abs. 1 lit. f), keine Sperre für die eigene Akquise; die Weitergabe an den Kunden ist eine Übermittlung an einen Dritten. Doku und Interessenabwägung: `DATENSCHUTZ_NETZWERKEN.md`. **Hinweis, keine Rechtsberatung — anwaltlich gegenlesen lassen.**
