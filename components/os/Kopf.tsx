@@ -18,6 +18,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { zoneFarbe } from './schlank';
 import { Sun, Inbox as InboxIcon, Search, CalendarDays, ArrowUpRight, Timer, Square, Tag } from 'lucide-react';
 import { useSpace } from '@/hooks/useSpace';
+import { useHandy } from '@/hooks/useHandy';
 import { spaceVon, type SpaceId } from '@/lib/make-one/spaces';
 import { zeitText, teile } from '@/lib/zeitmessung/modell';
 import { gemerkterFokus, fokusMerken, fokusAbgleichen, FOKUS_MERKER, FOKUS_EREIGNIS, type LaufenderFokus } from '@/lib/zeitmessung/fokus-laufend';
@@ -259,19 +260,6 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
 
 /** Runder Kopf-Knopf: Größe über `.kopf-rund` (globals.css: 40 px am Rechner, 44 px am Handy), hier nur Farbe/Rand nach Zustand. */
 const rund = (an: boolean) => ({ border: `2px solid ${an ? C.aktiv : 'rgba(255,255,255,.1)'}`, color: an ? C.aktiv : C.inkDim } as const);
-
-/** Handy-Breite (≤ 720 px), live — der Index-Schalter wandert dort aus der engen Kopfzeile in eine eigene Zeile darunter. */
-function useHandy(): boolean {
-  const [h, setH] = useState(false);
-  useEffect(() => {
-    const m = window.matchMedia('(max-width: 720px)');
-    const lesen = () => setH(m.matches);
-    lesen();
-    m.addEventListener('change', lesen);
-    return () => m.removeEventListener('change', lesen);
-  }, []);
-  return h;
-}
 
 export function Kopf() {
   const pfad = usePathname() ?? '';

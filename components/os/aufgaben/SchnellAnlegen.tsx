@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { Lock } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Knopf, feld, LEUCHT } from '../ui';
+import { useHandy } from '@/hooks/useHandy';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { parseSchnell, schnellVorschau, schnellZustaendigkeit, type SchnellPerson } from '@/lib/make-one/schnell-anlegen';
 import { sonstigeProjektId, istSonstigeProjekt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
@@ -39,6 +40,9 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
   const [parentId, setParentId] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
   const [nurIch, setNurIch] = useState(false);
+  // Am Handy steht der Ort als EINE Zeile („in KD Ventures › Projekt › Liste · ändern“); die Wahl-Chips klappen erst auf Wunsch auf.
+  const handy = useHandy();
+  const [ortAuf, setOrtAuf] = useState(false);
   const personen = usePersonen();
   const ich = useIch();
   const eingabe = useRef<HTMLInputElement>(null);
@@ -120,7 +124,13 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
           <span style={{ color: C.inkLeise }}>· Titel: „{erkannt.title}“</span>
         </div>
       )}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 10, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise }}>
+      {handy && !ortAuf && (
+        <button type="button" onClick={() => setOrtAuf(true)} aria-expanded={false} className="fassbar" style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginTop: 10, padding: '0 12px', minHeight: 44, borderRadius: 12, border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.03)', color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left', cursor: 'pointer' }}>
+          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>in <b style={{ color: space?.farbe ?? C.ink, fontWeight: 600 }}>{space?.label ?? 'Space'}</b> › {projektListe.find(p => p.id === projektId)?.label ?? 'Sonstige'}{listeId !== SONST ? ` › ${listenListe.find(l => l.id === listeId)?.label ?? ''}` : ''}</span>
+          <span style={{ color: C.aktiv, fontWeight: 600 }}>ändern</span>
+        </button>
+      )}
+      {(!handy || ortAuf) && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 10, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise }}>
         <span>in</span>
         <Wahl {...chip} label="Space" liste={spaceListe} wert={spaceId} farbe={space?.farbe ?? C.aktiv}
           onWahl={id => { setSpaceId(id); setProjektId(sonstigeProjektId(id)); setGruppeId(ALLE); setListeId(SONST); setParentId(null); }} />
@@ -144,7 +154,8 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
         </>}
         {istSonstigeProjekt(projektId) && listeId === SONST && !parentId && <span style={{ color: C.inkLeise }}>· landet unter „Sonstige“</span>}
         {hinweis && <span role="status" style={{ marginLeft: 'auto', color: LEUCHT.gut }}>{hinweis}</span>}
-      </div>
+      </div>}
+      {!(!handy || ortAuf) && hinweis && <span role="status" style={{ display: 'block', marginTop: 8, fontSize: TYP.bedien, color: LEUCHT.gut }}>{hinweis}</span>}
     </Karte>
   );
 }
