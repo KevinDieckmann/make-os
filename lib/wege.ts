@@ -35,8 +35,8 @@ export const WEG = {
   heute: () => '/os/heute',
   uebersicht: (space: 'privat' | 'business') => `/os/uebersicht?space=${space}`,
   menschen: () => '/os/menschen',
-  /** Netzwerken (02.10.): die Seite für unterwegs (Erfassen, Abendbericht — `bericht` = Event) · `netzwerkenKarte` = „Meine Visitenkarte“ (QR, vCard). */
-  netzwerken: (o: { bericht?: string } = {}) => q('/os/netzwerken', { bericht: o.bericht }),
+  /** Netzwerken (02.10.): die Seite für unterwegs (Erfassen, Abendbericht — `bericht` = Event; `event` = „Heute bei“ mit diesem Event vorwählen, 03.10.) · `netzwerkenKarte` = „Meine Visitenkarte“ (QR, vCard). */
+  netzwerken: (o: { bericht?: string; event?: string } = {}) => q('/os/netzwerken', { bericht: o.bericht, event: o.event }),
   netzwerkenKarte: () => '/os/netzwerken/karte',
   zahlen: (s?: ZahlenReiter) => q('/os/finanzen', { s }),
   /** Business-Cockpit: Sicht (gesamt weglassen), Kennzahl, Abschnitt. */
@@ -102,6 +102,8 @@ export const WEG = {
   kampagne: (id?: string, head: 'sales' | 'marketing' = 'marketing') => markttraktion(head, 'kampagnen', id),
   marketing: (a?: 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung', k?: string) => markttraktion('marketing', a, k),
   event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => `${markttraktion('event', undefined, id)}${r ? `${id ? '&' : '?'}r=${r}` : ''}`,
+  /** Events (03.10.): die Veranstaltungen, die wir BESUCHEN — `id` öffnet die Event-Akte, `a` die Ansicht (Kalender ist der Start). Make.One (unsere eigenen Abende) bleibt `WEG.event`. */
+  besuch: (id?: string, a?: 'kalender' | 'wirkung' | 'kunden') => markttraktion('besuche', a, id),
   stammdaten: (tab?: string) => markttraktion('stammdaten', tab),
   jahr: () => '/os/planung/jahr',
   /**

@@ -9,7 +9,8 @@
 //   Deals       ab SQL im Closing (Ebene 2): Board mit Ziehen, Liste, Deal-Akte, Auswertung, Kunden (Ebene 3 → Mandate)
 //   Follow-up   was dran ist: Zusagen, Wiedervorlagen, Deal-Schritte, Nachfassen, Kadenz — dazu die Power Hour
 //   Marketing   Übersicht · Segmente · Kampagnen · Redaktionsplan · Newsletter · Positionierung — Head of Marketing
-//   Events      Events mit Gästen, Checkliste, Abend, Nachfassen, Feedback, Budget — Head of Event
+//   Events      (03.10.) Veranstaltungen, die wir BESUCHEN: Kalender · Wirkung · Für Kunden, Event-Akte, Netzwerken (components/os/crm/besuche)
+//   Make.One    unsere EIGENEN Abende mit Gästen, Checkliste, Abend, Nachfassen, Feedback, Budget — Head of Event
 //   Stammdaten  Qualität, Wertelisten, Datenschutz, Import & Export
 // In der Mitte (28.09. abends) die zwei Schnellknöpfe des Bereichs, jeder für sich und leise pulsierend:
 //   Qualifizierung (orange)  Lead für Lead bis zum SQL
@@ -21,10 +22,11 @@
 // die Datenschicht weiter „crm“ (lib/crm, /api/crm) — das ist die Kartei darunter, nicht der Name.
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
-import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, LEISTE, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, LEISTE, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter, type BesucheAnsicht } from '@/lib/crm/adresse';
+import { istBesuch } from '@/lib/crm/besuche-form';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
 import { Ueberblick, WELT_FARBE } from './Ueberblick';
@@ -35,6 +37,7 @@ import { KundenKurz } from './Kunden';
 import { FollowUp } from './FollowUp';
 import { Marketing } from './Marketing';
 import { Events } from './Events';
+import { Besuche } from './besuche/Besuche';
 import { Stammdaten } from './Stammdaten';
 import { SchnellErfassen } from './SchnellErfassen';
 import { FehlerHinweis } from './FehlerHinweis';
@@ -64,6 +67,7 @@ const REITER: Record<Bereich, ReiterEintrag> = {
   angebot: { id: 'angebot', label: 'Angebot', farbe: LEUCHT.gut },
   sales: { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales },
   marketing: { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing },
+  besuche: { id: 'besuche', label: 'Events', farbe: WELT_FARBE.event },
   event: { id: 'event', label: 'Make.One', farbe: WELT_FARBE.event },
   stammdaten: { id: 'stammdaten', label: 'Stammdaten' },
 };
@@ -84,7 +88,8 @@ const UNTER: Record<Bereich, string> = {
   angebot: 'Angebot in einer Minute: Produkte anklicken, anpassen, senden.',
   sales: 'Vertrieb als System: der Head of Sales, die Power Hour, Kampagnen und die Auswertung.',
   marketing: 'Ansprechbar sein, nicht laut.',
-  event: 'Erfolgreich ist ein Event, wenn danach die richtigen Gespräche stattfinden.',
+  besuche: 'Veranstaltungen, die wir besuchen: planen, vor Ort erfassen, auswerten — für uns oder für Kunden.',
+  event: 'Make.One: unsere eigenen Abende — erfolgreich, wenn danach die richtigen Gespräche stattfinden.',
   stammdaten: 'Sauber halten, was alles andere trägt: Qualität, Werte, Datenschutz.',
 };
 
@@ -174,6 +179,11 @@ export function MarkttraktionSeite() {
   const dealsAnsicht = (bereich === 'deals' ? (ansicht ?? 'board') : 'board') as DealsAnsicht;
   const followupAnsicht = (bereich === 'followup' ? (ansicht ?? 'faellig') : 'faellig') as FollowupAnsicht;
   const salesAnsicht = (bereich === 'sales' ? (ansicht ?? 'head') : 'head') as SalesReiterAnsicht;
+  // Links auf ein BESUCHTES Event (Make.One-Adresse s=event&k=…, z. B. aus Kontaktakte, Deal, Verbindungsprüfung, ZOE) landen in der
+  // Event-Akte unter „Events“ — der alte Weg bleibt gültig, nur der Ort ist der richtige (03.10.).
+  const besuchsId = bereich === 'event' && kParam && api.crm?.stand.events.some(e => e.id === kParam && istBesuch(e)) ? kParam : null;
+  useEffect(() => { if (besuchsId) router.replace(markttraktion('besuche', undefined, besuchsId), { scroll: false }); }, [besuchsId, router]);
+  const besuche = (bereich === 'besuche' ? (ansicht ?? 'kalender') : 'kalender') as BesucheAnsicht;
   // Aktivität hinzufügen — von überall in der Markttraktion, ein Knopf oben rechts (bis 28.09. „Gespräch festhalten“).
   const [erfassen, setErfassen] = useState(false);
   const runde = bereich === 'kontakte' && ansicht?.startsWith('runde-') ? (ansicht.slice(6) as RundenArt) : null;
@@ -251,7 +261,8 @@ export function MarkttraktionSeite() {
         </>
       )}
       {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
-      {bereich === 'event' && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={(id, wie) => gehe('event', undefined, id ?? undefined, wie)} />}
+      {bereich === 'besuche' && <Besuche api={api} zuKontakt={zuKontakt} zuFirma={zuFirma} ansicht={besuche} k={kParam} onAnsicht={a => gehe('besuche', a === 'kalender' ? undefined : a)} onAkte={(id, wie) => gehe('besuche', undefined, id ?? undefined, wie ?? (id ? 'push' : 'replace'))} />}
+      {bereich === 'event' && !besuchsId && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={(id, wie) => gehe('event', undefined, id ?? undefined, wie)} />}
 
       {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
         kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}

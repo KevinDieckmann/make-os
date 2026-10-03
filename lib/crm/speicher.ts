@@ -17,6 +17,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
 import { MARKE_MAX } from './marke';
+import { fuerSaeubern, anmeldungSaeubern, werSaeubern, linkSaeubern, zielpersonenSaeubern, uebergabenSaeubern, ZIELPERSONEN_MAX, UEBERGABEN_MAX, WER_MAX } from './besuche-form';
 import { netzwerkenAngabeSaeubern } from './netzwerken';
 import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
 import { LIFECYCLE_PHASEN } from './lifecycle';
@@ -78,7 +79,7 @@ export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> =
   mandate: { kontaktIds: GRENZE_IDS, ziele: 500, leistungen: 1000, offen: 1000 },
   leistungen: { lieferumfang: 500, phasen: 500, unterlagen: 500 },
   firmen: { branchen: 100 },
-  events: { ablauf: 1000, checkliste: 2000, budget: 1000 },
+  events: { ablauf: 1000, checkliste: 2000, budget: 1000, zielpersonen: ZIELPERSONEN_MAX, uebergaben: UEBERGABEN_MAX, wer: WER_MAX },
   sitzungen: { karten: 2000 },
   beitraege: { wirkung: 20000, quellen: 1000 },
   newsletter: { beitragIds: GRENZE_IDS },
@@ -361,7 +362,13 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
     }
     case 'mandate': return firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {};
     // Marke (27.09.): durchreichen, wenn gesetzt — ohne Eintrag gilt Make.One abgeleitet (lib/crm/events.ts markeVon), nichts wird zurückgeschrieben.
-    case 'events': return { ...(opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {}), ...(opt(o.marke, MARKE_MAX) ? { marke: opt(o.marke, MARKE_MAX) } : {}) };
+    // Besuchte Events (03.10., lib/crm/besuche-form.ts): für wen, Anmeldestand, wer geht, Link, Zielpersonen, Übergabe-Protokoll — ohne diese Zeilen fielen sie bei jedem Speichern weg.
+    case 'events': {
+      const fuer = fuerSaeubern(o.fuer), anmeldung = anmeldungSaeubern(o.anmeldung), wer = werSaeubern(o.wer), link = linkSaeubern(o.link);
+      const zielpersonen = zielpersonenSaeubern(o.zielpersonen), uebergaben = uebergabenSaeubern(o.uebergaben);
+      return { ...(opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {}), ...(opt(o.marke, MARKE_MAX) ? { marke: opt(o.marke, MARKE_MAX) } : {}),
+        ...(fuer ? { fuer } : {}), ...(anmeldung ? { anmeldung } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(zielpersonen ? { zielpersonen } : {}), ...(uebergaben ? { uebergaben } : {}) };
+    }
     case 'kampagnen': case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};
     case 'newsletter': return wer(o.stimme) || o.stimme === 'marke' ? { stimme: String(o.stimme) } : {};
     case 'teilnahmen': {

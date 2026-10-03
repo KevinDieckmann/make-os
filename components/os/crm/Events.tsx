@@ -1,6 +1,9 @@
 'use client';
 
-// ─── Markttraktion · Events · Make.One — Stammtisch, Workshop, Dinner, Webinar ──────
+// ─── Markttraktion · Make.One — unsere EIGENEN Abende: Stammtisch, Workshop, Dinner, Webinar ──────
+// Seit 03.10. (Kevin: „Einmal wirklich Make.One und daneben das ganze Thema Events“) steht hier nur noch, was wir selbst
+// veranstalten. Veranstaltungen, die wir BESUCHEN (fremde Events, Messen, Kunden-Events; `marke: Netzwerken`), liegen im
+// Reiter „Events“ (components/os/crm/besuche) — `istNetzwerkenEvent` filtert sie hier heraus (Liste, Nachfassen, Wirkung).
 // Ein Event ist erfolgreich, wenn danach die richtigen Gespräche stattfinden.
 // Deshalb: ein messbares Ziel, eine bewusste Gästeliste aus der Kartei
 // (Mischung gegen das Soll), sechs Wochen Vorlauf als Checkliste, Zusage und
@@ -23,11 +26,13 @@
 // sieht „ist gerade bei diesem Event“.
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
 import { VORLAGEN, vorlageAnwenden, checklisteStand, einlader, type VorlageId } from '@/lib/crm/eventplanung';
 import { MARKE_EVENTS, nachfassenRest } from '@/lib/crm/events';
+import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { TEAM, verantwortlich, zustaendig, anderer, nameVon } from '@/lib/crm/team';
 import { anzeigename } from '@/lib/make-one/crm';
 import { WEG } from '@/lib/wege';
@@ -45,12 +50,13 @@ const K = (id: string) => kachel('event', id);
 const stunden = (h: number) => (h >= 48 ? `noch ${Math.floor(h / 24)} Tage` : h >= 0 ? `noch ${h} Std.` : h > -48 ? `seit ${-h} Std. vorbei` : `seit ${Math.floor(-h / 24)} Tagen vorbei`);
 const fristFarbe = (h: number) => (h > 24 ? LEUCHT.gut : h >= 0 ? LEUCHT.achtung : LEUCHT.kritisch);
 
-/** Kopf des Reiters: die Marke, unter der die Events laufen. */
+/** Kopf des Reiters: die Marke und ein Weg zu den Events, die wir besuchen. */
 function Kopf() {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-      <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.2 }}>Events · {MARKE_EVENTS}</span>
-      <span style={{ fontSize: 12.5, color: C.inkLeise }}>Unsere Veranstaltungsmarke — unter ihr laufen alle Events.</span>
+      <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.2 }}>{MARKE_EVENTS}</span>
+      <span style={{ fontSize: 12.5, color: C.inkLeise }}>Unsere Veranstaltungsmarke — hier laufen unsere eigenen Abende.</span>
+      <Link href={WEG.besuch()} style={{ fontSize: 12.5, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Veranstaltungen, die wir besuchen: Events ›</Link>
     </div>
   );
 }
@@ -68,7 +74,8 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
 
   const crm = api.crm;
   const heute = crm?.heute ?? '';
-  const events = useMemo(() => [...(crm?.stand.events ?? [])].sort((a, b) => b.datum.localeCompare(a.datum)), [crm?.stand.events]);
+  // Nur unsere eigenen Abende — besuchte Events (Netzwerken) stehen im Reiter „Events“.
+  const events = useMemo(() => (crm?.stand.events ?? []).filter(e => !istNetzwerkenEvent(e)).sort((a, b) => b.datum.localeCompare(a.datum)), [crm?.stand.events]);
   const idsEvents = new Set(events.map(e => e.id));
   const kommendAlle = events.filter(e => e.datum >= heute && e.status !== 'abgesagt').reverse();
   const vorbeiAlle = events.filter(e => e.datum < heute || e.status === 'abgesagt');
@@ -87,7 +94,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
     const liste: { t: { id: string; kontaktId: string }; e: Event; name: string; firma?: string }[] = [];
     if (!crm) return { nachfassen: r, offenListe: liste };
     const nachId = new Map((api.kontakte ?? []).map(k => [k.id, k]));
-    const eventVon = new Map(crm.stand.events.map(e => [e.id, e]));
+    const eventVon = new Map(events.map(e => [e.id, e]));
     for (const t of crm.stand.teilnahmen) {
       const ev = t.status === 'da' && !t.followUpAm ? eventVon.get(t.eventId) : undefined;
       if (!ev) continue;
@@ -98,7 +105,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
     }
     liste.sort((a, b) => b.e.datum.localeCompare(a.e.datum));
     return { nachfassen: r, offenListe: liste };
-  }, [crm, api.kontakte, heute]);
+  }, [crm, events, api.kontakte, heute]);
 
   // Wirkung der vergangenen Events (nicht abgesagt) — aus den Zahlen des Servers (crm.events), keine zweite Rechnung.
   const wirkung = useMemo(() => {

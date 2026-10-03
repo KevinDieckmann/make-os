@@ -27,7 +27,7 @@ const A = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({
 export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // ── CRM-Kern (lib/crm/person-bestaende.ts) ──
   E('kontakte', 'Die Kartei — Eintrag raus (personEntfernen), mit allen Feldern inkl. Geburtstag (K2, 29.09.).', 'kontakte'),
-  E('crm', 'Kennung raus (person-verweise.ts), voller Name in Deal-Titeln/Kundennamen → „[gelöscht]“.'),
+  E('crm', 'Kennung raus (person-verweise.ts) — auch aus den Zielpersonen besuchter Events (Event.zielpersonen, 03.10.); voller Name in Deal-Titeln/Kundennamen → „[gelöscht]“.'),
   E('crm-dateien--*', 'Dateiablage: nur Personen-Bezug → Eintrag + Datei weg; mit Geschäftsbezug nur der Personen-Bezug.'),
   E('crm-import-konflikte', 'Konflikte und mögliche Dubletten der Person raus.', 'import-konflikte'),
   E('crm-import-laeufe--*', 'Vorher-Stände der Person raus (laufOhne), auch Zusammenführ-Läufe; Namen getilgt.', 'import-laeufe'),

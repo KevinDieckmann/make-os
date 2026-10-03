@@ -151,6 +151,8 @@ export function loeschSperren(b: CrmBestand, ops: ListenOp[], kontext: VerweisKo
         toechter: toechter(b.firmen, f.id).length,
         dateien: dateien.filter(d => d.firmaId === f.id).length,
         followups: offeneFu('firma', f.id),
+        // Besuchte Events (03.10.): „für diesen Kunden“ und Zielfirmen — nie ins Leere zeigen.
+        events: (b.events ?? []).filter(e => !satz.geloescht.has(`events:${e.id}`) && (e.fuer?.art === 'kunde' && e.fuer.firmaId === f.id || (e.zielpersonen ?? []).some(z => z.firmaId === f.id))).length,
       });
       if (summe(anzahl)) sperren.push({ liste: 'firmen', id, anzahl, text: verweisText(f.name, anzahl) });
     } else if (o.liste === 'mandate') {

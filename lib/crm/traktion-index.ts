@@ -205,7 +205,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   },
   nachfassen_48h(b) {
     const vor90 = tagMinus(b.heute, 89);
-    const nachEvent = new Map(b.crm.events.map(e => [e.id, e]));
+    const nachEvent = new Map(b.crm.events.filter(e => !istNetzwerkenEvent(e)).map(e => [e.id, e]));
     return b.crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && nachEvent.has(t.eventId) && nachEvent.get(t.eventId)!.datum >= vor90 && followUpBis(nachEvent.get(t.eventId)!) < b.heute).slice(0, 4)
       .map(t => personDetail(b, t.kontaktId, 'offen', `„${nachEvent.get(t.eventId)!.titel.slice(0, 40)}“ · Frist war ${tagKurz(followUpBis(nachEvent.get(t.eventId)!))}`, 'rot')).filter((d): d is Detail => !!d);
   },

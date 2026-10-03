@@ -205,12 +205,13 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       const ev = b.events.find(x => x.id === e.eventId);
       if (!ev) {
         if (!e.eventNeu) { fehlt = true; return b; }
-        const neu = neuesEvent({ id: e.eventId, titel: e.eventNeu.titel, datum: e.eventNeu.datum, ...(e.eventNeu.ort ? { ort: e.eventNeu.ort } : {}), person: ctx.person, heute, jetztIso });
+        const neu = neuesEvent({ id: e.eventId, titel: e.eventNeu.titel, datum: e.eventNeu.datum, ...(e.eventNeu.ort ? { ort: e.eventNeu.ort } : {}), ...(e.eventNeu.fuer ? { fuer: e.eventNeu.fuer } : {}), person: ctx.person, heute, jetztIso });
         return { ...b, events: [...b.events, neu] };
       }
       // Wer „Heute bei“ wählt, ist dort: ein Event von heute oder früher, das noch „geplant“ steht, gilt als durchgeführt.
       if (ev.datum <= heute && (ev.status === 'geplant' || ev.status === 'einladung' || ev.status === 'idee')) {
-        return { ...b, events: b.events.map(x => (x.id === ev.id ? { ...x, status: 'durchgefuehrt' as const, geaendert: jetztIso, geaendertVon: ctx.person } : x)) };
+        // Hat das Event einen Anmeldestand (Events-Reiter, 03.10.), zieht er mit: wer dort erfasst, hat es besucht.
+        return { ...b, events: b.events.map(x => (x.id === ev.id ? { ...x, status: 'durchgefuehrt' as const, ...(x.anmeldung ? { anmeldung: 'besucht' as const } : {}), geaendert: jetztIso, geaendertVon: ctx.person } : x)) };
       }
       return b;
     }, ctx.wer);

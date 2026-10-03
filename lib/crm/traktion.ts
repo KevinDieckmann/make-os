@@ -101,7 +101,8 @@ export function eventKennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: str
   const in90 = vorbei.filter(e => e.datum >= vor90 && e.datum <= heute);
 
   // Nachfassen binnen 48 Stunden — nur Gäste, deren Frist schon abgelaufen ist oder die schon nachgefasst sind.
-  const nachEvent = new Map((crm.events ?? []).map(e => [e.id, e]));
+  // „Nachfassen binnen 48 h“ ist die Kennzahl der EIGENEN Abende — Teilnahmen besuchter Events (Netzwerken) zählen hier nicht (Events-Reiter, 03.10.: eigene Kennzahlen in lib/crm/besuche.ts).
+  const nachEvent = new Map((crm.events ?? []).filter(e => !istNetzwerkenEvent(e)).map(e => [e.id, e]));
   const gaeste = crm.teilnahmen.filter(t => t.status === 'da' && nachEvent.has(t.eventId) && nachEvent.get(t.eventId)!.datum >= vor90)
     .filter(t => t.followUpAm || followUpBis(nachEvent.get(t.eventId)!) < heute);
   const puenktlich = gaeste.filter(t => t.followUpAm && t.followUpAm.slice(0, 10) <= followUpBis(nachEvent.get(t.eventId)!)).length;

@@ -47,7 +47,8 @@ describe('Reiterleiste — links · Mitte · rechts', () => {
   it('Schnellknöpfe in der Mitte: Qualifizierung, dann Angebot', () => {
     expect(LEISTE.mitte).toEqual(['qualifizierung', 'angebot']);
     expect(LEISTE.links).toEqual(['ueberblick', 'kontakte', 'firmen', 'deals', 'followup']);
-    expect(LEISTE.rechts).toEqual(['sales', 'marketing', 'event', 'stammdaten']);
+    // Events (besuchte Veranstaltungen, 03.10.) zwischen Marketing und Make.One.
+    expect(LEISTE.rechts).toEqual(['sales', 'marketing', 'besuche', 'event', 'stammdaten']);
   });
 
   it('jeder Bereich steht genau einmal in der Leiste', () => {

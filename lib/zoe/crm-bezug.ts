@@ -50,7 +50,7 @@ export function zoeBezugFuer(bereich: string, ansicht: string | null | undefined
   switch (bereich) {
     case 'deals': case 'followup': case 'sales': return { art: 'sales' };
     case 'marketing': return { art: 'marketing' };
-    case 'event': return { art: 'event-welt' };
+    case 'event': case 'besuche': return { art: 'event-welt' };
     case 'qualifizierung': return { art: 'qualifizierung' };
     case 'stammdaten': return { art: 'stammdaten' };
     default: return { art: 'markttraktion' };

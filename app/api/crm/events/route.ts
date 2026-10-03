@@ -27,6 +27,10 @@
 // GET  ?liquiplan=<eventId> → wo das Event im Plan steht (fehlt · ok · abweichend).
 // POST { aktion: 'loeschen', eventId } → Event löschen MIT Kaskade (28.09., W6): Teilnahmen weg, offene
 //      Follow-ups des Events abgesagt — in einer Sperre (lib/crm/crm-stand.ts loeschKaskade).
+// POST { aktion: 'kunden-uebergabe', eventId } → „An Kunden übergeben“ (Events-Reiter, 03.10.): die Kontakte eines BESUCHTEN
+//      Events, das für einen Kunden läuft, als CSV (lib/crm/besuche.ts `kundenExport`) — nur Felder, keine Fotos/Sprachnotizen/
+//      Notizen, nie Personen mit Einschränkung (Art. 18) oder Werbesperre. Nur mit Sitzung (nie über den Dienstweg); jede Übergabe
+//      steht im Protokoll des Events (`uebergaben`: Tag, Person, Anzahl — nie die Kontakte). Kontakte für Kunden = Auftragsverarbeitung (AVV).
 // Alles nur auf Klick von Kevin oder Malin — hier wird nichts versendet.
 
 import { NextResponse } from 'next/server';
@@ -43,6 +47,10 @@ import { hebtLead, planpostenAusEvent, planpostenId, liquiplanStand, type Nachfa
 import { leadHebenNachGespraech } from '@/lib/crm/lead-heben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
+import { istDienst } from '@/lib/zugang/dienst';
+import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
+import { kundenExport } from '@/lib/crm/besuche';
+import { istBesuch, UEBERGABEN_MAX } from '@/lib/crm/besuche-form';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -124,6 +132,18 @@ export async function POST(req: Request) {
     const ops = halter.ops ?? [];
     const teilnahmen = ops.filter(o => o.liste === 'teilnahmen').length, abgesagt = ops.filter(o => o.liste === 'followups').length;
     return NextResponse.json({ ok: true, teilnahmen, abgesagt, text: `Event gelöscht${teilnahmen ? ` · ${teilnahmen} Teilnahme${teilnahmen === 1 ? '' : 'n'} entfernt` : ''}${abgesagt ? ` · ${abgesagt} offene${abgesagt === 1 ? 's' : ''} Follow-up${abgesagt === 1 ? '' : 's'} abgesagt` : ''}.` });
+  }
+
+  if (b.aktion === 'kunden-uebergabe') {
+    // Personendaten gehen nur an Menschen am Gerät — der Dienstweg (ZOE, Arbeiter) übergibt nie.
+    if (istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Kontakte übergibt nur eine angemeldete Person.' }, { status: 403 });
+    if (!istBesuch(e) || e.fuer?.art !== 'kunde') return NextResponse.json({ ok: false, fehler: 'Übergeben wird nur bei einem besuchten Event, das für einen Kunden läuft.' }, { status: 400 });
+    // Mit den eingeschränkten: `kundenExport` lässt sie selbst aus und zählt sie (Hinweis „bewusst nicht dabei“) — nie still.
+    const kontakte = await kontakteFuerVerarbeitung({ mitEingeschraenkten: true });
+    const r = kundenExport({ event: e, teilnahmen: crm.teilnahmen, kontakte });
+    if (!r.anzahl) return NextResponse.json({ ok: false, fehler: `Keine Kontakte zum Übergeben${r.ausgelassen.gesperrt ? ` — ${r.ausgelassen.gesperrt} gesperrte Person${r.ausgelassen.gesperrt === 1 ? '' : 'en'} (Art. 18 / Werbesperre) bleiben bewusst draußen` : ''}.` }, { status: 400 });
+    await aendereCrm(c => ({ ...c, events: c.events.map(x => (x.id === eventId ? { ...x, uebergaben: [...(x.uebergaben ?? []), { am: jetzt, von: person, anzahl: r.anzahl }].slice(-UEBERGABEN_MAX), geaendert: jetzt, geaendertVon: person } : x)) }), werAus(req));
+    return NextResponse.json({ ok: true, csv: r.csv, dateiname: r.dateiname, anzahl: r.anzahl, ausgelassen: r.ausgelassen }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   if (b.aktion === 'nachfassen') {
@@ -237,5 +257,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, geaendert });
   }
 
-  return NextResponse.json({ ok: false, fehler: 'aktion: checkliste-aufgaben, punkt, aufgabe-status, nachfassen oder liquiplan.' }, { status: 400 });
+  return NextResponse.json({ ok: false, fehler: 'aktion: checkliste-aufgaben, punkt, aufgabe-status, nachfassen, kunden-uebergabe, liquiplan oder loeschen.' }, { status: 400 });
 }

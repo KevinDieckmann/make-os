@@ -14,11 +14,12 @@
 // schalten). Der Vermerk `KEINE_EINWILLIGUNG` steht im Verlauf; Herkunft „Veranstaltung“, Quelle „Netzwerken“.
 
 import { anzeigename, normName, normFirma, normTelefon, istSammelAdresse, type Kontakt } from '@/lib/make-one/crm';
-import type { Event, Firma, FollowUp, NetzwerkenAngabe, NetzwerkSchritt, Teilnahme } from './typen';
+import type { Event, EventAnmeldung, EventFuer, Firma, FollowUp, NetzwerkenAngabe, NetzwerkSchritt, Teilnahme } from './typen';
+import { fuerSaeubern, werSaeubern, linkSaeubern } from './besuche-form';
 import { alleAdressen } from './emails';
 import { firmenSchluessel, bestehendeFirma } from './firmen';
 import { haeltBeziehung } from './team';
-import { MARKE_EVENTS } from './marke';
+import { MARKE_EVENTS, istNetzwerkenEvent } from './marke';
 import { emailNormal, telefonNormal, linkedinNormal, webNormal, text } from './visitenkarte';
 import { mailLink } from './erfassen';
 import { kanalStatus } from './recht';
@@ -77,11 +78,17 @@ const SCHRITT_IDS = SCHRITTE.map(s => s.id) as readonly string[];
 
 /** Ziel eines unterwegs angelegten Events (Pflichtfeld des Events — „Netzwerken“ allein wäre keins). */
 export const EVENT_ZIEL = 'Neue Kontakte kennenlernen und binnen 48 Stunden nachfassen';
-/** Ein Event, das „Heute bei“ unterwegs anlegt — Browser (Event-Schreibweg) und Server (wenn es ohne Netz entstand) bauen es gleich. */
-export function neuesEvent(o: { id: string; titel: string; datum: string; ort?: string; person: string; heute: string; jetztIso: string }): Event {
+/**
+ * Ein Event, das „Heute bei“ oder der Reiter „Events“ anlegt — Browser (Event-Schreibweg) und Server (wenn es ohne Netz entstand)
+ * bauen es gleich. Optional (03.10.): `fuer` (MAKE selbst oder Kunde — fehlt = MAKE), `wer` (wer hingeht), `link`, `anmeldung`;
+ * ohne Angabe bleibt der Eintrag so schlank wie vorher.
+ */
+export function neuesEvent(o: { id: string; titel: string; datum: string; ort?: string; person: string; heute: string; jetztIso: string; fuer?: EventFuer; wer?: string[]; link?: string; anmeldung?: EventAnmeldung }): Event {
+  const fuer = fuerSaeubern(o.fuer), wer = werSaeubern(o.wer), link = linkSaeubern(o.link);
   return {
     id: o.id, titel: o.titel, format: 'sonstig', ziel: EVENT_ZIEL, datum: o.datum, ...(o.ort ? { ort: o.ort } : {}),
     status: o.datum <= o.heute ? 'durchgefuehrt' : 'geplant', marke: NETZWERKEN_QUELLE, zustaendig: o.person, geaendert: o.jetztIso, geaendertVon: o.person,
+    ...(fuer ? { fuer } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(o.anmeldung ? { anmeldung: o.anmeldung } : {}),
   };
 }
 
@@ -105,7 +112,7 @@ export interface Erfassung {
   erfasstAm: string;
   eventId: string;
   /** Nur wenn das Event unterwegs ohne Netz angelegt wurde: der Server legt es an, wenn es fehlt. */
-  eventNeu?: { titel: string; datum: string; ort?: string };
+  eventNeu?: { titel: string; datum: string; ort?: string; /** Für wen (03.10.): fehlt = MAKE selbst. */ fuer?: EventFuer };
   kontakt: KontaktFelder;
   /** „Diesen nehmen“: die Erfassung hängt an dieser bestehenden Person (kein neuer Kontakt). */
   vorhandenKontaktId?: string;
@@ -197,7 +204,8 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
     if (!titel || titel.length > 160 || !TAG.test(datum)) return fehler('Das neue Event braucht einen Namen (höchstens 160 Zeichen) und ein Datum.');
     const ort = text(e.ort, 201);
     if (ort.length > 200) return fehler('Der Ort ist zu lang (höchstens 200 Zeichen).');
-    eventNeu = { titel, datum, ...(ort ? { ort } : {}) };
+    const fuer = fuerSaeubern(e.fuer);
+    eventNeu = { titel, datum, ...(ort ? { ort } : {}), ...(fuer ? { fuer } : {}) };
   }
 
   // Person
@@ -553,14 +561,14 @@ export interface ErgebnisLink { id: 'termin' | 'deal' | 'followup' | 'event' | '
  * Die Sprünge zu allem, was eine Erfassung angelegt hat — aus Kennungen, die der Server fest vergibt (`ch-nw-<Erfassung>`,
  * `fu-<Erfassung>`, Termin-Schlüssel). Dieselbe Liste speist die Fertig-Seite und den Abendbericht.
  */
-export function ergebnisLinks(o: { schritt: NetzwerkSchritt; erfassungId?: string; kontaktId?: string; eventId?: string; terminId?: string; terminAm?: string; dealId?: string; followupId?: string }): ErgebnisLink[] {
+export function ergebnisLinks(o: { schritt: NetzwerkSchritt; erfassungId?: string; kontaktId?: string; eventId?: string; terminId?: string; terminAm?: string; dealId?: string; followupId?: string; /** Besuchtes Event (Events-Reiter, 03.10.): der Sprung geht direkt in die Event-Akte statt über die Weiterleitung von Make.One. */ besuch?: boolean }): ErgebnisLink[] {
   const l: ErgebnisLink[] = [];
   if (o.terminId && o.terminAm) l.push({ id: 'termin', label: 'Termin öffnen', href: WEG.termin(o.terminId, o.terminAm.slice(0, 10)) });
   const deal = o.dealId ?? (o.schritt === 'vermitteln' && o.erfassungId ? `ch-nw-${o.erfassungId}` : undefined);
   if (deal) l.push({ id: 'deal', label: 'Deal öffnen', href: WEG.deal(deal) });
   const fu = o.followupId ?? (o.schritt === 'followup' && o.erfassungId ? `fu-${o.erfassungId}` : undefined);
   if (fu) l.push({ id: 'followup', label: 'Follow-up öffnen', href: WEG.followup() });
-  if (o.eventId) l.push({ id: 'event', label: 'Event öffnen', href: WEG.event(o.eventId) });
+  if (o.eventId) l.push({ id: 'event', label: o.besuch ? 'Event-Akte' : 'Event öffnen', href: o.besuch ? WEG.besuch(o.eventId) : WEG.event(o.eventId) });
   if (o.kontaktId) l.push({ id: 'kontakt', label: 'Zur Person', href: WEG.akte(o.kontaktId) });
   return l;
 }
@@ -589,7 +597,7 @@ export function berichtAus(o: { event: Event; teilnahmen: readonly Teilnahme[]; 
       if (n.schritt === 'makeone') offen.push(`${MARKE_EVENTS}-Einladung offen`);
     }
     zeilen.push({ kontaktId: k.id, name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}), schritt: n.schritt, schrittText: schrittLabel(n.schritt), zustaendig: n.zustaendig, erfasstVon: n.erfasstVon, ...(n.info ? { info: n.info } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}), erfasstAm: n.erfasstAm, offen,
-      links: ergebnisLinks({ schritt: n.schritt, erfassungId: n.erfassungId, kontaktId: k.id, eventId: o.event.id, ...(n.terminId ? { terminId: n.terminId } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}) }) });
+      links: ergebnisLinks({ schritt: n.schritt, erfassungId: n.erfassungId, kontaktId: k.id, eventId: o.event.id, besuch: istNetzwerkenEvent(o.event), ...(n.terminId ? { terminId: n.terminId } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}) }) });
   }
   zeilen.sort((a, b) => a.erfasstAm.localeCompare(b.erfasstAm));
   const jePerson: Record<string, number> = {};

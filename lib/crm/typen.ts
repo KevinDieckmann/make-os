@@ -343,10 +343,31 @@ export interface Event {
   zustaendig?: string;
   /** Veranstaltungsmarke, unter der das Event läuft (Kevin 27.09.: „Make.One“). Fehlt sie, gilt MARKE_EVENTS (lib/crm/events.ts) — abgeleitet, nie zurückgeschrieben. */
   marke?: string;
+  // ── Besuchte Events (Reiter „Events“, 03.10., lib/crm/besuche.ts) — alles optional, der Altbestand liest ohne Migration ──
+  /** Für wen wir dort sind: MAKE selbst (Standard, fehlt = make) oder ein Kunde (Firma der Kartei, ggf. mit Mandat). */
+  fuer?: EventFuer;
+  /** Anmeldestand eines BESUCHTEN Events; fehlt er, gilt er abgeleitet aus `status` (`anmeldungVon`). `status` zieht beim Setzen mit. */
+  anmeldung?: EventAnmeldung;
+  /** Wer von uns hingeht (Team-Kürzel, lib/crm/team.ts). */
+  wer?: string[];
+  /** Link zur Veranstaltung (nur https). */
+  link?: string;
+  /** Wen wir treffen wollen — Personen/Firmen aus der Kartei; beim Event abhaken (getroffen). Personenbezogen (Art. 15/17: lib/crm/person-verweise.ts). */
+  zielpersonen?: EventZielperson[];
+  /** Protokoll „An Kunden übergeben“ (Auftragsverarbeitung): wann, wer, wie viele Kontakte — nie die Kontakte selbst. */
+  uebergaben?: EventUebergabe[];
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
 }
+/** Für wen ein besuchtes Event ist: wir selbst oder ein Kunde (Firma der Kartei; das Mandat ist optional). */
+export type EventFuer = { art: 'make' } | { art: 'kunde'; firmaId: string; mandatId?: string };
+/** Anmeldestand eines besuchten Events. */
+export type EventAnmeldung = 'geplant' | 'angemeldet' | 'abgesagt' | 'besucht';
+/** Ein Ziel „wen wollen wir treffen“: eine Person oder eine Firma der Kartei; `getroffen` wird beim Event abgehakt. */
+export interface EventZielperson { kontaktId?: string; firmaId?: string; getroffen?: boolean }
+/** Ein Eintrag im Übergabe-Protokoll (An Kunden übergeben). */
+export interface EventUebergabe { am: string; von: string; anzahl: number }
 /** Die Schritte nach dem Kennenlernen (Netzwerken — Erfassen, 02.10.). Liste, Beschriftung und Regeln: lib/crm/netzwerken.ts. */
 export type NetzwerkSchritt = 'termin' | 'qualifizieren' | 'followup' | 'vermitteln' | 'andere' | 'angebot' | 'makeone' | 'nur-kontakt';
 /** Was „Netzwerken“ an der Teilnahme festhält (alles optional im Altbestand; gesäubert in lib/crm/speicher.ts `zusatz`). */

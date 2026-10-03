@@ -16,6 +16,7 @@ import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, 
 import { anzeigename, type Aktivitaet } from '@/lib/make-one/crm';
 import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
 import { dealZuFirma, mandatZuFirma } from '@/lib/crm/firmen-bezug';
+import { eventsFuerKunde, erfassteTeilnahmen } from '@/lib/crm/besuche';
 import type { Firma, FirmaRolle } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, nurFelder } from './daten';
 import { Feldzeile, Pillen, Feld, Verlauf } from './teile';
@@ -230,6 +231,15 @@ function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuP
           <Ueberschrift rechts={gruppe.length > 1 ? <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}><input type="checkbox" checked={gruppeAn} onChange={e => setGruppeAn(e.target.checked)} />ganze Gruppe</label> : undefined}>Deals & Mandate</Ueberschrift>
           {chancen.map(c => <Link key={c.id} href={WEG.deal(c.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{c.titel} <span style={{ color: C.inkLeise }}>· {crm.stufen.find(s => s.id === c.stufe)?.label}{c.wert.betrag ? ` · ${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : ''}` : ''} ›</span></Link>)}
           {mandate.map(m => <Link key={m.id} href={WEG.mandat(m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{m.titel.slice(0, 80)} <span style={{ color: C.inkLeise }}>· Mandat {m.status}{m.honorar.betrag ? ` · ${euro(m.honorar.betrag)}` : ''} ›</span></Link>)}
+        </div>
+      )}
+      {/* Events für diesen Kunden (03.10.): besuchte Events, die für diese Firma laufen (Reiter „Events“) — mit ihren erfassten Kontakten. */}
+      {eventsFuerKunde(crm.stand.events, f.id).length > 0 && (
+        <div>
+          <Ueberschrift rechts={`${eventsFuerKunde(crm.stand.events, f.id).length}`}>Events für diesen Kunden</Ueberschrift>
+          {eventsFuerKunde(crm.stand.events, f.id).map(e => (
+            <Link key={e.id} href={WEG.besuch(e.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{e.titel} <span style={{ color: C.inkLeise }}>· {datum(e.datum, crm.heute)} · {erfassteTeilnahmen(e.id, crm.stand.teilnahmen).length} Kontakte</span></Link>
+          ))}
         </div>
       )}
       {/* Termine (30.09., K3): mit der Firma, ihren Personen, Deals oder Mandaten verknüpft (kalender-bezug). */}

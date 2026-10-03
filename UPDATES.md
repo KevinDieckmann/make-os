@@ -4,6 +4,40 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Events (besuchte Veranstaltungen) neben Make.One (03.10.2026, nur lokal — Branch `events`)
+
+Kevin 03.10.: „Einmal wirklich Make.One und daneben das ganze Thema Events. Dann verbinden wir die beiden Sachen. Dann können auch die Events sauber vernetzt werden, auch wenn wir für Kunden unterwegs sind.“
+
+- **Aufteilung:** Markttraktion rechts: Sales · Marketing · **Events** (neu, Kennung `besuche`) · **Make.One** (Kennung `event`, unverändert) · Stammdaten. Make.One zeigt nur noch unsere eigenen Abende
+  (Liste, Nachfassen, Wirkung, Kachel „Nächstes Event“ auf der Startseite filtern besuchte Events heraus). Events = alle Veranstaltungen, die wir **besuchen**, samt Netzwerken (ein Datenbestand:
+  besuchte Events sind Events mit `marke: Netzwerken`, bestehende Daten bleiben gültig). Alte Links bleiben gültig: `?s=event`, `?s=events` und `/os/crm?s=events` öffnen Make.One; ein Link auf ein
+  BESUCHTES Event (`?s=event&k=…`, z. B. aus Kontaktakte, Deal, Verbindungsprüfung) leitet in die Event-Akte um. *(Die Kennung des neuen Reiters ist `besuche`, nicht `events` — `events` ist der alte Name von Make.One und per Test festgeschrieben.)*
+- **Events › Kalender · Wirkung · Für Kunden** (Pillen, `a=wirkung|kunden`, Event-Akte über `k=<Event>`): Kalender mit anstehenden/vergangenen besuchten Events (Anmeldestand geplant · angemeldet · abgesagt · besucht,
+  Kosten, wer von uns hingeht, Ort/Datum/Link, „für Kunde X“), unsere Make.One-Abende dazwischen nur lesend (ein Tipp öffnet Make.One). „+ Event“ = Name, Datum, Ort, für wen, wer geht hin.
+  **Im MAKE-OS-Kalender** erscheint ein Event über den schon vorhandenen Weg der Make.One-Events: Knopf „Termin anlegen (Kalender Gemeinsam)“ in der Event-Akte (`events/Kalender.tsx` → `POST /api/kalender/spiegel`, echte UID,
+  Änderungen/Absage ziehen nach) — nichts wird still angelegt. Der Anmeldestand zieht `status` mit (`anmeldungPatch`), damit Spiegel, Heads und Kennzahlen dasselbe sehen.
+- **Event-Akte** (`components/os/crm/besuche/BesuchAkte.tsx`): Kopf (Anmeldung, Wann & wo, Link, **für wen**, wer geht, Kosten, Kalender) · Ziel (Freitext, `Event.ziel`) und **Zielpersonen/-firmen** aus der Kartei per Suche
+  („wen wollen wir treffen“, beim Event abhaken; wer über Netzwerken erfasst wird, gilt automatisch als getroffen; Art.-18-Personen nie, Server-Schranke) · erfasste Personen (mit Sprüngen zu Person, Termin, Deal, Follow-up)
+  · Wirkung · bei einem Kunden „An Kunden übergeben“. Hauptaktion: **„Jetzt erfassen“** → Netzwerken mit diesem Event vorgewählt (`/os/netzwerken?event=<id>`).
+- **Netzwerken:** „Heute bei“ bietet die Events aus dem Event-Kalender an — erst **Heute**, dann **In den nächsten Tagen** (besuchte, 2 Tage zurück bis 7 voraus), der Rest über die Suche (`heuteBeiAngebot`). Ein neues Event dort
+  landet im Kalender, „für wen“ (MAKE selbst / Kunde per Suche) ist beim Anlegen wählbar und am gewählten Event änderbar; jede Erfassung erbt es. Abendbericht und Danke-Mails hängen am Event: von der Event-Akte
+  „Abendbericht und Danke-Mails ›“, vom Abendbericht „Event-Akte öffnen ›“. Wer bei einem „angemeldeten“ Event erfasst, setzt es auf „besucht“.
+- **Für Kunden:** `Event.fuer` = MAKE selbst oder Kunde (Firma der Kartei, Mandat optional → Link in die Mandatsakte). Die Kontakte bleiben in unserer Kartei und sind dem Kunden über das Event zugeordnet; Auswertung je Kunde im
+  Reiter „Für Kunden“, „Events für diesen Kunden“ in der Firmenakte, „besuchtes Event für <Kunde>“ in der Kontaktakte. **„An Kunden übergeben“** (`POST /api/crm/events { aktion: 'kunden-uebergabe' }`): CSV nur mit Feldern
+  (Name, Firma, Position, Mail, Telefon, Mobil, LinkedIn, Webseite + Datum, Veranstaltung, Herkunft, Vermerk „keine Werbe-Einwilligung“), **nie** Fotos, Sprachnotizen, Gesprächsnotizen oder Kennungen, **nie** Personen mit Art. 18
+  oder Werbesperre (gezählt und angezeigt, nicht verschwiegen), nur mit Sitzung (Dienstweg 403), Formel-Anfänge neutralisiert; jede Übergabe steht im Protokoll des Events (Tag, Person, Anzahl). Sichtbarer Hinweis überall: Kontakte für
+  Kunden = Auftragsverarbeitung (Art. 28), AVV mit dem Kunden nötig; vor dem Export fragt ein Dialog danach.
+- **Kennzahlen getrennt:** die Make.One-Kennzahlen bleiben ohne besuchte Events — neu auch **„Nachgefasst binnen 48 h“** (Kennzahl, Wochen-Scoreboard, Traktions-Index) rechnet nur noch die Gäste der eigenen Abende (vorher zählten
+  Netzwerken-Erfassungen dort mit; das war die offene Entscheidung vom 03.10.). Besuchte Events haben **eigene Kennzahlen** (`besuchKennzahlen`, 90 Tage, nie im Score): besuchte Events, erfasste Kontakte, Follow-up-Quote,
+  Termine · Deals, Kosten je Kontakt — und „Welche Events lohnen sich“ mit offenem Urteil ab 14 Tagen nach dem Event (lohnt sich = Deals da und Pipeline + Umsatz decken die Kosten; läuft; bisher ohne Folge; zu früh).
+  Erfasste Kontakte, Deals und Umsatz zählen normal in Sales (Power Hour, Follow-up, Pipeline).
+- **Datenschutz/Register:** `Event.zielpersonen` trägt Kontaktkennungen — Art. 17 (Person raus aus der Zielliste), Zusammenführen (alt → neu, „getroffen“ bleibt) und Art. 15 (`eventZiele` in der Auskunft) laufen über
+  `lib/crm/person-verweise.ts`; Bestandsname bleibt `crm` (Register unverändert, Wächtertest grün). Löschsperre: eine Firma, für die ein Event läuft oder die Zielfirma ist, wird nicht gelöscht.
+- **Rückweg:** keine Formänderung, nur optionale Felder; der alte Stand verliert sie beim nächsten Schreiben desselben Events — Details `GO_LIVE_CHECKLISTE.md` › Rückweg.
+- **Bewusst nicht gebaut / Folgeschritte:** ZOE und die Heads kennen besuchte Events weiter nicht (der Bezug „ZOE fragen“ im Reiter Events zeigt auf die Event-Welt = Make.One); Event-Termin im Kalender nur per Klick in der
+  Akte (kein Auto-Anlegen, kein Hinweis „kein Termin“ in der Glocke); kein Anlegen von Aufgaben/Checkliste für besuchte Events (die Make.One-Checkliste gibt es dort nicht); „Vorbereitung“ ist die Akte selbst, kein eigener Reiter;
+  Kosten je Event als Pauschale (Euro), keine Kostenposten.
+
 ## Netzwerken · Kontakt auch ins Handy speichern (03.10.2026, nur lokal — Branch `netz-vcf`, auf `entwicklung` 359e7d5)
 
 Kevin 03.10.: „Kontakt auch direkt aufs Handy speichern: geht ans CRM UND die Daten ins Handy.“ Alles im Browser, keine Daten an Dritte, keine neue Server-Route.

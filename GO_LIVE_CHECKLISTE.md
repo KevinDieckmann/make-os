@@ -143,6 +143,14 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   - globaler Sender, Abzeichen „n warten“ und Abmelden-Warnung sind reiner Browser-Code und verschwinden mit dem Rückweg. **Vor dem Rückweg alle Handys mit „n warten“ leer senden lassen** — der alte Stand hat keine Seite, die die IndexedDB-Warteschlange sendet;
   - `/api/netzwerken/karten` verweigert dem Dienstweg (403) — es gab nie einen Aufrufer, der den Schlüssel dafür nutzte.
   Nach einem erneuten Upload: nichts nachzuziehen.
+- **Events (besuchte Veranstaltungen) und Make.One getrennt (03.10., Branch `events`):** keine Formänderung, nur optionale Felder am Event
+  (`fuer`, `anmeldung`, `wer`, `link`, `zielpersonen`, `uebergaben`; Euro-Kosten wie bisher in `kostenEuro`). **Der alte Stand verwirft sie beim nächsten
+  Schreiben desselben Events** — sein Säuberer (`zusatz('events')`) kennt nur `kalenderUid` und `marke`. Das trifft nur Events, die nach dem Rückweg im alten Stand
+  gespeichert werden (Teil-Änderung, Erfassen setzt „durchgeführt“, Kalender-Spiegel); alle anderen bleiben unverändert in der Datei und sind nach einem erneuten
+  Upload wieder da. **Vor dem Rückweg notieren:** für welche Kunden Events laufen (`für wen`), die Zielpersonen offener Events und das Übergabe-Protokoll
+  (Events › Event-Akte › „An Kunden übergeben“ — Tag, Person, Anzahl); wer nach dem Rückweg ein solches Event im alten Stand ändert, trägt es nach dem nächsten Upload neu ein.
+  Sichtbar nach dem Rückweg: der Reiter „Events“ ist weg, besuchte Events (`marke: Netzwerken`) stehen wieder in der Make.One-Liste, und die 48-h-Kennzahl der Make.One-Abende
+  rechnet ihre Gäste wieder mit (wie vor dieser Änderung). Die CSV-Übergabe selbst liegt nur im Browser-Download — nichts davon im Bestand. Nach einem erneuten Upload: nichts nachzuziehen.
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 

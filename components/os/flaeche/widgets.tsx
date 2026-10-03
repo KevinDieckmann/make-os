@@ -36,7 +36,7 @@ import { kanalLeistung, type KanalZeile } from '@/lib/crm/score';
 import type { LeadZeile } from '@/lib/crm/leads';
 import type { Event as CrmEvent } from '@/lib/crm/typen';
 import type { EventZahlen } from '@/lib/crm/events';
-import { MARKE_EVENTS, markeVon } from '@/lib/crm/marke';
+import { MARKE_EVENTS, markeVon, istNetzwerkenEvent } from '@/lib/crm/marke';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, Chip, feld, zoneFarbe, prioFarbe } from '../schlank';
 import { heuteFaellig, istGemeinsam, spaceVonRoutine } from '@/lib/planung/routinen';
 import { rhythmusKurz } from '@/lib/planung/rhythmus';
@@ -582,8 +582,10 @@ function EventWidget({ titel, i }: WidgetProps) {
     const r = x as { ok?: boolean; heute?: string; stand?: { events?: CrmEvent[] }; events?: Record<string, EventZahlen> };
     if (!r?.ok || !r.stand?.events?.length) return null;
     const heute = r.heute ?? localDay();
-    const kommend = r.stand.events.filter(e => e.datum >= heute && e.status !== 'abgesagt').sort((a, b) => a.datum.localeCompare(b.datum));
-    const nachfassenOffen = r.stand.events.filter(e => e.datum <= heute).reduce((a, e) => a + (r.events?.[e.id]?.nachfassenOffen ?? 0), 0);
+    // Nur unsere eigenen Abende (Make.One) — besuchte Events (Netzwerken) stehen im Reiter „Events“ (03.10.).
+    const eigene = r.stand.events.filter(x => !istNetzwerkenEvent(x));
+    const kommend = eigene.filter(e => e.datum >= heute && e.status !== 'abgesagt').sort((a, b) => a.datum.localeCompare(b.datum));
+    const nachfassenOffen = eigene.filter(e => e.datum <= heute).reduce((a, e) => a + (r.events?.[e.id]?.nachfassenOffen ?? 0), 0);
     const e = kommend[0] ?? null;
     return e || nachfassenOffen ? { heute, e, z: e ? r.events?.[e.id] : undefined, nachfassenOffen } : null;
   });
@@ -592,7 +594,7 @@ function EventWidget({ titel, i }: WidgetProps) {
   const tage = e ? Math.round((Date.parse(`${e.datum}T12:00:00Z`) - Date.parse(`${d!.heute}T12:00:00Z`)) / 864e5) : null;
   return (
     <Karte i={i} akzent={e ? LEUCHT.beziehung : undefined}>
-      <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href={WEG.event()} style={link}>Events ›</Link>}>{titel ?? `Nächstes Event · ${MARKE_EVENTS}`}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href={WEG.event()} style={link}>Make.One ›</Link>}>{titel ?? `Nächstes Event · ${MARKE_EVENTS}`}</Ueberschrift>
       {d === undefined && <Leer>lade …</Leer>}
       {e && (
         <Zeile onClick={() => router.push(WEG.event(e.id))}

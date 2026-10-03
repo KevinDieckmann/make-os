@@ -179,7 +179,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
       for (const [name, wert] of Object.entries(f)) if (typeof wert === 'string' && wert.trim()) k[name] = wert.trim();
       const koerper: Record<string, unknown> = {
         erfassungId: e.id, erfasstAm: new Date().toISOString(), eventId: wahl.eventId, ...(ich ? { erfasstVon: ich } : {}),
-        ...(wahl.lokal ? { eventNeu: { titel: wahl.titel, datum: wahl.datum, ...(wahl.ort ? { ort: wahl.ort } : {}) } } : {}),
+        ...(wahl.lokal ? { eventNeu: { titel: wahl.titel, datum: wahl.datum, ...(wahl.ort ? { ort: wahl.ort } : {}), ...(wahl.fuer?.art === 'kunde' && wahl.fuer.firmaId ? { fuer: wahl.fuer } : {}) } } : {}),
         kontakt: k,
         ...(e.vorhandenId ? { vorhandenKontaktId: e.vorhandenId } : {}), ...(e.neuErzwingen ? { neuErzwingen: true } : {}),
         ...(!e.vorhandenId && !e.firmaNeu && (e.firmaId || exakt) ? { firmaId: e.firmaId ?? exakt!.id } : {}),

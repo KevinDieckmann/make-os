@@ -1,7 +1,7 @@
 // ─── Markttraktion — Adressen (rein, getestet) ──────────────────────────────
 // /os/markttraktion?s=<Bereich>&a=<Ansicht>&k=<Person, Firma, Deal, Event>
 //   s (Reiter, Kevins Reihenfolge 27.09.): ueberblick (Start) · kontakte · firmen ·
-//      deals · followup · qualifizierung (Runde, 27.09.) · angebot (28.09.) · sales · marketing · event · stammdaten
+//      deals · followup · qualifizierung (Runde, 27.09.) · angebot (28.09.) · sales · marketing · besuche (Events, 03.10.) · event (Make.One) · stammdaten
 //      Die Leiste (28.09. abends): links die Arbeit, in der Mitte die Schnellknöpfe Qualifizierung + Angebot,
 //      rechts die Welten und die Stammdaten — `LEISTE` unten ist die eine Stelle für die Reihenfolge.
 //   a: kontakte   → die gespeicherte Ansicht, eine Runde (runde-…) oder akte („Kontakt öffnen“ zu k)
@@ -13,6 +13,9 @@
 //      deals      → board (Start) · liste · akte (Deal-Akte zu k) · kunden · auswertung
 //      followup   → faellig (Start) · woche · powerhour · kadenz
 //      marketing  → uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · newsletter · positionierung
+//      besuche    → Events (03.10.): die Veranstaltungen, die wir BESUCHEN — kalender (Start) · wirkung · kunden; k = ein Event (Event-Akte)
+//      event      → Make.One: unsere EIGENEN Abende (Gäste, Checkliste, Abend, Nachfassen, Budget). Kennung `event` und der alte Name
+//                   `events` (s=events) bleiben Make.One; Links auf ein BESUCHTES Event (s=event&k=…) leitet die Seite in die Event-Akte um.
 //      stammdaten → der Reiter
 //   angebot (28.09.): k = ein bestehendes Angebot, dazu die Vorbelegung kontakt=<id> · firma=<id> · deal=<id>
 //      (`angebotLink` baut, `angebotAusAdresse` liest — unbekannte oder kaputte Kennungen fallen weg)
@@ -21,7 +24,10 @@
 // (s=sales&a=heute|leads|pipeline|kunden|kampagnen) auf die neuen Reiter — so
 // funktionieren alle Links aus Suche, Befunden, ZOE und Telegram weiter.
 
-export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'sales' | 'marketing' | 'event' | 'stammdaten';
+export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'sales' | 'marketing' | 'besuche' | 'event' | 'stammdaten';
+/** Der Reiter „Events“ (besuchte Veranstaltungen, 03.10.): Kalender · Wirkung · Für Kunden — die Event-Akte steht in `k`. Die Kennung heißt `besuche`, weil `events` als alter Name von Make.One gültig bleibt. */
+export type BesucheAnsicht = 'kalender' | 'wirkung' | 'kunden';
+export const BESUCHE_ANSICHTEN: BesucheAnsicht[] = ['kalender', 'wirkung', 'kunden'];
 /** Der Reiter „Sales“ rechts (Kevin 27.09.): Head of Sales · Power Hour · Kampagnen · Auswertung. */
 export type SalesReiterAnsicht = 'head' | 'powerhour' | 'kampagnen' | 'auswertung';
 export const SALES_REITER_ANSICHTEN: SalesReiterAnsicht[] = ['head', 'powerhour', 'kampagnen', 'auswertung'];
@@ -29,7 +35,7 @@ export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'kunden' | 'auswertung';
 export type FollowupAnsicht = 'faellig' | 'woche' | 'powerhour' | 'kadenz';
 /** Der alte Sales-Reiter (bis 26.09.) — nur noch zum Übersetzen alter Adressen. */
 export type SalesAnsicht = 'heute' | 'leads' | 'pipeline' | 'kunden' | 'kampagnen';
-export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'sales', 'marketing', 'event', 'stammdaten'];
+export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'sales', 'marketing', 'besuche', 'event', 'stammdaten'];
 /**
  * Die Reiterleiste (Kevin 28.09. abends): links die Arbeit, in der Mitte die zwei Schnellknöpfe
  * (Qualifizierung orange, Angebot grün — pulsieren leise), rechts die Welten und die Stammdaten.
@@ -38,7 +44,7 @@ export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals',
 export const LEISTE: { links: Bereich[]; mitte: Bereich[]; rechts: Bereich[] } = {
   links: ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup'],
   mitte: ['qualifizierung', 'angebot'],
-  rechts: ['sales', 'marketing', 'event', 'stammdaten'],
+  rechts: ['sales', 'marketing', 'besuche', 'event', 'stammdaten'],
 };
 export const DEALS_ANSICHTEN: DealsAnsicht[] = ['board', 'liste', 'akte', 'kunden', 'auswertung'];
 export const FOLLOWUP_ANSICHTEN: FollowupAnsicht[] = ['faellig', 'woche', 'powerhour', 'kadenz'];
@@ -84,6 +90,7 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
   if (s && (BEREICHE as string[]).includes(s)) {
     const b = s as Bereich;
     if (b === 'deals') return { s: b, ...(ansicht && ansicht !== 'board' && (DEALS_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
+    if (b === 'besuche') return { s: b, ...(ansicht && ansicht !== 'kalender' && (BESUCHE_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
     if (b === 'followup') return { s: b, ...(ansicht && ansicht !== 'faellig' && (FOLLOWUP_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
     return { s: b, ...(ansicht ? { a: ansicht } : {}) };
   }

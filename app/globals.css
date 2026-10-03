@@ -571,3 +571,11 @@ nav a:hover { transform: translateX(2px); }
 .netz-seite:has(input:focus, textarea:focus, select:focus) .netz-aktion::before { display: none; }
 /* iPhone mit offener Tastatur: die Aktion hängt direkt über der Tastatur (Abstand setzt Aktionsleiste per visualViewport). */
 .netz-seite .netz-aktion.netz-aktion-tastatur { position: fixed !important; left: 0; right: 0; margin: 0; padding: 8px 14px; z-index: 70; box-shadow: 0 -10px 24px -12px rgba(0, 0, 0, .9); }
+
+/* Events (besuchte Veranstaltungen, 03.10.): die Event-Akte am Handy — Beschriftung über dem Feld statt daneben, Eingaben mit 16 px
+   (kleiner zoomt iOS beim Antippen die Seite auf) und mindestens 44 px hoch. Am Rechner bleibt es zweispaltig wie in Make.One. */
+.bes-zeile { display: grid; grid-template-columns: minmax(110px, 150px) 1fr; gap: 12px; align-items: center; padding: 6px 0; }
+@media (max-width: 560px) {
+  .bes-zeile { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 8px 0; }
+  .bes-akte input, .bes-akte textarea, .bes-neu input { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }
+}

@@ -175,7 +175,8 @@ export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: st
   const veroeffentlicht = beitraege.filter(b => b.status === 'veroeffentlicht' && b.datum);
   const wirkung = beitraege.flatMap(b => (b.wirkung ?? []).filter(x => x.art === 'gespraech' || x.art === 'anfrage').map(x => ({ schluessel: `${b.id}|${x.kontaktId}`, tag: tag(x.am) })));
   const events = crm.events ?? [];
-  const nachEvent = new Map(events.map(e => [e.id, e]));
+  // Nur eigene Abende (Make.One) — besuchte Events (Netzwerken) haben eigene Kennzahlen (lib/crm/besuche.ts).
+  const nachEvent = new Map(events.filter(e => !istNetzwerkenEvent(e)).map(e => [e.id, e]));
   // Nachfassen zählt nur bei Gästen, deren Frist vorbei ist oder die schon nachgefasst sind (wie die Kennzahl).
   const gaeste = (crm.teilnahmen ?? []).filter(t => t.status === 'da' && nachEvent.has(t.eventId))
     .map(t => ({ t, e: nachEvent.get(t.eventId)! })).filter(({ t, e }) => !!t.followUpAm || followUpBis(e) < heute);

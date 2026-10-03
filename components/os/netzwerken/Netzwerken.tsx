@@ -36,6 +36,15 @@ export function NetzwerkenSeite() {
   const heute = api.crm?.heute ?? k.heute;
   const ich = k.ich ?? api.ich;
   const gueltig = wahl && wahl.tag === heute ? wahl : null;
+  // „Jetzt erfassen“ aus der Event-Akte (?event=<Event>): „Heute bei“ steht dann schon auf diesem Event (einmal, sobald die Kartei da ist).
+  const eventParam = suche.get('event');
+  const [vorgewaehlt, setVorgewaehlt] = useState<string | null>(null);
+  useEffect(() => {
+    if (!eventParam || vorgewaehlt === eventParam || !api.crm) return;
+    const e = api.crm.stand.events.find(x => x.id === eventParam);
+    setVorgewaehlt(eventParam);
+    if (e) { setWahl({ eventId: e.id, titel: e.titel, datum: e.datum, ...(e.ort ? { ort: e.ort } : {}), tag: heute, ...(e.fuer?.art === 'kunde' ? { fuer: e.fuer } : {}) }); setReiter('erfassen'); }
+  }, [eventParam, vorgewaehlt, api.crm, heute, setWahl]);
 
   return (
     <div className="netz-seite" style={{ maxWidth: 640, margin: '0 auto', padding: '16px 14px 40px', color: C.ink, fontFamily: SCHRIFT.text, display: 'grid', gap: 16 }}>

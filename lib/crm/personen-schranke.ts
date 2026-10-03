@@ -8,6 +8,7 @@
 //   kampagnen     409 (nur aktiv/Entwurf)       409 — keine Kampagne (nur aktiv/Entwurf)
 //   chancen       409                          erlaubt (Vertragsbeziehung, keine Werbung)
 //   mandate       409                          erlaubt (Vertragsbeziehung, keine Werbung)
+//   events        409 (Zielpersonen, 03.10.)   erlaubt (Vorbereitung, keine Werbung)
 //
 // Nur NEUE Verweise: wer schon drinsteht, wird nicht rückwirkend abgelehnt (die Verbindungsprüfung
 // meldet solche Altfälle reparierbar). Texte tragen nie Namen oder Kennungen der Person. Rein, getestet.
@@ -21,7 +22,7 @@ import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
 export type PersonSchranke = Pick<Kontakt, 'id' | 'werbesperre' | 'eingeschraenkt'>;
 
 /** Listen mit Personen-Verweisen, die die Schranke prüft. */
-export type SchrankenListe = 'teilnahmen' | 'kampagnen' | 'chancen' | 'mandate';
+export type SchrankenListe = 'teilnahmen' | 'kampagnen' | 'chancen' | 'mandate' | 'events';
 /** Kampagnen in diesen Zuständen sprechen (noch) an — nur dort zählt ein neuer Verweis. */
 export const KAMPAGNE_SPRICHT_AN: readonly KampagnenStatus[] = ['aktiv', 'entwurf'];
 
@@ -67,6 +68,14 @@ export function neuePersonenVerweise(b: CrmBestand, ops: ListenOp[]): NeuerVerwe
       const vorher = new Set(alt?.kontaktIds ?? []);
       const neu = nurText(roh.kontaktIds).filter(k => !vorher.has(k));
       if (neu.length) raus.push({ liste: 'kampagnen', id, wo: String(roh.name ?? alt?.name ?? 'Kampagne'), kontaktIds: neu, werbung: true });
+    } else if (o.liste === 'events') {
+      // Besuchte Events (03.10.): „wen wollen wir treffen“ — eine eingeschränkte Person (Art. 18) kommt nie neu auf die Liste.
+      const alt = (b.events ?? []).find(e => e.id === id);
+      if (o.op === 'teil' && !alt) continue;
+      if (!('zielpersonen' in roh) || !Array.isArray(roh.zielpersonen)) continue;
+      const vorher = new Set((alt?.zielpersonen ?? []).map(z => z.kontaktId).filter((k): k is string => !!k));
+      const neu = Array.from(new Set((roh.zielpersonen as unknown[]).map(z => (z && typeof z === 'object' ? String((z as { kontaktId?: unknown }).kontaktId ?? '') : '')).filter(k => k && !vorher.has(k))));
+      if (neu.length) raus.push({ liste: 'events', id, wo: String(roh.titel ?? alt?.titel ?? 'Event'), kontaktIds: neu, werbung: false });
     } else if (o.liste === 'chancen' || o.liste === 'mandate') {
       const alt = o.liste === 'chancen' ? (b.chancen ?? []).find(c => c.id === id) : (b.mandate ?? []).find(m => m.id === id);
       if (o.op === 'teil' && !alt) continue;
