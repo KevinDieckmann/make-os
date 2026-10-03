@@ -1,43 +1,61 @@
 'use client';
 
-// ─── Markttraktion · Qualifizierung (Runde, 27.09.) ──────────────────────────
-// Kevin: „Ein Knopf neben Sales: Qualifizierungsrunde. Es ploppen die Leads auf,
-// für die ich zuständig bin und die noch qualifiziert werden müssen — mit den
-// Kernfragen, einem Freitext je Schmerz/Bedarf, dem Lead-Score live, und von
-// dort in die Akte.“ Malin sieht ihre Leads zuerst, kann Kevins dazuschalten
-// und nicht zugeordnete Leads (ohne Zuständige/n, Feld `besitzer`) per Klick übernehmen. Logik: lib/crm/leads.ts
-// (zuQualifizieren) und lib/crm/score.ts; Schreibwege über /api/crm/lead.
+// ─── Markttraktion · Qualifizierung (Runde, 27.09.; umgebaut 03.10.) ──────────────────────────
+// Kevin: „Ein Knopf neben Sales: Qualifizierungsrunde. Es ploppen die Leads auf, für die ich zuständig bin und die noch
+// qualifiziert werden müssen.“ Seit 03.10. („derbe reingehen“):
+//   · SEITENFENSTER: Kontakt und Firma öffnen rechts (am Handy als Blatt von unten) mit der vollen Bearbeitung — man bleibt an
+//     seiner Stelle in der Runde; nach dem Speichern rechnet der Score sofort neu (die Runde liest Kartei und CRM live).
+//   · Je Karte nur das Wichtigste: Kontakt, Firma, „Gespräch starten“ — der Rest hinter „Mehr ⋯“: Firma wechseln/neu,
+//     Zusammenführen, weitere Person, Abgeben, Parken, Raus.
+//   · Fragen und Stufen kommen aus den Sales-Scoring-Einstellungen; Score, MQL- und SQL-Stand überall dieselbe Rechnung.
+//   · Herkunft an jeder Karte (Event, Make.One, Kampagne, Empfehlung, Foto der Visitenkarte, Sprachnotiz, letzte Aktivität).
+//   · Gesprächsmodus fürs Telefonat: Fragen der Reihe nach, Notizen nebenbei, am Ende das Ergebnis.
+// Logik: lib/crm/leads.ts (zuQualifizieren), lib/crm/scoring.ts; Schreibwege über /api/crm/lead.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { localDay } from '@/lib/zeit';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../schlank';
-import type { Kriterien, Qual } from '@/lib/crm/typen';
-import { KRITERIEN, sqlBereit, fehltBisSql, statusLabel, zuQualifizieren, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
-import { leadScore, kanalLeistung, kanalLabel, temperaturLabel, temperaturFarbe, temperaturLeistung, KANAL, type KanalId, type LeadScore } from '@/lib/crm/score';
+import { statusLabel, zuQualifizieren, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
+import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
+import { type ScoringEinstellungen } from '@/lib/crm/scoring';
+import { herkunftVon } from '@/lib/crm/herkunft';
+import { leadGruende, type LeadGruende } from '@/lib/crm/lead-grund';
 import { MINDESTMENGE } from '@/lib/crm/deal-auswertung';
+import { kontaktAkte, markttraktion } from '@/lib/crm/adresse';
 import { TEAM, anderer, nameVon } from '@/lib/crm/team';
 import { type CrmApi, datum, holeMitStand } from './daten';
 import { Pillen } from './teile';
 import { Person } from './team';
-import { useNachfrage } from './Nachfrage';
 import { beanFuerLead } from '@/lib/crm/bean';
 import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
+import { useLeadZeilen, useScoringEinstellungen, useSchmal, useAblage, leadPost } from './quali/hilfen';
+import { SEITENBLATT_BREITE } from './quali/Seitenblatt';
+import { KontaktSeitenfenster, FirmaSeitenfenster } from './quali/SeitenfensterInhalt';
+import { ScoreKopf } from './quali/ScoreAnzeige';
+import { Fragen } from './quali/Fragen';
+import { HerkunftBlock } from './quali/HerkunftBlock';
+import { MehrMenue } from './quali/MehrMenue';
+import { FirmaWechselnDialog, type FertigInfo, type NachziehenVorgabe } from './quali/FirmaWechseln';
+import { ZusammenfuehrenDialog } from './quali/Zusammenfuehren';
+import { WeiterePersonDialog } from './quali/WeiterePerson';
+import { AbgebenDialog, ParkenDialog, RausDialog, type WeiterInfo } from './quali/KleineDialoge';
+import { Gespraechsmodus } from './quali/Gespraechsmodus';
+import { useLeadFragen } from './quali/useLeadFragen';
 
 interface Daten { leads: LeadZeile[] }
-const Q_FARBE: Record<Qual, string> = { ja: LEUCHT.gut, nein: LEUCHT.kritisch, unklar: C.inkLeise };
+type Panel = { art: 'kontakt' | 'firma'; id: string; startFirma?: string } | null;
 
-export function Qualifizierung({ api, zuKontakt, zuFirma, zuLeads }: { api: CrmApi; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; zuLeads: (id?: string) => void }) {
+export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: string | null; zuLeads: (id?: string) => void }) {
   const heute = api.crm?.heute ?? localDay();
   const ich = api.ich ?? TEAM[0].id;
-  const [roh, setRoh] = useState<Daten | null>(null);
-  const [fehler, setFehler] = useState('');
-  const staende = useRef(new Map<string, string>());
-  const laden = useCallback(() => holeMitStand<Daten & { ok?: boolean; fehler?: string }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) { setRoh(x); setFehler(''); } else if (x && !x.ok) setFehler(x.fehler ?? 'Leads nicht geladen.'); }).catch(() => setFehler('Leads nicht erreichbar.')), []);
-  useEffect(() => { void laden(); }, [laden]);
+  const schmal = useSchmal();
+  const roh = useLeadZeilen(api);
   // BEAN (28.09., H4): je Lead mit den offenen Angeboten der Dateiablage nachgerechnet — für die Filter-Pille „Neu“.
   const angebote = useOffeneAngebote();
-  const d = useMemo<Daten | null>(() => (roh ? { leads: roh.leads.map(z => { const b = beanFuerLead(z, api.crm?.stand, api.kontakte ?? [], { angebote }); return b && b.bean !== z.bean ? { ...z, bean: b.bean } : z; }) } : null), [roh, api.crm, api.kontakte, angebote]);
+  const d = useMemo<Daten | null>(() => (roh ? { leads: roh.map(z => { const b = beanFuerLead(z, api.crm?.stand, api.kontakte ?? [], { angebote }); return b && b.bean !== z.bean ? { ...z, bean: b.bean } : z; }) } : null), [roh, api.crm, api.kontakte, angebote]);
+  const einstellungen = useScoringEinstellungen(api);
 
   const [wer, setWer] = useState<RundenFilter['wer']>(ich);
   useEffect(() => { setWer(w => (w === TEAM[0].id && ich !== TEAM[0].id ? ich : w)); }, [ich]);
@@ -49,19 +67,28 @@ export function Qualifizierung({ api, zuKontakt, zuFirma, zuLeads }: { api: CrmA
   const [reihe, setReihe] = useState<string[] | null>(null);
   const [pos, setPos] = useState(0);
   const [erledigt, setErledigt] = useState(0);
+  const [panel, setPanel] = useState<Panel>(null);
+  const [meldung, setMeldung] = useState('');
+  const [nachziehen, setNachziehen] = useState<NachziehenVorgabe | null>(null);
   const filterKey = `${wer}|${auchKalt}|${kanal}|${nurNeu}`;
   const passend = useMemo(() => (d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : []), [d, wer, auchKalt, kanal, nurNeu, heute]);
-  useEffect(() => { setReihe(null); setPos(0); setErledigt(0); }, [filterKey]);
-  useEffect(() => { if (!reihe && d) setReihe(passend.map(z => z.id)); }, [reihe, d, passend]);
   const nachId = useMemo(() => new Map((d?.leads ?? []).map(z => [z.id, z])), [d]);
+  // Ein Sprung aus der Akte (`start`: Firma oder Person) setzt diesen Lead an den Anfang — auch wenn er sonst nicht dran wäre.
+  const startZeile = useMemo(() => (start && d ? d.leads.find(z => z.id === start || z.personen.some(p => p.id === start)) : undefined), [start, d]);
+  const startKey = startZeile?.id ?? '';
+  useEffect(() => { setReihe(null); setPos(0); setErledigt(0); setPanel(null); }, [filterKey, startKey]);
+  useEffect(() => { if (!reihe && d) setReihe([...(startZeile ? [startZeile.id] : []), ...passend.map(z => z.id).filter(id => id !== startZeile?.id)]); }, [reihe, d, passend, startZeile]);
   const karten = (reihe ?? []).map(id => nachId.get(id)).filter((z): z is LeadZeile => !!z);
   const z = karten[pos];
-  const weiter = (fertig: boolean) => { if (fertig) setErledigt(n => n + 1); setPos(p => Math.min(p + 1, karten.length)); };
+  const weiter = useCallback((fertig: boolean) => { if (fertig) setErledigt(n => n + 1); setPos(p => Math.min(p + 1, karten.length)); setPanel(null); }, [karten.length]);
+  /** Der Lead heißt jetzt anders (Firma gewechselt, zusammengeführt): die Karte tauscht ihren Platz, die Runde bleibt an ihrer Stelle. */
+  const ersetze = useCallback((neuId: string) => setReihe(r => { if (!r) return r; const neu = r.slice(); neu[pos] = neuId; return neu.filter((x, i) => x !== neuId || i === pos); }), [pos]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (document.querySelector('[role="dialog"]')) return;
       if (e.key === 'ArrowRight') { e.preventDefault(); setPos(p => Math.min(p + 1, karten.length)); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); setPos(p => Math.max(p - 1, 0)); }
     };
@@ -77,184 +104,182 @@ export function Qualifizierung({ api, zuKontakt, zuFirma, zuLeads }: { api: CrmA
     { id: 'ohne', label: `Nicht zugeordnet ${zaehl('ohne')}` }, { id: 'alle', label: `Alle ${zaehl('alle')}` },
   ];
   const kanaele = useMemo(() => kanalLeistung(d?.leads ?? []), [d]);
+  const offen = panel && !schmal;
 
   return (
     <>
-      <Karte i={0} akzent={LEUCHT.business}>
-        <Ueberschrift farbe={LEUCHT.business} rechts={karten.length ? <span style={{ fontSize: 12.5, color: C.inkLeise }}>{Math.min(pos + 1, karten.length)} von {karten.length}{erledigt ? ` · ${erledigt} geprüft` : ''}</span> : undefined}>Qualifizierungsrunde</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: die sechs Kernfragen, was genau dahintersteckt, und wie warm es ist. Wer qualifiziert, übernimmt nicht zugeordnete Leads (ohne Zuständige/n). Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={WER} aktiv={wer} onWahl={setWer} farbe={LEUCHT.business} /></div>
-          <button type="button" onClick={() => setNurNeu(!nurNeu)} aria-pressed={nurNeu} title="BEAN „Neu“: kein Mandat, kein offenes Angebot — Leads zum Qualifizieren" className="fassbar"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 600,
-              border: `1px solid ${nurNeu ? BEAN_FARBE.N : 'rgba(255,255,255,.14)'}`, background: nurNeu ? `${BEAN_FARBE.N}1F` : 'transparent', color: nurNeu ? BEAN_FARBE.N : C.inkDim }}>
-            <BeanBadge bean="N" vonHand={nurNeu} /> Neu {neuZahl}
-          </button>
-          <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: C.inkDim, cursor: 'pointer' }}><input type="checkbox" checked={auchKalt} onChange={e => setAuchKalt(e.target.checked)} /> auch kalte</label>
-          <select value={kanal} onChange={e => setKanal(e.target.value as KanalId | '')} aria-label="Kanal" style={{ ...feld, fontSize: 12.5, padding: '6px 10px', width: 'auto' }}>
-            <option value="">Jeder Kanal</option>
-            {KANAL.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
-          </select>
-          {karten.length > 0 && <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}><Knopf leise aus={pos === 0} onClick={() => setPos(p => Math.max(0, p - 1))}>← Zurück</Knopf><Knopf leise aus={pos >= karten.length} onClick={() => setPos(p => Math.min(karten.length, p + 1))}>Weiter →</Knopf></span>}
-        </div>
-        {fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien, marginTop: 8 }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div>}
-      </Karte>
-
-      {!d && !fehler && <Karte i={1}><Leer>Lädt die Leads …</Leer></Karte>}
-      {d && !karten.length && (
-        <Karte i={1} akzent={LEUCHT.gut}>
-          <Leer>{wer === ich ? 'Alle deine Leads sind qualifiziert oder frisch geprüft. Nächste Runde in 60 Tagen — oder „Nicht zugeordnet“ öffnen.' : 'Hier wartet gerade nichts.'}</Leer>
+      <div style={{ display: 'grid', gap: 14, marginRight: offen ? SEITENBLATT_BREITE + 16 : 0, transition: 'margin .2s ease' }}>
+        <Karte i={0} akzent={LEUCHT.business}>
+          <Ueberschrift farbe={LEUCHT.business} rechts={karten.length ? <span style={{ fontSize: 12.5, color: C.inkLeise }}>{Math.min(pos + 1, karten.length)} von {karten.length}{erledigt ? ` · ${erledigt} geprüft` : ''}</span> : undefined}>Qualifizierungsrunde</Ueberschrift>
+          <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: woher er kommt, wie weit er ist, die Fragen — und im Gespräch Schritt für Schritt bis zum Ergebnis. Kontakt und Firma öffnen rechts zur Bearbeitung; wer qualifiziert, übernimmt nicht zugeordnete Leads. Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={WER} aktiv={wer} onWahl={setWer} farbe={LEUCHT.business} /></div>
+            <button type="button" onClick={() => setNurNeu(!nurNeu)} aria-pressed={nurNeu} title="BEAN „Neu“: kein Mandat, kein offenes Angebot — Leads zum Qualifizieren" className="fassbar"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', minHeight: 36, borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 600,
+                border: `1px solid ${nurNeu ? BEAN_FARBE.N : 'rgba(255,255,255,.14)'}`, background: nurNeu ? `${BEAN_FARBE.N}1F` : 'transparent', color: nurNeu ? BEAN_FARBE.N : C.inkDim }}>
+              <BeanBadge bean="N" vonHand={nurNeu} /> Neu {neuZahl}
+            </button>
+            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: C.inkDim, cursor: 'pointer', minHeight: 36 }}><input type="checkbox" checked={auchKalt} onChange={e => setAuchKalt(e.target.checked)} /> auch kalte</label>
+            <select value={kanal} onChange={e => setKanal(e.target.value as KanalId | '')} aria-label="Kanal" style={{ ...feld, fontSize: 12.5, padding: '6px 10px', width: 'auto', minHeight: 36 }}>
+              <option value="">Jeder Kanal</option>
+              {KANAL.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
+            </select>
+            {karten.length > 0 && <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}><Knopf leise aus={pos === 0} onClick={() => setPos(p => Math.max(0, p - 1))}>← Zurück</Knopf><Knopf leise aus={pos >= karten.length} onClick={() => setPos(p => Math.min(karten.length, p + 1))}>Weiter →</Knopf></span>}
+          </div>
+          {start && d && !startZeile && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, marginTop: 8 }}>Zu diesem Eintrag gibt es keinen Lead (Dienstleister, Investor oder eingeschränkt) — die Runde zeigt die übrigen.</div>}
         </Karte>
-      )}
-      {d && karten.length > 0 && !z && (
-        <Karte i={1} akzent={LEUCHT.gut}>
-          <Ueberschrift farbe={LEUCHT.gut}>Runde fertig</Ueberschrift>
-          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>{erledigt} von {karten.length} geprüft. Übersprungene kommen beim nächsten Start wieder.</div>
-          <div style={{ marginTop: 10, display: 'flex', gap: 8 }}><Knopf onClick={() => { setReihe(null); setPos(0); setErledigt(0); void laden(); }}>Neue Runde</Knopf><Knopf leise onClick={() => zuLeads()}>Zu den Leads</Knopf></div>
-        </Karte>
-      )}
-      {z && <QualiKarte key={z.id} z={z} api={api} ich={ich} heute={heute} laden={laden} weiter={weiter} zuKontakt={zuKontakt} zuFirma={zuFirma} zuLeads={zuLeads} />}
 
-      <KanalLeistung zeilen={kanaele} i={2} />
+        {meldung && (
+          <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 14px', borderRadius: 14, background: `${LEUCHT.gut}14`, border: `1px solid ${LEUCHT.gut}44`, fontSize: TYP.bedien, lineHeight: 1.5 }}>
+            <span style={{ flex: 1 }}>✓ {meldung}</span>
+            <button onClick={() => setMeldung('')} aria-label="Hinweis schließen" className="fassbar" style={{ width: 44, height: 44, borderRadius: 12, border: 'none', background: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 18 }}>×</button>
+          </div>
+        )}
+
+        {!d && <Karte i={1}><Leer>Lädt die Leads …</Leer></Karte>}
+        {d && !karten.length && (
+          <Karte i={1} akzent={LEUCHT.gut}>
+            <Leer>{wer === ich ? 'Alle deine Leads sind qualifiziert oder frisch geprüft. Nächste Runde in 60 Tagen — oder „Nicht zugeordnet“ öffnen.' : 'Hier wartet gerade nichts.'}</Leer>
+          </Karte>
+        )}
+        {d && karten.length > 0 && !z && (
+          <Karte i={1} akzent={LEUCHT.gut}>
+            <Ueberschrift farbe={LEUCHT.gut}>Runde fertig</Ueberschrift>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>{erledigt} von {karten.length} geprüft. Übersprungene kommen beim nächsten Start wieder.</div>
+            <div style={{ marginTop: 10, display: 'flex', gap: 8 }}><Knopf onClick={() => { setReihe(null); setPos(0); setErledigt(0); }}>Neue Runde</Knopf><Knopf leise onClick={() => zuLeads()}>Zu den Leads</Knopf></div>
+          </Karte>
+        )}
+        {z && <QualiKarte key={z.id} z={z} api={api} einstellungen={einstellungen} ich={ich} heute={heute} weiter={weiter} ersetze={ersetze} zuLeads={zuLeads}
+          oeffneKontakt={id => setPanel({ art: 'kontakt', id, startFirma: (api.kontakte ?? []).find(k => k.id === id)?.firmaId })} oeffneFirma={id => setPanel({ art: 'firma', id })} meldeFertig={setMeldung} />}
+
+        <KanalLeistung zeilen={kanaele} i={2} />
+        {d && <GruendeKarte g={leadGruende(d.leads)} i={3} />}
+      </div>
+
+      {panel?.art === 'kontakt' && <KontaktSeitenfenster key={`k-${panel.id}`} api={api} kontaktId={panel.id} startFirmaId={panel.startFirma} onZu={() => setPanel(null)} zuFirma={id => setPanel({ art: 'firma', id })}
+        onFirmaGeaendert={(von, nach, personId) => setNachziehen({ von, nach, personId })} />}
+      {panel?.art === 'firma' && <FirmaSeitenfenster key={`f-${panel.id}`} api={api} firmaId={panel.id} onZu={() => setPanel(null)} zuKontakt={id => setPanel({ art: 'kontakt', id, startFirma: (api.kontakte ?? []).find(k => k.id === id)?.firmaId })} zuFirma={id => setPanel({ art: 'firma', id })} />}
+      {nachziehen && z && <FirmaWechselnDialog api={api} z={z} nachziehen={nachziehen} onZu={() => setNachziehen(null)} onFertig={i => { setNachziehen(null); setMeldung(i.text); if (i.neuerLeadId) ersetze(i.neuerLeadId); }} />}
     </>
   );
 }
 
-function ScoreBlock({ score }: { score: LeadScore }) {
-  const f = temperaturFarbe(score.temperatur);
-  return (
-    <div style={{ display: 'grid', gap: 8, padding: '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,.04)', border: `1px solid ${f}33` }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-        <span style={{ fontFamily: SCHRIFT.display, fontSize: 30, fontWeight: 700, letterSpacing: '-.02em', color: f, fontVariantNumeric: 'tabular-nums' }}>{score.punkte}</span>
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>von 100</span>
-        <Chip farbe={f}>{temperaturLabel(score.temperatur)}</Chip>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
-        {score.teile.map(t => (
-          <div key={t.id} title={t.grund}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.inkDim, marginBottom: 3 }}><span>{t.label}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{t.punkte}/{t.max}</span></div>
-            <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}><div style={{ width: `${(100 * t.punkte) / t.max}%`, height: '100%', background: f, transition: 'width .3s' }} /></div>
-            <div style={{ fontSize: 11, color: C.inkLeise, marginTop: 3, lineHeight: 1.35 }}>{t.grund}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function QualiKarte({ z, api, ich, heute, laden, weiter, zuKontakt, zuFirma, zuLeads }: { z: LeadZeile; api: CrmApi; ich: string; heute: string; laden: () => Promise<void>; weiter: (fertig: boolean) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; zuLeads: (id?: string) => void }) {
-  const [k, setK] = useState<Kriterien>(z.kriterien);
-  const [antworten, setAntworten] = useState<Partial<Record<keyof Kriterien, string>>>(z.antworten ?? {});
-  const [fit, setFit] = useState<Qual | undefined>(z.fit);
+// ── Die Karte je Lead ────────────────────────────────────────────────────────────────────────
+function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLeads, oeffneKontakt, oeffneFirma, meldeFertig }: {
+  z: LeadZeile; api: CrmApi; einstellungen: ScoringEinstellungen; ich: string; heute: string; weiter: (fertig: boolean) => void; ersetze: (neuId: string) => void;
+  zuLeads: (id?: string) => void; oeffneKontakt: (id: string) => void; oeffneFirma: (id: string) => void; meldeFertig: (text: string) => void;
+}) {
+  const router = useRouter();
+  const { lokal, antworten, score, fehler, setFehler, speichern, stufeWaehlen, antwortSpeichern, bereit, fehlt } = useLeadFragen(api, z, einstellungen);
   const [notiz, setNotiz] = useState(z.notiz ?? '');
-  const [meldung, setMeldung] = useState('');
+  const [werkzeug, setWerkzeug] = useState<'firma' | 'zusammen' | 'person' | 'abgeben' | 'parken' | 'raus' | 'gespraech' | null>(null);
   const [laeuft, setLaeuft] = useState(false);
-  const { frage, dialog } = useNachfrage();
   const personen = useMemo(() => z.personen.map(p => (api.kontakte ?? []).find(x => x.id === p.id)).filter((x): x is NonNullable<typeof x> => !!x), [z.personen, api.kontakte]);
-  // Der Score rechnet live mit — jede Antwort verschiebt ihn sichtbar.
-  const score = useMemo(() => leadScore(personen, { status: z.status, kriterien: k, ...(fit ? { fit } : {}) }, heute, k), [personen, z.status, k, fit, heute]);
-  const post = (body: Record<string, unknown>) => fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
-  const setze = async (felder: Record<string, unknown>) => { const r = await post({ aktion: 'setze', id: z.id, felder }); if (!r.ok) setMeldung(r.fehler ?? 'Nicht gespeichert.'); return !!r.ok; };
-  const kriterium = (id: keyof Kriterien, w: Qual) => {
-    const neu = { ...k, [id]: w }; setK(neu);
-    const nachStatus = ['neu', 'kontaktiert', 'im_gespraech'].includes(z.status) ? 'qualifizierung' : z.status;
-    void setze({ kriterien: { [id]: w }, ...(nachStatus !== z.status ? { status: nachStatus } : {}) });
-  };
-  const antwortSpeichern = (id: keyof Kriterien) => { if ((antworten[id] ?? '') !== (z.antworten?.[id] ?? '')) void setze({ antworten: { [id]: antworten[id] ?? '' } }); };
-  const abschliessen = async (status?: 'kein_fit' | 'ruht') => {
+  const haupt = z.personen.find(p => p.id === z.hauptKontaktId) ?? z.personen[0];
+  const ablage = useAblage(haupt ? [haupt.id, ...z.personen.filter(p => p.id !== haupt.id).slice(0, 3).map(p => p.id)] : []);
+  const herkunftMitDateien = useMemo(() => herkunftVon(personen, api.crm?.stand ?? { events: [], teilnahmen: [], kampagnen: [], firmen: [] }, ablage), [personen, api.crm, ablage]);
+
+  const geprueft = async () => {
     setLaeuft(true);
-    let ok = true;
-    if (status) {
-      const grund = await frage(status === 'kein_fit' ? 'Warum kein Fit?' : 'Warum ruht es?', { hinweis: 'Ein kurzer Satz — steht später an der Firma.' });
-      if (grund === null) { setLaeuft(false); return; }
-      ok = await setze({ status, grund, geprueft: true });
-    } else ok = await setze({ geprueft: true, ...(notiz !== (z.notiz ?? '') ? { notiz } : {}) });
+    const ok = await speichern({ geprueft: true, ...(notiz !== (z.notiz ?? '') ? { notiz } : {}) });
     setLaeuft(false);
-    if (ok) { void laden(); weiter(true); }
+    if (ok) { void api.laden(true); weiter(true); }
   };
-  const uebernehmen = async () => { const r = await post({ aktion: 'uebernehmen', id: z.id, an: ich }); if (r.ok) { setMeldung(`Übernommen — ${r.uebernommen} ${r.uebernommen === 1 ? 'Person gehört' : 'Personen gehören'} jetzt ${nameVon(ich)}.`); void laden(); void api.laden(); } else setMeldung(r.fehler ?? 'Nicht übernommen.'); };
-  const bereit = sqlBereit(k);
-  const fehlt = fehltBisSql(k);
-  const eingabe = { ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: '100%', resize: 'vertical' as const };
+  const uebernehmen = async () => { const r = await leadPost({ aktion: 'uebernehmen', id: z.id, an: ich }); if (r.ok) { meldeFertig(`Übernommen — jetzt gehört der Lead ${nameVon(ich)}.`); void api.laden(true); } else setFehler(r.fehler ?? 'Nicht übernommen.'); };
+  const fertig = (i: FertigInfo) => { setWerkzeug(null); meldeFertig(i.text); if (i.neuerLeadId) ersetze(i.neuerLeadId); };
+  const weiterNach = (i: WeiterInfo) => { setWerkzeug(null); meldeFertig(i.text); if (i.weiter) weiter(true); };
+  const firma = z.firmaId ? api.crm?.stand.firmen.find(f => f.id === z.firmaId) : undefined;
 
   return (
     <Karte i={1} akzent={temperaturFarbe(score.temperatur)}>
       <div style={{ display: 'grid', gap: 14 }}>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-            <div style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, letterSpacing: '-.015em' }}>{z.name}</div>
-            <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 2 }}>{[z.art === 'firma' ? 'Firma' : 'Person ohne Firma', z.branche, z.stadt, statusLabel(z.status), `Kanal: ${kanalLabel(z.kanal)}`, z.letzterKontakt ? `zuletzt ${datum(z.letzterKontakt, heute)}` : 'noch kein Kontakt'].filter(Boolean).join(' · ')}</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+          <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 6 }}>
+            <div style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, letterSpacing: '-.015em', overflowWrap: 'anywhere' }}>{z.name}</div>
+            <div style={{ fontSize: 12.5, color: C.inkDim }}>{[z.art === 'firma' ? 'Firma' : 'Person ohne Firma', z.branche, z.stadt, statusLabel(z.status)].filter(Boolean).join(' · ')}{z.status === 'ruht' && z.wiedervorlage ? ` · Wiedervorlage ${datum(z.wiedervorlage, heute)}` : ''}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               {z.ohneBesitzer ? <Chip farbe={LEUCHT.achtung}>ohne Besitzer</Chip> : <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: C.inkDim }}><Person id={z.besitzer} groesse={18} /> {nameVon(z.besitzer)}</span>}
-              {z.personen.map(p => <button key={p.id} onClick={() => zuKontakt(p.id)} style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, padding: '4px 10px', color: C.ink, cursor: 'pointer', fontSize: 12.5 }}>{p.name}{p.position ? ` · ${p.position}` : ''}</button>)}
+              {z.personen.length > 1 && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{z.personen.length} Personen</span>}
             </div>
           </div>
-          <div style={{ flex: '1 1 300px' }}><ScoreBlock score={score} /></div>
+          <div style={{ flex: '1 1 300px' }}><ScoreKopf score={score} /></div>
         </div>
 
-        {z.deal && <div style={{ padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.gut}14`, fontSize: TYP.bedien }}>Deal „{z.deal.titel}“ läuft unter Deals — hier nur noch die Kernfragen nachziehen.</div>}
+        <HerkunftBlock h={herkunftMitDateien} heute={heute} personName={id => z.personen.find(p => p.id === id)?.name ?? ''} />
+
+        {z.deal && <div style={{ padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.gut}14`, fontSize: TYP.bedien }}>Deal „{z.deal.titel}“ läuft unter Deals — hier nur noch die Fragen nachziehen.</div>}
+
+        {/* Das Wichtigste: Kontakt · Firma · Gespräch starten */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {haupt && <button type="button" onClick={() => oeffneKontakt(haupt.id)} className="fassbar" style={{ minHeight: 44, padding: '8px 14px', borderRadius: 11, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, color: C.ink, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.05)' }}>Kontakt ▸ {haupt.name}{haupt.position ? <span style={{ color: C.inkLeise, fontWeight: 500 }}> · {haupt.position.slice(0, 28)}</span> : null}</button>}
+          {firma && <button type="button" onClick={() => oeffneFirma(firma.id)} className="fassbar" style={{ minHeight: 44, padding: '8px 14px', borderRadius: 11, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, color: C.ink, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.05)' }}>Firma ▸ {firma.name}</button>}
+          <Knopf farbe={LEUCHT.business} onClick={() => setWerkzeug('gespraech')}>Gespräch starten</Knopf>
+        </div>
 
         <div>
-          <Ueberschrift rechts={<span style={{ fontSize: 12, color: bereit ? LEUCHT.gut : C.inkLeise }}>{bereit ? 'SQL-bereit' : `bis SQL fehlt: ${fehlt.join(', ')}`}</span>}>Kernfragen</Ueberschrift>
-          <div style={{ display: 'grid', gap: 12 }}>
-            {KRITERIEN.map(x => (
-              <div key={x.id} style={{ display: 'grid', gap: 6, paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 10, alignItems: 'center' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{x.label}</div>
-                    <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.4 }}>{x.frage}</div>
-                  </div>
-                  <span style={{ display: 'inline-flex', gap: 3 }}>
-                    {(['ja', 'unklar', 'nein'] as Qual[]).map(w => (
-                      <button key={w} onClick={() => kriterium(x.id, w)} aria-pressed={k[x.id] === w} style={{ padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: SCHRIFT.text,
-                        border: `1px solid ${k[x.id] === w ? Q_FARBE[w] : 'rgba(255,255,255,.1)'}`, background: k[x.id] === w ? `${w === 'unklar' ? '#ffffff' : Q_FARBE[w]}1f` : 'transparent', color: k[x.id] === w ? C.ink : C.inkDim }}>{w}</button>
-                    ))}
-                  </span>
-                </div>
-                <textarea value={antworten[x.id] ?? ''} onChange={e => setAntworten(a => ({ ...a, [x.id]: e.target.value }))} onBlur={() => antwortSpeichern(x.id)} rows={2} maxLength={1000}
-                  placeholder={PLATZHALTER[x.id]} aria-label={`${x.label} — was genau`} style={eingabe} />
-              </div>
-            ))}
-          </div>
+          <Ueberschrift rechts={<span style={{ fontSize: 12, color: bereit ? LEUCHT.gut : C.inkLeise }}>{bereit ? 'SQL-bereit' : `bis SQL fehlt: ${fehlt.join(', ') || '—'}`}</span>}>Fragen</Ueberschrift>
+          <Fragen einstellungen={einstellungen} score={score} stufen={lokal.stufen} antworten={antworten} onStufe={stufeWaehlen} onAntwort={antwortSpeichern} />
         </div>
 
-        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
-          <div>
-            <Ueberschrift>Fit zu uns</Ueberschrift>
-            <Pillen liste={[{ id: 'ja', label: 'Passt' }, { id: 'unklar', label: 'Offen' }, { id: 'nein', label: 'Kein Fit' }]} aktiv={fit ?? 'unklar'} onWahl={w => { setFit(w as Qual); void setze({ fit: w }); }} farbe={LEUCHT.business} />
-          </div>
-          <div>
-            <Ueberschrift>Notiz</Ueberschrift>
-            <textarea value={notiz} onChange={e => setNotiz(e.target.value)} onBlur={() => { if (notiz !== (z.notiz ?? '')) void setze({ notiz }); }} rows={2} maxLength={2000} placeholder="Was man wissen muss, bevor man anruft …" aria-label="Notiz" style={eingabe} />
-          </div>
+        <div>
+          <Ueberschrift>Notiz zum Lead</Ueberschrift>
+          <textarea value={notiz} onChange={e => setNotiz(e.target.value)} onBlur={() => { if (notiz !== (z.notiz ?? '')) void speichern({ notiz }); }} rows={2} maxLength={2000} placeholder="Was man wissen muss, bevor man anruft …" aria-label="Notiz zum Lead" style={{ ...feld, fontSize: 16, padding: '8px 11px', width: '100%', resize: 'vertical' }} />
         </div>
 
-        {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
-        {dialog}
+        {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Knopf onClick={() => void abschliessen()} aus={laeuft}>Geprüft → nächster</Knopf>
+          <Knopf onClick={() => geprueft()} aus={laeuft}>Geprüft → nächster</Knopf>
           {bereit && !z.deal?.offen && <Knopf farbe={LEUCHT.gut} onClick={() => zuLeads(z.id)}>SQL → Deal anlegen</Knopf>}
-          {z.ohneBesitzer && <Knopf leise onClick={() => void uebernehmen()}>Übernehmen ({nameVon(ich)})</Knopf>}
-          <Knopf leise onClick={() => (z.firmaId ? zuFirma(z.firmaId) : z.personen[0] ? zuKontakt(z.personen[0].id) : undefined)}>{z.firmaId ? 'Firma öffnen' : 'Kontakt öffnen'}</Knopf>
-          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8 }}>
-            <Knopf leise onClick={() => void abschliessen('ruht')}>Ruht</Knopf>
-            <Knopf leise onClick={() => void abschliessen('kein_fit')}>Kein Fit</Knopf>
-            <Knopf leise onClick={() => weiter(false)}>Später</Knopf>
+          <Knopf leise onClick={() => weiter(false)}>Später</Knopf>
+          <span style={{ marginLeft: 'auto' }}>
+            <MehrMenue punkte={[
+              { id: 'firma', label: 'Firma wechseln oder neu …', hinweis: 'Jobwechsel, falsche Firma — Lead und Deals ziehen mit', onClick: () => setWerkzeug('firma') },
+              { id: 'zusammen', label: 'Zusammenführen …', hinweis: 'Dublette bei Personen oder Firmen, mit Vorschau', onClick: () => setWerkzeug('zusammen') },
+              { id: 'person', label: 'Weitere Person dazu …', hinweis: 'neuer Ansprechpartner, z. B. der Entscheider', onClick: () => setWerkzeug('person') },
+              ...(z.ohneBesitzer ? [{ id: 'uebernehmen', label: `Übernehmen (${nameVon(ich)})`, hinweis: 'der Lead gehört noch niemandem', onClick: () => void uebernehmen() }] : []),
+              { id: 'abgeben', label: 'Abgeben …', hinweis: 'an Kevin oder Malin, mit Aufgabe', onClick: () => setWerkzeug('abgeben') },
+              { id: 'parken', label: 'Parken …', hinweis: 'ruht bis zur Wiedervorlage, dann zurück in die Runde', onClick: () => setWerkzeug('parken') },
+              { id: 'raus', label: 'Raus — Kein Fit …', hinweis: 'mit Grund, der in die Auswertung fließt', gefahr: true, onClick: () => setWerkzeug('raus') },
+              { id: 'akte', label: 'Akte ganz öffnen ›', hinweis: z.firmaId ? 'die Firmenakte' : 'die Kontaktakte', onClick: () => router.push(z.firmaId ? markttraktion('firmen', undefined, z.firmaId) : haupt ? kontaktAkte(haupt.id) : markttraktion('kontakte')) },
+            ]} />
           </span>
         </div>
       </div>
+      {werkzeug === 'firma' && <FirmaWechselnDialog api={api} z={z} onZu={() => setWerkzeug(null)} onFertig={fertig} />}
+      {werkzeug === 'zusammen' && <ZusammenfuehrenDialog api={api} z={z} onZu={() => setWerkzeug(null)} onFertig={fertig} />}
+      {werkzeug === 'person' && <WeiterePersonDialog api={api} z={z} onZu={() => setWerkzeug(null)} onFertig={fertig} />}
+      {werkzeug === 'abgeben' && <AbgebenDialog api={api} z={z} onZu={() => setWerkzeug(null)} onFertig={weiterNach} />}
+      {werkzeug === 'parken' && <ParkenDialog api={api} z={z} onZu={() => setWerkzeug(null)} onFertig={weiterNach} />}
+      {werkzeug === 'raus' && <RausDialog api={api} z={z} onZu={() => setWerkzeug(null)} onFertig={weiterNach} />}
+      {werkzeug === 'gespraech' && <Gespraechsmodus api={api} z={{ ...z, kriterien: lokal.kriterien }} einstellungen={einstellungen} score={score} stufen={lokal.stufen} antworten={antworten} onStufe={stufeWaehlen} onAntwort={antwortSpeichern} onZu={() => setWerkzeug(null)} onFertig={weiterNach} />}
     </Karte>
   );
 }
 
-const PLATZHALTER: Record<keyof Kriterien, string> = {
-  schmerz: 'Was genau tut weh — Zahlen, Beispiel, Zitat …',
-  entscheider: 'Wer entscheidet, wer zahlt, wie nah sind wir dran …',
-  budget: 'Rahmen, Vergleichsausgaben, was der Schmerz kostet …',
-  zeitpunkt: 'Bis wann, welcher Anlass, was passiert sonst …',
-  wirkung: 'Woran wird der Erfolg gemessen …',
-  alternative: 'Wer ist noch im Rennen, was ist Plan B …',
-};
+/** Warum Leads ausscheiden oder warten — die Auswertung der Gründe aus „Raus“ und „Parken“. */
+export function GruendeKarte({ g, i = 0 }: { g: LeadGruende; i?: number }) {
+  if (!g.nAus && !g.nGeparkt) return null;
+  const max = Math.max(1, ...g.ausgeschieden.map(x => x.anzahl), ...g.geparkt.map(x => x.anzahl));
+  const liste = (titel: string, z: LeadGruende['ausgeschieden'], farbe: string) => z.length > 0 && (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ fontSize: 11.5, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 700 }}>{titel}</div>
+      {z.map(x => (
+        <div key={x.art} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.4fr) 1fr auto', gap: 10, alignItems: 'center', fontSize: 12.5 }}>
+          <span style={{ color: x.art === 'ohne' ? C.inkLeise : C.ink }}>{x.label}</span>
+          <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,.06)', overflow: 'hidden' }}><div style={{ width: `${(100 * x.anzahl) / max}%`, height: '100%', background: farbe }} /></div>
+          <span style={{ fontVariantNumeric: 'tabular-nums', color: C.inkDim }}>{x.anzahl}</span>
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <Karte i={i}>
+      <Ueberschrift rechts={<span>{g.nAus} raus · {g.nGeparkt} geparkt</span>}>Warum Leads ausscheiden oder warten</Ueberschrift>
+      <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Aus „Raus — Kein Fit“ und „Parken“: die feste Art des Grundes. „Ohne Angabe“ sind ältere Leads oder verlorene Deals.</div>
+      <div style={{ display: 'grid', gap: 16 }}>{liste('Ausgeschieden (Kein Fit)', g.ausgeschieden, LEUCHT.kritisch)}{liste('Geparkt (ruht)', g.geparkt, LEUCHT.achtung)}</div>
+    </Karte>
+  );
+}
 
 /** Kanal-Leistung: welcher Weg warme Leads und SQLs bringt — für Runde, Sales-Auswertung und Marketing. */
 export function KanalLeistung({ zeilen, i = 0, titel = 'Kanal-Leistung', rechts }: { zeilen: ReturnType<typeof kanalLeistung>; i?: number; titel?: string; rechts?: ReactNode }) {
@@ -318,5 +343,6 @@ export function KanalLeistungLaden({ i = 0, mitTemperatur = false }: { i?: numbe
   useEffect(() => { void holeMitStand<Daten & { ok?: boolean }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) setLeads(x.leads); }).catch(() => undefined); }, []);
   const zeilen = useMemo(() => kanalLeistung(leads), [leads]);
   const temperatur = useMemo(() => temperaturLeistung(leads), [leads]);
-  return <>{<KanalLeistung zeilen={zeilen} i={i} />}{mitTemperatur && <TemperaturLeistung zeilen={temperatur} i={i + 1} />}</>;
+  const gruende = useMemo(() => leadGruende(leads), [leads]);
+  return <>{<KanalLeistung zeilen={zeilen} i={i} />}{mitTemperatur && <TemperaturLeistung zeilen={temperatur} i={i + 1} />}{mitTemperatur && <GruendeKarte g={gruende} i={i + 2} />}</>;
 }

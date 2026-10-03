@@ -40,7 +40,7 @@ export async function GET(req: Request) {
   const tage = url.searchParams.get('tage') === '30' ? 30 : 90;
   // ETag für die JSON-Antwort (27.09.): der Marketing-Reiter fragt bei jedem Abgleich — unverändert heißt 304.
   const nurJson = format === null && segmentId === null && url.searchParams.get('newsletter') === null;
-  const etag = nurJson ? etagAus('mk', await speicherStand(['crm', 'kontakte']), heute, String(tage), personAus(req)) : null;
+  const etag = nurJson ? etagAus('mk', await speicherStand(['crm', 'kontakte', 'crm-scoring']), heute, String(tage), personAus(req)) : null;
   if (etag) { const gleich = unveraendert(req, etag); if (gleich) return gleich; }
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();

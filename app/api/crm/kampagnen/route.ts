@@ -41,7 +41,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const heute = localDay();
   // ETag aus dem Stand beider Bestände (27.09.): der Abgleich alle 20 s bekommt 304 statt der ganzen Antwort.
-  const etag = etagAus('kp', await speicherStand(['crm', 'kontakte']), heute);
+  const etag = etagAus('kp', await speicherStand(['crm', 'kontakte', 'crm-scoring']), heute);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const kontakte = await kontakteLaden();

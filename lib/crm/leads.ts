@@ -24,7 +24,7 @@ import { haeltBeziehung } from './team';
 import { dealZuFirma } from './firmen-bezug';
 import { leadScore, kanalVon, warmPlus, scoringKontext, type LeadScore, type KanalId } from './score';
 import { beanVon, beanFirma, type BeanId } from './bean';
-import { personenJeFirma, firmenDerPerson } from './stationen';
+import { personenJeFirma, firmenDerPerson, personenDerFirma } from './stationen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; aktiv: boolean }[] = [
@@ -77,6 +77,8 @@ export interface LeadZeile {
   /** firma-ID (f-…) oder kontakt-ID (c-…) — daran hängt die Qualifizierung. */
   id: string; art: 'firma' | 'person'; name: string; firmaId?: string;
   personen: { id: string; name: string; position?: string; stufe: string }[];
+  /** Hauptansprechpartner (Kennung) — am Lead gewählt oder die zuletzt kontaktierte Person. */
+  hauptKontaktId?: string;
   status: LeadStatus; gesetzt: boolean; kriterien: Kriterien; fit?: Qual; notiz?: string; grund?: string;
   deal?: { id: string; titel: string; stufe: string; wert: number; offen: boolean };
   letzterKontakt?: string; naechsterSchritt?: { text: string; datum: string; bei: string };
@@ -123,11 +125,12 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
     const offen = !!d && OFFENE_STUFEN.includes(d.stufe);
     const letzter = personen.map(k => k.letzterKontakt).filter(Boolean).sort().pop();
     const schritt = personen.filter(k => k.naechsterSchritt).sort((a, b) => a.naechsterSchritt!.datum.localeCompare(b.naechsterSchritt!.datum))[0];
-    const haupt = [...personen].sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
+    // Hauptansprechpartner: der am Lead gewählte (wenn er noch dort aktiv ist), sonst die zuletzt kontaktierte Person.
+    const haupt = personen.find(k => !!lead?.hauptKontaktId && k.id === lead.hauptKontaktId) ?? [...personen].sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
     const kriterien: Kriterien = { ...leereKriterien(), ...(lead?.kriterien ?? {}), ...(!lead?.kriterien && d ? d.qualifizierung : {}) };
     return {
       id, art, name, ...(firma ? { firmaId: firma.id, branche: firma.branche, stadt: firma.stadt } : {}),
-      personen: personen.map(k => ({ id: k.id, name: anzeigename(k), position: k.position ?? k.jobtitel, stufe: k.stufe })),
+      personen: personen.map(k => ({ id: k.id, name: anzeigename(k), position: k.position ?? k.jobtitel, stufe: k.stufe })), ...(haupt ? { hauptKontaktId: haupt.id } : {}),
       // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung.
       status: lead?.status === 'sql' && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : lead?.status ?? abgeleitet(personen, offen), gesetzt: !!lead?.status,
       kriterien,
@@ -245,3 +248,14 @@ export function qualiStand(z: Pick<LeadZeile, 'kriterien' | 'score' | 'status'>)
   return mqlErreicht(z) ? 'mql' : 'lead';
 }
 export { warmPlus };
+
+/**
+ * Die Lead-Zeile zu EINER Person (Akte, Seitenfenster): dieselbe Rechnung wie die Leads-Liste, nur für ihre Firma bzw. sie selbst —
+ * so zeigen Akte, Runde und Leads-Liste immer denselben Score (eine Rechnung). Mit Firma der Lead der Firma, sonst der der Person.
+ */
+export function leadZeileFuer(k: Kontakt, kontakte: readonly Kontakt[], crm: CrmBestand, heute: string): LeadZeile | undefined {
+  const firma = k.firmaId ? crm.firmen.find(f => f.id === k.firmaId) : undefined;
+  if (!firma) return leads([k], { ...crm, firmen: [] }, heute).find(z => z.id === k.id);
+  const personen = personenDerFirma(kontakte as Kontakt[], firma.id);
+  return leads(personen.length ? personen : [k], { ...crm, firmen: [firma] }, heute).find(z => z.id === firma.id);
+}

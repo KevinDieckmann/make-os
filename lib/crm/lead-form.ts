@@ -39,6 +39,7 @@ export function leadSaeubern(v: unknown): Lead | undefined {
     ...(Q.includes(o.fit as Qual) ? { fit: o.fit as Qual } : {}),
     ...(txt(o.notiz, 2000) ? { notiz: txt(o.notiz, 2000) } : {}), ...(txt(o.grund, 300) ? { grund: txt(o.grund, 300) } : {}),
     ...(antworten(o.antworten) ? { antworten: antworten(o.antworten) } : {}), ...(stufen(o.stufen) ? { stufen: stufen(o.stufen) } : {}), ...(tag(o.qualifiziertAm) ? { qualifiziertAm: tag(o.qualifiziertAm) } : {}),
+    ...(typeof o.hauptKontaktId === 'string' && /^c-[a-z0-9-]{4,60}$/.test(o.hauptKontaktId) ? { hauptKontaktId: o.hauptKontaktId } : {}),
     ...(typeof o.wiedervorlage === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.wiedervorlage) ? { wiedervorlage: o.wiedervorlage } : {}), ...(typeof o.grundArt === 'string' && /^[a-z][a-z_]{0,29}$/.test(o.grundArt) ? { grundArt: o.grundArt } : {}),
     ...(tag(o.sqlAm) ? { sqlAm: tag(o.sqlAm) } : {}), ...(/^[a-z0-9][a-z0-9-]{1,63}$/.test(String(o.chanceId ?? '')) ? { chanceId: String(o.chanceId) } : {}),
     ...(tag(o.geaendert) ? { geaendert: tag(o.geaendert) } : {}), ...(/^[a-z0-9-]{1,40}$/.test(String(o.geaendertVon ?? '')) ? { geaendertVon: String(o.geaendertVon) } : {}),

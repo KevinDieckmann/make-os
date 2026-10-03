@@ -4,6 +4,7 @@
 //      deals · followup · qualifizierung (Runde, 27.09.) · angebot (28.09.) · sales · marketing · besuche (Events, 03.10.) · event (Make.One) · stammdaten
 //      Die Leiste (28.09. abends): links die Arbeit, in der Mitte die Schnellknöpfe Qualifizierung + Angebot,
 //      rechts die Welten und die Stammdaten — `LEISTE` unten ist die eine Stelle für die Reihenfolge.
+//   qualifizierung (03.10., „Qualifizierung & Scoring“): a leer = Runde · scoring (Marketing) · scoring-sales; k = Lead (Sprung in die Runde)
 //   a: kontakte   → die gespeicherte Ansicht, eine Runde (runde-…) oder akte („Kontakt öffnen“ zu k)
 //      t (nur bei „Kontakt öffnen“, 28.09.): Reiter ueber (Start, ohne t) · aktivitaeten · umsatz · daten —
 //      alte Links ohne t bleiben gültig und öffnen „Über“; die Reiter vom 27.09. werden übersetzt
@@ -46,6 +47,13 @@ export const LEISTE: { links: Bereich[]; mitte: Bereich[]; rechts: Bereich[] } =
   mitte: ['qualifizierung', 'angebot'],
   rechts: ['sales', 'marketing', 'besuche', 'event', 'stammdaten'],
 };
+/**
+ * Der Schnellknopf in der Mitte heißt seit 03.10. „Qualifizierung & Scoring“ (die Kennung `qualifizierung` und alte Links bleiben):
+ * `a` fehlt = die Runde · `scoring` = Scoring-Einstellungen von Marketing (bis MQL) · `scoring-sales` = von Sales (MQL → SQL).
+ * `k` = ein Lead (Firma f-… oder Person c-…): die Runde springt dorthin.
+ */
+export type QualiAnsicht = 'runde' | 'scoring' | 'scoring-sales';
+export const QUALI_ANSICHTEN: QualiAnsicht[] = ['runde', 'scoring', 'scoring-sales'];
 export const DEALS_ANSICHTEN: DealsAnsicht[] = ['board', 'liste', 'akte', 'kunden', 'auswertung'];
 export const FOLLOWUP_ANSICHTEN: FollowupAnsicht[] = ['faellig', 'woche', 'powerhour', 'kadenz'];
 export const SALES_ANSICHTEN: SalesAnsicht[] = ['heute', 'leads', 'pipeline', 'kunden', 'kampagnen'];
@@ -92,6 +100,7 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
     if (b === 'deals') return { s: b, ...(ansicht && ansicht !== 'board' && (DEALS_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
     if (b === 'besuche') return { s: b, ...(ansicht && ansicht !== 'kalender' && (BESUCHE_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
     if (b === 'followup') return { s: b, ...(ansicht && ansicht !== 'faellig' && (FOLLOWUP_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
+    if (b === 'qualifizierung') return { s: b, ...(ansicht && ansicht !== 'runde' && (QUALI_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
     return { s: b, ...(ansicht ? { a: ansicht } : {}) };
   }
   return { s: 'ueberblick' };
@@ -113,6 +122,9 @@ export function markttraktion(s?: string, a?: string, k?: string, t?: string | n
   const text = q.toString();
   return text ? `${PFAD}?${text}` : PFAD;
 }
+
+/** Link in die Qualifizierung & Scoring (03.10.): ohne Angaben die Runde; `k` = dieser Lead (Firma oder Person), `a` = Scoring-Einstellungen. */
+export const qualifizierungLink = (k?: string, a?: QualiAnsicht): string => markttraktion('qualifizierung', a && a !== 'runde' ? a : undefined, k && KENNUNG.test(k) ? k : undefined);
 
 /** Vorbelegung eines Angebots (28.09.): welches Angebot (`k`) und für wen — Kontakt, Firma, Deal. */
 export interface AngebotAdresse { angebotId?: string | null; kontaktId?: string | null; firmaId?: string | null; dealId?: string | null }

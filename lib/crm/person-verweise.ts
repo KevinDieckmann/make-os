@@ -43,12 +43,16 @@ const uebergabenUm = (events: CrmBestand['events'], alt: string, neu: string): C
   if (!e.uebergaben?.some(u => u.kontaktIds?.includes(alt))) return e;
   return { ...e, uebergaben: e.uebergaben.map(u => (u.kontaktIds?.includes(alt) ? { ...u, kontaktIds: um(u.kontaktIds, alt, neu) } : u)) };
 });
+/** Hauptansprechpartner eines Firmen-Leads (03.10.): fällt weg bzw. wird umgebogen; ohne Treffer bleibt die Liste unverändert (===). */
+const hauptOhne = (firmen: CrmBestand['firmen'], id: string): CrmBestand['firmen'] => (firmen.some(f => f.lead?.hauptKontaktId === id) ? firmen.map(f => { if (f.lead?.hauptKontaktId !== id) return f; const { hauptKontaktId: _h, ...lead } = f.lead; return { ...f, lead }; }) : firmen);
+const hauptUm = (firmen: CrmBestand['firmen'], alt: string, neu: string): CrmBestand['firmen'] => (firmen.some(f => f.lead?.hauptKontaktId === alt) ? firmen.map(f => (f.lead?.hauptKontaktId === alt ? { ...f, lead: { ...f.lead, hauptKontaktId: neu } } : f)) : firmen);
 
 /** Person aus allen Listen entfernen (Art. 17). Follow-ups AN die Person fallen weg; Anträge behalten den Vorgang, verlieren aber den Verweis. */
 export function personEntfernen(crm: CrmBestand, id: string): CrmBestand {
   const rollenOhne = (r?: Record<string, unknown>) => { if (!r || !(id in r)) return r; const { [id]: _weg, ...rest } = r; return Object.keys(rest).length ? rest : undefined; };
   return {
     ...crm,
+    firmen: hauptOhne(crm.firmen, id),
     chancen: crm.chancen.map(c => (c.kontaktIds.includes(id) || c.personenRollen?.[id] ? { ...c, kontaktIds: ohne(c.kontaktIds, id), ...(rollenOhne(c.personenRollen) ? { personenRollen: rollenOhne(c.personenRollen) as typeof c.personenRollen } : { personenRollen: undefined }) } : c)),
     mandate: crm.mandate.map(m => (m.kontaktIds.includes(id) ? { ...m, kontaktIds: ohne(m.kontaktIds, id) } : m)),
     teilnahmen: crm.teilnahmen.filter(t => t.kontaktId !== id),
@@ -97,6 +101,7 @@ export function personUmbiegen(crm: CrmBestand, alt: string, neu: string): CrmBe
   const fu = (f: FollowUp): FollowUp => ({ ...f, ...(f.kontaktId === alt ? { kontaktId: neu } : {}), ...(f.bezug.art === 'kontakt' && f.bezug.id === alt ? { bezug: { ...f.bezug, id: neu } } : {}) });
   return {
     ...crm,
+    firmen: hauptUm(crm.firmen, alt, neu),
     chancen: crm.chancen.map(c => (c.kontaktIds.includes(alt) || c.personenRollen?.[alt] ? { ...c, kontaktIds: um(c.kontaktIds, alt, neu), ...(c.personenRollen ? { personenRollen: rollenUm(c.personenRollen) as typeof c.personenRollen } : {}) } : c)),
     mandate: crm.mandate.map(m => (m.kontaktIds.includes(alt) ? { ...m, kontaktIds: um(m.kontaktIds, alt, neu) } : m)),
     teilnahmen: teilnahmenUm(crm.teilnahmen, alt, neu),

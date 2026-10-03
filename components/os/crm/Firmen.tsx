@@ -136,7 +136,7 @@ export function neueFirma(name: string): Firma {
   return { id: firmenId(name), name: name.trim(), rolle: 'offen', geaendert: new Date().toISOString() };
 }
 
-function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuPerson: (id: string) => void; zuFirma: (id: string) => void }) {
+export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuPerson: (id: string) => void; zuFirma: (id: string) => void }) {
   const crm = api.crm!;
   const firmen = crm.stand.firmen;
   // Personen nur über die Stationen (28.09.): aktuell (laufende Station) und ehemalig (beendete) getrennt.

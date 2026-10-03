@@ -152,7 +152,11 @@ export function firmaZusammenPruefen(firmen: readonly Firma[], behalten: string,
   return null;
 }
 
-/** Die Felder der weggeführten Firma, die die behaltene bekommt — nur leere Lücken, nie ein Überschreiben. */
+/** Felder, deren abweichender Wert der weggeführten Firma im Vermerk der behaltenen steht (sie gewinnt, aber nichts verschwindet spurlos). */
+const VERMERK_FELDER: [keyof Firma, string][] = [['domain', 'Domain'], ['webseite', 'Webseite'], ['stadt', 'Ort'], ['branche', 'Branche'], ['mitarbeiter', 'Mitarbeitende'], ['umsatz', 'Umsatz'], ['telefon', 'Telefon'], ['email', 'E-Mail'], ['linkedin', 'LinkedIn']];
+const tagDE = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+
+/** Die Felder der weggeführten Firma, die die behaltene bekommt — nur leere Lücken, nie ein Überschreiben; Abweichendes steht im Vermerk. */
 export function firmaMerge(behalten: Firma, weg: Firma, jetzt: string, person: string): Firma {
   const out = { ...behalten } as unknown as Record<string, unknown>;
   const w = weg as unknown as Record<string, unknown>;
@@ -169,7 +173,15 @@ export function firmaMerge(behalten: Firma, weg: Firma, jetzt: string, person: s
   const lead = leadVereinen(behalten.lead, weg.lead);
   if (lead) out.lead = lead;
   if (weg.notiz && behalten.notiz && weg.notiz !== behalten.notiz) out.notiz = `${behalten.notiz}\n${weg.notiz}`;
-  return { ...(out as unknown as Firma), geaendert: jetzt, geaendertVon: person };
+  // Vermerk: wann, aus welcher Firma — und was dort anders stand (nur beim Schreiben, nicht in der Vorschau).
+  if (jetzt) {
+    const abweichend = VERMERK_FELDER.filter(([f]) => !leer(w[f]) && !leer((behalten as unknown as Record<string, unknown>)[f]) && String(w[f]).trim().toLowerCase() !== String((behalten as unknown as Record<string, unknown>)[f]).trim().toLowerCase()).map(([f, l]) => `${l} ${String(w[f]).trim()}`);
+    const vermerk = `Zusammengeführt am ${tagDE(jetzt)} aus „${weg.name}“${abweichend.length ? ` — dort stand anders: ${abweichend.join('; ')}` : ''}.`;
+    const mit = [String(out.notiz ?? '').trim(), vermerk].filter(Boolean).join('\n');
+    // Nie abschneiden: passt der Vermerk nicht mehr in die Notiz (3.000 Zeichen), bleibt die Notiz, wie sie ist.
+    if (mit.length <= 3000 && !String(out.notiz ?? '').includes(vermerk)) out.notiz = mit;
+  }
+  return { ...(out as unknown as Firma), geaendert: jetzt || behalten.geaendert, ...(person ? { geaendertVon: person } : {}) };
 }
 
 export interface ZusammenVorschau {

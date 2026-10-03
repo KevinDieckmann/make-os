@@ -179,6 +179,8 @@ export async function POST(req: Request) {
     if (antwortenNeu && Object.values(antwortenNeu).some(t => String(t ?? '').length > 1000)) return NextResponse.json({ ok: false, fehler: 'Eine Antwort ist länger als 1.000 Zeichen.' }, { status: 413 });
     if (f.notiz !== undefined && String(f.notiz).length > 2000) return NextResponse.json({ ok: false, fehler: 'Die Notiz ist länger als 2.000 Zeichen.' }, { status: 413 });
     if (f.grund !== undefined && String(f.grund).length > 300) return NextResponse.json({ ok: false, fehler: 'Der Grund ist länger als 300 Zeichen.' }, { status: 413 });
+    // Hauptansprechpartner (03.10.): nur eine Person dieses Leads.
+    if (f.hauptKontaktId !== undefined && f.hauptKontaktId !== null && !zeile.personen.some(p => p.id === f.hauptKontaktId)) return NextResponse.json({ ok: false, fehler: 'Der Hauptansprechpartner muss eine Person dieses Leads sein.' }, { status: 400 });
     const vorher = (zeile.stufen ?? {}) as Record<string, string>;
     const stufenSumme = new Set([...Object.keys(vorher), ...Object.keys(stufenAenderung).filter(k => stufenAenderung[k] !== null)]).size;
     const antwortenSumme = new Set([...Object.keys(zeile.antworten ?? {}), ...Object.keys(antwortenNeu ?? {})]).size;
@@ -200,7 +202,8 @@ export async function POST(req: Request) {
       const neuerStatus = f.status as Lead['status'] | undefined;
       const weiterAktiv = neuerStatus && neuerStatus !== 'ruht' && neuerStatus !== 'kein_fit';
       const { wiedervorlage: _w, grundArt: _g, ...ohneRuhe } = l;
-      return { ...(weiterAktiv ? ohneRuhe : l), ...(neuerStatus ? { status: neuerStatus } : {}), kriterien: { ...kriterien, ...((f.kriterien as object) ?? {}) },
+      const { hauptKontaktId: _hk, ...ohneHaupt } = (weiterAktiv ? ohneRuhe : l) as Lead;
+      return { ...ohneHaupt, ...(f.hauptKontaktId === null ? {} : typeof f.hauptKontaktId === 'string' ? { hauptKontaktId: f.hauptKontaktId } : l.hauptKontaktId ? { hauptKontaktId: l.hauptKontaktId } : {}), ...(neuerStatus ? { status: neuerStatus } : {}), kriterien: { ...kriterien, ...((f.kriterien as object) ?? {}) },
         ...(Object.keys(stufen).length ? { stufen } : { stufen: undefined }),
         ...(antwortenNeu ? { antworten: { ...(l.antworten ?? {}), ...(antwortenNeu as Record<string, string>) } } : {}),
         ...(f.fit !== undefined ? { fit: f.fit as Lead['fit'] } : fit !== undefined ? { fit } : {}), ...(f.notiz !== undefined ? { notiz: String(f.notiz) } : {}), ...(f.grund !== undefined ? { grund: String(f.grund) } : {}),

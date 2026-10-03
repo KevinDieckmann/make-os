@@ -25,7 +25,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
-import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, LEISTE, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter, type BesucheAnsicht } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, LEISTE, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht } from '@/lib/crm/adresse';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
@@ -45,7 +45,8 @@ import { Runden, type RundenArt } from './Runden';
 import { Leads, SalesTrichter } from './Leads';
 import { SalesStart } from './SalesStart';
 import { Kampagnen } from './Kampagnen';
-import { Qualifizierung, KanalLeistungLaden } from './Qualifizierung';
+import { KanalLeistungLaden } from './Qualifizierung';
+import { QualifizierungScoring } from './quali/QualifizierungScoring';
 import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
@@ -63,7 +64,7 @@ const REITER: Record<Bereich, ReiterEintrag> = {
   firmen: { id: 'firmen', label: 'Firmen' },
   deals: { id: 'deals', label: 'Deals' },
   followup: { id: 'followup', label: 'Follow-up' },
-  qualifizierung: { id: 'qualifizierung', label: 'Qualifizierung', farbe: LEUCHT.business },
+  qualifizierung: { id: 'qualifizierung', label: 'Qualifizierung & Scoring', farbe: LEUCHT.business },
   angebot: { id: 'angebot', label: 'Angebot', farbe: LEUCHT.gut },
   sales: { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales },
   marketing: { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing },
@@ -84,7 +85,7 @@ const UNTER: Record<Bereich, string> = {
   firmen: 'Ein Unternehmen, alle Beziehungen — hier wird qualifiziert, bis es ein SQL ist.',
   deals: 'Ab SQL im Closing: jede Stufe endet mit einem Ereignis auf Kundenseite.',
   followup: 'Was heute dran ist — Zusagen, Wiedervorlagen, Kadenz. Nichts fällt runter.',
-  qualifizierung: 'Lead für Lead: Kernfragen, Schmerz im Klartext, Lead-Score live — bis es ein SQL ist.',
+  qualifizierung: 'Lead für Lead bis zum SQL — und die Scoring-Einstellungen: Marketing (bis MQL) und Sales (MQL → SQL).',
   angebot: 'Angebot in einer Minute: Produkte anklicken, anpassen, senden.',
   sales: 'Vertrieb als System: der Head of Sales, die Power Hour, Kampagnen und die Auswertung.',
   marketing: 'Ansprechbar sein, nicht laut.',
@@ -249,7 +250,7 @@ export function MarkttraktionSeite() {
         </>
       )}
       {bereich === 'angebot' && <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} />}
-      {bereich === 'qualifizierung' && <Qualifizierung api={api} zuKontakt={zuKontakt} zuFirma={zuFirma} zuLeads={id => gehe('firmen', 'leads', id)} />}
+      {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('firmen', 'leads', id)} />}
       {bereich === 'sales' && (
         <>
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={salesAnsicht} onWahl={a => gehe('sales', a === 'head' ? undefined : a)} /></div>

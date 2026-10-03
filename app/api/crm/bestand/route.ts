@@ -71,7 +71,7 @@ export async function GET(req: Request) {
   // Alles, woraus die Antwort entsteht: die drei Speicher, der Tag (Ampeln, Prognose) und wer fragt.
   // Angebote (28.09.): gestellte nach „gültig bis“ → abgelaufen, bevor der Stand gerechnet wird (schreibt nur bei Bedarf).
   await ablaufNachziehen();
-  const etag = etagAus('b4', await speicherStand(['crm', 'kontakte', 'finanzplan']), localDay(), person);
+  const etag = etagAus('b5', await speicherStand(['crm', 'kontakte', 'finanzplan', 'crm-scoring']), localDay(), person);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   return jsonAntwort(req, await antwort(await ladeCrm(), person), etag);

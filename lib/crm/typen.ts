@@ -23,6 +23,8 @@ export interface Lead {
    * Neu und optional — ältere Leads tragen nur `kriterien` (ja/nein/unklar) und `fit`; der Rechenkern liest beides.
    */
   stufen?: Record<string, string>;
+  /** Hauptansprechpartner dieses Leads (03.10., Qualifizierung): eine Person der Firma — die Runde öffnet sie zuerst; fehlt sie oder ist die Person nicht mehr aktiv dort, gilt die zuletzt kontaktierte. */
+  hauptKontaktId?: string;
   /** Geparkt (Status „ruht“) bis zu diesem Tag (03.10.): dann kommt der Lead in die Qualifizierungsrunde zurück. */
   wiedervorlage?: string;
   /** Warum ausgeschieden (Kein Fit) oder geparkt — eine feste Art für die Auswertung (lib/crm/lead-grund.ts), `grund` bleibt der freie Satz. */
