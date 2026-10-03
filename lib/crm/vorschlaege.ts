@@ -18,6 +18,7 @@ import { echtesGespraech, OFFENE_STUFEN, STUFEN } from './pipeline';
 import { normiere, type WahlVorschlag } from './wahl';
 import type { DealRolle, Firma, Chance, CrmBestand } from './typen';
 import { leadScore, scoringKontext } from './score';
+import { marketingHerkunft } from './scoring';
 import { leereVerteilung, LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
 import { typenVon, kategorienVon } from './mehrfach';
 import { istNetzwerkenEvent } from './marke';
@@ -232,7 +233,7 @@ export function anredeVorschlag(k: Pick<Kontakt, 'anrede' | 'kategorie' | 'kateg
 
 // ── Lifecycle (28.09., Kevin: HubSpot-Vorbild) ──────────────────────────────
 /** Was der Lifecycle-Vorschlag vom Bestand braucht — Teilnahmen und Firmen dürfen fehlen. */
-export type LifecycleBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & Partial<Pick<CrmBestand, 'firmen' | 'teilnahmen' | 'events' | 'scoring'>>;
+export type LifecycleBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & Partial<Pick<CrmBestand, 'firmen' | 'teilnahmen' | 'events' | 'scoring' | 'kampagnen'>>;
 
 /** Anfragen landen als Aktivität „antwort“ mit diesem Anfang (wie ANFRAGE_PRAEFIX in marketing.ts — hier ohne Import, sonst ein Kreis über segmente.ts). */
 const ANFRAGE_ANFANG = 'Anfrage über ';
@@ -243,8 +244,8 @@ const tagDE = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
  * „ein offener Deal schlägt ein früheres Mandat“):
  *   aktives Mandat → Kunde · offener Deal in Angebot/Abschluss → Angebot · sonst offener Deal → Opportunity ·
  *   beendetes Mandat oder gewonnener Deal (ohne aktives Mandat) → Follow Up ·
- *   Lead-Status SQL (Firma vor Person) → SQL · Marketing-Signal (Antwort/Anfrage, beim Event dabei,
- *   Marketing-Schwelle der Scoring-Einstellungen erreicht) → MQL · sonst Lead.
+ *   Lead-Status SQL (Firma vor Person) → SQL · MQL NUR bei Marketing-Herkunft (03.10.: Kampagne, Newsletter,
+ *   Anfrage, Content, eigenes Event) und einem Signal (Antwort/Anfrage, beim Event dabei, Marketing-Schwelle erreicht) · sonst Lead.
  * Deals und Mandate zählen, wenn die Person daran hängt; der Score ist der der Person selbst
  * (mit dem Lead der Firma). Nie still gespeichert — der Wahl-Chip zeigt ihn, ein Klick übernimmt.
  */
@@ -265,20 +266,24 @@ export function lifecycleVorschlag(k: Kontakt, crm: LifecycleBestand | null | un
   const firmaLead = k.firmaId ? (crm?.firmen ?? []).find(f => f.id === k.firmaId)?.lead : undefined;
   const lead = firmaLead ?? k.lead;
   if (lead?.status === 'sql') return { id: 'sql', grund: `Lead ${firmaLead ? 'der Firma ' : ''}ist SQL` };
-  // Marketing-Signale: die jüngste Antwort/Anfrage, beim Event dabei, Score warm oder heiß.
-  const antwort = (k.aktivitaeten ?? []).filter(a => a.art === 'antwort' && a.von !== 'system' && a.am).sort((a, b) => b.am.localeCompare(a.am))[0];
-  if (antwort) return { id: 'mql', grund: `${antwort.text?.startsWith(ANFRAGE_ANFANG) ? 'Anfrage' : 'Antwort'} am ${tagDE(antwort.am.slice(0, 10))}` };
-  // „Beim Event dabei“ meint unsere Abende (Make.One). Wer auf einer BESUCHTEN Veranstaltung kennengelernt wurde, hat nie auf ein Signal von uns reagiert —
-  // das ist eine Begegnung, kein Marketing-Signal (M3): kein MQL, aber der Grund steht dabei.
+  // MQL nur für Leads aus dem Marketing (03.10., Kevin: „MQL sind nur die Leads, die aus dem Marketing kommen. Wenn jemand auf dem Event kommt, ist
+  // es ein Lead, bis es durch die Qualifragen gekommen ist.“): Kampagne, Newsletter (DOI), Website-Anfrage, Content, Anmeldung zu einem eigenen Event
+  // (`marketingHerkunft`, lib/crm/scoring.ts). Begegnung, Empfehlung, Direktansprache, Recherche und Bestand bleiben Lead — den nächsten Schritt
+  // (SQL) entscheidet die Qualifizierung (Sales-Scoring + Muss-Kriterien), nicht der Lifecycle-Vorschlag.
+  const kontext = scoringKontext(crm);
+  const herkunft = marketingHerkunft([k], kontext);
   const besuche = new Map((crm?.events ?? []).filter(istNetzwerkenEvent).map(e => [e.id, e]));
   const dortDa = (crm?.teilnahmen ?? []).filter(t => t.kontaktId === k.id && t.status === 'da');
-  const dabei = dortDa.some(t => !besuche.has(t.eventId));
-  if (dabei) return { id: 'mql', grund: 'war bei einem Event dabei' };
   const kennengelernt = dortDa.map(t => besuche.get(t.eventId)).find(Boolean);
-  // Marketing-Schwelle (03.10., Scoring-Einstellungen): genug Signale und Interaktionen — dieselbe Rechnung wie in der Akte und der Runde.
-  const mk = leadScore([k], lead, heute, undefined, scoringKontext(crm)).scoring?.marketing;
-  if (mk?.erreicht) return { id: 'mql', grund: `Marketing-Punkte ${mk.punkte} · Schwelle ${mk.schwelle}` };
-  return { id: 'lead', grund: kennengelernt ? `Kennengelernt bei ${kennengelernt.titel} — noch kein Marketing-Signal, kein Deal` : 'noch kein Marketing-Signal, kein Deal' };
+  if (!herkunft.length) return { id: 'lead', grund: kennengelernt ? `Kennengelernt bei ${kennengelernt.titel} — Lead, noch zu qualifizieren (keine Marketing-Herkunft)` : 'Lead, noch zu qualifizieren (keine Marketing-Herkunft), kein Deal' };
+  // Marketing-Lead: die jüngste Antwort/Anfrage, beim eigenen Event dabei, oder die Marketing-Schwelle der Scoring-Einstellungen erreicht.
+  const antwort = (k.aktivitaeten ?? []).filter(a => a.art === 'antwort' && a.von !== 'system' && a.am).sort((a, b) => b.am.localeCompare(a.am))[0];
+  if (antwort) return { id: 'mql', grund: `${antwort.text?.startsWith(ANFRAGE_ANFANG) ? 'Anfrage' : 'Antwort'} am ${tagDE(antwort.am.slice(0, 10))}` };
+  // „Beim Event dabei“ meint unsere Abende (Make.One), nicht besuchte Veranstaltungen (die sind eine Begegnung, kein Marketing-Signal).
+  if (dortDa.some(t => !besuche.has(t.eventId))) return { id: 'mql', grund: 'war bei einem Event dabei' };
+  const mk = leadScore([k], lead, heute, undefined, kontext).scoring?.marketing;
+  if (mk?.erreicht) return { id: 'mql', grund: `Marketing-Punkte ${mk.punkte} · Schwelle ${mk.schwelle} · ${herkunft.map(g => g.text).join(', ')}` };
+  return { id: 'lead', grund: `Marketing-Lead (${herkunft.map(g => g.text).join(', ')}) — noch kein Signal, kein Deal` };
 }
 
 /**
@@ -301,10 +306,15 @@ export function lifecycleVon(k: Kontakt, crm: LifecycleBestand | null | undefine
   return { phase: 'lead', vonHand: false, grund: v ? `nicht gesetzt — gilt als Lead · Vorschlag ${LIFECYCLE_LABEL[v.id]}: ${v.grund}` : 'nicht gesetzt — gilt als Lead', vorschlag: v };
 }
 
-/** Verteilung über viele Personen — gesetzt, sonst Lead; `gesetzt` zählt, wie viele von Hand stehen. */
-export function lifecycleVerteilung(kontakte: readonly Kontakt[], crm: LifecycleBestand | null | undefined, heute: string): { je: Record<LifecyclePhase, number>; gesetzt: number } {
+/**
+ * Verteilung über viele Personen — gesetzt, sonst Lead; `gesetzt` zählt, wie viele von Hand stehen.
+ * `vorgeschlagen` zählt, was die Daten nahelegen (nur höher als Lead, nur ohne gesetzte Phase) — „MQL“ darin sind nur Leads aus dem
+ * Marketing (03.10., `marketingHerkunft`): Begegnungen, Empfehlungen, Direktansprache und Bestand bleiben Lead, bis sie qualifiziert sind.
+ */
+export function lifecycleVerteilung(kontakte: readonly Kontakt[], crm: LifecycleBestand | null | undefined, heute: string): { je: Record<LifecyclePhase, number>; gesetzt: number; vorgeschlagen: Record<LifecyclePhase, number> } {
   const je = leereVerteilung();
+  const vorgeschlagen = leereVerteilung();
   let gesetzt = 0;
-  for (const k of kontakte) { const l = lifecycleVon(k, crm, heute); je[l.phase]++; if (l.vonHand) gesetzt++; }
-  return { je, gesetzt };
+  for (const k of kontakte) { const l = lifecycleVon(k, crm, heute); je[l.phase]++; if (l.vonHand) gesetzt++; else if (l.vorschlag) vorgeschlagen[l.vorschlag.id]++; }
+  return { je, gesetzt, vorgeschlagen };
 }

@@ -21,7 +21,8 @@
 // Alles hier ist rein (keine Speicherzugriffe) — Laden und Schreiben: lib/crm/scoring-server.ts.
 
 import type { Kontakt } from '@/lib/make-one/crm';
-import type { Event, Kriterien, Lead, Qual, Teilnahme } from './typen';
+import type { Event, Kampagne, Kriterien, Lead, Qual, Teilnahme } from './typen';
+import { kanalVon } from './kanal';
 import { echtesGespraech } from './pipeline';
 import { hatTyp, kategorieBeginnt } from './mehrfach';
 import { istNetzwerkenEvent } from './marke';
@@ -74,17 +75,73 @@ export interface ScoringEinstellungen {
   sales: ScoringSeite;
   temperaturAb: TemperaturAb;
   /** Woher die Einstellungen stammen — nur Anzeige. */
-  quelle?: 'standard' | 'vorschlag' | 'eigen';
+  quelle?: 'standard' | 'vorschlag' | 'bisherig' | 'eigen';
   geaendert?: string;
   geaendertVon?: string;
 }
 
-/** Was der Kern von außen braucht — Teilnahmen und Events nur für die Signale Event/Make.One. */
+/** Was der Kern von außen braucht — Teilnahmen und Events für die Signale Event/Make.One, Kampagnen für die Herkunft „Marketing“. */
 export interface ScoringKontext {
   einstellungen?: ScoringEinstellungen;
   teilnahmen?: readonly Teilnahme[];
   events?: readonly Event[];
+  kampagnen?: readonly Kampagne[];
 }
+
+// ── Marketing-Lead (03.10.) ──────────────────────────────────────────────────
+// Kevin: „MQL sind nur die Leads, die aus dem Marketing kommen. Wenn jemand auf dem Event kommt, ist es ein Lead, bis es durch die
+// Qualifragen gekommen ist.“ Eine Funktion entscheidet, ob ein Lead aus dem Marketing kommt — Lifecycle (MQL), Qualifizierungsrunde,
+// Leads-Liste, Kennzahlen und ZOE fragen sie. Marketing sind (je Person der Firma, ein Treffer genügt):
+//   anfrage     Website-/Inbound-Anfrage (Herkunft „selbst angegeben“ oder eine Anfrage im Verlauf)
+//   newsletter  Newsletter mit nachgewiesenem Double-Opt-in
+//   kampagne    Mitglied einer gestarteten Kampagne (nicht Direktansprache: „LinkedIn vernetzen“, persönlich, Telefon) — oder Quelle „Kampagne“
+//   inhalt      Content / Leadmagnet (Quelle Content, Beitrag, Newsletter, LinkedIn-Beitrag)
+//   event       Anmeldung zu einem EIGENEN Event (Make.One) — selbst angemeldet oder per Mail/LinkedIn eingeladen, nicht persönlich/telefonisch
+// Keine Marketing-Herkunft haben Begegnungen (besuchte Events, „Netzwerken“), Empfehlungen, Direktansprache, Recherche/Listen und
+// der Bestand (HubSpot, Auftrag): Sie bleiben „Lead“, bis die Qualifizierung durch ist (Sales-Scoring + Muss-Kriterien → SQL).
+export type MarketingQuelle = 'anfrage' | 'newsletter' | 'kampagne' | 'inhalt' | 'event';
+export interface MarketingGrund { quelle: MarketingQuelle; text: string }
+export const MARKETING_QUELLEN_LABEL: Record<MarketingQuelle, string> = {
+  anfrage: 'Website-Anfrage', newsletter: 'Newsletter (Double-Opt-in)', kampagne: 'Kampagne', inhalt: 'Content / Leadmagnet', event: 'Anmeldung zu eigenem Event',
+};
+/** Kampagnen der Direktansprache zählen nicht als Marketing. */
+const DIREKT_PLAYBOOKS: ReadonlySet<string> = new Set(['vernetzen']);
+const DIREKT_KANAELE: ReadonlySet<string> = new Set(['persoenlich', 'telefon']);
+const kampagnenMerk = new WeakMap<readonly Kampagne[], Set<string>>();
+function marketingKampagnenPersonen(l: readonly Kampagne[]): Set<string> {
+  let s = kampagnenMerk.get(l);
+  if (!s) {
+    s = new Set(l.filter(k => k.status !== 'entwurf' && !DIREKT_PLAYBOOKS.has(k.playbook) && !DIREKT_KANAELE.has(k.kanal)).flatMap(k => k.kontaktIds));
+    kampagnenMerk.set(l, s);
+  }
+  return s;
+}
+/** Woher der Marketing-Lead kommt — leer, wenn er nicht aus dem Marketing stammt (dann „Lead · noch zu qualifizieren“). */
+export function marketingHerkunft(personen: readonly Kontakt[], ctx: Pick<ScoringKontext, 'kampagnen' | 'teilnahmen' | 'events'> = {}): MarketingGrund[] {
+  const gruende: MarketingGrund[] = [];
+  const dazu = (quelle: MarketingQuelle) => { if (!gruende.some(g => g.quelle === quelle)) gruende.push({ quelle, text: MARKETING_QUELLEN_LABEL[quelle] }); };
+  const ids = new Set(personen.map(p => p.id));
+  for (const p of personen) {
+    if (p.herkunft === 'selbst' || (p.aktivitaeten ?? []).some(a => a.art === 'antwort' && (a.text ?? '').startsWith(ANFRAGE_ANFANG))) dazu('anfrage');
+    if ((p.einwilligungen ?? []).some(e => e.kanal === 'newsletter' && !e.widerrufenAm && !nachweisLuecken(e).length)) dazu('newsletter');
+    const kanal = kanalVon(p);
+    if (kanal === 'inbound') dazu('anfrage'); else if (kanal === 'content') dazu('inhalt'); else if (kanal === 'kampagne') dazu('kampagne');
+  }
+  if (ctx.kampagnen?.length) { const m = marketingKampagnenPersonen(ctx.kampagnen); if (personen.some(p => m.has(p.id))) dazu('kampagne'); }
+  if (ctx.teilnahmen?.length && ctx.events?.length) {
+    const events = new Map(ctx.events.map(e => [e.id, e]));
+    for (const t of ctx.teilnahmen) {
+      if (!ids.has(t.kontaktId) || (t.status !== 'zugesagt' && t.status !== 'da')) continue;
+      const e = events.get(t.eventId);
+      if (!e || istNetzwerkenEvent(e)) continue;
+      if (t.einladungsweg === 'persoenlich' || t.einladungsweg === 'telefon') continue;
+      dazu('event'); break;
+    }
+  }
+  return gruende;
+}
+/** Kommt dieser Lead aus dem Marketing? Nur dann kann er MQL werden (Kampagne, Newsletter, Anfrage, Content, eigenes Event). */
+export const istMarketingLead = (personen: readonly Kontakt[], ctx: Pick<ScoringKontext, 'kampagnen' | 'teilnahmen' | 'events'> = {}): boolean => marketingHerkunft(personen, ctx).length > 0;
 
 // ── Messfühler (aus den Daten gemessene Signale) ─────────────────────────────
 
@@ -253,15 +310,19 @@ const messKriterium = (id: string, messung: MessungId, punkte: Record<string, nu
   ...(gewicht && gewicht !== 1 ? { gewicht } : {}),
 });
 
-/** Der Standard: Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10 — genau die Rechnung von vor dem Umbau. */
-export function standardScoring(): ScoringEinstellungen {
+/**
+ * Die bisherige Rechnung (bis 03.10.): Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10 — genau die Rechnung von vor dem Umbau.
+ * Seit 03.10. nicht mehr der Standard (Kevin: der geschärfte Vorschlag gilt sofort), aber als wählbare Fassung erhalten
+ * („Bisherige Rechnung“) — und als Maßstab der Paritätsprüfung (tests/scoring-standard-paritaet.test.ts).
+ */
+export function bisherigeRechnung(): ScoringEinstellungen {
   return {
-    version: SCORING_VERSION, quelle: 'standard',
+    version: SCORING_VERSION, quelle: 'bisherig',
     marketing: {
-      // 35: ein frisches echtes Gespräch (30) und mindestens zwei Wege (E-Mail 4, Telefon 3, LinkedIn 3) — oder mehr. Der Standard soll das
-      // bisherige Verhalten treffen (MQL-Vorschlag erst bei „warm“): ein bekannter Typ (10) + erreichbar (10) und auch eine Begegnung mit
-      // Visitenkarte (zählt als Gespräch, aber nur eine Mail) reichen bewusst nicht — Antwort, Anfrage und Event-Teilnahme schlagen davon
-      // unabhängig als Signale an (lib/crm/vorschlaege.ts). Der Vorschlag misst diese Signale selbst (Schwelle 8).
+      // 35: ein frisches echtes Gespräch (30) und mindestens zwei Wege (E-Mail 4, Telefon 3, LinkedIn 3) — oder mehr. Die bisherige Rechnung
+      // sollte das alte Verhalten treffen (MQL-Vorschlag erst bei „warm“): ein bekannter Typ (10) + erreichbar (10) reichen bewusst nicht.
+      // Seit 03.10. entscheidet über den MQL zuerst die Herkunft (`istMarketingLead`), nicht die Schwelle — der neue Standard misst
+      // die Signale selbst (Schwelle 8).
       schwelle: 35,
       muss: [],
       teile: [
@@ -303,10 +364,13 @@ let standardMerk: ScoringEinstellungen | null = null;
 /** Der Standard zum Rechnen — einmal gebaut und nie verändert (die Rechnung läuft pro Lead hunderte Male). Wer bearbeitet, nimmt `standardScoring()`. */
 export const standardZumRechnen = (): ScoringEinstellungen => (standardMerk ??= standardScoring());
 
-/** Der Vorschlag: geschärfte Kriterien (MEDDICC/BANT), Stufen 1 · 3 · 5, Muss-Kriterien Schmerz und Entscheider. */
-export function vorschlagScoring(): ScoringEinstellungen {
+/**
+ * Der Standard (seit 03.10., Kevin: „sofort übernehmen“): geschärfte Kriterien (MEDDICC/BANT), Stufen 1 · 3 · 5, Muss-Kriterien
+ * Schmerz, Entscheider und Budget oder Zeitpunkt. Wer keine eigenen Einstellungen gespeichert hat, rechnet damit.
+ */
+export function standardScoring(): ScoringEinstellungen {
   return {
-    version: SCORING_VERSION, quelle: 'vorschlag',
+    version: SCORING_VERSION, quelle: 'standard',
     marketing: {
       schwelle: 8,
       muss: [],
@@ -478,7 +542,7 @@ export function scoringSaeubern(roh: unknown, vermerk?: { quelle?: ScoringEinste
   return {
     version: SCORING_VERSION, marketing: seite(o.marketing), sales: seite(o.sales),
     temperaturAb: { lau: Number(o.temperaturAb.lau), warm: Number(o.temperaturAb.warm), heiss: Number(o.temperaturAb.heiss) },
-    ...(vermerk?.quelle ? { quelle: vermerk.quelle } : o.quelle === 'standard' || o.quelle === 'vorschlag' || o.quelle === 'eigen' ? { quelle: o.quelle } : {}),
+    ...(vermerk?.quelle ? { quelle: vermerk.quelle } : o.quelle === 'standard' || o.quelle === 'vorschlag' || o.quelle === 'bisherig' || o.quelle === 'eigen' ? { quelle: o.quelle } : {}),
     ...(vermerk?.geaendert ? { geaendert: vermerk.geaendert } : typeof o.geaendert === 'string' ? { geaendert: o.geaendert } : {}),
     ...(vermerk?.geaendertVon ? { geaendertVon: vermerk.geaendertVon } : typeof o.geaendertVon === 'string' ? { geaendertVon: o.geaendertVon } : {}),
   };
@@ -506,10 +570,20 @@ export interface TeilErgebnis { id: string; name: string; seite: ScoringSeiteId;
 export interface MussErgebnis { text: string; ok: boolean }
 export interface SeitenErgebnis {
   seite: ScoringSeiteId; punkte: number; max: number; schwelle: number; erreicht: boolean;
+  /**
+   * Gilt die Seite für diesen Lead? Das Marketing-Scoring gilt nur für Leads aus dem Marketing (`istMarketingLead`); bei allen anderen
+   * (Begegnung, Empfehlung, Direktansprache, Bestand) ist `gilt` false und `erreicht` immer false — der Lead bleibt „Lead · noch zu
+   * qualifizieren“. Die Punkte werden trotzdem gerechnet (Wärme für die Reihenfolge in der Runde), sie führen nur nie zum MQL.
+   */
+  gilt: boolean;
   /** Was bis zur Schwelle fehlt, in der Reihenfolge, in der man fragt (Muss-Kriterien zuerst, dann Punkte). */
   fehlt: string[]; muss: MussErgebnis[]; teile: TeilErgebnis[];
 }
-export interface ScoringErgebnis { marketing: SeitenErgebnis; sales: SeitenErgebnis; gesamt: number }
+export interface ScoringErgebnis {
+  marketing: SeitenErgebnis; sales: SeitenErgebnis; gesamt: number;
+  /** Kommt der Lead aus dem Marketing — und woher (leer = nein). */
+  marketingLead: boolean; marketingHerkunft: MarketingGrund[];
+}
 
 /** Was an einem Lead beantwortet ist: neue Stufen, dazu die alten Felder (`kriterien`, `fit`). */
 export type LeadAntworten = Pick<Lead, 'kriterien' | 'fit' | 'stufen'> | { kriterien?: Kriterien; fit?: Qual; stufen?: Record<string, string> };
@@ -594,7 +668,7 @@ function seiteRechnen(seite: ScoringSeiteId, s: ScoringSeite, personen: readonly
   const fehlt = muss.filter(m => !m.ok).map(m => m.text);
   // Erst die Muss-Kriterien, dann die Punkte — wer die Pflichtfragen klärt, sammelt meist auch die Punkte.
   if (mussOk && punkte < s.schwelle) fehlt.push(`Punkte (${punkte} von mindestens ${s.schwelle})`);
-  return { seite, punkte, max, schwelle: s.schwelle, erreicht: punkte >= s.schwelle && mussOk, fehlt, muss, teile };
+  return { seite, punkte, max, schwelle: s.schwelle, erreicht: punkte >= s.schwelle && mussOk, gilt: true, fehlt, muss, teile };
 }
 
 /** Temperatur aus dem Gesamtwert — die Stufen sind einstellbar (Standard 25 / 50 / 75). */
@@ -609,11 +683,15 @@ export function temperaturAus(punkte: number, ab: TemperaturAb = { lau: 25, warm
 export function scoringRechnen(personen: readonly Kontakt[], lead: LeadAntworten | undefined, heute: string, ctx: ScoringKontext = {}): ScoringErgebnis {
   const e = ctx.einstellungen ?? standardZumRechnen();
   const mk: MessKontext = { heute, teilnahmen: ctx.teilnahmen ?? [], events: ctx.events ?? [] };
-  const marketing = seiteRechnen('marketing', e.marketing, personen, lead, mk);
+  const herkunft = marketingHerkunft(personen, ctx);
+  const marketingLead = herkunft.length > 0;
+  const mkt = seiteRechnen('marketing', e.marketing, personen, lead, mk);
+  // Kein Marketing-Lead: die Marketing-Schwelle gilt nicht (03.10.) — nie MQL, nichts „fehlt“; die Punkte bleiben als Wärme sichtbar.
+  const marketing: SeitenErgebnis = marketingLead ? mkt : { ...mkt, gilt: false, erreicht: false, fehlt: [] };
   const sales = seiteRechnen('sales', e.sales, personen, lead, mk);
   const max = marketing.max + sales.max;
   const gesamt = max > 0 ? Math.round((100 * (marketing.punkte + sales.punkte)) / max) : 0;
-  return { marketing, sales, gesamt };
+  return { marketing, sales, gesamt, marketingLead, marketingHerkunft: herkunft };
 }
 
 /** Die Kriterien, die im Gespräch gefragt werden: Sales-Fragen in Reihenfolge der Blöcke. */

@@ -4,7 +4,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Event, Teilnahme } from '@/lib/crm/typen';
 import { herkunftVon, letzteAktivitaetText } from '@/lib/crm/herkunft';
 import { leadGruende, grundLabel, istGrundRaus, istGrundParken } from '@/lib/crm/lead-grund';
-import { standardScoring, vorschlagScoring, scoringPruefen } from '@/lib/crm/scoring';
+import { bisherigeRechnung, standardScoring, scoringPruefen } from '@/lib/crm/scoring';
 import { idAusName, frageNeu, kriteriumAusMessung, freieMessungen, kriteriumEntfernen, kriteriumHinzufuegen, teilEntfernen, teilHinzufuegen, maxPunkte, istGeaendert, kopie } from '@/lib/crm/scoring-bearbeiten';
 import { scoringVorschau } from '@/lib/crm/scoring-vorschau';
 import { leads, leadZeileFuer, offeneFragen } from '@/lib/crm/leads';
@@ -61,7 +61,7 @@ describe('Editor-Hilfen', () => {
     expect(idAusName('123', [])).toMatch(/^[a-z]/);
   });
   it('Frage hinzufügen/entfernen hält die Einstellungen gültig; Muss-Verweise fallen mit', () => {
-    let e = vorschlagScoring();
+    let e = standardScoring();
     e = kriteriumHinzufuegen(e, 'sales', 'potenzial', frageNeu(e, 'Referenzkunde'));
     expect(scoringPruefen(e)).toEqual([]);
     expect(maxPunkte(e, 'sales')).toBe(75);
@@ -73,14 +73,14 @@ describe('Editor-Hilfen', () => {
     expect(scoringPruefen(e)).toEqual([]);
   });
   it('Signal aus dem Katalog hinzufügen — nur noch nicht verwendete', () => {
-    let e = standardScoring();
+    let e = bisherigeRechnung();
     expect(freieMessungen(e)).toContain('makeone');
     e = kriteriumHinzufuegen(e, 'marketing', 'waerme', kriteriumAusMessung(e, 'makeone'));
     expect(freieMessungen(e)).not.toContain('makeone');
     expect(scoringPruefen(e)).toEqual([]);
   });
   it('Blöcke: hinzufügen, entfernen (mit Kriterien), der letzte bleibt', () => {
-    let e = vorschlagScoring();
+    let e = standardScoring();
     e = teilEntfernen(e, 'sales', 'potenzial');
     expect(e.sales.teile.map(t => t.id)).toEqual(['fit', 'qualifikation']);
     const r = teilHinzufuegen(e, 'sales', 'Neuer Block');
@@ -99,11 +99,11 @@ describe('Vorschau der Wirkung', () => {
     k('c-2', { firmaId: 'f-2', firma: 'Zwei' }),
   ];
   const crm = { ...leer(), firmen: [{ id: 'f-1', name: 'Eins', rolle: 'zielkunde', geaendert: '' }, { id: 'f-2', name: 'Zwei', rolle: 'zielkunde', geaendert: '' }] } as CrmBestand;
-  it('gleiche Einstellungen: nichts ändert sich; Vorschlag: Zahlen vorher/nachher stimmen mit den Lead-Zeilen überein', () => {
+  it('gleiche Einstellungen: nichts ändert sich; bisherige Rechnung: Zahlen vorher/nachher stimmen mit den Lead-Zeilen überein', () => {
     const gleich = scoringVorschau(kontakte, crm, HEUTE, undefined, standardScoring());
     expect(gleich).toMatchObject({ anzahl: 2, wechsler: 0, beispiele: [] });
-    const v = scoringVorschau(kontakte, crm, HEUTE, undefined, vorschlagScoring());
-    const nach = leads(kontakte, { ...crm, scoring: vorschlagScoring() }, HEUTE);
+    const v = scoringVorschau(kontakte, crm, HEUTE, undefined, bisherigeRechnung());
+    const nach = leads(kontakte, { ...crm, scoring: bisherigeRechnung() }, HEUTE);
     expect(v.mql[1]).toBe(nach.filter(z => z.score.scoring!.marketing.erreicht).length);
     expect(v.temperatur.kalt[0] + v.temperatur.lau[0] + v.temperatur.warm[0] + v.temperatur.heiss[0]).toBe(2);
     expect(v.wechsler).toBeGreaterThan(0);
@@ -114,7 +114,7 @@ describe('Vorschau der Wirkung', () => {
 describe('Lead-Zeile der Akte = Zeile der Leads-Liste', () => {
   it('derselbe Score, auch mit eigenen Einstellungen — mit Firma, ohne Firma, mit Haupt-Ansprechpartner', () => {
     const ks = [k('c-1', { firmaId: 'f-1', firma: 'Eins', eignung: 'ja', email: 'a@example.invalid' }), k('c-2', { firmaId: 'f-1', firma: 'Eins', telefon: '1' }), k('c-3', { eignung: 'vielleicht' })];
-    const crm = { ...leer(), scoring: vorschlagScoring(), firmen: [{ id: 'f-1', name: 'Eins', rolle: 'zielkunde', geaendert: '', lead: { status: 'qualifizierung', kriterien: { schmerz: 'ja', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' }, stufen: { champion: 's5' }, hauptKontaktId: 'c-2' } }] } as CrmBestand;
+    const crm = { ...leer(), scoring: standardScoring(), firmen: [{ id: 'f-1', name: 'Eins', rolle: 'zielkunde', geaendert: '', lead: { status: 'qualifizierung', kriterien: { schmerz: 'ja', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' }, stufen: { champion: 's5' }, hauptKontaktId: 'c-2' } }] } as CrmBestand;
     const alle = leads(ks, crm, HEUTE);
     for (const p of ks) {
       const z = leadZeileFuer(p, ks, crm, HEUTE)!;

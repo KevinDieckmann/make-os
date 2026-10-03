@@ -197,6 +197,7 @@ export function ScoringSeite({ api, seite, z, i = 0 }: { api: CrmApi; seite: Sco
         <div style={{ ...klein, marginBottom: 12 }}>{mql
           ? 'Signale und Interaktionen, die zeigen, dass jemand ansprechbar ist: Gespräche, Antworten, Events, Make.One, Newsletter mit Double-Opt-in, Empfehlung, Anfrage. Gemessen werden sie aus den Daten — du stellst ein, wie viele Punkte welche Stufe bringt und ab wann ein Lead als MQL (Marketing Qualified Lead) gilt.'
           : 'Die Qualifikation im Gespräch: Fit, Schmerz, Budget, Entscheider, Zeit, Fürsprecher, Prozess, Potenzial (angelehnt an MEDDICC und BANT). Du stellst ein, was gefragt wird, wie viele Punkte jede Stufe bringt, welche Antworten Pflicht sind (Muss) und ab wann ein Lead als SQL (Sales Qualified Lead) gilt.'}</div>
+        {mql && <div style={{ ...klein, marginBottom: 12, color: C.ink }}>Gilt nur für Leads aus dem Marketing (Kampagne, Newsletter, Anfrage, Inhalte). Leads von Events, Empfehlungen und Direktansprache gehen direkt in die Qualifizierung.</div>}
         <div style={{ display: 'flex', gap: '10px 22px', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: TYP.body, fontWeight: 600 }}>Mindestpunktzahl {mql ? 'MQL' : 'SQL'}</span>
           <Zahlfeld wert={s.schwelle} onWert={n => setEntwurf(x => { const k = kopie(x); k[seite].schwelle = n; return k; })} min={0} max={1000} schritt={1} aria={`Mindestpunktzahl ${mql ? 'MQL' : 'SQL'}`} />
@@ -252,7 +253,7 @@ export function ScoringSeite({ api, seite, z, i = 0 }: { api: CrmApi; seite: Sco
   );
 }
 
-// ── Aktionsleiste: Speichern, Verwerfen, Vorschlag, Standard, Zurück ─────────────────────────
+// ── Aktionsleiste: Speichern, Verwerfen, Standard, bisherige Rechnung, Zurück ─────────────────────────
 function Unterschiede({ a, b }: { a: ScoringEinstellungen; b: ScoringEinstellungen }): ReactNode {
   const n = (e: ScoringEinstellungen, s: ScoringSeiteId) => e[s].teile.reduce((x, t) => x + t.kriterien.filter(k => !k.aus).length, 0);
   const z = (t: string, v: number, w: number) => <li key={t}>{t}: <b>{punkteText(v)}</b> → <b>{punkteText(w)}</b></li>;
@@ -264,25 +265,25 @@ function Unterschiede({ a, b }: { a: ScoringEinstellungen; b: ScoringEinstellung
   );
 }
 
-function UebernehmenDialog({ api, art, daten, aktuell, onZu, onJa, laeuft }: { api: CrmApi; art: 'vorschlag' | 'standard'; daten: ScoringDaten; aktuell: ScoringEinstellungen; onZu: () => void; onJa: () => void; laeuft: boolean }) {
-  const ziel = art === 'vorschlag' ? daten.vorschlag : daten.standard;
+function UebernehmenDialog({ api, art, daten, aktuell, onZu, onJa, laeuft }: { api: CrmApi; art: 'bisherig' | 'standard'; daten: ScoringDaten; aktuell: ScoringEinstellungen; onZu: () => void; onJa: () => void; laeuft: boolean }) {
+  const ziel = art === 'bisherig' ? daten.bisherig : daten.standard;
   return (
-    <Fenster titel={art === 'vorschlag' ? 'Vorschlag übernehmen' : 'Auf Standard zurück'} onZu={onZu} breit={640}>
-      {art === 'vorschlag' ? (
-        <div style={klein}>Der Vorschlag schärft die Kriterien nach MEDDICC (Schmerz, Entscheider, Fürsprecher, Prozess, Kennzahl, Wettbewerb) und BANT (Budget, Entscheider, Bedarf, Zeit): je Kriterium vier Stufen mit 1 · 3 · 5 Punkten, Schmerz und Entscheider doppelt gewichtet und als Muss, dazu Fit, Potenzial und im Marketing die Signale Event, Make.One, Newsletter, Termin, Empfehlung, Anfrage. Der Grund steht in SCORING.md.</div>
+    <Fenster titel={art === 'bisherig' ? 'Bisherige Rechnung (bis 03.10.)' : 'Auf Standard zurück'} onZu={onZu} breit={640}>
+      {art === 'bisherig' ? (
+        <div style={klein}>Die Rechnung von vor dem 03.10.: Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10, MQL ab 35 Marketing-Punkten, SQL bei Schmerz + Entscheider + Budget oder Zeitpunkt. Wer MQL werden kann, bestimmt weiterhin die Herkunft (Marketing), nicht diese Rechnung.</div>
       ) : (
-        <div style={klein}>Der Standard ist die Rechnung von vor dem Umbau: Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10, SQL bei Schmerz + Entscheider + Budget oder Zeitpunkt.</div>
+        <div style={klein}>Der Standard schärft die Kriterien nach MEDDICC (Schmerz, Entscheider, Fürsprecher, Prozess, Kennzahl, Wettbewerb) und BANT (Budget, Entscheider, Bedarf, Zeit): je Kriterium vier Stufen mit 1 · 3 · 5 Punkten, Schmerz und Entscheider doppelt gewichtet und als Muss, dazu Fit, Potenzial und im Marketing die Signale Event, Make.One, Newsletter, Termin, Empfehlung, Anfrage. Er gilt für alle, die nichts Eigenes gespeichert haben. Der Grund steht in SCORING.md.</div>
       )}
       <Unterschiede a={aktuell} b={ziel} />
       <VorschauKarte api={api} alt={api.crm?.stand.scoring} neu={ziel} titel="So würden deine aktuellen Leads dann eingestuft" />
       <div style={klein}>Es gilt sofort für Leads, Akte, Runde und ZOE. „Letzte Änderung zurücknehmen“ bringt die jetzige Fassung zurück.</div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}><Knopf leise onClick={onZu}>Abbrechen</Knopf><Knopf aus={laeuft} onClick={onJa}>{art === 'vorschlag' ? 'Vorschlag übernehmen' : 'Auf Standard zurück'}</Knopf></div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}><Knopf leise onClick={onZu}>Abbrechen</Knopf><Knopf aus={laeuft} onClick={onJa}>{art === 'bisherig' ? 'Bisherige Rechnung übernehmen' : 'Auf Standard zurück'}</Knopf></div>
     </Fenster>
   );
 }
 
 export function ScoringAktionen({ api, z }: { api: CrmApi; z: ScoringEntwurf }) {
-  const [dialog, setDialog] = useState<'vorschlag' | 'standard' | null>(null);
+  const [dialog, setDialog] = useState<'bisherig' | 'standard' | null>(null);
   const aktuell = useScoringEinstellungen(api);
   const fehlerText = z.fehlerLive[0]?.text;
   const quelle = z.daten?.einstellungen.quelle;
@@ -298,10 +299,10 @@ export function ScoringAktionen({ api, z }: { api: CrmApi; z: ScoringEntwurf }) 
           <Knopf aus={!z.geaendert || z.laeuft || z.fehlerLive.length > 0} onClick={() => z.speichern()}>{z.geaendert ? 'Speichern' : 'Gespeichert'}</Knopf>
           <Knopf leise aus={!z.geaendert} onClick={z.verwerfen}>Verwerfen</Knopf>
           <span style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.1)' }} aria-hidden />
-          <Knopf leise onClick={() => setDialog('vorschlag')}>Vorschlag übernehmen</Knopf>
           <Knopf leise onClick={() => setDialog('standard')}>Auf Standard zurück</Knopf>
+          <Knopf leise onClick={() => setDialog('bisherig')}>Bisherige Rechnung (bis 03.10.)</Knopf>
           {z.daten?.zurueckMoeglich && <Knopf leise aus={z.laeuft} onClick={() => z.aktion('zurueck')}>Letzte Änderung zurücknehmen</Knopf>}
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: C.inkLeise }}>{z.geaendert ? 'Ungespeichert' : `${quelle === 'vorschlag' ? 'Vorschlag' : quelle === 'eigen' ? 'Eigene Fassung' : 'Standard'}${von ? ` · zuletzt ${von.von}, ${von.am.slice(8, 10)}.${von.am.slice(5, 7)}.` : ''}`}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: C.inkLeise }}>{z.geaendert ? 'Ungespeichert' : `${quelle === 'bisherig' ? 'Bisherige Rechnung' : quelle === 'eigen' ? 'Eigene Fassung' : 'Standard'}${von ? ` · zuletzt ${von.von}, ${von.am.slice(8, 10)}.${von.am.slice(5, 7)}.` : ''}`}</span>
         </div>
       </div>
       {dialog && z.daten && <UebernehmenDialog api={api} art={dialog} daten={z.daten} aktuell={aktuell} laeuft={z.laeuft} onZu={() => setDialog(null)} onJa={async () => { await z.aktion(dialog); setDialog(null); }} />}

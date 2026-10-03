@@ -339,7 +339,7 @@ describe('M2/M3 · eine Rechnung, Begegnung ist kein Make.One-Signal', () => {
     expect(u.find(x => x.id === 'besuche-nachfassen')).toMatchObject({ anzahl: 1, ziel: { s: 'besuche' } });
     expect(u.some(x => x.id === 'event-nachfassen')).toBe(false);
   });
-  it('Gästevorschlag und Lifecycle: „Kennengelernt bei <Event>“ statt „war schon bei einem Event“ / MQL', async () => {
+  it('Gästevorschlag und Lifecycle: „Kennengelernt bei <Event>“ statt „war schon bei einem Event“ / MQL (Begegnung hat keine Marketing-Herkunft → Lead, bis qualifiziert)', async () => {
     await senden(erfassung({ schritt: 'nur-kontakt' }));
     const c = await crm(); const k = await kontakte();
     const { gaesteVorschlag } = await import('@/lib/crm/eventplanung');

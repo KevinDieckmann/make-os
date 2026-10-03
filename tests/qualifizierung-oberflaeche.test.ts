@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { CrmBestand } from '@/lib/crm/typen';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmApi } from '@/components/os/crm/daten';
-import { vorschlagScoring, standardScoring } from '@/lib/crm/scoring';
+import { standardScoring, bisherigeRechnung } from '@/lib/crm/scoring';
 import { leads } from '@/lib/crm/leads';
 import { herkunftVon } from '@/lib/crm/herkunft';
 
@@ -21,14 +21,14 @@ const K: Kontakt[] = [
   { id: 'c-anna1', vorname: 'Anna', nachname: 'Beispiel', email: 'anna@example.invalid', telefon: '123', position: 'Einkauf', firmaId: 'f-muster', firma: 'Muster GmbH', eignung: 'ja', prio: '', stufe: 'gespraech', aktivitaeten: [{ am: '2026-09-30T10:00:00Z', art: 'anruf', von: 'kevin' }], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', besitzer: 'kevin' },
   { id: 'c-bert1', vorname: 'Bert', nachname: 'Chef', position: 'Geschäftsführer', firmaId: 'f-muster', firma: 'Muster GmbH', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01' },
 ] as Kontakt[];
-const stand = (scoring = vorschlagScoring()): CrmBestand => ({ firmen: [{ id: 'f-muster', name: 'Muster GmbH', rolle: 'zielkunde', geaendert: J, branche: 'Maschinenbau', stadt: 'Köln' }], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [], angebote: [], scoring } as CrmBestand);
-const api = (scoring = vorschlagScoring()) => ({ crm: { ok: true, heute: '2026-10-03', stand: stand(scoring), ich: 'kevin' }, kontakte: K, ich: 'kevin', laden: async () => {}, setze: async () => {}, teil: async () => {}, kontaktTeil: async () => true, kontaktSetzen: async () => true, aktivitaet: async () => ({ ok: true }), fehler: null, hinweis: null, setFehler: () => {}, setHinweis: () => {}, uebergeben: async () => ({ ok: true }), weg: async () => {}, netzwerk: async () => ({ ok: true }) } as unknown as CrmApi);
-const zeile = (scoring = vorschlagScoring()) => leads(K, stand(scoring), '2026-10-03')[0];
+const stand = (scoring = standardScoring()): CrmBestand => ({ firmen: [{ id: 'f-muster', name: 'Muster GmbH', rolle: 'zielkunde', geaendert: J, branche: 'Maschinenbau', stadt: 'Köln' }], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [], angebote: [], scoring } as CrmBestand);
+const api = (scoring = standardScoring()) => ({ crm: { ok: true, heute: '2026-10-03', stand: stand(scoring), ich: 'kevin' }, kontakte: K, ich: 'kevin', laden: async () => {}, setze: async () => {}, teil: async () => {}, kontaktTeil: async () => true, kontaktSetzen: async () => true, aktivitaet: async () => ({ ok: true }), fehler: null, hinweis: null, setFehler: () => {}, setHinweis: () => {}, uebergeben: async () => ({ ok: true }), weg: async () => {}, netzwerk: async () => ({ ok: true }) } as unknown as CrmApi);
+const zeile = (scoring = standardScoring()) => leads(K, stand(scoring), '2026-10-03')[0];
 
 describe('Qualifizierung zeichnet', () => {
   it('Fragen: Blöcke, Muss-Marken, Punkte, die Fit-Frage aus der Liste', async () => {
     const { Fragen } = await import('@/components/os/crm/quali/Fragen');
-    const e = vorschlagScoring(); const z = zeile(e);
+    const e = standardScoring(); const z = zeile(e);
     const html = renderToStaticMarkup(h(Fragen, { einstellungen: e, score: z.score, stufen: {}, antworten: {}, onStufe: () => {}, onAntwort: () => {} }));
     for (const t of ['Fit', 'Qualifikation (MEDDICC · BANT)', 'Potenzial', 'Schmerz', 'Entscheider', 'Fürsprecher im Haus', 'Folgeauftrag &amp; Empfehlung', 'Muss', 'aus der Liste: Passt']) expect(html, t).toContain(t);
   });
@@ -37,9 +37,16 @@ describe('Qualifizierung zeichnet', () => {
     const z = zeile();
     const html = renderToStaticMarkup(h(ScoreKopf, { score: z.score }));
     expect(html).toContain(`>${z.score.punkte}<`);
-    expect(html).toMatch(/MQL[^<]*\/8/);
+    // Kein Marketing-Lead (Netzwerk-Kontakt ohne Marketing-Herkunft): kein MQL-Balken, sondern „Lead · noch zu qualifizieren“ (03.10.).
+    expect(html).toContain('Lead · noch zu qualifizieren');
+    expect(html).not.toMatch(/MQL[^<]*\/8/);
     expect(html).toMatch(/SQL[^<]*\/28/);
     expect(html).toContain('fehlt: Schmerz, Entscheider');
+    // Marketing-Lead (Anfrage über die Website): der MQL-Balken gegen die Schwelle 8.
+    const mk = leads(K.map(k => ({ ...k, herkunft: 'selbst' as const })), stand(), '2026-10-03')[0];
+    const html2 = renderToStaticMarkup(h(ScoreKopf, { score: mk.score }));
+    expect(html2).toMatch(/MQL[^<]*\/8/);
+    expect(html2).not.toContain('Lead · noch zu qualifizieren');
   });
   it('Herkunft: Kanal, Teile, letzte Aktivität', async () => {
     const { HerkunftBlock } = await import('@/components/os/crm/quali/HerkunftBlock');
@@ -52,7 +59,7 @@ describe('Qualifizierung zeichnet', () => {
   });
   it('Gesprächsmodus: erste offene Frage, Fortschritt, Notizen nebenbei', async () => {
     const { Gespraechsmodus } = await import('@/components/os/crm/quali/Gespraechsmodus');
-    const e = vorschlagScoring(); const z = zeile(e);
+    const e = standardScoring(); const z = zeile(e);
     const html = renderToStaticMarkup(h(Gespraechsmodus, { api: api(e), z, einstellungen: e, score: z.score, stufen: {}, antworten: {}, onStufe: () => {}, onAntwort: () => {}, onZu: () => {}, onFertig: () => {} }));
     expect(html).toContain('Gespräch');
     expect(html).toMatch(/Frage \d+ von 12/);
@@ -61,14 +68,14 @@ describe('Qualifizierung zeichnet', () => {
   });
   it('Scoring-Editor: Marketing und Sales mit Schwelle, Muss-Regeln, Blöcken, Temperatur und Vorschau', async () => {
     const { ScoringSeite, ScoringAktionen } = await import('@/components/os/crm/quali/ScoringEditor');
-    const e = vorschlagScoring();
-    const z = { daten: { einstellungen: standardScoring(), stand: 's', standard: standardScoring(), vorschlag: e, messungen: [], verlauf: [], zurueckMoeglich: true }, entwurf: e, setEntwurf: () => {}, geaendert: true, fehlerLive: [], fehler: '', hinweis: '', felder: [], laeuft: false, wiederhergestellt: false, speichern: async () => {}, aktion: async () => {}, verwerfen: () => {}, laden: async () => {} };
+    const e = standardScoring();
+    const z = { daten: { einstellungen: bisherigeRechnung(), stand: 's', standard: e, bisherig: bisherigeRechnung(), messungen: [], verlauf: [], zurueckMoeglich: true }, entwurf: e, setEntwurf: () => {}, geaendert: true, fehlerLive: [], fehler: '', hinweis: '', felder: [], laeuft: false, wiederhergestellt: false, speichern: async () => {}, aktion: async () => {}, verwerfen: () => {}, laden: async () => {} };
     const sales = renderToStaticMarkup(h(ScoringSeite, { api: api(), seite: 'sales', z }));
     for (const t of ['Sales-Scoring', 'Mindestpunktzahl SQL', 'Muss-Kriterien', 'Qualifikation (MEDDICC · BANT)', '+ Frage hinzufügen', '+ Block hinzufügen', 'Gesamtwert und Temperatur', 'So würden deine aktuellen Leads eingestuft']) expect(sales, t).toContain(t);
     const marketing = renderToStaticMarkup(h(ScoringSeite, { api: api(), seite: 'marketing', z }));
     for (const t of ['Marketing-Scoring', 'Mindestpunktzahl MQL', 'Interaktionen &amp; Signale', 'Make.One-Gast', 'Aus den Daten']) expect(marketing, t).toContain(t);
     const leiste = renderToStaticMarkup(h(ScoringAktionen, { api: api(), z }));
-    for (const t of ['Speichern', 'Vorschlag übernehmen', 'Auf Standard zurück', 'Letzte Änderung zurücknehmen']) expect(leiste, t).toContain(t);
+    for (const t of ['Speichern', 'Bisherige Rechnung (bis 03.10.)', 'Auf Standard zurück', 'Letzte Änderung zurücknehmen']) expect(leiste, t).toContain(t);
   });
   it('Dialoge: Firma wechseln, Zusammenführen, weitere Person, Abgeben, Parken, Raus', async () => {
     const z = zeile();

@@ -4,7 +4,10 @@
 // und in der Summe dasselbe liefern wie die wörtlich übernommene Rechnung von vor dem Umbau (tests/fixtures/…).
 import { describe, it, expect } from 'vitest';
 import { leadScore } from '@/lib/crm/score';
-import { standardScoring } from '@/lib/crm/scoring';
+import { bisherigeRechnung } from '@/lib/crm/scoring';
+// Seit 03.10. ist der Standard der geschärfte Vorschlag; die bisherige Rechnung bleibt wählbar („Bisherige Rechnung (bis 03.10.)“) und
+// muss die alte Rechnung weiter Punkt für Punkt treffen — dieser Test beweist es, mit den Einstellungen der bisherigen Rechnung.
+const ALT = { einstellungen: bisherigeRechnung() };
 import { altScore } from './fixtures/lead-score-vor-scoring';
 import type { Kontakt, Aktivitaet } from '@/lib/make-one/crm';
 import type { Kriterien, Lead, Qual } from '@/lib/crm/typen';
@@ -34,14 +37,14 @@ const kriterien = (r: () => number): Kriterien => {
   return { schmerz: q(), entscheider: q(), budget: q(), zeitpunkt: q(), wirkung: q(), alternative: q() };
 };
 
-describe('Standard-Parität — der neue Kern rechnet wie vorher', () => {
+describe('Parität der bisherigen Rechnung — der Kern rechnet wie vorher', () => {
   it('500 zufällige Leads: Summe und jeder der vier Teile stimmen exakt überein', () => {
     const r = zufall(20261003);
     for (let n = 0; n < 500; n++) {
       const personen = Array.from({ length: 1 + Math.floor(r() * 3) }, (_, i) => person(r, n * 10 + i));
       const lead: Lead | undefined = r() < 0.7 ? { status: 'qualifizierung', kriterien: kriterien(r), ...(r() < 0.4 ? { fit: wahl(r, ['ja', 'nein', 'unklar'] as Qual[]) } : {}) } : undefined;
       const alt = altScore(personen, lead, HEUTE);
-      const neu = leadScore(personen, lead, HEUTE);
+      const neu = leadScore(personen, lead, HEUTE, undefined, ALT);
       expect(neu.punkte, `Summe bei Lauf ${n}`).toBe(alt.punkte);
       for (const t of alt.teile) {
         const x = neu.teile.find(y => y.id === t.id)!;
@@ -56,20 +59,20 @@ describe('Standard-Parität — der neue Kern rechnet wie vorher', () => {
     for (let n = 0; n < 100; n++) {
       const personen = [person(r, n)];
       const k = kriterien(r);
-      expect(leadScore(personen, undefined, HEUTE, k).punkte).toBe(altScore(personen, undefined, HEUTE, k).punkte);
+      expect(leadScore(personen, undefined, HEUTE, k, ALT).punkte).toBe(altScore(personen, undefined, HEUTE, k).punkte);
     }
   });
-  it('Standard summiert auf 100 mögliche Punkte in vier Teilen — Fit 30, Wärme 30, Qualifizierung 30, Erreichbar 10', () => {
-    const s = leadScore([person(zufall(1), 1)], undefined, HEUTE);
+  it('Die bisherige Rechnung summiert auf 100 mögliche Punkte in vier Teilen — Fit 30, Wärme 30, Qualifizierung 30, Erreichbar 10', () => {
+    const s = leadScore([person(zufall(1), 1)], undefined, HEUTE, undefined, ALT);
     expect(s.teile.map(t => [t.id, t.max])).toEqual([['fit', 30], ['waerme', 30], ['qualifizierung', 30], ['erreichbarkeit', 10]]);
-    expect(standardScoring().temperaturAb).toEqual({ lau: 25, warm: 50, heiss: 75 });
+    expect(bisherigeRechnung().temperaturAb).toEqual({ lau: 25, warm: 50, heiss: 75 });
   });
-  it('SQL-bereit nach dem Standard = die alte Regel (Schmerz + Entscheider + Budget oder Zeitpunkt)', async () => {
+  it('SQL-bereit nach der bisherigen Rechnung = die alte Regel (Schmerz + Entscheider + Budget oder Zeitpunkt)', async () => {
     const { sqlBereit, fehltBisSql } = await import('@/lib/crm/leads');
     const r = zufall(99);
     for (let n = 0; n < 300; n++) {
       const k = kriterien(r);
-      const s = leadScore([person(r, n)], { status: 'qualifizierung', kriterien: k }, HEUTE);
+      const s = leadScore([person(r, n)], { status: 'qualifizierung', kriterien: k }, HEUTE, undefined, ALT);
       expect(s.scoring!.sales.erreicht, JSON.stringify(k)).toBe(sqlBereit(k));
       expect(s.scoring!.sales.fehlt, JSON.stringify(k)).toEqual(fehltBisSql(k));
     }

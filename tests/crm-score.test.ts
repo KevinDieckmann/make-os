@@ -2,42 +2,46 @@ import { describe, it, expect } from 'vitest';
 import { leadScore, kanalVon, kanalLeistung, temperaturVon, temperaturVerteilung } from '@/lib/crm/score';
 import { zuQualifizieren, brauchtQualifizierung, nichtKalt, leads, leereKriterien, type LeadZeile } from '@/lib/crm/leads';
 import { imSegment, kontextAus } from '@/lib/crm/segmente';
+import { bisherigeRechnung } from '@/lib/crm/scoring';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Kriterien } from '@/lib/crm/typen';
 
+// Dieser Test prüft die vier Teile der BISHERIGEN Rechnung (Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbar 10). Seit 03.10. ist der Standard der
+// geschärfte Vorschlag — die bisherige Rechnung wird hier ausdrücklich gewählt (wie über „Bisherige Rechnung“ in den Einstellungen).
+const ALT = { einstellungen: bisherigeRechnung() };
 const HEUTE = '2026-09-27';
 const person = (o: Partial<Kontakt> = {}): Kontakt => ({ id: 'c-1', vorname: 'Test', nachname: 'Person', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], ...o } as Kontakt);
 const alleJa: Kriterien = { schmerz: 'ja', entscheider: 'ja', budget: 'ja', zeitpunkt: 'ja', wirkung: 'ja', alternative: 'ja' };
 
 describe('Lead-Score — vier Teile, keine Blackbox', () => {
   it('ohne alles: nur Fit offen (8) → kalt', () => {
-    const s = leadScore([person()], undefined, HEUTE);
+    const s = leadScore([person()], undefined, HEUTE, undefined, ALT);
     expect(s.punkte).toBe(8);
     expect(s.temperatur).toBe('kalt');
     expect(s.teile.map(t => t.id)).toEqual(['fit', 'waerme', 'qualifizierung', 'erreichbarkeit']);
   });
   it('Vollbild: Fit ja, Gespräch gestern, alle Kernfragen, alle Wege → 100 heiß', () => {
     const k = person({ eignung: 'ja', email: 'a@example.invalid', telefon: '1', linkedin: 'x', aktivitaeten: [{ am: '2026-09-26T10:00:00Z', art: 'gespraech', von: 'kevin' }] });
-    const s = leadScore([k], { status: 'qualifizierung', kriterien: alleJa }, HEUTE);
+    const s = leadScore([k], { status: 'qualifizierung', kriterien: alleJa }, HEUTE, undefined, ALT);
     expect(s.punkte).toBe(100);
     expect(s.temperatur).toBe('heiss');
   });
   it('Schmerz „nein“ deckelt die Qualifizierung auf 10', () => {
-    const s = leadScore([person()], { status: 'qualifizierung', kriterien: { ...alleJa, schmerz: 'nein' } }, HEUTE);
+    const s = leadScore([person()], { status: 'qualifizierung', kriterien: { ...alleJa, schmerz: 'nein' } }, HEUTE, undefined, ALT);
     expect(s.teile.find(t => t.id === 'qualifizierung')!.punkte).toBe(10);
   });
   it('Fit am Lead schlägt die Eignung aus der Liste', () => {
-    const s = leadScore([person({ eignung: 'ja' })], { status: 'neu', kriterien: leereKriterien(), fit: 'nein' }, HEUTE);
+    const s = leadScore([person({ eignung: 'ja' })], { status: 'neu', kriterien: leereKriterien(), fit: 'nein' }, HEUTE, undefined, ALT);
     expect(s.teile.find(t => t.id === 'fit')!.punkte).toBe(0);
   });
   it('Wärme fällt mit der Zeit: 30 → 20 → 12 → Antwort 12 → angesprochen 8', () => {
-    const g = (am: string) => leadScore([person({ aktivitaeten: [{ am, art: 'gespraech', von: 'kevin' }] })], undefined, HEUTE).teile[1].punkte;
+    const g = (am: string) => leadScore([person({ aktivitaeten: [{ am, art: 'gespraech', von: 'kevin' }] })], undefined, HEUTE, undefined, ALT).teile[1].punkte;
     expect(g('2026-09-20')).toBe(30);
     expect(g('2026-07-20')).toBe(20);
     expect(g('2026-01-20')).toBe(12);
-    expect(leadScore([person({ aktivitaeten: [{ am: '2026-09-01', art: 'antwort', von: 'kevin' }] })], undefined, HEUTE).teile[1].punkte).toBe(12);
-    expect(leadScore([person({ aktivitaeten: [{ am: '2026-09-01', art: 'mail', von: 'kevin' }] })], undefined, HEUTE).teile[1].punkte).toBe(8);
-    expect(leadScore([person({ aktivitaeten: [{ am: '2026-09-01', art: 'system', von: 'system' }] })], undefined, HEUTE).teile[1].punkte).toBe(0);
+    expect(leadScore([person({ aktivitaeten: [{ am: '2026-09-01', art: 'antwort', von: 'kevin' }] })], undefined, HEUTE, undefined, ALT).teile[1].punkte).toBe(12);
+    expect(leadScore([person({ aktivitaeten: [{ am: '2026-09-01', art: 'mail', von: 'kevin' }] })], undefined, HEUTE, undefined, ALT).teile[1].punkte).toBe(8);
+    expect(leadScore([person({ aktivitaeten: [{ am: '2026-09-01', art: 'system', von: 'system' }] })], undefined, HEUTE, undefined, ALT).teile[1].punkte).toBe(0);
   });
   it('Temperatur-Schwellen 25 / 50 / 75', () => {
     expect(temperaturVon(24)).toBe('kalt'); expect(temperaturVon(25)).toBe('lau'); expect(temperaturVon(50)).toBe('warm'); expect(temperaturVon(75)).toBe('heiss');
@@ -101,7 +105,7 @@ describe('Qualifizierungsrunde — wer ist dran', () => {
   });
   it('leads() liefert Score, Kanal und ohneBesitzer je Zeile', () => {
     const k = person({ id: 'c-1', besitzer: undefined, quelle: 'Apple', eignung: 'ja' });
-    const z = leads([k], crmLeer(), HEUTE);
+    const z = leads([k], { ...crmLeer(), scoring: bisherigeRechnung() }, HEUTE);
     expect(z[0].score.punkte).toBe(40);
     expect(z[0].kanal).toBe('netzwerk');
     expect(z[0].ohneBesitzer).toBe(true);

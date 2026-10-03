@@ -50,12 +50,15 @@ beforeAll(async () => {
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 
 describe('Scoring-Einstellungen — Route mit Stand/409', () => {
-  it('GET: Standard, Stand, Vorschlag und der Katalog der Messungen; fremder Haushalt → 403', async () => {
+  it('GET: Standard (seit 03.10. der geschärfte Vorschlag), Stand, bisherige Rechnung und der Katalog der Messungen; fremder Haushalt → 403', async () => {
     const r = await scGet();
     expect(r.status).toBe(200);
     expect(r.d.einstellungen).toEqual(sc.standardScoring());
     expect(r.d.stand).toBeTypeOf('string');
-    expect(r.d.vorschlag.sales.schwelle).toBe(28);
+    expect(r.d.einstellungen.quelle).toBe('standard');
+    expect(r.d.einstellungen.sales.schwelle).toBe(28);
+    expect(r.d.bisherig.sales.schwelle).toBe(15);
+    expect(r.d.bisherig.quelle).toBe('bisherig');
     expect(r.d.messungen.map((m: { id: string }) => m.id)).toContain('makeone');
     expect(r.d.zurueckMoeglich).toBe(false);
     expect((await scGet('fremd')).status).toBe(403);
@@ -64,17 +67,17 @@ describe('Scoring-Einstellungen — Route mit Stand/409', () => {
   it('Dienstweg (ZOE) darf lesen, nie schreiben', async () => {
     expect((await scGet(null)).status).toBe(200);
     const { d } = await scGet();
-    expect((await scPatch({ aktion: 'vorschlag', stand: d.stand }, null)).status).toBe(403);
+    expect((await scPatch({ aktion: 'bisherig', stand: d.stand }, null)).status).toBe(403);
   });
 
   it('Speichern mit Stand → gilt sofort für ladeCrm und die Lead-Rechnung; veralteter Stand → 409 mit dem aktuellen', async () => {
     const { d } = await scGet();
     const e = JSON.parse(JSON.stringify(d.einstellungen));
-    e.sales.schwelle = 100; // höher als jede mögliche Summe der Kernfragen (Fit 30 + 6×5 = 60)
+    e.sales.schwelle = 100; // höher als jede mögliche Summe (70)
     const r = await scPatch({ aktion: 'speichern', einstellungen: e, stand: d.stand });
     expect(r.status).toBe(200);
     expect((await speicher.ladeCrm()).scoring!.sales.schwelle).toBe(100);
-    // alle Kernfragen „ja“ → mit Schwelle 15 wäre es SQL-bereit, mit 100 nicht
+    // alle Kernfragen „ja“ → mit Schwelle 28 wäre es SQL-bereit, mit 100 nicht
     await post({ aktion: 'setze', id: 'f-alpha', felder: { kriterien: { schmerz: 'ja', entscheider: 'ja', budget: 'ja', zeitpunkt: 'ja', wirkung: 'ja', alternative: 'ja' } } });
     const z = await zeile('f-alpha');
     expect(z.score.scoring!.sales.erreicht).toBe(false);
@@ -92,20 +95,29 @@ describe('Scoring-Einstellungen — Route mit Stand/409', () => {
     expect(d.zurueckMoeglich).toBe(true);
     const r = await scPatch({ aktion: 'zurueck', stand: d.stand });
     expect(r.status).toBe(200);
-    expect(r.d.einstellungen.sales.schwelle).toBe(15);
+    expect(r.d.einstellungen.sales.schwelle).toBe(28);
     expect((await scGet()).d.verlauf.map((v: { was: string }) => v.was)).toEqual(['Letzte Änderung zurückgenommen', 'Einstellungen geändert']);
   });
 
-  it('Vorschlag übernehmen und auf Standard zurück — mit Quelle und Verlauf', async () => {
+  it('Bisherige Rechnung wählen und auf Standard zurück — mit Quelle und Verlauf; der alte Aufruf „vorschlag“ ist ein Alias von „standard“', async () => {
     let { d } = await scGet();
-    const v = await scPatch({ aktion: 'vorschlag', stand: d.stand });
+    const v = await scPatch({ aktion: 'bisherig', stand: d.stand });
     expect(v.status).toBe(200);
-    expect(v.d.einstellungen.quelle).toBe('vorschlag');
-    expect(v.d.einstellungen.sales.teile.map((t: { id: string }) => t.id)).toEqual(['fit', 'qualifikation', 'potenzial']);
+    expect(v.d.einstellungen.quelle).toBe('bisherig');
+    expect(v.d.einstellungen.sales.teile.map((t: { id: string }) => t.id)).toEqual(['fit', 'qualifizierung']);
+    expect(v.d.einstellungen.marketing.schwelle).toBe(35);
     ({ d } = await scGet());
     const s = await scPatch({ aktion: 'standard', stand: d.stand });
     expect(s.status).toBe(200);
-    expect(s.d.einstellungen.sales.teile.map((t: { id: string }) => t.id)).toEqual(['fit', 'qualifizierung']);
+    expect(s.d.einstellungen.quelle).toBe('standard');
+    expect(s.d.einstellungen.sales.teile.map((t: { id: string }) => t.id)).toEqual(['fit', 'qualifikation', 'potenzial']);
+    ({ d } = await scGet());
+    expect((await scGet()).d.verlauf.map((x: { was: string }) => x.was).slice(0, 2)).toEqual(['Auf Standard zurückgesetzt', 'Bisherige Rechnung (bis 03.10.) übernommen']);
+    await scPatch({ aktion: 'bisherig', stand: d.stand });
+    ({ d } = await scGet());
+    const alias = await scPatch({ aktion: 'vorschlag', stand: d.stand });
+    expect(alias.status).toBe(200);
+    expect(alias.d.einstellungen.quelle).toBe('standard');
     // derselbe Auftrag noch einmal: nichts ändert sich, nichts wird neu protokolliert
     const n = (await scGet()).d.verlauf.length;
     ({ d } = await scGet());
@@ -138,8 +150,8 @@ describe('Scoring-Einstellungen — Route mit Stand/409', () => {
   });
 });
 
-describe('Lead — Stufen je Frage (Vorschlag aktiv)', () => {
-  beforeAll(async () => { const { d } = await scGet(); await scPatch({ aktion: 'vorschlag', stand: d.stand }); });
+describe('Lead — Stufen je Frage (Standard aktiv)', () => {
+  beforeAll(async () => { const { d } = await scGet(); await scPatch({ aktion: 'standard', stand: d.stand }); });
 
   it('eine Stufe wählen schreibt die Stufe UND spiegelt das alte Feld; Fit-Stufe spiegelt `fit`', async () => {
     const r = await post({ aktion: 'setze', id: 'f-beta', felder: { stufen: { schmerz: 's5', entscheider: 's3', budget: 's0', fit: 'ja' } } });
@@ -156,7 +168,7 @@ describe('Lead — Stufen je Frage (Vorschlag aktiv)', () => {
   it('null nimmt die Antwort zurück (offen), ungültige Frage oder Stufe → 400, nichts geändert', async () => {
     const vor = await leadVon('f-beta');
     expect((await post({ aktion: 'setze', id: 'f-beta', felder: { stufen: { gibtsnicht: 's5' } } })).status).toBe(400);
-    expect((await post({ aktion: 'setze', id: 'f-beta', felder: { stufen: { schmerz: 'ja' } } })).status).toBe(400); // „ja“ ist eine Stufe des Standards, nicht des Vorschlags
+    expect((await post({ aktion: 'setze', id: 'f-beta', felder: { stufen: { schmerz: 'ja' } } })).status).toBe(400); // „ja“ ist eine Stufe der bisherigen Rechnung, nicht des Standards
     expect(await leadVon('f-beta')).toEqual(vor);
     const r = await post({ aktion: 'setze', id: 'f-beta', felder: { stufen: { budget: null } } });
     expect(r.status).toBe(200);

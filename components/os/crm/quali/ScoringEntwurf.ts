@@ -12,7 +12,7 @@ import { istGeaendert, kopie } from '@/lib/crm/scoring-bearbeiten';
 import type { CrmApi } from '../daten';
 
 export interface ScoringDaten {
-  einstellungen: ScoringEinstellungen; stand: string; standard: ScoringEinstellungen; vorschlag: ScoringEinstellungen;
+  einstellungen: ScoringEinstellungen; stand: string; standard: ScoringEinstellungen; bisherig: ScoringEinstellungen;
   messungen: { id: MessungId; label: string; hinweis: string; stufen: { id: string; text: string }[] }[];
   verlauf: { am: string; von: string; quelle: string; was: string }[]; zurueckMoeglich: boolean;
 }
@@ -86,8 +86,8 @@ export function useScoringEntwurf(api: CrmApi) {
   }, [laeuft, laden, api]);
 
   const speichern = useCallback(async () => { if (entwurf && (await senden({ aktion: 'speichern', einstellungen: entwurf }))) setHinweis('Gespeichert — Leads, Akte und Runde rechnen ab jetzt damit.'); }, [entwurf, senden]);
-  const aktion = useCallback(async (a: 'vorschlag' | 'standard' | 'zurueck') => {
-    if (await senden({ aktion: a })) setHinweis(a === 'vorschlag' ? 'Vorschlag übernommen — mit „Letzte Änderung zurücknehmen“ geht es zurück.' : a === 'standard' ? 'Auf den Standard zurückgesetzt.' : 'Letzte Änderung zurückgenommen.');
+  const aktion = useCallback(async (a: 'standard' | 'bisherig' | 'zurueck') => {
+    if (await senden({ aktion: a })) setHinweis(a === 'bisherig' ? 'Bisherige Rechnung übernommen — mit „Letzte Änderung zurücknehmen“ oder „Auf Standard zurück“ geht es zurück.' : a === 'standard' ? 'Auf den Standard zurückgesetzt.' : 'Letzte Änderung zurückgenommen.');
   }, [senden]);
   const verwerfen = useCallback(() => { if (datenRef.current) setEntwurfRoh(kopie(datenRef.current.einstellungen)); setFelder([]); setFehler(''); setHinweis(''); setWiederhergestellt(false); try { sessionStorage.removeItem(MERKER); } catch { /* egal */ } }, []);
 

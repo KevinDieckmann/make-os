@@ -10,7 +10,6 @@
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Kriterien, Lead, Temperatur } from './typen';
 import { MINDESTMENGE } from './deal-auswertung';
-import { hatTyp, kategorieBeginnt } from './mehrfach';
 import { scoringRechnen, temperaturAus, standardZumRechnen, WAERME_VERFALL_TAGEN, type ScoringErgebnis, type ScoringKontext, type TemperaturAb } from './scoring';
 
 export { WAERME_VERFALL_TAGEN };
@@ -35,9 +34,9 @@ export const temperaturFarbe = (t: Temperatur) => TEMPERATUR.find(x => x.id === 
 /** Warm oder heiß — ab hier gehört ein Lead in die Leads-Liste statt ins Vernetzen. */
 export const warmPlus = (t: Temperatur) => t === 'warm' || t === 'heiss';
 
-/** Was der Kern aus dem CRM-Bestand braucht: die Einstellungen und die Teilnahmen/Events (für Event- und Make.One-Signale). */
-export function scoringKontext(crm?: Partial<Pick<CrmBestand, 'scoring' | 'teilnahmen' | 'events'>> | null): ScoringKontext {
-  return { ...(crm?.scoring ? { einstellungen: crm.scoring } : {}), ...(crm?.teilnahmen ? { teilnahmen: crm.teilnahmen } : {}), ...(crm?.events ? { events: crm.events } : {}) };
+/** Was der Kern aus dem CRM-Bestand braucht: die Einstellungen, Teilnahmen/Events (Event- und Make.One-Signale) und Kampagnen (Marketing-Herkunft). */
+export function scoringKontext(crm?: Partial<Pick<CrmBestand, 'scoring' | 'teilnahmen' | 'events' | 'kampagnen'>> | null): ScoringKontext {
+  return { ...(crm?.scoring ? { einstellungen: crm.scoring } : {}), ...(crm?.teilnahmen ? { teilnahmen: crm.teilnahmen } : {}), ...(crm?.events ? { events: crm.events } : {}), ...(crm?.kampagnen ? { kampagnen: crm.kampagnen } : {}) };
 }
 
 /**
@@ -56,36 +55,9 @@ export function leadScore(personen: Kontakt[], lead: Lead | undefined, heute: st
   return { punkte: e.gesamt, temperatur: temperaturAus(e.gesamt, einst.temperaturAb), teile, scoring: e };
 }
 
-// ── Herkunftskanal ───────────────────────────────────────────────────────────
-export type KanalId = 'empfehlung' | 'event' | 'content' | 'outreach' | 'bestand' | 'inbound' | 'kampagne' | 'netzwerk' | 'unbekannt';
-export const KANAL: { id: KanalId; label: string }[] = [
-  { id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }, { id: 'content', label: 'Content' }, { id: 'outreach', label: 'Outreach' },
-  { id: 'inbound', label: 'Inbound' }, { id: 'kampagne', label: 'Kampagne' }, { id: 'netzwerk', label: 'Netzwerk' }, { id: 'bestand', label: 'Bestand' }, { id: 'unbekannt', label: 'Unbekannt' },
-];
-export const kanalLabel = (k: KanalId) => KANAL.find(x => x.id === k)!.label;
-
-/** Über welchen Kanal ein Kontakt zu uns kam: erst die gepflegte Herkunft, sonst die Quelle aus der Liste. */
-export function kanalVon(k: Pick<Kontakt, 'herkunft' | 'quelle' | 'kategorie' | 'typ'>): KanalId {
-  switch (k.herkunft) {
-    case 'empfehlung': return 'empfehlung';
-    case 'veranstaltung': return 'event';
-    case 'recherche': return 'outreach';
-    case 'bekannt': return 'netzwerk';
-    case 'selbst': return 'inbound';
-    case 'hubspot': case 'vertrag': return 'bestand';
-    default: break;
-  }
-  const q = (k.quelle ?? '').toLowerCase();
-  if (/empfehl/.test(q)) return 'empfehlung';
-  if (/event|messe|veranstalt|meetup/.test(q)) return 'event';
-  if (/linkedin|content|newsletter|beitrag/.test(q)) return 'content';
-  if (/kampagne/.test(q)) return 'kampagne';
-  if (/inbound|anfrage|website/.test(q)) return 'inbound';
-  if (/apple/.test(q) || kategorieBeginnt(k, 'Apple') || hatTyp(k, 'Netzwerk')) return 'netzwerk';
-  if (/hubspot|import|export|bestand/.test(q)) return 'bestand';
-  if (/leadliste|recherche|kaltakquise/.test(q)) return 'outreach';
-  return 'unbekannt';
-}
+// ── Herkunftskanal (ausgelagert nach kanal.ts, hier weiter exportiert) ────────
+export { KANAL, kanalLabel, kanalVon, type KanalId } from './kanal';
+import { kanalLabel, type KanalId } from './kanal';
 
 /** Kanal-Leistung: je Kanal Anzahl, warm+, SQL/Kunde, gewonnen — für Sales-Auswertung, Marketing und die Heads. */
 export interface KanalZeile { kanal: KanalId; label: string; anzahl: number; warm: number; sql: number; gewonnen: number; warmQuote: number; sqlQuote: number }

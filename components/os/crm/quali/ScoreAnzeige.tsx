@@ -2,7 +2,7 @@
 
 // ─── Score, MQL und SQL auf einen Blick (03.10.) ──────────────────────────────────────────────
 // Dieselben Zahlen überall: Runde, Leads-Liste, Kontaktakte, Seitenfenster — gerechnet im Kern (lib/crm/scoring.ts).
-// „Score x · Temperatur“, daneben der Weg: Lead → MQL (Marketing-Punkte gegen Schwelle) → SQL (Sales-Punkte gegen Schwelle
+// „Score x · Temperatur“, daneben der Weg: Lead → MQL (Marketing-Punkte gegen Schwelle, nur für Marketing-Leads) → SQL (Sales-Punkte gegen Schwelle
 // und die Muss-Kriterien). Wer es genau wissen will, klappt die Zusammensetzung auf.
 
 import { useState } from 'react';
@@ -14,6 +14,15 @@ import { punkteText } from './hilfen';
 
 /** Ein Teil des Wegs: „MQL · 22 von 20“ bzw. „SQL · 12 von 28 · fehlt: Schmerz“. */
 export function SeitenChip({ s, name, kurz }: { s: SeitenErgebnis; name: 'MQL' | 'SQL'; kurz?: boolean }) {
+  // Kein Marketing-Lead (03.10.): kein MQL-Balken — der Lead kommt von Event, Empfehlung oder Direktansprache und wird erst qualifiziert.
+  if (name === 'MQL' && s.gilt === false) {
+    return (
+      <span title="Dieser Lead kommt nicht aus dem Marketing (Kampagne, Newsletter, Anfrage, Inhalte). Er geht direkt in die Qualifizierung — erst die Qualifizierungsfragen entscheiden, ob er SQL wird."
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: C.inkDim, border: `1px solid ${C.inkDim}55`, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>
+        Lead · noch zu qualifizieren
+      </span>
+    );
+  }
   const f = s.erreicht ? LEUCHT.gut : C.inkDim;
   const text = `${name} ${s.erreicht ? '✓' : ''} ${punkteText(s.punkte)}/${punkteText(s.schwelle)}`.replace('  ', ' ');
   return (

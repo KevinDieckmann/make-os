@@ -1,7 +1,10 @@
 // ─── Scoring-Einstellungen — der eigene Bestand (Server, 03.10.) ─────────────
 // Bestand `crm-scoring` (ein Bestand für das ganze CRM wie `crm` selbst — geteilt von Kevin und Malin, kein Personenbezug):
 //   { einstellungen, vorherige[], verlauf[] }
-// Fehlt der Bestand, gilt der Standard (nichts wird geschrieben, bis jemand etwas einstellt). Jede Änderung hat einen
+// Fehlt der Bestand, gilt der Standard (nichts wird geschrieben, bis jemand etwas einstellt). Der Standard ist seit 03.10. der
+// geschärfte Vorschlag (Kevin: „sofort übernehmen“); die alte Rechnung bleibt als wählbare Fassung „Bisherige Rechnung“ (art: 'bisherig').
+// Wer schon etwas gespeichert hat, behält es — auch die alte Rechnung, falls sie einmal als „Standard“ gespeichert wurde (sie wird beim Lesen
+// als „bisherig“ erkannt und angezeigt, die Zahlen ändern sich nicht). Jede Änderung hat einen
 // Stand (Fingerabdruck der Einstellungen): passt er nicht mehr, 409 mit dem aktuellen Stand — kein stilles Überschreiben
 // zu zweit. Geschrieben wird nur von einer angemeldeten Person des Haushalts (Routen: Dienstweg → 403).
 // Versioniert: `version` im Bestand (Schemaversion), dazu die letzten `VORHERIGE_MAX` Fassungen — „letzte Änderung
@@ -12,7 +15,7 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { protokolliereBestand, type Wer } from '@/lib/store/aenderungsprotokoll';
-import { scoringPruefen, scoringSaeubern, standardScoring, vorschlagScoring, scoringOderStandard, SCORING_VERSION, type ScoringEinstellungen, type ScoringFehler } from './scoring';
+import { scoringPruefen, scoringSaeubern, standardScoring, bisherigeRechnung, scoringOderStandard, SCORING_VERSION, type ScoringEinstellungen, type ScoringFehler } from './scoring';
 
 export const SCORING_BESTAND = 'crm-scoring';
 /** So viele frühere Fassungen bleiben für „Zurück“ (ältere fallen weg — es ist Bedienkomfort, kein Nachweis). */
@@ -22,6 +25,13 @@ export const VERLAUF_MAX = 50;
 export interface ScoringVermerk { am: string; von: string; quelle: NonNullable<ScoringEinstellungen['quelle']>; was: string }
 export interface ScoringDatei { version: number; einstellungen: ScoringEinstellungen; vorherige: ScoringEinstellungen[]; verlauf: ScoringVermerk[] }
 
+/** Der Inhalt ohne Vermerk (wer/wann/woher) — zum Vergleichen. */
+const inhaltStand = (e: ScoringEinstellungen): string => scoringStand({ ...e, geaendert: undefined, geaendertVon: undefined, quelle: undefined } as ScoringEinstellungen);
+/** Als „Standard“ gespeicherte Einstellungen, die genau die bisherige Rechnung sind, heißen „bisherig“ — nur das Etikett, nie der Inhalt. */
+function etikett(e: ScoringEinstellungen): ScoringEinstellungen {
+  return e.quelle === 'standard' && inhaltStand(e) === inhaltStand(bisherigeRechnung()) ? { ...e, quelle: 'bisherig' } : e;
+}
+
 const leer = (): ScoringDatei => ({ version: SCORING_VERSION, einstellungen: standardScoring(), vorherige: [], verlauf: [] });
 
 /** Die Datei aus dem Bestand lesen — beschädigte Einstellungen fallen auf den Standard zurück (nie ein Absturz beim Rechnen). */
@@ -30,7 +40,7 @@ export function scoringDateiAus(roh: unknown): ScoringDatei {
   const o = roh as Record<string, unknown>;
   const vorherige = (Array.isArray(o.vorherige) ? o.vorherige : []).map(v => scoringSaeubern(v)).filter((v): v is ScoringEinstellungen => !!v);
   const verlauf = (Array.isArray(o.verlauf) ? o.verlauf : []).filter((v): v is ScoringVermerk => !!v && typeof (v as ScoringVermerk).am === 'string' && typeof (v as ScoringVermerk).von === 'string');
-  return { version: SCORING_VERSION, einstellungen: scoringOderStandard(o.einstellungen), vorherige, verlauf };
+  return { version: SCORING_VERSION, einstellungen: etikett(scoringOderStandard(o.einstellungen)), vorherige: vorherige.map(etikett), verlauf };
 }
 
 export async function scoringDateiLaden(): Promise<ScoringDatei> {
@@ -50,11 +60,11 @@ export type ScoringSchreibErgebnis =
   | { ok: false; art: 'fehler'; fehler: ScoringFehler[]; status: 400 | 413 }
   | { ok: false; art: 'nichts'; text: string };
 
-/** Was geschrieben werden soll: eigene Eingabe, der Vorschlag, der Standard oder die vorige Fassung. */
+/** Was geschrieben werden soll: eigene Eingabe, der Standard, die bisherige Rechnung (bis 03.10.) oder die vorige Fassung. */
 export type ScoringAuftrag =
   | { art: 'eigen'; roh: unknown }
-  | { art: 'vorschlag' }
   | { art: 'standard' }
+  | { art: 'bisherig' }
   | { art: 'zurueck' };
 
 /**
@@ -77,8 +87,8 @@ export async function scoringSchreiben(auftrag: ScoringAuftrag, stand: unknown, 
       const f = scoringPruefen(auftrag.roh);
       if (f.length) { ergebnis = { ok: false, art: 'fehler', fehler: f, status: f.some(x => x.status === 413) ? 413 : 400 }; return cur ?? d; }
       neu = scoringSaeubern(auftrag.roh, { quelle: 'eigen', geaendert: jetzt, geaendertVon: person });
-    } else if (auftrag.art === 'vorschlag') { neu = { ...vorschlagScoring(), quelle: 'vorschlag', geaendert: jetzt, geaendertVon: person }; quelle = 'vorschlag'; was = 'Vorschlag übernommen'; }
-    else if (auftrag.art === 'standard') { neu = { ...standardScoring(), quelle: 'standard', geaendert: jetzt, geaendertVon: person }; quelle = 'standard'; was = 'Auf Standard zurückgesetzt'; }
+    } else if (auftrag.art === 'standard') { neu = { ...standardScoring(), quelle: 'standard', geaendert: jetzt, geaendertVon: person }; quelle = 'standard'; was = 'Auf Standard zurückgesetzt'; }
+    else if (auftrag.art === 'bisherig') { neu = { ...bisherigeRechnung(), quelle: 'bisherig', geaendert: jetzt, geaendertVon: person }; quelle = 'bisherig'; was = 'Bisherige Rechnung (bis 03.10.) übernommen'; }
     else {
       const vor = d.vorherige[0];
       if (!vor) { ergebnis = { ok: false, art: 'nichts', text: 'Es gibt keine frühere Fassung.' }; return cur ?? d; }

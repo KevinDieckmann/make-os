@@ -109,14 +109,24 @@ describe('Lifecycle-Vorschlag — alle Zweige, in dieser Reihenfolge', () => {
     const b = bestand({ firmen: [firma('x', { lead: lead('sql') })] });
     expect(lifecycleVorschlag(k('a', { firmaId: 'f-x', lead: lead('neu') }), b, HEUTE)).toMatchObject({ id: 'sql', grund: expect.stringContaining('Firma') });
   });
-  it('Marketing-Signal → MQL: Antwort, Anfrage, beim Event dabei, Score warm', () => {
-    expect(lifecycleVorschlag(k('a', { aktivitaeten: [akt('2026-09-20T09:00:00Z', 'antwort')] }), bestand(), HEUTE)).toMatchObject({ id: 'mql', grund: 'Antwort am 20.09.' });
+  it('Marketing-Signal → MQL — nur bei Marketing-Herkunft: Antwort, Anfrage, beim eigenen Event dabei, Score warm', () => {
+    // Marketing-Herkunft: hier die selbst angegebene Anfrage über die Website (weitere Quellen: tests/marketing-lead.test.ts).
+    const mk = (x: Partial<Kontakt> = {}) => k('a', { herkunft: 'selbst', ...x });
+    expect(lifecycleVorschlag(mk({ aktivitaeten: [akt('2026-09-20T09:00:00Z', 'antwort')] }), bestand(), HEUTE)).toMatchObject({ id: 'mql', grund: 'Antwort am 20.09.' });
     expect(lifecycleVorschlag(k('a', { aktivitaeten: [akt('2026-09-21T09:00:00Z', 'antwort', { text: 'Anfrage über Webseite: Hallo' })] }), bestand(), HEUTE).grund).toBe('Anfrage am 21.09.');
-    const ev = bestand({ teilnahmen: [{ id: 't1', eventId: 'e1', kontaktId: 'c-a', status: 'da', geaendert: J }] });
-    expect(lifecycleVorschlag(k('a'), ev, HEUTE).id).toBe('mql');
+    const ev = bestand({ events: [{ id: 'e1', titel: 'Stammtisch', format: 'stammtisch', ziel: 'Z', datum: '2026-09-10', status: 'durchgefuehrt', geaendert: J } as never], teilnahmen: [{ id: 't1', eventId: 'e1', kontaktId: 'c-a', status: 'da', geaendert: J }] });
+    expect(lifecycleVorschlag(k('a'), ev, HEUTE)).toMatchObject({ id: 'mql', grund: 'war bei einem Event dabei' });
     // Warm: Fit „ja“ + echtes Gespräch vor wenigen Tagen + erreichbar.
-    const warm = k('a', { eignung: 'ja', email: 'a@example.invalid', telefon: '030 1', aktivitaeten: [akt('2026-09-25T09:00:00Z', 'gespraech')] });
+    const warm = mk({ eignung: 'ja', email: 'a@example.invalid', telefon: '030 1', aktivitaeten: [akt('2026-09-25T09:00:00Z', 'gespraech')] });
     expect(lifecycleVorschlag(warm, bestand(), HEUTE)).toMatchObject({ id: 'mql', grund: expect.stringContaining('Marketing-Punkte') });
+  });
+  it('Ohne Marketing-Herkunft bleibt es ein Lead — Antwort, Gespräch und hohe Punkte ändern daran nichts (Kevin 03.10.)', () => {
+    const warm = { eignung: 'ja' as const, email: 'a@example.invalid', telefon: '030 1', aktivitaeten: [akt('2026-09-25T09:00:00Z', 'gespraech'), akt('2026-09-20T09:00:00Z', 'antwort')] };
+    for (const herkunft of ['empfehlung', 'recherche', 'bekannt', 'hubspot', 'vertrag', undefined] as const) {
+      const v = lifecycleVorschlag(k('a', { ...warm, ...(herkunft ? { herkunft } : {}) }), bestand(), HEUTE);
+      expect(v.id, String(herkunft)).toBe('lead');
+      expect(v.grund).toContain('keine Marketing-Herkunft');
+    }
   });
   it('sonst Lead; ohne Bestand ebenfalls Lead', () => {
     expect(lifecycleVorschlag(k('a'), bestand(), HEUTE)).toMatchObject({ id: 'lead' });

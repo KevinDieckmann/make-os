@@ -92,7 +92,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
   /** BEAN eines Leads: bei einer Firma die der Firma, sonst die der Person. */
   const beanLead = (id: string): BeanId | null => { const f = firmenNachId.get(id); if (f) return beanFirma(f, crm, aktiv).bean; return beanJe.get(id) ?? null; };
   /** Lifecycle-Verteilung über die ansprechbare Kartei (gesetzt, sonst Lead) — für Sales und Marketing. */
-  const lifecycle = () => { const v = lifecycleVerteilung(aktiv, crm, heute); return { je_phase: v.je, von_hand_gesetzt: v.gesetzt }; };
+  const lifecycle = () => { const v = lifecycleVerteilung(aktiv, crm, heute); return { je_phase: v.je, von_hand_gesetzt: v.gesetzt, vorgeschlagen: v.vorgeschlagen }; };
   const meta = { heute, head, modus, fuer: personName, fruehere_vorschlaege: frueher.slice(-15) };
 
   // Kampagnen planen (Sales und Marketing): Kundenprofil, ähnliche Firmen, Playbooks mit heutiger Zielgruppe.
@@ -139,7 +139,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       // Ebene 1: Leads in Arbeit mit ihren Kernfragen — die Personen für Vorschläge stehen unter „hauptkontakt“.
       leads_in_arbeit: leadZeilen(aktiv, crm, heute).filter(z => ['kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status) || (salesBereit(z) && !z.deal?.offen && z.status !== 'kunde')).slice(0, 25).map(z => {
         const haupt = z.personen.map(x => nachId.get(x.id)).filter((k): k is Kontakt => !!k).sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
-        return { lead_id: z.id, name: z.name, status: z.status, bean: beanLead(z.id), lifecycle: haupt ? lifecycleJe.get(haupt.id) ?? null : null, score: z.score.punkte, temperatur: z.score.temperatur, kanal: z.kanal, antworten: z.antworten ?? null, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: salesBereit(z), mql: mqlErreicht(z), sales_punkte: z.score.scoring ? `${z.score.scoring.sales.punkte} von mindestens ${z.score.scoring.sales.schwelle}` : null, fehlt: fehltBisSqlZeile(z), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
+        return { lead_id: z.id, name: z.name, status: z.status, bean: beanLead(z.id), lifecycle: haupt ? lifecycleJe.get(haupt.id) ?? null : null, score: z.score.punkte, temperatur: z.score.temperatur, kanal: z.kanal, antworten: z.antworten ?? null, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: salesBereit(z), marketing_lead: z.score.scoring?.marketingLead ?? false, mql: mqlErreicht(z), sales_punkte: z.score.scoring ? `${z.score.scoring.sales.punkte} von mindestens ${z.score.scoring.sales.schwelle}` : null, fehlt: fehltBisSqlZeile(z), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
       }),
       power_hours_4_wochen: crm.sitzungen.filter(s => s.datum >= new Date(Date.parse(heute) - 28 * 864e5).toISOString().slice(0, 10)).map(s => ({ datum: s.datum, person: s.person, versuche: s.karten.filter(k => k.ergebnis).length, gespraeche: s.karten.filter(k => k.ergebnis === 'gespraech' || k.ergebnis === 'termin').length, termine: s.karten.filter(k => k.ergebnis === 'termin').length })),
     };

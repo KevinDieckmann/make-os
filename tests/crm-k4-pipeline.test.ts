@@ -8,6 +8,7 @@ import { wendeCrmAn, leererBestand, HISTORIE_MAX } from '@/lib/crm/speicher';
 import { crmMitStand, crmKonflikte, loeschSperren, standVon } from '@/lib/crm/crm-stand';
 import { OFFENE_STUFEN, gesundheit, prognose, wechsleStufe, erwartetVerschiebung, VERSCHOBEN_GELB } from '@/lib/crm/pipeline';
 import { gemesseneQuoten, MINDESTMENGE } from '@/lib/crm/deal-auswertung';
+import { bisherigeRechnung } from '@/lib/crm/scoring';
 import { leadScore, temperaturLeistung, WAERME_VERFALL_TAGEN, type LeadScore } from '@/lib/crm/score';
 import { klickSperren } from '@/lib/make-one/klick-sperre';
 import type { Chance, CrmBestand, Firma, Mandat } from '@/lib/crm/typen';
@@ -151,7 +152,8 @@ describe('#84–#86 Pipeline ehrlicher', () => {
 describe('#93/#95 Lead-Score: Wärme verfällt, Quoten je Temperatur', () => {
   const person = (o: Partial<Kontakt> = {}): Kontakt => ({ id: 'c-1', vorname: 'Test', nachname: 'Person', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], ...o } as Kontakt);
   const vorTagen = (n: number) => { const d = new Date(`${HEUTE}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString(); };
-  const waerme = (k: Kontakt) => leadScore([k], undefined, HEUTE).teile.find(t => t.id === 'waerme')!;
+  // Die Wärme-Stufen der bisherigen Rechnung (12 / 5 / 8 / 3 / 10) — seit 03.10. nicht mehr der Standard, aber wählbar.
+  const waerme = (k: Kontakt) => leadScore([k], undefined, HEUTE, undefined, { einstellungen: bisherigeRechnung() }).teile.find(t => t.id === 'waerme')!;
   it(`„hat geantwortet“ zählt bis ${WAERME_VERFALL_TAGEN} Tage voll, danach abgekühlt`, () => {
     expect(waerme(person({ aktivitaeten: [{ am: vorTagen(100), art: 'antwort', von: 'kevin' }] })).punkte).toBe(12);
     const alt = waerme(person({ aktivitaeten: [{ am: vorTagen(200), art: 'antwort', von: 'kevin' }] }));

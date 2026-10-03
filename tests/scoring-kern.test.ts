@@ -1,7 +1,7 @@
 // ─── Qualifizierung & Scoring — der Rechenkern (03.10.): Stufen, Schwellen, Muss, Deckel, Gewicht, Prüfung ─────
 import { describe, it, expect } from 'vitest';
 import {
-  standardScoring, vorschlagScoring, scoringRechnen, scoringPruefen, scoringSaeubern, scoringOderStandard, temperaturAus, altWertAusStufe, gespraechsFragen,
+  bisherigeRechnung, standardScoring, scoringRechnen, scoringPruefen, scoringSaeubern, scoringOderStandard, temperaturAus, altWertAusStufe, gespraechsFragen,
   MESSUNGEN, MESSUNG_IDS, SCORING_GRENZEN, type ScoringEinstellungen,
 } from '@/lib/crm/scoring';
 import { leadScore } from '@/lib/crm/score';
@@ -15,7 +15,7 @@ const sales = (e: ScoringEinstellungen, personen: Kontakt[] = [p()], stufen: Rec
   scoringRechnen(personen, { stufen, ...extra }, HEUTE, { einstellungen: e }).sales;
 
 describe('Vorschlag — Stufen 1 · 3 · 5, Gewicht, Muss, Schwelle', () => {
-  const v = vorschlagScoring();
+  const v = standardScoring();
   it('ist gültig, hat die Blöcke Fit · Qualifikation · Potenzial und eine Mindestpunktzahl', () => {
     expect(scoringPruefen(v)).toEqual([]);
     expect(v.sales.teile.map(t => t.id)).toEqual(['fit', 'qualifikation', 'potenzial']);
@@ -70,28 +70,28 @@ describe('Vorschlag — Stufen 1 · 3 · 5, Gewicht, Muss, Schwelle', () => {
   it('Gespräch: die Fragen kommen aus den Einstellungen, in der Reihenfolge der Blöcke', () => {
     const f = gespraechsFragen(v).map(x => x.kriterium.id);
     expect(f).toEqual(['fit', 'groesse', 'passung', 'schmerz', 'entscheider', 'budget', 'zeitpunkt', 'champion', 'prozess', 'wirkung', 'alternative', 'folge']);
-    expect(gespraechsFragen(standardScoring()).map(x => x.kriterium.id)).toEqual(['fit', 'schmerz', 'entscheider', 'budget', 'zeitpunkt', 'wirkung', 'alternative']);
+    expect(gespraechsFragen(bisherigeRechnung()).map(x => x.kriterium.id)).toEqual(['fit', 'schmerz', 'entscheider', 'budget', 'zeitpunkt', 'wirkung', 'alternative']);
   });
 });
 
 describe('Deckel, Schwellen, Temperatur, Gesamtwert', () => {
   it('Deckel der Stufe: „kein Schmerz“ kappt den Block (Standard: Qualifizierung auf 10)', () => {
-    const e = standardScoring();
+    const e = bisherigeRechnung();
     const r = scoringRechnen([p()], { kriterien: { schmerz: 'nein', entscheider: 'ja', budget: 'ja', zeitpunkt: 'ja', wirkung: 'ja', alternative: 'ja' } }, HEUTE, { einstellungen: e }).sales;
     const q = r.teile.find(t => t.id === 'qualifizierung')!;
     expect(q.punkte).toBe(10);
     expect(q.gedeckeltAuf).toBe(10);
     expect(q.grund).toContain('deckelt');
   });
-  it('Schwelle und „erreicht“: Marketing-Standard ab 35 Punkten', () => {
-    const e = standardScoring();
-    const m = (aktivitaeten: Kontakt['aktivitaeten']) => scoringRechnen([p({ aktivitaeten })], undefined, HEUTE, { einstellungen: e }).marketing;
+  it('Schwelle und „erreicht“: Marketing der bisherigen Rechnung ab 35 Punkten (für einen Marketing-Lead)', () => {
+    const e = bisherigeRechnung();
+    const m = (aktivitaeten: Kontakt['aktivitaeten']) => scoringRechnen([p({ aktivitaeten, herkunft: 'selbst' })], undefined, HEUTE, { einstellungen: e }).marketing;
     expect(m([{ am: '2026-09-20T10:00:00Z', art: 'gespraech', von: 'kevin' }])).toMatchObject({ punkte: 30, erreicht: false });
-    expect(scoringRechnen([p({ email: 'a@example.invalid', telefon: '1', aktivitaeten: [{ am: '2026-09-20T10:00:00Z', art: 'gespraech', von: 'kevin' }] })], undefined, HEUTE, { einstellungen: e }).marketing).toMatchObject({ punkte: 37, erreicht: true });
+    expect(scoringRechnen([p({ herkunft: 'selbst', email: 'a@example.invalid', telefon: '1', aktivitaeten: [{ am: '2026-09-20T10:00:00Z', art: 'gespraech', von: 'kevin' }] })], undefined, HEUTE, { einstellungen: e }).marketing).toMatchObject({ punkte: 37, erreicht: true });
     expect(m([{ am: '2026-09-20T10:00:00Z', art: 'mail', von: 'kevin' }])).toMatchObject({ punkte: 8, erreicht: false });
   });
   it('Gesamtwert = Anteil an der möglichen Summe, nicht die Summe selbst (Vorschlag: 53 + 70 = 123 möglich)', () => {
-    const v = vorschlagScoring();
+    const v = standardScoring();
     const r = scoringRechnen([p({ eignung: 'ja' })], { stufen: { schmerz: 's5', entscheider: 's5' } }, HEUTE, { einstellungen: v });
     expect(r.gesamt).toBe(Math.round((100 * (r.marketing.punkte + r.sales.punkte)) / (r.marketing.max + r.sales.max)));
     expect(r.marketing.max + r.sales.max).toBe(123);
@@ -99,11 +99,11 @@ describe('Deckel, Schwellen, Temperatur, Gesamtwert', () => {
   it('Temperatur-Stufen sind einstellbar', () => {
     expect(temperaturAus(40)).toBe('lau');
     expect(temperaturAus(40, { lau: 10, warm: 30, heiss: 60 })).toBe('warm');
-    const e = { ...standardScoring(), temperaturAb: { lau: 5, warm: 10, heiss: 15 } };
+    const e = { ...bisherigeRechnung(), temperaturAb: { lau: 5, warm: 10, heiss: 15 } };
     expect(leadScore([p({ eignung: 'ja' })], undefined, HEUTE, undefined, { einstellungen: e }).temperatur).toBe('heiss');
   });
   it('ein Kriterium auf „aus“ zählt weder Punkte noch Maximum', () => {
-    const e = kopie(standardScoring());
+    const e = kopie(bisherigeRechnung());
     e.sales.teile[1].kriterien.find(k => k.id === 'wirkung')!.aus = true;
     const r = sales(e);
     expect(r.teile.find(t => t.id === 'qualifizierung')!.max).toBe(25);
@@ -112,7 +112,7 @@ describe('Deckel, Schwellen, Temperatur, Gesamtwert', () => {
 });
 
 describe('Signale (Marketing) aus den Daten', () => {
-  const v = vorschlagScoring();
+  const v = standardScoring();
   const sig = (personen: Kontakt[], ctx: { teilnahmen?: Teilnahme[]; events?: Event[] } = {}) =>
     scoringRechnen(personen, undefined, HEUTE, { einstellungen: v, ...ctx }).marketing.teile.flatMap(t => t.kriterien);
   const ev = (id: string, marke?: string): Event => ({ id, titel: id, format: 'abend', ziel: '', datum: '2026-09-01', status: 'durchgefuehrt', ...(marke ? { marke } : {}), geaendert: '2026-09-01' } as unknown as Event);
@@ -150,7 +150,7 @@ describe('Signale (Marketing) aus den Daten', () => {
 
 describe('Prüfen und säubern — nichts wird still gekürzt', () => {
   it('Standard und Vorschlag sind gültig und überstehen das Säubern unverändert (idempotent)', () => {
-    for (const e of [standardScoring(), vorschlagScoring()]) {
+    for (const e of [bisherigeRechnung(), standardScoring()]) {
       expect(scoringPruefen(e)).toEqual([]);
       const s = scoringSaeubern(e)!;
       expect(scoringSaeubern(s)).toEqual(s);
@@ -158,7 +158,7 @@ describe('Prüfen und säubern — nichts wird still gekürzt', () => {
     }
   });
   it('nennt jeden Fehler mit Pfad: doppelte Kennung, Punkte außerhalb, unbekannte Messung, Muss ins Leere, Temperatur', () => {
-    const e = kopie(vorschlagScoring());
+    const e = kopie(standardScoring());
     e.sales.teile[1].kriterien[1].id = e.sales.teile[1].kriterien[0].id; // doppelt
     e.sales.teile[0].kriterien[1].stufen[0].punkte = 500;
     e.marketing.teile[0].kriterien[0].messung = 'gibtesnicht' as never;
@@ -174,19 +174,19 @@ describe('Prüfen und säubern — nichts wird still gekürzt', () => {
     expect(scoringSaeubern(e)).toBeNull();
   });
   it('Marketing-Kriterien sind Messungen, Sales-Kriterien Fragen — nicht vertauschbar; Messungs-Stufen nur aus dem Katalog', () => {
-    const e = kopie(standardScoring());
+    const e = kopie(bisherigeRechnung());
     e.sales.teile[1].kriterien[0] = { ...e.marketing.teile[1].kriterien[0] };
     expect(scoringPruefen(e).some(x => /beantwortet|gemessen/.test(x.text))).toBe(true);
-    const e2 = kopie(standardScoring());
+    const e2 = kopie(bisherigeRechnung());
     e2.marketing.teile[1].kriterien[0].stufen.push({ id: 'erfunden', text: 'x', punkte: 1 });
     expect(scoringPruefen(e2).some(x => x.pfad.endsWith('.id') && /kennt keine Stufe/.test(x.text))).toBe(true);
   });
   it('Grenzen lehnen ab (413), statt zu kürzen: zu viele Kriterien, Stufen, Blöcke', () => {
-    const e = kopie(vorschlagScoring());
+    const e = kopie(standardScoring());
     const viele = Array.from({ length: SCORING_GRENZEN.kriterienJeSeite + 1 }, (_, i) => ({ ...kopie(e.sales.teile[2].kriterien[0]), id: `extra${i}` }));
     e.sales.teile[2].kriterien = viele;
     expect(scoringPruefen(e).some(x => x.status === 413)).toBe(true);
-    const e2 = kopie(vorschlagScoring());
+    const e2 = kopie(standardScoring());
     e2.sales.teile[2].kriterien[0].stufen = Array.from({ length: SCORING_GRENZEN.stufenJeKriterium + 1 }, (_, i) => ({ id: `s${i}`, text: 'x', punkte: i }));
     expect(scoringPruefen(e2).some(x => x.status === 413)).toBe(true);
   });
@@ -195,7 +195,7 @@ describe('Prüfen und säubern — nichts wird still gekürzt', () => {
     expect(scoringOderStandard(null)).toEqual(standardScoring());
   });
   it('eigene Frage hinzufügen, umbenennen, Stufen ändern, entfernen — gerechnet wird sofort danach', () => {
-    const e = kopie(standardScoring());
+    const e = kopie(bisherigeRechnung());
     e.sales.teile[1].kriterien.push({ id: 'referenz', name: 'Referenzkunde', hinweis: 'Würde er uns weiterempfehlen?', quelle: 'frage', stufen: [{ id: 'ja', text: 'ja', punkte: 4 }, { id: 'nein', text: 'nein', punkte: 0 }] });
     e.sales.teile[1].kriterien.find(k => k.id === 'wirkung')!.name = 'Ziel in sechs Monaten';
     expect(scoringPruefen(e)).toEqual([]);
@@ -210,13 +210,13 @@ describe('Prüfen und säubern — nichts wird still gekürzt', () => {
 
 describe('Spiegelung an die alten Felder', () => {
   it('beste Stufe = ja, ab 60 % = ja, darunter unklar, 0 = nein, keine = unklar', () => {
-    const k = vorschlagScoring().sales.teile[1].kriterien[0]; // Schmerz 5/3/1/0
+    const k = standardScoring().sales.teile[1].kriterien[0]; // Schmerz 5/3/1/0
     expect(altWertAusStufe(k, 's5')).toBe('ja');
     expect(altWertAusStufe(k, 's3')).toBe('ja');
     expect(altWertAusStufe(k, 's1')).toBe('unklar');
     expect(altWertAusStufe(k, 's0')).toBe('nein');
     expect(altWertAusStufe(k, null)).toBe('unklar');
-    const s = standardScoring().sales.teile[1].kriterien[0];
+    const s = bisherigeRechnung().sales.teile[1].kriterien[0];
     expect(altWertAusStufe(s, 'ja')).toBe('ja');
     expect(altWertAusStufe(s, 'nein')).toBe('nein');
   });
