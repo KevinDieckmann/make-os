@@ -47,4 +47,9 @@ describe('Kalender → Stränge', () => {
     expect(fuerBetrachter(p, 'kevin').titel).toBe('Belegt');
     expect(fuerBetrachter(p, 'malin').titel).toBe('Privat Malin');
   });
+  it('Microsoft-365-Spiegel (ohneLink): Strang ohne Link — die Kennung m365-<Position> öffnet keinen Termin', () => {
+    const [m, i] = kalenderStraenge({ heute: HEUTE, termine: [t({ id: 'm365-3', space: 'business', ohneLink: true }), t({ id: 'Kal|x' })] });
+    expect(m.link).toBeUndefined();
+    expect(i.link).toBeDefined();
+  });
 });

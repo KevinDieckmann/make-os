@@ -202,13 +202,19 @@ export const BEDEUTUNG_FARBE: Record<Bedeutung, string> = { gut: LEUCHT.gut, ach
 
 // ─── Lichtfäden (03.10., DESIGN_STANDARD.md › Lichtfäden) ───────────────────
 /**
- * Farben der Ziel-Bündel im Lichtfäden-Zeitstrahl, je Space in fester Reihenfolge (nach Rang): die erste ist die
- * Markierungsfarbe von heute (Business gelb, Privat grün), danach weitere Leuchtfarben. „Ohne Ziel“ = Zeit-Cyan.
+ * Farben der Ziel-Bündel im Lichtfäden-Zeitstrahl, je Space in fester Reihenfolge (nach Rang): die erste ist zugleich die
+ * Farbe des Space (Business orange, Privat grün), danach weitere Leuchtfarben. „Ohne Ziel“ = Zeit-Cyan. Nie eine Zustands-
+ * farbe (achtung/kritisch): Gelb gehört den Engstellen (Review 03.10. — vorher trug das erste Business-Ziel die Warnfarbe).
  */
 export const FADEN_FARBEN = {
-  business: [LEUCHT.achtung, LEUCHT.business, LEUCHT.agenten, LEUCHT.beziehung],
+  business: [LEUCHT.business, LEUCHT.agenten, LEUCHT.beziehung],
   privat: [LEUCHT.gut, LEUCHT.geld, LEUCHT.schlaf],
   ohne: LEUCHT.puls,
+} as const;
+/** Feste Töne der Lichtfäden außerhalb der Ziel-Reihen: Thema Finanzen (Kupfer) und anonyme „Belegt“-Stränge (neutrales Grau). */
+export const FADEN_TOENE = {
+  finanzen: '#DE9E63',
+  belegt: '#9AA7B2',
 } as const;
 /** Glas der schwebenden Markierungen über dem Band (dunkel, leicht durchscheinend). */
 export const LICHT_GLAS = {

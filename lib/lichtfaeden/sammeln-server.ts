@@ -58,6 +58,8 @@ async function kalender(person: string, von: string, bis: string, heute: string)
     wer: t.wer, space: k.kemaris.includes(t) ? 'business' : spaceVonKalender(k.einstellungen, t.kalender),
     gesundheit: !t.maskiert && istGesundheitsTermin(t), ...(t.maskiert ? { maskiert: true } : {}), ...(t.abgesagt ? { abgesagt: true } : {}),
     ...(t.bezug ? { bezug: t.bezug } : {}),
+    // Microsoft-365-Spiegel (KEMARIS): Kennung `m365-<Position>` — kein Termin dahinter, den ein Link öffnen könnte.
+    ...(k.kemaris.includes(t) ? { ohneLink: true } : {}),
   }));
   return kalenderStraenge({ termine, heute });
 }

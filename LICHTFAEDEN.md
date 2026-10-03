@@ -46,7 +46,7 @@ GET /api/lichtfaeden  (Haushalts-Tor, gemerkt)     app/api/lichtfaeden/route.ts
 | Ebene | Kennung | Name / Farbe |
 |---|---|---|
 | Gesamt | `gesamt` | „Gesamt“ |
-| Space | `space:business`, `space:privat` | Business gelb, Privat grün (= erstes Ziel-Bündel wie in v1) |
+| Space | `space:business`, `space:privat` | Business orange, Privat grün (= erstes Ziel-Bündel; Gelb gehört den Engstellen) |
 | Thema | `thema:<space>:<thema>` | Privat: Ziele & Planung · Gesundheit · Familie & Beziehung · Finanzen; Business: Ziele & Planung · Markttraktion · Mandate · Finanzen (`THEMEN`) |
 | Ziel | `ziel:<id>` | Titel; Farbe je Space in Rang-Reihenfolge aus `FADEN_FARBEN` — gerechnet NUR vom Server über ALLE Ziele des Haushalts (`lib/planung/ziel-farben-server.ts`), dieselbe wie an Ziel-Chips und Ziel-Bezug (Feld `farbe` in `GET /api/state/ziele`) |
 | Meilenstein | `ms:<id>` | Titel; Farbe = Ziel-Farbe leicht abgestuft |

@@ -130,7 +130,7 @@ Legende (je Bündel ein Knopf „eine Ebene tiefer“), Engstellen als aufklappb
 | Striche | `lib/lichtfaeden/zeichnen.ts` | `zeichneBuendel` (Path2D-Eimer, additiv), `leinwand` (dpr ≤ 2), `starteLauf` (pausiert außerhalb, reduzierte Bewegung = Standbild) |
 | Band (App) | `lib/lichtfaeden/faedenband.ts`, `components/os/lichtfaeden/Faedenband.tsx` | Bündel einer Ansicht, Auf-/Zufächern, HEUTE, Engstellen-Säulen, Verbinder, `treffer`; Maße `BAND_MASSE` |
 | Daten | `lib/lichtfaeden/{modell,baum,fokus}.ts`, `quellen/*`, `GET /api/lichtfaeden` | Stränge → Baum → Ansicht (LOD) + Engstellen |
-| Farben | `FADEN_FARBEN`, `LICHT_GLAS` (design.ts), `THEMEN` (modell.ts) | Ziel je Space fortlaufend (Business gelb → orange → lila → pink, Privat grün → türkis → violett), Themen in Bereichsfarben, „ohne Ziel“ Zeit-Cyan, „Belegt“ Grau |
+| Farben | `FADEN_FARBEN`, `LICHT_GLAS` (design.ts), `THEMEN` (modell.ts) | Ziel je Space fortlaufend (Business orange → lila → pink, Privat grün → türkis → violett — nie Gelb/Rot, die gehören Engstellen und Zuständen; feste Töne `FADEN_TOENE`), Themen in Bereichsfarben, „ohne Ziel“ Zeit-Cyan, „Belegt“ Grau |
 | Website | `website/js/lichtfaeden.js` (erzeugt), `website/js/faden.js` | Granat/Smaragd, Charakter je Kapitel |
 
 **Parameter:** Fäden je Bündel ∝ √Last (3 … 26; Blatt-Ebene 1 … 4), höchstens 160 je Leinwand (Handy 80) · Stützpunkt alle 6 px (Handy 8) · Strich 0,8 px ·

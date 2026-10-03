@@ -84,7 +84,11 @@ export function baueBaum(zusatz: readonly Knoten[], straenge: readonly Strang[])
     for (const [id, k] of knoten) if (k.eltern && !knoten.has(k.eltern)) { knoten.delete(id); geaendert = true; }
   }
   const kinder = new Map<string, string[]>();
-  for (const k of knoten.values()) if (k.eltern) kinder.set(k.eltern, [...(kinder.get(k.eltern) ?? []), k.id]);
+  for (const k of knoten.values()) {
+    if (!k.eltern) continue;
+    const l = kinder.get(k.eltern);
+    if (l) l.push(k.id); else kinder.set(k.eltern, [k.id]);
+  }
   for (const [id, l] of kinder) kinder.set(id, l.sort((a, b) => vergleiche(knoten.get(a)!, knoten.get(b)!)));
   const gueltig: Strang[] = [];
   const gesehen = new Set<string>();
@@ -240,7 +244,11 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
 
   // Gruppen: Kind-Knoten bzw. „direkt“.
   const gruppen = new Map<string, Strang[]>();
-  for (const s of im) { const k = kindVon(s, wurzel.id); gruppen.set(k, [...(gruppen.get(k) ?? []), s]); }
+  for (const s of im) {
+    const k = kindVon(s, wurzel.id);
+    const l = gruppen.get(k);
+    if (l) l.push(s); else gruppen.set(k, [s]);
+  }
   const nurDirekt = [...gruppen.keys()].every(k => k.startsWith('direkt:'));
   const blatt = nurDirekt && (gruppen.get(`direkt:${wurzel.id}`)?.length ?? 0) > 0 && (wurzel.art === 'meilenstein' || wurzel.art === 'ziel' || wurzel.art === 'thema');
 
@@ -271,14 +279,15 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
     roh = [...roh.filter(x => behalten.has(x.id)), { id: 'rest', art: 'rest', name: `Weitere (${rest.length})`, farbe: OHNE_FARBE, straenge: rest.flatMap(x => x.straenge), rang: 2e6 }];
   }
 
-  // Dichte: geglättet mit Rand, Sättigung je Ansicht.
-  const geglaettet = roh.map(x => gauss(rohMitRand(x.straenge, r, o.heute), DICHTE_SIGMA));
+  // Dichte: geglättet mit Rand, Sättigung je Ansicht. Die Wochengewichte je Bündel werden EINMAL gerechnet.
+  const ungeglaettet = roh.map(x => rohMitRand(x.straenge, r, o.heute));
+  const geglaettet = ungeglaettet.map(w => gauss(w, DICHTE_SIGMA));
   const werte = geglaettet.flatMap(g => schneiden(g, n)).filter(v => v > 0.05);
   const halb = Math.max(DICHTE_HALB, werte.length ? werte.reduce((s, v) => s + v, 0) / werte.length : 0);
   const summen = roh.map(x => x.straenge.filter(imFenster).reduce((s, y) => s + y.gewicht, 0));
   const maxSumme = Math.max(1e-9, ...summen);
   let buendel: Buendel[] = roh.map((x, i) => {
-    const rohW = schneiden(rohMitRand(x.straenge, r, o.heute), n).map(rund);
+    const rohW = schneiden(ungeglaettet[i], n).map(rund);
     const faeden = blatt
       ? Math.round(FAEDEN.strangMin + (FAEDEN.strangMax - FAEDEN.strangMin) * Math.min(1, x.straenge[0].gewicht / 3))
       : Math.round(FAEDEN.min + (FAEDEN.max - FAEDEN.min) * Math.sqrt(summen[i] / maxSumme));
@@ -293,7 +302,7 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
   // Markierungen: Stränge mit „marke“ (Meilensteine, Ziel-Fristen, Events, Fristen …), im Fenster, nach Gewicht gedeckelt.
   const farbeVon = new Map(buendel.map(b => [b.id, b.farbe]));
   const zuBuendel = new Map<string, string>();
-  roh.forEach(x => x.straenge.forEach(s => zuBuendel.set(s.id, buendel.some(b => b.id === x.id) ? x.id : 'rest')));
+  for (const x of roh) { const id = farbeVon.has(x.id) ? x.id : 'rest'; for (const s of x.straenge) zuBuendel.set(s.id, id); }
   const marken: Marke[] = im
     .filter(s => QUELLEN[s.quelle].marke && s.zeit.tag >= o.von && s.zeit.tag <= o.bis)
     .sort((a, b) => b.gewicht - a.gewicht || a.zeit.tag.localeCompare(b.zeit.tag) || a.id.localeCompare(b.id))

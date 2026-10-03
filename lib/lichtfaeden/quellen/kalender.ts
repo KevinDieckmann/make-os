@@ -21,6 +21,8 @@ export interface KalenderTermin {
   gesundheit?: boolean;
   maskiert?: boolean;
   abgesagt?: boolean;
+  /** Kein Ziel für einen Link (z. B. Microsoft-365-Spiegel: Kennung ist nur die Position in der Liste, nicht stabil). */
+  ohneLink?: boolean;
   bezug?: { mandatId?: string; kontaktId?: string; firmaId?: string; dealId?: string; eventId?: string };
 }
 export interface KalenderDaten { termine: KalenderTermin[]; heute: string }
@@ -54,7 +56,7 @@ export function kalenderStraenge(d: KalenderDaten): Strang[] {
     aus.push({
       id: `termin:${t.id}`, quelle: 'termin', titel: t.titel, pfad: themaPfad(t.gesundheit ? 'privat' : t.space, thema), person,
       zeit: { tag, ...(bis ? { bis } : {}) }, gewicht: gewichtVon('termin', { lang, erledigt: vorbei }), status: vorbei ? 'erledigt' : 'offen',
-      ...(t.maskiert ? {} : { link: WEG.termin(t.id, tag) }), ...(privat ? { privat: true } : {}),
+      ...(t.maskiert || t.ohneLink ? {} : { link: WEG.termin(t.id, tag) }), ...(privat ? { privat: true } : {}),
     });
   }
   return aus;

@@ -145,3 +145,11 @@ describe('4 · Planungsdaten im Browser: ein Zwischenspeicher', () => {
     expect(ohneKommentare(lies('lib/aufgaben/ziel-bezug.ts'))).not.toMatch(/zielFarben|farbRegel/);
   });
 });
+
+describe('5 · Farbtöne der Lichtfäden (Review 03.10.)', () => {
+  it('kein Ziel trägt eine Zustandsfarbe (Gelb = Engstelle, Rot = kritisch); keine Farb-Literale im Modell', async () => {
+    const { FADEN_FARBEN, LEUCHT } = await import('@/lib/make-one/design');
+    for (const f of [...FADEN_FARBEN.business, ...FADEN_FARBEN.privat]) expect([LEUCHT.achtung, LEUCHT.kritisch]).not.toContain(f);
+    expect(ohneKommentare(lies('lib/lichtfaeden/modell.ts'))).not.toMatch(/'#[0-9A-Fa-f]{6}'/);
+  });
+});

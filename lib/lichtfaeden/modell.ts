@@ -11,7 +11,7 @@
 // Der Baum (baum.ts) sammelt die Stränge an ihren Knoten; die Dichte eines Knotens ist die Summe seiner Kinder.
 // Neue Quelle anschließen: LICHTFAEDEN.md › „Eine neue Quelle anschließen“ (Adapter in quellen/, Zeile in QUELLEN unten).
 
-import { FADEN_FARBEN, LEUCHT } from '@/lib/make-one/design';
+import { FADEN_FARBEN, FADEN_TOENE, LEUCHT } from '@/lib/make-one/design';
 import type { SpaceId } from '@/lib/make-one/space-regeln';
 import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 
@@ -49,17 +49,17 @@ export const THEMEN: Record<SpaceId, readonly ThemaDef[]> = {
     { id: 'planung', name: 'Ziele & Planung', farbe: LEUCHT.planung },
     { id: 'gesundheit', name: 'Gesundheit', farbe: LEUCHT.gut },
     { id: 'beziehung', name: 'Familie & Beziehung', farbe: LEUCHT.beziehung },
-    { id: 'finanzen', name: 'Finanzen', farbe: '#DE9E63' },
+    { id: 'finanzen', name: 'Finanzen', farbe: FADEN_TOENE.finanzen },
   ],
   business: [
     { id: 'planung', name: 'Ziele & Planung', farbe: LEUCHT.planung },
     { id: 'markttraktion', name: 'Markttraktion', farbe: LEUCHT.beziehung },
     { id: 'mandate', name: 'Mandate', farbe: LEUCHT.agenten },
-    { id: 'finanzen', name: 'Finanzen', farbe: '#DE9E63' },
+    { id: 'finanzen', name: 'Finanzen', farbe: FADEN_TOENE.finanzen },
   ],
 };
 export const SPACE_NAME: Record<SpaceId, string> = { privat: 'Privat', business: 'Business' };
-/** Leuchtfarbe je Space — dieselbe wie das erste Ziel-Bündel des Space (Business gelb, Privat grün, wie v1). */
+/** Leuchtfarbe je Space — dieselbe wie das erste Ziel-Bündel des Space (Business orange, Privat grün). */
 export const SPACE_FADEN: Record<SpaceId, string> = { privat: FADEN_FARBEN.privat[0], business: FADEN_FARBEN.business[0] };
 /** Bündel der Stränge, die direkt am Wurzelknoten hängen („ohne Ziel“) — Zeit-Cyan wie v1. */
 export const OHNE_FARBE = FADEN_FARBEN.ohne;
@@ -144,7 +144,7 @@ export function zielFarben(ziele: readonly ZielFarbRoh[]): Map<string, string> {
   return aus;
 }
 /** Anonyme „belegt“-Stränge der anderen Person: neutrales Grau, nie eine Themenfarbe. */
-export const BELEGT_FARBE = '#9AA7B2';
+export const BELEGT_FARBE = FADEN_TOENE.belegt;
 
 /** Der Pfad bis zu einem Thema (Grundlage jedes Adapters). */
 export const themaPfad = (s: SpaceId, t: ThemaId): string[] => [GESAMT, knotenId.space(s), knotenId.thema(s, t)];
