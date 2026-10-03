@@ -92,6 +92,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
                     <span style={{ color: C.inkDim }}> · zuständig {nameVon(z.zustaendig)}{z.erfasstVon !== z.zustaendig ? ` · kennengelernt von ${nameVon(z.erfasstVon)}` : ''}</span>
                   </div>
                   {z.info && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, overflowWrap: 'anywhere' }}>{z.info}</div>}
+                  {z.frueher?.map(f => <div key={f.erfasstAm} style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5, overflowWrap: 'anywhere' }}>Davor: {f.schrittText} ({tagText(f.erfasstAm.slice(0, 10))}){f.terminAm ? ` · Termin ${tagText(f.terminAm.slice(0, 10))} ${f.terminAm.slice(11, 16)}` : ''}{f.info ? ` — ${f.info}` : ''}</div>)}
                   {/* Platz für die Verknüpfungen der Zeile (Termin · Deal · Follow-up · Event): eine Zeile Chips, leer = unsichtbar. */}
                   <LinkChips links={z.links.filter(l => l.id !== 'kontakt') as LinkChip[]} />
                   {z.offen.length > 0 && <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', gap: 6, flexWrap: 'wrap' }}>{z.offen.map(o => <li key={o} style={{ fontSize: TYP.bedien, fontWeight: 600, color: LEUCHT.achtung, background: `${LEUCHT.achtung}1F`, borderRadius: 999, padding: '3px 10px' }}>{o}</li>)}</ul>}

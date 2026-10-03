@@ -30,7 +30,7 @@ import { WEG } from '@/lib/wege';
 import { tagPlus } from '@/lib/kalender/zeit';
 
 export interface ATermin { id: string; titel: string; start: string; ende: string; ganztags: boolean; ort?: string; art: string; href: string; laeuft: boolean }
-export interface AFrist { id: string; art: Frist['art']; tag: string; titel: string; unter?: string; href: string; inTagen: number; kuendigung?: true }
+export interface AFrist { id: string; art: Frist['art'] | 'event'; tag: string; titel: string; unter?: string; href: string; inTagen: number; kuendigung?: true }
 export interface AFollowup { id: string; text: string; name: string; faellig: string; uhrzeit?: string; tageUeber: number; quelle: string; href: string }
 export interface ANachbereiten { kontaktId: string; name: string; titel: string; tag: string; zeit?: string; href: string }
 export interface ABuchung { id: string; titel: string; start: string; href: string }

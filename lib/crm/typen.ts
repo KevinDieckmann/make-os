@@ -350,6 +350,8 @@ export interface Event {
   anmeldung?: EventAnmeldung;
   /** Wer von uns hingeht (Team-Kürzel, lib/crm/team.ts). */
   wer?: string[];
+  /** Letzter Tag einer mehrtägigen Veranstaltung (Messe) — fehlt = eintägig. Der Kalender-Spiegel reicht dann bis hierher. */
+  bisDatum?: string;
   /** Link zur Veranstaltung (nur https). */
   link?: string;
   /** Wen wir treffen wollen — Personen/Firmen aus der Kartei; beim Event abhaken (getroffen). Personenbezogen (Art. 15/17: lib/crm/person-verweise.ts). */
@@ -392,7 +394,7 @@ export interface NetzwerkenAngabe {
   /** Schritt „Zu Make.One einladen“: das Event, für das die Person vorgemerkt wurde (Teilnahme `t-nwm-<erfassungId>`) — Quelle des Links und des echten Stands im Abendbericht. */
   makeone?: { eventId: string };
   /** Frühere Begegnungen derselben Person bei demselben Event (die neuere Angabe gilt, die ältere bleibt hier nachlesbar — nie überschrieben). */
-  vorher?: { erfassungId: string; schritt: NetzwerkSchritt; erfasstAm: string; info?: string }[];
+  vorher?: { erfassungId: string; schritt: NetzwerkSchritt; erfasstAm: string; info?: string; terminAm?: string; terminId?: string }[];
 }
 /** Woher eine Make.One-Teilnahme kommt: von einer Erfassung auf einem besuchten Event (Netzwerken) — für „kam von <Event>“ in der Gästeliste. */
 export interface TeilnahmeHerkunft { art: 'netzwerken'; eventId: string; erfassungId: string }

@@ -59,7 +59,10 @@ describe('Säuberung der neuen Felder (Längen, Kennungsformat)', () => {
   it('Link: nur https, nie javascript:', () => {
     expect(linkSaeubern('https://beispiel.example/tickets')).toBe('https://beispiel.example/tickets');
     expect(linkSaeubern('javascript:alert(1)')).toBeUndefined();
-    expect(linkSaeubern('http://unsicher.example')).toBeUndefined();
+    expect(linkSaeubern('http://unsicher.example')).toBe('http://unsicher.example');   // http ist erlaubt (Technik-Prüfung)
+    expect(linkSaeubern('messe.example/programm')).toBe('https://messe.example/programm');   // ohne Schema: https davor
+    expect(linkSaeubern('messe.example:8080/x')).toBe('https://messe.example:8080/x');       // ein Port ist kein Schema
+    for (const schlecht of ['mailto:a@b.example', 'data:text/html,x', 'ftp://x.example/a', 'kein link', 'javascript:alert(1)//messe.example', 'http://', 'https://ohnepunkt']) expect(linkSaeubern(schlecht), schlecht).toBeUndefined();
     expect(linkSaeubern('https://mit leerzeichen.example')).toBeUndefined();
   });
   it('Zielpersonen: Person ODER Firma, gültige Kennung, ohne Doppelte, getroffen nur als true', () => {

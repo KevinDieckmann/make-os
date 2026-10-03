@@ -183,3 +183,46 @@ describe('Logo-Pipeline', () => {
     expect(logoPruefen(`data:image/svg+xml;base64,${'A'.repeat(300000)}`).ok).toBe(false);
   });
 });
+
+// ── Laufzeit: nichts quadratisch (Technik-Prüfung 03.10.) ─────────────────────
+// Die Regex für <style>-Regeln war quadratisch: 200 KB Stil ohne „{“ blockierten den Event-Loop rund 35 Sekunden. Jetzt: linear, `CSS_MAX`.
+describe('Laufzeit — lange Eingaben bleiben schnell', () => {
+  const ZEIT_MS = 1500;
+  const stoppe = (f: () => unknown) => { const t0 = performance.now(); f(); return performance.now() - t0; };
+  it('200 KB <style> ohne „{“, mit vielen „/*“ und „}“', async () => {
+    const { CSS_MAX } = await import('@/lib/netzwerken/svg');
+    for (const roh of ['a'.repeat(200_000), '/*'.repeat(100_000), '}'.repeat(200_000), 'x '.repeat(100_000) + '{', '.a{fill:red'.repeat(15_000)]) {
+      const ms = stoppe(() => saeubereSvg(W(`<style>${roh}</style>`)));
+      expect(ms).toBeLessThan(ZEIT_MS);
+    }
+    expect(CSS_MAX).toBe(20_000);
+  });
+  it('über der Grenze fällt das Stylesheet weg, darunter bleibt es — das SVG selbst bleibt brauchbar', () => {
+    const regel = '.a{fill:#fff}';
+    const klein = saeubereSvg(W(`<style>${regel}</style>`, 'class="a"'));
+    expect(klein).toContain('fill:#fff');
+    const gross = saeubereSvg(W(`<style>${'.b{fill:red}'.repeat(2000)}</style>`));
+    expect(gross).not.toBeNull();
+    expect(gross).not.toContain('<style');
+  });
+  it('Windows-Zeilen, @media und verschachtelte Regeln: nur einfache Regeln bleiben', () => {
+    const o = saeubereSvg(W('<style>.a{fill:red}\r\n@media print{.b{fill:blue}}\r\npath{stroke:#000}</style>'))!;
+    expect(o).toContain('.a{fill:red}');
+    expect(o).toContain('path{stroke:#000}');
+    expect(o).not.toContain('@media');
+    expect(o).not.toContain('.b{');
+  });
+  it('viele „<!--“, „<?“, „<![CDATA[“, „<!DOCTYPE“ und „<a “ ohne Ende', () => {
+    for (const teil of ['<!--', '<?x ', '<![CDATA[', '<!DOCTYPE ', '<a ', '<a "', '<g ']) {
+      const ms = stoppe(() => saeubereSvg(W(teil.repeat(Math.floor(500_000 / teil.length)))));
+      expect(ms, teil).toBeLessThan(ZEIT_MS);
+    }
+  });
+  it('Kommentare, PI, CDATA und DOCTYPE mit Ende werden weiter entfernt', () => {
+    const o = saeubereSvg(`<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY x "y">]><!-- weg --><svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h1v1z"/><!-- <script>x</script> --><text><![CDATA[a<b]]></text></svg>`)!;
+    expect(o).not.toContain('DOCTYPE');
+    expect(o).not.toContain('weg');
+    expect(o).not.toContain('script');
+    expect(o).toContain('a&lt;b');
+  });
+});

@@ -52,7 +52,7 @@ import { angebotSpeichern } from './angebot-server';
 import { terminAktivitaetenSetzen } from './termin-aktivitaet-server';
 import { MARKE_EVENTS, istNetzwerkenEvent } from './marke';
 import { besuchAbgesagt } from './besuche-form';
-import { zusammenfuehrung, trifftEingeschraenkte, luekenFuellen, neuesEvent, gleichesBesuchEvent, followupFrist, followupFristEinTag, ergebnisZiel, eventDatumPlausibel, wandPlusMinuten, schrittLabel, terminArtLabel, stadtAusAnschrift, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG, LABEL_NETZWERKEN, LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN, type Erfassung } from './netzwerken';
+import { zusammenfuehrung, trifftEingeschraenkte, luekenFuellen, neuesEvent, gleichesBesuchEvent, followupFrist, followupFristEinTag, ergebnisZiel, angabeMitVorher, eventDatumPlausibel, wandPlusMinuten, schrittLabel, terminArtLabel, stadtAusAnschrift, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG, LABEL_NETZWERKEN, LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN, type Erfassung } from './netzwerken';
 import type { CrmBestand, Firma, NetzwerkenAngabe, Teilnahme } from './typen';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -400,8 +400,10 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
         if (t.netzwerken?.erfassungId === e.erfassungId) return b;
         // Zweite Begegnung beim selben Event: die neuere Angabe gilt, eine schon bestätigte Danke-Mail bleibt vermerkt.
         const danke = t.netzwerken?.danke?.rausAm ? { ...(angabe.danke ?? {}), rausAm: t.netzwerken.danke.rausAm } : angabe.danke;
+        // Die ältere Angabe bleibt nachlesbar (`vorher`), ein schon gebuchter Termin geht nicht verloren (N6); eine Begegnung ohne frühere Angabe wird die erste.
+        const neueAngabe = { ...angabe, ...(danke ? { danke } : {}) };
         const neu = { ...t, status: 'da' as const, ...(t.eingechecktVon ? {} : { eingechecktVon: ctx.person }), ...(t.einladenDurch ? {} : { einladenDurch: e.zustaendig }),
-          ...(e.info && !t.notiz ? { notiz: e.info.slice(0, 1500) } : {}), netzwerken: { ...angabe, ...(danke ? { danke } : {}) }, geaendert: jetztIso, geaendertVon: ctx.person };
+          ...(e.info && !t.notiz ? { notiz: e.info.slice(0, 1500) } : {}), netzwerken: t.netzwerken ? angabeMitVorher(t.netzwerken, neueAngabe) : neueAngabe, geaendert: jetztIso, geaendertVon: ctx.person };
         return { ...b, teilnahmen: b.teilnahmen.map((x, j) => (j === i ? neu : x)) };
       }
       return { ...b, teilnahmen: [...b.teilnahmen, { id: `t-${e.erfassungId}`, eventId: eventId, kontaktId, status: 'da' as const, rolle: 'gast' as const, einladenDurch: e.zustaendig, eingechecktVon: ctx.person, ...(e.info ? { notiz: e.info.slice(0, 1500) } : {}), netzwerken: angabe, geaendert: jetztIso, geaendertVon: ctx.person }] };
@@ -584,7 +586,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       const notiz = [`Netzwerken: kennengelernt bei „${event.titel}“.`, ...(e.info ? [`Info: ${e.info}`.slice(0, 500)] : [])].join('\n');
       let angelegt;
       try {
-        angelegt = await terminAnlegenServer({ titel, start: `${t.start}:00`, ende: `${ende}:00`, wer: e.zustaendig as KalenderWer, kalender, art: 'termin', beschaeftigt: true, notiz, uid: `makeos-t-nw-${e.erfassungId}`, bezug: { kontaktId }, von: ctx.person }, ctx.wer);
+        angelegt = await terminAnlegenServer({ titel, start: `${t.start}:00`, ende: `${ende}:00`, wer: e.zustaendig as KalenderWer, kalender, art: 'termin', beschaeftigt: true, notiz, uid: `makeos-t-nw-${e.erfassungId}`, bezug: { kontaktId, eventId }, von: ctx.person }, ctx.wer);
       } catch (err) {
         if (err instanceof KalenderFehler) throw new ErfassungFehler(err.message, err.status >= 500 ? 502 : err.status, { teilweise: true });
         throw err;

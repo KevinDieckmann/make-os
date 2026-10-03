@@ -486,3 +486,158 @@ describe('M10/M13 · Links und Sprachnotiz', () => {
     expect(berichtAus({ event: c2.events.find(x => x.id === 'ev-test-1')!, teilnahmen: c2.teilnahmen, kontakte: k2, heute: '2026-10-03' }).zeilen[0].offen.some(o => o.startsWith('Sprachnotiz'))).toBe(false);
   });
 });
+
+describe('M15 · Firmenakte: Begegnungen bei Events', () => {
+  it('Personen der Firma bei Events (auch Make.One) + besuchte Events mit der Firma als Ziel; eingeschränkte Personen fehlen', async () => {
+    const { begegnungenFuerFirma } = await import('@/lib/crm/besuche');
+    const k = (id: string, x: object = {}) => ({ id: `c-${id}`, vorname: id, nachname: 'Muster', firmaId: 'f-w1', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', ...x }) as never;
+    const events = [{ ...EVENT, id: 'ev-a', datum: '2026-09-01', zielpersonen: [{ firmaId: 'f-w1' }] }, { ...MAKEONE, id: 'ev-m', datum: '2026-09-15' }, { ...EVENT, id: 'ev-z', datum: '2026-09-20', zielpersonen: [{ firmaId: 'f-w1' }] }, { ...EVENT, id: 'ev-leer', datum: '2026-09-25' }] as never;
+    const tn = [{ id: 't1', eventId: 'ev-a', kontaktId: 'c-anna', status: 'da', geaendert: 'x' }, { id: 't2', eventId: 'ev-m', kontaktId: 'c-bert', status: 'da', geaendert: 'x' }, { id: 't3', eventId: 'ev-leer', kontaktId: 'c-gesperrt', status: 'da', geaendert: 'x' }, { id: 't4', eventId: 'ev-leer', kontaktId: 'c-fremd', status: 'da', geaendert: 'x' }] as never;
+    const l = begegnungenFuerFirma(events, tn, [k('anna'), k('bert'), k('gesperrt', { eingeschraenkt: { seit: '2026-09-01', grund: 'A', von: 'kevin' } }), k('fremd', { firmaId: 'f-andere' })], 'f-w1');
+    expect(l.map(x => x.event.id)).toEqual(['ev-z', 'ev-m', 'ev-a']);                 // neueste zuerst; ev-leer nicht (nur Eingeschränkte/Fremde dort)
+    expect(l.find(x => x.event.id === 'ev-a')).toMatchObject({ ziel: true, getroffen: true });
+    expect(l.find(x => x.event.id === 'ev-z')).toMatchObject({ ziel: true, getroffen: false, personen: [] });
+    expect(l.find(x => x.event.id === 'ev-m')!.personen.map(p => p.id)).toEqual(['c-bert']);
+  });
+});
+
+describe('N3 · Labels aus Netzwerken sind eine Arbeitsliste', () => {
+  it('Befunde „Dublette prüfen“ und „Lead prüfen“ mit Ziel in die Kartei-Ansicht', async () => {
+    const { befunde } = await import('@/lib/crm/befunde');
+    const k = (id: string, labels: string[], x: object = {}) => ({ id: `c-${id}`, vorname: id, nachname: 'Muster', labels, eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', ...x }) as never;
+    const b = befunde([k('a', ['Dublette prüfen']), k('b', ['Lead prüfen']), k('c', ['Lead prüfen', 'Netzwerken']), k('d', ['Dublette prüfen'], { eingeschraenkt: { seit: '2026-09-01', grund: 'A', von: 'kevin' } })], speicher.leererBestand(), '2026-10-12');
+    expect(b.find(x => x.titel.includes('Dublette prüfen'))).toMatchObject({ bereich: 'kontakte', ansicht: 'dublette-pruefen', titel: expect.stringContaining('1 Person') });
+    expect(b.find(x => x.titel.includes('Lead prüfen'))).toMatchObject({ ansicht: 'lead-pruefen', titel: expect.stringContaining('2 Personen') });
+  });
+});
+
+describe('N5 · Kalender-Spiegel: mehrtägig, wer, „angemeldet ohne Termin“', () => {
+  it('eventSoll: mehrtägig mit Uhrzeit bis zum letzten Tag, ohne Uhrzeit ganztägig; eintägig wie bisher', async () => {
+    const { eventSoll } = await import('@/lib/kalender/spiegel');
+    const e = { titel: 'Messe', datum: '2026-10-06', status: 'geplant', ort: 'Köln' };
+    expect(eventSoll({ ...e, uhrzeit: '09:00' })).toMatchObject({ art: 'soll', t: { start: '2026-10-06T09:00:00', ende: '2026-10-06T12:00:00', ganztags: false } });
+    expect(eventSoll({ ...e, uhrzeit: '09:00', bisDatum: '2026-10-08' })).toMatchObject({ art: 'soll', t: { start: '2026-10-06T09:00:00', ende: '2026-10-08T12:00:00' } });
+    expect(eventSoll({ ...e, bisDatum: '2026-10-08' })).toMatchObject({ art: 'soll', t: { start: '2026-10-06T00:00:00', ende: '2026-10-09T00:00:00', ganztags: true } });
+    expect(eventSoll(e).art).toBe('keiner');                                   // eintägig ohne Uhrzeit: wie bisher
+    expect(eventSoll({ ...e, bisDatum: '2026-10-05' }).art).toBe('keiner');    // Ende vor Beginn zählt nicht
+  });
+  it('bisDatum: gesäubert (nur nach dem Beginn, höchstens 30 Tage), fällt sonst weg', () => {
+    const roh = (b: unknown) => speicher.wendeCrmAn({ ...speicher.leererBestand() }, [{ liste: 'events', op: 'upsert', eintrag: { id: 'ev-bis-1', titel: 'Messe', format: 'messe', ziel: 'x', datum: '2026-10-06', status: 'geplant', bisDatum: b } }], '2026-10-02T08:00:00.000Z', 'kevin').bestand.events[0];
+    expect(roh('2026-10-08').bisDatum).toBe('2026-10-08');
+    expect(roh('2026-10-05').bisDatum).toBeUndefined();
+    expect(roh('2026-12-31').bisDatum).toBeUndefined();
+    expect(roh('2026-13-45').bisDatum).toBeUndefined();
+  });
+  it('Glocke/Heute: angemeldete besuchte Events ohne Kalender-Termin in den nächsten 7 Tagen — nur für die, die hingehen', async () => {
+    const { eventsOhneTermin } = await import('@/lib/crm/besuche');
+    const ev = (x: object) => ({ ...EVENT, ...x }) as never;
+    const l = [ev({ id: 'ev-1', anmeldung: 'angemeldet', datum: '2026-10-05', wer: ['kevin'] }), ev({ id: 'ev-2', anmeldung: 'angemeldet', datum: '2026-10-05', wer: ['malin'] }),
+      ev({ id: 'ev-3', anmeldung: 'angemeldet', datum: '2026-10-05', kalenderUid: 'uid-1' }), ev({ id: 'ev-4', anmeldung: 'geplant', datum: '2026-10-05' }), ev({ id: 'ev-5', anmeldung: 'angemeldet', datum: '2026-11-05' }),
+      ev({ id: 'ev-6', anmeldung: 'angemeldet', datum: '2026-10-03' })];
+    expect(eventsOhneTermin(l, '2026-10-02', 'kevin').map(x => x.id)).toEqual(['ev-6', 'ev-1']);
+    expect(eventsOhneTermin(l, '2026-10-02', 'malin').map(x => x.id)).toEqual(['ev-6', 'ev-2']);   // nach Datum
+    expect(eventsOhneTermin(l, '2026-10-02', 'kevin')[1]).toMatchObject({ tag: '2026-10-05', inTagen: 3 });
+  });
+});
+
+describe('N6 · zweite Begegnung hängt an, überschreibt nicht', () => {
+  it('die ältere Angabe bleibt nachlesbar (`vorher`), ein gebuchter Termin und die Make.One-Vormerkung bleiben, solange die neue keine eigenen hat', async () => {
+    const WEBM = undefined;
+    void WEBM;
+    const e1 = erfassung({ schritt: 'makeone', makeone: { eventId: 'ev-makeone-1' }, info: 'Erste Begegnung' });
+    await senden(e1);
+    const e2 = erfassung({ schritt: 'nur-kontakt', info: 'Zweite Begegnung', kontakt: { vorname: 'Anna', nachname: 'Beispiel', email: 'anna.beispiel@example.invalid' } });
+    const r = await senden(e2);
+    expect(r.status).toBe(200);
+    const t = (await crm()).teilnahmen.find(x => x.eventId === 'ev-test-1')!;
+    expect(t.netzwerken).toMatchObject({ erfassungId: e2.erfassungId, schritt: 'nur-kontakt', info: 'Zweite Begegnung', makeone: { eventId: 'ev-makeone-1' } });
+    expect(t.netzwerken?.vorher).toEqual([expect.objectContaining({ erfassungId: e1.erfassungId, schritt: 'makeone', info: 'Erste Begegnung' })]);
+    const { berichtAus } = await import('@/lib/crm/netzwerken');
+    const c = await crm();
+    const z = berichtAus({ event: c.events.find(x => x.id === 'ev-test-1')!, teilnahmen: c.teilnahmen, kontakte: await kontakte(), heute: '2026-10-03' }).zeilen[0];
+    expect(z.frueher).toEqual([expect.objectContaining({ schrittText: 'Zu Make.One einladen', info: 'Erste Begegnung' })]);
+  });
+  it('`angabeMitVorher` rein: Termin bleibt, ein neuer Termin gewinnt und der alte steht in `vorher`', async () => {
+    const { angabeMitVorher, netzwerkenAngabeSaeubern } = await import('@/lib/crm/netzwerken');
+    const basis = { schritt: 'termin' as const, zustaendig: 'kevin', erfasstVon: 'kevin' };
+    const alt = { ...basis, erfassungId: randomUUID(), erfasstAm: '2026-10-02T07:00:00.000Z', terminAm: '2026-10-05T10:00', terminId: 'kal|uid-1' };
+    const ohne = angabeMitVorher(alt, { ...basis, schritt: 'nur-kontakt', erfassungId: randomUUID(), erfasstAm: '2026-10-02T09:00:00.000Z' });
+    expect(ohne).toMatchObject({ terminAm: '2026-10-05T10:00', terminId: 'kal|uid-1' });
+    const neu = angabeMitVorher(alt, { ...basis, erfassungId: randomUUID(), erfasstAm: '2026-10-02T09:00:00.000Z', terminAm: '2026-10-07T11:00', terminId: 'kal|uid-2' });
+    expect(neu).toMatchObject({ terminAm: '2026-10-07T11:00', terminId: 'kal|uid-2' });
+    expect(neu.vorher![0]).toMatchObject({ terminAm: '2026-10-05T10:00', terminId: 'kal|uid-1' });
+    // Der Säuberer behält `vorher` und `makeone` (ohne diese Zeilen fielen sie beim nächsten Speichern weg).
+    expect(netzwerkenAngabeSaeubern({ ...neu, makeone: { eventId: 'ev-makeone-1' } })).toMatchObject({ vorher: [expect.objectContaining({ terminId: 'kal|uid-1' })], makeone: { eventId: 'ev-makeone-1' } });
+  });
+});
+
+describe('Verbindungsprüfung kennt Zielpersonen, „für wen“ und Termine aus Netzwerken', () => {
+  it('tote Ziele, tote Firma/Mandat bei „für wen“, gelöschter Termin einer Erfassung', async () => {
+    const { verbindungenPruefen } = await import('@/lib/crm/verbindungen');
+    const k = { id: 'c-da-1', vorname: 'A', nachname: 'B', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01' } as never;
+    const crmB = { ...speicher.leererBestand(),
+      firmen: [{ id: 'f-da-1', name: 'Da GmbH', rolle: 'kunde', geaendert: 'x' }] as never,
+      mandate: [{ id: 'm-da-1', kunde: 'Da', firmaId: 'f-andere', kontaktIds: [], titel: 'M', art: 'retainer', gesellschaft: 'offen', status: 'aktiv', geaendert: 'x' }] as never,
+      events: [{ ...EVENT, id: 'ev-ziel', zielpersonen: [{ kontaktId: 'c-weg-1' }, { firmaId: 'f-weg-1' }] }, { ...EVENT, id: 'ev-fuer', fuer: { art: 'kunde', firmaId: 'f-weg-2' } }, { ...EVENT, id: 'ev-mandat', fuer: { art: 'kunde', firmaId: 'f-da-1', mandatId: 'm-da-1' } }, { ...EVENT, id: 'ev-ok', zielpersonen: [{ kontaktId: 'c-da-1' }, { firmaId: 'f-da-1' }], fuer: { art: 'kunde', firmaId: 'f-da-1' } }] as never,
+      teilnahmen: [{ id: 't-1', eventId: 'ev-ok', kontaktId: 'c-da-1', status: 'da', geaendert: 'x', netzwerken: { erfassungId: randomUUID(), schritt: 'termin', zustaendig: 'kevin', erfasstVon: 'kevin', erfasstAm: '2026-10-02T07:00:00.000Z', terminAm: '2026-10-05T10:00', terminId: 'kal|uid-weg' } }] as never };
+    const kalender = { fenster: { von: '2026-07-01', bis: '2027-10-01' }, objekte: [], bezuege: [] };
+    const f = verbindungenPruefen({ heute: '2026-10-03', kontakte: [k], crm: crmB, kalender } as never);
+    const ids = (id: string) => f.find(x => x.id === id)?.beispiele ?? [];
+    expect(ids('event-ziel-tot')).toEqual(['ev-ziel']);
+    expect(ids('event-fuer-tot').sort()).toEqual(['ev-fuer', 'ev-mandat']);
+    expect(ids('netzwerken-termin-tot')).toEqual(['c-da-1']);
+  });
+});
+
+describe('Zielpersonen einzeln auf dem aktuellen Stand', () => {
+  const post = async (aenderung: object, eventId = 'ev-test-1', user = 'kevin') => {
+    const route = (await import('@/app/api/crm/events/route')) as unknown as Mod;
+    const r = await route.POST(new Request('http://test/api/crm/events', { method: 'POST', headers: kopf(user), body: JSON.stringify({ aktion: 'ziel', eventId, aenderung }) }));
+    return { status: r.status, d: await r.json() as { ok: boolean; fehler?: string; zielpersonen?: { kontaktId?: string; firmaId?: string; getroffen?: boolean }[] } };
+  };
+  it('hinzu · getroffen · weg, wiederholbar; zwei Änderungen nacheinander überschreiben einander nicht', async () => {
+    await db.saveJson('kontakte', { kontakte: [{ id: 'c-z-1', vorname: 'Z', nachname: 'Eins', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01' }, { id: 'c-z-2', vorname: 'Z', nachname: 'Zwei', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01' }] });
+    await db.saveJson('crm', { ...speicher.leererBestand(), events: [EVENT], firmen: [{ id: 'f-z-1', name: 'Z GmbH', rolle: 'zielkunde', geaendert: 'x' }] });
+    expect((await post({ op: 'hinzu', kontaktId: 'c-z-1' })).d.zielpersonen).toEqual([{ kontaktId: 'c-z-1' }]);
+    expect((await post({ op: 'hinzu', kontaktId: 'c-z-1' })).d.zielpersonen).toHaveLength(1);                     // wiederholbar
+    await post({ op: 'hinzu', firmaId: 'f-z-1' });
+    const r = await post({ op: 'getroffen', kontaktId: 'c-z-1', wert: true });
+    expect(r.d.zielpersonen).toEqual([{ kontaktId: 'c-z-1', getroffen: true }, { firmaId: 'f-z-1' }]);
+    expect((await post({ op: 'weg', firmaId: 'f-z-1' })).d.zielpersonen).toEqual([{ kontaktId: 'c-z-1', getroffen: true }]);
+    expect((await post({ op: 'getroffen', kontaktId: 'c-z-2', wert: true })).status).toBe(404);
+    expect((await post({ op: 'hinzu', kontaktId: 'c-gibt-es-nicht' })).status).toBe(404);
+    expect((await post({ op: 'hinzu' })).status).toBe(400);
+    expect((await crm()).events[0].zielpersonen).toEqual([{ kontaktId: 'c-z-1', getroffen: true }]);
+  });
+  it('Art. 18: eine eingeschränkte Person kommt nie neu auf die Liste (409), Make.One-Events haben keine Zielliste (400)', async () => {
+    await db.saveJson('kontakte', { kontakte: [{ id: 'c-z-9', vorname: 'Z', nachname: 'Neun', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', eingeschraenkt: { seit: '2026-09-01', grund: 'A', von: 'kevin' } }] });
+    const r = await post({ op: 'hinzu', kontaktId: 'c-z-9' });
+    expect(r.status).toBe(409);
+    expect(r.d.fehler).not.toContain('Neun');
+    expect((await crm()).events.find(x => x.id === 'ev-test-1')?.zielpersonen).toBeUndefined();
+    expect((await post({ op: 'hinzu', kontaktId: 'c-z-9' }, 'ev-makeone-1')).status).toBe(400);
+  });
+  it('„Für wen“: eine Firma, die es nicht gibt, und ein Mandat einer anderen Firma werden abgelehnt (409), eine gültige Wahl geht durch', async () => {
+    await db.saveJson('crm', { ...speicher.leererBestand(), events: [EVENT], firmen: [{ id: 'f-k-1', name: 'K GmbH', rolle: 'kunde', geaendert: 'x' }, { id: 'f-k-2', name: 'L GmbH', rolle: 'kunde', geaendert: 'x' }], mandate: [{ id: 'm-k-1', kunde: 'K', firmaId: 'f-k-1', kontaktIds: [], titel: 'M', art: 'retainer', gesellschaft: 'offen', status: 'aktiv', vertragUnterschrieben: true, verlaengerung: 'offen', honorar: { betrag: 100, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: [], geaendert: 'x' }] as never });
+    const probe = (fuer: object) => fetchBestand(fuer);
+    async function fetchBestand(fuer: object) {
+      const route = (await import('@/app/api/crm/bestand/route')) as unknown as { PATCH: (r: Request) => Promise<Response> };
+      const r = await route.PATCH(new Request('http://test/api/crm/bestand', { method: 'PATCH', headers: kopf('kevin'), body: JSON.stringify({ ops: [{ liste: 'events', op: 'teil', id: 'ev-test-1', felder: { fuer } }] }) }));
+      return { status: r.status, d: await r.json() as { fehler?: unknown } };
+    }
+    expect((await probe({ art: 'kunde', firmaId: 'f-weg-9' })).status).toBe(409);
+    expect((await probe({ art: 'kunde', firmaId: 'f-k-2', mandatId: 'm-k-1' })).status).toBe(409);
+    expect((await probe({ art: 'kunde', firmaId: 'f-k-1', mandatId: 'm-k-1' })).status).toBe(200);
+    expect((await crm()).events[0].fuer).toEqual({ art: 'kunde', firmaId: 'f-k-1', mandatId: 'm-k-1' });
+  });
+  it('Link: ohne Schema bekommt https://, ein unmögliches Schema wird mit Text abgelehnt statt still verworfen', async () => {
+    const route = (await import('@/app/api/crm/bestand/route')) as unknown as { PATCH: (r: Request) => Promise<Response> };
+    const patch = async (link: string) => { const r = await route.PATCH(new Request('http://test/api/crm/bestand', { method: 'PATCH', headers: kopf('kevin'), body: JSON.stringify({ ops: [{ liste: 'events', op: 'teil', id: 'ev-test-1', felder: { link } }] }) })); return { status: r.status, d: await r.json() as { fehler?: unknown } }; };
+    expect((await patch('messe.example/programm')).status).toBe(200);
+    expect((await crm()).events[0].link).toBe('https://messe.example/programm');
+    const schlecht = await patch('javascript:alert(1)');
+    expect(schlecht.status).toBe(409);
+    expect(JSON.stringify(schlecht.d.fehler)).toContain('Link');
+    expect((await crm()).events[0].link).toBe('https://messe.example/programm');
+  });
+});

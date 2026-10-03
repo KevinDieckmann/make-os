@@ -345,6 +345,20 @@ export const wandPlusMinuten = (start: string, minuten: number): string => wandA
 
 // ── Angabe an der Teilnahme (gesäubert) ──────────────────────────────────────
 
+/**
+ * Zweite Begegnung mit derselben Person beim selben Event (N6): die neuere Angabe gilt, die ältere bleibt NACHLESBAR (`vorher`) — nichts wird überschrieben.
+ * Ein schon gebuchter Termin (`terminAm`/`terminId`) und eine Make.One-Vormerkung gehen nicht verloren: sie bleiben stehen, solange die neue Angabe keine eigenen hat.
+ */
+export function angabeMitVorher(alt: NetzwerkenAngabe, neu: NetzwerkenAngabe): NetzwerkenAngabe {
+  const frueher = { erfassungId: alt.erfassungId, schritt: alt.schritt, erfasstAm: alt.erfasstAm, ...(alt.info ? { info: alt.info } : {}), ...(alt.terminAm ? { terminAm: alt.terminAm } : {}), ...(alt.terminId ? { terminId: alt.terminId } : {}) };
+  return {
+    ...neu,
+    ...(neu.terminAm || !alt.terminAm ? {} : { terminAm: alt.terminAm, ...(alt.terminId ? { terminId: alt.terminId } : {}) }),
+    ...(neu.makeone || !alt.makeone ? {} : { makeone: alt.makeone }),
+    vorher: [...(alt.vorher ?? []), frueher],
+  };
+}
+
 /** `Teilnahme.netzwerken` aus dem Netz/Speicher säubern — Unbekanntes fällt weg, ohne Kennung/Schritt nichts. */
 export function netzwerkenAngabeSaeubern(v: unknown): NetzwerkenAngabe | undefined {
   if (!v || typeof v !== 'object') return undefined;
@@ -362,7 +376,8 @@ export function netzwerkenAngabeSaeubern(v: unknown): NetzwerkenAngabe | undefin
     const v = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
     if (typeof v.erfassungId !== 'string' || !ERFASSUNG_ID.test(v.erfassungId) || !SCHRITT_IDS.includes(String(v.schritt)) || typeof v.erfasstAm !== 'string' || !Number.isFinite(Date.parse(v.erfasstAm))) return [];
     const i = typeof v.info === 'string' ? v.info.slice(0, INFO_MAX) : '';
-    return [{ erfassungId: v.erfassungId, schritt: v.schritt as NetzwerkSchritt, erfasstAm: v.erfasstAm.slice(0, 30), ...(i ? { info: i } : {}) }];
+    const tAm = typeof v.terminAm === 'string' && WAND.test(v.terminAm) ? v.terminAm : undefined, tId = typeof v.terminId === 'string' && v.terminId.length <= 200 && v.terminId.trim() ? v.terminId : undefined;
+    return [{ erfassungId: v.erfassungId, schritt: v.schritt as NetzwerkSchritt, erfasstAm: v.erfasstAm.slice(0, 30), ...(i ? { info: i } : {}), ...(tAm ? { terminAm: tAm } : {}), ...(tId ? { terminId: tId } : {}) }];
   });
   const d = o.danke && typeof o.danke === 'object' ? o.danke as Record<string, unknown> : null;
   const danke = d ? { ...(d.anrede === 'Du' || d.anrede === 'Sie' ? { anrede: d.anrede as 'Du' | 'Sie' } : {}), ...(typeof d.rausAm === 'string' && TAG.test(d.rausAm) ? { rausAm: d.rausAm } : {}) } : null;
@@ -599,6 +614,8 @@ export interface BerichtZeile {
   offen: string[];
   /** Sprünge zu dem, was die Erfassung angelegt hat: Termin, Deal, Follow-up, Event, Person (03.10.). */
   links: ErgebnisLink[];
+  /** Frühere Begegnungen mit derselben Person bei diesem Event (die neuere Angabe gilt, die ältere steht hier — N6). */
+  frueher?: { schrittText: string; erfasstAm: string; info?: string; terminAm?: string }[];
 }
 /** Ein Sprung zu etwas, das eine Erfassung angelegt hat. */
 export interface ErgebnisLink { id: 'termin' | 'deal' | 'followup' | 'event' | 'kontakt' | 'makeone' | 'angebot' | 'aufgabe' | 'sprachnotiz'; label: string; href: string }
@@ -671,7 +688,8 @@ export function berichtAus(o: { event: Event; teilnahmen: readonly Teilnahme[]; 
     }
     zeilen.push({ kontaktId: k.id, name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}), schritt: n.schritt, schrittText: schrittLabel(n.schritt), zustaendig: n.zustaendig, erfasstVon: n.erfasstVon, ...(n.info ? { info: n.info } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}), erfasstAm: n.erfasstAm, offen,
       links: ergebnisLinks({ schritt: n.schritt, erfassungId: n.erfassungId, kontaktId: k.id, eventId: o.event.id, besuch: istNetzwerkenEvent(o.event), ...(n.terminId ? { terminId: n.terminId } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}),
-        ...(n.makeone ? { makeoneEventId: n.makeone.eventId } : {}), sprachnotiz: !k.eingeschraenkt && sprachnotizOhneAbschrift(k, o.event.id), aufgabe: n.schritt === 'andere' || (n.schritt === 'makeone' && !n.makeone && !k.werbesperre) }) });
+        ...(n.makeone ? { makeoneEventId: n.makeone.eventId } : {}), sprachnotiz: !k.eingeschraenkt && sprachnotizOhneAbschrift(k, o.event.id), aufgabe: n.schritt === 'andere' || (n.schritt === 'makeone' && !n.makeone && !k.werbesperre) }),
+      ...(n.vorher?.length ? { frueher: n.vorher.map(v => ({ schrittText: schrittLabel(v.schritt), erfasstAm: v.erfasstAm, ...(v.info ? { info: v.info } : {}), ...(v.terminAm ? { terminAm: v.terminAm } : {}) })) } : {}) });
   }
   zeilen.sort((a, b) => a.erfasstAm.localeCompare(b.erfasstAm));
   const jePerson: Record<string, number> = {};

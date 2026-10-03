@@ -17,7 +17,8 @@ import { neueId } from '../crm/daten';
 import type { CrmApi } from '../crm/daten';
 import type { Event, EventFuer, Firma } from '@/lib/crm/typen';
 import { heuteBeiAngebot } from '@/lib/crm/besuche';
-import { gleichesBesuchEvent } from '@/lib/crm/netzwerken';
+import { gleichesBesuchEvent, eventDatumPlausibel } from '@/lib/crm/netzwerken';
+import { istKalendertag } from '@/lib/zeit';
 import { geteilteWarteschlange } from '@/lib/netzwerken/warteschlange';
 import { lokalAbleiten } from '@/lib/netzwerken/wahl';
 import { istBesuch, fuerVon } from '@/lib/crm/besuche-form';
@@ -153,7 +154,8 @@ export function EventWahlFenster({ api, ich, heute, onZu, onWahl }: { api: CrmAp
     const t = titel.trim();
     if (t.length < 2) { setFehler('Wie heißt das Event?'); return; }
     if (t.length > 160) { setFehler('Der Name ist zu lang (höchstens 160 Zeichen).'); return; }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) { setFehler('Bitte ein Datum wählen.'); return; }
+    if (!istKalendertag(datum)) { setFehler('Bitte ein gültiges Datum wählen.'); return; }
+    if (!eventDatumPlausibel(datum, heute)) { setFehler('Das Datum liegt mehr als ein Jahr entfernt — bitte prüfen.'); return; }
     if (!fuerGueltig(fuer)) { setFehler('Für welchen Kunden? Bitte eine Firma wählen — oder „MAKE selbst“.'); return; }
     setLaeuft(true); setFehler(null);
     const kunde = fuer.art === 'kunde' ? fuer : undefined;

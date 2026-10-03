@@ -136,5 +136,11 @@ export function funktionsOps(vorher: CrmBestand, nachher: CrmBestand): ListenOp[
     const a = kAlt.get(k.id);
     if (!a || k.kontaktIds.some(x => !a.kontaktIds.includes(x)) || a.status !== k.status) ops.push({ liste: 'kampagnen', op: 'upsert', eintrag: { ...k } as unknown as Record<string, unknown> });
   }
+  const eAlt = new Map((vorher.events ?? []).map(x => [x.id, x]));
+  for (const x of nachher.events ?? []) {
+    const a = eAlt.get(x.id);
+    const neu = (x.zielpersonen ?? []).some(z => z.kontaktId && !(a?.zielpersonen ?? []).some(y => y.kontaktId === z.kontaktId));
+    if (neu) ops.push({ liste: 'events', op: 'upsert', eintrag: { id: x.id, titel: x.titel, zielpersonen: x.zielpersonen } });
+  }
   return ops;
 }

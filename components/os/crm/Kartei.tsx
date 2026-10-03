@@ -46,14 +46,15 @@ import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ, LIFECYCLE_LABEL, type LifecyclePhase 
 import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, beanVon, istBean, type BeanErgebnis, type BeanId } from '@/lib/crm/bean';
 import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
 import { typenVon, kategorienVon, labelsVon, enthaeltEinenVon } from '@/lib/crm/mehrfach';
+import { LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN } from '@/lib/crm/netzwerken';
 import { alleAdressen, hatAdresse } from '@/lib/crm/emails';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { neueKontaktKennung } from '@/lib/kennung';
 import { useNaechsterTermin } from '../kalender/TermineAkte';
 
 type Modus = 'personen' | 'firmen';
-type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
-const ANSICHT_IDS: Ansicht[] = ['alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten'];
+type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten' | 'dublette-pruefen' | 'lead-pruefen';
+const ANSICHT_IDS: Ansicht[] = ['alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten', 'dublette-pruefen', 'lead-pruefen'];
 const istAnsicht = (a?: string): a is Ansicht => !!a && (ANSICHT_IDS as string[]).includes(a);
 
 export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde, zuAkte, startBean }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void;
@@ -108,11 +109,13 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     alle: () => true, kunden: k => k.lebensphase === 'kunde', kreis: k => k.kreis === 'A' || k.kreis === 'B', prio: k => k.prio === 'A',
     chancen: k => mitChance.has(k.id), mail: k => !!k.email, anreichern: k => !k.email && !k.telefon && !k.sms || !k.firma,
     art14: k => !!art14(k, heute)?.faellig, gesperrt: k => ausgenommen(k), dubletten: k => paare.some(([a, b]) => a.id === k.id || b.id === k.id),
+    // Arbeitslisten aus „Netzwerken“ (N3): die Labels „Dublette prüfen“ und „Lead prüfen“ setzt die Erfassung — hier stehen die Personen, die ein Mensch ansehen soll.
+    'dublette-pruefen': k => !ausgenommen(k) && labelsVon(k).includes(LABEL_DUBLETTE), 'lead-pruefen': k => !ausgenommen(k) && labelsVon(k).includes(LABEL_LEAD_PRUEFEN),
   }), [mitChance, paare, heute]);
   const zaehlung = useMemo(() => { const z = {} as Record<Ansicht, number>; for (const id of Object.keys(filter) as Ansicht[]) z[id] = kontakte.filter(filter[id]).length; return z; }, [kontakte, filter]);
   const ANSICHTEN: { id: Ansicht; label: string }[] = ([
     ['alle', 'Alle'], ['kunden', 'Kunden'], ['kreis', 'Kreis A/B'], ['prio', 'Prio A'], ['chancen', 'Mit Deal'], ['mail', 'Mit E-Mail'], ['anreichern', 'Anreichern'], ['art14', 'Art. 14'], ['gesperrt', 'Gesperrt'], ['dubletten', 'Dubletten'],
-  ] as [Ansicht, string][]).map(([id, l]) => ({ id, label: `${l} ${zaehlung[id]}` }));
+  ] as [Ansicht, string][]).concat([['dublette-pruefen', 'Dublette prüfen'], ['lead-pruefen', 'Lead prüfen']] as [Ansicht, string][]).filter(([id]) => (id !== 'dublette-pruefen' && id !== 'lead-pruefen') || zaehlung[id] > 0 || ansicht === id).map(([id, l]) => ({ id, label: `${l} ${zaehlung[id]}` }));
 
   const treffer = useMemo(() => {
     const q = suche.trim();

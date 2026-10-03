@@ -38,12 +38,16 @@ export function spiegelUid(art: SpiegelArt, id: string): string {
 /** Erfundene Kennung aus der Zeit vor K5 (`neueKennung('mac')`) — kein echter Termin dahinter. */
 export const istScheinUid = (uid: string | undefined | null): boolean => !!uid && /^mac-/.test(uid);
 
-export function eventSoll(e: { titel: string; datum: string; uhrzeit?: string; ort?: string; status: string }): Soll {
+export function eventSoll(e: { titel: string; datum: string; uhrzeit?: string; ort?: string; status: string; /** Letzter Tag einer mehrtägigen Veranstaltung (Messe). */ bisDatum?: string }): Soll {
   if (e.status === 'abgesagt') return { art: 'weg' };
   const m = minuten(e.uhrzeit);
-  if (!TAG.test(e.datum) || m === null) return { art: 'keiner', grund: 'Uhrzeit setzen (Überblick), dann lässt sich der Termin anlegen.' };
   const titel = e.titel.trim().slice(0, 120) || 'Event';
-  return { art: 'soll', t: { titel, start: wandAus(e.datum, m), ende: wandAus(e.datum, m + EVENT_DAUER_MIN), ganztags: false, ...(e.ort?.trim() ? { ort: e.ort.trim().slice(0, 300) } : {}) } };
+  const ort = e.ort?.trim() ? { ort: e.ort.trim().slice(0, 300) } : {};
+  const mehrtaegig = !!e.bisDatum && TAG.test(e.bisDatum) && TAG.test(e.datum) && e.bisDatum > e.datum;
+  if (mehrtaegig && m === null) return { art: 'soll', t: { titel, start: `${e.datum}T00:00:00`, ende: `${tagPlus(e.bisDatum!, 1)}T00:00:00`, ganztags: true, ...ort } };
+  if (!TAG.test(e.datum) || m === null) return { art: 'keiner', grund: 'Uhrzeit setzen (Überblick), dann lässt sich der Termin anlegen.' };
+  // Mehrtägig mit Uhrzeit: vom ersten Tag zur Uhrzeit bis zum letzten Tag zur selben Uhrzeit plus Dauer — die Messe läuft durch.
+  return { art: 'soll', t: { titel, start: wandAus(e.datum, m), ende: wandAus(mehrtaegig ? e.bisDatum! : e.datum, m + EVENT_DAUER_MIN), ganztags: false, ...ort } };
 }
 
 export function dateSoll(d: { titel: string; datum: string; status: string }): Soll {

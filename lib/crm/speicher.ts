@@ -18,7 +18,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
 import { MARKE_MAX } from './marke';
-import { fuerSaeubern, anmeldungSaeubern, werSaeubern, linkSaeubern, zielpersonenSaeubern, uebergabenSaeubern, ZIELPERSONEN_MAX, UEBERGABEN_MAX, WER_MAX } from './besuche-form';
+import { fuerSaeubern, anmeldungSaeubern, werSaeubern, linkSaeubern, linkNormal, LINK_FEHLER, zielpersonenSaeubern, uebergabenSaeubern, ZIELPERSONEN_MAX, UEBERGABEN_MAX, WER_MAX } from './besuche-form';
 import { netzwerkenAngabeSaeubern, teilnahmeHerkunftSaeubern } from './netzwerken';
 import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
 import { LIFECYCLE_PHASEN } from './lifecycle';
@@ -43,6 +43,8 @@ export async function ladeCrm(): Promise<CrmBestand> {
 const txt = (v: unknown, n = 300) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
 const opt = (v: unknown, n = 300) => { const t = txt(v, n); return t || undefined; };
 const tag = (v: unknown) => (istKalendertag(v) ? v : undefined);
+/** Kalendertage + n (UTC-Mittag) — für die Obergrenze einer mehrtägigen Veranstaltung (höchstens 30 Tage). */
+const tagePlusSpeicher = (d: string, n: number): string => { const x = new Date(`${d}T12:00:00Z`); if (Number.isNaN(x.getTime())) return ''; x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 const zahl = (v: unknown, min = 0, max = 1e9) => { const n = Number(v); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : 0; };
 const aus = <T extends string>(v: unknown, liste: readonly T[], standard: T): T => (liste.includes(v as T) ? (v as T) : standard);
 const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
@@ -368,7 +370,7 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       const fuer = fuerSaeubern(o.fuer), anmeldung = anmeldungSaeubern(o.anmeldung), wer = werSaeubern(o.wer), link = linkSaeubern(o.link);
       const zielpersonen = zielpersonenSaeubern(o.zielpersonen), uebergaben = uebergabenSaeubern(o.uebergaben);
       return { ...(opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {}), ...(opt(o.marke, MARKE_MAX) ? { marke: opt(o.marke, MARKE_MAX) } : {}),
-        ...(fuer ? { fuer } : {}), ...(anmeldung ? { anmeldung } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(zielpersonen ? { zielpersonen } : {}), ...(uebergaben ? { uebergaben } : {}) };
+        ...(fuer ? { fuer } : {}), ...(anmeldung ? { anmeldung } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(tag(o.bisDatum) && String(o.bisDatum) > String(o.datum ?? '') && String(o.bisDatum) <= tagePlusSpeicher(String(o.datum), 30) ? { bisDatum: tag(o.bisDatum) } : {}), ...(zielpersonen ? { zielpersonen } : {}), ...(uebergaben ? { uebergaben } : {}) };
     }
     case 'kampagnen': case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};
     case 'newsletter': return wer(o.stimme) || o.stimme === 'marke' ? { stimme: String(o.stimme) } : {};
@@ -451,6 +453,8 @@ export function regelnAbgelehnt(b: CrmBestand, ops: ListenOp[]): string[] {
       // „Für wen“ (besuchte Events): die Kunden-Firma muss es geben, das Mandat muss zu ihr gehören — nur wenn sich `fuer` ändert (Altbestand blockiert keine andere Änderung).
       const rohE = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>;
       const idE = String(o.op === 'teil' ? o.id : (o.eintrag as { id?: unknown } | undefined)?.id ?? '');
+      // Ein Link, der nicht durchgeht, wird NICHT still verworfen — die Änderung kommt mit Text zurück (409), die Akte zeigt ihn.
+      if (typeof rohE.link === 'string' && rohE.link.trim() && !linkNormal(rohE.link)) raus.push(LINK_FEHLER);
       const fuer = rohE.fuer && typeof rohE.fuer === 'object' ? fuerSaeubern(rohE.fuer) : undefined;
       const altE = b.events.find(x => x.id === idE);
       if (fuer?.art === 'kunde' && JSON.stringify(fuer) !== JSON.stringify(altE?.fuer ?? null)) {

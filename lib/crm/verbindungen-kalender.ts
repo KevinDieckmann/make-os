@@ -67,6 +67,21 @@ export function toteMeetings(k: KalenderPruefBestand | null | undefined, kontakt
   return raus;
 }
 
+/**
+ * Termin-Verweise (Schlüssel `kalender|uid`), deren Termin es nicht mehr gibt — wie `toteMeetings`, aber für beliebige Verweise (z. B. `Teilnahme.netzwerken.terminId`).
+ * `kennung` ist das, was gemeldet wird (nie ein Titel). Nur bei gelungenem Stand; außerhalb des Holfensters unentschieden.
+ */
+export function toteTerminVerweise(k: KalenderPruefBestand | null | undefined, verweise: readonly { kennung: string; terminId: string }[]): string[] {
+  if (!k?.fenster) return [];
+  const da = lebendAus(k.objekte);
+  const tag = new Map(k.bezuege.map(b => [uidVonSchluessel(b.schluessel), b.tag]));
+  return verweise.filter(v => {
+    if (verweisLebt(v.terminId, da)) return false;
+    const t = tag.get(uidVonSchluessel(v.terminId));
+    return !(tag.has(uidVonSchluessel(v.terminId)) && !imFenster(t, k.fenster!));
+  }).map(v => v.kennung);
+}
+
 /** Tote Kennungen eines Bezugs (nur Felder, deren Menge bekannt ist). */
 export function toteKennungen(k: BezugKennungen, l: KalenderLebend): BezugFeld[] {
   return BEZUG_FELDER.filter(f => !!k[f] && !!l[f] && !l[f]!.has(k[f]!));

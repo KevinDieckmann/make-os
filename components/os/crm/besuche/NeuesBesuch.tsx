@@ -5,10 +5,11 @@
 // Ziel, Zielpersonen, Anmeldung) steht danach in der Event-Akte. Das Event ist ein ganz normales Event der Kartei
 // (`marke: Netzwerken`, lib/crm/netzwerken.ts `neuesEvent`) — bei „Netzwerken“ steht es sofort zur Wahl.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, LEUCHT, feld } from '../../schlank';
-import { neuesEvent } from '@/lib/crm/netzwerken';
+import { neuesEvent, gleichesBesuchEvent } from '@/lib/crm/netzwerken';
+import { istKalendertag } from '@/lib/zeit';
 import { TEAM } from '@/lib/crm/team';
 import { neueId, plusTage } from '../daten';
 import { Wahl, WahlMehrfach } from '../Wahl';
@@ -24,17 +25,22 @@ export function NeuesBesuch({ api, crm, onFertig, onZu }: Pick<BesuchProps, 'api
   const [fehler, setFehler] = useState<string | null>(null);
   const [laeuft, setLaeuft] = useState(false);
 
+  // „Gibt es schon: …“ (M7): gleicher Name am gleichen Tag — dann öffnen statt doppelt anlegen.
+  const dublette = useMemo(() => gleichesBesuchEvent(crm.stand.events, titel, datumWert), [crm.stand.events, titel, datumWert]);
   const anlegen = async () => {
     const t = titel.trim();
     if (t.length < 2) { setFehler('Wie heißt das Event?'); return; }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(datumWert)) { setFehler('Bitte ein Datum wählen.'); return; }
+    if (!istKalendertag(datumWert)) { setFehler('Bitte ein gültiges Datum wählen.'); return; }
+    if (dublette) { onFertig(dublette.id); return; }
     setLaeuft(true); setFehler(null);
     const e = neuesEvent({
       id: neueId('ev'), titel: t.slice(0, 160), datum: datumWert, ...(ort.trim() ? { ort: ort.trim().slice(0, 200) } : {}), person: api.ich ?? TEAM[0].id, heute, jetztIso: new Date().toISOString(),
       ...(fuerId !== 'make' ? { fuer: { art: 'kunde' as const, firmaId: fuerId } } : {}), ...(wer.length ? { wer } : {}), anmeldung: datumWert <= heute ? 'besucht' : 'geplant',
     });
-    await api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
+    // Nur öffnen, wenn der Server es angenommen hat — sonst stünde die Akte eines Events, das es nicht gibt (die Meldung steht im Kopf, hier bleibt die Eingabe).
+    const ok = await api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
     setLaeuft(false);
+    if (!ok) { setFehler('Das Event ließ sich nicht anlegen — die Meldung steht oben, die Eingaben bleiben stehen.'); return; }
     onFertig(e.id);
   };
 
@@ -58,8 +64,9 @@ export function NeuesBesuch({ api, crm, onFertig, onZu }: Pick<BesuchProps, 'api
           <WahlMehrfach label="Wer geht hin" leer="+ wer geht hin" liste={TEAM.map(m => ({ id: m.id, label: m.name }))} wert={wer} onWahl={setWer} />
         </BFeld>
       </div>
+      {dublette && <div role="status" style={{ fontSize: 13, color: LEUCHT.achtung, margin: '8px 0' }}>Gibt es schon: {dublette.titel} · {dublette.datum.slice(8, 10)}.{dublette.datum.slice(5, 7)}.{dublette.datum.slice(0, 4)} — „Event öffnen“ nimmt dieses.</div>}
       {fehler && <div role="alert" style={{ fontSize: 13, color: LEUCHT.achtung, margin: '8px 0' }}>{fehler}</div>}
-      <div style={{ marginTop: 10 }}><Knopf onClick={anlegen} aus={laeuft}>{laeuft ? 'legt an …' : 'Event anlegen'}</Knopf></div>
+      <div style={{ marginTop: 10 }}><Knopf onClick={anlegen} aus={laeuft}>{laeuft ? 'legt an …' : dublette ? 'Event öffnen' : 'Event anlegen'}</Knopf></div>
     </Karte>
   );
 }

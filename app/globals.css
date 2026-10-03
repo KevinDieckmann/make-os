@@ -578,4 +578,9 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 560px) {
   .bes-zeile { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 8px 0; }
   .bes-akte input, .bes-akte textarea, .bes-neu input { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }
+  /* Alle Tippziele in der Akte und im Anlegen mindestens 44 px (Technik-Prüfung 03.10.: Knopf ~36, Pillen ~27, „Leise“-Texte 12 px ohne Fläche, Wahl-Chips ~28).
+     Nur hier — die geteilten Komponenten bleiben für den Rest der App, wie sie sind. Der Haken (`treffer44`) hat seine eigene Trefferfläche. */
+  .bes-akte button:not(.treffer44), .bes-neu button:not(.treffer44), .bes-akte select, .bes-neu select { min-height: 44px; min-width: 44px; box-sizing: border-box; padding-inline: 8px; }
 }
+/* Das Wahl-Blatt (Portal außerhalb der Akte, nur am Handy): das Suchfeld mit 16 px, sonst zoomt iOS beim Antippen. */
+.wahl-blatt input { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }

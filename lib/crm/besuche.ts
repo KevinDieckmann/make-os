@@ -198,6 +198,37 @@ export function besuchJeKunde(events: readonly Event[], ctx: BesuchKontext): Kun
 export const eventsFuerKunde = (events: readonly Event[], firmaId: string): Event[] =>
   events.filter(e => istBesuch(e) && fuerFirmaId(e) === firmaId).sort((a, b) => b.datum.localeCompare(a.datum));
 
+/**
+ * Begegnungen bei Events für eine Firma (M15, Firmenakte): jede Person der Firma, die bei einem Event war (Teilnahme „da“ bzw. über Netzwerken erfasst),
+ * und jedes besuchte Event, das diese Firma als Ziel nennt (Zielfirma, ggf. mit Treffer). Eingeschränkte Personen (Art. 18) fehlen — ihr Name steht nirgends.
+ * Neueste Events zuerst; je Event die Personen, `ziel` = die Firma stand auf der Zielliste, `getroffen` = jemand von ihr war dort.
+ */
+export interface FirmenBegegnung { event: Event; personen: Kontakt[]; ziel: boolean; getroffen: boolean }
+export function begegnungenFuerFirma(events: readonly Event[], teilnahmen: readonly Teilnahme[], kontakte: readonly Kontakt[], firmaId: string): FirmenBegegnung[] {
+  const personen = new Map(kontakte.filter(k => k.firmaId === firmaId && !k.eingeschraenkt).map(k => [k.id, k]));
+  const raus: FirmenBegegnung[] = [];
+  for (const e of events) {
+    if (besuchAbgesagt(e)) continue;
+    const dort = teilnahmen.filter(t => t.eventId === e.id && personen.has(t.kontaktId) && (t.status === 'da' || !!t.netzwerken));
+    const ziel = istBesuch(e) && (e.zielpersonen ?? []).some(z => z.firmaId === firmaId || (!!z.kontaktId && personen.has(z.kontaktId)));
+    if (!dort.length && !ziel) continue;
+    raus.push({ event: e, personen: dort.map(t => personen.get(t.kontaktId)!), ziel, getroffen: dort.length > 0 });
+  }
+  return raus.sort((a, b) => b.event.datum.localeCompare(a.event.datum));
+}
+
+/**
+ * „Angemeldet, aber kein Termin im Kalender“ (N5, Glocke und Heute): besuchte Events mit Anmeldestand „angemeldet“, die in den nächsten `tage` Tagen
+ * stattfinden und noch keinen Kalender-Termin haben (`kalenderUid` fehlt) — nur für die, die hingehen (`wer`; ohne Angabe die Zuständige bzw. alle).
+ */
+export function eventsOhneTermin(events: readonly Event[], heute: string, person: string, tage = 7): { id: string; titel: string; tag: string; inTagen: number }[] {
+  const bis = plusTage(heute, tage);
+  return events.filter(e => istBesuch(e) && anmeldungVon(e) === 'angemeldet' && !e.kalenderUid && e.datum >= heute && e.datum <= bis
+    && (e.wer?.length ? e.wer.includes(person) : !e.zustaendig || e.zustaendig === person || e.zustaendig === 'beide'))
+    .sort((a, b) => a.datum.localeCompare(b.datum))
+    .map(e => ({ id: e.id, titel: e.titel, tag: e.datum, inTagen: tageZwischen(heute, e.datum) }));
+}
+
 // ── Kennzahlen der besuchten Events (eigene, nie im Score) ──────────────────
 
 const prozent = (q: number) => `${Math.round(q * 100)} %`;

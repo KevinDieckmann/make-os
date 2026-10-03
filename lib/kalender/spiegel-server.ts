@@ -23,6 +23,7 @@
 import { verbunden, ladeStand, termineImZeitraum, findeObjekt, KalenderFehler, HOLEN_VON, HOLEN_BIS, type IcloudStand } from './icloud';
 import { termineAus, type Termin } from './ics';
 import { tagPlus } from './zeit';
+import { ladeEinstellungen } from './einstellungen';
 import { terminAnlegenServer, terminAendernServer, terminLoeschenServer } from './termin-server';
 import { eventSoll, dateSoll, gespraechSoll, spiegelAbweichung, spiegelUid, istScheinUid, scheinAufloesen, gespraecheUmziehen, spiegelMarke, spiegelSchritt, type Soll, type SpiegelArt } from './spiegel';
 import { bezugVon, type BezugBestand, type TerminBezug } from './bezug';
@@ -158,7 +159,11 @@ export async function eventSpiegelAnlegen(id: string, person: string, wer: Proto
     await klickAbgleich(e.kalenderUid, soll, wer);
     return { uid: e.kalenderUid };
   }
-  const r = await terminAnlegenServer({ ...soll.t, wer: 'beide', art: 'termin', beschaeftigt: true, uid: spiegelUid('event', e.id), von: person, bezug: { eventId: e.id }, notiz: 'Aus MAKE OS · Event' }, wer);
+  // Wessen Kalender: geht genau EINE Person hin (Event.wer, besuchte Events), kommt der Termin in deren Kalender, sonst „beide“ (Gemeinsam).
+  const einst = await ladeEinstellungen();
+  const hin = e.wer?.length === 1 ? e.wer[0] : undefined;
+  const kalenderWer = (hin && (einst.kalender as Record<string, string | undefined>)[hin] ? hin : 'beide') as 'beide';
+  const r = await terminAnlegenServer({ ...soll.t, wer: kalenderWer, art: 'termin', beschaeftigt: true, uid: spiegelUid('event', e.id), von: person, bezug: { eventId: e.id }, notiz: 'Aus MAKE OS · Event' }, wer);
   // Marke setzen (und bei `schonDa` auf das Soll bringen) — ab jetzt zieht der Abgleich nur nach Änderungen im Event nach.
   await klickAbgleich(r.uid, soll, wer);
   await eventUidSetzen(e.id, r.uid, wer);

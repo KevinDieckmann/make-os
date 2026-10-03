@@ -24,6 +24,7 @@ import { nachbereitung } from '@/lib/crm/erfassen';
 import { zeitenAus } from '@/lib/crm/aktivitaeten';
 import { haeltBeziehung, BEIDE } from '@/lib/crm/team';
 import { dankeZeilen, dankeOffen } from '@/lib/crm/netzwerken';
+import { eventsOhneTermin } from '@/lib/crm/besuche';
 import { WEG } from '@/lib/wege';
 import {
   termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, type Anstehend, type ABuchung, type ADanke,
@@ -88,7 +89,8 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     // M4 (F2): ein offenes Follow-up am selben Termin (`terminUid`) ist „in Arbeit“ — keine zweite Meldung.
     nachbereiten: nachbereitenAnstehend(nachbereitung(kontakte, heute, person, zeiten, jetztWand, crm?.followups)),
     nachbereitZeiten: Object.fromEntries(Object.entries(zeiten).filter(([k]) => verwiesen.has(k))),
-    fristen: fristenAnstehend(fristen, person, heute, vorlauf),
+    // Dazu (N5): besuchte Events, bei denen wir „angemeldet“ sind, aber noch kein Termin im Kalender steht — sonst fährt niemand hin, der es im Kalender sieht.
+    fristen: [...fristenAnstehend(fristen, person, heute, vorlauf), ...(crm ? eventsOhneTermin(crm.events, heute, person).map(x => ({ id: `event-ohne-termin-${x.id}`, art: 'event' as const, tag: x.tag, titel: `Event „${x.titel}“: angemeldet, aber kein Termin im Kalender`, href: WEG.besuch(x.id), inTagen: x.inTagen })) : [])],
     followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten }), person, mitAufgabe, zeiten) : [],
     buchungen,
     vorschlaege,
