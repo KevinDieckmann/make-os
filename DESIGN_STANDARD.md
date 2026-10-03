@@ -73,7 +73,7 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 4. Schriftgrößen 11–12,5 px in Fließtext → `TYP.bedien` (13); Eingaben → `eingabe`/`feld`.
 5. Foto Handy (375) + Rechner (1280) vorher/nachher, Messung: keine Tippziele < 44 px, keine Eingaben < 16 px am Handy, kein seitlicher Überlauf, Konsole sauber.
 
-Stand 03.10.: Muster **Markttraktion** (alle Reiter) und **Netzwerken** umgestellt. Zweiter Bereich: **Zahlen & Finanzen** (siehe unten). Folgt: der Rest.
+Stand 03.10.: Muster **Markttraktion** (alle Reiter) und **Netzwerken** umgestellt. Zweiter Bereich: **Zahlen & Finanzen** (siehe unten). Dazu **Planung** (Jahr/Monat/Quartal, Ziel- und Meilenstein-Seite, Meilenstein-Fenster) und **Fokus** — Leitidee „immer der Fokus auf die Ziele, visualisiert durch die Lichtfäden“. Folgt: der Rest.
 
 ## Umgestellt: Zahlen & Finanzen (03.10.)
 Alle 51 Dateien des Bereichs hängen an `components/os/ui` (keine Bausteine mehr aus `schlank.tsx`): **Zahlen** (Privat · Business · Steuern · Gesamt · Head of Finance, mit Haushalt-Reitern Übersicht bis Schulden), **Grundlage**, **Liquidität**, **Buchungen**, **Rechnungen & Zahlungen**, **Controlling & Ziele**, **Business-Altbestand** und die **Finanzplanung jetzt** (Lage · Planen · Privat · Business · Gesamt · Buchungen & Check · Ziele & Töpfe · Protokoll, alle 19 Unterseiten). Rechnung, Felder und Funktionen sind unverändert — jedes Feld bleibt anpassbar.
@@ -89,27 +89,36 @@ Was für Zahlen gilt (zusätzlich zu den 13 Regeln):
 
 Gemeinsame Teile der Finanzplanung (`finanzplan/teile.tsx`: `Kachel`, `Etikett`, `StatusPille`, `Tabelle`, `KnopfKlein`, `Pillen`, `Hinweis`, `Nichts`) und der Haushaltsfinanzen (`haushalt/gemeinsam.tsx`) reichen jetzt die Standard-Bausteine durch — gleiche Namen, damit die Seiten unverändert bleiben. Wächter: `tests/design-finanzen.test.ts`.
 
-## Lichtfäden (03.10.)
-Kevin: „Hier bei der Planung wäre geil, wenn das so reinkommt mit mehreren Elektro-Fäden … das kann sich auch mit durch die Homepage ziehen.“
-Feine, halbtransparente Fäden auf Canvas 2D, die zu Bündeln verflochten sind; dicht = breit und hell, ruhig = eng. **Ein Zeichner für App und Website.**
+## Lichtfäden (03.10., v2 „alle Stränge“)
+Kevin: „Hier bei der Planung wäre geil, wenn das so reinkommt mit mehreren Elektro-Fäden … das kann sich auch mit durch die Homepage ziehen.“ —
+„Das ist ein Werkzeug, was nachher Fokus anzeigt, weil extrem viele Stränge zusammenlaufen … Es gibt es auf jeder Ebene und nachher übergreifend.“
+Feine, halbtransparente Fäden auf Canvas 2D, zu Bündeln verflochten; dicht = breit und hell, ruhig = eng. **Ein Zeichner für App und Website.**
+Technik, Modell, Gewichte und „neue Quelle anschließen“: `LICHTFAEDEN.md`.
 
-**Wann einsetzen:** nur als *Hauptbild einer Zeitachse* oder als *roter Faden* — höchstens einmal je Ansicht, nie als Schmuck in Karten, Listen oder Kennzahlen.
-Die Fäden zeigen Dichte über die Zeit (Planung) bzw. führen durch eine Erzählung (Website). Jede Aussage steht zusätzlich als Text (Leinwand `aria-hidden`,
-Textäquivalent daneben), Bedienung bleibt in echten Knöpfen über der Leinwand.
+**Wann einsetzen:** nur als *Hauptbild einer Zeitachse* (die Lichtfäden-Karte) oder als *roter Faden* (Website) — höchstens einmal je Ansicht,
+nie als Schmuck in Karten, Listen oder Kennzahlen. Jede Aussage steht zusätzlich als Text (Leinwand `aria-hidden`, Textäquivalent je Ebene),
+Bedienung in echten Knöpfen (Markierungen, Legende, Brotkrumen, Engstellen).
+
+**Die Karte (`<Lichtfaeden wurzel=… />`, components/os/lichtfaeden):** Kopf = Brotkrumen „Gesamt › Privat › Gesundheit › …“ + Person (Ich · Partner/in ·
+Beide), Zeitraum wie die Planung (Dieses Jahr · Bis Ende nächsten Jahres · 18 Monate, Blättern, Heute, optional eine Aktion), das Band, darunter die
+Legende (je Bündel ein Knopf „eine Ebene tiefer“), Engstellen als aufklappbare Zeilen. Eingebaut: Planung › Jahr (Wurzel Space bzw. Gesamt), Ziel-Seite
+(Wurzel Ziel), Meilenstein-Seite (Wurzel Meilenstein), Fokus (Wurzel Gesamt, zuerst „Ich“).
 
 | Teil | Datei | Inhalt |
 |---|---|---|
-| Mathematik (rein) | `lib/lichtfaeden/band.ts` | `LICHTFAEDEN` (Parameter), Saaten, `versatz`, `buendelMitte`, `spreizung`, `gauss`, `saettigen`, `wertBei`, `kurve` (Catmull-Rom) |
-| Zeichner | `lib/lichtfaeden/zeichnen.ts` | `zeichneBuendel` (Path2D-Eimer je Deckkraft-Stufe, additiv), `leinwand` (devicePixelRatio ≤ 2), `starteLauf` (pausiert außerhalb Bild/Tab, reduzierte Bewegung = Standbild) |
-| Dichte (Planung) | `lib/lichtfaeden/dichte.ts` | `faedenDichte(ziele, meilensteine, aufgaben, termine?, zeitraum)` + `lichtText` |
-| Zeitband (Planung) | `lib/lichtfaeden/zeitband.ts`, `components/os/planung/LichtBand.tsx` | Bündel je Ziel, HEUTE-Schnitt, Verbinder zu den Markierungen, Hervorheben; Maße `ZEITBAND_MASSE` |
-| Farben | `FADEN_FARBEN`, `LICHT_GLAS` (design.ts), `lib/lichtfaeden/farben.ts` | je Space fortlaufend: Business gelb → orange → lila → pink, Privat grün → türkis → violett, „ohne Ziel“ Zeit-Cyan |
-| Website | `website/js/lichtfaeden.js` (erzeugt: `node scripts/lichtfaeden-website.mjs`), `website/js/faden.js` | Granat/Smaragd, Charakter je Kapitel |
+| Mathematik (rein) | `lib/lichtfaeden/band.ts` | `LICHTFAEDEN` (Parameter), Saaten, `versatz`, `buendelMitte`, `spreizung`, `gauss`, `saettigen`, `kurve` |
+| Striche | `lib/lichtfaeden/zeichnen.ts` | `zeichneBuendel` (Path2D-Eimer, additiv), `leinwand` (dpr ≤ 2), `starteLauf` (pausiert außerhalb, reduzierte Bewegung = Standbild) |
+| Band (App) | `lib/lichtfaeden/faedenband.ts`, `components/os/lichtfaeden/Faedenband.tsx` | Bündel einer Ansicht, Auf-/Zufächern, HEUTE, Engstellen-Säulen, Verbinder, `treffer`; Maße `BAND_MASSE` |
+| Daten | `lib/lichtfaeden/{modell,baum,fokus}.ts`, `quellen/*`, `GET /api/lichtfaeden` | Stränge → Baum → Ansicht (LOD) + Engstellen |
+| Farben | `FADEN_FARBEN`, `LICHT_GLAS` (design.ts), `THEMEN` (modell.ts) | Ziel je Space fortlaufend (Business gelb → orange → lila → pink, Privat grün → türkis → violett), Themen in Bereichsfarben, „ohne Ziel“ Zeit-Cyan, „Belegt“ Grau |
+| Website | `website/js/lichtfaeden.js` (erzeugt), `website/js/faden.js` | Granat/Smaragd, Charakter je Kapitel |
 
-**Parameter (`LICHTFAEDEN`):** Fäden je Bündel 22 (Handy 11) · Stützpunkt alle 6 px (Handy 8) · Strich 0,8 px · Deckkraft 0,24 (additiv) · Tempo 0,00028/ms
-(eine Welle ≈ 20 s) · Ruhe-Spreizung 12 % · 40 Deckkraft-Stufen · dpr ≤ 2. Dichte: offener Meilenstein 3, erledigter 1, Ziel-Frist 3, offene Aufgabe 1
-(dringend 1,5), Termin 0,5; Gauß σ = 2 Wochen; halbe Dichte bei geglättetem Gewicht 0,6; höchstens 6 Ziel-Bündel (+ „ohne Ziel“).
+**Parameter:** Fäden je Bündel ∝ √Last (3 … 26; Blatt-Ebene 1 … 4), höchstens 160 je Leinwand (Handy 80) · Stützpunkt alle 6 px (Handy 8) · Strich 0,8 px ·
+Deckkraft 0,24 (additiv) · Tempo 0,00028/ms · Ruhe-Spreizung 12 % · Auffächern 720 ms · höchstens 7 Bündel je Ebene (+ „Weitere“). Band 150 px (Handy 120),
+Markierungen 28 px (Handy 44 px) in höchstens 4 (Handy 2) Reihen. Dichte: Gauß σ = 2 Wochen, gesättigt je Ansicht.
 
-**Regeln:** 1. Bewegung nur als ruhiges Fließen; bei `prefers-reduced-motion` ein Standbild (t = 0). 2. Lauf pausiert außerhalb des Bildes und im verborgenen Tab.
-3. Höchstens ~160 Fäden je Leinwand am Rechner, ~80 am Handy; Zeichnen < 4 ms je Bild. 4. Vergangenes gedämpft, HEUTE leuchtet. 5. Farben nur aus `FADEN_FARBEN`
-(App) bzw. den Logo-Farben (Website). 6. Wer `band.ts`/`zeichnen.ts` ändert, ruft `node scripts/lichtfaeden-website.mjs` (Wächter `tests/lichtfaeden.test.ts`).
+**Regeln:** 1. Bewegung nur als ruhiges Fließen und beim Ebenenwechsel; bei `prefers-reduced-motion` ein Standbild ohne Übergang. 2. Lauf pausiert
+außerhalb des Bildes und im verborgenen Tab. 3. Zeichnen < 4 ms je Bild am Rechner. 4. Vergangenes gedämpft, HEUTE leuchtet, Engstellen als ruhige
+Säule + KW-Knopf (Bedeutung „achtung“, nie Alarmrot). 5. Farben nur aus `FADEN_FARBEN`/`THEMEN` (App) bzw. den Logo-Farben (Website). 6. Private Stränge der
+anderen Person nur als „Belegt“ (grau, ohne Titel/Link). 7. Wer `band.ts`/`zeichnen.ts` ändert, ruft `node scripts/lichtfaeden-website.mjs`
+(Wächter `tests/lichtfaeden.test.ts`). 8. Nie im Zeichner Daten rechnen.

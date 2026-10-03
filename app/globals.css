@@ -784,6 +784,8 @@ nav a:hover { transform: translateX(2px); }
   /* !important, weil viele Altstellen ihre Höhe inline tragen (Inline schlägt Stylesheet). */
   .ui-seite button:not(.treffer44):not(.ui-kein-ziel), .ui-seite [role=button]:not(.ui-kein-ziel), .ui-seite [role=tab], .ui-seite select, .ui-seite a.knopf, .ui-seite a.fassbar, .ui-seite summary { min-height: 44px !important; min-width: 44px; box-sizing: border-box; }
   .ui-seite a.fassbar, .ui-seite a.knopf { display: inline-flex; align-items: center; }
+  /* Segmente laufen seitwärts statt sich zu überlagern: die 44-px-Mindestbreite oben darf ihr `max-content` nicht schlagen (03.10., Lichtfäden-Zeitraum). */
+  .ui-seite .ui-segmente:not(.ui-segmente-umbrechen) .ui-segment { min-width: max-content; }
   .ui-seite input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]), .ui-seite textarea, .ui-seite select { font-size: 16px !important; min-height: 44px !important; box-sizing: border-box; }
   .ui-seite label:has(input[type=checkbox], input[type=radio]) { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box; }
   .ui-seite input[type=checkbox], .ui-seite input[type=radio] { width: 22px; height: 22px; min-height: 0 !important; flex: 0 0 auto; }

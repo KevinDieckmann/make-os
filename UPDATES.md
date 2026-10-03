@@ -4,7 +4,32 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
-## Lichtfäden: Zeitstrahl der Planung + roter Faden der Landingpage (03.10.2026, nur lokal — Branch `lichtfaeden`; Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
+## Lichtfäden v2: alle Stränge, jede Ebene, Fokus (03.10.2026, nur lokal — Branch `faeden2`; Technik `LICHTFAEDEN.md`, Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
+
+Kevin 03.10.: „Überarbeite das Ganze nochmal mit den Lichtfäden … ein Werkzeug, was nachher Fokus anzeigt, weil extrem viele Stränge zusammenlaufen.
+Es gibt es auf jeder Ebene und nachher übergreifend für alles.“ — „Alles läuft immer auf das größte Ziel zusammen.“ Löst v1 (unten) ab.
+
+- **Ein Modell:** Strang = ein Ding, das Zeit bindet (Pfad gesamt → Space → Thema → Ziel → Meilenstein, Person, Gewicht, Status, Link, privat). Quellen:
+  Ziele/Meilensteine/Aufgaben/Projekte, Kalender (iCloud/Google/Mac-Lieferung), Markttraktion (Follow-ups, Deals, Events/Besuche, Make.One-Abende),
+  Finanzen (Zahlungen, Rechnungen, Finanzplanung jetzt, Haushalts-Belege, Steuerfristen), Familie & Beziehung (Geburtstage, wichtige Tage, Dates,
+  Vereinbarungen), Gesundheit (terminierte Routinen, Wettkämpfe). Gewichtstabelle in `LICHTFAEDEN.md`.
+- **Jede Ebene:** Planung › Jahr (Wurzel = Space bzw. Gesamt; Blättern, Heute, Zeitraum, „+ Meilenstein“, Anlegen per Klick bleiben), Ziel-Seite (Wurzel Ziel),
+  Meilenstein-Seite (Wurzel Meilenstein — jeder Strang ein Faden), **Fokus** (`/os/fokus`, neue Kachel „Lichtfäden“, Wurzel Gesamt, zuerst „Ich“).
+- **Bedienung:** Tippen auf ein Bündel = eine Ebene tiefer (die Fäden fächern in 0,7 s aus dem Bündel auf), Brotkrumen „Gesamt › Privat › Gesundheit › …“
+  zurück (sie fließen zusammen), Legende als Knöpfe, Person „Ich · Partner/in · Beide“. **Engstellen:** Wochen, in denen viel zusammenläuft
+  („KW 44: 3 Ziele · 9 Fristen · 4 Termine“), als ruhige Lichtsäule + KW-Knopf im Band und aufklappbare Zeile mit den schwersten Strängen.
+- **Privat-Regel:** private Termine, Gesundheit, „nur ich“-Aufgaben und -Familieneinträge der anderen Person nur als anonymes „Belegt“ (grau, ohne Titel/Link/
+  Thema/Ziel) — die Last bleibt sichtbar, der Inhalt nicht.
+- **Route** `GET /api/lichtfaeden` (Haushalt des Inhabers, Dienstweg 403, gemerkt 60 s, gzip). Kein neuer Bestand.
+- **Design-Standard:** Planung (Jahr/Monat/Quartal), Ziel- und Meilenstein-Seite, Meilenstein-Fenster und Fokus hängen an `components/os/ui`
+  (Hinweise als Karten, Fließtext ≥ 13 px, Tippziele 44 px). Der schlichte `Zeitstrahl` (Monat, Quartal, Aufgaben, Bauplan) verliert die v1-Sonderwege.
+- **Standard-Fix nebenbei:** am Handy überlagerten sich nicht umbrechende `Segmente` (die 44-px-Mindestbreite des Handy-Netzes schlug `max-content`) — jetzt laufen sie seitwärts (eine Zeile in `globals.css`, nur unter `.ui-seite`).
+- **Ersetzt:** `lib/lichtfaeden/{dichte,farben,zeitband}.ts`, `components/os/planung/LichtBand.tsx` → `modell/baum/fokus/faedenband.ts` + `components/os/lichtfaeden/`.
+  Website unverändert (`band.ts`/`zeichnen.ts` gleich, Wächter grün).
+- **Test:** `tests/lichtfaeden-*.test.ts` (Modell, sechs Quellen, Baum/LOD/Dichte/Navigation, Engstellen, Route mit Privat-Regel, Oberfläche/Zeichner).
+- **Rückweg:** reine Darstellung + eine Lese-Route, keine neuen Bestände oder Felder — zurück ohne Datenschritte.
+
+## Lichtfäden v1 (abgelöst durch v2 oben): Zeitstrahl der Planung + roter Faden der Landingpage (03.10.2026, nur lokal — Branch `lichtfaeden`; Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
 
 Kevin 03.10. (Vorbild ein Daten-Zeitstrahl aus hunderten feinen, leuchtenden Linien): „Hier bei der Planung wäre geil, wenn das so reinkommt mit mehreren Elektro-Fäden … das kann sich auch mit durch die Homepage ziehen.“
 
