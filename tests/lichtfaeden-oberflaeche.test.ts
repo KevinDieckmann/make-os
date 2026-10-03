@@ -134,3 +134,33 @@ describe('Ein Zeichner, keine Doppelungen', () => {
     }
   });
 });
+
+describe('Übergang, „heute“ und Messpunkt (Review 03.10.)', () => {
+  const w = path.resolve(__dirname, '..');
+  const lies = (f: string) => readFileSync(path.join(w, f), 'utf8');
+  it('der Übergang hängt am Anfrage-Schlüssel (Ebene|Person|Zeitraum) — Person/Zeitraum-Wechsel spielen ihn nicht erneut', async () => {
+    const { lichtSchluessel } = await import('@/components/os/lichtfaeden/useLichtfaeden');
+    const o = { wurzel: 'ziel:z', person: 'alle', von: '2026-01-01', bis: '2026-12-31' };
+    expect(lichtSchluessel(o)).toBe('ziel:z|alle|2026-01-01|2026-12-31');
+    expect(lichtSchluessel({ ...o, person: 'ich' })).not.toBe(lichtSchluessel(o));
+    expect(lichtSchluessel({ ...o, von: '2026-02-01' })).not.toBe(lichtSchluessel(o));
+    const huelle = lies('components/os/lichtfaeden/Lichtfaeden.tsx');
+    expect(huelle).not.toMatch(/useRef<FaedenUebergang/); // kein Ref, der im Render gelesen wird
+    expect(huelle).toMatch(/useState<FaedenUebergang \| null>/);
+    expect(huelle).toMatch(/onUebergangAngewandt=\{\(\) => setUebergang\(null\)\}/);
+    expect(huelle).toMatch(/useEffect\(\(\) => \{ setUebergang\(null\); \}, \[person, von, bis\]\)/);
+    const band = lies('components/os/lichtfaeden/Faedenband.tsx');
+    expect(band).toContain('uebergang.fuer === schluessel');
+    expect(band).not.toContain('uebergang.fuer === ansicht.wurzel.id');
+  });
+  it('„heute“ kommt vom Server, nicht aus der Uhr des Browsers', () => {
+    const huelle = lies('components/os/lichtfaeden/Lichtfaeden.tsx');
+    expect(huelle).not.toMatch(/tag\(new Date\(\)\)|const tag = \(d: Date\)/);
+    expect(huelle).toContain('daten?.heute');
+  });
+  it('der 250-ms-Messpunkt läuft nur außerhalb der Produktion oder mit data-messen', () => {
+    const band = lies('components/os/lichtfaeden/Faedenband.tsx');
+    expect(band).toMatch(/const messen = process\.env\.NODE_ENV !== 'production' \|\| !!c\.closest\('\[data-messen\]'\)/);
+    expect(band).toMatch(/const messe = messen \? window\.setInterval/);
+  });
+});

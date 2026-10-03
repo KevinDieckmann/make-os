@@ -25,11 +25,18 @@ const ENGSTELLE = LEUCHT.achtung;
 const ENG_BREITE = 60;
 const tagKurz = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4) !== localDay().slice(0, 4) ? d.slice(0, 4) : ''}`;
 
-/** Der Übergang, den die Hülle beim Ebenenwechsel mitgibt: `vorher` = die Bündel der verlassenen Ebene. */
+/** Der Übergang, den die Hülle beim Ebenenwechsel mitgibt: `vorher` = die Bündel der verlassenen Ebene, `fuer` = der
+ *  Anfrage-Schlüssel der neuen Ebene (Ebene|Person|Zeitraum) — nur die Antwort mit genau diesem Schlüssel spielt ihn ab. */
 export interface FaedenUebergang { richtung: 'auf' | 'zu'; fokus: string; vorher: readonly Buendel[]; fuer: string }
 
 export interface FaedenbandProps {
   ansicht: Ansicht;
+  /** Anfrage-Schlüssel, zu dem `ansicht` gehört (useLichtfaeden `schluessel`). */
+  schluessel?: string | null;
+  /** Der Tag „heute“ vom Server (Standard: lokal nach Berliner Zeit). */
+  heute?: string;
+  /** Der Übergang wurde abgespielt — die Hülle wirft ihn weg. */
+  onUebergangAngewandt?: () => void;
   engstellen: readonly Engstelle[];
   uebergang: FaedenUebergang | null;
   hervor: string | null;
@@ -44,7 +51,7 @@ export interface FaedenbandProps {
 
 const zuBand = (l: readonly Buendel[], deckel: number): BandBuendel[] => faedenDeckeln(l, deckel).map(b => ({ id: b.id, farbe: b.farbe, dichte: b.dichte, faeden: b.faeden }));
 
-export function Faedenband({ ansicht, engstellen, uebergang, hervor, onHervor, onTiefer, onEngstelle, onTag, onBlaettern, onBreite, label }: FaedenbandProps) {
+export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, onUebergangAngewandt, engstellen, uebergang, hervor, onHervor, onTiefer, onEngstelle, onTag, onBlaettern, onBreite, label }: FaedenbandProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zeichner = useRef<Zeichner | null>(null);
@@ -61,7 +68,7 @@ export function Faedenband({ ansicht, engstellen, uebergang, hervor, onHervor, o
   }, []);
 
   const { von, bis } = ansicht;
-  const heute = localDay();
+  const heute = heuteVomServer ?? localDay();
   const frak = (d: string) => Math.max(0, Math.min(1, anteilIm(d, von, bis)));
   const heuteDrin = heute >= von && heute <= bis;
   const heuteX = heuteDrin ? frak(heute) * breite : null;
@@ -103,19 +110,23 @@ export function Faedenband({ ansicht, engstellen, uebergang, hervor, onHervor, o
     const z = faedenband(c, c.parentElement ?? c, bewegungReduziert());
     zeichner.current = z;
     z.setze(bildRef.current);
-    // Messpunkt für Prüfungen (Zeichenzeit je Bild, Übergang) — liest nur.
-    const messe = window.setInterval(() => { const m = z.lauf.messung(); c.dataset.bilder = String(m.bilder); c.dataset.mittelMs = m.mittelMs.toFixed(2); c.dataset.laengstesMs = m.laengstesMs.toFixed(2); c.dataset.uebergang = String(z.fortschritt() ?? ''); }, 250);
-    return () => { window.clearInterval(messe); z.stop(); zeichner.current = null; };
+    // Messpunkt für Prüfungen (Zeichenzeit je Bild, Übergang) — liest nur. Nur außerhalb der Produktion oder wenn eine Prüfung
+    // ihn ausdrücklich einschaltet (`data-messen` an der Seite oder einem Vorfahren) — sonst kein 250-ms-Takt im Betrieb.
+    const messen = process.env.NODE_ENV !== 'production' || !!c.closest('[data-messen]') || document.documentElement.hasAttribute('data-messen');
+    const messe = messen ? window.setInterval(() => { const m = z.lauf.messung(); c.dataset.bilder = String(m.bilder); c.dataset.mittelMs = m.mittelMs.toFixed(2); c.dataset.laengstesMs = m.laengstesMs.toFixed(2); c.dataset.uebergang = String(z.fortschritt() ?? ''); }, 250) : undefined;
+    return () => { if (messe !== undefined) window.clearInterval(messe); z.stop(); zeichner.current = null; };
   }, []);
-  // Neue Ansicht → einmal mit Übergang (falls er zu ihr gehört); alles andere (Breite, Hervorheben) ohne.
+  // Neue Ansicht → einmal mit Übergang, wenn er zu GENAU dieser Antwort gehört (Anfrage-Schlüssel); danach meldet das Band
+  // ihn verbraucht. Alles andere (Breite, Hervorheben, Person/Zeitraum) zeichnet ohne Übergang.
   const angewandt = useRef<Ansicht | null>(null);
+  const verbraucht = useRef(onUebergangAngewandt); verbraucht.current = onUebergangAngewandt;
   useEffect(() => {
     const z = zeichner.current;
     if (!z) return;
     let u: BandUebergang | null = null;
     if (angewandt.current !== ansicht) {
       angewandt.current = ansicht;
-      if (uebergang && uebergang.fuer === ansicht.wurzel.id) {
+      if (uebergang && schluessel && uebergang.fuer === schluessel) {
         const jetzt = zuBand(ansicht.buendel, deckel), vorher = zuBand(uebergang.vorher, deckel);
         u = uebergang.richtung === 'auf'
           ? { richtung: 'auf', fokus: uebergang.fokus, oben: vorher, unten: jetzt }
@@ -123,6 +134,7 @@ export function Faedenband({ ansicht, engstellen, uebergang, hervor, onHervor, o
       }
     }
     z.setze(bild, u);
+    if (u) verbraucht.current?.();
   });
 
   const b = useBlaettern(boxRef, onBlaettern, monatBreite);

@@ -10,7 +10,7 @@
 //   Legende   je Bündel ein Knopf „eine Ebene tiefer“ (barrierefreier Weg), Engstellen als Liste, Textäquivalent.
 // Daten: GET /api/lichtfaeden (Haushalts-Tor, Privat-Regel serverseitig). Logik rein in lib/lichtfaeden/*.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, LICHT_GLAS, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { STRAHL_RAEUME, type StrahlRaum } from '@/lib/planung/zeitstrahl';
 import { navStart, springe, tiefer, zurueck, type NavStand } from '@/lib/lichtfaeden/navigation';
@@ -21,7 +21,7 @@ import { Faedenband, type FaedenUebergang } from './Faedenband';
 import { Brotkrumen } from './Brotkrumen';
 import { Legende } from './Legende';
 import { Engstellen } from './Engstellen';
-import { useLichtfaeden } from './useLichtfaeden';
+import { lichtSchluessel, useLichtfaeden } from './useLichtfaeden';
 
 export interface LichtfaedenProps {
   /** Startebene (Knoten-Kennung): „gesamt“, „space:privat“, „ziel:<id>“, „ms:<id>“ … */
@@ -40,30 +40,34 @@ export interface LichtfaedenProps {
   i?: number;
 }
 
-const tag = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
 export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenster: fensterAussen, onTag, aktion, titel = 'Lichtfäden', i = 0 }: LichtfaedenProps) {
   const eigenesFenster = useStrahlFenster(new Date().getFullYear());
   const fenster = fensterAussen ?? eigenesFenster;
   const [nav, setNav] = useState<NavStand>(() => navStart(wurzel));
-  useEffect(() => { setNav(springe(wurzel)); }, [wurzel]);
   const [person, setPerson] = useState<string>(personStart);
-  const { daten, laedt, fehler, neu } = useLichtfaeden({ wurzel: nav.wurzel, person, von: fenster.fenster.von, bis: fenster.fenster.bis });
+  const { von, bis } = fenster.fenster;
+  const { daten, laedt, fehler, neu } = useLichtfaeden({ wurzel: nav.wurzel, person, von, bis });
   const [hervor, setHervor] = useState<string | null>(null);
   const [offen, setOffen] = useState<string | null>(null);
-  const uebergang = useRef<FaedenUebergang | null>(null);
-  const ansicht = daten?.ansicht ?? null;
+  // Der Übergang beim Ebenenwechsel gehört zu GENAU einer Antwort (Schlüssel Ebene|Person|Zeitraum, `lichtSchluessel`):
+  // Faedenband spielt ihn dort einmal ab und meldet ihn verbraucht. Person-/Zeitraum-Wechsel oder eine neue Wurzel von
+  // außen werfen ihn weg — die alte Auffächerung spielt nie ein zweites Mal.
+  const [uebergang, setUebergang] = useState<FaedenUebergang | null>(null);
+  useEffect(() => { setNav(springe(wurzel)); setUebergang(null); }, [wurzel]);
+  useEffect(() => { setUebergang(null); }, [person, von, bis]);
   // Solange die neue Ebene lädt, bleibt die alte stehen; der Übergang gehört zur neuen (Faedenband wendet ihn dort an).
-  const aktuell = ansicht;
+  const aktuell = daten?.ansicht ?? null;
 
   function wechsel(neuerStand: NavStand | null) {
-    if (!neuerStand || !ansicht) return;
-    uebergang.current = neuerStand.uebergang ? { richtung: neuerStand.uebergang.richtung, fokus: neuerStand.uebergang.fokus, vorher: ansicht.buendel, fuer: neuerStand.wurzel } : null;
+    if (!neuerStand || !aktuell) return;
+    setUebergang(neuerStand.uebergang
+      ? { richtung: neuerStand.uebergang.richtung, fokus: neuerStand.uebergang.fokus, vorher: aktuell.buendel, fuer: lichtSchluessel({ wurzel: neuerStand.wurzel, person, von, bis }) }
+      : null);
     setHervor(null); setOffen(null);
     setNav(neuerStand);
   }
   const onTiefer = (b: Buendel) => wechsel(tiefer(nav, b));
-  const onKrume = (id: string) => { if (ansicht) wechsel(zurueck(nav, id, ansicht.pfad)); };
+  const onKrume = (id: string) => { if (aktuell) wechsel(zurueck(nav, id, aktuell.pfad)); };
 
   const personen = daten?.personen;
   const personWahl = useMemo(() => {
@@ -72,7 +76,8 @@ export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenste
     return [{ id: 'ich', label: 'Ich' }, ...andere.map(p => ({ id: p.id, label: p.name })), { id: 'alle', label: personen.length === 2 ? 'Beide' : 'Alle' }];
   }, [personen]);
 
-  const heute = tag(new Date());
+  // „Heute“ kommt vom Server (dieselbe Berliner Tagesgrenze wie die Engstellen-Rechnung), nicht aus der Uhr des Browsers.
+  const heute = daten?.heute ?? null;
   return (
     <Karte i={i} className="licht-karte" style={{ background: LICHT_GLAS.karte }} ariaLabel={titel}>
       <Ueberschrift rechts={personWahl.length ? <Segmente liste={personWahl} aktiv={person} onWahl={setPerson} /> : undefined}>{titel}</Ueberschrift>
@@ -90,7 +95,8 @@ export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenste
         {aktuell ? (
           <div style={{ display: 'flex', alignItems: 'stretch', minWidth: 0 }} aria-busy={laedt}>
             <Pfeil richtung={-1} onBlaettern={fenster.blaettern} />
-            <Faedenband ansicht={aktuell} engstellen={daten?.engstellen ?? []} uebergang={uebergang.current} hervor={hervor} onHervor={setHervor}
+            <Faedenband ansicht={aktuell} schluessel={daten?.schluessel ?? null} heute={heute ?? undefined} engstellen={daten?.engstellen ?? []}
+              uebergang={uebergang} onUebergangAngewandt={() => setUebergang(null)} hervor={hervor} onHervor={setHervor}
               onTiefer={onTiefer} onEngstelle={w => setOffen(o => (o === w ? null : w))} onTag={onTag} onBlaettern={fenster.blaettern} onBreite={fenster.setBreite}
               label={`Lichtfäden ${aktuell.pfad.map(k => k.name).join(' › ')}, ${fenster.fenster.label}`} />
             <Pfeil richtung={1} onBlaettern={fenster.blaettern} />
@@ -102,7 +108,7 @@ export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenste
           </Leerzustand>
         )}
         {aktuell && <Legende buendel={aktuell.buendel} hervor={hervor} onHervor={setHervor} onTiefer={onTiefer} />}
-        {!!daten?.engstellen.length && (
+        {!!daten?.engstellen.length && heute && (
           <div style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise }}>Engstellen ab {heute.slice(8, 10)}.{heute.slice(5, 7)}.</span>
             <Engstellen liste={daten.engstellen} offen={offen} onOffen={setOffen} />
