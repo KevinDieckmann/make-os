@@ -385,6 +385,14 @@ nav a:hover { transform: translateX(2px); }
   .zoe-fab { bottom: 86px !important; }
 }
 
+/* ZOE-Fenster am Handy (Design-Standard 03.10.): Knöpfe ≥ 44 px, Eingabe 16 px (iOS zoomt sonst). Nur innerhalb des Fensters — Position und Größe bleiben unberührt. */
+@media (max-width: 720px) {
+  .zoe-fenster button { min-height: 44px; min-width: 44px; box-sizing: border-box; }
+  .zoe-fenster textarea, .zoe-fenster input:not([type=file]):not([type=hidden]), .zoe-fenster select { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }
+  .zoe-fenster a[href] { min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; }
+  .zoe-fenster button[title="Normalgröße"] { display: none; }
+}
+
 /* Heute auf dem Handy (23.09.): Ring oben, die fünf Säulen als Reihe darunter */
 @media (max-width: 720px) {
   .heute-kopf { grid-template-columns: 1fr !important; justify-items: center; }
