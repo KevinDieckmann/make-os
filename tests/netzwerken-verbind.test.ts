@@ -365,3 +365,124 @@ describe('M2/M3 · eine Rechnung, Begegnung ist kein Make.One-Signal', () => {
     expect(besuchKennzahlen(events, ctx).find(x => x.id === 'besuche_events')?.anzeige).toBe('2');
   });
 });
+
+describe('M4 · Schnellsuche kennt Events', () => {
+  it('besuchte Events und Make.One-Abende getrennt gekennzeichnet, jeder Link führt in den richtigen Reiter', async () => {
+    const suche = (await import('@/app/api/crm/suche/route')) as unknown as Mod;
+    const r = await suche.GET(new Request('http://test/api/crm/suche?q=stammtisch', { headers: kopf('kevin') }));
+    const d = await r.json() as { treffer: { art: string; id: string; href: string; unter: string }[] };
+    const besuch = d.treffer.find(t => t.id === 'ev-test-1')!;
+    expect(besuch.art).toBe('besuch');
+    expect(besuch.href).toContain('s=besuche');
+    expect(besuch.href).toContain('ev-test-1');
+    expect(besuch.unter).toContain('Event ·');
+    const r2 = await suche.GET(new Request('http://test/api/crm/suche?q=herbst', { headers: kopf('kevin') }));
+    const eigen = ((await r2.json()) as { treffer: { art: string; id: string; href: string; unter: string }[] }).treffer.find(t => t.id === 'ev-makeone-1')!;
+    expect(eigen.art).toBe('event');
+    expect(eigen.href).toContain('s=event');
+    expect(eigen.unter).toContain('Make.One');
+  });
+});
+
+describe('M5 · Zusammenführen zieht Kalender-Bezüge und offene Erfassungen mit', () => {
+  it('kontaktId und Gäste im kalender-bezug, kontaktId im Journal: alt → neu, ohne Doppelte', async () => {
+    await db.saveJson('kalender-bezug', { bezuege: {
+      'k1|uid-a': { kontaktId: 'c-alt-1', gastKontakte: ['c-alt-1', 'c-neu-1', 'c-x-1'] },
+      'k1|uid-b': { gastKontakte: ['c-alt-1'] },
+      'k1|uid-c': { kontaktId: 'c-fremd-1' },
+    } });
+    await db.saveJson('netzwerken-erfassungen--test-haus', { eintraege: [{ id: '11111111-1111-4111-8111-111111111111', angelegt: '2026-10-02T07:00:00.000Z', schritte: ['event'], kontaktId: 'c-alt-1' }] });
+    const { personUmbiegen } = await import('@/lib/crm/person-bestaende');
+    const b = await personUmbiegen('c-alt-1', 'c-neu-1');
+    const bez = (await db.loadJson<{ bezuege: Record<string, { kontaktId?: string; gastKontakte?: string[] }> }>('kalender-bezug'))!.bezuege;
+    expect(bez['k1|uid-a']).toMatchObject({ kontaktId: 'c-neu-1', gastKontakte: ['c-neu-1', 'c-x-1'] });
+    expect(bez['k1|uid-b'].gastKontakte).toEqual(['c-neu-1']);
+    expect(bez['k1|uid-c'].kontaktId).toBe('c-fremd-1');
+    expect((await db.loadJson<{ eintraege: { kontaktId?: string }[] }>('netzwerken-erfassungen--test-haus'))!.eintraege[0].kontaktId).toBe('c-neu-1');
+    expect(b.speicher['kalender-bezug']).toBeGreaterThan(0);
+  });
+});
+
+describe('M6 · Dublette mit Firma der Karte', () => {
+  const bestehend = (x: object = {}) => ({ id: 'c-alt-1', vorname: 'Anna', nachname: 'Beispiel', email: 'anna.beispiel@example.invalid', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', besitzer: 'malin', ...x });
+  it('bestehende Person ohne Firma: die Firma der Karte wird verknüpft (angelegt oder wiederverwendet), nie doppelt', async () => {
+    await db.saveJson('kontakte', { kontakte: [bestehend()] });
+    const r = await senden(erfassung());
+    expect(r.d.zusammengefuehrt).toBe(true);
+    const k = (await kontakte())[0];
+    const c = await crm();
+    expect(c.firmen).toHaveLength(1);
+    expect(k.firmaId).toBe(c.firmen[0].id);
+    expect(k.firma).toBe('Beispielwerk Nord GmbH');
+    expect(r.d.hinweise?.some(h => h.includes('Firma'))).toBe(true);
+  });
+  it('bestehende Person MIT anderer Firma: nichts geändert, keine verwaiste Firma — nur der Hinweis „Karte nennt andere Firma“', async () => {
+    await db.saveJson('kontakte', { kontakte: [bestehend({ firma: 'Andere Werke AG' })] });
+    const r = await senden(erfassung());
+    expect(r.d.hinweise?.some(h => h.startsWith('Karte nennt andere Firma: Beispielwerk Nord GmbH'))).toBe(true);
+    const k = (await kontakte())[0];
+    expect(k.firma).toBe('Andere Werke AG');
+    expect(k.firmaId).toBeUndefined();
+    expect((await crm()).firmen).toHaveLength(0);
+  });
+  it('gleiche Firma (nur andere Schreibweise): kein Hinweis', async () => {
+    await db.saveJson('kontakte', { kontakte: [bestehend({ firma: 'Beispielwerk Nord' })] });
+    const r = await senden(erfassung());
+    expect(r.d.hinweise?.some(h => h.startsWith('Karte nennt andere Firma'))).toBe(false);
+  });
+});
+
+describe('M8 · Event löschen räumt auf', () => {
+  it('Planposten raus, Deals verlieren den Verweis (Quelle bleibt), Teilnahmen weg — und der Dienstweg löscht nie einen Kalender-Termin', async () => {
+    const eventsRoute = (await import('@/app/api/crm/events/route')) as unknown as Mod;
+    await db.saveJson('liquiplan', { posten: [{ id: 'ev-ev-test-1', titel: 'Event: Stammtisch', betrag: -400, rhythmus: 'einmalig', ab: '2026-10-02', kategorie: 'marketing/event' }, { id: 'p-andere', titel: 'Miete', betrag: -1000, rhythmus: 'monat', ab: '2026-10-01' }] });
+    await senden(erfassung({ schritt: 'vermitteln', vermitteln: { an: 'Peter Beispiel' } }));
+    expect((await crm()).chancen[0].quelleBezug).toBe('ev-test-1');
+    const r = await eventsRoute.POST(new Request('http://test/api/crm/events', { method: 'POST', headers: kopf('kevin'), body: JSON.stringify({ aktion: 'loeschen', eventId: 'ev-test-1' }) }));
+    const d = await r.json() as { ok: boolean; planposten: boolean; dealsOhneVerweis: number; teilnahmen: number; text: string };
+    expect(d).toMatchObject({ ok: true, planposten: true, dealsOhneVerweis: 1, teilnahmen: 1 });
+    expect(d.text).toContain('Planposten');
+    const c = await crm();
+    expect(c.events.some(e => e.id === 'ev-test-1')).toBe(false);
+    expect(c.chancen[0].quelle).toBe('event');
+    expect(c.chancen[0].quelleBezug).toBeUndefined();
+    expect((await db.loadJson<{ posten: { id: string }[] }>('liquiplan'))!.posten.map(p => p.id)).toEqual(['p-andere']);
+  });
+});
+
+describe('M10/M13 · Links und Sprachnotiz', () => {
+  it('Angebot und Aufgabe haben feste Links; die Meldung an die andere Person springt zum erzeugten Objekt', async () => {
+    const { ergebnisLinks, ergebnisZiel } = await import('@/lib/crm/netzwerken');
+    const id = randomUUID();
+    expect(ergebnisLinks({ schritt: 'angebot', erfassungId: id, kontaktId: 'c-x-1' }).find(l => l.id === 'angebot')?.href).toContain(`ang-nw-${id}`);
+    expect(ergebnisLinks({ schritt: 'andere', erfassungId: id }).find(l => l.id === 'aufgabe')?.href).toContain(`nw-${id}`);
+    expect(ergebnisZiel({ schritt: 'vermitteln', erfassungId: id, kontaktId: 'c-x-1' })).toContain(`ch-nw-${id}`);
+    expect(ergebnisZiel({ schritt: 'angebot', erfassungId: id, kontaktId: 'c-x-1' })).toContain(`ang-nw-${id}`);
+    expect(ergebnisZiel({ schritt: 'nur-kontakt', erfassungId: id, kontaktId: 'c-x-1' })).toContain('c-x-1');
+    // Server: die Glocke an Malin trägt den Deal-Link.
+    const e = erfassung({ schritt: 'vermitteln', vermitteln: { an: 'Peter' }, zustaendig: 'malin' });
+    expect((await senden(e)).status).toBe(200);
+    const m = ((await db.loadJson<{ eintraege: { art: string; link: string }[] }>('meldungen--malin'))?.eintraege ?? []).filter(x => x.art === 'netzwerken');
+    expect(m[0].link).toContain(`ch-nw-${e.erfassungId}`);
+  });
+  it('eventLink: besuchtes Event → Event-Akte, Make.One → Make.One', async () => {
+    const { eventLink } = await import('@/lib/wege');
+    expect(eventLink({ id: 'ev-a-1', marke: 'Netzwerken' })).toContain('s=besuche');
+    expect(eventLink({ id: 'ev-a-1' })).toContain('s=event');
+    expect(eventLink({ id: 'ev-a-1' }, 'gaeste')).toContain('r=gaeste');
+  });
+  it('Sprachnotiz ohne Abschrift steht im Abendbericht als offener Punkt mit Sprung zur Akte', async () => {
+    const WEBM = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 1, 2, 3, 4, 5, 6, 7, 8]).toString('base64');
+    await senden(erfassung({ sprachnotiz: { typ: 'audio/webm', daten: WEBM, dauerSek: 20 } }));
+    const { berichtAus } = await import('@/lib/crm/netzwerken');
+    const c = await crm(); const k = await kontakte();
+    const z = berichtAus({ event: c.events.find(x => x.id === 'ev-test-1')!, teilnahmen: c.teilnahmen, kontakte: k, heute: '2026-10-03' }).zeilen[0];
+    expect(z.offen.some(o => o.startsWith('Sprachnotiz ohne Abschrift'))).toBe(true);
+    expect(z.links.find(l => l.id === 'sprachnotiz')?.href).toContain(k[0].id);
+    // Ohne Sprachnotiz kein Punkt.
+    await frisch();
+    await senden(erfassung());
+    const c2 = await crm(); const k2 = await kontakte();
+    expect(berichtAus({ event: c2.events.find(x => x.id === 'ev-test-1')!, teilnahmen: c2.teilnahmen, kontakte: k2, heute: '2026-10-03' }).zeilen[0].offen.some(o => o.startsWith('Sprachnotiz'))).toBe(false);
+  });
+});

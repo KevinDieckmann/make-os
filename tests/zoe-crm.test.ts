@@ -88,7 +88,7 @@ beforeAll(async () => {
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 
 describe('Nur im Haushalt des Inhabers', () => {
-  const NEU = ['crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'marketing_lage', 'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage', 'crm_vorschlag'];
+  const NEU = ['crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'besuche_lage', 'marketing_lage', 'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage', 'crm_vorschlag'];
   it('jedes neue Werkzeug steht in CRM_WERKZEUGE, hat eine Stufe und lehnt fremde Konten und Hintergrund ab', async () => {
     const { REGISTER } = await import('@/lib/zoe/register');
     for (const n of NEU) {
@@ -178,7 +178,7 @@ describe('Leitplanken beim Lesen', () => {
     const s = await lauf('suche_kontakt', { frage: 'Anna' }, 'malin');
     expect(s).toContain('c-anna-1');
     expect(await lauf('crm_lage', {}, 'kevin')).not.toContain('Geheimname');
-    for (const n of ['kennzahlen', 'sales_lage', 'qualifizierung_lage', 'marketing_lage', 'events_lage', 'kampagnen_lage', 'mandate_lage', 'angebote_lage', 'datenqualitaet', 'stammdaten_lage', 'pipeline']) {
+    for (const n of ['kennzahlen', 'sales_lage', 'qualifizierung_lage', 'marketing_lage', 'events_lage', 'besuche_lage', 'kampagnen_lage', 'mandate_lage', 'angebote_lage', 'datenqualitaet', 'stammdaten_lage', 'pipeline']) {
       const t = await lauf(n, {}, 'kevin');
       expect(t, n).not.toMatch(/^Fehlgeschlagen/);
       expect(t, n).not.toContain('Geheimname');
@@ -333,6 +333,36 @@ describe('events_lage: Netzwerken-Events sind keine Make.One-Events (Prüfung 03
       expect(alle).toMatch(/EVENTS \(Make\.One\) · 1 /);
       const gezielt = await lauf('events_lage', { event: 'Fremdmesse' }, 'kevin');
       expect(gezielt).not.toContain('ev-fremd-1');
+    } finally { await db.saveJson('crm', vorher); }
+  });
+});
+
+describe('besuche_lage + crm_suche: besuchte Events sind eigene Events (Netzwerken-Verbindungen, M4)', () => {
+  it('besuche_lage listet besuchte Events mit Wirkung und erfassten Personen — ohne eingeschränkte Personen; events_lage bleibt bei Make.One; crm_suche kennzeichnet beides', async () => {
+    const vorher = await speicher.ladeCrm();
+    const nw = (id: string) => ({ erfassungId: id, schritt: 'followup', zustaendig: 'kevin', erfasstVon: 'kevin', erfasstAm: '2026-09-05T18:00:00.000Z' });
+    await db.saveJson('crm', { ...vorher,
+      events: [
+        { id: 'ev-eigen-9', titel: 'Herbst-Dinner', format: 'dinner', ziel: 'Gespräche', datum: '2099-01-10', status: 'geplant', geaendert: T },
+        { id: 'ev-besuch-9', titel: 'Fremdmesse Nord', format: 'sonstig', ziel: 'x', datum: '2026-09-05', status: 'durchgefuehrt', marke: 'Netzwerken', anmeldung: 'besucht', kostenEuro: 400, geaendert: T },
+      ],
+      teilnahmen: [
+        { id: 't-b-1', eventId: 'ev-besuch-9', kontaktId: 'c-anna-1', status: 'da', netzwerken: nw('a1111111-1111-4111-8111-111111111111'), geaendert: T },
+        { id: 't-b-2', eventId: 'ev-besuch-9', kontaktId: 'c-bernd-1', status: 'da', netzwerken: nw('b2222222-2222-4222-8222-222222222222'), geaendert: T },
+      ] });
+    try {
+      const b = await lauf('besuche_lage', {}, 'kevin');
+      expect(b).toContain('Fremdmesse Nord');
+      expect(b).toContain('c-anna-1');
+      expect(b).not.toContain('Geheimname');      // Art. 18: nie genannt
+      expect(b).toContain('eingeschränkte ausgeblendet');
+      expect(b).not.toContain('Herbst-Dinner');
+      const eigene = await lauf('events_lage', {}, 'kevin');
+      expect(eigene).toContain('Herbst-Dinner');
+      expect(eigene).not.toContain('Fremdmesse');
+      const s = await lauf('crm_suche', { frage: 'e', arten: ['events'] }, 'kevin');
+      expect(s).toContain('besucht (besuche_lage)');
+      expect(s).toContain('Make.One (events_lage)');
     } finally { await db.saveJson('crm', vorher); }
   });
 });

@@ -366,6 +366,12 @@ async function ablageHaushalte(): Promise<string[]> {
   const namen = await fs.readdir(datenOrdner()).catch(() => [] as string[]);
   return namen.map(n => ABLAGE_DATEI.exec(n)?.[1]).filter((h): h is string => !!h).sort();
 }
+const JOURNAL_DATEI = /^(netzwerken-erfassungen--[a-z0-9][a-z0-9-]{0,39})\.json$/;
+/** Die Journale der Netzwerken-Erfassungen (je Haushalt) — aus den Dateinamen. */
+async function journalNamen(): Promise<string[]> {
+  const namen = await fs.readdir(datenOrdner()).catch(() => [] as string[]);
+  return namen.map(n => JOURNAL_DATEI.exec(n)?.[1]).filter((h): h is string => !!h).sort();
+}
 const replayName = (h: HeadId) => `heads-replay-${h}`;
 /** Nur Speicher anfassen, die es gibt — nie einen leeren anlegen. */
 const da = async (name: string) => (await loadJson<unknown>(name)) !== null;
@@ -704,6 +710,37 @@ export async function personenUmbiegen(paare: ReadonlyMap<string, string>, opt: 
     if (!vor.length) return;
     await aendereCrm(c => { let x = c; for (const [a, n] of vorhanden(c)) x = crmUm(x, a, n); return rest(x); });
     zaehle(b, 'crm', vor.length);
+  });
+  // Kalender-Bezüge (Termin ↔ Person, auch die Gäste) und die offenen Erfassungen von „Netzwerken“ (Journal) hängen an Kennungen der Kartei: beim
+  // Zusammenführen ziehen sie mit um (M5). Sie liegen im Schritt „crm“ — Absichten aus der Zeit davor kennen keinen eigenen Schritt dafür.
+  await teil('crm', async () => {
+    if (await da('kalender-bezug')) {
+      await updateJson<{ bezuege: Record<string, Record<string, unknown>> }>('kalender-bezug', cur => {
+        if (!cur?.bezuege) return cur as { bezuege: Record<string, Record<string, unknown>> };
+        let n = 0;
+        const bezuege = Object.fromEntries(Object.entries(cur.bezuege).map(([schluessel, e]) => {
+          let x = e;
+          for (const [a, neu] of p) {
+            const gast = Array.isArray(x.gastKontakte) ? (x.gastKontakte as string[]) : undefined;
+            if (x.kontaktId === a || gast?.includes(a)) {
+              x = { ...x, ...(x.kontaktId === a ? { kontaktId: neu } : {}), ...(gast ? { gastKontakte: Array.from(new Set(gast.map(g => (g === a ? neu : g)))) } : {}) };
+              n++;
+            }
+          }
+          return [schluessel, x];
+        }));
+        zaehle(b, 'kalender-bezug', n);
+        return n ? { ...cur, bezuege } : cur;
+      });
+    }
+    for (const name of await journalNamen()) {
+      await updateJson<{ eintraege: { kontaktId?: string }[] }>(name, cur => {
+        const l = cur?.eintraege ?? [];
+        const n = l.filter(e => e.kontaktId && p.has(e.kontaktId)).length;
+        zaehle(b, name, n);
+        return n ? { ...(cur ?? {}), eintraege: l.map(e => (e.kontaktId && p.has(e.kontaktId) ? { ...e, kontaktId: p.get(e.kontaktId) } : e)) } : (cur ?? { eintraege: [] });
+      });
+    }
   });
   await teil('ablage', async () => {
     for (const h of await ablageHaushalte()) {

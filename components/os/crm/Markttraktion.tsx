@@ -182,7 +182,9 @@ export function MarkttraktionSeite() {
   // Links auf ein BESUCHTES Event (Make.One-Adresse s=event&k=…, z. B. aus Kontaktakte, Deal, Verbindungsprüfung, ZOE) landen in der
   // Event-Akte unter „Events“ — der alte Weg bleibt gültig, nur der Ort ist der richtige (03.10.).
   const besuchsId = bereich === 'event' && kParam && api.crm?.stand.events.some(e => e.id === kParam && istBesuch(e)) ? kParam : null;
-  useEffect(() => { if (besuchsId) router.replace(markttraktion('besuche', undefined, besuchsId), { scroll: false }); }, [besuchsId, router]);
+  // Der Parameter `r` (Reiter in der Event-Akte) geht bei der Umleitung mit — sonst landete ein Link „…&r=nachfassen“ auf dem Start der Akte.
+  const rParam = params.get('r');
+  useEffect(() => { if (besuchsId) router.replace(`${markttraktion('besuche', undefined, besuchsId)}${rParam ? `&r=${encodeURIComponent(rParam)}` : ''}`, { scroll: false }); }, [besuchsId, rParam, router]);
   const besuche = (bereich === 'besuche' ? (ansicht ?? 'kalender') : 'kalender') as BesucheAnsicht;
   // Aktivität hinzufügen — von überall in der Markttraktion, ein Knopf oben rechts (bis 28.09. „Gespräch festhalten“).
   const [erfassen, setErfassen] = useState(false);

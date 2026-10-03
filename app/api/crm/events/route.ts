@@ -51,6 +51,7 @@ import { istDienst } from '@/lib/zugang/dienst';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { kundenExport } from '@/lib/crm/besuche';
 import { istBesuch, UEBERGABEN_MAX } from '@/lib/crm/besuche-form';
+import { eventSpiegelBeimLoeschen } from '@/lib/kalender/spiegel-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -118,7 +119,9 @@ export async function POST(req: Request) {
     // Serverweg (28.09., W6): Event + Kaskade (Teilnahmen weg, offene Follow-ups des Events abgesagt) in EINER Sperre —
     // vorher löschte der Browser Teilnahme für Teilnahme und dann das Event (halbe Stände bei Abbruch, Follow-ups blieben).
     const halter: { r?: CrmAnwendung; ops?: ListenOp[] } = {};
-    await aendereCrm(cur => {
+    await aendereCrm(cur0 => {
+      // Deals, die dieses Event als Quelle nennen, verlieren den Verweis (nicht die Quelle „Event“) — sonst zeigten sie auf ein Event, das es nicht mehr gibt (M8).
+      const cur = cur0.chancen.some(c => c.quelleBezug === eventId) ? { ...cur0, chancen: cur0.chancen.map(c => (c.quelleBezug === eventId ? (({ quelleBezug: _q, ...rest }) => rest)(c) : c)) } : cur0;
       const ops: ListenOp[] = [{ liste: 'events', op: 'delete', id: eventId }];
       halter.ops = [...ops, ...loeschKaskade(cur, ops, jetzt)];
       halter.r = wendeCrmAn(cur, halter.ops, jetzt, person);
@@ -131,7 +134,13 @@ export async function POST(req: Request) {
     if (r.abgelehnt?.length) return NextResponse.json({ ok: false, fehler: r.abgelehnt.join(' · ') }, { status: 409 });
     const ops = halter.ops ?? [];
     const teilnahmen = ops.filter(o => o.liste === 'teilnahmen').length, abgesagt = ops.filter(o => o.liste === 'followups').length;
-    return NextResponse.json({ ok: true, teilnahmen, abgesagt, text: `Event gelöscht${teilnahmen ? ` · ${teilnahmen} Teilnahme${teilnahmen === 1 ? '' : 'n'} entfernt` : ''}${abgesagt ? ` · ${abgesagt} offene${abgesagt === 1 ? 's' : ''} Follow-up${abgesagt === 1 ? '' : 's'} abgesagt` : ''}.` });
+    // Alles, was am Event hing (M8): der Spiegel-Termin im Kalender (nur auf Klick, nie über den Dienstweg), der Planposten in der Liquiplanung, der Verweis der Deals.
+    let kalender: Awaited<ReturnType<typeof eventSpiegelBeimLoeschen>> = 'keiner';
+    if (!istDienst(req)) kalender = await eventSpiegelBeimLoeschen(e, werAus(req));
+    const planposten = !!(await loadJson<Liquiplan>('liquiplan'))?.posten?.some(x => x.id === planpostenId(eventId));
+    if (planposten) await updateJson<Liquiplan>('liquiplan', cur => ({ ...(cur ?? {}), posten: (cur?.posten ?? []).filter(x => x.id !== planpostenId(eventId)) }));
+    const dealsOhneVerweis = crm.chancen.filter(c => c.quelleBezug === eventId).length;
+    return NextResponse.json({ ok: true, teilnahmen, abgesagt, kalender, planposten, dealsOhneVerweis, text: `Event gelöscht${teilnahmen ? ` · ${teilnahmen} Teilnahme${teilnahmen === 1 ? '' : 'n'} entfernt` : ''}${abgesagt ? ` · ${abgesagt} offene${abgesagt === 1 ? 's' : ''} Follow-up${abgesagt === 1 ? '' : 's'} abgesagt` : ''}${kalender === 'weg' ? ' · Kalender-Termin entfernt' : kalender === 'bleibt' || kalender === 'fehler' ? ' · Kalender-Termin bleibt — bitte in Apple löschen' : ''}${planposten ? ' · Planposten in der Liquiplanung entfernt' : ''}${dealsOhneVerweis ? ` · ${dealsOhneVerweis} Deal${dealsOhneVerweis === 1 ? '' : 's'} ohne Event-Verweis` : ''}.` });
   }
 
   if (b.aktion === 'kunden-uebergabe') {

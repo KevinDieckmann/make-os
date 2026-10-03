@@ -183,6 +183,20 @@ export async function eventSpiegelLoeschen(id: string, wer: ProtokollWer): Promi
 }
 
 /**
+ * Beim LÖSCHEN eines Events (Klick auf „Event löschen“, nie über den Dienstweg): der Spiegel-Termin geht mit — sonst bliebe ein Termin im Kalender, der auf ein
+ * Event zeigt, das es nicht mehr gibt (M8). Wie bei einer Absage: nur unser Spiegel (Bezug `eventId`), nur Einzeltermine, die MAKE OS ändern darf.
+ * Wirft nie: ein nicht erreichbares iCloud darf das Löschen nicht aufhalten — das Ergebnis sagt, was geschah.
+ */
+export async function eventSpiegelBeimLoeschen(e: { id: string; kalenderUid?: string } & Parameters<typeof eventSoll>[0], wer: ProtokollWer): Promise<'weg' | 'keiner' | 'bleibt' | 'ohne-icloud' | 'fehler'> {
+  if (!e.kalenderUid || istScheinUid(e.kalenderUid)) return 'keiner';
+  if (!verbunden()) return 'ohne-icloud';
+  try {
+    const r = await abgleichen(await ladeStand(), e.kalenderUid, eventSoll({ ...e, status: 'abgesagt' }), wer, { bezuege: await ladeBezuege(), gehoert: b => b?.eventId === e.id, loeschenErlaubt: true });
+    return r === 'weg' || !terminNachUid(await ladeStand(), e.kalenderUid) ? 'weg' : 'bleibt';
+  } catch { return 'fehler'; }
+}
+
+/**
  * Events mit Termin nachziehen. `ids` null = alle. Liefert die Zahl der geprüften, die Hinweise der Einträge, die nicht
  * gingen (F1 #5: je Eintrag abgefangen — die übrigen laufen weiter), und die abgesagten Events, deren Termin noch steht
  * (nur im Takt: dort wird nicht gelöscht, sondern gemeldet).

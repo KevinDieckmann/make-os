@@ -5,7 +5,9 @@
 // (sonst könnte man die Sperre nicht sehen), sind aber markiert.
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { WEG } from '@/lib/wege';
+import { WEG, eventLink } from '@/lib/wege';
+import { istNetzwerkenEvent } from '@/lib/crm/marke';
+import { anmeldungVon, anmeldungLabel, fuerFirmaId } from '@/lib/crm/besuche-form';
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { suchNorm, suchWoerter } from '@/lib/text/such-norm';
@@ -55,5 +57,12 @@ export async function GET(req: Request) {
   const md = crm.mandate.map(m => ({ m, kunde: firmaVonMandat(m, crm.firmen)?.name ?? m.kunde })).filter(({ m, kunde }) => passt([kunde, m.kunde, m.titel])).slice(0, 4)
     .map(({ m, kunde }) => ({ art: 'mandat', id: m.id, titel: `${kunde} · ${m.titel}`.slice(0, 90), unter: `Mandat · ${m.status}`, href: WEG.mandat(m.id), p: 1 }));
   const kp = crm.kampagnen.filter(k => passt([k.name])).slice(0, 3).map(k => ({ art: 'kampagne', id: k.id, titel: k.name, unter: `Kampagne · ${k.status}`, href: `/os/markttraktion?s=marketing&a=kampagnen&k=${k.id}`, p: 1 }));
-  return NextResponse.json({ ok: true, treffer: [...personen, ...fs, ...ch, ...md, ...kp] });
+  // Events (M4): besuchte Veranstaltungen (Reiter „Events“) und unsere Make.One-Abende — getrennt gekennzeichnet, der Link führt in den richtigen Reiter.
+  const ev = crm.events.filter(e => passt([e.titel, e.ort])).sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 4).map(e => {
+    const besuch = istNetzwerkenEvent(e);
+    const kunde = besuch ? fuerFirmaId(e) : null;
+    return { art: besuch ? 'besuch' : 'event', id: e.id, titel: e.titel, p: 1, href: eventLink(e),
+      unter: [besuch ? `Event · ${anmeldungLabel(anmeldungVon(e))}` : `Make.One · ${e.status}`, `${e.datum.slice(8, 10)}.${e.datum.slice(5, 7)}.${e.datum.slice(0, 4)}`, e.ort, kunde ? `für ${firmen.get(kunde)?.name ?? 'Kunde'}` : ''].filter(Boolean).join(' · ') };
+  });
+  return NextResponse.json({ ok: true, treffer: [...personen, ...fs, ...ch, ...md, ...kp, ...ev] });
 }

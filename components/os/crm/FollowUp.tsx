@@ -30,7 +30,8 @@ import { ausgenommen } from '@/lib/crm/einschraenkung';
 import Link from 'next/link';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabenAlsFaellig, type AufgabeFaellig } from '@/lib/crm/followup-aufgabe';
-import { WEG } from '@/lib/wege';
+import { WEG, eventLink } from '@/lib/wege';
+import { useRouter } from 'next/navigation';
 
 interface Antwort { ok: boolean; heute: string; liste: Faellig[]; zahlen: Record<Gruppe, number> & { gesamt: number }; puenktlich: { erledigt: number; puenktlich: number; verpasst: number; quote: number | null } }
 
@@ -64,8 +65,12 @@ export function useFollowups() {
   return { d, fehler, laden, aktion };
 }
 
+/** „Event öffnen“: ein besuchtes Event führt in die Event-Akte, ein Make.One-Abend in Make.One (M10). */
+const eventHrefVon = (api: CrmApi) => (id: string) => eventLink(api.crm?.stand.events.find(e => e.id === id) ?? { id });
+
 export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: CrmApi; ansicht: FollowupAnsicht; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void }) {
   const { d, fehler, laden, aktion } = useFollowups();
+  const eventHref = useMemo(() => eventHrefVon(api), [api.crm]); // eslint-disable-line react-hooks/exhaustive-deps
   const [wahl, setWahl] = useWerFilter('followup');
   const [neu, setNeu] = useState(false);
   const [hinweis, setHinweis] = useState<string | null>(null);
@@ -119,7 +124,7 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
           <Karte key={g.id} i={i + 1} akzent={(l.length || la.length) && g.id !== 'spaeter' ? g.farbe : undefined}>
             <Ueberschrift farbe={g.farbe} rechts={`${l.length + la.length}`}>{g.label}</Ueberschrift>
             {l.length || la.length ? <Liste>
-              {l.map(f => <FollowUpZeile key={f.id} f={f} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} eigene={eigene} />)}
+              {l.map(f => <FollowUpZeile key={f.id} f={f} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} eigene={eigene} eventHref={eventHref} />)}
               {la.map(a => (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44 }}>
                   <Haken an={false} label={a.titel} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: a.aufgabeId } })} />
@@ -135,13 +140,14 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
         );
       })}
 
-      {ansicht === 'woche' && <Wochenansicht liste={liste} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} />}
+      {ansicht === 'woche' && <Wochenansicht liste={liste} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} eventHref={eventHref} />}
       {ansicht === 'kadenz' && <Kadenz api={api} liste={liste} heute={d.heute} zuKontakt={zuKontakt} aktion={nachAktion} />}
     </>
   );
 }
 
-function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [] }: { f: Faellig; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void>; eigene?: { wert: string; label: string }[] }) {
+function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [], eventHref }: { f: Faellig; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void>; eigene?: { wert: string; label: string }[]; /** Wohin „Event öffnen“ führt (besuchtes Event → Event-Akte, Make.One → Make.One) — der Aufrufer kennt die Events. */ eventHref?: (id: string) => string }) {
+  const router = useRouter();
   const [offen, setOffen] = useState(false);
   const [erledigen, setErledigen] = useState(false);
   const farbe = GRUPPEN.find(g => g.id === f.gruppe)!.farbe;
@@ -164,6 +170,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
             {f.quelle !== 'dealschritt' && f.quelle !== 'dealwiedervorlage' && <Knopf leise onClick={() => { if (window.confirm(f.quelle === 'nachfassen' ? 'Nachfassen bewusst auslassen? Der Gast verschwindet aus der Liste, zählt aber nicht als nachgefasst.' : 'Follow-up absagen? Die Person bleibt, nur diese Zusage fällt weg.')) void aktion({ aktion: 'absagen', id: f.id }); }}>{f.quelle === 'nachfassen' ? 'Auslassen' : 'Absagen'}</Knopf>}
             <span style={{ flex: 1 }} />
             {f.kontaktId && <Knopf leise onClick={() => zuKontakt(f.kontaktId!)}>Person</Knopf>}
+            {f.bezug.art === 'event' && <Knopf leise onClick={() => router.push(eventHref ? eventHref(f.bezug.id) : eventLink({ id: f.bezug.id }))}>Event öffnen</Knopf>}
             {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Kontakt öffnen'}</Knopf>}
           </div>
           {f.verschoben ? <div style={{ fontSize: 12, color: f.verschoben >= 3 ? LEUCHT.kritisch : C.inkLeise }}>{f.verschoben}× verschoben{f.verschoben >= 3 ? ' — ehrlicherweise keine Zusage mehr.' : ''}</div> : null}
@@ -251,7 +258,7 @@ function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b
 }
 
 const WT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion }: { liste: Faellig[]; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void> }) {
+function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion, eventHref }: { liste: Faellig[]; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void>; eventHref: (id: string) => string }) {
   // Montag der Woche von heute
   const d = new Date(`${heute}T12:00:00Z`);
   const mo = plusTage(heute, -((d.getUTCDay() + 6) % 7));
@@ -260,7 +267,7 @@ function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion }: { li
   const danach = liste.filter(f => f.faellig > tage[6]);
   return (
     <>
-      {ueber.length > 0 && <Karte i={1} akzent={LEUCHT.kritisch}><Ueberschrift farbe={LEUCHT.kritisch} rechts={`${ueber.length}`}>Aus den Vorwochen</Ueberschrift><Liste>{ueber.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={aktion} />)}</Liste></Karte>}
+      {ueber.length > 0 && <Karte i={1} akzent={LEUCHT.kritisch}><Ueberschrift farbe={LEUCHT.kritisch} rechts={`${ueber.length}`}>Aus den Vorwochen</Ueberschrift><Liste>{ueber.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={aktion} eventHref={eventHref} />)}</Liste></Karte>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
         {tage.map((t, i) => {
           // (Einträge nach dem Sonntag stehen darunter unter „Nächste Woche“)
@@ -282,7 +289,7 @@ function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion }: { li
           );
         })}
       </div>
-      {danach.length > 0 && <Karte i={2}><Ueberschrift rechts={`${danach.length}`}>Nächste Woche</Ueberschrift><Liste>{danach.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={aktion} />)}</Liste></Karte>}
+      {danach.length > 0 && <Karte i={2}><Ueberschrift rechts={`${danach.length}`}>Nächste Woche</Ueberschrift><Liste>{danach.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={aktion} eventHref={eventHref} />)}</Liste></Karte>}
     </>
   );
 }

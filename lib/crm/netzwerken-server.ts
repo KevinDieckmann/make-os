@@ -275,8 +275,13 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
   // ── firma ── (nur für neue Personen; an einer bestehenden Person bleibt ihre Firma, wie sie ist — und hängt die Erfassung
   // an einer bestehenden Person, entsteht keine verwaiste Firma: dieselbe Zusammenführungs-Regel wie im Schritt „kontakt“)
   await schritt('firma', async () => {
-    if (nameDa || !firmaName) return;
-    if (!e.neuErzwingen && zusammenfuehrung(e, await kontakteLesen(), eigeneId).ziel) return;
+    if (!firmaName) return;
+    // Hängt die Erfassung an einer BESTEHENDEN Person (gewählt oder gleiche Mail/Nummer), entsteht nur dann eine Firma, wenn diese Person noch keine hat (M6):
+    // dann wird sie verknüpft. Hat sie eine, bleibt sie — eine abweichende Firma der Karte meldet der Kontakt-Schritt als Hinweis.
+    let bestehende: Kontakt | undefined;
+    if (nameDa) bestehende = (await kontakteLesen()).find(k => k.id === e.vorhandenKontaktId);
+    else if (!e.neuErzwingen) bestehende = zusammenfuehrung(e, await kontakteLesen(), eigeneId).ziel?.kontakt;
+    if ((nameDa || bestehende) && (!bestehende || bestehende.firmaId || (bestehende.firma ?? '').trim())) return;
     let fehlt = false;
     await aendereCrm(b => {
       if (e.firmaId) { if (!b.firmen.some(f => f.id === e.firmaId)) fehlt = true; return b; }
@@ -289,7 +294,8 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
     if (fehlt) throw new ErfassungFehler('Die gewählte Firma gibt es nicht mehr.', 404);
   });
   const firmenJetzt = (await ladeCrm()).firmen;
-  const firma = nameDa || !firmaName ? undefined : (e.firmaId ? firmenJetzt.find(f => f.id === e.firmaId) : undefined) ?? firmaZurKarte({ firma: firmaName, email: e.kontakt.email, webseite: e.kontakt.webseite }, firmenJetzt) ?? bestehendeFirma(firmenJetzt, firmaName);
+  // Die Firma der Karte: für eine neue Person und (M6) auch für eine bestehende ohne Firma — `luekenFuellen` verknüpft sie nur dort, wo sie fehlt.
+  const firma = !firmaName ? undefined : (e.firmaId ? firmenJetzt.find(f => f.id === e.firmaId) : undefined) ?? firmaZurKarte({ firma: firmaName, email: e.kontakt.email, webseite: e.kontakt.webseite }, firmenJetzt) ?? bestehendeFirma(firmenJetzt, firmaName);
 
   // ── kontakt ──
   const kontaktResultat = await schritt('kontakt', async () => {
@@ -300,8 +306,8 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       const f = cur ?? { kontakte: [] };
       /** An eine bestehende Person hängen: ihre leeren Felder füllen (nichts überschreiben), Quelle und Besitzer bleiben. */
       const anhaengen = (k: Kontakt, hinweis?: string, zus?: boolean) => {
-        const l = luekenFuellen(k, e.kontakt, heute);
-        r = { id: k.id, neu: false, ...(zus ? { zusammengefuehrt: true } : {}), hinweise: [...(hinweis ? [hinweis] : []), ...(l.ergaenzt.length ? [`Bei ${anzeigename(k)} ergänzt: ${l.ergaenzt.join(', ')} (nichts überschrieben).`] : [])] };
+        const l = luekenFuellen(k, e.kontakt, heute, firma ? { id: firma.id, name: firma.name } : undefined);
+        r = { id: k.id, neu: false, ...(zus ? { zusammengefuehrt: true } : {}), hinweise: [...(hinweis ? [hinweis] : []), ...(l.ergaenzt.length ? [`Bei ${anzeigename(k)} ergänzt: ${l.ergaenzt.join(', ')} (nichts überschrieben).`] : []), ...(l.hinweis ? [l.hinweis] : [])] };
         return l.ergaenzt.length ? { ...f, kontakte: f.kontakte.map(x => (x.id === k.id ? l.kontakt : x)) } : f;
       };
       if (nameDa) {

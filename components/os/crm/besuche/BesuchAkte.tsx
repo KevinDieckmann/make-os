@@ -24,6 +24,7 @@ import { datum, euro } from '../daten';
 import { Feld } from '../teile';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { Kalender } from '../events/Kalender';
+import { Liquiplan } from '../events/Budget';
 import { Notizfeld, Leise, eventLoeschen, eventsPost } from '../events/gemeinsam';
 import { LinkChips, type LinkChip } from '../../netzwerken/bausteine';
 import { FuerWahl, ZielSuche, AvvHinweis, BFeld, zielName, eventSetzen, type BesuchProps } from './gemeinsam';
@@ -106,6 +107,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
             ? <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{euro(budgetSumme(e))} <span style={{ color: C.inkLeise }}>· aus den Budgetposten des Events</span></span>
             : <Feld typ="number" wert={e.kostenEuro ? String(e.kostenEuro) : ''} breite={150} platzhalter="Euro gesamt" onFertig={k => void setze({ kostenEuro: Number(k) > 0 ? Number(k) : undefined })} />}
         </BFeld>
+        <BFeld label="Liquiplanung"><Liquiplan e={e} kosten={budgetSumme(e)} kompakt /></BFeld>
         <BFeld label="Kalender"><Kalender e={e} /></BFeld>
         {fuer.art === 'kunde' && <div style={{ marginTop: 8 }}><AvvHinweis text={AVV_HINWEIS} /></div>}
       </Karte>
@@ -188,7 +190,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
 
       <div>
         <Leise onClick={() => {
-          if (!window.confirm(`„${e.titel}“ löschen? Die erfassten Personen bleiben in der Kartei, ihre Teilnahme an diesem Event wird entfernt; offene Follow-ups des Events werden abgesagt.`)) return;
+          if (!window.confirm(`„${e.titel}“ löschen? Die erfassten Personen bleiben in der Kartei, ihre Teilnahme an diesem Event wird entfernt; offene Follow-ups des Events werden abgesagt. Auch der Kalender-Termin und der Planposten in der Liquiplanung werden entfernt, Deals verlieren den Verweis auf das Event.`)) return;
           void eventLoeschen(api, e).then(onZurueck);
         }}>Event löschen</Leise>
       </div>

@@ -492,7 +492,7 @@ export function trifftEingeschraenkte(e: Pick<Erfassung, 'kontakt'>, kontakte: r
  * Beim Anhängen an eine bestehende Person: leere Felder aus der Karte füllen (Telefon, Handy, Position, LinkedIn, Website),
  * nichts überschreiben. Gibt die Person und die Namen der ergänzten Felder zurück.
  */
-export function luekenFuellen(k: Kontakt, neu: KontaktFelder, heute: string): { kontakt: Kontakt; ergaenzt: string[] } {
+export function luekenFuellen(k: Kontakt, neu: KontaktFelder, heute: string, firma?: { id: string; name: string }): { kontakt: Kontakt; ergaenzt: string[]; hinweis?: string } {
   const leer = (v: unknown) => typeof v !== 'string' || !v.trim();
   const x: Kontakt = { ...k };
   const ergaenzt: string[] = [];
@@ -501,8 +501,16 @@ export function luekenFuellen(k: Kontakt, neu: KontaktFelder, heute: string): { 
   };
   setze('telefon', neu.telefon, 'Telefon'); setze('sms', neu.mobil, 'Handy'); setze('position', neu.position, 'Position');
   setze('linkedin', neu.linkedin, 'LinkedIn'); setze('firmaWebseite', neu.webseite, 'Webseite');
+  // Firma der Karte (M6): hat die bestehende Person noch keine, wird sie verknüpft; nennt die Karte eine ANDERE, bleibt alles, wie es ist — nur ein Hinweis
+  // (Jobwechsel, Zweitfirma, Tippfehler: das entscheidet ein Mensch, nie die Erfassung).
+  let hinweis: string | undefined;
+  const kartenFirma = (neu.firma ?? '').trim();
+  if (kartenFirma) {
+    if (leer(x.firma) && !x.firmaId) { if (firma) { x.firma = firma.name; x.firmaId = firma.id; ergaenzt.push('Firma'); } }
+    else if (firmenSchluessel(x.firma ?? firma?.name ?? '') !== firmenSchluessel(kartenFirma) && !(firma && x.firmaId === firma.id)) hinweis = `Karte nennt andere Firma: ${kartenFirma} (bei ${anzeigename(k)} steht ${x.firma ?? 'eine andere'}) — nichts geändert, bitte bei Gelegenheit prüfen.`;
+  }
   if (ergaenzt.length) x.geaendertAm = heute;
-  return { kontakt: ergaenzt.length ? x : k, ergaenzt };
+  return { kontakt: ergaenzt.length ? x : k, ergaenzt, ...(hinweis ? { hinweis } : {}) };
 }
 
 /** Passt eine bestehende Firma? Genau (ohne Rechtsform) zuerst, dann Teilübereinstimmung (ab 3 Zeichen). */
@@ -593,14 +601,14 @@ export interface BerichtZeile {
   links: ErgebnisLink[];
 }
 /** Ein Sprung zu etwas, das eine Erfassung angelegt hat. */
-export interface ErgebnisLink { id: 'termin' | 'deal' | 'followup' | 'event' | 'kontakt' | 'makeone' | 'angebot' | 'aufgabe'; label: string; href: string }
+export interface ErgebnisLink { id: 'termin' | 'deal' | 'followup' | 'event' | 'kontakt' | 'makeone' | 'angebot' | 'aufgabe' | 'sprachnotiz'; label: string; href: string }
 
 /**
  * Die Sprünge zu allem, was eine Erfassung angelegt hat — aus Kennungen, die der Server fest vergibt (`ch-nw-<Erfassung>`,
  * `fu-<Erfassung>`, `ang-nw-<Erfassung>`, `nw-<Erfassung>`, Termin-Schlüssel) und dem Make.One-Event der Vormerkung (`makeoneEventId`: Gästeliste
  * des Abends). Dieselbe Liste speist die Fertig-Seite und den Abendbericht — und die Meldung an die andere Person (`ergebnisZiel`).
  */
-export function ergebnisLinks(o: { schritt: NetzwerkSchritt; erfassungId?: string; kontaktId?: string; eventId?: string; terminId?: string; terminAm?: string; dealId?: string; followupId?: string; angebotId?: string; makeoneEventId?: string; /** Der Schritt „Andere“ bzw. „Zu Make.One einladen“ ohne Event hat eine Aufgabe angelegt. */ aufgabe?: boolean; /** Besuchtes Event (Events-Reiter, 03.10.): der Sprung geht direkt in die Event-Akte statt über die Weiterleitung von Make.One. */ besuch?: boolean }): ErgebnisLink[] {
+export function ergebnisLinks(o: { schritt: NetzwerkSchritt; erfassungId?: string; kontaktId?: string; eventId?: string; terminId?: string; terminAm?: string; dealId?: string; followupId?: string; angebotId?: string; makeoneEventId?: string; /** Der Schritt „Andere“ bzw. „Zu Make.One einladen“ ohne Event hat eine Aufgabe angelegt. */ aufgabe?: boolean; /** Zur Erfassung gehört eine Sprachnotiz ohne Abschrift — der Sprung führt in die Akte (Dateien), wo sie angehört wird. */ sprachnotiz?: boolean; /** Besuchtes Event (Events-Reiter, 03.10.): der Sprung geht direkt in die Event-Akte statt über die Weiterleitung von Make.One. */ besuch?: boolean }): ErgebnisLink[] {
   const l: ErgebnisLink[] = [];
   if (o.terminId && o.terminAm) l.push({ id: 'termin', label: 'Termin öffnen', href: WEG.termin(o.terminId, o.terminAm.slice(0, 10)) });
   const deal = o.dealId ?? (o.schritt === 'vermitteln' && o.erfassungId ? `ch-nw-${o.erfassungId}` : undefined);
@@ -612,6 +620,7 @@ export function ergebnisLinks(o: { schritt: NetzwerkSchritt; erfassungId?: strin
   if (o.makeoneEventId) l.push({ id: 'makeone', label: `Gästeliste ${MARKE_EVENTS}`, href: WEG.event(o.makeoneEventId, 'gaeste') });
   const aufgabe = o.aufgabe ?? (o.schritt === 'andere');
   if (aufgabe && o.erfassungId) l.push({ id: 'aufgabe', label: 'Aufgabe öffnen', href: WEG.aufgabe(`nw-${o.erfassungId}`) });
+  if (o.sprachnotiz && o.kontaktId) l.push({ id: 'sprachnotiz', label: 'Sprachnotiz anhören', href: WEG.akte(o.kontaktId) });
   if (o.eventId) l.push({ id: 'event', label: o.besuch ? 'Event-Akte' : 'Event öffnen', href: eventLink({ id: o.eventId, ...(o.besuch ? { marke: NETZWERKEN_MARKE } : {}) }) });
   if (o.kontaktId) l.push({ id: 'kontakt', label: 'Zur Person', href: WEG.akte(o.kontaktId) });
   return l;
@@ -622,6 +631,10 @@ export function ergebnisZiel(o: { schritt: NetzwerkSchritt; erfassungId: string;
   const l = ergebnisLinks({ schritt: o.schritt, erfassungId: o.erfassungId, kontaktId: o.kontaktId, ...(o.terminId ? { terminId: o.terminId } : {}), ...(o.terminAm ? { terminAm: o.terminAm } : {}), ...(o.aufgabe !== undefined ? { aufgabe: o.aufgabe } : {}) });
   return (l.find(x => x.id !== 'kontakt' && x.id !== 'event') ?? l.find(x => x.id === 'kontakt'))!.href;
 }
+
+/** Hat die Person zu diesem Event eine Sprachnotiz, deren Abschrift noch fehlt? (Aktivität „Sprachnotiz aufgenommen — Abschrift folgt“ mit Bezug zum Event.) */
+export const sprachnotizOhneAbschrift = (k: Pick<Kontakt, 'aktivitaeten'>, eventId: string): boolean =>
+  (k.aktivitaeten ?? []).some(a => a.art === 'notiz' && a.bezug === eventId && (a.text ?? '').startsWith('Sprachnotiz aufgenommen') && (a.text ?? '').includes('Abschrift folgt'));
 
 export interface Bericht { event: Event; zeilen: BerichtZeile[]; jePerson: Record<string, number>; offenGesamt: number }
 
@@ -644,6 +657,9 @@ export function berichtAus(o: { event: Event; teilnahmen: readonly Teilnahme[]; 
       if (n.schritt === 'qualifizieren' && (!k.lead || k.lead.status === 'qualifizierung')) offen.push('Qualifizierung offen');
       if (n.schritt === 'termin' && !n.terminAm) offen.push('Termin nicht angelegt');
       if (n.schritt === 'angebot') offen.push('Angebot nur als Entwurf');
+      // Sprachnotiz ohne Abschrift (M13): die Aufnahme liegt in der Dateiablage an der Person, die Abschrift (KI) gibt es noch nicht — ein offener Punkt,
+      // nie eine Sackgasse: der Sprung führt zur Akte, wo die Datei angehört wird. (Hier wird nichts transkribiert.)
+      if (sprachnotizOhneAbschrift(k, o.event.id)) offen.push('Sprachnotiz ohne Abschrift — anhören');
       if (n.schritt === 'makeone') {
         // Der echte Stand der Vormerkung (nicht „immer offen“): nur „vorgemerkt“ ist noch zu tun; eingeladen/zugesagt/da ist es nicht mehr.
         const gast = n.makeone ? o.teilnahmen.find(x => x.eventId === n.makeone!.eventId && x.kontaktId === k.id) : undefined;
@@ -655,7 +671,7 @@ export function berichtAus(o: { event: Event; teilnahmen: readonly Teilnahme[]; 
     }
     zeilen.push({ kontaktId: k.id, name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}), schritt: n.schritt, schrittText: schrittLabel(n.schritt), zustaendig: n.zustaendig, erfasstVon: n.erfasstVon, ...(n.info ? { info: n.info } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}), erfasstAm: n.erfasstAm, offen,
       links: ergebnisLinks({ schritt: n.schritt, erfassungId: n.erfassungId, kontaktId: k.id, eventId: o.event.id, besuch: istNetzwerkenEvent(o.event), ...(n.terminId ? { terminId: n.terminId } : {}), ...(n.terminAm ? { terminAm: n.terminAm } : {}),
-        ...(n.makeone ? { makeoneEventId: n.makeone.eventId } : {}), aufgabe: n.schritt === 'andere' || (n.schritt === 'makeone' && !n.makeone && !k.werbesperre) }) });
+        ...(n.makeone ? { makeoneEventId: n.makeone.eventId } : {}), sprachnotiz: !k.eingeschraenkt && sprachnotizOhneAbschrift(k, o.event.id), aufgabe: n.schritt === 'andere' || (n.schritt === 'makeone' && !n.makeone && !k.werbesperre) }) });
   }
   zeilen.sort((a, b) => a.erfasstAm.localeCompare(b.erfasstAm));
   const jePerson: Record<string, number> = {};

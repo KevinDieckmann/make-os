@@ -40,6 +40,8 @@ const ART: Record<string, { label: string; farbe: string }> = {
   kontakt: { label: 'Person', farbe: LEUCHT.business }, firma: { label: 'Firma', farbe: LEUCHT.puls }, chance: { label: 'Deal', farbe: LEUCHT.achtung },
   mandat: { label: 'Mandat', farbe: LEUCHT.geld }, kampagne: { label: 'Kampagne', farbe: LEUCHT.beziehung }, seite: { label: 'Bereich', farbe: C.inkDim }, mensch: { label: 'Mensch', farbe: LEUCHT.beziehung },
   aufgabe: { label: 'Aufgabe', farbe: LEUCHT.achtung },
+  // Events (M4): besuchte Veranstaltungen (Reiter „Events“) und unsere eigenen Abende (Make.One) getrennt gekennzeichnet — der Link kommt vom Server (`eventLink`).
+  besuch: { label: 'Event', farbe: LEUCHT.beziehung }, event: { label: 'Make.One', farbe: LEUCHT.beziehung },
 };
 
 /** Offene Aufgaben des aktiven Space, deren Titel passt — im Business mit der Einheit im Untertitel (27.09.). */

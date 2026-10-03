@@ -10,7 +10,7 @@
 /** Werkzeuge, die nur lesen — sie laufen auch nach Fremdtext frei. */
 export const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt', 'suche_kontakt', 'projekt_unterlagen', 'datei_lesen', 'meine_aufgaben', 'suche_arbeit',
   // Markttraktion lesen (28.09., C7) — und crm_vorschlag: legt NUR in den Stapel (Art „crm“), übernommen wird erst per Klick.
-  'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'marketing_lage',
+  'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'besuche_lage', 'marketing_lage',
   'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage', 'crm_vorschlag',
   // K6a (29.09.): freie Zeit — nur Zeiten, nichts wird angelegt.
   'freie_zeit']);

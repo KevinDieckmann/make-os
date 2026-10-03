@@ -14,7 +14,7 @@ import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
 import { berichtAus, dankeZeilen, dankeOffen, dankeEntwurf, dankeMailtoLink, schrittLabel, type DankeZeile } from '@/lib/crm/netzwerken';
 import { tagPlus, tagVon, wandzeit } from '@/lib/zeit/kalender-kern';
-import { WEG } from '@/lib/wege';
+import { WEG, eventLink } from '@/lib/wege';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import type { CrmApi } from '../crm/daten';
 import { Gross, Wahl, Beschriftung, Hinweis, Initialen, Leerzustand, LinkChips, type LinkChip, eingabe, kopfStil, tagText } from './bausteine';
@@ -72,7 +72,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
                 {bericht.offenGesamt ? ` · ${bericht.offenGesamt} offen` : ''}
               </div>
               {/* Bericht und Danke-Mails hängen am Event — von hier geht es in seine Akte (Events) bzw. ins Make.One-Event (03.10.). */}
-              <Link href={istBesuch(event) ? WEG.besuch(event.id) : WEG.event(event.id)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none' }}>{istBesuch(event) ? 'Event-Akte öffnen ›' : 'Make.One-Event öffnen ›'}</Link>
+              <Link href={eventLink(event)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none' }}>{istBesuch(event) ? 'Event-Akte öffnen ›' : 'Make.One-Event öffnen ›'}</Link>
             </div>
             {/* Ist es das Event von heute, stehen dieselben Zahlen schon oben im Kopf — nur ältere Events zeigen sie hier. */}
             {!(wahl && wahl.eventId === event.id) && <AbendZaehler zahlen={zahlen} eventTitel={event.titel} farbe={LEUCHT.beziehung} />}
