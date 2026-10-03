@@ -69,12 +69,10 @@ export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
   const wurzeln = d.ziele.filter(z => istWurzelZiel(zielWurzel, z.id))
     .sort((a, b) => (a.rang ?? 1e9) - (b.rang ?? 1e9) || a.titel.localeCompare(b.titel, 'de') || a.id.localeCompare(b.id));
   const zielPfad = new Map<string, string[]>();
-  const zielFarbe = new Map<string, string>();
   const bezFirma = new Map<string, string[]>(), bezMandat = new Map<string, string[]>();
   wurzeln.forEach((z, i) => {
     const pfad = [...themaPfad(spaceVonZiel(z), zielThema(z, msVonZiel.get(z.id) ?? [])), knotenId.ziel(z.id)];
     zielPfad.set(z.id, pfad);
-    zielFarbe.set(z.id, z.farbe);
     if (!z.erledigt) {
       if (z.firmaId && !bezFirma.has(z.firmaId)) bezFirma.set(z.firmaId, pfad);
       if (z.mandatId && !bezMandat.has(z.mandatId)) bezMandat.set(z.mandatId, pfad);
@@ -106,8 +104,7 @@ export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
     const eltern = oben[oben.length - 1];
     const j = msZaehler.get(eltern) ?? 0;
     msZaehler.set(eltern, j + 1);
-    const elternFarbe = z ? zielFarbe.get(z.id) : undefined;
-    knoten.push({ id: knotenId.meilenstein(m.id), art: 'meilenstein', name: m.titel, farbe: abstufen(elternFarbe ?? SPACE_FADEN[space], j), eltern, rang: j, link: WEG.meilenstein(m.id) });
+    knoten.push({ id: knotenId.meilenstein(m.id), art: 'meilenstein', name: m.titel, farbe: abstufen(z?.farbe ?? SPACE_FADEN[space], j), eltern, rang: j, link: WEG.meilenstein(m.id) });
     const tag = tagAus(m.faellig);
     if (tag) straenge.push({ id: `ms:${m.id}`, quelle: 'meilenstein', titel: m.titel, pfad, person: z?.person ?? BEIDE, zeit: { tag }, gewicht: gewichtVon('meilenstein', { erledigt: !!m.erledigt }), status: statusVon(!!m.erledigt, tag, d.heute), link: WEG.meilenstein(m.id) });
   }
