@@ -334,8 +334,10 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   (`fokus.ts`), gesammelt NUR in `sammeln-server.ts` (vorhandene Lesefunktionen, `sicher()`, `merken` 60 s) und ausgeliefert über `GET /api/lichtfaeden`
   (Haushalts-Tor, Dienstweg 403). **Privat-Regel:** private Stränge der anderen Person nur über `fuerBetrachter` als anonymes „Belegt“ (kein Titel/Link/
   Thema/Ziel) — neue Quellen setzen `privat`, nie selbst maskieren. Oberfläche nur `<Lichtfaeden wurzel=… />` (components/os/lichtfaeden): Planung Jahr,
-  Ziel, Meilenstein, Fokus. Zeichner `faedenband.ts` auf `band.ts` + `zeichnen.ts` (dieselben Dateien laufen auf der Website: `node scripts/lichtfaeden-website.mjs`,
-  Wächter `tests/lichtfaeden.test.ts`). Nie im Zeichner Daten rechnen. Der schlichte `Zeitstrahl` bleibt für Monat/Quartal/Aufgaben/Bauplan.
+  Ziel, Meilenstein, Fokus. Zeichner `faedenband.ts` auf `band.ts` + `zeichnen.ts` (dieselben Dateien laufen auf website/ UND fokus/:
+  `node scripts/lichtfaeden-website.mjs` schreibt beide, Wächter `tests/lichtfaeden.test.ts`). Ziel-Farben rechnet NUR der Server
+  (`lib/planung/ziel-farben-server.ts`, Feld `farbe` in `GET /api/state/ziele` und an den Ziel-Knoten); Space ohne Angabe, Wurzel-Ziel und Thema
+  je EINE Regel in `lib/lichtfaeden/modell.ts`; Planungsdaten im Browser nur über `lib/planung/ziele-client.ts` (Wächter `tests/ziele-eine-quelle.test.ts`). Nie im Zeichner Daten rechnen. Der schlichte `Zeitstrahl` bleibt für Monat/Quartal/Aufgaben/Bauplan.
 - Tests `tests/planung-*.test.ts`. Sichtprüfung nur mit Wegwerfkonto; Ziele/Meilensteine/Routinen sind GETEILTE Bestände —
   Schreibtests nur über `fuer: 'ich'` (persönlicher Ziele-Speicher), nie in `ziele`/`meilensteine`/`routinen` selbst.
 

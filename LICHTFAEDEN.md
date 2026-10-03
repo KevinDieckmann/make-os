@@ -48,7 +48,7 @@ GET /api/lichtfaeden  (Haushalts-Tor, gemerkt)     app/api/lichtfaeden/route.ts
 | Gesamt | `gesamt` | „Gesamt“ |
 | Space | `space:business`, `space:privat` | Business gelb, Privat grün (= erstes Ziel-Bündel wie in v1) |
 | Thema | `thema:<space>:<thema>` | Privat: Ziele & Planung · Gesundheit · Familie & Beziehung · Finanzen; Business: Ziele & Planung · Markttraktion · Mandate · Finanzen (`THEMEN`) |
-| Ziel | `ziel:<id>` | Titel; Farbe je Space in Rang-Reihenfolge aus `FADEN_FARBEN` (über ALLE Ziele, auf jeder Ebene gleich) |
+| Ziel | `ziel:<id>` | Titel; Farbe je Space in Rang-Reihenfolge aus `FADEN_FARBEN` — gerechnet NUR vom Server über ALLE Ziele des Haushalts (`lib/planung/ziel-farben-server.ts`), dieselbe wie an Ziel-Chips und Ziel-Bezug (Feld `farbe` in `GET /api/state/ziele`) |
 | Meilenstein | `ms:<id>` | Titel; Farbe = Ziel-Farbe leicht abgestuft |
 
 Was keinem Ziel gehört, hängt am Thema und erscheint dort als Bündel „Ohne Ziel“ (am Ziel: „Ohne Meilenstein“). Mehr als
@@ -56,8 +56,11 @@ Was keinem Ziel gehört, hängt am Thema und erscheint dort als Bündel „Ohne 
 höchstens 160 je Leinwand (Handy 80).
 
 **Ziel → Thema** (es gibt kein Thema-Feld am Ziel): Mandat/Firma am Ziel → Mandate (Business); ein Gesundheits-Meilenstein
-(`bereich: 'gesundheit'`) → Gesundheit (Privat); sonst Ziele & Planung. Ziele ohne Space gelten wie in v1 als Business.
-Abgeleitete Ziele (Kaskade) werden kein eigener Knoten, ihre Meilensteine laufen in das Jahresziel.
+(`bereich: 'gesundheit'`) → Gesundheit (Privat); sonst Ziele & Planung. Ziele ohne Space gelten als Business. Je EINE Regel in
+`modell.ts`: `zielThema`, `meilensteinThema`, `spaceVonZiel`, `zielWurzeln` — dieselben nutzt der Ziel-Bezug der Seiten
+(`lib/make-one/ziel-bezug.ts`, „zahlt ein auf“ nur aus dieser Zuordnung, keine Stichworte). Wächter `tests/ziele-eine-quelle.test.ts`.
+Abgeleitete Ziele (Kaskade, auch „angepasst“) werden kein eigener Knoten, ihre Meilensteine laufen in das Jahresziel; die Route
+rechnet `ziel:<abgeleitet>` auf das Jahresziel um (`wurzelAufloesen`, nur dort).
 
 ## Quellen und Gewichte
 
@@ -90,8 +93,10 @@ Nicht angeschlossen (bewusst): Liquiditäts-Planposten (wiederkehrende Prognose,
 ## Personen- und Privat-Regel
 
 - Jede Ansicht zeigt die Stränge einer Person (+ was beiden gehört) oder alle („Ich · Partner/in · Beide“).
-- **Privat** sind: private Kalendertermine und Gesundheitstermine einer Person, „nur ich“-Aufgaben, „nur ich“-Einträge der
-  Familie, Gesundheit (terminierte Routinen einer Person, Sport-Ziele). Für die ANDERE Person werden sie in `fuerBetrachter`
+- **Privat** sind: private Kalendertermine und Gesundheitstermine einer Person, „nur ich“-Aufgaben SAMT allen Unteraufgaben
+  darunter (dieselbe Kette wie `darfSehen`: `nurIchBesitzer` in `lib/aufgaben/sicht.ts` — „nur ich“ ohne bestimmbare Anlegerin
+  sieht niemand, der Strang fällt weg), „nur ich“-Einträge der Familie (Tage, Dates, Vereinbarungen), Gesundheit (terminierte
+  Routinen einer Person, Sport-Ziele). Für die ANDERE Person werden sie in `fuerBetrachter`
   zu einem anonymen „belegt“-Gewicht: Titel „Belegt“, kein Link, Pfad nur bis zum Space (kein Thema, kein Ziel), verdeckte
   Kennung. Die Last bleibt sichtbar (Fokus!), der Inhalt nicht. Der Kalender maskiert zusätzlich schon an der Quelle
   (`termineFuerZoe`), „nur ich“ der Familie filtert `sichtFuer`.
@@ -104,12 +109,14 @@ ansicht, engstellen, text }`. Zugang `imHaushaltDesInhabers` (Sitzung); der **Di
 braucht die Sicht heute (ZOE liest die Quellen über ihre eigenen Werkzeuge). Gesammelt wird je Betrachter und Fenster über
 `merken` (60 s, ungültig bei jeder Schreibung in einen Bestand; Kalender-Abgleiche sind „Rauschen“ — dort greift nur die Zeit),
 die Ansicht ist reine Rechnung (≈ 1 ms). Kein neuer Bestand (nichts im Speicher-Register), keine Personendaten in Logs.
+`heute` der Antwort ist DER Tag der Oberfläche (Engstellen-Überschrift, HEUTE-Linie). Ein Ebenen-Übergang gehört zu genau einer
+Antwort (Schlüssel Ebene|Person|Zeitraum, `lichtSchluessel`) und wird nach dem Abspielen verworfen.
 
 ## Wo man es sieht
 
 - **Planung › Jahr** (`HorizontView`): Wurzel = der gewählte Space (Alle → Gesamt). Blättern, Heute, Zeitraum, „+ Meilenstein“
   und Anlegen per Klick auf eine freie Stelle bleiben.
-- **Ziel-Seite** (`ZielDetail`): Wurzel = das Ziel (abgeleitete Ziele: ihr Jahresziel).
+- **Ziel-Seite** (`ZielDetail`): Wurzel = das Ziel (immer die eigene Kennung; abgeleitete Ziele zeigt die Route als ihr Jahresziel).
 - **Meilenstein-Seite** (`MeilensteinDetail`): Wurzel = der Meilenstein — jeder Strang ein Faden.
 - **Fokus** (`/os/fokus`, Kachel „Lichtfäden“): Wurzel = Gesamt, zuerst die eigenen Stränge, Engstellen.
 
@@ -136,11 +143,15 @@ die Ansicht ist reine Rechnung (≈ 1 ms). Kein neuer Bestand (nichts im Speiche
 und Fäden aus `band.ts`, Striche gebündelt aus `zeichnen.ts` (Path2D-Eimer, additiv). Übergang 720 ms (`UEBERGANG_MS`,
 sanftes Ein-/Ausschwingen); bei „Bewegung reduzieren“ kein Übergang und keine Eigenbewegung (Standbild). Der Lauf pausiert
 außerhalb des Bildes und im verborgenen Tab. Die Website nutzt `band.ts` + `zeichnen.ts` unverändert (übersetzt nach
-`website/js/lichtfaeden.js`, `node scripts/lichtfaeden-website.mjs`, Wächter `tests/lichtfaeden.test.ts`).
+`website/js/lichtfaeden.js` und `fokus/js/lichtfaeden.js` — `node scripts/lichtfaeden-website.mjs`, Liste `ZIELE`, Wächter
+`tests/lichtfaeden.test.ts`). Der Messpunkt am Band (`data-bilder`, `data-mittel-ms` …) läuft nur außerhalb der Produktion oder
+mit `data-messen` an der Seite.
 
 ## Tests
 
 `tests/lichtfaeden-modell.test.ts` · `-quelle-{planung,kalender,markttraktion,finanzen,beziehung,gesundheit}.test.ts` ·
 `-baum.test.ts` (Pfade, Summen, LOD-Deckel, Dichte deterministisch, Navigation) · `-fokus.test.ts` (Engstellen) ·
-`-route.test.ts` (Haushalts-Tor, Dienstweg 403, Privat-Regel) · `-oberflaeche.test.ts` (Render, Brotkrumen, Legende,
-Engstellen, Zeichner mit/ohne Bewegung) · `lichtfaeden.test.ts` (Mathematik, Markierungen, Lauf, Website-Kopie).
+`-route.test.ts` (Haushalts-Tor, Dienstweg 403, Privat-Regel, abgeleitetes Ziel) · `-datenschutz.test.ts` („nur ich“ über die
+Kette, Altaufgabe, Familie, Engstellen-top, Zwischenspeicher an) · `-oberflaeche.test.ts` (Render, Brotkrumen, Legende,
+Engstellen, Zeichner mit/ohne Bewegung, Übergang-Schlüssel) · `lichtfaeden.test.ts` (Mathematik, Markierungen, Lauf, Website-
+und Fokus-Kopie) · `ziele-eine-quelle.test.ts` (Farbe, Space-Regel, Planungsdaten im Browser).

@@ -85,6 +85,19 @@ describe('fokus/ — Freigabe-Prüfung', () => {
   });
 });
 
+describe('Städte — EINE Liste (Review 03.10.)', () => {
+  it('fokus/pruefen.mjs (ohne Abhängigkeiten) prüft dieselben Städte, die scripts/fokus-seite.mjs zeichnet', async () => {
+    const { STAEDTE: GEPRUEFT } = await import('../fokus/pruefen.mjs');
+    expect(GEPRUEFT).toEqual(Object.fromEntries((STAEDTE as { id: string; name: string }[]).map(s => [s.id, s.name])));
+  });
+  it('fokus/pruefen.mjs nimmt alleDateien aus website/pruefen.mjs (keine Kopie)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const t = readFileSync(new URL('../fokus/pruefen.mjs', import.meta.url), 'utf8');
+    expect(t).not.toMatch(/function alleDateien/);
+    expect(t).toMatch(/import \{[^}]*\balleDateien\b[^}]*\} from '\.\.\/website\/pruefen\.mjs'/);
+  });
+});
+
 describe('Karte — echte Positionen', () => {
   it('fünf Städte, Berlin ist der Knoten; Lage stimmt in Himmelsrichtung', () => {
     expect(STAEDTE.map((s: { name: string }) => s.name)).toEqual(['Berlin', 'Hamburg', 'Bielefeld', 'Köln', 'München']);

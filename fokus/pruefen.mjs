@@ -18,10 +18,10 @@
 // Aufruf: node fokus/pruefen.mjs → Ausgang 0 = freigabefähig, 1 = nicht freigabefähig (Fehler oder offene Platzhalter).
 // Ohne Abhängigkeiten außer website/pruefen.mjs (läuft so auch auf dem Server oder in der CI).
 
-import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { join, dirname, relative, extname } from 'node:path';
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SPERRLISTE, FIRMIERUNG, ALTER_NAME, SOFTWARE_NAME, PREISE, VERBOTENE_WOERTER, SKRIPT_VERBOTEN, TRACKER } from '../website/pruefen.mjs';
+import { SPERRLISTE, FIRMIERUNG, ALTER_NAME, SOFTWARE_NAME, PREISE, VERBOTENE_WOERTER, SKRIPT_VERBOTEN, TRACKER, alleDateien } from '../website/pruefen.mjs';
 
 const PLATZHALTER = /\[\[KEVIN:([^\]]*)\]\]/g;
 // Zusammengesetzt, damit tests/repo-sauber.test.ts (keine echten Adressen im Code) die Adresse nicht als Fund meldet.
@@ -33,7 +33,7 @@ export const EXTERN_ERLAUBT = ['https://makeinnovation.de', 'https://makeinnovat
 const SEITEN_MIT_PFLICHT = ['index.html', 'impressum.html', 'datenschutz.html'];
 /** Arbeitsdateien im Ordner — nie ausgeliefert (Caddy: @intern → 404 und file_server hide; Vorschlag in LIESMICH.md). */
 export const NICHT_OEFFENTLICH = ['LIESMICH.md', 'pruefen.mjs'];
-/** Die Städte der Reihe (Kevin 03.10.) — Kennung wie in scripts/fokus-seite.mjs. */
+/** Die Städte der Reihe (Kevin 03.10.) — Kennung und Name wie in scripts/fokus-seite.mjs (Wächter: tests/fokus-seite.test.ts). */
 export const STAEDTE = { berlin: 'Berlin', hamburg: 'Hamburg', bielefeld: 'Bielefeld', koeln: 'Köln', muenchen: 'München' };
 /** Hauptweg: vorbereitete Mail mit Betreff „Fokus Innovation – Teilnahme“ (Text vorbereitet). */
 export const TEILNAHME_MAIL = /^mailto:hello@makeinnovation\.de\?subject=Fokus%20Innovation%20%E2%80%93%20Teilnahme&amp;body=[^"]+$/;
@@ -54,15 +54,6 @@ export const GLEICH_WIE_WEBSITE = {
 export const GETEILTE_TOKENS = ['--grund', '--grundTief', '--flaeche', '--flaecheHoch', '--linie', '--ink', '--inkDim', '--inkLeise', '--aktiv', '--aktivSanft', '--achtung', '--granat', '--smaragd', '--schrift-display', '--schrift-text', '--breite', '--kopf'];
 export const GROESSE_MAX = 250 * 1024;
 
-function alleDateien(ordner, basis = ordner) {
-  const raus = [];
-  for (const name of readdirSync(ordner)) {
-    const pfad = join(ordner, name);
-    if (statSync(pfad).isDirectory()) raus.push(...alleDateien(pfad, basis));
-    else raus.push(relative(basis, pfad).split('\\').join('/'));
-  }
-  return raus.sort();
-}
 const zeileVon = (text, index) => text.slice(0, index).split('\n').length;
 const anker = html => new Set(Array.from(html.matchAll(/\sid="([^"]+)"/g), m => m[1]));
 const sichtbar = html => html.replace(/<!--[\s\S]*?-->/g, ' ').replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ');

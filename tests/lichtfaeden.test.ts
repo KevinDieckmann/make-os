@@ -7,7 +7,8 @@ import { fadenSaaten, versatz, gauss, saettigen, wertBei, kurve, textSaat, zufal
 import { starteLauf } from '@/lib/lichtfaeden/zeichnen';
 import { BAND_MASSE, bandMasse, hellBei, dichteBei, sanft, engstellenGruppen, type BandBild } from '@/lib/lichtfaeden/faedenband';
 import { stapeln } from '@/lib/planung/zeitstrahl';
-import { erzeugen, ZIEL } from '../scripts/lichtfaeden-website.mjs';
+import { erzeugen, ZIELE } from '../scripts/lichtfaeden-website.mjs';
+import { ZEICHNER as FOKUS_ZEICHNER } from '../scripts/fokus-seite.mjs';
 
 describe('Lichtfäden — Mathematik', () => {
   it('Saaten und Versatz sind deterministisch und begrenzt', () => {
@@ -136,11 +137,15 @@ describe('Lauf — Bewegung und reduzierte Bewegung', () => {
 });
 
 describe('Website-Kopie der Lichtfäden', () => {
-  it(`${ZIEL} entspricht band.ts + zeichnen.ts (sonst: node scripts/lichtfaeden-website.mjs)`, () => {
-    expect(readFileSync(join(__dirname, '..', ZIEL), 'utf8')).toBe(erzeugen());
+  it('das Skript schreibt website/ UND fokus/ (eine Liste)', () => {
+    expect(ZIELE).toEqual(['website/js/lichtfaeden.js', 'fokus/js/lichtfaeden.js']);
+    expect(ZIELE).toContain(FOKUS_ZEICHNER);
+  });
+  it.each(ZIELE as string[])('%s entspricht band.ts + zeichnen.ts (sonst: node scripts/lichtfaeden-website.mjs)', (ziel: string) => {
+    expect(readFileSync(join(__dirname, '..', ziel), 'utf8')).toBe(erzeugen());
   });
   it('dieselben Parameter wie in der App, ohne Verbotenes', () => {
-    const js = readFileSync(join(__dirname, '..', ZIEL), 'utf8');
+    const js = readFileSync(join(__dirname, '..', ZIELE[0]), 'utf8');
     expect(js).toContain(`tempo: ${LICHTFAEDEN.tempo}`);
     expect(js).toContain(`rechner: ${LICHTFAEDEN.faeden.rechner}`);
     expect(js).not.toMatch(/\b(?:fetch|XMLHttpRequest|localStorage|sessionStorage|eval|Function)\b|innerHTML|import\s*\(/);

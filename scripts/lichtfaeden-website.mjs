@@ -2,11 +2,13 @@
 // ─── Lichtfäden → Website (03.10.2026) ──────────────────────────────────────
 // Die Landingpage (website/) ist statisch und hat keinen Bau-Schritt. Damit dort DIESELBEN Lichtfäden laufen wie in der
 // Planung, übersetzt dieses Skript lib/lichtfaeden/band.ts + zeichnen.ts (reine Mathematik + Zeichner, ohne Framework)
-// in EINE Datei website/js/lichtfaeden.js (IIFE, `globalThis.Lichtfaeden`). Keine Abhängigkeit zur Laufzeit.
+// in EINE Datei (IIFE, `globalThis.Lichtfaeden`) — für JEDE statische Seite in `ZIELE`: website/ (makeinnovation.de) und
+// fokus/ (fokusinnovation.de). Keine Abhängigkeit zur Laufzeit.
 //
-//   node scripts/lichtfaeden-website.mjs           → schreibt website/js/lichtfaeden.js
-//   node scripts/lichtfaeden-website.mjs --pruefen → Ausgang 1, wenn die Datei nicht zum Quelltext passt
-// Wächter: tests/lichtfaeden.test.ts vergleicht die Datei mit `erzeugen()` — wer band.ts/zeichnen.ts ändert, ruft das Skript.
+//   node scripts/lichtfaeden-website.mjs           → schreibt website/js/lichtfaeden.js UND fokus/js/lichtfaeden.js
+//   node scripts/lichtfaeden-website.mjs --pruefen → Ausgang 1, wenn eine der Dateien nicht zum Quelltext passt
+// Wächter: tests/lichtfaeden.test.ts vergleicht jede Datei mit `erzeugen()` — wer band.ts/zeichnen.ts ändert, ruft das Skript.
+// (scripts/fokus-seite.mjs erzeugt fokus/js/lichtfaeden.js mit demselben `erzeugen()` — beide schreiben dasselbe.)
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -15,7 +17,8 @@ import ts from 'typescript';
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const QUELLEN = ['lib/lichtfaeden/band.ts', 'lib/lichtfaeden/zeichnen.ts'];
-export const ZIEL = 'website/js/lichtfaeden.js';
+/** Wohin der Zeichner geschrieben wird — eine Zeile je statischer Seite. */
+export const ZIELE = ['website/js/lichtfaeden.js', 'fokus/js/lichtfaeden.js'];
 
 /** Den Inhalt von website/js/lichtfaeden.js aus dem Quelltext erzeugen (rein, deterministisch). */
 export function erzeugen(wurzel = WURZEL) {
@@ -47,14 +50,19 @@ export function erzeugen(wurzel = WURZEL) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const soll = erzeugen();
-  const pfad = join(WURZEL, ZIEL);
-  if (process.argv.includes('--pruefen')) {
-    let ist = '';
-    try { ist = readFileSync(pfad, 'utf8'); } catch { /* fehlt */ }
-    if (ist !== soll) { console.error(`${ZIEL} passt nicht zu ${QUELLEN.join(' + ')} — node scripts/lichtfaeden-website.mjs`); process.exit(1); }
-    console.log(`${ZIEL} aktuell (${soll.length} Zeichen).`);
-  } else {
-    writeFileSync(pfad, soll);
-    console.log(`${ZIEL} geschrieben (${soll.length} Zeichen).`);
+  const pruefen = process.argv.includes('--pruefen');
+  let falsch = 0;
+  for (const ziel of ZIELE) {
+    const pfad = join(WURZEL, ziel);
+    if (pruefen) {
+      let ist = '';
+      try { ist = readFileSync(pfad, 'utf8'); } catch { /* fehlt */ }
+      if (ist !== soll) { console.error(`${ziel} passt nicht zu ${QUELLEN.join(' + ')} — node scripts/lichtfaeden-website.mjs`); falsch++; }
+      else console.log(`${ziel} aktuell (${soll.length} Zeichen).`);
+    } else {
+      writeFileSync(pfad, soll);
+      console.log(`${ziel} geschrieben (${soll.length} Zeichen).`);
+    }
   }
+  if (falsch) process.exit(1);
 }

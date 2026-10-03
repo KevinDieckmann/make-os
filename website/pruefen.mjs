@@ -92,7 +92,8 @@ export const SKRIPT_VERBOTEN = /\b(?:fetch|XMLHttpRequest|sendBeacon|WebSocket|E
 export const TRACKER = /google-analytics|googletagmanager|gtag\(|fonts\.googleapis|fonts\.gstatic|facebook\.(?:net|com)|hotjar|matomo|plausible|clarity\.ms|doubleclick/i;
 
 /** Alle Dateien unter `ordner` (relativ, mit „/“). */
-function alleDateien(ordner, basis = ordner) {
+/** Alle Dateien eines Ordners (rekursiv, relativ, sortiert) — auch von fokus/pruefen.mjs genutzt. */
+export function alleDateien(ordner, basis = ordner) {
   const raus = [];
   for (const name of readdirSync(ordner)) {
     const pfad = join(ordner, name);

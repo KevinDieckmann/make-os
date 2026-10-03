@@ -97,8 +97,9 @@ Kevins Leitidee: **„immer der Fokus auf die Ziele“.** Wo ein Bereich Ziele h
 **Neu im Standard:**
 | Baustein | Zweck |
 |---|---|
-| `ZielBezug bereich=…` | Ruhiger Chip „ZAHLT EIN AUF · <Jahresziel> · 40 %“ unter dem Kopf (44 px, Link ins Ziel der Planung). Auswahl rein in `lib/make-one/ziel-bezug.ts`: 1. Meilensteine des Bereichs mit `zielId` · 2. Stichwort im Zieltitel · 3. oberstes offenes privates Jahresziel (dann ehrlich „OBERSTES ZIEL“). Farbe nach der EINEN Farbregel für Ziele (`zielFarben`, lib/lichtfaeden/modell.ts) — dieselbe wie im Zeitstrahl und an den Ziel-Chips der Aufgaben (`ZielChip`, je Aufgabe; `ZielBezug` ist der Bezug je Bereich). Ohne Ziel steht ein leiser Weg in die Planung; keine Schreibwege. Bereiche: `gesundheit` · `training` · `beziehung` · `wissen` · `privat`. Einsatz: Gesundheit, Journal, Sport, Säule Gesundheit/Familie, Familie & Partnerschaft, Kompass, Wachstum, Privat-Übersicht. |
-| `Schalter` | Ein/Aus (Rolle `switch`): sichtbar 40 × 24, Tippfläche 56 × 44 — Routinen, Streak, Routinen-Planer. |
+| `ZielBezug bereich=…` | Ruhiger Chip „ZAHLT EIN AUF · <Jahresziel> · 40 %“ unter dem Kopf (44 px, Link ins Ziel der Planung). Auswahl rein in `lib/make-one/ziel-bezug.ts`: 1. das Thema der Meilensteine des Ziels — dieselbe Zuordnung wie die Lichtfäden (`zielThema`; Meilensteine über `zielVonMeilenstein`, abgeleitete Ziele aufs Jahresziel) · 2. sonst das oberste offene private Jahresziel (dann ehrlich „OBERSTES ZIEL“). Keine Stichworte im Titel, keine Namen im Code. Space ohne Angabe = Business (`spaceVonZiel`). Farbe kommt vom Server (`farbe` je Ziel, `lib/planung/ziel-farben-server.ts`) — dieselbe wie in den Lichtfäden und an den Ziel-Chips der Aufgaben (`ZielChip`, je Aufgabe; `ZielBezug` ist der Bezug je Bereich). Daten im Browser nur über `useZieleUndMeilensteine` (`lib/planung/ziele-client.ts`, ein Zwischenspeicher); der Chip ist der Baustein `Chip`. Ohne Ziel steht ein leiser Weg in die Planung; keine Schreibwege. Bereiche: `gesundheit` · `training` · `beziehung` · `wissen` · `privat`. Einsatz: Gesundheit, Journal, Sport, Säule Gesundheit/Familie, Familie & Partnerschaft, Kompass, Wachstum, Privat-Übersicht. |
+| `Schalter` | DER Ein/Aus-Schalter (Rolle `switch`), der einzige: sichtbar 40 × 24, Tippfläche ≥ 44. `onChange(v)` bekommt den neuen Zustand. Ohne Beschriftung ist `ariaLabel` Pflicht (Typ erzwingt es); mit `children` steht die Beschriftung rechts; `karte` = ganze Entscheidungszeile mit `beschreibung`/`symbol` (Netzwerken). Kein `role="switch"` außerhalb von `components/os/ui` (Wächter `tests/schalter-eine-quelle.test.ts`); die Finanzplanung reicht ihn nur durch. |
+| `useHandy` · `useBreit` · `useMedien` | EIN Hook für die Bildschirmbreite (`components/os/ui/medien.ts`, Grenzen `HANDY_BIS` 720 / `SPALTEN_AB` 1180 wie globals.css) — kein eigenes `matchMedia` für die Breite. |
 
 **Regeln für diesen Bereich (zusätzlich zu den 13):**
 1. **Ziel-Bezug** nur dort, wo ein Bereich auf ein Jahresziel einzahlt — höchstens ein Chip je Ansicht, nie als Schmuck in Karten.
@@ -140,11 +141,8 @@ Markierungen 28 px (Handy 44 px) in höchstens 4 (Handy 2) Reihen. Dichte: Gauß
 außerhalb des Bildes und im verborgenen Tab. 3. Zeichnen < 4 ms je Bild am Rechner. 4. Vergangenes gedämpft, HEUTE leuchtet, Engstellen als ruhige
 Säule + KW-Knopf (Bedeutung „achtung“, nie Alarmrot). 5. Farben nur aus `FADEN_FARBEN`/`THEMEN` (App) bzw. den Logo-Farben (Website). 6. Private Stränge der
 anderen Person nur als „Belegt“ (grau, ohne Titel/Link). 7. Wer `band.ts`/`zeichnen.ts` ändert, ruft `node scripts/lichtfaeden-website.mjs`
-(Wächter `tests/lichtfaeden.test.ts`). 8. Nie im Zeichner Daten rechnen.
-
-**Regeln:** 1. Bewegung nur als ruhiges Fließen; bei `prefers-reduced-motion` ein Standbild (t = 0). 2. Lauf pausiert außerhalb des Bildes und im verborgenen Tab.
-3. Höchstens ~160 Fäden je Leinwand am Rechner, ~80 am Handy; Zeichnen < 4 ms je Bild. 4. Vergangenes gedämpft, HEUTE leuchtet. 5. Farben nur aus `FADEN_FARBEN`
-(App) bzw. den Logo-Farben (Website). 6. Wer `band.ts`/`zeichnen.ts` ändert, ruft `node scripts/lichtfaeden-website.mjs` (Wächter `tests/lichtfaeden.test.ts`).
+— es schreibt `website/js/lichtfaeden.js` UND `fokus/js/lichtfaeden.js` (Liste `ZIELE`; Wächter `tests/lichtfaeden.test.ts`). 8. Nie im Zeichner Daten rechnen.
+9. Ziel-Farben rechnet nur der Server (`lib/planung/ziel-farben-server.ts`, Feld `farbe` an jedem Ziel) — Oberflächen nehmen sie, wie sie kommen.
 
 ## Umgestellt: Kern — Shell · Aufgaben · Kalender · Inbox (03.10.)
 Reine Darstellung und Struktur; Funktion, Daten und Abgleich (iCloud/Google/Gmail) unverändert. Wächter: `tests/design-kern.test.ts`.
