@@ -311,7 +311,7 @@ export function Zeitstrahl({ von, bis, marker, ticks, baender, onMarker, onTag, 
         )}
 
         {/* Ticks — Hintergrund-Ebene; weichen dem HEUTE-Label aus. Jahreszahl am Jahreswechsel (und am Anfang). */}
-        {ticks.filter(tk => !heuteDrin || Math.abs(frak(tk.date) - heuteX) * breite > 28).map(tk => {
+        {ticks.filter(tk => { if (!heuteDrin) return true; const x = frak(tk.date) * breite, d = Math.abs(x - heuteX * breite); /* am Rand bündig gesetzte Monate ragen weiter zur Mitte */ return d > (x < 16 || x > breite - 16 ? 56 : 28); }).map(tk => {
           // Am Rand nicht abschneiden: der erste Monat steht links bündig, der letzte rechts bündig.
           const x = frak(tk.date) * breite;
           const rand = x < 16 ? 'translateX(0)' : x > breite - 16 ? 'translateX(-100%)' : 'translateX(-50%)';
