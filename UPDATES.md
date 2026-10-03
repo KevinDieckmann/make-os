@@ -4,6 +4,16 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Netzwerken · Kontakt auch ins Handy speichern (03.10.2026, nur lokal — Branch `netz-vcf`, auf `entwicklung` 359e7d5)
+
+Kevin 03.10.: „Kontakt auch direkt aufs Handy speichern: geht ans CRM UND die Daten ins Handy.“ Alles im Browser, keine Daten an Dritte, keine neue Server-Route.
+
+- **Erfassen › Fertig:** Knopf **„Auch im Handy speichern“** (Symbol Adressbuch). Baut aus den erfassten Feldern (Name, Firma, Position, Mail, Telefon, Handy, Website, Anschrift, LinkedIn) eine vCard 3.0 — derselbe Baustein wie bei „Meine Visitenkarte“ (`lib/netzwerken/karte.ts`, Escaping/UTF-8/Falten) — und teilt sie per Web Share mit `.vcf`-Datei (iOS: „Kontakt hinzufügen“); Rückfall: Download `name.vcf` (iOS Safari: Kontaktvorschau). Geht auch, solange die Erfassung noch in der Warteschlange wartet (die Daten liegen lokal vor).
+- **Notiz im Handy-Kontakt:** nur „Kennengelernt bei <Event>, <Datum> · MAKE OS“ — nie Schritt, Zuständigkeit, Info oder Lead-Angaben.
+- **Erfassen › Bestätigen:** Schalter „Auch im Handy speichern“ (je Gerät gemerkt, localStorage nur als Komfort). Teilen löst nie von selbst aus (iOS verlangt eine Nutzer-Geste): ist der Schalter an, steht der Knopf auf der Fertig-Ansicht hervorgehoben bereit.
+- **Kontaktakte › Schnellleiste:** neuer Knopf **„Ins Handy“** für bestehende Kontakte (aus den Kartei-Daten, ohne Notiz). Eingeschränkte Personen (Art. 18): Knopf aus, Hinweis im Tooltip; in Erfassen zeigt sich der Grund direkt unter dem Schalter/Knopf.
+- Neu: `lib/netzwerken/handy.ts`; `vcard()` kennt jetzt eine optionale `notiz` (NOTE). Test: `tests/netzwerken-handy.test.ts` (Felder, Escaping, Umlaute, Notiz ohne Internes, Art. 18, Teilen/Download, Knöpfe).
+
 ## Netzwerken — Korrekturen aus der Lese-Prüfung (03.10.2026, nur lokal — Branch `netz-fix`, auf `entwicklung` 7f61114)
 
 Veranstaltung heute: die Prüfung fand echte Lücken im Fluss. Behoben, je mit Test (`tests/netzwerken-korrektur.test.ts`, `-abmelden.test.ts`, `-logik.test.ts`, `-route.test.ts`):

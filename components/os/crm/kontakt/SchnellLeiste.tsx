@@ -13,13 +13,14 @@
 //   Qualifizieren                LeadBlock (Lead-Status, Score, Kernfragen) + Sprung in die Qualifizierungsrunde
 //   Vermitteln                   DealAnlegen, vorbelegt mit der Art „Vermittlung“ (ein Deal, kein Zweitweg)
 //   Angebot                      Angebots-Entwurf (angebotLink mit Person/Firma)
+//   Ins Handy                    vCard aus den Kartei-Daten, Teilen-Blatt bzw. .vcf-Download — alles im Browser (Art. 18: gesperrt)
 //   Make.One einladen            Gast für ein Event vormerken (Teilnahme „vorgemerkt“, Einladungsweg nach Ampel); die Einladung
 //                                selbst geht wie bisher persönlich bzw. nur mit grüner Ampel (§ 7 UWG) — kein Versand von hier.
 // Gesperrt wie überall: Art. 18 (eingeschränkt) alles, Werbesperre Mail/Anruf. Am Rechner bleibt die Spalte links wie sie war.
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { ArrowRightLeft, CalendarClock, Euro, ListChecks, Mail, Mic, PenLine, Phone, Sparkles, Star, X } from 'lucide-react';
+import { ArrowRightLeft, BookUser, CalendarClock, Euro, ListChecks, Mail, Mic, PenLine, Phone, Sparkles, Star, X } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, LEUCHT } from '../../schlank';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -28,6 +29,7 @@ import { kanalLink } from '@/lib/crm/erfassen';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { kontextAus } from '@/lib/crm/segmente';
 import { WEG } from '@/lib/wege';
+import { handyKarteAusKontakt, handyTeilen, handyMeldung } from '@/lib/netzwerken/handy';
 import { type CrmApi, neueId, datum } from '../daten';
 import { NotizAktion, EmailAktion, AnrufAktion, AufgabeAktion, MeetingAktion, Hinweis } from '../KontaktSpalten';
 import { LeadBlock } from '../Leads';
@@ -130,6 +132,15 @@ export function SchnellLeiste({ k, api, heute, ampel }: { k: Kontakt; api: CrmAp
     if (sperre && (was === 'mail' || was === 'anruf')) return 'Werbesperre — kein Kanal';
     return undefined;
   };
+  // „Ins Handy“: die Kartei-Daten als vCard — direkt aus dem Tipp (iOS erlaubt das Teilen nur nach einer Geste), nichts geht an Dritte.
+  const handy = handyKarteAusKontakt(k);
+  const handyAus = !handy.ok ? handy.grund : undefined;
+  const insHandy = async () => {
+    if (!handy.ok) return;
+    const r = await handyTeilen(handy.karte);
+    const t = handyMeldung(r);
+    if (t) setMeldung(t);
+  };
   const fertig = (t: string) => { setMeldung(t); setAktion(null); };
   const knopf = (id: Aktion, label: string, zeichen: ReactNode, farbe?: string) => {
     const g = grund(id);
@@ -161,6 +172,7 @@ export function SchnellLeiste({ k, api, heute, ampel }: { k: Kontakt; api: CrmAp
           {art18
             ? <span title={grund('angebot')} aria-disabled="true" style={pille(false, true)}><span aria-hidden><Euro {...SYM} /></span>Angebot</span>
             : <Link href={WEG.angebot({ kontaktId: k.id, firmaId: k.firmaId })} style={pille(false, false)}><span aria-hidden><Euro {...SYM} /></span>Angebot</Link>}
+          <button type="button" onClick={() => void insHandy()} disabled={!!handyAus} title={handyAus ?? 'Kontakt im Handy speichern'} data-testid="ins-handy" style={pille(false, !!handyAus)}><span aria-hidden><BookUser {...SYM} /></span>Ins Handy</button>
           {knopf('einladen', 'Make.One einladen', <Sparkles {...SYM} />)}
         </div>
       </div>

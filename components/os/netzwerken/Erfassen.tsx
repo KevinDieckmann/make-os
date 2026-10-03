@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { ArrowRightLeft, CalendarClock, Camera, Euro, ImagePlus, ListChecks, Mic, PenLine, Sparkles, Star, UserCheck, type LucideIcon } from 'lucide-react';
+import { ArrowRightLeft, BookUser, CalendarClock, Camera, Euro, ImagePlus, ListChecks, Mic, PenLine, Sparkles, Star, UserCheck, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { zufallsUuid } from '@/lib/kennung';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -22,7 +22,7 @@ import type { NetzwerkSchritt } from '@/lib/crm/typen';
 import { WEG } from '@/lib/wege';
 import { Fenster } from '../Fenster';
 import type { CrmApi } from '../crm/daten';
-import { Gross, Wahl, Beschriftung, Feldzeile, Hinweis, Fortschritt, Aktionsleiste, Initialen, LinkChips, type LinkChip, eingabe, kopfStil, tagText, ZIEL } from './bausteine';
+import { Gross, Wahl, Beschriftung, Feldzeile, Hinweis, Fortschritt, Aktionsleiste, Initialen, LinkChips, useGemerkt, type LinkChip, eingabe, kopfStil, tagText, ZIEL } from './bausteine';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Firma } from '@/lib/crm/typen';
 
@@ -37,6 +37,7 @@ import type { EventWahl } from './EventModus';
 import type { Person, useWarteschlange } from './useNetzwerken';
 import { NUR_RAM_HINWEIS } from '@/lib/netzwerken/warteschlange';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
+import { handyKarteAusErfassung, handyKarteAusKontakt, handyTeilen, handyMeldung, HANDY_SPEICHER_KEY, type HandyErgebnis } from '@/lib/netzwerken/handy';
 
 type Warte = ReturnType<typeof useWarteschlange>;
 type Phase = 'karte' | 'schritt' | 'bestaetigen' | 'fertig';
@@ -123,6 +124,13 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
   const treffer = useMemo(() => kenntWirSchon({ vorname: f.vorname, nachname: f.nachname, firma: f.firma, email: emailNormal(f.email) ?? f.email, telefon: f.telefon, mobil: f.mobil }, kontakte), [f.vorname, f.nachname, f.firma, f.email, f.telefon, f.mobil, kontakte]);
   const starkOffen = !e.vorhandenId && !e.neuErzwingen && treffer.some(t => !t.gesperrt && (t.staerke === 'mail' || t.staerke === 'telefon' || t.staerke === 'name-firma'));
   const gewaehlt = e.vorhandenId ? kontakte.find(k => k.id === e.vorhandenId) : undefined;
+
+  // ── Auch im Handy speichern (03.10.): vCard aus den erfassten Feldern — liegt lokal vor, auch solange die Erfassung noch wartet ──
+  const [handyAn, setHandyAn] = useGemerkt<boolean>(HANDY_SPEICHER_KEY, false);
+  const handy: HandyErgebnis = useMemo(
+    () => (gewaehlt ? handyKarteAusKontakt(gewaehlt, { event: wahl?.titel, datum: wahl?.datum }) : handyKarteAusErfassung(f, { event: wahl?.titel, datum: wahl?.datum })),
+    [gewaehlt, f, wahl?.titel, wahl?.datum],
+  );
 
   // ── Firma ──
   const firmen = api.crm?.stand.firmen ?? KEINE_FIRMEN;
@@ -438,6 +446,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
             ))}
           </section>
           {!e.vorhandenId && <Hinweis>Quelle „{NETZWERKEN_QUELLE}“ · <b>keine Werbe-Einwilligung</b> — {KEINE_EINWILLIGUNG}. Die Danke-Mail liegt ab morgen als Entwurf bereit; verschickt wird nur per Klick.</Hinweis>}
+          <HandySchalter an={handyAn && handy.ok} onUm={setHandyAn} grund={handy.ok ? undefined : handy.grund} />
           {offline && <Hinweis farbe={LEUCHT.achtung}>Kein Netz erkannt — die Erfassung bleibt auf dem Gerät und wird gesendet, sobald Netz da ist.</Hinweis>}
           <Aktionsleiste>
             {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
@@ -449,7 +458,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
         </>
       )}
 
-      {phase === 'fertig' && gesendetId && <Fertig id={gesendetId} warte={warte} name={personName || 'Person'} zustaendig={nameVon(e.zustaendig)} foto={e.fotos[0]?.dataUrl ?? null} onNochEine={nochEine} onBericht={onBericht} schritt={sch ?? undefined} />}
+      {phase === 'fertig' && gesendetId && <Fertig id={gesendetId} warte={warte} name={personName || 'Person'} zustaendig={nameVon(e.zustaendig)} foto={e.fotos[0]?.dataUrl ?? null} onNochEine={nochEine} onBericht={onBericht} schritt={sch ?? undefined} handy={handy} hervor={handyAn} />}
 
       {gross && (
         <Fenster titel={`Foto ${e.fotos.findIndex(x => x.id === gross.id) + 1}`} onZu={() => setGross(null)} breit={900}>
@@ -494,7 +503,7 @@ function KartenPlatzhalter({ name }: { name: string }) {
 }
 
 /** Nach dem Speichern: was gerade passiert — gesendet, wartet aufs Netz oder abgelehnt. Bei „gesendet“ landet die Karte in der Kartei. */
-function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schritt }: { id: string; warte: Warte; name: string; zustaendig: string; foto: string | null; onNochEine: () => void; onBericht: () => void; schritt?: NetzwerkSchritt }) {
+function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schritt, handy, hervor }: { handy: HandyErgebnis; hervor: boolean; id: string; warte: Warte; name: string; zustaendig: string; foto: string | null; onNochEine: () => void; onBericht: () => void; schritt?: NetzwerkSchritt }) {
   const e = warte.eintraege.find(x => x.id === id);
   const a = warte.antworten[id];
   const wartet = e?.status === 'wartet';
@@ -534,10 +543,49 @@ function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schr
       {/* Platz für die Verknüpfungen der Erfassung (Termin · Deal · Follow-up · Event): eine Zeile Chips, leer = unsichtbar. */}
       {!wartet && !fehlt && <LinkChips links={verknuepfungen} />}
       {!wartet && !fehlt && a?.angebotId && <Link href={WEG.angebot({ angebotId: a.angebotId })} className="fassbar" style={verlinkt}>Angebots-Entwurf öffnen ›</Link>}
+      <HandyKnopf handy={handy} hervor={hervor} />
       <Aktionsleiste>
         <Gross ton="haupt" onClick={onNochEine}>Nächste Karte</Gross>
         <Gross onClick={onBericht} kleinerAbstand>Heute erfasst ansehen</Gross>
       </Aktionsleiste>
     </section>
+  );
+}
+
+/** Bestätigen: „Auch im Handy speichern“ — gemerkt je Gerät. Teilt nicht selbst (iOS erlaubt das nur nach einem Tipp), blendet nur auf der Fertig-Ansicht den Knopf hervorgehoben ein. */
+export function HandySchalter({ an, onUm, grund }: { an: boolean; onUm: (v: boolean) => void; grund?: string }) {
+  const aus = !!grund;
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <button type="button" role="switch" aria-checked={an} disabled={aus} onClick={() => onUm(!an)} className="fassbar" data-testid="handy-schalter"
+        style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: ZIEL, padding: '10px 14px', borderRadius: 14, textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.body, color: aus ? C.inkLeise : C.ink, cursor: aus ? 'default' : 'pointer',
+          border: `1px solid ${an ? TIEF.rand(C.aktiv) : 'rgba(255,255,255,.12)'}`, background: an ? TIEF.flaeche(C.aktiv) : 'rgba(255,255,255,.04)' }}>
+        <BookUser size={20} aria-hidden style={{ flex: '0 0 auto', color: an ? C.aktiv : C.inkDim }} />
+        <span style={{ flex: 1, minWidth: 0 }}><b>Auch im Handy speichern</b><span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{aus ? grund : 'Danach liegt der Kontakt-Knopf bereit — die Daten bleiben im Browser.'}</span></span>
+        <span aria-hidden style={{ flex: '0 0 auto', width: 44, height: 26, borderRadius: 13, position: 'relative', background: an ? C.aktiv : 'rgba(255,255,255,.18)' }}>
+          <span style={{ position: 'absolute', top: 3, left: an ? 21 : 3, width: 20, height: 20, borderRadius: 10, background: '#fff', transition: 'left .15s' }} />
+        </span>
+      </button>
+    </div>
+  );
+}
+
+/** Fertig-Ansicht: der Knopf „Auch im Handy speichern“ — funktioniert auch, solange die Erfassung noch wartet (die Daten liegen lokal vor). `hervor`: Schalter war an. */
+export function HandyKnopf({ handy, hervor }: { handy: HandyErgebnis; hervor: boolean }) {
+  const [meldung, setMeldung] = useState<string | null>(null);
+  const tipp = async () => {
+    if (!handy.ok) return;
+    setMeldung(null);
+    const r = await handyTeilen(handy.karte);
+    setMeldung(handyMeldung(r));
+  };
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <Gross ton={hervor ? 'haupt' : 'leise'} onClick={() => void tipp()} aus={!handy.ok} titel={handy.ok ? 'Kontakt im Handy speichern' : handy.grund}>
+        <BookUser size={20} aria-hidden />Auch im Handy speichern
+      </Gross>
+      {!handy.ok && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{handy.grund}</div>}
+      {meldung && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>✓ {meldung}</div>}
+    </div>
   );
 }

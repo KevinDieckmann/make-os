@@ -251,8 +251,9 @@ export function vFalten(zeileText: string): string {
 /**
  * Die vCard 3.0 eines Profils — nur gesetzte Felder. `falten` für die .vcf-Datei, im QR-Code aus.
  * N/FN nach Konvention (Nachname;Vorname); ohne Namen steht die Firma als FN (Firmenkarte, X-ABShowAs:COMPANY).
+ * `notiz` → NOTE (Handy-Kontakt aus der Erfassung: „Kennengelernt bei …“, 03.10.).
  */
-export function vcard(k: Visitenkarte, opt: { falten?: boolean; mitLogo?: boolean } = {}): string {
+export function vcard(k: Visitenkarte, opt: { falten?: boolean; mitLogo?: boolean; notiz?: string } = {}): string {
   const z: string[] = ['BEGIN:VCARD', 'VERSION:3.0'];
   const name = kartenName(k);
   z.push(`N:${vMaske(k.nachname ?? '')};${vMaske(k.vorname ?? '')};;;`);
@@ -273,6 +274,7 @@ export function vcard(k: Visitenkarte, opt: { falten?: boolean; mitLogo?: boolea
     const r = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/.exec(k.logo);
     if (r && r[2].length <= VCARD_LOGO_MAX) z.push(`PHOTO;ENCODING=b;TYPE=${r[1] === 'png' ? 'PNG' : 'JPEG'}:${r[2]}`);
   }
+  if (opt.notiz?.trim()) z.push(`NOTE:${vMaske(opt.notiz.trim())}`);
   z.push('END:VCARD');
   return (opt.falten ? z.map(vFalten) : z).join('\r\n') + '\r\n';
 }
