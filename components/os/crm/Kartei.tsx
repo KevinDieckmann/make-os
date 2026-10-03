@@ -436,7 +436,7 @@ function Karteikarte({ k, api, name, zuFirma, zuAkte }: { k: Kontakt; api: CrmAp
       </div>
       <div style={{ display: 'flex', gap: 6, marginTop: -6, flexWrap: 'wrap' }}>
         <Chip farbe={phaseFarbe(k.lebensphase)}>{phaseLabel(k.lebensphase)}</Chip>{rollenVon(k).map(r => <Chip key={r} farbe={LEUCHT.business}>{ROLLE_LABEL[r]}</Chip>)}{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
-        <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe]}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
+        <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe] ?? k.stufe}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
         <AuchHier passt={p => p.includes(`k=${k.id}`)} was="bei dieser Person" />
       </div>
       <Hinweise k={k} heute={heute} setze={setze} />

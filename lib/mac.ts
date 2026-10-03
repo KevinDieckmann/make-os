@@ -9,7 +9,10 @@
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 
-export const AUF_DEM_MAC = process.platform === 'darwin';
+// Prüf- und Testumgebungen (03.10.): Läuft MAKE OS mit eigenem Datenordner (`MAKE_OS_DATEN_DIR`, Sandbox/Prüfbau) oder mit
+// `MAKE_OS_OHNE_APPLE=1`, liest es NIE Kevins echte Apple-Daten (Mail, Kalender, Erinnerungen, Kontakte) — ein Prüflauf auf
+// dem Mac hatte sonst den echten Posteingang in der Sandbox gezeigt. Der normale Start nutzt `<repo>/.data` ohne Variable.
+export const AUF_DEM_MAC = process.platform === 'darwin' && !process.env.MAKE_OS_DATEN_DIR && !/^(1|ja|true)$/i.test(process.env.MAKE_OS_OHNE_APPLE ?? '');
 export const NUR_MAC = 'Das geht nur direkt auf Kevins Mac (Apple). Auf dem Server siehst du den zuletzt zugelieferten Stand.';
 
 export type Zulieferung = 'kalender' | 'mail' | 'erinnerungen' | 'kontakte';

@@ -63,7 +63,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
     <div style={{ display: 'grid', gap: 22 }}>
       {eventsMit.length > 1 && (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }} aria-label="Event wählen">
-          {eventsMit.map(e => <Wahl key={e.id} klein an={e.id === aktiv} onClick={() => setEventId(e.id)}>{e.titel}</Wahl>)}
+          {eventsMit.map(e => <span key={e.id} style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}><Wahl klein an={e.id === aktiv} onClick={() => setEventId(e.id)}>{e.titel}</Wahl></span>)}
         </div>
       )}
       {bericht && event && (

@@ -1,12 +1,14 @@
-# Go-Live-Checkliste — Stand `entwicklung` ab Netzwerken-Korrekturen (03.10.2026; online läuft `1818c5c`)
+# Go-Live-Checkliste — großes Update vom 03.10.2026 (online läuft `5202a69`)
 
-**Urteil: Ja, mit Bedingungen.** Im Code blockiert nichts: tsc, Lint und alle Tests sind grün. Hochgeladen wird
-`1818c5c..entwicklung` (Ziel ↔ Meilenstein, Finanzplanung-Kern-Umbau mit Steuerprofil, Netzwerken › Erfassen/Visitenkarte/Korrekturen,
-Landingpage). Der Online-Stand `1818c5c` enthält schon alles aus den früheren Paketen (Kalender-Bezug, Buchungsseite,
-Wochenplan-Übernahme, strenge Caddy-Köpfe, mehrstufige Unteraufgaben); diese Punkte stehen unten nur noch als „früher“.
+**Urteil: Ja, mit Bedingungen.** Im Code blockiert nichts: tsc, Lint und alle Tests sind grün, Abschluss-Praxisprüfung ohne
+schweren Fund. Hochgeladen wird `5202a69..entwicklung`: Events/Make.One getrennt und verbunden, Netzwerken-Recht/Verbindungen/
+Praxis-Fixes, Qualifizierung & Scoring, Firmen zusammenführen mit Archiv, Anmelde-Adressen je Konto, Netzwerken nur am Handy,
+OAuth-Rückruf Whoop/M365, Google Kalender + Gmail (ohne Einrichtung aus), Design-Standard (Markttraktion, Zahlen & Finanzen),
+Landingpage v4. Der Online-Stand `5202a69` enthält schon alles bis zur Netzwerken-Grundversion inkl. vCard und iPhone-Fixes
+(Finanzplanung-Kern-Umbau, Ziel ↔ Meilenstein, Landingpage v3); diese Punkte stehen unten nur noch als „früher“.
 
 **Rückweg ist möglich (Kompatibilitätsmodus).** Ohne `MAKE_OS_FORMAT` schreibt die neue Version im Format des Online-Stands
-(v1-Hülle, `MKOSDAT1`, kein `_v`). Beim Zurückgehen auf `1818c5c` fallen nur Dinge weg, die dieser Stand nicht kennt (Liste
+(v1-Hülle, `MKOSDAT1`, kein `_v`). Beim Zurückgehen auf `5202a69` fallen nur Dinge weg, die dieser Stand nicht kennt (Liste
 unten unter „Rückweg“). Erst `MAKE_OS_FORMAT=v2` macht den Upload zur Einbahnstraße (dann nur noch über die Sicherung zurück).
 
 Alle Befehle auf dem Server als `make`, im Ordner `/srv/make-os/app`, außer wo „am Mac“ steht. Werte (Schlüssel, Passwörter)
@@ -21,19 +23,19 @@ nie in Chat oder Repo.
    `id -u make` → `1000` · `test -d /srv/make-os/grabsteine && test -d /srv/make-os/schluessel && echo ORDNER-OK` ·
    Datenschlüssel liegt, wo er lag (`.env` oder Schlüssel-Datei — der Online-Stand kennt beide) · age/Pepper wie gehabt.
 5. **Kevin und Malin schließen alle MAKE-OS-Tabs auf allen Geräten** und geben bis nach „Direkt nach dem Upload“ 4 nichts ein.
-6. **Sicherung und altes Bild merken (Pflicht)** — das alte Bild bekommt den Tag `make-os:1818c5c` — Zeile für Zeile, jede Ausgabe prüfen:
+6. **Sicherung und altes Bild merken (Pflicht)** — das alte Bild bekommt den Tag `make-os:5202a69` — Zeile für Zeile, jede Ausgabe prüfen:
    ```
    docker compose stop app arbeiter
    sudo tar -C /srv/make-os --exclude='daten/brain-index.sqlite*' -czf /srv/make-os/sicherungen/vor-upload-$(date +%F-%H%M).tar.gz daten grabsteine; echo "tar-Ergebnis: $?"
-   docker tag make-os:aktuell make-os:1818c5c
+   docker tag make-os:aktuell make-os:5202a69
    docker compose start app arbeiter
    docker image ls make-os
-   docker run --rm --entrypoint sh make-os:1818c5c -c 'test -e lib/aufgaben/ebenen.ts && test ! -e lib/netzwerken/warteschlange.ts && echo ALTES-BILD-OK'
+   docker run --rm --entrypoint sh make-os:5202a69 -c 'test -e lib/netzwerken/warteschlange.ts && test ! -e lib/crm/scoring.ts && echo ALTES-BILD-OK'
    sudo chown make:make /srv/make-os/sicherungen/vor-upload-*.tar.gz && chmod 600 /srv/make-os/sicherungen/vor-upload-*.tar.gz
    ```
-   Nur bei `tar-Ergebnis: 0`, gleicher Image-ID für `1818c5c` und `aktuell` und `ALTES-BILD-OK` weitermachen (die Probe
-   passt nur auf 1818c5c: `lib/aufgaben/ebenen.ts` gibt es dort, `lib/netzwerken/warteschlange.ts` erst im neuen Stand — am Mac
-   gegenprüfbar mit `git cat-file -e 1818c5c:lib/aufgaben/ebenen.ts` (ok) und `git cat-file -e 1818c5c:lib/netzwerken/warteschlange.ts` (muss „not in“ melden), `HEAD` kennt beide). Kopie auf den Mac nur
+   Nur bei `tar-Ergebnis: 0`, gleicher Image-ID für `5202a69` und `aktuell` und `ALTES-BILD-OK` weitermachen (die Probe
+   passt nur auf 5202a69: `lib/netzwerken/warteschlange.ts` gibt es dort, `lib/crm/scoring.ts` erst im neuen Stand — am Mac
+   gegenprüfbar mit `git cat-file -e 5202a69:lib/netzwerken/warteschlange.ts` (ok) und `git cat-file -e 5202a69:lib/crm/scoring.ts` (muss „not in“ melden), `HEAD` kennt beide). Kopie auf den Mac nur
    verschlüsselt: `age -R /srv/make-os/sicherung.pub -o <datei>.age <datei>`, dann die `.age`-Datei per `scp` holen.
 7. Auf GitHub: Repo-Variable `AUSROLLEN` ist nicht `aus`; im letzten Ausroll-Log stehen `ausrollen-v2` und „Bild zum Server schicken“.
 
@@ -52,7 +54,7 @@ Am Mac: `cd ~/Claude/Projects/MakeOS && git push origin entwicklung:main && git 
    Ansehen, aber kein Grund zum Rückweg: `[spiegel] n Termin(e) nicht nachgezogen: …` (Serie/Gäste/nur lesbar — Kennung +
    Grund stehen dabei). **Anhalten, nichts eingeben, Rückweg prüfen** bei jeder anderen Zeile, besonders
    `nicht lesbar`, `entschlüsselung`, `schluessel fehlt`, `[kalender-sicherung] Stand nicht lesbar`.
-3. **Caddy:** seit `1818c5c` unverändert — nichts neu zu laden. Am Mac vorab: `git diff --stat 1818c5c HEAD -- deploy compose.yml Dockerfile`
+3. **Caddy:** seit `5202a69` unverändert — nichts neu zu laden (neu in `deploy/` sind nur `env.server.beispiel` und `google-verbinden.sh`). Am Mac vorab: `git diff --stat 5202a69 HEAD -- deploy/caddy compose.yml Dockerfile`
    → leer (sonst die Schritte aus der alten Fassung dieser Liste nachholen: `caddy validate` + `caddy reload`). Neu ist nur die
    Abhängigkeit `qrcode-generator` (Dev: `jsqr`): das Image-Bauen läuft dafür `npm ci` — die Action macht das von selbst.
 4. Auf allen Geräten neu laden (Handy: Tab bzw. Home-Screen-App schließen und neu öffnen).
@@ -67,33 +69,41 @@ Am Mac: `cd ~/Claude/Projects/MakeOS && git push origin entwicklung:main && git 
    age auf `: warnung — age fehlt — Sicherung nur mit Übergangs-Verschlüsselung …`. Die Kalender-Tagesdateien
    (`archiv/kalender-export-*`) sind bewusst NICHT im Archiv.
 
-## Rückweg, falls nötig (solange `MAKE_OS_FORMAT` nicht `v2` ist) — Ziel: Online-Stand `1818c5c`
+## Rückweg, falls nötig (solange `MAKE_OS_FORMAT` nicht `v2` ist) — Ziel: Online-Stand `5202a69`
 **Vorher prüfen:**
 1. Offene Vorgänge: als Kevin im Browser `/api/intern/absichten` öffnen (oder am Server
    `docker compose exec -T app node -e "fetch('http://localhost:3000/api/intern/absichten',{headers:{'x-make-key':process.env.MAKE_OS_KEY}}).then(r=>r.text()).then(console.log)"`)
    → keine offene oder unvollständige Absicht. Offene zuerst fertig werden lassen.
 2. **Alle Handys mit „n warten“ leer senden lassen** (Abzeichen im Netzwerken-Bereich). Der alte Stand hat keine Seite, die die
    IndexedDB-Warteschlange (`make-os-netzwerken`) sendet; was dort liegt, wäre verloren.
-3. Offene Buchungsanfragen: `1818c5c` kennt die Buchungsseite — nichts zu tun. (Nur ein Rückweg auf `af4679a` hätte die Links
+3. Offene Buchungsanfragen: `5202a69` kennt die Buchungsseite — nichts zu tun. (Nur ein Rückweg auf `af4679a` hätte die Links
    getötet; siehe „Früher“.)
 
 **Dann:**
 ```
 docker compose stop app arbeiter
-docker tag make-os:1818c5c make-os:aktuell
+docker tag make-os:5202a69 make-os:aktuell
 docker compose up -d --no-build
 ```
 Danach am Mac `main` zurückdrehen, sonst rollt die nächste Action wieder aus:
 ```
-git switch -c rueckweg origin/main && git revert --no-edit --no-commit 1818c5c..HEAD && git commit -m "Rückweg: Stand 1818c5c"
-git diff --stat 1818c5c HEAD      # muss leer sein
+git switch -c rueckweg origin/main && git revert --no-edit --no-commit 5202a69..HEAD && git commit -m "Rückweg: Stand 5202a69"
+git diff --stat 5202a69 HEAD      # muss leer sein
 git push origin rueckweg:main
 ```
 Dieser Push rollt den alten Code erneut aus (gewollt). Wer das nicht will: vorher die Repo-Variable `AUSROLLEN=aus` setzen.
 Die Caddyfile ist unverändert (kein Reload nötig).
 Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist alles seit dem Upload weg).
 
-**Was beim Rückweg auf `1818c5c` wegfällt oder später doppelt kommen kann** (der Online-Stand verwirft beim nächsten Schreiben, was er nicht kennt):
+**Vor dem Rückweg zusätzlich (neu seit 03.10.):** Anmelde-Adressen — gewünschte Adresse zur Hauptadresse machen (der alte Stand
+kennt nur die Hauptadresse); Firmen-Zusammenführungen, die rückgängig sollen, VORHER im neuen Stand wiederherstellen
+(`/api/crm/firma-archiv`); Google Kalender/Gmail trennen ist nicht nötig (der alte Stand ignoriert die Bestände `google-verbindung--*`,
+`gmail-*`, Business-Termine liegen dann nur in Google); Bestand `events-geloescht` (gelöschte Event-Kennungen, 90 Tage) ist
+additiv, der alte Stand ignoriert ihn.
+
+**Was beim Rückweg auf `5202a69` wegfällt oder später doppelt kommen kann** (der Online-Stand verwirft beim nächsten Schreiben, was er nicht kennt).
+Punkte, die schon mit `5202a69` online kamen (Finanzplanung-Kern-Umbau, Netzwerken-Grundpaket bis vCard/iPhone-Fixes), sind
+beim Rückweg auf `5202a69` NICHT betroffen — sie stehen hier nur noch zur Geschichte:
 - **Finanzplanung: Kern-Umbau (02.10., Steuern einzeln · Selbstständigkeit eigene Achse · Einkommensteuer · zwei Felder gelöscht):**
   keine Formänderung am Dokument, nur optionale Zusatzfelder — geprüft am Säuberer von 1818c5c (`pruefeDokument`, `pruefePlanszenarien`). Der alte Stand **stürzt nicht ab** und liest das neue Dokument weiter:
   - `steuern` (Rechtsform, Sätze, Hebesatz, Verlustvortrag, Zahlweise, Tarif-Eckwerte je Gesellschaft) und `schwellen` stehen nicht in seiner
@@ -136,7 +146,7 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   - liest/schreibt `netzwerken-erfassungen--<haushalt>` nie (liegt ungenutzt; nach einem erneuten Upload gilt dieselbe Erfassungs-Kennung weiter → nichts doppelt);
   - Sprachnotizen (`audio/*`) liegen als Datei am Kontakt; der alte Stand zeigt sie in der Dateiliste, kann sie aber nicht abspielen (Download geht).
   Nach einem erneuten Upload: nichts nachzuziehen (Teilnahmen ohne `netzwerken` erscheinen nicht im Bericht — selten, nur für Erfassungen aus der Rückweg-Zeit).
-- **Netzwerken ↔ Events ↔ Make.One (03.10., Branch `netz-verbind`):** keine Formänderung, nur optionale Zusatzfelder; 1818c5c verwirft sie beim nächsten Speichern des jeweiligen Eintrags:
+- **Netzwerken ↔ Events ↔ Make.One (03.10., Branch `netz-verbind`):** keine Formänderung, nur optionale Zusatzfelder; 5202a69 verwirft sie beim nächsten Speichern des jeweiligen Eintrags:
   - `Teilnahme.herkunft` (Make.One-Gast „kam von <Event>“): weg — der Gast bleibt mit Status, Einladungsweg und `einladenDurch`; nur der Chip und der Link in die Event-Akte fehlen;
   - `Teilnahme.netzwerken.makeone` (Ziel der Vormerkung) und `.vorher` (frühere Begegnungen): weg — der Abendbericht zeigt „Make.One-Einladung offen“ dann nicht mehr aus dem echten Stand; die ältere Angabe einer zweiten Begegnung ist nicht mehr nachlesbar (die Verlauf-Einträge an der Person bleiben);
   - `Event.bisDatum` (mehrtägige Messe): weg — der Kalender-Spiegel läuft wieder eintägig; vor dem Rückweg die Enddaten wichtiger Messen notieren;
@@ -144,7 +154,7 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   - der alte Stand kennt `eventNeu` immer im Körper (sendet der Browser mit) — ältere Browser-Warteschlangen ohne `eventNeu` enden bei gelöschtem Event wie bisher mit 404 („Anderes Event wählen“ gibt es dort nicht);
   - `Event löschen` räumt im neuen Stand Kalender-Termin, Planposten und Deal-Verweis ab — der alte nicht (einmal von Hand nachsehen: Kalender „Gemeinsam“, Zahlen › Planung);
   - ZOE `besuche_lage` und die Schnellsuche nach Events fehlen dort.
-- **Netzwerken — Korrekturen (03.10., Branch `netz-fix`):** keine Formänderung; 1818c5c ignoriert oder verwerfen die neuen Zusätze:
+- **Netzwerken — Korrekturen (03.10., Branch `netz-fix` — schon online mit 5202a69):** keine Formänderung; 1818c5c ignoriert oder verwerfen die neuen Zusätze:
   - `Teilnahme.netzwerken.terminId` (Termin-Sprung im Bericht): der alte Stand verwirft sie beim nächsten Speichern der Teilnahme (nur der Link „Termin öffnen“ fehlt); `followUpAm` aus Netzwerken-Schritten ist ein altes Feld und bleibt;
   - Labels `Netzwerken`/`Dublette prüfen`/`Lead prüfen` und `rechtsgrundlage: 'berechtigt'` sind alte Felder — bleiben, der alte Stand zeigt sie nur als gewöhnliche Labels. Das Event-Kennzeichen `marke: Netzwerken` kennt der alte Stand nur als Marken-Text: **dort zählen fremde Netzwerken-Events wieder in Erscheinensquote und Folgegespräche** (die Trennung ist neuer Code);
   - Lead-Status „Kontaktiert“ an Firma/Person und Follow-ups „Termin vereinbaren“ bleiben (alte Felder);
@@ -159,7 +169,7 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   (Events › Event-Akte › „An Kunden übergeben“ — Tag, Person, Anzahl); wer nach dem Rückweg ein solches Event im alten Stand ändert, trägt es nach dem nächsten Upload neu ein.
   Sichtbar nach dem Rückweg: der Reiter „Events“ ist weg, besuchte Events (`marke: Netzwerken`) stehen wieder in der Make.One-Liste, und die 48-h-Kennzahl der Make.One-Abende
   rechnet ihre Gäste wieder mit (wie vor dieser Änderung). Die CSV-Übergabe selbst liegt nur im Browser-Download — nichts davon im Bestand. Nach einem erneuten Upload: nichts nachzuziehen.
-- **Netzwerken — Recht (03.10., Branch `netz-recht`):** keine Formänderung, nur optionale Felder; der alte Stand (1818c5c) verwirft sie beim nächsten Schreiben desselben Eintrags:
+- **Netzwerken — Recht (03.10., Branch `netz-recht`):** keine Formänderung, nur optionale Felder; der alte Stand (5202a69) verwirft sie beim nächsten Schreiben desselben Eintrags:
   - am Kontakt `rechtsgrundlageNotiz`, `kennengelerntFuer`, `datenschutzInformiertAm` (der Säuberer des alten Stands kennt sie nicht) — **vor dem Rückweg notieren:** Personen mit „kennengelernt für <Kunde>“ (Kontakte › Label „Netzwerken“, Akte › Recht);
   - an der Teilnahme `netzwerken.neuAngelegt`, `kartenfoto`, `keinGespraech`, `danke.verzichtetAm` — sie fehlen dann; **ein späterer Export wüsste nicht mehr, wer neu angelegt war** (alles gälte als Bestand, nur mit Haken). Vor dem Rückweg offene Kunden-Übergaben erledigen;
   - am Event das erweiterte Übergabe-Protokoll (`empfaengerFirmaId`, `dateiname`, `kontaktIds`, Haken) — der alte Stand kennt `uebergaben` ohnehin nicht (siehe Events);
@@ -169,16 +179,16 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   - VVT: die drei nachgetragenen Verarbeitungen (`vv-netzwerken`, `vv-besuche-kunde`, `vv-kunden-export`) bleiben im Verzeichnis stehen (gewöhnliche Einträge) — nichts nachzuziehen;
   - Kampagnen-Ampel, Danke-Hinweis, Telegram-Text, Fotos ohne Exif und `TRANSKRIPTION_AN` sind Code ohne Daten — verschwinden mit dem Rückweg (Fotos, die schon ohne Exif abgelegt sind, bleiben es).
   Nach einem erneuten Upload: nichts nachzuziehen (fehlende `neuAngelegt`-Angaben gelten als Bestand — konservativ).
-- **Qualifizierung & Scoring (03.10., Branch `quali`):** keine Formänderung, nur optionale Felder und ein neuer Bestand; der alte Stand (1818c5c) verwirft sie beim nächsten Schreiben desselben Eintrags:
+- **Qualifizierung & Scoring (03.10., Branch `quali`):** keine Formänderung, nur optionale Felder und ein neuer Bestand; der alte Stand (5202a69) verwirft sie beim nächsten Schreiben desselben Eintrags:
   - am Lead (Firma bzw. Person) `stufen`, `wiedervorlage`, `grundArt`, `hauptKontaktId`; `antworten` darf jetzt beliebige Frage-Kennungen tragen (der alte Säuberer behält nur die sechs Kernfragen). Die alten Felder `kriterien` und `fit` werden mitgeschrieben — **Fragen, die nur über Stufen des Vorschlags beantwortet sind, bleiben als ja/nein/unklar erhalten, die Stufe selbst geht verloren**;
   - **geparkte Leads** (Status „ruht“ mit Wiedervorlage) bleiben im alten Stand „ruht“ ohne Rückkehr in die Runde — **vor dem Rückweg notieren:** Wiedervorlagen (Qualifizierung › Auswertung › „Geparkt“); das Follow-up „Wiedervorlage Qualifizierung“ bleibt ein gewöhnliches Follow-up;
-  - neuer Bestand `crm-scoring` (Einstellungen + 10 frühere Fassungen): der alte Stand ignoriert die Datei, sie bleibt liegen; der alte Stand (1818c5c) rechnet mit seiner eigenen festen Formel (= bisherige Rechnung, Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10) — **vor dem Rückweg notieren:** die eigenen Werte (Schwellen, Muss-Regeln, Temperatur-Stufen), falls ein späterer Upload sie wieder braucht;
+  - neuer Bestand `crm-scoring` (Einstellungen + 10 frühere Fassungen): der alte Stand ignoriert die Datei, sie bleibt liegen; der alte Stand (5202a69) rechnet mit seiner eigenen festen Formel (= bisherige Rechnung, Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10) — **vor dem Rückweg notieren:** die eigenen Werte (Schwellen, Muss-Regeln, Temperatur-Stufen), falls ein späterer Upload sie wieder braucht;
   - Absichtsprotokoll-Art `firma-umhaengen`: der alte Stand kennt sie nicht und ließe eine **offene** Absicht liegen (HOI zeigt sie) — **vor dem Rückweg in Stammdaten › Datenqualität bzw. HOI prüfen, dass keine offen ist** (sie wird sonst nicht fertiggestellt);
   - zusammengeführte Firmen sind weg (Vermerk in der Notiz der behaltenen Firma nennt den Namen) — der Rückweg bringt sie nicht zurück. **Seit 03.10. legt jedes Firmen-Zusammenführen vorher eine verschlüsselte Sicherung an** (`archiv/crm-vor-firmen-zusammenfuehren-<zeit>.json`, 30 Tage, dann räumt die Löschfrist `archiv-umzug` sie weg; der alte Stand kennt denselben Präfix `crm-vor-` und räumt sie ebenfalls, ignoriert sie sonst). **Vor dem Rückweg:** wer eine Zusammenführung zurückhaben will, nimmt sie im NEUEN Stand zurück — als Inhaber `POST /api/crm/firma-archiv` mit `{ "aktion": "liste" }` und danach `{ "aktion": "wiederherstellen", "datei": "…" }` (nur, was seitdem unverändert ist; die Antwort nennt, was bleibt). Im alten Stand gibt es diese Route nicht; die Sicherungsdatei bliebe nur bis zum Fristende lesbar (mit dem Datenschlüssel), nie von Hand zu öffnen;
   - **Standard und MQL-Begriff (Kevin 03.10.):** der Standard ist jetzt der geschärfte Vorschlag (Marketing 8, Sales 28, Muss-Regeln, Temperatur 5/12/25), die alte Rechnung nur noch als Fassung „Bisherige Rechnung (bis 03.10.)“ wählbar; MQL gibt es nur für Leads mit Marketing-Herkunft (Kampagne, Newsletter mit Double-Opt-in, Anfrage, Content, eigenes Event). Das sind Rechenregeln, **keine Daten** — nichts davon wird gespeichert (Lifecycle-Phasen bleiben nur Vorschläge, von Hand gesetzte Phasen ändern sich nicht). Der Rückweg rechnet wieder mit der alten Formel; nichts nachzuziehen. Wer vorher eigene Einstellungen gespeichert hatte (Datei `crm-scoring`), behält sie in beiden Richtungen;
   - Oberfläche, Editor, Gesprächsmodus, Herkunft sind Code ohne Daten.
   Nach einem erneuten Upload: nichts nachzuziehen (fehlende Stufen = „noch offen“, es gilt der neue Standard, bis `crm-scoring` gelesen wird).
-- **Mehrere Anmelde-Adressen (03.10., Branch `konto-mail`):** keine Formänderung, nur optionale Felder; der alte Stand (1818c5c) liest am Konto nur `email` und behält Zusatzfelder beim Schreiben (`...k`):
+- **Mehrere Anmelde-Adressen (03.10., Branch `konto-mail`):** keine Formänderung, nur optionale Felder; der alte Stand (5202a69) liest am Konto nur `email` und behält Zusatzfelder beim Schreiben (`...k`):
   - Konto `weitereEmails` (höchstens drei): der alte Stand ignoriert sie — **dort meldet sich nur die Hauptadresse (`email`) an.** **Vor dem Rückweg** (System › Konto › Anmelde-Adressen) die **Hauptadresse auf die gewünschte stellen** („Als Hauptadresse“), sonst geht beim alten Bild nur die bisherige Hauptadresse. Die Konten selbst bleiben unversehrt (Passwort, zweiter Faktor, Speichername ändern sich nicht).
   - Einladung `email` (reservierte Adresse): der alte Stand ignoriert sie — die Einladung gilt dort für jede Adresse.
   - Sicherheitsprotokoll `anmeldungen`: neue Arten `adresse-hinzu`/`adresse-haupt`/`adresse-weg` mit `detail` (maskierte Adresse) — der alte Stand zeigt sie roh an, nichts bricht.
@@ -208,7 +218,7 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   Verdächtig: `Google-Überlagerung nicht lesbar` oder wiederholte `Abgleich: …`-Zeilen.
 - **Neue Bestände (nur dieser Stand schreibt sie, der alte ignoriert sie):** `google-verbindung--<person>`, `google-oauth-zustand`, `kalender-google--<person>`, `kalender-umzug-sicherung--<person>`.
   Geänderte Formen: nur optionale Felder (`Termin.link`, `KalenderEintrag.quelle/person/ich` — nie gespeichert; `kalender-einstellungen` trägt nie etwas von Google). Der iCloud-Bestand `kalender-icloud` hat dieselbe Form wie vorher.
-- **Rückweg auf den Online-Stand (`5202a69`/`1818c5c`), wenn Google schon benutzt wurde:**
+- **Rückweg auf den Online-Stand (`5202a69`), wenn Google schon benutzt wurde:**
   1. **Vorher je Person in MAKE OS „Trennen“** (Kalender › Einstellungen › Google Kalender): widerruft den Zugriff bei Google, stoppt den Push-Kanal. (Ohne das läuft der Kanal bis zu ~7 Tage weiter und ruft die dann unbekannte Adresse auf — harmlos, Google gibt auf; das Token bliebe aber gültig, bis es bei <https://myaccount.google.com/permissions> entzogen ist.)
   2. Was der alte Stand nicht kennt, fällt weg: die Google-Termine verschwinden aus der Oberfläche (sie bleiben in Google), der Kalender „MAKE … (Google)“ ist weg, `kalender-bezug`-Einträge `google-<person>|…` bleiben ungenutzt liegen (kommen nach erneutem Upload + Verbinden zurück, die UIDs sind dieselben).
   3. **Umgezogene Termine** (iCloud → Google) fehlen im alten Stand in iCloud — sie stehen nur noch in Google; Meetings/Follow-ups zeigen im alten Stand auf einen Termin, den es dort nicht gibt (Verbindungsprüfung „Termin fehlt“, harmlos). Die Sicherung des Umzugs (`kalender-umzug-sicherung--<person>`, 30 Tage) hält den iCloud-Text jedes Termins; zurückgespielt wird er nur auf Anweisung (Entwickler: `objektWiederherstellen`, `lib/kalender/icloud.ts`).
