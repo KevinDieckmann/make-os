@@ -31,6 +31,17 @@ import { join, dirname, relative, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ANMELDEN = 'https://app.makeinnovation.de/anmelden';
+/**
+ * Quellen der belegten Zahlen in „01 Die Lage“ und „02 Warum Innovation“ (Kevin 03.10.): nur Originalquellen seriöser
+ * Herausgeber, direkt geprüft. Jede Zahlen-Kachel (`<li class="zahl">`) verweist per Fußnote (#fn-N) auf einen Eintrag der
+ * Quellenliste mit genau einem dieser Links. Neue Quelle = hier eintragen, nach Prüfung an der Originalseite.
+ */
+export const QUELLEN_LINKS = [
+  'https://www.kfw.de/PDF/Download-Center/Konzernthemen/Research/PDF-Dokumente-Fokus-Volkswirtschaft/Fokus-2026/Fokus-Nr.-526-Januar-2026-Nachfolge-Monitoring.pdf',
+  'https://www.kfw.de/PDF/Download-Center/Konzernthemen/Research/PDF-Dokumente-Fokus-Volkswirtschaft/Fokus-2025/Fokus-Nr.-495-April-2025-Buerokratie.pdf',
+  'https://www.kfw.de/PDF/Download-Center/Konzernthemen/Research/PDF-Dokumente-Innovationsbericht/KfW-Innovationsbericht-Mittelstand-2025.pdf',
+  'https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI',
+];
 // Zusammengesetzt, damit tests/repo-sauber.test.ts (keine echten Adressen im Code) die Firmenadresse nicht als Fund meldet.
 export const KONTAKT = `mailto:${['hello', 'makeinnovation.de'].join('@')}`;
 const PLATZHALTER = /\[\[KEVIN:([^\]]*)\]\]/g;
@@ -199,7 +210,18 @@ export function pruefeWebsite(ordner) {
       if (frag && datei.endsWith('.html') && !anker(inhalt.get(datei)).has(frag)) fehler.push(`${d}: Anker #${frag} fehlt in ${datei}`);
     }
     // Externe Links: nur bewusst gesetzte (Login, Buchungsseite). Alles andere wäre neu und muss hier eingetragen werden.
-    for (const m of text.matchAll(/\shref="(https?:[^"]*)"/g)) if (m[1] !== ANMELDEN && !m[1].startsWith(BUCHUNG_BASIS)) fehler.push(`${d}: unerwarteter externer Link ${m[1]}`);
+    for (const m of text.matchAll(/\shref="(https?:[^"]*)"/g)) if (m[1] !== ANMELDEN && !m[1].startsWith(BUCHUNG_BASIS) && !(d === 'index.html' && QUELLEN_LINKS.includes(m[1]))) fehler.push(`${d}: unerwarteter externer Link ${m[1]}`);
+    // Quellenlinks: nur als Fußnote einer Zahl, mit rel="noopener noreferrer"; jede Zahl hat eine Fußnote, jede Fußnote einen Beleg.
+    for (const [tag, url] of Array.from(text.matchAll(/<a\b[^>]*\shref="(https?:[^"]*)"[^>]*>/g), m => [m[0], m[1]])) {
+      if (QUELLEN_LINKS.includes(url) && !/\srel="noopener noreferrer"/.test(tag)) fehler.push(`${d}: Quellenlink ${url} ohne rel="noopener noreferrer"`);
+    }
+    if (d === 'index.html') {
+      const kacheln = Array.from(text.matchAll(/<li class="zahl[^"]*">([\s\S]*?)<\/li>/g), m => m[1]);
+      for (const k of kacheln) if (!/<p class="wert">[^<]*\d[^<]*<sup><a href="#fn-\d+"/.test(k)) fehler.push('index.html: Zahlen-Kachel ohne Zahl oder ohne Fußnote (#fn-N)');
+      const belege = Array.from(text.matchAll(/<li id="fn-\d+">([\s\S]*?)<\/li>/g), m => m[1]);
+      for (const b of belege) if (QUELLEN_LINKS.filter(u => b.includes(`href="${u}"`)).length !== 1) fehler.push('index.html: Fußnote ohne genau einen geprüften Quellenlink aus QUELLEN_LINKS');
+      if (belege.length !== kacheln.length) fehler.push(`index.html: ${kacheln.length} Zahlen-Kacheln, aber ${belege.length} Fußnoten`);
+    }
     // Buchungsseite (später): nur als Ziel des Erstgesprächs auf der Startseite, nirgends sonst.
     const buchung = Array.from(text.matchAll(/<a\b[^>]*\shref="(https:\/\/app\.makeinnovation\.de\/buchen\/[^"]*)"[^>]*>/g));
     for (const [tag, url] of buchung) {

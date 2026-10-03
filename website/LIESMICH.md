@@ -98,7 +98,7 @@ Anliegen, eigener Hinweis vor dem Absenden) und im Abschnitt „Cookies und Spei
 
 - **Impressum:** vollständig (KEMARIS-Impressum, 03.10.). Eine USt-IdNr. ist nicht bekannt und steht deshalb nicht da —
   falls es eine gibt, als Abschnitt „Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG“ ergänzen.
-- **Datenschutz:** AV-Vertrag mit Hetzner bestätigt? · E-Mail-Anbieter für `hello@makeinnovation.de` (Name, Sitz, AV-Vertrag) ·
+- **Datenschutz:** AV-Vertrag mit Hetzner bestätigt? · AV-Vertrag mit Google (Cloud Data Processing Addendum) in der Admin-Konsole bestätigen — Anbieter für `hello@makeinnovation.de` ist eingetragen: Google Workspace/Gmail, Google Ireland Limited ·
   eigener Datenschutzhinweis der App unter `app.makeinnovation.de` · Drittland-Verträge (Microsoft, Apple, Anthropic) ·
   Abschnitt „Geschäftskontakte und Veranstaltungen“ anwaltlich gegenlesen
 
@@ -113,8 +113,20 @@ Anliegen, eigener Hinweis vor dem Absenden) und im Abschnitt „Cookies und Spei
 - Die Make.One-Formate (Stammtisch, Dinner, Workshop, Webinar) haben je einen allgemeinen Satz, keine Termine oder Orte.
 - Gründer-Texte: MAKE = Malin + Kevin, Malins Zeile aus v2 (Kevins Worte, 27.09.). Ohne Fotos — Initialen in
   Personenfarbe. Fotos nur, wenn ihr sie freigebt (dann als Datei in `assets/`, `img-src 'self'` erlaubt das).
-- Anrede seit v4 „Sie“ (Entscheider der Wirtschaft; Kevin 03.10.: „Warum Sie mit uns arbeiten sollten“), auch in den Rechtstexten.
-- Die Kapitel „Die Lage“ und „Warum Innovation“ nennen bewusst keine Zahlen. Wenn Zahlen dazukommen, nur belegte mit Quelle.
+- Anrede auf der Startseite **„Du“** (Kevin 03.10.: unter Unternehmern üblich, natürlich und souverän; Überschrift „Warum du mit uns arbeiten solltest.“). **Impressum und Datenschutz bleiben förmlich („Sie“)** — Rechtstexte.
+- **Belegte Zahlen** (Kevin 03.10.): vier Kacheln in „01 Die Lage“ und „02 Warum Innovation“, jede mit Fußnote und Quellenliste
+  unter dem Kapitel. Nur Originalquellen, direkt am Dokument geprüft (Stand der Prüfung 03.10.2026). Neue Zahl = neue Quelle in
+  `QUELLEN_LINKS` (`pruefen.mjs`) eintragen — der Prüfer verlangt je Kachel eine Fußnote mit genau einem dieser Links.
+  Jährlich neu prüfen, ob eine jüngere Ausgabe erschienen ist:
+
+  | Zahl | Aussage | Quelle |
+  |---|---|---|
+  | 57 % | der Inhaber:innen mittelständischer Unternehmen sind 55+ (über 2 Mio.; 2003: 20 %) | KfW Research, Nachfolge-Monitoring Mittelstand 2025, Fokus Nr. 526, 9.1.2026 |
+  | 7 % | der Arbeitszeit im Mittelstand für Bürokratie (Ø 32 Std./Monat und Unternehmen) | KfW Research, Fokus Nr. 495, 25.4.2025 |
+  | 41 % | Innovatorenquote im Mittelstand 2022–2024; 80 % der Innovatoren ohne eigene FuE | KfW-Innovationsbericht Mittelstand 2025, März 2026 |
+  | 66 % | der KI-Anwender: Wettbewerbsposition verbessert (57 % setzen KI ein, vor zwei Jahren 20 %) | Bitkom, Presseinformation 14.9.2026 (603 Unternehmen ab 20 Beschäftigten) |
+
+  Die Fußnoten verlinken auf kfw.de und bitkom.org; der Datenschutzhinweis nennt das (Abschnitt „Links zu Quellen“).
 
 > **Hinweis, keine Rechtsberatung:** Impressum und Datenschutzhinweis sind nach bestem Wissen aus dem tatsächlichen
 > Verhalten der Seite und des Servers abgeleitet (Stand Oktober 2026: § 5 DDG, DSGVO, TDDDG; die frühere Pflicht zum

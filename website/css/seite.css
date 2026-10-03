@@ -210,6 +210,19 @@ img, svg { display: block; max-width: 100%; }
 .lage-liste h3::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--inkLeise); flex: none; }
 .lage-liste p { margin-top: 6px; color: var(--inkDim); font-size: 14px; }
 @media (max-width: 560px) { .lage-liste { grid-template-columns: 1fr; gap: var(--l); } }
+/* Belegte Zahlen (Kapitel 01 und 02): ruhige Kacheln, Quelle als Fußnote darunter */
+.zahlen { list-style: none; padding: 0; margin: var(--xxl) 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--l); }
+.zahl { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--r-behaelter); padding: var(--l) var(--l) var(--xl); }
+.zahl .wert { font-family: var(--schrift-display); font-weight: 700; font-size: clamp(34px, 4.4vw, 44px); line-height: 1; letter-spacing: -.03em; color: var(--ink); font-variant-numeric: tabular-nums lining-nums; }
+.zahl .wert sup { font-family: var(--schrift-text); font-weight: 600; font-size: var(--bedien); letter-spacing: 0; margin-left: 3px; vertical-align: super; line-height: 0; }
+.zahl .wert sup a { text-decoration: none; padding: 2px 3px; }
+.zahl .deutung { margin-top: var(--m); color: var(--inkDim); font-size: 14px; line-height: 1.5; }
+@media (max-width: 560px) { .zahlen { grid-template-columns: 1fr; } }
+.quellen { margin: var(--xl) 0 0; padding-left: 18px; color: var(--inkLeise); font-size: 12px; line-height: 1.5; display: grid; gap: 6px; }
+.quellen li { padding-left: 4px; }
+.quellen li::marker { font-variant-numeric: tabular-nums; }
+.quellen cite { font-style: normal; color: var(--inkDim); }
+.quellen li:target { color: var(--inkDim); }
 .schluss { margin-top: var(--xxl); padding-left: var(--l); border-left: 2px solid var(--aktiv); font-family: var(--schrift-display); font-size: 19px; line-height: 1.4; font-weight: 500; color: var(--ink); }
 
 /* ── 02 Warum Innovation: drei Prinzipien ── */
