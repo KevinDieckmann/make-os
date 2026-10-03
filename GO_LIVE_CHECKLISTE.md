@@ -1,14 +1,14 @@
-# Go-Live-Checkliste — großes Update vom 03.10.2026 (online läuft `5202a69`)
+# Go-Live-Checkliste — Update vom 04.10.2026 (online läuft `f0c5526`)
 
-**Urteil: Ja, mit Bedingungen.** Im Code blockiert nichts: tsc, Lint und alle Tests sind grün, Abschluss-Praxisprüfung ohne
-schweren Fund. Hochgeladen wird `5202a69..entwicklung`: Events/Make.One getrennt und verbunden, Netzwerken-Recht/Verbindungen/
-Praxis-Fixes, Qualifizierung & Scoring, Firmen zusammenführen mit Archiv, Anmelde-Adressen je Konto, Netzwerken nur am Handy,
-OAuth-Rückruf Whoop/M365, Google Kalender + Gmail (ohne Einrichtung aus), Design-Standard (Markttraktion, Zahlen & Finanzen),
-Landingpage v4. Der Online-Stand `5202a69` enthält schon alles bis zur Netzwerken-Grundversion inkl. vCard und iPhone-Fixes
-(Finanzplanung-Kern-Umbau, Ziel ↔ Meilenstein, Landingpage v3); diese Punkte stehen unten nur noch als „früher“.
+**Urteil: Ja, mit Bedingungen.** Im Code blockiert nichts: tsc, Build und alle Tests (4606) sind grün; Code-Review und
+Praxis-Prüfung sind abgearbeitet. Hochgeladen wird `f0c5526..entwicklung`: Lichtfäden v2 (Fokus-Baum, Planung/Ziel/Meilenstein/Fokus),
+Design-Standard Kern (Shell, Aufgaben, Kalender, Inbox) und Privat/ZOE/System, Fokus Innovation (`Event.reihe`, Seite `fokus/`
+noch NICHT ausgeliefert), Review-Fixes (eine Quelle für Ziel-Farbe/Space/Schalter) und **Datenschutz-Fixes, die schon online
+offen waren** (Familie „nur ich“-Tage, Routinen der Partnerin im Gesundheits-Index, „nur ich“-Unteraufgaben in den Lichtfäden).
+Der Online-Stand `f0c5526` enthält alles bis zum großen Update vom 03.10.; diese Punkte stehen unten nur noch als „früher“.
 
 **Rückweg ist möglich (Kompatibilitätsmodus).** Ohne `MAKE_OS_FORMAT` schreibt die neue Version im Format des Online-Stands
-(v1-Hülle, `MKOSDAT1`, kein `_v`). Beim Zurückgehen auf `5202a69` fallen nur Dinge weg, die dieser Stand nicht kennt (Liste
+(v1-Hülle, `MKOSDAT1`, kein `_v`). Beim Zurückgehen auf `f0c5526` fallen nur Dinge weg, die dieser Stand nicht kennt (Liste
 unten unter „Rückweg“). Erst `MAKE_OS_FORMAT=v2` macht den Upload zur Einbahnstraße (dann nur noch über die Sicherung zurück).
 
 Alle Befehle auf dem Server als `make`, im Ordner `/srv/make-os/app`, außer wo „am Mac“ steht. Werte (Schlüssel, Passwörter)
@@ -23,19 +23,19 @@ nie in Chat oder Repo.
    `id -u make` → `1000` · `test -d /srv/make-os/grabsteine && test -d /srv/make-os/schluessel && echo ORDNER-OK` ·
    Datenschlüssel liegt, wo er lag (`.env` oder Schlüssel-Datei — der Online-Stand kennt beide) · age/Pepper wie gehabt.
 5. **Kevin und Malin schließen alle MAKE-OS-Tabs auf allen Geräten** und geben bis nach „Direkt nach dem Upload“ 4 nichts ein.
-6. **Sicherung und altes Bild merken (Pflicht)** — das alte Bild bekommt den Tag `make-os:5202a69` — Zeile für Zeile, jede Ausgabe prüfen:
+6. **Sicherung und altes Bild merken (Pflicht)** — das alte Bild bekommt den Tag `make-os:f0c5526` — Zeile für Zeile, jede Ausgabe prüfen:
    ```
    docker compose stop app arbeiter
    sudo tar -C /srv/make-os --exclude='daten/brain-index.sqlite*' -czf /srv/make-os/sicherungen/vor-upload-$(date +%F-%H%M).tar.gz daten grabsteine; echo "tar-Ergebnis: $?"
-   docker tag make-os:aktuell make-os:5202a69
+   docker tag make-os:aktuell make-os:f0c5526
    docker compose start app arbeiter
    docker image ls make-os
-   docker run --rm --entrypoint sh make-os:5202a69 -c 'test -e lib/netzwerken/warteschlange.ts && test ! -e lib/crm/scoring.ts && echo ALTES-BILD-OK'
+   docker run --rm --entrypoint sh make-os:f0c5526 -c 'test -e lib/crm/scoring.ts && test ! -e lib/lichtfaeden/modell.ts && echo ALTES-BILD-OK'
    sudo chown make:make /srv/make-os/sicherungen/vor-upload-*.tar.gz && chmod 600 /srv/make-os/sicherungen/vor-upload-*.tar.gz
    ```
-   Nur bei `tar-Ergebnis: 0`, gleicher Image-ID für `5202a69` und `aktuell` und `ALTES-BILD-OK` weitermachen (die Probe
-   passt nur auf 5202a69: `lib/netzwerken/warteschlange.ts` gibt es dort, `lib/crm/scoring.ts` erst im neuen Stand — am Mac
-   gegenprüfbar mit `git cat-file -e 5202a69:lib/netzwerken/warteschlange.ts` (ok) und `git cat-file -e 5202a69:lib/crm/scoring.ts` (muss „not in“ melden), `HEAD` kennt beide). Kopie auf den Mac nur
+   Nur bei `tar-Ergebnis: 0`, gleicher Image-ID für `f0c5526` und `aktuell` und `ALTES-BILD-OK` weitermachen (die Probe
+   passt nur auf f0c5526: `lib/crm/scoring.ts` gibt es dort, `lib/lichtfaeden/modell.ts` erst im neuen Stand — am Mac
+   gegenprüfbar mit `git cat-file -e f0c5526:lib/crm/scoring.ts` (ok) und `git cat-file -e f0c5526:lib/lichtfaeden/modell.ts` (muss „not in“ melden), `HEAD` kennt beide). Kopie auf den Mac nur
    verschlüsselt: `age -R /srv/make-os/sicherung.pub -o <datei>.age <datei>`, dann die `.age`-Datei per `scp` holen.
 7. Auf GitHub: Repo-Variable `AUSROLLEN` ist nicht `aus`; im letzten Ausroll-Log stehen `ausrollen-v2` und „Bild zum Server schicken“.
 
@@ -54,7 +54,7 @@ Am Mac: `cd ~/Claude/Projects/MakeOS && git push origin entwicklung:main && git 
    Ansehen, aber kein Grund zum Rückweg: `[spiegel] n Termin(e) nicht nachgezogen: …` (Serie/Gäste/nur lesbar — Kennung +
    Grund stehen dabei). **Anhalten, nichts eingeben, Rückweg prüfen** bei jeder anderen Zeile, besonders
    `nicht lesbar`, `entschlüsselung`, `schluessel fehlt`, `[kalender-sicherung] Stand nicht lesbar`.
-3. **Caddy:** seit `5202a69` unverändert — nichts neu zu laden (neu in `deploy/` sind nur `env.server.beispiel` und `google-verbinden.sh`). Am Mac vorab: `git diff --stat 5202a69 HEAD -- deploy/caddy compose.yml Dockerfile`
+3. **Caddy:** seit `f0c5526` unverändert — nichts neu zu laden (neu in `deploy/` sind nur `env.server.beispiel` und `google-verbinden.sh`). Am Mac vorab: `git diff --stat f0c5526 HEAD -- deploy/caddy compose.yml Dockerfile`
    → leer (sonst die Schritte aus der alten Fassung dieser Liste nachholen: `caddy validate` + `caddy reload`). Neu ist nur die
    Abhängigkeit `qrcode-generator` (Dev: `jsqr`): das Image-Bauen läuft dafür `npm ci` — die Action macht das von selbst.
 4. Auf allen Geräten neu laden (Handy: Tab bzw. Home-Screen-App schließen und neu öffnen).
@@ -69,26 +69,26 @@ Am Mac: `cd ~/Claude/Projects/MakeOS && git push origin entwicklung:main && git 
    age auf `: warnung — age fehlt — Sicherung nur mit Übergangs-Verschlüsselung …`. Die Kalender-Tagesdateien
    (`archiv/kalender-export-*`) sind bewusst NICHT im Archiv.
 
-## Rückweg, falls nötig (solange `MAKE_OS_FORMAT` nicht `v2` ist) — Ziel: Online-Stand `5202a69`
+## Rückweg, falls nötig (solange `MAKE_OS_FORMAT` nicht `v2` ist) — Ziel: Online-Stand `f0c5526`
 **Vorher prüfen:**
 1. Offene Vorgänge: als Kevin im Browser `/api/intern/absichten` öffnen (oder am Server
    `docker compose exec -T app node -e "fetch('http://localhost:3000/api/intern/absichten',{headers:{'x-make-key':process.env.MAKE_OS_KEY}}).then(r=>r.text()).then(console.log)"`)
    → keine offene oder unvollständige Absicht. Offene zuerst fertig werden lassen.
 2. **Alle Handys mit „n warten“ leer senden lassen** (Abzeichen im Netzwerken-Bereich). Der alte Stand hat keine Seite, die die
    IndexedDB-Warteschlange (`make-os-netzwerken`) sendet; was dort liegt, wäre verloren.
-3. Offene Buchungsanfragen: `5202a69` kennt die Buchungsseite — nichts zu tun. (Nur ein Rückweg auf `af4679a` hätte die Links
+3. Offene Buchungsanfragen: `f0c5526` kennt die Buchungsseite — nichts zu tun. (Nur ein Rückweg auf `af4679a` hätte die Links
    getötet; siehe „Früher“.)
 
 **Dann:**
 ```
 docker compose stop app arbeiter
-docker tag make-os:5202a69 make-os:aktuell
+docker tag make-os:f0c5526 make-os:aktuell
 docker compose up -d --no-build
 ```
 Danach am Mac `main` zurückdrehen, sonst rollt die nächste Action wieder aus:
 ```
-git switch -c rueckweg origin/main && git revert --no-edit --no-commit 5202a69..HEAD && git commit -m "Rückweg: Stand 5202a69"
-git diff --stat 5202a69 HEAD      # muss leer sein
+git switch -c rueckweg origin/main && git revert --no-edit --no-commit f0c5526..HEAD && git commit -m "Rückweg: Stand f0c5526"
+git diff --stat f0c5526 HEAD      # muss leer sein
 git push origin rueckweg:main
 ```
 Dieser Push rollt den alten Code erneut aus (gewollt). Wer das nicht will: vorher die Repo-Variable `AUSROLLEN=aus` setzen.
@@ -105,9 +105,10 @@ additiv, der alte Stand ignoriert ihn.
 Ansicht weg (Planung › Jahr zeigt dann wieder den alten Zeitstrahl), Daten bleiben unberührt. Kachel „Lichtfäden“ auf Fokus: gespeicherte Flächen-Layouts
 kennen sie im alten Stand nicht — ohne Folgen.
 
-**Was beim Rückweg auf `5202a69` wegfällt oder später doppelt kommen kann** (der Online-Stand verwirft beim nächsten Schreiben, was er nicht kennt).
-Punkte, die schon mit `5202a69` online kamen (Finanzplanung-Kern-Umbau, Netzwerken-Grundpaket bis vCard/iPhone-Fixes), sind
-beim Rückweg auf `5202a69` NICHT betroffen — sie stehen hier nur noch zur Geschichte:
+**Was beim Rückweg auf `f0c5526` wegfällt oder später doppelt kommen kann** (der Online-Stand verwirft beim nächsten Schreiben, was er nicht kennt).
+Punkte, die schon mit `f0c5526` online kamen (alles bis einschließlich Events/Make.One, Netzwerken-Recht, Qualifizierung & Scoring,
+Anmelde-Adressen, Google-Kalender/Gmail-Code, Design Markttraktion/Finanzen, Landingpage v4), sind beim Rückweg auf `f0c5526` NICHT betroffen.
+Neu seit 04.10. (Lichtfäden v2, Design Kern/Privat, Fokus Innovation `Event.reihe`, Review-/Datenschutz-Fixes) siehe die eigenen Abschnitte; neue Felder sind optional — sie stehen hier nur noch zur Geschichte:
 - **Finanzplanung: Kern-Umbau (02.10., Steuern einzeln · Selbstständigkeit eigene Achse · Einkommensteuer · zwei Felder gelöscht):**
   keine Formänderung am Dokument, nur optionale Zusatzfelder — geprüft am Säuberer von 1818c5c (`pruefeDokument`, `pruefePlanszenarien`). Der alte Stand **stürzt nicht ab** und liest das neue Dokument weiter:
   - `steuern` (Rechtsform, Sätze, Hebesatz, Verlustvortrag, Zahlweise, Tarif-Eckwerte je Gesellschaft) und `schwellen` stehen nicht in seiner
