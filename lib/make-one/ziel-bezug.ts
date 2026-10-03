@@ -6,7 +6,7 @@
 // 3. das oberste offene private Jahresziel (ehrlich als „Oberstes Ziel“ gekennzeichnet, nicht als Bezug des Bereichs).
 
 import type { Meilenstein, Ziel } from '@/lib/planung/typen';
-import { FADEN_FARBEN } from '@/lib/make-one/design';
+import { OHNE_FARBE, zielFarben } from '@/lib/lichtfaeden/modell';
 
 export type BezugBereich = 'gesundheit' | 'beziehung' | 'wissen' | 'training' | 'privat';
 
@@ -29,16 +29,14 @@ const privat = (z: Ziel) => z.space === 'privat' || z.space === undefined;
 /**
  * Bis zu `max` Jahresziele, auf die der Bereich einzahlt. `ziele` = die Jahresziele (alle Spaces, wie die Route sie liefert),
  * `meilensteine` = alle Meilensteine. Reihenfolge der Ziele = Rang (ohne Rang hinten), die Farbe je Ziel kommt aus
- * `FADEN_FARBEN.privat` in dieser Reihenfolge — dieselbe Farbe wie im Zeitstrahl der Planung.
+ * `zielFarben` (lib/lichtfaeden/modell.ts) — dieselbe Farbe wie im Zeitstrahl der Planung und an den Ziel-Chips der Aufgaben.
  */
 export function zielBezug(bereich: BezugBereich, ziele: readonly Ziel[], meilensteine: readonly Meilenstein[], max = 2): ZielBezugEintrag[] {
-  const eigene = ziele.filter(z => z.space === 'privat');
   const rang = (z: Ziel) => (z.rang && z.rang > 0 ? z.rang : 1e6);
   const sortiert = [...ziele.filter(privat)].sort((a, b) => rang(a) - rang(b));
-  const farbeVon = (z: Ziel) => {
-    const i = [...eigene].sort((a, b) => rang(a) - rang(b)).findIndex(x => x.id === z.id);
-    return FADEN_FARBEN.privat[(i < 0 ? 0 : i) % FADEN_FARBEN.privat.length];
-  };
+  // Die EINE Farbregel für Ziele (lib/lichtfaeden/modell.ts) — dieselbe Farbe wie im Zeitstrahl und an den Ziel-Chips der Aufgaben.
+  const farben = zielFarben(ziele);
+  const farbeVon = (z: Ziel) => farben.get(z.id) ?? OHNE_FARBE;
   const kandidaten = sortiert.filter(offen);
   const treffer: ZielBezugEintrag[] = [];
   const nimm = (z: Ziel, grund: BezugGrund) => {

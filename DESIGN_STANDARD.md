@@ -97,7 +97,7 @@ Kevins Leitidee: **„immer der Fokus auf die Ziele“.** Wo ein Bereich Ziele h
 **Neu im Standard:**
 | Baustein | Zweck |
 |---|---|
-| `ZielBezug bereich=…` | Ruhiger Chip „ZAHLT EIN AUF · <Jahresziel> · 40 %“ unter dem Kopf (44 px, Link ins Ziel der Planung). Auswahl rein in `lib/make-one/ziel-bezug.ts`: 1. Meilensteine des Bereichs mit `zielId` · 2. Stichwort im Zieltitel · 3. oberstes offenes privates Jahresziel (dann ehrlich „OBERSTES ZIEL“). Farbe aus `FADEN_FARBEN.privat` in Rangfolge (dieselbe wie im Zeitstrahl). Ohne Ziel steht ein leiser Weg in die Planung; keine Schreibwege. Bereiche: `gesundheit` · `training` · `beziehung` · `wissen` · `privat`. Einsatz: Gesundheit, Journal, Sport, Säule Gesundheit/Familie, Familie & Partnerschaft, Kompass, Wachstum, Privat-Übersicht. |
+| `ZielBezug bereich=…` | Ruhiger Chip „ZAHLT EIN AUF · <Jahresziel> · 40 %“ unter dem Kopf (44 px, Link ins Ziel der Planung). Auswahl rein in `lib/make-one/ziel-bezug.ts`: 1. Meilensteine des Bereichs mit `zielId` · 2. Stichwort im Zieltitel · 3. oberstes offenes privates Jahresziel (dann ehrlich „OBERSTES ZIEL“). Farbe nach der EINEN Farbregel für Ziele (`zielFarben`, lib/lichtfaeden/modell.ts) — dieselbe wie im Zeitstrahl und an den Ziel-Chips der Aufgaben (`ZielChip`, je Aufgabe; `ZielBezug` ist der Bezug je Bereich). Ohne Ziel steht ein leiser Weg in die Planung; keine Schreibwege. Bereiche: `gesundheit` · `training` · `beziehung` · `wissen` · `privat`. Einsatz: Gesundheit, Journal, Sport, Säule Gesundheit/Familie, Familie & Partnerschaft, Kompass, Wachstum, Privat-Übersicht. |
 | `Schalter` | Ein/Aus (Rolle `switch`): sichtbar 40 × 24, Tippfläche 56 × 44 — Routinen, Streak, Routinen-Planer. |
 
 **Regeln für diesen Bereich (zusätzlich zu den 13):**

@@ -9,6 +9,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { zielBezug } from '@/lib/make-one/ziel-bezug';
 import { FADEN_FARBEN } from '@/lib/make-one/design';
+import { zielFarben } from '@/lib/lichtfaeden/modell';
 import type { Meilenstein, Ziel } from '@/lib/planung/typen';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/gesundheit' }));
@@ -131,12 +132,13 @@ describe('Ziel-Bezug — die reine Auswahl', () => {
     expect(zielBezug('privat', [], [])).toEqual([]);
   });
 
-  it('höchstens `max` Treffer, Farbe aus der privaten Fadenreihe in Rangfolge', () => {
+  it('höchstens `max` Treffer, Farbe nach der EINEN Farbregel für Ziele (zielFarben) in Rangfolge', () => {
     const r = zielBezug('privat', ziele, [], 1);
     expect(r).toHaveLength(1);
     const viele = [z('a', 'Gesundheit eins', 1), z('b', 'Gesundheit zwei', 2), z('c', 'Gesundheit drei', 3)];
     const rr = zielBezug('gesundheit', viele, [], 5);
     expect(rr.map(x => x.farbe)).toEqual([FADEN_FARBEN.privat[0], FADEN_FARBEN.privat[1], FADEN_FARBEN.privat[2]]);
+    expect(rr.map(x => x.farbe)).toEqual(viele.map(v => zielFarben(viele).get(v.id)));
   });
 
   it('der Baustein hält beim ersten Zeichnen seinen Platz (kein Springen) und ist für Hilfsmittel versteckt', async () => {
