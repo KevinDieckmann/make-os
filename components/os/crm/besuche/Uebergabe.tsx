@@ -67,12 +67,13 @@ export function UebergabeDialog({ e, api, onZu }: { e: Event; api: CrmApi; onZu:
       links={haeklich ? <Haken an={haken.has(z.kontaktId)} label={`${z.name} mitgeben`} onChange={() => umschalten(z.kontaktId)} /> : undefined}
       titel={z.name}
       unter={[z.firma, z.herkunft].filter(Boolean).join(' · ')}
-      rechts={!z.informiert ? <Chip farbe={LEUCHT.achtung}>noch nicht informiert</Chip> : undefined} />
+      umbrechen
+      rechts={!z.informiert ? <Chip farbe={LEUCHT.achtung} umbrechen>noch nicht informiert</Chip> : undefined} />
   );
 
   return (
     <Fenster titel={`An ${v?.kunde.name ?? 'den Kunden'} übergeben`} onZu={onZu} breit={720}>
-      <div style={{ display: 'grid', gap: 12 }}>
+      <div className="bes-dialog" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 12, minWidth: 0, overflowWrap: 'anywhere' }}>
         {!v && !fehler && <Leer>Die Vorschau wird geladen …</Leer>}
         {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
         {v && !fertig && (
@@ -94,12 +95,12 @@ export function UebergabeDialog({ e, api, onZu }: { e: Event; api: CrmApi; onZu:
             </div>
             {(gesperrt > 0 || v.fehlend > 0) && <div style={{ fontSize: 12.5, color: C.inkLeise }}>{gesperrt > 0 ? `${gesperrt} gesperrte Person${gesperrt === 1 ? '' : 'en'} (Art. 18 / Werbesperre) bleiben bewusst draußen.` : ''}{gesperrt > 0 && v.fehlend > 0 ? ' ' : ''}{v.fehlend > 0 ? `${v.fehlend} Teilnahme${v.fehlend === 1 ? '' : 'n'} ohne Person in der Kartei.` : ''}</div>}
             {ohneInfo > 0 && <div role="note" style={{ fontSize: 12.5, color: LEUCHT.achtung, lineHeight: 1.5 }}>{ohneInfo} {ohneInfo === 1 ? 'Person ist' : 'Personen sind'} noch nicht über die Weitergabe informiert (Danke-Mail mit Datenschutzhinweis, Art. 13). Die Übergabe geht trotzdem — aber bewusst.</div>}
-            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: TYP.bedien, color: C.ink, lineHeight: 1.45, cursor: 'pointer' }}>
+            <label className="bes-haken-zeile" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: TYP.bedien, color: C.ink, lineHeight: 1.45, cursor: 'pointer', minWidth: 0 }}>
               <input type="checkbox" checked={bestaetigt} onChange={x => setBestaetigt(x.target.checked)} style={{ width: 22, height: 22, marginTop: 1, flex: '0 0 auto' }} />
-              <span>Rolle und Vertrag mit {v.kunde.name} sind geklärt (steht im Protokoll).</span>
+              <span style={{ minWidth: 0 }}>Rolle und Vertrag mit {v.kunde.name} sind geklärt (steht im Protokoll).</span>
             </label>
             <div style={{ fontSize: 12.5, color: C.inkLeise }}>Exportiert werden nur Felder (Name, Firma, Position, E-Mail, Telefon, LinkedIn, Webseite) mit Herkunft je Zeile — keine Fotos, keine Sprachnotizen, keine Gesprächsnotizen.</div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap', minWidth: 0 }}>
               <Knopf leise onClick={onZu}>Abbrechen</Knopf>
               <Knopf onClick={uebergeben} aus={laeuft || !mit || !bestaetigt} farbe={LEUCHT.business}>{laeuft ? 'bereitet vor …' : `${mit} ${mit === 1 ? 'Kontakt' : 'Kontakte'} übergeben (CSV)`}</Knopf>
             </div>

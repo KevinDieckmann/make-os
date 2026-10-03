@@ -96,9 +96,12 @@ export function Liste({ children }: { children: ReactNode }) {
   return <div>{children}</div>;
 }
 
-export function Zeile({ links, titel, unter, rechts, onClick, aktiv }: {
+export function Zeile({ links, titel, unter, rechts, onClick, aktiv, umbrechen }: {
   links?: ReactNode; titel: ReactNode; unter?: ReactNode; rechts?: ReactNode; onClick?: () => void; aktiv?: boolean;
+  /** Lange Titel/Zusätze brechen um, statt abgeschnitten zu werden (Dialoge am Handy, Praxis-Prüfung 03.10.). */
+  umbrechen?: boolean;
 }) {
+  const kurz = umbrechen ? { overflowWrap: 'anywhere' as const } : { overflow: 'hidden' as const, textOverflow: 'ellipsis' as const, whiteSpace: 'nowrap' as const };
   return (
     <div onClick={onClick} className={`zeile${onClick ? ' zeile-klick fassbar' : ''}`} style={{
       display: 'flex', alignItems: 'center', gap: 14, padding: onClick ? '11px 6px' : '11px 2px', margin: onClick ? '0 -6px' : 0, borderBottom: `1px solid ${HAAR}`, minHeight: 50,
@@ -106,8 +109,8 @@ export function Zeile({ links, titel, unter, rechts, onClick, aktiv }: {
     }}>
       {links}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: TYP.body, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titel}</div>
-        {unter && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{unter}</div>}
+        <div style={{ fontSize: TYP.body, fontWeight: 500, ...kurz }}>{titel}</div>
+        {unter && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2, ...kurz }}>{unter}</div>}
       </div>
       {rechts}
     </div>
@@ -139,8 +142,8 @@ export function Punkt({ farbe, groesse = 9 }: { farbe: string; groesse?: number 
 }
 
 /** Pille in Kennzahlfarbe — „Grün", „Prio A", „3 offen". */
-export function Chip({ farbe, children }: { farbe: string; children: ReactNode }) {
-  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${farbe}22`, color: farbe, borderRadius: 999, padding: '4px 11px', fontSize: 12, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{children}</span>;
+export function Chip({ farbe, children, umbrechen }: { farbe: string; children: ReactNode; umbrechen?: boolean }) {
+  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${farbe}22`, color: farbe, borderRadius: umbrechen ? 14 : 999, padding: '4px 11px', fontSize: 12, fontWeight: 700, letterSpacing: '.02em', ...(umbrechen ? { whiteSpace: 'normal' as const, overflowWrap: 'anywhere' as const, maxWidth: '100%', minWidth: 0 } : { whiteSpace: 'nowrap' as const }) }}>{children}</span>;
 }
 
 /** Haken (erledigt ↔ offen). Mit `label` (Titel der Aufgabe) sagt er dem Screenreader, WAS er abhakt (#62); Trefferfläche 44 px (#90). */

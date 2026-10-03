@@ -16,8 +16,7 @@ import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, 
 import { anzeigename, type Aktivitaet } from '@/lib/make-one/crm';
 import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
 import { dealZuFirma, mandatZuFirma } from '@/lib/crm/firmen-bezug';
-import { eventsFuerKunde, erfassteTeilnahmen, begegnungenFuerFirma } from '@/lib/crm/besuche';
-import { istBesuch } from '@/lib/crm/besuche-form';
+import { eventsFuerKunde, erfassteTeilnahmen, begegnungenFuerFirma, begegnungStatus } from '@/lib/crm/besuche';
 import type { Firma, FirmaRolle } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, nurFelder } from './daten';
 import { Feldzeile, Pillen, Feld, Verlauf } from './teile';
@@ -250,7 +249,7 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmA
         <div>
           <Ueberschrift rechts={`${begegnungen.length}`}>Begegnungen bei Events</Ueberschrift>
           {begegnungen.map(b => (
-            <Link key={b.event.id} href={eventLink(b.event)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{b.event.titel} <span style={{ color: C.inkLeise }}>· {datum(b.event.datum, crm.heute)} · {istBesuch(b.event) ? 'besucht' : 'Make.One'}{b.personen.length ? ` · ${b.personen.map(anzeigename).join(', ')}` : ''}{b.ziel && !b.getroffen ? ' · Ziel, noch nicht getroffen' : b.ziel ? ' · Ziel getroffen' : ''}</span></Link>
+            <Link key={b.event.id} href={eventLink(b.event)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{b.event.titel} <span style={{ color: C.inkLeise }}>· {datum(b.event.datum, crm.heute)} · {begegnungStatus(b, crm.heute)}{b.personen.length ? ` · ${b.personen.map(anzeigename).join(', ')}` : ''}{b.ziel && !b.getroffen ? ' · Ziel, noch nicht getroffen' : b.ziel ? ' · Ziel getroffen' : ''}</span></Link>
           ))}
         </div>
       )}

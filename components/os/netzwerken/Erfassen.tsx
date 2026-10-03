@@ -12,7 +12,7 @@ import { ArrowRightLeft, BookUser, CalendarClock, Camera, Euro, ImagePlus, ListC
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { zufallsUuid } from '@/lib/kennung';
 import { anzeigename } from '@/lib/make-one/crm';
-import { emailNormal, telefonNormal, linkedinNormal, webNormal } from '@/lib/crm/visitenkarte';
+import { emailNormal, telefonNormal, linkedinNormal, webNormal, firmaZurKarte, firmaVorschlagAusDomain } from '@/lib/crm/visitenkarte';
 import {
   SCHRITTE, INFO_MAX, MAX_BILDER, kenntWirSchon, kennenText, firmaVorschlaege, followupFrist, schrittLabel, terminArtLabel, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG,
   type KontaktFelder,
@@ -29,6 +29,8 @@ import type { Firma } from '@/lib/crm/typen';
 /** Gleiche leere Listen bei jedem Render — sonst rechnen die `useMemo` bei jedem Tippen neu. */
 const KEINE: Kontakt[] = [];
 const KEINE_FIRMEN: Firma[] = [];
+/** Lange Mail-Adressen brechen an sinnvollen Stellen um (nach @ . - _), nicht mitten im Wort (Praxis-Prüfung): unsichtbare Umbruchstellen nur in Wörtern mit „@“. */
+export const weicheUmbrueche = (t: string): string => t.replace(/\S+@\S+/g, m => m.replace(/([@._-])/g, '$1\u200b'));
 import { fotoVorbereiten, dateiAlsBase64, type Foto } from './bild';
 import { Sprachnotiz, type Aufnahme } from './Sprachnotiz';
 import { TerminWahl, type TerminEingabe } from './TerminWahl';
@@ -144,8 +146,10 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
   // ── Firma ──
   const firmen = api.crm?.stand.firmen ?? KEINE_FIRMEN;
   const vorschlaege = useMemo(() => (leer(f.firma) || e.vorhandenId ? [] : firmaVorschlaege(f.firma ?? '', firmen)), [f.firma, firmen, e.vorhandenId]);
-  const exakt = vorschlaege.find(v => v.exakt)?.firma;
+  // Dieselbe Funktion wie der Server (`firmaZurKarte`): Name gewinnt, die Domain nur bei passendem Namen — Bestätigen zeigt die TATSÄCHLICH verwendete Firma (M1).
+  const exakt = useMemo(() => (leer(f.firma) || e.vorhandenId ? undefined : firmaZurKarte({ firma: f.firma ?? '', email: f.email, webseite: f.webseite }, firmen as Firma[])), [f.firma, f.email, f.webseite, firmen, e.vorhandenId]);
   const firmaVerknuepft = !e.firmaNeu && (e.firmaId ? firmen.find(x => x.id === e.firmaId) : exakt);
+  const domainVorschlag = useMemo(() => (!leer(f.firma) || e.vorhandenId ? undefined : firmaVorschlagAusDomain({ email: f.email, webseite: f.webseite }, firmen as Firma[])), [f.firma, f.email, f.webseite, firmen, e.vorhandenId]);
 
   // Kommende Events (für „Zu Make.One einladen“): nicht das heutige, nicht abgesagt.
   const kommende = useMemo(() => (api.crm?.stand.events ?? []).filter(ev => ev.id !== wahl?.eventId && !istNetzwerkenEvent(ev) && ev.datum >= heute && (ev.status === 'idee' || ev.status === 'geplant' || ev.status === 'einladung')).sort((a, b) => a.datum.localeCompare(b.datum)).slice(0, 8), [api.crm, wahl?.eventId, heute]);
@@ -305,12 +309,13 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                   <Hinweis farbe={LEUCHT.gut}>✓ Bestehende Firma: <b>{firmaVerknuepft.name}</b>. <button type="button" onClick={() => up({ firmaNeu: true, firmaId: undefined })} style={klarLink}>Stattdessen neue anlegen</button></Hinweis>
                 ) : (
                   <>
-                    {vorschlaege.filter(v => !v.exakt).map(v => <Gross key={v.firma.id} onClick={() => { feld({ firma: v.firma.name }); up({ firmaId: v.firma.id, firmaNeu: false }); }} kleinerAbstand>Bestehende Firma nehmen: {v.firma.name}</Gross>)}
+                    {vorschlaege.filter(v => v.firma.id !== exakt?.id).map(v => <Gross key={v.firma.id} onClick={() => { feld({ firma: v.firma.name }); up({ firmaId: v.firma.id, firmaNeu: false }); }} kleinerAbstand>Bestehende Firma nehmen: {v.firma.name}</Gross>)}
                     <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{e.firmaNeu || !vorschlaege.length ? `Neue Firma „${f.firma!.trim()}“ wird angelegt.` : `Oder neue Firma „${f.firma!.trim()}“ anlegen (so lassen).`}</div>
                   </>
                 )}
               </div>
             )}
+            {domainVorschlag && <Gross onClick={() => { feld({ firma: domainVorschlag.name }); up({ firmaId: domainVorschlag.id, firmaNeu: false }); }} kleinerAbstand>Gleiche Mail-Domain: {domainVorschlag.name} — als Firma nehmen?</Gross>}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
               <Feldzeile label="E-Mail" fehler={mailFehler}><input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="next" value={f.email ?? ''} onChange={x => feld({ email: x.target.value })} style={eingabe} aria-label="E-Mail" /></Feldzeile>
               <Feldzeile label="Handy" fehler={mobilFehler}><input type="tel" inputMode="tel" enterKeyHint="done" value={f.mobil ?? ''} onChange={x => feld({ mobil: x.target.value })} style={eingabe} aria-label="Handy" /></Feldzeile>
@@ -417,13 +422,15 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
           {sch === 'nur-kontakt' && <Hinweis>Nur der Kontakt wird gespeichert — „Kennengelernt bei {wahl?.titel ?? 'dem Event'}“ steht im Verlauf.</Hinweis>}
 
           <section aria-label="Info" style={{ display: 'grid', gap: 10 }}>
-            <GespraechSchalter an={e.gesprochen} onUm={v => up({ gesprochen: v })} />
             <Beschriftung rechts={`${e.info.length}/${INFO_MAX}`}>Info zum Gespräch (optional)</Beschriftung>
             <textarea value={e.info} onChange={x => up({ info: x.target.value })} rows={4} placeholder="Worüber habt ihr gesprochen? Was wurde zugesagt?" style={{ ...eingabe, resize: 'vertical', minHeight: 104 }} aria-label="Info zum Gespräch" />
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', alignItems: 'center', gap: 6 }}><Mic size={14} aria-hidden /> Diktieren: am iPhone das Mikrofon-Symbol auf der Tastatur antippen.</div>
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>Keine sensiblen Angaben (Gesundheit, Religion, Politik).</div>
             <Sprachnotiz wert={e.aufnahme} onWert={a => up({ aufnahme: a })} />
           </section>
+
+          {/* M12 (Praxis-Prüfung): der Haken steht sichtbar direkt über „Weiter“ — wer nur eine Karte bekam, schaltet ihn aus (dann keine Danke-Mail, § 7 UWG). */}
+          <GespraechSchalter an={e.gesprochen} onUm={v => up({ gesprochen: v })} />
 
           <Aktionsleiste>
             {fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fehler}</Hinweis>}
@@ -447,15 +454,15 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
               ['Sprachnotiz', e.aufnahme ? 'ja — Abschrift folgt (KI)' : 'keine'],
               ['Nächster Schritt', `${schrittLabel(sch ?? '')}${sch === 'termin' ? ` · ${terminArtLabel(e.termin.art)}, ${tagText(e.termin.start.slice(0, 10))} ${e.termin.start.slice(11, 16)} (${e.termin.dauer} Min.)` : sch === 'followup' ? ` · bis ${tagText(e.followupFaellig)}` : sch === 'vermitteln' ? ` · an ${e.vermittelnAn.trim()}` : sch === 'andere' ? ` · ${e.andereText.trim()}` : sch === 'makeone' ? ` · ${kommende.find(x => x.id === e.makeoneEventId)?.titel ?? 'ohne Event (Aufgabe)'}` : ''}`],
               ['Zuständig', nameVon(e.zustaendig)],
-              ['Gespräch', e.gesprochen ? 'persönlich gesprochen — Danke-Entwurf ab morgen' : 'nicht gesprochen — kein Danke-Entwurf'],
               ['Info', e.info.trim() || '—'],
             ] as [string, string][]).map(([k, v], i) => (
               <div key={k} style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, 120px) 1fr', gap: 12, padding: '11px 14px', borderTop: i ? '1px solid rgba(255,255,255,.06)' : undefined, fontSize: TYP.body, lineHeight: 1.45 }}>
-                <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{k}</span><span style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap', fontWeight: k === 'Nächster Schritt' ? 700 : 400 }}>{v}</span>
+                <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{k}</span><span style={{ overflowWrap: 'break-word', whiteSpace: 'pre-wrap', fontWeight: k === 'Nächster Schritt' ? 700 : 400 }}>{weicheUmbrueche(v)}</span>
               </div>
             ))}
           </section>
           {!e.vorhandenId && <Hinweis>Quelle „{NETZWERKEN_QUELLE}“ · <b>keine Werbe-Einwilligung</b> — {KEINE_EINWILLIGUNG}. {e.gesprochen ? 'Die Danke-Mail liegt ab morgen als Entwurf bereit (mit Datenschutzhinweis); verschickt wird nur per Klick.' : 'Ohne Gespräch gibt es keine Danke-Mail — den Datenschutzhinweis beim ersten Kontakt geben.'}</Hinweis>}
+          <GespraechSchalter an={e.gesprochen} onUm={v => up({ gesprochen: v })} />
           <HandySchalter an={handyAn && handy.ok} onUm={setHandyAn} grund={handy.ok ? undefined : handy.grund} />
           {offline && <Hinweis farbe={LEUCHT.achtung}>Kein Netz erkannt — die Erfassung bleibt auf dem Gerät und wird gesendet, sobald Netz da ist.</Hinweis>}
           <Aktionsleiste>
@@ -571,7 +578,7 @@ export function GespraechSchalter({ an, onUm }: { an: boolean; onUm: (v: boolean
     <button type="button" role="switch" aria-checked={an} onClick={() => onUm(!an)} className="fassbar" data-testid="gespraech-schalter"
       style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: ZIEL, padding: '10px 14px', borderRadius: 14, textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.body, color: C.ink, cursor: 'pointer',
         border: `1px solid ${an ? TIEF.rand(C.aktiv) : 'rgba(255,255,255,.12)'}`, background: an ? TIEF.flaeche(C.aktiv) : 'rgba(255,255,255,.04)' }}>
-      <span style={{ flex: 1, minWidth: 0 }}><b>Wir haben persönlich gesprochen</b><span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{an ? 'Danke-Entwurf ab morgen.' : 'Kein Danke-Entwurf — nur Karte erhalten. Datenschutzhinweis beim ersten Kontakt geben.'}</span></span>
+      <span style={{ flex: 1, minWidth: 0 }}><b>Wir haben persönlich gesprochen</b><span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{an ? 'Danke-Entwurf ab morgen. Aus = keine Danke-Mail.' : 'Aus: keine Danke-Mail — nur Karte erhalten. Datenschutzhinweis beim ersten Kontakt geben.'}</span></span>
       <span aria-hidden style={{ flex: '0 0 auto', width: 44, height: 26, borderRadius: 13, position: 'relative', background: an ? C.aktiv : 'rgba(255,255,255,.18)' }}>
         <span style={{ position: 'absolute', top: 3, left: an ? 21 : 3, width: 20, height: 20, borderRadius: 10, background: '#fff', transition: 'left .15s' }} />
       </span>

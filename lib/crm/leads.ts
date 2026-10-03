@@ -219,16 +219,30 @@ export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' 
   if (offeneFragen(z) > 0) return true;
   return !z.qualifiziertAm || tageZw(z.qualifiziertAm, heute) > QUALI_WIEDERVORLAGE_TAGE;
 }
-/** Die Leads für die Qualifizierungsrunde — eigene zuerst, warm vor kalt, dann die zuletzt angefassten. */
+/**
+ * SQL-bereit, aber noch ohne Entscheidung (Praxis-Prüfung M3): kein Deal, der Status steht noch vor „SQL“. Wer das Ergebnis eines Gesprächs
+ * verlässt, ohne „Deal anlegen“, „Parken“ oder „Raus“ zu wählen, hat den Lead sonst aus der Runde verloren (frisch geprüft = nicht mehr dran).
+ * Diese Leads bleiben in der Runde — als eigene Gruppe oben — bis jemand entscheidet.
+ */
+export function sqlEntscheidungOffen(z: Pick<LeadZeile, 'status' | 'kriterien' | 'score' | 'deal'>): boolean {
+  return !z.deal && ['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status) && salesBereit(z);
+}
+/**
+ * Die Leads für die Qualifizierungsrunde — zuerst „SQL bereit — Entscheidung offen“ (ohne Temperaturfilter: da wartet eine Entscheidung),
+ * dann die übrigen: eigene zuerst, warm vor kalt, dann die zuletzt angefassten.
+ */
 export function zuQualifizieren(zeilen: LeadZeile[], f: RundenFilter): LeadZeile[] {
   return zeilen
-    .filter(z => brauchtQualifizierung(z, f.heute))
+    .filter(z => brauchtQualifizierung(z, f.heute) || sqlEntscheidungOffen(z))
     .filter(z => (f.wer === 'alle' ? true : f.wer === 'ohne' ? z.ohneBesitzer : !z.ohneBesitzer && (z.besitzer === f.wer || z.besitzer === 'beide')))
-    .filter(z => f.auchKalt || z.score.temperatur !== 'kalt')
+    .filter(z => f.auchKalt || z.score.temperatur !== 'kalt' || sqlEntscheidungOffen(z))
     .filter(z => !f.kanal || z.kanal === f.kanal)
     .filter(z => !f.bean || z.bean === f.bean)
-    .sort((a, b) => b.score.punkte - a.score.punkte || (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? '') || a.name.localeCompare(b.name));
+    .sort((a, b) => Number(sqlEntscheidungOffen(b)) - Number(sqlEntscheidungOffen(a)) || b.score.punkte - a.score.punkte || (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? '') || a.name.localeCompare(b.name));
 }
+/** Warum „Parken“ und „Raus — Kein Fit“ nicht gehen (M8): der Lead ist schon SQL/Kunde oder hat einen offenen Deal — dann wird der Deal in der Deal-Akte geparkt oder verloren. Eine Regel für Server UND Oberfläche. */
+export const AUSSCHEIDEN_GESPERRT = 'Dieser Lead ist schon SQL oder hat einen offenen Deal — der Deal wird in der Deal-Akte geparkt oder verloren.';
+export const ausscheidenGesperrt = (z: Pick<LeadZeile, 'deal' | 'status'>): string | null => (z.deal?.offen || z.status === 'sql' || z.status === 'kunde' ? AUSSCHEIDEN_GESPERRT : null);
 /** Leads-Liste ohne die kalten (Kevin 27.09.: kalte leben nur im Marketing-Segment „Vernetzen“, bis sie warm werden). */
 export const nichtKalt = (z: Pick<LeadZeile, 'score' | 'status' | 'deal'>) => z.score.temperatur !== 'kalt' || z.status === 'sql' || z.status === 'kunde' || !!z.deal;
 /**

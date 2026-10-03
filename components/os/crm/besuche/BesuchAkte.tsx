@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Raster, Zahl, Haken, Zeile, Leer, LEUCHT } from '../../schlank';
 import { ANMELDUNGEN, anmeldungVon, anmeldungPatch, fuerVon, zielSchluessel, zielpersonGesperrt, linkNormal, LINK_FEHLER } from '@/lib/crm/besuche-form';
-import { besuchWirkung, besuchUrteil, zielGetroffen, type BesuchKontext } from '@/lib/crm/besuche';
+import { besuchWirkung, besuchUrteil, zielGetroffen, FOLLOWUP_QUOTE_DEFINITION, type BesuchKontext } from '@/lib/crm/besuche';
 import { UEBERGABE_HINWEIS, ROLLE_HINWEIS } from '@/lib/crm/netzwerken-recht';
 import { budgetSumme } from '@/lib/crm/eventplanung';
 import { berichtAus, EVENT_ZIEL } from '@/lib/crm/netzwerken';
@@ -69,7 +69,8 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
       </div>
 
       <Karte i={1} akzent={LEUCHT.beziehung}>
-        <Ueberschrift rechts={<Chip farbe={urteil.art === 'frueh' ? C.inkDim : URTEIL_FARBE[urteil.art]}>{urteil.label}</Chip>}>{e.titel}</Ueberschrift>
+        <Ueberschrift rechts={<span title={urteil.grund} style={{ cursor: 'help' }}><Chip farbe={urteil.art === 'frueh' ? C.inkDim : URTEIL_FARBE[urteil.art]}>{urteil.label}</Chip></span>}>{e.titel}</Ueberschrift>
+        <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5, margin: '-4px 0 6px' }}>{urteil.art === 'frueh' ? `„${urteil.label}“: ${urteil.grund}` : urteil.grund}</div>
         <BFeld label="Titel"><Feld wert={e.titel} onFertig={t => t.trim() && void setze({ titel: t.trim() })} /></BFeld>
         <BFeld label="Anmeldung">
           <Wahl<EventAnmeldung> label="Anmeldung" liste={ANMELDE} wert={a} onWahl={x => void setze(anmeldungPatch(x))} farbe={a === 'besucht' ? LEUCHT.gut : a === 'abgesagt' ? C.inkLeise : C.aktiv} />
@@ -139,7 +140,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
         <Ueberschrift>Wirkung</Ueberschrift>
         <Raster min={120}>
           <Zahl wert={String(w.kontakte)} label="Kontakte erfasst" />
-          <Zahl wert={w.followupQuote === null ? '—' : `${Math.round(w.followupQuote * 100)} %`} label="Follow-up-Quote" farbe={hat((w.followupQuote ?? 0) >= 0.8, LEUCHT.gut)} />
+          <Zahl wert={w.followupQuote === null ? '—' : `${Math.round(w.followupQuote * 100)} %`} label={<span title={FOLLOWUP_QUOTE_DEFINITION}>Follow-up-Quote ⓘ</span>} farbe={hat((w.followupQuote ?? 0) >= 0.8, LEUCHT.gut)} />
           <Zahl wert={String(w.termine)} label="Termine" />
           <Zahl wert={String(w.deals)} label="Deals" />
           {w.pipeline > 0 && <Zahl wert={euro(w.pipeline)} label="Pipeline" />}

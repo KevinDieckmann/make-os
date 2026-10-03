@@ -21,13 +21,13 @@ export function Fenster({ titel, onZu, children, breit = 720 }: { titel: ReactNo
   }, []);
   return (
     <div onMouseDown={e => { daneben.current = e.target === e.currentTarget; }} onClick={e => { if (daneben.current && e.target === e.currentTarget) zu.current(); }} style={{ position: 'fixed', inset: 0, zIndex: 96, background: 'rgba(5,7,8,.62)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: schmal ? 'stretch' : 'flex-start', padding: schmal ? 0 : '6vh 16px' }}>
-      <div role="dialog" aria-modal="true"
+      <div role="dialog" aria-modal="true" className="os-fenster"
         style={{ width: schmal ? '100%' : `min(${breit}px, 100%)`, maxHeight: schmal ? '100%' : '88vh', height: schmal ? '100%' : undefined, overflowY: 'auto', overscrollBehavior: 'contain',
           background: C.flaeche, borderRadius: schmal ? 0 : 18, border: schmal ? 'none' : '1px solid rgba(255,255,255,.07)', boxShadow: '0 30px 80px -20px rgba(0,0,0,.8)',
-          padding: schmal ? '14px 16px max(20px, env(safe-area-inset-bottom))' : '18px 22px 22px', color: C.ink, fontFamily: SCHRIFT.text, display: 'grid', gap: 14, alignContent: 'start' }}>
+          padding: schmal ? '14px 16px max(20px, env(safe-area-inset-bottom))' : '18px 22px 22px', color: C.ink, fontFamily: SCHRIFT.text, display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 14, alignContent: 'start' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <h2 style={{ margin: 0, fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', lineHeight: 1.3, minWidth: 0, flex: 1 }}>{titel}</h2>
-          <button onClick={onZu} aria-label="Schließen" className="fassbar" style={{ width: 40, height: 40, flex: '0 0 auto', borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.inkDim, fontSize: 22, lineHeight: 1, cursor: 'pointer' }}>×</button>
+          <button onClick={onZu} aria-label="Schließen" className="fassbar os-fenster-zu" style={{ width: 40, height: 40, flex: '0 0 auto', borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.inkDim, fontSize: 22, lineHeight: 1, cursor: 'pointer' }}>×</button>
         </div>
         {children}
       </div>

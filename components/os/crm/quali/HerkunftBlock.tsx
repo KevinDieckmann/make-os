@@ -22,13 +22,13 @@ export function HerkunftBlock({ h, heute, personName }: { h: Herkunft; heute: st
   const karten = h.teile.filter(t => t.art === 'visitenkarte');
   const sprachen = h.teile.filter(t => t.art === 'sprache');
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 8, minWidth: 0 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', minWidth: 0 }}>
         <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 700 }}>Herkunft</span>
-        {!texte.some(t => t.text.toLowerCase().startsWith(h.kanalText.toLowerCase())) && <Chip farbe={C.inkDim}>{h.kanalText}</Chip>}
+        {!texte.some(t => t.text.toLowerCase().startsWith(h.kanalText.toLowerCase())) && <Chip farbe={C.inkDim} umbrechen>{h.kanalText}</Chip>}
         {texte.map((t, i) => t.href
-          ? <button key={i} type="button" onClick={() => router.push(t.href!)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', minHeight: 32 }}><Chip farbe={FARBE[t.art]}>{t.text} ›</Chip></button>
-          : <Chip key={i} farbe={FARBE[t.art]}>{t.text}</Chip>)}
+          ? <button key={i} type="button" onClick={() => router.push(t.href!)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', minHeight: 32, maxWidth: '100%', minWidth: 0, textAlign: 'left' }}><Chip farbe={FARBE[t.art]} umbrechen>{t.text} ›</Chip></button>
+          : <Chip key={i} farbe={FARBE[t.art]} umbrechen>{t.text}</Chip>)}
       </div>
       {(karten.length > 0 || sprachen.length > 0) && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -46,7 +46,7 @@ export function HerkunftBlock({ h, heute, personName }: { h: Herkunft; heute: st
           ))}
         </div>
       )}
-      <div style={{ fontSize: 12.5, color: C.inkLeise }}>{letzteAktivitaetText(h, heute, personName)}</div>
+      <div style={{ fontSize: 12.5, color: C.inkLeise, overflowWrap: 'anywhere' }}>{letzteAktivitaetText(h, heute, personName)}</div>
       {gross && (
         <Fenster titel={gross.text} onZu={() => setGross(null)} breit={720}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -15,6 +15,7 @@ import { istKontaktKennung } from '@/lib/kennung';
 import { crmKonflikte, loeschSperren, type CrmKonflikt, type LoeschSperre, type VerweisKontext } from './crm-stand';
 import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe, type FollowUp } from './typen';
 import { wer, BEIDE, verantwortlich } from './team';
+import { eventsAlsGeloeschtMerken } from './events-geloescht';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
 import { MARKE_MAX } from './marke';
@@ -724,6 +725,7 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
   let aenderungen: Aenderung[] = [];
   let karteiAenderungen: Aenderung[] = [];
   let folgenAbsicht = null as FolgenAbsicht | null;
+  let geloeschteEvents: string[] = [];
   const person = personVon(protokollWer);
   const fertig = await updateJsonAsync<CrmBestand>(CRM_SPEICHER, async cur => {
     // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
@@ -760,6 +762,8 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
       await folgenAbsicht.karteiGeschrieben(nachherLeads);
     }
     aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>);
+    // Gelöschte Events (egal auf welchem Weg) merken — eine wartende Erfassung darf sie nicht wiederauferstehen lassen (M2).
+    if (neu !== basis) { const da = new Set(neu.events.map(x => x.id)); geloeschteEvents = basis.events.filter(x => !da.has(x.id)).map(x => x.id); }
     return neu;
   }).catch(async (e: unknown) => {
     // CRM nicht geschrieben, Kartei womöglich schon: sofort ausgleichen (sonst holt es die Wiederaufnahme nach).
@@ -767,6 +771,7 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
     throw e;
   });
   if (folgenAbsicht) await folgenAbsicht.abschliessen();
+  if (geloeschteEvents.length) await eventsAlsGeloeschtMerken(geloeschteEvents);
   await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
   if (karteiAenderungen.length) await protokolliere('kontakte', karteiAenderungen, protokollWer);
   return fertig;

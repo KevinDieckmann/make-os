@@ -58,11 +58,18 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
 
   useEffect(() => { try { if (notiz) sessionStorage.setItem(merker(z.id), notiz); else sessionStorage.removeItem(merker(z.id)); } catch { /* ohne Speicher: nur im Fenster */ } }, [notiz, z.id]);
   useEffect(() => { kopf.current?.scrollIntoView?.({ block: 'start' }); }, [i, erg]);
+  // M3: auf dem Ergebnis-Schirm ohne Wahl zu schließen kostet nichts — aber nie still: kurze Rückfrage. Ein SQL-bereiter Lead bleibt dann in der Runde
+  // („SQL bereit — Entscheidung offen“), er geht nicht verloren.
+  const schliessen = useRef(() => {});
+  schliessen.current = () => {
+    if (letzte && !window.confirm('Noch kein Ergebnis gewählt (Deal, weiter qualifizieren, parken oder raus). Der Lead bleibt in der Runde und wartet auf die Entscheidung. Trotzdem schließen?')) return;
+    onZu();
+  };
   useEffect(() => {
-    const taste = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role="dialog"]:not([data-gespraech])')) { e.preventDefault(); onZu(); } };
+    const taste = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role="dialog"]:not([data-gespraech])')) { e.preventDefault(); schliessen.current(); } };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
-  }, [onZu]);
+  }, []);
 
   const offenerDeal = !!api.crm?.stand.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && partner && c.kontaktIds.includes(partner.id));
   const ampel = useMemo(() => (partner ? kanalAmpel(partner, { hatMandat: false, hatChance: offenerDeal }) : []), [partner, offenerDeal]);
@@ -103,14 +110,14 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
 
   const fortschritt = fragen.length ? Math.min(100, Math.round((100 * Math.min(i, fragen.length)) / fragen.length)) : 100;
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Gespräch mit ${z.name}`} data-gespraech style={{ position: 'fixed', inset: 0, zIndex: 95, background: C.grund, color: C.ink, fontFamily: SCHRIFT.text, overflowY: 'auto', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column' }}>
-      <div ref={kopf} style={{ position: 'sticky', top: 0, zIndex: 2, background: C.grund, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '12px max(16px, env(safe-area-inset-left))', display: 'grid', gap: 8 }}>
+    <div role="dialog" aria-modal="true" aria-label={`Gespräch mit ${z.name}`} data-gespraech style={{ position: 'fixed', inset: 0, zIndex: 95, background: C.grund, color: C.ink, fontFamily: SCHRIFT.text, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column' }}>
+      <div ref={kopf} style={{ position: 'sticky', top: 0, zIndex: 2, background: C.grund, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '12px max(16px, env(safe-area-inset-left))', display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 8 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 700 }}>Gespräch</div>
             <div style={{ fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.name}</div>
           </div>
-          <button onClick={onZu} aria-label="Gesprächsmodus schließen" className="fassbar" style={{ width: 44, height: 44, borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontSize: 20 }}>×</button>
+          <button onClick={() => schliessen.current()} aria-label="Gesprächsmodus schließen" className="fassbar" style={{ flex: '0 0 auto', width: 44, height: 44, borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontSize: 20 }}>×</button>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {score.scoring && <SeitenChip s={score.scoring.sales} name="SQL" kurz />}
@@ -119,7 +126,7 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
         </div>
       </div>
 
-      <div style={{ flex: 1, width: 'min(720px, 100%)', margin: '0 auto', padding: '16px max(16px, env(safe-area-inset-left)) 24px', display: 'grid', gap: 16, alignContent: 'start' }}>
+      <div style={{ flex: 1, width: 'min(720px, 100%)', margin: '0 auto', padding: '16px max(16px, env(safe-area-inset-left)) 24px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 16, alignContent: 'start', minWidth: 0 }}>
         {/* Wer spricht — mit den Wegen, die zulässig sind (Telefon, Mail, LinkedIn) */}
         <div style={{ display: 'grid', gap: 8 }}>
           {z.personen.length > 1 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{z.personen.map(p => <button key={p.id} type="button" aria-pressed={partnerId === p.id} onClick={() => setPartnerId(p.id)} className="fassbar" style={{ minHeight: 44, padding: '8px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, color: C.ink, border: `1px solid ${partnerId === p.id ? LEUCHT.business : 'rgba(255,255,255,.12)'}`, background: partnerId === p.id ? `${LEUCHT.business}1F` : 'rgba(255,255,255,.04)' }}>{p.name}{p.id === z.hauptKontaktId ? ' ★' : ''}</button>)}</div>}

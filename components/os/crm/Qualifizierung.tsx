@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation';
 import { localDay } from '@/lib/zeit';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../schlank';
-import { statusLabel, zuQualifizieren, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
+import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
 import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
 import { type ScoringEinstellungen } from '@/lib/crm/scoring';
 import { herkunftVon } from '@/lib/crm/herkunft';
@@ -98,6 +98,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
 
   const zaehl = (w: RundenFilter['wer']) => (d ? zuQualifizieren(d.leads, { wer: w, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }).length : 0);
   const neuZahl = d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), bean: 'N', heute }).length : 0;
+  const sqlOffen = karten.filter(sqlEntscheidungOffen).length;
   const andere = anderer(ich);
   const WER: { id: RundenFilter['wer']; label: string }[] = [
     { id: ich, label: `Meine ${zaehl(ich)}` }, { id: andere, label: `${nameVon(andere)} ${zaehl(andere)}` },
@@ -108,7 +109,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
 
   return (
     <>
-      <div style={{ display: 'grid', gap: 14, marginRight: offen ? SEITENBLATT_BREITE + 16 : 0, transition: 'margin .2s ease' }}>
+      <div className="quali-flaeche" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 14, marginRight: offen ? SEITENBLATT_BREITE + 16 : 0, transition: 'margin .2s ease' }}>
         <Karte i={0} akzent={LEUCHT.business}>
           <Ueberschrift farbe={LEUCHT.business} rechts={karten.length ? <span style={{ fontSize: 12.5, color: C.inkLeise }}>{Math.min(pos + 1, karten.length)} von {karten.length}{erledigt ? ` · ${erledigt} geprüft` : ''}</span> : undefined}>Qualifizierungsrunde</Ueberschrift>
           <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: woher er kommt, wie weit er ist, die Fragen — und im Gespräch Schritt für Schritt bis zum Ergebnis. Kontakt und Firma öffnen rechts zur Bearbeitung; wer qualifiziert, übernimmt nicht zugeordnete Leads. Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
@@ -124,8 +125,9 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
               <option value="">Jeder Kanal</option>
               {KANAL.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
             </select>
-            {karten.length > 0 && <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}><Knopf leise aus={pos === 0} onClick={() => setPos(p => Math.max(0, p - 1))}>← Zurück</Knopf><Knopf leise aus={pos >= karten.length} onClick={() => setPos(p => Math.min(karten.length, p + 1))}>Weiter →</Knopf></span>}
+            {karten.length > 0 && <span className="quali-nav" style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}><Knopf leise aus={pos === 0} onClick={() => setPos(p => Math.max(0, p - 1))}>← Zurück</Knopf><Knopf leise aus={pos >= karten.length} onClick={() => setPos(p => Math.min(karten.length, p + 1))}>Weiter →</Knopf></span>}
           </div>
+          {sqlOffen > 0 && <div role="status" style={{ fontSize: 12.5, color: LEUCHT.gut, marginTop: 8, lineHeight: 1.5 }}>{sqlOffen} {sqlOffen === 1 ? 'Lead ist' : 'Leads sind'} SQL-bereit und warten auf deine Entscheidung (Deal, weiter qualifizieren, parken oder raus) — sie stehen oben in der Runde.</div>}
           {start && d && !startZeile && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, marginTop: 8 }}>Zu diesem Eintrag gibt es keinen Lead (Dienstleister, Investor oder eingeschränkt) — die Runde zeigt die übrigen.</div>}
         </Karte>
 
@@ -149,6 +151,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
             <div style={{ marginTop: 10, display: 'flex', gap: 8 }}><Knopf onClick={() => { setReihe(null); setPos(0); setErledigt(0); }}>Neue Runde</Knopf><Knopf leise onClick={() => zuLeads()}>Zu den Leads</Knopf></div>
           </Karte>
         )}
+        {z && sqlEntscheidungOffen(z) && <div role="note" style={{ padding: '8px 14px', borderRadius: 12, background: `${LEUCHT.gut}14`, border: `1px solid ${LEUCHT.gut}44`, fontSize: TYP.bedien, color: LEUCHT.gut, fontWeight: 700 }}>SQL bereit — Entscheidung offen</div>}
         {z && <QualiKarte key={z.id} z={z} api={api} einstellungen={einstellungen} ich={ich} heute={heute} weiter={weiter} ersetze={ersetze} zuLeads={zuLeads}
           oeffneKontakt={id => setPanel({ art: 'kontakt', id, startFirma: (api.kontakte ?? []).find(k => k.id === id)?.firmaId })} oeffneFirma={id => setPanel({ art: 'firma', id })} meldeFertig={setMeldung} />}
 
@@ -192,7 +195,7 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLead
 
   return (
     <Karte i={1} akzent={temperaturFarbe(score.temperatur)}>
-      <div style={{ display: 'grid', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 14, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 6 }}>
             <div style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, letterSpacing: '-.015em', overflowWrap: 'anywhere' }}>{z.name}</div>
@@ -202,7 +205,7 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLead
               {z.personen.length > 1 && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{z.personen.length} Personen</span>}
             </div>
           </div>
-          <div style={{ flex: '1 1 300px' }}><ScoreKopf score={score} /></div>
+          <div style={{ flex: '1 1 300px', minWidth: 0 }}><ScoreKopf score={score} /></div>
         </div>
 
         <HerkunftBlock h={herkunftMitDateien} heute={heute} personName={id => z.personen.find(p => p.id === id)?.name ?? ''} />
@@ -227,7 +230,7 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLead
         </div>
 
         {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="quali-aktionen" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Knopf onClick={() => geprueft()} aus={laeuft}>Geprüft → nächster</Knopf>
           {bereit && !z.deal?.offen && <Knopf farbe={LEUCHT.gut} onClick={() => zuLeads(z.id)}>SQL → Deal anlegen</Knopf>}
           <Knopf leise onClick={() => weiter(false)}>Später</Knopf>

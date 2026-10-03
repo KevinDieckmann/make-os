@@ -38,7 +38,8 @@ export function WeiterePersonDialog({ api, z, onZu, onFertig }: { api: CrmApi; z
     setLaeuft(true); setMeldung('');
     try {
       const id = neueKontaktKennung();
-      const besitzer = z.besitzer === 'beide' || !z.besitzer ? api.ich ?? undefined : z.besitzer;
+      // Besitzer ist die handelnde Person (Sitzung) — wer die Person im Gespräch erfährt und anlegt, hält die Beziehung; nur ohne Sitzung gilt der Besitzer des Leads.
+      const besitzer = api.ich ?? (z.besitzer && z.besitzer !== 'beide' ? z.besitzer : undefined);
       const gespeichert = await api.kontaktSetzen({
         id, vorname: e.vorname.trim(), nachname: e.nachname.trim(), ...(e.email.trim() ? { email: e.email.trim().toLowerCase() } : {}), ...(e.telefon.trim() ? { telefon: e.telefon.trim() } : {}),
         ...(e.position.trim() ? { position: e.position.trim() } : {}), firma: firma.name, firmaId: firma.id, eignung: '', prio: '', stufe: 'neu', lebensphase: 'kontakt', anrede: 'Sie',

@@ -32,7 +32,8 @@ export function FirmaWechselnDialog({ api, z, nachziehen, onZu, onFertig }: { ap
   const heute = api.crm?.heute ?? localDay();
   const firmen = useMemo(() => api.crm?.stand.firmen ?? [], [api.crm]);
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
-  const [personId, setPersonId] = useState(nachziehen?.personId ?? z.hauptKontaktId ?? z.personen[0]?.id ?? '');
+  // M7: bei einem Firmen-Lead mit mehreren Personen wählt man selbst, WESSEN Firma sich ändert — keine Vorauswahl (sonst zieht still die falsche Person um).
+  const [personId, setPersonId] = useState(nachziehen?.personId ?? (z.art === 'firma' && z.personen.length > 1 ? '' : z.hauptKontaktId ?? z.personen[0]?.id ?? ''));
   const person = kontakte.find(k => k.id === personId);
   const alt = nachziehen ? firmen.find(f => f.id === nachziehen.von) : person?.firmaId ? firmen.find(f => f.id === person.firmaId) : undefined;
   const hatteFirma = !!(person && stationenVon(person).length);
@@ -91,7 +92,7 @@ export function FirmaWechselnDialog({ api, z, nachziehen, onZu, onFertig }: { ap
     <Fenster titel={titel} onZu={onZu} breit={640}>
       {!nachziehen && z.personen.length > 1 && (
         <div style={{ display: 'grid', gap: 6 }}>
-          <span style={{ fontSize: 12.5, color: C.inkLeise }}>Wessen Firma ändert sich?</span>
+          <span style={{ fontSize: 12.5, color: C.inkLeise }}>Wessen Firma ändert sich?{!person && <b style={{ color: LEUCHT.achtung }}> Bitte eine Person wählen.</b>}</span>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {z.personen.map(p => <button key={p.id} type="button" aria-pressed={personId === p.id} onClick={() => setPersonId(p.id)} className="fassbar" style={chipStil(personId === p.id)}>{p.name}</button>)}
           </div>

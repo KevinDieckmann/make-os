@@ -24,7 +24,7 @@ import type { Kpi, KpiAmpel } from './kennzahlen';
 import { gesamtwert, OFFENE_STUFEN } from './pipeline';
 import { budgetSumme } from './eventplanung';
 import { ausgenommen } from './einschraenkung';
-import { istBesuch, besuchAbgesagt, fuerFirmaId, anmeldungVon, zielSchluessel, zielpersonGesperrt } from './besuche-form';
+import { istBesuch, besuchAbgesagt, fuerFirmaId, anmeldungVon, anmeldungLabel, zielSchluessel, zielpersonGesperrt } from './besuche-form';
 import { berlinTag } from './netzwerken';
 import { NETZWERKEN_QUELLE } from './netzwerken';
 import { tagVon } from '@/lib/zeit';
@@ -39,6 +39,10 @@ const tagDe = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)
 export const URTEIL_AB_TAGE = 14;
 /** Wie lange nach dem Event ein neuer Deal mit einer erfassten Person noch dem Event zugerechnet wird. */
 export const DEAL_FENSTER_TAGE = 180;
+/** Innerhalb von so vielen Tagen nach dem Event muss nachgefasst sein, damit es für die Follow-up-Quote zählt (wie die 48-Stunden-Regel der Events, `followUpBis`). */
+export const BESUCH_FOLLOWUP_TAGE = 2;
+/** Die Definition der Follow-up-Quote der besuchten Events — steht als Tooltip und unter den Kennzahlen (Praxis-Prüfung M10). */
+export const FOLLOWUP_QUOTE_DEFINITION = `Anteil der erfassten Personen, bei denen innerhalb von ${BESUCH_FOLLOWUP_TAGE} Tagen nach dem Event nachgefasst wurde (Follow-up, Termin, Gespräch oder Danke-Mail raus). Wer bewusst nicht nachgefasst wird („Nur Kontakt“, Verzicht), zählt nicht mit.`;
 
 export interface BesuchKontext {
   teilnahmen: readonly Teilnahme[];
@@ -54,9 +58,11 @@ export const erfassteTeilnahmen = (eventId: string, teilnahmen: readonly Teilnah
 export interface BesuchWirkung {
   /** Erfasste Kontakte. */
   kontakte: number;
-  /** Davon mit gesetztem Nachfassen (Teilnahme.followUpAm — Termin, Angebot, Vermittlung, Einladung zählen am Erfassungstag). */
+  /** Davon rechtzeitig nachgefasst: `followUpAm` gesetzt (Termin, Angebot, Vermittlung, Einladung, Danke-Mail zählen) und höchstens `BESUCH_FOLLOWUP_TAGE` Tage nach dem Event. */
   nachgefasst: number;
-  /** nachgefasst / kontakte (0–1) — null ohne Kontakte. */
+  /** Bezug der Quote: erfasste Personen ohne bewussten Verzicht („Nur Kontakt“) — wer nicht nachgefasst werden soll, drückt die Quote nicht. */
+  followupBasis: number;
+  /** nachgefasst / followupBasis (0–1) — null ohne Bezug. Definition: `FOLLOWUP_QUOTE_DEFINITION`. */
   followupQuote: number | null;
   /** Noch nicht nachgefasst (ohne „Nachfassen ausgelassen“). */
   nachfassenOffen: number;
@@ -117,11 +123,13 @@ export function besuchWirkung(e: Event, ctx: BesuchKontext): BesuchWirkung {
   const bis = plusTage(e.datum, DEAL_FENSTER_TAGE);
   const deals = ctx.chancen.filter(c => (c.quelle === 'event' && c.quelleBezug === e.id)
     || (!c.quelle && c.kontaktIds.some(id => neu.has(id)) && tagVon(c.angelegt) >= e.datum && tagVon(c.angelegt) <= bis));
-  const nachgefasst = t.filter(x => !!x.followUpAm).length;
+  const frist = plusTage(e.datum, BESUCH_FOLLOWUP_TAGE);
+  const basis = t.filter(x => !x.nachfassenVerzichtet || !!x.followUpAm);
+  const nachgefasst = basis.filter(x => !!x.followUpAm && x.followUpAm.slice(0, 10) <= frist).length;
   const kosten = budgetSumme(e);
   const z = zielGetroffen(e, ctx.teilnahmen, ctx.kontakte);
   return {
-    kontakte: t.length, nachgefasst, followupQuote: t.length ? nachgefasst / t.length : null,
+    kontakte: t.length, nachgefasst, followupBasis: basis.length, followupQuote: basis.length ? nachgefasst / basis.length : null,
     nachfassenOffen: t.filter(x => !x.followUpAm && !x.nachfassenVerzichtet).length,
     termine: t.filter(x => !!x.netzwerken?.terminAm).length,
     dealIds: deals.map(c => c.id), deals: deals.length, dealsUrteil: deals.filter(dealZaehlt).length,
@@ -153,15 +161,24 @@ export function besuchUrteil(e: Event, w: BesuchWirkung, heute: string): Urteil 
 /** Hat das besuchte Event WIRKLICH stattgefunden (für uns)? Angemeldet-und-vorbei oder geplant-und-vorbei zählt nicht — nur „besucht“ bzw. durchgeführt, nie abgesagt. */
 export const besucht = (e: Event): boolean => istBesuch(e) && !besuchAbgesagt(e) && (anmeldungVon(e) === 'besucht' || e.status === 'durchgefuehrt');
 
+/**
+ * Zählt dieses besuchte Event als besucht? „Wer dort erfasst, hat es besucht“ (Praxis-Prüfung M10): ein Event mit Erfassungen zählt immer — auch wenn sein Datum
+ * (noch) in der Zukunft liegt oder der Anmeldestand nicht umgesprungen ist; sonst entscheidet `besucht` (Anmeldestand/Status) und das Datum darf nicht in der Zukunft liegen.
+ */
+export function zaehltAlsBesucht(e: Event, teilnahmen: readonly Teilnahme[], heute: string): boolean {
+  if (!istBesuch(e) || besuchAbgesagt(e)) return false;
+  return erfassteTeilnahmen(e.id, teilnahmen).some(x => !!x.netzwerken || x.status === 'da') || (besucht(e) && e.datum <= heute);
+}
+
 export interface BesuchZeile { event: Event; wirkung: BesuchWirkung; urteil: Urteil }
-export interface BesuchSumme { events: number; kontakte: number; kosten: number; kostenJeKontakt: number | null; deals: number; pipeline: number; umsatz: number; nachgefasst: number; followupQuote: number | null }
+export interface BesuchSumme { events: number; kontakte: number; kosten: number; kostenJeKontakt: number | null; deals: number; pipeline: number; umsatz: number; nachgefasst: number; followupBasis: number; followupQuote: number | null }
 
 const REIHE: Record<UrteilArt, number> = { lohnt: 0, laeuft: 1, frueh: 2, ohne: 3 };
 const wert = (z: BesuchZeile) => z.wirkung.pipeline + z.wirkung.umsatz - z.wirkung.kosten;
 
 /** Die besuchten Events, die schon stattgefunden haben (nicht abgesagt) — mit Wirkung und Urteil, „lohnt sich“ zuerst. */
 export function besuchUebersicht(events: readonly Event[], ctx: BesuchKontext): { zeilen: BesuchZeile[]; summe: BesuchSumme } {
-  const zeilen = events.filter(e => besucht(e) && e.datum <= ctx.heute).map(event => {
+  const zeilen = events.filter(e => zaehltAlsBesucht(e, ctx.teilnahmen, ctx.heute)).map(event => {
     const wirkung = besuchWirkung(event, ctx);
     return { event, wirkung, urteil: besuchUrteil(event, wirkung, ctx.heute) };
   }).sort((a, b) => REIHE[a.urteil.art] - REIHE[b.urteil.art] || wert(b) - wert(a) || b.event.datum.localeCompare(a.event.datum));
@@ -175,12 +192,13 @@ export function besuchSumme(zeilen: readonly BesuchZeile[], ctx: Pick<BesuchKont
   const kontakte = zeilen.reduce((a, z) => a + z.wirkung.kontakte, 0);
   const kosten = zeilen.reduce((a, z) => a + z.wirkung.kosten, 0);
   const nachgefasst = zeilen.reduce((a, z) => a + z.wirkung.nachgefasst, 0);
+  const followupBasis = zeilen.reduce((a, z) => a + z.wirkung.followupBasis, 0);
   return {
     events: zeilen.length, kontakte, kosten, kostenJeKontakt: kosten > 0 && kontakte ? Math.round(kosten / kontakte) : null,
     deals: deals.length,
     pipeline: Math.round(deals.filter(c => OFFENE_STUFEN.includes(c.stufe)).reduce((a, c) => a + gesamtwert(c), 0)),
     umsatz: Math.round(deals.filter(c => c.stufe === 'gewonnen').reduce((a, c) => a + gesamtwert(c), 0)),
-    nachgefasst, followupQuote: kontakte ? nachgefasst / kontakte : null,
+    nachgefasst, followupBasis, followupQuote: followupBasis ? nachgefasst / followupBasis : null,
   };
 }
 
@@ -224,6 +242,17 @@ export function begegnungenFuerFirma(events: readonly Event[], teilnahmen: reado
 }
 
 /**
+ * Was die Firmenakte zu einem Event sagt: „besucht“ nur, wenn jemand von der Firma dort WAR (Teilnahme) bzw. das Event stattgefunden hat — ein Event in der Zukunft
+ * steht als „angemeldet“/„geplant“ (Praxis-Prüfung), Make.One-Abende als „Make.One“.
+ */
+export function begegnungStatus(b: Pick<FirmenBegegnung, 'event' | 'getroffen'>, heute: string): string {
+  if (!istBesuch(b.event)) return 'Make.One';
+  if (b.getroffen || (besucht(b.event) && b.event.datum <= heute)) return 'besucht';
+  const a = anmeldungVon(b.event);
+  return a === 'besucht' ? 'angemeldet' : anmeldungLabel(a).toLowerCase();
+}
+
+/**
  * „Angemeldet, aber kein Termin im Kalender“ (N5, Glocke und Heute): besuchte Events mit Anmeldestand „angemeldet“, die in den nächsten `tage` Tagen
  * stattfinden und noch keinen Kalender-Termin haben (`kalenderUid` fehlt) — nur für die, die hingehen (`wer`; ohne Angabe die Zuständige bzw. alle).
  */
@@ -243,7 +272,7 @@ const euro = (n: number) => `${n.toLocaleString('de-DE')} €`;
 /** Die eigenen Kennzahlen der besuchten Events, 90 Tage — getrennt von den Make.One-Kennzahlen (`eventKennzahlen`). */
 export function besuchKennzahlen(events: readonly Event[], ctx: BesuchKontext): Kpi[] {
   const von = plusTage(ctx.heute, -89);
-  const imFenster = events.filter(e => besucht(e) && e.datum >= von && e.datum <= ctx.heute);
+  const imFenster = events.filter(e => e.datum >= von && zaehltAlsBesucht(e, ctx.teilnahmen, ctx.heute));
   const { zeilen, summe } = besuchUebersicht(imFenster, ctx);
   const grau: KpiAmpel = 'grau';
   const quote = summe.followupQuote;
@@ -253,8 +282,8 @@ export function besuchKennzahlen(events: readonly Event[], ctx: BesuchKontext): 
       quelle: zeilen.length ? `${zeilen.filter(z => z.event.fuer?.art === 'kunde').length} davon für Kunden` : 'noch kein besuchtes Event' },
     { id: 'besuche_kontakte', label: 'Erfasste Kontakte', wert: summe.kontakte || null, anzeige: summe.kontakte ? String(summe.kontakte) : '—', ampel: grau, ziel: 'je Event',
       quelle: zeilen.length ? `aus ${zeilen.length} Event${zeilen.length === 1 ? '' : 's'}` : 'noch niemand erfasst' },
-    { id: 'besuche_followup', label: 'Follow-up-Quote', wert: quote, anzeige: quote === null ? '—' : prozent(quote), ampel: quoteAmpel, ziel: '≥ 80 %',
-      quelle: summe.kontakte ? `${summe.nachgefasst} von ${summe.kontakte} Kontakten mit nächstem Schritt erledigt` : 'noch niemand erfasst' },
+    { id: 'besuche_followup', label: 'Follow-up-Quote', wert: quote, anzeige: quote === null ? '—' : prozent(quote), ampel: quoteAmpel, ziel: '≥ 80 %', definition: FOLLOWUP_QUOTE_DEFINITION,
+      quelle: summe.followupBasis ? `${summe.nachgefasst} von ${summe.followupBasis} Personen rechtzeitig nachgefasst` : summe.kontakte ? 'alle ohne Nachfassen vorgesehen' : 'noch niemand erfasst' },
     { id: 'besuche_deals', label: 'Termine und Deals', wert: summe.deals, anzeige: `${zeilen.reduce((a, z) => a + z.wirkung.termine, 0)} · ${summe.deals}`, ampel: grau, ziel: 'Termine · Deals',
       quelle: summe.deals ? `Pipeline ${euro(summe.pipeline)}${summe.umsatz ? ` · gewonnen ${euro(summe.umsatz)}` : ''}` : 'noch kein Deal aus diesen Events' },
     { id: 'besuche_kosten', label: 'Kosten je Kontakt', wert: summe.kostenJeKontakt, anzeige: summe.kostenJeKontakt === null ? '—' : euro(summe.kostenJeKontakt), ampel: grau, ziel: 'niedrig',
@@ -302,12 +331,31 @@ export function csvFeld(v: string | undefined, o: { telefon?: boolean } = {}): s
 
 const slug = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'event';
 
-/** Herkunft einer Zeile aus den DATEN: neu angelegt (mit/ohne Kartenfoto) oder wiedergetroffen (mit der bisherigen Herkunft der Person). */
+/**
+ * Herkunft einer Zeile aus den DATEN: neu angelegt (mit/ohne Kartenfoto) oder wiedergetroffen (mit der bisherigen Herkunft der Person) —
+ * und ob persönlich gesprochen wurde (`keinGespraech`: dann steht nie „persönlich kennengelernt“; Art. 13/14: die Angabe muss stimmen).
+ */
 export function exportHerkunft(k: Pick<Kontakt, 'herkunft' | 'quelle'>, t: Pick<Teilnahme, 'netzwerken'>): string {
   const n = t.netzwerken;
-  if (n?.neuAngelegt) return n.kartenfoto ? 'Persönlich auf der Veranstaltung kennengelernt, Visitenkarte übergeben' : 'Persönlich auf der Veranstaltung kennengelernt';
+  const gesprochen = !n?.keinGespraech;
+  if (n?.neuAngelegt) {
+    if (!gesprochen) return n.kartenfoto ? 'Visitenkarte auf der Veranstaltung erhalten, kein persönliches Gespräch' : 'Auf der Veranstaltung erfasst, kein persönliches Gespräch';
+    return n.kartenfoto ? 'Persönlich auf der Veranstaltung kennengelernt, Visitenkarte übergeben' : 'Persönlich auf der Veranstaltung kennengelernt';
+  }
   const vorher = HERKUNFT.find(h => h.id === k.herkunft)?.label ?? (k.quelle ? `Quelle: ${k.quelle}` : 'Herkunft nicht vermerkt');
-  return `Bereits bekannt (${vorher}), auf der Veranstaltung wiedergetroffen`;
+  return `Bereits bekannt (${vorher}), auf der Veranstaltung ${gesprochen ? 'wiedergetroffen' : 'wiedergesehen, kein persönliches Gespräch'}`;
+}
+
+const EW_KANAL_TEXT: Record<string, string> = { mail: 'E-Mail', telefon: 'Telefon', social: 'Social', newsletter: 'Newsletter', einladung: 'Einladung' };
+/**
+ * Spalte „Werbe-Einwilligung“ je Zeile: „keine (Visitenkarte, § 7 UWG)“ NUR bei einer Person, die hier per Visitenkarte neu erfasst wurde;
+ * sonst der echte Stand aus der Kartei (gültige Einwilligungen mit Kanal und Tag, sonst „keine vermerkt“) — nie pauschal.
+ */
+export function exportWerbeEinwilligung(k: Pick<Kontakt, 'einwilligungen'>, t: Pick<Teilnahme, 'netzwerken'>): string {
+  if (t.netzwerken?.neuAngelegt) return KEINE_WERBE_EINWILLIGUNG;
+  const gueltig = (k.einwilligungen ?? []).filter(e => e.grundlage === 'einwilligung' && !e.widerrufenAm);
+  if (!gueltig.length) return 'keine vermerkt';
+  return gueltig.map(e => `${EW_KANAL_TEXT[e.kanal] ?? e.kanal} seit ${tagDe(e.erteiltAm)}`).join(', ');
 }
 
 export interface UebergabeZeile {
@@ -372,7 +420,7 @@ export function kundenExport(o: { event: Event; teilnahmen: readonly Teilnahme[]
     const am = x.netzwerken?.erfasstAm ? berlinTag(x.netzwerken.erfasstAm) : o.event.datum;
     zeilen.push([
       csvFeld(k.nachname), csvFeld(k.vorname), csvFeld(k.firma), csvFeld(k.position), csvFeld(k.email), csvFeld(k.telefon, { telefon: true }), csvFeld(k.sms, { telefon: true }), csvFeld(k.linkedin), csvFeld(k.firmaWebseite),
-      csvFeld(tagDe(am)), csvFeld(o.event.titel), csvFeld(tagDe(o.event.datum)), csvFeld(exportHerkunft(k, x)), csvFeld(k.datenschutzInformiertAm ? tagDe(k.datenschutzInformiertAm) : 'nein'), csvFeld(EXPORT_KEINE_EINWILLIGUNG),
+      csvFeld(tagDe(am)), csvFeld(o.event.titel), csvFeld(tagDe(o.event.datum)), csvFeld(exportHerkunft(k, x)), csvFeld(k.datenschutzInformiertAm ? tagDe(k.datenschutzInformiertAm) : 'nein'), csvFeld(exportWerbeEinwilligung(k, x)),
     ].join(';'));
   }
   const kopf = EXPORT_SPALTEN.map(s => csvFeld(s)).join(';');

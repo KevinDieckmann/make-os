@@ -9,7 +9,7 @@
 import { useMemo } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Raster, Zahl, LEUCHT } from '../../schlank';
-import { besuchKennzahlen, besuchUebersicht, URTEIL_AB_TAGE, type BesuchKontext, type UrteilArt } from '@/lib/crm/besuche';
+import { besuchKennzahlen, besuchUebersicht, URTEIL_AB_TAGE, FOLLOWUP_QUOTE_DEFINITION, type BesuchKontext, type UrteilArt } from '@/lib/crm/besuche';
 import { datum, euro } from '../daten';
 import { FuerChip, type BesuchProps } from './gemeinsam';
 
@@ -28,9 +28,10 @@ export function BesuchWirkung({ api, crm, onAkte }: Pick<BesuchProps, 'api' | 'c
       <Karte i={1}>
         <Ueberschrift>Kennzahlen der besuchten Events · 90 Tage</Ueberschrift>
         <Raster min={130}>
-          {kpis.map(k => <Zahl key={k.id} wert={k.anzeige} label={k.label} farbe={AMPEL[k.ampel]} />)}
+          {kpis.map(k => <div key={k.id} title={k.definition ?? k.quelle}><Zahl wert={k.anzeige} label={<>{k.label}{k.definition ? <span aria-hidden> ⓘ</span> : null}</>} farbe={AMPEL[k.ampel]} />{k.id === 'besuche_followup' && <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 2 }}>{k.quelle}</div>}</div>)}
         </Raster>
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>
+          <b style={{ color: C.inkDim }}>Follow-up-Quote:</b> {FOLLOWUP_QUOTE_DEFINITION}<br />
           Eigene Zahlen — getrennt von Make.One (Gäste, Zusagen und Nachfassen unserer Abende). Erfasste Kontakte, Deals und Umsatz zählen trotzdem normal in Sales.
         </div>
       </Karte>

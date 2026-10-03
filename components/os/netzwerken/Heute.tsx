@@ -8,14 +8,14 @@
 // (Teilnahme „nachgefasst“, Aktivität am Kontakt). Mails an Personen mit Werbesperre oder ohne Adresse gibt es nicht.
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardList } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
 import { berichtAus, dankeZeilen, dankeOffen, dankeEntwurf, dankeMailtoLink, schrittLabel, type DankeZeile } from '@/lib/crm/netzwerken';
-import { DANKE_UWG_HINWEIS, DANKE_FRIST_TAGE, werbeWoerter, datenschutzAngaben } from '@/lib/crm/netzwerken-recht';
+import { DANKE_UWG_HINWEIS, DANKE_FRIST_TAGE, werbeWoerter, datenschutzAngaben, weitergabeAnkuendigen } from '@/lib/crm/netzwerken-recht';
 import { fuerFirmaId } from '@/lib/crm/besuche-form';
-import { tagPlus, tagVon, wandzeit } from '@/lib/zeit/kalender-kern';
+import { tagVon, wandzeit } from '@/lib/zeit/kalender-kern';
 import { WEG, eventLink } from '@/lib/wege';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import type { CrmApi } from '../crm/daten';
@@ -73,8 +73,9 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
               <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4, lineHeight: 1.5 }}>
                 {tagText(event.datum)}{event.ort ? ` · ${event.ort}` : ''}
                 {Object.entries(bericht.jePerson).map(([p, n]) => ` · ${nameVon(p)} ${n}`).join('')}
-                {bericht.offenGesamt ? ` · ${bericht.offenGesamt} offen` : ''}
+                {bericht.offenGesamt ? <span title="Offene Punkte nach der Erfassung: Danke-Mail, Follow-up, Termin, Datenschutzhinweis, Sprachnotiz — jeder offene Punkt zählt einzeln, auch mehrere je Person."> · {bericht.offenGesamt} offene {bericht.offenGesamt === 1 ? 'Punkt' : 'Punkte'}</span> : ''}
               </div>
+              {bericht.offenGesamt > 0 && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2, lineHeight: 1.5 }}>Offen = was nach dem Erfassen noch zu tun ist (Danke-Mail, Follow-up, Termin, Datenschutzhinweis). Jeder Punkt zählt einzeln — die Gelben unter jeder Person nennen sie.</div>}
               {/* Bericht und Danke-Mails hängen am Event — von hier geht es in seine Akte (Events) bzw. ins Make.One-Event (03.10.). */}
               <Link href={eventLink(event)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none' }}>{istBesuch(event) ? 'Event-Akte öffnen ›' : 'Make.One-Event öffnen ›'}</Link>
             </div>
@@ -135,11 +136,21 @@ function Laedt() {
   );
 }
 
+/** Ein Textfeld, das mit dem Inhalt wächst (kein Scrollen im Feld, nichts abgeschnitten) — für Betreff und Text der Danke-Mail. */
+function AutoFeld({ wert, onWert, label, zeilen }: { wert: string; onWert: (v: string) => void; label: string; zeilen: number }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { const el = ref.current; if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight + 2}px`; } }, [wert]);
+  return <textarea ref={ref} value={wert} onChange={x => onWert(x.target.value)} rows={zeilen} style={{ ...eingabe, resize: 'none', overflow: 'hidden', lineHeight: 1.5, fontFamily: SCHRIFT.text }} aria-label={label} />;
+}
+
 function DankeKarte({ d, heute, absender, meine, vonName, api, kunde }: { d: DankeZeile; heute: string; absender: string; meine: boolean; vonName: string; api: CrmApi; kunde?: string }) {
   const n = d.teilnahme.netzwerken!;
   const [anrede, setAnrede] = useState<'Du' | 'Sie'>(n.danke?.anrede ?? d.kontakt.anrede ?? 'Sie');
-  const gestern = tagVon(wandzeit(new Date(n.erfasstAm))) === tagPlus(heute, -1);
-  const vorlage = useMemo(() => dankeEntwurf({ vorname: d.kontakt.vorname, nachname: d.kontakt.nachname, anrede, eventTitel: d.event.titel, wann: gestern ? 'gestern' : 'neulich', schritt: n.schritt, terminAm: n.terminAm, absender, ...(kunde ? { kunde } : {}), datenschutz: datenschutzAngaben() }), [d.kontakt.vorname, d.kontakt.nachname, anrede, d.event.titel, gestern, n.schritt, n.terminAm, absender, kunde]);
+  // „gestern“ gilt für den TAG DES EVENTS (nicht für den Erfassungstag); sonst steht das Datum („am 08.10.“). Die Weitergabe an den Kunden wird nur
+  // bei einer an diesem Event neu angelegten Person angekündigt; Bestandspersonen „wiedergesehen“, ohne Visitenkarten-Satz (Art. 13/14).
+  const neu = !!n.neuAngelegt;
+  const kundeAnkuendigen = !!kunde && weitergabeAnkuendigen(d.kontakt, n);
+  const vorlage = useMemo(() => dankeEntwurf({ vorname: d.kontakt.vorname, nachname: d.kontakt.nachname, anrede, eventTitel: d.event.titel, wann: 'neulich', eventDatum: d.event.datum, heute, neu, gesprochen: !n.keinGespraech, schritt: n.schritt, terminAm: n.terminAm, absender, ...(kundeAnkuendigen && kunde ? { kunde } : {}), datenschutz: datenschutzAngaben() }), [d.kontakt.vorname, d.kontakt.nachname, anrede, d.event.titel, d.event.datum, heute, neu, n.keinGespraech, n.schritt, n.terminAm, absender, kunde, kundeAnkuendigen]);
   const [text, setText] = useState<string | null>(null);
   const [betreff, setBetreff] = useState<string | null>(null);
   const [geoeffnet, setGeoeffnet] = useState(false);
@@ -200,8 +211,12 @@ function DankeKarte({ d, heute, absender, meine, vonName, api, kunde }: { d: Dan
             </div>
           </div>
           <Hinweis>{DANKE_UWG_HINWEIS}</Hinweis>
-          <input value={aktuell.betreff} onChange={x => setBetreff(x.target.value)} style={eingabe} aria-label="Betreff" />
-          <textarea value={aktuell.text} onChange={x => setText(x.target.value)} rows={9} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5, fontFamily: SCHRIFT.text }} aria-label="Text der Danke-Mail" />
+          {/* Der Datenschutzhinweis (Art. 13) steht am Ende des Textes — hier vorab sichtbar, damit man ihn nicht erst ans Ende scrollen muss. */}
+          {aktuell.text.includes('Datenschutz:')
+            ? <Hinweis farbe={LEUCHT.gut} rolle="status">✓ Datenschutzhinweis ist enthalten (am Ende der Mail).</Hinweis>
+            : <Hinweis farbe={LEUCHT.achtung} rolle="alert">Der Datenschutzhinweis (Art. 13) fehlt im Text — bitte ergänzen oder beim ersten Kontakt geben.</Hinweis>}
+          <AutoFeld wert={aktuell.betreff} onWert={setBetreff} label="Betreff" zeilen={1} />
+          <AutoFeld wert={aktuell.text} onWert={setText} label="Text der Danke-Mail" zeilen={9} />
           <div style={{ display: 'grid', gap: 8 }}>
             {werbung.length > 0 && <Hinweis farbe={LEUCHT.achtung} rolle="alert">Im Text steht „{werbung.join('“, „')}“ — das wäre ohne Einwilligung Werbung (§ 7 UWG). Bitte nur Dank und Verabredetes.</Hinweis>}
             {link && (werbung.length > 0

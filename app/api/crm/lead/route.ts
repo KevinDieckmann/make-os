@@ -36,7 +36,7 @@ import { personAus } from '@/lib/zoe/raum';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { dealZuFirma } from '@/lib/crm/firmen-bezug';
-import { leads, trichter, salesBereit, fehltBisSqlZeile, leereKriterien } from '@/lib/crm/leads';
+import { leads, trichter, salesBereit, fehltBisSqlZeile, leereKriterien, ausscheidenGesperrt } from '@/lib/crm/leads';
 import { standardScoring, altWertAusStufe } from '@/lib/crm/scoring';
 import { LEAD_MAP_MAX } from '@/lib/crm/lead-form';
 import { istGrundRaus, istGrundParken } from '@/lib/crm/lead-grund';
@@ -47,7 +47,7 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 import { dealAnlegen } from '@/lib/crm/deal-anlegen';
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { phaseHeben } from '@/lib/crm/lifecycle';
-import { wer, BEIDE } from '@/lib/crm/team';
+import { wer, BEIDE, nameVon } from '@/lib/crm/team';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
 import type { Lead, Mandat } from '@/lib/crm/typen';
 import { angenommenZuDeal, mandatVorbelegung } from '@/lib/crm/angebote';
@@ -216,7 +216,8 @@ export async function POST(req: Request) {
   // Parken (03.10.): Status „ruht“ mit Wiedervorlage — am Tag kommt der Lead in die Runde zurück; dazu ein Follow-up.
   // Raus: „Kein Fit“ mit fester Grund-Art (Auswertung). Beides nie bei einem Lead mit offenem Deal (dann den Deal parken).
   if (b.aktion === 'parken' || b.aktion === 'raus') {
-    if (zeile.deal?.offen || zeile.status === 'sql' || zeile.status === 'kunde') return NextResponse.json({ ok: false, fehler: 'Dieser Lead ist schon SQL oder hat einen offenen Deal — der Deal wird in der Deal-Akte geparkt oder verloren.' }, { status: 409 });
+    const gesperrt = ausscheidenGesperrt(zeile);
+    if (gesperrt) return NextResponse.json({ ok: false, fehler: gesperrt }, { status: 409 });
     const grund = String(b.grund ?? '').trim();
     if (grund.length > 300) return NextResponse.json({ ok: false, fehler: 'Der Grund ist länger als 300 Zeichen.' }, { status: 413 });
     const parken = b.aktion === 'parken';
@@ -245,7 +246,7 @@ export async function POST(req: Request) {
     if (!an || an === BEIDE) return NextResponse.json({ ok: false, fehler: 'Abgeben braucht eine Person (kevin oder malin).' }, { status: 400 });
     if (String(b.notiz ?? '').length > 600) return NextResponse.json({ ok: false, fehler: 'Die Notiz ist länger als 600 Zeichen.' }, { status: 413 });
     const r = await uebergeben({ art: 'kontakte', ids: zeile.personen.map(p => p.id), an, notiz: typeof b.notiz === 'string' ? b.notiz : undefined }, person, werAus(req));
-    return r.ok ? NextResponse.json({ ok: true, an: r.an, aufgabe: r.aufgabe, text: `„${zeile.name}“ → ${r.an}${r.aufgabe ? ' · Aufgabe angelegt' : ''}` }) : NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
+    return r.ok ? NextResponse.json({ ok: true, an: r.an, aufgabe: r.aufgabe, text: `„${zeile.name}“ → ${nameVon(r.an)}${r.aufgabe ? ' · Aufgabe angelegt' : ''}` }) : NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
   }
 
   if (b.aktion === 'sql') {

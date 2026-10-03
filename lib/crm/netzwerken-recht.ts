@@ -57,16 +57,24 @@ export const KEINE_WERBE_EINWILLIGUNG = 'keine (Visitenkarte, § 7 UWG)';
  * Der Datenschutzhinweis am Ende der Danke-Mail — kurz und freundlich: wer, wozu, Rechtsgrundlage, Werbung nur mit Einwilligung,
  * Rechte und wohin. Bei einem Kunden-Event zusätzlich der Empfänger der Übermittlung (`kunde` = Name der Firma).
  */
-export function datenschutzHinweisText(o: { du: boolean; kunde?: string; angaben?: DatenschutzAngaben }): string {
+export function datenschutzHinweisText(o: { du: boolean; kunde?: string; angaben?: DatenschutzAngaben; /** `bestand`: die Person war schon in der Kartei — dann steht dort NICHT „von der Visitenkarte notiert“ (Art. 13/14: der Text muss stimmen). Standard `karte`. */ quelle?: 'karte' | 'bestand' }): string {
   const a = o.angaben ?? datenschutzAngaben();
   const dein = o.du ? 'deine' : 'Ihre', deiner = o.du ? 'deiner' : 'Ihrer', dir = o.du ? 'dir' : 'Ihnen', dein2 = o.du ? 'deiner' : 'Ihrer';
+  const erste = o.quelle === 'bestand' ? `Ich verarbeite ${dein} Kontaktdaten, um mit ${dir} in Verbindung zu bleiben` : `Ich habe mir ${dein} Kontaktdaten von ${deiner} Visitenkarte notiert, um mit ${dir} in Verbindung zu bleiben`;
   const zeilen = [
-    `Datenschutz: Ich habe mir ${dein} Kontaktdaten von ${deiner} Visitenkarte notiert, um mit ${dir} in Verbindung zu bleiben (Art. 6 Abs. 1 lit. f DSGVO, Verantwortlich: ${a.verantwortlich}). Werbung sende ich nur mit ${dein2} Einwilligung. Auskunft, Berichtigung, Löschung, Widerspruch: ${a.mail} · ${a.seite}`,
+    `Datenschutz: ${erste} (Art. 6 Abs. 1 lit. f DSGVO, Verantwortlich: ${a.verantwortlich}). Werbung sende ich nur mit ${dein2} Einwilligung. Auskunft, Berichtigung, Löschung, Widerspruch: ${a.mail} · ${a.seite}`,
   ];
   const kunde = (o.kunde ?? '').replace(/\s+/g, ' ').trim();
   if (kunde) zeilen.push(`Wir waren für ${kunde} auf der Veranstaltung und geben ${dein} Kontaktdaten an ${kunde} weiter.`);
   return zeilen.join('\n');
 }
+
+/**
+ * Darf der Danke-Text die Weitergabe an den Kunden ankündigen? Nur wenn die Person überhaupt übergeben werden kann UND soll:
+ * an diesem Event neu angelegt (Bestandspersonen gehen nur mit ausdrücklichem Haken mit — da wird nichts angekündigt), nicht gesperrt.
+ */
+export const weitergabeAnkuendigen = (k: Pick<Kontakt, 'werbesperre' | 'eingeschraenkt'>, n: { neuAngelegt?: boolean } | undefined): boolean =>
+  !!n?.neuAngelegt && !k.werbesperre && !k.eingeschraenkt;
 
 // ── UWG: Werbewörter in einer Danke-Mail ──────────────────────────────────
 

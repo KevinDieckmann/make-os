@@ -5,7 +5,9 @@
 // beeinflusste Pipeline geteilt durch die Kosten — Ziel ≥ 5, aussagekräftig
 // erst nach 90 Tagen. Ohne Positionen zählt die Pauschale.
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Zahl, Raster, Leer, Chip, feld, LEUCHT } from '../../schlank';
 import { budgetSumme, VORLAGEN } from '@/lib/crm/eventplanung';
@@ -38,7 +40,7 @@ export function Liquiplan({ e, kosten, kompakt }: { e: Event; kosten: number; /*
     setLaeuft(false);
     if (!r.ok) { setMeldung(r.fehler ?? 'Nicht übernommen.'); return; }
     setStand(r as unknown as LiquiplanStand);
-    setMeldung(r.neu ? 'Im Liquiditätsplan angelegt — Zahlen › Planung zeigt ihn.' : 'Posten im Liquiditätsplan nachgezogen.');
+    setMeldung(r.neu ? 'Im Liquiditätsplan angelegt.' : 'Posten im Liquiditätsplan nachgezogen.');
   };
   const kann = kosten > 0 && LIQUIPLAN_STATUS.includes(status);
   const lage = stand?.lage ?? (kann ? 'fehlt' : 'kein-posten');
@@ -57,6 +59,7 @@ export function Liquiplan({ e, kosten, kompakt }: { e: Event; kosten: number; /*
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {kann && lage !== 'ok' && <Knopf aus={laeuft} onClick={() => void uebernehmen()}>{laeuft ? 'überträgt …' : lage === 'abweichend' ? 'Im Liquiditätsplan nachziehen' : kompakt ? 'Kosten in die Liquiplanung übernehmen' : 'In die Liquiditätsplanung übernehmen'}</Knopf>}
           {meldung && <span style={{ fontSize: 12.5, color: C.inkDim }}>{meldung}</span>}
+          {stand?.vorhanden && <Link href={WEG.planposten(stand.vorhanden.id)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none' }}>Im Liquiditätsplan öffnen ›</Link>}
         </div>
         {!kompakt && <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Betrag = Summe des Budgets (geht raus), fällig am Eventdatum, Kategorie „marketing/event“. Sicher, sobald die Einladung läuft; geplant zählt mit 80 %. Ändert sich das Budget, steht hier „abweichend“ — nachziehen ist ein Klick, doppelt wird nichts.</div>}
       </div>

@@ -12,7 +12,7 @@ import { Fenster } from '../../Fenster';
 import { localDay } from '@/lib/zeit';
 import { TEAM, nameVon } from '@/lib/crm/team';
 import { GRUND_PARKEN, GRUND_RAUS } from '@/lib/crm/lead-grund';
-import type { LeadZeile } from '@/lib/crm/leads';
+import { ausscheidenGesperrt, type LeadZeile } from '@/lib/crm/leads';
 import type { CrmApi } from '../daten';
 import { plusTage } from '../daten';
 import { leadPost } from './hilfen';
@@ -21,6 +21,8 @@ export interface WeiterInfo { text: string; weiter?: boolean }
 interface P { api: CrmApi; z: LeadZeile; onZu: () => void; onFertig: (i: WeiterInfo) => void }
 
 const knopfStil = (an: boolean, farbe: string = LEUCHT.business) => ({ display: 'flex', gap: 10, alignItems: 'center', width: '100%', minHeight: 48, padding: '8px 12px', borderRadius: 11, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.ink, textAlign: 'left', border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}1F` : 'rgba(255,255,255,.03)' }) as const;
+/** Hinweis VOR dem Klick (M8): dieser Lead darf nicht geparkt/ausgeschieden werden — der Knopf bleibt gesperrt, statt erst nach dem Klick einen Fehler zu zeigen. */
+const Gesperrt = ({ grund }: { grund: string | null }) => (grund ? <div role="note" style={{ padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.achtung}14`, border: `1px solid ${LEUCHT.achtung}44`, fontSize: TYP.bedien, lineHeight: 1.5, color: LEUCHT.achtung }}>{grund}</div> : null);
 const Fuss = ({ onZu, ok, laeuft, los, text }: { onZu: () => void; ok: boolean; laeuft: boolean; los: () => void; text: string }) => (
   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}><Knopf leise onClick={onZu}>Abbrechen</Knopf><Knopf aus={!ok || laeuft} onClick={() => los()}>{text}</Knopf></div>
 );
@@ -53,6 +55,7 @@ export function AbgebenDialog({ api, z, onZu, onFertig }: P) {
 }
 
 export function ParkenDialog({ api, z, onZu, onFertig }: P) {
+  const gesperrt = ausscheidenGesperrt(z);
   const heute = api.crm?.heute ?? localDay();
   const [bis, setBis] = useState(plusTage(heute, 30));
   const [art, setArt] = useState('spaeter');
@@ -70,6 +73,7 @@ export function ParkenDialog({ api, z, onZu, onFertig }: P) {
   const schnell: [string, number][] = [['2 Wochen', 14], ['1 Monat', 30], ['3 Monate', 90], ['6 Monate', 180]];
   return (
     <Fenster titel="Parken" onZu={onZu} breit={520}>
+      <Gesperrt grund={gesperrt} />
       <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>„{z.name}“ ruht bis zu diesem Tag — dann kommt der Lead von selbst in die Runde zurück (und ein Follow-up erinnert).</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {schnell.map(([l, t]) => <button key={l} type="button" onClick={() => setBis(plusTage(heute, t))} aria-pressed={bis === plusTage(heute, t)} className="fassbar" style={{ ...knopfStil(bis === plusTage(heute, t)), width: 'auto', borderRadius: 999 }}>{l}</button>)}
@@ -80,12 +84,13 @@ export function ParkenDialog({ api, z, onZu, onFertig }: P) {
       </div>
       <input value={grund} onChange={e => setGrund(e.target.value)} maxLength={300} placeholder="Ein Satz dazu (optional) …" aria-label="Grund in einem Satz" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
       {meldung && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
-      <Fuss onZu={onZu} ok={bis >= heute} laeuft={laeuft} los={() => void los()} text="Parken" />
+      <Fuss onZu={onZu} ok={bis >= heute && !gesperrt} laeuft={laeuft} los={() => void los()} text="Parken" />
     </Fenster>
   );
 }
 
 export function RausDialog({ api, z, onZu, onFertig }: P) {
+  const gesperrt = ausscheidenGesperrt(z);
   const [art, setArt] = useState('');
   const [grund, setGrund] = useState('');
   const [laeuft, setLaeuft] = useState(false);
@@ -100,13 +105,14 @@ export function RausDialog({ api, z, onZu, onFertig }: P) {
   };
   return (
     <Fenster titel="Raus — Kein Fit" onZu={onZu} breit={520}>
+      <Gesperrt grund={gesperrt} />
       <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>„{z.name}“ scheidet aus der Qualifizierung aus. Der Grund fließt in die Auswertung — so sehen Marketing und Sales, woran Leads scheitern. Nichts wird gelöscht.</div>
       <div role="radiogroup" aria-label="Warum Kein Fit" style={{ display: 'grid', gap: 6 }}>
         {GRUND_RAUS.map(g => <button key={g.id} type="button" role="radio" aria-checked={art === g.id} onClick={() => setArt(g.id)} className="fassbar" style={{ ...knopfStil(art === g.id, LEUCHT.kritisch), display: 'grid', gap: 2 }}><b style={{ fontWeight: 600 }}>{g.label}</b>{g.hinweis && <span style={{ fontSize: 12, color: C.inkDim }}>{g.hinweis}</span>}</button>)}
       </div>
       <input value={grund} onChange={e => setGrund(e.target.value)} maxLength={300} placeholder="Ein Satz dazu (optional) — steht später an der Firma" aria-label="Grund in einem Satz" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />
       {meldung && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
-      <Fuss onZu={onZu} ok={!!art} laeuft={laeuft} los={() => void los()} text="Raus" />
+      <Fuss onZu={onZu} ok={!!art && !gesperrt} laeuft={laeuft} los={() => void los()} text="Raus" />
     </Fenster>
   );
 }

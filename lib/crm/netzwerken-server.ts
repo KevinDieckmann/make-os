@@ -41,6 +41,7 @@ import { aendereCrm, ladeCrm } from './speicher';
 import { sperrlisteLaden, neuanlageSperre } from './sperrliste';
 import { datenschutzStempeln } from './datenschutz-stempel';
 import { kontaktAusKarte, firmaZurKarte, type VisitenkartenDaten } from './visitenkarte';
+import { warEventGeloescht } from './events-geloescht';
 import { domainVon, firmenId, bestehendeFirma } from './firmen';
 import { neuesFollowUp } from './followup';
 import { leereKriterien } from './leads';
@@ -222,14 +223,18 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
     return { ...b, events: [...b.events, neuesEvent({ id, titel: n.titel, datum: n.datum, ...(n.ort ? { ort: n.ort } : {}), ...(fuer ? { fuer } : {}), person: ctx.person, heute, jetztIso })] };
   };
   const EVENT_WEG = 'Das Event gibt es nicht (mehr) — bitte „Heute bei“ neu wählen.';
+  // M2: ein bewusst gelöschtes Event steht nie wieder auf — `eventNeu` gilt nur für ein Event, das der Server nie hatte (unterwegs lokal angelegt).
+  const EVENT_GELOESCHT = 'Das Event wurde gelöscht — bitte ein anderes Event wählen.';
+  const warGeloescht = e.eventNeu ? await warEventGeloescht(e.eventId) : false;
   const eventErsatz = await schritt('event', async () => {
-    let fehlt = false, abgesagt = false;
+    let fehlt = false, abgesagt = false, geloescht = false;
     let ersatz: string | undefined;
     await aendereCrm(b => {
       let ev = b.events.find(x => x.id === e.eventId);
       if (!ev) {
         if (!e.eventNeu) { fehlt = true; return b; }
         const da = gleichesBesuchEvent(b.events, e.eventNeu.titel, e.eventNeu.datum);
+        if (!da && warGeloescht) { geloescht = true; return b; }
         if (!da) return eventNeuAnlegen(b, e.eventId);
         ev = da; ersatz = da.id;
       }
@@ -243,6 +248,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       }
       return b;
     }, ctx.wer);
+    if (geloescht) throw new ErfassungFehler(EVENT_GELOESCHT, 404, { eventFehler: true });
     if (fehlt) throw new ErfassungFehler(EVENT_WEG, 404, { eventFehler: true });
     if (abgesagt) throw new ErfassungFehler('Das Event ist abgesagt — bitte ein anderes Event wählen.', 409, { eventFehler: true });
     return ersatz;
@@ -254,6 +260,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
     // Das Event wurde gelöscht, nachdem der Schritt schon abgehakt war (Erfassung hing in der Warteschlange): aus `eventNeu` neu anlegen (H1);
     // ohne `eventNeu` (ältere Körper) bleibt es beim 404. Die Teilnahme hing am gelöschten Event (Kaskade) — der Schritt läuft noch einmal.
     if (!e.eventNeu) throw new ErfassungFehler(EVENT_WEG, 404, { eventFehler: true });
+    if (await warEventGeloescht(eventId)) throw new ErfassungFehler(EVENT_GELOESCHT, 404, { eventFehler: true });
     await aendereCrm(b => (b.events.some(x => x.id === eventId) ? b : eventNeuAnlegen(b, eventId)), ctx.wer);
     hinweise.push(`Das Event „${e.eventNeu.titel}“ war gelöscht — es wurde neu angelegt.`);
     erledigt.delete('teilnahme');

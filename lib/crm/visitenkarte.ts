@@ -348,7 +348,16 @@ export function kartenDubletten(d: Pick<VisitenkartenDaten, 'vorname' | 'nachnam
   return { ...(mail ? { mail } : {}), ...(name ? { name } : {}) };
 }
 
-/** Bestehende Firma zur Karte: gleicher Name (ohne Rechtsform) oder gleiche Domain. Ohne Firmennamen keine Zuordnung. */
+const firmaHatDomain = (f: Firma, dom: string) => f.domain === dom || domainVon({ firmaWebseite: f.webseite }) === dom;
+
+/**
+ * Bestehende Firma zur Karte — EINE Funktion für Server (Schritt „firma“) und Oberfläche (Bestätigen zeigt genau diese Firma):
+ *  1. gleicher Name (ohne Rechtsform) gewinnt immer;
+ *  2. die gleiche Mail-/Webseiten-Domain gilt NUR, wenn der Name der Karte zu der Firma passt (derselbe, nur anders geschrieben:
+ *     einer beginnt mit dem anderen). Nennt die Karte einen ANDEREN Firmennamen, entsteht eine neue Firma — auch wenn die Domain
+ *     schon bei einer anderen Firma steht (Konzern, Berater, Agentur). Freie Mail-Anbieter (gmail.com …) zählen nie (`domainVon`).
+ * Ohne Firmennamen keine Zuordnung — dafür gibt es den Vorschlag `firmaVorschlagAusDomain` (nur auf Klick).
+ */
 export function firmaZurKarte(d: Pick<VisitenkartenDaten, 'firma' | 'email' | 'webseite'>, firmen: Firma[]): Firma | undefined {
   const name = (d.firma ?? '').trim();
   if (!name) return undefined;
@@ -356,7 +365,18 @@ export function firmaZurKarte(d: Pick<VisitenkartenDaten, 'firma' | 'email' | 'w
   const nachName = s.length >= 2 ? firmen.find(f => firmenSchluessel(f.name) === s) : undefined;
   if (nachName) return nachName;
   const dom = domainVon({ email: d.email, firmaWebseite: d.webseite });
-  return dom ? firmen.find(f => f.domain === dom || domainVon({ firmaWebseite: f.webseite }) === dom) : undefined;
+  if (!dom || s.length < 3) return undefined;
+  return firmen.find(f => {
+    if (!firmaHatDomain(f, dom)) return false;
+    const t = firmenSchluessel(f.name);
+    return t.length >= 3 && (t.startsWith(s) || s.startsWith(t));
+  });
+}
+
+/** Die Firma mit derselben (nicht freien) Mail-Domain — nur als Vorschlag für eine Karte OHNE Firmennamen, nie automatisch. */
+export function firmaVorschlagAusDomain(d: Pick<VisitenkartenDaten, 'email' | 'webseite'>, firmen: Firma[]): Firma | undefined {
+  const dom = domainVon({ email: d.email, firmaWebseite: d.webseite });
+  return dom ? firmen.find(f => firmaHatDomain(f, dom)) : undefined;
 }
 
 export interface KarteAnlegen {

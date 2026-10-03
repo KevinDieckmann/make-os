@@ -211,7 +211,9 @@ describe('In die Kartei', () => {
   it('Firma: gleicher Name ohne Rechtsform oder gleiche Domain; ohne Firmennamen keine Zuordnung', () => {
     const firmen = [f('Beispiel Maschinenbau GmbH', { domain: 'beispiel-maschinenbau.de' }), f('Anders AG', { webseite: 'https://www.anders-ag.de' })];
     expect(firmaZurKarte({ firma: 'Beispiel Maschinenbau' }, firmen)?.name).toBe('Beispiel Maschinenbau GmbH');
-    expect(firmaZurKarte({ firma: 'BM Beispiel', email: 'a@beispiel-maschinenbau.de' }, firmen)?.name).toBe('Beispiel Maschinenbau GmbH');
+    // Praxis-Prüfung M1: die Domain gilt nur bei passendem Namen — ein ANDERER Firmenname auf der Karte heißt neue Firma.
+    expect(firmaZurKarte({ firma: 'Beispiel Maschinenbau International', email: 'a@beispiel-maschinenbau.de' }, firmen)?.name).toBe('Beispiel Maschinenbau GmbH');
+    expect(firmaZurKarte({ firma: 'BM Beispiel', email: 'a@beispiel-maschinenbau.de' }, firmen)).toBeUndefined();
     expect(firmaZurKarte({ firma: 'Anders', webseite: 'https://anders-ag.de' }, firmen)?.name).toBe('Anders AG');
     expect(firmaZurKarte({ firma: 'Ganz Neu GmbH', email: 'x@gmail.com' }, firmen)).toBeUndefined();
     expect(firmaZurKarte({ email: 'a@beispiel-maschinenbau.de' }, firmen)).toBeUndefined();

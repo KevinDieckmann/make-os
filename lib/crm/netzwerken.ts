@@ -559,19 +559,27 @@ const datumDe = (tag: string) => `${tag.slice(8, 10)}.${tag.slice(5, 7)}.`;
  * eine persönliche Nachricht nach dem Gespräch ist erlaubt, ein Angebot oder eine Einladung per Mail ohne Einwilligung nicht).
  * Versand nur per Einzelklick im Mail-Programm (`dankeMailtoLink`) — MAKE OS verschickt hier nichts.
  */
-export function dankeEntwurf(a: { vorname?: string; nachname?: string; anrede: 'Du' | 'Sie'; eventTitel: string; wann: 'gestern' | 'neulich'; schritt?: NetzwerkSchritt; terminAm?: string; absender: string; /** Kunden-Event: Name der Firma, an die die Kontaktdaten weitergehen (Art. 13: Empfänger nennen). */ kunde?: string; /** Kontaktweg und Seite für die Rechte der Person — Standard: MAKE. */ datenschutz?: DatenschutzAngaben }): { betreff: string; text: string } {
+export function dankeEntwurf(a: { vorname?: string; nachname?: string; anrede: 'Du' | 'Sie'; eventTitel: string; wann: 'gestern' | 'neulich'; schritt?: NetzwerkSchritt; terminAm?: string; absender: string; /** Kunden-Event: Name der Firma, an die die Kontaktdaten weitergehen (Art. 13: Empfänger nennen). */ kunde?: string; /** Kontaktweg und Seite für die Rechte der Person — Standard: MAKE. */ datenschutz?: DatenschutzAngaben; /** An diesem Event NEU angelegt (Standard) — sonst Bestandsperson: „wiedergesehen“, keine Visitenkarte, keine Ankündigung der Weitergabe. */ neu?: boolean; /** Persönlich gesprochen (Standard) — sonst kein „Danke für das Gespräch“. */ gesprochen?: boolean; /** Tag des EVENTS und heute: „gestern“ nur, wenn das EVENT gestern war, sonst „am 08.10.“ (nie relativ zum Erfassungstag). */ eventDatum?: string; heute?: string }): { betreff: string; text: string } {
   const du = a.anrede === 'Du';
   const vorname = a.vorname?.trim() ?? '', nachname = a.nachname?.trim() ?? '';
   const ansprache = du ? `Hallo ${vorname || nachname}`.trim() + ',' : `Guten Tag ${[vorname, nachname].filter(Boolean).join(' ')}`.trim() + ',';
-  const kennengelernt = du ? `schön, dich ${a.wann} bei ${a.eventTitel} kennengelernt zu haben.` : `schön, Sie ${a.wann} bei ${a.eventTitel} kennengelernt zu haben.`;
-  const dank = du ? 'Danke für das Gespräch — ich habe es gern geführt.' : 'Vielen Dank für das Gespräch — ich habe es gern geführt.';
+  const neu = a.neu !== false, gesprochen = a.gesprochen !== false;
+  const wann = a.eventDatum && a.heute && istKalendertag(a.eventDatum) && istKalendertag(a.heute)
+    ? (tageZwischenTage(a.eventDatum, a.heute) === 1 ? 'gestern' : `am ${datumDe(a.eventDatum)}`)
+    : a.wann;
+  const kennengelernt = !gesprochen
+    ? `schön, dass wir uns ${wann} bei ${a.eventTitel} begegnet sind.`
+    : neu ? (du ? `schön, dich ${wann} bei ${a.eventTitel} kennengelernt zu haben.` : `schön, Sie ${wann} bei ${a.eventTitel} kennengelernt zu haben.`)
+      : (du ? `schön, dich ${wann} bei ${a.eventTitel} wiedergesehen zu haben.` : `schön, Sie ${wann} bei ${a.eventTitel} wiedergesehen zu haben.`);
+  const dank = !gesprochen ? '' : du ? 'Danke für das Gespräch — ich habe es gern geführt.' : 'Vielen Dank für das Gespräch — ich habe es gern geführt.';
   let schluss = '';
   if (a.schritt === 'termin' && a.terminAm) schluss = `Wie besprochen: Unser Termin ist am ${WOCHENTAG[new Date(`${a.terminAm.slice(0, 10)}T12:00:00Z`).getUTCDay()]}, ${datumDe(a.terminAm.slice(0, 10))} um ${a.terminAm.slice(11, 16)} Uhr.`;
   else if (a.schritt === 'followup') schluss = du ? 'Ich melde mich in den nächsten Tagen bei dir.' : 'Ich melde mich in den nächsten Tagen bei Ihnen.';
   const gruss = du ? 'Bis bald und viele Grüße' : 'Mit freundlichen Grüßen';
   // Art. 13 DSGVO (03.10.): der Hinweis gehört in die erste Nachricht an die Person — kurz, am Ende, mit Rechten und Empfänger.
-  const hinweis = datenschutzHinweisText({ du, ...(a.kunde ? { kunde: a.kunde } : {}), ...(a.datenschutz ? { angaben: a.datenschutz } : {}) });
-  return { betreff: `Danke für das Gespräch bei ${a.eventTitel}`, text: [ansprache, '', kennengelernt, dank, ...(schluss ? ['', schluss] : []), '', gruss, a.absender, '', '—', hinweis].join('\n') };
+  // Der Satz zur Weitergabe an den Kunden nur bei einer an diesem Event neu angelegten Person (Bestandspersonen gehen nicht ungefragt mit).
+  const hinweis = datenschutzHinweisText({ du, quelle: neu ? 'karte' : 'bestand', ...(a.kunde && neu ? { kunde: a.kunde } : {}), ...(a.datenschutz ? { angaben: a.datenschutz } : {}) });
+  return { betreff: gesprochen ? `Danke für das Gespräch bei ${a.eventTitel}` : `Kurz zu ${a.eventTitel}`, text: [ansprache, '', kennengelernt, ...(dank ? [dank] : []), ...(schluss ? ['', schluss] : []), '', gruss, a.absender, '', '—', hinweis].join('\n') };
 }
 
 /** mailto:-Link mit Betreff und Text — nur für eine plausible Adresse. Das Mail-Programm des Geräts öffnet; gesendet wird dort per Klick. */

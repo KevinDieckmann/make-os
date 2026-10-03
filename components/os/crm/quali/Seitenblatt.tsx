@@ -32,7 +32,7 @@ export function Seitenblatt({ titel, unter, onZu, children, kopfRechts }: { tite
   useEffect(() => { ref.current?.scrollTo?.({ top: 0 }); ref.current?.focus({ preventScroll: true }); }, [titel]);
 
   const inhalt = (
-    <aside ref={ref} role="dialog" aria-modal={schmal ? true : undefined} aria-label={typeof titel === 'string' ? titel : 'Seitenfenster'} data-seitenblatt tabIndex={-1}
+    <aside ref={ref} role="dialog" aria-modal={schmal ? true : undefined} aria-label={typeof titel === 'string' ? titel : 'Seitenfenster'} data-seitenblatt className="quali-seite" tabIndex={-1}
       style={{
         position: 'fixed', zIndex: schmal ? 97 : 60, background: C.flaeche, color: C.ink, fontFamily: SCHRIFT.text, overflowY: 'auto', overscrollBehavior: 'contain', outline: 'none',
         ...(schmal

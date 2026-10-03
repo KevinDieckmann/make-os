@@ -140,6 +140,9 @@ export function uebernommenAm(p: Pick<Planposten, 'notiz'> | null | undefined): 
   return m ? m[1] : null;
 }
 
+/** Deutsches Datum für Hinweise („08.10.2026“) — nie der Rohtag „2026-10-08“. */
+const tagDeLang = (d: string): string => (/^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : d);
+
 export type LiquiplanLage = 'kein-posten' | 'fehlt' | 'ok' | 'abweichend';
 export interface LiquiplanStand { lage: LiquiplanLage; vorschlag: Planposten | null; vorhanden: Planposten | null; uebernommenAm: string | null; hinweis: string }
 
@@ -150,14 +153,14 @@ export function liquiplanStand(e: Event, vorhanden: Planposten | null | undefine
   const am = uebernommenAm(alt);
   if (!alt) {
     return vorschlag
-      ? { lage: 'fehlt', vorschlag, vorhanden: null, uebernommenAm: null, hinweis: `Noch nicht im Liquiditätsplan — ${Math.abs(vorschlag.betrag)} € am ${e.datum}.` }
+      ? { lage: 'fehlt', vorschlag, vorhanden: null, uebernommenAm: null, hinweis: `Noch nicht im Liquiditätsplan — ${Math.abs(vorschlag.betrag)} € am ${tagDeLang(e.datum)}.` }
       : { lage: 'kein-posten', vorschlag: null, vorhanden: null, uebernommenAm: null, hinweis: !LIQUIPLAN_STATUS.includes(e.status) ? 'In den Plan geht ein Event ab Status „Geplant“ oder „Einladung läuft“.' : 'Ohne Budget gibt es nichts zu übernehmen — Positionen oder Pauschale eintragen.' };
   }
   if (vorschlag && (vorschlag.betrag !== alt.betrag || vorschlag.ab !== alt.ab)) {
-    return { lage: 'abweichend', vorschlag, vorhanden: alt, uebernommenAm: am, hinweis: `Im Plan stehen ${Math.abs(alt.betrag)} € am ${alt.ab}, das Event sagt ${Math.abs(vorschlag.betrag)} € am ${vorschlag.ab}.` };
+    return { lage: 'abweichend', vorschlag, vorhanden: alt, uebernommenAm: am, hinweis: `Im Plan stehen ${Math.abs(alt.betrag)} € am ${tagDeLang(alt.ab)}, das Event sagt ${Math.abs(vorschlag.betrag)} € am ${tagDeLang(vorschlag.ab)}.` };
   }
-  if (e.status === 'abgesagt') return { lage: 'abweichend', vorschlag: null, vorhanden: alt, uebernommenAm: am, hinweis: 'Event abgesagt — der Posten steht noch im Plan (unter Zahlen › Planung entfernen).' };
-  return { lage: 'ok', vorschlag, vorhanden: alt, uebernommenAm: am, hinweis: `Im Liquiditätsplan${am ? ` seit ${am}` : ''}: ${Math.abs(alt.betrag)} € am ${alt.ab}.` };
+  if (e.status === 'abgesagt') return { lage: 'abweichend', vorschlag: null, vorhanden: alt, uebernommenAm: am, hinweis: 'Event abgesagt — der Posten steht noch im Liquiditätsplan und kann dort entfernt werden.' };
+  return { lage: 'ok', vorschlag, vorhanden: alt, uebernommenAm: am, hinweis: `Im Liquiditätsplan${am ? ` seit ${tagDeLang(am)}` : ''}: ${Math.abs(alt.betrag)} € am ${tagDeLang(alt.ab)}.` };
 }
 
 // ── 4 · Termin im Kalender ──────────────────────────────────────────────────

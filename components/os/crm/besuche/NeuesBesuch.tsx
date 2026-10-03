@@ -15,7 +15,8 @@ import { neueId, plusTage } from '../daten';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { fuerEintraege, BFeld, type BesuchProps } from './gemeinsam';
 
-export function NeuesBesuch({ api, crm, onFertig, onZu }: Pick<BesuchProps, 'api' | 'crm'> & { onFertig: (id: string) => void; onZu: () => void }) {
+/** Das Abbrechen steht EINMAL: der Knopf „+ Event“ in der Kopfzeile der Ansicht wird beim Öffnen zu „Abbrechen“ (Praxis-Prüfung: zwei Abbrechen waren verwirrend). */
+export function NeuesBesuch({ api, crm, onFertig }: Pick<BesuchProps, 'api' | 'crm'> & { onFertig: (id: string) => void }) {
   const heute = crm.heute;
   const [titel, setTitel] = useState('');
   const [datumWert, setDatumWert] = useState(plusTage(heute, 14));
@@ -46,7 +47,7 @@ export function NeuesBesuch({ api, crm, onFertig, onZu }: Pick<BesuchProps, 'api
 
   return (
     <Karte i={1} akzent={LEUCHT.beziehung}>
-      <Ueberschrift rechts={<Knopf leise onClick={onZu}>Abbrechen</Knopf>}>Neues Event</Ueberschrift>
+      <Ueberschrift>Neues Event</Ueberschrift>
       <div className="bes-neu" style={{ display: 'grid', gap: 4 }}>
         <BFeld label="Name">
           <input value={titel} onChange={x => setTitel(x.target.value)} placeholder="z. B. Mittelstandstag Köln" aria-label="Name des Events" autoCapitalize="sentences" style={{ ...feld, fontSize: 16, padding: '10px 12px' }} />

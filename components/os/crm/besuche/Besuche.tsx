@@ -52,7 +52,7 @@ export function Besuche({ api, zuKontakt, zuFirma, ansicht, k, onAnsicht, onAkte
         {aktiv === 'kalender' && <Knopf onClick={() => setNeu(!neu)}>{neu ? 'Abbrechen' : '+ Event'}</Knopf>}
       </div>
       {k && !akteEvent && <div role="status" style={{ fontSize: 13, color: C.inkLeise }}>Dieses Event gibt es unter „Events“ nicht (mehr).</div>}
-      {aktiv === 'kalender' && neu && <NeuesBesuch api={api} crm={crm} onZu={() => setNeu(false)} onFertig={id => { setNeu(false); onAkte(id); }} />}
+      {aktiv === 'kalender' && neu && <NeuesBesuch api={api} crm={crm} onFertig={id => { setNeu(false); onAkte(id); }} />}
       {aktiv === 'kalender' && <BesuchKalender crm={crm} onAkte={id => onAkte(id)} />}
       {aktiv === 'wirkung' && <BesuchWirkung api={api} crm={crm} onAkte={id => onAkte(id)} />}
       {aktiv === 'kunden' && <BesuchKunden api={api} crm={crm} zuFirma={zuFirma} onAkte={id => onAkte(id)} />}

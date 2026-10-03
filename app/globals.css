@@ -582,5 +582,20 @@ nav a:hover { transform: translateX(2px); }
      Nur hier — die geteilten Komponenten bleiben für den Rest der App, wie sie sind. Der Haken (`treffer44`) hat seine eigene Trefferfläche. */
   .bes-akte button:not(.treffer44), .bes-neu button:not(.treffer44), .bes-akte select, .bes-neu select { min-height: 44px; min-width: 44px; box-sizing: border-box; padding-inline: 8px; }
 }
+/* Praxis-Prüfung 03.10. (M4/M5): Tippziele ≥ 44 px und Eingaben 16 px am Handy — nur für die Bereiche, die geprüft wurden (Qualifizierung, Seitenfenster,
+   Fenster-Dialoge, Übergabe, Netzwerken-Blatt, Deal-Formular); die geteilten Bausteine bleiben für den Rest der App, wie sie sind. */
+@media (max-width: 560px) {
+  .quali-flaeche button:not(.treffer44), .quali-flaeche [role=button], .quali-flaeche select, .quali-seite button:not(.treffer44), .quali-seite [role=button], .quali-seite select,
+  .os-fenster button:not(.treffer44), .os-fenster [role=button], .os-fenster select, .os-fenster a.knopf, .quali-flaeche a.knopf, .quali-seite a.knopf, .netz-seite .netz-blatt button:not(.treffer44) { min-height: 44px; min-width: 44px; box-sizing: border-box; }
+  .os-fenster .os-fenster-zu { width: 44px !important; height: 44px !important; }
+  .quali-flaeche label, .quali-seite label, .os-fenster label.bes-haken-zeile, .deal-anlegen label { min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; }
+  .os-fenster label.bes-haken-zeile { display: flex; align-items: flex-start; padding: 6px 0; }
+  .quali-flaeche input[type=checkbox], .quali-seite input[type=checkbox], .os-fenster input[type=checkbox], .deal-anlegen input[type=checkbox] { width: 22px !important; height: 22px !important; min-height: 0; flex: 0 0 auto; }
+  .quali-seite input:not([type=checkbox]):not([type=radio]), .quali-seite textarea, .quali-seite select, .deal-anlegen input:not([type=checkbox]):not([type=radio]), .deal-anlegen textarea, .deal-anlegen select,
+  .os-fenster input:not([type=checkbox]):not([type=radio]), .os-fenster textarea, .os-fenster select { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }
+  .quali-nav { margin-left: 0 !important; }
+  .quali-aktionen { padding-right: 76px; } /* rechts bleibt Platz für den ZOE-Knopf, der über der Leiste schwebt (M6) */
+}
+
 /* Das Wahl-Blatt (Portal außerhalb der Akte, nur am Handy): das Suchfeld mit 16 px, sonst zoomt iOS beim Antippen. */
 .wahl-blatt input { font-size: 16px !important; min-height: 44px; box-sizing: border-box; }

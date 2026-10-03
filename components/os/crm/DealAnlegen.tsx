@@ -58,7 +58,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
   };
 
   return (
-    <div style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 14, background: 'rgba(255,255,255,.03)', border: `1px solid ${LEUCHT.business}33` }}>
+    <div className="deal-anlegen" style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 14, background: 'rgba(255,255,255,.03)', border: `1px solid ${LEUCHT.business}33` }}>
       <div style={{ fontSize: TYP.body, fontWeight: 700 }}>Neuer Deal</div>
       <Feldzeile label="Firma">
         {f ? <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{f.name}</span><button onClick={() => setFirma(undefined)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>

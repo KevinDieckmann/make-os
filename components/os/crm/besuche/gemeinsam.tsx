@@ -85,7 +85,7 @@ export function FuerWahl({ e, api, crm }: { e: Event; api: CrmApi; crm: CrmStand
       {fuer.art === 'kunde' && (
         <span style={{ fontSize: 12, color: C.inkLeise }}>
           Die Kontakte bleiben in unserer Kartei und sind diesem Kunden zugeordnet.{' '}
-          <MandantLink firmaId={fuer.firmaId} {...(fuer.mandatId ? { mandatId: fuer.mandatId } : {})} name={kundenName(e, firmen) ?? undefined} klein />
+          <MandantLink firmaId={fuer.firmaId} {...(fuer.mandatId ? { mandatId: fuer.mandatId } : {})} name={kundenName(e, firmen) ?? undefined} klein>{fuer.mandatId ? 'Mandat öffnen ›' : 'Firmenakte öffnen ›'}</MandantLink>
         </span>
       )}
     </div>

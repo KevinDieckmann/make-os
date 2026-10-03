@@ -16,7 +16,7 @@ import { kontakteUeberFrist } from './loeschfristen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export type KpiAmpel = 'gruen' | 'gelb' | 'rot' | 'grau';
-export interface Kpi { id: string; label: string; wert: number | null; anzeige: string; ampel: KpiAmpel; ziel: string; quelle: string }
+export interface Kpi { id: string; label: string; wert: number | null; anzeige: string; ampel: KpiAmpel; ziel: string; quelle: string; /** Wie die Zahl gerechnet wird — als Tooltip sichtbar (optional). */ definition?: string }
 
 const tagMinus = (heute: string, n: number) => { const d = new Date(`${heute}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
 const stufe = (v: number, gruen: number, gelb: number, hoeherBesser = true): KpiAmpel => (hoeherBesser ? (v >= gruen ? 'gruen' : v >= gelb ? 'gelb' : 'rot') : (v <= gruen ? 'gruen' : v <= gelb ? 'gelb' : 'rot'));
