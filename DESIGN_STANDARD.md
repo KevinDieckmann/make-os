@@ -73,7 +73,7 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 4. Schriftgrößen 11–12,5 px in Fließtext → `TYP.bedien` (13); Eingaben → `eingabe`/`feld`.
 5. Foto Handy (375) + Rechner (1280) vorher/nachher, Messung: keine Tippziele < 44 px, keine Eingaben < 16 px am Handy, kein seitlicher Überlauf, Konsole sauber.
 
-Stand 03.10.: Muster **Markttraktion** (alle Reiter) und **Netzwerken** umgestellt. Zweiter Bereich: **Zahlen & Finanzen** (siehe unten). Folgt: der Rest.
+Stand 03.10.: Muster **Markttraktion** (alle Reiter) und **Netzwerken** umgestellt. Zweiter Bereich: **Zahlen & Finanzen**, dritter: **Kern** (globale Shell, Aufgaben, Kalender, Inbox — siehe unten). Folgt: der Rest (Gesundheit, Familie, Brain, ZOE/Agenten, System laufen separat).
 
 ## Umgestellt: Zahlen & Finanzen (03.10.)
 Alle 51 Dateien des Bereichs hängen an `components/os/ui` (keine Bausteine mehr aus `schlank.tsx`): **Zahlen** (Privat · Business · Steuern · Gesamt · Head of Finance, mit Haushalt-Reitern Übersicht bis Schulden), **Grundlage**, **Liquidität**, **Buchungen**, **Rechnungen & Zahlungen**, **Controlling & Ziele**, **Business-Altbestand** und die **Finanzplanung jetzt** (Lage · Planen · Privat · Business · Gesamt · Buchungen & Check · Ziele & Töpfe · Protokoll, alle 19 Unterseiten). Rechnung, Felder und Funktionen sind unverändert — jedes Feld bleibt anpassbar.
@@ -113,3 +113,21 @@ Textäquivalent daneben), Bedienung bleibt in echten Knöpfen über der Leinwand
 **Regeln:** 1. Bewegung nur als ruhiges Fließen; bei `prefers-reduced-motion` ein Standbild (t = 0). 2. Lauf pausiert außerhalb des Bildes und im verborgenen Tab.
 3. Höchstens ~160 Fäden je Leinwand am Rechner, ~80 am Handy; Zeichnen < 4 ms je Bild. 4. Vergangenes gedämpft, HEUTE leuchtet. 5. Farben nur aus `FADEN_FARBEN`
 (App) bzw. den Logo-Farben (Website). 6. Wer `band.ts`/`zeichnen.ts` ändert, ruft `node scripts/lichtfaeden-website.mjs` (Wächter `tests/lichtfaeden.test.ts`).
+
+## Umgestellt: Kern — Shell · Aufgaben · Kalender · Inbox (03.10.)
+Reine Darstellung und Struktur; Funktion, Daten und Abgleich (iCloud/Google/Gmail) unverändert. Wächter: `tests/design-kern.test.ts`.
+
+**Globale Shell (wirkt auf jeder Seite):**
+1. **Kopf:** runde Knöpfe sind `.kopf-rund` (40 px Rechner, 44 px Handy; vorher 34). Am Handy passen sieben 44-px-Ziele (Wachstum, Suche, Heute, Inbox, Kalender, Meldungen, Fokus) in eine Zeile; der **Index-Schalter** („Business-Index … ↗“) steht dort in einer eigenen Zeile darunter (früher war er aus der wischbaren Kopfzeile geschoben und unsichtbar). Die Lupe gibt es nur am Handy, das Suchfeld nur am Rechner.
+2. **Leiste links** (232 px): Kasten 15 px/700 (`TYP.body`), Punkte und Zeilen 13 px (`TYP.bedien`), alles ≥ 40 px; Einklapp-Knopf 40 px. **Unten (Handy):** Kasten ≥ 48 px, aktiver Eintrag fett; ein Space leuchtet nur auf Seiten, die zu ihm gehören (N3: nicht mehr auf Konto, Heute, Kalender), solange sein Blatt offen ist ebenfalls. Blatt-Zeilen 44 px, Schrift 15 px.
+3. **ZOE-Fenster** am Handy: 8 px Rand links und rechts (`.zoe-fenster` in globals.css; vorher 6 px links abgeschnitten); Breite/Höhe ziehen den eingestellten Abstand ab.
+
+**Neue Bausteine (`components/os/ui`):** `HakenZiel` (sichtbar 24 px, tippbar 44 px als echter Knopf, kein Pseudoelement), `SymbolKnopf` (✕, Stift, ⋯: 40/44 px, `gefahr` rot, `eingebettet` in Pillen; Zweitaktionen stehen mit Abstand in `.ui-symbole`), `ZielChip` + `useZielBezug` (siehe Ziel-Bezug), Klassen `.ui-haken-ziel`, `.ui-symbol`, `.ui-mini-monat`, `.ui-monat-*`.
+
+**Ziel-Bezug (Kevins Leitidee „immer der Fokus auf die Ziele“):** Wo eine Aufgabe in der Liste eines Meilensteins liegt, zeigt Zeile (Aufgaben-Baum) und Detail einen ruhigen Chip „Ziel · Titel“ in der **Ziel-Farbe der Lichtfäden** (je Space nach Rang durch `FADEN_FARBEN`, `lib/aufgaben/ziel-bezug.ts`). Nichts wird gespeichert, kein Feld kommt dazu — gelesen wird die vorhandene Kette Aufgabe → Meilenstein (`meilensteinVonAufgabe`) → Ziel (`zielVonMeilenstein`); Abfragen nur, wenn überhaupt eine Aufgabe in einer Meilenstein-Liste liegt.
+
+**Aufgaben:** alle Dateien über `../ui`; Abhaken-Kreise `HakenZiel`; ✕/Schließen/Entfernen `SymbolKnopf`; Wahl-Chips (`crm/Wahl`) 32/36 px statt 26/30; Kopf am Handy: Umschalter Kalender|Aufgaben neben dem Titel, Darstellung (Liste · Board · Tabelle · Kalender · ZOE) und „Zeitstrahl ›“ als eigene Zeile im Inhalt (`ui-nur-breit`/`ui-nur-schmal`); Schnellzeile: kurzer Platzhalter + Kürzel-Hinweis darunter, der Ort (Space › Projekt › Liste) am Handy als EINE Zeile mit „ändern“; Platzhalter der Zeilen kurz („+ Aufgabe (Enter)“); Eigenschaften im Detail stehen am Handy übereinander (`ui-eigenschaft`, kein Überlauf der Datumsfelder).
+**Kalender:** Mini-Monat: Vor-/Folgemonat 44 px (vorher 4 × 24), Tage 40/44 px mit Beschriftung („3. Oktober, heute, mit Terminen“); Monatsblatt am Handy: ganze Tage antippen, Termine als Punkte (die Pillen gehören dem Rechner); die sechs Ansichten (Tag … Termine) als wischbare `Reiter`; Einstellungen: freie Tage entfernen 44 px; Kalenderliste mit 44-px-Zeilen. **Rasterzellen** (Zeitraster, Monat, Jahr, 4 Tage, Balken der Aufgaben-Kalenderansicht): der Block/die Zelle ist das Ziel (`.ui-kein-ziel` an Unterknöpfen), Schrift mindestens 12 px — die einzige Ausnahme von der 13-px-Regel.
+**Inbox:** Liste, Gmail-Thread, Antwort-Editor (`feld`, 180 px), Meldungen als `Hinweis`; Thread bricht lange Adressen um (kein seitlicher Überlauf), das Mehr-Menü ist eine Fläche mit ganzen Knöpfen, Einzug unter der Zeile am Handy 4 px statt 22.
+
+**Messung (Sandbox, erfundene Daten, 375 px, 42 Ansichten, vorher → nachher):** Tippziele < 44 px — Aufgaben (11 Ansichten) **777 → 0**, Kalender (10) **1.290 → 3**, Inbox (5) **147 → 0**, Shell-Seiten (6) 158 → 75 (Rest: Inhalt von Home/Konto/Heute und das ZOE-Fenster, die anderen Paketen gehören), Regression (10 fremde Seiten) 196 → 106 (nur Shell-Teile besser, nichts schlechter); Eingaben < 16 px Aufgaben 104 → 0, Kalender 23 → 0; seitlicher Überlauf 0 → 0; Konsolenfehler 0 → 0. Vergleich mit Fotos: `scratchpad/design-kern/vergleich.html`.

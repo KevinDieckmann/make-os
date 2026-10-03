@@ -4,6 +4,17 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Design-Standard: Kern — globale Shell, Aufgaben, Kalender, Inbox (03.10.2026, nur lokal — Branch `design-kern`; Dokument `DESIGN_STANDARD.md` › „Umgestellt: Kern“)
+
+Reine Darstellung und Struktur — keine Funktion, kein Bestand, kein Abgleich geändert.
+
+- **Shell (wirkt überall):** Kopf-Knöpfe 40/44 px (vorher 34), am Handy sieben Ziele in einer Zeile und der Index-Schalter in eigener Zeile (war aus dem Bild gewischt); Leiste links 232 px mit klarer Rangfolge (Kasten 15 · Punkte 13); Leiste unten: ein Space leuchtet nur auf seinen eigenen Seiten (N3 behoben); ZOE-Fenster am 375er mit 8 px Rand statt links abgeschnitten.
+- **Aufgaben, Kalender, Inbox:** alle Dateien (über 60) auf `components/os/ui`; Abhaken-Kreise mit echter 44-px-Fläche, ✕/⋯/Stift als `SymbolKnopf` (nicht mehr 18 × 24 nebeneinander); Mini-Monat mit 44-px-Pfeilen und Tagen; Monatsblatt am Handy mit Punkten; Kalender-Ansichten als wischbare Reiter; Inbox-Thread ohne Überlauf, Mehr-Menü als Fläche.
+- **Ziel-Bezug:** Aufgaben in der Liste eines Meilensteins zeigen das Ziel als Chip in der Ziel-Farbe der Lichtfäden (Baum und Detail) — gelesen aus Aufgabe → Meilenstein → Ziel, nichts gespeichert.
+- **Messung (375 px, 42 Ansichten, erfundene Daten):** Tippziele < 44 px Aufgaben 777 → 0, Kalender 1.290 → 3, Inbox 147 → 0; Eingaben < 16 px Aufgaben 104 → 0, Kalender 23 → 0; kein seitlicher Überlauf, keine Konsolenfehler.
+- **Berührte fremde Stellen:** `crm/Wahl.tsx` (Wahl-Chips 32/36 px statt 26/30, 13 px — gilt auch im CRM), Kopf/Leiste/Glocke/ZOE-Fenster-Position (global), `globals.css`.
+- **Test:** `tests/design-kern.test.ts`. **Rückweg:** reiner Oberflächen-Commit, keine neuen Bestände.
+
 ## Lichtfäden: Zeitstrahl der Planung + roter Faden der Landingpage (03.10.2026, nur lokal — Branch `lichtfaeden`; Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
 
 Kevin 03.10. (Vorbild ein Daten-Zeitstrahl aus hunderten feinen, leuchtenden Linien): „Hier bei der Planung wäre geil, wenn das so reinkommt mit mehreren Elektro-Fäden … das kann sich auch mit durch die Homepage ziehen.“
