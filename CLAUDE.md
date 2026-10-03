@@ -321,12 +321,16 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   — Ansichten rechnen nichts davon selbst. Jahresziele: optional `jahr`, lesen NUR über `zielJahr()`; der Ziele-PATCH (Jahr)
   stempelt es (`jahrStempeln`), die Kaskade nimmt nur das laufende Jahr. Fokus je Jahr nur über `lib/planung/jahr-fokus.ts`
   (laufendes Jahr doppelt, ausgeliefert via `fokusFuerLaufendesJahr`). Meilenstein öffnen/anlegen: `useMeilensteinFenster`
-  (`components/os/planung/MeilensteinFenster.tsx`), auf der Jahresseite über EINE Stelle `oeffneMeilenstein` — kein zweiter
-  Schreibweg, keine Aufgaben-Logik dort. `Zeitstrahl` bleibt ohne neue Props wie bisher (Aufgaben, Bauplan).
-- **Lichtfäden (03.10., DESIGN_STANDARD.md › Lichtfäden):** Der Jahres-Zeitstrahl zeigt `licht` (Prop am `Zeitstrahl`): je Ziel ein Bündel,
-  Dichte je Woche NUR aus `faedenDichte` (`lib/lichtfaeden/dichte.ts`, Gewichte dort), Farben aus `buendelFarben`/`FADEN_FARBEN`, Marker tragen `buendel`.
-  Zeichner framework-frei (`lib/lichtfaeden/band.ts` + `zeichnen.ts`, Zeitband `zeitband.ts`); dieselben Dateien laufen auf der Website
-  (`node scripts/lichtfaeden-website.mjs` → `website/js/lichtfaeden.js`, Wächter `tests/lichtfaeden.test.ts`). Nie im Zeichner Daten rechnen.
+  (`components/os/planung/MeilensteinFenster.tsx`) — kein zweiter Schreibweg, keine Aufgaben-Logik dort; Markierungen öffnen die
+  Detailseite (`WEG.meilenstein`). Das Jahr zeigt die Lichtfäden (Fenster `useStrahlFenster`, Blättern `useBlaettern`), `Zeitstrahl` ist der schlichte Strahl.
+- **Lichtfäden v2 (03.10., LICHTFAEDEN.md + DESIGN_STANDARD.md › Lichtfäden):** EIN Modell für alle Ebenen — Stränge (`lib/lichtfaeden/modell.ts`:
+  Quelle, Pfad gesamt → space → thema → ziel → meilenstein, Person, Zeit, Gewicht aus `QUELLEN`, Status, Link, privat) aus reinen Adaptern
+  (`lib/lichtfaeden/quellen/*`: Planung, Kalender, Markttraktion, Finanzen, Beziehung, Gesundheit), Baum/Dichte/Ansicht (`baum.ts`, LOD), Engstellen
+  (`fokus.ts`), gesammelt NUR in `sammeln-server.ts` (vorhandene Lesefunktionen, `sicher()`, `merken` 60 s) und ausgeliefert über `GET /api/lichtfaeden`
+  (Haushalts-Tor, Dienstweg 403). **Privat-Regel:** private Stränge der anderen Person nur über `fuerBetrachter` als anonymes „Belegt“ (kein Titel/Link/
+  Thema/Ziel) — neue Quellen setzen `privat`, nie selbst maskieren. Oberfläche nur `<Lichtfaeden wurzel=… />` (components/os/lichtfaeden): Planung Jahr,
+  Ziel, Meilenstein, Fokus. Zeichner `faedenband.ts` auf `band.ts` + `zeichnen.ts` (dieselben Dateien laufen auf der Website: `node scripts/lichtfaeden-website.mjs`,
+  Wächter `tests/lichtfaeden.test.ts`). Nie im Zeichner Daten rechnen. Der schlichte `Zeitstrahl` bleibt für Monat/Quartal/Aufgaben/Bauplan.
 - Tests `tests/planung-*.test.ts`. Sichtprüfung nur mit Wegwerfkonto; Ziele/Meilensteine/Routinen sind GETEILTE Bestände —
   Schreibtests nur über `fuer: 'ich'` (persönlicher Ziele-Speicher), nie in `ziele`/`meilensteine`/`routinen` selbst.
 
@@ -353,8 +357,8 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   `/api/planung/meilenstein` (GET/POST): nur Haushalt des Inhabers mit Person, `bauPruefen`, Körper ≤ 128 KB. UI-Bauteil für
   Kommentare UND Verlauf: `components/os/austausch/BeitragsVerlauf.tsx` (nie ein zweites). Dateien: Aufgaben-Ablage mit `listeId`.
 - **Oberfläche:** `components/os/planung/MeilensteinDetail.tsx` (Seite `app/os/planung/meilenstein/[id]`), Bearbeiten nur im
-  Meilenstein-Fenster (`useMeilensteinFenster`), Link „gehört zu …“ an Aufgaben `MeilensteinVerweis.tsx`. Zeitstrahl-Marker →
-  `oeffneMeilenstein` → `WEG.meilenstein(id)`. Offen: ZOE-Knopf „zusammenfassen / nächste Schritte“, Befund „Liste ohne Meilenstein“
+  Meilenstein-Fenster (`useMeilensteinFenster`), Link „gehört zu …“ an Aufgaben `MeilensteinVerweis.tsx`. Markierungen der
+  Lichtfäden (und des Monats-/Quartals-Strahls) → `WEG.meilenstein(id)`. Offen: ZOE-Knopf „zusammenfassen / nächste Schritte“, Befund „Liste ohne Meilenstein“
   in der Verbindungsprüfung (rein vorbereitet: `listenOhneMeilenstein`). Tests `tests/meilenstein-aufgaben.test.ts`.
 
 ## Ziel ↔ Meilenstein — Kette und Abhängigkeiten (01.10., nur lokal)
