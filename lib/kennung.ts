@@ -37,3 +37,5 @@ export const neueKontaktKennung = (): string => neueKennung('c');
 export const istNeueKontaktKennung = (id: string): boolean => KONTAKT_NEU.test(id);
 /** Alte Kontakt-Kennung (aus E-Mail/Name gebildet oder `c-neu-<zeit>`) — Kandidat für den Kennungs-Umzug. */
 export const istAlteKontaktKennung = (id: string): boolean => /^c-[a-z0-9-]{1,62}$/.test(id) && !KONTAKT_NEU.test(id);
+/** Gültige Kontakt-Kennung der Kartei — neu (`c-<uuid>`) ODER alt (`c-<Mail/Name>-<Hash>`, bis 64 Zeichen): die eine Prüfung für Eingaben, die auf eine Person zeigen. */
+export const istKontaktKennung = (id: string): boolean => istNeueKontaktKennung(id) || istAlteKontaktKennung(id);

@@ -30,14 +30,32 @@ const CSS_EIGENSCHAFTEN = new Set([
   'opacity', 'stop-color', 'stop-opacity', 'font-family', 'font-size', 'font-weight', 'font-style', 'letter-spacing', 'text-anchor', 'display', 'visibility', 'mix-blend-mode',
 ]);
 
-const maske = (v: string): string => v.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);)/gi, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/**
+ * Entities EINMAL auflösen (numerisch, hexadezimal, die fünf benannten + nbsp) — vor jeder Prüfung. Der Browser löst sie in Attributen
+ * und Text ohnehin auf; wer erst prüft und dann den Rohtext ausgibt, lässt `u&#114;l(http://…)` oder `&#106;avascript:` durch. Ein
+ * einziger Durchgang: `&amp;#106;` wird zu `&#106;` (Text), nicht weiter zu `j`. Unbekannte Namen bleiben stehen (und werden beim Ausgeben
+ * als `&amp;name;` zu reinem Text). Steuerzeichen fallen weg, ungültige Codepunkte auch.
+ */
+const BENANNT: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+export function entitiesAufloesen(v: string): string {
+  return v.replace(/&(?:#(\d{1,8})|#[xX]([0-9a-fA-F]{1,6})|(amp|lt|gt|quot|apos|nbsp));?/g, (_m, dez: string | undefined, hex: string | undefined, name: string | undefined) => {
+    if (name) return BENANNT[name];
+    const cp = dez !== undefined ? parseInt(dez, 10) : parseInt(hex as string, 16);
+    if (!Number.isFinite(cp) || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff) || cp === 0 || cp < 0x20 && cp !== 9 && cp !== 10 && cp !== 13 || cp === 0x7f) return '';
+    return String.fromCodePoint(cp);
+  }).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
+}
+/** Für die Ausgabe: genau EIN Entity-Satz (& < > "), nie ein vorhandenes Entity stehen lassen — die Eingabe ist vorher aufgelöst. */
+const maske = (v: string): string => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Ein Wert ist unbedenklich: kein Skript, kein fremdes `url()`, keine Daten-URL, kein Sonderzeichen für Markup. */
 function wertSicher(wert: string): boolean {
-  const w = wert.replace(/&#x?[0-9a-f]+;?/gi, '').toLowerCase();
-  if (/[<>\\]/.test(wert)) return false;
+  // `wert` ist schon aufgelöst (entitiesAufloesen). Leerraum und Steuerzeichen zählen für die Muster nicht („java\tscript:“).
+  const w = wert.toLowerCase().replace(/[\s\u0000-\u001f\u007f-\u009f]/g, '');
+  if (/[<>\\"]/.test(wert)) return false;   // auch kein Anführungszeichen: ein Wert soll nie wie ein weiteres Attribut aussehen
   if (/javascript:|vbscript:|data:|expression\s*\(|@import|behavior|-moz-binding/.test(w)) return false;
-  for (const m of w.matchAll(/url\s*\(\s*([^)]*)\)/g)) if (!/^['"]?#[\w:.-]+['"]?$/.test(m[1].trim())) return false;
+  for (const m of w.matchAll(/url\(([^)]*)\)/g)) if (!/^['"]?#[\w:.-]+['"]?$/.test(m[1])) return false;
+  if (/url\(/.test(w) && !/url\([^)]*\)/.test(w)) return false;   // „url(“ ohne Ende
   return true;
 }
 
@@ -94,12 +112,25 @@ export function saeubereSvg(eingabe: string): string | null {
   let wurzel = false;
   let pos = 0;
 
+  /** Das oberste offene Element schließen; ein <style> nur mit sicheren Regeln — sonst fällt es ganz weg. */
+  const schliesseEins = (): void => {
+    const name = offen.pop() as string;
+    if (name === 'style' && styleInhalt !== null) {
+      const regeln = cssRegeln(entitiesAufloesen(styleInhalt)).replace(/&/g, '&amp;');
+      styleInhalt = null;
+      if (regeln) ausgabe += `${regeln}</style>`;
+      else { const i = ausgabe.lastIndexOf('<style'); if (i !== -1) ausgabe = ausgabe.slice(0, i); }
+      return;
+    }
+    ausgabe += `</${name}>`;
+  };
+
   while (pos < t.length) {
     const lt = t.indexOf('<', pos);
     const text = t.slice(pos, lt === -1 ? t.length : lt);
     if (text && !skip) {
       if (styleInhalt !== null) styleInhalt += text;
-      else if (offen.length && /^(text|tspan|title|desc)$/i.test(offen[offen.length - 1])) ausgabe += maske(text);
+      else if (offen.length && /^(text|tspan|title|desc)$/i.test(offen[offen.length - 1])) ausgabe += maske(entitiesAufloesen(text));
     }
     if (lt === -1) break;
     TAG.lastIndex = lt;
@@ -116,21 +147,14 @@ export function saeubereSvg(eingabe: string): string | null {
     if (!ELEMENTE.has(klein)) { if (!tag.schliessend && !tag.selbst) skip = { name: klein, tiefe: 1 }; continue; }
 
     if (tag.schliessend) {
-      if (klein === 'style' && styleInhalt !== null) {
-        const regeln = cssRegeln(styleInhalt);
-        styleInhalt = null;
-        if (regeln) ausgabe += regeln;
-        else { // leere/unsichere Regeln: das ganze <style> wieder wegnehmen
-          const i = ausgabe.lastIndexOf('<style');
-          if (i !== -1) ausgabe = ausgabe.slice(0, i);
-          offen.pop();
-          continue;
-        }
-      }
-      const name = offen.pop();
-      if (name) ausgabe += `</${name}>`;
+      // Schließt, was zum Namen passt — und vorher alles, was darüber noch offen steht (sonst entstünden falsch verschachtelte Ausgaben).
+      const idx = offen.lastIndexOf(CAMEL[klein] ?? klein);
+      if (idx < 0) continue;   // ohne passendes Öffnen: ignorieren
+      while (offen.length > idx) schliesseEins();
+      if (!offen.length) break;   // Wurzel geschlossen: alles danach ist nicht mehr Teil des Dokuments
       continue;
     }
+    if (styleInhalt !== null) continue;   // Tags im <style>-Text sind kein Markup, das wir übernehmen
 
     // Öffnendes Element: Attribute prüfen und neu schreiben.
     if (klein === 'svg' && !wurzel) wurzel = true;
@@ -139,7 +163,8 @@ export function saeubereSvg(eingabe: string): string | null {
     const name = CAMEL[klein] ?? klein;
     let attr = '';
     let hatXmlns = false;
-    for (const [n, w] of attributeLesen(tag.attribute)) {
+    for (const [n, wRoh] of attributeLesen(tag.attribute)) {
+      const w = entitiesAufloesen(wRoh);
       if (n === 'xmlns') { if (w === 'http://www.w3.org/2000/svg') { attr += ' xmlns="http://www.w3.org/2000/svg"'; hatXmlns = true; } continue; }
       if (n === 'href' || n === 'xlink:href') { if (klein === 'use' && /^#[\w:.-]+$/.test(w.trim())) attr += ` href="${w.trim()}"`; continue; }
       if (n === 'style') { const d = cssDeklarationen(w); if (d) attr += ` style="${maske(d)}"`; continue; }
@@ -149,10 +174,11 @@ export function saeubereSvg(eingabe: string): string | null {
       attr += ` ${schreibweise}="${maske(w)}"`;
     }
     if (klein === 'svg' && !hatXmlns) attr = ` xmlns="http://www.w3.org/2000/svg"${attr}`;
+    if (klein === 'style' && tag.selbst) continue;   // ein leeres <style/> bringt nichts
     ausgabe += `<${name}${attr}${tag.selbst ? '/>' : '>'}`;
     if (!tag.selbst) { offen.push(name); if (klein === 'style') styleInhalt = ''; }
   }
-  while (offen.length) ausgabe += `</${offen.pop()}>`;
+  while (offen.length) schliesseEins();   // offene Elemente schließen (ein offenes <style> wird dabei ausgewertet oder verworfen)
   if (!/^<svg[\s>]/.test(ausgabe) || !/<(path|rect|circle|ellipse|line|polyline|polygon|text)[\s/>]/.test(ausgabe)) return null;
   return ausgabe;
 }

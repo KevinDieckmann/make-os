@@ -9,6 +9,7 @@
 // mit Konto (Riegel „power_hour:<person>“). Riegel stehen im eigenen Speicher.
 
 import { loadJson } from '@/lib/store/local-db';
+import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { resolveAgent } from '@/lib/agent-config';
 import type { Faellig } from '@/lib/zoe/takt';
 import { ladeCrm } from '@/lib/crm/speicher';
@@ -21,7 +22,9 @@ const tag = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const liefHeute = (s: HeadStand, modus: string, heute: string) => (s.letzte[modus] ?? '').slice(0, 10) === heute;
 
 /** Welcher Modus ist jetzt dran? Rein, getestet. */
-export function faelligeModi(head: HeadId, jetzt: Date, s: HeadStand, events: { datum: string; status: string }[], personen: string[] = ['kevin']): { modus: string; grund: string; person?: string }[] {
+export function faelligeModi(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], personen: string[] = ['kevin']): { modus: string; grund: string; person?: string }[] {
+  // Fremde Veranstaltungen aus „Netzwerken“ (Marke „Netzwerken“) sind keine Make.One-Events: kein Nachfassen/Countdown dafür.
+  const events = alleEvents.filter(e => !istNetzwerkenEvent(e));
   const heute = tag(jetzt), w = jetzt.getDay(), h = jetzt.getHours(), werktag = w >= 1 && w <= 5;
   const raus: { modus: string; grund: string; person?: string }[] = [];
   const ersterWerktag = werktag && jetzt.getDate() <= 3 && !Array.from({ length: jetzt.getDate() - 1 }, (_, i) => new Date(jetzt.getFullYear(), jetzt.getMonth(), i + 1).getDay()).some(x => x >= 1 && x <= 5);

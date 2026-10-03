@@ -49,8 +49,8 @@ import { kontextAus } from './segmente';
 import { kanalStatus } from './recht';
 import { angebotSpeichern } from './angebot-server';
 import { terminAktivitaetenSetzen } from './termin-aktivitaet-server';
-import { MARKE_EVENTS } from './marke';
-import { zusammenfuehrung, luekenFuellen, neuesEvent, followupFrist, followupFristEinTag, wandPlusMinuten, schrittLabel, terminArtLabel, stadtAusAnschrift, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG, LABEL_NETZWERKEN, LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN, type Erfassung } from './netzwerken';
+import { MARKE_EVENTS, istNetzwerkenEvent } from './marke';
+import { zusammenfuehrung, trifftEingeschraenkte, luekenFuellen, neuesEvent, followupFrist, followupFristEinTag, wandPlusMinuten, schrittLabel, terminArtLabel, stadtAusAnschrift, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG, LABEL_NETZWERKEN, LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN, type Erfassung } from './netzwerken';
 import type { Firma, NetzwerkenAngabe, Teilnahme } from './typen';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -106,6 +106,9 @@ async function journalAendern(haushalt: string, id: string, f: (e: JournalEintra
 }
 
 // ── Fehler ───────────────────────────────────────────────────────────────────
+
+/** Art. 18: die Person ist eingeschränkt — Text für jeden Weg, der darauf stößt (nennt sie nie). */
+const EINGESCHRAENKT_TEXT = 'Diese Person ist eingeschränkt (Art. 18) — sie wird nicht verarbeitet.';
 
 export class ErfassungFehler extends Error {
   constructor(message: string, public status = 400, public extra: Record<string, unknown> = {}) { super(message); this.name = 'ErfassungFehler'; }
@@ -221,6 +224,13 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
   const firmaName = e.kontakt.firma;
 
   const eigeneId = `c-${e.erfassungId}`;
+  // ── Art. 18 bei „Dublette“: gehört die Karte (Mail, oder Nummer + Nachname) zu einer EINGESCHRÄNKTEN Person, geschieht nichts —
+  // weder wird angehängt noch daneben neu angelegt (derselbe Befund wie beim Pfad `vorhandenKontaktId`). VOR Firma und Kontakt,
+  // damit auch keine verwaiste Firma entsteht; die Meldung nennt die Person nie.
+  if (!nameDa) {
+    const { kontakteFuerVerarbeitung } = await import('./verarbeitung');
+    if (trifftEingeschraenkte(e, await kontakteFuerVerarbeitung({ mitEingeschraenkten: true }), eigeneId)) throw new ErfassungFehler(EINGESCHRAENKT_TEXT, 409, { eingeschraenkt: true });
+  }
   // ── firma ── (nur für neue Personen; an einer bestehenden Person bleibt ihre Firma, wie sie ist — und hängt die Erfassung
   // an einer bestehenden Person, entsteht keine verwaiste Firma: dieselbe Zusammenführungs-Regel wie im Schritt „kontakt“)
   await schritt('firma', async () => {
@@ -256,10 +266,12 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       if (nameDa) {
         const k = f.kontakte.find(x => x.id === e.vorhandenKontaktId);
         if (!k) { fehler = new ErfassungFehler('Die gewählte Person gibt es nicht mehr.', 404); return f; }
-        if (k.eingeschraenkt) { fehler = new ErfassungFehler('Diese Person ist eingeschränkt (Art. 18) — sie wird nicht verarbeitet.', 409, { eingeschraenkt: true }); return f; }
+        if (k.eingeschraenkt) { fehler = new ErfassungFehler(EINGESCHRAENKT_TEXT, 409, { eingeschraenkt: true }); return f; }
         return anhaengen(k);
       }
       if (f.kontakte.some(x => x.id === eigeneId)) { r = { id: eigeneId, neu: true, hinweise: [] }; return f; } // Abbruch zwischen Wirkung und Abhaken
+      // Zwischen der Vorprüfung oben und diesem Schreiben kann die Person eingeschränkt worden sein — hier noch einmal, auf dem Stand der Kartei.
+      if (trifftEingeschraenkte(e, f.kontakte, eigeneId)) { fehler = new ErfassungFehler(EINGESCHRAENKT_TEXT, 409, { eingeschraenkt: true }); return f; }
       // Ähnliche Person? Auch wenn die Prüfung am Handy ohne Netz entfiel. Mail — oder Nummer UND Nachname — hängt an; Nummer mit
       // anderem Nachnamen (Zentrale, Familie) und Name + Firma ohne Beleg legen NEU an, mit Hinweis.
       const z = e.neuErzwingen ? {} as ReturnType<typeof zusammenfuehrung> : zusammenfuehrung(e, f.kontakte, eigeneId);
@@ -295,7 +307,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
 
   const kontakt0 = (await ladeKontakt(kontaktId));
   if (!kontakt0) throw new ErfassungFehler('Die Person gibt es nicht mehr.', 404);
-  if (kontakt0.eingeschraenkt) throw new ErfassungFehler('Diese Person ist eingeschränkt (Art. 18) — sie wird nicht verarbeitet.', 409, { eingeschraenkt: true });
+  if (kontakt0.eingeschraenkt) throw new ErfassungFehler(EINGESCHRAENKT_TEXT, 409, { eingeschraenkt: true });
   const name = anzeigename(kontakt0);
 
   // ── dateien ──
@@ -358,7 +370,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       let k = f.kontakte[i];
       if (k.eingeschraenkt) return f;
       const text = [`Kennengelernt bei ${event.titel}`, ...(e.info ? [`Info: ${e.info.replace(/\s+/g, ' ')}`] : []), ...(neuAngelegt ? [KEINE_EINWILLIGUNG] : [])].join(' — ');
-      const schon = (art: string, marker: string) => k.aktivitaeten.some(a => a.art === art && a.am === e.erfasstAm && a.bezug === e.eventId && (a.text ?? '').includes(marker));
+      const schon = (art: string, marker: string) => (k.aktivitaeten ?? []).some(a => a.art === art && a.am === e.erfasstAm && a.bezug === e.eventId && (a.text ?? '').includes(marker));
       if (!schon('event', 'Kennengelernt bei')) k = wendeAktivitaetAn(k, { art: 'event', text: text.slice(0, 2900), von: ctx.person, bezug: e.eventId }, erfasstTag > heute ? heute : erfasstTag, e.erfasstAm, tagPlusLokal);
       if (e.sprachnotiz && !schon('notiz', 'Sprachnotiz')) k = wendeAktivitaetAn({ ...k }, { art: 'notiz', text: `Sprachnotiz aufgenommen — Abschrift folgt (KI)${e.sprachnotiz.dauerSek ? ` · ${Math.floor(e.sprachnotiz.dauerSek / 60)}:${String(e.sprachnotiz.dauerSek % 60).padStart(2, '0')} min` : ''}`, von: ctx.person, bezug: e.eventId }, erfasstTag > heute ? heute : erfasstTag, e.erfasstAm, tagPlusLokal);
       // Jede über „Netzwerken“ erfasste Person trägt das Label — auch eine bestehende (Kartei-Filter „Label: Netzwerken“).
@@ -445,7 +457,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
         // Wie „Make.One einladen“ in der Kontaktakte: Gast für ein KOMMENDES Event vormerken (Teilnahme „vorgemerkt“), der Einladungsweg
         // folgt der Ampel (Mail nur bei grün, sonst persönlich) — gesendet wird nichts. Ohne wählbares Event: Aufgabe + Label als Vormerkung.
         const crmJetzt = await ladeCrm();
-        const ziel = e.makeone?.eventId ? crmJetzt.events.find(x => x.id === e.makeone!.eventId && x.id !== e.eventId && x.datum >= heute && (x.status === 'idee' || x.status === 'geplant' || x.status === 'einladung')) : undefined;
+        const ziel = e.makeone?.eventId ? crmJetzt.events.find(x => x.id === e.makeone!.eventId && x.id !== e.eventId && !istNetzwerkenEvent(x) && x.datum >= heute && (x.status === 'idee' || x.status === 'geplant' || x.status === 'einladung')) : undefined;
         if (ziel) {
           const kx = kontextAus(crmJetzt, heute);
           const einl = kanalStatus(kontakt0, 'einladung', { hatMandat: kx.mitMandat.has(kontaktId), hatChance: kx.mitChance.has(kontaktId) });

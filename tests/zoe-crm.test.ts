@@ -319,3 +319,20 @@ describe('„ZOE fragen“ — Bezug (rein)', () => {
     expect(passtZuBezug({ bezug: { art: 'aufgabe', id: 'kontakt:c-anna-1' } }, 'kontakt', 'c-anna-1')).toBe(false);
   });
 });
+
+describe('events_lage: Netzwerken-Events sind keine Make.One-Events (Prüfung 03.10.)', () => {
+  it('listet nur eigene Events — auch nicht, wenn man das fremde Event beim Namen verlangt; die Zahl in der Überschrift stimmt', async () => {
+    const vorher = await speicher.ladeCrm();
+    const ev = (id: string, titel: string, x: Record<string, unknown> = {}) => ({ id, titel, format: 'stammtisch', ziel: 'Gespräche', datum: '2099-01-10', status: 'geplant', geaendert: T, ...x });
+    await db.saveJson('crm', { ...vorher, events: [ev('ev-eigen-1', 'Herbst-Dinner'), ev('ev-fremd-1', 'Fremdmesse Nord', { marke: 'Netzwerken' })] });
+    try {
+      const alle = await lauf('events_lage', {}, 'kevin');
+      expect(alle).toContain('Herbst-Dinner');
+      expect(alle).not.toContain('Fremdmesse');
+      expect(alle).not.toContain('ev-fremd-1');
+      expect(alle).toMatch(/EVENTS \(Make\.One\) · 1 /);
+      const gezielt = await lauf('events_lage', { event: 'Fremdmesse' }, 'kevin');
+      expect(gezielt).not.toContain('ev-fremd-1');
+    } finally { await db.saveJson('crm', vorher); }
+  });
+});

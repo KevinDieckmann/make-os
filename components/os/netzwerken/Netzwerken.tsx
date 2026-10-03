@@ -19,6 +19,7 @@ import { Erfassen } from './Erfassen';
 import { Heute } from './Heute';
 import { useKontext, useWarteschlange } from './useNetzwerken';
 import { OhneTerminKnopf } from './Ergebnis';
+import { NUR_RAM_HINWEIS } from '@/lib/netzwerken/warteschlange';
 
 type Reiter = 'erfassen' | 'heute';
 
@@ -81,6 +82,7 @@ function Warteschlange({ warte }: { warte: ReturnType<typeof useWarteschlange> }
         <Hinweis farbe={warte.fehler ? LEUCHT.kritisch : LEUCHT.achtung} rolle="status">
           <b>{warte.wartend ? `${warte.wartend} ${warte.wartend === 1 ? 'Erfassung wird' : 'Erfassungen werden'} gesendet, sobald Netz da ist` : 'Nicht alles ist gespeichert'}</b>
           {warte.laeuft ? ' — sendet gerade …' : ''}
+          {warte.nurImRam && <div style={{ marginTop: 6 }}><b>{NUR_RAM_HINWEIS}</b></div>}
           <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
             {warte.eintraege.map(e => (
               <li key={e.id} style={{ display: 'grid', gap: 6, fontSize: 14, lineHeight: 1.45 }}>

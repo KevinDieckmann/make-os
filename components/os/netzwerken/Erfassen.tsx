@@ -35,6 +35,8 @@ import { TerminWahl, type TerminEingabe } from './TerminWahl';
 import { OhneTerminKnopf, linksAusAntwort } from './Ergebnis';
 import type { EventWahl } from './EventModus';
 import type { Person, useWarteschlange } from './useNetzwerken';
+import { NUR_RAM_HINWEIS } from '@/lib/netzwerken/warteschlange';
+import { istNetzwerkenEvent } from '@/lib/crm/marke';
 
 type Warte = ReturnType<typeof useWarteschlange>;
 type Phase = 'karte' | 'schritt' | 'bestaetigen' | 'fertig';
@@ -129,7 +131,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
   const firmaVerknuepft = !e.firmaNeu && (e.firmaId ? firmen.find(x => x.id === e.firmaId) : exakt);
 
   // Kommende Events (für „Zu Make.One einladen“): nicht das heutige, nicht abgesagt.
-  const kommende = useMemo(() => (api.crm?.stand.events ?? []).filter(ev => ev.id !== wahl?.eventId && ev.datum >= heute && (ev.status === 'idee' || ev.status === 'geplant' || ev.status === 'einladung')).sort((a, b) => a.datum.localeCompare(b.datum)).slice(0, 8), [api.crm, wahl?.eventId, heute]);
+  const kommende = useMemo(() => (api.crm?.stand.events ?? []).filter(ev => ev.id !== wahl?.eventId && !istNetzwerkenEvent(ev) && ev.datum >= heute && (ev.status === 'idee' || ev.status === 'geplant' || ev.status === 'einladung')).sort((a, b) => a.datum.localeCompare(b.datum)).slice(0, 8), [api.crm, wahl?.eventId, heute]);
   const nachnameOk = !leer(f.nachname) || !!e.vorhandenId;
   const weiter1 = () => {
     if (!wahl) { setFehler('Bitte oben zuerst „Heute bei“ wählen.'); return; }
@@ -523,9 +525,9 @@ function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schr
           {(a?.hinweise ?? []).map((h, i) => <div key={i} style={{ fontSize: TYP.body, color: C.inkDim }}>{h}</div>)}
         </>
       ) : fehlt ? (
-        <Hinweis farbe={LEUCHT.achtung} rolle="alert"><b>Noch nicht ganz gespeichert.</b><div style={{ marginTop: 6 }}>{e.hinweis}</div></Hinweis>
+        <Hinweis farbe={LEUCHT.achtung} rolle="alert"><b>Noch nicht ganz gespeichert.</b><div style={{ marginTop: 6 }}>{e.hinweis}</div>{warte.nurImRam && <div style={{ marginTop: 6 }}><b>{NUR_RAM_HINWEIS}</b></div>}</Hinweis>
       ) : (
-        <Hinweis farbe={LEUCHT.achtung} rolle="status"><b style={{ fontSize: 17 }}>Auf dem Gerät gespeichert</b><div style={{ marginTop: 6 }}>{warte.laeuft ? 'Wird gerade gesendet …' : (e.hinweis ?? 'Wird gesendet, sobald Netz da ist.')}</div>{warte.neuLaden && <div style={{ marginTop: 6 }}>MAKE OS wurde aktualisiert — bitte die Seite neu laden. Die Erfassung bleibt auf dem Gerät.</div>}</Hinweis>
+        <Hinweis farbe={LEUCHT.achtung} rolle="status"><b style={{ fontSize: 17 }}>{warte.nurImRam ? 'Noch nicht gesendet' : 'Auf dem Gerät gespeichert'}</b><div style={{ marginTop: 6 }}>{warte.laeuft ? 'Wird gerade gesendet …' : (e.hinweis ?? 'Wird gesendet, sobald Netz da ist.')}</div>{warte.nurImRam && <div style={{ marginTop: 6 }}><b>{NUR_RAM_HINWEIS}</b></div>}{warte.neuLaden && <div style={{ marginTop: 6 }}>MAKE OS wurde aktualisiert — bitte die Seite neu laden. Die Erfassung bleibt auf dem Gerät.</div>}</Hinweis>
       )}
       {fehlt && e && <div style={{ display: 'grid', gap: 8 }}><Gross ton="haupt" onClick={() => void warte.erneut(e.id)}>Erneut versuchen</Gross><OhneTerminKnopf e={e} onOhneTermin={x => void warte.ohneTermin(x)} /><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></div>}
       {!wartet && !fehlt && a?.kontaktId && <Link href={WEG.akte(a.kontaktId)} className="fassbar" style={verlinkt}>Zum Kontakt ›</Link>}

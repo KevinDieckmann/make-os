@@ -113,5 +113,7 @@ export function useWarteschlange(beiGesendet?: (r: SendeErgebnis) => void) {
 
   const wartend = stand.eintraege.filter(e => e.status === 'wartet').length;
   const fehler = stand.eintraege.filter(e => e.status === 'fehler').length;
-  return { ...stand, wartend, fehler, ablegen, senden, erneut, ohneTermin, verwerfen };
+  // Fiel der Speicher auf dem Gerät aus, liegt die Erfassung nur im Arbeitsspeicher — die Oberfläche sagt dann: Seite offen lassen.
+  const nurImRam = q.current!.nurImArbeitsspeicher() && stand.eintraege.length > 0;
+  return { ...stand, wartend, fehler, nurImRam, ablegen, senden, erneut, ohneTermin, verwerfen };
 }

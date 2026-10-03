@@ -7,7 +7,7 @@
 // Alles deterministisch und client-sicher. Steuern sind Näherungen — Hinweis, keine Steuerberatung.
 
 import type { Gesellschaftskennung } from '@/lib/einheiten';
-import type { FinanzDaten, MonatSelbst, MonatUG } from './rechenkern';
+import { wert, type FinanzDaten, type MonatSelbst, type MonatUG, type Zeile } from './rechenkern';
 import { betragImMonat, neuerBaustein, type Baustein, type KostenArt, type Planszenario, type Rhythmus } from './szenarien';
 
 /** Leere Vorlagen für „+ Produkt“ — nur Beispiel-Namen, Preis 0 (Kevin 02.10.: keine echten Preise). Der Name ist frei änderbar. */
@@ -79,6 +79,14 @@ export interface Geschaeftsblatt {
   liquiditaetName: string;
   breakEven: BreakEven;
   runway: number | null;
+}
+
+/** Sachkosten-Zeilen, die im MAKE-Blatt stehen: alles außer den Zeilen der Selbstständigkeit (die laufen im eigenen Blatt — wie im Kern, `rechneUG`). */
+export const sachkostenDerMake = <Z extends Pick<Zeile, 'einheit'>>(zeilen: readonly Z[]): Z[] => zeilen.filter(z => z.einheit !== 'selbststaendigkeit');
+
+/** „Einmalige Kosten und Ereignisse“ im MAKE-Blatt: Sach-Gesamtbetrag des Kerns minus die gelisteten MAKE-Fixkosten und die Sach-Bausteine (nie durch Selbst-Zeilen verzerrt). */
+export function einmaligeKostenMake(u: Pick<MonatUG, 'sach' | 'bausteineSach'>, d: Pick<FinanzDaten, 'sachkosten' | 'plan'>, m: number): number {
+  return u.sach - sachkostenDerMake(d.sachkosten).reduce((s, z) => s + wert(z, m, d.plan), 0) - u.bausteineSach;
 }
 
 /**

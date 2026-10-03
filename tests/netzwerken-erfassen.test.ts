@@ -487,3 +487,115 @@ describe('Danke-Mail: „ist raus“', () => {
     expect((await senden({ aktion: 'danke-raus', eventId: 'kaputt!', kontaktId: kid })).status).toBe(400);
   });
 });
+
+// ─── Nachbesserung Prüfung 03.10. (Branch netz-fix2) ───────────────────────────
+describe('Art. 18 bei „Dublette“ (kein vorhandenKontaktId)', () => {
+  const gesperrt = (x: Partial<Kontakt> = {}): Kontakt => ({ id: 'c-gesperrt-9', vorname: 'Anna', nachname: 'Beispiel', email: 'anna.beispiel@example.invalid', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', besitzer: 'malin', eingeschraenkt: { seit: '2026-09-01', grund: 'Richtigkeit bestritten', von: 'kevin' }, ...x } as Kontakt);
+
+  it('gleiche Mail wie eine eingeschränkte Person: 409 „eingeschränkt“ — nichts angehängt, nichts neu angelegt, keine verwaiste Firma, kein Journal-Eintrag mit Folgen', async () => {
+    await db.saveJson('kontakte', { kontakte: [gesperrt()] });
+    const r = await senden(erfassung());
+    expect(r.status).toBe(409);
+    expect(r.d).toMatchObject({ ok: false, eingeschraenkt: true });
+    expect(JSON.stringify(r.d)).not.toMatch(/Anna|Beispiel|c-gesperrt/);   // die Meldung nennt die Person nie
+    const ks = await kontakte();
+    expect(ks).toHaveLength(1);
+    expect(ks[0].aktivitaeten).toEqual([]);                  // nichts angehängt
+    expect(ks[0].labels ?? []).toEqual([]);
+    expect((await crm()).firmen).toEqual([]);                // keine verwaiste Firma
+    expect((await crm()).teilnahmen).toEqual([]);
+    expect(((await db.loadJson<{ eintraege: unknown[] }>('crm-dateien--test-haus'))!).eintraege).toEqual([]);   // keine Fotos abgelegt
+  });
+
+  it('auch mit „trotzdem neu“: eine zweite Person neben der eingeschränkten wäre dieselbe Verarbeitung', async () => {
+    await db.saveJson('kontakte', { kontakte: [gesperrt()] });
+    const r = await senden(erfassung({ neuErzwingen: true }));
+    expect(r.status).toBe(409);
+    expect(await kontakte()).toHaveLength(1);
+  });
+
+  it('Telefon + gleicher Nachname trifft ebenfalls; bloß gleiche Nummer mit anderem Nachnamen (Zentrale) nicht', async () => {
+    await db.saveJson('kontakte', { kontakte: [gesperrt({ email: undefined, telefon: '+49 30 1234567' })] });
+    expect((await senden(erfassung({ kontakt: { vorname: 'Anna', nachname: 'Beispiel', telefon: '+49 30 1234567' } }))).status).toBe(409);
+    const zentrale = await senden(erfassung({ kontakt: { vorname: 'Karl', nachname: 'Anders', telefon: '+49 30 1234567' } }));
+    expect(zentrale.status).toBe(200);
+  });
+
+  it('eine NICHT eingeschränkte Person mit gleicher Mail hängt weiter an (Regel unverändert)', async () => {
+    await db.saveJson('kontakte', { kontakte: [gesperrt({ eingeschraenkt: undefined, id: 'c-offen-1' })] });
+    const r = await senden(erfassung());
+    expect(r.d).toMatchObject({ ok: true, zusammengefuehrt: true, kontaktId: 'c-offen-1' });
+  });
+});
+
+describe('Magic Bytes vor dem ersten Schreiben (415 ohne Teilzustand)', () => {
+  const GIF = Buffer.from('GIF89a......').toString('base64');
+  const zustand = async () => ({ kontakte: (await kontakte()).length, firmen: (await crm()).firmen.length, teilnahmen: (await crm()).teilnahmen.length, dateien: ((await db.loadJson<{ eintraege: unknown[] }>('crm-dateien--test-haus'))!).eintraege.length, journal: ((await db.loadJson<{ eintraege: unknown[] }>('netzwerken-erfassungen--test-haus'))?.eintraege ?? []).length });
+
+  it('Foto mit Typ „jpeg“, aber GIF/Text/WebP/HEIC-Inhalt → 415, nichts geschrieben (weder Person noch Firma noch Journal)', async () => {
+    const vorher = await zustand();
+    const webp = Buffer.from('RIFF\0\0\0\0WEBPVP8 ').toString('base64');
+    const heic = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypheic'), Buffer.alloc(8)]).toString('base64');
+    for (const daten of [GIF, Buffer.from('kein bild, nur Text').toString('base64'), webp, heic]) {
+      const r = await senden(erfassung({ bilder: [{ name: 'x.jpg', typ: 'image/jpeg', daten }] }));
+      expect(r.status).toBe(415);
+    }
+    expect(await zustand()).toEqual(vorher);
+  });
+
+  it('zweites Foto kaputt: auch das erste wird nicht abgelegt (Prüfung kommt vor allem Schreiben)', async () => {
+    const vorher = await zustand();
+    const r = await senden(erfassung({ bilder: [{ name: 'a.jpg', typ: 'image/jpeg', daten: JPEG }, { name: 'b.png', typ: 'image/png', daten: GIF }] }));
+    expect(r.status).toBe(415);
+    expect(r.d.fehler).toMatch(/Foto 2/);
+    expect(await zustand()).toEqual(vorher);
+  });
+
+  it('Sprachnotiz mit falschem Inhalt → 415 ohne Teilzustand; ein echtes WebM geht', async () => {
+    const vorher = await zustand();
+    const r = await senden(erfassung({ sprachnotiz: { typ: 'audio/webm', daten: Buffer.from('<html>nein</html>').toString('base64') } }));
+    expect(r.status).toBe(415);
+    expect(await zustand()).toEqual(vorher);
+    expect((await senden(erfassung({ sprachnotiz: { typ: 'audio/webm;codecs=opus', daten: WEBM } }))).status).toBe(200);
+  });
+
+  it('PNG mit echtem Kopf wird angenommen', async () => {
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 1, 2, 3, 4]).toString('base64');
+    expect((await senden(erfassung({ bilder: [{ name: 'k.png', typ: 'image/png', daten: png }] }))).status).toBe(200);
+  });
+});
+
+describe('Kontakt ohne `aktivitaeten` (Altbestand)', () => {
+  it('Anhängen an eine bestehende Person ohne Verlaufsliste: kein TypeError, der Verlauf wird angelegt', async () => {
+    const alt = { id: 'c-ohne-akt-1', vorname: 'Anna', nachname: 'Beispiel', email: 'anna.beispiel@example.invalid', eignung: '', prio: '', stufe: 'neu', importiertAm: '2026-09-01', geaendertAm: '2026-09-01', besitzer: 'malin' } as unknown as Kontakt;
+    expect('aktivitaeten' in alt).toBe(false);
+    await db.saveJson('kontakte', { kontakte: [alt] });
+    const r = await senden(erfassung({ sprachnotiz: { typ: 'audio/webm', daten: WEBM } }));
+    expect(r.status).toBe(200);
+    expect(r.d).toMatchObject({ ok: true, zusammengefuehrt: true, kontaktId: 'c-ohne-akt-1' });
+    const k = (await kontakte()).find(x => x.id === 'c-ohne-akt-1')!;
+    expect(k.aktivitaeten.map(a => a.art)).toEqual(expect.arrayContaining(['event', 'notiz']));
+  });
+});
+
+describe('Netzwerken-Event ist kein Make.One-Ziel', () => {
+  it('„Zu Make.One einladen“ auf ein Event mit Marke „Netzwerken“: Rückfall Label + Aufgabe, keine Gast-Vormerkung', async () => {
+    await db.saveJson('crm', { ...(await crm()), events: [...(await crm()).events, { id: 'ev-fremd-1', titel: 'Fremdmesse', marke: 'Netzwerken', format: 'dinner', ziel: 'x', datum: '2026-11-12', status: 'geplant', geaendert: '2026-09-01' }] });
+    const r = await senden(erfassung({ schritt: 'makeone', makeone: { eventId: 'ev-fremd-1' } }));
+    expect(r.status).toBe(200);
+    expect((await crm()).teilnahmen.filter(x => x.eventId === 'ev-fremd-1')).toEqual([]);
+    expect((await kontakte()).find(k => k.id === r.d.kontaktId)?.labels).toContain('Make.One-Einladung');
+  });
+});
+
+describe('lange Alt-Kennung der Kartei als vorhandenKontaktId', () => {
+  it('c-<Mail-Slug>-<Hash> (bis 64 Zeichen) wird angenommen, nicht als „ungültig“ abgelehnt', async () => {
+    const lang = `c-${'anna-beispiel-example-invalid-beispielwerk-nord-gmbh'.slice(0, 50)}-0a1b2c3d4e5f`;
+    expect(lang.length).toBeGreaterThan(62);
+    const id = lang.slice(0, 64);
+    await db.saveJson('kontakte', { kontakte: [{ id, vorname: 'Anna', nachname: 'Beispiel', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', besitzer: 'malin' } as unknown as Kontakt] });
+    const r = await senden(erfassung({ vorhandenKontaktId: id, kontakt: { vorname: 'Anna', nachname: 'Beispiel' }, schritt: 'followup' }));
+    expect(r.status).toBe(200);
+    expect(r.d).toMatchObject({ ok: true, kontaktId: id, neu: false });
+  });
+});

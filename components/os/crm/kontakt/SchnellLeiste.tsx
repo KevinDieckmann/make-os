@@ -25,6 +25,7 @@ import { Knopf, LEUCHT } from '../../schlank';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kanalLink } from '@/lib/crm/erfassen';
+import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { kontextAus } from '@/lib/crm/segmente';
 import { WEG } from '@/lib/wege';
 import { type CrmApi, neueId, datum } from '../daten';
@@ -47,7 +48,7 @@ const pille = (an: boolean, aus: boolean, farbe?: string): CSSProperties => ({
 /** „Make.One einladen“: ein kommendes Event wählen, die Person als Gast vormerken. */
 function EventEinladen({ k, api, heute, onFertig }: { k: Kontakt; api: CrmApi; heute: string; onFertig: (t: string) => void }) {
   const crm = api.crm;
-  const events = useMemo(() => (crm?.stand.events ?? []).filter(e => (e.status === 'idee' || e.status === 'geplant' || e.status === 'einladung') && e.datum >= heute).sort((a, b) => a.datum.localeCompare(b.datum)), [crm, heute]);
+  const events = useMemo(() => (crm?.stand.events ?? []).filter(e => !istNetzwerkenEvent(e) && (e.status === 'idee' || e.status === 'geplant' || e.status === 'einladung') && e.datum >= heute).sort((a, b) => a.datum.localeCompare(b.datum)), [crm, heute]);
   const schon = new Set((crm?.stand.teilnahmen ?? []).filter(t => t.kontaktId === k.id).map(t => t.eventId));
   const [laeuft, setLaeuft] = useState<string | null>(null);
   if (!crm) return <Hinweis>Die Events laden noch …</Hinweis>;

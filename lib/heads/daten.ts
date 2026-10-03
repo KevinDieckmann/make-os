@@ -10,6 +10,7 @@ import { ampel, art14, kanalStatus } from '@/lib/crm/recht';
 import { prognose, gesundheit, gesamtwert, OFFENE_STUFEN, STUFEN, winRate } from '@/lib/crm/pipeline';
 import { mandatLage, mrr, konzentration } from '@/lib/crm/kunden';
 import { eventZahlen, followUpBis, nachfassenRest } from '@/lib/crm/events';
+import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { mix, checklisteStand, zielHinweis, budgetSumme, gaesteVorschlag } from '@/lib/crm/eventplanung';
 import type { HeadId } from './prompt';
 import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen } from '@/lib/crm/kampagnen';
@@ -187,13 +188,13 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       quellen_der_chancen: quellen,
       selbstauskunft: crm.chancen.filter(c => c.selbstauskunft).map(c => ({ chance_id: c.id, text: kurz(c.selbstauskunft, 200) })),
       stimme_der_kunden: stimmen,
-      anstehende_events: crm.events.filter(e => e.datum >= heute && e.status !== 'abgesagt').map(e => ({ id: e.id, titel: e.titel, datum: e.datum, ziel: kurz(e.ziel, 200) })),
+      anstehende_events: crm.events.filter(e => e.datum >= heute && e.status !== 'abgesagt' && !istNetzwerkenEvent(e)).map(e => ({ id: e.id, titel: e.titel, datum: e.datum, ziel: kurz(e.ziel, 200) })),
       kunden_gruen: crm.mandate.filter(m => m.status === 'aktiv' && mandatLage(m, heute).ampel === 'gruen').map(m => ({ mandat_id: m.id, kunde: m.kunde })),
     };
   }
 
   // event
-  const events = crm.events.filter(e => e.status !== 'abgesagt');
+  const events = crm.events.filter(e => e.status !== 'abgesagt' && !istNetzwerkenEvent(e));   // Netzwerken-Events (fremde Veranstaltungen) sind nicht Make.One
   // Gästevorschläge für das nächste Event (mit Grund und zulässigem Einladungsweg), sonst allgemein die Kreise.
   const naechstes = events.filter(e => e.datum >= heute).sort((a, b) => a.datum.localeCompare(b.datum))[0];
   const seg = naechstes?.segmentId ? crm.segmente.find(sg => sg.id === naechstes.segmentId) : undefined;

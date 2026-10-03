@@ -21,7 +21,8 @@ import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { alleGesellschaften, gesellschaftenName, mitVorgaben, type GesellschaftenDatei } from '@/lib/crm/gesellschaften';
-import { MAX_KARTEN, pruefeKarte, KARTEN_TEXTFELDER, type Visitenkarte } from '@/lib/netzwerken/karte';
+import { MAX_KARTEN, LOGO_MAX, pruefeKarte, KARTEN_TEXTFELDER, type Visitenkarte } from '@/lib/netzwerken/karte';
+import { zuGross } from '@/lib/zugang/umfang';
 import { fuerBrowser, ladeKarten, visitenkartenName, type KartenDatei } from '@/lib/netzwerken/karte-speicher';
 
 export const runtime = 'nodejs';
@@ -30,6 +31,9 @@ export const dynamic = 'force-dynamic';
 const KEIN = { ok: false, fehler: 'Visitenkarten gibt es nur für Konten mit Haushalt. Der Inhaber schaltet das unter System → Konto frei.' };
 /** Höchstens so viele Änderungen je Anruf — darüber 413, nie still gekürzt. */
 const OPS_MAX = 40;
+/** Ganzer Körper einer Änderung: höchstens OPS_MAX Profile mit je einem Logo am Limit (LOGO_MAX Zeichen) plus Text — darüber 413, bevor irgendetwas gelesen oder geparst wird. */
+const KARTEN_KOERPER_MAX = OPS_MAX * LOGO_MAX + 400_000;
+const ZU_GROSS_KARTEN = () => NextResponse.json({ ok: false, fehler: `Die Änderung ist zu groß (höchstens ${Math.round(KARTEN_KOERPER_MAX / 1_000_000)} MB) — bitte weniger Profile oder kleinere Logos auf einmal.` }, { status: 413 });
 
 /** Die eigene Person mit Haushalt — nur von Hand angemeldet, nie über den Dienstweg (auch nicht mit `x-make-person`). */
 async function eigene(req: Request): Promise<HaushaltZugang | null> {
@@ -79,10 +83,15 @@ export async function PATCH(req: Request) {
   const z = await eigene(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   const alterBau = bauPruefen(req); if (alterBau) return alterBau;
+  if (zuGross(req, KARTEN_KOERPER_MAX)) return ZU_GROSS_KARTEN();   // Content-Length zuerst — ohne etwas zu puffern
   const ziel = await zielPerson(req, z);
   if (ziel instanceof NextResponse) return ziel;
   let body: { ops?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  // Auch ohne Content-Length (chunked) gilt die Grenze: den Text lesen, messen, dann erst parsen.
+  let text: string;
+  try { text = await req.text(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  if (text.length > KARTEN_KOERPER_MAX) return ZU_GROSS_KARTEN();
+  try { body = JSON.parse(text); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const jetzt = new Date().toISOString();
 
   // Jede Karte wird geprüft, BEVOR etwas geschrieben wird — ein Fehler benennt das Feld, nichts wird halb gespeichert.

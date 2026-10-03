@@ -186,3 +186,24 @@ describe('Speicher-Register', () => {
     expect(() => visitenkartenName('../x')).toThrow();
   });
 });
+
+describe('Körpergröße der Änderung (Prüfung 03.10.)', () => {
+  it('über der Grenze (40 Profile × Logo-Limit + Text) → 413 — nach Header UND nach gemessenem Text; nichts geschrieben', async () => {
+    const vorher = await db.loadJson('visitenkarten--malin');
+    // 1. Content-Length zuerst: ohne den Body zu lesen
+    const kopf = { 'content-type': 'application/json', 'x-make-user': 'malin', 'content-length': '99000000' };
+    const a = await route.PATCH(new Request('http://test/api/netzwerken/karten', { method: 'PATCH', headers: kopf, body: JSON.stringify({ ops: [neu(1)] }) }));
+    expect(a.status).toBe(413);
+    expect(((await a.json()) as Antwort).fehler).toMatch(/zu groß/);
+    // 2. Ohne ehrlichen Header (chunked): der gelesene Text wird gemessen
+    const riesig = JSON.stringify({ ops: [neu(1, { bezeichnung: 'x'.repeat(12_000_000) })] });
+    const b = await route.PATCH(new Request('http://test/api/netzwerken/karten', { method: 'PATCH', headers: { 'content-type': 'application/json', 'x-make-user': 'malin' }, body: riesig }));
+    expect(b.status).toBe(413);
+    expect(await db.loadJson('visitenkarten--malin')).toEqual(vorher);
+  });
+  it('ein Körper mit vollen Logos im erlaubten Rahmen geht weiter durch die normale Prüfung', async () => {
+    const r = await schreibe('malin', [neu(1, { logo: SVG('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h1v1z"/></svg>') })]);
+    expect(r.d.fehler ?? '').not.toMatch(/zu groß/);
+    expect(r.status).not.toBe(413);
+  });
+});

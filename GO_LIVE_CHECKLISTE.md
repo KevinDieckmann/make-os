@@ -1,14 +1,13 @@
-# Go-Live-Checkliste — Stand `entwicklung` mit Paket U1 (29.09.2026 spät; online läuft af4679a)
+# Go-Live-Checkliste — Stand `entwicklung` ab Netzwerken-Korrekturen (03.10.2026; online läuft `1818c5c`)
 
-**Urteil: Ja, mit Bedingungen.** Im Code blockiert nichts: tsc, Lint und alle Tests sind grün. Die Funde der Upload-Prüfung
-`af4679a..entwicklung` sind behoben (Paket U1): Familien-Daten bringen den alten Stand nicht mehr zum Absturz, der Kalender
-schreibt beim ersten Takt nichts ungefragt nach iCloud, die Kalender-Sicherung startet nie gleich nach dem Upload und bleibt
-wirklich nur 14 Tage, Caddy lässt die strengen Köpfe der Buchungsseite stehen.
+**Urteil: Ja, mit Bedingungen.** Im Code blockiert nichts: tsc, Lint und alle Tests sind grün. Hochgeladen wird
+`1818c5c..entwicklung` (Ziel ↔ Meilenstein, Finanzplanung-Kern-Umbau mit Steuerprofil, Netzwerken › Erfassen/Visitenkarte/Korrekturen,
+Landingpage). Der Online-Stand `1818c5c` enthält schon alles aus den früheren Paketen (Kalender-Bezug, Buchungsseite,
+Wochenplan-Übernahme, strenge Caddy-Köpfe, mehrstufige Unteraufgaben); diese Punkte stehen unten nur noch als „früher“.
 
 **Rückweg ist möglich (Kompatibilitätsmodus).** Ohne `MAKE_OS_FORMAT` schreibt die neue Version im Format des Online-Stands
-af4679a (v1-Hülle, `MKOSDAT1`, kein `_v`). Beim Zurückgehen fallen nur Dinge weg, die af4679a nicht kennt (Liste unten unter
-„Rückweg“). **Die Wochenplan-Übernahme macht den Rückweg aufwendiger** — deshalb erst nach ein paar stabilen Tagen (siehe
-„Am ersten Tag“). Erst `MAKE_OS_FORMAT=v2` macht den Upload zur Einbahnstraße (dann nur noch über die Sicherung zurück).
+(v1-Hülle, `MKOSDAT1`, kein `_v`). Beim Zurückgehen auf `1818c5c` fallen nur Dinge weg, die dieser Stand nicht kennt (Liste
+unten unter „Rückweg“). Erst `MAKE_OS_FORMAT=v2` macht den Upload zur Einbahnstraße (dann nur noch über die Sicherung zurück).
 
 Alle Befehle auf dem Server als `make`, im Ordner `/srv/make-os/app`, außer wo „am Mac“ steht. Werte (Schlüssel, Passwörter)
 nie in Chat oder Repo.
@@ -18,22 +17,23 @@ nie in Chat oder Repo.
 2. **Platz:** `df -h /` und `docker system df` → auf `/` mindestens **5 GB frei**. Sonst zuerst `docker builder prune -af`
    (löscht nur den Bau-Zwischenspeicher, keine Bilder mit Namen, keine Daten) und noch einmal prüfen.
 3. **Format:** `grep '^MAKE_OS_FORMAT=' .env` → **leer** (keine Zeile). Steht dort `v2`, gibt es keinen Rückweg — dann erst klären.
-4. Seit dem Upload von af4679a eingerichtet — nur prüfen, nichts ändern:
+4. Seit den früheren Uploads eingerichtet — nur prüfen, nichts ändern:
    `id -u make` → `1000` · `test -d /srv/make-os/grabsteine && test -d /srv/make-os/schluessel && echo ORDNER-OK` ·
-   Datenschlüssel liegt, wo er lag (`.env` oder Schlüssel-Datei — af4679a kennt beide) · age/Pepper wie gehabt.
+   Datenschlüssel liegt, wo er lag (`.env` oder Schlüssel-Datei — der Online-Stand kennt beide) · age/Pepper wie gehabt.
 5. **Kevin und Malin schließen alle MAKE-OS-Tabs auf allen Geräten** und geben bis nach „Direkt nach dem Upload“ 4 nichts ein.
-6. **Sicherung und altes Bild merken (Pflicht)** — Zeile für Zeile, jede Ausgabe prüfen:
+6. **Sicherung und altes Bild merken (Pflicht)** — das alte Bild bekommt den Tag `make-os:1818c5c` — Zeile für Zeile, jede Ausgabe prüfen:
    ```
    docker compose stop app arbeiter
    sudo tar -C /srv/make-os --exclude='daten/brain-index.sqlite*' -czf /srv/make-os/sicherungen/vor-upload-$(date +%F-%H%M).tar.gz daten grabsteine; echo "tar-Ergebnis: $?"
-   docker tag make-os:aktuell make-os:af4679a
+   docker tag make-os:aktuell make-os:1818c5c
    docker compose start app arbeiter
    docker image ls make-os
-   docker run --rm --entrypoint sh make-os:af4679a -c 'test -e lib/store/huelle.mjs && test ! -e lib/kalender/bezug.ts && echo ALTES-BILD-OK'
+   docker run --rm --entrypoint sh make-os:1818c5c -c 'test -e lib/aufgaben/ebenen.ts && test ! -e lib/netzwerken/warteschlange.ts && echo ALTES-BILD-OK'
    sudo chown make:make /srv/make-os/sicherungen/vor-upload-*.tar.gz && chmod 600 /srv/make-os/sicherungen/vor-upload-*.tar.gz
    ```
-   Nur bei `tar-Ergebnis: 0`, gleicher Image-ID für `af4679a` und `aktuell` und `ALTES-BILD-OK` weitermachen (die Probe
-   passt nur auf af4679a: `huelle.mjs` gibt es dort, `lib/kalender/bezug.ts` erst im neuen Stand). Kopie auf den Mac nur
+   Nur bei `tar-Ergebnis: 0`, gleicher Image-ID für `1818c5c` und `aktuell` und `ALTES-BILD-OK` weitermachen (die Probe
+   passt nur auf 1818c5c: `lib/aufgaben/ebenen.ts` gibt es dort, `lib/netzwerken/warteschlange.ts` erst im neuen Stand — am Mac
+   gegenprüfbar mit `git cat-file -e 1818c5c:lib/aufgaben/ebenen.ts` (ok) und `git cat-file -e 1818c5c:lib/netzwerken/warteschlange.ts` (muss „not in“ melden), `HEAD` kennt beide). Kopie auf den Mac nur
    verschlüsselt: `age -R /srv/make-os/sicherung.pub -o <datei>.age <datei>`, dann die `.age`-Datei per `scp` holen.
 7. Auf GitHub: Repo-Variable `AUSROLLEN` ist nicht `aus`; im letzten Ausroll-Log stehen `ausrollen-v2` und „Bild zum Server schicken“.
 
@@ -52,59 +52,130 @@ Am Mac: `cd ~/Claude/Projects/MakeOS && git push origin entwicklung:main && git 
    Ansehen, aber kein Grund zum Rückweg: `[spiegel] n Termin(e) nicht nachgezogen: …` (Serie/Gäste/nur lesbar — Kennung +
    Grund stehen dabei). **Anhalten, nichts eingeben, Rückweg prüfen** bei jeder anderen Zeile, besonders
    `nicht lesbar`, `entschlüsselung`, `schluessel fehlt`, `[kalender-sicherung] Stand nicht lesbar`.
-3. **Caddy neu laden** (die Caddyfile hat sich geändert — Buchungsseite behält ihre strengen Köpfe; der Container lädt sie nicht von selbst):
-   ```
-   docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
-   curl -sI https://2-28-108-162.sslip.io/buchen/probe-000000000000000000000000 | grep -iE 'referrer-policy|permissions-policy'
-   ```
-   → `referrer-policy: no-referrer` und `permissions-policy: camera=(), microphone=(), …`. Eine andere Seite (z. B. `/anmelden`)
-   zeigt weiter `strict-origin-when-cross-origin`.
+3. **Caddy:** seit `1818c5c` unverändert — nichts neu zu laden. Am Mac vorab: `git diff --stat 1818c5c HEAD -- deploy compose.yml Dockerfile`
+   → leer (sonst die Schritte aus der alten Fassung dieser Liste nachholen: `caddy validate` + `caddy reload`). Neu ist nur die
+   Abhängigkeit `qrcode-generator` (Dev: `jsqr`): das Image-Bauen läuft dafür `npm ci` — die Action macht das von selbst.
 4. Auf allen Geräten neu laden (Handy: Tab bzw. Home-Screen-App schließen und neu öffnen).
 5. Kurztest: anmelden · Aufgabe anlegen, abhaken, „Rückgängig“ · CRM Kontakt öffnen, ein Feld ändern · Mandat öffnen, Titel
-   ändern · Angebot nur Entwurf und Vorschau · Glocke · eine ZOE-Frage · Finanzplan öffnen · Kalender öffnen (Woche, Modus
-   „Planen“: die Karte „Alter Wochenplan“ zeigt den gelben Hinweis — **nicht** übernehmen) · Familie öffnen (Wichtige Tage
-   laden) · `/os/hoi`: kein „Klartext-Bestand abgelehnt“, „Abgebrochene Vorgänge: keine“, gelb „Kompatibilitätsmodus“ ist erwartet.
+   ändern · Angebot nur Entwurf und Vorschau · Glocke · eine ZOE-Frage · Finanzplanung öffnen (Steuerprofil, Business-Blatt je
+   Gesellschaft, Zahlen plausibel) · Ziel öffnen (Kette „wartet auf“) · Netzwerken › Meine Visitenkarte (QR) und Erfassen auf
+   einer Veranstaltung (Handy; Erfassung mit Flugmodus ablegen, danach „n warten“ leer senden) · Kalender öffnen · Familie öffnen
+   (Wichtige Tage laden) · `/os/hoi`: kein „Klartext-Bestand abgelehnt“, „Abgebrochene Vorgänge: keine“, gelb „Kompatibilitätsmodus“ ist erwartet.
 6. Sicherung einmal von Hand, vorher die heutige Nachtsicherung schützen:
    `for f in /srv/make-os/sicherungen/make-os-$(date +%F).tar.gz.*; do [ -e "$f" ] && mv "$f" "$(dirname "$f")/vor-upload-nacht-$(basename "$f")"; done`
    dann `bash /srv/make-os/app/deploy/sicherung.sh` (als make, ohne sudo) → letzte Zeile endet auf `: ok (Ping: …)` bzw. ohne
    age auf `: warnung — age fehlt — Sicherung nur mit Übergangs-Verschlüsselung …`. Die Kalender-Tagesdateien
    (`archiv/kalender-export-*`) sind bewusst NICHT im Archiv.
 
-## Rückweg, falls nötig (solange `MAKE_OS_FORMAT` nicht `v2` ist)
+## Rückweg, falls nötig (solange `MAKE_OS_FORMAT` nicht `v2` ist) — Ziel: Online-Stand `1818c5c`
 **Vorher prüfen:**
 1. Offene Vorgänge: als Kevin im Browser `/api/intern/absichten` öffnen (oder am Server
    `docker compose exec -T app node -e "fetch('http://localhost:3000/api/intern/absichten',{headers:{'x-make-key':process.env.MAKE_OS_KEY}}).then(r=>r.text()).then(console.log)"`)
-   → keine Absicht der Art `buchung` oder `wochenplan-uebernahme` mit Status `offen`/`unvollstaendig`. af4679a kennt diese
-   Arten nicht, setzt sie nicht fort und meldet sie nach drei Versuchen als „gescheitert“. Offene zuerst fertig werden lassen
-   (bzw. „Erneut versuchen“ in der Planen-Karte).
-2. **War die Wochenplan-Übernahme schon?** Dann zuerst Kalender › Planen › „Übernahme zurücknehmen …“ (Probelauf mit Zahlen,
-   dann Rückfrage). Das löscht in iCloud genau die Termine mit der Kennung `makeos-wochenplan-…` und setzt den Übernahme-Stand
-   zurück; Termine mit Gästen/Serien bleiben stehen (Teilnehmer-Sperre, die Zahl steht in der Rückfrage — in Apple von Hand
-   löschen). Änderungen, die ihr seitdem an diesen Blöcken gemacht habt, gehen dabei verloren. Apple-Kopien, die zum Block
-   wurden, bleiben (af4679a kennt sie). Blöcke, die nach dem Upload neu in „Planen“ entstanden, bleiben als normale Termine.
-3. Offene Buchungsanfragen beantworten oder ablehnen — **die Buchungslinks sind nach dem Rückweg tot** (af4679a hat keine
-   Buchungsseite).
+   → keine offene oder unvollständige Absicht. Offene zuerst fertig werden lassen.
+2. **Alle Handys mit „n warten“ leer senden lassen** (Abzeichen im Netzwerken-Bereich). Der alte Stand hat keine Seite, die die
+   IndexedDB-Warteschlange (`make-os-netzwerken`) sendet; was dort liegt, wäre verloren.
+3. Offene Buchungsanfragen: `1818c5c` kennt die Buchungsseite — nichts zu tun. (Nur ein Rückweg auf `af4679a` hätte die Links
+   getötet; siehe „Früher“.)
 
 **Dann:**
 ```
 docker compose stop app arbeiter
-docker tag make-os:af4679a make-os:aktuell
+docker tag make-os:1818c5c make-os:aktuell
 docker compose up -d --no-build
 ```
 Danach am Mac `main` zurückdrehen, sonst rollt die nächste Action wieder aus:
 ```
-git switch -c rueckweg origin/main && git revert --no-edit --no-commit af4679a..HEAD && git commit -m "Rückweg: Stand af4679a"
-git diff --stat af4679a HEAD      # muss leer sein
+git switch -c rueckweg origin/main && git revert --no-edit --no-commit 1818c5c..HEAD && git commit -m "Rückweg: Stand 1818c5c"
+git diff --stat 1818c5c HEAD      # muss leer sein
 git push origin rueckweg:main
 ```
 Dieser Push rollt den alten Code erneut aus (gewollt). Wer das nicht will: vorher die Repo-Variable `AUSROLLEN=aus` setzen.
-Danach auf dem Server einmal `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile` (die alte Caddyfile gilt
-wieder; ohne Buchungsseite ist das unkritisch).
+Die Caddyfile ist unverändert (kein Reload nötig).
 Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist alles seit dem Upload weg).
 
-**Nach dem Rückweg zusätzlich (Art. 17 / 14-Tage-Zusage):** af4679a räumt die Kalender-Tagesdateien nicht auf und nimmt sie ins Nachtarchiv — deshalb direkt nach dem Rückweg `rm -f /srv/make-os/daten/archiv/kalender-export-*` (als make).
+**Was beim Rückweg auf `1818c5c` wegfällt oder später doppelt kommen kann** (der Online-Stand verwirft beim nächsten Schreiben, was er nicht kennt):
+- **Finanzplanung: Kern-Umbau (02.10., Steuern einzeln · Selbstständigkeit eigene Achse · Einkommensteuer · zwei Felder gelöscht):**
+  keine Formänderung am Dokument, nur optionale Zusatzfelder — geprüft am Säuberer von 1818c5c (`pruefeDokument`, `pruefePlanszenarien`). Der alte Stand **stürzt nicht ab** und liest das neue Dokument weiter:
+  - `steuern` (Rechtsform, Sätze, Hebesatz, Verlustvortrag, Zahlweise, Tarif-Eckwerte je Gesellschaft) und `schwellen` stehen nicht in seiner
+    Wurzelliste → **verworfen beim nächsten Lesen/Schreiben**; ebenso `planszenarien[].annahmen.steuern/exitSteuer/entnahme` (seine
+    Szenario-Annahmen kennen nur Gehälter, `steuerUG`, Zahlungsziel, Ausschüttung + deren Steuer). Nach einem erneuten Upload sind die Felder
+    leer und der Plan rechnet mit den Vorgaben — wer sie eingestellt hat, trägt sie neu ein (vor dem Rückweg notieren: Hebesatz, Zahlweise,
+    Entnahme-Regel, Steuer auf den Ausstieg je Szenario).
+  - `annahmen` reicht er unverändert durch (`steuerUG` bleibt, `ruecklage5a` fehlt — nicht Pflicht), `einstellungen.notgroschenMonate` setzt er auf 3
+    (ohne Wirkung), Bausteine mit `einheit: 'kdc'` kennt er.
+  - **Die Zahlen springen zurück:** der alte Kern rechnet wieder EINE Ertragsteuer-Quote (`steuerUG` auf den Gewinn des Vorjahres), die Bausteine der
+    Selbstständigkeit und ihre Sachkosten-Zeilen laufen in den MAKE-Zahlen, KD Ventures zahlt nur die Steuer auf den Ausstieg, die Einkommensteuer der
+    Selbstständigkeit steht nur im Abschluss 2026. „Frei verfügbar gesamt“ enthält das Konto der Selbstständigkeit dann nicht mehr; eine Entnahme-Regel
+    wirkt nicht mehr. Keine Daten gehen verloren (Pläne, Bausteine, Buchungen, Ziele bleiben).
+  - Hin und zurück ist verlustfrei, solange nichts im alten Stand an `steuern`/Entnahme geändert wurde (er kennt die Felder nicht).
+- **Ziel ↔ Meilenstein (01.10.):** nur optionale Zusatzfelder, keine Formänderung. Der Säuberer des Online-Stands (1818c5c) verwirft sie beim
+  nächsten Speichern des jeweiligen Eintrags — und sonst nichts (geprüft mit dem wörtlich kopierten alten Säuberer, `tests/ziel-kette-0110.test.ts`):
+  - `wartetAuf` am Meilenstein („wartet auf“, die Kette im Ziel-Detail): die Abhängigkeiten sind weg, die Meilensteine bleiben mit Titel,
+    Datum, Rang, Einheit, Aufgaben und Verlauf; die Kette ist dort einfach flach (nichts wartet mehr, kein „wartet“-Hinweis in Glocke/Kalender).
+    Vor dem Rückweg die Abhängigkeiten wichtiger Ziele notieren, wenn sie nach dem nächsten Upload wieder gebraucht werden;
+  - `messlatte` am Ziel (Ziel-Detail): fällt weg; die Beschreibung (`notiz`) bleibt (bis 400 Zeichen, dieselbe Grenze wie im alten Stand);
+  - `zielId` am Meilenstein kennt `1818c5c` schon (30.09.) — der Ziel-Bezug bleibt.
+  Die neue Seite `/os/planung/ziel/<id>` gibt es im alten Stand nicht (Links aus der Liste fehlen dort ohnehin). Kein neuer Bestand, kein
+  Eintrag im Speicher-Register (Art. 17 unverändert: die Felder liegen in `ziele`/`meilensteine`). Nach einem erneuten Upload: Ziel-Zuordnung
+  und Abhängigkeiten neu setzen — die Verbindungsprüfung meldet nur tote Verweise, keine fehlenden.
+- **Finanzplanung: Steuerprofil, Schwellen, Monats-Überschreibung (02.10.):** keine Formänderung, nur optionale Zusatzfelder im Plan-Dokument. 1818c5c
+  bauen das Dokument beim Lesen aus festen Schlüsseln neu (`pruefeDokument`) und kennt daher folgendes nicht — es geht beim nächsten Speichern im alten Stand verloren:
+  `steuern` (Rechtsform, abgeschaltete Steuerzeilen, Aufschlüsselung in KSt/Soli/Gewerbesteuer), `schwellen` (eigene Ampel-Grenzen → wieder die festen Vorgaben) und `ueber` am Baustein
+  (von Hand überschriebene Monate eines Produkts → der Baustein rechnet wieder nach Preis × Anzahl). **Zahlen bleiben:** `annahmen.steuerUG`, USt-Satz, Ausstieg und Netto-Tabelle liegen
+  im bekannten Annahmen-Feld; ein Gesamtsatz, der aus der Aufschlüsselung entstand, bleibt dort stehen. Abgeschaltete Zeilen mit Satz 0 (Einzel-Ertragsteuer, Ausstieg) bleiben im alten Stand
+  auf 0 — dort von Hand wieder eintragen (der gemerkte Satz steht nur im verworfenen Profil). Vor dem Rückweg: abgeschaltete Steuerzeilen und überschriebene Produkt-Monate notieren.
+- **Netzwerken › Meine Visitenkarte (02.10., Paket B):** eigener Bestand `visitenkarten--<person>` — `1818c5c` kennt ihn nicht und liest/schreibt ihn nie, er
+  bleibt unverändert liegen (nichts geht verloren, nach einem erneuten Upload sind die Profile wieder da). Im alten Stand fehlen die Seite `/os/netzwerken/karte`, der
+  Knopf „Netzwerken“ in der Handy-Leiste (dort steht wieder „Melden“) und die Schnellaktions-Leiste in der Kontaktakte am Handy; „Problem oder Idee melden“ geht dort
+  wie früher über die Leiste. Das Offline-Abbild der Karte im Browser (`make-karten-cache`) bleibt harmlos liegen. Keine Formänderung bestehender Bestände.
+  Die neue Abhängigkeit `qrcode-generator` (Dev: `jsqr`) braucht auf dem Server `npm ci` beim Bauen des Images; die Schrift Urbanist liegt in `public/schriften/`.
+- **Netzwerken — Erfassen (02.10.):** keine Formänderung, nur optionale Zusatzfelder, eine neue Meldungsart und ein neuer Speicher. 1818c5c:
+  - verwirft `Teilnahme.netzwerken` (Schritt, Zuständigkeit, Info, Danke-Mail-Stand) beim nächsten Speichern der Teilnahme — Abendbericht und Danke-Mail-Entwürfe sind dort leer; Teilnahme „da“, Notiz, `einladenDurch`, Verlauf („Kennengelernt bei …“),
+    Follow-ups, Aufgaben, Deals (Vermittlung), Gast-Vormerkungen, Termine, Labels und Dateien bleiben;
+  - kennt die Meldungsart `netzwerken` nicht → diese Meldungen (Termin gebucht/zugeteilt) verschwinden aus der Glocke; „n Danke-Mails bereit“ (abgeleitet) und das Pop-up gibt es dort nicht;
+  - liest/schreibt `netzwerken-erfassungen--<haushalt>` nie (liegt ungenutzt; nach einem erneuten Upload gilt dieselbe Erfassungs-Kennung weiter → nichts doppelt);
+  - Sprachnotizen (`audio/*`) liegen als Datei am Kontakt; der alte Stand zeigt sie in der Dateiliste, kann sie aber nicht abspielen (Download geht).
+  Nach einem erneuten Upload: nichts nachzuziehen (Teilnahmen ohne `netzwerken` erscheinen nicht im Bericht — selten, nur für Erfassungen aus der Rückweg-Zeit).
+- **Netzwerken — Korrekturen (03.10., Branch `netz-fix`):** keine Formänderung; 1818c5c ignoriert oder verwerfen die neuen Zusätze:
+  - `Teilnahme.netzwerken.terminId` (Termin-Sprung im Bericht): der alte Stand verwirft sie beim nächsten Speichern der Teilnahme (nur der Link „Termin öffnen“ fehlt); `followUpAm` aus Netzwerken-Schritten ist ein altes Feld und bleibt;
+  - Labels `Netzwerken`/`Dublette prüfen`/`Lead prüfen` und `rechtsgrundlage: 'berechtigt'` sind alte Felder — bleiben, der alte Stand zeigt sie nur als gewöhnliche Labels. Das Event-Kennzeichen `marke: Netzwerken` kennt der alte Stand nur als Marken-Text: **dort zählen fremde Netzwerken-Events wieder in Erscheinensquote und Folgegespräche** (die Trennung ist neuer Code);
+  - Lead-Status „Kontaktiert“ an Firma/Person und Follow-ups „Termin vereinbaren“ bleiben (alte Felder);
+  - globaler Sender, Abzeichen „n warten“ und Abmelden-Warnung sind reiner Browser-Code und verschwinden mit dem Rückweg. **Vor dem Rückweg alle Handys mit „n warten“ leer senden lassen** — der alte Stand hat keine Seite, die die IndexedDB-Warteschlange sendet;
+  - `/api/netzwerken/karten` verweigert dem Dienstweg (403) — es gab nie einen Aufrufer, der den Schlüssel dafür nutzte.
+  Nach einem erneuten Upload: nichts nachzuziehen.
+- **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
+  CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 
-**Was beim Rückweg wegfällt oder später doppelt kommen kann** (af4679a verwirft beim nächsten Schreiben, was er nicht kennt):
+## Am ersten Tag
+1. **Wochenplan-Übernahme** (falls sie noch nicht gemacht wurde; mit diesem Upload hat sie nichts zu tun): erst nach ein paar stabilen Tagen: Kalender › Planen › Karte „Alter
+   Wochenplan“ → Vorschau → „Jetzt übernehmen“ (die Rückfrage wiederholt den Hinweis). Bis dahin stehen die alten Blöcke
+   gestrichelt „wartet auf Übernahme“ im Raster — nichts geht verloren. Scheitert etwas an iCloud (Netz, Überlast), macht die
+   Übernahme später von selbst weiter; übersprungene Blöcke zeigt die Karte mit „Erneut versuchen“.
+2. Alte Make.One-Events mit Termin (Kennung `mac-…`): die Verbindungsprüfung nennt sie („alte Kalender-Marke“). Verknüpft wird
+   NUR per Klick auf der Event-Seite („Mit dem Kalender verknüpfen“) — nie von selbst.
+3. **Nicht** in den ersten Tagen: `MAKE_OS_FORMAT=v2`, Kennungs-Umzug der Kontakte, `MAKE_OS_APP_SPIEGEL=an`.
+4. Aufgaben › Überblick › „Neu anfangen …“ nur, wenn ihr es wollt — ein Rückweg würde die neue Planung (Listen, Gruppen,
+   Serien) nicht kennen.
+
+## Nächster Morgen
+- Tagesstart gelaufen, Durchsicht ab 4 Uhr erledigt.
+- `/os/hoi`: **„Kalender-Sicherung“ grün** (lief zwischen 03:00 und 05:00; war der Server da kürzer als 30 Minuten wach, kommt
+  sie erst in der Nacht darauf). „Sicherung geprüft“ ist nur mit age grün. Gelb erwartet: Kompatibilitätsmodus, Pepper,
+  Schlüssel in der Umgebung, Healthcheck, Abholung.
+- `du -sh /srv/make-os/daten/archiv` → notieren; die Kalender-Tagesdateien bleiben 14 Tage je Kalender (Fenster −400 …
+  +800 Tage), das Archiv wächst danach nicht mehr.
+- Glocke: meldet sie ein abgesagtes Event mit Termin, auf der Event-Seite „Termin im Kalender löschen“ (der Takt löscht nie selbst).
+
+## Hinweis zum Healthcheck
+Solange age fehlt, meldet die Nachtsicherung bewusst `/fail` an Healthchecks (Erinnerung). Wer das nicht will: age zuerst einrichten.
+
+## Früher (Rückweg auf `af4679a`, seit dem Upload von `1818c5c` gegenstandslos)
+Bis zum Upload von `1818c5c` war `af4679a` der Online-Stand; seine Rückweg-Hinweise stehen hier nur zur Nachvollziehbarkeit
+(der Tag `make-os:af4679a` und der Rückweg-Block mit `af4679a..HEAD` gelten **nicht mehr**). Der heutige Rückweg geht auf `1818c5c`.
+**Rückweg-Vorabprüfungen von damals:** Absichten der Art `buchung`/`wochenplan-uebernahme` abwarten, Wochenplan-Übernahme zurücknehmen,
+Buchungslinks wären tot gewesen; danach `rm -f /srv/make-os/daten/archiv/kalender-export-*` (Art. 17 / 14-Tage-Zusage).
+
+**Was beim Rückweg auf `af4679a` wegfiel oder später doppelt kommen konnte** (af4679a verwarf beim nächsten Schreiben, was er nicht kennt):
 - Aufgaben: Uhrzeit der Deadline (`dueTime`), Anlass „Geschenk“ (→ Heute bietet „Geschenk vormerken“ evtl. noch einmal an).
 - CRM: Geburtstag am Kontakt; Meeting-Aktivitäten verlieren den Verweis auf ihren Termin (`terminUid`), Follow-ups ebenso.
 - Kalender-Einstellungen: belegte Kalender, freie Tage, Steuertermin-Vorlage, Kündigungs-Vorlauf → Standardwerte.
@@ -130,21 +201,6 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
     laufenden Jahres steht wie bisher unter `jahr`/`privat:jahr`/`business:jahr` (die neue Version schreibt ihn doppelt).
     Wird der Fokus im alten Stand geändert und danach wieder die neue Version eingespielt, gilt der zuletzt in der NEUEN
     Version gespeicherte Satz (`…jahr:<Jahr>`) — dann einmal auf der Jahresseite prüfen.
-- **Finanzplanung: Kern-Umbau (02.10., Steuern einzeln · Selbstständigkeit eigene Achse · Einkommensteuer · zwei Felder gelöscht):**
-  keine Formänderung am Dokument, nur optionale Zusatzfelder — geprüft am Säuberer von 1818c5c (`pruefeDokument`, `pruefePlanszenarien`; af4679a
-  verhält sich gleich). Der alte Stand **stürzt nicht ab** und liest das neue Dokument weiter:
-  - `steuern` (Rechtsform, Sätze, Hebesatz, Verlustvortrag, Zahlweise, Tarif-Eckwerte je Gesellschaft) und `schwellen` stehen nicht in seiner
-    Wurzelliste → **verworfen beim nächsten Lesen/Schreiben**; ebenso `planszenarien[].annahmen.steuern/exitSteuer/entnahme` (seine
-    Szenario-Annahmen kennen nur Gehälter, `steuerUG`, Zahlungsziel, Ausschüttung + deren Steuer). Nach einem erneuten Upload sind die Felder
-    leer und der Plan rechnet mit den Vorgaben — wer sie eingestellt hat, trägt sie neu ein (vor dem Rückweg notieren: Hebesatz, Zahlweise,
-    Entnahme-Regel, Steuer auf den Ausstieg je Szenario).
-  - `annahmen` reicht er unverändert durch (`steuerUG` bleibt, `ruecklage5a` fehlt — nicht Pflicht), `einstellungen.notgroschenMonate` setzt er auf 3
-    (ohne Wirkung), Bausteine mit `einheit: 'kdc'` kennt er.
-  - **Die Zahlen springen zurück:** der alte Kern rechnet wieder EINE Ertragsteuer-Quote (`steuerUG` auf den Gewinn des Vorjahres), die Bausteine der
-    Selbstständigkeit und ihre Sachkosten-Zeilen laufen in den MAKE-Zahlen, KD Ventures zahlt nur die Steuer auf den Ausstieg, die Einkommensteuer der
-    Selbstständigkeit steht nur im Abschluss 2026. „Frei verfügbar gesamt“ enthält das Konto der Selbstständigkeit dann nicht mehr; eine Entnahme-Regel
-    wirkt nicht mehr. Keine Daten gehen verloren (Pläne, Bausteine, Buchungen, Ziele bleiben).
-  - Hin und zurück ist verlustfrei, solange nichts im alten Stand an `steuern`/Entnahme geändert wurde (er kennt die Felder nicht).
 - **Meilensteine im Detail (30.09.):** Projekt „Meilensteine“ und die Listen `lm-…` bleiben (af4679a kennt Projekte/Listen), die
   Aufgaben darin auch — nur die Detailseite, der Verlauf/die Notizen/Links (`meilenstein-raum--<haushalt>`, af4679a liest ihn nie
   und schreibt ihn nie) und die Rechenregel fehlen; der Fortschritt bleibt auf dem zuletzt errechneten Wert stehen (dann wieder von
@@ -159,63 +215,3 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
   errechneten Stand, siehe oben). Vor dem Rückweg: Aufgaben mit Ebene 3+ in der Aufgaben-Seite kurz notieren, wenn die Gliederung
   wichtig ist; nach einem erneuten Upload bleibt es flach (nichts wird von selbst wieder tief). Kreise können im alten Stand
   nicht entstehen; die neue Version lehnt sie ab (Meldung „Abgelehnt: … kann nicht unter ihrer eigenen Unteraufgabe liegen“).
-- **Ziel ↔ Meilenstein (01.10.):** nur optionale Zusatzfelder, keine Formänderung. Der Säuberer des Online-Stands (af4679a) verwirft sie beim
-  nächsten Speichern des jeweiligen Eintrags — und sonst nichts (geprüft mit dem wörtlich kopierten alten Säuberer, `tests/ziel-kette-0110.test.ts`):
-  - `wartetAuf` am Meilenstein („wartet auf“, die Kette im Ziel-Detail): die Abhängigkeiten sind weg, die Meilensteine bleiben mit Titel,
-    Datum, Rang, Einheit, Aufgaben und Verlauf; die Kette ist dort einfach flach (nichts wartet mehr, kein „wartet“-Hinweis in Glocke/Kalender).
-    Vor dem Rückweg die Abhängigkeiten wichtiger Ziele notieren, wenn sie nach dem nächsten Upload wieder gebraucht werden;
-  - `messlatte` am Ziel (Ziel-Detail): fällt weg; die Beschreibung (`notiz`) bleibt (bis 400 Zeichen, dieselbe Grenze wie im alten Stand);
-  - `zielId` am Meilenstein (30.09., siehe oben): der Ziel-Bezug fällt weg — dann stehen die Meilensteine dort ohne Ziel.
-  Die neue Seite `/os/planung/ziel/<id>` gibt es im alten Stand nicht (Links aus der Liste fehlen dort ohnehin). Kein neuer Bestand, kein
-  Eintrag im Speicher-Register (Art. 17 unverändert: die Felder liegen in `ziele`/`meilensteine`). Nach einem erneuten Upload: Ziel-Zuordnung
-  und Abhängigkeiten neu setzen — die Verbindungsprüfung meldet nur tote Verweise, keine fehlenden.
-- **Finanzplanung: Steuerprofil, Schwellen, Monats-Überschreibung (02.10.):** keine Formänderung, nur optionale Zusatzfelder im Plan-Dokument. af4679a/1818c5c
-  bauen das Dokument beim Lesen aus festen Schlüsseln neu (`pruefeDokument`) und kennt daher folgendes nicht — es geht beim nächsten Speichern im alten Stand verloren:
-  `steuern` (Rechtsform, abgeschaltete Steuerzeilen, Aufschlüsselung in KSt/Soli/Gewerbesteuer), `schwellen` (eigene Ampel-Grenzen → wieder die festen Vorgaben) und `ueber` am Baustein
-  (von Hand überschriebene Monate eines Produkts → der Baustein rechnet wieder nach Preis × Anzahl). **Zahlen bleiben:** `annahmen.steuerUG`, USt-Satz, Ausstieg und Netto-Tabelle liegen
-  im bekannten Annahmen-Feld; ein Gesamtsatz, der aus der Aufschlüsselung entstand, bleibt dort stehen. Abgeschaltete Zeilen mit Satz 0 (Einzel-Ertragsteuer, Ausstieg) bleiben im alten Stand
-  auf 0 — dort von Hand wieder eintragen (der gemerkte Satz steht nur im verworfenen Profil). Vor dem Rückweg: abgeschaltete Steuerzeilen und überschriebene Produkt-Monate notieren.
-- **Netzwerken › Meine Visitenkarte (02.10., Paket B):** eigener Bestand `visitenkarten--<person>` — af4679a kennt ihn nicht und liest/schreibt ihn nie, er
-  bleibt unverändert liegen (nichts geht verloren, nach einem erneuten Upload sind die Profile wieder da). Im alten Stand fehlen die Seite `/os/netzwerken/karte`, der
-  Knopf „Netzwerken“ in der Handy-Leiste (dort steht wieder „Melden“) und die Schnellaktions-Leiste in der Kontaktakte am Handy; „Problem oder Idee melden“ geht dort
-  wie früher über die Leiste. Das Offline-Abbild der Karte im Browser (`make-karten-cache`) bleibt harmlos liegen. Keine Formänderung bestehender Bestände.
-  Die neue Abhängigkeit `qrcode-generator` (Dev: `jsqr`) braucht auf dem Server `npm ci` beim Bauen des Images; die Schrift Urbanist liegt in `public/schriften/`.
-- **Netzwerken — Erfassen (02.10.):** keine Formänderung, nur optionale Zusatzfelder, eine neue Meldungsart und ein neuer Speicher. af4679a/1818c5c:
-  - verwirft `Teilnahme.netzwerken` (Schritt, Zuständigkeit, Info, Danke-Mail-Stand) beim nächsten Speichern der Teilnahme — Abendbericht und Danke-Mail-Entwürfe sind dort leer; Teilnahme „da“, Notiz, `einladenDurch`, Verlauf („Kennengelernt bei …“),
-    Follow-ups, Aufgaben, Deals (Vermittlung), Gast-Vormerkungen, Termine, Labels und Dateien bleiben;
-  - kennt die Meldungsart `netzwerken` nicht → diese Meldungen (Termin gebucht/zugeteilt) verschwinden aus der Glocke; „n Danke-Mails bereit“ (abgeleitet) und das Pop-up gibt es dort nicht;
-  - liest/schreibt `netzwerken-erfassungen--<haushalt>` nie (liegt ungenutzt; nach einem erneuten Upload gilt dieselbe Erfassungs-Kennung weiter → nichts doppelt);
-  - Sprachnotizen (`audio/*`) liegen als Datei am Kontakt; der alte Stand zeigt sie in der Dateiliste, kann sie aber nicht abspielen (Download geht).
-  Nach einem erneuten Upload: nichts nachzuziehen (Teilnahmen ohne `netzwerken` erscheinen nicht im Bericht — selten, nur für Erfassungen aus der Rückweg-Zeit).
-- **Netzwerken — Korrekturen (03.10., Branch `netz-fix`):** keine Formänderung; af4679a/1818c5c ignorieren oder verwerfen die neuen Zusätze:
-  - `Teilnahme.netzwerken.terminId` (Termin-Sprung im Bericht): der alte Stand verwirft sie beim nächsten Speichern der Teilnahme (nur der Link „Termin öffnen“ fehlt); `followUpAm` aus Netzwerken-Schritten ist ein altes Feld und bleibt;
-  - Labels `Netzwerken`/`Dublette prüfen`/`Lead prüfen` und `rechtsgrundlage: 'berechtigt'` sind alte Felder — bleiben, der alte Stand zeigt sie nur als gewöhnliche Labels. Das Event-Kennzeichen `marke: Netzwerken` kennt der alte Stand nur als Marken-Text: **dort zählen fremde Netzwerken-Events wieder in Erscheinensquote und Folgegespräche** (die Trennung ist neuer Code);
-  - Lead-Status „Kontaktiert“ an Firma/Person und Follow-ups „Termin vereinbaren“ bleiben (alte Felder);
-  - globaler Sender, Abzeichen „n warten“ und Abmelden-Warnung sind reiner Browser-Code und verschwinden mit dem Rückweg. **Vor dem Rückweg alle Handys mit „n warten“ leer senden lassen** — der alte Stand hat keine Seite, die die IndexedDB-Warteschlange sendet;
-  - `/api/netzwerken/karten` verweigert dem Dienstweg (403) — es gab nie einen Aufrufer, der den Schlüssel dafür nutzte.
-  Nach einem erneuten Upload: nichts nachzuziehen.
-- **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
-  CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
-
-## Am ersten Tag
-1. **Wochenplan-Übernahme NICHT am ersten Tag.** Erst nach ein paar stabilen Tagen: Kalender › Planen › Karte „Alter
-   Wochenplan“ → Vorschau → „Jetzt übernehmen“ (die Rückfrage wiederholt den Hinweis). Bis dahin stehen die alten Blöcke
-   gestrichelt „wartet auf Übernahme“ im Raster — nichts geht verloren. Scheitert etwas an iCloud (Netz, Überlast), macht die
-   Übernahme später von selbst weiter; übersprungene Blöcke zeigt die Karte mit „Erneut versuchen“.
-2. Alte Make.One-Events mit Termin (Kennung `mac-…`): die Verbindungsprüfung nennt sie („alte Kalender-Marke“). Verknüpft wird
-   NUR per Klick auf der Event-Seite („Mit dem Kalender verknüpfen“) — nie von selbst.
-3. **Nicht** in den ersten Tagen: `MAKE_OS_FORMAT=v2`, Kennungs-Umzug der Kontakte, `MAKE_OS_APP_SPIEGEL=an`.
-4. Aufgaben › Überblick › „Neu anfangen …“ nur, wenn ihr es wollt — ein Rückweg würde die neue Planung (Listen, Gruppen,
-   Serien) nicht kennen.
-
-## Nächster Morgen
-- Tagesstart gelaufen, Durchsicht ab 4 Uhr erledigt.
-- `/os/hoi`: **„Kalender-Sicherung“ grün** (lief zwischen 03:00 und 05:00; war der Server da kürzer als 30 Minuten wach, kommt
-  sie erst in der Nacht darauf). „Sicherung geprüft“ ist nur mit age grün. Gelb erwartet: Kompatibilitätsmodus, Pepper,
-  Schlüssel in der Umgebung, Healthcheck, Abholung.
-- `du -sh /srv/make-os/daten/archiv` → notieren; die Kalender-Tagesdateien bleiben 14 Tage je Kalender (Fenster −400 …
-  +800 Tage), das Archiv wächst danach nicht mehr.
-- Glocke: meldet sie ein abgesagtes Event mit Termin, auf der Event-Seite „Termin im Kalender löschen“ (der Takt löscht nie selbst).
-
-## Hinweis zum Healthcheck
-Solange age fehlt, meldet die Nachtsicherung bewusst `/fail` an Healthchecks (Erinnerung). Wer das nicht will: age zuerst einrichten.

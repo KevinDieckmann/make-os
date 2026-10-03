@@ -4,11 +4,12 @@ import type { FinanzDaten } from '../lib/finanzen/rechenkern';
 import { rechneMit, betragImMonat, reihen, pruefeBaustein, pruefePlanszenarien, neuerBaustein, planszenarienVon } from '../lib/finanzen/szenarien';
 import { wendeOperationenAn, pruefeDokument } from '../lib/finanzen/plan/operationen';
 import {
-  breakEven, runwayAb, geschaeftsblatt, bausteineVon, arbeitsplanSichern, neuesProdukt, BEISPIEL_PRODUKTE, summe12,
+  breakEven, runwayAb, geschaeftsblatt, sachkostenDerMake, einmaligeKostenMake, bausteineVon, arbeitsplanSichern, neuesProdukt, BEISPIEL_PRODUKTE, summe12,
 } from '../lib/finanzen/geschaeft';
 import { luecken } from '../lib/finanzen/luecken';
 import { annahmeGruppen, ANNAHMEN_IN_KARTE_STEUER, ANNAHMEN_EIGENER_EDITOR } from '../lib/finanzen/annahmen-felder';
 import { planFix, arbeitsplanFix, arbeitsplanSelbst } from './fixtures/finanz-plan';
+import type { Zeile } from '../lib/finanzen/rechenkern';
 
 const JETZT = '2026-10-02T10:00:00.000Z';
 const an = (d: FinanzDaten, ops: Parameters<typeof wendeOperationenAn>[1]) => wendeOperationenAn(d, ops, 'kevin', JETZT).dokument;
@@ -160,5 +161,20 @@ describe('Annahmen-Felder', () => {
     const abgedeckt = new Set<string>([...felder, ...ANNAHMEN_IN_KARTE_STEUER, ...ANNAHMEN_EIGENER_EDITOR]);
     expect(alle.filter(k => !abgedeckt.has(k))).toEqual([]);
     expect(new Set(felder).size).toBe(felder.length);
+  });
+});
+
+describe('Sachkosten der Selbstständigkeit im MAKE-Blatt', () => {
+  const selbst = { id: 'sk9', name: 'Selbst-Software', einheit: 'selbststaendigkeit', gruppe: 'Tools', soll: 120, ab: 1 } as Zeile;
+  it('stehen nicht in der MAKE-Liste (nicht doppelt) und verzerren „Einmalige Kosten und Ereignisse“ nicht ins Negative', () => {
+    const d = planFix(9000);
+    const mit = { ...d, sachkosten: [...d.sachkosten, selbst] };
+    const g = rechneMit(mit, arbeitsplanFix());
+    const ohne = rechneMit(d, arbeitsplanFix());
+    expect(sachkostenDerMake(mit.sachkosten).map(z => z.id)).toEqual(['sk1', 'sk2']);
+    for (const m of [1, 4, 8]) {
+      expect(einmaligeKostenMake(g.ug[m - 1], mit, m)).toBeGreaterThanOrEqual(-1e-9);
+      expect(einmaligeKostenMake(g.ug[m - 1], mit, m)).toBeCloseTo(einmaligeKostenMake(ohne.ug[m - 1], d, m), 9);
+    }
   });
 });

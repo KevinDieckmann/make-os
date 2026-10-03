@@ -17,7 +17,7 @@ import {
   KOSTENART_LABEL, RHYTHMUS_LABEL, STEUER_HINWEIS, betragImMonat, neuerBaustein, type Baustein, type KostenArt, type Rhythmus,
 } from '@/lib/finanzen/szenarien';
 import {
-  BEISPIEL_PRODUKTE, KOSTENARTEN_BLATT, bausteineVon, geschaeftsblatt, kostenFaktor, neuesProdukt, summe12,
+  BEISPIEL_PRODUKTE, KOSTENARTEN_BLATT, bausteineVon, einmaligeKostenMake, geschaeftsblatt, kostenFaktor, neuesProdukt, sachkostenDerMake, summe12,
 } from '@/lib/finanzen/geschaeft';
 import { rechtsformVon, zeigeSteuer, steuerParameter } from '@/lib/finanzen/steuern';
 import { gesamtquote } from '@/lib/finanzen/ertragsteuer';
@@ -146,7 +146,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
 
   const zeilen: BlattZeile[] = [];
   if (ort === 'ug') {
-    const sachSumme = (m: number) => d.sachkosten.reduce((s, z) => s + wert(z, m, d.plan), 0);
+    const sachMake = sachkostenDerMake(d.sachkosten);   // Selbst-Zeilen stehen nur im Selbstständigkeits-Blatt
     const ustAn = zeigeSteuer(dd, 'ug', 'ust');
     zeilen.push(
       { grp: 'Umsatz netto', leerName: ['weitere Umsatzzeile', 'weitere Umsatzzeilen'] },
@@ -162,9 +162,9 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
     );
     zeilen.push(
       { grp: 'Fixkosten (Sachkosten)', add: 'sachkosten', leerName: ['weitere Fixkostenzeile', 'weitere Fixkostenzeilen'] },
-      ...d.sachkosten.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true, aus: true, optional: true })),
+      ...sachMake.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true, aus: true, optional: true })),
       ...kostenZeilen(KOSTENARTEN_BLATT.filter(a => a !== 'stelle')),
-      { name: 'Einmalige Kosten und Ereignisse', get: m => U(m).sach - sachSumme(m) - U(m).bausteineSach, ind: true, aus: true, optional: true },
+      { name: 'Einmalige Kosten und Ereignisse', get: m => einmaligeKostenMake(U(m), d, m), ind: true, aus: true, optional: true },
       { name: 'Gründung', get: m => U(m).gruendung, ind: true, aus: true, optional: true },
       { name: 'Holding-Umlage', get: m => U(m).holding, ind: true, aus: true, optional: true },
       { name: 'Kosten gesamt', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },

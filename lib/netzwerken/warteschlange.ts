@@ -36,7 +36,12 @@ export interface WarteSpeicher {
   alle(): Promise<WarteEintrag[]>;
   setze(e: WarteEintrag): Promise<void>;
   entferne(id: string): Promise<void>;
+  /** Nur bei `ausfallsicher`: liegt mindestens eine Erfassung nur im Arbeitsspeicher (IndexedDB fiel aus)? Dann darf die Seite nicht geschlossen werden. */
+  imArbeitsspeicher?(): boolean;
 }
+
+/** Text, wenn IndexedDB ausfällt (privates Fenster, Speicher voll, Safari-Fehler): die Erfassung liegt nur im Arbeitsspeicher dieser Seite. */
+export const NUR_RAM_HINWEIS = 'Bitte Seite offen lassen, bis gesendet — der Speicher des Geräts ist nicht verfügbar.';
 
 /** Was eine Antwort des Servers für den Eintrag bedeutet. */
 export type Bewertung =
@@ -81,15 +86,51 @@ export function ramSpeicher(): WarteSpeicher {
   };
 }
 
+/**
+ * Fällt der Speicher auf dem Gerät aus (`indexedDB.open` scheitert, Schreiben scheitert, Platte voll), geht die Erfassung in den
+ * Arbeitsspeicher — und wird trotzdem gesendet. So geht beim Erfassen nie etwas verloren, solange die Seite offen bleibt;
+ * `imArbeitsspeicher()` sagt der Oberfläche, dass sie den Hinweis „Bitte Seite offen lassen, bis gesendet“ zeigen muss.
+ * Ohne `primaer` (Browser ohne IndexedDB) läuft alles gleich im Arbeitsspeicher.
+ */
+export function ausfallsicher(primaer: WarteSpeicher | null, rueckfall: WarteSpeicher = ramSpeicher()): WarteSpeicher {
+  /** Kennungen, die NUR im Arbeitsspeicher liegen (das Gerät konnte sie nicht aufnehmen). */
+  const imRam = new Set<string>();
+  return {
+    imArbeitsspeicher: () => imRam.size > 0,
+    alle: async () => {
+      let a: WarteEintrag[] = [];
+      if (primaer) { try { a = await primaer.alle(); } catch { /* Gerät nicht lesbar: es zählt, was im Arbeitsspeicher liegt */ } }
+      const r = await rueckfall.alle();
+      const rIds = new Set(r.map(x => x.id));
+      return [...a.filter(x => !rIds.has(x.id)), ...r];   // was im Arbeitsspeicher liegt, ist der neuere Stand
+    },
+    setze: async e => {
+      if (primaer) {
+        // Lag sie schon im Arbeitsspeicher, noch einmal auf das Gerät versuchen (der Speicher kann wieder da sein).
+        try { await primaer.setze(e); if (imRam.delete(e.id)) await rueckfall.entferne(e.id); return; } catch { /* Rückfall */ }
+      }
+      await rueckfall.setze(e); imRam.add(e.id);
+    },
+    entferne: async id => {
+      imRam.delete(id);
+      await rueckfall.entferne(id);
+      if (primaer) { try { await primaer.entferne(id); } catch { /* bleibt auf dem Gerät liegen; beim nächsten Senden wäre es ohnehin idempotent */ } }
+    },
+  };
+}
+
 /** IndexedDB — `null`, wenn der Browser keine hat (privates Fenster in alten Versionen): dann bleibt es im Arbeitsspeicher. */
 export function indexedDbSpeicher(name = 'make-os-netzwerken'): WarteSpeicher | null {
   if (typeof indexedDB === 'undefined') return null;
   const oeffnen = () => new Promise<IDBDatabase>((ok, nein) => {
+    let fertig = false;
+    // Safari am iPhone antwortet manchmal nie: nach 5 Sekunden gilt der Speicher als ausgefallen (Rückfall auf den Arbeitsspeicher).
+    const uhr = setTimeout(() => { fertig = true; nein(new Error('IndexedDB antwortet nicht')); }, 5000);
     const r = indexedDB.open(name, 1);
     r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('warteschlange')) r.result.createObjectStore('warteschlange', { keyPath: 'id' }); };
-    r.onsuccess = () => ok(r.result);
-    r.onerror = () => nein(r.error ?? new Error('IndexedDB nicht verfügbar'));
-    r.onblocked = () => nein(new Error('IndexedDB blockiert'));
+    r.onsuccess = () => { clearTimeout(uhr); if (fertig) r.result.close(); else { fertig = true; ok(r.result); } };
+    r.onerror = () => { clearTimeout(uhr); nein(r.error ?? new Error('IndexedDB nicht verfügbar')); };
+    r.onblocked = () => { clearTimeout(uhr); nein(new Error('IndexedDB blockiert')); };
   });
   const lauf = async <T>(modus: IDBTransactionMode, f: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> => {
     const db = await oeffnen();
@@ -137,6 +178,9 @@ export class Warteschlange {
   /** Meldet jede Änderung am Bestand (abgelegt, gesendet, Fehler, verworfen) — für Zähler-Abzeichen und Anzeige. Gibt die Abmeldung zurück. */
   beiAenderung(f: () => void): () => void { this.hoerer.add(f); return () => { this.hoerer.delete(f); }; }
   private geaendert(): void { for (const f of this.hoerer) { try { f(); } catch { /* ein Hörer darf den Lauf nie stören */ } } }
+
+  /** Liegt etwas nur im Arbeitsspeicher (Speicher auf dem Gerät fiel aus)? Dann bitte die Seite offen lassen, bis gesendet. */
+  nurImArbeitsspeicher(): boolean { return this.speicher.imArbeitsspeicher?.() === true; }
 
   async alle(): Promise<WarteEintrag[]> { return (await this.speicher.alle()).sort((a, b) => a.angelegt - b.angelegt); }
 
@@ -235,5 +279,5 @@ export const fetchSender = (url = '/api/netzwerken', zeitMs = 90_000): Sender =>
  */
 export function geteilteWarteschlange(): Warteschlange {
   const G = globalThis as unknown as { __makeosNetzwerkenQueue?: Warteschlange };
-  return (G.__makeosNetzwerkenQueue ??= new Warteschlange(indexedDbSpeicher() ?? ramSpeicher(), fetchSender()));
+  return (G.__makeosNetzwerkenQueue ??= new Warteschlange(ausfallsicher(indexedDbSpeicher()), fetchSender()));
 }

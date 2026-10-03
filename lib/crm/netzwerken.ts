@@ -24,6 +24,9 @@ import { mailLink } from './erfassen';
 import { kanalStatus } from './recht';
 import { werktagePlus, tagVon, wandzeit, wandAus, minutenVon } from '@/lib/zeit/kalender-kern';
 import { WEG } from '@/lib/wege';
+import { istKontaktKennung } from '@/lib/kennung';
+import { sprachnotizTypErkennen } from '@/lib/dateien/regeln';
+import { istEingeschraenkt } from './einschraenkung';
 
 // ── Festwerte ───────────────────────────────────────────────────────────────
 
@@ -53,7 +56,6 @@ const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const WAND = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const PERSON = /^[a-z0-9-]{1,40}$/;
 const ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
-const KONTAKT_ID = /^c-[a-z0-9-]{4,60}$/;
 const FIRMA_ID = /^f-[a-z0-9-]{2,63}$/;
 
 export const BILD_TYPEN = ['image/jpeg', 'image/png'] as const;
@@ -134,6 +136,27 @@ export type Pruefung<T> = { ok: true; wert: T } | { ok: false; status: number; f
 const fehler = (fehlertext: string, status = 400): { ok: false; status: number; fehler: string } => ({ ok: false, status, fehler: fehlertext });
 
 /** Base64 → Bytes-Länge, ohne zu dekodieren. */
+/** Die ersten `n` Bytes eines Base64-Texts (für die Magic-Bytes-Prüfung) — leer, wenn der Anfang kein gültiges Base64 ist. */
+export function kopfBytes(b64: string, n = 16): Uint8Array {
+  const teil = b64.slice(0, Math.ceil((n * 4) / 3) + 4);
+  const lang = Math.floor(teil.length / 4) * 4;
+  try { return Uint8Array.from(atob(teil.slice(0, lang)), c => c.charCodeAt(0)).subarray(0, n); } catch { return new Uint8Array(0); }
+}
+
+/**
+ * Was ein Bild WIRKLICH ist, aus den ersten Bytes (JPEG, PNG, WebP, HEIC/HEIF) — der mitgeschickte Typ allein zählt nicht.
+ * `null` = keines der bekannten Formate. Angenommen werden nur JPEG und PNG (wie die Ablage); WebP/HEIC werden erkannt, damit die
+ * Meldung sagen kann, was zu tun ist.
+ */
+export function bildInhaltsTyp(k: Uint8Array): 'jpeg' | 'png' | 'webp' | 'heic' | null {
+  const text = (ab: number, t: string) => t.length > 0 && k.length >= ab + t.length && t.split('').every((c, i) => k[ab + i] === c.charCodeAt(0));
+  if (k.length >= 3 && k[0] === 0xff && k[1] === 0xd8 && k[2] === 0xff) return 'jpeg';
+  if (k.length >= 8 && k[0] === 0x89 && text(1, 'PNG') && k[4] === 0x0d && k[5] === 0x0a && k[6] === 0x1a && k[7] === 0x0a) return 'png';
+  if (text(0, 'RIFF') && text(8, 'WEBP')) return 'webp';
+  if (text(4, 'ftyp') && ['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1', 'heif'].some(m => text(8, m))) return 'heic';
+  return null;
+}
+
 export const base64Bytes = (b64: string): number => Math.floor((b64.length * 3) / 4) - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0);
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
@@ -202,7 +225,7 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
   if (k.anrede === 'Du' || k.anrede === 'Sie') felder.anrede = k.anrede;
 
   const vorhanden = typeof b.vorhandenKontaktId === 'string' && b.vorhandenKontaktId ? b.vorhandenKontaktId : undefined;
-  if (vorhanden && !KONTAKT_ID.test(vorhanden)) return fehler('Die gewählte Person ist ungültig.');
+  if (vorhanden && !istKontaktKennung(vorhanden)) return fehler('Die gewählte Person ist ungültig.');
   if (!vorhanden && !felder.nachname) return fehler('Nachname fehlt — bitte eintragen.');
   const firmaId = typeof b.firmaId === 'string' && b.firmaId ? b.firmaId : undefined;
   if (firmaId && !FIRMA_ID.test(firmaId)) return fehler('Die gewählte Firma ist ungültig.');
@@ -217,6 +240,9 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
     const daten = typeof o.daten === 'string' ? o.daten.replace(/\s+/g, '') : '';
     if (!(BILD_TYPEN as readonly string[]).includes(typ) || !daten || !BASE64.test(daten)) return fehler(`Foto ${i + 1}: nur JPEG oder PNG.`, 415);
     if (base64Bytes(daten) > MAX_BILD_BYTES) return fehler(`Foto ${i + 1} ist zu groß (höchstens ${MAX_BILD_BYTES / 1024 / 1024} MB).`, 413);
+    // Der Inhalt entscheidet, nicht die Angabe — VOR dem ersten Schreiben: sonst bliebe bei einer Datei, die die Ablage später ablehnt, ein Teilzustand.
+    const echt = bildInhaltsTyp(kopfBytes(daten));
+    if (echt !== 'jpeg' && echt !== 'png') return fehler(echt === 'webp' || echt === 'heic' ? `Foto ${i + 1}: ${echt === 'heic' ? 'HEIC' : 'WebP'} wird nicht gelesen — bitte als JPEG aufnehmen.` : `Foto ${i + 1}: keine gültige Bilddatei (nur JPEG oder PNG).`, 415);
     bilder.push({ name: text(o.name, 80) || `karte-${i + 1}`, typ, daten });
   }
   let sprachnotiz: Erfassung['sprachnotiz'];
@@ -227,6 +253,7 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
     const daten = typeof o.daten === 'string' ? o.daten.replace(/\s+/g, '') : '';
     if (!(AUDIO_TYPEN as readonly string[]).includes(typ) || !daten || !BASE64.test(daten)) return fehler('Die Sprachnotiz hat ein unbekanntes Format.', 415);
     if (base64Bytes(daten) > MAX_AUDIO_BYTES) return fehler(`Die Sprachnotiz ist zu groß (höchstens ${MAX_AUDIO_BYTES / 1024 / 1024} MB).`, 413);
+    if (!sprachnotizTypErkennen(kopfBytes(daten))) return fehler('Die Sprachnotiz hat ein unbekanntes Format.', 415);   // am Inhalt, vor dem ersten Schreiben
     const dauer = Math.round(Number(o.dauerSek));
     sprachnotiz = { typ, daten, ...(Number.isFinite(dauer) && dauer > 0 && dauer < 36_000 ? { dauerSek: dauer } : {}) };
   }
@@ -403,6 +430,16 @@ export function zusammenfuehrung(e: Pick<Erfassung, 'kontakt'>, kontakte: readon
     } else if (t.staerke === 'name-firma' || t.staerke === 'aehnlich') vermutlich ??= t;
   }
   return { ...(gleicheNummer ? { gleicheNummer } : {}), ...(vermutlich ? { vermutlich } : {}) };
+}
+
+/**
+ * Würde die Erfassung an eine EINGESCHRÄNKTE Person (Art. 18) hängen — gleiche Regel wie `zusammenfuehrung` (Mail, oder Nummer UND
+ * Nachname)? Dann darf nichts geschehen: weder anhängen noch daneben neu anlegen (das wäre dieselbe Verarbeitung). Gibt `true` bei Treffer;
+ * den Namen der Person nennt die Meldung nie.
+ */
+export function trifftEingeschraenkte(e: Pick<Erfassung, 'kontakt'>, kontakte: readonly Kontakt[], eigeneId: string): boolean {
+  const gesperrt = kontakte.filter(x => x.id !== eigeneId && istEingeschraenkt(x)).map(x => ({ ...x, eingeschraenkt: undefined }));
+  return gesperrt.length > 0 && !!zusammenfuehrung(e, gesperrt, eigeneId).ziel;
 }
 
 /**
