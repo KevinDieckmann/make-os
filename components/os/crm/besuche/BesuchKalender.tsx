@@ -9,7 +9,8 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT } from '../../ui';
+import { CalendarCheck, CalendarPlus } from 'lucide-react';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Chip, Punkt, LEUCHT } from '../../ui';
 import { anmeldungVon, anmeldungLabel, besuchAbgesagt, istBesuch } from '@/lib/crm/besuche-form';
 import { budgetSumme } from '@/lib/crm/eventplanung';
 import { markeVon } from '@/lib/crm/marke';
@@ -66,7 +67,8 @@ export function BesuchKalender({ crm, onAkte }: Pick<BesuchProps, 'crm'> & { onA
       <Karte i={1}>
         <Ueberschrift rechts={anstehend.length ? <span>{anstehend.length}</span> : undefined}>Anstehend</Ueberschrift>
         {anstehend.length ? <Liste>{anstehend.map(zeile)}</Liste>
-          : <Leer>{besuche.length ? 'Nichts mehr geplant.' : 'Noch kein Event. Messe, Kongress, Kunden-Event — mit „+ Event“ anlegen: Dann steht es hier, lässt sich bei Netzwerken wählen und auf Wunsch in den Kalender legen.'}</Leer>}
+          : besuche.length ? <Leer symbol={<CalendarCheck size={18} />}>Nichts mehr geplant.</Leer>
+            : <Leerzustand symbol={<CalendarPlus size={26} />} ton={LEUCHT.beziehung} titel="Noch kein Event">Messe, Kongress, Kunden-Event — mit „+ Event“ anlegen: Dann steht es hier, lässt sich bei Netzwerken wählen und auf Wunsch in den Kalender legen.</Leerzustand>}
       </Karte>
       {vergangenAlle.length > 0 && (
         <Karte i={2}>

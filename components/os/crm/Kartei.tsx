@@ -24,7 +24,8 @@ import { useNachfrage } from './Nachfrage';
 import { localDay } from '@/lib/zeit';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT } from '../ui';
+import { SearchX } from 'lucide-react';
+import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT } from '../ui';
 import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -289,7 +290,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
                   ))}
                 </div>
                 {treffer.length > mehr && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehr(mehr + 150)}>Weitere {Math.min(150, treffer.length - mehr)} zeigen</Knopf></div>}
-                {!treffer.length && <Leer>Niemand gefunden. Suche zurücksetzen oder eine andere Ansicht wählen.</Leer>}
+                {!treffer.length && <Leerzustand symbol={<SearchX size={26} />} titel="Niemand gefunden">Suche zurücksetzen oder eine andere Ansicht wählen.</Leerzustand>}
               </div>
             )}
           </Karte>

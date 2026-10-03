@@ -652,7 +652,7 @@ nav a:hover { transform: translateX(2px); }
 }
 
 .ui-stufen { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 4px; margin-top: 16px; }
-.ui-stufe { padding: 10px 8px; border-radius: 10px; font-size: 12px; line-height: 1.3; }
+.ui-stufe { padding: 10px 8px; border-radius: 10px; font-size: 12px; line-height: 1.3; white-space: nowrap; }
 @media (max-width: 720px) { .ui-stufen { grid-template-columns: repeat(var(--n, 5), minmax(112px, 1fr)); overflow-x: auto; scrollbar-width: none; } .ui-stufen::-webkit-scrollbar { display: none; } }
 
 /* Karten */
@@ -666,10 +666,10 @@ nav a:hover { transform: translateX(2px); }
 .ui-karte:has([aria-modal="true"]) { transform: none !important; }
 
 /* Abschnitt, Titel, Beschriftung */
-.ui-abschnitt { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 12px; }
+.ui-abschnitt { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; margin: 0 0 12px; }
 .ui-abschnitt-titel { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 700; color: #A2ADB0; letter-spacing: .09em; text-transform: uppercase; min-width: 0; }
 .ui-abschnitt-punkt { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
-.ui-abschnitt-rechts { font-size: 13px; color: #86918F; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.ui-abschnitt-rechts { font-size: 13px; color: #86918F; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; text-align: right; }
 .ui-titel { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .ui-beschriftung { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #86918F; margin: 2px 0 6px; }
 .ui-beschriftung-rechts { text-transform: none; letter-spacing: 0; font-weight: 500; }
@@ -696,8 +696,8 @@ nav a:hover { transform: translateX(2px); }
 .ui-zeile-text { flex: 1 1 150px; min-width: 0; }
 .ui-zeile-rechts { margin-left: auto; min-width: 0; max-width: 100%; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
 @media (max-width: 720px) {
-  /* Am Handy brechen Titel und Zusatz um (höchstens zwei Zeilen), statt mit … abgeschnitten zu werden. */
-  .ui-zeile-titel, .ui-zeile-unter { white-space: normal !important; text-overflow: clip !important; overflow: hidden !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+  /* Am Handy brechen Titel und Zusatz um, statt mit … abgeschnitten zu werden — kein Text geht verloren (der Rechner kürzt weiter). */
+  .ui-zeile-titel, .ui-zeile-unter { white-space: normal !important; text-overflow: clip !important; overflow: visible !important; overflow-wrap: anywhere; }
 }
 .ui-zeile-titel { font-size: 15px; font-weight: 500; line-height: 1.35; }
 .ui-zeile-unter { font-size: 13px; color: #A2ADB0; margin-top: 2px; line-height: 1.4; }
@@ -769,6 +769,9 @@ nav a:hover { transform: translateX(2px); }
   .ui-seite input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]), .ui-seite textarea, .ui-seite select { font-size: 16px !important; min-height: 44px !important; box-sizing: border-box; }
   .ui-seite label:has(input[type=checkbox], input[type=radio]) { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box; }
   .ui-seite input[type=checkbox], .ui-seite input[type=radio] { width: 22px; height: 22px; min-height: 0 !important; flex: 0 0 auto; }
+  /* Allein stehende Links und Text-Links: die Trefferfläche wächst auf 44 px, ohne das Layout zu verschieben (wie `.treffer44` am Haken). */
+  .ui-seite a[href]:not(.fassbar):not(.knopf):not(.ui-kein-ziel) { position: relative; }
+  .ui-seite a[href]:not(.fassbar):not(.knopf):not(.ui-kein-ziel)::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(calc(100% + 8px), 44px); height: 44px; transform: translate(-50%, -50%); }
 }
 
 /* Kartei (Kontakte): die Tabellenspalten richten sich nach der Breite der KARTE, nicht des Fensters (Container-Abfrage) — am Rechner mit Leiste und
@@ -777,5 +780,5 @@ nav a:hover { transform: translateX(2px); }
 .kartei-zeile { grid-template-columns: 10px 22px minmax(0, 1.6fr) minmax(0, 1.2fr) 40px 84px 96px 64px 64px; }
 @container (max-width: 700px) {
   .kartei-zeile { grid-template-columns: 10px 22px minmax(0, 1.6fr) minmax(0, 1.2fr) 40px 64px; }
-  .kartei-zeile > :nth-child(6), .kartei-zeile > :nth-child(7), .kartei-zeile > :nth-child(8) { display: none; }
+  .kartei-zeile > :nth-child(6), .kartei-zeile > :nth-child(7), .kartei-zeile > :nth-child(8) { display: none !important; }
 }

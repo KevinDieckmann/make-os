@@ -32,7 +32,7 @@ describe('Spaces', () => {
       expect(new Set(s.eintraege.map(e => e.href)).size).toBe(s.eintraege.length);
       expect(s.eintraege[0].label).toBe('Übersicht');
     }
-    expect(EIGEN.map(e => e.label)).toEqual(['Agenten', 'Finanzplanung jetzt', 'Netzwerken']); // 27.09.: Finanzplanung jetzt unter den Agenten (Kevin); 02.10.: Netzwerken (Handschlag, Paket B)
+    expect(EIGEN.map(e => e.label)).toEqual(['Agenten', 'Finanzplanung jetzt']); // 27.09.: Finanzplanung jetzt unter den Agenten (Kevin); 03.10.: Netzwerken steht nur noch am Handy in der Leiste (Kevin, 0488c71)
     expect(UNTEN.map(e => e.label)).toEqual(['ZOE', 'Brain']);
   });
 });
