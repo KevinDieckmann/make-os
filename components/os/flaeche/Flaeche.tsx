@@ -19,7 +19,7 @@
 import { Children, createContext, isValidElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactElement, type ReactNode } from 'react';
 import { anwenden, wende, ausgeblendet, istStandard, BREITEN, type Layout, type Op, type Platz, type StandardPlatz, type Breite, type Wert } from '@/lib/flaeche/modell';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Leer, Knopf, useBreit } from '../schlank';
+import { Karte, Leer, Knopf, useBreit, feld } from '../ui';
 import { WIDGETS, KATALOG, type EinstellungDef } from './widgets';
 
 export interface KachelProps { id: string; titel: string; breite?: Breite; children: ReactNode }
@@ -29,7 +29,7 @@ export function Kachel(_: KachelProps): ReactElement | null { return null; }
 interface Ctx { bearbeiten: boolean; dragId: string | null; schmal: boolean; tu: (op: Op) => void; starteZug: (id: string, e: RPointerEvent) => void; langerDruck: (e: RPointerEvent) => void }
 const FlaecheCtx = createContext<Ctx | null>(null);
 
-const nackt: CSSProperties = { background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', color: C.inkDim, fontSize: 12, fontFamily: 'inherit', borderRadius: 8 };
+const nackt: CSSProperties = { background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', color: C.inkDim, fontSize: TYP.bedien, fontFamily: 'inherit', borderRadius: 8 };
 const GAP = 14, ZEILE = 8;
 
 export function Flaeche({ seite, widgets = [], standard: standardProp, children, katalog = true }: { seite: string; widgets?: StandardPlatz[]; standard?: StandardPlatz[]; children?: ReactNode; katalog?: boolean }) {
@@ -115,10 +115,10 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
   return (
     <FlaecheCtx.Provider value={ctx}>
       <div className="flaeche-kopf" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, flexWrap: 'wrap', minHeight: 28, margin: '-6px 0 2px' }}>
-        {meld && <span style={{ fontSize: 12, color: LEUCHT.achtung, marginRight: 'auto' }}>{meld}</span>}
+        {meld && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginRight: 'auto' }}>{meld}</span>}
         {bearbeiten ? (
           <>
-            <span style={{ fontSize: 12, color: C.inkLeise, marginRight: 'auto', ...(schmal ? { order: 9, flex: '1 1 100%' } : {}) }}>{schmal ? 'Am ⋮⋮ ziehen · ✕ ausblenden · ⚙ einstellen' : 'Am ⋮⋮ ziehen · Breite ⅓ ½ ⅔ ▭ · ✕ ausblenden · ⚙ einstellen'}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise, marginRight: 'auto', ...(schmal ? { order: 9, flex: '1 1 100%' } : {}) }}>{schmal ? 'Am ⋮⋮ ziehen · ✕ ausblenden · ⚙ einstellen' : 'Am ⋮⋮ ziehen · Breite ⅓ ½ ⅔ ▭ · ✕ ausblenden · ⚙ einstellen'}</span>
             {katalog && <Knopf leise onClick={() => setKatalogOffen(o => !o)}>{katalogOffen ? 'Katalog schließen' : '+ Widget'}</Knopf>}
             {zuruecksetzbar && <Knopf leise onClick={() => { if (window.confirm('Diese Seite auf den Standard zurücksetzen?')) { tu({ op: 'zuruecksetzen' }); setKatalogOffen(false); } }}>Zurücksetzen</Knopf>}
             <Knopf farbe={LEUCHT.gut} onClick={() => { setBearbeiten(false); setKatalogOffen(false); }}>Fertig</Knopf>
@@ -149,13 +149,13 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
                     <button key={`${k.art}-${n}`} type="button" onClick={() => { tu({ op: 'hinzufuegen', art: k.art, breite: k.breite, einstellungen: k.voreinstellung, titel: k.label !== WIDGETS[k.art]?.label ? k.label : undefined }); setMeld(''); }}
                       className="fassbar" style={{ ...nackt, textAlign: 'left', padding: '10px 12px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, display: 'grid', gap: 3 }}>
                       <span style={{ color: C.ink, fontSize: TYP.bedien, fontWeight: 600 }}>+ {k.label}</span>
-                      <span style={{ color: C.inkLeise, fontSize: 12, lineHeight: 1.4 }}>{k.beschreibung}</span>
+                      <span style={{ color: C.inkLeise, fontSize: TYP.bedien, lineHeight: 1.4 }}>{k.beschreibung}</span>
                     </button>
                   ))}
                 </div>
               </div>
             ))}
-            <p style={{ fontSize: 12, color: C.inkLeise, margin: 0 }}>Widgets zeigen nur, was es für dich gibt — ohne Haushalt keine Familie, ohne Werte keine Zahlen.</p>
+            <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: 0 }}>Widgets zeigen nur, was es für dich gibt — ohne Haushalt keine Familie, ohne Werte keine Zahlen.</p>
           </div>
         </Karte>
       )}
@@ -205,7 +205,7 @@ function Platzhalter({ platz, titel, einstellungen, festeKarte, children }: { pl
       {bearbeiten && (
         <div className="kachel-leiste">
           <button type="button" className="kachel-griff" onPointerDown={e => ctx.starteZug(platz.id, e)} title="Ziehen" aria-label={`${titel} verschieben`} style={{ ...nackt, fontSize: 15, letterSpacing: '-.1em', color: C.inkDim }}>⋮⋮</button>
-          <span style={{ fontSize: 12, color: C.inkDim, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{titel}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{titel}</span>
           {!schmal && BREITEN.map(b => (
             <button key={b.b} type="button" onClick={() => tu({ op: 'breite', id: platz.id, breite: b.b })} title={b.titel} style={{ ...nackt, padding: '3px 6px', color: platz.breite === b.b ? LEUCHT.gut : C.inkLeise, background: platz.breite === b.b ? `${LEUCHT.gut}1A` : 'transparent' }}>{b.label}</button>
           ))}
@@ -226,16 +226,16 @@ function Einstellungen({ platz, defs, festeKarte, tu, zu }: { platz: Platz; defs
   const [titel, setTitel] = useState(platz.titel ?? '');
   const wert = (d: EinstellungDef): Wert => platz.einstellungen[d.k] ?? d.standard;
   const setz = (k: string, v: Wert) => tu({ op: 'einstellen', id: platz.id, einstellungen: { [k]: v } });
-  const feldStil: CSSProperties = { background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 9, color: C.ink, padding: '6px 9px', fontSize: 12.5, fontFamily: 'inherit', colorScheme: 'dark' };
+  const feldStil: CSSProperties = { ...feld, minHeight: 40, padding: '6px 10px', fontSize: TYP.bedien, colorScheme: 'dark' };
   return (
     <div style={{ padding: '10px 12px', marginBottom: 8, borderRadius: 12, background: 'rgba(255,255,255,.04)', border: `1px solid ${LEUCHT.gut}33`, display: 'grid', gap: 8, pointerEvents: 'auto' }}>
       {!festeKarte && (
-        <label style={{ display: 'grid', gap: 4, fontSize: 12, color: C.inkLeise }}>Titel (leer = Standard)
+        <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkLeise }}>Titel (leer = Standard)
           <input value={titel} onChange={e => setTitel(e.target.value)} onBlur={() => tu({ op: 'einstellen', id: platz.id, titel: titel.trim() || null })} placeholder="eigener Titel" style={feldStil} />
         </label>
       )}
       {defs.map(d => (
-        <label key={d.k} style={{ display: 'grid', gap: 4, fontSize: 12, color: C.inkLeise }}>{d.label}
+        <label key={d.k} style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkLeise }}>{d.label}
           {d.art === 'wahl' && <select value={String(wert(d))} onChange={e => { const o = d.optionen?.find(x => String(x.w) === e.target.value); if (o) setz(d.k, o.w); }} style={feldStil}>{(d.optionen ?? []).map(o => <option key={String(o.w)} value={String(o.w)}>{o.label}</option>)}</select>}
           {d.art === 'schalter' && <button type="button" onClick={() => setz(d.k, !(wert(d) === true))} style={{ ...feldStil, textAlign: 'left', cursor: 'pointer', color: wert(d) === true ? LEUCHT.gut : C.inkDim }}>{wert(d) === true ? '● an' : '○ aus'}</button>}
           {d.art === 'text' && <input value={String(wert(d))} onChange={e => setz(d.k, e.target.value)} style={feldStil} />}

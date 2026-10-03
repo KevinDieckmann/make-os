@@ -37,7 +37,7 @@ import type { LeadZeile } from '@/lib/crm/leads';
 import type { Event as CrmEvent } from '@/lib/crm/typen';
 import type { EventZahlen } from '@/lib/crm/events';
 import { MARKE_EVENTS, markeVon, istNetzwerkenEvent } from '@/lib/crm/marke';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, Chip, feld, zoneFarbe, prioFarbe } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, Chip, feld, zoneFarbe, prioFarbe } from '../ui';
 import { heuteFaellig, istGemeinsam, spaceVonRoutine } from '@/lib/planung/routinen';
 import { rhythmusKurz } from '@/lib/planung/rhythmus';
 import type { Routine as PlanungsRoutine } from '@/lib/planung/typen';
@@ -236,8 +236,8 @@ function KoerperWidget({ titel, i }: WidgetProps) {
         <Link href="/os/gesundheit" style={{ textDecoration: 'none', color: 'inherit' }}><Ring groesse="klein" label="Recovery" wert={frisch && v?.rec != null ? String(v.rec) : undefined} einheit="%" farbe={farbe} anteil={frisch && v?.rec != null ? v.rec / 100 : undefined} /></Link>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{frisch && v?.rec != null ? (v.rec >= 66 ? 'Grün — heute darf es Druck sein.' : v.rec >= 40 ? 'Gelb — fokussiert, mit Puffer.' : 'Rot — heute nur das Nötige.') : d === undefined ? 'lade …' : 'Noch keine Werte von heute'}</div>
-          <div style={{ fontSize: 12.5, color: C.inkDim, margin: '6px 0 8px' }}>{d ? <Link href="/os/gesundheit#routinen" style={{ color: C.inkDim }}>{heuteN} von {liste.length} Routinen ›</Link> : '—'}</div>
-          {d && !frisch && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}><WhoopImport kurz /><Link href="/os/ritual?modus=morgen" style={{ fontSize: 12.5, color: C.inkDim }}>von Hand eintragen ›</Link></div>}
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '6px 0 8px' }}>{d ? <Link href="/os/gesundheit#routinen" style={{ color: C.inkDim }}>{heuteN} von {liste.length} Routinen ›</Link> : '—'}</div>
+          {d && !frisch && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}><WhoopImport kurz /><Link href="/os/ritual?modus=morgen" style={{ fontSize: TYP.bedien, color: C.inkDim }}>von Hand eintragen ›</Link></div>}
           {d && liste.length > 0 && <Fortschritt anteil={heuteN / liste.length} farbe={LEUCHT.gut} />}
         </div>
       </div>
@@ -262,7 +262,7 @@ function RoutinenWidget({ titel, i }: WidgetProps) {
       {d && (
         <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', marginTop: 10 }}>
           <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 26, letterSpacing: '-.03em', color: streak?.aktuell ? LEUCHT.gut : C.inkLeise }}>{streak?.sauberTage ?? 0}</span>
-          <span style={{ fontSize: 12.5, color: C.inkDim }}>Tage Streak{d.routinen?.quote7 != null ? ` · 7-Tage-Quote ${Math.round(d.routinen.quote7 * 100)} %` : ''}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Tage Streak{d.routinen?.quote7 != null ? ` · 7-Tage-Quote ${Math.round(d.routinen.quote7 * 100)} %` : ''}</span>
         </div>
       )}
     </Karte>
@@ -315,10 +315,10 @@ function RoutinenHeuteWidget({ e, titel, i }: WidgetProps) {
               f.ueberfaellig ? `seit ${f.naechstes.slice(8)}.${f.naechstes.slice(5, 7)}.` : '',
               f.dieseWoche != null ? `${f.dieseWoche}/3 diese Woche` : '',
             ].filter(Boolean).join(' · ') || undefined}
-            rechts={f.ueberfaellig && !heuteErledigt ? <Chip farbe={LEUCHT.achtung}>überfällig</Chip> : <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{r.dauerMin} min</span>} />
+            rechts={f.ueberfaellig && !heuteErledigt ? <Chip farbe={LEUCHT.achtung}>überfällig</Chip> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{r.dauerMin} min</span>} />
         ))}
       </Liste>
-      {liste.length > 10 && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>+ {liste.length - 10} weitere in der Tagesplanung</div>}
+      {liste.length > 10 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>+ {liste.length - 10} weitere in der Tagesplanung</div>}
     </Karte>
   );
 }
@@ -343,7 +343,7 @@ function EssenWidget({ titel, i }: WidgetProps) {
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={`/api/ernaehrung/bild?name=${encodeURIComponent(g.bild)}`} alt="" style={{ width: 34, height: 34, borderRadius: 9, objectFit: 'cover' }} />
                 : <span style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, width: 52 }}>{m.label}</span>}
-              titel={text ? <span>{g?.bild ? <span style={{ color: C.inkLeise, fontSize: 12 }}>{m.label} · </span> : ''}{text}</span> : <span style={{ color: C.inkLeise }}>noch nichts geplant</span>}
+              titel={text ? <span>{g?.bild ? <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{m.label} · </span> : ''}{text}</span> : <span style={{ color: C.inkLeise }}>noch nichts geplant</span>}
               unter={g ? [g.dauerMin ? `${g.dauerMin} Min` : '', 'Rezept ›'].filter(Boolean).join(' · ') : undefined} />;
           })}
         </Liste>
@@ -372,7 +372,7 @@ function IndexWidget({ e, titel, i }: WidgetProps) {
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 6 }}>
           <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{d === undefined ? 'lade …' : d.label || (d.index == null ? 'Noch keine Messung' : '')}</div>
           {(d?.saeulen ?? []).slice(0, 4).map(s => (
-            <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: 12.5, color: C.inkDim }}>
+            <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
               <span style={{ fontVariantNumeric: 'tabular-nums', color: s.score == null ? C.inkLeise : zoneFarbe(s.score) }}>{s.score == null ? '—' : Math.round(s.score)}</span>
               <div style={{ gridColumn: '1 / -1' }}><Fortschritt anteil={(s.score ?? 0) / 100} farbe={s.score == null ? C.inkLeise : zoneFarbe(s.score)} /></div>
@@ -415,7 +415,7 @@ function ZoeWidget({ e, titel, i }: WidgetProps) {
         <Link href="/os/stapel" style={{ textDecoration: 'none', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: n ? LEUCHT.achtung : C.inkLeise, textShadow: n ? `0 0 24px ${LEUCHT.achtung}33` : undefined }}>{n == null ? '—' : n}</Link>
         <div style={{ fontSize: TYP.body, fontWeight: 600, lineHeight: 1.35 }}>
           {n == null ? 'ZOE' : n === 0 ? 'Nichts vorbereitet — alles erledigt.' : `Vorschl${n === 1 ? 'ag wartet' : 'äge warten'} auf dich`}
-          {mitInbox && <div style={{ fontSize: 12.5, color: C.inkDim, fontWeight: 500, marginTop: 4 }}><Link href="/os/inbox" style={{ color: C.inkDim }}>{inbox ? `${inbox} in der Inbox offen ›` : 'Inbox ›'}</Link></div>}
+          {mitInbox && <div style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 500, marginTop: 4 }}><Link href="/os/inbox" style={{ color: C.inkDim }}>{inbox ? `${inbox} in der Inbox offen ›` : 'Inbox ›'}</Link></div>}
         </div>
       </div>
     </Karte>
@@ -464,11 +464,11 @@ function ScoreWidget({ titel, i }: WidgetProps) {
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: TYP.body, fontWeight: 600 }}>
             {d === undefined ? 'lade …' : p?.index != null ? p.label : 'Noch keine Messung'}
-            {delta != null && delta !== 0 && <span style={{ fontSize: 12, fontWeight: 700, color: delta > 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span>}
+            {delta != null && delta !== 0 && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: delta > 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span>}
           </div>
-          <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 4 }}>{p?.hebel ? <>Größter Hebel: {p.hebel}</> : p ? `Stand ${p.stand.slice(8)}.${p.stand.slice(5, 7)}.` : 'Der Score, auf den wir hinarbeiten'}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>{p?.hebel ? <>Größter Hebel: {p.hebel}</> : p ? `Stand ${p.stand.slice(8)}.${p.stand.slice(5, 7)}.` : 'Der Score, auf den wir hinarbeiten'}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-            {(p?.saeulen ?? []).map(s => <span key={s.key} title={SAEULE_KURZ[s.key] ?? s.label} style={{ fontSize: 11.5, fontVariantNumeric: 'tabular-nums', color: s.score == null ? C.inkLeise : SAEULE_FARBE[s.key] ?? C.inkDim }}>{(SAEULE_KURZ[s.key] ?? s.label).slice(0, 3)} {s.score ?? '—'}</span>)}
+            {(p?.saeulen ?? []).map(s => <span key={s.key} title={SAEULE_KURZ[s.key] ?? s.label} style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: s.score == null ? C.inkLeise : SAEULE_FARBE[s.key] ?? C.inkDim }}>{(SAEULE_KURZ[s.key] ?? s.label).slice(0, 3)} {s.score ?? '—'}</span>)}
           </div>
         </div>
       </div>
@@ -512,7 +512,7 @@ function ZeitBereichWidget({ e, titel, i }: WidgetProps) {
     <div key={label} style={{ display: 'grid', gap: 2 }}>
       <span style={{ fontSize: 11, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span>
       <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 18, color: sek ? C.ink : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{zeitText(sek)}</span>
-      {unter && <span style={{ fontSize: 11, color: C.inkDim }}>{unter}</span>}
+      {unter && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{unter}</span>}
     </div>
   );
   return (
@@ -527,7 +527,7 @@ function ZeitBereichWidget({ e, titel, i }: WidgetProps) {
         : bereiche.length ? (
           <div style={{ display: 'grid', gap: 6 }}>
             {bereiche.map(b => (
-              <div key={b.bereich} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: 12.5, color: C.inkDim }}>
+              <div key={b.bereich} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bereichLabel(b.bereich)}{b.bewusst ? <span style={{ color: C.inkLeise }}> · {zeitText(b.bewusst)} bewusst</span> : null}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums', color: C.ink }}>{zeitText(b.sek)}</span>
                 <div style={{ gridColumn: '1 / -1' }}><Fortschritt anteil={b.sek / max} farbe={farbe} /></div>
@@ -552,7 +552,7 @@ function KanalWidget({ titel, i }: WidgetProps) {
       <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={markttraktion('sales', 'auswertung')} style={link}>Auswertung ›</Link>}>{titel ?? 'Kanal-Leistung'}</Ueberschrift>
       {d === undefined && <Leer>lade …</Leer>}
       {zeilen.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 120px) 1fr auto', gap: '6px 10px', alignItems: 'center', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 120px) 1fr auto', gap: '6px 10px', alignItems: 'center', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>
           {zeilen.map(z => (
             <div key={z.kanal} style={{ display: 'contents' }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.label}</span>
@@ -565,7 +565,7 @@ function KanalWidget({ titel, i }: WidgetProps) {
           ))}
         </div>
       )}
-      {d && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Leads je Kanal, davon warm oder heiß, davon SQL oder Kunde.</div>}
+      {d && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Leads je Kanal, davon warm oder heiß, davon SQL oder Kunde.</div>}
     </Karte>
   );
 }
@@ -603,7 +603,7 @@ function EventWidget({ titel, i }: WidgetProps) {
           unter={[markeVon(e), tagKurz(e.datum), e.uhrzeit ? `${e.uhrzeit} Uhr` : '', e.ort, d?.z ? (d.z.zugesagt ? `${d.z.zugesagt} zugesagt` : d.z.eingeladen ? `${d.z.eingeladen} eingeladen` : '') : ''].filter(Boolean).join(' · ')} />
       )}
       {d && !e && <Leer>Kein Event geplant — sechs Wochen Vorlauf, Ziel zuerst.</Leer>}
-      {d && d.nachfassenOffen > 0 && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, marginTop: 6 }}><Link href={WEG.event()} style={{ color: LEUCHT.achtung }}>{d.nachfassenOffen} {d.nachfassenOffen === 1 ? 'Gast' : 'Gäste'} nachfassen — binnen 48 Stunden ›</Link></div>}
+      {d && d.nachfassenOffen > 0 && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 6 }}><Link href={WEG.event()} style={{ color: LEUCHT.achtung }}>{d.nachfassenOffen} {d.nachfassenOffen === 1 ? 'Gast' : 'Gäste'} nachfassen — binnen 48 Stunden ›</Link></div>}
     </Karte>
   );
 }

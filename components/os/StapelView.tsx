@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, feld, LEUCHT, Spalten, Spalte } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Hinweis, feld, LEUCHT, Spalten, Spalte } from './ui';
 import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
 import { CrmStapelDetail } from './crm/ZoeFragen';
@@ -119,20 +119,21 @@ export function StapelView() {
   const g = (id: string) => GRUPPE[id] ?? { label: id, href: '/os', farbe: C.inkLeise };
 
   return (
-    <Seite titel="Aufträge & Freigaben" unter="Was ZOE vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts." rechts={<Link href="/os/stapel/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Protokoll & Rückgängig ›</Link>}>
-      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
+    <Seite titel="Aufträge & Freigaben" unter="Was ZOE vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts." rechts={<span className="ui-nur-breit"><Knopf leise href="/os/stapel/voll">Protokoll & Rückgängig ›</Knopf></span>}>
+      <div className="ui-nur-schmal"><Knopf leise href="/os/stapel/voll" voll>Protokoll & Rückgängig ›</Knopf></div>
+      {meldung && <Hinweis art="info" rolle="status">{meldung}</Hinweis>}
 
       <Spalten verhaeltnis="2:1">
         <Spalte>
-      <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
+      <Karte i={0} ton={offen.length ? LEUCHT.achtung : undefined}>
         <Ueberschrift farbe={offen.length ? LEUCHT.achtung : C.inkLeise} rechts={risikoarmOffen.length > 1 ? <Knopf onClick={() => alleFreigeben()} aus={busy === 'alle'}>{risikoarmOffen.length === offen.length ? `Alle ${offen.length} freigeben` : `${risikoarmOffen.length} risikoarme freigeben`}</Knopf> : `${offen.length} offen`}>Wartet auf dich</Ueberschrift>
         {!laedt && offen.length === 0 && <Leer>Nichts offen. ZOE legt hier ab, was er vorbereitet hat — du entscheidest.</Leer>}
         {gruppen.map(gr => (
           <div key={gr} style={{ marginTop: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
               <Punkt farbe={g(gr).farbe} /><span style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.04em', textTransform: 'uppercase' }}>{g(gr).label}</span>
-              <Link href={g(gr).href} style={{ fontSize: 12, color: C.inkLeise, textDecoration: 'none' }}>lieber selbst ›</Link>
-              {risikoarmOffen.filter(v => v.gruppe === gr).length > 1 && <button onClick={() => alleFreigeben(gr)} disabled={busy === gr} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>alle in {g(gr).label} freigeben</button>}
+              <Link href={g(gr).href} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>lieber selbst ›</Link>
+              {risikoarmOffen.filter(v => v.gruppe === gr).length > 1 && <Knopf leise onClick={() => alleFreigeben(gr)} aus={busy === gr} style={{ marginLeft: 'auto' }}>alle in {g(gr).label} freigeben</Knopf>}
             </div>
             <Liste>
               {offen.filter(v => v.gruppe === gr).map(v => (
@@ -144,7 +145,7 @@ export function StapelView() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: TYP.bedien, color: C.inkDim }}>
                         {v.vorher && <><span style={{ color: C.inkLeise }}>vorher</span><span>{v.vorher}</span></>}
                         <span style={{ color: C.inkLeise }}>nachher</span><span style={{ color: C.ink, fontWeight: 600 }}>{v.nachher}</span>
-                        <span style={{ color: C.inkLeise }}>Werkzeug</span><span style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>{v.werkzeug}</span>
+                        <span style={{ color: C.inkLeise }}>Werkzeug</span><span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{v.werkzeug}</span>
                         <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
                       </div>
                       {v.bezug?.art === 'aufgabe' && <AufgabeVorschlag v={v} />}
@@ -185,7 +186,7 @@ export function StapelView() {
               </Link>
             ))}
           </Liste>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Entschieden wird beim Head selbst — dort steht die Begründung und der Prüfer-Vermerk.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Entschieden wird beim Head selbst — dort steht die Begründung und der Prüfer-Vermerk.</div>
         </Karte>
         <Karte i={3}>
           <Ueberschrift farbe={LEUCHT.schlaf}>Zuletzt entschieden</Ueberschrift>
@@ -194,7 +195,7 @@ export function StapelView() {
             {entschieden.map(v => {
               const charge = v.status === 'freigegeben' && v.werkzeug === ZOE_AUFGABE_WERKZEUG && v.eingabe?._vorher ? (typeof v.eingabe._sammel === 'string' ? v.eingabe._sammel : typeof v.eingabe._charge === 'string' ? v.eingabe._charge : null) : null;
               return <Zeile key={v.id} links={<Punkt farbe={STATUS[v.status]?.farbe ?? C.inkLeise} />} titel={v.titel} unter={`${g(v.gruppe).label} · ${her(v.zeit)}${v.entschiedenVon ? ` · ${v.entschiedenVon}` : ''}${v.grund ? ` · ${v.grund}` : v.ergebnis ? ` · ${v.ergebnis.slice(0, 80)}` : ''}`}
-                rechts={<span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{charge && <button onClick={() => void chargeZurueck(charge)} disabled={busy === charge} title="Alle Übernahmen dieses Laufs bzw. dieser Sammelfreigabe zurücknehmen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>Charge rückgängig</button>}<Chip farbe={STATUS[v.status]?.farbe ?? C.inkLeise}>{STATUS[v.status]?.label ?? v.status}</Chip></span>} />;
+                rechts={<span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{charge && <button onClick={() => void chargeZurueck(charge)} disabled={busy === charge} title="Alle Übernahmen dieses Laufs bzw. dieser Sammelfreigabe zurücknehmen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>Charge rückgängig</button>}<Chip farbe={STATUS[v.status]?.farbe ?? C.inkLeise}>{STATUS[v.status]?.label ?? v.status}</Chip></span>} />;
             })}
           </Liste>
         </Karte>
@@ -202,7 +203,7 @@ export function StapelView() {
           <Ueberschrift farbe={LEUCHT.agenten} rechts={`${fakten.length}`}>Gedächtnis</Ueberschrift>
           <Liste>
             {fakten.length === 0 && <Leer>ZOE hat sich noch nichts gemerkt. Sag ihm „merk dir …“.</Leer>}
-            {fakten.slice(0, 10).map(f => <Zeile key={f.id} titel={f.satz} unter={`${f.thema} · ${f.tag}`} rechts={<button onClick={() => vergiss(f.id)} disabled={busy === f.id} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>vergessen</button>} />)}
+            {fakten.slice(0, 10).map(f => <Zeile key={f.id} titel={f.satz} unter={`${f.thema} · ${f.tag}`} rechts={<button onClick={() => vergiss(f.id)} disabled={busy === f.id} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>vergessen</button>} />)}
           </Liste>
         </Karte>
         <Karte i={4}>
@@ -213,9 +214,9 @@ export function StapelView() {
           </div>
           {(kosten?.jeZweck ?? []).slice(0, 5).map(z => (
             <div key={z.zweck} style={{ display: 'grid', gridTemplateColumns: 'minmax(80px,130px) 1fr 64px', alignItems: 'center', gap: 10, padding: '4px 0' }}>
-              <span style={{ fontSize: 12.5, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.zweck}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.zweck}</span>
               <Fortschritt anteil={z.cent / Math.max(kosten!.jeZweck[0]?.cent ?? 1, 1)} farbe={LEUCHT.geld} />
-              <span style={{ fontFamily: SCHRIFT.display, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: C.inkDim, textAlign: 'right' }}>{eur(z.cent / 100)}</span>
+              <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: C.inkDim, textAlign: 'right' }}>{eur(z.cent / 100)}</span>
             </div>
           ))}
         </Karte>
@@ -234,7 +235,7 @@ function AufgabeVorschlag({ v }: { v: Vorschlag }) {
     <div style={{ marginTop: 12, display: 'grid', gap: 8, fontSize: TYP.bedien, color: C.inkDim }}>
       {entwurf && <div style={{ whiteSpace: 'pre-wrap', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '10px 12px', maxHeight: 240, overflowY: 'auto', lineHeight: 1.5 }}>{entwurf}</div>}
       {unter.length > 0 && <ul style={{ margin: 0, paddingLeft: 18 }}>{unter.map(u => <li key={u}>{u}</li>)}</ul>}
-      <Link href={WEG.aufgabe(v.bezug!.id)} style={{ fontSize: 12.5, color: C.aktiv, textDecoration: 'none' }}>Aufgabe öffnen ›</Link>
+      <Link href={WEG.aufgabe(v.bezug!.id)} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none' }}>Aufgabe öffnen ›</Link>
     </div>
   );
 }

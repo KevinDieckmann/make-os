@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Ring, Chip, Knopf, Leer, Liste, Zeile, Haken, Fortschritt, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Ring, Chip, Knopf, Leer, Liste, Zeile, Haken, Fortschritt, feld, LEUCHT } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { DATE_IDEEN, REPARATUR_SAETZE, MUSTER, HILFE } from '@/lib/familie/katalog';
 import type { Thema, Wunsch, DateIdee, Reparatur } from '@/lib/familie/typen';
@@ -35,7 +35,7 @@ export function WirZwei({ api, onGespraech }: { api: FamilieApi; onGespraech: ()
     <>
       <Flaeche seite="familie-wir">
       <Kachel id="rhythmus" titel="Pflege-Rhythmus" breite={6}>
-      <Karte i={0} akzent={ROSA}>
+      <Karte i={0} ton={ROSA}>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,40px)', alignItems: 'center' }}>
           <Ring label="Pflege-Rhythmus" wert={d.rhythmus.score != null ? String(d.rhythmus.score) : undefined} farbe={st.farbe}
             anteil={d.rhythmus.score != null ? d.rhythmus.score / 100 : undefined} unter={<Chip farbe={st.farbe}>{st.text}</Chip>} />
@@ -55,10 +55,10 @@ export function WirZwei({ api, onGespraech }: { api: FamilieApi; onGespraech: ()
         <Mehr titel="Woraus sich der Rhythmus ergibt">
           <div style={{ display: 'grid', gap: 9 }}>
             {d.rhythmus.bausteine.map(b => (
-              <div key={b.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(130px,180px) 1fr minmax(120px,220px)', gap: 12, alignItems: 'center', fontSize: TYP.bedien }}>
+              <div key={b.id} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '4px 12px', alignItems: 'center', fontSize: TYP.bedien }}>
                 <span style={{ color: C.inkDim }}>{b.titel} <span style={{ color: C.inkLeise }}>· {b.gewicht}</span></span>
                 <Fortschritt anteil={b.wert} farbe={b.wert >= 1 ? LEUCHT.gut : ROSA} />
-                <span style={{ color: C.inkLeise, fontSize: 12.5 }}>{b.text}</span>
+                <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{b.text}</span>
               </div>
             ))}
             <Klein>Gemessen wird, was ihr gemeinsam tut — über 28 Tage, nie eine einzelne Person und nie Gefühle.</Klein>
@@ -132,7 +132,7 @@ function InKalender({ vorhanden, art, id, nachher }: { vorhanden?: string; art: 
   return (
     <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
       <Knopf leise aus={lage === 'laeuft'} onClick={() => void anlegen()}>{lage === 'laeuft' ? 'legt an …' : 'in den Kalender'}</Knopf>
-      {lage === 'fehler' && <Klein>{fehler}</Klein>}
+      {lage === 'fehler' && <Klein farbe={LEUCHT.kritisch}>{fehler}</Klein>}
     </span>
   );
 }
@@ -157,8 +157,8 @@ function Dates({ api }: { api: FamilieApi }) {
         <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', marginBottom: 12 }}>
           <Eingabe wert={plan.titel} platzhalter="Was macht ihr?" onFertig={titel => setPlan({ ...plan, titel })} />
           <Reihe>
-            <input type="date" value={plan.datum} onChange={e => setPlan({ ...plan, datum: e.target.value })} aria-label="Datum" style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '8px 10px', color: C.ink }} />
-            <span style={{ fontSize: 12.5, color: C.inkLeise }}>plant komplett:</span>
+            <input type="date" value={plan.datum} onChange={e => setPlan({ ...plan, datum: e.target.value })} aria-label="Datum" style={{ ...feld, width: 'auto', colorScheme: 'dark' }} />
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>plant komplett:</span>
             <Wahl liste={d.mitglieder.map(m => ({ id: m.person, label: m.name }))} aktiv={plan.planer} onWahl={planer => setPlan({ ...plan, planer })} farbe={ROSA} />
           </Reihe>
           <Reihe>
@@ -182,7 +182,7 @@ function Dates({ api }: { api: FamilieApi }) {
           {gewesen.map(x => (
             <Reihe key={x.id}>
               <Klein>{datumLang(x.datum)} · {x.titel}</Klein>
-              <button onClick={() => api.setze('dates', { ...x, neuesErlebnis: !x.neuesErlebnis })} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: x.neuesErlebnis ? ROSA : C.inkLeise }}>{x.neuesErlebnis ? '✦ etwas Neues' : 'war es neu?'}</button>
+              <button onClick={() => api.setze('dates', { ...x, neuesErlebnis: !x.neuesErlebnis })} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: TYP.bedien, color: x.neuesErlebnis ? ROSA : C.inkLeise }}>{x.neuesErlebnis ? '✦ etwas Neues' : 'war es neu?'}</button>
             </Reihe>
           ))}
         </div>
@@ -214,7 +214,7 @@ function Themen({ api }: { api: FamilieApi }) {
         <Eingabe leeren platzhalter="Was sollten wir in Ruhe besprechen?" onFertig={titel => api.setze('themen', { id: neueId('t'), titel, art: 'unklar', status: 'offen', hut, sichtbarkeit: privat ? 'nur-ich' : 'paar' })} />
         <Reihe>
           <Wahl liste={[...HUT]} aktiv={hut} onWahl={setHut} farbe={ROSA} />
-          <label style={{ fontSize: 12.5, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={privat} onChange={e => setPrivat(e.target.checked)} /> erst mal nur für mich</label>
+          <label style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={privat} onChange={e => setPrivat(e.target.checked)} /> erst mal nur für mich</label>
         </Reihe>
       </div>
       <Liste>
@@ -262,7 +262,7 @@ function Wuensche({ api, partner }: { api: FamilieApi; partner: string | null })
         <Eingabe leeren platzhalter="Ein Wunsch — klein oder groß" onFertig={text => api.setze('wuensche', { id: neueId('u'), text, kategorie: kat, status: 'offen', sichtbarkeit: privat ? 'nur-ich' : 'paar' })} />
         <Reihe>
           <Wahl liste={KATEGORIEN} aktiv={kat} onWahl={setKat} farbe={ROSA} />
-          <label style={{ fontSize: 12.5, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={privat} onChange={e => setPrivat(e.target.checked)} /> Merkzettel (nur ich)</label>
+          <label style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={privat} onChange={e => setPrivat(e.target.checked)} /> Merkzettel (nur ich)</label>
         </Reihe>
       </div>
       <Liste>

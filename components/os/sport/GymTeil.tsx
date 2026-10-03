@@ -3,7 +3,7 @@
 // ─── Sport — Gym: Einheiten mit Sätzen, e1RM (Epley), Verlauf, Vorlagen ─────
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, LEUCHT } from '../ui';
 import { Feld, Raster, Zahlfeld, Hinweis, Weg, klein, de, datumLang, datumKurz, SPORT_FARBE } from './teile';
 import { alleUebungen, alleVorlagen, e1rm, bestesE1rm, volumen, verlauf, rekorde, ausVorlage } from '@/lib/sport/gym';
 import { neueId, type GymEinheit, type Muskelgruppe, type Op, type Satz, type SportStand, type Uebung, type Vorlage } from '@/lib/sport/modell';
@@ -26,7 +26,7 @@ export function GymTeil({ stand, heute, schicke }: { stand: SportStand; heute: s
 
   return (
     <>
-      <Karte i={0} akzent={F}>
+      <Karte i={0} ton={F}>
         <Ueberschrift farbe={F} rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700 }}>{offen ? 'Schließen' : '+ Einheit'}</button>}>Einheiten</Ueberschrift>
         {(offen || bearbeite) && <EinheitFormular heute={heute} start={bearbeite ?? undefined} uebungen={uebungen} vorlagen={vorlagen} einheiten={stand.gym.einheiten}
           onSpeichern={async (e, alsVorlage) => {
@@ -41,9 +41,9 @@ export function GymTeil({ stand, heute, schicke }: { stand: SportStand; heute: s
             <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <button type="button" onClick={() => { setBearbeite(e); setOffen(false); }} style={{ all: 'unset', cursor: 'pointer', fontSize: TYP.body, fontWeight: 500 }}>{datumLang(e.datum)}{e.vorlage ? ` · ${vorlagen.find(v => v.id === e.vorlage)?.name ?? e.vorlage}` : ''}</button>
-                <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.uebungen.map(u => `${name(u.uebung)} ${u.saetze.length}×`).join(' · ')}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.uebungen.map(u => `${name(u.uebung)} ${u.saetze.length}×`).join(' · ')}</div>
               </div>
-              <span style={{ fontSize: 12.5, color: C.inkDim, whiteSpace: 'nowrap' }}>{de(vol, 0)} kg Vol.</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'nowrap' }}>{de(vol, 0)} kg Vol.</span>
               <Weg onClick={() => { if (confirm('Einheit entfernen?')) void schicke([{ op: 'gym-weg', id: e.id }], 'Entfernt.'); }} />
             </div>
           );
@@ -82,8 +82,8 @@ export function GymTeil({ stand, heute, schicke }: { stand: SportStand; heute: s
           {vorlagen.map(v => (
             <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{v.name}{v.eigen && <span style={{ color: F, fontSize: 11, marginLeft: 8 }}>eigene</span>}</div>
-                <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.uebungen.map(u => `${name(u.uebung)} ${u.saetze}×${u.wdh}`).join(' · ')}</div>
+                <div style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{v.name}{v.eigen && <span style={{ color: F, fontSize: TYP.bedien, marginLeft: 8 }}>eigene</span>}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.uebungen.map(u => `${name(u.uebung)} ${u.saetze}×${u.wdh}`).join(' · ')}</div>
               </div>
               {v.eigen && <Weg onClick={() => { if (confirm(`Vorlage „${v.name}“ entfernen?`)) void schicke([{ op: 'vorlage-weg', id: v.id }], 'Vorlage entfernt.'); }} />}
             </div>
@@ -113,22 +113,22 @@ function EinheitFormular({ heute, start, uebungen, vorlagen, einheiten, onSpeich
         {e.uebungen.map((u, ui) => (
           <div key={ui} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <span style={{ fontSize: TYP.body, fontWeight: 600 }}>{name(u.uebung)} <span style={{ fontSize: 12, color: C.inkLeise, fontWeight: 400 }}>e1RM {de(bestesE1rm(u.saetze))} kg</span></span>
+              <span style={{ fontSize: TYP.body, fontWeight: 600 }}>{name(u.uebung)} <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 400 }}>e1RM {de(bestesE1rm(u.saetze))} kg</span></span>
               <Weg label="Übung entfernen" onClick={() => setE(x => ({ ...x, uebungen: x.uebungen.filter((_, i) => i !== ui) }))} />
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               {u.saetze.map((s, si) => (
                 <div key={si} style={{ display: 'grid', gridTemplateColumns: '28px minmax(70px, 1fr) 16px minmax(70px, 1fr) 70px 28px', gap: 6, alignItems: 'center' }}>
-                  <span style={{ fontSize: 12, color: C.inkLeise }}>{si + 1}.</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{si + 1}.</span>
                   <Zahlfeld wert={s.kg} onWert={n => setSatz(ui, si, { kg: n ?? 0 })} einheit="kg" stil={{ padding: '7px 10px' }} />
                   <span style={{ textAlign: 'center', color: C.inkLeise }}>×</span>
                   <input type="number" min={1} max={200} value={s.wdh || ''} aria-label="Wiederholungen" onChange={ev => setSatz(ui, si, { wdh: Number(ev.target.value) || 0 })} style={{ ...klein, padding: '7px 10px' }} />
-                  <span style={{ fontSize: 11.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{s.kg && s.wdh ? `${de(e1rm(s.kg, s.wdh))} kg` : ''}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{s.kg && s.wdh ? `${de(e1rm(s.kg, s.wdh))} kg` : ''}</span>
                   <Weg label="Satz entfernen" onClick={() => setE(x => ({ ...x, uebungen: x.uebungen.map((y, i) => i !== ui ? y : { ...y, saetze: y.saetze.filter((_, j) => j !== si) }) }))} />
                 </div>
               ))}
             </div>
-            <button type="button" onClick={() => setE(x => ({ ...x, uebungen: x.uebungen.map((y, i) => i !== ui ? y : { ...y, saetze: [...y.saetze, { ...(y.saetze[y.saetze.length - 1] ?? { kg: 0, wdh: 8 }) }] }) }))} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontSize: 12.5, fontWeight: 700, marginTop: 6 }}>+ Satz</button>
+            <button type="button" onClick={() => setE(x => ({ ...x, uebungen: x.uebungen.map((y, i) => i !== ui ? y : { ...y, saetze: [...y.saetze, { ...(y.saetze[y.saetze.length - 1] ?? { kg: 0, wdh: 8 }) }] }) }))} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontSize: TYP.bedien, fontWeight: 700, marginTop: 6 }}>+ Satz</button>
           </div>
         ))}
       </div>

@@ -26,7 +26,7 @@ import { EINHEIT_MIN, EINHEIT_MAX } from '@/lib/planung/einheiten';
 import { einheitName } from '@/lib/einheiten';
 import { rhythmusKurz, naechstesMalNach } from '@/lib/planung/rhythmus';
 import { PlanerLeiste } from './PlanerLeiste';
-import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT, Schalter, Pillen } from './ui';
 import { PfeilRang } from './planung/PfeilRang';
 import { neueKennung } from '@/lib/kennung';
 
@@ -46,7 +46,7 @@ const wahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none
 const mini: CSSProperties = { width: 24, height: 24, fontSize: TYP.bedien, lineHeight: 1, borderRadius: 7, cursor: 'pointer', border: 'none', background: 'rgba(255,255,255,.08)', color: C.inkDim, padding: 0 };
 const linkStil = { color: C.inkDim, textDecoration: 'none' as const };
 const loeschen: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, background: 'transparent', border: 'none', cursor: 'pointer', flex: '0 0 auto', padding: '2px 4px' };
-const pille = (an: boolean, farbe: string): CSSProperties => ({ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim });
+const pille = (an: boolean, farbe: string): CSSProperties => ({ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim });
 const dtKurz = (iso: string) => `${iso.slice(8)}.${iso.slice(5, 7)}.`;
 
 interface Person { speicher: string; name: string }
@@ -193,7 +193,7 @@ export function RoutinenPlanerView() {
       <PlanerLeiste aktiv="routinen" />
 
       {/* Neu anlegen */}
-      <Karte i={0} akzent={LEUCHT.gut}>
+      <Karte i={0} ton={LEUCHT.gut}>
         <Ueberschrift farbe={LEUCHT.gut}>Neue Routine</Ueberschrift>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input value={neu.label} onChange={e => setNeu({ ...neu, label: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') add(); }}
@@ -223,15 +223,10 @@ export function RoutinenPlanerView() {
         </div>
       </Karte>
 
-      {/* Filter: Space · Person */}
-      <div className="os-auf" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', ['--i' as string]: 1 }}>
-        {(['privat', 'business', 'alle'] as const).map(k => (
-          <button key={k} onClick={() => setSpaceFilter(k)} className="fassbar" style={pille(spaceFilter === k, k === 'alle' ? C.aktiv : SPACE_FARBE[k])}>{k === 'alle' ? 'Alle' : SPACE_LABEL[k]}</button>
-        ))}
-        <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,.1)', margin: '0 4px' }} />
-        <button onClick={() => setWerFilter('alle')} className="fassbar" style={pille(werFilter === 'alle', C.aktiv)}>Alle Personen</button>
-        {personen.map(p => <button key={p.speicher} onClick={() => setWerFilter(p.speicher)} className="fassbar" title={`${p.name} und Gemeinsames`} style={pille(werFilter === p.speicher, LEUCHT.puls)}>{p.name}</button>)}
-        <button onClick={() => setWerFilter(OWNER_BEIDE)} className="fassbar" style={pille(werFilter === OWNER_BEIDE, LEUCHT.puls)}>nur gemeinsam</button>
+      {/* Filter: Space · Person — zwei wischbare Zeilen Wahl-Chips (Standard) */}
+      <div className="os-auf" style={{ display: 'grid', gap: 8, ['--i' as string]: 1 }}>
+        <Pillen einzeilig liste={[{ id: 'privat', label: SPACE_LABEL.privat }, { id: 'business', label: SPACE_LABEL.business }, { id: 'alle', label: 'Alle' }]} aktiv={spaceFilter} onWahl={k => setSpaceFilter(k as typeof spaceFilter)} />
+        <Pillen einzeilig farbe={LEUCHT.puls} liste={[{ id: 'alle', label: 'Alle Personen' }, ...personen.map(p => ({ id: p.speicher, label: p.name })), { id: OWNER_BEIDE, label: 'nur gemeinsam' }]} aktiv={werFilter} onWahl={w => setWerFilter(w)} />
       </div>
 
       {/* Drei Tageszeiten */}
@@ -253,11 +248,7 @@ export function RoutinenPlanerView() {
                 return (
                   <div key={r.id} className="zeile" style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: r.aktiv ? 1 : 0.45, transition: 'opacity .2s ease' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <button onClick={() => patch(r.id, { aktiv: !r.aktiv })}
-                        title={r.aktiv ? 'aktiv — klicken zum Pausieren' : 'pausiert — klicken zum Aktivieren'} aria-label={r.aktiv ? 'aktiv' : 'pausiert'}
-                        style={{ width: 36, height: 20, borderRadius: 10, cursor: 'pointer', border: 'none', padding: 0, background: r.aktiv ? LEUCHT.gut : 'rgba(255,255,255,.12)', position: 'relative', flex: '0 0 auto', boxShadow: r.aktiv ? `0 0 10px ${LEUCHT.gut}33` : undefined, transition: 'background .2s ease' }}>
-                        <span style={{ position: 'absolute', top: 2, left: r.aktiv ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: r.aktiv ? C.grund : C.inkDim, transition: 'left .15s ease' }} />
-                      </button>
+                      <Schalter an={r.aktiv} farbe={LEUCHT.gut} onChange={() => patch(r.id, { aktiv: !r.aktiv })} titel={r.aktiv ? 'aktiv — klicken zum Pausieren' : 'pausiert — klicken zum Aktivieren'} ariaLabel={r.aktiv ? 'aktiv' : 'pausiert'} />
                       <Punkt farbe={katFarbe(r.kategorie)} groesse={8} />
                       <input value={r.label} onChange={e => patch(r.id, { label: e.target.value })} aria-label="Routine"
                         style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 500 }} />
@@ -284,7 +275,7 @@ export function RoutinenPlanerView() {
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim }}>
                           nächstes Mal
                           <input type="date" value={r.naechstesMal ?? ''} onChange={e => patch(r.id, { naechstesMal: e.target.value || undefined })} aria-label="Nächstes Mal am" style={{ ...wahl, padding: '4px 8px' }} />
-                          {!r.naechstesMal && <button onClick={() => patch(r.id, { naechstesMal: naechstesMalNach(rh, heute) ?? undefined })} title="ab heute einen Rhythmus weiter" style={{ ...loeschen, fontSize: 11, color: LEUCHT.agenten }}>ab heute + 1</button>}
+                          {!r.naechstesMal && <button onClick={() => patch(r.id, { naechstesMal: naechstesMalNach(rh, heute) ?? undefined })} title="ab heute einen Rhythmus weiter" style={{ ...loeschen, fontSize: TYP.bedien, color: LEUCHT.agenten }}>ab heute + 1</button>}
                         </span>
                       )}
                       <select value={r.kategorie} onChange={e => patch(r.id, { kategorie: e.target.value as Routine['kategorie'] })} aria-label="Kategorie" style={{ ...wahl, padding: '5px 8px', color: katFarbe(r.kategorie) }}>
@@ -309,9 +300,7 @@ export function RoutinenPlanerView() {
 
       {/* Blöcke: die Wochenvorlage je Person — wann Privat, wann Arbeit */}
       <Karte i={5} akzent={SPACE_FARBE.business}>
-        <Ueberschrift farbe={SPACE_FARBE.business} rechts={<span style={{ display: 'inline-flex', gap: 6 }}>
-          {personen.map(p => <button key={p.speicher} onClick={() => setBlockPerson(p.speicher)} className="fassbar" style={pille(blockPerson === p.speicher, LEUCHT.puls)}>{p.name}</button>)}
-        </span>}>Blöcke · Wochenvorlage{blockPerson ? ` · ${nameVon(blockPerson)}` : ''}</Ueberschrift>
+        <Ueberschrift farbe={SPACE_FARBE.business} rechts={<Pillen farbe={LEUCHT.puls} liste={personen.map(p => ({ id: p.speicher, label: p.name }))} aktiv={blockPerson} onWahl={id => setBlockPerson(id)} />}>Blöcke · Wochenvorlage{blockPerson ? ` · ${nameVon(blockPerson)}` : ''}</Ueberschrift>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10, lineHeight: 1.5 }}>Wann ist Arbeit, wann ist Privat? Je Wochentag Zeitfenster — z. B. Mo–Fr 09–18 Business. Was nicht belegt ist, ist privat.</div>
         {geladen && blockPerson && !meineBloecke.length && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
@@ -325,22 +314,22 @@ export function RoutinenPlanerView() {
             return (
               <div key={wt.id} style={{ background: 'rgba(255,255,255,.03)', borderRadius: 12, padding: '8px 10px', minHeight: 64 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise, marginBottom: 6 }}>{wt.label}</div>
-                {!tag.length && <div style={{ fontSize: 12, color: 'rgba(255,255,255,.2)' }}>privat</div>}
+                {!tag.length && <div style={{ fontSize: TYP.bedien, color: 'rgba(255,255,255,.2)' }}>privat</div>}
                 {tag.map((b, pos) => (
                   <div key={b.id} style={{ padding: '4px 0', borderBottom: pos < tag.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Punkt farbe={SPACE_FARBE[b.art]} groesse={7} />
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: C.ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${b.von}–${b.bis} ${SPACE_LABEL[b.art]}${b.titel ? ` · ${b.titel}` : ''}`}>{b.von}–{b.bis}{b.titel ? <span style={{ color: C.inkDim }}> {b.titel}</span> : ''}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, color: C.ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${b.von}–${b.bis} ${SPACE_LABEL[b.art]}${b.titel ? ` · ${b.titel}` : ''}`}>{b.von}–{b.bis}{b.titel ? <span style={{ color: C.inkDim }}> {b.titel}</span> : ''}</span>
                     {blockEigen ? <>
-                      <button onClick={() => persistBloecke(bloecke.map(x => (x.id === b.id ? (x.art === 'business' ? { ...x, art: 'privat', einheit: undefined } : { ...x, art: 'business' }) : x)))} title={`${SPACE_LABEL[b.art]} — Klick wechselt`} style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: 11 }}>{b.art === 'business' ? 'B' : 'P'}</button>
+                      <button onClick={() => persistBloecke(bloecke.map(x => (x.id === b.id ? (x.art === 'business' ? { ...x, art: 'privat', einheit: undefined } : { ...x, art: 'business' }) : x)))} title={`${SPACE_LABEL[b.art]} — Klick wechselt`} style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: TYP.bedien }}>{b.art === 'business' ? 'B' : 'P'}</button>
                       <PfeilRang label={`${wt.kurz} ${b.von}`} obenAus={pos === 0} untenAus={pos === tag.length - 1} onAuf={() => blockBewegen(b, 'auf')} onAb={() => blockBewegen(b, 'ab')} />
                       <button onClick={() => persistBloecke(bloecke.filter(x => x.id !== b.id))} aria-label="Block löschen" style={{ ...loeschen, padding: 0 }}>✕</button>
-                    </> : <span style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: 11 }}>{b.art === 'business' ? 'B' : 'P'}</span>}
+                    </> : <span style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: TYP.bedien }}>{b.art === 'business' ? 'B' : 'P'}</span>}
                   </div>
                   {/* Einheit (28.09., nur Business): kleines Kürzel — bei eigenen Blöcken per Klick wählbar. */}
                   {b.art === 'business' && (blockEigen
                     ? <div style={{ marginTop: 3, paddingLeft: 13 }}><BlockEinheit wert={b.einheit} setzen={e => persistBloecke(bloecke.map(x => (x.id === b.id ? { ...x, einheit: e } : x)))} einheiten={einheiten} anlegen={einheitAnlegen} /></div>
-                    : b.einheit ? <div style={{ marginTop: 2, paddingLeft: 13 }}><span title={`Einheit: ${einheitName(b.einheit) ?? b.einheit}`} style={{ fontSize: 11, fontWeight: 600, color: einheitFarbe(b.einheit) }}>{einheitKurz(b.einheit)}</span></div> : null)}
+                    : b.einheit ? <div style={{ marginTop: 2, paddingLeft: 13 }}><span title={`Einheit: ${einheitName(b.einheit) ?? b.einheit}`} style={{ fontSize: TYP.bedien, fontWeight: 600, color: einheitFarbe(b.einheit) }}>{einheitKurz(b.einheit)}</span></div> : null)}
                   </div>
                 ))}
               </div>

@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Ring, Balken, Zahl, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Ring, Balken, Zahl, LEUCHT } from '../ui';
 import { Feld, Raster, Zahlfeld, Skala, Hinweis, de, datumKurz, datumLang, stilLink, SPORT_FARBE } from './teile';
 import { ampel, bezugAus, AMPEL_LABEL, type Stufe } from '@/lib/sport/ampel';
 import { deload, ersteEinheit, wochentagVon } from '@/lib/sport/plan';
@@ -37,14 +37,14 @@ export function ErholungTeil({ stand, heute, vitals, schicke }: { stand: SportSt
 
   return (
     <>
-      <Karte i={0} akzent={fa}>
+      <Karte i={0} ton={fa}>
         <Ueberschrift farbe={fa} rechts={`Plan heute: ${PLAN_LABEL[geplant]}`}>Heute trainieren?</Ueberschrift>
         <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
           <Ring label="Erholung" wert={a.punkte != null ? String(a.punkte) : undefined} anteil={a.punkte != null ? a.punkte / 100 : undefined} farbe={fa} unter={<Chip farbe={fa}>{AMPEL_LABEL[a.stufe]}</Chip>} />
           <div style={{ flex: '1 1 240px', minWidth: 0 }}>
             <p style={{ fontSize: TYP.body, lineHeight: 1.5, margin: 0, color: C.ink }}>{a.text}</p>
             {a.gruende.length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>{a.gruende.map(g => <Chip key={g} farbe={C.inkDim}>{g}</Chip>)}</div>}
-            {v?.recovery != null && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Recovery {v.recovery} % aus deinen Vitalwerten (Whoop / Morgen-Check).</div>}
+            {v?.recovery != null && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Recovery {v.recovery} % aus deinen Vitalwerten (Whoop / Morgen-Check).</div>}
           </div>
         </div>
       </Karte>
@@ -69,9 +69,9 @@ export function ErholungTeil({ stand, heute, vitals, schicke }: { stand: SportSt
       <Karte i={2}>
         <Ueberschrift rechts="14 Tage">Verlauf</Ueberschrift>
         <div style={{ display: 'grid', gap: 18 }}>
-          <div><div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 6 }}>Schlaf <span style={{ color: C.inkLeise }}>· h</span></div><Balken werte={schlaf} max={9} farbe={LEUCHT.schlaf} hoehe={40} titel={tage.map((d, i) => `${datumKurz(d)} · ${schlaf[i] != null ? `${de(schlaf[i])} h` : 'kein Wert'}`)} /></div>
-          <div><div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 6 }}>Gefühl <span style={{ color: C.inkLeise }}>· 1–5</span></div><Balken werte={gefuehl} max={5} farbe={LEUCHT.gut} hoehe={32} titel={tage.map((d, i) => `${datumKurz(d)} · ${gefuehl[i] ?? '—'}`)} /></div>
-          <div><div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 6 }}>Muskelkater <span style={{ color: C.inkLeise }}>· 1–5, niedriger ist besser</span></div><Balken werte={kater} max={5} farbe={LEUCHT.achtung} hoehe={32} titel={tage.map((d, i) => `${datumKurz(d)} · ${kater[i] ?? '—'}`)} /></div>
+          <div><div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>Schlaf <span style={{ color: C.inkLeise }}>· h</span></div><Balken werte={schlaf} max={9} farbe={LEUCHT.schlaf} hoehe={40} titel={tage.map((d, i) => `${datumKurz(d)} · ${schlaf[i] != null ? `${de(schlaf[i])} h` : 'kein Wert'}`)} /></div>
+          <div><div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>Gefühl <span style={{ color: C.inkLeise }}>· 1–5</span></div><Balken werte={gefuehl} max={5} farbe={LEUCHT.gut} hoehe={32} titel={tage.map((d, i) => `${datumKurz(d)} · ${gefuehl[i] ?? '—'}`)} /></div>
+          <div><div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>Muskelkater <span style={{ color: C.inkLeise }}>· 1–5, niedriger ist besser</span></div><Balken werte={kater} max={5} farbe={LEUCHT.achtung} hoehe={32} titel={tage.map((d, i) => `${datumKurz(d)} · ${kater[i] ?? '—'}`)} /></div>
         </div>
       </Karte>
 

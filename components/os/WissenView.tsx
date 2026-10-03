@@ -17,7 +17,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useZurueck, nachOben } from './Verlauf';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { bloecke, inline, sichererLink, type Block, type Teil } from '@/lib/make-one/markdown';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, Segmente, Punkt, Chip, Zahl, feld, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, Segmente, Punkt, Chip, Zahl, Wahl, feld, LEUCHT, Spalten, Spalte, useBreit } from './ui';
 import { Regeln } from './wissen/Regeln';
 import { Inbox } from './wissen/Inbox';
 
@@ -118,7 +118,7 @@ export function block(b: Block, i: number, oeffne: (ziel: string) => void, oben 
             <div key={j} style={{ display: 'flex', gap: 9, paddingLeft: p.tiefe * 18, alignItems: 'baseline' }}>
               {p.haken === undefined
                 ? <span style={{ color: C.inkLeise, minWidth: b.geordnet ? 18 : 8, fontVariantNumeric: 'tabular-nums' }}>{b.geordnet ? `${j + 1}.` : '•'}</span>
-                : <span aria-label={p.haken ? 'erledigt' : 'offen'} style={{ width: 15, height: 15, borderRadius: 4, flex: '0 0 auto', transform: 'translateY(2px)', border: `1.5px solid ${p.haken ? LEUCHT.gut : C.inkLeise}`, background: p.haken ? LEUCHT.gut : 'transparent', display: 'inline-grid', placeItems: 'center', color: C.grund, fontSize: 11, fontWeight: 800 }}>{p.haken ? '✓' : ''}</span>}
+                : <span aria-label={p.haken ? 'erledigt' : 'offen'} style={{ width: 15, height: 15, borderRadius: 4, flex: '0 0 auto', transform: 'translateY(2px)', border: `1.5px solid ${p.haken ? LEUCHT.gut : C.inkLeise}`, background: p.haken ? LEUCHT.gut : 'transparent', display: 'inline-grid', placeItems: 'center', color: C.grund, fontSize: TYP.bedien, fontWeight: 800 }}>{p.haken ? '✓' : ''}</span>}
               <span style={{ color: p.haken ? C.inkLeise : undefined, textDecoration: p.haken ? 'line-through' : undefined }}>{zeile(p.text)}</span>
             </div>
           ))}
@@ -128,7 +128,7 @@ export function block(b: Block, i: number, oeffne: (ziel: string) => void, oben 
       return (
         <div key={i} style={{ overflowX: 'auto', margin: '4px 0 14px', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-            <thead><tr>{b.kopf.map((k, j) => <th key={j} style={{ textAlign: 'left', padding: '8px 12px', color: C.inkDim, fontWeight: 700, fontSize: 12, borderBottom: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.03)', whiteSpace: 'nowrap' }}>{zeile(k)}</th>)}</tr></thead>
+            <thead><tr>{b.kopf.map((k, j) => <th key={j} style={{ textAlign: 'left', padding: '8px 12px', color: C.inkDim, fontWeight: 700, fontSize: TYP.bedien, borderBottom: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.03)', whiteSpace: 'nowrap' }}>{zeile(k)}</th>)}</tr></thead>
             <tbody>{b.zeilen.map((r, j) => <tr key={j}>{b.kopf.map((_, k) => <td key={k} style={{ padding: '7px 12px', borderBottom: j < b.zeilen.length - 1 ? '1px solid rgba(255,255,255,.05)' : undefined, verticalAlign: 'top' }}>{zeile(r[k] ?? '')}</td>)}</tr>)}</tbody>
           </table>
         </div>
@@ -143,7 +143,7 @@ export function block(b: Block, i: number, oeffne: (ziel: string) => void, oben 
       );
     }
     case 'code':
-      return <pre key={i} style={{ margin: '0 0 14px', padding: '12px 14px', borderRadius: 12, background: 'rgba(0,0,0,.35)', overflowX: 'auto', fontFamily: SCHRIFT.mono, fontSize: 12.5, lineHeight: 1.55, color: C.inkDim }}>{b.text}</pre>;
+      return <pre key={i} style={{ margin: '0 0 14px', padding: '12px 14px', borderRadius: 12, background: 'rgba(0,0,0,.35)', overflowX: 'auto', fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, lineHeight: 1.55, color: C.inkDim }}>{b.text}</pre>;
     case 'linie':
       return <hr key={i} style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,.08)', margin: '16px 0' }} />;
   }
@@ -253,7 +253,7 @@ export function WissenView() {
 
   // ── Fragen: der Chat mit dem Brain ──
   const chatKarte = (
-    <Karte i={1} akzent={LEUCHT.agenten}>
+    <Karte i={1} ton={LEUCHT.agenten}>
       {umschalter}
       <div ref={chatFenster} style={{ position: 'relative', maxHeight: breit ? 'calc(100vh - 420px)' : undefined, minHeight: breit ? 280 : 120, overflowY: breit ? 'auto' : undefined, display: 'grid', gap: 14, alignContent: 'start', paddingRight: breit ? 4 : 0, marginBottom: 14 }}>
         {!chat.length && (
@@ -264,7 +264,7 @@ export function WissenView() {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {VORSCHLAEGE.map(v => (
-                <button key={v} onClick={() => void fragen(v)} className="fassbar" style={{ border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, borderRadius: 999, padding: '8px 14px', font: 'inherit', fontSize: 13, cursor: 'pointer' }}>{v}</button>
+                <Wahl key={v} klein an={false} onClick={() => void fragen(v)}>{v}</Wahl>
               ))}
             </div>
           </div>
@@ -282,7 +282,7 @@ export function WissenView() {
             {!!z.quellen?.length && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
                 {z.quellen.map(q => (
-                  <button key={q.id} onClick={() => void oeffne(q.id)} title={q.id} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, maxWidth: '100%', border: `1px solid ${offen?.id === q.id ? bereichFarbe(q.bereich) : 'rgba(255,255,255,.1)'}`, background: 'rgba(255,255,255,.03)', color: C.inkDim, borderRadius: 999, padding: '5px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>
+                  <button key={q.id} onClick={() => void oeffne(q.id)} title={q.id} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, maxWidth: '100%', border: `1px solid ${offen?.id === q.id ? bereichFarbe(q.bereich) : 'rgba(255,255,255,.1)'}`, background: 'rgba(255,255,255,.03)', color: C.inkDim, borderRadius: 999, padding: '5px 11px', font: 'inherit', fontSize: TYP.bedien, cursor: 'pointer' }}>
                     <Punkt farbe={bereichFarbe(q.bereich)} groesse={7} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.titel}</span>
                     {q.scope === 'privat' && <span aria-label="privat">🔒</span>}
@@ -310,7 +310,7 @@ export function WissenView() {
         />
         <Knopf farbe={LEUCHT.agenten} aus={denkt || !eingabe.trim()} onClick={() => void fragen()}>Fragen</Knopf>
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{'Enter schickt, Umschalt+Enter macht eine neue Zeile. Der Chat bleibt nur, solange dieser Tab offen ist.'}</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>{'Enter schickt, Umschalt+Enter macht eine neue Zeile. Der Chat bleibt nur, solange dieser Tab offen ist.'}</div>
     </Karte>
   );
 
@@ -344,10 +344,10 @@ export function WissenView() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Punkt farbe={bereichFarbe(e.bereich)} groesse={8} />
                   <span style={{ flex: 1, minWidth: 0, fontSize: TYP.body, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.titel}</span>
-                  {e.scope === 'privat' && <span title="privat — ZOE nutzt das nie in Texten nach außen" style={{ fontSize: 12 }}>🔒</span>}
-                  <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{e.stand ? `Stand ${standText(e.stand)}` : wann(e.geaendert)}</span>
+                  {e.scope === 'privat' && <span title="privat — ZOE nutzt das nie in Texten nach außen" style={{ fontSize: TYP.bedien }}>🔒</span>}
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{e.stand ? `Stand ${standText(e.stand)}` : wann(e.geaendert)}</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 4, paddingLeft: 18, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.45 }}>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4, paddingLeft: 18, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.45 }}>
                   {e.ausschnitt ?? `${e.bereich}${e.ueberschriften?.length ? ` · ${e.ueberschriften.slice(0, 3).join(' · ')}` : ''}`}
                 </div>
               </button>
@@ -374,9 +374,9 @@ export function WissenView() {
             {offen.stand && <Chip farbe={C.inkDim}>{`Stand ${standText(offen.stand)}`}</Chip>}
           </div>
           <h2 style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(22px,2.4vw,28px)', fontWeight: 700, letterSpacing: '-.02em', margin: '0 0 4px', lineHeight: 1.15, textWrap: 'balance' as never }}>{offen.titel}</h2>
-          <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 16, wordBreak: 'break-word' }}>{`${offen.id?.replace(/^make\//, '').replace(/\.md$/, '')} · geändert ${wann(offen.geaendert)}`}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 16, wordBreak: 'break-word' }}>{`${offen.id?.replace(/^make\//, '').replace(/\.md$/, '')} · geändert ${wann(offen.geaendert)}`}</div>
           {offen.scope === 'privat' && (
-            <div style={{ fontSize: 12.5, color: C.inkDim, background: `${LEUCHT.beziehung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 14 }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, background: `${LEUCHT.beziehung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 14 }}>
               {'Privat nach deinen Vertraulichkeitsregeln: ZOE nutzt das nur im Gespräch mit dir — nie in Mails, Entwürfen oder Briefings, und kein Agent bekommt es.'}
             </div>
           )}

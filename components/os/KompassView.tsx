@@ -27,7 +27,7 @@ import {
   MODI, MODUS, STANDARD_MODUS, BEREICHE, REGLER, wertVon, abweichungen, stufeText,
   type ReglerId,
 } from '@/lib/make-one/kompass-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Segmente, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Segmente, Wahl, ZielBezug, feld, LEUCHT } from './ui';
 import { neueKennung } from '@/lib/kennung';
 import { suchPasst } from '@/lib/text/such-norm';
 
@@ -36,7 +36,7 @@ const HAAR = 'rgba(255,255,255,.06)';
 const MIKRO: CSSProperties = { fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
 const wahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', outline: 'none', cursor: 'pointer' };
 /** Kleiner, rahmenloser Knopf für ▲ ▼ ↺ ✕. */
-const klein = (aus = false): CSSProperties => ({ width: 30, height: 30, borderRadius: 9, border: 'none', cursor: aus ? 'default' : 'pointer', background: 'rgba(255,255,255,.06)', color: aus ? C.linie : C.inkDim, fontSize: TYP.bedien, display: 'grid', placeItems: 'center', padding: 0, flex: '0 0 auto', opacity: aus ? .5 : 1 });
+const klein = (aus = false): CSSProperties => ({ width: 40, height: 40, borderRadius: 12, border: 'none', cursor: aus ? 'default' : 'pointer', background: 'rgba(255,255,255,.06)', color: aus ? C.linie : C.inkDim, fontSize: TYP.bedien, display: 'grid', placeItems: 'center', padding: 0, flex: '0 0 auto', opacity: aus ? .5 : 1 });
 const loeschen: CSSProperties = { background: 'transparent', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: '2px 4px', flex: '0 0 auto' };
 const verweis: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' };
 
@@ -322,12 +322,7 @@ export function KompassView() {
   }
 
   /** Umschalt-Pille im Filter-Editor: leuchtet in der Farbe, wenn sie an ist. */
-  const chip = (an: boolean, farbe: string, text: string, onClick: () => void, key: string) => (
-    <button key={key} onClick={onClick} className="fassbar" style={{
-      fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', border: 'none',
-      background: an ? `${farbe}22` : 'rgba(255,255,255,.06)', color: an ? farbe : C.inkDim, transition: 'background .15s ease, color .15s ease',
-    }}>{text}</button>
-  );
+  const chip = (an: boolean, farbe: string, text: string, onClick: () => void, key: string) => <Wahl key={key} klein an={an} farbe={farbe} onClick={onClick}>{text}</Wahl>;
   /** Eine Zeile im Filter-Editor: Beschriftung links, Pillen rechts. */
   const reihe = (label: string, kinder: ReactNode) => (
     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -346,10 +341,11 @@ export function KompassView() {
       breit={960}
       rechts={abw.length > 0 ? <Knopf leise onClick={zuruecksetzen}>↺ {abw.length} Abweichung{abw.length === 1 ? '' : 'en'} zurücknehmen</Knopf> : undefined}
     >
+      <ZielBezug bereich="privat" />
       {/* ── EBENE 1: DIE LAGE ──
           Kein Zahlenwert, sondern ein Zustand: in welcher Lage läuft das
           System gerade. Alles andere auf dieser Seite justiert nur nach. */}
-      <Karte i={k++} akzent={aktLage.farbe}>
+      <Karte i={k++} ton={aktLage.farbe}>
         <Ueberschrift farbe={aktLage.farbe} rechts="wirkt in Aufgaben · Tag · Dashboard · Postfach">Lage</Ueberschrift>
         <div style={{ display: 'flex', gap: 'clamp(16px,3vw,32px)', alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
           <Zahl gross wert={aktLage.label} label="aktuelle Lage" farbe={aktLage.farbe} />
@@ -411,13 +407,13 @@ export function KompassView() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
           {([['wir', 'Wir'], ['ich', 'Ich']] as const).map(([id, label]) => chip(wessen === id, LEUCHT.schlaf, label, () => setWessen(id), id))}
           {personen.andere.map(a => chip(wessen === a.speicher, LEUCHT.beziehung, a.name, () => setWessen(a.speicher), a.speicher))}
-          <span style={{ fontSize: 12, color: C.inkLeise }}>{fokusLesend ? 'nur lesen — jeder pflegt seinen eigenen' : wessen === 'wir' ? 'gemeinsam, beide dürfen ändern' : 'nur du, die andere Person kann ihn sehen'}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fokusLesend ? 'nur lesen — jeder pflegt seinen eigenen' : wessen === 'wir' ? 'gemeinsam, beide dürfen ändern' : 'nur du, die andere Person kann ihn sehen'}</span>
         </div>
         {/* Welcher Space (26.09.): gemeinsam, Privat, Business — jeder Space hat seinen eigenen Satz je Horizont. */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
           {chip(fokusSpace === null, C.aktiv, 'Gemeinsam', () => setFokusSpace(null), 'sp-gemeinsam')}
           {(['privat', 'business'] as const).map(sp => chip(fokusSpace === sp, SPACE_FARBE[sp], SPACE_LABEL[sp], () => setFokusSpace(sp), `sp-${sp}`))}
-          <span style={{ fontSize: 12, color: C.inkLeise }}>{fokusSpace ? `nur ${SPACE_LABEL[fokusSpace]} — Planer und ZOE nehmen ihn im ${SPACE_LABEL[fokusSpace]}-Space` : 'gilt überall, wo kein Space-Fokus steht'}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fokusSpace ? `nur ${SPACE_LABEL[fokusSpace]} — Planer und ZOE nehmen ihn im ${SPACE_LABEL[fokusSpace]}-Space` : 'gilt überall, wo kein Space-Fokus steht'}</span>
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10 }}>Ein Satz je Horizont. Was hier steht, taucht im Tag, in der Woche und bei ZOE wieder auf.</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -3,7 +3,7 @@
 // ─── Sport — kleine Bausteine: Felder, Skala, Zahlen deutsch ────────────────
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, TYP, SCHRIFT, LEUCHT, TIEF } from '@/lib/make-one/design';
-import { feld } from '../schlank';
+import { feld, Pillen as UiPillen } from '../ui';
 import { parseZeit, formatZeit } from '@/lib/sport/pace';
 
 export const de = (n: number | null | undefined, stellen = 1) => (n == null || !Number.isFinite(n) ? '—' : n.toLocaleString('de-DE', { maximumFractionDigits: stellen }));
@@ -12,7 +12,7 @@ export const datumLang = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.
 
 export const klein: CSSProperties = { ...feld, padding: '9px 12px', fontSize: TYP.bedien, borderRadius: 10 };
 export const beschriftung: CSSProperties = { fontSize: TYP.mikro, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4, display: 'block' };
-export const hinweisStil: CSSProperties = { fontSize: 12, color: C.inkLeise, lineHeight: 1.5, marginTop: 12 };
+export const hinweisStil: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5, marginTop: 12 };
 
 export function Feld({ label, children, breit }: { label: string; children: ReactNode; breit?: boolean }) {
   return <label style={{ display: 'block', minWidth: 0, gridColumn: breit ? '1 / -1' : undefined }}><span style={beschriftung}>{label}</span>{children}</label>;
@@ -43,7 +43,7 @@ export function Zahlfeld({ wert, onWert, placeholder, schritt, stil, einheit }: 
       <input value={text} inputMode="decimal" placeholder={placeholder} step={schritt} onChange={e => setText(e.target.value)}
         onBlur={() => { const n = Number(text.replace(',', '.')); onWert(text.trim() && Number.isFinite(n) ? n : undefined); }}
         style={{ ...klein, fontVariantNumeric: 'tabular-nums', paddingRight: einheit ? 36 : undefined, ...stil }} />
-      {einheit && <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: C.inkLeise }}>{einheit}</span>}
+      {einheit && <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: TYP.bedien, color: C.inkLeise }}>{einheit}</span>}
     </div>
   );
 }
@@ -55,26 +55,17 @@ export function Skala({ wert, onWert, farbe, umgekehrt }: { wert: number | undef
     <div style={{ display: 'flex', gap: 6 }}>
       {[1, 2, 3, 4, 5].map(n => (
         <button key={n} type="button" onClick={() => onWert(n)} aria-label={`${n} von 5`} aria-pressed={wert === n} className="fassbar" style={{
-          width: 40, height: 36, borderRadius: 10, border: `1px solid ${wert != null && n <= wert ? TIEF.rand(f(wert)) : 'rgba(255,255,255,.08)'}`, cursor: 'pointer',
-          fontFamily: SCHRIFT.display, fontSize: 13, fontWeight: 700, background: wert != null && n <= wert ? TIEF.flaeche(f(wert)) : 'rgba(255,255,255,.04)', color: wert != null && n <= wert ? f(wert) : C.inkLeise,
+          width: 40, height: 40, borderRadius: 12, border: `1px solid ${wert != null && n <= wert ? TIEF.rand(f(wert)) : 'rgba(255,255,255,.08)'}`, cursor: 'pointer',
+          fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, background: wert != null && n <= wert ? TIEF.flaeche(f(wert)) : 'rgba(255,255,255,.04)', color: wert != null && n <= wert ? f(wert) : C.inkLeise,
         }}>{n}</button>
       ))}
     </div>
   );
 }
 
-/** Auswahl aus Pillen — Art des Laufs, Art der Einheit. */
+/** Auswahl aus Pillen — Art des Laufs, Art der Einheit (Standard-Baustein, Tippziel 44 px am Handy). */
 export function Pillen<T extends string>({ liste, wert, onWert, farbe = C.aktiv }: { liste: { id: T; label: string }[]; wert: T; onWert: (id: T) => void; farbe?: string }) {
-  return (
-    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-      {liste.map(x => (
-        <button key={x.id} type="button" onClick={() => onWert(x.id)} aria-pressed={wert === x.id} className="fassbar" style={{
-          padding: '7px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 700,
-          border: `1px solid ${wert === x.id ? TIEF.rand(farbe) : 'rgba(255,255,255,.08)'}`, background: wert === x.id ? TIEF.flaeche(farbe) : 'rgba(255,255,255,.04)', color: wert === x.id ? farbe : C.inkDim,
-        }}>{x.label}</button>
-      ))}
-    </div>
-  );
+  return <UiPillen liste={liste} aktiv={wert} onWahl={onWert} farbe={farbe} />;
 }
 
 export function Hinweis({ children }: { children: ReactNode }) {

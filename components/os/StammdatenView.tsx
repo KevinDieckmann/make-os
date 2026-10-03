@@ -15,7 +15,7 @@ import { Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { KARTEIEN, verdecken, type Feld, type Kartei } from '@/lib/make-one/stammdaten-data';
 import { modusLesen, beiWechsel } from '@/lib/make-one/arbeitsplatz-browser';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, Hinweis, feld, LEUCHT } from './ui';
 
 const HAAR = 'rgba(255,255,255,.06)';
 const beschriftung: CSSProperties = { fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
@@ -68,20 +68,8 @@ export function StammdatenView() {
         </p>
       </Karte>
 
-      {ladeFehler && (
-        <Karte i={1} akzent={LEUCHT.kritisch}>
-          <Ueberschrift farbe={LEUCHT.kritisch}>Stammdaten nicht geladen</Ueberschrift>
-          <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: 0 }}>
-            Damit nichts überschrieben wird, ist das Speichern gesperrt. Seite neu laden.
-          </p>
-        </Karte>
-      )}
-      {fehler && !ladeFehler && (
-        <Karte i={1} akzent={LEUCHT.achtung}>
-          <Ueberschrift farbe={LEUCHT.achtung}>Nicht gespeichert</Ueberschrift>
-          <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: 0 }}>{fehler}</p>
-        </Karte>
-      )}
+      {ladeFehler && <Hinweis art="kritisch" titel="Stammdaten nicht geladen">Damit nichts überschrieben wird, ist das Speichern gesperrt. Seite neu laden.</Hinweis>}
+      {fehler && !ladeFehler && <Hinweis art="achtung" titel="Nicht gespeichert">{fehler}</Hinweis>}
 
       {d === null && !ladeFehler && <Karte i={1}><Leer>lädt …</Leer></Karte>}
 
@@ -122,7 +110,7 @@ function KarteiBlock({ i, kartei, saetze, offen, aufdecken, aendern, gesperrt }:
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{s[kartei.titelFeld] || 'Ohne Namen'}</div>
               {kartei.untertitelFeld && s[kartei.untertitelFeld] && (
-                <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2 }}>{s[kartei.untertitelFeld]}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{s[kartei.untertitelFeld]}</div>
               )}
             </div>
             <button

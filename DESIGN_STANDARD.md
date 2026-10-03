@@ -73,7 +73,7 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 4. Schriftgrößen 11–12,5 px in Fließtext → `TYP.bedien` (13); Eingaben → `eingabe`/`feld`.
 5. Foto Handy (375) + Rechner (1280) vorher/nachher, Messung: keine Tippziele < 44 px, keine Eingaben < 16 px am Handy, kein seitlicher Überlauf, Konsole sauber.
 
-Stand 03.10.: Muster **Markttraktion** (alle Reiter) und **Netzwerken** umgestellt. Zweiter Bereich: **Zahlen & Finanzen**, dritter: **Kern** (globale Shell, Aufgaben, Kalender, Inbox — siehe unten). Dazu **Planung** (Jahr/Monat/Quartal, Ziel- und Meilenstein-Seite, Meilenstein-Fenster) und **Fokus** — Leitidee „immer der Fokus auf die Ziele, visualisiert durch die Lichtfäden“. Folgt: der Rest.
+Stand 03.10.: Muster **Markttraktion** (alle Reiter) und **Netzwerken** umgestellt. Zweiter Bereich: **Zahlen & Finanzen**, dritter: **Kern** (globale Shell, Aufgaben, Kalender, Inbox — siehe unten). Dazu **Planung** (Jahr/Monat/Quartal, Ziel- und Meilenstein-Seite, Meilenstein-Fenster) und **Fokus** — Leitidee „immer der Fokus auf die Ziele, visualisiert durch die Lichtfäden“. Folgt: der Rest. Dann **Privat · ZOE · System** (Gesundheit, Familie, Brain, Konto, ZOE — siehe „Umgestellt: Privat · ZOE · System“).
 
 ## Umgestellt: Zahlen & Finanzen (03.10.)
 Alle 51 Dateien des Bereichs hängen an `components/os/ui` (keine Bausteine mehr aus `schlank.tsx`): **Zahlen** (Privat · Business · Steuern · Gesamt · Head of Finance, mit Haushalt-Reitern Übersicht bis Schulden), **Grundlage**, **Liquidität**, **Buchungen**, **Rechnungen & Zahlungen**, **Controlling & Ziele**, **Business-Altbestand** und die **Finanzplanung jetzt** (Lage · Planen · Privat · Business · Gesamt · Buchungen & Check · Ziele & Töpfe · Protokoll, alle 19 Unterseiten). Rechnung, Felder und Funktionen sind unverändert — jedes Feld bleibt anpassbar.
@@ -88,6 +88,25 @@ Was für Zahlen gilt (zusätzlich zu den 13 Regeln):
 7. **Fehler** sind `Hinweis art="kritisch"` mit Weg zurück (z. B. „Noch einmal versuchen“), Erfolg `gut`, Erklärungen unter einer Karte bleiben Notiz in `inkDim` (13 px).
 
 Gemeinsame Teile der Finanzplanung (`finanzplan/teile.tsx`: `Kachel`, `Etikett`, `StatusPille`, `Tabelle`, `KnopfKlein`, `Pillen`, `Hinweis`, `Nichts`) und der Haushaltsfinanzen (`haushalt/gemeinsam.tsx`) reichen jetzt die Standard-Bausteine durch — gleiche Namen, damit die Seiten unverändert bleiben. Wächter: `tests/design-finanzen.test.ts`.
+
+## Umgestellt: Privat · ZOE · System (03.10.)
+Kevins Leitidee: **„immer der Fokus auf die Ziele“.** Wo ein Bereich Ziele hat, steht der Bezug ruhig unter dem Seitenkopf — Funktion und Daten unverändert, reine Darstellung und Struktur.
+
+**Umgestellt (alle über `components/os/ui`, kein `schlank`-Import mehr):** Gesundheit (Heute · Index · Verlauf · Ernährung · Körper), Journal, Energie, Routinen-Planer, Sport (Plan · Hyrox · Running · Gym · Erholung), Säulen-Seite, Familie & Partnerschaft (Wir zwei · Familie · Rahmen · Paar-Gespräch), Kontakte privat, Kompass, Brain (Fragen · Stöbern · Regeln · Inbox), Privat-Übersicht, Home, Wachstum, die Flächen (`flaeche/`), ZOE (Empfang, Aufträge & Freigaben schlank und voll, Agenten, Loops, Head of IT) und System (Konto, System-Übersicht, Verbindungen, Datenbasis, Stammdaten). Nicht berührt: Heute, Planung (Ziele/Meilensteine/Fokus), Aufgaben, Kalender, Inbox, Kopfzeile/Leiste/Shell, ZoePanel.
+
+**Neu im Standard:**
+| Baustein | Zweck |
+|---|---|
+| `ZielBezug bereich=…` | Ruhiger Chip „ZAHLT EIN AUF · <Jahresziel> · 40 %“ unter dem Kopf (44 px, Link ins Ziel der Planung). Auswahl rein in `lib/make-one/ziel-bezug.ts`: 1. Meilensteine des Bereichs mit `zielId` · 2. Stichwort im Zieltitel · 3. oberstes offenes privates Jahresziel (dann ehrlich „OBERSTES ZIEL“). Farbe nach der EINEN Farbregel für Ziele (`zielFarben`, lib/lichtfaeden/modell.ts) — dieselbe wie im Zeitstrahl und an den Ziel-Chips der Aufgaben (`ZielChip`, je Aufgabe; `ZielBezug` ist der Bezug je Bereich). Ohne Ziel steht ein leiser Weg in die Planung; keine Schreibwege. Bereiche: `gesundheit` · `training` · `beziehung` · `wissen` · `privat`. Einsatz: Gesundheit, Journal, Sport, Säule Gesundheit/Familie, Familie & Partnerschaft, Kompass, Wachstum, Privat-Übersicht. |
+| `Schalter` | Ein/Aus (Rolle `switch`): sichtbar 40 × 24, Tippfläche 56 × 44 — Routinen, Streak, Routinen-Planer. |
+
+**Regeln für diesen Bereich (zusätzlich zu den 13):**
+1. **Ziel-Bezug** nur dort, wo ein Bereich auf ein Jahresziel einzahlt — höchstens ein Chip je Ansicht, nie als Schmuck in Karten.
+2. **Umschalter im Inhalt, nicht im Kopf:** Gesundheit (5 Segmente), Familie (3), Sport (5), Paar-Gespräch (Schritte als `Reiter`) stehen als EINE wischbare Leiste unter dem Kopf; im Kopf bleibt höchstens eine Aktion (`ui-nur-breit`/`ui-nur-schmal`, wenn sie lang ist).
+3. **Formulare mit sichtbarer Beschriftung** (`Feldzeile`), Platzhalter nur als Beispiel — nie als einzige Beschriftung. Konto: Felder untereinander (`.konto-feldreihe`), Enter schickt ab (Formular), nichts wird abgeschnitten (Praxis-Fund: „altes Passw…“, „neues, min…“).
+4. **Speichern mit Enter:** Ein einzelnes Eingabefeld mit Speichern-Knopf ist ein `<form onSubmit>` mit `Knopf typ="submit"` (Praxis-Fund N7: Privat › Rücklage).
+5. **Hero-Karte je Ansicht getönt (`ton`):** Gesundheit der Morgen-Check (Zonenfarbe), Familie das Pflege-Rhythmus-Paar-Gespräch, Konto der Zweite Faktor, Brain der Chat, ZOE die Freigaben, HOI die Gesamtampel, Wachstum der Score.
+6. **Fehler und Meldungen als `Hinweis`** (kritisch mit `role=alert`, Rückmeldung `gut`/`info` mit `role=status`), mit „Noch einmal versuchen“ wo es einen Weg gibt.
 
 ## Lichtfäden (03.10., v2 „alle Stränge“)
 Kevin: „Hier bei der Planung wäre geil, wenn das so reinkommt mit mehreren Elektro-Fäden … das kann sich auch mit durch die Homepage ziehen.“ —

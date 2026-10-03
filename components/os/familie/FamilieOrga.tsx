@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Leer, Liste, Zeile, Haken, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Leer, Liste, Zeile, Haken, LEUCHT } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { KINDER_KARTEN } from '@/lib/familie/katalog';
 import type { Karte as KarteT, WichtigerTag, Mensch } from '@/lib/familie/typen';

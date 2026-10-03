@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
-import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, Leer, Schalter, ZielBezug, feld, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { BESCHWERDEN, HEBEL, AUFBAU, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
 
@@ -53,24 +53,13 @@ interface Stand {
 
 const zone = (r?: number) => (r == null ? C.inkLeise : r >= 66 ? LEUCHT.gut : r >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
 
-function Schalter({ an, onChange, aus }: { an: boolean; onChange?: () => void; aus?: boolean }) {
-  return (
-    <button role="switch" aria-checked={an} onClick={onChange} disabled={aus} style={{
-      width: 40, height: 24, borderRadius: 12, border: 'none', padding: 0, position: 'relative', flex: '0 0 auto',
-      background: an ? C.aktiv : C.linie, cursor: aus ? 'default' : 'pointer', transition: 'background .18s ease',
-    }}>
-      <span style={{ position: 'absolute', top: 3, left: an ? 19 : 3, width: 18, height: 18, borderRadius: '50%', background: an ? C.grund : C.inkDim, transition: 'left .18s cubic-bezier(.22,1,.36,1)' }} />
-    </button>
-  );
-}
-
 function Zeile({ wann, titel, unter, kinder }: { wann?: string; titel: React.ReactNode; unter?: React.ReactNode; kinder: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 2px', borderBottom: `1px solid ${C.linie}`, minHeight: 48 }}>
       {wann && <span style={{ fontSize: 11, color: C.inkLeise, width: 56, letterSpacing: '.04em', textTransform: 'uppercase', flex: '0 0 auto' }}>{wann}</span>}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: TYP.body }}>{titel}</div>
-        {unter && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 1 }}>{unter}</div>}
+        {unter && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 1 }}>{unter}</div>}
       </div>
       {kinder}
     </div>
@@ -89,7 +78,7 @@ function Balken({ titel, werte, max, farbe, farbeJe, einheit, besserIst, tage }:
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
         <span style={{ fontSize: TYP.body, fontWeight: 500 }}>{titel}</span>
         <span style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, color: letzter == null ? C.inkLeise : C.ink, fontVariantNumeric: 'tabular-nums' }}>{letzter != null ? de(letzter) : '—'}{letzter != null && einheit}</span>
-        <span style={{ fontSize: 12, color: C.inkLeise }}>{mittel != null ? `Ø ${de(mittel)}${einheit ?? ''} · ${echte.length} von 30 Tagen` : 'noch keine Werte'}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{mittel != null ? `Ø ${de(mittel)}${einheit ?? ''} · ${echte.length} von 30 Tagen` : 'noch keine Werte'}</span>
       </div>
       <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 56 }}>
         {werte.map((w, i) => (
@@ -97,7 +86,7 @@ function Balken({ titel, werte, max, farbe, farbeJe, einheit, besserIst, tage }:
             style={{ flex: 1, height: w == null ? 3 : Math.max(3, (Math.min(w, max) / max) * 56), borderRadius: 2, background: w == null ? C.linie : farbeJe ? farbeJe(w) : farbe, opacity: w == null ? 1 : 0.55 + 0.45 * (i / 29) }} />
         ))}
       </div>
-      {besserIst && <div style={{ fontSize: 11, color: C.inkLeise, marginTop: 4 }}>{besserIst === 'tief' ? 'niedriger ist besser' : 'höher ist besser'}</div>}
+      {besserIst && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>{besserIst === 'tief' ? 'niedriger ist besser' : 'höher ist besser'}</div>}
     </div>
   );
 }
@@ -220,23 +209,29 @@ export function GesundheitView() {
           {personen.map(p => <button key={p.speicher} onClick={() => { setAnsicht(p.speicher); setStand(null); setVerlauf(null); }} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: ansicht === p.speicher ? C.ink : C.inkLeise, borderBottom: `1px solid ${ansicht === p.speicher ? C.ink : 'transparent'}` }}>{p.name.split(' ')[0]}</button>)}
         </div>
       ) : undefined}
-      rechts={<Segmente liste={SEGMENTE} aktiv={segment} onWahl={geheZu} />}>
+      >
+      {/* Die Umschalter stehen im Inhalt als EINE wischbare Leiste (Standard, Regel 11) — nicht im Kopf. */}
+      <Segmente liste={SEGMENTE} aktiv={segment} onWahl={geheZu} />
+      <ZielBezug bereich="gesundheit" />
 
       {segment === 'heute' && (
         <>
           <Flaeche seite="gesundheit-heute">
           <Kachel id="index-kurz" titel="Gesundheits-Index" breite={3}><GesundheitIndexKurz fuer={!eigene ? ansicht : undefined} onOeffnen={() => geheZu('index')} stand={hl} /></Kachel>
           <Kachel id="morgen" titel="Morgen-Check" breite={3}>
-          <Karte i={0} akzent={rec != null ? zone(rec) : undefined} id="morgen" style={{ scrollMarginTop: 90 }}>
+          <Karte i={0} ton={rec != null ? zone(rec) : undefined} id="morgen" style={{ scrollMarginTop: 90 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'clamp(8px,2vw,20px)', margin: '4px 0 8px' }}>
               <button type="button" onClick={() => geheZu('verlauf')} className="fassbar" title="Verlauf 30 Tage" style={{ all: 'unset', cursor: 'pointer' }}><Ring label="Recovery" wert={rec != null ? String(rec) : undefined} einheit="%" farbe={zone(rec)} anteil={rec != null ? rec / 100 : undefined}
                 unter={rec != null ? <Chip farbe={zone(rec)}>{rec >= 66 ? 'Grün' : rec >= 40 ? 'Gelb' : 'Rot'}</Chip> : undefined} /></button>
               <button type="button" onClick={() => geheZu('verlauf')} className="fassbar" title="Verlauf 30 Tage" style={{ all: 'unset', cursor: 'pointer' }}><Ring label="Schlaf" wert={schlaf != null ? String(schlaf).replace('.', ',') : undefined} einheit="h" farbe={LEUCHT.schlaf} anteil={schlaf != null ? schlaf / 8 : undefined} /></button>
-              <div style={{ display: 'grid', justifyItems: 'center', gap: 6 }}>
-                <Ring label="Anspannung" wert={anspannung != null ? String(anspannung) : undefined} einheit="/5" farbe={anspannung != null && anspannung >= 4 ? LEUCHT.kritisch : anspannung != null && anspannung >= 3 ? LEUCHT.achtung : LEUCHT.puls} anteil={anspannung != null ? anspannung / 5 : undefined} />
-                {eigene && <div style={{ display: 'flex', gap: 4 }}>{[1, 2, 3, 4, 5].map(n => <button key={n} type="button" onClick={() => anspannungSetzen(n)} aria-label={`Anspannung ${n}`} className="fassbar" style={{ width: 24, height: 24, borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.display, fontSize: 12, fontWeight: 700, background: (anspannung ?? 0) >= n ? (n >= 4 ? LEUCHT.kritisch : n >= 3 ? LEUCHT.achtung : LEUCHT.puls) : 'rgba(255,255,255,.07)', color: (anspannung ?? 0) >= n ? C.grund : C.inkLeise }}>{n}</button>)}</div>}
-              </div>
+              <Ring label="Anspannung" wert={anspannung != null ? String(anspannung) : undefined} einheit="/5" farbe={anspannung != null && anspannung >= 4 ? LEUCHT.kritisch : anspannung != null && anspannung >= 3 ? LEUCHT.achtung : LEUCHT.puls} anteil={anspannung != null ? anspannung / 5 : undefined} />
             </div>
+            {eigene && (
+              <div role="group" aria-label="Anspannung heute von 1 bis 5" style={{ display: 'grid', gridTemplateColumns: 'auto repeat(5, minmax(44px, 56px))', gap: 6, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, paddingRight: 6 }}>Anspannung</span>
+                {[1, 2, 3, 4, 5].map(n => <button key={n} type="button" onClick={() => anspannungSetzen(n)} aria-label={`Anspannung ${n}`} aria-pressed={anspannung === n} className="fassbar" style={{ height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.display, fontSize: TYP.body, fontWeight: 700, background: (anspannung ?? 0) >= n ? (n >= 4 ? LEUCHT.kritisch : n >= 3 ? LEUCHT.achtung : LEUCHT.puls) : 'rgba(255,255,255,.07)', color: (anspannung ?? 0) >= n ? C.grund : C.inkLeise }}>{n}</button>)}
+              </div>
+            )}
             <p style={{ textAlign: 'center', color: C.inkDim, fontSize: TYP.body, margin: '14px 0 0', lineHeight: 1.5 }}>
               {satz ? <><b style={{ color: C.ink, fontWeight: 600 }}>{satz.split('.')[0]}.</b> {satz.split('.').slice(1).join('.').trim()}</> : null}
               {stand && rec == null && <> Whoop-Export einlesen oder morgens dem Boten sagen.</>}
@@ -299,7 +294,7 @@ export function GesundheitView() {
                 <Zeile wann="Abend" titel="Sauber geblieben"
                   unter={stand?.streak.aktuell ? `Tag ${stand.streak.sauberTage} seit dem letzten Rückfall` : stand?.streak.eintraege30 ? 'seit über drei Tagen kein Eintrag' : 'noch nicht angefangen'}
                   kinder={<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {eigene && <button onClick={() => streakSetzen(false)} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: 12, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>Rückfall</button>}
+                    {eigene && <button onClick={() => streakSetzen(false)} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>Rückfall</button>}
                     <Schalter an={!!stand?.streak.aktuell && (stand.haut.tage[0]?.d === heute ? true : stand.streak.aktuell)} onChange={() => streakSetzen(true)} aus={!eigene} />
                   </div>} />
               )}
@@ -315,7 +310,7 @@ export function GesundheitView() {
       {segment === 'verlauf' && (
         <Karte i={0}>
           <Ueberschrift>30 Tage</Ueberschrift>
-          {!verlauf ? <div style={{ color: C.inkLeise, fontSize: TYP.bedien }}>lade …</div> : (
+          {!verlauf ? <Leer>Der Verlauf lädt …</Leer> : (
             <>
               {/* Recovery je Tag in seiner Zone — wie Whoop: grün ab 66, gelb ab 40, darunter rot */}
               <Balken titel="Recovery" einheit="%" max={100} farbe={LEUCHT.gut} farbeJe={zone} besserIst="hoch" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.rec ?? null)} />
@@ -341,32 +336,32 @@ export function GesundheitView() {
           <Kachel id="meilensteine" titel="Gesundheits-Meilensteine" breite={3}>
           <Karte i={4}>
             <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/jahr" style={{ color: C.inkLeise, textDecoration: 'none' }}>pflegen ›</Link>}>Gesundheits-Meilensteine</Ueberschrift>
-            {!etappen.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keiner — <Link href="/os/planung/jahr" style={{ color: C.inkDim }}>in der Jahresplanung anlegen ›</Link></div>}
-            {etappen.map(g => { const spaet = !!g.faellig && g.faellig < heute && !g.erledigt; return <Link key={g.id} href={`/os/planung/jahr?m=${encodeURIComponent(g.id)}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}><Zeile titel={<span style={{ textDecoration: g.erledigt ? 'line-through' : 'none', color: g.erledigt ? C.inkLeise : C.ink }}>{g.titel}</span>} unter={spaet ? `überfällig seit ${g.faellig!.slice(8)}.${g.faellig!.slice(5, 7)}. — zählt 0 im Index` : g.faellig ? `fällig ${g.faellig.slice(8)}.${g.faellig.slice(5, 7)}.` : undefined} kinder={<span style={{ fontSize: 12, color: spaet ? LEUCHT.kritisch : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{g.fortschritt} %</span>} /><div style={{ margin: '-4px 0 10px' }}><Fortschritt anteil={g.fortschritt / 100} farbe={spaet ? LEUCHT.kritisch : LEUCHT.schlaf} /></div></Link>; })}
+            {!etappen.length && <Leer>Noch kein Gesundheits-Meilenstein — <Link href="/os/planung/jahr" style={{ color: C.inkDim }}>in der Jahresplanung anlegen ›</Link></Leer>}
+            {etappen.map(g => { const spaet = !!g.faellig && g.faellig < heute && !g.erledigt; return <Link key={g.id} href={`/os/planung/jahr?m=${encodeURIComponent(g.id)}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}><Zeile titel={<span style={{ textDecoration: g.erledigt ? 'line-through' : 'none', color: g.erledigt ? C.inkLeise : C.ink }}>{g.titel}</span>} unter={spaet ? `überfällig seit ${g.faellig!.slice(8)}.${g.faellig!.slice(5, 7)}. — zählt 0 im Index` : g.faellig ? `fällig ${g.faellig.slice(8)}.${g.faellig.slice(5, 7)}.` : undefined} kinder={<span style={{ fontSize: TYP.bedien, color: spaet ? LEUCHT.kritisch : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{g.fortschritt} %</span>} /><div style={{ margin: '-4px 0 10px' }}><Fortschritt anteil={g.fortschritt / 100} farbe={spaet ? LEUCHT.kritisch : LEUCHT.schlaf} /></div></Link>; })}
           </Karte>
           </Kachel>
           <Kachel id="zusammenhaenge" titel="Zusammenhänge" breite={3}>
           <Karte i={5}>
             <Ueberschrift>Zusammenhänge</Ueberschrift>
             {ZUSAMMENHAENGE.map(z => <Zeile key={z} titel={z} kinder={<span />} />)}
-            <p style={{ fontSize: 12, color: C.inkLeise, marginTop: A.xl, lineHeight: 1.5 }}>{CARE_NOTE}</p>
+            <p style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: A.xl, lineHeight: 1.5 }}>{CARE_NOTE}</p>
           </Karte>
           </Kachel>
           <Kachel id="profil" titel="Profil" breite={3}>
           <Karte i={1}>
-            <Ueberschrift farbe={LEUCHT.puls} rechts={<button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>aktuell im Verlauf ›</button>}>Profil · Stand 29.07.</Ueberschrift>
+            <Ueberschrift farbe={LEUCHT.puls} rechts={<button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>aktuell im Verlauf ›</button>}>Profil · Stand 29.07.</Ueberschrift>
             {AUFBAU.map(s => <Zeile key={s.phase} wann={s.state === 'now' ? 'Jetzt' : s.state === 'next' ? 'Danach' : 'Später'} titel={`${s.phase} · ${s.name}`} unter={s.desc} kinder={<span />} />)}
           </Karte>
           </Kachel>
           <Kachel id="aufmerksamkeit" titel="Was Aufmerksamkeit braucht" breite={3}>
           <Karte i={2}>
-            <Ueberschrift farbe={LEUCHT.achtung} rechts={<span>Stand 29.07. · <button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>aktuell ›</button></span>}>Was Aufmerksamkeit braucht</Ueberschrift>
+            <Ueberschrift farbe={LEUCHT.achtung} rechts={<span>Stand 29.07. · <button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>aktuell ›</button></span>}>Was Aufmerksamkeit braucht</Ueberschrift>
             {BESCHWERDEN.map(b => <Zeile key={b.name} titel={b.name} unter={b.note} kinder={<Chip farbe={b.tone === 'crit' ? LEUCHT.kritisch : b.tone === 'watch' ? LEUCHT.achtung : LEUCHT.gut}>{b.status}</Chip>} />)}
           </Karte>
           </Kachel>
           <Kachel id="hebel" titel="Hebel · live" breite={3}>
           <Karte i={3}>
-            <Ueberschrift farbe={LEUCHT.gut} rechts={<button onClick={() => geheZu('index')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Index ›</button>}>Hebel · live</Ueberschrift>
+            <Ueberschrift farbe={LEUCHT.gut} rechts={<button onClick={() => geheZu('index')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Index ›</button>}>Hebel · live</Ueberschrift>
             {HEBEL.map(h => {
               const k = hebel?.find(x => x.id === HEBEL_KENNZAHL[h.name]);
               const f = !k || !k.gemessen ? C.inkLeise : k.ampel === 'gruen' ? LEUCHT.gut : k.ampel === 'gelb' ? LEUCHT.achtung : LEUCHT.kritisch;

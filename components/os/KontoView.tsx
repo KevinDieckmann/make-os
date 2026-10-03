@@ -9,7 +9,7 @@ import { karteCacheLeeren } from './netzwerken/karten-daten';
 import { vorAbmelden } from '@/lib/netzwerken/abmelden';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, Hinweis, Feldzeile, feld, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { HaushaltZuordnung } from './HaushaltZuordnung';
 import { TeamKarte } from './TeamKarte';
@@ -74,35 +74,41 @@ export function KontoView() {
   const kopieren = (t: string) => { try { void navigator.clipboard.writeText(t); setMeldung('Link kopiert — persönlich weitergeben.'); } catch { setMeldung(t); } };
 
   if (!ich) return <Seite titel="Konto"><Leer>lade …</Leer></Seite>;
+  const meldungKritisch = meldung.includes('nicht') || meldung.includes('Fehler');
   const mono: React.CSSProperties = { fontFamily: SCHRIFT.mono, fontWeight: 700, color: C.aktiv, letterSpacing: '.08em' };
 
   return (
-    <Seite titel={<>Konto <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{ich.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'}</span></>} rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf leise onClick={alleAbmelden}>Alle anderen Geräte abmelden</Knopf><Knopf leise onClick={abmelden}>Abmelden</Knopf></span>}>
-      <Karte i={0}><div style={{ fontSize: TYP.body }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: 13 }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
-        {anmeldungen.length > 0 && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${ART_TEXT[e.art] ?? e.art}${e.detail ? ` ${e.detail}` : ''}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
-      {meldung && <div style={{ fontSize: TYP.bedien, color: meldung.includes('nicht') || meldung.includes('Fehler') ? LEUCHT.kritisch : LEUCHT.gut, marginTop: 10 }}>{meldung}</div>}</Karte>
+    <Seite titel={<>Konto <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{ich.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'}</span></>} rechts={<Knopf leise onClick={abmelden}>Abmelden</Knopf>}>
+      <Karte i={0}>
+        <div style={{ fontSize: TYP.body, overflowWrap: 'anywhere' }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
+        {anmeldungen.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${ART_TEXT[e.art] ?? e.art}${e.detail ? ` ${e.detail}` : ''}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
+        <Liste>
+          <Zeile titel="Andere Geräte abmelden" unter="Meldet alle anderen Geräte ab — dieses bleibt angemeldet." rechts={<Knopf leise onClick={alleAbmelden}>Alle anderen abmelden</Knopf>} />
+        </Liste>
+        {meldung && <div style={{ marginTop: 10 }}><Hinweis art={meldungKritisch ? 'kritisch' : 'gut'}>{meldung}</Hinweis></div>}
+      </Karte>
       <Flaeche seite="konto">
       <Kachel id="zugang" titel="Name & Passwort" breite={3}>
       <Karte i={1}>
       <Ueberschrift>Name</Ueberschrift>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 18 }}>
-        <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') speichern({ name }, 'Name gespeichert.'); }} style={feld} />
+      <div className="konto-feldreihe" style={{ marginBottom: 18 }}>
+        <Feldzeile label="Dein Name"><input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') speichern({ name }, 'Name gespeichert.'); }} style={feld} autoComplete="name" /></Feldzeile>
         <Knopf leise onClick={() => speichern({ name }, 'Name gespeichert.')} aus={name.trim() === ich.name}>Speichern</Knopf>
       </div>
 
       <Ueberschrift>Passwort ändern</Ueberschrift>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) auto', gap: 10, alignItems: 'center' }}>
-        <input type="password" placeholder="altes Passwort" value={pw.alt} onChange={e => setPw(p => ({ ...p, alt: e.target.value }))} style={feld} autoComplete="current-password" />
-        <input type="password" placeholder="neues, mindestens 10 Zeichen" value={pw.neu} onChange={e => setPw(p => ({ ...p, neu: e.target.value }))} style={feld} autoComplete="new-password" />
-        <Knopf leise onClick={() => speichern({ passwortAlt: pw.alt, passwortNeu: pw.neu }, 'Passwort geändert.')} aus={pw.neu.length < 10 || !pw.alt}>Ändern</Knopf>
-      </div>
+      <form className="konto-feldreihe konto-feldreihe-pw" onSubmit={e => { e.preventDefault(); if (pw.neu.length >= 10 && pw.alt) void speichern({ passwortAlt: pw.alt, passwortNeu: pw.neu }, 'Passwort geändert.'); }}>
+        <Feldzeile label="Altes Passwort"><input type="password" value={pw.alt} onChange={e => setPw(p => ({ ...p, alt: e.target.value }))} style={feld} autoComplete="current-password" /></Feldzeile>
+        <Feldzeile label="Neues Passwort (mindestens 10 Zeichen)"><input type="password" value={pw.neu} onChange={e => setPw(p => ({ ...p, neu: e.target.value }))} style={feld} autoComplete="new-password" /></Feldzeile>
+        <Knopf leise typ="submit" aus={pw.neu.length < 10 || !pw.alt}>Ändern</Knopf>
+      </form>
       </Karte>
       </Kachel>
       <Kachel id="adressen" titel="Anmelde-Adressen" breite={3}>
         <AnmeldeAdressen email={ich.email} weitere={ich.weitereEmails ?? []} i={2} geaendert={() => void laden()} />
       </Kachel>
       <Kachel id="zwei-faktor" titel="Zweiter Faktor" breite={3}>
-      <Karte i={2} akzent={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung}>
+      <Karte i={2} ton={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung}>
         <Ueberschrift farbe={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung} rechts={<span>{ich.zweiterFaktorAn ? 'an' : 'aus'}</span>}>Zweiter Faktor · Authenticator</Ueberschrift>
         {zf.phase === 'codes' && zf.codes && (
           <div style={{ display: 'grid', gap: 8 }}>
@@ -118,18 +124,26 @@ export function KontoView() {
               <code style={{ ...mono, fontSize: 15, letterSpacing: '.12em' }}>{zf.geheimnis.replace(/(.{4})/g, '$1 ').trim()}</code>
               <a href={zf.link} style={{ fontSize: TYP.bedien, color: C.aktiv }}>In der App öffnen ›</a>
             </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <input placeholder="Code aus der App" value={zf.code} onChange={e => setZf(z => ({ ...z, code: e.target.value }))} style={{ ...feld, width: 180, fontFamily: SCHRIFT.mono, letterSpacing: '.15em' }} inputMode="numeric" autoComplete="one-time-code" />
-              <Knopf onClick={zfBestaetigen} aus={zf.code.replace(/\s/g, '').length !== 6}>Bestätigen</Knopf>
-              <Knopf leise onClick={() => setZf({ phase: 'aus', code: '', passwort: '' })}>Abbrechen</Knopf>
-            </div>
+            <form className="konto-feldreihe" onSubmit={e => { e.preventDefault(); if (zf.code.replace(/\s/g, '').length === 6) void zfBestaetigen(); }}>
+              <Feldzeile label="Sechsstelliger Code aus der App"><input value={zf.code} onChange={e => setZf(z => ({ ...z, code: e.target.value }))} style={{ ...feld, fontFamily: SCHRIFT.mono, letterSpacing: '.15em' }} inputMode="numeric" autoComplete="one-time-code" /></Feldzeile>
+              <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Knopf typ="submit" aus={zf.code.replace(/\s/g, '').length !== 6}>Bestätigen</Knopf>
+                <Knopf leise onClick={() => setZf({ phase: 'aus', code: '', passwort: '' })}>Abbrechen</Knopf>
+              </span>
+            </form>
           </div>
         )}
         {zf.phase === 'aus' && !ich.zweiterFaktorAn && (
           <Zeile titel="Zweiten Faktor einrichten" unter="Beim Anmelden zusätzlich ein Sechssteller aus der Authenticator-App (Apple Passwörter, Google Authenticator, 1Password). Das ist der wichtigste Schutz für ein Login im offenen Netz." rechts={<Knopf farbe={LEUCHT.gut} onClick={zfBeginnen}>Einrichten</Knopf>} />
         )}
         {zf.phase === 'aus' && ich.zweiterFaktorAn && (
-          <Zeile titel="Zweiter Faktor ist an" unter="Ausschalten nur mit Passwort — danach genügt beim Anmelden wieder das Passwort allein." rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="password" placeholder="Passwort" value={zf.passwort} onChange={e => setZf(z => ({ ...z, passwort: e.target.value }))} style={{ ...feld, width: 150, padding: '8px 10px', fontSize: TYP.bedien }} autoComplete="current-password" /><Knopf leise onClick={zfAus} aus={!zf.passwort}>Ausschalten</Knopf></span>} />
+          <>
+            <Zeile titel="Zweiter Faktor ist an" unter="Ausschalten nur mit Passwort — danach genügt beim Anmelden wieder das Passwort allein." />
+            <form className="konto-feldreihe" onSubmit={e => { e.preventDefault(); if (zf.passwort) void zfAus(); }}>
+              <Feldzeile label="Passwort zum Ausschalten"><input type="password" value={zf.passwort} onChange={e => setZf(z => ({ ...z, passwort: e.target.value }))} style={feld} autoComplete="current-password" /></Feldzeile>
+              <Knopf leise typ="submit" aus={!zf.passwort}>Ausschalten</Knopf>
+            </form>
+          </>
         )}
       </Karte>
       </Kachel>
@@ -141,14 +155,20 @@ export function KontoView() {
             {einladung ? (
               <div style={{ padding: '14px 2px', borderBottom: `1px solid ${C.linie}` }}>
                 <div style={{ ...mono, fontSize: 24 }}>{einladung.code}</div>
-                <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4 }}>gültig {einladung.stunden} Stunden, einmal einlösbar</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>gültig {einladung.stunden} Stunden, einmal einlösbar</div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
                   <Knopf onClick={() => kopieren(einladung.link)}>Link kopieren</Knopf>
                   <span style={{ fontSize: TYP.bedien, color: C.inkLeise, wordBreak: 'break-all' }}>{einladung.link}</span>
                 </div>
               </div>
-            ) : <Zeile titel="Jemanden einladen" unter={'Die Person öffnet den Link, trägt Vorname, E-Mail und Passwort ein — fertig. Für Malin hier „Malin“ eintragen: dann hängen ihre bisherigen Bestände am Konto (ohne diese Bindung bekommt niemand ihren Namen).'} rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input value={fuer} onChange={e => setFuer(e.target.value)} placeholder="Vorname (optional)" aria-label="Für wen" style={{ ...feld, width: 150, padding: '8px 10px', fontSize: TYP.bedien }} /><Knopf onClick={einladen}>Link erzeugen</Knopf></span>} />}
-            {!einladung && <div className="konto-adressen-neu" style={{ gridTemplateColumns: 'minmax(0,1fr)' }}><input type="email" inputMode="email" autoCapitalize="none" value={fuerMail} onChange={e => setFuerMail(e.target.value)} placeholder="E-Mail der Person (optional) — reserviert die Adresse für die Einladung" aria-label="E-Mail der eingeladenen Person" style={feld} autoComplete="off" /></div>}
+            ) : <>
+              <Zeile titel="Jemanden einladen" unter={'Die Person öffnet den Link, trägt Vorname, E-Mail und Passwort ein — fertig. Für Malin hier „Malin“ eintragen: dann hängen ihre bisherigen Bestände am Konto (ohne diese Bindung bekommt niemand ihren Namen).'} />
+              <form className="konto-feldreihe" onSubmit={e => { e.preventDefault(); void einladen(); }}>
+                <Feldzeile label="Vorname (optional)"><input value={fuer} onChange={e => setFuer(e.target.value)} style={feld} autoComplete="off" /></Feldzeile>
+                <Feldzeile label="E-Mail der Person (optional) — reserviert die Adresse für die Einladung"><input type="email" inputMode="email" autoCapitalize="none" value={fuerMail} onChange={e => setFuerMail(e.target.value)} style={feld} autoComplete="off" /></Feldzeile>
+                <Knopf typ="submit">Link erzeugen</Knopf>
+              </form>
+            </>}
           </Liste>
         </Karte>
         </Kachel>
@@ -174,11 +194,11 @@ export function KontoView() {
       <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
       <Liste>
         {!tg ? <Leer>lade …</Leer>
-          : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>TELEGRAM_BOT_TOKEN</code> in <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>.env.local</code>, neu starten.</Leer>
+          : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>TELEGRAM_BOT_TOKEN</code> in <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>.env.local</code>, neu starten.</Leer>
           : tg.chats > 0 ? <Zeile titel="Gekoppelt" unter="ZOE schreibt dir morgens, mittags und abends; du antwortest mit einem Satz." rechts={<Knopf leise onClick={tgWeg}>Entkoppeln</Knopf>} />
           : tg.code ? <Zeile titel={<>Dem Bot {tg.bot ? <b>@{tg.bot}</b> : ''} senden: <span style={{ ...mono, fontSize: 17 }}>/start {tg.code}</span></>} unter={`${tg.minuten} Minuten gültig`} />
           : <Zeile titel="Noch nicht gekoppelt" unter="ZOE schreibt dir morgens, mittags und abends aufs Handy." rechts={<Knopf onClick={tgCode}>Code holen</Knopf>} />}
-        {tg?.fehler && <Leer><span style={{ color: LEUCHT.kritisch }}>{tg.fehler}</span></Leer>}
+        {tg?.fehler && <Hinweis art="kritisch">{tg.fehler}</Hinweis>}
       </Liste>
       </Karte>
       </Kachel>

@@ -12,7 +12,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, zoneFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, zoneFarbe, ZielBezug, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 interface Faktor { label: string; wert: number; echt: boolean; quelle?: string; href?: string }
@@ -50,6 +50,7 @@ export function WachstumView() {
 
   return (
     <Seite titel="Wachstum" unter="Der Score, auf den wir hinarbeiten: wachsen, uns optimieren, Unternehmertum, Firmen optimieren, mehr Geld verdienen. Gesundheit ist die Basis.">
+      <ZielBezug bereich="privat" />
       <Flaeche seite="wachstum">
       <Kachel id="saeulen" titel="Die sechs Säulen · Gesamtansicht" breite={6}>
       <Karte i={1}>
@@ -76,7 +77,7 @@ export function WachstumView() {
                         <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: x.echt ? C.inkDim : C.inkLeise, textAlign: 'right' }}>{x.echt ? x.wert : '—'}</span>
                       </div>
                     ))}
-                    <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>
+                    <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>
                       {(s.faktoren ?? []).filter(x => !x.echt).length > 0 && <>Nicht gemessen: {(s.faktoren ?? []).filter(x => !x.echt).map(x => x.quelle ?? x.label).slice(0, 3).join(' · ')}. </>}
                       <Link href={HREF[s.key] ?? `/os/saeule/${s.key}`} style={{ color: C.inkDim }}>Zur Säule ›</Link>
                     </div>
@@ -91,7 +92,7 @@ export function WachstumView() {
       </Kachel>
       {/* Kevin 26.09.: Gesamtansicht zuerst, der Score danach */}
       <Kachel id="score" titel="Wachstums-Score" breite={6}>
-      <Karte i={0} akzent={perf?.index != null ? zone : undefined}>
+      <Karte i={0} ton={perf?.index != null ? zone : undefined}>
         <Ueberschrift farbe={zone} rechts={perf?.stand ? `Stand ${datum(perf.stand)}` : undefined}>Wachstums-Score</Ueberschrift>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
           <Ring groesse="gross" label="Wachstums-Score" wert={perf?.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf?.index != null ? perf.index / 100 : undefined}

@@ -13,8 +13,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { LEUCHT, Ueberschrift } from './schlank';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { LEUCHT, Ueberschrift } from './ui';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 
 interface Lauf { agent: string; title: string; ts: string }
@@ -95,13 +95,13 @@ export function AgentenHirn() {
               style={{ position: 'absolute', left: `${(p.x / 520) * 100}%`, top: `${(p.y / 380) * 100}%`, transform: 'translate(-50%, -50%)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
               <span className={akt === 'heiss' ? 'zoe-orb-kern' : undefined}
                 style={{ width: akt === 'heiss' ? 16 : 12, height: akt === 'heiss' ? 16 : 12, borderRadius: '50%', background: farbe, boxShadow: akt !== 'ruht' ? `0 0 ${akt === 'heiss' ? 14 : 8}px ${farbe}` : 'none', display: 'inline-block' }} />
-              <span style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, color: akt === 'ruht' ? C.inkLeise : C.inkDim, whiteSpace: 'nowrap', background: 'rgba(11,14,16,.75)', borderRadius: 999, padding: '2px 8px' }}>{a.name.replace('-Agent', '')}</span>
+              <span style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, color: akt === 'ruht' ? C.inkLeise : C.inkDim, whiteSpace: 'nowrap', background: 'rgba(11,14,16,.75)', borderRadius: 999, padding: '2px 8px' }}>{a.name.replace('-Agent', '')}</span>
             </Link>
           );
         })}
       </div>
 
-      <div style={{ fontSize: 12, color: C.inkLeise, textAlign: 'center' }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, textAlign: 'center' }}>
         <span style={{ color: A, textShadow: `0 0 8px ${A}33` }}>●</span> letzte Stunde · <span style={{ color: WARM }}>●</span> heute · <span>●</span> ruht — Klick öffnet den Agenten
       </div>
     </div>

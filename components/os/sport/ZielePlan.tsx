@@ -3,7 +3,7 @@
 // ─── Sport — Ziele & Plan: Saisonziele, Wochenstruktur, Plan gegen Ist ──────
 import { useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, Haken, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, Haken, LEUCHT } from '../ui';
 import { Feld, Raster, Zeitfeld, Zahlfeld, Hinweis, Weg, klein, de, datumLang, SPORT_FARBE } from './teile';
 import { WochenRaster } from './Einstieg';
 import { DISZIPLIN_LABEL, PLAN_LABEL, WOCHENTAGE, WOCHENTAG_LABEL, neueId, type Disziplin, type Op, type SportStand, type Ziel, type Woche } from '@/lib/sport/modell';
@@ -28,7 +28,7 @@ export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportSta
 
   return (
     <>
-      <Karte i={0} akzent={ziel ? FARBE_JE[ziel.art] : undefined}>
+      <Karte i={0} ton={ziel ? FARBE_JE[ziel.art] : undefined}>
         <Ueberschrift farbe={ziel ? FARBE_JE[ziel.art] : undefined} rechts={ziel?.datum ? datumLang(ziel.datum) : undefined}>Dein Ziel</Ueberschrift>
         {!ziel ? <Leer>Noch kein Ziel — unten „+ Ziel“ tippen.</Leer> : (
           <>
@@ -61,7 +61,7 @@ export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportSta
             <Haken an={!!z.erledigt} onChange={() => void schicke([{ op: 'ziel', eintrag: { ...z, erledigt: !z.erledigt } }], z.erledigt ? 'Wieder offen.' : 'Geschafft!')} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: TYP.body, fontWeight: 500, textDecoration: z.erledigt ? 'line-through' : undefined, color: z.erledigt ? C.inkLeise : C.ink }}>{z.titel}</div>
-              <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2 }}>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>
                 {DISZIPLIN_LABEL[z.art]}{z.datum ? ` · ${datumLang(z.datum)} · ${wochenBis(heute, z.datum)} Wo.` : ''}{z.zielzeitSek ? ` · ${formatZeit(z.zielzeitSek)}` : ''}{z.distanzKm ? ` · ${de(z.distanzKm)} km` : ''}{z.zielKg ? ` · ${de(z.zielKg)} kg` : ''}
               </div>
             </div>
@@ -79,8 +79,8 @@ export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportSta
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
               <Knopf onClick={async () => { const ok = await schicke([{ op: 'woche', tage: wocheBearbeiten, planStart: stand.planStart ?? montagVon(heute) }], 'Woche gespeichert.'); if (ok) setWocheBearbeiten(null); }}>Speichern</Knopf>
               <Knopf leise onClick={() => setWocheBearbeiten(null)}>Abbrechen</Knopf>
-              <span style={{ color: C.inkLeise, fontSize: 12.5 }}>Vorschlag: </span>
-              {ARTEN.map(a => <button key={a.id} type="button" onClick={() => setWocheBearbeiten(vorschlagWoche(a.id, stand.ausgang.tageProWoche ?? 4))} style={{ all: 'unset', cursor: 'pointer', color: C.inkDim, fontSize: 12.5, textDecoration: 'underline' }}>{a.label}</button>)}
+              <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Vorschlag: </span>
+              {ARTEN.map(a => <button key={a.id} type="button" onClick={() => setWocheBearbeiten(vorschlagWoche(a.id, stand.ausgang.tageProWoche ?? 4))} style={{ all: 'unset', cursor: 'pointer', color: C.inkDim, fontSize: TYP.bedien, textDecoration: 'underline' }}>{a.label}</button>)}
             </div>
           </>
         ) : (
@@ -90,7 +90,7 @@ export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportSta
                 <div key={t} style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: p.art === 'frei' ? 'rgba(255,255,255,.03)' : `${f}1A`, outline: istHeute ? `1px solid ${C.ink}55` : undefined }}>
                   <div style={{ fontSize: TYP.mikro, color: C.inkLeise, letterSpacing: '.06em' }}>{WOCHENTAG_LABEL[t].toUpperCase()}</div>
                   <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 13, color: p.art === 'frei' ? C.inkLeise : f, marginTop: 4 }}>{PLAN_LABEL[p.art]}</div>
-                  {p.dauerMin ? <div style={{ fontSize: 11, color: C.inkDim }}>{p.dauerMin}′</div> : null}
+                  {p.dauerMin ? <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{p.dauerMin}′</div> : null}
                 </div>
               ); })}
             </div>
@@ -101,7 +101,7 @@ export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportSta
             </div>
             {dl && <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <Chip farbe={dl.jetzt ? LEUCHT.achtung : C.inkDim}>{dl.jetzt ? 'Deload-Woche' : `Woche ${dl.wocheImBlock} von ${dl.rhythmus}`}</Chip>
-              <span style={{ fontSize: 12.5, color: C.inkLeise }}>{dl.jetzt ? 'Diese Woche leichter: Umfang runter, Technik rauf.' : `Nächste leichte Woche ab ${datumLang(dl.naechsterMontag)}.`}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{dl.jetzt ? 'Diese Woche leichter: Umfang runter, Technik rauf.' : `Nächste leichte Woche ab ${datumLang(dl.naechsterMontag)}.`}</span>
             </div>}
             {umfang.einheiten === 0 && <Leer>Noch kein Rhythmus — „Ändern“ und einen Vorschlag wählen.</Leer>}
           </>

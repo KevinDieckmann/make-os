@@ -11,7 +11,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Seite } from './schlank';
+import { Seite } from './ui';
 import { Flaeche } from './flaeche/Flaeche';
 import type { StandardPlatz } from '@/lib/flaeche/modell';
 

@@ -437,7 +437,7 @@ export function ZoePanel() {
           {/* Weg ins volle Hirn. Das Symbol selbst öffnet weiter dieses Fenster:
               eine Frage im Vorbeigehen soll die Seite nicht verlassen, auf der
               Kevin gerade arbeitet. Wer den ganzen Empfang will, geht hier. */}
-          <Link href="/zoe" title="Zum Hirn — der ganze Empfang" style={chip(J)}>
+          <Link href="/zoe" title="Zum Hirn — der ganze Empfang" className="zoe-hirn-link" style={chip(J)}>
             ◎ Hirn
           </Link>
           {stapelOffen > 0 && (

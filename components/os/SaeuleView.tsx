@@ -17,7 +17,7 @@ import { TeamKarte } from './TeamKarte';
 import { eur, computeMetrics, type FinanceState, type Kasse } from '@/lib/make-one/finance-data';
 import { localDay } from '@/lib/zeit';
 import { aufgabeStatusSetzen } from '@/lib/aufgaben/status';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Ring, Zahl, Balken, Fortschritt, Haken, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Ring, Zahl, Balken, Fortschritt, Haken, feld, LEUCHT, ZielBezug } from './ui';
 
 export { SAEULEN_META };
 
@@ -235,7 +235,7 @@ function WerkzeugPlanung() {
           })}
         </Liste>
       )}
-      <p style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, marginBottom: 0, lineHeight: 1.5 }}>{offen.length} offen — bis 12 gilt als tragbar. Was hier nicht brennt, muss heute nicht in deinen Kopf.</p>
+      <p style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, marginBottom: 0, lineHeight: 1.5 }}>{offen.length} offen — bis 12 gilt als tragbar. Was hier nicht brennt, muss heute nicht in deinen Kopf.</p>
     </Karte>
   );
 }
@@ -362,7 +362,7 @@ function WerkzeugSozial() {
             );
           })}
         </Liste>
-        <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0' }}>Zählt in die Säule ein.</p>
+        <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '10px 0 0' }}>Zählt in die Säule ein.</p>
       </Karte>
       {/* Team aus den Daten (28.09., U4): Speicher team--<haushalt>, gepflegt genau hier. */}
       <TeamKarte i={3} />
@@ -401,8 +401,9 @@ export function SaeuleView({ keyName }: { keyName: string }) {
   return (
     <Seite titel={meta.titel} unter={<>{meta.claim} <span style={{ color: C.inkLeise }}>· {meta.hin}</span></>}
       rechts={<Link href="/os/wachstum" className="fassbar" style={linkKnopf}>Wachstum ›</Link>}>
+      {(keyName === 'health' || keyName === 'social') && <ZielBezug bereich={keyName === 'health' ? 'gesundheit' : 'beziehung'} />}
       {/* Wert + Herleitung */}
-      <Karte i={0} akzent={s?.score != null ? zone : undefined}>
+      <Karte i={0} ton={s?.score != null ? zone : undefined}>
         <Ueberschrift farbe={s ? zone : C.inkLeise} rechts={s?.zuDuenn ? <Chip farbe={LEUCHT.achtung}>zählt noch nicht mit</Chip> : undefined}>Die Säule</Ueberschrift>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
           <Ring groesse="gross" label={meta.titel} wert={s?.score != null ? String(s.score) : undefined} farbe={zone} anteil={s?.score != null ? s.score / 100 : undefined} />
@@ -420,7 +421,7 @@ export function SaeuleView({ keyName }: { keyName: string }) {
             {s.faktoren.map((f, i) => (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 200px) 1fr 44px', alignItems: 'center', gap: 12, padding: '6px 0', opacity: f.echt ? 1 : 0.6 }}>
                 <span style={{ fontSize: TYP.bedien, color: f.echt ? C.ink : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${f.label}${f.quelle ? ` · ${f.quelle}` : ''}`}>
-                  {f.href ? <Link href={f.href} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.3)' }}>{f.label}</Link> : f.label}<span style={{ color: f.echt ? C.inkLeise : LEUCHT.achtung, marginLeft: 8, fontSize: 11.5 }}>{f.quelle}</span>
+                  {f.href ? <Link href={f.href} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.3)' }}>{f.label}</Link> : f.label}<span style={{ color: f.echt ? C.inkLeise : LEUCHT.achtung, marginLeft: 8, fontSize: TYP.bedien }}>{f.quelle}</span>
                 </span>
                 <Fortschritt anteil={f.echt ? f.wert / 100 : 0} farbe={f.echt ? col(f.wert) : saeulenFarbe} />
                 <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: f.echt ? col(f.wert) : C.inkLeise, textAlign: 'right' }}>{f.echt ? f.wert : '—'}</span>

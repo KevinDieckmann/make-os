@@ -6,10 +6,10 @@
 
 import Link from 'next/link';
 import { localDay } from '@/lib/zeit';
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Balken, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Balken, Wahl, ZielBezug, feld, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 interface Entry { text?: string; mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string; flags?: string[]; at?: string; gut?: string; dankbar?: string; hart?: string; tagesnote?: string }
@@ -23,12 +23,6 @@ const FLAGS: { id: string; label: string }[] = [
   { id: 'keincannabis', label: 'Kein Cannabis' },
   { id: 'keinalkohol', label: 'Kein Alkohol' },
 ];
-
-/** Pille zum Umschalten — leuchtet in der Kennzahlfarbe, wenn sie an ist. */
-const pille = (an: boolean, farbe: string): CSSProperties => ({
-  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '6px 12px', borderRadius: 999, cursor: 'pointer', border: 'none',
-  background: an ? `${farbe}22` : 'rgba(255,255,255,.06)', color: an ? farbe : C.inkDim, transition: 'background .15s ease, color .15s ease',
-});
 
 export function JournalView() {
   const today = ymd(new Date());
@@ -83,7 +77,7 @@ export function JournalView() {
           const c = bad ? LEUCHT.kritisch : LEUCHT.gut;
           return (
             <button key={n} onClick={() => set(n)} aria-label={`${label} ${n}`} className="fassbar" style={{
-              width: 30, height: 30, borderRadius: 10, cursor: 'pointer', border: 'none', fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700,
+              width: 40, height: 40, borderRadius: 12, cursor: 'pointer', border: 'none', fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700,
               background: on ? c : 'rgba(255,255,255,.07)', color: on ? C.grund : C.inkLeise, boxShadow: on ? `0 0 10px ${c}33` : undefined, transition: 'background .15s ease',
             }}>{n}</button>
           );
@@ -105,15 +99,13 @@ export function JournalView() {
   return (
     <Seite
       titel={<span suppressHydrationWarning>{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' })}</span>}
-      unter="Journal · dein Datenweg — kurz festhalten, wie der Tag war. Daraus entstehen deine Daten, um den Weg immer wieder anzupassen."
-      rechts={<div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Chip farbe={saved ? LEUCHT.gut : LEUCHT.achtung}>{saved ? 'gespeichert ✓' : 'speichert …'}</Chip>
-        <Link href="/os/gesundheit" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Gesundheit ›</Link>
-      </div>}
+      unter={<>Journal · dein Datenweg — kurz festhalten, wie der Tag war. Daraus entstehen deine Daten, um den Weg immer wieder anzupassen. <Link href="/os/gesundheit" style={{ color: C.inkDim }}>Gesundheit ›</Link></>}
+      rechts={<Chip farbe={saved ? LEUCHT.gut : LEUCHT.achtung}>{saved ? 'gespeichert ✓' : 'speichert …'}</Chip>}
     >
+      <ZielBezug bereich="gesundheit" />
       <Flaeche seite="journal">
       <Kachel id="journal" titel="Journal" breite={6}>
-      <Karte i={0} akzent={LEUCHT.gut}>
+      <Karte i={0} ton={LEUCHT.gut}>
         <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit#haut" style={{ color: C.inkLeise, textDecoration: 'none' }}>Haut & Streak auf Gesundheit ›</Link>}>Journal</Ueberschrift>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
@@ -124,7 +116,7 @@ export function JournalView() {
           <div>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>Heute gelungen</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {FLAGS.map(f => { const on = (entry.flags ?? []).includes(f.id); return <button key={f.id} onClick={() => toggleFlag(f.id)} className="fassbar" style={pille(on, C.aktiv)}>{on ? '✓ ' : ''}{f.label}</button>; })}
+              {FLAGS.map(f => { const on = (entry.flags ?? []).includes(f.id); return <Wahl key={f.id} klein an={on} onClick={() => toggleFlag(f.id)}>{on ? '✓ ' : ''}{f.label}</Wahl>; })}
             </div>
           </div>
           <div>
@@ -168,7 +160,7 @@ export function JournalView() {
                 {e.ruecken === 'schmerz' && <Chip farbe={LEUCHT.kritisch}>Rücken-Schmerz</Chip>}
               </div>
               {e.text && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.text}</div>}
-              {(e.gut || e.dankbar || e.hart || e.tagesnote) && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6, lineHeight: 1.5, display: 'grid', gap: 2 }}>{e.gut && <span>Gut: {e.gut}</span>}{e.dankbar && <span>Dankbar: {e.dankbar}</span>}{e.hart && <span>Hart zu mir: {e.hart}</span>}{e.tagesnote && <span>Tagesnotiz: {e.tagesnote}</span>}</div>}
+              {(e.gut || e.dankbar || e.hart || e.tagesnote) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5, display: 'grid', gap: 2 }}>{e.gut && <span>Gut: {e.gut}</span>}{e.dankbar && <span>Dankbar: {e.dankbar}</span>}{e.hart && <span>Hart zu mir: {e.hart}</span>}{e.tagesnote && <span>Tagesnotiz: {e.tagesnote}</span>}</div>}
             </div>
           ))}
         </Liste>

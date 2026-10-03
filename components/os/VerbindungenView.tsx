@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
-import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, LEUCHT, Raster } from './schlank';
+import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, Hinweis, LEUCHT, Raster } from './ui';
 
 interface Verbindung { id: string; name: string; konfiguriert: boolean; verbunden: boolean; seit: string | null; laeuftAb: number | null; scope: string | null; anleitung: string; envId: string; envSecret: string }
 
@@ -36,9 +36,7 @@ export function VerbindungenView() {
   return (
     <Seite titel="Verbindungen" unter="App beim Anbieter registrieren, Schlüssel in .env.local, einmal verbinden. Danach fließen die Daten von selbst, die Tokens bleiben auf diesem Mac.">
       {status && (
-        <Karte i={0} akzent={status.startsWith('verbunden') ? LEUCHT.gut : LEUCHT.kritisch}>
-          <div style={{ fontSize: TYP.body, color: status.startsWith('verbunden') ? LEUCHT.gut : LEUCHT.kritisch }}>{status.startsWith('verbunden') ? 'Verbindung hergestellt.' : `Verbindung nicht zustande gekommen (${status}) — nochmal versuchen.`}</div>
-        </Karte>
+        <Hinweis art={status.startsWith('verbunden') ? 'gut' : 'kritisch'}>{status.startsWith('verbunden') ? 'Verbindung hergestellt.' : `Verbindung nicht zustande gekommen (${status}) — nochmal versuchen.`}</Hinweis>
       )}
       {!geladen && <Karte i={0}><Leer>lade …</Leer></Karte>}
       <Raster min={420}>
@@ -51,7 +49,7 @@ export function VerbindungenView() {
             {!v.konfiguriert && (
               <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
                 <b style={{ color: C.ink, fontWeight: 600 }}>Was du brauchst:</b> {v.anleitung}
-                <div style={{ marginTop: 6, fontFamily: SCHRIFT.mono, fontSize: 12, color: C.inkLeise }}>{v.envId} · {v.envSecret} in .env.local, dann neu starten.</div>
+                <div style={{ marginTop: 6, fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, color: C.inkLeise }}>{v.envId} · {v.envSecret} in .env.local, dann neu starten.</div>
               </div>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -66,7 +64,7 @@ export function VerbindungenView() {
                 <WhoopImport />
               </div>
             )}
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, lineHeight: 1.5 }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, lineHeight: 1.5 }}>
               {v.id === 'whoop' ? 'Verbunden heißt: Recovery, Schlaf, HRV und Puls kommen jeden Morgen von selbst — in die Gesundheit und in den Wachstums-Score.' : 'Verbunden heißt: Postfach und Firmenkalender live statt als Momentaufnahme.'}
             </div>
           </Karte>

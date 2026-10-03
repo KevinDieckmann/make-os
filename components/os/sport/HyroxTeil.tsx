@@ -3,7 +3,7 @@
 // ─── Sport — Hyrox: Splits aus der Zielzeit, Stationszeiten, Schwächen, Log ─
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Zahl, Leer, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Zahl, Leer, LEUCHT } from '../ui';
 import { Feld, Raster, Zeitfeld, Pillen, Hinweis, Weg, klein, datumLang, SPORT_FARBE } from './teile';
 import { STATIONEN, LAEUFE, splitsAusZielzeit, gesamtAus, vollstaendig, schwaechen, bestesJeStation, bestzeitPrognose } from '@/lib/sport/hyrox';
 import { formatZeit, formatPace } from '@/lib/sport/pace';
@@ -26,7 +26,7 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
 
   return (
     <>
-      <Karte i={0} akzent={F}>
+      <Karte i={0} ton={F}>
         <Ueberschrift farbe={F} rechts={hz ? `Ziel: ${hz.titel}` : undefined}>Zielzeit-Rechner</Ueberschrift>
         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
           <Feld label="Zielzeit gesamt"><Zeitfeld wert={zielzeit} onWert={setZielzeit} placeholder="h:mm:ss" stil={{ width: 140, fontSize: TYP.body }} /></Feld>
@@ -39,10 +39,10 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
             {STATIONEN.map(s => (
               <div key={s.id} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,.04)' }}>
-                <div style={{ fontSize: 12.5, color: C.inkDim }}>{s.name} <span style={{ color: C.inkLeise }}>· {s.umfang}</span></div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{s.name} <span style={{ color: C.inkLeise }}>· {s.umfang}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
                   <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 18, fontVariantNumeric: 'tabular-nums' }}>{formatZeit(splits.stationen[s.id])}</span>
-                  {beste[s.id] && <span style={{ fontSize: 11.5, color: beste[s.id]!.sek <= splits.stationen[s.id] ? LEUCHT.gut : C.inkLeise }}>best {formatZeit(beste[s.id]!.sek)}</span>}
+                  {beste[s.id] && <span style={{ fontSize: TYP.bedien, color: beste[s.id]!.sek <= splits.stationen[s.id] ? LEUCHT.gut : C.inkLeise }}>best {formatZeit(beste[s.id]!.sek)}</span>}
                 </div>
               </div>
             ))}
@@ -60,7 +60,7 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
               const breite = Math.min(100, Math.abs(s.deltaSek) / Math.max(1, Math.abs(schw[0].deltaSek)) * 100);
               return (
                 <div key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(110px, 1.2fr) minmax(80px, 2fr) auto', gap: 12, alignItems: 'center', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-                  <div style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{s.name}<div style={{ fontSize: 11.5, color: C.inkLeise, fontWeight: 400 }}>{formatZeit(s.ist)} statt {formatZeit(s.soll)}</div></div>
+                  <div style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{s.name}<div style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 400 }}>{formatZeit(s.ist)} statt {formatZeit(s.soll)}</div></div>
                   <div style={{ height: 8, background: 'rgba(255,255,255,.06)', borderRadius: 4, overflow: 'hidden' }}><div style={{ width: `${breite}%`, height: '100%', background: f, borderRadius: 4, opacity: .8 }} /></div>
                   <Chip farbe={f}>{s.deltaSek > 0 ? '+' : ''}{formatZeit(Math.abs(s.deltaSek)).replace(/^0:/, '')}{s.deltaSek < 0 ? ' schneller' : ''}</Chip>
                 </div>
@@ -81,7 +81,7 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
             <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <button type="button" onClick={() => { setBearbeite(e); setOffen(false); }} style={{ all: 'unset', cursor: 'pointer', fontSize: TYP.body, fontWeight: 500 }}>{datumLang(e.datum)}{e.ort ? ` · ${e.ort}` : ''}</button>
-                <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2 }}>{n} von 8 Stationen · {e.laeufe.length} von 8 Läufen{e.notiz ? ` · ${e.notiz}` : ''}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{n} von 8 Stationen · {e.laeufe.length} von 8 Läufen{e.notiz ? ` · ${e.notiz}` : ''}</div>
               </div>
               <Chip farbe={e.art === 'wettkampf' ? F : e.art === 'simulation' ? LEUCHT.achtung : C.inkDim}>{ARTEN.find(a => a.id === e.art)?.label}</Chip>
               <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, fontVariantNumeric: 'tabular-nums', color: g ? C.ink : C.inkLeise }}>{formatZeit(g)}</span>

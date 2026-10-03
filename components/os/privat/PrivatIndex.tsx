@@ -48,13 +48,14 @@ function RuecklageKarte({ r, onGespeichert }: { r: Antwort['ruecklage']; onGespe
   return (
     <Karte i={4} id="ruecklage" style={{ scrollMarginTop: 90 }}>
       <Ueberschrift farbe={LEUCHT.geld} rechts={r ? <span>Stand {r.stand.slice(8, 10)}.{r.stand.slice(5, 7)}.{r.stand.slice(0, 4)}</span> : <span>fehlt noch</span>}>Rücklage · Notgroschen</Ueberschrift>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input inputMode="decimal" value={wert} onChange={e => setWert(e.target.value)} placeholder="z. B. 12.000" aria-label="Rücklage in Euro"
+      {/* Ein Formular: Enter speichert wie der Knopf (Praxis-Fund N7). */}
+      <form onSubmit={e => { e.preventDefault(); void speichern(); }} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input inputMode="decimal" value={wert} onChange={e => setWert(e.target.value)} placeholder="z. B. 12.000" aria-label="Rücklage in Euro" enterKeyHint="done"
           style={{ ...feld, width: 180, fontSize: TYP.body, fontFamily: SCHRIFT.display, fontWeight: 700, padding: '9px 12px', fontVariantNumeric: 'tabular-nums' }} />
         <span style={{ color: C.inkLeise }}>€</span>
-        <Knopf farbe={LEUCHT.geld} onClick={() => void speichern()}>Speichern</Knopf>
-        {meldung && <span style={{ fontSize: TYP.bedien, color: meldung.ok ? LEUCHT.gut : LEUCHT.kritisch }}>{meldung.text}</span>}
-      </div>
+        <Knopf farbe={LEUCHT.geld} typ="submit">Speichern</Knopf>
+      </form>
+      {meldung && <div style={{ marginTop: 10 }}><Hinweis art={meldung.ok ? 'gut' : 'kritisch'}>{meldung.text}</Hinweis></div>}
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Was sofort verfügbar ist (Tagesgeld, Notgroschen) — ohne Depot und Altersvorsorge. Die Kontoauszüge enthalten keine Kontostände, deshalb tragt ihr die Rücklage hier ein; einmal im Monat aktualisieren reicht.</div>
     </Karte>
   );

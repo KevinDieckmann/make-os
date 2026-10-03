@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { TYP } from '@/lib/make-one/design';
-import { Karte, Chip, Ring, Fortschritt, LEUCHT } from '../schlank';
+import { Karte, Chip, Ring, Fortschritt, Hinweis, LEUCHT } from '../ui';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { scoreFarbe } from '../business/teile';
 import { IndexAnsicht, type IndexDaten } from '../kennzahlen/IndexAnsicht';
@@ -25,7 +25,7 @@ export function GesundheitIndex({ fuer, ich, stand, i0 = 0 }: { fuer?: string | 
     if (r.ok) { setD(r); setFehler(null); } else setFehler(r.fehler ?? 'Nicht geladen.');
   }, [q]);
   useEffect(() => { void laden(); }, [laden, stand]);
-  if (fehler) return <Karte i={i0}><div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div></Karte>;
+  if (fehler) return <Hinweis art="kritisch" titel="Der Gesundheits-Index konnte nicht geladen werden">{fehler}</Hinweis>;
   const fremd = !!d && !!ich && d.person !== ich;
   return (
     <IndexAnsicht d={d} name="Gesundheit" chip="Gesundheits-Index" farben={GESUNDHEIT_FARBE} scope="gesundheit" kopfId="index" i0={i0}
@@ -43,13 +43,13 @@ export function GesundheitIndexKurz({ fuer, onOeffnen, stand }: { fuer?: string 
   useEffect(() => { fetch(`/api/gesundheit/index${q}`, { cache: 'no-store' }).then(r => r.json()).then(x => x.ok && setD(x)).catch(() => {}); }, [q, stand]);
   const farbe = scoreFarbe(d?.index ?? null);
   return (
-    <Karte i={0} akzent={farbe}>
+    <Karte i={0} ton={farbe}>
       <button type="button" onClick={onOeffnen} className="fassbar" style={{ all: 'unset', cursor: 'pointer', display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
         <Ring groesse="klein" wert={d?.index != null ? String(d.index) : undefined} anteil={d?.index != null ? d.index / 100 : undefined} farbe={farbe} label="" />
         <span style={{ display: 'grid', gap: 6, flex: '1 1 240px', minWidth: 0 }}>
           <span style={{ fontSize: TYP.body, fontWeight: 700, color: C.ink }}>Gesundheits-Index <span style={{ color: C.inkLeise, fontWeight: 500 }}>{d ? d.label : '…'}</span></span>
           {d?.saeulen.map(s => (
-            <span key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(60px, 1.4fr) 30px', gap: 10, alignItems: 'center', fontSize: 12.5, color: C.inkDim }}>
+            <span key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(60px, 1.4fr) 30px', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
               <Fortschritt anteil={(s.score ?? 0) / 100} farbe={GESUNDHEIT_FARBE[s.id]} />
               <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, textAlign: 'right', color: s.score == null ? C.inkLeise : C.ink, fontVariantNumeric: 'tabular-nums' }}>{s.score ?? '—'}</span>

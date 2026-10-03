@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Leer } from '../schlank';
+import { Seite, Karte, Leer } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useFamilie } from './daten';
 import { Tage, Menschen } from './FamilieOrga';

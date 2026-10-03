@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Hinweis, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 type LoopKind = 'morgen' | 'woche' | 'rueckblick' | 'finanzen' | 'sales' | 'marketing' | 'operations' | 'kunden' | 'gesundheit';
@@ -85,7 +85,7 @@ export function LoopView() {
           {LOOPS.map(l => (
             <button key={l.id} onClick={() => setKind(l.id)} className="fassbar" style={{ textAlign: 'left', padding: '11px 13px', borderRadius: 12, cursor: 'pointer', border: 'none', background: kind === l.id ? `${l.farbe}1F` : 'rgba(255,255,255,.04)', transition: 'background .15s ease' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Punkt farbe={kind === l.id ? l.farbe : C.inkLeise} /><span style={{ fontSize: TYP.bedien, fontWeight: 700, color: kind === l.id ? C.ink : C.inkDim }}>{l.label}</span></div>
-              <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 3, lineHeight: 1.35 }}>{l.sub}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, lineHeight: 1.35 }}>{l.sub}</div>
             </button>
           ))}
         </div>
@@ -99,7 +99,7 @@ export function LoopView() {
 
       <Kachel id="ergebnis" titel="Ergebnis des Laufs" breite={4}>
       <div style={{ display: 'grid', gap: 14 }}>
-      {cur?.error && <Karte i={1} akzent={LEUCHT.kritisch}><Absatz farbe={LEUCHT.kritisch}>{cur.error}</Absatz></Karte>}
+      {cur?.error && <Hinweis art="kritisch" titel="Dieser Loop konnte nicht gelesen werden">{cur.error}</Hinweis>}
       {cur?.hinweis && <Karte i={1}><Leer>{cur.hinweis}</Leer></Karte>}
 
       {kind === 'morgen' && cur && !cur.error && cur.gruss && (
@@ -140,7 +140,7 @@ export function LoopView() {
 
       {bereich && cur && !cur.error && cur.lage && (
         <>
-          <Karte i={1} akzent={loop.farbe}><Ueberschrift farbe={loop.farbe}>Lage</Ueberschrift><Absatz>{cur.lage}</Absatz>{cur.warnung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginTop: 8 }}>{cur.warnung}</div>}</Karte>
+          <Karte i={1} ton={loop.farbe}><Ueberschrift farbe={loop.farbe}>Lage</Ueberschrift><Absatz>{cur.lage}</Absatz>{cur.warnung && <div style={{ marginTop: 10 }}><Hinweis art="achtung">{cur.warnung}</Hinweis></div>}</Karte>
           {!!cur.punkte?.length && <Karte i={2}><Ueberschrift farbe={loop.farbe}>Die Moves</Ueberschrift><Punkte liste={cur.punkte} farbe={loop.farbe} /></Karte>}
           {cur.eineSache && <Karte i={3} akzent={LEUCHT.achtung}><Ueberschrift farbe={LEUCHT.achtung}>Die eine Sache</Ueberschrift><div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600 }}>{cur.eineSache}</div></Karte>}
         </>
@@ -158,7 +158,7 @@ export function LoopView() {
         <Kachel id="gedaechtnis" titel="Gedächtnis" breite={2}>
         <Karte i={9}>
           <Ueberschrift rechts={`${history.length}`}>Gedächtnis · frühere Läufe</Ueberschrift>
-          <Liste>{history.slice(0, 12).map(h => <Zeile key={h.id} links={<span style={{ fontFamily: SCHRIFT.mono, fontSize: 11, color: C.inkLeise, width: 88 }}>{h.ts.slice(0, 16).replace('T', ' ')}</span>} titel={h.title} />)}</Liste>
+          <Liste>{history.slice(0, 12).map(h => <Zeile key={h.id} links={<span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, color: C.inkLeise, width: 88 }}>{h.ts.slice(0, 16).replace('T', ' ')}</span>} titel={h.title} />)}</Liste>
         </Karte>
         </Kachel>
       )}

@@ -159,6 +159,11 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   am Handy ab (globals.css, nur unter dem Anker — nie ein Seitenhammer). Umgestellt: **Netzwerken, Markttraktion (alle Reiter), Zahlen & Finanzen (51 Dateien, Wächter `tests/design-finanzen.test.ts`), Kern = globale Shell + Aufgaben + Kalender + Inbox (Wächter `tests/design-kern.test.ts`, Bausteine `HakenZiel`/`SymbolKnopf`/`ZielChip`)**; als Nächstes der Rest —
   Rezept „Umstellen einer Seite“ steht im Dokument (Import `../schlank` → `../ui`, gleiche Namen). `schlank.tsx` bleibt für Altseiten unverändert. Wächter `tests/design-standard.test.ts`.
 
+- **Design-Standard · Privat/ZOE/System (03.10.):** Gesundheit (mit Sport, Journal, Routinen), Familie & Partnerschaft, Kompass, Brain, Privat-Übersicht, Home, Wachstum,
+  ZOE (Empfang, Stapel, Agenten, Loops, HOI), Konto, System, Verbindungen, Datenbasis, Stammdaten hängen an `components/os/ui` (Wächter `tests/design-privat.test.ts`).
+  Neu: `ZielBezug bereich=…` (ruhiger Chip „zahlt ein auf <Jahresziel>“, Auswahl rein in `lib/make-one/ziel-bezug.ts`, Farbe über `zielFarben`; je Aufgabe bleibt `ZielChip`)
+  und `Schalter` (Tippfläche 56 × 44). Umschalter im Inhalt statt im Kopf, Konto-Felder mit Beschriftung (`.konto-feldreihe`), Einzelfelder mit Speichern = `<form>` (Enter).
+
 ## Live-Betrieb (seit 25.09.2026)
 - **Server:** Hetzner, `https://2-28-108-162.sslip.io` (IP 2.28.108.162, Admin `ssh make@…` + `sudo` — root-Login ist seit 26.09. aus,
   App-Nutzer `make`, Ordner `/srv/make-os/{app,daten,vault,sicherungen}`, Docker Compose:
