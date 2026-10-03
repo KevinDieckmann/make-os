@@ -16,8 +16,17 @@ export interface Kriterien { schmerz: Qual; entscheider: Qual; budget: Qual; zei
 export interface Lead {
   status: LeadStatus;
   kriterien: Kriterien;
-  /** Freitext je Kernfrage (Qualifizierungsrunde 27.09.): was genau der Schmerz ist, wer entscheidet, … */
-  antworten?: Partial<Record<keyof Kriterien, string>>;
+  /** Freitext je Frage (Qualifizierungsrunde 27.09.): was genau der Schmerz ist, wer entscheidet, … Seit 03.10. je Kriterium der Scoring-Einstellungen (Kennung → Text). */
+  antworten?: Record<string, string>;
+  /**
+   * Die im Gespräch gewählte Stufe je Kriterium der Sales-Scoring-Einstellungen (03.10., lib/crm/scoring.ts): Kennung → Stufen-Kennung.
+   * Neu und optional — ältere Leads tragen nur `kriterien` (ja/nein/unklar) und `fit`; der Rechenkern liest beides.
+   */
+  stufen?: Record<string, string>;
+  /** Geparkt (Status „ruht“) bis zu diesem Tag (03.10.): dann kommt der Lead in die Qualifizierungsrunde zurück. */
+  wiedervorlage?: string;
+  /** Warum ausgeschieden (Kein Fit) oder geparkt — eine feste Art für die Auswertung (lib/crm/lead-grund.ts), `grund` bleibt der freie Satz. */
+  grundArt?: string;
   /** Wann zuletzt qualifiziert wurde (Runde, Kernfrage, Antwort) — steuert die Wiedervorlage in der Qualifizierungsrunde. */
   qualifiziertAm?: string;
   /** Passt die Firma zu unserem Kundenprofil? */
@@ -610,6 +619,11 @@ export interface CrmBestand {
   marketing?: MarketingEinstellung;
   /** Pflegbare Wertelisten (27.09.). */
   wertelisten?: Wertelisten;
+  /**
+   * Scoring-Einstellungen (03.10., lib/crm/scoring.ts) — NUR beim Lesen angehängt (`ladeCrm`, aus dem eigenen Bestand
+   * `crm-scoring`), nie im Bestand `crm` gespeichert. So sehen Leads, Akte, Lifecycle, Segmente und ZOE überall dieselben Werte.
+   */
+  scoring?: import('./scoring').ScoringEinstellungen;
   /** Wahrscheinlichkeiten je Stufe, von Hand überschreibbar (wie in KEMARIS Operations „von_hand“). */
   wahrscheinlichkeiten?: Partial<Record<ChancenStufe, number>>;
 }

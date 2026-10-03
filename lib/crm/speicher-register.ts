@@ -192,6 +192,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('tageslauf', 'Riegel des Tageslaufs.'),
   K('tagesstart', 'Riegel des Morgenlaufs.'),
   K('willkommen', 'Willkommens-Hinweise.'),
+  K('crm-scoring', 'Scoring-Einstellungen des CRM (Kriterien, Stufen, Schwellen MQL/SQL) samt früheren Fassungen und Vermerk wer/wann — keine Personendaten (Leads tragen ihre Antworten selbst, in crm/kontakte).'),
   K('gesellschaften--*', 'Die eigenen Gesellschaften des Haushalts (Firmendaten, Nummernkreise).'),
   K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
   K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),

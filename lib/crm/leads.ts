@@ -22,7 +22,7 @@ import type { CrmBestand, Chance, Firma, Kriterien, Lead, LeadStatus, Qual } fro
 import { OFFENE_STUFEN, gesamtwert } from './pipeline';
 import { haeltBeziehung } from './team';
 import { dealZuFirma } from './firmen-bezug';
-import { leadScore, kanalVon, warmPlus, type LeadScore, type KanalId } from './score';
+import { leadScore, kanalVon, warmPlus, scoringKontext, type LeadScore, type KanalId } from './score';
 import { beanVon, beanFirma, type BeanId } from './bean';
 import { personenJeFirma, firmenDerPerson } from './stationen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
@@ -83,8 +83,12 @@ export interface LeadZeile {
   besitzer: string; branche?: string; stadt?: string; sqlAm?: string;
   /** Lead-Score (27.09.): Punkte, Temperatur, vier Teile — und der Herkunftskanal. */
   score: LeadScore; kanal: KanalId;
-  /** Freitext je Kernfrage und wann zuletzt qualifiziert wurde (Qualifizierungsrunde). */
+  /** Freitext je Frage und wann zuletzt qualifiziert wurde (Qualifizierungsrunde). */
   antworten?: Lead['antworten']; qualifiziertAm?: string;
+  /** Die im Gespräch gewählten Stufen je Kriterium (Scoring-Einstellungen, 03.10.). */
+  stufen?: Lead['stufen'];
+  /** Geparkt bis (Status „ruht“) und die feste Art des Grundes (kein Fit / geparkt) — für Runde und Auswertung. */
+  wiedervorlage?: string; grundArt?: string;
   /** Besitzer wurde nie gesetzt — in der Runde per Klick übernehmen. */
   ohneBesitzer: boolean;
   /**
@@ -103,6 +107,8 @@ export interface LeadZeile {
  * nie ein UTC-Tag aus `toISOString()` — der liegt nachts bis 2 Uhr einen Tag daneben.
  */
 export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): LeadZeile[] {
+  // Die Scoring-Einstellungen und Teilnahmen/Events (Signale) — EINMAL für alle Leads (score.ts `scoringKontext`).
+  const skx = scoringKontext(crm);
   const offeneDeals = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const dealVon = (ids: string[], firma?: Firma): Chance | undefined =>
     (firma?.lead?.chanceId ? crm.chancen.find(c => c.id === firma.lead!.chanceId) : undefined)
@@ -125,8 +131,9 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
       // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung.
       status: lead?.status === 'sql' && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : lead?.status ?? abgeleitet(personen, offen), gesetzt: !!lead?.status,
       kriterien,
-      score: leadScore(personen, lead, heute, kriterien), kanal: kanalVon(haupt ?? personen[0] ?? {}),
+      score: leadScore(personen, lead, heute, kriterien, skx), kanal: kanalVon(haupt ?? personen[0] ?? {}),
       ...(lead?.antworten ? { antworten: lead.antworten } : {}), ...(lead?.qualifiziertAm ? { qualifiziertAm: lead.qualifiziertAm } : {}),
+      ...(lead?.stufen ? { stufen: lead.stufen } : {}), ...(lead?.wiedervorlage ? { wiedervorlage: lead.wiedervorlage } : {}), ...(lead?.grundArt ? { grundArt: lead.grundArt } : {}),
       ohneBesitzer: personen.every(k => !k.besitzer),
       bean: firma ? beanFirma(firma, crm, personen).bean : beanVon(personen[0] ?? { id, firmaId: undefined }, crm).bean,
       ...(lead?.fit ? { fit: lead.fit } : {}), ...(lead?.notiz ? { notiz: lead.notiz } : {}), ...(lead?.grund ? { grund: lead.grund } : lead?.status === 'sql' && d && !offen && d.grund ? { grund: d.grund } : {}), ...(lead?.sqlAm ? { sqlAm: lead.sqlAm } : {}),
@@ -188,12 +195,25 @@ export interface RundenFilter {
   heute: string;
 }
 const tageZw = (a: string, b: string) => Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
-/** Braucht dieser Lead noch Qualifizierung? Offener Status, Kernfragen unvollständig oder länger nicht angefasst. */
-export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' | 'qualifiziertAm' | 'deal'>, heute: string): boolean {
+/**
+ * Offene Fragen an diesem Lead: die Sales-Fragen der Scoring-Einstellungen, die noch keine eigene Antwort haben
+ * (Fragen mit Messung, z. B. „Fit“ aus der Liste, zählen nicht — die sind abgeleitet). Beim Standard sind das genau die
+ * sechs Kernfragen mit „unklar“. Ohne Scoring-Ergebnis (von Hand gebaute Zeile) gilt die alte Rechnung.
+ */
+export function offeneFragen(z: Pick<LeadZeile, 'kriterien' | 'score'>): number {
+  const s = z.score.scoring?.sales;
+  if (!s) return (Object.values(z.kriterien) as Qual[]).filter(w => w === 'unklar').length;
+  return s.teile.flatMap(t => t.kriterien).filter(k => k.quelle === 'frage' && k.offen && k.herkunft === 'ohne').length;
+}
+/**
+ * Braucht dieser Lead noch Qualifizierung? Offener Status, offene Fragen oder länger nicht angefasst — oder er war geparkt und
+ * seine Wiedervorlage ist erreicht (03.10.: dann kommt er aus „ruht“ zurück in die Runde).
+ */
+export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' | 'qualifiziertAm' | 'deal' | 'score'> & { wiedervorlage?: string }, heute: string): boolean {
+  if (z.status === 'ruht' && z.wiedervorlage && z.wiedervorlage <= heute) return !z.deal?.offen;
   if (!['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status)) return false;
   if (z.deal?.offen) return false;
-  const offen = (Object.values(z.kriterien) as Qual[]).some(w => w === 'unklar');
-  if (offen) return true;
+  if (offeneFragen(z) > 0) return true;
   return !z.qualifiziertAm || tageZw(z.qualifiziertAm, heute) > QUALI_WIEDERVORLAGE_TAGE;
 }
 /** Die Leads für die Qualifizierungsrunde — eigene zuerst, warm vor kalt, dann die zuletzt angefassten. */
@@ -208,4 +228,20 @@ export function zuQualifizieren(zeilen: LeadZeile[], f: RundenFilter): LeadZeile
 }
 /** Leads-Liste ohne die kalten (Kevin 27.09.: kalte leben nur im Marketing-Segment „Vernetzen“, bis sie warm werden). */
 export const nichtKalt = (z: Pick<LeadZeile, 'score' | 'status' | 'deal'>) => z.score.temperatur !== 'kalt' || z.status === 'sql' || z.status === 'kunde' || !!z.deal;
+/**
+ * SQL-bereit nach den Scoring-Einstellungen (Sales-Schwelle und Muss-Kriterien erreicht) — die eine Rechnung für Leads-Liste,
+ * Runde, Heads, ZOE und den SQL-Weg. Ohne Scoring-Ergebnis (von Hand gebaute Zeile): die alte Regel `sqlBereit`.
+ */
+export const salesBereit = (z: Pick<LeadZeile, 'kriterien' | 'score'>): boolean => z.score.scoring?.sales.erreicht ?? sqlBereit(z.kriterien);
+/** Was bis zum SQL fehlt (Muss-Kriterien, dann Punkte) — wie `fehltBisSql`, aber nach den Einstellungen. */
+export const fehltBisSqlZeile = (z: Pick<LeadZeile, 'kriterien' | 'score'>): string[] => z.score.scoring?.sales.fehlt ?? fehltBisSql(z.kriterien);
+/** Marketing-Schwelle (MQL) erreicht — Signale und Interaktionen reichen. */
+export const mqlErreicht = (z: Pick<LeadZeile, 'score'>): boolean => z.score.scoring?.marketing.erreicht ?? false;
+/** Die Stufe, in der der Lead steht: Lead → MQL → SQL-bereit (nur Anzeige, nichts davon wird gespeichert). */
+export type QualiStand = 'lead' | 'mql' | 'sql_bereit' | 'sql';
+export function qualiStand(z: Pick<LeadZeile, 'kriterien' | 'score' | 'status'>): QualiStand {
+  if (z.status === 'sql' || z.status === 'kunde') return 'sql';
+  if (salesBereit(z)) return 'sql_bereit';
+  return mqlErreicht(z) ? 'mql' : 'lead';
+}
 export { warmPlus };

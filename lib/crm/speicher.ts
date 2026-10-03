@@ -25,6 +25,7 @@ import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
 import { personenSchranke, kampagnenHinweise, type PersonSchranke } from './personen-schranke';
+import { ladeScoring } from './scoring-server';
 import { crmFolgen, geloeschteDeals, karteiBetroffen, kontaktLeadsOhneDeals } from './bestand-folgen';
 import type { Temperatur } from './typen';
 
@@ -36,7 +37,9 @@ export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], manda
 export async function ladeCrm(): Promise<CrmBestand> {
   const roh = { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
   // 27.09.: alte Deals und Mandate bekommen die Firmen-Kennung nachgetragen — hier im Speicher, dauerhaft mit der nächsten Änderung (aendereCrm).
-  return firmaIdsErgaenzen(roh).bestand;
+  // 03.10.: die Scoring-Einstellungen (eigener Bestand `crm-scoring`) werden beim LESEN angehängt — jede Stelle, die Leads rechnet, sieht dieselben Werte;
+  // geschrieben wird `scoring` nie mit dem CRM (crmSchreiben liest den rohen Bestand).
+  return { ...firmaIdsErgaenzen(roh).bestand, scoring: await ladeScoring() };
 }
 
 const txt = (v: unknown, n = 300) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);

@@ -83,7 +83,8 @@ function leadVereinen(a: Kontakt['lead'], b: Kontakt['lead']): Kontakt['lead'] {
   const kriterien = { ...a.kriterien };
   for (const [f, v] of Object.entries(b.kriterien ?? {}) as [keyof typeof kriterien, typeof kriterien[keyof typeof kriterien]][]) if (kriterien[f] === undefined || (kriterien[f] === 'unklar' && v !== 'unklar')) kriterien[f] = v;
   const antworten = luecken(a.antworten, b.antworten);
-  return { ...out, kriterien, ...(antworten ? { antworten } : {}) };
+  const stufen = luecken(a.stufen, b.stufen);
+  return { ...out, kriterien, ...(antworten ? { antworten } : {}), ...(stufen ? { stufen } : {}) };
 }
 
 /**
