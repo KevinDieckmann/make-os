@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Fenster } from '../Fenster';
-import { Knopf, feld } from '../schlank';
+import { Knopf, feld } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import { neueKennung } from '@/lib/kennung';
 import { NEUSTART_BESTAETIGUNG } from '@/lib/aufgaben/neustart';
@@ -106,14 +106,14 @@ export function NeuAnfangenFenster({ onZu }: { onZu: () => void }) {
                   </div>
                 ))}
               </div>
-              <span style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 }}>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>
                 dazu {zahl(v.unteraufgaben, 'Unteraufgabe', 'Unteraufgaben')}, {zahl(v.listen, 'Liste', 'Listen')}, {zahl(v.gruppen, 'Gruppe', 'Gruppen')}
                 {v.fokus ? `, ${zahl(v.fokus, 'Fokus-Satz', 'Fokus-Sätze')}` : ''} · davon {v.erledigt} schon erledigt/abgebrochen · Ziele je Ebene:{' '}
                 {(['jahr', 'quartal', 'monat', 'woche', 'tag'] as const).map(h => `${h === 'jahr' ? 'Jahr' : h === 'quartal' ? 'Quartal' : h === 'monat' ? 'Monat' : h === 'woche' ? 'Woche' : 'Tag'} ${v.zieleJe[h]}`).join(' · ')}
               </span>
               {v.serien.length > 0 && <SerienListe serien={v.serien} titel="Serien ruhen im Archiv" />}
               <div style={mikro}>Bleibt</div>
-              <span style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
                 Routinen und Wochen-Blöcke, Vorlagen, eigene Status, das CRM (Follow-ups, Deals, Mandate), der Papierkorb
                 {v.bleiben.length ? ` und ${zahl(v.bleiben.length, 'offene Fristen-Aufgabe', 'offene Fristen-Aufgaben')} der Module (${v.bleiben.slice(0, 3).map(b => `„${b.titel}“`).join(', ')}${v.bleiben.length > 3 ? ' …' : ''})` : ''}.
               </span>
@@ -143,7 +143,7 @@ function SerienListe({ serien, titel }: { serien: { art: string; titel: string; 
   return (
     <div style={{ display: 'grid', gap: 4 }}>
       <div style={mikro}>{titel} · {serien.length}</div>
-      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: C.inkDim, lineHeight: 1.6, maxHeight: 140, overflowY: 'auto' }}>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, maxHeight: 140, overflowY: 'auto' }}>
         {serien.map((s, i) => <li key={i}>↻ {s.titel} <span style={{ color: C.inkLeise }}>({s.art === 'liste' ? 'Liste, ' : ''}{REGEL_LABEL[s.regel as keyof typeof REGEL_LABEL] ?? s.regel})</span></li>)}
       </ul>
     </div>

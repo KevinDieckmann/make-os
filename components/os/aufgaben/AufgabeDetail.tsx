@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Haken, Knopf, feld, prioFarbe } from '../schlank';
+import { Karte, HakenZiel, Knopf, SymbolKnopf, feld, prioFarbe, ZielChip, useZielBezug } from '../ui';
 import { Wahl, WahlMehrfach, type WahlEintrag } from '../crm/Wahl';
 import { TextMitLinks } from '../TextMitLinks';
 import { statusListe, statusVon, erwaehnungen, sonstigeProjektId, fortschritt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
@@ -48,6 +48,7 @@ import { DatumFeld, UhrzeitFeld } from './DatumFeld';
 import { NurIchZeichen, titelStil, AbgebrochenSchild } from './Zeichen';
 import { BeitragsVerlauf } from '../austausch/BeitragsVerlauf';
 import { MeilensteinVerweis } from '../planung/MeilensteinVerweis';
+import { istMeilensteinListe } from '@/lib/planung/meilenstein-aufgaben';
 
 const PRIO: WahlEintrag<Priority>[] = [
   { id: 'critical', label: 'Kritisch', punkt: LEUCHT.kritisch }, { id: 'high', label: 'Hoch', punkt: LEUCHT.achtung },
@@ -55,7 +56,7 @@ const PRIO: WahlEintrag<Priority>[] = [
 ];
 const SONST = '__sonstige__';
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
-const datumFeld: CSSProperties = { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '4px 10px', minHeight: 30, colorScheme: 'dark' };
+const datumFeld: CSSProperties = { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '4px 12px', minHeight: 40, colorScheme: 'dark' };
 const zeit = (iso: string) => { try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
 function Feld({ label, children }: { label: string; children: React.ReactNode }) {
@@ -117,22 +118,24 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
   const [titel, setTitel] = useState(t.title);
   useEffect(() => { setTitel(t.title); }, [t.id, t.title]);
   const [neuUnter, setNeuUnter] = useState('');
+  // Ziel-Bezug (03.10.): Aufgabe in der Liste eines Meilensteins → das Ziel ruhig als Chip (nur lesen).
+  const zielBezug = useZielBezug(istMeilensteinListe(t.listeId))(t);
 
   return (
     <Karte i={i} akzent={status.farbe} id={`aufgabe-${t.id}`}>
       {/* Pfad: Space › Projekt › Liste (› übergeordnete Aufgabe) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12.5, color: C.inkLeise, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>
         <span style={{ color: space?.farbe ?? C.inkDim, fontWeight: 600 }}>{space?.label ?? 'Space'}</span>
         <span aria-hidden>›</span><span>{state.projects.find(p => p.id === t.projectId)?.title ?? 'Sonstige'}</span>
         {gruppe && <><span aria-hidden>›</span><span style={{ color: gruppe.farbe }}>{gruppe.titel}</span></>}
         <span aria-hidden>›</span><span>{listen.find(l => l.id === t.listeId)?.titel ?? 'Sonstige'}</span>
-        {vorKette.map(v => <span key={v.id} style={{ display: 'contents' }}><span aria-hidden>›</span><button onClick={() => onOeffnen(v.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</button></span>)}
-        <button onClick={onSchliessen} aria-label="Schließen" className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px' }}>×</button>
+        {vorKette.map(v => <span key={v.id} style={{ display: 'contents' }}><span aria-hidden>›</span><button onClick={() => onOeffnen(v.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</button></span>)}
+        <span style={{ marginLeft: 'auto' }}><SymbolKnopf onClick={onSchliessen} ariaLabel="Schließen">×</SymbolKnopf></span>
       </div>
       {/* Meilenstein (30.09.): liegt die Aufgabe in der Liste eines Meilensteins, führt der Link dorthin. */}
-      <div style={{ marginTop: -4, marginBottom: 6 }}><MeilensteinVerweis listeId={t.listeId} /></div>
+      <div style={{ marginTop: -4, marginBottom: 6, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{zielBezug && <ZielChip bezug={zielBezug} />}<MeilensteinVerweis listeId={t.listeId} /></div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
-        <div style={{ paddingTop: 8 }}><Haken an={t.status === 'done'} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} /></div>
+        <div style={{ paddingTop: 8 }}><HakenZiel an={t.status === 'done'} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} /></div>
         <textarea value={titel} onChange={e => setTitel(e.target.value)} rows={1} aria-label="Titel"
           onBlur={() => { const v = titel.replace(/\s+/g, ' ').trim(); if (v && v !== t.title) aendern({ title: v }); else setTitel(t.title); }}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }}
@@ -141,8 +144,8 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
       {(nurIch || t.status === 'cancelled') && <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '-6px 0 10px 34px' }}>{nurIch && <NurIchZeichen text />}{t.status === 'cancelled' && <AbgebrochenSchild />}</div>}
 
       {wartet.length > 0 && (
-        <div role="status" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '-4px 0 12px', padding: '8px 12px', borderRadius: 10, border: `1px solid ${LEUCHT.achtung}55`, background: `${LEUCHT.achtung}12`, color: LEUCHT.achtung, fontSize: 12.5 }}>
-          <Lock size={13} /> Blockiert — wartet auf {wartet.map((w, n) => <button key={w.id} onClick={() => onOeffnen(w.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, textDecoration: 'underline', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>{w.title}{n < wartet.length - 1 ? ',' : ''}</button>)}
+        <div role="status" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '-4px 0 12px', padding: '8px 12px', borderRadius: 10, border: `1px solid ${LEUCHT.achtung}55`, background: `${LEUCHT.achtung}12`, color: LEUCHT.achtung, fontSize: TYP.bedien }}>
+          <Lock size={13} /> Blockiert — wartet auf {wartet.map((w, n) => <button key={w.id} onClick={() => onOeffnen(w.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, textDecoration: 'underline', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>{w.title}{n < wartet.length - 1 ? ',' : ''}</button>)}
         </div>
       )}
       <div style={{ display: 'grid', gap: 4, marginBottom: 14 }}>
@@ -160,23 +163,23 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
           <Feld label="Sichtbar">
             <button type="button" aria-pressed={nurIch} disabled={!darfSichtbarkeit} onClick={() => aendern(nurIch ? { sichtbarkeit: 'haushalt' } : { sichtbarkeit: 'nur-ich', assignee: (ich || t.assignee) as Owner, beteiligte: undefined, ...(t.wiederholung?.rotation ? { wiederholung: (() => { const w = { ...t.wiederholung! }; delete w.rotation; return w; })() } : {}) })} className="fassbar"
               title={darfSichtbarkeit ? 'Nur ich: niemand sonst sieht die Aufgabe — auch nicht in Kalender, Glocke, Suche oder bei ZOE.' : 'Nur wer die Aufgabe angelegt hat, kann das ändern.'}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, borderRadius: 999, padding: '4px 12px', cursor: darfSichtbarkeit ? 'pointer' : 'default', fontFamily: SCHRIFT.text, fontSize: 12.5,
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, borderRadius: 999, padding: '4px 12px', cursor: darfSichtbarkeit ? 'pointer' : 'default', fontFamily: SCHRIFT.text, fontSize: TYP.bedien,
                 border: `1px solid ${nurIch ? `${LEUCHT.schlaf}99` : 'rgba(255,255,255,.1)'}`, background: nurIch ? `${LEUCHT.schlaf}22` : 'rgba(255,255,255,.03)', color: nurIch ? LEUCHT.schlaf : C.inkDim, opacity: darfSichtbarkeit ? 1 : 0.55 }}>
               <Lock size={13} aria-hidden /> nur ich
             </button>
-            <span style={{ fontSize: 12, color: C.inkLeise }}>{nurIch ? 'Nur du siehst sie — und nur du bist zuständig.' : t.assignee !== ich || t.beteiligte?.length ? 'Für euch beide sichtbar. „Nur ich“ macht dich zuständig und nimmt Beteiligte und Wechsel heraus.' : 'Für euch beide sichtbar.'}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurIch ? 'Nur du siehst sie — und nur du bist zuständig.' : t.assignee !== ich || t.beteiligte?.length ? 'Für euch beide sichtbar. „Nur ich“ macht dich zuständig und nimmt Beteiligte und Wechsel heraus.' : 'Für euch beide sichtbar.'}</span>
           </Feld>
         )}
         <Feld label="Priorität">
           <Wahl klein label="Priorität" liste={PRIO} wert={t.priority} farbe={prioFarbe(t.priority)} onWahl={p => aendern({ priority: p })} />
         </Feld>
         <Feld label="Zeitraum">
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>Start
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkLeise }}>Start
             <DatumFeld wert={t.startDate} onWert={d => handlung.verschieben(t, { startDate: d }, 'Start geändert')} style={datumFeld} label="Startdatum" /></label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>Deadline
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkLeise }}>Deadline
             <DatumFeld wert={t.dueDate} onWert={d => handlung.verschieben(t, { dueDate: d }, d ? 'verschoben' : 'ohne Deadline')} style={datumFeld} label="Deadline" /></label>
           {/* Uhrzeit der Deadline (29.09., Kalender K1) — dieselbe Aufgabe steht im Kalender an dieser Zeit. */}
-          {t.dueDate && <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>um
+          {t.dueDate && <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkLeise }}>um
             <UhrzeitFeld wert={t.dueTime} onWert={z => handlung.verschieben(t, { dueTime: z }, z ? 'Uhrzeit gesetzt' : 'ohne Uhrzeit')} style={datumFeld} label="Uhrzeit der Deadline" /></label>}
           {eltern && <NachElternFrist unter={t} eltern={eltern} />}
         </Feld>
@@ -186,11 +189,11 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
             <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
               {serieLaeuft && t.dueDate && t.status !== 'done' && t.status !== 'cancelled' && (
                 <button type="button" onClick={() => { if (handlung.ueberspringen(t)) onSchliessen(); }} className="fassbar" title="Nur diesen Termin auslassen — die nächste Instanz entsteht sofort"
-                  style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '4px 11px', minHeight: 32, color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>Diese überspringen</button>
+                  style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '4px 11px', minHeight: 40, color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>Diese überspringen</button>
               )}
               <button type="button" onClick={() => aendern({ wiederholung: serieLaeuft ? { ...t.wiederholung!, serieBeendet: true } : (() => { const w = { ...t.wiederholung! }; delete w.serieBeendet; return w; })() })} className="fassbar"
                 title={serieLaeuft ? 'Nach dieser Aufgabe kommt keine weitere — die Regel bleibt sichtbar' : 'Die Serie läuft nach dieser Aufgabe wieder weiter'}
-                style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '4px 11px', minHeight: 32, color: serieLaeuft ? C.inkDim : C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>{serieLaeuft ? 'Serie beenden' : 'Serie fortsetzen'}</button>
+                style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '4px 11px', minHeight: 40, color: serieLaeuft ? C.inkDim : C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>{serieLaeuft ? 'Serie beenden' : 'Serie fortsetzen'}</button>
             </span>
           )}
         </Feld>}
@@ -212,9 +215,9 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
         )}
         {eltern && (
           <Feld label="Ebene">
-            <span style={{ fontSize: 12.5, color: C.inkDim }}>Ebene {ebene} · Unteraufgabe von „{eltern.title}“</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Ebene {ebene} · Unteraufgabe von „{eltern.title}“</span>
             {elternWahl.length > 0 && <Wahl klein label="Umhängen unter" leer="umhängen" liste={elternWahl} wert={null} onWahl={id => aendern(umhaengenTeil(state, id))} />}
-            <button onClick={() => aendern(umhaengenTeil(state, null))} className="fassbar" title={teilbaum.length ? `Ihre ${teilbaum.length} Unteraufgabe${teilbaum.length === 1 ? '' : 'n'} kommen mit` : undefined} style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '3px 10px', minHeight: 30, color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>zur Hauptaufgabe machen</button>
+            <button onClick={() => aendern(umhaengenTeil(state, null))} className="fassbar" title={teilbaum.length ? `Ihre ${teilbaum.length} Unteraufgabe${teilbaum.length === 1 ? '' : 'n'} kommen mit` : undefined} style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '3px 10px', minHeight: 30, color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>zur Hauptaufgabe machen</button>
           </Feld>
         )}
       </div>
@@ -223,7 +226,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
       <textarea key={`${t.id}-${t.updatedAt}`} defaultValue={t.description ?? ''} placeholder="Worum geht es? Links (z. B. aus der Markttraktion) werden klickbar."
         onBlur={e => { const v = e.target.value.trim(); if (v !== (t.description ?? '').trim()) aendern({ description: v }); }}
         rows={3} style={{ ...feld, fontSize: TYP.bedien, lineHeight: 1.5, resize: 'vertical', minHeight: 70 }} />
-      {/(\/os\/|https?:\/\/)/.test(t.description ?? '') && <TextMitLinks text={(t.description ?? '').trim()} style={{ fontSize: 12.5, color: C.inkDim, marginTop: 6, maxHeight: 160, overflowY: 'auto' }} />}
+      {/(\/os\/|https?:\/\/)/.test(t.description ?? '') && <TextMitLinks text={(t.description ?? '').trim()} style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, maxHeight: 160, overflowY: 'auto' }} />}
 
       <CrmVerknuepfung task={t} aendern={aendern} />
 
@@ -248,14 +251,14 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
             const uf = fortschritt(uu);
             return (
               <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', flexWrap: 'wrap' }}>
-                <Haken an={u.status === 'done'} onChange={() => handlung.erledigen(u)} farbe={prioFarbe(u.priority)} label={u.title} />
+                <HakenZiel an={u.status === 'done'} onChange={() => handlung.erledigen(u)} farbe={prioFarbe(u.priority)} label={u.title} />
                 <button onClick={() => onOeffnen(u.id)} className="fassbar" title="Öffnen — Beschreibung, Notiz, eigene Unteraufgaben" style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', minHeight: 36, cursor: 'pointer', ...titelStil(u), fontFamily: SCHRIFT.text, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {u.title}{uf.gesamt > 0 && <span style={{ color: C.inkLeise, fontSize: 12, marginLeft: 8, fontVariantNumeric: 'tabular-nums' }}>{uf.fertig}/{uf.gesamt}</span>}{u.description?.trim() ? <span title="Mit Beschreibung" style={{ color: C.inkLeise, fontSize: 12, marginLeft: 6 }}>¶</span> : null}
+                  {u.title}{uf.gesamt > 0 && <span style={{ color: C.inkLeise, fontSize: TYP.bedien, marginLeft: 8, fontVariantNumeric: 'tabular-nums' }}>{uf.fertig}/{uf.gesamt}</span>}{u.description?.trim() ? <span title="Mit Beschreibung" style={{ color: C.inkLeise, fontSize: TYP.bedien, marginLeft: 6 }}>¶</span> : null}
                 </button>
                 <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Wahl klein label="Status" liste={statusWahl} wert={us.id} farbe={us.farbe} onWahl={id => handlung.statusSetzen(u, id)} />
                   <Wahl klein label="Zuständig" liste={personen.map(p => ({ id: p.speicher as Owner, label: p.name }))} wert={u.assignee} farbe={C.inkDim} onWahl={a => aendernU({ assignee: a })} />
-                  <DatumFeld wert={u.dueDate} onWert={d => aendernU({ dueDate: d })} style={{ ...datumFeld, padding: '2px 8px', fontSize: 12 }} label={`Deadline ${u.title}`} />
+                  <DatumFeld wert={u.dueDate} onWert={d => aendernU({ dueDate: d })} style={{ ...datumFeld, padding: '2px 8px', fontSize: TYP.bedien }} label={`Deadline ${u.title}`} />
                   <NachElternFrist unter={u} eltern={t} />
                 </span>
               </div>
@@ -266,7 +269,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
               onKeyDown={e => { if (e.key === 'Enter' && neuUnter.trim()) { aufgabeAnlegen(dispatch, state, { spaceId: t.spaceId ?? 'privat', parentId: t.id }, { title: neuUnter.trim(), assignee: t.assignee, bezug: t.bezug }); setNeuUnter(''); } }}
               placeholder="+ Unteraufgabe (Enter = nächste)" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px', marginTop: 6 }} />
           ) : (
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Tiefste Ebene ({AUFGABEN_EBENEN_MAX}) erreicht — weitere Schritte als Checkliste in der Notiz („- [ ] …“).</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Tiefste Ebene ({AUFGABEN_EBENEN_MAX}) erreicht — weitere Schritte als Checkliste in der Notiz („- [ ] …“).</div>
           )}
         </>
       )}
@@ -289,12 +292,12 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
         {t.spaceId !== 'privat' && t.status !== 'done' && (
           <Knopf leise onClick={() => fokusFuerAufgabe({ id: t.id, einheit: t.einheit })}>▶ Fokus</Knopf>
         )}
-        <span style={{ fontSize: 12, color: C.inkLeise }}>angelegt {zeit(t.createdAt)}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>angelegt {zeit(t.createdAt)}</span>
         <button onClick={async () => {
           // Papierkorb (29.09., A7): geht etwas mit (Unteraufgaben, Notiz, Dateien), nennt die Rückfrage es; 30 Tage wiederherstellbar.
           // Danach „Rückgängig“ (10 s, #87). Eine offene Serien-Instanz wird dabei übersprungen (die Serie läuft weiter).
           if (await handlung.loeschen(t)) onSchliessen();
-        }} className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, minHeight: 36 }}>Löschen</button>
+        }} className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, minHeight: 36 }}>Löschen</button>
       </div>
     </Karte>
   );
@@ -316,14 +319,14 @@ function CrmVerknuepfung({ task: t, aendern }: { task: Task; aendern: (teil: Par
           const id = t.bezug![a]!;
           const name = bezugName(verweise, a, id);
           return (
-            <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${LEUCHT.business}55`, background: `${LEUCHT.business}14`, borderRadius: 999, padding: '3px 4px 3px 10px', fontSize: 12.5 }}>
+            <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${LEUCHT.business}55`, background: `${LEUCHT.business}14`, borderRadius: 999, padding: '3px 4px 3px 10px', fontSize: TYP.bedien }}>
               <span style={{ color: C.inkLeise }}>{BEZUG_LABEL[a]}</span>
               <Link href={bezugLink(a, id)} style={{ color: LEUCHT.business, textDecoration: 'none', fontWeight: 600, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name ?? (verweise ? 'nicht mehr im CRM' : '…')}</Link>
-              <button onClick={() => aendern({ bezug: bezugOhne(t.bezug, a) })} aria-label={`${BEZUG_LABEL[a]} lösen`} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, padding: '0 6px' }}>×</button>
+              <SymbolKnopf onClick={() => aendern({ bezug: bezugOhne(t.bezug, a) })} ariaLabel={`${BEZUG_LABEL[a]} lösen`} eingebettet>×</SymbolKnopf>
             </span>
           );
         })}
-        {!offen && <button onClick={() => { setOffen(true); setTimeout(() => feldRef.current?.focus(), 0); }} className="fassbar" style={{ border: '1px dashed rgba(255,255,255,.2)', background: 'transparent', color: C.inkDim, borderRadius: 999, padding: '4px 11px', fontSize: 12.5, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+ Kontakt, Firma, Mandat, Deal</button>}
+        {!offen && <button onClick={() => { setOffen(true); setTimeout(() => feldRef.current?.focus(), 0); }} className="fassbar" style={{ border: '1px dashed rgba(255,255,255,.2)', background: 'transparent', color: C.inkDim, borderRadius: 999, padding: '4px 11px', fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+ Kontakt, Firma, Mandat, Deal</button>}
       </div>
       {offen && (
         <div style={{ marginTop: 8 }}>
@@ -335,11 +338,11 @@ function CrmVerknuepfung({ task: t, aendern }: { task: Task; aendern: (teil: Par
                 style={{ display: 'flex', gap: 10, alignItems: 'baseline', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '8px 4px', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>
                 <span style={{ ...mikro, width: 62, flex: '0 0 auto' }}>{BEZUG_LABEL[x.art]}</span>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.name}</span>
-                {x.unter && <span style={{ color: C.inkLeise, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.unter}</span>}
+                {x.unter && <span style={{ color: C.inkLeise, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.unter}</span>}
               </button>
             ))}
-            {suche.trim() && verweise && !treffer.length && <span style={{ fontSize: 12.5, color: C.inkLeise, padding: '6px 4px' }}>Nichts gefunden.</span>}
-            <button onClick={() => { setOffen(false); setSuche(''); }} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: '6px 4px' }}>fertig</button>
+            {suche.trim() && verweise && !treffer.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 4px' }}>Nichts gefunden.</span>}
+            <button onClick={() => { setOffen(false); setSuche(''); }} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '6px 4px' }}>fertig</button>
           </div>
         </div>
       )}
@@ -390,13 +393,13 @@ function Abhaengigkeiten({ task: t, state, aendern, onOeffnen }: { task: Task; s
           const fertig = b.status === 'done';
           const f = fertig ? LEUCHT.gut : LEUCHT.achtung;
           return (
-            <span key={id} title={fertig ? 'Erledigt — blockiert nicht mehr' : 'Noch offen — diese Aufgabe wartet darauf'} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${f}55`, background: `${f}14`, borderRadius: 999, padding: '3px 4px 3px 10px', fontSize: 12.5, maxWidth: 280 }}>
-              <button onClick={() => onOeffnen(id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: f, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: fertig ? 'line-through' : 'none' }}>{b.title}</button>
-              <button onClick={() => setze(ids.filter(x => x !== id))} aria-label={`Abhängigkeit von „${b.title}“ lösen`} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, padding: '0 6px' }}>×</button>
+            <span key={id} title={fertig ? 'Erledigt — blockiert nicht mehr' : 'Noch offen — diese Aufgabe wartet darauf'} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${f}55`, background: `${f}14`, borderRadius: 999, padding: '3px 4px 3px 10px', fontSize: TYP.bedien, maxWidth: 280 }}>
+              <button onClick={() => onOeffnen(id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: f, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: fertig ? 'line-through' : 'none' }}>{b.title}</button>
+              <SymbolKnopf onClick={() => setze(ids.filter(x => x !== id))} ariaLabel={`Abhängigkeit von „${b.title}“ lösen`} eingebettet>×</SymbolKnopf>
             </span>
           );
         })}
-        {!offen && <button onClick={() => setOffen(true)} className="fassbar" style={{ border: '1px dashed rgba(255,255,255,.2)', background: 'transparent', color: C.inkDim, borderRadius: 999, padding: '4px 11px', fontSize: 12.5, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+ wartet auf …</button>}
+        {!offen && <button onClick={() => setOffen(true)} className="fassbar" style={{ border: '1px dashed rgba(255,255,255,.2)', background: 'transparent', color: C.inkDim, borderRadius: 999, padding: '4px 11px', fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+ wartet auf …</button>}
       </div>
       {offen && (
         <div style={{ marginTop: 8 }}>
@@ -407,17 +410,17 @@ function Abhaengigkeiten({ task: t, state, aendern, onOeffnen }: { task: Task; s
               <button key={x.id} onClick={() => { setze([...ids, x.id]); setSuche(''); setOffen(false); }} className="fassbar"
                 style={{ display: 'flex', gap: 10, alignItems: 'baseline', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '8px 4px', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{x.title}</span>
-                {x.dueDate && <span style={{ color: C.inkLeise, fontSize: 12 }}>{tagKurz(x.dueDate)}</span>}
+                {x.dueDate && <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{tagKurz(x.dueDate)}</span>}
               </button>
             ))}
-            {!kandidaten.length && <span style={{ fontSize: 12.5, color: C.inkLeise, padding: '6px 4px' }}>Nichts gefunden (Aufgaben, die einen Kreis schließen würden, stehen nicht zur Wahl).</span>}
-            <button onClick={() => { setOffen(false); setSuche(''); }} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: '6px 4px' }}>fertig</button>
+            {!kandidaten.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 4px' }}>Nichts gefunden (Aufgaben, die einen Kreis schließen würden, stehen nicht zur Wahl).</span>}
+            <button onClick={() => { setOffen(false); setSuche(''); }} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '6px 4px' }}>fertig</button>
           </div>
         </div>
       )}
       {davon.length > 0 && (
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>
-          Darauf warten: {davon.map((x, n) => <button key={x.id} onClick={() => onOeffnen(x.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>{x.title}{n < davon.length - 1 ? ', ' : ''}</button>)}
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>
+          Darauf warten: {davon.map((x, n) => <button key={x.id} onClick={() => onOeffnen(x.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>{x.title}{n < davon.length - 1 ? ', ' : ''}</button>)}
         </div>
       )}
     </div>
@@ -436,7 +439,7 @@ function ZeitJeAufgabeZeile({ ids, personen }: { ids: string[]; personen: readon
     return () => { lebt = false; };
   }, [schluessel]);
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 16, fontSize: 12.5, color: C.inkDim }}>
+    <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 16, fontSize: TYP.bedien, color: C.inkDim }}>
       <span style={mikro}>Fokus-Zeit</span>
       {!z ? <span style={{ color: C.inkLeise }}>…</span> : z.sek ? <>
         <b style={{ color: C.ink, fontFamily: SCHRIFT.display, fontSize: 15 }}>{dauerText(z.sek)}</b>

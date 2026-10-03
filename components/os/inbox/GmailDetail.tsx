@@ -13,7 +13,7 @@ import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import type { Owner } from '@/types/common';
-import { Knopf, Chip, LEUCHT } from '../schlank';
+import { Knopf, Chip, LEUCHT } from '../ui';
 import { NeuerTermin } from '../kalender/NeuerTermin';
 import { GmailText } from './GmailText';
 import { GmailAntwort, type AntwortDaten } from './GmailAntwort';
@@ -97,7 +97,7 @@ export function GmailDetail({ nachrichtId, person, meldung, onGeaendert, imFenst
   };
 
   const kopfZeile = (n: Nachricht) => (
-    <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>
+    <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>
       <b style={{ color: C.inkDim }}>{n.kopf.von.name ?? n.kopf.von.email}</b>{n.kopf.von.name ? ` <${n.kopf.von.email}>` : ''} · {datum(n.kopf.am)}
       {n.kopf.an.length > 0 && <> · an {n.kopf.an.slice(0, 3).map(a => a.name ?? a.email).join(', ')}{n.kopf.an.length > 3 ? ` +${n.kopf.an.length - 3}` : ''}{n.kopf.cc.length ? ` (Cc ${n.kopf.cc.length})` : ''}</>}
     </div>
@@ -183,7 +183,7 @@ export function GmailDetail({ nachrichtId, person, meldung, onGeaendert, imFenst
           onGesendet={() => { setAntwort(null); void laden(); void post('/api/gmail', { aktion: 'abgleichen' }).then(() => onGeaendert()); }}
           d={{ antwortAuf: d.antwortAuf, betreff: k.betreff, empfaenger: d.empfaenger, aliase: d.aliase, eigene: d.eigene }} />
       )}
-      <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 10 }}>{vorText(Math.max(0, Math.floor((Date.now() - Date.parse(k.am)) / 60_000)))} · Gmail bleibt das Original — hier liegt nur eine Kopie zum Lesen, Zuordnen und Antworten.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>{vorText(Math.max(0, Math.floor((Date.now() - Date.parse(k.am)) / 60_000)))} · Gmail bleibt das Original — hier liegt nur eine Kopie zum Lesen, Zuordnen und Antworten.</div>
     </div>
   );
 }

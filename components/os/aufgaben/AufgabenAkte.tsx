@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Haken, feld, prioFarbe } from '../schlank';
+import { feld, prioFarbe, HakenZiel } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabenFuer } from '@/lib/aufgaben/crm-verweise';
 import { mandantSpaceId } from '@/lib/aufgaben/struktur';
@@ -41,18 +41,18 @@ export function AufgabenAkte(b: AkteBezug) {
     <div style={{ display: 'grid', gap: 2 }}>
       {offen.slice(0, 8).map(t => (
         <div key={t.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,.045)' }}>
-          <Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />
+          <HakenZiel an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />
           <Link href={t.spaceId ? WEG.aufgaben({ s: t.spaceId, a: t.id }) : WEG.aufgabe(t.id)} className="fassbar" style={{ flex: 1, minWidth: 0, color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</Link>
-          {t.dueDate && <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise }}>{t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span>}
+          {t.dueDate && <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise }}>{t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span>}
         </div>
       ))}
-      {offen.length > 8 && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4 }}>… und {offen.length - 8} weitere.</div>}
-      {!offen.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Keine offene Aufgabe.</div>}
+      {offen.length > 8 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>… und {offen.length - 8} weitere.</div>}
+      {!offen.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine offene Aufgabe.</div>}
       <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }} aria-label="Neue Aufgabe zu dieser Akte"
         placeholder="+ Aufgabe (Enter)" style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', marginTop: 6, fontFamily: SCHRIFT.text }} />
       {b.mandantFirmaId
-        ? <Link href={WEG.aufgaben({ s: mandantSpaceId(b.mandantFirmaId) })} style={{ fontSize: 12.5, fontWeight: 600, color: C.aktiv, textDecoration: 'none', marginTop: 6 }}>Mandanten-Space öffnen — Projekte, Gruppen, Listen ›</Link>
-        : <Link href={WEG.aufgaben({ b: 'ueberblick' })} style={{ fontSize: 12, color: C.aktiv, textDecoration: 'none', marginTop: 4 }}>Alle Aufgaben ›</Link>}
+        ? <Link href={WEG.aufgaben({ s: mandantSpaceId(b.mandantFirmaId) })} style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.aktiv, textDecoration: 'none', marginTop: 6 }}>Mandanten-Space öffnen — Projekte, Gruppen, Listen ›</Link>
+        : <Link href={WEG.aufgaben({ b: 'ueberblick' })} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', marginTop: 4 }}>Alle Aufgaben ›</Link>}
     </div>
   );
 }

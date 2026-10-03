@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { LEUCHT } from '../schlank';
+import { LEUCHT } from '../ui';
 import { WEG } from '@/lib/wege';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { antwortenZaehlen } from '@/lib/kalender/gaeste';
@@ -85,9 +85,9 @@ export function TermineAkte({ frage, kontaktId, heute }: { frage: TermineZuFrage
   const stabil = useMemo(() => frage, [JSON.stringify(frage)]); // eslint-disable-line react-hooks/exhaustive-deps
   const { daten } = useTermineZu(stabil);
   const [vorgemerkt, setVorgemerkt] = useState<Record<string, 'ok' | 'laeuft' | string>>({});
-  if (!daten) return <div style={{ fontSize: 12.5, color: C.inkLeise }}>Termine werden geladen …</div>;
+  if (!daten) return <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Termine werden geladen …</div>;
   const { kommend, vergangen } = daten;
-  if (!kommend.length && !vergangen.length) return <div style={{ fontSize: 12.5, color: C.inkLeise }}>Keine verknüpften Termine. Im Kalender am Termin „verknüpfen“ — oder hier „+ Meeting“.</div>;
+  if (!kommend.length && !vergangen.length) return <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine verknüpften Termine. Im Kalender am Termin „verknüpfen“ — oder hier „+ Meeting“.</div>;
   const nachbereiten = async (t: AkteTermin) => {
     const wer = kontaktId ?? t.bezug.kontaktId;
     if (!wer) return;
@@ -105,12 +105,12 @@ export function TermineAkte({ frage, kontaktId, heute }: { frage: TermineZuFrage
       <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.045)', minWidth: 0, fontFamily: SCHRIFT.text }}>
         <Link href={WEG.termin(t.id, t.start.slice(0, 10))} title="Im Kalender öffnen" style={{ display: 'grid', gap: 1, flex: 1, minWidth: 0, color: C.ink, textDecoration: 'none' }}>
           <span style={{ fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(t.abgesagt ? { textDecoration: 'line-through', color: C.inkLeise } : {}) }}>{t.titel}</span>
-          <span style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.abgesagt ? 'abgesagt · ' : ''}{wann(t)}{t.ort ? ` · ${t.ort}` : ''}{t.serie ? ' · Serie' : ''}{t.antworten?.length ? ` · ${antwortenZaehlen(t.antworten)}` : ''}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.abgesagt ? 'abgesagt · ' : ''}{wann(t)}{t.ort ? ` · ${t.ort}` : ''}{t.serie ? ' · Serie' : ''}{t.antworten?.length ? ` · ${antwortenZaehlen(t.antworten)}` : ''}</span>
         </Link>
         {kannNach && (v === 'ok'
-          ? <span style={{ fontSize: 12, color: LEUCHT.gut, whiteSpace: 'nowrap' }}>✓ vorgemerkt</span>
+          ? <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, whiteSpace: 'nowrap' }}>✓ vorgemerkt</span>
           : <button type="button" disabled={v === 'laeuft'} onClick={() => void nachbereiten(t)} title={typeof v === 'string' && v !== 'laeuft' ? v : 'Vorschlag: Follow-up „Nachbereiten“ für heute anlegen'} className="fassbar"
-            style={{ border: `1px solid ${LEUCHT.business}66`, background: 'transparent', color: LEUCHT.business, borderRadius: 999, padding: '3px 10px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text }}>Nachbereiten</button>)}
+            style={{ border: `1px solid ${LEUCHT.business}66`, background: 'transparent', color: LEUCHT.business, borderRadius: 999, padding: '3px 10px', fontSize: TYP.bedien, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text }}>Nachbereiten</button>)}
       </div>
     );
   };

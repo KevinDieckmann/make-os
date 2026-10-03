@@ -8,7 +8,7 @@
 import { useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Fenster } from '../Fenster';
-import { Knopf, feld } from '../schlank';
+import { Knopf, feld } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import type { AufgabenListe, Wiederholung } from '@/types/tasks';
 import { listenMuster, listenSerieStarten } from '@/lib/aufgaben/serie';
@@ -81,14 +81,14 @@ export function SerienListeEinstellen({ liste, onSchliessen }: { liste: Aufgaben
           </select></label>
         <label style={zeile}><span style={mikro}>Titel-Muster</span>
           <input value={musterJetzt} onChange={e => setMuster(e.target.value)} maxLength={120} style={eingabe} aria-label="Titel-Muster" placeholder="Monatsabschluss {Monat} {Jahr}" /></label>
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
           Platzhalter {'{Monat}'} {'{Jahr}'} {'{KW}'} {'{Datum}'} · {wiederholungText(w)}
           {start?.naechste ? ` · nächste Liste am ${kurzTag(start.naechste)}: „${titelMitPlatzhaltern(musterJetzt, start.naechste)}“` : ' · keine weitere Liste'}
         </span>
       </>}
       {fehler && <div role="alert" style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler}</div>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button onClick={() => setAlsVorlage(true)} style={{ marginRight: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>Nur als Vorlage speichern …</button>
+        <button onClick={() => setAlsVorlage(true)} style={{ marginRight: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>Nur als Vorlage speichern …</button>
         {liste.wiederholung && <Knopf leise onClick={() => { dispatch({ type: 'UPDATE_LISTE', payload: { id: liste.id, wiederholung: undefined } }); onSchliessen(); }}>Serie beenden</Knopf>}
         <Knopf leise onClick={onSchliessen}>Abbrechen</Knopf>
         <Knopf onClick={speichern}>{w ? 'Speichern' : 'Ohne Wiederholung speichern'}</Knopf>
@@ -109,7 +109,7 @@ export function ListeSerieKnopf({ listeId }: { listeId: string }) {
     <>
       <button onClick={() => setAuf(true)} className="fassbar" aria-label={w ? `Wiederkehrend: ${wiederholungText(w)} — einstellen` : 'Als wiederkehrende Liste einstellen'}
         title={w ? `wiederkehrend: ${wiederholungText(w)}${w.naechste ? ` · nächste Liste ${kurzTag(w.naechste)}` : ''}` : 'wiederkehrend einstellen'}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', fontSize: 14, lineHeight: 1, fontWeight: 700, color: w ? C.aktiv : 'rgba(255,255,255,.28)', fontFamily: SCHRIFT.text }}>↻</button>
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', minWidth: 40, minHeight: 40, borderRadius: 10, fontSize: 16, lineHeight: 1, fontWeight: 700, color: w ? C.aktiv : 'rgba(255,255,255,.28)', fontFamily: SCHRIFT.text }}>↻</button>
       {auf && <SerienListeEinstellen liste={liste} onSchliessen={() => setAuf(false)} />}
     </>
   );

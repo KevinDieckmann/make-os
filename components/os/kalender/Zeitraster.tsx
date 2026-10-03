@@ -26,7 +26,7 @@
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPE, type DragEvent } from 'react';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { LEUCHT } from '../schlank';
+import { LEUCHT } from '../ui';
 import { spaltenLegen, ziehSpanne, spanneText, rasterLage, zeitumstellung, letzterTag, verschiebeDifferenz, endeAmTag, startMinute } from '@/lib/kalender/layout';
 import { ART_INFO, ARBEITSORTE } from '@/lib/kalender/arten';
 import { ART_FARBE } from '@/types/planer';
@@ -294,16 +294,16 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
       <div>
         {arbeitsorte.map(z => (
           <div key={z.wer} style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px repeat(${tage.length}, minmax(0, 1fr))`, borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-            <div title={`Arbeitsort ${WER_LABEL[z.wer]}`} style={{ fontSize: 11, color: WER_FARBE[z.wer], padding: '4px 4px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{WER_LABEL[z.wer]}</div>
+            <div title={`Arbeitsort ${WER_LABEL[z.wer]}`} style={{ fontSize: 12, color: WER_FARBE[z.wer], padding: '4px 4px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{WER_LABEL[z.wer]}</div>
             {tage.map(tag => { const t = z.tage.get(tag); const ort = t?.arbeitsort ? ARBEITSORTE.find(a => a.id === t.arbeitsort!.art) : undefined; return (
               <div key={tag} style={{ borderLeft: '1px solid rgba(255,255,255,.05)', padding: '2px 4px', minWidth: 0 }}>
                 {t ? (
-                  <button type="button" onClick={() => onOeffnen(t)} title={`Arbeitsort ${WER_LABEL[z.wer]}: ${t.titel}`} className="fassbar"
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%', minWidth: 0, border: 'none', background: 'transparent', color: C.inkDim, fontSize: 11.5, cursor: 'pointer', padding: '1px 2px', fontFamily: SCHRIFT.text }}>
+                  <button type="button" onClick={() => onOeffnen(t)} title={`Arbeitsort ${WER_LABEL[z.wer]}: ${t.titel}`} className="fassbar ui-kein-ziel"
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%', minWidth: 0, border: 'none', background: 'transparent', color: C.inkDim, fontSize: 12, cursor: 'pointer', padding: '1px 2px', fontFamily: SCHRIFT.text }}>
                     <span aria-hidden>{ort?.zeichen ?? '•'}</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titel}</span>
                   </button>
                 ) : onArbeitsortNeu && z.wer !== 'beide' ? (
-                  <button type="button" onClick={() => onArbeitsortNeu(tag, z.wer)} aria-label={`Arbeitsort ${WER_LABEL[z.wer]} am ${tag} eintragen`} style={{ width: '100%', border: 'none', background: 'transparent', color: C.inkLeise, cursor: 'pointer', fontSize: 11, opacity: .5 }}>+</button>
+                  <button type="button" className="ui-kein-ziel" onClick={() => onArbeitsortNeu(tag, z.wer)} aria-label={`Arbeitsort ${WER_LABEL[z.wer]} am ${tag} eintragen`} style={{ width: '100%', border: 'none', background: 'transparent', color: C.inkLeise, cursor: 'pointer', fontSize: 12, opacity: .5 }}>+</button>
                 ) : null}
               </div>
             ); })}
@@ -312,7 +312,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
       </div>
       {/* Ganztags-Zeile */}
       <div style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px repeat(${tage.length}, minmax(0, 1fr))`, borderBottom: '1px solid rgba(255,255,255,.07)', maxHeight: 132, overflowY: 'auto' }}>
-        <div style={{ fontSize: 11, color: C.inkLeise, padding: '6px 4px', textAlign: 'right' }}>ganzt.</div>
+        <div style={{ fontSize: 12, color: C.inkLeise, padding: '6px 4px', textAlign: 'right' }}>ganzt.</div>
         {jeTag.map(t => (
           <div key={t.tag} data-ganztags={t.tag} onDragOver={ganztagsUeber} onDrop={e => aufgabeAb(e, t.tag, false)} style={{ padding: 4, borderLeft: '1px solid rgba(255,255,255,.05)', minWidth: 0, minHeight: 28, background: t.abwesendGanz ? SCHRAFFUR : undefined }}>
             <GanztagsZelle termine={t.ganztags} aufgaben={t.aufgaben} erinnerungen={t.erinnerungen} fristen={t.fristen} onTermin={onOeffnen}
@@ -324,7 +324,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
       <div ref={rollen} style={{ overflowY: 'auto', minHeight: 0, position: 'relative' }}>
         <div style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px 1fr`, height: 24 * 60 * PX_MIN }}>
           <div style={{ position: 'relative' }}>
-            {stunden.map(h => <div key={h} style={{ position: 'absolute', top: h * 60 * PX_MIN - 7, right: 6, fontSize: 11, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{h > 0 ? `${String(h).padStart(2, '0')}:00` : ''}</div>)}
+            {stunden.map(h => <div key={h} style={{ position: 'absolute', top: h * 60 * PX_MIN - 7, right: 6, fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{h > 0 ? `${String(h).padStart(2, '0')}:00` : ''}</div>)}
           </div>
           <div ref={spalten} style={{ position: 'relative', display: 'grid', gridTemplateColumns: `repeat(${tage.length}, minmax(0, 1fr))` }}>
             {/* Stundenlinien */}
@@ -339,18 +339,18 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                   {/* #86: Zeitumstellung — Ende Oktober gibt es 02:00–03:00 zweimal, Ende März gar nicht. */}
                   {t.umstellung && (
                     <div role="note" title={t.umstellung === 'doppelt' ? 'Zeitumstellung: 02:00–03:00 gibt es heute zweimal (erst Sommer-, dann Winterzeit). Termine in dieser Stunde können übereinander liegen.' : 'Zeitumstellung: 02:00–03:00 gibt es heute nicht (die Uhr springt von 2 auf 3 Uhr).'}
-                      style={{ position: 'absolute', left: 0, right: 0, top: 120 * PX_MIN, height: 60 * PX_MIN, background: `repeating-linear-gradient(45deg, ${LEUCHT.achtung}1f 0 5px, transparent 5px 10px)`, borderTop: `1px dashed ${LEUCHT.achtung}88`, borderBottom: `1px dashed ${LEUCHT.achtung}88`, pointerEvents: 'none', zIndex: 1, fontSize: 11, color: LEUCHT.achtung, padding: '1px 4px', overflow: 'hidden', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text }}>
+                      style={{ position: 'absolute', left: 0, right: 0, top: 120 * PX_MIN, height: 60 * PX_MIN, background: `repeating-linear-gradient(45deg, ${LEUCHT.achtung}1f 0 5px, transparent 5px 10px)`, borderTop: `1px dashed ${LEUCHT.achtung}88`, borderBottom: `1px dashed ${LEUCHT.achtung}88`, pointerEvents: 'none', zIndex: 1, fontSize: 12, color: LEUCHT.achtung, padding: '1px 4px', overflow: 'hidden', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text }}>
                       {t.umstellung === 'doppelt' ? '2–3 Uhr doppelt' : '2–3 Uhr entfällt'}
                     </div>
                   )}
                   {/* #85: „+n“ je Gruppe mit mehr als 3 Spalten — Klick klappt den Tag auf (alle Spalten), „−“ wieder zu. */}
                   {t.mehr.map(m => (
-                    <button key={`mehr-${m.gruppe}`} type="button" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setAufgeklappt(a => new Set(a).add(t.tag)); }}
+                    <button key={`mehr-${m.gruppe}`} type="button" className="ui-kein-ziel" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setAufgeklappt(a => new Set(a).add(t.tag)); }}
                       aria-label={`${m.n} weitere Einträge zeigen`} title={`${m.n} weitere Einträge — aufklappen`}
                       style={{ position: 'absolute', top: m.von * PX_MIN, height: MIN_HOEHE, left: `calc(${(200 / 3).toFixed(4)}% + 2px)`, width: `calc(${(100 / 3).toFixed(4)}% - 4px)`, zIndex: 3, border: `1px solid rgba(255,255,255,.14)`, borderRadius: 7, background: C.flaecheHoch, color: C.ink, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>+{m.n}</button>
                   ))}
                   {t.wenigerVon !== null && (
-                    <button type="button" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setAufgeklappt(a => { const n = new Set(a); n.delete(t.tag); return n; }); }}
+                    <button type="button" className="ui-kein-ziel" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setAufgeklappt(a => { const n = new Set(a); n.delete(t.tag); return n; }); }}
                       aria-label="Weniger Spalten zeigen" title="Wieder zusammenklappen"
                       style={{ position: 'absolute', top: Math.max(0, t.wenigerVon * PX_MIN - MIN_HOEHE - 2), right: 2, zIndex: 4, minWidth: MIN_HOEHE, height: MIN_HOEHE, border: `1px solid rgba(255,255,255,.14)`, borderRadius: 7, background: C.flaecheHoch, color: C.inkDim, fontSize: 13, cursor: 'pointer', padding: 0 }}>−</button>
                   )}
@@ -386,8 +386,8 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                           {ev.art === 'block' && <span aria-hidden style={{ marginRight: 4, color: f }}>▪</span>}
                           {ev.titel}
                         </div>
-                        {z && mehr && z.bewegt && <div aria-live="polite" style={{ fontSize: 11, color: C.ink, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{mehrtaegigVorschau(ev, z)}</div>}
-                        {(bis - von) * PX_MIN >= 30 && !(z && mehr) && <div style={{ fontSize: 11, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{mehr ? `${kurz(ev.start)} – ${kurz(ev.ende)}` : `${uhr(von)}–${uhr(bis)}`}{ev.ort ? ` · ${ev.ort}` : ''}{frei ? ' · frei' : ''}</div>}
+                        {z && mehr && z.bewegt && <div aria-live="polite" style={{ fontSize: 12, color: C.ink, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{mehrtaegigVorschau(ev, z)}</div>}
+                        {(bis - von) * PX_MIN >= 30 && !(z && mehr) && <div style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{mehr ? `${kurz(ev.start)} – ${kurz(ev.ende)}` : `${uhr(von)}–${uhr(bis)}`}{ev.ort ? ` · ${ev.ort}` : ''}{frei ? ' · frei' : ''}</div>}
                         {darfDauer && <div onPointerDown={e => anfassen(e, ev, ti, 'resize')} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 8, cursor: 'ns-resize' }} />}
                       </div>
                     );
@@ -402,10 +402,10 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                         style={{ position: 'absolute', top: l.von * PX_MIN, height: Math.max(MIN_HOEHE, (l.bis - l.von) * PX_MIN - 2), left: `calc(${s.links}% + 2px)`, width: `calc(${s.breite}% - 4px)`, zIndex: 2,
                           display: 'flex', alignItems: 'flex-start', gap: 5, textAlign: 'left', border: `1px solid ${ART_FARBE.aufgabe}66`, background: `${ART_FARBE.aufgabe}18`, borderRadius: 7, padding: '3px 6px', color: C.ink, fontSize: 12, fontWeight: 600, cursor: onAufgabeEinplanen ? 'grab' : 'pointer', overflow: 'hidden', fontFamily: SCHRIFT.text, textDecoration: a.done ? 'line-through' : 'none' }}>
                         {onAufgabeHaken
-                          ? <button type="button" onClick={e => { e.stopPropagation(); onAufgabeHaken(a.id); }} aria-label={`„${a.title}“ als erledigt markieren`} title="Abhaken"
+                          ? <button type="button" className="ui-kein-ziel" onClick={e => { e.stopPropagation(); onAufgabeHaken(a.id); }} aria-label={`„${a.title}“ als erledigt markieren`} title="Abhaken"
                             style={{ width: 13, height: 13, marginTop: 1, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, background: 'transparent', flex: '0 0 auto', padding: 0, cursor: 'pointer' }} />
                           : <span aria-hidden style={{ width: 10, height: 10, marginTop: 2, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto' }} />}
-                        <button type="button" onClick={e => { e.stopPropagation(); onAufgabe(a.id); }} style={{ all: 'unset', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        <button type="button" className="ui-kein-ziel" onClick={e => { e.stopPropagation(); onAufgabe(a.id); }} style={{ all: 'unset', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                           {a.eltern && <span aria-label="Unteraufgabe" style={{ color: C.inkLeise }}>↳ </span>}{a.zeit} {a.title}
                         </button>
                       </div>
@@ -413,17 +413,17 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                   })}
                   {/* Wohin eine gezogene Aufgabe fällt */}
                   {ablage && ablage.tag === ti && (
-                    <div aria-hidden style={{ position: 'absolute', top: ablage.min * PX_MIN, left: 2, right: 2, height: Math.max(MIN_HOEHE, aufgabeDauer * PX_MIN - 2), borderRadius: 7, border: `2px dashed ${ART_FARBE.aufgabe}`, background: `${ART_FARBE.aufgabe}14`, pointerEvents: 'none', zIndex: 6, fontSize: 11, color: C.inkDim, padding: '2px 6px', fontFamily: SCHRIFT.text }}>{zeitAusMinuten(ablage.min, RASTER)}</div>
+                    <div aria-hidden style={{ position: 'absolute', top: ablage.min * PX_MIN, left: 2, right: 2, height: Math.max(MIN_HOEHE, aufgabeDauer * PX_MIN - 2), borderRadius: 7, border: `2px dashed ${ART_FARBE.aufgabe}`, background: `${ART_FARBE.aufgabe}14`, pointerEvents: 'none', zIndex: 6, fontSize: 12, color: C.inkDim, padding: '2px 6px', fontFamily: SCHRIFT.text }}>{zeitAusMinuten(ablage.min, RASTER)}</div>
                   )}
                   {/* Vorschau beim Aufziehen: „(Kein Titel) 4–5 Uhr“ */}
                   {vorschau && vorschau.tag === ti && (
                     <div aria-live="polite" style={{ position: 'absolute', top: vorschau.von * PX_MIN, height: Math.max(MIN_HOEHE, (vorschau.bis - vorschau.von) * PX_MIN - 2), left: 2, right: 2, borderRadius: 7, background: `${LEUCHT.puls}40`, borderLeft: `3px solid ${LEUCHT.puls}`, pointerEvents: 'none', zIndex: 6, padding: '3px 6px', fontSize: 12, color: C.ink, fontFamily: SCHRIFT.text, boxShadow: '0 8px 24px rgba(0,0,0,.35)' }}>
-                      <b>(Kein Titel)</b><div style={{ fontSize: 11, color: C.inkDim }}>{spanneText(vorschau.von, vorschau.bis)}</div>
+                      <b>(Kein Titel)</b><div style={{ fontSize: 12, color: C.inkDim }}>{spanneText(vorschau.von, vorschau.bis)}</div>
                     </div>
                   )}
                   {/* Geist in der Zielspalte beim Verschieben auf einen anderen Tag */}
                   {zieh && zieh.aktiv && zieh.art === 'move' && zieh.neuTag === ti && zieh.tag !== ti && (
-                    <div style={{ position: 'absolute', top: zieh.neuStart * PX_MIN, height: (zieh.neuEnde - zieh.neuStart) * PX_MIN - 2, left: 2, right: 2, borderRadius: 7, border: `2px dashed ${WER_FARBE.kevin}`, background: 'rgba(255,255,255,.06)', pointerEvents: 'none', zIndex: 4, fontSize: 11, color: C.inkDim, padding: '3px 6px' }}>{uhr(zieh.neuStart)}–{uhr(zieh.neuEnde)}</div>
+                    <div style={{ position: 'absolute', top: zieh.neuStart * PX_MIN, height: (zieh.neuEnde - zieh.neuStart) * PX_MIN - 2, left: 2, right: 2, borderRadius: 7, border: `2px dashed ${WER_FARBE.kevin}`, background: 'rgba(255,255,255,.06)', pointerEvents: 'none', zIndex: 4, fontSize: 12, color: C.inkDim, padding: '3px 6px' }}>{uhr(zieh.neuStart)}–{uhr(zieh.neuEnde)}</div>
                   )}
                 </div>
               );
@@ -431,7 +431,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
           </div>
         </div>
       </div>
-      <div style={{ fontSize: 11, color: C.inkLeise, padding: '6px 10px', borderTop: '1px solid rgba(255,255,255,.05)', fontFamily: SCHRIFT.text }}>Klick in eine Lücke legt an · aufziehen wählt die Zeit (am Handy kurz halten) · anfassen verschiebt · untere Kante ändert die Dauer · Aufgaben: Haken erledigt, ziehen plant ein · 🔒 nur in Apple/Google änderbar · 👥 mit Gästen</div>
+      <div style={{ fontSize: 12, color: C.inkLeise, padding: '6px 10px', borderTop: '1px solid rgba(255,255,255,.05)', fontFamily: SCHRIFT.text }}>Klick in eine Lücke legt an · aufziehen wählt die Zeit (am Handy kurz halten) · anfassen verschiebt · untere Kante ändert die Dauer · Aufgaben: Haken erledigt, ziehen plant ein · 🔒 nur in Apple/Google änderbar · 👥 mit Gästen</div>
     </div>
   );
 }

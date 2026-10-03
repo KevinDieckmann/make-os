@@ -12,8 +12,8 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
-import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { LEUCHT } from '../schlank';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { LEUCHT } from '../ui';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
 
 interface Stand {
@@ -140,7 +140,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
     await vorschauHolen(); onGeaendert?.();
   };
 
-  const klein: CSSProperties = { fontSize: 12.5, color: C.inkLeise };
+  const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise };
   const box: CSSProperties = { display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)' };
   const gebe = (k: string) => arbeit === k;
 
@@ -148,8 +148,8 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
     <div style={box} data-google="verbindung">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 700, fontSize: 14 }}>Google Kalender (MAKE)</span>
-        {s?.verbunden && <span style={{ fontSize: 11, fontWeight: 700, color: LEUCHT.schlaf, border: `1px solid ${LEUCHT.schlaf}55`, borderRadius: 999, padding: '1px 8px' }}>verbunden</span>}
-        {s?.getrennt && <span style={{ fontSize: 11, fontWeight: 700, color: LEUCHT.kritisch, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 999, padding: '1px 8px' }}>getrennt</span>}
+        {s?.verbunden && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.schlaf, border: `1px solid ${LEUCHT.schlaf}55`, borderRadius: 999, padding: '1px 8px' }}>verbunden</span>}
+        {s?.getrennt && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.kritisch, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 999, padding: '1px 8px' }}>getrennt</span>}
       </div>
       <div style={klein}>Deine MAKE-Termine liegen bei Google (Workspace) und gleichen in beide Richtungen ab. Privat, Familie und Gemeinsam bleiben in MAKE OS und iCloud.</div>
       {hinweis && <div role="status" style={{ fontSize: 13, color: hinweis.achtung ? LEUCHT.achtung : C.ink, background: hinweis.achtung ? `${LEUCHT.achtung}14` : 'rgba(255,255,255,.04)', borderRadius: 9, padding: '8px 10px' }}>{hinweis.text}</div>}

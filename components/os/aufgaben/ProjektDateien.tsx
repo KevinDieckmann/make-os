@@ -152,17 +152,17 @@ export function ProjektDateien({ projektId, aufgabeId, listeId, space }: { proje
           <Upload size={14} aria-hidden /> Auswählen
         </button>
         <input ref={waehler} type="file" multiple accept={AUFGABEN_ANNEHMEN} hidden onChange={ev => { if (ev.target.files) void hochladen(ev.target.files); ev.target.value = ''; }} />
-        <span style={{ width: '100%', textAlign: 'center', fontFamily: SCHRIFT.text, fontSize: 11.5, color: C.inkLeise }}>
+        <span style={{ width: '100%', textAlign: 'center', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise }}>
           PDF, Bilder, Word, Excel, PowerPoint, CSV, TXT, Markdown · bis {MAX_AUFGABEN_DATEI_BYTES / 1024 / 1024} MB · verschlüsselt{space === 'privat' ? ' · privat' : ''}
         </span>
       </div>
 
-      {fehler && <div role="alert" style={{ fontFamily: SCHRIFT.text, fontSize: 12.5, color: C.kritisch }}>{fehler}</div>}
+      {fehler && <div role="alert" style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.kritisch }}>{fehler}</div>}
 
       {eintraege === null ? (
-        <div style={{ fontFamily: SCHRIFT.text, fontSize: 12.5, color: C.inkLeise }}>Lade Dateien …</div>
+        <div style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise }}>Lade Dateien …</div>
       ) : !eintraege.length ? (
-        <div style={{ fontFamily: SCHRIFT.text, fontSize: 12.5, color: C.inkLeise }}>Noch keine Dateien.</div>
+        <div style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Dateien.</div>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {eintraege.map(e => {
@@ -176,10 +176,10 @@ export function ProjektDateien({ projektId, aufgabeId, listeId, space }: { proje
                   <Icon size={18} color={C.inkDim} aria-label={TYP_LABEL[g]} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div title={e.datei.name} style={{ fontFamily: SCHRIFT.text, fontSize: 13.5, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.datei.name}</div>
-                    <div style={{ fontFamily: SCHRIFT.text, fontSize: 11.5, color: C.inkLeise }}>
+                    <div style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise }}>
                       {TYP_LABEL[g]} · {groesseText(e.datei.groesse)} · {person(e.hochgeladenVon)} · {wann(e.hochgeladenAm)}{!aufgabeId && e.aufgabeId ? ' · an einer Aufgabe' : ''}
                     </div>
-                    {e.notiz && !inBearbeitung && <div style={{ fontFamily: SCHRIFT.text, fontSize: 12, color: C.inkDim, marginTop: 2 }}>{e.notiz}</div>}
+                    {e.notiz && !inBearbeitung && <div style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{e.notiz}</div>}
                   </div>
                   {vorschau && <button type="button" style={leise} onClick={() => void ansehen(e)} title={vorschau === 'pdf' ? 'Im neuen Tab ansehen' : 'Vorschau'} aria-label={`${e.datei.name} ansehen`}><Eye size={15} /></button>}
                   <a href={`${WEG}?id=${encodeURIComponent(e.id)}`} download={e.datei.name} style={leise} title="Herunterladen" aria-label={`${e.datei.name} herunterladen`}><Download size={15} /></a>
@@ -197,7 +197,7 @@ export function ProjektDateien({ projektId, aufgabeId, listeId, space }: { proje
                   </div>
                 )}
                 {loeschen === e.id && (
-                  <div role="alertdialog" aria-label="Löschen bestätigen" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontFamily: SCHRIFT.text, fontSize: 12.5, color: C.ink }}>
+                  <div role="alertdialog" aria-label="Löschen bestätigen" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.ink }}>
                     <span style={{ flex: 1 }}>„{e.datei.name}“ endgültig löschen? Das lässt sich nicht rückgängig machen.</span>
                     <button type="button" style={{ ...leise, padding: '5px 10px' }} onClick={() => setLoeschen(null)}>Behalten</button>
                     <button type="button" style={{ ...leise, padding: '5px 10px', color: C.kritisch, fontWeight: 700 }} onClick={() => void entfernen(e.id)}>Löschen</button>

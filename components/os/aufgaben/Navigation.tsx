@@ -19,7 +19,7 @@ type Gehe = (z: Partial<AufgabenAdresse>) => void;
 const ALLE = '__alle__';
 
 const reiterStil = (an: boolean): CSSProperties => ({
-  display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+  display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px', minHeight: 40, borderRadius: 10, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
   fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, transition: 'background .2s ease, color .2s ease',
   background: an ? C.ink : 'transparent', color: an ? C.grund : C.inkDim,
 });
@@ -68,7 +68,7 @@ export function Brotkrumen({ adresse, state, spaces, gehe }: { adresse: Aufgaben
   const listen = p ? (state.listen ?? []).filter(l => l.projektId === p && !l.archiviert && (!adresse.g || l.gruppeId === adresse.g)).sort((a, b) => a.sortOrder - b.sortOrder) : [];
   const trenner = <span aria-hidden style={{ color: C.inkLeise }}>›</span>;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '2px 0 12px', fontSize: 12.5 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '2px 0 12px', fontSize: TYP.bedien }}>
       <Wahl klein label="Space" liste={spaceWahl} wert={sid} farbe={raum?.farbe ?? C.aktiv} onWahl={id => gehe({ ansicht: 'space', s: id })} />
       {trenner}
       <Wahl klein label="Projekt" liste={projektWahl} wert={p ?? ALLE} farbe={p ? state.projects.find(x => x.id === p)?.color ?? C.inkDim : C.inkDim}

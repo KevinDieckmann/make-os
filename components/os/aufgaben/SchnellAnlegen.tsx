@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { Lock } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Knopf, feld, LEUCHT } from '../schlank';
+import { Karte, Knopf, feld, LEUCHT } from '../ui';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { parseSchnell, schnellVorschau, schnellZustaendigkeit, type SchnellPerson } from '@/lib/make-one/schnell-anlegen';
 import { sonstigeProjektId, istSonstigeProjekt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
@@ -101,17 +101,18 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
     <Karte i={0} akzent={LEUCHT.achtung}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <input ref={eingabe} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
-          aria-label="Neue Aufgabe" placeholder={`Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @${personen.find(x => x.speicher !== ich)?.name ?? 'Name'})`}
+          aria-label="Neue Aufgabe" placeholder="Neue Aufgabe …" aria-describedby="schnell-kuerzel"
           style={{ ...feld, fontSize: TYP.body, flex: '1 1 240px', minWidth: 0, width: 'auto' }} />
         <button type="button" aria-pressed={nurIch} onClick={() => setNurIch(n => !n)} className="fassbar" title="Nur ich: niemand sonst sieht die Aufgabe"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 44, padding: '0 12px', borderRadius: 12, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, whiteSpace: 'nowrap',
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 44, padding: '0 12px', borderRadius: 12, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, whiteSpace: 'nowrap',
             border: `1px solid ${nurIch ? `${LEUCHT.schlaf}99` : 'rgba(255,255,255,.1)'}`, background: nurIch ? `${LEUCHT.schlaf}22` : 'rgba(255,255,255,.03)', color: nurIch ? LEUCHT.schlaf : C.inkLeise }}>
           <Lock size={13} aria-hidden /> nur ich
         </button>
         <Knopf onClick={anlegen}>Anlegen</Knopf>
       </div>
+      {!text.trim() && <div id="schnell-kuerzel" style={{ marginTop: 6, fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Kürzel: !! kritisch · heute / mo–so / 24.09. · #projekt · @{personen.find(x => x.speicher !== ich)?.name ?? 'Name'}</div>}
       {erkannt && (vorschau.length > 0 || erkannt.datumUngueltig) && (
-        <div aria-live="polite" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, fontSize: 12.5, color: C.inkDim }}>
+        <div aria-live="polite" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, fontSize: TYP.bedien, color: C.inkDim }}>
           <span style={{ color: C.inkLeise }}>erkannt:</span>
           {vorschau.map((v, i) => <span key={i} style={{ border: `1px solid ${i === 0 && erkannt.dueDate ? `${LEUCHT.achtung}77` : 'rgba(255,255,255,.12)'}`, borderRadius: 999, padding: '1px 9px', color: i === 0 && erkannt.dueDate ? LEUCHT.achtung : C.inkDim }}>{v}</span>)}
           {nurIch && erkannt.zustaendigGetippt && <span style={{ color: LEUCHT.achtung }}>„nur ich“: zuständig bist du</span>}
@@ -119,7 +120,7 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
           <span style={{ color: C.inkLeise }}>· Titel: „{erkannt.title}“</span>
         </div>
       )}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 10, fontFamily: SCHRIFT.text, fontSize: 12.5, color: C.inkLeise }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 10, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise }}>
         <span>in</span>
         <Wahl {...chip} label="Space" liste={spaceListe} wert={spaceId} farbe={space?.farbe ?? C.aktiv}
           onWahl={id => { setSpaceId(id); setProjektId(sonstigeProjektId(id)); setGruppeId(ALLE); setListeId(SONST); setParentId(null); }} />

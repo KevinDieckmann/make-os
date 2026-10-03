@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Seite, Karte, Spalten, Spalte, Segmente, Leer, feld, useBreit } from '../schlank';
+import { Seite, Karte, Spalten, Spalte, Segmente, Leer, feld, useBreit } from '../ui';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { nachOben } from '../Verlauf';
 import { useTasks } from '@/context/TasksContext';
@@ -168,7 +168,7 @@ export function AufgabenRaum() {
       {neuProjekt !== null && (
         <input autoFocus value={neuProjekt} onChange={e => setNeuProjekt(e.target.value)} aria-label="Neues Projekt"
           onKeyDown={e => { if (e.key === 'Escape') setNeuProjekt(null); if (e.key === 'Enter' && neuProjekt.trim()) { const id = projektAnlegen(dispatch, raum.id, neuProjekt.trim().slice(0, 120), raum.farbe); setNeuProjekt(null); gehe({ ansicht: 'space', s: raum.id, p: id }); } }}
-          placeholder={`Neues Projekt in ${raum.label}, z. B. Launch (Enter)`} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px', flexBasis: '100%' }} />
+          placeholder={`Neues Projekt in ${raum.label} (Enter)`} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px', flexBasis: '100%' }} />
       )}
     </div>
   );
@@ -219,7 +219,7 @@ export function AufgabenRaum() {
       )}
       {ready && adresse.ansicht === 'ueberblick' && darstellung !== 'zoe' && (
         <div style={{ margin: '0 0 12px' }}>
-          <input type="search" value={suche} onChange={e => setSuche(e.target.value)} aria-label="In allen Aufgaben suchen" placeholder="In allen Aufgaben suchen (Titel und Beschreibung) …"
+          <input type="search" value={suche} onChange={e => setSuche(e.target.value)} aria-label="In allen Aufgaben suchen" placeholder="In allen Aufgaben suchen …"
             style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
           {suche.trim() && (
             <Karte i={1} style={{ marginTop: 8 }}>
@@ -227,8 +227,8 @@ export function AufgabenRaum() {
                 <button key={t.id} id={`oeffnen-${t.id}`} onClick={() => gehe({ ansicht: 'space', s: t.spaceId, a: t.id })} className="fassbar"
                   style={{ display: 'flex', width: '100%', gap: 10, alignItems: 'baseline', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '9px 2px', minHeight: 44, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: t.status === 'done' || t.status === 'cancelled' ? C.inkLeise : C.ink }}>
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.status === 'done' || t.status === 'cancelled' ? 'line-through' : 'none' }}>{t.title}</span>
-                  {t.parentId && <span title="Teil von" style={{ fontSize: 12, color: C.inkLeise, minWidth: 0, maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>in {kette(t, nachIdKarte(state.tasks)).map(x => x.title).join(' › ')}</span>}
-                  <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{spaces.find(x => x.id === t.spaceId)?.label ?? ''}</span>
+                  {t.parentId && <span title="Teil von" style={{ fontSize: TYP.bedien, color: C.inkLeise, minWidth: 0, maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>in {kette(t, nachIdKarte(state.tasks)).map(x => x.title).join(' › ')}</span>}
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{spaces.find(x => x.id === t.spaceId)?.label ?? ''}</span>
                 </button>
               ))}
               {!treffer.length && <Leer>Nichts gefunden.</Leer>}

@@ -13,7 +13,8 @@
 import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { MessageSquare, Link2, ChevronRight, Lock, Sparkles, StickyNote } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Haken, Punkt, feld, prioFarbe } from '../schlank';
+import { Karte, HakenZiel, Punkt, feld, prioFarbe, ZielChip, useZielBezug } from '../ui';
+import { istMeilensteinListe } from '@/lib/planung/meilenstein-aufgaben';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { statusVon, fortschritt, sonstigeProjektId, nachReihe, type BaumProjekt, type BaumAufgabe, type BaumListe } from '@/lib/aufgaben/struktur';
 import { kinderKarte, vorfahren, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
@@ -28,7 +29,7 @@ import { ListeSerieKnopf } from './SerienListeEinstellen';
 const ZU_MERKER = 'make-aufgaben-zu';
 const lies = (k: string): string | null => { try { return localStorage.getItem(k); } catch { return null; } };
 const merke = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* egal */ } };
-export const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '4px 6px' };
+export const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '8px 10px', minHeight: 40, borderRadius: 10 };
 const DIREKT = '__direkt__';
 /** Fensterung (#84): so viele Zeilen je Liste auf einmal, dann „weitere zeigen“. */
 export const FENSTER_ZEILEN = 200;
@@ -40,7 +41,7 @@ export function Aktionen({ breit, children }: { breit: boolean; children: ReactN
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', flex: '0 0 auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
       {auf && children}
-      <button onClick={() => setAuf(a => !a)} aria-label={auf ? 'Aktionen schließen' : 'Aktionen'} aria-expanded={auf} className="fassbar" style={{ ...leiseKnopf, fontSize: 16, lineHeight: 1 }}>{auf ? '×' : '⋯'}</button>
+      <button onClick={() => setAuf(a => !a)} aria-label={auf ? 'Aktionen schließen' : 'Aktionen'} aria-expanded={auf} className="fassbar" style={{ ...leiseKnopf, minWidth: 40, fontSize: 18, lineHeight: 1 }}>{auf ? '×' : '⋯'}</button>
     </span>
   );
 }
@@ -56,7 +57,7 @@ export function NeuZeile({ platzhalter, onNeu, einzug = 0 }: { platzhalter: stri
 }
 
 const chevron = (zu: boolean, groesse = 15) => <ChevronRight size={groesse} style={{ transform: zu ? 'none' : 'rotate(90deg)', transition: 'transform .15s ease' }} />;
-const klappKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', padding: 0, display: 'grid', placeItems: 'center', width: 22, height: 22, flex: '0 0 auto' };
+const klappKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', padding: 0, display: 'grid', placeItems: 'center', width: 36, height: 36, borderRadius: 10, flex: '0 0 auto' };
 
 export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeffnen, onProjekt, breit, personen, heute, fokus, projektKopf = true, iStart = 2 }: {
   projekte: readonly BaumProjekt[];
@@ -78,6 +79,8 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   const [zu, setZu] = useState<Set<string>>(new Set());
   const [mehr, setMehr] = useState<Record<string, number>>({});
   const handlung = useHandlung(dispatch, state.statusEigen);
+  // Ziel-Bezug (03.10.): liegt eine Aufgabe in der Liste eines Meilensteins, zeigt ihre Zeile das Ziel — nur lesen, nur wenn es solche Listen gibt.
+  const ziel = useZielBezug(useMemo(() => state.tasks.some(t => istMeilensteinListe(t.listeId)), [state.tasks]));
   // Einmal je Render (#84): Kennung → Aufgabe, für „wartet auf …“ jeder Zeile.
   const nachId = useMemo(() => new Map(state.tasks.map(x => [x.id, x])), [state.tasks]);
   // Kinder je Aufgabe (alle Ebenen, einmal je Render), sortiert wie die Liste.
@@ -101,7 +104,7 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     const f = fortschritt(unter);
     const wartet = t.status !== 'done' && t.status !== 'cancelled' ? wartetAuf(t) : [];
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: schmal ? 8 : 10, fontSize: 12, color: C.inkLeise, flex: '0 0 auto', flexWrap: 'wrap' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: schmal ? 8 : 10, fontSize: TYP.bedien, color: C.inkLeise, flex: '0 0 auto', flexWrap: 'wrap' }}>
         <PrioZeichen p={t.priority} />
         {t.sichtbarkeit === 'nur-ich' && <NurIchZeichen />}
         {t.status === 'cancelled' && <AbgebrochenSchild />}
@@ -134,14 +137,15 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     const weiter = new Set(gesehen).add(t.id);
     return (
       <div key={t.id}>
-        <div className="zeile" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px', paddingLeft: 4 + tiefe * (breit ? 26 : 16), borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44, background: istOffen ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: istOffen ? 10 : 0 }}>
+        <div className="zeile" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 4px', paddingLeft: 4 + tiefe * (breit ? 26 : 16), borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44, background: istOffen ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: istOffen ? 10 : 0 }}>
           {klappbar ? (
             <button onClick={() => umschalten(auf, setAuf, t.id)} aria-label={aufgeklappt ? `Unteraufgaben von „${t.title}“ zuklappen` : `Unteraufgaben von „${t.title}“ aufklappen`} aria-expanded={aufgeklappt} className="fassbar"
               style={{ ...klappKnopf, color: a.unter.length ? C.inkDim : 'rgba(255,255,255,.18)' }}>{chevron(!aufgeklappt)}</button>
-          ) : <span aria-hidden style={{ width: 22, flex: '0 0 auto' }} />}
-          <Haken an={t.status === 'done'} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} />
+          ) : <span aria-hidden style={{ width: 36, flex: '0 0 auto' }} />}
+          <HakenZiel an={t.status === 'done'} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} />
           <button id={`oeffnen-${t.id}`} onClick={() => onOeffnen(istOffen ? null : t.id)} aria-expanded={istOffen} className="fassbar" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 2px', minHeight: 40, cursor: 'pointer', fontFamily: SCHRIFT.text, display: 'grid', gap: 2 }}>
             <span style={{ fontSize: tiefe ? TYP.bedien : 14.5, fontWeight: tiefe ? 500 : 550, ...titelStil(t), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+            {ziel(t) && <span style={{ display: 'flex', minWidth: 0 }}><ZielChip bezug={ziel(t)!} /></span>}
             {!breit && meta(t, a.unter, true)}
           </button>
           {breit && meta(t, a.unter, false)}
@@ -149,8 +153,8 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
         {aufgeklappt && <>
           {a.unter.filter(u => !weiter.has(u.id)).map(u => zeile({ task: u, unter: kinder.get(u.id) ?? [] }, tiefe + 1, weiter))}
           {darfUnter
-            ? <NeuZeile einzug={30 + tiefe * (breit ? 26 : 16)} platzhalter={`+ Unteraufgabe${tiefe ? ` zu „${t.title.slice(0, 40)}“` : ''} (Enter = nächste)`} onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, parentId: t.id }, { title, assignee: t.assignee, bezug: t.bezug })} />
-            : <div style={{ fontSize: 12, color: C.inkLeise, padding: `4px 0 6px ${30 + tiefe * (breit ? 26 : 16)}px` }}>Tiefste Ebene ({AUFGABEN_EBENEN_MAX}) — weitere Schritte als Checkliste in der Notiz.</div>}
+            ? <NeuZeile einzug={46 + tiefe * (breit ? 26 : 16)} platzhalter="+ Unteraufgabe (Enter)" onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, parentId: t.id }, { title, assignee: t.assignee, bezug: t.bezug })} />
+            : <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: `4px 0 6px ${46 + tiefe * (breit ? 26 : 16)}px` }}>Tiefste Ebene ({AUFGABEN_EBENEN_MAX}) — weitere Schritte als Checkliste in der Notiz.</div>}
         </>}
       </div>
     );
@@ -163,9 +167,9 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
       <div key={lk} style={{ marginTop: zeigeKopf ? 10 : 0 }}>
         {zeigeKopf && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,.07)', flexWrap: 'wrap' }}>
-            <button onClick={() => umschalten(zu, setZu, lk, ZU_MERKER)} aria-label={lz ? 'Liste aufklappen' : 'Liste zuklappen'} aria-expanded={!lz} className="fassbar" style={{ ...klappKnopf, color: C.inkLeise, width: 20, height: 20 }}>{chevron(lz, 14)}</button>
+            <button onClick={() => umschalten(zu, setZu, lk, ZU_MERKER)} aria-label={lz ? 'Liste aufklappen' : 'Liste zuklappen'} aria-expanded={!lz} className="fassbar" style={{ ...klappKnopf, color: C.inkLeise, width: 32, height: 32 }}>{chevron(lz, 14)}</button>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: l.virtuell ? C.inkLeise : C.inkDim }}>{l.titel}</span>
-            <span style={{ fontSize: 12, color: C.inkLeise }}>{l.offen || ''}</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{l.offen || ''}</span>
             {!l.virtuell && <ListeSerieKnopf listeId={l.id} />}
             {!l.virtuell && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}><Aktionen breit={breit}>
               {gruppenWahl.length > 1 && <Wahl klein label="Gruppe" liste={gruppenWahl} wert={l.gruppeId ?? DIREKT} onWahl={g => dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, gruppeId: g === DIREKT ? undefined : g } })} />}
@@ -181,8 +185,8 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
               weitere {Math.min(FENSTER_ZEILEN, l.aufgaben.length - (mehr[lk] ?? FENSTER_ZEILEN))} von {l.aufgaben.length - (mehr[lk] ?? FENSTER_ZEILEN)} zeigen
             </button>
           )}
-          {!l.aufgaben.length && <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '8px 4px' }}>Noch keine Aufgabe.</div>}
-          <NeuZeile platzhalter={`+ Aufgabe in ${l.virtuell ? p.titel : l.titel} (Enter)`} onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, projectId: p.virtuell ? sonstigeProjektId(raumId) : p.id, listeId: l.virtuell ? undefined : l.id }, { title })} />
+          {!l.aufgaben.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '8px 4px' }}>Noch keine Aufgabe.</div>}
+          <NeuZeile platzhalter="+ Aufgabe (Enter)" onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, projectId: p.virtuell ? sonstigeProjektId(raumId) : p.id, listeId: l.virtuell ? undefined : l.id }, { title })} />
         </>}
       </div>
     );
@@ -206,8 +210,8 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
             <Punkt farbe={p.farbe} />
             <button onClick={() => onProjekt?.(pid)} className="fassbar" title="Projekt öffnen"
               style={{ background: 'none', border: 'none', padding: 0, cursor: onProjekt ? 'pointer' : 'default', fontFamily: SCHRIFT.display, fontSize: 17, fontWeight: 700, letterSpacing: '-.01em', color: C.ink, textAlign: 'left', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titel}</button>
-            {p.fremd && <span style={{ fontSize: 12, color: C.inkLeise }}>aus einem anderen Space</span>}
-            <span style={{ fontSize: 12.5, color: C.inkLeise, marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{p.offen} offen</span>
+            {p.fremd && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>aus einem anderen Space</span>}
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise, marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{p.offen} offen</span>
             {!p.virtuell && !p.fremd && onProjekt && <button onClick={() => onProjekt(pid)} style={{ ...leiseKnopf, color: C.aktiv }}>öffnen ›</button>}
           </div>
         )}
@@ -219,7 +223,7 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', flexWrap: 'wrap' }}>
                   <button onClick={() => dispatch({ type: 'UPDATE_GRUPPE', payload: { id: g.id, eingeklappt: g.eingeklappt ? undefined : true } })} aria-label={g.eingeklappt ? 'Gruppe aufklappen' : 'Gruppe zuklappen'} aria-expanded={!g.eingeklappt} className="fassbar" style={{ ...klappKnopf, color: g.farbe }}>{chevron(g.eingeklappt)}</button>
                   <span style={{ fontFamily: SCHRIFT.display, fontSize: 15, fontWeight: 700, color: g.farbe }}>{g.titel}</span>
-                  <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{g.offen ? `${g.offen} offen` : ''}</span>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{g.offen ? `${g.offen} offen` : ''}</span>
                   <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}><Aktionen breit={breit}>
                     <button onClick={() => { const n = GRUPPEN_FARBEN[(GRUPPEN_FARBEN.indexOf(g.farbe as typeof GRUPPEN_FARBEN[number]) + 1) % GRUPPEN_FARBEN.length]; dispatch({ type: 'UPDATE_GRUPPE', payload: { id: g.id, farbe: n } }); }} style={leiseKnopf} aria-label="Farbe wechseln"><Punkt farbe={g.farbe} groesse={8} /> Farbe</button>
                     <button onClick={() => { const v = window.prompt('Gruppe umbenennen', g.titel)?.trim(); if (v && v !== g.titel) dispatch({ type: 'UPDATE_GRUPPE', payload: { id: g.id, titel: v.slice(0, 60) } }); }} style={leiseKnopf}>Umbenennen</button>
@@ -228,8 +232,8 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
                 </div>
                 {!g.eingeklappt && <>
                   {gl.map(l => listeBlock(p, l, true, gruppenWahl))}
-                  {!gl.length && <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '6px 4px' }}>Noch keine Liste in {g.titel}.</div>}
-                  {!p.fremd && !nurListe && <NeuZeile platzhalter={`+ Liste in ${g.titel} (Enter)`} onNeu={titel => { listeAnlegen(dispatch, state, pid, titel.slice(0, 80), g.id); }} />}
+                  {!gl.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 4px' }}>Noch keine Liste in {g.titel}.</div>}
+                  {!p.fremd && !nurListe && <NeuZeile platzhalter="+ Liste (Enter)" onNeu={titel => { listeAnlegen(dispatch, state, pid, titel.slice(0, 80), g.id); }} />}
                 </>}
               </div>
             );
@@ -237,8 +241,8 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
           {direkt.map(l => listeBlock(p, l, zeigeKopf(l), gruppenWahl))}
           {!p.fremd && !nurGruppe && !nurListe && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ flex: '2 1 220px' }}><NeuZeile platzhalter="+ Liste, z. B. Januar (Enter)" onNeu={titel => { listeAnlegen(dispatch, state, pid, titel.slice(0, 80)); }} /></span>
-              {!p.virtuell && <span style={{ flex: '1 1 180px' }}><NeuZeile platzhalter="+ Gruppe, z. B. Marketing (Enter)" onNeu={titel => { gruppeAnlegen(dispatch, state, pid, titel); }} /></span>}
+              <span style={{ flex: '2 1 220px' }}><NeuZeile platzhalter="+ Liste, z. B. Januar" onNeu={titel => { listeAnlegen(dispatch, state, pid, titel.slice(0, 80)); }} /></span>
+              {!p.virtuell && <span style={{ flex: '1 1 180px' }}><NeuZeile platzhalter="+ Gruppe, z. B. Marketing" onNeu={titel => { gruppeAnlegen(dispatch, state, pid, titel); }} /></span>}
             </div>
           )}
         </>}

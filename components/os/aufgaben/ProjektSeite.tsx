@@ -7,7 +7,7 @@
 
 import { useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
-import { Karte, Segmente, Punkt, feld } from '../schlank';
+import { Karte, Segmente, Punkt, feld } from '../ui';
 import { Wahl, WahlMehrfach, type WahlEintrag } from '../crm/Wahl';
 import { istSonstigeProjekt, type AufgabenSpace, type BaumProjekt } from '@/lib/aufgaben/struktur';
 import { projektStand } from '@/lib/aufgaben/uebersicht';
@@ -38,9 +38,9 @@ function Beschreibung({ p, aendern }: { p: Project; aendern: (teil: Partial<Proj
     <>
       <textarea value={e.text} onChange={x => e.setText(x.target.value)} rows={2} aria-label="Beschreibung" placeholder="Worum geht es in diesem Projekt?" onBlur={e.jetzt}
         style={{ ...feld, fontSize: TYP.bedien, lineHeight: 1.5, resize: 'vertical', marginTop: 10, minHeight: 44, ...(e.zuLang ? { borderColor: '#FF5C5C' } : {}) }} />
-      {e.zuLang && <div role="alert" style={{ fontSize: 12, color: '#FF5C5C', marginTop: 4 }}>Zu lang — NICHT gespeichert: {e.text.length.toLocaleString('de-DE')} von {AUFGABEN_GRENZEN.beschreibung.toLocaleString('de-DE')} Zeichen. Längeres gehört in die Notiz.</div>}
+      {e.zuLang && <div role="alert" style={{ fontSize: TYP.bedien, color: '#FF5C5C', marginTop: 4 }}>Zu lang — NICHT gespeichert: {e.text.length.toLocaleString('de-DE')} von {AUFGABEN_GRENZEN.beschreibung.toLocaleString('de-DE')} Zeichen. Längeres gehört in die Notiz.</div>}
       {e.wiederhergestellt && (
-        <div role="alert" style={{ display: 'flex', gap: 8, fontSize: 12, color: '#FFC93C', marginTop: 4, flexWrap: 'wrap' }}>
+        <div role="alert" style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, color: '#FFC93C', marginTop: 4, flexWrap: 'wrap' }}>
           <span style={{ flex: 1 }}>Ungespeicherter Entwurf aus dieser Sitzung wiederhergestellt.</span>
           <button onClick={e.verwerfen} style={leiseKnopf}>Verwerfen</button>
           <button onClick={e.uebernehmen} disabled={e.zuLang} style={{ ...leiseKnopf, color: C.aktiv }}>Entwurf speichern</button>
@@ -55,7 +55,7 @@ const STATUS: WahlEintrag<ProjektStatus>[] = [
   { id: 'aktiv', label: 'Aktiv', punkt: LEUCHT.gut }, { id: 'pausiert', label: 'Pausiert', punkt: LEUCHT.achtung }, { id: 'abgeschlossen', label: 'Abgeschlossen', punkt: C.inkLeise },
 ];
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
-const datumFeld: CSSProperties = { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '4px 10px', minHeight: 30, colorScheme: 'dark' };
+const datumFeld: CSSProperties = { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '4px 10px', minHeight: 30, colorScheme: 'dark' };
 
 function Kennzahl({ wert, label, farbe }: { wert: ReactNode; label: string; farbe?: string }) {
   return (
@@ -115,19 +115,19 @@ export function ProjektSeite({ projektId, baumProjekt, state, dispatch, space, a
         </div>
         {p && !virtuell && (
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>Start
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkLeise }}>Start
               <input type="date" value={p.start ?? ''} onChange={e => aendern({ start: e.target.value || undefined })} style={datumFeld} aria-label="Projektstart" /></label>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>Ende
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkLeise }}>Ende
               <input type="date" value={p.ende ?? ''} min={p.start} onChange={e => aendern({ ende: e.target.value || undefined })} style={datumFeld} aria-label="Projektende" /></label>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>Mitglieder
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkLeise }}>Mitglieder
               <WahlMehrfach klein label="Mitglieder" liste={personen.map(x => ({ id: x.speicher, label: x.name }))} wert={p.mitglieder ?? []} onWahl={m => aendern({ mitglieder: m.length ? m : undefined })} leer="+ Person" /></span>
           </div>
         )}
-        {titelFehler && <div role="alert" style={{ fontSize: 12, color: '#FF5C5C', marginTop: 4 }}>{titelFehler}</div>}
+        {titelFehler && <div role="alert" style={{ fontSize: TYP.bedien, color: '#FF5C5C', marginTop: 4 }}>{titelFehler}</div>}
         {p && !virtuell && <Beschreibung key={p.id} p={p} aendern={aendern} />}
         <div style={{ display: 'flex', gap: 18, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 14 }}>
           <div style={{ flex: '1 1 200px', minWidth: 160 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.inkLeise, marginBottom: 5 }}><span>Fortschritt</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{stand.fertig}/{stand.gesamt} · {anteil} %</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 5 }}><span>Fortschritt</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{stand.fertig}/{stand.gesamt} · {anteil} %</span></div>
             <div style={{ height: 7, borderRadius: 5, background: 'rgba(255,255,255,.07)', overflow: 'hidden' }}><div style={{ height: '100%', width: `${anteil}%`, background: TIEF.verlauf(LEUCHT.gut), transition: 'width .3s ease' }} /></div>
           </div>
           <Kennzahl wert={stand.offen} label="offen" />
@@ -137,7 +137,7 @@ export function ProjektSeite({ projektId, baumProjekt, state, dispatch, space, a
           {stand.naechste && <Kennzahl wert={tagKurz(stand.naechste)} label="nächste Deadline" />}
         </div>
         {offeneJe.size > 0 && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10, fontSize: 12.5, color: C.inkDim }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>
             <span style={mikro}>Verantwortlich</span>
             {Array.from(offeneJe.entries()).sort((a, b) => b[1] - a[1]).map(([w, n]) => <span key={w}>{ownerLabel(w, personen)} <b style={{ color: C.ink, fontVariantNumeric: 'tabular-nums' }}>{n}</b></span>)}
           </div>

@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type DragEvent } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Leer, Punkt, Segmente, prioFarbe } from '../schlank';
+import { Karte, Leer, Punkt, Segmente, prioFarbe } from '../ui';
 import { statusListe, statusVon } from '@/lib/aufgaben/struktur';
 import { tagPlus } from '@/lib/kalender/zeit';
 import {
@@ -32,7 +32,7 @@ const BAHN_HOEHE = 24;
 const KOPF_HOEHE = 30;
 
 type FarbeNach = 'status' | 'gruppe';
-const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '6px 8px', borderRadius: 8 };
+const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '6px 8px', borderRadius: 8 };
 const rundKnopf: CSSProperties = { ...leiseKnopf, width: 32, height: 32, display: 'grid', placeItems: 'center', padding: 0, border: '1px solid rgba(255,255,255,.08)', color: C.inkDim };
 const pille = (an: boolean): CSSProperties => ({ ...leiseKnopf, border: `1px solid ${an ? `${C.aktiv}66` : 'rgba(255,255,255,.08)'}`, color: an ? C.aktiv : C.inkDim, borderRadius: 999, padding: '4px 10px' });
 
@@ -129,7 +129,7 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
           border: `1px solid ${ist ? C.aktiv : rot ? `${LEUCHT.kritisch}AA` : `${f}55`}`, borderLeft: b.anfang ? `3px solid ${rot ? LEUCHT.kritisch : f}` : `1px dashed ${f}88`,
           borderRadius: `${b.anfang ? 6 : 0}px ${b.ende ? 6 : 0}px ${b.ende ? 6 : 0}px ${b.anfang ? 6 : 0}px`,
           background: `${f}${fertig ? '14' : '2B'}`, color: fertig ? C.inkLeise : C.ink, cursor: 'grab', opacity: zieht === t.id ? 0.4 : 1,
-          fontFamily: SCHRIFT.text, fontSize: 11.5, fontWeight: 600, textAlign: 'left', lineHeight: 1.2, overflow: 'hidden',
+          fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, textAlign: 'left', lineHeight: 1.2, overflow: 'hidden',
         }}>
         {!b.anfang && <span aria-hidden style={{ color: C.inkLeise }}>‹</span>}
         {rot && <span aria-hidden style={{ color: LEUCHT.kritisch, fontWeight: 800 }}>!</span>}
@@ -144,14 +144,14 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
   const leiste = offen && (
     <div role="group" aria-label="Deadline verschieben" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: '8px 10px', margin: '0 0 10px', borderRadius: 12, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)' }}>
       <span style={{ fontSize: TYP.bedien, color: C.ink, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>„{offen.title}“</span>
-      <span style={{ fontSize: 12.5, color: istUeberfaellig(offen, heute) ? LEUCHT.kritisch : C.inkLeise }}>{istTag(offen.dueDate) ? `Deadline ${datumLang(offen.dueDate)}` : 'ohne Datum'}</span>
+      <span style={{ fontSize: TYP.bedien, color: istUeberfaellig(offen, heute) ? LEUCHT.kritisch : C.inkLeise }}>{istTag(offen.dueDate) ? `Deadline ${datumLang(offen.dueDate)}` : 'ohne Datum'}</span>
       <button onClick={() => setVerschieben(v => !v)} aria-expanded={verschieben} className="fassbar" style={pille(verschieben)}>{istTag(offen.dueDate) ? 'verschieben auf …' : 'Datum setzen …'}</button>
       {verschieben && (
         <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
           <input type="date" aria-label={`Neue Deadline für „${offen.title}“`} defaultValue={istTag(offen.dueDate) ? offen.dueDate : heute} key={`${offen.id}-${offen.dueDate ?? ''}`}
             onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value; if (istTag(v)) verschiebeAuf(offen.id, v); } }}
             onChange={e => { const v = e.target.value; if (istTag(v)) verschiebeAuf(offen.id, v); }}
-            style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '4px 10px', minHeight: 30, colorScheme: 'dark' }} />
+            style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 999, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '4px 10px', minHeight: 30, colorScheme: 'dark' }} />
           <button onClick={() => verschiebeAuf(offen.id, heute)} className="fassbar" style={pille(false)}>Heute</button>
           <button onClick={() => verschiebeAuf(offen.id, tagPlus(heute, 1))} className="fassbar" style={pille(false)}>Morgen</button>
           {istTag(offen.dueDate) && <>
@@ -188,11 +188,11 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
                     onDrop={e => { e.preventDefault(); ablegen(tag, e); }}
                     style={{ minWidth: 0, borderRight: i < 6 ? '1px solid rgba(255,255,255,.05)' : 'none', background: ueber === tag ? `${C.aktiv}1A` : h ? 'rgba(255,255,255,.035)' : undefined, opacity: imMonat ? 1 : .5, position: 'relative', transition: 'background .12s ease' }}>
                     <div style={{ height: KOPF_HOEHE, display: 'flex', alignItems: 'center', padding: '0 5px' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', fontSize: 12, fontWeight: 700, background: h ? LEUCHT.puls : 'transparent', color: h ? '#0b0b0c' : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{Number(tag.slice(8, 10))}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', fontSize: TYP.bedien, fontWeight: 700, background: h ? LEUCHT.puls : 'transparent', color: h ? '#0b0b0c' : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{Number(tag.slice(8, 10))}</span>
                     </div>
                     {verdeckt[i] > 0 && (
                       <button onClick={() => { setAnker(tag); setAnsicht('woche'); }} className="fassbar" aria-label={`${verdeckt[i]} weitere am ${datumLang(tag)} — Woche zeigen`}
-                        style={{ position: 'absolute', left: 4, bottom: 2, background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 11, color: C.inkLeise }}>+{verdeckt[i]}</button>
+                        style={{ position: 'absolute', left: 4, bottom: 2, background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise }}>+{verdeckt[i]}</button>
                     )}
                   </div>
                 );
@@ -211,12 +211,12 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
   const seitenliste = (
     <aside aria-label="Aufgaben ohne Datum" style={{ flex: '1 1 220px', minWidth: 0, maxWidth: '100%' }}>
       <div style={{ fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, margin: '2px 2px 8px' }}>Ohne Datum · {ohne.length}</div>
-      {!ohne.length ? <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '4px 2px' }}>Alle Aufgaben haben eine Deadline.</div> : (
+      {!ohne.length ? <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '4px 2px' }}>Alle Aufgaben haben eine Deadline.</div> : (
         <div style={{ display: 'grid', gap: 6, maxHeight: 520, overflowY: 'auto' }}>
           {ohne.map(t => (
             <button key={t.id} type="button" draggable onDragStart={ziehStart(t.id)} onDragEnd={ziehEnde} onClick={() => onOeffnen(t.id)} className="fassbar" data-aufgabe={t.id}
               aria-label={`${t.title} · ohne Datum — öffnen; auf einen Tag ziehen setzt die Deadline`}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', background: offenId === t.id ? 'rgba(255,255,255,.07)' : C.flaeche, border: `1px solid ${offenId === t.id ? `${C.aktiv}55` : 'rgba(255,255,255,.05)'}`, borderRadius: 10, padding: '7px 10px', cursor: 'grab', fontFamily: SCHRIFT.text, fontSize: 12.5, color: t.status === 'done' ? C.inkLeise : C.ink, minWidth: 0, opacity: zieht === t.id ? .4 : 1 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', background: offenId === t.id ? 'rgba(255,255,255,.07)' : C.flaeche, border: `1px solid ${offenId === t.id ? `${C.aktiv}55` : 'rgba(255,255,255,.05)'}`, borderRadius: 10, padding: '7px 10px', cursor: 'grab', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: t.status === 'done' ? C.inkLeise : C.ink, minWidth: 0, opacity: zieht === t.id ? .4 : 1 }}>
               <Punkt farbe={farbe(t)} groesse={7} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, textDecoration: t.status === 'done' ? 'line-through' : 'none' }}>{t.title}</span>
               {t.wiederholung && <span aria-hidden title="wiederkehrend" style={{ color: C.inkDim }}>↻</span>}
@@ -245,7 +245,7 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
         <div style={{ flex: '999 1 520px', minWidth: 0, maxWidth: '100%' }}>
           {blatt}
           {legende.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8, fontSize: 12, color: C.inkLeise }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8, fontSize: TYP.bedien, color: C.inkLeise }}>
               {legende.map(l => <span key={l.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Punkt farbe={l.farbe} groesse={7} />{l.label}</span>)}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ color: LEUCHT.kritisch, fontWeight: 800 }}>!</span>überfällig</span>
               <span>↻ wiederkehrend</span>
