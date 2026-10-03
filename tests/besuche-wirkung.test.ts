@@ -7,7 +7,7 @@ import { leererBestand } from '../lib/crm/speicher';
 import { eventKennzahlen } from '../lib/crm/traktion';
 import { wochenScoreboard } from '../lib/crm/scoreboard';
 import {
-  besuchWirkung, besuchUrteil, besuchUebersicht, besuchJeKunde, besuchKennzahlen, eventsFuerKunde, heuteBeiAngebot, kundenExport, csvFeld, erfassteTeilnahmen,
+  besuchWirkung, zielGetroffen, besuchUrteil, besuchUebersicht, besuchJeKunde, besuchKennzahlen, eventsFuerKunde, heuteBeiAngebot, kundenExport, csvFeld, erfassteTeilnahmen,
   EXPORT_SPALTEN, EXPORT_KEINE_EINWILLIGUNG, URTEIL_AB_TAGE, type BesuchKontext,
 } from '../lib/crm/besuche';
 
@@ -21,12 +21,13 @@ const nw = (schritt: string, x: Record<string, unknown> = {}) => ({ erfassungId:
 
 describe('Wirkung je Event', () => {
   const e = ev({ kostenEuro: 600 });
+  // Die Personen a–e wurden über „Netzwerken“ NEU angelegt (Kennung `c-<Erfassung>`, Quelle „Netzwerken“) — nur dann gehört ein späterer Deal dem Event (M12).
   const teilnahmen = [
-    t('a', 'ev-a', { followUpAm: '2026-09-20', netzwerken: nw('termin', { terminAm: '2026-09-28T10:00' }) }),
-    t('b', 'ev-a', { followUpAm: '2026-09-20', netzwerken: nw('angebot') }),
-    t('c', 'ev-a', { followUpAm: '2026-09-20', netzwerken: nw('vermitteln') }),
-    t('d', 'ev-a', { followUpAm: '2026-09-20', netzwerken: nw('makeone') }),
-    t('e', 'ev-a', { netzwerken: nw('followup') }),
+    t('a', 'ev-a', { followUpAm: '2026-09-20', netzwerken: nw('termin', { erfassungId: 'a', terminAm: '2026-09-28T10:00' }) }),
+    t('b', 'ev-a', { followUpAm: '2026-09-20', netzwerken: nw('angebot', { erfassungId: 'b' }) }),
+    t('c', 'ev-a', { followUpAm: '2026-09-20', netzwerken: nw('vermitteln', { erfassungId: 'c' }) }),
+    t('d', 'ev-a', { followUpAm: '2026-09-20', netzwerken: nw('makeone', { erfassungId: 'd' }) }),
+    t('e', 'ev-a', { netzwerken: nw('followup', { erfassungId: 'e' }) }),
     t('abgesagt', 'ev-a', { status: 'abgesagt' }),
     t('fremd', 'ev-b', { followUpAm: '2026-09-20' }),
   ];
@@ -38,7 +39,8 @@ describe('Wirkung je Event', () => {
     chance({ id: 'ch-andere', kontaktIds: ['c-fremd'], angelegt: '2026-09-25T10:00:00.000Z' }),
     chance({ id: 'ch-verloren', kontaktIds: ['c-c'], stufe: 'verloren', angelegt: '2026-09-26T10:00:00.000Z', wert: { betrag: 7000, basis: 'einmalig' } }),
   ];
-  const w = besuchWirkung(e, ctx({ teilnahmen, chancen }));
+  const kontakte = ['a', 'b', 'c', 'd', 'e'].map(i => k(i, { quelle: 'Netzwerken' }));
+  const w = besuchWirkung(e, ctx({ teilnahmen, chancen, kontakte }));
 
   it('Kontakte: ohne Absagen und ohne fremde Events; Follow-up-Quote = Kontakte mit nächstem Schritt erledigt', () => {
     expect(w.kontakte).toBe(5);
@@ -51,8 +53,31 @@ describe('Wirkung je Event', () => {
     expect(w.termine).toBe(1);
     expect(w.dealIds.sort()).toEqual(['ch-ev', 'ch-nachher', 'ch-verloren']);
     expect(w.deals).toBe(3);
+    expect(w.dealsUrteil).toBe(2);    // der verlorene Deal zählt fürs Urteil nicht
     expect(w.pipeline).toBe(10000);   // offene Deals (Angebot) — verloren zählt nicht
     expect(w.umsatz).toBe(5000);      // gewonnen
+  });
+  it('M12: nur NEU über Netzwerken angelegte Personen (ohne andere Quelle) bringen einen späteren Deal ins Event; Vermittlung ohne Wert und Verlorene zählen fürs Urteil nicht', () => {
+    const mehr = [
+      ...chancen,
+      chance({ id: 'ch-kampagne', kontaktIds: ['c-a'], quelle: 'kampagne', angelegt: '2026-10-06T10:00:00.000Z' }),     // andere Quelle → nicht dem Event
+      chance({ id: 'ch-vermittlung', kontaktIds: ['c-b'], art: 'vermittlung', wert: { betrag: 0, basis: 'einmalig' }, angelegt: '2026-10-07T10:00:00.000Z' }),
+    ];
+    const alt = besuchWirkung(e, ctx({ teilnahmen, chancen: mehr, kontakte }));
+    expect(alt.dealIds).not.toContain('ch-kampagne');
+    expect(alt.dealIds).toContain('ch-vermittlung');
+    expect(alt.deals).toBe(4);
+    expect(alt.dealsUrteil).toBe(2);   // Vermittlung ohne Wert, verloren: nicht fürs Urteil
+    // Eine Person, die wir schon KANNTEN (nicht über Netzwerken angelegt): ihr Deal danach gehört nicht dem Event.
+    const bekannt = besuchWirkung(e, ctx({ teilnahmen, chancen, kontakte: kontakte.map(x => ({ ...x, quelle: 'Import' })) }));
+    expect(bekannt.dealIds).toEqual(['ch-ev']);
+  });
+  it('Berliner Tag: ein Deal kurz nach Mitternacht Berliner Zeit (UTC noch am Vortag) zählt am richtigen Tag', () => {
+    // 2026-09-20T22:30Z = 21.09. 00:30 Berlin — am Tag NACH dem Event (20.09.), nicht am Eventtag nach UTC-Rechnung.
+    const spaet = chance({ id: 'ch-mitternacht', kontaktIds: ['c-a'], angelegt: '2026-09-19T22:30:00.000Z' });   // = 20.09. Berlin (Eventtag): zählt
+    const davor = chance({ id: 'ch-davor', kontaktIds: ['c-a'], angelegt: '2026-09-19T21:30:00.000Z' });          // = 19.09. 23:30 Berlin: vor dem Event
+    const x = besuchWirkung(e, ctx({ teilnahmen, chancen: [spaet, davor], kontakte }));
+    expect(x.dealIds).toEqual(['ch-mitternacht']);
   });
   it('Kosten je Kontakt: Euro durch erfasste Kontakte — ohne Kosten oder Kontakte keine Zahl', () => {
     expect(w.kosten).toBe(600);
@@ -64,11 +89,25 @@ describe('Wirkung je Event', () => {
   it('Zielpersonen: wie viele getroffen', () => {
     const z = besuchWirkung(ev({ zielpersonen: [{ kontaktId: 'c-a', getroffen: true }, { firmaId: 'f-w1' }] }), ctx());
     expect([z.zielGesamt, z.zielGetroffen]).toEqual([2, 1]);
+    expect(z.zielQuote).toBeCloseTo(0.5);
+  });
+  it('M14: getroffen = von Hand abgehakt ODER erfasst — Person über die Kennung, Zielfirma über jede erfasste Person der Firma; Quote daraus', () => {
+    const zp = [{ kontaktId: 'c-a' }, { kontaktId: 'c-fehlt' }, { firmaId: 'f-w1' }, { firmaId: 'f-w2' }, { kontaktId: 'c-hand', getroffen: true }];
+    const ev1 = ev({ id: 'ev-z', zielpersonen: zp });
+    const tn = [t('a', 'ev-z', { netzwerken: nw('nur-kontakt', { erfassungId: 'a' }) }), t('b', 'ev-z', { netzwerken: nw('nur-kontakt', { erfassungId: 'b' }) }), t('fehlt', 'ev-z', { status: 'abgesagt' })];
+    const kn = [k('a'), k('b', { firmaId: 'f-w1' }), k('fehlt', { firmaId: 'f-w2' })];
+    const z = zielGetroffen(ev1, tn, kn);
+    expect([...z.getroffen].sort()).toEqual(['f:f-w1', 'k:c-a', 'k:c-hand']);
+    expect([...z.abgeleitet].sort()).toEqual(['f:f-w1', 'k:c-a']);   // c-hand ist von Hand
+    expect([z.gesamt, z.anzahl]).toEqual([5, 3]);
+    expect(z.quote).toBeCloseTo(0.6);
+    const w2 = besuchWirkung(ev1, ctx({ teilnahmen: tn, kontakte: kn }));
+    expect([w2.zielGesamt, w2.zielGetroffen]).toEqual([5, 3]);
   });
 });
 
 describe('Urteil — „Welche Events lohnen sich“ (erst ab 14 Tagen nach dem Event)', () => {
-  const w = (x: Partial<ReturnType<typeof besuchWirkung>>) => ({ ...besuchWirkung(ev(), ctx()), ...x });
+  const w = (x: Partial<ReturnType<typeof besuchWirkung>>) => ({ ...besuchWirkung(ev(), ctx()), ...(x.deals !== undefined && x.dealsUrteil === undefined ? { dealsUrteil: x.deals } : {}), ...x });
   it('zu früh vor Ablauf der Frist und für kommende Events', () => {
     expect(besuchUrteil(ev({ datum: '2026-10-25' }), w({ deals: 2, pipeline: 99999 }), HEUTE).art).toBe('frueh');
     expect(besuchUrteil(ev({ datum: '2026-11-20' }), w({}), HEUTE).art).toBe('frueh');
@@ -83,6 +122,9 @@ describe('Urteil — „Welche Events lohnen sich“ (erst ab 14 Tagen nach dem 
     expect(besuchUrteil(ev(), w({ termine: 2 }), HEUTE).art).toBe('laeuft');
     expect(besuchUrteil(ev(), w({ kontakte: 4 }), HEUTE).art).toBe('ohne');
   });
+  it('Verlorene und Vermittlungen ohne Wert zählen nicht: nur sie → „ohne Folge“, nicht „lohnt“', () => {
+    expect(besuchUrteil(ev(), w({ kontakte: 4, deals: 2, dealsUrteil: 0, kosten: 0 }), HEUTE).art).toBe('ohne');
+  });
 });
 
 describe('Übersicht und je Kunde', () => {
@@ -94,9 +136,10 @@ describe('Übersicht und je Kunde', () => {
     ev({ id: 'ev-m', titel: 'Stammtisch', marke: 'Make.One', datum: '2026-09-15' }),
     ev({ id: 'ev-5', titel: 'Messe D', datum: '2026-10-01', fuer: { art: 'kunde', firmaId: 'f-kunde1' } }),
   ];
-  const teilnahmen = [t('a', 'ev-1'), t('b', 'ev-1'), t('c', 'ev-2'), t('m', 'ev-m'), t('n', 'ev-5')];
+  const teilnahmen = [t('a', 'ev-1', { netzwerken: nw('nur-kontakt', { erfassungId: 'a' }) }), t('b', 'ev-1', { netzwerken: nw('nur-kontakt', { erfassungId: 'b' }) }), t('c', 'ev-2', { netzwerken: nw('nur-kontakt', { erfassungId: 'c' }) }), t('m', 'ev-m'), t('n', 'ev-5')];
+  const kontakteNeu = ['a', 'b', 'c', 'n'].map(i => k(i, { quelle: 'Netzwerken' }));
   const chancen = [chance({ id: 'ch-1', kontaktIds: ['c-a', 'c-c'], wert: { betrag: 500, basis: 'einmalig' }, angelegt: '2026-09-20T10:00:00.000Z' }), chance({ id: 'ch-2', quelle: 'event', quelleBezug: 'ev-2', wert: { betrag: 400, basis: 'einmalig' } })];
-  const c = ctx({ teilnahmen, chancen });
+  const c = ctx({ teilnahmen, chancen, kontakte: kontakteNeu });
   const u = besuchUebersicht(events, c);
 
   it('nur besuchte, vergangene, nicht abgesagte Events — Make.One-Abende fehlen; „lohnt sich“ steht oben', () => {

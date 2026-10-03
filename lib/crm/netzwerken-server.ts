@@ -540,7 +540,10 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       }
       default: break; // 'termin' (eigener Schritt) und 'nur-kontakt' (nichts)
     }
-    if (e.schritt === 'angebot' || e.schritt === 'vermitteln' || (e.schritt === 'makeone' && !makeoneGesperrt)) await nachgefasst();
+    // Ein nächster Schritt ist getan oder festgelegt: kein Gast bleibt als „Nachfassen nach Event“ hängen — und keine Doppelung mit der Aufgabe
+    // (`nw-…`, „Andere“), dem Qualifizierungs-Lead oder dem Deal. „Nur Kontakt“ heißt bewusst: nichts nachfassen (`nachfassenVerzichtet`, zählt NICHT als nachgefasst).
+    if (e.schritt === 'angebot' || e.schritt === 'vermitteln' || e.schritt === 'andere' || e.schritt === 'qualifizieren' || (e.schritt === 'makeone' && !makeoneGesperrt)) await nachgefasst();
+    if (e.schritt === 'nur-kontakt') await aendereCrm(b => ({ ...b, teilnahmen: b.teilnahmen.map(t => (t.eventId === eventId && t.kontaktId === kontaktId && !t.followUpAm && !t.nachfassenVerzichtet ? { ...t, nachfassenVerzichtet: begegnungsTag, geaendert: jetztIso, geaendertVon: ctx.person } : t)) }), ctx.wer);
   });
 
   // ── termin ──

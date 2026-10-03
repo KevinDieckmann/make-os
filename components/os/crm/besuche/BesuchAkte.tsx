@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Raster, Zahl, Haken, Zeile, Leer, LEUCHT } from '../../schlank';
 import { ANMELDUNGEN, anmeldungVon, anmeldungPatch, fuerVon, zielSchluessel } from '@/lib/crm/besuche-form';
-import { besuchWirkung, besuchUrteil, AVV_HINWEIS, type BesuchKontext } from '@/lib/crm/besuche';
+import { besuchWirkung, besuchUrteil, zielGetroffen, AVV_HINWEIS, type BesuchKontext } from '@/lib/crm/besuche';
 import { budgetSumme } from '@/lib/crm/eventplanung';
 import { berichtAus, EVENT_ZIEL } from '@/lib/crm/netzwerken';
 import { STUFEN, gesamtwert } from '@/lib/crm/pipeline';
@@ -40,7 +40,6 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
   const w = useMemo(() => besuchWirkung(e, ctx), [e, ctx]);
   const urteil = besuchUrteil(e, w, heute);
   const bericht = useMemo(() => berichtAus({ event: e, teilnahmen: crm.stand.teilnahmen, kontakte, followups: crm.stand.followups, heute }), [e, crm.stand.teilnahmen, kontakte, crm.stand.followups, heute]);
-  const erfasstIds = useMemo(() => new Set(bericht.zeilen.map(z => z.kontaktId)), [bericht]);
   const setze = (teil: Partial<Event>) => eventSetzen(api, e, teil);
   const a = anmeldungVon(e);
   const fuer = fuerVon(e);
@@ -50,7 +49,9 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
   const offeneFu = (crm.stand.followups ?? []).filter(f => f.bezug.art === 'event' && f.bezug.id === e.id && f.status === 'offen').length;
   const zielText = e.ziel === EVENT_ZIEL ? '' : e.ziel;
   const ziele = e.zielpersonen ?? [];
-  const getroffen = (z: EventZielperson) => !!z.getroffen || (!!z.kontaktId && erfasstIds.has(z.kontaktId));
+  // Getroffen = von Hand abgehakt oder über „Netzwerken“ erfasst (Person über die Kennung, Zielfirma über jede erfasste Person der Firma) — eine Regel für Akte und Wirkung (`zielGetroffen`).
+  const zielStand = useMemo(() => zielGetroffen(e, crm.stand.teilnahmen, kontakte), [e, crm.stand.teilnahmen, kontakte]);
+  const getroffen = (z: EventZielperson) => zielStand.getroffen.has(zielSchluessel(z));
   const zielNeu = (liste: EventZielperson[]) => void setze({ zielpersonen: liste });
   const kundenName = fuer.art === 'kunde' ? (firmenMap.get(fuer.firmaId)?.name ?? 'dem Kunden') : null;
 
@@ -110,13 +111,13 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
       </Karte>
 
       <Karte i={2}>
-        <Ueberschrift rechts={ziele.length ? <span>{ziele.filter(getroffen).length} von {ziele.length} getroffen</span> : undefined}>Ziel und wen wir treffen wollen</Ueberschrift>
+        <Ueberschrift rechts={ziele.length ? <span>{zielStand.anzahl} von {ziele.length} getroffen{w.zielQuote !== null ? ` · ${Math.round(w.zielQuote * 100)} % erreicht` : ''}</span> : undefined}>Ziel und wen wir treffen wollen</Ueberschrift>
         <Notizfeld wert={zielText} zeilen={2} gross platzhalter="Ziel des Events — was soll danach anders sein? z. B. drei Gespräche mit Inhabern aus dem Maschinenbau" onFertig={t => { if (t.trim() !== zielText) void setze({ ziel: t.trim() }); }} />
         <div style={{ marginTop: 10 }}>
           {ziele.length === 0 && <Leer>Noch niemand eingetragen — wen wollen wir dort treffen? Suche unten; beim Event wird abgehakt, und wer über „Netzwerken“ erfasst wird, gilt automatisch als getroffen.</Leer>}
           {ziele.map(z => {
             const n = zielName(z, kontaktMap, firmenMap);
-            const abgeleitet = !z.getroffen && getroffen(z);
+            const abgeleitet = zielStand.abgeleitet.has(zielSchluessel(z));
             return (
               <Zeile key={zielSchluessel(z)}
                 links={<Haken an={getroffen(z)} farbe={hat(getroffen(z), LEUCHT.gut)} label={n.name} onChange={() => { if (!abgeleitet) zielNeu(ziele.map(x => (zielSchluessel(x) === zielSchluessel(z) ? { ...x, getroffen: !x.getroffen } : x))); }} />}

@@ -21,6 +21,7 @@ import type { Welt } from './traktion';
 import { leads, sqlBereit } from './leads';
 import { nachbereitung } from './erfassen';
 import { faellige, fuerPerson as faelligeFuer } from './followup';
+import { istNetzwerkenEvent } from './marke';
 
 export interface Mitglied { id: string; name: string; farbe: string; verantwortet: Welt[] }
 export const TEAM: Mitglied[] = [
@@ -132,8 +133,14 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   // Wer nachfasst: wer eingeladen hat, sonst wer die Beziehung hält — bei „beide“ die Zuständigkeit des Events (wie in der Event-Ansicht).
   const eventVon = new Map(crm.events.map(e => [e.id, e]));
   const nachfasser = (t: CrmBestand['teilnahmen'][number]) => { const e = wer(t.einladenDurch); if (e && e !== BEIDE) return e; const k = nachId.get(t.kontaktId); const h = k ? haeltBeziehung(k) : BEIDE; return h !== BEIDE ? h : zustaendig(eventVon.get(t.eventId)?.zustaendig, 'event'); };
-  const nachfassen = crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && eventIds.has(t.eventId) && nachfasser(t) === person).length;
+  // Besuchte Events (Reiter „Events“) zählen getrennt von den Make.One-Gästen und führen in IHREN Reiter (M1/M2); bewusst Ausgelassene
+  // (`nachfassenVerzichtet`) und Personen mit einem offenen echten Follow-up zum Event zählen nirgends — dort steht es schon.
+  const offeneFu = new Set((crm.followups ?? []).filter(f => f.status === 'offen' && f.bezug.art === 'event' && f.kontaktId).map(f => `${f.bezug.id}|${f.kontaktId}`));
+  const nachzufassen = crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && !t.nachfassenVerzichtet && eventIds.has(t.eventId) && nachfasser(t) === person && !offeneFu.has(`${t.eventId}|${t.kontaktId}`));
+  const nachfassen = nachzufassen.filter(t => !istNetzwerkenEvent(eventVon.get(t.eventId)!)).length;
+  const begegnungen = nachzufassen.length - nachfassen;
   if (nachfassen) l.push({ id: 'nachfassen', welt: 'event', titel: 'Gäste nachfassen', anzahl: nachfassen, text: 'die du eingeladen hast oder deren Beziehung du hältst', ziel: { s: 'event' } });
+  if (begegnungen) l.push({ id: 'begegnungen', welt: 'event', titel: 'Begegnungen bei Events nachfassen', anzahl: begegnungen, text: 'kennengelernt auf besuchten Veranstaltungen, noch ohne nächsten Schritt', ziel: { s: 'besuche' } });
   // Ebene 1 → 2: Leads, die SQL-bereit sind, aber noch keinen Deal haben — und Leads in Qualifizierung.
   const meineLeads = leads(kontakte, crm, heute).filter(z => z.besitzer === person || z.besitzer === BEIDE);
   const sqlOffen = meineLeads.filter(z => sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;

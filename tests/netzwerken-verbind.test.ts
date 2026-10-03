@@ -294,3 +294,74 @@ describe('Event-Titel: gleichesBesuchEvent', () => {
     expect(gleichesBesuchEvent(evs, 'Make.One Herbst', '2026-10-20')).toBeUndefined();
   });
 });
+
+describe('M1 · kein virtuelles „Nachfassen nach Event“ nach einem festgelegten Schritt', () => {
+  const kontaktEmail = (i: number) => ({ vorname: `P${i}`, nachname: `Gast${i}`, email: `gast${i}@example.invalid` });
+  it('nur-kontakt → bewusst ausgelassen; andere/qualifizieren → nachgefasst; follow-up → genau ein Eintrag (der echte)', async () => {
+    const schritte = ['nur-kontakt', 'andere', 'qualifizieren', 'followup'] as const;
+    for (const [i, s] of schritte.entries()) await senden(erfassung({ schritt: s, kontakt: kontaktEmail(i), ...(s === 'andere' ? { andere: { text: 'Studie schicken' } } : {}) }));
+    const c = await crm();
+    const je = (s: string) => c.teilnahmen.find(t => t.netzwerken?.schritt === s)!;
+    expect(je('nur-kontakt')).toMatchObject({ nachfassenVerzichtet: '2026-10-02' });
+    expect(je('nur-kontakt').followUpAm).toBeUndefined();
+    expect(je('andere').followUpAm).toBe('2026-10-02');
+    expect(je('qualifizieren').followUpAm).toBe('2026-10-02');
+    expect(je('followup').followUpAm).toBeUndefined();
+    const { faellige } = await import('@/lib/crm/followup');
+    const virtuell = faellige(await kontakte(), c, '2026-10-12').filter(f => f.quelle === 'nachfassen');
+    expect(virtuell).toHaveLength(0);                                   // der echte Follow-up ersetzt den virtuellen
+    expect(c.followups.filter(f => f.bezug.id === 'ev-test-1')).toHaveLength(1);
+  });
+  it('„Für dich“: besuchte Events zählen getrennt („Begegnungen“) und führen in den Events-Reiter; offene echte Follow-ups zählen nicht doppelt', async () => {
+    const { fuerDich } = await import('@/lib/crm/team');
+    await senden(erfassung({ schritt: 'followup', kontakt: kontaktEmail(7) }));
+    const crmDa = await crm();
+    // Wiederhergestellter Fall: eine Begegnung ohne nächsten Schritt (z. B. von Hand in der Event-Akte) + ein Make.One-Gast.
+    const frei = { ...crmDa, followups: [], events: [...crmDa.events, { ...MAKEONE, id: 'ev-eigen-1', status: 'durchgefuehrt', datum: '2026-09-30' } as never], teilnahmen: [...crmDa.teilnahmen, { id: 't-g-1', eventId: 'ev-eigen-1', kontaktId: crmDa.teilnahmen[0].kontaktId, status: 'da' as const, einladenDurch: 'kevin', geaendert: '2026-09-30' }] };
+    const l = fuerDich('kevin', await kontakte(), frei, '2026-10-12');
+    expect(l.find(x => x.id === 'begegnungen')).toMatchObject({ anzahl: 1, ziel: { s: 'besuche' } });
+    expect(l.find(x => x.id === 'nachfassen')).toMatchObject({ anzahl: 1, ziel: { s: 'event' } });
+    const mitFu = fuerDich('kevin', await kontakte(), crmDa, '2026-10-12');
+    expect(mitFu.find(x => x.id === 'begegnungen')).toBeUndefined();      // der offene echte Follow-up steht schon in „Follow-ups fällig“
+  });
+});
+
+describe('M2/M3 · eine Rechnung, Begegnung ist kein Make.One-Signal', () => {
+  it('Make.One-Kennzahlen kennen „netzwerken“ nicht mehr; Übergaben trennen Make.One-Gäste und Begegnungen; Überblick zählt getrennt', async () => {
+    await senden(erfassung({ schritt: 'nur-kontakt' }));
+    const c = await crm(); const k = await kontakte();
+    const { eventKennzahlen, uebergaben } = await import('@/lib/crm/traktion');
+    expect(eventKennzahlen(k, c, '2026-10-12').some(x => x.id === 'netzwerken')).toBe(false);
+    // Bewusst ausgelassen (nur-kontakt) taucht in keiner Übergabe auf; ohne Verzicht steht es unter „Begegnungen“, nie unter „Gäste“.
+    expect(uebergaben(k, c, '2026-10-12').some(u => u.id === 'besuche-nachfassen' || u.id === 'event-nachfassen')).toBe(false);
+    const ohne = { ...c, teilnahmen: c.teilnahmen.map(t => ({ ...t, nachfassenVerzichtet: undefined })) };
+    const u = uebergaben(k, ohne, '2026-10-12');
+    expect(u.find(x => x.id === 'besuche-nachfassen')).toMatchObject({ anzahl: 1, ziel: { s: 'besuche' } });
+    expect(u.some(x => x.id === 'event-nachfassen')).toBe(false);
+  });
+  it('Gästevorschlag und Lifecycle: „Kennengelernt bei <Event>“ statt „war schon bei einem Event“ / MQL', async () => {
+    await senden(erfassung({ schritt: 'nur-kontakt' }));
+    const c = await crm(); const k = await kontakte();
+    const { gaesteVorschlag } = await import('@/lib/crm/eventplanung');
+    const v = gaesteVorschlag(k, c, c.events.find(e => e.id === 'ev-makeone-1')!, '2026-10-12', { stichwort: 'Beispiel' }, 5);
+    const eintrag = v.find(x => x.kontakt.id === k[0].id)!;
+    expect(eintrag.gruende).toContain('Kennengelernt bei Stammtisch Beispielstadt');
+    expect(eintrag.gruende).not.toContain('war schon bei einem Event');
+    const { lifecycleVorschlag } = await import('@/lib/crm/vorschlaege');
+    const l = lifecycleVorschlag(k[0], c, '2026-10-12');
+    expect(l.id).toBe('lead');
+    expect(l.grund).toContain('Kennengelernt bei Stammtisch Beispielstadt');
+    // Ein Make.One-Abend dagegen bleibt ein Signal.
+    const eigen = { ...c, events: [...c.events, { ...MAKEONE, id: 'ev-eigen-2', status: 'durchgefuehrt' } as never], teilnahmen: [...c.teilnahmen, { id: 't-e2', eventId: 'ev-eigen-2', kontaktId: k[0].id, status: 'da' as const, geaendert: '2026-10-01' }] };
+    expect(lifecycleVorschlag(k[0], eigen, '2026-10-12').id).toBe('mql');
+  });
+  it('Übersicht und Kennzahlen zählen nur WIRKLICH besuchte Events (nicht jedes vergangene geplante)', async () => {
+    const { besuchUebersicht, besuchKennzahlen, besucht } = await import('@/lib/crm/besuche');
+    const ev = (x: object) => ({ ...EVENT, ...x }) as never;
+    const events = [ev({ id: 'ev-a', status: 'durchgefuehrt' }), ev({ id: 'ev-b', status: 'geplant', datum: '2026-09-20' }), ev({ id: 'ev-c', status: 'geplant', anmeldung: 'angemeldet', datum: '2026-09-21' }), ev({ id: 'ev-d', status: 'durchgefuehrt', anmeldung: 'besucht', datum: '2026-09-22' })];
+    const ctx = { teilnahmen: [], kontakte: [], chancen: [], heute: '2026-10-12' };
+    expect(events.filter(e => besucht(e)).map((e: { id: string }) => e.id)).toEqual(['ev-a', 'ev-d']);
+    expect(besuchUebersicht(events, ctx).zeilen.map(z => z.event.id).sort()).toEqual(['ev-a', 'ev-d']);
+    expect(besuchKennzahlen(events, ctx).find(x => x.id === 'besuche_events')?.anzeige).toBe('2');
+  });
+});

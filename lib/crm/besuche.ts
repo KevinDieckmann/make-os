@@ -20,7 +20,9 @@ import type { Kpi, KpiAmpel } from './kennzahlen';
 import { gesamtwert, OFFENE_STUFEN } from './pipeline';
 import { budgetSumme } from './eventplanung';
 import { ausgenommen } from './einschraenkung';
-import { istBesuch, besuchAbgesagt, fuerFirmaId } from './besuche-form';
+import { istBesuch, besuchAbgesagt, fuerFirmaId, anmeldungVon, zielSchluessel } from './besuche-form';
+import { tagVon } from '@/lib/zeit';
+import { NETZWERKEN_QUELLE } from './netzwerken';
 
 const plusTage = (datum: string, n: number): string => { const d = new Date(`${datum}T12:00:00Z`); if (Number.isNaN(d.getTime())) return datum; d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const tageZwischen = (von: string, bis: string): number => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
@@ -56,6 +58,8 @@ export interface BesuchWirkung {
   /** Entstandene/beeinflusste Deals (Kennungen) — für die Summe ohne Doppelzählung. */
   dealIds: string[];
   deals: number;
+  /** Davon zählen fürs Urteil: nicht verloren/geparkt und keine Vermittlung ohne Wert (die ist ein Gefallen, kein Geschäft). */
+  dealsUrteil: number;
   /** Gesamtwert der offenen Deals. */
   pipeline: number;
   /** Gesamtwert der gewonnenen Deals. */
@@ -64,30 +68,61 @@ export interface BesuchWirkung {
   kosten: number;
   /** Euro je erfasstem Kontakt — null ohne Kosten oder Kontakte. */
   kostenJeKontakt: number | null;
-  /** Zielpersonen/-firmen und wie viele davon getroffen sind. */
+  /** Zielpersonen/-firmen und wie viele davon getroffen sind (von Hand abgehakt ODER über „Netzwerken“ erfasst — `zielGetroffen`). */
   zielGesamt: number;
   zielGetroffen: number;
+  /** Zielerreichungsgrad (0–1) — null ohne Ziele. */
+  zielQuote: number | null;
 }
 
-/** Die Wirkung eines besuchten Events — aus Teilnahmen, Kontakten und Chancen (eine Rechnung für Akte, Übersicht und Kunden). */
+/**
+ * Wen wir treffen wollten und wen davon schon — EINE Regel für Akte und Wirkung (M14): getroffen ist, wer von Hand abgehakt ist, oder wer über
+ * „Netzwerken“ erfasst wurde — eine Person über ihre Kennung, eine Zielfirma über jede erfasste Person, die zu dieser Firma gehört.
+ * `abgeleitet` = nur über die Erfassung, nicht von Hand (die Akte zeigt „über Netzwerken erfasst“ und lässt es nicht abhaken).
+ */
+export function zielGetroffen(e: Pick<Event, 'id' | 'zielpersonen'>, teilnahmen: readonly Teilnahme[], kontakte: readonly Pick<Kontakt, 'id' | 'firmaId'>[]): { getroffen: Set<string>; abgeleitet: Set<string>; gesamt: number; anzahl: number; quote: number | null } {
+  const erfasst = erfassteTeilnahmen(e.id, teilnahmen).filter(t => t.netzwerken || t.status === 'da');
+  const personen = new Set(erfasst.map(t => t.kontaktId));
+  const nachId = new Map(kontakte.map(k => [k.id, k]));
+  const firmen = new Set(erfasst.map(t => nachId.get(t.kontaktId)?.firmaId).filter((f): f is string => !!f));
+  const getroffen = new Set<string>(), abgeleitet = new Set<string>();
+  const ziel = e.zielpersonen ?? [];
+  for (const z of ziel) {
+    const k = zielSchluessel(z);
+    const ueber = z.kontaktId ? personen.has(z.kontaktId) : !!z.firmaId && firmen.has(z.firmaId);
+    if (z.getroffen || ueber) getroffen.add(k);
+    if (!z.getroffen && ueber) abgeleitet.add(k);
+  }
+  return { getroffen, abgeleitet, gesamt: ziel.length, anzahl: getroffen.size, quote: ziel.length ? getroffen.size / ziel.length : null };
+}
+
+/** Zählt der Deal fürs Urteil? Nicht verloren/geparkt, und keine Vermittlung ohne Wert. */
+const dealZaehlt = (c: Chance): boolean => c.stufe !== 'verloren' && c.stufe !== 'geparkt' && !(c.art === 'vermittlung' && !(gesamtwert(c) > 0));
+
+/**
+ * Die Wirkung eines besuchten Events — aus Teilnahmen, Kontakten und Chancen (eine Rechnung für Akte, Übersicht und Kunden).
+ * Ein Deal gehört dem Event, wenn er es als Quelle nennt — oder (bis 180 Tage danach) mit einer dort NEU über „Netzwerken“ angelegten Person entstand
+ * und keine andere Quelle trägt (M12): ein Kunde, den wir längst kannten, und ein Deal aus einer Kampagne gehören nicht dem Event.
+ */
 export function besuchWirkung(e: Event, ctx: BesuchKontext): BesuchWirkung {
   const t = erfassteTeilnahmen(e.id, ctx.teilnahmen);
   const ids = new Set(t.map(x => x.kontaktId));
+  const neu = new Set(t.filter(x => x.netzwerken && ctx.kontakte.some(k => k.id === x.kontaktId && k.id === `c-${x.netzwerken!.erfassungId}` && k.quelle === NETZWERKEN_QUELLE)).map(x => x.kontaktId));
   const bis = plusTage(e.datum, DEAL_FENSTER_TAGE);
   const deals = ctx.chancen.filter(c => (c.quelle === 'event' && c.quelleBezug === e.id)
-    || (c.kontaktIds.some(id => ids.has(id)) && c.angelegt.slice(0, 10) >= e.datum && c.angelegt.slice(0, 10) <= bis));
+    || (!c.quelle && c.kontaktIds.some(id => neu.has(id)) && tagVon(c.angelegt) >= e.datum && tagVon(c.angelegt) <= bis));
   const nachgefasst = t.filter(x => !!x.followUpAm).length;
   const kosten = budgetSumme(e);
-  const ziel = e.zielpersonen ?? [];
+  const z = zielGetroffen(e, ctx.teilnahmen, ctx.kontakte);
   return {
     kontakte: t.length, nachgefasst, followupQuote: t.length ? nachgefasst / t.length : null,
     nachfassenOffen: t.filter(x => !x.followUpAm && !x.nachfassenVerzichtet).length,
     termine: t.filter(x => !!x.netzwerken?.terminAm).length,
-    dealIds: deals.map(c => c.id), deals: deals.length,
+    dealIds: deals.map(c => c.id), deals: deals.length, dealsUrteil: deals.filter(dealZaehlt).length,
     pipeline: Math.round(deals.filter(c => OFFENE_STUFEN.includes(c.stufe)).reduce((a, c) => a + gesamtwert(c), 0)),
     umsatz: Math.round(deals.filter(c => c.stufe === 'gewonnen').reduce((a, c) => a + gesamtwert(c), 0)),
     kosten, kostenJeKontakt: kosten > 0 && t.length ? Math.round(kosten / t.length) : null,
-    zielGesamt: ziel.length, zielGetroffen: ziel.filter(z => z.getroffen).length,
+    zielGesamt: z.gesamt, zielGetroffen: z.anzahl, zielQuote: z.quote,
   };
 }
 
@@ -104,10 +139,13 @@ export interface Urteil { art: UrteilArt; label: string; grund: string }
 export function besuchUrteil(e: Event, w: BesuchWirkung, heute: string): Urteil {
   const alter = tageZwischen(e.datum, heute);
   if (alter < URTEIL_AB_TAGE) return { art: 'frueh', label: 'zu früh', grund: alter < 0 ? 'Das Event hat noch nicht stattgefunden.' : `Ein Urteil gibt es ab ${URTEIL_AB_TAGE} Tagen nach dem Event.` };
-  if (w.deals > 0 && w.pipeline + w.umsatz >= w.kosten) return { art: 'lohnt', label: 'lohnt sich', grund: w.kosten > 0 ? 'Pipeline und Umsatz decken die Kosten.' : 'Es sind Deals entstanden.' };
-  if (w.termine > 0 || w.deals > 0) return { art: 'laeuft', label: 'läuft', grund: 'Gespräche laufen — die Kosten sind noch nicht gedeckt.' };
+  if (w.dealsUrteil > 0 && w.pipeline + w.umsatz >= w.kosten) return { art: 'lohnt', label: 'lohnt sich', grund: w.kosten > 0 ? 'Pipeline und Umsatz decken die Kosten.' : 'Es sind Deals entstanden.' };
+  if (w.termine > 0 || w.dealsUrteil > 0) return { art: 'laeuft', label: 'läuft', grund: 'Gespräche laufen — die Kosten sind noch nicht gedeckt.' };
   return { art: 'ohne', label: 'bisher ohne Folge', grund: w.kontakte ? 'Kontakte erfasst, aber weder Termin noch Deal.' : 'Niemand erfasst.' };
 }
+
+/** Hat das besuchte Event WIRKLICH stattgefunden (für uns)? Angemeldet-und-vorbei oder geplant-und-vorbei zählt nicht — nur „besucht“ bzw. durchgeführt, nie abgesagt. */
+export const besucht = (e: Event): boolean => istBesuch(e) && !besuchAbgesagt(e) && (anmeldungVon(e) === 'besucht' || e.status === 'durchgefuehrt');
 
 export interface BesuchZeile { event: Event; wirkung: BesuchWirkung; urteil: Urteil }
 export interface BesuchSumme { events: number; kontakte: number; kosten: number; kostenJeKontakt: number | null; deals: number; pipeline: number; umsatz: number; nachgefasst: number; followupQuote: number | null }
@@ -117,7 +155,7 @@ const wert = (z: BesuchZeile) => z.wirkung.pipeline + z.wirkung.umsatz - z.wirku
 
 /** Die besuchten Events, die schon stattgefunden haben (nicht abgesagt) — mit Wirkung und Urteil, „lohnt sich“ zuerst. */
 export function besuchUebersicht(events: readonly Event[], ctx: BesuchKontext): { zeilen: BesuchZeile[]; summe: BesuchSumme } {
-  const zeilen = events.filter(e => istBesuch(e) && !besuchAbgesagt(e) && e.datum <= ctx.heute).map(event => {
+  const zeilen = events.filter(e => besucht(e) && e.datum <= ctx.heute).map(event => {
     const wirkung = besuchWirkung(event, ctx);
     return { event, wirkung, urteil: besuchUrteil(event, wirkung, ctx.heute) };
   }).sort((a, b) => REIHE[a.urteil.art] - REIHE[b.urteil.art] || wert(b) - wert(a) || b.event.datum.localeCompare(a.event.datum));
@@ -168,7 +206,7 @@ const euro = (n: number) => `${n.toLocaleString('de-DE')} €`;
 /** Die eigenen Kennzahlen der besuchten Events, 90 Tage — getrennt von den Make.One-Kennzahlen (`eventKennzahlen`). */
 export function besuchKennzahlen(events: readonly Event[], ctx: BesuchKontext): Kpi[] {
   const von = plusTage(ctx.heute, -89);
-  const imFenster = events.filter(e => istBesuch(e) && !besuchAbgesagt(e) && e.datum >= von && e.datum <= ctx.heute);
+  const imFenster = events.filter(e => besucht(e) && e.datum >= von && e.datum <= ctx.heute);
   const { zeilen, summe } = besuchUebersicht(imFenster, ctx);
   const grau: KpiAmpel = 'grau';
   const quote = summe.followupQuote;

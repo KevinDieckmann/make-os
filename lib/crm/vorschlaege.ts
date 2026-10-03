@@ -20,6 +20,7 @@ import type { DealRolle, Firma, Chance, CrmBestand } from './typen';
 import { leadScore, warmPlus, temperaturLabel } from './score';
 import { leereVerteilung, LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
 import { typenVon, kategorienVon } from './mehrfach';
+import { istNetzwerkenEvent } from './marke';
 
 /** Wie lange ein echtes Gespräch die Person „warm“ hält. */
 export const WARM_TAGE = 90;
@@ -231,7 +232,7 @@ export function anredeVorschlag(k: Pick<Kontakt, 'anrede' | 'kategorie' | 'kateg
 
 // ── Lifecycle (28.09., Kevin: HubSpot-Vorbild) ──────────────────────────────
 /** Was der Lifecycle-Vorschlag vom Bestand braucht — Teilnahmen und Firmen dürfen fehlen. */
-export type LifecycleBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & Partial<Pick<CrmBestand, 'firmen' | 'teilnahmen'>>;
+export type LifecycleBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & Partial<Pick<CrmBestand, 'firmen' | 'teilnahmen' | 'events'>>;
 
 /** Anfragen landen als Aktivität „antwort“ mit diesem Anfang (wie ANFRAGE_PRAEFIX in marketing.ts — hier ohne Import, sonst ein Kreis über segmente.ts). */
 const ANFRAGE_ANFANG = 'Anfrage über ';
@@ -267,11 +268,16 @@ export function lifecycleVorschlag(k: Kontakt, crm: LifecycleBestand | null | un
   // Marketing-Signale: die jüngste Antwort/Anfrage, beim Event dabei, Score warm oder heiß.
   const antwort = (k.aktivitaeten ?? []).filter(a => a.art === 'antwort' && a.von !== 'system' && a.am).sort((a, b) => b.am.localeCompare(a.am))[0];
   if (antwort) return { id: 'mql', grund: `${antwort.text?.startsWith(ANFRAGE_ANFANG) ? 'Anfrage' : 'Antwort'} am ${tagDE(antwort.am.slice(0, 10))}` };
-  const dabei = (crm?.teilnahmen ?? []).some(t => t.kontaktId === k.id && t.status === 'da');
+  // „Beim Event dabei“ meint unsere Abende (Make.One). Wer auf einer BESUCHTEN Veranstaltung kennengelernt wurde, hat nie auf ein Signal von uns reagiert —
+  // das ist eine Begegnung, kein Marketing-Signal (M3): kein MQL, aber der Grund steht dabei.
+  const besuche = new Map((crm?.events ?? []).filter(istNetzwerkenEvent).map(e => [e.id, e]));
+  const dortDa = (crm?.teilnahmen ?? []).filter(t => t.kontaktId === k.id && t.status === 'da');
+  const dabei = dortDa.some(t => !besuche.has(t.eventId));
   if (dabei) return { id: 'mql', grund: 'war bei einem Event dabei' };
+  const kennengelernt = dortDa.map(t => besuche.get(t.eventId)).find(Boolean);
   const score = leadScore([k], lead, heute);
   if (warmPlus(score.temperatur)) return { id: 'mql', grund: `Score der Person ${score.punkte} · ${temperaturLabel(score.temperatur)}` };
-  return { id: 'lead', grund: 'noch kein Marketing-Signal, kein Deal' };
+  return { id: 'lead', grund: kennengelernt ? `Kennengelernt bei ${kennengelernt.titel} — noch kein Marketing-Signal, kein Deal` : 'noch kein Marketing-Signal, kein Deal' };
 }
 
 /**

@@ -28,6 +28,7 @@ import { leererStand, standName, type HeadStand } from '@/lib/heads/stand';
 import { localDay } from '@/lib/zeit';
 import { personAus } from '@/lib/zoe/raum';
 import { fuerDich, teamFeed, verantwortlich, TEAM } from '@/lib/crm/team';
+import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { wochenScoreboard, verlaufEintrag, verlaufFortschreiben, verlaufSeit, gleicherStand, jePersonSieben, VERLAUF_SPEICHER, type TraktionVerlauf, type VerlaufTag } from '@/lib/crm/scoreboard';
 import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
 
@@ -94,7 +95,7 @@ export async function GET(req: Request) {
     uebergaben: uebergaben(kontakte, crm, heute),
     befunde: befunde(kontakte, crm, heute),
     heads,
-    bestand: { kontakte: kontakte.length, firmen: crm.firmen.length, chancen: crm.chancen.length, mandate: crm.mandate.length, events: crm.events.length, kampagnen: (crm.kampagnen ?? []).length },
+    bestand: { kontakte: kontakte.length, firmen: crm.firmen.length, chancen: crm.chancen.length, mandate: crm.mandate.length, events: crm.events.filter(e => !istNetzwerkenEvent(e)).length, besuche: crm.events.filter(istNetzwerkenEvent).length, kampagnen: (crm.kampagnen ?? []).length },
   };
   });
   return NextResponse.json(body);

@@ -186,7 +186,7 @@ export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: st
   const abChance = fruehestes(chancen.map(c => tag(c.angelegt)));
   const abBeitrag = fruehestes(beitraege.flatMap(b => [tag(b.datum), tag(b.geaendert)]));
   const abContent = veroeffentlicht.length || wirkung.length ? fruehestes([...veroeffentlicht.map(b => tag(b.datum)), ...wirkung.map(x => x.tag)]) : null;
-  const abEvent = fruehestes(events.flatMap(e => [e.datum, tag(e.geaendert)]));
+  const abEvent = fruehestes(events.filter(e => !istNetzwerkenEvent(e)).flatMap(e => [e.datum, tag(e.geaendert)]));  // nur unsere Abende — besuchte Events (Events-Reiter) zählen hier nicht
 
   const anzahl = <T,>(liste: T[], datum: (x: T) => string) => (w: ScoreWoche) => liste.filter(x => drin(datum(x), w)).length;
   const anteil = (z: number) => Math.ceil(z / Math.max(1, TEAM.length));
