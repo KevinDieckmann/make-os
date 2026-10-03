@@ -15,6 +15,7 @@ import { speicherbegrenzung } from './kennzahlen';
 import { tagVon } from '@/lib/zeit';
 import { hatTyp, kategorienVon } from './mehrfach';
 import { informationOffen, INFO_FRIST_TAGE } from './netzwerken-recht';
+import { UG_NAME } from '@/lib/einheiten';
 export interface PflichtVorschlag { id: string; herkunft?: Herkunft; rechtsgrundlage?: Rechtsgrundlage; fremddaten?: boolean; grund: string }
 
 export function pflichtangaben(kontakte: Kontakt[], crm: CrmBestand): PflichtVorschlag[] {
@@ -110,7 +111,7 @@ export function verarbeitungenNetzwerken(jetzt: string): Verarbeitung[] {
   const stand = tagVon(jetzt);
   const gemein = {
     toms: 'Zugang nur mit Anmeldung (zwei Konten, zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, nächtliche verschlüsselte Sicherung, Fotos/Sprachnotizen verschlüsselt abgelegt, Art. 18 und Werbesperre greifen überall',
-    verantwortlich: 'MAKE Innovation GmbH (Kevin Dieckmann, Malin)', stand,
+    verantwortlich: UG_NAME, stand,
   };
   const dritt = 'Microsoft, Apple, Anthropic (USA): Standardvertragsklauseln bzw. Data Privacy Framework — prüfen';
   return [
