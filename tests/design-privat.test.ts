@@ -7,10 +7,9 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { zielBezug } from '@/lib/make-one/ziel-bezug';
-import { FADEN_FARBEN } from '@/lib/make-one/design';
-import { zielFarben } from '@/lib/lichtfaeden/modell';
-import type { Meilenstein, Ziel } from '@/lib/planung/typen';
+import { zielBezug, type BezugZiel } from '@/lib/make-one/ziel-bezug';
+import { zielThema } from '@/lib/lichtfaeden/modell';
+import type { Meilenstein } from '@/lib/planung/typen';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/gesundheit' }));
 
@@ -104,19 +103,31 @@ describe('Praxis-Fund N7: Rücklage speichert mit Enter', () => {
 });
 
 describe('Ziel-Bezug — die reine Auswahl', () => {
-  const z = (id: string, titel: string, rang: number, extra: Partial<Ziel> = {}): Ziel => ({ id, titel, fortschritt: 40, rang, space: 'privat', ...extra });
+  // Die Farbe kommt im Betrieb vom Server (lib/planung/ziel-farben-server.ts); hier eine Platzhalter-Farbe je Ziel.
+  const z = (id: string, titel: string, rang: number, extra: Partial<BezugZiel> = {}): BezugZiel => ({ id, titel, fortschritt: 40, rang, space: 'privat', horizont: 'jahr', farbe: `#${id.padEnd(6, '0').slice(0, 6).replace(/[^0-9a-f]/gi, '0')}`, ...extra });
   const m = (id: string, zielId: string, extra: Partial<Meilenstein> = {}): Meilenstein => ({ id, titel: id, bereich: 'gesundheit', space: 'privat', zielId, fortschritt: 20, erledigt: false, ...extra });
   const ziele = [z('z1', 'Rücklage aufbauen', 1), z('z2', 'Fit und beschwerdefrei', 2), z('z3', 'Mehr Zeit als Paar', 3), z('zb', 'Umsatz', 1, { space: 'business' })];
 
-  it('Gesundheit: der Meilenstein des Bereichs führt zum Ziel („zahlt ein auf“)', () => {
+  it('Gesundheit: das Thema der Meilensteine führt zum Ziel („zahlt ein auf“) — dieselbe Zuordnung wie die Lichtfäden (zielThema)', () => {
     const r = zielBezug('gesundheit', ziele, [m('m1', 'z2')]);
     expect(r.map(x => x.id)).toEqual(['z2']);
-    expect(r[0].grund).toBe('meilenstein');
+    expect(r[0].grund).toBe('thema');
+    expect(zielThema(ziele[1], [m('m1', 'z2')])).toBe('gesundheit');
+    // Meilenstein an einem abgeleiteten Ziel zählt für das Jahresziel.
+    const mitQuartal = [...ziele, z('z2~quartal', 'Etappe', 0, { horizont: 'quartal', abgeleitetVon: 'z2' })];
+    expect(zielBezug('training', mitQuartal, [m('m2', 'z2~quartal')]).map(x => [x.id, x.grund])).toEqual([['z2', 'thema']]);
   });
 
-  it('ohne Meilenstein entscheidet das Stichwort im Zieltitel', () => {
-    expect(zielBezug('beziehung', ziele, []).map(x => x.id)).toEqual(['z3']);
-    expect(zielBezug('gesundheit', ziele, [])[0].grund).toBe('stichwort');
+  it('keine Stichworte mehr: „Profit“, „Buchhaltung“, „Paar“ im Titel stiften keinen Bezug — ehrlich „Oberstes Ziel“', () => {
+    const l = [z('p1', 'Profit steigern', 1), z('p2', 'Buchhaltung digital', 2), z('p3', 'Mehr Zeit als Paar', 3)];
+    for (const b of ['gesundheit', 'training', 'wissen', 'beziehung'] as const) {
+      const r = zielBezug(b, l, []);
+      expect(r.map(x => [x.id, x.grund])).toEqual([['p1', 'rang']]);
+    }
+    // Keine Stichwort-Liste und kein Personenname mehr im Code.
+    const code = lies('lib/make-one/ziel-bezug.ts').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(code).not.toMatch(/stichwort|malin|kevin|RegExp|\.test\(/i);
+    expect(code).toContain('zielThema');
   });
 
   it('ohne Treffer zeigt der Bereich das oberste private Ziel — ehrlich als „rang“, nie ein Business-Ziel', () => {
@@ -126,19 +137,22 @@ describe('Ziel-Bezug — die reine Auswahl', () => {
     expect(r[0].grund).toBe('rang');
   });
 
-  it('erledigte Ziele und Meilensteine zählen nicht; ohne Ziele bleibt die Liste leer', () => {
+  it('Space ohne Angabe ist Business (spaceVonZiel, dieselbe Regel wie Planung und Lichtfäden) — kein privates Ziel', () => {
+    expect(zielBezug('privat', [z('ohne', 'Ohne Space', 1, { space: undefined })], [])).toEqual([]);
+  });
+
+  it('nur Jahresziele; erledigte Ziele zählen nicht; ohne Ziele bleibt die Liste leer', () => {
     expect(zielBezug('gesundheit', [z('z2', 'Fit', 1, { erledigt: true })], [m('m1', 'z2')])).toEqual([]);
-    expect(zielBezug('gesundheit', ziele, [m('m1', 'z2', { erledigt: true })])[0].grund).toBe('stichwort');
+    expect(zielBezug('privat', [z('w', 'Woche', 1, { horizont: 'woche' })], [])).toEqual([]);
     expect(zielBezug('privat', [], [])).toEqual([]);
   });
 
-  it('höchstens `max` Treffer, Farbe nach der EINEN Farbregel für Ziele (zielFarben) in Rangfolge', () => {
-    const r = zielBezug('privat', ziele, [], 1);
-    expect(r).toHaveLength(1);
-    const viele = [z('a', 'Gesundheit eins', 1), z('b', 'Gesundheit zwei', 2), z('c', 'Gesundheit drei', 3)];
-    const rr = zielBezug('gesundheit', viele, [], 5);
-    expect(rr.map(x => x.farbe)).toEqual([FADEN_FARBEN.privat[0], FADEN_FARBEN.privat[1], FADEN_FARBEN.privat[2]]);
-    expect(rr.map(x => x.farbe)).toEqual(viele.map(v => zielFarben(viele).get(v.id)));
+  it('höchstens `max` Treffer; die Farbe ist die vom Server gelieferte (der Ziel-Bezug rechnet keine)', () => {
+    expect(zielBezug('privat', ziele, [], 1)).toHaveLength(1);
+    const viele = [z('a', 'Eins', 1), z('b', 'Zwei', 2), z('c', 'Drei', 3)];
+    const rr = zielBezug('gesundheit', viele, viele.map(v => m(`m-${v.id}`, v.id)), 5);
+    expect(rr.map(x => x.id)).toEqual(['a', 'b', 'c']);
+    expect(rr.map(x => x.farbe)).toEqual(viele.map(v => v.farbe));
   });
 
   it('der Baustein hält beim ersten Zeichnen seinen Platz (kein Springen) und ist für Hilfsmittel versteckt', async () => {

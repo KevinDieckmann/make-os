@@ -34,7 +34,7 @@ beforeAll(async () => {
   const db = await import('@/lib/store/local-db');
   const k = (id: string, speicher: string, rolle: string, haushalt: string, name: string) => ({ id, speicher, email: `${speicher}@test`, name, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt });
   await db.saveJson('konten', { konten: [k('k1', 'kevin', 'inhaber', 'test-haus', 'Kevin'), k('k2', 'malin', 'mitglied', 'test-haus', 'Malin'), k('k3', 'gast', 'mitglied', 'anderer-haus', 'Gast')], einladungen: [] });
-  await db.saveJson('ziele', { tag: [], woche: [], monat: [], quartal: [], jahr: [{ id: 'z-biz', titel: 'Zwölf Mandate', fortschritt: 40, space: 'business', rang: 1 }], fokus: {} });
+  await db.saveJson('ziele', { tag: [], woche: [], monat: [], quartal: [{ id: 'z-biz~quartal', titel: 'Drei Mandate im Quartal (angepasst)', fortschritt: 0, space: 'business', abgeleitetVon: 'z-biz', angepasst: true }], jahr: [{ id: 'z-biz', titel: 'Zwölf Mandate', fortschritt: 40, space: 'business', rang: 1 }], fokus: {} });
   await db.saveJson('meilensteine', { meilensteine: [{ id: 'm-1', titel: 'Neun Mandate', faellig: '2026-10-30', zielId: 'z-biz', space: 'business', fortschritt: 50, erledigt: false }] });
   const t = (id: string, x: Record<string, unknown>) => ({ id, projectId: 'p1', title: `Aufgabe ${id}`, status: 'todo', priority: 'medium', assignee: 'kevin', tags: [], subTasks: [], dependencies: [], sortOrder: 0, createdAt: '2026-09-01', updatedAt: '2026-09-01', ...x });
   await db.saveJson('tasks', { projects: [], listen: [], tasks: [
@@ -68,6 +68,13 @@ describe('Ansicht', () => {
     expect(d.ansicht.buendel.map(b => b.id).sort()).toEqual(['space:business', 'space:privat']);
     expect(d.personen).toEqual([{ id: 'kevin', name: 'Kevin', ich: true }, { id: 'malin', name: 'Malin', ich: false }]);
     expect(d.text).toContain('Lichtfäden Gesamt');
+  });
+  it('abgeleitetes, angepasstes Ziel (ZielDetail fragt seine eigene Kennung an) → die Fäden seines Jahresziels, kein 404', async () => {
+    const r = await get('wurzel=ziel:z-biz~quartal', sitzung('kevin'));
+    expect(r.status).toBe(200);
+    const d = (await r.json()) as Antwort;
+    expect(d.ansicht.wurzel.id).toBe('ziel:z-biz');
+    expect(d.ansicht.buendel.map(b => b.id)).toContain('ms:m-1');
   });
   it('eine Ebene tiefer: Ziel → Meilenstein-Bündel; Meilenstein-Markierung', async () => {
     const { d } = await json('wurzel=ziel:z-biz', sitzung('kevin'));

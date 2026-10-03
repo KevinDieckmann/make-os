@@ -11,9 +11,9 @@ import { speicherFuer } from '@/lib/zoe/raum';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
 import { WEG, eventLink } from '@/lib/wege';
-import type { ZieleDatei, Meilenstein, RoutinenDatei } from '@/lib/planung/typen';
-import { fuerBetrachter, BEIDE, type Knoten, type Strang } from './modell';
-import { planungStraenge, KEINE_BEZUEGE, type PlanungZiel, type ZielBezuege } from './quellen/planung';
+import type { Meilenstein, RoutinenDatei } from '@/lib/planung/typen';
+import { fuerBetrachter, type Knoten, type Strang } from './modell';
+import { planungStraenge, KEINE_BEZUEGE, type PlanungErgebnis, type ZielBezuege } from './quellen/planung';
 import { kalenderStraenge, type KalenderTermin } from './quellen/kalender';
 import { markttraktionStraenge } from './quellen/markttraktion';
 import { finanzStraenge } from './quellen/finanzen';
@@ -23,10 +23,13 @@ import { gesundheitStraenge } from './quellen/gesundheit';
 const sicher = async <T>(p: Promise<T> | (() => Promise<T>), sonst: T): Promise<T> => { try { return await (typeof p === 'function' ? p() : p); } catch { return sonst; } };
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 const tageZwischen = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
-const HORIZONTE = ['tag', 'woche', 'monat', 'quartal', 'jahr'] as const;
 
 export interface Person { id: string; name: string }
-export interface Sammlung { knoten: Knoten[]; straenge: Strang[]; personen: Person[] }
+export interface Sammlung {
+  knoten: Knoten[]; straenge: Strang[]; personen: Person[];
+  /** Kennung jedes Ziels → Kennung seines Wurzel-Ziels (Route: `wurzelAufloesen`). */
+  zielWurzel: ReadonlyMap<string, string>;
+}
 
 /** Personen des Haushalts (Speichername + Anzeigename) — Reihenfolge: Inhaber zuerst. */
 export async function haushaltsPersonen(): Promise<Person[]> {
@@ -35,17 +38,13 @@ export async function haushaltsPersonen(): Promise<Person[]> {
   return (await sicher(kontenDesHaushalts(h), [])).map(k => ({ id: k.speicher, name: k.name }));
 }
 
-async function planung(personen: readonly Person[], heute: string): Promise<{ knoten: Knoten[]; straenge: Strang[]; bezuege: ZielBezuege }> {
-  const [gemeinsam, eigene, ms, aufgaben] = await Promise.all([
-    sicher(loadJson<ZieleDatei>('ziele'), null),
-    Promise.all(personen.map(p => sicher(loadJson<ZieleDatei>(speicherFuer('ziele-eigen', p.id)), null).then(d => ({ person: p.id, d })))),
+async function planung(heute: string): Promise<PlanungErgebnis> {
+  const [ziele, ms, aufgaben] = await Promise.all([
+    // Alle Ziele des Haushalts MIT Farbe — dieselbe Menge und Farbe wie GET /api/state/ziele (lib/planung/ziel-farben-server.ts).
+    sicher(async () => (await import('@/lib/planung/ziel-farben-server')).haushaltsZiele(), []),
     sicher(loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'), null),
     sicher(async () => (await import('@/lib/aufgaben/sicht')).ladeAufgabenUngefiltert(), null),
   ]);
-  const ziele: PlanungZiel[] = [];
-  const dazu = (d: ZieleDatei | null, person: string) => { for (const h of HORIZONTE) for (const z of d?.[h] ?? []) ziele.push({ ...z, person }); };
-  dazu(gemeinsam, BEIDE);
-  for (const e of eigene) dazu(e.d, e.person);
   return planungStraenge({ ziele, meilensteine: ms?.meilensteine ?? [], aufgaben: aufgaben?.tasks ?? [], projekte: aufgaben?.projects ?? [], heute });
 }
 
@@ -129,7 +128,7 @@ async function gesundheit(personen: readonly Person[], heute: string): Promise<S
 export async function straengeSammeln(betrachter: string, von: string, bis: string, heute: string): Promise<Sammlung> {
   const randVon = tagPlus(von, -56), randBis = tagPlus(bis, 56);
   const personen = await haushaltsPersonen();
-  const plan = await sicher(planung(personen, heute), { knoten: [], straenge: [], bezuege: KEINE_BEZUEGE });
+  const plan = await sicher(planung(heute), { knoten: [], straenge: [], bezuege: KEINE_BEZUEGE, zielWurzel: new Map<string, string>() });
   const teile = await Promise.all([
     sicher(kalender(betrachter, randVon, randBis, heute), []),
     sicher(markttraktion(randBis, heute, plan.bezuege), []),
@@ -138,7 +137,7 @@ export async function straengeSammeln(betrachter: string, von: string, bis: stri
     sicher(gesundheit(personen, heute), []),
   ]);
   const straenge = [...plan.straenge, ...teile.flat()].map(s => fuerBetrachter(s, betrachter));
-  return { knoten: plan.knoten, straenge, personen };
+  return { knoten: plan.knoten, straenge, personen, zielWurzel: plan.zielWurzel };
 }
 
 /** Gemerkt je Betrachter, Fenster und Tag (60 s; jede Schreibung in einen Bestand macht es ungültig). */

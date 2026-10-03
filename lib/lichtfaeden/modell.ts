@@ -13,6 +13,7 @@
 
 import { FADEN_FARBEN, LEUCHT } from '@/lib/make-one/design';
 import type { SpaceId } from '@/lib/make-one/space-regeln';
+import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 
 // ── Knoten ───────────────────────────────────────────────────────────────────
 
@@ -63,22 +64,83 @@ export const SPACE_FADEN: Record<SpaceId, string> = { privat: FADEN_FARBEN.priva
 /** Bündel der Stränge, die direkt am Wurzelknoten hängen („ohne Ziel“) — Zeit-Cyan wie v1. */
 export const OHNE_FARBE = FADEN_FARBEN.ohne;
 
-/** Die EINE Farbregel für Ziele (Lichtfäden-Bündel, Ziel-Chips an Aufgaben, Legenden): Wurzel-Ziele je Space in
- *  Rang-Reihenfolge (dann Titel, Kennung) fortlaufend durch `FADEN_FARBEN[space]`; abgeleitete Ziele (Kaskade) tragen die
- *  Farbe ihres Jahresziels. Erledigte Ziele behalten ihren Platz, damit Farben beim Abhaken nicht springen. */
+// ── Ziele: Space, Wurzel, Thema, Farbe — je EINE Regel ───────────────────────
+
+/** Der Space eines Ziels — ohne Angabe Business (wie die Planung). Die EINE Regel, überall genutzt (Lichtfäden, Farben,
+ *  Ziel-Bezug); ein Wächter (tests/ziele-eine-quelle.test.ts) lässt keine zweite zu. */
+export const spaceVonZiel = (z: { space?: SpaceId }): SpaceId => z.space ?? 'business';
+
+/**
+ * Kennung → Kennung des Wurzel-Ziels (Jahresziel) für alle Ziele der Menge: abgeleitete Ziele (Kaskade, auch angepasste,
+ * solange ihr Elternziel lebt) gehören ihrem Jahresziel; ein Ziel, dessen Elternziel fehlt, ist selbst Wurzel. Kreisfest.
+ */
+export function zielWurzeln(ziele: readonly { id: string; abgeleitetVon?: string }[]): Map<string, string> {
+  const nachId = new Map(ziele.map(z => [z.id, z]));
+  const aus = new Map<string, string>();
+  for (const z of ziele) {
+    let w = z;
+    for (let i = 0; w.abgeleitetVon && nachId.has(w.abgeleitetVon) && w.abgeleitetVon !== z.id && i < 8; i++) w = nachId.get(w.abgeleitetVon)!;
+    aus.set(z.id, w.id);
+  }
+  return aus;
+}
+export const istWurzelZiel = (wurzeln: ReadonlyMap<string, string>, id: string): boolean => wurzeln.get(id) === id;
+
+/** Eine Ebenen-Kennung der Lichtfäden auflösen: `ziel:<abgeleitet>` → `ziel:<Jahresziel>` (dort laufen die Stränge
+ *  zusammen); alles andere bleibt. Die EINE Stelle — die Route nutzt sie, die Oberfläche schickt immer die eigene Kennung. */
+export function wurzelAufloesen(wurzel: string, zielWurzel: ReadonlyMap<string, string>): string {
+  if (!wurzel.startsWith('ziel:')) return wurzel;
+  const w = zielWurzel.get(wurzel.slice(5));
+  return w ? knotenId.ziel(w) : wurzel;
+}
+
+/** Thema eines Meilensteins (ohne Ziel): Mandat/Firma → Mandate, Altfeld `bereich: gesundheit` → Gesundheit, sonst Planung. */
+export function meilensteinThema(m: { mandatId?: string; firmaId?: string; bereich?: string }): ThemaId {
+  return m.mandatId || m.firmaId ? 'mandate' : m.bereich === 'gesundheit' ? 'gesundheit' : 'planung';
+}
+/**
+ * Thema eines Wurzel-Ziels: Mandat/Firma am Ziel → Mandate (im Business); ein privates Ziel mit einem Gesundheits-
+ * Meilenstein → Gesundheit; sonst Ziele & Planung. Die EINE Zuordnung — Lichtfäden-Baum und Ziel-Bezug der Seiten.
+ */
+export function zielThema(z: { space?: SpaceId; mandatId?: string; firmaId?: string }, meilensteine: readonly { bereich?: string }[]): ThemaId {
+  const space = spaceVonZiel(z);
+  if (z.mandatId || z.firmaId) return space === 'business' ? 'mandate' : 'planung';
+  return space === 'privat' && meilensteine.some(m => m.bereich === 'gesundheit') ? 'gesundheit' : 'planung';
+}
+
+/** Die Meilensteine je Wurzel-Ziel (über `zielVonMeilenstein`, abgeleitete Ziele auf ihr Jahresziel gerechnet). */
+export function meilensteineJeWurzel<M extends { zielId?: string; abgeleitetVon?: string }>(zielWurzel: ReadonlyMap<string, string>, meilensteine: readonly M[]): Map<string, M[]> {
+  const aus = new Map<string, M[]>();
+  for (const m of meilensteine) {
+    const zid = zielVonMeilenstein(m);
+    const w = zid ? zielWurzel.get(zid) : undefined;
+    if (!w) continue;
+    const l = aus.get(w);
+    if (l) l.push(m); else aus.set(w, [m]);
+  }
+  return aus;
+}
+
+/**
+ * Die EINE Farbregel für Ziele: Wurzel-Ziele je Space in Rang-Reihenfolge (dann Titel, Kennung) fortlaufend durch
+ * `FADEN_FARBEN[space]`; abgeleitete Ziele (Kaskade) tragen die Farbe ihres Jahresziels. Erledigte Ziele behalten ihren
+ * Platz, damit Farben beim Abhaken nicht springen. Das Ergebnis hängt von der Eingabemenge ab — deshalb rechnet sie NUR
+ * der Server, über ALLE Ziele des Haushalts (lib/planung/ziel-farben-server.ts), und liefert `farbe` mit; kein Client
+ * ruft sie auf (Wächter: tests/ziele-eine-quelle.test.ts).
+ */
 export interface ZielFarbRoh { id: string; titel: string; space?: SpaceId; rang?: number; abgeleitetVon?: string }
 export function zielFarben(ziele: readonly ZielFarbRoh[]): Map<string, string> {
-  const nachId = new Map(ziele.map(z => [z.id, z]));
-  const wurzeln = ziele.filter(z => !z.abgeleitetVon || !nachId.has(z.abgeleitetVon))
+  const wurzel = zielWurzeln(ziele);
+  const wurzeln = ziele.filter(z => istWurzelZiel(wurzel, z.id))
     .sort((a, b) => (a.rang ?? 1e9) - (b.rang ?? 1e9) || a.titel.localeCompare(b.titel, 'de') || a.id.localeCompare(b.id));
   const zaehler: Record<SpaceId, number> = { privat: 0, business: 0 };
   const aus = new Map<string, string>();
   for (const z of wurzeln) {
-    const space: SpaceId = z.space ?? 'business';
+    const space = spaceVonZiel(z);
     const reihe = FADEN_FARBEN[space];
     aus.set(z.id, reihe[zaehler[space]++ % reihe.length]);
   }
-  for (const z of ziele) if (!aus.has(z.id)) aus.set(z.id, (z.abgeleitetVon && aus.get(z.abgeleitetVon)) || OHNE_FARBE);
+  for (const z of ziele) if (!aus.has(z.id)) aus.set(z.id, aus.get(wurzel.get(z.id) ?? '') ?? OHNE_FARBE);
   return aus;
 }
 /** Anonyme „belegt“-Stränge der anderen Person: neutrales Grau, nie eine Themenfarbe. */

@@ -1,19 +1,22 @@
 // ─── Lichtfäden-Quelle Planung: Ziele, Meilensteine, Aufgaben, Projekte → Knoten + Stränge (erfundene Daten) ─
 import { describe, it, expect } from 'vitest';
 import { planungStraenge, type PlanungDaten } from '@/lib/lichtfaeden/quellen/planung';
-import { BEIDE, GESAMT, knotenId } from '@/lib/lichtfaeden/modell';
+import { BEIDE, GESAMT, knotenId, zielFarben, wurzelAufloesen } from '@/lib/lichtfaeden/modell';
 import { meilensteinListeId } from '@/lib/planung/meilenstein-aufgaben';
 import { FADEN_FARBEN } from '@/lib/make-one/design';
 
 const HEUTE = '2026-10-03';
+/** Die Farbe kommt im Betrieb fertig vom Server (lib/planung/ziel-farben-server.ts) — hier aus derselben Regel. */
+const mitFarbe = <Z extends { id: string; titel: string }>(l: Z[]) => { const f = zielFarben(l); return l.map(z => ({ ...z, farbe: f.get(z.id)! })); };
 const D: PlanungDaten = {
   heute: HEUTE,
-  ziele: [
+  ziele: mitFarbe([
     { id: 'z-mandate', titel: 'Zwölf Mandate', space: 'business', rang: 1, person: BEIDE, firmaId: 'f-a' },
     { id: 'z-netz', titel: 'Netzwerk wächst', space: 'business', rang: 2, person: BEIDE, termin: '2026-12-10' },
     { id: 'z-lauf', titel: 'Halbmarathon', space: 'privat', rang: 1, person: 'malin' },
     { id: 'z-q4', titel: 'Q4-Etappe', space: 'business', person: BEIDE, abgeleitetVon: 'z-mandate', termin: '2026-12-31' },
-  ],
+    { id: 'z-mandate~monat', titel: 'Monatsetappe angepasst', space: 'business', person: BEIDE, abgeleitetVon: 'z-mandate', angepasst: true },
+  ]),
   meilensteine: [
     { id: 'm-1', titel: 'Neun Mandate', faellig: '2026-10-30', zielId: 'z-mandate', space: 'business' },
     { id: 'm-2', titel: '10 km', faellig: '2026-09-01', erledigt: true, zielId: 'z-lauf', bereich: 'gesundheit' },
@@ -38,7 +41,7 @@ describe('Planung → Knoten und Stränge', () => {
   const st = (id: string) => e.straenge.find(x => x.id === id)!;
   const kn = (id: string) => e.knoten.find(x => x.id === id)!;
 
-  it('Ziel-Knoten nur für Wurzel-Ziele, unter ihrem Thema, Farbe je Space in Rang-Reihenfolge', () => {
+  it('Ziel-Knoten nur für Wurzel-Ziele, unter ihrem Thema, Farbe wie geliefert (je Space in Rang-Reihenfolge)', () => {
     expect(e.knoten.filter(k => k.art === 'ziel').map(k => k.id).sort()).toEqual(['ziel:z-lauf', 'ziel:z-mandate', 'ziel:z-netz']);
     expect(kn('ziel:z-mandate').eltern).toBe(knotenId.thema('business', 'mandate')); // Firma am Ziel → Mandate
     expect(kn('ziel:z-netz').eltern).toBe(knotenId.thema('business', 'planung'));
@@ -66,6 +69,15 @@ describe('Planung → Knoten und Stränge', () => {
 
   it('„nur ich“-Aufgaben sind privat und gehören der Anlegerin; überfällig wird erkannt', () => {
     expect(st('aufgabe:t-4')).toMatchObject({ privat: true, person: 'malin', status: 'ueberfaellig' });
+  });
+
+  it('abgeleitete Ziele — auch angepasste — lösen auf ihr Jahresziel auf (Route: wurzelAufloesen)', () => {
+    expect(e.zielWurzel.get('z-q4')).toBe('z-mandate');
+    expect(e.zielWurzel.get('z-mandate~monat')).toBe('z-mandate');
+    expect(wurzelAufloesen('ziel:z-mandate~monat', e.zielWurzel)).toBe('ziel:z-mandate');
+    expect(wurzelAufloesen('ziel:z-netz', e.zielWurzel)).toBe('ziel:z-netz');
+    expect(wurzelAufloesen('ms:m-1', e.zielWurzel)).toBe('ms:m-1');
+    expect(wurzelAufloesen('ziel:unbekannt', e.zielWurzel)).toBe('ziel:unbekannt');
   });
 
   it('Ziel-Frist nur ohne Kaskaden-Meilenstein; abgeleitete Ziele keine eigene Frist', () => {

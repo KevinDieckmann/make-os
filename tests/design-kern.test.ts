@@ -7,7 +7,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { FADEN_FARBEN, LEUCHT } from '@/lib/make-one/design';
-import { zielFarben, bezugNachListe, bezugVonAufgabe } from '@/lib/aufgaben/ziel-bezug';
+import { bezugNachListe, bezugVonAufgabe } from '@/lib/aufgaben/ziel-bezug';
+import { zielFarben } from '@/lib/lichtfaeden/modell';
 import { meilensteinListeId } from '@/lib/planung/meilenstein-aufgaben';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/aufgaben' }));
@@ -133,22 +134,21 @@ describe('Ziel-Bezug (Aufgabe → Meilenstein → Ziel)', () => {
     { id: 'zp', titel: 'Fit', space: 'privat' as const, rang: 1 },
     { id: 'zx', titel: 'Fertig', space: 'business' as const, rang: 3, erledigt: true },
   ];
-  it('Farben wie in den Lichtfäden: EINE Regel (lib/lichtfaeden/modell.ts), je Space nach Rang durch FADEN_FARBEN', async () => {
+  it('Farbregel (lib/lichtfaeden/modell.ts, NUR serverseitig genutzt): je Space nach Rang durch FADEN_FARBEN', () => {
     const f = zielFarben(ziele);
     expect(f.get('z1')).toBe(FADEN_FARBEN.business[0]);
     expect(f.get('z2')).toBe(FADEN_FARBEN.business[1]);
     expect(f.get('zp')).toBe(FADEN_FARBEN.privat[0]);
     // Erledigte Ziele behalten ihren Platz — Farben springen beim Abhaken nicht.
     expect(f.get('zx')).toBe(FADEN_FARBEN.business[2]);
-    // Dieselbe Funktion wie die Lichtfäden — nie zwei Farbregeln.
-    const { zielFarben: regel } = await import('@/lib/lichtfaeden/modell');
-    expect([...regel(ziele)]).toEqual([...f]);
   });
-  it('findet das Ziel über die Liste des Meilensteins — ohne Meilenstein-Liste kein Bezug', () => {
-    const karte = bezugNachListe(ziele, [{ id: 'ms1', titel: 'Vorlage', zielId: 'z1' }, { id: 'ms2', titel: 'Ohne', zielId: 'gibtsnicht' }, { id: 'ms3', titel: 'Abgeleitet', abgeleitetVon: 'zp' }]);
+  it('findet das Ziel über die Liste des Meilensteins — ohne Meilenstein-Liste kein Bezug; Farbe wie geliefert', () => {
+    const farben = zielFarben(ziele);
+    const karte = bezugNachListe(ziele.map(z => ({ ...z, farbe: farben.get(z.id)! })), [{ id: 'ms1', titel: 'Vorlage', zielId: 'z1' }, { id: 'ms2', titel: 'Ohne', zielId: 'gibtsnicht' }, { id: 'ms3', titel: 'Abgeleitet', abgeleitetVon: 'zp' }]);
     const b = bezugVonAufgabe({ listeId: meilensteinListeId('ms1') }, karte);
     expect(b?.zielTitel).toBe('A-Ziel');
     expect(b?.meilensteinTitel).toBe('Vorlage');
+    expect(b?.farbe).toBe(farben.get('z1'));
     expect(bezugVonAufgabe({ listeId: meilensteinListeId('ms2') }, karte)).toBeNull();
     expect(bezugVonAufgabe({ listeId: meilensteinListeId('ms3') }, karte)?.zielId).toBe('zp');
     expect(bezugVonAufgabe({ listeId: 'l-normal' }, karte)).toBeNull();

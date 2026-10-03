@@ -1,6 +1,7 @@
 // ─── MAKE OS — Lichtfäden v2: GET /api/lichtfaeden (03.10.2026) ─────────────
 // Liefert den Ausschnitt des Strang-Baums für eine Ebene, einen Zeitraum und eine Person — samt Engstellen.
 //   GET ?wurzel=gesamt|space:…|thema:…|ziel:<id>|ms:<id> &person=ich|alle|<speicher> &von=YYYY-MM-DD &bis=YYYY-MM-DD
+//   `ziel:<id>` eines abgeleiteten Ziels (Kaskade, auch „angepasst“) wird auf sein Jahresziel umgerechnet (`wurzelAufloesen`).
 //   → { ok, ansicht, engstellen, text, personen: [{ id, name, ich }], sicht }
 // Zugang: angemeldete Person im Haushalt des Inhabers (`imHaushaltDesInhabers`, streng, Regel 5). Der Dienstweg ist hier
 // GESPERRT (403): kein Hintergrundlauf braucht die Sicht heute — ZOE liest die Quellen selbst über ihre eigenen Werkzeuge.
@@ -19,6 +20,7 @@ import { localDay } from '@/lib/zeit';
 import { anfrageAus } from '@/lib/lichtfaeden/anfrage';
 import { ansichtText, baueBaum, personenSicht, rechneAnsicht } from '@/lib/lichtfaeden/baum';
 import { engstellen } from '@/lib/lichtfaeden/fokus';
+import { wurzelAufloesen } from '@/lib/lichtfaeden/modell';
 import { straengeGemerkt } from '@/lib/lichtfaeden/sammeln-server';
 
 export const runtime = 'nodejs';
@@ -33,9 +35,11 @@ export async function GET(req: Request) {
   const heute = localDay();
   const a = anfrageAus(new URL(req.url).searchParams, heute);
   if (!a.ok) return NextResponse.json({ ok: false, fehler: a.fehler }, { status: 400 });
-  const { wurzel, von, bis } = a.anfrage;
+  const { von, bis } = a.anfrage;
 
   const sammlung = await straengeGemerkt(ich, von, bis, heute);
+  // Ein abgeleitetes Ziel (Kaskade, auch angepasst) zeigt die Fäden seines Jahresziels — aufgelöst NUR hier.
+  const wurzel = wurzelAufloesen(a.anfrage.wurzel, sammlung.zielWurzel);
   const personen = sammlung.personen.map(p => ({ ...p, ich: p.id === ich }));
   // „ich“ = die Person der Sitzung; eine genannte Person muss im Haushalt sein; „alle“ = alle Stränge.
   const sicht = a.anfrage.person === 'ich' ? ich : a.anfrage.person;

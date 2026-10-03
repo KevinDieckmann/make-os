@@ -231,9 +231,9 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
       </Karte>
 
       {/* ── Lichtfäden (03.10.): alles, was auf dieses Ziel einzahlt — Meilensteine, Aufgaben, Termine, Deals, Rechnungen mit
-           demselben Mandat/derselben Firma — als Fäden; Tippen auf einen Meilenstein fächert ihn auf. Abgeleitete Ziele zeigen
-           ihr Jahresziel (dort laufen die Stränge zusammen). ── */}
-      <Lichtfaeden wurzel={`ziel:${abgeleitet && z.abgeleitetVon ? z.abgeleitetVon : z.id}`} titel="Lichtfäden dieses Ziels" i={2} />
+           demselben Mandat/derselben Firma — als Fäden; Tippen auf einen Meilenstein fächert ihn auf. Abgeleitete Ziele (auch
+           angepasste) zeigen ihr Jahresziel — das rechnet NUR die Route um (`wurzelAufloesen`), hier steht immer die eigene Kennung. ── */}
+      <Lichtfaeden wurzel={`ziel:${z.id}`} titel="Lichtfäden dieses Ziels" i={2} />
 
       {/* ── Die Kette ── */}
       <Karte i={3} akzent={LEUCHT.achtung}>

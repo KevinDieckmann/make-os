@@ -26,6 +26,7 @@ import { meilensteinStrukturSichern, meilensteinListenArchivieren, zieleNachzieh
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ohneToteVerweise, zielVerweiseLoesen } from '@/lib/planung/meilenstein-kette';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
+import { mitFarbe, zielFarbenDesHaushalts } from '@/lib/planung/ziel-farben-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -69,14 +70,19 @@ export async function GET(req: Request) {
   const sp = await speicherFuerAnfrage(req, new URL(req.url).searchParams.get('fuer'));
   if (!sp) return NextResponse.json({ ok: false, error: 'Diese Person gehört nicht zu deinem Haushalt.' }, { status: 403 });
   const f = datei(await loadJson<ZieleDatei>(sp.name));
-  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...mitStaenden(f) });
+  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...await mitStaenden(f) });
 }
 
-/** Jede Zeile trägt ihren Stand (Fingerabdruck) — der Browser schickt ihn mit jeder Änderung zurück. */
-function mitStaenden(f: ZieleDatei): ZieleDatei {
+/**
+ * Jede Zeile trägt ihren Stand (Fingerabdruck — der Browser schickt ihn mit jeder Änderung zurück) und ihre Farbe (Review
+ * 03.10.: EINE Stelle, lib/planung/ziel-farben-server.ts, über alle Ziele des Haushalts — dieselbe wie in den Lichtfäden;
+ * Clients rechnen nie selbst). `farbe` zählt nicht zum Stand und wird nie gespeichert (`sauberZiel` kennt sie nicht).
+ */
+async function mitStaenden(f: ZieleDatei): Promise<ZieleDatei> {
+  const farben = await zielFarbenDesHaushalts();
   // Fokus des laufenden Jahres unter dem Schlüssel ohne Jahr — der vorgeplante Satz gilt ab Januar (30.09.).
   const aus: ZieleDatei = { ...f, fokus: fokusFuerLaufendesJahr(f.fokus, laufendesJahr()) };
-  for (const h of ZIEL_HORIZONTE) aus[h] = mitStand(f[h] ?? []);
+  for (const h of ZIEL_HORIZONTE) aus[h] = mitFarbe(mitStand(f[h] ?? []), farben);
   return aus;
 }
 
@@ -104,7 +110,7 @@ export async function PUT(req: Request) {
     basis.fokus = { ...basis.fokus, ...Object.fromEntries(fokusSchreibSchluessel(h, laufendesJahr()).map(k => [k, text])) };
     return basis;
   });
-  return NextResponse.json({ ok: true, fuer: sp.fuer, ...mitStaenden(datei(next)) });
+  return NextResponse.json({ ok: true, fuer: sp.fuer, ...await mitStaenden(datei(next)) });
 }
 
 /**
@@ -144,7 +150,7 @@ export async function PATCH(req: Request) {
   if (!r.ok) {
     const aktuell = datei(await loadJson<ZieleDatei>(sp.name));
     const status = r.konflikte?.length ? 409 : r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
-    return NextResponse.json({ ok: false, error: r.fehler, konflikte: r.konflikte ?? [], fuer: sp.fuer, horizont: h, ...mitStaenden(aktuell) }, { status });
+    return NextResponse.json({ ok: false, error: r.fehler, konflikte: r.konflikte ?? [], fuer: sp.fuer, horizont: h, ...await mitStaenden(aktuell) }, { status });
   }
   const next = datei(r.next);
 
@@ -182,7 +188,7 @@ export async function PATCH(req: Request) {
   // Ziel-Fortschritt aus Meilensteinen (30.09.): hat ein Ziel Meilensteine, gilt ihr Mittelwert (auch nach einer Änderung von Hand).
   if (sp.fuer === 'wir' && await zieleNachziehen()) {
     const f = datei(await loadJson<ZieleDatei>(sp.name));
-    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, ...mitStaenden(f) });
+    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, ...await mitStaenden(f) });
   }
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, ...mitStaenden(next) });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, ...await mitStaenden(next) });
 }
