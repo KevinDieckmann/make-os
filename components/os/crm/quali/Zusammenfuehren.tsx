@@ -6,7 +6,7 @@
 //             „Rückgängig“ 30 Tage unter Stammdaten) — die Runde zeigt nur die Paare, an denen dieser Lead beteiligt ist,
 //             und lässt jede andere Person suchen.
 //   Firmen    lib/crm/firma-umhaengen(-server).ts: Personen, Deals, Mandate, Angebote, Events, Follow-ups wandern zur behaltenen
-//             Firma, ihr Vermerk nennt die andere. Hängt an der anderen noch etwas außerhalb von Kartei und CRM (Aufgaben,
+//             Firma, ihr Vermerk nennt die andere. Vorher legt der Server eine Sicherung an (30 Tage, /api/crm/firma-archiv). Hängt an der anderen noch etwas außerhalb von Kartei und CRM (Aufgaben,
 //             Zeit …), lehnt der Server mit Namen ab — dann dort erst umhängen.
 
 import { useEffect, useMemo, useState } from 'react';
@@ -156,7 +156,7 @@ function Firmen({ api, z, onZu, onFertig }: { api: CrmApi; z: LeadZeile; onZu: (
     setLaeuft(false);
     if (!r.ok) { setMeldung(r.fehler ?? 'Nicht zusammengeführt.'); return; }
     await api.laden(true);
-    onFertig({ text: `„${paar.weg.name}“ ist jetzt in „${paar.behalten.name}“ aufgegangen — Personen, Deals, Mandate und Verläufe stehen dort.`, neuerLeadId: paar.behalten.id });
+    onFertig({ text: `„${paar.weg.name}“ ist jetzt in „${paar.behalten.name}“ aufgegangen — Personen, Deals, Mandate und Verläufe stehen dort. Die Sicherung liegt 30 Tage bereit.`, neuerLeadId: paar.behalten.id });
   };
   if (!eigene && !paar) return <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Dieser Lead hat noch keine Firma. Erst über „Firma wechseln oder neu“ eine Firma zuordnen — dann lassen sich Firmen-Dubletten zusammenführen.</div>;
   const v = vorschau?.v;
@@ -191,7 +191,8 @@ function Firmen({ api, z, onZu, onFertig }: { api: CrmApi; z: LeadZeile; onZu: (
             <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.04)', fontSize: TYP.bedien, lineHeight: 1.6, display: 'grid', gap: 4 }}>
               <span>Von „{paar.weg.name}“ wandert: <b>{v.personen} {v.personen === 1 ? 'Person' : 'Personen'}</b>{v.ehemalig ? ` (+ ${v.ehemalig} ehemalige)` : ''} · <b>{v.dealsGesamt} {v.dealsGesamt === 1 ? 'Deal' : 'Deals'}</b>{v.dealsOffen ? ` (${v.dealsOffen} offen)` : ''} · <b>{v.mandate} {v.mandate === 1 ? 'Mandat' : 'Mandate'}</b> · {v.angebote} Angebote · {v.events} Events · {v.followups} Follow-ups.</span>
               <span style={{ color: C.inkDim }}>{v.lead === 'beide' ? 'Beide haben einen Lead: der der behaltenen Firma bleibt führend, Lücken füllt der andere.' : v.lead === 'nur-weg' ? 'Der Lead der anderen Firma zieht mit.' : 'Kein Lead zu übernehmen.'}{v.neueFelder.length ? ` Neu bei „${paar.behalten.name}“: ${v.neueFelder.map(f => FELD_LABEL[f] ?? f).join(', ')}.` : ''}</span>
-              <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44, cursor: 'pointer', marginTop: 4 }}><input type="checkbox" checked={sicher} onChange={e => setSicher(e.target.checked)} style={{ width: 22, height: 22 }} /><span>Ich habe geprüft, dass es dieselbe Firma ist — das lässt sich nicht per Klick zurücknehmen.</span></label>
+              <span style={{ color: C.inkDim }}>Vor dem Zusammenführen wird eine Sicherung angelegt (30 Tage). Zurücknehmen kann sie nur der Inhaber, und nur, was seitdem unverändert ist.</span>
+              <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44, cursor: 'pointer', marginTop: 4 }}><input type="checkbox" checked={sicher} onChange={e => setSicher(e.target.checked)} style={{ width: 22, height: 22 }} /><span>Ich habe geprüft, dass es dieselbe Firma ist.</span></label>
             </div>
           )}
           {vorschau?.fehler && <div role="alert" style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien, lineHeight: 1.5 }}>{vorschau.fehler}</div>}

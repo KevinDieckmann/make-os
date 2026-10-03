@@ -316,7 +316,7 @@ export async function weitereAufzaehlen(m: PersonMerkmale): Promise<Record<strin
 }
 
 // ── Archiv (<daten>/archiv): Umzugs-Kopien mit Personenbezug tilgen ───────────
-// Die Kopie „CRM vor Brain-Umzug“ trägt Kartei und CRM — Art. 17 nimmt die Person auch dort heraus (Kartei-Eintrag
+// Die Kopien „CRM vor Brain-Umzug“, „vor Kennungs-Umzug“ und „vor Firmen zusammenführen“ tragen Kartei und CRM (`kontakte.kontakte`) — Art. 17 nimmt die Person auch dort heraus (Kartei-Eintrag
 // weg, Rest getilgt); die Kopie bleibt, bis ihre Löschfrist (archiv-umzug, 30 Tage) sie entfernt.
 
 async function archivTilgen(m: PersonMerkmale): Promise<{ speicher: Record<string, number>; fehler: string[] }> {

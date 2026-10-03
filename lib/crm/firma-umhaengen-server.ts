@@ -5,9 +5,12 @@
 //
 //   folgen    crm (Lead an die neue Firma, offene Deals mit) → kartei (der Lead, der jetzt an der Firma hängt, geht von der
 //             Person weg). Die Station der Person selbst ändert die Kartei-Route (`firmaWechsel`) — vorher, mit Stand/409.
-//   zusammen  kartei (Stationen weg → behalten) → crm (Verweise umbiegen, Lücken füllen, die andere Firma entfällt).
-//             Reihenfolge: nach dem ersten Schritt stehen die Personen bei der behaltenen Firma, die Deals noch bei der
-//             anderen — beides gültig; erst der letzte Schritt löscht die Firma.
+//   zusammen  archiv (Sicherung aller betroffenen Einträge, 30 Tage — Kevin 03.10.) → kartei (Stationen weg → behalten) →
+//             crm (Verweise umbiegen, Lücken füllen, die andere Firma entfällt). Reihenfolge: nach dem Archiv stehen die
+//             Personen bei der behaltenen Firma, die Deals noch bei der anderen — beides gültig; erst der letzte Schritt
+//             löscht die Firma.
+//   zurueck   crm (Firma wieder anlegen, Einträge auf den archivierten Stand — nur dort, wo seitdem nichts geändert wurde) →
+//             kartei (Personen ebenso). Nur der Inhaber, von Hand (Route /api/crm/firma-archiv, Dienstweg → 403).
 //
 // Nie anfassen, was nicht unser Bestand ist: Hängt an der weggeführten Firma noch etwas außerhalb von Kartei und CRM
 // (Aufgaben, Ziele, Zeit, Finanzplan, Dateiablage …), lehnt das Zusammenführen mit Namen der Bestände ab (409).
@@ -20,12 +23,14 @@ import { absichtBeginnen, absichtAbschliessen, absichtenLaden, istOffen, mitVorg
 import { aendereKontakte } from './kartei-schreiben';
 import { aendereCrm, ladeCrm } from './speicher';
 import { karteiHaushalt } from './sperrliste';
+import { archivSchreiben, archivLesen, archivZeit, archivOrdner } from '@/lib/store/archiv';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
 import { tagVon } from '@/lib/zeit';
-import { firmaFolgenPlan, firmaFolgenCrm, firmaFolgenKartei, firmaZusammenPruefen, firmaZusammenVorschau, firmaZusammenKartei, firmaZusammenCrm, type FolgenEingabe, type FolgenPlan, type ZusammenVorschau } from './firma-umhaengen';
+import { firmaFolgenPlan, firmaFolgenCrm, firmaFolgenKartei, firmaZusammenPruefen, firmaZusammenVorschau, firmaZusammenKartei, firmaZusammenCrm, firmenArchivInhalt, firmenArchivName, istFirmenArchiv, firmaWiederherstellen, firmaWiederherstellenPruefen, FIRMEN_ARCHIV_NAME, type FolgenEingabe, type FolgenPlan, type ZusammenVorschau, type WiederherstellungsErgebnis } from './firma-umhaengen';
 
 export const FOLGEN_SCHRITTE = ['crm', 'kartei'] as const;
-export const FIRMEN_ZUSAMMEN_SCHRITTE = ['kartei', 'crm'] as const;
+export const FIRMEN_ZUSAMMEN_SCHRITTE = ['archiv', 'kartei', 'crm'] as const;
+export const FIRMEN_ZURUECK_SCHRITTE = ['crm', 'kartei'] as const;
 export const ABSICHT_FIRMA = 'firma-umhaengen' as const;
 
 type KarteiBestand = { kontakte: Kontakt[] };
@@ -105,7 +110,7 @@ export async function fremdeFirmenVerweise(firmaId: string): Promise<Record<stri
 const BESTAND_NAME: [RegExp, string][] = [[/^tasks/, 'Aufgaben'], [/^ziele|^meilensteine/, 'Ziele'], [/^zeit/, 'Zeit'], [/^finanzplan|^liquiplan/, 'Finanzplan'], [/^crm-dateien/, 'Dateiablage'], [/^kalender/, 'Kalender']];
 const bestandText = (n: string) => BESTAND_NAME.find(([re]) => re.test(n))?.[1] ?? n;
 
-export type ZusammenErgebnis = { ok: true; vorschau: ZusammenVorschau } | { ok: false; fehler: string; status: number; fremd?: Record<string, number> };
+export type ZusammenErgebnis = { ok: true; vorschau: ZusammenVorschau; archiv?: string } | { ok: false; fehler: string; status: number; fremd?: Record<string, number> };
 
 async function zusammenPruefen(behalten: string, weg: string): Promise<{ fehler: string; status: number; fremd?: Record<string, number> } | null> {
   if (!FIRMA_ID.test(behalten) || !FIRMA_ID.test(weg)) return { fehler: 'Firmen-Kennung ungültig.', status: 400 };
@@ -127,7 +132,16 @@ export async function zusammenVorschau(behalten: string, weg: string): Promise<Z
   return v ? { ok: true, vorschau: v } : { ok: false, fehler: 'Eine der beiden Firmen gibt es nicht mehr.', status: 404 };
 }
 
-async function zusammenAusfuehren(v: Vorgang, behalten: string, weg: string, person: string, jetzt: string, wer?: Wer): Promise<void> {
+async function zusammenAusfuehren(v: Vorgang, behalten: string, weg: string, person: string, jetzt: string, wer?: Wer): Promise<string | undefined> {
+  // Die Sicherung zuerst (Kevin 03.10.): alle betroffenen Einträge, verschlüsselt wie die Bestände, 30 Tage (Löschfrist „archiv-umzug“).
+  // Eine ältere, noch offene Absicht ohne diesen Schritt läuft wie bisher weiter (ohne Sicherung — vor dem 03.10. angelegt).
+  if (v.absicht.schritte.some(x => x.name === 'archiv')) {
+    await v.schritt('archiv', async () => {
+      const crm = await ladeCrm();
+      if (!crm.firmen.some(f => f.id === weg)) return undefined; // schon zusammengeführt (zweiter Lauf) — die erste Sicherung gilt
+      return archivSchreiben(firmenArchivName(archivZeit(jetzt)), firmenArchivInhalt(crm, await kontakteLesen(), behalten, weg, jetzt, person));
+    }, archiv => (archiv ? { archiv } : {}));
+  }
   await v.schritt('kartei', async () => {
     const crm = await ladeCrm();
     const b = crm.firmen.find(f => f.id === behalten);
@@ -140,6 +154,7 @@ async function zusammenAusfuehren(v: Vorgang, behalten: string, weg: string, per
     }, wer);
   });
   await v.schritt('crm', async () => { await aendereCrm(c => firmaZusammenCrm(c, behalten, weg, jetzt, person), wer); });
+  return v.daten<string>('archiv');
 }
 
 /** Firmen zusammenführen: Personen, Deals, Mandate, Angebote, Events, Follow-ups wandern zu `behalten`; `weg` entfällt. */
@@ -152,24 +167,90 @@ export async function zusammenfuehren(behalten: string, weg: string, person: str
   const haushalt = await karteiHaushalt();
   const jetzt = new Date().toISOString();
   const { absicht } = await absichtBeginnen(haushalt, { art: ABSICHT_FIRMA, schluessel: `z:${weg}>${behalten}`, schritte: FIRMEN_ZUSAMMEN_SCHRITTE, daten: { aktion: 'zusammen', behalten, weg, person, jetzt }, person });
-  await mitVorgang(haushalt, absicht, v => zusammenAusfuehren(v, behalten, weg, person, jetzt, wer));
+  const archiv = await mitVorgang(haushalt, absicht, v => zusammenAusfuehren(v, behalten, weg, person, jetzt, wer));
+  await absichtAbschliessen(haushalt, absicht.id, 'fertig', ['archiv']);
+  return { ok: true, vorschau, ...(archiv ? { archiv } : {}) };
+}
+
+// ── Sicherungen ansehen und zurücknehmen (nur Inhaber, von Hand) ──────────────
+
+export interface FirmenArchivZeile {
+  datei: string; am: string; person: string;
+  behalten: { id: string; name: string }; weg: { id: string; name: string };
+  /** Tage, bis die Löschfrist die Sicherung entfernt (Standard 30). */
+  nochTage: number | null;
+  /** Geht die Wiederherstellung jetzt — und wenn nicht, warum. */
+  moeglich: boolean; grund?: string;
+}
+
+/** Die vorhandenen Sicherungen aus Firmen-Zusammenführungen — neueste zuerst. Beschädigte oder fremde Dateien fehlen. */
+export async function firmenArchive(heute = new Date(), fristTage = 30): Promise<FirmenArchivZeile[]> {
+  const namen = (await fs.readdir(archivOrdner()).catch(() => [] as string[])).filter(n => FIRMEN_ARCHIV_NAME.test(n)).sort().reverse();
+  const crm = await ladeCrm();
+  const raus: FirmenArchivZeile[] = [];
+  for (const datei of namen) {
+    try {
+      const a = await archivLesen<unknown>(datei);
+      if (!istFirmenArchiv(a)) continue;
+      const nameVon = (id: string) => (a.crm.firmen as { id: string; name: string }[]).find(f => f.id === id)?.name ?? id;
+      const alt = Math.floor((heute.getTime() - Date.parse(a.am)) / 864e5);
+      const grund = firmaWiederherstellenPruefen(crm, a);
+      raus.push({ datei, am: a.am, person: a.person, behalten: { id: a.behalten, name: nameVon(a.behalten) }, weg: { id: a.weg, name: nameVon(a.weg) }, nochTage: Number.isFinite(alt) ? Math.max(0, fristTage - alt) : null, moeglich: !grund, ...(grund ? { grund } : {}) });
+    } catch (e) { console.error(`[firma-archiv] ${datei} nicht lesbar:`, e instanceof Error ? e.message : e); }
+  }
+  return raus;
+}
+
+export type WiederherstellenErgebnis = { ok: true; zurueck: WiederherstellungsErgebnis['zurueck']; uebersprungen: string[] } | { ok: false; fehler: string; status: number };
+
+async function zurueckAusfuehren(v: Vorgang, datei: string, wer?: Wer): Promise<void> {
+  const a = await archivLesen<unknown>(datei);
+  if (!istFirmenArchiv(a)) throw new Error('Die Sicherung ist nicht lesbar.');
+  await v.schritt('crm', async () => {
+    // Läuft der Schritt ein zweites Mal (Wiederaufnahme nach Abbruch), gibt es die Firma schon — dann bleibt der Bestand, wie er ist.
+    await aendereCrm(c => (firmaWiederherstellenPruefen(c, a) ? c : firmaWiederherstellen(c, [], a).crm), wer);
+  });
+  await v.schritt('kartei', async () => {
+    const crm = await ladeCrm();
+    await aendereKontakte<KarteiBestand>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: firmaWiederherstellen(crm, cur?.kontakte ?? [], a).kontakte }), wer);
+  });
+}
+
+/** Eine Firmen-Zusammenführung zurücknehmen — aus der Sicherung, nur wo seitdem nichts geändert wurde. Nennt, was bleibt. */
+export async function firmenWiederherstellen(datei: string, person: string, wer?: Wer): Promise<WiederherstellenErgebnis> {
+  if (!FIRMEN_ARCHIV_NAME.test(datei)) return { ok: false, fehler: 'Name der Sicherung ungültig.', status: 400 };
+  let a: unknown;
+  try { a = await archivLesen<unknown>(datei); } catch { return { ok: false, fehler: 'Die Sicherung gibt es nicht (mehr) — nach 30 Tagen wird sie gelöscht.', status: 404 }; }
+  if (!istFirmenArchiv(a)) return { ok: false, fehler: 'Die Sicherung ist nicht lesbar.', status: 409 };
+  const crm = await ladeCrm();
+  const grund = firmaWiederherstellenPruefen(crm, a);
+  if (grund) return { ok: false, fehler: grund, status: 409 };
+  // Art. 18: keine eingeschränkte Person wird umgehängt — auch nicht zurück.
+  const kontakte = await kontakteLesen();
+  if (a.kontakte.kontakte.some(p => kontakte.find(k => k.id === p.id)?.eingeschraenkt)) return { ok: false, fehler: `${EINGESCHRAENKT_FEHLER} (eine Person der Firma ist eingeschränkt).`, status: 409 };
+  const haushalt = await karteiHaushalt();
+  const { absicht } = await absichtBeginnen(haushalt, { art: ABSICHT_FIRMA, schluessel: `zurueck:${datei}`, schritte: FIRMEN_ZURUECK_SCHRITTE, daten: { aktion: 'zurueck', datei, person }, person });
+  await mitVorgang(haushalt, absicht, v => zurueckAusfuehren(v, datei, wer));
   await absichtAbschliessen(haushalt, absicht.id, 'fertig');
-  return { ok: true, vorschau };
+  const e = firmaWiederherstellen({ ...crm, firmen: crm.firmen.filter(f => f.id !== a.weg) }, kontakte, a);
+  return { ok: true, zurueck: e.zurueck, uebersprungen: e.uebersprungen };
 }
 
 // ── Wiederaufnahme ───────────────────────────────────────────────────────────
 
 /** Eine offene Absicht dieser Art fertigstellen — ab dem ersten nicht abgehakten Schritt (alle Schritte sind idempotent). */
 export async function firmaUmhaengenFortsetzen(haushalt: string, a: Absicht): Promise<void> {
-  const d = a.daten as { aktion?: string; eingabe?: FolgenEingabe; behalten?: string; weg?: string; person?: string; jetzt?: string };
+  const d = a.daten as { aktion?: string; eingabe?: FolgenEingabe; behalten?: string; weg?: string; person?: string; jetzt?: string; datei?: string };
   const person = d.person ?? 'system', jetzt = d.jetzt ?? new Date().toISOString();
   const wer: Wer = { art: 'system', person };
   if (d.aktion === 'folgen' && d.eingabe) {
     await mitVorgang(haushalt, a, v => folgenAusfuehren(v, d.eingabe!, person, jetzt, wer));
   } else if (d.aktion === 'zusammen' && d.behalten && d.weg) {
     await mitVorgang(haushalt, a, v => zusammenAusfuehren(v, d.behalten!, d.weg!, person, jetzt, wer));
+  } else if (d.aktion === 'zurueck' && d.datei && FIRMEN_ARCHIV_NAME.test(d.datei)) {
+    await mitVorgang(haushalt, a, v => zurueckAusfuehren(v, d.datei!, wer));
   } else { await absichtAbschliessen(haushalt, a.id, 'verworfen'); return; }
-  await absichtAbschliessen(haushalt, a.id, 'fertig');
+  await absichtAbschliessen(haushalt, a.id, 'fertig', d.aktion === 'zusammen' ? ['archiv'] : []);
 }
 
 /** Offene Absichten dieser Art (für Tests und Anzeige). */

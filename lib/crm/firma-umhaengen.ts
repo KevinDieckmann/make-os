@@ -239,3 +239,147 @@ export function firmaZusammenCrm(crm: CrmBestand, behalten: string, weg: string,
   });
   return { ...(umgebogen as CrmBestand), chancen, firmen };
 }
+
+// ── Sicherung vor dem Zusammenführen (30 Tage) und der Weg zurück (03.10.) ───────────────────────────
+// Kevin: „Firmen zusammenführen mit Archivkopie 30 Tage“ — wie der Kennungs-Umzug und die Personen-Zusammenführung: VOR dem ersten
+// Schreibschritt legt der Server eine Archivkopie aller betroffenen Einträge ab (lib/store/archiv.ts: verschlüsselt wie die Bestände,
+// Datei `crm-vor-firmen-zusammenfuehren-<zeit>.json` — der Präfix `crm-vor-` unterliegt der Löschfrist „archiv-umzug“, 30 Tage,
+// automatisch; Art. 17 nimmt die Person auch dort heraus, lib/crm/person-weitere.ts `archivTilgen`).
+// Betroffen sind beide Firmen, alle Kontakte, die die weggeführte Firma nennen (Stationen, Lead …), und je CRM-Liste (Deals, Mandate,
+// Angebote, Events mit Bezug, Follow-ups, Kampagnen …) genau die Einträge, in denen die Kennung der weggeführten Firma vorkommt.
+// Zurück: `firmaWiederherstellen` legt die Firma wieder an und setzt jeden Eintrag auf den archivierten Stand — aber NUR dort, wo er
+// seit dem Zusammenführen unverändert ist (das Ergebnis der Zusammenführung wird deterministisch nachgerechnet und verglichen);
+// was seitdem jemand angefasst hat, bleibt, wie es ist, und wird genannt. Kein stilles Überschreiben.
+
+export const FIRMEN_ARCHIV_PRAEFIX = 'crm-vor-firmen-zusammenfuehren-';
+export const firmenArchivName = (zeit: string) => `${FIRMEN_ARCHIV_PRAEFIX}${zeit}.json`;
+export const FIRMEN_ARCHIV_NAME = /^crm-vor-firmen-zusammenfuehren-[0-9A-Za-z-]{10,40}\.json$/;
+
+export interface FirmenArchiv {
+  art: 'firmen-zusammenfuehren';
+  version: 1;
+  behalten: string;
+  weg: string;
+  /** Zeitpunkt des Zusammenführens (ISO) — daraus rechnet der Rückweg das Ergebnis nach. */
+  am: string;
+  person: string;
+  /** Je CRM-Liste die betroffenen Einträge (`firmen`: beide Firmen und was auf die weggeführte zeigt). */
+  crm: Record<string, unknown[]>;
+  /** Die betroffenen Kontakte — gleiche Form wie der Bestand (`kontakte.kontakte`), damit Art. 17 sie wie bei jeder Umzugs-Kopie findet. */
+  kontakte: { kontakte: Kontakt[] };
+}
+
+const wortRe = (id: string) => new RegExp(`(?<![A-Za-z0-9_-])${ESC(id)}(?![A-Za-z0-9_-])`);
+
+/** Der Inhalt der Archivkopie: nur, was das Zusammenführen anfasst. Rein. */
+export function firmenArchivInhalt(crm: CrmBestand, kontakte: readonly Kontakt[], behalten: string, weg: string, jetzt: string, person: string): FirmenArchiv {
+  const re = wortRe(weg);
+  const nennt = (x: unknown) => re.test(JSON.stringify(x ?? null));
+  const liste: Record<string, unknown[]> = {};
+  for (const [schluessel, wert] of Object.entries(crm as unknown as Record<string, unknown>)) {
+    if (!Array.isArray(wert)) continue;
+    const t = schluessel === 'firmen' ? wert.filter(f => (f as Firma).id === behalten || nennt(f)) : wert.filter(nennt);
+    if (t.length) liste[schluessel] = JSON.parse(JSON.stringify(t));
+  }
+  return { art: 'firmen-zusammenfuehren', version: 1, behalten, weg, am: jetzt, person, crm: liste, kontakte: { kontakte: JSON.parse(JSON.stringify(kontakte.filter(nennt))) as Kontakt[] } };
+}
+
+/** Ist das ein lesbares Archiv dieser Art? Rein, ohne Annahmen über den Rest. */
+export function istFirmenArchiv(roh: unknown): roh is FirmenArchiv {
+  const a = roh as FirmenArchiv | null;
+  return !!a && typeof a === 'object' && a.art === 'firmen-zusammenfuehren' && a.version === 1 && typeof a.behalten === 'string' && typeof a.weg === 'string' && typeof a.am === 'string'
+    && !!a.crm && typeof a.crm === 'object' && Array.isArray(a.crm.firmen) && !!a.kontakte && Array.isArray(a.kontakte.kontakte);
+}
+
+const STEMPEL = new Set(['geaendert', 'geaendertVon', 'geaendertAm', 'stand']);
+/** Stabile Textform ohne Änderungsstempel — gleich gemeinte Einträge vergleichen. */
+function stabilOhneStempel(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stabilOhneStempel).join(',')}]`;
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o).filter(k => o[k] !== undefined && !STEMPEL.has(k)).sort().map(k => `${JSON.stringify(k)}:${stabilOhneStempel(o[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v ?? null);
+}
+const idVon = (x: unknown): string | undefined => { const i = (x as { id?: unknown } | null)?.id; return typeof i === 'string' ? i : undefined; };
+
+export interface WiederherstellungsErgebnis {
+  crm: CrmBestand;
+  kontakte: Kontakt[];
+  /** Was zurückgesetzt wurde. */
+  zurueck: { firmen: number; eintraege: number; personen: number };
+  /** Was seitdem verändert, gelöscht oder nicht mehr da ist — bleibt, wie es jetzt ist (mit Klartext). */
+  uebersprungen: string[];
+}
+
+/** Geht die Wiederherstellung? Nennt den Grund, wenn nicht. Rein. */
+export function firmaWiederherstellenPruefen(crm: Pick<CrmBestand, 'firmen'>, a: FirmenArchiv): string | null {
+  const b0 = (a.crm.firmen as Firma[]).find(f => f.id === a.behalten), w0 = (a.crm.firmen as Firma[]).find(f => f.id === a.weg);
+  if (!b0 || !w0) return 'Die Sicherung ist unvollständig (eine der beiden Firmen fehlt darin).';
+  if (crm.firmen.some(f => f.id === a.weg)) return `„${w0.name}“ gibt es schon wieder — die Zusammenführung ist offenbar schon zurückgenommen.`;
+  if (!crm.firmen.some(f => f.id === a.behalten)) return `Die behaltene Firma „${b0.name}“ gibt es nicht mehr.`;
+  return null;
+}
+
+/**
+ * Die Zusammenführung zurücknehmen: weggeführte Firma wieder anlegen, Einträge und Personen auf den archivierten Stand — nur dort, wo sie
+ * seit dem Zusammenführen unverändert sind. Idempotent (ein Eintrag, der schon dem Archiv gleicht, zählt nicht noch einmal). Rein.
+ */
+export function firmaWiederherstellen(crm: CrmBestand, kontakte: Kontakt[], a: FirmenArchiv): WiederherstellungsErgebnis {
+  const arch = a.crm as Record<string, Record<string, unknown>[]>;
+  const b0 = arch.firmen.find(f => idVon(f) === a.behalten) as unknown as Firma, w0 = arch.firmen.find(f => idVon(f) === a.weg) as unknown as Firma;
+  const zurueck = { firmen: 0, eintraege: 0, personen: 0 };
+  const uebersprungen: string[] = [];
+  // Das Ergebnis des Zusammenführens, nachgerechnet auf dem archivierten Stand: mit denselben Funktionen, mit denen geschrieben wurde.
+  const pseudo = { ...(crm as unknown as Record<string, unknown>), ...Object.fromEntries(Object.entries(arch).map(([k, v]) => [k, v])) } as unknown as CrmBestand;
+  const erwartet = firmaZusammenCrm(pseudo, a.behalten, a.weg, a.am, a.person) as unknown as Record<string, Record<string, unknown>[]>;
+  const aktuell = crm as unknown as Record<string, Record<string, unknown>[]>;
+  const neu: Record<string, unknown> = { ...(crm as unknown as Record<string, unknown>) };
+
+  // Firmen: die weggeführte kommt zurück; die behaltene und Tochterfirmen nur, wenn sie noch genau das Ergebnis der Zusammenführung sind.
+  const firmenNeu: Record<string, unknown>[] = [...aktuell.firmen];
+  arch.firmen.forEach((f, i) => {
+    const id = idVon(f)!;
+    if (id === a.weg) return;
+    const pos = firmenNeu.findIndex(x => idVon(x) === id);
+    if (pos < 0) { uebersprungen.push(`Firma „${(f as unknown as Firma).name}“ gibt es nicht mehr`); return; }
+    if (stabilOhneStempel(firmenNeu[pos]) === stabilOhneStempel(f)) return;
+    const soll = id === a.behalten ? firmaMerge(b0, w0, a.am, a.person) : erwartet.firmen.find(x => idVon(x) === id) ?? erwartet.firmen[i];
+    if (stabilOhneStempel(firmenNeu[pos]) === stabilOhneStempel(soll)) { firmenNeu[pos] = f; zurueck.firmen++; }
+    else uebersprungen.push(`Firma „${(f as unknown as Firma).name}“ wurde seitdem geändert — bleibt, wie sie jetzt ist`);
+  });
+  firmenNeu.push(w0 as unknown as Record<string, unknown>); zurueck.firmen++;
+  neu.firmen = firmenNeu;
+
+  // Alle anderen Listen: Eintrag für Eintrag.
+  for (const [liste, eintraege] of Object.entries(arch)) {
+    if (liste === 'firmen') continue;
+    const erw = erwartet[liste] ?? [];
+    const neuListe = [...(aktuell[liste] ?? [])];
+    let geaendert = false;
+    eintraege.forEach((e, i) => {
+      const id = idVon(e);
+      if (!id) return;
+      const pos = neuListe.findIndex(x => idVon(x) === id);
+      if (pos < 0) { uebersprungen.push(`${liste}: ein Eintrag gibt es nicht mehr`); return; }
+      if (stabilOhneStempel(neuListe[pos]) === stabilOhneStempel(e)) return; // schon auf dem archivierten Stand
+      if (stabilOhneStempel(neuListe[pos]) === stabilOhneStempel(erw[i])) { neuListe[pos] = e; zurueck.eintraege++; geaendert = true; }
+      else uebersprungen.push(`${liste}: ein Eintrag wurde seitdem geändert — bleibt, wie er jetzt ist`);
+    });
+    if (geaendert) neu[liste] = neuListe;
+  }
+
+  // Kartei: Personen auf den archivierten Stand (Stationen, Firma) — wieder nur, wo sie noch genau das Ergebnis sind.
+  const heute = tagVon(a.am);
+  const karteiNeu = kontakte.map(k => {
+    const p = a.kontakte.kontakte.find(x => x.id === k.id);
+    if (!p) return k;
+    if (stabilOhneStempel(k) === stabilOhneStempel(p)) return k;
+    const soll = firmaZusammenKartei([p], b0, a.weg, heute)[0];
+    if (stabilOhneStempel(k) === stabilOhneStempel(soll)) { zurueck.personen++; return p; }
+    uebersprungen.push('Eine Person wurde seitdem geändert — bleibt, wie sie jetzt ist');
+    return k;
+  });
+  for (const p of a.kontakte.kontakte) if (!kontakte.some(k => k.id === p.id)) uebersprungen.push('Eine Person gibt es nicht mehr (gelöscht)');
+  return { crm: neu as unknown as CrmBestand, kontakte: karteiNeu, zurueck, uebersprungen: Array.from(new Set(uebersprungen)) };
+}

@@ -65,6 +65,11 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // von selbst weg. Seit U1 H2 gehen sie NICHT ins Nachtarchiv (deploy/sicherung.sh schließt `archiv/kalender-export-*`
   // aus) — Art. 17 wirkt in Apple und ist spätestens nach 14 Tagen auch aus den Kalender-Sicherungen verschwunden
   // (die Hetzner-Abbilder des ganzen Servers halten 7 Tage).
+  // Archivkopien vor Umzügen (03.10.): `archiv/crm-vor-*.json` — auch die Sicherung vor „Firmen zusammenführen“
+  // (`crm-vor-firmen-zusammenfuehren-<zeit>.json`, lib/crm/firma-umhaengen-server.ts) — liegen VERSCHLÜSSELT im Archiv, sind keine
+  // Bestände im Sinne dieses Registers (eigener Archiv-Ordner), fallen nach 30 Tagen von selbst weg (Löschfrist „archiv-umzug“,
+  // lib/crm/loeschfristen-lauf.ts) und Art. 17 nimmt die Person auch daraus heraus (lib/crm/person-weitere.ts `archivTilgen`).
+  // Getestet: tests/firma-archiv.test.ts (Sicherung vor dem ersten Schritt, 30 Tage, Art. 17), tests/datenschutz-art17-weitere.test.ts.
   { muster: 'kalender-sicherung', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Stand der täglichen Kalender-Sicherung (nur Dateinamen/Zahlen); die verschlüsselten Tagesdateien im Archiv enthalten Termine (−400 … +800 Tage) samt Teilnehmern, gehen nicht ins Nachtarchiv und laufen nach 14 Tagen ab — Löschung in Apple, danach spätestens nach 14 Tagen auch in der Kalender-Sicherung (Hetzner-Abbilder: 7 Tage).' },
   T('meetings', 'Meeting-Protokolle — bleiben, Name/Adresse getilgt.'),
   T('zoe-verlauf', 'Gespräche mit ZOE — bleiben, die Person getilgt.', 'zoe-verlauf'),

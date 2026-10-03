@@ -64,7 +64,7 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'zoe-gedaechtnis', titel: 'ZOE-Gedächtnis (Fakten)', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. d, e DSGVO', hinweis: 'Fakten, die so lange nicht erneuert wurden, fallen weg.' },
   { id: 'postfach-caches', titel: 'Postfach-Zwischenspeicher', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Zwischengespeicherte Mails (Absender, Betreff, Vorschau) und Einstufungen — das Postfach selbst bleibt beim Anbieter.' },
   { id: 'kalender-caches', titel: 'Kalender-Zwischenspeicher', einheit: 'monate', standard: 12, min: 1, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Vergangene Termine im Zwischenspeicher — der Kalender selbst bleibt beim Anbieter.' },
-  { id: 'archiv-umzug', titel: 'Umzugs- und Aufräum-Kopien im Archiv', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Kopien vor Umzügen und Aufräumarbeiten (CRM vor Brain-Umzug, MAKE.ORGA, Business, Kategorien). Andere Archiv-Dateien bleiben — nie automatisch.' },
+  { id: 'archiv-umzug', titel: 'Umzugs- und Aufräum-Kopien im Archiv', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Kopien vor Umzügen und Aufräumarbeiten (CRM vor Brain-Umzug, Kennungs-Umzug, Firmen zusammenführen, MAKE.ORGA, Business, Kategorien). Andere Archiv-Dateien bleiben — nie automatisch.' },
   { id: 'netzwerk', titel: 'Altbestand Netzwerk (vor der Kartei)', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch: Einträge ohne Kontakt seit der Frist zählen in die Löschfrist-Aufgabe. Der Altbestand wird stillgelegt (in die Kartei übernehmen oder löschen).' },
   { id: 'grabsteine', titel: 'Grabsteine gelöschter Personen', einheit: 'monate', standard: 13, min: 13, max: 120, wirkung: 'automatisch', norm: 'Art. 17, Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Fingerabdrücke außerhalb des Datenordners — länger als jede Sicherung, damit ein Restore niemanden zurückholt. Die Sperrliste bleibt.' },
   // 29.09. (K4): Terminbuchungen der öffentlichen Buchungsseiten.
@@ -239,7 +239,7 @@ export function vorGrenzeRaus<T>(liste: readonly T[] | undefined, grenze: string
   return { liste: rest.length === l.length ? [...l] : rest, n: l.length - rest.length };
 }
 
-/** Archiv-Datei eine Umzugs-/Aufräum-Kopie? (lib/store/archiv.ts-Aufrufer: crm-vor-*, make-orga-*, business-vor-*, kategorien-vor-*) */
+/** Archiv-Datei eine Umzugs-/Aufräum-Kopie? (lib/store/archiv.ts-Aufrufer: crm-vor-* — auch Brain-Umzug, Kennungs-Umzug, Firmen zusammenführen —, make-orga-*, business-vor-*, kategorien-vor-*) */
 export const istUmzugsKopie = (datei: string) => /^(crm-vor-|make-orga-|business-vor-|kategorien-vor-)[a-z0-9._-]*\.json$/i.test(datei);
 
 /** Tag einer Archiv-Datei aus dem Namen (ISO-Zeit oder Millisekunden) — null, wenn keiner drinsteht. */
