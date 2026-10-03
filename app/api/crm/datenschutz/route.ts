@@ -165,7 +165,8 @@ export async function POST(req: Request) {
     });
   }
   if (b.aktion === 'datenschutz-informiert') {
-    return kontaktAendern(req, id, ['datenschutzInformiertAm', 'aktivitaeten'], k => (k.datenschutzInformiertAm ? k : {
+    // Art. 18: an einer eingeschränkten Person wird nichts festgehalten.
+    return kontaktAendern(req, id, ['datenschutzInformiertAm', 'aktivitaeten'], k => (k.eingeschraenkt ? { fehler: 'Verarbeitung eingeschränkt (Art. 18) — nichts vermerkt.', status: 409 } : k.datenschutzInformiertAm ? k : {
       ...k, datenschutzInformiertAm: heute,
       aktivitaeten: [...(k.aktivitaeten ?? []), { am: jetzt, art: 'system' as const, von, text: 'Datenschutzhinweis (Art. 13) persönlich gegeben' }],
     }));
