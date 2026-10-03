@@ -138,6 +138,8 @@ img, svg { display: block; max-width: 100%; }
 .reise { position: relative; margin-top: calc(-1 * var(--kopf)); } /* beginnt hinter dem Kopf: die Bühne steht von Anfang an dort, wo sie klebt */
 .buehne { position: sticky; top: 0; height: 100vh; margin-bottom: -100vh; z-index: 0; pointer-events: none; overflow: hidden; }
 .buehne canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* Der rote Faden (js/faden.js): hinter Netz und Logo, ruhig — die Bühne bleibt das Hauptbild. */
+.buehne canvas.faeden { z-index: -1; }
 /* Lage von Logo und Standbild = Mitte der Formationen in js/neuronen.js (Desktop: 72 % / Mitte unter dem Kopf). */
 .buehne .zeichen, .buehne .standbild { position: absolute; left: 72%; top: calc(var(--kopf) + (100vh - var(--kopf)) / 2); transform: translate(-50%, -50%); }
 .buehne .zeichen { width: min(31vw, calc((100vh - var(--kopf)) * .6), 520px); height: auto; overflow: visible; }

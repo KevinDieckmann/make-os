@@ -1,6 +1,6 @@
 # Landingpage makeinnovation.de — MAKE Innovation (eine Marke der KEMARIS Innovation GmbH)
 
-Statische Seite (HTML + eine CSS-Datei + vier kleine eigene Skripte, keine Cookies, kein Tracking, kein Speicher im
+Statische Seite (HTML + eine CSS-Datei + sechs kleine eigene Skripte, keine Cookies, kein Tracking, kein Speicher im
 Browser, Schriften selbst gehostet). Stand **v4 (03.10.2026)**: „Innovation braucht Umsetzung.“ — Beratung (Interim CSO,
 Interim Head of Sales, Events & Netzwerk-Strategie), Make.One als Netzwerk für junge und erfahrene Entscheider,
 Make.Beteiligungen und Development kompakt, „Warum wir“. Dazu die **Neuronen-Bühne**: oben das Logo, beim Scrollen
@@ -24,6 +24,8 @@ Sie ist als **nicht indexierte Vorschau** aktiv (`X-Robots-Tag: noindex`, `robot
 | `css/seite.css` | CI-Tokens aus `lib/make-one/design.ts`; Rot/Grün (edler, wie Logo v5) nur für Personen, Logo und Bühne; Bewegung nur ohne `prefers-reduced-motion` |
 | `js/formationen.js` | Geometrie der Bühne (sechs Formationen, ohne DOM — läuft auch in Node für das Standbild) |
 | `js/neuronen.js` | die Bühne: Canvas 2D, mischt die Formationen entlang des Scrollens, Logo ↔ Netz überblenden; pausiert außerhalb des Bildes; `prefers-reduced-motion` = ein Standbild je Kapitel; liest, speichert, sendet nichts |
+| `js/lichtfaeden.js` | Lichtfäden: Mathematik + Zeichner (Canvas 2D) — **erzeugt** aus denselben Dateien wie die Planung der App (`node scripts/lichtfaeden-website.mjs`, nie von Hand ändern; ein Test vergleicht) |
+| `js/faden.js` | der rote Faden: zwei Bündel Granat/Smaragd aus dem Logo durch alle Kapitel (eigene Leinwand `canvas.faeden` in der Bühne, hinter dem Netz); pausiert außerhalb des Bildes; `prefers-reduced-motion` = Standbild; liest, speichert, sendet nichts |
 | `js/menue.js` | schließt das Handy-Menü (`<details>`) nach einem Klick, mit Esc oder per Klick daneben |
 | `js/erstgespraech.js` | übernimmt das Ziel aus `#erstgespraech-link` für alle Knöpfe mit `data-erstgespraech` |
 | `assets/buehne/standbild.svg` | Standbild der Bühne ohne Skript/Canvas (`node website/standbild.mjs`) |
@@ -53,6 +55,26 @@ Ruhig wie die frühere Bühne („wie ein Auge“): dünne Linien, kein Glühen,
 Lokal ansehen: `python3 -m http.server 3013 -d website` über einen Eintrag in `.claude/launch.json` (nicht per Bash),
 oder die HTML-Datei direkt im Browser öffnen. Logo ändern: `node scripts/website-logo.mjs`, danach den Bühnen-Block
 (`node scripts/website-logo.mjs --buehne`) in `index.html` übernehmen. Formationen ändern: danach `node website/standbild.mjs`.
+
+## Der rote Faden (Lichtfäden, 03.10.2026)
+
+Zwei Bündel feiner Lichtfäden — **Granat** (#C9465C) und **Smaragd** (#2FA878), die Farben der Synapse im Logo (das Logo selbst bleibt
+unverändert) — kommen aus dem Logo: Rot hinter dem roten Strich aus dessen linkem Ende, Grün hinter dem grünen Strich und in einem Bogen
+unter dem Logo zurück. Unterhalb treffen sie sich und ziehen sich am Rechner zwischen Text und Bühne durch die Seite, am Handy an den
+beiden Rändern. Der Charakter wechselt mit dem Kapitel (`CHARAKTER` in `js/faden.js`):
+
+| Kapitel | Faden |
+|---|---|
+| Start | aus den Strichen des Logos, Bogen unter dem Logo |
+| 01 Die Lage | zwei ruhige Bündel nebeneinander, leicht unruhig |
+| 02 Warum Innovation | verflochten — die Kreuzungen wandern langsam |
+| 03 Beratung | eng zu einem Pfad, drei Stufen zur Bühne hin, Licht steigt in ihm auf |
+| 04 Make.One | weit aufgefächert |
+| 05–06 | ruhig, leicht verflochten (Kern) |
+| 07 Kontakt | zurück in die Striche und den Knoten |
+
+Ruhig gehalten (wenige, dünne Fäden; die Neuronen-Bühne bleibt das Hauptbild). Gemessen: 60 fps beim Scrollen, keine langen Aufgaben;
+zusammen +19 KB Skript. Rein dekorativ (`aria-hidden` über die Bühne), im Text beschrieben (`.unsichtbar`).
 
 ## Freigabe — in dieser Reihenfolge
 
