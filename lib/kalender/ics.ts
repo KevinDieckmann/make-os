@@ -93,6 +93,9 @@ export interface Termin {
   abgesagt?: true;
   /** Beginn als echter Zeitpunkt (ms, UTC) — sortiert richtig auch in der doppelten Stunde am 25.10. */
   startMs?: number;
+  // ── seit 03.10. (Google) ──
+  /** Link zum Termin (ICS `URL`, nur https) — bei Google Kalender der Meet-Link; nur lesen. */
+  link?: string;
 }
 
 /** Was ein VEVENT selbst über Art, Farbe und Sichtbarkeit sagt (X-MAKE-ART, COLOR, CLASS). */
@@ -349,6 +352,7 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
     const en = alsWand(endeW);
     const sT = zeitpunkt(start);
     const eT = Math.max(sT, zeitpunkt(endeW));
+    const url = String(e.component.getFirstPropertyValue('url') ?? '').trim();
     // Überlappt den Zeitraum? (ganztägige und Null-Dauer-Termine zählen am Starttag)
     if (!(sT < bisT && (eT > vonT || (eT === sT && sT >= vonT)))) return;
     const st = String(e.component.getFirstPropertyValue('status') ?? '').toUpperCase();
@@ -369,6 +373,7 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
       ...(status ? { status } : {}),
       startMs: sT,
       ...(obj.etag ? { stand: obj.etag } : {}),
+      ...(/^https:\/\/[^\s]{1,490}$/i.test(url) ? { link: url } : {}),
     });
   };
 

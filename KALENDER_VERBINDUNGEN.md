@@ -267,3 +267,36 @@ hat K6a nichts geändert.
 | #100 Waise → Neuzuordnung per Klick | **erledigt** K6a (`termin-waise-neu`) |
 | Buchungs-Follow-up hängt am Termin und zieht mit | **teilweise** — K6a: `FollowUp.terminUid`, Verknüpfen + Nachziehen per Klick in der Verbindungsprüfung. Automatisch beim Verschieben: offen (Schreibweg der Termin-Route/Buchung = Kern/R-K2) |
 | Auswertung: mehrere Gäste je Termin (`ATermin.kontakte`) | **erledigt** K3 |
+
+
+---
+
+## Google Kalender für Business/MAKE (03.10.2026, Branch `google-kal`)
+
+Kevin 03.10.: „Wir haben nur den Kalender bei Google für MAKE und alles andere läuft über MAKE OS.“ — Business-/MAKE-Termine je Person ↔ Google
+Kalender dieser Person, in beide Richtungen; Privat/Familie/Gemeinsam bleiben wie bisher.
+
+**Datenhaltung (Regeln 4a–4i gelten weiter):**
+- **Wahrheit:** Google. Der Bestand `kalender-google--<person>` ist ein Spiegel (Löschung nur in Google, Register „ausgenommen“). Zusätze zum Termin: Art/Blockart/Farbe/UID
+  stehen in `extendedProperties.private` (`makeOsId`, `art`, `blockArt`, `farbe`); Bezüge zu MAKE OS (Kontakt, Deal, Aufgabe …) weiter NUR in `kalender-bezug`
+  (Schlüssel `google-<person>|uid(::RID)`), Sichtbarkeit = `visibility`, frei/beschäftigt = `transparency`, Gäste = `attendees`.
+- **Eine Quelle je Termin:** jeder MAKE-OS-Kalender hat genau ein externes Zuhause; neue Termine entscheidet `kalenderZiel(person, art)`; der Umzug zieht bestehende Business-Termine
+  mit Vorschau + Sicherung um (Gäste/Serien/Blöcke bleiben in iCloud).
+- **Gemeinsame Lesefunktionen** bleiben dieselben: der Google-Spiegel liegt im selben Stand wie iCloud (`ladeStand()`), `termineImZeitraum`, `verfuegbarkeitFuer`, `termineLesen`,
+  Spiegel, Verbindungsprüfung, Glocke/Heute, ZOE, `calendar-cache` sehen ihn ohne Sonderwege.
+- **Ausgehendes:** Einladungen nur nach Klick (`sendUpdates=all` nur danach), Dienstweg nie; jede Schreibaktion im Änderungsprotokoll (UID, Feldnamen, nie Titel); Webhook ohne Sitzung
+  liefert nie Daten.
+
+**Stellen, die jetzt nach Google schreiben können** (je nach `kalenderZiel`, sonst iCloud wie bisher):
+| Stelle | Datei | Bereich |
+|---|---|---|
+| Event-Spiegel besuchter Events (genau EINE Person geht hin) | `lib/kalender/spiegel-server.ts eventSpiegelAnlegen` | business → Google der Person; beide/gemeinsam → iCloud „Gemeinsam“ |
+| Netzwerken: Termin im Kalender der zuständigen Person | `lib/crm/netzwerken-server.ts` (Schritt `termin`) | business |
+| Termin-Dialog im Kalender | `app/api/kalender/termin` (`bereich`) | Business-Bereich der Seite → Google der Person, sonst gewählter Kalender |
+| Buchungsseite (Freigabe) | `lib/kalender/buchung-ablauf.ts` (`zielKalender` = Name) | der gewählte Kalender, auch ein Google-Kalender |
+| Deal-/Follow-up-Termine, ZOE-Vorschläge | über die Termin-Route (Stapel/Klick) | wie der Dialog |
+| Umzug aus iCloud | `lib/kalender/google/umzug.ts` | nur auf Klick |
+| (bleiben iCloud) | Blöcke/Fokus (`planung/bloecke-server`), Wochenplan-Übernahme, Familie (Date, Paar-Gespräch) | privat/gemeinsam bzw. Plan |
+
+**Verbindungsprüfung:** Google-Termine tragen echte Schlüssel (`google-…|uid`) — `termin-uid-tot`, `event-termin-tot`, `aktivitaet-termin-tot` prüfen sie im selben Holfenster (−90 … +400 Tage).
+Tote Verweise nach „Trennen“ meldet die Prüfung; verbinden stellt sie wieder her (dieselben UIDs).

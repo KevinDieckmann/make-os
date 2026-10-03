@@ -14,12 +14,16 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SITZUNG_COOKIE, WER_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
 import { standGueltig } from '@/lib/zugang/stand-pruefung';
+import { crossSiteVerboten } from '@/lib/zugang/cross-site';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
 const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitreten)$/];
 // Der Browser meldet CSP-Verstöße ohne Sitzung und ohne verlässlichen Origin-Kopf (27.09.) — die Route
 // nimmt nur Zähler an (Richtlinie, blockierte Quelle, Seite ohne Parameter) und begrenzt die Rate selbst.
 const CSP_MELDEWEG = /^\/api\/hoi\/csp$/;
+// Google (03.10.): Push-Meldungen des Kalenders (events.watch) kommen von Googles Servern — ohne Sitzung, ohne Origin. Die Route
+// prüft Kanal-Kennung + Token + Ressourcen-ID selbst und liefert nie Daten (lib/kalender/google/kanal.ts). Nur POST.
+const GOOGLE_MELDEWEG = /^\/api\/kalender\/google\/meldung$/;
 // Öffentliche Buchungsseite (29.09., K4): NUR diese Pfade sind ohne Sitzung offen — die Seite einer Buchungsadresse,
 // ihre Status-Seite und genau deren zwei Schnittstellen. Adresse = lesbarer Vorsatz + 96 Bit Zufall (lib/kalender/buchung.ts
 // `slugOk`); alles andere (auch /buchen ohne Adresse oder tiefere Pfade) bleibt zu. Die Routen drosseln selbst.
@@ -41,7 +45,7 @@ export async function middleware(req: NextRequest) {
   if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) return new NextResponse('MAKE OS ist nicht eingerichtet (SESSION_SECRET fehlt in .env).', { status: 503 });
 
   // CSRF-Schutz: Schreibzugriffe aus fremden Browser-Kontexten abweisen.
-  if (req.method !== 'GET' && req.method !== 'HEAD' && !CSP_MELDEWEG.test(req.nextUrl.pathname)) {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !CSP_MELDEWEG.test(req.nextUrl.pathname) && !(GOOGLE_MELDEWEG.test(req.nextUrl.pathname) && req.method === 'POST')) {
     const origin = req.headers.get('origin');
     if (origin) {
       // Die eigene Adresse ist, was der Browser als Host schickt — hinter einem
@@ -80,10 +84,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next({ request: { headers: kopf } });
   }
   if (CSP_MELDEWEG.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
+  if (GOOGLE_MELDEWEG.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
 
   // Eine Schnittstelle ist nie das Ziel einer Navigation von einer fremden Seite (26.09.): so kann kein
   // fremder Link mit dem Cookie im Gepäck eine GET-Route mit Wirkung auslösen.
-  if (pfad.startsWith('/api/') && req.headers.get('sec-fetch-site') === 'cross-site' && req.headers.get('sec-fetch-mode') === 'navigate') return verweigertApi();
+  // Einzige Ausnahme: der Rückruf der Google-Anmeldung (lib/zugang/cross-site.ts).
+  if (crossSiteVerboten(pfad, req.headers)) return verweigertApi();
 
   if (OFFEN.some(r => r.test(pfad))) return NextResponse.next({ request: { headers: kopf } });
   // Öffentliche Buchung: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Routen handeln für niemanden.

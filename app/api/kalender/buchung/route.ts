@@ -48,6 +48,7 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { buchungKopie } from '@/lib/crm/person-auskunft-kalender';
 import { terminLesen, verbunden } from '@/lib/kalender/icloud';
+import { kalenderQuelleDa } from '@/lib/kalender/google/namen';
 import { terminAendernServer } from '@/lib/kalender/termin-server';
 import { localDay } from '@/lib/zeit';
 import { loadJson } from '@/lib/store/local-db';
@@ -284,7 +285,7 @@ async function gastRechte(b: Record<string, unknown>, wer: ReturnType<typeof wer
   for (const x of mitTermin) {
     const tag = x.start.slice(0, 10);
     if (!bereinigen) { inApple.push({ terminUid: x.terminUid!, kalender: x.terminKalender, tag, grund: 'nicht bereinigt (auf Wunsch)' }); continue; }
-    if (!verbunden()) { inApple.push({ terminUid: x.terminUid!, kalender: x.terminKalender, tag, grund: 'iCloud nicht verbunden' }); continue; }
+    if (!verbunden() && !(await kalenderQuelleDa())) { inApple.push({ terminUid: x.terminUid!, kalender: x.terminKalender, tag, grund: 'iCloud nicht verbunden' }); continue; }
     try {
       const t = await terminLesen(x.terminUid!);
       if (!t) continue; // in Apple schon weg

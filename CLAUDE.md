@@ -209,6 +209,7 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Titel/Zeit nie. Ohne `einladungBestaetigt: true` schreibt KEIN Weg ein ATTENDEE oder ändert/löscht einen Termin mit Gästen
   (409, `lib/kalender/icloud.ts` — gilt für jeden Schreiber); der Dienstweg (ZOE, Takt, Skripte) darf nie einladen (403).
 - Sehen darf den Kalender nur der Haushalt des Inhabers (+ Dienstweg), kein anderes Konto.
+- **Google (seit 03.10.):** Business-/MAKE-Termine liegen im Google Kalender der Person (Abschnitt „Kalender — Google Workspace“ unten); iCloud bleibt für Privat, Familie, Gemeinsam und den Plan.
 - Apple-Erinnerungen gibt iCloud nicht per CalDAV heraus — die kommen nur, wenn der Mac
   zuliefert (`zulieferer.mjs`); den Kalender vom Mac nimmt der Server nicht mehr an.
 
@@ -890,6 +891,53 @@ Kevin: Kontakte, die wir für einen Kunden erfassen, „gehören immer auch uns�
   Stand, `zeit`/`zeit--<p>` der Eingewilligten). Termin-Zeiten für Modellpfade (`terminZeitenLesen`) nach `fuerZoe`; `termineFuerZoe`
   lässt abgesagte weg.
 - Tests: `tests/kalender-k6a.test.ts`, `tests/crm-verbindungen.test.ts` (4 neue Prüfungen), `tests/brain-app-bruecke.test.ts`.
+
+## Kalender — Google Workspace für Business/MAKE (03.10., nur lokal, Branch `google-kal`; Einrichtung: `GOOGLE_KALENDER_EINRICHTEN.md`)
+Kevin 03.10.: „Wir haben nur den Kalender bei Google für MAKE und alles andere läuft über MAKE OS.“ **Business-/MAKE-Termine jeder
+Person ↔ Google Kalender dieser Person, in beide Richtungen; Privat/Familie/Gemeinsam bleiben MAKE OS + iCloud.** Jeder MAKE-OS-Kalender
+hat genau EIN externes Zuhause (kein Termin in zwei Quellen).
+- **Allgemeine Google-Verbindung je Person** (`lib/google/verbindung.ts`, kennt keinen Kalender): OAuth 2.0 Code + PKCE (S256) + `state`
+  (einmalig, 15 Min., gehört der Person der Sitzung), `access_type=offline`, `prompt=consent`, **`include_granted_scopes=true`**,
+  `hd`/Domain-Prüfung (`GOOGLE_ERLAUBTE_DOMAIN`: Adresse UND `hd`-Anspruch, sonst Token sofort widerrufen). Scopes je **Funktion**
+  (`GOOGLE_FUNKTIONEN`: `basis` = `openid email`, `kalender` = `calendar.events` + `calendar.readonly`) — ein weiteres Modul (z. B. Gmail) trägt
+  nur seine Scopes ein und holt sein Token über `googleZugriffstoken(person, funktion)`; eine Verbindung, ein Refresh-Token. Bestände
+  `google-verbindung--<person>` (Token verschlüsselt, nie im Browser/Log; `googleStatus` liefert nur maskierte Adresse + Zustände) und
+  `google-oauth-zustand`. Erneuern (ein Lauf je Person), `invalid_grant` → „getrennt“ + EINE Glocke, Trennen = Widerruf bei Google + Grabstein
+  (`v: 0`). Anfragen nur an `*.googleapis.com`/`accounts.google.com` (`lib/google/http.ts`: 401 → einmal erneuern, 429/403-Kontingent → `GoogleUeberlastet`
+  mit Retry-After). Umgebung: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_RUECKRUF_URL` (sonst `MAKE_OS_ADRESSE` + `/api/google/rueckruf`),
+  `GOOGLE_ERLAUBTE_DOMAIN` — ohne ID/Secret sichtbar aus. Setzen per `deploy/google-verbinden.sh` (fragt verdeckt, wie `icloud-verbinden.sh`).
+- **Routen:** `/api/google/{status,verbinden,trennen,rueckruf}` (allgemein; **nur die eigene Person**, Dienstweg 403 — `lib/google/zugang.ts eigenePerson`),
+  `/api/kalender/google` (Status, `abgleichen|voll|kalender`), `/api/kalender/google/umzug`, `POST /api/kalender/google/meldung` (Push-Webhook, ohne Sitzung).
+  Middleware: genau der Webhook (POST) ist offen, und der Rückruf darf cross-site navigiert werden (`lib/zugang/cross-site.ts`, einzige Ausnahme; die Sitzung gilt weiter).
+- **Spiegel = ICS-Brücke** (`lib/kalender/google/abbilden.ts`): ein Google-Ereignis (`singleEvents=false`: Serie = Master + Ausnahmen) wird zu einem
+  ICS-Objekt und läuft durch denselben Kern wie iCloud (`termineAus`, ical.js: Serien, EXDATE, Zeitzonen, 25.10.-Umstellung; Einzeltermine in der doppelten
+  Stunde als UTC). Dieselbe `Termin`-Form → Kalender, Heute, Wochenplan, ZOE, Bezüge, Verfügbarkeit, Spiegel, Verbindungsprüfung unverändert. Neu optional
+  `Termin.link` (Meet-Link, nur https) und `KalenderEintrag.quelle/person/ich`. Bestand `kalender-google--<person>` (`stand.ts`: Ereignisse schlank, `syncToken`,
+  Zustand, Kanal, `eigene` ETags); **`ladeStand()` legt die Google-Kalender über den iCloud-Stand** (`ladeStandIcloud` = nur Platte; `abgleichen`/`frischerStand`
+  geben den Stand MIT Google zurück). Kalender in MAKE OS: „MAKE <Vorname> (Google)“, Kennung `google-<person>`, Schlüssel `google-<person>|uid(::RID)`,
+  `calendar-cache` Kategorie `holding`; `kalender-einstellungen` trägt NIE etwas von Google — `ladeEinstellungen()`/GET legen `google` (Name → Person) zur Laufzeit dazu
+  (Zuordnung `zuordnung`, Space Business, „zählt als belegt“).
+- **Lesen** (`abgleich.ts`): erste Lesung ab heute − 90 Tage (`timeMin`, `showDeleted=true`), danach `syncToken`; **410 → Bestand verwerfen und sofort voll neu**;
+  abgesagte Vorkommen als EXDATE (Fallback über die Instanz-Kennung); Echo: ETags eigener Schreibungen zählen nicht als „von außen“, ein Abgleich schreibt NIE nach
+  Google (kein Ping-Pong); Fehler: 401 → erneuern, `invalid_grant` → getrennt, 403-Kontingent/429 → Pause (Retry-After, sonst 2 → 30 Min.), 5xx Backoff;
+  `abgleichAlter` („vor X Min.“, ab 30 hervorgehoben — Kalender-Kopf, HOI-Befund `kalender-google`); Push **während** eines Laufs → ein Nachlauf.
+- **Push** (`kanal.ts`): `events.watch` je Person nur mit öffentlicher HTTPS-Adresse, Kanal `mk-<person>-<24 hex>`, Token nur als SHA-256 im Bestand, Erneuerung ab 36 h
+  Restlaufzeit (neuer Kanal, dann alten stoppen), Webhook prüft Kennung + Token (konstante Zeit) + Ressourcen-ID, sonst 403 leer; Fehlversuche je Netz gedrosselt, Anstoß je Person
+  höchstens alle 5 s; liefert nie Daten. Ohne Push: Takt alle 5 Min. (`takt.ts`; mit Kanal 30 Min.).
+- **Schreiben** (`schreiben.ts`, aus `icloud.ts anlegen/aendern/loeschen/antwortSenden` verteilt nach dem Kalender des Termins): `If-Match` mit dem ETag, 412 → `KalenderKonflikt`
+  (**Google gewinnt**, „deine Fassung“ bleibt im Browser, „Meine Fassung speichern“ auf dem neuen Stand); Einladungen nur nach Klick (`EinladungNoetig` VOR dem Aufruf, `sendUpdates=all`
+  nur dann, sonst `none`); eigene Kennung `extendedProperties.private.makeOsId` = UID in MAKE OS, Google-ID aus der UID abgeleitet (`eventIdFuer`, idempotent; 409 → `schonDa`; früher
+  Gelöschtes wird per `PUT` wiederhergestellt); Serien anlegen ja, ändern/löschen nein; Ergebnis sofort im Bestand + `calendar-cache`.
+- **Zuordnung — EINE Stelle:** `kalenderZiel(person, art)` (`lib/kalender/google/ziel.ts`; `art` = `business|privat|gemeinsam`): business → Google der Person (nur schreibbar + verbunden), sonst iCloud
+  wie heute (Rückfall = heutiger Stand). Wer neue Termine schreibt, fragt nur dort: `terminAnlegenServer({ bereich })` (**Event-Spiegel** besuchter Events einer Person, **Netzwerken-Termin** im Kalender der
+  zuständigen Person → business), Browser-Dialog `POST /api/kalender/termin { bereich }` (Business-Bereich der Kalenderseite → Standard Google der Person), Buchungsseite (`zielKalender` = Name, auch
+  der Google-Kalender). Blöcke/Fokus/Plan, Familie und ZOE-`plan_block` bleiben iCloud. Bestehende Spiegel werden über ihre UID dort nachgezogen, wo sie liegen.
+- **Umzug iCloud → Google** (`umzug.ts`): eigene Aktion, Vorschau (nichts geschrieben), dann ausdrücklicher Klick: Sicherung ZUERST (`kalender-umzug-sicherung--<person>`, 30 Tage, Takt räumt auf), je Termin
+  Google anlegen (feste neue UID `makeos-um-…`), Bezug + Meetings + Follow-ups + Events/Teilnahmen/Buchungen umhängen, ERST DANN iCloud löschen; nie Gäste/Serien/Blöcke/Fokus; idempotent.
+- **Recht:** Register `kalender-google--*` (ausgenommen: Löschung nur in Google, Art.-17-Lauf zählt `inGoogleZaehlen`), `google-verbindung--*` (Haushalt), `google-oauth-zustand`, `kalender-umzug-sicherung--*`;
+  VVT „Kalender (Google Workspace)“ (`verarbeitungKalenderGoogle`, wird beim Öffnen von Stammdaten nachgetragen, sobald Google eingerichtet ist), AVV in der Workspace-Admin-Konsole.
+- Tests: `tests/google-*.test.ts` (abbilden, verbindung, abgleich, route, webhook, ziel, umzug, lesen), Fakes in `tests/fixtures/google-fake.ts` / `icloud-fake.ts`.
+  **Rückweg:** nur neue, eigene Bestände und optionale Felder — Details `GO_LIVE_CHECKLISTE.md` › „Google Kalender“.
 
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — bei Zweifel Datei löschen, der Takt baut neu.

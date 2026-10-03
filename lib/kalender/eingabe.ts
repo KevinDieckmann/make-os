@@ -12,6 +12,7 @@ import { zoneGueltig, ausWandzeitIn, STANDARD_ZONE } from './zeitzone';
 import { kennungenVon, GAST_KONTAKTE_MAX, type BezugKennungen } from './bezug';
 import { adresseAus, TEILNAHMEN, type Teilnahme } from './gaeste';
 import type { Wer } from './einstellungen';
+import { istBereich, type KalenderBereich } from './bereich';
 
 /** Ein Gast aus der Oberfläche: Adresse (Pflicht), Name, Kontakt-Kennung aus dem CRM. */
 export interface GastEingabe { email: string; name?: string; kontaktId?: string }
@@ -51,6 +52,8 @@ export const neueTerminUid = (): string => `makeos-t-${globalThis.crypto.randomU
 export interface AnlegeEingabe {
   titel: string; start: string; ende: string; ganztags: boolean;
   kalender?: string; wer?: Wer;
+  /** Google (03.10.): ohne `kalender` entscheidet der Bereich, wohin der Termin kommt — `business` = Google Kalender der Person (wenn verbunden), sonst iCloud wie bisher (lib/kalender/google/ziel.ts). */
+  bereich?: KalenderBereich;
   ort?: string; notiz?: string;
   art: IcsArt; farbe?: string; beschaeftigt: boolean; sichtbarkeit: Sichtbarkeit; zone: string;
   /** R-K1 #13: Zone des Endes, wenn anders als `zone` (Flug) — `ende` ist dort gemeint. Nur über die Route, ohne Dialog. */
@@ -100,7 +103,7 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
   return {
     ok: true,
     e: {
-      titel, start, ende, ganztags, ...(kalender ? { kalender } : {}), ...(wer ? { wer } : {}),
+      titel, start, ende, ganztags, ...(kalender ? { kalender } : {}), ...(wer ? { wer } : {}), ...(istBereich(b.bereich) ? { bereich: b.bereich } : {}),
       ...(ort ? { ort } : {}), ...(notiz ? { notiz } : {}),
       art, ...(farbe ? { farbe } : {}), beschaeftigt, sichtbarkeit: istSichtbarkeit(b.sichtbarkeit) ? b.sichtbarkeit : 'standard', zone,
       ...(endZone ? { endZone } : {}),

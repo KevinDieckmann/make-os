@@ -4,6 +4,18 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Google Kalender für Business/MAKE (03.10.2026, nur lokal — Branch `google-kal`; Einrichtung `GOOGLE_KALENDER_EINRICHTEN.md`)
+
+Kevin 03.10.: „Wir haben nur den Kalender bei Google für MAKE und alles andere läuft über MAKE OS.“ Business-/MAKE-Termine je Person ↔ Google Kalender der Person, in beide Richtungen, nahezu sofort; Privat/Familie/Gemeinsam bleiben MAKE OS + iCloud.
+
+- **Allgemeine Google-Verbindung je Person** (`lib/google/*`): OAuth 2.0 Code + PKCE + `state`, inkrementelle Scopes je Funktion (`include_granted_scopes`) — Gmail o. Ä. kann später ohne zweite Verbindung andocken. Token nur serverseitig, verschlüsselt; Domain-Prüfung (`GOOGLE_ERLAUBTE_DOMAIN`); Trennen widerruft bei Google.
+- **Abgleich:** `syncToken` (410 → voll neu), Serien/Ausnahmen/ganztägig/Zeitzonen (25.10.2026 getestet), Push per `events.watch` (Webhook mit Kanal-Token, Rückfall alle 5 Min.), Schreiben mit ETag (Google gewinnt bei Konflikt), Einladungen nur nach Klick, eigene Kennung `makeOsId`, Echo-Erkennung.
+- **Zuordnung:** `kalenderZiel(person, art)` — Business → Google der Person, Privat/Gemeinsam → iCloud; Event-Spiegel, Netzwerken-Termin, Termin-Dialog (Business-Bereich) und Buchungsseite nutzen sie. Umzug bestehender Business-Termine aus iCloud: Vorschau + Sicherung + ausdrücklicher Klick.
+- **Oberfläche:** Kalender › Einstellungen › „Google Kalender (MAKE)“ (verbinden, abgleichen, Kalender wählen, trennen, umziehen; am Handy bedienbar), Kalender „MAKE Kevin (Google)“ in eigener Farbe mit „G“, „letzter Abgleich vor X Min.“ je Quelle, Meet-Link am Termin.
+- **Recht/Betrieb:** Register-Einträge, VVT „Kalender (Google Workspace)“, Art. 17 (Termine nennen die Person → in Google löschen), HOI-Befund, Glocke bei getrennter Verbindung.
+- **Neu auf dem Server (optional, ohne sie ist die Funktion sichtbar aus):** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_ERLAUBTE_DOMAIN`, optional `GOOGLE_RUECKRUF_URL` — `deploy/google-verbinden.sh`.
+- **Rückweg:** nur neue eigene Bestände und optionale Felder — Details `GO_LIVE_CHECKLISTE.md` › „Google Kalender“.
+
 ## Praxis-Funde behoben: Handy-Layout, wahre Texte, gelöschte Events, Kennzahlen (03.10.2026, nur lokal — Branch `praxis-fix`)
 
 Die Praxis-Prüfung (Produktionsbau, Handy 375 px) fand Layout-Fehler und einige unwahre Texte; alles unten ist behoben und getestet (`tests/praxis-fix.test.ts`).

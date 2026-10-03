@@ -5,11 +5,16 @@
 //   1. iCloud (anlegen/ändern/löschen, mit ETag)  2. `kalender-bezug` (Kennungen + Sicherung von Art/privat, `von`)
 //   3. Änderungsprotokoll (`kalender`/`termine`: UID + Feldnamen, nie Titel) — das ist das Audit-Log jeder
 //      Kalender-Schreibaktion, auch der autonomen (KALENDER_VERBINDUNGEN.md 4h).
-// Nie Teilnehmer (MAKE OS verschickt keine Einladungen). Ohne iCloud: KalenderFehler 409.
+// Nie Teilnehmer (MAKE OS verschickt keine Einladungen). Ohne iCloud UND ohne Google: KalenderFehler 409.
+// Google (03.10.): WOHIN ein neuer Termin kommt, entscheidet nur `kalenderZiel(person, bereich)` (lib/kalender/google/ziel.ts):
+// `bereich: 'business'` → der Google Kalender der Person (wenn verbunden), sonst/„privat“/„gemeinsam“ → iCloud wie bisher.
+// Geschrieben wird danach über dieselben Funktionen (`anlegen` verteilt nach Kalender an iCloud oder Google).
 // Seit R-K1 (#46): Bezug und Protokoll unter dem Schlüssel `kalender|uid`; `uid` der Aufrufer darf auch die alte reine
 // UID sein (die Spiegel tragen ihre feste UID) — der alte Bezug-Eintrag zieht dabei mit um, wenn die UID eindeutig ist.
 
 import { verbunden, anlegen, aendern, loeschen, terminAufloesen, KalenderFehler } from './icloud';
+import { kalenderZiel, googleKalenderNamen } from './google/ziel';
+import type { KalenderBereich } from './bereich';
 import { ladeEinstellungen, type Wer } from './einstellungen';
 import { bezugSetzen } from './bezug-server';
 import { uidVonSchluessel, type BezugKennungen } from './bezug';
@@ -21,6 +26,11 @@ export interface ServerTermin {
   titel: string; start: string; ende: string; ganztags?: boolean;
   /** Wessen Kalender (Einstellungen) — oder `kalender` (Name) direkt. */
   wer: Wer; kalender?: string;
+  /**
+   * Wohin gehört der Termin (03.10., Google): `business` = Kalender der Person bei Google (sobald verbunden), `privat`
+   * (Standard, wie bisher) und `gemeinsam` = iCloud. Ohne Wirkung, wenn `kalender` (Name) gesetzt ist — diese Wahl gilt.
+   */
+  bereich?: KalenderBereich;
   art?: IcsArt; blockArt?: BlockArt; beschaeftigt?: boolean; ort?: string; notiz?: string;
   /** Feste, echte UID für idempotente Vorgänge (siehe icloud.ts `anlegen`). */
   uid?: string;
@@ -30,17 +40,25 @@ export interface ServerTermin {
   von: string;
 }
 
-function nurVerbunden() {
-  if (!verbunden()) throw new KalenderFehler('iCloud ist noch nicht verbunden (deploy/icloud-verbinden.sh).', 409);
+/** Mindestens eine Quelle da: iCloud oder ein verbundener Google-Kalender (03.10.). */
+async function nurVerbunden(): Promise<void> {
+  if (verbunden()) return;
+  if (Object.keys(await googleKalenderNamen()).length) return;
+  throw new KalenderFehler('Kein Kalender verbunden — iCloud (deploy/icloud-verbinden.sh) oder Google (Kalender › Einstellungen).', 409);
 }
 
 /** Anlegen + Bezug + Protokoll. `schonDa`: der Termin mit dieser festen UID lag schon in iCloud (nichts doppelt). */
 export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): Promise<{ uid: string; schluessel: string; kalender: string; schonDa?: true }> {
-  nurVerbunden();
+  await nurVerbunden();
   const einst = await ladeEinstellungen();
   const art: IcsArt = t.art ?? 'termin';
+  const ziel = t.kalender ? null : await kalenderZiel(t.wer, t.bereich ?? 'privat', einst);
+  const kalender = t.kalender || ziel?.kalender;
+  if (!kalender) throw new KalenderFehler('Für diese Person ist kein Kalender hinterlegt — der Termin wurde nicht angelegt.', 409);
+  // Liegt der Zielkalender in iCloud, braucht es iCloud (ein Google-Ziel braucht es nicht).
+  if (!verbunden() && ziel?.quelle !== 'google' && !Object.values(await googleKalenderNamen()).includes(kalender)) throw new KalenderFehler('iCloud ist noch nicht verbunden (deploy/icloud-verbinden.sh).', 409);
   const r = await anlegen({
-    titel: t.titel, kalender: t.kalender || einst.kalender[t.wer], start: t.start, ende: t.ende, ganztags: !!t.ganztags,
+    titel: t.titel, kalender, start: t.start, ende: t.ende, ganztags: !!t.ganztags,
     art, ...(art === 'block' && t.blockArt ? { blockArt: t.blockArt } : {}),
     ...(t.beschaeftigt !== undefined ? { beschaeftigt: t.beschaeftigt } : {}),
     ...(t.ort ? { ort: t.ort } : {}), ...(t.notiz ? { notiz: t.notiz } : {}), ...(t.uid ? { uid: t.uid } : {}),
@@ -53,7 +71,7 @@ export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): P
 
 /** Einzeltermin ändern (+ Sicherung der Art, Bezüge) und protokollieren. */
 export async function terminAendernServer(uid: string, a: Aenderung, wer: ProtokollWer, bezug?: Record<string, string | null>): Promise<void> {
-  nurVerbunden();
+  await nurVerbunden();
   const felder = Object.keys(a).filter(k => a[k as keyof Aenderung] !== undefined);
   // Schlüssel des Objekts; nur-Bezug-Änderungen an einem (noch) unbekannten Termin bleiben wie bisher beim Verweis.
   const ziel = (felder.length ? await aendern(uid, a) : null) ?? await terminAufloesen(uid) ?? { schluessel: uid, uid: uidVonSchluessel(uid), eindeutig: false };
@@ -68,7 +86,7 @@ export async function terminAendernServer(uid: string, a: Aenderung, wer: Protok
 
 /** Löschen (+ Bezug weg) und protokollieren. Schon weg → still ok. */
 export async function terminLoeschenServer(uid: string, wer: ProtokollWer): Promise<void> {
-  nurVerbunden();
+  await nurVerbunden();
   const r = await loeschen(uid);
   await bezugSetzen(r.schluessel ?? uid, null, undefined, r.uid ? { altSchluessel: r.uid, altBehalten: !r.eindeutig } : {}).catch(() => { /* die Verbindungsprüfung meldet den Rest */ });
   await protokolliere('kalender', [{ liste: 'termine', op: 'geloescht', id: r.schluessel ?? uid }], wer);

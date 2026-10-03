@@ -20,19 +20,19 @@ export function abgleichText(vorMin: number | null): string {
   return h < 48 ? `letzter Abgleich vor ${h} Std.` : `letzter Abgleich vor ${Math.floor(h / 24)} Tagen`;
 }
 
-export function AbgleichStand({ a }: { a?: AbgleichInfo }) {
+export function AbgleichStand({ a, quelle = 'iCloud', bezeichnung }: { a?: AbgleichInfo; /** Woher der Stand kommt (iCloud, Google). */ quelle?: string; /** Name des Kalenders (bei mehreren Quellen nebeneinander). */ bezeichnung?: string }) {
   if (!a) return null;
   const warn = a.veraltet || !!a.fehler || !!a.anmeldung;
   const titel = [
     a.letzter ? `Stand ${new Date(a.letzter).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}` : '',
-    a.anmeldung ? 'iCloud lehnt die Anmeldung ab — neu verbinden (System › Konto).' : a.fehler ? `Abgleich gescheitert: ${a.fehler}` : '',
+    a.anmeldung ? (quelle === 'iCloud' ? 'iCloud lehnt die Anmeldung ab — neu verbinden (System › Konto).' : `${quelle} lehnt die Anmeldung ab — neu verbinden (Kalender › Einstellungen).`) : a.fehler ? `Abgleich gescheitert: ${a.fehler}` : '',
     a.naechsterVersuch ? `Nächster Versuch ${new Date(a.naechsterVersuch).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : '',
   ].filter(Boolean).join(' · ');
   return (
     <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontFamily: SCHRIFT.text, fontSize: 11.5, fontWeight: 500 }}>
       <span role={warn ? 'status' : undefined} title={titel || undefined}
         style={{ color: warn ? LEUCHT.achtung : C.inkLeise, ...(warn ? { background: `${LEUCHT.achtung}1a`, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '1px 8px' } : {}) }}>
-        {a.anmeldung ? 'iCloud-Anmeldung abgelehnt · ' : a.fehler ? 'Abgleich gescheitert · ' : ''}{abgleichText(a.vorMin)}
+        {bezeichnung ? `${bezeichnung}: ` : ''}{a.anmeldung ? `${quelle}-Anmeldung abgelehnt · ` : a.fehler ? 'Abgleich gescheitert · ' : ''}{abgleichText(a.vorMin)}
       </span>
       {(a.hinweise ?? []).map(h => (
         <span key={`${h.kalender}:${h.grund}`} role="note" style={{ color: LEUCHT.achtung, fontSize: 11.5 }}>„{h.kalender}“: {h.grund}</span>
