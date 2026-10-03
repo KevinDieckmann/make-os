@@ -12,10 +12,22 @@
 //   409 „andere Person“ (am Gerät ist inzwischen jemand anderes angemeldet) → wartet auf die richtige Person, sendet nie fremd
 //   409 „neu laden“ (veralteter Tab) → wartet, bis die Seite neu geladen ist
 // Rein bis auf `indexedDbSpeicher` — getestet mit dem Speicher im Arbeitsspeicher (tests/netzwerken-logik.test.ts).
+//
+// Datenschutz (03.10., Paket „netz-recht“) — die Warteschlange trägt Daten Dritter (Name, Mail, Telefon, Foto der Karte, Sprachnotiz):
+//   · Alter: ab 14 Tagen steht „Erfassung vom … noch nicht gesendet: senden oder verwerfen“ (`altHinweis`); nach 30 Tagen wird der Eintrag
+//     AUTOMATISCH verworfen (`altVerwerfen`, mit Anzeige `verworfenAlt`) — kein Vorrat auf dem Gerät (Art. 5 Abs. 1 lit. e). Der Server nähme eine
+//     Erfassung ohnehin nur bis 14 Tage nach der Begegnung mit ihrem Zeitpunkt an.
+//   · Verschlüsselt: in IndexedDB liegt der Körper (Angaben, Fotos, Sprachnotiz) nur noch verschlüsselt — AES-GCM mit einem NICHT exportierbaren
+//     WebCrypto-Schlüssel, der selbst in IndexedDB steckt (`verschluesselterSpeicher`). Der Schlüssel lässt sich nicht auslesen, nur benutzen; wer
+//     die Datenbank kopiert, hat ohne den Browser nichts. Ohne WebCrypto (kein sicherer Kontext) geht der Eintrag in den Arbeitsspeicher
+//     (`ausfallsicher`, Hinweis „Seite offen lassen“) — nie unverschlüsselt auf die Platte. Abmelden löscht Daten UND Schlüssel.
 
 import type { EventFuer } from '@/lib/crm/typen';
 
 export type WarteStatus = 'wartet' | 'fehler';
+/** Verschlüsselter Körper (nur im Speicher IndexedDB): Version, Zufallswert (12 Byte) und Chiffretext — nie im Klartext daneben. */
+export interface Verschluesselt { v: 1; iv: Uint8Array; daten: ArrayBuffer }
+
 export interface WarteEintrag {
   /** Kennung der Erfassung (UUID) — zugleich Schlüssel in der Warteschlange. */
   id: string;
@@ -30,8 +42,12 @@ export interface WarteEintrag {
   teilweise?: boolean;
   /** „Fehler“, weil das Event nicht (mehr) passt (gelöscht, abgesagt, Datum falsch): die Erfassung lässt sich einem anderen Event zuordnen (`eventWechseln`). */
   eventFehler?: boolean;
-  /** Der Körper an POST /api/netzwerken (Bilder als Base64). */
+  /** Der Körper an POST /api/netzwerken (Bilder als Base64). Im Speicher IndexedDB leer — dort steht er in `verschluesselt`. */
   koerper: Record<string, unknown>;
+  /** Nur im Speicher IndexedDB: der Körper, verschlüsselt (AES-GCM, nicht exportierbarer Schlüssel). `alle()` gibt ihn entschlüsselt als `koerper` zurück. */
+  verschluesselt?: Verschluesselt;
+  /** Der Schlüssel dieses Geräts fehlt (Browserdaten gelöscht): der Körper ist nicht mehr lesbar — nur noch verwerfen. */
+  unlesbar?: boolean;
   /** Kurzform für die Anzeige (ohne Fotos). */
   anzeige: { name: string; schritt: string; eventTitel: string; termin?: string };
 }
@@ -59,6 +75,28 @@ export type Bewertung =
 
 /** So viele Versuche mit Serverfehler (5xx), dann „Fehler“. */
 export const MAX_SERVER_VERSUCHE = 3;
+/** Ab so vielen Tagen steht dabei „noch nicht gesendet: senden oder verwerfen“. */
+export const WARTE_ALT_TAGE = 14;
+/** Nach so vielen Tagen wird ein Eintrag automatisch verworfen (mit Anzeige). */
+export const WARTE_VERWERFEN_TAGE = 30;
+const TAG_MS = 864e5;
+const tagDe = (ms: number) => new Date(ms).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Berlin' });
+
+/** Alter eines Eintrags in ganzen Tagen. */
+export const alterTage = (e: Pick<WarteEintrag, 'angelegt'>, jetzt: number = Date.now()): number => Math.floor((jetzt - e.angelegt) / TAG_MS);
+/** Ist der Eintrag alt genug für die Warnung (≥ 14 Tage)? */
+export const istAlt = (e: Pick<WarteEintrag, 'angelegt'>, jetzt: number = Date.now()): boolean => alterTage(e, jetzt) >= WARTE_ALT_TAGE;
+/** „Erfassung vom 18.09. noch nicht gesendet: senden oder verwerfen“ — nur ab 14 Tagen, sonst null. Nennt, wann sie von selbst verschwindet. */
+export function altHinweis(e: Pick<WarteEintrag, 'angelegt'>, jetzt: number = Date.now()): string | null {
+  if (!istAlt(e, jetzt)) return null;
+  const rest = Math.max(0, WARTE_VERWERFEN_TAGE - alterTage(e, jetzt));
+  return `Erfassung vom ${tagDe(e.angelegt)} noch nicht gesendet: senden oder verwerfen — nach ${WARTE_VERWERFEN_TAGE} Tagen wird sie vom Gerät gelöscht${rest ? ` (in ${rest} ${rest === 1 ? 'Tag' : 'Tagen'})` : ''}.`;
+}
+/** Was nach 30 Tagen automatisch verworfen wurde — für die Anzeige („Erfassung von X vom … wurde nach 30 Tagen vom Gerät gelöscht“). */
+export interface VerworfenAlt { id: string; am: number; name: string; schritt: string; eventTitel: string }
+/** localStorage-Schlüssel der Anzeige „nach 30 Tagen verworfen“ (Präfix `make-os-netzwerken-` → das Abmelden räumt ihn mit weg). */
+export const VERWORFEN_KEY = 'make-os-netzwerken-verworfen';
+export const verworfenText = (v: VerworfenAlt): string => `Die Erfassung von ${v.name} (${v.eventTitel}) vom ${tagDe(v.am)} wurde nach ${WARTE_VERWERFEN_TAGE} Tagen ohne Senden vom Gerät gelöscht.`;
 
 export const WARTET_TEXT = 'Wird gesendet, sobald Netz da ist.';
 export const NEU_LADEN_WARTE = 'MAKE OS wurde aktualisiert — bitte die Seite neu laden. Die Erfassung bleibt auf dem Gerät.';
@@ -123,15 +161,70 @@ export function ausfallsicher(primaer: WarteSpeicher | null, rueckfall: WarteSpe
   };
 }
 
-/** IndexedDB — `null`, wenn der Browser keine hat (privates Fenster in alten Versionen): dann bleibt es im Arbeitsspeicher. */
+// ── Verschlüsselung (AES-GCM, nicht exportierbarer Schlüssel) ──────────────
+
+const TE = () => new TextEncoder();
+/** Körper → verschlüsselt. Die Kennung der Erfassung ist zusätzlich authentifiziert (AAD): ein Chiffretext lässt sich nicht an einen anderen Eintrag hängen. */
+export async function koerperVerschluesseln(key: CryptoKey, id: string, koerper: Record<string, unknown>, subtle: SubtleCrypto = globalThis.crypto.subtle): Promise<Verschluesselt> {
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+  const daten = await subtle.encrypt({ name: 'AES-GCM', iv, additionalData: TE().encode(id) }, key, TE().encode(JSON.stringify(koerper)));
+  return { v: 1, iv, daten };
+}
+/** Verschlüsselt → Körper. Wirft, wenn der Schlüssel nicht passt oder etwas verändert wurde. */
+export async function koerperEntschluesseln(key: CryptoKey, id: string, v: Verschluesselt, subtle: SubtleCrypto = globalThis.crypto.subtle): Promise<Record<string, unknown>> {
+  const klar = await subtle.decrypt({ name: 'AES-GCM', iv: v.iv as BufferSource, additionalData: TE().encode(id) }, key, v.daten);
+  const k = JSON.parse(new TextDecoder().decode(klar)) as unknown;
+  if (!k || typeof k !== 'object' || Array.isArray(k)) throw new Error('Körper ungültig');
+  return k as Record<string, unknown>;
+}
+
+/**
+ * Hüllt einen Speicher ein: `setze` legt den Körper nur noch verschlüsselt ab (der Klartext-Körper wird durch `{}` ersetzt), `alle` gibt ihn
+ * entschlüsselt zurück. Alte Einträge ohne Hülle (vor dem 03.10.) bleiben lesbar und werden beim nächsten Schreiben verschlüsselt. Ist der
+ * Schlüssel nicht mehr da (Browserdaten gelöscht), kommt der Eintrag als `unlesbar` mit Klartext-Hinweis zurück — verwerfen geht, senden nicht.
+ * `key()` liefert den Schlüssel (wirft ohne WebCrypto — dann scheitert `setze`, und `ausfallsicher` nimmt den Arbeitsspeicher).
+ */
+export function verschluesselterSpeicher(inner: WarteSpeicher, key: () => Promise<CryptoKey>): WarteSpeicher {
+  return {
+    imArbeitsspeicher: inner.imArbeitsspeicher?.bind(inner),
+    alle: async () => {
+      const roh = await inner.alle();
+      let k: CryptoKey | null = null;
+      return Promise.all(roh.map(async e => {
+        if (!e.verschluesselt) return e;
+        try {
+          k ??= await key();
+          const { verschluesselt: _h, ...rest } = e;
+          return { ...rest, koerper: await koerperEntschluesseln(k, e.id, e.verschluesselt) } as WarteEintrag;
+        } catch {
+          const { verschluesselt: _h, ...rest } = e;
+          return { ...rest, koerper: {}, unlesbar: true, status: 'fehler' as const, hinweis: 'Auf diesem Gerät nicht mehr lesbar (der Schlüssel fehlt, etwa nach dem Löschen der Browserdaten) — bitte verwerfen und neu erfassen.' };
+        }
+      }));
+    },
+    setze: async e => {
+      if (e.unlesbar) { await inner.setze(e); return; } // nur Hinweis/Status — nichts zu verschlüsseln
+      const k = await key();
+      const { koerper, ...rest } = e;
+      await inner.setze({ ...rest, koerper: {}, verschluesselt: await koerperVerschluesseln(k, e.id, koerper) });
+    },
+    entferne: id => inner.entferne(id),
+  };
+}
+
+/** IndexedDB — `null`, wenn der Browser keine hat (privates Fenster in alten Versionen): dann bleibt es im Arbeitsspeicher. Der Körper liegt dort nur verschlüsselt. */
 export function indexedDbSpeicher(name = 'make-os-netzwerken'): WarteSpeicher | null {
   if (typeof indexedDB === 'undefined') return null;
   const oeffnen = () => new Promise<IDBDatabase>((ok, nein) => {
     let fertig = false;
     // Safari am iPhone antwortet manchmal nie: nach 5 Sekunden gilt der Speicher als ausgefallen (Rückfall auf den Arbeitsspeicher).
     const uhr = setTimeout(() => { fertig = true; nein(new Error('IndexedDB antwortet nicht')); }, 5000);
-    const r = indexedDB.open(name, 1);
-    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('warteschlange')) r.result.createObjectStore('warteschlange', { keyPath: 'id' }); };
+    // Version 2 (03.10.): dazu der Speicher `schluessel` für den nicht exportierbaren AES-Schlüssel.
+    const r = indexedDB.open(name, 2);
+    r.onupgradeneeded = () => {
+      if (!r.result.objectStoreNames.contains('warteschlange')) r.result.createObjectStore('warteschlange', { keyPath: 'id' });
+      if (!r.result.objectStoreNames.contains('schluessel')) r.result.createObjectStore('schluessel', { keyPath: 'id' });
+    };
     r.onsuccess = () => { clearTimeout(uhr); if (fertig) r.result.close(); else { fertig = true; ok(r.result); } };
     r.onerror = () => { clearTimeout(uhr); nein(r.error ?? new Error('IndexedDB nicht verfügbar')); };
     r.onblocked = () => { clearTimeout(uhr); nein(new Error('IndexedDB blockiert')); };
@@ -148,11 +241,41 @@ export function indexedDbSpeicher(name = 'make-os-netzwerken'): WarteSpeicher | 
       });
     } finally { db.close(); }
   };
-  return {
+  const roh: WarteSpeicher = {
     alle: () => lauf<WarteEintrag[]>('readonly', s => s.getAll() as IDBRequest<WarteEintrag[]>),
     setze: async e => { await lauf('readwrite', s => s.put(e)); },
     entferne: async id => { await lauf('readwrite', s => s.delete(id)); },
   };
+  // Der Schlüssel: einmal erzeugt (nicht exportierbar, `extractable: false`), in IndexedDB abgelegt, danach nur benutzt. Zwei Tabs: wer zuerst
+  // schreibt, gewinnt (die Prüfung steckt in derselben Transaktion) — beide benutzen danach denselben.
+  let schluessel: Promise<CryptoKey> | null = null;
+  const holeSchluessel = (): Promise<CryptoKey> => {
+    if (schluessel) return schluessel;
+    const p = (async () => {
+      const subtle = globalThis.crypto?.subtle;
+      if (!subtle) throw new Error('WebCrypto nicht verfügbar (kein sicherer Kontext)');
+      const db = await oeffnen();
+      try {
+        const gelesen = await new Promise<CryptoKey | undefined>((ok, nein) => {
+          const t = db.transaction('schluessel', 'readonly'); const r = t.objectStore('schluessel').get('warteschlange');
+          t.oncomplete = () => ok((r.result as { key?: CryptoKey } | undefined)?.key); t.onerror = () => nein(t.error ?? new Error('IndexedDB-Fehler')); t.onabort = () => nein(t.error ?? new Error('IndexedDB abgebrochen'));
+        });
+        if (gelesen) return gelesen;
+        const neu = await subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        return await new Promise<CryptoKey>((ok, nein) => {
+          const t = db.transaction('schluessel', 'readwrite'); const st = t.objectStore('schluessel');
+          let gewinner = neu;
+          const g = st.get('warteschlange');
+          g.onsuccess = () => { const da = (g.result as { key?: CryptoKey } | undefined)?.key; if (da) gewinner = da; else st.put({ id: 'warteschlange', key: neu }); };
+          t.oncomplete = () => ok(gewinner); t.onerror = () => nein(t.error ?? new Error('IndexedDB-Fehler')); t.onabort = () => nein(t.error ?? new Error('IndexedDB abgebrochen'));
+        });
+      } finally { db.close(); }
+    })();
+    schluessel = p;
+    p.catch(() => { if (schluessel === p) schluessel = null; }); // beim nächsten Mal neu versuchen
+    return p;
+  };
+  return verschluesselterSpeicher(roh, holeSchluessel);
 }
 
 /** Wie viele Erfassungen warten für diese Person? (Zähler-Abzeichen, Abmelden.) Ohne Person im Eintrag zählt er für jede. */
@@ -182,6 +305,8 @@ export class Warteschlange {
   gesendetZahl = 0;
   /** Der Server sagte „MAKE OS wurde aktualisiert“ — die Seite soll neu geladen werden. */
   neuLadenNoetig = false;
+  /** Was nach 30 Tagen automatisch verworfen wurde (seit dem Laden) — die Anzeige nennt es, damit nichts still verschwindet. */
+  readonly verworfenAlt: VerworfenAlt[] = [];
   constructor(private speicher: WarteSpeicher, private sender: Sender) {}
 
   /** Meldet jede Änderung am Bestand (abgelegt, gesendet, Fehler, verworfen) — für Zähler-Abzeichen und Anzeige. Gibt die Abmeldung zurück. */
@@ -248,6 +373,22 @@ export class Warteschlange {
     return n;
   }
   async verwerfen(id: string): Promise<void> { await this.speicher.entferne(id); this.geaendert(); }
+
+  /**
+   * Einträge, die älter als `WARTE_VERWERFEN_TAGE` (30) sind, verwerfen — ob wartend oder Fehler. Gibt sie zurück und merkt sie in `verworfenAlt`
+   * (die Oberfläche zeigt „… wurde nach 30 Tagen vom Gerät gelöscht“). Aufrufer: der Sender im /os-Rahmen und die Netzwerken-Seite beim Öffnen — nie
+   * `senden()` selbst, damit Tests mit Fantasie-Zeiten unberührt bleiben.
+   */
+  async altVerwerfen(jetzt: number = Date.now()): Promise<VerworfenAlt[]> {
+    const alt = (await this.speicher.alle()).filter(e => alterTage(e, jetzt) >= WARTE_VERWERFEN_TAGE);
+    const raus: VerworfenAlt[] = [];
+    for (const e of alt) {
+      await this.speicher.entferne(e.id);
+      raus.push({ id: e.id, am: e.angelegt, name: e.anzeige.name, schritt: e.anzeige.schritt, eventTitel: e.anzeige.eventTitel });
+    }
+    if (raus.length) { this.verworfenAlt.push(...raus); this.geaendert(); }
+    return raus;
+  }
 
   /**
    * Alles Wartende nacheinander senden, ältestes zuerst. Beim ersten Netzfehler Schluss (das Netz fehlt für alle).

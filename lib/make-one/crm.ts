@@ -282,6 +282,16 @@ export interface Kontakt {
   /** Woher die Daten stammen (Art. 14 DSGVO) und worauf die Verarbeitung beruht (Art. 6). */
   herkunft?: Herkunft;
   rechtsgrundlage?: Rechtsgrundlage;
+  /**
+   * Netzwerken (03.10., Paket „netz-recht“) — alle drei NUR vom Server gestempelt (`datenschutzStempeln`), alle optional:
+   *  · `rechtsgrundlageNotiz` — Verweis auf die dokumentierte Interessenabwägung (z. B. „LIA-Netzwerken v1“, DATENSCHUTZ_NETZWERKEN.md)
+   *  · `kennengelerntFuer` — auf einem Event „für einen Kunden“ kennengelernt (Kunden-Firma, Event, Tag): MAKE bleibt eigener
+   *    Verantwortlicher; die Übergabe an den Kunden ist eine Übermittlung (Protokoll am Event, Art. 13/15/19)
+   *  · `datenschutzInformiertAm` — Tag, an dem die Person den Datenschutzhinweis (Art. 13) bekam (Danke-Mail „ist raus“ oder von Hand)
+   */
+  rechtsgrundlageNotiz?: string;
+  kennengelerntFuer?: { firmaId: string; eventId: string; am: string }[];
+  datenschutzInformiertAm?: string;
   /** Daten nicht von der Person selbst (Recherche, Liste, Empfehlung) → Art.-14-Information fällig. */
   fremddaten?: boolean;
   art14InformiertAm?: string;
@@ -314,7 +324,8 @@ export interface Kontakt {
 export const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
   'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden',
   'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung', 'bean', 'geloeschteAktivitaeten', 'stationen',
-  'eingeschraenkt', 'geprueftAm', 'geprueftVon', 'hinweisBeiErhebung', 'loeschfristVerlaengert', 'geburtstag'];
+  'eingeschraenkt', 'geprueftAm', 'geprueftVon', 'hinweisBeiErhebung', 'loeschfristVerlaengert', 'geburtstag',
+  'rechtsgrundlageNotiz', 'kennengelerntFuer', 'datenschutzInformiertAm'];
 
 /** Höchstens so viele Feldnamen in `vonHand` — mehr Stammdaten-Felder gibt es nicht. */
 export const VON_HAND_MAX = 60;
@@ -1023,8 +1034,30 @@ export function kontaktZuGross(e: unknown): string | null {
   if (Array.isArray(o.einwilligungen) && o.einwilligungen.length > EINWILLIGUNGEN_MAX) return `Mehr als ${EINWILLIGUNGEN_MAX} Einwilligungen an einem Kontakt — abgelehnt, nichts gekürzt.`;
   if (Array.isArray(o.stationen) && o.stationen.length > STATIONEN_MAX) return `Mehr als ${STATIONEN_MAX} Stationen an einem Kontakt — abgelehnt, nichts gekürzt.`;
   if (Array.isArray(o.emails) && o.emails.length > EMAILS_MAX) return `Mehr als ${EMAILS_MAX} E-Mail-Adressen an einem Kontakt — abgelehnt, nichts gekürzt.`;
+  if (Array.isArray(o.kennengelerntFuer) && o.kennengelerntFuer.length > KENNENGELERNT_MAX) return `Mehr als ${KENNENGELERNT_MAX} Einträge in „kennengelerntFuer“ an einem Kontakt — abgelehnt, nichts gekürzt.`;
   for (const f of ['typen', 'kategorien', 'labels'] as const) if (Array.isArray(o[f]) && (o[f] as unknown[]).length > MEHRFACH_MAX) return `Mehr als ${MEHRFACH_MAX} Einträge in „${f}“ an einem Kontakt — abgelehnt, nichts gekürzt.`;
   return null;
+}
+
+/** Höchstens so viele „für Kunden kennengelernt“-Einträge an einer Person (darüber lehnt `kontaktZuGross` ab, nie still gekürzt). */
+export const KENNENGELERNT_MAX = 200;
+/** Verweis auf die Interessenabwägung — nur Buchstaben, Ziffern, Leerzeichen und .-_ (Server stempelt, z. B. „LIA-Netzwerken v1“). */
+const RG_NOTIZ = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,59}$/;
+function kennengelerntFuerSaeubern(v: unknown): NonNullable<Kontakt['kennengelerntFuer']> | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const raus: NonNullable<Kontakt['kennengelerntFuer']> = [];
+  const gesehen = new Set<string>();
+  for (const x of v) {
+    if (!x || typeof x !== 'object') continue;
+    const o = x as Record<string, unknown>;
+    const firmaId = String(o.firmaId ?? ''), eventId = String(o.eventId ?? ''), am = String(o.am ?? '');
+    if (!/^f-[a-z0-9-]{2,63}$/.test(firmaId) || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(eventId) || !/^\d{4}-\d{2}-\d{2}$/.test(am)) continue;
+    const s = `${firmaId}|${eventId}`;
+    if (gesehen.has(s)) continue;
+    gesehen.add(s);
+    raus.push({ firmaId, eventId, am });
+  }
+  return raus.length ? raus : undefined;
 }
 
 export function saeubereKontakt(e: unknown): Kontakt | null {
@@ -1108,6 +1141,9 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     ...(loeschfristVerlaengert ? { loeschfristVerlaengert } : {}),
     ...(HERKUNFT.some(h => h.id === o.herkunft) ? { herkunft: o.herkunft as Herkunft } : {}),
     ...(RECHTSGRUNDLAGEN.some(r => r.id === o.rechtsgrundlage) ? { rechtsgrundlage: o.rechtsgrundlage as Rechtsgrundlage } : {}),
+    ...(typeof o.rechtsgrundlageNotiz === 'string' && RG_NOTIZ.test(o.rechtsgrundlageNotiz) ? { rechtsgrundlageNotiz: o.rechtsgrundlageNotiz } : {}),
+    ...(kennengelerntFuerSaeubern(o.kennengelerntFuer) ? { kennengelerntFuer: kennengelerntFuerSaeubern(o.kennengelerntFuer) } : {}),
+    ...(tag(o.datenschutzInformiertAm) ? { datenschutzInformiertAm: tag(o.datenschutzInformiertAm) } : {}),
     ...(o.fremddaten === true ? { fremddaten: true } : {}), ...(tag(o.art14InformiertAm) ? { art14InformiertAm: tag(o.art14InformiertAm) } : {}),
     ...(ns && txt(ns.text, 300) && tag(ns.datum) ? { naechsterSchritt: { text: txt(ns.text, 300)!, datum: tag(ns.datum)! } } : {}),
     ...(txt(o.privatNotiz, 2000) ? { privatNotiz: txt(o.privatNotiz, 2000), ...(/^[a-z0-9-]{1,40}$/.test(String(o.privatNotizVon ?? '')) ? { privatNotizVon: String(o.privatNotizVon) } : {}) } : {}),
@@ -1227,7 +1263,9 @@ export function kontaktVereinen(neu: Kontakt, alt: Kontakt, person?: string): Ko
  */
 const NIE_LEEREN = new Set(['id', 'stufe', 'aktivitaeten', 'importiertAm', 'geaendertAm', 'vonHand', 'geloeschteAktivitaeten', 'stand', 'zahlung', 'stationen', 'emails', 'typen', 'kategorien', 'labels',
   // U2 (28.09.): Einwilligungen sind ein Nachweis (wächst nur), Einschränkung und Fristverlängerung setzt nur /api/crm/datenschutz, geprüft stempelt der Server.
-  'einwilligungen', 'eingeschraenkt', 'loeschfristVerlaengert', 'geprueftAm', 'geprueftVon']);
+  'einwilligungen', 'eingeschraenkt', 'loeschfristVerlaengert', 'geprueftAm', 'geprueftVon',
+  // Netzwerken (03.10.): Server-Felder (Interessenabwägung, „für Kunden kennengelernt“, Datenschutzhinweis erteilt).
+  'rechtsgrundlageNotiz', 'kennengelerntFuer', 'datenschutzInformiertAm']);
 
 /**
  * Einzelne Felder auf den gespeicherten Kontakt legen (PATCH /api/state/kontakte, op `teil`).

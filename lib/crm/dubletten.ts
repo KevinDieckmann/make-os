@@ -61,7 +61,9 @@ export function dubletten(kontakte: Kontakt[]): [Kontakt, Kontakt][] {
 const EIGENS: readonly string[] = ['id', 'aktivitaeten', 'geloeschteAktivitaeten', 'einwilligungen', 'werbesperre', 'stufe', 'importiertAm', 'geaendertAm', 'stand',
   'privatNotiz', 'privatNotizVon', 'netzwerk', 'vonHand', 'lead', 'zahlung', 'stationen', 'emails', 'email', 'firmaId', 'position', 'firma', 'typ', 'typen', 'kategorie', 'kategorien', 'labels',
   // U2 (28.09.): Datenschutz-Felder mit eigenen Regeln (unten).
-  'eingeschraenkt', 'geprueftAm', 'geprueftVon', 'hinweisBeiErhebung', 'loeschfristVerlaengert'];
+  'eingeschraenkt', 'geprueftAm', 'geprueftVon', 'hinweisBeiErhebung', 'loeschfristVerlaengert',
+  // Netzwerken (03.10.): Server-Felder mit eigener Regel (unten).
+  'rechtsgrundlageNotiz', 'kennengelerntFuer', 'datenschutzInformiertAm'];
 
 const leer = (v: unknown) => v === undefined || v === null || v === '';
 
@@ -200,6 +202,14 @@ export function zusammenfuehren(a: Kontakt, b: Kontakt, von: string, jetzt: stri
   // Hinweis bei Erhebung: erteilt ist erteilt — der frühere Vermerk.
   const hinweis = [a.hinweisBeiErhebung, b.hinweisBeiErhebung].filter((x): x is NonNullable<typeof x> => !!x).sort((x, y) => x.am.localeCompare(y.am))[0];
   if (hinweis) out.hinweisBeiErhebung = hinweis; else delete out.hinweisBeiErhebung;
+  // Netzwerken (03.10.): „für Kunden kennengelernt“ geht nie verloren (Übermittlung bleibt nachvollziehbar), Datenschutzhinweis: der frühere
+  // Tag (informiert ist informiert), Verweis auf die Interessenabwägung: der der behaltenen Person, sonst der andere.
+  const kf = [...(a.kennengelerntFuer ?? []), ...(b.kennengelerntFuer ?? [])].filter((x, i, l) => l.findIndex(y => y.firmaId === x.firmaId && y.eventId === x.eventId) === i);
+  if (kf.length) out.kennengelerntFuer = kf; else delete out.kennengelerntFuer;
+  const info = [a.datenschutzInformiertAm, b.datenschutzInformiertAm].filter((x): x is string => !!x).sort()[0];
+  if (info) out.datenschutzInformiertAm = info; else delete out.datenschutzInformiertAm;
+  const rn = a.rechtsgrundlageNotiz ?? b.rechtsgrundlageNotiz;
+  if (rn) out.rechtsgrundlageNotiz = rn; else delete out.rechtsgrundlageNotiz;
   // Fristverlängerung: die längere gilt.
   const frist = [a.loeschfristVerlaengert, b.loeschfristVerlaengert].filter((x): x is NonNullable<typeof x> => !!x).sort((x, y) => y.bis.localeCompare(x.bis))[0];
   if (frist) out.loeschfristVerlaengert = frist; else delete out.loeschfristVerlaengert;

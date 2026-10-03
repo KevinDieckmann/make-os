@@ -32,3 +32,22 @@ export function ausgelesenesUebernehmen(eingabe: KontaktFelder, erkannt: Partial
   }
   return raus;
 }
+
+// ─── KI-Transkript der Sprachnotiz (vorbereitet, abgeschaltet; 03.10., netz-recht) ──
+// Die Sprachnotiz ist heute nur Audio (verschlüsselt am Kontakt, 90 Tage). Ein Transkript würde die Stimme eines Menschen an einen
+// KI-Anbieter schicken — das geht erst mit Auftragsverarbeitungsvertrag und Standardvertragsklauseln/DPF des Anbieters (Art. 28, 44 ff. DSGVO).
+// Deshalb ein SERVER-Schalter, Standard AUS: `TRANSKRIPTION_AN=1` in der Umgebung des Servers (nie `NEXT_PUBLIC_`, nie im Browser). Läuft
+// das Transkript einmal, ERSETZT es das Audio (Text als Notiz am Kontakt, die Audio-Datei fällt weg) — so liegt die Stimme nie länger als nötig.
+// Nichts schaltet das ein: dieser Haken liefert heute immer `null`.
+
+/** Server-Schalter: nur mit gesetzter Umgebungsvariable `TRANSKRIPTION_AN=1` — sonst aus. */
+export const transkriptionAn = (): boolean => process.env.TRANSKRIPTION_AN === '1';
+/** Regel für später: ein erfolgreiches Transkript ersetzt das Audio. */
+export const TRANSKRIPT_ERSETZT_AUDIO = true;
+
+/** Sprachnotiz → Text oder `null` (abgeschaltet, nicht erkannt). Heute: nie ein Aufruf nach außen. */
+export async function sprachnotizTranskribieren(_bytes: Uint8Array, _typ: string): Promise<string | null> {
+  if (!transkriptionAn()) return null;
+  // Hier käme der Aufruf des Anbieters — erst nach AVV/SCC. Bis dahin auch bei gesetztem Schalter: nichts senden.
+  return null;
+}

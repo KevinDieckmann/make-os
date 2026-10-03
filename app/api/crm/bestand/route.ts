@@ -120,5 +120,5 @@ export async function PATCH(req: Request) {
       .catch(e => console.warn(`[spiegel] Events nicht nachgezogen: ${e instanceof Error ? `${e.name}: ${e.message.slice(0, 160)}` : 'Fehler'}`));
   }
   // Abgelehnte Stufenwechsel (Regeln, 27.09.) kommen als `fehler` mit — der Stand ist trotzdem der aktuelle.
-  return jsonAntwort(req, { ...(await antwort(b, person)), angewandt: e.angewandt, fehler: e.fehler });
+  return jsonAntwort(req, { ...(await antwort(b, person)), angewandt: e.angewandt, fehler: e.fehler, ...(e.hinweise?.length ? { hinweise: e.hinweise } : {}) });
 }

@@ -9,6 +9,7 @@
 
 import { useEffect } from 'react';
 import { geteilteWarteschlange, wartendFuer, offenFuer, type WarteEintrag } from '@/lib/netzwerken/warteschlange';
+import { verworfenMerken } from './useNetzwerken';
 import { wartezahlSetzen } from '@/lib/netzwerken/zaehler';
 
 /**
@@ -43,6 +44,7 @@ export function NetzwerkenSender() {
     let ich: string | null = null;
     const aktualisieren = async () => {
       try {
+        verworfenMerken(await q.altVerwerfen()); // älter als 30 Tage: automatisch verworfen, die Netzwerken-Seite sagt es
         const l = await q.alle();
         if (!lebt) return;
         if (l.length && !ich) { ich = await ichErmitteln(); q.person = ich; }

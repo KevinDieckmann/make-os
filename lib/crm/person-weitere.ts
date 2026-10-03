@@ -246,6 +246,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'agent-log', muster: /^agent-log$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'client-fehler', muster: /^client-fehler$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'meldungen--*', muster: /^meldungen--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  // Übergabe-Journal (03.10., netz-recht): Kennungen der Person in `kontaktIds` → „[gelöscht]“, der Nachweis der Übergabe bleibt.
+  { name: 'uebergabe-journal--*', muster: /^uebergabe-journal--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Austausch am Meilenstein (30.09.): Nachrichten, Notiz, Link-Titel können Dritte nennen — getilgt, der Raum bleibt.
   { name: 'meilenstein-raum--*', muster: /^meilenstein-raum--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'absichten--*', muster: /^absichten--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: absichtenTilgen },

@@ -73,7 +73,7 @@ export function Loeschfristen({ d, i, laden, zuKontakt }: { d: StammdatenDaten; 
         <div style={{ display: 'grid', gap: 2, marginTop: 6 }}>
           {liste.map(k => (
             <div key={k.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,.04)' }}>
-              <span style={{ fontSize: 12.5, color: C.ink, flex: '1 1 200px' }}>{k.name} <span style={{ color: C.inkLeise }}>· {k.id} · letzte Spur {datum(k.seit)}</span></span>
+              <span style={{ fontSize: 12.5, color: C.ink, flex: '1 1 200px' }}>{k.name} <span style={{ color: C.inkLeise }}>· {k.id} · letzte Spur {datum(k.seit)}{k.netzwerken ? ` · aus Netzwerken, ${fristText('netzwerken-kontakte', lf.wirksam['netzwerken-kontakte'])} ohne Interaktion` : ''}</span></span>
               <Knopf leise onClick={() => zuKontakt(k.id)}>Zur Person</Knopf>
               <Knopf leise onClick={() => void verlaengern(k.id, k.name)}>Frist verlängern mit Grund</Knopf>
             </div>

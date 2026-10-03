@@ -17,7 +17,7 @@ let netz: Mod, events: Mod, bestand: Mod;
 let db: typeof import('@/lib/store/local-db');
 let speicher: typeof import('@/lib/crm/speicher');
 
-const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 1, 2, 3, 4, 5, 6, 7, 8]).toString('base64');
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0x12, 0x34, 0xff, 0xd9]).toString('base64'); // strukturell gültig (der Server säubert Metadaten)
 const kopf = (u: string) => ({ 'content-type': 'application/json', 'x-make-user': u });
 const dienst = (p?: string) => ({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, ...(p ? { 'x-make-person': p } : {}) });
 const post = (url: string, body: unknown, h: Record<string, string>) => new Request(`http://test${url}`, { method: 'POST', headers: h, body: JSON.stringify(body) });
@@ -111,58 +111,152 @@ describe('„Heute bei“ → Erfassen: für wen und Anmeldestand', () => {
   });
 });
 
-describe('An Kunden übergeben (POST /api/crm/events { aktion: kunden-uebergabe })', () => {
+describe('An Kunden übergeben (POST /api/crm/events { aktion: kunden-vorschau | kunden-uebergabe }) — Übermittlung (netz-recht)', () => {
+  const nwAngabe = (id: string, x: Record<string, unknown> = {}) => ({ erfassungId: id, schritt: 'nur-kontakt', zustaendig: 'kevin', erfasstVon: 'kevin', erfasstAm: '2026-10-01T15:00:00.000Z', ...x });
   const vorbereiten = async (fuer?: unknown) => {
     await db.saveJson('kontakte', { kontakte: [
       kontakt('anna', { firma: 'Beispielwerk GmbH', notiz: 'GEHEIM' }),
       kontakt('berta', { eingeschraenkt: { seit: '2026-09-25', grund: 'Antrag', von: 'kevin' } }),
+      kontakt('emil', { firma: 'Altbestand AG' }),
     ] });
     await db.saveJson('crm', { ...(await crm()), events: [
       { id: 'ev-k', titel: 'Messe für den Kunden', format: 'messe', ziel: '', datum: '2026-10-01', status: 'durchgefuehrt', marke: 'Netzwerken', ...(fuer ? { fuer } : {}), geaendert: '2026-09-01' },
     ], teilnahmen: [
-      { id: 't-anna', eventId: 'ev-k', kontaktId: 'c-anna', status: 'da', geaendert: '2026-10-01', netzwerken: { erfassungId: 'e1', schritt: 'nur-kontakt', zustaendig: 'kevin', erfasstVon: 'kevin', erfasstAm: '2026-10-01T15:00:00.000Z', info: 'GESPRÄCHSINHALT' } },
-      { id: 't-berta', eventId: 'ev-k', kontaktId: 'c-berta', status: 'da', geaendert: '2026-10-01', netzwerken: { erfassungId: 'e2', schritt: 'nur-kontakt', zustaendig: 'kevin', erfasstVon: 'kevin', erfasstAm: '2026-10-01T15:05:00.000Z' } },
+      { id: 't-anna', eventId: 'ev-k', kontaktId: 'c-anna', status: 'da', geaendert: '2026-10-01', netzwerken: nwAngabe('e1', { info: 'GESPRÄCHSINHALT', neuAngelegt: true }) },
+      { id: 't-berta', eventId: 'ev-k', kontaktId: 'c-berta', status: 'da', geaendert: '2026-10-01', netzwerken: nwAngabe('e2', { neuAngelegt: true, erfasstAm: '2026-10-01T15:05:00.000Z' }) },
+      { id: 't-emil', eventId: 'ev-k', kontaktId: 'c-emil', status: 'da', geaendert: '2026-10-01', netzwerken: nwAngabe('e3', { erfasstAm: '2026-10-01T15:06:00.000Z' }) },
     ] });
   };
   const kunde = { art: 'kunde', firmaId: 'f-kunde1' };
+  const uebergabe = (h: Record<string, string>, x: Record<string, unknown> = {}) => eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k', hinweisBestaetigt: true, ...x }, h);
 
-  it('liefert die CSV (ohne die eingeschränkte Person, ohne Gesprächsinhalt), zählt das Ausgelassene und protokolliert die Übergabe — jedes Mal', async () => {
+  it('Vorschau: neu angelegt / Bestand / gesperrt, „noch nicht informiert“ — schreibt nichts', async () => {
     await vorbereiten(kunde);
-    const a = await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k' }, kopf('kevin'));
+    const r = await eventsPost({ aktion: 'kunden-vorschau', eventId: 'ev-k' }, kopf('kevin'));
+    expect(r.status).toBe(200);
+    expect(r.d).toMatchObject({ ok: true, kunde: { id: 'f-kunde1', name: 'Kundenwerk GmbH' }, fehlend: 0 });
+    const z = (r.d as unknown as { zeilen: { kontaktId: string; neu: boolean; informiert: boolean; gesperrt: string | null }[] }).zeilen;
+    expect(z.map(x => [x.kontaktId, x.neu, x.informiert, x.gesperrt])).toEqual([['c-anna', true, false, null], ['c-berta', true, false, 'eingeschraenkt'], ['c-emil', false, false, null]]);
+    expect(JSON.stringify(r.d)).not.toContain('GEHEIM');
+    expect(((await crm()).events.find(x => x.id === 'ev-k')!.uebergaben ?? [])).toEqual([]);
+  });
+  it('liefert die CSV (nur die neu angelegte, nicht die gesperrte, nicht die Bestandsperson), zählt das Ausgelassene und protokolliert mit Empfänger, Datei und Kennungen — jedes Mal', async () => {
+    await vorbereiten(kunde);
+    const a = await uebergabe(kopf('kevin'));
     expect(a.status).toBe(200);
-    expect(a.d).toMatchObject({ ok: true, anzahl: 1, ausgelassen: { gesperrt: 1, fehlend: 0 } });
+    expect(a.d).toMatchObject({ ok: true, anzahl: 1, ausgelassen: { gesperrt: 1, fehlend: 0, bestand: 1 } });
     expect(a.d.csv).toContain('anna@example.invalid');
     expect(a.d.csv).not.toContain('berta@example.invalid');
+    expect(a.d.csv).not.toContain('emil@example.invalid');
     expect(a.d.csv).not.toContain('GEHEIM');
     expect(a.d.csv).not.toContain('GESPRÄCHSINHALT');
     expect(a.r.headers.get('cache-control')).toBe('no-store');
-    await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k' }, kopf('malin'));
+    await uebergabe(kopf('malin'), { bestandIds: ['c-emil'] });
     const e = (await crm()).events.find(x => x.id === 'ev-k')!;
-    expect(e.uebergaben).toEqual([{ am: expect.any(String), von: 'kevin', anzahl: 1 }, { am: expect.any(String), von: 'malin', anzahl: 1 }]);
-    // Das Protokoll trägt keine Kontakte.
-    expect(JSON.stringify(e.uebergaben)).not.toContain('anna');
+    expect(e.uebergaben).toEqual([
+      { am: expect.any(String), von: 'kevin', anzahl: 1, empfaengerFirmaId: 'f-kunde1', dateiname: 'kontakte-messe-fur-den-kunden-2026-10-01.csv', kontaktIds: ['c-anna'], avvBzwHinweisBestaetigt: true },
+      { am: expect.any(String), von: 'malin', anzahl: 2, empfaengerFirmaId: 'f-kunde1', dateiname: 'kontakte-messe-fur-den-kunden-2026-10-01.csv', kontaktIds: ['c-anna', 'c-emil'], avvBzwHinweisBestaetigt: true },
+    ]);
+    // Das Protokoll trägt Kennungen, nie Namen oder Mails.
+    expect(JSON.stringify(e.uebergaben)).not.toContain('anna@');
+    expect(JSON.stringify(e.uebergaben)).not.toContain('Muster');
+  });
+  it('ohne den Haken „Rolle und Vertrag geklärt“ (hinweisBestaetigt) wird nichts übergeben', async () => {
+    await vorbereiten(kunde);
+    const r = await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k' }, kopf('kevin'));
+    expect(r.status).toBe(400);
+    expect(r.d.fehler).toMatch(/Rolle und Vertrag/);
+    expect(((await crm()).events.find(x => x.id === 'ev-k')!.uebergaben ?? [])).toEqual([]);
+  });
+  it('bestandIds nur als Kennungen von Personen; Unsinn → 400', async () => {
+    await vorbereiten(kunde);
+    expect((await uebergabe(kopf('kevin'), { bestandIds: ['kein-kontakt'] })).status).toBe(400);
+    expect((await uebergabe(kopf('kevin'), { bestandIds: 'c-emil' as unknown as string[] })).status).toBe(200); // kein Array = keine Haken
   });
   it('nur bei einem besuchten Event für einen Kunden — für MAKE selbst und bei unseren Abenden 400', async () => {
     await vorbereiten();
-    expect((await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k' }, kopf('kevin'))).status).toBe(400);
-    expect((await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-eigen-1' }, kopf('kevin'))).status).toBe(404); // das Event steht in diesem Test nicht mehr im Bestand
+    expect((await uebergabe(kopf('kevin'))).status).toBe(400);
+    expect((await eventsPost({ aktion: 'kunden-vorschau', eventId: 'ev-k' }, kopf('kevin'))).status).toBe(400);
+    expect((await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-eigen-1', hinweisBestaetigt: true }, kopf('kevin'))).status).toBe(404); // das Event steht in diesem Test nicht mehr im Bestand
     await db.saveJson('crm', { ...(await crm()), events: [{ id: 'ev-m', titel: 'Abend', format: 'stammtisch', ziel: 'x', datum: '2026-10-01', status: 'durchgefuehrt', fuer: kunde, geaendert: '2026-09-01' }] });
-    expect((await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-m' }, kopf('kevin'))).status).toBe(400);
+    expect((await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-m', hinweisBestaetigt: true }, kopf('kevin'))).status).toBe(400);
   });
-  it('Personendaten gehen nie über den Dienstweg und nie an fremde Haushalte', async () => {
+  it('Personendaten gehen nie über den Dienstweg und nie an fremde Haushalte — auch die Vorschau nicht', async () => {
     await vorbereiten(kunde);
-    expect((await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k' }, dienst('kevin'))).status).toBe(403);
-    expect((await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k' }, dienst())).status).toBe(403);
-    expect((await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k' }, kopf('fremd'))).status).toBe(403);
-    expect((await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k' }, { 'content-type': 'application/json' })).status).toBe(403);
+    for (const aktion of ['kunden-uebergabe', 'kunden-vorschau']) {
+      expect((await eventsPost({ aktion, eventId: 'ev-k', hinweisBestaetigt: true }, dienst('kevin'))).status).toBe(403);
+      expect((await eventsPost({ aktion, eventId: 'ev-k', hinweisBestaetigt: true }, dienst())).status).toBe(403);
+      expect((await eventsPost({ aktion, eventId: 'ev-k', hinweisBestaetigt: true }, kopf('fremd'))).status).toBe(403);
+      expect((await eventsPost({ aktion, eventId: 'ev-k', hinweisBestaetigt: true }, { 'content-type': 'application/json' })).status).toBe(403);
+    }
     expect(((await crm()).events.find(x => x.id === 'ev-k')!.uebergaben ?? [])).toEqual([]);
   });
   it('ohne exportierbare Kontakte: 400 mit Grund, kein Protokolleintrag', async () => {
     await vorbereiten(kunde);
     await db.saveJson('crm', { ...(await crm()), teilnahmen: (await crm()).teilnahmen.filter(t => t.id === 't-berta') });
-    const r = await eventsPost({ aktion: 'kunden-uebergabe', eventId: 'ev-k' }, kopf('kevin'));
+    const r = await uebergabe(kopf('kevin'));
     expect(r.status).toBe(400);
     expect(r.d.fehler).toContain('1 gesperrte Person');
     expect(((await crm()).events.find(x => x.id === 'ev-k')!.uebergaben ?? [])).toEqual([]);
+  });
+  it('der Browser kann das Protokoll über den generischen Weg weder setzen noch fälschen noch löschen (Alt-Stand gilt)', async () => {
+    await vorbereiten(kunde);
+    await uebergabe(kopf('kevin'));
+    const vorher = (await crm()).events.find(x => x.id === 'ev-k')!.uebergaben;
+    expect(vorher).toHaveLength(1);
+    const patch = (ops: unknown[]) => bestand.PATCH!(new Request('http://test/api/crm/bestand', { method: 'PATCH', headers: kopf('kevin'), body: JSON.stringify({ ops }) }));
+    // teil: gefälschtes Protokoll
+    expect((await patch([{ liste: 'events', op: 'teil', id: 'ev-k', felder: { uebergaben: [{ am: '2020-01-01', von: 'kevin', anzahl: 999 }], titel: 'Messe neu' } }])).status).toBe(200);
+    const e = (await crm()).events.find(x => x.id === 'ev-k')!;
+    expect(e.titel).toBe('Messe neu');
+    expect(e.uebergaben).toEqual(vorher);
+    // Neues Event: ein vom Browser mitgeschicktes Protokoll fällt weg.
+    expect((await patch([{ liste: 'events', op: 'upsert', eintrag: { id: 'ev-neu2', titel: 'Neu', format: 'messe', ziel: 'x', datum: '2026-11-01', status: 'geplant', marke: 'Netzwerken', uebergaben: [{ am: '2026-10-01', von: 'kevin', anzahl: 5 }] } }])).status).toBe(200);
+    expect((await crm()).events.find(x => x.id === 'ev-neu2')!.uebergaben).toBeUndefined();
+  });
+});
+
+describe('Event löschen mit Übergaben (POST /api/crm/events { aktion: loeschen }) — der Nachweis bleibt (Art. 15/19)', () => {
+  const vorher = async () => {
+    await db.saveJson('kontakte', { kontakte: [kontakt('anna', { firma: 'Beispielwerk GmbH' })] });
+    await db.saveJson('crm', { ...(await crm()), events: [
+      { id: 'ev-k', titel: 'Messe für den Kunden', format: 'messe', ziel: '', datum: '2026-10-01', status: 'durchgefuehrt', marke: 'Netzwerken', fuer: { art: 'kunde', firmaId: 'f-kunde1' }, geaendert: '2026-09-01',
+        uebergaben: [{ am: '2026-10-02T08:00:00.000Z', von: 'kevin', anzahl: 1, empfaengerFirmaId: 'f-kunde1', dateiname: 'kontakte-x.csv', kontaktIds: ['c-anna'], avvBzwHinweisBestaetigt: true }] },
+    ], teilnahmen: [] });
+  };
+  it('ohne ausdrückliche Bestätigung 409 mit Warnung — nichts gelöscht; auch der generische Weg lehnt ab', async () => {
+    await vorher();
+    const r = await eventsPost({ aktion: 'loeschen', eventId: 'ev-k' }, kopf('kevin'));
+    expect(r.status).toBe(409);
+    expect(r.d.fehler).toMatch(/1 Übergabe an Kunden.*Übergabe-Journal/);
+    expect((await crm()).events.some(x => x.id === 'ev-k')).toBe(true);
+    const g = await bestand.PATCH!(new Request('http://test/api/crm/bestand', { method: 'PATCH', headers: kopf('kevin'), body: JSON.stringify({ ops: [{ liste: 'events', op: 'delete', id: 'ev-k' }] }) }));
+    expect(g.status).toBe(409);
+    expect((await crm()).events.some(x => x.id === 'ev-k')).toBe(true);
+  });
+  it('mit Bestätigung: das Event ist weg, das Protokoll steht im Übergabe-Journal (Empfänger, Kennungen) und beantwortet Art. 15/17', async () => {
+    await vorher();
+    const r = await eventsPost({ aktion: 'loeschen', eventId: 'ev-k', uebergabenBestaetigt: true }, kopf('kevin'));
+    expect(r.status).toBe(200);
+    expect((await crm()).events.some(x => x.id === 'ev-k')).toBe(false);
+    const journal = await db.loadJson<{ eintraege: { eventTitel: string; empfaengerName?: string; kontaktIds?: string[]; grund: string }[] }>('uebergabe-journal--test-haus');
+    expect(journal?.eintraege).toEqual([expect.objectContaining({ eventTitel: 'Messe für den Kunden', empfaengerName: 'Kundenwerk GmbH', kontaktIds: ['c-anna'], grund: 'event-geloescht' })]);
+    const { personAufzaehlen } = await import('@/lib/crm/person-bestaende');
+    const a = await personAufzaehlen('c-anna');
+    expect(a.uebergaben).toEqual([expect.objectContaining({ empfaenger: 'Kundenwerk GmbH', event: 'Messe für den Kunden', text: 'übergeben am 02.10.2026 an Kundenwerk GmbH (Messe für den Kunden)' })]);
+    // Art. 17: der Bericht nennt den Empfänger (Art. 19), das Journal verliert die Kennung der Person.
+    const { personEntfernen } = await import('@/lib/crm/person-bestaende');
+    const b = await personEntfernen('c-anna');
+    expect(b.uebergaben).toEqual(['Person wurde am 02.10.2026 an Kundenwerk GmbH übergeben (Messe für den Kunden) — dort informieren (Art. 19)']);
+    expect(JSON.stringify(await db.loadJson('uebergabe-journal--test-haus'))).not.toContain('c-anna');
+  });
+  it('Art. 17 bei Protokoll am Event: Kennung fällt aus kontaktIds, Datum/Anzahl/Empfänger bleiben; der Bericht nennt den Empfänger', async () => {
+    await vorher();
+    const { personEntfernen } = await import('@/lib/crm/person-bestaende');
+    const b = await personEntfernen('c-anna');
+    expect(b.uebergaben).toHaveLength(1);
+    const u = (await crm()).events.find(x => x.id === 'ev-k')!.uebergaben!;
+    expect(u).toEqual([{ am: '2026-10-02T08:00:00.000Z', von: 'kevin', anzahl: 1, empfaengerFirmaId: 'f-kunde1', dateiname: 'kontakte-x.csv', avvBzwHinweisBestaetigt: true }]);
+    expect(JSON.stringify(await crm())).not.toContain('c-anna');
   });
 });

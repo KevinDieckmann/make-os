@@ -3,7 +3,7 @@
 // ─── Netzwerken — „Für wen“ am Handy (03.10.) ────────────────────────────────
 // Ein besuchtes Event läuft für MAKE selbst oder für einen Kunden (Firma der Kartei). Zwei große Chips, bei „Kunde“ eine Suche
 // mit großen Treffern — kein Menü am Rand, alles mit dem Daumen. Gilt für „Neues Event“ in „Heute bei“ und zum Ändern am
-// gewählten Event; die Regeln (Säuberung, Firma vorhanden) prüft der Server. Kontakte für Kunden = Auftragsverarbeitung (AVV).
+// gewählten Event; die Regeln (Säuberung, Firma vorhanden) prüft der Server. Kontakte für Kunden: eigener Verantwortlicher, Übergabe = Übermittlung (netz-recht).
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
@@ -35,7 +35,7 @@ export function FuerAuswahl({ firmen, wert, onWahl }: { firmen: readonly Firma[]
             </button>
           ))}
           {suche.trim().length >= 2 && !treffer.length && <div style={{ fontSize: 14, color: C.inkLeise }}>Keine Firma gefunden — sie muss zuerst in der Kartei stehen.</div>}
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>Kontakte für Kunden verarbeiten wir in dessen Auftrag — dafür ist ein AVV nötig. Herkunft und „keine Werbe-Einwilligung“ bleiben vermerkt.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>Kontakte für Kunden gehören auch uns. Die Person erfährt in der Danke-Mail, dass die Daten an den Kunden gehen. Herkunft und „keine Werbe-Einwilligung“ bleiben vermerkt.</div>
         </>
       )}
     </div>

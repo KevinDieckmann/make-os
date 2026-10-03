@@ -24,7 +24,9 @@ import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import type { Kontakt } from '@/lib/make-one/crm';
-import { ladeCrm } from './speicher';
+import { ladeCrm, aendereCrm } from './speicher';
+import { netzwerkenMedienAufraeumen, infoBereinigen, protokolleBereinigen, netzwerkenKontakteUeberFrist } from './netzwerken-loeschen';
+import { journalAufraeumen } from './uebergabe-journal';
 import { KONFLIKT_SPEICHER, type KonfliktStand } from './import-konflikte';
 import { laufHaushalte, laufName, laeufeAufraeumen, type LaufBestand } from './import-lauf';
 import { HEADS } from '@/lib/heads/prompt';
@@ -84,7 +86,9 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
   const crm = await ladeCrm();
   const ueber = kontakteUeberFrist(kontakte, crm, heute, f.kontakte);
   const netz = netzwerkUeberFrist((await loadJson<{ kontakte?: { letzterKontakt?: string }[] }>('netzwerk'))?.kontakte, heute, f.netzwerk);
-  const aufgabe = await aufgabeAbgleichen(ueber.length, f.kontakte, jetztIso, netz);
+  // Netzwerken (03.10.): Personen aus „Netzwerken“ ohne Interaktion seit 12 Monaten — eigene, kürzere Frist, dieselbe Prüf-Aufgabe (nie löschen).
+  const nwUeber = netzwerkenKontakteUeberFrist(kontakte, crm, heute, f['netzwerken-kontakte'], new Set(ueber.map(x => x.id)));
+  const aufgabe = await aufgabeAbgleichen(ueber.length, f.kontakte, jetztIso, netz, nwUeber.length, f['netzwerken-kontakte']);
 
   // 2 · Import-Konflikte
   await schritt('import-konflikte', async () => {
@@ -292,22 +296,46 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('buchung (Terminbuchungen)', await buchungenLoeschfrist(jetzt, f.buchungen));
   });
 
+  // 15 · Netzwerken (03.10., netz-recht): Kartenfotos (6 Monate) und Sprachnotizen (90 Tage), Gesprächs-Info und Zielpersonen (12 Monate nach dem Event),
+  //      Übergabe-Protokolle (36 Monate). Personen werden hier nie angefasst (die Prüf-Aufgabe oben).
+  await schritt('netzwerken-medien', async () => {
+    const r = await netzwerkenMedienAufraeumen(stichtag('netzwerken-karten', f['netzwerken-karten'], heute), stichtag('netzwerken-sprachnotizen', f['netzwerken-sprachnotizen'], heute));
+    zaehle('netzwerken-kartenfotos', r.karten); zaehle('netzwerken-sprachnotizen', r.sprachnotizen);
+  });
+  await schritt('netzwerken-info', async () => {
+    const grenze = stichtag('netzwerken-info', f['netzwerken-info'], heute);
+    const vorab = infoBereinigen(await ladeCrm(), grenze);
+    if (!vorab.info && !vorab.ziele) return; // nichts zu tun: nicht sperren, nichts schreiben
+    let info = 0, ziele = 0;
+    await aendereCrm(c => { const r = infoBereinigen(c, grenze); info = r.info; ziele = r.ziele; return r.crm; }, SYSTEM);
+    zaehle('netzwerken-info', info); zaehle('netzwerken-zielpersonen', ziele);
+  });
+  await schritt('uebergabe-protokolle', async () => {
+    const grenze = stichtag('uebergabe-protokolle', f['uebergabe-protokolle'], heute);
+    if (protokolleBereinigen(await ladeCrm(), grenze).n) {
+      let n = 0;
+      await aendereCrm(c => { const r = protokolleBereinigen(c, grenze); n = r.n; return r.crm; }, SYSTEM);
+      zaehle('uebergabe-protokolle', n);
+    }
+    zaehle('uebergabe-journal', await journalAufraeumen(heute, f['uebergabe-protokolle']));
+  });
+
   await updateJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER, cur => ({ ...(cur ?? {}), lauf: { tag: heute, am: jetztIso, ueberFrist: ueber.length, bereinigt } }));
   const summe = Object.values(bereinigt).reduce((a, x) => a + x, 0);
   return {
     ok: true, ueberFrist: ueber.length, bereinigt, aufgabe, ...(grabsteine ? { grabsteine } : {}),
-    text: `${ueber.length} ${ueber.length === 1 ? 'Kontakt' : 'Kontakte'} über der Frist${netz ? ` (+ ${netz} im Altbestand Netzwerk)` : ''} (Aufgabe ${aufgabe}) · ${summe} technische Einträge bereinigt${grabsteine && !grabsteine.uebersprungen ? ` · Grabsteine angewendet (${grabsteine.entfernt} erneut entfernt)` : ''}`,
+    text: `${ueber.length} ${ueber.length === 1 ? 'Kontakt' : 'Kontakte'} über der Frist${netz ? ` (+ ${netz} im Altbestand Netzwerk)` : ''}${nwUeber.length ? ` (+ ${nwUeber.length} aus Netzwerken ohne Interaktion)` : ''} (Aufgabe ${aufgabe}) · ${summe} technische Einträge bereinigt${grabsteine && !grabsteine.uebersprungen ? ` · Grabsteine angewendet (${grabsteine.entfernt} erneut entfernt)` : ''}`,
   };
 }
 
 /** Die eine Aufgabe führen: anlegen, Zahl nachziehen oder erledigen. Nie Kennungen oder Namen im Text. */
-async function aufgabeAbgleichen(kartei: number, monate: number, jetztIso: string, netz = 0): Promise<LaufErgebnis['aufgabe']> {
+async function aufgabeAbgleichen(kartei: number, monate: number, jetztIso: string, netz = 0, nw = 0, nwMonate = 12): Promise<LaufErgebnis['aufgabe']> {
   const inhaber = (await ladeKonten()).konten.find(k => k.rolle === 'inhaber')?.speicher;
   let wirkung: LaufErgebnis['aufgabe'] = 'keine';
-  const n = kartei + netz;
+  const n = kartei + netz + nw;
   // Nichts über der Frist und noch keine Aufgaben-Liste: nichts anlegen.
   if (!n && (await loadJson<unknown>('tasks')) === null) return wirkung;
-  const titel = `${kartei} ${kartei === 1 ? 'Kontakt' : 'Kontakte'}${netz ? ` (+ ${netz} im Altbestand Netzwerk)` : ''} über der Löschfrist — prüfen: löschen oder begründen`;
+  const titel = `${kartei} ${kartei === 1 ? 'Kontakt' : 'Kontakte'}${netz ? ` (+ ${netz} im Altbestand Netzwerk)` : ''}${nw ? ` (+ ${nw} aus Netzwerken ohne Interaktion seit ${nwMonate} Monaten)` : ''} über der Löschfrist — prüfen: löschen oder begründen`;
   const beschreibung = `Seit ${monate} Monaten ohne Beziehung und ohne Aktivität (Art. 5 Abs. 1 lit. e DSGVO). Gelöscht wird nie automatisch: je Person löschen (Art. 17) oder „Frist verlängern mit Grund“ — Liste unter ${WEG.stammdaten('datenschutz')}. Hinweis, keine Rechtsberatung.`;
   // Über den Schreibweg (29.09., Paket T1 #12): `completedAt`, Verlauf „durch System“, Protokoll — in EINER Sperre.
   await systemAufgabenAendern(stand => {

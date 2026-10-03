@@ -4,12 +4,13 @@
 // Kevin: „Dann können auch die Events sauber vernetzt werden, auch wenn wir für Kunden unterwegs sind.“ Ein besuchtes Event
 // trägt „für wen“: MAKE selbst oder ein Kunde (Firma der Kartei, Mandat optional). Die Kontakte bleiben in UNSERER Kartei und
 // sind dem Kunden über das Event zugeordnet. Hier: Auswertung je Kunde. „An Kunden übergeben“ (CSV) steht in der Event-Akte.
-// Datenschutz: Kontakte für Kunden sind Auftragsverarbeitung (Art. 28 DSGVO) — AVV nötig; sichtbar als Hinweis.
+// Datenschutz: Kontakte für Kunden gehören auch uns (eigener Verantwortlicher); die Weitergabe ist eine Übermittlung an einen Dritten — sichtbar als Hinweis.
 
 import { useMemo } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Raster, Zahl, Chip, LEUCHT } from '../../schlank';
-import { besuchJeKunde, AVV_HINWEIS, erfassteTeilnahmen, type BesuchKontext } from '@/lib/crm/besuche';
+import { besuchJeKunde, erfassteTeilnahmen, type BesuchKontext } from '@/lib/crm/besuche';
+import { UEBERGABE_HINWEIS, ROLLE_HINWEIS } from '@/lib/crm/netzwerken-recht';
 import { anmeldungVon, anmeldungLabel } from '@/lib/crm/besuche-form';
 import { datum, euro } from '../daten';
 import { AvvHinweis, type BesuchProps } from './gemeinsam';
@@ -25,7 +26,7 @@ export function BesuchKunden({ api, crm, onAkte, zuFirma }: Pick<BesuchProps, 'a
 
   return (
     <>
-      <AvvHinweis text={AVV_HINWEIS} />
+      <AvvHinweis text={`${UEBERGABE_HINWEIS} ${ROLLE_HINWEIS}`} />
       {!nurKunden.length && (
         <Karte i={1}><Leer>Noch kein Event für einen Kunden. In der Event-Akte unter „Für wen“ den Kunden wählen — dann steht er hier mit Kontakten, Kosten und Deals, und die Kontakte lassen sich als CSV übergeben.</Leer></Karte>
       )}

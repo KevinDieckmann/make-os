@@ -7,7 +7,7 @@ import { leererBestand } from '../lib/crm/speicher';
 import { eventKennzahlen } from '../lib/crm/traktion';
 import { wochenScoreboard } from '../lib/crm/scoreboard';
 import {
-  besuchWirkung, zielGetroffen, besuchUrteil, besuchUebersicht, besuchJeKunde, besuchKennzahlen, eventsFuerKunde, heuteBeiAngebot, kundenExport, csvFeld, erfassteTeilnahmen,
+  besuchWirkung, zielGetroffen, besuchUrteil, besuchUebersicht, besuchJeKunde, besuchKennzahlen, eventsFuerKunde, heuteBeiAngebot, kundenExport, kundenVorschau, csvFeld, erfassteTeilnahmen,
   EXPORT_SPALTEN, EXPORT_KEINE_EINWILLIGUNG, URTEIL_AB_TAGE, type BesuchKontext,
 } from '../lib/crm/besuche';
 
@@ -224,29 +224,44 @@ describe('„Heute bei“ in Netzwerken bietet die Events aus dem Kalender an', 
   });
 });
 
-describe('„An Kunden übergeben“ — CSV nur mit Feldern, nie gesperrte Personen', () => {
+describe('„An Kunden übergeben“ — Übermittlung: neu angelegte ungefragt, Bestand nur mit Haken, nie gesperrte Personen', () => {
   const e = ev({ titel: 'Mittelstandstag „Süd“', fuer: { art: 'kunde', firmaId: 'f-kunde1' } });
   const kontakte = [
-    k('anna', { firma: 'Beispielwerk GmbH', position: 'Geschäftsführerin', telefon: '+49 30 1', sms: '0171 2', linkedin: 'https://linkedin.example/anna', firmaWebseite: 'https://beispielwerk.example', notiz: 'GEHEIME NOTIZ', privatNotiz: 'PRIVAT', personInfo: 'INFO' }),
+    k('anna', { firma: 'Beispielwerk GmbH', position: 'Geschäftsführerin', telefon: '+49 30 1234567', sms: '0171 2', linkedin: 'https://linkedin.example/anna', firmaWebseite: 'https://beispielwerk.example', notiz: 'GEHEIME NOTIZ', privatNotiz: 'PRIVAT', personInfo: 'INFO', datenschutzInformiertAm: '2026-09-21' }),
     k('berta', { eingeschraenkt: { seit: '2026-09-25', grund: 'Antrag', von: 'kevin' } }),
     k('carla', { werbesperre: { seit: '2026-09-25', grund: 'Widerspruch', von: 'kevin' } } as Partial<Kontakt>),
     k('dora', { nachname: '=HYPERLINK("http://boese.example")', vorname: '+Dora' }),
+    k('emil', { herkunft: 'bekannt', firma: 'Altbestand AG' }),
   ];
   const teilnahmen = [
-    t('anna', e.id, { notiz: 'Gespräch: vertraulich', netzwerken: nw('termin', { info: 'INFO AUS DEM GESPRÄCH', erfasstAm: '2026-09-20T18:00:00.000Z' }) }),
-    t('berta', e.id, { netzwerken: nw('nur-kontakt', { erfasstAm: '2026-09-20T18:05:00.000Z' }) }),
-    t('carla', e.id, { netzwerken: nw('nur-kontakt', { erfasstAm: '2026-09-20T18:06:00.000Z' }) }),
-    t('dora', e.id, { netzwerken: nw('nur-kontakt', { erfasstAm: '2026-09-20T18:07:00.000Z' }) }),
-    t('weg', e.id, { netzwerken: nw('nur-kontakt', { erfasstAm: '2026-09-20T18:08:00.000Z' }) }),
+    t('anna', e.id, { notiz: 'Gespräch: vertraulich', netzwerken: nw('termin', { info: 'INFO AUS DEM GESPRÄCH', erfasstAm: '2026-09-20T18:00:00.000Z', neuAngelegt: true, kartenfoto: true }) }),
+    t('berta', e.id, { netzwerken: nw('nur-kontakt', { erfasstAm: '2026-09-20T18:05:00.000Z', neuAngelegt: true }) }),
+    t('carla', e.id, { netzwerken: nw('nur-kontakt', { erfasstAm: '2026-09-20T18:06:00.000Z', neuAngelegt: true }) }),
+    t('dora', e.id, { netzwerken: nw('nur-kontakt', { erfasstAm: '2026-09-20T22:30:00.000Z', neuAngelegt: true }) }), // 21.09. 00:30 Berlin
+    t('weg', e.id, { netzwerken: nw('nur-kontakt', { erfasstAm: '2026-09-20T18:08:00.000Z', neuAngelegt: true }) }),
+    t('emil', e.id, { netzwerken: nw('followup', { erfasstAm: '2026-09-20T18:09:00.000Z' }) }), // Bestandsperson: vorher bekannt, nur angehängt
     t('fremd', 'ev-andere'),
+    t('vorgemerkt', e.id, { status: 'vorgemerkt', netzwerken: nw('nur-kontakt', { neuAngelegt: true }) }), // nur „da“ zählt
   ];
   const x = kundenExport({ event: e, teilnahmen, kontakte });
 
-  it('Art. 18 und Werbesperre gehen nie mit — und werden gezählt, nicht verschwiegen; Teilnahmen ohne Person in der Kartei ebenfalls', () => {
+  it('Art. 18 und Werbesperre gehen nie mit — gezählt, nicht verschwiegen; Teilnahmen ohne Person in der Kartei und Bestandspersonen ohne Haken ebenfalls', () => {
     expect(x.anzahl).toBe(2);
-    expect(x.ausgelassen).toEqual({ gesperrt: 2, fehlend: 1 });
+    expect(x.ausgelassen).toEqual({ gesperrt: 2, fehlend: 1, bestand: 1 });
     expect(x.csv).not.toContain('berta@example.invalid');
     expect(x.csv).not.toContain('carla@example.invalid');
+    expect(x.csv).not.toContain('emil@example.invalid'); // Bestandsperson ohne Haken
+    expect(x.csv).not.toContain('vorgemerkt'); // nicht „da“
+    expect(x.kontaktIds).toEqual(['c-anna', 'c-dora']);
+  });
+  it('mit ausdrücklichem Haken je Person geht auch eine Bestandsperson mit — und sie trägt eine andere Herkunft', () => {
+    const mit = kundenExport({ event: e, teilnahmen, kontakte, bestandIds: ['c-emil'] });
+    expect(mit.anzahl).toBe(3);
+    expect(mit.ausgelassen.bestand).toBe(0);
+    expect(mit.kontaktIds).toContain('c-emil');
+    expect(mit.csv).toContain('Bereits bekannt (Persönlich bekannt), auf der Veranstaltung wiedergetroffen');
+    // Ein Haken für eine gesperrte Person ändert nichts.
+    expect(kundenExport({ event: e, teilnahmen, kontakte, bestandIds: ['c-berta', 'c-carla'] }).anzahl).toBe(2);
   });
   it('nur Felder: kein Gesprächstext, keine Notiz, keine Kennung, kein Bild und keine Sprachnotiz', () => {
     for (const verboten of ['GEHEIME NOTIZ', 'PRIVAT', 'INFO', 'vertraulich', 'c-anna', 't-anna', 'jpeg', 'foto', 'audio']) expect(x.csv, verboten).not.toContain(verboten);
@@ -254,14 +269,37 @@ describe('„An Kunden übergeben“ — CSV nur mit Feldern, nie gesperrte Pers
     expect(x.csv).toContain('Beispielwerk GmbH');
     expect(x.csv).toContain('Geschäftsführerin');
   });
-  it('Kopfzeile, Herkunft und der Vermerk „keine Werbe-Einwilligung“ stehen in jeder Zeile; Excel-tauglich (BOM, Semikolon, CRLF)', () => {
+  it('Kopfzeile, Herkunft je Zeile AUS DEN DATEN (nicht pauschal), Datenschutzhinweis-Stand und der Vermerk „keine Werbe-Einwilligung“; Excel-tauglich (BOM, Semikolon, CRLF)', () => {
     const zeilen = x.csv.replace(/^﻿/, '').trim().split('\r\n');
     expect(x.csv.startsWith('﻿')).toBe(true);
     expect(zeilen[0].split(';')).toHaveLength(EXPORT_SPALTEN.length);
     expect(zeilen[0]).toBe(EXPORT_SPALTEN.map(s => `"${s}"`).join(';'));
     expect(zeilen).toHaveLength(3);
-    for (const z of zeilen.slice(1)) { expect(z).toContain(EXPORT_KEINE_EINWILLIGUNG); expect(z).toContain('Visitenkarte, persönlich auf der Veranstaltung übergeben'); expect(z).toContain('20.09.2026'); }
+    for (const z of zeilen.slice(1)) { expect(z).toContain(EXPORT_KEINE_EINWILLIGUNG); expect(z).not.toContain('persönlich auf der Veranstaltung übergeben'); }
+    const anna = zeilen.find(z => z.includes('anna@example.invalid'))!;
+    expect(anna).toContain('Persönlich auf der Veranstaltung kennengelernt, Visitenkarte übergeben'); // Kartenfoto an der Teilnahme
+    expect(anna).toContain('"21.09.2026"'); // Datenschutzhinweis erteilt am
+    const dora = zeilen.find(z => z.includes('dora@example.invalid'))!;
+    expect(dora).toContain('"Persönlich auf der Veranstaltung kennengelernt"'); // ohne Foto: keine Visitenkarte behaupten
+    expect(dora).toContain('"nein"'); // noch nicht informiert
     expect(x.dateiname).toBe('kontakte-mittelstandstag-sud-2026-09-20.csv');
+  });
+  it('„Kennengelernt am“ ist der Berliner Tag (nicht UTC): 22:30 UTC am 20.09. = 21.09. in Berlin', () => {
+    const dora = x.csv.split('\r\n').find(z => z.includes('dora@example.invalid'))!;
+    expect(dora).toContain('"21.09.2026"');
+    expect(dora).not.toContain('"20.09.2026";"Mittelstandstag');
+    const anna = x.csv.split('\r\n').find(z => z.includes('anna@example.invalid'))!;
+    expect(anna).toContain('"20.09.2026";"Mittelstandstag „Süd“";"20.09.2026"');
+  });
+  it('Telefon: streng geprüfte Nummern bleiben unverändert (kein Apostroph), Formel-Neutralisierung nur für andere Felder', () => {
+    const anna = x.csv.split('\r\n').find(z => z.includes('anna@example.invalid'))!;
+    expect(anna).toContain('"+49 30 1234567"');
+    expect(anna).not.toContain("'+49 30 1234567");
+    expect(csvFeld('+49 171 1234567', { telefon: true })).toBe('"+49 171 1234567"');
+    expect(csvFeld('+49 171 1234567')).toBe(`"'+49 171 1234567"`);       // in einem anderen Feld: neutralisiert
+    expect(csvFeld('+49 171 12345+67', { telefon: true })).toBe(`"'+49 171 12345+67"`); // nicht streng → neutralisiert
+    expect(csvFeld('=1+1', { telefon: true })).toBe(`"'=1+1"`);
+    expect(csvFeld('+49 (0) 171', { telefon: true })).toBe(`"'+49 (0) 171"`);
   });
   it('Formel-Einschleusung wird neutralisiert (=, +, -, @) und Anführungszeichen werden verdoppelt', () => {
     expect(x.csv).toContain(`"'=HYPERLINK(""http://boese.example"")"`);
@@ -271,5 +309,13 @@ describe('„An Kunden übergeben“ — CSV nur mit Feldern, nie gesperrte Pers
     expect(csvFeld('@SUMME')).toBe(`"'@SUMME"`);
     expect(csvFeld('Zeile\nUmbruch')).toBe('"Zeile Umbruch"');
     expect(csvFeld(undefined)).toBe('""');
+  });
+  it('Vorschau: neu/Bestand, „noch nicht informiert“, gesperrt — ohne Notizen, ohne Kennungen im Text', () => {
+    const v = kundenVorschau({ event: e, teilnahmen, kontakte });
+    expect(v.fehlend).toBe(1);
+    expect(v.zeilen.map(z => [z.kontaktId, z.neu, z.informiert, z.gesperrt])).toEqual([
+      ['c-anna', true, true, null], ['c-berta', true, false, 'eingeschraenkt'], ['c-carla', true, false, 'werbesperre'], ['c-emil', false, false, null], ['c-dora', true, false, null], // nach Zeit der Erfassung
+    ]);
+    expect(JSON.stringify(v)).not.toContain('GEHEIM');
   });
 });

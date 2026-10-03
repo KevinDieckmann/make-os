@@ -58,7 +58,7 @@ describe('Kennzahlen', () => {
   });
 });
 
-import { pflichtangaben, selbstpruefung, verarbeitungenStart } from '../lib/crm/datenschutz';
+import { pflichtangaben, selbstpruefung, verarbeitungenStart, verarbeitungenNachtragen } from '../lib/crm/datenschutz';
 import { befunde } from '../lib/crm/befunde';
 
 describe('Datenschutz als Code', () => {
@@ -74,7 +74,7 @@ describe('Datenschutz als Code', () => {
     ]);
   });
   it('Selbstprüfung aus dem Bestand, Verzeichnis mit Startbestand erfüllt', () => {
-    const crm = { ...leererBestand(), verarbeitungen: verarbeitungenStart(J) };
+    const crm = { ...leererBestand(), verarbeitungen: verarbeitungenNachtragen(verarbeitungenStart(J), J) }; // Startbestand + die Netzwerken-Verarbeitungen (netz-recht)
     const p = selbstpruefung([k('a', { herkunft: 'selbst', rechtsgrundlage: 'vertrag' })], crm, HEUTE, { konten: 2, mitPasswort: 2 });
     expect(p.filter(x => x.status !== 'erfuellt').map(x => x.id)).toEqual([]);
     expect(selbstpruefung([k('b')], leererBestand(), HEUTE, { konten: 1, mitPasswort: 1 }).find(x => x.id === 'rechtsgrundlage')?.status).toBe('offen');

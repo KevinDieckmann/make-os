@@ -15,7 +15,8 @@ import { anstehendAbleiten, pruefeEingabe, ARTEN } from '@/lib/meldungen/regeln'
 import { kanalStatus } from '@/lib/crm/recht';
 
 const ID = '3f2b9c1e-1a2b-4c3d-8e4f-0123456789ab';
-const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]).toString('base64');
+// Ein strukturell gültiges Mini-JPEG (JFIF + Scan + Ende) — der Server säubert Metadaten (netz-recht) und lehnt kaputte Aufbauten ab.
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0x12, 0x34, 0xff, 0xd9]).toString('base64');
 const jetzt = new Date('2026-10-02T09:00:00+02:00');
 const roh = (x: Record<string, unknown> = {}) => ({ erfassungId: ID, erfasstAm: jetzt.toISOString(), eventId: 'ev-test-1', kontakt: { vorname: 'Anna', nachname: 'Beispiel' }, bilder: [], schritt: 'nur-kontakt', zustaendig: 'kevin', ...x });
 const pruefen = (x?: Record<string, unknown>) => erfassungPruefen(roh(x), { jetzt, heute: '2026-10-02' });
@@ -162,13 +163,20 @@ describe('Danke-Mail', () => {
   it('Entwurf Du und Sie, mit Schritt-Satz — und nie Werbung', () => {
     const du = dankeEntwurf({ vorname: 'Anna', nachname: 'Beispiel', anrede: 'Du', eventTitel: 'Stammtisch Beispielstadt', wann: 'gestern', schritt: 'termin', terminAm: '2026-10-05T10:30', absender: 'Kevin' });
     expect(du.betreff).toBe('Danke für das Gespräch bei Stammtisch Beispielstadt');
-    expect(du.text).toBe('Hallo Anna,\n\nschön, dich gestern bei Stammtisch Beispielstadt kennengelernt zu haben.\nDanke für das Gespräch — ich habe es gern geführt.\n\nWie besprochen: Unser Termin ist am Montag, 05.10. um 10:30 Uhr.\n\nBis bald und viele Grüße\nKevin');
+    expect(du.text.startsWith('Hallo Anna,\n\nschön, dich gestern bei Stammtisch Beispielstadt kennengelernt zu haben.\nDanke für das Gespräch — ich habe es gern geführt.\n\nWie besprochen: Unser Termin ist am Montag, 05.10. um 10:30 Uhr.\n\nBis bald und viele Grüße\nKevin\n\n—\nDatenschutz: ')).toBe(true);
+    // Art. 13 (netz-recht): der Hinweis steht am Ende — wer, wozu, Rechtsgrundlage, Werbung nur mit Einwilligung, Rechte und wohin.
+    expect(du.text).toMatch(/Datenschutz: Ich habe mir deine Kontaktdaten von deiner Visitenkarte notiert, um mit dir in Verbindung zu bleiben \(Art\. 6 Abs\. 1 lit\. f DSGVO, Verantwortlich: .+\)\. Werbung sende ich nur mit deiner Einwilligung\. Auskunft, Berichtigung, Löschung, Widerspruch: \S+@\S+ · \S+#kontakte$/);
     const sie = dankeEntwurf({ vorname: 'Anna', nachname: 'Beispiel', anrede: 'Sie', eventTitel: 'Stammtisch Beispielstadt', wann: 'gestern', schritt: 'followup', absender: 'Kevin' });
     expect(sie.text).toContain('Guten Tag Anna Beispiel,');
     expect(sie.text).toContain('schön, Sie gestern bei Stammtisch Beispielstadt kennengelernt zu haben.');
     expect(sie.text).toContain('Ich melde mich in den nächsten Tagen bei Ihnen.');
     expect(sie.text).toContain('Mit freundlichen Grüßen\nKevin');
     for (const e of [du, sie]) expect(e.text).not.toMatch(/Angebot|Newsletter|jetzt buchen|kostenlos|Rabatt/i);
+    expect(sie.text).toContain('Ich habe mir Ihre Kontaktdaten von Ihrer Visitenkarte notiert');
+    expect(sie.text).not.toContain('geben Ihre Kontaktdaten'); // ohne Kunden-Event kein Empfänger
+    // Kunden-Event: zusätzlich der Empfänger der Übermittlung.
+    const kunde = dankeEntwurf({ vorname: 'Anna', nachname: 'Beispiel', anrede: 'Sie', eventTitel: 'X', wann: 'gestern', absender: 'Kevin', kunde: 'Beispielwerk GmbH' });
+    expect(kunde.text).toContain('Wir waren für Beispielwerk GmbH auf der Veranstaltung und geben Ihre Kontaktdaten an Beispielwerk GmbH weiter.');
     expect(dankeEntwurf({ nachname: 'Beispiel', anrede: 'Du', eventTitel: 'X', wann: 'neulich', absender: 'Kevin' }).text).toContain('Hallo Beispiel,');
   });
   it('mailto-Link nur für eine plausible Adresse, Text kodiert', () => {
@@ -199,7 +207,7 @@ describe('Abendbericht', () => {
     const b = berichtAus({ event: ev, teilnahmen: [t('c-2', 'angebot', 'malin'), t('c-1', 'followup', 'kevin', { info: 'Studie' }), t('c-3', 'nur-kontakt', 'kevin')], kontakte, followups: fu, heute: '2026-10-02' });
     expect(b.zeilen.map(z => z.name)).toEqual(['Anna Eins', 'Bert Zwei', 'Carla Drei']);
     expect(b.zeilen[0]).toMatchObject({ schrittText: 'Follow-up', zustaendig: 'kevin', info: 'Studie', offen: ['Danke-Mail ab morgen', 'Follow-up offen'] });
-    expect(b.zeilen[1].offen).toEqual(['keine E-Mail — keine Danke-Mail', 'Angebot nur als Entwurf']);
+    expect(b.zeilen[1].offen).toEqual(['keine E-Mail — Datenschutzhinweis beim ersten Kontakt geben', 'Angebot nur als Entwurf']);
     expect(b.zeilen[2].offen).toEqual(['Verarbeitung eingeschränkt (Art. 18)']);
     expect(b.jePerson).toEqual({ kevin: 2, malin: 1 });
     expect(b.offenGesamt).toBe(5);

@@ -70,6 +70,7 @@ import { melde } from '@/lib/meldungen/melden';
 import { localDay } from '@/lib/zeit';
 import { tagVon, wandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { WEG } from '@/lib/wege';
+import { LIA_NETZWERKEN } from './netzwerken-recht';
 
 // ── Journal ──────────────────────────────────────────────────────────────────
 
@@ -340,7 +341,8 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       };
       const sperre = neuanlageSperre(mitZusatz, sperrEintraege, heute);
       const namen = new Map(firmenJetzt.map(x => [x.id, x.name]));
-      const fertig = serverStempel(bezuegeSynchron(datenschutzStempeln(sperre.kontakt, undefined, ctx.person, jetztIso, heute), undefined, heute, id => namen.get(id)), undefined, heute);
+      // `rechtsgrundlageNotiz` (Verweis auf die Interessenabwägung, DATENSCHUTZ_NETZWERKEN.md) setzt NUR der Server — nach dem Stempeln.
+      const fertig: Kontakt = { ...serverStempel(bezuegeSynchron(datenschutzStempeln(sperre.kontakt, undefined, ctx.person, jetztIso, heute), undefined, heute, id => namen.get(id)), undefined, heute), rechtsgrundlageNotiz: LIA_NETZWERKEN };
       r = { id: eigeneId, neu: true, hinweise: [...(sperre.hinweis ? [sperre.hinweis] : []), ...hinweiseNeu] };
       return { ...f, kontakte: [...f.kontakte, fertig] };
     }, ctx.wer);
@@ -391,6 +393,9 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
     ...(e.info ? { info: e.info } : {}),
     // `terminAm`/`terminId` kommen erst im Schritt „termin“ dazu, wenn der Termin wirklich im Kalender steht.
     ...(e.kontakt.anrede ? { danke: { anrede: e.kontakt.anrede } } : {}),
+    // netz-recht (03.10.): an diesem Event neu angelegt (nur sie gehen ungefragt in den Kunden-Export), Kartenfoto (Herkunftsangabe),
+    // kein persönliches Gespräch (kein Danke-Entwurf, § 7 UWG).
+    ...(neuAngelegt ? { neuAngelegt: true as const } : {}), ...(e.bilder.length ? { kartenfoto: true as const } : {}), ...(e.gesprochen === false ? { keinGespraech: true as const } : {}),
   };
   await schritt('teilnahme', async () => {
     await aendereCrm(b => {
@@ -401,7 +406,9 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
         // Zweite Begegnung beim selben Event: die neuere Angabe gilt, eine schon bestätigte Danke-Mail bleibt vermerkt.
         const danke = t.netzwerken?.danke?.rausAm ? { ...(angabe.danke ?? {}), rausAm: t.netzwerken.danke.rausAm } : angabe.danke;
         // Die ältere Angabe bleibt nachlesbar (`vorher`), ein schon gebuchter Termin geht nicht verloren (N6); eine Begegnung ohne frühere Angabe wird die erste.
-        const neueAngabe = { ...angabe, ...(danke ? { danke } : {}) };
+        // „An diesem Event neu angelegt“ bleibt, wenn es die erste Begegnung war (die zweite hängt an der schon angelegten Person).
+        const neuDa = t.netzwerken?.neuAngelegt || angabe.neuAngelegt;
+        const neueAngabe = { ...angabe, ...(neuDa ? { neuAngelegt: true as const } : {}), ...(danke ? { danke } : {}) };
         const neu = { ...t, status: 'da' as const, ...(t.eingechecktVon ? {} : { eingechecktVon: ctx.person }), ...(t.einladenDurch ? {} : { einladenDurch: e.zustaendig }),
           ...(e.info && !t.notiz ? { notiz: e.info.slice(0, 1500) } : {}), netzwerken: t.netzwerken ? angabeMitVorher(t.netzwerken, neueAngabe) : neueAngabe, geaendert: jetztIso, geaendertVon: ctx.person };
         return { ...b, teilnahmen: b.teilnahmen.map((x, j) => (j === i ? neu : x)) };
@@ -424,6 +431,12 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
       if (e.sprachnotiz && !schon('notiz', 'Sprachnotiz')) k = wendeAktivitaetAn({ ...k }, { art: 'notiz', text: `Sprachnotiz aufgenommen — Abschrift folgt (KI)${e.sprachnotiz.dauerSek ? ` · ${Math.floor(e.sprachnotiz.dauerSek / 60)}:${String(e.sprachnotiz.dauerSek % 60).padStart(2, '0')} min` : ''}`, von: ctx.person, bezug: eventId }, erfasstTag > heute ? heute : erfasstTag, e.erfasstAm, tagPlusLokal);
       // Jede über „Netzwerken“ erfasste Person trägt das Label — auch eine bestehende (Kartei-Filter „Label: Netzwerken“).
       if (!(k.labels ?? []).includes(LABEL_NETZWERKEN)) k = { ...k, labels: [...(k.labels ?? []), LABEL_NETZWERKEN], geaendertAm: heute };
+      // netz-recht (03.10.): auf einem Event „für einen Kunden“ kennengelernt — das gehört zur Person (Übermittlung nachvollziehbar, Art. 13/15/19).
+      // MAKE bleibt eigener Verantwortlicher: das ist eine Markierung, keine Sperre für die eigene Akquise.
+      const kundenFirma = event.fuer?.art === 'kunde' ? event.fuer.firmaId : null;
+      if (kundenFirma && !(k.kennengelerntFuer ?? []).some(x => x.firmaId === kundenFirma && x.eventId === event.id)) {
+        k = { ...k, kennengelerntFuer: [...(k.kennengelerntFuer ?? []), { firmaId: kundenFirma, eventId: event.id, am: erfasstTag > heute ? heute : erfasstTag }], geaendertAm: heute };
+      }
       return { ...f, kontakte: f.kontakte.map((x, j) => (j === i ? k : x)) };
     }, ctx.wer);
   });
@@ -488,7 +501,9 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
         await aendereCrm(b => {
           const id = `fu-${e.erfassungId}`;
           if ((b.followups ?? []).some(x => x.id === id)) return b;
-          const text = `Nachfassen nach „${event.titel}“${e.info ? `: ${e.info.replace(/\s+/g, ' ')}` : ''}`.slice(0, 300);
+          // Ohne Mail (oder ohne Gespräch) gibt es keine Danke-Mail mit dem Datenschutzhinweis (Art. 13) — dann beim ersten Kontakt mündlich nachholen.
+          const hinweisNoetig = !kontakt0.email || e.gesprochen === false;
+          const text = `Nachfassen nach „${event.titel}“${hinweisNoetig ? ' (Datenschutzhinweis geben)' : ''}${e.info ? `: ${e.info.replace(/\s+/g, ' ')}` : ''}`.slice(0, 300);
           const fu = neuesFollowUp({ id, bezug: { art: 'event', id: eventId }, kontaktId, art: 'nachricht', text, faellig: e.followup?.faellig ?? frist, quelle: 'event', zustaendig: e.zustaendig }, kontakt0, ctx.person, jetztIso);
           return { ...b, followups: [...(b.followups ?? []), { ...fu, geaendertVon: ctx.person }] };
         }, ctx.wer);
@@ -676,8 +691,12 @@ export async function terminKonflikt(a: { person: string; start: string; ende: s
 
 /**
  * Die Danke-Mail wurde im Mail-Programm geschickt — die Person bestätigt es mit einem Klick. Vermerkt: `danke.rausAm` an der
- * Teilnahme, `followUpAm` (zählt als nachgefasst, wenn noch nichts da war) und eine Aktivität „Mail“ OHNE Folgen für Stufe
- * und Wiedervorlage (eine Danke-Mail ist keine Akquise-Mail). Nur die Person, die die Karte erfasst hat.
+ * Teilnahme, `followUpAm` (zählt als nachgefasst, wenn noch nichts da war), eine Aktivität „Mail“ OHNE Folgen für Stufe
+ * und Wiedervorlage (eine Danke-Mail ist keine Akquise-Mail) und — netz-recht 03.10. — `datenschutzInformiertAm` an der Person
+ * (der Hinweis nach Art. 13 stand in der Mail). Nur die Person, die die Karte erfasst hat.
+ *
+ * Zwei Schreibvorgänge (CRM, dann Kartei), die nicht in EINER Sperre gehen (Rangfolge crm → kontakte, getrennte Bestände): der zweite ist
+ * idempotent und läuft bei jedem Aufruf mit — bricht es nach dem ersten ab, holt der nächste Klick (`schonDa`) den zweiten Teil nach.
  */
 export async function dankeRausVermerken(a: { eventId: string; kontaktId: string; anrede?: 'Du' | 'Sie'; person: string; wer: Wer; jetzt?: Date }): Promise<{ ok: true; schonDa?: boolean } | { ok: false; status: number; fehler: string }> {
   const jetzt = a.jetzt ?? new Date();
@@ -685,27 +704,53 @@ export async function dankeRausVermerken(a: { eventId: string; kontaktId: string
   let fehler: { status: number; fehler: string } | null = null;
   let schonDa = false;
   let eventTitel = '';
+  let rausAm = heute;
   await aendereCrm(b => {
     const t = b.teilnahmen.find(x => x.eventId === a.eventId && x.kontaktId === a.kontaktId);
     if (!t?.netzwerken) { fehler = { status: 404, fehler: 'Zu dieser Person gibt es keine Erfassung bei diesem Event.' }; return b; }
     if (t.netzwerken.erfasstVon !== a.person) { fehler = { status: 403, fehler: 'Die Danke-Mail schickt, wer die Person kennengelernt hat.' }; return b; }
-    if (t.netzwerken.danke?.rausAm) { schonDa = true; return b; }
     eventTitel = b.events.find(x => x.id === a.eventId)?.titel ?? '';
-    const danke = { ...(a.anrede ?? t.netzwerken.danke?.anrede ? { anrede: (a.anrede ?? t.netzwerken.danke?.anrede) as 'Du' | 'Sie' } : {}), rausAm: heute };
+    if (t.netzwerken.danke?.rausAm) { schonDa = true; rausAm = t.netzwerken.danke.rausAm; return b; }
+    // „Raus“ und „nicht senden“ schließen sich aus: wer sie doch verschickt hat, hebt den Verzicht auf.
+    const { verzichtetAm: _v, ...dankeRest } = t.netzwerken.danke ?? {};
+    const danke = { ...dankeRest, ...(a.anrede ?? dankeRest.anrede ? { anrede: (a.anrede ?? dankeRest.anrede) as 'Du' | 'Sie' } : {}), rausAm: heute };
     return { ...b, teilnahmen: b.teilnahmen.map(x => (x === t ? { ...x, ...(x.followUpAm ? {} : { followUpAm: heute }), netzwerken: { ...t.netzwerken!, danke }, geaendert: jetztIso, geaendertVon: a.person } : x)) };
   }, a.wer);
   if (fehler) return { ok: false, ...(fehler as { status: number; fehler: string }) };
-  if (schonDa) return { ok: true, schonDa: true };
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
     return { ...f, kontakte: f.kontakte.map(k => {
       if (k.id !== a.kontaktId || k.eingeschraenkt) return k;
-      const neu = wendeAktivitaetAn(k, { art: 'mail', text: `Danke-Mail nach „${eventTitel}“ — im Mail-Programm geöffnet und als verschickt bestätigt`, von: a.person, bezug: a.eventId, stufe: k.stufe, wiedervorlage: k.wiedervorlage }, heute, jetztIso, tagPlusLokal);
+      const markiert = k.datenschutzInformiertAm ? k : { ...k, datenschutzInformiertAm: rausAm, geaendertAm: heute };
+      // Die Aktivität nur einmal (Retry nach einem Abbruch legt sie nicht doppelt an).
+      if ((markiert.aktivitaeten ?? []).some(x => x.art === 'mail' && x.bezug === a.eventId && (x.text ?? '').startsWith('Danke-Mail nach'))) return markiert;
+      const neu = wendeAktivitaetAn(markiert, { art: 'mail', text: `Danke-Mail nach „${eventTitel}“ — im Mail-Programm geöffnet und als verschickt bestätigt (mit Datenschutzhinweis)`, von: a.person, bezug: a.eventId, stufe: k.stufe, wiedervorlage: k.wiedervorlage }, heute, jetztIso, tagPlusLokal);
       // Eine Danke-Mail ändert weder die Stufe noch die Wiedervorlage.
       return { ...neu, stufe: k.stufe, wiedervorlage: k.wiedervorlage };
     }) };
   }, a.wer);
-  return { ok: true };
+  return schonDa ? { ok: true, schonDa: true } : { ok: true };
+}
+
+/**
+ * „Nicht senden“ (03.10.): die Danke-Mail wird bewusst nicht geschickt — `danke.verzichtetAm`. Nimmt sie aus Glocke und Heute, zählt
+ * NICHT als nachgefasst (die Kennzahl bleibt ehrlich); der Datenschutzhinweis ist damit nicht erteilt (Bericht: „beim ersten Kontakt geben“).
+ */
+export async function dankeVerzichten(a: { eventId: string; kontaktId: string; person: string; wer: Wer; jetzt?: Date }): Promise<{ ok: true; schonDa?: boolean } | { ok: false; status: number; fehler: string }> {
+  const jetzt = a.jetzt ?? new Date();
+  const heute = localDay(jetzt), jetztIso = jetzt.toISOString();
+  let fehler: { status: number; fehler: string } | null = null;
+  let schonDa = false;
+  await aendereCrm(b => {
+    const t = b.teilnahmen.find(x => x.eventId === a.eventId && x.kontaktId === a.kontaktId);
+    if (!t?.netzwerken) { fehler = { status: 404, fehler: 'Zu dieser Person gibt es keine Erfassung bei diesem Event.' }; return b; }
+    if (t.netzwerken.erfasstVon !== a.person) { fehler = { status: 403, fehler: 'Über die Danke-Mail entscheidet, wer die Person kennengelernt hat.' }; return b; }
+    if (t.netzwerken.danke?.rausAm || t.netzwerken.danke?.verzichtetAm) { schonDa = true; return b; }
+    const danke = { ...(t.netzwerken.danke ?? {}), verzichtetAm: heute };
+    return { ...b, teilnahmen: b.teilnahmen.map(x => (x === t ? { ...x, netzwerken: { ...t.netzwerken!, danke }, geaendert: jetztIso, geaendertVon: a.person } : x)) };
+  }, a.wer);
+  if (fehler) return { ok: false, ...(fehler as { status: number; fehler: string }) };
+  return schonDa ? { ok: true, schonDa: true } : { ok: true };
 }
 
 /** Freie Zeiten der Person für die nächsten Werktage — nur Zeiten (maskiert), höchstens `proTag` je Tag, gleichmäßig verteilt. */

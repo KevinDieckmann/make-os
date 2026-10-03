@@ -51,15 +51,24 @@ describe('vorAbmelden', () => {
     expect((await q.alle())).toHaveLength(1);
   });
 
-  it('Senden klappt nicht (kein Netz): zweite Frage; „Trotzdem abmelden“ räumt nur den Kontext-Merker, die Erfassung bleibt auf dem Gerät', async () => {
+  it('Senden klappt nicht (kein Netz): zweite Frage mit klarer Warnung; „Trotzdem abmelden“ LÖSCHT die Erfassung vom Gerät samt Datenbank (03.10.)', async () => {
     const q = new Warteschlange(ramSpeicher(), netzweg); const s = speicher(); const f = fragen(true, true);
     await q.ablegen(koerper('a'), anzeige, 1);
     expect(await vorAbmelden('kevin', f.ui, q, s.z)).toBe(true);
-    expect(f.gestellt[1]).toMatch(/1 Erfassung ließ sich nicht senden.*Trotzdem abmelden/);
-    expect(s.geloescht).toEqual([]);                      // Datenbank bleibt: es liegt noch etwas darin
-    expect(s.keys.has('make-os-netzwerken-kontext')).toBe(false); // „wer bin ich“ gehört der abgemeldeten Person
-    expect(s.keys.has('make-os-netzwerken-event')).toBe(true);
-    expect(await q.alle()).toHaveLength(1);
+    expect(f.gestellt[1]).toMatch(/1 Erfassung ließ sich nicht senden.*Trotzdem abmelden\? ACHTUNG: Sie wird dabei vom Gerät GELÖSCHT/);
+    expect(await q.alle()).toEqual([]);                   // weg — kein Vorrat von Daten Dritter auf dem Gerät
+    expect(s.geloescht).toEqual([DB_NAME]);               // Datenbank samt Schlüssel
+    expect(s.keys.has('make-os-netzwerken-kontext')).toBe(false);
+    expect(s.keys.has('make-os-netzwerken-event')).toBe(false);
+  });
+
+  it('… die Erfassung einer ANDEREN Person auf dem Gerät bleibt dabei liegen (Datenbank und Schlüssel bleiben für sie)', async () => {
+    const q = new Warteschlange(ramSpeicher(), netzweg); const s = speicher(); const f = fragen(true, true);
+    await q.ablegen(koerper('a'), anzeige, 1); await q.ablegen(koerper('m', 'malin'), anzeige, 2);
+    expect(await vorAbmelden('kevin', f.ui, q, s.z)).toBe(true);
+    expect((await q.alle()).map(e => e.id)).toEqual(['m']);
+    expect(s.geloescht).toEqual([]);
+    expect(s.keys.has('make-os-netzwerken-kontext')).toBe(false);
   });
 
   it('… und „Nein“ auf die zweite Frage: bleibt angemeldet', async () => {

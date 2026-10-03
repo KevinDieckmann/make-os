@@ -50,7 +50,18 @@ const tagVonIso = (iso: string) => tagVon(wandzeit(new Date(iso)));
  * blockierend, Titel ohne vertrauliche Werte (steht schon so in der Schnittstelle).
  */
 export async function telegramHaken(_person: string, _meldung: Meldung): Promise<void> {
-  // TELEGRAM-HAKEN (vorgesehen, aus): await sendeAnPerson(_person, `${_meldung.titel}`) — kommt später.
+  // TELEGRAM-HAKEN (vorgesehen, aus): await sendeAnPerson(_person, telegramText(_meldung)) — kommt später.
+}
+
+/**
+ * Der Text für Telegram (Datenschutz, 03.10., netz-recht): ein Messenger-Dienst bekommt keine Namen von Veranstaltungs-Kontakten. Für die
+ * Arten `netzwerken` („X hat dir <Person> zugeteilt …“, „Termin mit <Person> …“) und `danke` nur der neutrale Satz — Namen, Firmen, Events und
+ * Termin-Einzelheiten stehen dann nur in MAKE OS. Alle anderen Arten: der Titel wie bisher (er trägt nie vertrauliche Werte).
+ */
+export function telegramText(m: Pick<Meldung, 'art' | 'titel'>): string {
+  if (m.art === 'netzwerken') return 'Neue Person zugeteilt — Details in MAKE OS';
+  if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
+  return m.titel;
 }
 
 /** Eine Meldung ablegen. Wirft nie nach außen weiter als bis `melde()`; Grund bei Ablehnung. */

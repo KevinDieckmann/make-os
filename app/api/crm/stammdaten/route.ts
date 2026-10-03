@@ -19,7 +19,8 @@ import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { anzeigename } from '@/lib/make-one/crm';
-import { pflichtangaben, selbstpruefung, verarbeitungenStart, LOESCHREGELN } from '@/lib/crm/datenschutz';
+import { pflichtangaben, selbstpruefung, verarbeitungenStart, verarbeitungenNachtragen, LOESCHREGELN } from '@/lib/crm/datenschutz';
+import { netzwerkenKontakteUeberFrist } from '@/lib/crm/netzwerken-loeschen';
 import { befunde } from '@/lib/crm/befunde';
 import { localDay, tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -50,6 +51,8 @@ export async function GET(req: Request) {
   const lf = (await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {};
   const fristen = fristenWirksam(lf.fristen);
   if (!crm.verarbeitungen.length) crm = await aendereCrm(c => (c.verarbeitungen.length ? c : { ...c, verarbeitungen: verarbeitungenStart(new Date().toISOString()) }));
+  // Netzwerken (03.10.): fehlende Verarbeitungen von Veranstaltungs-Kontakten idempotent nachtragen (Verzeichnis nach Art. 30).
+  if (verarbeitungenNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungenNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
   const konten = (await ladeKonten()).konten;
   const vorschlag = pflichtangaben(kontakte, crm);
   const zaehl = (f: (v: (typeof vorschlag)[number]) => string | undefined) => vorschlag.reduce((a, v) => { const x = f(v); if (x) a[x] = (a[x] ?? 0) + 1; return a; }, {} as Record<string, number>);
@@ -101,7 +104,12 @@ export async function GET(req: Request) {
     },
     loeschregeln: LOESCHREGELN,
     // Alle über der Frist (nie gekürzt) — mit „seit“ = letzte Spur (letzter Kontakt, Aktivität, Import, Prüfung).
-    speicherbegrenzung: kontakteUeberFrist(kontakte, crm, heute, fristen.kontakte).map(x => ({ id: x.id, name: anzeigename(nachId.get(x.id)!), seit: x.seit })),
+    // Dazu (03.10., netz-recht): Personen aus Netzwerken ohne Interaktion seit 12 Monaten (kürzere Frist, `netzwerken: true`) — nie automatisch gelöscht.
+    speicherbegrenzung: (() => {
+      const ueber = kontakteUeberFrist(kontakte, crm, heute, fristen.kontakte);
+      const nw = netzwerkenKontakteUeberFrist(kontakte, crm, heute, fristen['netzwerken-kontakte'], new Set(ueber.map(x => x.id)));
+      return [...ueber.map(x => ({ id: x.id, name: anzeigename(nachId.get(x.id)!), seit: x.seit })), ...nw.map(x => ({ id: x.id, name: anzeigename(nachId.get(x.id)!), seit: x.seit, netzwerken: true }))];
+    })(),
     loeschfristen: { tabelle: LOESCHFRISTEN, wirksam: fristen, gespeichert: lf.fristen ?? {}, lauf: lf.lauf ?? null },
     antraege: crm.antraege, verarbeitungen: crm.verarbeitungen,
     befunde: befunde(kontakte, crm, heute, { loeschMonate: fristen.kontakte }),

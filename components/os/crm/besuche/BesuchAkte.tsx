@@ -11,8 +11,9 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Raster, Zahl, Haken, Zeile, Leer, LEUCHT } from '../../schlank';
-import { ANMELDUNGEN, anmeldungVon, anmeldungPatch, fuerVon, zielSchluessel, linkNormal, LINK_FEHLER } from '@/lib/crm/besuche-form';
-import { besuchWirkung, besuchUrteil, zielGetroffen, AVV_HINWEIS, type BesuchKontext } from '@/lib/crm/besuche';
+import { ANMELDUNGEN, anmeldungVon, anmeldungPatch, fuerVon, zielSchluessel, zielpersonGesperrt, linkNormal, LINK_FEHLER } from '@/lib/crm/besuche-form';
+import { besuchWirkung, besuchUrteil, zielGetroffen, type BesuchKontext } from '@/lib/crm/besuche';
+import { UEBERGABE_HINWEIS, ROLLE_HINWEIS } from '@/lib/crm/netzwerken-recht';
 import { budgetSumme } from '@/lib/crm/eventplanung';
 import { berichtAus, EVENT_ZIEL } from '@/lib/crm/netzwerken';
 import { STUFEN, gesamtwert } from '@/lib/crm/pipeline';
@@ -25,9 +26,10 @@ import { Feld } from '../teile';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { Kalender } from '../events/Kalender';
 import { Liquiplan } from '../events/Budget';
-import { Notizfeld, Leise, eventLoeschen, eventsPost } from '../events/gemeinsam';
+import { Notizfeld, Leise, eventLoeschen } from '../events/gemeinsam';
 import { LinkChips, type LinkChip } from '../../netzwerken/bausteine';
 import { FuerWahl, ZielSuche, AvvHinweis, BFeld, zielName, eventSetzen, zielAenderung, type BesuchProps } from './gemeinsam';
+import { UebergabeDialog } from './Uebergabe';
 
 const URTEIL_FARBE = { lohnt: LEUCHT.gut, laeuft: LEUCHT.achtung, frueh: C.inkDim, ohne: LEUCHT.kritisch } as const;
 
@@ -44,7 +46,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
   const setze = (teil: Partial<Event>) => eventSetzen(api, e, teil);
   const a = anmeldungVon(e);
   const fuer = fuerVon(e);
-  const [uebergibt, setUebergibt] = useState(false);
+  const [uebergabeOffen, setUebergabeOffen] = useState(false);
 
   const deals = crm.stand.chancen.filter(c => w.dealIds.includes(c.id));
   const offeneFu = (crm.stand.followups ?? []).filter(f => f.bezug.art === 'event' && f.bezug.id === e.id && f.status === 'offen').length;
@@ -54,23 +56,6 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
   const zielStand = useMemo(() => zielGetroffen(e, crm.stand.teilnahmen, kontakte), [e, crm.stand.teilnahmen, kontakte]);
   const getroffen = (z: EventZielperson) => zielStand.getroffen.has(zielSchluessel(z));
   const kundenName = fuer.art === 'kunde' ? (firmenMap.get(fuer.firmaId)?.name ?? 'dem Kunden') : null;
-
-  const uebergeben = async () => {
-    if (uebergibt || fuer.art !== 'kunde') return;
-    if (!window.confirm(`Die Kontakte dieses Events an ${kundenName} übergeben?\n\n${AVV_HINWEIS}\n\nExportiert werden nur Felder (Name, Firma, Position, E-Mail, Telefon, LinkedIn, Webseite) — keine Fotos, keine Sprachnotizen, keine Gesprächsnotizen. Liegt der AVV vor?`)) return;
-    setUebergibt(true);
-    const r = await eventsPost(e.id, { aktion: 'kunden-uebergabe' });
-    setUebergibt(false);
-    if (!r.ok || typeof r.csv !== 'string') { api.setFehler(typeof r.fehler === 'string' ? r.fehler : 'Nicht übergeben.'); return; }
-    const url = URL.createObjectURL(new Blob([r.csv], { type: 'text/csv;charset=utf-8' }));
-    const l = document.createElement('a');
-    l.href = url; l.download = String(r.dateiname ?? 'kontakte.csv');
-    document.body.appendChild(l); l.click(); l.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    const aus = r.ausgelassen as { gesperrt?: number; fehlend?: number } | undefined;
-    api.setHinweis(`${r.anzahl} ${r.anzahl === 1 ? 'Kontakt' : 'Kontakte'} exportiert${aus?.gesperrt ? ` · ${aus.gesperrt} gesperrte Person${aus.gesperrt === 1 ? '' : 'en'} (Art. 18 / Werbesperre) bewusst nicht dabei` : ''}. Die Übergabe steht im Protokoll.`);
-    await api.laden();
-  };
 
   const ANMELDE = ANMELDUNGEN.map(x => ({ id: x.id, label: x.label }));
   const hat = (b: boolean, farbe: string) => (b ? farbe : undefined);
@@ -109,7 +94,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
         </BFeld>
         <BFeld label="Liquiplanung"><Liquiplan e={e} kosten={budgetSumme(e)} kompakt /></BFeld>
         <BFeld label="Kalender"><Kalender e={e} /></BFeld>
-        {fuer.art === 'kunde' && <div style={{ marginTop: 8 }}><AvvHinweis text={AVV_HINWEIS} /></div>}
+        {fuer.art === 'kunde' && <div style={{ marginTop: 8 }}><AvvHinweis text={`${UEBERGABE_HINWEIS} ${ROLLE_HINWEIS}`} /></div>}
       </Karte>
 
       <Karte i={2}>
@@ -120,12 +105,14 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
           {ziele.map(z => {
             const n = zielName(z, kontaktMap, firmenMap);
             const abgeleitet = zielStand.abgeleitet.has(zielSchluessel(z));
+            // Inzwischen gesperrt (Art. 18 / Werbesperre): ausgegraut, nicht abhakbar (der Server nimmt Gesperrte nie neu auf).
+            const gesperrt = !!z.kontaktId && !!zielpersonGesperrt(kontaktMap.get(z.kontaktId));
             return (
-              <Zeile key={zielSchluessel(z)}
-                links={<Haken an={getroffen(z)} farbe={hat(getroffen(z), LEUCHT.gut)} label={n.name} onChange={() => { if (!abgeleitet) void zielAenderung(api, e, { op: 'getroffen', ...(z.kontaktId ? { kontaktId: z.kontaktId } : { firmaId: z.firmaId }), wert: !z.getroffen }); }} />}
+              <div key={zielSchluessel(z)} style={gesperrt ? { opacity: 0.5 } : undefined} aria-disabled={gesperrt || undefined}><Zeile
+                links={<Haken an={getroffen(z)} farbe={hat(getroffen(z), LEUCHT.gut)} label={n.name} onChange={() => { if (!abgeleitet && !gesperrt) void zielAenderung(api, e, { op: 'getroffen', ...(z.kontaktId ? { kontaktId: z.kontaktId } : { firmaId: z.firmaId }), wert: !z.getroffen }); }} />}
                 titel={n.tot ? n.name : <button type="button" onClick={() => (z.kontaktId ? zuKontakt(z.kontaktId) : z.firmaId && zuFirma(z.firmaId))} style={{ background: 'none', border: 'none', color: C.ink, cursor: 'pointer', fontSize: 'inherit', fontWeight: 500, padding: 0, textAlign: 'left' }}>{n.name}</button>}
-                unter={[n.unter, abgeleitet ? 'über Netzwerken erfasst' : ''].filter(Boolean).join(' · ') || undefined}
-                rechts={<Leise onClick={() => void zielAenderung(api, e, { op: 'weg', ...(z.kontaktId ? { kontaktId: z.kontaktId } : { firmaId: z.firmaId }) })}>entfernen</Leise>} />
+                unter={[n.unter, gesperrt ? 'gesperrt (Art. 18 / Werbesperre)' : '', abgeleitet ? 'über Netzwerken erfasst' : ''].filter(Boolean).join(' · ') || undefined}
+                rechts={<Leise onClick={() => void zielAenderung(api, e, { op: 'weg', ...(z.kontaktId ? { kontaktId: z.kontaktId } : { firmaId: z.firmaId }) })}>entfernen</Leise>} /></div>
             );
           })}
         </div>
@@ -175,23 +162,25 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
         <Karte i={5} akzent={LEUCHT.business}>
           <Ueberschrift>An {kundenName} übergeben</Ueberschrift>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 10 }}>
-            Die erfassten Kontakte als CSV — nur Felder, mit Herkunft und dem Vermerk „keine Werbe-Einwilligung“. Gesperrte Personen (Art. 18, Werbesperre) gehen nie mit. Jede Übergabe steht im Protokoll.
+            Die Kontakte, die an diesem Event neu angelegt wurden, als CSV — nur Felder, mit Herkunft je Zeile und dem Vermerk „keine Werbe-Einwilligung“. Bestandspersonen gehen nur mit Haken je Person. Gesperrte Personen (Art. 18, Werbesperre) gehen nie mit. Jede Übergabe steht mit Empfänger im Protokoll.
           </div>
-          <Knopf onClick={uebergeben} aus={uebergibt || w.kontakte === 0} farbe={LEUCHT.business}>{uebergibt ? 'bereitet vor …' : 'An Kunden übergeben (CSV)'}</Knopf>
+          <Knopf onClick={() => setUebergabeOffen(true)} aus={w.kontakte === 0} farbe={LEUCHT.business}>An Kunden übergeben …</Knopf>
           {(e.uebergaben ?? []).length > 0 && (
             <div style={{ marginTop: 10, display: 'grid', gap: 2 }}>
               {[...(e.uebergaben ?? [])].reverse().map((u, i) => (
-                <div key={`${u.am}-${i}`} style={{ fontSize: 12.5, color: C.inkLeise }}>{datum(u.am.slice(0, 10), heute)} · {u.anzahl} {u.anzahl === 1 ? 'Kontakt' : 'Kontakte'} · von {TEAM.find(m => m.id === u.von)?.name ?? u.von}</div>
+                <div key={`${u.am}-${i}`} style={{ fontSize: 12.5, color: C.inkLeise }}>{datum(u.am.slice(0, 10), heute)} · {u.anzahl} {u.anzahl === 1 ? 'Kontakt' : 'Kontakte'} · an {(u.empfaengerFirmaId ? firmenMap.get(u.empfaengerFirmaId)?.name : undefined) ?? kundenName}{u.dateiname ? ` · ${u.dateiname}` : ''} · von {TEAM.find(m => m.id === u.von)?.name ?? u.von}</div>
               ))}
             </div>
           )}
         </Karte>
       )}
+      {uebergabeOffen && <UebergabeDialog e={e} api={api} onZu={() => setUebergabeOffen(false)} />}
 
       <div>
         <Leise onClick={() => {
-          if (!window.confirm(`„${e.titel}“ löschen? Die erfassten Personen bleiben in der Kartei, ihre Teilnahme an diesem Event wird entfernt; offene Follow-ups des Events werden abgesagt. Auch der Kalender-Termin und der Planposten in der Liquiplanung werden entfernt, Deals verlieren den Verweis auf das Event.`)) return;
-          void eventLoeschen(api, e).then(onZurueck);
+          const n = (e.uebergaben ?? []).length;
+          if (!window.confirm(`„${e.titel}“ löschen? Die erfassten Personen bleiben in der Kartei, ihre Teilnahme an diesem Event wird entfernt; offene Follow-ups des Events werden abgesagt. Auch der Kalender-Termin und der Planposten in der Liquiplanung werden entfernt, Deals verlieren den Verweis auf das Event.${n ? `\n\nACHTUNG: Dieses Event hat ${n} ${n === 1 ? 'Übergabe' : 'Übergaben'} an Kunden im Protokoll. Das Protokoll bleibt als Nachweis (Auskunft Art. 15, Mitteilung Art. 19) 3 Jahre im Übergabe-Journal erhalten — aber das Event ist weg.` : ''}`)) return;
+          void eventLoeschen(api, e, n ? { uebergabenBestaetigt: true } : undefined).then(onZurueck);
         }}>Event löschen</Leise>
       </div>
     </div>

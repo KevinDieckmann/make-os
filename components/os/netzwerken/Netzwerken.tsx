@@ -19,7 +19,7 @@ import { Erfassen } from './Erfassen';
 import { Heute } from './Heute';
 import { useKontext, useWarteschlange } from './useNetzwerken';
 import { OhneTerminKnopf } from './Ergebnis';
-import { NUR_RAM_HINWEIS, geteilteWarteschlange, type WarteEintrag } from '@/lib/netzwerken/warteschlange';
+import { NUR_RAM_HINWEIS, altHinweis, verworfenText, geteilteWarteschlange, type WarteEintrag } from '@/lib/netzwerken/warteschlange';
 import { lokalAbleiten } from '@/lib/netzwerken/wahl';
 
 type Reiter = 'erfassen' | 'heute';
@@ -85,10 +85,16 @@ export function NetzwerkenSeite() {
 /** Der Streifen der Warteschlange: was noch auf dem Gerät liegt, warum, und was man tun kann. */
 function Warteschlange({ warte, offline, api, ich, heute }: { warte: ReturnType<typeof useWarteschlange>; offline: boolean; api: ReturnType<typeof useCrm>; ich: string | null; heute: string }) {
   const [anderes, setAnderes] = useState<WarteEintrag | null>(null);
-  if (!warte.eintraege.length && !warte.neuLaden) return null;
+  if (!warte.eintraege.length && !warte.neuLaden && !warte.verworfenAlt.length) return null;
   return (
     <>
     <section aria-label="Warteschlange" style={{ display: 'grid', gap: 10 }}>
+      {warte.verworfenAlt.length > 0 && (
+        <Hinweis farbe={LEUCHT.achtung} rolle="alert">
+          {warte.verworfenAlt.map(v => <div key={v.id}>{verworfenText(v)}</div>)}
+          <div style={{ marginTop: 10 }}><Gross onClick={warte.verworfenAusblenden} kleinerAbstand>Verstanden</Gross></div>
+        </Hinweis>
+      )}
       {warte.neuLaden && (
         <Hinweis farbe={LEUCHT.achtung} rolle="alert">
           MAKE OS wurde aktualisiert — bitte die Seite neu laden. Die Erfassungen bleiben auf dem Gerät.
@@ -105,6 +111,8 @@ function Warteschlange({ warte, offline, api, ich, heute }: { warte: ReturnType<
               <li key={e.id} style={{ display: 'grid', gap: 6, fontSize: 14, lineHeight: 1.45 }}>
                 <span><b>{e.anzeige.name}</b> · {e.anzeige.schritt}{e.anzeige.termin ? ` · ${e.anzeige.termin}` : ''} · {e.anzeige.eventTitel}</span>
                 <span style={{ color: e.status === 'fehler' ? LEUCHT.kritisch : C.inkDim }}>{e.hinweis}</span>
+                {altHinweis(e) && <span style={{ color: LEUCHT.achtung, fontWeight: 600 }}>{altHinweis(e)}</span>}
+                {altHinweis(e) && e.status === 'wartet' && <span><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></span>}
                 {e.status === 'fehler' && <span style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}><Gross ton="haupt" onClick={() => void warte.erneut(e.id)} kleinerAbstand>Erneut versuchen</Gross><Gross onClick={() => void warte.verwerfen(e.id)} kleinerAbstand>Verwerfen</Gross></span>}
                 <OhneTerminKnopf e={e} onOhneTermin={x => void warte.ohneTermin(x)} />
                 {e.eventFehler && <Gross onClick={() => setAnderes(e)} kleinerAbstand>Anderes Event wählen</Gross>}

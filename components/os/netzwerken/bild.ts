@@ -1,7 +1,10 @@
 // ─── Netzwerken — Foto im Browser verkleinern (02.10.) ───────────────────────
 // Eine Karte bleibt bei 1400 px Kante gut lesbar (auch für das spätere Auslesen), der Upload bleibt klein (150–350 KB statt 4 MB vom iPhone). Ausgabe ist
 // immer JPEG (weißer Grund, damit transparente PNGs nicht schwarz werden); Base64 ohne Präfix für den Körper der Erfassung,
-// die Data-URL für die Vorschau. Kann der Browser das Format nicht öffnen und ist es klein genug, geht das Original mit.
+// die Data-URL für die Vorschau. Kann der Browser das Format nicht öffnen und ist es klein genug, geht das Original mit — aber NIE mit
+// Exif/GPS: der Rückfall säubert die Metadaten (lib/netzwerken/bild-bereinigen.ts, 03.10.), sonst keine Erfassung des Fotos.
+
+import { bildOhneMetadaten, alsBase64 } from '@/lib/netzwerken/bild-bereinigen';
 
 export const MAX_KANTE = 1400;
 export const JPEG_QUALITAET = 0.78;
@@ -16,7 +19,6 @@ export function zielMasse(breite: number, hoehe: number, max = MAX_KANTE): { b: 
   return { b: Math.max(1, Math.round(breite * f)), h: Math.max(1, Math.round(hoehe * f)) };
 }
 
-const lesen = (datei: File) => new Promise<string>(ok => { const r = new FileReader(); r.onload = () => ok(String(r.result ?? '')); r.onerror = () => ok(''); r.readAsDataURL(datei); });
 
 export async function fotoVorbereiten(datei: File, id: string, nr: number): Promise<Foto | { fehler: string }> {
   const url = URL.createObjectURL(datei);
@@ -37,8 +39,13 @@ export async function fotoVorbereiten(datei: File, id: string, nr: number): Prom
     // Nicht öffnbar (z. B. ein Format, das dieser Browser nicht kennt): ein kleines JPEG/PNG geht unverändert mit.
     const typ = datei.type === 'image/png' ? 'image/png' : datei.type === 'image/jpeg' ? 'image/jpeg' : null;
     if (!typ || datei.size > ORIGINAL_MAX) return { fehler: 'Das Foto lässt sich hier nicht verkleinern — bitte noch einmal aufnehmen (JPG).' };
-    const dataUrl = await lesen(datei);
-    return dataUrl ? { id, dataUrl, daten: dataUrl.slice(dataUrl.indexOf(',') + 1), typ, name: `karte-${nr}.${typ === 'image/png' ? 'png' : 'jpg'}`, groesse: datei.size } : { fehler: 'Das Foto ließ sich nicht öffnen — bitte noch einmal aufnehmen.' };
+    // Das Original trägt Exif/GPS (Aufnahmeort, Gerät, Zeit) — der Rückfall geht deshalb durch die Metadaten-Säuberung (lib/netzwerken/bild-bereinigen.ts).
+    // Lässt sich der Aufbau nicht lesen, geht das Original NICHT mit: lieber noch einmal aufnehmen als einen Ort mitschicken.
+    let sauber: Uint8Array | null = null;
+    try { sauber = bildOhneMetadaten(new Uint8Array(await datei.arrayBuffer()), typ === 'image/png' ? 'png' : 'jpeg'); } catch { sauber = null; }
+    if (!sauber) return { fehler: 'Das Foto lässt sich hier nicht bereinigen (Standortdaten) — bitte noch einmal aufnehmen.' };
+    const daten = alsBase64(sauber);
+    return { id, dataUrl: `data:${typ};base64,${daten}`, daten, typ, name: `karte-${nr}.${typ === 'image/png' ? 'png' : 'jpg'}`, groesse: sauber.length };
   } finally { URL.revokeObjectURL(url); }
 }
 

@@ -35,7 +35,9 @@ import type { CrmBestand } from './typen';
 import { tagVon } from '@/lib/zeit';
 
 export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'heads-replay' | 'signale' | 'aenderungsprotokoll' | 'aktivitaeten-geloeschte'
-  | 'zoe-arbeitslisten' | 'zoe-entscheidungen' | 'zoe-verlauf' | 'zoe-gedaechtnis' | 'postfach-caches' | 'kalender-caches' | 'archiv-umzug' | 'netzwerk' | 'grabsteine' | 'sicherungen' | 'buchungen';
+  | 'zoe-arbeitslisten' | 'zoe-entscheidungen' | 'zoe-verlauf' | 'zoe-gedaechtnis' | 'postfach-caches' | 'kalender-caches' | 'archiv-umzug' | 'netzwerk' | 'grabsteine' | 'sicherungen' | 'buchungen'
+  // Netzwerken (03.10., netz-recht): Medien, Veranstaltungs-Kontakte ohne Interaktion, Gesprächs-Info, Übergabe-Protokolle.
+  | 'netzwerken-karten' | 'netzwerken-sprachnotizen' | 'netzwerken-kontakte' | 'netzwerken-info' | 'uebergabe-protokolle';
 export type Einheit = 'tage' | 'monate';
 
 export interface FristDef {
@@ -67,6 +69,12 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'grabsteine', titel: 'Grabsteine gelöschter Personen', einheit: 'monate', standard: 13, min: 13, max: 120, wirkung: 'automatisch', norm: 'Art. 17, Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Fingerabdrücke außerhalb des Datenordners — länger als jede Sicherung, damit ein Restore niemanden zurückholt. Die Sperrliste bleibt.' },
   // 29.09. (K4): Terminbuchungen der öffentlichen Buchungsseiten.
   { id: 'buchungen', titel: 'Terminbuchungen (Buchungsseiten)', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Nicht bestätigte, abgelehnte, abgesagte und abgelaufene Buchungen fallen nach der Frist weg, bestätigte die Frist nach dem Termin — Anfrage und Aktivität im CRM bleiben (dort gilt die Frist der Kartei).' },
+  // 03.10. (netz-recht): Erfassungs-Daten von „Netzwerken“ — Medien und Info automatisch, Personen nie.
+  { id: 'netzwerken-karten', titel: 'Netzwerken: Fotos der Visitenkarten', einheit: 'monate', standard: 6, min: 1, max: 36, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Das Foto war die Vorlage für die Felder in der Kartei — es fällt nach der Frist samt verschlüsselter Datei weg (ab Erfassung).' },
+  { id: 'netzwerken-sprachnotizen', titel: 'Netzwerken: Sprachnotizen', einheit: 'tage', standard: 90, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Eigene Gesprächsnotiz (Stimme, Inhalt): fällt nach der Frist samt verschlüsselter Datei weg. Eine Abschrift (KI) ersetzt sie erst, wenn sie eingeschaltet ist.' },
+  { id: 'netzwerken-kontakte', titel: 'Netzwerken: Kontakte ohne weitere Interaktion', einheit: 'monate', standard: 12, min: 6, max: 60, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch gelöscht: Personen aus Netzwerken ohne Beziehung, Deal und Aktivität seit der Frist zählen in die Löschfrist-Aufgabe (prüfen: löschen oder begründen).' },
+  { id: 'netzwerken-info', titel: 'Netzwerken: Gesprächs-Info und Zielpersonen', einheit: 'monate', standard: 12, min: 3, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Info zum Gespräch (Teilnahme) und die Personen auf der Zielliste eines Events fallen 12 Monate nach dem Event weg — Teilnahme, Termin und Kennzahlen bleiben.' },
+  { id: 'uebergabe-protokolle', titel: 'Übergabe-Protokolle (Kunden-Events)', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2, Art. 15, Art. 19 DSGVO', hinweis: 'Nachweis, wann welche Personen an welchen Kunden übergeben wurden (am Event bzw. im Übergabe-Journal) — danach weg.' },
   { id: 'sicherungen', titel: 'Tageskopien und Nachtsicherungen', einheit: 'tage', standard: 14, min: 14, max: 14, wirkung: 'fest', anzeige: '14 Tage', norm: 'Art. 5 Abs. 1 lit. e, Art. 32 DSGVO', hinweis: 'Gelöschte Personen stehen bis zum Ablauf noch in Sicherungen („beyond use“) — nach jedem Zurückspielen wenden die Grabsteine die Löschung erneut an.' },
 ];
 

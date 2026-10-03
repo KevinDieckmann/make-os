@@ -53,6 +53,8 @@ interface Entwurf {
   firmaNeu: boolean;
   schritt: NetzwerkSchritt | null;
   info: string;
+  /** „Wir haben persönlich gesprochen“ (Standard an, § 7 UWG): nur dann gibt es morgen einen Danke-Entwurf. */
+  gesprochen: boolean;
   aufnahme: Aufnahme | null;
   zustaendig: string;
   termin: TerminEingabe;
@@ -65,7 +67,7 @@ interface Entwurf {
 }
 
 const neuerEntwurf = (zustaendig: string, heute: string): Entwurf => ({
-  id: zufallsUuid(), fotos: [], rueckseiteWeg: false, felder: { anrede: 'Sie' }, neuErzwingen: false, firmaNeu: false, schritt: null, info: '', aufnahme: null, zustaendig,
+  id: zufallsUuid(), fotos: [], rueckseiteWeg: false, felder: { anrede: 'Sie' }, neuErzwingen: false, firmaNeu: false, schritt: null, info: '', gesprochen: true, aufnahme: null, zustaendig,
   termin: { art: 'kennenlernen', dauer: 45, start: '' }, followupFaellig: followupFrist(heute), vermittelnAn: '', andereText: '', andereFaellig: '',
 });
 
@@ -186,7 +188,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
         ...(!e.vorhandenId && !e.firmaNeu && (e.firmaId || exakt) ? { firmaId: e.firmaId ?? exakt!.id } : {}),
         bilder: e.fotos.map(x => ({ name: x.name, typ: x.typ, daten: x.daten })),
         ...(e.aufnahme ? { sprachnotiz: { typ: e.aufnahme.typ, daten: await dateiAlsBase64(e.aufnahme.blob), ...(e.aufnahme.dauerSek ? { dauerSek: e.aufnahme.dauerSek } : {}) } } : {}),
-        schritt: sch, ...(e.info.trim() ? { info: e.info.trim() } : {}), zustaendig: e.zustaendig,
+        schritt: sch, ...(e.info.trim() ? { info: e.info.trim() } : {}), ...(e.gesprochen ? {} : { gesprochen: false }), zustaendig: e.zustaendig,
         ...(sch === 'followup' ? { followup: { faellig: e.followupFaellig } } : {}),
         ...(sch === 'termin' ? { termin: { art: e.termin.art, dauer: e.termin.dauer, start: e.termin.start } } : {}),
         ...(sch === 'vermitteln' ? { vermitteln: { an: e.vermittelnAn.trim() } } : {}),
@@ -252,7 +254,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
             {e.fotos.length >= 1 && (e.fotos.length > 1 || e.rueckseiteWeg) && e.fotos.length < MAX_BILDER && <Gross onClick={() => kamera.current?.click()} kleinerAbstand>+ weiteres Foto</Gross>}
             {e.fotos.length === 0 && <button type="button" onClick={() => galerie.current?.click()} style={{ ...klarLink, color: C.inkDim, justifySelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 6 }}><ImagePlus size={16} aria-hidden /> oder ein Foto aus der Mediathek wählen</button>}
             {fotoFehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{fotoFehler}</Hinweis>}
-            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Fotos werden verkleinert und verschlüsselt an der Person abgelegt. Felder bitte von Hand eintragen — das Auslesen kommt später.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Nur die Visitenkarte fotografieren, keine Personen. Verkleinert und verschlüsselt abgelegt, nach 6 Monaten gelöscht. Felder bitte von Hand eintragen — das Auslesen kommt später.</div>
           </section>
 
           {/* Person — zuerst, was man für den nächsten Schritt wirklich braucht: Name, Firma, E-Mail, Handy. Der Rest liegt unter „Mehr“. */}
@@ -415,9 +417,11 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
           {sch === 'nur-kontakt' && <Hinweis>Nur der Kontakt wird gespeichert — „Kennengelernt bei {wahl?.titel ?? 'dem Event'}“ steht im Verlauf.</Hinweis>}
 
           <section aria-label="Info" style={{ display: 'grid', gap: 10 }}>
+            <GespraechSchalter an={e.gesprochen} onUm={v => up({ gesprochen: v })} />
             <Beschriftung rechts={`${e.info.length}/${INFO_MAX}`}>Info zum Gespräch (optional)</Beschriftung>
             <textarea value={e.info} onChange={x => up({ info: x.target.value })} rows={4} placeholder="Worüber habt ihr gesprochen? Was wurde zugesagt?" style={{ ...eingabe, resize: 'vertical', minHeight: 104 }} aria-label="Info zum Gespräch" />
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', alignItems: 'center', gap: 6 }}><Mic size={14} aria-hidden /> Diktieren: am iPhone das Mikrofon-Symbol auf der Tastatur antippen.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>Keine sensiblen Angaben (Gesundheit, Religion, Politik).</div>
             <Sprachnotiz wert={e.aufnahme} onWert={a => up({ aufnahme: a })} />
           </section>
 
@@ -443,6 +447,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
               ['Sprachnotiz', e.aufnahme ? 'ja — Abschrift folgt (KI)' : 'keine'],
               ['Nächster Schritt', `${schrittLabel(sch ?? '')}${sch === 'termin' ? ` · ${terminArtLabel(e.termin.art)}, ${tagText(e.termin.start.slice(0, 10))} ${e.termin.start.slice(11, 16)} (${e.termin.dauer} Min.)` : sch === 'followup' ? ` · bis ${tagText(e.followupFaellig)}` : sch === 'vermitteln' ? ` · an ${e.vermittelnAn.trim()}` : sch === 'andere' ? ` · ${e.andereText.trim()}` : sch === 'makeone' ? ` · ${kommende.find(x => x.id === e.makeoneEventId)?.titel ?? 'ohne Event (Aufgabe)'}` : ''}`],
               ['Zuständig', nameVon(e.zustaendig)],
+              ['Gespräch', e.gesprochen ? 'persönlich gesprochen — Danke-Entwurf ab morgen' : 'nicht gesprochen — kein Danke-Entwurf'],
               ['Info', e.info.trim() || '—'],
             ] as [string, string][]).map(([k, v], i) => (
               <div key={k} style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, 120px) 1fr', gap: 12, padding: '11px 14px', borderTop: i ? '1px solid rgba(255,255,255,.06)' : undefined, fontSize: TYP.body, lineHeight: 1.45 }}>
@@ -450,7 +455,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
               </div>
             ))}
           </section>
-          {!e.vorhandenId && <Hinweis>Quelle „{NETZWERKEN_QUELLE}“ · <b>keine Werbe-Einwilligung</b> — {KEINE_EINWILLIGUNG}. Die Danke-Mail liegt ab morgen als Entwurf bereit; verschickt wird nur per Klick.</Hinweis>}
+          {!e.vorhandenId && <Hinweis>Quelle „{NETZWERKEN_QUELLE}“ · <b>keine Werbe-Einwilligung</b> — {KEINE_EINWILLIGUNG}. {e.gesprochen ? 'Die Danke-Mail liegt ab morgen als Entwurf bereit (mit Datenschutzhinweis); verschickt wird nur per Klick.' : 'Ohne Gespräch gibt es keine Danke-Mail — den Datenschutzhinweis beim ersten Kontakt geben.'}</Hinweis>}
           <HandySchalter an={handyAn && handy.ok} onUm={setHandyAn} grund={handy.ok ? undefined : handy.grund} />
           {offline && <Hinweis farbe={LEUCHT.achtung}>Kein Netz erkannt — die Erfassung bleibt auf dem Gerät und wird gesendet, sobald Netz da ist.</Hinweis>}
           <Aktionsleiste>
@@ -560,6 +565,20 @@ function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schr
   );
 }
 
+/** „Wir haben persönlich gesprochen“ (§ 7 UWG): nur dann gibt es morgen einen Danke-Entwurf. Standard an; ohne Gespräch beim ersten Kontakt den Datenschutzhinweis geben. */
+export function GespraechSchalter({ an, onUm }: { an: boolean; onUm: (v: boolean) => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={an} onClick={() => onUm(!an)} className="fassbar" data-testid="gespraech-schalter"
+      style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: ZIEL, padding: '10px 14px', borderRadius: 14, textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.body, color: C.ink, cursor: 'pointer',
+        border: `1px solid ${an ? TIEF.rand(C.aktiv) : 'rgba(255,255,255,.12)'}`, background: an ? TIEF.flaeche(C.aktiv) : 'rgba(255,255,255,.04)' }}>
+      <span style={{ flex: 1, minWidth: 0 }}><b>Wir haben persönlich gesprochen</b><span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{an ? 'Danke-Entwurf ab morgen.' : 'Kein Danke-Entwurf — nur Karte erhalten. Datenschutzhinweis beim ersten Kontakt geben.'}</span></span>
+      <span aria-hidden style={{ flex: '0 0 auto', width: 44, height: 26, borderRadius: 13, position: 'relative', background: an ? C.aktiv : 'rgba(255,255,255,.18)' }}>
+        <span style={{ position: 'absolute', top: 3, left: an ? 21 : 3, width: 20, height: 20, borderRadius: 10, background: '#fff', transition: 'left .15s' }} />
+      </span>
+    </button>
+  );
+}
+
 /** Bestätigen: „Auch im Handy speichern“ — gemerkt je Gerät. Teilt nicht selbst (iOS erlaubt das nur nach einem Tipp), blendet nur auf der Fertig-Ansicht den Knopf hervorgehoben ein. */
 export function HandySchalter({ an, onUm, grund }: { an: boolean; onUm: (v: boolean) => void; grund?: string }) {
   const aus = !!grund;
@@ -569,7 +588,7 @@ export function HandySchalter({ an, onUm, grund }: { an: boolean; onUm: (v: bool
         style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: ZIEL, padding: '10px 14px', borderRadius: 14, textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.body, color: aus ? C.inkLeise : C.ink, cursor: aus ? 'default' : 'pointer',
           border: `1px solid ${an ? TIEF.rand(C.aktiv) : 'rgba(255,255,255,.12)'}`, background: an ? TIEF.flaeche(C.aktiv) : 'rgba(255,255,255,.04)' }}>
         <BookUser size={20} aria-hidden style={{ flex: '0 0 auto', color: an ? C.aktiv : C.inkDim }} />
-        <span style={{ flex: 1, minWidth: 0 }}><b>Auch im Handy speichern</b><span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{aus ? grund : 'Danach liegt der Kontakt-Knopf bereit — die Daten bleiben im Browser.'}</span></span>
+        <span style={{ flex: 1, minWidth: 0 }}><b>Auch im Handy speichern</b><span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{aus ? grund : 'Danach liegt der Kontakt-Knopf bereit — die Daten bleiben im Browser. Im Handy liegt er dann in Apple Kontakte (iCloud) — Löschen und Auskunft dort selbst.'}</span></span>
         <span aria-hidden style={{ flex: '0 0 auto', width: 44, height: 26, borderRadius: 13, position: 'relative', background: an ? C.aktiv : 'rgba(255,255,255,.18)' }}>
           <span style={{ position: 'absolute', top: 3, left: an ? 21 : 3, width: 20, height: 20, borderRadius: 10, background: '#fff', transition: 'left .15s' }} />
         </span>

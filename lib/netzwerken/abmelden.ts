@@ -2,10 +2,12 @@
 // Auf einem gemeinsam genutzten Gerät (Messe-iPad, das Handy des Partners) bleiben nach dem Abmelden weder Erfassungen noch Merker der
 // letzten Person liegen — und nichts geht verloren:
 //   1. Warten noch Erfassungen dieser Person (kein Netz auf dem Weg nach Hause?): „Es warten noch n Erfassungen — erst senden?“
-//      OK sendet jetzt; klappt es nicht, fragt eine zweite Frage, ob trotzdem abgemeldet werden soll (sie bleiben dann auf dem Gerät und
-//      gehen raus, sobald sich DIESE Person wieder anmeldet — unter anderem Namen sendet der Server sie nie, 409). Abbrechen = nicht abmelden.
-//   2. Ist die Warteschlange leer: IndexedDB `make-os-netzwerken` und alle `make-os-netzwerken-*` im localStorage weg (Event-Wahl, Kontext).
-//      Liegt noch etwas für jemand anderen: nur der Kontext-Merker („wer bin ich“) fällt weg — er gehört der abgemeldeten Person.
+//      OK sendet jetzt; klappt es nicht, fragt eine zweite Frage mit KLARER WARNUNG, ob trotzdem abgemeldet werden soll: dann werden diese
+//      Erfassungen vom Gerät GELÖSCHT (03.10., netz-recht — vorher blieben sie samt Fotos liegen; ein geteiltes Gerät ist kein Vorrat für Daten
+//      Dritter). Abbrechen = nicht abmelden, nichts gelöscht.
+//   2. Danach: gehört nichts mehr jemand anderem, fallen IndexedDB `make-os-netzwerken` (samt dem Schlüssel der Verschlüsselung) und alle
+//      `make-os-netzwerken-*` im localStorage weg (Event-Wahl, Kontext, „verworfen“-Hinweis). Liegt noch etwas für jemand anderen (Malins
+//      Erfassung auf Kevins Gerät): Datenbank und Schlüssel bleiben für sie, nur der Kontext-Merker („wer bin ich“) fällt weg.
 // Die Fragen stellt `ui` (im Browser `window.confirm`) — so lässt sich der Ablauf ohne Browser testen.
 
 import { geteilteWarteschlange, offenFuer, type Warteschlange } from './warteschlange';
@@ -57,7 +59,11 @@ export async function vorAbmelden(person: string | null, ui: AbmeldeUi, q: Warte
     try { await q.senden(); } catch { /* unten zählt, was übrig ist */ }
     let rest = offen;
     try { rest = offenFuer(await q.alle(), person); } catch { /* ungewiss: wie unversendet behandeln */ }
-    if (rest > 0 && !ui.bestaetigen(`${n(rest)} ${rest === 1 ? 'ließ' : 'ließen'} sich nicht senden (kein Netz?). Trotzdem abmelden? ${rest === 1 ? 'Sie bleibt' : 'Sie bleiben'} auf diesem Gerät und ${rest === 1 ? 'geht' : 'gehen'} raus, sobald du dich wieder anmeldest.`)) return false;
+    if (rest > 0) {
+      if (!ui.bestaetigen(`${n(rest)} ${rest === 1 ? 'ließ' : 'ließen'} sich nicht senden (kein Netz?). Trotzdem abmelden? ACHTUNG: ${rest === 1 ? 'Sie wird' : 'Sie werden'} dabei vom Gerät GELÖSCHT — Angaben, Fotos und Sprachnotizen sind dann unwiederbringlich weg. Besser: abbrechen, Netz suchen, erst senden.`)) return false;
+      // Bestätigt: die eigenen Erfassungen weg (die einer anderen Person bleiben für sie liegen).
+      try { for (const e of (await q.alle()).filter(x => !x.person || !person || x.person === person)) await q.verwerfen(e.id); } catch { /* unten räumt `netzwerkenAufraeumen`, was sich löschen lässt */ }
+    }
   }
   await netzwerkenAufraeumen(q, z);
   return true;

@@ -82,6 +82,7 @@ export function Sprachnotiz({ wert, onWert }: { wert: Aufnahme | null; onWert: (
       <input ref={datei} type="file" accept="audio/*" capture tabIndex={-1} aria-hidden style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
         onChange={x => { const f = x.target.files?.[0]; x.target.value = ''; ausDatei(f); }} />
       {!wert && !nimmtAuf && <Gross onClick={() => void beginnen()}><Mic size={18} aria-hidden /> Sprachnotiz aufnehmen</Gross>}
+      {!wert && !nimmtAuf && <div style={{ fontSize: 13, color: C.inkLeise, lineHeight: 1.45 }}>Nur eigene Notiz: selbst sprechen, keine Gespräche oder andere Personen aufnehmen (§ 201 StGB). Keine sensiblen Angaben (Gesundheit, Religion, Politik). Die Aufnahme wird nach 90 Tagen gelöscht.</div>}
       {nimmtAuf && (
         <div role="status" aria-live="polite" style={{ display: 'grid', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 16, color: LEUCHT.kritisch, fontWeight: 700 }}>

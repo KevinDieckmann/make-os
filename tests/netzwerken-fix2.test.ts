@@ -12,7 +12,8 @@ import { leererBestand } from '@/lib/crm/speicher';
 import type { Kontakt } from '@/lib/make-one/crm';
 
 const ID = '3f2b9c1e-1a2b-4c3d-8e4f-0123456789ab';
-const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8]).toString('base64');
+// Ein strukturell gültiges Mini-JPEG (JFIF + Scan + Ende) — der Server säubert Metadaten (netz-recht) und lehnt kaputte Aufbauten ab.
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0x12, 0x34, 0xff, 0xd9]).toString('base64');
 const jetzt = new Date('2026-10-02T09:00:00+02:00');
 const roh = (x: Record<string, unknown> = {}) => ({ erfassungId: ID, erfasstAm: jetzt.toISOString(), eventId: 'ev-test-1', kontakt: { vorname: 'Anna', nachname: 'Beispiel' }, bilder: [], schritt: 'nur-kontakt', zustaendig: 'kevin', ...x });
 const pruefen = (x?: Record<string, unknown>) => erfassungPruefen(roh(x), { jetzt, heute: '2026-10-02' });

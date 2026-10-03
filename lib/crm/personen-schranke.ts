@@ -6,6 +6,8 @@
 //   Liste         Art. 18 (eingeschränkt)      Werbesperre (Art. 21)
 //   teilnahmen    409 EINGESCHRAENKT_FEHLER    409 — keine Einladung
 //   kampagnen     409 (nur aktiv/Entwurf)       409 — keine Kampagne (nur aktiv/Entwurf)
+//                 Werblicher Kanal (Mail, LinkedIn, Newsletter; 03.10., netz-recht): auch die AMPEL des Kanals zählt hart —
+//                 rot → 409 (Mail ohne Einwilligung ist abmahnfähig, § 7 UWG), gelb → erlaubt, aber mit Hinweis (`kampagnenHinweise`)
 //   chancen       409                          erlaubt (Vertragsbeziehung, keine Werbung)
 //   mandate       409                          erlaubt (Vertragsbeziehung, keine Werbung)
 //   events        409 (Zielpersonen, 03.10.)   erlaubt (Vorbereitung, keine Werbung)
@@ -17,6 +19,9 @@ import type { ListenOp } from '@/lib/sync';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, KampagnenStatus } from './typen';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
+import { kanalStatus, type Kanal } from './recht';
+import { kontextAus } from './segmente';
+import { localDay } from '@/lib/zeit';
 
 /** Was die Schranke von einer Person braucht — mehr nicht. */
 export type PersonSchranke = Pick<Kontakt, 'id' | 'werbesperre' | 'eingeschraenkt'>;
@@ -28,6 +33,8 @@ export const KAMPAGNE_SPRICHT_AN: readonly KampagnenStatus[] = ['aktiv', 'entwur
 
 export interface NeuerVerweis {
   liste: SchrankenListe;
+  /** Nur Kampagnen: der Kanal der Kampagne (`mail`, `linkedin`, …) — bei werblichem Kanal zählt die Ampel. */
+  kanal?: string;
   /** Kennung des Eintrags (Teilnahme, Kampagne, Deal, Mandat). */
   id: string;
   /** Anzeigename des Eintrags (Kampagnen-Name, Event-Titel …) für den Text — nie der Name der Person. */
@@ -69,7 +76,7 @@ export function neuePersonenVerweise(b: CrmBestand, ops: ListenOp[]): NeuerVerwe
       if (!KAMPAGNE_SPRICHT_AN.includes(status) || !('kontaktIds' in roh)) continue;
       const vorher = new Set(alt?.kontaktIds ?? []);
       const neu = nurText(roh.kontaktIds).filter(k => !vorher.has(k));
-      if (neu.length) raus.push({ liste: 'kampagnen', id, wo: String(roh.name ?? alt?.name ?? 'Kampagne'), kontaktIds: neu, werbung: true });
+      if (neu.length) raus.push({ liste: 'kampagnen', id, wo: String(roh.name ?? alt?.name ?? 'Kampagne'), kontaktIds: neu, werbung: true, kanal: String(roh.kanal ?? alt?.kanal ?? 'persoenlich') });
     } else if (o.liste === 'events') {
       // Besuchte Events (03.10.): „wen wollen wir treffen“ — eine eingeschränkte Person (Art. 18) kommt nie neu auf die Liste.
       const alt = (b.events ?? []).find(e => e.id === id);
@@ -108,6 +115,12 @@ export function personenSchranke(b: CrmBestand, ops: ListenOp[], personen: reado
     if (ps.some(p => p.eingeschraenkt)) { eingeschraenkt = true; continue; }
     if (!v.werbung) continue;
     const gesperrt = ps.filter(p => p.werbesperre).length;
+    // Werblicher Kanal: die Ampel zählt hart — rot (ohne Werbesperre, die unten schon abgelehnt wird) kommt nicht in die Kampagne.
+    if (v.liste === 'kampagnen') {
+      const a = kampagnenAmpel(v.kanal, v.kontaktIds, personen, b, localDay());
+      const rot = a.rot.filter(x => !je.get(x.id)?.werbesperre);
+      if (rot.length) raus.push(`Kampagne „${v.wo}“ (${KANAL_TEXT[v.kanal ?? ''] ?? v.kanal}): ${personenWort(rot.length)} mit roter Ampel ${rot.length === 1 ? 'kommt' : 'kommen'} nicht hinein — ${gruende(rot)} — nichts gespeichert.`);
+    }
     if (!gesperrt) continue;
     raus.push(v.liste === 'teilnahmen'
       ? `Event „${v.wo}“: ${personenWort(gesperrt)} mit Werbesperre (Widerspruch, Art. 21 DSGVO) ${gesperrt === 1 ? 'bekommt' : 'bekommen'} keine Einladung — nichts gespeichert.`
@@ -143,4 +156,49 @@ export function funktionsOps(vorher: CrmBestand, nachher: CrmBestand): ListenOp[
     if (neu) ops.push({ liste: 'events', op: 'upsert', eintrag: { id: x.id, titel: x.titel, zielpersonen: x.zielpersonen } });
   }
   return ops;
+}
+
+// ── Ampel bei werblichen Kampagnen (03.10., netz-recht) ─────────────────────
+
+/** Kanäle einer Kampagne, in denen sie wirbt — dort entscheidet die Ampel des Kanals (lib/crm/recht.ts), nicht nur die Sperre. */
+export const WERBLICHE_KANAELE: Readonly<Record<string, Kanal>> = { mail: 'mail', linkedin: 'linkedin', newsletter: 'newsletter' };
+const KANAL_TEXT: Record<string, string> = { mail: 'Mail', linkedin: 'LinkedIn', newsletter: 'Newsletter' };
+const gruende = (l: readonly { grund: string }[]): string => Array.from(new Set(l.map(x => x.grund))).slice(0, 3).join(' · ');
+
+/** Ein ganzer Kontakt (nicht nur die Sperr-Felder)? Nur dann lässt sich die Ampel rechnen — Teil-Objekte (Tests, Auszüge) bleiben bei Sperre/Einschränkung. */
+const istVoll = (p: PersonSchranke): p is PersonSchranke & Kontakt => 'aktivitaeten' in p && 'stufe' in p;
+
+export interface AmpelBefund { rot: { id: string; grund: string }[]; gelb: { id: string; grund: string }[] }
+/**
+ * Ampel der Personen für den Kanal einer Kampagne. Ohne werblichen Kanal (persönlich, Telefon, Event, Mix) bleibt es leer: dort gelten
+ * die bestehenden Regeln. Personen, die die Kartei nicht (voll) kennt, zählen nicht.
+ */
+export function kampagnenAmpel(kanal: string | undefined, kontaktIds: readonly string[], personen: readonly PersonSchranke[], crm: CrmBestand, heute: string): AmpelBefund {
+  const rechtKanal = kanal ? WERBLICHE_KANAELE[kanal] : undefined;
+  const raus: AmpelBefund = { rot: [], gelb: [] };
+  if (!rechtKanal) return raus;
+  const je = new Map(personen.map(p => [p.id, p]));
+  const ctx = kontextAus(crm, heute);
+  for (const id of kontaktIds) {
+    const p = je.get(id);
+    if (!p || !istVoll(p)) continue;
+    const st = kanalStatus(p, rechtKanal, { hatMandat: ctx.mitMandat.has(id), hatChance: ctx.mitChance.has(id) });
+    if (st.farbe === 'rot') raus.rot.push({ id, grund: st.grund });
+    else if (st.farbe === 'gelb') raus.gelb.push({ id, grund: st.grund });
+  }
+  return raus;
+}
+
+/**
+ * Hinweise zu NEUEN Personen mit gelber Ampel in einer werblichen Kampagne — die Änderung gilt, aber der Mensch soll es wissen
+ * (persönliche Nachricht ja, Werbung erst mit Einwilligung / Nachweis ergänzen). Nie ein Name oder eine Kennung im Text.
+ */
+export function kampagnenHinweise(b: CrmBestand, ops: ListenOp[], personen: readonly PersonSchranke[]): string[] {
+  const raus: string[] = [];
+  for (const v of neuePersonenVerweise(b, ops)) {
+    if (v.liste !== 'kampagnen') continue;
+    const a = kampagnenAmpel(v.kanal, v.kontaktIds, personen, b, localDay());
+    if (a.gelb.length) raus.push(`Kampagne „${v.wo}“ (${KANAL_TEXT[v.kanal ?? ''] ?? v.kanal}): ${personenWort(a.gelb.length)} mit gelber Ampel — ${gruende(a.gelb)}. Gelb heißt: nur persönlich oder nach Klärung, keine Werbung ohne Einwilligung.`);
+  }
+  return raus;
 }
