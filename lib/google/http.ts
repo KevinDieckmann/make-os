@@ -63,7 +63,7 @@ export async function googleAnfrage<T = Record<string, unknown>>(person: string,
     try {
       r = await fetch(ziel, {
         method: opt.method ?? 'GET', redirect: 'error', signal: AbortSignal.timeout(opt.zeitMs ?? 25_000),
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'User-Agent': 'MAKE OS Kalender', ...(opt.body !== undefined ? { 'Content-Type': 'application/json; charset=utf-8' } : {}), ...opt.kopf },
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'User-Agent': 'MAKE OS', ...(opt.body !== undefined ? { 'Content-Type': 'application/json; charset=utf-8' } : {}), ...opt.kopf },
         ...(opt.body !== undefined ? { body: JSON.stringify(opt.body) } : {}),
       });
     } catch (e) {

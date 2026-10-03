@@ -190,6 +190,8 @@ describe('Middleware: offen ist NUR dieser Webhook (POST) und der Rückruf (cros
     const { crossSiteVerboten } = await import('@/lib/zugang/cross-site');
     const nav = new Headers({ 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate' });
     expect(crossSiteVerboten('/api/google/rueckruf', nav)).toBe(false);
+    expect(crossSiteVerboten('/api/oauth/callback', nav)).toBe(false); // Whoop/M365 (03.10.)
+    for (const p of ['/api/oauth/callback/x', '/api/oauth/start', '/api/oauth/callback2']) expect(crossSiteVerboten(p, nav), p).toBe(true);
     for (const p of ['/api/google/status', '/api/google/trennen', '/api/kalender/termin', '/api/google/rueckruf/x', '/api/google/rueckruf2']) expect(crossSiteVerboten(p, nav), p).toBe(true);
     expect(crossSiteVerboten('/api/google/status', new Headers({ 'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate' }))).toBe(false);
     expect(crossSiteVerboten('/os/kalender', nav)).toBe(false);

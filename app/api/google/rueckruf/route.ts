@@ -4,18 +4,21 @@
 // der `state` (einmalig, 15 Min.) gehört ihr, der PKCE-Verifier liegt serverseitig. Danach (Funktion „kalender“):
 // Kalender wählen (Hauptkalender) und im Hintergrund die erste Lesung. Weiter zu /os/kalender?google=… — kein Token,
 // kein Code, keine Adresse in der Weiterleitung.
+// Gmail (03.10.): wer NUR Gmail ergänzt hat, kommt zurück in die Inbox (`/os/inbox?google=…`); eingerichtet wird nur, was
+// DIESE Anmeldung neu wollte (`angefordert`) — ein Gmail-Zusatz setzt den gewählten Kalender nie zurück.
 // Die Middleware lässt genau diesen Pfad als Navigation von Google (cross-site) zu; die Sitzung gilt trotzdem.
 import { NextResponse } from 'next/server';
 import { verbindungAbschliessen, GoogleVerbindungsFehler } from '@/lib/google/verbindung';
 import { eigenePerson } from '@/lib/google/zugang';
 import { aussenAdresse } from '@/lib/innen';
 import { googleKalenderWaehlen, googleAbgleichen } from '@/lib/kalender/google/abgleich';
+import { gmailEinrichten } from '@/lib/gmail/abgleich';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const zurueck = (req: Request, status: string) => NextResponse.redirect(new URL(`/os/kalender?google=${status}`, aussenAdresse() ?? new URL(req.url).origin));
+const zurueck = (req: Request, status: string, seite = '/os/kalender') => NextResponse.redirect(new URL(`${seite}?google=${status}`, aussenAdresse() ?? new URL(req.url).origin));
 
 export async function GET(req: Request) {
   const z = await eigenePerson(req);
@@ -27,12 +30,15 @@ export async function GET(req: Request) {
   try {
     const r = await verbindungAbschliessen(z.person, code, state);
     await protokolliere('kalender', [{ liste: 'google', op: 'neu', id: 'verbindung', felder: r.funktionen }], werAus(req)).catch(() => { /* nur Protokoll */ });
-    if (r.fehlendeScopes.length) return zurueck(req, 'scope-fehlt');
-    if (r.funktionen.includes('kalender')) {
+    const nurGmail = r.angefordert.includes('gmail') && !r.angefordert.includes('kalender');
+    const seite = nurGmail ? '/os/inbox' : '/os/kalender';
+    if (r.fehlendeScopes.length) return zurueck(req, 'scope-fehlt', seite);
+    if (r.angefordert.includes('kalender')) {
       await googleKalenderWaehlen(z.person, 'primary');
       void googleAbgleichen(z.person).catch(() => { /* Fehler steht im Stand; der Takt versucht es wieder */ });
     }
-    return zurueck(req, 'verbunden');
+    if (r.angefordert.includes('gmail')) void gmailEinrichten(z.person).catch(() => { /* Fehler steht im Stand; der Takt versucht es wieder */ });
+    return zurueck(req, 'verbunden', seite);
   } catch (e) {
     if (e instanceof GoogleVerbindungsFehler) return zurueck(req, e.code);
     return zurueck(req, 'fehler');

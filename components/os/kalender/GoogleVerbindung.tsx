@@ -11,6 +11,7 @@
 // Daten nur über /api/google/* (allgemeine Verbindung) und /api/kalender/google* (Kalender) — nie Tokens im Browser.
 
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import Link from 'next/link';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { LEUCHT } from '../schlank';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
@@ -161,7 +162,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
         <>
           {s.getrennt && <div style={{ fontSize: 13, color: LEUCHT.kritisch }}>Die Verbindung ist nicht mehr gültig ({s.getrennt.grund}). Bitte neu verbinden.</div>}
           <div><Taste onClick={() => void verbinden()} aus={gebe('verbinden')}>{gebe('verbinden') ? 'öffnet Google …' : s.getrennt ? 'Neu verbinden' : 'Google Kalender verbinden'}</Taste></div>
-          <div style={klein}>Du meldest dich bei Google mit deinem Workspace-Konto an{s.erlaubteDomain ? ' (nur die eingestellte Domain wird angenommen)' : ''}. MAKE OS bekommt Zugriff auf Termine — nicht auf Mails oder Dateien.</div>
+          <div style={klein}>Du meldest dich bei Google mit deinem Workspace-Konto an{s.erlaubteDomain ? ' (nur die eingestellte Domain wird angenommen)' : ''}. MAKE OS bekommt Zugriff auf Termine — keine Mails und keine Dateien; Gmail verbindest du getrennt in der Inbox (nur wenn du willst).</div>
         </>
       )}
       {s?.verbunden && (
@@ -169,6 +170,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
           <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
             <span>Verbunden als <b>{s.konto}</b>{s.kalender ? <> · Kalender „{s.kalender.name}“{s.kalender.schreibbar ? '' : ' (nur lesbar)'}</> : ' · wird eingerichtet …'}</span>
             <AbgleichStand a={s.abgleich} quelle="Google" />
+            <span style={klein}>Gmail (Inbox): {s.bereit?.includes('gmail') ? 'verbunden' : 'nicht verbunden'} — <Link href="/os/inbox" style={{ color: C.aktiv, textDecoration: 'none' }}>in der Inbox {s.bereit?.includes('gmail') ? 'öffnen' : 'verbinden'} ›</Link></span>
             <span style={klein}>{s.push === 'aktiv' ? 'Änderungen kommen sofort per Push von Google.' : s.push === 'wartet' ? 'Push wird eingerichtet — bis dahin Abgleich alle 5 Minuten.' : 'Kein Push (keine öffentliche HTTPS-Adresse) — Abgleich alle 5 Minuten.'}{s.vonAussen ? ` Zuletzt in Google geändert: ${s.vonAussen.n} Termin${s.vonAussen.n === 1 ? '' : 'e'}.` : ''}</span>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

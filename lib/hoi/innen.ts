@@ -14,10 +14,11 @@ import { fremderSchreiber } from '@/lib/store/betrieb';
 import { tmpResteZaehlen, DURCHSICHT_SPEICHER, type DurchsichtErgebnis } from '@/lib/store/durchsicht';
 import { lies, stand } from '@/lib/zoe/auftraege';
 import { alle } from '@/lib/zugang/anmeldungen';
-import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz, type KalenderLage, type GoogleKalenderLage } from './lage';
+import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz, type KalenderLage, type GoogleKalenderLage, type GmailLage } from './lage';
 import { verbunden as kalenderVerbunden, ladeStand as kalenderStand, abgleichAlter, tzVersion } from '@/lib/kalender/icloud';
 import { ladeSicherungStand } from '@/lib/kalender/sicherung-server';
 import { googleLage } from '@/lib/kalender/google/lage';
+import { gmailLage } from '@/lib/gmail/lage';
 import { fehlerquote24h, fehlanmeldungen24h, neueNetze7d, cspBild, type CspMeldung } from './rechnen';
 import { hasAnthropicKey, guthabenStand } from '@/lib/anthropic';
 import { pepperGesetzt } from '@/lib/datenschutz/pepper';
@@ -120,6 +121,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     absichten: await absichtenLage(new Date(jetzt), MINDEST_ALTER_MS),
     kalender: await kalenderLage(jetzt),
     kalenderGoogle: await googleLage(Date.parse(jetzt)).catch((): GoogleKalenderLage | null => null),
+    gmail: await gmailLage(Date.parse(jetzt)).catch((): GmailLage | null => null),
   };
 }
 

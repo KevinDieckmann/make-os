@@ -18,9 +18,9 @@ export function spaceEinstellungenSauber(d: unknown): SpaceEinstellungen {
   return { postfaecher: aus };
 }
 
-/** Der Space eines Postfachs: Zuordnung, sonst KEMARIS/M365 = Business, sonst Privat. */
+/** Der Space eines Postfachs: Zuordnung, sonst KEMARIS/M365/Google Workspace (Gmail der Domain) = Business, sonst Privat. */
 export function spaceVonPostfach(e: SpaceEinstellungen | null | undefined, konto: string): SpaceId {
   const fest = e?.postfaecher[konto];
   if (fest) return fest;
-  return /kemaris|m365|microsoft/i.test(konto) ? 'business' : 'privat';
+  return /kemaris|m365|microsoft|workspace/i.test(konto) ? 'business' : 'privat';
 }

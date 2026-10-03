@@ -57,6 +57,9 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   A('apple-contacts-cache', 'Kontakte-Spiegel vom Mac (Adressbuch) — Löschung nur in Apple; der Löschlauf meldet die Einträge, die die Person nennen.'),
   // Google Kalender (03.10.2026): ein Spiegel je Person — Wahrheit ist Google, Löschung nur dort (wie die Apple-Spiegel; der Löschlauf zählt die Termine, die die Person nennen).
   A('kalender-google--*', 'Spiegel des Google Kalenders je Person (Termine, Teilnehmer-Adressen Dritter) — Wahrheit ist Google, Löschung nur dort; der Abgleich holt ihn neu, der Löschlauf meldet die Termine, die die Person nennen (person-weitere.ts).', 'kalender-caches'),
+  // Gmail in der Inbox (03.10.2026): Spiegel je Person — Nachrichten, die die Person nennen, raus (Art. 17), das Original bleibt in Gmail (der Löschlauf zählt es als „dort löschen“).
+  E('gmail-stand--*', 'Gmail-Spiegel je Person (Köpfe: Absender, Empfänger, Betreff, Ausschnitt, Labels, Anhang-Metadaten) — Nachrichten, die die Person nennen, raus (person-weitere.ts); das Original bleibt in Gmail (Hinweis „dort löschen“); Aufbewahrung: Frist Mail-Spiegel (180 Tage).', 'mail-spiegel'),
+  E('gmail-text--*', 'Gmail-Spiegel je Person (Textkörper, nur Text) — Texte, die die Person nennen (Adresse oder Name), raus; Aufbewahrung wie der Spiegel.', 'mail-spiegel'),
   A('kalender-umzug-sicherung--*', 'Sicherung der iCloud-Texte beim Umzug Business → Google (Notizen können Dritte nennen) — verschlüsselt, 30 Tage, dann räumt der Takt sie weg (lib/kalender/google/umzug.ts); Wahrheit ist der Termin in Google.', 'kalender-caches'),
   // Verbindung zu Google (03.10.): Token-Bestand und Anmelde-Zustand — gehören der Person des Haushalts, keine Dritten.
   H('google-verbindung--*', 'Google-Verbindung je Person (Adresse des Google-Kontos, verschlüsselte Token) — nur serverseitig, Trennen widerruft bei Google und löscht den Inhalt; Art. 17 über das Konto.'),

@@ -187,6 +187,19 @@ Nur im Notfall auf die Sicherung aus „Vor dem Upload“ 6 zurück (dann ist al
 - **Nach einem erneuten Upload** können Meetings (Kalender-Signal) und Geschenk-Vorschläge doppelt erscheinen →
   CRM › Verbindungsprüfung laufen lassen und Doppelte entfernen.
 
+## Gmail in der Inbox (03.10.2026, Branch `gmail`) — Umgebung, Einrichtung, Rückweg
+**Ohne Zutun ändert sich beim Upload nichts:** solange niemand in der Inbox „Gmail verbinden“ klickt, gibt es keine Gmail-Bestände und keinen Aufruf bei Google. Voraussetzung ist die Google-Verbindung aus „Google Kalender“ (`GOOGLE_CLIENT_ID`/`SECRET`).
+- **Reihenfolge bei Google (Details `GOOGLE_GMAIL_EINRICHTEN.md`):** Gmail API aktivieren → im Zustimmungsbildschirm den Bereich `gmail.modify` ergänzen (App bleibt „Intern“) → in der Admin-Konsole prüfen, dass die App Gmail darf → je Person in der Inbox „Gmail verbinden“. **Erst danach** die Mail-Adresse umstellen: Konten + `hello@` (Alias/Gruppe) anlegen und testen, **MX zuletzt** (SPF, DKIM, DMARC davor).
+- **Neue Umgebungsvariablen (alle optional, nur Server-`.env`, nie ins Repo):** `GMAIL_PUBSUB_THEMA`, `GMAIL_PUSH_DIENSTKONTO`, `GMAIL_PUSH_AUDIENCE` (Echtzeit per Pub/Sub-Push; ohne sie Abfrage alle 2 Minuten). Setzen per `deploy/google-verbinden.sh` (fragt optional). Fehlt etwas, antwortet der Webhook IMMER 403 (nie offen).
+- **Nach dem Upload prüfen (nichts eingeben, nur ansehen):** `docker compose logs app --since 10m | grep -i "\[gmail\]"` → leer oder einzelne Zeilen (`watch: …` ohne Pub/Sub ist erwartbar). Verdächtig: wiederholte `Abgleich: …`-Zeilen. HOI zeigt den Befund „Gmail (Inbox)“.
+- **Geänderte Formen:** nur neue Bestände (`gmail-stand--<person>`, `gmail-text--<person>`, im Speicher-Register) und optional `Aktivitaet.mailLink` (Verlauf der Kontaktakte); neue Löschfrist `mail-spiegel` (180 Tage, einstellbar unter System › Datenschutz). Im Kompatibilitätsmodus sind sie wie jeder Bestand verschlüsselt und für den alten Stand unsichtbar.
+- **Rückweg auf den Online-Stand:**
+  1. **Vorher je Person „Gmail ausschalten“** (Inbox, unten) bzw. Kalender › Einstellungen › Google › **Trennen**: beendet die Überwachung (`users.stop`), löscht den Spiegel, widerruft (beim Trennen) den Zugriff bei Google. Ohne das läuft eine Pub/Sub-Überwachung bis zu ~7 Tage weiter und ruft die dann unbekannte Adresse auf (harmlos, Google gibt auf).
+  2. Was der alte Stand nicht kennt, fällt weg: die Gmail-Quelle in der Inbox, die Spiegel-Bestände (bleiben ungenutzt liegen), `Aktivitaet.mailLink` (der alte Säuberer verwirft das Feld; die Verlaufszeile „Betreff: …“ bleibt ohne Link).
+  3. **Mails selbst sind nie verloren:** das Original liegt in Gmail. Gesendete Antworten stehen in Gmail unter „Gesendet“.
+  4. **DNS-Rückweg** (falls die Mail-Adresse wieder zu IONOS soll): MX/SPF auf die alten IONOS-Werte (Abschrift aus Teil D der Anleitung) — Mails, die in der Zwischenzeit bei Google ankamen, bleiben in Gmail.
+- **Datenschutz:** AVV (Datenverarbeitungszusatz) in der Workspace-Admin-Konsole bestätigen (gilt auch für Gmail); Verzeichnis nach Art. 30 bekommt „E-Mail (Google Workspace)“ automatisch, sobald Google eingerichtet ist (System › Datenschutz öffnen). Art. 17: der Löschlauf zählt „n Einträge in … Gmail nennen die Person — bitte dort löschen“.
+
 ## Google Kalender (03.10.2026, Branch `google-kal`) — Umgebung, Einrichtung, Rückweg
 **Ohne Zutun ändert sich beim Upload nichts:** solange `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` fehlen, ist Google sichtbar aus („noch nicht eingerichtet“), iCloud läuft wie bisher.
 - **Neue Umgebungsvariablen (nur Server-`.env`, nie ins Repo):** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_ERLAUBTE_DOMAIN` (z. B. `makeinnovation.de`), optional `GOOGLE_RUECKRUF_URL`

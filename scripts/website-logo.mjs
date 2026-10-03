@@ -1,15 +1,21 @@
 #!/usr/bin/env node
-// ─── MAKE Innovation · Logo-Bau (v4, 02.10.2026) ────────────────────────────────────────────────────
-// Eine Quelle für das Logo der Landingpage. Kevin 02.10.: „Mach bei uns nur MAKE und darunter Innovation — mit dem
-// roten Strich unter MA und dem grünen unter KE. Wir haben noch kein gutes Logo, da müssen wir später nochmal ran.“
-//   (a) Wortmarke: „MAKE“ (Linien-Buchstaben), darunter zwei Personenstriche — Rot unter MA, Grün unter KE, mit
-//       kleiner Lücke zwischen A und K —, darunter „INNOVATION“ im Blocksatz auf Breite der Wortmarke.
-//   (b) Bildmarke (das M mit geteiltem Punkt): VORLÄUFIG nur noch für Favicon und App-Kachel (zu klein für eine Wortmarke).
-// Alles ist Linie bzw. Fläche auf einem Raster (keine Schrift im SVG — sieht überall gleich aus, lädt nichts nach).
+// ─── MAKE Innovation · Logo-Bau (v5 „Synapse“, 03.10.2026) ──────────────────────────────────────────
+// Eine Quelle für das Logo der Landingpage. Kevin 03.10.: „Das Logo einfach bearbeiten und ein bisschen aufmotzen —
+// das sieht noch nicht nach Innovation und Seriosität aus.“ Dieselbe Idee wie v4 (MAKE, Rot unter MA = Malin, Grün
+// unter KE = Kevin, darunter INNOVATION), aber präzise gebaut:
+//   · Buchstaben als Flächen (keine runden Strich-Enden mehr): Stämme, Diagonalen mit waagerechtem Anschnitt an
+//     Versalhöhe und Grundlinie, optisch gleiche Strichstärke — eine eigene, ruhige Grotesk.
+//   · INNOVATION aus derselben Konstruktion, klein und weit gesperrt (Blocksatz auf Breite von MAKE).
+//   · Die zwei Personenstriche als Haarlinien in edleren Tönen; drei Entwürfe (logo-entwuerfe.html):
+//       A „Präzision“ — die Striche genau unter MA und KE.
+//       B „Synapse“   — die Striche laufen in der Fuge zwischen A und K auf einen Knoten zu, der Rot und Grün
+//                        verbindet (der Impuls, aus dem auf der Seite die Neuronen wachsen). ← gewählt
+//       C „Intarsie“  — keine Striche: der A-Querstrich rot, der E-Mittelstrich grün.
+// Alles ist Fläche auf einem Raster (keine Schrift im SVG — sieht überall gleich aus, lädt nichts nach).
 // Schreibt:
 //   website/assets/logo/*.svg + favicon-32.png, apple-touch-icon.png, icon-512.png
 //   website/favicon.svg                    (= Kachel)
-//   website/logo-entwuerfe.html            (Logo-Übersicht, wird nie ausgeliefert)
+//   website/logo-entwuerfe.html            (drei Entwürfe + alle Fassungen, wird nie ausgeliefert)
 // Konstruktion, Farben, Schutzzone, Mindestgröße: website/assets/logo/LOGO.md.
 //
 //   node scripts/website-logo.mjs          (braucht `sharp` aus node_modules für die PNGs)
@@ -27,171 +33,245 @@ const SEITE = join(WURZEL, 'website');
 const LOGO = join(SEITE, 'assets', 'logo');
 
 // ── Farben (CI wie website/css/seite.css) ──
+// Rot und Grün edler als v4: weniger Neon, mehr Tiefe (Granat, Smaragd). Auf Dunkel hell genug für Haarlinien.
 export const FARBEN = {
-  dunkel: { grund: '#0B0E10', ink: '#E8ECEA', zusatz: '#A2ADB0', rot: '#D13A55', gruen: '#22B577' },
-  hell: { grund: '#FFFFFF', ink: '#0B0E10', zusatz: '#4F5A5D', rot: '#B12E46', gruen: '#1A8F5E' },
+  dunkel: { grund: '#0B0E10', ink: '#ECEFED', zusatz: '#9AA5A8', rot: '#C9465C', gruen: '#2FA878' },
+  hell: { grund: '#FFFFFF', ink: '#0B0E10', zusatz: '#4F5A5D', rot: '#A82E44', gruen: '#167A55' },
 };
 
 const r = n => Math.round(n * 100) / 100;
-const pfad = pts => 'M' + pts.map(([x, y], i) => `${i ? 'L' : ''}${r(x)} ${r(y)}`).join('');
-const linie = (s, farbe) => `fill="none" stroke="${farbe}" stroke-width="${r(s)}" stroke-linecap="round" stroke-linejoin="round"`;
 
-// ── Bildmarke ─────────────────────────────────────────────────────────────────────────────────────────
-// Feld 240 × 240, Modul 24 = Strichstärke. Stämme x 48 / 192, oben y 64, unten y 184, Diagonalen exakt 45° bis
-// zur Fuge (120 | 136). Jeder Zug ist auf seine Hälfte beschnitten (clipPath bei x 120) — die Naht liegt genau auf
-// der Mittelachse. Sichtbare Fläche 168 × 144 (x 36–204, y 52–196).
-const S = 24;
-const MARKE_BOX = { x: 36, y: 52, b: 168, h: 144 };
-/** Die zwei Züge — beide beginnen am Fuß ihres Stamms und laufen zur Fuge (so zeichnet die Bühne sie). */
-export const ZUEGE = { ma: [[48, 184], [48, 64], [120, 136]], ke: [[192, 184], [192, 64], [120, 136]] };
-/**
- * Der Punkt in der Mitte: frei im V, Durchmesser = Strichstärke. Abstand zur Innenkante der Diagonalen und zur
- * Kerbe der Fuge je ≈ 15 (gut eine halbe Strichstärke) — bleibt auch in 16 px als eigener Punkt lesbar.
- */
-export const PUNKT = { cx: 120, cy: 92, r: 12 };
-
-/** Halbkreis rechts (Bogen im Uhrzeigersinn von oben nach unten). */
-const halbRechts = ({ cx, cy, r: rr }) => `M${cx} ${cy - rr}A${rr} ${rr} 0 0 1 ${cx} ${cy + rr}Z`;
-
-/** Der geteilte Punkt: voller Kreis grün, darüber die rechte Hälfte rot (keine Haarlinie in der Mitte). */
-function punktInnen(f, { klassen = false } = {}) {
-  const k = klassen ? ' class="punkt"' : '';
-  return `<g${k}><circle cx="${PUNKT.cx}" cy="${PUNKT.cy}" r="${PUNKT.r}" fill="${f.gruen}"/><path d="${halbRechts(PUNKT)}" fill="${f.rot}"/></g>`;
-}
-
-/** Bildmarke als SVG-Innenleben im 240er-Feld. `id` macht die Clip-Kennungen je Einsatz eindeutig. */
-export function bildmarkeInnen(f, id, { klassen = false } = {}) {
-  const k = n => (klassen ? ` class="zug zug-${n}" pathLength="1"` : '');
-  const defs = `<defs><clipPath id="${id}-ma"><rect width="120" height="240"/></clipPath><clipPath id="${id}-ke"><rect x="120" width="120" height="240"/></clipPath></defs>`;
-  return `${defs}<path${k('ma')} clip-path="url(#${id}-ma)" d="${pfad(ZUEGE.ma)}" ${linie(S, f.rot)}/>` +
-    `<path${k('ke')} clip-path="url(#${id}-ke)" d="${pfad(ZUEGE.ke)}" ${linie(S, f.gruen)}/>${punktInnen(f, { klassen })}`;
-}
-
-// ── Wortmarke „MAKE“ ──────────────────────────────────────────────────────────────────────────────────
-// Versalhöhe 72, Strich 12 (= halbe Bildmarke). Mittellinien von y 6 bis 66, Außenkante 0–72.
-// M wie die Bildmarke (45°, V-Tiefe 60 %). A-Querstrich auf 7/10, E-Mittelstrich leicht über der Mitte und kürzer.
-const WORT = { s: 12, h: 72, breite: 332 };
-const BUCHSTABEN = {
-  M: [[[0, 66], [0, 6], [36, 42], [72, 6], [72, 66]]],
-  A: [[[0, 66], [32, 6], [64, 66]], [[10, 48], [54, 48]]],
-  K: [[[0, 6], [0, 66]], [[50, 6], [0, 46]], [[16, 33.2], [52, 66]]],
-  E: [[[46, 6], [0, 6], [0, 66], [46, 66]], [[0, 35], [40, 35]]],
+// ── Flächen-Werkzeug ──────────────────────────────────────────────────────────────────────────────────
+// Jede Form ist ein Polygon (im Uhrzeigersinn, SVG-Koordinaten). Überlappende Polygone gleicher Farbe ergeben eine
+// saubere Vereinigung (nonzero) — so entstehen Buchstaben ohne Nähte.
+const flaeche = pts => {
+  let a = 0; for (let i = 0; i < pts.length; i++) { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length]; a += x1 * y2 - x2 * y1; }
+  return a < 0 ? pts.slice().reverse() : pts; // a > 0 = im Uhrzeigersinn (y nach unten)
 };
-/** x der Mittellinie je Buchstabe (Abstände der Außenkanten: M–A 16, A–K 18, K–E 16). */
-const WORT_X = { M: 6, A: 106, K: 200, E: 280 };
+const rechteck = (x, y, b, h) => flaeche([[x, y], [x + b, y], [x + b, y + h], [x, y + h]]);
+/** Viereck mit waagerechter Ober- und Unterkante: oben [x0, x1] bei y0, unten [x2, x3] bei y1. */
+const schraeg = (x0, x1, y0, x2, x3, y1) => flaeche([[x0, y0], [x1, y0], [x3, y1], [x2, y1]]);
+const verschieben = (polys, dx, dy = 0) => polys.map(p => p.map(([x, y]) => [x + dx, y + dy]));
+const skalieren = (polys, k) => polys.map(p => p.map(([x, y]) => [x * k, y * k]));
+const dPoly = polys => polys.map(p => 'M' + p.map(([x, y], i) => `${i ? 'L' : ''}${r(x)} ${r(y)}`).join('') + 'Z').join('');
+/** Kreisring (O) — außen im, innen gegen den Uhrzeigersinn: das Innere bleibt frei. */
+const ringD = (cx, cy, ra, ri) => `M${r(cx)} ${r(cy - ra)}A${r(ra)} ${r(ra)} 0 1 1 ${r(cx)} ${r(cy + ra)}A${r(ra)} ${r(ra)} 0 1 1 ${r(cx)} ${r(cy - ra)}Z` +
+  `M${r(cx)} ${r(cy - ri)}A${r(ri)} ${r(ri)} 0 1 0 ${r(cx)} ${r(cy + ri)}A${r(ri)} ${r(ri)} 0 1 0 ${r(cx)} ${r(cy - ri)}Z`;
 
-function makeInnen(f) {
-  const d = Object.entries(BUCHSTABEN).map(([b, z]) => z.map(p => pfad(p.map(([x, y]) => [x + WORT_X[b], y]))).join('')).join('');
-  return `<path d="${d}" ${linie(WORT.s, f.ink)}/>`;
-}
+/** Horizontale Dicke einer Diagonalen, damit sie quer gemessen `s` stark ist (dx über dy). */
+const quer = (s, dx, dy) => s * Math.hypot(dx, dy) / dy;
 
-// ── Die zwei Personenstriche unter MAKE ──────────────────────────────────────────────────────────────
-// 4 hoch, 12 unter der Grundlinie (wie v2). Rot (Malin) unter „MA“ (Außenkanten M 0 bis A 176), Grün (Kevin) unter „KE“
-// (K 194 bis E 332) — die Lücke von 18 liegt genau zwischen A und K.
-const STRICHE = { ma: [0, 176], ke: [194, 332], dicke: 4, abstand: 12 };
-function strichInnen(f, { klassen = false } = {}) {
-  const y = WORT.h + STRICHE.abstand;
-  const rect = (n, [a, b], farbe) => `<rect${klassen ? ` class="strich strich-${n}"` : ''} x="${a}" y="${y}" width="${b - a}" height="${STRICHE.dicke}" rx="${STRICHE.dicke / 2}" fill="${farbe}"/>`;
-  return rect('ma', STRICHE.ma, f.rot) + rect('ke', STRICHE.ke, f.gruen);
-}
-
-// ── Zusatz „INNOVATION“ ───────────────────────────────────────────────────────────────────────────────
-// Grundmaß Versalhöhe 20, Strich 4; skaliert mit k. O mit 0,5 Überhang (Rundes wirkt sonst kleiner).
-const ZUSATZ = {
-  I: { b: 0, z: [[[0, 2], [0, 18]]] },
-  N: { b: 14, z: [[[0, 18], [0, 2], [14, 18], [14, 2]]] },
-  O: { b: 16, kreis: { cx: 8, cy: 10, r: 8.5 } },
-  V: { b: 16, z: [[[0, 2], [8, 18], [16, 2]]] },
-  A: { b: 16, z: [[[0, 18], [8, 2], [16, 18]], [[3, 13], [13, 13]]] },
-  T: { b: 14, z: [[[0, 2], [14, 2]], [[7, 2], [7, 18]]] },
+// ── Die Schrift (Versalhöhe H, Strich s, Breite B) ──────────────────────────────────────────────────────
+// Diagonalen sind optisch etwas leichter (92 %) als Stämme. Spitzen (A-Scheitel, M-Kerbe, V-Fuß) enden in einer
+// schmalen Fläche (F) statt in einer Spitze — wirkt präzise und bleibt auch klein sauber.
+const GLYPHEN = {
+  M(H, s, B) {
+    // Stämme + ein V als eine Fläche: Kerbe bis zur Grundlinie (architektonisch, ruhig), unten eine schmale Fläche F.
+    const F = s * .5, b = (B - F) / 2, t = quer(s * .92, b, H), yi = (B / 2 - t) * H / b;
+    const v = flaeche([[0, 0], [t, 0], [B / 2, yi], [B - t, 0], [B, 0], [B - b, H], [b, H]]);
+    return { polys: [rechteck(0, 0, s, H), rechteck(B - s, 0, s, H), v], breite: B };
+  },
+  A(H, s, B, { querstrich = true } = {}) {
+    // Zwei Schenkel als eine Fläche, oben eine schmale Fläche F statt Spitze.
+    const F = s * .55, a = (B - F) / 2, t = quer(s * .92, a, H), yi = H * (1 - (B / 2 - t) / a);
+    const dach = flaeche([[a, 0], [B - a, 0], [B, H], [B - t, H], [B / 2, yi], [t, H], [0, H]]);
+    // Querstrich auf 64 % der Höhe, Enden in den Schenkeln verborgen (Mitte der Schenkel).
+    const yq = H * .64, hq = s * .86, mitteL = y => t / 2 + a * (1 - y / H);
+    const q = rechteck(mitteL(yq), yq, B - 2 * mitteL(yq), hq);
+    return { polys: [dach], querstrich: querstrich ? [q] : [], q, breite: B };
+  },
+  K(H, s, B) {
+    // Arm: ein Band von oben rechts bis in die Stammmitte (dort senkrecht angeschnitten, im Stamm verborgen).
+    // Bein: zweigt auf 42 % der Höhe vom Arm ab und läuft zur Grundlinie.
+    const yMitte = H * .6, ta = quer(s * .94, B - s, yMitte);
+    const dx = B - ta / 2 - s / 2, xL = y => (B - ta) - y * dx / yMitte;
+    const yL = (B - ta - s / 2) * yMitte / dx, yR = (B - s / 2) * yMitte / dx;
+    const arm = flaeche([[B - ta, 0], [B, 0], [s / 2, yR], [s / 2, yL]]);
+    const ys = H * .42;
+    let tb = s * 1.3; for (let i = 0; i < 3; i++) { const lx0 = xL(ys) + (ta - tb) / 2; tb = quer(s * .96, B - tb - lx0, H - ys); }
+    const lx = xL(ys) + (ta - tb) / 2;
+    const bein = schraeg(lx, lx + tb, ys, B - tb, B, H);
+    return { polys: [rechteck(0, 0, s, H), arm, bein], breite: B };
+  },
+  E(H, s, B, { mittelstrich = true } = {}) {
+    const hm = s * .9, ym = H * .485 - hm / 2;
+    const m = rechteck(0, ym, B * .86, hm);
+    return { polys: [rechteck(0, 0, s, H), rechteck(0, 0, B, s), rechteck(0, H - s, B, s)], mittelstrich: mittelstrich ? [m] : [], m, breite: B };
+  },
+  I(H, s) { return { polys: [rechteck(0, 0, s, H)], breite: s }; },
+  N(H, s, B) {
+    const t = quer(s * .92, B - s, H);
+    return { polys: [rechteck(0, 0, s, H), rechteck(B - s, 0, s, H), schraeg(0, t, 0, B - t, B, H)], breite: B };
+  },
+  V(H, s, B) {
+    const F = s * .55, a = (B - F) / 2, t = quer(s * .92, a, H), yi = H * (B / 2 - t) / a;
+    return { polys: [flaeche([[0, 0], [t, 0], [B / 2, yi], [B - t, 0], [B, 0], [B - a, H], [a, H]])], breite: B };
+  },
+  T(H, s, B) { return { polys: [rechteck(0, 0, B, s), rechteck(B / 2 - s / 2, 0, s, H)], breite: B }; },
+  O(H, s) { const ra = H * .515, ri = ra - s * 1.04; return { ring: [ra, ri], breite: ra * 2 }; },
 };
-const ZUSATZ_WORT = 'INNOVATION';
+/** Breite je Buchstabe als Vielfaches der Versalhöhe. */
+const BREITE = { M: 1.06, A: 1.0, K: .84, E: .69, N: .8, V: .9, T: .8 };
 
-/** INNOVATION bei Faktor k, im Blocksatz auf genau `breite` (Außenkante bis Außenkante). */
-function zusatzInnen(f, k, breite) {
-  const s = 4 * k;
-  const ohneSperr = ZUSATZ_WORT.split('').reduce((summe, b) => summe + ZUSATZ[b].b * k + s, 0);
-  const abstand = (breite - ohneSperr) / (ZUSATZ_WORT.length - 1);
-  let x = s / 2; const pfade = []; const kreise = [];
-  for (const b of ZUSATZ_WORT) {
-    const g = ZUSATZ[b];
-    if (g.kreis) kreise.push(`<circle cx="${r(x + g.kreis.cx * k)}" cy="${r(g.kreis.cy * k)}" r="${r(g.kreis.r * k)}" fill="none" stroke="${f.zusatz}" stroke-width="${r(s)}"/>`);
-    else pfade.push(g.z.map(p => pfad(p.map(([px, py]) => [px * k + x, py * k]))).join(''));
-    x += g.b * k + s + abstand;
+/** Ein Wort aus der Schrift: Polygone (Tinte), Ringe (O) und Akzente (rot/grün), x ab 0. `sperr` = Abstände. */
+function wort(text, H, s, sperr, akzent = {}) {
+  let x = 0; const tinte = [], ringe = [], rot = [], gruen = [], kanten = [];
+  [...text].forEach((b, i) => {
+    const B = BREITE[b] ? BREITE[b] * H : 0;
+    const g = GLYPHEN[b](H, s, B, b === 'A' ? { querstrich: !akzent.aRot } : b === 'E' ? { mittelstrich: !akzent.eGruen } : {});
+    if (g.ring) ringe.push([x + g.breite / 2, H / 2, ...g.ring]);
+    else tinte.push(...verschieben([...g.polys, ...(g.querstrich || []), ...(g.mittelstrich || [])], x));
+    if (b === 'A' && akzent.aRot) rot.push(...verschieben([g.q], x));
+    if (b === 'E' && akzent.eGruen) gruen.push(...verschieben([g.m], x));
+    kanten.push([x, x + g.breite]);
+    x += g.breite + (Array.isArray(sperr) ? (sperr[i] ?? 0) : sperr);
+  });
+  return { tinte, ringe, rot, gruen, kanten, breite: x - (Array.isArray(sperr) ? (sperr[text.length - 1] ?? 0) : sperr) };
+}
+/** Sperrung so, dass das Wort genau `breite` füllt (Blocksatz). */
+function blocksatz(text, H, s, breite) {
+  const ohne = wort(text, H, s, 0).breite;
+  return wort(text, H, s, (breite - ohne) / (text.length - 1));
+}
+
+// ── Wortmarke ─────────────────────────────────────────────────────────────────────────────────────────
+// MAKE: Versalhöhe 64, Strich 10.5. Sperrung optisch: M–A 11 (die Diagonale öffnet Raum), A–K 24 (die Fuge — hier
+// sitzt der Knoten), K–E 12.
+export const MASS = { H: 64, s: 10.5, sperr: [11, 24, 12], linie: 3, abstandLinie: 12, zusatzH: 13.5, zusatzS: 2.3, abstandZusatz: 12, knoten: 5, spalt: 3 };
+const MAKE = wort('MAKE', MASS.H, MASS.s, MASS.sperr);
+const MAKE_C = wort('MAKE', MASS.H, MASS.s, MASS.sperr, { aRot: true, eGruen: true });
+export const BREITE_WORT = MAKE.breite;
+const FUGE = (MAKE.kanten[1][1] + MAKE.kanten[2][0]) / 2; // Mitte zwischen A und K
+const Y_LINIE = MASS.H + MASS.abstandLinie;
+const Y_ZUSATZ = Y_LINIE + MASS.linie + MASS.abstandZusatz;
+const HOEHE_BLOCK = Math.ceil(Y_ZUSATZ + MASS.zusatzH * 1.03 + 0.5);
+const HOEHE_KOMPAKT = Y_LINIE + MASS.linie;
+
+const pfad = (d, farbe, k = '') => `<path${k} d="${d}" fill="${farbe}"/>`;
+const wortInnen = (w, f, dx = 0, dy = 0) => {
+  const tinte = verschieben(w.tinte, dx, dy);
+  const ringe = w.ringe.map(([cx, cy, ra, ri]) => ringD(cx + dx, cy + dy, ra, ri)).join('');
+  return { tinte: dPoly(tinte) + ringe, rot: dPoly(verschieben(w.rot, dx, dy)), gruen: dPoly(verschieben(w.gruen, dx, dy)) };
+};
+
+/** Die zwei Personenstriche je Entwurf. `klassen` = Klassen für die Einzeichnen-Animation der Bühne. */
+function striche(variante, f, { klassen = false, y = Y_LINIE } = {}) {
+  const h = MASS.linie, k = n => (klassen ? ` class="${n}"` : '');
+  if (variante === 'C') return '';
+  if (variante === 'A') {
+    const [ma0, ma1] = [MAKE.kanten[0][0], MAKE.kanten[1][1]], [ke0, ke1] = [MAKE.kanten[2][0], MAKE.kanten[3][1]];
+    return `<rect${k('strich strich-ma')} x="${r(ma0)}" y="${r(y)}" width="${r(ma1 - ma0)}" height="${h}" fill="${f.rot}"/>` +
+      `<rect${k('strich strich-ke')} x="${r(ke0)}" y="${r(y)}" width="${r(ke1 - ke0)}" height="${h}" fill="${f.gruen}"/>`;
   }
-  return { innen: `<path d="${pfade.join('')}" ${linie(s, f.zusatz)}/>${kreise.join('')}`, hoehe: 20 * k };
+  // B „Synapse“: Rot läuft von links, Grün von rechts auf den Knoten in der Fuge zu (mit schmalem Spalt —
+  // wie an einer Synapse). Der Knoten: linke Hälfte Rot, rechte Grün — hier verbinden sich die beiden.
+  const kn = MASS.knoten, sp = MASS.spalt, cy = y + h / 2;
+  const rotEnde = FUGE - kn - sp, gruenStart = FUGE + kn + sp;
+  return `<rect${k('strich strich-ma')} x="0" y="${r(y)}" width="${r(rotEnde)}" height="${h}" fill="${f.rot}"/>` +
+    `<rect${k('strich strich-ke')} x="${r(gruenStart)}" y="${r(y)}" width="${r(BREITE_WORT - gruenStart)}" height="${h}" fill="${f.gruen}"/>` +
+    `<g${k('knoten')}>` +
+    `<path d="M${r(FUGE)} ${r(cy - kn)}A${kn} ${kn} 0 0 0 ${r(FUGE)} ${r(cy + kn)}Z" fill="${f.rot}"/>` +
+    `<path d="M${r(FUGE)} ${r(cy - kn)}A${kn} ${kn} 0 0 1 ${r(FUGE)} ${r(cy + kn)}Z" fill="${f.gruen}"/></g>`;
 }
 
-// ── Wortmarke gestapelt: MAKE · Personenstriche · INNOVATION (Block 332 × 130) ───────────────────────────
-// MAKE 0–72 · Striche 84–88 · INNOVATION 100–130 (Faktor 1,5: Versalhöhe 30, Strich 6). Lücke je 12.
-const BLOCK = { h: 130, zusatzY: 100, k: 1.5 };
-function wortmarkeBlock(f, { mitZusatz = true, klassen = false } = {}) {
-  const z = zusatzInnen(f, BLOCK.k, WORT.breite);
-  return makeInnen(f) + strichInnen(f, { klassen }) + (mitZusatz ? `<g transform="translate(0 ${BLOCK.zusatzY})">${z.innen}</g>` : '');
+/** Wortmarke gestapelt: MAKE · Striche · INNOVATION (Blocksatz auf Breite von MAKE). */
+function blockInnen(variante, f, { mitZusatz = true, klassen = false } = {}) {
+  const w = wortInnen(variante === 'C' ? MAKE_C : MAKE, f);
+  let s = pfad(w.tinte, f.ink, klassen ? ' class="make"' : '');
+  if (variante === 'C') s += pfad(w.rot, f.rot) + pfad(w.gruen, f.gruen);
+  s += striche(variante, f, { klassen });
+  if (mitZusatz) {
+    const z = blocksatz('INNOVATION', MASS.zusatzH, MASS.zusatzS, BREITE_WORT);
+    s += pfad(wortInnen(z, f, 0, Y_ZUSATZ).tinte, f.zusatz, klassen ? ' class="zusatz"' : '');
+  }
+  return s;
 }
 
 // ── Anordnungen ───────────────────────────────────────────────────────────────────────────────────────
-const svg = (b, h, innen, titel) =>
+const svg = (b, h, innen, titel = 'MAKE Innovation') =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r(b)} ${r(h)}" width="${r(b)}" height="${r(h)}" role="img" aria-label="${titel}">${innen}</svg>`;
-const marke = (f, id, dx = 0, dy = 0) => `<g transform="translate(${dx - MARKE_BOX.x} ${dy - MARKE_BOX.y})">${bildmarkeInnen(f, id)}</g>`;
+export const GEWAEHLT = 'B';
 
-/** Bildmarke allein, sichtbare Fläche ohne Rand (168 × 144). */
-export function bildmarke(ton, id = `bm${ton}`) {
-  return svg(MARKE_BOX.b, MARKE_BOX.h, marke(FARBEN[ton], id), 'MAKE Innovation');
+/** Wortmarke allein (gestapelt). */
+export function wortmarke(ton, variante = GEWAEHLT) {
+  return svg(BREITE_WORT, HOEHE_BLOCK, blockInnen(variante, FARBEN[ton]));
 }
-
-/** Wortmarke allein: MAKE · Personenstriche · INNOVATION (332 × 130). */
-export function wortmarke(ton) {
-  return svg(WORT.breite, BLOCK.h, wortmarkeBlock(FARBEN[ton]), 'MAKE Innovation');
+/** Kompakt (Kopf am Handy): MAKE + Striche, ohne INNOVATION. */
+export function kompakt(ton, variante = GEWAEHLT) {
+  return svg(BREITE_WORT, HOEHE_KOMPAKT, blockInnen(variante, FARBEN[ton], { mitZusatz: false }));
 }
-
-/** App-Kachel / Favicon: Bildmarke auf dunklem Quadrat (Schutzzone eingebaut). */
-export function kachel({ rund = true, id = 'ka' } = {}) {
-  const f = FARBEN.dunkel;
-  const grund = `<rect width="240" height="240"${rund ? ' rx="52"' : ''} fill="${f.grund}"/>`;
-  // Mitte der sichtbaren Bildmarke (120 | 124) auf die Kachelmitte, 82 %.
-  return svg(240, 240, `${grund}<g transform="translate(120 120) scale(.82) translate(-120 -124)">${bildmarkeInnen(f, id)}</g>`, 'MAKE Innovation');
+/** Quer (Kopf, Fuß): MAKE + Striche, rechts daneben INNOVATION auf Höhe der Versalmitte. */
+export function querLogo(ton, variante = GEWAEHLT) {
+  const f = FARBEN[ton], hz = 21, sz = 3.1, abstand = 34;
+  const z = wort('INNOVATION', hz, sz, hz * .42);
+  const x0 = BREITE_WORT + abstand, y0 = (MASS.H - hz) / 2;
+  const b = x0 + z.breite + 1, h = HOEHE_KOMPAKT;
+  return svg(b, h, blockInnen(variante, f, { mitZusatz: false }) + pfad(wortInnen(z, f, x0, y0).tinte, f.zusatz));
 }
-
-/** Quer (Kopf, Fuß): die Wortmarke. `kompakt` = ohne INNOVATION (Handy). */
-export function quer(ton, { kompakt = false } = {}) {
-  const f = FARBEN[ton];
-  const h = kompakt ? WORT.h + STRICHE.abstand + STRICHE.dicke : BLOCK.h;
-  return svg(WORT.breite, h, wortmarkeBlock(f, { mitZusatz: !kompakt }), 'MAKE Innovation');
-}
-
-/** Groß (Titel, Druck): die Wortmarke mit Schutzzone (rundum 40, transparent). */
-export function gross(ton) {
+/** Groß (Titel, Druck): Wortmarke mit Schutzzone (rundum 40, transparent). */
+export function gross(ton, variante = GEWAEHLT) {
   const rand = 40;
-  return svg(WORT.breite + 2 * rand, BLOCK.h + 2 * rand, `<g transform="translate(${rand} ${rand})">${wortmarkeBlock(FARBEN[ton])}</g>`, 'MAKE Innovation');
+  return svg(BREITE_WORT + 2 * rand, HOEHE_BLOCK + 2 * rand, `<g transform="translate(${rand} ${rand})">${blockInnen(variante, FARBEN[ton])}</g>`);
+}
+/** Visitenkarten-Profil (zum Hochladen): eigener Grund, Rand 56. Reines SVG ohne Skript, Stil oder externe Verweise. */
+export function visitenkarte(ton, variante = GEWAEHLT) {
+  const f = FARBEN[ton], rand = 56, b = BREITE_WORT + 2 * rand, h = HOEHE_BLOCK + 2 * rand;
+  return svg(b, h, `<rect width="${b}" height="${h}" fill="${f.grund}"/><g transform="translate(${rand} ${rand})">${blockInnen(variante, f)}</g>`);
 }
 
-/**
- * Visitenkarten-Profil (Logo zum Hochladen): Wortmarke + Striche + INNOVATION mit eigenem Grund und Rand (rundum 48),
- * damit es auf jedem Profil-Hintergrund gleich aussieht. Reines SVG: kein Skript, kein Stil, keine externen Verweise.
- */
-export function visitenkarte(ton) {
-  const f = FARBEN[ton]; const rand = 48;
-  const b = WORT.breite + 2 * rand; const h = BLOCK.h + 2 * rand;
-  return svg(b, h, `<rect width="${b}" height="${h}" fill="${f.grund}"/><g transform="translate(${rand} ${rand})">${wortmarkeBlock(f)}</g>`, 'MAKE Innovation');
+// ── Bildmarke (Monogramm) und Kachel ──────────────────────────────────────────────────────────────────
+// Das M aus der Wortmarke, darunter die zwei Striche mit dem Knoten — lesbar bis 16 px.
+function monogrammInnen(f, { mitStrichen = true } = {}) {
+  const H = 100, s = 17, B = BREITE.M * H, m = GLYPHEN.M(H, s, B);
+  const lh = 8, ly = H + 16, kn = 7, sp = 4, mitte = B / 2;
+  let innen = pfad(dPoly(m.polys), f.ink);
+  if (mitStrichen) {
+    innen += `<rect x="0" y="${ly}" width="${r(mitte - kn - sp)}" height="${lh}" fill="${f.rot}"/>` +
+      `<rect x="${r(mitte + kn + sp)}" y="${ly}" width="${r(B - mitte - kn - sp)}" height="${lh}" fill="${f.gruen}"/>` +
+      `<path d="M${r(mitte)} ${ly + lh / 2 - kn}A${kn} ${kn} 0 0 0 ${r(mitte)} ${ly + lh / 2 + kn}Z" fill="${f.rot}"/>` +
+      `<path d="M${r(mitte)} ${ly + lh / 2 - kn}A${kn} ${kn} 0 0 1 ${r(mitte)} ${ly + lh / 2 + kn}Z" fill="${f.gruen}"/>`;
+  }
+  return { innen, b: B, h: ly + lh / 2 + kn };
+}
+export function bildmarke(ton) {
+  const m = monogrammInnen(FARBEN[ton]);
+  return svg(m.b, m.h, m.innen);
+}
+/** App-Kachel / Favicon: Monogramm auf dunklem Quadrat (Schutzzone eingebaut). */
+export function kachel({ rund = true } = {}) {
+  const f = FARBEN.dunkel, m = monogrammInnen(f), k = 128 / m.b;
+  const grund = `<rect width="240" height="240"${rund ? ' rx="52"' : ''} fill="${f.grund}"/>`;
+  return svg(240, 240, `${grund}<g transform="translate(${r(120 - m.b * k / 2)} ${r(120 - m.h * k / 2)}) scale(${r(k)})">${m.innen}</g>`);
 }
 
-/** Inline-Fassung für die Bühne (Klassen für die Einzeichnen-Animation der Striche, dekorativ: aria-hidden). */
+/** Inline-Fassung für die Bühne (Klassen für die Einzeichnen-Animation, dekorativ: aria-hidden). */
 export function buehne() {
-  return `<svg class="zeichen" viewBox="0 0 ${WORT.breite} ${BLOCK.h}" aria-hidden="true" focusable="false">${wortmarkeBlock(FARBEN.dunkel, { klassen: true })}</svg>`;
+  return `<svg class="zeichen" viewBox="0 0 ${r(BREITE_WORT)} ${HOEHE_BLOCK}" aria-hidden="true" focusable="false">${blockInnen(GEWAEHLT, FARBEN.dunkel, { klassen: true })}</svg>`;
 }
 
-// ── Schreiben ─────────────────────────────────────────────────────────────────────────────────────────
+// ── Übersicht (logo-entwuerfe.html) ───────────────────────────────────────────────────────────────────
 const KOPF = '<?xml version="1.0" encoding="UTF-8"?>\n';
-
+const ENTWUERFE = {
+  A: ['Präzision', 'Die Idee aus v4, präzise gebaut: eigene Grotesk aus Flächen statt runder Linien, Haarlinien genau unter MA und KE, INNOVATION klein und weit gesperrt. Ruhig, seriös — aber ohne eigenes Zeichen.'],
+  B: ['Synapse', 'Rot läuft von links, Grün von rechts auf einen Knoten in der Fuge zwischen A und K zu — mit schmalem Spalt, wie an einer Synapse. Der Knoten trägt beide Farben: hier verbinden sich Malin und Kevin, hier entsteht der Impuls. Auf der Seite wachsen aus genau diesem Knoten die Neuronen. Gewählt: seriös in der Schrift, eigen im Detail, und es erzählt die Seite.'],
+  C: ['Intarsie', 'Keine Striche unter dem Wort: der Querstrich des A ist rot, der Mittelstrich des E grün — die Personen stecken in den Buchstaben. Sehr kompakt, aber klein schwer lesbar und weiter weg von der bisherigen Idee.'],
+};
 function uebersicht() {
   const zeile = (titel, inhalt) => `<div class="ent-zeile"><span class="mikro">${titel}</span><div class="ent-flaeche">${inhalt}</div></div>`;
+  const entwurf = ([v, [name, text]]) => `
+  <section class="ent" aria-labelledby="ent-${v}">
+    <div class="ent-kopf"><h2 id="ent-${v}">Entwurf ${v} · ${name}</h2>${v === GEWAEHLT ? '<span class="abzeichen gewaehlt">Gewählt</span>' : ''}</div>
+    <p class="ent-text">${text}</p>
+    ${zeile('Wortmarke · dunkel und hell', `<div class="ent-dunkel ent-gestapelt">${wortmarke('dunkel', v)}</div><div class="ent-hell ent-gestapelt">${wortmarke('hell', v)}</div>`)}
+    ${zeile('Quer (Kopf)', `<div class="ent-dunkel ent-quer">${querLogo('dunkel', v)}</div><div class="ent-hell ent-quer">${querLogo('hell', v)}</div>`)}
+    ${zeile('Klein: 120 px und 64 px breit', `<div class="ent-dunkel ent-klein"><span class="b120">${wortmarke('dunkel', v)}</span><span class="b64">${kompakt('dunkel', v)}</span></div><div class="ent-hell ent-klein"><span class="b120">${wortmarke('hell', v)}</span><span class="b64">${kompakt('hell', v)}</span></div>`)}
+  </section>`;
   return `<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Logo — MAKE Innovation GmbH</title>
+<title>Logo-Entwürfe — MAKE Innovation</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0B0E10">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -202,16 +282,15 @@ function uebersicht() {
 <main id="inhalt" class="recht entwuerfe">
   <div class="wrap">
     <span class="mikro">Arbeitsdatei · nur lokal</span>
-    <h1>MAKE-Logo (v4)</h1>
-    <p>Wortmarke: MAKE, darunter ein roter Strich unter MA und ein grüner unter KE, darunter INNOVATION im Blocksatz. Die M-Bildmarke dient vorläufig nur als Favicon und App-Kachel — das Logo wird später überarbeitet. Konstruktion, Schutzzone und Mindestgrößen: <code>assets/logo/LOGO.md</code>.</p>
-  <section class="ent" aria-labelledby="ent-logo">
-    <div class="ent-kopf"><h2 id="ent-logo">Im Einsatz</h2></div>
-    ${zeile('Wortmarke · dunkel und hell', `<div class="ent-dunkel ent-gestapelt">${wortmarke('dunkel')}</div><div class="ent-hell ent-gestapelt">${wortmarke('hell')}</div>`)}
-    ${zeile('Bildmarke (vorläufig, nur Favicon/Kachel)', `<div class="ent-dunkel ent-gross">${bildmarke('dunkel', 'u1')}</div><div class="ent-hell ent-gross">${bildmarke('hell', 'u2')}</div>`)}
-    ${zeile('Favicon · 64 / 32 / 16 px', `<div class="ent-dunkel ent-icons"><span class="i64">${kachel({ id: 'u3' })}</span><span class="i32">${kachel({ id: 'u4' })}</span><span class="i16">${kachel({ id: 'u5' })}</span></div>`)}
-    ${zeile('Quer (Kopf, Fuß)', `<div class="ent-dunkel ent-quer">${quer('dunkel')}</div><div class="ent-hell ent-quer">${quer('hell')}</div>`)}
-    ${zeile('Kompakt (Kopf am Handy)', `<div class="ent-dunkel ent-quer">${quer('dunkel', { kompakt: true })}</div><div class="ent-hell ent-quer">${quer('hell', { kompakt: true })}</div>`)}
-    ${zeile('Groß (Bühne, Titel, Druck)', `<div class="ent-dunkel ent-quer">${gross('dunkel')}</div><div class="ent-hell ent-quer">${gross('hell')}</div>`)}
+    <h1>MAKE-Logo (v5) — drei Entwürfe</h1>
+    <p>Dieselbe Idee wie bisher — MAKE, Rot unter MA (Malin), Grün unter KE (Kevin), darunter INNOVATION —, aber präzise gebaut: eine eigene Grotesk aus Flächen (keine runden Strich-Enden), optisch ausgeglichene Strichstärken und Abstände, Haarlinien in edleren Tönen, INNOVATION klein und weit gesperrt. Konstruktion, Schutzzone und Mindestgrößen: <code>assets/logo/LOGO.md</code>.</p>
+${Object.entries(ENTWUERFE).map(entwurf).join('\n')}
+  <section class="ent" aria-labelledby="ent-satz">
+    <div class="ent-kopf"><h2 id="ent-satz">Gewählt (${GEWAEHLT}) — alle Fassungen</h2></div>
+    ${zeile('Groß (Titel, Druck)', `<div class="ent-dunkel ent-quer">${gross('dunkel')}</div><div class="ent-hell ent-quer">${gross('hell')}</div>`)}
+    ${zeile('Kompakt (Kopf am Handy)', `<div class="ent-dunkel ent-quer">${kompakt('dunkel')}</div><div class="ent-hell ent-quer">${kompakt('hell')}</div>`)}
+    ${zeile('Monogramm (Bildmarke)', `<div class="ent-dunkel ent-gross">${bildmarke('dunkel')}</div><div class="ent-hell ent-gross">${bildmarke('hell')}</div>`)}
+    ${zeile('Favicon · 64 / 32 / 16 px', `<div class="ent-dunkel ent-icons"><span class="i64">${kachel()}</span><span class="i32">${kachel()}</span><span class="i16">${kachel()}</span></div>`)}
     ${zeile('Visitenkarten-Profil (zum Hochladen)', `<div class="ent-dunkel ent-quer">${visitenkarte('dunkel')}</div><div class="ent-hell ent-quer">${visitenkarte('hell')}</div>`)}
   </section>
   </div>
@@ -229,10 +308,10 @@ async function schreiben() {
     'wortmarke.svg': wortmarke('dunkel'),
     'wortmarke-hell.svg': wortmarke('hell'),
     'kachel.svg': kachel(),
-    'quer.svg': quer('dunkel'),
-    'quer-hell.svg': quer('hell'),
-    'kompakt.svg': quer('dunkel', { kompakt: true }),
-    'kompakt-hell.svg': quer('hell', { kompakt: true }),
+    'quer.svg': querLogo('dunkel'),
+    'quer-hell.svg': querLogo('hell'),
+    'kompakt.svg': kompakt('dunkel'),
+    'kompakt-hell.svg': kompakt('hell'),
     'gross.svg': gross('dunkel'),
     'gross-hell.svg': gross('hell'),
     'visitenkarte-make.svg': visitenkarte('dunkel'),
@@ -248,7 +327,7 @@ async function schreiben() {
   await png(kachel(), 32, 'favicon-32.png');
   await png(kachel({ rund: false }), 180, 'apple-touch-icon.png'); // iOS rundet selbst ab
   await png(kachel(), 512, 'icon-512.png');
-  console.log(`✓ ${Object.keys(dateien).length} SVG, 3 PNG, favicon.svg, logo-entwuerfe.html geschrieben.`);
+  console.log(`✓ ${Object.keys(dateien).length} SVG, 3 PNG, favicon.svg, logo-entwuerfe.html geschrieben (Wortmarke ${r(BREITE_WORT)} × ${HOEHE_BLOCK}).`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

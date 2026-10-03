@@ -271,6 +271,12 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('inbox-triage', n);
   });
 
+  // 11b · Mail-Spiegel (Gmail in der Inbox, 03.10.): Nachrichten vor der Frist (180 Tage) fallen im Spiegel weg — das Original bleibt in Gmail.
+  await schritt('mail-spiegel', async () => {
+    const { gmailAufraeumen } = await import('@/lib/gmail/aufraeumen');
+    zaehle('gmail-spiegel', await gmailAufraeumen(stichtag('mail-spiegel', f['mail-spiegel'], heute)));
+  });
+
   // 12 · Umzugs- und Aufräum-Kopien im Archiv (30 Tage) — andere Archiv-Dateien bleiben (dokumentiert)
   await schritt('archiv-umzug', async () => {
     const grenze = stichtag('archiv-umzug', f['archiv-umzug'], heute);

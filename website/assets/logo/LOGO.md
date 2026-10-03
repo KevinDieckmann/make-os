@@ -1,76 +1,72 @@
-# MAKE-Logo (Landingpage v4, Stand 02.10.2026)
+# MAKE-Logo (v5 „Synapse“, Stand 03.10.2026)
 
 Erzeugt von `scripts/website-logo.mjs` — **nicht von Hand ändern**, sondern dort und neu erzeugen:
 `node scripts/website-logo.mjs` (schreibt alle Dateien hier, `website/favicon.svg` und `website/logo-entwuerfe.html`).
 Diese Datei wird nie ausgeliefert (Caddy `@intern`, `hide LOGO.md`).
 
-> **Vorläufig — das Logo wird später überarbeitet** (Kevin 02.10.: „Wir haben noch kein gutes Logo, da müssen wir
-> später nochmal ran“). Bis dahin zeigt die Seite nur die Wortmarke. Favicon und App-Kachel behalten vorläufig die
-> M-Bildmarke aus v3 (zu klein für eine Wortmarke).
+## Auftrag (Kevin 03.10.)
+„Das Logo einfach bearbeiten und ein bisschen aufmotzen — das sieht noch nicht nach Innovation und Seriosität aus.“
+Dieselbe Idee wie v4: **MAKE**, **Rot unter MA** (Malin), **Grün unter KE** (Kevin), darunter **INNOVATION**.
+Drei Entwürfe in `website/logo-entwuerfe.html`:
 
-## Idee (Kevin 02.10.)
-**MAKE**, darunter zwei **Personenstriche** — **Rot unter MA** (Malin), **Grün unter KE** (Kevin), mit kleiner Lücke
-zwischen A und K —, darunter **INNOVATION** im Blocksatz auf Breite von MAKE. Die zwei Punkte aus v3 entfallen.
-Alles ist Linie bzw. Fläche, keine Schrift: das Logo sieht überall gleich aus und lädt nichts nach.
+| Entwurf | Idee |
+|---|---|
+| A „Präzision“ | Haarlinien genau unter MA und KE |
+| **B „Synapse“ (gewählt)** | Rot läuft von links, Grün von rechts auf einen **Knoten in der Fuge zwischen A und K** zu, mit schmalem Spalt wie an einer Synapse; der Knoten ist links rot, rechts grün. Hier verbinden sich die beiden — und auf der Seite wachsen aus genau diesem Knoten die Neuronen. |
+| C „Intarsie“ | keine Striche: A-Querstrich rot, E-Mittelstrich grün |
+
+## Was gegenüber v4 anders ist
+- **Buchstaben als Flächen** statt Linien mit runden Enden: Stämme, Diagonalen mit waagerechtem Anschnitt an Versalhöhe
+  und Grundlinie, Diagonalen optisch 92 % der Stammstärke, Spitzen (A-Scheitel, M-Kerbe, V) enden in einer schmalen Fläche.
+  Eine eigene, ruhige Grotesk — präzise und seriös statt verspielt.
+- M mit Kerbe bis zur Grundlinie, K mit vom Arm abzweigendem Bein, E-Mittelstrich leicht über der Mitte und kürzer,
+  A-Querstrich auf 64 %.
+- **INNOVATION** aus derselben Konstruktion, klein (Versalhöhe 13,5) und weit gesperrt im Blocksatz auf Breite von MAKE.
+- Striche als **Haarlinien** (3) in edleren Tönen; der Knoten (Ø 10) als Zeichen.
+- Kopf: neue **Querfassung** (MAKE links, INNOVATION rechts auf Höhe der Versalmitte) — INNOVATION bleibt so im Kopf lesbar.
+- Favicon/Kachel: **Monogramm** M mit Strichen und Knoten (ersetzt die vorläufige M-Bildmarke aus v3/v4).
 
 ## Konstruktion
 | Teil | Raster |
 |---|---|
-| MAKE | Versalhöhe 72, Strich **12**, runde Enden und Ecken. M mit 45°-V (Tiefe 60 %). Außenkanten-Abstände M–A 16, A–K 18, K–E 16. Breite 332. |
-| Personenstriche | 4 hoch, abgerundet, **12 unter der Grundlinie** (y 84–88). Rot x 0–176 (unter MA), Grün x 194–332 (unter KE); die Lücke von 18 liegt zwischen A und K. |
-| INNOVATION | Versalhöhe 30, Strich 6 (Grundmaß 20/4 × 1,5), Blocksatz auf 332 (= Breite MAKE), y 100–130 (Lücke 12 unter den Strichen). |
-| Block | 332 × 130 (kompakt ohne INNOVATION: 332 × 88). |
-| Bildmarke (vorläufig) | Feld 240 × 240, Modul 24. Zwei Züge (MA rot links, KE grün rechts) treffen sich in der Fuge, in der Mitte ein geteilter Punkt (links grün, rechts rot). Nur noch Favicon und Kachel. |
-
-**Optische Korrekturen:** E-Mittelstrich leicht über der Mitte und kürzer · A-Querstrich auf 7/10 · O mit 0,5 Überhang.
+| MAKE | Versalhöhe 64, Stamm 10,5. Sperrung M–A 11, A–K 24 (die Fuge), K–E 12. Breite 276,76. |
+| Striche | Höhe 3, 12 unter der Grundlinie (y 76–79). Rot x 0 bis Knoten − 8, Grün Knoten + 8 bis Ende. |
+| Knoten | Mitte der Fuge zwischen A und K, Radius 5, Spalt 3 zu beiden Strichen; linke Hälfte Rot, rechte Grün. |
+| INNOVATION | Versalhöhe 13,5, Stamm 2,3, Blocksatz auf 276,76, y 91–105. |
+| Block | 276,76 × 106 (kompakt ohne INNOVATION: 276,76 × 79). |
 
 ## Farben
 | Rolle | auf dunklem Grund | auf hellem Grund |
 |---|---|---|
-| Rot (Strich unter MA; Bildmarke: MA-Zug) | `#D13A55` | `#B12E46` |
-| Grün (Strich unter KE; Bildmarke: KE-Zug, linke Punkthälfte) | `#22B577` | `#1A8F5E` |
-| MAKE | `#E8ECEA` | `#0B0E10` |
-| INNOVATION | `#A2ADB0` | `#4F5A5D` |
+| Rot (Malin) | `#C9465C` | `#A82E44` |
+| Grün (Kevin) | `#2FA878` | `#167A55` |
+| MAKE | `#ECEFED` | `#0B0E10` |
+| INNOVATION | `#9AA5A8` | `#4F5A5D` |
 | Kachel-Grund | `#0B0E10` | — |
 
-Rot und Grün gehören den Personen — nie für Zustände oder Knöpfe (die sind Türkis `#58D9CD`).
+Rot und Grün gehören den Personen — nie für Zustände oder Knöpfe (die sind Türkis `#58D9CD`). Rot steht links, Grün
+rechts — nie tauschen.
 
 ## Dateien
 | Datei | Einsatz |
 |---|---|
-| `bildmarke.svg` / `bildmarke-hell.svg` | Bildmarke allein |
-| `wortmarke.svg` / `wortmarke-hell.svg` | Wortmarke allein (MAKE · Punkte · INNOVATION) |
-| `kachel.svg` (= `website/favicon.svg`) | App-Kachel und Favicon (dunkles, abgerundetes Quadrat, Schutzzone eingebaut) |
-| `favicon-32.png`, `apple-touch-icon.png` (180, ohne Rundung — iOS rundet selbst), `icon-512.png` | Raster-Fassungen der Kachel |
-| `quer.svg` / `quer-hell.svg` | Kopf und Fuß: Bildmarke + Wortmarke (540 × 144) |
+| `wortmarke.svg` / `wortmarke-hell.svg` | Wortmarke gestapelt (MAKE · Striche mit Knoten · INNOVATION), 276,76 × 106 |
+| `quer.svg` / `quer-hell.svg` | Kopf und Fuß: MAKE + Striche, INNOVATION rechts daneben (547,7 × 79; Kopf 30 px hoch) |
 | `kompakt.svg` / `kompakt-hell.svg` | Kopf am Handy (≤ 560 px): ohne INNOVATION |
-| `gross.svg` / `gross-hell.svg` | Titel, Druck: Bildmarke mittig über der Wortmarke |
+| `gross.svg` / `gross-hell.svg` | Titel, Druck: Wortmarke mit Schutzzone (rundum 40) |
+| `visitenkarte-make.svg` / `visitenkarte-make-hell.svg` | **Logo zum Hochladen in ein Visitenkarten-Profil**: Wortmarke mit eigenem Grund (dunkel `#0B0E10` bzw. weiß), Rand 56, reines SVG ohne Skript, Stil oder externe Verweise |
+| `bildmarke.svg` / `bildmarke-hell.svg` | Monogramm (M · Striche · Knoten) |
+| `kachel.svg` (= `website/favicon.svg`) | App-Kachel und Favicon (Monogramm auf dunklem, abgerundetem Quadrat) |
+| `favicon-32.png`, `apple-touch-icon.png` (180, ohne Rundung — iOS rundet selbst), `icon-512.png` | Raster-Fassungen der Kachel |
 
-Die Bühne der Startseite trägt die Bildmarke **inline** (Einzeichnen-Animation: beide Züge zeichnen sich von den
-Stämmen zur Fuge, danach erscheint der Punkt; bei `prefers-reduced-motion` steht alles sofort). Den Block liefert
-`node scripts/website-logo.mjs --buehne`; `website/pruefen.mjs` prüft, dass seine Formen mit `bildmarke.svg` übereinstimmen.
-
-## Dateien
-| Datei | Einsatz |
-|---|---|
-| `wortmarke.svg` / `wortmarke-hell.svg` | Wortmarke allein (MAKE · Striche · INNOVATION), 332 × 130 |
-| `quer.svg` / `quer-hell.svg` | Kopf und Fuß (gleiche Form wie die Wortmarke; Kopf 46 px hoch, Fuß 64 px) |
-| `kompakt.svg` / `kompakt-hell.svg` | Kopf am Handy (≤ 560 px): ohne INNOVATION, 332 × 88 |
-| `gross.svg` / `gross-hell.svg` | Titel, Druck, Bühne: Wortmarke mit Schutzzone (rundum 40) |
-| `visitenkarte-make.svg` / `visitenkarte-make-hell.svg` | **Logo zum Hochladen in ein Visitenkarten-Profil**: Wortmarke mit eigenem Grund (dunkel `#0B0E10` bzw. weiß) und Rand 48, 428 × 226, ca. 1,2 KB, reines SVG ohne Skript, Stil oder externe Verweise |
-| `bildmarke.svg` / `bildmarke-hell.svg` | Bildmarke allein — **vorläufig**, nur noch Grundlage der Kachel |
-| `kachel.svg` (= `website/favicon.svg`) | App-Kachel und Favicon — **vorläufig** (M-Bildmarke auf dunklem, abgerundetem Quadrat) |
-| `favicon-32.png`, `apple-touch-icon.png` (180, ohne Rundung — iOS rundet selbst), `icon-512.png` | Raster-Fassungen der Kachel — vorläufig |
-
-Die Bühne der Startseite trägt die Wortmarke **inline**: die zwei Striche zeichnen sich nacheinander ein (Rot, dann
-Grün), bei `prefers-reduced-motion` steht alles sofort. Den Block liefert `node scripts/website-logo.mjs --buehne`;
-`website/pruefen.mjs` prüft, dass seine Formen mit `wortmarke.svg` übereinstimmen.
+Die Bühne der Startseite trägt die Wortmarke **inline** (`node scripts/website-logo.mjs --buehne`): Rot zeichnet sich von
+links, Grün von rechts ein, dann erscheint der Knoten; bei `prefers-reduced-motion` steht alles sofort. Die Klassen
+`strich-ma`, `strich-ke`, `knoten`, `make` liest auch `js/neuronen.js` — dort setzen sich die Neuronen genau auf diese
+Formen. `website/pruefen.mjs` prüft, dass die Formen mit `wortmarke.svg` übereinstimmen.
 
 ## Schutzzone und Mindestgröße
-- **Schutzzone:** rundum 40 (Einheiten der Wortmarke, ≈ halbe Versalhöhe von MAKE). Nichts ragt hinein.
-- **Mindestgröße:** „quer“ 40 px hoch (darunter wird INNOVATION unleserlich → „kompakt“ nehmen, mind. 24 px hoch), Bildmarke/Kachel 16 px.
-- Nicht verzerren, nicht umfärben (außer hell/dunkel), keine Schatten oder Konturen; Rot (MA) steht links, Grün (KE) rechts — nie tauschen.
+- **Schutzzone:** rundum 40 (Einheiten der Wortmarke). Nichts ragt hinein.
+- **Mindestgröße:** gestapelt 120 px breit, quer 24 px hoch, kompakt 20 px hoch, Kachel 16 px.
+- Nicht verzerren, nicht umfärben (außer hell/dunkel), keine Schatten oder Konturen.
 
-## Übersicht
-`website/logo-entwuerfe.html` (lokal öffnen, wird nie ausgeliefert) zeigt alle Fassungen dunkel und hell. Die
-früheren Stände (v2 mit Personenstrichen und Bildmarke, v3 mit zwei Punkten) liegen im Git-Verlauf (Commits ca28282, 6b83f48).
+Frühere Stände (v2 Personenstriche + Bildmarke, v3 zwei Punkte, v4 runde Linien-Buchstaben) liegen im Git-Verlauf.
