@@ -323,6 +323,10 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   (laufendes Jahr doppelt, ausgeliefert via `fokusFuerLaufendesJahr`). Meilenstein öffnen/anlegen: `useMeilensteinFenster`
   (`components/os/planung/MeilensteinFenster.tsx`), auf der Jahresseite über EINE Stelle `oeffneMeilenstein` — kein zweiter
   Schreibweg, keine Aufgaben-Logik dort. `Zeitstrahl` bleibt ohne neue Props wie bisher (Aufgaben, Bauplan).
+- **Lichtfäden (03.10., DESIGN_STANDARD.md › Lichtfäden):** Der Jahres-Zeitstrahl zeigt `licht` (Prop am `Zeitstrahl`): je Ziel ein Bündel,
+  Dichte je Woche NUR aus `faedenDichte` (`lib/lichtfaeden/dichte.ts`, Gewichte dort), Farben aus `buendelFarben`/`FADEN_FARBEN`, Marker tragen `buendel`.
+  Zeichner framework-frei (`lib/lichtfaeden/band.ts` + `zeichnen.ts`, Zeitband `zeitband.ts`); dieselben Dateien laufen auf der Website
+  (`node scripts/lichtfaeden-website.mjs` → `website/js/lichtfaeden.js`, Wächter `tests/lichtfaeden.test.ts`). Nie im Zeichner Daten rechnen.
 - Tests `tests/planung-*.test.ts`. Sichtprüfung nur mit Wegwerfkonto; Ziele/Meilensteine/Routinen sind GETEILTE Bestände —
   Schreibtests nur über `fuer: 'ich'` (persönlicher Ziele-Speicher), nie in `ziele`/`meilensteine`/`routinen` selbst.
 

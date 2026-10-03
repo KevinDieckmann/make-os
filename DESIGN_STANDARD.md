@@ -88,3 +88,28 @@ Was für Zahlen gilt (zusätzlich zu den 13 Regeln):
 7. **Fehler** sind `Hinweis art="kritisch"` mit Weg zurück (z. B. „Noch einmal versuchen“), Erfolg `gut`, Erklärungen unter einer Karte bleiben Notiz in `inkDim` (13 px).
 
 Gemeinsame Teile der Finanzplanung (`finanzplan/teile.tsx`: `Kachel`, `Etikett`, `StatusPille`, `Tabelle`, `KnopfKlein`, `Pillen`, `Hinweis`, `Nichts`) und der Haushaltsfinanzen (`haushalt/gemeinsam.tsx`) reichen jetzt die Standard-Bausteine durch — gleiche Namen, damit die Seiten unverändert bleiben. Wächter: `tests/design-finanzen.test.ts`.
+
+## Lichtfäden (03.10.)
+Kevin: „Hier bei der Planung wäre geil, wenn das so reinkommt mit mehreren Elektro-Fäden … das kann sich auch mit durch die Homepage ziehen.“
+Feine, halbtransparente Fäden auf Canvas 2D, die zu Bündeln verflochten sind; dicht = breit und hell, ruhig = eng. **Ein Zeichner für App und Website.**
+
+**Wann einsetzen:** nur als *Hauptbild einer Zeitachse* oder als *roter Faden* — höchstens einmal je Ansicht, nie als Schmuck in Karten, Listen oder Kennzahlen.
+Die Fäden zeigen Dichte über die Zeit (Planung) bzw. führen durch eine Erzählung (Website). Jede Aussage steht zusätzlich als Text (Leinwand `aria-hidden`,
+Textäquivalent daneben), Bedienung bleibt in echten Knöpfen über der Leinwand.
+
+| Teil | Datei | Inhalt |
+|---|---|---|
+| Mathematik (rein) | `lib/lichtfaeden/band.ts` | `LICHTFAEDEN` (Parameter), Saaten, `versatz`, `buendelMitte`, `spreizung`, `gauss`, `saettigen`, `wertBei`, `kurve` (Catmull-Rom) |
+| Zeichner | `lib/lichtfaeden/zeichnen.ts` | `zeichneBuendel` (Path2D-Eimer je Deckkraft-Stufe, additiv), `leinwand` (devicePixelRatio ≤ 2), `starteLauf` (pausiert außerhalb Bild/Tab, reduzierte Bewegung = Standbild) |
+| Dichte (Planung) | `lib/lichtfaeden/dichte.ts` | `faedenDichte(ziele, meilensteine, aufgaben, termine?, zeitraum)` + `lichtText` |
+| Zeitband (Planung) | `lib/lichtfaeden/zeitband.ts`, `components/os/planung/LichtBand.tsx` | Bündel je Ziel, HEUTE-Schnitt, Verbinder zu den Markierungen, Hervorheben; Maße `ZEITBAND_MASSE` |
+| Farben | `FADEN_FARBEN`, `LICHT_GLAS` (design.ts), `lib/lichtfaeden/farben.ts` | je Space fortlaufend: Business gelb → orange → lila → pink, Privat grün → türkis → violett, „ohne Ziel“ Zeit-Cyan |
+| Website | `website/js/lichtfaeden.js` (erzeugt: `node scripts/lichtfaeden-website.mjs`), `website/js/faden.js` | Granat/Smaragd, Charakter je Kapitel |
+
+**Parameter (`LICHTFAEDEN`):** Fäden je Bündel 22 (Handy 11) · Stützpunkt alle 6 px (Handy 8) · Strich 0,8 px · Deckkraft 0,24 (additiv) · Tempo 0,00028/ms
+(eine Welle ≈ 20 s) · Ruhe-Spreizung 12 % · 40 Deckkraft-Stufen · dpr ≤ 2. Dichte: offener Meilenstein 3, erledigter 1, Ziel-Frist 3, offene Aufgabe 1
+(dringend 1,5), Termin 0,5; Gauß σ = 2 Wochen; halbe Dichte bei geglättetem Gewicht 0,6; höchstens 6 Ziel-Bündel (+ „ohne Ziel“).
+
+**Regeln:** 1. Bewegung nur als ruhiges Fließen; bei `prefers-reduced-motion` ein Standbild (t = 0). 2. Lauf pausiert außerhalb des Bildes und im verborgenen Tab.
+3. Höchstens ~160 Fäden je Leinwand am Rechner, ~80 am Handy; Zeichnen < 4 ms je Bild. 4. Vergangenes gedämpft, HEUTE leuchtet. 5. Farben nur aus `FADEN_FARBEN`
+(App) bzw. den Logo-Farben (Website). 6. Wer `band.ts`/`zeichnen.ts` ändert, ruft `node scripts/lichtfaeden-website.mjs` (Wächter `tests/lichtfaeden.test.ts`).

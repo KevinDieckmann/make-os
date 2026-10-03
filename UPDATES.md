@@ -4,6 +4,19 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Lichtfäden: Zeitstrahl der Planung + roter Faden der Landingpage (03.10.2026, nur lokal — Branch `lichtfaeden`; Standard `DESIGN_STANDARD.md` › „Lichtfäden“)
+
+Kevin 03.10. (Vorbild ein Daten-Zeitstrahl aus hunderten feinen, leuchtenden Linien): „Hier bei der Planung wäre geil, wenn das so reinkommt mit mehreren Elektro-Fäden … das kann sich auch mit durch die Homepage ziehen.“
+
+- **Planung › Jahr:** Der Zeitstrahl zeigt statt der Achse ein Band aus Lichtfäden — **je Ziel ein Bündel in seiner Farbe** (Business zuerst gelb wie die Markierungen bisher, Privat zuerst grün, „ohne Ziel“ in Zeit-Cyan), alle zu einem Band verflochten. **Auffächern und Leuchten je Woche aus echten Daten** (`lib/lichtfaeden/dichte.ts` `faedenDichte`: offener Meilenstein 3, erledigter 1, Ziel-Frist 3, offene Aufgabe 1 bzw. dringend 1,5 über die Liste ihres Meilensteins; Gauß σ = 2 Wochen, weich gesättigt). Vergangenheit gedämpft, HEUTE als leuchtender Schnitt, feine Mittellinie, Achse wie bisher darunter, Legende der Bündel.
+- **Markierungen** schweben als echte Knöpfe über dem Band (Glas-Chip mit Raute/Quadrat/Haken in Bündelfarbe, feine Verbindungslinie zum Bündel), gestapelt wie bisher, „+n“ bleibt; Zeigen/Fokus hebt das Bündel hervor, die anderen dimmen. Am Handy Knöpfe 44 px, Band 104 px, drei Reihen. Bedienung unverändert (Bereiche, Blättern, Heute, „+ Meilenstein“, Planungsjahr, Forecast). Leinwand `aria-hidden`, Textäquivalent für Vorleser.
+- **Bewegung:** ruhiges Fließen, pausiert außerhalb des Bildes/Tabs, „Bewegung reduzieren“ = Standbild. Gemessen (Sandbox, 1280, 7 Bündel × 22 Fäden): 60 fps, Zeichnen im Mittel 1,3–1,8 ms je Bild; Handy 11 Fäden je Bündel.
+- **Landingpage:** zwei Bündel (Granat/Smaragd) kommen aus dem Logo — Rot aus dem roten, Grün aus dem grünen Strich in einem Bogen unter dem Logo — und ziehen sich zwischen Text und Neuronen-Bühne durch alle Kapitel: verflochten bei „Warum Innovation“, drei Stufen mit aufsteigendem Licht bei „Beratung“, aufgefächert bei „Make.One“, im Kontakt zurück in die Striche und den Knoten. Am Handy an den Rändern. +19 KB Skript (`js/lichtfaeden.js` übersetzt aus der App, `js/faden.js`).
+- **Ein Zeichner für beide:** `lib/lichtfaeden/band.ts` (rein) + `zeichnen.ts` (Canvas 2D, Path2D-Eimer) → `node scripts/lichtfaeden-website.mjs` erzeugt `website/js/lichtfaeden.js`; Wächter vergleicht.
+- **Kleinkorrektur nebenbei:** Quartalsnamen unter dem Zeitstrahl wurden unten abgeschnitten (+6 px Höhe, gilt für alle Zeitstrahlen).
+- **Test:** `tests/lichtfaeden.test.ts` (Dichte deterministisch, Gewichtung, Zeitraum/Rand, höchstens 6 Ziel-Bündel, Textäquivalent, Farben, Mathematik, Markierungen ohne Überlappung + 44 px am Handy, reduzierte Bewegung, Website-Kopie). `node website/pruefen.mjs`: nur die bekannten Platzhalter offen.
+- **Rückweg:** reine Darstellung, keine neuen Bestände oder Felder.
+
 ## Design-Standard: Zahlen & Finanzen (03.10.2026, nur lokal — Branch `design-finanzen`; Dokument `DESIGN_STANDARD.md` › „Umgestellt: Zahlen & Finanzen“)
 
 Zweiter Bereich nach der Markttraktion. Reine Darstellung und Struktur — keine Rechnung, kein Feld, keine Funktion geändert; die Finanzplanung bleibt in jedem Feld anpassbar.
