@@ -9,6 +9,7 @@
 //        (von = wer angesprochen hat, Team-Kürzel, sonst die angemeldete Person;
 //        „chance“ = Interesse: der Lead der Firma (ohne Firma: der Person) geht in die
 //        Qualifizierung — ein Deal entsteht erst über Leads › SQL, nie hier)
+// Werblicher Kanal (mail, linkedin, newsletter): bei „planen“ kommen Personen mit roter Ampel nicht in die Kampagne, gelbe mit Hinweis (03.10., netz-recht).
 // Versendet wird nichts.
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -22,6 +23,7 @@ import { localDay, tagePlus } from '@/lib/zeit';
 import { anzeigename, wendeAktivitaetAn, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm, LISTEN_GRENZEN } from '@/lib/crm/speicher';
 import { PLAYBOOKS, planen, zielgruppe, kundenprofil, aehnlicheFirmen, kampagnenZahlen } from '@/lib/crm/kampagnen';
+import { kampagnenAmpel } from '@/lib/crm/personen-schranke';
 import { bearbeiterFuer } from '@/lib/crm/pipeline';
 import { wer, mitglied, nameVon, BEIDE } from '@/lib/crm/team';
 import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
@@ -74,12 +76,21 @@ export async function POST(req: Request) {
     const plan = planen(seg ? { ...basis, zielgruppe: seg.kriterien, zusatz: undefined } : basis, kontakte, crm, heute, neueKennung('kp'), 'hand');
     // Wer plant, ist zuständig (Kevin oder Malin) — umstellen oder übergeben geht in der Kampagne.
     const zst = mitglied(person) ? { zustaendig: person } : {};
-    const k: Kampagne = { ...(seg ? { ...plan, segmentId: seg.id, name: pb ? `${pb.name} · ${seg.name}` : plan.name } : plan), ...zst, geaendertVon: person };
+    const k0: Kampagne = { ...(seg ? { ...plan, segmentId: seg.id, name: pb ? `${pb.name} · ${seg.name}` : plan.name } : plan), ...zst, geaendertVon: person };
+    // Werblicher Kanal (Mail, LinkedIn, Newsletter; 03.10., netz-recht): die Ampel zählt hart — Personen mit roter Ampel kommen nicht in die
+    // Kampagne (abmahnfähig, § 7 UWG), Personen mit gelber nur mit Hinweis. Persönlich/Telefon/Event/Mix: unverändert.
+    const ampel = kampagnenAmpel(k0.kanal, k0.kontaktIds, kontakte, crm, heute);
+    const rot = new Set(ampel.rot.map(x => x.id));
+    const k: Kampagne = rot.size ? { ...k0, kontaktIds: k0.kontaktIds.filter(id => !rot.has(id)) } : k0;
+    const ampelText = [
+      rot.size ? ` ${rot.size === 1 ? 'Eine Person' : `${rot.size} Personen`} mit roter Ampel für ${k.kanal === 'linkedin' ? 'LinkedIn' : 'Mail'} ${rot.size === 1 ? 'wurde' : 'wurden'} nicht aufgenommen (${Array.from(new Set(ampel.rot.map(x => x.grund))).slice(0, 2).join(' · ')}).` : '',
+      ampel.gelb.length ? ` ${ampel.gelb.length === 1 ? 'Eine Person hat' : `${ampel.gelb.length} Personen haben`} eine gelbe Ampel — nur persönlich oder nach Klärung, keine Werbung ohne Einwilligung.` : '',
+    ].join('');
     // Nie abschneiden (28.09.): die ganze Zielgruppe wird übernommen; über der Grenze → 413 mit Anzahl.
     const max = LISTEN_GRENZEN.kampagnen?.kontaktIds ?? 20000;
     if (k.kontaktIds.length > max) return NextResponse.json({ ok: false, fehler: `Die Zielgruppe hat ${k.kontaktIds.length} Personen — eine Kampagne fasst höchstens ${max}. Bitte das Segment enger fassen.` }, { status: 413 });
     await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, k] }));
-    return NextResponse.json({ ok: true, kampagne: k, text: `Kampagne mit allen ${k.kontaktIds.length} Personen der Zielgruppe angelegt — wer nicht dabei sein soll, in der Kampagne herausnehmen.` });
+    return NextResponse.json({ ok: true, kampagne: k, ...(rot.size ? { abgelehnt: rot.size } : {}), text: `Kampagne mit ${rot.size ? `${k.kontaktIds.length} Personen der Zielgruppe` : `allen ${k.kontaktIds.length} Personen der Zielgruppe`} angelegt — wer nicht dabei sein soll, in der Kampagne herausnehmen.${ampelText}` });
   }
 
   if (b.aktion === 'aufgaben') {

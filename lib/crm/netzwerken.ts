@@ -28,6 +28,7 @@ import { WEG } from '@/lib/wege';
 import { istKontaktKennung } from '@/lib/kennung';
 import { sprachnotizTypErkennen } from '@/lib/dateien/regeln';
 import { istEingeschraenkt } from './einschraenkung';
+import { base64OhneMetadaten } from '@/lib/netzwerken/bild-bereinigen';
 import { datenschutzHinweisText, DANKE_FRIST_TAGE, type DatenschutzAngaben } from './netzwerken-recht';
 
 // ── Festwerte ───────────────────────────────────────────────────────────────
@@ -257,7 +258,10 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
     // Der Inhalt entscheidet, nicht die Angabe — VOR dem ersten Schreiben: sonst bliebe bei einer Datei, die die Ablage später ablehnt, ein Teilzustand.
     const echt = bildInhaltsTyp(kopfBytes(daten));
     if (echt !== 'jpeg' && echt !== 'png') return fehler(echt === 'webp' || echt === 'heic' ? `Foto ${i + 1}: ${echt === 'heic' ? 'HEIC' : 'WebP'} wird nicht gelesen — bitte als JPEG aufnehmen.` : `Foto ${i + 1}: keine gültige Bilddatei (nur JPEG oder PNG).`, 415);
-    bilder.push({ name: text(o.name, 80) || `karte-${i + 1}`, typ, daten });
+    // Datenminimierung (03.10.): Exif/GPS/XMP raus, bevor irgendetwas geschrieben wird — auch bei Erfassungen aus der Warteschlange älterer Stände.
+    const sauber = base64OhneMetadaten(daten, echt);
+    if (!sauber) return fehler(`Foto ${i + 1}: Die Bilddatei ist beschädigt — bitte noch einmal aufnehmen.`, 415);
+    bilder.push({ name: text(o.name, 80) || `karte-${i + 1}`, typ, daten: sauber });
   }
   let sprachnotiz: Erfassung['sprachnotiz'];
   if (b.sprachnotiz !== undefined && b.sprachnotiz !== null) {

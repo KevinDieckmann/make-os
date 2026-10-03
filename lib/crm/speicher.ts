@@ -24,7 +24,7 @@ import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
-import { personenSchranke, type PersonSchranke } from './personen-schranke';
+import { personenSchranke, kampagnenHinweise, type PersonSchranke } from './personen-schranke';
 import { crmFolgen, geloeschteDeals, karteiBetroffen, kontaktLeadsOhneDeals } from './bestand-folgen';
 import type { Temperatur } from './typen';
 
@@ -526,6 +526,8 @@ export interface CrmAnwendung {
   sperren: LoeschSperre[];
   /** 413 (28.09., K4): über eine Grenze (Deal-Historie) — die GANZE Änderung ist abgelehnt. */
   grenze: string[];
+  /** Hinweise, die die Änderung NICHT ablehnen (03.10., netz-recht): z. B. Personen mit gelber Ampel in einer werblichen Kampagne. */
+  hinweise?: string[];
   /**
    * 409 (28.09.): gegen eine Regel (Angebote nur übers Tool, Produkt ohne Leistungstext nicht aktiv; seit 28.09. spät
    * auch neue Verweise auf gesperrte Personen, `personenSchranke`) — die GANZE Änderung ist abgelehnt.
@@ -577,7 +579,8 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
   }
   // Folgen in derselben Sperre (28.09. spät, lib/crm/bestand-folgen.ts): gelöschter Deal → Firmen-Lead zurück auf
   // Qualifizierung; umbenannte Firma → Anzeigename an Mandaten/Deals. Personen-Leads führt `aendereCrm` nach.
-  return { bestand: crmFolgen(b, neu, jetzt, person), angewandt, fehler, konflikte: [], sperren: [], grenze: [] };
+  const hinweise = kampagnenHinweise(b, roh, personen ?? personenImLauf.getStore() ?? []);
+  return { bestand: crmFolgen(b, neu, jetzt, person), angewandt, fehler, konflikte: [], sperren: [], grenze: [], ...(hinweise.length ? { hinweise } : {}) };
 }
 
 /** Das Übergabe-Protokoll der Events kommt immer aus dem gespeicherten Stand (Altstand), nie aus dem, was der Browser schickt. */
