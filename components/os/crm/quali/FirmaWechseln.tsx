@@ -75,7 +75,7 @@ export function FirmaWechselnDialog({ api, z, nachziehen, onZu, onFertig }: { ap
     try {
       let nach = zielFirma.id;
       if (!nachziehen) {
-        if (!firmen.some(f => f.id === zielFirma.id)) await api.setze('firmen', zielFirma as unknown as { id: string } & Record<string, unknown>);
+        if (!firmen.some(f => f.id === zielFirma.id) && !(await api.setze('firmen', zielFirma as unknown as { id: string } & Record<string, unknown>))) { setMeldung('Die neue Firma konnte nicht angelegt werden — nichts geändert. Bitte noch einmal.'); return; }
         const ok = await api.kontaktTeil(person.id, { firma: zielFirma.name, firmaId: zielFirma.id, ...(hatteFirma ? { firmaWechsel: absicht } : {}) });
         if (!ok) { setMeldung('Nicht gespeichert — die Person ist unverändert (jemand war schneller oder die Verbindung fehlt). Bitte noch einmal.'); return; }
       } else nach = nachziehen.nach;
