@@ -47,6 +47,15 @@ gehalten, KEMARIS geht in MAKE über (Umfirmierung), eigene Gesellschaften als o
   in die Liquidität (der Finanzplan wird gerade umgebaut).
 - **Nach dem Upload:** Kevin trägt Stammkapital, Gesellschafter (KD Ventures → MAKE 100 %), Vorgänger (KEMARIS Innovation GmbH) und die Verträge
   ein — nichts davon steht im Code.
+## Finanzplanung: Nachtrag zu den Handwerten (04.10.2026, nur lokal — Branch `finanzplan-2`)
+
+Kevins Antworten: (1) **Umsatz von Hand zieht den Zahlungseingang mit** (Zahlungsziel-Vorgabe des Arbeitsplans, sonst im selben Monat; neue
+Zeile „Eingang aus Umsatz von Hand“). (2) **Handwerte zusätzlich je Szenario** — Standard bleibt „für alle“, im Zellen-Menü „nur in diesem
+Szenario“; Vorrang Szenario › alle › Formel, ✎ türkis. (3) **Quartals-Vorauszahlungen wandern mit** einem Steuer-Handwert.
+- **Rückweg:** keine neuen Felder — Szenario-Handwerte sind `plan`-Schlüssel `<kennung>@<szenario>:<monat>`; der alte Stand ignoriert sie und
+  lässt sie stehen. Der alte Stand rechnet Umsatz von Hand ohne Eingang und Vorauszahlungen ohne Nachholung (wie vor dem Nachtrag).
+- Nicht hochgeladen.
+
 ## Finanzplanung unter Finanzen › Privat und › Business (04.10.2026, nur lokal — Branch `finanzplan-frei`)
 
 Kevin 04.10.: „Business ist bei Business sichtbar, kein Privat. Bei Privat kann man alles sehen … Im Business-Bereich sieht man Privat nicht.“

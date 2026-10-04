@@ -165,7 +165,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
     );
     zeilen.push(
       { grp: 'Fixkosten (Sachkosten)', add: 'sachkosten', leerName: ['weitere Fixkostenzeile', 'weitere Fixkostenzeilen'] },
-      ...sachMake.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true, aus: true, optional: true })),
+      ...sachMake.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, dd.plan), ind: true, aus: true, optional: true })),
       ...kostenZeilen(KOSTENARTEN_BLATT.filter(a => a !== 'stelle')),
       { name: 'Einmalige Kosten und Ereignisse', edit: 'ug.einmalig', get: m => U(m).einmalig, ind: true, aus: true, optional: true },
       { name: 'Gründung', edit: 'ug.gruendung', get: m => U(m).gruendung, ind: true, aus: true, optional: true },
@@ -179,6 +179,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { grp: 'Zahlungsfluss und Liquidität', leerName: ['weitere Zeile', 'weitere Zeilen'] },
       { name: 'Eingang Retainer', edit: 'ug.retainerEingang', get: m => U(m).retainerEingang, ind: true, optional: true },
       { name: 'Eingang aus Bausteinen', edit: 'ug.bausteineEingang', get: m => U(m).bausteineEingang, ind: true, optional: true },
+      { name: 'Eingang aus Umsatz von Hand', edit: 'ug.umsatzEingang', get: m => U(m).umsatzEingang, ind: true, optional: true },
       { name: 'Stammkapital und Gesellschafterdarlehen', edit: 'ug.kapital', get: m => U(m).kapital, ind: true, optional: true },
       ...(ustAn ? [] : [{ name: 'USt vereinnahmt (Durchlauf)', edit: 'ug.ustEin', get: (m: number) => U(m).ustEin, ind: true, optional: true } as DatenZeile]),
       { name: ustAn ? 'Einzahlungen' : 'Einzahlungen (inkl. USt-Durchlauf)', edit: 'ug.einzahlungen', sum: true, get: m => U(m).einzahlungen },
@@ -237,7 +238,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { grp: 'Kosten' },
       ...kostenZeilen(KOSTENARTEN_BLATT),
       { grp: 'Fixkosten (Sachkosten)', add: 'sachkosten', addG: 'Selbstständigkeit', addE: 'selbststaendigkeit', leerName: ['weitere Fixkostenzeile', 'weitere Fixkostenzeilen'] },
-      ...fix.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true, aus: true, optional: true })),
+      ...fix.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, dd.plan), ind: true, aus: true, optional: true })),
       { name: 'Kosten gesamt', edit: 'kdc.kosten', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
       { grp: 'Ergebnis' },
       { name: 'Ergebnis vor Steuern', edit: 'kdc.gewinn', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },

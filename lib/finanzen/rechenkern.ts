@@ -77,6 +77,11 @@ export interface Zusatz {
   kdcEntnahme?: number[];
   /** Selbstständigkeit → Privat: Anteil (0–1) am positiven Ergebnis nach Steuern des Monats als Entnahme. */
   kdcEntnahmeAnteil?: number[];
+  /**
+   * Zahlungsziel in Monaten für Umsatz von Hand (04.10. Nachtrag, Kevin: „Umsatz von Hand zieht den Zahlungseingang mit“): die Abweichung
+   * einer Umsatz-Summe von Hand (`ug.umsatz`, `kdc.umsatz`) kommt um so viele Monate später als Eingang (netto, USt obendrauf). Fehlt: im selben Monat.
+   */
+  umsatzZiel?: number;
 }
 const zx = (r: number[] | undefined, i: number): number => r?.[i] ?? 0;
 
@@ -220,6 +225,8 @@ export interface MonatUG {
   retainerAnzahl: number;
   /** Aus Bausteinen (Szenario-Baukasten) — 0 ohne Zusatz. */
   bausteineUmsatz: number; bausteineEingang: number; stellen: number; bausteineSach: number; ausschuettung: number;
+  /** Eingang aus Umsatz von Hand (Abweichung der Umsatz-Summe, mit Zahlungsziel verschoben) — 0 ohne Handwert. Selbst ein Handwert (`ug.umsatzEingang`). */
+  umsatzEingang: number;
   // KD Ventures
   kdvUmlage: number; kdvBjoernEin: number; kdvExit: number; kdvExitSteuer: number;
   kdvHolding: number; kdvBjoern: number; kdvAbloesung: number; kdvKonto: number; bjoernRest: number;
@@ -247,6 +254,7 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz, f?: Formeln):
   let konto = 0, kdv = a.kdvStart, rest = a.bjoernBetrag, vorUst = 0;
   const gew: number[] = [];
   const retUmsatz: number[] = [];
+  const handEin = new Array<number>(N).fill(0), ziel = Math.max(0, Math.round(x?.umsatzZiel ?? 0));
   const stUG = neuerSteuerrechner(steuerParameter(d, 'ug'), jahrVon, kalMonat);
   const stKdv = neuerSteuerrechner(steuerParameter(d, 'kdv'), jahrVon, kalMonat);
   const sachZeilen = d.sachkosten.filter(z => !istSelbstZeile(z));
@@ -260,10 +268,14 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz, f?: Formeln):
     const ev = h('ug.events', m, abAktiv(sz.events, m));
     const bU = zx(x?.ugUmsatz, i), bP = zx(x?.ugPersonal, i), bS = zx(x?.ugSach, i);
     const bE = h('ug.bausteineEingang', m, zx(x?.ugEingang, i)), bA = h('ug.ausschuettung', m, zx(x?.ausschuettung, i));
-    const umsatz = h('ug.umsatz', m, ob + ret + ast + ev + bU);
-    const ustEin = h('ug.ustEin', m, (retEin + ast + ev + bE) * a.ust);
+    const umsatzRoh = ob + ret + ast + ev + bU;
+    const umsatz = h('ug.umsatz', m, umsatzRoh);
+    // Umsatz von Hand zieht den Zahlungseingang mit (Zahlungsziel `umsatzZiel`); ohne Handwert ist die Abweichung genau 0.
+    if (umsatz !== umsatzRoh && i + ziel < N) handEin[i + ziel] += umsatz - umsatzRoh;
+    const uE = h('ug.umsatzEingang', m, handEin[i]);
+    const ustEin = h('ug.ustEin', m, (retEin + ast + ev + bE + uE) * a.ust);
     const kapital = h('ug.kapital', m, m === 1 ? a.stammkapital + a.darlehenKevin : 0);
-    const einzahlungen = h('ug.einzahlungen', m, kapital + ob + retEin + ast + ev + bE + ustEin);
+    const einzahlungen = h('ug.einzahlungen', m, kapital + ob + retEin + ast + ev + bE + uE + ustEin);
 
     const rz = abAktiv(sz.erhoehung, m);
     const kevinBrutto = h('ug.kevin', m, m >= a.kevinAb ? a.kevinBrutto + rz : 0);
@@ -331,7 +343,7 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz, f?: Formeln):
       kevin, malin, kevinBrutto, malinBrutto, unterstuetzung, sach, gruendung, holding, ustZahlung, steuer, bjoern, darlehen,
       auszahlungen, saldo, konto, gewinn, gewinnYTD: ytd, steuerRuecklage, ustOffen, frei,
       retainerAnzahl: sz.retainer.filter(r => aktiv(r, m)).length,
-      bausteineUmsatz: bU, bausteineEingang: bE, stellen, bausteineSach: bS, ausschuettung: bA,
+      bausteineUmsatz: bU, bausteineEingang: bE, stellen, bausteineSach: bS, ausschuettung: bA, umsatzEingang: uE,
       kdvUmlage, kdvBjoernEin, kdvExit: ex, kdvExitSteuer: exSteuer, kdvHolding,
       kdvBjoern: kdvTilgung, kdvAbloesung: abloesung, kdvKonto: kdv, bjoernRest: rest,
       kdvBausteineEin: kdvEin, kdvBausteineAus: kdvAus,
@@ -372,10 +384,13 @@ export function rechneSelbstAchse(d: FinanzDaten, x?: Zusatz, f?: Formeln): Mona
   const zeilen = d.sachkosten.filter(istSelbstZeile);
   const out: MonatSelbst[] = [];
   let konto = d.selbst.kontoStart, vorUst = 0;
+  const handEin = new Array<number>(N).fill(0), ziel = Math.max(0, Math.round(x?.umsatzZiel ?? 0));
   for (let m = 1; m <= N; m++) {
     const i = m - 1;
-    const umsatz = h('kdc.umsatz', m, zx(x?.kdcUmsatz, i));
-    const eingang = h('kdc.eingang', m, zx(x?.kdcEingang, i));
+    const umsatzRoh = zx(x?.kdcUmsatz, i);
+    const umsatz = h('kdc.umsatz', m, umsatzRoh);
+    if (umsatz !== umsatzRoh && i + ziel < N) handEin[i + ziel] += umsatz - umsatzRoh;   // Umsatz von Hand → Eingang (Zahlungsziel)
+    const eingang = h('kdc.eingang', m, zx(x?.kdcEingang, i) + handEin[i]);
     const ustEin = h('kdc.ustEin', m, eingang * a.ust);
     const personal = zx(x?.kdcPersonal, i) * (1 + a.agAnteil);
     const sach = zeilen.reduce((s, z) => s + wert(z, m, p), 0) + zx(x?.kdcSach, i);

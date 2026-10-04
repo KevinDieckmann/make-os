@@ -29,7 +29,7 @@ import { rechneUG, rechnePrivat, rechneSelbstAchse, kennzahlen, zielStaende, pla
 import { pruefeSteuern, steuernMit, type Steuern } from './steuern';
 import type { Unterseite } from './plan/hilfen';
 import { schwellenVon } from './schwellen';
-import type { Formeln } from './handwerte';
+import { planMitSzenario, type Formeln } from './handwerte';
 import { eur } from './plan/hilfen';
 import { UG_KURZ, UG_NAME, finanzOrtName, type FinanzOrt, type KernEinheit } from '@/lib/einheiten';
 
@@ -141,7 +141,7 @@ export function betragImMonat(b: Baustein, m: number): number {
 /** Alle Bausteine eines Szenarios zu Monatsreihen (Länge N) — Zahlungsziel verschiebt nur den Eingang. */
 export function reihen(ps: Planszenario, N: number): Zusatz {
   const leer = () => new Array<number>(N).fill(0);
-  const x: Required<Zusatz> = { ugUmsatz: leer(), ugEingang: leer(), ugPersonal: leer(), ugSach: leer(), ausschuettung: leer(), ausschuettungSteuer: leer(), privatEin: leer(), privatAus: leer(), kdvEin: leer(), kdvAus: leer(), kdcUmsatz: leer(), kdcEingang: leer(), kdcPersonal: leer(), kdcSach: leer(), kdcEntnahme: leer(), kdcEntnahmeAnteil: leer() };
+  const x: Required<Omit<Zusatz, 'umsatzZiel'>> = { ugUmsatz: leer(), ugEingang: leer(), ugPersonal: leer(), ugSach: leer(), ausschuettung: leer(), ausschuettungSteuer: leer(), privatEin: leer(), privatAus: leer(), kdvEin: leer(), kdvAus: leer(), kdcUmsatz: leer(), kdcEingang: leer(), kdcPersonal: leer(), kdcSach: leer(), kdcEntnahme: leer(), kdcEntnahmeAnteil: leer() };
   const vorgabeZiel = Math.max(0, Math.round(fin(ps.annahmen.zahlungsziel)));
   for (const b of ps.bausteine) {
     const ziel = Math.max(0, Math.round(fin(b.zahlungsziel, vorgabeZiel)));
@@ -198,8 +198,11 @@ export interface Gerechnet {
 export function rechneMit(d: FinanzDaten, ps: Planszenario | null, treiber?: Szenario): Gerechnet {
   const sz = treiber ?? treiberVon(d, ps);
   // Szenario-Annahmen und Szenario-Steuern (Überlagerung je Gesellschaft) liegen über dem Dokument.
-  const dd = ps ? { ...d, annahmen: annahmenMit(d.annahmen, ps.annahmen), ...(ps.annahmen.steuern ? { steuern: steuernMit(d.steuern, ps.annahmen.steuern) } : {}) } : d;
-  const x = ps ? reihen(ps, d.monate.length) : undefined;
+  // Handwerte „nur in diesem Szenario“ (`<kennung>@<szenario>:<monat>`) überlagern die allgemeinen — Vorrang Szenario › alle › Formel.
+  const plan = planMitSzenario(d.plan, ps?.id);
+  const dd = ps ? { ...d, ...(plan !== d.plan ? { plan } : {}), annahmen: annahmenMit(d.annahmen, ps.annahmen), ...(ps.annahmen.steuern ? { steuern: steuernMit(d.steuern, ps.annahmen.steuern) } : {}) } : d;
+  // Umsatz von Hand zieht den Eingang mit — mit der Vorgabe des Zahlungsziels dieses Szenarios (fehlt: im selben Monat).
+  const x = ps ? { ...reihen(ps, d.monate.length), umsatzZiel: ps.annahmen.zahlungsziel } : undefined;
   const formel: Formeln = {};
   const ug = rechneUG(dd, sz, x, formel);
   const kdc = rechneSelbstAchse(dd, x, formel);

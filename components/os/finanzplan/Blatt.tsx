@@ -16,6 +16,8 @@
 // überschriebene Zelle trägt den Strich der Person und das Kennzeichen „von Hand“ (✎); der Tooltip nennt den Formelwert und die
 // Abweichung. Summen von Hand stehen zusätzlich als ruhiger Hinweis unter dem Blatt (Abweichung zur Summe der Einzelzeilen).
 // Zurücksetzen auf die Formel: je Zelle (Entf, Menü), je Zeile (Menü) oder alle Handwerte des Blatts (Knopf über dem Blatt).
+// Handwerte je Szenario (04.10. Nachtrag): Standard „gilt für alle Szenarien“ (`<kennung>:<monat>`); im Menü „Nur in „<Arbeitsplan>““
+// (`<kennung>@<szenario>:<monat>`). Vorrang Szenario › alle › Formel; eine Zelle mit Szenario-Handwert schreibt beim Tippen dorthin.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, MIKRO, TYP, ECKE } from '@/lib/make-one/design';
@@ -24,7 +26,7 @@ import type { Zeile } from '@/lib/finanzen/rechenkern';
 import { key, jahrVon, wert, sollBudget } from '@/lib/finanzen/rechenkern';
 import { MAX_OPS, type Operation } from '@/lib/finanzen/plan/operationen';
 import { eur, parseBetrag, zeileName, monatLabel, datumLang, alleZeilen } from '@/lib/finanzen/plan/hilfen';
-import { HAND_FELDER } from '@/lib/finanzen/handwerte';
+import { HAND_FELDER, szenarioSchluessel } from '@/lib/finanzen/handwerte';
 import { usePlan } from './daten';
 import { Kontextmenue, Dialog, KnopfKlein, Schalter, personFarbe, personName, LILA, HAAR, vorzeichenFarbe, Legende, Pillen } from './teile';
 
@@ -76,7 +78,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   zeilen: BlattZeile[]; titel: string; hist?: boolean; extra?: ExtraSpalte[];
   onZeile?: (id: string) => void; onNeueZeile?: (liste: ZeilenListe, gruppe?: string, einheit?: Zeile['einheit']) => void; onDrill?: (histIdx: number, zeile: string) => void; werkzeuge?: ReactNode;
 }) {
-  const { d, aendere, verbergen, person, formel, melde } = usePlan();
+  const { d, aendere, verbergen, person, formel, melde, ps } = usePlan();
   const [modus, setModus] = useState<Modus>('plan');
   const [jahr, setJahr] = useState<Jahr>('alle');
   const [verlauf, setVerlauf] = useState(true);
@@ -115,16 +117,21 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   /** Vorzeichen der Anzeige: gespeichert × vz = gezeigt. */
   const vz = (e: string) => (zeileVon(e)?.minus ? -1 : 1);
 
+  /** Schlüssel des Handwerts „nur in diesem Szenario“ (nur Plan-Ebene, nur mit Arbeitsplan). */
+  const szKey = (e: string, m: number): string | null => (ebene === 'plan' && ps ? szenarioSchluessel(e, ps.id, m) : null);
+  /** Der Schlüssel, der in dieser Zelle gilt bzw. beschrieben wird: der Szenario-Handwert, wenn es ihn gibt, sonst der allgemeine. */
+  const zielKey = (e: string, m: number): string => { const sk = szKey(e, m); return sk && sk in speicher ? sk : key(e, m); };
+
   /** Zelle setzen/zurücksetzen — `wert` ist der gezeigte Wert (bei Minus-Zeilen wird er zurückgedreht). */
   const setzeZelle = useCallback((e: string, m: number, wert: number | null) => {
     const eigene = zeileVon(e)?.zelle;
     if (eigene) { eigene.setze(m, wert); return; }
-    const k = key(e, m);
+    const k = zielKey(e, m);
     const op: Operation = wert === null ? { pfad: `/${ebene}/${k}` } : { pfad: `/${ebene}/${k}`, neu: wert * vz(e) + 0 };
     if (wert === null && !(k in speicher)) return;
     void aendere([{ ...op, alt: speicher[k] }], label(e, m));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aendere, ebene, speicher, d, zeileVon]);
+  }, [aendere, ebene, speicher, d, zeileVon, ps]);
 
   const anzeigeWert = useCallback((r: DatenZeile, m: number): number | null => {
     const k = r.edit ? key(r.edit, m) : null;
@@ -142,13 +149,13 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   const formelWert = useCallback((r: DatenZeile, m: number): number | null => {
     if (!r.edit) return null;
     const k = key(r.edit, m);
-    if (!(k in d.plan)) return null;
+    if (!(k in d.plan) && !(ps && szenarioSchluessel(r.edit, ps.id, m) in d.plan)) return null;
     const v = r.minus ? -1 : 1;
     if (k in formel) return formel[k] * v;
     const z = alleZeilen(d).find(x => x.id === r.edit);
     if (!z) return null;
     return (d.privatBudget.includes(z) ? sollBudget(z, m, {}) : wert(z, m, {})) * v;
-  }, [d, formel]);
+  }, [d, formel, ps]);
 
   const beginne = useCallback((e: string, m: number, start?: string) => {
     const r = zeileVon(e); if (!r) return;
@@ -212,18 +219,27 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   };
   const menueEintraege = () => {
     if (!menue) return [];
-    const { e, m } = menue; const r = zeileVon(e); const k = key(e, m);
-    const wert = k in speicher ? speicher[k] : r ? (anzeigeWert(r, m) ?? 0) * vz(e) : 0;
+    const { e, m } = menue; const r = zeileVon(e); const k = key(e, m), zk = zielKey(e, m), sk = szKey(e, m);
+    const imSzenario = !!sk && zk === sk;
+    const wert = zk in speicher ? speicher[zk] : r ? (anzeigeWert(r, m) ?? 0) * vz(e) : 0;
+    // Fortschreiben im selben Geltungsbereich wie die Zelle (Szenario oder alle).
     const fort = (bis: number) => {
-      const ops: Operation[] = []; for (let i = m; i <= bis; i++) ops.push({ pfad: `/${ebene}/${key(e, i)}`, alt: speicher[key(e, i)], neu: wert });
-      void aendere(ops, `${zeilenName(e)} ab ${monatLabel(d, m)} bis ${monatLabel(d, bis)}`);
+      const ops: Operation[] = []; for (let i = m; i <= bis; i++) { const t = imSzenario && ps ? szenarioSchluessel(e, ps.id, i) : key(e, i); ops.push({ pfad: `/${ebene}/${t}`, alt: speicher[t], neu: wert }); }
+      void aendere(ops, `${zeilenName(e)} ab ${monatLabel(d, m)} bis ${monatLabel(d, bis)}${imSzenario && ps ? ` (nur ${ps.name})` : ''}`);
     };
-    const zeileKeys = (von: number) => d.monate.map((_, i) => i + 1).filter(i => i >= von).map(i => key(e, i));
+    // Zurücksetzen nimmt beide Geltungsbereiche dieser Zeile (allgemein und dieses Szenario).
+    const zeileKeys = (von: number) => d.monate.map((_, i) => i + 1).filter(i => i >= von).flatMap(i => [key(e, i), ...(ps && ebene === 'plan' ? [szenarioSchluessel(e, ps.id, i)] : [])]);
     const fw = r ? formelWert(r, m) : null;
+    const szenarioEintraege = ebene === 'plan' && ps && !r?.zelle ? (imSzenario
+      ? [{ label: `Für alle Szenarien statt nur in „${ps.name}“`, tun: () => void aendere([{ pfad: `/plan/${k}`, alt: speicher[k], neu: speicher[sk!] }, { pfad: `/plan/${sk}`, alt: speicher[sk!] }], `${label(e, m)} gilt für alle Szenarien`) },
+        { label: `Handwert nur in „${ps.name}“ entfernen${k in speicher ? ' (dann gilt der für alle)' : ''}`, tun: () => void aendere([{ pfad: `/plan/${sk}`, alt: speicher[sk!] }], `${label(e, m)} · Szenario-Handwert entfernt`) }]
+      : [{ label: `Diesen Wert nur in „${ps.name}“`, tun: () => void aendere([{ pfad: `/plan/${sk}`, alt: speicher[sk!], neu: wert }], `${label(e, m)} (nur ${ps.name})`) }])
+      : [];
     return [
       { label: 'Wert ab hier für alle Folgemonate', tun: () => fort(d.monate.length) },
       { label: 'Wert für die nächsten 12 Monate', tun: () => fort(Math.min(d.monate.length, m + 11)) },
-      { label: fw != null ? `Auf Formel zurücksetzen (${eur(fw)} €)` : 'Auf Formel zurücksetzen', tun: () => setzeZelle(e, m, null), aus: !(k in speicher) },
+      ...szenarioEintraege,
+      { label: fw != null ? `Auf Formel zurücksetzen (${eur(fw)} €)` : 'Auf Formel zurücksetzen', tun: () => zuruecksetzen([k, ...(sk ? [sk] : [])], `${label(e, m)} auf Formel zurückgesetzt`), aus: !(k in speicher) && !imSzenario },
       { label: 'Ab hier alle auf Formel zurücksetzen', tun: () => zuruecksetzen(zeileKeys(m), `${zeilenName(e)} ab ${monatLabel(d, m)} auf Formel zurückgesetzt`), aus: !zeileKeys(m).some(x => x in speicher) },
       { label: 'Ganze Zeile auf Formel zurücksetzen', tun: () => zuruecksetzen(zeileKeys(1), `${zeilenName(e)} auf Formel zurückgesetzt`), aus: !zeileKeys(1).some(x => x in speicher) },
       { label: d.notizen[k] ? 'Notiz bearbeiten' : 'Notiz hinzufügen', tun: () => setNotiz({ e, m, text: d.notizen[k] ?? '' }) },
@@ -250,9 +266,10 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   for (const r of zeilen) {
     if (istGruppe(r) || !r.edit) continue;
     for (let m = 1; m <= d.monate.length; m++) {
-      const k = key(r.edit, m);
-      if (!(k in d.plan)) continue;
-      blattKeys.push(k);
+      const k = key(r.edit, m), sk = ps ? szenarioSchluessel(r.edit, ps.id, m) : null;
+      if (sk && sk in d.plan) blattKeys.push(sk);
+      if (!(k in d.plan) && !(sk && sk in d.plan)) continue;
+      if (k in d.plan) blattKeys.push(k);
       const fw = formelWert(r, m);
       if (r.sum && fw != null && Math.abs(r.get(m) - fw) > 0.005 && planMonate.includes(m)) summenHinweise.push({ name: r.name, m, hand: r.get(m), formel: fw });
     }
@@ -305,8 +322,10 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
       }
       const m = c.m; const k = r.edit ? key(r.edit, m) : null;
       const v = anzeigeWert(r, m);
-      const ueberschrieben = r.zelle ? modus === 'plan' && r.zelle.ueber(m) : !!k && modus !== 'delta' && k in speicher;
-      const meta = k && modus === 'plan' && k in d.plan ? d.meta[k] : undefined;
+      const skZ = r.edit && modus === 'plan' && ps ? szenarioSchluessel(r.edit, ps.id, m) : null;
+      const szHand = !!skZ && skZ in d.plan;
+      const ueberschrieben = r.zelle ? modus === 'plan' && r.zelle.ueber(m) : (!!k && modus !== 'delta' && k in speicher) || szHand;
+      const meta = szHand ? d.meta[skZ!] : k && modus === 'plan' && k in d.plan ? d.meta[k] : undefined;
       const gewaehlt = !!eid(r) && !!sel && sel.e === eid(r) && sel.m === m;
       const bearb = !!eid(r) && !!bearbeitet && bearbeitet.e === eid(r) && bearbeitet.m === m;
       const hatNotiz = !!k && !!d.notizen[k];
@@ -317,7 +336,8 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
       const vonHand = modus === 'plan' && ueberschrieben && !r.zelle;
       const formelText = fw != null && v != null ? `Formel ${eur(fw, Number.isInteger(fw) ? 0 : 2)} € · Abweichung ${v - fw >= 0 ? '+' : '−'}${eur(Math.abs(v - fw), Number.isInteger(v - fw) ? 0 : 2)} €` : null;
       const wirkt = vonHand && r.edit && HAND_FELDER[r.edit] ? `wirkt auf: ${HAND_FELDER[r.edit].wirkt}` : null;
-      const titel = [hatNotiz ? d.notizen[k!] : null, vonHand ? `von Hand${meta ? ` · ${personName(meta.wer)} · ${datumLang(meta.wann.slice(0, 10))}` : ''}` : meta ? `${personName(meta.wer)} · ${datumLang(meta.wann.slice(0, 10))}` : ueberschrieben ? 'überschrieben' : null, formelText, wirkt].filter(Boolean).join(' — ') || undefined;
+      const gilt = vonHand ? (szHand ? `nur in „${ps!.name}“${k! in d.plan ? ` (für alle: ${eur(d.plan[k!] * (r.minus ? -1 : 1))} €)` : ''}` : 'für alle Szenarien') : '';
+      const titel = [hatNotiz ? d.notizen[k!] : null, vonHand ? `von Hand · ${gilt}${meta ? ` · ${personName(meta.wer)} · ${datumLang(meta.wann.slice(0, 10))}` : ''}` : meta ? `${personName(meta.wer)} · ${datumLang(meta.wann.slice(0, 10))}` : ueberschrieben ? 'überschrieben' : null, formelText, wirkt].filter(Boolean).join(' — ') || undefined;
       const stil = zellStil({
         cursor: eid(r) ? 'cell' : 'default',
         color: farbe,
@@ -341,7 +361,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
               style={{ ...feld, minHeight: 32, width: Math.max(ZELLE_MIN - 4, 8 * bearbeitet!.text.length + 20), padding: '2px 6px', borderRadius: 6, fontSize: TYP.bedien, textAlign: 'right', fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', border: `1px solid ${C.aktiv}` }} />
           ) : <span style={geldStil}>{v == null ? (modus === 'plan' ? '' : '·') : eur(v)}</span>}
           {hatNotiz && !bearb && <span aria-hidden style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: LEUCHT.business }} />}
-          {vonHand && !bearb && <span aria-hidden title="von Hand" style={{ position: 'absolute', top: 0, left: 3, fontSize: TYP.bedien, lineHeight: 1, color: LEUCHT.achtung, fontFamily: SCHRIFT.text }}>✎</span>}
+          {vonHand && !bearb && <span aria-hidden title={szHand ? 'von Hand, nur in diesem Szenario' : 'von Hand'} style={{ position: 'absolute', top: 0, left: 3, fontSize: TYP.bedien, lineHeight: 1, color: szHand ? C.aktiv : LEUCHT.achtung, fontFamily: SCHRIFT.text }}>✎</span>}
         </td>
       );
     });
@@ -373,7 +393,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
           </button>
         )}
         <span style={{ flex: 1 }} />
-        <Legende eintraege={[{ farbe: LILA, text: 'IST' }, { farbe: LEUCHT.achtung, text: '✎ von Hand' }, { farbe: LEUCHT.business, text: 'Notiz' }, { farbe: personFarbe('kevin'), text: personName('kevin') }, { farbe: personFarbe('malin'), text: personName('malin') }]} />
+        <Legende eintraege={[{ farbe: LILA, text: 'IST' }, { farbe: LEUCHT.achtung, text: '✎ von Hand' }, ...(ps ? [{ farbe: C.aktiv, text: '✎ nur dieses Szenario' }] : []), { farbe: LEUCHT.business, text: 'Notiz' }, { farbe: personFarbe('kevin'), text: personName('kevin') }, { farbe: personFarbe('malin'), text: personName('malin') }]} />
       </div>
       <div className="ui-tabelle" tabIndex={0} role="region" aria-label={`${titel}, Monate als Spalten — seitwärts wischbar`} style={{ overflow: 'auto', maxHeight: '72vh', borderRadius: ECKE.eingabe, background: C.flaeche }}>
         <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', color: C.ink, fontFamily: SCHRIFT.text }}>

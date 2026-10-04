@@ -1527,7 +1527,9 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
   **Neue gerechnete Größe = Eintrag in `HAND_FELDER` + `h('<kennung>', m, …)` im Kern + Zeile mit `edit: '<kennung>'` im Blatt** (je Blatt jede
   Kennung höchstens einmal; Minus-Zeilen mit `minus: true`); Test „Handwert = Formelwert ändert keine Zahl“ läuft automatisch über alle Kennungen.
   Schreiben nur über die Operationen (`/plan/…`, Zahl, Monat 0 … Planlänge, `GRENZE_PLAN_ZELLEN` → 413). Gestellte Rechnungen sind keine Handwerte
-  (`rechnungSchutz` bleibt). Details: `FINANZPLANUNG_JETZT.md` › „Jede Zahl bearbeitbar“.
+  (`rechnungSchutz` bleibt). Nachtrag 04.10. (Kevins Antworten): Handwert nur in einem Szenario = `plan["<kennung>@<szenario>:<monat>"]`, Vorrang
+  Szenario › alle › Formel, nur über `planMitSzenario` (rechneMit); Umsatz-Summe von Hand zieht den Eingang mit (Zahlungsziel-Vorgabe des
+  Arbeitsplans, `Zusatz.umsatzZiel`); Steuer-Handwerte wandern in die Quartals-Vorauszahlungen. Details: `FINANZPLANUNG_JETZT.md` › „Jede Zahl bearbeitbar“.
 
 - **Finanzplanung unter Finanzen › Privat und › Business (04.10., Kevin: „Business ist bei Business sichtbar, kein Privat. Bei Privat kann man
   alles sehen … Im Business-Bereich sieht man Privat nicht.“):** EINE Komponente `Finanzplan({ sicht, eingebettet })` als Reiter

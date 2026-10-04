@@ -109,6 +109,14 @@ describe('Business-Sicht: Privat wird gar nicht ausgeliefert', () => {
     expect(JSON.stringify(businessSicht(b))).toBe(JSON.stringify(b));
     expect(fuerSicht(voll, 'privat')).toBe(voll);
   });
+  it('Handwerte je Szenario (Nachtrag 04.10.): Business-Schlüssel bleiben, private fallen weg; Schreiben ebenso geprüft', () => {
+    const d = { ...voll, plan: { ...voll.plan, 'ug.konto@ps1:5': 1, 'p.luft@ps1:5': 4321.09, 'p.b.geheim@ps1:2': 7777.77 } };
+    const bs = businessSicht(d);
+    expect(bs.plan['ug.konto@ps1:5']).toBe(1);
+    expect('p.luft@ps1:5' in bs.plan || 'p.b.geheim@ps1:2' in bs.plan).toBe(false);
+    expect(businessPfadErlaubt('/plan/ug.konto@ps1:6', d, 2)).toBeNull();
+    expect(businessPfadErlaubt('/plan/p.luft@ps1:6', d, 2)).not.toBeNull();
+  });
   it('Punkte „Was jetzt zu entscheiden ist“ ohne Privat', () => {
     expect(nurBusinessPunkte([{ id: 'privat-minus' }, { id: 'ug-minus' }, { id: 'konten' }, { id: 'netto' }, { id: 'privat-runway' }, { id: 'steuer' }]).map(p => p.id)).toEqual(['ug-minus', 'steuer']);
   });

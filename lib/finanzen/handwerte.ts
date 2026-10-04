@@ -40,7 +40,7 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'ug.retainer': f('Retainer', 'ug', 'Umsatz, Ergebnis, Eingang Retainer (mit Verzug)'),
   'ug.astarna': f('Provision', 'ug', 'Umsatz, Ergebnis, Einzahlungen, USt'),
   'ug.events': f('Events', 'ug', 'Umsatz, Ergebnis, Einzahlungen, USt'),
-  'ug.umsatz': f('Umsatz', 'ug', 'Ergebnis vor Steuern, Ertragsteuer, Kennzahlen — der Zahlungseingang steht unter „Einzahlungen“', { summe: true }),
+  'ug.umsatz': f('Umsatz', 'ug', 'Ergebnis vor Steuern, Ertragsteuer, Kennzahlen und den Zahlungseingang (Abweichung mit dem Zahlungsziel des Arbeitsplans, sonst im selben Monat)', { summe: true }),
   // ── Kosten ──
   'ug.kevin': f('Gehalt 1 brutto', 'ug', 'Personal, Ergebnis, Auszahlungen, Netto im Privat-Blatt'),
   'ug.malin': f('Gehalt 2 brutto', 'ug', 'Personal, Ergebnis, Auszahlungen, Netto im Privat-Blatt'),
@@ -65,6 +65,7 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   // ── Zahlungsfluss und Liquidität ──
   'ug.retainerEingang': f('Eingang Retainer', 'ug', 'Einzahlungen, USt, Kontostand'),
   'ug.bausteineEingang': f('Eingang aus Bausteinen', 'ug', 'Einzahlungen, USt, Kontostand'),
+  'ug.umsatzEingang': f('Eingang aus Umsatz von Hand', 'ug', 'Einzahlungen, USt, Kontostand'),
   'ug.kapital': f('Stammkapital und Gesellschafterdarlehen', 'ug', 'Einzahlungen, Kontostand'),
   'ug.ustEin': f('USt vereinnahmt', 'ug', 'Einzahlungen, USt offen, USt-Zahlung im Folgemonat'),
   'ug.einzahlungen': f('Einzahlungen', 'ug', 'Kontostand, frei verfügbar', { summe: true }),
@@ -106,7 +107,7 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'kdv.darlehenOffen': f('Partnerdarlehen offen', 'kdv', 'Ziele (Partnerdarlehen) und alle Folgemonate', { stand: true }),
 
   // ── Selbstständigkeit (Kennung kdc) ──
-  'kdc.umsatz': f('Umsatz', 'kdc', 'Ergebnis, Einkommen- und Gewerbesteuer, Entnahme-Anteil — der Zahlungseingang steht unter „Eingang“', { summe: true }),
+  'kdc.umsatz': f('Umsatz', 'kdc', 'Ergebnis, Einkommen- und Gewerbesteuer, Entnahme-Anteil und den Eingang (Abweichung mit dem Zahlungsziel des Arbeitsplans, sonst im selben Monat)', { summe: true }),
   'kdc.kosten': f('Kosten gesamt', 'kdc', 'Ergebnis, Steuern, Auszahlungen', { summe: true }),
   'kdc.gewinn': f('Ergebnis vor Steuern', 'kdc', 'Einkommen- und Gewerbesteuer, Entnahme-Anteil', { summe: true }),
   'kdc.kst': f('Körperschaftsteuer', 'kdc', ERTRAG),
@@ -159,6 +160,40 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'ab.nachConsors': f('nach Ablösung', 'abschluss', 'Nur die Anzeige'),
 };
 
+// ── Handwerte je Szenario (04.10. Nachtrag, Kevin) ──────────────────────────────────────────────
+// Standard: ein Handwert gilt für alle Szenarien (`<kennung>:<monat>`). Zusätzlich „nur in diesem Szenario“: `<kennung>@<szenario>:<monat>`
+// — derselbe Ort (`plan`), derselbe Schreibweg (Stand/409, Protokoll, Meta, Rückgängig). Vorrang: Szenario-Handwert vor allgemeinem
+// Handwert vor Formel. Der Kern sieht den Szenario-Handwert nur, wenn dieses Szenario gerechnet wird (`planMitSzenario` in rechneMit).
+// Kompatibel: der alte Online-Stand lässt `plan` beim Lesen und Schreiben unverändert — er ignoriert diese Schlüssel, sie bleiben erhalten.
+
+/** Zellen-Schlüssel eines Handwerts nur für ein Szenario. */
+export const szenarioSchluessel = (id: string, szenario: string, m: number): string => `${id}@${szenario}:${m}`;
+/** Zerlegt einen Zellen-Schlüssel: Kennung, Szenario (oder null = gilt für alle), Monat. */
+export function zelleTeile(k: string): { id: string; szenario: string | null; m: number } | null {
+  const i = k.lastIndexOf(':');
+  if (i <= 0) return null;
+  const vorn = k.slice(0, i), m = Number(k.slice(i + 1));
+  if (!Number.isInteger(m)) return null;
+  const a = vorn.indexOf('@');
+  return a > 0 ? { id: vorn.slice(0, a), szenario: vorn.slice(a + 1), m } : { id: vorn, szenario: null, m };
+}
+/**
+ * Der Plan, wie ihn ein Szenario sieht: die Handwerte „nur in diesem Szenario“ überlagern die allgemeinen. Ohne solche Schlüssel kommt
+ * derselbe Plan zurück (dieselbe Referenz — ohne Szenario-Handwerte rechnet der Kern bit-genau wie vorher).
+ */
+export function planMitSzenario(plan: Record<string, number>, szenario: string | null | undefined): Record<string, number> {
+  if (!szenario) return plan;
+  const muster = `@${szenario}:`;
+  let neu: Record<string, number> | null = null;
+  for (const [k, v] of Object.entries(plan)) {
+    if (!k.includes(muster)) continue;
+    const t = zelleTeile(k);
+    if (!t || t.szenario !== szenario) continue;
+    (neu ??= { ...plan })[`${t.id}:${t.m}`] = v;
+  }
+  return neu ?? plan;
+}
+
 /** Ist das eine gerechnete Größe (und keine Planzeile)? */
 export const istHandFeld = (id: string): boolean => Object.prototype.hasOwnProperty.call(HAND_FELDER, id);
 
@@ -176,7 +211,7 @@ export function abweichung(plan: Record<string, number>, formel: Formeln, schlue
 
 /** Alle Handwerte gerechneter Größen im Plan (ohne Planzeilen-Überschreibungen) — für „alle zurücksetzen“ und den Bericht. */
 export function handwerteImPlan(plan: Record<string, number>): string[] {
-  return Object.keys(plan).filter(k => { const i = k.lastIndexOf(':'); return i > 0 && istHandFeld(k.slice(0, i)); });
+  return Object.keys(plan).filter(k => { const t = zelleTeile(k); return !!t && istHandFeld(t.id); });
 }
 
 /** Höchstzahl der Zellen im Plan (Planzeilen + Handwerte) — darüber lehnt der Schreibweg ab (413), gekürzt wird nie. */

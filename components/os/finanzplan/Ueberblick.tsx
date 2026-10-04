@@ -83,8 +83,8 @@ function LageKopf() {
 }
 
 export function Lage() {
-  const { d, ug, kdc, pr, kz, h, sz, ps, aw, aendere, geh, person } = usePlan();
-  const zs = zielStaende(d, ug, pr, kdc);
+  const { d, dd, ug, kdc, pr, kz, h, sz, ps, aw, aendere, geh, person } = usePlan();
+  const zs = zielStaende(dd, ug, pr, kdc);
   const ng = zs.find(z => z.ziel.id === 'g.notgroschen') ?? zs.find(z => z.ziel.quelle === 'privat.angespart');
   const offen = offeneBuchungen(d);
   const konten = d.posten.filter(p => p.art === 'konto'); const kontenBekannt = konten.filter(p => p.betrag != null);
@@ -227,13 +227,13 @@ export function Lage() {
  * 14 Tage ohne private Termine. Kein Privat-Konto, keine Luft, kein Notgroschen, keine Entscheidung der Woche (die gehört dem Haushalt).
  */
 export function LageBusiness() {
-  const { d, ug, kdc, pr, aw, ps, sz, kz, geh } = usePlan();
+  const { d, dd, ug, kdc, pr, aw, ps, sz, kz, geh } = usePlan();
   const punkte = nurBusinessPunkte(entscheidungen(d, { ug, pr, ps }, aw, 12)).slice(0, 6);
   const offenPunkte = nurBusinessPunkte(luecken(d, ug, 0)).slice(0, 7);
   const sw = schwellenVon(d);
   const m0 = aw.m0;
   const freiBusiness = aw.frei.ug + aw.frei.kdv + aw.frei.kdc;
-  const zs = zielStaende(d, ug, pr, kdc);
+  const zs = zielStaende(dd, ug, pr, kdc);
   const imPlan = zs.filter(z => z.status === 'erreicht' || z.status === 'im Plan').length;
   const termine = nurBusinessTermine(zahlungskalender(d, ug, pr, 14, kdc));
   const stufeFarbe = { kritisch: LEUCHT.kritisch, achtung: LEUCHT.achtung, info: LEUCHT.puls } as const;

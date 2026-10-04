@@ -7,7 +7,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { FinanzDaten } from '../lib/finanzen/rechenkern';
-import { rechneSelbst, toepfeUG, zielStaende } from '../lib/finanzen/rechenkern';
+import { rechneSelbst, toepfeUG, zielStaende, jahrVon, kalMonat } from '../lib/finanzen/rechenkern';
+import { neuerSteuerrechner, TARIF_2026, type SteuerHand } from '../lib/finanzen/ertragsteuer';
 import { rechneMit, auswertung } from '../lib/finanzen/szenarien';
 import { geschaeftsblatt } from '../lib/finanzen/geschaeft';
 import { wendeOperationenAn, pruefeDokument, lies, pfadTeile, OperationUngueltig, OperationZuGross, type Operation } from '../lib/finanzen/plan/operationen';
@@ -173,7 +174,8 @@ describe('(e) Summe von Hand: gilt, und die Abweichung zur Summe der Einzelzeile
     expect(g.formel['ug.umsatz:3']).toBeCloseTo(u.ob + u.retainer + u.astarna + u.events + u.bausteineUmsatz, 9);
     expect(abweichung(plan, g.formel, 'ug.umsatz:3')).toBeCloseTo(50000 - u.umsatz, 9);
     expect(g.ug[2].gewinn - v.ug[2].gewinn).toBeCloseTo(50000 - u.umsatz, 9);
-    expect(g.ug[2].einzahlungen).toBe(v.ug[2].einzahlungen);   // der Zahlungseingang hat seine eigene Zeile
+    // Nachtrag 04.10. (Kevin): Umsatz von Hand zieht den Eingang mit — ohne Zahlungsziel im selben Monat, USt obendrauf.
+    expect(g.ug[2].einzahlungen - v.ug[2].einzahlungen).toBeCloseTo((50000 - u.umsatz) * 1.19, 6);
     expect(abweichung(plan, g.formel, 'ug.umsatz:4')).toBeNull();
   });
   it('KD Ventures: Einnahmen von Hand gehen in Ergebnis, Ertragsteuer und Konto', () => {
@@ -275,5 +277,97 @@ describe('Kennungen der Handwerte', () => {
   });
   it('keine festen Personennamen in den Kennungs-Namen (Plattform-Regel)', () => {
     for (const f of Object.values(HAND_FELDER)) expect(/kevin|malin/i.test(f.name), f.name).toBe(false);
+  });
+});
+
+// ─── Nachtrag 04.10. (Kevins Antworten): Umsatz zieht den Eingang mit · Handwerte je Szenario · Vorauszahlungen wandern mit ──────
+describe('Nachtrag (1): Umsatz von Hand zieht den Zahlungseingang mit', () => {
+  const d = planFix(14000);
+  it('ohne Arbeitsplan: Abweichung im selben Monat als Eingang, USt obendrauf, Konto', () => {
+    const v = rechneMit(d, null);
+    const g = rechneMit(mit(d, { 'ug.umsatz:4': v.ug[3].umsatz + 1000 }), null);
+    expect(g.ug[3].umsatzEingang).toBeCloseTo(1000, 9);
+    expect(g.ug[3].ustEin - v.ug[3].ustEin).toBeCloseTo(190, 9);
+    expect(g.ug[3].einzahlungen - v.ug[3].einzahlungen).toBeCloseTo(1190, 9);
+    expect(g.ug[3].konto - v.ug[3].konto).toBeCloseTo(1190, 9);
+    expect(g.ug[4].ustZahlung - v.ug[4].ustZahlung).toBeCloseTo(190, 9);   // die USt geht im Folgemonat ans Finanzamt
+  });
+  it('mit Zahlungsziel des Arbeitsplans (2 Monate): Eingang zwei Monate später; Selbstständigkeit ebenso', () => {
+    const ps = { ...arbeitsplanSelbst(), annahmen: { ...arbeitsplanSelbst().annahmen, zahlungsziel: 2 } };
+    const v = rechneMit(d, ps);
+    const g = rechneMit(mit(d, { 'ug.umsatz:4': v.ug[3].umsatz - 500, 'kdc.umsatz:3': v.kdc[2].umsatz + 800 }), ps);
+    expect(g.ug[3].umsatzEingang).toBe(0);
+    expect(g.ug[5].umsatzEingang).toBeCloseTo(-500, 9);
+    expect(g.ug[5].einzahlungen - v.ug[5].einzahlungen).toBeCloseTo(-595, 9);
+    expect(g.kdc[4].eingang - v.kdc[4].eingang).toBeCloseTo(800, 9);
+    expect(g.kdc[4].konto - v.kdc[4].konto).toBeCloseTo(952, 6);
+  });
+  it('einzelne Umsatzzeilen wie bisher (Ankermandat im selben Monat, Retainer mit Verzug) — die Summe hat dann keine Abweichung', () => {
+    const v = rechneMit(d, null);
+    const g = rechneMit(mit(d, { 'ug.ob:4': v.ug[3].ob + 1000 }), null);
+    expect(g.ug[3].umsatzEingang).toBe(0);
+    expect(g.ug[3].einzahlungen - v.ug[3].einzahlungen).toBeCloseTo(1000, 9);
+  });
+});
+
+describe('Nachtrag (2): Handwerte je Szenario', () => {
+  const ps = arbeitsplanFix();
+  const d: FinanzDaten = { ...planFix(14000), planszenarien: [ps, { ...arbeitsplanFix(), id: 'ps9', name: 'Anderes' }], arbeitsplan: ps.id };
+  it('Vorrang Szenario › alle › Formel; andere Szenarien und die Basis sehen den Szenario-Handwert nicht', () => {
+    const allg = mit(d, { 'ug.konto:5': 1000 });
+    const beide = mit(allg, { 'ug.konto@ps1:5': 2000 });
+    expect(rechneMit(beide, ps).ug[4].konto).toBe(2000);
+    expect(rechneMit(beide, d.planszenarien![1]).ug[4].konto).toBe(1000);
+    expect(rechneMit(beide, null).ug[4].konto).toBe(1000);
+    const nurSz = mit(d, { 'ug.konto@ps1:5': 2000 });
+    expect(rechneMit(nurSz, null).ug[4].konto).toBe(rechneMit(d, null).ug[4].konto);
+    expect(rechneMit(nurSz, ps).formel['ug.konto:5']).toBe(rechneMit(d, ps).ug[4].konto);
+  });
+  it('Szenario-Handwert gleich Formelwert ändert keine Zahl; ohne Szenario-Schlüssel ist der Plan dieselbe Referenz', () => {
+    const v = rechneMit(d, ps);
+    expect(v.d.plan).toBe(d.plan);
+    const g = rechneMit(mit(d, { 'ug.gewinn@ps1:6': v.ug[5].gewinn }), ps);
+    expect(zahlen(g)).toBe(zahlen(v));
+  });
+  it('Planzeilen gehen ebenso (Sachkosten nur in diesem Szenario)', () => {
+    const v = rechneMit(d, ps), g = rechneMit(mit(d, { 'sk1@ps1:6': 900 }), ps);
+    expect(g.ug[5].sach - v.ug[5].sach).toBeCloseTo(650, 9);
+  });
+  it('Operationen: Szenario muss es geben; Meta/Protokoll/Rückgängig wie jede Planzelle; die Prüfung lässt die Schlüssel stehen', () => {
+    expect(() => an(d, [{ pfad: '/plan/ug.konto@gibtsnicht:5', neu: 1 }])).toThrow(/Szenario gibt es nicht/);
+    const e = an(d, [{ pfad: '/plan/ug.konto@ps1:5', neu: 7 }]);
+    expect(e.meta['ug.konto@ps1:5']).toEqual({ wer: 'kevin', wann: JETZT });
+    expect(an(e, [gegen(e, { pfad: '/plan/ug.konto@ps1:5' })]).plan['ug.konto@ps1:5']).toBe(7);
+    expect(an(e, [{ pfad: '/plan/ug.konto@ps1:5' }]).plan['ug.konto@ps1:5']).toBeUndefined();
+    const p = pruefeDokument(JSON.parse(JSON.stringify(e)));
+    expect(p.ok && p.dokument.plan['ug.konto@ps1:5']).toBe(7);
+    expect(handwerteImPlan(e.plan)).toContain('ug.konto@ps1:5');
+  });
+});
+
+describe('Nachtrag (3): Vorauszahlungen je Quartal wandern mit dem Steuer-Handwert', () => {
+  const p = { form: 'kapital' as const, kstAn: true, kst: 0.15, soliAn: true, soli: 0.055, gewstAn: true, messzahl: 0.035, hebesatz: 400, estAn: true, tarif: TARIF_2026, estAbzug: 0, freibetrag: 24500, anrechnung: 4, verlustvortrag: true, zahlweise: 'quartal' as const, zahlMonat: 6 };
+  const lauf = (hand?: (m: number) => SteuerHand | undefined) => { const r = neuerSteuerrechner(p, jahrVon, kalMonat); return Array.from({ length: 27 }, (_, i) => r(i + 1, 10000, hand?.(i + 1))); };
+  it('ohne Handwert: wie vorher (Vorauszahlungen aus der Vorjahressteuer)', () => {
+    const a = lauf(), b = lauf(() => (_f, v) => v);
+    expect(JSON.stringify(b)).toBe(JSON.stringify(a));
+  });
+  it('Aufwand von Hand (+4.000 KSt im Jan 27) → die nächste Quartals-Vorauszahlung (Mrz 27) steigt um 4.000; der Abschluss rechnet damit', () => {
+    const a = lauf();
+    const b = lauf(m => (m === 4 ? (f, v) => (f === 'kst' ? v + 4000 : v) : undefined));
+    expect(b[5].zahlung - a[5].zahlung).toBeCloseTo(4000, 9);       // Plan-Monat 6 = Mrz 27
+    // Die restlichen Quartale 2027 bleiben; der Abschluss 2027 (Jun 28) gleicht nichts doppelt aus.
+    for (const i of [8, 11, 14]) expect(b[i].zahlung - a[i].zahlung, `Monat ${i + 1}`).toBeCloseTo(0, 9);
+    expect(b[20].zahlung - a[20].zahlung).toBeCloseTo(1000, 9);       // Jun 28: Quartal 2028 (+1.000, aus der höheren Steuer 2027), Abschluss 2027 ±0
+    // 2028 steigen die Vorauszahlungen um ein Viertel der höheren Vorjahressteuer (+1.000 je Quartal).
+    for (const i of [17, 23, 26]) expect(b[i].zahlung - a[i].zahlung, `Monat ${i + 1}`).toBeCloseTo(1000, 9);
+  });
+  it('eine Quartals-Zahlung von Hand zählt als Vorauszahlung — der Abschluss im Folgejahr gleicht sie aus', () => {
+    const a = lauf();
+    const b = lauf(m => (m === 9 ? (f, v) => (f === 'steuer' ? v + 1500 : v) : undefined));   // Jun 27 (Quartal + Abschluss 2026)
+    const summe = (r: typeof a) => r.reduce((s, x) => s + x.zahlung, 0);
+    expect(b[8].zahlung - a[8].zahlung).toBeCloseTo(1500, 9);
+    expect(b[20].zahlung - a[20].zahlung).toBeCloseTo(-1500, 9);      // Abschluss 2027 im Jun 28 um die zu viel gezahlte Vorauszahlung kleiner
+    expect(summe(b) - summe(a)).toBeCloseTo(0, 6);
   });
 });
