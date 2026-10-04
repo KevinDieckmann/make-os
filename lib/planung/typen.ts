@@ -54,6 +54,13 @@ export interface Ziel {
   firmaId?: string;
   /** Woran wird „erreicht“ gemessen? (01.10., Ziel-Detail — wie am Meilenstein.) */
   messlatte?: string;
+  /**
+   * Kapazität (04.10., Kevin: „Kapa reingeben für welche Sachen … realistisch planbar“): geschätzter Aufwand in Stunden
+   * ZUSÄTZLICH zu den Meilensteinen des Ziels — optional, nur Business. Ohne Aufwand sagt die Machbarkeit „Aufwand fehlt“.
+   */
+  aufwand?: number;
+  /** Wer daran arbeitet: Kennungen aus dem Team (lib/kapazitaet). Leer = das ganze Team. */
+  personen?: string[];
 }
 
 export interface Meilenstein {
@@ -98,6 +105,13 @@ export interface Meilenstein {
    * lib/planung/meilenstein-kette.ts. „wartet“ ist nur ein Anzeige-Status (nie gespeichert).
    */
   wartetAuf?: string[];
+  /**
+   * Kapazität (04.10.): geschätzter Aufwand in Stunden — optional, nur Business. Machbarkeit rein in lib/kapazitaet/modell.ts
+   * (Rest = Aufwand × (1 − Fortschritt) gegen die freie Zeit der Personen bis `faellig`).
+   */
+  aufwand?: number;
+  /** Wer daran arbeitet: Kennungen aus dem Team (lib/kapazitaet). Leer = das ganze Team. */
+  personen?: string[];
 }
 
 export type Rhythmus = 'taeglich' | '3x-woche' | 'woechentlich' | 'monatlich' | 'quartal' | 'halbjahr' | 'jaehrlich';

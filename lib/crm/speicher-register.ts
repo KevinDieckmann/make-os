@@ -185,6 +185,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('arbeitsplatz', 'Arbeitsplatz-Einstellungen des Haushalts.'),
   H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter System › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'),
   H('team--*', 'Team des Haushalts (Rollen/Namen der Mitglieder).'),
+  H('kapazitaet--*', 'Kapazität je Haushalt (04.10.): Grundwert und Ausnahmen (Urlaub, feste Blöcke) je Team-Person, Zuweisungen Person × Mandat/Kunde (nur CRM-Kennungen, keine Namen Dritter) — eigene Planung des Haushalts; Art. 17 über das Konto.'),
   H('oauth-tokens', 'Zugangsschlüssel des Haushalts (Whoop/Microsoft) — keine Dritten.'),
   H('oauth-states', 'Kurzlebige OAuth-Zustände — keine Dritten.'),
   H('ki-verbrauch', 'Kosten der Modellaufrufe je Person des Haushalts.'),
