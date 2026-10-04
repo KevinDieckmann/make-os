@@ -24,7 +24,7 @@ import Link from 'next/link';
 
 import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { LEUCHT } from './schlank';
+import { LEUCHT } from './ui';
 import { tagKey, type LaufArt } from '@/lib/tageslauf';
 
 const MIN = 60_000;

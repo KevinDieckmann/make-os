@@ -1,7 +1,7 @@
 // ─── Kalender — Fristen aus dem ganzen System lesen (Server, K6a, 29.09.) ────
 // EINE Stelle, die die Quellen der Fristen lädt (Meilensteine, Bauplan-Etappen, Mandate, Zahlungen/Rechnungen des
 // Finanzplans, CRM: DSGVO-Anträge/Angebote/Deals, Steuertermine als Vorlage) — genutzt von GET /api/kalender (Fristen-Ebene) und Glocke/Heute
-// (lib/heute/anstehend-server.ts). Vorher lud die Route selbst; ein zweiter Leser hätte die Quellen kopiert.
+// (lib/heute/anstehend-server.ts). Seit 04.10. auch Vertragsfristen der eigenen Gesellschaften (Register). Vorher lud die Route selbst; ein zweiter Leser hätte die Quellen kopiert.
 // Steuertermine: nur mit eingeschaltetem Schalter (Kalender-Einstellungen `steuerVorlage.an`, Standard aus) aus dem
 // Steuer-Modul — ohne Beträge, mit Hinweis „keine Steuerberatung; gegen BMF-Steuerkalender prüfen“.
 // Gerechnet wird rein in lib/kalender/eintraege.ts `fristen` (Kündigungsfrist über `mandatFristen`, eine Rechnung).
@@ -15,6 +15,19 @@ import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { localDay } from '@/lib/zeit';
 import { fristen, type Frist, type Quellen } from './eintraege';
 import { ladeEinstellungen } from './einstellungen';
+import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+
+/**
+ * Vertragsfristen aus dem Gesellschafts-Register (04.10.) — nur der Haushalt des Inhabers (dem gehört der Kalender, Business);
+ * ohne Haushalt keine. Gerechnet rein in lib/gesellschaften/modell.ts `vertragsStichtage`.
+ */
+export async function vertragsFristenLesen(): Promise<NonNullable<Quellen['vertraege']>> {
+  const h = await haushaltDesInhabers();
+  if (!h) return [];
+  const { ladeRegister } = await import('@/lib/gesellschaften/server');
+  const { alleGesellschaften, vertragsStichtage } = await import('@/lib/gesellschaften/modell');
+  return vertragsStichtage(alleGesellschaften(await ladeRegister(h)));
+}
 
 /**
  * Steuertermine als Vorlage (Zusatzthema #11) — NUR wenn in den Kalender-Einstellungen eingeschaltet (Standard aus).
@@ -31,12 +44,13 @@ export async function steuerFristenLesen(heute: string): Promise<NonNullable<Que
 
 /** Die Quellen der Fristen (ohne Rechnung). Das Fenster wählt `fristen` (Steuer-Vorlage: −30 … +365 Tage ab heute). */
 export async function fristenQuellenLesen(): Promise<Quellen> {
-  const [meilensteine, bauplan, crm, finanzplan, einst] = await Promise.all([
+  const [meilensteine, bauplan, crm, finanzplan, einst, vertraege] = await Promise.all([
     loadJson<{ meilensteine?: Quellen['meilensteine'] }>('meilensteine').catch(() => null),
     ladeBauplan().catch(() => null),
     ladeCrm().catch(() => null),
     loadJson<{ zahlungen?: Quellen['zahlungen']; rechnungen?: Quellen['rechnungen'] }>('finanzplan').catch(() => null),
     ladeEinstellungen().catch(() => null),
+    vertragsFristenLesen().catch(() => []),
   ]);
   return {
     meilensteine: meilensteine?.meilensteine, etappen: bauplan?.etappen,
@@ -48,6 +62,7 @@ export async function fristenQuellenLesen(): Promise<Quellen> {
     angebote: crm?.angebote.map(a => ({ id: a.id, titel: a.titel, status: a.status, gueltigBis: a.gueltigBis })),
     deals: crm?.chancen.map(c => ({ id: c.id, titel: c.titel, stufe: c.stufe, ...(c.erwartetAm ? { erwartetAm: c.erwartetAm } : {}), besitzer: c.besitzer, offen: OFFENE_STUFEN.includes(c.stufe) })),
     steuer: einst?.steuerVorlage.an ? await steuerFristenLesen(localDay()).catch(() => []) : [],
+    vertraege,
   };
 }
 

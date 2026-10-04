@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../schlank';
+import { Knopf, Hinweis, feld, LEUCHT } from '../ui';
 import { Pillen } from '../crm/teile';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
@@ -27,8 +27,8 @@ export const MELDEN_ARTEN: { id: Art; label: string; hinweis: string }[] = [
   { id: 'verbesserung', label: 'Wunsch', hinweis: 'Etwas Bestehendes soll besser werden.' },
 ];
 export const PRIO: { id: '1' | '2' | '3'; label: string }[] = [{ id: '1', label: 'Jetzt' }, { id: '2', label: 'Bald' }, { id: '3', label: 'Irgendwann' }];
-export const klein = { fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 } as const;
-export const titelKlein = { margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase' } as const;
+export const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
+export const titelKlein = { margin: '0 0 6px', fontSize: TYP.mikro, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase' } as const;
 
 export function useBauplan() {
   const [items, setItems] = useState<BacklogItem[] | null>(null);
@@ -109,14 +109,14 @@ export function Bilder({ namen, onAendern, max = 4 }: { namen: string[]; onAende
           </div>
         ))}
         {onAendern && namen.length < max && (
-          <label className="fassbar" style={{ width: 120, height: 80, borderRadius: 10, border: '1px dashed rgba(255,255,255,.2)', display: 'grid', placeItems: 'center', cursor: 'pointer', color: C.inkDim, fontSize: 12.5, textAlign: 'center', padding: 6 }}>
+          <label className="fassbar" style={{ width: 120, height: 80, borderRadius: 10, border: '1px dashed rgba(255,255,255,.2)', display: 'grid', placeItems: 'center', cursor: 'pointer', color: C.inkDim, fontSize: TYP.bedien, textAlign: 'center', padding: 6 }}>
             {laeuft ? 'lädt …' : '+ Bild'}
             <input type="file" accept="image/*" multiple onChange={e => { const f = Array.from(e.target.files ?? []); e.target.value = ''; void dazu(f); }} style={{ display: 'none' }} />
           </label>
         )}
       </div>
       {onAendern && <div style={klein}>Bildschirmfoto: <b style={{ color: C.inkDim }}>Cmd+Ctrl+Shift+4</b> kopiert es in die Zwischenablage, dann hier <b style={{ color: C.inkDim }}>Cmd+V</b>. Oder das Vorschaubild unten rechts (bzw. die Datei vom Schreibtisch) einfach in dieses Fenster ziehen. Am Handy: „+ Bild“ → Kamera oder Album. Höchstens {max}.</div>}
-      {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
       {gross && (
         <div onClick={() => setGross(null)} style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,.88)', display: 'grid', placeItems: 'center', padding: 20, cursor: 'zoom-out' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -223,7 +223,7 @@ export function ErfassenFormular({ seite, melden, onFertig, onAbbruch }: { seite
       )}
       <div><h3 style={titelKlein}>Bildschirmfoto</h3><Bilder namen={bilder} onAendern={setBilder} /></div>
       {seite && <div style={klein}>Aufgefallen auf: {seite}</div>}
-      {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
       <div style={{ display: 'flex', gap: 8 }}>
         <Knopf aus={!f.titel.trim() || laeuft} onClick={() => void anlegen()}>{laeuft ? 'Speichert …' : 'In den Bauplan'}</Knopf>
         <Knopf leise onClick={onAbbruch}>Abbrechen</Knopf>

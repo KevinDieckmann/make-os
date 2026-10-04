@@ -20,7 +20,7 @@ import { reviewZaehlt } from '@/lib/crm/review';
 import { werktagAbOder } from '@/lib/zeit/kalender-kern';
 import { wartetText } from '@/lib/planung/meilenstein-kette';
 
-export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang' | 'steuer' | 'dsgvo' | 'angebot' | 'deal';
+export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang' | 'steuer' | 'dsgvo' | 'angebot' | 'deal' | 'vertrag';
 /**
  * `bereich` (29.09., K1): Privat oder Business — Mandate, Zahlungen, Eingänge, Bauplan-Etappen sind Business, Meilensteine
  * nach ihrem Space. `fuer` (K6a): wer zuständig ist (Mandat: `zustaendig`) — ohne Angabe der ganze Haushalt (Glocke).
@@ -55,6 +55,8 @@ export interface Quellen {
   deals?: { id: string; titel: string; stufe: string; erwartetAm?: string; besitzer?: string; offen: boolean }[];
   /** Steuertermine aus der Vorlage (nur wenn in den Kalender-Einstellungen eingeschaltet) — ohne Beträge. */
   steuer?: { datum: string; art: string; titel: string; hinweis: string; privat?: boolean }[];
+  /** Verträge der eigenen Gesellschaften (04.10., Register): Beginn, Ende, „kündigen bis“, Optionen/Cliff — Business. */
+  vertraege?: { id: string; tag: string; titel: string; unter?: string; gesellschaftId: string; vertragId: string; kuendigung?: true }[];
 }
 
 /** Alle Stichtage im Zeitraum [von, bis) — Berliner Tage. `heute` für die laufende Periode eines Mandats (Verlängerung). */
@@ -101,6 +103,9 @@ export function fristen(q: Quellen, von: string, bis: string, heute: string = vo
   // Steuertermine (Vorlage, Zusatzthema #11): schon auf den Werktag geschoben (§ 108 AO), nie mit Betrag.
   for (const s of q.steuer ?? []) {
     if (imZeitraum(s.datum, von, bis)) raus.push({ id: `st-${s.art}-${s.datum}`, art: 'steuer', tag: s.datum.slice(0, 10), titel: s.titel, unter: `${s.hinweis} · ${STEUER_HINWEIS}`, href: WEG.steuern('fristen'), bereich: s.privat ? 'privat' : 'business' });
+  }
+  for (const v of q.vertraege ?? []) {
+    if (imZeitraum(v.tag, von, bis)) raus.push({ id: v.id, art: 'vertrag', tag: v.tag.slice(0, 10), titel: v.titel, ...(v.unter ? { unter: v.unter } : {}), href: WEG.unternehmen(v.gesellschaftId, 'vertraege'), bereich: 'business', ...(v.kuendigung ? { kuendigung: true as const } : {}) });
   }
   return raus.sort((a, b) => a.tag.localeCompare(b.tag) || a.titel.localeCompare(b.titel));
 }

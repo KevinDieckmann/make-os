@@ -7,7 +7,7 @@
 
 import { useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Knopf, feld } from '../schlank';
+import { Knopf, feld } from '../ui';
 import { erwaehnungen } from '@/lib/aufgaben/struktur';
 
 export interface Beitrag {
@@ -18,7 +18,7 @@ export interface Beitrag {
 export interface BeitragPerson { speicher: string; name: string; namen: string[] }
 
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
-const leise: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, fontFamily: SCHRIFT.text, padding: '2px 4px', minHeight: 28 };
+const leise: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, fontFamily: SCHRIFT.text, padding: '2px 4px', minHeight: 28 };
 const zeit = (iso: string) => { try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
 function MitErwaehnung({ text, personen }: { text: string; personen: readonly BeitragPerson[] }) {
@@ -62,13 +62,13 @@ export function BeitragsVerlauf({ liste, ich, personen, titel = 'Kommentare', pl
   return (
     <div>
       <div style={{ ...mikro, marginBottom: 6 }}>{titel}{sichtbar ? ` · ${sichtbar}` : ''}</div>
-      {!liste.length && leer && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 0' }}>{leer}</div>}
+      {!liste.length && leer && <div style={{ fontSize: TYP.bedien, color: C.inkDim, padding: '6px 0' }}>{leer}</div>}
       {liste.map(k => {
         const bezug = k.antwortAuf ? nachId.get(k.antwortAuf) : undefined;
         const eigen = k.von === ich && !k.entfernt;
         return (
           <div key={k.id} id={`beitrag-${k.id}`} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', ...(k.zoe ? { borderLeft: `2px solid ${LEUCHT.agenten}`, paddingLeft: 10 } : {}) }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: 12, color: C.inkLeise }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkLeise }}>
               {k.zoe ? <b style={{ color: LEUCHT.agenten, fontWeight: 700 }}>ZOE</b> : <b style={{ color: C.inkDim, fontWeight: 600 }}>{name(k.von)}</b>}
               {k.zoe && <span>für {name(k.von)} · Vorschlag, nichts ist angelegt</span>}
               <span>{zeit(k.am)}</span>
@@ -80,11 +80,11 @@ export function BeitragsVerlauf({ liste, ich, personen, titel = 'Kommentare', pl
               </span>
             </div>
             {bezug && (
-              <div style={{ fontSize: 12, color: C.inkLeise, borderLeft: '2px solid rgba(255,255,255,.12)', paddingLeft: 8, margin: '4px 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim, borderLeft: '2px solid rgba(255,255,255,.12)', paddingLeft: 8, margin: '4px 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 ↳ {bezug.zoe ? 'ZOE' : name(bezug.von)}: {bezug.entfernt ? '(entfernt)' : bezug.text}
               </div>
             )}
-            {k.entfernt ? <div style={{ fontSize: TYP.bedien, color: C.inkLeise, fontStyle: 'italic', marginTop: 3 }}>{entferntText}</div>
+            {k.entfernt ? <div style={{ fontSize: TYP.bedien, color: C.inkDim, fontStyle: 'italic', marginTop: 3 }}>{entferntText}</div>
               : bearbeite?.id === k.id ? (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
                   <textarea autoFocus value={bearbeite.text} onChange={e => setBearbeite({ id: k.id, text: e.target.value })} rows={2} aria-label="Nachricht bearbeiten"
@@ -98,7 +98,7 @@ export function BeitragsVerlauf({ liste, ich, personen, titel = 'Kommentare', pl
         );
       })}
       {antwort && nachId.get(antwort) && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: C.inkLeise, marginTop: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>Antwort an {nachId.get(antwort)!.zoe ? 'ZOE' : name(nachId.get(antwort)!.von)}</span>
           <button onClick={() => setAntwort(null)} style={leise} aria-label="Antwort abbrechen">×</button>
         </div>
@@ -113,7 +113,7 @@ export function BeitragsVerlauf({ liste, ich, personen, titel = 'Kommentare', pl
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           {vorschlaege.map(p => (
             <button key={p.speicher} onClick={() => { setText(x => x.replace(/@([\p{L}\p{N}_-]*)$/u, `@${p.name} `)); zurueckInsFeld(); }} className="fassbar"
-              style={{ border: `1px solid ${C.aktiv}66`, background: `${C.aktiv}14`, color: C.aktiv, borderRadius: 999, padding: '3px 10px', fontSize: 12.5, cursor: 'pointer', fontFamily: SCHRIFT.text }}>@{p.name}</button>
+              style={{ border: `1px solid ${C.aktiv}66`, background: `${C.aktiv}14`, color: C.aktiv, borderRadius: 999, padding: '3px 10px', fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>@{p.name}</button>
           ))}
         </div>
       )}

@@ -50,7 +50,12 @@ export type DealRolle = 'entscheider' | 'fuersprecher' | 'nutzer' | 'blocker';
 export type Qual = 'ja' | 'nein' | 'unklar';
 /** Lead-Temperatur aus dem Score (lib/crm/score.ts): kalt < 25 · lau < 50 · warm < 75 · heiß. */
 export type Temperatur = 'kalt' | 'lau' | 'warm' | 'heiss';
-export type Gesellschaft = 'kdv' | 'kdc' | 'ug' | 'offen';
+/**
+ * Gesellschaft eines Deals, Mandats oder Produkts: eine der drei festen, „offen“ oder (seit 04.10., offene Liste) eine
+ * Gesellschaft aus dem Register (`g-…`, lib/gesellschaften). Rechnen (Finanzen, Steuern, Index) kennt nur die drei festen —
+ * für `g-…` gibt es dort „nur Grunddaten“ (lib/einheiten.ts `finanzFirmaFuer`).
+ */
+export type Gesellschaft = 'kdv' | 'kdc' | 'ug' | 'offen' | import('@/lib/einheiten').RegisterKennung;
 
 export interface Chance {
   id: string;

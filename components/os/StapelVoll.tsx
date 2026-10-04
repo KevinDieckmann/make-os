@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Hinweis, feld, LEUCHT } from './ui';
 
@@ -44,7 +45,8 @@ interface Eintrag {
 /** Wohin man geht, wenn man es lieber selbst macht. */
 const SELBST: Record<string, { href: string; label: string }> = {
   finanzen: { href: '/os/finanzen', label: 'Finanzen' },
-  meilensteine: { href: '/os/roadmap', label: 'Roadmap' },
+  // Meilensteine gehören der Planung (ZOE setzt sie im Bestand „meilensteine“) — nicht der Bau-Roadmap (04.10., Aufräumen).
+  meilensteine: { href: WEG.jahr(), label: 'Ziele & Planung' },
   fokus: { href: '/os/fokus', label: 'Fokus' },
   aufgaben: { href: '/os/aufgaben', label: 'Aufgaben' },
   kunden: { href: '/os/mandate', label: 'Produkte & Mandate' },

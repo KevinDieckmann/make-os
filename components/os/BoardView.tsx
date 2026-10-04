@@ -11,7 +11,8 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { eur } from '@/lib/make-one/finance-data';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, Zahl, Fortschritt, LEUCHT } from './schlank';
+import { FileText } from 'lucide-react';
+import { Seite, Karte, Ueberschrift, Leerzustand, Knopf, Chip, Zahl, Fortschritt, LEUCHT } from './ui';
 
 interface Sektion { titel: string; punkte?: string[]; }
 interface Stats {
@@ -85,6 +86,7 @@ export function BoardView() {
 
   const s = pack?.stats;
   const achtung = s ? s.tasks.overdue + s.tasks.blocked : 0;
+  const status = ready ? `Geschäftssicht${privat > 0 ? ` · ${privat} private Aufgaben ausgeblendet` : ''}` : 'lade …';
   const runwayKritisch = s?.finance?.runway != null && s.finance.runway < runwayRot;
 
   return (
@@ -93,17 +95,22 @@ export function BoardView() {
       unter="Ein Blick über alles: Umsatz-Kurs, Pipeline und Ausführung — zusammengefasst aus Controlling, Prospecting und Aufgaben. Kennzahlen exakt, Einordnung vom Agenten."
       rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
     >
-      <Karte i={0} akzent={LEUCHT.agenten}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Knopf onClick={build} aus={busy || !ready} farbe={LEUCHT.agenten}>
-            {busy ? 'stelle Pack zusammen …' : pack ? 'Neu erstellen' : 'Board-Pack erstellen'}
-          </Knopf>
-          <span style={{ fontSize: 12, color: C.inkLeise }}>{ready ? `Geschäftssicht${privat > 0 ? ` · ${privat} private Aufgaben ausgeblendet` : ''}` : 'lade …'}</span>
-        </div>
-        {!pack && !busy && (
-          <Leer>„Board-Pack erstellen“ — der Agent zieht Controlling, Pipeline und Aufgaben zusammen und schreibt das Wochen-Briefing.</Leer>
-        )}
-      </Karte>
+      {!pack && !busy ? (
+        <Leerzustand symbol={<FileText size={26} />} ton={LEUCHT.agenten} titel="Noch kein Wochen-Pack"
+          aktion={<Knopf haupt voll onClick={build} aus={!ready} farbe={LEUCHT.agenten}>Board-Pack erstellen</Knopf>}>
+          Der Agent zieht Controlling, Pipeline und Aufgaben zusammen und schreibt das Wochen-Briefing.
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6 }}>{status}</div>
+        </Leerzustand>
+      ) : (
+        <Karte i={0} ton={LEUCHT.agenten}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Knopf haupt onClick={build} aus={busy || !ready} farbe={LEUCHT.agenten}>
+              {busy ? 'stelle Pack zusammen …' : 'Neu erstellen'}
+            </Knopf>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{status}</span>
+          </div>
+        </Karte>
+      )}
 
       {/* Kennzahlen (deterministisch) */}
       {s && (

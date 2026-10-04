@@ -10,7 +10,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { PHASEN } from '@/lib/make-one/roadmap-data';
 import { KAT_LABEL, BLOCK_LABEL, type BacklogItem } from '@/lib/make-one/backlog-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Ring, Zahl, Fortschritt, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Ring, Zahl, Fortschritt, LEUCHT } from './ui';
 
 const blockColor = (b: string) => (b === 'frei' ? LEUCHT.gut : b === 'kevin' ? LEUCHT.achtung : C.inkLeise);
 const katColor = (k: string) => (k === 'anbindung' ? LEUCHT.puls : k === 'agent' ? LEUCHT.agenten : k === 'qualitaet' ? LEUCHT.gut : LEUCHT.schlaf);
@@ -37,7 +37,7 @@ export function RoadmapView() {
 
   return (
     <Seite titel="Roadmap" unter="Sieben Phasen, die aufeinander aufbauen. Erst der tägliche Takt, dann vollständige Daten, dann Steuerung — Messbarkeit auf Daten zu bauen, die noch nicht reinfließen, führt zu Zahlen, denen man nicht trauen kann.">
-      <Karte i={0} akzent={LEUCHT.puls}>
+      <Karte i={0} ton={LEUCHT.puls}>
         <Ueberschrift farbe={LEUCHT.puls} rechts={`${PHASEN.length} Phasen`}>Der Fahrplan</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
           <Zahl wert={gesamt ? String(gesamt) : undefined} label="Bausteine" />
@@ -81,7 +81,7 @@ export function RoadmapView() {
                   {auf && (
                     <div style={{ padding: '6px 2px 16px' }}>
                       <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: 0 }}>{p.ziel}</p>
-                      <p style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55, margin: '8px 0 12px' }}>
+                      <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: '8px 0 12px' }}>
                         <b style={{ color: LEUCHT.puls }}>Fertig, wenn: </b>{p.fertigWenn}
                       </p>
                       {eigene.sort((a, b) => a.prio - b.prio).map(i => (
@@ -93,9 +93,9 @@ export function RoadmapView() {
                               <Chip farbe={katColor(i.kategorie)}>{KAT_LABEL[i.kategorie]}</Chip>
                               <Chip farbe={blockColor(i.block)}>{BLOCK_LABEL[i.block]}</Chip>
                             </div>
-                            {i.warum && <p style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5, margin: '4px 0 0' }}>{i.warum}</p>}
+                            {i.warum && <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '4px 0 0' }}>{i.warum}</p>}
                             {i.block === 'kevin' && i.brauche && (
-                              <p style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5, margin: '4px 0 0' }}>
+                              <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '4px 0 0' }}>
                                 <b style={{ color: LEUCHT.achtung }}>Du brauchst: </b>{i.brauche}
                               </p>
                             )}

@@ -26,6 +26,7 @@ import { dealZuFirma } from './firmen-bezug';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
 import { phaseHeben } from './lifecycle';
 import type { Chance, ChancenArt, Gesellschaft, Lead, Quelle, WertBasis } from './typen';
+import { istRegisterKennung } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 
 export interface DealEingabe {
@@ -104,7 +105,7 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
     naechsterSchritt: schritt, qualifizierung: kriterien,
     ...(QUELLEN.includes(e.quelle as Quelle) ? { quelle: e.quelle as Quelle } : {}), ...(e.quelleBezug && idOk(e.quelleBezug) ? { quelleBezug: e.quelleBezug } : {}),
     ...(tagOk(e.erwartetAm) ? { erwartetAm: tagOk(e.erwartetAm) } : {}),
-    gesellschaft: GES.includes(e.gesellschaft as Gesellschaft) ? (e.gesellschaft as Gesellschaft) : 'offen', besitzer,
+    gesellschaft: GES.includes(e.gesellschaft as Gesellschaft) || istRegisterKennung(e.gesellschaft) ? (e.gesellschaft as Gesellschaft) : 'offen', besitzer,
     angelegt: ctx.jetzt, geaendert: ctx.jetzt, geaendertVon: ctx.person, letzteAktivitaet: tagVon(ctx.jetzt),
     ...(String(e.notiz ?? '').trim() ? { notiz: String(e.notiz).trim().slice(0, 3000) } : {}),
   };

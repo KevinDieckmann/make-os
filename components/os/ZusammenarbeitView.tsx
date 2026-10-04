@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ZONEN } from '@/lib/make-one/onboarding-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './ui';
 
 const ZONENFARBE: Record<string, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch };
 const PERSONFARBE: Record<string, string> = { Malin: LEUCHT.beziehung, Kevin: LEUCHT.puls };
@@ -50,7 +50,7 @@ export function ZusammenarbeitView() {
       rechts={<Link href="/os/onboarding" className="fassbar" style={linkKnopf}>Onboarding ›</Link>}>
 
       {/* Der Schalter */}
-      <Karte i={0} akzent={aktiv ? LEUCHT.achtung : undefined}>
+      <Karte i={0} ton={aktiv ? LEUCHT.achtung : undefined}>
         <Ueberschrift farbe={aktiv ? LEUCHT.achtung : C.inkLeise}
           rechts={aktiv
             ? <Knopf leise onClick={() => setzen(false, woran)}>Bauzeit beenden</Knopf>
@@ -60,7 +60,7 @@ export function ZusammenarbeitView() {
         <div style={{ fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.01em', color: aktiv ? LEUCHT.achtung : C.ink }}>
           {aktiv ? 'Kevin baut gerade' : 'Kein Umbau — alles sicher'}
         </div>
-        <p style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55, margin: '4px 0 0' }}>
+        <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: '4px 0 0' }}>
           {aktiv
             ? <>Seit {b?.seit ? `${b.seit.slice(11, 16)} Uhr` : 'gerade eben'}{b?.woran ? ` · ${b.woran}` : ''}. Der Hinweis steht jetzt auf jeder Seite.</>
             : 'Einschalten, bevor du am Code arbeitest. Malin sieht den Hinweis dann überall.'}
@@ -168,8 +168,8 @@ function Aenderungen() {
         {zeigen.map((e, i) => (
           <Zeile key={e.at + i}
             links={<Chip farbe={PERSONFARBE[e.person] ?? C.inkDim}>{e.person}</Chip>}
-            titel={<>{BESTAND_NAME[e.bestand] ?? e.bestand}{e.art === 'DELETE' && <span style={{ color: LEUCHT.kritisch, fontSize: 12, fontWeight: 400 }}> · gelöscht</span>}</>}
-            rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}><Punkt farbe={C.inkLeise} groesse={6} />{wann(e.at)}</span>} />
+            titel={<>{BESTAND_NAME[e.bestand] ?? e.bestand}{e.art === 'DELETE' && <span style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien, fontWeight: 400 }}> · gelöscht</span>}</>}
+            rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}><Punkt farbe={C.inkLeise} groesse={6} />{wann(e.at)}</span>} />
         ))}
       </Liste>
       {liste && liste.length > 8 && (

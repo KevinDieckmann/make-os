@@ -19,6 +19,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { KARTEIEN, verdecken, type Feld, type Kartei } from '@/lib/make-one/stammdaten-data';
 import { modusLesen, beiWechsel } from '@/lib/make-one/arbeitsplatz-browser';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Hinweis, feld, LEUCHT, ZeileAktionen, useRueckgaengig, useRueckfrage, type Rueckgaengig } from './ui';
+import { WEG } from '@/lib/wege';
 
 const HAAR = 'rgba(255,255,255,.06)';
 const beschriftung: CSSProperties = { fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
@@ -141,6 +142,8 @@ function KarteiBlock({ i, kartei, saetze: alle, offen, aufdecken, aendern: aende
         {kartei.titel}
       </Ueberschrift>
       <p style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5, margin: '0 0 6px' }}>{kartei.satz}</p>
+      {/* 04.10.: die eigenen Gesellschaften führt das Register (Business › Unternehmen) — ein Weg statt zwei; was hier steht, bleibt lesbar. */}
+      {kartei.id === 'firmen' && <div style={{ margin: '4px 0 10px' }}><Hinweis art="info" titel="Eigene Gesellschaften jetzt im Register" aktion={<Knopf href={WEG.unternehmen()}>Zu Unternehmen</Knopf>}>Steckbrief, Gesellschafter, Verträge und Absender der Angebote pflegst du unter Business › Unternehmen. Die Karten hier bleiben unverändert stehen — übertrage sie bei Gelegenheit.</Hinweis></div>}
 
       {saetze.length === 0 && <Leer>Noch nichts eingetragen. Über „Neu“ die erste Karte anlegen.</Leer>}
 

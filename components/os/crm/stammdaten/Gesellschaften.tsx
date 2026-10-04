@@ -22,7 +22,11 @@ import { gesellschaftKette, type GesellschaftAntwort } from '@/lib/crm/gesellsch
 type G = Gesellschaft & { stand: string; luecken: string[] };
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
 
-export function Gesellschaften({ i = 0 }: { i?: number }) {
+/**
+ * `nur` (04.10.): nur diese eine Gesellschaft — so steht die Absender-Pflege als Reiter „Absender“ im Register
+ * (/os/unternehmen). `onGeaendert` meldet jede gespeicherte Änderung (dort lädt das Register den neuen Stand).
+ */
+export function Gesellschaften({ i = 0, nur, onGeaendert }: { i?: number; nur?: 'kdc' | 'kdv' | 'ug'; onGeaendert?: () => void }) {
   const [liste, setListe] = useState<G[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const laden = useCallback(async () => {
@@ -37,11 +41,11 @@ export function Gesellschaften({ i = 0 }: { i?: number }) {
   return (
     <>
       <Karte i={i}>
-        <Ueberschrift>Gesellschaften</Ueberschrift>
+        <Ueberschrift>{nur ? 'Absender für Angebote' : 'Gesellschaften'}</Ueberschrift>
         <div style={klein}>Absender der Angebote (und später der Rechnungen). Pflichtangaben einmal mit dem Steuerberater abstimmen — Hinweis, keine Steuerberatung. Die IBAN steht hier nur maskiert; im PDF steht sie voll.</div>
         {fehler && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginTop: 8 }}>{fehler}</div>}
       </Karte>
-      {liste.map((g, n) => <GesellschaftKarte key={g.id} i={i + n + 1} g={g} onNeu={x => setListe(l => (l ?? []).map(y => (y.id === x.id ? x : y)))} />)}
+      {liste.filter(g => !nur || g.id === nur).map((g, n) => <GesellschaftKarte key={g.id} i={i + n + 1} g={g} onNeu={x => { setListe(l => (l ?? []).map(y => (y.id === x.id ? x : y))); onGeaendert?.(); }} />)}
     </>
   );
 }

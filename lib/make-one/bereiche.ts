@@ -2,7 +2,7 @@ import {
   Activity, Bot, BrainCircuit, CalendarRange, CheckSquare, Compass, Database, Flame,
   Gauge, HeartPulse, Inbox, LayoutGrid, ListChecks, Map, Network, Plug, RefreshCw,
   Repeat, Rocket, Salad, Search, ShieldCheck, Sparkles, Sunrise, Target, TrendingUp,
-  UserCheck, UserCog, Users, Utensils, Wallet, IdCard, type LucideIcon,
+  UserCheck, UserCog, Users, Utensils, Wallet, IdCard, Building2, type LucideIcon,
 } from 'lucide-react';
 import { THEME as T } from './os-data';
 
@@ -175,6 +175,8 @@ export const BEREICHE: Bereich[] = [
       { href: '/os/datenbasis', label: 'Datenbasis', icon: Database },
       // Der sichere Platz für Steuernummern, IBANs und Ansprechpartner.
       { href: '/os/stammdaten', label: 'Stammdaten', icon: IdCard, hinweis: 'Firmen · Konten' },
+      // Gesellschafts-Register (04.10.) — die eigenen Gesellschaften; im Business-Space als „Unternehmen“.
+      { href: '/os/unternehmen', label: 'Unternehmen', icon: Building2, hinweis: 'Gesellschaften · Anteile · Verträge', modus: 'business' },
       { href: '/os/verbindungen', label: 'Verbindungen', icon: Plug },
     ],
   },

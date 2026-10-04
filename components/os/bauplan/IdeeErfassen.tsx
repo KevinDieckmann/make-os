@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { LEUCHT } from '../schlank';
+import { LEUCHT } from '../ui';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
 import { Fenster, ErfassenFormular, BAUPLAN_NEU } from './gemeinsam';
 

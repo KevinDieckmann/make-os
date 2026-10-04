@@ -10,7 +10,7 @@ import { localDay } from '@/lib/zeit';
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, prioFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, prioFarbe, LEUCHT } from './ui';
 import { neueKennung } from '@/lib/kennung';
 
 interface ActionItem { titel: string; owner: string; prio: string; projectId: string; due?: string; }
@@ -114,7 +114,7 @@ export function MeetingView() {
       unter={<>Transkript oder Notizen einfügen — der Agent macht Zusammenfassung, Entscheidungen und Action-Items daraus. Jedes Action-Item übernimmst du <b style={{ color: C.ink }}>auf Klick in deine echten Aufgaben</b>. <span style={{ color: C.inkLeise }}>(Auto-Mitschrift via Granola/Fireflies kommt als Zusatz.)</span></>}
       rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
     >
-      <Karte i={0} akzent={LEUCHT.agenten}>
+      <Karte i={0} ton={LEUCHT.agenten}>
         <Ueberschrift farbe={LEUCHT.agenten}>Mitschrift</Ueberschrift>
         <textarea value={transcript} onChange={e => setTranscript(e.target.value)} rows={7} placeholder="Meeting-Transkript oder Notizen hier einfügen …" style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />
         {/* Zu welchem Termin gehört das? Der Kalender bleibt die Pflegebasis. */}
@@ -132,9 +132,9 @@ export function MeetingView() {
           </div>
         )}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 14 }}>
-          <Knopf onClick={evaluate} aus={!kannAuswerten} farbe={LEUCHT.agenten}>{busy ? 'werte aus …' : 'Meeting auswerten'}</Knopf>
-          {err && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{err}</span>}
+          <Knopf haupt onClick={evaluate} aus={!kannAuswerten} farbe={LEUCHT.agenten}>{busy ? 'werte aus …' : 'Meeting auswerten'}</Knopf>
         </div>
+        {err && <div style={{ marginTop: 12 }}><Hinweis art="kritisch" aktion={<Knopf leise onClick={evaluate} aus={!kannAuswerten}>Noch einmal versuchen</Knopf>}>{err}</Hinweis></div>}
       </Karte>
 
       {prot && (
@@ -173,7 +173,7 @@ export function MeetingView() {
               />
             ))}
           </Liste>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Übernommene Aufgaben landen in deinen echten Aufgaben (/os/aufgaben).</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 10 }}>Übernommene Aufgaben landen in deinen echten Aufgaben (/os/aufgaben).</div>
         </Karte>
       )}
 
@@ -183,17 +183,17 @@ export function MeetingView() {
       <Karte i={prot ? 4 : 1}>
         <Ueberschrift farbe={LEUCHT.puls} rechts={verlauf.length ? `${verlauf.length} Protokoll${verlauf.length === 1 ? '' : 'e'}` : undefined}>Skriptverlauf</Ueberschrift>
         {!verlauf.length && <Leer>Noch nichts protokolliert. Ab jetzt bleibt jede Auswertung hier liegen.</Leer>}
-        {!!verlauf.length && <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Bleiben liegen, mit Termin verknüpft.</div>}
+        {!!verlauf.length && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>Bleiben liegen, mit Termin verknüpft.</div>}
         <Liste>
           {verlauf.map(m => {
             const auf = offenesProtokoll === m.id;
             return (
               <div key={m.id}>
                 <Zeile onClick={() => setOffenesProtokoll(auf ? null : m.id)} aktiv={auf}
-                  links={<span style={{ fontSize: 12, color: C.inkLeise, width: 46, flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{m.datum.slice(8)}.{m.datum.slice(5, 7)}.</span>}
+                  links={<span style={{ fontSize: TYP.bedien, color: C.inkLeise, width: 46, flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{m.datum.slice(8)}.{m.datum.slice(5, 7)}.</span>}
                   titel={m.titel}
                   unter={m.terminTitel ? `⌛ ${m.terminTitel}` : undefined}
-                  rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{(m.aufgaben ?? []).length} Aufgaben<span>{auf ? '▾' : '▸'}</span></span>}
+                  rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{(m.aufgaben ?? []).length} Aufgaben<span>{auf ? '▾' : '▸'}</span></span>}
                 />
                 {auf && (
                   <div style={{ padding: '10px 2px 16px 60px' }}>
@@ -210,9 +210,9 @@ export function MeetingView() {
                     ))}
                     <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                       {m.transcript && (
-                        <details style={{ fontSize: 12, color: C.inkLeise, flex: 1, minWidth: 200 }}>
+                        <details style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: 1, minWidth: 200 }}>
                           <summary style={{ cursor: 'pointer' }}>Skript nachlesen</summary>
-                          <div style={{ whiteSpace: 'pre-wrap', marginTop: 6, maxHeight: 260, overflowY: 'auto', fontSize: 12, color: C.inkDim, lineHeight: 1.5 }}>{m.transcript}</div>
+                          <div style={{ whiteSpace: 'pre-wrap', marginTop: 6, maxHeight: 260, overflowY: 'auto', fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{m.transcript}</div>
                         </details>
                       )}
                       <span style={{ marginLeft: 'auto' }}>

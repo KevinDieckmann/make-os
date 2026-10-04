@@ -8,8 +8,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, feld, Fortschritt, LEUCHT } from '../schlank';
-import { useRueckfrage } from '../ui';
+import { Karte, Ueberschrift, Knopf, feld, Fortschritt, LEUCHT, useRueckfrage } from '../ui';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from '../Zeitstrahl';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
 import { SPALTEN, board, spalteVon, artVon, etappenStand, type Etappe } from '@/lib/bauplan/board';
@@ -126,7 +125,7 @@ export function Planung({ items, etappen, tu, onOeffnen }: { items: BacklogItem[
           {ohne.map(i => (
             <Reihe key={i.id} k={i} onOeffnen={onOeffnen} rechts={liste.length > 0 && (
               <select value="" onChange={e => { if (e.target.value) void zuordnen(i.id, e.target.value); }} aria-label="Etappe zuordnen" onClick={e => e.stopPropagation()}
-                style={{ ...feld, width: 'auto', fontSize: 12.5, padding: '5px 8px', borderRadius: 9 }}>
+                style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '5px 8px', borderRadius: 9 }}>
                 <option value="">→ Etappe</option>
                 {liste.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
@@ -144,7 +143,7 @@ function Reihe({ k, onOeffnen, rechts }: { k: BacklogItem; onOeffnen: (id: strin
   return (
     <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', k.id); e.dataTransfer.effectAllowed = 'move'; }}
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', borderRadius: 9, cursor: 'grab' }} className="fassbar">
-      <span style={{ fontSize: 11.5, fontWeight: 700, color: s === 'fertig' ? LEUCHT.gut : s === 'test' ? LEUCHT.achtung : s === 'bereit' || s === 'arbeit' ? LEUCHT.puls : C.inkLeise, width: 78, flex: '0 0 auto' }}>{SPALTEN.find(x => x.id === s)?.label}</span>
+      <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: s === 'fertig' ? LEUCHT.gut : s === 'test' ? LEUCHT.achtung : s === 'bereit' || s === 'arbeit' ? LEUCHT.puls : C.inkLeise, width: 78, flex: '0 0 auto' }}>{SPALTEN.find(x => x.id === s)?.label}</span>
       <button onClick={() => onOeffnen(k.id)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, color: s === 'fertig' ? C.inkLeise : C.ink, fontSize: TYP.bedien, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: s === 'fertig' ? 'line-through' : 'none' }}>
         <span style={{ color: ART_FARBE[artVon(k)], marginRight: 6 }}>●</span>{k.titel}
       </button>

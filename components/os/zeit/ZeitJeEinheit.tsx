@@ -15,7 +15,7 @@ import { bereichLabel } from '@/lib/zeitmessung/kennzahlen';
 import { ZEITRAUM_LABEL, type EinheitAuswertung, type ZeitJeEinheit, type Zeitraum } from '@/lib/zeitmessung/einheiten';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { einheitFarbe, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
-import { Karte, Ueberschrift, Leer, Segmente, Fortschritt } from '../schlank';
+import { Karte, Ueberschrift, Leer, Hinweis, Segmente, Fortschritt } from '../ui';
 import { ZEIT_EREIGNIS } from '../Kopf';
 import { ZuordnungWahl, type Zuordnung } from './Zuordnung';
 import { FadenLinie } from '../ui';
@@ -45,13 +45,13 @@ export function EinheitBalken({ a, kompakt }: { a: EinheitAuswertung; kompakt?: 
             {!kompakt && (z.aufgaben.length > 0 || z.ohneAufgabeSek > 0) && (
               <div style={{ gridColumn: '1 / -1', display: 'grid', gap: 2, paddingLeft: 10, borderLeft: `2px solid ${farbe}33` }}>
                 {z.aufgaben.map(t => (
-                  <div key={t.id} style={{ display: 'flex', gap: 8, fontSize: 12.5, color: C.inkDim }}>
+                  <div key={t.id} style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, color: C.inkDim }}>
                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titel}</span>
                     <span style={{ fontVariantNumeric: 'tabular-nums', color: C.inkLeise }}>{zeitText(t.sek)}</span>
                   </div>
                 ))}
                 {z.ohneAufgabeSek > 0 && (
-                  <div style={{ display: 'flex', gap: 8, fontSize: 12.5, color: C.inkLeise }}>
+                  <div style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, color: C.inkLeise }}>
                     <span style={{ flex: 1 }}>ohne Aufgabe</span>
                     <span style={{ fontVariantNumeric: 'tabular-nums' }}>{zeitText(z.ohneAufgabeSek)}</span>
                   </div>
@@ -94,14 +94,14 @@ export function ZeitJeEinheitKarte({ i = 0 }: { i?: number }) {
           <button onClick={() => blaettern(-1)} aria-label={`${ZEITRAUM_LABEL[zeitraum]} davor`} className="fassbar" style={pfeil}>‹</button>
           <span style={{ minWidth: 104, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{d?.label ?? '…'}</span>
           <button onClick={() => blaettern(1)} aria-label={`${ZEITRAUM_LABEL[zeitraum]} danach`} className="fassbar" style={pfeil}>›</button>
-          {stichtag && <button onClick={() => setStichtag(undefined)} className="fassbar" style={{ ...pfeil, fontSize: 12, textDecoration: 'underline' }}>jetzt</button>}
+          {stichtag && <button onClick={() => setStichtag(undefined)} className="fassbar" style={{ ...pfeil, fontSize: TYP.bedien, textDecoration: 'underline' }}>jetzt</button>}
         </span>
         {mehrere && d && (
           <Segmente<string> liste={[{ id: 'gesamt', label: 'Gesamt' }, ...d.personen.map(p => ({ id: p.person, label: p.name }))]} aktiv={wer} onWahl={setWer} />
         )}
       </div>
-      {d === undefined ? <Leer>lade …</Leer> : !a ? <Leer>Die Zeit je Einheit ist gerade nicht erreichbar.</Leer> : <EinheitBalken a={a} />}
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12 }}>Gezählt werden bewusste Fokus-Blöcke im Business. Die Einheit kommt aus der zugeordneten Aufgabe, sonst aus der Wahl am Block.</div>
+      {d === undefined ? <Leer>lade …</Leer> : !a ? <Hinweis art="achtung">Die Zeit je Einheit ist gerade nicht erreichbar.</Hinweis> : <EinheitBalken a={a} />}
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 12 }}>Gezählt werden bewusste Fokus-Blöcke im Business. Die Einheit kommt aus der zugeordneten Aufgabe, sonst aus der Wahl am Block.</div>
     </Karte>
   );
 }
@@ -153,11 +153,11 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
   const kopf = (b: FokusBlock) => (
     <div style={{ flex: '1 1 160px', minWidth: 0 }}>
       <div style={{ fontSize: TYP.bedien, color: C.ink, fontVariantNumeric: 'tabular-nums' }}>{zeitText(b.sek)} <span style={{ color: C.inkLeise }}>· {b.label || bereichLabel(teile(b.schluessel).bereich)}</span></div>
-      <div style={{ fontSize: 12, color: C.inkLeise }}>{wann(b)}</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{wann(b)}</div>
     </div>
   );
   const zeile: CSSProperties = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.05)' };
-  const leise: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, padding: '2px 4px', textDecoration: 'underline' };
+  const leise: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: 'inherit', fontSize: TYP.bedien, padding: '2px 4px', textDecoration: 'underline' };
   return (
     <Karte i={i}>
       <Ueberschrift rechts={business.length ? `${offen} ohne Zuordnung` : undefined}>Fokus-Blöcke</Ueberschrift>
@@ -188,7 +188,7 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
                     <div key={b.von} style={{ ...zeile, opacity: 0.85 }}>
                       {kopf(b)}
                       <button onClick={() => void umbuchen(b, 'business')} disabled={laeuft === b.von} title="Ins Business umbuchen — danach Aufgabe oder Einheit zuordnen" className="fassbar"
-                        style={{ fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${LEUCHT.business}66`, background: `${LEUCHT.business}14`, color: LEUCHT.business }}>
+                        style={{ fontFamily: 'inherit', fontSize: TYP.bedien, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${LEUCHT.business}66`, background: `${LEUCHT.business}14`, color: LEUCHT.business }}>
                         {laeuft === b.von ? '…' : 'ins Business'}
                       </button>
                     </div>
@@ -197,7 +197,7 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
               )}
             </>
           )}
-      {fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 8 }}>{fehler}</div>}
+      {fehler && <div style={{ marginTop: 8 }}><Hinweis art="kritisch">{fehler}</Hinweis></div>}
     </Karte>
   );
 }
