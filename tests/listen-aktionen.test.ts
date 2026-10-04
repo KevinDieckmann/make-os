@@ -78,8 +78,8 @@ describe('Wächter: alle Listen am Baustein, keine Browser-Rückfrage', () => {
     expect(lies('components/os/familie/WirZwei.tsx')).toMatch(/<MitAktionen\b/);
   });
   it('kein window.confirm im Repo — Ausnahmen begründet', () => {
-    // Gesellschaften (Stammdaten › IBAN entfernen): gehört dem Register-Paket (eigener Agent, 04.10.) — dort umgestellt.
-    const AUSNAHMEN = new Set(['components/os/crm/stammdaten/Gesellschaften.tsx']);
+    // Keine Ausnahme mehr (Prüfung 04.10.: auch „IBAN entfernen“ fragt über useRueckfrage).
+    const AUSNAHMEN = new Set<string>();
     const funde = ['app', 'components', 'lib', 'context', 'hooks'].flatMap(d => dateien(d))
       .filter(f => !AUSNAHMEN.has(f))
       .filter(f => lies(f).split('\n').some(z => !/^\s*(\/\/|\*)/.test(z) && /window\.confirm\(|(^|[^.\w])confirm\(/.test(z)));

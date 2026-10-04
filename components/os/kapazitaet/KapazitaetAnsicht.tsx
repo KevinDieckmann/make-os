@@ -16,7 +16,7 @@ import type { KapaStand, PersonStand, Machbarkeit, Ausnahme } from '@/lib/kapazi
 import { MACHBAR_BIS, ENG_BIS } from '@/lib/kapazitaet/typen';
 import { stufeVon } from '@/lib/kapazitaet/modell';
 import type { KapaOp } from '@/lib/kapazitaet/aendern';
-import { Seite, Karte, Ueberschrift, Zahl, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, auswahl, useHandy, LEUCHT } from '../ui';
+import { Seite, Karte, Ueberschrift, Zahl, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, auswahl, useHandy, LEUCHT, useRueckgaengig } from '../ui';
 import { PlanerLeiste } from '../PlanerLeiste';
 import { useKapazitaet, type Bezug } from './useKapazitaet';
 import { MachbarMarke, LastBand, STUFE_FARBE, STUFE_TEXT } from './teile';
@@ -176,6 +176,13 @@ function Grundwert({ p, los }: { p: PersonStand; los: (ops: KapaOp[]) => Promise
 function Ausnahmen({ p, darf, los }: { p: PersonStand; darf: boolean; los: (ops: KapaOp[]) => Promise<void> }) {
   const [art, setArt] = useState<'urlaub' | 'block'>('urlaub');
   const [von, setVon] = useState(''); const [bis, setBis] = useState(''); const [sw, setSw] = useState(''); const [titel, setTitel] = useState('');
+  const { melden, hinweis } = useRueckgaengig();
+  // Entfernen mit „Rückgängig“ (10 s) — nie endgültig mit dem ersten Klick (DESIGN_STANDARD › Löschen & Archivieren).
+  const entfernen = async (a: Ausnahme) => {
+    await los([{ op: 'ausnahme-weg', person: p.id, id: a.id }]);
+    const { id: _id, ...rest } = a;
+    melden(`${text(a)} entfernt`, () => void los([{ op: 'ausnahme', person: p.id, ausnahme: rest }]));
+  };
   const text = (a: Ausnahme) => a.art === 'urlaub' ? `Urlaub ${kurz(a.von)}–${kurz(a.bis ?? a.von)}` : `Block ${z(a.stundenWoche ?? 0)} h/Woche ab ${kurz(a.von)}${a.bis ? ` bis ${kurz(a.bis)}` : ''}`;
   return (
     <div style={{ display: 'grid', gap: 8 }}>
@@ -185,7 +192,7 @@ function Ausnahmen({ p, darf, los }: { p: PersonStand; darf: boolean; los: (ops:
         {p.ausnahmen.map(a => (
           <span key={a.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
             <Chip umbrechen farbe={a.art === 'urlaub' ? LEUCHT.planung : LEUCHT.agenten}>{text(a)}{a.titel ? ` · ${a.titel}` : ''}</Chip>
-            {darf && <button type="button" aria-label={`${text(a)} entfernen`} onClick={() => void los([{ op: 'ausnahme-weg', person: p.id, id: a.id }])} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: 15 }}>×</button>}
+            {darf && <button type="button" aria-label={`${text(a)} entfernen`} onClick={() => void entfernen(a)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: 15 }}>×</button>}
           </span>
         ))}
       </div>
@@ -204,6 +211,7 @@ function Ausnahmen({ p, darf, los }: { p: PersonStand; darf: boolean; los: (ops:
           }}>+ hinzufügen</Knopf>
         </div>
       )}
+      {hinweis}
     </div>
   );
 }
@@ -211,6 +219,11 @@ function Ausnahmen({ p, darf, los }: { p: PersonStand; darf: boolean; los: (ops:
 function Zuweisungen({ p, darf, zuweisungen, bezuege, los }: { p: PersonStand; darf: boolean; zuweisungen: KapaStand['zuweisungen']; bezuege: Bezug[]; personen: PersonStand[]; los: (ops: KapaOp[]) => Promise<void> }) {
   const [bezug, setBezug] = useState(''); const [sw, setSw] = useState('');
   const b = bezuege.find(x => `${x.art}:${x.id}` === bezug);
+  const { melden, hinweis } = useRueckgaengig();
+  const entfernen = async (x: KapaStand['zuweisungen'][number]) => {
+    await los([{ op: 'zuweisung-weg', id: x.id }]);
+    melden(`Zuweisung ${x.label} entfernt`, () => void los([{ op: 'zuweisung', zuweisung: { person: x.person, art: x.art, bezugId: x.bezugId, stundenWoche: x.stundenWoche, ...(x.von ? { von: x.von } : {}), ...(x.bis ? { bis: x.bis } : {}) } }]));
+  };
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>Zuweisungen · Mandate & Kunden</span>
@@ -219,7 +232,7 @@ function Zuweisungen({ p, darf, zuweisungen, bezuege, los }: { p: PersonStand; d
         {zuweisungen.map(x => (
           <span key={x.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
             <Chip umbrechen farbe={LEUCHT.business}>{x.label} · {z(x.stundenWoche)} h/Woche</Chip>
-            {darf && <button type="button" aria-label={`Zuweisung ${x.label} entfernen`} onClick={() => void los([{ op: 'zuweisung-weg', id: x.id }])} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: 15 }}>×</button>}
+            {darf && <button type="button" aria-label={`Zuweisung ${x.label} entfernen`} onClick={() => void entfernen(x)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: 15 }}>×</button>}
           </span>
         ))}
       </div>
@@ -234,6 +247,7 @@ function Zuweisungen({ p, darf, zuweisungen, bezuege, los }: { p: PersonStand; d
           <Knopf leise aus={!b || !sw} onClick={async () => { if (!b) return; await los([{ op: 'zuweisung', zuweisung: { person: p.id, art: b.art, bezugId: b.id, stundenWoche: Number(sw) } }]); setBezug(''); setSw(''); }}>+ zuweisen</Knopf>
         </div>
       )}
+      {hinweis}
     </div>
   );
 }

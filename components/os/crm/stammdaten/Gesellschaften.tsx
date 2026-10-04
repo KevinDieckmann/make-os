@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KERN_EINHEITEN, UG_NAME } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip } from '../../ui';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, useRueckfrage } from '../../ui';
 import { Feldzeile, Feld } from '../teile';
 import { mitVorgaben, firmierungNochUG, firmierungVorschlag, type Gesellschaft } from '@/lib/crm/gesellschaften';
 import { nummerAusFormat, NUMMER_VORGABE } from '@/lib/crm/angebote';
@@ -59,6 +59,7 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
   const [unterwegs, setUnterwegs] = useState(0);
   const [ungespeichert, setUngespeichert] = useState<Offen[]>([]);
   const [iban, setIban] = useState('');
+  const { bestaetigen, dialog } = useRueckfrage();
   const v = mitVorgaben(g);
   const name = KERN_EINHEITEN.find(e => e.id === g.id)?.label ?? g.id;
   const jahr = new Date().getFullYear();
@@ -147,7 +148,7 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
               onKeyDown={async e => { if (e.key === 'Enter' && iban.trim()) { if (await setze({ bank: { ...g.bank, iban: iban.trim() } })) setIban(''); } }}
               style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, color: C.ink, fontSize: TYP.bedien, padding: '8px 11px', flex: '1 1 200px' }} />
             {iban.trim() && <Knopf onClick={async () => { if (await setze({ bank: { ...g.bank, iban: iban.trim() } })) setIban(''); }}>IBAN speichern</Knopf>}
-            {g.bank?.iban && <button onClick={() => { if (window.confirm('IBAN entfernen?')) void setze({ bank: { ...g.bank, iban: undefined, ibanEntfernen: true } }, 'IBAN entfernen'); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>entfernen</button>}
+            {g.bank?.iban && <button onClick={async () => { if (await bestaetigen({ titel: 'IBAN entfernen?', text: 'Die IBAN fehlt danach auf Angeboten und Rechnungen dieser Gesellschaft, bis du sie neu einträgst.', ja: 'Entfernen', gefahr: true })) void setze({ bank: { ...g.bank, iban: undefined, ibanEntfernen: true } }, 'IBAN entfernen'); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>entfernen</button>}
           </span>
           <Feld wert={g.bank?.inhaber ?? ''} platzhalter="Kontoinhaber (optional)" onFertig={t => void setze({ bank: { ...g.bank, iban: undefined, inhaber: t.trim() } }, 'Kontoinhaber')} />
         </div>
@@ -185,6 +186,7 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
           onBlur={e => { if (e.target.value.trim() !== (g.fusstext ?? '')) void setze({ fusstext: e.target.value.trim() }, 'Fußtext'); }}
           style={{ width: '100%', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, color: C.ink, fontSize: TYP.bedien, padding: '8px 11px', resize: 'vertical', lineHeight: 1.5 }} />
       </Feldzeile>
+      {dialog}
     </Karte>
   );
 }
