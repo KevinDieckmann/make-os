@@ -26,6 +26,12 @@ gehalten, KEMARIS geht in MAKE über (Umfirmierung), eigene Gesellschaften als o
   bisher und schreibt sie als `{ ...alt, … }` zurück — Register-Felder und `g-…`-Einträge bleiben erhalten (Test). Verloren gingen beim Zurückgehen
   nur Deals/Mandate/Produkte, die eine `g-…`-Gesellschaft tragen: der alte Säuberer macht daraus beim nächsten Schreiben „offen“. Vorher prüfen:
   `grep -c '"gesellschaft":"g-' ` im entschlüsselten CRM (bzw. in der Oberfläche nach Gesellschaft filtern).
+- **Gründungsfahrplan (Paket 4, eigener Commit):** bei jeder Gesellschaft im Steckbrief „Fahrplan anlegen“ → Jahresziel (Business, Einheit =
+  diese Gesellschaft) + neun Meilensteine mit Kette (Vertrag/Satzungsänderung → Notar → Konto & Stammkapital → Handelsregister bzw.
+  Umfirmierung „Vorgänger → Name“ → Transparenzregister · Finanzamt · IHK · Buchhaltung/Versicherungen · Website erst nach Eintragung) und
+  Aufgaben. Vorlage rein in `lib/gesellschaften/fahrplan.ts` (keine Namen, Termine = Vorschläge ab heute); geschrieben über die bestehenden
+  Wege (Ziele-/Meilensteine-PATCH, /api/tasks/create), feste Kennungen → ein zweiter Klick ergänzt nur. Einzahlung Stammkapital nur als Weg
+  in die Liquidität (der Finanzplan wird gerade umgebaut).
 - **Nach dem Upload:** Kevin trägt Stammkapital, Gesellschafter (KD Ventures → MAKE 100 %), Vorgänger (KEMARIS Innovation GmbH) und die Verträge
   ein — nichts davon steht im Code.
 

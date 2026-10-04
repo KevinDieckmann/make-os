@@ -21,6 +21,7 @@ import { useSchreiber, TextFeld, Auswahl, Felder, Feldzeile, klein, centText, ce
 import { StatusPille } from './UnternehmenView';
 import { GesellschafterReiter } from './Gesellschafter';
 import { BeteiligungenReiter, VertraegeReiter, UnterlagenReiter } from './Vertraege';
+import { FahrplanKarte } from './Fahrplan';
 
 type ReiterId = 'steckbrief' | 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender';
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
@@ -91,6 +92,7 @@ function Steckbrief({ g, daten, schreibe, neuLaden, oeffne }: { g: GAnzeige; dat
           {a.hinweis && <div style={{ marginTop: 10 }}><Hinweis art="achtung">{a.hinweis}</Hinweis></div>}
         </Karte>
       )}
+      {!g.geloeschtAm && <FahrplanKarte g={g} daten={daten} />}
       {g.luecken.length > 0 && <Hinweis art="info" titel="Noch offen">Für einen vollständigen Steckbrief fehlen: {g.luecken.join(', ')}. Hinweis, keine Rechtsberatung.</Hinweis>}
       <Karte>
         <Ueberschrift>Steckbrief</Ueberschrift>

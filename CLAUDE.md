@@ -39,6 +39,8 @@ lokal, Route `/os`, Port 3001.
   der Absender-Antwort. Vertragsfristen → Kalender (`vertragsFristenLesen`, Art `vertrag`), ZOE `gesellschaften_lesen` (frei, nur lesen).
   Keine Namen/Beträge/HRB im Code — der Haushalt trägt sie ein. Archiv = ruhend/aufgelöst bzw. ausgeschieden/beendet, Löschen = Papierkorb
   (ZeileAktionen), endgültig nur ohne Verweise; Morgenlauf-Schritt „Gesellschaften-Papierkorb“.
+  Gründungsfahrplan: Vorlage `lib/gesellschaften/fahrplan.ts` (Ziel + 9 Meilensteine mit `wartetAuf` + Aufgaben), Karte im Steckbrief
+  (`components/os/unternehmen/Fahrplan.tsx`), nur über die bestehenden Planungs-/Aufgaben-Schreibwege, feste Kennungen `z-fahrplan-…`/`ms-fahrplan-…`.
 - **Malin ist Gesundheits-Beauftragte** (Sport, Ernährung, Hyrox-Pro-Ziel) —
   Gesundheitsthemen laufen über sie.
 - **Kritisch pulsiert:** Priorisierung nach Eisenhower; kritische Aufgaben
