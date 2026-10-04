@@ -3,6 +3,7 @@
 // GET  ?papierkorb=1                    → dazu die Gesellschaften im Papierkorb
 // GET  ?wahl=1                          → nur { id, name, status } je Gesellschaft (Auswahl in Deals/Mandaten/Produkten/Planung)
 // GET  ?suche=kontakte|firmen&q=…       → höchstens 20 Treffer { id, name } aus dem CRM (Gesellschafter, Parteien, Beteiligungen)
+// GET  ?suche=register&q=…               → höchstens 8 Treffer der Schnellsuche (Gesellschaften, Verträge, Beschlüsse) mit Weg
 // POST { felder, anfrageId }            → neue Gesellschaft `g-…` (Name Pflicht)
 // PATCH { id, stand, felder }                          → Steckbrief
 // PATCH { id, stand, liste, eintrag, eintragId? }      → Gesellschafter / Beteiligung / Vertrag anlegen bzw. ändern
@@ -24,8 +25,10 @@ import { einmalig } from '@/lib/store/anfragen';
 import { gesellschaftFuerAnzeige } from '@/lib/crm/gesellschaften';
 import { istGesellschaftId } from '@/lib/einheiten';
 import { imPapierkorb } from '@/lib/eintraege/sicher';
+import { suchPasst } from '@/lib/text/such-norm';
+import { WEG } from '@/lib/wege';
 import {
-  alleGesellschaften, anzeigeName, registerLuecken, gesellschaftVerweise, aktiveEintraege, REGISTER_LISTEN, EINTRAG_AKTIONEN,
+  alleGesellschaften, anzeigeName, registerTreffer, registerLuecken, gesellschaftVerweise, aktiveEintraege, REGISTER_LISTEN, EINTRAG_AKTIONEN,
   type RegisterGesellschaft, type RegisterListe, type EintragAktion, type CrmVerweisTeil, type Bezug,
 } from '@/lib/gesellschaften/modell';
 import {
@@ -90,6 +93,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, gesellschaften: alleGesellschaften(d).map(g => ({ id: g.id, name: anzeigeName(g), ...(g.status ? { status: g.status } : {}) })) }, kopf);
   }
   const suche = q.get('suche');
+  if (suche === 'register') {
+    const frage = (q.get('q') ?? '').trim().slice(0, 80);
+    if (frage.length < 2) return NextResponse.json({ ok: true, treffer: [] }, kopf);
+    const treffer = registerTreffer(alleGesellschaften(d), t => suchPasst([...t], frage)).map(t => ({
+      art: t.art, id: t.id, titel: t.titel, unter: t.unter, space: 'business' as const,
+      href: WEG.unternehmen(t.gesellschaftId, t.art === 'vertrag' ? 'vertraege' : t.art === 'beschluss' ? 'organe' : undefined),
+    }));
+    return NextResponse.json({ ok: true, treffer }, kopf);
+  }
   if (suche === 'kontakte' || suche === 'firmen') {
     const frage = (q.get('q') ?? '').toLocaleLowerCase('de-DE').trim().slice(0, 80);
     if (frage.length < 2) return NextResponse.json({ ok: true, treffer: [] }, kopf);

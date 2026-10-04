@@ -264,7 +264,7 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
         <div style={{ display: 'grid', gap: 4, fontSize: TYP.bedien }}>
           {fehlt.length ? <span style={{ color: LEUCHT.achtung }}>Für die Planung fehlt: {fehlt.join(', ')}</span> : <span style={{ color: LEUCHT.gut }}>planbar — Preis, Basis, Laufzeit und Gesellschaft sind da</span>}
           {inSzenarien && (inSzenarien[l.id]?.length ? <span style={{ color: C.inkDim }}>In Szenarien: {inSzenarien[l.id].map(s => `${s.arbeitsplan ? '★ ' : ''}${s.name} (${s.menge}×)`).join(' · ')}</span> : <span style={klein}>In keinem Szenario der Finanzplanung.</span>)}
-          <Link href="/os/finanzen?s=finanzplanung&space=business&u=planen" style={{ color: C.aktiv, fontSize: 12.5 }}>In der Finanzplanung verwenden ›</Link>
+          <Link href={WEG.finanzplanung('business', 'planen')} style={{ color: C.aktiv, fontSize: TYP.bedien }}>In der Finanzplanung verwenden ›</Link>
         </div>
       </Feldzeile>
       <Feldzeile label="Status">

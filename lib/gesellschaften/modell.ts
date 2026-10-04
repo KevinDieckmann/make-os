@@ -800,3 +800,23 @@ export function faelligeErinnerungen(alle: readonly RegisterGesellschaft[], heut
   }
   return raus;
 }
+
+// ── Schnellsuche (04.10., Prüfung Verbindungen) ─────────────────────────────
+
+export interface RegisterTreffer { art: 'gesellschaft' | 'vertrag' | 'beschluss'; gesellschaftId: GesellschaftId; id: string; titel: string; unter: string }
+
+/**
+ * Treffer im Register für die Schnellsuche: Gesellschaften (Name, Firmierung, Register), Verträge (Titel), Beschlüsse (Titel,
+ * Inhalt) — ohne Papierkorb, höchstens `max`. `passt` ist die Suchregel der Schnellsuche (lib/text/such-norm.ts).
+ */
+export function registerTreffer(alle: readonly RegisterGesellschaft[], passt: (texte: readonly (string | undefined)[]) => boolean, max = 8): RegisterTreffer[] {
+  const aus: RegisterTreffer[] = [];
+  for (const g of alle) {
+    if (imPapierkorb(g)) continue;
+    const name = anzeigeName(g);
+    if (passt([name, g.firmierung, g.register])) aus.push({ art: 'gesellschaft', gesellschaftId: g.id, id: g.id, titel: name, unter: [rechtsformLabel(g.rechtsform), statusLabel(g.status)].filter(Boolean).join(' · ') });
+    for (const v of aktiveEintraege(g.vertraege)) if (passt([v.titel])) aus.push({ art: 'vertrag', gesellschaftId: g.id, id: v.id, titel: v.titel, unter: `${vertragArtLabel(v.art)} · ${name}` });
+    for (const b of aktiveEintraege(g.beschluesse)) if (passt([b.titel, b.inhalt])) aus.push({ art: 'beschluss', gesellschaftId: g.id, id: b.id, titel: b.titel, unter: `Beschluss vom ${b.datum.slice(8, 10)}.${b.datum.slice(5, 7)}.${b.datum.slice(0, 4)} · ${name}` });
+  }
+  return aus.slice(0, max);
+}

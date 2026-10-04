@@ -56,6 +56,8 @@ export const WEG = {
   steuern: (abschnitt?: 'fristen' | 'ruecklage' | 'ust' | 'uebergabe') => q('/os/finanzen', { s: 'steuern' }, abschnitt),
   gesamt: () => q('/os/finanzen', { s: 'gesamt' }),
   chef: () => q('/os/finanzen', { s: 'chef' }),
+  /** Finanzplanung (04.10.): Reiter unter Finanzen › Privat (alles) bzw. › Business (nur Gesellschaften); `u` = Unterseite. Weitere Parameter: `finanzplanAdresse`. */
+  finanzplanung: (sicht: 'privat' | 'business', u?: string) => q('/os/finanzen', { s: 'finanzplanung', space: sicht, u }),
 
   rechnung: (id?: string) => q('/os/finanzen/planung', { r: id }),
   rechnungen: () => '/os/finanzen/planung',

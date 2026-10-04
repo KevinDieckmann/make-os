@@ -3,7 +3,7 @@ import { suchPasst } from '@/lib/text/such-norm';
 import { useSpace } from '@/hooks/useSpace';
 
 // ─── MAKE OS — Schnellsuche (⌘K / Strg+K) ──────────────────────────────────
-// Von jeder Seite aus: Kontakte, Firmen, Chancen, Mandate, Kampagnen — und die
+// Von jeder Seite aus: Kontakte, Firmen, Chancen, Mandate, Kampagnen, Gesellschaften, Verträge, Beschlüsse — und die
 // Bereiche selbst. Pfeile wählen, Enter springt hinein, Esc schließt. Oben im
 // Kopf gibt es dafür auch die Lupe (Ereignis „make-suche“).
 
@@ -30,6 +30,11 @@ const SEITEN: Treffer[] = [
   { art: 'seite', id: 'qualifizierung', titel: 'Markttraktion · Qualifizierung', href: '/os/markttraktion?s=qualifizierung', space: 'business' }, { art: 'seite', id: 'angebot', titel: 'Markttraktion · Angebot', href: '/os/markttraktion?s=angebot', space: 'business' },
   { art: 'seite', id: 'events', titel: 'Events (besuchte Veranstaltungen)', href: '/os/markttraktion?s=besuche', space: 'business' }, { art: 'seite', id: 'makeone', titel: 'Make.One (eigene Abende)', href: '/os/markttraktion?s=event', space: 'business' }, { art: 'seite', id: 'stammdaten', titel: 'Markttraktion · Stammdaten', href: '/os/markttraktion?s=stammdaten', space: 'business' },
   { art: 'seite', id: 'finanzen-business', titel: 'Zahlen · Business', href: '/os/finanzen?s=business', space: 'business' }, { art: 'seite', id: 'agenten', titel: 'Agenten', href: '/os/agenten', space: 'business' },
+  // 04.10.: Gesellschafts-Register, Finanzplanung (je Sicht), Ziele & Planung und Kapazität — auffindbar wie jede andere Seite.
+  { art: 'seite', id: 'unternehmen', titel: 'Unternehmen · Gesellschaften, Anteile, Verträge', href: WEG.unternehmen(), space: 'business' },
+  { art: 'seite', id: 'finanzplanung-business', titel: 'Finanzplanung · Business (Gesellschaften)', href: WEG.finanzplanung('business'), space: 'business' },
+  { art: 'seite', id: 'finanzplanung-privat', titel: 'Finanzplanung · Privat (alles)', href: WEG.finanzplanung('privat'), space: 'privat' },
+  { art: 'seite', id: 'ziele', titel: 'Ziele & Planung · Jahr, Meilensteine', href: WEG.jahr() }, { art: 'seite', id: 'kapazitaet', titel: 'Kapazität · Zeit und Machbarkeit je Person', href: WEG.kapazitaet(), space: 'business' },
   // Netzwerken (03.10.): unterwegs erfassen und die eigenen Visitenkarten (QR) — in jedem Space auffindbar.
   { art: 'seite', id: 'netzwerken', titel: 'Netzwerken · Person erfassen, Abendbericht', href: WEG.netzwerken() }, { art: 'seite', id: 'netzwerken-karte', titel: 'Netzwerken · Meine Visitenkarten', href: WEG.netzwerkenKarte() },
   { art: 'seite', id: 'aufgaben', titel: 'Aufgaben', href: '/os/aufgaben' }, { art: 'seite', id: 'finanzen', titel: 'Zahlen · Privat', href: '/os/finanzen?s=privat', space: 'privat' },
@@ -42,6 +47,8 @@ const ART: Record<string, { label: string; farbe: string }> = {
   aufgabe: { label: 'Aufgabe', farbe: LEUCHT.achtung },
   // Events (M4): besuchte Veranstaltungen (Reiter „Events“) und unsere eigenen Abende (Make.One) getrennt gekennzeichnet — der Link kommt vom Server (`eventLink`).
   besuch: { label: 'Event', farbe: LEUCHT.beziehung }, event: { label: 'Make.One', farbe: LEUCHT.beziehung },
+  // Gesellschafts-Register (04.10.): Treffer kommen vom Server (/api/gesellschaften?suche=register, nur Haushalt des Inhabers).
+  gesellschaft: { label: 'Gesellschaft', farbe: LEUCHT.business }, vertrag: { label: 'Vertrag', farbe: LEUCHT.business }, beschluss: { label: 'Beschluss', farbe: LEUCHT.business },
 };
 
 /** Offene Aufgaben des aktiven Space, deren Titel passt — im Business mit der Einheit im Untertitel (27.09.). */
@@ -94,7 +101,10 @@ export function Schnellsuche() {
         }).catch(() => {});
         return;
       }
-      fetch(`/api/crm/suche?q=${encodeURIComponent(t)}`, { signal: ab.signal }).then(r => r.json()).then(d => { setTreffer([...(d.treffer ?? []), ...aufgabenTreffer(aufgabenRef.current, t, 'business'), ...seiten.slice(0, 3)]); setI(0); }).catch(() => {});
+      // Register ohne Zugang (anderes Konto → 403) liefert einfach nichts.
+      const register = fetch(`/api/gesellschaften?suche=register&q=${encodeURIComponent(t)}`, { signal: ab.signal }).then(r => (r.ok ? r.json() : null)).then(d => (d?.treffer ?? []) as Treffer[]).catch(() => [] as Treffer[]);
+      Promise.all([fetch(`/api/crm/suche?q=${encodeURIComponent(t)}`, { signal: ab.signal }).then(r => r.json()), register])
+        .then(([d, reg]) => { setTreffer([...(d.treffer ?? []), ...reg, ...aufgabenTreffer(aufgabenRef.current, t, 'business'), ...seiten.slice(0, 3)]); setI(0); }).catch(() => {});
     }, 140);
     return () => { clearTimeout(timer); ab.abort(); };
   }, [q, offen, space]);
@@ -104,7 +114,7 @@ export function Schnellsuche() {
   return (
     <div onClick={schliessen} style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(5,7,8,.62)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', paddingTop: '12vh', paddingInline: 16 }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Schnellsuche" style={{ width: 'min(640px, 100%)', background: C.flaeche, borderRadius: 16, boxShadow: '0 30px 80px -20px rgba(0,0,0,.8)', border: '1px solid rgba(255,255,255,.07)', overflow: 'hidden' }}>
-        <input ref={feldRef} value={q} onChange={e => setQ(e.target.value)} placeholder={space === 'business' ? 'Business: Person, Firma, Chance, Mandat, Aufgabe oder Seite …' : 'Privat: Familie, Aufgabe, Gesundheit, Zahlen oder Seite …'} aria-label="Suchen"
+        <input ref={feldRef} value={q} onChange={e => setQ(e.target.value)} placeholder={space === 'business' ? 'Business: Person, Firma, Deal, Mandat, Gesellschaft, Vertrag, Aufgabe oder Seite …' : 'Privat: Familie, Aufgabe, Gesundheit, Zahlen oder Seite …'} aria-label="Suchen"
           onKeyDown={e => {
             if (e.key === 'Escape') schliessen();
             else if (e.key === 'ArrowDown') { e.preventDefault(); setI(x => Math.min(treffer.length - 1, x + 1)); }

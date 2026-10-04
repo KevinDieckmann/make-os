@@ -220,6 +220,7 @@ describe('Server: Rechte, Kompatibilität, Kalender', () => {
       expect((await get(p)).status).toBe(403);
       expect((await get(p, '?wahl=1')).status).toBe(403);
       expect((await get(p, '?suche=firmen&q=ab')).status).toBe(403);
+      expect((await get(p, '?suche=register&q=Fremde')).status).toBe(403);
       expect((await post(p, { felder: { name: 'Eindringling GmbH' } })).status).toBe(403);
       expect((await patch(p, { id: 'kdv', stand: 'x', felder: { sitz: 'X' } })).status).toBe(403);
       expect((await unterlagen.GET(new Request('http://test/api/gesellschaften/unterlagen?id=kdv', { headers: kopf(p) }))).status).toBe(403);
@@ -233,6 +234,10 @@ describe('Server: Rechte, Kompatibilität, Kalender', () => {
     expect(r.status).toBe(200);
     const text = JSON.stringify(await r.json());
     expect(text).not.toContain(G3);
+    // Schnellsuche im Register (Prüfung 04.10.): eigener Haushalt findet, nie den fremden; Treffer tragen den Weg ins Register.
+    const such = await (await get('person-b', '?suche=register&q=Beispiel')).json();
+    expect(such.treffer.map((t: { href: string }) => t.href)).toContain('/os/unternehmen?g=kdv');
+    expect(JSON.stringify(await (await get('person-b', '?suche=register&q=Fremde')).json())).not.toContain(G3);
     expect(text).not.toContain('Fremde Holding');
   });
 
