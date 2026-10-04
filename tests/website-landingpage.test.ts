@@ -75,7 +75,7 @@ describe('website/pruefen.mjs', () => {
     const k = kopie();
     fuellen(k);
     // Ein Angebot ohne Termin-Knopf, ein zweites „Coming Soon“, ein fehlender Beteiligungen-Knopf und ein Preis fallen auf.
-    ersetze(k, 'index.html', /(<article[^>]*id="angebot-events"[\s\S]*?)<a class="knopf" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen<\/a>/, '$1');
+    ersetze(k, 'index.html', /(<article[^>]*id="angebot-events"[\s\S]*?)<a class="knopf" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen(?: <span class="pfeil" aria-hidden="true">→<\/span>)?<\/a>/, '$1');
     ersetze(k, 'index.html', '<span class="rolle">Sales-Aufbau auf Zeit</span>', '<span class="abzeichen bald">Coming Soon</span>');
     ersetze(k, 'index.html', 'subject=Make.Beteiligungen%20%E2%80%93%20Projekt', 'subject=Projekt');
     ersetze(k, 'index.html', '<li>Laufzeit 6–12 Monate</li>', '<li>Laufzeit 6–12 Monate, ab 1.500 € pro Tag</li>');
@@ -304,5 +304,121 @@ describe('website/pruefen.mjs', () => {
       const kam = S.kern.kamera(welt.Z, T, 0, 0, 1.6, { kante: .05 });
       expect([...kam.auge, ...kam.ziel].every(Number.isFinite)).toBe(true);
     }
+  });
+
+  // ── Standard 04.10. (Glas-Knöpfe, Mikro-Pille, Kaskade, Auftritt, Einstieg, Aurora) ──
+  function szene(): any { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const ctx: Record<string, unknown> = {};
+    vm.createContext(ctx);
+    for (const d of ['js/szene/kern.js', 'js/szene/formationen.js', 'js/drehbuch.js', 'js/szene/motor.js']) vm.runInContext(readFileSync(join(ORDNER, d), 'utf8'), ctx);
+    return ctx.MakeSzene;
+  }
+  /** Ein kleines Stück DOM — genug für die Text-Bühne (Knoten, Klassen, Attribute, Stil-Variablen). */
+  type Knoten = { nodeType: number; nodeValue?: string; tagName?: string; className?: string; childNodes: Knoten[]; attr: Record<string, string>; vars: Record<string, string>; parent?: Knoten;
+    textContent: string; appendChild(k: Knoten): Knoten; replaceChildren(...k: Knoten[]): void; setAttribute(n: string, w: string): void; cloneNode(tief: boolean): Knoten; style: { setProperty(n: string, w: string): void } };
+  function knoten(nodeType: number, tagName?: string, text?: string): Knoten {
+    const k: Knoten = {
+      nodeType, tagName, nodeValue: text, className: '', childNodes: [], attr: {}, vars: {},
+      get textContent() { return nodeType === 3 ? (k.nodeValue ?? '') : k.childNodes.map(c => c.textContent).join(''); },
+      set textContent(t: string) { if (nodeType === 3) k.nodeValue = t; else k.childNodes = [knoten(3, undefined, t)]; },
+      appendChild(c) { c.parent = k; k.childNodes.push(c); return c; },
+      replaceChildren(...c) { k.childNodes = []; for (const x of c) k.appendChild(x); },
+      setAttribute(n, w) { k.attr[n] = w; },
+      cloneNode() { const c = knoten(nodeType, tagName, text); c.className = k.className; c.attr = { ...k.attr }; return c; },
+      style: { setProperty(n, w) { k.vars[n] = w; } },
+    };
+    return k;
+  }
+  const dok = { createElement: (t: string) => knoten(1, t), createTextNode: (t: string) => knoten(3, undefined, t) };
+  /** Was ein Vorleser liest: Text ohne alles, was aria-hidden ist. */
+  const vorgelesen = (k: Knoten): string => k.nodeType === 3 ? (k.nodeValue ?? '') : k.attr['aria-hidden'] === 'true' ? '' : k.childNodes.map(vorgelesen).join('');
+
+  it('Kaskade: die zerlegte Überschrift bleibt für Vorleser ein Satz, Kindelemente bleiben, danach steht das Original wieder', () => {
+    const { zerlegen } = szene().buehne;
+    const h1 = knoten(1, 'H1'), ruhig = knoten(1, 'SPAN');
+    ruhig.className = 'ruhig';
+    h1.appendChild(knoten(3, undefined, 'Innovation braucht Umsetzung '));
+    ruhig.appendChild(knoten(3, undefined, 'und Sichtbarkeit.'));
+    h1.appendChild(ruhig);
+    const vorher = [...h1.childNodes];
+    const { buchstaben, zurueck } = zerlegen(h1, dok, 'unsichtbar');
+    expect(buchstaben).toHaveLength('InnovationbrauchtUmsetzungundSichtbarkeit.'.length);
+    expect(buchstaben.map((b: Knoten) => b.vars['--i'])).toEqual(buchstaben.map((_: Knoten, i: number) => String(i)));
+    expect(h1.childNodes[0].className).toBe('unsichtbar');
+    expect(vorgelesen(h1).replace(/\s+/g, ' ').trim()).toBe('Innovation braucht Umsetzung und Sichtbarkeit.');
+    expect(h1.childNodes.find(k => k.className === 'ruhig')?.childNodes.every(k => k.nodeType === 3 || k.attr['aria-hidden'] === 'true')).toBe(true);
+    zurueck();
+    expect(h1.childNodes).toEqual(vorher);
+    // In der Seite: nur H1/H2 werden zerlegt (nicht das Wort INNOVATION, das die Szene formt).
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    const kaskaden = Array.from(index.matchAll(/<(\w+)\b[^>]*\sdata-kaskade\b[^>]*>/g), m => m[1]);
+    expect(kaskaden.length).toBeGreaterThanOrEqual(6);
+    for (const t of kaskaden) expect(['h1', 'h2']).toContain(t);
+    expect(index).not.toMatch(/<h2 class="wort"[^>]*data-kaskade/);
+  });
+
+  it('Auftritt: vorher · jetzt · nach am Fortschritt der Szene — Fließendes geht erst, wenn es oben hinausläuft', () => {
+    const { auftritt } = szene().buehne;
+    expect(auftritt('', 0, 0, null, 0, 900)).toBe('jetzt');
+    expect(auftritt('', 2, 4, null, 0, 900)).toBe('vorher');
+    expect(auftritt('jetzt', 4.7, 4, null, 0, 900)).toBe('nach');
+    expect(auftritt('jetzt', 4.6, 4, null, 0, 900)).toBe('jetzt'); // Hysterese
+    const lage = { oben: 5000, unten: 5100 };
+    expect(auftritt('', 4, 4, lage, 3000, 900)).toBe('vorher'); // noch unter dem Bild
+    expect(auftritt('', 4, 4, lage, 4400, 900)).toBe('jetzt');
+    expect(auftritt('jetzt', 4.9, 4, lage, 4600, 900)).toBe('jetzt'); // mitten im Bild: bleibt, auch wenn T weiter ist
+    expect(auftritt('jetzt', 4.9, 4, lage, 5200, 900)).toBe('nach');
+  });
+
+  it('Text-Bühne: ohne Skript und bei „Bewegung reduzieren“ steht aller Text sofort', () => {
+    const css = readFileSync(join(ORDNER, 'css/seite.css'), 'utf8');
+    // Versteckt wird nur, was der Motor markiert (text-bereit, kaskade) — und nur bei Bewegung; das Vorab-Verstecken des
+    // Einstiegs gilt nur mit Skript und hat einen Notfall-Auftritt.
+    const regeln = Array.from(css.matchAll(/([^{}]+)\{([^{}]*opacity:\s*0[;\s][^{}]*)\}/g), m => m[1].trim());
+    for (const sel of regeln.filter(r => /data-auftritt|data-kaskade|k-b/.test(r))) expect(sel, sel).toMatch(/text-bereit|kaskade/);
+    const vorab = /@media \(scripting: enabled\) and \(prefers-reduced-motion: no-preference\) \{\s*html:not\(\.text-bereit\)[^}]*animation: notfall/.exec(css);
+    expect(vorab).not.toBeNull();
+    const motor = readFileSync(join(ORDNER, 'js/szene/motor.js'), 'utf8');
+    expect(motor.indexOf("prefers-reduced-motion: reduce")).toBeLessThan(motor.indexOf("classList.add('text-bereit'"));
+  });
+
+  it('Knöpfe und Pillen: nur CI-Farben (Tokens), keine fremde Palette oder Schrift', () => {
+    const css = readFileSync(join(ORDNER, 'css/seite.css'), 'utf8');
+    const teil = css.slice(css.indexOf('/* ── Knöpfe'), css.indexOf('/* ── Text-Bühne'));
+    expect(teil.length).toBeGreaterThan(500);
+    expect(teil.match(/#[0-9a-f]{3,8}\b/gi)?.filter(h => h !== '#000') ?? []).toEqual([]);
+    const erlaubt = ['255, 255, 255', '0, 0, 0', '10, 14, 17', '201, 70, 92', '47, 168, 120'];
+    for (const m of teil.matchAll(/rgba\((\d+, \d+, \d+),/g)) expect(erlaubt, m[0]).toContain(m[1]);
+    expect(teil).toMatch(/var\(--granat\), var\(--smaragd\), var\(--granat\)/);
+    const alles = [css, ...['js/szene/motor.js', 'js/szene/kern.js', 'js/drehbuch.js'].map(d => readFileSync(join(ORDNER, d), 'utf8'))].join('\n');
+    expect(alles).not.toMatch(/#ff4c33|#3366ff|#ffa091|#8da9fc|'Inter'|Assistant|fonts\.googleapis/i);
+    // Die Mikro-Pillen tragen den Knoten aus dem Logo (Inline-SVG, aria-hidden, Farben über Klassen).
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    const pillen = Array.from(index.matchAll(/<span class="mikro pille"[^>]*>(<svg[^>]*>)/g), m => m[1]);
+    expect(pillen.length).toBeGreaterThanOrEqual(9);
+    for (const s of pillen) expect(s).toContain('aria-hidden="true"');
+  });
+
+  it('Einstieg, Aurora und Text-Bühne kommen aus dem Drehbuch und sind abschaltbar; die Feder folgt weich, ohne Überschwingen', () => {
+    const S = szene(), K = S.kern;
+    const an = K.optionen(S.drehbuch, false);
+    expect(an.einstieg.dauer).toBe(2600);
+    expect(an.aurora.aufloesung).toBeLessThanOrEqual(.25);
+    expect(K.optionen(S.drehbuch, true).aurora.oktaven).toBeLessThan(an.aurora.oktaven);
+    const aus = K.optionen({ zustaende: [] }, false);
+    expect(aus.einstieg).toBeNull();
+    expect(aus.aurora).toBeNull();
+    expect(K.optionen({ text: false, aurora: false }, false)).toMatchObject({ text: null, aurora: null });
+    expect(K.einstieg(0, an.einstieg)).toBeCloseTo(an.einstieg.naeher);
+    expect(K.einstieg(1, an.einstieg)).toBe(0);
+    expect(K.einstieg(.5, null)).toBe(0);
+    // Feder: gleiche Wirkung bei 60 und 144 Bildern pro Sekunde, kein Überschwingen, kommt an.
+    const lauf = (fps: number) => { const z = { wert: 0, v: 0 }; let max = 0; for (let t = 0; t < 4; t += 1 / fps) { K.feder(z, 1, 1 / fps, .32); max = Math.max(max, z.wert); } return { z, max }; };
+    const a = lauf(60), b = lauf(144);
+    expect(a.max).toBeLessThanOrEqual(1);
+    expect(a.z.wert).toBe(1);
+    const halb = (fps: number) => { const z = { wert: 0, v: 0 }; for (let t = 0; t < .3; t += 1 / fps) K.feder(z, 1, 1 / fps, .32); return z.wert; };
+    expect(Math.abs(halb(60) - halb(144))).toBeLessThan(.03);
+    expect(b.max).toBeLessThanOrEqual(1);
   });
 });

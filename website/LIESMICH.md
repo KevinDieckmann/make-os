@@ -31,6 +31,25 @@ Sie ist als **nicht indexierte Vorschau** aktiv (`X-Robots-Tag: noindex`, `robot
 | `assets/logo/` | Logo v5 „Synapse“ aus `scripts/website-logo.mjs` (nie von Hand ändern) — Konstruktion in `assets/logo/LOGO.md` |
 | `logo-entwuerfe.html`, `pruefen.mjs`, `LIESMICH.md` | Arbeitsdateien (werden nie ausgeliefert) |
 
+## Standard (04.10.2026): Glas, Kaskade, Einstieg, Aurora
+Übernommen aus Kevins Vorlage nur der Standard — in unserer CI (Archivo/Public Sans, Granat/Smaragd, Tokens aus `css/seite.css`):
+
+| Teil | Wo | Abschalten |
+|---|---|---|
+| Glas-Knöpfe (`.knopf`, `.gross`, `.leise`): Lauf-Rand Granat → Smaragd, Pfeil-Abzeichen (`span.pfeil`), Hover −2 px | `css/seite.css` › Knöpfe | — |
+| Mikro-Pille (`.mikro.pille` + `svg.knoten-zeichen`) | `index.html`, `css/seite.css` | Klasse `pille` weglassen |
+| Buchstaben-Kaskade: `data-kaskade` an H1/H2 (nicht am Wort INNOVATION) | `js/szene/motor.js` › `zerlegen` | `text: { kaskade: false }` |
+| Ein-/Ausblenden: `data-auftritt` an Pille, Unterzeile, Knöpfen (vorher · jetzt · nach) | `motor.js` › `auftritt` | `text: { auftritt: false }` |
+| Feder statt Lerp (Szene folgt dem Scroll weich) | `kern.js` › `feder` | `folgen` (Sekunden) |
+| Einstieg: Lichtwolke blüht auf, Kamera fährt zurück | Shader `bluehen`, `kern.einstieg` | `einstieg: false` |
+| Aurora an den Rändern (¼ Auflösung, eigener Puffer) | `motor.js` › `auroraBauen`; je Kapitel `aurora` im Drehbuch | `aurora: false` |
+
+Barrierefreiheit: Ohne Skript und bei „Bewegung reduzieren“ steht aller Text sofort (der Motor startet dann nicht, das CSS versteckt nur, was der Motor
+markiert); nur der Einstieg wartet mit Skript auf den Motor — mit Notfall-Auftritt nach 2,2 s. Zerlegte Überschriften tragen vorn eine unsichtbare
+Kopie, die Buchstaben sind `aria-hidden`; nach dem Auftritt steht wieder das Original. Ohne Szene: stehender Aurora-Hauch per CSS (`body::before`).
+Nicht übernommen: Bloom, Zahlen-Karten im Kreis, Lichtblitz, Texte/Zahlen/Farben/Schriften der Vorlage, Lenis.
+Die Ausblend-Maske am Ende der ruhigen Titelzeile endet bei 0,55 statt 0,2 Deckkraft (sonst Kontrast unter 3 : 1).
+
 ## Die Szene — Dramaturgie (Scroll = Kamerafahrt)
 
 | # | Kapitel (`data-zustand`) | Formation | Bild |

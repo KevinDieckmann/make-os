@@ -4,6 +4,22 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## makeinnovation.de „Standard“ — Glas, Kaskade, Einstieg, Aurora (04.10.2026, nur lokal — Branch `website-standard`)
+
+Kevin 04.10. (Vorlage getlayers.ai „New Era“): nicht alles übernehmen, nur den Standard + Aurora — „bleibe bei unserer CI“.
+
+- **Glas-Knöpfe:** Hauptknopf als Glas-Pille mit umlaufendem 1-px-Rand Granat → Smaragd → Granat (4 s), rundes Pfeil-Abzeichen, Hover hebt 2 px;
+  Zweitknopf dezent. Nur Tokens, Archivo/Public Sans, keine fremde Palette (Wächtertest).
+- **Mikro-Pillen** je Kapitel mit hellem Lauf-Ring (3 s) und dem Knoten aus dem Logo (Inline-SVG, aria-hidden).
+- **Buchstaben-Kaskade** für H1/H2 (40 px, Unschärfe 16 px, 15 ms Versatz, 1,2 s, easeOutQuart) — für Vorleser ein Satz, danach das Original zurück.
+- **Ein-/Ausblenden** (vorher · jetzt · nach, 1,2 s) für Pille, Unterzeile, Knöpfe — am selben Fortschritt wie die Szene; Fließendes geht erst,
+  wenn es oben hinausläuft.
+- **Weicher:** die Szene folgt dem Scroll über eine kritisch gedämpfte Feder (kein Kapern des Scrollens).
+- **Einstieg:** die Lichtwolke blüht 2,6 s auf, die Kamera fährt leicht zurück; frühes Scrollen beschleunigt ihn, statt mit ihm zu kämpfen.
+- **Aurora:** ruhiger fBm-Schleier in Granat/Smaragd nur an den Rändern, ¼ Auflösung (Handy 1/6, 3 Oktaven), sehr dezent; ohne Szene ein
+  stehender Hauch per CSS.
+- Alles abschaltbar im Drehbuch (`einstieg`, `aurora`, `text`, `folgen`), Motor bleibt inhaltsfrei (fokus/ kann andocken).
+
 ## makeinnovation.de v5 „Der Weg“ — 3D-Scroll-Erlebnis (04.10.2026, nur lokal — Branch `website-v5`)
 
 Kevin 04.10.: „Die ganze Homepage bei MAKE Innovation neu auf viel besser und hohes Niveau … Das soll ein Erlebnis werden. Ich will, dass du da

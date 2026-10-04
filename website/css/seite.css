@@ -90,7 +90,7 @@ body:has(.held) .kopf { border-bottom-color: transparent; }
 .kopf .haupt a:hover, .menue nav a:hover { color: var(--ink); }
 .aussen { display: inline-block; font-size: 11px; color: var(--inkLeise); transform: translateY(-1px); }
 /* Login: klein und ruhig, ohne Produktnamen (Kevin 01.10.). */
-.kopf .anmelden { flex: none; min-height: 36px; padding: 0 14px; border-radius: 10px; font-size: 12px; }
+.kopf .anmelden { flex: none; min-height: 36px; padding: 0 16px; font-size: 12px; }
 
 /* Handy-Menü: <details> — funktioniert ohne Skript; js/menue.js schließt es nach einem Klick. */
 .menue { display: none; position: relative; margin-left: auto; }
@@ -119,22 +119,123 @@ body:has(.held) .kopf { border-bottom-color: transparent; }
   .kopf .anmelden { padding: 0 12px; min-height: 44px; }
 }
 
-/* ── Knöpfe ── */
+/* ── Knöpfe (Standard 04.10.: Glas) ──
+   Hauptknopf (.knopf): Glas-Pille, mehrlagiger Innenschatten, 1-px-Verlaufsrand Granat → Smaragd → Granat, der langsam umläuft,
+   rundes Pfeil-Abzeichen rechts (eigener Ring Granat → Smaragd), Hover hebt um 2 px. Zweitknopf (.knopf.leise): dezente Glas-Pille
+   mit 1-px-Rand, Hover heller. Nur CI-Farben (Tokens), kein fremder Farbwert (Wächter: tests/website-landingpage.test.ts). */
 .knopf {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px;
-  border-radius: 12px; font-family: var(--schrift-text); font-weight: 700; font-size: var(--bedien); text-decoration: none;
-  border: 1px solid rgba(88, 217, 205, .45); background: var(--aktivSanft); color: var(--aktiv);
-  transition: background .2s ease, box-shadow .25s ease, border-color .2s ease; white-space: nowrap;
+  --glas-oben: rgba(255, 255, 255, .11); --glas-unten: rgba(255, 255, 255, .03);
+  position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 44px; padding: 0 20px; border: 0; border-radius: var(--r-pille);
+  font-family: var(--schrift-text); font-weight: 600; font-size: var(--bedien); letter-spacing: .01em; text-decoration: none; white-space: nowrap;
+  color: var(--ink); background: linear-gradient(180deg, var(--glas-oben), var(--glas-unten)) rgba(10, 14, 17, .42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 -1px 0 rgba(0, 0, 0, .4), inset 0 0 18px rgba(255, 255, 255, .035), 0 10px 28px rgba(0, 0, 0, .38);
+  transition: transform .45s var(--sanft), box-shadow .35s ease, background-color .3s ease;
 }
-.knopf:hover { background: rgba(88, 217, 205, .22); box-shadow: 0 8px 30px rgba(88, 217, 205, .16); }
-.knopf.leise { border-color: rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04); color: var(--ink); }
-.knopf.leise:hover { background: rgba(255, 255, 255, .08); box-shadow: none; border-color: rgba(255, 255, 255, .24); }
-.knopf.gross { min-height: 52px; padding: 0 26px; font-size: var(--body); border-radius: var(--r-behaelter); }
-.knopf .pfeil { font-size: 16px; line-height: 1; transition: transform .2s var(--sanft); }
-.knopf:hover .pfeil { transform: translateX(3px); }
-.knopf:hover .pfeil.runter { transform: translateY(3px); }
+@supports (backdrop-filter: blur(1px)) { .knopf { backdrop-filter: blur(14px) saturate(1.25); } }
+/* Der umlaufende Rand: ein Verlauf, durch eine Maske auf 1 px beschnitten (Inhalt − Rahmen). */
+.knopf::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(90deg, var(--granat), var(--smaragd), var(--granat)) 0 0 / 200% 100%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: .85; transition: opacity .3s ease;
+}
+.knopf:hover { transform: translateY(-2px); --glas-oben: rgba(255, 255, 255, .16); --glas-unten: rgba(255, 255, 255, .05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 -1px 0 rgba(0, 0, 0, .4), inset 0 0 22px rgba(255, 255, 255, .05), 0 16px 36px rgba(0, 0, 0, .45), 0 0 28px rgba(201, 70, 92, .12); }
+.knopf:hover::before { opacity: 1; }
+.knopf:active { transform: translateY(0); }
+.knopf:has(.pfeil) { padding-right: 6px; }
+.knopf .pfeil {
+  position: relative; flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+  font-size: 15px; line-height: 1; background: rgba(255, 255, 255, .06); transition: transform .35s var(--sanft), background-color .3s ease;
+}
+.knopf .pfeil::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(135deg, var(--granat), var(--smaragd));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.knopf:hover .pfeil { transform: translateX(2px); background: rgba(255, 255, 255, .1); }
+.knopf:hover .pfeil.runter { transform: translateY(2px); }
+.knopf.gross { min-height: 52px; padding: 0 26px; font-size: var(--body); }
+.knopf.gross:has(.pfeil) { padding-right: 7px; }
+.knopf.gross .pfeil { width: 38px; height: 38px; font-size: 16px; }
+/* Zweitknopf: dezent, ohne Lauf-Rand; der Pfeil bleibt ein schlichtes Zeichen. */
+.knopf.leise, .kopf .anmelden { --glas-oben: rgba(255, 255, 255, .06); --glas-unten: rgba(255, 255, 255, .02); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), inset 0 1px 0 rgba(255, 255, 255, .08); }
+.knopf.leise:hover, .kopf .anmelden:hover { --glas-oben: rgba(255, 255, 255, .11); --glas-unten: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .26), inset 0 1px 0 rgba(255, 255, 255, .12), 0 10px 26px rgba(0, 0, 0, .35); }
+.knopf.leise::before, .kopf .anmelden::before { display: none; }
+.knopf.leise:has(.pfeil), .knopf.leise.gross:has(.pfeil) { padding-right: 22px; }
+.knopf.leise .pfeil { width: auto; height: auto; background: none; }
+.knopf.leise .pfeil::before { display: none; }
+.knopf:focus-visible { outline: 2px solid var(--aktiv); outline-offset: 3px; border-radius: var(--r-pille); }
+@media (prefers-reduced-motion: no-preference) {
+  .knopf::before { animation: rand-lauf 4s linear infinite; }
+  @keyframes rand-lauf { to { background-position: 200% 0; } }
+}
+@media (prefers-reduced-motion: reduce) { .knopf, .knopf .pfeil { transition: none; } .knopf:hover { transform: none; } }
 .knoepfe { display: flex; flex-wrap: wrap; gap: var(--m); margin-top: var(--xxl); }
-@media (max-width: 560px) { .knoepfe .knopf { flex: 1 1 100%; } }
+@media (max-width: 560px) {
+  .knoepfe .knopf { flex: 1 1 100%; }
+  .knoepfe .knopf:not(.leise):has(.pfeil) { justify-content: space-between; padding-left: 22px; }
+  .knoepfe .knopf { white-space: normal; text-align: left; }
+  .kapitel { grid-template-columns: minmax(0, 1fr); } /* nichts drückt die Seite breiter als das Fenster */
+  .ruf { padding: 24px 20px; }
+}
+
+/* ── Mikro-Pille (Kapitel-Zeilen): Glas mit hellem 1-px-Ring, der langsam umläuft; vorn der Knoten aus dem Logo ── */
+.mikro.pille {
+  position: relative; isolation: isolate; gap: 9px; padding: 7px 14px 7px 11px; border-radius: var(--r-pille);
+  color: var(--inkDim); background: rgba(255, 255, 255, .035); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+@supports (backdrop-filter: blur(1px)) { .mikro.pille { backdrop-filter: blur(12px); } }
+.mikro.pille::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .38), rgba(255, 255, 255, .07)) 0 0 / 200% 100%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+@media (prefers-reduced-motion: no-preference) { .mikro.pille::before { animation: rand-lauf 3s linear infinite; } }
+.knoten-zeichen { flex: none; width: 19px; height: auto; }
+.knoten-zeichen .k-ma { fill: var(--granat); }
+.knoten-zeichen .k-ke { fill: var(--smaragd); }
+@media (max-width: 560px) { .mikro.pille { letter-spacing: .1em; white-space: normal; text-align: left; border-radius: 16px; } }
+
+/* ── Text-Bühne (js/szene/motor.js; nur mit Skript und Bewegung, ohne Skript steht aller Text sofort) ──
+   Kaskade: Überschriften mit data-kaskade kommen Buchstabe für Buchstabe (aus 40 px Tiefe, unscharf, 15 ms Versatz, 1,2 s,
+   easeOutQuart). Für Vorleser bleibt die Überschrift ein Satz (unsichtbare Kopie, Buchstaben aria-hidden); nach dem Auftritt stellt
+   der Motor das Original wieder her. Auftritt: data-auftritt = vorher (unten, unsichtbar) · jetzt · nach (oben, unsichtbar), 1,2 s. */
+.k-wort { display: inline-block; white-space: nowrap; }
+.k-b { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .kaskade .k-b {
+    opacity: 0; transform: translateY(40px); filter: blur(16px); will-change: transform, opacity, filter;
+    transition: opacity 1.2s cubic-bezier(.25, 1, .5, 1), transform 1.2s cubic-bezier(.25, 1, .5, 1), filter 1.2s cubic-bezier(.25, 1, .5, 1);
+    transition-delay: calc(var(--i, 0) * 15ms);
+  }
+  .kaskade.los .k-b { opacity: 1; transform: none; filter: blur(0); }
+  .text-bereit [data-auftritt] { transition: opacity 1.2s cubic-bezier(.2, 1, .2, 1), transform 1.2s cubic-bezier(.2, 1, .2, 1); }
+  .text-bereit [data-auftritt="jetzt"] { transition-delay: calc(var(--folge, 0) * 90ms); }
+  .text-bereit [data-auftritt="vorher"] { opacity: 0; transform: translateY(30px); }
+  .text-bereit [data-auftritt="nach"] { opacity: 0; transform: translateY(-30px); }
+  .text-sofort [data-auftritt], .text-sofort .k-b { transition: none !important; }
+  /* Einstieg: erst die Pille, dann die Überschrift (Kaskade), dann Satz, Knöpfe und der Scroll-Hinweis. */
+  .einstieg .held .mikro[data-auftritt="jetzt"] { transition-delay: .15s; }
+  .einstieg .held .satz[data-auftritt="jetzt"] { transition-delay: .75s; }
+  .einstieg .held .knoepfe[data-auftritt="jetzt"] { transition-delay: .95s; }
+  .einstieg .held .scrollen[data-auftritt="jetzt"] { transition-delay: 1.4s; }
+  .einstieg .held .kaskade .k-b { transition-delay: calc(.3s + var(--i, 0) * 15ms); }
+}
+/* Bis der Motor übernimmt, bleibt der Einstieg unsichtbar (kein Aufblitzen) — kommt er nicht (Skript-Fehler), zeigt ein
+   Notfall-Auftritt nach 2,2 s alles. Ohne Skript gilt die Regel nicht (scripting: none). */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  html:not(.text-bereit) .held [data-auftritt], html:not(.text-bereit) .held [data-kaskade] { opacity: 0; animation: notfall .8s ease 2.2s forwards; }
+}
+@keyframes notfall { to { opacity: 1; } }
+/* Weicher Ausblend-Rand am Ende der ruhigen Titelzeile (nur große Rechner-Titel; End-Deckkraft so gewählt, dass der Kontrast ≥ 3 : 1 bleibt). */
+@media (min-width: 1100px) {
+  .kapitel h2:not(.wort) .ruhig { width: fit-content; -webkit-mask-image: linear-gradient(90deg, #000 60%, rgba(0, 0, 0, .55)); mask-image: linear-gradient(90deg, #000 60%, rgba(0, 0, 0, .55)); }
+}
 
 /* ── Die Szene: feste Leinwand hinter allem ── */
 .szene { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 1.4s var(--sanft); }
@@ -142,7 +243,7 @@ body:has(.held) .kopf { border-bottom-color: transparent; }
 .szene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* Ruhe für den Text: Vignette + Mitte gedämpft (große Sätze), links eine weiche Fläche, wenn die Szene rechts steht. */
 .szene::before, .szene::after { content: ''; position: absolute; inset: 0; pointer-events: none; transition: opacity 1.2s var(--sanft); }
-.szene::before { background: radial-gradient(ellipse 60% 45% at 50% 52%, rgba(5, 7, 10, .5), rgba(5, 7, 10, 0) 70%), radial-gradient(ellipse 120% 90% at 50% 50%, rgba(5, 7, 10, 0) 55%, rgba(3, 4, 5, .75) 100%); }
+.szene::before { background: radial-gradient(ellipse 60% 45% at 50% 52%, rgba(5, 7, 10, .5), rgba(5, 7, 10, 0) 70%), radial-gradient(ellipse 120% 90% at 50% 50%, rgba(5, 7, 10, 0) 55%, rgba(3, 4, 5, .5) 100%); }
 .szene::after { background: linear-gradient(90deg, rgba(5, 7, 10, .9) 0%, rgba(5, 7, 10, .72) 30%, rgba(5, 7, 10, .25) 46%, rgba(5, 7, 10, 0) 58%); opacity: 0; }
 html[data-lage="rechts"] .szene::after { opacity: 1; }
 html[data-lage="rechts"] .szene::before { opacity: .55; }
@@ -162,6 +263,16 @@ html[data-lage="rechts"] .szene::before { opacity: .55; }
 .szene .marke.strom { justify-content: flex-start; color: var(--ink); }
 .szene svg.zeichen { position: absolute; left: 0; top: 0; z-index: 1; width: 300px; height: auto; opacity: 0; transform-origin: 0 0; will-change: transform, opacity; }
 @media (prefers-reduced-motion: reduce) { .szene { display: none; } }
+
+/* Ohne laufende Szene (Bewegung reduzieren, ohne WebGL, ohne Skript): die Aurora als stehendes Bild — ein Hauch Granat und
+   Smaragd in den Ecken, die Mitte bleibt frei. */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse 55% 45% at 0% 100%, rgba(201, 70, 92, .09), rgba(201, 70, 92, 0) 70%),
+    radial-gradient(ellipse 50% 45% at 100% 0%, rgba(47, 168, 120, .08), rgba(47, 168, 120, 0) 70%),
+    radial-gradient(ellipse 40% 35% at 100% 100%, rgba(47, 168, 120, .05), rgba(47, 168, 120, 0) 70%);
+}
+.mit-szene body::before { display: none; }
 
 /* ── Kapitel-Leiste (Rechner): wo bin ich? Funktioniert auch ohne Skript als Sprungnavigation. ── */
 .kapitelleiste { display: none; }

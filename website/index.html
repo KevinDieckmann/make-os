@@ -12,13 +12,13 @@
 <link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png">
 <link rel="preload" href="assets/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/seite.css?v=0ca2b4b99d">
+<link rel="stylesheet" href="css/seite.css?v=d25fa68188">
 <script src="js/menue.js?v=bbd943c68b" defer></script>
 <script src="js/erstgespraech.js?v=84c162977a" defer></script>
-<script src="js/szene/kern.js?v=ffcd2c2663" defer></script>
+<script src="js/szene/kern.js?v=67d78ef969" defer></script>
 <script src="js/szene/formationen.js?v=15d18fe326" defer></script>
-<script src="js/drehbuch.js?v=feaf3ab7ac" defer></script>
-<script src="js/szene/motor.js?v=f5c1904c46" defer></script>
+<script src="js/drehbuch.js?v=54f55781fc" defer></script>
+<script src="js/szene/motor.js?v=438f135805" defer></script>
 </head>
 <body>
 <a class="sprung" href="#inhalt">Zum Inhalt</a>
@@ -93,31 +93,31 @@
   <section class="kapitel held mitte" id="start" data-zustand="weg" aria-labelledby="titel">
     <img class="still" src="assets/szene/weg.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
     <div class="wrap"><div class="inhalt">
-      <span class="mikro">MAKE Innovation · aus Berlin für Deutschland</span>
-      <h1 id="titel">Innovation braucht Umsetzung <span class="ruhig">und Sichtbarkeit.</span></h1>
-      <p class="satz">Wir beraten Unternehmen, die Neues in den Markt bringen — und arbeiten mit, bis es wirkt: im Vertrieb, in der Sichtbarkeit, in der Umsetzung und im Netzwerk.</p>
-      <div class="knoepfe">
+      <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg>MAKE Innovation · aus Berlin für Deutschland</span>
+      <h1 id="titel" data-kaskade>Innovation braucht Umsetzung <span class="ruhig">und Sichtbarkeit.</span></h1>
+      <p class="satz" data-auftritt>Wir beraten Unternehmen, die Neues in den Markt bringen — und arbeiten mit, bis es wirkt: im Vertrieb, in der Sichtbarkeit, in der Umsetzung und im Netzwerk.</p>
+      <div class="knoepfe" data-auftritt>
         <a class="knopf gross" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a>
         <a class="knopf gross leise" href="#innovation">Den Weg ansehen <span class="pfeil runter" aria-hidden="true">↓</span></a>
       </div>
-      <p class="scrollen" aria-hidden="true"><span></span>Scrollen</p>
+      <p class="scrollen" aria-hidden="true" data-auftritt><span></span>Scrollen</p>
     </div></div>
   </section>
 
   <section class="kapitel mitte pin wortbild" id="innovation" data-zustand="innovation" aria-labelledby="innovation-titel">
     <img class="still" src="assets/szene/innovation.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
     <div class="wrap"><div class="inhalt">
-      <span class="mikro"><span class="nr">02</span> Innovation</span>
+      <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg><span class="nr">02</span> Innovation</span>
       <h2 class="wort" id="innovation-titel">INNOVATION</h2>
-      <p class="unterzeile">Ein großes Wort. Wir messen es an einer einfachen Frage: Kommt es beim Kunden an?</p>
+      <p class="unterzeile" data-auftritt>Ein großes Wort. Wir messen es an einer einfachen Frage: Kommt es beim Kunden an?</p>
     </div></div>
   </section>
 
   <section class="kapitel mitte pin" id="satz" data-zustand="satz" aria-labelledby="satz-titel">
     <img class="still" src="assets/szene/satz.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
     <div class="wrap"><div class="inhalt">
-      <h2 class="leitsatz" id="satz-titel">Jede Innovation beginnt als Signal. <span class="ruhig">Wir machen daraus einen Weg.</span></h2>
-      <p class="satz">Deutschland hat Ideen, Ingenieurskunst und einen starken Mittelstand. Was oft fehlt, ist der Weg vom guten Produkt zum zahlenden Kunden: ein Vertrieb, der trägt, eine Bühne, auf der man gesehen wird, und die richtigen Menschen am Tisch.</p>
+      <h2 class="leitsatz" id="satz-titel" data-kaskade>Jede Innovation beginnt als Signal. <span class="ruhig">Wir machen daraus einen Weg.</span></h2>
+      <p class="satz" data-auftritt>Deutschland hat Ideen, Ingenieurskunst und einen starken Mittelstand. Was oft fehlt, ist der Weg vom guten Produkt zum zahlenden Kunden: ein Vertrieb, der trägt, eine Bühne, auf der man gesehen wird, und die richtigen Menschen am Tisch.</p>
     </div></div>
   </section>
 
@@ -125,9 +125,9 @@
     <div class="kapitel" data-zustand="beratung">
       <img class="still" src="assets/szene/beratung.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
       <div class="wrap"><div class="inhalt">
-        <span class="mikro"><span class="nr">03</span> Beratung für Unternehmen</span>
-        <h2 id="beratung-titel">Wachstum scheitert selten an Ideen. <span class="ruhig">Meist an der Umsetzung.</span></h2>
-        <p class="einleitung">Genau dort setzen wir an: Wir beraten Unternehmen und gehen die Hürden mit ihnen an – im Vertrieb, in der Sichtbarkeit, in der Umsetzung und im Netzwerk.</p>
+        <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg><span class="nr">03</span> Beratung für Unternehmen</span>
+        <h2 id="beratung-titel" data-kaskade>Wachstum scheitert selten an Ideen. <span class="ruhig">Meist an der Umsetzung.</span></h2>
+        <p class="einleitung" data-auftritt>Genau dort setzen wir an: Wir beraten Unternehmen und gehen die Hürden mit ihnen an – im Vertrieb, in der Sichtbarkeit, in der Umsetzung und im Netzwerk.</p>
         <p>Wir übernehmen Verantwortung auf Zeit, mit klarer Agenda und Ergebnissen, die sich messen lassen. Die Interim-Mandate führt Kevin Dieckmann persönlich.</p>
         <ul class="fuer" aria-label="Für wen">
           <li>KI- &amp; Tech-Startups</li>
@@ -146,9 +146,9 @@
     <div class="kapitel station" id="sales" data-zustand="sales">
       <img class="still" src="assets/szene/sales.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
       <div class="wrap"><div class="inhalt">
-        <span class="mikro"><span class="nr">3.1</span> Sales</span>
+        <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg><span class="nr">3.1</span> Sales</span>
         <h3 class="station-titel">Vertriebsleitung, <span class="ruhig">wenn sie gebraucht wird.</span></h3>
-        <p class="einleitung">Ist das Produkt bereit, der Vertrieb aber noch nicht, übernehmen wir die Führung auf Zeit — strategisch, strukturiert und mit Kennzahlen, an denen sich der Fortschritt ablesen lässt.</p>
+        <p class="einleitung" data-auftritt>Ist das Produkt bereit, der Vertrieb aber noch nicht, übernehmen wir die Führung auf Zeit — strategisch, strukturiert und mit Kennzahlen, an denen sich der Fortschritt ablesen lässt.</p>
         <div class="angebote">
           <article class="angebot zeigen" id="angebot-interim-cso" aria-labelledby="cso-name">
             <span class="rolle">Strategische Vertriebsleitung auf Zeit</span>
@@ -160,7 +160,7 @@
               <li>Laufzeit 6–12 Monate</li>
               <li>inklusive Zugang zu den Make.One-Veranstaltungen — Bühne und Netzwerk</li>
             </ul>
-            <div class="aktionen"><a class="knopf" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen</a></div>
+            <div class="aktionen"><a class="knopf" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a></div>
           </article>
           <article class="angebot zeigen" id="angebot-head-of-sales" aria-labelledby="hos-name">
             <span class="rolle">Sales-Aufbau auf Zeit</span>
@@ -172,7 +172,7 @@
               <li>Übergabe an dein festes Team</li>
               <li>Laufzeit 6–12 Monate, mit Kevin Dieckmann</li>
             </ul>
-            <div class="aktionen"><a class="knopf" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen</a></div>
+            <div class="aktionen"><a class="knopf" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a></div>
           </article>
         </div>
         <div class="beratungsfelder zeigen">
@@ -190,9 +190,9 @@
     <div class="kapitel station" id="sichtbarkeit" data-zustand="sichtbarkeit">
       <img class="still" src="assets/szene/sichtbarkeit.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
       <div class="wrap"><div class="inhalt">
-        <span class="mikro"><span class="nr">3.2</span> Sichtbarkeit</span>
+        <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg><span class="nr">3.2</span> Sichtbarkeit</span>
         <h3 class="station-titel">Gesehen werden, <span class="ruhig">wo entschieden wird.</span></h3>
-        <p class="einleitung">Gute Produkte brauchen eine klare Geschichte und die richtigen Menschen im Raum. Wir schärfen Botschaft und Unterlagen und schaffen Bühnen vor Entscheiderinnen und Entscheidern — im eigenen Netzwerk und bei dir.</p>
+        <p class="einleitung" data-auftritt>Gute Produkte brauchen eine klare Geschichte und die richtigen Menschen im Raum. Wir schärfen Botschaft und Unterlagen und schaffen Bühnen vor Entscheiderinnen und Entscheidern — im eigenen Netzwerk und bei dir.</p>
         <div class="angebote eins">
           <article class="angebot zeigen" id="angebot-events" aria-labelledby="events-name">
             <span class="rolle">Bühne · Begegnung · Matchmaking</span>
@@ -204,7 +204,7 @@
               <li>Bühne: vor Entscheidern und Partnern präsentieren</li>
               <li>Matchmaking: gezielt passende Entscheider zusammenbringen</li>
             </ul>
-            <div class="aktionen"><a class="knopf" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen</a></div>
+            <div class="aktionen"><a class="knopf" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a></div>
           </article>
         </div>
         <ul class="themen zwei zeigen">
@@ -217,7 +217,7 @@
     <div class="kapitel station" id="umsetzung" data-zustand="umsetzung">
       <img class="still" src="assets/szene/umsetzung.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
       <div class="wrap"><div class="inhalt">
-        <span class="mikro"><span class="nr">3.3</span> Umsetzung</span>
+        <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg><span class="nr">3.3</span> Umsetzung</span>
         <div class="phasen" id="so-arbeiten-wir">
           <h3 class="station-titel">Drei Phasen. <span class="ruhig">Ein Fundament, das bleibt.</span></h3>
           <ol class="kreislauf drei">
@@ -247,9 +247,9 @@
     <div class="kapitel station" id="make-one" data-zustand="netzwerk">
       <img class="still" src="assets/szene/netzwerk.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
       <div class="wrap"><div class="inhalt">
-        <span class="mikro"><span class="nr">3.4</span> Netzwerk</span>
+        <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg><span class="nr">3.4</span> Netzwerk</span>
         <h3 class="station-titel">Make.One. <span class="ruhig">Wo junge und erfahrene Entscheider sich begegnen.</span></h3>
-        <p class="einleitung">Wir haben Make.One gegründet, um Innovation in Deutschland zu fördern. Es bringt zusammen, wer Neues baut, und wer Erfahrung, Zugang und Urteilsvermögen mitbringt: Gründerinnen und Gründer, Unternehmerinnen und Unternehmer, Führungskräfte aus Mittelstand und Konzern.</p>
+        <p class="einleitung" data-auftritt>Wir haben Make.One gegründet, um Innovation in Deutschland zu fördern. Es bringt zusammen, wer Neues baut, und wer Erfahrung, Zugang und Urteilsvermögen mitbringt: Gründerinnen und Gründer, Unternehmerinnen und Unternehmer, Führungskräfte aus Mittelstand und Konzern.</p>
         <ul class="formate zeigen" aria-label="Formate">
           <li><b>Stammtisch</b><span>Ungezwungen ins Gespräch kommen — ohne Programm.</span></li>
           <li><b>Dinner</b><span>Eine kleine Runde an einem Tisch, Zeit für echte Gespräche.</span></li>
@@ -283,9 +283,9 @@
   <section class="kapitel" id="fokus-innovation" data-zustand="fokus" aria-labelledby="fokus-titel">
     <img class="still" src="assets/szene/fokus.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
     <div class="wrap"><div class="inhalt">
-      <span class="mikro"><span class="nr">04</span> Fokus Innovation</span>
-      <h2 id="fokus-titel">Fokus Innovation. <span class="ruhig">Das neue Event-Format von Make.One.</span></h2>
-      <p class="einleitung">Ausgewählte Abende für Menschen, die Neues in den Markt bringen — und für die, die dort entscheiden. Eine kleine Runde, ein besonderer Ort, Gespräche mit Substanz.</p>
+      <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg><span class="nr">04</span> Fokus Innovation</span>
+      <h2 id="fokus-titel" data-kaskade>Fokus Innovation. <span class="ruhig">Das neue Event-Format von Make.One.</span></h2>
+      <p class="einleitung" data-auftritt>Ausgewählte Abende für Menschen, die Neues in den Markt bringen — und für die, die dort entscheiden. Eine kleine Runde, ein besonderer Ort, Gespräche mit Substanz.</p>
       <p>MAKE kommt aus Berlin. Von hier aus verbindet Make.One Entscheiderinnen und Entscheider in ganz Deutschland — Fokus Innovation ist dort zu Gast, wo sie arbeiten:</p>
       <ul class="staedte" aria-label="Städte">
         <li class="start"><b>Berlin</b><span>Ausgangspunkt</span></li>
@@ -296,7 +296,7 @@
         <li><b>Dresden</b></li>
       </ul>
       <p class="klein">Die Termine sind in Planung. Wer anfragt, hört als Erstes von uns, sobald ein Abend in seiner Stadt feststeht.</p>
-      <div class="knoepfe">
+      <div class="knoepfe" data-auftritt>
         <a class="knopf gross" href="https://fokusinnovation.de">Zu Fokus Innovation <span class="pfeil" aria-hidden="true">↗</span></a>
         <a class="knopf gross leise" href="mailto:hello@makeinnovation.de?subject=Fokus%20Innovation%20%E2%80%93%20Teilnahme">Teilnahme anfragen</a>
       </div>
@@ -307,10 +307,10 @@
     <div class="kapitel schritt" data-zustand="funken">
       <img class="still" src="assets/szene/funken.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
       <div class="wrap"><div class="inhalt">
-        <span class="mikro"><span class="nr">05</span> KI &amp; Innovation in Deutschland</span>
-        <h2 id="geschichte-titel">Wie wir KI und Innovation in Deutschland fördern wollen.</h2>
+        <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg><span class="nr">05</span> KI &amp; Innovation in Deutschland</span>
+        <h2 id="geschichte-titel" data-kaskade>Wie wir KI und Innovation in Deutschland fördern wollen.</h2>
         <h3 class="schritt-titel"><span class="nr">1</span> Ideen gibt es genug.</h3>
-        <p class="einleitung">Im Mittelstand entsteht Neues jeden Tag — meist ohne eigenes Labor. Gleichzeitig steht in vielen Unternehmen der Generationswechsel an: Erfahrung, die weitergegeben werden will.</p>
+        <p class="einleitung" data-auftritt>Im Mittelstand entsteht Neues jeden Tag — meist ohne eigenes Labor. Gleichzeitig steht in vielen Unternehmen der Generationswechsel an: Erfahrung, die weitergegeben werden will.</p>
         <ul class="zahlen" aria-label="Zwei Zahlen zu Ideen und Erfahrung">
           <li class="zahl zeigen">
             <p class="wert">41&nbsp;%<sup><a href="#fn-1" aria-label="Quelle 1">1</a></sup></p>
@@ -328,7 +328,7 @@
       <img class="still" src="assets/szene/ki.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
       <div class="wrap"><div class="inhalt">
         <h3 class="schritt-titel"><span class="nr">2</span> KI macht aus Ideen schneller Ergebnisse.</h3>
-        <p class="einleitung">KI ist im Alltag der Unternehmen angekommen — und wer sie einsetzt, spürt es im Wettbewerb. Sie nimmt Routine ab, beschleunigt Analyse und Vorbereitung und schafft Zeit für das, was zählt. Wir setzen sie selbst in unserer täglichen Arbeit ein: in Analyse, Vorbereitung und Vertrieb.</p>
+        <p class="einleitung" data-auftritt>KI ist im Alltag der Unternehmen angekommen — und wer sie einsetzt, spürt es im Wettbewerb. Sie nimmt Routine ab, beschleunigt Analyse und Vorbereitung und schafft Zeit für das, was zählt. Wir setzen sie selbst in unserer täglichen Arbeit ein: in Analyse, Vorbereitung und Vertrieb.</p>
         <ul class="zahlen" aria-label="Zwei Zahlen zu KI und Zeit">
           <li class="zahl zeigen">
             <p class="wert">66&nbsp;%<sup><a href="#fn-3" aria-label="Quelle 3">3</a></sup></p>
@@ -346,7 +346,7 @@
       <img class="still" src="assets/szene/wirkung.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
       <div class="wrap"><div class="inhalt">
         <h3 class="schritt-titel"><span class="nr">3</span> Wirkung entsteht mit Menschen.</h3>
-        <p class="einleitung">KI ersetzt kein Urteil, keine Beziehung und keinen Abschluss. Wirkung entsteht, wenn Menschen Verantwortung übernehmen. Deshalb verbinden wir beides: KI in der Arbeit, Erfahrung in der Führung — und Make.One als Ort, an dem sich die Richtigen begegnen.</p>
+        <p class="einleitung" data-auftritt>KI ersetzt kein Urteil, keine Beziehung und keinen Abschluss. Wirkung entsteht, wenn Menschen Verantwortung übernehmen. Deshalb verbinden wir beides: KI in der Arbeit, Erfahrung in der Führung — und Make.One als Ort, an dem sich die Richtigen begegnen.</p>
         <ol class="trio">
           <li class="zeigen"><b>Umsetzung</b><span>Vertrieb mit Struktur, Kennzahlen und einem Rhythmus, der bleibt.</span></li>
           <li class="zeigen"><b>Sichtbarkeit</b><span>Eine klare Geschichte und Bühnen vor den richtigen Menschen.</span></li>
@@ -366,9 +366,9 @@
     <img class="still" src="assets/szene/kontakt.svg" width="800" height="800" alt="" loading="lazy" decoding="async">
     <div class="wrap"><div class="inhalt">
       <div id="ueber-uns">
-        <span class="mikro"><span class="nr">06</span> Warum MAKE</span>
-        <h2 id="ueber-uns-titel">Zwei Linien. <span class="ruhig">Ein Knoten.</span></h2>
-        <p class="einleitung">MAKE steht für <b class="ma">MA</b>lin und <b class="ke">KE</b>vin. Die rote und die grüne Linie im Logo sind wir beide — der Knoten ist der Punkt, an dem aus einer Idee Umsetzung wird. Als Gründerpaar haben wir MAKE Innovation aufgebaut, weil wir Innovation in Deutschland voranbringen wollen.</p>
+        <span class="mikro pille" data-auftritt><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="3.5" width="4" height="3"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="20" y="3.5" width="4" height="3"/></svg><span class="nr">06</span> Warum MAKE</span>
+        <h2 id="ueber-uns-titel" data-kaskade>Zwei Linien. <span class="ruhig">Ein Knoten.</span></h2>
+        <p class="einleitung" data-auftritt>MAKE steht für <b class="ma">MA</b>lin und <b class="ke">KE</b>vin. Die rote und die grüne Linie im Logo sind wir beide — der Knoten ist der Punkt, an dem aus einer Idee Umsetzung wird. Als Gründerpaar haben wir MAKE Innovation aufgebaut, weil wir Innovation in Deutschland voranbringen wollen.</p>
         <ul class="staerken">
           <li class="zeigen"><h3>Umsetzung statt Folien</h3><p>Wir arbeiten in deinem Unternehmen mit: ca. zwei Tage pro Woche, ein wöchentlicher Call, Kennzahlen, die alle sehen.</p></li>
           <li class="zeigen"><h3>Vertrieb aus der Praxis</h3><p>Kevin führt jedes Interim-Mandat persönlich — als Unternehmer und Berater, nicht als Beobachter von außen. <span class="ph">[[KEVIN: Ein Satz zu deiner Vertriebserfahrung — Stationen oder Schwerpunkte, ohne Kundennamen]]</span></p></li>

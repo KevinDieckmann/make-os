@@ -123,6 +123,7 @@ ${z}return vec3(o,sicht);}
     const freiX = schubX > 0 ? Math.max(.25, Math.min(1 - schubX, schubX - (o.kante ?? 0) * .5 + .06)) : 1 - Math.abs(schubX), freiY = 1 - Math.abs(schubY);
     let D = Math.max(mix('abstand'), mix('breite') * 1.12 / (tan * aspekt * freiX), mix('hoehe') * 1.15 / (tan * freiY));
     D *= 1 - .12 * (dolly || 0);
+    if (o.naeher) D *= 1 - o.naeher; // Einstieg: die Kamera beginnt etwas näher und fährt zurück (klingt ab, kämpft nicht mit dem Scroll)
     const sA = mix('s');
     const fz = rahmen(sA), fa = rahmen(sA - D);
     const auge = lokal(fa, mix('seite') + Math.sin(zeit * .05) * .4, mix('hebung') + .5 * (dolly || 0), 0);
@@ -131,8 +132,34 @@ ${z}return vec3(o,sicht);}
   }
   /** Drehbuch-Zustände mit Vorgaben füllen. */
   function zustaende(liste) {
-    return liste.map(z => Object.assign({ abstand: 18, hebung: 1, seite: 0, blick: 0, breite: 8, schub: 0, funkeln: .15, faeden: .5, nah: .6 }, z,
+    return liste.map(z => Object.assign({ abstand: 18, hebung: 1, seite: 0, blick: 0, breite: 8, schub: 0, funkeln: .15, faeden: .5, nah: .6, aurora: 1 }, z,
       { hoehe: z.hoehe ?? (z.breite ?? 8) * .72, hoch: z.hoch ?? ((z.schub ?? 0) > 0 ? .4 : 0) }));
+  }
+
+  // ── Weiches Folgen, Einstieg, Optionen ──
+  /** Kritisch gedämpfte Feder (wie SmoothDamp): z = { wert, v } folgt dem Ziel weich an- und auslaufend, ohne Überschwingen,
+   *  unabhängig von der Bildrate. zeit ≈ Zeit bis zum Ziel (s). Das native Scrollen bleibt unberührt — nur die Szene folgt so. */
+  function feder(z, ziel, dt, zeit) {
+    const w = 2 / Math.max(.001, zeit), x = w * dt, e = 1 / (1 + x + .48 * x * x + .235 * x * x * x);
+    const d = z.wert - ziel, t = (z.v + w * d) * dt;
+    z.v = (z.v - w * t) * e; z.wert = ziel + (d + t) * e;
+    if (Math.abs(z.wert - ziel) < 1e-5 && Math.abs(z.v) < 1e-4) { z.wert = ziel; z.v = 0; }
+    return z.wert;
+  }
+  const ausLaufen = u => { u = clamp(u, 0, 1); return 1 - (1 - u) * (1 - u) * (1 - u); }; // easeOutCubic
+  /** Einstieg (Wanduhr): Fortschritt 0…1 → wie weit die Kamera noch näher steht (klingt mit easeOutCubic ab). */
+  function einstieg(fortschritt, cfg) { return cfg ? cfg.naeher * (1 - ausLaufen(fortschritt)) : 0; }
+  /** Optionen der Szene aus dem Drehbuch (alles abschaltbar: fehlt ein Eintrag oder steht false, gibt es ihn nicht).
+   *  einstieg: { dauer (ms), naeher }  ·  aurora: { staerke, aufloesung (Anteil der Leinwand), oktaven, handy: {…} }
+   *  text: { kaskade, auftritt } (Überschriften Buchstabe für Buchstabe, Ein-/Ausblenden je Kapitel)  ·  folgen: Federzeit (s). */
+  function optionen(drehbuch, handy) {
+    const d = drehbuch || {}, mit = (wert, vorgabe) => wert ? Object.assign({}, vorgabe, wert === true ? {} : wert) : null;
+    const einst = mit(d.einstieg, { dauer: 2600, naeher: .18 });
+    let aurora = mit(d.aurora, { staerke: .24, aufloesung: .25, oktaven: 4, bewegung: true });
+    if (aurora && handy) aurora = Object.assign(aurora, { aufloesung: .16, oktaven: 3 }, aurora.handy || {});
+    if (aurora) delete aurora.handy;
+    const text = d.text === false ? null : Object.assign({ kaskade: true, auftritt: true }, d.text || {});
+    return { einstieg: einst, aurora, text, folgen: d.folgen ?? .32 };
   }
 
   // ── SVG-Formen (Pfade aus M, L, A, Z) → Polygone, Innen-Test (nonzero), Abtasten ──
@@ -188,6 +215,6 @@ ${z}return vec3(o,sicht);}
   S.kern = {
     TAU, clamp, sanft, sanfter, zufall, add, sub, mul, dot, cross, len, norm,
     perspektive, blick, mal, projiziere, PFAD, pfad, rahmen, lokal, pfadGlsl, faden, fadenGlsl,
-    kamera, zustaende, form, rechteck, innen, abtasten, flaeche,
+    kamera, zustaende, form, rechteck, innen, abtasten, flaeche, feder, ausLaufen, einstieg, optionen,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
