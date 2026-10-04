@@ -11,10 +11,12 @@ import { Karte, Ueberschrift, Spalten, Spalte, LEUCHT } from '../ui';
 import { istSchnitt, sollBudget, wert } from '@/lib/finanzen/rechenkern';
 import { achse, letzterVoller, prozent } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
-import { UG_NAME } from '@/lib/einheiten';
+import { UG_NAME, finanzOrtName } from '@/lib/einheiten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, Auswahl, Hinweis, Legende, PersonMarke, KUPFER, LILA, Nichts, Pillen } from './teile';
 import { Linie, Fluss, type FlussKante } from './diagramme';
 import { Blatt } from './Blatt';
+/** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
+const KDV = finanzOrtName('kdv');
 
 // ── Entwicklung ─────────────────────────────────────────────────────────────
 export function Entwicklung() {
@@ -121,7 +123,7 @@ export function Geldfluss() {
         <Blatt titel="Gruppe" zeilen={[
           { grp: 'Stand' },
           { name: `${UG_NAME} frei`, edit: 'ug.frei', stock: true, get: mm => ug[mm - 1].frei, ind: true },
-          { name: 'KD Ventures (nach Steuerrücklage)', edit: 'kdv.frei', stock: true, get: mm => ug[mm - 1].kdvFrei, ind: true },
+          { name: `${KDV} (nach Steuerrücklage)`, edit: 'kdv.frei', stock: true, get: mm => ug[mm - 1].kdvFrei, ind: true },
           { name: 'Selbstständigkeit', edit: 'kdc.frei', stock: true, get: mm => kdc[mm - 1].frei, ind: true },
           { name: 'Privat angespart', edit: 'p.angespart', stock: true, get: mm => pr[mm - 1].angespart, ind: true },
           { name: 'Partnerdarlehen offen', edit: 'kdv.darlehenOffen', minus: true, stock: true, get: mm => -ug[mm - 1].bjoernRest, ind: true },

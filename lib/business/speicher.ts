@@ -14,6 +14,7 @@ import { traktionsIndex, alsTraktion } from '@/lib/crm/traktion-index';
 import { ladeIndexDatei } from '@/lib/kennzahlen/speicher';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
+import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { kapaKennzahlenFuerIndex } from '@/lib/kapazitaet/server';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { localDay } from '@/lib/zeit';
@@ -143,8 +144,8 @@ async function ladeRohFrisch(heute: string) {
     ladeCrm(),
     loadJson<{ kontakte: Kontakt[] }>('kontakte'),
     loadJson<{ events?: { startDate?: string; endDate?: string; allDay?: boolean; owner?: string }[]; quelle?: string }>('calendar-cache'),
-    // Fokus-Blöcke (K5: Kalender-Termine der Art Fokus/Block + Archiv) — wie bisher Kevins Plan.
-    planBloeckeLesen({ person: 'kevin', von: tagPlus(heute, -42), bis: tagPlus(heute, 1) }).catch(() => []),
+    // Fokus-Blöcke (K5: Kalender-Termine der Art Fokus/Block + Archiv) — der Plan des Inhabers (Rolle, keine feste Person im Code).
+    inhaberSpeicher().then(p => (p ? planBloeckeLesen({ person: p, von: tagPlus(heute, -42), bis: tagPlus(heute, 1) }) : [])).catch(() => []),
     loadJson<{ auftraege?: { status: string; beendet?: string; zeit?: string; anlass?: string; name?: string; auftrag?: string }[] }>('zoe-auftraege'),
     loadJson<{ meilensteine?: { id?: string; titel?: string; bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     ladeEinstellungen(),

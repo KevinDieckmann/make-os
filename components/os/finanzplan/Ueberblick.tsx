@@ -21,6 +21,8 @@ import { nurBusinessPunkte, nurBusinessTermine } from '@/lib/finanzen/plan/sicht
 import { usePlan } from './daten';
 import { Geld, Kachel, Kacheln, Etikett, StatusPille, PersonMarke, AnteilBalken, KnopfKlein, Auswahl, ampel, personName, KUPFER, LILA, Nichts, Hinweis, Legende } from './teile';
 import { Linie } from './diagramme';
+/** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
+const KDV = finanzOrtName('kdv');
 
 export function ZielKurz({ s, bjoernStart }: { s: ZielStand; bjoernStart: number }) {
   const { d } = usePlan();
@@ -161,11 +163,11 @@ export function Lage() {
       <Spalten verhaeltnis="3:2">
         <Spalte>
           <Karte i={1}>
-            <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LILA, text: 'Privat angespart' }, { farbe: LEUCHT.puls, text: 'KD Ventures' }, { farbe: C.ink, text: 'Gruppe' }]} />}>Geld der Familie — {sz.name}</Ueberschrift>
+            <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LILA, text: 'Privat angespart' }, { farbe: LEUCHT.puls, text: KDV }, { farbe: C.ink, text: 'Gruppe' }]} />}>Geld der Familie — {sz.name}</Ueberschrift>
             <Linie labels={lab} heute={hi - 1} tick={4} serien={[
               { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: [...leerVor, ...ug.map(u => u.frei)], breite: 2.4 },
               { name: 'Privat angespart', farbe: LILA, werte: [...leerVor, ...pr.map(p => p.angespart)] },
-              { name: 'KD Ventures', farbe: LEUCHT.puls, werte: [...leerVor, ...ug.map(u => u.kdvFrei)], breite: 1.4 },
+              { name: KDV, farbe: LEUCHT.puls, werte: [...leerVor, ...ug.map(u => u.kdvFrei)], breite: 1.4 },
               { name: 'Selbstständigkeit', farbe: LEUCHT.achtung, werte: [...leerVor, ...kdc.map(k => k.frei)], breite: 1.4 },
               { name: 'Gruppe', farbe: C.ink, werte: [...leerVor, ...ug.map((u, i) => u.frei + u.kdvFrei + kdc[i].frei + pr[i].angespart)], gestrichelt: true, breite: 1.4 },
             ]} />
@@ -273,10 +275,10 @@ export function LageBusiness() {
       <Spalten verhaeltnis="3:2">
         <Spalte>
           <Karte i={2}>
-            <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: 'KD Ventures' }, { farbe: LEUCHT.achtung, text: 'Selbstständigkeit' }]} />}>Frei verfügbar je Gesellschaft — {sz.name}</Ueberschrift>
+            <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: KDV }, { farbe: LEUCHT.achtung, text: 'Selbstständigkeit' }]} />}>Frei verfügbar je Gesellschaft — {sz.name}</Ueberschrift>
             <Linie labels={d.monate} heute={m0 - 1} tick={3} serien={[
               { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: ug.map(u => u.frei), breite: 2.4 },
-              { name: 'KD Ventures', farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
+              { name: KDV, farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
               { name: 'Selbstständigkeit', farbe: LEUCHT.achtung, werte: kdc.map(k => k.frei), breite: 1.4 },
             ]} />
           </Karte>

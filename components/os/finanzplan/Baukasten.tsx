@@ -17,7 +17,7 @@ import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, feld } from '../ui';
 import { WEG } from '@/lib/wege';
 import { eur, prozent, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfen';
-import { UG_KURZ, GESELLSCHAFTEN } from '@/lib/einheiten';
+import { UG_KURZ, GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
 import {
   planszenarienVon, neuesPlanszenario, neuerBaustein, betragImMonat, vergleich, STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE,
@@ -30,6 +30,8 @@ import { usePlan, rechne, type Gerechnet } from './daten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Dialog, Feld, Formular, Schalter, StatusPille, Legende, Pillen, Nichts, Etikett, KUPFER, LILA } from './teile';
 import { Linie } from './diagramme';
 import { SteuerKarte } from './Steuern';
+/** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
+const KDV = finanzOrtName('kdv');
 
 const RHYTHMEN = (Object.keys(RHYTHMUS_LABEL) as Rhythmus[]).map(id => ({ id, label: RHYTHMUS_LABEL[id] }));
 const KOSTENARTEN = (Object.keys(KOSTENART_LABEL) as KostenArt[]).map(id => ({ id, label: KOSTENART_LABEL[id] }));
@@ -253,7 +255,7 @@ export function Baukasten() {
               <Feld label={`Ausschüttung ${UG_KURZ} → Privat je Monat`}><ZahlFeld wert={ps.annahmen.ausschuettung?.betrag ?? null} leer platzhalter="keine" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/ausschuettung', ps.annahmen.ausschuettung, v ? { betrag: v, ab: ps.annahmen.ausschuettung?.ab ?? m0 } : undefined, 'Ausschüttung')} titel="Ausschüttung je Monat" /></Feld>
               <Feld label="Ausschüttung ab"><MonatWahl wert={ps.annahmen.ausschuettung?.ab ?? m0} onWahl={m => void setze('/annahmen/ausschuettung', ps.annahmen.ausschuettung, { betrag: ps.annahmen.ausschuettung?.betrag ?? 0, ab: m }, 'Ausschüttung ab')} monate={d.monate} /></Feld>
               <Feld label={`Steuer auf Ausschüttung, pauschal (Vorgabe ${prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)})`}><ZahlFeld wert={ps.annahmen.ausschuettungSteuer ?? null} leer platzhalter={String(AUSSCHUETTUNG_STEUER_VORGABE).replace('.', ',')} dezimal={3} breite="100%" onFertig={v => void setze('/annahmen/ausschuettungSteuer', ps.annahmen.ausschuettungSteuer, v == null ? undefined : Math.max(0, Math.min(1, v)), 'Steuer auf Ausschüttung')} titel="Steuerquote auf die Ausschüttung als Dezimalzahl (0,264 = 26,4 %)" /></Feld>
-              <Feld label={`Steuer auf den Ausstieg KD Ventures (Plan: ${prozent(d.annahmen.exitSteuer)})`}><ZahlFeld wert={ps.annahmen.exitSteuer ?? null} leer platzhalter="wie Plan" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/exitSteuer', ps.annahmen.exitSteuer, v == null ? undefined : Math.max(0, Math.min(1, v)), 'Steuer auf den Ausstieg')} titel="Steuer auf den Ausstieg als Dezimalzahl" /></Feld>
+              <Feld label={`Steuer auf den Ausstieg ${KDV} (Plan: ${prozent(d.annahmen.exitSteuer)})`}><ZahlFeld wert={ps.annahmen.exitSteuer ?? null} leer platzhalter="wie Plan" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/exitSteuer', ps.annahmen.exitSteuer, v == null ? undefined : Math.max(0, Math.min(1, v)), 'Steuer auf den Ausstieg')} titel="Steuer auf den Ausstieg als Dezimalzahl" /></Feld>
               <Feld label="Entnahme Selbstständigkeit → Privat je Monat"><ZahlFeld wert={ps.annahmen.entnahme?.betrag ?? null} leer platzhalter="keine" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/entnahme', ps.annahmen.entnahme, entnahmeNeu({ betrag: v ?? undefined }), 'Entnahme')} titel="Entnahme je Monat" /></Feld>
               <Feld label="Entnahme: Anteil am Ergebnis nach Steuern (0–1)"><ZahlFeld wert={ps.annahmen.entnahme?.anteil ?? null} leer platzhalter="keiner" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/entnahme', ps.annahmen.entnahme, entnahmeNeu({ anteil: v == null ? undefined : Math.max(0, Math.min(1, v)) }), 'Entnahme Anteil')} titel="Entnahme als Anteil am Ergebnis nach Steuern" /></Feld>
               <Feld label="Entnahme ab"><MonatWahl wert={ps.annahmen.entnahme?.ab ?? m0} onWahl={m => void setze('/annahmen/entnahme', ps.annahmen.entnahme, entnahmeNeu({ ab: m }), 'Entnahme ab')} monate={d.monate} /></Feld>
@@ -433,7 +435,7 @@ function VergleichTabelle({ spalten, d, alsArbeitsplan, business = false }: { sp
     { l: 'Privat Luft, schlechtester Monat', w: s => <><Geld v={s.g.kz.privatLuftMin} /> €</> },
     { l: 'Runway Privat', w: s => runway(s.aw.runway.privat, s.aw.runway.horizont) },
     { l: 'Privat angespart Dez 27', w: s => <><Geld v={s.g.kz.privatAngespartDez27} /> €</> },
-    { l: 'KD Ventures Dez 28', w: s => <><Geld v={s.g.kz.kdvDez28} /> €</> },
+    { l: `${KDV} Dez 28`, w: s => <><Geld v={s.g.kz.kdvDez28} /> €</> },
     { l: 'Gruppe Dez 28', w: s => <b><Geld v={s.g.kz.gruppeDez28} /> €</b> },
     { l: 'Ziele im Plan', w: s => <span style={{ color: s.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut }}>{s.aw.ziele.imPlan} / {s.aw.ziele.gesamt}{s.aw.ziele.gekippt ? ` · ${s.aw.ziele.gekippt} gekippt` : ''}</span> },
     { l: 'Steuerrücklage jetzt', w: s => <><Geld v={s.aw.steuer.ruecklageGesamt} farbe={C.inkDim} /> €</> },

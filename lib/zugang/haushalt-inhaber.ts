@@ -83,6 +83,12 @@ export async function nurInhaber(req: Request): Promise<boolean> {
   return istInhaber(w.person);
 }
 
+/** Der Speichername des Inhabers (Rolle) — statt einer festen Person im Code (Plattform-Regel); ohne Inhaber null. */
+export async function inhaberSpeicher(): Promise<string | null> {
+  const { konten } = await ladeKonten();
+  return konten.find(k => k.rolle === 'inhaber')?.speicher ?? null;
+}
+
 /** Der Haushalt des Inhabers — Kalender und Business-Index gehören genau diesem Haushalt. */
 export async function haushaltDesInhabers(): Promise<string | null> {
   const { konten } = await ladeKonten();

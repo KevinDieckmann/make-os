@@ -29,6 +29,8 @@ import { ZeileDialog, neueZeileOp } from './ZeileDialog';
 import { SteuerKarte } from './Steuern';
 import { FeldK, AnnahmenKarte } from './Annahmen';
 import { EntnahmeFelder } from './Entnahme';
+/** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
+const KDV = finanzOrtName('kdv');
 
 const RHYTHMEN = (Object.keys(RHYTHMUS_LABEL) as Rhythmus[]).map(id => ({ id, label: RHYTHMUS_LABEL[id] }));
 const KOSTEN_NEU: KostenArt[] = ['stelle', 'tool', 'miete', 'sonstiges'];
@@ -224,7 +226,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { name: 'Ertragsteuer-Zahlung', edit: 'kdv.steuer', minus: true, get: m => -U(m).kdvSt.zahlung, ind: true, optional: true },
       { name: 'Steuerrücklage', edit: 'kdv.steuerRuecklage', minus: true, stock: true, get: m => -U(m).kdvSt.ruecklage, ind: true, optional: true },
       { name: 'Verlustvortrag zu Jahresbeginn', edit: 'kdv.verlustvortrag', stock: true, get: m => U(m).kdvSt.verlustvortrag, ind: true, optional: true },
-      { name: 'Kontostand KD Ventures', edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
+      { name: `Kontostand ${KDV}`, edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
       { name: 'Frei verfügbar', edit: 'kdv.frei', stock: true, sum: true, key: true, get: m => U(m).kdvFrei },
       { name: 'Partnerdarlehen offen', edit: 'kdv.darlehenOffen', minus: true, stock: true, get: m => -U(m).bjoernRest, optional: true },
     );

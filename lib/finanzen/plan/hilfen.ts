@@ -7,6 +7,8 @@ import type { Einheit, FinanzDaten, Zeile } from '@/lib/finanzen/rechenkern';
 import { histIndex } from '@/lib/finanzen/rechenkern';
 import { UG_KURZ, finanzOrtAusKern, finanzOrtName } from '@/lib/einheiten';
 import { HAND_FELDER } from '@/lib/finanzen/handwerte';
+/** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
+const KDV = finanzOrtName('kdv');
 
 export const KAL = ['Jan', 'Feb', 'Mrz', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'] as const;
 
@@ -36,7 +38,7 @@ export const BEREICHE: { id: Bereich; label: string; unter: { id: Unterseite; la
   { id: 'lage', label: 'Lage', unter: [{ id: 'lage', label: 'Lage' }] },
   { id: 'planen', label: 'Planen', unter: [{ id: 'planen', label: 'Szenarien bauen' }, { id: 'szenarien', label: 'Treiber, Annahmen & Steuern' }] },
   { id: 'privat', label: 'Privat', unter: [{ id: 'privat', label: 'Privat' }] },
-  { id: 'business', label: 'Business', unter: [{ id: 'ug', label: finanzOrtName('ug') }, { id: 'kdv', label: 'KD Ventures' }, { id: 'selbst', label: 'Selbstständigkeit' }] },
+  { id: 'business', label: 'Business', unter: [{ id: 'ug', label: finanzOrtName('ug') }, { id: 'kdv', label: KDV }, { id: 'selbst', label: 'Selbstständigkeit' }] },
   { id: 'gesamt', label: 'Gesamt', unter: [{ id: 'gesamt', label: 'Gesamt' }, { id: 'entwicklung', label: 'Entwicklung' }, { id: 'geldfluss', label: 'Geldfluss' }] },
   { id: 'buchungen', label: 'Buchungen & Check', unter: [{ id: 'buchungen', label: 'Buchungen' }, { id: 'budget', label: 'Budget' }, { id: 'check', label: 'Wochen-Check' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }] },
   { id: 'ziele', label: 'Ziele & Töpfe', unter: [{ id: 'ziele', label: 'Ziele' }, { id: 'toepfe', label: `Töpfe ${UG_KURZ}` }] },

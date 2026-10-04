@@ -23,6 +23,8 @@ import { Linie } from './diagramme';
 import { FeldK } from './Annahmen';
 import { ProzentFeld } from './Steuern';
 import { EntnahmeFelder } from './Entnahme';
+/** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
+const KDV = finanzOrtName('kdv');
 
 /** Übergänge von der Gesellschaft nach Privat einstellen: Gehälter, Ausschüttung, Steuer darauf — an der Stelle, die gerade gilt (Arbeitsplan, sonst Plan). */
 function UebergaengeKarte() {
@@ -83,9 +85,9 @@ function GesamtBusiness() {
     { name: 'Kontostand', edit: 'ug.konto', stock: true, get: m => U(m).konto },
     { name: 'Frei verfügbar', edit: 'ug.frei', stock: true, key: true, get: m => U(m).frei },
     ...(ertragAn ? [{ name: 'Steuerrücklage', edit: 'ug.steuerRuecklage', minus: true, stock: true, get: (m: number) => -U(m).steuerRuecklage, ind: true } as DatenZeile] : []),
-    { grp: 'KD Ventures' },
-    { name: 'Kontostand KD Ventures', edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
-    { name: 'Frei verfügbar KD Ventures', edit: 'kdv.frei', stock: true, key: true, get: m => U(m).kdvFrei },
+    { grp: KDV },
+    { name: `Kontostand ${KDV}`, edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
+    { name: `Frei verfügbar ${KDV}`, edit: 'kdv.frei', stock: true, key: true, get: m => U(m).kdvFrei },
     { name: 'Partnerdarlehen offen', edit: 'kdv.darlehenOffen', minus: true, stock: true, get: m => -U(m).bjoernRest, ind: true },
     { grp: finanzOrtName('kdc') },
     { name: 'Umsatz netto Selbstständigkeit', edit: 'kdc.umsatz', get: m => K(m).umsatz, ind: true },
@@ -96,7 +98,7 @@ function GesamtBusiness() {
     { name: 'Frei verfügbar Selbstständigkeit', edit: 'kdc.frei', stock: true, key: true, get: m => K(m).frei },
     { grp: 'Gesamt Business' },
     // Summe der drei Gesellschaften — reine Anzeige, ändert man über die drei Zeilen „Frei verfügbar“ darüber.
-    { name: `Frei ${UG_KURZ} + KD Ventures + Selbstständigkeit`, stock: true, sum: true, key: true, get: m => frei[m - 1] },
+    { name: `Frei ${UG_KURZ} + ${KDV} + Selbstständigkeit`, stock: true, sum: true, key: true, get: m => frei[m - 1] },
   ];
   return (
     <>
@@ -107,10 +109,10 @@ function GesamtBusiness() {
         <Kachel label="Gehälter brutto je Monat" wert={<><Geld v={aw.uebergaenge.gehaelterBrutto} /> €</>} unter="Abfluss der Gesellschaft" />
       </Kacheln>
       <Karte i={0}>
-        <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: 'KD Ventures' }, { farbe: LEUCHT.achtung, text: 'Selbstständigkeit' }, { farbe: C.ink, text: 'Business gesamt' }]} />}>Business gesamt — {ps ? `Arbeitsplan „${ps.name}“` : `Treiber „${sz.name}“`}</Ueberschrift>
+        <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: KDV }, { farbe: LEUCHT.achtung, text: 'Selbstständigkeit' }, { farbe: C.ink, text: 'Business gesamt' }]} />}>Business gesamt — {ps ? `Arbeitsplan „${ps.name}“` : `Treiber „${sz.name}“`}</Ueberschrift>
         <Linie labels={d.monate} tick={3} hoehe={240} heute={m0 - 1} serien={[
           { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: ug.map(u => u.frei), breite: 2.2 },
-          { name: 'KD Ventures', farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
+          { name: KDV, farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
           { name: 'Selbstständigkeit', farbe: LEUCHT.achtung, werte: kdc.map(k => k.frei), breite: 1.4 },
           { name: 'Business gesamt', farbe: C.ink, werte: frei, gestrichelt: true, breite: 1.4 },
         ]} />
@@ -166,10 +168,10 @@ export function Gesamt() {
       ...(ertragAn ? [{ name: 'Verlustvortrag zu Jahresbeginn', edit: 'ug.verlustvortrag', stock: true, get: (m: number) => U(m).st.verlustvortrag, ind: true, optional: true } as DatenZeile] : []),
       ...(ustAn ? [{ name: 'USt offen (Durchlauf)', edit: 'ug.ustOffen', minus: true, stock: true, get: (m: number) => -U(m).ustOffen, ind: true, optional: true } as DatenZeile] : []),
     ] : []),
-    { grp: 'KD Ventures' },
-    { name: 'Kontostand KD Ventures', edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
-    { name: 'Ertragsteuer-Rücklage KD Ventures', edit: 'kdv.steuerRuecklage', minus: true, stock: true, get: m => -U(m).kdvSt.ruecklage, ind: true, optional: true },
-    { name: 'Frei verfügbar KD Ventures', edit: 'kdv.frei', stock: true, key: true, get: m => U(m).kdvFrei },
+    { grp: KDV },
+    { name: `Kontostand ${KDV}`, edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
+    { name: `Ertragsteuer-Rücklage ${KDV}`, edit: 'kdv.steuerRuecklage', minus: true, stock: true, get: m => -U(m).kdvSt.ruecklage, ind: true, optional: true },
+    { name: `Frei verfügbar ${KDV}`, edit: 'kdv.frei', stock: true, key: true, get: m => U(m).kdvFrei },
     { name: 'Partnerdarlehen offen', edit: 'kdv.darlehenOffen', minus: true, stock: true, get: m => -U(m).bjoernRest, ind: true },
     { grp: finanzOrtName('kdc') },
     { name: 'Umsatz netto Selbstständigkeit', edit: 'kdc.umsatz', get: m => K(m).umsatz, ind: true },
@@ -180,7 +182,7 @@ export function Gesamt() {
     { name: 'Kontostand Selbstständigkeit', edit: 'kdc.konto', stock: true, get: m => K(m).konto },
     { name: 'Frei verfügbar Selbstständigkeit', edit: 'kdc.frei', stock: true, key: true, get: m => K(m).frei },
     { grp: 'Gesamt' },
-    { name: `Frei ${UG_KURZ} + KD Ventures + Selbstständigkeit + Privat angespart`, edit: 'g.frei', stock: true, sum: true, key: true, get: m => gruppe[m - 1] },
+    { name: `Frei ${UG_KURZ} + ${KDV} + Selbstständigkeit + Privat angespart`, edit: 'g.frei', stock: true, sum: true, key: true, get: m => gruppe[m - 1] },
   ];
   const deckung = aw.mindestumsatz.schnitt12 > 0 ? aw.mindestumsatz.umsatzSchnitt12 / aw.mindestumsatz.schnitt12 : 1;
   return (
@@ -195,10 +197,10 @@ export function Gesamt() {
         <Kachel label="Selbstständigkeit 2026" wert={<><Geld v={selbst.frei} /> €</>} unter={<>frei nach Abschluss · Steuer <Geld v={selbst.est} farbe={C.inkDim} /> €</>} />
       </Kacheln>
       <Karte i={0}>
-        <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: 'KD Ventures' }, { farbe: LEUCHT.achtung, text: 'Selbstständigkeit' }, { farbe: LILA, text: 'Privat angespart' }, { farbe: C.ink, text: 'Gesamt' }]} />}>Gesamt — {ps ? `Arbeitsplan „${ps.name}“` : `Treiber „${sz.name}“`}</Ueberschrift>
+        <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: KDV }, { farbe: LEUCHT.achtung, text: 'Selbstständigkeit' }, { farbe: LILA, text: 'Privat angespart' }, { farbe: C.ink, text: 'Gesamt' }]} />}>Gesamt — {ps ? `Arbeitsplan „${ps.name}“` : `Treiber „${sz.name}“`}</Ueberschrift>
         <Linie labels={d.monate} tick={3} hoehe={240} heute={m0 - 1} serien={[
           { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: ug.map(u => u.frei), breite: 2.2 },
-          { name: 'KD Ventures', farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
+          { name: KDV, farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
           { name: 'Selbstständigkeit', farbe: LEUCHT.achtung, werte: kdc.map(k => k.frei), breite: 1.4 },
           { name: 'Privat angespart', farbe: LILA, werte: pr.map(p => p.angespart), breite: 1.8 },
           { name: 'Gesamt', farbe: C.ink, werte: gruppe, gestrichelt: true, breite: 1.4 },
