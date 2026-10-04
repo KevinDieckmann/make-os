@@ -43,6 +43,8 @@ Sie ist als **nicht indexierte Vorschau** aktiv (`X-Robots-Tag: noindex`, `robot
 | Feder statt Lerp (Szene folgt dem Scroll weich) | `kern.js` › `feder` | `folgen` (Sekunden) |
 | Einstieg: Lichtwolke blüht auf, Kamera fährt zurück | Shader `bluehen`, `kern.einstieg` | `einstieg: false` |
 | Aurora an den Rändern (¼ Auflösung, eigener Puffer) | `motor.js` › `auroraBauen`; je Kapitel `aurora` im Drehbuch | `aurora: false` |
+| Zahlen-Trommel: `li.zahl.trommel` — die Zahl zählt beim Aktivwerden hoch (2,2 s, easeOutQuint), unscharf und abgesenkt, solange sie läuft; beim Verlassen sofort 0; für Vorleser der echte Wert | `motor.js` › `trommel` | `text: { trommel: false }` |
+| Aufdeck-Fuß (ab 768 px): Fuß fest hinter der Seite, `div.aufdecken` deckt ihn auf (`--aufdeckung`); Kontakt-Aufruf Buchstabe für Buchstabe ab 20 %, Glas-Knopf „Erstgespräch anfragen“ (`data-erstgespraech`), riesige Wortmarke steigt in zwei Stimmen. Passt der Fuß nicht ins Fenster, bleibt er normal; springt der Tastatur-Fokus hinein, scrollt die Seite ans Ende | `motor.js` › Bühne, `css/seite.css` › Aufdeck-Fuß | `text: { fuss: false }` |
 
 Barrierefreiheit: Ohne Skript und bei „Bewegung reduzieren“ steht aller Text sofort (der Motor startet dann nicht, das CSS versteckt nur, was der Motor
 markiert); nur der Einstieg wartet mit Skript auf den Motor — mit Notfall-Auftritt nach 2,2 s. Zerlegte Überschriften tragen vorn eine unsichtbare
@@ -91,9 +93,11 @@ ruhige Fläche darüber; weniger Teilchen (1.800 statt 4.200), Netz 1.100 statt 
 ### Technik, Gewicht, Tempo (gemessen 04.10., headless Chrome, Apple M3)
 - **Eigenes WebGL statt three.js:** die Szene besteht nur aus Punkten und 1-px-Linien mit additivem Licht — dafür reichen vier kleine Shader.
   So bleibt alles selbst gehostet ohne Bibliothek (three.js allein wäre ~170 KB gzip und enthält Muster, die `pruefen.mjs` für Seiten-Skripte sperrt).
-- **Gewicht:** Startseite (HTML + CSS + sechs Skripte) **≈ 42 KB gzip**, mit Schriften ≈ 102 KB (`pruefen.mjs`: Grenze 400 KB). Standbilder je ≈ 21–46 KB gzip, nur im Fallback.
+- **Gewicht:** Startseite (HTML + CSS + sechs Skripte) **≈ 53 KB gzip** (Standard 04.10.; v5: 42 KB), mit Schriften ≈ 113 KB (`pruefen.mjs`: Grenze 400 KB). Standbilder je ≈ 21–46 KB gzip, nur im Fallback.
 - **Erster Text:** sofort als HTML (First Contentful Paint ≈ 0,08 s lokal); die Szene baut sich nach dem ersten Bild auf (einmalig ≈ 90 ms Rechnen, Handy gedrosselt ≈ 160 ms).
 - **Bildrate:** 60 fps beim Scrollen über die ganze Seite, längstes Bild 16,8 ms (Rechner und Handy-Emulation mit 4× gedrosselter CPU). Konsole leer.
+  Mit Standard (Aurora, Text-Bühne, Fuß): Rechner 60 fps / längstes Bild 16,8 ms; Handy (CPU × 4) 59,9 fps, ein Bild 33 ms. Messungen schwanken, wenn
+  der Rechner nebenbei ausgelastet ist — dann einzelne Ausreißer bis ~80 ms.
 
 ### Andocken für fokus/ (später, eine Quelle)
 `js/szene/kern.js`, `formationen.js`, `motor.js` kennen keine Inhalte. Wie beim Lichtfäden-Zeichner kann ein Generator

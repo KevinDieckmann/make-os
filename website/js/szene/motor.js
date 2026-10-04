@@ -11,7 +11,8 @@
 //   einstieg  die Lichtwolke blüht beim Laden auf, die Kamera fährt leicht zurück (Wanduhr, easeOutCubic)
 //   aurora    ruhiger Schleier aus Rauschen (fBm) in den Farben der Synapse, nur an den Bildrändern, in reduzierter Auflösung
 //   text      Text-Bühne: Überschriften mit data-kaskade kommen Buchstabe für Buchstabe (für Vorleser ein Satz),
-//             Bausteine mit data-auftritt blenden je Kapitel ein und aus (vorher · jetzt · nach) — am selben Fortschritt wie die Szene
+//             Bausteine mit data-auftritt blenden je Kapitel ein und aus (vorher · jetzt · nach) — am selben Fortschritt wie die Szene,
+//             Zahlen in .trommel .wert zählen beim Aktivwerden hoch (Trommel), der Fuß hinter .aufdecken wird beim Scrollen aufgedeckt
 // Das native Scrollen bleibt unberührt; die Szene folgt ihm über eine gedämpfte Feder (kern.feder).
 // Pausiert im verborgenen Tab, senkt bei Bedarf die Auflösung. Liest, speichert und sendet nichts.
 (function (wurzel) {
@@ -60,7 +61,12 @@
     if (T > i + (fliesst ? .6 : .55) + .08 * h && (!fliesst || lage.unten < y + vh * (.18 - .06 * h))) return 'nach';
     return 'jetzt';
   }
-  S.buehne = { zerlegen, auftritt };
+  /** Zahlen-Trommel: Stand nach ms Laufzeit (2,2 s, easeOutQuint) — Zahl und wie weit sie noch unscharf/abgesenkt ist (rest). */
+  function trommel(wert, ms) {
+    const e = Math.min(1, Math.max(0, ms / 2200)), q = 1 - Math.pow(1 - e, 5), zahl = Math.round(wert * q);
+    return { zahl, rest: wert ? 1 - zahl / wert : 0, fertig: e >= 1 };
+  }
+  S.buehne = { zerlegen, auftritt, trommel };
 
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
   const html = document.documentElement;
@@ -92,12 +98,56 @@
 
   // ── Text-Bühne (Seite) ──
   const buehne = (function () {
-    const leer = { messen() {}, setze() {} };
+    const leer = { messen() {}, setze() { return false; } };
     if (!OPT.text) return leer;
     const kapitelVon = el => { const a = el.closest('[data-zustand]'); return a ? Z.findIndex(z => z.name === a.dataset.zustand) : -1; };
     const kaskaden = OPT.text.kaskade ? Array.from(document.querySelectorAll('main [data-kaskade]'), el => ({ el, i: kapitelVon(el), los: false, lage: null })).filter(k => k.i >= 0) : [];
     const teile = OPT.text.auftritt ? Array.from(document.querySelectorAll('main [data-auftritt]'), el => ({ el, i: kapitelVon(el), z: '', lage: null })).filter(t => t.i >= 0) : [];
-    if (!kaskaden.length && !teile.length) return leer;
+    // Zahlen-Trommel: „41 %“ → unsichtbare Kopie für Vorleser + Ziffer (aria-hidden), die beim Aktivwerden hochzählt.
+    const trommeln = OPT.text.trommel === false ? [] : Array.from(document.querySelectorAll('main .trommel .wert'), el => {
+      const t = el.firstChild, m = t && t.nodeType === 3 ? /^(\d+)([\s\S]*)$/.exec(t.nodeValue) : null;
+      if (!m) return null;
+      const lesen = document.createElement('span'), ziffer = document.createElement('span'), rest = document.createElement('span');
+      lesen.className = 'unsichtbar'; lesen.textContent = t.nodeValue.replace(/\s+/g, ' ');
+      ziffer.className = 'trommel-ziffer'; ziffer.setAttribute('aria-hidden', 'true'); ziffer.style.minWidth = `${m[1].length}ch`;
+      rest.setAttribute('aria-hidden', 'true'); rest.textContent = m[2];
+      el.insertBefore(lesen, t); el.insertBefore(ziffer, t); el.insertBefore(rest, t); el.removeChild(t);
+      return { el, ziffer, wert: +m[1], i: kapitelVon(el), z: '', lage: null, t0: 0, zahl: -1 };
+    }).filter(t => t && t.i >= 0);
+    function zeigeZahl(t, stand) {
+      if (stand.zahl === t.zahl) return;
+      t.zahl = stand.zahl; t.ziffer.textContent = String(stand.zahl);
+      t.ziffer.style.filter = stand.rest > .002 ? `blur(${(stand.rest * .5).toFixed(3)}rem)` : '';
+      t.ziffer.style.transform = stand.rest > .002 ? `translateY(${(stand.rest * 1.25).toFixed(3)}rem)` : '';
+    }
+    for (const t of trommeln) zeigeZahl(t, { zahl: 0, rest: 1 });
+    // Aufdeck-Fuß: der Fuß liegt (ab 768 px) fest hinter der Seite; der Abstandhalter .aufdecken deckt ihn auf (--aufdeckung 0…1).
+    const abstand = OPT.text.fuss === false ? null : document.querySelector('.aufdecken'), fuss = abstand && document.querySelector('footer.fuss');
+    const fussTitel = fuss && fuss.querySelector('[data-kaskade-fuss]');
+    let fussAn = false, fussOben = 0, fussHoehe = 1, aufdeckung = -1;
+    if (fussTitel) { zerlegen(fussTitel, document, 'unsichtbar'); fussTitel.classList.add('kaskade'); }
+    // Tastatur: springt der Fokus in den noch verdeckten Fuß, scrollt die Seite ans Ende — er ist nie unerreichbar.
+    if (fuss) fuss.addEventListener('focusin', () => { if (fussAn && aufdeckung < .98) window.scrollTo(0, document.documentElement.scrollHeight); });
+    function fussMessen(y) {
+      if (!fuss) return;
+      html.classList.toggle('fuss-aufdecken', window.innerWidth >= 768);
+      if (fuss.offsetHeight > window.innerHeight) html.classList.remove('fuss-aufdecken'); // passt er nicht ins Fenster, bleibt er normal
+      fussAn = html.classList.contains('fuss-aufdecken');
+      abstand.style.height = fussAn ? `${fuss.offsetHeight}px` : '';
+      fussOben = abstand.getBoundingClientRect().top + y; fussHoehe = Math.max(1, fuss.offsetHeight); aufdeckung = -1;
+    }
+    function fussSetzen(y) {
+      if (!fuss) return;
+      const p = fussAn ? K.clamp((y + vh - fussOben) / fussHoehe, 0, 1) : 1;
+      if (Math.abs(p - aufdeckung) < .0005) return;
+      aufdeckung = p;
+      fuss.style.setProperty('--aufdeckung', p.toFixed(4));
+      const offen = p > 0 ? 'ja' : 'nein';
+      if (fuss.dataset.offen !== offen) fuss.dataset.offen = offen;
+      if (p > .15) html.dataset.fuss = 'offen'; else delete html.dataset.fuss;
+      if (fussTitel) { if (p >= .2) fussTitel.classList.add('los'); else if (p < .05) fussTitel.classList.remove('los'); }
+    }
+    if (!kaskaden.length && !teile.length && !trommeln.length && !fuss) return leer;
     // Reihenfolge je Kapitel → leiser Versatz beim Erscheinen (Mikro-Pille, Unterzeile, Knöpfe).
     const folge = new Map();
     for (const t of teile) { const k = folge.get(t.i) || 0; folge.set(t.i, k + 1); t.el.style.setProperty('--folge', String(k)); }
@@ -106,7 +156,7 @@
       k.el.classList.add('kaskade'); k.zurueck = z.zurueck; k.dauer = 1200 + z.buchstaben.length * 15 + 150;
     }
     const steht = el => { for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) if (getComputedStyle(p).position === 'sticky') return true; return false; };
-    for (const t of [...teile, ...kaskaden]) t.steht = steht(t.el);
+    for (const t of [...teile, ...kaskaden, ...trommeln]) t.steht = steht(t.el);
     // Anfang ohne Übergang setzen (Einstieg: das erste Kapitel beginnt „vorher“ und kommt dann herein).
     html.classList.add('text-bereit', 'text-sofort');
     for (const t of teile) { t.z = 'vorher'; t.el.dataset.auftritt = 'vorher'; }
@@ -116,19 +166,30 @@
     function zuende(k) { setTimeout(() => { k.zurueck(); k.el.classList.remove('kaskade', 'los'); }, k.dauer); }
     return {
       messen(y) {
-        for (const t of [...teile, ...kaskaden]) {
+        fussMessen(y);
+        for (const t of [...teile, ...kaskaden, ...trommeln]) {
           if (t.steht) { t.lage = null; continue; }
-          const r = t.el.getBoundingClientRect(), v = t.z === 'vorher' ? 30 : t.z === 'nach' ? -30 : 0; // ohne den eigenen Versatz
+          const r = t.el.getBoundingClientRect(), v = t.ziffer ? 0 : t.z === 'vorher' ? 30 : t.z === 'nach' ? -30 : 0; // ohne den eigenen Versatz
           t.lage = { oben: r.top + y - v, unten: r.bottom + y - v };
         }
       },
+      /** gibt true zurück, solange eine Trommel läuft (die Bild-Schleife ruht dann nicht). */
       setze(T, y) {
-        if (html.classList.contains('text-sofort')) return;
+        if (html.classList.contains('text-sofort')) return true;
+        fussSetzen(y);
+        const jetzt = performance.now();
+        let laeuftNoch = false;
+        for (const t of trommeln) {
+          const z = auftritt(t.z, T, t.i, t.lage, y, vh);
+          if (z !== t.z) { t.z = z; t.t0 = z === 'jetzt' ? jetzt : 0; if (!t.t0) zeigeZahl(t, { zahl: 0, rest: 1 }); } // verlassen: sofort auf 0
+          if (t.t0) { const st = trommel(t.wert, jetzt - t.t0); zeigeZahl(t, st); if (st.fertig) t.t0 = 0; else laeuftNoch = true; }
+        }
         for (const t of teile) {
           const z = auftritt(t.z, T, t.i, t.lage, y, vh);
           if (z !== t.z) { t.z = z; t.el.dataset.auftritt = z; }
         }
         for (const k of kaskaden) if (!k.los && auftritt('', T, k.i, k.lage, y, vh) === 'jetzt') { k.los = true; k.el.classList.add('los'); zuende(k); }
+        return laeuftNoch;
       },
     };
   })();
@@ -145,7 +206,7 @@
     const T = K.feder(lauf, ziel, dt, OPT.folgen);
     const k = Math.min(Math.floor(T), n - 2), u = K.clamp(T - k, 0, 1);
     K.feder(dolly, lesen(k, y) + (lesen(k + 1, y) - lesen(k, y)) * K.sanfter(u), dt, OPT.folgen * 1.6);
-    buehne.setze(T, y);
+    const textLaeuft = buehne.setze(T, y);
     const neu = Math.round(T);
     if (neu !== aktiv) {
       aktiv = neu; html.dataset.kapitel = Z[aktiv].name; html.dataset.lage = Z[aktiv].schub > 0 ? 'rechts' : 'mitte';
@@ -159,7 +220,7 @@
         if (mittel > .024) { szene.dpr = Math.max(1, szene.dpr - .25); gesenkt++; dauer.length = 0; szene.groesse(); }
       }
       szene.zeichnen(T, k, u);
-    } else if (!szeneKommt && ziel === T && !html.classList.contains('text-sofort')) { laeuft = false; return; } // ohne Szene: ruhen, bis wieder gescrollt wird
+    } else if (!szeneKommt && ziel === T && !textLaeuft) { laeuft = false; return; } // ohne Szene: ruhen, bis wieder gescrollt wird
     requestAnimationFrame(bild);
   }
   function start() { if (laeuft || document.hidden) return; laeuft = true; letzte = 0; requestAnimationFrame(bild); }

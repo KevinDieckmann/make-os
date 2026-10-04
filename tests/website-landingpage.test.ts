@@ -351,7 +351,7 @@ describe('website/pruefen.mjs', () => {
     expect(h1.childNodes).toEqual(vorher);
     // In der Seite: nur H1/H2 werden zerlegt (nicht das Wort INNOVATION, das die Szene formt).
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
-    const kaskaden = Array.from(index.matchAll(/<(\w+)\b[^>]*\sdata-kaskade\b[^>]*>/g), m => m[1]);
+    const kaskaden = Array.from(index.matchAll(/<(\w+)\b[^>]*\sdata-kaskade(?![-\w])[^>]*>/g), m => m[1]);
     expect(kaskaden.length).toBeGreaterThanOrEqual(6);
     for (const t of kaskaden) expect(['h1', 'h2']).toContain(t);
     expect(index).not.toMatch(/<h2 class="wort"[^>]*data-kaskade/);
@@ -421,4 +421,26 @@ describe('website/pruefen.mjs', () => {
     expect(Math.abs(halb(60) - halb(144))).toBeLessThan(.03);
     expect(b.max).toBeLessThanOrEqual(1);
   });
+
+  it('Zahlen-Trommel und Aufdeck-Fuß: zählt in 2,2 s bis zum belegten Wert, Fuß bleibt vollständig (Firmierung, Recht, Erstgespräch)', () => {
+    const { trommel } = szene().buehne;
+    expect(trommel(41, 0)).toEqual({ zahl: 0, rest: 1, fertig: false });
+    expect(trommel(41, 2200)).toEqual({ zahl: 41, rest: 0, fertig: true });
+    let vor = -1;
+    for (let ms = 0; ms <= 2200; ms += 50) { const t = trommel(66, ms); expect(t.zahl).toBeGreaterThanOrEqual(vor); vor = t.zahl; }
+    expect(trommel(7, 1100).zahl).toBeGreaterThan(5); // easeOutQuint: früh fast da
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    expect(index.match(/<li class="zahl zeigen trommel">/g)).toHaveLength(4);
+    expect(index).toContain('<div class="aufdecken" aria-hidden="true"></div>');
+    const fuss = /<footer class="fuss">[\s\S]*<\/footer>/.exec(index)?.[0] ?? '';
+    expect(fuss).toMatch(/<a class="knopf gross" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen/);
+    expect(fuss).toContain('eine Marke der KEMARIS Innovation GmbH');
+    expect(fuss).toContain('href="impressum.html"');
+    expect(fuss).toContain('href="datenschutz.html"');
+    expect(fuss).toMatch(/<p class="riesen" aria-hidden="true">/);
+    // Fester Fuß nur ab 768 px und nur mit Bewegung (der Motor setzt fuss-aufdecken; ohne Skript bleibt er im Fluss).
+    const css = readFileSync(join(ORDNER, 'css/seite.css'), 'utf8');
+    expect(css).toMatch(/@media \(min-width: 768px\) and \(prefers-reduced-motion: no-preference\) \{\s*\.fuss-aufdecken \.aufdecken/);
+  });
 });
+

@@ -12,13 +12,13 @@
 <link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png">
 <link rel="preload" href="assets/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/seite.css?v=d25fa68188">
+<link rel="stylesheet" href="css/seite.css?v=07f42f89ba">
 <script src="js/menue.js?v=bbd943c68b" defer></script>
 <script src="js/erstgespraech.js?v=84c162977a" defer></script>
-<script src="js/szene/kern.js?v=67d78ef969" defer></script>
+<script src="js/szene/kern.js?v=5bb0bc941c" defer></script>
 <script src="js/szene/formationen.js?v=15d18fe326" defer></script>
-<script src="js/drehbuch.js?v=54f55781fc" defer></script>
-<script src="js/szene/motor.js?v=438f135805" defer></script>
+<script src="js/drehbuch.js?v=27da51551b" defer></script>
+<script src="js/szene/motor.js?v=068344e049" defer></script>
 </head>
 <body>
 <a class="sprung" href="#inhalt">Zum Inhalt</a>
@@ -312,11 +312,11 @@
         <h3 class="schritt-titel"><span class="nr">1</span> Ideen gibt es genug.</h3>
         <p class="einleitung" data-auftritt>Im Mittelstand entsteht Neues jeden Tag — meist ohne eigenes Labor. Gleichzeitig steht in vielen Unternehmen der Generationswechsel an: Erfahrung, die weitergegeben werden will.</p>
         <ul class="zahlen" aria-label="Zwei Zahlen zu Ideen und Erfahrung">
-          <li class="zahl zeigen">
+          <li class="zahl zeigen trommel">
             <p class="wert">41&nbsp;%<sup><a href="#fn-1" aria-label="Quelle 1">1</a></sup></p>
             <p class="deutung">der mittelständischen Unternehmen haben in den letzten drei Jahren mindestens eine Innovation eingeführt. Vier von fünf dieser Innovatoren kommen ohne eigene Forschung und Entwicklung aus.</p>
           </li>
-          <li class="zahl zeigen">
+          <li class="zahl zeigen trommel">
             <p class="wert">57&nbsp;%<sup><a href="#fn-2" aria-label="Quelle 2">2</a></sup></p>
             <p class="deutung">der Inhaberinnen und Inhaber mittelständischer Unternehmen sind 55 Jahre oder älter — über 2 Millionen Menschen. Vor 20 Jahren waren es 20&nbsp;%.</p>
           </li>
@@ -330,11 +330,11 @@
         <h3 class="schritt-titel"><span class="nr">2</span> KI macht aus Ideen schneller Ergebnisse.</h3>
         <p class="einleitung" data-auftritt>KI ist im Alltag der Unternehmen angekommen — und wer sie einsetzt, spürt es im Wettbewerb. Sie nimmt Routine ab, beschleunigt Analyse und Vorbereitung und schafft Zeit für das, was zählt. Wir setzen sie selbst in unserer täglichen Arbeit ein: in Analyse, Vorbereitung und Vertrieb.</p>
         <ul class="zahlen" aria-label="Zwei Zahlen zu KI und Zeit">
-          <li class="zahl zeigen">
+          <li class="zahl zeigen trommel">
             <p class="wert">66&nbsp;%<sup><a href="#fn-3" aria-label="Quelle 3">3</a></sup></p>
             <p class="deutung">der Unternehmen, die KI einsetzen, haben nach eigener Angabe damit ihre Wettbewerbsposition verbessert. Insgesamt nutzen 57&nbsp;% KI — vor zwei Jahren waren es 20&nbsp;%.</p>
           </li>
-          <li class="zahl zeigen">
+          <li class="zahl zeigen trommel">
             <p class="wert">7&nbsp;%<sup><a href="#fn-4" aria-label="Quelle 4">4</a></sup></p>
             <p class="deutung">der Arbeitszeit im Mittelstand fließen im Schnitt in bürokratische Pflichten — rund 32&nbsp;Stunden pro Monat und Unternehmen. Zeit, die gute Abläufe zurückgeben können.</p>
           </li>
@@ -408,8 +408,15 @@
   </section>
 </main>
 
+<!-- Aufdeck-Fuß (ab 768 px, mit Skript und Bewegung): der Fuß liegt fest hinter der Seite, dieser Abstandhalter deckt ihn beim
+     Scrollen auf (js/szene/motor.js setzt --aufdeckung). Ohne Skript steht der Fuß ganz normal unter der Seite. -->
+<div class="aufdecken" aria-hidden="true"></div>
 <footer class="fuss">
   <div class="wrap">
+    <div class="fuss-ruf">
+      <p class="fuss-ruf-titel" data-kaskade-fuss>Sprechen wir über dein Vorhaben.</p>
+      <a class="knopf gross" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen <span class="pfeil" aria-hidden="true">→</span></a>
+    </div>
     <div class="fuss-spalten">
       <div class="fuss-marke">
         <img src="assets/logo/quer.svg" width="548" height="79" alt="MAKE Innovation">
@@ -444,6 +451,7 @@
         </ul>
       </div>
     </div>
+    <p class="riesen" aria-hidden="true"><span>M</span><span>A</span><span>K</span><span>E</span> <span>I</span><span>n</span><span>n</span><span>o</span><span>v</span><span>a</span><span>t</span><span>i</span><span>o</span><span>n</span></p>
     <div class="fuss-unten">
       <span class="absender"><span>© 2026 MAKE Innovation</span><small>eine Marke der KEMARIS Innovation GmbH</small></span>
       <a href="mailto:hello@makeinnovation.de">hello@makeinnovation.de</a>

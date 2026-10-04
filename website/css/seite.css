@@ -480,6 +480,34 @@ main { position: relative; z-index: 1; }
   html:not(.ohne-szene) .kapitel:not(.mitte) > .wrap { max-width: var(--breite); margin: 0 auto; }
 }
 
+/* ── Zahlen-Trommel (js/szene/motor.js): die Ziffer zählt hoch, solange sie läuft, ist sie unscharf und leicht abgesenkt ── */
+.trommel-ziffer { display: inline-block; text-align: right; font-variant-numeric: tabular-nums; will-change: transform, filter; }
+
+/* ── Aufdeck-Fuß: Kontakt-Aufruf, Glas-Knopf, Spalten, riesige Wortmarke, Firmierung. Ab 768 px (mit Skript und Bewegung) liegt der
+   Fuß fest hinter der Seite und wird über .aufdecken aufgedeckt (--aufdeckung 0…1 vom Motor); sonst steht er ganz normal. ── */
+.aufdecken { display: none; }
+.fuss-ruf { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--xl); padding-bottom: var(--xxl); margin-bottom: var(--xxl); border-bottom: 1px solid var(--linie); }
+.fuss-ruf-titel { font-family: var(--schrift-display); font-weight: 700; font-size: clamp(28px, 3.6vw, 52px); line-height: 1.05; letter-spacing: -.035em; color: var(--ink); max-width: 16ch; }
+.riesen {
+  margin: var(--xxl) calc(50% - 50vw) 0; width: 100vw; overflow: hidden; text-align: center; white-space: nowrap;
+  font-family: var(--schrift-display); font-weight: 700; font-size: 10.2vw; line-height: .9; letter-spacing: -.045em; color: var(--ink);
+  padding-bottom: .04em;
+}
+.riesen span { display: inline-block; }
+.riesen span:nth-child(n+5) { color: var(--inkDim); font-weight: 500; }
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .fuss-aufdecken .aufdecken { display: block; height: 85vh; }
+  .fuss-aufdecken .fuss {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 0; min-height: 85vh; display: flex; flex-direction: column; justify-content: flex-end;
+    clip-path: inset(calc((1 - var(--aufdeckung, 0)) * 100%) 0 0 0);
+  }
+  /* Zwei Stimmen: gerade Buchstaben steigen früh und kurz, ungerade später und weiter. */
+  .fuss-aufdecken .riesen span:nth-child(odd) { transform: translateY(calc((1 - clamp(0, (var(--aufdeckung, 1) - .12) / .4, 1)) * 45%)); }
+  .fuss-aufdecken .riesen span:nth-child(even) { transform: translateY(calc((1 - clamp(0, (var(--aufdeckung, 1) - .3) / .55, 1)) * 110%)); }
+  html[data-fuss="offen"] .kapitelleiste { opacity: 0; pointer-events: none; }
+  .kapitelleiste { transition: opacity .4s ease; }
+}
+
 /* Absender (Marke): „MAKE Innovation“, darunter klein „eine Marke der KEMARIS Innovation GmbH“ */
 .absender b, .absender > span { display: block; color: var(--ink); font-weight: 600; }
 .absender small { display: block; font-size: 12px; color: var(--inkLeise); }

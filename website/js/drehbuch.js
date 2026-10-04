@@ -12,7 +12,8 @@
 // Optionen der ganzen Szene (js/szene/kern.js › optionen; jede mit false abschaltbar):
 //   einstieg die Lichtwolke blüht beim Laden auf (dauer ms), die Kamera fährt dabei leicht zurück (naeher = Anteil)
 //   aurora   ruhiger Schleier in Granat und Smaragd nur an den Rändern (staerke, aufloesung = Anteil der Leinwand, oktaven)
-//   text     Überschriften mit data-kaskade Buchstabe für Buchstabe, Bausteine mit data-auftritt blenden je Kapitel ein/aus
+//   text     Überschriften mit data-kaskade Buchstabe für Buchstabe, Bausteine mit data-auftritt blenden je Kapitel ein/aus,
+//            trommel: Zahlen in .trommel .wert zählen hoch · fuss: Aufdeck-Fuß hinter .aufdecken
 //   folgen   wie weich die Szene dem Scrollen folgt (Federzeit in s)
 // Liest nichts, speichert nichts, sendet nichts.
 (function (wurzel) {
@@ -22,7 +23,7 @@
     saat: 4102026,
     einstieg: { dauer: 2600, naeher: .18 },
     aurora: { staerke: .28, aufloesung: .25, oktaven: 4 },
-    text: { kaskade: true, auftritt: true },
+    text: { kaskade: true, auftritt: true, trommel: true, fuss: true },
     folgen: .32,
     netz: { dichtBis: 140 },
     zustaende: [

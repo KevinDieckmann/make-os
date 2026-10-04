@@ -19,6 +19,10 @@ Kevin 04.10. (Vorlage getlayers.ai „New Era“): nicht alles übernehmen, nur 
 - **Aurora:** ruhiger fBm-Schleier in Granat/Smaragd nur an den Rändern, ¼ Auflösung (Handy 1/6, 3 Oktaven), sehr dezent; ohne Szene ein
   stehender Hauch per CSS.
 - Alles abschaltbar im Drehbuch (`einstieg`, `aurora`, `text`, `folgen`), Motor bleibt inhaltsfrei (fokus/ kann andocken).
+- **Zahlen-Trommel** (Vorlage „Keld Studio“): die vier belegten Zahlen zählen beim Aktivwerden hoch, Fußnoten unverändert.
+- **Aufdeck-Fuß** ab 768 px: Kontakt-Aufruf, Glas-Knopf „Erstgespräch anfragen“, Spalten, riesige Wortmarke „MAKE Innovation“, Firmierung + Recht.
+- **Offen:** Bildfolgen-Platz „Beratung“ (Kameraflug als Frames, abgeschaltet) — noch nicht gebaut.
+- Gemessen: ≈ 53 KB gzip, Rechner 60 fps / 16,8 ms, Handy (CPU × 4) 59,9 fps; Konsole leer.
 
 ## makeinnovation.de v5 „Der Weg“ — 3D-Scroll-Erlebnis (04.10.2026, nur lokal — Branch `website-v5`)
 

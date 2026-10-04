@@ -151,14 +151,14 @@ ${z}return vec3(o,sicht);}
   function einstieg(fortschritt, cfg) { return cfg ? cfg.naeher * (1 - ausLaufen(fortschritt)) : 0; }
   /** Optionen der Szene aus dem Drehbuch (alles abschaltbar: fehlt ein Eintrag oder steht false, gibt es ihn nicht).
    *  einstieg: { dauer (ms), naeher }  ·  aurora: { staerke, aufloesung (Anteil der Leinwand), oktaven, handy: {…} }
-   *  text: { kaskade, auftritt } (Überschriften Buchstabe für Buchstabe, Ein-/Ausblenden je Kapitel)  ·  folgen: Federzeit (s). */
+   *  text: { kaskade, auftritt, trommel, fuss } (Überschriften Buchstabe für Buchstabe, Ein-/Ausblenden je Kapitel, Zahlen-Trommel, Aufdeck-Fuß)  ·  folgen: Federzeit (s). */
   function optionen(drehbuch, handy) {
     const d = drehbuch || {}, mit = (wert, vorgabe) => wert ? Object.assign({}, vorgabe, wert === true ? {} : wert) : null;
     const einst = mit(d.einstieg, { dauer: 2600, naeher: .18 });
     let aurora = mit(d.aurora, { staerke: .24, aufloesung: .25, oktaven: 4, bewegung: true });
     if (aurora && handy) aurora = Object.assign(aurora, { aufloesung: .16, oktaven: 3 }, aurora.handy || {});
     if (aurora) delete aurora.handy;
-    const text = d.text === false ? null : Object.assign({ kaskade: true, auftritt: true }, d.text || {});
+    const text = d.text === false ? null : Object.assign({ kaskade: true, auftritt: true, trommel: true, fuss: true }, d.text || {});
     return { einstieg: einst, aurora, text, folgen: d.folgen ?? .32 };
   }
 
