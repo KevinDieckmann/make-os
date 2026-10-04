@@ -137,6 +137,18 @@ Bericht (nur gelesen) — Kernaussagen:
 8 Strahl zurücknehmen (Abschnitt 6) · 9 ZOE-Kugel · 10 Brain-Kugel. Offen: F2 (Rolle KD Ventures), F5 (Tiefe Cap-Table),
 F6 (Vertragswerk-Tiefe), F8 (app/(dashboard) löschen?).
 
+## 9 · Alle Listen anpassbar + Demo-Konto (Kevin 04.10.)
+„Mach weiter mit allen und den anderen Listen — wir müssen alles anpassbar haben, auch wenn wir mal einen Demo-Account machen.“
+- ZeileAktionen (Branch zeile-aktionen, auf entwicklung) auf ALLE Listen mit Einträgen: Mandate, Angebote, Kontakte, Firmen,
+  Deals, Events, Kampagnen, Segmente, Beiträge, Ziele/Meilensteine, Brain-Notizen, Bauplan-Karten, Familie, Stammdaten-Kartei,
+  Netzwerken, Projekte/Listen/Gruppen im Aufgaben-Baum, Gesellschaften (läuft im Register-Paket). `window.confirm` (~50 Dateien)
+  → `useRueckfrage`; eigene Rückgängig-Hinweise (z. B. Kalender-Verschieben) → `useRueckgaengig`. Wächtertest: jede Liste.
+- „Alles anpassbar“: jede Liste anlegen/bearbeiten/archivieren/löschen in der Oberfläche; keine fest eingebauten Einträge,
+  die man nicht entfernen kann (Vorgaben = Startwerte, überschreibbar) — passt zur Plattform-Regel.
+- **Demo-Konto:** eigene Instanz/Datenordner mit erfundenen Beispieldaten (Seed), leer startbar, alles darin bearbeitbar und
+  löschbar; nie unsere Daten (Plattform-Regel „Testkunden nie auf unserer Instanz“). Seed-Skript + Zurücksetzen-Knopf für
+  Vorführungen als eigenes Paket.
+
 ## Offen aus dem Tag (nicht vergessen)
 - Bildfolgen-Platz „Beratung“ (makeinnovation.de) und „Abend“ (fokus) für echte Fotos/Film später — Kevin: erst 3D.
 - Kevins Satz zur Vertriebserfahrung (Platzhalter), Datenschutz-Bestätigungen.
