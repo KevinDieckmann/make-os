@@ -15,7 +15,8 @@ export function Fenster({ titel, onZu, children, breit = 720 }: { titel: ReactNo
   // Nur ein Klick, der auch DANEBEN begonnen hat, schließt — wer Text markiert und dabei hinauszieht, verliert nichts.
   const daneben = useRef(false);
   useEffect(() => {
-    const taste = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); zu.current(); } };
+    // Eine offene Rückfrage (04.10., `useRueckfrage`) schließt Escape zuerst — das Fenster bleibt dann stehen.
+    const taste = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role="alertdialog"]')) { e.preventDefault(); zu.current(); } };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
   }, []);
