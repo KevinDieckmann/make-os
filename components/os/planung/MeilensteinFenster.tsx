@@ -17,6 +17,9 @@
 // Ziel vorbelegen (`MsVorgabe.zielId` — „+ Meilenstein zu diesem Ziel“ im Ziel-Detail) und kennt „wartet auf“: die Vorgänger,
 // bevorzugt aus demselben Ziel, ohne die, die einen Kreis schlössen; liegt das Datum vor dem eines Vorgängers, steht eine
 // Warnung da (kein Blockieren). Löschen räumt die Kette mit (`loescheMeilenstein`, mit „Rückgängig“).
+// Kapazität (04.10., Kevin: „Kapa reingeben für welche Sachen … realistisch planbar“): im Business „Aufwand (h)“ und
+// „Wer arbeitet daran“ (Personen aus dem Team, lib/kapazitaet) — beides optional; die Machbarkeit steht direkt darunter
+// (gerechnet auf dem Server, GET /api/kapazitaet). Nach dem Speichern laden die Kapazitäts-Ansichten neu (`kapazitaetNeu`).
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -32,10 +35,12 @@ import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { loescheMeilenstein } from './meilenstein-loeschen';
 import { neueKennung } from '@/lib/kennung';
 import { Fenster } from '../Fenster';
-import { Knopf, feld, LEUCHT } from '../ui';
+import { Knopf, MehrfachPillen, feld, LEUCHT } from '../ui';
 import { MandatWahl, useMandate } from '../zeit/MandatWahl';
 import type { PlanungStand } from './usePlanung';
 import type { Rueckgaengig } from '../ui';
+import { useKapazitaet, kapazitaetNeu } from '../kapazitaet/useKapazitaet';
+import { MachbarMarke } from '../kapazitaet/teile';
 
 /** Was das Fenster beim Anlegen vorbelegt (aus Klick-Stelle und aktivem Filter). */
 export interface MsVorgabe { faellig?: string; space?: SpaceId; einheit?: string; /** Ziel, auf das der neue Meilenstein einzahlt (Ziel-Detail). */ zielId?: string; /** Vorgänger, auf die er wartet („+ danach“ in der Kette). */ wartetAuf?: string[] }
@@ -45,6 +50,8 @@ interface Form {
   /** „wartet auf“ (01.10.): Kennungen der Vorgänger. */
   wartetAuf: string[];
   fortschritt: number; erledigt: boolean; messlatte: string;
+  /** Kapazität (04.10.): Aufwand in Stunden (Text im Feld, leer = ohne) und wer daran arbeitet. */
+  aufwand: string; personen: string[];
   /** Nur beim Anlegen (01.10., Kevin: „dahinter muss etwas sein“): erste Aufgaben, eine je Zeile — echte Aufgaben in der Meilenstein-Liste. */
   aufgaben: string;
 }
@@ -73,9 +80,9 @@ const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LE
 function formAus(m: Meilenstein | null, v: MsVorgabe): Form {
   if (m) {
     const sp = meilensteinSpace(m);
-    return { titel: m.titel, faellig: m.faellig ?? '', space: sp, einheit: m.einheit ?? '', mandatId: m.mandatId ?? '', zielId: m.zielId ?? '', wartetAuf: m.wartetAuf ?? [], fortschritt: m.fortschritt, erledigt: m.erledigt, messlatte: m.messlatte ?? '', aufgaben: '' };
+    return { titel: m.titel, faellig: m.faellig ?? '', space: sp, einheit: m.einheit ?? '', mandatId: m.mandatId ?? '', zielId: m.zielId ?? '', wartetAuf: m.wartetAuf ?? [], fortschritt: m.fortschritt, erledigt: m.erledigt, messlatte: m.messlatte ?? '', aufgaben: '', aufwand: m.aufwand ? String(m.aufwand) : '', personen: m.personen ?? [] };
   }
-  return { titel: '', faellig: v.faellig ?? '', space: v.space ?? 'business', einheit: v.space === 'privat' ? '' : v.einheit ?? '', mandatId: '', zielId: v.zielId ?? '', wartetAuf: v.wartetAuf ?? [], fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '' };
+  return { titel: '', faellig: v.faellig ?? '', space: v.space ?? 'business', einheit: v.space === 'privat' ? '' : v.einheit ?? '', mandatId: '', zielId: v.zielId ?? '', wartetAuf: v.wartetAuf ?? [], fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '', aufwand: '', personen: [] };
 }
 
 export interface MeilensteinFensterApi {
@@ -112,6 +119,9 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
       // Nur Vorgänger, die es (noch) gibt — ein inzwischen gelöschter fällt hier schon weg.
       wartetAuf: f.wartetAuf.filter(id => p.ms.some(x => x.id === id)).length ? f.wartetAuf.filter(id => p.ms.some(x => x.id === id)) : undefined,
       messlatte: f.messlatte.trim() ? f.messlatte.trim().slice(0, 300) : undefined,
+      // Kapazität (04.10.): nur im Business; der Server säubert (lib/planung/meilensteine.ts `aufwandSaeubern`).
+      aufwand: business && Number(f.aufwand.replace(',', '.')) > 0 ? Math.round(Number(f.aufwand.replace(',', '.')) * 10) / 10 : undefined,
+      personen: business && f.personen.length ? f.personen : undefined,
     };
     if (bestehend) {
       p.persistMs(p.ms.map(m => (m.id !== bestehend.id ? m : {
@@ -121,6 +131,7 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
         ...(felder.mandatId ? {} : { firmaId: undefined }),
         ...(m.abgeleitetVon ? { angepasst: true } : {}),
       })));
+      kapazitaetNeu();
       return null;
     }
     const offen = offenErledigt(p.ms).offen;
@@ -132,6 +143,7 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
     const p = stand.current;
     const ok = await p.persistMsJetzt([...p.ms, neu]);
     if (!ok) return 'Nicht gespeichert — bitte noch einmal.';
+    kapazitaetNeu();
     const titel = ersteAufgaben(f.aufgaben);
     const angelegt = titel.length ? await aufgabenAnlegen(neu.id, titel) : 0;
     if (oeffnen) { setZustand(null); router.push(WEG.meilenstein(neu.id, 'aufgaben')); }
@@ -176,6 +188,10 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
   const { zugang, mandate } = useMandate();
   const mandatZugang = zugang && mandate.length > 0;
   const business = f.space === 'business';
+  // Kapazität: Personen aus dem Team und die Machbarkeit dieses Meilensteins (nur im Business, nur lesen).
+  const kapa = useKapazitaet(business);
+  const kapaPersonen = (kapa.stand?.personen ?? []).filter(x => !x.ohneKapa || f.personen.includes(x.id));
+  const machbar = m ? kapa.stand?.posten.find(x => x.art === 'meilenstein' && x.id === m.id) : undefined;
   const laufend = Number(planung.heute.slice(0, 4));
   const jahr = f.faellig ? Number(f.faellig.slice(0, 4)) : laufend;
   // Ziel-Bezug: Jahresziele im Jahr des Datums und im selben Bereich (gemeinsame zählen mit) — der gesetzte bleibt wählbar.
@@ -200,7 +216,7 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
     setMeldung(hinweis);
     if (weiter && !(hinweis && hinweis.startsWith('Nicht gespeichert'))) {
       // Schnell-Eingabe: Datum, Bereich, Einheit (und Mandat/Ziel) bleiben stehen — nur Titel, Aufgaben und Stand neu.
-      setF(x => ({ ...x, titel: '', fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '', wartetAuf: [] }));
+      setF(x => ({ ...x, titel: '', fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '', wartetAuf: [], aufwand: '' }));
       setAngelegt(n => n + 1); setFehlt(false);
       titelRef.current?.focus();
     }
@@ -281,6 +297,23 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
               </span>
             )}
             {vorgaenger.length === 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>Erst wenn die Vorgänger erledigt sind, ist dieser Meilenstein dran — bis dahin steht er als „wartet“.</span>}
+          </div>
+        )}
+        {business && (
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'end' }}>
+              <label style={{ ...beschriftung, flex: '0 1 150px' }}>Aufwand (h)
+                <input type="number" inputMode="decimal" min={0} max={10000} step={1} value={f.aufwand} onChange={e => setze({ aufwand: e.target.value })} placeholder="z. B. 40" style={feld} aria-describedby="ms-aufwand-hilfe" />
+              </label>
+              {kapaPersonen.length > 0 && (
+                <div style={{ ...beschriftung, flex: '1 1 220px' }}>Wer arbeitet daran
+                  <MehrfachPillen liste={kapaPersonen.map(x => ({ id: x.id, label: x.name.split(/\s+/)[0] }))} aktiv={f.personen} onWahl={ids => setze({ personen: ids })} />
+                </div>
+              )}
+            </div>
+            <span id="ms-aufwand-hilfe" style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>
+              {machbar && f.aufwand === (m?.aufwand ? String(m.aufwand) : '') ? <MachbarMarke m={machbar} mitText /> : 'Geschätzte Stunden bis „fertig“ — daraus rechnet die Kapazität, ob es bis zum Datum reicht. Ohne Person zählt das ganze Team.'}
+            </span>
           </div>
         )}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>

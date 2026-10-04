@@ -94,7 +94,7 @@ describe('Punkte hinter den Kacheln', () => {
   });
 
   it('kein Link endet im Leeren: jeder Punkt und jedes „so schließen“ zeigt auf eine echte Seite', () => {
-    const ERLAUBT = /^\/os\/(finanzen(\/(planung|liquiditaet|grundlage|buchungen))?|mandate|markttraktion|planung\/(woche|jahr)|kalender|agenten|controlling|aufgaben)(\?[a-z]+=[^&#\s]+(&[a-z]+=[^&#\s]+)*)?(#(abschluss|einstellungen|modell|verlauf|kontostaende|fristen|ruecklage|ust|uebergabe|index))?$/;
+    const ERLAUBT = /^\/os\/(finanzen(\/(planung|liquiditaet|grundlage|buchungen))?|mandate|markttraktion|planung\/(woche|jahr|kapazitaet|meilenstein\/[A-Za-z0-9_~:.-]+|ziel\/[A-Za-z0-9_~:.-]+)|kalender|agenten|controlling|aufgaben)(\?[a-z]+=[^&#\s]+(&[a-z]+=[^&#\s]+)*)?(#(abschluss|einstellungen|modell|verlauf|kontostaende|fristen|ruecklage|ust|uebergabe|index))?$/;
     const b = leer({
       firmen: [{ id: 'kdc', name: 'Consulting', kontostand: 20000, stand: '2026-09-01' }, { id: 'kdv', name: 'KD Ventures', kontostand: null, stand: null }],
       grundlageMonate: monate(1, 8, 10000, 7000), planposten: [posten('miete', -2000), posten('kredit', -500, { kategorie: 'kredite' })],
@@ -110,6 +110,8 @@ describe('Punkte hinter den Kacheln', () => {
       meilensteine: [{ titel: 'Launch', bereich: 'business', faellig: '2026-09-01', fortschritt: 40, erledigt: false }],
       abschluesse: [{ firma: 'kdc', monat: '2026-08', umsatz: 10000, kosten: 7000, personal: 3000, marketingVertrieb: 400, eigenkapital: 20000, bilanzsumme: 50000, kurzfrVerbindlichkeiten: 8000, fakturierteTage: 10 }],
       fte: { kdc: 1 }, ziele: { kdc: 150000 }, kapazitaet: { kdc: 15 },
+      // Kapazität (04.10.): gemessen, damit auch ihre Punkte geprüft werden.
+      kapa: { last4: 90, bedarf4: 144, belastbar4: 160, machbar: { machbar: 1, eng: 1, nicht: 0, ueberfaellig: 0, ohneAufwand: 0, ohneTermin: 0, bewertet: 2 }, machbarAnteil: 75, planTreue: 80, istStdWoche: 29, planStdWoche: 36, pufferStdWoche: 4, erholung: 90, erholungPersonen: 1, engpassWochen: [], kritisch: [{ id: 'ms-1', art: 'meilenstein', titel: 'Launch', status: 'eng', text: 'eng' }, { id: 'z-1', art: 'ziel', titel: 'Ziel', status: 'eng', text: 'eng' }] },
     });
     const hrefs: string[] = [];
     for (const scope of ['gesamt', 'kdc', 'kdv'] as const) {

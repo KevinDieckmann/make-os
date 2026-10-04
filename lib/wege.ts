@@ -109,6 +109,8 @@ export const WEG = {
   besuch: (id?: string, a?: 'kalender' | 'wirkung' | 'kunden') => markttraktion('besuche', a, id),
   stammdaten: (tab?: string) => markttraktion('stammdaten', tab),
   jahr: () => '/os/planung/jahr',
+  /** Kapazität (04.10.): je Person und Woche — verfügbar, verplant, Engpässe, Machbarkeit; `person` springt zur Person. */
+  kapazitaet: (person?: string) => q('/os/planung/kapazitaet', { person }),
   /**
    * Ein Meilenstein im Detail (30.09.): Aufgaben (echte Aufgaben mit Unteraufgaben), Verlauf, Dateien & Links, Notizen.
    * `r` = Abschnitt, der geöffnet/angesprungen wird. Der Zeitstrahl und alle Listen verlinken nur hierüber.

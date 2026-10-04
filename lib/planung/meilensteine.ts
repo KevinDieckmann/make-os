@@ -48,6 +48,22 @@ export function sauberWartetAuf(roh: unknown, eigeneId: string): string[] | unde
   return aus.length ? aus : undefined;
 }
 
+const PERSON_KENNUNG = /^[a-z0-9][a-z0-9-]{0,47}$/;
+/** Höchstaufwand (Stunden) und Personen je Meilenstein/Ziel — wie lib/kapazitaet/typen.ts. */
+export const AUFWAND_MAX = 10_000;
+export const AUFWAND_PERSONEN_MAX = 10;
+/**
+ * Kapazität (04.10.): `aufwand` (Stunden, > 0, ≤ 10.000, eine Nachkommastelle) und `personen` (Team-Kennungen, ohne Doppelte,
+ * höchstens 10) säubern — nur im Business, sonst fallen beide weg. Für Meilensteine UND Ziele (lib/planung/ziele.ts).
+ */
+export function aufwandSaeubern(m: { aufwand?: unknown; personen?: unknown }, business: boolean): { aufwand?: number; personen?: string[] } {
+  if (!business) return {};
+  const n = Number(m.aufwand);
+  const aufwand = m.aufwand != null && m.aufwand !== '' && Number.isFinite(n) && n > 0 ? Math.min(AUFWAND_MAX, Math.round(n * 10) / 10) : undefined;
+  const personen = Array.isArray(m.personen) ? Array.from(new Set(m.personen.filter((x): x is string => typeof x === 'string' && PERSON_KENNUNG.test(x)))).slice(0, AUFWAND_PERSONEN_MAX) : [];
+  return { ...(aufwand ? { aufwand } : {}), ...(personen.length ? { personen } : {}) };
+}
+
 /** Einen Meilenstein säubern (Schreibweg der Route) — null, wenn der Titel fehlt. */
 export function sauberMeilenstein(roh: unknown): Meilenstein | null {
   const m = (roh && typeof roh === 'object' ? roh : {}) as Partial<Meilenstein> & Record<string, unknown>;
@@ -81,6 +97,8 @@ export function sauberMeilenstein(roh: unknown): Meilenstein | null {
     ...(wartetAuf ? { wartetAuf } : {}),
     // Archiv (04.10.): nur ein gültiger ISO-Zeitpunkt — die Planungsliste blendet ihn aus, zurückholbar.
     ...(typeof m.archiviertAm === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(m.archiviertAm) ? { archiviertAm: m.archiviertAm } : {}),
+    // Kapazität (04.10.): Aufwand + Personen — optional, nur Business.
+    ...aufwandSaeubern(m, space === 'business'),
   };
 }
 

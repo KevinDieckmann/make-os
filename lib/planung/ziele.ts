@@ -8,6 +8,7 @@ import { bezugSaeubern } from './mandat';
 import type { Ziel } from './typen';
 import { neueKennung } from '@/lib/kennung';
 import { istPlanJahr, zielJahr } from './zeitstrahl';
+import { aufwandSaeubern } from './meilensteine';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 /** Länge der Notiz/Beschreibung eines Ziels (wie bisher — der alte Stand kürzt nicht anders). */
@@ -47,6 +48,8 @@ export function sauberZiel(roh: unknown): Ziel | null {
   if (typeof z.archiviertAm === 'string' && ISO_ZEIT.test(z.archiviertAm)) aus.archiviertAm = z.archiviertAm;
   // Mandat an Zielen (28.09.): nur im Business, nur die Form der Kennungen — Firma/Einheit leitet der Schreibweg ab.
   Object.assign(aus, bezugSaeubern(z, aus.space === 'business'));
+  // Kapazität (04.10.): Aufwand + Personen — optional, nicht im Privat-Space.
+  Object.assign(aus, aufwandSaeubern(z, aus.space !== 'privat'));
   return aus;
 }
 

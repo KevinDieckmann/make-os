@@ -10,7 +10,7 @@
 // Jede Kennzahl sagt, wie sie rechnet (formel), woher (quelle), was gut ist
 // (gruen/rot) und — wenn Daten fehlen — wie man die Lücke schließt.
 
-export type SaeuleId = 'fh' | 'ud' | 'mt' | 'fz';
+export type SaeuleId = 'fh' | 'ud' | 'mt' | 'fz' | 'kp';
 // Sichten (28.09., eine Einheitenliste): Gesamt + die drei Gesellschaften aus lib/einheiten.ts —
 // die MAKE Innovation GmbH ist eine eigene Sicht; Namen kommen von dort (kdc heißt „Selbstständigkeit“).
 export type Scope = 'gesamt' | Gesellschaftskennung;
@@ -24,12 +24,16 @@ export const scopeAus = (v: unknown): Scope => SCOPES.find(s => s.id === v)?.id 
 // 26.09. spät: vierte Säule „Fokus & Zeit“ (10 %, Kevin). Die drei KSI-Säulen behalten ihr
 // Verhältnis 50/30/20 — sie sind um denselben Faktor 0,9 skaliert. Fehlt die Zeitmessung noch,
 // zählt die Säule nicht, und der Index ist exakt der alte.
-export const SAEULEN: { id: SaeuleId; label: string; gewicht: number; satz: string }[] = [
-  { id: 'fh', label: 'Finanzielle Gesundheit', gewicht: 0.5 * (1 - FZ_GEWICHT), satz: 'Liquidität, Forderungen, Ausgaben, Kapital' },
+// 04.10.: fünfte Säule „Kapazität“ (15 %, Kevin: „Verhältnis halten“) — alle bisherigen ×0,85. Sie trägt `nurMitMessung`:
+// ohne Messung fällt sie ganz heraus, der Index ist dann exakt der bisherige (lib/kapazitaet/kennzahlen.ts, Test).
+const REST = 1 - KP_GEWICHT;
+export const SAEULEN: { id: SaeuleId; label: string; gewicht: number; satz: string; nurMitMessung?: boolean }[] = [
+  { id: 'fh', label: 'Finanzielle Gesundheit', gewicht: 0.5 * (1 - FZ_GEWICHT) * REST, satz: 'Liquidität, Forderungen, Ausgaben, Kapital' },
   // 04.10.: „Unternehmer-DNA“ heißt jetzt „Personal“ (Kevin). Kennung 'ud' bleibt — gespeicherte Verläufe lesen weiter.
-  { id: 'ud', label: 'Personal', gewicht: 0.3 * (1 - FZ_GEWICHT), satz: 'Produktivität, Auslastung und wie das Team arbeitet' },
-  { id: 'mt', label: 'Markttraktion', gewicht: 0.2 * (1 - FZ_GEWICHT), satz: 'Vertrieb, Kunden, Wachstum' },
-  { ...FZ_SAEULE, id: 'fz' },
+  { id: 'ud', label: 'Personal', gewicht: 0.3 * (1 - FZ_GEWICHT) * REST, satz: 'Produktivität, Auslastung und wie das Team arbeitet' },
+  { id: 'mt', label: 'Markttraktion', gewicht: 0.2 * (1 - FZ_GEWICHT) * REST, satz: 'Vertrieb, Kunden, Wachstum' },
+  { ...FZ_SAEULE, id: 'fz', gewicht: FZ_GEWICHT * REST },
+  { ...KP_SAEULE, id: 'kp' },
 ];
 /** Säulen mit ihrem echten Gewicht als Text — EINE Quelle für Cockpit, ZOE und Erklärungen (z. B. „Finanzielle Gesundheit 45 % · …“). */
 export const SAEULEN_TEXT = SAEULEN.map(s => `${s.label} ${Math.round(s.gewicht * 100)} %`).join(' · ');
@@ -38,6 +42,7 @@ import type { KennzahlDefBasis, Schwelle as KernSchwelle } from '@/lib/kennzahle
 import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
 import { WEG } from '@/lib/wege';
 import { FZ_SAEULE, FZ_GEWICHT, fzKennzahlen } from '@/lib/zeitmessung/kennzahlen';
+import { KP_SAEULE, KP_GEWICHT, KP_KENNZAHLEN } from '@/lib/kapazitaet/kennzahlen';
 export type { Einheit, Richtung } from '@/lib/kennzahlen/kern';
 
 export interface KennzahlDef extends KennzahlDefBasis {
@@ -166,6 +171,8 @@ export const KENNZAHLEN: KennzahlDef[] = [
 
 // Fokus & Zeit (26.09. spät): dieselben vier Kennzahlen wie im Privat-Index, mit Business-Schwellen.
 KENNZAHLEN.push(...fzKennzahlen('business').map(k => ({ ...k, saeule: 'fz' as SaeuleId })));
+// Kapazität (04.10.): Team-Summen, personen- und firmenübergreifend — nur in der Gesamtsicht.
+KENNZAHLEN.push(...KP_KENNZAHLEN.map(k => ({ ...k, saeule: 'kp' as SaeuleId, nurGesamt: true })));
 
 export const KENNZAHL = Object.fromEntries(KENNZAHLEN.map(k => [k.id, k])) as Record<string, KennzahlDef>;
 

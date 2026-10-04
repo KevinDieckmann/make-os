@@ -4,6 +4,19 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Kapazität — Zeit und Machbarkeit je Person, Säule im Business-Index (04.10.2026, nur lokal — Branch `kapazitaet`)
+
+Kevin 04.10.: „… manchmal sind die Ziele nicht zu erreichen, weil man sonst z. B. 30 Stunden am Tag arbeiten müsste … realistisch planbar.“
+
+- **Neu:** Planung › Kapazität (je Person/Woche: verfügbar, verplant, Engpässe; Grundwert, Urlaub, feste Blöcke, Zuweisungen Mandat/Kunde),
+  Machbarkeit je Meilenstein/Ziel („machbar / eng / nicht machbar — bräuchte N h/Tag“), „Aufwand (h)“ + Personen im Meilenstein-Fenster,
+  Last-Band unter dem Strahl im Jahr, Säule „Kapazität“ 15 % im Business-Index (übrige ×0,85; ohne Messung exakt der alte Index).
+- **Datenschutz:** Erholung nur als Team-Faktor und nur bei geteilter Gesundheit; Einzelwert/Ausnahme-Titel nur für die Person selbst —
+  serverseitig gefiltert. Neuer Bestand `kapazitaet--<haushalt>` (Register).
+- **Rückweg:** Der alte Stand kennt `aufwand`/`personen` an Meilensteinen und Zielen nicht — seine Säuberung (`sauberMeilenstein`/`sauberZiel`)
+  verwirft beide beim nächsten Speichern (sonst nichts kaputt). Bestand `kapazitaet--*` bleibt liegen und wird ignoriert. Im Business-Verlauf
+  stehen ab dem Update Tage mit Säule `kp` — der alte Stand liest nur die Säulen, die er kennt. Vor dem Rückweg ggf. Aufwände notieren.
+
 ## Aufräumen — ein Weg statt zwei (04.10.2026, nur lokal — Branch `aufraeumen`)
 
 Kevin 04.10.: „Dann ist die Software fast fertig.“ Befunde der Inventur (UMBAU_ABEND_0410.md Abschnitt 8), Arbeitspaket 6:

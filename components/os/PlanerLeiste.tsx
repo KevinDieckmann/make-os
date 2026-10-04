@@ -19,7 +19,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 
-export type Horizont = 'tag' | 'woche' | 'monat' | 'quartal' | 'jahr' | 'routinen';
+export type Horizont = 'tag' | 'woche' | 'monat' | 'quartal' | 'jahr' | 'routinen' | 'kapazitaet';
 
 const HORIZONTE: { id: Horizont; label: string; href: string }[] = [
   { id: 'tag', label: 'Tag', href: '/os/planung' },
@@ -28,6 +28,8 @@ const HORIZONTE: { id: Horizont; label: string; href: string }[] = [
   { id: 'quartal', label: 'Quartal', href: '/os/planung/quartal' },
   { id: 'jahr', label: 'Jahr & Ziele', href: '/os/planung/jahr' },
   { id: 'routinen', label: 'Routinen', href: '/os/planung/routinen' },
+  // Kapazität (04.10.): Zeit und Machbarkeit je Person und Woche.
+  { id: 'kapazitaet', label: 'Kapazität', href: '/os/planung/kapazitaet' },
 ];
 
 const WOCHENTAG = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
