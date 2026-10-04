@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, LEUCHT } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabeAnlegen } from '../aufgaben/hilfe';
 import { geschenkAufgabeTitel, geschenkStand, ANLASS_WORT, GEBURTSTAG_VORLAUF, type Anstehend as AnstehendDaten, type AGeburtstag } from '@/lib/heute/anstehend';
@@ -25,9 +25,9 @@ import { tagKurz } from '@/lib/zeit/kalender-kern';
 /** „5.9.“ — mit Jahreszahl nur außerhalb des laufenden Jahres (eine Regel mit Glocke/Agenda, lib/zeit/kalender-kern `tagKurz`). */
 const kurz = (tag: string, heute: string) => tagKurz(tag, heute, { ohneNull: true });
 const zeile: React.CSSProperties = { display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.045)', textDecoration: 'none', color: C.ink, minWidth: 0, fontFamily: SCHRIFT.text };
-const vorne = (farbe: string): React.CSSProperties => ({ fontSize: 12, color: farbe, fontWeight: 600, whiteSpace: 'nowrap', minWidth: 74 });
+const vorne = (farbe: string): React.CSSProperties => ({ fontSize: TYP.bedien, color: farbe, fontWeight: 600, whiteSpace: 'nowrap', minWidth: 74 });
 const text: React.CSSProperties = { fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 };
-const kopf: React.CSSProperties = { fontSize: 11.5, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 8 };
+const kopf: React.CSSProperties = { fontSize: TYP.mikro, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 8 };
 
 /** Ist irgendetwas da? (sonst zeigt Heute keine Karte) */
 export const anstehendLeer = (d: Pick<AnstehendDaten, 'nachbereiten' | 'fristen' | 'followups' | 'buchungen' | 'vorschlaege' | 'geburtstage'> & { danke?: AnstehendDaten['danke'] }) =>
@@ -35,11 +35,11 @@ export const anstehendLeer = (d: Pick<AnstehendDaten, 'nachbereiten' | 'fristen'
 
 /** Was beim Geburtstag rechts steht: Stand aus dem Wichtigen Tag (Familie) bzw. der verknüpften Aufgabe (CRM). */
 function GeschenkRechts({ g, heute, stand, geschenk }: { g: AGeburtstag; heute: string; stand: 'offen' | 'erledigt' | null; geschenk?: (g: AGeburtstag) => void }) {
-  const fertig: React.CSSProperties = { fontSize: 12, color: LEUCHT.gut, whiteSpace: 'nowrap' };
+  const fertig: React.CSSProperties = { fontSize: TYP.bedien, color: LEUCHT.gut, whiteSpace: 'nowrap' };
   if (g.anlass) {
     const wort = ANLASS_WORT[g.anlass.aktion];
     return g.anlass.erledigt ? <span style={fertig}>✓ {wort} erledigt</span>
-      : <Link href="/os/familie" style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }} title="In der Familie abhaken">{wort} ab {kurz(g.anlass.ab, heute)}</Link>;
+      : <Link href="/os/familie" style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }} title="In der Familie abhaken">{wort} ab {kurz(g.anlass.ab, heute)}</Link>;
   }
   if (stand === 'erledigt') return <span style={fertig}>✓ Geschenk erledigt</span>;
   if (stand === 'offen') return <span style={fertig}>✓ Geschenk vorgemerkt</span>;
@@ -136,7 +136,7 @@ export function Anstehend({ i = 0 }: { i?: number }) {
   const zahl = d.nachbereiten.length + d.fristen.length + d.followups.length + d.buchungen.length + (d.vorschlaege.kalender ? 1 : 0) + d.geburtstage.length + (d.danke ?? []).length;
   return (
     <Karte i={i} akzent={d.fristen.some(f => f.kuendigung) || d.followups.some(f => f.tageUeber > 0) ? LEUCHT.achtung : undefined}>
-      <Ueberschrift farbe={LEUCHT.achtung} rechts={<span style={{ fontSize: 12, color: C.inkLeise }}>{zahl}</span>}>Steht an</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.achtung} rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{zahl}</span>}>Steht an</Ueberschrift>
       <AnstehendListe d={d} geschenkStandVon={geschenkStandVon} geschenk={geschenk} />
     </Karte>
   );

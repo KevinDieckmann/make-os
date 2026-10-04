@@ -10,7 +10,7 @@ import { useSpace } from '@/hooks/useSpace';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { LEUCHT } from './schlank';
+import { LEUCHT } from './ui';
 import { useTasks } from '@/context/TasksContext';
 import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 import { einheitName } from '@/lib/einheiten';
@@ -116,16 +116,16 @@ export function Schnellsuche() {
           {treffer.map((t, j) => (
             <button key={`${t.art}-${t.id}`} onMouseEnter={() => setI(j)} onClick={() => oeffne(t)}
               style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12, padding: '10px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left', background: j === i ? 'rgba(255,255,255,.07)' : 'transparent', color: C.ink }}>
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: ART[t.art]?.farbe ?? C.inkDim, width: 66, flex: '0 0 auto' }}>{ART[t.art]?.label ?? t.art}</span>
+              <span style={{ fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: ART[t.art]?.farbe ?? C.inkDim, width: 66, flex: '0 0 auto' }}>{ART[t.art]?.label ?? t.art}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: TYP.body, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titel}</span>
-                {t.unter && <span style={{ display: 'block', fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.unter}</span>}
+                {t.unter && <span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.unter}</span>}
               </span>
             </button>
           ))}
           {!treffer.length && q.trim().length >= 2 && <div style={{ padding: '14px 16px', color: C.inkLeise, fontSize: TYP.bedien }}>Nichts gefunden.</div>}
         </div>
-        <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(255,255,255,.06)', fontSize: 12, color: C.inkLeise }}>↑↓ wählen · Enter öffnen · Esc schließen · ⌘K von überall</div>
+        <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(255,255,255,.06)', fontSize: TYP.bedien, color: C.inkLeise }}>↑↓ wählen · Enter öffnen · Esc schließen · ⌘K von überall</div>
       </div>
     </div>
   );

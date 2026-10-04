@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Maximize2, Pencil, Share2, IdCard } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, LEUCHT } from '../schlank';
+import { Seite, Karte, Ueberschrift, Knopf, Chip, LEUCHT } from '../ui';
 import { neueKennung } from '@/lib/kennung';
 import {
   FELD_LABEL, KARTEN_TEXTFELDER, MAX_KARTEN, SCHRIFTEN, SCHRIFT_LABEL, STANDARD_DESIGN, kartenName, kartenTitel, kontrastWarnungen, nameAusKonto, nachRang,
@@ -18,7 +18,7 @@ import {
 } from '@/lib/netzwerken/karte';
 import { saeubereSvg } from '@/lib/netzwerken/svg';
 import { KartenAnsicht, QrVollbild } from './QrKarte';
-import { Leerzustand } from './bausteine';
+import { Leerzustand, Hinweis } from './bausteine';
 import { aktivLesen, aktivMerken, useKarten, type Gesellschaftsvorschlag } from './karten-daten';
 
 const MIN = 44; // kleinstes Ziel am Handy
@@ -30,7 +30,7 @@ const knopfStil: CSSProperties = {
   minHeight: MIN, padding: '0 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)', color: C.ink,
   fontFamily: SCHRIFT.text, fontSize: 15, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none',
 };
-const klein: CSSProperties = { fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 };
+const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 };
 
 /** Ein Entwurf im Formular: alle Textfelder als Text, Design-Felder leer = Standard. */
 type Entwurf = Record<KartenTextfeld, string> & { farbe: string; hintergrund: string; textfarbe: string; schrift: KartenSchrift | ''; logo: string };
@@ -83,7 +83,7 @@ async function logoVorbereiten(datei: File): Promise<{ ok: true; logo: string } 
 function FeldZeile({ label, children, hinweis }: { label: string; children: ReactNode; hinweis?: string }) {
   return (
     <label style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-      <span style={{ fontSize: 12.5, color: C.inkDim, fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600 }}>{label}</span>
       {children}
       {hinweis && <span style={klein}>{hinweis}</span>}
     </label>
@@ -96,7 +96,7 @@ function FarbFeld({ label, wert, standard, onWahl }: { label: string; wert: stri
   useEffect(() => setText(wert), [wert]);
   return (
     <div style={{ display: 'grid', gap: 5 }}>
-      <span style={{ fontSize: 12.5, color: C.inkDim, fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600 }}>{label}</span>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input type="color" aria-label={`${label} wählen`} value={hexNorm(wert) ?? standard} onChange={e => onWahl(e.target.value)}
           style={{ width: MIN, height: MIN, padding: 2, borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.05)', cursor: 'pointer', flex: '0 0 auto' }} />
@@ -171,7 +171,7 @@ function Formular({ start, titel, konto, gesellschaften, onSpeichern, onAbbruch 
           <div style={{ fontSize: TYP.body, fontWeight: 700 }}>Design dieses Profils</div>
           <div style={klein}>Alles optional — ohne Auswahl bleibt die Karte neutral (weiß, schwarz, Systemschrift). Nur dieses Design erscheint auf der Karte und im Vollbild.</div>
           <div style={{ display: 'grid', gap: 8 }}>
-            <span style={{ fontSize: 12.5, color: C.inkDim, fontWeight: 600 }}>Logo (SVG, PNG, JPG · bis etwa 200 KB)</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600 }}>Logo (SVG, PNG, JPG · bis etwa 200 KB)</span>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               {e.logo && (
                 // eslint-disable-next-line @next/next/no-img-element -- Data-URL des Profils
@@ -201,7 +201,7 @@ function Formular({ start, titel, konto, gesellschaften, onSpeichern, onAbbruch 
           </div>
         </div>
 
-        {fehler && <div role="alert" style={{ fontSize: 13.5, color: LEUCHT.kritisch, lineHeight: 1.45 }}>{fehler}</div>}
+        {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button type="button" onClick={() => void speichern()} disabled={laeuft} style={{ ...knopfStil, background: `${C.aktiv}22`, border: `1px solid ${C.aktiv}66`, color: C.aktiv, flex: '1 1 160px' }}>{laeuft ? 'Speichert …' : 'Speichern'}</button>
           <button type="button" onClick={onAbbruch} style={{ ...knopfStil, flex: '0 1 auto' }}>Abbrechen</button>
@@ -298,7 +298,7 @@ export function MeineKarte() {
       </div>
     </Seite>
   );
-  if (d.fehler && !karten.length) return <Seite titel="Meine Visitenkarten"><Karte i={0}><Leer>{d.fehler}</Leer></Karte></Seite>;
+  if (d.fehler && !karten.length) return <Seite titel="Meine Visitenkarten"><Hinweis art="kritisch" titel="Visitenkarten nicht geladen">{d.fehler}</Hinweis></Seite>;
 
   return (
     <Seite titel="Meine Visitenkarten" unter="Der QR-Code für unterwegs — wer ihn scannt, hat dich als Kontakt.">
@@ -306,7 +306,7 @@ export function MeineKarte() {
         {personenWahl}
         {d.fuerAndere && <div style={{ ...klein, padding: '8px 12px', borderRadius: 10, background: 'rgba(255,255,255,.04)' }}>Du bearbeitest die Profile von {andere ?? 'einer anderen Person'} — sie erscheinen dort unter „Meine Visitenkarte“.</div>}
         {d.offline && <div role="status" style={{ ...klein, color: LEUCHT.achtung }}>Offline-Stand auf diesem Gerät — der Code funktioniert, Bearbeiten ist erst mit Verbindung möglich.</div>}
-        {meldung && <div role="status" style={{ fontSize: 13.5, color: LEUCHT.gut }}>{meldung}</div>}
+        {meldung && <Hinweis art="gut" rolle="status">{meldung}</Hinweis>}
 
         {karten.length > 0 && aktiv && (
           <>
@@ -350,7 +350,7 @@ export function MeineKarte() {
 
         {karten.length > 0 && (
           <Karte i={3}>
-            <Ueberschrift rechts={<span style={{ fontSize: 12.5, color: C.inkLeise }}>{karten.length} von {MAX_KARTEN}</span>}>Meine Profile</Ueberschrift>
+            <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{karten.length} von {MAX_KARTEN}</span>}>Meine Profile</Ueberschrift>
             <div style={{ display: 'grid', gap: 2 }}>
               {nachRang(karten).map((k, i, alle) => (
                 <div key={k.id} style={{ display: 'grid', gap: 8, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>

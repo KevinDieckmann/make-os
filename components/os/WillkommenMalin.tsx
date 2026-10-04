@@ -13,7 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf } from './schlank';
+import { Knopf } from './ui';
 import { personLesen, beiWechsel } from '@/lib/make-one/arbeitsplatz-browser';
 
 /** Malins Licht im Bild — dieselbe Farbe wie im gezeichneten Herz. */

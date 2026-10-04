@@ -16,7 +16,7 @@ import { ZEITRAUM_LABEL, type Zeitraum } from '@/lib/zeitmessung/einheiten';
 import { MANDAT_OHNE, type MandatAuswertung, type MandatZeile, type ZeitJeMandat } from '@/lib/zeitmessung/mandate';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { einheitFarbe, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
-import { Karte, Ueberschrift, Leer, Segmente, Fortschritt } from '../schlank';
+import { Karte, Ueberschrift, Leer, Hinweis, Segmente, Fortschritt } from '../ui';
 import { MandantLink } from '../crm/MandantLink';
 import { ZEIT_EREIGNIS } from '../Kopf';
 
@@ -57,7 +57,7 @@ export function MandatBalken({ a }: { a: MandatAuswertung }) {
             </span>
             <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: C.ink, textAlign: 'right' }}>
               {zeitText(z.sek)}
-              {z.euroJeStunde ? <span title={satzTitel(z)} style={{ display: 'block', fontSize: 11.5, color: C.inkLeise }}>≈ {euro(z.euroJeStunde)}/h</span> : null}
+              {z.euroJeStunde ? <span title={satzTitel(z)} style={{ display: 'block', fontSize: TYP.bedien, color: C.inkLeise }}>≈ {euro(z.euroJeStunde)}/h</span> : null}
             </span>
             <div style={{ gridColumn: '1 / -1' }}><Fortschritt anteil={z.sek / max} farbe={farbe} /></div>
           </div>
@@ -95,14 +95,14 @@ export function ZeitJeMandatKarte({ i = 0 }: { i?: number }) {
           <button onClick={() => blaettern(-1)} aria-label={`${ZEITRAUM_LABEL[zeitraum]} davor`} className="fassbar" style={pfeil}>‹</button>
           <span style={{ minWidth: 104, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{d?.label ?? '…'}</span>
           <button onClick={() => blaettern(1)} aria-label={`${ZEITRAUM_LABEL[zeitraum]} danach`} className="fassbar" style={pfeil}>›</button>
-          {stichtag && <button onClick={() => setStichtag(undefined)} className="fassbar" style={{ ...pfeil, fontSize: 12, textDecoration: 'underline' }}>jetzt</button>}
+          {stichtag && <button onClick={() => setStichtag(undefined)} className="fassbar" style={{ ...pfeil, fontSize: TYP.bedien, textDecoration: 'underline' }}>jetzt</button>}
         </span>
         {mehrere && d && (
           <Segmente<string> liste={[{ id: 'gesamt', label: 'Gesamt' }, ...d.personen.map(p => ({ id: p.person, label: p.name }))]} aktiv={wer} onWahl={setWer} />
         )}
       </div>
-      {d === undefined ? <Leer>lade …</Leer> : !a ? <Leer>Die Zeit je Mandat ist gerade nicht erreichbar (nur im Haushalt des Inhabers).</Leer> : <MandatBalken a={a} />}
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12 }}>
+      {d === undefined ? <Leer>lade …</Leer> : !a ? <Hinweis art="info">Die Zeit je Mandat ist gerade nicht erreichbar (nur im Haushalt des Inhabers).</Hinweis> : <MandatBalken a={a} />}
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 12 }}>
         {a?.sek ? `${anteilMandat} % der bewussten Business-Zeit sind einem Mandat zugeordnet. ` : ''}
         Zuordnen im Kopf beim laufenden Fokus oder unter „Fokus-Blöcke“. „≈ €/h“ ist nur ein grober Hinweis aus dem Monatshonorar — kein Rechnungsbezug.
       </div>
@@ -121,13 +121,13 @@ export function MandatZeitMonat({ mandatId }: { mandatId: string }) {
     window.addEventListener(ZEIT_EREIGNIS, auf);
     return () => { aktiv = false; window.removeEventListener(ZEIT_EREIGNIS, auf); };
   }, []);
-  if (d === undefined) return <span style={{ fontSize: 12.5, color: C.inkLeise }}>lade …</span>;
-  if (!d) return <span style={{ fontSize: 12.5, color: C.inkLeise }}>nicht erreichbar</span>;
+  if (d === undefined) return <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>lade …</span>;
+  if (!d) return <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>nicht erreichbar</span>;
   const z = d.gesamt.zeilen.find(x => x.id === mandatId && x.id !== MANDAT_OHNE);
-  if (!z) return <span style={{ fontSize: 12.5, color: C.inkLeise }}>{d.label}: noch keine Fokus-Zeit — im Kopf „Fokus“ starten und dieses Mandat zuordnen.</span>;
+  if (!z) return <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{d.label}: noch keine Fokus-Zeit — im Kopf „Fokus“ starten und dieses Mandat zuordnen.</span>;
   const jePerson = d.personen.length > 1 ? d.personen.map(p => ({ name: p.name, sek: p.auswertung.zeilen.find(x => x.id === mandatId)?.sek ?? 0 })).filter(p => p.sek > 0) : [];
   return (
-    <span style={{ fontSize: 12.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>
+    <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>
       <b style={{ color: C.ink }}>{zeitText(z.sek)}</b> im {d.label} · {z.bloecke} {z.bloecke === 1 ? 'Block' : 'Blöcke'}
       {jePerson.length > 0 && ` · ${jePerson.map(p => `${p.name} ${zeitText(p.sek)}`).join(' · ')}`}
       {z.euroJeStunde ? <span title={satzTitel(z)} style={{ color: C.inkLeise }}> · ≈ {euro(z.euroJeStunde)}/h (grob)</span> : null}
