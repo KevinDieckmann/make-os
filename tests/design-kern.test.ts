@@ -241,3 +241,14 @@ describe('Praxis-Funde 04.10. (Handy-Tippziele, Kopf, Abschneiden)', () => {
     expect(lies('components/os/FokusView.tsx')).toContain('placeholder="eintragen …"');
   });
 });
+
+describe('Reiter liegen immer in der wischbaren Zeile (04.10., Fund Handy-Prüfung Unternehmen)', () => {
+  it('jede <Reiter>-Verwendung steht in einer .ui-reiter-zeile', async () => {
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const funde: string[] = [];
+    const lauf = (o: string) => { for (const n of readdirSync(o)) { const p = join(o, n); if (statSync(p).isDirectory()) lauf(p); else if (n.endsWith('.tsx') && !p.includes(join('ui', 'knoepfe'))) { const t = readFileSync(p, 'utf8'); if (/<Reiter\s+(liste|aktiv|onWahl)=/.test(t) && !t.includes('ui-reiter-zeile')) funde.push(p); } } };
+    lauf('components/os');
+    expect(funde).toEqual([]);
+  });
+});

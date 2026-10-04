@@ -43,7 +43,7 @@ export function Detail({ g, daten, reiter, onReiter, zurueck, onNeu, neuLaden, o
   return (
     <Seite titel={g.name} unter={[rechtsformLabel(g.rechtsform), g.sitz || g.ort, g.geloeschtAm ? 'im Papierkorb' : undefined].filter(Boolean).join(' · ') || 'Eigene Gesellschaft'}
       rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><StatusPille s={g.status} /><Knopf leise onClick={zurueck}>‹ Alle</Knopf></span>}>
-      <Reiter liste={liste} aktiv={aktiv} onWahl={onReiter} ariaLabel="Bereiche der Gesellschaft" />
+      <div className="ui-reiter-zeile"><Reiter liste={liste} aktiv={aktiv} onWahl={onReiter} ariaLabel="Bereiche der Gesellschaft" /></div>
       {sw.meldung && <Hinweis art="achtung" rolle="alert">{sw.meldung}</Hinweis>}
       {sw.unterwegs > 0 && <div role="status" style={klein}>speichert …</div>}
       {aktiv === 'steckbrief' && <Steckbrief g={g} daten={daten} schreibe={sw.schreibe} neuLaden={neuLaden} oeffne={oeffne} />}

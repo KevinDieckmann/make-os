@@ -76,7 +76,7 @@ export function UnternehmenView() {
       rechts={!neu && <Knopf haupt onClick={() => setNeu(true)}>+ Gesellschaft</Knopf>}>
       {offen && !g && <Hinweis art="info" titel="Nicht gefunden">Diese Gesellschaft gibt es im Register nicht (mehr).</Hinweis>}
       {neu && <Anlegen onFertig={async id => { setNeu(false); await laden(); if (id) geh({ g: id }); }} />}
-      <Reiter liste={SICHTEN} aktiv={sicht} onWahl={s => geh({ s })} ariaLabel="Ansicht" />
+      <div className="ui-reiter-zeile"><Reiter liste={SICHTEN} aktiv={sicht} onWahl={s => geh({ s })} ariaLabel="Ansicht" /></div>
       {sicht === 'struktur' ? <Struktur daten={daten} oeffne={id => geh({ g: id })} /> : <Uebersicht daten={daten} sicht={sicht} oeffne={id => geh({ g: id })} neuLaden={laden} />}
     </Seite>
   );
