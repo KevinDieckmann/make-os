@@ -85,6 +85,8 @@ const nextConfig = {
       { source: '/routines', destination: '/os/planung/routinen', permanent: false },
       { source: '/groceries', destination: '/os/familie', permanent: false },
       { source: '/dog', destination: '/os/familie', permanent: false },
+      // 04.10. (Aufräumen): /os/okr lief neben „Ziele & Planung“ — ein Ort für Ziele. Der OKR-Agent bleibt (ZOE, /api/okr).
+      { source: '/os/okr', destination: '/os/planung/jahr?space=business', permanent: false },
     ];
   },
 };

@@ -72,3 +72,16 @@ describe('Stapel: Meilensteine führen in die Planung', () => {
     }
   });
 });
+
+describe('OKR: ein Ort für Ziele', () => {
+  it('/os/okr ist keine eigene Seite mehr und leitet in Ziele & Planung', async () => {
+    expect(existsSync(path.join(wurzel, 'app/os/okr'))).toBe(false);
+    expect(existsSync(path.join(wurzel, 'components/os/OkrView.tsx'))).toBe(false);
+    const { default: konfig } = await import('../next.config.mjs');
+    const regeln = await (konfig as { redirects: () => Promise<{ source: string; destination: string }[]> }).redirects();
+    expect(regeln.find(r => r.source === '/os/okr')?.destination).toBe('/os/planung/jahr?space=business');
+    // Der Agent selbst bleibt (ZOE ruft /api/okr) — nur sein Verweis zeigt in die Planung.
+    expect(existsSync(path.join(wurzel, 'app/api/okr/route.ts'))).toBe(true);
+    expect(lies('lib/make-one/agents-data.ts')).not.toMatch(/href: '\/os\/okr'/);
+  });
+});
