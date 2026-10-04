@@ -46,16 +46,20 @@ async function mitglieder(haushalt: string) {
  */
 async function antwort(f: Familie, person: string, haushalt: string) {
   const s = sicht(f, person);
+  // Archiv (04.10., components/os/familie/ablage.tsx): Erinnerungen, fällige Menschen und Agenda rechnen ohne Archiviertes —
+  // der Bestand selbst (`familie`) trägt es weiter, damit die Listen es unter „Archiv“ zeigen.
+  const ohneArchiv = <T extends { archiviertAm?: string }>(l: T[]) => l.filter(x => !x.archiviertAm);
+  const a = { ...s, tage: ohneArchiv(s.tage), menschen: ohneArchiv(s.menschen), themen: ohneArchiv(s.themen), wuensche: ohneArchiv(s.wuensche), rituale: ohneArchiv(s.rituale), ideen: ohneArchiv(s.ideen) };
   const heute = heuteBerlin();
   const woche = Math.floor(Date.parse(`${heute}T12:00:00Z`) / (7 * 864e5));
   return {
     ok: true, person, familie: s,
     rhythmus: pflegeRhythmus(s, heute),
     gespraech: naechstesGespraech(s.einstellungen, heute, s.gespraeche),
-    tage: wichtigeTage(s.tage, heute, 60, s.menschen),
-    kontakte: kontaktFaellig(s.menschen, heute),
+    tage: wichtigeTage(a.tage, heute, 60, s.menschen),
+    kontakte: kontaktFaellig(a.menschen, heute),
     frage: LOVEMAP_FRAGEN[woche % LOVEMAP_FRAGEN.length],
-    agenda: agendaVorbereiten(s, heute, person),
+    agenda: agendaVorbereiten(a, heute, person),
     mitglieder: await mitglieder(haushalt),
     heute,
   };

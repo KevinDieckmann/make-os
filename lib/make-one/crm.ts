@@ -324,6 +324,11 @@ export interface Kontakt {
   vonHand?: string[];
   /** Zahlungsmöglichkeiten (28.09., lib/crm/zahlung.ts) — nur bei Personen OHNE Firma; mit Firma gelten die Werte der Firma. IBAN nie in Export/Agenten. */
   zahlung?: import('@/lib/crm/typen').Zahlungsdaten;
+  /**
+   * Archiv (04.10., optional — Kompatibilitätsmodus): archiviert am (ISO). Die Person steht dann nur noch in der Kartei-Ansicht
+   * „Archiv“ — überall sonst (Segmente, Deals, Verlauf, Recht) bleibt sie, wie sie ist. Löschen geht weiter nur über Art. 17.
+   */
+  archiviertAm?: string;
 }
 
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
@@ -331,7 +336,7 @@ export const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'le
   'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden',
   'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung', 'bean', 'geloeschteAktivitaeten', 'stationen',
   'eingeschraenkt', 'geprueftAm', 'geprueftVon', 'hinweisBeiErhebung', 'loeschfristVerlaengert', 'geburtstag',
-  'rechtsgrundlageNotiz', 'kennengelerntFuer', 'datenschutzInformiertAm'];
+  'rechtsgrundlageNotiz', 'kennengelerntFuer', 'datenschutzInformiertAm', 'archiviertAm'];
 
 /** Höchstens so viele Feldnamen in `vonHand` — mehr Stammdaten-Felder gibt es nicht. */
 export const VON_HAND_MAX = 60;
@@ -1066,6 +1071,9 @@ function kennengelerntFuerSaeubern(v: unknown): NonNullable<Kontakt['kennengeler
   return raus.length ? raus : undefined;
 }
 
+/** ISO-Zeitpunkt wie `toISOString` (Archiv-Marke der Kartei, 04.10.). */
+const ISO_ZEIT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+
 export function saeubereKontakt(e: unknown): Kontakt | null {
   if (!e || typeof e !== 'object') return null;
   const o = e as Record<string, unknown>;
@@ -1162,6 +1170,8 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     ...(istBean(o.bean) ? { bean: o.bean } : {}),
     ...(geloeschteAktivitaeten ? { geloeschteAktivitaeten } : {}),
     ...(stationen ? { stationen } : {}), ...(emails ? { emails } : {}),
+    // Archiv der Kartei (04.10.): nur ein gültiger ISO-Zeitpunkt.
+    ...(typeof o.archiviertAm === 'string' && ISO_ZEIT.test(o.archiviertAm) ? { archiviertAm: o.archiviertAm } : {}),
     ...(typen ? { typen } : {}), ...(kategorien ? { kategorien } : {}), ...(labels ? { labels } : {}),
   };
   if (!k.vorname && !k.nachname && !k.firma) return null;

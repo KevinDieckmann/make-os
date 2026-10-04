@@ -26,6 +26,8 @@ export async function angebotPost(body: Record<string, unknown>, opt: { keepaliv
 
 export function useAngebote() {
   const [angebote, setAngebote] = useState<AngebotMitStand[] | null>(null);
+  /** Entwürfe im Papierkorb (04.10.) — die Liste `angebote` enthält sie nicht. */
+  const [papierkorb, setPapierkorb] = useState<AngebotMitStand[]>([]);
   const [gesellschaften, setGesellschaften] = useState<GesellschaftAnzeige[]>([]);
   const [fehler, setFehler] = useState<string | null>(null);
   const [gesperrt, setGesperrt] = useState(false);
@@ -36,8 +38,8 @@ export function useAngebote() {
     try {
       const r = await fetch('/api/crm/angebot', { cache: 'no-store' });
       if (r.status === 403) { setGesperrt(true); setAngebote([]); return; }
-      const d = await r.json().catch(() => null) as { ok?: boolean; angebote?: AngebotMitStand[]; gesellschaften?: GesellschaftAnzeige[]; fehler?: string } | null;
-      if (d?.ok) { setAngebote(d.angebote ?? []); setGesellschaften(d.gesellschaften ?? []); setFehler(null); }
+      const d = await r.json().catch(() => null) as { ok?: boolean; angebote?: AngebotMitStand[]; papierkorb?: AngebotMitStand[]; gesellschaften?: GesellschaftAnzeige[]; fehler?: string } | null;
+      if (d?.ok) { setAngebote(d.angebote ?? []); setPapierkorb(d.papierkorb ?? []); setGesellschaften(d.gesellschaften ?? []); setFehler(null); }
       else setFehler(d?.fehler ?? `Antwort ${r.status}.`);
     } catch { setFehler('Keine Verbindung.'); }
     finally { laeuft.current = false; }
@@ -46,7 +48,7 @@ export function useAngebote() {
   /** Ein Angebot aus einer Server-Antwort in die Liste übernehmen. */
   const uebernehmen = useCallback((a: AngebotMitStand) => setAngebote(alt => (alt ? (alt.some(x => x.id === a.id) ? alt.map(x => (x.id === a.id ? a : x)) : [...alt, a]) : [a])), []);
   const entfernen = useCallback((id: string) => setAngebote(alt => (alt ? alt.filter(x => x.id !== id) : alt)), []);
-  return { angebote, gesellschaften, fehler, gesperrt, laden, uebernehmen, entfernen, setFehler };
+  return { angebote, papierkorb, gesellschaften, fehler, gesperrt, laden, uebernehmen, entfernen, setFehler };
 }
 export type AngebotDaten = ReturnType<typeof useAngebote>;
 

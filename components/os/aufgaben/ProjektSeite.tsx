@@ -7,7 +7,7 @@
 
 import { useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
-import { Karte, Segmente, Punkt, feld } from '../ui';
+import { Karte, Segmente, Punkt, feld, useRueckfrage } from '../ui';
 import { Wahl, WahlMehrfach, type WahlEintrag } from '../crm/Wahl';
 import { istSonstigeProjekt, type AufgabenSpace, type BaumProjekt } from '@/lib/aufgaben/struktur';
 import { projektStand } from '@/lib/aufgaben/uebersicht';
@@ -87,6 +87,7 @@ export function ProjektSeite({ projektId, baumProjekt, state, dispatch, space, a
   const stand = projektStand(state, { id: projektId, title: p?.title ?? 'Sonstige', color: p?.color ?? '#6E7A7D' }, heute);
   const aendern = (teil: Partial<Project>) => dispatch({ type: 'UPDATE_PROJECT', payload: { ...teil, id: projektId } });
   const [titelFehler, setTitelFehler] = useState<string | null>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
   const offeneJe = new Map<string, number>();
   for (const t of state.tasks) if (t.projectId === projektId && t.status !== 'done') for (const w of t.assignee === 'both' ? personen.map(x => x.speicher) : [t.assignee]) offeneJe.set(w, (offeneJe.get(w) ?? 0) + 1);
   const anteil = stand.gesamt ? Math.round((stand.fertig / stand.gesamt) * 100) : 0;
@@ -148,7 +149,7 @@ export function ProjektSeite({ projektId, baumProjekt, state, dispatch, space, a
             <button onClick={async () => {
               // Papierkorb (29.09., A7): die Rückfrage nennt, was mitgeht; 30 Tage wiederherstellbar (Aufgaben › Archiv).
               const mit = umfangText(projektUmfang(state, p.id, await dateienZaehlen({ projektId: p.id })));
-              if (!window.confirm(`Projekt „${p.title}“ in den Papierkorb legen?${mit ? `\n\nEs geht mit: ${mit}.` : ''}\n\n30 Tage lang unter Aufgaben › Archiv › Papierkorb wiederherstellbar.`)) return;
+              if (!(await bestaetigen({ titel: `Projekt „${p.title}“ in den Papierkorb legen?`, text: `${mit ? `Es geht mit: ${mit}.\n\n` : ''}30 Tage lang unter Aufgaben › Archiv › Papierkorb wiederherstellbar.`, ja: 'In den Papierkorb', gefahr: true }))) return;
               dispatch({ type: 'DELETE_PROJECT', payload: { id: p.id } }); gehe({ ansicht: 'space', s: space.id });
             }} style={leiseKnopf}>Löschen</button>
           </div>
@@ -168,6 +169,7 @@ export function ProjektSeite({ projektId, baumProjekt, state, dispatch, space, a
       {reiter === 'dateien' && <Karte i={2}><ProjektDateien projektId={projektId} space={space.bereich} /></Karte>}
       {reiter === 'felder' && p && <Karte i={2}><FelderVerwalten projekt={p} dispatch={dispatch} aufgaben={state.tasks.filter(t => t.projectId === projektId)} /></Karte>}
       {reiter === 'verlauf' && <Karte i={2}><VerlaufListe eintraege={verlauf} personen={personen} felder={p?.felder} aufgabe max={120} onAufgabe={id => onOeffnen(id)} /></Karte>}
+      {dialog}
     </>
   );
 }

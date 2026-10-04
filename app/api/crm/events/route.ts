@@ -25,7 +25,8 @@
 //      in den Liquiditätsplan (Speicher „liquiplan“), Kennung ev-<eventId>:
 //      einmal angelegt, danach nur Betrag und Datum nachgezogen — nie doppelt.
 // GET  ?liquiplan=<eventId> → wo das Event im Plan steht (fehlt · ok · abweichend).
-// POST { aktion: 'loeschen', eventId, uebergabenBestaetigt? } → Event löschen MIT Kaskade (28.09., W6): Teilnahmen weg, offene
+// POST { aktion: 'loeschen', eventId, uebergabenBestaetigt? } → Event ENDGÜLTIG löschen MIT Kaskade (28.09., W6; seit 04.10. nur aus dem
+//      Papierkorb — „Löschen“ in der Liste legt es erst hinein, `geloeschtAm` über /api/crm/bestand): Teilnahmen weg, offene
 //      Follow-ups des Events abgesagt — in einer Sperre (lib/crm/crm-stand.ts loeschKaskade). Hat das Event Übergaben an Kunden im
 //      Protokoll (03.10.), verlangt der Server `uebergabenBestaetigt: true` (sonst 409 mit Warnung); das Protokoll wandert dann ins
 //      Übergabe-Journal (lib/crm/uebergabe-journal.ts, 36 Monate) — der Nachweis bleibt.
@@ -46,7 +47,7 @@ import { personAus } from '@/lib/zoe/raum';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay } from '@/lib/zeit';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
-import { ladeCrm, aendereCrm, wendeCrmAn, type CrmAnwendung } from '@/lib/crm/speicher';
+import { ladeCrm, ladeCrmMitPapierkorb, aendereCrm, wendeCrmAn, type CrmAnwendung } from '@/lib/crm/speicher';
 import { loeschKaskade } from '@/lib/crm/crm-stand';
 import type { ListenOp } from '@/lib/sync';
 import { icsText, icsDateiname, checklisteAlsAufgaben, punktAendern, aufgabeAbgleichen, type PunktAenderung, type ChecklistenPunkt } from '@/lib/crm/eventplanung';
@@ -120,7 +121,9 @@ export async function POST(req: Request) {
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const eventId = String(b.eventId ?? '');
   if (!ID.test(eventId)) return NextResponse.json({ ok: false, fehler: 'eventId nötig.' }, { status: 400 });
-  const crm = await ladeCrm();
+  // Endgültig löschen geht seit 04.10. nur aus dem Papierkorb (lib/crm/ablage.ts) — dafür den Bestand MIT Papierkorb;
+  // alle anderen Aktionen sehen ein Event im Papierkorb nicht (404).
+  const crm = b.aktion === 'loeschen' ? await ladeCrmMitPapierkorb() : await ladeCrm();
   const e = crm.events.find(x => x.id === eventId);
   if (!e) return NextResponse.json({ ok: false, fehler: 'Event nicht gefunden.' }, { status: 404 });
   const person = personAus(req);

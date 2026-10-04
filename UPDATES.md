@@ -108,6 +108,28 @@ maximal 20 %, 80 % Seriosität und Souveränität. Wenn ein Investor draufschaut
   in drei Läufen; Konsole leer; 375 px ohne waagerechtes Scrollen. Datenschutz: Satz zu den acht Skripten angepasst.
 - **Offen für Kevin:** Texte bestätigen (Karte „Fokus & Klarheit“, Fakten-Zeile, Band-Überschrift, Flug-Kacheln), Off-White-Ton, Satz zur
   Vertriebserfahrung (Platzhalter). Nicht hochgeladen.
+## Löschen & Archivieren in ALLEN Listen (04.10.2026 abends, nur lokal — Branch `listen-aktionen`; UMBAU_ABEND_0410.md › 5 + 9)
+
+Kevin 04.10.: „Mach weiter mit allen und den anderen Listen — wir müssen alles anpassbar haben, auch wenn wir mal einen Demo-Account machen.“
+
+- **Jede Liste am Baustein `ZeileAktionen`** (Wischen: Archivieren + Löschen; Rechner: Knöpfe am Rand): Mandate, Angebote, Kontakte, Firmen, Deals,
+  Events (Make.One und besuchte), Kampagnen, Segmente, Beiträge, Newsletter, Ziele & Meilensteine, Aufgaben-Baum (Projekt/Gruppe/Liste), Stammdaten-Kartei,
+  Familie, Brain-Regeln, Bauplan-Karten, Visitenkarten-Profile. Tabelle „was Archiv je Liste heißt“: DESIGN_STANDARD.md › Löschen & Archivieren.
+- **Kein `window.confirm` mehr** (~55 Stellen): die Rückfrage-Karte (`useRueckfrage().bestaetigen`). Kalender-Verschieben: „Rückgängig“ jetzt 10 s.
+- **Server:** CRM-Papierkorb/-Archiv (`lib/crm/ablage.ts`, Server-Zeit; endgültig nur aus dem Papierkorb → 409; Firmen/Mandate nur ohne Verweise);
+  `ladeCrm()` und `/api/crm/bestand` blenden den Papierkorb für alle Leser aus und liefern ihn getrennt. Angebote: neue Aktion `ablage`
+  (Archiv jeder Status, Papierkorb nur Entwürfe), `loeschen` nur aus dem Papierkorb. Event endgültig (Serverweg mit Kaskade) nur aus dem Papierkorb.
+  Morgenlauf-Schritt „CRM-Papierkorb“ (nach 30 Tagen, nur ohne Verweise; Events mit Kalender-Termin/Übergaben nur von Hand).
+- **Neue optionale Felder (Kompatibilitätsmodus):** `archiviertAm` an Firma, Event, Segment, Beitrag, NewsletterAusgabe, Kampagne, Angebot, Kontakt,
+  Ziel, Meilenstein, Familien-Einträgen, Stammdaten-Sätzen; `geloeschtAm` an Firma, Mandat, Event, Segment, Beitrag, NewsletterAusgabe, Kampagne,
+  Angebot, Stammdaten-Sätzen. Kein neuer Speicher.
+- **Rückweg (alter Online-Stand liest weiter):** Der alte Stand kennt die Marken nicht — **Papierkorb und Archiv erscheinen dort wieder als normale
+  Einträge** (Felder werden ignoriert; beim nächsten Speichern des Eintrags verworfen bzw. bei Stammdaten/Familie mitgeschrieben). Vor dem Zurückrollen:
+  Papierkorb leeren oder wiederherstellen, Archiviertes bei Bedarf zurückholen. Nichts geht verloren. Der Morgenlauf-Schritt fehlt im alten Stand (harmlos).
+  Angebote: im alten Stand löscht `loeschen` einen Entwurf wieder direkt (wie vorher).
+- Prüfung: tsc, eslint (geänderte Dateien), vitest betroffene Dateien mit `--maxWorkers=1` (Wächter `tests/listen-aktionen.test.ts` + ~80 Dateien rund um
+  CRM/Events/Angebote/Kalender/Familie/Planung), Sandbox-Durchgang 375 px Wischen + 1280 px Überfahren.
+
 ## Löschen & Archivieren in Listen — Produkte und Aufgaben (04.10.2026, nur lokal — Branch `zeile-aktionen`)
 
 Kevin 04.10.: „Wenn man auf Produkte geht, kann man keine Produkte löschen … den Button, der kommt, wenn man z. B. nach links swiped: dann

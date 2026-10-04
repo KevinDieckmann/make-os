@@ -3,7 +3,7 @@
 // ─── Sport — Hyrox: Splits aus der Zielzeit, Stationszeiten, Schwächen, Log ─
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Zahl, Leer, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Knopf, Chip, Zahl, Leer, LEUCHT, useRueckfrage } from '../ui';
 import { Feld, Raster, Zeitfeld, Pillen, Hinweis, Weg, klein, datumLang, SPORT_FARBE } from './teile';
 import { STATIONEN, LAEUFE, splitsAusZielzeit, gesamtAus, vollstaendig, schwaechen, bestesJeStation, bestzeitPrognose } from '@/lib/sport/hyrox';
 import { formatZeit, formatPace } from '@/lib/sport/pace';
@@ -14,6 +14,7 @@ const F = SPORT_FARBE.hyrox;
 const ARTEN: { id: HyroxEinheit['art']; label: string }[] = [{ id: 'training', label: 'Training' }, { id: 'simulation', label: 'Simulation' }, { id: 'wettkampf', label: 'Wettkampf' }];
 
 export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute: string; schicke: (ops: Op[], erfolg?: string) => Promise<boolean> }) {
+  const { bestaetigen, dialog } = useRueckfrage();
   const hz = stand.ziele.find(z => z.art === 'hyrox' && !z.erledigt && z.zielzeitSek) ?? (hauptziel(stand.ziele, heute)?.art === 'hyrox' ? hauptziel(stand.ziele, heute) : null);
   const [zielzeit, setZielzeit] = useState<number | undefined>(hz?.zielzeitSek ?? stand.ausgang.hyroxSek ?? 5400);
   const splits = useMemo(() => (zielzeit ? splitsAusZielzeit(zielzeit) : null), [zielzeit]);
@@ -85,11 +86,12 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
               </div>
               <Chip farbe={e.art === 'wettkampf' ? F : e.art === 'simulation' ? LEUCHT.achtung : C.inkDim}>{ARTEN.find(a => a.id === e.art)?.label}</Chip>
               <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, fontVariantNumeric: 'tabular-nums', color: g ? C.ink : C.inkLeise }}>{formatZeit(g)}</span>
-              <Weg onClick={() => { if (confirm('Einheit entfernen?')) void schicke([{ op: 'hyrox-weg', id: e.id }], 'Entfernt.'); }} />
+              <Weg onClick={async () => { if (await bestaetigen({ titel: 'Einheit entfernen?', text: 'Die erfasste Hyrox-Einheit fällt weg.', ja: 'Entfernen', gefahr: true })) void schicke([{ op: 'hyrox-weg', id: e.id }], 'Entfernt.'); }} />
             </div>
           );
         })}
       </Karte>
+      {dialog}
     </>
   );
 }

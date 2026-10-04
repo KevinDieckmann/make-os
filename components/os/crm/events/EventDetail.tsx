@@ -28,7 +28,7 @@ import { Abend } from './Abend';
 import { Nachfassen } from './Nachfassen';
 import { Kalender } from './Kalender';
 
-export function EventDetail({ e, api, zuKontakt }: ReiterProps) {
+export function EventDetail({ e, api, zuKontakt, ablage }: ReiterProps) {
   const crm = api.crm!;
   const heute = crm.heute;
   const gaeste = crm.stand.teilnahmen.filter(t => t.eventId === e.id);
@@ -51,7 +51,7 @@ export function EventDetail({ e, api, zuKontakt }: ReiterProps) {
     { id: 'abend', label: 'Abend' },
     { id: 'nachfassen', label: nachfassenOffen ? `Nachfassen ${nachfassenOffen}` : 'Nachfassen' },
   ];
-  const props = { e, api, zuKontakt };
+  const props = { e, api, zuKontakt, ablage };
   const wer = zustaendig(e.zustaendig, 'event');
 
   return (

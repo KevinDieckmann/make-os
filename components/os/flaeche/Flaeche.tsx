@@ -19,7 +19,7 @@
 import { Children, createContext, isValidElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactElement, type ReactNode } from 'react';
 import { anwenden, wende, ausgeblendet, istStandard, BREITEN, type Layout, type Op, type Platz, type StandardPlatz, type Breite, type Wert } from '@/lib/flaeche/modell';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Leer, Knopf, useBreit, feld } from '../ui';
+import { Karte, Leer, Knopf, useBreit, feld, useRueckfrage } from '../ui';
 import { WIDGETS, KATALOG, type EinstellungDef } from './widgets';
 
 export interface KachelProps { id: string; titel: string; breite?: Breite; children: ReactNode }
@@ -34,6 +34,7 @@ const GAP = 14, ZEILE = 8;
 
 export function Flaeche({ seite, widgets = [], standard: standardProp, children, katalog = true }: { seite: string; widgets?: StandardPlatz[]; standard?: StandardPlatz[]; children?: ReactNode; katalog?: boolean }) {
   const schmal = !useBreit();
+  const { bestaetigen, dialog } = useRueckfrage();
   // Feste Karten aus den Kindern einsammeln (Reihenfolge = Standard)
   const kinder = useMemo(() => {
     const m = new Map<string, KachelProps>();
@@ -120,7 +121,7 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
           <>
             <span style={{ fontSize: TYP.bedien, color: C.inkLeise, marginRight: 'auto', ...(schmal ? { order: 9, flex: '1 1 100%' } : {}) }}>{schmal ? 'Am ⋮⋮ ziehen · ✕ ausblenden · ⚙ einstellen' : 'Am ⋮⋮ ziehen · Breite ⅓ ½ ⅔ ▭ · ✕ ausblenden · ⚙ einstellen'}</span>
             {katalog && <Knopf leise onClick={() => setKatalogOffen(o => !o)}>{katalogOffen ? 'Katalog schließen' : '+ Widget'}</Knopf>}
-            {zuruecksetzbar && <Knopf leise onClick={() => { if (window.confirm('Diese Seite auf den Standard zurücksetzen?')) { tu({ op: 'zuruecksetzen' }); setKatalogOffen(false); } }}>Zurücksetzen</Knopf>}
+            {zuruecksetzbar && <Knopf leise onClick={async () => { if (await bestaetigen({ titel: 'Diese Seite auf den Standard zurücksetzen?', text: 'Anordnung, Breiten und Widgets dieser Seite gehen auf den Standard zurück.', ja: 'Zurücksetzen' })) { tu({ op: 'zuruecksetzen' }); setKatalogOffen(false); } }}>Zurücksetzen</Knopf>}
             <Knopf farbe={LEUCHT.gut} onClick={() => { setBearbeiten(false); setKatalogOffen(false); }}>Fertig</Knopf>
           </>
         ) : (
@@ -128,6 +129,7 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
             <span aria-hidden style={{ fontSize: 13 }}>✎</span> Anpassen
           </button>
         )}
+        {dialog}
       </div>
 
       {bearbeiten && katalogOffen && (

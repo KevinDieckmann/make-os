@@ -7,7 +7,7 @@ import type { MutableRefObject } from 'react';
 import { ohneStand } from '@/lib/make-one/liste-stand';
 import type { Ziel } from '@/lib/planung/typen';
 import type { PlanungStand } from './usePlanung';
-import type { Rueckgaengig } from './Rueckgaengig';
+import type { Rueckgaengig } from '../ui';
 
 /** Löscht das Ziel; `stand` ist der jüngste Stand (das Zurückholen läuft später). Liefert, wie viele Meilensteine ohne Ziel bleiben. */
 export function loescheZiel(stand: MutableRefObject<PlanungStand>, id: string, rueck: Rueckgaengig): number {

@@ -9,13 +9,14 @@
 
 import { kennengelerntZeilen } from '@/lib/crm/netzwerken-recht';
 import { useNachfrage } from './Nachfrage';
+import { useArt17 } from './kontakt/art17';
 import { localDay } from '@/lib/zeit';
 import { DealAnlegen } from './DealAnlegen';
 import { useEffect, useState, type ReactNode, type KeyboardEvent as TastenEreignis } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Punkt, feld, LEUCHT } from '../ui';
+import { Ueberschrift, Knopf, Punkt, feld, LEUCHT, useRueckfrage } from '../ui';
 import { WEG } from '@/lib/wege';
-import { anzeigename, STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN, type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt, ROLLEN as KONTAKT_ROLLEN, ROLLE_LABEL, rollenVon, type Rolle } from '@/lib/make-one/crm';
+import { STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN, type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt, ROLLEN as KONTAKT_ROLLEN, ROLLE_LABEL, rollenVon, type Rolle } from '@/lib/make-one/crm';
 import type { Firma } from '@/lib/crm/typen';
 import { art14 } from '@/lib/crm/recht';
 import { nachweisLuecken } from '@/lib/crm/einwilligung';
@@ -351,6 +352,8 @@ async function datenschutzAktion(api: CrmApi, body: Record<string, unknown>): Pr
  */
 export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; heute: string; setze: Setze }) {
   const { frage, dialog: nachfrage } = useNachfrage();
+  const { bestaetigen, dialog: rueckfrage } = useRueckfrage();
+  const art17 = useArt17(api);
   const [ew, setEw] = useState<EwEingabe | null>(null);
   // Werbesperre aufheben (K2 #64): nur zusammen mit einer neuen Einwilligung samt Nachweis — ein Schritt, der Server prüft es.
   const [auf, setAuf] = useState<EwEingabe | null>(null);
@@ -426,7 +429,7 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
       <div>
         <Ueberschrift>Werbewiderspruch (Art. 21)</Ueberschrift>
         {!k.werbesperre
-          ? <Knopf leise onClick={() => { if (window.confirm('Werbewiderspruch eintragen? Die Person wird aus allen Listen genommen — dauerhaft.')) void setze({ werbesperre: { seit: heute, grund: 'Widerspruch' }, wiedervorlage: undefined, naechsterSchritt: undefined }); }}>Werbesperre eintragen</Knopf>
+          ? <Knopf leise onClick={async () => { if (await bestaetigen({ titel: 'Werbewiderspruch eintragen?', text: 'Die Person wird aus allen Listen genommen — dauerhaft.', ja: 'Sperren', gefahr: true })) void setze({ werbesperre: { seit: heute, grund: 'Widerspruch' }, wiedervorlage: undefined, naechsterSchritt: undefined }); }}>Werbesperre eintragen</Knopf>
           : !auf
             ? (!gesperrt && <Knopf leise onClick={() => setAuf({ ...EW_LEER(heute), grundlage: 'einwilligung' })}>Sperre aufheben (nur mit neuer Einwilligung)</Knopf>)
             : (
@@ -443,44 +446,16 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
         <Ueberschrift>Betroffenenrechte</Ueberschrift>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${k.id}`; }}>Auskunft (Art. 15) als Datei</Knopf>
-          <Knopf leise aus={gesperrt} onClick={async () => {
-            if (!window.confirm(`${anzeigename(k)} endgültig löschen (Art. 17)? Besser oft: Werbesperre — dann bleibt „nicht anschreiben“ erhalten.`)) return;
-            const grund = await frage('Grund für das Löschprotokoll', { vorgabe: 'Löschverlangen Art. 17', hinweis: 'Ohne Personendaten — der Eintrag bleibt als Nachweis.' });
-            if (grund === null) return;
-            const r = await fetch('/api/crm/datenschutz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: k.id, grund }) }).then(x => x.json()).catch(() => null);
-            if (!r?.ok) { api.setFehler(r?.fehler ?? 'Nicht gelöscht.'); return; }
-            // W3 (28.09.): was jetzt zu tun ist — Deals ohne Person, Aufgaben, die den Namen noch nennen.
-            const text = loeschErgebnis(r);
-            await api.laden(true);
-            if (text) api.setHinweis(text);
-          }}>Löschen (Art. 17)</Knopf>
+          {/* Ein Weg für Zeile und Karteikarte (04.10., kontakt/art17.tsx): Rückfrage → Grund fürs Löschprotokoll → Ergebnis. */}
+          <Knopf leise aus={gesperrt} onClick={() => art17.loeschen(k)}>Löschen (Art. 17)</Knopf>
+          {art17.dialog}
           {nachfrage}
+          {rueckfrage}
         </div>
         {gesperrt && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Löschen erst nach dem Aufheben der Einschränkung — sie heißt „aufbewahren“.</div>}
       </div>
     </div>
   );
-}
-
-/**
- * Ergebnis des Löschens (Art. 17) als Hinweis zum Abarbeiten (W3, 28.09.): Deals, an denen nur diese Person hing,
- * und Aufgaben, die sie nur beim Namen nennen (nicht geändert). Nichts offen → null.
- */
-function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; aufgabenPruefen?: string[]; vollstaendig?: boolean; hinweis?: string; warnung?: string; inApple?: number; uebergaben?: string[] }): string | null {
-  const deals = r.dealsOhnePerson ?? [];
-  const aufgaben = r.aufgabenPruefen ?? [];
-  const teile = [
-    // Paket D-C (#21): nicht alle Bestände bestätigt — das Löschprotokoll steht auf „unvollständig“, MAKE OS holt es nach.
-    r.vollstaendig === false ? (r.hinweis ?? 'Nicht alle Bestände bestätigt — wird automatisch nachgeholt.') : '',
-    r.warnung ?? '',
-    deals.length ? `${deals.length === 1 ? '1 Deal hat' : `${deals.length} Deals haben`} jetzt keine Person mehr: ${deals.slice(0, 5).map(d => `„${d.titel}“`).join(', ')}${deals.length > 5 ? ' …' : ''} — unter Deals eine Person zuordnen oder den Deal schließen.` : '',
-    // Art. 19 (03.10.): an Kunden übergeben — der Empfänger muss von der Löschung erfahren.
-    ...(r.uebergaben ?? []),
-    aufgaben.length ? `${aufgaben.length === 1 ? '1 Aufgabe nennt' : `${aufgaben.length} Aufgaben nennen`} den Namen noch (nicht geändert) — bitte unter Aufgaben prüfen.` : '',
-    // K2 (29.09.): Kalender/Erinnerungen/Kontakte sind Spiegel aus Apple — dort löschen, sonst kommt es mit dem Abgleich zurück.
-    r.inApple ? `${r.inApple === 1 ? '1 Eintrag in Apple oder Google (Kalender, Erinnerungen, Kontakte oder Gmail) nennt' : `${r.inApple} Einträge in Apple oder Google (Kalender, Erinnerungen, Kontakte oder Gmail) nennen`} die Person — bitte dort löschen (MAKE OS spiegelt nur).` : '',
-  ].filter(Boolean);
-  return teile.length ? `Gelöscht.\n${teile.join('\n')}` : null;
 }
 
 /** Tag plus/minus n Monate (Monatsende gekappt) — für „über 12 Monate her“. */

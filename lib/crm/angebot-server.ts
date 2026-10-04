@@ -10,7 +10,8 @@
 //               den bestehenden Weg (/api/crm/lead aktion „mandat“, vorbelegt aus dem Angebot)
 //   ablehnen    Grund Pflicht, Deal verloren mit Grund, Follow-up abgesagt
 //   version     neue Fassung als Entwurf mit Bezug (alte bleibt lesbar)
-//   loeschen    nur Entwürfe
+//   loeschen    nur Entwürfe, und nur aus dem Papierkorb (04.10., „sicher statt endgültig“)
+//   ablage      Archiv (jeder Status) und Papierkorb (nur Entwürfe) — hinein/zurück, Marke = Server-Zeit (04.10.)
 //   ablauf      gestellt → abgelaufen nach „gültig bis“ (beim Lesen und täglich im Morgenlauf) + Follow-up-Hinweis
 // Kanal-Ampel vor dem Stellen: Werbesperre/Einschränkung (Art. 18/21) blockt mit Grund —
 // sonst ist ein angefragtes Angebot Vertragsanbahnung (Art. 6 Abs. 1 lit. b), gelb = Hinweis.
@@ -97,12 +98,38 @@ export async function angebotLoeschen(p: { id: string; stand?: unknown; wer?: We
     gab = true;
     try {
       if (!istEntwurf(a)) throw new AngebotFehler('Gestellte Angebote werden nicht gelöscht (Geschäftsunterlage) — ablehnen oder neue Version.', 409, { aktuell: mitStand(a) });
+      // Sicher statt endgültig (04.10.): erst in den Papierkorb (`angebotAblage`), endgültig nur von dort.
+      if (!a.geloeschtAm) throw new AngebotFehler(`„${a.titel || 'Entwurf'}“ liegt nicht im Papierkorb — Löschen legt einen Entwurf erst in den Papierkorb (30 Tage wiederherstellbar), endgültig nur von dort.`, 409, { aktuell: mitStand(a) });
       standPruefen(a, p.stand);
       return { ...b, angebote: b.angebote.filter(x => x.id !== p.id) };
     } catch (e) { fehler = e as AngebotFehler; return b; }
   }, p.wer);
   if (fehler) throw fehler;
   if (!gab) throw new AngebotFehler('Angebot nicht gefunden.', 404);
+}
+
+/**
+ * Archiv & Papierkorb eines Angebots (04.10., Kevin: „alles anpassbar“): `archiv` blendet jedes Angebot aus der Liste aus
+ * (zurückholbar); `papierkorb` nur Entwürfe — ein gestelltes Angebot ist eine Geschäftsunterlage (Nummer, PDF) und bleibt.
+ * Die Marke setzt der Server (jetzt); `zurueck` nimmt sie weg. Kein Stand nötig: die Marke ändert keinen Inhalt.
+ */
+export async function angebotAblage(p: { id: string; art: 'archiv' | 'papierkorb'; zurueck?: boolean; wer?: Wer; jetzt?: Date }): Promise<Angebot> {
+  let fehler: AngebotFehler | null = null;
+  let ergebnis: Angebot | null = null;
+  const jetzt = (p.jetzt ?? new Date()).toISOString();
+  const feld = p.art === 'archiv' ? 'archiviertAm' : 'geloeschtAm';
+  await aendereCrm(b => {
+    const a = (b.angebote ?? []).find(x => x.id === p.id);
+    try {
+      if (!a) throw new AngebotFehler('Angebot nicht gefunden.', 404);
+      if (p.art === 'papierkorb' && !p.zurueck && !istEntwurf(a)) throw new AngebotFehler('Gestellte Angebote kommen nicht in den Papierkorb (Geschäftsunterlage) — archivieren blendet sie aus der Liste aus.', 409, { aktuell: mitStand(a) });
+      const neu: Angebot = p.zurueck ? (({ [feld]: _weg, ...rest }) => rest as Angebot)(a) : { ...a, [feld]: a[feld] ?? jetzt };
+      ergebnis = neu;
+      return neu === a ? b : { ...b, angebote: b.angebote.map(x => (x.id === a.id ? neu : x)) };
+    } catch (e) { fehler = e as AngebotFehler; return b; }
+  }, p.wer);
+  if (fehler) throw fehler;
+  return ergebnis!;
 }
 
 /** Neue Version: Entwurf mit Bezug auf das gestellte Angebot. Gibt es schon einen offenen Nachfolge-Entwurf, kommt der zurück. */

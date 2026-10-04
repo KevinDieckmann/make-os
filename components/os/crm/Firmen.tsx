@@ -9,10 +9,17 @@ import { WEG, eventLink } from '@/lib/wege';
 // Webseite an EINER Stelle. Die Karteikarte zeigt alle Personen, Chancen,
 // Mandate und den gemeinsamen Verlauf. Rolle wird aus den Personen
 // abgeleitet, bis sie von Hand gesetzt wird.
+// 04.10. (Kevin: „alles anpassbar“): jede Firmenzeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Ansicht
+// „Archiv“, zurückholbar, an Personen/Deals/Mandaten weiter lesbar) und Löschen (Papierkorb 30 Tage, Rückgängig) — in den
+// Papierkorb nur eine LEERE Firma (keine Personen, Deals, Mandate, Töchter; der Server prüft dazu Rechnungen, Dateien,
+// Follow-ups, Events). Hängt etwas daran, bietet die Rückfrage das Archiv an. Die Sicherung beim Zusammenführen bleibt.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT, ZeileAktionen } from '../ui';
+import { useCrmAblage, PapierkorbKarte, type CrmAblage } from './ablage';
+import type { Kontakt } from '@/lib/make-one/crm';
+import type { CrmBestand } from '@/lib/crm/typen';
 import { anzeigename, type Aktivitaet } from '@/lib/make-one/crm';
 import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
 import { dealZuFirma, mandatZuFirma } from '@/lib/crm/firmen-bezug';
@@ -41,38 +48,67 @@ export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
 const RECHTSFORMEN = ['GmbH', 'UG (haftungsbeschränkt)', 'GmbH & Co. KG', 'AG', 'SE', 'KG', 'OHG', 'GbR', 'e. K.', 'Einzelunternehmen', 'Freiberufler', 'e. V.', 'eG', 'Ltd.', 'Körperschaft öffentl. Rechts'];
 const rolle = (r: FirmaRolle) => ROLLEN.find(x => x.id === r) ?? ROLLEN[ROLLEN.length - 1];
 
-type Ansicht = 'alle' | FirmaRolle | 'ohne_branche' | 'dubletten';
+type Ansicht = 'alle' | FirmaRolle | 'ohne_branche' | 'dubletten' | 'archiv' | 'papierkorb';
+
+/** Was an einer Firma hängt (Personen auch ehemalige, Deals, Mandate, Töchter) — leer = darf in den Papierkorb. */
+function firmaVerweise(f: Firma, b: CrmBestand, kontakte: Kontakt[]): string {
+  const { aktuell, ehemalig } = personenAufteilen(kontakte, f.id);
+  const p = aktuell.length + ehemalig.length, d = b.chancen.filter(c => dealZuFirma(c, f)).length, m = b.mandate.filter(x => mandatZuFirma(x, f)).length, t = toechterVon(b.firmen, f.id).length;
+  return [p ? `${p} Person${p === 1 ? '' : 'en'}` : '', d ? `${d} Deal${d === 1 ? '' : 's'}` : '', m ? `${m} Mandat${m === 1 ? '' : 'e'}` : '', t ? `${t} Tochterfirm${t === 1 ? 'a' : 'en'}` : ''].filter(Boolean).join(', ');
+}
+
+/** Löschen = Papierkorb, nur leer; sonst Rückfrage mit dem Archiv als Weg (nichts verschwindet still). */
+export function firmaLoeschen(ablage: CrmAblage, f: Firma, b: CrmBestand, kontakte: Kontakt[]) {
+  const dran = firmaVerweise(f, b, kontakte);
+  if (!dran) { ablage.loeschen(f.id, f.name); return; }
+  ablage.fragen({
+    titel: `„${f.name}“ kann nicht in den Papierkorb`,
+    text: `An der Firma hängen noch ${dran}. Im Papierkorb wäre sie überall ausgeblendet — diese Einträge zeigten ins Leere. Archivieren blendet sie nur aus der Firmenliste aus und lässt alles lesbar; zum Löschen erst die Personen umhängen bzw. Deals und Mandate einer anderen Firma zuordnen.`,
+    wahl: [{ label: 'Archivieren', tun: () => ablage.archivieren(f.id, f.name) }],
+  });
+}
 const FIRMEN_SPALTEN = '10px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1.3fr) minmax(0,.8fr) 44px 84px';
 
 export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: CrmApi; auswahl: string | null; setAuswahl: (id: string | null) => void; zuPerson: (id: string) => void; suche: string }) {
   const breit = useBreit();
   const [ansicht, setAnsicht] = useState<Ansicht>('alle');
   const [mehr, setMehr] = useState(80);
-  const firmen = useMemo(() => api.crm?.stand.firmen ?? [], [api.crm]);
+  const alleFirmen = api.crm?.stand.firmen;
+  // Archivierte Firmen nur in der Ansicht „Archiv“ — überall sonst (Zahlen, Rollen, Dubletten) zählt die laufende Liste.
+  const firmen = useMemo(() => (alleFirmen ?? []).filter(x => !x.archiviertAm), [alleFirmen]);
+  const archiv = useMemo(() => (alleFirmen ?? []).filter(x => x.archiviertAm), [alleFirmen]);
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
+  const ablage = useCrmAblage(api, 'firmen');
   // Personen einer Firma nur über die Stationen (28.09.) — laufende Stationen.
   const personenJe = useMemo(() => new Map(Array.from(personenJeFirma(kontakte, { nurAktiv: true }).entries()).map(([id, l]) => [id, l.length])), [kontakte]);
   const dubl = useMemo(() => (ansicht === 'dubletten' ? firmenDubletten(firmen) : []), [ansicht, firmen]);
   const ANSICHTEN: { id: Ansicht; label: string }[] = [
     { id: 'alle', label: `Alle ${firmen.length}` }, ...ROLLEN.filter(r => firmen.some(f => f.rolle === r.id)).map(r => ({ id: r.id as Ansicht, label: `${r.label} ${firmen.filter(f => f.rolle === r.id).length}` })),
     { id: 'ohne_branche', label: 'Ohne Branche' }, { id: 'dubletten', label: 'Dubletten' },
+    ...(archiv.length || ansicht === 'archiv' ? [{ id: 'archiv' as const, label: `Archiv ${archiv.length}` }] : []),
+    ...(ablage.korb.length || ansicht === 'papierkorb' ? [{ id: 'papierkorb' as const, label: `Papierkorb ${ablage.korb.length}` }] : []),
   ];
   const treffer = useMemo(() => {
     const q = suche.trim().toLowerCase();
-    let l = firmen;
+    let l = ansicht === 'archiv' ? archiv : firmen;
     if (ansicht === 'ohne_branche') l = l.filter(f => !f.branche);
     else if (ansicht === 'dubletten') { const ids = new Set(dubl.flatMap(([a, b]) => [a.id, b.id])); l = l.filter(f => ids.has(f.id)); }
-    else if (ansicht !== 'alle') l = l.filter(f => f.rolle === ansicht);
+    else if (ansicht !== 'alle' && ansicht !== 'archiv' && ansicht !== 'papierkorb') l = l.filter(f => f.rolle === ansicht);
     if (q) l = l.filter(f => `${f.name} ${f.domain ?? ''} ${f.branche ?? ''} ${f.stadt ?? ''}`.toLowerCase().includes(q));
     const R = ['kunde', 'zielkunde', 'partner', 'netzwerk', 'investor', 'dienstleister', 'ex_kunde', 'wettbewerb', 'offen'];
     return [...l].sort((a, b) => R.indexOf(a.rolle) - R.indexOf(b.rolle) || (personenJe.get(b.id) ?? 0) - (personenJe.get(a.id) ?? 0) || a.name.localeCompare(b.name));
-  }, [firmen, ansicht, suche, dubl, personenJe]);
-  const f = auswahl ? firmen.find(x => x.id === auswahl) ?? null : null;
+  }, [firmen, archiv, ansicht, suche, dubl, personenJe]);
+  const f = auswahl ? (alleFirmen ?? []).find(x => x.id === auswahl) ?? null : null;
+  const loeschen = (x: Firma) => { if (auswahl === x.id) setAuswahl(null); if (api.crm) firmaLoeschen(ablage, x, api.crm.stand, kontakte); };
+  const archivieren = (x: Firma) => { if (auswahl === x.id) setAuswahl(null); if (x.archiviertAm) ablage.zurueckholen(x.id, x.name); else ablage.archivieren(x.id, x.name); };
   const ohneBranche = firmen.filter(x => !x.branche).length;
 
   // Breit: dichte Tabelle wie in einer guten Adressverwaltung (Firma · Domain · Branche · Ort · Personen · Rolle).
-  const zeile = (x: Firma) => breit ? (
-    <div key={x.id} onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} className="fassbar" title={[x.name, x.branche, x.stadt].filter(Boolean).join(' · ')}
+  const aktionen = (x: Firma, inhalt: ReactNode) => (
+    <ZeileAktionen key={x.id} titel={x.name} archiviert={!!x.archiviertAm} onArchivieren={() => archivieren(x)} onLoeschen={() => loeschen(x)}>{inhalt}</ZeileAktionen>
+  );
+  const zeile = (x: Firma) => breit ? aktionen(x,
+    <div onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} className="fassbar" title={[x.name, x.branche, x.stadt].filter(Boolean).join(' · ')}
       style={{ display: 'grid', gridTemplateColumns: FIRMEN_SPALTEN, gap: 12, alignItems: 'center', padding: '8px 8px', minHeight: 40, borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', fontSize: TYP.bedien, background: auswahl === x.id ? 'rgba(255,255,255,.07)' : 'transparent', borderRadius: auswahl === x.id ? 8 : 0 }}>
       <Punkt farbe={rolle(x.rolle).farbe} groesse={8} />
       <span style={{ fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.name}</span>
@@ -84,11 +120,11 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
     </div>
   ) : (
     <div key={x.id}>
-      <Zeile onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} aktiv={auswahl === x.id} links={<Punkt farbe={rolle(x.rolle).farbe} />}
+      {aktionen(x, <Zeile onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} aktiv={auswahl === x.id} links={<Punkt farbe={rolle(x.rolle).farbe} />}
         titel={<>{x.name}{x.domain && <span style={{ color: C.inkLeise }}> · {x.domain}</span>}</>}
         unter={[x.branche, x.stadt, x.mitarbeiter ? `${x.mitarbeiter} MA` : ''].filter(Boolean).join(' · ') || 'keine Details'}
-        rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{personenJe.get(x.id) ?? 0} P.</span><Chip farbe={rolle(x.rolle).farbe}>{rolle(x.rolle).label}</Chip></span>} />
-      {auswahl === x.id && <div style={{ padding: '8px 0 18px' }}><FirmenKarte f={x} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} /></div>}
+        rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{personenJe.get(x.id) ?? 0} P.</span><Chip farbe={rolle(x.rolle).farbe}>{rolle(x.rolle).label}</Chip></span>} />)}
+      {auswahl === x.id && <div style={{ padding: '8px 0 18px' }}><FirmenKarte f={x} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} onLoeschen={() => loeschen(x)} /></div>}
     </div>
   );
 
@@ -102,7 +138,7 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
             <span><b style={{ color: C.ink }}>{firmen.filter(x => x.rolle === 'kunde').length}</b> Kunden</span>
           </div>
           <div style={{ marginBottom: 10, overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={ANSICHTEN} aktiv={ansicht} onWahl={a => { setAnsicht(a); setMehr(80); }} /></div>
-          {ansicht === 'dubletten' ? (
+          {ansicht === 'papierkorb' ? <PapierkorbKarte ablage={ablage} liste="firmen" /> : ansicht === 'dubletten' ? (
             <div style={{ display: 'grid', gap: 8 }}>
               {dubl.map(([a, b]) => <div key={`${a.id}|${b.id}`} style={{ fontSize: TYP.bedien, padding: 10, borderRadius: 10, background: 'rgba(255,255,255,.03)' }}>{a.name} ⇄ {b.name}{a.domain ? ` · ${a.domain}` : ''} <span style={{ color: C.inkLeise }}>— Personen der einen Firma in der Karteikarte der anderen zuordnen, dann die leere löschen.</span></div>)}
               {!dubl.length && <Leer>Keine Firmen-Dubletten.</Leer>}
@@ -116,7 +152,7 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
               )}
               <div>{treffer.slice(0, mehr).map(zeile)}</div>
               {treffer.length > mehr && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehr(mehr + 150)}>Weitere {Math.min(150, treffer.length - mehr)} zeigen</Knopf></div>}
-              {!treffer.length && <Leer>Keine Firma gefunden.</Leer>}
+              {!treffer.length && <Leer>{ansicht === 'archiv' ? 'Das Archiv ist leer. Archivierte Firmen sind aus der Liste ausgeblendet, an Personen, Deals und Mandaten aber weiter lesbar — zurückholen jederzeit.' : 'Keine Firma gefunden.'}</Leer>}
             </>
           )}
         </Karte>
@@ -124,10 +160,12 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
       {breit && (
         <Spalte klebt>
           <Karte i={1} akzent={f ? rolle(f.rolle).farbe : undefined}>
-            {f ? <FirmenKarte f={f} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} /> : <Leer>Eine Firma anklicken — Stammdaten, Personen, Chancen und Verlauf erscheinen hier.</Leer>}
+            {f ? <FirmenKarte f={f} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} onLoeschen={() => loeschen(f)} /> : <Leer>Eine Firma anklicken — Stammdaten, Personen, Chancen und Verlauf erscheinen hier.</Leer>}
           </Karte>
         </Spalte>
       )}
+      {ablage.dialog}
+      {ablage.hinweis}
     </Spalten>
   );
 }
@@ -136,8 +174,9 @@ export function neueFirma(name: string): Firma {
   return { id: firmenId(name), name: name.trim(), rolle: 'offen', geaendert: new Date().toISOString() };
 }
 
-export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuPerson: (id: string) => void; zuFirma: (id: string) => void }) {
+export function FirmenKarte({ f, api, zuPerson, zuFirma, onLoeschen }: { f: Firma; api: CrmApi; zuPerson: (id: string) => void; zuFirma: (id: string) => void; /** Papierkorb über die Liste (Rückgängig bleibt dort stehen) — sonst der eigene Weg dieser Karte. */ onLoeschen?: () => void }) {
   const crm = api.crm!;
+  const eigeneAblage = useCrmAblage(api, 'firmen');
   const firmen = crm.stand.firmen;
   // Personen nur über die Stationen (28.09.): aktuell (laufende Station) und ehemalig (beendete) getrennt.
   const { aktuell: personen, ehemalig } = personenAufteilen(api.kontakte ?? [], f.id);
@@ -282,7 +321,9 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmA
         <Ueberschrift>Verlauf aller Personen</Ueberschrift>
         <Verlauf liste={verlauf} name={p => p.charAt(0).toUpperCase() + p.slice(1)} max={15} heute={crm.heute} />
       </div>
-      {!personen.length && !ehemalig.length && !toechter.length && !chancen.length && !mandate.length && <div><button onClick={() => { if (window.confirm(`Firma „${f.name}“ löschen?`)) void api.weg('firmen', f.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Leere Firma löschen</button></div>}
+      {!personen.length && !ehemalig.length && !toechter.length && !chancen.length && !mandate.length && <div><button onClick={() => (onLoeschen ? onLoeschen() : firmaLoeschen(eigeneAblage, f, crm.stand, api.kontakte ?? []))} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Leere Firma in den Papierkorb</button></div>}
+      {eigeneAblage.dialog}
+      {eigeneAblage.hinweis}
     </div>
   );
 }

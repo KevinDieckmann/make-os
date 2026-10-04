@@ -3,7 +3,7 @@
 // ─── Sport — Running: Läufe, Wochenkilometer, Bestzeiten, Zielpace ──────────
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, LEUCHT, useRueckfrage } from '../ui';
 import { Feld, Raster, Zeitfeld, Zahlfeld, Pillen, Skala, Hinweis, Weg, klein, de, datumLang, datumKurz, SPORT_FARBE } from './teile';
 import { paceSekProKm, formatPace, formatZeit, wochenKilometer, kmTrend, bestzeiten, riegel, zielPace, trainingsPaces } from '@/lib/sport/pace';
 import { LAUF_ARTEN, neueId, type Lauf, type LaufArt, type Op, type SportStand } from '@/lib/sport/modell';
@@ -12,6 +12,7 @@ const F = SPORT_FARBE.lauf;
 const ART_LABEL = Object.fromEntries(LAUF_ARTEN.map(a => [a.id, a.label])) as Record<LaufArt, string>;
 
 export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heute: string; schicke: (ops: Op[], erfolg?: string) => Promise<boolean> }) {
+  const { bestaetigen, dialog } = useRueckfrage();
   const wochen = useMemo(() => wochenKilometer(stand.laeufe, heute, 12), [stand.laeufe, heute]);
   const trend = kmTrend(wochen);
   const best = useMemo(() => bestzeiten(stand.laeufe), [stand.laeufe]);
@@ -72,10 +73,11 @@ export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heut
             </div>
             <Chip farbe={l.art === 'intervall' || l.art === 'tempo' || l.art === 'wettkampf' ? F : C.inkDim}>{ART_LABEL[l.art]}</Chip>
             <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, fontVariantNumeric: 'tabular-nums' }}>{formatPace(paceSekProKm(l.distanzKm, l.dauerSek))}<span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 500 }}> /km</span></span>
-            <Weg onClick={() => { if (confirm('Lauf entfernen?')) void schicke([{ op: 'lauf-weg', id: l.id }], 'Entfernt.'); }} />
+            <Weg onClick={async () => { if (await bestaetigen({ titel: 'Lauf entfernen?', text: 'Der erfasste Lauf fällt weg.', ja: 'Entfernen', gefahr: true })) void schicke([{ op: 'lauf-weg', id: l.id }], 'Entfernt.'); }} />
           </div>
         ))}
       </Karte>
+      {dialog}
     </>
   );
 }

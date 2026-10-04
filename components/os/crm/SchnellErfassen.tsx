@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
-import { Knopf, feld, Chip, LEUCHT, Hinweis, useHandy, HANDY_BIS } from '../ui';
+import { Knopf, feld, Chip, LEUCHT, Hinweis, useHandy, HANDY_BIS, useRueckfrage } from '../ui';
 import { anzeigename, findeKontakte, STUFE_LABEL, type Kontakt, type Ergebnis, type AktivitaetArt } from '@/lib/make-one/crm';
 import { haeltBeziehung, BEIDE } from '@/lib/crm/team';
 import type { ChancenStufe, WertBasis } from '@/lib/crm/typen';
@@ -46,6 +46,8 @@ const titelKlein = { fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 
 export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; offen: boolean; onZu: () => void; kontaktId?: string }) {
   const schmal = useSchmal();
   const heute = api.crm?.heute ?? localDay();
+  // Rückfrage (Sperre) — hängt neben dem Dialog in einer Hülle, die Klicks abfängt (sonst schlösse der Grund den Dialog).
+  const { bestaetigen, dialog } = useRueckfrage();
   const [suche, setSuche] = useState('');
   const [markiert, setMarkiert] = useState(0);
   const [personId, setPersonId] = useState<string | null>(null);
@@ -87,6 +89,8 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
     const taste = (e: KeyboardEvent) => {
       // Ein offenes Wahl-Menü (hängt am Seitenende, außerhalb des Dialogs) bekommt seine Tasten selbst — Esc schließt dann nur das Menü.
       if ((e.target as Element | null)?.closest?.('[data-wahl-menue]')) return;
+      // Eine offene Rückfrage beantwortet Esc selbst (sie bricht ab, der Dialog bleibt offen); andere Tasten erreichen die Seite nicht.
+      if ((e.target as Element | null)?.closest?.('.ui-rueckfrage')) { if (e.key !== 'Escape') e.stopPropagation(); return; }
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); zu.current(); return; }
       if (!dialogRef.current?.contains(e.target as Node)) e.stopPropagation();
     };
@@ -111,7 +115,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
   /** Ergebnis ohne Notiz (Mailbox, nicht erreicht, kein Bedarf, Sperre) — ein Tipp, gespeichert. */
   async function sofort(e: Ergebnis) {
     if (!k || laeuft) return;
-    if (e === 'sperre' && !window.confirm(`${anzeigename(k)} widerspricht Werbung? Die Person wird gesperrt und taucht nirgends mehr auf.`)) return;
+    if (e === 'sperre' && !(await bestaetigen({ titel: `${anzeigename(k)} widerspricht Werbung?`, text: 'Die Person wird gesperrt und taucht nirgends mehr auf.', ja: 'Sperren', gefahr: true }))) return;
     setLaeuft(true); setFehler('');
     try {
       const r = await festhalten(api, { id: k.id, art, ergebnis: e, ...(art === 'anruf' && anlass.trim() ? { anlass: anlass.trim() } : {}) }, undefined, heute);
@@ -263,6 +267,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
           </>
         )}
       </div>
+      {dialog && <div onClick={e => e.stopPropagation()}>{dialog}</div>}
     </div>
   );
 }

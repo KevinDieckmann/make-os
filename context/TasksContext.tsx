@@ -13,6 +13,7 @@ import {
 } from '@/lib/aufgaben/abgleich';
 import { istNeuLaden, NEU_LADEN_EREIGNIS } from '@/lib/bau/kennung';
 import { SpeicherHinweis } from '@/components/os/aufgaben/SpeicherHinweis';
+import { useRueckfrage } from '@/components/os/ui';
 import { nachfahrenIn } from '@/lib/aufgaben/ebenen';
 import { aufgabeArchivieren, aufgabeAusArchiv } from '@/lib/aufgaben/archiv-einzeln';
 
@@ -298,6 +299,8 @@ const schreibe = (k: string, v: string | null) => { try { if (v === null) window
 export function TasksProvider({ children }: { children: ReactNode }) {
   const [voll, dispatch] = useReducer(tasksReducer, initialState);
   const [ready, setReady] = useState(false);
+  // Rückfrage-Karte vor Massen-Änderungen — `dialog` hängt neben den Kindern.
+  const { bestaetigen, dialog } = useRueckfrage();
   const [spaces, setSpaces] = useState<AufgabenSpace[]>([]);
   /** Laden fehlgeschlagen (oder kein Zugang) — dann wird nichts gespeichert, um echte Daten zu schützen. */
   const [ladeFehler, setLadeFehler] = useState(false);
@@ -462,9 +465,9 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (r.status === 409 && (d.massenAenderung || d.massenLoeschung) && !Object.keys(bestaetigt).length) {
-          const ja = window.confirm(d.massenLoeschung
-            ? 'Damit würde über die Hälfte aller Aufgaben gelöscht.\n\nIst das so gewollt?'
-            : `${d.anzahl} Aufgaben würden auf einmal als erledigt markiert.\n\nDas ist ungewöhnlich viel. Ist das so gewollt?`);
+          const ja = await bestaetigen(d.massenLoeschung
+            ? { titel: 'Über die Hälfte aller Aufgaben löschen?', text: 'Damit würde über die Hälfte aller Aufgaben gelöscht. Ist das so gewollt?', ja: 'Löschen', gefahr: true }
+            : { titel: `${d.anzahl} Aufgaben auf einmal erledigen?`, text: `${d.anzahl} Aufgaben würden auf einmal als erledigt markiert. Das ist ungewöhnlich viel. Ist das so gewollt?`, ja: 'Erledigen' });
           if (ja) { bestaetigt = d.massenLoeschung ? { massenLoeschung: true } : { massenAenderung: true }; continue; }
           // Nicht gewollt: diese Änderungen verwerfen — die Zeilen nehmen wieder den Serverstand.
           schlange.shift(); bestaetigt = {};
@@ -490,7 +493,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       merken();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offeneOps, lageSetzen, merken, uebernehmen, abgleichenJetzt, gemeinsam]);
+  }, [offeneOps, lageSetzen, merken, uebernehmen, abgleichenJetzt, gemeinsam, bestaetigen]);
 
   const senden = useCallback((): Promise<void> => {
     const p = kette.current.then(() => sendenJetzt());
@@ -620,6 +623,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     <TasksContext.Provider value={wert}>
       {children}
       <SpeicherHinweis lage={lage} onJetzt={jetztSpeichern} onKonflikt={konfliktLoesen} onAbgelehnt={ablehnungLoesen} fassungText={fassungText} />
+      {dialog}
     </TasksContext.Provider>
   );
 }

@@ -6,12 +6,15 @@
 // Kanal-Kriterium zählt nur, wer darüber zulässig erreichbar ist. Der Export
 // enthält Mail-Adressen nur, wo die Mail-Ampel grün ist. Drei Vorlagen
 // werden erst auf Klick angelegt.
+// 04.10. (Kevin: „alles anpassbar“): jede Zeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter Archiv) und
+// Löschen (Papierkorb 30 Tage, Rückgängig; hängen Kampagnen/Events daran → Rückfrage). components/os/crm/ablage.tsx.
 
 import { TEMPERATUR } from '@/lib/crm/score';
 import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT, ZeileAktionen } from '../../ui';
+import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte } from '../ablage';
 import { anzeigename, HERKUNFT, type Kontakt } from '@/lib/make-one/crm';
 import type { Segment, SegmentKriterien } from '@/lib/crm/typen';
 import { kontextAus, segmentAuswerten, type SegmentAuswertung } from '@/lib/crm/segmente';
@@ -68,7 +71,11 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
   const werte = useMemo(() => einordnungWerte(api, kontakte), [api, kontakte]);
   const heute = crm?.heute ?? localDay();
   const ctx = useMemo(() => (crm ? kontextAus(crm.stand, heute) : null), [crm, heute]);
-  const segmente = useMemo(() => [...(crm?.stand.segmente ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [crm]);
+  const ablage = useCrmAblage(api, 'segmente');
+  const [sicht, setSicht] = useAblageSicht(() => setEntwurf(null));
+  const alleSegmente = crm?.stand.segmente;
+  const archivZahl = (alleSegmente ?? []).filter(x => x.archiviertAm).length;
+  const segmente = useMemo(() => (alleSegmente ?? []).filter(x => (sicht === 'archiv' ? !!x.archiviertAm : !x.archiviertAm)).sort((a, b) => a.name.localeCompare(b.name)), [alleSegmente, sicht]);
   const zahlen = useMemo(() => new Map(ctx ? segmente.map(s => [s.id, segmentAuswerten(kontakte, s.kriterien, ctx)]) : []), [segmente, kontakte, ctx]);
   const vorschau = useMemo(() => (entwurf && ctx ? segmentAuswerten(kontakte, entwurf.kriterien, ctx) : null), [entwurf, kontakte, ctx]);
   const vorlagen = useMemo(() => (ctx ? SEGMENT_VORLAGEN.filter(v => !segmente.some(s => s.name.trim().toLowerCase() === v.name.toLowerCase())).map(v => ({ v, anzahl: segmentAuswerten(kontakte, v.kriterien, ctx).anzahl })) : []), [segmente, kontakte, ctx]);
@@ -85,11 +92,20 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
   };
   const gespeichert = (e: Entwurf) => { const s = segmente.find(x => x.id === e.id); return !!s && s.name === e.name.trim() && (s.beschreibung ?? '') === e.beschreibung.trim() && kriterienGleich(s.kriterien, e.kriterien); };
   const csv = (id: string) => { window.location.href = `/api/crm/marketing?segment=${encodeURIComponent(id)}&format=csv`; };
+  // Löschen = Papierkorb; hängen Kampagnen oder Events am Segment, erst eine Rückfrage (Archiv als ruhigerer Weg).
+  const loeschen = (s: Segment) => {
+    if (entwurf?.id === s.id) setEntwurf(null);
+    const k = crm.stand.kampagnen.filter(x => x.segmentId === s.id).length, ev = crm.stand.events.filter(x => x.segmentId === s.id).length;
+    const dran = [k ? `${k} Kampagne${k === 1 ? '' : 'n'}` : '', ev ? `${ev} Event${ev === 1 ? '' : 's'}` : ''].filter(Boolean).join(' und ');
+    ablage.loeschen(s.id, s.name, dran ? { archivAnbieten: true, text: `${dran} nennen dieses Segment. Ihre Personen bleiben, wie sie sind; im Papierkorb ist das Segment überall ausgeblendet. Die Personen der Kartei bleiben unberührt.` } : undefined);
+  };
 
   return (
     <>
-      <Karte i={0}>
-        <Ueberschrift rechts={<Knopf onClick={() => setEntwurf({ id: neueId('sg'), name: '', beschreibung: '', kriterien: {}, neu: true })}>+ Segment</Knopf>}>Segmente · {segmente.length}</Ueberschrift>
+      {((alleSegmente ?? []).length > 0 || ablage.korb.length > 0) && <AblageReiter sicht={sicht} onSicht={setSicht} name="Segmente" liste={(alleSegmente ?? []).length - archivZahl} archiv={archivZahl} korb={ablage.korb.length} />}
+      {sicht === 'papierkorb' && <PapierkorbKarte ablage={ablage} liste="segmente" i={0} />}
+      {sicht !== 'papierkorb' && <Karte i={0}>
+        <Ueberschrift rechts={sicht === 'liste' ? <Knopf onClick={() => setEntwurf({ id: neueId('sg'), name: '', beschreibung: '', kriterien: {}, neu: true })}>+ Segment</Knopf> : undefined}>{sicht === 'archiv' ? 'Archiv · Segmente' : 'Segmente'} · {segmente.length}</Ueberschrift>
         {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>{meldung}</div>}
         {entwurf?.neu && vorschau && <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} speichern={speichern} gespeichert={false} csv={csv} zuKontakt={zuKontakt} werte={werte} />}
         <Liste>
@@ -97,11 +113,13 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
             const a = zahlen.get(s.id);
             return (
               <div key={s.id}>
-                <Zeile onClick={() => oeffne(s)} aktiv={entwurf?.id === s.id} titel={s.name} unter={s.beschreibung || kriterienText(s.kriterien)}
-                  rechts={<Chip farbe={a?.anzahl ? LEUCHT.business : C.inkDim}>{a?.anzahl ?? 0} Personen</Chip>} />
+                <ZeileAktionen titel={s.name} archiviert={sicht === 'archiv'} onArchivieren={() => { if (entwurf?.id === s.id) setEntwurf(null); if (sicht === 'archiv') ablage.zurueckholen(s.id, s.name); else ablage.archivieren(s.id, s.name); }} onLoeschen={() => loeschen(s)}>
+                  <Zeile onClick={() => oeffne(s)} aktiv={entwurf?.id === s.id} titel={s.name} unter={s.beschreibung || kriterienText(s.kriterien)}
+                    rechts={<Chip farbe={a?.anzahl ? LEUCHT.business : C.inkDim}>{a?.anzahl ?? 0} Personen</Chip>} />
+                </ZeileAktionen>
                 {entwurf?.id === s.id && !entwurf.neu && vorschau && (
                   <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} speichern={speichern} gespeichert={gespeichert(entwurf)} csv={csv} zuKontakt={zuKontakt} werte={werte}
-                    loeschen={async () => { if (!window.confirm(`Segment „${s.name}“ löschen? Die Personen bleiben unberührt.`)) return; await api.weg('segmente', s.id); setEntwurf(null); setMeldung(`„${s.name}“ gelöscht.`); }}
+                    loeschen={() => loeschen(s)}
                     kampagne={() => zuKampagne(s.id)} />
                 )}
                 {entwurf?.id !== s.id && a && <div style={{ padding: '2px 0 10px' }}><KanalZahlen a={a} /></div>}
@@ -109,10 +127,10 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
             );
           })}
         </Liste>
-        {!segmente.length && !entwurf && <Leer>Noch kein Segment. Ein Segment ist ein gespeicherter Filter über die Kartei — für Einladungen, Beiträge und Kampagnen. Unten liegen drei Vorlagen.</Leer>}
-      </Karte>
+        {!segmente.length && !entwurf && <Leer>{sicht === 'archiv' ? 'Das Archiv ist leer. Archivierte Segmente sind aus der Liste ausgeblendet, bleiben an Kampagnen und Events lesbar und lassen sich jederzeit zurückholen.' : 'Noch kein Segment. Ein Segment ist ein gespeicherter Filter über die Kartei — für Einladungen, Beiträge und Kampagnen. Unten liegen drei Vorlagen.'}</Leer>}
+      </Karte>}
 
-      {vorlagen.length > 0 && (
+      {sicht === 'liste' && vorlagen.length > 0 && (
         <Karte i={1}>
           <Ueberschrift>Vorlagen</Ueberschrift>
           <Liste>
@@ -126,6 +144,8 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Angelegt wird erst mit dem Klick — danach frei änderbar.</div>
         </Karte>
       )}
+      {ablage.dialog}
+      {ablage.hinweis}
     </>
   );
 }

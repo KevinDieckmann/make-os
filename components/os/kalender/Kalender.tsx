@@ -250,7 +250,7 @@ export function Kalender() {
     : ansicht === 'monat' ? `${MONATE[Number(anker.slice(5, 7)) - 1]} ${anker.slice(0, 4)}` : `Nächste 30 Tage ab ${Number(anker.slice(8, 10))}.${Number(anker.slice(5, 7))}.`;
 
   // Schreiben
-  // Verschieben/Dauer mit Stand (ETag, 409 statt still überschreiben) + „Rückgängig“ 8 s (R-K2 #92, verschieben.tsx);
+  // Verschieben/Dauer mit Stand (ETag, 409 statt still überschreiben) + „Rückgängig“ (Standard `useRueckgaengig`, R-K2 #92, verschieben.tsx);
   // Schlüssel = `objektSchluessel` (R-K1: Kalender + UID).
   const { verschieben, hinweis: rueckgaengig } = useVerschieben({ setDaten, laden, melden: setMeldung });
   const jetztAbgleichen = async () => { setAbgleich(true); const r = await fetch('/api/kalender', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'abgleichen' }) }).then(x => x.json()).catch(() => ({ ok: false })); if (!r.ok && r.fehler) setMeldung(r.fehler); await laden(); setAbgleich(false); };

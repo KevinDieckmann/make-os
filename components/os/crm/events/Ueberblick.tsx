@@ -15,12 +15,15 @@ import { datum, euro } from '../daten';
 import { Feldzeile, Feld } from '../teile';
 import { Wahl } from '../Wahl';
 import { Person, ZustaendigWahl, Uebergeben } from '../team';
-import { FORMATE, STATUS, MixAnzeige, MarkeWahl, ReiheWahl, Leise, eventSetzen, eventLoeschen, type ReiterProps, type Reiter } from './gemeinsam';
+import { FORMATE, STATUS, MixAnzeige, MarkeWahl, ReiheWahl, Leise, eventSetzen, eventPapierkorb, type ReiterProps, type Reiter } from './gemeinsam';
+import { useCrmAblage } from '../ablage';
 
 const tageBis = (von: string, bis: string) => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
 
-export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: Reiter) => void }) {
+export function Ueberblick({ e, api, zuReiter, ablage }: ReiterProps & { zuReiter: (r: Reiter) => void }) {
   const crm = api.crm!;
+  // Ohne Liste darüber (z. B. eingebettet) ein eigener Weg — sonst der der Liste, damit „Rückgängig“ stehen bleibt.
+  const eigeneAblage = useCrmAblage(api, 'events');
   const heute = crm.heute;
   const z = crm.events[e.id];
   const gaeste = crm.stand.teilnahmen.filter(t => t.eventId === e.id);
@@ -146,8 +149,10 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
         <Feldzeile label="Notiz"><Feld wert={e.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>
       </div>
 
-      {/* Löschen über den Serverweg (28.09., W6): Teilnahmen und offene Follow-ups gehen in DERSELBEN Änderung mit. */}
-      <div><Leise onClick={() => { if (window.confirm(`„${e.titel}“ löschen? Teilnahmen werden entfernt, offene Follow-ups des Events abgesagt.`)) void eventLoeschen(api, e); }}>Event löschen</Leise></div>
+      {/* Löschen = Papierkorb (04.10.): Gäste, Follow-ups und Termin bleiben bis „endgültig“ — dann der Serverweg mit Kaskade (28.09., W6). */}
+      <div><Leise onClick={() => eventPapierkorb(ablage ?? eigeneAblage, api, e)}>In den Papierkorb</Leise></div>
+      {!ablage && eigeneAblage.dialog}
+      {!ablage && eigeneAblage.hinweis}
     </div>
   );
 }

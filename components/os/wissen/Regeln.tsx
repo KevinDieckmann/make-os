@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Segmente, Hinweis, feld, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Segmente, Hinweis, feld, LEUCHT, useRueckfrage, ZeileAktionen } from '../ui';
 
 type Prio = 0 | 1 | 2 | 3;
 type Gilt = 'kevin' | 'malin' | 'beide' | 'zoe';
@@ -22,6 +22,7 @@ const STATUS_FARBE: Record<Status, string> = { entwurf: LEUCHT.achtung, aktiv: L
 const prioFarbe = (p: Prio) => PRIO.find(x => x.id === p)?.farbe ?? C.inkLeise;
 
 export function Regeln({ ich }: { ich: string }) {
+  const { bestaetigen, dialog } = useRueckfrage();
   const [konst, setKonst] = useState<Konstitution | null>(null);
   const [maxZeilen, setMaxZeilen] = useState(250);
   const [regeln, setRegeln] = useState<Regel[] | null>(null);
@@ -48,6 +49,8 @@ export function Regeln({ ich }: { ich: string }) {
     await laden();
     return d;
   };
+  /** Ablösen = das Archiv der Regeln (bleibt als Geschichte in _abgeloest). */
+  const abloesen = async (id: string, titel: string) => { if (await bestaetigen({ titel: `„${titel}“ ablösen?`, text: 'Sie bleibt als Geschichte im Ordner _abgeloest.', ja: 'Ablösen' })) void post({ aktion: 'archivieren', id }); };
 
   const sichtbar = (regeln ?? []).filter(r => filter === 'alle' || r.status === filter);
   const zeilen = konstText.trim() ? konstText.trim().split('\n').length : 0;
@@ -101,10 +104,13 @@ export function Regeln({ ich }: { ich: string }) {
         <Liste>
           {sichtbar.map(r => (
             <div key={r.id}>
+              {/* 04.10. (ZeileAktionen): Archivieren = ablösen (bleibt als Geschichte in _abgeloest) — gelöscht wird eine Regel nie. */}
+              <ZeileAktionen titel={r.titel} onArchivieren={() => void abloesen(r.id, r.titel)}>
               <Zeile onClick={() => setOffen(o => (o === r.id ? null : r.id))} aktiv={offen === r.id} links={<Punkt farbe={prioFarbe(r.prioritaet)} />}
                 titel={<span>{r.titel} {r.scope === 'privat' && <span aria-label="privat">🔒</span>}</span>}
                 unter={`${PRIO.find(p => p.id === r.prioritaet)?.label} · gilt für ${GILT.find(g => g.id === r.giltFuer)?.label} · ${r.status === 'aktiv' ? `freigegeben von ${r.freigegebenVon ?? '—'} am ${r.freigegebenAm ?? '—'}` : r.status} · von ${r.erstelltVon}`}
                 rechts={<Chip farbe={STATUS_FARBE[r.status]}>{r.status}</Chip>} />
+              </ZeileAktionen>
               {offen === r.id && (
                 <div style={{ padding: '6px 2px 14px 26px', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'grid', gap: 8 }}>
                   <div style={{ fontSize: TYP.bedien, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{r.text}</div>
@@ -112,7 +118,7 @@ export function Regeln({ ich }: { ich: string }) {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {r.status !== 'aktiv' && <Knopf farbe={LEUCHT.gut} onClick={() => void post({ aktion: 'aendern', id: r.id, felder: { status: 'aktiv' } })}>Freigeben als {ich}</Knopf>}
                     {r.status === 'aktiv' && <Knopf leise onClick={() => void post({ aktion: 'aendern', id: r.id, felder: { status: 'entwurf' } })}>Zurück auf Entwurf</Knopf>}
-                    <Knopf leise onClick={() => { if (window.confirm(`„${r.titel}“ ablösen? Sie bleibt als Geschichte im Ordner _abgeloest.`)) void post({ aktion: 'archivieren', id: r.id }); }}>Ablösen</Knopf>
+                    <Knopf leise onClick={() => abloesen(r.id, r.titel)}>Ablösen</Knopf>
                   </div>
                 </div>
               )}
@@ -120,6 +126,7 @@ export function Regeln({ ich }: { ich: string }) {
           ))}
         </Liste>
       </Karte>
+      {dialog}
     </>
   );
 }

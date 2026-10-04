@@ -165,7 +165,8 @@ describe('W6 — Löschen: Sperren für Produkte, Segmente, Beiträge, Ablage, F
     expect(loeschSperren(b, [...ops, ...k2])).toEqual([]);
   });
   it('Serverweg POST /api/crm/events { aktion: loeschen }: alles in einer Änderung', async () => {
-    await db.saveJson('crm', bestand());
+    // Endgültig nur aus dem Papierkorb (04.10., lib/crm/ablage.ts) — das Event liegt dort.
+    await db.saveJson('crm', { ...bestand(), events: bestand().events.map(e => (e.id === 'ev-1' ? { ...e, geloeschtAm: J } : e)) });
     const route = await import('@/app/api/crm/events/route');
     const r = await route.POST(post('/api/crm/events', { aktion: 'loeschen', eventId: 'ev-1' }));
     expect(r.status).toBe(200);

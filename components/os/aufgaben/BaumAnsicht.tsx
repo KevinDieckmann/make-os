@@ -11,11 +11,16 @@
 // Unteraufgaben und hat „+ Unteraufgabe“ bis zur Grenze `AUFGABEN_EBENEN_MAX` (lib/aufgaben/ebenen.ts); tiefer eingerückt.
 // Löschen & Archivieren (04.10., Kevin: „nach links swiped: dann kommt da Löschen oder Archivieren“): jede Zeile hängt am
 // Baustein `ZeileAktionen` — Handy wischen, Rechner Knöpfe am Rand; Papierkorb/Archiv mit „Rückgängig“ über den HandlungProvider.
+// 04.10. auch die Köpfe: Projekt (Archivieren = `archived`, Löschen = Papierkorb 30 Tage mit Umfang in der Rückfrage), Gruppe
+// und Liste (Löschen mit „Rückgängig“ — Ordner: ihr Inhalt bleibt, Listen rutschen direkt ins Projekt, Aufgaben unter
+// „Sonstige“). Ein Archiv für Listen/Gruppen gibt es bewusst nicht: die Aufgaben einer abgelegten Liste stünden sonst lose da.
 
 import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { MessageSquare, Link2, ChevronRight, Lock, Sparkles, StickyNote } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, HakenZiel, Punkt, feld, prioFarbe, ZielChip, useZielBezug, ZeileAktionen } from '../ui';
+import { Karte, HakenZiel, Punkt, feld, prioFarbe, ZielChip, useZielBezug, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
+import { dateienZaehlen } from './Papierkorb';
+import { projektUmfang, umfangText } from '@/lib/aufgaben/papierkorb';
 import { istMeilensteinListe } from '@/lib/planung/meilenstein-aufgaben';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { statusVon, fortschritt, sonstigeProjektId, nachReihe, type BaumProjekt, type BaumAufgabe, type BaumListe } from '@/lib/aufgaben/struktur';
@@ -81,6 +86,40 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   const [zu, setZu] = useState<Set<string>>(new Set());
   const [mehr, setMehr] = useState<Record<string, number>>({});
   const handlung = useHandlung(dispatch, state.statusEigen);
+  const { melden, hinweis } = useRueckgaengig();
+  const { bestaetigen, dialog } = useRueckfrage();
+  // ── Köpfe: Liste · Gruppe · Projekt (04.10.) — der Inhalt bleibt immer; „Rückgängig“ stellt die Zuordnung wieder her. ──
+  const listeLoeschen = (id: string) => {
+    const l = (state.listen ?? []).find(x => x.id === id);
+    if (!l) return;
+    const aufgaben = state.tasks.filter(t => t.listeId === id).map(t => t.id);
+    dispatch({ type: 'DELETE_LISTE', payload: { id } });
+    melden(`Liste „${l.titel}“ gelöscht — ${aufgaben.length ? `${aufgaben.length} Aufgabe${aufgaben.length === 1 ? '' : 'n'} unter „Sonstige“` : 'sie war leer'}`, () => {
+      dispatch({ type: 'ADD_LISTE', payload: l });
+      for (const tid of aufgaben) dispatch({ type: 'UPDATE_TASK', payload: { id: tid, listeId: id } });
+    });
+  };
+  const gruppeLoeschen = (id: string) => {
+    const g = (state.gruppen ?? []).find(x => x.id === id);
+    if (!g) return;
+    const listen = (state.listen ?? []).filter(l => l.gruppeId === id).map(l => l.id);
+    dispatch({ type: 'DELETE_GRUPPE', payload: { id } });
+    melden(`Gruppe „${g.titel}“ gelöscht — ${listen.length ? `${listen.length} Liste${listen.length === 1 ? '' : 'n'} direkt im Projekt` : 'sie war leer'}`, () => {
+      dispatch({ type: 'ADD_GRUPPE', payload: g });
+      for (const lid of listen) dispatch({ type: 'UPDATE_LISTE', payload: { id: lid, gruppeId: id } });
+    });
+  };
+  const projektArchivieren = (id: string, titel: string) => {
+    dispatch({ type: 'UPDATE_PROJECT', payload: { id, archived: true } });
+    melden(`Projekt „${titel}“ archiviert — in der Projektseite „Aus dem Archiv holen“`, () => dispatch({ type: 'UPDATE_PROJECT', payload: { id, archived: false } }));
+  };
+  const projektLoeschen = async (id: string, titel: string) => {
+    // Papierkorb (29.09., A7): die Rückfrage nennt, was mitgeht; 30 Tage wiederherstellbar (Aufgaben › Archiv › Papierkorb).
+    const mit = umfangText(projektUmfang(state, id, await dateienZaehlen({ projektId: id })));
+    if (!(await bestaetigen({ titel: `Projekt „${titel}“ in den Papierkorb legen?`, text: `${mit ? `Es geht mit: ${mit}.\n\n` : ''}30 Tage lang unter Aufgaben › Archiv › Papierkorb wiederherstellbar.`, ja: 'In den Papierkorb', gefahr: true }))) return;
+    dispatch({ type: 'DELETE_PROJECT', payload: { id } });
+    melden(`Projekt „${titel}“ im Papierkorb`, () => dispatch({ type: 'WIEDERHERSTELLEN', payload: { art: 'projekt', id } }));
+  };
   // Ziel-Bezug (03.10.): liegt eine Aufgabe in der Liste eines Meilensteins, zeigt ihre Zeile das Ziel — nur lesen, nur wenn es solche Listen gibt.
   const ziel = useZielBezug(useMemo(() => state.tasks.some(t => istMeilensteinListe(t.listeId)), [state.tasks]));
   // Einmal je Render (#84): Kennung → Aufgabe, für „wartet auf …“ jeder Zeile.
@@ -170,6 +209,7 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     return (
       <div key={lk} style={{ marginTop: zeigeKopf ? 10 : 0 }}>
         {zeigeKopf && (
+          <ZeileAktionen titel={`Liste ${l.titel}`} darf={!l.virtuell} onLoeschen={() => listeLoeschen(l.id)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,.07)', flexWrap: 'wrap' }}>
             <button onClick={() => umschalten(zu, setZu, lk, ZU_MERKER)} aria-label={lz ? 'Liste aufklappen' : 'Liste zuklappen'} aria-expanded={!lz} className="fassbar" style={{ ...klappKnopf, color: C.inkLeise, width: 32, height: 32 }}>{chevron(lz, 14)}</button>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: l.virtuell ? C.inkLeise : C.inkDim }}>{l.titel}</span>
@@ -178,9 +218,10 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
             {!l.virtuell && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}><Aktionen breit={breit}>
               {gruppenWahl.length > 1 && <Wahl klein label="Gruppe" liste={gruppenWahl} wert={l.gruppeId ?? DIREKT} onWahl={g => dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, gruppeId: g === DIREKT ? undefined : g } })} />}
               <button onClick={() => { const v = window.prompt('Liste umbenennen', l.titel)?.trim(); if (v && v !== l.titel) dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, titel: v.slice(0, 80) } }); }} style={leiseKnopf}>Umbenennen</button>
-              <button onClick={() => { if (window.confirm(`Liste „${l.titel}“ löschen? Die Aufgaben bleiben — unter „Sonstige“.`)) dispatch({ type: 'DELETE_LISTE', payload: { id: l.id } }); }} style={leiseKnopf}>Löschen</button>
+              <button onClick={() => listeLoeschen(l.id)} style={leiseKnopf}>Löschen</button>
             </Aktionen></span>}
           </div>
+          </ZeileAktionen>
         )}
         {!lz && <>
           {l.aufgaben.slice(0, mehr[lk] ?? FENSTER_ZEILEN).map(a => zeile(a))}
@@ -209,6 +250,7 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     return (
       <Karte key={p.id} i={i + iStart}>
         {projektKopf && (
+          <ZeileAktionen titel={`Projekt ${p.titel}`} darf={!p.virtuell && !p.fremd} onArchivieren={() => projektArchivieren(p.id, p.titel)} onLoeschen={() => void projektLoeschen(p.id, p.titel)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: pz ? 0 : 6 }}>
             <button onClick={() => umschalten(zu, setZu, p.id, ZU_MERKER)} aria-label={pz ? 'Projekt aufklappen' : 'Projekt zuklappen'} aria-expanded={!pz} className="fassbar" style={klappKnopf}>{chevron(pz, 16)}</button>
             <Punkt farbe={p.farbe} />
@@ -218,12 +260,14 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
             <span style={{ fontSize: TYP.bedien, color: C.inkLeise, marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{p.offen} offen</span>
             {!p.virtuell && !p.fremd && onProjekt && <button onClick={() => onProjekt(pid)} style={{ ...leiseKnopf, color: C.aktiv }}>öffnen ›</button>}
           </div>
+          </ZeileAktionen>
         )}
         {!pz && <>
           {gruppen.map(g => {
             const gl = listenSichtbar.filter(l => l.gruppeId === g.id);
             return (
               <div key={g.id} style={{ marginTop: 12, borderLeft: `3px solid ${g.farbe}`, paddingLeft: 10, borderRadius: 2 }}>
+                <ZeileAktionen titel={`Gruppe ${g.titel}`} darf={!p.fremd} onLoeschen={() => gruppeLoeschen(g.id)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', flexWrap: 'wrap' }}>
                   <button onClick={() => dispatch({ type: 'UPDATE_GRUPPE', payload: { id: g.id, eingeklappt: g.eingeklappt ? undefined : true } })} aria-label={g.eingeklappt ? 'Gruppe aufklappen' : 'Gruppe zuklappen'} aria-expanded={!g.eingeklappt} className="fassbar" style={{ ...klappKnopf, color: g.farbe }}>{chevron(g.eingeklappt)}</button>
                   <span style={{ fontFamily: SCHRIFT.display, fontSize: 15, fontWeight: 700, color: g.farbe }}>{g.titel}</span>
@@ -231,9 +275,10 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
                   <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}><Aktionen breit={breit}>
                     <button onClick={() => { const n = GRUPPEN_FARBEN[(GRUPPEN_FARBEN.indexOf(g.farbe as typeof GRUPPEN_FARBEN[number]) + 1) % GRUPPEN_FARBEN.length]; dispatch({ type: 'UPDATE_GRUPPE', payload: { id: g.id, farbe: n } }); }} style={leiseKnopf} aria-label="Farbe wechseln"><Punkt farbe={g.farbe} groesse={8} /> Farbe</button>
                     <button onClick={() => { const v = window.prompt('Gruppe umbenennen', g.titel)?.trim(); if (v && v !== g.titel) dispatch({ type: 'UPDATE_GRUPPE', payload: { id: g.id, titel: v.slice(0, 60) } }); }} style={leiseKnopf}>Umbenennen</button>
-                    <button onClick={() => { if (window.confirm(`Gruppe „${g.titel}“ löschen? Die Listen bleiben — direkt im Projekt.`)) dispatch({ type: 'DELETE_GRUPPE', payload: { id: g.id } }); }} style={leiseKnopf}>Löschen</button>
+                    <button onClick={() => gruppeLoeschen(g.id)} style={leiseKnopf}>Löschen</button>
                   </Aktionen></span>
                 </div>
+                </ZeileAktionen>
                 {!g.eingeklappt && <>
                   {gl.map(l => listeBlock(p, l, true, gruppenWahl))}
                   {!gl.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 4px' }}>Noch keine Liste in {g.titel}.</div>}
@@ -254,5 +299,5 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     );
   };
 
-  return <>{projekte.map((p, i) => projektKarte(p, i))}</>;
+  return <>{projekte.map((p, i) => projektKarte(p, i))}{dialog}{hinweis}</>;
 }

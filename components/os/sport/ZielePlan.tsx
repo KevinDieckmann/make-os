@@ -3,7 +3,7 @@
 // ─── Sport — Ziele & Plan: Saisonziele, Wochenstruktur, Plan gegen Ist ──────
 import { useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, Haken, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, Haken, LEUCHT, useRueckfrage } from '../ui';
 import { Feld, Raster, Zeitfeld, Zahlfeld, Hinweis, Weg, klein, de, datumLang, SPORT_FARBE } from './teile';
 import { WochenRaster } from './Einstieg';
 import { DISZIPLIN_LABEL, PLAN_LABEL, WOCHENTAGE, WOCHENTAG_LABEL, neueId, type Disziplin, type Op, type SportStand, type Ziel, type Woche } from '@/lib/sport/modell';
@@ -16,6 +16,7 @@ const FARBE_JE: Record<Disziplin, string> = { hyrox: SPORT_FARBE.hyrox, lauf: SP
 const ARTEN: { id: Disziplin; label: string }[] = (['hyrox', 'lauf', 'kraft', 'grundlagen'] as Disziplin[]).map(id => ({ id, label: DISZIPLIN_LABEL[id] }));
 
 export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportStand; heute: string; schicke: (ops: Op[], erfolg?: string) => Promise<boolean>; onReiter: (r: 'hyrox' | 'lauf' | 'gym' | 'erholung') => void }) {
+  const { bestaetigen, dialog } = useRueckfrage();
   const ziel = hauptziel(stand.ziele, heute);
   const umfang = planUmfang(stand.woche);
   const pi = planIst(stand, heute, 8);
@@ -66,7 +67,7 @@ export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportSta
               </div>
             </div>
             <Chip farbe={FARBE_JE[z.art]}>{DISZIPLIN_LABEL[z.art]}</Chip>
-            <Weg onClick={() => { if (confirm(`„${z.titel}“ entfernen?`)) void schicke([{ op: 'ziel-weg', id: z.id }], 'Ziel entfernt.'); }} />
+            <Weg onClick={async () => { if (await bestaetigen({ titel: `„${z.titel}“ entfernen?`, text: 'Das Ziel fällt aus dem Plan.', ja: 'Entfernen', gefahr: true })) void schicke([{ op: 'ziel-weg', id: z.id }], 'Ziel entfernt.'); }} />
           </div>
         ))}
       </Karte>
@@ -119,6 +120,7 @@ export function ZielePlan({ stand, heute, schicke, onReiter }: { stand: SportSta
         </div>
         <Hinweis>Struktur und Erfassung — keine Trainingsberatung. Bei Schmerzen oder Beschwerden führen Ärztin und Physio, nicht der Plan.</Hinweis>
       </Karte>
+      {dialog}
     </>
   );
 }

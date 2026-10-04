@@ -28,12 +28,16 @@
 // (`Event.reihe`, Werteliste in lib/crm/marke.ts). Liste und Akte tragen dann ein ruhiges Abzeichen, über der Liste steht
 // ein Filter je Reihe, die Kachel „Reihen“ zeigt Events, Gäste, Zusagen, Nachgefasst, Leads und Deals je Reihe
 // (lib/crm/reihen.ts — summiert dieselben Zahlen je Event wie die Wirkung, keine zweite Rechnung).
+// 04.10. (Kevin: „alles anpassbar“): jede Event-Zeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter Archiv,
+// zählt in Wirkung und Reihen weiter) und Löschen (Papierkorb 30 Tage, Rückgängig; Gäste/Follow-ups/Termin bleiben bis
+// „endgültig“). Endgültig nur aus dem Papierkorb über den Serverweg mit Kaskade (events/gemeinsam.tsx `eventEndgueltig`).
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Pillen, useBreit, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Pillen, useBreit, LEUCHT, ZeileAktionen } from '../ui';
+import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte } from './ablage';
 import { VORLAGEN, vorlageAnwenden, checklisteStand, einlader, type VorlageId } from '@/lib/crm/eventplanung';
 import { MARKE_EVENTS, nachfassenRest } from '@/lib/crm/events';
 import { istNetzwerkenEvent, OHNE_REIHE, reiheName, eventTitelVorschlag } from '@/lib/crm/marke';
@@ -47,7 +51,7 @@ import { HeadPanel } from './HeadPanel';
 import { Person, WerFilter, useWerFilter, passtWer } from './team';
 import { EventDetail } from './events/EventDetail';
 import { Start } from './events/Start';
-import { FORMATE, STATUS, ReiheAbzeichen, ReiheWahl } from './events/gemeinsam';
+import { FORMATE, STATUS, ReiheAbzeichen, ReiheWahl, eventPapierkorb, eventEndgueltig } from './events/gemeinsam';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { FLAECHE, kachel, standardVon } from '@/lib/crm/flaechen';
 
@@ -83,7 +87,12 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   const crm = api.crm;
   const heute = crm?.heute ?? '';
   // Nur unsere eigenen Abende — besuchte Events (Netzwerken) stehen im Reiter „Events“.
-  const events = useMemo(() => (crm?.stand.events ?? []).filter(e => !istNetzwerkenEvent(e)).sort((a, b) => b.datum.localeCompare(a.datum)), [crm?.stand.events]);
+  // Archivierte zählen in Wirkung und Reihen weiter (`eigene`), stehen aber nur im Reiter „Archiv“.
+  const eigene = useMemo(() => (crm?.stand.events ?? []).filter(e => !istNetzwerkenEvent(e)).sort((a, b) => b.datum.localeCompare(a.datum)), [crm?.stand.events]);
+  const events = useMemo(() => eigene.filter(e => !e.archiviertAm), [eigene]);
+  const archivEvents = useMemo(() => eigene.filter(e => e.archiviertAm), [eigene]);
+  const ablage = useCrmAblage(api, 'events');
+  const [ablageSicht, setAblageSicht] = useAblageSicht();
   const idsEvents = new Set(events.map(e => e.id));
   const reihenPillen = useMemo(() => reihenFilter(events), [events]);
   // Eine Reihe, die es (nach Löschen/Umstellen) nicht mehr gibt, filtert nicht weiter — sonst stünde die Liste grundlos leer.
@@ -122,19 +131,19 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   // Wirkung der vergangenen Events (nicht abgesagt) — aus den Zahlen des Servers (crm.events), keine zweite Rechnung.
   const wirkung = useMemo(() => {
     if (!crm) return null;
-    const gewesen = events.filter(e => e.datum < heute && e.status !== 'abgesagt');
+    const gewesen = eigene.filter(e => e.datum < heute && e.status !== 'abgesagt');
     const s = zahlenSumme(gewesen.map(e => crm.events[e.id]));
     return { events: gewesen.length, da: s.da, folge: s.folgegespraeche, beeinflusst: s.beeinflusst, verursacht: s.verursacht, kosten: s.kosten, jeGespraech: s.kosten && s.folgegespraeche ? Math.round(s.kosten / s.folgegespraeche) : null, nachfassenOffen: s.nachfassenOffen };
-  }, [crm, events, heute]);
+  }, [crm, eigene, heute]);
   // Je Reihe (Fokus Innovation …): dieselben Zahlen je Event, nur anders gruppiert.
-  const reihen = useMemo(() => (crm ? reihenUebersicht(events, crm.events, crm.stand.teilnahmen, heute) : []), [crm, events, heute]);
+  const reihen = useMemo(() => (crm ? reihenUebersicht(eigene, crm.events, crm.stand.teilnahmen, heute) : []), [crm, eigene, heute]);
 
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
 
   const waehle = (id: string | null) => { setLokal(id); onAuswahl?.(id, start && id ? 'replace' : id ? 'push' : 'replace'); };
 
   // Start ohne Daten (E8): kein Event → statt der leeren Liste der geführte Start; der Head of Event bleibt oben.
-  if (!events.length) {
+  if (!eigene.length && !ablage.korb.length) {
     return (
       <>
         <Kopf />
@@ -173,11 +182,13 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
     const wer = zustaendig(e.zustaendig, 'event');
     return (
       <div key={e.id}>
+        <ZeileAktionen titel={e.titel} archiviert={!!e.archiviertAm} onArchivieren={() => (e.archiviertAm ? ablage.zurueckholen(e.id, e.titel) : ablage.archivieren(e.id, e.titel))} onLoeschen={() => eventPapierkorb(ablage, api, e)}>
         <Zeile onClick={() => waehle(breit ? e.id : aktivId === e.id ? null : e.id)} aktiv={aktivId === e.id}
           links={<Punkt farbe={e.status === 'durchgefuehrt' ? LEUCHT.gut : e.status === 'abgesagt' ? C.inkLeise : warnung ? LEUCHT.achtung : LEUCHT.beziehung} />}
           titel={reiheAktiv && reiheAktiv !== OHNE_REIHE ? e.titel : <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}><span>{e.titel}</span><ReiheAbzeichen e={e} /></span>} unter={unter}
           rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }} title={`Zuständig: ${nameVon(wer)}`}><Person id={wer} groesse={20} /><Chip farbe={C.inkDim}>{STATUS.find(s => s.id === e.status)?.label}</Chip></span>} />
-        {!breit && aktivId === e.id && <div style={{ padding: '12px 2px 20px', borderBottom: '1px solid rgba(255,255,255,.06)' }}><EventDetail key={e.id} e={e} api={api} zuKontakt={zuKontakt} /></div>}
+        </ZeileAktionen>
+        {!breit && aktivId === e.id && !e.archiviertAm && <div style={{ padding: '12px 2px 20px', borderBottom: '1px solid rgba(255,255,255,.06)' }}><EventDetail key={e.id} e={e} api={api} zuKontakt={zuKontakt} ablage={ablage} /></div>}
       </div>
     );
   };
@@ -197,6 +208,10 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
               <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>Verantwortung <Person id={verantwortlich('event')} name /></span>
               <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>beide sehen alles und arbeiten mit</span>
             </div>
+            <div style={{ marginBottom: 8 }}><AblageReiter sicht={ablageSicht} onSicht={setAblageSicht} name="Events" liste={events.length} archiv={archivEvents.length} korb={ablage.korb.length} /></div>
+            {ablageSicht === 'archiv' && (archivEvents.length ? <Liste>{archivEvents.map(zeile)}</Liste> : <Leer>Das Archiv ist leer. Archivierte Events sind aus der Liste ausgeblendet, zählen in Wirkung und Reihen weiter und lassen sich jederzeit zurückholen.</Leer>)}
+            {ablageSicht === 'papierkorb' && <PapierkorbKarte ablage={ablage} liste="events" weg={id => eventEndgueltig(api, id, ablage.bestaetigen)} />}
+            {ablageSicht === 'liste' && <>
             <div style={{ marginBottom: 8 }}><WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} /></div>
             {reihenPillen.length > 0 && (
               <div style={{ marginBottom: 8 }} role="group" aria-label="Reihe">
@@ -223,6 +238,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
               ? <Leer>Keine kommenden Events {wahl === 'ich' ? 'bei dir' : `bei ${nameVon(wahl)}`} — „Alle“ zeigt {kommendAlle.length === 1 ? 'eins' : kommendAlle.length}.</Leer>
               : reiheAktiv ? <Leer>Kein kommendes Event {reiheAktiv === OHNE_REIHE ? 'ohne Reihe' : `in „${reiheName(reiheAktiv)}“`} — „+ Event“ legt eins {reiheAktiv === OHNE_REIHE ? 'an' : 'in dieser Reihe an'}.</Leer>
               : <Leer>Kein Event geplant. Sechs Wochen Vorlauf: Ziel, Format, Gästemischung (mindestens 40 % Zielkunden, 20 % Kunden und Multiplikatoren).</Leer>)}
+            </>}
           </Karte>
         </Kachel>
 
@@ -230,7 +246,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
         <Kachel {...K('detail')}>
           {breit ? (
             <Karte i={2} akzent={aktiv ? LEUCHT.beziehung : undefined}>
-              {aktiv ? <EventDetail key={aktiv.id} e={aktiv} api={api} zuKontakt={zuKontakt} /> : <Leer>Noch kein Event. „+ Event“ legt eins mit Vorlage an.</Leer>}
+              {aktiv ? <EventDetail key={aktiv.id} e={aktiv} api={api} zuKontakt={zuKontakt} ablage={ablage} /> : <Leer>Noch kein Event. „+ Event“ legt eins mit Vorlage an.</Leer>}
             </Karte>
           ) : null}
         </Kachel>
@@ -301,6 +317,8 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
           {vorbei.length > 0 ? <Karte i={6}><Ueberschrift>Vergangene Events</Ueberschrift><Liste>{vorbei.map(zeile)}</Liste></Karte> : null}
         </Kachel>
       </Flaeche>
+      {ablage.dialog}
+      {ablage.hinweis}
     </>
   );
 }

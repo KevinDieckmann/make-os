@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Knopf, Chip, LEUCHT } from '../../ui';
+import { Knopf, Chip, LEUCHT, useRueckfrage } from '../../ui';
 import type { Event } from '@/lib/crm/typen';
 
 type Lage = 'prueft' | 'da' | 'fehlt' | 'schein' | 'keiner' | 'ohne-icloud' | 'kein-zugang' | 'nicht-erreichbar';
@@ -22,6 +22,7 @@ export function Kalender({ e }: { e: Event }) {
   const [grund, setGrund] = useState('');
   const [warDa, setWarDa] = useState(false);
   const [laeuft, setLaeuft] = useState(false);
+  const { bestaetigen, dialog } = useRueckfrage();
   const [meldung, setMeldung] = useState('');
   const { id, datum, uhrzeit, status } = e;
 
@@ -48,7 +49,7 @@ export function Kalender({ e }: { e: Event }) {
   };
 
   const loeschen = async () => {
-    if (laeuft || !window.confirm('Den Termin dieses abgesagten Events im Kalender „Gemeinsam“ löschen? Das Event selbst bleibt.')) return;
+    if (laeuft || !(await bestaetigen({ titel: 'Termin im Kalender löschen?', text: 'Der Termin dieses abgesagten Events wird im Kalender „Gemeinsam“ gelöscht. Das Event selbst bleibt.', ja: 'Löschen', gefahr: true }))) return;
     setLaeuft(true); setMeldung('');
     const r = await fetch('/api/kalender/spiegel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ art: 'event', id, aktion: 'loeschen' }) })
       .then(x => x.json() as Promise<{ ok: boolean; fehler?: string }>).catch(() => ({ ok: false, fehler: 'Kalender nicht erreichbar.' }));
@@ -73,6 +74,7 @@ export function Kalender({ e }: { e: Event }) {
       {lage === 'kein-zugang' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Termin anlegen geht nur im Haushalt des Inhabers — die Kalender-Datei immer.</span>}
       {lage === 'nicht-erreichbar' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender gerade nicht erreichbar — die Kalender-Datei geht immer.</span>}
       {meldung && <span style={{ fontSize: TYP.bedien, color: lage === 'da' ? LEUCHT.gut : LEUCHT.achtung }}>{meldung}</span>}
+      {dialog}
     </div>
   );
 }

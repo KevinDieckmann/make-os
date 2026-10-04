@@ -35,7 +35,7 @@ import { Fenster } from '../Fenster';
 import { Knopf, feld, LEUCHT } from '../ui';
 import { MandatWahl, useMandate } from '../zeit/MandatWahl';
 import type { PlanungStand } from './usePlanung';
-import type { Rueckgaengig } from './Rueckgaengig';
+import type { Rueckgaengig } from '../ui';
 
 /** Was das Fenster beim Anlegen vorbelegt (aus Klick-Stelle und aktivem Filter). */
 export interface MsVorgabe { faellig?: string; space?: SpaceId; einheit?: string; /** Ziel, auf das der neue Meilenstein einzahlt (Ziel-Detail). */ zielId?: string; /** Vorgänger, auf die er wartet („+ danach“ in der Kette). */ wartetAuf?: string[] }

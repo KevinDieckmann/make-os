@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import { useEffect, useState, type CSSProperties, type Dispatch } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld } from '../ui';
+import { Knopf, feld, useRueckfrage } from '../ui';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { AUFGABEN_GRENZEN, euroAlsCent } from '@/lib/aufgaben/saeubern';
 import type { EigenesFeld, FeldTyp, FeldWert, Project, Task } from '@/types/tasks';
@@ -43,6 +43,7 @@ export function FelderVerwalten({ projekt, dispatch, aufgaben }: { projekt: Proj
   const [name, setName] = useState('');
   const [typ, setTyp] = useState<FeldTyp>('text');
   const [optionen, setOptionen] = useState('');
+  const { bestaetigen, dialog } = useRueckfrage();
   const setze = (neu: EigenesFeld[]) => dispatch({ type: 'UPDATE_PROJECT', payload: { id: projekt.id, felder: neu.length ? neu : undefined } });
   const anlegen = () => {
     const n = name.trim().slice(0, 60);
@@ -65,7 +66,7 @@ export function FelderVerwalten({ projekt, dispatch, aufgaben }: { projekt: Proj
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{genutzt(f.id) ? `an ${genutzt(f.id)} Aufgabe${genutzt(f.id) === 1 ? '' : 'n'}` : ''}</span>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
             <button disabled={i === 0} onClick={() => { const n = [...felder]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; setze(n); }} aria-label="nach oben" className="fassbar" style={{ background: 'none', border: 'none', color: i ? C.inkDim : 'rgba(255,255,255,.15)', cursor: i ? 'pointer' : 'default' }}>↑</button>
-            <button onClick={() => { if (window.confirm(`Feld „${f.name}“ entfernen? Die Werte an den Aufgaben bleiben gespeichert, werden aber nicht mehr gezeigt.`)) setze(felder.filter(x => x.id !== f.id)); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>Entfernen</button>
+            <button onClick={async () => { if (await bestaetigen({ titel: `Feld „${f.name}“ entfernen?`, text: 'Die Werte an den Aufgaben bleiben gespeichert, werden aber nicht mehr gezeigt.', ja: 'Entfernen', gefahr: true })) setze(felder.filter(x => x.id !== f.id)); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>Entfernen</button>
           </span>
         </div>
       ))}
@@ -75,6 +76,7 @@ export function FelderVerwalten({ projekt, dispatch, aufgaben }: { projekt: Proj
         {typ === 'auswahl' && <input value={optionen} onChange={e => setOptionen(e.target.value)} placeholder="Werte: Messe, Web, Presse" aria-label="Auswahl-Werte" style={{ ...klein, flex: '2 1 200px', width: 'auto' }} />}
         <Knopf onClick={anlegen} aus={!name.trim() || felder.length >= AUFGABEN_GRENZEN.felder}>+ Feld</Knopf>
       </div>
+      {dialog}
     </div>
   );
 }

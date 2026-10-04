@@ -237,7 +237,7 @@ export function Rueckfrage({ frage, onZu, onGewaehlt }: { frage: RueckfrageDaten
       <div role="alertdialog" aria-modal="true" aria-labelledby={`${kennung}-t`} aria-describedby={`${kennung}-x`} className="ui-rueckfrage"
         style={{ background: C.flaeche, border: `1px solid ${RAND.stark}`, color: C.ink, fontFamily: SCHRIFT.text }}>
         <h2 id={`${kennung}-t`} style={{ margin: 0, fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.01em', lineHeight: 1.3 }}>{frage.titel}</h2>
-        <div id={`${kennung}-x`} style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.55 }}>{frage.text}</div>
+        <div id={`${kennung}-x`} style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.55, whiteSpace: 'pre-line' }}>{frage.text}</div>
         <div className="ui-rueckfrage-wahl">
           {frage.wahl.map(w => <Knopf key={w.label} leise={w.ton === 'leise'} farbe={w.ton === 'gefahr' ? KRITISCH : undefined} onClick={() => { (onGewaehlt ?? onZu)(); return w.tun(); }}>{w.label}</Knopf>)}
           <div ref={abbrechen} style={{ display: 'contents' }}><Knopf leise onClick={onZu}>Abbrechen</Knopf></div>
@@ -247,13 +247,32 @@ export function Rueckfrage({ frage, onZu, onGewaehlt }: { frage: RueckfrageDaten
   );
 }
 
-/** Rückfrage als Hook: `fragen({ titel, text, wahl })`, `dialog` einmal in die Seite hängen. Abbrechen ruft `zu` der Frage. */
-export function useRueckfrage(): { fragen: (f: RueckfrageDaten) => void; dialog: ReactNode } {
+/** Kurzform für eine Ja/Nein-Rückfrage (statt `window.confirm`): eine Hauptwahl, „Abbrechen“ kommt immer dazu. */
+export interface Bestaetigung {
+  titel: string;
+  /** Erklärung: was passiert, was bleibt (Zeilenumbrüche `\n` werden gezeigt). */
+  text?: ReactNode;
+  /** Beschriftung der Hauptwahl, z. B. „In den Papierkorb“, „Trennen“, „Zurücknehmen“. */
+  ja: string;
+  /** Achtung-Farbe für die Hauptwahl (Löschen, Trennen, Verwerfen). */
+  gefahr?: boolean;
+}
+
+/**
+ * Rückfrage als Hook: `fragen({ titel, text, wahl })`, `dialog` einmal in die Seite hängen. Abbrechen ruft `zu` der Frage.
+ * `bestaetigen({ titel, text, ja, gefahr })` ersetzt `window.confirm` (04.10.): ein Promise — `true` bei der Hauptwahl,
+ * `false` bei Abbrechen/Escape/daneben. Eine neue Frage bricht eine offene ab (`false`).
+ */
+export function useRueckfrage(): { fragen: (f: RueckfrageDaten) => void; bestaetigen: (b: Bestaetigung) => Promise<boolean>; dialog: ReactNode } {
   const [f, setF] = useState<RueckfrageDaten | null>(null);
   const jetzt = useRef<RueckfrageDaten | null>(null);
   jetzt.current = f;
-  const abbrechen = useCallback(() => { const zu = jetzt.current?.zu; setF(null); zu?.(); }, []);
-  const gewaehlt = useCallback(() => setF(null), []);
-  const fragen = useCallback((x: RueckfrageDaten) => setF(x), []);
-  return { fragen, dialog: f ? <Rueckfrage frage={f} onZu={abbrechen} onGewaehlt={gewaehlt} /> : null };
+  const abbrechen = useCallback(() => { const zu = jetzt.current?.zu; jetzt.current = null; setF(null); zu?.(); }, []);
+  // Gewählt: die Frage ist beantwortet — eine gleich danach gestellte (Kette) bricht sie nicht mehr „ab“.
+  const gewaehlt = useCallback(() => { jetzt.current = null; setF(null); }, []);
+  const fragen = useCallback((x: RueckfrageDaten) => { const offen = jetzt.current?.zu; jetzt.current = x; setF(x); offen?.(); }, []);
+  const bestaetigen = useCallback((b: Bestaetigung) => new Promise<boolean>(fertig => {
+    fragen({ titel: b.titel, text: b.text ?? '', wahl: [{ label: b.ja, ton: b.gefahr ? 'gefahr' : undefined, tun: () => fertig(true) }], zu: () => fertig(false) });
+  }), [fragen]);
+  return { fragen, bestaetigen, dialog: f ? <Rueckfrage frage={f} onZu={abbrechen} onGewaehlt={gewaehlt} /> : null };
 }

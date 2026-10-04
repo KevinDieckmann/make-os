@@ -7,12 +7,14 @@
 // eure Abnahme macht eine Karte fertig. Planung: Etappen mit Zieldatum.
 // Neue Karten kommen von hier, vom Knopf „Idee“ oben auf jeder Seite und
 // von ZOE („notier im Bauplan …“).
+// 04.10. (ZeileAktionen): jede Karte im Board — Archivieren = „verwerfen“ (unten „verworfen — ansehen“, zurückholbar, mit
+// Rückgängig). Gelöscht wird eine Bauplan-Karte nicht: sie ist die Geschichte dessen, was wir wollten und warum nicht.
 
 import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ThumbsUp, MessageSquare, Image as BildIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Knopf, Segmente, Zahl, Hinweis, feld, LEUCHT } from '../ui';
+import { Seite, Karte, Knopf, Segmente, Zahl, Hinweis, feld, LEUCHT, ZeileAktionen, useRueckgaengig } from '../ui';
 import { Pillen } from '../crm/teile';
 import { useLinkAuswahl } from '../Verlauf';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
@@ -45,6 +47,12 @@ export function BauplanBoard() {
   const [verworfeneZeigen, setVerworfeneZeigen] = useState(false);
   const [zieht, setZieht] = useState<string | null>(null);
   const [ziel, setZiel] = useState<{ spalte: Spalte; vor: string | null } | null>(null);
+  const { melden, hinweis } = useRueckgaengig();
+  const verwerfen = (k: BacklogItem, ja: boolean) => {
+    const setzen = (v: boolean) => tu({ aktion: 'teil', id: k.id, felder: { verworfen: v } }, l => l.map(i => (i.id === k.id ? { ...i, verworfen: v } : i)));
+    void setzen(ja);
+    melden(ja ? `„${k.titel}“ verworfen — unten unter „verworfen“ zurückholbar` : `„${k.titel}“ ist zurück`, () => void setzen(!ja));
+  };
 
   // Eine Karte vom Knopf „Idee“ (andere Seite derselben Sitzung) sofort zeigen.
   useEffect(() => { const f = () => void laden(); window.addEventListener(BAUPLAN_NEU, f); return () => window.removeEventListener(BAUPLAN_NEU, f); }, [laden]);
@@ -173,10 +181,12 @@ export function BauplanBoard() {
                   {sichtbar.map(k => (
                     <div key={k.id} style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
                       {hier && ziel?.vor === k.id && linie}
+                      <ZeileAktionen titel={k.titel} onArchivieren={() => verwerfen(k, true)}>
                       <KarteMini k={k} namen={namen} ich={ich} heute={heute} frisch={frisch === k.id} zieht={zieht === k.id}
                         onOeffnen={() => setOffen(k.id)}
                         onZiehStart={e => { e.dataTransfer.setData('text/plain', k.id); e.dataTransfer.effectAllowed = 'move'; setZieht(k.id); }}
                         onZiehEnde={() => { setZieht(null); setZiel(null); }} />
+                      </ZeileAktionen>
                     </div>
                   ))}
                   {hier && ziel?.vor === null && linie}
@@ -195,7 +205,9 @@ export function BauplanBoard() {
                 {verworfeneZeigen ? 'Verworfene ausblenden' : `${verworfen.length} verworfen — ansehen`}
               </button>
               {verworfeneZeigen && verworfen.map(i => (
-                <button key={i.id} onClick={() => setOffen(i.id)} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '2px 0', textDecoration: 'line-through' }}>{i.titel}</button>
+                <ZeileAktionen key={i.id} titel={i.titel} archiviert onArchivieren={() => verwerfen(i, false)}>
+                  <button onClick={() => setOffen(i.id)} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '2px 0', textDecoration: 'line-through', minHeight: 32 }}>{i.titel}</button>
+                </ZeileAktionen>
               ))}
             </div>
           )}
@@ -207,6 +219,7 @@ export function BauplanBoard() {
           <ErfassenFormular onAbbruch={() => setNeu(false)} onFertig={k => { setNeu(false); setFrisch(k.id); void laden(); }} />
         </Fenster>
       )}
+      {hinweis}
       {karte && <KarteDetail key={karte.id} karte={karte} items={alle} etappen={etappen} ich={ich} namen={namen} tu={tu} onZu={() => setOffen(null)} />}
     </Seite>
   );

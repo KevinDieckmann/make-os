@@ -14,10 +14,13 @@
 // Jede Änderung ist eine Einzeländerung (api.teil).
 // Stimme (27.09.): in wessen Namen die Ausgabe erscheint — Kevin, Malin oder die
 // Marke (Absender im Versandwerkzeug). Plakette in der Liste: Autor › Stimme.
+// 04.10. (Kevin: „alles anpassbar“): jede Ausgabe am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter Archiv)
+// und Löschen (Papierkorb 30 Tage, Rückgängig); endgültig nur aus dem Papierkorb (components/os/crm/ablage.tsx).
 
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Zahl, Raster, feld, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Zahl, Raster, feld, LEUCHT, ZeileAktionen } from '../../ui';
+import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte } from '../ablage';
 import type { NewsletterAusgabe, Beitrag } from '@/lib/crm/typen';
 import { TEAM, anderer, nameVon } from '@/lib/crm/team';
 import {
@@ -48,10 +51,14 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
   const ich = api.ich;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const empfaenger = useMemo(() => newsletterEmpfaenger(kontakte).length, [kontakte]);
+  const ablage = useCrmAblage(api, 'newsletter');
+  const [sicht, setSicht] = useAblageSicht(() => setOffen(null));
+  const alleAusgaben = crm?.stand.newsletter;
+  const archivZahl = (alleAusgaben ?? []).filter(a => a.archiviertAm).length;
   const ausgaben = useMemo(() => {
     const rang = { entwurf: 0, bereit: 0, versendet: 1 } as const;
-    return [...(crm?.stand.newsletter ?? [])].sort((a, b) => rang[a.status] - rang[b.status] || (b.datum ?? '9999').localeCompare(a.datum ?? '9999') || b.geaendert.localeCompare(a.geaendert));
-  }, [crm]);
+    return (alleAusgaben ?? []).filter(a => (sicht === 'archiv' ? !!a.archiviertAm : !a.archiviertAm)).sort((a, b) => rang[a.status] - rang[b.status] || (b.datum ?? '9999').localeCompare(a.datum ?? '9999') || b.geaendert.localeCompare(a.geaendert));
+  }, [alleAusgaben, sicht]);
   const zahlen = useMemo(() => {
     const z: Record<string, number> = { alle: ausgaben.length };
     if (ich) { z.ich = ausgaben.filter(a => passtAusgabe(a, 'ich', ich)).length; z[anderer(ich)] = ausgaben.filter(a => passtAusgabe(a, anderer(ich), ich)).length; }
@@ -60,7 +67,8 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   const heute = crm.heute;
   const sichtbar = ausgaben.filter(a => passtAusgabe(a, wer, ich));
-  const versendet = ausgaben.filter(a => a.status === 'versendet');
+  // Zahlen oben über alle Ausgaben außer dem Papierkorb (auch archivierte zählen als versendet).
+  const versendet = (alleAusgaben ?? []).filter(a => a.status === 'versendet');
   const antworten = versendet.reduce((s, a) => s + (a.antworten ?? 0), 0);
   const letzteQuote = versendet.map(abmeldequote).find(q => q !== null) ?? null;
 
@@ -86,12 +94,14 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>MAKE OS versendet nichts. Ausgabe hier schreiben, Empfänger exportieren (nur Name und Adresse, nur Double-Opt-in), im Versandwerkzeug verschicken — mit Abmeldelink. Danach Empfänger, Antworten und Abmeldungen eintragen. Öffnungsraten sind keine Steuergröße.</div>
       </Karte>
 
-      <Karte i={1}>
-        <Ueberschrift rechts={<WerFilter wahl={wer} onWahl={setWer} ich={ich} zahlen={zahlen} />}>Ausgaben · {ausgaben.length}</Ueberschrift>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+      <AblageReiter sicht={sicht} onSicht={setSicht} name="Ausgaben" liste={(alleAusgaben ?? []).length - archivZahl} archiv={archivZahl} korb={ablage.korb.length} />
+      {sicht === 'papierkorb' && <PapierkorbKarte ablage={ablage} liste="newsletter" />}
+      {sicht !== 'papierkorb' && <Karte i={1}>
+        <Ueberschrift rechts={<WerFilter wahl={wer} onWahl={setWer} ich={ich} zahlen={zahlen} />}>{sicht === 'archiv' ? 'Archiv · Ausgaben' : 'Ausgaben'} · {ausgaben.length}</Ueberschrift>
+        {sicht === 'liste' && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
           <input value={titel} maxLength={200} onChange={e => setTitel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void anlegen(); }} placeholder="Neue Ausgabe: Titel eingeben, Enter" aria-label="Titel der Ausgabe" style={{ ...feld, flex: 1, minWidth: 220, fontSize: TYP.bedien, padding: '9px 13px' }} />
           <Knopf aus={!titel.trim()} onClick={() => void anlegen()}>+ Ausgabe</Knopf>
-        </div>
+        </div>}
         {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>{meldung}</div>}
         <Liste>
           {sichtbar.map(a => {
@@ -99,23 +109,27 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
             const stand = a.status === 'versendet' ? 'nicht_noetig' : ausgabeFreigabeStand(a);
             return (
               <div key={a.id}>
+                <ZeileAktionen titel={a.titel} archiviert={sicht === 'archiv'} onArchivieren={() => { if (offen === a.id) setOffen(null); if (sicht === 'archiv') ablage.zurueckholen(a.id, a.titel); else ablage.archivieren(a.id, a.titel); }} onLoeschen={() => { if (offen === a.id) setOffen(null); ablage.loeschen(a.id, a.titel); }}>
                 <Zeile onClick={() => setOffen(offen === a.id ? null : a.id)} aktiv={offen === a.id} titel={a.titel} links={<AutorStimme autor={autorVon(a)} stimme={a.stimme} groesse={20} />}
                   unter={[a.datum ? datum(a.datum, heute) : 'ohne Datum', a.stimme ? `als ${stimmeText(a.stimme)}` : '', a.beitragIds.length ? `${a.beitragIds.length} Beiträge` : '', a.status === 'versendet' && a.empfaenger ? `${a.empfaenger} Empfänger` : '', a.antworten ? `${a.antworten} Antworten` : '', q !== null ? `Abmeldungen ${prozent(q)}` : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{stand !== 'ok' && <FreigabeChip stand={stand} an={a.freigabe?.an} />}<Chip farbe={STATUS_FARBE[a.status]}>{AUSGABE_STATUS.find(s => s.id === a.status)?.label}</Chip></span>} />
-                {offen === a.id && <AusgabeFormular a={a} api={api} heute={heute} empfaenger={empfaenger} beitraege={crm.stand.beitraege ?? []} schliessen={() => setOffen(null)} melde={setMeldung} />}
+                </ZeileAktionen>
+                {offen === a.id && <AusgabeFormular a={a} api={api} heute={heute} empfaenger={empfaenger} beitraege={crm.stand.beitraege ?? []} schliessen={() => setOffen(null)} melde={setMeldung} loeschen={() => { setOffen(null); ablage.loeschen(a.id, a.titel); }} />}
               </div>
             );
           })}
         </Liste>
-        {!ausgaben.length && <Leer>Noch keine Ausgabe. Eine Ausgabe bündelt Beiträge und eine eigene Einsicht — Themen kommen aus der Stimme der Kunden.</Leer>}
+        {!ausgaben.length && <Leer>{sicht === 'archiv' ? 'Das Archiv ist leer. Archivierte Ausgaben sind aus der Liste ausgeblendet, ihre Zahlen zählen weiter — zurückholen jederzeit.' : 'Noch keine Ausgabe. Eine Ausgabe bündelt Beiträge und eine eigene Einsicht — Themen kommen aus der Stimme der Kunden.'}</Leer>}
         {ausgaben.length > 0 && !sichtbar.length && <Leer>Nichts für diese Auswahl — „Alle“ zeigt jede Ausgabe.</Leer>}
-      </Karte>
+      </Karte>}
+      {ablage.dialog}
+      {ablage.hinweis}
     </>
   );
 }
 
-function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, melde }: {
-  a: NewsletterAusgabe; api: CrmApi; heute: string; empfaenger: number; beitraege: Beitrag[]; schliessen: () => void; melde: (t: string) => void;
+function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, melde, loeschen }: {
+  a: NewsletterAusgabe; api: CrmApi; heute: string; empfaenger: number; beitraege: Beitrag[]; schliessen: () => void; melde: (t: string) => void; /** In den Papierkorb (mit Rückgängig). */ loeschen: () => void;
 }) {
   const [statusHinweis, setStatusHinweis] = useState('');
   const ich = api.ich;
@@ -193,7 +207,7 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
         <Knopf leise aus={!a.inhalt.trim()} onClick={async () => melde((await kopieren(text)) ? 'Ausgabe kopiert — Versand im Versandwerkzeug, nicht hier.' : 'Kopieren nicht möglich.')}>Ausgabe kopieren</Knopf>
         <Knopf leise onClick={schliessen}>Schließen</Knopf>
-        <Knopf leise onClick={async () => { if (!window.confirm(`Ausgabe „${a.titel}“ löschen?`)) return; await api.weg('newsletter', a.id); schliessen(); melde(`„${a.titel}“ gelöscht.`); }}>Löschen</Knopf>
+        <Knopf leise onClick={loeschen}>In den Papierkorb</Knopf>
       </div>
     </div>
   );

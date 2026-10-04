@@ -131,9 +131,8 @@ describe('Produkte und Aufgaben nutzen den Baustein', () => {
     expect(hd).toMatch(/melden\(`„\$\{t\.title\}“ archiviert/);
   });
   it('Rückgängig hat EINE Quelle (ui) — Planung, Aufgaben und Produkte reichen nur durch', () => {
-    expect(lies('components/os/planung/Rueckgaengig.tsx')).toContain("export { useRueckgaengig, type Rueckgaengig } from '../ui';");
-    // Der Kalender (Termin verschieben, 8 s) hat noch seinen eigenen Hinweis — kommt mit der Inventur der übrigen Listen.
-    const funde = [...dateien('components/os/aufgaben'), ...dateien('components/os/planung'), ...dateien('components/os/mandate')].filter(f => /export (const|function) (useRueckgaengig|RUECKGAENGIG_MS)\b|role="status" aria-live="polite" style=\{\{ position: 'fixed'/.test(lies(f)));
+    // Seit 04.10. ist planung/Rueckgaengig.tsx aufgegangen, der Kalender nutzt useRueckgaengig (tests/listen-aktionen.test.ts).
+    const funde = [...dateien('components/os/aufgaben'), ...dateien('components/os/planung'), ...dateien('components/os/mandate'), ...dateien('components/os/kalender')].filter(f => /export (const|function) (useRueckgaengig|RUECKGAENGIG_MS)\b|role="status" aria-live="polite" style=\{\{ position: 'fixed'/.test(lies(f)));
     expect(funde).toEqual([]);
   });
   it('DESIGN_STANDARD.md nennt Baustein und Regel', () => {

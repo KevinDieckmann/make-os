@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Knopf, LEUCHT } from '../ui';
+import { Karte, Knopf, LEUCHT, useRueckfrage } from '../ui';
 import { vorText } from '@/lib/gmail/liste';
 
 export interface GmailMeta {
@@ -36,6 +36,7 @@ const post = (url: string, body?: unknown) => fetch(url, { method: 'POST', heade
 export function GmailVerbinden({ meta, onGeaendert, meldung }: { meta: GmailMeta | null; onGeaendert: () => void; meldung: (t: string) => void }) {
   const [arbeit, setArbeit] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<{ text: string; achtung?: boolean } | null>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
 
   // Rückkehr von Google: ?google=verbunden|… → Hinweis zeigen, Adresse säubern.
   useEffect(() => {
@@ -61,7 +62,7 @@ export function GmailVerbinden({ meta, onGeaendert, meldung }: { meta: GmailMeta
     onGeaendert();
   };
   const ausschalten = async () => {
-    if (!window.confirm('Gmail in MAKE OS ausschalten? Der Spiegel (Kopie der Mails) wird gelöscht und der Zugriff nicht mehr genutzt. In Gmail bleibt alles, wie es ist. Der Kalender bleibt verbunden.')) return;
+    if (!(await bestaetigen({ titel: 'Gmail in MAKE OS ausschalten?', text: 'Der Spiegel (Kopie der Mails) wird gelöscht und der Zugriff nicht mehr genutzt. In Gmail bleibt alles, wie es ist. Der Kalender bleibt verbunden.', ja: 'Ausschalten', gefahr: true }))) return;
     setArbeit('aus');
     const r = await post('/api/gmail', { aktion: 'ausschalten' });
     setArbeit(null);
@@ -99,6 +100,7 @@ export function GmailVerbinden({ meta, onGeaendert, meldung }: { meta: GmailMeta
         <Knopf leise onClick={() => abgleichen(false)} aus={!!arbeit}>{arbeit === 'abgleich' ? 'gleicht ab …' : 'Jetzt abgleichen'}</Knopf>
         <Knopf leise onClick={ausschalten} aus={!!arbeit}>Gmail ausschalten</Knopf>
       </div>
+      {dialog}
     </div>
   );
 }

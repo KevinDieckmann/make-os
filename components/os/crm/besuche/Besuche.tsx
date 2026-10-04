@@ -10,6 +10,8 @@
 //   Für Kunden      Auswertung je Kunde, Datenschutz-Hinweis (AVV)
 // Ein Datenbestand: besuchte Events sind Events mit `marke: Netzwerken` (lib/crm/besuche-form.ts). Die Pillen und die Akte stehen
 // in der Adresse (a, k) — Zurück, Vor und alle Links zeigen dieselbe Ansicht.
+// 04.10. (Kevin: „alles anpassbar“): Archiv & Papierkorb wie bei Make.One (components/os/crm/ablage.tsx) — EINE Ablage für Kalender
+// und Akte, damit „Rückgängig“ stehen bleibt, wenn die Akte nach dem Löschen zurück in den Kalender springt.
 
 import { useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
@@ -24,6 +26,7 @@ import { BesuchWirkung } from './BesuchWirkung';
 import { BesuchKunden } from './BesuchKunden';
 import { NeuesBesuch } from './NeuesBesuch';
 import type { CrmApi } from '../daten';
+import { useCrmAblage } from '../ablage';
 
 const ANSICHTEN: { id: BesucheAnsicht; label: string }[] = [{ id: 'kalender', label: 'Kalender' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'kunden', label: 'Für Kunden' }];
 
@@ -34,6 +37,7 @@ export function Besuche({ api, zuKontakt, zuFirma, ansicht, k, onAnsicht, onAkte
   onAnsicht: (a: BesucheAnsicht) => void; onAkte: (id: string | null, wie?: 'push' | 'replace') => void;
 }) {
   const [neu, setNeu] = useState(false);
+  const ablage = useCrmAblage(api, 'events');
   const crm = api.crm;
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
 
@@ -41,7 +45,7 @@ export function Besuche({ api, zuKontakt, zuFirma, ansicht, k, onAnsicht, onAkte
   const akteEvent = k ? crm.stand.events.find(e => e.id === k && istBesuch(e)) : undefined;
   const props = { api, crm, zuKontakt, zuFirma };
 
-  if (akteEvent) return <BesuchAkte key={akteEvent.id} {...props} e={akteEvent} onZurueck={() => onAkte(null)} />;
+  if (akteEvent) return <><BesuchAkte key={akteEvent.id} {...props} e={akteEvent} ablage={ablage} onZurueck={() => onAkte(null)} />{ablage.dialog}{ablage.hinweis}</>;
 
   return (
     <>
@@ -53,9 +57,11 @@ export function Besuche({ api, zuKontakt, zuFirma, ansicht, k, onAnsicht, onAkte
       </div>
       {k && !akteEvent && <div role="status" style={{ fontSize: 13, color: C.inkLeise }}>Dieses Event gibt es unter „Events“ nicht (mehr).</div>}
       {aktiv === 'kalender' && neu && <NeuesBesuch api={api} crm={crm} onFertig={id => { setNeu(false); onAkte(id); }} />}
-      {aktiv === 'kalender' && <BesuchKalender crm={crm} onAkte={id => onAkte(id)} />}
+      {aktiv === 'kalender' && <BesuchKalender api={api} crm={crm} ablage={ablage} onAkte={id => onAkte(id)} />}
       {aktiv === 'wirkung' && <BesuchWirkung api={api} crm={crm} onAkte={id => onAkte(id)} />}
       {aktiv === 'kunden' && <BesuchKunden api={api} crm={crm} zuFirma={zuFirma} onAkte={id => onAkte(id)} />}
+      {ablage.dialog}
+      {ablage.hinweis}
     </>
   );
 }

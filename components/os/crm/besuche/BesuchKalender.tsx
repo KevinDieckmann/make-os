@@ -5,12 +5,17 @@
 // Make.One-Abende stehen dazwischen — nur lesend, ein Tipp führt in Make.One (Kevin: „Einmal Make.One, daneben Events, dann
 // verbinden wir die beiden“). Im MAKE-OS-Kalender erscheint ein Event über den bestehenden Spiegel (Termin im Kalender
 // „Gemeinsam“, `events/Kalender.tsx`) — den Knopf gibt es in der Event-Akte, nichts wird still angelegt.
+// 04.10.: jede besuchte Event-Zeile am Baustein `ZeileAktionen` (Archivieren · Löschen = Papierkorb); Make.One-Abende bleiben hier
+// nur lesend (ihre Aktionen stehen in Make.One). Reiter Kalender · Archiv · Papierkorb.
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
 import { CalendarCheck, CalendarPlus } from 'lucide-react';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Chip, Punkt, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Chip, Punkt, LEUCHT, ZeileAktionen } from '../../ui';
+import { AblageReiter, PapierkorbKarte, useAblageSicht, type CrmAblage } from '../ablage';
+import { eventPapierkorb, eventEndgueltig } from '../events/gemeinsam';
+import type { CrmApi } from '../daten';
 import { anmeldungVon, anmeldungLabel, besuchAbgesagt, istBesuch } from '@/lib/crm/besuche-form';
 import { budgetSumme } from '@/lib/crm/eventplanung';
 import { eventName } from '@/lib/crm/marke';
@@ -25,13 +30,16 @@ const VERGANGEN_START = 12;
 
 type Eintrag = { art: 'besuch' | 'makeone'; e: Event };
 
-export function BesuchKalender({ crm, onAkte }: Pick<BesuchProps, 'crm'> & { onAkte: (id: string) => void }) {
+export function BesuchKalender({ api, crm, ablage, onAkte }: Pick<BesuchProps, 'crm'> & { api: CrmApi; ablage: CrmAblage; onAkte: (id: string) => void }) {
   const router = useRouter();
   const heute = crm.heute;
   const firmen = crm.stand.firmen;
   const [alle, setAlle] = useState(false);
+  const [sicht, setSicht] = useAblageSicht();
 
-  const alleEvents = crm.stand.events;
+  // Archivierte Events (auch unsere Abende) nur im Reiter „Archiv“.
+  const alleEvents = crm.stand.events.filter(e => !e.archiviertAm);
+  const archiv = crm.stand.events.filter(e => e.archiviertAm && istBesuch(e));
   const eintraege: Eintrag[] = alleEvents.map(e => ({ art: istBesuch(e) ? 'besuch' as const : 'makeone' as const, e }));
   // Unsere abgesagten Abende bleiben weg; abgesagte besuchte Events stehen unter „Vergangen“ (grau) — nichts verschwindet still.
   const abgesagt = (x: Eintrag) => besuchAbgesagt(x.e);
@@ -52,18 +60,33 @@ export function BesuchKalender({ crm, onAkte }: Pick<BesuchProps, 'crm'> & { onA
       );
     }
     return (
-      <Zeile key={e.id} onClick={() => onAkte(e.id)} links={<Punkt farbe={ANMELDE_FARBE[a]} />}
+      <ZeileAktionen key={e.id} titel={e.titel} archiviert={!!e.archiviertAm} onArchivieren={() => (e.archiviertAm ? ablage.zurueckholen(e.id, e.titel) : ablage.archivieren(e.id, e.titel))} onLoeschen={() => eventPapierkorb(ablage, api, e)}>
+      <Zeile onClick={() => onAkte(e.id)} links={<Punkt farbe={ANMELDE_FARBE[a]} />}
         titel={e.titel} unter={[unter, kosten > 0 ? euro(kosten) : ''].filter(Boolean).join(' · ')}
         rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
           <FuerChip e={e} firmen={firmen} />
           {(e.wer ?? []).length > 0 && <span style={{ display: 'inline-flex' }} title={`Hin gehen: ${(e.wer ?? []).join(', ')}`}>{(e.wer ?? []).map(w => <Person key={w} id={w} groesse={20} />)}</span>}
           <Chip farbe={ANMELDE_FARBE[a]}>{anmeldungLabel(a)}</Chip>
         </span>} />
+      </ZeileAktionen>
     );
   };
 
+  const reiter = <AblageReiter sicht={sicht} onSicht={setSicht} name="Kalender" liste={besuche.length} archiv={archiv.length} korb={ablage.korb.length} />;
+  if (sicht === 'papierkorb') return <>{reiter}<PapierkorbKarte ablage={ablage} liste="events" weg={id => eventEndgueltig(api, id, ablage.bestaetigen)} /></>;
+  if (sicht === 'archiv') return (
+    <>
+      {reiter}
+      <Karte i={1}>
+        <Ueberschrift rechts={<span>{archiv.length}</span>}>Archiv</Ueberschrift>
+        {archiv.length ? <Liste>{archiv.map(e => zeile({ art: 'besuch', e }))}</Liste> : <Leer>Das Archiv ist leer. Archivierte Events sind aus dem Kalender ausgeblendet, zählen in der Wirkung weiter und lassen sich jederzeit zurückholen.</Leer>}
+      </Karte>
+    </>
+  );
+
   return (
     <>
+      {reiter}
       <Karte i={1}>
         <Ueberschrift rechts={anstehend.length ? <span>{anstehend.length}</span> : undefined}>Anstehend</Ueberschrift>
         {anstehend.length ? <Liste>{anstehend.map(zeile)}</Liste>

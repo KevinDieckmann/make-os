@@ -6,7 +6,9 @@
 //   annehmen   { id, stand }                → Deal gewonnen (danach „Mandat anlegen“, vorbelegt)
 //   ablehnen   { id, stand, grund }         → Deal verloren mit Grund (Grund Pflicht)
 //   version    { id }                       → neue Fassung als Entwurf mit Bezug
-//   loeschen   { id, stand }                → nur Entwürfe
+//   loeschen   { id, stand }                → nur Entwürfe, nur aus dem Papierkorb (endgültig, 04.10.)
+//   ablage     { id, art: archiv|papierkorb, zurueck? } → Archiv (jeder Status) bzw. Papierkorb (nur Entwürfe), hinein/zurück (04.10.)
+// GET liefert seit 04.10. `papierkorb` getrennt (Entwürfe im Papierkorb) — `angebote` enthält sie nicht mehr.
 // Zugang: Haushalt des Inhabers (Default-Deny); Stellen braucht dazu eine benannte Person mit Haushalt
 // (Dateiablage und Gesellschaften liegen je Haushalt). Nichts wird versendet — das Mail-Programm öffnet der Browser.
 
@@ -15,9 +17,9 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
-import { ladeCrm } from '@/lib/crm/speicher';
+import { ladeCrmMitPapierkorb } from '@/lib/crm/speicher';
 import { gesellschaftFuerAnzeige } from '@/lib/crm/gesellschaften';
-import { AngebotFehler, ablaufNachziehen, angebotAblehnen, angebotAnnehmen, angebotLoeschen, angebotSpeichern, angebotStellen, angebotVersion, gesellschaftenLaden, mitStand } from '@/lib/crm/angebot-server';
+import { AngebotFehler, ablaufNachziehen, angebotAblage, angebotAblehnen, angebotAnnehmen, angebotLoeschen, angebotSpeichern, angebotStellen, angebotVersion, gesellschaftenLaden, mitStand } from '@/lib/crm/angebot-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,8 +39,9 @@ export async function GET(req: Request) {
   try {
     await ablaufNachziehen();
     const h = await haushaltVon(req);
-    const crm = await ladeCrm();
-    return NextResponse.json({ ok: true, angebote: (crm.angebote ?? []).map(mitStand), gesellschaften: (await gesellschaftenLaden(h?.haushalt)).map(gesellschaftFuerAnzeige), haushalt: !!h }, { headers: { 'Cache-Control': 'no-store' } });
+    const crm = await ladeCrmMitPapierkorb();
+    const alle = crm.angebote ?? [];
+    return NextResponse.json({ ok: true, angebote: alle.filter(a => !a.geloeschtAm).map(mitStand), papierkorb: alle.filter(a => a.geloeschtAm).map(mitStand), gesellschaften: (await gesellschaftenLaden(h?.haushalt)).map(gesellschaftFuerAnzeige), haushalt: !!h }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return ausFehler(e); }
 }
 
@@ -85,7 +88,13 @@ export async function POST(req: Request) {
         await angebotLoeschen({ id, stand: b.stand, wer });
         return NextResponse.json({ ok: true });
       }
-      default: return fehler('aktion: speichern, stellen, annehmen, ablehnen, version oder loeschen.', 400);
+      case 'ablage': {
+        const art = (b as { art?: unknown }).art;
+        if (art !== 'archiv' && art !== 'papierkorb') return fehler('art: archiv oder papierkorb.', 400);
+        const a = await angebotAblage({ id, art, zurueck: (b as { zurueck?: unknown }).zurueck === true, wer });
+        return NextResponse.json({ ok: true, angebot: mitStand(a) });
+      }
+      default: return fehler('aktion: speichern, stellen, annehmen, ablehnen, version, ablage oder loeschen.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }

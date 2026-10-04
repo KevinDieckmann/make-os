@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT, Hinweis } from '../../ui';
+import { Knopf, feld, LEUCHT, Hinweis, useRueckfrage } from '../../ui';
 import { localDay } from '@/lib/zeit';
 import { anzeigename } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel } from '@/lib/crm/recht';
@@ -55,18 +55,20 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState('');
   const kopf = useRef<HTMLDivElement>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
 
   useEffect(() => { try { if (notiz) sessionStorage.setItem(merker(z.id), notiz); else sessionStorage.removeItem(merker(z.id)); } catch { /* ohne Speicher: nur im Fenster */ } }, [notiz, z.id]);
   useEffect(() => { kopf.current?.scrollIntoView?.({ block: 'start' }); }, [i, erg]);
   // M3: auf dem Ergebnis-Schirm ohne Wahl zu schließen kostet nichts — aber nie still: kurze Rückfrage. Ein SQL-bereiter Lead bleibt dann in der Runde
   // („SQL bereit — Entscheidung offen“), er geht nicht verloren.
   const schliessen = useRef(() => {});
-  schliessen.current = () => {
-    if (letzte && !window.confirm('Noch kein Ergebnis gewählt (Deal, weiter qualifizieren, parken oder raus). Der Lead bleibt in der Runde und wartet auf die Entscheidung. Trotzdem schließen?')) return;
+  schliessen.current = async () => {
+    if (letzte && !(await bestaetigen({ titel: 'Trotzdem schließen?', text: 'Noch kein Ergebnis gewählt (Deal, weiter qualifizieren, parken oder raus). Der Lead bleibt in der Runde und wartet auf die Entscheidung.', ja: 'Schließen' }))) return;
     onZu();
   };
   useEffect(() => {
-    const taste = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role="dialog"]:not([data-gespraech])')) { e.preventDefault(); schliessen.current(); } };
+    // Offene Rückfrage (alertdialog) oder anderer Dialog: Esc gehört ihnen.
+    const taste = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role="dialog"]:not([data-gespraech]), [role="alertdialog"]')) { e.preventDefault(); void schliessen.current(); } };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
   }, []);
@@ -211,6 +213,7 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
       </div>
       {weg === 'parken' && <ParkenDialog api={api} z={z} onZu={() => setWeg(null)} onFertig={i2 => void nachParkenOderRaus(i2)} />}
       {weg === 'raus' && <RausDialog api={api} z={z} onZu={() => setWeg(null)} onFertig={i2 => void nachParkenOderRaus(i2)} />}
+      {dialog}
     </div>
   );
 }

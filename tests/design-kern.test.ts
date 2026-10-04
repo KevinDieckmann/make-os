@@ -223,7 +223,7 @@ describe('Praxis-Funde 04.10. (Handy-Tippziele, Kopf, Abschneiden)', () => {
     expect(lies('components/os/PlanerLeiste.tsx').match(/className="planer-reiter"/g)?.length).toBe(2);
     expect(lies('app/globals.css')).toMatch(/\.planer-reiter \{ display: inline-flex !important; align-items: center; min-height: 44px;/);
     // Rückgängig: seit 04.10. EINE Leiste für alle Listen (components/os/ui/zeile-aktionen.tsx, Klasse in globals.css).
-    expect(lies('components/os/planung/Rueckgaengig.tsx')).toContain("from '../ui'");
+    expect(lies('components/os/planung/ZieleMeilensteine.tsx')).toMatch(/useRueckgaengig[^\n]*from '\.\.\/ui'/); // planung/Rueckgaengig.tsx ist darin aufgegangen
     expect(lies('app/globals.css')).toMatch(/\.ui-rueckgaengig-knopf \{[^}]*min-height: 44px;/);
     expect(lies('components/os/Glocke.tsx')).toMatch(/padding: '4px 10px', minHeight: 44/);
     for (const f of ['ZielePlan', 'RunningTeil', 'GymTeil', 'HyroxTeil']) expect(lies(`components/os/sport/${f}.tsx`), f).toContain('minHeight: 44, minWidth: 44');

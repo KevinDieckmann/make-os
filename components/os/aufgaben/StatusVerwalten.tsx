@@ -5,7 +5,7 @@
 
 import { useState, type Dispatch } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, SymbolKnopf, feld, Punkt } from '../ui';
+import { Karte, Ueberschrift, Knopf, SymbolKnopf, feld, Punkt, useRueckfrage } from '../ui';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { GRUNDSTATUS, statusListe } from '@/lib/aufgaben/struktur';
 import type { TasksState, TaskStatus } from '@/types/tasks';
@@ -18,6 +18,7 @@ const BASIS: WahlEintrag<TaskStatus>[] = GRUNDSTATUS.map(g => ({ id: g.basis, la
 export function StatusVerwalten({ state, dispatch, spaceId, spaceLabel, i = 2 }: { state: TasksState; dispatch: Dispatch<AufgabenAktion>; spaceId: string; spaceLabel: string; i?: number }) {
   const [name, setName] = useState('');
   const [farbe, setFarbe] = useState(FARBEN[0]);
+  const { bestaetigen, dialog } = useRueckfrage();
   const [basis, setBasis] = useState<TaskStatus>('in-progress');
   const eigene = (state.statusEigen ?? []).filter(s => s.spaceId === spaceId);
   const alle = statusListe(spaceId, state.statusEigen ?? []);
@@ -42,7 +43,7 @@ export function StatusVerwalten({ state, dispatch, spaceId, spaceLabel, i = 2 }:
               <span style={{ fontSize: TYP.bedien, color: e ? C.ink : C.inkDim, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
               {e ? <>
                 <Wahl klein label="Grundstatus" liste={BASIS} wert={e.basis === 'backlog' ? 'todo' : e.basis} onWahl={b => dispatch({ type: 'UPDATE_STATUS', payload: { id: e.id, basis: b } })} />
-                <SymbolKnopf onClick={() => { if (window.confirm(`Status „${e.label}“ entfernen? Aufgaben behalten ihren Grundstatus.`)) dispatch({ type: 'DELETE_STATUS', payload: { id: e.id } }); }} ariaLabel={`${e.label} entfernen`} gefahr>×</SymbolKnopf>
+                <SymbolKnopf onClick={async () => { if (await bestaetigen({ titel: `Status „${e.label}“ entfernen?`, text: 'Aufgaben behalten ihren Grundstatus.', ja: 'Entfernen', gefahr: true })) dispatch({ type: 'DELETE_STATUS', payload: { id: e.id } }); }} ariaLabel={`${e.label} entfernen`} gefahr>×</SymbolKnopf>
               </> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>fest</span>}
             </div>
           );
@@ -59,6 +60,7 @@ export function StatusVerwalten({ state, dispatch, spaceId, spaceLabel, i = 2 }:
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, fontFamily: SCHRIFT.text, lineHeight: 1.5 }}>Der Grundstatus sagt allen anderen Seiten, was der Status bedeutet — „Abgelegt“ mit Grundstatus Erledigt zählt überall als erledigt.</div>
       </div>
+      {dialog}
     </Karte>
   );
 }

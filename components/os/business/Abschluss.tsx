@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Knopf, feld, LEUCHT, useRueckfrage } from '../ui';
 import { Pillen } from '../crm/teile';
 import type { Monatsabschluss } from '@/lib/business/messen';
 import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
@@ -39,6 +39,7 @@ async function senden(body: Record<string, unknown>) {
 
 export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: Monatsabschluss[]; onGespeichert: () => void }) {
   const [firma, setFirma] = useState<Firma>('kdc');
+  const { bestaetigen, dialog } = useRueckfrage();
   const [monat, setMonat] = useState(letzterMonat());
   const [werte, setWerte] = useState<Record<string, string>>({});
   const [notiz, setNotiz] = useState('');
@@ -62,7 +63,7 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: 
     else setMeldung({ ok: false, text: r.fehler ?? 'Nicht gespeichert.' });
   };
   const loeschen = async (e: Monatsabschluss) => {
-    if (!window.confirm(`Abschluss ${FIRMA_LISTE.find(f => f.id === e.firma)?.label} ${e.monat} löschen?`)) return;
+    if (!(await bestaetigen({ titel: `Abschluss ${FIRMA_LISTE.find(f => f.id === e.firma)?.label} ${e.monat} löschen?`, text: 'Die eingetragenen Monatswerte dieser Firma fallen weg.', ja: 'Löschen', gefahr: true }))) return;
     const r = await senden({ aktion: 'abschluss_weg', firma: e.firma, monat: e.monat });
     if (r.ok) onGespeichert();
   };
@@ -110,6 +111,7 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: 
           </table>
         </div>
       )}
+      {dialog}
     </Karte>
   );
 }

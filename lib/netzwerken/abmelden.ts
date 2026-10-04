@@ -8,7 +8,7 @@
 //   2. Danach: gehört nichts mehr jemand anderem, fallen IndexedDB `make-os-netzwerken` (samt dem Schlüssel der Verschlüsselung) und alle
 //      `make-os-netzwerken-*` im localStorage weg (Event-Wahl, Kontext, „verworfen“-Hinweis). Liegt noch etwas für jemand anderen (Malins
 //      Erfassung auf Kevins Gerät): Datenbank und Schlüssel bleiben für sie, nur der Kontext-Merker („wer bin ich“) fällt weg.
-// Die Fragen stellt `ui` (im Browser `window.confirm`) — so lässt sich der Ablauf ohne Browser testen.
+// Die Fragen stellt `ui` (im Browser die Rückfrage-Karte, `useRueckfrage`) — so lässt sich der Ablauf ohne Browser testen.
 
 import { geteilteWarteschlange, offenFuer, type Warteschlange } from './warteschlange';
 
@@ -16,7 +16,8 @@ export const DB_NAME = 'make-os-netzwerken';
 export const SPEICHER_PRAEFIX = 'make-os-netzwerken-';
 export const KONTEXT_KEY = 'make-os-netzwerken-kontext';
 
-export interface AbmeldeUi { bestaetigen(text: string): boolean }
+/** `text` = die ganze Frage samt Erklärung; `karte` = Titel und Hauptwahl für die Rückfrage-Karte (Test-Attrappen dürfen sie übergehen). */
+export interface AbmeldeUi { bestaetigen(text: string, karte?: { titel: string; ja: string; gefahr?: boolean }): boolean | Promise<boolean> }
 export interface Speicherzugang {
   /** localStorage-ähnlich (Schlüssel auflisten, löschen) — im Test ein Attrappen-Speicher. */
   schluessel(): string[];
@@ -54,13 +55,13 @@ export async function vorAbmelden(person: string | null, ui: AbmeldeUi, q: Warte
   try { offen = offenFuer(await q.alle(), person); } catch { /* nicht lesbar: ohne Warnung weiter */ }
   if (offen > 0) {
     const n = (x: number) => `${x} ${x === 1 ? 'Erfassung' : 'Erfassungen'}`;
-    if (!ui.bestaetigen(`Es ${offen === 1 ? 'wartet' : 'warten'} noch ${n(offen)} — erst senden?`)) return false;
+    if (!(await ui.bestaetigen(`Es ${offen === 1 ? 'wartet' : 'warten'} noch ${n(offen)} — erst senden?`, { titel: 'Erst senden?', ja: 'Senden' }))) return false;
     q.person = person;
     try { await q.senden(); } catch { /* unten zählt, was übrig ist */ }
     let rest = offen;
     try { rest = offenFuer(await q.alle(), person); } catch { /* ungewiss: wie unversendet behandeln */ }
     if (rest > 0) {
-      if (!ui.bestaetigen(`${n(rest)} ${rest === 1 ? 'ließ' : 'ließen'} sich nicht senden (kein Netz?). Trotzdem abmelden? ACHTUNG: ${rest === 1 ? 'Sie wird' : 'Sie werden'} dabei vom Gerät GELÖSCHT — Angaben, Fotos und Sprachnotizen sind dann unwiederbringlich weg. Besser: abbrechen, Netz suchen, erst senden.`)) return false;
+      if (!(await ui.bestaetigen(`${n(rest)} ${rest === 1 ? 'ließ' : 'ließen'} sich nicht senden (kein Netz?). Trotzdem abmelden? ACHTUNG: ${rest === 1 ? 'Sie wird' : 'Sie werden'} dabei vom Gerät GELÖSCHT — Angaben, Fotos und Sprachnotizen sind dann unwiederbringlich weg. Besser: abbrechen, Netz suchen, erst senden.`, { titel: 'Trotzdem abmelden?', ja: 'Trotzdem abmelden', gefahr: true }))) return false;
       // Bestätigt: die eigenen Erfassungen weg (die einer anderen Person bleiben für sie liegen).
       try { for (const e of (await q.alle()).filter(x => !x.person || !person || x.person === person)) await q.verwerfen(e.id); } catch { /* unten räumt `netzwerkenAufraeumen`, was sich löschen lässt */ }
     }

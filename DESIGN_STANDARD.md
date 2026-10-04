@@ -247,7 +247,27 @@ der Server, Frist `PAPIERKORB_TAGE` = 30, nicht verschiebbar), danach unten „R
 die Frist hinaus, solange Mandate/Deals daran hängen; Morgenlauf-Schritt „Produkte-Papierkorb“) · Aufgaben (Baum: jede Ebene; Archiv › „Archiviert“
 mit Zurückholen; Einzel-Archiv = dieselbe Marke wie „Neu anfangen“ mit Kennung `ea-<Aufgabe>`, nimmt den Teilbaum mit, Serien ruhen; Löschen wie bisher in
 den Papierkorb, die Rückfrage nennt Unteraufgaben/Notiz/Dateien). Planung und Aufgaben-Hinweise hängen am selben `useRueckgaengig`.
-Folgt nach der Inventur: Mandate, Kontakte/Firmen, Deals, Events, Ziele, Notizen … (Kalender: eigener 8-s-Hinweis beim Verschieben, wird umgestellt).
+**Alle übrigen Listen (04.10. abends, Kevin: „Mach weiter mit allen … wir müssen alles anpassbar haben“)** — Wächter `tests/listen-aktionen.test.ts`
+(Liste aller Komponenten; kommt eine Liste dazu, gehört sie dort hinein). Was „Archiv“ je Liste heißt:
+
+| Liste | Archivieren | Löschen |
+|---|---|---|
+| Mandate | Status „beendet“ (aktives erst nach Rückfrage); Zurückholen = aktiv bzw. Verhandlung | Papierkorb, nur ohne Rechnungen/Dateien/offene Follow-ups (Server-Sperre) |
+| Deals | Rückfrage: parken (Wiedervorlage) oder verloren (Grund) — Zurückholen = letzte offene Stufe | nur Fehlanlage (ohne Geschichte/Wert/Notiz), endgültig nach Rückfrage |
+| Angebote | `archiviertAm`, jeder Status (Filter „Archiv“) | Papierkorb nur für Entwürfe — gestellte sind Geschäftsunterlage |
+| Kontakte | `archiviertAm` = nur aus der Kartei ausgeblendet (Ansicht „Archiv“) | Art.-17-Weg (Rückfrage + Grund fürs Löschprotokoll, `crm/kontakt/art17.tsx`) |
+| Firmen, Events, Kampagnen, Segmente, Beiträge, Newsletter | `archiviertAm` (Reiter/Ansicht „Archiv“) | Papierkorb 30 Tage (`lib/crm/ablage.ts`); Firmen nur leer; Events: Gäste/Termin bleiben bis „endgültig“ (Serverweg mit Kaskade) |
+| Ziele & Meilensteine | `archiviertAm` (Bereich „Archiv“ unten; löst Abgeleitetes vom Jahresziel) | mit Rückgängig; Abgeleitetes → Rückfrage (käme sonst wieder) |
+| Aufgaben-Baum | Projekt: `archived` | Projekt: Papierkorb; Gruppe/Liste: mit Rückgängig, Inhalt bleibt |
+| Stammdaten-Kartei | `archiviertAm` am Satz | Papierkorb am Satz, endgültig nach Rückfrage |
+| Familie (Tage, Menschen, Traditionen, Themen, Wünsche, Ideen) | `archiviertAm` (Erinnerungen/Agenda rechnen ohne) | mit Rückgängig; Karten: Archiv = „betrifft uns nicht“ |
+| Brain-Regeln · Bauplan-Karten | ablösen (`_abgeloest`) · verwerfen | — (Geschichte bleibt) |
+| Visitenkarten-Profile | — | mit Rückgängig |
+
+CRM-Papierkorb: `ladeCrm()` und `/api/crm/bestand` blenden ihn für ALLE Leser aus (Zahlen, Suche, ZOE, Kalender) und liefern ihn getrennt (`papierkorb`);
+Oberfläche `components/os/crm/ablage.tsx` (`useCrmAblage`, `AblageReiter`, `PapierkorbKarte`). **Rückfragen:** `useRueckfrage().bestaetigen({ titel, text, ja, gefahr })`
+ist der Ersatz für `window.confirm` (Promise, „Abbrechen“ immer dabei) — im Repo gibt es kein `window.confirm` mehr (Ausnahme: Stammdaten › Gesellschaften, Register-Paket).
+Kalender-Verschieben nutzt `useRueckgaengig` (10 s statt eigener 8-s-Leiste); `planung/Rueckgaengig.tsx` ist aufgegangen.
 
 ## Aufräumen: der Rest am Standard (04.10.)
 Kevin: „Dann ist die Software fast fertig.“ Die letzten 28 Dateien hingen noch an `schlank.tsx`: Board-Pack, Content, Meeting, Prospecting, Research, Roadmap,

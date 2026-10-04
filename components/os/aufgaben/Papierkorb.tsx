@@ -5,7 +5,7 @@
 // eigener Schritt mit Rückfrage (erst dann gehen auch die Dateien). Regeln: lib/aufgaben/papierkorb.ts.
 
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Leer } from '../ui';
+import { Karte, Leer, useRueckfrage } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabeUmfang, projektUmfang, umfangText } from '@/lib/aufgaben/papierkorb';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';
@@ -25,6 +25,7 @@ export async function dateienZaehlen(bezug: { projektId?: string; aufgabeId?: st
 
 export function Papierkorb({ spaces }: { spaces: readonly AufgabenSpace[] }) {
   const { papierkorb, voll, dispatch } = useTasks();
+  const { bestaetigen, dialog } = useRueckfrage();
   const endgueltig = async (art: 'projekt' | 'aufgabe', id: string, titel: string) => {
     const dateien = await dateienZaehlen(art === 'projekt' ? { projektId: id } : { aufgabeId: id });
     // Der Umfang zählt, was im Papierkorb mit dieser Wurzel liegt (Aufgaben tragen dort schon ihre Marke).
@@ -32,7 +33,7 @@ export function Papierkorb({ spaces }: { spaces: readonly AufgabenSpace[] }) {
       ? { ...projektUmfang({ ...voll, tasks: voll.tasks.map(t => (t.geloeschtMit === id ? { ...t, geloeschtAm: undefined } : t)) }, id, dateien) }
       : aufgabeUmfang({ ...voll, tasks: voll.tasks.map(t => (t.geloeschtMit === id ? { ...t, geloeschtAm: undefined } : t)) }, id, dateien);
     const mit = umfangText(u);
-    if (!window.confirm(`„${titel}“ endgültig löschen?${mit ? `\n\nDamit gehen auch: ${mit}.` : ''}\n\nDas lässt sich nicht rückgängig machen.`)) return;
+    if (!(await bestaetigen({ titel: `„${titel}“ endgültig löschen?`, text: `${mit ? `Damit gehen auch: ${mit}.\n\n` : ''}Das lässt sich nicht rückgängig machen.`, ja: 'Endgültig löschen', gefahr: true }))) return;
     dispatch({ type: 'ENDGUELTIG_LOESCHEN', payload: { art, id } });
   };
   return (
@@ -54,6 +55,7 @@ export function Papierkorb({ spaces }: { spaces: readonly AufgabenSpace[] }) {
         ))}
         {!papierkorb.length && <Leer>Der Papierkorb ist leer.</Leer>}
       </Karte>
+      {dialog}
     </>
   );
 }
