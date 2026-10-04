@@ -169,6 +169,23 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
 - **Kalender-Wiederherstellung** prüft jede fehlende .ics gegen die Grabsteine (Adressen → `grabsteinTrifft`): gesperrt,
   im Probelauf `grabstein`. **CRM-Signale:** private Termine ohne Bezug gehen nie über den Titel ins CRM.
 
+## Sicherheit & DSGVO — Prüfung S2 (04.10., vor dem Upload; Doku `DATENSCHUTZ_APP.md`)
+- **Speicher-Register** (`lib/crm/speicher-register.ts`) trägt jetzt je Eintrag optional `rechtsgrundlage`, `art15`, `loeschfrist`,
+  `kategorie` (`art9` · `beschaeftigte` · `vertraulich`) über `mit(…)` — **Pflicht für jeden neuen Speicher mit Personenbezug**
+  (Wächter: Altbestand ohne Angaben darf nur sinken, `ALTBESTAND_OHNE_ANGABEN`); Gesundheits-Bestände = `GESUNDHEIT` (Art. 9).
+- **Gesundheit in der Kapazität:** Erholung zählt nur mit eigener Einwilligung (`PersonEinstellung.erholungAm`, Op `erholung` nur die
+  Person selbst, auch nicht der Inhaber; Vorgabe AUS) UND Teilen mit allen Konten des Haushalts; nie im Business-Index (keine
+  Kennzahl `kp_kopf`, `ohneGesundheit` in `kapaKennzahlenFuerIndex`), nie an ZOE/Protokolle. Andere sehen nicht einmal `erholungAm`.
+- **Papierkorb und Art. 15/17:** `ladeCrm` blendet Papierkorb aus — `lib/crm/person-bestaende.ts` liest deshalb IMMER
+  `ladeCrmMitPapierkorb` (Auskunft, Löschlauf, Zusammenführen, Verknüpfungs-Prüfung). Neue Art.-15/17-Leser ebenso.
+- **Gesellschafts-Register:** Art. 15 `registerAuskunft` (lib/gesellschaften/auskunft.ts) in `personAufzaehlen.gesellschaften`;
+  Art. 17 tilgt (`WEITERE_SPEICHER`), „[gelöscht]“ bleibt speicherbar (`bezugAus`, `GETILGT`). Telegram-Text der Vertrags-Erinnerung
+  neutral, auch bei Fälligkeit der Aufgabe `vte-…`.
+- **Inbox-Status:** `/api/state/inbox` nur Haushalt des Inhabers (403) und je Postfach (`lib/inbox/status-sicht.ts`: eigenes Gmail,
+  Apple/M365 nur Inhaber); fremde Einträge nie in der Antwort, beim Schreiben unberührt.
+- **Finanzplanung:** `?nur=kennzahlen&sicht=business` ohne Privat-/Gruppenwerte (`kennzahlenFuerSicht`).
+- **Verzeichnis (Art. 30):** `vv-gesellschaften`, `vv-kapazitaet` (`verarbeitungenOrganisationNachtragen`); Löschkonzept nennt den Papierkorb.
+
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),
   Petrol `#21B5AA` als Akzent. Motion-Sprache in `app/globals.css`.
@@ -439,12 +456,12 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   nie Platzhalter, nichts fest im Code). Ist = bewusste Business-Fokuszeit (`zeit--<person>`), je Meilenstein über die Aufgaben-Liste.
 - **Server:** `lib/kapazitaet/server.ts` (vorhandene Lesewege: `verfuegbarkeitFuer`, vitals, Zeit, Meilensteine/Ziele, CRM; `merken` 60 s
   je Haushalt+Tag). Route `GET/PATCH /api/kapazitaet` (nur Haushalt des Inhabers mit Person). **Privatfilter serverseitig**
-  (`fuerBetrachter`): Erholungswert und Ausnahme-Titel nur für die Person selbst; Erholung zählt überhaupt nur, wenn die Person ihre
-  Gesundheit mit ALLEN anderen Konten des Haushalts teilt, und dann nur im Team-Faktor. Schreiben (`lib/kapazitaet/aendern.ts`
+  (`fuerBetrachter`): Erholungswert, Ausnahme-Titel und `erholungAm` nur für die Person selbst; Erholung zählt überhaupt nur mit eigener
+  Einwilligung (`erholungAm`, Prüfung S2) UND wenn die Person ihre Gesundheit mit ALLEN anderen Konten des Haushalts teilt, und dann nur im Team-Faktor. Schreiben (`lib/kapazitaet/aendern.ts`
   `kapaAendern`, Ops grundwert/ausnahme/ausnahme-weg/zuweisung/zuweisung-weg): eigene Kapa oder Inhaber, Team-Personen ohne Konto
   nur der Inhaber → sonst 403; unbekannt 404; Unsinn 400; > 50 Ops 413; alles oder nichts.
 - **Säule `kp` im Business-Index** (`lib/kapazitaet/kennzahlen.ts`, 15 %, alle übrigen ×0,85, nur Gesamtsicht): Last nächste 4 Wochen,
-  machbare Meilensteine, Plan-Treue (Ø Ist 4 Wochen ÷ Ø Plan nächste 4 Wochen), Puffer je Woche, Kopf & Energie (Team). `SaeuleDef.nurMitMessung`
+  machbare Meilensteine, Plan-Treue (Ø Ist 4 Wochen ÷ Ø Plan nächste 4 Wochen), Puffer je Woche — Kopf & Energie NICHT (Art. 9, Prüfung S2). `SaeuleDef.nurMitMessung`
   (lib/kennzahlen/kern.ts): ohne Messung fällt sie auch aus Gesamtgewicht/Abdeckung — der Index ist dann EXAKT der bisherige (Test).
   Summen kommen über `kapaKennzahlenFuerIndex` in `ladeRoh` (Fehler → null, Säule zählt nicht). „Auslastung“ (fakturiert) und
   „Meeting-Last“ bleiben in Personal — hier wirkt die Meeting-Last nur als Umschaltzeit (nicht doppelt gezählt).
