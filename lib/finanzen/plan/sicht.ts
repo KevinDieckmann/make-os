@@ -85,6 +85,19 @@ export function businessSicht(d: FinanzDaten): FinanzDaten {
 /** Sicht anwenden (Privat = alles). */
 export const fuerSicht = (d: FinanzDaten, sicht: PlanSicht): FinanzDaten => (sicht === 'business' ? businessSicht(d) : d);
 
+/**
+ * Verdichtete Kennzahlen (GET ?nur=kennzahlen) in der Business-Sicht (DSGVO-Prüfung 04.10.): vorher galt `?sicht=business` dort
+ * nicht — die Antwort trug Privat-Luft, private Rücklage, Privat-Runway. Jetzt fallen alle privaten bzw. mit Privat gemischten
+ * Werte weg (die Liste ist abschließend: unbekannt = bleibt nur, wenn sie nicht nach Privat klingt — Wächter im Test).
+ */
+export const PRIVAT_KENNZAHLEN = ['privatLuftMin', 'privatKumDez28', 'privatAngespartDez27', 'gruppeDez28', 'runwayPrivat', 'privatLuftOkt'] as const;
+export function kennzahlenFuerSicht<T extends Record<string, unknown>>(k: T, sicht: PlanSicht): T {
+  if (sicht !== 'business') return k;
+  const raus: Record<string, unknown> = {};
+  for (const [s, v] of Object.entries(k)) if (!(PRIVAT_KENNZAHLEN as readonly string[]).includes(s) && !/privat/i.test(s)) raus[s] = v;
+  return raus as T;
+}
+
 const teileVon = (pfad: string): string[] => (typeof pfad === 'string' && pfad.startsWith('/') ? pfad.slice(1).split('/') : []);
 /** Listenelement über `id=…` finden. */
 const finde = <T extends { id: string }>(liste: T[] | undefined, teil: string | undefined): T | undefined => (teil?.startsWith('id=') ? (liste ?? []).find(x => x.id === teil.slice(3)) : undefined);

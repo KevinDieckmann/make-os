@@ -13,7 +13,7 @@ import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { ladeFinanzplan, dateiStand, patchen, kennzahlenVon } from '@/lib/finanzen/plan/speicher';
-import { fuerSicht, sichtAus } from '@/lib/finanzen/plan/sicht';
+import { fuerSicht, kennzahlenFuerSicht, sichtAus } from '@/lib/finanzen/plan/sicht';
 import { MAX_OPS, type Operation } from '@/lib/finanzen/plan/operationen';
 
 export const runtime = 'nodejs';
@@ -31,7 +31,8 @@ export async function GET(req: Request) {
   if (nur === 'kennzahlen') {
     const d = await ladeFinanzplan(z.haushalt);
     if (!d) return NextResponse.json({ ok: true, leer: true });
-    return NextResponse.json({ ok: true, leer: false, ...kennzahlenVon(d) });
+    // Business-Sicht: Kennzahlen aus dem gefilterten Dokument, ohne Privat-Werte (lib/finanzen/plan/sicht.ts).
+    return NextResponse.json({ ok: true, leer: false, ...kennzahlenFuerSicht(kennzahlenVon(fuerSicht(d, sicht)), sicht) });
   }
   const etag = etagAus('fp', await dateiStand(z.haushalt), z.haushalt, z.person, sicht);
   const gleich = unveraendert(req, etag);
