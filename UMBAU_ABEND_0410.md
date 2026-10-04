@@ -169,3 +169,12 @@ F6 (Vertragswerk-Tiefe), F8 (app/(dashboard) löschen?).
   einem Steuer-Handwert mit.
 - **Kapazität (Kevins Antworten):** Schwellen 70 % machbar / 90 % eng (umgesetzt, 4091608); Grundwert-Annahme 40 h bleibt;
   **wöchentlicher Plan-Schnappschuss** (jeden Montag den Wochenplan speichern → echte Plan-Treue „geplant vs. Ist“) → Update 3.
+
+## 11 · Plattform-Schulden (aus der Abschlussprüfung 04.10., größer — später)
+- Finanzplanung fest auf zwei Personen (`personName('kevin'/'malin')`, `kevinBrutto`, `ug.kevin`, Handwert `ug.bjoern`) → Modell-Umbau.
+- `lib/einheiten.ts` feste Gesellschaftsnamen (`KERN_EINHEITEN`, `UG_NAME`) → aus Instanz-Einrichtung.
+- `/os/stammdaten` (Firmen-Karten) neben dem Register → übertragen, dann entfernen.
+- Feste Pfade/Namen in Schnellsuche-Liste, Stapel, bereiche.ts, spaces.ts, agents-data.ts, planung/bloecke-server.ts:44,
+  Onboarding-Routen kevin/malin, WillkommenMalin.
+- ZOE-Werkzeug „Kapazität lesen“ fehlt; Finanzplanung-Tabellen (Bausteine/Schulden/Posten) noch ohne ZeileAktionen;
+  FlussKarte-Leerzustände ohne Knopf; Kennzahlen kp_treue/kp_puffer/kp_kopf ohne Detail-Link.
