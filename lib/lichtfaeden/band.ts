@@ -10,6 +10,12 @@
 // Bauprinzip eines Bündels: Eine Leitkurve (Mitte des Bündels) mit Normalen; jeder Faden liegt um `versatz × spreizung`
 // neben ihr. `versatz` mischt eine feste Lage im Bündel mit zwei langsamen Sinuswellen eigener Frequenz — so kreuzen sich
 // die Fäden (Geflecht), und mit wachsender Zeit fließen sie (Phasenverschiebung), ohne dass sich das Bild je wiederholt.
+//
+// Strahl v3 (04.10., Kevin: „Der Strahl läuft im Grunde genommen immer von links nach rechts — guck dir den Verlauf an.“):
+//   · Fließrichtung: jede Welle wandert in Richtung wachsender Weglänge `s` (links → rechts, in Zeitrichtung) — vorher hatte
+//     jeder Faden eine zufällige Richtung.
+//   · `fransen`: rechts von HEUTE lösen sich Fäden aus dem Bündel (Zukunft = unsicher) — der Zeichner mischt es je Stelle zu.
+//   · Weitere Parameter für Aufbau (Fäden wachsen von links ein), Partikel entlang der Fäden und das Glühen.
 
 /** Die Parameter — eine Stelle für App und Website (DESIGN_STANDARD.md › Lichtfäden). */
 export const LICHTFAEDEN = {
@@ -19,16 +25,27 @@ export const LICHTFAEDEN = {
   schritt: { rechner: 6, handy: 8 },
   /** Fließen: Phase je Millisekunde — sehr ruhig (eine Welle braucht gut 20 s). */
   tempo: 0.00028,
-  /** Strichbreite eines Fadens (CSS-Pixel). */
-  strich: 0.8,
+  /** Strichbreite eines Fadens (CSS-Pixel) — v3 feiner (vorher 0,8), dafür mehr Fäden. */
+  strich: 0.6,
   /** Grund-Deckkraft eines Fadens; additiv gemischt leuchten Kreuzungen von selbst. */
-  deckkraft: 0.24,
+  deckkraft: 0.2,
   /** Feinheit der Deckkraft-Eimer (gleiche Farbe + gleiche Stufe = EIN Pfad, ein Strich). */
   stufen: 40,
   /** Spreizung in ruhigen Abschnitten (Anteil der vollen) — dort liegt das Band eng. */
   ruhe: 0.12,
   /** Höchste Pixeldichte — darüber kostet es nur Rechenzeit. */
   dprMax: 2,
+  /** Aufbau: so lange (ms) wachsen die Fäden von links nach rechts ein; jeder Faden läuft bis `aufbauVerzug` px hinterher. */
+  aufbau: 1900,
+  aufbauVerzug: 150,
+  /** Die Spitze eines wachsenden Fadens leuchtet auf dieser Länge (px). */
+  aufbauSpitze: 46,
+  /** Partikel entlang der Fäden (Punkt-Textur wie im Vorbild): Abstand (px), Tempo nach rechts (px/ms), Größe (px), Helligkeit. */
+  punkte: { abstand: 10, tempo: 0.011, groesse: 1.1, hell: 2.4 },
+  /** Ausfransen rechts von HEUTE: Weite (Anteil der Spreizung, mindestens `fransMin` px) und Abschlag der Deckkraft. */
+  frans: { weite: 0.95, min: 7, blass: 0.6 },
+  /** Glühen dichter Stellen: Teiler des Schein-Puffers, Weichzeichner (px im Puffer), Stärke. */
+  glanz: { teiler: 4, weich: 2.5, staerke: 0.55 },
 } as const;
 
 export const TAU = Math.PI * 2;
@@ -59,7 +76,7 @@ export interface FadenSaat {
   phase: number;
   /** Wellenzahl je Pixel entlang der Leitkurve. */
   frequenz: number;
-  /** Fließrichtung und -tempo (Vielfaches von LICHTFAEDEN.tempo; Vorzeichen = Richtung). */
+  /** Fließtempo (Vielfaches von LICHTFAEDEN.tempo); seit v3 immer positiv = in Zeitrichtung (links → rechts). */
   tempo: number;
   /** Anteil der Welle an der Lage, 0 … 1 (hoch = der Faden wandert quer durchs Bündel). */
   welle: number;
@@ -74,14 +91,12 @@ export function fadenSaaten(anzahl: number, saat: number): FadenSaat[] {
   const aus: FadenSaat[] = [];
   for (let i = 0; i < n; i++) {
     const u = n === 1 ? 0 : (i / (n - 1)) * 2 - 1;
-    aus.push({
-      lage: u * 0.86 + (r() - 0.5) * 0.18,
-      phase: r() * TAU,
-      frequenz: 0.0045 + r() * 0.0125,
-      tempo: (0.55 + r() * 0.9) * (r() < 0.5 ? -1 : 1),
-      welle: 0.3 + r() * 0.7,
-      hell: 0.5 + r() * 0.5,
-    });
+    const lage = u * 0.86 + (r() - 0.5) * 0.18, phase = r() * TAU, frequenz = 0.0045 + r() * 0.0125;
+    // v3: immer in Zeitrichtung (links → rechts). Der Zufallswert für das frühere Vorzeichen wird weiter gezogen, damit
+    // Welle und Helligkeit aller Fäden dieselben bleiben wie vorher.
+    const tempo = 0.55 + r() * 0.9;
+    r();
+    aus.push({ lage, phase, frequenz, tempo, welle: 0.3 + r() * 0.7, hell: 0.5 + r() * 0.5 });
   }
   return aus;
 }
@@ -94,10 +109,20 @@ export const MITTE: FadenSaat = { lage: 0, phase: 0, frequenz: 0, tempo: 0, well
  * `s` = Weg entlang der Leitkurve in Pixeln, `t` = Zeit in Millisekunden (0 = Standbild).
  */
 export function versatz(f: FadenSaat, s: number, t: number): number {
-  const ph = t * LICHTFAEDEN.tempo * f.tempo;
+  const ph = t * LICHTFAEDEN.tempo * Math.abs(f.tempo);
+  // sin(k·s − ω·t): beide Wellen wandern zu wachsendem s — das Geflecht fließt in Zeitrichtung.
   return f.lage * (1 - 0.45 * f.welle)
-    + f.welle * 0.62 * Math.sin(s * f.frequenz + f.phase + ph)
-    + 0.16 * f.welle * Math.sin(s * f.frequenz * 2.3 + f.phase * 1.7 - ph * 0.7);
+    + f.welle * 0.62 * Math.sin(s * f.frequenz + f.phase - ph)
+    + 0.16 * f.welle * Math.sin(s * f.frequenz * 2.3 + f.phase * 1.7 - ph * 1.6);
+}
+
+/**
+ * Ausfransen (v3): Wo `frans` > 0 (rechts von HEUTE), löst sich ein Faden um diesen Anteil aus dem Bündel — außen liegende
+ * weiter als innere, mit einer eigenen, schnelleren Welle (auch sie wandert nach rechts). Ergebnis etwa −1,4 … 1,4.
+ */
+export function fransen(f: FadenSaat, s: number, t: number): number {
+  const ph = t * LICHTFAEDEN.tempo * Math.abs(f.tempo);
+  return f.lage * 0.8 + 0.6 * Math.sin(s * f.frequenz * 3.1 + f.phase * 2.3 - ph * 1.8);
 }
 
 /**
@@ -108,7 +133,8 @@ export function buendelMitte(index: number, anzahl: number, s: number, t: number
   const phi = (index / Math.max(1, anzahl)) * TAU + index * 0.9;
   const ph = t * LICHTFAEDEN.tempo * 0.55;
   const amp = 0.06 + 0.44 * dichte;
-  return amp * Math.sin(s * 0.0098 + phi + ph) + 0.05 * Math.sin(s * 0.0031 - phi * 1.3 - ph * 0.4);
+  // v3: beide Wellen wandern nach rechts (−ph).
+  return amp * Math.sin(s * 0.0098 + phi - ph) + 0.05 * Math.sin(s * 0.0031 - phi * 1.3 - ph * 0.4);
 }
 
 /** Spreizung eines Bündels (Pixel) bei gegebener Dichte 0 … 1 und halber Bandhöhe. */

@@ -9,9 +9,17 @@
 // (Brotkrume) läuft dasselbe rückwärts: die Kinder fließen in ihr Bündel zusammen. Bei „Bewegung reduzieren“ kein
 // Übergang, nur das Standbild.
 // Daten rechnet der Zeichner nie — er bekommt fertige Dichten (Regel aus DESIGN_STANDARD.md › Lichtfäden).
+//
+// Strahl v3 (04.10., Kevin: „Der Strahl läuft im Grunde genommen immer von links nach rechts.“):
+//   · Aufbau: beim ersten Bild wachsen die Fäden in `LICHTFAEDEN.aufbau` ms von links nach rechts ein, ihre Spitzen leuchten;
+//     ein leises Licht läuft der Front voraus. Markierungs-Verbinder, HEUTE und Engstellen erscheinen, wenn die Front sie erreicht.
+//   · Fließen: alle Wellen wandern in Zeitrichtung (band.ts), Partikel laufen entlang der Fäden nach rechts.
+//   · Zukunft: rechts von HEUTE fransen die Fäden aus und werden blasser; links (Vergangenheit) gedämpft.
+//   · Spitzen: aus der UNgeglätteten Last (`spitze` je Woche, baum.ts) — scharfe Ausschläge, die Fäden fächern um sie auf.
+//   · Glühen dichter Stellen (Schein-Puffer), dünne helle Mittellinie, gestrichelte Hilfslinien, Netz-Motiv oben rechts.
 
 import { LICHTFAEDEN, MITTE, buendelMitte, fadenSaaten, glatt, spreizung as spreizungBei, textSaat, type FadenSaat } from './band';
-import { leinwand, rgb, starteLauf, zeichneBuendel, type Lauf, type Probe } from './zeichnen';
+import { glanzPuffer, leinwand, rgb, starteLauf, zeichneBuendel, zeichneNetz, type Lauf, type Probe, type PunkteStil } from './zeichnen';
 
 export interface BandBuendel {
   id: string;
@@ -21,6 +29,8 @@ export interface BandBuendel {
   dichte: readonly number[];
   /** Fäden auf der Leinwand (schon gedeckelt). */
   faeden: number;
+  /** Spitzen je Woche 0 … 1 (v3, ungeglättet) — scharfe Ausschläge; fehlt = keine. */
+  spitze?: readonly number[];
 }
 export interface BandVerbinder { x: number; yOben: number | null; buendel: string; farbe: string; leise: boolean }
 export interface BandBild {
@@ -53,14 +63,24 @@ export const bandMasse = (breite: number) => (breite < 520 ? BAND_MASSE.handy : 
 /** Dauer des Auf-/Zufächerns (ms). */
 export const UEBERGANG_MS = 720;
 
-/** Helligkeit an einer Stelle: Vergangenheit gedämpft, HEUTE leuchtet, Dichte hebt. */
+/** Helligkeit an einer Stelle: Vergangenheit gedämpft, HEUTE leuchtet, Dichte hebt; die ferne Zukunft wird leiser (v3). */
 export function hellBei(x: number, d: Pick<BandBild, 'heuteX' | 'heuteSeite'>, dichte: number): number {
   let zeit: number;
   if (d.heuteX == null) zeit = d.heuteSeite === 'rechts' ? 0.32 : 1;
-  else zeit = 0.32 + 0.68 * glatt(x, d.heuteX - 26, d.heuteX + 4);
-  const schnitt = d.heuteX == null ? 0 : Math.exp(-(((x - d.heuteX) / 14) ** 2)) * 0.4;
+  else zeit = (0.32 + 0.68 * glatt(x, d.heuteX - 26, d.heuteX + 4)) * (1 - 0.3 * glatt(x, d.heuteX + 20, d.heuteX + 560));
+  const schnitt = d.heuteX == null ? 0 : Math.exp(-(((x - d.heuteX) / 14) ** 2)) * 0.25;
   return zeit * (0.55 + 0.85 * dichte) + schnitt;
 }
+
+/** Ausfransen 0 … 1 an einer Stelle (v3): ab HEUTE nach rechts zunehmend — die Zukunft ist unsicher. */
+export function fransBei(x: number, d: Pick<BandBild, 'heuteX' | 'heuteSeite' | 'breite'>): number {
+  if (d.heuteX == null) return d.heuteSeite === 'links' ? 0.7 : 0;
+  return glatt(x, d.heuteX + 6, d.heuteX + Math.max(160, d.breite * 0.42));
+}
+
+/** Vorzeichen eines Ausschlags je Woche und Bündel (−1 = nach oben): je Bündel eine Richtung (das erste nach oben, das zweite
+ *  nach unten …), selten gekippt — so bilden benachbarte volle Wochen einen Grat statt eines Zitterns. */
+export const spitzeRichtung = (woche: number, buendel: number) => ((buendel % 2 === 0 ? -1 : 1) * ((woche + buendel * 3) % 7 === 3 ? -1 : 1));
 
 /**
  * Engstellen-Knöpfe, die sich im Band überlappen würden (benachbarte Wochen liegen nur wenige Pixel auseinander), zu EINEM
@@ -83,12 +103,18 @@ export function engstellenGruppen<T extends { x: number; kw: number }>(liste: re
 
 /** Dichte eines Bündels an der Stelle x (Wochen linear zwischen ihren Mitten). */
 export function dichteBei(b: Pick<BandBuendel, 'dichte'>, x: number, d: Pick<BandBild, 'breite' | 'tage' | 'wochenVersatz'>): number {
-  const n = b.dichte.length;
+  return wocheBei(b.dichte, x, d);
+}
+
+/** Wert einer Wochenreihe an der Stelle x — linear zwischen den Wochenmitten (bei Spitzen: ein scharfes Dreieck). */
+export function wocheBei(reihe: readonly number[], x: number, d: Pick<BandBild, 'breite' | 'tage' | 'wochenVersatz'>, vorzeichen?: (w: number) => number): number {
+  const n = reihe.length;
   if (!n) return 0;
   const tag = (x / Math.max(1, d.breite)) * d.tage + d.wochenVersatz;
   const p = Math.max(0, Math.min(n - 1, tag / 7 - 0.5));
   const i = Math.floor(p), j = Math.min(n - 1, i + 1), a = p - i;
-  return b.dichte[i] * (1 - a) + b.dichte[j] * a;
+  const vi = vorzeichen ? vorzeichen(i) : 1, vj = vorzeichen ? vorzeichen(j) : 1;
+  return reihe[i] * vi * (1 - a) + reihe[j] * vj * a;
 }
 
 /** Sanftes Ein-/Ausschwingen 0 → 1. */
@@ -100,6 +126,8 @@ export interface Faedenband {
   treffer(x: number, y: number): string | null;
   /** Läuft gerade ein Übergang? 0 … 1, null = nein (Prüfungen). */
   fortschritt(): number | null;
+  /** Läuft gerade der Aufbau (v3)? 0 … 1, null = fertig bzw. reduzierte Bewegung (Prüfungen). */
+  aufbau(): number | null;
   stop(): void;
   lauf: Lauf;
 }
@@ -109,6 +137,9 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
   let bild: BandBild | null = null;
   let ueb: (BandUebergang & { start: number }) | null = null;
   let letztesT = 0, q: number | null = null;
+  // Aufbau (v3): Startzeit des ersten Bildes; −1 = noch nicht begonnen. Bei reduzierter Bewegung gibt es keinen Aufbau.
+  let aufbauStart = -1, aufbauP: number | null = ruhig ? null : 0;
+  const glanz = glanzPuffer();
   const saatCache = new Map<string, FadenSaat[]>();
   const saaten = (id: string, n: number) => {
     const k = `${id}|${n}`;
@@ -122,26 +153,34 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
     const halb = d.bandHoehe / 2, mitte = d.bandOben + halb;
     const maxF = Math.max(1, ...liste.map(b => b.faeden));
     const dicke = 0.55 + 0.45 * Math.sqrt(liste[i].faeden / maxF);
+    const sp = liste[i].spitze;
+    const richtung = (w: number) => spitzeRichtung(w, i);
+    const hubPx = halb * (d.handy ? 0.32 : 0.52);
+    const hub = (x: number) => (sp && sp.length ? hubPx * wocheBei(sp, x, d, richtung) : 0);
     return {
       dichte: (x: number) => dichteBei(liste[i], x, d),
-      mitte: (x: number) => mitte + halb * buendelMitte(i, liste.length, x, t, dichteBei(liste[i], x, d)),
+      hub,
+      mitte: (x: number) => mitte + halb * buendelMitte(i, liste.length, x, t, dichteBei(liste[i], x, d)) + hub(x),
       spreizung: (x: number) => spreizungBei(dichteBei(liste[i], x, d), halb) * dicke,
     };
   };
 
-  function zeichneSatz(d: BandBild, b: BandBuendel, geo: ReturnType<typeof geometrie>, t: number, alpha: number, von?: ReturnType<typeof geometrie>, mix = 1) {
+  function zeichneSatz(d: BandBild, b: BandBuendel, geo: ReturnType<typeof geometrie>, t: number, alpha: number, von?: ReturnType<typeof geometrie>, mix = 1, front = Infinity) {
     if (!ctx || alpha <= 0.01) return;
     const schritt = d.handy ? LICHTFAEDEN.schritt.handy : LICHTFAEDEN.schritt.rechner;
-    const faktor = d.hervor == null ? 1 : d.hervor === b.id ? 1.45 : 0.16;
+    // Viele Fäden übereinander laufen additiv ins Weiße — je mehr Fäden auf der Leinwand, desto leiser jeder (v3: bis 300 Fäden).
+    const gesamt = d.buendel.reduce((s, x) => s + x.faeden, 0);
+    const faktor = (d.hervor == null ? 1 : d.hervor === b.id ? 1.45 : 0.16) * Math.min(1, Math.sqrt(150 / Math.max(1, gesamt)));
     const proben: Probe[] = [];
     for (let x = -schritt; x <= d.breite + schritt; x += schritt) {
       const dx = geo.dichte(x);
-      let y = geo.mitte(x), sp = geo.spreizung(x);
-      if (von && mix < 1) { y = von.mitte(x) + (y - von.mitte(x)) * mix; sp = von.spreizung(x) * 0.8 + (sp - von.spreizung(x) * 0.8) * mix; }
-      proben.push({ x, y, nx: 0, ny: 1, s: x, spreizung: sp, hell: hellBei(x, d, dx) * faktor * alpha });
+      let y = geo.mitte(x), sp = geo.spreizung(x), hub = geo.hub(x);
+      if (von && mix < 1) { y = von.mitte(x) + (y - von.mitte(x)) * mix; sp = von.spreizung(x) * 0.8 + (sp - von.spreizung(x) * 0.8) * mix; hub *= mix; }
+      proben.push({ x, y, nx: 0, ny: 1, s: x, spreizung: sp, hell: hellBei(x, d, dx) * faktor * alpha, frans: fransBei(x, d), hub });
     }
-    zeichneBuendel(ctx, proben, { farbe: b.farbe, saaten: [MITTE], deckkraft: 0.05, strich: d.handy ? 8 : 12 }, t);
-    zeichneBuendel(ctx, proben, { farbe: b.farbe, saaten: saaten(b.id, Math.max(1, b.faeden)) }, t);
+    const punkte: PunkteStil = d.handy ? { ...LICHTFAEDEN.punkte, abstand: 14, jeder: 3 } : { ...LICHTFAEDEN.punkte, jeder: 2 };
+    zeichneBuendel(ctx, proben, { farbe: b.farbe, saaten: [MITTE], deckkraft: 0.05, strich: d.handy ? 8 : 12, front }, t);
+    zeichneBuendel(ctx, proben, { farbe: b.farbe, saaten: saaten(b.id, Math.max(1, b.faeden)), front, punkte }, t);
   }
 
   function zeichne(t: number) {
@@ -153,17 +192,38 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
     ctx.clearRect(0, 0, d.breite, d.hoehe);
     const halb = d.bandHoehe / 2, mitte = d.bandOben + halb;
 
+    // Aufbau (v3): die Front wandert von links nach rechts; danach unendlich (alles da).
+    let front = Infinity;
+    if (!ruhig && aufbauP != null) {
+      if (aufbauStart < 0) aufbauStart = t;
+      const p = (t - aufbauStart) / LICHTFAEDEN.aufbau;
+      if (p >= 1) aufbauP = null;
+      else { aufbauP = Math.max(0, p); front = sanft(aufbauP) * (d.breite + LICHTFAEDEN.aufbauVerzug + 80) - 40; }
+    }
+    const erreicht = (x: number) => (front === Infinity ? 1 : glatt(front - x, 0, 90));
+
     // Engstellen: ruhige Lichtsäulen hinter dem Band.
     ctx.globalCompositeOperation = 'source-over';
     const [er, eg, eb] = rgb(d.engstelleFarbe);
     for (const e of d.engstellen) {
       const g = ctx.createLinearGradient(0, d.bandOben - 10, 0, d.bandOben + d.bandHoehe + 10);
-      g.addColorStop(0, `rgba(${er},${eg},${eb},0)`); g.addColorStop(0.5, `rgba(${er},${eg},${eb},.09)`); g.addColorStop(1, `rgba(${er},${eg},${eb},0)`);
+      g.addColorStop(0, `rgba(${er},${eg},${eb},0)`); g.addColorStop(0.5, `rgba(${er},${eg},${eb},${(0.09 * erreicht(e.x0)).toFixed(3)})`); g.addColorStop(1, `rgba(${er},${eg},${eb},0)`);
       ctx.fillStyle = g;
       ctx.fillRect(e.x0, d.bandOben - 10, Math.max(2, e.x1 - e.x0), d.bandHoehe + 20);
     }
-    ctx.fillStyle = 'rgba(255,255,255,.07)';
-    ctx.fillRect(0, mitte - 0.5, d.breite, 1);
+    // Hilfslinien (gestrichelt) und die dünne helle Mittellinie — an den Rändern ausgeblendet.
+    ctx.save();
+    ctx.setLineDash([3, 7]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,.07)';
+    for (const f of [-0.84, 0.84]) { const y = Math.round(mitte + halb * f) + 0.5; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(d.breite, y); ctx.stroke(); }
+    ctx.restore();
+    const ml = ctx.createLinearGradient(0, 0, d.breite, 0);
+    ml.addColorStop(0, 'rgba(255,255,255,0)'); ml.addColorStop(0.06, 'rgba(255,255,255,.17)'); ml.addColorStop(0.94, 'rgba(255,255,255,.17)'); ml.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = ml;
+    ctx.fillRect(0, mitte - 0.5, front === Infinity ? d.breite : Math.max(0, Math.min(d.breite, front)), 1);
+    // Netz-Motiv oben rechts (nur Rechner), sehr leise und langsam.
+    if (!d.handy && d.breite > 640) zeichneNetz(ctx, { x: d.breite * 0.74, y: Math.max(0, d.bandOben - 6), breite: d.breite * 0.25, hoehe: d.bandHoehe * 0.42, t, farbe: d.heuteFarbe, saat: 41, knoten: 12, deckkraft: 0.1 * erreicht(d.breite * 0.8) });
 
     ctx.globalCompositeOperation = 'lighter';
     const mitten = new Map<string, (x: number) => number>();
@@ -183,16 +243,27 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
       if (fi >= 0) zeichneSatz(d, ueb.oben[fi], fokusGeo!, t, (1 - e) ** 2);
       ueb.unten.forEach((b, i) => zeichneSatz(d, b, geometrie(d, ueb!.unten, i, t), t, Math.sqrt(e), fokusGeo, e));
     } else {
-      d.buendel.forEach((b, i) => { const g = geometrie(d, d.buendel, i, t); mitten.set(b.id, g.mitte); zeichneSatz(d, b, g, t, 1); });
+      d.buendel.forEach((b, i) => { const g = geometrie(d, d.buendel, i, t); mitten.set(b.id, g.mitte); zeichneSatz(d, b, g, t, 1, undefined, 1, front); });
+    }
+    // Glühen dichter Stellen: das Gezeichnete klein und weich additiv darüber (ein drawImage hin, eines zurück).
+    if (glanz && d.buendel.length) glanz.auf(ctx, canvas, d.breite, d.hoehe, d.handy ? 0.45 : LICHTFAEDEN.glanz.staerke);
+    // Die Front des Aufbaus: ein leises Licht, das vorausläuft und mit dem Ende des Aufbaus verlischt.
+    if (front !== Infinity && aufbauP != null) {
+      const [r, g, bl] = rgb(d.heuteFarbe);
+      const fx = Math.max(0, Math.min(d.breite, front));
+      const licht = ctx.createRadialGradient(fx, mitte, 0, fx, mitte, halb * 1.3);
+      licht.addColorStop(0, `rgba(${r},${g},${bl},${(0.2 * (1 - aufbauP)).toFixed(3)})`); licht.addColorStop(1, `rgba(${r},${g},${bl},0)`);
+      ctx.fillStyle = licht;
+      ctx.fillRect(fx - halb * 1.3, mitte - halb * 1.3, halb * 2.6, halb * 2.6);
     }
 
-    // HEUTE: leuchtender Schnitt durchs Band.
-    if (d.heuteX != null) {
+    // HEUTE: leuchtender Schnitt durchs Band (erscheint, wenn der Aufbau ihn erreicht).
+    if (d.heuteX != null && erreicht(d.heuteX) > 0.02) {
       const [r, g, bl] = rgb(d.heuteFarbe);
       const x = d.heuteX;
-      const glanz = ctx.createRadialGradient(x, mitte, 0, x, mitte, halb * 1.1);
-      glanz.addColorStop(0, `rgba(${r},${g},${bl},.16)`); glanz.addColorStop(1, `rgba(${r},${g},${bl},0)`);
-      ctx.fillStyle = glanz;
+      const schein = ctx.createRadialGradient(x, mitte, 0, x, mitte, halb * 1.1);
+      schein.addColorStop(0, `rgba(${r},${g},${bl},${(0.16 * erreicht(x)).toFixed(3)})`); schein.addColorStop(1, `rgba(${r},${g},${bl},0)`);
+      ctx.fillStyle = schein;
       ctx.fillRect(x - halb * 1.1, mitte - halb * 1.1, halb * 2.2, halb * 2.2);
       const linie = ctx.createLinearGradient(0, d.bandOben - 8, 0, d.bandOben + d.bandHoehe + 8);
       linie.addColorStop(0, `rgba(${r},${g},${bl},0)`); linie.addColorStop(0.5, `rgba(${r},${g},${bl},.85)`); linie.addColorStop(1, `rgba(${r},${g},${bl},0)`);
@@ -206,7 +277,8 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
       const an = mitten.get(v.buendel);
       const cy = an ? an(v.x) : mitte;
       const gedimmt = d.hervor != null && d.hervor !== v.buendel;
-      const a = (v.leise ? 0.5 : 1) * (gedimmt ? 0.25 : 1);
+      const a = (v.leise ? 0.5 : 1) * (gedimmt ? 0.25 : 1) * erreicht(v.x);
+      if (a <= 0.01) continue;
       const [r, g, bl] = rgb(v.farbe);
       if (v.yOben != null && cy > v.yOben) {
         const lin = ctx.createLinearGradient(0, v.yOben, 0, cy);
@@ -240,6 +312,7 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
       return best;
     },
     fortschritt: () => q,
+    aufbau: () => aufbauP,
     stop() { lauf.stop(); },
     lauf,
   };

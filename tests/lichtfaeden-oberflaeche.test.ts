@@ -80,7 +80,7 @@ function uhr() {
   const warte: FrameRequestCallback[] = [];
   vi.stubGlobal('requestAnimationFrame', (f: FrameRequestCallback) => { warte.push(f); return warte.length; });
   vi.stubGlobal('cancelAnimationFrame', () => undefined);
-  vi.stubGlobal('Path2D', class { moveTo() {} lineTo() {} });
+  vi.stubGlobal('Path2D', class { moveTo() {} lineTo() {} rect() {} arc() {} });
   return (t: number) => { const f = warte.splice(0); f.forEach(x => x(t)); };
 }
 const BILD: BandBild = {

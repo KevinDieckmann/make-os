@@ -27,8 +27,13 @@ export const SPANNE_MAX_WOCHEN = 12;
 /** Höchstens so viele Bündel je Ansicht — der Rest fließt in „Weitere“. Auf Strang-Ebene (Blätter) mehr, aber feiner. */
 export const MAX_BUENDEL = 7;
 export const MAX_STRANG_BUENDEL = 24;
-/** Fäden je Bündel ∝ Last (Wurzel der Last, damit kleine Bündel sichtbar bleiben), gedeckelt je Leinwand. */
-export const FAEDEN = { min: 3, max: 26, strangMin: 1, strangMax: 4, deckel: { rechner: 160, handy: 80 } } as const;
+/** Fäden je Bündel ∝ Last (Wurzel der Last, damit kleine Bündel sichtbar bleiben), gedeckelt je Leinwand.
+ *  v3 (04.10.): deutlich mehr, feinere Fäden — vorher 3 … 26 je Bündel, Deckel 160 / 80. */
+export const FAEDEN = { min: 5, max: 44, strangMin: 2, strangMax: 6, deckel: { rechner: 300, handy: 120 } } as const;
+/** Spitzen (v3): Exponent auf die gesättigte Rohlast und Schwelle darüber — nur deutlich volle Wochen (gut das Doppelte einer
+ *  mittleren) schlagen aus, die übrigen bleiben ruhig (sonst zittert das Band Woche für Woche). */
+export const SPITZE_EXPONENT = 1.6;
+export const SPITZE_SCHWELLE = 0.4;
 /** Höchstens so viele Markierungen (Knöpfe über dem Band) je Ansicht — nach Gewicht, dann Datum. */
 export const MAX_MARKEN = 40;
 
@@ -173,6 +178,8 @@ export interface Buendel {
   roh: number[];
   /** Dichte je Woche 0 … 1 (geglättet, gesättigt) — treibt Spreizung und Leuchten. */
   dichte: number[];
+  /** Spitzen je Woche 0 … 1 (v3, UNgeglättet, gesättigt) — die scharfen Ausschläge des Strahls an echten Lastwochen. */
+  spitze: number[];
   summe: number;
   /** Stränge im Bündel (im Fenster). */
   anzahl: number;
@@ -284,6 +291,9 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
   const geglaettet = ungeglaettet.map(w => gauss(w, DICHTE_SIGMA));
   const werte = geglaettet.flatMap(g => schneiden(g, n)).filter(v => v > 0.05);
   const halb = Math.max(DICHTE_HALB, werte.length ? werte.reduce((s, v) => s + v, 0) / werte.length : 0);
+  // Spitzen: dieselbe Sättigung auf die ungeglättete Last — eine Woche mit drei Fristen ragt heraus, statt im Gauß zu verschwimmen.
+  const rohWerte = ungeglaettet.flatMap(g => schneiden(g, n)).filter(v => v > 0.05);
+  const halbRoh = Math.max(DICHTE_HALB, rohWerte.length ? rohWerte.reduce((s, v) => s + v, 0) / rohWerte.length : 0);
   const summen = roh.map(x => x.straenge.filter(imFenster).reduce((s, y) => s + y.gewicht, 0));
   const maxSumme = Math.max(1e-9, ...summen);
   let buendel: Buendel[] = roh.map((x, i) => {
@@ -294,7 +304,7 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
     const darunter = x.tiefer ? hatDarunter(baum, x.tiefer) : false;
     return {
       id: x.id, art: x.art, name: x.name, farbe: x.farbe, ...(x.tiefer && (darunter || x.straenge.length > 1) ? { tiefer: x.tiefer } : {}), ...(x.link ? { link: x.link } : {}),
-      roh: rohW, dichte: schneiden(geglaettet[i], n).map(v => rund(saettigen(v, halb))), summe: rund(summen[i]), anzahl: x.straenge.filter(imFenster).length, faeden,
+      roh: rohW, dichte: schneiden(geglaettet[i], n).map(v => rund(saettigen(v, halb))), spitze: rohW.map(v => rund(Math.max(0, (saettigen(v, halbRoh) ** SPITZE_EXPONENT - SPITZE_SCHWELLE) / (1 - SPITZE_SCHWELLE)))), summe: rund(summen[i]), anzahl: x.straenge.filter(imFenster).length, faeden,
     };
   });
   buendel = faedenDeckeln(buendel, FAEDEN.deckel.rechner);

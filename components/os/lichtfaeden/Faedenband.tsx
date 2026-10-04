@@ -49,7 +49,7 @@ export interface FaedenbandProps {
   label: string;
 }
 
-const zuBand = (l: readonly Buendel[], deckel: number): BandBuendel[] => faedenDeckeln(l, deckel).map(b => ({ id: b.id, farbe: b.farbe, dichte: b.dichte, faeden: b.faeden }));
+const zuBand = (l: readonly Buendel[], deckel: number): BandBuendel[] => faedenDeckeln(l, deckel).map(b => ({ id: b.id, farbe: b.farbe, dichte: b.dichte, faeden: b.faeden, ...(b.spitze ? { spitze: b.spitze } : {}) }));
 
 export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, onUebergangAngewandt, engstellen, uebergang, hervor, onHervor, onTiefer, onEngstelle, onTag, onBlaettern, onBreite, label }: FaedenbandProps) {
   const boxRef = useRef<HTMLDivElement>(null);
@@ -113,7 +113,7 @@ export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, 
     // Messpunkt für Prüfungen (Zeichenzeit je Bild, Übergang) — liest nur. Nur außerhalb der Produktion oder wenn eine Prüfung
     // ihn ausdrücklich einschaltet (`data-messen` an der Seite oder einem Vorfahren) — sonst kein 250-ms-Takt im Betrieb.
     const messen = process.env.NODE_ENV !== 'production' || !!c.closest('[data-messen]') || document.documentElement.hasAttribute('data-messen');
-    const messe = messen ? window.setInterval(() => { const m = z.lauf.messung(); c.dataset.bilder = String(m.bilder); c.dataset.mittelMs = m.mittelMs.toFixed(2); c.dataset.laengstesMs = m.laengstesMs.toFixed(2); c.dataset.uebergang = String(z.fortschritt() ?? ''); }, 250) : undefined;
+    const messe = messen ? window.setInterval(() => { const m = z.lauf.messung(); c.dataset.bilder = String(m.bilder); c.dataset.mittelMs = m.mittelMs.toFixed(2); c.dataset.laengstesMs = m.laengstesMs.toFixed(2); c.dataset.uebergang = String(z.fortschritt() ?? ''); c.dataset.aufbau = String(z.aufbau() ?? ''); }, 250) : undefined;
     return () => { if (messe !== undefined) window.clearInterval(messe); z.stop(); zeichner.current = null; };
   }, []);
   // Neue Ansicht → einmal mit Übergang, wenn er zu GENAU dieser Antwort gehört (Anfrage-Schlüssel); danach meldet das Band
@@ -285,9 +285,14 @@ function Markierung({ m, links, top, w, hoehe, chip, leise, gedimmt, onHervor }:
   m: Marke; links: number; top: number; w: number; hoehe: number; chip: number; leise: boolean; gedimmt: boolean; onHervor: (an: boolean) => void;
 }) {
   const quadrat = m.symbol === '◎' || m.symbol === '▣';
-  const zeichen = m.symbol === '◇' || quadrat
-    ? <span style={{ flex: '0 0 auto', width: quadrat ? 8 : 7, height: quadrat ? 8 : 7, transform: quadrat ? undefined : 'rotate(45deg)', borderRadius: 1.5, background: m.erledigt ? 'transparent' : m.farbe, border: m.erledigt ? `1.5px solid ${m.farbe}` : undefined, boxShadow: m.erledigt ? undefined : LICHT_GLAS.schein(m.farbe) }} />
-    : <span style={{ flex: '0 0 auto', color: m.farbe, fontSize: 12, lineHeight: 1 }}>{m.symbol}</span>;
+  // v3 (Vorbild): Fristen und Ziele als abgerundetes Quadrat mit leuchtendem Kern (erledigt: nur der Rahmen), Meilensteine als Raute.
+  const zeichen = quadrat
+    ? <span style={{ flex: '0 0 auto', width: 12, height: 12, borderRadius: 3.5, border: `1.5px solid ${m.farbe}`, display: 'grid', placeItems: 'center', boxShadow: m.erledigt ? undefined : LICHT_GLAS.schein(m.farbe) }}>
+        {!m.erledigt && <span style={{ width: 5, height: 5, borderRadius: 1.5, background: m.farbe }} />}
+      </span>
+    : m.symbol === '◇'
+      ? <span style={{ flex: '0 0 auto', width: 8, height: 8, transform: 'rotate(45deg)', borderRadius: 1.5, background: m.erledigt ? 'transparent' : m.farbe, border: m.erledigt ? `1.5px solid ${m.farbe}` : undefined, boxShadow: m.erledigt ? undefined : LICHT_GLAS.schein(m.farbe) }} />
+      : <span style={{ flex: '0 0 auto', color: m.farbe, fontSize: 12, lineHeight: 1 }}>{m.symbol}</span>;
   const titel = `${m.titel} · ${tagKurz(m.tag)}${m.erledigt ? ' · erledigt' : ''}`;
   const innen = (
     <span style={{ display: 'flex', alignItems: 'center', gap: 7, height: chip, maxWidth: w, padding: '0 10px 0 9px', borderRadius: 8,

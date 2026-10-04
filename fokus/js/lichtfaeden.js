@@ -6,11 +6,17 @@
       faeden: { rechner: 22, handy: 11 },
       schritt: { rechner: 6, handy: 8 },
       tempo: 0.00028,
-      strich: 0.8,
-      deckkraft: 0.24,
+      strich: 0.6,
+      deckkraft: 0.2,
       stufen: 40,
       ruhe: 0.12,
       dprMax: 2,
+      aufbau: 1900,
+      aufbauVerzug: 150,
+      aufbauSpitze: 46,
+      punkte: { abstand: 10, tempo: 0.011, groesse: 1.1, hell: 2.4 },
+      frans: { weite: 0.95, min: 7, blass: 0.6 },
+      glanz: { teiler: 4, weich: 2.5, staerke: 0.55 },
   };
   const TAU = Math.PI * 2;
   function zufall(saat) {
@@ -37,29 +43,29 @@
       const aus = [];
       for (let i = 0; i < n; i++) {
           const u = n === 1 ? 0 : (i / (n - 1)) * 2 - 1;
-          aus.push({
-              lage: u * 0.86 + (r() - 0.5) * 0.18,
-              phase: r() * TAU,
-              frequenz: 0.0045 + r() * 0.0125,
-              tempo: (0.55 + r() * 0.9) * (r() < 0.5 ? -1 : 1),
-              welle: 0.3 + r() * 0.7,
-              hell: 0.5 + r() * 0.5,
-          });
+          const lage = u * 0.86 + (r() - 0.5) * 0.18, phase = r() * TAU, frequenz = 0.0045 + r() * 0.0125;
+          const tempo = 0.55 + r() * 0.9;
+          r();
+          aus.push({ lage, phase, frequenz, tempo, welle: 0.3 + r() * 0.7, hell: 0.5 + r() * 0.5 });
       }
       return aus;
   }
   const MITTE = { lage: 0, phase: 0, frequenz: 0, tempo: 0, welle: 0, hell: 1 };
   function versatz(f, s, t) {
-      const ph = t * LICHTFAEDEN.tempo * f.tempo;
+      const ph = t * LICHTFAEDEN.tempo * Math.abs(f.tempo);
       return f.lage * (1 - 0.45 * f.welle)
-          + f.welle * 0.62 * Math.sin(s * f.frequenz + f.phase + ph)
-          + 0.16 * f.welle * Math.sin(s * f.frequenz * 2.3 + f.phase * 1.7 - ph * 0.7);
+          + f.welle * 0.62 * Math.sin(s * f.frequenz + f.phase - ph)
+          + 0.16 * f.welle * Math.sin(s * f.frequenz * 2.3 + f.phase * 1.7 - ph * 1.6);
+  }
+  function fransen(f, s, t) {
+      const ph = t * LICHTFAEDEN.tempo * Math.abs(f.tempo);
+      return f.lage * 0.8 + 0.6 * Math.sin(s * f.frequenz * 3.1 + f.phase * 2.3 - ph * 1.8);
   }
   function buendelMitte(index, anzahl, s, t, dichte) {
       const phi = (index / Math.max(1, anzahl)) * TAU + index * 0.9;
       const ph = t * LICHTFAEDEN.tempo * 0.55;
       const amp = 0.06 + 0.44 * dichte;
-      return amp * Math.sin(s * 0.0098 + phi + ph) + 0.05 * Math.sin(s * 0.0031 - phi * 1.3 - ph * 0.4);
+      return amp * Math.sin(s * 0.0098 + phi - ph) + 0.05 * Math.sin(s * 0.0031 - phi * 1.3 - ph * 0.4);
   }
   function spreizung(dichte, halb) {
       const d = Math.max(0, Math.min(1, dichte));
@@ -142,20 +148,48 @@
       return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
   function zeichneBuendel(ctx, proben, stil, t) {
-      var _a, _b, _c;
+      var _a, _b, _c, _d, _e, _f;
       if (proben.length < 2)
           return 0;
       const stufen = LICHTFAEDEN.stufen;
       const basis = (_a = stil.deckkraft) !== null && _a !== void 0 ? _a : LICHTFAEDEN.deckkraft;
+      const F = LICHTFAEDEN.frans;
+      const front = stil.front != null && isFinite(stil.front) ? stil.front : null;
+      const spitze = LICHTFAEDEN.aufbauSpitze;
+      const pk = (_b = stil.punkte) !== null && _b !== void 0 ? _b : null;
+      const g = pk ? pk.groesse : 0, gh = g / 2;
       const eimer = new Map();
-      for (const f of stil.saaten) {
-          let pfad = null, stufe = -1, vx = 0, vy = 0;
+      const punktEimer = new Map();
+      const saaten = stil.saaten;
+      for (let fi = 0; fi < saaten.length; fi++) {
+          const f = saaten[fi];
+          const reicht = front == null ? null : front - (f.phase / TAU) * LICHTFAEDEN.aufbauVerzug;
+          const mitPunkten = !!pk && fi % Math.max(1, (_c = pk.jeder) !== null && _c !== void 0 ? _c : 1) === 0;
+          const verschub = pk && mitPunkten ? t * pk.tempo + (f.phase / TAU) * pk.abstand : 0;
+          const faecher = (f.welle - 0.65) * 0.8;
+          let pfad = null, stufe = -1, vx = 0, vy = 0, vs = 0, vq = 0;
           for (let k = 0; k < proben.length; k++) {
               const p = proben[k];
-              const o = versatz(f, p.s, t) * p.spreizung;
+              if (reicht != null && p.s > reicht)
+                  break;
+              let o = versatz(f, p.s, t) * p.spreizung;
+              const fr = (_d = p.frans) !== null && _d !== void 0 ? _d : 0;
+              if (fr > 0)
+                  o += fr * F.weite * Math.max(p.spreizung, F.min) * fransen(f, p.s, t);
+              if (p.hub)
+                  o += p.hub * faecher;
               const x = p.x + p.nx * o, y = p.y + p.ny * o;
+              const q = pk && mitPunkten ? Math.floor((p.s - verschub) / pk.abstand) : 0;
               if (k > 0) {
-                  const a = Math.min(1, basis * f.hell * p.hell);
+                  let a = basis * f.hell * p.hell;
+                  if (fr > 0)
+                      a *= 1 - fr * F.blass * (0.4 + 0.6 * Math.min(1, Math.abs(f.lage)));
+                  if (reicht != null) {
+                      const r = reicht - p.s;
+                      if (r < spitze)
+                          a *= 1 + 1.8 * (1 - r / spitze);
+                  }
+                  a = Math.min(1, a);
                   const st = Math.round(a * stufen);
                   if (st <= 0) {
                       pfad = null;
@@ -164,7 +198,7 @@
                   else {
                       if (st !== stufe || !pfad) {
                           stufe = st;
-                          pfad = (_b = eimer.get(st)) !== null && _b !== void 0 ? _b : null;
+                          pfad = (_e = eimer.get(st)) !== null && _e !== void 0 ? _e : null;
                           if (!pfad) {
                               pfad = new Path2D();
                               eimer.set(st, pfad);
@@ -173,20 +207,100 @@
                       }
                       pfad.lineTo(x, y);
                   }
+                  if (pk && mitPunkten && q > vq && st > 0) {
+                      const u = (q * pk.abstand + verschub - vs) / ((p.s - vs) || 1);
+                      const ps = Math.round(Math.min(1, a * pk.hell) * stufen);
+                      let pp = punktEimer.get(ps);
+                      if (!pp) {
+                          pp = new Path2D();
+                          punktEimer.set(ps, pp);
+                      }
+                      pp.rect(vx + (x - vx) * u - gh, vy + (y - vy) * u - gh, g, g);
+                  }
               }
               vx = x;
               vy = y;
+              vs = p.s;
+              vq = q;
           }
       }
-      const [r, g, b] = rgb(stil.farbe);
-      ctx.lineWidth = (_c = stil.strich) !== null && _c !== void 0 ? _c : LICHTFAEDEN.strich;
+      const [r, gr, b] = rgb(stil.farbe);
+      ctx.lineWidth = (_f = stil.strich) !== null && _f !== void 0 ? _f : LICHTFAEDEN.strich;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       for (const [st, pfad] of eimer) {
-          ctx.strokeStyle = `rgba(${r},${g},${b},${(st / stufen).toFixed(3)})`;
+          ctx.strokeStyle = `rgba(${r},${gr},${b},${(st / stufen).toFixed(3)})`;
           ctx.stroke(pfad);
       }
-      return eimer.size;
+      for (const [st, pp] of punktEimer) {
+          ctx.fillStyle = `rgba(${r},${gr},${b},${(st / stufen).toFixed(3)})`;
+          ctx.fill(pp);
+      }
+      return eimer.size + punktEimer.size;
+  }
+  function glanzPuffer() {
+      if (typeof document === 'undefined' || typeof document.createElement !== 'function')
+          return null;
+      const c = document.createElement('canvas');
+      const g = c.getContext ? c.getContext('2d') : null;
+      if (!g)
+          return null;
+      return {
+          auf(ctx, quelle, breite, hoehe, staerke = LICHTFAEDEN.glanz.staerke) {
+              const T = LICHTFAEDEN.glanz.teiler;
+              const w = Math.max(1, Math.round(breite / T)), h = Math.max(1, Math.round(hoehe / T));
+              if (c.width !== w)
+                  c.width = w;
+              if (c.height !== h)
+                  c.height = h;
+              g.setTransform(1, 0, 0, 1, 0, 0);
+              g.globalCompositeOperation = 'copy';
+              g.filter = `blur(${LICHTFAEDEN.glanz.weich}px)`;
+              g.drawImage(quelle, 0, 0, w, h);
+              g.filter = 'none';
+              ctx.save();
+              ctx.globalCompositeOperation = 'lighter';
+              ctx.globalAlpha = staerke;
+              ctx.imageSmoothingEnabled = true;
+              ctx.drawImage(c, 0, 0, breite, hoehe);
+              ctx.restore();
+          },
+      };
+  }
+  function zeichneNetz(ctx, o) {
+      var _a, _b, _c;
+      const r = zufall((_a = o.saat) !== null && _a !== void 0 ? _a : 7);
+      const n = Math.max(3, (_b = o.knoten) !== null && _b !== void 0 ? _b : 11);
+      const pk = [];
+      for (let i = 0; i < n; i++) {
+          const bx = r(), by = r(), ph = r() * TAU, amp = 4 + r() * 7;
+          pk.push({ x: o.x + bx * o.breite + Math.sin(o.t * 0.00011 + ph) * amp, y: o.y + by * o.hoehe + Math.cos(o.t * 0.00009 + ph * 1.3) * amp * 0.7, g: 1.3 + r() * 1.5 });
+      }
+      const max = Math.max(o.breite, o.hoehe) * 0.5;
+      const a0 = (_c = o.deckkraft) !== null && _c !== void 0 ? _c : 0.16;
+      const [cr, cg, cb] = rgb(o.farbe);
+      const linien = [new Path2D(), new Path2D(), new Path2D()];
+      for (let i = 0; i < n; i++)
+          for (let j = i + 1; j < n; j++) {
+              const d = Math.hypot(pk[i].x - pk[j].x, pk[i].y - pk[j].y);
+              if (d >= max)
+                  continue;
+              const l = linien[d < max * 0.45 ? 0 : d < max * 0.75 ? 1 : 2];
+              l.moveTo(pk[i].x, pk[i].y);
+              l.lineTo(pk[j].x, pk[j].y);
+          }
+      ctx.lineWidth = 0.6;
+      linien.forEach((l, i) => { ctx.strokeStyle = `rgba(${cr},${cg},${cb},${(a0 * [1, 0.6, 0.3][i]).toFixed(3)})`; ctx.stroke(l); });
+      const knoten = new Path2D();
+      for (const p of pk) {
+          knoten.moveTo(p.x + p.g, p.y);
+          knoten.arc(p.x, p.y, p.g, 0, TAU);
+      }
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${(a0 * 0.7).toFixed(3)})`;
+      ctx.fill(knoten);
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${Math.min(1, a0 * 2.4).toFixed(3)})`;
+      ctx.stroke(knoten);
   }
   function leinwand(canvas, breite, hoehe, dprMax = LICHTFAEDEN.dprMax) {
       const dpr = Math.max(1, Math.min(dprMax, (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1));
@@ -201,6 +315,7 @@
       return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
   function starteLauf(o) {
+      var _a;
       const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (f) => setTimeout(() => f(Date.now()), 16);
       const caf = typeof cancelAnimationFrame === 'function' ? cancelAnimationFrame : (id) => clearTimeout(id);
       let bilder = 0, summe = 0, laengstes = 0, beendet = false;
@@ -224,9 +339,17 @@
           return { einmal, stop: () => { beendet = true; if (wartet)
                   caf(wartet); }, messung };
       }
-      let sichtbar = true, laeuft = false, id = 0;
-      const schritt = (j) => { if (!laeuft)
-          return; messen(zeit(j)); id = raf(schritt); };
+      let sichtbar = true, laeuft = false, id = 0, zuletzt = -1e9;
+      const abstand = Math.max(0, (_a = o.intervall) !== null && _a !== void 0 ? _a : 0);
+      const schritt = (j) => {
+          if (!laeuft)
+              return;
+          if (!abstand || j - zuletzt >= abstand - 1) {
+              zuletzt = j;
+              messen(zeit(j));
+          }
+          id = raf(schritt);
+      };
       const pruefe = () => {
           const soll = !beendet && sichtbar && !(typeof document !== 'undefined' && document.hidden);
           if (soll && !laeuft) {
@@ -264,5 +387,5 @@
           messung,
       };
   }
-  globalThis.Lichtfaeden = Object.freeze({ LICHTFAEDEN, TAU, zufall, textSaat, fadenSaaten, MITTE, versatz, buendelMitte, spreizung, gauss, saettigen, wertBei, glatt, kurve, rgb, zeichneBuendel, leinwand, bewegungReduziert, starteLauf });
+  globalThis.Lichtfaeden = Object.freeze({ LICHTFAEDEN, TAU, zufall, textSaat, fadenSaaten, MITTE, versatz, fransen, buendelMitte, spreizung, gauss, saettigen, wertBei, glatt, kurve, rgb, zeichneBuendel, glanzPuffer, zeichneNetz, leinwand, bewegungReduziert, starteLauf });
 })();
