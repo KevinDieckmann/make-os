@@ -1,5 +1,7 @@
 // ─── MAKE OS — Gesellschafts-Register (/os/unternehmen, 04.10.) ─────────────────────────────────────────────────
-// GET                                   → { gesellschaften (mit stand, luecken, verweise), personen, namen }
+// GET                                   → { gesellschaften (mit stand, luecken, verweise), personen, namen, geloescht }
+//                                         `geloescht` (DSGVO-Nachtrag 04.10.): Vermerke endgültig gelöschter Gesellschaften/Verträge —
+//                                         Kennung, Name, Tag, Datei-Kennungen — damit Bezüge als „(gelöscht)“ lesbar bleiben
 // GET  ?papierkorb=1                    → dazu die Gesellschaften im Papierkorb
 // GET  ?wahl=1                          → nur { id, name, status } je Gesellschaft (Auswahl in Deals/Mandaten/Produkten/Planung)
 // GET  ?suche=kontakte|firmen&q=…       → höchstens 20 Treffer { id, name } aus dem CRM (Gesellschafter, Parteien, Beteiligungen)
@@ -122,6 +124,7 @@ export async function GET(req: Request) {
   const sichtbar = mitKorb ? alle : alle.filter(g => !imPapierkorb(g));
   return NextResponse.json({
     ok: true, gesellschaften: sichtbar.map(g => zurAnzeige(g, alle, crm)), personen, namen: await namenFuer(alle, personen),
+    geloescht: Array.isArray(d?.geloescht) ? d!.geloescht : [],
   }, kopf);
 }
 

@@ -1,5 +1,8 @@
 // ─── MAKE OS — Register › Unterlagen einer Gesellschaft (04.10.) ────────────────────────────────────────────────
-// GET  ?id=<gesellschaft>                       → Einträge der Dateiablage mit Bezug auf diese Gesellschaft (neueste zuerst)
+// GET  ?id=<gesellschaft>[&vertrag=<vt-…>]     → Einträge der Dateiablage mit Bezug auf diese Gesellschaft (neueste zuerst),
+//                                                optional nur die Unterlagen eines Vertrags — auch nach dem endgültigen Löschen
+//                                                der Gesellschaft bzw. des Vertrags (Vermerk im Register, DSGVO-Nachtrag 04.10.:
+//                                                Unterlagen bleiben, Aufbewahrung § 257 HGB). Dazu `bezug` (Name, gelöscht ja/nein).
 // POST multipart { id, datei, titel?, art? }    → Unterlage ablegen (PDF/PNG/JPG/DOCX, ≤ 15 MB, Typ am Inhalt geprüft)
 // Herunterladen wie jede Ablage-Datei über GET /api/crm/dateien?id=d-… (dieselbe Ablage, derselbe Haushalt).
 // Die bestehende Dateiablage (lib/dateien/ablage.ts, verschlüsselt je Haushalt) — kein zweiter Speicher. Den Bezug
@@ -13,7 +16,7 @@ import { ablageListe, ablegen, AblageFehler } from '@/lib/dateien/ablage';
 import { begrenztLesen } from '@/lib/dateien/begrenzt-lesen';
 import { MAX_DATEI_BYTES, dateinameSaeubern, endung, nurCrm, typErkennen, type DateiArt } from '@/lib/dateien/regeln';
 import { istGesellschaftId } from '@/lib/einheiten';
-import { gesellschaftVon } from '@/lib/gesellschaften/modell';
+import { gesellschaftVon, geloeschterBezug, unterlagenFiltern, anzeigeName } from '@/lib/gesellschaften/modell';
 import { ladeRegister } from '@/lib/gesellschaften/server';
 import { imPapierkorb } from '@/lib/eintraege/sicher';
 
@@ -35,9 +38,21 @@ export async function GET(req: Request) {
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!istGesellschaftId(id)) return fehler('id: kdc, kdv, ug oder g-….', 400);
+  const vertragId = new URL(req.url).searchParams.get('vertrag');
+  if (vertragId !== null && !/^vt-[a-z0-9][a-z0-9-]{3,62}$/.test(vertragId)) return fehler('vertrag: Kennung vt-….', 400);
   try {
-    const eintraege = nurCrm(await ablageListe(z.haushalt)).filter(e => e.gesellschaft === id).sort((a, b) => b.hochgeladenAm.localeCompare(a.hochgeladenAm));
-    return NextResponse.json({ ok: true, eintraege }, { headers: { 'Cache-Control': 'no-store' } });
+    const register = await ladeRegister(z.haushalt);
+    const g = gesellschaftVon(register, id);
+    const gWeg = geloeschterBezug(register, 'gesellschaft', id);
+    const v = vertragId ? (g?.vertraege ?? []).find(x => x.id === vertragId) : undefined;
+    const vWeg = vertragId && !v ? geloeschterBezug(register, 'vertrag', vertragId) : undefined;
+    if (vertragId && !v && (!vWeg || vWeg.gesellschaftId !== id)) return fehler('Vertrag nicht gefunden.', 404);
+    const eintraege = unterlagenFiltern(nurCrm(await ablageListe(z.haushalt)), id, vertragId ? (v?.dateiIds ?? vWeg?.dateiIds ?? []) : undefined);
+    const bezug = {
+      gesellschaft: g ? { name: anzeigeName(g), geloescht: false } : gWeg ? { name: gWeg.titel, geloescht: true } : null,
+      ...(vertragId ? { vertrag: v ? { titel: v.titel, geloescht: false } : { titel: vWeg!.titel, geloescht: true } } : {}),
+    };
+    return NextResponse.json({ ok: true, eintraege, bezug }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     if (e instanceof AblageFehler) return fehler(e.message, e.status);
     return fehler('Ablage nicht erreichbar.', 500);

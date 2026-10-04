@@ -5,7 +5,8 @@
 // gespeichert werden nur Beteiligungen an fremden Firmen (CRM-Firma, Anteil, Erwerb). Verträge: Art, Parteien, Status,
 // Laufzeit, Kündigungsfrist + „kündigen bis“, Stichtage (Option, Cliff …) — alle Stichtage erscheinen im Kalender
 // (Fristen-Ebene, lib/kalender/fristen-server.ts). Unterlagen: die bestehende Dateiablage mit Bezug auf die Gesellschaft.
-// Archiv = beendet, Löschen = Papierkorb 30 Tage (ZeileAktionen, Rückgängig 10 s).
+// Archiv = beendet, Löschen = Papierkorb 30 Tage (ZeileAktionen, Rückgängig 10 s). Endgültig gelöschte Verträge: die Unterlagen
+// bleiben (§ 257 HGB) — Rückfrage mit „ansehen“, danach steht der Bezug an der Unterlage als „„Titel“ (gelöscht)“ (DSGVO-Nachtrag 04.10.).
 
 import { useCallback, useEffect, useState } from 'react';
 import { FileText } from 'lucide-react';
@@ -13,10 +14,11 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Knopf, Hinweis, Leer, Pillen, Chip, LEUCHT, ZeileAktionen, useRueckgaengig, useRueckfrage, feld } from '../ui';
 import { neueKennung } from '@/lib/kennung';
 import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
-import { haelt, centAus, ERINNERUNG_VORGABE_TAGE, VERTRAG_ARTEN, VERTRAG_STATUS, vertragArtLabel, vertragStatusLabel, type Bezug, type FremdBeteiligung, type Vertrag, type VertragArt, type VertragStatus, type VertragFrist } from '@/lib/gesellschaften/modell';
+import { WEG } from '@/lib/wege';
+import { geloeschtText, haelt, centAus, ERINNERUNG_VORGABE_TAGE, VERTRAG_ARTEN, VERTRAG_STATUS, vertragArtLabel, vertragStatusLabel, type Bezug, type FremdBeteiligung, type Vertrag, type VertragArt, type VertragStatus, type VertragFrist } from '@/lib/gesellschaften/modell';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { ANNEHMEN } from '@/lib/dateien/regeln';
-import { BezugWahl, Auswahl, Felder, Feldzeile, bezugName, centEingabe, centText, klein, tagText, type GAnzeige, type RegisterDaten, type useSchreiber } from './teile';
+import { BezugWahl, Auswahl, Felder, Feldzeile, bezugName, centEingabe, centText, klein, tagText, UnterlagenBleiben, type GAnzeige, type RegisterDaten, type useSchreiber } from './teile';
 import { Papierkorb } from './Gesellschafter';
 
 type Schreibe = ReturnType<typeof useSchreiber>['schreibe'];
@@ -125,7 +127,15 @@ function useUnterlagen(id: string) {
 
 const dateiLink = (e: DateiEintrag) => `/api/crm/dateien?id=${encodeURIComponent(e.id)}`;
 
-export function UnterlagenReiter({ g }: { g: GAnzeige }) {
+/** Zu welchem Vertrag gehört eine Unterlage? Lebender Vertrag → Titel; endgültig gelöschter → „„Titel“ (gelöscht)“ (Vermerk). */
+export function vertragBezugText(dateiId: string, g: Pick<GAnzeige, 'id' | 'vertraege'>, geloescht: RegisterDaten['geloescht']): string | undefined {
+  const v = (g.vertraege ?? []).find(x => x.dateiIds?.includes(dateiId));
+  if (v) return `zu „${v.titel}“${v.geloeschtAm ? ' (im Papierkorb)' : ''}`;
+  const weg = geloescht.find(b => b.art === 'vertrag' && b.gesellschaftId === g.id && b.dateiIds?.includes(dateiId));
+  return weg ? `zu ${geloeschtText(weg)}` : undefined;
+}
+
+export function UnterlagenReiter({ g, daten }: { g: GAnzeige; daten: RegisterDaten }) {
   const u = useUnterlagen(g.id);
   return (
     <Karte>
@@ -136,7 +146,7 @@ export function UnterlagenReiter({ g }: { g: GAnzeige }) {
       {u.liste === null ? <Leer>lädt …</Leer> : !u.liste.length ? <Leer symbol={<FileText size={16} />}>Noch keine Unterlage — z. B. Gesellschaftsvertrag, Handelsregisterauszug, Gesellschafterliste (PDF, PNG, JPG, DOCX bis 15 MB).</Leer> : (
         <Liste>{u.liste.map(e => (
           <a key={e.id} href={dateiLink(e)} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Zeile titel={e.titel || e.datei?.name || 'Unterlage'} unter={[e.art === 'vertrag' ? 'Vertrag' : e.id === g.logoDateiId ? 'Logo' : 'Unterlage', tagText(e.hochgeladenAm.slice(0, 10)), e.datei?.name].filter(Boolean).join(' · ')} rechts={<span style={klein}>herunterladen ›</span>} />
+            <Zeile titel={e.titel || e.datei?.name || 'Unterlage'} unter={[e.art === 'vertrag' ? 'Vertrag' : e.id === g.logoDateiId ? 'Logo' : 'Unterlage', vertragBezugText(e.id, g, daten.geloescht), tagText(e.hochgeladenAm.slice(0, 10)), e.datei?.name].filter(Boolean).join(' · ')} rechts={<span style={klein}>herunterladen ›</span>} />
           </a>
         ))}</Liste>
       )}
@@ -179,7 +189,7 @@ export function VertraegeReiter({ g, daten, schreibe }: { g: GAnzeige; daten: Re
         </Karte>
       )}
       {korb.length > 0 && <Papierkorb eintraege={korb.map(v => ({ id: v.id, titel: v.titel, geloeschtAm: v.geloeschtAm! }))} wiederherstellen={id => void aktion(korb.find(v => v.id === id)!, 'wiederherstellen')}
-        endgueltig={id => { const v = korb.find(x => x.id === id)!; fragen({ titel: `„${v.titel}“ endgültig löschen?`, text: 'Die Angaben zum Vertrag verschwinden; Unterlagen in der Ablage bleiben. Das lässt sich nicht rückgängig machen.', wahl: [{ label: 'Endgültig löschen', ton: 'gefahr', tun: () => aktion(v, 'endgueltig') }] }); }} />}
+        endgueltig={id => { const v = korb.find(x => x.id === id)!; fragen({ titel: `„${v.titel}“ endgültig löschen?`, text: <>Die Angaben zum Vertrag verschwinden — das lässt sich nicht rückgängig machen. <UnterlagenBleiben href={WEG.unterlagen(g.id, v.id)} /></>, wahl: [{ label: 'Endgültig löschen', ton: 'gefahr', tun: () => aktion(v, 'endgueltig') }] }); }} />}
       {dialog}
       {hinweis}
     </>
