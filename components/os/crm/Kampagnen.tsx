@@ -15,6 +15,9 @@
 // Kosten je Anfrage und je SQL. „Deal anlegen“ an einer Person mit Ergebnis
 // „Interesse → Lead“: über POST /api/crm/deal mit Quelle Kampagne und Bezug
 // (marketing/DealAusQuelle.tsx) — der Lead wird SQL, der Deal trägt die Herkunft.
+// 04.10. (Kevin: „alles anpassbar“): jede Kampagne hängt am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter
+// Archiv, zurückholbar) und Löschen (Papierkorb 30 Tage, `geloeschtAm`, mit Rückgängig); endgültig nur aus dem Papierkorb
+// (components/os/crm/ablage.tsx, Regel lib/crm/ablage.ts).
 
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
@@ -23,7 +26,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { dealAkte } from '@/lib/crm/adresse';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT, ZeileAktionen } from '../ui';
+import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte, type CrmAblage } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
 import { kanalStatus } from '@/lib/crm/recht';
 import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
@@ -62,6 +66,8 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
   const [wahl, setWahl] = useWerFilter('kampagnen');
   const ich = api.ich;
   const [fehler, setFehler] = useState<string | null>(null);
+  const ablage = useCrmAblage(api, 'kampagnen');
+  const [sicht, setSicht] = useAblageSicht(() => setOffen(null));
   const laden = useCallback(() => fetch('/api/crm/kampagnen', { cache: 'no-store' }).then(r => r.json()).then(x => { if (x.ok) { setD(x); setFehler(null); } else setFehler(x.fehler ?? 'Kampagnen nicht geladen.'); }).catch(() => setFehler('Kampagnen nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden]);
   useEffect(() => { try { const s = sessionStorage.getItem('crm-kampagne-segment'); if (s) { setSegmentPlan(s); sessionStorage.removeItem('crm-kampagne-segment'); } } catch { /* ohne Speicher */ } }, []);
@@ -79,7 +85,9 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
     if (!passtWer(wahl, r.kampagne.zustaendig, 'sales', ich)) setWahl('alle');
     setMeldung(`Entwurf „${r.kampagne.name}“ mit ${r.kampagne.kontaktIds.length} Personen angelegt — zuständig ${nameVon(zustaendig(r.kampagne.zustaendig, 'sales'))}. Als Nächstes: Personen prüfen, dann den ersten Schritt angehen.`);
   };
-  const alleKampagnen = [...(api.crm?.stand.kampagnen ?? [])].sort((a, b) => STATUS.findIndex(s => s.id === a.status) - STATUS.findIndex(s => s.id === b.status) || b.geaendert.localeCompare(a.geaendert));
+  const alleRoh = api.crm?.stand.kampagnen ?? [];
+  const archivZahl = alleRoh.filter(k => k.archiviertAm).length;
+  const alleKampagnen = alleRoh.filter(k => (sicht === 'archiv' ? !!k.archiviertAm : !k.archiviertAm)).sort((a, b) => STATUS.findIndex(s => s.id === a.status) - STATUS.findIndex(s => s.id === b.status) || b.geaendert.localeCompare(a.geaendert));
   const kampagnen = alleKampagnen.filter(k => passtWer(wahl, k.zustaendig, 'sales', ich));
   const zahlen = werZahlen(alleKampagnen, k => k.zustaendig, 'sales', ich);
   const segment = segmentPlan ? api.crm?.stand.segmente.find(s => s.id === segmentPlan) : undefined;
@@ -101,21 +109,27 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
         </Karte>
       )}
 
-      {alleKampagnen.length > 0 && (
+      {(alleRoh.length > 0 || ablage.korb.length > 0) && (
+        <AblageReiter sicht={sicht} onSicht={setSicht} name="Kampagnen" liste={alleRoh.length - archivZahl} archiv={archivZahl} korb={ablage.korb.length} />
+      )}
+      {sicht === 'papierkorb' && <PapierkorbKarte ablage={ablage} liste="kampagnen" />}
+      {sicht !== 'papierkorb' && (alleKampagnen.length > 0 || sicht === 'archiv') && (
         <Karte i={1}>
-          <Ueberschrift rechts={`${kampagnen.filter(k => k.status === 'aktiv').length} aktiv`}>Kampagnen</Ueberschrift>
+          <Ueberschrift rechts={sicht === 'archiv' ? `${alleKampagnen.length} im Archiv` : `${kampagnen.filter(k => k.status === 'aktiv').length} aktiv`}>{sicht === 'archiv' ? 'Archiv · Kampagnen' : 'Kampagnen'}</Ueberschrift>
           <div style={{ marginBottom: 6 }}><WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} /></div>
-          {!kampagnen.length && <Leer>Bei {wahl === 'ich' ? 'dir' : nameVon(wahl)} liegt keine Kampagne — „Alle“ zeigen, eine übergeben oder unten nach bewährtem Vorgehen planen.</Leer>}
+          {!kampagnen.length && <Leer>{sicht === 'archiv' ? 'Hier liegt keine archivierte Kampagne. Archivierte Kampagnen sind aus der Liste ausgeblendet, ihre Ergebnisse bleiben im Verlauf der Personen — zurückholen jederzeit.' : `Bei ${wahl === 'ich' ? 'dir' : nameVon(wahl)} liegt keine Kampagne — „Alle“ zeigen, eine übergeben oder unten nach bewährtem Vorgehen planen.`}</Leer>}
           <Liste>
             {kampagnen.map(k => {
               const z = d.zahlen[k.id];
               return (
                 <div key={k.id}>
+                  <ZeileAktionen titel={k.name} archiviert={sicht === 'archiv'} onArchivieren={() => { setOffen(null); if (sicht === 'archiv') ablage.zurueckholen(k.id, k.name); else ablage.archivieren(k.id, k.name); }} onLoeschen={() => { setOffen(null); kampagneLoeschen(ablage, k); }}>
                   <Zeile onClick={() => setOffen(offen === k.id ? null : k.id)} aktiv={offen === k.id}
                     links={<Punkt farbe={k.status === 'aktiv' ? LEUCHT.gut : k.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise} />}
                     titel={k.name} unter={z ? `${z.personen} Personen · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Leads${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}${k.kostenEuro ? ` · ${euro(k.kostenEuro)} Kosten` : ''}` : ''}
                     rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{k.von !== 'hand' && <Chip farbe={LEUCHT.agenten}>{k.von === 'head-sales' ? 'Head of Sales' : 'Head of Marketing'}</Chip>}<Chip farbe={C.inkDim}>{STATUS.find(s => s.id === k.status)?.label}</Chip><Person id={zustaendig(k.zustaendig, 'sales')} groesse={18} /></span>} />
-                  {offen === k.id && <KampagnenDetail k={k} api={api} pb={d.playbooks.find(p => p.id === k.playbook)} z={z} heute={d.heute} post={post} zuKontakt={zuKontakt} />}
+                  </ZeileAktionen>
+                  {offen === k.id && <KampagnenDetail k={k} api={api} ablage={ablage} pb={d.playbooks.find(p => p.id === k.playbook)} z={z} heute={d.heute} post={post} zuKontakt={zuKontakt} />}
                 </div>
               );
             })}
@@ -161,11 +175,19 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
           ))}
         </div>
       </Karte>
+      {ablage.dialog}
+      {ablage.hinweis}
     </>
   );
 }
 
-function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagne; api: CrmApi; pb?: Playbook; z?: KampagnenZahlen; heute: string; post: (b: Record<string, unknown>) => Promise<{ ok?: boolean; angelegt?: number; an?: string }>; zuKontakt: (id: string) => void }) {
+/** Löschen = Papierkorb; eine laufende Kampagne erst nach Rückfrage (Archiv als ruhigerer Weg). */
+function kampagneLoeschen(ablage: CrmAblage, k: Kampagne) {
+  if (k.status !== 'aktiv') { ablage.loeschen(k.id, k.name); return; }
+  ablage.loeschen(k.id, k.name, { archivAnbieten: true, text: 'Die Kampagne läuft noch. Im Papierkorb ist sie überall ausgeblendet; die Ergebnisse im Verlauf der Personen bleiben. Ist sie nur vorbei, ist Archivieren der ruhigere Weg.' });
+}
+
+function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt }: { k: Kampagne; api: CrmApi; ablage: CrmAblage; pb?: Playbook; z?: KampagnenZahlen; heute: string; post: (b: Record<string, unknown>) => Promise<{ ok?: boolean; angelegt?: number; an?: string }>; zuKontakt: (id: string) => void }) {
   const router = useRouter();
   const [suche, setSuche] = useState('');
   const [alle, setAlle] = useState(false);
@@ -275,7 +297,7 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Jedes Ergebnis landet im Verlauf der Person — mit dir als der Person, die angesprochen hat; „Interesse → Lead“ setzt den Lead der Firma in die Qualifizierung (Ebene 1). Wird daraus ein echter Bedarf: „Deal aus dieser Kampagne“ — der Deal trägt Quelle Kampagne, der Lead wird SQL.</div>
       </div>
       <Feldzeile label="Notiz"><Feld wert={k.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>
-      <div><button onClick={() => { if (window.confirm('Kampagne löschen? Ergebnisse im Verlauf der Personen bleiben.')) void api.weg('kampagnen', k.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Löschen</button></div>
+      <div><button onClick={() => kampagneLoeschen(ablage, k)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>In den Papierkorb</button></div>
     </div>
   );
 }

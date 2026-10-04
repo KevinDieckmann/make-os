@@ -18,6 +18,9 @@
 // (ohne Eintrag: Sales-Verantwortung, Kevin), gefilterte Kontakte gesammelt
 // übergeben, je Person „Übergeben“ und „Malin ist gerade hier“. Die private
 // Notiz sieht nur, wer sie schrieb (serverseitig).
+// 04.10. (Kevin: „alles anpassbar“): jede Personenzeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`: nur aus der
+// Kartei ausgeblendet, Ansicht „Archiv“, überall sonst unverändert) und Löschen = der DSGVO-Weg Art. 17 (kontakt/art17.tsx,
+// Rückfrage + Grund fürs Löschprotokoll) — kein Papierkorb, Art. 17 verlangt, dass die Daten gehen.
 
 import { suchPasst } from '@/lib/text/such-norm';
 import { useNachfrage } from './Nachfrage';
@@ -25,7 +28,8 @@ import { localDay } from '@/lib/zeit';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SearchX } from 'lucide-react';
-import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
+import { useArt17 } from './kontakt/art17';
 import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -54,8 +58,8 @@ import { neueKontaktKennung } from '@/lib/kennung';
 import { useNaechsterTermin } from '../kalender/TermineAkte';
 
 type Modus = 'personen' | 'firmen';
-type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten' | 'dublette-pruefen' | 'lead-pruefen';
-const ANSICHT_IDS: Ansicht[] = ['alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten', 'dublette-pruefen', 'lead-pruefen'];
+type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten' | 'dublette-pruefen' | 'lead-pruefen' | 'archiv';
+const ANSICHT_IDS: Ansicht[] = ['alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten', 'dublette-pruefen', 'lead-pruefen', 'archiv'];
 const istAnsicht = (a?: string): a is Ansicht => !!a && (ANSICHT_IDS as string[]).includes(a);
 
 export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde, zuAkte, startBean }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void;
@@ -69,7 +73,12 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const [markiert, setMarkiert] = useState(0);
   const [anlegen, setAnlegen] = useState(false);
   const sucheRef = useRef<HTMLInputElement>(null);
-  const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
+  // Archivierte Personen (04.10.) stehen nur in der Ansicht „Archiv“ — Zahlen, Filter und Dubletten rechnen ohne sie.
+  const kontakte = useMemo(() => (api.kontakte ?? []).filter(k => !k.archiviertAm), [api.kontakte]);
+  const archivKontakte = useMemo(() => (api.kontakte ?? []).filter(k => k.archiviertAm), [api.kontakte]);
+  const { melden, hinweis } = useRueckgaengig();
+  const { bestaetigen, dialog: rueckfrage } = useRueckfrage();
+  const art17 = useArt17(api);
   const crm = api.crm;
   const heute = crm?.heute ?? localDay();
   const firmen = useMemo(() => new Map((crm?.stand.firmen ?? []).map(f => [f.id, f])), [crm]);
@@ -112,21 +121,22 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     art14: k => !!art14(k, heute)?.faellig, gesperrt: k => ausgenommen(k), dubletten: k => paare.some(([a, b]) => a.id === k.id || b.id === k.id),
     // Arbeitslisten aus „Netzwerken“ (N3): die Labels „Dublette prüfen“ und „Lead prüfen“ setzt die Erfassung — hier stehen die Personen, die ein Mensch ansehen soll.
     'dublette-pruefen': k => !ausgenommen(k) && labelsVon(k).includes(LABEL_DUBLETTE), 'lead-pruefen': k => !ausgenommen(k) && labelsVon(k).includes(LABEL_LEAD_PRUEFEN),
+    archiv: () => true,
   }), [mitChance, paare, heute]);
-  const zaehlung = useMemo(() => { const z = {} as Record<Ansicht, number>; for (const id of Object.keys(filter) as Ansicht[]) z[id] = kontakte.filter(filter[id]).length; return z; }, [kontakte, filter]);
+  const zaehlung = useMemo(() => { const z = {} as Record<Ansicht, number>; for (const id of Object.keys(filter) as Ansicht[]) z[id] = id === 'archiv' ? archivKontakte.length : kontakte.filter(filter[id]).length; return z; }, [kontakte, archivKontakte, filter]);
   const ANSICHTEN: { id: Ansicht; label: string }[] = ([
     ['alle', 'Alle'], ['kunden', 'Kunden'], ['kreis', 'Kreis A/B'], ['prio', 'Prio A'], ['chancen', 'Mit Deal'], ['mail', 'Mit E-Mail'], ['anreichern', 'Anreichern'], ['art14', 'Art. 14'], ['gesperrt', 'Gesperrt'], ['dubletten', 'Dubletten'],
-  ] as [Ansicht, string][]).concat([['dublette-pruefen', 'Dublette prüfen'], ['lead-pruefen', 'Lead prüfen']] as [Ansicht, string][]).filter(([id]) => (id !== 'dublette-pruefen' && id !== 'lead-pruefen') || zaehlung[id] > 0 || ansicht === id).map(([id, l]) => ({ id, label: `${l} ${zaehlung[id]}` }));
+  ] as [Ansicht, string][]).concat([['dublette-pruefen', 'Dublette prüfen'], ['lead-pruefen', 'Lead prüfen'], ['archiv', 'Archiv']] as [Ansicht, string][]).filter(([id]) => (id !== 'dublette-pruefen' && id !== 'lead-pruefen' && id !== 'archiv') || zaehlung[id] > 0 || ansicht === id).map(([id, l]) => ({ id, label: `${l} ${zaehlung[id]}` }));
 
   const treffer = useMemo(() => {
     const q = suche.trim();
-    let l = kontakte.filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich)).filter(k => !lc || lifecycle.get(k.id)?.phase === lc).filter(k => !bn || beans.get(k.id)?.bean === bn).filter(passtEin);
+    let l = (ansicht === 'archiv' ? archivKontakte : kontakte).filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich)).filter(k => !lc || lifecycle.get(k.id)?.phase === lc).filter(k => !bn || beans.get(k.id)?.bean === bn).filter(passtEin);
     // Eine Such-Normalisierung (K2 #105): „mueller“ findet „Müller“ (auch NFD), „strasse“ „Straße“; jedes Wort muss passen.
     // Alle E-Mail-Adressen, Typen, Kategorien und Labels zählen mit (28.09.).
     if (q) l = l.filter(k => suchPasst([anzeigename(k), k.firma, ...alleAdressen(k), k.firmaBranche, k.position, k.firmaStadt, k.telefon, ...labelsVon(k), ...kategorienVon(k)], q));
     const rang = (k: Kontakt) => (k.lebensphase === 'kunde' ? 0 : k.kreis === 'A' ? 1 : k.kreis === 'B' ? 2 : k.prio === 'A' ? 3 : k.prio === 'B' ? 4 : 5);
     return [...l].sort((a, b) => (ansicht === 'dubletten' ? anzeigename(a).localeCompare(anzeigename(b)) : rang(a) - rang(b) || anzeigename(a).localeCompare(anzeigename(b))));
-  }, [kontakte, suche, ansicht, filter, wer, ich, lc, lifecycle, bn, beans, passtEin]);
+  }, [kontakte, archivKontakte, suche, ansicht, filter, wer, ich, lc, lifecycle, bn, beans, passtEin]);
   const sichtbar = treffer.slice(0, mehr);
   const [erreichbar, freigegeben] = useMemo(() => [
     kontakte.filter(k => k.email || k.telefon || k.sms).length,
@@ -179,7 +189,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     const v = await fetch(`/api/crm/dubletten?behalten=${encodeURIComponent(behalten.id)}&weg=${encodeURIComponent(weg.id)}`, { cache: 'no-store' }).then(x => x.json()).catch(() => null) as { ok?: boolean; wandert?: Wanderung; grund?: string; fehler?: string } | null;
     if (!v?.ok || !v.wandert) { api.setFehler(v?.fehler ?? 'Vorschau nicht geladen — nichts zusammengeführt.'); return; }
     if (v.grund) { api.setFehler(v.grund); return; }
-    if (!window.confirm(`„${anzeigename(behalten)}“ behalten und „${anzeigename(weg)}“ hineinführen?\n\nEs wandert: ${wanderungText(v.wandert)}.\n\nRückgängig geht 30 Tage lang (Dubletten › Zusammengeführt), solange niemand die Einträge seitdem ändert.`)) return;
+    if (!(await bestaetigen({ titel: `„${anzeigename(behalten)}“ behalten und „${anzeigename(weg)}“ hineinführen?`, text: `Es wandert: ${wanderungText(v.wandert)}.\n\nRückgängig geht 30 Tage lang (Dubletten › Zusammengeführt), solange niemand die Einträge seitdem ändert.`, ja: 'Zusammenführen' }))) return;
     const r = await fetch('/api/crm/dubletten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ behalten: behalten.id, weg: weg.id }) }).then(x => x.json()).catch(() => null);
     await api.laden(true);
     if (r?.ok) { setAuswahl(behalten.id); void zusammenLaden(); } else api.setFehler(r?.fehler ?? 'Nicht zusammengeführt.');
@@ -192,7 +202,14 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     else if (r.hinweis) api.setHinweis(r.hinweis);
   };
 
-  const k = auswahl && !auswahl.startsWith('f-') ? kontakte.find(x => x.id === auswahl) ?? null : null;
+  const k = auswahl && !auswahl.startsWith('f-') ? (api.kontakte ?? []).find(x => x.id === auswahl) ?? null : null;
+  // Archivieren (04.10.): nur aus der Kartei ausblenden — mit „Rückgängig“; Zurückholen aus der Ansicht „Archiv“.
+  const archivieren = (x: Kontakt) => {
+    if (auswahl === x.id) setAuswahl(null);
+    if (x.archiviertAm) { void api.kontaktTeil(x.id, { archiviertAm: undefined }); melden(`${anzeigename(x)} ist zurück in der Kartei`, () => void api.kontaktTeil(x.id, { archiviertAm: new Date().toISOString() })); return; }
+    void api.kontaktTeil(x.id, { archiviertAm: new Date().toISOString() });
+    melden(`${anzeigename(x)} archiviert — unter „Archiv“ zurückholbar; Deals, Segmente und Verlauf bleiben`, () => void api.kontaktTeil(x.id, { archiviertAm: undefined }));
+  };
   const { frage, dialog: nachfrage } = useNachfrage();
   const kopf = (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -266,7 +283,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
                     {zusammengefuehrt.map(z => (
                       <div key={z.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
                         <span style={{ flex: 1, minWidth: 200 }}>{z.name} ← {z.weg} <span style={{ color: C.inkLeise }}>· {datum(z.am.slice(0, 10), heute)} · {nameVon(z.person)}</span></span>
-                        <Knopf leise onClick={async () => { if (window.confirm(`Zusammenführung „${z.name} ← ${z.weg}“ zurücknehmen? Beide Einträge stehen danach wieder wie vorher da — nur, wenn seitdem niemand sie geändert hat.`)) await zurueck(z.id); }}>Rückgängig</Knopf>
+                        <Knopf leise onClick={async () => { if (await bestaetigen({ titel: `Zusammenführung „${z.name} ← ${z.weg}“ zurücknehmen?`, text: 'Beide Einträge stehen danach wieder wie vorher da — nur, wenn seitdem niemand sie geändert hat.', ja: 'Zurücknehmen' })) await zurueck(z.id); }}>Rückgängig</Knopf>
                       </div>
                     ))}
                   </div>
@@ -283,14 +300,18 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
                 <div>
                   {sichtbar.map((x, i) => (
                     <div key={x.id} data-kid={x.id}>
+                      <ZeileAktionen titel={anzeigename(x)} archiviert={!!x.archiviertAm} onArchivieren={() => archivieren(x)} onLoeschen={() => void art17.loeschen(x, () => { if (auswahl === x.id) setAuswahl(null); })}>
                       <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} lifecycle={lifecycle.get(x.id)} bean={beans.get(x.id)} breit={breit} aktiv={auswahl === x.id} markiert={i === markiert && breit}
                         chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); setAuswahl(auswahl === x.id ? null : x.id); }} />
+                      </ZeileAktionen>
                       {auswahl === x.id && !breit && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /></div>}
                     </div>
                   ))}
                 </div>
                 {treffer.length > mehr && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehr(mehr + 150)}>Weitere {Math.min(150, treffer.length - mehr)} zeigen</Knopf></div>}
-                {!treffer.length && <Leerzustand symbol={<SearchX size={26} />} titel="Niemand gefunden">Suche zurücksetzen oder eine andere Ansicht wählen.</Leerzustand>}
+                {!treffer.length && (ansicht === 'archiv'
+                  ? <Leer>Das Archiv ist leer. Archivierte Personen sind nur aus der Kartei ausgeblendet — Deals, Segmente, Verlauf und Recht bleiben, zurückholen jederzeit.</Leer>
+                  : <Leerzustand symbol={<SearchX size={26} />} titel="Niemand gefunden">Suche zurücksetzen oder eine andere Ansicht wählen.</Leerzustand>)}
               </div>
             )}
           </Karte>
@@ -303,6 +324,9 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
           </Spalte>
         )}
       </Spalten>
+      {rueckfrage}
+      {art17.dialog}
+      {hinweis}
     </>
   );
 }

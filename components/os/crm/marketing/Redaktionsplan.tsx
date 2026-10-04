@@ -19,11 +19,14 @@
 // MAKE OS veröffentlicht nichts: Text kopieren, selbst posten, hier eintragen.
 // Kosten (27.09.): je Beitrag pflegbar (Anzeigen, Produktion) — der Marketing-
 // Trichter rechnet daraus Kosten je Anfrage und je SQL.
+// 04.10. (Kevin: „alles anpassbar“): jede Beitragszeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter
+// Archiv, zurückholbar) und Löschen (Papierkorb 30 Tage, Rückgängig; steckt er in einer Ausgabe → Rückfrage).
 
 import { localDay } from '@/lib/zeit';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, feld, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, feld, LEUCHT, ZeileAktionen } from '../../ui';
+import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte, ArchivLeer, type CrmAblage } from '../ablage';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { Beitrag, MarketingEinstellung } from '@/lib/crm/typen';
 import { BEIDE, anderer, nameVon, verantwortlich } from '@/lib/crm/team';
@@ -75,7 +78,12 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
   const ich = api.ich;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const heute = crm?.heute ?? localDay();
-  const beitraege = useMemo(() => crm?.stand.beitraege ?? [], [crm]);
+  const ablage = useCrmAblage(api, 'beitraege');
+  const [ablageSicht, setAblageSicht] = useAblageSicht(() => setOffen(null));
+  const alleBeitraege = crm?.stand.beitraege;
+  // Archivierte Beiträge zählen in Plan, Woche und „für dich“ nicht mit — sie stehen nur im Reiter Archiv.
+  const beitraege = useMemo(() => (alleBeitraege ?? []).filter(b => !b.archiviertAm), [alleBeitraege]);
+  const archiviert = useMemo(() => (alleBeitraege ?? []).filter(b => b.archiviertAm), [alleBeitraege]);
   const einstellung = useMemo(() => einstellungAus(crm?.stand ?? {}), [crm]);
   const fenster = useMemo(() => planFenster(heute, sicht, versatz), [heute, sicht, versatz]);
   const imPlan = useMemo(() => beitraege.filter(b => imFenster(b, fenster)), [beitraege, fenster]);
@@ -98,7 +106,13 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
     await api.setze('beitraege', alsEintrag(b));
     setTitel(''); setOffen(b.id);
   };
-  const aktuell = offen ? beitraege.find(b => b.id === offen) ?? null : null;
+  const aktuell = offen ? (alleBeitraege ?? []).find(b => b.id === offen) ?? null : null;
+  /** Eine Beitragszeile mit Archivieren/Löschen (Wischen bzw. Knöpfe am Rand). */
+  const mitAktionen = (b: Beitrag, zeile: ReactNode) => (
+    <ZeileAktionen key={b.id} titel={b.titel} archiviert={!!b.archiviertAm} onArchivieren={() => { if (offen === b.id) setOffen(null); if (b.archiviertAm) ablage.zurueckholen(b.id, b.titel); else ablage.archivieren(b.id, b.titel); }} onLoeschen={() => { if (offen === b.id) setOffen(null); beitragLoeschen(ablage, b, crm.stand.newsletter.filter(n => n.beitragIds.includes(b.id)).length); }}>
+      {zeile}
+    </ZeileAktionen>
+  );
   const siebenTage = beitraege.filter(b => b.status === 'veroeffentlicht' && b.datum && b.datum <= heute && b.datum >= new Date(Date.parse(`${heute}T12:00:00Z`) - 6 * 864e5).toISOString().slice(0, 10)).length;
   const oeffne = (id: string) => setOffen(offen === id ? null : id);
   const verantwortung = verantwortlich('marketing');
@@ -131,8 +145,19 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
         </div>
       </Karte>
 
-      {aktuell && <div id={OFFEN_ID} style={{ scrollMarginTop: 80 }}><BeitragKarte key={aktuell.id} b={aktuell} api={api} einstellung={einstellung} heute={heute} zuKontakt={zuKontakt} schliessen={() => setOffen(null)} melde={setMeldung} /></div>}
+      <AblageReiter sicht={ablageSicht} onSicht={setAblageSicht} name="Plan" liste={beitraege.length} archiv={archiviert.length} korb={ablage.korb.length} />
 
+      {aktuell && <div id={OFFEN_ID} style={{ scrollMarginTop: 80 }}><BeitragKarte key={aktuell.id} b={aktuell} api={api} ablage={ablage} einstellung={einstellung} heute={heute} zuKontakt={zuKontakt} schliessen={() => setOffen(null)} melde={setMeldung} /></div>}
+
+      {ablageSicht === 'papierkorb' && <PapierkorbKarte ablage={ablage} liste="beitraege" />}
+      {ablageSicht === 'archiv' && (archiviert.length ? (
+        <Karte i={1}>
+          <Ueberschrift rechts={String(archiviert.length)}>Archiv · Beiträge</Ueberschrift>
+          <Liste>{archiviert.map(b => mitAktionen(b, <Zeile onClick={() => oeffne(b.id)} aktiv={offen === b.id} titel={b.titel} links={<AutorStimme autor={autorVon(b)} stimme={b.stimme} groesse={18} />} unter={[statusLabel(b.status), kanalLabel(b.kanal), b.datum ? datum(b.datum, heute) : ''].filter(Boolean).join(' · ')} />))}</Liste>
+        </Karte>
+      ) : <ArchivLeer liste="beitraege" />)}
+
+      {ablageSicht === 'liste' && <>
       <Raster min={360}>
         <Karte i={1}>
           <Ueberschrift rechts={ich ? <Person id={ich} name /> : undefined}>Als Nächstes für dich</Ueberschrift>
@@ -140,8 +165,8 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
             <Liste>
               {fuerMich.map(x => {
                 const b = beitraege.find(y => y.id === x.id)!;
-                return <Zeile key={x.id} onClick={() => oeffne(x.id)} aktiv={offen === x.id} links={<AutorStimme autor={autorVon(b)} stimme={b.stimme} />} titel={b.titel} unter={x.was}
-                  rechts={x.art === 'freigabe' || x.art === 'aenderung' ? <Punkt farbe={x.art === 'freigabe' ? LEUCHT.achtung : LEUCHT.kritisch} /> : undefined} />;
+                return mitAktionen(b, <Zeile onClick={() => oeffne(x.id)} aktiv={offen === x.id} links={<AutorStimme autor={autorVon(b)} stimme={b.stimme} />} titel={b.titel} unter={x.was}
+                  rechts={x.art === 'freigabe' || x.art === 'aenderung' ? <Punkt farbe={x.art === 'freigabe' ? LEUCHT.achtung : LEUCHT.kritisch} /> : undefined} />);
               })}
             </Liste>
           ) : <Leer>{ich ? 'Nichts wartet auf dich. Nächster Schritt: eine Idee aus der Stimme der Kunden (unten) zum Entwurf machen.' : 'Anmelden, dann steht hier, was bei dir liegt.'}</Leer>}
@@ -161,9 +186,9 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
                     {g.beitraege.map(b => {
                       const ueber = b.datum! < heute && b.status !== 'veroeffentlicht';
                       const f = freigabeKurz(freigabeStand(b), stimmPerson(b));
-                      return <Zeile key={b.id} onClick={() => oeffne(b.id)} aktiv={offen === b.id} links={<StimmePlakette stimme={b.stimme} groesse={18} />} titel={b.titel}
+                      return mitAktionen(b, <Zeile onClick={() => oeffne(b.id)} aktiv={offen === b.id} links={<StimmePlakette stimme={b.stimme} groesse={18} />} titel={b.titel}
                         unter={<><span style={{ color: ueber ? LEUCHT.kritisch : undefined }}>{ueber ? 'überfällig · ' : ''}{datum(b.datum, heute)}</span> · {statusLabel(b.status)} · als {stimmeText(b.stimme)}{f ? ` · ${f}` : ''}</>}
-                        rechts={<Punkt farbe={STATUS_FARBE[b.status]} groesse={7} />} />;
+                        rechts={<Punkt farbe={STATUS_FARBE[b.status]} groesse={7} />} />);
                     })}
                   </Liste>
                 ) : <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '8px 0' }}>Nichts mit Datum in dieser Woche.</div>}
@@ -184,11 +209,10 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
                 const saeule = einstellung.saeulen.find(x => x.id === b.saeule)?.name ?? b.saeule;
                 const stand = freigabeStand(b);
                 const f = freigabeKurz(stand, stimmPerson(b));
-                return (
-                  <Zeile key={b.id} onClick={() => oeffne(b.id)} aktiv={offen === b.id} titel={b.titel} links={<AutorStimme autor={autorVon(b)} stimme={b.stimme} groesse={18} />}
+                return mitAktionen(b,
+                  <Zeile onClick={() => oeffne(b.id)} aktiv={offen === b.id} titel={b.titel} links={<AutorStimme autor={autorVon(b)} stimme={b.stimme} groesse={18} />}
                     rechts={f ? <Punkt farbe={STAND_FARBE[stand]} groesse={8} /> : undefined}
-                    unter={[f, kanalLabel(b.kanal), b.datum ? datum(b.datum, heute) : '', saeule, w.reaktionen ? `${w.reaktionen} Reakt.` : '', w.gespraeche + w.anfragen ? `${w.gespraeche + w.anfragen} Gespr./Anfr.` : ''].filter(Boolean).join(' · ')} />
-                );
+                    unter={[f, kanalLabel(b.kanal), b.datum ? datum(b.datum, heute) : '', saeule, w.reaktionen ? `${w.reaktionen} Reakt.` : '', w.gespraeche + w.anfragen ? `${w.gespraeche + w.anfragen} Gespr./Anfr.` : ''].filter(Boolean).join(' · ')} />);
               })}
             </Liste>
             {!gruppen[s.id].length && <Leer>{s.id === 'idee' ? 'Ideen kommen aus der Stimme der Kunden (unten).' : wer !== 'alle' ? 'Nichts für diese Auswahl in diesem Zeitraum.' : 'Nichts in diesem Zeitraum.'}</Leer>}
@@ -217,12 +241,20 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
         ) : <Leer>Sobald Gesprächsnotizen das Feld „Bedarf / Schmerz“ haben, stehen hier die Themen — echte Probleme, mit eigener Einsicht beantwortet.</Leer>}
         {stimmen.length > 8 && <button onClick={() => setAlleStimmen(!alleStimmen)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{alleStimmen ? 'weniger' : `alle ${stimmen.length} zeigen`}</button>}
       </Karte>
+      </>}
+      {ablage.dialog}
+      {ablage.hinweis}
     </>
   );
 }
 
-function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde }: {
-  b: Beitrag; api: CrmApi; einstellung: MarketingEinstellung; heute: string; zuKontakt: (id: string) => void; schliessen: () => void; melde: (t: string) => void;
+/** Löschen = Papierkorb; steckt der Beitrag in einer Newsletter-Ausgabe, erst eine Rückfrage (Archiv als ruhigerer Weg). */
+function beitragLoeschen(ablage: CrmAblage, b: Beitrag, inAusgaben: number) {
+  ablage.loeschen(b.id, b.titel, inAusgaben ? { archivAnbieten: true, text: `Der Beitrag steckt in ${inAusgaben} Newsletter-Ausgabe${inAusgaben === 1 ? '' : 'n'}. Im Papierkorb ist er dort ausgeblendet; endgültig geht er erst, wenn ihn keine Ausgabe mehr nennt.` } : undefined);
+}
+
+function BeitragKarte({ b, api, ablage, einstellung, heute, zuKontakt, schliessen, melde }: {
+  b: Beitrag; api: CrmApi; ablage: CrmAblage; einstellung: MarketingEinstellung; heute: string; zuKontakt: (id: string) => void; schliessen: () => void; melde: (t: string) => void;
 }) {
   const [art, setArt] = useState<Beitrag['wirkung'][number]['art']>('reaktion');
   const [notiz, setNotiz] = useState('');
@@ -308,7 +340,7 @@ function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
         <Knopf leise aus={!b.text} onClick={async () => melde((await kopieren(`${b.text ?? ''}`)) ? 'Text kopiert — veröffentlichen bleibt bei euch.' : 'Kopieren nicht möglich.')}>Text kopieren</Knopf>
         {b.link && <Knopf leise onClick={() => window.open(b.link, '_blank', 'noopener')}>Link öffnen</Knopf>}
-        <Knopf leise onClick={async () => { if (!window.confirm(`Beitrag „${b.titel}“ löschen?`)) return; await api.weg('beitraege', b.id); schliessen(); melde(`„${b.titel}“ gelöscht.`); }}>Löschen</Knopf>
+        <Knopf leise onClick={() => { schliessen(); beitragLoeschen(ablage, b, (api.crm?.stand.newsletter ?? []).filter(n => n.beitragIds.includes(b.id)).length); }}>In den Papierkorb</Knopf>
       </div>
       {b.geaendertVon && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Zuletzt geändert von {nameVon(b.geaendertVon)} · {datum(b.geaendert.slice(0, 10), heute)}</div>}
 

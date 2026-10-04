@@ -15,6 +15,9 @@
 // 28.09.: Filter nach Gesellschaft (Alle · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH)
 // neben dem Personen-Filter; „+ Mandat“ übernimmt die gefilterte Gesellschaft. Rechnungen
 // aus dem Honorar landen bei der Gesellschaft des Mandats (firmaFuerGesellschaft).
+// 04.10. (Kevin: „alles anpassbar“): jede Mandatszeile am Baustein `ZeileAktionen` — Archivieren = Status „beendet“ (ein aktives
+// erst nach Rückfrage; „Zurückholen“ setzt es wieder auf aktiv bzw. Verhandlung ohne Vertrag) und Löschen = Papierkorb 30 Tage
+// (nur ohne Rechnungen, Dateien, offene Follow-ups — prüft der Server; components/os/crm/ablage.tsx, lib/crm/ablage.ts).
 
 import { TermineAkte } from '../kalender/TermineAkte';
 import { localDay, tagePlus } from '@/lib/zeit';
@@ -28,7 +31,8 @@ import { WEG } from '@/lib/wege';
 import { rechnungPasst } from '@/lib/crm/kunden';
 import { mandatPhase, portfolio } from '@/lib/crm/produkte';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, useBreit, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, useBreit, LEUCHT, ZeileAktionen } from '../ui';
+import { useCrmAblage, PapierkorbKarte } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
 import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson, GESELLSCHAFT_FILTER, passtGesellschaft, type GesellschaftFilter } from '@/lib/crm/kunden';
 import { werZahlen } from '@/lib/crm/pipeline';
@@ -70,6 +74,8 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const [ges, setGes] = useState<GesellschaftFilter>('alle');
   // Kommt man über einen Link auf ein Mandat, springt die Liste einmal dorthin.
   useZuZiel(useZiel('k'), !!api.crm);
+  const ablage = useCrmAblage(api, 'mandate');
+  const [korbOffen, setKorbOffen] = useState(false);
   const ladeLiqui = () => fetch('/api/crm/liquiplan').then(r => r.json()).then(d => d.ok && setLiqui(d)).catch(() => {});
   useEffect(() => { void ladeLiqui(); }, []);
   const crm = api.crm;
@@ -91,6 +97,22 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
   // Neues Mandat: für die gefilterte Person, sonst für mich (im Team) — ohne beides gilt die Sales-Verantwortung.
   const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id;
+  // Archiv = Status „beendet“ (kein eigenes Feld): ein laufendes Mandat erst nach Rückfrage — es zählt danach nicht mehr in MRR und Radar.
+  const beenden = (m: Mandat) => {
+    const vorher = m.status;
+    const tun = () => { if (auswahl === m.id) setAuswahl(null); void api.teil('mandate', m.id, { status: 'beendet' }); ablage.melden(`„${m.kunde} · ${m.titel}“ beendet — unter „Beendete zeigen“ zurückholbar`, () => void api.teil('mandate', m.id, { status: vorher })); };
+    if (vorher !== 'aktiv') { tun(); return; }
+    ablage.fragen({ titel: `„${m.kunde}“ beenden?`, text: 'Archivieren heißt bei Mandaten: Status „beendet“. Es zählt dann nicht mehr im wiederkehrenden Umsatz und im Laufzeitradar; Rechnungen, Zeiten und Verlauf bleiben. Zurückholen geht jederzeit.', wahl: [{ label: 'Beenden', tun }] });
+  };
+  const zurueckholen = (m: Mandat) => {
+    const status: Mandat['status'] = m.vertragUnterschrieben ? 'aktiv' : 'verhandlung';
+    void api.teil('mandate', m.id, { status });
+    ablage.melden(`„${m.kunde} · ${m.titel}“ ist zurück — ${status === 'aktiv' ? 'aktiv' : 'in Verhandlung (ohne Vertrag)'}`, () => void api.teil('mandate', m.id, { status: 'beendet' }));
+  };
+  const loeschen = (m: Mandat) => {
+    if (auswahl === m.id) setAuswahl(null);
+    ablage.loeschen(m.id, `${m.kunde} · ${m.titel}`, m.status === 'beendet' ? undefined : { archivAnbieten: false, text: 'Das Mandat läuft noch. Im Papierkorb ist es überall ausgeblendet (Umsatz, Zahlen, Suche). Gibt es Rechnungen, Dateien oder offene Follow-ups dazu, bleibt es stehen — dann ist „Beenden“ der Weg. Ist es nur vorbei: Archivieren (beendet).' });
+  };
   const produktName = (m: Mandat) => { const p = crm.stand.leistungen.find(x => x.id === m.leistungId); const ph = mandatPhase(m, p); return p ? `${p.name.slice(0, 40)}${ph ? ` · Phase ${ph.nr}/${ph.von}` : ''}` : ''; };
 
   return (
@@ -131,7 +153,10 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
             <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
             <span role="group" aria-label="Nach Gesellschaft filtern"><Segmente liste={GESELLSCHAFT_FILTER.map(g => ({ id: g.id, label: breit ? g.label : g.kurz }))} aktiv={ges} onWahl={setGes} /></span>
           </div>
-          <button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>{alle ? 'Beendete ausblenden' : `Beendete zeigen (${beendetVerborgen})`}</button>
+          <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+            <button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 44 }}>{alle ? 'Beendete ausblenden' : `Beendete zeigen (${beendetVerborgen})`}</button>
+            {(ablage.korb.length > 0 || korbOffen) && <button onClick={() => setKorbOffen(!korbOffen)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 44 }}>{korbOffen ? 'Papierkorb schließen' : `Papierkorb (${ablage.korb.length})`}</button>}
+          </span>
         </div>
         <Liste>
           {sichtbar.map(m => {
@@ -139,6 +164,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
             const lq = liqui?.mandate.find(x => x.id === m.id);
             return (
               <div key={m.id} id={`ziel-${m.id}`}>
+                <ZeileAktionen titel={`${m.kunde} · ${m.titel}`} archiviert={m.status === 'beendet'} onArchivieren={() => (m.status === 'beendet' ? zurueckholen(m) : beenden(m))} onLoeschen={() => loeschen(m)}>
                 <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
                   links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
                   titel={<>{m.kunde}<span style={{ color: C.inkLeise }}> · {m.titel}</span></>}
@@ -150,6 +176,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
                     <Chip farbe={statusFarbe(m.status)}>{STATUS.find(s => s.id === m.status)?.label}</Chip>
                     <Person id={zustaendig(m.zustaendig, 'sales')} groesse={18} />
                   </span>} />
+                </ZeileAktionen>
                 {auswahl === m.id && <MandatDetail m={m} api={api} lq={lq} frei={liqui?.freiePosten ?? []} neuLaden={ladeLiqui} zuKontakt={zuKontakt} />}
               </div>
             );
@@ -157,6 +184,9 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
         </Liste>
         {!sichtbar.length && <Leer>{mandate.length && wahl !== 'alle' ? `Hier liegt kein laufendes Mandat bei ${wahl === 'ich' ? 'dir' : nameVon(wahl)} — „Alle“ zeigen oder ein Mandat übergeben.` : 'Noch keine Mandate.'}</Leer>}
       </Karte>
+      {korbOffen && <PapierkorbKarte ablage={ablage} liste="mandate" i={2} />}
+      {ablage.dialog}
+      {ablage.hinweis}
 
       <HeadPanel head="sales" standardModus="kundenreview" zuKontakt={zuKontakt} i={2} />
     </>

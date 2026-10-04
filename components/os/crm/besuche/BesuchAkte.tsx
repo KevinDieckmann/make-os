@@ -26,14 +26,15 @@ import { Feld } from '../teile';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { Kalender } from '../events/Kalender';
 import { Liquiplan } from '../events/Budget';
-import { Notizfeld, Leise, eventLoeschen } from '../events/gemeinsam';
+import { Notizfeld, Leise, eventPapierkorb } from '../events/gemeinsam';
+import type { CrmAblage } from '../ablage';
 import { LinkChips, type LinkChip } from '../../netzwerken/bausteine';
 import { FuerWahl, ZielSuche, AvvHinweis, BFeld, zielName, eventSetzen, zielAenderung, type BesuchProps } from './gemeinsam';
 import { UebergabeDialog } from './Uebergabe';
 
 const URTEIL_FARBE = { lohnt: LEUCHT.gut, laeuft: LEUCHT.achtung, frueh: C.inkDim, ohne: LEUCHT.kritisch } as const;
 
-export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: BesuchProps & { e: Event; onZurueck: () => void }) {
+export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck, ablage }: BesuchProps & { e: Event; onZurueck: () => void; /** Archiv & Papierkorb (04.10.) — gehört der Liste darüber, damit „Rückgängig“ nach dem Zurückspringen stehen bleibt. */ ablage: CrmAblage }) {
   const router = useRouter();
   const heute = crm.heute;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
@@ -178,11 +179,12 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck }: Besuc
       {uebergabeOffen && <UebergabeDialog e={e} api={api} onZu={() => setUebergabeOffen(false)} />}
 
       <div>
-        <Leise onClick={() => {
-          const n = (e.uebergaben ?? []).length;
-          if (!window.confirm(`„${e.titel}“ löschen? Die erfassten Personen bleiben in der Kartei, ihre Teilnahme an diesem Event wird entfernt; offene Follow-ups des Events werden abgesagt. Auch der Kalender-Termin und der Planposten in der Liquiplanung werden entfernt, Deals verlieren den Verweis auf das Event.${n ? `\n\nACHTUNG: Dieses Event hat ${n} ${n === 1 ? 'Übergabe' : 'Übergaben'} an Kunden im Protokoll. Das Protokoll bleibt als Nachweis (Auskunft Art. 15, Mitteilung Art. 19) 3 Jahre im Übergabe-Journal erhalten — aber das Event ist weg.` : ''}`)) return;
-          void eventLoeschen(api, e, n ? { uebergabenBestaetigt: true } : undefined).then(onZurueck);
-        }}>Event löschen</Leise>
+        {/* Löschen = Papierkorb (04.10.): Personen, Teilnahmen, Follow-ups, Termin und Übergabe-Protokoll bleiben bis „endgültig“ —
+            dann der Serverweg mit Kaskade (Übergaben → Journal, zweite Rückfrage). Archivieren blendet nur aus dem Kalender aus. */}
+        <span style={{ display: 'inline-flex', gap: 16, flexWrap: 'wrap' }}>
+          <Leise onClick={() => { ablage.archivieren(e.id, e.titel); onZurueck(); }}>Archivieren</Leise>
+          <Leise onClick={() => { onZurueck(); eventPapierkorb(ablage, api, e); }}>In den Papierkorb</Leise>
+        </span>
       </div>
     </div>
   );

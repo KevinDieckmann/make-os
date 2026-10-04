@@ -9,7 +9,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, RAND, RADIUS } from '@/lib/make-one/design';
-import { feld, Chip, Fortschritt, LEUCHT } from '../../ui';
+import { feld, Chip, Fortschritt, LEUCHT, type Bestaetigung } from '../../ui';
+import type { CrmAblage } from '../ablage';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Event, Teilnahme, TeilnahmeStatus, LeadStatus } from '@/lib/crm/typen';
 import { teilAenderung, type Mix, type MixGruppe } from '@/lib/crm/eventplanung';
@@ -38,7 +39,7 @@ export const MIX: Record<MixGruppe, { label: string; mehrzahl: string; farbe: st
 export const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 
 export type Reiter = 'ueberblick' | 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen';
-export interface ReiterProps { e: Event; api: CrmApi; zuKontakt: (id: string) => void }
+export interface ReiterProps { e: Event; api: CrmApi; zuKontakt: (id: string) => void; /** Archiv & Papierkorb der Liste (04.10.) — Rückgängig bleibt in der Liste stehen, auch wenn das Event verschwindet. */ ablage?: CrmAblage }
 
 /** Event ändern: nur die geänderten Felder (api.teil). Unverändertes geht gar nicht erst raus. */
 export function eventSetzen(api: CrmApi, e: Event, teil: Partial<Event>): Promise<boolean> {
@@ -85,12 +86,34 @@ export async function nachfassen(api: CrmApi, e: Event, t: Teilnahme, k: Kontakt
 }
 
 /**
- * Event löschen über den Serverweg (28.09., W6): POST /api/crm/events { aktion: 'loeschen' } — Teilnahmen weg,
- * offene Follow-ups des Events abgesagt, alles in EINER Änderung. Meldung als Hinweis bzw. Fehler.
+ * Event in den Papierkorb (04.10., „sicher statt endgültig“, lib/crm/ablage.ts): `geloeschtAm` über /api/crm/bestand — das Event
+ * ist überall ausgeblendet, Gäste, Follow-ups, Kalender-Termin und Übergabe-Protokoll bleiben unverändert (Rückgängig/Wiederherstellen
+ * holt alles zurück). Hängt etwas daran, nennt die Rückfrage es und bietet das Archiv an.
  */
-export async function eventLoeschen(api: CrmApi, e: Event, o: { /** Event mit Übergaben an Kunden: ausdrücklich bestätigt (der Server verlangt es, 03.10.). */ uebergabenBestaetigt?: boolean } = {}): Promise<void> {
-  const r = await eventsPost(e.id, { aktion: 'loeschen', ...(o.uebergabenBestaetigt ? { uebergabenBestaetigt: true } : {}) });
-  if (r.ok) api.setHinweis(typeof r.text === 'string' ? r.text : 'Event gelöscht.');
+export function eventPapierkorb(ablage: CrmAblage, api: CrmApi, e: Event): void {
+  const t = (api.crm?.stand.teilnahmen ?? []).filter(x => x.eventId === e.id).length;
+  const fu = (api.crm?.stand.followups ?? []).filter(f => f.bezug?.art === 'event' && f.bezug.id === e.id && f.status === 'offen').length;
+  const ue = (e.uebergaben ?? []).length;
+  const dran = [t ? `${t} ${t === 1 ? 'Gast' : 'Gäste'}` : '', fu ? `${fu} offene${fu === 1 ? 's' : ''} Follow-up${fu === 1 ? '' : 's'}` : '', e.kalenderUid ? 'der Kalender-Termin' : '', ue ? `${ue} ${ue === 1 ? 'Übergabe' : 'Übergaben'} an Kunden im Protokoll` : ''].filter(Boolean);
+  if (!dran.length) { ablage.loeschen(e.id, e.titel); return; }
+  ablage.loeschen(e.id, e.titel, {
+    archivAnbieten: true,
+    text: `Am Event hängen ${dran.join(', ')}. Im Papierkorb bleibt alles, wie es ist — nur ausgeblendet, 30 Tage wiederherstellbar.${e.kalenderUid ? ' Der Kalender-Termin bleibt bis zum endgültigen Löschen stehen.' : ''} Endgültig (aus dem Papierkorb) gehen die Teilnahmen mit, offene Follow-ups werden abgesagt${e.kalenderUid ? ', der Kalender-Termin wird entfernt' : ''}${ue ? '; das Übergabe-Protokoll bleibt 3 Jahre im Übergabe-Journal' : ''}. Ist das Event nur vorbei, ist Archivieren der ruhigere Weg.`,
+  });
+}
+
+/**
+ * Event ENDGÜLTIG löschen — nur aus dem Papierkorb, über den Serverweg (28.09., W6): POST /api/crm/events { aktion: 'loeschen' } —
+ * Teilnahmen weg, offene Follow-ups abgesagt, Kalender-Termin und Planposten entfernt, alles in EINER Änderung. Hat das Event
+ * Übergaben an Kunden im Protokoll, verlangt der Server ein ausdrückliches Wort (03.10.) — dann eine zweite Rückfrage.
+ */
+export async function eventEndgueltig(api: CrmApi, eventId: string, bestaetigen: (b: Bestaetigung) => Promise<boolean>): Promise<void> {
+  let r = await eventsPost(eventId, { aktion: 'loeschen' });
+  if (!r.ok && r.bestaetigung === true) {
+    if (!(await bestaetigen({ titel: 'Übergaben an Kunden im Protokoll', text: `${r.fehler ?? ''}\n\nDer Nachweis (Auskunft Art. 15, Mitteilung Art. 19) bleibt 3 Jahre im Übergabe-Journal — das Event ist danach weg.`, ja: 'Endgültig löschen', gefahr: true }))) return;
+    r = await eventsPost(eventId, { aktion: 'loeschen', uebergabenBestaetigt: true });
+  }
+  if (r.ok) api.setHinweis(typeof r.text === 'string' ? r.text : 'Event endgültig gelöscht.');
   else api.setFehler(r.fehler ?? 'Nicht gelöscht.');
   await api.laden();
 }

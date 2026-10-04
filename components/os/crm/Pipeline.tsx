@@ -9,13 +9,17 @@
 // Chancen je Person. Änderungen gehen als Einzelfelder (api.teil) raus, damit
 // sich Kevin und Malin an derselben Chance nichts überschreiben.
 
+// 04.10. (Kevin: „alles anpassbar“): jeder Deal (Liste und Board) am Baustein `ZeileAktionen`. Archiv heißt bei Deals
+// parken (Wiedervorlage) oder verloren (Grund) — die Rückfrage bietet beides, „Zurückholen“ öffnet einen geschlossenen Deal
+// wieder auf seiner letzten offenen Stufe (Server-Regel: nächster Schritt mit Datum). Löschen nur eine Fehlanlage (ohne
+// Geschichte, Wert, Notiz) nach Rückfrage — ein Deal mit Geschichte wird nie gelöscht (Server-Regel `dealRegeln`).
 import { useLinkAuswahl } from '../Verlauf';
 import { mandateLink } from '@/lib/crm/adresse';
 import { WEG, eventLink } from '@/lib/wege';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -56,6 +60,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   const [wunsch, setWunsch] = useState<{ id: string; ziel: ChancenStufe } | null>(null);
   const [alleVorschlaege, setAlleVorschlaege] = useState(false);
   const [wahl, setWahl] = useWerFilter('pipeline');
+  const { melden, hinweis } = useRueckgaengig();
+  const { fragen, dialog } = useRueckfrage();
   const crm = api.crm;
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   const ich = api.ich;
@@ -100,6 +106,47 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
       return;
     }
     void api.teil('chancen', id, { stufe: ziel });
+  };
+  // ── Archivieren · Zurückholen · Löschen (04.10.) ──
+  const fehlanlage = (c: Chance) => c.historie.length <= 1 && !c.wert.betrag && !(c.notiz ?? '').trim();
+  const verlorenFragen = (c: Chance) => { setAuswahl(c.id); setWunsch({ id: c.id, ziel: 'verloren' }); };
+  const parken = (c: Chance) => {
+    const vorher = c.stufe, bis = plusTage(crm.heute, 60);
+    if (auswahl === c.id) setAuswahl(null);
+    void api.teil('chancen', c.id, { stufe: 'geparkt', wiedervorlage: bis, letzteAktivitaet: tagVon(new Date().toISOString()) });
+    melden(`„${c.titel}“ geparkt bis ${datum(bis)} — unter „Gewonnen · Verloren · Geparkt“`, () => void api.teil('chancen', c.id, { stufe: vorher }));
+  };
+  const deal: DealAktionen = {
+    archivieren: c => fragen({
+      titel: `„${c.titel}“ archivieren?`,
+      text: 'Archiv heißt bei Deals: parken (mit Wiedervorlage) oder verloren (mit Grund) — so lernt die Pipeline. Nichts wird gelöscht; zurückholen geht jederzeit.',
+      wahl: [{ label: 'Verloren …', ton: 'leise', tun: () => verlorenFragen(c) }, { label: `Parken bis ${datum(plusTage(crm.heute, 60))}`, tun: () => parken(c) }],
+    }),
+    zurueckholen: c => {
+      // Auf die letzte offene Stufe aus der Historie — offen braucht einen nächsten Schritt mit Datum (Server-Regel).
+      const ziel = [...c.historie].reverse().find(h => offen.some(s => s.id === h.stufe))?.stufe ?? offen[0]?.id;
+      if (!ziel) return;
+      if (!(c.naechsterSchritt && c.naechsterSchritt.datum >= crm.heute)) {
+        setAuswahl(c.id);
+        api.setFehler(`„${c.titel}“ zurückholen: erst einen nächsten Schritt mit Datum festhalten, dann die Stufe „${crm.stufen.find(s => s.id === ziel)?.label ?? ziel}“ wählen.`);
+        return;
+      }
+      const vorher = c.stufe;
+      void api.teil('chancen', c.id, { stufe: ziel });
+      melden(`„${c.titel}“ ist zurück — ${crm.stufen.find(s => s.id === ziel)?.label ?? ziel}`, () => void api.teil('chancen', c.id, vorher === 'geparkt' ? { stufe: vorher, wiedervorlage: c.wiedervorlage ?? plusTage(crm.heute, 60) } : { stufe: vorher, grund: c.grund ?? '' }));
+    },
+    loeschen: c => fehlanlage(c)
+      ? fragen({
+        titel: `Fehlanlage „${c.titel}“ löschen?`,
+        text: 'Der Deal hat keine Geschichte, keinen Wert und keine Notiz — er geht ganz weg (ein Lead, der darauf zeigte, kehrt in die Qualifizierung zurück). Das lässt sich nicht rückgängig machen.',
+        wahl: [{ label: 'Löschen', ton: 'gefahr', tun: () => { if (auswahl === c.id) setAuswahl(null); return api.weg('chancen', c.id); } }],
+      })
+      : fragen({
+        titel: `„${c.titel}“ hat Geschichte`,
+        text: 'Deals mit Geschichte werden nicht gelöscht — sie werden verloren oder geparkt markiert, damit Win Rate, Zyklus und Prognose stimmen.',
+        wahl: istOffen(c) ? [{ label: 'Verloren …', ton: 'leise', tun: () => verlorenFragen(c) }, { label: 'Parken', tun: () => parken(c) }] : [],
+      }),
+    istOffen,
   };
   const zieh = (e: React.DragEvent, ziel: ChancenStufe) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain'); if (id) zieheNach(id, ziel); };
 
@@ -164,7 +211,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
                       {l.map(c => {
                         const a = crm.ampel[c.id];
                         return (
-                          <button key={c.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; }} onDoubleClick={() => zuAkte?.(c.id)} title="Klick: Details · Doppelklick: Akte · Ziehen: Stufe wechseln" onClick={() => setAuswahl(auswahl === c.id ? null : c.id)} className="fassbar" style={{ textAlign: 'left', cursor: 'grab', border: `1px solid ${auswahl === c.id ? LEUCHT.business : 'rgba(255,255,255,.06)'}`, borderLeft: `3px solid ${a ? AMPEL[a.ampel] : C.inkLeise}`, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '9px 10px', color: C.ink, display: 'grid', gap: 3 }}>
+                          <ZeileAktionen key={c.id} titel={c.titel} onArchivieren={() => deal.archivieren(c)} onLoeschen={() => deal.loeschen(c)}>
+                          <button draggable onDragStart={e => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; }} onDoubleClick={() => zuAkte?.(c.id)} title="Klick: Details · Doppelklick: Akte · Ziehen: Stufe wechseln" onClick={() => setAuswahl(auswahl === c.id ? null : c.id)} className="fassbar" style={{ textAlign: 'left', cursor: 'grab', border: `1px solid ${auswahl === c.id ? LEUCHT.business : 'rgba(255,255,255,.06)'}`, borderLeft: `3px solid ${a ? AMPEL[a.ampel] : C.inkLeise}`, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '9px 10px', color: C.ink, display: 'grid', gap: 3 }}>
                             <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'flex-start' }}>
                               <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3 }}>{c.titel}</span>
                               <Person id={zustaendig(c.besitzer, 'sales')} groesse={16} />
@@ -173,6 +221,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
                             <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{wertText(c)}</span>
                             <span style={{ fontSize: 12, color: c.naechsterSchritt && c.naechsterSchritt.datum < crm.heute ? LEUCHT.kritisch : C.inkLeise }}>{c.naechsterSchritt ? `→ ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt'}</span>
                           </button>
+                          </ZeileAktionen>
                         );
                       })}
                       {!l.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '4px' }}>—</div>}
@@ -205,7 +254,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
             <Ueberschrift rechts={`${s.p} % · ${l.length} · ${kurzEuro(js?.wert ?? 0)}${js?.haengt ? ` · ${js.haengt} hängt` : ''}`}>{s.label}</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Weiter, wenn: {s.weiterWenn}</div>
             <Liste>
-              {l.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} />)}
+              {l.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />)}
             </Liste>
             {!l.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 0' }}>Kein Deal in dieser Stufe.</div>}
           </Karte>
@@ -225,30 +274,38 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
 
       <Karte i={7}>
         <Ueberschrift rechts={<button onClick={() => { if (zeigeZu && gewaehlt && !istOffen(gewaehlt)) setAuswahl(null); setGeschlossen(!zeigeZu); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>{zeigeZu ? 'ausblenden' : `${zu.length} zeigen`}</button>}>Gewonnen · Verloren · Geparkt</Ueberschrift>
-        {zeigeZu && <Liste>{zu.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} />)}</Liste>}
+        {zeigeZu && <Liste>{zu.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />)}</Liste>}
       </Karte>
+      {dialog}
+      {hinweis}
     </>
   );
 }
 
-function ChancenZeile({ c, api, offen, onKlick, zuKontakt }: { c: Chance; api: CrmApi; offen: boolean; onKlick: () => void; zuKontakt: (id: string) => void }) {
+/** Zeilen-Aktionen eines Deals (Pipeline) — Archiv = parken/verloren, Zurückholen = wieder offen, Löschen = nur Fehlanlage. */
+interface DealAktionen { archivieren: (c: Chance) => void; zurueckholen: (c: Chance) => void; loeschen: (c: Chance) => void; istOffen: (c: Chance) => boolean }
+
+function ChancenZeile({ c, api, offen, onKlick, zuKontakt, deal, wunsch, wunschWeg }: { c: Chance; api: CrmApi; offen: boolean; onKlick: () => void; zuKontakt: (id: string) => void; deal: DealAktionen; wunsch?: ChancenStufe; wunschWeg?: () => void }) {
   const crm = api.crm!;
   const a = crm.ampel[c.id];
   const kontakte = api.kontakte ?? [];
   const personen = c.kontaktIds.map(id => kontakte.find(k => k.id === id)).filter(Boolean);
   return (
     <div>
+      <ZeileAktionen titel={c.titel} archiviert={!deal.istOffen(c)} onArchivieren={() => (deal.istOffen(c) ? deal.archivieren(c) : deal.zurueckholen(c))} onLoeschen={() => deal.loeschen(c)}>
       <Zeile onClick={onKlick} aktiv={offen} links={<Punkt farbe={a ? AMPEL[a.ampel] : C.inkLeise} />}
         titel={<>{c.titel}{firmenName(c, crm.stand.firmen) && <span style={{ color: C.inkLeise }}> · {firmenName(c, crm.stand.firmen)}</span>}</>}
         unter={[c.naechsterSchritt ? `→ ${c.naechsterSchritt.text} · ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt', a?.gruende[0]].filter(Boolean).join(' · ')}
         rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><span style={{ fontVariantNumeric: 'tabular-nums', fontSize: TYP.bedien, color: C.inkDim }}>{c.wert.betrag ? wertText(c) : '—'}</span><Person id={zustaendig(c.besitzer, 'sales')} groesse={18} /></span>} />
-      {offen && <ChancenDetail c={c} api={api} personen={personen as NonNullable<typeof personen[number]>[]} zuKontakt={zuKontakt} />}
+      </ZeileAktionen>
+      {offen && <ChancenDetail c={c} api={api} personen={personen as NonNullable<typeof personen[number]>[]} zuKontakt={zuKontakt} wunsch={wunsch} wunschWeg={wunschWeg} />}
     </div>
   );
 }
 
 export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }: { c: Chance; api: CrmApi; personen: NonNullable<CrmApi['kontakte']>; zuKontakt: (id: string) => void; /** Stufe, die per Ziehen gewünscht wurde (Verloren/Geparkt) — öffnet die Nachfrage. */ wunsch?: ChancenStufe; wunschWeg?: () => void }) {
   const crm = api.crm!;
+  const { bestaetigen, dialog } = useRueckfrage();
   const [wechsel, setWechsel] = useState<{ ziel: ChancenStufe; grund: string; wiedervorlage: string } | null>(null);
   useEffect(() => { if (wunsch) { setWechsel({ ziel: wunsch, grund: '', wiedervorlage: plusTage(crm.heute, 60) }); wunschWeg?.(); } }, [wunsch, wunschWeg, crm.heute]);
   const [suche, setSuche] = useState('');
@@ -359,8 +416,9 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
       {c.stufe === 'gewonnen' && crm.stand.mandate.some(m => m.chanceId === c.id) && <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Mandat angelegt — <Link href={mandateLink('mandate', crm.stand.mandate.find(m => m.chanceId === c.id)!.id)} style={{ color: LEUCHT.gut }}>unter Produkte & Mandate öffnen ›</Link></div>}
       {/* Sperre statt Löschen (Konzept): ein Deal mit Geschichte wird verloren oder geparkt — löschen geht nur bei einer Fehlanlage. */}
       {c.historie.length <= 1 && !c.wert.betrag && !(c.notiz ?? '').trim()
-        ? <div><button onClick={() => { if (window.confirm('Fehlanlage löschen? Ein Deal mit Geschichte wird stattdessen als verloren oder geparkt markiert.')) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Fehlanlage löschen</button></div>
+        ? <div><button onClick={async () => { if (await bestaetigen({ titel: `Fehlanlage „${c.titel}“ löschen?`, text: 'Der Deal hat keine Geschichte, keinen Wert und keine Notiz — er geht ganz weg. Ein Deal mit Geschichte wird stattdessen als verloren oder geparkt markiert.', ja: 'Löschen', gefahr: true })) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Fehlanlage löschen</button></div>
         : <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Löschen gibt es nicht — ein Deal mit Geschichte wird verloren oder geparkt, damit die Pipeline lernt.</div>}
+      {dialog}
     </div>
   );
 }

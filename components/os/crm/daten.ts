@@ -14,6 +14,7 @@ import { CRM_LISTEN, type CrmBestand, type CrmListe, type ChancenStufe } from '@
 import type { Prognose, Ampel } from '@/lib/crm/pipeline';
 import type { MandatLage } from '@/lib/crm/kunden';
 import type { EventZahlen } from '@/lib/crm/events';
+import type { CrmKorbEintrag } from '@/lib/crm/ablage';
 import { deltaAnwenden } from '@/lib/kontakte/delta';
 import { localDay } from '@/lib/zeit';
 import { KontaktStaende, kontaktSchreiben, nacheinanderKette, KONTAKT_KONFLIKT, type KontaktAntwort, type KontaktOp } from '@/lib/crm/kontakt-schreiben';
@@ -32,6 +33,8 @@ export interface CrmAntwort {
   zahlung: Record<string, { wert: number; text: string } | null>;
   mrr: number; konzentration: { kunde: string; anteil: number } | null;
   events: Record<string, EventZahlen>;
+  /** Papierkorb der Listen mit Archiv & Papierkorb (04.10., lib/crm/ablage.ts) — der `stand` enthält sie nicht mehr. Optional: ältere Server schicken ihn nicht. */
+  papierkorb?: CrmKorbEintrag[];
   // Der nächste Termin je Person kommt seit F3 (29.09.) NICHT mehr hier mit, sondern aus dem Kalender-Leser der Akte
   // (components/os/kalender/TermineAkte.tsx `useNaechsterTermin`, GET /api/kalender/bezug) — eine Quelle.
 }
