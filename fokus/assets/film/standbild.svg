@@ -14,5 +14,8 @@
 <path d="M1101.5 319.3Q989 517.4 990 745.3" fill="none" stroke="#C9465C" stroke-width="1.6" stroke-opacity=".8" stroke-linecap="round"/>
 <path d="M1101.5 319.3Q983.2 515.9 990 745.3" fill="none" stroke="#2FA878" stroke-width="1.6" stroke-opacity=".8" stroke-linecap="round"/>
 <circle cx="990" cy="745.3" r="5" fill="#E8ECEA"/>
+<path d="M1101.5 319.3Q1094.6 393.1 1121.7 462.1" fill="none" stroke="#C9465C" stroke-width="1.6" stroke-opacity=".8" stroke-linecap="round"/>
+<path d="M1101.5 319.3Q1088.7 393.9 1121.7 462.1" fill="none" stroke="#2FA878" stroke-width="1.6" stroke-opacity=".8" stroke-linecap="round"/>
+<circle cx="1121.7" cy="462.1" r="5" fill="#E8ECEA"/>
 <path d="M1101.5 310.3A9 9 0 0 0 1101.5 328.3Z" fill="#C9465C"/><path d="M1101.5 310.3A9 9 0 0 1 1101.5 328.3Z" fill="#2FA878"/>
 </svg>

@@ -5,7 +5,7 @@
 //   · Schriften (Archivo, Public Sans): Byte für Byte aus website/assets/fonts/.
 //   · Lichtfäden-Zeichner fokus/js/lichtfaeden.js: aus lib/lichtfaeden/band.ts + zeichnen.ts (dasselbe `erzeugen()` wie
 //     scripts/lichtfaeden-website.mjs — nie von Hand ändern).
-//   · Deutschlandkarte (inline in fokus/index.html zwischen den Markierungen KARTE_ANFANG/KARTE_ENDE): Umriss und die fünf
+//   · Deutschlandkarte (inline in fokus/index.html zwischen den Markierungen KARTE_ANFANG/KARTE_ENDE): Umriss und die sechs
 //     Städte aus echten Koordinaten (Breite/Länge), Fäden von Berlin aus.
 //   · Standbild des Films (fokus/assets/film/standbild.svg) und das Favicon (fokus/favicon.svg, der Knoten).
 //
@@ -40,7 +40,7 @@ export const FAVICON = 'fokus/favicon.svg';
 
 /**
  * Die Städte der Reihe (Kevin 03.10.) mit echten Koordinaten (WGS84, Stadtmitte). Berlin ist der Knoten — von dort gehen
- * die Fäden aus (Drehbuch Szene 4). `anker` = wohin der Name rückt.
+ * die Fäden aus (Drehbuch Szene 4). `anker` = wohin der Name rückt (links · rechts · unten).
  */
 export const STAEDTE = [
   { id: 'berlin', name: 'Berlin', breite: 52.520, laenge: 13.405, anker: 'rechts' },
@@ -48,7 +48,13 @@ export const STAEDTE = [
   { id: 'bielefeld', name: 'Bielefeld', breite: 52.030, laenge: 8.532, anker: 'links' },
   { id: 'koeln', name: 'Köln', breite: 50.938, laenge: 6.960, anker: 'rechts' },
   { id: 'muenchen', name: 'München', breite: 48.137, laenge: 11.575, anker: 'rechts' },
+  // Dresden (Kevin 04.10.): liegt dicht südöstlich von Berlin — der Name steht darunter, damit er weder die Fäden nach München
+  // noch den Rand der Karte trifft.
+  { id: 'dresden', name: 'Dresden', breite: 51.0504, laenge: 13.7373, anker: 'unten' },
 ];
+
+/** Zahlwort für die Zahl der Städte (Kartentitel; die Überschrift der Seite nennt dasselbe Wort — fokus/pruefen.mjs vergleicht). */
+export const ZAHLWORT = ['keine', 'eine', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn'];
 
 /**
  * Umriss Deutschlands, vereinfacht (Festland, Rügen und Usedom angedeutet, ohne die übrigen Inseln) — [Breite, Länge] im
@@ -94,7 +100,7 @@ export function karteSvg() {
   const berlin = pos.berlin;
   const z = [];
   z.push(`<svg class="karte" viewBox="0 0 ${KARTE_BREITE} ${KARTE_HOEHE}" role="img" aria-labelledby="karte-titel karte-text" focusable="false">`);
-  z.push('<title id="karte-titel">Deutschlandkarte: Fokus Innovation in fünf Städten</title>');
+  z.push(`<title id="karte-titel">Deutschlandkarte: Fokus Innovation in ${ZAHLWORT[STAEDTE.length] ?? STAEDTE.length} Städten</title>`);
   z.push(`<desc id="karte-text">Von Berlin gehen feine Fäden in Rot und Grün nach ${STAEDTE.filter(s => s.id !== 'berlin').map(s => s.name).join(', ').replace(/, ([^,]*)$/, ' und $1')}.</desc>`);
   z.push(`<path class="land" d="${umrissPfad()}"/>`);
   for (const s of STAEDTE.filter(x => x.id !== 'berlin')) {
@@ -103,13 +109,14 @@ export function karteSvg() {
   }
   for (const s of STAEDTE) {
     const [x, y] = pos[s.id];
-    const links = s.anker === 'links';
+    const links = s.anker === 'links', unten = s.anker === 'unten';
     if (s.id === 'berlin') {
       z.push(`<g class="stadt knoten" data-stadt="${s.id}"><path d="M${r1(x)} ${r1(y - 5)}A5 5 0 0 0 ${r1(x)} ${r1(y + 5)}Z" fill="${GRANAT}"/><path d="M${r1(x)} ${r1(y - 5)}A5 5 0 0 1 ${r1(x)} ${r1(y + 5)}Z" fill="${SMARAGD}"/>`);
     } else {
       z.push(`<g class="stadt" data-stadt="${s.id}"><circle cx="${r1(x)}" cy="${r1(y)}" r="3.2"/>`);
     }
-    z.push(`<text x="${r1(links ? x - 10 : x + 10)}" y="${r1(y + 4.5)}"${links ? ' text-anchor="end"' : ''}>${s.name}</text></g>`);
+    const tx = unten ? x : links ? x - 10 : x + 10, ty = unten ? y + 18 : y + 4.5;
+    z.push(`<text x="${r1(tx)}" y="${r1(ty)}"${links ? ' text-anchor="end"' : unten ? ' text-anchor="middle"' : ''}>${s.name}</text></g>`);
   }
   z.push('</svg>');
   return z.join('\n');

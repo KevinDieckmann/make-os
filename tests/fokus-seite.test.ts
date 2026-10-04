@@ -69,12 +69,20 @@ describe('fokus/ — Freigabe-Prüfung', () => {
     } finally { k.weg(); }
   });
 
-  it('Muster: Datum und Mengen ja, Nummerierung und „fünf Städte“ nein', () => {
+  it('Überschrift und Kartentitel nennen die Zahl der Städte (sechs, seit Dresden 04.10.)', () => {
+    const k = kopie();
+    try {
+      k.aendern('index.html', t => t.replace('in sechs Städte.', 'in fünf Städte.'));
+      expect(pruefeFokus(k.fokus).fehler.join('\n')).toMatch(/„in sechs Städte\.“ erwartet/);
+    } finally { k.weg(); }
+  });
+
+  it('Muster: Datum und Mengen ja, Nummerierung und „sechs Städte“ nein', () => {
     for (const ja of ['am 12.11.', '12.11.2026', '5. November', 'November 2026']) expect(TERMIN.test(ja)).toBe(true);
     for (const nein of ['§ 5 DDG', 'Art. 6 Abs. 1', '01 Ankommen']) expect(TERMIN.test(nein)).toBe(false);
     expect(MENGEN.test('40 Gäste')).toBe(true);
     expect(MENGEN.test('02   Unternehmen und Rolle')).toBe(false);
-    expect(MENGEN.test('in fünf Städte')).toBe(false);
+    expect(MENGEN.test('in sechs Städte')).toBe(false);
     expect(EXTERN_ERLAUBT).toContain('https://makeinnovation.de');
   });
 
@@ -99,15 +107,20 @@ describe('Städte — EINE Liste (Review 03.10.)', () => {
 });
 
 describe('Karte — echte Positionen', () => {
-  it('fünf Städte, Berlin ist der Knoten; Lage stimmt in Himmelsrichtung', () => {
-    expect(STAEDTE.map((s: { name: string }) => s.name)).toEqual(['Berlin', 'Hamburg', 'Bielefeld', 'Köln', 'München']);
+  it('sechs Städte, Berlin ist der Knoten; Lage stimmt in Himmelsrichtung', () => {
+    expect(STAEDTE.map((s: { name: string }) => s.name)).toEqual(['Berlin', 'Hamburg', 'Bielefeld', 'Köln', 'München', 'Dresden']);
+    const dresden = (STAEDTE as { id: string; breite: number; laenge: number }[]).find(s => s.id === 'dresden')!;
+    expect([dresden.breite, dresden.laenge]).toEqual([51.0504, 13.7373]); // echte Koordinaten (Kevin 04.10.)
     const p = Object.fromEntries(STAEDTE.map((s: { id: string; breite: number; laenge: number }) => [s.id, projiziere([s.breite, s.laenge])]));
     expect(p.hamburg[1]).toBeLessThan(p.berlin[1]); // Hamburg nördlicher
     expect(p.muenchen[1]).toBeGreaterThan(p.koeln[1]); // München südlicher als Köln
     expect(p.koeln[0]).toBeLessThan(p.bielefeld[0]); // Köln westlicher als Bielefeld
     expect(p.berlin[0]).toBeGreaterThan(p.hamburg[0]); // Berlin östlicher als Hamburg
+    expect(p.dresden[1]).toBeGreaterThan(p.berlin[1]); // Dresden südlicher als Berlin
+    expect(p.dresden[0]).toBeGreaterThan(p.berlin[0]); // … und ein Stück östlicher
     const svg = karteSvg();
-    expect((svg.match(/class="faden faden-rot"/g) ?? []).length).toBe(4);
+    expect((svg.match(/class="faden faden-rot"/g) ?? []).length).toBe(5);
+    expect(svg).toContain('Fokus Innovation in sechs Städten');
     expect(svg).toContain('data-stadt="berlin"');
   });
   it('jede Stadt liegt im Umriss (Punkt-in-Polygon)', () => {
@@ -115,5 +128,22 @@ describe('Karte — echte Positionen', () => {
     const poly = (UMRISS as number[][]).map(p => proj(p));
     const innen = ([x, y]: [number, number]) => { let drin = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) drin = !drin; } return drin; };
     for (const s of STAEDTE as { name: string; breite: number; laenge: number }[]) expect(innen(proj([s.breite, s.laenge])), s.name).toBe(true);
+  });
+});
+
+describe('Lichtfäden im Held — Strahl v3 aus dem gemeinsamen Zeichner (04.10.)', () => {
+  const quelle = readFileSync(join(FOKUS, 'js', 'fokus-faeden.js'), 'utf8');
+  it('Aufbau von links (Front), Lichtpunkte, Glühen, Ausfransen — alles über js/lichtfaeden.js, nichts kopiert', () => {
+    for (const teil of ['front', 'punkte', 'L.glanzPuffer()', 'frans:', 'L.zeichneBuendel(', 'P.aufbau']) expect(quelle).toContain(teil);
+    // keine eigene Fassung der Mathematik/des Zeichners
+    expect(quelle).not.toMatch(/function (?:versatz|fransen|zeichneBuendel|kurve)\b/);
+  });
+  it('„Bewegung reduzieren“ = Standbild ohne Aufbau; Lauf pausiert über starteLauf', () => {
+    expect(quelle).toMatch(/const p = ruhig \? 1 :/);
+    expect(quelle).toContain('L.starteLauf({ beobachte: held, zeichne, ruhig })');
+  });
+  it('Handy leichter: weniger Fäden und Lichtpunkte', () => {
+    expect(quelle).toMatch(/fadenSaaten\(handy \? 10 : 18/);
+    expect(quelle).toMatch(/handy \? \{ \.\.\.P\.punkte, abstand: 14, jeder: 3 \}/);
   });
 });
