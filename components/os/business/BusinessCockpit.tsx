@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT, Hinweis } from '../ui';
+import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT, Hinweis, FlussKarte } from '../ui';
 import { IndexFadenLinie } from '../kennzahlen/IndexAnsicht';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useLinkAuswahl } from '../Verlauf';
@@ -148,6 +148,9 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
         );
       })}
       </Flaeche>
+
+      {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
+      <FlussKarte bereich="finanzen-business" farbe={LEUCHT.business} />
 
       {d?.modell && <ModellKarte m={d.modell} />}
 

@@ -11,9 +11,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT, FadenLinie } from '../ui';
-import { tagBeschriftung } from '@/lib/lichtfaeden/reihen';
-import { useFaelligReihe } from './fokus-reihen';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT, FlussKarte } from '../ui';
+import type { FlussReihe } from '@/lib/fluss/modell';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Befund } from '@/lib/crm/befunde';
@@ -41,7 +40,7 @@ const BEFUND_WELT: Record<Befund['bereich'], Welt | null> = { heute: 'sales', fo
 const PRIO = { 1: LEUCHT.kritisch, 2: LEUCHT.achtung, 3: LEUCHT.puls, 4: C.inkDim, 5: C.inkLeise } as const;
 
 interface HeadKurz { id: Welt; name: string; verantwortlich: string; offen: number; status: 'ruhig' | 'beobachten' | 'handeln' | null; zeit: string | null; zusammenfassung: string | null }
-interface Daten { heute: string; ich: string; fuerDich: FuerDich[]; teamFeed: TeamEreignis[]; traktion: Traktion; index: IndexErgebnis; indexVerlauf: IndexVerlauf; uebergaben: Uebergabe[]; befunde: Befund[]; heads: HeadKurz[]; bestand: Record<string, number> }
+interface Daten { heute: string; ich: string; fuerDich: FuerDich[]; fluss?: FlussReihe; teamFeed: TeamEreignis[]; traktion: Traktion; index: IndexErgebnis; indexVerlauf: IndexVerlauf; uebergaben: Uebergabe[]; befunde: Befund[]; heads: HeadKurz[]; bestand: Record<string, number> }
 
 const leise = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 } as const;
 
@@ -55,8 +54,6 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
   // BEAN-Verteilung (28.09., H4): über die ganze Kartei, mit den offenen Angeboten der Dateiablage.
   const angebote = useOffeneAngebote();
   const bean = useMemo(() => (api.kontakte ? beanVerteilung(api.kontakte, api.crm?.stand, { angebote }) : null), [api.kontakte, api.crm, angebote]);
-  // Fokus-Signatur (04.10.): die fälligen Follow-ups der nächsten 14 Tage als Mini-Strahl in „Für dich“ — dieselbe Liste wie die Power Hour.
-  const faellig = useFaelligReihe(api, d?.ich ?? api.ich);
   if (!d) return <Karte i={0}>{fehler || api.fehler ? <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>Überblick konnte nicht geladen werden: {fehler ?? api.fehler}</span><button onClick={() => void laden()} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 8, padding: '5px 10px', color: C.ink, cursor: 'pointer' }}>Noch einmal</button></div> : <Leer>Lädt …</Leer>}</Karte>;
   const befunde = alle ? d.befunde : d.befunde.slice(0, 5);
   const zeit = (iso: string) => { const tg = iso.slice(0, 10); return tg === d.heute ? iso.slice(11, 16) : datum(tg, d.heute); };
@@ -102,12 +99,9 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
     <>
       <Flaeche seite="markttraktion-ueberblick">
           <Kachel id="fuer-dich" titel="Für dich" breite={3}>
-          <Karte i={0} ton="fokus" licht={d.fuerDich.length ? LEUCHT.gut : undefined}>
-            <Ueberschrift rechts={<Person id={d.ich} name />}>Für dich</Ueberschrift>
-            {faellig && faellig.reihe.some(v => v > 0) && (
-              <FadenLinie reihe={faellig.reihe} heute={0} label="Deine fälligen Follow-ups, nächste 14 Tage" beschriftung={tagBeschriftung(faellig.heute)}
-                farbe={LEUCHT.gut} hoehe={40} achse={['Heute', 'Fällig · 14 Tage', `+${faellig.reihe.length - 1} T`]} style={{ marginBottom: 10 }} />
-            )}
+          {/* Überblick „Für dich“ (04.10. abends, Muster für jeden Bereich): Umsatz der letzten 3 Monate → heute → Pipeline × Wahrscheinlichkeit
+              (FlussKarte, Reihe serverseitig aus /api/crm/traktion), darunter die priorisierten Zeilen aus dem Team-Modell. */}
+          <FlussKarte i={0} fluss={d.fluss ?? null} rechts={<Person id={d.ich} name />} farbe={LEUCHT.gut}>
             {!d.fuerDich.length ? <Leer>Bei dir liegt gerade nichts Fälliges — Zeit für die Power Hour oder einen Beitrag.</Leer> : (
               <Liste>
                 {d.fuerDich.map(f => (
@@ -117,7 +111,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
                 ))}
               </Liste>
             )}
-          </Karte>
+          </FlussKarte>
           </Kachel>
           <Kachel id="team" titel="Zuletzt im Team" breite={3}>
           <Karte i={1}>

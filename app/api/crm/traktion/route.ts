@@ -28,6 +28,7 @@ import { leererStand, standName, type HeadStand } from '@/lib/heads/stand';
 import { localDay } from '@/lib/zeit';
 import { personAus } from '@/lib/zoe/raum';
 import { fuerDich, teamFeed, verantwortlich, TEAM } from '@/lib/crm/team';
+import { flussAusCrm } from '@/lib/fluss/server';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { wochenScoreboard, verlaufEintrag, verlaufFortschreiben, verlaufSeit, gleicherStand, jePersonSieben, VERLAUF_SPEICHER, type TraktionVerlauf, type VerlaufTag } from '@/lib/crm/scoreboard';
 import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
@@ -85,6 +86,8 @@ export async function GET(req: Request) {
   return {
     ok: true, heute, ich, team: TEAM,
     fuerDich: fuerDich(ich, kontakte, crm, heute),
+    // Überblick „Für dich“ (04.10. abends): Umsatz der letzten 3 Monate → heute → Pipeline × Wahrscheinlichkeit (lib/fluss).
+    fluss: flussAusCrm(crm, heute),
     teamFeed: teamFeed(kontakte, crm, new Date(Date.now() - 14 * 864e5).toISOString(), 14),
     traktion: t,
     index, indexVerlauf,

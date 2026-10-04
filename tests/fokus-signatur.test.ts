@@ -236,7 +236,8 @@ describe('Wächter — Regeln der Fokus-Signatur', () => {
         expect(m[1], `${f}: FadenLinie ohne label`).toMatch(/\blabel=/);
       }
     }
-    expect(n).toBeGreaterThanOrEqual(7);
+    // 04.10. abends: „Für dich“ der Markttraktion zeigt den Fluss (FlussKarte) statt der FadenLinie der Follow-ups.
+    expect(n).toBeGreaterThanOrEqual(6);
   });
   it('höchstens EINE Fokus-Karte und ZWEI FadenLinien je Datei (≈ je Ansicht)', () => {
     for (const f of quellen) {
@@ -249,7 +250,9 @@ describe('Wächter — Regeln der Fokus-Signatur', () => {
   });
   it('eingebaut, wo Fokus ist', () => {
     const fokus = (f: string) => /\bton=(?:"fokus"|\{[^}]*['"]fokus['"])/.test(lies(f));
-    for (const f of ['components/os/crm/Ueberblick.tsx', 'components/os/crm/Qualifizierung.tsx', 'components/os/crm/Heute.tsx', 'components/os/crm/Pipeline.tsx', 'components/os/planung/ZielDetail.tsx', 'components/os/FokusView.tsx']) expect(fokus(f), f).toBe(true);
+    // Markttraktion › Überblick: die Fokus-Karte ist seit 04.10. abends der Baustein FlussKarte (tests/fluss.test.ts).
+    expect(lies('components/os/crm/Ueberblick.tsx')).toContain('<FlussKarte');
+    for (const f of ['components/os/crm/Qualifizierung.tsx', 'components/os/crm/Heute.tsx', 'components/os/crm/Pipeline.tsx', 'components/os/planung/ZielDetail.tsx', 'components/os/FokusView.tsx']) expect(fokus(f), f).toBe(true);
     for (const f of ['components/os/LiquiditaetView.tsx', 'components/os/zeit/ZeitJeEinheit.tsx', 'components/os/kennzahlen/IndexAnsicht.tsx']) expect(lies(f), f).toContain('<FadenLinie');
   });
   it('Farben aus dem Token, Bewegung in CSS still bei reduzierter Bewegung, Doku nennt die Bausteine', () => {

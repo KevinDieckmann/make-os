@@ -15,3 +15,5 @@ export { FadenLinie, Segmentbalken, FokusKante, NetzMotiv, type FadenLinieProps 
 // Zeilen-Aktionen (04.10., DESIGN_STANDARD.md › Löschen & Archivieren): Wischen/Überfahren → Archivieren · Löschen, „Rückgängig“, Rückfrage.
 export { ZeileAktionen, RueckgaengigLeiste, useRueckgaengig, Rueckfrage, useRueckfrage, RUECKGAENGIG_MS, AKTION_BREITE, RICHTUNG_AB, type ZeileAktionenProps, type Rueckgaengig, type RueckfrageDaten, type RueckfrageWahl } from './zeile-aktionen';
 export { Ring, Balken, Punkt, Haken, Spalten, Spalte, aufZwei, useHochzaehlen, LEUCHT, zoneFarbe, prioFarbe } from '../schlank';
+// Überblick „Für dich“ je Bereich (04.10. abends, DESIGN_STANDARD.md › Überblick): Ist 3 Monate · heute · Prognose aus echten Daten.
+export { FlussKarte, useFluss, flussPunkte, type FlussKarteProps } from './fluss';
