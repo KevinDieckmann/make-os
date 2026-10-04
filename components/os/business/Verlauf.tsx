@@ -17,7 +17,7 @@ export interface Serie { id: string; label: string; farbe: string; dick: number 
 const SERIEN: Serie[] = [
   { id: 'index', label: 'Index', farbe: C.ink, dick: 2.6 },
   { id: 'fh', label: 'Finanzielle Gesundheit', farbe: SAEULE_FARBE.fh, dick: 1.8 },
-  { id: 'ud', label: 'Unternehmer-DNA', farbe: SAEULE_FARBE.ud, dick: 1.8 },
+  { id: 'ud', label: 'Personal', farbe: SAEULE_FARBE.ud, dick: 1.8 },
   { id: 'mt', label: 'Markttraktion', farbe: SAEULE_FARBE.mt, dick: 1.8 },
 ];
 const BAENDER = [{ ab: 80, label: 'Souverän' }, { ab: 60, label: 'Solide' }, { ab: 40, label: 'Verbesserungsfähig' }];

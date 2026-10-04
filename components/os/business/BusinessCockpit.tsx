@@ -2,8 +2,8 @@
 
 // ─── Business-Index (25.09.) — das Business-Cockpit ─────────────────────────
 // Kevin: „Die Kennzahlen des KSI-Scores sind Gold wert für den kompletten
-// Business-Bereich.“ Hier steht unser Index: Finanzielle Gesundheit 50 % ·
-// Unternehmer-DNA 30 % · Markttraktion 20 % — je Firma und gesamt, jede Zahl
+// Business-Bereich.“ Hier steht unser Index (Säulen und Gewichte: SAEULEN_TEXT in
+// lib/business/register.ts) — je Firma und gesamt, jede Zahl
 // mit Formel und Quelle, jede fehlende mit dem Weg, sie zu schließen.
 // Der Wachstums-Score nimmt genau diese Zahl als seine Business-Säule.
 // Seit 25.09. lebt das Cockpit unter Zahlen → Business (/os/finanzen?s=business);
@@ -25,7 +25,7 @@ import { useZuZiel } from '../ziel';
 import type { Geschaeftsmodell } from '@/lib/business/modell';
 import type { BusinessIndex } from '@/lib/business/index';
 import type { Monatsabschluss } from '@/lib/business/messen';
-import { SCOPES, scopeAus, type Scope } from '@/lib/business/register';
+import { SCOPES, SAEULEN_TEXT, scopeAus, type Scope } from '@/lib/business/register';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 
 interface Antwort {
@@ -80,7 +80,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
     <>
       {eingebettet && (
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, maxWidth: 640, lineHeight: 1.5 }}>Business-Index: Finanzielle Gesundheit 50 % · Unternehmer-DNA 30 % · Markttraktion 20 % — jede Zahl mit Formel, Quelle und den Punkten dahinter. Privates zählt nie.</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, maxWidth: 640, lineHeight: 1.5 }}>Business-Index: {SAEULEN_TEXT} — jede Zahl mit Formel, Quelle und den Punkten dahinter. Privates zählt nie.</span>
           {sichtWahl}
         </div>
       )}
@@ -173,7 +173,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
   if (eingebettet) return inhalt;
   return (
     <Seite titel="Business-Index" breit={1440}
-      unter="Unsere KSI-Logik mit unseren Zahlen: Finanzielle Gesundheit 50 % · Unternehmer-DNA 30 % · Markttraktion 20 %. Jede Zahl mit Formel und Quelle — Privates zählt nie.">
+      unter={`Mit unseren eigenen Zahlen: ${SAEULEN_TEXT}. Jede Zahl mit Formel und Quelle — Privates zählt nie.`}>
       <div className="ui-reiter-zeile">{sichtWahl}</div>
       {inhalt}
     </Seite>

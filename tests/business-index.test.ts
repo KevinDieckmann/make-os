@@ -111,7 +111,7 @@ describe('Die Kennzahlen', () => {
     // Gesamt braucht beide Firmen, sonst Lücke statt halber Zahl.
     expect(mess('ek_quote', { ...mitAbschluss, scope: 'gesamt' })).toHaveProperty('luecke');
   });
-  it('Unternehmer-DNA: Umsatz je Kopf, Personalquote, Fokus, Meetings (ohne Malins Termine), Delegation (ohne Takt), Meilensteine', () => {
+  it('Personal: Umsatz je Kopf, Personalquote, Fokus, Meetings (ohne Malins Termine), Delegation (ohne Takt), Meilensteine', () => {
     const b = leer({ grundlageMonate: monate(1, 8, 10000, 5000), fte: { kdc: 1 }, planposten: [{ id: 'p', titel: 'Gehalt', betrag: -3000, rhythmus: 'monatlich', ab: '2026-01-01', sicher: true, firmaId: 'kdc', kategorie: 'personal' }] });
     expect(wert('umsatz_kopf', b)).toBe(120000);
     expect(wert('personalquote', b)).toBe(30);
@@ -194,3 +194,27 @@ describe('Feinjustierung', () => {
   });
 });
 
+
+describe('Säulen-Namen (04.10.: „Personal“ statt „Unternehmer-DNA“)', () => {
+  it('heißt „Personal“, Kennung bleibt „ud“, und die Gewichte stehen als ein Text bereit', async () => {
+    const { SAEULEN, SAEULEN_TEXT } = await import('@/lib/business/register');
+    expect(SAEULEN.find(s => s.id === 'ud')?.label).toBe('Personal');
+    expect(SAEULEN_TEXT).toContain('Personal');
+    expect(SAEULEN_TEXT).not.toMatch(/DNA/);
+    expect(Math.round(SAEULEN.reduce((s, x) => s + x.gewicht, 0) * 1000) / 1000).toBe(1);
+  });
+  it('der alte Name steht nirgends mehr in Oberfläche, ZOE oder Erklärungen', async () => {
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const funde: string[] = [];
+    const lauf = (ordner: string) => {
+      for (const n of readdirSync(ordner)) {
+        const p = join(ordner, n);
+        if (statSync(p).isDirectory()) lauf(p);
+        else if (/\.(ts|tsx)$/.test(n) && /Unternehmer-DNA|KSI-Logik/.test(readFileSync(p, 'utf8').replace(/^.*heißt jetzt „Personal“.*$/m, ''))) funde.push(p);
+      }
+    };
+    for (const o of ['lib', 'components', 'app']) lauf(o);
+    expect(funde).toEqual([]);
+  });
+});

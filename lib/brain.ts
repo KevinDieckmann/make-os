@@ -18,6 +18,7 @@ import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, type ResolvedVitals } from '@/lib/vitals';
 import { computeIndex, type PerfIndex } from '@/lib/performance';
+import { SAEULEN_TEXT } from '@/lib/business/register';
 import { computeMetrics, mitKasse, eur, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
 import { recentRuns, type AgentLogEntry } from '@/lib/agent-log';
 import { computeShields, shieldZeilen, type Shield } from '@/lib/risk';
@@ -396,12 +397,12 @@ export function blockIndex(b: Brain): string {
     blockBusiness(b);
 }
 
-/** Business-Index (25.09.): unsere KSI-Logik mit eigenen Zahlen — die Business-Säule im Detail. */
+/** Business-Index (25.09.): eigene Zahlen — die Business-Säule im Detail. */
 function blockBusiness(b: Brain): string {
   const bi = b.index?.business;
   if (!bi) return '';
   const saeulen = bi.saeulen.map(x => `${x.label} ${x.score ?? '—'}`).join(' · ');
-  return `\nBUSINESS-INDEX (Finanzielle Gesundheit 50 · Unternehmer-DNA 30 · Markttraktion 20, nur eigene Zahlen): ${bi.index ?? '—'} (${bi.label}). ${saeulen}.` +
+  return `\nBUSINESS-INDEX (${SAEULEN_TEXT}, nur eigene Zahlen): ${bi.index ?? '—'} (${bi.label}). ${saeulen}.` +
     `${bi.rot.length ? ` Rot: ${bi.rot.join(', ')}.` : ''}${bi.hebel ? ` Größter Hebel: ${bi.hebel}.` : ''} ${bi.luecken} Messlücken — Cockpit /os/finanzen?s=business (Monatsabschluss schließt die meisten).`;
 }
 

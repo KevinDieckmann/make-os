@@ -21,7 +21,7 @@ import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/zoe/gedaechtnis';
 import { innenAdresse } from '@/lib/innen';
 import { ARTEN as BAU_ARTEN, BEREICHE as BAU_BEREICHE } from '@/lib/bauplan/form';
-import { KENNZAHLEN as BUSINESS_KENNZAHLEN } from '@/lib/business/register';
+import { KENNZAHLEN as BUSINESS_KENNZAHLEN, SAEULEN_TEXT } from '@/lib/business/register';
 import { GESUNDHEIT_KENNZAHLEN } from '@/lib/gesundheit/index';
 import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { FREMD_WERKZEUGE, FREMD_AGENTEN, SELBST_GEKAPSELT } from '@/lib/zoe/fremd';
@@ -281,7 +281,7 @@ export async function POST(req: Request) {
     );
     tools.push({
       name: 'business_index',
-      description: 'Liest den Business-Index (unsere KSI-Logik mit eigenen Zahlen: Finanzielle Gesundheit 50 · Unternehmer-DNA 30 · Markttraktion 20) — gesamt oder je Firma, oder EINE Kennzahl mit Wert, Ampel, Schwellen, Formel und Quelle (bzw. was fehlt und wie man es schließt). Nutze das bei Fragen wie „Wie steht das Business?“, „Wie ist unser DSO / Runway / Win Rate?“, „Was ist rot?“. Nenne Zahlen genau so, wie sie kommen — nichts schätzen.',
+      description: `Liest den Business-Index (eigene Zahlen: ${SAEULEN_TEXT}) — gesamt oder je Firma, oder EINE Kennzahl mit Wert, Ampel, Schwellen, Formel und Quelle (bzw. was fehlt und wie man es schließt). Nutze das bei Fragen wie „Wie steht das Business?“, „Wie ist unser DSO / Runway / Win Rate?“, „Was ist rot?“. Nenne Zahlen genau so, wie sie kommen — nichts schätzen.`,
       input_schema: {
         type: 'object',
         properties: {

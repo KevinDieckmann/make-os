@@ -226,8 +226,9 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   zuliefert (`zulieferer.mjs`); den Kalender vom Mac nimmt der Server nicht mehr an.
 
 ## Business-Index (seit 25.09.2026)
-- Unsere KSI-Logik mit eigenen Zahlen: Finanzielle Gesundheit 50 · Unternehmer-DNA 30 ·
-  Markttraktion 20 (arithmetisch). Nur Struktur + Standard-Kennzahlen übernommen — kein Code,
+- Business-Index mit eigenen Zahlen: Finanzielle Gesundheit 50 · Personal 30 (bis 04.10. „Unternehmer-DNA“,
+  Kennung `ud` bleibt) · Markttraktion 20 (arithmetisch), dazu Fokus & Zeit 10 % (die drei skaliert ×0,9) — Text
+  überall aus `SAEULEN_TEXT` (lib/business/register.ts). Nur Struktur + Standard-Kennzahlen übernommen — kein Code,
   keine Daten aus KEMARIS/POINCAP/HubSpot. Plan + Entscheidungen: `BUSINESS_KSI_PLAN.md`.
 - `lib/business/` (register · messen · index · speicher), API `app/api/business`, Cockpit
   `/os/business` (Kopf-Ring „Business“; `/os/saeule/business` leitet dorthin).

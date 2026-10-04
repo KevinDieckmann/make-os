@@ -4,7 +4,7 @@
 // ist oder der Monatsabschluss fehlt. ZOE beantwortet Fragen dazu.
 
 import { localDay } from '@/lib/zeit';
-import { SCOPES, KENNZAHL, type Scope } from './register';
+import { SCOPES, SAEULEN_TEXT, KENNZAHL, type Scope } from './register';
 import { ladeRoh, bestandFuer, businessSchreibStand } from './speicher';
 import { berechne, type BusinessIndex, type KennzahlStand } from './index';
 import { schwellenText } from './text';
@@ -51,7 +51,7 @@ export async function businessFuerChef(heute = localDay()): Promise<{ block: Rec
     hinweise.push({ schwere: 'niedrig', bereich: 'daten', text: `Monatsabschluss ${f.monat} für ${FIRMA[f.firma]} fehlt — er schließt Quick Ratio, Eigenkapitalquote, Personalquote und mehr (/os/finanzen?s=business#abschluss).`, quelle: 'business-index.abschluss' });
   }
   const block = {
-    erklaerung: 'Business-Index = unsere KSI-Logik mit eigenen Zahlen: Finanzielle Gesundheit 50 % · Unternehmer-DNA 30 % · Markttraktion 20 %. Punkte je Kennzahl: rote Schwelle 20, grüne 100. Eine Säule zählt ab 40 % gemessener Kennzahlen.',
+    erklaerung: `Business-Index mit eigenen Zahlen: ${SAEULEN_TEXT}. Punkte je Kennzahl: rote Schwelle 20, grüne 100. Eine Säule zählt ab 40 % gemessener Kennzahlen.`,
     gesamt: { index: g.index, label: g.label, abdeckung_prozent: Math.round(g.abdeckung * 100), groesster_hebel: g.hebel?.label ?? null },
     je_firma: Object.fromEntries(GESELLSCHAFTEN.map(f => [FIRMA[f], { index: alle[f].index, label: alle[f].label }])),
     saeulen: g.saeulen.map(s => ({ saeule: s.label, score: s.zuDuenn ? null : s.score, gemessen: `${s.kennzahlen.filter(k => k.gemessen).length}/${s.kennzahlen.length}` })),

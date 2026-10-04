@@ -1,7 +1,7 @@
 // ─── Business-Index — die Kennzahlen (eine Wahrheit) ────────────────────────
 // Kevin 25.09.2026: „Die ganzen Kennzahlen des KSI-Scores sind Gold wert für
 // den kompletten Business-Bereich.“ Entschieden: eigener Name (Business-Index),
-// dieselbe Logik — Finanzielle Gesundheit 50 % · Unternehmer-DNA 30 % ·
+// dieselbe Logik — Finanzielle Gesundheit 50 % · Personal 30 % ·
 // Markttraktion 20 % —, gerechnet NUR mit unseren eigenen Zahlen. Übernommen
 // sind Struktur und Standard-Kennzahlen (Lehrbuch: Runway, DSO, Quick Ratio,
 // Win Rate, NRR …), kein Code und keine Daten aus KEMARIS/POINCAP/HubSpot.
@@ -26,10 +26,13 @@ export const scopeAus = (v: unknown): Scope => SCOPES.find(s => s.id === v)?.id 
 // zählt die Säule nicht, und der Index ist exakt der alte.
 export const SAEULEN: { id: SaeuleId; label: string; gewicht: number; satz: string }[] = [
   { id: 'fh', label: 'Finanzielle Gesundheit', gewicht: 0.5 * (1 - FZ_GEWICHT), satz: 'Liquidität, Forderungen, Ausgaben, Kapital' },
-  { id: 'ud', label: 'Unternehmer-DNA', gewicht: 0.3 * (1 - FZ_GEWICHT), satz: 'Produktivität und wie der Unternehmer arbeitet' },
+  // 04.10.: „Unternehmer-DNA“ heißt jetzt „Personal“ (Kevin). Kennung 'ud' bleibt — gespeicherte Verläufe lesen weiter.
+  { id: 'ud', label: 'Personal', gewicht: 0.3 * (1 - FZ_GEWICHT), satz: 'Produktivität, Auslastung und wie das Team arbeitet' },
   { id: 'mt', label: 'Markttraktion', gewicht: 0.2 * (1 - FZ_GEWICHT), satz: 'Vertrieb, Kunden, Wachstum' },
   { ...FZ_SAEULE, id: 'fz' },
 ];
+/** Säulen mit ihrem echten Gewicht als Text — EINE Quelle für Cockpit, ZOE und Erklärungen (z. B. „Finanzielle Gesundheit 45 % · …“). */
+export const SAEULEN_TEXT = SAEULEN.map(s => `${s.label} ${Math.round(s.gewicht * 100)} %`).join(' · ');
 
 import type { KennzahlDefBasis, Schwelle as KernSchwelle } from '@/lib/kennzahlen/kern';
 import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
@@ -99,7 +102,7 @@ export const KENNZAHLEN: KennzahlDef[] = [
     formel: '(Ø Umsatz − Break-even-Umsatz) ÷ Ø Umsatz; Break-even = Fixkosten ÷ Deckungsbeitragsquote', quelle: 'Ist-Monate + wiederkehrende Kosten',
     luecke: 'Umsatz und wiederkehrende Kosten der letzten Monate fehlen', pflegen: PLANPOSTEN },
 
-  // ── Unternehmer-DNA ──
+  // ── Personal ──
   { id: 'umsatz_kopf', label: 'Umsatz je Kopf', saeule: 'ud', gruppe: 'Produktivität', nichtFuer: ['kdv'], einheit: 'eur', richtung: 'hoch', gruen: 120_000, rot: 80_000,
     formel: 'Umsatz der letzten 12 Monate ÷ Köpfe (FTE)', quelle: 'Ist-Monate + FTE-Einstellung',
     luecke: 'Köpfe (FTE) oder Umsatz fehlen', pflegen: EINSTELLUNGEN('Köpfe eintragen') },

@@ -19,6 +19,7 @@ import { privatIndexFuer } from '@/lib/privat/speicher';
 import { ladeFamilie } from '@/lib/familie/speicher';
 import { berechne } from '@/lib/business/index';
 import { ladeRoh as ladeBusinessRoh, bestandFuer } from '@/lib/business/speicher';
+import { SAEULEN } from '@/lib/business/register';
 import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
@@ -145,8 +146,8 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   }));
 
   // ── Business-Performance = Business-Index (25.09., „eine Wahrheit“) ──
-  // Unsere KSI-Logik — Finanzielle Gesundheit 50 · Unternehmer-DNA 30 ·
-  // Markttraktion 20 — in der Gesamtsicht (lib/business). Die Säule IST dieser
+  // Säulen und Gewichte: SAEULEN in lib/business/register.ts (Finanzielle Gesundheit · Personal ·
+  // Markttraktion · Fokus & Zeit) — in der Gesamtsicht (lib/business). Die Säule IST dieser
   // Index; die Faktoren zeigen seine drei Säulen. Umsatz-Kurs, Traktion,
   // Meilensteine, Forderungen und Kunden stecken jetzt dort als Kennzahlen.
   // Zeit & Fokus der Person (26.09. spät): vierte Säule in Business- und Privat-Index.
@@ -273,7 +274,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   const roh: { key: string; label: string; gewicht: number; faktoren: Faktor[]; hinweis: string }[] = [
     // Kevin: „Gesundheit macht mindestens 35% aus — ohne sie funktioniert nichts."
     { key: 'health', label: 'Gesundheit & Energie', gewicht: 0.35, faktoren: gesundheit, hinweis: 'Morgen-Check + Routinen + Journal' },
-    { key: 'business', label: 'Business-Performance', gewicht: 0.20, faktoren: business, hinweis: 'Business-Index: Finanzielle Gesundheit · Unternehmer-DNA · Markttraktion' },
+    { key: 'business', label: 'Business-Performance', gewicht: 0.20, faktoren: business, hinweis: `Business-Index: ${SAEULEN.map(s => s.label).join(' · ')}` },
     // 24.09.: Agenten als sechste Säule (10 %); Planung und Beziehung geben je 5 % ab.
     { key: 'planning', label: 'Planung & Ausführung', gewicht: 0.10, faktoren: planung, hinweis: 'Aufgabenlage + Kalender' },
     { key: 'finance', label: 'Finanzen', gewicht: 0.15, faktoren: finanzenGesamt, hinweis: privat.length ? 'Business (Finanzielle Gesundheit) + Privat (Sparquote, Luft, Schuldenabbau) — je zur Hälfte' : 'Finanzielle Gesundheit (Business-Index)' },
