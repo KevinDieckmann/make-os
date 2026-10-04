@@ -10,7 +10,7 @@
 //     „eine Marke der KEMARIS Innovation GmbH“, Impressum + Datenschutz verlinkt; jeder eigene Link/Anker existiert.
 //   · Externe Links nur zu makeinnovation.de (Startseite, Datenschutzhinweis). Mail nur an die MAKE-Adresse; jede Mail mit
 //     Betreff beginnt mit „Fokus Innovation“.
-//   · Inhalt: Absender „Ein Format von Make.One“, die fünf Städte mit „Termin in Planung“ und der Karte, Hauptweg
+//   · Inhalt: Absender „Ein Format von Make.One“, die sechs Städte mit „Termin in Planung“ und der Karte, Hauptweg
 //     „Teilnahme anfragen“ (#teilnahme-link, vorbereitete Mail) — und KEINE erfundenen Termine, Preise oder Zahlen zu Gästen.
 //   · Gemeinsame Dateien gleich wie in website/: Schriften Byte für Byte, Lichtfäden-Zeichner, MAKE-Logo, Impressum (Block
 //     von „Angaben gemäß § 5 DDG“ bis „Stand“), die geteilten Tokens im :root der CSS.
@@ -34,7 +34,9 @@ const SEITEN_MIT_PFLICHT = ['index.html', 'impressum.html', 'datenschutz.html'];
 /** Arbeitsdateien im Ordner — nie ausgeliefert (Caddy: @intern → 404 und file_server hide; Vorschlag in LIESMICH.md). */
 export const NICHT_OEFFENTLICH = ['LIESMICH.md', 'pruefen.mjs'];
 /** Die Städte der Reihe (Kevin 03.10.) — Kennung und Name wie in scripts/fokus-seite.mjs (Wächter: tests/fokus-seite.test.ts). */
-export const STAEDTE = { berlin: 'Berlin', hamburg: 'Hamburg', bielefeld: 'Bielefeld', koeln: 'Köln', muenchen: 'München' };
+export const STAEDTE = { berlin: 'Berlin', hamburg: 'Hamburg', bielefeld: 'Bielefeld', koeln: 'Köln', muenchen: 'München', dresden: 'Dresden' };
+/** Zahlwort der Überschrift „Aus Berlin in … Städte.“ — muss zur Zahl der Städte passen (wie der Kartentitel in scripts/fokus-seite.mjs). */
+export const ZAHLWORT = ['keine', 'eine', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn'];
 /** Hauptweg: vorbereitete Mail mit Betreff „Fokus Innovation – Teilnahme“ (Text vorbereitet). */
 export const TEILNAHME_MAIL = /^mailto:hello@makeinnovation\.de\?subject=Fokus%20Innovation%20%E2%80%93%20Teilnahme&amp;body=[^"]+$/;
 /** Jede Mail mit Betreff gehört zur Reihe: „Fokus Innovation[ Stadt] – …“. */
@@ -166,6 +168,9 @@ export function pruefeFokus(ordner, website = join(ordner, '..', 'website')) {
     if (!index.includes(`href="${KONTAKT}"`)) fehler.push(`index.html: Kontakt (${KONTAKT}) fehlt`);
     if (!/<h1[^>]*>Fokus Innovation<\/h1>/.test(index)) fehler.push('index.html: H1 „Fokus Innovation“ fehlt');
     if (!/<canvas class="faeden" aria-hidden="true">/.test(index)) fehler.push('index.html: Lichtfäden-Leinwand (aria-hidden) im Held fehlt');
+    const wort = ZAHLWORT[Object.keys(STAEDTE).length];
+    if (!text.includes(`in ${wort} Städte.`)) fehler.push(`index.html: Überschrift der Städte — „in ${wort} Städte.“ erwartet (${Object.keys(STAEDTE).length} Städte)`);
+    if (!index.includes(`Fokus Innovation in ${wort} Städten`)) fehler.push(`index.html: Kartentitel nennt nicht ${wort} Städte (node scripts/fokus-seite.mjs)`);
     for (const [id, name] of Object.entries(STAEDTE)) {
       const zeile = new RegExp(`<li data-stadt="${id}"><b>${name}</b><span>Termin in Planung</span>`).test(index);
       if (!zeile) fehler.push(`index.html: Stadt ${name} — Zeile mit „Termin in Planung“ fehlt`);

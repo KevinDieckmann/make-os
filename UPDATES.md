@@ -4,6 +4,22 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## fokusinnovation.de: Lichtfäden auf Strahl v3 + Dresden (04.10.2026, nur lokal — Branch `website-faeden`)
+
+Kevin 04.10.: „Bring die neue Homepage hoch mit den neuen Effekten, die wir gerade auch bauen.“ makeinnovation.de (website/) bleibt
+unverändert — sie wird als eigenes Paket neu gestaltet; der gemeinsame Zeichner `website/js/lichtfaeden.js` ist unverändert gültig.
+
+- **Held (fokus/js/fokus-faeden.js, dünne Schicht über dem gemeinsamen Zeichner):** beim Laden läuft eine Front in 1,9 s von links nach
+  rechts — Granat wächst in den Knoten, der Knoten leuchtet kurz auf (Synapse), dann wächst Smaragd hinaus; leuchtende Spitzen und ein
+  vorauslaufendes Licht. Danach fließen die Fäden ruhig links → rechts, Lichtpunkte wandern mit, Glühen an dichten Stellen (Schein-Puffer),
+  ein ruhiger Schein um den Knoten, Smaragd franst nach rechts leicht aus (Zukunft offen). Unter dem Text bleiben die Fäden leiser
+  (Kontrast unverändert). Handy: weniger Fäden, jeder 3. Faden mit Lichtpunkten. „Bewegung reduzieren“ = Standbild ohne Aufbau.
+- **Dresden** als sechste Stadt (51,0504 N · 13,7373 O): Liste mit „Termin in Planung“ + Mail-Link, Karte (Faden von Berlin, Name unter dem
+  Punkt), Film-Standbild, Überschrift „Aus Berlin in sechs Städte.“; Städte-Quelle `scripts/fokus-seite.mjs`, Prüfung nennt die Zahl
+  der Städte als Wort in Überschrift und Kartentitel. Offen für Kevin: `marketing/film/DREHBUCH.md` nennt Dresden noch nicht (Szene 4).
+- **Messung (headless, 1440):** 60 fps, längster Bildabstand 17 ms, keine langen Aufgaben, Skriptzeit je Bild ≈ 1,3–1,5 ms (vorher 0,4);
+  Handy 60 fps, höchstens 3,8 ms. Gewicht +4,4 KB Skript. Fotos/Bildfolge: Scratchpad `website-faeden/vergleich.html`.
+
 ## Fokus-Signatur + Strahl v3 (04.10.2026, nur lokal — Branch `fokus-signatur`)
 
 Kevin 04.10.: „Diese Akzente will ich überall drauf haben, wo Fokus ist. Mache das Ganze offline, damit wir da nochmal den Standard heben. Dezent, aber
