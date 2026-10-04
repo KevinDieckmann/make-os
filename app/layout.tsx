@@ -16,10 +16,7 @@ const publicSans = localFont({
   src: './schriften/public-sans-latin.woff2', weight: '400 600', style: 'normal',
   variable: '--schrift-text', display: 'swap', adjustFontFallback: 'Arial',
 });
-import { AppContextProvider } from '@/context/AppContext';
 import { TasksProvider } from '@/context/TasksContext';
-import { PrivacyProvider } from '@/context/PrivacyContext';
-import { MakeOSProvider } from '@/context/MakeOSContext';
 import { VerlaufWaechter } from '@/components/os/Verlauf';
 import { BauWache } from '@/components/os/BauWache';
 
@@ -48,17 +45,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <VerlaufWaechter />
         {/* Alte Tabs nach dem Hochladen: Build-Kennung an jeder Schreibung, „bitte neu laden“ (29.09., lib/bau/kennung.ts). */}
         <BauWache />
-        <MakeOSProvider>
-          <PrivacyProvider>
-            <AppContextProvider>
-              {/* Seit 29.09. (K5) ohne CalendarProvider: das Alt-Dashboard /calendar ist weg — sein Abruf von
-                  /api/apple-calendar lief auf JEDER Seite (auch /anmelden → 401/500). Kalender: /os/kalender. */}
-              <TasksProvider>
-                {children}
-              </TasksProvider>
-            </AppContextProvider>
-          </PrivacyProvider>
-        </MakeOSProvider>
+        {/* Seit 29.09. (K5) ohne CalendarProvider: das Alt-Dashboard /calendar ist weg — sein Abruf von
+            /api/apple-calendar lief auf JEDER Seite (auch /anmelden → 401/500). Kalender: /os/kalender.
+            Seit 04.10. (Aufräumen) auch ohne MakeOS-, Privacy- und App-Kontext: sie gehörten nur der alten Gruppe
+            app/(dashboard) (Beispieldaten, Stubs) — die alten Adressen leiten weiter (next.config.mjs). */}
+        <TasksProvider>
+          {children}
+        </TasksProvider>
       </body>
     </html>
   );

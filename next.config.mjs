@@ -76,6 +76,15 @@ const nextConfig = {
       { source: '/calendar/:ansicht*', destination: '/os/kalender', permanent: false },
       // 02.08.: die Fokus-Regler leben im Kompass.
       { source: '/os/planung/fokus', destination: '/os/kompass', permanent: false },
+      // 04.10. (Aufräumen): die alte Gruppe app/(dashboard) (Beispieldaten, Stubs, eigene Leiste) ist weg — ein Weg statt zwei.
+      // Lesezeichen landen auf der passenden /os-Seite. Wächter: tests/aufraeumen-routen.test.ts.
+      { source: '/dashboard', destination: '/os', permanent: false },
+      { source: '/tasks', destination: '/os/aufgaben', permanent: false },
+      { source: '/tasks/:pfad*', destination: '/os/aufgaben', permanent: false },
+      { source: '/wellness', destination: '/os/gesundheit', permanent: false },
+      { source: '/routines', destination: '/os/planung/routinen', permanent: false },
+      { source: '/groceries', destination: '/os/familie', permanent: false },
+      { source: '/dog', destination: '/os/familie', permanent: false },
     ];
   },
 };
