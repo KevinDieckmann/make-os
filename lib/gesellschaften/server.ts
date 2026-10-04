@@ -16,7 +16,7 @@ import {
   alleGesellschaften, gesellschaftVon, steckbriefAnwenden, gesellschafterSaeubern, beteiligungSaeubern, vertragSaeubern,
   eintragAktion, gesellschaftArchiv, gesellschaftVerweise, verweiseAnzahl, verweiseSatz, registerAufraeumen, GRENZEN, PRAEFIX,
   type RegisterDatei, type RegisterGesellschaft, type RegisterFehler, type RegisterListe, type EintragAktion, type CrmVerweisTeil,
-  beschlussSaeubern, organSaeubern, faelligeErinnerungen,
+  beschlussSaeubern, organSaeubern, faelligeErinnerungen, geloeschtVermerken,
   type Gesellschafter, type FremdBeteiligung, type Vertrag, type Beschluss, type Organ, type ListenEintrag,
 } from './modell';
 
@@ -53,11 +53,13 @@ export async function registerAendern(haushalt: string, person: string, id: stri
     if (typeof stand !== 'string' || standVon(alt) !== stand) { ergebnis = { konflikt: alt }; return cur ?? { gesellschaften: [] }; }
     const r = mut(alt, alleGesellschaften(cur, { mitPapierkorb: true }));
     if (r.fehler?.length) { ergebnis = { fehler: r.fehler, status: r.status ?? 400 }; return cur ?? { gesellschaften: [] }; }
-    if (r.g === null) { ergebnis = { weg: true }; return { ...(cur ?? {}), gesellschaften: l.filter(g => g.id !== id) }; }
-    const neu: RegisterGesellschaft = { ...r.g!, geaendert: new Date().toISOString(), geaendertVon: person };
+    // Endgültig Gelöschtes (Gesellschaft, Vertrag) bleibt als Vermerk lesbar — die Unterlagen in der Ablage bleiben (§ 257 HGB).
+    const jetzt = new Date().toISOString();
+    if (r.g === null) { ergebnis = { weg: true }; return geloeschtVermerken(cur, { ...(cur ?? {}), gesellschaften: l.filter(g => g.id !== id) }, jetzt); }
+    const neu: RegisterGesellschaft = { ...r.g!, geaendert: jetzt, geaendertVon: person };
     ergebnis = { g: neu };
     const i = l.findIndex(g => g.id === id);
-    return { ...(cur ?? {}), gesellschaften: i >= 0 ? l.map(g => (g.id === id ? neu : g)) : [...l, neu] };
+    return geloeschtVermerken(cur, { ...(cur ?? {}), gesellschaften: i >= 0 ? l.map(g => (g.id === id ? neu : g)) : [...l, neu] }, jetzt);
   });
   if (ergebnis.g || ergebnis.weg) await protokolliereBestand(registerName(haushalt), vorher, nachher, wer);
   return ergebnis;

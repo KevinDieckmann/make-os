@@ -206,7 +206,24 @@ export interface RegisterGesellschaft extends Omit<Absender, 'id'> {
   angelegt?: string;
   geloeschtAm?: string;
 }
-export interface RegisterDatei { gesellschaften: RegisterGesellschaft[] }
+/**
+ * Vermerk über eine endgültig gelöschte Gesellschaft bzw. einen Vertrag (DSGVO-Nachtrag 04.10., Kevin): die Unterlagen in der
+ * Dateiablage bleiben (Aufbewahrung § 257 HGB, § 147 AO) — damit ihr Bezug lesbar bleibt („„Name“ (gelöscht)“ statt eines toten
+ * Links) und die Ablage sich auf diese Gesellschaft/diesen Vertrag filtern lässt, merkt sich das Register Kennung, Name, Tag und
+ * (beim Vertrag) die Datei-Kennungen. Setzt NUR der Server (`geloeschtVermerken`); Art. 17 tilgt auch hier (tilgeTief).
+ */
+export interface GeloeschterBezug {
+  art: 'gesellschaft' | 'vertrag';
+  id: string;
+  gesellschaftId: GesellschaftId;
+  titel: string;
+  /** Zeitpunkt des endgültigen Löschens (ISO). */
+  am: string;
+  dateiIds?: string[];
+}
+export interface RegisterDatei { gesellschaften: RegisterGesellschaft[]; geloescht?: GeloeschterBezug[] }
+/** Höchstens so viele Vermerke — die ältesten fallen zuerst (sie verweisen nur auf Unterlagen, die in der Ablage bleiben). */
+export const MAX_VERMERKE = 500;
 
 export type RegisterListe = 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'beschluesse' | 'organe';
 export const REGISTER_LISTEN: readonly RegisterListe[] = ['gesellschafter', 'beteiligungen', 'vertraege', 'beschluesse', 'organe'];
@@ -701,7 +718,54 @@ export function registerAufraeumen(d: RegisterDatei | null, crm: CrmVerweisTeil,
     }
     raus.push(neu);
   }
-  return n ? { d: { ...d, gesellschaften: raus }, n } : { d, n: 0 };
+  // Was endgültig geht, bleibt als Vermerk lesbar — die Unterlagen in der Ablage bleiben (DSGVO-Nachtrag 04.10.).
+  return n ? { d: geloeschtVermerken(d, { ...d, gesellschaften: raus }, jetzt), n } : { d, n: 0 };
+}
+
+// ── Gelöschte Bezüge (DSGVO-Nachtrag 04.10.): Unterlagen bleiben, der Bezug bleibt lesbar ──────────────────────────
+
+/**
+ * Vergleicht zwei Stände und vermerkt, was endgültig verschwand: Register-Gesellschaften (samt ihren Verträgen) und Verträge.
+ * Rein; gleiche Kennung → der neue Vermerk ersetzt den alten. Nichts verschwunden → derselbe Stand (kein Schreiben).
+ */
+export function geloeschtVermerken(vorher: RegisterDatei | null | undefined, nachher: RegisterDatei, jetzt: string): RegisterDatei {
+  const neu: GeloeschterBezug[] = [];
+  const nachId = new Map((nachher.gesellschaften ?? []).map(g => [g.id, g]));
+  const vertragVermerk = (g: RegisterGesellschaft, v: Vertrag): GeloeschterBezug => ({
+    art: 'vertrag', id: v.id, gesellschaftId: g.id, titel: v.titel || vertragArtLabel(v.art), am: jetzt, ...(v.dateiIds?.length ? { dateiIds: [...v.dateiIds] } : {}),
+  });
+  for (const g of vorher?.gesellschaften ?? []) {
+    const da = nachId.get(g.id);
+    if (!da) {
+      if (!istGesellschaft(g.id)) neu.push({ art: 'gesellschaft', id: g.id, gesellschaftId: g.id, titel: anzeigeName(g), am: jetzt });
+      for (const v of g.vertraege ?? []) neu.push(vertragVermerk(g, v));
+      continue;
+    }
+    const bleiben = new Set((da.vertraege ?? []).map(v => v.id));
+    for (const v of g.vertraege ?? []) if (!bleiben.has(v.id)) neu.push(vertragVermerk(g, v));
+  }
+  if (!neu.length) return nachher;
+  const schluessel = (b: GeloeschterBezug) => `${b.art}:${b.id}`;
+  const ersetzt = new Set(neu.map(schluessel));
+  const alt = (Array.isArray(nachher.geloescht) ? nachher.geloescht : []).filter(b => !ersetzt.has(schluessel(b)));
+  return { ...nachher, geloescht: [...alt, ...neu].slice(-MAX_VERMERKE) };
+}
+
+/** Der Vermerk zu einer gelöschten Gesellschaft bzw. einem gelöschten Vertrag — oder undefined. */
+export function geloeschterBezug(d: Pick<RegisterDatei, 'geloescht'> | null | undefined, art: GeloeschterBezug['art'], id: string): GeloeschterBezug | undefined {
+  return (d?.geloescht ?? []).find(b => b.art === art && b.id === id);
+}
+
+/** Anzeigetext eines gelöschten Bezugs: „„Name“ (gelöscht)“. */
+export const geloeschtText = (b: Pick<GeloeschterBezug, 'titel'>) => `„${b.titel}“ (gelöscht)`;
+
+/**
+ * Unterlagen einer Gesellschaft aus der Ablage — optional auf einen Vertrag gefiltert (dessen Datei-Kennungen, ob er noch lebt
+ * oder gelöscht ist). Neueste zuerst.
+ */
+export function unterlagenFiltern<T extends { id: string; gesellschaft?: string; hochgeladenAm: string }>(eintraege: readonly T[], gesellschaftId: string, dateiIds?: readonly string[]): T[] {
+  const nur = dateiIds ? new Set(dateiIds) : null;
+  return eintraege.filter(e => e.gesellschaft === gesellschaftId && (!nur || nur.has(e.id))).sort((a, b) => b.hochgeladenAm.localeCompare(a.hochgeladenAm));
 }
 
 // ── Planung: Einheiten aus dem Register ──────────────────────────────────────────────────────────────────────────

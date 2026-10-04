@@ -72,6 +72,11 @@ export const WEG = {
 
   /** Gesellschafts-Register (04.10.): Liste bzw. eine Gesellschaft mit Reiter. */
   unternehmen: (id?: string, reiter?: 'steckbrief' | 'gesellschafter' | 'organe' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender') => q('/os/unternehmen', { g: id, r: id && reiter && reiter !== 'steckbrief' ? reiter : undefined }),
+  /**
+   * Unterlagen einer Gesellschaft in der Ablage — optional nur die eines Vertrags (DSGVO-Nachtrag 04.10.): funktioniert auch,
+   * wenn Gesellschaft bzw. Vertrag endgültig gelöscht sind (die Unterlagen bleiben, § 257 HGB).
+   */
+  unterlagen: (gesellschaftId: string, vertragId?: string) => q('/os/unternehmen', { ablage: gesellschaftId, v: vertragId }),
   mandat: (id?: string) => mandateLink('mandate', id),
   produkt: (id?: string) => mandateLink('produkte', id),
   // Deal-Ebene (27.09.): eigener Reiter; ein Deal öffnet seine Akte.

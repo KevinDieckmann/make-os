@@ -955,7 +955,11 @@ export async function personAufzaehlen(id: string) {
   const { registerAuskunft } = await import('@/lib/gesellschaften/auskunft');
   const gesellschaften: import('@/lib/gesellschaften/auskunft').RegisterAuskunft[] = [];
   for (const n of await registerNamen()) gesellschaften.push(...registerAuskunft(await loadJson<import('@/lib/gesellschaften/modell').RegisterDatei>(n).catch(() => null), id));
-  return { ...verweise, uebergaben, terminFollowups, gesellschaften, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
+  // Kapazität (DSGVO-Nachtrag 04.10.): ist die Person als Team-Person ohne Konto geführt (gleiche E-Mail), ihre Kapazitätsdaten
+  // als Kopie — auch deaktiviert, bis zur Löschung 30 Tage nach dem Deaktivieren (lib/kapazitaet/aufraeumen.ts).
+  const { kapaAuskunftFuerAdressen } = await import('@/lib/kapazitaet/server');
+  const kapazitaet = await kapaAuskunftFuerAdressen(m.emails);
+  return { ...verweise, uebergaben, terminFollowups, gesellschaften, kapazitaet, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */

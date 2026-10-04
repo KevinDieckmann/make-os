@@ -12,10 +12,22 @@ import { feld, auswahl, Feldzeile, Segmente } from '../ui';
 import { gesellschaftKette, type GesellschaftAntwort } from '@/lib/crm/gesellschaft-kette';
 import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
 import { WEG } from '@/lib/wege';
-import { BEZUG_ARTEN, euroText, type Bezug, type BezugArt, type RegisterGesellschaft, type Verweise } from '@/lib/gesellschaften/modell';
+import { BEZUG_ARTEN, euroText, type Bezug, type BezugArt, type RegisterGesellschaft, type Verweise, type GeloeschterBezug } from '@/lib/gesellschaften/modell';
 
 export type GAnzeige = RegisterGesellschaft & { name: string; stand: string; luecken: string[]; verweise: Verweise };
-export interface RegisterDaten { gesellschaften: GAnzeige[]; personen: { id: string; name: string }[]; namen: Record<string, string> }
+export interface RegisterDaten {
+  gesellschaften: GAnzeige[]; personen: { id: string; name: string }[]; namen: Record<string, string>;
+  /** Vermerke endgültig gelöschter Gesellschaften/Verträge (DSGVO-Nachtrag 04.10.) — Bezüge bleiben als „(gelöscht)“ lesbar. */
+  geloescht: GeloeschterBezug[];
+}
+
+/**
+ * Der Satz in der Rückfrage vor dem endgültigen Löschen einer Gesellschaft bzw. eines Vertrags (DSGVO-Nachtrag 04.10., Kevin):
+ * Unterlagen bleiben in der Ablage (Aufbewahrungspflicht § 257 HGB) — „ansehen“ öffnet die Ablage, gefiltert auf diesen Bezug.
+ */
+export function UnterlagenBleiben({ href }: { href: string }) {
+  return <>Die Unterlagen bleiben in der Ablage erhalten (Aufbewahrungspflicht) — <Link href={href} style={{ color: C.ink, textDecoration: 'underline' }}>ansehen ›</Link></>;
+}
 
 export const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
 

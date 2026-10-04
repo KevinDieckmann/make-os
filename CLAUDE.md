@@ -185,6 +185,11 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Apple/M365 nur Inhaber); fremde Einträge nie in der Antwort, beim Schreiben unberührt.
 - **Finanzplanung:** `?nur=kennzahlen&sicht=business` ohne Privat-/Gruppenwerte (`kennzahlenFuerSicht`).
 - **Verzeichnis (Art. 30):** `vv-gesellschaften`, `vv-kapazitaet` (`verarbeitungenOrganisationNachtragen`); Löschkonzept nennt den Papierkorb.
+- **Nachtrag (04.10. spät, Branch `dsgvo-2`):** Team-Person deaktiviert → `deaktiviertAm` NUR vom Server (Team-Route `deaktivierungStempeln`),
+  Morgenlauf `kapaDeaktivierteAufraeumen` löscht nach 30 Tagen ihre Kapazitätsdaten (idempotent, Sperre des Team-Bestands; Reaktivieren davor
+  erhält alles); Art. 15 `GET /api/kapazitaet?auskunft=<person>` (Konto nur selbst, Team-Person nur Inhaber) + `personAufzaehlen.kapazitaet`.
+  Gesellschaft/Vertrag endgültig → Unterlagen bleiben (§ 257 HGB): Rückfrage `UnterlagenBleiben` mit `WEG.unterlagen(g, v?)`, Register vermerkt
+  Gelöschtes (`RegisterDatei.geloescht`, `geloeschtVermerken` — neue Schreibwege auf das Register IMMER darüber), Bezüge „„Name“ (gelöscht)“.
 
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),

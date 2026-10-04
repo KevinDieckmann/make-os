@@ -9,14 +9,15 @@
 //   Posten       Meilensteine (Business) und Jahresziele mit Aufwand
 // Die Rechnung selbst ist rein: lib/kapazitaet/modell.ts.
 
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { merken } from '@/lib/store/memo';
 import { localDay } from '@/lib/zeit';
 import { tagPlus, montagVon } from '@/lib/zeit/kalender-kern';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { haushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
-import { teamStand } from '@/lib/make-one/team-speicher';
+import { teamStand, teamSpeicherName, type TeamDatei } from '@/lib/make-one/team-speicher';
+import { protokolliere } from '@/lib/store/aenderungsprotokoll';
 import { verfuegbarkeitFuer } from '@/lib/kalender/verfuegbarkeit';
 import { speicherFuer } from '@/lib/zoe/raum';
 import type { VitalsLog } from '@/lib/vitals';
@@ -31,14 +32,17 @@ import { zielJahr } from '@/lib/planung/zeitstrahl';
 import type { Meilenstein, ZieleDatei } from '@/lib/planung/typen';
 import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit } from './modell';
 import { sauberKapaDatei, kapaAendern, type Ergebnis } from './aendern';
+import { kapaLoeschPlan, kapaOhnePersonen, kapaAuskunft, type KapaAuskunft } from './aufraeumen';
 import { WOCHEN_STANDARD, type KapaDatei, type KapaStand, type PersonEingabe, type PostenEingabe, type KapaKennzahlen } from './typen';
 
 const KONTO = 'konto-';
 
+/** Der Bestandsname eines Haushalts (ohne gültigen Haushalt: der Inhaber-Bestand). */
+export const kapaSpeicherFuer = (h: string | null | undefined) => (h && HAUSHALT_OK.test(h) ? `kapazitaet--${h}` : 'kapazitaet--inhaber');
+
 /** Der Bestandsname des Haushalts des Inhabers (ohne Haushalt: der Inhaber-Bestand). */
 export async function kapaSpeicher(): Promise<string> {
-  const h = await haushaltDesInhabers();
-  return h && HAUSHALT_OK.test(h) ? `kapazitaet--${h}` : 'kapazitaet--inhaber';
+  return kapaSpeicherFuer(await haushaltDesInhabers());
 }
 
 export async function ladeKapaDatei(): Promise<KapaDatei> {
@@ -172,4 +176,89 @@ export async function kapaStandFuer(person: string, heute = localDay()) {
  */
 export async function kapaKennzahlenFuerIndex(heute = localDay()): Promise<KapaKennzahlen | null> {
   try { return ohneGesundheit(fuerBetrachter((await gemerkt(heute)).stand, null).kennzahlen); } catch { return null; }
+}
+
+// ── DSGVO-Nachtrag 04.10.: Löschfrist deaktivierter Team-Personen + Auskunft (Regeln rein in ./aufraeumen.ts) ──
+
+export interface KapaAufraeumBericht { gestempelt: number; personen: number; teile: number }
+
+/**
+ * Morgenlauf-Schritt „Kapazität deaktivierter Personen“: alte deaktivierte Einträge ohne Zeitpunkt stempeln (Frist beginnt),
+ * nach 30 Tagen die Kapazitätsdaten der Person löschen. Liest erst ohne Sperre; schreibt nur, wenn etwas fällig ist. Beides
+ * in der Sperre des Team-Bestands (ein gleichzeitiges Reaktivieren über /api/team wartet). Protokoll „System“ (nur Kennungen).
+ */
+export async function kapaDeaktivierteAufraeumen(haushalt: string, jetzt = new Date()): Promise<KapaAufraeumBericht> {
+  const iso = jetzt.toISOString();
+  const teamName = teamSpeicherName(haushalt);
+  const kapaName = kapaSpeicherFuer(haushalt);
+  const vorab = kapaLoeschPlan((await loadJson<TeamDatei>(teamName))?.team ?? [], iso);
+  if (!vorab.stempeln.length && !vorab.faellig.length) return { gestempelt: 0, personen: 0, teile: 0 };
+  const bericht: KapaAufraeumBericht = { gestempelt: 0, personen: 0, teile: 0 };
+  let geloescht: string[] = [];
+  let gestempelt: string[] = [];
+  await updateJsonAsync<TeamDatei>(teamName, async cur => {
+    if (!cur || !Array.isArray(cur.team)) return cur as TeamDatei;
+    const plan = kapaLoeschPlan(cur.team, iso);
+    const stempeln = new Set(plan.stempeln);
+    if (plan.faellig.length) {
+      const ids = new Set(plan.faellig);
+      await updateJson<KapaDatei>(kapaName, alt => {
+        const r = kapaOhnePersonen(alt, ids);
+        bericht.personen = r.personen.length; bericht.teile = r.teile; geloescht = r.personen;
+        return r.teile ? r.datei : (alt as KapaDatei);
+      });
+    }
+    bericht.gestempelt = stempeln.size; gestempelt = plan.stempeln;
+    return stempeln.size ? { ...cur, team: cur.team.map(e => (stempeln.has(e.id) ? { ...e, deaktiviertAm: iso } : e)) } : cur;
+  });
+  if (bericht.gestempelt) await protokolliere(teamName, gestempelt.map(id => ({ op: 'geaendert' as const, id, felder: ['deaktiviertAm'] })), { art: 'system' });
+  if (geloescht.length) await protokolliere(kapaName, geloescht.map(id => ({ op: 'geloescht' as const, id })), { art: 'system' });
+  return bericht;
+}
+
+/** Meilensteine (Business) und Jahresziele mit `personen` — nur Verweise für die Auskunft. */
+async function postenMitPersonen() {
+  const [ms, ziele] = await Promise.all([loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'), loadJson<ZieleDatei>('ziele')]);
+  return [
+    ...(ms?.meilensteine ?? []).filter(m => meilensteinSpace(m) === 'business' && m.personen?.length).map(m => ({ art: 'meilenstein' as const, id: m.id, titel: m.titel, personen: m.personen })),
+    ...(ziele?.jahr ?? []).filter(z => z.space !== 'privat' && z.personen?.length).map(z => ({ art: 'ziel' as const, id: z.id, titel: z.titel, personen: z.personen })),
+  ];
+}
+
+/** Anzeigenamen der Mandate/Kunden (CRM) — nur für die Auskunft. */
+async function bezugNamenLaden(): Promise<Record<string, string>> {
+  const crm = await sicher(() => ladeCrm(), null);
+  const namen: Record<string, string> = {};
+  for (const m of mandatKurzListe(crm)) namen[m.id] = mandatLabel(m);
+  for (const f of crm?.firmen ?? []) namen[f.id] = f.name;
+  return namen;
+}
+
+/**
+ * Art. 15 — Kapazitätsdaten einer Person des Teams (auch deaktiviert). Rechte entscheidet die Route; hier: unbekannt → null.
+ * Team des Haushalts des Inhabers (Konten + gepflegte Personen, nie Platzhalter).
+ */
+export async function kapaAuskunftLaden(personId: string, jetzt = new Date()): Promise<{ auskunft: KapaAuskunft; konto: boolean } | null> {
+  const h = await haushaltDesInhabers();
+  const { team } = await teamStand(h);
+  const e = team.find(t => t.quelle !== 'platzhalter' && t.id === personId);
+  if (!e) return null;
+  const [datei, posten, bezugNamen] = await Promise.all([ladeKapaDatei(), postenMitPersonen(), bezugNamenLaden()]);
+  return { auskunft: kapaAuskunft({ eintrag: e, datei, posten, bezugNamen, jetzt: jetzt.toISOString() }), konto: e.quelle === 'konto' };
+}
+
+/**
+ * Für die Kontakt-Auskunft (lib/crm/person-bestaende.ts): Team-Personen OHNE Konto, deren E-Mail eine der Adressen der
+ * Person ist — deren Kapazitätsdaten als Kopie. Konten nie (die Person sieht ihre Daten selbst). Fehler → leer.
+ */
+export async function kapaAuskunftFuerAdressen(adressen: readonly string[], jetzt = new Date()): Promise<KapaAuskunft[]> {
+  const a = new Set(adressen.map(x => x.trim().toLowerCase()).filter(Boolean));
+  if (!a.size) return [];
+  try {
+    const { team } = await teamStand(await haushaltDesInhabers());
+    const treffer = team.filter(t => t.quelle === 'daten' && t.email && a.has(t.email.toLowerCase()));
+    if (!treffer.length) return [];
+    const [datei, posten, bezugNamen] = await Promise.all([ladeKapaDatei(), postenMitPersonen(), bezugNamenLaden()]);
+    return treffer.map(e => kapaAuskunft({ eintrag: e, datei, posten, bezugNamen, jetzt: jetzt.toISOString() }));
+  } catch { return []; }
 }

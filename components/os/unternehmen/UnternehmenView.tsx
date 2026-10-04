@@ -5,13 +5,15 @@
 // Cap-Table, Beteiligungen, Verträge mit Fristen, Unterlagen. Leitregel 80/20: klar, seriös, investor-tauglich.
 //   Übersicht   Reiter Gesellschaften · Struktur („wer hält wen“) · Archiv (ruhend/aufgelöst) · Papierkorb
 //   Detail      ?g=<kennung>&r=<reiter> (Detail.tsx)
+//   Ablage      ?ablage=<kennung>[&v=<vertrag>] (DSGVO-Nachtrag 04.10.): Unterlagen einer Gesellschaft bzw. eines Vertrags — auch
+//               nach dem endgültigen Löschen (Aufbewahrung § 257 HGB); der Bezug steht dann als „„Name“ (gelöscht)“ da.
 // Löschen/Archivieren über den gemeinsamen Baustein ZeileAktionen (Handy wischen, Rechner Knöpfe am Rand), Rückfrage statt
 // window.confirm, „Rückgängig“ für 10 s. Daten: GET/POST/PATCH /api/gesellschaften (nur Haushalt des Inhabers).
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Building2, Network, Trash2 } from 'lucide-react';
+import { Building2, FileText, Network, Trash2 } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT, SCHRIFT, RAND } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leerzustand, Leer, Reiter, Pillen, Feldzeile, eingabe, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import { zufallsUuid } from '@/lib/kennung';
@@ -20,9 +22,11 @@ import { istGesellschaft } from '@/lib/einheiten';
 import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
 import {
   GES_STATUS, RECHTSFORMEN, istArchiviertStatus, statusLabel, rechtsformLabel, strukturBaum, gesellschafterKurz, verweiseAnzahl, verweiseSatz,
+  geloeschterBezug, geloeschtText,
   type GesStatus, type Rechtsform, type StrukturKnoten,
 } from '@/lib/gesellschaften/modell';
-import { bezugName, klein, type GAnzeige, type RegisterDaten } from './teile';
+import type { DateiEintrag } from '@/lib/dateien/regeln';
+import { bezugName, klein, tagText, UnterlagenBleiben, type GAnzeige, type RegisterDaten } from './teile';
 import { Detail } from './Detail';
 
 type Sicht = 'liste' | 'struktur' | 'archiv' | 'papierkorb';
@@ -45,7 +49,7 @@ export function UnternehmenView() {
     try {
       const r = await fetch('/api/gesellschaften?papierkorb=1', { cache: 'no-store' });
       const d = await r.json().catch(() => null);
-      if (d?.ok) { setDaten({ gesellschaften: d.gesellschaften, personen: d.personen, namen: d.namen }); setFehler(null); }
+      if (d?.ok) { setDaten({ gesellschaften: d.gesellschaften, personen: d.personen, namen: d.namen, geloescht: d.geloescht ?? [] }); setFehler(null); }
       else setFehler(d?.fehler ?? `Antwort ${r.status}.`);
     } catch { setFehler('Keine Verbindung.'); }
   }, []);
@@ -68,13 +72,19 @@ export function UnternehmenView() {
     );
   }
 
+  const ablage = params.get('ablage');
+  if (ablage) return <AblageAnsicht key={`${ablage}:${params.get('v') ?? ''}`} gesellschaftId={ablage} vertragId={params.get('v') ?? undefined} zurueck={() => geh({ s: sicht })} />;
+
   const g = offen ? daten.gesellschaften.find(x => x.id === offen) : undefined;
+  const weg = offen && !g ? geloeschterBezug(daten, 'gesellschaft', offen) : undefined;
   if (offen && g) return <Detail key={g.id} g={g} daten={daten} reiter={params.get('r') ?? 'steckbrief'} onReiter={r => geh({ g: g.id, r })} zurueck={() => geh({ s: sicht })} onNeu={ersetzen} neuLaden={laden} oeffne={id => geh({ g: id })} />;
 
   return (
     <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Anteile und Verträge — eine Quelle für Planung, Finanzen und Markttraktion."
       rechts={!neu && <Knopf haupt onClick={() => setNeu(true)}>+ Gesellschaft</Knopf>}>
-      {offen && !g && <Hinweis art="info" titel="Nicht gefunden">Diese Gesellschaft gibt es im Register nicht (mehr).</Hinweis>}
+      {offen && !g && (weg
+        ? <Hinweis art="info" titel={geloeschtText(weg)}>Diese Gesellschaft wurde endgültig gelöscht. <UnterlagenBleiben href={WEG.unterlagen(weg.id)} /></Hinweis>
+        : <Hinweis art="info" titel="Nicht gefunden">Diese Gesellschaft gibt es im Register nicht (mehr).</Hinweis>)}
       {neu && <Anlegen onFertig={async id => { setNeu(false); await laden(); if (id) geh({ g: id }); }} />}
       <div className="ui-reiter-zeile"><Reiter liste={SICHTEN} aktiv={sicht} onWahl={s => geh({ s })} ariaLabel="Ansicht" /></div>
       {sicht === 'struktur' ? <Struktur daten={daten} oeffne={id => geh({ g: id })} /> : <Uebersicht daten={daten} sicht={sicht} oeffne={id => geh({ g: id })} neuLaden={laden} />}
@@ -149,7 +159,7 @@ function Uebersicht({ daten, sicht, oeffne, neuLaden }: { daten: RegisterDaten; 
     });
   };
   const endgueltig = (g: GAnzeige) => fragen({
-    titel: `„${g.name}“ endgültig löschen?`, text: 'Das lässt sich nicht rückgängig machen. Unterlagen in der Ablage bleiben erhalten.',
+    titel: `„${g.name}“ endgültig löschen?`, text: <>Das lässt sich nicht rückgängig machen. <UnterlagenBleiben href={WEG.unterlagen(g.id)} /></>,
     wahl: [{ label: 'Endgültig löschen', ton: 'gefahr', tun: async () => { if (await handeln(g, 'endgueltig')) melden(`„${g.name}“ endgültig gelöscht`); } }],
   });
 
@@ -184,6 +194,51 @@ function Uebersicht({ daten, sicht, oeffne, neuLaden }: { daten: RegisterDaten; 
       {dialog}
       {hinweis}
     </>
+  );
+}
+
+/**
+ * Unterlagen einer Gesellschaft bzw. eines Vertrags aus der Ablage (DSGVO-Nachtrag 04.10.) — auch nach dem endgültigen Löschen:
+ * die Unterlagen bleiben (Aufbewahrungspflicht), der Bezug steht lesbar als „„Name“ (gelöscht)“ statt eines toten Links.
+ */
+function AblageAnsicht({ gesellschaftId, vertragId, zurueck }: { gesellschaftId: string; vertragId?: string; zurueck: () => void }) {
+  type Bezug = { gesellschaft: { name: string; geloescht: boolean } | null; vertrag?: { titel: string; geloescht: boolean } };
+  const [stand, setStand] = useState<{ eintraege: DateiEintrag[]; bezug: Bezug } | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  useEffect(() => {
+    const u = new URLSearchParams({ id: gesellschaftId, ...(vertragId ? { vertrag: vertragId } : {}) });
+    void fetch(`/api/gesellschaften/unterlagen?${u}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null)
+      .then(d => { if (d?.ok) { setStand({ eintraege: d.eintraege, bezug: d.bezug }); setFehler(null); } else setFehler(d?.fehler ?? 'Ablage nicht erreichbar.'); });
+  }, [gesellschaftId, vertragId]);
+  const b = stand?.bezug;
+  const gText = !b?.gesellschaft ? 'Gesellschaft (gelöscht)' : b.gesellschaft.geloescht ? geloeschtText({ titel: b.gesellschaft.name }) : b.gesellschaft.name;
+  return (
+    <Seite titel="Unterlagen" unter="Aus der Dateiablage des Haushalts — verschlüsselt, nur der Haushalt des Inhabers."
+      rechts={<Knopf leise onClick={zurueck}>Zum Register</Knopf>}>
+      {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
+      <Karte>
+        <Ueberschrift>Bezug</Ueberschrift>
+        <div style={{ display: 'grid', gap: 6, fontSize: TYP.body, color: C.ink }}>
+          <span>Gesellschaft: {b?.gesellschaft && !b.gesellschaft.geloescht
+            ? <Link href={WEG.unternehmen(gesellschaftId, 'unterlagen')} style={{ color: 'inherit' }}>{gText} ›</Link>
+            : <span style={{ color: C.inkDim }}>{stand ? gText : '…'}</span>}</span>
+          {vertragId && <span>Vertrag: {b?.vertrag && !b.vertrag.geloescht && b.gesellschaft && !b.gesellschaft.geloescht
+            ? <Link href={WEG.unternehmen(gesellschaftId, 'vertraege')} style={{ color: 'inherit' }}>„{b.vertrag.titel}“ ›</Link>
+            : <span style={{ color: C.inkDim }}>{b?.vertrag ? (b.vertrag.geloescht ? geloeschtText(b.vertrag) : `„${b.vertrag.titel}“`) : '…'}</span>}</span>}
+        </div>
+      </Karte>
+      <Karte>
+        <Ueberschrift>Unterlagen</Ueberschrift>
+        {!stand ? <Leer>{fehler ? 'nicht geladen' : 'lädt …'}</Leer> : !stand.eintraege.length ? <Leer symbol={<FileText size={16} />}>Keine Unterlagen in der Ablage.</Leer> : (
+          <Liste>{stand.eintraege.map(e => (
+            <a key={e.id} href={`/api/crm/dateien?id=${encodeURIComponent(e.id)}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Zeile titel={e.titel || e.datei?.name || 'Unterlage'} unter={[e.art === 'vertrag' ? 'Vertrag' : 'Unterlage', tagText(e.hochgeladenAm.slice(0, 10)), e.datei?.name].filter(Boolean).join(' · ')} rechts={<span style={klein}>herunterladen ›</span>} />
+            </a>
+          ))}</Liste>
+        )}
+        <div style={{ ...klein, marginTop: 8 }}>Aufbewahrungspflicht: Unterlagen bleiben auch nach dem endgültigen Löschen einer Gesellschaft oder eines Vertrags in der Ablage (§ 257 HGB, § 147 AO — 6 bzw. 10 Jahre).</div>
+      </Karte>
+    </Seite>
   );
 }
 

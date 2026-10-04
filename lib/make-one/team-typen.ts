@@ -27,6 +27,12 @@ export interface TeamEintrag {
   farbe?: string;
   /** Kern-Team oder extern/beratend (Standard: kern). */
   kreis?: 'kern' | 'partner';
+  /**
+   * Seit wann die Person deaktiviert ist (ISO) — setzt NUR der Server (Team-Route bzw. Morgenlauf), nie der Browser
+   * (DSGVO-Nachtrag 04.10.): 30 Tage danach löscht der Morgenlauf ihre Kapazitätsdaten (lib/kapazitaet/aufraeumen.ts).
+   * Fehlt bei alten deaktivierten Einträgen (Kompatibilitätsmodus) — dann stempelt der nächste Morgenlauf „jetzt“.
+   */
+  deaktiviertAm?: string;
 }
 
 /** Eine Person im Team, wie Leser sie bekommen. */

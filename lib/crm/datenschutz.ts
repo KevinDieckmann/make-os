@@ -82,6 +82,10 @@ export const LOESCHREGELN = [
   { id: 'rechnung', titel: 'Rechnungen und Buchungsbelege', frist: '8 Jahre ab Jahresende', aktion: 'Sperren', norm: '§ 147 AO, § 257 HGB' },
   // DSGVO-Prüfung 04.10.: die Papierkörbe (CRM-Listen, Produkte, Aufgaben, Gesellschafts-Register) — Art. 15/17 erfassen sie mit.
   { id: 'papierkorb', titel: 'Papierkorb (CRM-Listen, Produkte, Aufgaben, Gesellschafts-Register)', frist: '30 Tage nach dem Löschen', aktion: 'Löschen (Morgenlauf; mit Verweisen bleibt der Eintrag im Papierkorb)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO' },
+  // DSGVO-Nachtrag 04.10. (Kevin): Kapazitätsdaten deaktivierter Team-Personen (lib/kapazitaet/aufraeumen.ts).
+  { id: 'kapazitaet-team', titel: 'Kapazität deaktivierter Team-Personen (Grundwert, Urlaub/Blöcke, Zuweisungen, Einwilligung Erholung)', frist: '30 Tage nach dem Deaktivieren', aktion: 'Löschen (Morgenlauf; Reaktivieren davor erhält alles)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO, § 26 BDSG' },
+  // DSGVO-Nachtrag 04.10. (Kevin): Unterlagen gelöschter Gesellschaften/Verträge bleiben (Aufbewahrungspflicht).
+  { id: 'unterlagen-register', titel: 'Unterlagen einer endgültig gelöschten Gesellschaft bzw. eines Vertrags (Dateiablage)', frist: '6 bzw. 10 Jahre ab Jahresende', aktion: 'Aufbewahren (Ablage, Bezug „(gelöscht)“ bleibt lesbar)', norm: '§ 257 HGB, § 147 AO' },
 ] as const;
 
 /** Startbestand für das Verzeichnis (Art. 30) — MAKE OS, nicht Operations. Wird einmal angelegt, danach gepflegt. */
@@ -190,6 +194,16 @@ export const VV_ORGANISATION_NAMEN: Record<string, string> = {
 };
 export const VV_ORGANISATION_IDS = Object.keys(VV_ORGANISATION_NAMEN);
 
+/** Löschfrist der Kapazitätsplanung (seit dem DSGVO-Nachtrag 04.10. mit der 30-Tage-Frist für deaktivierte Team-Personen). */
+const KAPA_LOESCHFRIST = 'bis zur Löschung durch Person bzw. Inhaber; Team-Personen ohne Konto: 30 Tage nach dem Deaktivieren automatisch (Morgenlauf; Reaktivieren davor erhält alles); Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s)';
+/** Löschfrist des Registers (DSGVO-Nachtrag 04.10.: Unterlagen bleiben nach dem endgültigen Löschen in der Ablage). */
+const GES_LOESCHFRIST = 'Papierkorb 30 Tage; Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Unterlagen in der Dateiablage bleiben auch nach dem endgültigen Löschen einer Gesellschaft bzw. eines Vertrags erhalten (Aufbewahrungspflicht, Bezug als „(gelöscht)“ lesbar); Art. 17 einer Person tilgt ihre Kennung (auch im Papierkorb), Cap-Table und Vertrag bleiben';
+/** Fassungen, die der Nachtrag ersetzt, solange niemand sie von Hand geändert hat (vorhandene Verzeichnisse). */
+const ALTE_FASSUNGEN: Record<string, Partial<Record<keyof Verarbeitung, { alt: string; neu: string }>>> = {
+  'vv-gesellschaften': { loeschfrist: { alt: 'Papierkorb 30 Tage; Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Art. 17 einer Person tilgt ihre Kennung (auch im Papierkorb), Cap-Table und Vertrag bleiben', neu: GES_LOESCHFRIST } },
+  'vv-kapazitaet': { loeschfrist: { alt: 'bis zur Löschung durch Person bzw. Inhaber; Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s); offen: Einträge deaktivierter Team-Personen', neu: KAPA_LOESCHFRIST } },
+};
+
 export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
   const stand = tagVon(jetzt);
   const toms = 'Zugang nur im Haushalt des Inhabers mit Anmeldung (zweiter Faktor), Trennung serverseitig (fremder Haushalt/Testkunde → 403), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, nächtliche verschlüsselte Sicherung, Änderungsprotokoll nur mit Kennungen/Feldnamen (nie Werte)';
@@ -202,7 +216,7 @@ export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
       rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO (Gesellschafterliste § 40 GmbHG, Aufbewahrung § 257 HGB / § 147 AO), lit. b (Verträge mit der Person), lit. f (Führung der eigenen Gesellschaften)',
       empfaenger: 'Kevin, Malin; Hetzner (Hosting, Auftragsverarbeitung); Anthropic (ZOE liest das Register auf Frage — nur Kennungen, keine Kontaktnamen); Glocke/Telegram nur neutral („Eine Vertragsfrist naht“)',
       drittland: 'Anthropic (USA) nur für ZOE: Standardvertragsklauseln / Data Privacy Framework — prüfen',
-      loeschfrist: 'Papierkorb 30 Tage; Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Art. 17 einer Person tilgt ihre Kennung (auch im Papierkorb), Cap-Table und Vertrag bleiben',
+      loeschfrist: GES_LOESCHFRIST,
       toms, verantwortlich: UG_NAME, stand,
     },
     {
@@ -213,15 +227,28 @@ export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
       rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Arbeitszeitplanung im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (realistische Planung); Erholungs-Faktor: Art. 9 Abs. 2 lit. a (ausdrückliche, widerrufbare Einwilligung der Person in der Kapazität) — Einwilligungstext und Freiwilligkeit bei Beschäftigten (§ 26 Abs. 2 BDSG) prüfen',
       empfaenger: 'Personen des Haushalts (Einzelwerte der Erholung und Ausnahme-Titel nur die Person selbst); Hetzner (Hosting)',
       drittland: 'keines',
-      loeschfrist: 'bis zur Löschung durch Person bzw. Inhaber; Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s); offen: Einträge deaktivierter Team-Personen',
+      loeschfrist: KAPA_LOESCHFRIST,
       toms: `${toms}; Privatfilter serverseitig (fuerBetrachter), Index ohne Gesundheits-Ableitung (ohneGesundheit)`, verantwortlich: UG_NAME, stand,
     },
   ];
 }
 
-/** Fehlende Verarbeitungen „Gesellschafts-Register“/„Kapazität“ ergänzen (idempotent; vorhandene — auch geänderte — bleiben). */
+/**
+ * Fehlende Verarbeitungen „Gesellschafts-Register“/„Kapazität“ ergänzen (idempotent; vorhandene — auch geänderte — bleiben).
+ * DSGVO-Nachtrag 04.10.: eine unveränderte alte Fassung (`ALTE_FASSUNGEN`) wird auf die neue gehoben — von Hand Geändertes bleibt.
+ */
 export function verarbeitungenOrganisationNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
   const da = new Set(vorhanden.map(v => v.id));
   const dazu = verarbeitungenOrganisation(jetzt).filter(v => !da.has(v.id));
-  return dazu.length ? [...vorhanden, ...dazu] : [...vorhanden];
+  let gehoben = false;
+  const neu = vorhanden.map(v => {
+    const f = ALTE_FASSUNGEN[v.id];
+    if (!f) return v;
+    let x = v;
+    for (const [k, w] of Object.entries(f) as [keyof Verarbeitung, { alt: string; neu: string }][]) {
+      if (x[k] === w.alt) { x = { ...x, [k]: w.neu }; gehoben = true; }
+    }
+    return x;
+  });
+  return dazu.length || gehoben ? [...neu, ...dazu] : [...vorhanden];
 }

@@ -51,7 +51,7 @@ export function Detail({ g, daten, reiter, onReiter, zurueck, onNeu, neuLaden, o
       {aktiv === 'organe' && <OrganeReiter g={g} daten={daten} schreibe={sw.schreibe} />}
       {aktiv === 'beteiligungen' && <BeteiligungenReiter g={g} daten={daten} schreibe={sw.schreibe} oeffne={oeffne} />}
       {aktiv === 'vertraege' && <VertraegeReiter g={g} daten={daten} schreibe={sw.schreibe} />}
-      {aktiv === 'unterlagen' && <UnterlagenReiter g={g} />}
+      {aktiv === 'unterlagen' && <UnterlagenReiter g={g} daten={daten} />}
       {aktiv === 'absender' && fest && <Absender nur={g.id as 'kdc' | 'kdv' | 'ug'} onGeaendert={() => void neuLaden()} />}
     </Seite>
   );

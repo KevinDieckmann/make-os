@@ -25,6 +25,9 @@ Anwendung“ — den gibt es noch nicht. Abschnitt 4 ist ein **Entwurf** dafür;
 - Art. 17: Kennung → „[gelöscht]“ überall im Register (auch Papierkorb/Archiv, auch Freitext); Cap-Table und Vertrag bleiben
   (eigene Geschäftsunterlagen, Art. 17 Abs. 3 lit. b/e). Ein getilgter Eintrag bleibt speicherbar.
 - Löschfrist: Papierkorb 30 Tage (Morgenlauf); Verträge/Beschlüsse 6 bzw. 10 Jahre.
+- Unterlagen (Nachtrag 04.10., Kevin): beim endgültigen Löschen einer Gesellschaft bzw. eines Vertrags **bleiben** sie in der Dateiablage
+  (§ 257 HGB, § 147 AO); die Rückfrage sagt das mit Link „ansehen“ (Ablage gefiltert auf Gesellschaft/Vertrag). Das Register vermerkt
+  Gelöschtes (`geloescht`: Kennung, Name/Titel, Tag, Datei-Kennungen) — Bezüge bleiben als „(gelöscht)“ lesbar; Art. 17 tilgt auch dort.
 - Erinnerung vor „kündigen bis“: Glocke + Aufgabe; Telegram (wenn später an) nur „Eine Vertragsfrist naht — Details in MAKE OS“.
 
 **Kapazität** (`kapazitaet--<haushalt>`, Planung › Kapazität) — Kategorie *Beschäftigtendaten*, Ableitung aus *Art. 9*
@@ -36,7 +39,11 @@ Anwendung“ — den gibt es noch nicht. Abschnitt 4 ist ein **Entwurf** dafür;
   dann nur als gemeinsamer Team-Faktor auf die nächsten 14 Tage. Einzelwert sieht nur die Person. **Nie** im Business-Index
   (die Kennzahl „Kopf & Energie“ ist dort entfernt), nie an ZOE, nie in Verlauf/Protokollen.
 - Rechtsgrundlage: Art. 6 Abs. 1 lit. b / § 26 BDSG, lit. f; Erholung Art. 9 Abs. 2 lit. a (Einwilligung, widerrufbar).
-- Art. 15: `GET /api/kapazitaet` (eigene Werte); Team-Personen ohne Konto über den Inhaber.
+- Art. 15: `GET /api/kapazitaet` (eigene Werte), als Datei `GET /api/kapazitaet?auskunft=<person>` (Konto: nur die Person selbst;
+  Team-Person ohne Konto: der Inhaber, auch deaktiviert) und in der Kontakt-Auskunft (`personAufzaehlen.kapazitaet`, über die E-Mail).
+- Löschfrist (Nachtrag 04.10., Kevin): Team-Personen ohne Konto — **30 Tage nach dem Deaktivieren** löscht der Morgenlauf Grundwert,
+  Urlaub/Blöcke, Zuweisungen und die Einwilligung (`lib/kapazitaet/aufraeumen.ts`); den Zeitpunkt (`deaktiviertAm`) setzt nur der
+  Server, Reaktivieren davor erhält alles. Offen: Einträge eines entfernten Kontos (Konten werden nicht deaktiviert).
 
 **Papierkörbe** (CRM-Listen, Produkte, Aufgaben, Gesellschafts-Register): 30 Tage, dann endgültig (Morgenlauf; mit Verweisen
 bleibt der Eintrag). Für alle Leser unsichtbar — **aber** Art. 15/17 und das Zusammenführen lesen den Bestand mit Papierkorb.
@@ -48,9 +55,10 @@ auch für `?nur=kennzahlen`.
 (eigenes Gmail; Apple/M365 nur der Inhaber).
 
 ## 3. Offene Punkte (Entscheidung Kevin)
-Siehe Bericht der Prüfung vom 04.10. — u. a. Einwilligungstext Erholung (Freiwilligkeit bei Beschäftigten), Löschweg für
-Kapazitäts-Einträge deaktivierter Team-Personen, Unterlagen nach endgültigem Löschen einer Gesellschaft, eigener
-Datenschutzhinweis der Anwendung (Abschnitt 4).
+Siehe Bericht der Prüfung vom 04.10. — u. a. Einwilligungstext Erholung (Freiwilligkeit bei Beschäftigten; für Kunden-Instanzen mit
+Angestellten gegenlesen), eigener Datenschutzhinweis der Anwendung (Abschnitt 4, erst Anwalt). **Entschieden und gebaut (04.10. spät):**
+Kapazität deaktivierter Team-Personen 30 Tage nach dem Deaktivieren löschen + Art.-15-Auskunft; Unterlagen nach endgültigem Löschen
+einer Gesellschaft/eines Vertrags behalten, mit Hinweis und Link.
 
 ## 4. Entwurf: Datenschutzhinweis der Anwendung (nicht veröffentlicht)
 

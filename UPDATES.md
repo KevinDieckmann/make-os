@@ -4,6 +4,34 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## DSGVO-Nachtrag: Kapazität deaktivierter Team-Personen + Unterlagen gelöschter Gesellschaften/Verträge (04.10.2026 spät, nur lokal — Branch `dsgvo-2`; UMBAU_ABEND_0410.md › 12)
+
+Kevin 04.10.: „Team-Personen: Kapazitätsdaten 30 Tage nach Deaktivieren automatisch löschen + Art.-15-Export“ und „Unterlagen beim
+endgültigen Löschen von Gesellschaft/Vertrag: behalten (§ 257 HGB) + deutlicher Hinweis mit Link in der Rückfrage“.
+
+- **Deaktivieren:** Team-Karte fragt vorher („Kapazitätsdaten werden 30 Tage nach dem Deaktivieren automatisch gelöscht — reaktivierst du
+  sie vorher, bleibt alles“). `TeamEintrag.deaktiviertAm` (optional) setzt NUR der Server (`deaktivierungStempeln` in der Team-Route);
+  Reaktivieren nimmt ihn weg. Die Zeile zeigt „deaktiviert seit … · Kapazitätsdaten werden ab … gelöscht“ und „Auskunft“.
+- **Morgenlauf-Schritt „Kapazität deaktivierter Personen“** (`kapaDeaktivierteAufraeumen`, lib/kapazitaet/aufraeumen.ts + server.ts):
+  nach 30 Tagen fallen Grundwert, Urlaub/Blöcke, Zuweisungen und die Einwilligung `erholungAm` der Person aus `kapazitaet--<haushalt>`
+  (der Team-Eintrag selbst bleibt — Delegiert-Marker). Idempotent, in der Sperre des Team-Bestands, Protokoll „System“ (nur Kennungen).
+  Alte deaktivierte Einträge ohne Zeitpunkt stempelt der erste Lauf mit „jetzt“ — die Frist beginnt dann.
+- **Art. 15:** `GET /api/kapazitaet?auskunft=<person>` als JSON-Datei (Konto: nur die Person selbst; Team-Person ohne Konto: nur der
+  Inhaber, auch deaktiviert) — Knöpfe in Kapazität (je Person) und Team-Karte; dazu `kapazitaet` in der Kontakt-Auskunft
+  (`personAufzaehlen`, Zuordnung über die E-Mail der Team-Person).
+- **Unterlagen:** Rückfrage vor „endgültig löschen“ (Gesellschaft, Vertrag): „Die Unterlagen bleiben in der Ablage erhalten
+  (Aufbewahrungspflicht) — ansehen ›“ → `WEG.unterlagen(g, v?)` = `/os/unternehmen?ablage=…&v=…` (neue Ansicht „Unterlagen“, auch für
+  Gelöschtes). Das Register merkt sich Gelöschtes (`RegisterDatei.geloescht`: Kennung, Name/Titel, Tag, Datei-Kennungen; `geloeschtVermerken`
+  in `registerAendern` und im Papierkorb-Morgenlauf); Links auf eine gelöschte Gesellschaft (Glocke, Aufgabe) zeigen „„Name“ (gelöscht)“
+  mit „ansehen“, Unterlagen nennen „zu „Titel“ (gelöscht)“. `GET /api/gesellschaften/unterlagen?id=…&vertrag=…` filtert auf einen Vertrag.
+- **Doku:** Speicher-Register (`kapazitaet--*`, `team--*`, `gesellschaften--*`), Löschkonzept (`LOESCHREGELN` + `kapazitaet-team`,
+  `unterlagen-register`), Verzeichnis `vv-kapazitaet`/`vv-gesellschaften` (eine unveränderte alte Fassung wird gehoben, von Hand
+  Geändertes bleibt), DATENSCHUTZ_APP.md.
+- **Tests:** `tests/kapazitaet-loeschfrist.test.ts`, `tests/gesellschaften-unterlagen-bleiben.test.ts`.
+- **Rückweg:** Der alte Stand verwirft `deaktiviertAm` beim nächsten Speichern eines Team-Eintrags (sonst nichts kaputt) und ignoriert
+  `geloescht` im Register (bleibt beim Schreiben erhalten). Bereits gelöschte Kapazitätsdaten kommen nicht zurück (gewollt) — vor dem
+  Rückweg nichts zu tun.
+
 ## Abschlussprüfung Teil 1: Verbindungen & Standards (04.10.2026 spät, nur lokal — Branch `pruefung-verbindungen`)
 
 Kevin 04.10.: „kein Datenpunkt geht ins Leere, alles ist verbunden.“
