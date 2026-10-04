@@ -133,9 +133,24 @@ Legende (je Bündel ein Knopf „eine Ebene tiefer“), Engstellen als aufklappb
 | Farben | `FADEN_FARBEN`, `LICHT_GLAS` (design.ts), `THEMEN` (modell.ts) | Ziel je Space fortlaufend (Business orange → lila → pink, Privat grün → türkis → violett — nie Gelb/Rot, die gehören Engstellen und Zuständen; feste Töne `FADEN_TOENE`), Themen in Bereichsfarben, „ohne Ziel“ Zeit-Cyan, „Belegt“ Grau |
 | Website | `website/js/lichtfaeden.js` (erzeugt), `website/js/faden.js` | Granat/Smaragd, Charakter je Kapitel |
 
-**Parameter:** Fäden je Bündel ∝ √Last (3 … 26; Blatt-Ebene 1 … 4), höchstens 160 je Leinwand (Handy 80) · Stützpunkt alle 6 px (Handy 8) · Strich 0,8 px ·
-Deckkraft 0,24 (additiv) · Tempo 0,00028/ms · Ruhe-Spreizung 12 % · Auffächern 720 ms · höchstens 7 Bündel je Ebene (+ „Weitere“). Band 150 px (Handy 120),
-Markierungen 28 px (Handy 44 px) in höchstens 4 (Handy 2) Reihen. Dichte: Gauß σ = 2 Wochen, gesättigt je Ansicht.
+**Parameter (Strahl v3, 04.10.):** Fäden je Bündel ∝ √Last (5 … 44; Blatt-Ebene 2 … 6), höchstens 300 je Leinwand (Handy 120) · Stützpunkt alle 6 px (Handy 8) ·
+Strich 0,6 px · Deckkraft 0,2 (additiv) · Tempo 0,00028/ms · Ruhe-Spreizung 12 % · Auffächern 720 ms · Aufbau 1,9 s · Partikel alle 10 px (jeder 2. Faden; Handy
+14 px, jeder 3.) · Glühen über einen Schein-Puffer (¼ Größe, Weichzeichner 2,5 px, Stärke 0,55; Handy 0,45) · je Faden leiser ab 150 Fäden je Leinwand (√150/n) · höchstens 7 Bündel je Ebene (+ „Weitere“). Band 150 px
+(Handy 120), Markierungen 28 px (Handy 44 px) in höchstens 4 (Handy 2) Reihen. Dichte: Gauß σ = 2 Wochen, gesättigt je Ansicht; Spitzen: ungeglättete Last,
+gesättigt, hoch 1,6, erst über der Schwelle 0,4 (`spitze` je Woche — nur deutlich volle Wochen schlagen aus).
+
+**Strahl v3 (04.10., Kevin: „Der Strahl läuft im Grunde genommen immer von links nach rechts — guck dir den Verlauf an. Ich will diese Klarheit überall drin
+haben.“)** — Vorbild: Data-Viz-Strahl mit hunderten feiner Fäden.
+1. **Fließrichtung links → rechts:** jede Welle (Fäden und Leitkurven) wandert in Zeitrichtung; Partikel laufen entlang der Fäden nach rechts.
+2. **Aufbau:** beim Öffnen wachsen die Fäden in 1,9 s von links ein, jeder etwas versetzt, ihre Spitzen leuchten; ein leises Licht läuft der Front voraus;
+   Verbinder, HEUTE und Engstellen erscheinen, wenn die Front sie erreicht.
+3. **Zukunft unsicher:** rechts von HEUTE fransen die Fäden aus (außen stärker, eigene Welle) und werden blasser; die ferne Zukunft wird leiser, die Vergangenheit
+   bleibt gedämpft, HEUTE leuchtet.
+4. **Spitzen aus der echten Last:** volle Wochen schlagen als scharfe Ausschläge aus (linear zwischen den Wochenmitten — kein Gauß), meist nach oben; die Fäden
+   fächern um die Spitze auf.
+5. **Bühne wie im Vorbild:** Punkt-Textur entlang der Fäden, Glühen an dichten Stellen, dünne helle Mittellinie, gestrichelte Hilfslinien, Markierungen mit
+   abgerundetem Quadrat (Frist/Ziel) bzw. Raute (Meilenstein) + Label, leises Netz-Motiv oben rechts (nur Rechner), das langsam treibt. Perspektive bewusst aus
+   (Lesbarkeit, Trefferflächen der Bündel). 60 fps am Rechner, Handy leichter; „Bewegung reduzieren“ = Standbild; pausiert außer Sicht.
 
 **Regeln:** 1. Bewegung nur als ruhiges Fließen und beim Ebenenwechsel; bei `prefers-reduced-motion` ein Standbild ohne Übergang. 2. Lauf pausiert
 außerhalb des Bildes und im verborgenen Tab. 3. Zeichnen < 4 ms je Bild am Rechner. 4. Vergangenes gedämpft, HEUTE leuchtet, Engstellen als ruhige
@@ -161,3 +176,36 @@ Reine Darstellung und Struktur; Funktion, Daten und Abgleich (iCloud/Google/Gmai
 **Inbox:** Liste, Gmail-Thread, Antwort-Editor (`feld`, 180 px), Meldungen als `Hinweis`; Thread bricht lange Adressen um (kein seitlicher Überlauf), das Mehr-Menü ist eine Fläche mit ganzen Knöpfen, Einzug unter der Zeile am Handy 4 px statt 22.
 
 **Messung (Sandbox, erfundene Daten, 375 px, 42 Ansichten, vorher → nachher):** Tippziele < 44 px — Aufgaben (11 Ansichten) **777 → 0**, Kalender (10) **1.290 → 3**, Inbox (5) **147 → 0**, Shell-Seiten (6) 158 → 75 (Rest: Inhalt von Home/Konto/Heute und das ZOE-Fenster, die anderen Paketen gehören), Regression (10 fremde Seiten) 196 → 106 (nur Shell-Teile besser, nichts schlechter); Eingaben < 16 px Aufgaben 104 → 0, Kalender 23 → 0; seitlicher Überlauf 0 → 0; Konsolenfehler 0 → 0. Vergleich mit Fotos: `scratchpad/design-kern/vergleich.html`.
+
+## Fokus-Signatur (04.10.)
+Kevin: „Diese Akzente will ich überall drauf haben, wo Fokus ist. Mache das Ganze offline, damit wir da nochmal den Standard heben. Dezent, aber immer
+wichtig. Und der Strahl läuft im Grunde genommen immer von links nach rechts.“ Die Fokus-Signatur ist das Licht der Lichtfäden im Kleinen — eine Sprache für
+alles, worauf es gerade ankommt. Bausteine in `components/os/ui/fokus.tsx` (Import wie immer `from '../ui'`), Token `FOKUS_LICHT`/`FOKUS_STIL` in
+`lib/make-one/design.ts`, Zeichner `lib/lichtfaeden/fadenlinie.ts`, reine Reihen `lib/lichtfaeden/reihen.ts`, Wächter `tests/fokus-signatur.test.ts`.
+
+| Baustein | Zweck |
+|---|---|
+| `Karte ton="fokus"` | Die Fokus-Karte: gläserner, minimal hellerer Grund, feine Kante, über die ein Lichtfaden (1 px) alle ~11 s langsam von links nach rechts läuft, weicher Schein. `licht` = Bereichsfarbe (Standard: Fokus-Cyan `FOKUS_LICHT`), `netz` = kleines Netz-Motiv in der Ecke (nur Rechner). |
+| `FadenLinie` | Mini-Strahl (32–56 px) über EINER echten Zeitreihe: Leitkurve = die Werte (linear, Spitzen bleiben spitz), darum ein Bündel feiner Fäden aus demselben Zeichner wie das Band — Aufbau von links, Fließen nach rechts, Ausfransen rechts von `heute`, Partikel. `reihe` + `label` sind Pflicht; der ganze Wert steht im `aria-label` („Fällige Follow-ups, nächste 14 Tage: heute 3, morgen 0, … — zusammen 7, höchstens 3.“). Negative Werte: gestrichelte Nulllinie. `spalten` = Hinweis je Feld beim Zeigen. Höher (110 px) als Band für Verläufe (Liquidität). |
+| `Segmentbalken` | Anteil/Fortschritt als schräge Segmente („//////“ wie im Vorbild), Rolle `progressbar`, füllt sich gestaffelt; `zahl` zeigt die Prozent. |
+| `FokusKante`, `NetzMotiv` | Einzelteile der Fokus-Karte — z. B. die Kante an der aufgeklappten Engstelle (gelb). |
+
+**Regeln:**
+1. **Nur wo Fokus ist** — die Karte oder Zahl, auf die es in dieser Ansicht ankommt (Für dich, Qualifizierungsrunde, Power Hour, Prognose, das Ziel, Unser
+   Fokus). Nie als Schmuck in Listen oder auf jeder Karte.
+2. **Höchstens EINE Fokus-Karte und ZWEI FadenLinien je Ansicht** (Wächter je Datei). Die Fokus-Karte ersetzt dort die getönte Hero-Karte (`ton={farbe}`).
+3. **Nie ohne Daten:** eine FadenLinie zeigt immer eine echte Reihe aus einem vorhandenen Bestand (keine fest eingetippte Zahlenliste, Wächter); ohne gültige
+   Reihe (≥ 2 Werte) zeigt sie nichts; ist die Reihe ganz leer (nur Nullen), blenden die Einbaustellen sie aus.
+4. **Bewegung sehr langsam** (Kante ~11 s, Netz 26 s, Fäden 0,00028/ms, FadenLinie ~30 Bilder je Sekunde), nur `transform`/`opacity` in CSS;
+   „Bewegung reduzieren“ = still (Kante als leise Linie, Fäden als Standbild, Segmente sofort da). Pausiert außer Sicht.
+5. **Farbe:** Fokus-Cyan oder die Bereichsfarbe der Karte; Zustandsfarben (grün/gelb/rot) nur, wenn die Reihe einen Zustand trägt (Liquidität, Index).
+   Kein Farb-Literal in Seiten — `FOKUS_LICHT`, `LEUCHT.*`.
+6. **Daten unverändert:** Reihen kommen aus dem, was die Seite schon lädt (Kartei, Prognose, Zeit, Index-Verlauf, Liquiditäts-Vorschau) — keine neue Route,
+   kein neuer Bestand; private Daten der anderen Person nie in einer Reihe (die Quellen sind schon je Person gefiltert).
+
+**Eingebaut (04.10.):** Markttraktion › Überblick „Für dich“ (Fokus-Karte, FadenLinie fällige Follow-ups 14 Tage) und Traktions-Index (Verlauf 30 Tage) ·
+Qualifizierungsrunde (Fokus-Karte orange, qualifizierte Leads je Woche) · Power Hour (Fokus-Karte, fällig 14 Tage; laufend: Segmentbalken Gespräche) ·
+Deals › Prognose (Fokus-Karte, erwartete Abschlüsse gewichtet je Monat) · Planung › Ziel-Seite (Fokus-Karte in der Ziel-Farbe, Segmentbalken Fortschritt),
+Ziel-Zeilen (Segmentbalken), aufgeklappte Engstelle (Kante) · Zahlen › Liquidität (Verlauf als Lichtfäden-Band), Business- und Privat-Index (Verlauf) ·
+Fokus (Schaufenster: „Unser Fokus“ mit Netz, Regler als Segmentbalken, Fokus-Minuten je Tag, darunter der Strahl v3).
+

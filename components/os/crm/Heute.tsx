@@ -23,7 +23,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP, TIEF, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Knopf, Chip, Leer, LEUCHT, FadenLinie, Segmentbalken } from '../ui';
+import { tagBeschriftung } from '@/lib/lichtfaeden/reihen';
+import { useFaelligReihe } from './fokus-reihen';
 import type { Ergebnis, Aktivitaet } from '@/lib/make-one/crm';
 import type { KanalStatus } from '@/lib/crm/recht';
 import type { TeamTag } from '@/lib/crm/pipeline';
@@ -115,6 +117,8 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   // Offene Follow-ups am selben Termin (F2 M4) gelten als „in Arbeit“ — keine zweite Frage.
   const nachbereiten = useMemo(() => (d ? nachbereitung(api.kontakte ?? [], d.heute, d.ich, terminZeiten, wandzeit(new Date()), api.crm?.stand.followups) : []), [api.kontakte, api.crm, d, terminZeiten]);
 
+  // Fokus-Signatur (04.10.): was in den nächsten 14 Tagen bei dieser Liste fällig wird — dieselbe Follow-up-Liste wie die Karten.
+  const faellig = useFaelligReihe(api, d?.person ?? d?.ich);
   const serie = useMemo(() => {
     const tage = new Set((d?.sitzungen ?? []).map(s => s.datum));
     let n = 0; const t = new Date(`${d?.heute ?? '2000-01-01'}T12:00:00Z`);
@@ -153,7 +157,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   const andere = anderer(d.ich);
   const verantwortet = d.ich === d.verantwortlich;
   const kopf = (
-    <Karte i={0} akzent={fokus ? LEUCHT.gut : lesen ? C.inkDim : undefined}>
+    <Karte i={0} ton={lesen ? undefined : 'fokus'} licht={fokus ? LEUCHT.gut : LEUCHT.business} akzent={lesen ? C.inkDim : undefined}>
       <Ueberschrift farbe={fokus ? LEUCHT.gut : LEUCHT.business} rechts={fokus ? <span style={{ fontSize: 22, fontWeight: 700, color: C.ink }}><Uhr bis={fokus.bis} /></span> : `${d.karten.length} Karten${serie ? ` · Serie ${serie}` : ''}`}>
         {fokus ? `Power Hour läuft · ${nameVon(d.ich)}` : lesen ? `${nameVon(d.person)}s Liste · nur lesen` : `Deine Power Hour · ${nameVon(d.ich)}`}
       </Ueberschrift>
@@ -162,6 +166,10 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {d.kategorien.map(k => { const n = d.karten.filter(x => x.kategorie === k.id).length; return n ? <Chip key={k.id} farbe={KAT_FARBE[k.id]}>{k.label} · {n}</Chip> : null; })}
           </div>
+          {faellig && faellig.reihe.some(v => v > 0) && (
+            <FadenLinie reihe={faellig.reihe} heute={0} label={`Fällige Follow-ups${lesen ? ` von ${nameVon(d.person)}` : ''}, nächste 14 Tage`} beschriftung={tagBeschriftung(faellig.heute)}
+              farbe={LEUCHT.business} hoehe={40} achse={['Heute', 'Fällig · 14 Tage', `+${faellig.reihe.length - 1} T`]} />
+          )}
           {lesen ? (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <Knopf onClick={() => setFuer(null)}>Zurück zu deiner Power Hour</Knopf>
@@ -189,6 +197,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
       ) : (
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center', fontSize: TYP.bedien }}>
           <span>Karte <b>{Math.min(fokus.index + 1, d.karten.length)}</b> von {d.karten.length}</span>
+          <Segmentbalken anteil={(zaehl('gespraech') + zaehl('termin')) / Math.max(1, fokus.ziel.gespraeche)} label={`Gespräche: ${zaehl('gespraech') + zaehl('termin')} von ${fokus.ziel.gespraeche}`} farbe={LEUCHT.gut} segmente={fokus.ziel.gespraeche * 3} breite={120} />
           <span style={{ color: zaehl('gespraech') + zaehl('termin') >= fokus.ziel.gespraeche ? LEUCHT.gut : C.ink }}>Gespräche <b>{zaehl('gespraech') + zaehl('termin')}</b>/{fokus.ziel.gespraeche}</span>
           <span style={{ color: zaehl('termin') >= fokus.ziel.termine ? LEUCHT.gut : C.ink }}>Termine <b>{zaehl('termin')}</b>/{fokus.ziel.termine}</span>
           <span>Versuche <b>{gezaehlt.length}</b></span>

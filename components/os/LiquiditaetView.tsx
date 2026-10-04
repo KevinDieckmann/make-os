@@ -19,7 +19,7 @@ import {
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, auswahl, LEUCHT } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, auswahl, LEUCHT, FadenLinie } from './ui';
 import { finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 import { mandatAusPlanposten, PLANPOSTEN_MANDAT } from '@/lib/crm/mandant-link';
 import { MandantLink } from './crm/MandantLink';
@@ -43,22 +43,18 @@ const datum = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.`;
 /** Stand am Ende der Woche in Zustandsfarbe. */
 const standFarbe = (stand: number) => (stand < 0 ? LEUCHT.kritisch : stand < 2000 ? LEUCHT.achtung : LEUCHT.geld);
 
-/** Verlauf als Balken — jede Woche in ihrer Zustandsfarbe, die letzte leuchtet. */
-function Wochenbalken({ wochen, hoehe, jede }: { wochen: Woche[]; hoehe: number; jede: number }) {
-  const maxAbs = Math.max(1, ...wochen.map(w => Math.abs(w.stand)));
+/**
+ * Verlauf als Lichtfäden-Band (Fokus-Signatur, 04.10. — vorher Balken): der Kontostand je Woche als Bündel feiner Fäden, die von
+ * links (heute) nach rechts wachsen und in die Zukunft ausfransen; unter null liegt die gestrichelte Nulllinie, die Farbe sagt den
+ * Zustand (Engpass rot, knapp gelb, sonst Geld). Zeigen auf eine Woche nennt Stand und Bewegungen (wie vorher an den Balken).
+ */
+function Wochenbalken({ wochen, hoehe, jede, farbe }: { wochen: Woche[]; hoehe: number; jede: number; farbe: string }) {
   return (
     <>
-      <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: hoehe }}>
-        {wochen.map((w, i) => {
-          const farbe = standFarbe(w.stand);
-          const letzte = i === wochen.length - 1;
-          return (
-            <div key={w.von} className="balken-auf" title={`${w.label} (${datum(w.von)}): ${eur(w.stand)}${w.bewegungen.length ? '\n' + w.bewegungen.map(b => `${datum(b.datum)} ${b.betrag > 0 ? '+' : ''}${b.betrag} € ${b.text}`).join('\n') : '\nkeine Bewegung'}`}
-              style={{ ['--i' as string]: i, flex: 1, height: Math.max(3, Math.round((Math.abs(w.stand) / maxAbs) * hoehe)), borderRadius: 3, background: farbe, opacity: letzte ? 1 : w.bewegungen.length ? .8 : .35, boxShadow: letzte ? `0 0 10px ${farbe}33` : undefined }} />
-          );
-        })}
-      </div>
-      <div style={{ display: 'flex', gap: 3, marginTop: 4, fontSize: TYP.mikro, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>
+      <FadenLinie reihe={wochen.map(w => w.stand)} heute={0} farbe={farbe} hoehe={hoehe} label="Kontostand am Ende jeder Woche" format={eur}
+        beschriftung={i => `${wochen[i].label} (${datum(wochen[i].von)})`}
+        spalten={wochen.map(w => `${w.label} (${datum(w.von)}): ${eur(w.stand)}${w.bewegungen.length ? '\n' + w.bewegungen.map(b => `${datum(b.datum)} ${b.betrag > 0 ? '+' : ''}${b.betrag} € ${b.text}`).join('\n') : '\nkeine Bewegung'}`)} />
+      <div aria-hidden="true" style={{ display: 'flex', gap: 3, marginTop: 4, fontSize: TYP.mikro, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>
         {wochen.map((w, i) => <div key={w.von} style={{ flex: 1, textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>{i % jede === 0 ? datum(w.von) : ''}</div>)}
       </div>
     </>
@@ -308,7 +304,7 @@ export function LiquiditaetView() {
               {!!v.unsicher && <> {eur(v.unsicher)} sind in diesem Fall nicht mitgerechnet.</>}
             </div>
 
-            <Wochenbalken wochen={v.wochen} hoehe={110} jede={Math.ceil(wochen / 8)} />
+            <Wochenbalken wochen={v.wochen} hoehe={110} jede={Math.ceil(wochen / 8)} farbe={v.engpass ? LEUCHT.kritisch : v.tiefpunkt.stand < 2000 ? LEUCHT.achtung : LEUCHT.geld} />
           </Karte>
 
           {/* Ebene 3: wohin das Geld geht */}

@@ -225,3 +225,23 @@ export const LICHT_GLAS = {
   /** Karte des Lichtfäden-Zeitstrahls: tiefer als `gehoben`, mit einem leisen Lichtschein unter dem Band. */
   karte: 'radial-gradient(90% 60% at 50% 70%, rgba(79,195,247,.07), transparent 70%), linear-gradient(165deg, #151A1E 0%, #0B0F12 100%)',
 } as const;
+
+// ─── Fokus-Signatur (04.10., DESIGN_STANDARD.md › Fokus-Signatur) ──────────────
+// Kevin (04.10.): „Diese Akzente will ich überall drauf haben, wo Fokus ist. Dezent, aber immer wichtig. Und der Strahl läuft
+// im Grunde genommen immer von links nach rechts.“ Ein Akzent = das Licht der Lichtfäden im Kleinen: gläserne Fokus-Karte
+// mit einem Lichtfaden an der Kante, Mini-Strahl (`FadenLinie`) über einer echten Zeitreihe, Segmentbalken für Anteile.
+/** Das Fokus-Licht (cyan wie der Strahl im Vorbild) — Standard für Kante, FadenLinie und Netz-Motiv. Bereichsfarben bleiben erlaubt. */
+export const FOKUS_LICHT = '#5AD7F2';
+/** Flächen der Fokus-Signatur: gläserner, minimal hellerer Grund als `gehoben`, feine Kante in Lichtfarbe, weicher Schein darunter. */
+export const FOKUS_STIL = {
+  karte: (f: string = FOKUS_LICHT) => ({
+    background: `linear-gradient(165deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,.018) 52%, ${f}0B 100%), linear-gradient(165deg, #1A2125 0%, #11161A 100%)`,
+    border: `1px solid ${f}38`,
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,.08), 0 18px 40px -28px ${f}, 0 12px 32px rgba(0,0,0,.35)`,
+  }),
+  /** Die laufende Kante: Grundlinie (sehr leise) und das wandernde Licht. */
+  kanteGrund: (f: string = FOKUS_LICHT) => `linear-gradient(90deg, transparent, ${f}2E 18%, ${f}2E 82%, transparent)`,
+  kanteLicht: (f: string = FOKUS_LICHT) => `linear-gradient(90deg, transparent, ${f}B3 55%, #FFFFFF 78%, transparent)`,
+  /** Unbelegte Segmente eines Segmentbalkens. */
+  segmentLeer: 'rgba(255,255,255,.09)',
+} as const;

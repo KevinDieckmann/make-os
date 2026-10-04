@@ -11,12 +11,14 @@
 //      KD Ventures · MAKE Innovation GmbH, Blöcke nachträglich einer Aufgabe/Einheit zuordnen
 //   5. Zeit je Mandat (28.09., „Mandat an Zielen und Zeit“) — für Abrechnung und Auslastung
 //   6. Lichtfäden (03.10.) — übergreifend (Wurzel Gesamt): alle Stränge, Engstellen, eine Ebene tiefer per Tippen
+//   Fokus-Signatur (04.10., Schaufenster): „Unser Fokus“ ist DIE Fokus-Karte (Lichtfaden an der Kante, Netz-Motiv), die Regler
+//   stehen als Segmentbalken, die Fokus-Blöcke tragen ihre Minuten je Tag als FadenLinie, darunter läuft der Strahl v3.
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
-import { Seite, Karte, Ueberschrift, Ring, Chip, Knopf, Leer, feld, zoneFarbe, LEUCHT } from './ui';
+import { Seite, Karte, Ueberschrift, Ring, Chip, Knopf, Leer, feld, zoneFarbe, LEUCHT, Segmentbalken } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { ZeitJeEinheitKarte, FokusBloeckeKarte } from './zeit/ZeitJeEinheit';
 import { ZeitJeMandatKarte } from './zeit/ZeitJeMandat';
@@ -72,7 +74,7 @@ export function FokusView() {
     <Seite titel="Fokus" unter="Worauf es heute, diese Woche und diesen Monat ankommt — und ob der Körper mitmacht.">
       <Flaeche seite="fokus">
       <Kachel id="fokus" titel="Unser Fokus" breite={6}>
-      <Karte i={0} akzent={LEUCHT.planung}>
+      <Karte i={0} ton="fokus" netz>
         <Ueberschrift farbe={LEUCHT.planung}>Unser Fokus</Ueberschrift>
         <div style={{ display: 'grid', gap: 14 }}>
           {HORIZONTE.map(h => (
@@ -122,7 +124,7 @@ export function FokusView() {
               return (
                 <div key={k} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 190px) 1fr 40px', gap: 12, alignItems: 'center', fontSize: TYP.bedien }}>
                   <span style={{ color: C.inkDim }}>{s.name}</span>
-                  <div style={{ height: 8, borderRadius: 99, background: 'rgba(255,255,255,.06)' }}><div style={{ width: `${w}%`, height: '100%', borderRadius: 99, background: s.farbe, boxShadow: `0 0 10px ${s.farbe}33` }} /></div>
+                  <Segmentbalken anteil={w / 100} label={`${s.name}: ${w} von 100`} farbe={s.farbe} segmente={20} hoehe={12} />
                   <span style={{ fontVariantNumeric: 'tabular-nums', color: C.ink, textAlign: 'right' }}>{w}</span>
                 </div>
               );

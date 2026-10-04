@@ -3,11 +3,13 @@
 // ─── Lichtfäden — Engstellen als Liste unter dem Band ──────────────────────
 // Je Engstelle ein Satz („KW 44: 3 Ziele · 9 Fristen · 4 Termine“) und die schwersten Stränge dahinter als Links.
 // Der KW-Knopf im Band klappt die passende Zeile auf (`offen`). Ruhig: Bedeutung „achtung“, keine Alarmfarbe.
+// Fokus-Signatur (04.10.): die aufgeklappte Engstelle ist der Fokus — ihr Rand trägt den laufenden Lichtfaden (FokusKante, gelb).
 
 import Link from 'next/link';
 import { FARBE as C, LEUCHT, SCHRIFT, TYP, RAND } from '@/lib/make-one/design';
 import { QUELLEN } from '@/lib/lichtfaeden/modell';
 import type { Engstelle } from '@/lib/lichtfaeden/fokus';
+import { FokusKante } from '../ui/fokus';
 
 const tagKurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
 
@@ -18,7 +20,8 @@ export function Engstellen({ liste, offen, onOffen }: { liste: readonly Engstell
       {liste.map(e => {
         const auf = offen === e.woche;
         return (
-          <div key={e.woche} role="listitem" id={`engstelle-${e.woche}`} style={{ borderRadius: 14, border: `1px solid ${auf ? `${LEUCHT.achtung}55` : RAND.flaeche}`, background: auf ? `${LEUCHT.achtung}0F` : 'rgba(255,255,255,.025)' }}>
+          <div key={e.woche} role="listitem" id={`engstelle-${e.woche}`} style={{ position: 'relative', borderRadius: 14, border: `1px solid ${auf ? `${LEUCHT.achtung}55` : RAND.flaeche}`, background: auf ? `${LEUCHT.achtung}0F` : 'rgba(255,255,255,.025)' }}>
+            {auf && <FokusKante farbe={LEUCHT.achtung} />}
             <button type="button" className="fassbar" aria-expanded={auf} onClick={() => onOffen(auf ? null : e.woche)}
               style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '0 12px', border: 'none', background: 'transparent', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, textAlign: 'left', cursor: 'pointer' }}>
               <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: LEUCHT.achtung, boxShadow: `0 0 8px ${LEUCHT.achtung}99`, flex: '0 0 auto' }} />

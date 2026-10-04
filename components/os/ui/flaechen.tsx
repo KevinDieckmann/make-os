@@ -5,8 +5,9 @@
 // („Heute bei“ in Netzwerken) — sonst bleibt alles neutral. Ablauf der Stile: lib/make-one/design.ts › FLAECHE_STIL, Klassen `ui-*` in globals.css.
 
 import { type CSSProperties, type ReactNode } from 'react';
-import { FARBE as C, SCHRIFT, TYP, TIEF, FLAECHE_STIL, ECKE, LEUCHT } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, TIEF, FLAECHE_STIL, ECKE, LEUCHT, FOKUS_LICHT, FOKUS_STIL } from '@/lib/make-one/design';
 import { useHochzaehlen } from '../schlank';
+import { FokusKante, NetzMotiv } from './fokus';
 
 /** Breite der Arbeitsfläche — wie schlank.tsx (bis 1440 px, Kanten wie der Wachstums-Kopf). */
 export const SEITE_BREIT = 1440;
@@ -34,14 +35,21 @@ export function Seite({ titel, unter, rechts, children, breit = SEITE_BREIT, ton
 /**
  * Eine Karte. Standard = gehoben (Verlauf, Lichtkante, Tiefenschatten). `flach` = ein Weißhauch mit Haarrand (Karte in der Karte, Listenblock),
  * `ton` = die Bereichsfarbe als Hauch (die EINE wichtige Karte der Ansicht). `i` staffelt das Erscheinen, `akzent` legt nur einen leisen Rand an.
+ * `ton="fokus"` (Fokus-Signatur, 04.10.): gläserner, minimal hellerer Grund, feine Kante, über die ein Lichtfaden langsam von links nach
+ * rechts läuft — in `licht` (Standard: das Fokus-Cyan, sonst die Bereichsfarbe); `netz` legt das kleine Netz-Motiv in die Ecke.
+ * Höchstens EINE Fokus-Karte je Ansicht (DESIGN_STANDARD.md › Fokus-Signatur).
  */
-export function Karte({ children, i = 0, akzent, ton, flach, dicht, style, id, className, onClick, rolle, ariaLabel }: {
-  children: ReactNode; i?: number; akzent?: string; ton?: string; flach?: boolean; /** Engerer Innenabstand (Listenkarte, Hero-Karte am Handy). */ dicht?: boolean; style?: CSSProperties; id?: string; className?: string; onClick?: () => void; rolle?: string; ariaLabel?: string;
+export function Karte({ children, i = 0, akzent, ton, licht, netz, flach, dicht, style, id, className, onClick, rolle, ariaLabel }: {
+  children: ReactNode; i?: number; akzent?: string; ton?: string; /** Lichtfarbe der Fokus-Karte (`ton="fokus"`). */ licht?: string; /** Netz-Motiv in der Ecke der Fokus-Karte. */ netz?: boolean; flach?: boolean; /** Engerer Innenabstand (Listenkarte, Hero-Karte am Handy). */ dicht?: boolean; style?: CSSProperties; id?: string; className?: string; onClick?: () => void; rolle?: string; ariaLabel?: string;
 }) {
-  const stufe = ton ? FLAECHE_STIL.getoent(ton) : akzent ? { ...FLAECHE_STIL.gehoben, boxShadow: `${FLAECHE_STIL.gehoben.boxShadow}, inset 0 0 0 1px ${akzent}1F, 0 0 44px -18px ${akzent}40` } : flach ? FLAECHE_STIL.flach : FLAECHE_STIL.gehoben;
+  const fokus = ton === 'fokus';
+  const lichtFarbe = licht ?? FOKUS_LICHT;
+  const stufe = fokus ? FOKUS_STIL.karte(lichtFarbe) : ton ? FLAECHE_STIL.getoent(ton) : akzent ? { ...FLAECHE_STIL.gehoben, boxShadow: `${FLAECHE_STIL.gehoben.boxShadow}, inset 0 0 0 1px ${akzent}1F, 0 0 44px -18px ${akzent}40` } : flach ? FLAECHE_STIL.flach : FLAECHE_STIL.gehoben;
   return (
-    <section id={id} role={rolle} aria-label={ariaLabel} onClick={onClick} className={`ui-karte${flach && !ton ? ' ui-karte-flach' : ''}${dicht ? ' ui-karte-dicht' : ''}${onClick ? ' ui-karte-klick' : ''} os-auf${className ? ` ${className}` : ''}`}
+    <section id={id} role={rolle} aria-label={ariaLabel} onClick={onClick} className={`ui-karte${flach && !ton ? ' ui-karte-flach' : ''}${fokus ? ' ui-karte-fokus' : ''}${dicht ? ' ui-karte-dicht' : ''}${onClick ? ' ui-karte-klick' : ''} os-auf${className ? ` ${className}` : ''}`}
       style={{ ['--i' as string]: i, ...stufe, ...style }}>
+      {fokus && <FokusKante farbe={lichtFarbe} />}
+      {fokus && netz && <NetzMotiv farbe={lichtFarbe} />}
       {children}
     </section>
   );

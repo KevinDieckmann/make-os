@@ -18,6 +18,8 @@ import { einheitFarbe, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
 import { Karte, Ueberschrift, Leer, Segmente, Fortschritt } from '../schlank';
 import { ZEIT_EREIGNIS } from '../Kopf';
 import { ZuordnungWahl, type Zuordnung } from './Zuordnung';
+import { FadenLinie } from '../ui';
+import { summeJeTagZurueck, tageZurueckBeschriftung } from '@/lib/lichtfaeden/reihen';
 
 export type ZeitJeEinheitAntwort = ZeitJeEinheit & { ok: boolean; ich: string };
 export const zeitEinheitenAdresse = (zeitraum: Zeitraum, stichtag?: string) =>
@@ -159,6 +161,12 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
   return (
     <Karte i={i}>
       <Ueberschrift rechts={business.length ? `${offen} ohne Zuordnung` : undefined}>Fokus-Blöcke</Ueberschrift>
+      {/* Fokus-Signatur (04.10.): bewusste Fokus-Minuten je Tag der letzten 7 Tage — aus denselben Blöcken wie die Liste darunter. */}
+      {bild && alle.length > 0 && (() => {
+        const reihe = summeJeTagZurueck(alle.map(b => ({ tag: b.tag, wert: Math.round(b.sek / 60) })), bild.heute, 7);
+        return <FadenLinie reihe={reihe} heute={reihe.length - 1} label="Bewusste Fokus-Minuten je Tag, letzte 7 Tage" beschriftung={tageZurueckBeschriftung(bild.heute, 7)} format={v => `${v} min`}
+          farbe={LEUCHT.planung} hoehe={40} achse={['vor 6 Tagen', `Fokus · ${reihe.reduce((a, v) => a + v, 0)} min`, 'heute']} style={{ marginBottom: 8 }} />;
+      })()}
       {bild === undefined ? <Leer>lade …</Leer>
         : !alle.length ? <Leer>In den letzten 7 Tagen keine Fokus-Blöcke. Oben „Fokus“ starten — oder aus einer Aufgabe heraus.</Leer>
           : (

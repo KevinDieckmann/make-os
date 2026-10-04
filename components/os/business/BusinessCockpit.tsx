@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT, Hinweis } from '../ui';
+import { IndexFadenLinie } from '../kennzahlen/IndexAnsicht';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlKachel, KennzahlFenster, SAEULE_FARBE, AMPEL_FARBE, scoreFarbe } from './teile';
@@ -104,6 +105,8 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
                 <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, textAlign: 'right', color: s.score == null || s.zuDuenn ? C.inkLeise : C.ink, fontVariantNumeric: 'tabular-nums' }} title={s.zuDuenn ? 'zu wenig Daten — zählt nicht in den Index' : undefined}>{s.score ?? '—'}{s.zuDuenn ? '*' : ''}</span>
               </div>
             ))}
+            {/* Fokus-Signatur (04.10.): der Verlauf des Index als Mini-Strahl — dieselbe Reihe wie die Verlaufskarte unten. */}
+            {d && <IndexFadenLinie verlauf={d.verlauf} name="Business" farbe={farbe} />}
             {bi?.hebel && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Größter Hebel: <button onClick={() => setOffen(bi.hebel!.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, fontWeight: 700, cursor: 'pointer', fontSize: TYP.bedien, textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.25)' }}>{bi.hebel.label}</button> ({bi.hebel.saeule})</div>}
             {bi?.saeulen.some(s => s.zuDuenn) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>* zu wenig Daten (unter 40 % gemessen) — zählt noch nicht in den Index.</div>}
           </div>

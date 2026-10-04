@@ -4,6 +4,23 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Fokus-Signatur + Strahl v3 (04.10.2026, nur lokal — Branch `fokus-signatur`)
+
+Kevin 04.10.: „Diese Akzente will ich überall drauf haben, wo Fokus ist. Mache das Ganze offline, damit wir da nochmal den Standard heben. Dezent, aber
+immer wichtig. Und der Strahl läuft im Grunde genommen immer von links nach rechts — guck dir den Verlauf an. Ich will diese Klarheit überall drin haben.“
+
+- **Strahl v3 (Lichtfäden, eine Quelle für App + Website):** fließt links → rechts (Wellen, Leitkurven, Partikel), wächst beim Öffnen in 1,9 s von links ein
+  (leuchtende Spitzen, vorauslaufendes Licht), franst rechts von HEUTE aus und wird blasser, scharfe Spitzen aus der ungeglätteten Last (`Buendel.spitze`),
+  deutlich mehr und feinere Fäden (bis 300, Handy 120; Strich 0,6), Punkt-Textur, Glühen über einen Schein-Puffer, helle Mittellinie, gestrichelte
+  Hilfslinien, Markierungen mit Quadrat/Raute, leises Netz-Motiv. Website-Zeichner neu erzeugt (website/ und fokus/: gleiche Fließrichtung, feinerer Strich).
+- **Fokus-Signatur (components/os/ui):** `Karte ton="fokus"` (gläsern, laufender Lichtfaden an der Kante, optional Netz), `FadenLinie` (Mini-Strahl über
+  einer echten Reihe, Text der Reihe im `aria-label`), `Segmentbalken`; reine Reihen `lib/lichtfaeden/reihen.ts`, Zeichner `lib/lichtfaeden/fadenlinie.ts`;
+  Regeln in DESIGN_STANDARD.md › Fokus-Signatur (eine Fokus-Karte, zwei FadenLinien je Ansicht, nie ohne Daten, reduzierte Bewegung = still).
+- **Eingebaut:** Markttraktion (Für dich, Traktions-Index, Qualifizierungsrunde, Power Hour, Deals-Prognose), Planung (Ziel-Seite, Ziel-Zeilen,
+  aufgeklappte Engstelle), Zahlen (Liquidität als Lichtfäden-Band, Business-/Privat-Index-Verlauf), Fokus (Schaufenster). Funktion und Daten unverändert,
+  keine neue Route, kein neuer Bestand — alle Reihen aus dem, was die Seiten schon laden.
+- **Rückweg:** reine Darstellung; `Buendel.spitze` ist nur Antwortfeld der Lichtfäden-Route (nicht gespeichert).
+
 ## Review-Nacharbeit: eine Quelle durchgesetzt (03./04.10.2026, nur lokal — Branch `review-fix`)
 
 Strenges Code-Review der Stände vom 03.10. (Lichtfäden v2, Design-Standard, Fokus Innovation) — Kevin: „extrem sauber, sonst macht das nachher wieder extremen Aufwand“. Jede „eine Quelle“ steht jetzt mit Wächtertest.

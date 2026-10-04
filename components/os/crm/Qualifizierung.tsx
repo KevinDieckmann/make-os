@@ -16,7 +16,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useRouter } from 'next/navigation';
 import { localDay } from '@/lib/zeit';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis } from '../ui';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis, FadenLinie } from '../ui';
+import { wochenBeschriftung } from '@/lib/lichtfaeden/reihen';
+import { qualifiziertJeWoche } from './fokus-reihen';
 import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
 import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
 import { type ScoringEinstellungen } from '@/lib/crm/scoring';
@@ -105,14 +107,20 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
     { id: 'ohne', label: `Nicht zugeordnet ${zaehl('ohne')}` }, { id: 'alle', label: `Alle ${zaehl('alle')}` },
   ];
   const kanaele = useMemo(() => kanalLeistung(d?.leads ?? []), [d]);
+  // Fokus-Signatur (04.10.): qualifizierte Leads je Woche (8 Wochen) der gewählten Person — wie die Runde vorankommt.
+  const proWoche = useMemo(() => (d ? qualifiziertJeWoche(d.leads, heute, z => (wer === 'alle' ? true : wer === 'ohne' ? z.ohneBesitzer : z.besitzer === wer), 8) : null), [d, heute, wer]);
   const offen = panel && !schmal;
 
   return (
     <>
       <div className="quali-flaeche" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 14, marginRight: offen ? SEITENBLATT_BREITE + 16 : 0, transition: 'margin .2s ease' }}>
-        <Karte i={0} ton={LEUCHT.business}>
+        <Karte i={0} ton="fokus" licht={LEUCHT.business}>
           <Ueberschrift farbe={LEUCHT.business} rechts={karten.length ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.min(pos + 1, karten.length)} von {karten.length}{erledigt ? ` · ${erledigt} geprüft` : ''}</span> : undefined}>Qualifizierungsrunde</Ueberschrift>
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: woher er kommt, wie weit er ist, die Fragen — und im Gespräch Schritt für Schritt bis zum Ergebnis. Kontakt und Firma öffnen rechts zur Bearbeitung; wer qualifiziert, übernimmt nicht zugeordnete Leads. Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
+          {proWoche && proWoche.some(v => v > 0) && (
+            <FadenLinie reihe={proWoche} heute={proWoche.length - 1} label="Qualifizierte Leads je Woche, letzte 8 Wochen" beschriftung={wochenBeschriftung(heute, proWoche.length)}
+              farbe={LEUCHT.business} hoehe={40} achse={[`vor ${proWoche.length - 1} Wochen`, `Qualifiziert · ${proWoche.reduce((a, v) => a + v, 0)}`, 'diese Woche']} style={{ marginBottom: 12 }} />
+          )}
           <div className="quali-aktionen" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <div><Pillen liste={WER} aktiv={wer} onWahl={setWer} farbe={LEUCHT.business} /></div>
             <button type="button" onClick={() => setNurNeu(!nurNeu)} aria-pressed={nurNeu} title="BEAN „Neu“: kein Mandat, kein offenes Angebot — Leads zum Qualifizieren" className="fassbar"

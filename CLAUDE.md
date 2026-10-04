@@ -1105,6 +1105,12 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
 - `/api/hoi/csp` (POST) ist bewusst offen (Browser-Berichte kommen ohne Sitzung): nur Zähler speichern, Rate begrenzen, nie Inhalte. Neue Befunde: Schwelle + Satz in `lage.ts`, Test in `tests/hoi-lage.test.ts`.
 - Grundsatz: keine Personen, keine Adressen, keine Inhalte im Lagebild — Zähler und Zustände.
 
+- **Fokus-Signatur + Strahl v3 (04.10., Kevin: „Diese Akzente überall, wo Fokus ist — dezent, aber immer wichtig; der Strahl läuft von links nach rechts“):**
+  `Karte ton="fokus"` (gläsern, Lichtfaden an der Kante, `licht`, `netz`), `FadenLinie` (Mini-Strahl über EINER echten Reihe, `reihe` + `label` Pflicht,
+  Reihen rein in `lib/lichtfaeden/reihen.ts`, Zeichner `lib/lichtfaeden/fadenlinie.ts`), `Segmentbalken`. Höchstens eine Fokus-Karte und zwei FadenLinien je
+  Ansicht, nie ohne Daten, reduzierte Bewegung = still (DESIGN_STANDARD.md › Fokus-Signatur, Wächter `tests/fokus-signatur.test.ts`). Strahl v3 (band/zeichnen/
+  faedenband): fließt nach rechts, Aufbau von links, Ausfransen nach HEUTE, Spitzen aus `Buendel.spitze`, Partikel, Glühen — Website-Zeichner neu erzeugen.
+
 ## Zeit & Fokus (26.09. spät, nur lokal)
 - **Modell:** `lib/zeitmessung/modell.ts` (rein, getestet): Zeit je Person, Tag und Schlüssel
   `space:bereich`, zwei Arten — `auto` (Anwesenheits-Ping alle 30 s, Differenz ≤ 90 s zählt)

@@ -9,7 +9,7 @@
 
 import { type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Ring, Fortschritt, Chip, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Ring, Fortschritt, Chip, LEUCHT, FadenLinie } from '../ui';
 import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlKachel, KennzahlFenster, AMPEL_FARBE, scoreFarbe, type SchwelleSenden } from '../business/teile';
 import { VerlaufKarte, type Serie } from '../business/Verlauf';
@@ -22,7 +22,21 @@ export function verlaufSerien(saeulen: { id: string; label: string }[], farben: 
   return [{ id: 'index', label: 'Index', farbe: C.ink, dick: 2.6 }, ...saeulen.map(s => ({ id: s.id, label: s.label, farbe: farben[s.id] ?? C.inkLeise, dick: 1.8 }))];
 }
 
-export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onGespeichert, chips, kopfRechts, kopfId, saeuleKopf, zwischen, hinweis, i0 = 0, verlaufAb = 2, ohneVerlauf }: {
+/** Die letzten (höchstens `max`) Tage mit Indexwert — die Reihe der FadenLinie im Kopf (Fokus-Signatur). */
+export function indexReihe(verlauf: readonly VerlaufPunkt[], max = 30): { tag: string; wert: number }[] {
+  return verlauf.filter((v): v is VerlaufPunkt & { index: number } => typeof v.index === 'number' && Number.isFinite(v.index)).slice(-max).map(v => ({ tag: v.tag, wert: v.index }));
+}
+
+/** Der Verlauf eines Index (letzte 30 Tage mit Wert) als FadenLinie — erst ab drei Tagen, sonst nichts (nie Schmuck ohne Daten). */
+export function IndexFadenLinie({ verlauf, name, farbe }: { verlauf: readonly VerlaufPunkt[]; name: string; farbe: string }) {
+  const r = indexReihe(verlauf);
+  if (r.length < 3) return null;
+  const kurz = (t: string) => `${Number(t.slice(8, 10))}.${Number(t.slice(5, 7))}.`;
+  return <FadenLinie reihe={r.map(x => x.wert)} heute={r.length - 1} label={`${name}-Index, Verlauf der letzten ${r.length} Tage`} beschriftung={i => kurz(r[i].tag)}
+    farbe={farbe} hoehe={40} achse={[kurz(r[0].tag), `Verlauf · ${r.length} Tage`, kurz(r[r.length - 1].tag)]} />;
+}
+
+export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onGespeichert, chips, kopfRechts, kopfId, saeuleKopf, zwischen, hinweis, i0 = 0, verlaufAb = 2, ohneVerlauf, fadenLinie }: {
   d: IndexDaten | null;
   /** Name im Ring-Label („Privat · Solide“) und im Verlauf. */
   name: string;
@@ -44,6 +58,8 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
   /** Verlauf erst ab so vielen Tagen zeigen. */
   verlaufAb?: number;
   ohneVerlauf?: boolean;
+  /** Fokus-Signatur (04.10.): der Verlauf des Index der letzten 30 Tage als Mini-Strahl im Kopf (ab drei Tagen mit Wert). */
+  fadenLinie?: boolean;
 }) {
   const [offen, setOffen] = useLinkAuswahl('k');
   const pi = d?.pi ?? null;
@@ -74,6 +90,7 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
                 <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, textAlign: 'right', color: s.score == null || s.zuDuenn ? C.inkLeise : C.ink, fontVariantNumeric: 'tabular-nums' }} title={s.zuDuenn ? 'zu wenig Daten — zählt nicht in den Index' : undefined}>{s.score ?? '—'}{s.zuDuenn ? '*' : ''}</span>
               </div>
             ))}
+            {fadenLinie && d && <IndexFadenLinie verlauf={d.verlauf} name={name} farbe={farbe} />}
             {pi?.hebel && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Größter Hebel: <button onClick={() => setOffen(pi.hebel!.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, fontWeight: 700, cursor: 'pointer', fontSize: TYP.bedien, textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.25)' }}>{pi.hebel.label}</button> ({pi.hebel.saeule})</div>}
             {pi?.saeulen.some(s => s.zuDuenn) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>* zu wenig Daten (unter 40 % gemessen) — zählt noch nicht in den Index.</div>}
           </div>

@@ -34,7 +34,7 @@ import { imZeitraum } from '@/lib/planung/zeitraum';
 import { meilensteinImJahr, zielJahr } from '@/lib/planung/zeitstrahl';
 import { useRueckgaengig, type Rueckgaengig } from './Rueckgaengig';
 import type { Meilenstein, Ziel, ZielHorizont } from '@/lib/planung/typen';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Hinweis, feld, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Hinweis, feld, LEUCHT, Segmentbalken } from '../ui';
 import { zielRahmen } from '../ziel';
 import { PfeilRang } from './PfeilRang';
 import { usePlanung, type PlanungStand } from './usePlanung';
@@ -236,7 +236,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             {!z.erledigt && (
               <>
                 {zMs.length
-                  ? <span title="Aus den Meilensteinen dieses Ziels" style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', height: 5, borderRadius: 4, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${v}%`, background: col(v) }} /></span>
+                  ? <span title="Aus den Meilensteinen dieses Ziels" style={{ display: 'inline-flex', width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)' }}><Segmentbalken anteil={v / 100} label={`Fortschritt ${z.titel}`} farbe={col(v)} segmente={kompakt ? 8 : 12} hoehe={10} breite="100%" /></span>
                   : <input type="range" min={0} max={100} step={5} value={v} aria-label="Fortschritt" onChange={e => zPatch(z.id, { fortschritt: Number(e.target.value) })} style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', accentColor: col(v) }} />}
                 <span style={{ ...prozent, color: col(v) }}>{v} %</span>
                 <PfeilRang label={z.titel} obenAus={pos === 0} untenAus={pos === n - 1} onAuf={() => zBewegen(z.id, 'auf')} onAb={() => zBewegen(z.id, 'ab')} />

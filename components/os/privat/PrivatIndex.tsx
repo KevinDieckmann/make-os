@@ -29,7 +29,7 @@ export function PrivatIndex({ stand }: { stand?: unknown }) {
   useEffect(() => { void laden(); }, [laden, stand]);
   if (fehler) return <Hinweis art="kritisch">{fehler}</Hinweis>;
   return (
-    <IndexAnsicht d={d} name="Privat" chip="Privat-Index" farben={PRIVAT_FARBE} scope="privat" kopfId="index"
+    <IndexAnsicht d={d} name="Privat" chip="Privat-Index" farben={PRIVAT_FARBE} scope="privat" kopfId="index" fadenLinie
       schwelleSenden={schwelle => senden({ schwelle })} onGespeichert={() => void laden()}
       chips={d && !d.frisch ? <Chip farbe={LEUCHT.achtung}>Buchungen älter als 45 Tage</Chip> : undefined}
       zwischen={d ? <RuecklageKarte r={d.ruecklage} onGespeichert={() => void laden()} /> : null} />

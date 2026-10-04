@@ -11,7 +11,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT, FadenLinie } from '../ui';
+import { tagBeschriftung } from '@/lib/lichtfaeden/reihen';
+import { useFaelligReihe } from './fokus-reihen';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Befund } from '@/lib/crm/befunde';
@@ -53,6 +55,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
   // BEAN-Verteilung (28.09., H4): über die ganze Kartei, mit den offenen Angeboten der Dateiablage.
   const angebote = useOffeneAngebote();
   const bean = useMemo(() => (api.kontakte ? beanVerteilung(api.kontakte, api.crm?.stand, { angebote }) : null), [api.kontakte, api.crm, angebote]);
+  // Fokus-Signatur (04.10.): die fälligen Follow-ups der nächsten 14 Tage als Mini-Strahl in „Für dich“ — dieselbe Liste wie die Power Hour.
+  const faellig = useFaelligReihe(api, d?.ich ?? api.ich);
   if (!d) return <Karte i={0}>{fehler || api.fehler ? <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>Überblick konnte nicht geladen werden: {fehler ?? api.fehler}</span><button onClick={() => void laden()} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 8, padding: '5px 10px', color: C.ink, cursor: 'pointer' }}>Noch einmal</button></div> : <Leer>Lädt …</Leer>}</Karte>;
   const befunde = alle ? d.befunde : d.befunde.slice(0, 5);
   const zeit = (iso: string) => { const tg = iso.slice(0, 10); return tg === d.heute ? iso.slice(11, 16) : datum(tg, d.heute); };
@@ -98,8 +102,12 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
     <>
       <Flaeche seite="markttraktion-ueberblick">
           <Kachel id="fuer-dich" titel="Für dich" breite={3}>
-          <Karte i={0} ton={d.fuerDich.length ? LEUCHT.gut : undefined}>
+          <Karte i={0} ton="fokus" licht={d.fuerDich.length ? LEUCHT.gut : undefined}>
             <Ueberschrift rechts={<Person id={d.ich} name />}>Für dich</Ueberschrift>
+            {faellig && faellig.reihe.some(v => v > 0) && (
+              <FadenLinie reihe={faellig.reihe} heute={0} label="Deine fälligen Follow-ups, nächste 14 Tage" beschriftung={tagBeschriftung(faellig.heute)}
+                farbe={LEUCHT.gut} hoehe={40} achse={['Heute', 'Fällig · 14 Tage', `+${faellig.reihe.length - 1} T`]} style={{ marginBottom: 10 }} />
+            )}
             {!d.fuerDich.length ? <Leer>Bei dir liegt gerade nichts Fälliges — Zeit für die Power Hour oder einen Beitrag.</Leer> : (
               <Liste>
                 {d.fuerDich.map(f => (
@@ -130,7 +138,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
         {bean ? <BeanVerteilungKarte je={bean.je} vonHand={bean.vonHand} i={1} /> : <Karte i={1}><Leer>Kartei lädt …</Leer></Karte>}
       </Kachel>
       <Kachel id="traktion" titel="Traktions-Score" breite={6}>
-      <IndexAnsicht d={{ pi: d.index, ...d.indexVerlauf }} name="Traktion" chip="Traktions-Index" farben={INDEX_FARBE} scope="markttraktion" i0={2}
+      <IndexAnsicht d={{ pi: d.index, ...d.indexVerlauf }} name="Traktion" chip="Traktions-Index" farben={INDEX_FARBE} scope="markttraktion" i0={2} fadenLinie
         chips={d.traktion.vorlaeufig ? <Chip farbe={LEUCHT.achtung}>vorläufig</Chip> : undefined}
         schwelleSenden={schwelle => fetch('/api/crm/traktion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ schwelle }) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }))}
         onGespeichert={() => void laden()} saeuleKopf={saeuleKopf} zwischen={<Scoreboard api={api} />}

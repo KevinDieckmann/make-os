@@ -10,4 +10,6 @@ export { eingabe, feld, auswahl, Feldzeile } from './felder';
 export { ZielChip, useZielBezug } from './ziel';
 export { ZielBezug } from './ziel-bezug';
 export { useHandy, useBreit, useMedien, HANDY_BIS, SPALTEN_AB } from './medien';
+// Fokus-Signatur (04.10., DESIGN_STANDARD.md › Fokus-Signatur): Mini-Strahl über einer echten Reihe, Segmentbalken, Kante, Netz.
+export { FadenLinie, Segmentbalken, FokusKante, NetzMotiv, type FadenLinieProps } from './fokus';
 export { Ring, Balken, Punkt, Haken, Spalten, Spalte, aufZwei, useHochzaehlen, LEUCHT, zoneFarbe, prioFarbe } from '../schlank';

@@ -15,7 +15,9 @@ import { WEG, eventLink } from '@/lib/wege';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie } from '../ui';
+import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
+import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
 import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
@@ -68,6 +70,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   // Eine Definition für die Win Rate überall (Auswertung, Kennzahl, hier): 180 Tage, ab 5 Entscheidungen.
   const wl = winLoss(crm.stand.chancen, crm.heute);
   const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
+  // Fokus-Signatur (04.10.): die gewichteten erwarteten Abschlüsse der nächsten sechs Monate (Auswahl wie die Prognose).
+  const jeMonat = prognoseJeMonat(api, chancen, 6);
   // Neue Chance: für die gefilterte Person, sonst für mich (im Team), sonst die Sales-Verantwortung.
   const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id ?? verantwortlich('sales');
   const neu = () => setAnlegen({});
@@ -106,7 +110,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
       </div>
-      <Karte i={0} ton={LEUCHT.business}>
+      <Karte i={0} ton="fokus" licht={LEUCHT.business}>
         <Ueberschrift rechts={<Knopf haupt onClick={neu}>+ Deal{neuFuer !== ich ? ` für ${nameVon(neuFuer)}` : ''}</Knopf>}>{wahl === 'alle' ? 'Prognose' : `Prognose · ${wahl === 'ich' ? 'meine' : nameVon(wahl)}`}</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={kurzEuro(p.offen)} label="offen" />
@@ -118,6 +122,10 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
           <Zahl wert={String(p.ohneSchritt)} label="ohne nächsten Schritt" farbe={p.ohneSchritt ? LEUCHT.achtung : undefined} />
           <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? 'Win Rate · 180 Tage' : 'gewonnen · verloren (Quote ab 5)'} />
         </Raster>
+        {jeMonat && jeMonat.some(v => v > 0) && (
+          <FadenLinie reihe={jeMonat} heute={0} label="Erwartete Abschlüsse gewichtet je Monat, nächste 6 Monate" beschriftung={monatBeschriftung(crm.heute)} format={kurzEuro}
+            farbe={LEUCHT.business} hoehe={44} achse={[monatBeschriftung(crm.heute)(0), 'Erwartet · gewichtet', monatBeschriftung(crm.heute)(jeMonat.length - 1)]} style={{ marginTop: 14 }} />
+        )}
         {jePerson.length > 1 && (
           <div style={{ display: 'grid', gap: 5, marginTop: 12 }}>
             {jePerson.map(x => (

@@ -150,11 +150,29 @@ außerhalb des Bildes und im verborgenen Tab. Die Website nutzt `band.ts` + `zei
 `tests/lichtfaeden.test.ts`). Der Messpunkt am Band (`data-bilder`, `data-mittel-ms` …) läuft nur außerhalb der Produktion oder
 mit `data-messen` an der Seite.
 
+## Strahl v3 (04.10.) und FadenLinie
+
+Kevin: „Der Strahl läuft im Grunde genommen immer von links nach rechts — guck dir den Verlauf an.“
+- **band.ts:** `versatz` und `buendelMitte` wandern in Zeitrichtung (sin(k·s − ω·t)), `fadenSaaten` immer mit positivem Tempo (dieselben Lagen wie
+  vorher), neu `fransen` (Ausfransen) und die Parameter `aufbau`, `aufbauVerzug`, `aufbauSpitze`, `punkte`, `frans`, `glanz`.
+- **zeichnen.ts:** `Probe.frans` (0 … 1) und `Probe.hub` (Ausschlag an einer Spitze), `BuendelStil.front` (Aufbau, die Spitze leuchtet) und `punkte`
+  (Partikel, ein Path2D je Deckkraft-Stufe, ein `fill`), `glanzPuffer()` (Glühen: verkleinert + weichgezeichnet additiv zurück), `zeichneNetz` (Netz-Motiv),
+  `starteLauf({ intervall })` (Mindestabstand der Bilder für kleine Leinwände).
+- **baum.ts:** `Buendel.spitze` je Woche = gesättigte UNgeglättete Last hoch `SPITZE_EXPONENT` (1,6) — die scharfen Ausschläge; Fäden-Deckel 300/120.
+- **faedenband.ts:** Aufbau (`aufbau()` für Prüfungen, Messpunkt `data-aufbau`), `fransBei` (ab HEUTE), `spitzeRichtung` (meist nach oben), `wocheBei`
+  (linear, mit Vorzeichen), Hilfslinien, Mittellinie, Netz, Glühen.
+- **fadenlinie.ts (FadenLinie, Mini-Strahl):** `fadenLinienProben` (rein: Leitkurve aus normalisierten Werten, Normale aus der Steigung, Spreizung/Helligkeit
+  aus dem Wert, Ausfransen ab `heute`), `fadenlinie(canvas, beobachte, ruhig)` mit 12 Fäden (Handy 8), ~30 Bilder je Sekunde, Aufbau 1,4 s.
+- **reihen.ts:** `jeTag`, `jeWoche`, `summeJeMonat`, `summeJeTagZurueck`, `normalisiere`, `reiheGueltig`, `reiheText` + Beschriftungen — rein, `heute` vom Aufrufer.
+- Die Website (`website/js/lichtfaeden.js`, `fokus/js/lichtfaeden.js`) bekommt dieselbe Fließrichtung und den feineren Strich über
+  `node scripts/lichtfaeden-website.mjs` (Partikel, Aufbau und Glühen nutzt sie nicht — ihre Bündel bleiben, wie sie sind).
+
 ## Tests
 
 `tests/lichtfaeden-modell.test.ts` · `-quelle-{planung,kalender,markttraktion,finanzen,beziehung,gesundheit}.test.ts` ·
 `-baum.test.ts` (Pfade, Summen, LOD-Deckel, Dichte deterministisch, Navigation) · `-fokus.test.ts` (Engstellen) ·
-`-route.test.ts` (Haushalts-Tor, Dienstweg 403, Privat-Regel, abgeleitetes Ziel) · `-datenschutz.test.ts` („nur ich“ über die
+`-route.test.ts` (Haushalts-Tor, Dienstweg 403, Privat-Regel, abgeleitetes Ziel) · `fokus-signatur.test.ts` (Strahl v3: Fließrichtung, Aufbau,
+Partikel, Ausfransen, Spitzen; FadenLinie, Reihen, Fokus-Karte, Segmentbalken, Wächter) · `-datenschutz.test.ts` („nur ich“ über die
 Kette, Altaufgabe, Familie, Engstellen-top, Zwischenspeicher an) · `-oberflaeche.test.ts` (Render, Brotkrumen, Legende,
 Engstellen, Zeichner mit/ohne Bewegung, Übergang-Schlüssel) · `lichtfaeden.test.ts` (Mathematik, Markierungen, Lauf, Website-
 und Fokus-Kopie) · `ziele-eine-quelle.test.ts` (Farbe, Space-Regel, Planungsdaten im Browser).

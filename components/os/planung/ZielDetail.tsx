@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Haken, Knopf, Leer, Chip, Hinweis, feld, LEUCHT } from '../ui';
+import { Seite, Karte, Ueberschrift, Haken, Knopf, Leer, Chip, Hinweis, feld, LEUCHT, Segmentbalken } from '../ui';
 import { Lichtfaeden } from '../lichtfaeden/Lichtfaeden';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
@@ -181,8 +181,8 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
     <Seite titel={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>Ziel</span>}
       unter={<><Link href={horizontWeg(horizont)} style={{ color: C.inkLeise, textDecoration: 'none' }}>‹ Ziele & Planung</Link> › {HORIZONT_NAME[horizont]}</>}>
       {p.hinweis && <Hinweis art="achtung" rolle="status">{p.hinweis}</Hinweis>}
-      {/* ── Kopf ── */}
-      <Karte i={1} akzent={farbe}>
+      {/* ── Kopf ── Fokus-Signatur (04.10.): das Ziel ist der Fokus dieser Seite — gläserne Karte, Lichtfaden in der Ziel-Farbe. */}
+      <Karte i={1} ton="fokus" licht={farbe}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <div style={{ paddingTop: 6 }}><Haken an={!!z.erledigt} farbe={farbe} label={z.titel} onChange={() => zPatch(z.erledigt ? { erledigt: false, erledigtAm: undefined } : { erledigt: true, erledigtAm: heute, fortschritt: 100 })} /></div>
           {titel !== null
@@ -221,7 +221,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
           </div>
           {live === null && !z.erledigt
             ? <input type="range" min={0} max={100} step={5} value={z.fortschritt} aria-label="Fortschritt" onChange={e => zPatch({ fortschritt: Number(e.target.value) })} style={{ width: '100%', accentColor: col(z.fortschritt) }} />
-            : <div style={{ height: 7, borderRadius: 5, background: 'rgba(255,255,255,.07)', overflow: 'hidden' }}><div style={{ height: '100%', width: `${fortschritt}%`, background: col(fortschritt), transition: 'width .3s ease' }} /></div>}
+            : <Segmentbalken anteil={fortschritt / 100} label={`Fortschritt ${z.titel}`} farbe={col(fortschritt)} segmente={40} hoehe={14} breite="100%" />}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           {abgeleitet
