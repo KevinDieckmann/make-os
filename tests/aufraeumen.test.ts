@@ -61,3 +61,14 @@ describe('Routen: ein Weg statt zwei', () => {
     }
   });
 });
+
+describe('Stapel: Meilensteine führen in die Planung', () => {
+  // ZOE setzt Meilensteine im Bestand „meilensteine“ (Planung, Lichtfäden) — die Bau-Roadmap ist etwas anderes.
+  it('StapelView und StapelVoll verlinken über WEG.jahr(), nicht /os/roadmap', () => {
+    for (const p of ['components/os/StapelView.tsx', 'components/os/StapelVoll.tsx']) {
+      const t = lies(p);
+      expect(t, p).toMatch(/meilensteine: \{[^}]*href: WEG\.jahr\(\)/);
+      expect(t, p).not.toMatch(/meilensteine: \{[^}]*\/os\/roadmap/);
+    }
+  });
+});
