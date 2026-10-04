@@ -11,6 +11,7 @@
 // Pfad-Grammatik (an JSON Pointer angelehnt, „/“ trennt, weil Zellen-Schlüssel
 // wie „p.b.miete:3“ Punkte und Doppelpunkte tragen):
 //   /plan/p.b.miete:3          Zelle setzen (neu) oder zurücksetzen (neu fehlt)
+//   /plan/ug.konto@ps1:3       Handwert nur im Planszenario ps1 (04.10. Nachtrag; Vorrang vor dem allgemeinen)
 //   /plan/ug.konto:3           Handwert einer gerechneten Zahl (04.10., lib/finanzen/handwerte.ts) — gleiche Mechanik;
 //                              Monat 0 = Wert ohne Monat (Abschluss). Neu muss eine endliche Zahl sein; höchstens
 //                              GRENZE_PLAN_ZELLEN Zellen, darüber 413 (gekürzt wird nie).
@@ -32,7 +33,7 @@ import { pruefePlanszenarien } from '@/lib/finanzen/szenarien';
 import { pruefeSteuern } from '@/lib/finanzen/steuern';
 import { pruefeSchwellen } from '@/lib/finanzen/schwellen';
 import { KAL, istUnterseite } from './hilfen';
-import { GRENZE_PLAN_ZELLEN, ZELLE_MUSTER } from '@/lib/finanzen/handwerte';
+import { GRENZE_PLAN_ZELLEN, ZELLE_MUSTER, zelleTeile } from '@/lib/finanzen/handwerte';
 
 import { localDay } from '@/lib/zeit';
 export interface Operation {
@@ -193,6 +194,9 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       if (teile.length !== 2) throw new OperationUngueltig('Eine Planzelle ist „<Zeile>:<Monat>“.');
       const t = ZELLE_MUSTER.exec(teile[1]);
       if (!t || Number(t[1]) > d.monate.length) throw new OperationUngueltig(`Planzelle unbrauchbar: ${teile[1].slice(0, 60)}`);
+      // Handwert nur in einem Szenario (`<kennung>@<szenario>:<monat>`): das Szenario muss es geben.
+      const zt = zelleTeile(teile[1]);
+      if (zt?.szenario !== null && zt?.szenario !== undefined && !(d.planszenarien ?? []).some(p => p.id === zt.szenario)) throw new OperationUngueltig('Dieses Szenario gibt es nicht.');
       if (typeof op.neu !== 'number') throw new OperationUngueltig(`Eine Planzelle braucht eine Zahl (${teile[1].slice(0, 60)}).`);
     }
     const alt = lies(d, teile);

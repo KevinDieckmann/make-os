@@ -34,16 +34,16 @@ function useZeilenDialog() {
 
 // ── Privat ──────────────────────────────────────────────────────────────────
 export function Privat() {
-  const { d, pr, h, sz, geh } = usePlan();
+  const { d, dd, pr, h, sz, geh } = usePlan();
   const zd = useZeilenDialog();
   const L = letzterVoller(d);
   const P = (m: number) => pr[m - 1];
   const hz = (id: string) => (i: number) => (h.zeilen[id] ? Math.round(h.zeilen[id][i]) || null : null);
-  const budgetZeile = (z: Zeile): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => sollBudget(z, m, d.plan), hist: hz(z.id), drill: z.id, ind: true, aus: true, z });
+  const budgetZeile = (z: Zeile): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => sollBudget(z, m, dd.plan), hist: hz(z.id), drill: z.id, ind: true, aus: true, z });
   const andere = d.privatBudget.filter(z => !(BUDGET_GRUPPEN as readonly string[]).includes(z.gruppe));
   const zeilen: BlattZeile[] = [
     { grp: 'Einnahmen', add: 'privatEinnahmen' },
-    ...d.privatEinnahmen.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true })),
+    ...d.privatEinnahmen.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, dd.plan), ind: true })),
     { name: `${personName('kevin')} netto`, edit: 'p.kevinNetto', get: m => P(m).kevinNetto, ind: true },
     { name: `${personName('malin')} netto`, edit: 'p.malinNetto', get: m => P(m).malinNetto, ind: true },
     { name: 'Ausschüttung netto', edit: 'p.ausschuettung', get: m => P(m).ausschuettung, ind: true, optional: true },
@@ -54,7 +54,7 @@ export function Privat() {
     ...(andere.length ? [{ grp: 'Weitere' } as BlattZeile, ...andere.map(budgetZeile)] : []),
     { name: 'Bedarf', edit: 'p.bedarf', sum: true, get: m => P(m).bedarf, hist: i => Math.round(h.ausgaben[i] - (h.zeilen['p.d.altlasten']?.[i] ?? 0)) || null, istGet: m => { let s = 0, n = 0; for (const z of d.privatBudget) { const k = key(z.id, m); if (k in d.ist) { s += d.ist[k]; n++; } } return n ? s : null; } },
     { grp: 'Schulden & Ereignisse', add: 'privatSchulden' },
-    ...d.privatSchulden.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), hist: hz(z.id), drill: z.id, ind: true, aus: true })),
+    ...d.privatSchulden.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, dd.plan), hist: hz(z.id), drill: z.id, ind: true, aus: true })),
     { name: 'Schulden', edit: 'p.schulden', sum: true, aus: true, get: m => P(m).schulden },
     { name: 'Lebensereignisse', edit: 'p.ereignisse', get: m => P(m).ereignisse, ind: true },
     { name: 'Ausgaben aus Bausteinen', edit: 'p.bausteineAus', get: m => P(m).bausteineAus, ind: true, aus: true, optional: true },
@@ -100,8 +100,8 @@ export function UG() { return <Geschaeft ort="ug" />; }
 
 // ── Töpfe MAKE (Kennung ug) ──────────────────────────────────────────────────
 export function Toepfe() {
-  const { d, ug, aendere } = usePlan();
-  const t = toepfeUG(ug, d.einstellungen.reserveMonate, d.plan);
+  const { d, dd, ug, aendere } = usePlan();
+  const t = toepfeUG(ug, d.einstellungen.reserveMonate, dd.plan);
   const T = (m: number) => t[m - 1];
   const farben = [C.inkLeise, LEUCHT.achtung, LEUCHT.puls, KUPFER];
   return (
@@ -306,11 +306,11 @@ export function Szenarien() {
 const QUELLEN = [{ id: 'privat.angespart', label: 'Privat angespart' }, { id: 'ug.frei', label: `${UG_KURZ} frei verfügbar` }, { id: 'kdv.bjoern', label: 'Partnerdarlehen offen' }, { id: 'gruppe', label: 'Freies Geld Gruppe' }] as const;
 
 export function Ziele() {
-  const { d, ug, kdc, pr, aendere, sicht } = usePlan();
+  const { d, dd, ug, kdc, pr, aendere, sicht } = usePlan();
   const business = sicht === 'business';
   // Business-Sicht: nur Messgrößen ohne Privat (MAKE frei, Partnerdarlehen).
   const quellen = business ? QUELLEN.filter(q => q.id === 'ug.frei' || q.id === 'kdv.bjoern') : QUELLEN;
-  const zs = zielStaende(d, ug, pr, kdc);
+  const zs = zielStaende(dd, ug, pr, kdc);
   const [plus, setPlus] = useState<Record<string, number>>({});
   const [neu, setNeu] = useState<string | null>(null);
   return (

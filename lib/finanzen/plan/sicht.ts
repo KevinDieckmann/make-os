@@ -15,7 +15,7 @@
 // Privat genauso (MAKE, KD Ventures und Selbstständigkeit hängen nicht an Privat) — Test: tests/finanzplan-sicht.test.ts.
 
 import type { Aenderung, Einheit, FinanzDaten, Zeile } from '@/lib/finanzen/rechenkern';
-import { HAND_FELDER } from '@/lib/finanzen/handwerte';
+import { HAND_FELDER, zelleTeile } from '@/lib/finanzen/handwerte';
 import { lies } from './operationen';
 
 export type PlanSicht = 'privat' | 'business';
@@ -39,7 +39,8 @@ export function kennungIstBusiness(id: string, d: Pick<FinanzDaten, 'sachkosten'
   return businessZeilen(d).has(id);
 }
 /** Zellen-Schlüssel `<kennung>:<monat>` → Business? */
-const schluesselIstBusiness = (k: string, d: Pick<FinanzDaten, 'sachkosten'>): boolean => { const i = k.lastIndexOf(':'); return i > 0 && kennungIstBusiness(k.slice(0, i), d); };
+/** Zellen-Schlüssel `<kennung>:<monat>` oder `<kennung>@<szenario>:<monat>` (Handwert nur in einem Szenario) → Business? */
+const schluesselIstBusiness = (k: string, d: Pick<FinanzDaten, 'sachkosten'>): boolean => { const t = zelleTeile(k); return !!t && kennungIstBusiness(t.id, d); };
 const nurBusiness = <T>(o: Record<string, T>, d: Pick<FinanzDaten, 'sachkosten'>): Record<string, T> => Object.fromEntries(Object.entries(o ?? {}).filter(([k]) => schluesselIstBusiness(k, d)));
 
 /** Die Netto-Tabelle (Brutto → Netto privat) ist privat — die Business-Sicht trägt den Platzhalter (rechenbar, ohne Wert). */

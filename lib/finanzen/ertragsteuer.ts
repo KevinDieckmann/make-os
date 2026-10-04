@@ -127,6 +127,8 @@ export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => numb
   let aktJahr = Number.NaN, ytd = 0, vortrag = 0, letzteSteuer: JahresSteuer = NULL_ST;
   /** Summe der Handwert-Abweichungen beim Aufwand im laufenden Jahr — geht in die Jahressteuer (Rücklage, Zahlung im Folgejahr). */
   let korrJahr = 0;
+  /** Davon schon mit den Vorauszahlungen je Quartal bezahlt (04.10. Nachtrag, Kevin: „Vorauszahlungen wandern mit“). */
+  let korrVoraus = 0;
   // Je abgeschlossenem Jahr: die endgültige Steuer und die darauf schon gezahlten Vorauszahlungen.
   const fertig = new Map<number, { steuer: number; vorausgezahlt: number }>();
   let gezahltGesamt = 0, aufgelaufenFertig = 0;
@@ -142,7 +144,7 @@ export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => numb
         aufgelaufenFertig += s;
         vorjahrVortragNachher = p.verlustvortrag ? Math.max(0, vortrag - ytd) : 0;
       }
-      aktJahr = j; ytd = 0; vortrag = vorjahrVortragNachher; letzteSteuer = NULL_ST; korrJahr = 0;
+      aktJahr = j; ytd = 0; vortrag = vorjahrVortragNachher; letzteSteuer = NULL_ST; korrJahr = 0; korrVoraus = 0;
     }
     // Verlustvortrag von Hand: gilt ab diesem Monat für das laufende Jahr (die Steuer des Jahres wird damit neu bemessen).
     if (hand) { const v = hand('verlustvortrag', vortrag); if (v !== vortrag && Number.isFinite(v)) vortrag = Math.max(0, v); }
@@ -154,14 +156,26 @@ export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => numb
     // Zahlung
     let zahlung = 0;
     const vj = fertig.get(j - 1);
+    // Vorauszahlung je Quartal = ein Viertel der Vorjahressteuer; ein Steuer-Aufwand von Hand im laufenden Jahr wandert mit der nächsten
+    // Vorauszahlung mit (Nachholung `nach`, nie unter null — der Rest kommt mit dem Abschluss). Ohne Handwert genau wie vorher.
+    const nach = p.zahlweise === 'quartal' && mo % 3 === 0 ? korrJahr - korrVoraus : 0;
     if (p.zahlweise === 'quartal') {
-      if (mo % 3 === 0 && vj) { const q = vj.steuer / 4; zahlung += q; const f = fertig.get(j) ?? { steuer: 0, vorausgezahlt: 0 }; fertig.set(j, { ...f, vorausgezahlt: f.vorausgezahlt + q }); }
+      if (mo % 3 === 0 && (vj || nach !== 0)) {
+        let q = vj ? vj.steuer / 4 : 0;
+        if (nach !== 0) { q = Math.max(0, q + nach); korrVoraus = korrJahr; }
+        zahlung += q; const f = fertig.get(j) ?? { steuer: 0, vorausgezahlt: 0 }; fertig.set(j, { ...f, vorausgezahlt: f.vorausgezahlt + q });
+      }
       if (mo === p.zahlMonat && vj) {
         // Abschluss des Vorjahres: Steuer abzüglich der Vorauszahlungen (kann eine Erstattung sein).
         zahlung += vj.steuer - vj.vorausgezahlt;
       }
     } else if (mo === p.zahlMonat && vj) zahlung += vj.steuer;
-    if (hand) zahlung = hand('steuer', zahlung);
+    if (hand) {
+      const formel = zahlung;
+      zahlung = hand('steuer', zahlung);
+      // Eine Quartals-Zahlung von Hand zählt als Vorauszahlung des laufenden Jahres — der Abschluss im Folgejahr rechnet damit.
+      if (zahlung !== formel && p.zahlweise === 'quartal' && mo % 3 === 0) { const f = fertig.get(j) ?? { steuer: 0, vorausgezahlt: 0 }; fertig.set(j, { ...f, vorausgezahlt: f.vorausgezahlt + (zahlung - formel) }); }
+    }
     gezahltGesamt += zahlung;
 
     let kst = jetzt.kst - vorher.kst, soli = jetzt.soli - vorher.soli, gewst = jetzt.gewst - vorher.gewst, est = jetzt.est - vorher.est;

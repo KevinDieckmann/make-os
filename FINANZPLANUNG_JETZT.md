@@ -228,14 +228,25 @@ selber bearbeiten kann. Jede Zahl. Nur die Formeln sind im Hintergrund immer har
   der Kern rechnet bit-genau wie vorher (Regressionsgold unverändert, plus Test „Handwert = Formelwert ändert keine Zahl“ für jede Kennung).
 - **Steuern:** Der Steuerrechner (`neuerSteuerrechner`, `lib/finanzen/ertragsteuer.ts`) nimmt je Monat Handwerte für den Aufwand je Steuerart
   (KSt, Soli, Gewerbesteuer, ESt, Anrechnung), die Zahlung und den Verlustvortrag. Ein geänderter Aufwand geht in die Jahressteuer (Rücklage,
-  Zahlung im Folgejahr), eine geänderte Zahlung in das Gezahlte (Rücklage). Vereinfachung: bei Vorauszahlung je Quartal bleibt der Plan der
-  Vorauszahlungen beim Formelwert.
-- **Was wohin wirkt (Kern-Modell, unverändert):** Umsatz und Ergebnis sind Leistung (wirken auf Ergebnis und Steuer), der Zahlungseingang hat
-  eigene Zeilen (Eingang Retainer, Eingang aus Bausteinen, Einzahlungen). Kosten sind im Kern sofort bezahlt — ein Kosten-Handwert wirkt auch auf die
+  Zahlung im Folgejahr), eine geänderte Zahlung in das Gezahlte (Rücklage). **Vorauszahlungen je Quartal wandern mit (Nachtrag 04.10.):** ein Aufwand von
+  Hand im laufenden Jahr wird mit der nächsten Quartals-Vorauszahlung nachgeholt (nie unter null, der Rest kommt mit dem Abschluss); die höhere
+  Jahressteuer erhöht im Folgejahr die Vorauszahlungen (Viertel der Vorjahressteuer); eine Quartals-Zahlung von Hand zählt als Vorauszahlung, der
+  Abschluss im Folgejahr gleicht sie aus. Fällt der Zahlmonat auf ein Quartal, zählt eine Zahlung von Hand dort ganz als Vorauszahlung (Näherung).
+- **Was wohin wirkt:** Umsatz und Ergebnis sind Leistung (wirken auf Ergebnis und Steuer), der Zahlungseingang hat eigene Zeilen (Eingang
+  Retainer, Eingang aus Bausteinen, Einzahlungen). **Nachtrag 04.10. (Kevin): Umsatz von Hand zieht den Zahlungseingang mit** — einzelne
+  Umsatzzeilen wie bisher (Ankermandat/Provision/Events im selben Monat, Retainer mit Verzug, Produkte mit ihrem Zahlungsziel); die Abweichung einer
+  Umsatz-Summe von Hand (`ug.umsatz`, `kdc.umsatz`) kommt mit der Zahlungsziel-Vorgabe des Arbeitsplans (`annahmen.zahlungsziel`, fehlt: im selben
+  Monat) als „Eingang aus Umsatz von Hand“ (`ug.umsatzEingang`, selbst überschreibbar) bzw. im Eingang der Selbstständigkeit, USt obendrauf. Kosten sind im Kern sofort bezahlt — ein Kosten-Handwert wirkt auch auf die
   Auszahlungen. Bestände (Kontostand, Angespart, Partnerdarlehen offen) rechnen in den Folgemonaten vom Handwert weiter. Brücken haben auf beiden
   Seiten eine eigene Kennung (z. B. `ug.ausschuettung` → `p.ausschuettung`, `ug.holding` → `kdv.umlage`/`kdv.holding`): ändert man die Senderseite,
   folgt die Empfängerseite der Formel; ändert man die Empfängerseite, gilt dort der Handwert.
-- **Handwerte gelten für den ganzen Plan (alle Szenarien)** — wie die Zellen-Überschreibungen schon bisher; auch Vergleiche und „gegen Basis“ rechnen damit.
+- **Handwerte gelten standardmäßig für den ganzen Plan (alle Szenarien)** — wie die Zellen-Überschreibungen schon bisher. **Nachtrag 04.10.:
+  zusätzlich „nur in diesem Szenario“** (Menü der Zelle: „Diesen Wert nur in „Arbeitsplan““, „Für alle Szenarien statt nur hier“, „Handwert nur
+  in … entfernen“): Schlüssel `plan["<kennung>@<szenario>:<monat>"]` — derselbe Ort und Schreibweg (Stand/409, Protokoll, Meta, Rückgängig).
+  Vorrang: Szenario-Handwert › allgemeiner Handwert › Formel (`planMitSzenario` in `rechneMit`); andere Szenarien und die Basis sehen ihn nicht.
+  Tippen in eine Zelle mit Szenario-Handwert schreibt dorthin; ✎ türkis = nur dieses Szenario, Tooltip nennt, welcher gilt (und den allgemeinen
+  Wert). Das Szenario muss es geben (sonst 400). Rückweg: der alte Online-Stand lässt `plan` unverändert — er ignoriert die Schlüssel, sie bleiben
+  erhalten. Wird ein Szenario gelöscht, bleiben seine Schlüssel liegen (ohne Wirkung, zählen zur Zellen-Grenze).
 - **Oberfläche:** Jede Zeile aller Blätter (Privat, MAKE Innovation GmbH, KD Ventures, Selbstständigkeit, Gesamt, Gruppe, Töpfe — Töpfe sind seit
   04.10. ein Blatt) hat ihre Kennung; die Excel-Bedienung gilt überall (Enter/Tab/Pfeile/Entf/Escape, Rechtsklick/langer Druck: fortschreiben ab hier ·
   12 Monate, „Auf Formel zurücksetzen (Formelwert)“, „Ab hier alle auf Formel“, „Ganze Zeile auf Formel“, Notiz). Von Hand = Strich der Person + ✎,
