@@ -2,28 +2,49 @@
 // Map messageId → Status ("offen" | "erledigt" | "aufgabe" | "delegiert" | "snoozed").
 // snoozed trägt ein bis-Datum: bis dahin unsichtbar, danach taucht die Mail
 // als ⏰ Wiedervorlage wieder oben auf. So bleibt die Triage über Reloads.
+// Zugang (DSGVO-Prüfung 04.10.): nur eine Person im Haushalt des Inhabers (sonst 403), und je Postfach gefiltert
+// (lib/inbox/status-sicht.ts): eigene Gmail-Nachrichten; Apple-Mail/M365 nur der Inhaber. Fremde Einträge stehen nie in
+// der Antwort und bleiben beim Schreiben unberührt. Test: tests/inbox-status-zugang.test.ts.
 
 import { NextResponse } from 'next/server';
-import { loadJson, saveJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
+import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { ladeGmailStand } from '@/lib/gmail/stand';
+import { gmailSchluessel, inboxSchluesselErlaubt, inboxStatusErsetzen, inboxStatusFuer, type InboxEigentum, type InboxStatusMap } from '@/lib/inbox/status-sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export type InboxStatusMap = Record<string, { status: string; at: string; bis?: string }>;
+export type { InboxStatusMap };
 
-export async function GET() {
-  const status = (await loadJson<InboxStatusMap>('inbox-status')) ?? {};
-  return NextResponse.json({ status });
+const KEIN_ZUGANG = { ok: false, error: 'Die Inbox gehört zum Haushalt des Inhabers.' } as const;
+
+/** Wer fragt und welche Postfächer gehören ihm — oder null (→ 403). */
+async function eigentum(req: Request): Promise<InboxEigentum | null> {
+  const w = await imHaushaltDesInhabers(req);
+  if (!w) return null;
+  const [inhaber, gmail] = await Promise.all([istInhaber(w.person), ladeGmailStand(w.person).catch(() => null)]);
+  return { inhaber, gmail: gmailSchluessel(gmail?.koepfe) };
+}
+
+export async function GET(req: Request) {
+  const e = await eigentum(req);
+  if (!e) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const status = inboxStatusFuer(await loadJson<InboxStatusMap>('inbox-status'), e);
+  return NextResponse.json({ status }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PUT(req: Request) {
+  const e = await eigentum(req);
+  if (!e) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const map = body as InboxStatusMap;
   if (!map || typeof map !== 'object' || Array.isArray(map)) {
     return NextResponse.json({ ok: false, error: 'Ungültige Status-Map.' }, { status: 400 });
   }
-  await saveJson('inbox-status', map);
+  // Nur den eigenen Teil ersetzen — die Triage der anderen Postfächer bleibt stehen.
+  await updateJson<InboxStatusMap>('inbox-status', cur => inboxStatusErsetzen(cur, map, e));
   return NextResponse.json({ ok: true });
 }
 
@@ -40,6 +61,8 @@ export async function PUT(req: Request) {
 const ERLAUBT = ['offen', 'erledigt', 'aufgabe', 'delegiert', 'snoozed'];
 
 export async function PATCH(req: Request) {
+  const e = await eigentum(req);
+  if (!e) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let body: { ops?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const roh = Array.isArray(body.ops) ? body.ops.slice(0, 300) : null;
@@ -50,6 +73,8 @@ export async function PATCH(req: Request) {
   for (const o of roh as Record<string, unknown>[]) {
     const id = String(o?.id ?? '').slice(0, 120);
     if (!id) continue;
+    // Fremde Postfächer: nie schreiben (auch nicht „wieder offen“ = löschen).
+    if (!inboxSchluesselErlaubt(id, e)) continue;
     if (o.status === null || o.status === 'offen') { ops.push({ id, status: null }); continue; }
     const st = String(o.status ?? '');
     if (!ERLAUBT.includes(st)) continue;
@@ -67,5 +92,5 @@ export async function PATCH(req: Request) {
     }
     return map;
   });
-  return NextResponse.json({ ok: true, angewandt, anzahl: Object.keys(next).length });
+  return NextResponse.json({ ok: true, angewandt, anzahl: Object.keys(inboxStatusFuer(next, e)).length });
 }

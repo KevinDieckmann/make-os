@@ -321,6 +321,9 @@ describe('11 · Telegram: keine Namen von Veranstaltungs-Kontakten', () => {
     expect(telegramText({ art: 'netzwerken', titel: 'Kevin hat dir Anna Beispiel (Stammtisch) zugeteilt — nächster Schritt: Termin' })).toBe('Neue Person zugeteilt — Details in MAKE OS');
     expect(telegramText({ art: 'danke', titel: '3 Danke-Mails bereit — Stammtisch' })).toBe('Danke-Mails bereit — Details in MAKE OS');
     expect(telegramText({ art: 'zuweisung', titel: 'Kevin hat dir eine Aufgabe zugewiesen' })).toBe('Kevin hat dir eine Aufgabe zugewiesen');
+    // DSGVO-Prüfung 04.10.: Vertrags-Erinnerung — Glocke (Art „vertrag“) und Fälligkeit ihrer Aufgabe `vte-…` nur neutral.
+    expect(telegramText({ art: 'vertrag', titel: 'Kündigen oder verlängern? GF-Vertrag Max Erfunden (Beispiel GmbH)' })).toBe('Eine Vertragsfrist naht — Details in MAKE OS');
+    expect(telegramText({ art: 'faellig', titel: 'Fällig: Kündigen oder verlängern? GF-Vertrag Max Erfunden', bezug: { art: 'aufgabe', id: 'vte-abcd-20261231' } })).toBe('Eine Vertragsfrist naht — Details in MAKE OS');
   });
 });
 

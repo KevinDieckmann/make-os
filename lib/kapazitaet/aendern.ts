@@ -2,6 +2,8 @@
 // Säubern des Bestands `kapazitaet--<haushalt>` und Änderungen als Ops — mit der Rechte-Regel:
 //   Die Kapazität einer Person (Grundwert, Ausnahmen, Zuweisungen) ändert die Person selbst oder der Inhaber.
 //   Team-Personen ohne Konto pflegt nur der Inhaber. Alles andere → 403. Grenzen → 413, Unsinn → 400 (nie still gekürzt).
+//   Ausnahme Erholung (Art. 9, DSGVO-Prüfung 04.10.): ob sie zählt, entscheidet NUR die Person selbst (Op `erholung`) — auch nicht
+//   der Inhaber; Vorgabe aus.
 
 import { neueKennung } from '@/lib/kennung';
 import {
@@ -15,6 +17,7 @@ const stunden = (v: unknown): number | null => {
   return v !== null && v !== '' && Number.isFinite(n) && n >= 0 && n <= MAX_STUNDEN_WOCHE ? Math.round(n * 10) / 10 : null;
 };
 const tag = (v: unknown): string | undefined => (typeof v === 'string' && TAG_OK.test(v) ? v : undefined);
+const isoZeit = (v: unknown): string | undefined => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(v) && Number.isFinite(Date.parse(v)) ? v : undefined);
 
 export function sauberAusnahme(roh: unknown): Ausnahme | null {
   const a = (roh && typeof roh === 'object' ? roh : {}) as Record<string, unknown>;
@@ -48,8 +51,9 @@ export function sauberKapaDatei(roh: unknown): KapaDatei {
     if (!PERSON_ID_OK.test(id) || !e || typeof e !== 'object') continue;
     const sw = stunden((e as PersonEinstellung).stundenWoche);
     const aus = (Array.isArray((e as PersonEinstellung).ausnahmen) ? (e as PersonEinstellung).ausnahmen! : []).map(sauberAusnahme).filter((a): a is Ausnahme => !!a).slice(0, MAX_AUSNAHMEN);
-    if (sw == null && !aus.length) continue;
-    personen[id] = { ...(sw != null ? { stundenWoche: sw } : {}), ...(aus.length ? { ausnahmen: aus } : {}) };
+    const am = isoZeit((e as PersonEinstellung).erholungAm);
+    if (sw == null && !aus.length && !am) continue;
+    personen[id] = { ...(sw != null ? { stundenWoche: sw } : {}), ...(aus.length ? { ausnahmen: aus } : {}), ...(am ? { erholungAm: am } : {}) };
   }
   const zuweisungen = (Array.isArray(d.zuweisungen) ? d.zuweisungen : []).map(sauberZuweisung).filter((z): z is Zuweisung => !!z).slice(0, MAX_ZUWEISUNGEN);
   return { personen, zuweisungen };
@@ -62,7 +66,9 @@ export type KapaOp =
   | { op: 'ausnahme'; person: string; ausnahme: unknown }
   | { op: 'ausnahme-weg'; person: string; id: string }
   | { op: 'zuweisung'; zuweisung: unknown }
-  | { op: 'zuweisung-weg'; id: string };
+  | { op: 'zuweisung-weg'; id: string }
+  /** Einwilligung „Erholung zählt in der Kapazität“ — nur die Person selbst. */
+  | { op: 'erholung'; person: string; an: boolean };
 
 export type Ergebnis = { ok: true; datei: KapaDatei } | { ok: false; status: 400 | 403 | 404 | 413; fehler: string };
 
@@ -79,7 +85,15 @@ export function kapaAendern(alt: KapaDatei | null | undefined, ops: unknown, wer
   for (const roh of ops as Record<string, unknown>[]) {
     const op = roh?.op;
     const person = typeof roh?.person === 'string' ? roh.person : '';
-    if (op === 'grundwert' || op === 'ausnahme' || op === 'ausnahme-weg') {
+    if (op === 'erholung') {
+      if (!PERSON_ID_OK.test(person) || !personen.has(person)) return { ok: false, status: 404, fehler: 'Diese Person gibt es im Team nicht.' };
+      if (wer.ich !== person) return { ok: false, status: 403, fehler: 'Ob die Erholung (Gesundheitsdaten) zählt, entscheidet nur die Person selbst.' };
+      if (typeof roh.an !== 'boolean') return { ok: false, status: 400, fehler: 'Erholung: an ist ja oder nein.' };
+      const e: PersonEinstellung = { ...(d.personen[person] ?? {}) };
+      if (roh.an) e.erholungAm = e.erholungAm ?? new Date().toISOString(); else delete e.erholungAm;
+      if (e.stundenWoche == null && !e.ausnahmen?.length && !e.erholungAm) delete d.personen[person];
+      else d.personen[person] = e;
+    } else if (op === 'grundwert' || op === 'ausnahme' || op === 'ausnahme-weg') {
       if (!PERSON_ID_OK.test(person) || !personen.has(person)) return { ok: false, status: 404, fehler: 'Diese Person gibt es im Team nicht.' };
       if (!darfAendern(wer, person)) return { ok: false, status: 403, fehler: 'Die Kapazität einer anderen Person ändert nur sie selbst oder der Inhaber.' };
       const e: PersonEinstellung = { ...(d.personen[person] ?? {}) };
@@ -97,8 +111,8 @@ export function kapaAendern(alt: KapaDatei | null | undefined, ops: unknown, wer
         if (!(e.ausnahmen ?? []).some(x => x.id === id)) return { ok: false, status: 404, fehler: 'Diese Ausnahme gibt es nicht.' };
         e.ausnahmen = (e.ausnahmen ?? []).filter(x => x.id !== id);
       }
-      if (e.stundenWoche == null && !e.ausnahmen?.length) delete d.personen[person];
-      else d.personen[person] = { ...(e.stundenWoche != null ? { stundenWoche: e.stundenWoche } : {}), ...(e.ausnahmen?.length ? { ausnahmen: e.ausnahmen } : {}) };
+      if (e.stundenWoche == null && !e.ausnahmen?.length && !e.erholungAm) delete d.personen[person];
+      else d.personen[person] = { ...(e.stundenWoche != null ? { stundenWoche: e.stundenWoche } : {}), ...(e.ausnahmen?.length ? { ausnahmen: e.ausnahmen } : {}), ...(e.erholungAm ? { erholungAm: e.erholungAm } : {}) };
     } else if (op === 'zuweisung') {
       const z = sauberZuweisung(roh.zuweisung);
       if (!z) return { ok: false, status: 400, fehler: 'Zuweisung: Person, Mandat/Kunde und Stunden je Woche (> 0) nötig.' };

@@ -11,11 +11,29 @@
 //                'pseudonym'  nur Fingerabdrücke (HMAC v2), keine Klartexte — bewusst so (Sperrliste, Löschprotokoll)
 //                'ausgenommen' mit Grund (Aufbewahrungspflicht, eigene Daten des Haushalts, kein Personenbezug)
 //   muster       Name oder Muster mit `*` (z. B. `heads-replay-*`).
+// Seit der DSGVO-Prüfung 04.10. (Teil 2) zusätzlich — für JEDEN neuen Speicher mit Personenbezug Pflicht (Wächter: die Zahl der
+// Altbestände ohne diese Angaben darf nur sinken, tests/datenschutz-register.test.ts):
+//   rechtsgrundlage  Art. 6 (und Art. 9 Abs. 2 bei besonderen Kategorien), ggf. BDSG/HGB
+//   art15            wo die Person ihre Daten bekommt (Auskunft/Export)
+//   loeschfrist      Frist als Satz (zusätzlich zu `frist` = Kennung einer einstellbaren Löschfrist)
+//   kategorie        'art9' (Gesundheit), 'beschaeftigte' (Arbeitszeit/Urlaub, § 26 BDSG), 'vertraulich' (Geschäftsgeheimnisse, Cap-Table)
+// Der Zweck steht wie bisher in `grund`.
 // Rein, ohne Abhängigkeiten — der Test und die Doku lesen es direkt.
 
 export type Bezug = 'dritte' | 'haushalt' | 'kein';
 export type Behandlung = 'entfernen' | 'tilgen' | 'pseudonym' | 'ausgenommen';
-export interface SpeicherEintrag { muster: string; bezug: Bezug; behandlung: Behandlung; grund: string; frist?: string }
+export type Kategorie = 'art9' | 'beschaeftigte' | 'vertraulich';
+export interface Angaben { rechtsgrundlage: string; art15: string; loeschfrist: string; kategorie?: Kategorie[] }
+export interface SpeicherEintrag extends Partial<Angaben> { muster: string; bezug: Bezug; behandlung: Behandlung; grund: string; frist?: string }
+/** Einen Eintrag um die Pflicht-Angaben ergänzen (neue Speicher, besondere Kategorien). */
+const mit = (e: SpeicherEintrag, a: Angaben): SpeicherEintrag => ({ ...e, ...a });
+/** Gesundheitsdaten der Person selbst (Art. 9): Grundlage und Wege — eine Formulierung für alle Gesundheits-Bestände. */
+const GESUNDHEIT: Angaben = {
+  rechtsgrundlage: 'Art. 9 Abs. 2 lit. a DSGVO — ausdrückliche Einwilligung der Person durch eigenes Erfassen bzw. Verbinden (Whoop); an andere Konten nur über „Teilen“ (Konto › teilt.gesundheit), an ZOE nur die eigenen Werte',
+  art15: 'die Person sieht und exportiert ihre Werte selbst (Gesundheit); andere Konten sehen sie nur bei „Teilen“',
+  loeschfrist: 'bis die Person sie löscht bzw. ihr Konto entfernt wird',
+  kategorie: ['art9'],
+};
 
 const E = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'entfernen', grund, ...(frist ? { frist } : {}) });
 const T = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'tilgen', grund, ...(frist ? { frist } : {}) });
@@ -102,7 +120,12 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // Übergabe-Journal (03.10., netz-recht): Nachweis der Übermittlungen an Kunden nach dem Löschen eines Events (Art. 5 Abs. 2, 15, 19).
   // Gesellschafts-Register (04.10.): eigene Gesellschaften; Gesellschafter, Vertragsparteien und Beteiligungen können CRM-Kontakte/-Firmen
   // NUR per Kennung nennen — Art. 17 tilgt die Kennung der Person („[gelöscht]“), Cap-Table und Vertrag bleiben (eigene Geschäftsunterlagen).
-  T('gesellschaften--*', 'Gesellschafts-Register des Haushalts (lib/gesellschaften): Firmendaten, Nummernkreise, Steckbrief, Gesellschafter, Beteiligungen, Verträge — Dritte nur als Kontakt-/Firmen-Kennung; deren Kennung wird getilgt, der Eintrag bleibt.'),
+  mit(T('gesellschaften--*', 'Gesellschafts-Register des Haushalts (lib/gesellschaften): Firmendaten, Nummernkreise, Steckbrief, Gesellschafter, Organe, Beschlüsse, Beteiligungen, Verträge — Dritte nur als Kontakt-/Firmen-Kennung; deren Kennung wird getilgt (auch in Papierkorb/Archiv), der Eintrag bleibt.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO (Gesellschafterliste § 40 GmbHG, Aufbewahrung § 257 HGB / § 147 AO), lit. b (Verträge mit der Person), lit. f (Führung der eigenen Gesellschaften)',
+    art15: 'Auskunft der Kontaktakte (GET /api/crm/datenschutz › gesellschaften: Gesellschafter, Organ, Vertragspartei — auch Papierkorb/Archiv, lib/gesellschaften/auskunft.ts)',
+    loeschfrist: 'Papierkorb 30 Tage (Morgenlauf); sonst bis zur Löschung durch den Haushalt — Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Unterlagen in crm-dateien--*',
+    kategorie: ['vertraulich'],
+  }),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):
@@ -150,15 +173,17 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('fokus-laufend--*', 'Laufender Fokus-Block je Person.'),
   H('wochenplan--*', 'Alter Wochenplan je Person (bis 29.09., K5) — nur noch Archiv; liest allein die Übernahme in den Kalender.'),
   H('wochenplan-uebernahme', 'Stand der Übernahme alter Wochenplan-Blöcke in den Kalender (K5): nur Block-Kennung → Termin-UID, keine Titel.'),
-  H('sport', 'Sport (Kevin) — eigene Gesundheitsdaten.'),
-  H('sport--*', 'Sport je Person — eigene Gesundheitsdaten.'),
-  H('vitals', 'Körperwerte (Kevin, Whoop) — eigene Gesundheitsdaten.'),
-  H('vitals--*', 'Körperwerte je Person — eigene Gesundheitsdaten.'),
-  H('haut', 'Haut-Tagebuch (Kevin) — eigene Gesundheitsdaten.'),
-  H('haut--*', 'Haut-Tagebuch je Person — eigene Gesundheitsdaten.'),
+  mit(H('sport', 'Sport (Kevin) — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  mit(H('sport--*', 'Sport je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  mit(H('vitals', 'Körperwerte (Kevin, Whoop) — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  // Kapazität (04.10.) liest daraus NUR den Ø-Recovery-Wert, NUR mit eigener Einwilligung der Person und wenn sie mit allen Konten teilt, und nur als
+  // Team-Faktor (lib/kapazitaet/server.ts); nie in Business-Index, ZOE oder Protokolle (`ohneGesundheit`, Test kapazitaet-route).
+  mit(H('vitals--*', 'Körperwerte je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  mit(H('haut', 'Haut-Tagebuch (Kevin) — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  mit(H('haut--*', 'Haut-Tagebuch je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
   H('streak', 'Serien (Kevin) — eigene Daten.'),
   H('streak--*', 'Serien je Person — eigene Daten.'),
-  H('health-log--*', 'Gesundheits-Log je Person — eigene Gesundheitsdaten.'),
+  mit(H('health-log--*', 'Gesundheits-Log je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
   H('journal--*', 'Journal je Person — eigene Daten.'),
   H('steuern', 'Eigene Steuern des Haushalts (Einstellungen, Vorauszahlungen).'),
   H('haushalt-*--*', 'Haushaltsfinanzen (Konten, Buchungen, Rechnungen) — eigene Daten des Haushalts.'),
@@ -168,9 +193,9 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('content-entwuerfe', 'Eigene Marketing-Entwürfe (ZOE) — Themen und Texte des Haushalts, keine Kartei-Daten.'),
   H('delegation-runde', 'Delegations-Vorschläge an Personen des Haushalts (Aufgaben-Titel).'),
   { muster: 'anfragen-ergebnis', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Idempotenz-Ablage (lib/store/anfragen.ts): Antworten höchstens 24 h, danach automatisch weg — kein eigener Löschlauf nötig.' },
-  H('gesundheit-takt', 'Eigene Gesundheitsdaten des Haushalts.'),
-  H('gesundheitszeit', 'Eigene Gesundheitsdaten des Haushalts.'),
-  H('health-log', 'Eigene Gesundheitsdaten des Haushalts.'),
+  mit(H('gesundheit-takt', 'Eigene Gesundheitsdaten des Haushalts.'), GESUNDHEIT),
+  mit(H('gesundheitszeit', 'Eigene Gesundheitsdaten des Haushalts.'), GESUNDHEIT),
+  mit(H('health-log', 'Eigene Gesundheitsdaten des Haushalts.'), GESUNDHEIT),
   H('journal', 'Eigenes Journal des Haushalts.'),
   H('routinen', 'Eigene Routinen des Haushalts.'),
   H('ziele', 'Eigene Ziele/Fokus des Haushalts.'),
@@ -188,7 +213,12 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('arbeitsplatz', 'Arbeitsplatz-Einstellungen des Haushalts.'),
   H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter System › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'),
   H('team--*', 'Team des Haushalts (Rollen/Namen der Mitglieder).'),
-  H('kapazitaet--*', 'Kapazität je Haushalt (04.10.): Grundwert und Ausnahmen (Urlaub, feste Blöcke) je Team-Person, Zuweisungen Person × Mandat/Kunde (nur CRM-Kennungen, keine Namen Dritter) — eigene Planung des Haushalts; Art. 17 über das Konto.'),
+  mit(H('kapazitaet--*', 'Kapazität je Haushalt (04.10.): Grundwert und Ausnahmen (Urlaub, feste Blöcke) je Team-Person, Zuweisungen Person × Mandat/Kunde (nur CRM-Kennungen, keine Namen Dritter) — eigene Planung des Haushalts. Gespeichert wird KEIN Gesundheitswert (die Erholung wird beim Rechnen aus vitals--* gelesen, nur mit Einwilligung + Teilen, nur als Team-Faktor); `erholungAm` = Zeitpunkt der Einwilligung (Nachweis).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Planung der Arbeitszeit im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (realistische Planung); Erholung: Art. 9 Abs. 2 lit. a — eigene Einwilligung der Person (`erholungAm`, Schalter in der Kapazität, Vorgabe aus) UND Teilen mit allen Konten (siehe vitals--*)',
+    art15: 'GET /api/kapazitaet — die Person sieht ihre Werte samt eigener Ausnahme-Titel; Team-Personen ohne Konto: Auskunft durch den Inhaber (Planung › Kapazität)',
+    loeschfrist: 'Ausnahmen/Zuweisungen bis zur Löschung durch Person bzw. Inhaber (Planung › Kapazität). OFFEN: Einträge einer deaktivierten Team-Person bzw. eines entfernten Kontos bleiben stehen (kein Löschweg, Team-Personen werden nur deaktiviert) — Frage an Kevin (DSGVO-Prüfung 04.10.)',
+    kategorie: ['beschaeftigte'],
+  }),
   H('oauth-tokens', 'Zugangsschlüssel des Haushalts (Whoop/Microsoft) — keine Dritten.'),
   H('oauth-states', 'Kurzlebige OAuth-Zustände — keine Dritten.'),
   H('ki-verbrauch', 'Kosten der Modellaufrufe je Person des Haushalts.'),
@@ -202,7 +232,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('fokus-regler', 'Regler-Stand.'),
   K('hoi-meldung', 'Riegel des Head of IT.'),
   K('hoi-durchsicht', 'Nächtliche Durchsicht der Bestände (lib/store/durchsicht.ts) — nur Zähler je Bestand.'),
-  K('inbox-status', 'Gelesen/erledigt je Mail-Kennung — keine Inhalte, keine Adressen.'),
+  K('inbox-status', 'Gelesen/erledigt je Mail-Kennung — keine Inhalte, keine Adressen. Eine Karte, aber je Postfach getrennt ausgeliefert/geschrieben (lib/inbox/status-sicht.ts: eigenes Gmail, Apple/M365 nur Inhaber; Haushalt des Inhabers).'),
   K('kalender-einstellungen', 'Kalender-Einstellungen.'),
   K('labels', 'Beschriftungen.'),
   K('onboarding', 'Einrichtungs-Haken.'),

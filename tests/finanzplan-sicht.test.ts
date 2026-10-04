@@ -177,6 +177,15 @@ describe('Route: GET/PATCH ?sicht=business', () => {
     expect(await voll.text()).toContain('Geheimmiete');
     expect(r.headers.get('etag')).not.toBe(voll.headers.get('etag'));
   });
+  it('GET ?nur=kennzahlen&sicht=business (DSGVO-Prüfung 04.10.): keine Privat-Kennzahl; ohne Sicht sind sie da', async () => {
+    const b = JSON.parse(await (await plan.GET(req('/api/finanzplan?nur=kennzahlen&sicht=business'))).text()) as Record<string, unknown>;
+    expect(b.ok).toBe(true);
+    expect(Object.keys(b).filter(k => /privat|gruppe/i.test(k))).toEqual([]);
+    expect(b).toHaveProperty('freiDez26');
+    for (const g of GEHEIM) expect(JSON.stringify(b).includes(g), g).toBe(false);
+    const voll = JSON.parse(await (await plan.GET(req('/api/finanzplan?nur=kennzahlen'))).text()) as Record<string, unknown>;
+    expect(voll).toHaveProperty('runwayPrivat');
+  });
   it('PATCH ?sicht=business: Privat-Pfad → 403, nichts geschrieben; Business-Pfad → ok; 409 trägt nur Business', async () => {
     const stand = (JSON.parse(await (await plan.GET(req('/api/finanzplan?sicht=business'))).text()) as { dokument: FinanzDaten }).dokument.stand;
     const verboten = await plan.PATCH(req('/api/finanzplan?sicht=business', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:5', neu: 1 }, { pfad: '/privatBudget/id=pb1/soll', neu: 1 }] }, 'PATCH'));

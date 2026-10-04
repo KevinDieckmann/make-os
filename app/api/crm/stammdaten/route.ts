@@ -19,7 +19,7 @@ import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { anzeigename } from '@/lib/make-one/crm';
-import { pflichtangaben, selbstpruefung, verarbeitungenStart, verarbeitungenNachtragen, verarbeitungKalenderNachtragen, verarbeitungEmailNachtragen, LOESCHREGELN } from '@/lib/crm/datenschutz';
+import { pflichtangaben, selbstpruefung, verarbeitungenStart, verarbeitungenNachtragen, verarbeitungKalenderNachtragen, verarbeitungEmailNachtragen, verarbeitungenOrganisationNachtragen, LOESCHREGELN } from '@/lib/crm/datenschutz';
 import { googleKonfiguriert } from '@/lib/google/verbindung';
 import { netzwerkenKontakteUeberFrist } from '@/lib/crm/netzwerken-loeschen';
 import { befunde } from '@/lib/crm/befunde';
@@ -54,6 +54,8 @@ export async function GET(req: Request) {
   if (!crm.verarbeitungen.length) crm = await aendereCrm(c => (c.verarbeitungen.length ? c : { ...c, verarbeitungen: verarbeitungenStart(new Date().toISOString()) }));
   // Netzwerken (03.10.): fehlende Verarbeitungen von Veranstaltungs-Kontakten idempotent nachtragen (Verzeichnis nach Art. 30).
   if (verarbeitungenNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungenNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
+  // Gesellschafts-Register und Kapazität (DSGVO-Prüfung 04.10.) — immer, sie gehören zu jeder Instanz.
+  if (verarbeitungenOrganisationNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungenOrganisationNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
   // Google Kalender (03.10.): sobald Google eingerichtet ist, gehört „Kalender (Google Workspace)“ ins Verzeichnis (Art. 30).
   if (googleKonfiguriert() && verarbeitungKalenderNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungKalenderNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
   // 03.10. (gmail): „E-Mail (Google Workspace)“ — ebenfalls, sobald Google eingerichtet ist (idempotent).

@@ -146,6 +146,7 @@ function PersonKarte({ p, i, ich, inhaber, personen, bezuege, zuweisungen, aende
       {p.erholung && eigen && (
         <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>Deine Erholung: Ø {p.erholung.wert} % → Faktor {z(p.erholung.faktor)} <span style={{ color: C.inkLeise }}>(nur du siehst den Wert — das Team sieht nur den gemeinsamen Faktor)</span></div>
       )}
+      {eigen && <ErholungWahl p={p} los={los} />}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, marginTop: 16 }}>
         {darf && <Grundwert p={p} los={los} />}
         <Ausnahmen p={p} darf={darf} los={los} />
@@ -157,6 +158,24 @@ function PersonKarte({ p, i, ich, inhaber, personen, bezuege, zuweisungen, aende
 }
 
 const zeileStil = { display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center', minWidth: 0 };
+
+/**
+ * Einwilligung „Erholung berücksichtigen“ (DSGVO-Prüfung 04.10., Art. 9 Abs. 2 lit. a): nur die eigene Person, Vorgabe aus.
+ * Der Server prüft dasselbe (Op `erholung` nur für sich selbst) — hier nur der Schalter mit ehrlichem Satz.
+ */
+function ErholungWahl({ p, los }: { p: PersonStand; los: (ops: KapaOp[]) => Promise<void> }) {
+  const an = !!p.erholungAm;
+  return (
+    <div style={{ ...zeileStil, marginTop: 10 }}>
+      <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: '1 1 260px', minWidth: 0 }}>
+        {an
+          ? `Deine Erholung zählt als Team-Faktor (seit ${new Date(p.erholungAm!).toLocaleDateString('de-DE')}) — nur wenn du deine Gesundheit mit allen im Haushalt teilst; den Wert siehst nur du.`
+          : 'Deine Erholung (Gesundheitsdaten) zählt nicht. Einschalten = Einwilligung, dass sie als gemeinsamer Team-Faktor die belastbare Zeit der nächsten 14 Tage mindert — jederzeit widerrufbar.'}
+      </span>
+      <Knopf onClick={() => void los([{ op: 'erholung', person: p.id, an: !an }])}>{an ? 'Erholung nicht mehr berücksichtigen' : 'Erholung berücksichtigen'}</Knopf>
+    </div>
+  );
+}
 const klein = { ...feld, width: 'auto', minWidth: 0, maxWidth: '100%', colorScheme: 'dark' as const };
 
 function Grundwert({ p, los }: { p: PersonStand; los: (ops: KapaOp[]) => Promise<void> }) {

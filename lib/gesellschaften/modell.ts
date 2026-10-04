@@ -454,6 +454,8 @@ const block = (v: unknown, n: number) => { const t = String(v ?? '').replace(/\u
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const tag = (v: unknown) => (typeof v === 'string' && TAG.test(v) && Number.isFinite(Date.parse(v)) ? v : undefined);
 const KENNUNG = /^[a-z0-9][a-z0-9_-]{1,79}$/i;
+/** Wie `GELOESCHT` in lib/crm/person-weitere.ts (dort nicht importierbar: Server-Modul) — Wächter im Test. */
+export const GETILGT = '[gelöscht]';
 const PERSON = /^[a-z0-9-]{1,40}$/;
 const UNTER_ID = (p: string) => new RegExp(`^${p}-[a-z0-9][a-z0-9-]{3,62}$`);
 
@@ -478,6 +480,9 @@ function bezugAus(v: unknown): Bezug | null {
   if (art === 'person' && PERSON.test(id)) return { art, id };
   if (art === 'gesellschaft' && istGesellschaftId(id)) return { art, id };
   if ((art === 'kontakt' || art === 'firma') && KENNUNG.test(id)) return { art, id };
+  // Art. 17 (DSGVO-Prüfung 04.10.): eine gelöschte Person steht als „[gelöscht]“ im Eintrag (person-weitere `tilgen`) — der
+  // Eintrag bleibt änderbar (Cap-Table, Vertrag sind eigene Geschäftsunterlagen), die Kennung kommt nie zurück.
+  if ((art === 'kontakt' || art === 'firma') && id === GETILGT) return { art, id };
   return null;
 }
 

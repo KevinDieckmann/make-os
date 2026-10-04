@@ -81,7 +81,9 @@ import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from './typen';
-import { aendereCrm, ladeCrm } from './speicher';
+// Art. 15/17, Zusammenführen, Verknüpfungs-Prüfung lesen den Bestand MIT Papierkorb (DSGVO-Prüfung 04.10.): sonst blieb eine
+// Person in einem gelöschten Event/Mandat/… stehen (die Vorprüfung sah sie nicht) und fehlte in der Auskunft. `ladeCrm` ist hier tabu.
+import { aendereCrm, ladeCrmMitPapierkorb as ladeCrm } from './speicher';
 import { personEntfernen as crmOhne, personUmbiegen as crmUm, personVerweise } from './person-verweise';
 import { KONFLIKT_SPEICHER, leererKonfliktStand, type KonfliktStand } from './import-konflikte';
 import { ablageName, dateiPfad } from '@/lib/dateien/ablage';
@@ -365,6 +367,12 @@ const ABLAGE_DATEI = /^crm-dateien--([a-z0-9][a-z0-9-]{0,39})\.json$/;
 async function ablageHaushalte(): Promise<string[]> {
   const namen = await fs.readdir(datenOrdner()).catch(() => [] as string[]);
   return namen.map(n => ABLAGE_DATEI.exec(n)?.[1]).filter((h): h is string => !!h).sort();
+}
+const REGISTER_DATEI = /^(gesellschaften--[a-z0-9][a-z0-9-]{0,39})\.json$/;
+/** Die Gesellschafts-Register (je Haushalt) — aus den Dateinamen. */
+async function registerNamen(): Promise<string[]> {
+  const namen = await fs.readdir(datenOrdner()).catch(() => [] as string[]);
+  return namen.map(n => REGISTER_DATEI.exec(n)?.[1]).filter((h): h is string => !!h).sort();
 }
 const JOURNAL_DATEI = /^(netzwerken-erfassungen--[a-z0-9][a-z0-9-]{0,39})\.json$/;
 /** Die Journale der Netzwerken-Erfassungen (je Haushalt) — aus den Dateinamen. */
@@ -943,7 +951,11 @@ export async function personAufzaehlen(id: string) {
   const { journalUebergabenVon } = await import('./uebergabe-journal');
   const uebergaben = [...uebergabenVon(crm, id), ...(await journalUebergabenVon(id))].map(u => ({ am: u.am, empfaenger: u.empfaenger, event: u.eventTitel, ...(u.dateiname ? { datei: u.dateiname } : {}), text: uebergabeAuskunftText(u) }));
   const terminFollowups = kal.terminFollowupsAuskunft(crm.followups, terminSchluessel, new Set(verweise.followups.map(f => f.id)));
-  return { ...verweise, uebergaben, terminFollowups, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
+  // Gesellschafts-Register (DSGVO-Prüfung 04.10.): Gesellschafter-, Organ- und Vertragsangaben als Kopie — alle Haushalte, auch Papierkorb/Archiv.
+  const { registerAuskunft } = await import('@/lib/gesellschaften/auskunft');
+  const gesellschaften: import('@/lib/gesellschaften/auskunft').RegisterAuskunft[] = [];
+  for (const n of await registerNamen()) gesellschaften.push(...registerAuskunft(await loadJson<import('@/lib/gesellschaften/modell').RegisterDatei>(n).catch(() => null), id));
+  return { ...verweise, uebergaben, terminFollowups, gesellschaften, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */

@@ -112,7 +112,6 @@ describe('Cockpit (Business-Index) — Summen je Sicht bleiben', () => {
             "kapitaldienst": 99,
             "konzentration": 38.96,
             "kostenquote": 58.64,
-            "kp_kopf": null,
             "kp_last": null,
             "kp_machbar": null,
             "kp_puffer": null,

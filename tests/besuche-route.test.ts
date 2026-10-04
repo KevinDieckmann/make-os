@@ -251,6 +251,17 @@ describe('Event löschen mit Übergaben (POST /api/crm/events { aktion: loeschen
     expect(b.uebergaben).toEqual(['Person wurde am 02.10.2026 an Kundenwerk GmbH übergeben (Messe für den Kunden) — dort informieren (Art. 19)']);
     expect(JSON.stringify(await db.loadJson('uebergabe-journal--test-haus'))).not.toContain('c-anna');
   });
+  it('Event im PAPIERKORB (DSGVO-Prüfung 04.10.): Art. 15 nennt die Übergabe, Art. 17 tilgt die Kennung auch dort', async () => {
+    await vorher(true);
+    expect((await crm()).events.some(x => x.id === 'ev-k')).toBe(false); // für alle Leser unsichtbar …
+    const { personAufzaehlen, personEntfernen } = await import('@/lib/crm/person-bestaende');
+    expect((await personAufzaehlen('c-anna')).uebergaben).toHaveLength(1); // … aber in der Auskunft
+    const b = await personEntfernen('c-anna');
+    expect(b.uebergaben).toHaveLength(1); // Art. 19-Hinweis auch aus dem Papierkorb
+    const roh = await speicher.ladeCrmMitPapierkorb();
+    expect(roh.events.find(x => x.id === 'ev-k')!.uebergaben![0]).not.toHaveProperty('kontaktIds');
+    expect(JSON.stringify(roh)).not.toContain('c-anna');
+  });
   it('Art. 17 bei Protokoll am Event: Kennung fällt aus kontaktIds, Datum/Anzahl/Empfänger bleiben; der Bericht nennt den Empfänger', async () => {
     await vorher();
     const { personEntfernen } = await import('@/lib/crm/person-bestaende');
