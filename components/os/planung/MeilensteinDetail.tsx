@@ -38,6 +38,7 @@ import { ProjektDateien } from '../aufgaben/ProjektDateien';
 import { NotizAnzeige } from '../aufgaben/Notiz';
 import { usePersonen, useIch } from '../aufgaben/hilfe';
 import { useMeilensteinFenster } from './MeilensteinFenster';
+import { MachbarZeile } from '../kapazitaet/MachbarZeile';
 import { datumVorVorgaenger, nachfolger, wartetText } from '@/lib/planung/meilenstein-kette';
 import { useRueckgaengig } from './Rueckgaengig';
 import { BeitragsVerlauf } from '../austausch/BeitragsVerlauf';
@@ -202,6 +203,8 @@ export function MeilensteinDetail({ id }: { id: string }) {
           </div>
         )}
         {m.messlatte && <div style={{ marginTop: 8, fontSize: TYP.bedien, color: C.inkDim }}><span style={mikro}>Messlatte </span>{m.messlatte}</div>}
+        {/* Kapazität (04.10.): Aufwand, wer daran arbeitet, machbar bis zum Datum? — nur Business, gerechnet auf dem Server. */}
+        {sp === 'business' && !m.erledigt && <MachbarZeile art="meilenstein" id={m.id} />}
         {/* Fortschritt: aus den Aufgaben, sobald es welche gibt — sonst von Hand. */}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
           <div style={{ flex: '1 1 220px', minWidth: 0 }}>

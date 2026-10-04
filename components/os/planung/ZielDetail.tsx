@@ -28,6 +28,8 @@ import { zielJahr } from '@/lib/planung/zeitstrahl';
 import { ZIEL_HORIZONTE, type Meilenstein, type Ziel, type ZielHorizont } from '@/lib/planung/typen';
 import { usePlanung, type PlanungStand } from './usePlanung';
 import { useMeilensteinFenster } from './MeilensteinFenster';
+import { MachbarZeile } from '../kapazitaet/MachbarZeile';
+import { kapazitaetNeu } from '../kapazitaet/useKapazitaet';
 import { useRueckgaengig } from './Rueckgaengig';
 import { PfeilRang } from './PfeilRang';
 import { loescheZiel } from './ziel-loeschen';
@@ -88,6 +90,8 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
   // Notiz und Messlatte werden beim Verlassen des Feldes gespeichert (ein Schreiben je Änderung, Stand/409 wie überall).
   const [notiz, setNotiz] = useState<string | null>(null);
   const [messlatte, setMesslatte] = useState<string | null>(null);
+  // Kapazität (04.10.): Aufwand des Ziels zusätzlich zu seinen Meilensteinen (nur Jahresziele, nicht Privat).
+  const [aufwand, setAufwand] = useState<string | null>(null);
   const [titel, setTitel] = useState<string | null>(null);
   const [zugId, setZugId] = useState<string | null>(null);
 
@@ -207,6 +211,21 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
             onBlur={() => { if (messlatte !== null && messlatte.trim() !== (z.messlatte ?? '')) zPatch({ messlatte: messlatte.trim() || undefined }); setMesslatte(null); }}
             style={{ ...feld, textTransform: 'none', letterSpacing: 0, fontWeight: 400 }} />
         </label>
+        {space !== 'privat' && <MachbarZeile art="ziel" id={z.id} />}
+        {space !== 'privat' && horizont === 'jahr' && !abgeleitet && (
+          <label style={{ display: 'grid', gap: 6, marginTop: 10, ...mikro }}>Eigener Aufwand (h, zusätzlich zu den Meilensteinen)
+            <input type="number" inputMode="decimal" min={0} max={10000} value={aufwand ?? (z.aufwand ? String(z.aufwand) : '')} onChange={e => setAufwand(e.target.value)} placeholder="optional"
+              onBlur={() => {
+                if (aufwand !== null) {
+                  const n = Number(aufwand.replace(',', '.'));
+                  const neu = n > 0 ? Math.round(n * 10) / 10 : undefined;
+                  if (neu !== z.aufwand) { zPatch({ aufwand: neu }); kapazitaetNeu(); }
+                }
+                setAufwand(null);
+              }}
+              style={{ ...feld, maxWidth: 200, textTransform: 'none', letterSpacing: 0, fontWeight: 400 }} />
+          </label>
+        )}
         <label style={{ display: 'grid', gap: 6, marginTop: 10, ...mikro }}>Beschreibung
           <textarea value={notizText} onChange={e => setNotiz(e.target.value.slice(0, ZIEL_NOTIZ_MAX))} rows={3} placeholder="Worum geht es, was soll am Ende stehen?"
             onBlur={() => { if (notiz !== null && notiz.trim() !== (z.notiz ?? '')) zPatch({ notiz: notiz.trim() || undefined }); setNotiz(null); }}

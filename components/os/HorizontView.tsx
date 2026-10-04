@@ -48,6 +48,8 @@ import { useMeilensteinFenster } from './planung/MeilensteinFenster';
 import { useRueckgaengig } from './planung/Rueckgaengig';
 import { NeuAnfangenKnopf } from './aufgaben/NeuAnfangen';
 import { Lichtfaeden } from './lichtfaeden/Lichtfaeden';
+import { useKapazitaet } from './kapazitaet/useKapazitaet';
+import { LastBand } from './kapazitaet/teile';
 
 type Horizont = 'monat' | 'quartal' | 'jahr';
 
@@ -123,6 +125,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
 
   // ── Zeitstrahl: im Jahr die Lichtfäden (eigenes Fenster zum Blättern), in Monat/Quartal der schlichte Strahl ──
   const fensterJahr = useStrahlFenster(planJahr);
+  // Kapazität (04.10.): Last je Woche als dezentes Band UNTER dem Strahl (eigene Komponente — der Strahl selbst bleibt unberührt).
+  const kapa = useKapazitaet(istJahr && spaceFilter !== 'privat');
   const MON_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
   const p2 = (n: number) => String(n).padStart(2, '0');
   const ticks: StrahlTick[] = (() => {
@@ -209,6 +213,12 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
           aktion={<Knopf onClick={() => msFenster.oeffneNeu(vorgabe())}>+ Meilenstein</Knopf>} />
       ) : (
         <Zeitstrahl von={zr.von} bis={zr.bis} ticks={ticks} marker={strahlMarker} />
+      )}
+      {istJahr && spaceFilter !== 'privat' && kapa.stand && (
+        <div style={{ display: 'grid', gap: 4, margin: '-6px 4px 0' }}>
+          <LastBand stand={kapa.stand} von={fensterJahr.fenster.von} bis={fensterJahr.fenster.bis} hoehe={22} />
+          <Link href={WEG.kapazitaet()} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', justifySelf: 'start' }}>Kapazität je Person ›</Link>
+        </div>
       )}
 
       {/* Forecast — Zeit vs. Fortschritt, deterministisch; im Jahr je Planungsjahr */}
