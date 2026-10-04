@@ -167,3 +167,5 @@ F6 (Vertragswerk-Tiefe), F8 (app/(dashboard) löschen?).
 - **Finanzplanung (Nachtrag, wartet auf freien Platz):** Umsatz von Hand zieht den Zahlungseingang mit (übliches
   Zahlungsziel); Handwerte zusätzlich je Szenario möglich (Standard: gilt für alle); Vorauszahlungen je Quartal wandern mit
   einem Steuer-Handwert mit.
+- **Kapazität (Kevins Antworten):** Schwellen 70 % machbar / 90 % eng (umgesetzt, 4091608); Grundwert-Annahme 40 h bleibt;
+  **wöchentlicher Plan-Schnappschuss** (jeden Montag den Wochenplan speichern → echte Plan-Treue „geplant vs. Ist“) → Update 3.
