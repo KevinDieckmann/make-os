@@ -234,14 +234,14 @@ async function netzwerken(heute: string): Promise<FlussReihe> {
 
 // ── Inbox (nur das eigene Postfach) ──────────────────────────────────────────
 async function inbox(person: string, heute: string): Promise<FlussReihe> {
-  const [{ ladeGmailStand }] = await Promise.all([import('@/lib/gmail/stand')]);
+  const [{ ladeGmailStand }, { gmailSchluessel }] = await Promise.all([import('@/lib/gmail/stand'), import('@/lib/inbox/status-sicht')]);
   const g = await ladeGmailStand(person).catch(() => null);
   const koepfe = Object.values(g?.koepfe ?? {});
   const eingang = koepfe.filter(k => k.labels.includes('INBOX')).map(k => tag(k.am)).filter((t): t is string => !!t);
   // Wiedervorlagen: der Status-Bestand ist EIN Bestand für alle — gezählt wird nur, was zu Nachrichten DIESES Postfachs gehört.
   const status = await loadJson<Record<string, { status?: string; bis?: string }>>('inbox-status').catch(() => null);
-  // Schlüssel der Inbox-Zeilen: `gmail-<Thread>` (components/os/InboxSchlank.tsx).
-  const eigene = new Set(koepfe.flatMap(k => [`gmail-${k.threadId}`, `gmail-${k.id}`]));
+  // Schlüssel der Inbox-Zeilen: `gmail-<Thread>` (components/os/InboxSchlank.tsx) — dieselbe Regel wie /api/state/inbox.
+  const eigene = gmailSchluessel(g?.koepfe);
   const wiedervorlagen = Object.entries(status ?? {}).filter(([id, s]) => eigene.has(id) && s?.status === 'snoozed' && tag(s.bis)).map(([, s]) => s.bis!.slice(0, 10));
   const offen = koepfe.filter(k => k.labels.includes('INBOX') && k.labels.includes('UNREAD')).length;
   return flussInbox({ heute, eingang, wiedervorlagen, offen, verbunden: !!g, link: '/os/inbox' });

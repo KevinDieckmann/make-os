@@ -202,7 +202,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('fokus-regler', 'Regler-Stand.'),
   K('hoi-meldung', 'Riegel des Head of IT.'),
   K('hoi-durchsicht', 'Nächtliche Durchsicht der Bestände (lib/store/durchsicht.ts) — nur Zähler je Bestand.'),
-  K('inbox-status', 'Gelesen/erledigt je Mail-Kennung — keine Inhalte, keine Adressen.'),
+  K('inbox-status', 'Gelesen/erledigt je Mail-Kennung — keine Inhalte, keine Adressen. Eine Karte, aber je Postfach getrennt ausgeliefert/geschrieben (lib/inbox/status-sicht.ts: eigenes Gmail, Apple/M365 nur Inhaber; Haushalt des Inhabers).'),
   K('kalender-einstellungen', 'Kalender-Einstellungen.'),
   K('labels', 'Beschriftungen.'),
   K('onboarding', 'Einrichtungs-Haken.'),
