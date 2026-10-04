@@ -225,7 +225,7 @@ describe('Stammdaten: Verzeichnis (VVT) und Löschliste', () => {
     expect(a.verarbeitungen.map(v => v.id)).toEqual(expect.arrayContaining(['vv-kontakte', 'vv-netzwerken', 'vv-besuche-kunde', 'vv-kunden-export']));
     // DSGVO-Prüfung 04.10.: Gesellschafts-Register und Kapazität stehen ebenfalls im Verzeichnis (Art. 30), mit Art.-9-Hinweis.
     expect(a.verarbeitungen.map(v => v.id)).toEqual(expect.arrayContaining(['vv-gesellschaften', 'vv-kapazitaet']));
-    expect(a.verarbeitungen.find(v => v.id === 'vv-kapazitaet')!.rechtsgrundlage).toMatch(/Art\. 9 Abs\. 2 lit\. a/);
+    expect((a.verarbeitungen.find(v => v.id === 'vv-kapazitaet') as { rechtsgrundlage?: string } | undefined)?.rechtsgrundlage).toMatch(/Art\. 9 Abs\. 2 lit\. a/);
     const zahl = a.verarbeitungen.length;
     expect((await get()).verarbeitungen).toHaveLength(zahl);   // zweiter Aufruf: nichts doppelt
     expect(a.selbstpruefung.find(x => x.id === 'verzeichnis')!.status).toBe('erfuellt');

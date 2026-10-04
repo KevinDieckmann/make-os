@@ -31,6 +31,8 @@ beforeAll(async () => {
   ], einladungen: [] });
   const vitals = (rec: number) => Object.fromEntries([0, 1, 2, 3].map(i => [tag(-i), { rec }]));
   await db.saveJson('vitals--pa', vitals(21));
+  // pa hat selbst eingewilligt, dass ihre Erholung zählt (DSGVO-Prüfung 04.10.: Vorgabe aus).
+  await db.saveJson('kapazitaet--h-pruef', { personen: { 'konto-pa': { erholungAm: '2026-10-01T10:00:00.000Z' } }, zuweisungen: [] });
   await db.saveJson('vitals--pb', vitals(88));
   await db.saveJson('meilensteine', { meilensteine: [
     { id: 'ms-gross', titel: 'Erfundener großer Schritt', space: 'business', bereich: 'business', faellig: tag(10), fortschritt: 0, erledigt: false, aufwand: 600, personen: ['konto-pa'] },
@@ -94,6 +96,25 @@ describe('Kapazität — Gesundheit (Art. 9, DSGVO-Prüfung 04.10.)', () => {
     } finally {
       await db.saveJson('konten', konten);
     }
+  });
+});
+
+describe('Kapazität — Einwilligung Erholung (Art. 9 Abs. 2 lit. a, Vorgabe aus)', () => {
+  it('nur die Person selbst schaltet sie — auch der Inhaber nicht für andere; ohne Einwilligung zählt geteilte Erholung nicht', async () => {
+    expect((await route.PATCH(patch('pa', [{ op: 'erholung', person: 'konto-pb', an: true }]))).status).toBe(403); // Inhaber für pb
+    expect((await route.PATCH(patch('pb', [{ op: 'erholung', person: 'konto-pa', an: false }]))).status).toBe(403);
+    expect((await route.PATCH(patch('pa', [{ op: 'erholung', person: 'konto-pa', an: 'ja' }]))).status).toBe(400);
+    const aus = await route.PATCH(patch('pa', [{ op: 'erholung', person: 'konto-pa', an: false }]));
+    expect(aus.status).toBe(200);
+    const j = await aus.json();
+    expect(j.stand.team.kopf).toMatchObject({ faktor: 1, personen: 0 }); // pa teilt weiter mit pb — zählt trotzdem nicht
+    expect(j.stand.personen.find((p: { id: string }) => p.id === 'konto-pa')).not.toHaveProperty('erholung');
+    const an = await (await route.PATCH(patch('pa', [{ op: 'erholung', person: 'konto-pa', an: true }]))).json();
+    expect(an.stand.team.kopf).toMatchObject({ faktor: 0.75, personen: 1 });
+    expect(an.stand.personen.find((p: { id: string }) => p.id === 'konto-pa').erholungAm).toMatch(/^\d{4}-/);
+    // Der andere sieht nicht einmal, ob pa eingewilligt hat.
+    const fuerB = await (await route.GET(get('pb'))).json();
+    expect(fuerB.stand.personen.find((p: { id: string }) => p.id === 'konto-pa')).not.toHaveProperty('erholungAm');
   });
 });
 

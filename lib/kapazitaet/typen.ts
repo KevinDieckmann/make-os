@@ -40,7 +40,14 @@ export const WOCHEN_STANDARD = 53;
 export type AusnahmeArt = 'urlaub' | 'block';
 /** Urlaub: Tage ganz frei. Fester Block: so viele Stunden je Woche sind gebunden (z. B. Lehrauftrag, Elternzeit-Anteil). */
 export interface Ausnahme { id: string; art: AusnahmeArt; von: string; /** einschließlich; fehlt beim Block = unbefristet */ bis?: string; stundenWoche?: number; titel?: string }
-export interface PersonEinstellung { /** Grundwert: verfügbare Stunden je Woche. Fehlt → Wochenvorlage, sonst Annahme (nur Konten). */ stundenWoche?: number; ausnahmen?: Ausnahme[] }
+export interface PersonEinstellung {
+  /** Grundwert: verfügbare Stunden je Woche. Fehlt → Wochenvorlage, sonst Annahme (nur Konten). */ stundenWoche?: number; ausnahmen?: Ausnahme[];
+  /**
+   * Einwilligung der Person, dass ihre Erholung (Gesundheitsdaten, Art. 9) als Team-Faktor in die Kapazität eingeht — Zeitpunkt
+   * (ISO) als Nachweis (Art. 7 Abs. 1). Fehlt = aus (Vorgabe, DSGVO-Prüfung 04.10.). Setzen/zurücknehmen NUR die Person selbst.
+   */
+  erholungAm?: string;
+}
 
 export type ZuweisungArt = 'mandat' | 'kunde';
 /** Wiederkehrend gebundene Zeit: Person × Mandat/Kunde × Stunden je Woche, optional befristet. */
@@ -72,8 +79,9 @@ export interface PersonEingabe {
   tage?: TagEingabe[];
   hatVorlage?: boolean;
   /**
-   * Ø Recovery (0–100) der letzten 7 Tage — NUR gesetzt, wenn die Person ihre Gesundheit mit allen anderen Konten des
-   * Haushalts teilt (Server-Regel). Geht nur als Team-Faktor in die Rechnung, nie als Einzelwert zu anderen.
+   * Ø Recovery (0–100) der letzten 7 Tage — NUR gesetzt, wenn die Person eingewilligt hat (`PersonEinstellung.erholungAm`) UND
+   * ihre Gesundheit mit allen anderen Konten des Haushalts teilt (Server-Regel). Geht nur als Team-Faktor in die Rechnung, nie als
+   * Einzelwert zu anderen.
    */
   erholung?: number | null;
 }
@@ -173,6 +181,8 @@ export interface PersonStand {
   ausnahmen: Ausnahme[];
   /** Nur für die Person selbst (fuerBetrachter): ihr eigener Erholungswert. */
   erholung?: { wert: number; faktor: number };
+  /** Nur für die Person selbst (fuerBetrachter): seit wann sie eingewilligt hat, dass ihre Erholung zählt. */
+  erholungAm?: string;
 }
 
 export type LastStufe = 'leer' | 'gut' | 'eng' | 'ueber';

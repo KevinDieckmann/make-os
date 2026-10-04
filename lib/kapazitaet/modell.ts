@@ -164,6 +164,7 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
     return {
       id: p.id, name: p.name, quelle: p.quelle, grundwert: r1(grundwert), grundwertQuelle: quelle ?? 'einstellung',
       ...(quelle ? {} : { ohneKapa: true }), wochen: [], ausnahmen, ...(erholung ? { erholung } : {}),
+      ...(einst.erholungAm ? { erholungAm: einst.erholungAm } : {}),
     };
   });
 
@@ -312,7 +313,7 @@ export function fuerBetrachter(stand: KapaStand, betrachter: string | null): Kap
     ...stand,
     personen: stand.personen.map(p => {
       if (p.id === betrachter) return p;
-      const { erholung: _weg, ...rest } = p;
+      const { erholung: _weg, erholungAm: _am, ...rest } = p;
       return { ...rest, ausnahmen: p.ausnahmen.map(({ titel: _t, ...a }) => a) };
     }),
   };

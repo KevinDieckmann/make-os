@@ -111,10 +111,11 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
       sicher(() => ladeZeit(sp), null),
     ]);
     const t = v ? tageAusVerfuegbarkeit(v) : { tage: [], hatVorlage: false };
-    // Erholung zählt nur, wenn die Person ihre Gesundheit mit allen anderen Konten des Haushalts teilt.
+    // Erholung zählt nur, wenn die Person SELBST eingewilligt hat (Kapazität › „Erholung berücksichtigen“, Art. 9 Abs. 2 lit. a —
+    // Vorgabe aus, DSGVO-Prüfung 04.10.) UND ihre Gesundheit mit allen anderen Konten des Haushalts teilt.
     const k = konten.find(x => x.speicher === sp);
     const andere = [...kontoSpeicher].filter(x => x !== sp);
-    const teilt = !!k && andere.every(a => k.teilt?.gesundheit?.includes(a));
+    const teilt = !!k && andere.every(a => k.teilt?.gesundheit?.includes(a)) && !!datei.personen[p.id]?.erholungAm;
     if (zeit) {
       for (const b of bloeckeImZeitraum(zeit, tagPlus(heute, -400), heute)) {
         const tag = berlinTag(b.von);
