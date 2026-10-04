@@ -426,7 +426,7 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   „termin“ + Abwesenheit mit Zeit; Fokus/Blöcke sind Arbeit, kein Abzug) − 15 min Umschalten je Termin − feste Blöcke = netto;
   × Kopf & Energie (Team-Faktor aus Erholung grün 1,0 · gelb 0,9 · rot 0,75, nur die nächsten 14 Tage) = belastbar; − Zuweisungen
   (Mandat/Kunde, h/Woche) = frei. **Machbarkeit** je Meilenstein/Ziel der Reihe nach (überfällig, Termin, Rang — „nicht schon
-  verplant“): Rest = Aufwand × (1 − Fortschritt) gegen frei bis zum Termin: ≤ 80 % machbar, ≤ 100 % eng, sonst „nicht machbar —
+  verplant“): Rest = Aufwand × (1 − Fortschritt) gegen frei bis zum Termin: ≤ 70 % machbar, ≤ 90 % eng (`MACHBAR_BIS`/`ENG_BIS`, Kevin 04.10.), sonst „nicht machbar —
   bräuchte N h/Tag, frei sind F“ (> 24 h: „mehr, als ein Tag Stunden hat“); ohne Aufwand „Aufwand fehlt“, ohne Termin „Termin fehlt“.
   Ziel = schlechtester Status aus eigenem Aufwand + Meilensteinen (`zielMachbarkeit`). Neue Regeln dort, nie in Ansichten.
 - **Andock-Stelle für jeden Strahl:** `lib/kapazitaet/last.ts` `lastJeWoche(stand, { von, bis }, person?)` / `engpassWochen` — je Woche

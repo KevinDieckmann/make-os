@@ -13,7 +13,7 @@
 //
 // Machbarkeit je Meilenstein/Ziel (der Reihe nach: Überfälliges, dann nach Termin und Rang — „nicht schon verplante Kapa“):
 //   Rest = Aufwand × (1 − Fortschritt) · frei = freie Stunden der Personen bis zum Termin
-//   Rest ≤ 80 % von frei → machbar · ≤ 100 % → eng · darüber → nicht machbar („bräuchte N h/Tag“ = Rest ÷ Personen-Arbeitstage)
+//   Rest ≤ 70 % von frei → machbar · ≤ 90 % → eng · darüber → nicht machbar („bräuchte N h/Tag“ = Rest ÷ Personen-Arbeitstage)
 //   Ohne Aufwand → „Aufwand fehlt“, ohne Termin → „Termin fehlt“ — nie geraten.
 // Der Rest wird anteilig auf die freie Zeit gelegt (wer Urlaub hat, bekommt nichts); reicht sie nicht, liegt der Rest
 // trotzdem in den Wochen — so wird die Überlast sichtbar statt versteckt.
@@ -21,7 +21,7 @@
 import { montagVon, tagPlus, wochentag, feiertag } from '@/lib/zeit/kalender-kern';
 import type { Verfuegbarkeit } from '@/lib/kalender/verfuegbarkeit-regeln';
 import {
-  ANNAHME_STUNDEN_WOCHE, UMSCHALTEN_STUNDEN, KOPF_TAGE, MACHBAR_BIS, WOCHEN_STANDARD,
+  ANNAHME_STUNDEN_WOCHE, UMSCHALTEN_STUNDEN, KOPF_TAGE, MACHBAR_BIS, ENG_BIS, WOCHEN_STANDARD,
   type KapaEingabe, type KapaStand, type PersonStand, type WochePerson, type WocheTeam, type Machbarkeit, type PostenEingabe,
   type KapaKennzahlen, type LastStufe, type Ausnahme, type MachbarStatus, type Zuweisung, type TagEingabe,
 } from './typen';
@@ -201,7 +201,7 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
     const braeuchte = rest / Math.max(1, tageBasis);
     const freiTag = frei / Math.max(1, tageBasis);
     const quote = frei > 0 ? rest / frei : Infinity;
-    const status: MachbarStatus = quote <= MACHBAR_BIS ? 'machbar' : quote <= 1 ? 'eng' : 'nicht-machbar';
+    const status: MachbarStatus = quote <= MACHBAR_BIS ? 'machbar' : quote <= ENG_BIS ? 'eng' : 'nicht-machbar';
     // Verteilen: anteilig auf die freie Zeit; ohne freie Zeit gleichmäßig auf die Arbeitstage (Überlast wird sichtbar).
     if (frei > 0) {
       for (const r of wer) for (let d = 0; d <= dEnde; d++) {

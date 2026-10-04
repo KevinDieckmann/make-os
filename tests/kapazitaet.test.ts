@@ -31,11 +31,11 @@ describe('Machbarkeit je Meilenstein', () => {
     expect(p.text).toContain('bräuchte 30 h/Tag');
     expect(p.text).toContain('mehr, als ein Tag Stunden hat');
   });
-  it('machbar bis 80 % der freien Zeit, eng bis 100 %, darüber nicht machbar', () => {
+  it('machbar bis 70 % der freien Zeit, eng bis 90 %, darüber nicht machbar (Kevin 04.10.)', () => {
     const st = rechne({ posten: [ms('klein', { aufwand: 40 })] });
     expect(posten(st, 'klein')).toMatchObject({ status: 'machbar', braeuchteStdTag: 4, freiStdTag: 8 });
     expect(posten(rechne({ posten: [ms('mittel', { aufwand: 70 })] }), 'mittel').status).toBe('eng');
-    expect(posten(rechne({ posten: [ms('voll', { aufwand: 81 })] }), 'voll').status).toBe('nicht-machbar');
+    expect(posten(rechne({ posten: [ms('voll', { aufwand: 73 })] }), 'voll').status).toBe('nicht-machbar');
   });
   it('Rest = Aufwand × (1 − Fortschritt): 100 h zu 60 % fertig → 40 h Rest → machbar', () => {
     expect(posten(rechne({ posten: [ms('halb', { aufwand: 100, fortschritt: 60 })] }), 'halb')).toMatchObject({ rest: 40, status: 'machbar' });
@@ -70,7 +70,7 @@ describe('Verfügbare Kapa: Grundwert, Urlaub, Blöcke, Termine, Zuweisungen', (
   it('Urlaub nimmt die Tage ganz heraus', () => {
     const st = rechne({ datei: datei({ personen: { 'konto-a': { stundenWoche: 40, ausnahmen: [{ id: 'u', art: 'urlaub', von: '2026-10-05', bis: '2026-10-09', titel: 'Erfundene Reise' }] } } }), posten: [ms('x', { aufwand: 40 })] });
     expect(st.personen[0].wochen[0]).toMatchObject({ abwesend: 40, netto: 0 });
-    expect(posten(st, 'x')).toMatchObject({ status: 'eng', arbeitstage: 5, braeuchteStdTag: 8 });
+    expect(posten(st, 'x')).toMatchObject({ status: 'nicht-machbar', arbeitstage: 5, braeuchteStdTag: 8 });
   });
   it('fester Block und Zuweisung (Mandat, h/Woche) binden Zeit', () => {
     const st = rechne({ datei: datei({

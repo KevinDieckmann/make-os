@@ -31,8 +31,9 @@ export const ANNAHME_STUNDEN_WOCHE = 40;
 export const UMSCHALTEN_STUNDEN = 0.25;
 /** „Kopf & Energie“ wirkt nur auf die nächsten 14 Tage — Erholung ist ein Zustand von jetzt, keine Prognose fürs Jahr. */
 export const KOPF_TAGE = 14;
-/** Machbar, solange der Restbedarf höchstens 80 % der freien Zeit bis zum Termin braucht; bis 100 % „eng“. */
-export const MACHBAR_BIS = 0.8;
+/** Machbar, solange der Restbedarf höchstens 70 % der freien Zeit bis zum Termin braucht; bis 90 % „eng“ (Kevin 04.10.: mehr Puffer). */
+export const MACHBAR_BIS = 0.7;
+export const ENG_BIS = 0.9;
 /** Wochen, die gerechnet werden (ab der laufenden). Der Strahl zeigt darüber hinaus nichts. */
 export const WOCHEN_STANDARD = 53;
 
