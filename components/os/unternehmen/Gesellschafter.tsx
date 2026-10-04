@@ -6,7 +6,7 @@
 // steht: wer (z. B. eine eigene Gesellschaft) wählen → „Eintragen“ (Nennbetrag ist mit dem freien Rest vorbelegt).
 // Archiv = ausgeschieden (zählt nicht mehr), Löschen = Papierkorb 30 Tage — Baustein ZeileAktionen, Rückgängig 10 s.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Knopf, Hinweis, Leer, Pillen, Punkt, Schalter, ZeileAktionen, useRueckgaengig, useRueckfrage, feld as feldStil } from '../ui';
 import { anteile, centAus, EINLAGEN, type Bezug, type Einlage, type Gesellschafter } from '@/lib/gesellschaften/modell';
@@ -102,6 +102,8 @@ export function Papierkorb({ eintraege, wiederherstellen, endgueltig }: { eintra
 function GesellschafterForm({ g, daten, alt, rest, schreibe, fertig }: { g: GAnzeige; daten: RegisterDaten; alt?: Gesellschafter; rest?: number; schreibe: Schreibe; fertig: () => void }) {
   const [wer, setWer] = useState<Bezug | null>(alt?.wer ?? null);
   const [nennbetrag, setNennbetrag] = useState(alt ? centEingabe(alt.nennbetragCent) : rest ? centEingabe(rest) : '');
+  // Kommt das Stammkapital erst nach dem Öffnen an (Steckbrief eben gespeichert), den freien Rest nachträglich vorbelegen — nie überschreiben.
+  useEffect(() => { if (!alt && rest) setNennbetrag(n => n || centEingabe(rest)); }, [alt, rest]);
   const [einlage, setEinlage] = useState<Einlage>(alt?.einlage ?? 'nein');
   const [eingezahlt, setEingezahlt] = useState(centEingabe(alt?.eingezahltCent));
   const [einlageAm, setEinlageAm] = useState(alt?.einlageAm ?? '');
