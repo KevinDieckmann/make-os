@@ -80,6 +80,8 @@ export const LOESCHREGELN = [
   { id: 'kunde', titel: 'Kunde nach Vertragsende', frist: '36 Monate', aktion: 'Prüfen', norm: '§ 195 BGB (Verjährung)' },
   { id: 'korrespondenz', titel: 'Geschäftliche Korrespondenz', frist: '6 Jahre ab Jahresende', aktion: 'Sperren', norm: '§ 257 HGB' },
   { id: 'rechnung', titel: 'Rechnungen und Buchungsbelege', frist: '8 Jahre ab Jahresende', aktion: 'Sperren', norm: '§ 147 AO, § 257 HGB' },
+  // DSGVO-Prüfung 04.10.: die Papierkörbe (CRM-Listen, Produkte, Aufgaben, Gesellschafts-Register) — Art. 15/17 erfassen sie mit.
+  { id: 'papierkorb', titel: 'Papierkorb (CRM-Listen, Produkte, Aufgaben, Gesellschafts-Register)', frist: '30 Tage nach dem Löschen', aktion: 'Löschen (Morgenlauf; mit Verweisen bleibt der Eintrag im Papierkorb)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO' },
 ] as const;
 
 /** Startbestand für das Verzeichnis (Art. 30) — MAKE OS, nicht Operations. Wird einmal angelegt, danach gepflegt. */
