@@ -14,6 +14,7 @@ import { DATE_IDEEN, REPARATUR_SAETZE, MUSTER, HILFE } from '@/lib/familie/katal
 import type { Thema, Wunsch, DateIdee, Reparatur } from '@/lib/familie/typen';
 import { type FamilieApi, neueId, datumLang } from './daten';
 import { Eingabe, Textfeld, Wahl, Klein, Reihe, Mehr, Symbol } from './teile';
+import { useFamilieAblage, MitAktionen, ArchivBlock } from './ablage';
 
 const ROSA = LEUCHT.beziehung;
 const STUFE: Record<string, { text: string; farbe: string }> = {
@@ -147,7 +148,7 @@ function Dates({ api }: { api: FamilieApi }) {
   const kommend = geplant.filter(x => x.datum >= d.heute);
   const gewesen = f.dates.filter(x => x.status === 'stattgefunden').sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 3);
   const genutzt = new Set(f.dates.map(x => x.ideeId));
-  const ideen = [...f.ideen].sort((a, b) => Number(genutzt.has(a.id)) - Number(genutzt.has(b.id)) || Number(b.neu) - Number(a.neu)).slice(0, 5);
+  const ideen = f.ideen.filter(i => !i.archiviertAm).sort((a, b) => Number(genutzt.has(a.id)) - Number(genutzt.has(b.id)) || Number(b.neu) - Number(a.neu)).slice(0, 5);
   const starte = (i?: DateIdee) => setPlan({ titel: i?.titel ?? '', datum: d.heute, planer: d.person, ideeId: i?.id ?? null, neu: i?.neu ?? false });
 
   return (
@@ -189,8 +190,9 @@ function Dates({ api }: { api: FamilieApi }) {
       )}
       <Mehr titel={`Ideen-Pool (${f.ideen.length})`}>
         <Liste>
-          {ideen.map(i => <Zeile key={i.id} titel={<span style={{ whiteSpace: 'normal' }}>{i.titel}</span>} unter={`${i.dauer} · ${'€'.repeat(i.kosten) || 'kostenlos'}${genutzt.has(i.id) ? ' · schon gemacht' : ''}`} rechts={<>{i.neu && <Chip farbe={ROSA}>Neu</Chip>}<Knopf leise onClick={() => starte(i)}>Planen</Knopf></>} />)}
+          {ideen.map(i => <MitAktionen key={i.id} ablage={ablage} liste="ideen" e={i} titel={i.titel}><Zeile titel={<span style={{ whiteSpace: 'normal' }}>{i.titel}</span>} unter={`${i.dauer} · ${'€'.repeat(i.kosten) || 'kostenlos'}${genutzt.has(i.id) ? ' · schon gemacht' : ''}`} rechts={<>{i.neu && <Chip farbe={ROSA}>Neu</Chip>}<Knopf leise onClick={() => starte(i)}>Planen</Knopf></>} /></MitAktionen>)}
         </Liste>
+        <ArchivBlock ablage={ablage} liste="ideen" eintraege={f.ideen} titelVon={e => String(e.titel ?? '')} />
         <div style={{ marginTop: 10 }}><Eingabe leeren platzhalter="Eigene Idee in den Pool" onFertig={titel => api.setze('ideen', { id: neueId('di'), titel, tags: [], aufwand: 1, kosten: 1, dauer: 'abend', neu: true })} /></div>
         {f.ideen.length < DATE_IDEEN.length && <Klein>Einige Start-Ideen wurden entfernt.</Klein>}
       </Mehr>
@@ -205,7 +207,8 @@ function Themen({ api }: { api: FamilieApi }) {
   const f = d.familie;
   const [hut, setHut] = useState<Thema['hut']>('privat');
   const [privat, setPrivat] = useState(false);
-  const offen = f.themen.filter(t => t.status === 'offen' || t.status === 'geparkt');
+  const ablage = useFamilieAblage(api);
+  const offen = f.themen.filter(t => (t.status === 'offen' || t.status === 'geparkt') && !t.archiviertAm);
   const vereinb = f.vereinbarungen.filter(v => v.status === 'offen');
   return (
     <Karte i={1}>
@@ -219,15 +222,18 @@ function Themen({ api }: { api: FamilieApi }) {
       </div>
       <Liste>
         {offen.map(t => (
-          <Zeile key={t.id} titel={<span style={{ whiteSpace: 'normal' }}>{t.titel}</span>}
+          <MitAktionen key={t.id} ablage={ablage} liste="themen" e={t} titel={t.titel}>
+          <Zeile titel={<span style={{ whiteSpace: 'normal' }}>{t.titel}</span>}
             unter={`${api.name(t.von)}${t.hut === 'business' ? ' · Business — nicht fürs Paar-Gespräch' : ''}${t.sichtbarkeit === 'nur-ich' ? ' · nur für dich sichtbar' : ''}${t.status === 'geparkt' ? ' · geparkt' : ''}`}
             rechts={<Reihe gap={2}>
               {t.sichtbarkeit === 'nur-ich' && <Knopf leise onClick={() => api.setze('themen', { ...t, sichtbarkeit: 'paar' })}>Teilen</Knopf>}
               <Symbol titel="Besprochen" onClick={() => api.setze('themen', { ...t, status: 'besprochen' })}>✓</Symbol>
-              <Symbol titel="Entfernen" onClick={() => api.weg('themen', t.id)}>×</Symbol>
             </Reihe>} />
+          </MitAktionen>
         ))}
       </Liste>
+      <ArchivBlock ablage={ablage} liste="themen" eintraege={f.themen} titelVon={e => String(e.titel ?? '')} />
+      {ablage.hinweis}
       {!offen.length && <Leer>Nichts geparkt. Themen landen hier, statt zwischen Tür und Angel besprochen zu werden.</Leer>}
 
       <div style={{ marginTop: 18 }}>
@@ -253,7 +259,8 @@ function Wuensche({ api, partner }: { api: FamilieApi; partner: string | null })
   const [privat, setPrivat] = useState(false);
   const mein = f.profile.find(p => p.person === d.person);
   const deins = partner ? f.profile.find(p => p.person === partner) : undefined;
-  const offen = f.wuensche.filter(w => w.status === 'offen');
+  const ablage = useFamilieAblage(api);
+  const offen = f.wuensche.filter(w => w.status === 'offen' && !w.archiviertAm);
   const profil = (feld: 'stress' | 'traeume' | 'wasMirGuttut', text: string) => api.felder({ profil: { stress: mein?.stress ?? '', traeume: mein?.traeume ?? '', wasMirGuttut: mein?.wasMirGuttut ?? '', [feld]: text } });
   return (
     <Karte i={3}>
@@ -267,10 +274,14 @@ function Wuensche({ api, partner }: { api: FamilieApi; partner: string | null })
       </div>
       <Liste>
         {offen.map(w => (
-          <Zeile key={w.id} titel={<span style={{ whiteSpace: 'normal' }}>{w.text}</span>} unter={`${w.sichtbarkeit === 'nur-ich' ? 'Merkzettel · ' : `Wunsch von ${api.name(w.von)} · `}${KATEGORIEN.find(k => k.id === w.kategorie)?.label}`}
-            rechts={<Reihe gap={2}><Symbol titel="Erfüllt" onClick={() => api.setze('wuensche', { ...w, status: 'erfuellt' })}>✓</Symbol><Symbol titel="Entfernen" onClick={() => api.weg('wuensche', w.id)}>×</Symbol></Reihe>} />
+          <MitAktionen key={w.id} ablage={ablage} liste="wuensche" e={w} titel={w.text}>
+          <Zeile titel={<span style={{ whiteSpace: 'normal' }}>{w.text}</span>} unter={`${w.sichtbarkeit === 'nur-ich' ? 'Merkzettel · ' : `Wunsch von ${api.name(w.von)} · `}${KATEGORIEN.find(k => k.id === w.kategorie)?.label}`}
+            rechts={<Reihe gap={2}><Symbol titel="Erfüllt" onClick={() => api.setze('wuensche', { ...w, status: 'erfuellt' })}>✓</Symbol></Reihe>} />
+          </MitAktionen>
         ))}
       </Liste>
+      <ArchivBlock ablage={ablage} liste="wuensche" eintraege={f.wuensche.filter(w => w.status === 'offen')} titelVon={e => String(e.text ?? '')} />
+      {ablage.hinweis}
       <Mehr titel="Mein Profil — was mein Gegenüber wissen sollte">
         <div style={{ display: 'grid', gap: 8 }}>
           <Textfeld zeilen={2} wert={mein?.stress} platzhalter="Was mich gerade stresst" onFertig={t => profil('stress', t)} />

@@ -9,13 +9,16 @@
 //    ist ein bewusster Klick — nicht der Normalzustand, wenn jemand mitguckt.
 // 2. Gespeichert wird erst beim Verlassen des Feldes, nicht bei jedem Zeichen.
 // 24.09.: auf das lebendige Muster umgezogen.
+// 04.10. (Kevin: „alles anpassbar“): jede Karte hängt mit ihrem Kopf am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`,
+// unten „Archiv“, zurückholbar) und Löschen = Papierkorb (`geloeschtAm`, mit „Rückgängig“; endgültig nur aus dem Papierkorb,
+// hinter einer Rückfrage). Beide Marken sind einfache Textfelder des Satzes — der Speicher nimmt sie ohne Umbau mit.
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
-import { Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Eye, EyeOff, Plus } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { KARTEIEN, verdecken, type Feld, type Kartei } from '@/lib/make-one/stammdaten-data';
 import { modusLesen, beiWechsel } from '@/lib/make-one/arbeitsplatz-browser';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, Hinweis, feld, LEUCHT } from './ui';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, Hinweis, feld, LEUCHT, ZeileAktionen, useRueckgaengig, useRueckfrage, type Rueckgaengig } from './ui';
 
 const HAAR = 'rgba(255,255,255,.06)';
 const beschriftung: CSSProperties = { fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
@@ -56,6 +59,23 @@ export function StammdatenView() {
       .catch(() => setFehler('Nicht gespeichert — läuft die Software noch?'));
   }, [ladeFehler]);
 
+  // Archiv & Papierkorb (04.10.): Marken am Satz — „Rückgängig“ läuft später, darum immer auf dem jüngsten Bestand.
+  const dRef = useRef(d); dRef.current = d;
+  const { melden, hinweis } = useRueckgaengig();
+  const { fragen, dialog } = useRueckfrage();
+  const marke = (kartei: Kartei['id'], id: string, feld: 'archiviertAm' | 'geloeschtAm', wert: string | null) => {
+    const b = dRef.current;
+    if (!b) return;
+    sichern({ ...b, [kartei]: b[kartei].map(x => { if (x.id !== id) return x; const n = { ...x } as Satz; if (wert) n[feld] = wert; else delete n[feld]; return n; }) });
+  };
+  const ablage: Ablage = {
+    melden,
+    archivieren: (k, sz) => { const t = sz[k.titelFeld] || 'Diese Karte'; if (sz.archiviertAm) { marke(k.id, sz.id, 'archiviertAm', null); melden(`„${t}“ ist zurück`, () => marke(k.id, sz.id, 'archiviertAm', new Date().toISOString())); return; } marke(k.id, sz.id, 'archiviertAm', new Date().toISOString()); melden(`„${t}“ archiviert — unten unter „Archiv“`, () => marke(k.id, sz.id, 'archiviertAm', null)); },
+    loeschen: (k, sz) => { const t = sz[k.titelFeld] || 'Diese Karte'; marke(k.id, sz.id, 'geloeschtAm', new Date().toISOString()); melden(`„${t}“ im Papierkorb — unten wiederherstellbar`, () => marke(k.id, sz.id, 'geloeschtAm', null)); },
+    wiederherstellen: (k, sz) => { const t = sz[k.titelFeld] || 'Diese Karte'; marke(k.id, sz.id, 'geloeschtAm', null); melden(`„${t}“ wiederhergestellt`, () => marke(k.id, sz.id, 'geloeschtAm', new Date().toISOString())); },
+    endgueltig: (k, sz) => fragen({ titel: `„${sz[k.titelFeld] || 'Diese Karte'}“ endgültig löschen?`, text: 'Die Karte verschwindet ganz, mit allen Angaben. Das lässt sich nicht rückgängig machen.', wahl: [{ label: 'Endgültig löschen', ton: 'gefahr', tun: () => { const b = dRef.current; if (b) sichern({ ...b, [k.id]: b[k.id].filter(x => x.id !== sz.id) }); } }] }),
+  };
+
   const karteien = KARTEIEN.filter(k => modus === 'alles' || k.modus === 'beides' || k.modus === modus);
 
   return (
@@ -83,17 +103,37 @@ export function StammdatenView() {
           aufdecken={(id) => setOffen(o => ({ ...o, [id]: !o[id] }))}
           aendern={(saetze) => sichern({ ...d, [k.id]: saetze })}
           gesperrt={ladeFehler}
+          ablage={ablage}
         />
       ))}
+      {dialog}
+      {hinweis}
     </Seite>
   );
 }
 
-function KarteiBlock({ i, kartei, saetze, offen, aufdecken, aendern, gesperrt }: {
+interface Ablage {
+  melden: Rueckgaengig['melden'];
+  archivieren: (k: Kartei, s: Satz) => void; loeschen: (k: Kartei, s: Satz) => void;
+  wiederherstellen: (k: Kartei, s: Satz) => void; endgueltig: (k: Kartei, s: Satz) => void;
+}
+
+function KarteiBlock({ i, kartei, saetze: alle, offen, aufdecken, aendern: aendernAlle, gesperrt, ablage }: {
   i: number; kartei: Kartei; saetze: Satz[]; offen: Record<string, boolean>;
-  aufdecken: (id: string) => void; aendern: (s: Satz[]) => void; gesperrt: boolean;
+  aufdecken: (id: string) => void; aendern: (s: Satz[]) => void; gesperrt: boolean; ablage: Ablage;
 }) {
-  const neu = () => aendern([...saetze, { id: `${kartei.id}-${saetze.length + 1}-${saetze.length}`, [kartei.titelFeld]: '' } as Satz]);
+  // Nur die laufenden Karten stehen offen; Archiv und Papierkorb unten als kurze Zeilen.
+  const saetze = alle.filter(x => !x.archiviertAm && !x.geloeschtAm);
+  const archiv = alle.filter(x => x.archiviertAm && !x.geloeschtAm);
+  const korb = alle.filter(x => x.geloeschtAm);
+  /** Änderungen an den laufenden Karten — Archiv und Papierkorb bleiben, wie sie sind. */
+  const aendern = (neu: Satz[]) => aendernAlle([...neu, ...alle.filter(x => x.archiviertAm || x.geloeschtAm)]);
+  const kurz = (x: Satz, rechts: ReactNode) => (
+    <div key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: `1px solid ${HAAR}`, fontSize: TYP.bedien }}>
+      <span style={{ minWidth: 0, color: C.inkDim }}>{x[kartei.titelFeld] || 'Ohne Namen'}</span>{rechts}
+    </div>
+  );
+  const neu = () => aendern([...saetze, { id: `${kartei.id}-${alle.length + 1}-${Date.now().toString(36)}`, [kartei.titelFeld]: '' } as Satz]);
 
   return (
     <Karte i={i}>
@@ -106,20 +146,16 @@ function KarteiBlock({ i, kartei, saetze, offen, aufdecken, aendern, gesperrt }:
 
       {saetze.map((s, idx) => (
         <div key={s.id} style={{ padding: '14px 0 16px', borderTop: `1px solid ${HAAR}` }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+          <ZeileAktionen titel={s[kartei.titelFeld] || 'Ohne Namen'} darf={!gesperrt} onArchivieren={() => ablage.archivieren(kartei, s)} onLoeschen={() => ablage.loeschen(kartei, s)}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12, minHeight: 44 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{s[kartei.titelFeld] || 'Ohne Namen'}</div>
               {kartei.untertitelFeld && s[kartei.untertitelFeld] && (
                 <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{s[kartei.untertitelFeld]}</div>
               )}
             </div>
-            <button
-              onClick={() => { if (confirm(`„${s[kartei.titelFeld] || 'Diese Karte'}" wirklich löschen?`)) aendern(saetze.filter((_, j) => j !== idx)); }}
-              aria-label="Karte löschen" title="Karte löschen"
-              style={{ ...nackt, flex: '0 0 auto' }}>
-              <Trash2 size={14} />
-            </button>
           </div>
+          </ZeileAktionen>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 10 }}>
             {kartei.felder.map(f => (
@@ -133,6 +169,28 @@ function KarteiBlock({ i, kartei, saetze, offen, aufdecken, aendern, gesperrt }:
           </div>
         </div>
       ))}
+
+      {archiv.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <div style={beschriftung}>Archiv · {archiv.length}</div>
+          {archiv.map(x => (
+            <ZeileAktionen key={x.id} titel={x[kartei.titelFeld] || 'Ohne Namen'} archiviert darf={!gesperrt} onArchivieren={() => ablage.archivieren(kartei, x)} onLoeschen={() => ablage.loeschen(kartei, x)}>
+              {kurz(x, <Knopf leise onClick={() => ablage.archivieren(kartei, x)} aus={gesperrt}>Zurückholen</Knopf>)}
+            </ZeileAktionen>
+          ))}
+        </div>
+      )}
+      {korb.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <div style={beschriftung}>Papierkorb · {korb.length}</div>
+          {korb.map(x => kurz(x, (
+            <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <Knopf leise onClick={() => ablage.wiederherstellen(kartei, x)} aus={gesperrt}>Wiederherstellen</Knopf>
+              <Knopf leise farbe={LEUCHT.kritisch} onClick={() => ablage.endgueltig(kartei, x)} aus={gesperrt}>Endgültig löschen</Knopf>
+            </span>
+          )))}
+        </div>
+      )}
     </Karte>
   );
 }

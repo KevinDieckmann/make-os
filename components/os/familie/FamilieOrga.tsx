@@ -7,13 +7,14 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Leer, Liste, Zeile, Haken, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Knopf, Chip, Leer, Liste, Zeile, Haken, LEUCHT, ZeileAktionen } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { KINDER_KARTEN } from '@/lib/familie/katalog';
 import type { Karte as KarteT, WichtigerTag, Mensch } from '@/lib/familie/typen';
 import { type FamilieApi, neueId, datumLang } from './daten';
 import { Eingabe, Wahl, Klein, Reihe, Mehr, Symbol, Auswahl } from './teile';
 import { tagDatum } from '@/lib/familie/logik';
+import { useFamilieAblage, MitAktionen, ArchivBlock } from './ablage';
 import { geburtstagSaeubern, geburtstagText, naechsterGeburtstag } from '@/lib/kalender/geburtstag';
 
 const ROSA = LEUCHT.beziehung;
@@ -53,7 +54,8 @@ export function Tage({ api }: { api: FamilieApi }) {
   // Geburtstag (29.09., K2): der MENSCH führt das Datum — der wichtige Tag verweist nur (menschId, ohne eigenes Datum).
   const verwiesen = neu?.art === 'geburtstag' && neu.menschId ? menschen.find(m => m.id === neu.menschId) : undefined;
   const datumVon = (t: WichtigerTag) => tagDatum(t, menschen) ?? '';
-  const liste = alle ? [...d.familie.tage].sort((a, b) => datumVon(a).slice(-5).localeCompare(datumVon(b).slice(-5))) : null;
+  const ablage = useFamilieAblage(api);
+  const liste = alle ? d.familie.tage.filter(t => !t.archiviertAm).sort((a, b) => datumVon(a).slice(-5).localeCompare(datumVon(b).slice(-5))) : null;
   const ok = neu && neu.titel.trim() && (verwiesen ? verwiesen.geburtstag || geburtstagSaeubern(neu.datum) : datumAus(neu.datum));
   const speichern = () => {
     if (!neu || !ok) return;
@@ -109,9 +111,11 @@ export function Tage({ api }: { api: FamilieApi }) {
       )}
       {liste && (
         <Liste>
-          {liste.map(t => { const dt = datumVon(t); return <Zeile key={t.id} titel={t.titel} unter={`${dt ? `${dt.slice(-2)}.${dt.slice(-5, -3)}.` : 'ohne Datum'} · ${ARTEN.find(a => a.id === t.art)?.label}${t.menschId ? ' · Datum vom Menschen' : ''} · ${t.vorlaufTage} Tage Vorlauf`} rechts={<Symbol titel="Entfernen" onClick={() => api.weg('tage', t.id)}>×</Symbol>} />; })}
+          {liste.map(t => { const dt = datumVon(t); return <MitAktionen key={t.id} ablage={ablage} liste="tage" e={t} titel={t.titel}><Zeile titel={t.titel} unter={`${dt ? `${dt.slice(-2)}.${dt.slice(-5, -3)}.` : 'ohne Datum'} · ${ARTEN.find(a => a.id === t.art)?.label}${t.menschId ? ' · Datum vom Menschen' : ''} · ${t.vorlaufTage} Tage Vorlauf`} /></MitAktionen>; })}
         </Liste>
       )}
+      {alle && <ArchivBlock ablage={ablage} liste="tage" eintraege={d.familie.tage} titelVon={e => String(e.titel ?? '')} />}
+      {ablage.hinweis}
     </Karte>
   );
 }
@@ -124,7 +128,8 @@ export function Menschen({ api }: { api: FamilieApi }) {
   const [gebFehler, setGebFehler] = useState(false);
   const faellig = new Set(d.kontakte.map(k => k.id));
   const gebMensch = geb ? d.familie.menschen.find(m => m.id === geb) : undefined;
-  const sortiert = [...d.familie.menschen].sort((a, b) => Number(faellig.has(b.id)) - Number(faellig.has(a.id)) || a.name.localeCompare(b.name));
+  const ablage = useFamilieAblage(api);
+  const sortiert = d.familie.menschen.filter(m => !m.archiviertAm).sort((a, b) => Number(faellig.has(b.id)) - Number(faellig.has(a.id)) || a.name.localeCompare(b.name));
   const TAKTE = [{ id: '0', label: 'ohne Takt' }, { id: '7', label: 'wöchentlich' }, { id: '14', label: 'alle 2 Wochen' }, { id: '30', label: 'monatlich' }];
   return (
     <Karte i={2}>
@@ -133,14 +138,15 @@ export function Menschen({ api }: { api: FamilieApi }) {
         {sortiert.map(m => {
           const dran = faellig.has(m.id);
           return (
-            <Zeile key={m.id} titel={<span style={{ color: dran ? C.ink : C.inkDim }}>{m.name}</span>}
+            <MitAktionen key={m.id} ablage={ablage} liste="menschen" e={m} titel={m.name}>
+            <Zeile titel={<span style={{ color: dran ? C.ink : C.inkDim }}>{m.name}</span>}
               unter={`${ROLLEN.find(r => r.id === m.rolle)?.label}${m.kontaktAlleTage ? ` · alle ${m.kontaktAlleTage} Tage` : ''}${m.letzterKontakt ? ` · zuletzt ${datumLang(m.letzterKontakt)}` : ''}${(() => { const n = m.geburtstag ? naechsterGeburtstag(m.geburtstag, d.heute) : null; return n ? ` · 🎂 ${geburtstagText(m.geburtstag)}${n.inTagen === 0 ? ' — heute' : n.inTagen <= 30 ? ` — in ${n.inTagen} T` : ''}` : ''; })()}`}
               rechts={<Reihe gap={4}>
                 {dran && <Chip farbe={ROSA}>dran</Chip>}
                 <Symbol titel={m.geburtstag ? 'Geburtstag ändern' : 'Geburtstag eintragen'} onClick={() => { setGeb(geb === m.id ? null : m.id); setGebFehler(false); }}>🎂</Symbol>
                 <Knopf leise onClick={() => api.setze('menschen', { ...m, letzterKontakt: d.heute })}>Gesprochen</Knopf>
-                <Symbol titel="Entfernen" onClick={() => api.weg('menschen', m.id)}>×</Symbol>
               </Reihe>} />
+            </MitAktionen>
           );
         })}
       </Liste>
@@ -156,6 +162,8 @@ export function Menschen({ api }: { api: FamilieApi }) {
         </div>
       )}
       {!sortiert.length && <Leer>Eltern, Geschwister, Kinder, enge Freunde — mit einem Takt, wie oft sie von euch hören sollen.</Leer>}
+      <ArchivBlock ablage={ablage} liste="menschen" eintraege={d.familie.menschen} titelVon={e => String(e.name ?? '')} />
+      {ablage.hinweis}
       <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
         <Eingabe leeren platzhalter="Name hinzufügen" onFertig={name => api.setze('menschen', { id: neueId('m'), name, rolle, geburtstag: null, kontaktAlleTage: takt, letzterKontakt: null, notiz: '' })} />
         <Reihe><Wahl liste={ROLLEN} aktiv={rolle} onWahl={setRolle} farbe={ROSA} /></Reihe>
@@ -188,13 +196,16 @@ function Karten({ api }: { api: FamilieApi }) {
           <Mehr key={b.id} titel={`${b.label} · ${karten.filter(k => k.aktiv && k.inhaber).length}/${karten.filter(k => k.aktiv).length} verteilt`} offen={b.id === 'zuhause'}>
             <Liste>
               {karten.map(k => (
-                <Zeile key={k.id} titel={<span style={{ color: k.aktiv ? C.ink : C.inkLeise, whiteSpace: 'normal' }}>{k.titel}</span>}
+                // Karten (04.10.): „Archiv“ ist hier „betrifft uns nicht“ (`aktiv: false`) — Löschen nur bei eigenen Karten (Katalog-Karten kämen als Vorschlag wieder).
+                <ZeileAktionen key={k.id} titel={k.titel} archiviert={!k.aktiv} onArchivieren={() => void api.setze('karten', { ...k, aktiv: !k.aktiv })} onLoeschen={k.id.startsWith('k-') ? undefined : () => void api.weg('karten', k.id)}>
+                <Zeile titel={<span style={{ color: k.aktiv ? C.ink : C.inkLeise, whiteSpace: 'normal' }}>{k.titel}</span>}
                   unter={<span title={k.mindeststandard}>{k.mindeststandard}{k.geprueft ? ` · geprüft ${datumLang(k.geprueft)}` : ''}</span>}
                   rechts={k.aktiv ? <Reihe gap={4}>
                     <Wahl liste={d.mitglieder.map(m => ({ id: m.person, label: m.name }))} aktiv={k.inhaber} onWahl={inhaber => api.setze('karten', { ...k, inhaber: inhaber === k.inhaber ? null : inhaber })} farbe={ROSA} />
                     {k.inhaber && alt(k) && <Symbol titel="Gemeinsam geprüft" onClick={() => api.setze('karten', { ...k, geprueft: d.heute })}>✓</Symbol>}
                     <Symbol titel="Betrifft uns nicht" onClick={() => api.setze('karten', { ...k, aktiv: false })}>–</Symbol>
                   </Reihe> : <Knopf leise onClick={() => api.setze('karten', { ...k, aktiv: true })}>Aufnehmen</Knopf>} />
+                </ZeileAktionen>
               ))}
             </Liste>
           </Mehr>
@@ -211,14 +222,18 @@ function Karten({ api }: { api: FamilieApi }) {
 function Rituale({ api }: { api: FamilieApi }) {
   const d = api.d!;
   const [rhythmus, setRhythmus] = useState<'woechentlich' | 'monatlich' | 'jaehrlich'>('woechentlich');
-  const liste = d.familie.rituale.filter(r => r.ebene === 'familie' || r.rhythmus !== 'taeglich');
+  const ablage = useFamilieAblage(api);
+  const alleRituale = d.familie.rituale.filter(r => r.ebene === 'familie' || r.rhythmus !== 'taeglich');
+  const liste = alleRituale.filter(r => !r.archiviertAm);
   const RH = [{ id: 'woechentlich', label: 'wöchentlich' }, { id: 'monatlich', label: 'monatlich' }, { id: 'jaehrlich', label: 'jährlich' }] as const;
   return (
     <Karte i={3}>
       <Ueberschrift farbe={ROSA}>Unsere Traditionen</Ueberschrift>
       <Liste>
-        {liste.map(r => <Zeile key={r.id} titel={r.titel} unter={`${r.ebene === 'paar' ? 'wir zwei' : 'Familie'} · ${RH.find(x => x.id === r.rhythmus)?.label ?? r.rhythmus}`} rechts={<Symbol titel="Entfernen" onClick={() => api.weg('rituale', r.id)}>×</Symbol>} />)}
+        {liste.map(r => <MitAktionen key={r.id} ablage={ablage} liste="rituale" e={r} titel={r.titel}><Zeile titel={r.titel} unter={`${r.ebene === 'paar' ? 'wir zwei' : 'Familie'} · ${RH.find(x => x.id === r.rhythmus)?.label ?? r.rhythmus}`} /></MitAktionen>)}
       </Liste>
+      <ArchivBlock ablage={ablage} liste="rituale" eintraege={alleRituale} titelVon={e => String(e.titel ?? '')} />
+      {ablage.hinweis}
       {!liste.length && <Leer>Sonntagsfrühstück, der erste Schnee, der Jahresrückblick an Silvester — was euch als Familie ausmacht.</Leer>}
       <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
         <Eingabe leeren platzhalter="Tradition hinzufügen" onFertig={titel => api.setze('rituale', { id: neueId('rit'), titel, ebene: 'familie', rhythmus })} />

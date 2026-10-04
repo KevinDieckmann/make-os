@@ -12,7 +12,7 @@
 // Einzeländerungen geschrieben (lib/sync.ts).
 
 export type Sichtbarkeit = 'paar' | 'nur-ich';
-export interface Basis { id: string; von: string; am: string; sichtbarkeit?: Sichtbarkeit }
+export interface Basis { id: string; von: string; am: string; sichtbarkeit?: Sichtbarkeit; /** Archiv (04.10., optional): aus der Liste ausgeblendet, Erinnerungen/Agenda rechnen ohne; zurückholbar. */ archiviertAm?: string }
 
 export interface Einstellungen {
   gespraech: { wochentag: number; uhrzeit: string; dauerMin: number };
