@@ -291,6 +291,11 @@ export async function POST(req: Request) {
       },
     });
     tools.push({
+      name: 'gesellschaften_lesen',
+      description: 'Liest das Gesellschafts-Register (/os/unternehmen): eigene Gesellschaften mit Status (geplant · in Gründung · eingetragen · ruhend · aufgelöst), Rechtsform, Sitz, Register, Stammkapital, Gesellschaftern mit Anteil, „hervorgegangen aus“, wer wen hält und laufende Verträge mit Fristen. Nutze das bei „Wem gehört …?“, „Wie ist der Stand der Gründung?“, „Welche Verträge laufen aus?“. Nur lesen; Zahlen genau so nennen, wie sie kommen; keine Rechtsberatung.',
+      input_schema: { type: 'object', properties: { name: { type: 'string', description: 'Optional: Teil des Namens einer Gesellschaft — ohne Angabe alle.' } } },
+    });
+    tools.push({
       name: 'gesundheits_index',
       description: 'Liest den Gesundheits-Index der Person (Erholung & Schlaf 40 · Bewegung & Aufbau 30 · Ernährung & Körper 30) — gesamt oder EINE Kennzahl mit Wert, Ampel, Schwellen, Formel, Quelle und den Punkten dahinter. Nutze das bei „Wie steht meine Gesundheit?“, „Wie war mein Schlaf diese Woche?“, „Was ist rot?“. Zahlen genau so nennen, wie sie kommen; Struktur und Tracking, keine ärztliche Beratung.',
       input_schema: {

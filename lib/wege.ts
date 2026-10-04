@@ -63,6 +63,8 @@ export const WEG = {
   controlling: () => '/os/controlling',
   grundlage: () => '/os/finanzen/grundlage',
 
+  /** Gesellschafts-Register (04.10.): Liste bzw. eine Gesellschaft mit Reiter. */
+  unternehmen: (id?: string, reiter?: 'steckbrief' | 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender') => q('/os/unternehmen', { g: id, r: id && reiter && reiter !== 'steckbrief' ? reiter : undefined }),
   mandat: (id?: string) => mandateLink('mandate', id),
   produkt: (id?: string) => mandateLink('produkte', id),
   // Deal-Ebene (27.09.): eigener Reiter; ein Deal öffnet seine Akte.

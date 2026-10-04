@@ -72,8 +72,11 @@ export interface DateiEintrag {
    * Eintrag ist eine Geschäftsunterlage: nicht löschbar (`istBeleg`), Personenbezug nur lösbar.
    */
   angebotId?: string;
-  /** Logo einer Gesellschaft (28.09., Stammdaten › Gesellschaften) — setzt NUR der Server. */
-  gesellschaft?: 'kdc' | 'kdv' | 'ug';
+  /**
+   * Gehört zu einer eigenen Gesellschaft — Logo (28.09., Absender) bzw. Unterlage aus dem Register (04.10., /os/unternehmen ›
+   * Unterlagen, auch Vertrags-Dateien); offene Liste kdc · kdv · ug · `g-…`. Setzt NUR der Server.
+   */
+  gesellschaft?: import('@/lib/einheiten').GesellschaftId;
   /**
    * Dateien an Projekten und Aufgaben (28.09., Paket C2) — nur im Bestand `aufgaben-dateien--<haushalt>`
    * (lib/dateien/aufgaben-ablage.ts), nie in der CRM-Ablage. Kennungen wie in lib/aufgaben/saeubern.ts.
@@ -204,7 +207,7 @@ export const istAufgabenDatei = (e: Pick<DateiEintrag, 'projektId' | 'aufgabeId'
 export const nurCrm = <T extends Pick<DateiEintrag, 'projektId' | 'aufgabeId' | 'bereich'>>(l: readonly T[]): T[] => l.filter(e => !istAufgabenDatei(e));
 
 /** Bezüge, die nur der Server setzt (Angebots-PDF, Logo) — `metaSaeubern` liest sie nie aus dem Netz. */
-export interface FesteBezuege { angebotId?: string; gesellschaft?: 'kdc' | 'kdv' | 'ug' }
+export interface FesteBezuege { angebotId?: string; gesellschaft?: import('@/lib/einheiten').GesellschaftId }
 
 export interface DateiFilter { kontaktId?: string; firmaId?: string; mandatIds?: string[]; dealIds?: string[]; rechnungIds?: string[] }
 /** Einträge eines Kontakts: an ihm, an seiner Firma, an seinen Mandaten, Deals oder Rechnungen. Neueste zuerst. */

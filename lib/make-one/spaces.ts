@@ -12,7 +12,7 @@
 // Space (lib/make-one/space-regeln.ts); Heute und ZOE sehen beides.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid, Calculator } from 'lucide-react';
+import { Home, Briefcase, Building2, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid, Calculator } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
 
 export type { SpaceId };
@@ -51,6 +51,8 @@ export const SPACES: Space[] = [
       { href: '/os/planung/jahr?space=business', label: 'Ziele & Planung', icon: Target, passt: ['/os/planung?space=business', '/os/fokus?space=business', '/os/kompass?space=business'] },
       { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm', '/os/prospecting', '/os/research', '/os/content'] },
       { href: '/os/mandate', label: 'Mandate', icon: Briefcase, passt: ['/os/mandate'] },
+      // Gesellschafts-Register (04.10.): eigene Gesellschaften, Anteile, Verträge — vorher Stammdaten an zwei Stellen.
+      { href: '/os/unternehmen', label: 'Unternehmen', icon: Building2, passt: ['/os/unternehmen'] },
     ],
   },
 ];

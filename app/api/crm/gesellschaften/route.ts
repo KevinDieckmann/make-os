@@ -3,27 +3,35 @@
 // PATCH  { id, felder, stand }       → Felder ändern (Stand/409; ungültige Werte 400 mit Feld)
 // POST   multipart { id, datei }     → Logo (nur PNG/JPG, ≤ 15 MB) in die Dateiablage, verknüpft
 // DELETE ?id=<gesellschaft>&logo=1   → Logo entfernen
-// Speicher NUR `gesellschaften--<haushalt>` (verschlüsselt wie jeder Bestand) — nie im Code.
+// Speicher NUR `gesellschaften--<haushalt>` (verschlüsselt wie jeder Bestand) — nie im Code. Seit 04.10. ist er das
+// Gesellschafts-Register (/os/unternehmen, /api/gesellschaften); hier nur die Absender der drei festen Gesellschaften.
 // Zugang: Haushalt des Inhabers UND benannte Person mit Haushalt (wie die Dateiablage).
 
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
-import { loadJson, updateJson } from '@/lib/store/local-db';
-import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
-import { fingerabdruck } from '@/lib/store/fingerabdruck';
+import { loadJson } from '@/lib/store/local-db';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
+import { registerAendern, standVon as registerStand } from '@/lib/gesellschaften/server';
+import type { RegisterGesellschaft } from '@/lib/gesellschaften/modell';
 import { ablegen, entfernen, AblageFehler } from '@/lib/dateien/ablage';
 import { MAX_DATEI_BYTES, dateinameSaeubern, endung, typErkennen } from '@/lib/dateien/regeln';
-import { alleGesellschaften, gesellschaftAnwenden, gesellschaftenName, gesellschaftFuerAnzeige, gesellschaftLuecken, istGesellschaftId, leereGesellschaft, type Gesellschaft, type GesellschaftenDatei, type GesellschaftFehler } from '@/lib/crm/gesellschaften';
+import { alleGesellschaften, gesellschaftAnwenden, gesellschaftenName, gesellschaftFuerAnzeige, gesellschaftLuecken, istGesellschaftId, type Gesellschaft, type GesellschaftenDatei, type GesellschaftFehler } from '@/lib/crm/gesellschaften';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const KEIN_ZUGANG = { ok: false, fehler: 'Gesellschaften gehören zum Haushalt des Inhabers — für dieses Konto nicht freigegeben.' };
 const fehler = (text: string, status: number, extra: Record<string, unknown> = {}) => NextResponse.json({ ok: false, fehler: text, ...extra }, { status });
-const standVon = (g: Gesellschaft) => fingerabdruck(g as unknown as Record<string, unknown>);
-const zurAnzeige = (g: Gesellschaft) => ({ ...gesellschaftFuerAnzeige(g), stand: standVon(g), luecken: gesellschaftLuecken(g) });
+/**
+ * Für den Browser: nur die Absender-Felder (IBAN maskiert) — Cap-Table, Verträge und Notizen des Registers bleiben in
+ * /api/gesellschaften (sensibel, 04.10.). Der Stand ist der Fingerabdruck des GANZEN Eintrags (eine Schreibstelle).
+ */
+function zurAnzeige(g: Gesellschaft) {
+  const { gesellschafter: _gs, beteiligungen: _bt, vertraege: _vt, notizen: _nz, ...absender } = g as Gesellschaft & Partial<Pick<RegisterGesellschaft, 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'notizen'>>;
+  return { ...gesellschaftFuerAnzeige(absender as Gesellschaft), stand: registerStand(g as unknown as RegisterGesellschaft), luecken: gesellschaftLuecken(g) };
+}
 
 async function zugang(req: Request): Promise<{ person: string; haushalt: string } | null> {
   if (!(await imHaushaltDesInhabers(req))) return null;
@@ -41,22 +49,16 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, gesellschaften: await liste(z.haushalt) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
-/** Eine Gesellschaft ändern — in EINER Sperre, mit Stand. */
+/**
+ * Eine Gesellschaft ändern — in EINER Sperre, mit Stand. Seit 04.10. über die gemeinsame Schreibstelle des Registers
+ * (lib/gesellschaften/server.ts): derselbe Speicher, derselbe Stand, dasselbe Protokoll wie /os/unternehmen.
+ */
 async function aendern(haushalt: string, person: string, id: Gesellschaft['id'], felder: Record<string, unknown>, stand: unknown, wer: ReturnType<typeof werAus>) {
-  let vorher: GesellschaftenDatei | null = null;
-  let ergebnis: { g?: Gesellschaft; konflikt?: Gesellschaft; fehler?: GesellschaftFehler[] } = {};
-  const nachher = await updateJson<GesellschaftenDatei>(gesellschaftenName(haushalt), cur => {
-    vorher = cur;
-    const l = cur?.gesellschaften ?? [];
-    const alt = l.find(g => g.id === id) ?? leereGesellschaft(id);
-    if (typeof stand !== 'string' || standVon(alt) !== stand) { ergebnis = { konflikt: alt }; return cur ?? { gesellschaften: [] }; }
-    const r = gesellschaftAnwenden(alt, felder, new Date().toISOString(), person);
-    if (r.fehler.length) { ergebnis = { fehler: r.fehler }; return cur ?? { gesellschaften: [] }; }
-    ergebnis = { g: r.g };
-    return { gesellschaften: [...l.filter(g => g.id !== id), r.g] };
+  const r = await registerAendern(haushalt, person, id, stand, wer, alt => {
+    const x = gesellschaftAnwenden(alt as unknown as Gesellschaft, felder, new Date().toISOString(), person);
+    return x.fehler.length ? { fehler: x.fehler } : { g: x.g as unknown as RegisterGesellschaft };
   });
-  if (ergebnis.g) await protokolliereBestand(gesellschaftenName(haushalt), vorher, nachher, wer);
-  return ergebnis;
+  return { g: r.g as unknown as Gesellschaft | undefined, konflikt: r.konflikt as unknown as Gesellschaft | undefined, fehler: r.fehler as GesellschaftFehler[] | undefined };
 }
 
 export async function PATCH(req: Request) {

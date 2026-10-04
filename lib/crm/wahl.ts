@@ -125,3 +125,20 @@ export const GESELLSCHAFT_WAHL: readonly WahlEintrag<Gesellschaft>[] = [
   ...KERN_EINHEITEN.map(e => ({ id: e.id as Gesellschaft, label: e.label })),
   { id: 'offen', label: 'offen' },
 ];
+
+/**
+ * Gesellschaften als offene Liste (04.10., Register /os/unternehmen): die drei festen, dann die Register-Gesellschaften
+ * (`g-…`) — ruhende/aufgelöste nur, wenn sie gerade gewählt sind (mit Hinweis) — und „offen“. Ohne Register (lädt noch,
+ * kein Zugang) ist das genau `GESELLSCHAFT_WAHL`. Eine unbekannte gespeicherte `g-…` bleibt als „Gesellschaft (nicht im
+ * Register)“ wählbar, damit nichts still verloren geht.
+ */
+export function gesellschaftWahl(register: readonly { id: string; name: string; status?: string }[] | null | undefined, aktuell?: string | null): WahlEintrag<Gesellschaft>[] {
+  const weitere = (register ?? []).filter(g => /^g-/.test(g.id));
+  const ruht = (s?: string) => s === 'ruhend' || s === 'aufgeloest';
+  const l: WahlEintrag<Gesellschaft>[] = [
+    ...KERN_EINHEITEN.map(e => ({ id: e.id as Gesellschaft, label: e.label })),
+    ...weitere.filter(g => !ruht(g.status) || g.id === aktuell).map(g => ({ id: g.id as Gesellschaft, label: g.name, ...(ruht(g.status) ? { hinweis: g.status === 'ruhend' ? 'ruhend' : 'aufgelöst' } : {}) })),
+  ];
+  if (aktuell && /^g-/.test(aktuell) && !l.some(x => x.id === aktuell)) l.push({ id: aktuell as Gesellschaft, label: 'Gesellschaft (nicht im Register)' });
+  return [...l, { id: 'offen', label: 'offen' }];
+}
