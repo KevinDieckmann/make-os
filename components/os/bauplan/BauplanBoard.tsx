@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ThumbsUp, MessageSquare, Image as BildIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Knopf, Segmente, Zahl, feld, LEUCHT } from '../schlank';
+import { Seite, Karte, Knopf, Segmente, Zahl, Hinweis, feld, LEUCHT } from '../ui';
 import { Pillen } from '../crm/teile';
 import { useLinkAuswahl } from '../Verlauf';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
@@ -109,13 +109,11 @@ export function BauplanBoard() {
       unter="Hier verbessern wir MAKE OS. Neues landet in „Ideen“ — was nach „Bereit“ wandert, baut Claude von oben nach unten; ihr testet und nehmt ab."
       rechts={<div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <Segmente liste={[{ id: 'board' as Ansicht, label: 'Board' }, { id: 'plan' as Ansicht, label: 'Planung' }]} aktiv={ansicht} onWahl={wechsle} />
-        <Knopf onClick={() => setNeu(true)}>+ Karte</Knopf>
+        <Knopf haupt onClick={() => setNeu(true)}>+ Karte</Knopf>
       </div>}>
 
       {fehler && (
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', color: LEUCHT.kritisch, fontSize: TYP.bedien }}>
-          {fehler} <button onClick={() => setFehler(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>ausblenden</button>
-        </div>
+        <Hinweis art="kritisch" aktion={<Knopf leise onClick={() => setFehler(null)}>Ausblenden</Knopf>}>{fehler}</Hinweis>
       )}
 
       {/* Wo stehen wir? */}
@@ -129,7 +127,7 @@ export function BauplanBoard() {
         </div>
         {schlange[0] && (
           <div style={{ ...klein, marginTop: 14 }}>
-            Als Nächstes: <button onClick={() => setOffen(schlange[0].id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.2)' }}>{schlange[0].titel}</button>
+            Als Nächstes: <button onClick={() => setOffen(schlange[0].id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.2)' }}>{schlange[0].titel}</button>
             {schlange[1] ? ` · danach ${schlange[1].titel}` : ''}
           </div>
         )}
@@ -148,10 +146,10 @@ export function BauplanBoard() {
             </select>
             <Pillen liste={[{ id: '' as Art | '', label: 'Alle Arten' }, ...ARTEN]} aktiv={art} onWahl={a => setArt(a)} />
             <button onClick={() => setNurDaumen(!nurDaumen)} aria-pressed={nurDaumen} className="fassbar"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${nurDaumen ? LEUCHT.gut : 'rgba(255,255,255,.1)'}`, background: nurDaumen ? `${LEUCHT.gut}22` : 'transparent', color: nurDaumen ? LEUCHT.gut : C.inkDim }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${nurDaumen ? LEUCHT.gut : 'rgba(255,255,255,.1)'}`, background: nurDaumen ? `${LEUCHT.gut}22` : 'transparent', color: nurDaumen ? LEUCHT.gut : C.inkDim }}>
               <ThumbsUp size={13} /> Nur mit Daumen
             </button>
-            {filterAn && <button onClick={() => { setSuche(''); setBereich(''); setArt(''); setNurDaumen(false); }} style={{ background: 'none', border: 'none', color: LEUCHT.business, cursor: 'pointer', fontSize: 12.5 }}>Filter zurücksetzen</button>}
+            {filterAn && <button onClick={() => { setSuche(''); setBereich(''); setArt(''); setNurDaumen(false); }} style={{ background: 'none', border: 'none', color: LEUCHT.business, cursor: 'pointer', fontSize: TYP.bedien }}>Filter zurücksetzen</button>}
           </div>
 
           {/* Board */}
@@ -168,9 +166,9 @@ export function BauplanBoard() {
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: SPALTEN_FARBE[s.id], alignSelf: 'center' }} />
                       <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, fontWeight: 700 }}>{s.label}</span>
-                      <span style={{ fontSize: 12.5, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{filterAn ? `${liste.length}/${spalten[s.id].length}` : spalten[s.id].length}</span>
+                      <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{filterAn ? `${liste.length}/${spalten[s.id].length}` : spalten[s.id].length}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 2, lineHeight: 1.4 }}>{s.satz}</div>
+                    <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2, lineHeight: 1.4 }}>{s.satz}</div>
                   </div>
                   {sichtbar.map(k => (
                     <div key={k.id} style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -184,7 +182,7 @@ export function BauplanBoard() {
                   {hier && ziel?.vor === null && linie}
                   {!liste.length && <div style={{ ...klein, padding: '14px 6px', textAlign: 'center', border: '1px dashed rgba(255,255,255,.08)', borderRadius: 12 }}>{items ? (filterAn ? 'Nichts passt zum Filter' : s.id === 'idee' ? 'Leer — „+ Karte“ oder „Idee“ oben auf jeder Seite' : 'Hierher ziehen') : 'lädt …'}</div>}
                   {s.id === 'fertig' && liste.length > FERTIG_ZEIGEN && (
-                    <button onClick={() => setAlleFertig(!alleFertig)} style={{ background: 'none', border: 'none', color: LEUCHT.business, cursor: 'pointer', fontSize: 12.5, padding: 6 }}>{alleFertig ? 'Weniger zeigen' : `Alle ${liste.length} zeigen`}</button>
+                    <button onClick={() => setAlleFertig(!alleFertig)} style={{ background: 'none', border: 'none', color: LEUCHT.business, cursor: 'pointer', fontSize: TYP.bedien, padding: 6 }}>{alleFertig ? 'Weniger zeigen' : `Alle ${liste.length} zeigen`}</button>
                   )}
                 </div>
               );
@@ -193,7 +191,7 @@ export function BauplanBoard() {
 
           {verworfen.length > 0 && (
             <div style={{ display: 'grid', gap: 6 }}>
-              <button onClick={() => setVerworfeneZeigen(!verworfeneZeigen)} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>
+              <button onClick={() => setVerworfeneZeigen(!verworfeneZeigen)} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>
                 {verworfeneZeigen ? 'Verworfene ausblenden' : `${verworfen.length} verworfen — ansehen`}
               </button>
               {verworfeneZeigen && verworfen.map(i => (
@@ -230,15 +228,15 @@ function KarteMini({ k, namen, ich, heute, frisch, zieht, onOeffnen, onZiehStart
       className="fassbar bauplan-karte"
       style={{ display: 'grid', gap: 7, minWidth: 0, padding: '10px 12px', borderRadius: 12, cursor: 'grab', background: C.flaecheHoch, opacity: zieht ? 0.35 : 1,
         border: `1px solid ${frisch ? LEUCHT.gut : 'rgba(255,255,255,.06)'}`, boxShadow: frisch ? `0 0 24px -6px ${LEUCHT.gut}40` : '0 4px 14px -8px rgba(0,0,0,.6)', transition: 'border-color .3s ease, box-shadow .3s ease' }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 11.5, fontWeight: 700 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, fontWeight: 700 }}>
         <span style={{ color: ART_FARBE[a] }}>● {ARTEN.find(x => x.id === a)?.label}</span>
         {k.bereich && <span style={{ color: C.inkLeise }}>{k.bereich}</span>}
         {k.prio === 1 && spalteVon(k) !== 'fertig' && <span style={{ color: LEUCHT.achtung, marginLeft: 'auto' }}>Jetzt</span>}
       </div>
       <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.35, color: C.ink, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{k.titel}</div>
-      {k.block === 'kevin' && spalteVon(k) !== 'fertig' && <div style={{ fontSize: 12, color: LEUCHT.kritisch, fontWeight: 600 }}>wartet auf Kevin{k.brauche ? `: ${k.brauche}` : ''}</div>}
-      {zurueck && <div style={{ fontSize: 12, color: LEUCHT.achtung, lineHeight: 1.4 }}>{zuletzt!.text}</div>}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: C.inkLeise }}>
+      {k.block === 'kevin' && spalteVon(k) !== 'fertig' && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, fontWeight: 600 }}>wartet auf Kevin{k.brauche ? `: ${k.brauche}` : ''}</div>}
+      {zurueck && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{zuletzt!.text}</div>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: TYP.bedien, color: C.inkLeise }}>
         {d.length > 0 && <span title={d.map(p => namen[p] ?? p).join(', ')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: d.includes(ich) ? LEUCHT.gut : C.inkLeise }}><ThumbsUp size={12} /> {d.length}</span>}
         {n > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MessageSquare size={12} /> {n}</span>}
         {(k.bilder?.length ?? 0) > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><BildIcon size={12} /> {k.bilder!.length}</span>}

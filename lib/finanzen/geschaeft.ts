@@ -2,8 +2,8 @@
 // Kevin 02.10.: „Businessplanung fertig“ — je Gesellschaft ein vollständiges Blatt: Umsatz aus Produkten,
 // Kosten (fix/variabel, Personal, Software, Miete), Ergebnis vor und nach Steuern, Liquidität, Runway, Break-even.
 // Diese Schicht RECHNET NICHTS NEU, was der Kern schon kennt: Umsatz, Kosten, Gewinn, Steuern (einzeln: KSt, Soli, Gewerbesteuer,
-// Einkommensteuer, Anrechnung), Konto und frei kommen aus `MonatUG`/`MonatSelbst` (Rechenkern, Umbau 02.10.). Neu und nur Anzeige:
-// Ergebnis nach Steuern, Break-even-Monat, Runway je Ort.
+// Einkommensteuer, Anrechnung), Ergebnis nach Steuern, Konto und frei kommen aus `MonatUG`/`MonatSelbst` (Rechenkern, Umbau 02.10.;
+// seit 04.10. auch die Summen — jede ist als Handwert überschreibbar). Neu und nur Anzeige: Break-even-Monat, Runway je Ort.
 // Alles deterministisch und client-sicher. Steuern sind Näherungen — Hinweis, keine Steuerberatung.
 
 import type { Gesellschaftskennung } from '@/lib/einheiten';
@@ -101,15 +101,15 @@ export function geschaeftsblatt(d: Pick<FinanzDaten, 'monate' | 'annahmen'>, ort
   if (ort === 'ug') {
     // Kern: Umsatz = Treiber (Ankermandat, Retainer, …) + Bausteine der MAKE Innovation GmbH; Kosten = Personal + Stellen + Sach + Holding.
     umsatz = ug.map(u => u.umsatz);
-    kostenSumme = ug.map(u => u.kevin + u.malin + u.unterstuetzung + u.stellen + u.sach + u.gruendung + u.holding);
+    kostenSumme = ug.map(u => u.kosten);
     vor = ug.map(u => u.gewinn);
     arten = { kst: ug.map(u => u.st.kst), soli: ug.map(u => u.st.soli), gewst: ug.map(u => u.st.gewst), est: ug.map(u => u.st.est), anrechnung: ug.map(u => u.st.anrechnung), exit: reihe(() => 0) };
     liq = ug.map(u => u.frei); liqName = 'Frei verfügbar (nach Steuer und USt)';
   } else if (ort === 'kdv') {
     // Kern: Umlage und Partnerdarlehen-Rate gehen von der MAKE Innovation GmbH ein und als Holdingkosten bzw. Tilgung wieder aus (heben sich auf); dazu Ausstieg und Bausteine.
-    umsatz = ug.map(u => u.kdvUmlage + u.kdvBjoernEin + u.kdvExit + u.kdvBausteineEin);
-    kostenSumme = ug.map(u => u.kdvHolding + u.kdvBjoern + u.kdvBausteineAus);
-    vor = umsatz.map((v, i) => v - kostenSumme[i]);
+    umsatz = ug.map(u => u.kdvEinnahmen);
+    kostenSumme = ug.map(u => u.kdvAusgaben);
+    vor = ug.map(u => u.kdvErgebnis);
     arten = { kst: ug.map(u => u.kdvSt.kst), soli: ug.map(u => u.kdvSt.soli), gewst: ug.map(u => u.kdvSt.gewst), est: ug.map(u => u.kdvSt.est), anrechnung: ug.map(u => u.kdvSt.anrechnung), exit: ug.map(u => u.kdvExitSteuer) };
     liq = ug.map(u => u.kdvFrei); liqName = 'Frei verfügbar KD Ventures (Konto nach Steuerrücklage)';
   } else {
@@ -119,7 +119,8 @@ export function geschaeftsblatt(d: Pick<FinanzDaten, 'monate' | 'annahmen'>, ort
     liq = kdc.map(k => k.frei); liqName = 'Frei verfügbar (Konto nach Steuerrücklage und USt)';
   }
   const steuer = reihe(i => arten.kst[i] + arten.soli[i] + arten.gewst[i] + arten.est[i] - arten.anrechnung[i] + arten.exit[i]);
-  const nach = vor.map((v, i) => v - steuer[i]);
+  // Ergebnis nach Steuern aus dem Kern (04.10.: als Handwert überschreibbar; ohne Handwert = vor − Steuer).
+  const nach = ort === 'ug' ? ug.map(u => u.ergebnisNach) : ort === 'kdv' ? ug.map(u => u.kdvNach) : kdc.map(k => k.ergebnisNach);
   return { ort, produkte: prod, kosten, umsatz, kostenSumme, ergebnisVorSteuern: vor, steuer, steuerArten: arten, ergebnisNachSteuern: nach, liquiditaet: liq, liquiditaetName: liqName, breakEven: breakEven(vor), runway: runwayAb(liq, m0) };
 }
 

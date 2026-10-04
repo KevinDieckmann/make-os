@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ThumbsUp } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT } from '../schlank';
+import { Knopf, Hinweis, feld, LEUCHT } from '../ui';
 import { Pillen } from '../crm/teile';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
 import { SPALTEN, ARTEN, BEREICHE, spalteVon, artVon, board, verschieben, type Spalte, type Etappe } from '@/lib/bauplan/board';
@@ -163,7 +163,7 @@ export function KarteDetail({ karte, items, etappen, ich, namen, tu, onZu }: {
         </div>
       </div>
 
-      {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
+      {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
 
       {/* Herkunft */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 12 }}>
@@ -180,5 +180,5 @@ export function KarteDetail({ karte, items, etappen, ich, namen, tu, onZu }: {
 }
 
 function Mini({ children, onClick, aus }: { children: React.ReactNode; onClick: () => void; aus?: boolean }) {
-  return <button onClick={onClick} disabled={aus} style={{ fontSize: 12, padding: '4px 9px', borderRadius: 8, border: '1px solid rgba(255,255,255,.1)', background: 'transparent', color: aus ? C.inkLeise : C.inkDim, cursor: aus ? 'default' : 'pointer', opacity: aus ? 0.5 : 1, fontFamily: SCHRIFT.text }}>{children}</button>;
+  return <button onClick={onClick} disabled={aus} style={{ fontSize: TYP.bedien, padding: '4px 9px', borderRadius: 8, border: '1px solid rgba(255,255,255,.1)', background: 'transparent', color: aus ? C.inkLeise : C.inkDim, cursor: aus ? 'default' : 'pointer', opacity: aus ? 0.5 : 1, fontFamily: SCHRIFT.text }}>{children}</button>;
 }

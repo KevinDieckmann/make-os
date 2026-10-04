@@ -14,7 +14,7 @@
 import { useNachfrage } from './Nachfrage';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, LEUCHT, Hinweis } from '../ui';
 import { HERKUNFT, RECHTSGRUNDLAGEN } from '@/lib/make-one/crm';
 import type { Antrag, AntragArt, Verarbeitung } from '@/lib/crm/typen';
 import type { Befund } from '@/lib/crm/befunde';
@@ -30,7 +30,7 @@ import { Verbindungen } from './stammdaten/Verbindungen';
 import { KennungenUmzug } from './stammdaten/KennungenUmzug';
 import { Loeschfristen } from './stammdaten/Loeschfristen';
 import { NachweisOffenKarte } from './stammdaten/NachweisOffen';
-import { Gesellschaften } from './stammdaten/Gesellschaften';
+import { WEG } from '@/lib/wege';
 
 type Unter = 'uebersicht' | 'qualitaet' | 'wertelisten' | 'gesellschaften' | 'datenschutz' | 'austausch';
 const UNTER: { id: Unter; label: string }[] = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'qualitaet', label: 'Datenqualität' }, { id: 'wertelisten', label: 'Wertelisten' }, { id: 'gesellschaften', label: 'Gesellschaften' }, { id: 'datenschutz', label: 'Datenschutz' }, { id: 'austausch', label: 'Import & Export' }];
@@ -65,7 +65,10 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
     return r;
   };
   // Gesellschaften (28.09., Absender der Angebote) laden eigenständig — auch wenn die Stammdaten-Übersicht noch lädt.
-  if (unter === 'gesellschaften') return <><div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={UNTER} aktiv={unter} onWahl={waehle} /></div><Gesellschaften i={0} /></>;
+  // 04.10.: ein Weg statt zwei — die eigenen Gesellschaften (samt Absender der Angebote) pflegt das Register unter
+  // Business › Unternehmen (/os/unternehmen); hier nur noch der Weg dorthin.
+  if (unter === 'gesellschaften') return <><div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={UNTER} aktiv={unter} onWahl={waehle} /></div>
+    <Hinweis art="info" titel="Gesellschaften liegen jetzt im Register" aktion={<Knopf href={WEG.unternehmen()}>Zu Unternehmen</Knopf>}>Firmierung, Anschrift, Bank, Nummernkreis und Logo der Angebote stehen bei jeder Gesellschaft im Reiter „Absender“ — zusammen mit Steckbrief, Gesellschaftern und Verträgen.</Hinweis></>;
   if (!d) return <Karte i={0}><Laedt fehler={ladeFehler ?? api.fehler} nochEinmal={() => { void laden(); void api.laden(); }} /></Karte>;
   const offenePruefung = d.selbstpruefung.filter(p => p.status !== 'erfuellt').length;
 

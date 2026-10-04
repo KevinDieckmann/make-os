@@ -66,7 +66,7 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 10. **Text:** nie heller als `inkLeise` (≥ 5:1); Erklärungen in `inkDim`; Beschriftungen in `inkLeise` nur in Großbuchstaben (11 px). Sätze ab 13 px.
 11. **Am Handy zuerst der Inhalt:** Kopf ≤ 2 Zeilen Satz, Aktionen neben dem Titel, EINE Reiterleiste, Listen als Zeilen statt Tabellen.
 12. **Neutral bauen:** keine Namen, Firmen, Gesundheit im Code; Werte aus Einstellungen (Plattform-Regel).
-13. **Nichts global verbiegen:** Der Standard wirkt, wo ein Baustein benutzt wird. Altseiten (`schlank.tsx`) bleiben unverändert, bis sie umgestellt werden: Import von `../schlank` auf `../ui` tauschen (gleiche Namen), danach auf Hierarchie, Hinweise und Leerzustände prüfen.
+13. **Nichts global verbiegen:** Der Standard wirkt, wo ein Baustein benutzt wird. Seit 04.10. (Aufräumen) holt keine Seite mehr etwas aus `schlank.tsx` — nur `components/os/ui` reicht dessen Nicht-Standard-Teile (Ring, Balken, Punkt, Haken, Spalten, `useHochzaehlen`, `LEUCHT`) durch. Neue Seiten importieren ausschließlich `from '../ui'` (Wächter `tests/design-standard.test.ts` › Aufräumen).
 
 ## Umstellen einer Seite (Rezept)
 1. `import … from '../schlank'` → `from '../ui'` (Namen sind gleich: `Karte`, `Knopf`, `Chip`, `Zeile`, `Leer`, `Ueberschrift`, `Zahl`, `feld` …).
@@ -280,3 +280,17 @@ die Frist hinaus, solange Mandate/Deals daran hängen; Morgenlauf-Schritt „Pro
 mit Zurückholen; Einzel-Archiv = dieselbe Marke wie „Neu anfangen“ mit Kennung `ea-<Aufgabe>`, nimmt den Teilbaum mit, Serien ruhen; Löschen wie bisher in
 den Papierkorb, die Rückfrage nennt Unteraufgaben/Notiz/Dateien). Planung und Aufgaben-Hinweise hängen am selben `useRueckgaengig`.
 Folgt nach der Inventur: Mandate, Kontakte/Firmen, Deals, Events, Ziele, Notizen … (Kalender: eigener 8-s-Hinweis beim Verschieben, wird umgestellt).
+
+## Aufräumen: der Rest am Standard (04.10.)
+Kevin: „Dann ist die Software fast fertig.“ Die letzten 28 Dateien hingen noch an `schlank.tsx`: Board-Pack, Content, Meeting, Prospecting, Research, Roadmap,
+Ritual, Onboarding, Tageslauf, Zusammenarbeit, Heute, Abhängigkeiten, Fälligkeit, Schnellsuche, Taktgeber, Willkommen, Bauplan (Board, Planung, Karte, Erfassen),
+Zeit (je Einheit, je Mandat, Mandat-Wahl), Anstehend, Meine Visitenkarten, Produkte & Mandate, Beitragsverlauf — und die Anmeldung (Eingabe 48/16 aus `ui/felder`).
+Rein Darstellung (80/20), Funktion und Daten unverändert:
+1. Fließtext 11,5–12,5 px → `TYP.bedien`, Beschriftungen in Großbuchstaben → `TYP.mikro`, Erklärungssätze in `inkDim`.
+2. Die eine Hauptaktion je Ansicht ist `Knopf haupt` (Board-Pack erstellen, Entwurf schreiben, Meeting auswerten, Alle qualifizieren, Recherchieren, Lauf starten,
+   + Karte); die Hero-Karte ist getönt (`ton`) statt `akzent`.
+3. Fehler und Meldungen als `Hinweis` (kritisch/gut/info, „Noch einmal versuchen“ wo es einen Weg gibt) statt roter Textzeile.
+4. `Leerzustand` (Symbol + Satz + Weg) dort, wo der leere Zustand eine Handlung hat: Board-Pack, Zielliste. Ladezustände und Zeilen bleiben `Leer`.
+5. ✕ an Abhängigkeiten ist `SymbolKnopf eingebettet` (Tippziel 44 px).
+Nicht angefasst: `window.confirm` und Löschen in Listen (eigenes Paket `ZeileAktionen`/`useRueckfrage`).
+

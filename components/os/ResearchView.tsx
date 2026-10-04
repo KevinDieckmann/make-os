@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from '@/components/os/Rich';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT } from './ui';
 
 interface Item { id: number; q: string; a: string; webUsed?: boolean; loading?: boolean; }
 
@@ -68,7 +68,7 @@ export function ResearchView() {
           ) : (
             <>
               <Rich text={it.a} />
-              <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 14 }}>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 14 }}>
                 {it.webUsed ? '⌁ mit Web-Suche' : '⌁ ohne Live-Suche beantwortet'}
               </div>
             </>
@@ -86,7 +86,7 @@ export function ResearchView() {
             placeholder="Was soll ich recherchieren?"
             style={{ ...feld, flex: 1, minWidth: 180, width: 'auto', fontFamily: SCHRIFT.text }}
           />
-          <Knopf onClick={() => run(q)} aus={busy || !q.trim()} farbe={LEUCHT.agenten}>{busy ? '…' : 'Recherchieren'}</Knopf>
+          <Knopf haupt onClick={() => run(q)} aus={busy || !q.trim()} farbe={LEUCHT.agenten}>{busy ? '…' : 'Recherchieren'}</Knopf>
         </div>
       </Karte>
     </Seite>

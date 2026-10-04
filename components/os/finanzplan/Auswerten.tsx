@@ -73,7 +73,7 @@ export function Entwicklung() {
 const GF: Record<string, string> = { Fixkosten: LEUCHT.puls, 'Jahreskosten & Puffer': KUPFER, Flexibel: C.aktiv, Sparen: LILA, Schulden: LEUCHT.kritisch, Luft: C.ink, Ereignisse: LEUCHT.achtung, Fehlbetrag: LEUCHT.kritisch, 'Nicht zugeordnet': C.inkLeise };
 
 export function Geldfluss() {
-  const { d, ug, kdc, pr, h, sz } = usePlan();
+  const { d, ug, kdc, pr, h, sz, gruppe } = usePlan();
   const [art, setArt] = useState<'privat' | 'ug'>('privat');
   const [m, setM] = useState(1);
   const optionen = [...(art === 'privat' ? d.historie.map((l, j) => ({ id: String(-(j + 1)), label: `${l} IST` })) : []), ...d.monate.map((l, j) => ({ id: String(j + 1), label: l }))];
@@ -120,12 +120,12 @@ export function Geldfluss() {
         <Ueberschrift>Gruppe je Monat</Ueberschrift>
         <Blatt titel="Gruppe" zeilen={[
           { grp: 'Stand' },
-          { name: `${UG_NAME} frei`, stock: true, get: mm => ug[mm - 1].frei, ind: true },
-          { name: 'KD Ventures (nach Steuerrücklage)', stock: true, get: mm => ug[mm - 1].kdvFrei, ind: true },
-          { name: 'Selbstständigkeit', stock: true, get: mm => kdc[mm - 1].frei, ind: true },
-          { name: 'Privat angespart', stock: true, get: mm => pr[mm - 1].angespart, ind: true },
-          { name: 'Partnerdarlehen offen', stock: true, get: mm => -ug[mm - 1].bjoernRest, ind: true },
-          { name: 'Freies Geld Gruppe', stock: true, sum: true, key: true, get: mm => ug[mm - 1].frei + ug[mm - 1].kdvFrei + kdc[mm - 1].frei + pr[mm - 1].angespart },
+          { name: `${UG_NAME} frei`, edit: 'ug.frei', stock: true, get: mm => ug[mm - 1].frei, ind: true },
+          { name: 'KD Ventures (nach Steuerrücklage)', edit: 'kdv.frei', stock: true, get: mm => ug[mm - 1].kdvFrei, ind: true },
+          { name: 'Selbstständigkeit', edit: 'kdc.frei', stock: true, get: mm => kdc[mm - 1].frei, ind: true },
+          { name: 'Privat angespart', edit: 'p.angespart', stock: true, get: mm => pr[mm - 1].angespart, ind: true },
+          { name: 'Partnerdarlehen offen', edit: 'kdv.darlehenOffen', minus: true, stock: true, get: mm => -ug[mm - 1].bjoernRest, ind: true },
+          { name: 'Freies Geld Gruppe', edit: 'g.frei', stock: true, sum: true, key: true, get: mm => gruppe[mm - 1] },
         ]} />
       </Karte>
     </>

@@ -30,8 +30,7 @@ import { PAPIERKORB_TAGE } from '@/lib/eintraege/sicher';
 import { mandateLink } from '@/lib/crm/adresse';
 import { type CrmApi, neueId, euro, kurzEuro, datum } from '../crm/daten';
 import { Feldzeile, Pillen, Feld } from '../crm/teile';
-import { Wahl } from '../crm/Wahl';
-import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
+import { GesellschaftWahl } from '../crm/GesellschaftWahl';
 import { useLinkAuswahl } from '../Verlauf';
 import { produktAngebotFehlt } from '@/lib/crm/angebote';
 import { angebotLink } from '@/lib/crm/adresse';
@@ -264,7 +263,7 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
         <div style={{ display: 'grid', gap: 4, fontSize: TYP.bedien }}>
           {fehlt.length ? <span style={{ color: LEUCHT.achtung }}>Für die Planung fehlt: {fehlt.join(', ')}</span> : <span style={{ color: LEUCHT.gut }}>planbar — Preis, Basis, Laufzeit und Gesellschaft sind da</span>}
           {inSzenarien && (inSzenarien[l.id]?.length ? <span style={{ color: C.inkDim }}>In Szenarien: {inSzenarien[l.id].map(s => `${s.arbeitsplan ? '★ ' : ''}${s.name} (${s.menge}×)`).join(' · ')}</span> : <span style={klein}>In keinem Szenario der Finanzplanung.</span>)}
-          <Link href="/os/finanzplan?u=planen" style={{ color: C.aktiv, fontSize: 12.5 }}>In der Finanzplanung verwenden ›</Link>
+          <Link href="/os/finanzen?s=finanzplanung&space=business&u=planen" style={{ color: C.aktiv, fontSize: 12.5 }}>In der Finanzplanung verwenden ›</Link>
         </div>
       </Feldzeile>
       <Feldzeile label="Status">
@@ -275,7 +274,7 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
           {angebotFehlt.length > 0 && <span style={{ fontSize: 12.5, color: LEUCHT.achtung, fontWeight: statusHinweis ? 700 : 400 }}>für Angebote fehlt: {angebotFehlt.join(', ')}{l.status === 'aktiv' ? ' — im Angebots-Tool als „Text fehlt“ markiert' : ' — „aktiv“ ist gesperrt, bis er steht (unten unter Angebotstexte)'}</span>}
         </div>
       </Feldzeile>
-      <Feldzeile label="Gesellschaft"><Wahl label="Gesellschaft" liste={GESELLSCHAFT_WAHL} wert={l.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
+      <Feldzeile label="Gesellschaft"><GesellschaftWahl wert={l.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
       {textfeld('Beschreibung', l.beschreibung, 'beschreibung')}
       {textfeld('Ergebnis', l.ergebnis, 'ergebnis', 2)}
       {textfeld('Grenzen', l.grenzen, 'grenzen', 2)}

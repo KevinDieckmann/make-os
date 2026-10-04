@@ -159,3 +159,11 @@ F6 (Vertragswerk-Tiefe), F8 (app/(dashboard) löschen?).
 ## Offen aus dem Tag (nicht vergessen)
 - Bildfolgen-Platz „Beratung“ (makeinnovation.de) und „Abend“ (fokus) für echte Fotos/Film später — Kevin: erst 3D.
 - Kevins Satz zur Vertriebserfahrung (Platzhalter), Datenschutz-Bestätigungen.
+
+## 10 · Nachträge nach Kevins Antworten (04.10. abends)
+- **Register (Branch gesellschaften-2, läuft):** KD Ventures = reine Holding (Rolle im Register, operative Kennzahlen gelten
+  nicht); Cap-Table reicht so; Erinnerung vor „kündigen bis“ (Glocke + Aufgabe); Beschlüsse & Organe als Liste; neue
+  Gesellschaften vorerst NICHT im Finanzplan.
+- **Finanzplanung (Nachtrag, wartet auf freien Platz):** Umsatz von Hand zieht den Zahlungseingang mit (übliches
+  Zahlungsziel); Handwerte zusätzlich je Szenario möglich (Standard: gilt für alle); Vorauszahlungen je Quartal wandern mit
+  einem Steuer-Handwert mit.

@@ -97,7 +97,7 @@ function SteuerFeldEingabe({ f, setze }: { f: SteuerFeld; setze: (wert: number |
  * sonst wählt man oben „Ganzer Plan“ oder „nur Arbeitsplan“.
  */
 export function SteuerKarte({ ort, offen: offenStart = false, i = 0, szenario }: { ort: FinanzOrt; offen?: boolean; i?: number; szenario?: Planszenario }) {
-  const { d, aendere } = usePlan();
+  const { d, aendere, sicht } = usePlan();
   const { ps: arbeitsplan, schreibe } = useArbeitsplan();
   const [offen, setOffen] = useState(offenStart);
   const [bereichWahl, setBereichWahl] = useState<'plan' | 'szenario'>('plan');
@@ -132,6 +132,8 @@ export function SteuerKarte({ ort, offen: offenStart = false, i = 0, szenario }:
       if (imSzenario) return <ProzentFeld wert={exitSatz ?? null} leer platzhalter={prozentText(d.annahmen.exitSteuer, 2)} titel="Steuer auf den Ausstieg (Szenario)" onFertig={v => void schreibe(id => [{ pfad: `/planszenarien/id=${ps?.id ?? id}/annahmen/exitSteuer`, alt: exitSatz, ...(v == null ? {} : { neu: Math.max(0, Math.min(1, v)) }) }], 'Steuer auf den Ausstieg (Szenario)')} />;
       return <ProzentFeld wert={d.annahmen.exitSteuer} titel="Steuer auf den Ausstieg" onFertig={v => v != null && annahme('exitSteuer', d.annahmen.exitSteuer, v, 'Steuer auf den Ausstieg')} />;
     }
+    // Die pauschale Steuer auf die Ausschüttung wirkt nur privat — in der Business-Sicht weder sichtbar noch änderbar.
+    if (art === 'ausschuettung' && sicht === 'business') return <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>unter Privat</span>;
     if (art === 'ausschuettung') return <ProzentFeld wert={ausSatz} dezimal={3} titel="Steuer auf die Ausschüttung, pauschal" onFertig={v => v != null && void schreibe(id => [{ pfad: `/planszenarien/id=${id}/annahmen/ausschuettungSteuer`, alt: ps?.annahmen.ausschuettungSteuer, neu: Math.max(0, Math.min(1, v)) }], 'Steuer auf die Ausschüttung')} />;
     return <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>—</span>;
   };

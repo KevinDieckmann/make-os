@@ -16,7 +16,7 @@ import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
 import { tagPlus as tagPlusK } from '@/lib/kalender/zeit';
 import { useTasks } from '@/context/TasksContext';
-import { Seite, Karte, Chip, Knopf, Segmente, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Chip, Knopf, Segmente, feld, LEUCHT } from './ui';
 
 interface Vitals { rec?: number; sleep?: number; hrv?: number; rhr?: number; note?: string }
 interface JournalEintrag { text?: string; mood?: number; energy?: number; stress?: number; flags?: string[]; at?: string; tagesnote?: number }
@@ -267,7 +267,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{zoneR.txt}</span>
               </div>
             )}
-            {mSchritte.vitals && !zoneR && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Heute schon da — neue Eingabe überschreibt nur die ausgefüllten Felder.</div>}
+            {mSchritte.vitals && !zoneR && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>Heute schon da — neue Eingabe überschreibt nur die ausgefüllten Felder.</div>}
           </Schritt>
 
           <Schritt nr={4} titel="Kurz-Journal — wie geht's rein?" done={mSchritte.journal}>
@@ -314,7 +314,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
               <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Wie war der Tag?</span>
               <Skala wert={j.tagesnote} setzen={n => journalSetzen({ tagesnote: n })} farbe={LEUCHT.gut} />
             </div>
-            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>
               {arbeit ? `Arbeitszeit ${stunden(arbeit.aktivMin)}` : ''} · Routinen {routinen.erledigt}/{routinen.gesamt} · {heuteBloecke.length} Blöcke geplant · {erledigtHeute} fällige erledigt
             </div>
           </Schritt>

@@ -109,28 +109,43 @@ export interface SteuerMonat extends JahresSteuer {
 }
 
 /**
+ * Handwerte (04.10., Kevin: „jede Zahl bearbeitbar, nur die Formeln bleiben fest“): Der Rechenkern reicht je Monat eine Funktion
+ * herein, die zu einem gerechneten Wert den Handwert liefert (oder den gerechneten zurück). Überschreibbar sind der Aufwand je
+ * Steuerart, die Zahlung und der Verlustvortrag des laufenden Jahres. Ein geänderter Aufwand zählt in die Jahressteuer (Rücklage und
+ * Zahlung im Folgejahr), eine geänderte Zahlung in das Gezahlte (Rücklage). Ohne Handwert rechnet der Rechner bit-genau wie vorher.
+ */
+export type SteuerHandFeld = 'kst' | 'soli' | 'gewst' | 'est' | 'anrechnung' | 'steuer' | 'verlustvortrag';
+export type SteuerHand = (feld: SteuerHandFeld, gerechnet: number) => number;
+
+/**
  * Ein Steuerrechner für EINE Gesellschaft: Monat für Monat mit dem Gewinn vor Steuern füttern (m = Plan-Monat ab 1,
  * `jahr(m)`/`kal(m)` = Kalenderjahr bzw. -monat dazu). Zahlung hängt nur an Gewinnen bis zum Vormonat des Zahlmonats, Rücklage
  * und Aufwand an den Gewinnen bis einschließlich dieses Monats — darum reicht ein Durchlauf im Rechenkern.
+ * `hand` (optional): Handwerte dieses Monats (siehe `SteuerHand`).
  */
-export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => number, kal: (m: number) => number): (m: number, gewinn: number) => SteuerMonat {
+export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => number, kal: (m: number) => number): (m: number, gewinn: number, hand?: SteuerHand) => SteuerMonat {
   let aktJahr = Number.NaN, ytd = 0, vortrag = 0, letzteSteuer: JahresSteuer = NULL_ST;
+  /** Summe der Handwert-Abweichungen beim Aufwand im laufenden Jahr — geht in die Jahressteuer (Rücklage, Zahlung im Folgejahr). */
+  let korrJahr = 0;
   // Je abgeschlossenem Jahr: die endgültige Steuer und die darauf schon gezahlten Vorauszahlungen.
   const fertig = new Map<number, { steuer: number; vorausgezahlt: number }>();
   let gezahltGesamt = 0, aufgelaufenFertig = 0;
   let vorjahrVortragNachher = 0;
-  return (m, gewinn) => {
+  return (m, gewinn, hand) => {
     const j = jahr(m), mo = kal(m);
     if (j !== aktJahr) {
       if (!Number.isNaN(aktJahr)) {
-        // Jahreswechsel: das Jahr abschließen, Verlustvortrag fortschreiben.
-        const s = jahresSteuer(p, ytd, vortrag).summe;
+        // Jahreswechsel: das Jahr abschließen (mit den Handwerten des Jahres), Verlustvortrag fortschreiben.
+        let s = jahresSteuer(p, ytd, vortrag).summe;
+        if (korrJahr !== 0) s += korrJahr;
         fertig.set(aktJahr, { steuer: s, vorausgezahlt: fertig.get(aktJahr)?.vorausgezahlt ?? 0 });
         aufgelaufenFertig += s;
         vorjahrVortragNachher = p.verlustvortrag ? Math.max(0, vortrag - ytd) : 0;
       }
-      aktJahr = j; ytd = 0; vortrag = vorjahrVortragNachher; letzteSteuer = NULL_ST;
+      aktJahr = j; ytd = 0; vortrag = vorjahrVortragNachher; letzteSteuer = NULL_ST; korrJahr = 0;
     }
+    // Verlustvortrag von Hand: gilt ab diesem Monat für das laufende Jahr (die Steuer des Jahres wird damit neu bemessen).
+    if (hand) { const v = hand('verlustvortrag', vortrag); if (v !== vortrag && Number.isFinite(v)) vortrag = Math.max(0, v); }
     const vorher = letzteSteuer;
     ytd += gewinn;
     const jetzt = jahresSteuer(p, ytd, vortrag);
@@ -146,14 +161,20 @@ export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => numb
         zahlung += vj.steuer - vj.vorausgezahlt;
       }
     } else if (mo === p.zahlMonat && vj) zahlung += vj.steuer;
+    if (hand) zahlung = hand('steuer', zahlung);
     gezahltGesamt += zahlung;
 
-    const ruecklage = Math.max(0, aufgelaufenFertig + jetzt.summe - gezahltGesamt);
-    return {
-      kst: jetzt.kst - vorher.kst, soli: jetzt.soli - vorher.soli, gewst: jetzt.gewst - vorher.gewst, est: jetzt.est - vorher.est,
-      anrechnung: jetzt.anrechnung - vorher.anrechnung, summe: jetzt.summe - vorher.summe,
-      zahlung, ruecklage, verlustvortrag: vortrag,
-    };
+    let kst = jetzt.kst - vorher.kst, soli = jetzt.soli - vorher.soli, gewst = jetzt.gewst - vorher.gewst, est = jetzt.est - vorher.est;
+    let anrechnung = jetzt.anrechnung - vorher.anrechnung, summe = jetzt.summe - vorher.summe;
+    if (hand) {
+      // Aufwand je Steuerart von Hand: die Abweichung geht in die Summe dieses Monats und in die Jahressteuer.
+      const k = hand('kst', kst), s = hand('soli', soli), g = hand('gewst', gewst), e = hand('est', est), a = hand('anrechnung', anrechnung);
+      const delta = (k - kst) + (s - soli) + (g - gewst) + (e - est) - (a - anrechnung);
+      kst = k; soli = s; gewst = g; est = e; anrechnung = a;
+      if (delta !== 0) { summe += delta; korrJahr += delta; }
+    }
+    const ruecklage = Math.max(0, aufgelaufenFertig + jetzt.summe + korrJahr - gezahltGesamt);
+    return { kst, soli, gewst, est, anrechnung, summe, zahlung, ruecklage, verlustvortrag: vortrag };
   };
 }
 

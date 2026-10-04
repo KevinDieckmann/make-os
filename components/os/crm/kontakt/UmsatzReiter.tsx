@@ -26,7 +26,7 @@ import { WEG } from '@/lib/wege';
 import { umsatzBezug, umsatzKennzahlen, angeboteListe, ablageFilter, kundenName, type UmsatzRechnung, type ZugeordneteRechnung, type AngebotZeile } from '@/lib/crm/umsatz';
 import { ZAHLUNGSWEGE, ZAHLUNGSWEG_LABEL, ibanGueltig, ibanMaskiert, zahlungsQuelle, zahlungLuecken } from '@/lib/crm/zahlung';
 import { ANNEHMEN, MAX_DATEI_BYTES, VERTRAGSARTEN, ANGEBOT_STATUS, groesseText, istBeleg, type DateiEintrag, type DateiArt, type Vertragsart, type AngebotStatus } from '@/lib/dateien/regeln';
-import { einheitAusGesellschaft, firmaFuerGesellschaft, gesellschaftAusEinheit } from '@/lib/einheiten';
+import { einheitAusGesellschaft, finanzFirmaFuer, gesellschaftAusEinheit, NUR_GRUNDDATEN } from '@/lib/einheiten';
 import { inGruppe } from '@/lib/crm/konzern';
 import Link from 'next/link';
 import { angebotLink } from '@/lib/crm/adresse';
@@ -283,8 +283,11 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
             alsRechnung={plan === null || typeof plan !== 'object' ? undefined : async () => {
               const e = a.eintrag!;
               const mandat = e.mandatId ? bezug.mandate.find(m => m.id === e.mandatId) : bezug.mandate[0];
+              // Register-Gesellschaft (04.10.): noch nicht im Finanzplan — Hinweis statt still bei der Selbstständigkeit.
+              const finanzFirma = mandat ? finanzFirmaFuer(mandat.gesellschaft) : 'kdc';
+              if (!finanzFirma) { setMeldung(NUR_GRUNDDATEN); return; }
               const id = neueKennung('r');
-              const ok = await rechnungSchreiben({ id, firmaId: mandat ? firmaFuerGesellschaft(mandat.gesellschaft) : 'kdc', kunde: kundenName(k, bezug.firma), titel: e.titel || `Angebot ${e.angebot?.nummer ?? ''}`.trim(), betrag: e.angebot?.betrag ?? 0, status: 'geplant', ...(e.angebot?.nummer ? { angebot: e.angebot.nummer } : {}), ...(e.angebot?.datum ? { angebotAm: e.angebot.datum } : {}), ...(mandat ? { mandatId: mandat.id } : {}) });
+              const ok = await rechnungSchreiben({ id, firmaId: finanzFirma, kunde: kundenName(k, bezug.firma), titel: e.titel || `Angebot ${e.angebot?.nummer ?? ''}`.trim(), betrag: e.angebot?.betrag ?? 0, status: 'geplant', ...(e.angebot?.nummer ? { angebot: e.angebot.nummer } : {}), ...(e.angebot?.datum ? { angebotAm: e.angebot.datum } : {}), ...(mandat ? { mandatId: mandat.id } : {}) });
               if (ok) await eintragAendern(e.id, { rechnungId: id });
             }} />
         ))}

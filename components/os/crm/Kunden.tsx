@@ -37,8 +37,8 @@ import type { Mandat } from '@/lib/crm/typen';
 import { type CrmApi, neueId, datum, euro, kurzEuro, nurFelder } from './daten';
 import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
-import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
-import { firmaFuerGesellschaft } from '@/lib/einheiten';
+import { GesellschaftWahl } from './GesellschaftWahl';
+import { finanzFirmaFuer, NUR_GRUNDDATEN } from '@/lib/einheiten';
 import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
 import { MandantLink } from './MandantLink';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
@@ -234,7 +234,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
         </div>
         {l?.endeAm && <div style={{ fontSize: TYP.bedien, color: l.endeIn !== null && l.endeIn <= 90 ? LEUCHT.achtung : C.inkLeise, marginTop: 4 }}>Ende {datum(l.endeAm)} ({l.endeIn} Tage){l.fristBis && l.fristBis !== l.endeAm ? ` · kündbar bis ${datum(l.fristBis)}` : ''}</div>}
       </Feldzeile>
-      <Feldzeile label="Gesellschaft"><Wahl label="Gesellschaft" liste={GESELLSCHAFT_WAHL} wert={m.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
+      <Feldzeile label="Gesellschaft"><GesellschaftWahl wert={m.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
       <Feldzeile label="Nächstes Review"><Feld typ="date" wert={m.naechstesReview} breite={160} platzhalter="Datum" onFertig={r => setze({ naechstesReview: r || undefined })} /></Feldzeile>
       <div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Health {l?.health != null ? `· ${l.health}` : '— noch nicht bewertet'} (unter 60 rot, bis 75 gelb){m.health.zahlung === null && crm.zahlung?.[m.id] ? ` · Zahlung aus dem Finanzplan: ${crm.zahlung[m.id]!.wert} (${crm.zahlung[m.id]!.text})` : ''}</div>
@@ -318,11 +318,14 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   const eigene = (liste ?? []).filter(r => r.mandatId === m.id || (!r.mandatId && rechnungPasst(m, r))).sort((a, b) => (b.faellig ?? '').localeCompare(a.faellig ?? ''));
   const offen = eigene.filter(r => r.status === 'gestellt');
   const ueber = offen.filter(r => r.faellig && r.faellig < heute);
+  // Register-Gesellschaft (04.10.): der Finanzplan führt sie noch nicht — ehrlich sagen statt still bei der Selbstständigkeit ablegen.
+  const finanzFirma = finanzFirmaFuer(m.gesellschaft);
   const anlegen = async () => {
+    if (!finanzFirma) return;
     const id = neueKennung('r');
     // Eine USt-Funktion, auf den Cent (28.09., K3); fällig ab dem Berliner Tag, nicht dem UTC-Tag.
     const brutto = m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
-    const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: firmaFuerGesellschaft(m.gesellschaft), mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: tagePlus(heute, m.zahlungszielTage || 0) };
+    const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: finanzFirma, mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: tagePlus(heute, m.zahlungszielTage || 0) };
     const r = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'rechnungen', op: 'upsert', eintrag }] }) }).then(x => x.json()).catch(() => null);
     if (r?.ok !== false) router.push(WEG.rechnung(id));
   };
@@ -339,7 +342,8 @@ function MandatRechnungen({ m }: { m: Mandat }) {
           </Link>
         ))}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {m.honorar.betrag > 0 && <Knopf leise onClick={() => void anlegen()}>+ Rechnung aus dem Honorar</Knopf>}
+          {m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => void anlegen()}>+ Rechnung aus dem Honorar</Knopf>}
+          {m.honorar.betrag > 0 && !finanzFirma && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{NUR_GRUNDDATEN}</span>}
           {ueber.length > 0 && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{ueber.length} überfällig</span>}
           {eigene.length > 5 && <Link href={WEG.rechnungen()} style={{ fontSize: TYP.bedien, color: C.inkLeise }}>alle ›</Link>}
         </div>

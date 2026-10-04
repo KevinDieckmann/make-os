@@ -11,6 +11,9 @@
 // Pfad-Grammatik (an JSON Pointer angelehnt, „/“ trennt, weil Zellen-Schlüssel
 // wie „p.b.miete:3“ Punkte und Doppelpunkte tragen):
 //   /plan/p.b.miete:3          Zelle setzen (neu) oder zurücksetzen (neu fehlt)
+//   /plan/ug.konto:3           Handwert einer gerechneten Zahl (04.10., lib/finanzen/handwerte.ts) — gleiche Mechanik;
+//                              Monat 0 = Wert ohne Monat (Abschluss). Neu muss eine endliche Zahl sein; höchstens
+//                              GRENZE_PLAN_ZELLEN Zellen, darüber 413 (gekürzt wird nie).
 //   /fokus/schritte/id=st1/erledigt   Element einer Liste über seine Kennung
 //   /fokus/schritte/-          anhängen (neu = der neue Eintrag)
 //   /fokus/schritte/id=st1     Element entfernen (neu fehlt)
@@ -29,6 +32,7 @@ import { pruefePlanszenarien } from '@/lib/finanzen/szenarien';
 import { pruefeSteuern } from '@/lib/finanzen/steuern';
 import { pruefeSchwellen } from '@/lib/finanzen/schwellen';
 import { KAL, istUnterseite } from './hilfen';
+import { GRENZE_PLAN_ZELLEN, ZELLE_MUSTER } from '@/lib/finanzen/handwerte';
 
 import { localDay } from '@/lib/zeit';
 export interface Operation {
@@ -50,6 +54,8 @@ const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'b
 const GEFAEHRLICH = new Set(['__proto__', 'constructor', 'prototype']);
 
 export class OperationUngueltig extends Error {}
+/** Das Dokument würde über eine Grenze wachsen — der Schreibweg antwortet 413, gekürzt wird nie. */
+export class OperationZuGross extends OperationUngueltig {}
 
 export function pfadTeile(pfad: string): string[] {
   if (typeof pfad !== 'string' || !pfad.startsWith('/') || pfad.length > 300) throw new OperationUngueltig(`Pfad unbrauchbar: ${String(pfad).slice(0, 60)}`);
@@ -161,13 +167,13 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       if (op.neu === undefined) {
         const alt = d.regeln[k];
         delete d.regeln[k];
-        protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt), neu: 'Regel entfernt' });
+        protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt), neu: 'Regel entfernt', pfad: op.pfad });
         continue;
       }
       if (typeof op.neu !== 'string' || !op.neu) throw new OperationUngueltig('Eine Regel braucht eine Planzeile.');
       const n = lerneRegel(d, k, op.neu);
       if (n) nachladen = true;
-      protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(op.alt), neu: `${op.neu} · Regel gemerkt, ${n} Buchungen angepasst` });
+      protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(op.alt), neu: `${op.neu} · Regel gemerkt, ${n} Buchungen angepasst`, pfad: op.pfad });
       continue;
     }
     if (teile[0] === 'aktiv') {
@@ -182,6 +188,13 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       const n = op.neu;
       if (!istObjekt(n) || typeof n.id !== 'string' || (d.planszenarien ?? []).some(s => s.id === n.id)) throw new OperationUngueltig('Ein neues Planszenario braucht eine freie Kennung.');
     }
+    // Planzelle oder Handwert (04.10.): `<kennung>:<monat>`, Monat 0 … Planlänge, Wert eine endliche Zahl. Entfernen geht immer.
+    if (teile[0] === 'plan' && op.neu !== undefined) {
+      if (teile.length !== 2) throw new OperationUngueltig('Eine Planzelle ist „<Zeile>:<Monat>“.');
+      const t = ZELLE_MUSTER.exec(teile[1]);
+      if (!t || Number(t[1]) > d.monate.length) throw new OperationUngueltig(`Planzelle unbrauchbar: ${teile[1].slice(0, 60)}`);
+      if (typeof op.neu !== 'number') throw new OperationUngueltig(`Eine Planzelle braucht eine Zahl (${teile[1].slice(0, 60)}).`);
+    }
     const alt = lies(d, teile);
     if (alt === undefined && op.neu === undefined) continue; // nichts zu tun, nichts zu protokollieren
     setze(d as unknown as Beliebig, teile, op.neu);
@@ -190,8 +203,11 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       if (op.neu === undefined) { delete d.meta[teile[1]]; meta[teile[1]] = null; }
       else { d.meta[teile[1]] = { wer: person, wann: jetzt }; meta[teile[1]] = { wer: person, wann: jetzt }; }
     }
-    protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt !== undefined ? alt : op.alt), neu: op.neu === undefined ? 'zurückgesetzt' : kurz(op.neu) });
+    protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt !== undefined ? alt : op.alt), neu: op.neu === undefined ? 'zurückgesetzt' : kurz(op.neu), pfad: op.pfad });
   }
+  // Zellen-Grenze (nie abschneiden, ablehnen): wer über die Grenze wächst, bekommt 413 — Verkleinern geht immer.
+  const zellen = Object.keys(d.plan ?? {}).length;
+  if (zellen > GRENZE_PLAN_ZELLEN && zellen > Object.keys(doc.plan ?? {}).length) throw new OperationZuGross(`Abgelehnt: höchstens ${GRENZE_PLAN_ZELLEN} Planzellen und Handwerte (jetzt wären es ${zellen}). Erst Handwerte zurücksetzen — gekürzt wird nie.`);
   // Steuerprofil und Schwellen bereinigen (Sätze begrenzen, Unbekanntes verwerfen); leer = Schlüssel entfernen.
   if (ops.some(o => typeof o.pfad === 'string' && (o.pfad.startsWith('/steuern') || o.pfad.startsWith('/schwellen')))) {
     const st = pruefeSteuern(d.steuern), sw = pruefeSchwellen(d.schwellen);

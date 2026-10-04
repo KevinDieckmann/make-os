@@ -17,6 +17,20 @@
 
 export type Gesellschaftskennung = 'kdc' | 'kdv' | 'ug';
 
+// ─── Offene Liste (04.10., Gesellschafts-Register) ──────────────────────────
+// Kevin 04.10.: „Eigene Gesellschaften als offene Liste.“ Die drei festen Kennungen oben bleiben unverändert (Finanzen,
+// Steuern, Rechenkern, Business-Index und Spaces rechnen nur mit ihnen); weitere eigene Gesellschaften legt der Haushalt im
+// Register an (lib/gesellschaften, Seite /os/unternehmen) — Kennung `g-<uuid>`, nie im Code. Wer eine Gesellschaft nur
+// AUSWÄHLT oder ANZEIGT (Deals, Mandate, Produkte, Planung), nimmt `GesellschaftId`; wer rechnet, bleibt bei
+// `Gesellschaftskennung` und zeigt für eine Register-Gesellschaft „nur Grunddaten“.
+
+/** Kennung einer Gesellschaft aus dem Register: `g-<uuid>` (lib/kennung.ts `neueKennung('g')`). */
+export type RegisterKennung = `g-${string}`;
+/** Jede eigene Gesellschaft: eine der drei festen ODER eine aus dem Register. */
+export type GesellschaftId = Gesellschaftskennung | RegisterKennung;
+export const REGISTER_KENNUNG = /^g-[a-z0-9][a-z0-9-]{3,62}$/;
+export const istRegisterKennung = (v: unknown): v is RegisterKennung => typeof v === 'string' && REGISTER_KENNUNG.test(v);
+
 /** Anzeigename der Gesellschaft mit der Kennung `ug` — EINZIGE Stelle (seit 30.09., vorher „MAKE OS UG“). */
 export const UG_NAME = 'MAKE Innovation GmbH';
 /** Kurzname für enge Stellen (Pillen, Chips, Spaltenköpfe) — „MAKE“, damit er nicht mit anderen GmbHs verwechselt wird. */
@@ -69,6 +83,18 @@ export function firmaFuerGesellschaft(g: string | null | undefined): Gesellschaf
 }
 
 /**
+ * Firmen-Konto im Finanzplan für eine Gesellschaft — OHNE stillen Rückfall für das Register (04.10.): Rechnungen und Konten
+ * gibt es nur für die drei festen Gesellschaften (Rechenkern). Eine Register-Gesellschaft (`g-…`) ergibt `null` — die
+ * Oberfläche sagt dann, dass die Gesellschaft im Finanzplan noch nicht geführt wird, statt die Rechnung bei der
+ * Selbstständigkeit (kdc) abzulegen. „offen“/Altwerte bleiben wie bisher bei kdc.
+ */
+export function finanzFirmaFuer(g: string | null | undefined): Gesellschaftskennung | null {
+  return istRegisterKennung(g) ? null : firmaFuerGesellschaft(g);
+}
+/** Satz für die Oberfläche, wenn `finanzFirmaFuer` null ergibt. */
+export const NUR_GRUNDDATEN = 'Diese Gesellschaft steht im Register, wird im Finanzplan aber noch nicht geführt — Rechnungen und Zahlen gibt es heute nur für die drei festen Gesellschaften.';
+
+/**
  * Name eines Firmen-Kontos (Finanzplan `firmen[]`, 30.09.): das Konto `ug` mit einem Altnamen der Gesellschaft
  * („MAKE OS UG“, „Neue UG“ …) heißt wie hier (UG_NAME); ein eigener Name und alle anderen Konten bleiben, wie sie sind.
  * Nur der Textwert ändert sich (keine Formänderung) — gespeichert wird er beim nächsten Schreiben.
@@ -107,6 +133,8 @@ export const FINANZ_ORT_IDS: readonly FinanzOrt[] = FINANZ_ORTE.map(o => o.id);
 export const GESELLSCHAFTEN: readonly Gesellschaftskennung[] = KERN_EINHEITEN.map(e => e.id);
 
 export const istGesellschaft = (v: unknown): v is Gesellschaftskennung => GESELLSCHAFTEN.includes(v as Gesellschaftskennung);
+/** Eine der drei festen ODER eine Register-Gesellschaft (`g-…`) — für Auswahl und Anzeige, nie zum Rechnen. */
+export const istGesellschaftId = (v: unknown): v is GesellschaftId => istGesellschaft(v) || istRegisterKennung(v);
 export const istFinanzOrt = (v: unknown): v is FinanzOrt => FINANZ_ORT_IDS.includes(v as FinanzOrt);
 
 /** Anzeigename einer Kennung (Privat · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH). */

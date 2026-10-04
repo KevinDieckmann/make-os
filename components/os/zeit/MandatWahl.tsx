@@ -18,7 +18,7 @@ import { LEUCHT } from '@/lib/make-one/design';
 import { mandatWahlListe, type MandatKurz } from '@/lib/planung/mandat';
 import { Wahl } from '../crm/Wahl';
 import { MandantLink } from '../crm/MandantLink';
-import { Chip } from '../schlank';
+import { Chip } from '../ui';
 import { useMandate } from './useMandate';
 
 // Der Abruf lebt in ./useMandate.ts (auch MandantLink braucht ihn) — hier weiter angeboten.

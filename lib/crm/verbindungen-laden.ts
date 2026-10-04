@@ -8,6 +8,7 @@
 // Zurückschreiben (28.09. spät): `aufgabenBezugZurueckschreiben` — die Reparatur „aufgabe-bezug-tot“ fasst im
 // Speicher `tasks` nur das Feld `bezug` der betroffenen Aufgaben an (aktueller Stand, in der Sperre).
 
+import { registerEinheitenNamen, type RegisterDatei } from '@/lib/gesellschaften/modell';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { datenOrdner, loadJson, speicherStand, updateJson } from '@/lib/store/local-db';
@@ -201,6 +202,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     Promise.all(q.personen.map(async p => ({ person: p, datei: await loadJson<ZeitDatei>(speicherFuer('zeit', p)) }))),
     q.haushalt ? loadJson<{ eintraege?: DateiEintrag[] }>(`${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`) : Promise.resolve(null),
   ]);
+  const registerEinheiten = q.haushalt ? registerEinheitenNamen(await loadJson<RegisterDatei>(`gesellschaften--${q.haushalt}`)) : [];
   const aufgaben: AufgabeKurz[] = (Array.isArray(tasks?.tasks) ? tasks!.tasks : []).map(t => ({ id: t.id, title: t.title, ...(t.description ? { description: t.description } : {}), projectId: t.projectId, status: t.status, ...(t.space ? { space: t.space } : {}), ...(t.einheit ? { einheit: t.einheit } : {}), ...(t.spaceId ? { spaceId: t.spaceId } : {}), ...(t.bezug ? { bezug: t.bezug } : {}), ...(t.parentId ? { parentId: t.parentId } : {}) }));
   return {
     heute,
@@ -208,7 +210,8 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     kontakte: Array.isArray(kontakte?.kontakte) ? kontakte!.kontakte : [],
     crm,
     finanzplan: finanz ? { rechnungen: Array.isArray(finanz.rechnungen) ? finanz.rechnungen : [], firmen: (Array.isArray(finanz.firmen) ? finanz.firmen : []).map(f => f.id) } : null,
-    aufgaben: tasks ? { liste: aufgaben, orte: ordnung?.orgs && typeof ordnung.orgs === 'object' ? ordnung.orgs : {}, eigeneEinheiten: Array.isArray(einheiten?.eigene) ? einheiten!.eigene : [] } : null,
+    // Einheiten der Planung = Standard + Register-Gesellschaften (04.10.) + eigene — dieselbe Liste wie GET /api/planung/einheiten.
+    aufgaben: tasks ? { liste: aufgaben, orte: ordnung?.orgs && typeof ordnung.orgs === 'object' ? ordnung.orgs : {}, eigeneEinheiten: [...registerEinheiten, ...(Array.isArray(einheiten?.eigene) ? einheiten!.eigene : [])] } : null,
     fokus: zeiten.map(z => ({ person: z.person, bloecke: Object.values(z.datei?.tage ?? {}).flatMap(t => (Array.isArray(t?.bloecke) ? t.bloecke : [])) })),
     dateien: q.haushalt ? { eintraege: Array.isArray(ablage?.eintraege) ? ablage!.eintraege : [], aufPlatte: dateien } : null,
     // Projekt-/Aufgaben-Dateien (C2): nur Kennungen und Bezüge werden geprüft, nie Inhalte.
