@@ -166,7 +166,7 @@ export async function vertragsErinnerungen(haushalt: string, heute = localDay())
     const { alleGesellschaften } = await import('./modell');
     const faellig = faelligeErinnerungen(alleGesellschaften(await ladeRegister(haushalt)), heute);
     if (!faellig.length) return { neu: 0 };
-    const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
+    const [{ systemAufgabenAendern }, { WEG }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/wege')]);
     const jetzt = new Date().toISOString();
     let neu: typeof faellig = [];
     await systemAufgabenAendern(stand => {
@@ -174,7 +174,9 @@ export async function vertragsErinnerungen(haushalt: string, heute = localDay())
       neu = faellig.filter(e => !da.has(e.aufgabeId));
       return {
         neu: neu.map(e => ({
-          id: e.aufgabeId, title: e.titel, description: e.beschreibung, status: 'todo', priority: 'high', assignee: 'both', dueDate: e.kuendigenBis,
+          id: e.aufgabeId, title: e.titel, description: e.beschreibung, status: 'todo',
+          // Der Weg zum Vertrag (kein Datenpunkt ins Leere): Link in der Notiz, sichere Markdown-Teilmenge (lib/aufgaben/notiz.ts).
+          notiz: `[Vertrag im Register öffnen](${WEG.unternehmen(e.gesellschaftId, 'vertraege')})`, priority: 'high', assignee: 'both', dueDate: e.kuendigenBis,
           tags: ['vertrag', 'gesellschaft'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: 'business',
           ...(istGesellschaft(e.gesellschaftId) ? { spaceId: e.gesellschaftId } : {}),
         })),
@@ -183,7 +185,6 @@ export async function vertragsErinnerungen(haushalt: string, heute = localDay())
     if (neu.length) {
       const { ladeKonten } = await import('@/lib/zugang/konten');
       const { melde } = await import('@/lib/meldungen/melden');
-      const { WEG } = await import('@/lib/wege');
       const personen = (await ladeKonten()).konten.filter(k => k.haushalt === haushalt).map(k => k.speicher);
       for (const e of neu) for (const an of personen) await melde({ an, art: 'vertrag', titel: e.titel, link: WEG.unternehmen(e.gesellschaftId, 'vertraege'), bezug: { art: 'aufgabe', id: e.aufgabeId } });
     }

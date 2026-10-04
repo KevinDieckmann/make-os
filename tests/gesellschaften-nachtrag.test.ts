@@ -127,6 +127,8 @@ describe('Server: Organe/Beschlüsse über die Route, Erinnerung idempotent', ()
     const tasks = await db.loadJson<{ tasks: { id: string; dueDate?: string }[] }>('tasks');
     expect(tasks!.tasks.filter(t => t.id === aid)).toHaveLength(1);
     expect(tasks!.tasks.find(t => t.id === aid)?.dueDate).toBe(bis);
+    // Der Weg zum Vertrag steht in der Aufgabe (Prüfung 04.10.: kein Datenpunkt ins Leere).
+    expect((tasks!.tasks.find(t => t.id === aid) as { notiz?: string } | undefined)?.notiz).toContain('/os/unternehmen?g=kdv&r=vertraege');
     for (const p of ['person-a', 'person-b']) {
       const m = await db.loadJson<{ eintraege: { art: string; bezug?: { id: string } }[] }>(`meldungen--${p}`);
       expect(m!.eintraege.filter(e => e.art === 'vertrag' && e.bezug?.id === aid)).toHaveLength(1);
