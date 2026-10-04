@@ -260,7 +260,8 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
 
 ## Business-Index (seit 25.09.2026)
 - Business-Index mit eigenen Zahlen: Finanzielle Gesundheit 50 · Personal 30 (bis 04.10. „Unternehmer-DNA“,
-  Kennung `ud` bleibt) · Markttraktion 20 (arithmetisch), dazu Fokus & Zeit 10 % (die drei skaliert ×0,9) — Text
+  Kennung `ud` bleibt) · Markttraktion 20 (arithmetisch), dazu Fokus & Zeit 10 % (die drei skaliert ×0,9) und seit 04.10.
+  Kapazität 15 % (alle übrigen ×0,85, zählt nur mit Messung — Abschnitt „Kapazität“) — Text
   überall aus `SAEULEN_TEXT` (lib/business/register.ts). Nur Struktur + Standard-Kennzahlen übernommen — kein Code,
   keine Daten aus KEMARIS/POINCAP/HubSpot. Plan + Entscheidungen: `BUSINESS_KSI_PLAN.md`.
 - `lib/business/` (register · messen · index · speicher), API `app/api/business`, Cockpit
@@ -415,6 +416,43 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Meilenstein-Fenster: `MsVorgabe.zielId`/`wartetAuf`, Feld „Wartet auf“. Glocke/Kalender: die Frist sagt „wartet noch auf …“ (`lib/kalender/eintraege.ts`).
 - **Rückweg:** af4679a verwirft `wartetAuf`, Ziel-`messlatte` und `zielId` beim nächsten Speichern (GO_LIVE_CHECKLISTE › Rückweg); Wächter-Fixture
   `tests/fixtures/alt-af4679a/meilensteine.ts`/`ziele.ts` (wörtlich alt). Verbindungsprüfung: `meilenstein-ziel-tot`, `meilenstein-wartet-tot`. Tests `tests/ziel-kette-0110.test.ts`.
+
+## Kapazität — Zeit und Machbarkeit je Person (04.10., nur lokal, Branch `kapazitaet`)
+Kevin: „Schlichtweg die Zeit und Machbarkeit über die Personen und Kapas … manchmal sind die Ziele nicht zu erreichen, weil
+man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_ABEND_0410.md › 7)
+- **Rechnung EINMAL rein** in `lib/kapazitaet/modell.ts` (`kapazitaetRechnen`): je Person und Tag ab heute (53 Wochen) Soll =
+  Grundwert (h/Woche ÷ 5) · sonst Wochenvorlage (Planung › Routinen, Blöcke „business“) · sonst Annahme 40 h (nur Konten;
+  Team-Personen ohne Grundwert zählen nicht) − Urlaub/Feiertag/ganz abwesend − Termine im Arbeitsfenster (überlappungsfrei, Art
+  „termin“ + Abwesenheit mit Zeit; Fokus/Blöcke sind Arbeit, kein Abzug) − 15 min Umschalten je Termin − feste Blöcke = netto;
+  × Kopf & Energie (Team-Faktor aus Erholung grün 1,0 · gelb 0,9 · rot 0,75, nur die nächsten 14 Tage) = belastbar; − Zuweisungen
+  (Mandat/Kunde, h/Woche) = frei. **Machbarkeit** je Meilenstein/Ziel der Reihe nach (überfällig, Termin, Rang — „nicht schon
+  verplant“): Rest = Aufwand × (1 − Fortschritt) gegen frei bis zum Termin: ≤ 80 % machbar, ≤ 100 % eng, sonst „nicht machbar —
+  bräuchte N h/Tag, frei sind F“ (> 24 h: „mehr, als ein Tag Stunden hat“); ohne Aufwand „Aufwand fehlt“, ohne Termin „Termin fehlt“.
+  Ziel = schlechtester Status aus eigenem Aufwand + Meilensteinen (`zielMachbarkeit`). Neue Regeln dort, nie in Ansichten.
+- **Andock-Stelle für jeden Strahl:** `lib/kapazitaet/last.ts` `lastJeWoche(stand, { von, bis }, person?)` / `engpassWochen` — je Woche
+  kapa, bedarf, auslastung, stufe (leer/gut/eng/ueber), `engpass`, Lage im Fenster `anteilVon/anteilBis` (0–1). Gezeichnet von
+  `LastBand` (components/os/kapazitaet/teile.tsx) als eigene Komponente UNTER den Lichtfäden im Jahr — die Strahl-Dateien bleiben unberührt.
+- **Daten:** Aufwand steht AM Meilenstein/Ziel (optional `aufwand` h + `personen` Team-Kennungen, nur Business; Säuberung
+  `aufwandSaeubern` in lib/planung/meilensteine.ts, auch für Ziele; die Kaskade lässt beides stehen). Alles andere im Bestand
+  `kapazitaet--<haushalt>` (Haushalt des Inhabers; Register `H`): je Person Grundwert + Ausnahmen (Urlaub, Block), Zuweisungen
+  Person × Mandat/Kunde (nur CRM-Kennungen). Personen = Team des Haushalts (`teamStand`, Kennung `konto-<speicher>` bzw. Team-Kennung,
+  nie Platzhalter, nichts fest im Code). Ist = bewusste Business-Fokuszeit (`zeit--<person>`), je Meilenstein über die Aufgaben-Liste.
+- **Server:** `lib/kapazitaet/server.ts` (vorhandene Lesewege: `verfuegbarkeitFuer`, vitals, Zeit, Meilensteine/Ziele, CRM; `merken` 60 s
+  je Haushalt+Tag). Route `GET/PATCH /api/kapazitaet` (nur Haushalt des Inhabers mit Person). **Privatfilter serverseitig**
+  (`fuerBetrachter`): Erholungswert und Ausnahme-Titel nur für die Person selbst; Erholung zählt überhaupt nur, wenn die Person ihre
+  Gesundheit mit ALLEN anderen Konten des Haushalts teilt, und dann nur im Team-Faktor. Schreiben (`lib/kapazitaet/aendern.ts`
+  `kapaAendern`, Ops grundwert/ausnahme/ausnahme-weg/zuweisung/zuweisung-weg): eigene Kapa oder Inhaber, Team-Personen ohne Konto
+  nur der Inhaber → sonst 403; unbekannt 404; Unsinn 400; > 50 Ops 413; alles oder nichts.
+- **Säule `kp` im Business-Index** (`lib/kapazitaet/kennzahlen.ts`, 15 %, alle übrigen ×0,85, nur Gesamtsicht): Last nächste 4 Wochen,
+  machbare Meilensteine, Plan-Treue (Ø Ist 4 Wochen ÷ Ø Plan nächste 4 Wochen), Puffer je Woche, Kopf & Energie (Team). `SaeuleDef.nurMitMessung`
+  (lib/kennzahlen/kern.ts): ohne Messung fällt sie auch aus Gesamtgewicht/Abdeckung — der Index ist dann EXAKT der bisherige (Test).
+  Summen kommen über `kapaKennzahlenFuerIndex` in `ladeRoh` (Fehler → null, Säule zählt nicht). „Auslastung“ (fakturiert) und
+  „Meeting-Last“ bleiben in Personal — hier wirkt die Meeting-Last nur als Umschaltzeit (nicht doppelt gezählt).
+- **Oberfläche:** Planung › Kapazität (`WEG.kapazitaet()`, `KapazitaetAnsicht`: vier Zahlen + Last-Band Team, Machbarkeit, je Person
+  12 Wochen + Grundwert/Urlaub/Blöcke/Zuweisungen), Meilenstein-Fenster „Aufwand (h)“ + „Wer arbeitet daran“, `MachbarZeile` in
+  Meilenstein- und Ziel-Detail (Ziel: „Eigener Aufwand“). Browser nur über `useKapazitaet` (`kapazitaetNeu()` nach dem Speichern).
+- Tests `tests/kapazitaet.test.ts` (30-h/Tag-Fall, Reihenfolge, Urlaub/Block/Termine, Kopf & Energie, Andock, Rechte, alte Daten,
+  Säule ohne Messung = alter Index), `tests/kapazitaet-route.test.ts` (Testkunde 403, Privatfilter, Rechte).
 
 ## Ernährung & Einkauf zu zweit (seit 26.09.2026, online)
 - Modell `lib/ernaehrung/modell.ts` (rein): Profile je Person (Konto = nur selbst, Gast = Haushalt), Stammliste
