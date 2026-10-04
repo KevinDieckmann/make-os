@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { FARBE as C, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Knopf, Hinweis, Leer, Pillen, Punkt, Schalter, ZeileAktionen, useRueckgaengig, useRueckfrage, feld as feldStil } from '../ui';
 import { anteile, centAus, EINLAGEN, type Bezug, type Einlage, type Gesellschafter } from '@/lib/gesellschaften/modell';
-import { BezugWahl, TextFeld, Felder, Feldzeile, bezugName, centEingabe, centText, klein, tagText, type GAnzeige, type RegisterDaten, type useSchreiber } from './teile';
+import { BezugWahl, Felder, Feldzeile, bezugName, centEingabe, centText, klein, tagText, type GAnzeige, type RegisterDaten, type useSchreiber } from './teile';
 
 type Schreibe = ReturnType<typeof useSchreiber>['schreibe'];
 /** Farben der Anteile (Zustandsfarben ausgenommen) — nur Token. */
@@ -132,7 +132,7 @@ function GesellschafterForm({ g, daten, alt, rest, schreibe, fertig }: { g: GAnz
         </Felder>
         <Feldzeile label="Einlage"><Pillen liste={EINLAGEN.map(e => ({ id: e.id, label: e.label }))} aktiv={einlage} onWahl={setEinlage} /></Feldzeile>
         <Schalter an={stimmrecht} onChange={setStimmrecht}>Mit Stimmrecht</Schalter>
-        <Feldzeile label="Klauseln (Vesting, Vorkaufsrecht, Drag-/Tag-along …)"><TextFeld lang label="Klauseln" wert={klauseln} onFertig={setKlauseln} platzhalter="frei, z. B. Vesting 4 Jahre, Cliff 12 Monate" /></Feldzeile>
+        <Feldzeile label="Klauseln (Vesting, Vorkaufsrecht, Drag-/Tag-along …)"><textarea value={klauseln} onChange={e => setKlauseln(e.target.value)} aria-label="Klauseln" rows={3} placeholder="frei, z. B. Vesting 4 Jahre, Cliff 12 Monate" style={{ ...feldStil, resize: 'vertical', lineHeight: 1.5 }} /></Feldzeile>
         {rest !== undefined && !alt && <div style={klein}>Noch frei: {centText(rest)} vom Stammkapital.</div>}
         {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

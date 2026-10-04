@@ -67,7 +67,7 @@ export function UnternehmenView() {
   }
 
   const g = offen ? daten.gesellschaften.find(x => x.id === offen) : undefined;
-  if (offen && g) return <Detail g={g} daten={daten} reiter={params.get('r') ?? 'steckbrief'} onReiter={r => geh({ g: g.id, r })} zurueck={() => geh({ s: sicht })} onNeu={ersetzen} neuLaden={laden} oeffne={id => geh({ g: id })} />;
+  if (offen && g) return <Detail key={g.id} g={g} daten={daten} reiter={params.get('r') ?? 'steckbrief'} onReiter={r => geh({ g: g.id, r })} zurueck={() => geh({ s: sicht })} onNeu={ersetzen} neuLaden={laden} oeffne={id => geh({ g: id })} />;
 
   return (
     <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Anteile und Verträge — eine Quelle für Planung, Finanzen und Markttraktion."
@@ -124,8 +124,8 @@ function Uebersicht({ daten, sicht, oeffne, neuLaden }: { daten: RegisterDaten; 
     setFehler(null);
     const r = await fetch('/api/gesellschaften', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: g.id, stand: g.stand, aktion, ...extra }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung — nichts geändert.' }));
     await neuLaden(); gesellschaftenGeaendert();
-    if (!r.ok) { setFehler(r.fehler ?? 'Nicht geändert.'); return null; }
-    return r.gesellschaft as GAnzeige | undefined ?? null;
+    if (!r.ok) { setFehler(r.fehler ?? 'Nicht geändert.'); return false; }
+    return true;
   };
   // Nach dem Neuladen gilt der neue Stand — „Rückgängig“ holt ihn frisch.
   const frisch = async (id: string) => { const d = await fetch('/api/gesellschaften?papierkorb=1', { cache: 'no-store' }).then(r => r.json()).catch(() => null); return (d?.gesellschaften as GAnzeige[] | undefined)?.find(x => x.id === id); };
@@ -148,7 +148,7 @@ function Uebersicht({ daten, sicht, oeffne, neuLaden }: { daten: RegisterDaten; 
   };
   const endgueltig = (g: GAnzeige) => fragen({
     titel: `„${g.name}“ endgültig löschen?`, text: 'Das lässt sich nicht rückgängig machen. Unterlagen in der Ablage bleiben erhalten.',
-    wahl: [{ label: 'Endgültig löschen', ton: 'gefahr', tun: async () => { if (await handeln(g, 'endgueltig') !== null) melden(`„${g.name}“ endgültig gelöscht`); } }],
+    wahl: [{ label: 'Endgültig löschen', ton: 'gefahr', tun: async () => { if (await handeln(g, 'endgueltig')) melden(`„${g.name}“ endgültig gelöscht`); } }],
   });
 
   const leer = sicht === 'liste'

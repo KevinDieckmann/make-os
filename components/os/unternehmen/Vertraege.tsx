@@ -16,7 +16,7 @@ import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
 import { haelt, centAus, VERTRAG_ARTEN, VERTRAG_STATUS, vertragArtLabel, vertragStatusLabel, type Bezug, type FremdBeteiligung, type Vertrag, type VertragArt, type VertragStatus, type VertragFrist } from '@/lib/gesellschaften/modell';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { ANNEHMEN } from '@/lib/dateien/regeln';
-import { BezugWahl, TextFeld, Auswahl, Felder, Feldzeile, bezugName, centEingabe, centText, klein, tagText, type GAnzeige, type RegisterDaten, type useSchreiber } from './teile';
+import { BezugWahl, Auswahl, Felder, Feldzeile, bezugName, centEingabe, centText, klein, tagText, type GAnzeige, type RegisterDaten, type useSchreiber } from './teile';
 import { Papierkorb } from './Gesellschafter';
 
 type Schreibe = ReturnType<typeof useSchreiber>['schreibe'];
@@ -94,7 +94,7 @@ function BeteiligungForm({ daten, alt, schreibe, fertig }: { daten: RegisterDate
           <Feldzeile label="Erworben am"><input type="date" value={erwerbAm} onChange={e => setErwerbAm(e.target.value)} aria-label="Erworben am" style={feld} /></Feldzeile>
           <Feldzeile label="Kaufpreis (€, optional)" fehler={preis && centAus(preis) === 'fehler' ? 'Betrag nicht lesbar.' : undefined}><input value={preis} onChange={e => setPreis(e.target.value)} inputMode="decimal" aria-label="Kaufpreis in Euro" style={feld} /></Feldzeile>
         </Felder>
-        <Feldzeile label="Notiz"><TextFeld lang label="Notiz" wert={notiz} onFertig={setNotiz} /></Feldzeile>
+        <Feldzeile label="Notiz"><textarea value={notiz} onChange={e => setNotiz(e.target.value)} aria-label="Notiz" rows={3} style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} /></Feldzeile>
         {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf typ="submit" aus={!firma}>{alt ? 'Speichern' : 'Eintragen'}</Knopf><Knopf leise onClick={fertig}>Abbrechen</Knopf></div>
       </form>
@@ -255,7 +255,7 @@ function VertragForm({ g, daten, alt, schreibe, fertig }: { g: GAnzeige; daten: 
           </label>
           {u.fehler && <Hinweis art="kritisch" rolle="alert">{u.fehler}</Hinweis>}
         </div>
-        <Feldzeile label="Notiz"><TextFeld lang label="Notiz" wert={notiz} onFertig={setNotiz} /></Feldzeile>
+        <Feldzeile label="Notiz"><textarea value={notiz} onChange={e => setNotiz(e.target.value)} aria-label="Notiz" rows={3} style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} /></Feldzeile>
         {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf typ="submit">{alt ? 'Speichern' : 'Eintragen'}</Knopf><Knopf leise onClick={fertig}>Abbrechen</Knopf></div>
       </form>
