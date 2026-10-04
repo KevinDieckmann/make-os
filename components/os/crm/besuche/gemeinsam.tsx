@@ -7,7 +7,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Chip, LEUCHT, feld } from '../../ui';
+import { Chip, LEUCHT, feld, useRueckfrage, type Bestaetigung } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { fuerVon, fuerFirmaId, zielSchluessel, type ZielAenderung } from '@/lib/crm/besuche-form';
@@ -71,11 +71,13 @@ export function FuerWahl({ e, api, crm }: { e: Event; api: CrmApi; crm: CrmStand
   const eintraege = useMemo(() => fuerEintraege(firmen), [firmen]);
   const mandate = fuer.art === 'kunde' ? crm.stand.mandate.filter(m => m.firmaId === fuer.firmaId) : [];
   const mandatListe = mandate.map(m => ({ id: m.id, label: m.titel }));
+  const { bestaetigen, dialog } = useRueckfrage();
   return (
     <div style={{ display: 'grid', gap: 6 }}>
+      {dialog}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Wahl label="Für wen" liste={eintraege} wert={fuer.art === 'kunde' ? fuer.firmaId : 'make'} farbe={fuer.art === 'kunde' ? LEUCHT.business : C.aktiv}
-          onWahl={id => { if (!fuerAendernOk(e, crm, id === 'make' ? 'MAKE selbst' : firmen.find(f => f.id === id)?.name ?? 'diesen Kunden')) return; void eventSetzen(api, e, { fuer: id === 'make' ? undefined : { art: 'kunde', firmaId: id } }); }} />
+          onWahl={async id => { if (!(await fuerAendernOk(e, crm, id === 'make' ? 'MAKE selbst' : firmen.find(f => f.id === id)?.name ?? 'diesen Kunden', bestaetigen))) return; void eventSetzen(api, e, { fuer: id === 'make' ? undefined : { art: 'kunde', firmaId: id } }); }} />
         {fuer.art === 'kunde' && mandatListe.length > 0 && (
           <Wahl label="Mandat" leer="+ Mandat" liste={mandatListe} wert={fuer.mandatId ?? null}
             onWahl={mandatId => void eventSetzen(api, e, { fuer: { art: 'kunde', firmaId: fuer.firmaId, mandatId } })}
@@ -93,10 +95,10 @@ export function FuerWahl({ e, api, crm }: { e: Event; api: CrmApi; crm: CrmStand
 }
 
 /** Hängen schon erfasste Personen am Event, fragt „Für wen ändern“ vorher nach („n Personen hängen dann an …“) — ein Etikett mit Folgen (Export für Kunden, Auftragsverarbeitung). */
-function fuerAendernOk(e: Event, crm: CrmStand, name: string): boolean {
+async function fuerAendernOk(e: Event, crm: CrmStand, name: string, bestaetigen: (b: Bestaetigung) => Promise<boolean>): Promise<boolean> {
   const n = crm.stand.teilnahmen.filter(t => t.eventId === e.id && t.netzwerken).length;
   if (!n) return true;
-  return window.confirm(`${n === 1 ? 'Eine erfasste Person hängt' : `${n} erfasste Personen hängen`} dann an ${name} — auch ihr Export „An Kunden übergeben“ ändert sich. Wirklich ändern?`);
+  return bestaetigen({ titel: 'Für wen wirklich ändern?', text: `${n === 1 ? 'Eine erfasste Person hängt' : `${n} erfasste Personen hängen`} dann an ${name} — auch ihr Export „An Kunden übergeben“ ändert sich.`, ja: 'Ändern' });
 }
 
 /** Wie eine Zielperson heißt — Person (Name · Firma) oder Firma. */

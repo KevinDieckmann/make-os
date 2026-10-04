@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { LEUCHT } from '../ui';
+import { LEUCHT, useRueckfrage } from '../ui';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
 
 interface Stand {
@@ -74,6 +74,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
   const [vorschau, setVorschau] = useState<Vorschau | null>(null);
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [bestaetigt, setBestaetigt] = useState(false);
+  const { bestaetigen, dialog } = useRueckfrage();
 
   const laden = useCallback(async (liste = false) => {
     const d: Stand | null = await fetch(`/api/kalender/google${liste ? '?liste=1' : ''}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
@@ -99,7 +100,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
     setHinweis({ text: r.d.fehler ?? 'Google ließ sich nicht starten.', achtung: true });
   };
   const trennen = async () => {
-    if (!window.confirm('Google trennen? Der Zugriff wird bei Google widerrufen, die Google-Termine verschwinden aus MAKE OS (sie bleiben in Google). Neue Business-Termine landen wieder in iCloud.')) return;
+    if (!(await bestaetigen({ titel: 'Google trennen?', text: 'Der Zugriff wird bei Google widerrufen, die Google-Termine verschwinden aus MAKE OS (sie bleiben in Google). Neue Business-Termine landen wieder in iCloud.', ja: 'Trennen', gefahr: true }))) return;
     setArbeit('trennen');
     const r = await post('/api/google/trennen');
     setArbeit(null);
@@ -248,6 +249,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
           )}
         </>
       )}
+      {dialog}
     </div>
   );
 }

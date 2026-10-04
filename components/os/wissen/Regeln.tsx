@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Segmente, Hinweis, feld, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Segmente, Hinweis, feld, LEUCHT, useRueckfrage } from '../ui';
 
 type Prio = 0 | 1 | 2 | 3;
 type Gilt = 'kevin' | 'malin' | 'beide' | 'zoe';
@@ -22,6 +22,7 @@ const STATUS_FARBE: Record<Status, string> = { entwurf: LEUCHT.achtung, aktiv: L
 const prioFarbe = (p: Prio) => PRIO.find(x => x.id === p)?.farbe ?? C.inkLeise;
 
 export function Regeln({ ich }: { ich: string }) {
+  const { bestaetigen, dialog } = useRueckfrage();
   const [konst, setKonst] = useState<Konstitution | null>(null);
   const [maxZeilen, setMaxZeilen] = useState(250);
   const [regeln, setRegeln] = useState<Regel[] | null>(null);
@@ -112,7 +113,7 @@ export function Regeln({ ich }: { ich: string }) {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {r.status !== 'aktiv' && <Knopf farbe={LEUCHT.gut} onClick={() => void post({ aktion: 'aendern', id: r.id, felder: { status: 'aktiv' } })}>Freigeben als {ich}</Knopf>}
                     {r.status === 'aktiv' && <Knopf leise onClick={() => void post({ aktion: 'aendern', id: r.id, felder: { status: 'entwurf' } })}>Zurück auf Entwurf</Knopf>}
-                    <Knopf leise onClick={() => { if (window.confirm(`„${r.titel}“ ablösen? Sie bleibt als Geschichte im Ordner _abgeloest.`)) void post({ aktion: 'archivieren', id: r.id }); }}>Ablösen</Knopf>
+                    <Knopf leise onClick={async () => { if (await bestaetigen({ titel: `„${r.titel}“ ablösen?`, text: 'Sie bleibt als Geschichte im Ordner _abgeloest.', ja: 'Ablösen' })) void post({ aktion: 'archivieren', id: r.id }); }}>Ablösen</Knopf>
                   </div>
                 </div>
               )}
@@ -120,6 +121,7 @@ export function Regeln({ ich }: { ich: string }) {
           ))}
         </Liste>
       </Karte>
+      {dialog}
     </>
   );
 }

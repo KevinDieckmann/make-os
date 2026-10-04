@@ -14,8 +14,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { zoneFarbe, useHandy } from './ui';
+import { zoneFarbe, useHandy, useRueckfrage } from './ui';
 import { Sun, Inbox as InboxIcon, Search, CalendarDays, ArrowUpRight, Timer, Square, Tag } from 'lucide-react';
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVon, type SpaceId } from '@/lib/make-one/spaces';
@@ -183,6 +184,9 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
   const [laufend, setLaufend] = useState<LaufenderFokus | null>(null);
   const [jetzt, setJetzt] = useState(0);
   const { state } = useTasks();
+  const { bestaetigen, dialog: frage } = useRueckfrage();
+  // Der Kopf hat `backdrop-filter` (.wachstum-kopf) — darin wäre das fixierte Overlay auf die Kopfhöhe begrenzt: ins <body> hängen.
+  const dialog = frage && typeof document !== 'undefined' ? createPortal(frage, document.body) : null;
   // Mandat im Kopf nennen (29.09.) — die Mandate nur laden, wenn eins zugeordnet ist (der Kopf steht auf jeder Seite).
   const { karte: mandate } = useMandate(!!laufend?.mandatId);
   useEffect(() => {
@@ -224,7 +228,7 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
     } catch { status = 0; }
     if (status < 200 || status >= 300) {
       // Inhaltlich abgelehnt (400): fragen statt endlos weiterzählen; sonst (Netz, 5xx, Sitzung) weiterlaufen lassen.
-      if (status === 400 && window.confirm(`Fokus-Block abgelehnt${grund ? `: ${grund}` : ''}.\n\nZähler trotzdem beenden (diese Zeit wird nicht gezählt)?`)) fokusMerken(null);
+      if (status === 400 && (await bestaetigen({ titel: 'Zähler trotzdem beenden?', text: `Fokus-Block abgelehnt${grund ? `: ${grund}` : ''}.\n\nDiese Zeit wird nicht gezählt.`, ja: 'Beenden', gefahr: true }))) fokusMerken(null);
       else if (status !== 400) window.alert('Fokus-Zeit nicht gespeichert (keine Verbindung oder Server nicht erreichbar). Der Zähler läuft weiter — bitte gleich noch einmal beenden.');
       return;
     }
@@ -247,13 +251,17 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
         {teile(laufend.schluessel).space === 'business' && (
           <FokusZuordnenKnopf wert={{ aufgabeId: laufend.aufgabeId, einheit: laufend.einheit, mandatId: laufend.mandatId }} setzen={zuordnen} />
         )}
+        {dialog}
       </span>
     );
   }
   return (
-    <button onClick={starten} title="Fokus starten — bewusste Zeit für diesen Bereich" aria-label="Fokus starten" className="kopf-knopf" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div className="kopf-rund" style={rund(false)}><Timer size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: TYP.mikro, color: C.inkLeise }}>Fokus</span></div>
-    </button>
+    <>
+      <button onClick={starten} title="Fokus starten — bewusste Zeit für diesen Bereich" aria-label="Fokus starten" className="kopf-knopf" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div className="kopf-rund" style={rund(false)}><Timer size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: TYP.mikro, color: C.inkLeise }}>Fokus</span></div>
+      </button>
+      {dialog}
+    </>
   );
 }
 

@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Knopf, Chip, Leer, Ueberschrift, feld } from '../ui';
+import { Karte, Knopf, Chip, Leer, Ueberschrift, feld, useRueckfrage } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import {
   zoeAufgaben, auftraggeberinVon, darfAnZoe, vorschlagZeile, vorschlagAenderungen, standAbweichung, nurGewaehlt, ZOE_STATUS_LABEL,
@@ -219,6 +219,7 @@ export function ZoeAufgabenSicht({ state, personen, ich, offenId, onOeffnen, i =
   const { rehydrate } = useTasks();
   const [meldung, setMeldung] = useState('');
   const [ki, setKi] = useState(true);
+  const { bestaetigen, dialog } = useRueckfrage();
   useEffect(() => { fetch('/api/aufgaben/zoe', { cache: 'no-store' }).then(r => r.json()).then(d => setKi(d?.ki !== false)).catch(() => {}); }, []);
   const s = zoeAufgaben(state);
   const meineOffen = s.offen.filter(t => auftraggeberinVon(t) === ich).length;
@@ -227,7 +228,7 @@ export function ZoeAufgabenSicht({ state, personen, ich, offenId, onOeffnen, i =
   const chargenLaden = useCallback(() => { fetch('/api/aufgaben/zoe?chargen=1', { cache: 'no-store' }).then(r => r.json()).then(d => setChargen(Array.isArray(d?.chargen) ? d.chargen : [])).catch(() => {}); }, []);
   useEffect(() => { chargenLaden(); }, [chargenLaden, s.freigegeben.length]);
   const chargeZurueck = async (charge: string, n: number) => {
-    if (!window.confirm(`Die ${n} Übernahme${n === 1 ? '' : 'n'} dieser Charge zurücknehmen? Felder, die inzwischen jemand geändert hat, bleiben.`)) return;
+    if (!(await bestaetigen({ titel: `Die ${n} Übernahme${n === 1 ? '' : 'n'} dieser Charge zurücknehmen?`, text: 'Felder, die inzwischen jemand geändert hat, bleiben.', ja: 'Zurücknehmen' }))) return;
     const d = await fetch('/api/aufgaben/zoe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'charge-zurueck', charge }) }).then(r => r.json()).catch(() => ({ ok: false, error: 'nicht erreichbar' }));
     const b = d?.bericht as { zurueck: number; teilweise: { titel: string; grund: string }[] } | undefined;
     setMeldung(d?.ok && b ? `${b.zurueck} zurückgenommen.${b.teilweise.length ? ` ${b.teilweise.map(x => `„${x.titel}“: ${x.grund}`).join(' · ')}` : ''}` : (d?.error ?? 'Nicht zurückgenommen.'));
@@ -287,6 +288,7 @@ export function ZoeAufgabenSicht({ state, personen, ich, offenId, onOeffnen, i =
           })}
         </div>
       )}
+      {dialog}
     </Karte>
   );
 }

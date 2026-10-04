@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP, TIEF, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Leer, LEUCHT, FadenLinie, Segmentbalken } from '../ui';
+import { Karte, Ueberschrift, Knopf, Chip, Leer, LEUCHT, FadenLinie, Segmentbalken, useRueckfrage } from '../ui';
 import { tagBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { useFaelligReihe } from './fokus-reihen';
 import type { Ergebnis, Aktivitaet } from '@/lib/make-one/crm';
@@ -86,6 +86,7 @@ function TeamZeile({ team }: { team: TeamTag[] }) {
 export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string) => string; zuKontakt: (id: string) => void }) {
   const [d, setD] = useState<HeuteAntwort | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
   const [fokus, setFokus] = useState<{ id: string; start: string; bis: number; ziel: { gespraeche: number; termine: number }; index: number; ergebnisse: Record<string, string>; kartenStart: number } | null>(null);
   const [ende, setEnde] = useState(false);
   const [gelernt, setGelernt] = useState('');
@@ -133,7 +134,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   const zaehl = (x: string) => gezaehlt.filter(e => e === x).length;
 
   async function erfassen(k: HeuteKarte, ergebnis: Ergebnis, x?: NotizErgebnis) {
-    if (ergebnis === 'sperre' && !window.confirm(`${k.name} widerspricht Werbung? Die Person wird gesperrt und taucht nirgends mehr auf.`)) return;
+    if (ergebnis === 'sperre' && !(await bestaetigen({ titel: `${k.name} widerspricht Werbung?`, text: 'Die Person wird gesperrt und taucht nirgends mehr auf.', ja: 'Sperren', gefahr: true }))) return;
     const art = ergebnis === 'gespraech' || ergebnis === 'termin' ? (k.kanal?.kanal === 'telefon' || !k.kanal ? 'anruf' : 'gespraech') : 'anruf';
     // Anlass (U2 #58): der Grund der Power-Hour-Karte ist der konkrete Anlass aus der Beziehung (Zusage, Deal-Schritt, Takt …).
     const anlass = x?.notiz?.anlass?.trim() || (k.gruende[0] ? `Power Hour: ${k.gruende[0]}` : '');
@@ -298,6 +299,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
         );
       })}
       {!fokus && !lesen && <LetztePowerHours sitzungen={d.sitzungen} heute={d.heute} />}
+      {dialog}
     </>
   );
 }

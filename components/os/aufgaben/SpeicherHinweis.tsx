@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import type { SpeicherLage, Konflikt } from '@/context/TasksContext';
+import { useRueckfrage } from '../ui';
 
 const knopf = { background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 999, color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '3px 10px', whiteSpace: 'nowrap' } as const;
 const leise = { ...knopf, background: 'none', border: 'none', color: C.inkLeise } as const;
@@ -30,12 +31,15 @@ export function SpeicherHinweis({ lage, onJetzt, onKonflikt, onAbgelehnt, fassun
   fassungText: (z: Konflikt['meine']) => string;
 }) {
   const [kopiert, setKopiert] = useState<string | null>(null);
+  // Rückfrage „Verwerfen“ — neben dem Hinweis (nicht in der Live-Region), bleibt stehen, auch wenn der Hinweis verschwindet.
+  const { bestaetigen, dialog } = useRueckfrage();
   const zeigen = lage.phase === 'wiederholen' || lage.phase === 'gesperrt' || (lage.phase === 'neuLaden' && lage.offen > 0) || lage.abgelehnt.length > 0 || lage.konflikte.length > 0;
-  if (!zeigen) return null;
+  if (!zeigen) return <>{dialog}</>;
   const kopieren = async (k: Konflikt) => {
     try { await navigator.clipboard.writeText(fassungText(k.meine)); setKopiert(k.schluessel); setTimeout(() => setKopiert(null), 2000); } catch { /* Zwischenablage gesperrt */ }
   };
   return (
+    <>
     <div role="status" aria-live="polite" style={{
       position: 'fixed', right: 16, bottom: 16, zIndex: 9999, width: 'min(420px, calc(100vw - 32px))', maxHeight: '60vh', overflowY: 'auto',
       display: 'grid', gap: 8, padding: 12, borderRadius: 14, background: C.flaecheHoch, border: `1px solid ${lage.abgelehnt.length || lage.konflikte.length ? LEUCHT.kritisch : LEUCHT.achtung}55`,
@@ -56,7 +60,7 @@ export function SpeicherHinweis({ lage, onJetzt, onKonflikt, onAbgelehnt, fassun
           <span><b style={{ color: LEUCHT.kritisch }}>„{a.titel}“ nicht gespeichert:</b> {a.grund} Deine Eingabe steht noch da — ändern und es geht erneut raus.</span>
           <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
             <button onClick={() => onAbgelehnt(a.schluessel, 'erneut')} style={leise}>Erneut versuchen</button>
-            <button onClick={() => { if (window.confirm(`Deine Änderung an „${a.titel}“ verwerfen? Es gilt dann wieder der gespeicherte Stand.`)) onAbgelehnt(a.schluessel, 'verwerfen'); }} style={knopf}>Verwerfen</button>
+            <button onClick={async () => { if (await bestaetigen({ titel: `Deine Änderung an „${a.titel}“ verwerfen?`, text: 'Es gilt dann wieder der gespeicherte Stand.', ja: 'Verwerfen', gefahr: true })) onAbgelehnt(a.schluessel, 'verwerfen'); }} style={knopf}>Verwerfen</button>
           </span>
         </div>
       ))}
@@ -71,5 +75,7 @@ export function SpeicherHinweis({ lage, onJetzt, onKonflikt, onAbgelehnt, fassun
         </div>
       ))}
     </div>
+    {dialog}
+    </>
   );
 }

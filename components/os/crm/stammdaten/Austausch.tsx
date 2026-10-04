@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Liste, Zeile, Zahl, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Knopf, Liste, Zeile, Zahl, LEUCHT, useRueckfrage } from '../../ui';
 import { EXPORTE, EXPORT_INFO } from '@/lib/crm/export';
 import { anzeigename, type Konflikt } from '@/lib/make-one/crm';
 import { leererKonfliktStand, type KonfliktStand } from '@/lib/crm/import-konflikte';
@@ -47,6 +47,7 @@ const wert = (v: unknown) => { const t = typeof v === 'string' ? v : JSON.string
 export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d: StammdatenDaten; api: CrmApi; laeuft: boolean; setLaeuft: (v: boolean) => void; setMeldung: (t: string) => void; laden: () => void }) {
   const [quelle, setQuelle] = useState<Quelle | null>(null);
   const [vorschau, setVorschau] = useState<Vorschau | null>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
   // Art. 18 (29.09.): eingeschränkte Personen fehlen im Export — nur ausdrücklich (z. B. für eine Auskunft) mit Markierung dabei.
   const [mitEingeschraenkten, setMitEingeschraenkten] = useState(false);
   const [stand, setStand] = useState<KonfliktStand>(leererKonfliktStand());
@@ -102,7 +103,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
 
   /** Import-Lauf zurücknehmen (K2 #25): nur unveränderte Kontakte, der Rest wird als Konflikt gemeldet. */
   const zuruecknehmen = async (l: LaufKurz) => {
-    if (!window.confirm(`Import vom ${datum(l.am)} zurücknehmen? ${l.neu} neue Kontakte fallen weg, ${l.geaendert} geänderte bekommen ihren Stand von vorher — nur, wer seitdem nicht von Hand geändert wurde. Firmen, die der Import neu anlegte, fallen mit weg, wenn niemand mehr an ihnen hängt.`)) return;
+    if (!(await bestaetigen({ titel: `Import vom ${datum(l.am)} zurücknehmen?`, text: `${l.neu} neue Kontakte fallen weg, ${l.geaendert} geänderte bekommen ihren Stand von vorher — nur, wer seitdem nicht von Hand geändert wurde. Firmen, die der Import neu anlegte, fallen mit weg, wenn niemand mehr an ihnen hängt.`, ja: 'Zurücknehmen', gefahr: true }))) return;
     const r = await post({ aktion: 'rueckgaengig', laufId: l.id });
     if (r.error || r.fehler) { setMeldung(r.error ?? r.fehler); return; }
     const k = (r.konflikte as LaufKonflikt[] | undefined) ?? [];
@@ -236,6 +237,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
         </Liste>
       </Karte>
       {firmaDialog}
+      {dialog}
     </>
   );
 }

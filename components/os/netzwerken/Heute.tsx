@@ -21,7 +21,7 @@ import { istBesuch } from '@/lib/crm/besuche-form';
 import type { CrmApi } from '../crm/daten';
 import { Gross, Wahl, Beschriftung, Hinweis, Initialen, Leerzustand, LinkChips, type LinkChip, eingabe, kopfStil, tagText } from './bausteine';
 import { AbendZaehler, abendZahlen } from './zaehler';
-import { Karte } from '../ui';
+import { Karte, useRueckfrage } from '../ui';
 import type { EventWahl } from './EventModus';
 import type { Person } from './useNetzwerken';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -146,6 +146,7 @@ function AutoFeld({ wert, onWert, label, zeilen }: { wert: string; onWert: (v: s
 
 function DankeKarte({ d, heute, absender, meine, vonName, api, kunde }: { d: DankeZeile; heute: string; absender: string; meine: boolean; vonName: string; api: CrmApi; kunde?: string }) {
   const n = d.teilnahme.netzwerken!;
+  const { bestaetigen, dialog } = useRueckfrage();
   const [anrede, setAnrede] = useState<'Du' | 'Sie'>(n.danke?.anrede ?? d.kontakt.anrede ?? 'Sie');
   // „gestern“ gilt für den TAG DES EVENTS (nicht für den Erfassungstag); sonst steht das Datum („am 08.10.“). Die Weitergabe an den Kunden wird nur
   // bei einer an diesem Event neu angelegten Person angekündigt; Bestandspersonen „wiedergesehen“, ohne Visitenkarten-Satz (Art. 13/14).
@@ -170,9 +171,9 @@ function DankeKarte({ d, heute, absender, meine, vonName, api, kunde }: { d: Dan
       if (r.ok && j?.ok) void api.laden(true); else setFehler(typeof j?.fehler === 'string' ? j.fehler : 'Nicht vermerkt — bitte noch einmal.');
     } catch { setFehler('Ohne Netz nicht vermerkt — bitte später noch einmal.'); } finally { setLaeuft(false); }
   };
-  const oeffnen = () => {
+  const oeffnen = async () => {
     if (!link) return;
-    if (werbung.length && !window.confirm(`Im Text steht „${werbung.join('“, „')}“. Ohne Einwilligung wäre das Werbung (§ 7 UWG) — in einer Danke-Mail bitte nur Dank und Verabredetes.\n\nTrotzdem im Mail-Programm öffnen?`)) return;
+    if (werbung.length && !(await bestaetigen({ titel: 'Trotzdem im Mail-Programm öffnen?', text: `Im Text steht „${werbung.join('“, „')}“. Ohne Einwilligung wäre das Werbung (§ 7 UWG) — in einer Danke-Mail bitte nur Dank und Verabredetes.`, ja: 'Trotzdem öffnen', gefahr: true }))) return;
     window.location.href = link;
     setGeoeffnet(true);
   };
@@ -232,6 +233,7 @@ function DankeKarte({ d, heute, absender, meine, vonName, api, kunde }: { d: Dan
         </>
       )}
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{schrittLabel(n.schritt)} · {tagText(tagVon(wandzeit(new Date(n.erfasstAm))))}</div>
+      {dialog}
     </article>
   );
 }

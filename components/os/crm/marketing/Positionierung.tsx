@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Leer, feld, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Knopf, Leer, feld, LEUCHT, useRueckfrage } from '../../ui';
 import type { MarketingEinstellung } from '@/lib/crm/typen';
 import { EINSTELLUNG_GRENZEN as G, einstellungAus } from '@/lib/crm/marketing';
 import { type CrmApi, neueId } from '../daten';
@@ -18,6 +18,7 @@ const Zaehler = ({ n, max }: { n: number; max: number }) => <span style={{ fontS
 
 export function Positionierung({ api }: { api: CrmApi }) {
   const crm = api.crm;
+  const { bestaetigen, dialog } = useRueckfrage();
   const gespeichert = useMemo(() => einstellungAus(crm?.stand ?? {}), [crm]);
   const schluessel = JSON.stringify(gespeichert);
   const [e, setE] = useState<MarketingEinstellung>(gespeichert);
@@ -80,7 +81,7 @@ export function Positionierung({ api }: { api: CrmApi }) {
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input value={s.name} maxLength={G.name} placeholder="Name der Säule*" aria-label="Name der Säule" onChange={x => saeule(i, { name: x.target.value })} style={{ ...feld, flex: 1, fontSize: TYP.bedien, padding: '8px 11px', fontWeight: 600 }} />
                   {(nutzung.get(s.id) ?? 0) > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{nutzung.get(s.id)} Beiträge</span>}
-                  <button onClick={() => { if ((nutzung.get(s.id) ?? 0) && !window.confirm(`„${s.name}“ ist ${nutzung.get(s.id)} Beiträgen zugeordnet. Trotzdem entfernen?`)) return; setE({ ...e, saeulen: e.saeulen.filter((_, j) => j !== i) }); }}
+                  <button onClick={async () => { if ((nutzung.get(s.id) ?? 0) && !(await bestaetigen({ titel: `„${s.name}“ trotzdem entfernen?`, text: `Die Säule ist ${nutzung.get(s.id)} Beiträgen zugeordnet.`, ja: 'Entfernen', gefahr: true }))) return; setE(x => ({ ...x, saeulen: x.saeulen.filter((_, j) => j !== i) })); }}
                     aria-label="Säule entfernen" title="Säule entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 15, padding: '0 4px' }}>×</button>
                 </div>
                 <textarea value={s.beschreibung} rows={2} maxLength={G.beschreibung} placeholder="Worum geht es, welche Frage beantwortet sie?" aria-label="Beschreibung der Säule" onChange={x => saeule(i, { beschreibung: x.target.value })} style={{ ...feld, resize: 'vertical', fontSize: TYP.bedien, padding: '8px 11px', lineHeight: 1.5 }} />
@@ -90,6 +91,7 @@ export function Positionierung({ api }: { api: CrmApi }) {
         ) : <Leer>Drei bis fünf Säulen reichen: wiederkehrende Themen, zu denen du eine eigene Einsicht hast. Jeder Beitrag im Redaktionsplan bekommt eine davon.</Leer>}
         {e.saeulen.some(s => !s.name.trim()) && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 8 }}>Säulen ohne Namen werden beim Speichern verworfen.</div>}
       </Karte>
+      {dialog}
     </>
   );
 }

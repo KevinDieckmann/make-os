@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, LEUCHT } from '../ui';
+import { Knopf, LEUCHT, useRueckfrage } from '../ui';
 import type { Adr, GmailAlias } from '@/lib/gmail/typen';
 
 export interface AntwortDaten {
@@ -43,12 +43,13 @@ export function GmailAntwort({ d, allen, onGesendet, onZu, meldung }: { d: Antwo
   const [fehler, setFehler] = useState('');
   const anfrageId = useRef(neueId());
   const feld = useRef<HTMLTextAreaElement>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
   useEffect(() => { feld.current?.focus(); }, []);
   useEffect(() => { schreibe(d.antwortAuf, text); }, [d.antwortAuf, text]);
   const absender = useMemo(() => { const l = d.aliase.length ? d.aliase : [{ email: d.eigene, verifiziert: true } as GmailAlias]; return l.some(a => a.email === d.eigene) ? l : [{ email: d.eigene, verifiziert: true } as GmailAlias, ...l]; }, [d.aliase, d.eigene]);
 
   const entwurf = async () => {
-    if (text.trim() && !window.confirm('Den Text im Feld durch den Entwurf von ZOE ersetzen?')) return;
+    if (text.trim() && !(await bestaetigen({ titel: 'Text durch ZOE-Entwurf ersetzen?', text: 'Der Text im Feld wird durch den Entwurf von ZOE ersetzt.', ja: 'Ersetzen' }))) return;
     setSchreibt(true); setFehler('');
     const r = await fetch('/api/gmail/entwurf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: d.antwortAuf, ...(hinweis.trim() ? { hinweis: hinweis.trim() } : {}) }) })
       .then(async x => ({ status: x.status, d: await x.json().catch(() => ({})) as { ok?: boolean; draft?: string; fehler?: string; quellen?: string[] } })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung.' } as { ok?: boolean; draft?: string; fehler?: string; quellen?: string[] } }));
@@ -65,7 +66,7 @@ export function GmailAntwort({ d, allen, onGesendet, onZu, meldung }: { d: Antwo
     if (r.d.ok) { schreibe(d.antwortAuf, ''); meldung(`Gesendet an ${(r.d.an ?? []).join(', ')}.`); onGesendet(); return; }
     if (r.status === 409 && r.d.code === 'uwg' && r.d.uwg) {
       const wer = r.d.uwg.empfaenger.map(e => `${e.name} (${e.grund})`).join('\n');
-      if (window.confirm(`Der Text enthält werbliche Wörter (${r.d.uwg.woerter.join(', ')}), und für diese Person fehlt die Grundlage für Werbung (§ 7 UWG):\n\n${wer}\n\nNur senden, wenn es eine persönliche 1:1-Antwort bleibt. Trotzdem senden?`)) { await senden(true); return; }
+      if (await bestaetigen({ titel: 'Trotzdem senden?', text: `Der Text enthält werbliche Wörter (${r.d.uwg.woerter.join(', ')}), und für diese Person fehlt die Grundlage für Werbung (§ 7 UWG):\n\n${wer}\n\nNur senden, wenn es eine persönliche 1:1-Antwort bleibt.`, ja: 'Trotzdem senden', gefahr: true })) { await senden(true); return; }
       return;
     }
     setFehler(r.d.fehler ?? 'Nicht gesendet.');
@@ -91,9 +92,10 @@ export function GmailAntwort({ d, allen, onGesendet, onZu, meldung }: { d: Antwo
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <Knopf onClick={() => senden(false)} aus={laeuft || !text.trim() || !an.trim()}>{laeuft ? 'sendet …' : 'Senden'}</Knopf>
         <Knopf leise onClick={entwurf} aus={schreibt || laeuft}>{schreibt ? 'ZOE schreibt …' : 'ZOE-Entwurf'}</Knopf>
-        <Knopf leise onClick={() => { if (!text.trim() || window.confirm('Entwurf verwerfen?')) { schreibe(d.antwortAuf, ''); onZu(); } }} aus={laeuft}>Verwerfen</Knopf>
+        <Knopf leise onClick={async () => { if (!text.trim() || (await bestaetigen({ titel: 'Entwurf verwerfen?', text: 'Der geschriebene Text geht verloren.', ja: 'Verwerfen', gefahr: true }))) { schreibe(d.antwortAuf, ''); onZu(); } }} aus={laeuft}>Verwerfen</Knopf>
         <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gesendet wird nur mit dem Klick auf „Senden“.</span>
       </div>
+      {dialog}
     </div>
   );
 }

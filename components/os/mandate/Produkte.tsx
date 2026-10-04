@@ -177,6 +177,7 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
   const router = useRouter();
   const crm = api.crm!;
   const inSzenarien = useInSzenarien();
+  const { bestaetigen, dialog } = useRueckfrage();
   const fehlt = planungFehlt(l);
   const basis = preisBasisVon(l);
   const marge = margeVon(l);
@@ -317,7 +318,7 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
                 {dort > 0 && <Chip farbe={LEUCHT.gut}>{dort} hier</Chip>}
                 <button onClick={() => verschiebe(i, -1)} aria-label="Nach oben" disabled={i === 0} style={{ background: 'none', border: 'none', color: i === 0 ? C.linie : C.inkDim, cursor: 'pointer' }}>↑</button>
                 <button onClick={() => verschiebe(i, 1)} aria-label="Nach unten" disabled={i === phasen.length - 1} style={{ background: 'none', border: 'none', color: i === phasen.length - 1 ? C.linie : C.inkDim, cursor: 'pointer' }}>↓</button>
-                <button onClick={() => { if (!dort || window.confirm(`${dort} Mandate stehen in dieser Phase — trotzdem entfernen? Sie rücken in die erste Phase.`)) setzePhasen(phasen.filter(x => x.id !== ph.id)); }} aria-label="Phase entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>×</button>
+                <button onClick={async () => { if (!dort || (await bestaetigen({ titel: 'Phase trotzdem entfernen?', text: `${dort} Mandate stehen in dieser Phase. Sie rücken in die erste Phase.`, ja: 'Entfernen', gefahr: true }))) setzePhasen(phasen.filter(x => x.id !== ph.id)); }} aria-label="Phase entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>×</button>
               </span>
             </div>
           );
@@ -372,6 +373,7 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
         )}
       </div>
       {l.quelle && <div style={klein}>Quelle: {l.quelle}</div>}
+      {dialog}
     </div>
   );
 }

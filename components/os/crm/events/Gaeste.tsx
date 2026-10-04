@@ -13,7 +13,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Chip, Punkt, Leer, LEUCHT } from '../../ui';
+import { Ueberschrift, Knopf, Chip, Punkt, Leer, LEUCHT, useRueckfrage } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
@@ -36,6 +36,7 @@ const QUELLE: Record<EinladerQuelle, string | undefined> = { eingetragen: undefi
 export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
   const crm = api.crm!;
   const heute = crm.heute;
+  const { bestaetigen, dialog } = useRueckfrage();
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const nachId = useMemo(() => new Map(kontakte.map(k => [k.id, k])), [kontakte]);
   const firmen = useMemo(() => new Map(crm.stand.firmen.map(f => [f.id, f])), [crm.stand.firmen]);
@@ -69,7 +70,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
   const alleAusSegment = async () => {
     if (!segment || !ausSegment.length) return;
     const liste = ausSegment.slice(0, 60);
-    if (!window.confirm(`${liste.length} Personen aus „${segment.name}“ vormerken?${ausSegment.length > 60 ? ` (die ersten 60 von ${ausSegment.length})` : ''}`)) return;
+    if (!(await bestaetigen({ titel: `${liste.length} Personen aus „${segment.name}“ vormerken?`, text: ausSegment.length > 60 ? `Die ersten 60 von ${ausSegment.length}.` : 'Sie kommen als Vorgemerkt auf die Gästeliste.', ja: 'Vormerken' }))) return;
     setLaeuft(true);
     for (const k of liste) await vormerken(k);
     if (e.segmentId !== segment.id) await eventSetzen(api, e, { segmentId: segment.id });
@@ -123,7 +124,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
             {t.status === 'da' && !t.followUpAm && <Knopf leise onClick={() => void nachfassen(api, e, t, k, 'erledigt')}>Nachgefasst</Knopf>}
             {followUpMoeglich(e, t, heute) && (mitFollowUp.has(k.id) ? <Chip farbe={C.inkDim}>Follow-up steht</Chip> : <Knopf leise onClick={() => void followUp(t)}>Follow-up anlegen</Knopf>)}
             {t.followUpAm && <Chip farbe={LEUCHT.gut}>nachgefasst {datum(t.followUpAm)}</Chip>}
-            <button onClick={() => { if (window.confirm(`${anzeigename(k)} von der Liste nehmen?`)) void api.weg('teilnahmen', t.id); }} aria-label="Gast entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.body }}>×</button>
+            <button onClick={async () => { if (await bestaetigen({ titel: `${anzeigename(k)} von der Liste nehmen?`, text: 'Die Person bleibt in der Kartei, nur die Teilnahme an diesem Event fällt weg.', ja: 'Entfernen', gefahr: true })) void api.weg('teilnahmen', t.id); }} aria-label="Gast entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.body }}>×</button>
           </span>
         </div>
         {/* Erfasst über „Netzwerken“ (03.10.): nächster Schritt und Zuständigkeit stehen hier, der Abendbericht ist einen Tipp entfernt. */}
@@ -224,6 +225,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
         {!vorschlaege.length && <Leer>{segment ? 'Alle aus diesem Segment stehen schon auf der Liste.' : 'Keine Vorschläge — Kreis, Lebensphase oder Prio in der Kartei pflegen, dann weiß die Liste, wen du meinst.'}</Leer>}
         {vorschlaege.length > 8 && <div style={{ marginTop: 8 }}><Leise onClick={() => setMehr(!mehr)}>{mehr ? 'weniger' : `alle ${vorschlaege.length} zeigen`}</Leise></div>}
       </div>
+      {dialog}
     </div>
   );
 }

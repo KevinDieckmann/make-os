@@ -8,7 +8,7 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Fenster } from '../Fenster';
-import { Knopf, Segmente, feld } from '../ui';
+import { Knopf, Segmente, feld, useRueckfrage } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import type { AufgabenVorlage } from '@/types/tasks';
 import { sonstigeProjektId } from '@/lib/aufgaben/struktur';
@@ -107,6 +107,7 @@ function Anlegen({ spaceId: startSpace, projektId: startProjekt, artStart, onSch
   const v = liste.find(x => x.id === gewaehlt) ?? liste[0];
   const [titel, setTitel] = useState<string | null>(null);
   const [fertig, setFertig] = useState<string | null>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
   const projekte = projekteImSpace(state, spaceId);
   const gruppen = (state.gruppen ?? []).filter(g => g.projektId === projektId);
   const space = spaces.find(s => s.id === spaceId);
@@ -125,8 +126,8 @@ function Anlegen({ spaceId: startSpace, projektId: startProjekt, artStart, onSch
     for (const t of r.tasks) { const { createdAt: _c, updatedAt: _u, ...rest } = t; dispatch({ type: 'ADD_TASK_MIT_ID', payload: rest }); }
     setFertig(`Angelegt: „${r.projekt?.title ?? r.listen[0]?.titel ?? v.titel}“ mit ${r.tasks.length} Aufgabe${r.tasks.length === 1 ? '' : 'n'}.`);
   };
-  const loeschen = (x: AufgabenVorlage) => {
-    if (!window.confirm(`Vorlage „${x.titel}“ löschen? Angelegte Projekte und Listen bleiben.`)) return;
+  const loeschen = async (x: AufgabenVorlage) => {
+    if (!(await bestaetigen({ titel: `Vorlage „${x.titel}“ löschen?`, text: 'Angelegte Projekte und Listen bleiben.', ja: 'Löschen', gefahr: true }))) return;
     dispatch({ type: 'DELETE_VORLAGE', payload: { id: x.id } });
     if (gewaehlt === x.id) setGewaehlt('');
   };
@@ -179,6 +180,7 @@ function Anlegen({ spaceId: startSpace, projektId: startProjekt, artStart, onSch
         <Knopf leise onClick={onSchliessen}>{fertig ? 'Fertig' : 'Abbrechen'}</Knopf>
         <Knopf onClick={anlegen} aus={!v || !!fertig}>Anlegen</Knopf>
       </div>
+      {dialog}
     </Fenster>
   );
 }

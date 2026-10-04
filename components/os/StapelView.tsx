@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Hinweis, feld, LEUCHT, Spalten, Spalte } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Hinweis, feld, LEUCHT, Spalten, Spalte, useRueckfrage } from './ui';
 import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
 import { CrmStapelDetail } from './crm/ZoeFragen';
@@ -47,6 +47,7 @@ const STATUS: Record<string, { label: string; farbe: string }> = {
 const her = (iso: string) => { const min = Math.floor((Date.now() - Date.parse(iso)) / 60000); return min < 1 ? 'gerade' : min < 60 ? `vor ${min} min` : min < 1440 ? `vor ${Math.floor(min / 60)} h` : `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`; };
 
 export function StapelView() {
+  const { bestaetigen, dialog } = useRueckfrage();
   const [vorschlaege, setVorschlaege] = useState<Vorschlag[]>([]);
   const [auftraege, setAuftraege] = useState<Auftrag[]>([]);
   const [fakten, setFakten] = useState<Fakt[]>([]);
@@ -102,7 +103,7 @@ export function StapelView() {
     setMeldung(d.error ?? `${d.erledigt ?? 0} risikoarme Vorschläge übernommen.${d.einzeln ? ` ${d.einzeln} brauchen einzeln einen Blick (ändern Status/Deadline, CRM oder anderes).` : ''}`); setBusy(null); void laden(); void rehydrate();
   }
   async function chargeZurueck(charge: string) {
-    if (!window.confirm('Alle Übernahmen dieser Charge zurücknehmen? Felder, die inzwischen jemand geändert hat, bleiben.')) return;
+    if (!(await bestaetigen({ titel: 'Alle Übernahmen dieser Charge zurücknehmen?', text: 'Felder, die inzwischen jemand geändert hat, bleiben.', ja: 'Zurücknehmen' }))) return;
     setBusy(charge);
     const d = await fetch('/api/aufgaben/zoe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'charge-zurueck', charge }) }).then(r => r.json()).catch(() => ({ ok: false, error: 'nicht erreichbar' }));
     setMeldung(d?.ok ? `${d.bericht?.zurueck ?? 0} zurückgenommen.${d.bericht?.teilweise?.length ? ` ${d.bericht.teilweise.map((x: { titel: string; grund: string }) => `„${x.titel}“: ${x.grund}`).join(' · ')}` : ''}` : (d?.error ?? 'Nicht zurückgenommen.'));
@@ -222,6 +223,7 @@ export function StapelView() {
         </Karte>
         </Spalte>
       </Spalten>
+      {dialog}
     </Seite>
   );
 }

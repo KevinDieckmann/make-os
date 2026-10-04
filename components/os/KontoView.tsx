@@ -9,7 +9,7 @@ import { karteCacheLeeren } from './netzwerken/karten-daten';
 import { vorAbmelden } from '@/lib/netzwerken/abmelden';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, Hinweis, Feldzeile, feld, LEUCHT } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, Hinweis, Feldzeile, feld, LEUCHT, useRueckfrage } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { HaushaltZuordnung } from './HaushaltZuordnung';
 import { TeamKarte } from './TeamKarte';
@@ -22,6 +22,7 @@ interface Andere { speicher: string; name: string; rolle: string; teiltGesundhei
 interface Telegram { konfiguriert: boolean; bot?: string; chats: number; code?: string; minuten?: number; fehler?: string }
 
 export function KontoView() {
+  const { bestaetigen, dialog } = useRueckfrage();
   const [ich, setIch] = useState<Ich | null>(null);
   const [andere, setAndere] = useState<Andere[]>([]);
   const [name, setName] = useState('');
@@ -65,7 +66,7 @@ export function KontoView() {
   async function zfAus() { const r = await zfPost({ aktion: 'aus', passwort: zf.passwort }); if (r.error) setMeldung(r.error); else { setZf({ phase: 'aus', code: '', passwort: '' }); setMeldung('Zweiter Faktor ist aus.'); void laden(); } }
   // Das Offline-Abbild der eigenen Visitenkarten (Netzwerken) bleibt nicht auf einem abgemeldeten Gerät liegen.
   // Netzwerken (03.10.): wartet noch eine Erfassung, wird davor gewarnt („erst senden?“); danach räumt Abmelden Warteschlange und Merker weg.
-  async function abmelden() { if (!(await vorAbmelden(ich?.speicher ?? null, { bestaetigen: t => window.confirm(t) }))) return; karteCacheLeeren(); await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
+  async function abmelden() { if (!(await vorAbmelden(ich?.speicher ?? null, { bestaetigen: (t, k) => bestaetigen({ titel: k?.titel ?? 'Wirklich?', text: t, ja: k?.ja ?? 'Weiter', gefahr: k?.gefahr }) }))) return; karteCacheLeeren(); await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
   // Alle anderen Geräte raus — dieses bleibt drin (der Server stellt einen neuen Zettel aus).
   async function alleAbmelden() {
     const r = await fetch('/api/konto/abmelden', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true }) }).then(x => x.json()).catch(() => ({ ok: false }));
@@ -203,6 +204,7 @@ export function KontoView() {
       </Karte>
       </Kachel>
       </Flaeche>
+      {dialog}
     </Seite>
   );
 }

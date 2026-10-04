@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Zahl, Segmente, Chip, feld, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Leer, Knopf, Zahl, Segmente, Chip, feld, LEUCHT, useRueckfrage } from '../ui';
 import { ART_FARBE, type PlanArt } from '@/types/planer';
 import { useTasks } from '@/context/TasksContext';
 import { einheitKurz } from '@/lib/aufgaben/einheit';
@@ -69,6 +69,8 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
 }) {
   const { state: aufgabenStand } = useTasks();
   const { ausAdresse: spaceAusAdresse } = useSpace();
+  // Rückfrage-Karte zur Übernahme — `dialog` hängt in der Leiste, wo die Knöpfe sitzen.
+  const { bestaetigen, dialog } = useRueckfrage();
   const [gewaehlt, setGewaehlt] = useState<Baustein | null>(null);
   const [ich, setIch] = useState<Wer>('kevin');
   const [routinen, setRoutinen] = useState<{ id: string; label: string; dauerMin: number }[]>([]);
@@ -177,7 +179,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   /** Übernahme bzw. „Erneut versuchen“ (U1 M1: übersprungene freigeben, eine unterbrochene fortsetzen). */
   async function uebernehmen(aktion: 'ausfuehren' | 'erneut' = 'ausfuehren') {
     if (!uebernahme) return;
-    if (aktion === 'ausfuehren' && (!uebernahme.offen || !window.confirm(uebernahmeTexte(uebernahme.offen).frage))) return;
+    if (aktion === 'ausfuehren' && (!uebernahme.offen || !(await bestaetigen({ titel: 'Alten Wochenplan übernehmen?', text: uebernahmeTexte(uebernahme.offen).frage, ja: 'Übernehmen' })))) return;
     setUebernahmeLaeuft(true);
     const r = await fetch('/api/planung/uebernahme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setUebernahmeLaeuft(false);
@@ -192,7 +194,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     const p = await post(false);
     if (!p.ok) { melden(p.grund ?? 'Zurücknehmen geht gerade nicht.'); return; }
     const n = p.termine ?? 0, g = p.gesperrt ?? 0;
-    if (!window.confirm(`Übernahme zurücknehmen? ${n} ${n === 1 ? 'Termin' : 'Termine'} aus der Übernahme (${n === 1 ? 'Kennung' : 'Kennungen'} „makeos-wochenplan-…“) werden in iCloud gelöscht${g ? ` — ${g} davon mit Gästen/Serie bleiben stehen` : ''}. Änderungen, die ihr seitdem an diesen Blöcken gemacht habt, gehen verloren. Nur für den Rückweg zur alten Version.`)) return;
+    if (!(await bestaetigen({ titel: 'Übernahme zurücknehmen?', text: `${n} ${n === 1 ? 'Termin' : 'Termine'} aus der Übernahme (${n === 1 ? 'Kennung' : 'Kennungen'} „makeos-wochenplan-…“) werden in iCloud gelöscht${g ? ` — ${g} davon mit Gästen/Serie bleiben stehen` : ''}. Änderungen, die ihr seitdem an diesen Blöcken gemacht habt, gehen verloren. Nur für den Rückweg zur alten Version.`, ja: 'Zurücknehmen', gefahr: true }))) return;
     setUebernahmeLaeuft(true);
     const r = await post(true);
     setUebernahmeLaeuft(false);
@@ -242,6 +244,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   /** Linke Leiste: Bausteine, Routinen, Aufgaben, eigener Block, Übernahme. */
   const leiste = !aktiv ? null : (
     <div style={{ display: 'grid', gap: 12 }}>
+      {dialog}
       {!!uebernahme && !uebernahme.offen && (uebernahme.uebersprungen > 0 || uebernahme.unterbrochen) && (
         <Karte i={1} akzent={LEUCHT.achtung}>
           <Ueberschrift farbe={LEUCHT.achtung}>Alter Wochenplan</Ueberschrift>

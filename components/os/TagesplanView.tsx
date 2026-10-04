@@ -26,7 +26,7 @@ import { useTasks } from '@/context/TasksContext';
 import { einheitKurz } from '@/lib/aufgaben/einheit';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, KATEGORIE_ZU_SAEULE, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT, useRueckfrage } from './ui';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }
@@ -76,6 +76,7 @@ function Ziehbar({ farbe, daten, children, breit }: { farbe: string; daten: obje
 
 export function TagesplanView({ tag }: { tag?: string } = {}) {
   const { ausAdresse: spaceAusAdresse } = useSpace();
+  const { bestaetigen, dialog } = useRueckfrage();
   // Kevins Ansage: den nächsten Tag angucken können. Ohne Anker ist es heute.
   const heute = tag ?? localDay();
   const istHeute = heute === localDay();
@@ -336,7 +337,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
                       <span style={{ position: 'absolute', right: 4, top: 2, display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
                         <button onClick={() => void blockSetzen(b, b.startMin, Math.max(15, b.dauerMin - 30))} style={mini(C.inkDim)}>−</button>
                         <button onClick={() => void blockSetzen(b, b.startMin, Math.min(240, b.dauerMin + 30))} style={mini(C.inkDim)}>＋</button>
-                        <button onClick={() => { if (window.confirm(`„${b.titel}“ löschen? Der Termin verschwindet auch in Apple.`)) { void blockWeg(b); setAktivBlock(null); } }} style={mini(LEUCHT.kritisch)}>✕</button>
+                        <button onClick={async () => { if (await bestaetigen({ titel: `„${b.titel}“ löschen?`, text: 'Der Termin verschwindet auch in Apple.', ja: 'Löschen', gefahr: true })) { void blockWeg(b); setAktivBlock(null); } }} style={mini(LEUCHT.kritisch)}>✕</button>
                       </span>
                     )}
                   </div>
@@ -423,6 +424,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
           </Karte>
         </div>
       </div>
+      {dialog}
     </Seite>
   );
 }

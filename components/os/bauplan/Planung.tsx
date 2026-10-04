@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, feld, Fortschritt, LEUCHT } from '../schlank';
+import { useRueckfrage } from '../ui';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from '../Zeitstrahl';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
 import { SPALTEN, board, spalteVon, artVon, etappenStand, type Etappe } from '@/lib/bauplan/board';
@@ -21,6 +22,7 @@ const tageBis = (heute: string, ziel: string) => Math.round((Date.parse(`${ziel}
 
 export function Planung({ items, etappen, tu, onOeffnen }: { items: BacklogItem[]; etappen: Etappe[]; tu: Tu; onOeffnen: (id: string) => void }) {
   const heute = localDay();
+  const { bestaetigen, dialog } = useRueckfrage();
   const [form, setForm] = useState<Partial<Etappe> | null>(null);
   const [ueber, setUeber] = useState<string | null>(null);
   const aktiv = items.filter(i => !i.verworfen);
@@ -99,7 +101,7 @@ export function Planung({ items, etappen, tu, onOeffnen }: { items: BacklogItem[
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <Knopf leise onClick={() => setForm({ ...e })}>Ändern</Knopf>
-                    <Knopf leise onClick={() => { if (window.confirm(`Etappe „${e.name}“ entfernen? Die Karten bleiben, nur die Zuordnung fällt weg.`)) void tu({ aktion: 'etappe_weg', id: e.id }); }}>Entfernen</Knopf>
+                    <Knopf leise onClick={async () => { if (await bestaetigen({ titel: `Etappe „${e.name}“ entfernen?`, text: 'Die Karten bleiben, nur die Zuordnung fällt weg.', ja: 'Entfernen', gefahr: true })) void tu({ aktion: 'etappe_weg', id: e.id }); }}>Entfernen</Knopf>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -132,6 +134,7 @@ export function Planung({ items, etappen, tu, onOeffnen }: { items: BacklogItem[
           ))}
         </div>
       </Karte>
+      {dialog}
     </>
   );
 }

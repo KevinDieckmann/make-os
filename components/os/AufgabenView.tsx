@@ -30,7 +30,7 @@ import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
 import { parseSchnell, tagInT, schnellZustaendigkeit } from '@/lib/make-one/schnell-anlegen';
 import { usePersonen } from '@/components/os/aufgaben/hilfe';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, feld, prioFarbe, LEUCHT, SymbolKnopf, HakenZiel } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, feld, prioFarbe, LEUCHT, SymbolKnopf, HakenZiel, useRueckfrage } from './ui';
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 import { EinheitWahl, EinheitFilterPillen, useEinheiten, einheitGemerkt, einheitMerken } from './aufgaben/Einheit';
@@ -85,6 +85,7 @@ interface DelegVorschlag { taskId: string; titel: string; empfehlung: 'abgeben' 
 
 export function AufgabenView() {
   const { state, dispatch, ready } = useTasks();
+  const { bestaetigen, dialog } = useRueckfrage();
   // Team aus den Daten (28.09., U4): Speicher team--<haushalt> über /api/team — Rückfall Rollen-Platzhalter.
   const { team } = useTeam();
   const personen = usePersonen();
@@ -717,7 +718,7 @@ export function AufgabenView() {
               })()}
               {done && <span style={{ flex: 1 }} />}
               <Pille an={blockiert} farbe={LEUCHT.achtung} onClick={() => patchTask(t.id, { status: blockiert ? 'todo' : 'blocked' })}>{blockiert ? 'blockiert ✓' : 'blockiert?'}</Pille>
-              <Pille leise onClick={() => { if (confirm(`„${t.title.slice(0, 60)}" in den Papierkorb legen? (30 Tage wiederherstellbar unter Aufgaben › Archiv)`)) { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); } }}>Löschen</Pille>
+              <Pille leise onClick={async () => { if (await bestaetigen({ titel: `„${t.title.slice(0, 60)}“ in den Papierkorb legen?`, text: '30 Tage wiederherstellbar unter Aufgaben › Archiv.', ja: 'In den Papierkorb', gefahr: true })) { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); } }}>Löschen</Pille>
             </div>
           </div>
         )}
@@ -1228,6 +1229,7 @@ export function AufgabenView() {
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '0 2px' }}>
         Aufgaben werden lokal auf deinem Mac gespeichert · Erinnerungen live aus iCloud.
       </div>
+      {dialog}
     </Seite>
   );
 }
