@@ -235,6 +235,13 @@ Neu seit 04.10. (Lichtfäden v2, Design Kern/Privat, Fokus Innovation `Event.rei
   4. Neue Business-Termine, die ab dem Upload in Google angelegt wurden, stehen nur in Google; der alte Stand legt wieder alles in iCloud an.
 - **Datenschutz:** AVV (Datenverarbeitungszusatz) in der Workspace-Admin-Konsole bestätigen; Verzeichnis nach Art. 30 bekommt „Kalender (Google Workspace)“ automatisch, sobald Google eingerichtet ist (System › Datenschutz öffnen).
 
+## DSGVO-Prüfung S2 (04.10.) — nach dem Upload kurz prüfen
+- **Kapazität:** Kopf & Energie zählt jetzt erst nach eigener Einwilligung — Kevin und Malin schalten in Planung › Kapazität
+  (eigene Personenkarte) „Erholung berücksichtigen“ selbst ein, wenn gewünscht. Der Business-Index zeigt keine Kennzahl „Kopf & Energie“ mehr.
+- **Inbox:** als Malin angemeldet zeigt die Inbox nur Malins Gmail-Status; Apple/M365-Status nur bei Kevin.
+- **Stammdaten › Datenschutz:** Verzeichnis enthält „Gesellschafts-Register“ und „Kapazitätsplanung“; Löschkonzept „Papierkorb“.
+- Rückweg: nur neue, optionale Felder (`erholungAm` in `kapazitaet--*`) und neue Verzeichnis-Einträge — der Online-Stand liest sie nicht und stört sich nicht daran.
+
 ## Am ersten Tag
 1. **Wochenplan-Übernahme** (falls sie noch nicht gemacht wurde; mit diesem Upload hat sie nichts zu tun): erst nach ein paar stabilen Tagen: Kalender › Planen › Karte „Alter
    Wochenplan“ → Vorschau → „Jetzt übernehmen“ (die Rückfrage wiederholt den Hinweis). Bis dahin stehen die alten Blöcke
