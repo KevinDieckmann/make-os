@@ -15,6 +15,7 @@ import { kennzahlen, istHistorie } from '@/lib/finanzen/rechenkern';
 import { rechneMit, arbeitsplanVon, auswertung, type Planszenario, type Auswertung } from '@/lib/finanzen/szenarien';
 import { wendeOperationenAn, lies, pfadTeile, OperationUngueltig, type Operation } from '@/lib/finanzen/plan/operationen';
 import type { Unterseite } from '@/lib/finanzen/plan/hilfen';
+import type { Formeln } from '@/lib/finanzen/handwerte';
 
 export type Zustand = 'laedt' | 'da' | 'leer' | 'kein' | 'fehler';
 export interface Meldung { id: number; art: 'ok' | 'fehler' | 'info'; titel: string; text?: string; aktion?: { label: string; tun: () => void } }
@@ -149,6 +150,10 @@ export interface Gerechnet {
   ug: MonatUG[]; /** Selbstständigkeit (eigene Achse seit 02.10.). */ kdc: MonatSelbst[]; pr: MonatPrivat[]; kz: ReturnType<typeof kennzahlen>; h: IstHistorie;
   /** Lage in Zahlen: frei verfügbar, Runway, Ziele, Mindestumsatz, Steuer, Übergänge. */
   aw: Auswertung;
+  /** Formelwerte der von Hand überschriebenen gerechneten Zellen (04.10., Handwerte) — Tooltip „Formel … · Abweichung …“. */
+  formel: Formeln;
+  /** Freies Geld der Gruppe je Monat (mit Handwert). */
+  gruppe: number[];
 }
 
 /**
@@ -158,7 +163,7 @@ export interface Gerechnet {
  */
 export function rechne(d: FinanzDaten, treiber?: Szenario, ps: Planszenario | null = arbeitsplanVon(d)): Gerechnet {
   const g = rechneMit(d, ps, treiber);
-  return { sz: g.sz, ps: g.ps, dd: g.d, x: g.x, ug: g.ug, kdc: g.kdc, pr: g.pr, kz: g.kz, h: istHistorie(d), aw: auswertung(g.d, g.ug, g.pr, g.kdc) };
+  return { sz: g.sz, ps: g.ps, dd: g.d, x: g.x, ug: g.ug, kdc: g.kdc, pr: g.pr, kz: g.kz, h: istHistorie(d), aw: auswertung(g.d, g.ug, g.pr, g.kdc), formel: g.formel, gruppe: g.gruppe };
 }
 
 export interface PlanKontext extends Gerechnet {

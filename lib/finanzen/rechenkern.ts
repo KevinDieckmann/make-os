@@ -27,11 +27,19 @@
 // Zellen lassen sich überschreiben (plan["<zeile>:<monat>"]). IST liegt
 // getrennt daneben (ist["<zeile>:<monat>"]) und wird später aus dem
 // Finanz-Cockpit (Spalte einheit) befüllt.
+//
+// HANDWERTE (04.10., Kevins ausdrückliches Wort: „Jede Zahl bearbeitbar. Nur die Formeln sind im Hintergrund immer hart
+// gecodet.“): Jeder gerechnete Wert läuft über `hand()` — steht im Plan `plan["<kennung>:<monat>"]` ein Handwert, gilt er
+// statt des Formelwerts, und alles Nachgelagerte rechnet damit weiter. Die Formeln sind unverändert; ohne Handwert ist das
+// Ergebnis bit-genau wie vorher (Summen mit Handwert wirken über ihre Abweichung `d…`, die ohne Handwert genau 0 ist).
+// Die Kennungen und was sie bewirken: lib/finanzen/handwerte.ts (HAND_FELDER). Den Formelwert einer überschriebenen Zelle
+// sammelt `f` (Formeln) — für Tooltip und Abweichung in der Oberfläche.
 
 import type { Planszenario } from './szenarien';
 import type { Steuern } from './steuern';
 import { steuerParameter } from './steuern';
-import { estTarif, neuerSteuerrechner, type SteuerMonat } from './ertragsteuer';
+import { estTarif, neuerSteuerrechner, type SteuerHand, type SteuerMonat } from './ertragsteuer';
+import type { Formeln } from './handwerte';
 import type { Schwellen } from './schwellen';
 import { UG_KURZ, UG_NAME } from '@/lib/einheiten';
 
@@ -165,10 +173,22 @@ export function wert(z: Zeile, m: number, plan: Record<string, number>): number 
   if (k in plan) return plan[k];
   return m >= (z.ab ?? 1) && m <= (z.bis ?? 999) ? z.soll : 0;
 }
-/** Berechneter Basiswert, falls die Zelle nicht überschrieben wurde. */
-const ov = (id: string, m: number, basis: number, plan: Record<string, number>): number => {
-  const k = key(id, m); return k in plan ? plan[k] : basis;
-};
+/**
+ * Die Handwert-Schicht (04.10.): liefert zu einem gerechneten Wert den Handwert aus dem Plan (`<id>:<m>`) oder den gerechneten.
+ * Nur endliche Zahlen gelten als Handwert. Ist `f` da, merkt sie sich den Formelwert jeder überschriebenen Zelle.
+ */
+export function hand(plan: Record<string, number>, f?: Formeln): (id: string, m: number, basis: number) => number {
+  return (id, m, basis) => {
+    const k = id + ':' + m;
+    if (!(k in plan)) return basis;
+    const v = plan[k];
+    if (typeof v !== 'number' || !Number.isFinite(v)) return basis;
+    if (f) f[k] = basis;
+    return v;
+  };
+}
+/** Handwerte des Steuerrechners für einen Ort und Monat (`<ort>.kst`, `<ort>.steuer`, `<ort>.verlustvortrag` …). */
+const steuerHand = (h: ReturnType<typeof hand>, ort: string, m: number): SteuerHand => (feld, basis) => h(`${ort}.${feld}`, m, basis);
 
 /** Netto aus Brutto — lineare Interpolation in der Tabelle (StKl I, 2026). */
 export function netto(brutto: number, t: [number, number][]): number {
@@ -207,13 +227,21 @@ export interface MonatUG {
   st: SteuerMonat;
   /** KD Ventures (02.10.): laufendes Ergebnis aus Bausteinen (ohne Ausstieg — der hat seine eigene pauschale Steuer), dessen Ertragsteuer im Detail, und frei = Konto minus Rücklage. */
   kdvGewinn: number; kdvSt: SteuerMonat; kdvFrei: number;
+  /**
+   * Summen, die bisher nur die Oberfläche bildete (04.10., Handwerte): Personal inkl. Arbeitgeber (Gehälter + Unterstützung), einmalige
+   * Kosten und Ereignisse, laufende Kosten (= Mindestumsatz: Personal + Stellen + Sach + Holding), Kosten gesamt, Ergebnis nach Steuern;
+   * KD Ventures: Einnahmen, Ausgaben, Ergebnis vor und nach Steuern. Jede ist von Hand überschreibbar.
+   */
+  personal: number; einmalig: number; laufend: number; kosten: number; ergebnisNach: number;
+  kdvEinnahmen: number; kdvAusgaben: number; kdvErgebnis: number; kdvNach: number;
 }
 
 /** Sachkosten-Zeilen, die der Selbstständigkeit zugeordnet sind, laufen dort; alle anderen bei der MAKE Innovation GmbH wie bisher. */
 const istSelbstZeile = (z: Zeile): boolean => z.einheit === 'selbststaendigkeit';
 
-export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz): MonatUG[] {
+export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz, f?: Formeln): MonatUG[] {
   const a = d.annahmen, p = d.plan, N = d.monate.length;
+  const h = hand(p, f);
   const out: MonatUG[] = [];
   let konto = 0, kdv = a.kdvStart, rest = a.bjoernBetrag, vorUst = 0;
   const gew: number[] = [];
@@ -223,67 +251,93 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz): MonatUG[] {
   const sachZeilen = d.sachkosten.filter(z => !istSelbstZeile(z));
   for (let m = 1; m <= N; m++) {
     const i = m - 1;
-    const ob = ov('ug.ob', m, aktiv(sz.ob, m) ? sz.ob.betrag : 0, p);
-    const ret = ov('ug.retainer', m, sz.retainer.filter(r => aktiv(r, m)).reduce((s, r) => s + r.betrag, 0), p);
+    const ob = h('ug.ob', m, aktiv(sz.ob, m) ? sz.ob.betrag : 0);
+    const ret = h('ug.retainer', m, sz.retainer.filter(r => aktiv(r, m)).reduce((s, r) => s + r.betrag, 0));
     retUmsatz[i] = ret;
-    const retEin = a.retainerVerzug === 0 ? ret : (i - a.retainerVerzug >= 0 ? retUmsatz[i - a.retainerVerzug] : 0);
-    const ast = ov('ug.astarna', m, abAktiv(sz.astarna, m) * a.astarnaProvision, p);
-    const ev = ov('ug.events', m, abAktiv(sz.events, m), p);
-    const bU = zx(x?.ugUmsatz, i), bE = zx(x?.ugEingang, i), bP = zx(x?.ugPersonal, i), bS = zx(x?.ugSach, i), bA = zx(x?.ausschuettung, i);
-    const umsatz = ob + ret + ast + ev + bU;
-    const ustEin = (retEin + ast + ev + bE) * a.ust;
-    const kapital = m === 1 ? a.stammkapital + a.darlehenKevin : 0;
-    const einzahlungen = kapital + ob + retEin + ast + ev + bE + ustEin;
+    const retEin = h('ug.retainerEingang', m, a.retainerVerzug === 0 ? ret : (i - a.retainerVerzug >= 0 ? retUmsatz[i - a.retainerVerzug] : 0));
+    const ast = h('ug.astarna', m, abAktiv(sz.astarna, m) * a.astarnaProvision);
+    const ev = h('ug.events', m, abAktiv(sz.events, m));
+    const bU = zx(x?.ugUmsatz, i), bP = zx(x?.ugPersonal, i), bS = zx(x?.ugSach, i);
+    const bE = h('ug.bausteineEingang', m, zx(x?.ugEingang, i)), bA = h('ug.ausschuettung', m, zx(x?.ausschuettung, i));
+    const umsatz = h('ug.umsatz', m, ob + ret + ast + ev + bU);
+    const ustEin = h('ug.ustEin', m, (retEin + ast + ev + bE) * a.ust);
+    const kapital = h('ug.kapital', m, m === 1 ? a.stammkapital + a.darlehenKevin : 0);
+    const einzahlungen = h('ug.einzahlungen', m, kapital + ob + retEin + ast + ev + bE + ustEin);
 
     const rz = abAktiv(sz.erhoehung, m);
-    const kevinBrutto = ov('ug.kevin', m, m >= a.kevinAb ? a.kevinBrutto + rz : 0, p);
-    const malinBrutto = ov('ug.malin', m, m >= a.malinAb ? a.malinBrutto + rz : 0, p);
+    const kevinBrutto = h('ug.kevin', m, m >= a.kevinAb ? a.kevinBrutto + rz : 0);
+    const malinBrutto = h('ug.malin', m, m >= a.malinAb ? a.malinBrutto + rz : 0);
     const kevin = kevinBrutto * (1 + a.agAnteil), malin = malinBrutto * (1 + a.agAnteil);
-    const unterstuetzung = ov('ug.unterstuetzung', m, abAktiv(sz.unterstuetzung, m), p);
+    const unterstuetzung = h('ug.unterstuetzung', m, abAktiv(sz.unterstuetzung, m));
     const stellen = bP * (1 + a.agAnteil);
-    const einmalig = (sz.ereignisse ?? []).filter(e => e.einheit === 'ug' && e.monat === m).reduce((s, e) => s + e.betrag, 0);
+    const einmalig = h('ug.einmalig', m, (sz.ereignisse ?? []).filter(e => e.einheit === 'ug' && e.monat === m).reduce((s, e) => s + e.betrag, 0));
     const sach = sachZeilen.reduce((s, z) => s + wert(z, m, p), 0) + einmalig + bS;
-    const gruendung = m === 1 ? a.gruendungskosten : 0;
-    const holding = m >= a.holdingAb ? a.holdingKosten : 0;
-    const gewinn = umsatz - kevin - malin - unterstuetzung - stellen - sach - gruendung - holding;
-    const st = stUG(m, gewinn);
-    const steuer = st.zahlung;
+    const gruendung = h('ug.gruendung', m, m === 1 ? a.gruendungskosten : 0);
+    const holding = h('ug.holding', m, m >= a.holdingAb ? a.holdingKosten : 0);
+    // Summen mit Handwert: wirken über ihre Abweichung (ohne Handwert genau 0 — die Rechnung bleibt bit-genau wie vorher).
+    const personalRoh = kevin + malin + unterstuetzung;
+    const personal = h('ug.personal', m, personalRoh), dPers = personal - personalRoh;
+    const laufendRoh = personal + stellen + sach + holding;
+    const laufend = h('ug.laufend', m, laufendRoh), dLauf = laufend - laufendRoh;
+    const kostenRoh = personal + stellen + sach + gruendung + holding + dLauf;
+    const kosten = h('ug.kosten', m, kostenRoh), dKost = kosten - kostenRoh;
+    const gewinn = h('ug.gewinn', m, umsatz - kevin - malin - unterstuetzung - stellen - sach - gruendung - holding - dPers - dLauf - dKost);
+    const st0 = stUG(m, gewinn, steuerHand(h, 'ug', m));
+    const steuer = st0.zahlung;
     const abgeloest = sz.bjoernAbloesen && sz.exit1.monat > 0 && m >= sz.exit1.monat;
     const rateBasis = m === a.bjoernSchlussMonat ? a.bjoernSchluss : (m >= a.bjoernRateVon && m <= a.bjoernRateBis ? a.bjoernRate : 0);
-    const bjoern = abgeloest ? 0 : rateBasis;
-    const abloesung = sz.bjoernAbloesen && m === sz.exit1.monat && rest > 0
-      ? rest + Math.min(a.bjoernZinsDeckel, a.bjoernZinsMonat * (m + 2)) : 0;
-    const darlehen = m === a.darlehenRueckMonat ? a.darlehenKevin : 0;
-    const auszahlungen = kevin + malin + unterstuetzung + stellen + sach + gruendung + vorUst + steuer + bjoern + holding + darlehen + bA;
+    const bjoern = h('ug.bjoern', m, abgeloest ? 0 : rateBasis);
+    const abloesung = h('kdv.abloesung', m, sz.bjoernAbloesen && m === sz.exit1.monat && rest > 0
+      ? rest + Math.min(a.bjoernZinsDeckel, a.bjoernZinsMonat * (m + 2)) : 0);
+    const darlehen = h('ug.darlehen', m, m === a.darlehenRueckMonat ? a.darlehenKevin : 0);
+    const ustZahlung = h('ug.ustZahlung', m, vorUst);
+    const auszahlungen = h('ug.auszahlungen', m, kevin + malin + unterstuetzung + stellen + sach + gruendung + ustZahlung + steuer + bjoern + holding + darlehen + bA + dPers + dLauf + dKost);
 
     const saldo = einzahlungen - auszahlungen;
-    konto += saldo;
+    konto = h('ug.konto', m, konto + saldo);
     gew[i] = gewinn;
     const ytd = gew.reduce((s, g, j) => s + (jahrVon(j + 1) === jahrVon(m) ? g : 0), 0);
-    const steuerRuecklage = st.ruecklage;
-    const frei = konto - steuerRuecklage - ustEin;
+    const steuerRuecklage = h('ug.steuerRuecklage', m, st0.ruecklage);
+    const st: SteuerMonat = steuerRuecklage === st0.ruecklage ? st0 : { ...st0, ruecklage: steuerRuecklage };
+    const ustOffen = h('ug.ustOffen', m, ustEin);
+    const frei = h('ug.frei', m, konto - steuerRuecklage - ustOffen);
+    const ergebnisNach = h('ug.ergebnisNach', m, gewinn - (st.kst + st.soli + st.gewst + st.est - st.anrechnung + 0));
 
-    const ex = (m === sz.exit1.monat ? sz.exit1.betrag : 0) + (m === sz.exit2.monat ? sz.exit2.betrag : 0);
-    const exSteuer = ex * a.exitSteuer;
+    const ex = h('kdv.exit', m, (m === sz.exit1.monat ? sz.exit1.betrag : 0) + (m === sz.exit2.monat ? sz.exit2.betrag : 0));
+    const exSteuer = h('kdv.exitSteuer', m, ex * a.exitSteuer);
     const kdvEin = zx(x?.kdvEin, i), kdvAus = zx(x?.kdvAus, i);
-    // KD Ventures: Umlage und Partnerdarlehen-Rate heben sich auf; laufendes Ergebnis = Bausteine, dessen Ertragsteuer zahlt das Konto (Ausstieg: eigene pauschale Steuer).
-    const kdvGewinn = kdvEin - kdvAus;
-    const kdvSt = stKdv(m, kdvGewinn);
-    kdv += holding + bjoern + ex - holding - bjoern - abloesung - exSteuer + kdvEin - kdvAus - kdvSt.zahlung;
-    rest = abloesung > 0 ? 0 : Math.max(0, rest - (m === a.bjoernSchlussMonat ? a.bjoernSchluss - a.bjoernZinsDeckel : bjoern));
+    // KD Ventures: Umlage und Partnerdarlehen-Rate kommen von der MAKE Innovation GmbH und gehen als Holdingkosten bzw. Tilgung wieder hinaus (heben
+    // sich nach Formel auf); laufendes Ergebnis = Bausteine, dessen Ertragsteuer zahlt das Konto (Ausstieg: eigene pauschale Steuer).
+    const kdvUmlage = h('kdv.umlage', m, holding), kdvBjoernEin = h('kdv.bjoernEin', m, bjoern);
+    const kdvHolding = h('kdv.holding', m, holding), kdvTilgung = h('kdv.tilgung', m, bjoern);
+    const einnRoh = kdvUmlage + kdvBjoernEin + ex + kdvEin;
+    const kdvEinnahmen = h('kdv.einnahmen', m, einnRoh), dE = kdvEinnahmen - einnRoh;
+    const ausgRoh = kdvHolding + kdvTilgung + kdvAus;
+    const kdvAusgaben = h('kdv.ausgaben', m, ausgRoh), dA = kdvAusgaben - ausgRoh;
+    const ergRoh = kdvEinnahmen - kdvAusgaben;
+    const kdvErgebnis = h('kdv.ergebnis', m, ergRoh), dErg = kdvErgebnis - ergRoh;
+    const kdvGewinn = (kdvUmlage - kdvHolding) + (kdvBjoernEin - kdvTilgung) + (kdvEin - kdvAus) + dE - dA + dErg;
+    const kdvSt0 = stKdv(m, kdvGewinn, steuerHand(h, 'kdv', m));
+    kdv = h('kdv.konto', m, kdv + (kdvUmlage + kdvBjoernEin + ex - kdvHolding - kdvTilgung - abloesung - exSteuer + kdvEin - kdvAus - kdvSt0.zahlung + dE - dA));
+    rest = h('kdv.darlehenOffen', m, abloesung > 0 ? 0 : Math.max(0, rest - (m === a.bjoernSchlussMonat ? a.bjoernSchluss - a.bjoernZinsDeckel : kdvTilgung)));
+    const kdvRuecklage = h('kdv.steuerRuecklage', m, kdvSt0.ruecklage);
+    const kdvSt: SteuerMonat = kdvRuecklage === kdvSt0.ruecklage ? kdvSt0 : { ...kdvSt0, ruecklage: kdvRuecklage };
+    const kdvFrei = h('kdv.frei', m, kdv - kdvRuecklage);
+    const kdvNach = h('kdv.ergebnisNach', m, kdvErgebnis - (kdvSt.kst + kdvSt.soli + kdvSt.gewst + kdvSt.est - kdvSt.anrechnung + exSteuer));
 
     out.push({
       m, ob, retainer: ret, astarna: ast, events: ev, umsatz, retainerEingang: retEin, ustEin, kapital, einzahlungen,
-      kevin, malin, kevinBrutto, malinBrutto, unterstuetzung, sach, gruendung, holding, ustZahlung: vorUst, steuer, bjoern, darlehen,
-      auszahlungen, saldo, konto, gewinn, gewinnYTD: ytd, steuerRuecklage, ustOffen: ustEin, frei,
+      kevin, malin, kevinBrutto, malinBrutto, unterstuetzung, sach, gruendung, holding, ustZahlung, steuer, bjoern, darlehen,
+      auszahlungen, saldo, konto, gewinn, gewinnYTD: ytd, steuerRuecklage, ustOffen, frei,
       retainerAnzahl: sz.retainer.filter(r => aktiv(r, m)).length,
       bausteineUmsatz: bU, bausteineEingang: bE, stellen, bausteineSach: bS, ausschuettung: bA,
-      kdvUmlage: holding, kdvBjoernEin: bjoern, kdvExit: ex, kdvExitSteuer: exSteuer, kdvHolding: holding,
-      kdvBjoern: bjoern, kdvAbloesung: abloesung, kdvKonto: kdv, bjoernRest: rest,
+      kdvUmlage, kdvBjoernEin, kdvExit: ex, kdvExitSteuer: exSteuer, kdvHolding,
+      kdvBjoern: kdvTilgung, kdvAbloesung: abloesung, kdvKonto: kdv, bjoernRest: rest,
       kdvBausteineEin: kdvEin, kdvBausteineAus: kdvAus,
-      st, kdvGewinn, kdvSt, kdvFrei: kdv - kdvSt.ruecklage,
+      st, kdvGewinn, kdvSt, kdvFrei,
+      personal, einmalig, laufend, kosten, ergebnisNach, kdvEinnahmen, kdvAusgaben, kdvErgebnis, kdvNach,
     });
-    vorUst = ustEin;
+    vorUst = ustOffen;
   }
   return out;
 }
@@ -310,31 +364,38 @@ export interface MonatSelbst {
  * Einkommensteuer nach Grundtarif plus Gewerbesteuer (Freibetrag, Anrechnung) über `neuerSteuerrechner`, eigenes Konto, Entnahme nach Privat.
  * Ohne Zusatz ist sie leer (nur das Konto steht). Der Abschluss 2026 mit seinen Posten (`rechneSelbst`) bleibt eigenständig daneben.
  */
-export function rechneSelbstAchse(d: FinanzDaten, x?: Zusatz): MonatSelbst[] {
+export function rechneSelbstAchse(d: FinanzDaten, x?: Zusatz, f?: Formeln): MonatSelbst[] {
   const a = d.annahmen, p = d.plan, N = d.monate.length;
+  const h = hand(p, f);
   const st = neuerSteuerrechner(steuerParameter(d, 'kdc'), jahrVon, kalMonat);
   const zeilen = d.sachkosten.filter(istSelbstZeile);
   const out: MonatSelbst[] = [];
   let konto = d.selbst.kontoStart, vorUst = 0;
   for (let m = 1; m <= N; m++) {
     const i = m - 1;
-    const umsatz = zx(x?.kdcUmsatz, i), eingang = zx(x?.kdcEingang, i), ustEin = eingang * a.ust;
+    const umsatz = h('kdc.umsatz', m, zx(x?.kdcUmsatz, i));
+    const eingang = h('kdc.eingang', m, zx(x?.kdcEingang, i));
+    const ustEin = h('kdc.ustEin', m, eingang * a.ust);
     const personal = zx(x?.kdcPersonal, i) * (1 + a.agAnteil);
     const sach = zeilen.reduce((s, z) => s + wert(z, m, p), 0) + zx(x?.kdcSach, i);
-    const kosten = personal + sach;
-    const gewinn = umsatz - kosten;
-    const s = st(m, gewinn);
-    const nach = gewinn - s.summe;
-    const entnahme = zx(x?.kdcEntnahme, i) + zx(x?.kdcEntnahmeAnteil, i) * Math.max(0, nach);
-    const einzahlungen = eingang + ustEin;
-    const auszahlungen = kosten + vorUst + s.zahlung + entnahme;
+    const kosten = h('kdc.kosten', m, personal + sach);
+    const gewinn = h('kdc.gewinn', m, umsatz - kosten);
+    const s0 = st(m, gewinn, steuerHand(h, 'kdc', m));
+    const nach = h('kdc.ergebnisNach', m, gewinn - s0.summe);
+    const entnahme = h('kdc.entnahme', m, zx(x?.kdcEntnahme, i) + zx(x?.kdcEntnahmeAnteil, i) * Math.max(0, nach));
+    const einzahlungen = h('kdc.einzahlungen', m, eingang + ustEin);
+    const ustZahlung = h('kdc.ustZahlung', m, vorUst);
+    const auszahlungen = h('kdc.auszahlungen', m, kosten + ustZahlung + s0.zahlung + entnahme);
     const saldo = einzahlungen - auszahlungen;
-    konto += saldo;
+    konto = h('kdc.konto', m, konto + saldo);
+    const ruecklage = h('kdc.steuerRuecklage', m, s0.ruecklage);
+    const s: SteuerMonat = ruecklage === s0.ruecklage ? s0 : { ...s0, ruecklage };
+    const ustOffen = h('kdc.ustOffen', m, ustEin);
     out.push({
-      m, umsatz, eingang, ustEin, personal, sach, kosten, gewinn, st: s, ergebnisNach: nach, ustZahlung: vorUst, entnahme, einzahlungen, auszahlungen, saldo,
-      konto, steuerRuecklage: s.ruecklage, ustOffen: ustEin, frei: konto - s.ruecklage - ustEin,
+      m, umsatz, eingang, ustEin, personal, sach, kosten, gewinn, st: s, ergebnisNach: nach, ustZahlung, entnahme, einzahlungen, auszahlungen, saldo,
+      konto, steuerRuecklage: ruecklage, ustOffen, frei: h('kdc.frei', m, konto - ruecklage - ustOffen),
     });
-    vorUst = ustEin;
+    vorUst = ustOffen;
   }
   return out;
 }
@@ -356,55 +417,76 @@ export function sollBudget(z: Zeile, m: number, plan: Record<string, number>): n
   if (z.typ === 'jahr' && z.jahresbetrag != null && !(key(z.id, m) in plan)) return m >= (z.ab ?? 1) && m <= (z.bis ?? 999) ? z.jahresbetrag / 12 : 0;
   return wert(z, m, plan);
 }
-export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Zusatz, kdc?: MonatSelbst[]): MonatPrivat[] {
+export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Zusatz, kdc?: MonatSelbst[], f?: Formeln): MonatPrivat[] {
   const a = d.annahmen, p = d.plan; let kum = 0, spar = 0;
+  const h = hand(p, f);
   const topf: Record<string, number> = {};
   return ug.map(u => {
     const m = u.m;
-    const weitere = d.privatEinnahmen.reduce((s, z) => s + wert(z, m, p), 0);
+    const weitere = h('p.weitere', m, d.privatEinnahmen.reduce((s, z) => s + wert(z, m, p), 0));
     const kevinBrutto = u.kevinBrutto;
     // Malin: vor der UG über Kevins Selbstständigkeit angestellt — gleiches Brutto.
-    const malinBrutto = m >= a.malinAb ? u.malinBrutto : ov('p.malinSelbst', m, a.malinBrutto, p);
-    const kevinNetto = ov('p.kevinNetto', m, netto(kevinBrutto, a.nettoTabelle), p);
-    const malinNetto = ov('p.malinNetto', m, netto(malinBrutto, a.nettoTabelle), p);
-    const bEin = zx(x?.privatEin, u.m - 1), bAus = zx(x?.privatAus, u.m - 1);
-    const ausschuettungSteuer = Math.min(u.ausschuettung, zx(x?.ausschuettungSteuer, u.m - 1)), ausschuettung = u.ausschuettung - ausschuettungSteuer;
-    const entnahme = kdc?.[u.m - 1]?.entnahme ?? 0;
-    const verfuegbar = weitere + kevinNetto + malinNetto + bEin + ausschuettung + entnahme;
+    const malinBrutto = m >= a.malinAb ? u.malinBrutto : h('p.malinSelbst', m, a.malinBrutto);
+    const kevinNetto = h('p.kevinNetto', m, netto(kevinBrutto, a.nettoTabelle));
+    const malinNetto = h('p.malinNetto', m, netto(malinBrutto, a.nettoTabelle));
+    const bEin = h('p.bausteineEin', m, zx(x?.privatEin, u.m - 1)), bAus = h('p.bausteineAus', m, zx(x?.privatAus, u.m - 1));
+    const ausschuettungSteuer = h('p.ausschuettungSteuer', m, Math.min(u.ausschuettung, zx(x?.ausschuettungSteuer, u.m - 1)));
+    const ausschuettung = h('p.ausschuettung', m, u.ausschuettung - ausschuettungSteuer);
+    const entnahme = h('p.entnahme', m, kdc?.[u.m - 1]?.entnahme ?? 0);
+    const verfuegbar = h('p.verfuegbar', m, weitere + kevinNetto + malinNetto + bEin + ausschuettung + entnahme);
     const teil = (t: string) => d.privatBudget.filter(z => (z.typ ?? 'flex') === t).reduce((s, z) => s + sollBudget(z, m, p), 0);
     const fix = teil('fix'), jahr = teil('jahr'), flex = teil('flex'), sparenSoll = teil('sparen');
-    const bedarf = fix + jahr + flex + sparenSoll;
-    const schulden = d.privatSchulden.reduce((s, z) => s + wert(z, m, p), 0);
-    const ereignisse = (sz?.ereignisse ?? []).filter(e => e.einheit === 'privat' && e.monat === m).reduce((s, e) => s + e.betrag, 0);
-    const luft = verfuegbar - bedarf - schulden - ereignisse - bAus;
+    const bedarf = h('p.bedarf', m, fix + jahr + flex + sparenSoll);
+    const schulden = h('p.schulden', m, d.privatSchulden.reduce((s, z) => s + wert(z, m, p), 0));
+    const ereignisse = h('p.ereignisse', m, (sz?.ereignisse ?? []).filter(e => e.einheit === 'privat' && e.monat === m).reduce((s, e) => s + e.betrag, 0));
+    const luft = h('p.luft', m, verfuegbar - bedarf - schulden - ereignisse - bAus);
     kum += luft; spar += sparenSoll;
+    // Angespart von Hand: die Folgemonate sparen von diesem Stand aus weiter.
+    const angespartRoh = kum + spar;
+    const angespart = h('p.angespart', m, angespartRoh);
+    if (angespart !== angespartRoh) kum = angespart - spar;
     for (const z of d.privatBudget.filter(z => z.typ === 'jahr')) {
-      const f = z.faellig ?? [];
-      const zahlung = f.includes(kalMonat(m)) && f.length ? (z.jahresbetrag ?? 0) / f.length : 0;
+      const fa = z.faellig ?? [];
+      const zahlung = fa.includes(kalMonat(m)) && fa.length ? (z.jahresbetrag ?? 0) / fa.length : 0;
       topf[z.id] = (topf[z.id] ?? 0) + sollBudget(z, m, p) - zahlung;
     }
     return { m, einnahmenWeitere: weitere, kevinBrutto, kevinNetto, malinBrutto, malinNetto, verfuegbar, bedarf, schulden, ereignisse,
-      luft, luftKum: kum, sparen: sparenSoll + luft, fix, jahr, flex, sparenSoll, sparKum: spar, angespart: kum + spar, toepfe: { ...topf },
+      luft, luftKum: kum, sparen: h('p.sparen', m, sparenSoll + luft), fix, jahr, flex, sparenSoll, sparKum: spar, angespart, toepfe: { ...topf },
       ausschuettung, ausschuettungSteuer, bausteineEin: bEin, bausteineAus: bAus, entnahme };
   });
 }
 
+// ── Gruppe ─────────────────────────────────────────────────────────────────
+/** Freies Geld der Gruppe je Monat (04.10., Handwert `g.frei`): MAKE frei + KD Ventures frei + Selbstständigkeit frei + Privat angespart. */
+export function gruppeReihe(plan: Record<string, number>, ug: MonatUG[], pr: MonatPrivat[], kdc?: MonatSelbst[], f?: Formeln): number[] {
+  const h = hand(plan, f);
+  return ug.map((u, i) => h('g.frei', u.m, u.frei + u.kdvFrei + (kdc?.[i]?.frei ?? 0) + pr[i].angespart));
+}
+
 // ── Selbstständigkeit 2026 (Abschluss) ─────────────────────────────────────
-export function rechneSelbst(d: FinanzDaten) {
+/** Abschluss 2026 — ohne Monat; Handwerte stehen unter Monat 0 (`ab.est:0` …). */
+export function rechneSelbst(d: FinanzDaten, f?: Formeln) {
   const s = d.selbst;
-  const ein = s.posten.filter(x => x.art === 'einnahme' && !x.aus).reduce((t, x) => t + x.betrag, 0);
-  const aus = s.posten.filter(x => x.art === 'ausgabe' && !x.aus).reduce((t, x) => t + x.betrag, 0);
-  const gewinn = ein - aus;
-  const zve = Math.max(0, gewinn - s.vorsorge - s.sonderausgaben);
-  const est = estTarif(zve, steuerParameter(d, 'kdc').tarif);
+  const h = hand(d.plan ?? {}, f);
+  const ein = h('ab.ein', 0, s.posten.filter(x => x.art === 'einnahme' && !x.aus).reduce((t, x) => t + x.betrag, 0));
+  const aus = h('ab.aus', 0, s.posten.filter(x => x.art === 'ausgabe' && !x.aus).reduce((t, x) => t + x.betrag, 0));
+  const gewinn = h('ab.gewinn', 0, ein - aus);
+  const zve = h('ab.zve', 0, Math.max(0, gewinn - s.vorsorge - s.sonderausgaben));
+  const est = h('ab.est', 0, estTarif(zve, steuerParameter(d, 'kdc').tarif));
   const offen = s.posten.filter(x => x.art === 'einnahme' && !x.aus && x.status !== 'bezahlt').reduce((t, x) => t + x.betrag, 0);
   const offenAus = s.posten.filter(x => x.art === 'ausgabe' && !x.aus && x.status !== 'bezahlt').reduce((t, x) => t + x.betrag, 0);
-  const frei = s.kontoStart + offen - offenAus - s.darlehenAnUG - est - s.sicherheit;
-  return { ein, aus, gewinn, zve, est, frei, nachConsors: frei - s.consorsAbloesung };
+  const frei = h('ab.frei', 0, s.kontoStart + offen - offenAus - s.darlehenAnUG - est - s.sicherheit);
+  return { ein, aus, gewinn, zve, est, frei, nachConsors: h('ab.nachConsors', 0, frei - s.consorsAbloesung) };
 }
 
 // ── Kennzahlen für Fokus & Szenarien ───────────────────────────────────────
-export function kennzahlen(ug: MonatUG[], pr: MonatPrivat[], kdc?: MonatSelbst[]) {
+/** Abweichung eines Handwerts „Freies Geld Gruppe“ im Monat 27 (Dez 28) — ohne Handwert (oder ohne Reihe) genau 0. */
+function gruppeHand(ug: MonatUG[], pr: MonatPrivat[], kdc?: MonatSelbst[], gruppe?: number[]): number {
+  const i = Math.min(27, ug.length) - 1;
+  if (!gruppe || gruppe[i] === undefined || !pr[i]) return 0;
+  return gruppe[i] - (ug[i].frei + ug[i].kdvFrei + (kdc?.[i]?.frei ?? 0) + pr[i].angespart);
+}
+export function kennzahlen(ug: MonatUG[], pr: MonatPrivat[], kdc?: MonatSelbst[], gruppe?: number[]) {
   let minFrei = Infinity, minMonat = 1, minus = 0;
   ug.forEach(u => { if (u.frei < minFrei) { minFrei = u.frei; minMonat = u.m; } if (u.frei < 0) minus++; });
   const bei = (m: number) => ug[Math.min(m, ug.length) - 1];
@@ -419,7 +501,7 @@ export function kennzahlen(ug: MonatUG[], pr: MonatPrivat[], kdc?: MonatSelbst[]
     umsatz2027: umsatzJahr(2027), umsatz2028: umsatzJahr(2028),
     privatLuftMin: Math.min(...pr.map(p => p.luft)), privatKumDez28: pr[pr.length - 1].luftKum,
     kdcFreiDez28: kdc?.[Math.min(27, kdc.length) - 1]?.frei ?? 0,
-    gruppeDez28: bei(27).frei + bei(27).kdvFrei + (kdc?.[Math.min(27, kdc.length) - 1]?.frei ?? 0) + pr[pr.length - 1].angespart,
+    gruppeDez28: bei(27).frei + bei(27).kdvFrei + (kdc?.[Math.min(27, kdc.length) - 1]?.frei ?? 0) + pr[pr.length - 1].angespart + gruppeHand(ug, pr, kdc, gruppe),
     privatAngespartDez27: pr[14].angespart,
     bjoernRestDez27: bei(15).bjoernRest,
   };
@@ -466,22 +548,26 @@ export function lerneRegel(d: FinanzDaten, empfaenger: string, zeile: string): n
 
 // ── Töpfe der UG (Profit First, an die Unterkonten der Bank angelehnt) ──
 export interface ToepfeUG { m: number; ust: number; steuer: number; reserve: number; frei: number; reserveZiel: number; konto: number }
-export function toepfeUG(ug: MonatUG[], reserveMonate: number): ToepfeUG[] {
+/** `plan`/`f` (04.10.): Handwerte für Reserve-Ziel, Reserve und frei (`ug.reserveZiel`, `ug.reserve`, `ug.topfFrei`). */
+export function toepfeUG(ug: MonatUG[], reserveMonate: number, plan: Record<string, number> = {}, f?: Formeln): ToepfeUG[] {
+  const h = hand(plan, f);
   return ug.map(u => {
-    const laufend = u.kevin + u.malin + u.unterstuetzung + u.stellen + u.sach + u.holding + u.bjoern;
-    const reserveZiel = reserveMonate * laufend;
+    // Laufende Kosten = Personal + Stellen + Sach + Holding (`laufend`, mit Handwert) plus die Partnerdarlehen-Rate.
+    const laufend = (u.laufend ?? u.kevin + u.malin + u.unterstuetzung + u.stellen + u.sach + u.holding) + u.bjoern;
+    const reserveZiel = h('ug.reserveZiel', u.m, reserveMonate * laufend);
     const rest = u.konto - u.ustOffen - u.steuerRuecklage;
-    const reserve = Math.max(0, Math.min(rest, reserveZiel));
-    return { m: u.m, ust: u.ustOffen, steuer: u.steuerRuecklage, reserve, frei: rest - reserve, reserveZiel, konto: u.konto };
+    const reserve = h('ug.reserve', u.m, Math.max(0, Math.min(rest, reserveZiel)));
+    return { m: u.m, ust: u.ustOffen, steuer: u.steuerRuecklage, reserve, frei: h('ug.topfFrei', u.m, rest - reserve), reserveZiel, konto: u.konto };
   });
 }
 
 // ── Ziele mit Tempo ────────────────────────────────────────────────────────
 export interface ZielStand { ziel: Ziel; verlauf: number[]; heute: number; erreichtMonat: number | null; bisMonat: number; status: 'erreicht' | 'im Plan' | 'knapp' | 'verfehlt' }
 export function zielStaende(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], kdc?: MonatSelbst[]): ZielStand[] {
+  const gr = gruppeReihe(d.plan ?? {}, ug, pr, kdc);
   return d.ziele.map(z => {
     const verlauf = ug.map((u, i) => z.quelle === 'privat.angespart' ? pr[i].angespart : z.quelle === 'ug.frei' ? u.frei
-      : z.quelle === 'kdv.bjoern' ? u.bjoernRest : u.frei + u.kdvFrei + (kdc?.[i]?.frei ?? 0) + pr[i].angespart);
+      : z.quelle === 'kdv.bjoern' ? u.bjoernRest : gr[i]);
     const runter = z.quelle === 'kdv.bjoern';
     const idx = verlauf.findIndex(v => runter ? v <= z.ziel + 0.5 : v >= z.ziel);
     const erreichtMonat = idx >= 0 ? idx + 1 : null;
@@ -506,7 +592,7 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     for (const z of d.privatSchulden) if (z.tag) add(m, z.tag, z.name, -wert(z, m, d.plan), 'privat');
     for (const z of d.privatBudget) { const f = z.faellig ?? []; if (z.typ === 'jahr' && f.length && f.includes(kalMonat(m))) add(m, 15, z.name, -(z.jahresbetrag ?? 0) / f.length, 'privat'); }
     add(m, d.annahmen.gehaltTag ?? 28, 'Gehälter netto an Privat', p.kevinNetto + p.malinNetto, 'privat');
-    add(m, d.annahmen.gehaltTag ?? 28, 'Gehälter inkl. Arbeitgeber', -(u.kevin + u.malin + u.unterstuetzung), 'ug');
+    add(m, d.annahmen.gehaltTag ?? 28, 'Gehälter inkl. Arbeitgeber', -(u.personal ?? u.kevin + u.malin + u.unterstuetzung), 'ug');
     add(m, 1, 'Sachkosten', -u.sach, 'ug');
     add(m, 10, 'Umsatzsteuer an Finanzamt', -u.ustZahlung, 'ug');
     add(m, 1, 'Björn-Rate', -u.bjoern, 'kdv');

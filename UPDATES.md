@@ -4,6 +4,21 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Finanzplanung: jede Zahl bearbeitbar — Handwerte (04.10.2026, nur lokal — Branch `finanzplan-frei`)
+
+Kevin 04.10.: „Alle Felder — auch unten die Kosten, die Einzahlungen, die Steuern, whatever — alles selber bearbeiten. Jede Zahl. Nur die Formeln
+sind im Hintergrund immer hart gecodet.“
+
+- Jede gerechnete Zahl in den Blättern (Privat, MAKE Innovation GmbH, KD Ventures, Selbstständigkeit, Gesamt, Gruppe, Töpfe) und im Abschluss 2026
+  ist anklickbar und überschreibbar; alles Nachgelagerte (Summen, Steuern auf Folgejahre, Kontostand, frei verfügbar, Kennzahlen, Ziele) rechnet
+  mit dem Handwert weiter. Von Hand = ✎ + Strich der Person, Tooltip mit Formelwert und Abweichung, Summen von Hand als ruhiger Hinweis.
+- Zurücksetzen auf die Formel je Zelle (Entf), Zeile (Rechtsklick/langer Druck) oder alle im Blatt; Rückgängig (Cmd+Z) wie gewohnt.
+- Schicht an einer Stelle: `hand()` im Rechenkern, Kennungen in `lib/finanzen/handwerte.ts`; Formeln unverändert, ohne Handwerte bit-genau wie vorher.
+- Handy: Namensspalte begrenzt — vorher deckte sie bei langem Titel die Zahlen zu.
+- **Rückweg:** keine neuen Felder, Handwerte sind gewöhnliche `plan`-Schlüssel. Der alte Online-Stand liest Dokumente mit Handwerten ohne Fehler
+  und ignoriert die neuen Schlüssel (dort gilt die Formel); sie bleiben erhalten und wirken wieder mit dem neuen Stand.
+- Nicht hochgeladen.
+
 ## makeinnovation.de „Klar“ — Neubau auf der Basis „Superconscious“, 80 % Seriosität (04.10.2026, nur lokal — Branch `website-klar`)
 
 Kevin 04.10.: „Das ist too much. Das muss klarer sein … Basis Superconscious, ein bisschen von unserer futuristischen Sache mitnehmen —

@@ -116,6 +116,38 @@ export function ZahlFeld({ wert, onFertig, breite = 110, dezimal = 2, platzhalte
     style={{ ...eingabeStil, width: breite, textAlign: rechts ? 'right' : 'left', fontVariantNumeric: 'tabular-nums', ...(verbergen && !fokus ? { filter: 'blur(6px)' } : {}) }} />;
 }
 
+/**
+ * Eine gerechnete Zahl ohne Monat als Handwert (04.10., Kevin: „jede Zahl bearbeitbar“) — z. B. der Abschluss der Selbstständigkeit.
+ * Zeigt den Wert (mit ✎, wenn von Hand), Klick öffnet das Feld; Enter speichert `plan["<kennung>:0"]`, leer oder „↺ Formel“ setzt
+ * zurück. Gleicher Schreibweg wie das Blatt (Operation, Stand/409, Protokoll, Rückgängig). `minus`: als −Betrag gezeigt, positiv gespeichert.
+ */
+export function HandZahl({ kennung, wert, name, formel, farbe, minus }: { kennung: string; wert: number; name: string; formel?: number; farbe?: string; minus?: boolean }) {
+  const { d, aendere, verbergen } = usePlan();
+  const k = `${kennung}:0`;
+  const vonHand = k in d.plan;
+  const [offen, setOffen] = useState(false);
+  const vz = minus ? -1 : 1;
+  const gezeigt = wert * vz;
+  const speichere = (v: number | null) => {
+    setOffen(false);
+    if (v === null) { if (vonHand) void aendere([{ pfad: `/plan/${k}`, alt: d.plan[k] }], `${name} auf Formel zurückgesetzt`); return; }
+    if (Math.abs(v - gezeigt) < 1e-9) return;
+    void aendere([{ pfad: `/plan/${k}`, alt: d.plan[k], neu: v * vz + 0 }], name);
+  };
+  const tip = vonHand && formel != null ? `von Hand — Formel ${eur(formel * vz)} € · Abweichung ${(wert - formel) * vz >= 0 ? '+' : '−'}${eur(Math.abs(wert - formel))} €` : 'Klicken zum Bearbeiten — die Formel bleibt im Hintergrund';
+  if (offen) return <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><ZahlFeld wert={gezeigt} leer dezimal={2} breite={120} titel={name} onFertig={speichere} /></span>;
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+      <button type="button" onClick={() => setOffen(true)} title={tip} aria-label={`${name}: ${verbergen ? 'verborgen' : `${eur(gezeigt)} €`}${vonHand ? ', von Hand' : ''} — bearbeiten`}
+        style={{ background: vonHand ? `${LEUCHT.achtung}12` : 'none', border: 'none', borderRadius: 6, padding: '2px 4px', cursor: 'text', color: 'inherit', font: 'inherit', whiteSpace: 'nowrap' }}>
+        {vonHand && <span aria-hidden style={{ color: LEUCHT.achtung, fontSize: TYP.bedien, marginRight: 4 }}>✎</span>}
+        <Geld v={gezeigt} farbe={farbe} /> €
+      </button>
+      {vonHand && <button type="button" onClick={() => speichere(null)} title="Auf die Formel zurücksetzen" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', font: 'inherit', fontSize: TYP.bedien, padding: 0 }}>↺ Formel</button>}
+    </span>
+  );
+}
+
 /** Text-Feld, das beim Verlassen speichert. */
 export function TextFeld({ wert = '', onFertig, platzhalter, breite, typ = 'text', titel }: { wert?: string; onFertig: (t: string) => void; platzhalter?: string; breite?: number | string; typ?: string; titel?: string }) {
   const [t, setT] = useState(wert);

@@ -6,6 +6,7 @@
 import type { Einheit, FinanzDaten, Zeile } from '@/lib/finanzen/rechenkern';
 import { histIndex } from '@/lib/finanzen/rechenkern';
 import { UG_KURZ, finanzOrtAusKern, finanzOrtName } from '@/lib/einheiten';
+import { HAND_FELDER } from '@/lib/finanzen/handwerte';
 
 export const KAL = ['Jan', 'Feb', 'Mrz', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'] as const;
 
@@ -20,11 +21,8 @@ export const BUDGET_GRUPPEN = ['Fixkosten', 'Jahreskosten & Puffer', 'Flexibel',
 export const SONDER_ZEILEN: Record<string, string> = {
   'x.einnahme': 'Einnahme verlässlich', 'x.einmalig': 'Einnahme einmalig', 'x.kredit': 'Kredit erhalten', 'x.umbuchung': 'Umbuchung', 'x.offen': 'Noch nicht zugeordnet',
 };
-/** Berechnete Zeilen, die man je Zelle überschreiben kann. */
-export const RECHENZEILEN: Record<string, string> = {
-  'ug.ob': 'Ankermandat', 'ug.retainer': 'Retainer', 'ug.astarna': 'ASTARNA', 'ug.events': 'Events', 'ug.kevin': 'Kevin brutto', 'ug.malin': 'Malin brutto',
-  'ug.unterstuetzung': 'Unterstützung', 'p.kevinNetto': 'Kevin netto', 'p.malinNetto': 'Malin netto', 'p.malinSelbst': 'Malin brutto (Selbstständigkeit)',
-};
+/** Berechnete Zeilen, die man je Zelle überschreiben kann — seit 04.10. jede gerechnete Zahl (Handwerte, lib/finanzen/handwerte.ts). */
+export const RECHENZEILEN: Record<string, string> = Object.fromEntries(Object.entries(HAND_FELDER).map(([k, f]) => [k, f.name]));
 
 // ── Aufbau (Kevin 27.09. abends: acht Bereiche, die alten Unterseiten leben darunter weiter) ──
 // Lage → Planen (Szenarien bauen · Treiber, Annahmen & Steuern) → Privat → Business (MAKE Innovation GmbH · KD Ventures · Selbstständigkeit)

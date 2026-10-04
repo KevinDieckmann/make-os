@@ -61,56 +61,62 @@ function UebergaengeKarte() {
 }
 
 export function Gesamt() {
-  const { d, ug, kdc, pr, aw, ps, sz } = usePlan();
+  const { d, ug, kdc, pr, aw, ps, sz, gruppe } = usePlan();
   const ertragAn = zeigeSteuer(d, 'ug', 'kst') || zeigeSteuer(d, 'ug', 'est');
   const ustAn = zeigeSteuer(d, 'ug', 'ust');
   const U = (m: number) => ug[m - 1], P = (m: number) => pr[m - 1], K = (m: number) => kdc[m - 1];
   const selbst = rechneSelbst(d);
   const m0 = aw.m0;
-  const kosten = (m: number) => U(m).kevin + U(m).malin + U(m).unterstuetzung + U(m).stellen + U(m).sach + U(m).holding;
+  // Jede Zeile ist ein Wert des Kerns mit eigener Kennung (Handwert, lib/finanzen/handwerte.ts) — keine Summen nur für die Anzeige.
+  // Je Blatt kommt jede Kennung höchstens einmal vor; die Empfängerseite hat eigene Kennungen (Privat: p.*), die der Formel folgen.
   const zeilen: BlattZeile[] = [
     { grp: 'Privat' },
-    { name: `Gehälter netto (aus der ${UG_NAME})`, get: m => P(m).kevinNetto + P(m).malinNetto, ind: true },
-    { name: `Ausschüttung aus der ${UG_NAME} (netto)`, get: m => P(m).ausschuettung, ind: true },
-    { name: 'Weitere Einnahmen & Bausteine', get: m => P(m).einnahmenWeitere + P(m).bausteineEin, ind: true },
-    { name: 'Bedarf, Schulden, Ereignisse', get: m => -(P(m).bedarf + P(m).schulden + P(m).ereignisse + P(m).bausteineAus), ind: true },
-    { name: 'Luft je Monat', sum: true, get: m => P(m).luft },
-    { name: 'Angespart', stock: true, key: true, get: m => P(m).angespart },
+    { name: `${personName('kevin')} netto (aus der ${UG_NAME})`, edit: 'p.kevinNetto', get: m => P(m).kevinNetto, ind: true },
+    { name: `${personName('malin')} netto`, edit: 'p.malinNetto', get: m => P(m).malinNetto, ind: true },
+    { name: 'Weitere Einnahmen', edit: 'p.weitere', get: m => P(m).einnahmenWeitere, ind: true, optional: true },
+    { name: 'Einnahmen aus Bausteinen', edit: 'p.bausteineEin', get: m => P(m).bausteineEin, ind: true, optional: true },
+    { name: 'Bedarf', edit: 'p.bedarf', minus: true, get: m => -P(m).bedarf, ind: true },
+    { name: 'Schulden', edit: 'p.schulden', minus: true, get: m => -P(m).schulden, ind: true, optional: true },
+    { name: 'Lebensereignisse', edit: 'p.ereignisse', minus: true, get: m => -P(m).ereignisse, ind: true, optional: true },
+    { name: 'Ausgaben aus Bausteinen', edit: 'p.bausteineAus', minus: true, get: m => -P(m).bausteineAus, ind: true, optional: true },
+    { name: 'Luft je Monat', edit: 'p.luft', sum: true, get: m => P(m).luft },
+    { name: 'Angespart', edit: 'p.angespart', stock: true, key: true, get: m => P(m).angespart },
     { grp: `Übergänge ${UG_KURZ} → Privat` },
-    { name: 'Gehälter brutto', get: m => U(m).kevinBrutto + U(m).malinBrutto, ind: true },
-    { name: 'davon Arbeitgeberanteil', get: m => U(m).kevin + U(m).malin - U(m).kevinBrutto - U(m).malinBrutto, ind: true },
-    { name: 'Ausschüttung brutto', get: m => U(m).ausschuettung, ind: true, optional: true },
-    { name: 'davon Steuer, pauschal (Näherung)', get: m => -P(m).ausschuettungSteuer, ind: true, optional: true },
-    { name: 'Ausschüttung netto an Privat', get: m => P(m).ausschuettung, ind: true, optional: true },
-    { name: 'Entnahme aus der Selbstständigkeit (schon versteuert)', get: m => P(m).entnahme, ind: true, optional: true },
+    { name: `${personName('kevin')} brutto`, edit: 'ug.kevin', get: m => U(m).kevinBrutto, ind: true },
+    { name: `${personName('malin')} brutto`, edit: 'ug.malin', get: m => U(m).malinBrutto, ind: true },
+    { name: 'Personal inkl. Arbeitgeber', edit: 'ug.personal', get: m => U(m).personal, ind: true },
+    { name: 'Ausschüttung brutto', edit: 'ug.ausschuettung', get: m => U(m).ausschuettung, ind: true, optional: true },
+    { name: 'davon Steuer, pauschal (Näherung)', edit: 'p.ausschuettungSteuer', minus: true, get: m => -P(m).ausschuettungSteuer, ind: true, optional: true },
+    { name: 'Ausschüttung netto an Privat', edit: 'p.ausschuettung', get: m => P(m).ausschuettung, ind: true, optional: true },
+    { name: 'Entnahme aus der Selbstständigkeit (schon versteuert)', edit: 'p.entnahme', get: m => P(m).entnahme, ind: true, optional: true },
     { grp: UG_NAME },
-    { name: 'Umsatz netto', get: m => U(m).umsatz, ind: true },
-    { name: 'Mindestumsatz (laufende Kosten)', get: m => kosten(m), ind: true },
-    { name: 'Gewinn', sum: true, get: m => U(m).gewinn },
-    { name: 'Kontostand', stock: true, get: m => U(m).konto },
-    { name: 'Frei verfügbar', stock: true, key: true, get: m => U(m).frei },
+    { name: 'Umsatz netto', edit: 'ug.umsatz', get: m => U(m).umsatz, ind: true },
+    { name: 'Mindestumsatz (laufende Kosten)', edit: 'ug.laufend', get: m => U(m).laufend, ind: true },
+    { name: 'Gewinn', edit: 'ug.gewinn', sum: true, get: m => U(m).gewinn },
+    { name: 'Kontostand', edit: 'ug.konto', stock: true, get: m => U(m).konto },
+    { name: 'Frei verfügbar', edit: 'ug.frei', stock: true, key: true, get: m => U(m).frei },
     ...(ertragAn || ustAn ? [
       { grp: 'Steuern (Näherung)', zu: true, leerName: ['weitere Steuerzeile', 'weitere Steuerzeilen'] } as BlattZeile,
-      ...(ertragAn ? [{ name: 'Steuerrücklage', stock: true, sum: true, get: (m: number) => -U(m).steuerRuecklage } as DatenZeile] : []),
-      ...(ertragAn ? [{ name: 'Ertragsteuer-Zahlung', get: (m: number) => -U(m).steuer, ind: true, optional: true } as DatenZeile] : []),
-      ...(ertragAn ? [{ name: 'Verlustvortrag zu Jahresbeginn', stock: true, get: (m: number) => U(m).st.verlustvortrag, ind: true, optional: true } as DatenZeile] : []),
-      ...(ustAn ? [{ name: 'USt offen (Durchlauf)', stock: true, get: (m: number) => -U(m).ustOffen, ind: true, optional: true } as DatenZeile] : []),
+      ...(ertragAn ? [{ name: 'Steuerrücklage', edit: 'ug.steuerRuecklage', minus: true, stock: true, sum: true, get: (m: number) => -U(m).steuerRuecklage } as DatenZeile] : []),
+      ...(ertragAn ? [{ name: 'Ertragsteuer-Zahlung', edit: 'ug.steuer', minus: true, get: (m: number) => -U(m).steuer, ind: true, optional: true } as DatenZeile] : []),
+      ...(ertragAn ? [{ name: 'Verlustvortrag zu Jahresbeginn', edit: 'ug.verlustvortrag', stock: true, get: (m: number) => U(m).st.verlustvortrag, ind: true, optional: true } as DatenZeile] : []),
+      ...(ustAn ? [{ name: 'USt offen (Durchlauf)', edit: 'ug.ustOffen', minus: true, stock: true, get: (m: number) => -U(m).ustOffen, ind: true, optional: true } as DatenZeile] : []),
     ] : []),
     { grp: 'KD Ventures' },
-    { name: 'Kontostand KD Ventures', stock: true, get: m => U(m).kdvKonto },
-    { name: 'Ertragsteuer-Rücklage KD Ventures', stock: true, get: m => -U(m).kdvSt.ruecklage, ind: true, optional: true },
-    { name: 'Frei verfügbar KD Ventures', stock: true, key: true, get: m => U(m).kdvFrei },
-    { name: 'Partnerdarlehen offen', stock: true, get: m => -U(m).bjoernRest, ind: true },
+    { name: 'Kontostand KD Ventures', edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
+    { name: 'Ertragsteuer-Rücklage KD Ventures', edit: 'kdv.steuerRuecklage', minus: true, stock: true, get: m => -U(m).kdvSt.ruecklage, ind: true, optional: true },
+    { name: 'Frei verfügbar KD Ventures', edit: 'kdv.frei', stock: true, key: true, get: m => U(m).kdvFrei },
+    { name: 'Partnerdarlehen offen', edit: 'kdv.darlehenOffen', minus: true, stock: true, get: m => -U(m).bjoernRest, ind: true },
     { grp: finanzOrtName('kdc') },
-    { name: 'Umsatz netto Selbstständigkeit', get: m => K(m).umsatz, ind: true },
-    { name: 'Kosten Selbstständigkeit', get: m => -K(m).kosten, ind: true },
-    { name: 'Ergebnis vor Steuern Selbstständigkeit', sum: true, get: m => K(m).gewinn },
-    { name: 'Einkommen- und Gewerbesteuer (Aufwand)', get: m => -K(m).st.summe, ind: true, optional: true },
-    { name: 'Entnahme an Privat', get: m => -K(m).entnahme, ind: true, optional: true },
-    { name: 'Kontostand Selbstständigkeit', stock: true, get: m => K(m).konto },
-    { name: 'Frei verfügbar Selbstständigkeit', stock: true, key: true, get: m => K(m).frei },
+    { name: 'Umsatz netto Selbstständigkeit', edit: 'kdc.umsatz', get: m => K(m).umsatz, ind: true },
+    { name: 'Kosten Selbstständigkeit', edit: 'kdc.kosten', minus: true, get: m => -K(m).kosten, ind: true },
+    { name: 'Ergebnis vor Steuern Selbstständigkeit', edit: 'kdc.gewinn', sum: true, get: m => K(m).gewinn },
+    { name: 'Ergebnis nach Steuern Selbstständigkeit', edit: 'kdc.ergebnisNach', get: m => K(m).ergebnisNach, ind: true, optional: true },
+    { name: 'Entnahme an Privat', edit: 'kdc.entnahme', minus: true, get: m => -K(m).entnahme, ind: true, optional: true },
+    { name: 'Kontostand Selbstständigkeit', edit: 'kdc.konto', stock: true, get: m => K(m).konto },
+    { name: 'Frei verfügbar Selbstständigkeit', edit: 'kdc.frei', stock: true, key: true, get: m => K(m).frei },
     { grp: 'Gesamt' },
-    { name: `Frei ${UG_KURZ} + KD Ventures + Selbstständigkeit + Privat angespart`, stock: true, sum: true, key: true, get: m => U(m).frei + U(m).kdvFrei + K(m).frei + P(m).angespart },
+    { name: `Frei ${UG_KURZ} + KD Ventures + Selbstständigkeit + Privat angespart`, edit: 'g.frei', stock: true, sum: true, key: true, get: m => gruppe[m - 1] },
   ];
   const deckung = aw.mindestumsatz.schnitt12 > 0 ? aw.mindestumsatz.umsatzSchnitt12 / aw.mindestumsatz.schnitt12 : 1;
   return (
@@ -131,7 +137,7 @@ export function Gesamt() {
           { name: 'KD Ventures', farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
           { name: 'Selbstständigkeit', farbe: LEUCHT.achtung, werte: kdc.map(k => k.frei), breite: 1.4 },
           { name: 'Privat angespart', farbe: LILA, werte: pr.map(p => p.angespart), breite: 1.8 },
-          { name: 'Gesamt', farbe: C.ink, werte: ug.map((u, i) => u.frei + u.kdvFrei + kdc[i].frei + pr[i].angespart), gestrichelt: true, breite: 1.4 },
+          { name: 'Gesamt', farbe: C.ink, werte: gruppe, gestrichelt: true, breite: 1.4 },
         ]} />
       </Karte>
       <UebergaengeKarte />

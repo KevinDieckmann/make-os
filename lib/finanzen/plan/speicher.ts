@@ -10,7 +10,7 @@ import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { Aenderung, FinanzDaten } from '@/lib/finanzen/rechenkern';
 import { zielStaende } from '@/lib/finanzen/rechenkern';
 import { rechneMit, arbeitsplanVon, auswertung } from '@/lib/finanzen/szenarien';
-import { wendeOperationenAn, neuerStand, pruefeDokument, OperationUngueltig, type Operation } from './operationen';
+import { wendeOperationenAn, neuerStand, pruefeDokument, OperationUngueltig, OperationZuGross, type Operation } from './operationen';
 import { offeneBuchungen, faelligeZahl } from './hilfen';
 
 export function speicherName(haushalt: string): string {
@@ -32,7 +32,7 @@ export const dateiStand = (haushalt: string) => speicherStand([speicherName(haus
 
 export type PatchErgebnis =
   | { ok: true; stand: string; protokoll: Aenderung[]; meta: Record<string, { wer: string; wann: string } | null>; nachladen: boolean }
-  | { ok: false; status: 400 | 404 | 409; fehler: string; stand?: string; dokument?: FinanzDaten };
+  | { ok: false; status: 400 | 404 | 409 | 413; fehler: string; stand?: string; dokument?: FinanzDaten };
 
 /**
  * Operationen anwenden — Prüfung und Schreiben in EINER Sperre. Bei fremdem
@@ -57,7 +57,7 @@ export async function patchen(haushalt: string, basisStand: unknown, ops: Operat
       ergebnis = { ok: true, stand, protokoll: r.protokoll, meta: r.meta, nachladen: r.nachladen };
       return { ...r.dokument, stand };
     } catch (err) {
-      ergebnis = { ok: false, status: 400, fehler: err instanceof OperationUngueltig ? err.message : 'Änderung nicht verwertbar.' };
+      ergebnis = { ok: false, status: err instanceof OperationZuGross ? 413 : 400, fehler: err instanceof OperationUngueltig ? err.message : 'Änderung nicht verwertbar.' };
       return aktuell;
     }
   });
