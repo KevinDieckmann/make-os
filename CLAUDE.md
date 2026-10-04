@@ -162,7 +162,15 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   `BEDEUTUNG_FARBE` in `lib/make-one/design.ts` — keine Literale in Seiten. Eine Hauptaktion je Ansicht (48 px), Ziele ≥ 44 px, Eingaben 16 px am Handy,
   Hinweise als Karten nach Bedeutung, Leerzustand mit Symbol + Satz + Weg, Fließtext ≥ 13 px (11 px nur als Beschriftung in Großbuchstaben). `.ui-seite` fängt Altbausteine
   am Handy ab (globals.css, nur unter dem Anker — nie ein Seitenhammer). Umgestellt: **Netzwerken, Markttraktion (alle Reiter), Zahlen & Finanzen (51 Dateien, Wächter `tests/design-finanzen.test.ts`), Kern = globale Shell + Aufgaben + Kalender + Inbox (Wächter `tests/design-kern.test.ts`, Bausteine `HakenZiel`/`SymbolKnopf`/`ZielChip`)**; als Nächstes der Rest —
-  Rezept „Umstellen einer Seite“ steht im Dokument (Import `../schlank` → `../ui`, gleiche Namen). `schlank.tsx` bleibt für Altseiten unverändert. Wächter `tests/design-standard.test.ts`.
+  Rezept „Umstellen einer Seite“ steht im Dokument (Import `../schlank` → `../ui`, gleiche Namen). `schlank.tsx` ist nur noch Quelle für `components/os/ui` (seit 04.10. hängt jede Seite am Standard). Wächter `tests/design-standard.test.ts`.
+
+- **Aufräumen (04.10., Branch `aufraeumen`, nur lokal) — ein Weg statt zwei:** Keine Seite liegt mehr außerhalb von `/os`, `/zoe`, `/anmelden`, `/buchen`, `/api`
+  (plus reine Weiterleitungen `app/page.tsx`, `app/jarvis`). Die Alt-Gruppe `app/(dashboard)` (eigene Leiste, Stubs, Beispieldaten, CommandPalette) ist samt
+  allem, was nur sie nutzte, entfernt (components/layout, tasks, shared, dashboard, fundament, components/ui, context/MakeOS-/App-/PrivacyContext, lib/mock-data,
+  lib/constants, lib/utils); alte Adressen leiten in `next.config.mjs` weiter (`/dashboard` → `/os`, `/tasks` → `/os/aufgaben`, `/wellness` → `/os/gesundheit`,
+  `/routines` → `/os/planung/routinen`, `/groceries` + `/dog` → `/os/familie`). `/os/okr` leitet in Ziele & Planung (der OKR-Agent bleibt über ZOE, `/api/okr`).
+  **Kein Import aus `schlank.tsx` mehr** außer `components/os/ui` selbst (reicht Ring/Balken/Punkt/Haken/Spalten/useHochzaehlen durch). Wächter
+  `tests/aufraeumen.test.ts` (Routen, Weiterleitungen, Stapel-Link, OKR) und `tests/design-standard.test.ts` › Aufräumen.
 
 - **Design-Standard · Privat/ZOE/System (03.10.):** Gesundheit (mit Sport, Journal, Routinen), Familie & Partnerschaft, Kompass, Brain, Privat-Übersicht, Home, Wachstum,
   ZOE (Empfang, Stapel, Agenten, Loops, HOI), Konto, System, Verbindungen, Datenbasis, Stammdaten hängen an `components/os/ui` (Wächter `tests/design-privat.test.ts`).

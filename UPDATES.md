@@ -4,6 +4,20 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Aufräumen — ein Weg statt zwei (04.10.2026, nur lokal — Branch `aufraeumen`)
+
+Kevin 04.10.: „Dann ist die Software fast fertig.“ Befunde der Inventur (UMBAU_ABEND_0410.md Abschnitt 8), Arbeitspaket 6:
+- **Alt-Gruppe `app/(dashboard)` entfernt** (Dashboard mit Beispieldaten, Stub-Seiten Hund/Einkauf/Routinen, Wellness/Projekte auf Mock-Daten, eigene Leiste,
+  CommandPalette mit Ziel /dashboard) samt allem, was nur sie nutzte (≈ 85 Dateien, Erreichbarkeits-Analyse + tsc). Die drei Kontexte MakeOS/App/Privacy liefen
+  dadurch nicht mehr auf jeder Seite mit. Alte Adressen leiten weiter: `/dashboard` → `/os`, `/tasks` → `/os/aufgaben`, `/wellness` → `/os/gesundheit`,
+  `/routines` → `/os/planung/routinen`, `/groceries` und `/dog` → `/os/familie`.
+- **Stapel:** „Meilensteine“ führt in Ziele & Planung (`WEG.jahr()`) statt auf die Bau-Roadmap.
+- **OKR:** `/os/okr` leitet in Ziele & Planung (Business). Der OKR-Agent bleibt (ZOE ruft `/api/okr`); verloren ist nur die eigene Seite mit dem Knopf
+  „Zielbaum bauen“ und der Nordstern-Kachel — als Knopf in der Planung offen.
+- **Standard überall:** die letzten 28 Dateien von `schlank` auf `components/os/ui` (siehe DESIGN_STANDARD.md › Aufräumen).
+- Stammdaten doppelt (/os/stammdaten ↔ Markttraktion › Stammdaten › Gesellschaften) bewusst nicht angefasst — übernimmt das Gesellschafts-Register.
+- Wächter: `tests/aufraeumen.test.ts`, `tests/design-standard.test.ts` › Aufräumen. Nicht hochgeladen.
+
 ## makeinnovation.de „Klar“ — Neubau auf der Basis „Superconscious“, 80 % Seriosität (04.10.2026, nur lokal — Branch `website-klar`)
 
 Kevin 04.10.: „Das ist too much. Das muss klarer sein … Basis Superconscious, ein bisschen von unserer futuristischen Sache mitnehmen —

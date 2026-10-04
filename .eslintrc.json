@@ -3,16 +3,6 @@
     "next/core-web-vitals",
     "next/typescript"
   ],
-  "ignorePatterns": [
-    "app/(dashboard)/**",
-    "components/ui/make/**",
-    "components/dashboard/**",
-    "components/calendar/**",
-    "components/tasks/**",
-    "components/fundament/**",
-    "lib/mock-data/**",
-    "components/layout/**"
-  ],
   "rules": {
     "@typescript-eslint/no-unused-vars": [
       "error",
