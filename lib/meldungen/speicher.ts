@@ -58,8 +58,10 @@ export async function telegramHaken(_person: string, _meldung: Meldung): Promise
  * Arten `netzwerken` („X hat dir <Person> zugeteilt …“, „Termin mit <Person> …“) und `danke` nur der neutrale Satz — Namen, Firmen, Events und
  * Termin-Einzelheiten stehen dann nur in MAKE OS. Alle anderen Arten: der Titel wie bisher (er trägt nie vertrauliche Werte).
  */
-export function telegramText(m: Pick<Meldung, 'art' | 'titel'>): string {
+export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Meldung, 'bezug'>>): string {
   if (m.art === 'netzwerken') return 'Neue Person zugeteilt — Details in MAKE OS';
+  // DSGVO-Prüfung 04.10.: auch „fällig/überfällig“ der Vertrags-Erinnerung (Aufgabe `vte-…`) nennt Vertrag und Gesellschaft nicht.
+  if (m.bezug?.art === 'aufgabe' && m.bezug.id.startsWith('vte-')) return 'Eine Vertragsfrist naht — Details in MAKE OS';
   if (m.art === 'sicherheit') return 'Am Zugang wurde etwas geändert — Details in MAKE OS';
   if (m.art === 'vertrag') return 'Eine Vertragsfrist naht — Details in MAKE OS';
   if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
