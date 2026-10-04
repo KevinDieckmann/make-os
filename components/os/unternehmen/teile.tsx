@@ -5,11 +5,13 @@
 // letzten Antwort — lib/crm/gesellschaft-kette.ts), Namen der Bezüge, Betrags- und Datumsfelder, Bezug-Wahl.
 // Regeln stehen rein in lib/gesellschaften/modell.ts; hier nur Darstellung.
 
+import Link from 'next/link';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { feld, auswahl, Feldzeile, Segmente } from '../ui';
 import { gesellschaftKette, type GesellschaftAntwort } from '@/lib/crm/gesellschaft-kette';
 import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
+import { WEG } from '@/lib/wege';
 import { BEZUG_ARTEN, euroText, type Bezug, type BezugArt, type RegisterGesellschaft, type Verweise } from '@/lib/gesellschaften/modell';
 
 export type GAnzeige = RegisterGesellschaft & { name: string; stand: string; luecken: string[]; verweise: Verweise };
@@ -23,6 +25,12 @@ export function bezugName(b: Bezug, namen: Record<string, string>): string {
   if (n) return n;
   if (b.id.includes('gelöscht')) return b.art === 'kontakt' ? 'Kontakt (gelöscht)' : 'Eintrag (gelöscht)';
   return b.art === 'kontakt' ? 'Kontakt (nicht mehr im CRM)' : b.art === 'firma' ? 'Firma (nicht mehr im CRM)' : b.art === 'person' ? 'Person (nicht mehr im Haushalt)' : 'Gesellschaft (nicht gefunden)';
+}
+
+/** Wohin ein Bezug führt (Akte im CRM, Firma, Gesellschaft im Register) — Personen des Haushalts und getilgte Kennungen nirgendwohin. */
+export function bezugWeg(b: Bezug): string | undefined {
+  if (b.id.includes('gelöscht')) return undefined;
+  return b.art === 'kontakt' ? WEG.akte(b.id) : b.art === 'firma' ? WEG.firma(b.id) : b.art === 'gesellschaft' ? WEG.unternehmen(b.id) : undefined;
 }
 
 export const tagText = (t?: string) => (t ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : '');
@@ -108,7 +116,7 @@ export function BezugWahl({ daten, wert, onWahl, ohne = [], arten = BEZUG_ARTEN.
       {art === 'gesellschaft' && <Auswahl label="Gesellschaft" wert={wert?.art === 'gesellschaft' ? wert.id : ''} leer="Gesellschaft wählen …" liste={ges} onWahl={v => { if (v) waehle({ art, id: v }, ges.find(x => x.id === v)?.label ?? v); }} />}
       {art === 'person' && <Auswahl label="Person" wert={wert?.art === 'person' ? wert.id : ''} leer="Person wählen …" liste={pers} onWahl={v => { if (v) waehle({ art, id: v }, pers.find(x => x.id === v)?.label ?? v); }} />}
       {(art === 'kontakt' || art === 'firma') && <CrmSuche art={art === 'kontakt' ? 'kontakte' : 'firmen'} onWahl={x => waehle({ art, id: x.id }, x.name)} />}
-      {wert && wert.art === art && <span style={klein}>Gewählt: <strong style={{ color: C.ink }}>{gewaehlt ?? bezugName(wert, daten.namen)}</strong></span>}
+      {wert && wert.art === art && <span style={klein}>Gewählt: <strong style={{ color: C.ink }}>{gewaehlt ?? bezugName(wert, daten.namen)}</strong>{bezugWeg(wert) && <> · <Link href={bezugWeg(wert)!} style={{ color: 'inherit' }}>{wert.art === 'gesellschaft' ? 'im Register öffnen' : 'im CRM öffnen'} ›</Link></>}</span>}
     </div>
   );
 }

@@ -8,12 +8,14 @@
 // Löschen/Archivieren über den gemeinsamen Baustein ZeileAktionen (Handy wischen, Rechner Knöpfe am Rand), Rückfrage statt
 // window.confirm, „Rückgängig“ für 10 s. Daten: GET/POST/PATCH /api/gesellschaften (nur Haushalt des Inhabers).
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Network, Trash2 } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT, SCHRIFT, RAND } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leerzustand, Leer, Reiter, Pillen, Feldzeile, eingabe, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import { zufallsUuid } from '@/lib/kennung';
+import { WEG } from '@/lib/wege';
 import { istGesellschaft } from '@/lib/einheiten';
 import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
 import {
@@ -215,7 +217,7 @@ function Knoten({ k, daten, oeffne, tiefe }: { k: StrukturKnoten; daten: Registe
             <li key={`${k.id}-f-${f.firmaId}`} role="treeitem" aria-selected={false} style={{ borderLeft: `1px solid ${RAND.stark}`, marginLeft: 10, paddingLeft: 14 }}>
               <span style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 40, padding: '6px 10px', fontSize: TYP.bedien, color: C.inkDim, fontStyle: 'italic' }}>
                 {f.anteilProzent !== undefined && <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 64 }}>{f.anteilProzent.toLocaleString('de-DE')} %</span>}
-                {bezugName({ art: 'firma', id: f.firmaId }, daten.namen)}
+                <Link href={WEG.firma(f.firmaId)} style={{ color: 'inherit' }}>{bezugName({ art: 'firma', id: f.firmaId }, daten.namen)}</Link>
               </span>
             </li>
           ))}

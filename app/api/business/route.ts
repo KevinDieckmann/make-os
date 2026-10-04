@@ -15,7 +15,7 @@ import { alleSichten, vergleich, speichereAbschluss, loescheAbschluss, speichere
 import { berechne } from '@/lib/business/index';
 import { fixkostenDer } from '@/lib/business/messen';
 import { geschaeftsmodell } from '@/lib/business/modell';
-import { SCOPES, type Scope } from '@/lib/business/register';
+import { SCOPES, HOLDING_VORGABE, type Scope } from '@/lib/business/register';
 import { istGesellschaft } from '@/lib/einheiten';
 import { personAus } from '@/lib/zoe/raum';
 import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
@@ -45,6 +45,8 @@ export async function GET(req: Request) {
   verlauf.push({ tag: roh.heute, index: bi.index, saeulen: Object.fromEntries(bi.saeulen.map(x => [x.id, x.score])), werte: Object.fromEntries(bi.saeulen.flatMap(x => x.kennzahlen.map(k => [k.id, k.wert]))) });
   return NextResponse.json({
     ok: true, scope, bi,
+    // Holding laut Register (Rolle im Steckbrief) — die Oberfläche nennt es und führt ins Register.
+    holding: scope !== 'gesamt' && (roh.holdings ?? HOLDING_VORGABE).includes(scope),
     sichten: Object.fromEntries(SCOPES.map(x => [x.id, { index: ergebnis[x.id].index, label: ergebnis[x.id].label }])),
     vor30, wechsel, verlauf,
     abschluesse: roh.abschluesse.slice(0, 36),

@@ -39,7 +39,9 @@ export const FAHRPLAN_SCHRITTE: readonly Schritt[] = [
 
 /** Kurzform der Gesellschafts-Kennung für feste Kennungen (Planung erlaubt [A-Za-z0-9_~:.-], ≤ 80). */
 const kurz = (gid: string) => gid.replace(/^g-/, '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 36);
-export const fahrplanZielId = (gid: string) => `z-fahrplan-${kurz(gid)}`;
+/** Kennungs-Anfang der Fahrplan-Ziele — daran erkennt das Ziel-Detail seine Gesellschaft (Weg zurück ins Register). */
+export const FAHRPLAN_ZIEL_PRAEFIX = 'z-fahrplan-';
+export const fahrplanZielId = (gid: string) => `${FAHRPLAN_ZIEL_PRAEFIX}${kurz(gid)}`;
 export const fahrplanMeilensteinId = (gid: string, key: string) => `ms-fahrplan-${key}-${kurz(gid)}`;
 
 export interface Fahrplan { ziel: Ziel; meilensteine: Meilenstein[]; aufgaben: { meilensteinId: string; titel: string }[] }

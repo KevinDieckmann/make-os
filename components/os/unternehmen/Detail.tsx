@@ -135,7 +135,12 @@ function Steckbrief({ g, daten, schreibe, neuLaden, oeffne }: { g: GAnzeige; dat
               <strong style={{ color: C.ink }}>{g.name}</strong>
             </div>
           )}
-          {nach.length > 0 && <div style={klein}>Daraus hervorgegangen: {nach.map(x => x.name).join(', ')}.</div>}
+          {nach.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
+              <span>Daraus hervorgegangen:</span>
+              {nach.map(x => <Knopf key={x.id} leise onClick={() => oeffne(x.id)}>{x.name}</Knopf>)}
+            </div>
+          )}
           {g.angelegt && <div style={klein}>Im Register seit {tagText(g.angelegt.slice(0, 10))}.</div>}
         </div>
       </Karte>

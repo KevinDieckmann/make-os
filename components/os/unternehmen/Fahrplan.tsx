@@ -84,3 +84,21 @@ export function FahrplanKarte({ g, daten }: { g: GAnzeige; daten: RegisterDaten 
     </Karte>
   );
 }
+
+/**
+ * Der Weg zurück (Ziel-Detail eines Fahrplans → Gesellschaft im Register). Die Gesellschaft wird über die feste Kennung des
+ * Fahrplan-Ziels gefunden; ohne Zugang zum Register (anderes Konto, 403) erscheint nichts.
+ */
+export function FahrplanHerkunft({ zielId }: { zielId: string }) {
+  const [g, setG] = useState<{ id: string; name: string } | null>(null);
+  useEffect(() => {
+    let lebt = true;
+    fetch('/api/gesellschaften?wahl=1', { cache: 'no-store' }).then(json).then(d => {
+      const treffer = ((d?.gesellschaften ?? []) as { id: string; name: string }[]).find(x => fahrplanZielId(x.id) === zielId);
+      if (lebt) setG(treffer ?? null);
+    }).catch(() => undefined);
+    return () => { lebt = false; };
+  }, [zielId]);
+  if (!g) return null;
+  return <Link href={WEG.unternehmen(g.id)} style={{ color: 'inherit' }}>Gründungsfahrplan von {g.name} ›</Link>;
+}

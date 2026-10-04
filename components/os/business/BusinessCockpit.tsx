@@ -10,7 +10,9 @@
 // /os/business leitet dorthin um. Hinter jeder Kachel stehen die Punkte, aus
 // denen sie besteht — jeder ein Link dorthin, wo man handelt.
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { WEG } from '@/lib/wege';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT, Hinweis, FlussKarte } from '../ui';
@@ -30,6 +32,8 @@ import type { Gesellschaftskennung } from '@/lib/einheiten';
 
 interface Antwort {
   ok: boolean; scope: Scope; bi: BusinessIndex;
+  /** Diese Sicht ist laut Register eine Holding (operative Kennzahlen zählen nicht). */
+  holding?: boolean;
   sichten: Record<Scope, { index: number | null; label: string }>;
   vor30: number | null;
   wechsel: { id: string; von: string; nach: string; seit: string }[];
@@ -95,6 +99,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
           <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 14 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Chip farbe={farbe}>{SCOPE_LABEL[scope]}</Chip>
+              {d?.holding && d.scope === scope && scope !== 'gesamt' && <Link href={WEG.unternehmen(scope)} style={{ fontSize: TYP.bedien, color: C.inkLeise }} title="Rolle im Steckbrief — operative Vertriebs- und Produktivitätskennzahlen zählen hier nicht">Holding laut Register ›</Link>}
               {trend != null && trend !== 0 && <Chip farbe={trend > 0 ? LEUCHT.gut : LEUCHT.kritisch}>{trend > 0 ? '▲' : '▼'} {Math.abs(trend)} in 30 Tagen</Chip>}
               {bi && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.round(bi.abdeckung * 100)} % des Index auf echten Daten · {bi.luecken} Messlücke{bi.luecken === 1 ? '' : 'n'}</span>}
             </div>

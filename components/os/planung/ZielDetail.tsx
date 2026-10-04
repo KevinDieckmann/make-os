@@ -28,6 +28,8 @@ import { zielJahr } from '@/lib/planung/zeitstrahl';
 import { ZIEL_HORIZONTE, type Meilenstein, type Ziel, type ZielHorizont } from '@/lib/planung/typen';
 import { usePlanung, type PlanungStand } from './usePlanung';
 import { useMeilensteinFenster } from './MeilensteinFenster';
+import { FahrplanHerkunft } from '../unternehmen/Fahrplan';
+import { FAHRPLAN_ZIEL_PRAEFIX } from '@/lib/gesellschaften/fahrplan';
 import { MachbarZeile } from '../kapazitaet/MachbarZeile';
 import { kapazitaetNeu } from '../kapazitaet/useKapazitaet';
 import { PfeilRang } from './PfeilRang';
@@ -200,6 +202,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
           <Chip farbe={farbe}>{HORIZONT_NAME[horizont]}{horizont === 'jahr' ? ` ${jahr}` : ''}</Chip>
           {space && <Chip farbe={SPACE_FARBE[space]}>{SPACE_LABEL[space]}</Chip>}
           {z.einheit && space === 'business' && <Chip farbe={SPACE_FARBE.business}>{z.einheit}</Chip>}
+          {z.id.startsWith(FAHRPLAN_ZIEL_PRAEFIX) && <FahrplanHerkunft zielId={z.id} />}
           {z.termin && <span>Frist {dt(z.termin)}</span>}
           {z.zielwert ? <span>Zahlenziel {z.zielwert}</span> : null}
           {abgeleitet && <span style={{ color: LEUCHT.agenten }}>abgeleitet aus dem Jahresziel</span>}
