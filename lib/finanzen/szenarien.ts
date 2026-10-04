@@ -117,6 +117,26 @@ export const BAUSTEIN_EINHEIT_LABEL: Record<BausteinEinheit, string> = { ug: fin
 export const planszenarienVon = (d: Pick<FinanzDaten, 'planszenarien'>): Planszenario[] => (Array.isArray(d.planszenarien) ? d.planszenarien : []);
 export const arbeitsplanVon = (d: Pick<FinanzDaten, 'planszenarien' | 'arbeitsplan'>): Planszenario | null =>
   (d.arbeitsplan ? planszenarienVon(d).find(p => p.id === d.arbeitsplan) ?? null : null);
+/** Bereich der Finanzplanung (Privat/Business) — jeder darf ein eigenes Planszenario rechnen (`FinanzDaten.bereiche`). */
+export type Bereich = 'privat' | 'business';
+/** Hat der Bereich eine eigene Einstellung? (sonst gilt der gemeinsame Arbeitsplan) */
+export const bereichEigen = (d: Pick<FinanzDaten, 'bereiche'>, b: Bereich): boolean => !!d.bereiche?.[b];
+/** Das Planszenario, das ein Bereich rechnet: seine eigene Wahl (null = Basis), sonst der gemeinsame Arbeitsplan. */
+export function arbeitsplanFuer(d: Pick<FinanzDaten, 'planszenarien' | 'arbeitsplan' | 'bereiche'>, b: Bereich): Planszenario | null {
+  const e = d.bereiche?.[b];
+  if (!e) return arbeitsplanVon(d);
+  return e.arbeitsplan ? planszenarienVon(d).find(p => p.id === e.arbeitsplan) ?? null : null;
+}
+/**
+ * Das Dokument, wie ein Bereich es sieht: `arbeitsplan` = die Wahl des Bereichs. Alles, was mit dem Arbeitsplan rechnet oder in ihn schreibt
+ * (Blätter, Baukasten, Kennzahlen), folgt damit dem Bereich. Ohne eigene Einstellung dasselbe Dokument (dieselbe Referenz).
+ */
+export function mitBereich<T extends Pick<FinanzDaten, 'planszenarien' | 'arbeitsplan' | 'bereiche'>>(d: T, b: Bereich): T {
+  const e = d.bereiche?.[b];
+  if (!e || (e.arbeitsplan ?? null) === (d.arbeitsplan ?? null)) return d;
+  return { ...d, arbeitsplan: e.arbeitsplan };
+}
+
 /** Treiber-Szenario zu einem Planszenario — sonst das aktive. */
 export function treiberVon(d: Pick<FinanzDaten, 'szenarien' | 'aktiv'>, ps?: Planszenario | null): Szenario {
   return (ps && d.szenarien.find(s => s.id === ps.basis)) || d.szenarien.find(s => s.id === d.aktiv) || d.szenarien[0];

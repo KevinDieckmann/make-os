@@ -31,6 +31,14 @@ endgültigen Löschen von Gesellschaft/Vertrag: behalten (§ 257 HGB) + deutlich
 - **Rückweg:** Der alte Stand verwirft `deaktiviertAm` beim nächsten Speichern eines Team-Eintrags (sonst nichts kaputt) und ignoriert
   `geloescht` im Register (bleibt beim Schreiben erhalten). Bereits gelöschte Kapazitätsdaten kommen nicht zurück (gewollt) — vor dem
   Rückweg nichts zu tun.
+## Finanzplanung: Business zeigt die komplette Planung, Privat und Business separat einstellbar (04.10.2026 spät, nur lokal — Branch `finanzplan-3`)
+
+Kevin: „Ich will im Business meine Planung haben … immer sehen können. Das ist der USP.“
+- Unter Business › Finanzen › Finanzplanung sieht der Haushalt des Inhabers alles wie unter Privat (inkl. Privat-Blatt, Liquidität, Gesamt, Ziele).
+- Je Bereich eigenes Szenario („Business rechnet …“), eigene Ansicht der Blätter (gemerkt), eigene Kennzahlen in der Lage.
+- Die Trennung bleibt serverseitig — nur noch für Konten mit Finanzrecht „nur Business“ (heute keins), entschieden aus dem Konto, nie aus der Adresse.
+- **Rückweg:** neues optionales Feld `bereiche` im Plan (der alte Stand verwirft es → gemeinsamer Arbeitsplan) und `finanzRecht` am Konto (der
+  alte Stand ignoriert es — vorher entfernen, falls gesetzt). Nicht hochgeladen.
 
 ## Abschlussprüfung Teil 1: Verbindungen & Standards (04.10.2026 spät, nur lokal — Branch `pruefung-verbindungen`)
 

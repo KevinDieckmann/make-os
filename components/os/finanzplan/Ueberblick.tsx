@@ -51,9 +51,10 @@ function LageKopf() {
   return (
     <>
       <Kacheln min={230}>
-        <Kachel label="Frei verfügbar diesen Monat" punkt={aw.frei.gesamt >= sw.freiGut ? LEUCHT.gut : aw.frei.gesamt >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.gesamt} /> €</>}
-          unter={<>{UG_KURZ} frei <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
-        <Kachel label="Runway" punkt={rwFarbe(Math.min(aw.runway.ug ?? 99, aw.runway.privat ?? 99))} wert={<>{UG_KURZ} {rw(aw.runway.ug, aw.runway.horizont)} · Privat {rw(aw.runway.privat, aw.runway.horizont)}</>} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
+        {/* Kennzahlen des Bereichs Privat (04.10. spät): frei verfügbar privat und Privat-Runway vorn — die Gesellschaften stehen unter Business › Lage. */}
+        <Kachel label="Frei verfügbar privat" punkt={aw.frei.privat >= sw.freiGut ? LEUCHT.gut : aw.frei.privat >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.privat} /> €</>}
+          unter={<>Konten <Geld v={aw.frei.privatKonten} farbe={C.inkDim} /> · Luft diesen Monat <Geld v={aw.frei.privatLuft} farbe={C.inkDim} /> · alles zusammen <Geld v={aw.frei.gesamt} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
+        <Kachel label="Runway Privat" punkt={rwFarbe(aw.runway.privat)} wert={rw(aw.runway.privat, aw.runway.horizont)} unter={<>Monate ab jetzt, bis die privaten Konten unter null fallen · {UG_KURZ} {rw(aw.runway.ug, aw.runway.horizont)}</>} />
         <Kachel label="Ziele im Plan" punkt={aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${aw.ziele.imPlan} / ${aw.ziele.gesamt}`} unter={aw.ziele.gesamt ? `${aw.ziele.gekippt} gekippt · ${aw.ziele.knapp} knapp` : 'noch keine Ziele'} />
       </Kacheln>
       <Karte i={0} ton={C.aktiv}>
@@ -229,7 +230,7 @@ export function Lage() {
  * 14 Tage ohne private Termine. Kein Privat-Konto, keine Luft, kein Notgroschen, keine Entscheidung der Woche (die gehört dem Haushalt).
  */
 export function LageBusiness() {
-  const { d, dd, ug, kdc, pr, aw, ps, sz, kz, geh } = usePlan();
+  const { d, dd, ug, kdc, pr, aw, ps, sz, kz, geh, sicht } = usePlan();
   const punkte = nurBusinessPunkte(entscheidungen(d, { ug, pr, ps }, aw, 12)).slice(0, 6);
   const offenPunkte = nurBusinessPunkte(luecken(d, ug, 0)).slice(0, 7);
   const sw = schwellenVon(d);
@@ -258,7 +259,7 @@ export function LageBusiness() {
             <KnopfKlein onClick={() => geh(p.ziel.u, p.ziel.params)}>Öffnen ›</KnopfKlein>
           </div>
         )) : <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: LEUCHT.gut }} />Nichts drängt im Business.</div>}
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Rechnet mit {ps ? <>dem Arbeitsplan <b style={{ color: C.inkDim }}>{ps.name}</b> auf Treiber {sz.name}</> : <>dem Treiber <b style={{ color: C.inkDim }}>{sz.name}</b></>} · Stichtag {datumLang(d.einstellungen.heute)} · nur Business.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Rechnet mit {ps ? <>dem Arbeitsplan <b style={{ color: C.inkDim }}>{ps.name}</b> auf Treiber {sz.name}</> : <>dem Treiber <b style={{ color: C.inkDim }}>{sz.name}</b></>} · Stichtag {datumLang(d.einstellungen.heute)} · Kennzahlen der Gesellschaften.</div>
       </Karte>
       {offenPunkte.length > 0 && (
         <Karte i={1}>
@@ -301,7 +302,7 @@ export function LageBusiness() {
           </Karte>
         </Spalte>
       </Spalten>
-      <Hinweis>Nur Business: {finanzOrtName('ug')}, {finanzOrtName('kdv')} und {finanzOrtName('kdc')}. Privat (Haushalt, Konten, Luft, private Ziele) steht unter Finanzen › Privat › Finanzplanung. Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
+      <Hinweis>Kennzahlen der Gesellschaften: {finanzOrtName('ug')}, {finanzOrtName('kdv')} und {finanzOrtName('kdc')}. {sicht === 'business' ? 'Privat (Haushalt, Konten, Luft, private Ziele) ist für dieses Konto nicht freigegeben.' : 'Die ganze Planung — auch Privat — steht in den Reitern darüber; die privaten Kennzahlen zeigt die Lage unter Finanzen › Privat.'} Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
     </>
   );
 }

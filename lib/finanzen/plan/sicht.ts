@@ -6,7 +6,11 @@
 // EINE Stelle für die Trennung: `businessSicht()` filtert das Plan-Dokument, BEVOR es den Server verlässt (GET /api/finanzplan
 // ?sicht=business, auch die 409-Antwort), und `businessPfadErlaubt()` lehnt Schreibschritte auf private Teile ab (PATCH ?sicht=business
 // → 403). So ist Privat nicht nur versteckt, sondern gar nicht ausgeliefert — die Business-Sicht kann später auch Teammitgliedern ohne
-// Privatzugang gezeigt werden (dann erzwingt der Server die Sicht je Person, `sichtAus`).
+// Privatzugang gezeigt werden.
+// 04.10. spät (Kevin: „im Business meine Planung haben … immer sehen können“): Die Sicht entscheidet der Server aus dem KONTO
+// (`planZugangFuer` in lib/finanzen/haushalt/zugriff.ts, Feld `finanzRecht`), nie aus der Adresse. Der Haushalt des Inhabers sieht in
+// beiden Bereichen alles; nur Konten mit `finanzRecht: 'business'` bekommen diese gefilterte Sicht. Die Adresse wählt nur den BEREICH
+// (Privat/Business) mit eigenem Szenario, eigener Ansicht und eigenen Kennzahlen (`bereiche` im Dokument).
 //
 // Was privat ist: Privat-Zeilen (Einnahmen, Budget, Schulden), private Buchungen/Posten/Schulden/Ziele/Ereignisse, Wochen-Check,
 // Entscheidung der Woche, Abschlüsse, Regeln (Empfänger aus dem Privatkonto), die Netto-Tabelle, die pauschale Steuer auf die
@@ -21,7 +25,9 @@ import { lies } from './operationen';
 export type PlanSicht = 'privat' | 'business';
 export const PLAN_SICHTEN: PlanSicht[] = ['privat', 'business'];
 /** Sicht aus der Anfrage: `?sicht=business` → Business, sonst die volle (Privat-)Sicht. Später: je Person erzwingbar. */
-export const sichtAus = (wert: string | null | undefined): PlanSicht => (wert === 'business' ? 'business' : 'privat');
+/** Bereich der Oberfläche aus der Adresse (`space=business` → Business, sonst Privat) — wählt NUR Szenario/Ansicht/Kennzahlen, nie die Daten. */
+export type PlanBereich = 'privat' | 'business';
+export const bereichAus = (wert: string | null | undefined): PlanBereich => (wert === 'business' ? 'business' : 'privat');
 
 const BUSINESS_EINHEITEN: Einheit[] = ['ug', 'kdv', 'selbststaendigkeit'];
 const istBusinessEinheit = (e: unknown): boolean => typeof e === 'string' && (BUSINESS_EINHEITEN as string[]).includes(e);
@@ -58,6 +64,8 @@ export function businessSicht(d: FinanzDaten): FinanzDaten {
   const { schwellen: _schwellen, ...rest } = d;   // Ampel-Schwellen sind gemeinsam mit Privat (Luft, Notgroschen) — nicht in der Business-Sicht
   return {
     ...rest,
+    // Einstellung je Bereich: nur der Business-Bereich bleibt.
+    ...(d.bereiche ? { bereiche: d.bereiche.business ? { business: d.bereiche.business } : {} } : {}),
     planszenarien: (d.planszenarien ?? []).map(ps => {
       const { ausschuettungSteuer: _privat, ...annahmen } = ps.annahmen;   // wirkt nur privat
       return { ...ps, bausteine: ps.bausteine.filter(b => b.einheit !== 'privat'), annahmen };
@@ -182,6 +190,8 @@ export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown)
       if (t.length === 1) return 'Die ganze Liste gehört auch zu Privat.';
       return null;
     }
+    case 'bereiche':
+      return t[1] === 'business' ? null : 'Die Einstellung des Privat-Bereichs gehört zu Privat.';
     case 'selbst': case 'aktiv': case 'arbeitsplan': case 'einstellungen':
       return null;
     default:

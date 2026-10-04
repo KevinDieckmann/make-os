@@ -46,6 +46,12 @@ export interface Konto {
    * Zugriff auf private Finanzen — auch keine Summen.
    */
   haushalt?: string;
+  /**
+   * Finanzrecht im Haushalt (04.10. spät): fehlt = alles (Inhaber-Haushalt, Kevin + Malin). `business` = nur die Business-Sicht der
+   * Finanzplanung (Teammitglieder/Partner ohne Privatzugang): kein Zugang zu den privaten Haushaltsfinanzen, Privat wird serverseitig
+   * herausgefiltert (lib/finanzen/plan/sicht.ts). Setzt nur der Inhaber (`PUT /api/konto/haushalt`).
+   */
+  finanzRecht?: 'business';
   /** Zettel, die vor diesem Zeitpunkt ausgestellt wurden, gelten nicht mehr („alle anderen Geräte abmelden“, 26.09.). */
   sitzungenAb?: string;
   /** Beim Abmelden widerrufene Zettel (Kennung + Ablauf, danach entfällt der Eintrag). */

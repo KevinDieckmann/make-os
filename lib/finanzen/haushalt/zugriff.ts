@@ -28,7 +28,27 @@ export async function haushaltFuer(person: string | null | undefined): Promise<H
   if (!person) return null;
   const k = await kontoFuerSpeicher(person);
   const h = k?.haushalt;
+  // Konten mit Finanzrecht „nur Business“ (04.10.) haben KEINEN Zugang zu den privaten Haushaltsfinanzen — nur die Business-Sicht der Finanzplanung.
+  if (k?.finanzRecht === 'business') return null;
   return h && HAUSHALT_OK.test(h) ? { person, haushalt: h } : null;
 }
+
+/** Zugang zur Finanzplanung des Haushalts: welcher Haushalt und welche Datensicht — die Sicht entscheidet der Server aus dem Konto. */
+export interface PlanZugang extends HaushaltZugang { sicht: 'privat' | 'business' }
+
+/**
+ * Finanzplanung (04.10. spät, Kevin: „im Business meine Planung haben … immer sehen können“): Wer zum Haushalt gehört, sieht ALLES
+ * (Sicht „privat“ = voll) — in beiden Bereichen. Nur Konten mit `finanzRecht: 'business'` (Teammitglieder/Partner ohne Privatzugang,
+ * spätere Kunden-Rollen) bekommen die Business-Sicht (Privat wird serverseitig herausgefiltert, Schreiben auf Privat → 403).
+ * Entschieden wird NUR hier aus dem Konto — nie aus der Adresse.
+ */
+export async function planZugangFuer(person: string | null | undefined): Promise<PlanZugang | null> {
+  if (!person) return null;
+  const k = await kontoFuerSpeicher(person);
+  const h = k?.haushalt;
+  if (!h || !HAUSHALT_OK.test(h)) return null;
+  return { person, haushalt: h, sicht: k?.finanzRecht === 'business' ? 'business' : 'privat' };
+}
+export async function planZugangVon(req: Request): Promise<PlanZugang | null> { return planZugangFuer(personStreng(req)); }
 
 export const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zu den Haushaltsfinanzen. Der Inhaber schaltet ihn unter System → Konto frei.' };

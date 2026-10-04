@@ -12,7 +12,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { FinanzDaten, MonatPrivat, MonatSelbst, MonatUG, Szenario, IstHistorie, Zusatz } from '@/lib/finanzen/rechenkern';
 import { kennzahlen, istHistorie } from '@/lib/finanzen/rechenkern';
-import { rechneMit, arbeitsplanVon, auswertung, type Planszenario, type Auswertung } from '@/lib/finanzen/szenarien';
+import { rechneMit, arbeitsplanVon, auswertung, type Planszenario, type Auswertung, type Bereich } from '@/lib/finanzen/szenarien';
 import { wendeOperationenAn, lies, pfadTeile, OperationUngueltig, type Operation } from '@/lib/finanzen/plan/operationen';
 import type { Unterseite } from '@/lib/finanzen/plan/hilfen';
 import type { Formeln } from '@/lib/finanzen/handwerte';
@@ -21,7 +21,7 @@ import type { PlanSicht } from '@/lib/finanzen/plan/sicht';
 export type Zustand = 'laedt' | 'da' | 'leer' | 'kein' | 'fehler';
 export interface Meldung { id: number; art: 'ok' | 'fehler' | 'info'; titel: string; text?: string; aktion?: { label: string; tun: () => void } }
 
-interface Antwort { ok: boolean; haushalt?: string; person?: string; dokument?: FinanzDaten | null; fehler?: string }
+interface Antwort { ok: boolean; haushalt?: string; person?: string; sicht?: PlanSicht; dokument?: FinanzDaten | null; fehler?: string }
 interface PatchAntwort { ok: boolean; stand?: string; protokoll?: FinanzDaten['protokoll']; meta?: Record<string, { wer: string; wann: string } | null>; nachladen?: boolean; fehler?: string; dokument?: FinanzDaten }
 
 const MERKER_VERBERGEN = 'make-fp-verbergen';
@@ -40,11 +40,13 @@ function gegenOperation(d: FinanzDaten, op: Operation): Operation | null {
 }
 
 /**
- * `sicht` (04.10.): „business“ holt nur den Business-Teil vom Server (`?sicht=business`, Privat wird gar nicht ausgeliefert) und
- * schreibt über denselben Weg (der Server lehnt private Pfade mit 403 ab). „privat“ = alles.
+ * Die Datensicht entscheidet der SERVER aus dem Konto (04.10. spät): der Haushalt des Inhabers bekommt alles, ein Konto mit
+ * `finanzRecht: 'business'` nur den Business-Teil (Privat wird gar nicht ausgeliefert, Schreiben auf Privat → 403). Die Antwort sagt,
+ * welche Sicht gilt (`sicht`) — die Oberfläche richtet sich danach, nie nach der Adresse.
  */
-export function useFinanzplanDaten(sicht: PlanSicht = 'privat') {
-  const adresse = sicht === 'business' ? '/api/finanzplan?sicht=business' : '/api/finanzplan';
+export function useFinanzplanDaten() {
+  const adresse = '/api/finanzplan';
+  const [sicht, setSicht] = useState<PlanSicht>('privat');
   const [dokument, setDokument] = useState<FinanzDaten | null>(null);
   const [zustand, setZustand] = useState<Zustand>('laedt');
   const [person, setPerson] = useState<string>('');
@@ -76,6 +78,7 @@ export function useFinanzplanDaten(sicht: PlanSicht = 'privat') {
       if (!d.ok) { setZustand('fehler'); melde('fehler', 'Plan konnte nicht geladen werden', d.fehler); return; }
       etag.current = r.headers.get('etag');
       setPerson(d.person ?? '');
+      setSicht(d.sicht === 'business' ? 'business' : 'privat');
       setDokument(d.dokument ?? null);
       setZustand(d.dokument ? 'da' : 'leer');
     } catch { setZustand(z => (z === 'laedt' ? 'fehler' : z)); melde('fehler', 'Keine Verbindung', 'MAKE OS ist gerade nicht erreichbar.'); }
@@ -140,7 +143,7 @@ export function useFinanzplanDaten(sicht: PlanSicht = 'privat') {
 
   const gespeichert = useCallback((feld: string) => melde('ok', 'Gespeichert', feld, undo.current.length ? { label: 'Rückgängig', tun: () => { void rueckgaengig(); } } : undefined), [melde, rueckgaengig]);
 
-  return { dokument, zustand, person, laden, aendern, rueckgaengig, undoAnzahl, meldungen, melde, weg, gespeichert, verbergen, setVerbergen };
+  return { dokument, zustand, person, sicht, laden, aendern, rueckgaengig, undoAnzahl, meldungen, melde, weg, gespeichert, verbergen, setVerbergen };
 }
 
 // ── Gerechnete Sicht für alle Ansichten ──────────────────────────────────────
@@ -174,8 +177,10 @@ export function rechne(d: FinanzDaten, treiber?: Szenario, ps: Planszenario | nu
 
 export interface PlanKontext extends Gerechnet {
   d: FinanzDaten;
-  /** Privat = alles (Vorgabe, auch wenn es fehlt); Business = nur die Gesellschaften (das Dokument ist schon serverseitig gefiltert). */
+  /** Datensicht vom Server: Privat = alles (Vorgabe, auch wenn es fehlt); Business = nur die Gesellschaften (Konto ohne Privatzugang). */
   sicht?: PlanSicht;
+  /** Bereich der Oberfläche (aus der Adresse): eigenes Szenario, eigene Ansicht, eigene Kennzahlen — Vorgabe Privat. */
+  bereich?: Bereich;
   person: string;
   verbergen: boolean;
   /** Änderung mit lesbarem Feldnamen; meldet „Gespeichert“ selbst. */
