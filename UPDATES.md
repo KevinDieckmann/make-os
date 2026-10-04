@@ -4,6 +4,30 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## makeinnovation.de „Klar“ — Neubau auf der Basis „Superconscious“, 80 % Seriosität (04.10.2026, nur lokal — Branch `website-klar`)
+
+Kevin 04.10.: „Das ist too much. Das muss klarer sein … Basis Superconscious, ein bisschen von unserer futuristischen Sache mitnehmen —
+maximal 20 %, 80 % Seriosität und Souveränität. Wenn ein Investor draufschaut … Klare Linien, kein Gewusel.“
+
+- **Hell → dunkel:** Start auf Off-White (neues Token `--papier` #F4F3EF, Tinte = dunkler Grund der Marke) mit dunkler Titelkarte; beim Scrollen
+  öffnet sich der dunkle Raum. Lichter (Verlauf, Kugel, Aurora) nur an drei Stellen — Titelkarte, dunkler Raum, Schluss (Prüfer: höchstens 3 Leinwände).
+- **Showreel** als EIN Fortschritt p über eine hohe Spur mit stehender Bühne, jeder Wert eine reine Funktion von p (Feder, smoothstep, Rasten):
+  Vorhang (Knoten + Blüte, 1,9 s) → Titelkarte „Innovation braucht Umsetzung / und Sichtbarkeit.“ (Buchstaben gleiten verschwommen weg) →
+  Karussell aus vier Karten (Marke · Umsetzung & Sichtbarkeit · Fokus & Klarheit · Tor) vor dem Laufband → der Knoten öffnet einen Kreis in den
+  dunklen Raum: Partikel-Kugel, „Wachstum scheitert selten an Ideen. / Meist an der Umsetzung.“ steigt Buchstabe für Buchstabe auf → Band ruhiger
+  Karten (Fokus Innovation mit sechs Städten, Make.One, die vier belegten Zahlen mit Trommel) → ruhiger Flug durch sechs typografische Kacheln →
+  Schlussblock (Wortmarke über eigenem Verlauf, Erstgespräch, Rahmen schnappt ein) → Abschnitte im Detail auf Off-White → ruhiger Fuß.
+- **Wiederverwendbar für fokusinnovation.de:** `js/szene/spur.js` (Showreel-Baukasten), `js/szene/verlauf.js` (Mesh-Gradient); Motor/Formationen
+  erweitert um `fortschritt: 'extern'`, `netz: false`, `pfad: false`, `teilchen`, `hell`, `handy()`, `data-ruht` und die Formation `kugel`.
+  Seitenspezifisch nur `js/drehbuch.js`.
+- **Entfernt:** Neuronennetz/Lichtpfad auf der Startseite, Kapitel-Leiste, Lesefortschritt, Aufdeck-Fuß, laufende Ränder in Ruhe, 13 Standbilder
+  (jetzt eines: die Kugel).
+- **Ruhige Fassung** (ohne Skript, Bewegung reduzieren, ohne WebGL) mit allem Inhalt; Tastatur-Fokus fährt in der Spur zum Block.
+- Gemessen: Startseite ≈ 64 KB gzip (mit Standbild + Bildern ohne Schriften ≈ 82 KB); Rechner 60 fps / 16,8 ms; Handy (CPU × 4) 60 fps / 16,8 ms
+  in drei Läufen; Konsole leer; 375 px ohne waagerechtes Scrollen. Datenschutz: Satz zu den acht Skripten angepasst.
+- **Offen für Kevin:** Texte bestätigen (Karte „Fokus & Klarheit“, Fakten-Zeile, Band-Überschrift, Flug-Kacheln), Off-White-Ton, Satz zur
+  Vertriebserfahrung (Platzhalter). Nicht hochgeladen.
+
 ## makeinnovation.de „Standard“ — Glas, Kaskade, Einstieg, Aurora (04.10.2026, nur lokal — Branch `website-standard`)
 
 Kevin 04.10. (Vorlage getlayers.ai „New Era“): nicht alles übernehmen, nur den Standard + Aurora — „bleibe bei unserer CI“.

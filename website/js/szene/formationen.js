@@ -17,6 +17,10 @@
 //   strahl     KI: ein Strahl aus vielen feinen Fäden, fließt von links nach rechts (Strahl v3 der App)
 //   wirkung    Menschen in einer Runde, daraus drei Ströme (Umsetzung, Sichtbarkeit, Netzwerk)
 //   zeichen    das Logo „Synapse“ (aus dem SVG der Seite) — alles fließt in den Knoten
+//   kugel      eine ruhige Kugel aus Licht: dichte Hülle, links Granat, rechts Smaragd, heller Rand, hohle Mitte (eigener fester
+//              Zufall — mehrere Zustände mit derselben Kugel sind Punkt für Punkt gleich, die Kamera fährt nur)
+//
+// Ruhig stellen über das Drehbuch: `netz: false` (kein Neuronennetz), `pfad: false` (keine Lichtfäden, kein Staub).
 //
 // Schnittstelle für andere Seiten (fokus/): MakeSzene.formationen.bauen(drehbuch, { handy, logo }) — das Drehbuch nennt je
 // Zustand die Formation und ihre Optionen, z. B. { formation: 'karte', optionen: { staedte: [{ name, lat, lon }], start: 'Berlin' } }.
@@ -318,6 +322,22 @@
       for (let i = 0; i < N * .03; i++) b.punkt(bis + z.g() * .12, z.g() * .12, z.g() * .12, HELL, .8);
     },
 
+    kugel(b, o) {
+      const K = S.kern, z = K.zufall(o.saat ?? 2026), N = b.N, R = o.radius ?? 3, huelle = Math.floor(N * .92);
+      for (let i = 0; i < huelle; i++) {
+        // gleichmäßig auf der Kugel (z-Achse zur Kamera), Radius mit leisem Zittern
+        const nz = z() * 2 - 1, a = z() * TAU, r = Math.sqrt(1 - nz * nz), nx = Math.cos(a) * r, ny = Math.sin(a) * r;
+        const rr = R * (1 + z.g() * .01), rand = Math.pow(1 - Math.abs(nz), 2.6), ton = K.sanft((nx + .6) / 1.2);
+        const farbe = z() < .06 + .2 * rand ? WEISS : z() < ton ? SMARAGD : GRANAT;
+        b.punkt(nx * rr, ny * rr, nz * rr, farbe, .04 + .5 * rand + .06 * z());
+      }
+      // innen wenige, sehr leise Punkte (Tiefe)
+      while (!b.voll()) {
+        const nz = z() * 2 - 1, a = z() * TAU, r = Math.sqrt(1 - nz * nz), rr = R * .9 * Math.cbrt(z());
+        b.punkt(Math.cos(a) * r * rr, Math.sin(a) * r * rr, nz * rr, z() < .5 ? GRAU : WEISS, .03 + .05 * z());
+      }
+    },
+
     zeichen(b, o) {
       const K = S.kern, { z, N } = b, L = o.logo;
       if (!L) return;
@@ -354,7 +374,9 @@
     for (let i = 0; i < N; i++) { saat[i * 4] = z(); saat[i * 4 + 1] = z() * Math.PI * 2; saat[i * 4 + 2] = .65 + z() * z() * 1.1; saat[i * 4 + 3] = z(); }
     const ziele = formationen.flatMap(f => f.ziele).sort((a, c) => a.s - c.s);
     const von = (drehbuch.von ?? Z[0].s - 40), bis = Z[Z.length - 1].s + 12;
-    return { Z, N, formationen, saat, ziele, von, bis, netz: netz(Z, drehbuch.netz || {}, handy, von, bis), faeden: faeden(handy, von, bis, o.faeden), staub: staub(handy, von, bis) };
+    const leer = new Float32Array(0), ohneNetz = { punkte: leer, saat: leer, kanten: leer }, ohnePfad = drehbuch.pfad === false;
+    return { Z, N, formationen, saat, ziele, von, bis, netz: drehbuch.netz === false ? ohneNetz : netz(Z, drehbuch.netz || {}, handy, von, bis),
+      faeden: ohnePfad ? leer : faeden(handy, von, bis, o.faeden), staub: ohnePfad ? leer : staub(handy, von, bis) };
   }
 
   /** Das Neuronennetz um den Pfad: dicht am Anfang, dünner später, frei um die Formationen und über der Karte. */

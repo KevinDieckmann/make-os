@@ -1,10 +1,13 @@
 # Landingpage makeinnovation.de — MAKE Innovation (eine Marke der KEMARIS Innovation GmbH)
 
-Statische Seite (HTML + eine CSS-Datei + sechs eigene Skripte, keine Cookies, kein Tracking, kein Speicher im Browser,
-Schriften selbst gehostet). Stand **v5 „Der Weg“ (04.10.2026)**: ein Scroll-Erlebnis — eine durchgehende WebGL-Szene hinter dem
-Text, Scrollen = Kamerafahrt entlang eines Lichtpfads durch ein Neuronennetz. Ton seriös und beratend („Du“ im professionellen
-Register): Beratung für Unternehmen mit Umsetzungsstärke. Der Name der Software steht bewusst nirgends auf der Seite; oben
-rechts nur ein kleiner Knopf „Login“.
+Statische Seite (HTML + eine CSS-Datei + acht eigene Skripte, keine Cookies, kein Tracking, kein Speicher im Browser,
+Schriften selbst gehostet). Stand **„Klar“ (04.10.2026)** — Kevin: „Das ist too much. Das muss klarer sein … Basis
+Superconscious … ein bisschen von unserer futuristischen Sache mitnehmen, maximal 20 % — 80 % Seriosität und Souveränität.
+Wenn ein Investor draufschaut, soll er sagen: oh Gott. Klare Linien, kein Gewusel.“
+
+**Botschaft:** Umsetzung & Sichtbarkeit (Beratung) und Fokus & Klarheit (eigene Software — ohne Namen, ohne Bilder, ohne
+Kaufangebot). Ton seriös und beratend, Anrede „Du“; Impressum und Datenschutz „Sie“. Der Name der Software steht nirgends
+im Ordner; oben rechts nur „Login“.
 
 **Firmierung (Kevin 03.10., rechtlich):** Eine GmbH unter dem Namen „MAKE Innovation“ ist nicht eingetragen. Überall steht
 „MAKE Innovation“ und darunter klein „eine Marke der KEMARIS Innovation GmbH“; Impressum und Datenschutz nennen die
@@ -14,97 +17,88 @@ Sie liegt im Repo, Caddy liest sie auf dem Server read-only aus `/srv/make-os/ap
 Sie ist als **nicht indexierte Vorschau** aktiv (`X-Robots-Tag: noindex`, `robots.txt` sperrt, jede Seite trägt
 `<meta name="robots" content="noindex">`). Die CSP bleibt unverändert (`script-src 'self'` reicht: eigenes WebGL, kein eval, keine Worker).
 
+## Aufbau „Klar“ — hell → dunkel, 80 / 20
+
+Die Seite beginnt auf **Off-White** (`--papier` #F4F3EF) mit dunkler Schrift wie eine Beteiligungsgesellschaft; beim Scrollen
+öffnet sich der **dunkle Raum** mit unseren Lichtern. **80 %** sind Typografie, Weißraum, Haarlinien, ruhige Bewegung; die
+**20 %** Lichter (Verlauf, Kugel, Aurora) stehen an genau drei Stellen: Titelkarte, dunkler Raum, Schlussblock (`pruefen.mjs`:
+höchstens drei Leinwände). Keine Dauer-Animation hinter Lesetext, keine konkurrierenden Bewegungen, keine Neon-Effekte.
+
+**Showreel** (Vorlage „Superconscious“, in unsere CI übersetzt): eine hohe Spur (`.spur`, Rechner 1150vh · Tablet hoch 1000vh ·
+Handy 900vh — kürzer als die Vorlage, Klarheit vor Länge) mit stehender Bühne (`.buehne`, sticky). EIN Fortschritt p (0 → 1),
+geglättet durch eine kritisch gedämpfte Feder; **jeder bewegte Wert ist eine reine Funktion von p** (Phasen mit clamp/smoothstep),
+gerechnet in jedem Bild — keine Keyframes für Scroll-Dinge (Keyframes nur für Vorhang, Laufband und den Rand beim Zeigen).
+
+| p | Phase | Was geschieht |
+|---|---|---|
+| — | **Vorhang** | Knoten aus dem Logo (links Granat, rechts Smaragd) fügt sich über einer sanften Blüte zusammen, nach 1,9 s hebt der Vorhang ab (Bewegung reduzieren: 0,7 s ohne Bewegung). Wer scrollt oder eine Taste drückt, hebt ihn sofort. Ohne Skript gibt es ihn nicht. |
+| 0,00–0,10 | **1 · Titelkarte** | dunkle Karte auf Off-White, ruhiger Mesh-Gradient (Anthrazit, dezente Granat/Smaragd-Lichter, folgt leicht der Maus, Auflösung 1, 36 fps). H1 „Innovation braucht Umsetzung / und Sichtbarkeit.“ (zweite Zeile 42 %), rechts ein Bildkarte mit dem Standbild der Kugel (neigt sich mit der Maus). Unten Satz, „Erstgespräch anfragen“ / „Den Weg ansehen“, Haarlinie, Fakten (Aus Berlin für Deutschland · Interim CSO · Interim Head of Sales · Fokus Innovation). Beim Scrollen gleiten die Buchstaben verschwommen nach unten weg. |
+| 0,09–0,17 | **2 · Karussell** | die Karte schrumpft zur Marken-Karte (Wortmarke) und wird Teil eines Karussells aus vier Karten, dahinter das Laufband „Umsetzung · Sichtbarkeit · Vertrieb · Netzwerk · Fokus · Klarheit“ (25 s, 6 % Tinte). |
+| 0,17–0,37 | | rotateY 0 → −270°, nach cos sortiert, mit **Rasten** (jede Karte steht vorn still — Lesezeit): **Umsetzung & Sichtbarkeit** (Beratung: Interim CSO, Interim Head of Sales, Events & Netzwerk-Strategie) · **Fokus & Klarheit** (eigene Software) · das **Tor** (Knoten). Darunter „Erstgespräch anfragen“. |
+| 0,37–0,45 | **3 · Tor** | der Knoten teilt sich, ein Kreis öffnet das Papier in den dunklen Raum. |
+| 0,44–0,60 | **4 · Dunkler Raum** | die **Kugel** aus der Szene (Smaragd/Granat, additiv, hohle Mitte, heller Rand — ruhig), Aurora sehr dezent an den Rändern. „Wachstum scheitert selten an Ideen. / Meist an der Umsetzung.“ steigt Buchstabe für Buchstabe auf, dazu der Absatz. Rechner: Text links, Kugel rechts; hochkant: Kugel oben, Text unten. |
+| 0,60–0,80 | **5 · Band** | ruhige Karten ziehen von rechts nach links vorbei (Handy: rastet je Karte mittig ein): **Fokus Innovation** (sechs Städte, Berlin Ausgangspunkt, Link fokusinnovation.de) · **Make.One** · zwei Karten mit den **vier belegten Zahlen** (Zahlen-Trommel am Fortschritt, Fußnoten unverändert). Die Kugel steht klein und gedimmt oben rechts. |
+| 0,79–0,91 | **6 · Flug** | die Kamera fliegt ruhig in die Kugel; sechs typografische Kacheln kommen aus der Tiefe (Wiederholung der Inhalte, `aria-hidden`). |
+| 0,90–1,00 | **7 · Schluss** | Wortmarke über eigenem Verlauf, „Sprechen wir über dein Vorhaben.“ + „Erstgespräch anfragen“; der Rand aus Papier und der weiße Innenrahmen schnappen ein. |
+| danach | **Im Detail** (Off-White) | Beratung im Detail (drei Angebote, drei Phasen, Beratungsfelder, Development „Coming Soon“) · Make.One + Make.Beteiligungen · Warum MAKE · Kontakt mit dem Erstgespräch (`#erstgespraech-link`) und den Quellen · ruhiger dunkler Fuß mit großer Wortmarke. |
+
+**Navigation:** Kachel-Pille (dunkel auf jedem Grund): Logo-Kachel · Beratung · Make.One · Fokus Innovation ↗ · Warum wir · Kontakt ·
+„Login“ · Ruf-Kachel „Erstgespräch“ (Off-White). Unter 1100 px ein Menü-Knopf (`<details>`, geht ohne Skript), unter 560 px ohne Ruf-Kachel.
+Anker in der Spur fahren an die passende Stelle (Blöcke tragen `data-spur-p`); springt der **Tastatur-Fokus** in einen Block der Bühne,
+fährt die Seite dorthin — nichts ist unerreichbar, auch wenn es gerade unsichtbar ist.
+
+**Ruhige Fassung** (ohne Skript, „Bewegung reduzieren“, ohne WebGL, oder wenn die Szene scheitert): dieselben Blöcke stehen
+untereinander — Titelkarte mit stehendem Verlauf (CSS), die zwei Karten nebeneinander, der dunkle Raum mit dem **Standbild der Kugel**,
+das Band als Raster, der Schlussblock; der Flug entfällt. Versteckt (Deckkraft 0) wird nur unter `html.spur-an`, das allein
+`js/szene/spur.js` setzt — nach der Prüfung auf „Bewegung reduzieren“ und WebGL. Bis das Skript entscheidet, deckt ein dunkler Grund die
+Startseite (nur mit Skript, spätestens nach 2,5 s weg).
+
+**Barrierefreiheit:** eine H1; zerlegte Überschriften tragen vorn eine unsichtbare Kopie, die Buchstaben sind `aria-hidden`
+(`MakeSzene.buehne.zerlegen`); Zahlen der Trommel mit unsichtbarer Kopie; Szene und Flug `aria-hidden`, die Szene in einem Satz
+beschrieben; Fokus sichtbar (auf Papier Tinte, auf Dunkel Türkis); Tippziele ≥ 44 px; 375 px ohne waagerechtes Scrollen; kein
+Scrollbalken-Trick, kein Scroll-Sperren.
+
+## Dateien
+
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Kopf (Logo, Navigation Beratung · Make.One · **Fokus Innovation ↗** (fokusinnovation.de) · Warum wir · Kontakt, Handy-Menü, „Login“), die Szene (`.szene`, `aria-hidden`: Leinwand, Beschriftungen, Logo-SVG `svg.zeichen`), die Kapitel-Leiste (Rechner, links) und die Kapitel — jedes mit `data-zustand` (= Eintrag im Drehbuch) und seinem Standbild (`img.still`). Fuß mit Firmierung |
-| `js/szene/kern.js` | **wiederverwendbar:** Mathematik ohne DOM — Zufall, Matrizen, der Pfad (auch als GLSL), die Lichtfäden entlang des Pfads (JS + GLSL aus einer Quelle), Kamera aus dem Scroll-Stand, SVG-Formen abtasten |
-| `js/szene/formationen.js` | **wiederverwendbar:** Formationen (Neuronennetz, Schriftzug, Stationen, Deutschlandkarte mit Städte-Liste, Knoten/Logo …) als Punkte + Linien, `bauen(drehbuch, { handy, logo })`, `logoAusSvg()` |
-| `js/szene/motor.js` | **wiederverwendbar:** WebGL-1-Motor (4 kleine Shader: Teilchen, Linien, Lichtfäden, Staub), Scroll → Zustand, Beschriftungen und Logo als HTML/SVG über der Leinwand, Fallbacks, Pause im verborgenen Tab, senkt bei Bedarf die Auflösung |
-| `js/drehbuch.js` | **nur diese Seite:** was die Szene je Kapitel zeigt (Formation, Kamera, Optionen) |
-| `standbild.mjs` | erzeugt `assets/szene/<zustand>.svg` aus derselben Geometrie (Arbeitsdatei; Caddy liefert `*.mjs` nie aus) |
-| `assets/szene/*.svg` | je Kapitel ein Standbild (nur geladen, wenn die Szene nicht läuft) |
-| `js/lichtfaeden.js` | Lichtfäden-Zeichner (Canvas 2D) — **erzeugt** aus der App (`node scripts/lichtfaeden-website.mjs`), auf der Startseite v5 nicht eingebunden (die Szene zeichnet ihre Fäden selbst); bleibt für den Generator und als gemeinsame Quelle mit fokus/ |
-| `js/menue.js` | schließt das Handy-Menü (`<details>`) nach einem Klick, mit Esc oder per Klick daneben |
-| `js/erstgespraech.js` | übernimmt das Ziel aus `#erstgespraech-link` für alle Knöpfe mit `data-erstgespraech` |
-| `css/seite.css` | Tokens wie `lib/make-one/design.ts` und `fokus/css/fokus.css` (gleich gehalten), neu nur `--tief`/`--tiefGanz`; Kapitel-Layout, Szene, Standbilder, Rechtstexte |
-| `impressum.html`, `datenschutz.html`, `404.html` | Rechtstexte (Inhalt unverändert; Datenschutz: nur die Zahl der Skripte und „WebGL“ an v5 angepasst) |
-| `assets/logo/` | Logo v5 „Synapse“ aus `scripts/website-logo.mjs` (nie von Hand ändern) — Konstruktion in `assets/logo/LOGO.md` |
-| `logo-entwuerfe.html`, `pruefen.mjs`, `LIESMICH.md` | Arbeitsdateien (werden nie ausgeliefert) |
+| `index.html` | Kopf (Kachel-Pille), die Spur mit Bühne (Szene, Papier mit Laufband, Karussell, dunkler Raum, Band, Flug, Schluss), die Abschnitte im Detail, Fuß |
+| `js/szene/spur.js` | **wiederverwendbar — der Showreel-Baukasten:** p über die Spur + Feder, Stufen (rechner/tablet/handy wie `--sr-*`), Vorhang, Werkzeuge (`sicht`, `stil`, Buchstaben-Zerfall/-Aufstieg, Karussell nach cos, Rasten, Trommel am Fortschritt, Maus, Szene steuern, Verlauf), Anker/Tastatur-Fokus, ruhige Fassung. Kennt keine Inhalte. |
+| `js/szene/verlauf.js` | **wiederverwendbar:** ruhiger Mesh-Gradient (WebGL 1, Auflösung 1, höchstens 36 fps, nur sichtbar und gebraucht) |
+| `js/szene/kern.js` | **wiederverwendbar:** Mathematik ohne DOM (Zufall, Matrizen, Pfad, Kamera, Feder, Optionen) |
+| `js/szene/formationen.js` | **wiederverwendbar:** Formationen als Punkte + Linien — neu `kugel` (dichte Hülle, links Granat, rechts Smaragd, heller Rand, hohle Mitte, eigener fester Zufall: mehrere Zustände = dieselbe Kugel); `netz: false` / `pfad: false` im Drehbuch stellen Netz, Lichtfäden und Staub ab |
+| `js/szene/motor.js` | **wiederverwendbar:** WebGL-1-Motor der Szene — neu: `fortschritt: 'extern'` (folgt `MakeSzene.fortschritt` statt Abschnitten), `teilchen` je Gerät, `hell` je Zustand, `handy()` aus dem Drehbuch, `.szene[data-ruht]` (zeichnet nicht, solange verdeckt), kein Teilchen-Bogen, wenn die Formation gleich bleibt |
+| `js/drehbuch.js` | **nur diese Seite:** Zustände der Szene (raum · band · flug mit p/bis) und die Choreografie (`MakeSzene.showreel`: was bei welchem p geschieht) |
+| `js/menue.js`, `js/erstgespraech.js` | Handy-Menü schließen; Ziel des Erstgesprächs für alle Knöpfe mit `data-erstgespraech` |
+| `js/lichtfaeden.js` | Lichtfäden-Zeichner (Canvas 2D) — **erzeugt** aus der App (`node scripts/lichtfaeden-website.mjs`), auf der Startseite nicht eingebunden; gemeinsame Quelle mit fokus/ |
+| `css/seite.css` | Tokens (das erste `:root` gleich `fokus/css/fokus.css`), neu `--papier`/`--tinte*` (Off-White, siehe Kommentar) und `--sr-*` je Stufe; ruhige Fassung + Showreel (`.spur-an`) aus einem HTML |
+| `assets/szene/raum.svg` | Standbild der Kugel (`node website/standbild.mjs`) — Titelkarte und ruhige Fassung |
+| `impressum.html`, `datenschutz.html`, `404.html` | Rechtstexte auf Off-White (Inhalt unverändert; Datenschutz: Satz zu den acht Skripten angepasst) |
+| `assets/logo/` | Logo v5 „Synapse“ aus `scripts/website-logo.mjs` (nie von Hand ändern) — `assets/logo/LOGO.md` |
+| `logo-entwuerfe.html`, `pruefen.mjs`, `stempeln.mjs`, `standbild.mjs`, `LIESMICH.md` | Arbeitsdateien (werden nie ausgeliefert) |
 
-## Standard (04.10.2026): Glas, Kaskade, Einstieg, Aurora
-Übernommen aus Kevins Vorlage nur der Standard — in unserer CI (Archivo/Public Sans, Granat/Smaragd, Tokens aus `css/seite.css`):
+**Off-White (neu 04.10.):** Die CI von MAKE hatte bisher kein Off-White. `--papier` #F4F3EF ist ein warmes, leicht gebrochenes Weiß
+(ruhiger als reines Weiß, passt zum warmen Granat); Tinte darauf = dunkler Grund der Marke #0B0E10 (wie MAKE im hellen Logo, 17,4 : 1),
+Lesetext `--tinteDim` #4F5A5D (INNOVATION im hellen Logo, 6,4 : 1), Beschriftungen `--tinteLeise` #5C6669 (5,3 : 1).
 
-| Teil | Wo | Abschalten |
-|---|---|---|
-| Glas-Knöpfe (`.knopf`, `.gross`, `.leise`): Lauf-Rand Granat → Smaragd, Pfeil-Abzeichen (`span.pfeil`), Hover −2 px | `css/seite.css` › Knöpfe | — |
-| Mikro-Pille (`.mikro.pille` + `svg.knoten-zeichen`) | `index.html`, `css/seite.css` | Klasse `pille` weglassen |
-| Buchstaben-Kaskade: `data-kaskade` an H1/H2 (nicht am Wort INNOVATION) | `js/szene/motor.js` › `zerlegen` | `text: { kaskade: false }` |
-| Ein-/Ausblenden: `data-auftritt` an Pille, Unterzeile, Knöpfen (vorher · jetzt · nach) | `motor.js` › `auftritt` | `text: { auftritt: false }` |
-| Feder statt Lerp (Szene folgt dem Scroll weich) | `kern.js` › `feder` | `folgen` (Sekunden) |
-| Einstieg: Lichtwolke blüht auf, Kamera fährt zurück | Shader `bluehen`, `kern.einstieg` | `einstieg: false` |
-| Aurora an den Rändern (¼ Auflösung, eigener Puffer) | `motor.js` › `auroraBauen`; je Kapitel `aurora` im Drehbuch | `aurora: false` |
-| Zahlen-Trommel: `li.zahl.trommel` — die Zahl zählt beim Aktivwerden hoch (2,2 s, easeOutQuint), unscharf und abgesenkt, solange sie läuft; beim Verlassen sofort 0; für Vorleser der echte Wert | `motor.js` › `trommel` | `text: { trommel: false }` |
-| Aufdeck-Fuß (ab 768 px): Fuß fest hinter der Seite, `div.aufdecken` deckt ihn auf (`--aufdeckung`); Kontakt-Aufruf Buchstabe für Buchstabe ab 20 %, Glas-Knopf „Erstgespräch anfragen“ (`data-erstgespraech`), riesige Wortmarke steigt in zwei Stimmen. Passt der Fuß nicht ins Fenster, bleibt er normal; springt der Tastatur-Fokus hinein, scrollt die Seite ans Ende | `motor.js` › Bühne, `css/seite.css` › Aufdeck-Fuß | `text: { fuss: false }` |
+### Ändern
+- **Text:** `index.html`. **Zeitplan / Bewegung:** `js/drehbuch.js` › `bild(p, w)` (je Phase ein Block). **Bild der Szene:** `js/drehbuch.js`
+  › `S.drehbuch.zustaende` (Kamera, `hell`, `p`/`bis`), danach `node website/standbild.mjs`. **Größen je Stufe:** `--sr-*` in `css/seite.css`.
+- **Danach immer:** `node website/stempeln.mjs` und `node website/pruefen.mjs`.
+- **Lokal ansehen:** `python3 -m http.server 3013 -d website` über einen Eintrag in `.claude/launch.json` (nicht per Bash).
 
-Barrierefreiheit: Ohne Skript und bei „Bewegung reduzieren“ steht aller Text sofort (der Motor startet dann nicht, das CSS versteckt nur, was der Motor
-markiert); nur der Einstieg wartet mit Skript auf den Motor — mit Notfall-Auftritt nach 2,2 s. Zerlegte Überschriften tragen vorn eine unsichtbare
-Kopie, die Buchstaben sind `aria-hidden`; nach dem Auftritt steht wieder das Original. Ohne Szene: stehender Aurora-Hauch per CSS (`body::before`).
-Nicht übernommen: Bloom, Zahlen-Karten im Kreis, Lichtblitz, Texte/Zahlen/Farben/Schriften der Vorlage, Lenis.
-Die Ausblend-Maske am Ende der ruhigen Titelzeile endet bei 0,55 statt 0,2 Deckkraft (sonst Kontrast unter 3 : 1).
+### Andocken für fokus/ (eine Quelle)
+`js/szene/spur.js`, `verlauf.js`, `kern.js`, `formationen.js`, `motor.js` kennen keine Inhalte. fokus/ bringt nur ein eigenes
+`js/drehbuch.js` mit (eigene Zustände/Formationen, eigene `bild(p, w)`), dieselbe Spur-Struktur (`.spur > .buehne`, `data-spur-p`) und
+eigene `--sr-*`. Kopieren byte-gleich wie bei den Schriften (Muster `scripts/fokus-seite.mjs`, Wächtertest vergleicht);
+`fokus/pruefen.mjs` müsste dafür `js/szene/` als Skript-Pfad erlauben.
 
-## Die Szene — Dramaturgie (Scroll = Kamerafahrt)
-
-| # | Kapitel (`data-zustand`) | Formation | Bild |
-|---|---|---|---|
-| 01 | Der Weg (`weg`) | `weg` | Start IM Neuronennetz; Granat und Smaragd verflochten als Lichtpfad, Staub fließt nach vorn — beim Scrollen geht die Kamera den Pfad |
-| 02 | INNOVATION (`innovation`) | `schriftzug` | die Teilchen formen INNOVATION in der Typo der Wortmarke (aus dem Logo-SVG), darunter Rot · Knoten · Grün; das Wort steht als echtes HTML (`h2.wort`, mit Szene unsichtbar) |
-| 02 | Der Satz (`satz`) | `strom` | „Innovation braucht Umsetzung und Sichtbarkeit.“ — zwei Stränge laufen zu einem Faden zusammen (Kamera im Strang) |
-| 03 | Beratung (`beratung`) | `huerde` | „Wachstum scheitert selten an Ideen. Meist an der Umsetzung.“ — eine graue Wand mit Öffnung, der Weg führt hindurch |
-| 3.1 | Sales (`sales`) | `trichter` | von vielen Kontakten links zu einem klaren Strahl rechts (Interim CSO, Interim Head of Sales, Go-to-Market-Beratung) |
-| 3.2 | Sichtbarkeit (`sichtbarkeit`) | `signal` | Leuchtpunkt, Ringe breiten sich aus, ein Strahl steigt auf (Events & Netzwerk-Strategie) |
-| 3.3 | Umsetzung (`umsetzung`) | `stufen` | drei wachsende Gitter Analyse · Aufbau · Skalierung, Pfad darüber (Development „Coming Soon“) |
-| 3.4 | Netzwerk (`netzwerk`) | `runden` | Runden von Menschen auf einer Kugel, Brücken dazwischen (Make.One, Make.Beteiligungen) |
-| 04 | Fokus Innovation (`fokus`) | `karte` | die Szene wird zur Deutschlandkarte (echte Koordinaten): Lichtfäden von Berlin nach Hamburg, Bielefeld, Köln, München, Dresden; Kapitel-Knopf und Menüpunkt → fokusinnovation.de |
-| 05 | Ideen (`funken`) | `funken` | verstreute Funken (41 %, 57 % mit Fußnote) |
-| 05 | KI (`ki`) | `strahl` | ein Strahl aus vielen feinen Fäden, fließt links → rechts (wie der Strahl v3 der App; 66 %, 7 %) |
-| 05 | Wirkung (`wirkung`) | `wirkung` | eine Runde von Menschen, daraus drei Ströme Umsetzung · Sichtbarkeit · Netzwerk |
-| 06 | Kontakt (`kontakt`) | `zeichen` | alles fließt in den Knoten des Logos; die Teilchen formen das Logo, dann steht es scharf als SVG (Logo unverändert) |
-
-Rechner (≥ 1100 px): Text links, die Szene rechts daneben (Objektiv-Verschiebung, Platz bis zur gemessenen Textkante); die großen
-Sätze (INNOVATION, der Satz) mittig und stehend (sticky), während sich die Szene formt. Handy: die Szene oben, der Text kommt als
-ruhige Fläche darüber; weniger Teilchen (1.800 statt 4.200), Netz 1.100 statt 2.600 Knoten, Auflösung ≤ 1,5.
-
-### Kapitel ändern
-- **Text:** in `index.html` im Abschnitt mit dem passenden `data-zustand`.
-- **Bild:** in `js/drehbuch.js` (Formation, `s` = Lage am Pfad, Kamera `abstand/hebung/seite/blick`, `breite/hoehe`, `schub`, `faeden/nah`,
-  `optionen`). Neues Kapitel = neuer Eintrag im Drehbuch + Abschnitt mit gleichem `data-zustand` in derselben Reihenfolge + Standbild.
-- **Danach:** `node website/standbild.mjs` (Standbilder neu) und `node website/pruefen.mjs` (prüft Reihenfolge, Standbilder, Gewicht).
-- **Lokal ansehen:** `python3 -m http.server 3013 -d website` über einen Eintrag in `.claude/launch.json` (nicht per Bash) — die Szene braucht
-  einen Server (Schriften, gleiche Herkunft); ohne Server zeigt die Datei die Standbilder.
-- **Neue Formation:** Funktion in `FORMEN` (`js/szene/formationen.js`) — lokal am Anker bauen (x rechts, y oben, z zur Kamera), Punkte mit
-  `b.punkt`, Linien mit `b.zug` (t = 0…1 für Aufbau von links und Lichtimpulse), Beschriftungen mit `b.marke` (+ `span.marke` in `.szene`).
-
-### Fallbacks
-- **Ohne WebGL** (oder Fehler im Aufbau): der Motor setzt `.ohne-szene` → je Kapitel das Standbild (Rechner: rechts, sticky; Handy: über dem Text).
-- **„Bewegung reduzieren“:** keine Szene, dieselben Standbilder (`@media (prefers-reduced-motion: reduce)`), kein Lauf-Effekt.
-- **Ohne Skript:** alle Inhalte, Links, Impressum; die Standbilder stehen (`@media (scripting: none)`).
-- Mit Skript und Bewegung bleiben die Standbilder ungeladen (`display: none` + `loading="lazy"`).
-
-### Technik, Gewicht, Tempo (gemessen 04.10., headless Chrome, Apple M3)
-- **Eigenes WebGL statt three.js:** die Szene besteht nur aus Punkten und 1-px-Linien mit additivem Licht — dafür reichen vier kleine Shader.
-  So bleibt alles selbst gehostet ohne Bibliothek (three.js allein wäre ~170 KB gzip und enthält Muster, die `pruefen.mjs` für Seiten-Skripte sperrt).
-- **Gewicht:** Startseite (HTML + CSS + sechs Skripte) **≈ 53 KB gzip** (Standard 04.10.; v5: 42 KB), mit Schriften ≈ 113 KB (`pruefen.mjs`: Grenze 400 KB). Standbilder je ≈ 21–46 KB gzip, nur im Fallback.
-- **Erster Text:** sofort als HTML (First Contentful Paint ≈ 0,08 s lokal); die Szene baut sich nach dem ersten Bild auf (einmalig ≈ 90 ms Rechnen, Handy gedrosselt ≈ 160 ms).
-- **Bildrate:** 60 fps beim Scrollen über die ganze Seite, längstes Bild 16,8 ms (Rechner und Handy-Emulation mit 4× gedrosselter CPU). Konsole leer.
-  Mit Standard (Aurora, Text-Bühne, Fuß): Rechner 60 fps / längstes Bild 16,8 ms; Handy (CPU × 4) 59,9 fps, ein Bild 33 ms. Messungen schwanken, wenn
-  der Rechner nebenbei ausgelastet ist — dann einzelne Ausreißer bis ~80 ms.
-
-### Andocken für fokus/ (später, eine Quelle)
-`js/szene/kern.js`, `formationen.js`, `motor.js` kennen keine Inhalte. Wie beim Lichtfäden-Zeichner kann ein Generator
-(`scripts/szene-website.mjs`, Muster `scripts/lichtfaeden-website.mjs` mit Liste `ZIELE`) sie byte-gleich nach `fokus/js/szene/` kopieren
-(Wächtertest vergleicht). fokus/ bringt nur ein eigenes `js/drehbuch.js` (z. B. `karte` mit `optionen.staedte` = eigene Liste, `schriftzug`
-mit eigener SVG-Form, `zeichen` mit dem Fokus-Knoten), Abschnitte mit `data-zustand`, `.szene` mit Leinwand und die Standbilder
-(`standbild.mjs` mit Ordner als Parameter). `fokus/pruefen.mjs` müsste dafür `js/szene/` als Skript-Pfad erlauben.
+### Gewicht, Tempo (gemessen 04.10., headless Chrome, Apple M3)
+- **Startseite** (HTML + CSS + acht Skripte, gzip) ≈ 64 KB; ausgeliefert ohne Schriften ≈ 82 KB (mit Standbild der Kugel 17 KB),
+  mit Schriften ≈ 142 KB (`pruefen.mjs`: Grenze 400 KB).
+- **Bildrate** beim Scrollen über die ganze Seite: Rechner 1440 × 900 **60 fps**, längstes Bild 16,8 ms; Handy 375 × 812 mit 4× gedrosselter
+  CPU **60 fps**, längstes Bild 16,8 ms (drei Läufe; ein früherer kalter Lauf hatte einmal 417 ms beim ersten Erscheinen der Karten).
+  Aufbau der Szene einmalig ≈ 85–200 ms (gedrosselt). Konsole leer, kein waagerechtes Scrollen (375 / 820 / 1440 px).
 
 ## Freigabe — in dieser Reihenfolge
 
@@ -116,7 +110,7 @@ mit eigener SVG-Form, `zeichen` mit dem Fokus-Knoten), Abschnitte mit `data-zust
    `robots.txt` sperrt — `noindex` je Seite, keine
    Skripte, keine Inline-Stile, keine fremden Quellen/Tracker, eine H1 je Seite, Login-Knopf, Impressum- und
    Datenschutz-Link, alle eigenen Links und Anker — dazu: Skripte nur aus `js/` und ohne Speichern/Senden, Logo-Dateien
-   vollständig, Bühnen-Zeichen = `assets/logo/wortmarke.svg`, Navigation, Angebote (drei mit „Erstgespräch anfragen“, genau
+   vollständig, Schlussblock mit `assets/logo/wortmarke.svg`, Showreel (Spur + Bühne, Zustände mit Lage p, Standbild ohne tote Dateien, Lichter an höchstens drei Stellen, Buchstaben-Bewegung nur an H1 und Raum-Überschrift), Navigation, Angebote (drei mit „Erstgespräch anfragen“, genau
    ein „Coming Soon“ bei Development), Mail-Knöpfe Make.One/Make.Beteiligungen, **Ziel des Erstgesprächs an genau einer Stelle**
    (`#erstgespraech-link`: vorbereitete Mail oder Buchungsseite mit gültigem Slug), **keine Preise**, **Sperrliste**: keine anderen Firmen-, Marken- oder
    Projektnamen (nur MAKE; KEMARIS nur in der Firmierung), der Name der Software nirgends im Ordner, Wortregeln (kein „Dashboard“, „Tool“,
@@ -131,9 +125,9 @@ mit eigener SVG-Form, `zeichen` mit dem Fokus-Knoten), Abschnitte mit `data-zust
    von selbst). Prüfen: `curl -sI https://makeinnovation.de` → 200 mit `content-security-policy`,
    `curl -sI https://www.makeinnovation.de` → 301 auf `https://makeinnovation.de/`.
 
-## Offene Platzhalter (Stand 04.10.2026, v5)
+## Offene Platzhalter (Stand 04.10.2026, „Klar“)
 
-- **Startseite › Kontakt › Warum MAKE:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
+- **Startseite › Warum MAKE › Vertrieb aus der Praxis:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
 
 ## Später auf Buchungsseite umstellen
 
@@ -166,8 +160,8 @@ Anliegen, eigener Hinweis vor dem Absenden) und im Abschnitt „Cookies und Spei
 - Gründer-Texte: MAKE = Malin + Kevin, Malins Zeile aus v2 (Kevins Worte, 27.09.). Ohne Fotos — Initialen in
   Personenfarbe. Fotos nur, wenn ihr sie freigebt (dann als Datei in `assets/`, `img-src 'self'` erlaubt das).
 - Anrede auf der Startseite **„Du“** (Kevin 03.10.: unter Unternehmern üblich, natürlich und souverän; Überschrift „Warum du mit uns arbeiten solltest.“). **Impressum und Datenschutz bleiben förmlich („Sie“)** — Rechtstexte.
-- **Belegte Zahlen** (Kevin 03.10.): vier Kacheln im Kapitel „05 KI & Innovation in Deutschland“ (je zwei in den Schritten Ideen und KI),
-  jede mit Fußnote; die Quellenliste steht am Ende des Kapitels. Nur Originalquellen, direkt am Dokument geprüft (Stand der Prüfung 03.10.2026). Neue Zahl = neue Quelle in
+- **Belegte Zahlen** (Kevin 03.10.): vier Kacheln in zwei Karten des Bands („Ideen gibt es genug.“, „KI macht aus Ideen schneller Ergebnisse.“),
+  jede mit Fußnote; die Quellenliste steht im Abschnitt Kontakt (`#quellen`). Nur Originalquellen, direkt am Dokument geprüft (Stand der Prüfung 03.10.2026). Neue Zahl = neue Quelle in
   `QUELLEN_LINKS` (`pruefen.mjs`) eintragen — der Prüfer verlangt je Kachel eine Fußnote mit genau einem dieser Links.
   Jährlich neu prüfen, ob eine jüngere Ausgabe erschienen ist:
 

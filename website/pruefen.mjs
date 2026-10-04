@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ─── MAKE Innovation · Landingpage: Freigabe-Prüfung (v3 01.10.2026, v4 03.10.2026: Firmierung, v5 04.10.2026: Szene) ───
+// ─── MAKE Innovation · Landingpage: Freigabe-Prüfung (v3 01.10.2026, v4 03.10.2026: Firmierung, v5 04.10.2026: Szene, „Klar“ 04.10.2026: Showreel) ───
 // Die Seite unter makeinnovation.de geht erst online, wenn Kevin sie gesehen und freigegeben hat. Dieser
 // Prüfschritt sagt, ob sie freigabefähig ist:
 //   · Platzhalter: steht irgendwo noch „[[KEVIN:“, ist die Seite NICHT freigabefähig (Impressum/Datenschutz
@@ -23,9 +23,12 @@
 //     Titel/Beschreibung). KEMARIS steht nur in dieser Firmierung (und in der Adresse @kemaris.de im Impressum).
 //   · Vorschau: solange robots.txt alles sperrt, trägt jede Seite <meta name="robots" content="noindex">; jede Seite
 //     hat eine Beschreibung (<meta name="description">).
-//   · Szene (v5): Skripte auch aus js/szene/, Leinwand rein dekorativ (aria-hidden), jedes Kapitel des Drehbuchs
-//     (js/drehbuch.js) hat seinen Abschnitt (data-zustand, gleiche Reihenfolge) und sein Standbild (assets/szene/<name>.svg),
-//     Gewicht der Startseite (HTML + CSS + Skripte, gzip) höchstens GEWICHT_GRENZE.
+//   · Szene und Showreel („Klar“ 04.10.): Skripte auch aus js/szene/, Leinwand rein dekorativ (aria-hidden), die Bühne steht in
+//     der Spur (.spur > .buehne); jeder Zustand des Drehbuchs (js/drehbuch.js) hat seine Lage p (aufsteigend, 0…1), jeder mit
+//     `standbild: true` sein Standbild (assets/szene/<name>.svg, von der Seite genutzt) — und in assets/szene/ liegt nichts anderes;
+//     Blöcke mit data-spur-p tragen eine Lage 0…1; die Lichter (Leinwände) stehen an höchstens LICHTER_HOECHSTENS Stellen (Kevin:
+//     80 % Seriosität); zerlegt werden nur die H1 (data-zerfall) und die Überschrift des dunklen Raums (data-aufstieg, H2);
+//     der Schlussblock zeigt die Wortmarke (assets/logo/wortmarke.svg). Gewicht der Startseite (HTML + CSS + Skripte, gzip) höchstens GEWICHT_GRENZE.
 //   · Fokus Innovation: Menüpunkt und Kapitel verlinken auf FOKUS_SEITE, das Kapitel nennt alle STAEDTE.
 //   · Stempel (04.10.): jeder Verweis auf css/ und js/ trägt ?v=<Prüfsumme der Datei> (Caddy hält Stile/Skripte einen Tag,
 //     Seiten nie — ohne Stempel mischt ein Browser nach dem Upload die neue Seite mit alten Skripten). Setzen: node website/stempeln.mjs
@@ -77,6 +80,8 @@ export const MAIL_BETREFFE = {
 export const NAVIGATION = ['#markttraktion', '#make-one', FOKUS_SEITE, '#ueber-uns', '#kontakt'];
 /** Städte von Fokus Innovation (Kevin 04.10.: Dresden dazu) — stehen im Kapitel #fokus-innovation. */
 export const STAEDTE = ['Berlin', 'Hamburg', 'Bielefeld', 'Köln', 'München', 'Dresden'];
+/** Lichter (Kevin 04.10.: höchstens 20 % Akzente): so viele Leinwände (WebGL) hat die Startseite höchstens — Szene + zwei Verläufe. */
+export const LICHTER_HOECHSTENS = 3;
 /** Höchstgewicht der Startseite: index.html + CSS + alle Skripte der Seite, gzip, ohne Schriften und Standbilder. */
 export const GEWICHT_GRENZE = 400 * 1024;
 /** Skripte der Seiten: eigene Dateien aus js/ oder js/szene/ (die wiederverwendbare Szene). */
@@ -301,21 +306,36 @@ export function pruefeWebsite(ordner) {
       if (!fokus.includes(`href="${FOKUS_SEITE}"`)) fehler.push(`index.html: Kapitel Fokus Innovation ohne Link auf ${FOKUS_SEITE}`);
       for (const st of STAEDTE) if (!fokus.includes(`<b>${st}</b>`)) fehler.push(`index.html: Fokus Innovation — Stadt ${st} fehlt`);
     }
-    // Szene: rein dekorativ, Drehbuch und Seite passen zusammen, jedes Kapitel hat sein Standbild.
+    // Szene: rein dekorativ; die Bühne steht in der Spur; Drehbuch, Lagen und Standbilder passen zusammen.
     if (!/<div class="szene" aria-hidden="true">\s*<canvas><\/canvas>/.test(index)) fehler.push('index.html: Szene (<div class="szene" aria-hidden="true"><canvas>) fehlt oder ist nicht aria-hidden');
     const haupt = /<main\b[\s\S]*<\/main>/.exec(index)?.[0] ?? '';
-    const abschnitte = Array.from(haupt.matchAll(/<(?:section|div)\b[^>]*\sdata-zustand="([a-z-]+)"[^>]*>\s*<img class="still" src="([^"]+)"/g), m => [m[1], m[2]]);
-    const alleAbschnitte = Array.from(haupt.matchAll(/\sdata-zustand="([a-z-]+)"/g), m => m[1]);
-    if (abschnitte.length !== alleAbschnitte.length) fehler.push('index.html: jeder Abschnitt mit data-zustand beginnt mit seinem Standbild (<img class="still" src="assets/szene/<name>.svg">)');
-    for (const [name, src] of abschnitte) if (src !== `assets/szene/${name}.svg`) fehler.push(`index.html: Standbild von „${name}“ ist ${src} (erwartet assets/szene/${name}.svg)`);
+    if (!/<div class="spur"[^>]*>\s*<div class="buehne">/.test(haupt)) fehler.push('index.html: Showreel ohne Spur und Bühne (<div class="spur"><div class="buehne">)');
     const drehbuch = inhalt.get('js/drehbuch.js') ?? '';
-    const namen = Array.from(drehbuch.matchAll(/\{ name: '([a-z-]+)'/g), m => m[1]);
-    if (namen.join(' ') !== alleAbschnitte.join(' ')) fehler.push(`index.html: Abschnitte (${alleAbschnitte.join(', ')}) passen nicht zum Drehbuch js/drehbuch.js (${namen.join(', ')})`);
+    const zustaende = Array.from(drehbuch.matchAll(/\{ name: '([a-z-]+)', p: ([\d.]+)(?:, bis: ([\d.]+))?([^\n]*)/g), m => ({ name: m[1], p: +m[2], bis: m[3] ? +m[3] : +m[2], standbild: /\sstandbild: true/.test(m[4]) }));
+    const alleNamen = Array.from(drehbuch.matchAll(/\{ name: '([a-z-]+)'/g), m => m[1]);
+    if (zustaende.length !== alleNamen.length || zustaende.length < 2) fehler.push(`js/drehbuch.js: jeder Zustand braucht seine Lage im Showreel ({ name, p[, bis] }) — mindestens zwei (${alleNamen.join(', ')})`);
+    let vorher = 0;
+    for (const z of zustaende) {
+      if (!(z.p >= vorher && z.bis >= z.p && z.bis <= 1)) fehler.push(`js/drehbuch.js: Zustand „${z.name}“ liegt nicht aufsteigend zwischen 0 und 1 (p ${z.p}, bis ${z.bis})`);
+      vorher = z.bis;
+    }
+    const mitBild = zustaende.filter(z => z.standbild).map(z => `assets/szene/${z.name}.svg`);
+    for (const d of mitBild) {
+      if (!dateien.includes(d)) fehler.push(`${d}: fehlt (node website/standbild.mjs)`);
+      if (!index.includes(`src="${d}"`)) fehler.push(`index.html: Standbild ${d} wird nicht gezeigt (Titelkarte oder ruhige Fassung)`);
+    }
+    for (const d of dateien.filter(d => d.startsWith('assets/szene/'))) if (!mitBild.includes(d)) fehler.push(`${d}: kein Zustand mit standbild: true — tote Datei`);
+    for (const m of haupt.matchAll(/\sdata-spur-p="([^"]*)"/g)) if (!/^(?:0|1|0?\.\d+)$/.test(m[1]) || +m[1] > 1) fehler.push(`index.html: data-spur-p="${m[1]}" — Lage im Showreel zwischen 0 und 1`);
+    const lichter = (index.match(/<canvas\b/g) ?? []).length;
+    if (lichter > LICHTER_HOECHSTENS) fehler.push(`index.html: ${lichter} Leinwände — die Lichter stehen an höchstens ${LICHTER_HOECHSTENS} Stellen (80 % Seriosität)`);
+    const zerlegt = Array.from(index.matchAll(/<(\w+)\b[^>]*\sdata-(zerfall|aufstieg)\b[^>]*>/g), m => `${m[1]}:${m[2]}`);
+    if (zerlegt.join(' ') !== 'h1:zerfall h2:aufstieg') fehler.push(`index.html: Buchstaben-Bewegung nur an der H1 (data-zerfall) und der Überschrift des dunklen Raums (h2 data-aufstieg) — gefunden: ${zerlegt.join(', ') || 'keine'}`);
+    if (!/<section class="ende"[\s\S]*?src="assets\/logo\/wortmarke\.svg"[\s\S]*?<\/section>/.test(index)) fehler.push('index.html: Schlussblock ohne Wortmarke (assets/logo/wortmarke.svg)');
     // Gewicht: HTML + CSS + Skripte der Startseite (gzip), ohne Schriften und Standbilder.
     const teile = ['index.html', ...Array.from(index.matchAll(/<link rel="stylesheet" href="([^"]+)"/g), m => m[1]), ...Array.from(index.matchAll(/<script src="([^"]+)"/g), m => m[1])];
     const gewicht = teile.map(t => t.split('?')[0]).filter(t => dateien.includes(t)).reduce((summe, t) => summe + gzipSync(readFileSync(join(ordner, t))).length, 0);
     if (gewicht > GEWICHT_GRENZE) fehler.push(`index.html: Startseite wiegt ${(gewicht / 1024).toFixed(0)} KB gzip (höchstens ${GEWICHT_GRENZE / 1024} KB)`);
-    // Die Bühne zeichnet dieselbe Wortmarke wie assets/logo/wortmarke.svg (sonst laufen zwei Logos auseinander).
+    // Zeichnet die Szene das Logo (svg.zeichen, Formation „zeichen“), dann dieselbe Wortmarke wie assets/logo/wortmarke.svg.
     const zeichen = /<svg class="zeichen"[\s\S]*?<\/svg>/.exec(index)?.[0] ?? '';
     // Formen: Pfade (d + Strich- oder Füllfarbe), Kreise (Lage, Radius, Farbe) und Striche (Rechtecke) — ohne Klassen.
     const attr = (t, n) => new RegExp(`\\s${n}="([^"]+)"`).exec(t)?.[1] ?? '';
@@ -323,7 +343,7 @@ export function pruefeWebsite(ordner) {
       ? `p ${attr(t, 'd')}|${attr(t, 'stroke')}|${attr(t, 'fill')}`
       : art === 'circle' ? `c ${attr(t, 'cx')} ${attr(t, 'cy')} ${attr(t, 'r')}|${attr(t, 'stroke')}|${attr(t, 'fill')}`
         : `r ${attr(t, 'x')} ${attr(t, 'y')} ${attr(t, 'width')} ${attr(t, 'height')}|${attr(t, 'fill')}`).sort().join(' ');
-    if (dateien.includes('assets/logo/wortmarke.svg') && pfade(zeichen) !== pfade(inhalt.get('assets/logo/wortmarke.svg')))
+    if (zeichen && dateien.includes('assets/logo/wortmarke.svg') && pfade(zeichen) !== pfade(inhalt.get('assets/logo/wortmarke.svg')))
       fehler.push('index.html: Bühnen-Zeichen weicht von assets/logo/wortmarke.svg ab — Block aus `node scripts/website-logo.mjs --buehne` übernehmen');
   }
 

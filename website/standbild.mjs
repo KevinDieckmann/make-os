@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// ─── MAKE Innovation · Landingpage v5: Standbilder der Szene (04.10.2026) ─────────────────────────────
-// Ohne WebGL, ohne Skript oder bei „Bewegung reduzieren“ steht in jedem Kapitel ein gestaltetes Standbild — gerechnet aus
-// DERSELBEN Geometrie wie die Szene im Browser (js/szene/kern.js + formationen.js nach js/drehbuch.js), mit derselben
-// Kamera, nur ruhig: Netz, Lichtfäden, Linien und Teilchen der Formation als SVG (Punkte = runde Striche, gruppiert nach
-// Farbe und Helligkeit; dazu ein weicher Schein über eine Filter-Kopie der hellen Teile). Ohne Stil-Attribute (CSP).
+// ─── MAKE Innovation · Standbilder der Szene (v5 04.10.2026; „Klar“ 04.10.2026) ─────────────────────────────
+// Gerechnet aus DERSELBEN Geometrie wie die Szene im Browser (js/szene/kern.js + formationen.js nach js/drehbuch.js), mit derselben
+// Kamera, nur ruhig: Netz, Lichtfäden, Linien und Teilchen der Formation als SVG (Punkte = runde Striche, gruppiert nach Farbe
+// und Helligkeit; dazu ein weicher Schein über eine Filter-Kopie der hellen Teile). Ohne Stil-Attribute (CSP).
+// makeinnovation.de braucht eines: die Kugel (Zustand „raum“) — in der Titelkarte und in der ruhigen Fassung des dunklen Raums.
 // Arbeitsdatei (wird nie ausgeliefert: Caddy versteckt *.mjs).
-//   node website/standbild.mjs   → website/assets/szene/<zustand>.svg (je Zustand des Drehbuchs)
+//   node website/standbild.mjs   → website/assets/szene/<zustand>.svg (je Zustand des Drehbuchs; trägt ein Zustand `standbild: true`,
+//                                   nur diese)
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import vm from 'node:vm';
 
@@ -15,7 +16,8 @@ for (const d of ['js/szene/kern.js', 'js/szene/formationen.js', 'js/drehbuch.js'
 const S = kontext.MakeSzene, K = S.kern, FM = S.formationen;
 const wortmarke = readFileSync(new URL('assets/logo/wortmarke.svg', hier), 'utf8');
 const logo = FM.logoAusSvg(wortmarke);
-const welt = FM.bauen(S.drehbuch, { handy: false, logo, anzahl: 2600 });
+const welt = FM.bauen(S.drehbuch, { handy: false, logo, anzahl: (S.drehbuch.teilchen && S.drehbuch.teilchen.standbild) || 2600 });
+const mitStandbild = S.drehbuch.zustaende.some(z => z.standbild);
 const Z = welt.Z, W = 800, H = 800;
 const hex = c => '#' + c.map(v => Math.round(Math.min(1, v) * 255).toString(16).padStart(2, '0')).join('');
 const FARBEN = FM.PALETTE.map(hex);
@@ -26,6 +28,7 @@ const MARKEN = { umsetzung: ['Analyse', 'Aufbau', 'Skalierung'], fokus: (S.forma
 mkdirSync(new URL('assets/szene/', hier), { recursive: true });
 let summe = 0;
 Z.forEach((zst, k) => {
+  if (mitStandbild && !S.drehbuch.zustaende[k].standbild) return;
   const kam = K.kamera(Z, k, 0, 0, W / H, { mittig: true });
   const M = K.mal(K.perspektive(kam.fov, W / H, .1, 600, 0, 0), K.blick(kam.auge, kam.ziel, kam.oben));
   const px = H / 2 / Math.tan(kam.fov / 2) * .075, nebel = [kam.D * .9 + 6, kam.D + 80];
@@ -55,7 +58,7 @@ Z.forEach((zst, k) => {
   for (let i = 0; i < np.length / 4; i++) punkt([np[i * 4], np[i * 4 + 1], np[i * 4 + 2]], np[i * 4 + 3], ns[i * 4 + 2]);
   // Lichtfäden des Pfads (Zeit 0), wie im Shader — vor der Kamera bis 110 Einheiten.
   const sKam = zst.s - kam.D, nah = zst.nah * kam.D;
-  for (let f = 0; f < 18; f++) {
+  for (let f = 0; f < (S.drehbuch.pfad === false ? 0 : 18); f++) {
     const saat = (f * .618) % 1, strang = f % 9 === 8 ? 2 : f % 2;
     let vor = null;
     for (let s = sKam; s < sKam + 120; s += .8) {
@@ -98,4 +101,4 @@ Z.forEach((zst, k) => {
   summe += svg.length;
   console.log(`✓ assets/szene/${zst.name}.svg (${(svg.length / 1024).toFixed(1)} KB)`);
 });
-console.log(`  zusammen ${(summe / 1024).toFixed(0)} KB (werden nur ohne Szene geladen)`);
+console.log(`  zusammen ${(summe / 1024).toFixed(0)} KB`);

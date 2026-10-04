@@ -132,7 +132,7 @@ ${z}return vec3(o,sicht);}
   }
   /** Drehbuch-Zustände mit Vorgaben füllen. */
   function zustaende(liste) {
-    return liste.map(z => Object.assign({ abstand: 18, hebung: 1, seite: 0, blick: 0, breite: 8, schub: 0, funkeln: .15, faeden: .5, nah: .6, aurora: 1 }, z,
+    return liste.map(z => Object.assign({ abstand: 18, hebung: 1, seite: 0, blick: 0, breite: 8, schub: 0, funkeln: .15, faeden: .5, nah: .6, aurora: 1, hell: 1 }, z,
       { hoehe: z.hoehe ?? (z.breite ?? 8) * .72, hoch: z.hoch ?? ((z.schub ?? 0) > 0 ? .4 : 0) }));
   }
 

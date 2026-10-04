@@ -14,7 +14,13 @@
 //             Bausteine mit data-auftritt blenden je Kapitel ein und aus (vorher · jetzt · nach) — am selben Fortschritt wie die Szene,
 //             Zahlen in .trommel .wert zählen beim Aktivwerden hoch (Trommel), der Fuß hinter .aufdecken wird beim Scrollen aufgedeckt
 // Das native Scrollen bleibt unberührt; die Szene folgt ihm über eine gedämpfte Feder (kern.feder).
-// Pausiert im verborgenen Tab, senkt bei Bedarf die Auflösung. Liest, speichert und sendet nichts.
+// Fortschritt von außen (Drehbuch `fortschritt: 'extern'`, z. B. eine Showreel-Spur — js/szene/spur.js): dann misst der Motor keine
+// Abschnitte, sondern folgt MakeSzene.fortschritt (0 … n−1), den die Seite in jedem Bild setzt.
+// Ruhig stellen (Drehbuch): `netz: false` (kein Neuronennetz), `pfad: false` (keine Lichtfäden und kein Staub am Pfad), `teilchen`
+// { rechner, handy } (Zahl der Teilchen), je Zustand `hell` (Helligkeit der Formation). Bleiben zwei Zustände in derselben Formation,
+// gleiten die Teilchen nicht (nur die Kamera fährt).
+// Pausiert im verborgenen Tab, senkt bei Bedarf die Auflösung. Trägt .szene das Attribut data-ruht (setzt eine Seite, solange
+// sie die Szene verdeckt), rechnet der Motor den Fortschritt weiter, zeichnet aber nicht. Liest, speichert und sendet nichts.
 (function (wurzel) {
   'use strict';
   const S = wurzel.MakeSzene = wurzel.MakeSzene || {};
@@ -75,7 +81,8 @@
   if (!S.kern || !S.formationen || !S.drehbuch || !leinwand) return;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const K = S.kern, FM = S.formationen;
-  const handy = window.innerWidth < 760 || (window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 1100);
+  // Hochkant (Szene oben, Text darunter): die Seite darf das selbst entscheiden (Drehbuch `handy: () => …`, gleiche Stufe wie ihr CSS).
+  const handy = typeof S.drehbuch.handy === 'function' ? !!S.drehbuch.handy() : window.innerWidth < 760 || (window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 1100);
   const OPT = K.optionen(S.drehbuch, handy);
   // Mit Skript blendet das CSS die Standbilder aus (@media (scripting: enabled)), solange die Szene kommt — scheitert
   // sie, holt „ohne-szene“ sie zurück. Die Text-Bühne läuft auch ohne Szene weiter.
@@ -83,8 +90,9 @@
 
   // ── Scroll → Fortschritt (eine Quelle für Szene und Text) ──
   const Z = K.zustaende(S.drehbuch.zustaende), n = Z.length;
-  const abschnitte = Z.map(z => document.querySelector(`main [data-zustand="${z.name}"]`));
-  if (abschnitte.some(a => !a)) { html.classList.add('ohne-szene'); return; } // Drehbuch und Seite passen nicht zusammen
+  const EXTERN = S.drehbuch.fortschritt === 'extern';
+  const abschnitte = EXTERN ? [] : Z.map(z => document.querySelector(`main [data-zustand="${z.name}"]`));
+  if (abschnitte.some(a => !a) || n < 2) { html.classList.add('ohne-szene'); return; } // Drehbuch und Seite passen nicht zusammen
   let lagen = [], vh = window.innerHeight, kante = 0;
   const spalte = document.querySelector('main .station .inhalt');
   function messen() {
@@ -93,8 +101,8 @@
     lagen = abschnitte.map(el => { const r = el.getBoundingClientRect(); return { top: r.top + y, hoehe: Math.max(1, r.height) }; });
     buehne.messen(y);
   }
-  const zielT = y => { let T = 0; for (let j = 1; j < n; j++) T += K.clamp((y + vh * .8 - lagen[j].top) / (vh * .6), 0, 1); return T; };
-  const lesen = (j, y) => K.clamp((y + vh * .5 - lagen[j].top) / lagen[j].hoehe, 0, 1) - .5;
+  const zielT = y => { if (EXTERN) return K.clamp(+S.fortschritt || 0, 0, n - 1); let T = 0; for (let j = 1; j < n; j++) T += K.clamp((y + vh * .8 - lagen[j].top) / (vh * .6), 0, 1); return T; };
+  const lesen = (j, y) => EXTERN ? 0 : K.clamp((y + vh * .5 - lagen[j].top) / lagen[j].hoehe, 0, 1) - .5;
 
   // ── Text-Bühne (Seite) ──
   const buehne = (function () {
@@ -219,7 +227,7 @@
         const mittel = dauer.reduce((a, c) => a + c, 0) / 90;
         if (mittel > .024) { szene.dpr = Math.max(1, szene.dpr - .25); gesenkt++; dauer.length = 0; szene.groesse(); }
       }
-      szene.zeichnen(T, k, u);
+      if (!huelle.hasAttribute('data-ruht') || !html.classList.contains('mit-szene')) szene.zeichnen(T, k, u);
     } else if (!szeneKommt && ziel === T && !textLaeuft) { laeuft = false; return; } // ohne Szene: ruhen, bis wieder gescrollt wird
     requestAnimationFrame(bild);
   }
@@ -243,7 +251,8 @@
     const gl = leinwand.getContext('webgl', { antialias: true, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
     if (!gl) return null;
     const zeichen = document.querySelector('svg.zeichen');
-    const welt = FM.bauen(S.drehbuch, { handy, logo: zeichen ? FM.logoAusSvg(zeichen.outerHTML) : null });
+    const teilchen = S.drehbuch.teilchen;
+    const welt = FM.bauen(S.drehbuch, { handy, logo: zeichen ? FM.logoAusSvg(zeichen.outerHTML) : null, anzahl: teilchen ? teilchen[handy ? 'handy' : 'rechner'] : undefined });
 
     // ── Shader ──
     const P = FM.PALETTE.map(c => `vec3(${c.map(v => v.toFixed(3)).join(',')})`);
@@ -263,7 +272,7 @@ void main(){vec2 c=gl_PointCoord*2.-1.;float d=dot(c,c);if(d>1.)discard;float a=
 uniform float uMix;uniform float uFunkeln;uniform float uGewicht;
 void main(){
 float m=clamp((uMix-aSaat.x*.4)/.6,0.,1.);m=m*m*(3.-2.*m);
-vec3 p=mix(aVon.xyz,aNach.xyz,m);float bogen=sin(m*3.14159);
+vec3 p=mix(aVon.xyz,aNach.xyz,m);float bogen=sin(m*3.14159)*min(1.,distance(aVon.xyz,aNach.xyz)*4.);
 p+=vec3(cos(aSaat.y),sin(aSaat.y),cos(aSaat.y*1.7))*bogen*(1.+aSaat.w*1.8);
 p+=.035*vec3(sin(uZeit*.6+aSaat.y*7.),sin(uZeit*.5+aSaat.w*9.),sin(uZeit*.7+aSaat.x*5.));
 float h=mix(fract(aVon.w),fract(aNach.w),m);
@@ -426,34 +435,41 @@ gl_FragColor=vec4(uGrund+texture2D(uBild,vP*.5+.5).rgb+(d-.5)/255.,1.);}`;
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
       // Netz: Kanten, dann Knoten.
       let pr = PR.linien; nutze(pr, g);
-      binde(pr, 'aPos', B.kanten, 3, 6, 0); binde(pr, 'aDaten', B.kanten, 3, 6, 3);
-      gl.uniform1f(pr.u('uGewicht'), 1); gl.uniform1f(pr.u('uEnthuellt'), 2); gl.uniform1f(pr.u('uPuls'), .22); gl.uniform1f(pr.u('uAnteil'), .25); gl.uniform1f(pr.u('uGrund'), .26);
-      gl.drawArrays(gl.LINES, 0, B.kantenN);
+      if (B.kantenN) {
+        binde(pr, 'aPos', B.kanten, 3, 6, 0); binde(pr, 'aDaten', B.kanten, 3, 6, 3);
+        gl.uniform1f(pr.u('uGewicht'), 1); gl.uniform1f(pr.u('uEnthuellt'), 2); gl.uniform1f(pr.u('uPuls'), .22); gl.uniform1f(pr.u('uAnteil'), .25); gl.uniform1f(pr.u('uGrund'), .26);
+        gl.drawArrays(gl.LINES, 0, B.kantenN);
+      }
       // Linien der Formationen in der Nähe des Zustands (bauen sich von links auf).
       for (let i = 0; i < n; i++) {
         const L = B.linien[i]; if (!L) continue;
         const w = K.sanft((1 - Math.abs(T - i)) * 1.6); if (w <= .002) continue;
         binde(pr, 'aPos', L.b, 3, 6, 0); binde(pr, 'aDaten', L.b, 3, 6, 3);
-        gl.uniform1f(pr.u('uGewicht'), w); gl.uniform1f(pr.u('uEnthuellt'), w * 1.1); gl.uniform1f(pr.u('uPuls'), .3); gl.uniform1f(pr.u('uAnteil'), 1); gl.uniform1f(pr.u('uGrund'), handy ? .85 : .7);
+        gl.uniform1f(pr.u('uGewicht'), w * kam.wert('hell')); gl.uniform1f(pr.u('uEnthuellt'), w * 1.1); gl.uniform1f(pr.u('uPuls'), .3); gl.uniform1f(pr.u('uAnteil'), 1); gl.uniform1f(pr.u('uGrund'), handy ? .85 : .7);
         gl.drawArrays(gl.LINES, 0, L.n);
       }
-      // Lichtfäden entlang des Pfads.
-      pr = PR.faeden; nutze(pr, g);
+      // Lichtfäden entlang des Pfads und Staub, der entlang der Fäden fließt (fehlen bei `pfad: false`).
       const nah = kam.wert('nah') * kam.D, hell = kam.wert('faeden');
-      binde(pr, 'aFaden', B.faeden, 3, 3, 0); gl.uniform1f(pr.u('uGrund'), (handy ? 1.1 : .85) * hell); gl.uniform2f(pr.u('uNah'), nah * .7 + 1.5, nah + 7);
-      gl.drawArrays(gl.LINES, 0, B.faedenN);
-      // Staub, der entlang der Fäden fließt.
-      pr = PR.staub; nutze(pr, g);
-      binde(pr, 'aStaub', B.staub, 3, 3, 0); gl.uniform2f(pr.u('uBereich'), welt.von, welt.bis - welt.von);
-      gl.uniform2f(pr.u('uNah'), nah * .7 + 1, nah + 5); gl.uniform1f(pr.u('uGrund'), .15 + .85 * hell);
-      gl.drawArrays(gl.POINTS, 0, B.staubN);
+      if (B.faedenN) {
+        pr = PR.faeden; nutze(pr, g);
+        binde(pr, 'aFaden', B.faeden, 3, 3, 0); gl.uniform1f(pr.u('uGrund'), (handy ? 1.1 : .85) * hell); gl.uniform2f(pr.u('uNah'), nah * .7 + 1.5, nah + 7);
+        gl.drawArrays(gl.LINES, 0, B.faedenN);
+      }
+      if (B.staubN) {
+        pr = PR.staub; nutze(pr, g);
+        binde(pr, 'aStaub', B.staub, 3, 3, 0); gl.uniform2f(pr.u('uBereich'), welt.von, welt.bis - welt.von);
+        gl.uniform2f(pr.u('uNah'), nah * .7 + 1, nah + 5); gl.uniform1f(pr.u('uGrund'), .15 + .85 * hell);
+        gl.drawArrays(gl.POINTS, 0, B.staubN);
+      }
       // Neuronen (statisch) und die Teilchen der Formationen.
       pr = PR.punkte; nutze(pr, g);
-      binde(pr, 'aVon', B.netz, 4, 4, 0); binde(pr, 'aNach', B.netz, 4, 4, 0); binde(pr, 'aSaat', B.netzSaat, 4, 4, 0);
-      gl.uniform1f(pr.u('uMix'), 0); gl.uniform1f(pr.u('uFunkeln'), .45); gl.uniform1f(pr.u('uGewicht'), .9);
-      gl.drawArrays(gl.POINTS, 0, B.netzN);
+      if (B.netzN) {
+        binde(pr, 'aVon', B.netz, 4, 4, 0); binde(pr, 'aNach', B.netz, 4, 4, 0); binde(pr, 'aSaat', B.netzSaat, 4, 4, 0);
+        gl.uniform1f(pr.u('uMix'), 0); gl.uniform1f(pr.u('uFunkeln'), .45); gl.uniform1f(pr.u('uGewicht'), .9);
+        gl.drawArrays(gl.POINTS, 0, B.netzN);
+      }
       binde(pr, 'aVon', B.formationen[k], 4, 4, 0); binde(pr, 'aNach', B.formationen[k + 1], 4, 4, 0); binde(pr, 'aSaat', B.saat, 4, 4, 0);
-      gl.uniform1f(pr.u('uMix'), u); gl.uniform1f(pr.u('uFunkeln'), Z[k].funkeln + (Z[k + 1].funkeln - Z[k].funkeln) * u); gl.uniform1f(pr.u('uGewicht'), 1);
+      gl.uniform1f(pr.u('uMix'), u); gl.uniform1f(pr.u('uFunkeln'), Z[k].funkeln + (Z[k + 1].funkeln - Z[k].funkeln) * u); gl.uniform1f(pr.u('uGewicht'), kam.wert('hell'));
       gl.drawArrays(gl.POINTS, 0, welt.N);
       // Beschriftungen im Bild (Städte, Phasen, Ströme) und das Logo am Ende — echtes HTML/SVG über der Leinwand.
       const css = (p) => { const q = K.projiziere(M, p); return [(q[0] * .5 + .5) * leinwand.clientWidth, (.5 - q[1] * .5) * leinwand.clientHeight, q[2]]; };

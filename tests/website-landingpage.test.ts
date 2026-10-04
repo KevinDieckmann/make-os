@@ -1,4 +1,4 @@
-// ─── Landingpage makeinnovation.de: Freigabe-Prüfung (01.10., v3: Markttraktion, Make.One, Beteiligungen) ───────
+// ─── Landingpage makeinnovation.de: Freigabe-Prüfung (01.10., v3: Markttraktion, Make.One, Beteiligungen; „Klar“ 04.10.: Showreel) ───
 // website/pruefen.mjs entscheidet, ob die Seite online darf. Hier wird geprüft, dass der Prüfer selbst stimmt:
 // Bau-Regeln heute grün (nur die Platzhalter halten die Freigabe auf), Platzhalter und Regelbrüche werden erkannt.
 // Ob heute noch Platzhalter offen sind, prüft dieser Test bewusst NICHT — das ist Kevins Freigabe, kein Fehler.
@@ -6,7 +6,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE, QUELLEN_LINKS, NAVIGATION, STAEDTE, FOKUS_SEITE, GEWICHT_GRENZE, STEMPEL_VERWEIS, stempelVon, stempeln } from '../website/pruefen.mjs';
+import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE, QUELLEN_LINKS, NAVIGATION, STAEDTE, FOKUS_SEITE, GEWICHT_GRENZE, LICHTER_HOECHSTENS, STEMPEL_VERWEIS, stempelVon, stempeln } from '../website/pruefen.mjs';
 import vm from 'node:vm';
 
 const ORDNER = join(process.cwd(), 'website');
@@ -52,15 +52,15 @@ describe('website/pruefen.mjs', () => {
     expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/gelbe Platzhalter-Markierung/);
   });
 
-  it('Logo-Dateien sind da, die Bühne zeichnet dieselbe Wortmarke, Kopf und Favicons zeigen darauf', () => {
+  it('Logo-Dateien sind da, der Schlussblock zeigt die Wortmarke, Kopf und Favicons zeigen darauf', () => {
     for (const d of LOGO_DATEIEN) expect(existsSync(join(ORDNER, d)), d).toBe(true);
     const k = kopie();
     fuellen(k);
-    // Ein anderer Strich in der Bühne fällt genauso auf wie ein anderer Buchstabe.
-    ersetze(k, 'index.html', /(<svg class="zeichen"[\s\S]*?<rect class="strich strich-ke") x="[\d.]+"/, '$1 x="190"');
+    // Ein Schlussblock ohne Wortmarke fällt auf, ebenso eine fehlende Logo-Datei.
+    ersetze(k, 'index.html', '<img class="ende-zeichen" src="assets/logo/wortmarke.svg"', '<img class="ende-zeichen" src="assets/logo/quer.svg"');
     rmSync(join(k, 'assets/logo/kompakt.svg'));
     const f = pruefeWebsite(k).fehler.join('\n');
-    expect(f).toMatch(/Bühnen-Zeichen weicht von assets\/logo\/wortmarke\.svg ab/);
+    expect(f).toMatch(/Schlussblock ohne Wortmarke/);
     expect(f).toMatch(/srcset assets\/logo\/kompakt\.svg — Datei fehlt/);
     expect(f).toMatch(/assets\/logo\/kompakt\.svg: fehlt/);
   });
@@ -111,7 +111,7 @@ describe('website/pruefen.mjs', () => {
     expect(pruefeWebsite(k)).toEqual({ fehler: [], platzhalter: [], freigabefaehig: true });
     // Ungültiger Slug, Knopf ins Leere, zweite Erstgespräch-Mail, Buchungslink auf einer Unterseite: alles fällt auf.
     ersetze(k, 'index.html', `/buchen/${SLUG}"`, '/buchen/falsch"');
-    ersetze(k, 'index.html', '<a class="knopf leise" href="#erstgespraech" data-erstgespraech>', '<a class="knopf leise" href="#kontakt" data-erstgespraech>');
+    ersetze(k, 'index.html', '<a class="ruf-kachel" href="#erstgespraech" data-erstgespraech>', '<a class="ruf-kachel" href="#kontakt" data-erstgespraech>');
     ersetze(k, 'index.html', '<a class="mail" href="mailto:hello@makeinnovation.de">', `<a class="mail" href="${ziel}">`);
     ersetze(k, 'impressum.html', '</main>', `<p><a href="https://app.makeinnovation.de/buchen/${SLUG}">Termin</a></p></main>`);
     const f = pruefeWebsite(k).fehler.join('\n');
@@ -212,27 +212,40 @@ describe('website/pruefen.mjs', () => {
     expect(f).toMatch(/Fußnote ohne genau einen geprüften Quellenlink/);
   });
 
-  it('v5 Szene: Drehbuch und Seite passen zusammen, jedes Kapitel hat sein Standbild, Skripte nur aus js/ und js/szene/', () => {
+  it('Showreel: Spur und Bühne, Drehbuch mit Lagen, Standbild ohne tote Dateien, Lichter an höchstens drei Stellen, Skripte nur aus js/ und js/szene/', () => {
+    expect(LICHTER_HOECHSTENS).toBe(3);
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    expect(index.match(/<canvas\b/g)).toHaveLength(3);
     const k = kopie();
     fuellen(k);
-    // Ein Kapitel ohne Standbild, ein Standbild mit falschem Namen, ein Skript aus einem fremden Ordner fallen auf.
-    ersetze(k, 'index.html', '<img class="still" src="assets/szene/sales.svg" width="800" height="800" alt="" loading="lazy" decoding="async">', '');
-    ersetze(k, 'index.html', 'src="assets/szene/ki.svg"', 'src="assets/szene/wirkung.svg"');
+    // Eine vierte Leinwand, ein Standbild ohne Zustand, eine Lage außerhalb 0…1 und ein Skript aus einem fremden Ordner fallen auf.
+    ersetze(k, 'index.html', '<canvas class="verlauf" aria-hidden="true"></canvas>\n          <div class="ende-rahmen"', '<canvas class="verlauf" aria-hidden="true"></canvas><canvas></canvas>\n          <div class="ende-rahmen"');
+    writeFileSync(join(k, 'assets/szene/alt.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    ersetze(k, 'index.html', 'data-spur-p=".237">', 'data-spur-p="1.4">');
     ersetze(k, 'index.html', /<script src="js\/drehbuch\.js\?v=[a-f0-9]+" defer><\/script>/, '<script src="js/fremd/drehbuch.js" defer></script>');
     const f = pruefeWebsite(k).fehler.join('\n');
-    expect(f).toMatch(/jeder Abschnitt mit data-zustand beginnt mit seinem Standbild/);
-    expect(f).toMatch(/Standbild von „ki“ ist assets\/szene\/wirkung\.svg/);
+    expect(f).toMatch(/4 Leinwände — die Lichter stehen an höchstens 3 Stellen/);
+    expect(f).toMatch(/assets\/szene\/alt\.svg: kein Zustand mit standbild: true — tote Datei/);
+    expect(f).toMatch(/data-spur-p="1\.4"/);
     expect(f).toMatch(/<script> — nur eigene Dateien aus js\//);
-    // Reihenfolge im Drehbuch ≠ Seite.
+    // Zustände ohne Lage oder in falscher Reihenfolge, ein fehlendes Standbild.
     const k2 = kopie();
     fuellen(k2);
-    ersetze(k2, 'js/drehbuch.js', "{ name: 'ki',", "{ name: 'kix',");
-    expect(pruefeWebsite(k2).fehler.join('\n')).toMatch(/passen nicht zum Drehbuch/);
-    // Die Leinwand bleibt rein dekorativ.
+    ersetze(k2, 'js/drehbuch.js', "{ name: 'band', p: .635,", "{ name: 'band', p: .2,");
+    rmSync(join(k2, 'assets/szene/raum.svg'));
+    const f2 = pruefeWebsite(k2).fehler.join('\n');
+    expect(f2).toMatch(/Zustand „band“ liegt nicht aufsteigend/);
+    expect(f2).toMatch(/assets\/szene\/raum\.svg: fehlt/);
+    // Die Leinwand bleibt rein dekorativ; die Bühne steht in der Spur; Buchstaben-Bewegung nur an H1 und der Raum-Überschrift.
     const k3 = kopie();
     fuellen(k3);
     ersetze(k3, 'index.html', '<div class="szene" aria-hidden="true">', '<div class="szene">');
-    expect(pruefeWebsite(k3).fehler.join('\n')).toMatch(/Szene .* nicht aria-hidden/);
+    ersetze(k3, 'index.html', '<div class="buehne">', '<div class="buehne-x">');
+    ersetze(k3, 'index.html', '<h2 id="us-titel">', '<h2 id="us-titel" data-aufstieg>');
+    const f3 = pruefeWebsite(k3).fehler.join('\n');
+    expect(f3).toMatch(/Szene .* nicht aria-hidden/);
+    expect(f3).toMatch(/Showreel ohne Spur und Bühne/);
+    expect(f3).toMatch(/Buchstaben-Bewegung nur an der H1/);
   });
 
   it('Stempel: jeder Verweis auf css/ und js/ trägt die Prüfsumme der Datei — geänderte Datei ohne neuen Stempel fällt auf', () => {
@@ -252,7 +265,7 @@ describe('website/pruefen.mjs', () => {
     expect(pruefeWebsite(k).fehler.join('\n')).not.toMatch(/Stempel/);
   });
 
-  it('v5 Fokus Innovation: Menüpunkt und Kapitel verlinken auf fokusinnovation.de, alle sechs Städte inkl. Dresden', () => {
+  it('Fokus Innovation: Menüpunkt und Karte verlinken auf fokusinnovation.de, alle sechs Städte inkl. Dresden', () => {
     expect(STAEDTE).toEqual(['Berlin', 'Hamburg', 'Bielefeld', 'Köln', 'München', 'Dresden']);
     expect(NAVIGATION).toContain(FOKUS_SEITE);
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
@@ -261,7 +274,7 @@ describe('website/pruefen.mjs', () => {
     const k = kopie();
     fuellen(k);
     ersetze(k, 'index.html', '<li><b>Dresden</b></li>', '');
-    ersetze(k, 'index.html', `<a class="knopf gross" href="${FOKUS_SEITE}">`, '<a class="knopf gross" href="#kontakt">');
+    ersetze(k, 'index.html', `<a class="karte-link" href="${FOKUS_SEITE}">`, '<a class="karte-link" href="#kontakt">');
     ersetze(k, 'index.html', `<a href="${FOKUS_SEITE}">Fokus Innovation <span class="aussen" aria-hidden="true">↗</span></a>\n      <a href="#ueber-uns">`, '<a href="#ueber-uns">');
     const f = pruefeWebsite(k).fehler.join('\n');
     expect(f).toMatch(/Stadt Dresden fehlt/);
@@ -269,7 +282,7 @@ describe('website/pruefen.mjs', () => {
     expect(f).toMatch(/Navigation ohne https:\/\/fokusinnovation\.de/);
   });
 
-  it('v5 Gewicht: Startseite (HTML, CSS, Skripte, gzip) bleibt unter der Grenze — ein schwerer Zusatz fällt auf', () => {
+  it('Gewicht: Startseite (HTML, CSS, Skripte, gzip) bleibt unter der Grenze — ein schwerer Zusatz fällt auf', () => {
     expect(GEWICHT_GRENZE).toBe(400 * 1024);
     const k = kopie();
     fuellen(k);
@@ -279,34 +292,76 @@ describe('website/pruefen.mjs', () => {
     expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/Startseite wiegt \d+ KB gzip/);
   });
 
-  it('v5 Geometrie: läuft ohne DOM, Deutschlandkarte nimmt eine eigene Städte-Liste (Schnittstelle für fokus/)', () => {
+  it('Szene ohne DOM: die Kugel ist in jedem Zustand Punkt für Punkt gleich (nur die Kamera fährt), ohne Netz und Pfad; die Karte nimmt eine eigene Städte-Liste (für fokus/)', () => {
     const ctx: Record<string, unknown> = {};
     vm.createContext(ctx);
     for (const d of ['js/szene/kern.js', 'js/szene/formationen.js', 'js/drehbuch.js']) vm.runInContext(readFileSync(join(ORDNER, d), 'utf8'), ctx);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const S = ctx.MakeSzene as any;
-    const logo = S.formationen.logoAusSvg(readFileSync(join(ORDNER, 'assets/logo/wortmarke.svg'), 'utf8'));
-    expect(logo.knoten).toEqual([154.84, 77.5]);
-    const welt = S.formationen.bauen(S.drehbuch, { handy: true, logo, anzahl: 600 });
+    expect(S.drehbuch).toMatchObject({ fortschritt: 'extern', netz: false, pfad: false, einstieg: false, text: false });
+    const welt = S.formationen.bauen(S.drehbuch, { handy: true, anzahl: 600 });
     expect(welt.formationen).toHaveLength(S.drehbuch.zustaende.length);
-    for (const f of welt.formationen) expect(f.punkte.length).toBe(600 * 4);
-    const karte = welt.formationen[welt.Z.findIndex((z: { formation: string }) => z.formation === 'karte')];
-    expect(karte.marken).toHaveLength(6);
-    // Eigene Liste: drei Städte → drei Marken; Dresden liegt östlich und südlich von Berlin, Köln westlich (echte Koordinaten).
+    for (const f of welt.formationen) expect(Array.from(f.punkte)).toEqual(Array.from(welt.formationen[0].punkte));
+    expect(welt.netz.punkte.length + welt.netz.kanten.length + welt.faeden.length + welt.staub.length).toBe(0);
+    // Hülle mit hellem Rand: Punkte am Rand (quer zur Blickrichtung) sind im Mittel heller als die in der Mitte.
+    const r = S.kern.rahmen(S.drehbuch.zustaende[0].s), P = welt.formationen[0].punkte;
+    let rand = 0, nRand = 0, mitte = 0, nMitte = 0;
+    for (let i = 0; i < 600; i++) {
+      const p = [P[i * 4], P[i * 4 + 1], P[i * 4 + 2]], d = S.kern.sub(p, r.p), l = S.kern.len(d), q = Math.abs(S.kern.dot(d, r.t)) / (l || 1), h = P[i * 4 + 3] % 1;
+      if (l < 2.5) continue;
+      if (q < .3) { rand += h; nRand++; } else if (q > .9) { mitte += h; nMitte++; }
+    }
+    expect(rand / nRand).toBeGreaterThan(2 * mitte / nMitte);
+    // Deutschlandkarte mit eigener Liste: Dresden liegt östlich und südlich von Berlin, Köln westlich (echte Koordinaten).
     const eigene = S.formationen.bauen({ zustaende: [{ name: 'k', formation: 'karte', s: 50, optionen: { staedte: [{ name: 'Berlin', lat: 52.52, lon: 13.405 }, { name: 'Dresden', lat: 51.05, lon: 13.738 }, { name: 'Köln', lat: 50.938, lon: 6.96 }] } }, { name: 'z', formation: 'funken', s: 90 }] }, { anzahl: 400 });
     const [berlin, dresden, koeln] = eigene.formationen[0].marken;
-    const r = S.kern.rahmen(50), lokal = (p: number[]) => [S.kern.dot(S.kern.sub(p, r.p), r.r), S.kern.dot(S.kern.sub(p, r.p), r.t)]; // [Osten, Norden]
+    const rk = S.kern.rahmen(50), lokal = (p: number[]) => [S.kern.dot(S.kern.sub(p, rk.p), rk.r), S.kern.dot(S.kern.sub(p, rk.p), rk.t)]; // [Osten, Norden]
     expect(lokal(dresden)[0]).toBeGreaterThan(lokal(berlin)[0]);
     expect(lokal(dresden)[1]).toBeLessThan(lokal(berlin)[1]);
     expect(lokal(koeln)[0]).toBeLessThan(lokal(berlin)[0]);
-    // Die Kamera liefert für jeden Scroll-Stand endliche Werte.
-    for (const T of [0, .5, 3.3, welt.Z.length - 1]) {
-      const kam = S.kern.kamera(welt.Z, T, 0, 0, 1.6, { kante: .05 });
+    // Die Kamera liefert für jeden Stand endliche Werte (Rechner und hochkant).
+    for (const T of [0, .5, 1.3, welt.Z.length - 1]) for (const handy of [false, true]) {
+      const kam = S.kern.kamera(welt.Z, T, 0, 0, handy ? .46 : 1.6, { handy });
       expect([...kam.auge, ...kam.ziel].every(Number.isFinite)).toBe(true);
     }
   });
 
-  // ── Standard 04.10. (Glas-Knöpfe, Mikro-Pille, Kaskade, Auftritt, Einstieg, Aurora) ──
+  it('Spur (Showreel-Baukasten): Rasten geben Lesezeit, Zustände stehen von p bis bis, Stufen wie im CSS, Karussell nach cos sortiert', () => {
+    const ctx: Record<string, unknown> = {};
+    vm.createContext(ctx);
+    vm.runInContext(readFileSync(join(ORDNER, 'js/szene/spur.js'), 'utf8'), ctx);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const R = (ctx.MakeSzene as any).spur;
+    // Rasten: an jeder Stufe steht der Wert still (Anteil halten), dazwischen gleitet er; monoton, 0 … n.
+    expect(R.rasten(0, 3, .5)).toBe(0);
+    expect(R.rasten(1 / 3, 3, .5)).toBe(1);
+    expect(R.rasten(1 / 3 + .03, 3, .5)).toBe(1);
+    expect(R.rasten(1, 3, .5)).toBe(3);
+    let vor = -1;
+    for (let u = 0; u <= 1; u += .01) { const v = R.rasten(u, 3, .5); expect(v).toBeGreaterThanOrEqual(vor - 1e-9); vor = v; }
+    // Zustände: [von, bis] → T steht, dazwischen weich.
+    const lagen = [[.44, .585], [.635, .745], [.87, .87]];
+    expect(R.zuT(.1, lagen)).toBe(0);
+    expect(R.zuT(.5, lagen)).toBe(0);
+    expect(R.zuT(.7, lagen)).toBe(1);
+    expect(R.zuT(.61, lagen)).toBeCloseTo(.5, 5);
+    expect(R.zuT(.95, lagen)).toBe(2);
+    // Stufen wie im CSS (--sr-*): Handy < 640, Tablet hoch ≤ 1024, sonst Rechner.
+    expect([R.stufe(375, 812), R.stufe(820, 1180), R.stufe(1024, 768), R.stufe(1440, 900)]).toEqual(['handy', 'tablet', 'rechner', 'rechner']);
+    const css = readFileSync(join(ORDNER, 'css/seite.css'), 'utf8');
+    expect(css).toMatch(/@media \(max-width: 1024px\) and \(orientation: portrait\) \{\s*:root \{ --sr-spur/);
+    expect(css).toMatch(/@media \(max-width: 639px\) \{\s*:root \{ --sr-spur/);
+    // Karussell: vier Karten im 90°-Abstand; vorn (cos = 1) liegt oben auf dem Stapel.
+    const k = [0, 1, 2, 3].map(i => R.karte(i, 4, -90));
+    expect(k[1].cos).toBeCloseTo(1, 6);
+    expect(Math.max(...k.map((x: { stapel: number }) => x.stapel))).toBe(k[1].stapel);
+    // Trommel am Fortschritt: 0 → belegter Wert, monoton; gestaffelte Buchstaben beginnen von links.
+    expect(R.trommelAm(41, 0).zahl).toBe(0);
+    expect(R.trommelAm(41, 1)).toEqual({ zahl: 41, rest: 0 });
+    expect(R.gestaffelt(.05, 0, .1, 0, 10, .5)).toBeGreaterThan(R.gestaffelt(.05, 0, .1, 9, 10, .5));
+  });
+
+  // ── Bausteine aus dem Standard 04.10. (Glas-Knöpfe, Buchstaben, Trommel, Feder) — im Showreel „Klar“ weiter genutzt ──
   function szene(): any { // eslint-disable-line @typescript-eslint/no-explicit-any
     const ctx: Record<string, unknown> = {};
     vm.createContext(ctx);
@@ -349,12 +404,11 @@ describe('website/pruefen.mjs', () => {
     expect(h1.childNodes.find(k => k.className === 'ruhig')?.childNodes.every(k => k.nodeType === 3 || k.attr['aria-hidden'] === 'true')).toBe(true);
     zurueck();
     expect(h1.childNodes).toEqual(vorher);
-    // In der Seite: nur H1/H2 werden zerlegt (nicht das Wort INNOVATION, das die Szene formt).
+    // In der Seite: zerlegt werden nur die H1 (Zerfall) und die Überschrift des dunklen Raums (Aufstieg) — beide mit ruhiger zweiter Zeile.
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
-    const kaskaden = Array.from(index.matchAll(/<(\w+)\b[^>]*\sdata-kaskade(?![-\w])[^>]*>/g), m => m[1]);
-    expect(kaskaden.length).toBeGreaterThanOrEqual(6);
-    for (const t of kaskaden) expect(['h1', 'h2']).toContain(t);
-    expect(index).not.toMatch(/<h2 class="wort"[^>]*data-kaskade/);
+    expect(index).toContain('<h1 id="titel" data-zerfall>Innovation braucht Umsetzung <span class="ruhig">und Sichtbarkeit.</span></h1>');
+    expect(index).toContain('<h2 id="raum-titel" data-aufstieg>Wachstum scheitert selten an Ideen. <span class="ruhig">Meist an der Umsetzung.</span></h2>');
+    expect(index).not.toMatch(/data-kaskade/);
   });
 
   it('Auftritt: vorher · jetzt · nach am Fortschritt der Szene — Fließendes geht erst, wenn es oben hinausläuft', () => {
@@ -370,41 +424,58 @@ describe('website/pruefen.mjs', () => {
     expect(auftritt('jetzt', 4.9, 4, lage, 5200, 900)).toBe('nach');
   });
 
-  it('Text-Bühne: ohne Skript und bei „Bewegung reduzieren“ steht aller Text sofort', () => {
+  it('Ruhige Fassung: ohne Skript, bei „Bewegung reduzieren“ und ohne WebGL steht aller Inhalt untereinander', () => {
     const css = readFileSync(join(ORDNER, 'css/seite.css'), 'utf8');
-    // Versteckt wird nur, was der Motor markiert (text-bereit, kaskade) — und nur bei Bewegung; das Vorab-Verstecken des
-    // Einstiegs gilt nur mit Skript und hat einen Notfall-Auftritt.
-    const regeln = Array.from(css.matchAll(/([^{}]+)\{([^{}]*opacity:\s*0[;\s][^{}]*)\}/g), m => m[1].trim());
-    for (const sel of regeln.filter(r => /data-auftritt|data-kaskade|k-b/.test(r))) expect(sel, sel).toMatch(/text-bereit|kaskade/);
-    const vorab = /@media \(scripting: enabled\) and \(prefers-reduced-motion: no-preference\) \{\s*html:not\(\.text-bereit\)[^}]*animation: notfall/.exec(css);
-    expect(vorab).not.toBeNull();
-    const motor = readFileSync(join(ORDNER, 'js/szene/motor.js'), 'utf8');
-    expect(motor.indexOf("prefers-reduced-motion: reduce")).toBeLessThan(motor.indexOf("classList.add('text-bereit'"));
+    // Versteckt (Deckkraft 0) wird nur im Showreel — html.spur-an setzt allein js/szene/spur.js, und erst nach der Prüfung auf
+    // „Bewegung reduzieren“ und WebGL. Der dunkle Deckel vor dem Vorhang gilt nur mit Skript und geht nach 2,5 s von selbst.
+    const regeln = Array.from(css.matchAll(/([^{}]+)\{([^{}]*opacity:\s*0[;\s][^{}]*)\}/g), m => m[1].trim().split('\n').pop()!.trim());
+    for (const sel of regeln.filter(r => !/@keyframes|from|to\b/.test(r) && !/^\.vorhang/.test(r))) expect(sel, sel).toMatch(/\.spur-an/);
+    expect(css).toMatch(/@media \(scripting: enabled\) \{\s*html:not\(\.spur-an\):not\(\.spur-aus\) body:has\(> main \.spur\)::after \{[^}]*animation: deckel-weg 0s linear 2\.5s forwards/);
+    const spur = readFileSync(join(ORDNER, 'js/szene/spur.js'), 'utf8');
+    const an = spur.indexOf("html.classList.add('spur-an')");
+    expect(spur.slice(0, an)).toMatch(/still \|\| !webglDa\(\)/);
+    expect(spur.indexOf("prefers-reduced-motion: reduce")).toBeLessThan(an);
+    // Ruhige Fassung: Szene, Papier-Maske, Flug und Verläufe gibt es dort nicht; der dunkle Raum zeigt das Standbild.
+    expect(css).toMatch(/\.szene, \.papier, \.flug, \.karte-tor, \.verlauf, \.held-marke \{ display: none; \}/);
+    expect(css).toMatch(/\.spur-an \.still \{ display: none; \}/);
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    expect(index).toMatch(/<section class="raum-text"[^>]*>\s*<img class="still" src="assets\/szene\/raum\.svg"/);
+    // Die Flug-Kacheln wiederholen Inhalte: für Vorleser verborgen.
+    expect(index).toContain('<div class="flug" aria-hidden="true">');
   });
 
   it('Knöpfe und Pillen: nur CI-Farben (Tokens), keine fremde Palette oder Schrift', () => {
     const css = readFileSync(join(ORDNER, 'css/seite.css'), 'utf8');
-    const teil = css.slice(css.indexOf('/* ── Knöpfe'), css.indexOf('/* ── Text-Bühne'));
+    const teil = css.slice(css.indexOf('/* ── Knöpfe'), css.indexOf('/* ── Mikro-Pille'));
     expect(teil.length).toBeGreaterThan(500);
     expect(teil.match(/#[0-9a-f]{3,8}\b/gi)?.filter(h => h !== '#000') ?? []).toEqual([]);
-    const erlaubt = ['255, 255, 255', '0, 0, 0', '10, 14, 17', '201, 70, 92', '47, 168, 120'];
+    const erlaubt = ['255, 255, 255', '0, 0, 0', '10, 14, 17', '11, 14, 16', '201, 70, 92', '47, 168, 120'];
     for (const m of teil.matchAll(/rgba\((\d+, \d+, \d+),/g)) expect(erlaubt, m[0]).toContain(m[1]);
     expect(teil).toMatch(/var\(--granat\), var\(--smaragd\), var\(--granat\)/);
-    const alles = [css, ...['js/szene/motor.js', 'js/szene/kern.js', 'js/drehbuch.js'].map(d => readFileSync(join(ORDNER, d), 'utf8'))].join('\n');
-    expect(alles).not.toMatch(/#ff4c33|#3366ff|#ffa091|#8da9fc|'Inter'|Assistant|fonts\.googleapis/i);
-    // Die Mikro-Pillen tragen den Knoten aus dem Logo (Inline-SVG, aria-hidden, Farben über Klassen).
+    const alles = [css, ...['js/szene/motor.js', 'js/szene/kern.js', 'js/szene/spur.js', 'js/szene/verlauf.js', 'js/drehbuch.js'].map(d => readFileSync(join(ORDNER, d), 'utf8'))].join('\n');
+    expect(alles).not.toMatch(/#ff4c33|#3366ff|#ffa091|#8da9fc|'Inter'|Assistant|fonts\.googleapis|three|lenis/i);
+    // Off-White (Kevin 04.10.: hell → dunkel): als Token, dunkle Schrift darauf aus der Marke; der Rand läuft nur beim Zeigen um.
+    expect(css).toMatch(/--papier: #F4F3EF;/);
+    expect(css).toMatch(/--tinte: #0B0E10;/);
+    expect(css).toMatch(/\.knopf:hover::before \{ animation: rand-lauf/);
+    expect(css).not.toMatch(/\.knopf::before \{ animation/);
+    // Die Mikro-Pille trägt den Knoten aus dem Logo (Inline-SVG, aria-hidden, Farben über Klassen).
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
-    const pillen = Array.from(index.matchAll(/<span class="mikro pille"[^>]*>(<svg[^>]*>)/g), m => m[1]);
-    expect(pillen.length).toBeGreaterThanOrEqual(9);
+    const pillen = Array.from(index.matchAll(/<span class="mikro pille[^"]*"[^>]*>(<svg[^>]*>)/g), m => m[1]);
+    expect(pillen.length).toBeGreaterThanOrEqual(1);
     for (const s of pillen) expect(s).toContain('aria-hidden="true"');
   });
 
-  it('Einstieg, Aurora und Text-Bühne kommen aus dem Drehbuch und sind abschaltbar; die Feder folgt weich, ohne Überschwingen', () => {
+  it('Einstieg, Aurora und Text-Bühne kommen aus dem Drehbuch und sind abschaltbar (hier: Aurora dezent, der Rest aus); die Feder folgt weich', () => {
     const S = szene(), K = S.kern;
-    const an = K.optionen(S.drehbuch, false);
+    const hier = K.optionen(S.drehbuch, false);
+    expect(hier.einstieg).toBeNull();
+    expect(hier.text).toBeNull();
+    expect(hier.aurora.staerke).toBeLessThanOrEqual(.2);
+    const an = K.optionen({ einstieg: true, aurora: true }, false);
     expect(an.einstieg.dauer).toBe(2600);
     expect(an.aurora.aufloesung).toBeLessThanOrEqual(.25);
-    expect(K.optionen(S.drehbuch, true).aurora.oktaven).toBeLessThan(an.aurora.oktaven);
+    expect(K.optionen({ aurora: true }, true).aurora.oktaven).toBeLessThan(an.aurora.oktaven);
     const aus = K.optionen({ zustaende: [] }, false);
     expect(aus.einstieg).toBeNull();
     expect(aus.aurora).toBeNull();
@@ -422,25 +493,20 @@ describe('website/pruefen.mjs', () => {
     expect(b.max).toBeLessThanOrEqual(1);
   });
 
-  it('Zahlen-Trommel und Aufdeck-Fuß: zählt in 2,2 s bis zum belegten Wert, Fuß bleibt vollständig (Firmierung, Recht, Erstgespräch)', () => {
+  it('Zahlen-Trommel und Fuß: zählt bis zum belegten Wert, Fuß bleibt vollständig (Firmierung, Recht, Login, Kontakt)', () => {
     const { trommel } = szene().buehne;
     expect(trommel(41, 0)).toEqual({ zahl: 0, rest: 1, fertig: false });
     expect(trommel(41, 2200)).toEqual({ zahl: 41, rest: 0, fertig: true });
-    let vor = -1;
-    for (let ms = 0; ms <= 2200; ms += 50) { const t = trommel(66, ms); expect(t.zahl).toBeGreaterThanOrEqual(vor); vor = t.zahl; }
-    expect(trommel(7, 1100).zahl).toBeGreaterThan(5); // easeOutQuint: früh fast da
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
-    expect(index.match(/<li class="zahl zeigen trommel">/g)).toHaveLength(4);
-    expect(index).toContain('<div class="aufdecken" aria-hidden="true"></div>');
+    expect(index.match(/<li class="zahl trommel">/g)).toHaveLength(4);
     const fuss = /<footer class="fuss">[\s\S]*<\/footer>/.exec(index)?.[0] ?? '';
-    expect(fuss).toMatch(/<a class="knopf gross" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen/);
     expect(fuss).toContain('eine Marke der KEMARIS Innovation GmbH');
     expect(fuss).toContain('href="impressum.html"');
     expect(fuss).toContain('href="datenschutz.html"');
+    expect(fuss).toContain(`href="${ANMELDEN}"`);
+    expect(fuss).toContain('href="mailto:hello@makeinnovation.de"');
     expect(fuss).toMatch(/<p class="riesen" aria-hidden="true">/);
-    // Fester Fuß nur ab 768 px und nur mit Bewegung (der Motor setzt fuss-aufdecken; ohne Skript bleibt er im Fluss).
-    const css = readFileSync(join(ORDNER, 'css/seite.css'), 'utf8');
-    expect(css).toMatch(/@media \(min-width: 768px\) and \(prefers-reduced-motion: no-preference\) \{\s*\.fuss-aufdecken \.aufdecken/);
+    // Der Fuß steht ruhig im Fluss (kein Aufdecken mehr).
+    expect(index).not.toContain('class="aufdecken"');
   });
 });
-
