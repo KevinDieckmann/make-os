@@ -178,3 +178,48 @@ export function verarbeitungEmailGoogle(jetzt: string): Verarbeitung {
 export function verarbeitungEmailNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
   return vorhanden.some(v => v.id === VV_EMAIL_GOOGLE_ID) ? [...vorhanden] : [...vorhanden, verarbeitungEmailGoogle(jetzt)];
 }
+
+// ── Verarbeitungen „Gesellschafts-Register“ und „Kapazität“ (DSGVO-Prüfung 04.10.) — idempotent nachgetragen ──
+// Kevin 04.10.: „DSGVO und Datenschutz — alles verbessern, anpassen.“ Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
+
+export const VV_ORGANISATION_NAMEN: Record<string, string> = {
+  'vv-gesellschaften': 'Gesellschafts-Register (Gesellschafter, Organe, Beschlüsse, Verträge)',
+  'vv-kapazitaet': 'Kapazitätsplanung (Arbeitszeit, Urlaub, Zuweisungen)',
+};
+export const VV_ORGANISATION_IDS = Object.keys(VV_ORGANISATION_NAMEN);
+
+export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
+  const stand = tagVon(jetzt);
+  const toms = 'Zugang nur im Haushalt des Inhabers mit Anmeldung (zweiter Faktor), Trennung serverseitig (fremder Haushalt/Testkunde → 403), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, nächtliche verschlüsselte Sicherung, Änderungsprotokoll nur mit Kennungen/Feldnamen (nie Werte)';
+  return [
+    {
+      id: 'vv-gesellschaften', name: VV_ORGANISATION_NAMEN['vv-gesellschaften'],
+      zweck: 'Führung der eigenen Gesellschaften: Steckbrief, Gesellschafterliste/Cap-Table, Organe (Geschäftsführung, Prokura, Beirat), Beschlüsse, Beteiligungen und Verträge mit Fristen und Erinnerungen',
+      personen: 'Gesellschafter, Organmitglieder und Vertragspartner (Personen des Haushalts oder CRM-Kontakte); Kevin, Malin',
+      daten: 'Bezug nur als Kennung (Konto bzw. CRM-Kontakt/-Firma), Nennbetrag, Einlage, Stimmrecht, Klauseln, Funktion und Zeitraum, Vertragsart/-titel/-status/-fristen, Unterlagen (Dateiablage, verschlüsselt); keine Namen Dritter im Register selbst',
+      rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO (Gesellschafterliste § 40 GmbHG, Aufbewahrung § 257 HGB / § 147 AO), lit. b (Verträge mit der Person), lit. f (Führung der eigenen Gesellschaften)',
+      empfaenger: 'Kevin, Malin; Hetzner (Hosting, Auftragsverarbeitung); Anthropic (ZOE liest das Register auf Frage — nur Kennungen, keine Kontaktnamen); Glocke/Telegram nur neutral („Eine Vertragsfrist naht“)',
+      drittland: 'Anthropic (USA) nur für ZOE: Standardvertragsklauseln / Data Privacy Framework — prüfen',
+      loeschfrist: 'Papierkorb 30 Tage; Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Art. 17 einer Person tilgt ihre Kennung (auch im Papierkorb), Cap-Table und Vertrag bleiben',
+      toms, verantwortlich: UG_NAME, stand,
+    },
+    {
+      id: 'vv-kapazitaet', name: VV_ORGANISATION_NAMEN['vv-kapazitaet'],
+      zweck: 'Realistische Planung: verfügbare Arbeitszeit je Person gegen den Aufwand von Meilensteinen/Zielen und wiederkehrende Mandats-/Kundenzeit; Engpässe sichtbar machen',
+      personen: 'Personen des Teams (Konten des Haushalts, Team-Personen ohne Konto wie Mitarbeitende/Freie)',
+      daten: 'Stunden je Woche, Urlaub und feste Blöcke (Titel nur für die Person selbst sichtbar), Zuweisungen Person × Mandat/Kunde (Kennung), Termine im Arbeitsfenster (nur Dauer/Anzahl, aus dem Kalender), gemessene Business-Fokuszeit; aus Gesundheitsdaten NUR ein Team-Faktor (Erholung), wenn die Person ihre Gesundheit mit allen Konten des Haushalts teilt — nie gespeichert, nie im Business-Index, nie an ZOE',
+      rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Arbeitszeitplanung im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (realistische Planung); Erholungs-Faktor: Art. 9 Abs. 2 lit. a (ausdrückliche Einwilligung über „Teilen“) — Einwilligungstext prüfen',
+      empfaenger: 'Personen des Haushalts (Einzelwerte der Erholung und Ausnahme-Titel nur die Person selbst); Hetzner (Hosting)',
+      drittland: 'keines',
+      loeschfrist: 'bis zur Löschung durch Person bzw. Inhaber; Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s); offen: Einträge deaktivierter Team-Personen',
+      toms: `${toms}; Privatfilter serverseitig (fuerBetrachter), Index ohne Gesundheits-Ableitung (ohneGesundheit)`, verantwortlich: UG_NAME, stand,
+    },
+  ];
+}
+
+/** Fehlende Verarbeitungen „Gesellschafts-Register“/„Kapazität“ ergänzen (idempotent; vorhandene — auch geänderte — bleiben). */
+export function verarbeitungenOrganisationNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  const da = new Set(vorhanden.map(v => v.id));
+  const dazu = verarbeitungenOrganisation(jetzt).filter(v => !da.has(v.id));
+  return dazu.length ? [...vorhanden, ...dazu] : [...vorhanden];
+}
