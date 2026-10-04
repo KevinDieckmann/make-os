@@ -25,7 +25,7 @@ import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, kurzEuro, plusTage, nurFelder } from './daten';
 import { Feldzeile, Pillen, Feld } from './teile';
 import { Wahl } from './Wahl';
-import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
+import { GesellschaftWahl } from './GesellschaftWahl';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 import { DealAnlegen } from './DealAnlegen';
@@ -338,7 +338,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         </Feldzeile>
       )}
       <Feldzeile label="Selbstauskunft"><Feld wert={c.selbstauskunft} platzhalter="„Wie sind Sie auf uns aufmerksam geworden?“" onFertig={s => setze({ selbstauskunft: s || undefined })} /></Feldzeile>
-      <Feldzeile label="Gesellschaft"><Wahl label="Gesellschaft" liste={GESELLSCHAFT_WAHL} wert={c.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
+      <Feldzeile label="Gesellschaft"><GesellschaftWahl wert={c.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
       <Feldzeile label="Personen">
         <div style={{ display: 'grid', gap: 6 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

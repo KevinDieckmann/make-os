@@ -4,6 +4,31 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Gesellschafts-Register „Unternehmen“ (04.10.2026, nur lokal — Branch `gesellschaften`; UMBAU_ABEND_0410.md › 8, Paket 3)
+
+Kevin 04.10.: „Kriegen wir dort jetzt alles sauber geplant — vor allem die MAKE Innovation GmbH?“ Entscheidungen: MAKE wird von der KD Ventures
+gehalten, KEMARIS geht in MAKE über (Umfirmierung), eigene Gesellschaften als offene Liste.
+
+- **Neue Seite Business › Unternehmen** (`/os/unternehmen`): Gesellschaften · Struktur („wer hält wen“) · Archiv · Papierkorb; je Gesellschaft
+  Steckbrief (Rechtsform, Status geplant/in Gründung/eingetragen/ruhend/aufgelöst, Sitz, Register, Gründung/Eintragung, Stammkapital
+  gezeichnet/eingezahlt, Geschäftsjahr, „hervorgegangen aus“ in zwei Klicks), Gesellschafter (Cap-Table mit Balken, Prozent aus Nennbeträgen,
+  Summenprüfung gegen das Stammkapital), Beteiligungen (eigene abgeleitet + fremde CRM-Firmen), Verträge (Art, Parteien, Status, Laufzeit,
+  „kündigen bis“, Stichtage, Unterlagen) → **Kalender** (Fristen-Ebene), Unterlagen (Dateiablage), Absender (die bisherige Pflege der Angebote).
+- **Eine Quelle:** derselbe Speicher `gesellschaften--<haushalt>` wie die Absender; Markttraktion › Stammdaten › Gesellschaften und System ›
+  Stammdaten › Firmen verweisen dorthin (alte Firmen-Karten bleiben lesbar stehen). Auswahlen in Deals, Mandaten, Produkten und die
+  Planungs-Einheiten kennen jetzt auch die weiteren Gesellschaften (`g-…`). ZOE: `gesellschaften_lesen` (nur lesen).
+- **Löschen/Archivieren** mit `ZeileAktionen` (Rückfrage bei Verweisen, Rückgängig, Papierkorb 30 Tage, Morgenlauf-Schritt „Gesellschaften-Papierkorb“).
+- **Nur Grunddaten** für weitere Gesellschaften: Finanzplan/Rechnungen, Steuern, Business-Index-Sicht, Aufgaben-Spaces, Angebots-Absender und
+  ZOE-Schreibwerkzeuge kennen weiter nur kdc · kdv · ug. „Rechnung aus dem Honorar“ zeigt bei einer `g-…`-Gesellschaft einen Hinweis statt die
+  Rechnung still der Selbstständigkeit zuzuordnen.
+- **Datenschutz:** Register im Speicher-Register jetzt „tilgen“ (CRM-Kontakte nur als Kennung; Art. 17 tilgt sie, Cap-Table bleibt).
+- **Rückweg (Kompatibilitätsmodus, Online-Stand):** keine Formänderung, kein neuer Speicher. Der alte Stand liest die drei festen Einträge wie
+  bisher und schreibt sie als `{ ...alt, … }` zurück — Register-Felder und `g-…`-Einträge bleiben erhalten (Test). Verloren gingen beim Zurückgehen
+  nur Deals/Mandate/Produkte, die eine `g-…`-Gesellschaft tragen: der alte Säuberer macht daraus beim nächsten Schreiben „offen“. Vorher prüfen:
+  `grep -c '"gesellschaft":"g-' ` im entschlüsselten CRM (bzw. in der Oberfläche nach Gesellschaft filtern).
+- **Nach dem Upload:** Kevin trägt Stammkapital, Gesellschafter (KD Ventures → MAKE 100 %), Vorgänger (KEMARIS Innovation GmbH) und die Verträge
+  ein — nichts davon steht im Code.
+
 ## makeinnovation.de „Klar“ — Neubau auf der Basis „Superconscious“, 80 % Seriosität (04.10.2026, nur lokal — Branch `website-klar`)
 
 Kevin 04.10.: „Das ist too much. Das muss klarer sein … Basis Superconscious, ein bisschen von unserer futuristischen Sache mitnehmen —

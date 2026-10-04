@@ -122,7 +122,7 @@ export function gesellschaftAnwenden(alt: Gesellschaft, roh: Record<string, unkn
 }
 
 /** Für den Browser: IBAN nur maskiert (+ ibanGesetzt). */
-export function gesellschaftFuerAnzeige<G extends Gesellschaft>(g: G): G {
+export function gesellschaftFuerAnzeige<G extends { bank?: GesellschaftBank }>(g: G): G {
   if (!g.bank?.iban) return g;
   return { ...g, bank: { ...g.bank, iban: ibanMaskiert(g.bank.iban), ibanGesetzt: true } };
 }

@@ -22,7 +22,7 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
 import { tagePlus } from '@/lib/zeit';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
-import { imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltOderSystemlauf, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { aufgabenSerienNachziehen, papierkorbAufraeumen } from '@/lib/aufgaben/serie-server';
 import { produktePapierkorbAufraeumen } from '@/lib/crm/produkte-server';
 
@@ -119,6 +119,19 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     schritte.push({ name: 'Produkte-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
+  // 0e) Gesellschaften-Papierkorb (04.10., Register): Einträge älter als 30 Tage → endgültig; eine Gesellschaft nur ohne Verweise.
+  try {
+    const h = (await imHaushaltOderSystemlauf(req)) ? await haushaltDesInhabers() : null;
+    if (!h) schritte.push({ name: 'Gesellschaften-Papierkorb', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { registerPapierkorbAufraeumen } = await import('@/lib/gesellschaften/server');
+      const p = await registerPapierkorbAufraeumen(h);
+      schritte.push({ name: 'Gesellschaften-Papierkorb', ok: true, info: p.eintraege ? `endgültig gelöscht: ${p.eintraege} Eintr${p.eintraege === 1 ? 'ag' : 'äge'}` : 'nichts älter als 30 Tage' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Gesellschaften-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read

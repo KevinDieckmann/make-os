@@ -731,6 +731,39 @@ async function businessIndex(input: Record<string, unknown>, _origin: string, pe
   return businessText(sicht, typeof input.kennzahl === 'string' && input.kennzahl ? input.kennzahl : undefined);
 }
 
+/**
+ * Gesellschafts-Register lesen (04.10.): eigene Gesellschaften mit Status, Rechtsform, Kapital, Anteilen (Prozent aus den
+ * Nennbeträgen), Vorgänger und laufenden Verträgen samt Stichtagen — nur Haushalt des Inhabers, nur lesen. Notizen und
+ * Klausel-Texte gehen bewusst nicht mit (Cap-Table ist sensibel; ZOE nennt Zahlen, wie sie stehen).
+ */
+async function gesellschaftenLesen(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+  if (!person || !(await personImHaushaltDesInhabers(person))) return 'Kein Zugang: Das Gesellschafts-Register gehört zum Haushalt des Inhabers.';
+  const { haushaltFuer } = await import('@/lib/finanzen/haushalt/zugriff');
+  const h = await haushaltFuer(person);
+  if (!h) return 'Kein Zugang: Ohne Haushalt am Konto gibt es kein Register.';
+  const { ladeRegister } = await import('@/lib/gesellschaften/server');
+  const m = await import('@/lib/gesellschaften/modell');
+  const alle = m.alleGesellschaften(await ladeRegister(h.haushalt));
+  const frage = typeof input.name === 'string' ? input.name.toLocaleLowerCase('de-DE').trim() : '';
+  const liste = frage ? alle.filter(g => m.anzeigeName(g).toLocaleLowerCase('de-DE').includes(frage) || (g.firmierung ?? '').toLocaleLowerCase('de-DE').includes(frage)) : alle;
+  if (!liste.length) return `Keine Gesellschaft passt zu „${frage}“. Im Register: ${alle.map(m.anzeigeName).join(', ')}.`;
+  const name = (b: { art: string; id: string }) => (b.art === 'gesellschaft' ? m.anzeigeName(alle.find(x => x.id === b.id) ?? { id: b.id as never }) : b.art === 'person' ? `Person ${b.id}` : b.art === 'firma' ? `CRM-Firma ${b.id}` : `CRM-Kontakt ${b.id}`);
+  return liste.map(g => {
+    const a = m.anteile(g);
+    const z = [
+      `${m.anzeigeName(g)} — ${m.statusLabel(g.status)}${g.rechtsform ? ` · ${m.rechtsformLabel(g.rechtsform)}` : ''}${g.sitz || g.ort ? ` · Sitz ${g.sitz || g.ort}` : ''}${g.register ? ` · ${g.register}` : ''}`,
+      g.stammkapitalCent !== undefined ? `  Stammkapital ${m.euroText(g.stammkapitalCent)}${g.eingezahltCent !== undefined ? `, eingezahlt ${m.euroText(g.eingezahltCent)}` : ''}` : '',
+      a.zeilen.length ? `  Gesellschafter: ${a.zeilen.map(x => `${name(x.g.wer)} ${x.prozent.toLocaleString('de-DE')} % (${m.euroText(x.g.nennbetragCent)})`).join('; ')}${a.hinweis ? ` — ${a.hinweis}` : ''}` : '',
+      g.vorgaengerId ? `  Hervorgegangen aus: ${m.vorgaengerKette(g.id, alle).map(id => m.anzeigeName(alle.find(x => x.id === id) ?? { id })).join(' ← ')}` : '',
+      ...m.haelt(g.id, alle).map(x => `  Hält ${x.prozent.toLocaleString('de-DE')} % an ${m.anzeigeName(alle.find(y => y.id === x.an) ?? { id: x.an })}`),
+      ...m.aktiveEintraege(g.vertraege).filter(v => v.status !== 'beendet').map(v => `  Vertrag: ${v.titel} (${m.vertragArtLabel(v.art)}, ${m.vertragStatusLabel(v.status)})${v.ende ? ` bis ${v.ende}` : ''}${v.kuendigenBis ? `, kündigen bis ${v.kuendigenBis}` : ''}`),
+      m.registerLuecken(g).length ? `  Noch offen: ${m.registerLuecken(g).join(', ')}` : '',
+    ].filter(Boolean);
+    return z.join('\n');
+  }).join('\n\n') + '\n(Quelle: Register /os/unternehmen — Hinweis, keine Rechtsberatung.)';
+}
+
 /** Monatsabschluss eintragen (25.09.) — läuft nur nach Freigabe (Register: freigabe). */
 async function monatsabschlussErfassen(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
@@ -1064,6 +1097,7 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   fakt_merken: { gruppe: 'gedaechtnis', lauf: faktMerken },
   bauplan_notieren: { gruppe: 'bauplan', lauf: bauplanNotieren },
   business_index: { gruppe: 'business', lauf: businessIndex },
+  gesellschaften_lesen: { gruppe: 'business', lauf: gesellschaftenLesen },
   monatsabschluss_erfassen: { gruppe: 'finanzen', lauf: monatsabschlussErfassen },
   suche_wissen: { gruppe: 'wissen', lauf: sucheWissen },
   lies_notiz: { gruppe: 'wissen', lauf: liesNotiz },
