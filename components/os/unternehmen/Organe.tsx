@@ -46,13 +46,13 @@ export function OrganeReiter({ g, daten, schreibe }: { g: GAnzeige; daten: Regis
     <>
       <Karte>
         <Ueberschrift rechts={!organForm && <Knopf leise onClick={() => setOrganForm('neu')}>+ Organ</Knopf>}>Organe</Ueberschrift>
-        {!aktiveOrgane.length ? <Leer symbol={<Users size={16} />}>Noch keine Geschäftsführung, Prokura oder Beirat eingetragen.</Leer> : <Liste>{aktiveOrgane.map(o => organZeile(o, false))}</Liste>}
+        {!aktiveOrgane.length ? <Leer symbol={<Users size={16} />} aktion={!organForm ? <Knopf leise onClick={() => setOrganForm('neu')}>Organ eintragen</Knopf> : undefined}>Noch keine Geschäftsführung, Prokura oder Beirat eingetragen.</Leer> : <Liste>{aktiveOrgane.map(o => organZeile(o, false))}</Liste>}
         {frueher.length > 0 && <><div style={{ ...klein, margin: '10px 0 4px' }}>Ausgeschieden</div><Liste>{frueher.map(o => organZeile(o, true))}</Liste></>}
       </Karte>
       {organForm && <OrganForm key={organForm === 'neu' ? 'neu' : organForm.id} daten={daten} alt={organForm === 'neu' ? undefined : organForm} schreibe={schreibe} fertig={() => setOrganForm(null)} />}
       <Karte>
         <Ueberschrift rechts={!beschlussForm && <Knopf leise onClick={() => setBeschlussForm('neu')}>+ Beschluss</Knopf>}>Beschlüsse</Ueberschrift>
-        {!beschluesse.length ? <Leer symbol={<Gavel size={16} />}>Noch kein Beschluss — z. B. Gesellschafterbeschluss zur Umfirmierung oder Bestellung der Geschäftsführung.</Leer> : (
+        {!beschluesse.length ? <Leer symbol={<Gavel size={16} />} aktion={!beschlussForm ? <Knopf leise onClick={() => setBeschlussForm('neu')}>Beschluss eintragen</Knopf> : undefined}>Noch kein Beschluss — z. B. Gesellschafterbeschluss zur Umfirmierung oder Bestellung der Geschäftsführung.</Leer> : (
           <Liste>{beschluesse.map(b => {
             const archiv = b.status === 'aufgehoben';
             return (

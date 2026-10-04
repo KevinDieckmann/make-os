@@ -36,6 +36,8 @@ export const WEG = {
   heute: () => '/os/heute',
   uebersicht: (space: 'privat' | 'business') => `/os/uebersicht?space=${space}`,
   menschen: () => '/os/menschen',
+  /** Konto (Kachel „Team“: Konten und Team-Personen des Haushalts pflegen). */
+  konto: () => '/os/konto',
   /** Familie & Partnerschaft (Privat) · Inbox (eigenes Postfach). */
   familie: () => '/os/familie',
   inbox: () => '/os/inbox',

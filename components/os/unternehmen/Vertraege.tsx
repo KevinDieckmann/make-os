@@ -48,7 +48,7 @@ export function BeteiligungenReiter({ g, daten, schreibe, oeffne }: { g: GAnzeig
       </Karte>
       <Karte>
         <Ueberschrift rechts={!form && <Knopf leise onClick={() => setForm('neu')}>+ Beteiligung</Knopf>}>An fremden Firmen</Ueberschrift>
-        {!laufend.length ? <Leer>Keine Beteiligung an einer Firma außerhalb des Registers.</Leer> : (
+        {!laufend.length ? <Leer aktion={!form ? <Knopf leise onClick={() => setForm('neu')}>Beteiligung eintragen</Knopf> : undefined}>Keine Beteiligung an einer Firma außerhalb des Registers.</Leer> : (
           <Liste>{laufend.map(b => (
             <ZeileAktionen key={b.id} titel={firma(b.firmaId)} onArchivieren={async () => { if (await aktion(b, 'archivieren')) melden(`„${firma(b.firmaId)}“ als beendet markiert`, () => void aktion(b, 'zurueckholen')); }} onLoeschen={async () => { if (await aktion(b, 'loeschen')) melden(`„${firma(b.firmaId)}“ im Papierkorb`, () => void aktion(b, 'wiederherstellen')); }}>
               <Zeile titel={firma(b.firmaId)} unter={unter(b)} onClick={() => setForm(b)} />

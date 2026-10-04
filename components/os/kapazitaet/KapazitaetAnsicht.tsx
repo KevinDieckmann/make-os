@@ -51,7 +51,7 @@ export function KapazitaetAnsicht() {
           <PersonKarte key={p.id} p={p} i={i + 2} ich={k.ich} inhaber={k.inhaber} personen={s.personen} bezuege={k.bezuege}
             zuweisungen={s.zuweisungen.filter(x => x.person === p.id)} aendern={k.aendern} />
         ))}
-        {!s.personen.length && <Karte><Leer>Noch keine Personen im Team — Konten und Team pflegst du unter System › Team.</Leer></Karte>}
+        {!s.personen.length && <Karte><Leer aktion={<Knopf leise href={WEG.konto()}>Team pflegen</Knopf>}>Noch keine Personen im Team — Konten und Team pflegst du unter Konto › Team.</Leer></Karte>}
         <KopfKarte s={s} />
       </>}
     </Seite>
@@ -86,7 +86,7 @@ function MachbarKarte({ posten }: { posten: Machbarkeit[] }) {
   return (
     <Karte i={1}>
       <Ueberschrift rechts={ohne.length ? `${ohne.length} ohne Aufwand oder Termin` : undefined}>Machbarkeit · Meilensteine & Ziele</Ueberschrift>
-      {!bewertet.length && <Leer>Noch kein offener Business-Meilenstein mit Aufwand und Termin. Trag am Meilenstein „Aufwand (h)“ ein — dann steht hier, ob es reicht.</Leer>}
+      {!bewertet.length && <Leer aktion={<Knopf leise href={WEG.jahr()}>Zu Ziele & Meilensteine</Knopf>}>Noch kein offener Business-Meilenstein mit Aufwand und Termin. Trag am Meilenstein „Aufwand (h)“ ein — dann steht hier, ob es reicht.</Leer>}
       <Liste>
         {bewertet.map(p => (
           <Link key={`${p.art}:${p.id}`} href={p.art === 'ziel' ? WEG.ziel(p.id) : WEG.meilenstein(p.id)} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
@@ -138,7 +138,7 @@ function PersonKarte({ p, i, ich, inhaber, personen, bezuege, zuweisungen, aende
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: Math.max(2, hKapa), borderRadius: 4, background: 'rgba(255,255,255,.07)' }} />
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: hBedarf, borderRadius: 4, background: stufe === 'gut' ? 'rgba(255,255,255,.28)' : `${STUFE_FARBE[stufe]}c0` }} />
               </div>
-              <span style={{ fontSize: 10.5, color: stufe === 'ueber' ? LEUCHT.kritisch : stufe === 'eng' ? LEUCHT.achtung : C.inkLeise, textAlign: 'center', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', whiteSpace: 'nowrap' }}>{kurz(w.woche).slice(0, 5)}</span>
+              <span style={{ fontSize: TYP.mikro, color: stufe === 'ueber' ? LEUCHT.kritisch : stufe === 'eng' ? LEUCHT.achtung : C.inkLeise, textAlign: 'center', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', whiteSpace: 'nowrap' }}>{kurz(w.woche).slice(0, 5)}</span>
             </div>
           );
         })}
@@ -192,7 +192,7 @@ function Ausnahmen({ p, darf, los }: { p: PersonStand; darf: boolean; los: (ops:
         {p.ausnahmen.map(a => (
           <span key={a.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
             <Chip umbrechen farbe={a.art === 'urlaub' ? LEUCHT.planung : LEUCHT.agenten}>{text(a)}{a.titel ? ` · ${a.titel}` : ''}</Chip>
-            {darf && <button type="button" aria-label={`${text(a)} entfernen`} onClick={() => void entfernen(a)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: 15 }}>×</button>}
+            {darf && <button type="button" aria-label={`${text(a)} entfernen`} onClick={() => void entfernen(a)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: TYP.body }}>×</button>}
           </span>
         ))}
       </div>
@@ -232,7 +232,7 @@ function Zuweisungen({ p, darf, zuweisungen, bezuege, los }: { p: PersonStand; d
         {zuweisungen.map(x => (
           <span key={x.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
             <Chip umbrechen farbe={LEUCHT.business}>{x.label} · {z(x.stundenWoche)} h/Woche</Chip>
-            {darf && <button type="button" aria-label={`Zuweisung ${x.label} entfernen`} onClick={() => void entfernen(x)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: 15 }}>×</button>}
+            {darf && <button type="button" aria-label={`Zuweisung ${x.label} entfernen`} onClick={() => void entfernen(x)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: TYP.body }}>×</button>}
           </span>
         ))}
       </div>
