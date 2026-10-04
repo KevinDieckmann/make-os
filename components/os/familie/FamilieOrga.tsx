@@ -114,7 +114,7 @@ export function Tage({ api }: { api: FamilieApi }) {
           {liste.map(t => { const dt = datumVon(t); return <MitAktionen key={t.id} ablage={ablage} liste="tage" e={t} titel={t.titel}><Zeile titel={t.titel} unter={`${dt ? `${dt.slice(-2)}.${dt.slice(-5, -3)}.` : 'ohne Datum'} · ${ARTEN.find(a => a.id === t.art)?.label}${t.menschId ? ' · Datum vom Menschen' : ''} · ${t.vorlaufTage} Tage Vorlauf`} /></MitAktionen>; })}
         </Liste>
       )}
-      {alle && <ArchivBlock ablage={ablage} liste="tage" eintraege={d.familie.tage} titelVon={e => String(e.titel ?? '')} />}
+      {alle && <ArchivBlock ablage={ablage} liste="tage" eintraege={d.familie.tage} titelVon={e => e.titel} />}
       {ablage.hinweis}
     </Karte>
   );
@@ -162,7 +162,7 @@ export function Menschen({ api }: { api: FamilieApi }) {
         </div>
       )}
       {!sortiert.length && <Leer>Eltern, Geschwister, Kinder, enge Freunde — mit einem Takt, wie oft sie von euch hören sollen.</Leer>}
-      <ArchivBlock ablage={ablage} liste="menschen" eintraege={d.familie.menschen} titelVon={e => String(e.name ?? '')} />
+      <ArchivBlock ablage={ablage} liste="menschen" eintraege={d.familie.menschen} titelVon={e => e.name} />
       {ablage.hinweis}
       <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
         <Eingabe leeren platzhalter="Name hinzufügen" onFertig={name => api.setze('menschen', { id: neueId('m'), name, rolle, geburtstag: null, kontaktAlleTage: takt, letzterKontakt: null, notiz: '' })} />
@@ -232,7 +232,7 @@ function Rituale({ api }: { api: FamilieApi }) {
       <Liste>
         {liste.map(r => <MitAktionen key={r.id} ablage={ablage} liste="rituale" e={r} titel={r.titel}><Zeile titel={r.titel} unter={`${r.ebene === 'paar' ? 'wir zwei' : 'Familie'} · ${RH.find(x => x.id === r.rhythmus)?.label ?? r.rhythmus}`} /></MitAktionen>)}
       </Liste>
-      <ArchivBlock ablage={ablage} liste="rituale" eintraege={alleRituale} titelVon={e => String(e.titel ?? '')} />
+      <ArchivBlock ablage={ablage} liste="rituale" eintraege={alleRituale} titelVon={e => e.titel} />
       {ablage.hinweis}
       {!liste.length && <Leer>Sonntagsfrühstück, der erste Schnee, der Jahresrückblick an Silvester — was euch als Familie ausmacht.</Leer>}
       <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>

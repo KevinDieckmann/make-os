@@ -10,7 +10,8 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Maximize2, Pencil, Share2, IdCard } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Knopf, Chip, LEUCHT } from '../ui';
+import { Seite, Karte, Ueberschrift, Chip, LEUCHT, ZeileAktionen, useRueckgaengig } from '../ui';
+import { ohneStand } from '@/lib/make-one/liste-stand';
 import { neueKennung } from '@/lib/kennung';
 import {
   FELD_LABEL, KARTEN_TEXTFELDER, MAX_KARTEN, SCHRIFTEN, SCHRIFT_LABEL, STANDARD_DESIGN, kartenName, kartenTitel, kontrastWarnungen, nameAusKonto, nachRang,
@@ -234,13 +235,12 @@ export function MeineKarte() {
   const [bearbeiten, setBearbeiten] = useState<{ id: string | null; start: Entwurf } | null>(null);
   const [vollbild, setVollbild] = useState(false);
   const [meldung, setMeldung] = useState<string | null>(null);
-  const [loeschen, setLoeschen] = useState<string | null>(null);
   useEffect(() => { if (!fuer) setAktivId(aktivLesen()); }, [fuer]);
   useEffect(() => { if (!meldung) return; const t = setTimeout(() => setMeldung(null), 5000); return () => clearTimeout(t); }, [meldung]);
 
   const karten = d.karten;
   const aktiv: KarteMitStand | undefined = karten.find(k => k.id === aktivId) ?? karten[0];
-  const waehlen = (id: string) => { setAktivId(id); if (!fuer) aktivMerken(id); setLoeschen(null); };
+  const waehlen = (id: string) => { setAktivId(id); if (!fuer) aktivMerken(id); };
   const andere = d.fuerAndere ? d.personen.find(p => p.person === d.person)?.name.split(' ')[0] : undefined;
   const warnungen = useMemo(() => (aktiv ? kontrastWarnungen(aktiv) : []), [aktiv]);
 
@@ -267,10 +267,13 @@ export function MeineKarte() {
     const r = await d.schreiben(ops);
     if (!r.ok) setMeldung(r.fehler ?? 'Nicht gespeichert.');
   };
+  // Löschen (04.10., ZeileAktionen): sofort, mit „Rückgängig“ — das Profil kommt mit demselben Inhalt zurück.
+  const { melden, hinweis } = useRueckgaengig();
   const entfernen = async (k: KarteMitStand) => {
     const r = await d.schreiben([{ op: 'delete', id: k.id, stand: k.stand }]);
-    setLoeschen(null);
-    setMeldung(r.ok ? 'Profil gelöscht.' : r.fehler ?? 'Nicht gelöscht.');
+    if (!r.ok) { setMeldung(r.fehler ?? 'Nicht gelöscht.'); return; }
+    setMeldung('');
+    melden(`Profil „${kartenTitel(k)}“ gelöscht`, () => void d.schreiben([{ op: 'upsert', eintrag: ohneStand(k) as Visitenkarte }]));
   };
 
   const personenWahl = d.personen.length > 1 && (
@@ -353,7 +356,8 @@ export function MeineKarte() {
             <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{karten.length} von {MAX_KARTEN}</span>}>Meine Profile</Ueberschrift>
             <div style={{ display: 'grid', gap: 2 }}>
               {nachRang(karten).map((k, i, alle) => (
-                <div key={k.id} style={{ display: 'grid', gap: 8, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                <ZeileAktionen key={k.id} titel={kartenTitel(k)} darf={!d.offline} onLoeschen={() => void entfernen(k)}>
+                <div style={{ display: 'grid', gap: 8, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
                     <span aria-hidden style={{ width: 14, height: 14, borderRadius: 4, flex: '0 0 auto', background: k.hintergrund ?? STANDARD_DESIGN.hintergrund, border: `3px solid ${k.farbe ?? STANDARD_DESIGN.akzent}` }} />
                     <button type="button" onClick={() => waehlen(k.id)} style={{ flex: 1, minWidth: 0, minHeight: MIN, background: 'none', border: 'none', color: C.ink, textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 600, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -364,11 +368,9 @@ export function MeineKarte() {
                     <button type="button" onClick={() => setBearbeiten({ id: k.id, start: entwurfAus(k) })} disabled={d.offline} style={knopfStil}>Bearbeiten</button>
                     <button type="button" aria-label={`${kartenTitel(k)} nach oben`} disabled={i === 0 || d.offline} onClick={() => void verschieben(k.id, -1)} style={{ ...knopfStil, width: MIN, padding: 0, ...(i === 0 ? { opacity: 0.4 } : {}) }}>↑</button>
                     <button type="button" aria-label={`${kartenTitel(k)} nach unten`} disabled={i === alle.length - 1 || d.offline} onClick={() => void verschieben(k.id, 1)} style={{ ...knopfStil, width: MIN, padding: 0, ...(i === alle.length - 1 ? { opacity: 0.4 } : {}) }}>↓</button>
-                    {loeschen === k.id
-                      ? <><Knopf farbe={LEUCHT.kritisch} onClick={() => entfernen(k)}>Wirklich löschen</Knopf><button type="button" onClick={() => setLoeschen(null)} style={knopfStil}>Behalten</button></>
-                      : <button type="button" onClick={() => setLoeschen(k.id)} disabled={d.offline} style={{ ...knopfStil, color: LEUCHT.kritisch }}>Löschen</button>}
                   </div>
                 </div>
+                </ZeileAktionen>
               ))}
             </div>
             {karten.length < MAX_KARTEN && !bearbeiten && !d.offline && (
@@ -381,6 +383,7 @@ export function MeineKarte() {
         )}
       </div>
       {vollbild && aktiv && <QrVollbild karte={aktiv} onZu={() => setVollbild(false)} />}
+      {hinweis}
     </Seite>
   );
 }

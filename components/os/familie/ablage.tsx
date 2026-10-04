@@ -14,7 +14,7 @@ import type { Liste as FamilieListe } from '@/lib/familie/typen';
 import type { FamilieApi } from './daten';
 import { Mehr } from './teile';
 
-type Eintrag = { id: string; von?: string; sichtbarkeit?: string; archiviertAm?: string } & Record<string, unknown>;
+type Eintrag = { id: string; von?: string; sichtbarkeit?: string; archiviertAm?: string };
 
 export interface FamilieAblage {
   archivieren: (liste: FamilieListe, e: Eintrag, titel: string) => void;
@@ -26,7 +26,7 @@ export interface FamilieAblage {
 
 export function useFamilieAblage(api: FamilieApi): FamilieAblage {
   const { melden, hinweis } = useRueckgaengig();
-  const ohne = (e: Eintrag): Eintrag => { const n = { ...e }; delete n.archiviertAm; return n; };
+  const ohne = <T extends Eintrag>(e: T): T => { const n = { ...e }; delete n.archiviertAm; return n; };
   const archivieren = (liste: FamilieListe, e: Eintrag, titel: string) => {
     if (e.archiviertAm) {
       void api.setze(liste, ohne(e));
@@ -54,7 +54,7 @@ export function MitAktionen({ ablage, liste, e, titel, children }: { ablage: Fam
 }
 
 /** Das Archiv einer Liste — eingeklappt unten in der Karte, nur wenn etwas darin liegt. */
-export function ArchivBlock({ ablage, liste, eintraege, titelVon }: { ablage: FamilieAblage; liste: FamilieListe; eintraege: Eintrag[]; titelVon: (e: Eintrag) => string }) {
+export function ArchivBlock<T extends Eintrag>({ ablage, liste, eintraege, titelVon }: { ablage: FamilieAblage; liste: FamilieListe; eintraege: T[]; titelVon: (e: T) => string }) {
   const archiv = eintraege.filter(e => e.archiviertAm);
   if (!archiv.length) return null;
   return (

@@ -148,6 +148,7 @@ function Dates({ api }: { api: FamilieApi }) {
   const kommend = geplant.filter(x => x.datum >= d.heute);
   const gewesen = f.dates.filter(x => x.status === 'stattgefunden').sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 3);
   const genutzt = new Set(f.dates.map(x => x.ideeId));
+  const ablage = useFamilieAblage(api);
   const ideen = f.ideen.filter(i => !i.archiviertAm).sort((a, b) => Number(genutzt.has(a.id)) - Number(genutzt.has(b.id)) || Number(b.neu) - Number(a.neu)).slice(0, 5);
   const starte = (i?: DateIdee) => setPlan({ titel: i?.titel ?? '', datum: d.heute, planer: d.person, ideeId: i?.id ?? null, neu: i?.neu ?? false });
 
@@ -192,10 +193,11 @@ function Dates({ api }: { api: FamilieApi }) {
         <Liste>
           {ideen.map(i => <MitAktionen key={i.id} ablage={ablage} liste="ideen" e={i} titel={i.titel}><Zeile titel={<span style={{ whiteSpace: 'normal' }}>{i.titel}</span>} unter={`${i.dauer} · ${'€'.repeat(i.kosten) || 'kostenlos'}${genutzt.has(i.id) ? ' · schon gemacht' : ''}`} rechts={<>{i.neu && <Chip farbe={ROSA}>Neu</Chip>}<Knopf leise onClick={() => starte(i)}>Planen</Knopf></>} /></MitAktionen>)}
         </Liste>
-        <ArchivBlock ablage={ablage} liste="ideen" eintraege={f.ideen} titelVon={e => String(e.titel ?? '')} />
+        <ArchivBlock ablage={ablage} liste="ideen" eintraege={f.ideen} titelVon={e => e.titel} />
         <div style={{ marginTop: 10 }}><Eingabe leeren platzhalter="Eigene Idee in den Pool" onFertig={titel => api.setze('ideen', { id: neueId('di'), titel, tags: [], aufwand: 1, kosten: 1, dauer: 'abend', neu: true })} /></div>
         {f.ideen.length < DATE_IDEEN.length && <Klein>Einige Start-Ideen wurden entfernt.</Klein>}
       </Mehr>
+      {ablage.hinweis}
     </Karte>
   );
 }
@@ -232,7 +234,7 @@ function Themen({ api }: { api: FamilieApi }) {
           </MitAktionen>
         ))}
       </Liste>
-      <ArchivBlock ablage={ablage} liste="themen" eintraege={f.themen} titelVon={e => String(e.titel ?? '')} />
+      <ArchivBlock ablage={ablage} liste="themen" eintraege={f.themen} titelVon={e => e.titel} />
       {ablage.hinweis}
       {!offen.length && <Leer>Nichts geparkt. Themen landen hier, statt zwischen Tür und Angel besprochen zu werden.</Leer>}
 
@@ -280,7 +282,7 @@ function Wuensche({ api, partner }: { api: FamilieApi; partner: string | null })
           </MitAktionen>
         ))}
       </Liste>
-      <ArchivBlock ablage={ablage} liste="wuensche" eintraege={f.wuensche.filter(w => w.status === 'offen')} titelVon={e => String(e.text ?? '')} />
+      <ArchivBlock ablage={ablage} liste="wuensche" eintraege={f.wuensche.filter(w => w.status === 'offen')} titelVon={e => e.text} />
       {ablage.hinweis}
       <Mehr titel="Mein Profil — was mein Gegenüber wissen sollte">
         <div style={{ display: 'grid', gap: 8 }}>
