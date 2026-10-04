@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
-import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, Leer, Schalter, ZielBezug, feld, LEUCHT } from './ui';
+import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, Leer, Schalter, ZielBezug, feld, LEUCHT, FlussKarte } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { BESCHWERDEN, HEBEL, AUFBAU, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
 
@@ -217,6 +217,8 @@ export function GesundheitView() {
       {segment === 'heute' && (
         <>
           <Flaeche seite="gesundheit-heute">
+          {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
+          {eigene && <Kachel id="fluss" titel="Für dich" breite={6}><FlussKarte bereich="gesundheit" farbe={LEUCHT.gut} /></Kachel>}
           <Kachel id="index-kurz" titel="Gesundheits-Index" breite={3}><GesundheitIndexKurz fuer={!eigene ? ansicht : undefined} onOeffnen={() => geheZu('index')} stand={hl} /></Kachel>
           <Kachel id="morgen" titel="Morgen-Check" breite={3}>
           <Karte i={0} ton={rec != null ? zone(rec) : undefined} id="morgen" style={{ scrollMarginTop: 90 }}>

@@ -21,7 +21,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { absenderKey } from '@/lib/make-one/inbox-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Hinweis, feld, LEUCHT, Spalten, Spalte, useBreit } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Hinweis, feld, LEUCHT, Spalten, Spalte, useBreit, FlussKarte } from './ui';
 import { GmailDetail } from './inbox/GmailDetail';
 import { GmailVerbinden, type GmailMeta } from './inbox/GmailVerbinden';
 import { threadsAus, zeileMitNachricht, gmailIdAus, type ListeNachricht, type ThreadZeile } from '@/lib/gmail/liste';
@@ -292,6 +292,8 @@ export function InboxSchlank() {
         {quellenDa.length > 1 && <Segmente liste={[{ id: 'alle' as const, label: 'Alle' }, ...quellenDa.map(q => ({ id: q, label: QUELLE_LABEL[q] }))]} aktiv={quelleWahl} onWahl={setQuelleWahl} umbrechen />}
         <Segmente liste={SEG} aktiv={seg} onWahl={setSeg} /><Link href="/os/inbox/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Volle Ansicht ›</Link></span>}>
       {meldung && <div style={{ marginBottom: 12 }}><Hinweis art="info" rolle="status">{meldung}</Hinweis></div>}
+      {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
+      <div style={{ marginBottom: 14 }}><FlussKarte bereich="inbox" farbe={LEUCHT.puls} /></div>
       {gmMeta && !gmMeta.bereit && gmMeta.konfiguriert && <GmailVerbinden meta={gmMeta} onGeaendert={() => void gmailLaden()} meldung={setMeldung} />}
       <Spalten verhaeltnis="3:2">
         <Spalte>

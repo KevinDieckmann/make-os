@@ -28,7 +28,7 @@ import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { NORDSTERN } from '@/lib/make-one/nordstern-data';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT, Segmente, Knopf, useRueckgaengig } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT, Segmente, Knopf, useRueckgaengig, FlussKarte } from './ui';
 import { useZiel, useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
 import { SPACE_LABEL, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
@@ -219,6 +219,9 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
           <Link href={WEG.kapazitaet()} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', justifySelf: 'start' }}>Kapazität je Person ›</Link>
         </div>
       )}
+
+      {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
+      <FlussKarte bereich="planung" space={spaceFilter === 'alle' ? null : spaceFilter} farbe={LEUCHT.planung} i={2} />
 
       {/* Forecast — Zeit vs. Fortschritt, deterministisch; im Jahr je Planungsjahr */}
       {hatForecast && (

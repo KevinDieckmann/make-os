@@ -49,7 +49,7 @@ export interface FaedenbandProps {
   label: string;
 }
 
-const zuBand = (l: readonly Buendel[], deckel: number): BandBuendel[] => faedenDeckeln(l, deckel).map(b => ({ id: b.id, farbe: b.farbe, dichte: b.dichte, faeden: b.faeden, ...(b.spitze ? { spitze: b.spitze } : {}) }));
+const zuBand = (l: readonly Buendel[], deckel: number): BandBuendel[] => faedenDeckeln(l, deckel).map(b => ({ id: b.id, farbe: b.farbe, dichte: b.dichte, faeden: b.faeden, ...(b.ausschlag?.some(v => v > 0) ? { ausschlag: b.ausschlag } : {}) }));
 
 export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, onUebergangAngewandt, engstellen, uebergang, hervor, onHervor, onTiefer, onEngstelle, onTag, onBlaettern, onBreite, label }: FaedenbandProps) {
   const boxRef = useRef<HTMLDivElement>(null);
@@ -82,7 +82,7 @@ export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, 
   const st = stapeln(ansicht.marken.map(m => ({ x: frak(m.tag) * breite, w: pillB(m) })), breite, masse.maxReihen);
   const hatUeberlauf = st.buendel.length > 0;
   const reihen = (ansicht.marken.length ? Math.max(1, Math.min(masse.maxReihen, st.reihen)) : 0) + (hatUeberlauf ? 1 : 0);
-  // Eigene Zone für die Markierungen über dem Band (v3.1): Reihen + Luft — die Spitzen bleiben im Band (lib/lichtfaeden/faedenband.ts `randBei`).
+  // Eigene Zone für die Markierungen über dem Band: Reihen + Luft — Ausschläge bleiben im Band (lib/lichtfaeden/strahl.ts `strangMitte`).
   const bandOben = reihen * masse.reihe + masse.abstand;
   const achseY = bandOben + masse.band;
   const bandMitte = bandOben + masse.band / 2;
@@ -254,11 +254,9 @@ export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, 
 
         {/* Achse (Haarlinie), HEUTE, Monate */}
         <div style={{ position: 'absolute', left: 0, right: 0, top: achseY, height: 1, background: LICHT_GLAS.achse }} />
+        {/* HEUTE: nur Beschriftung — die Linie zeichnet die Leinwand ruhig durchs Band (kein Punkt, kein Puls). */}
         {heuteX != null && (
-          <>
-            <div className="zeit-puls" style={{ position: 'absolute', left: heuteX - 4.5, top: bandMitte - 4.5, width: 9, height: 9, borderRadius: '50%', background: ZEIT, boxShadow: `0 0 12px ${ZEIT}33`, zIndex: 2, pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', left: heuteX, top: achseY + 9, transform: 'translateX(-50%)', fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: ZEIT, whiteSpace: 'nowrap', pointerEvents: 'none' }}>HEUTE</div>
-          </>
+          <div style={{ position: 'absolute', left: heuteX, top: achseY + 9, transform: 'translateX(-50%)', fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: ZEIT, whiteSpace: 'nowrap', pointerEvents: 'none' }}>HEUTE</div>
         )}
         {ticks.filter(tk => { if (heuteX == null) return true; const x = frak(tk.date) * breite; return Math.abs(x - heuteX) > (x < 16 || x > breite - 16 ? 56 : 28); }).map(tk => {
           const x = frak(tk.date) * breite;

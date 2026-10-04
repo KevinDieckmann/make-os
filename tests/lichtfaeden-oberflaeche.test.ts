@@ -96,13 +96,14 @@ describe('Zeichner', () => {
     const a = attrappe();
     const z = faedenband(a.canvas, null as unknown as Element, false);
     z.setze(BILD);
-    tick(1000);
+    // Strahl ruhig: das erste Bild ist der Beginn des Aufbaus (noch leer) — ein paar hundert ms später stehen die ersten Striche.
+    tick(1000); tick(1600);
     expect(a.striche()).toBeGreaterThan(0);
     z.setze(BILD, { richtung: 'auf', fokus: BILD.buendel[0].id, oben: BILD.buendel, unten: BILD.buendel });
-    tick(1100); tick(1100 + UEBERGANG_MS / 2);
+    tick(1700); tick(1700 + UEBERGANG_MS / 2);
     const mitte = z.fortschritt();
     expect(mitte).toBeGreaterThan(0.3); expect(mitte).toBeLessThan(0.7);
-    tick(1100 + UEBERGANG_MS + 20);
+    tick(1700 + UEBERGANG_MS + 20);
     expect(z.fortschritt()).toBeNull();
     const y = Array.from({ length: 150 }, (_, i) => 40 + i).find(yy => z.treffer(300, yy));
     expect(y).toBeDefined();

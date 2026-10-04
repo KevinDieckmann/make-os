@@ -135,6 +135,8 @@ Legende (je Bündel ein Knopf „eine Ebene tiefer“), Engstellen als aufklappb
 | Farben | `FADEN_FARBEN`, `LICHT_GLAS` (design.ts), `THEMEN` (modell.ts) | Ziel je Space fortlaufend (Business orange → lila → pink, Privat grün → türkis → violett — nie Gelb/Rot, die gehören Engstellen und Zuständen; feste Töne `FADEN_TOENE`), Themen in Bereichsfarben, „ohne Ziel“ Zeit-Cyan, „Belegt“ Grau |
 | Website | `website/js/lichtfaeden.js` (erzeugt), `website/js/faden.js` | Granat/Smaragd, Charakter je Kapitel |
 
+**Strahl ruhig (04.10. abends, ersetzt die Parameter unten im Planungsband):** je Bündel EIN Strang auf eigener Spur, ab HEUTE zum Ziel zusammenlaufend, ausschlagen NUR bei echter Abweichung (Meilenstein überfällig, Ziel-Frist überschritten, Frist gerissen, Deal ≥ 2× verschoben; Kapazität dockt an) — Parameter `STRAHL` (`lib/lichtfaeden/strahl.ts`), Gründe `lib/lichtfaeden/abweichung.ts`, Details `LICHTFAEDEN.md` › Strahl ruhig. Keine Partikel, kein Glühen, kein Netz, kein Licht am HEUTE-Punkt; Themen in der Farbe ihres ersten Ziels.
+
 **Parameter (Strahl v3, 04.10.):** Fäden je Bündel ∝ √Last (5 … 44; Blatt-Ebene 2 … 6), höchstens 300 je Leinwand (Handy 120) · Stützpunkt alle 6 px (Handy 8) ·
 Strich 0,6 px · Deckkraft 0,2 (additiv) · Tempo 0,00028/ms · Ruhe-Spreizung 12 % · Auffächern 720 ms · Aufbau 1,9 s · Partikel alle 10 px (jeder 2. Faden; Handy
 14 px, jeder 3.) · Glühen über einen Schein-Puffer (¼ Größe, Weichzeichner 3 px, Stärke 0,7; Handy 0,6) · je Faden leiser ab 150 Fäden je Leinwand (√150/n) · höchstens 7 Bündel je Ebene (+ „Weitere“). Band 300 px
@@ -215,6 +217,36 @@ Deals › Prognose (Fokus-Karte, erwartete Abschlüsse gewichtet je Monat) · Pl
 Ziel-Zeilen (Segmentbalken), aufgeklappte Engstelle (Kante) · Zahlen › Liquidität (Verlauf als Lichtfäden-Band), Business- und Privat-Index (Verlauf) ·
 Fokus (Schaufenster: „Unser Fokus“ mit Netz, Regler als Segmentbalken, Fokus-Minuten je Tag, darunter der Strahl v3).
 
+
+## Überblick „Für dich“ je Bereich (04.10. abends)
+Kevin: „Lass uns so immer den Überblick gestalten und dann den Flow so anzeigen, wie es die letzten 3 Monate war, wie es jetzt ist und wie der
+Forecast ist … für jeden einzelnen Bereich.“ Baustein `FlussKarte` (`components/os/ui/fluss.tsx`, Import `from '../ui'`), Modell `lib/fluss/modell.ts`,
+Reihen je Bereich `lib/fluss/bereiche.ts` (rein), Laden + Sicht `lib/fluss/server.ts`, Route `GET /api/fluss?bereich=…&space=…`, Wächter `tests/fluss.test.ts`.
+
+| Teil | Inhalt |
+|---|---|
+| Karte | `Karte ton="fokus"` (sie IST die eine Fokus-Karte der Ansicht), Überschrift „Für dich“, rechts optional die Person |
+| Linie | Ist der letzten 3 Monate durchgezogen mit leiser Fläche → HEUTE (ruhige senkrechte Linie, Mitte) → Prognose gestrichelt und leiser; Legende „Ist · erledigt“ / „Prognose · fällig“, Achse „−3 M · heute · +3 M“, darunter „Prognose aus …“ (die Grundlage) |
+| Ohne Grundlage | rechts ein gestrichelter Leerzustand „Keine Prognose — es liegt nichts Terminiertes vor.“ — nie geschätzt |
+| Zeilen | höchstens 4, priorisiert (Punkt in Bedeutungsfarbe · Titel · Unterzeile mit Bereich und Handlung · Zahl-Pille), Link zum Ort; Markttraktion gibt ihre „Für dich“-Zeilen als Kinder |
+| Text | `role="img"` + `aria-label` mit Ist und Prognose (`flussText`) |
+
+| Bereich | Raster | Ist | Prognose (nur aus echten Daten) | Sicht (Server) |
+|---|---|---|---|---|
+| Markttraktion | Monat | gewonnener Umsatz | offene Deals × Wahrscheinlichkeit nach erwartetem Abschluss | Haushalt, Business |
+| Finanzen Privat | Monat | Ausgaben (Einheit privat) | Raten, offene Rechnungen, erkannte feste Kosten | nur Einheit `privat` |
+| Finanzen Business | Woche | Saldo der Firmen-Buchungen | Liquiditäts-Vorschau (ein − aus) | nur Gesellschaften (`istGesellschaft`, `ohnePrivat`) |
+| Planung | Woche | erreichte Meilensteine/Ziele | fällige Meilensteine/Ziel-Fristen | ohne eigene Ziele der anderen Person; `space` filtert |
+| Aufgaben | Woche | erledigt | fällig (offen) | `ladeAufgabenSicht(person)` — fremde „nur ich“ samt Kette nie |
+| Kalender | Woche | Termin-Stunden | eingetragene Termine | `termineFuerZoe`, nur eigene/gemeinsame, nie „Belegt“ |
+| Gesundheit | Woche | Trainingseinheiten | Wochenplan + Sport-Ziele/Routinen mit Datum | nur die eigene Person |
+| Familie | Woche | Dates, Gespräche, Wertschätzungen | Geplantes (Dates, Gespräche, Vereinbarungen, Tage) | `sichtFuer` — „nur ich“ der anderen nie |
+| Netzwerken | Woche | erfasste Kontakte | fälliges Nachfassen | Haushalt; eingeschränkte Kontakte ohne Namen |
+| Inbox | Woche | eingegangene Mails | Wiedervorlagen | nur das eigene Postfach |
+
+Wissen/Brain: keine sinnvolle Zeitreihe — bewusst ohne. **Regeln:** 1. Jede Bereichsseite nutzt den Baustein (Wächter), daneben keine zweite
+Fokus-Karte. 2. Reihen kommen nur vom Server, gefiltert nach Person/Haushalt/Sicht — keine Seite rechnet oder tippt Reihen. 3. 80/20: die Linie ist
+der Akzent (Bereichsfarbe), alles andere ruhig.
 
 ## Löschen & Archivieren (04.10.)
 Kevin: „Wenn man auf Produkte geht, kann man keine Produkte löschen — das macht das Ganze wieder ein bisschen wild. Für die Usability können wir auch

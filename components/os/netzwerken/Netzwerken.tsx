@@ -13,7 +13,7 @@ import { FARBE as C, LEUCHT, TYP } from '@/lib/make-one/design';
 import { WEG } from '@/lib/wege';
 import { useCrm } from '../crm/daten';
 import { Gross, Hinweis, useGemerkt } from './bausteine';
-import { Seite, Knopf, Segmente } from '../ui';
+import { Seite, Knopf, Segmente, FlussKarte } from '../ui';
 import { EventModus, EventWahlFenster, type EventWahl } from './EventModus';
 import { Erfassen } from './Erfassen';
 import { Heute } from './Heute';
@@ -60,6 +60,9 @@ export function NetzwerkenSeite() {
       <Segmente liste={[{ id: 'erfassen', label: 'Erfassen' }, { id: 'heute', label: `Heute${warte.fehler ? ' · !' : ''}` }]} aktiv={reiter} onWahl={setReiter} />
 
       <Warteschlange warte={warte} offline={k.offline} api={api} ich={ich} heute={heute} />
+
+      {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
+      {reiter === 'heute' && <FlussKarte bereich="netzwerken" farbe={LEUCHT.beziehung} />}
 
       {api.fehler && <Hinweis farbe={LEUCHT.achtung} rolle="alert">{api.fehler} <button type="button" onClick={() => api.setFehler(null)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.body, textDecoration: 'underline', minHeight: 44 }}>ausblenden</button></Hinweis>}
 

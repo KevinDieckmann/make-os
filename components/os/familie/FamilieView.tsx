@@ -7,7 +7,7 @@
 // Konzept: docs/konzepte/familie-und-partnerschaft.md
 
 import { useState } from 'react';
-import { Seite, Karte, Ueberschrift, Segmente, Leer, Knopf, Hinweis, ZielBezug, Wahl as UiWahl, feld, LEUCHT } from '../ui';
+import { Seite, Karte, Ueberschrift, Segmente, Leer, Knopf, Hinweis, ZielBezug, Wahl as UiWahl, feld, LEUCHT, FlussKarte } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useFamilie, WOCHENTAGE, type FamilieApi } from './daten';
 import { WirZwei } from './WirZwei';
@@ -27,6 +27,8 @@ export function FamilieView() {
     <Seite titel="Familie & Partnerschaft" unter="Erst wir zwei, dann die Familie. Gemessen wird, was ihr gemeinsam tut — nie eine Person.">
       {d && <Segmente liste={[{ id: 'wir', label: 'Wir zwei' }, { id: 'familie', label: 'Familie' }, { id: 'rahmen', label: 'Rahmen' }]} aktiv={bereich} onWahl={b => { setBereich(b); setGespraech(false); }} />}
       <ZielBezug bereich="beziehung" />
+      {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
+      {d && !gespraech && <FlussKarte bereich="familie" farbe={LEUCHT.beziehung} />}
       {!d ? (
         api.fehler
           ? <Hinweis art="kritisch" titel="Familie & Partnerschaft konnte nicht geladen werden">{api.fehler}</Hinweis>

@@ -11,10 +11,10 @@
 // Daten: GET /api/lichtfaeden (Haushalts-Tor, Privat-Regel serverseitig). Logik rein in lib/lichtfaeden/*.
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { FARBE as C, LICHT_GLAS, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, LEUCHT, LICHT_GLAS, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { STRAHL_RAEUME, type StrahlRaum } from '@/lib/planung/zeitstrahl';
 import { navStart, springe, tiefer, zurueck, type NavStand } from '@/lib/lichtfaeden/navigation';
-import type { Buendel } from '@/lib/lichtfaeden/baum';
+import type { AbweichungKurz, Buendel } from '@/lib/lichtfaeden/baum';
 import { Karte, Segmente, Knopf, Hinweis, Leerzustand, Ueberschrift } from '../ui';
 import { useStrahlFenster, type StrahlFenster } from '../planung/useStrahlFenster';
 import { Faedenband, type FaedenUebergang } from './Faedenband';
@@ -108,6 +108,7 @@ export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenste
           </Leerzustand>
         )}
         {aktuell && <Legende buendel={aktuell.buendel} hervor={hervor} onHervor={setHervor} onTiefer={onTiefer} />}
+        {aktuell && aktuell.buendel.length > 0 && <Abweichungen liste={aktuell.abweichungen ?? []} />}
         {!!daten?.engstellen.length && heute && (
           <div style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise }}>Engstellen ab {heute.slice(8, 10)}.{heute.slice(5, 7)}.</span>
@@ -117,6 +118,25 @@ export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenste
         {daten && <p className="nur-vorleser" aria-live="polite">{daten.text}</p>}
       </div>
     </Karte>
+  );
+}
+
+/** Die Bedeutung des Strahls in einem Satz (Kevin 04.10.: „Es darf nur ausgeschlagen werden, wenn … etwas schiefgelaufen ist“):
+ *  ruhig = im Plan; schlägt ein Strang aus, steht hier, warum — die Abweichungen der Ansicht (schwerste zuerst). */
+function Abweichungen({ liste }: { liste: readonly AbweichungKurz[] }) {
+  if (!liste.length) return <p style={{ margin: 0, fontSize: TYP.bedien, color: C.inkDim }}>Alle Stränge laufen ruhig — im Plan. Ausschlagen würde ein Strang nur bei einer Abweichung.</p>;
+  return (
+    <div style={{ display: 'grid', gap: 4 }}>
+      <span style={{ fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise }}>Ausschlag = Abweichung vom Plan</span>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}>
+        {liste.map(a => (
+          <li key={a.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: TYP.bedien, color: C.inkDim }}>
+            <span aria-hidden="true" style={{ flex: '0 0 auto', width: 6, height: 6, borderRadius: '50%', background: LEUCHT.achtung, transform: 'translateY(-1px)' }} />
+            <span>{a.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

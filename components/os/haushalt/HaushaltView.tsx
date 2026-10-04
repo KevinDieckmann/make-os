@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP, RAND } from '@/lib/make-one/design';
 import { katNamen } from '@/lib/finanzen/haushalt/einordnung';
 import { heuteBerlin, tageZwischen, datumDe } from '@/lib/finanzen/haushalt/monat';
-import { Karte, Leer, Knopf, Reiter, LEUCHT } from '../ui';
+import { Karte, Leer, Knopf, Reiter, LEUCHT, FlussKarte } from '../ui';
 import { useHaushalt, Meldungen } from './gemeinsam';
 import { Uebersicht } from './Uebersicht';
 import { Buchungen } from './Buchungen';
@@ -74,6 +74,8 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
         <>
           {/* Privat-Index (25.09.): oben auf der Übersicht — dieselbe Logik wie der Business-Index. */}
           {aktiv === 'uebersicht' && <PrivatIndex stand={h} />}
+          {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
+          {aktiv === 'uebersicht' && <FlussKarte bereich="finanzen-privat" farbe={LEUCHT.geld} i={1} />}
           {aktiv === 'uebersicht' && <Uebersicht h={h} katName={katName} />}
           {aktiv === 'buchungen' && <Buchungen h={h} katName={katName} patch={patch} aktion={aktion} melde={melde} laden={laden} onImport={() => setImportAuf(true)} />}
           {aktiv === 'einnahmen' && <Einnahmen h={h} katName={katName} patch={patch} aktion={aktion} melde={melde} laden={laden} />}

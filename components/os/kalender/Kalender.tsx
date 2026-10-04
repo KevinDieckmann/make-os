@@ -28,7 +28,7 @@ import { tagPlus, wandAus } from '@/lib/kalender/zeit';
 import { montagVon, monatsblatt } from '@/lib/kalender/layout';
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, Reiter, Chip, feld, LEUCHT, useBreit } from '../ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, Reiter, Chip, feld, LEUCHT, useBreit, FlussKarte } from '../ui';
 import { useKalender, TerminFenster, WER_FARBE, WER_LABEL, type KTermin, type Wer } from './teile';
 import { Zeitraster } from './Zeitraster';
 import { Monat } from './Monat';
@@ -355,6 +355,8 @@ export function Kalender() {
           </Liste>
         )}
       </Karte>
+      {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
+      <FlussKarte bereich="kalender" farbe={LEUCHT.schlaf} i={4} />
       <AuswertungKarte stichtag={ansicht === 'woche' || ansicht === 'vier' || ansicht === 'tag' ? anker : heute} i={4} />
       <Karte i={5}>
         <Ueberschrift rechts={<Knopf leise onClick={() => setZeigeEinst(v => !v)}>{zeigeEinst ? 'zu' : 'öffnen'}</Knopf>}>Einstellungen</Ueberschrift>

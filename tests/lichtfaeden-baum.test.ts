@@ -73,16 +73,11 @@ describe('Ansicht — LOD, Summen, Dichte', () => {
     expect(biz.faeden).toBeGreaterThan(a.buendel[1].faeden);
     expect(biz.tiefer).toBe('space:business');
     expect(a.pfad.map(k => k.id)).toEqual([GESAMT]);
-    // Strahl v3: Spitzen aus der UNgeglätteten Last — gleiche Länge wie die Dichte, 0 … 1, null wo keine Last liegt, und schärfer
-    // als die Dichte (die volle Woche ragt über ihre Nachbarn hinaus).
+    // Strahl ruhig (04.10. abends): Ausschlag NUR aus Abweichungen — gleiche Länge wie die Dichte, 0 … 1 (tests/strahl-ruhig.test.ts).
     for (const x of a.buendel) {
-      expect(x.spitze.length).toBe(x.dichte.length);
-      expect(x.spitze.every(v => v >= 0 && v <= 1)).toBe(true);
-      x.roh.forEach((r, i) => { if (!r) expect(x.spitze[i]).toBe(0); });
+      expect(x.ausschlag.length).toBe(x.dichte.length);
+      expect(x.ausschlag.every(v => v >= 0 && v <= 1)).toBe(true);
     }
-    const i = biz.roh.indexOf(Math.max(...biz.roh));
-    expect(biz.spitze[i]).toBeGreaterThan(0);
-    if (i > 0 && !biz.roh[i - 1]) expect(biz.spitze[i] - biz.spitze[i - 1]).toBeGreaterThan(biz.dichte[i] - biz.dichte[i - 1]);
   });
   it('Space → Themen; Thema → Ziele; Ziel → Meilensteine + „Ohne Meilenstein“; Privat zeigt anonymes „Belegt“', () => {
     const b = bau();

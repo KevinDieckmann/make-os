@@ -169,6 +169,38 @@ Kevin: „Der Strahl läuft im Grunde genommen immer von links nach rechts — g
 - Die Website (`website/js/lichtfaeden.js`, `fokus/js/lichtfaeden.js`) bekommt dieselbe Fließrichtung und den feineren Strich über
   `node scripts/lichtfaeden-website.mjs` (Partikel, Aufbau und Glühen nutzt sie nicht — ihre Bündel bleiben, wie sie sind).
 
+## Strahl ruhig (04.10. abends) — gegliederte Stränge, Ausschlag nur bei Abweichung
+
+Kevin: „Oben die Symbole genial, aber das sieht zu spacig aus.“ — „Gliedere einfach mehr. Die einzelnen Farben von den einzelnen Themen
+müssen immer gebündelt sein und zusammenlaufen. Es darf nur ausgeschlagen werden, wenn etwas Unvorhergesehenes kommt oder etwas
+schiefgelaufen ist. Ziel ist, dass alle Linien immer ruhig laufen — nach Ziel, Plan und Meilenstein.“ Löst Strahl v3/v3.1 (oben) im
+Planungsband ab; FadenLinie und Website bleiben unverändert.
+- **`strahl.ts` (rein, alle Parameter in `STRAHL`, eine Stelle):** Band 200/150 px (v3.1: 300/220), Fäden je Strang 3 … 8 (Blatt 1 … 3), höchstens
+  56 je Leinwand (Handy 32; v3: 300/120), Deckkraft 0,17 normal gemischt (keine additiven Mischtöne), Strich 0,6, Kern 0,05, Strangbreite 1,2 … 3,2 px,
+  Spuren höchstens 22 px (Handy 16) auseinander, ab HEUTE Zusammenlauf auf 35 % am rechten Rand (zum großen Ziel), Ausschlag bei Abweichung 1:
+  34 px (Handy 24) nach außen, Strang fächert dort bis × 2,4, Fließen × 0,5. Geometrie: `spurAbstand`, `zusammenlauf`, `spurVersatz`,
+  `strangMitte`, `strangBreite`, `wocheWeich` (Smoothstep zwischen Wochen — kein Zacken), `strahlHell` (kein Lichtschnitt am HEUTE-Punkt).
+- **`abweichung.ts` (rein):** `Abweichung { id, art, pfad, person, von, bis?, staerke 0…1, verlauf 'anstieg'|'gleich', titel, strang?, privat? }`,
+  Arten `ueberfaellig · verschoben · frist-gerissen · ziel-gekippt · ueberlastet · ungeplant`. Aus den Strängen (`abweichungenAusStraengen`):
+  offener Meilenstein überfällig (1), Ziel-Frist überschritten (1), Steuerfrist (1), Projekt-Ende (0,6), gestellte Rechnung (0,5) — Aufgaben,
+  Termine, Follow-ups, „Belegt“ nie. Stärke `abweichungsStaerke(Tage, Gewicht)` = Gewicht · (1 − 2^(−Tage/14)); `ausschlagJeWoche`: steigt von
+  `von` bis `bis` an, klingt in 14 Tagen aus, mehrere = 1 − Π(1 − v). Privat-Regel `abweichungFuerBetrachter` (private der anderen Person:
+  Titel „Belegt“, nur bis zum Space, kein Strang).
+- **Schnittstelle für weitere Quellen:** `AbweichungsQuelle = (k: { heute, von, bis, straenge }) => Abweichung[]` (rein). Lader in
+  `abweichung-quellen-server.ts` (`LADER`), die Route sammelt mit `abweichungenSammeln(k, betrachter, quellen)` (gekapselt, ungültige fallen weg).
+  Angedockt: Deal-Entscheidung ≥ 2× verschoben (`dealsVerschoben`, Art `verschoben`, Gewicht 0,6). **Kapazität „überlastet“** dockt genauso an:
+  reine Funktion → Abweichungen (Art `ueberlastet`, Pfad bis Space/Ziel, Woche als von/bis, `verlauf: 'gleich'`, Stärke = Überlast) + Zeile in `LADER`.
+  Ohne Datengrundlage: `verschoben` für Meilensteine (kein ursprünglicher Termin gespeichert), `ungeplant`.
+- **`baum.ts`:** `Buendel.ausschlag` je Woche (ersetzt `spitze`), `Ansicht.abweichungen` (Text, schwerste zuerst, höchstens 8), `AnsichtOptionen.abweichungen`;
+  ein Thema trägt die Farbe seines ersten Ziels (`zielFarben`, Server) — „Farben nur je Ziel“; Blatt-Ebene höchstens 12 Spuren.
+- **Zeichner/Oberfläche:** keine Partikel, kein Glühen, kein Netz, keine Hilfs-/Mittellinie, kein Puls-Punkt und kein Schein am HEUTE-Punkt (eine
+  ruhige 1-px-Linie); Aufbau von links ohne leuchtende Spitze; Marker mit Stiel laufen weiter in ihren Strang. Unter der Legende ein Satz:
+  „Alle Stränge laufen ruhig — im Plan.“ bzw. „Ausschlag = Abweichung vom Plan“ mit den Gründen.
+- **Website:** `scripts/lichtfaeden-website.mjs` übersetzt weiter nur `band.ts` + `zeichnen.ts` — beide unverändert, `website/js/lichtfaeden.js`
+  und `fokus/js/lichtfaeden.js` bleiben, wie sie sind (`strahl.ts`/`abweichung.ts` gehören nur der App).
+- Wächter: `tests/strahl-ruhig.test.ts` (Höchstwerte, glatt ohne Abweichung, Spuren, Zusammenlauf, Ausschlag nur aus Abweichungen, Privat-Regel,
+  angedockte Quelle, Deal verschoben, Zeichner ohne `lighter`/Partikel/Weichzeichner/Radialschein, Website-Quellen).
+
 ## Tests
 
 `tests/lichtfaeden-modell.test.ts` · `-quelle-{planung,kalender,markttraktion,finanzen,beziehung,gesundheit}.test.ts` ·
