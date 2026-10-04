@@ -217,10 +217,11 @@ describe('An Kunden übergeben (POST /api/crm/events { aktion: kunden-vorschau |
 });
 
 describe('Event löschen mit Übergaben (POST /api/crm/events { aktion: loeschen }) — der Nachweis bleibt (Art. 15/19)', () => {
-  const vorher = async () => {
+  // Endgültig löschen geht seit 04.10. nur aus dem Papierkorb (lib/crm/ablage.ts) — `imKorb` legt das Event vorher hinein.
+  const vorher = async (imKorb = false) => {
     await db.saveJson('kontakte', { kontakte: [kontakt('anna', { firma: 'Beispielwerk GmbH' })] });
     await db.saveJson('crm', { ...(await crm()), events: [
-      { id: 'ev-k', titel: 'Messe für den Kunden', format: 'messe', ziel: '', datum: '2026-10-01', status: 'durchgefuehrt', marke: 'Netzwerken', fuer: { art: 'kunde', firmaId: 'f-kunde1' }, geaendert: '2026-09-01',
+      { id: 'ev-k', titel: 'Messe für den Kunden', format: 'messe', ziel: '', datum: '2026-10-01', status: 'durchgefuehrt', marke: 'Netzwerken', fuer: { art: 'kunde', firmaId: 'f-kunde1' }, geaendert: '2026-09-01', ...(imKorb ? { geloeschtAm: '2026-10-03T08:00:00.000Z' } : {}),
         uebergaben: [{ am: '2026-10-02T08:00:00.000Z', von: 'kevin', anzahl: 1, empfaengerFirmaId: 'f-kunde1', dateiname: 'kontakte-x.csv', kontaktIds: ['c-anna'], avvBzwHinweisBestaetigt: true }] },
     ], teilnahmen: [] });
   };
@@ -235,10 +236,10 @@ describe('Event löschen mit Übergaben (POST /api/crm/events { aktion: loeschen
     expect((await crm()).events.some(x => x.id === 'ev-k')).toBe(true);
   });
   it('mit Bestätigung: das Event ist weg, das Protokoll steht im Übergabe-Journal (Empfänger, Kennungen) und beantwortet Art. 15/17', async () => {
-    await vorher();
+    await vorher(true);
     const r = await eventsPost({ aktion: 'loeschen', eventId: 'ev-k', uebergabenBestaetigt: true }, kopf('kevin'));
     expect(r.status).toBe(200);
-    expect((await crm()).events.some(x => x.id === 'ev-k')).toBe(false);
+    expect((await speicher.ladeCrmMitPapierkorb()).events.some(x => x.id === 'ev-k')).toBe(false);
     const journal = await db.loadJson<{ eintraege: { eventTitel: string; empfaengerName?: string; kontaktIds?: string[]; grund: string }[] }>('uebergabe-journal--test-haus');
     expect(journal?.eintraege).toEqual([expect.objectContaining({ eventTitel: 'Messe für den Kunden', empfaengerName: 'Kundenwerk GmbH', kontaktIds: ['c-anna'], grund: 'event-geloescht' })]);
     const { personAufzaehlen } = await import('@/lib/crm/person-bestaende');

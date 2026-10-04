@@ -94,6 +94,9 @@ describe('Löschsperre (#49)', () => {
   });
   it('Mandat mit Rechnung → 409; leere Firma → gelöscht', async () => {
     expect((await patch([{ liste: 'mandate', op: 'delete', id: 'm-werke' }])).status).toBe(409);
+    // Seit 04.10. (lib/crm/ablage.ts): endgültig nur aus dem Papierkorb — erst hinein, dann weg.
+    expect((await patch([{ liste: 'firmen', op: 'delete', id: 'f-leer' }])).status).toBe(409);
+    expect((await patch([{ liste: 'firmen', op: 'teil', id: 'f-leer', felder: { geloeschtAm: new Date().toISOString() } }])).status).toBe(200);
     expect((await patch([{ liste: 'firmen', op: 'delete', id: 'f-leer' }])).status).toBe(200);
     expect((await speicher.ladeCrm()).firmen.map(f => f.id)).toEqual(['f-werke']);
   });

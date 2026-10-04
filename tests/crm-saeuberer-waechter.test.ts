@@ -22,6 +22,8 @@ const nennt = (text: string, feld: string) => new RegExp(`\\b${feld}\\b`).test(t
 // Felder, die nicht der Säuberer der Liste setzt — mit Grund.
 const UEBERALL: Record<string, string> = {
   geaendertVon: 'setzt saeubern() selbst (die schreibende Person), nie aus dem Netz',
+  archiviertAm: 'Archiv-Marke (04.10.) — übernimmt saeubern() für jede Liste über ablageZusatz() (lib/crm/ablage.ts), Zeit vom Server',
+  geloeschtAm: 'Papierkorb-Marke (04.10.) — übernimmt saeubern() über ablageZusatz() bzw. leistung() (Produkte), Zeit vom Server',
 };
 
 describe('CRM-Säuberer kennen jedes Typ-Feld (#23)', () => {

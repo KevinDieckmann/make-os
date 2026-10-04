@@ -100,7 +100,10 @@ describe('#49 Firmen und Mandate mit Verweisen werden nicht gelöscht', () => {
   it('Mandat mit Rechnung: Sperre; ohne Rechnung und leere Firma: gelöscht', () => {
     expect(loeschSperren(b, [{ liste: 'mandate', op: 'delete', id: 'm-1' }], kontext)[0].anzahl.rechnungen).toBe(1);
     expect(loeschSperren(b, [{ liste: 'mandate', op: 'delete', id: 'm-1' }], { ...kontext, rechnungen: [] })).toEqual([]);
-    const r = wendeCrmAn(b, [{ liste: 'firmen', op: 'delete', id: 'f-leer' }], JETZT, 'kevin', kontext);
+    // Seit 04.10. (lib/crm/ablage.ts): endgültig nur aus dem Papierkorb — die leere Firma liegt dort.
+    const imKorb = { ...b, firmen: b.firmen.map(x => (x.id === 'f-leer' ? { ...x, geloeschtAm: JETZT } : x)) };
+    expect(wendeCrmAn(b, [{ liste: 'firmen', op: 'delete', id: 'f-leer' }], JETZT, 'kevin', kontext).abgelehnt?.[0]).toMatch(/nicht im Papierkorb/);
+    const r = wendeCrmAn(imKorb, [{ liste: 'firmen', op: 'delete', id: 'f-leer' }], JETZT, 'kevin', kontext);
     expect(r.sperren).toEqual([]);
     expect(r.bestand.firmen.map(x => x.id)).toEqual(['f-werke']);
   });

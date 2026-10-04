@@ -438,6 +438,9 @@ describe('M8 · Event löschen räumt auf', () => {
     await db.saveJson('liquiplan', { posten: [{ id: 'ev-ev-test-1', titel: 'Event: Stammtisch', betrag: -400, rhythmus: 'einmalig', ab: '2026-10-02', kategorie: 'marketing/event' }, { id: 'p-andere', titel: 'Miete', betrag: -1000, rhythmus: 'monat', ab: '2026-10-01' }] });
     await senden(erfassung({ schritt: 'vermitteln', vermitteln: { an: 'Peter Beispiel' } }));
     expect((await crm()).chancen[0].quelleBezug).toBe('ev-test-1');
+    // Endgültig nur aus dem Papierkorb (04.10., lib/crm/ablage.ts): erst hinein (generischer Weg), dann der Serverweg mit Kaskade.
+    const { aendereCrm } = await import('@/lib/crm/speicher');
+    await aendereCrm(b => ({ ...b, events: b.events.map(e => (e.id === 'ev-test-1' ? { ...e, geloeschtAm: new Date().toISOString() } : e)) }));
     const r = await eventsRoute.POST(new Request('http://test/api/crm/events', { method: 'POST', headers: kopf('kevin'), body: JSON.stringify({ aktion: 'loeschen', eventId: 'ev-test-1' }) }));
     const d = await r.json() as { ok: boolean; planposten: boolean; dealsOhneVerweis: number; teilnahmen: number; text: string };
     expect(d).toMatchObject({ ok: true, planposten: true, dealsOhneVerweis: 1, teilnahmen: 1 });
