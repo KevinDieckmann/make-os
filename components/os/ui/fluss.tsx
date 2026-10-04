@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, FOKUS_LICHT, LEUCHT, BEDEUTUNG_FARBE, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { flussAchse, flussHatLinie, flussText, flussZahl, type FlussBereich, type FlussReihe, type FlussTon } from '@/lib/fluss/modell';
 import { Karte, Ueberschrift, Liste, Zeile } from './flaechen';
-import { Chip } from './knoepfe';
+import { Chip, Knopf } from './knoepfe';
 import { Hinweis, Leer } from './rueckmeldung';
 
 /** Die Reihe eines Bereichs vom Server holen (Person aus der Sitzung). `space` nur für die Planung. */
@@ -55,21 +55,21 @@ export interface FlussKarteProps {
 
 /** Der Baustein. Lädt selbst, wenn nur `bereich` gegeben ist. */
 export function FlussKarte(p: FlussKarteProps) {
-  if (p.fluss !== undefined || !p.bereich) return <FlussKarteInhalt {...p} fluss={p.fluss ?? null} laedt={false} fehler={null} />;
+  if (p.fluss !== undefined || !p.bereich) return <FlussKarteInhalt {...p} fluss={p.fluss ?? null} laedt={false} fehler={null} neu={null} />;
   return <FlussKarteLadend {...p} bereich={p.bereich} />;
 }
 function FlussKarteLadend(p: FlussKarteProps & { bereich: FlussBereich }) {
-  const { fluss, laedt, fehler } = useFluss(p.bereich, p.space);
-  return <FlussKarteInhalt {...p} fluss={fluss} laedt={laedt} fehler={fehler} />;
+  const { fluss, laedt, fehler, neu } = useFluss(p.bereich, p.space);
+  return <FlussKarteInhalt {...p} fluss={fluss} laedt={laedt} fehler={fehler} neu={neu} />;
 }
 
-function FlussKarteInhalt({ fluss, laedt, fehler, titel = 'Für dich', rechts, farbe = FOKUS_LICHT, children, i = 0 }: FlussKarteProps & { fluss: FlussReihe | null; laedt: boolean; fehler: string | null }) {
+function FlussKarteInhalt({ fluss, laedt, fehler, neu, titel = 'Für dich', rechts, farbe = FOKUS_LICHT, children, i = 0 }: FlussKarteProps & { fluss: FlussReihe | null; laedt: boolean; fehler: string | null; neu: (() => void) | null }) {
   const router = useRouter();
   return (
     <Karte i={i} ton="fokus" licht={farbe}>
       <div data-flusskarte="" style={{ display: 'contents' }} />
       <Ueberschrift rechts={rechts}>{titel}</Ueberschrift>
-      {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
+      {fehler && <Hinweis art="kritisch" rolle="alert" aktion={neu ? <Knopf leise onClick={neu}>Noch einmal versuchen</Knopf> : undefined}>{fehler}</Hinweis>}
       {!fluss && !fehler && (laedt ? <div aria-busy="true" aria-label="Überblick lädt" style={{ height: 96 }} /> : <Leer>Für diesen Bereich gibt es noch keinen Verlauf.</Leer>)}
       {fluss && (flussHatLinie(fluss) ? <FlussLinie f={fluss} farbe={farbe} /> : <Leer>{fluss.leer ?? 'Noch kein Verlauf.'}</Leer>)}
       {children ?? (fluss && fluss.zeilen.length > 0 && (
