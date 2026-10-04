@@ -61,6 +61,7 @@ export async function telegramHaken(_person: string, _meldung: Meldung): Promise
 export function telegramText(m: Pick<Meldung, 'art' | 'titel'>): string {
   if (m.art === 'netzwerken') return 'Neue Person zugeteilt — Details in MAKE OS';
   if (m.art === 'sicherheit') return 'Am Zugang wurde etwas geändert — Details in MAKE OS';
+  if (m.art === 'vertrag') return 'Eine Vertragsfrist naht — Details in MAKE OS';
   if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
   return m.titel;
 }

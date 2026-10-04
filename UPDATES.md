@@ -17,6 +17,18 @@ Kevin 04.10.: „Dann ist die Software fast fertig.“ Befunde der Inventur (UMB
 - **Standard überall:** die letzten 28 Dateien von `schlank` auf `components/os/ui` (siehe DESIGN_STANDARD.md › Aufräumen).
 - Stammdaten doppelt (/os/stammdaten ↔ Markttraktion › Stammdaten › Gesellschaften) bewusst nicht angefasst — übernimmt das Gesellschafts-Register.
 - Wächter: `tests/aufraeumen.test.ts`, `tests/design-standard.test.ts` › Aufräumen. Nicht hochgeladen.
+## Gesellschafts-Register — Nachtrag nach Kevins Antworten (04.10.2026, nur lokal — Branch `gesellschaften-2`)
+
+- **Rolle „Holding“** im Steckbrief (operativ · Holding). Für eine Holding gelten im Business-Index die operativen Vertriebs-/Produktivitäts-
+  kennzahlen nicht — abgeleitet aus dem Register statt fest verdrahtet. Solange keine der drei festen Gesellschaften eine Rolle trägt, bleibt
+  alles wie bisher (KD Ventures ohne operative Kennzahlen). **Nach dem Upload:** bei KD Ventures „Holding“ wählen.
+- **Organe & Beschlüsse** als eigener Reiter je Gesellschaft (Geschäftsführung/Prokura/Beirat … mit seit/bis; Beschlüsse mit Datum, Art,
+  Inhalt, Status) — ZeileAktionen, Papierkorb, Rechte wie das Register.
+- **Erinnerung vor „kündigen bis“:** Vorlauf je Vertrag (Vorgabe 30 Tage, 0 = keine) → eine Aufgabe (fällig am Stichtag) + Meldung in der
+  Glocke (neue Art „Vertragsfrist“) für den Haushalt; im Morgenlauf („Vertrags-Erinnerungen“) und sofort nach dem Speichern, nie doppelt.
+- **Rückweg:** keine Formänderung; der Online-Stand ignoriert die neuen Felder und behält sie. Meldungen der Art `vertrag` kennt der alte Stand
+  nicht (er verwirft sie beim Lesen der Glocke höchstens) — sonst nichts.
+
 ## Gesellschafts-Register „Unternehmen“ (04.10.2026, nur lokal — Branch `gesellschaften`; UMBAU_ABEND_0410.md › 8, Paket 3)
 
 Kevin 04.10.: „Kriegen wir dort jetzt alles sauber geplant — vor allem die MAKE Innovation GmbH?“ Entscheidungen: MAKE wird von der KD Ventures

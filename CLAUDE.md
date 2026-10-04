@@ -39,6 +39,12 @@ lokal, Route `/os`, Port 3001.
   der Absender-Antwort. Vertragsfristen → Kalender (`vertragsFristenLesen`, Art `vertrag`), ZOE `gesellschaften_lesen` (frei, nur lesen).
   Keine Namen/Beträge/HRB im Code — der Haushalt trägt sie ein. Archiv = ruhend/aufgelöst bzw. ausgeschieden/beendet, Löschen = Papierkorb
   (ZeileAktionen), endgültig nur ohne Verweise; Morgenlauf-Schritt „Gesellschaften-Papierkorb“.
+  Nachtrag 04.10. (Kevins Antworten): Rolle `operativ | holding` im Steckbrief — Holding-Sichten liest der Business-Index aus dem
+  Register (`holdingSichten` → `Bestand.holdings` → `kennzahlenFuer(scope, holdings)`; `HOLDING_VORGABE` nur, solange keine feste Gesellschaft
+  eine Rolle trägt). Organe (`organe[]`: Funktion, Person/Kontakt, seit/bis) und Beschlüsse (`beschluesse[]`: Datum, Art, Titel, Inhalt,
+  Status, Unterlagen) als Listen je Gesellschaft (Reiter „Organe & Beschlüsse“). Erinnerung vor „kündigen bis“: `Vertrag.erinnerungTage`
+  (Vorgabe 30, 0 = keine) → `vertragsErinnerungen` (Aufgabe `vte-…` + Meldung Art `vertrag` an den Haushalt, idempotent) im Morgenlauf und
+  nach jeder Vertragsänderung. Neue Gesellschaften im Finanzplan: bewusst nicht (Kevin).
   Gründungsfahrplan: Vorlage `lib/gesellschaften/fahrplan.ts` (Ziel + 9 Meilensteine mit `wartetAuf` + Aufgaben), Karte im Steckbrief
   (`components/os/unternehmen/Fahrplan.tsx`), nur über die bestehenden Planungs-/Aufgaben-Schreibwege, feste Kennungen `z-fahrplan-…`/`ms-fahrplan-…`.
 - **Malin ist Gesundheits-Beauftragte** (Sport, Ernährung, Hyrox-Pro-Ziel) —

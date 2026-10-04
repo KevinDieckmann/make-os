@@ -13,5 +13,5 @@ export type { Ampel, KennzahlStand, SaeulenStand, Detail } from '@/lib/kennzahle
 export type BusinessIndex = IndexErgebnis;
 
 export function berechne(b: Bestand): BusinessIndex {
-  return berechneModell({ saeulen: SAEULEN, kennzahlen: kennzahlenFuer(b.scope), messen: MESSEN, bestand: b, schwellen: b.schwellen, stand: b.heute, scope: b.scope });
+  return berechneModell({ saeulen: SAEULEN, kennzahlen: kennzahlenFuer(b.scope, b.holdings ?? undefined), messen: MESSEN, bestand: b, schwellen: b.schwellen, stand: b.heute, scope: b.scope });
 }

@@ -13,7 +13,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Knopf, Hinweis, Leer, Pillen, Chip, LEUCHT, ZeileAktionen, useRueckgaengig, useRueckfrage, feld } from '../ui';
 import { neueKennung } from '@/lib/kennung';
 import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
-import { haelt, centAus, VERTRAG_ARTEN, VERTRAG_STATUS, vertragArtLabel, vertragStatusLabel, type Bezug, type FremdBeteiligung, type Vertrag, type VertragArt, type VertragStatus, type VertragFrist } from '@/lib/gesellschaften/modell';
+import { haelt, centAus, ERINNERUNG_VORGABE_TAGE, VERTRAG_ARTEN, VERTRAG_STATUS, vertragArtLabel, vertragStatusLabel, type Bezug, type FremdBeteiligung, type Vertrag, type VertragArt, type VertragStatus, type VertragFrist } from '@/lib/gesellschaften/modell';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { ANNEHMEN } from '@/lib/dateien/regeln';
 import { BezugWahl, Auswahl, Felder, Feldzeile, bezugName, centEingabe, centText, klein, tagText, type GAnzeige, type RegisterDaten, type useSchreiber } from './teile';
@@ -170,7 +170,7 @@ export function VertraegeReiter({ g, daten, schreibe }: { g: GAnzeige; daten: Re
             </ZeileAktionen>
           ))}</Liste>
         )}
-        <div style={{ ...klein, marginTop: 8 }}>Beginn, Ende, „kündigen bis“ und jeder Stichtag stehen automatisch im Kalender (Ebene Fristen).</div>
+        <div style={{ ...klein, marginTop: 8 }}>Beginn, Ende, „kündigen bis“ und jeder Stichtag stehen automatisch im Kalender (Ebene Fristen). Vor „kündigen bis“ kommt rechtzeitig eine Erinnerung in die Glocke und als Aufgabe.</div>
       </Karte>
       {form && <VertragForm key={form === 'neu' ? 'neu' : form.id} g={g} daten={daten} alt={form === 'neu' ? undefined : form} schreibe={schreibe} fertig={() => setForm(null)} />}
       {beendet.length > 0 && (
@@ -195,6 +195,7 @@ function VertragForm({ g, daten, alt, schreibe, fertig }: { g: GAnzeige; daten: 
   const [ende, setEnde] = useState(alt?.ende ?? '');
   const [kuendigungsfrist, setKuendigungsfrist] = useState(alt?.kuendigungsfrist ?? '');
   const [kuendigenBis, setKuendigenBis] = useState(alt?.kuendigenBis ?? '');
+  const [erinnerung, setErinnerung] = useState(String(alt?.erinnerungTage ?? ERINNERUNG_VORGABE_TAGE));
   const [fristen, setFristen] = useState<VertragFrist[]>(alt?.fristen ?? []);
   const [dateiIds, setDateiIds] = useState<string[]>(alt?.dateiIds ?? []);
   const [notiz, setNotiz] = useState(alt?.notiz ?? '');
@@ -206,7 +207,7 @@ function VertragForm({ g, daten, alt, schreibe, fertig }: { g: GAnzeige; daten: 
   const u = useUnterlagen(g.id);
   const speichern = async () => {
     setFehler(null);
-    const eintrag = { art, titel: titel || vertragArtLabel(art), status, parteien, beginn: beginn || null, ende: ende || null, kuendigungsfrist, kuendigenBis: kuendigenBis || null, fristen, dateiIds, notiz };
+    const eintrag = { art, titel: titel || vertragArtLabel(art), status, parteien, beginn: beginn || null, ende: ende || null, kuendigungsfrist, kuendigenBis: kuendigenBis || null, erinnerungTage: erinnerung === '' ? null : Number(erinnerung), fristen, dateiIds, notiz };
     const r = await schreibe({ liste: 'vertraege', eintrag, ...(alt ? { eintragId: alt.id } : {}) });
     if (r.ok) { gesellschaftenGeaendert(); fertig(); } else setFehler(r.fehler ?? 'Nicht gespeichert.');
   };
@@ -221,6 +222,7 @@ function VertragForm({ g, daten, alt, schreibe, fertig }: { g: GAnzeige; daten: 
           <Feldzeile label="Laufzeit bis"><input type="date" value={ende} onChange={e => setEnde(e.target.value)} aria-label="Laufzeit bis" style={feld} /></Feldzeile>
           <Feldzeile label="Kündigungsfrist"><input value={kuendigungsfrist} onChange={e => setKuendigungsfrist(e.target.value)} placeholder="z. B. 6 Monate zum Jahresende" aria-label="Kündigungsfrist" style={feld} /></Feldzeile>
           <Feldzeile label="Kündigen bis"><input type="date" value={kuendigenBis} onChange={e => setKuendigenBis(e.target.value)} aria-label="Kündigen bis" style={feld} /></Feldzeile>
+          {kuendigenBis && <Feldzeile label="Erinnerung (Tage vorher, 0 = keine)"><input value={erinnerung} onChange={e => setErinnerung(e.target.value.replace(/[^0-9]/g, ''))} inputMode="numeric" aria-label="Erinnerung Tage vorher" style={feld} /></Feldzeile>}
         </Felder>
         <Feldzeile label="Status"><Pillen liste={VERTRAG_STATUS.map(s => ({ id: s.id, label: s.label }))} aktiv={status} onWahl={setStatus} /></Feldzeile>
         <div style={{ display: 'grid', gap: 8 }}>

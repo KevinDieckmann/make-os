@@ -126,9 +126,12 @@ export async function POST(req: Request) {
     const h = (await imHaushaltOderSystemlauf(req)) ? await haushaltDesInhabers() : null;
     if (!h) schritte.push({ name: 'Gesellschaften-Papierkorb', ok: false, info: 'nur im Haushalt des Inhabers' });
     else {
-      const { registerPapierkorbAufraeumen } = await import('@/lib/gesellschaften/server');
+      const { registerPapierkorbAufraeumen, vertragsErinnerungen } = await import('@/lib/gesellschaften/server');
       const p = await registerPapierkorbAufraeumen(h);
       schritte.push({ name: 'Gesellschaften-Papierkorb', ok: true, info: p.eintraege ? `endgültig gelöscht: ${p.eintraege} Eintr${p.eintraege === 1 ? 'ag' : 'äge'}` : 'nichts älter als 30 Tage' });
+      // 04.10. Nachtrag: Erinnerung vor „kündigen bis“ (Aufgabe + Glocke, idempotent).
+      const e = await vertragsErinnerungen(h);
+      schritte.push({ name: 'Vertrags-Erinnerungen', ok: true, info: e.neu ? `${e.neu} neue Erinnerung${e.neu === 1 ? '' : 'en'}` : 'keine fällig' });
     }
   } catch (err) {
     schritte.push({ name: 'Gesellschaften-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });

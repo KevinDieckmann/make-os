@@ -30,7 +30,7 @@ import {
 } from '@/lib/gesellschaften/modell';
 import {
   ladeRegister, standVon, registerAendern, registerAnlegen, crmVerweisTeil, steckbrief, eintragSchreiben, eintragHandeln, gesellschaftHandeln,
-  type Ergebnis,
+  vertragsErinnerungen, type Ergebnis,
 } from '@/lib/gesellschaften/server';
 import type { Kontakt } from '@/lib/make-one/crm';
 
@@ -57,7 +57,7 @@ const kontaktName = (k: Pick<Kontakt, 'vorname' | 'nachname'>) => `${k.vorname ?
 /** Namen der verwendeten Bezüge (Personen des Haushalts, CRM-Kontakte, CRM-Firmen) — nur die, die vorkommen. */
 async function namenFuer(alle: RegisterGesellschaft[], personen: { id: string; name: string }[]): Promise<Record<string, string>> {
   const bezuege: Bezug[] = alle.flatMap(g => [
-    ...aktiveEintraege(g.gesellschafter).map(x => x.wer), ...aktiveEintraege(g.vertraege).flatMap(v => v.parteien),
+    ...aktiveEintraege(g.gesellschafter).map(x => x.wer), ...aktiveEintraege(g.vertraege).flatMap(v => v.parteien), ...aktiveEintraege(g.organe).map(o => o.wer),
     ...aktiveEintraege(g.beteiligungen).map(b => ({ art: 'firma' as const, id: b.firmaId })),
   ]);
   const namen: Record<string, string> = {};
@@ -170,7 +170,10 @@ export async function PATCH(req: Request) {
       return antwort(await registerAendern(z.haushalt, z.person, b.id, b.stand, wer, eintragHandeln(liste, eintragId, aktion)), z.haushalt);
     }
     if (!b.eintrag || typeof b.eintrag !== 'object') return fehler('eintrag fehlt.', 400);
-    return antwort(await registerAendern(z.haushalt, z.person, b.id, b.stand, wer, eintragSchreiben(liste, b.eintrag, eintragId)), z.haushalt);
+    const r = await registerAendern(z.haushalt, z.person, b.id, b.stand, wer, eintragSchreiben(liste, b.eintrag, eintragId));
+    // Erinnerung vor „kündigen bis“: liegt der Stichtag schon im Vorlauf, sofort (sonst im Morgenlauf).
+    if (r.g && liste === 'vertraege') await vertragsErinnerungen(z.haushalt);
+    return antwort(r, z.haushalt);
   }
   if (aktion) {
     const ziel = b.ziel === 'aufgeloest' ? 'aufgeloest' : 'ruhend';

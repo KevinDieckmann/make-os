@@ -116,7 +116,63 @@ export interface Vertrag {
   kuendigungsfrist?: string;
   /** Bis wann gekündigt werden muss — erscheint im Kalender. */
   kuendigenBis?: string;
+  /**
+   * Erinnerung vor „kündigen bis“ (04.10. Nachtrag, Kevin): so viele Tage vorher Meldung in der Glocke + Aufgabe.
+   * Fehlt = `ERINNERUNG_VORGABE_TAGE`; 0 = keine Erinnerung.
+   */
+  erinnerungTage?: number;
   fristen?: VertragFrist[];
+  notiz?: string;
+  geloeschtAm?: string;
+}
+
+/** Vorlauf der Erinnerung vor „kündigen bis“, solange am Vertrag nichts steht. */
+export const ERINNERUNG_VORGABE_TAGE = 30;
+
+// ── Rolle, Beschlüsse, Organe (04.10. Nachtrag, Kevin: „KD Ventures = reine Holding“, „Beschlüsse & Organe als eigene Liste“) ──
+
+/** Rolle einer Gesellschaft: operativ (Standard) oder reine Holding — für eine Holding gelten operative Kennzahlen nicht. */
+export type GesRolle = 'operativ' | 'holding';
+export const GES_ROLLEN: readonly { id: GesRolle; label: string }[] = [{ id: 'operativ', label: 'operativ' }, { id: 'holding', label: 'Holding' }];
+
+export type BeschlussArt = 'gesellschafterbeschluss' | 'gf-beschluss' | 'umlaufbeschluss' | 'beiratsbeschluss' | 'sonstiges';
+export const BESCHLUSS_ARTEN: readonly { id: BeschlussArt; label: string }[] = [
+  { id: 'gesellschafterbeschluss', label: 'Gesellschafterbeschluss' }, { id: 'gf-beschluss', label: 'GF-Beschluss' },
+  { id: 'umlaufbeschluss', label: 'Umlaufbeschluss' }, { id: 'beiratsbeschluss', label: 'Beiratsbeschluss' }, { id: 'sonstiges', label: 'Sonstiges' },
+];
+export type BeschlussStatus = 'entwurf' | 'gefasst' | 'eingetragen' | 'aufgehoben';
+export const BESCHLUSS_STATUS: readonly { id: BeschlussStatus; label: string }[] = [
+  { id: 'entwurf', label: 'Entwurf' }, { id: 'gefasst', label: 'gefasst' }, { id: 'eingetragen', label: 'eingetragen' }, { id: 'aufgehoben', label: 'aufgehoben' },
+];
+export interface Beschluss {
+  /** `bs-<uuid>` */
+  id: string;
+  datum: string;
+  art: BeschlussArt;
+  titel: string;
+  inhalt?: string;
+  status: BeschlussStatus;
+  /** Status vor „aufgehoben“ (Archiv) — Zurückholen stellt ihn wieder her. */
+  vorArchiv?: BeschlussStatus;
+  /** Unterlagen in der Dateiablage (Bezug = diese Gesellschaft). */
+  dateiIds?: string[];
+  geloeschtAm?: string;
+}
+
+export type OrganFunktion = 'geschaeftsfuehrung' | 'prokura' | 'beirat' | 'aufsichtsrat' | 'sonstiges';
+export const ORGAN_FUNKTIONEN: readonly { id: OrganFunktion; label: string }[] = [
+  { id: 'geschaeftsfuehrung', label: 'Geschäftsführung' }, { id: 'prokura', label: 'Prokura' }, { id: 'beirat', label: 'Beirat' },
+  { id: 'aufsichtsrat', label: 'Aufsichtsrat' }, { id: 'sonstiges', label: 'Sonstiges' },
+];
+export interface Organ {
+  /** `og-<uuid>` */
+  id: string;
+  funktion: OrganFunktion;
+  /** Person im Haushalt oder CRM-Kontakt (nur Kennung). */
+  wer: Bezug;
+  seit?: string;
+  /** Archiv: ausgeschieden bis. */
+  bis?: string;
   notiz?: string;
   geloeschtAm?: string;
 }
@@ -128,6 +184,8 @@ export interface RegisterGesellschaft extends Omit<Absender, 'id'> {
   name?: string;
   rechtsform?: Rechtsform;
   status?: GesStatus;
+  /** Rolle (operativ · Holding) — wählt der Haushalt in der Oberfläche; nie eine feste Firma im Code. */
+  rolle?: GesRolle;
   /** Status vor dem Archiv — Zurückholen stellt ihn wieder her. */
   vorArchiv?: GesStatus;
   sitz?: string;
@@ -143,17 +201,21 @@ export interface RegisterGesellschaft extends Omit<Absender, 'id'> {
   gesellschafter?: Gesellschafter[];
   beteiligungen?: FremdBeteiligung[];
   vertraege?: Vertrag[];
+  beschluesse?: Beschluss[];
+  organe?: Organ[];
   angelegt?: string;
   geloeschtAm?: string;
 }
 export interface RegisterDatei { gesellschaften: RegisterGesellschaft[] }
 
-export type RegisterListe = 'gesellschafter' | 'beteiligungen' | 'vertraege';
-export const REGISTER_LISTEN: readonly RegisterListe[] = ['gesellschafter', 'beteiligungen', 'vertraege'];
-export const PRAEFIX: Record<RegisterListe, string> = { gesellschafter: 'gs', beteiligungen: 'bt', vertraege: 'vt' };
+export type RegisterListe = 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'beschluesse' | 'organe';
+export const REGISTER_LISTEN: readonly RegisterListe[] = ['gesellschafter', 'beteiligungen', 'vertraege', 'beschluesse', 'organe'];
+export const PRAEFIX: Record<RegisterListe, string> = { gesellschafter: 'gs', beteiligungen: 'bt', vertraege: 'vt', beschluesse: 'bs', organe: 'og' };
+/** Ein Eintrag irgendeiner Liste des Registers. */
+export type ListenEintrag = Gesellschafter | FremdBeteiligung | Vertrag | Beschluss | Organ;
 
 /** Grenzen (nie still kürzen — darüber 413/400 mit Text). */
-export const GRENZEN = { gesellschaften: 60, gesellschafter: 80, beteiligungen: 80, vertraege: 120, parteien: 12, dateien: 20, fristen: 20 } as const;
+export const GRENZEN = { gesellschaften: 60, gesellschafter: 80, beteiligungen: 80, vertraege: 120, beschluesse: 300, organe: 60, parteien: 12, dateien: 20, fristen: 20 } as const;
 
 // ── Lesen ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -431,6 +493,7 @@ export function steckbriefAnwenden(alt: RegisterGesellschaft, roh: Record<string
   }
   if (hat('rechtsform')) { const r = roh.rechtsform; if (r === null || r === '') setze('rechtsform', undefined); else if (RECHTSFORMEN.some(x => x.id === r)) setze('rechtsform', r as Rechtsform); else fehler.push({ feld: 'rechtsform', text: 'Unbekannte Rechtsform.' }); }
   if (hat('status')) { const s = roh.status; if (s === null || s === '') setze('status', undefined); else if (GES_STATUS.some(x => x.id === s)) { setze('status', s as GesStatus); if (!istArchiviertStatus(s as GesStatus)) setze('vorArchiv', undefined); } else fehler.push({ feld: 'status', text: 'Unbekannter Status.' }); }
+  if (hat('rolle')) { const r = roh.rolle; if (r === null || r === '' || r === 'operativ') setze('rolle', undefined); else if (r === 'holding') setze('rolle', 'holding'); else fehler.push({ feld: 'rolle', text: 'Rolle: operativ oder Holding.' }); }
   if (hat('sitz')) setze('sitz', zeile(roh.sitz, 80));
   for (const k of ['gegruendetAm', 'eingetragenAm'] as const) if (hat(k)) { const t = tag(roh[k]); if (roh[k] && !t) fehler.push({ feld: k, text: 'Datum bitte als JJJJ-MM-TT.' }); else setze(k, t); }
   for (const k of ['stammkapitalCent', 'eingezahltCent'] as const) if (hat(k)) { const c = centAus(roh[k]); if (c === 'fehler') fehler.push({ feld: k, text: 'Betrag nicht lesbar (z. B. 25.000 oder 12.500,50).' }); else setze(k, c); }
@@ -527,6 +590,11 @@ export function vertragSaeubern(roh: unknown, alt?: Vertrag): { e?: Vertrag; feh
   const beginn = datum('beginn'), ende = datum('ende'), kuendigenBis = datum('kuendigenBis');
   if (beginn && ende && ende < beginn) fehler.push({ feld: 'ende', text: 'Das Ende liegt vor dem Beginn.' });
   const kuendigungsfrist = o.kuendigungsfrist !== undefined ? zeile(o.kuendigungsfrist, 120) : alt?.kuendigungsfrist;
+  let erinnerungTage = alt?.erinnerungTage;
+  if (o.erinnerungTage !== undefined) {
+    if (o.erinnerungTage === null || o.erinnerungTage === '') erinnerungTage = undefined;
+    else { const n = Number(o.erinnerungTage); if (!Number.isInteger(n) || n < 0 || n > 365) fehler.push({ feld: 'erinnerungTage', text: 'Erinnerung: 0 bis 365 Tage vorher (0 = keine).' }); else erinnerungTage = n === ERINNERUNG_VORGABE_TAGE ? undefined : n; }
+  }
   let fristen = alt?.fristen;
   if (o.fristen !== undefined) {
     const l = Array.isArray(o.fristen) ? o.fristen : [];
@@ -548,7 +616,7 @@ export function vertragSaeubern(roh: unknown, alt?: Vertrag): { e?: Vertrag; feh
       id: id!, art, titel: titel || vertragArtLabel(art), parteien, status,
       ...(status === 'beendet' && alt?.vorArchiv ? { vorArchiv: alt.vorArchiv } : {}),
       ...(dateiIds?.length ? { dateiIds } : {}), ...(beginn ? { beginn } : {}), ...(ende ? { ende } : {}),
-      ...(kuendigungsfrist ? { kuendigungsfrist } : {}), ...(kuendigenBis ? { kuendigenBis } : {}), ...(fristen?.length ? { fristen } : {}),
+      ...(kuendigungsfrist ? { kuendigungsfrist } : {}), ...(kuendigenBis ? { kuendigenBis } : {}), ...(erinnerungTage !== undefined ? { erinnerungTage } : {}), ...(fristen?.length ? { fristen } : {}),
       ...(notiz ? { notiz } : {}), ...(alt?.geloeschtAm ? { geloeschtAm: alt.geloeschtAm } : {}),
     },
   };
@@ -560,9 +628,20 @@ export type EintragAktion = 'archivieren' | 'zurueckholen' | 'loeschen' | 'wiede
 export const EINTRAG_AKTIONEN: readonly EintragAktion[] = ['archivieren', 'zurueckholen', 'loeschen', 'wiederherstellen'];
 
 /** Archiv-/Papierkorb-Aktion auf einen Listeneintrag. `heute` = Berliner Tag, `jetzt` = Server-Zeit (Marke). */
-export function eintragAktion<T extends Gesellschafter | FremdBeteiligung | Vertrag>(liste: RegisterListe, e: T, aktion: EintragAktion, heute: string, jetzt: string): T {
+export function eintragAktion<T extends ListenEintrag>(liste: RegisterListe, e: T, aktion: EintragAktion, heute: string, jetzt: string): T {
   if (aktion === 'loeschen') return inPapierkorb(e, jetzt);
   if (aktion === 'wiederherstellen') return ausPapierkorb(e);
+  if (liste === 'organe') {
+    const o = { ...(e as Organ) };
+    if (aktion === 'archivieren') o.bis = o.bis && o.bis <= heute ? o.bis : heute; else delete o.bis;
+    return o as T;
+  }
+  if (liste === 'beschluesse') {
+    const b = { ...(e as Beschluss) };
+    if (aktion === 'archivieren') { if (b.status !== 'aufgehoben') { b.vorArchiv = b.status; b.status = 'aufgehoben'; } }
+    else if (b.status === 'aufgehoben') { b.status = b.vorArchiv ?? 'gefasst'; delete b.vorArchiv; }
+    return b as T;
+  }
   if (liste === 'gesellschafter') {
     const g = { ...(e as Gesellschafter) };
     if (aktion === 'archivieren') g.ausgeschiedenAm = g.ausgeschiedenAm ?? heute; else delete g.ausgeschiedenAm;
@@ -580,7 +659,9 @@ export function eintragAktion<T extends Gesellschafter | FremdBeteiligung | Vert
 }
 
 /** Ist ein Listeneintrag archiviert (ausgeschieden/beendet)? */
-export function eintragArchiviert(liste: RegisterListe, e: Gesellschafter | FremdBeteiligung | Vertrag): boolean {
+export function eintragArchiviert(liste: RegisterListe, e: ListenEintrag, heute = '9999-12-31'): boolean {
+  if (liste === 'organe') return !!(e as Organ).bis && (e as Organ).bis! <= heute;
+  if (liste === 'beschluesse') return (e as Beschluss).status === 'aufgehoben';
   if (liste === 'gesellschafter') return !!(e as Gesellschafter).ausgeschiedenAm;
   if (liste === 'beteiligungen') return !!(e as FremdBeteiligung).beendetAm;
   return (e as Vertrag).status === 'beendet';
@@ -626,4 +707,96 @@ export function registerAufraeumen(d: RegisterDatei | null, crm: CrmVerweisTeil,
  */
 export function registerEinheitenNamen(d: RegisterDatei | null | undefined): string[] {
   return alleGesellschaften(d).filter(g => istRegisterKennung(g.id) && !istArchiviertStatus(g.status)).map(anzeigeName);
+}
+
+// ── Beschlüsse und Organe säubern (04.10. Nachtrag) ──────────────────────────────────────────────────────────────
+
+export function beschlussSaeubern(roh: unknown, alt?: Beschluss): { e?: Beschluss; fehler: RegisterFehler[] } {
+  const fehler: RegisterFehler[] = [];
+  const o = (roh && typeof roh === 'object' ? roh : {}) as Record<string, unknown>;
+  const dv = o.datum !== undefined ? o.datum : alt?.datum; const datum = tag(dv);
+  if (!datum) fehler.push({ feld: 'datum', text: 'Datum bitte als JJJJ-MM-TT.' });
+  const art = (o.art !== undefined ? o.art : alt?.art) as BeschlussArt;
+  if (!BESCHLUSS_ARTEN.some(a => a.id === art)) fehler.push({ feld: 'art', text: 'Welche Art von Beschluss?' });
+  const titel = o.titel !== undefined ? zeile(o.titel, 160) : alt?.titel;
+  if (!titel) fehler.push({ feld: 'titel', text: 'Worum geht es? Bitte einen Titel.' });
+  const status = (o.status !== undefined ? o.status : alt?.status ?? 'gefasst') as BeschlussStatus;
+  if (!BESCHLUSS_STATUS.some(x => x.id === status)) fehler.push({ feld: 'status', text: 'Unbekannter Status.' });
+  const inhalt = o.inhalt !== undefined ? block(o.inhalt, 4000) : alt?.inhalt;
+  let dateiIds = alt?.dateiIds;
+  if (o.dateiIds !== undefined) {
+    const l = Array.isArray(o.dateiIds) ? o.dateiIds : [];
+    const ok = l.filter((x): x is string => typeof x === 'string' && /^d-[a-z0-9-]{4,60}$/.test(x));
+    if (ok.length !== l.length || l.length > GRENZEN.dateien) fehler.push({ feld: 'dateiIds', text: `Höchstens ${GRENZEN.dateien} lesbare Unterlagen.` });
+    dateiIds = [...new Set(ok)];
+  }
+  const id = alt?.id ?? (typeof o.id === 'string' && UNTER_ID('bs').test(o.id) ? o.id : undefined);
+  if (!id) fehler.push({ feld: 'id', text: 'Kennung fehlt.' });
+  if (fehler.length) return { fehler };
+  return { fehler, e: { id: id!, datum: datum!, art, titel: titel!, status, ...(status === 'aufgehoben' && alt?.vorArchiv ? { vorArchiv: alt.vorArchiv } : {}), ...(inhalt ? { inhalt } : {}), ...(dateiIds?.length ? { dateiIds } : {}), ...(alt?.geloeschtAm ? { geloeschtAm: alt.geloeschtAm } : {}) } };
+}
+
+export function organSaeubern(roh: unknown, alt?: Organ): { e?: Organ; fehler: RegisterFehler[] } {
+  const fehler: RegisterFehler[] = [];
+  const o = (roh && typeof roh === 'object' ? roh : {}) as Record<string, unknown>;
+  const funktion = (o.funktion !== undefined ? o.funktion : alt?.funktion) as OrganFunktion;
+  if (!ORGAN_FUNKTIONEN.some(f => f.id === funktion)) fehler.push({ feld: 'funktion', text: 'Welche Funktion?' });
+  const wer = o.wer !== undefined ? bezugAus(o.wer) : alt?.wer ?? null;
+  if (!wer || (wer.art !== 'person' && wer.art !== 'kontakt')) fehler.push({ feld: 'wer', text: 'Wer? Bitte eine Person im Haushalt oder einen Kontakt wählen.' });
+  const datum = (k: 'seit' | 'bis') => { const v = o[k] !== undefined ? o[k] : alt?.[k]; const t = tag(v); if (v && !t) fehler.push({ feld: k, text: 'Datum bitte als JJJJ-MM-TT.' }); return t; };
+  const seit = datum('seit'), bis = datum('bis');
+  if (seit && bis && bis < seit) fehler.push({ feld: 'bis', text: '„Bis“ liegt vor „seit“.' });
+  const notiz = o.notiz !== undefined ? block(o.notiz, 1000) : alt?.notiz;
+  const id = alt?.id ?? (typeof o.id === 'string' && UNTER_ID('og').test(o.id) ? o.id : undefined);
+  if (!id) fehler.push({ feld: 'id', text: 'Kennung fehlt.' });
+  if (fehler.length) return { fehler };
+  return { fehler, e: { id: id!, funktion, wer: wer!, ...(seit ? { seit } : {}), ...(bis ? { bis } : {}), ...(notiz ? { notiz } : {}), ...(alt?.geloeschtAm ? { geloeschtAm: alt.geloeschtAm } : {}) } };
+}
+
+export const beschlussArtLabel = (a: BeschlussArt) => BESCHLUSS_ARTEN.find(x => x.id === a)?.label ?? 'Beschluss';
+export const organLabel = (f: OrganFunktion) => ORGAN_FUNKTIONEN.find(x => x.id === f)?.label ?? 'Organ';
+
+// ── Holding (Business-Index) ─────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Welche der drei festen Gesellschaften sind laut Register eine Holding? `null`, solange KEINE feste Gesellschaft eine Rolle
+ * trägt (Altbestand) — dann gilt im Business-Index die bisherige Vorgabe (lib/business/register.ts `HOLDING_VORGABE`).
+ * Register-Gesellschaften (`g-…`) haben keine eigene Index-Sicht (nur Grunddaten).
+ */
+export function holdingSichten(d: RegisterDatei | null | undefined): Gesellschaftskennung[] | null {
+  const feste = (d?.gesellschaften ?? []).filter(g => istGesellschaft(g.id) && !imPapierkorb(g));
+  if (!feste.some(g => g.rolle !== undefined)) return null;
+  return feste.filter(g => g.rolle === 'holding').map(g => g.id as Gesellschaftskennung);
+}
+
+// ── Erinnerung vor „kündigen bis“ ────────────────────────────────────────────────────────────────────────────────
+
+export interface Erinnerung { aufgabeId: string; gesellschaftId: GesellschaftId; vertragId: string; kuendigenBis: string; titel: string; beschreibung: string }
+
+/** Kennung der Erinnerungs-Aufgabe — fest je Vertrag und Stichtag (idempotent; ein neuer Stichtag = eine neue Erinnerung). */
+export const erinnerungAufgabeId = (vertragId: string, kuendigenBis: string) => `vte-${vertragId.replace(/^vt-/, '').slice(0, 40)}-${kuendigenBis.replace(/-/g, '')}`;
+
+/**
+ * Welche Erinnerungen sind heute fällig? Laufende Verträge (nicht beendet, nicht im Papierkorb, Gesellschaft nicht im
+ * Papierkorb) mit „kündigen bis“ ≥ heute und heute ≥ kündigen bis − Vorlauf. Vorlauf 0 = keine.
+ */
+export function faelligeErinnerungen(alle: readonly RegisterGesellschaft[], heute: string): Erinnerung[] {
+  const raus: Erinnerung[] = [];
+  for (const g of alle) {
+    if (imPapierkorb(g)) continue;
+    for (const v of aktiveEintraege(g.vertraege)) {
+      if (v.status === 'beendet' || !v.kuendigenBis || v.kuendigenBis < heute) continue;
+      const vorlauf = v.erinnerungTage ?? ERINNERUNG_VORGABE_TAGE;
+      if (vorlauf <= 0) continue;
+      const ab = new Date(Date.parse(`${v.kuendigenBis}T12:00:00Z`) - vorlauf * 86_400_000).toISOString().slice(0, 10);
+      if (heute < ab) continue;
+      const name = v.titel || vertragArtLabel(v.art);
+      raus.push({
+        aufgabeId: erinnerungAufgabeId(v.id, v.kuendigenBis), gesellschaftId: g.id, vertragId: v.id, kuendigenBis: v.kuendigenBis,
+        titel: `Kündigen oder verlängern? ${name} (${anzeigeName(g)}) — bis ${v.kuendigenBis.slice(8, 10)}.${v.kuendigenBis.slice(5, 7)}.${v.kuendigenBis.slice(0, 4)}`,
+        beschreibung: `Erinnerung aus dem Gesellschafts-Register: „kündigen bis“ ${v.kuendigenBis}${v.kuendigungsfrist ? ` (${v.kuendigungsfrist})` : ''}. Entscheiden, ob gekündigt oder verlängert wird. Hinweis, keine Rechtsberatung.`,
+      });
+    }
+  }
+  return raus;
 }
