@@ -176,7 +176,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   mit(H('sport', 'Sport (Kevin) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('sport--*', 'Sport je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('vitals', 'Körperwerte (Kevin, Whoop) — eigene Gesundheitsdaten.'), GESUNDHEIT),
-  // Kapazität (04.10.) liest daraus NUR den Ø-Recovery-Wert, NUR wenn die Person mit allen Konten des Haushalts teilt, und nur als
+  // Kapazität (04.10.) liest daraus NUR den Ø-Recovery-Wert, NUR mit eigener Einwilligung der Person und wenn sie mit allen Konten teilt, und nur als
   // Team-Faktor (lib/kapazitaet/server.ts); nie in Business-Index, ZOE oder Protokolle (`ohneGesundheit`, Test kapazitaet-route).
   mit(H('vitals--*', 'Körperwerte je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('haut', 'Haut-Tagebuch (Kevin) — eigene Gesundheitsdaten.'), GESUNDHEIT),
@@ -213,8 +213,8 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('arbeitsplatz', 'Arbeitsplatz-Einstellungen des Haushalts.'),
   H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter System › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'),
   H('team--*', 'Team des Haushalts (Rollen/Namen der Mitglieder).'),
-  mit(H('kapazitaet--*', 'Kapazität je Haushalt (04.10.): Grundwert und Ausnahmen (Urlaub, feste Blöcke) je Team-Person, Zuweisungen Person × Mandat/Kunde (nur CRM-Kennungen, keine Namen Dritter) — eigene Planung des Haushalts. Gespeichert wird KEIN Gesundheitswert (die Erholung wird beim Rechnen aus vitals--* gelesen, nur mit Teilen, nur als Team-Faktor).'), {
-    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Planung der Arbeitszeit im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (realistische Planung); Erholung: Art. 9 Abs. 2 lit. a über „Teilen“ (siehe vitals--*)',
+  mit(H('kapazitaet--*', 'Kapazität je Haushalt (04.10.): Grundwert und Ausnahmen (Urlaub, feste Blöcke) je Team-Person, Zuweisungen Person × Mandat/Kunde (nur CRM-Kennungen, keine Namen Dritter) — eigene Planung des Haushalts. Gespeichert wird KEIN Gesundheitswert (die Erholung wird beim Rechnen aus vitals--* gelesen, nur mit Einwilligung + Teilen, nur als Team-Faktor); `erholungAm` = Zeitpunkt der Einwilligung (Nachweis).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Planung der Arbeitszeit im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (realistische Planung); Erholung: Art. 9 Abs. 2 lit. a — eigene Einwilligung der Person (`erholungAm`, Schalter in der Kapazität, Vorgabe aus) UND Teilen mit allen Konten (siehe vitals--*)',
     art15: 'GET /api/kapazitaet — die Person sieht ihre Werte samt eigener Ausnahme-Titel; Team-Personen ohne Konto: Auskunft durch den Inhaber (Planung › Kapazität)',
     loeschfrist: 'Ausnahmen/Zuweisungen bis zur Löschung durch Person bzw. Inhaber (Planung › Kapazität). OFFEN: Einträge einer deaktivierten Team-Person bzw. eines entfernten Kontos bleiben stehen (kein Löschweg, Team-Personen werden nur deaktiviert) — Frage an Kevin (DSGVO-Prüfung 04.10.)',
     kategorie: ['beschaeftigte'],
