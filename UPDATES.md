@@ -47,6 +47,31 @@ gehalten, KEMARIS geht in MAKE über (Umfirmierung), eigene Gesellschaften als o
   in die Liquidität (der Finanzplan wird gerade umgebaut).
 - **Nach dem Upload:** Kevin trägt Stammkapital, Gesellschafter (KD Ventures → MAKE 100 %), Vorgänger (KEMARIS Innovation GmbH) und die Verträge
   ein — nichts davon steht im Code.
+## Finanzplanung unter Finanzen › Privat und › Business (04.10.2026, nur lokal — Branch `finanzplan-frei`)
+
+Kevin 04.10.: „Business ist bei Business sichtbar, kein Privat. Bei Privat kann man alles sehen … Im Business-Bereich sieht man Privat nicht.“
+
+- Reiter „Finanzplanung“ unter Finanzen › Privat (alles, auch die Firmen) und Finanzen › Business (nur MAKE Innovation GmbH, KD Ventures,
+  Selbstständigkeit) — eine Komponente, zwei Sichten. Der Eintrag „Finanzplanung jetzt“ unter den Agenten ist weg; alte Links leiten weiter.
+- Business-Sicht serverseitig gefiltert (`GET /api/finanzplan?sicht=business`), Schreiben auf Privat-Pfade → 403.
+- **Rückweg:** keine Datenänderung; Protokolleinträge tragen neu `pfad` (optional, der alte Stand ignoriert es). Der alte Stand kennt die
+  Reiter nicht und zeigt die Finanzplanung wieder unter den Agenten.
+- Nicht hochgeladen.
+
+## Finanzplanung: jede Zahl bearbeitbar — Handwerte (04.10.2026, nur lokal — Branch `finanzplan-frei`)
+
+Kevin 04.10.: „Alle Felder — auch unten die Kosten, die Einzahlungen, die Steuern, whatever — alles selber bearbeiten. Jede Zahl. Nur die Formeln
+sind im Hintergrund immer hart gecodet.“
+
+- Jede gerechnete Zahl in den Blättern (Privat, MAKE Innovation GmbH, KD Ventures, Selbstständigkeit, Gesamt, Gruppe, Töpfe) und im Abschluss 2026
+  ist anklickbar und überschreibbar; alles Nachgelagerte (Summen, Steuern auf Folgejahre, Kontostand, frei verfügbar, Kennzahlen, Ziele) rechnet
+  mit dem Handwert weiter. Von Hand = ✎ + Strich der Person, Tooltip mit Formelwert und Abweichung, Summen von Hand als ruhiger Hinweis.
+- Zurücksetzen auf die Formel je Zelle (Entf), Zeile (Rechtsklick/langer Druck) oder alle im Blatt; Rückgängig (Cmd+Z) wie gewohnt.
+- Schicht an einer Stelle: `hand()` im Rechenkern, Kennungen in `lib/finanzen/handwerte.ts`; Formeln unverändert, ohne Handwerte bit-genau wie vorher.
+- Handy: Namensspalte begrenzt — vorher deckte sie bei langem Titel die Zahlen zu.
+- **Rückweg:** keine neuen Felder, Handwerte sind gewöhnliche `plan`-Schlüssel. Der alte Online-Stand liest Dokumente mit Handwerten ohne Fehler
+  und ignoriert die neuen Schlüssel (dort gilt die Formel); sie bleiben erhalten und wirken wieder mit dem neuen Stand.
+- Nicht hochgeladen.
 
 ## makeinnovation.de „Klar“ — Neubau auf der Basis „Superconscious“, 80 % Seriosität (04.10.2026, nur lokal — Branch `website-klar`)
 

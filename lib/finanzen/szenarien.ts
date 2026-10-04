@@ -25,10 +25,11 @@
 // Oberfläche findet sie wieder, die Rechnung behandelt sie wie alle anderen.
 
 import type { Annahmen, FinanzDaten, MonatPrivat, MonatSelbst, MonatUG, Szenario, ZielStand, Zusatz } from './rechenkern';
-import { rechneUG, rechnePrivat, rechneSelbstAchse, kennzahlen, zielStaende, planMonat, kalMonat } from './rechenkern';
+import { rechneUG, rechnePrivat, rechneSelbstAchse, kennzahlen, zielStaende, planMonat, kalMonat, gruppeReihe } from './rechenkern';
 import { pruefeSteuern, steuernMit, type Steuern } from './steuern';
 import type { Unterseite } from './plan/hilfen';
 import { schwellenVon } from './schwellen';
+import type { Formeln } from './handwerte';
 import { eur } from './plan/hilfen';
 import { UG_KURZ, UG_NAME, finanzOrtName, type FinanzOrt, type KernEinheit } from '@/lib/einheiten';
 
@@ -181,7 +182,13 @@ export function annahmenMit(a: Annahmen, pa: PlanAnnahmen | undefined): Annahmen
 }
 
 // ── Rechnen ──────────────────────────────────────────────────────────────────
-export interface Gerechnet { d: FinanzDaten; ps: Planszenario | null; sz: Szenario; x?: Zusatz; ug: MonatUG[]; /** Selbstständigkeit (eigene Achse seit 02.10.). */ kdc: MonatSelbst[]; pr: MonatPrivat[]; kz: ReturnType<typeof kennzahlen> }
+export interface Gerechnet {
+  d: FinanzDaten; ps: Planszenario | null; sz: Szenario; x?: Zusatz; ug: MonatUG[]; /** Selbstständigkeit (eigene Achse seit 02.10.). */ kdc: MonatSelbst[]; pr: MonatPrivat[]; kz: ReturnType<typeof kennzahlen>;
+  /** Formelwerte der von Hand überschriebenen Zellen (`<kennung>:<monat>` → Formelwert, 04.10.) — für Tooltip und Abweichung. */
+  formel: Formeln;
+  /** Freies Geld der Gruppe je Monat (mit Handwert `g.frei`). */
+  gruppe: number[];
+}
 
 /**
  * Ein Planszenario rechnen: Dokument + Szenario-Annahmen + Bausteine → Kern.
@@ -193,10 +200,12 @@ export function rechneMit(d: FinanzDaten, ps: Planszenario | null, treiber?: Sze
   // Szenario-Annahmen und Szenario-Steuern (Überlagerung je Gesellschaft) liegen über dem Dokument.
   const dd = ps ? { ...d, annahmen: annahmenMit(d.annahmen, ps.annahmen), ...(ps.annahmen.steuern ? { steuern: steuernMit(d.steuern, ps.annahmen.steuern) } : {}) } : d;
   const x = ps ? reihen(ps, d.monate.length) : undefined;
-  const ug = rechneUG(dd, sz, x);
-  const kdc = rechneSelbstAchse(dd, x);
-  const pr = rechnePrivat(dd, ug, sz, x, kdc);
-  return { d: dd, ps, sz, x, ug, kdc, pr, kz: kennzahlen(ug, pr, kdc) };
+  const formel: Formeln = {};
+  const ug = rechneUG(dd, sz, x, formel);
+  const kdc = rechneSelbstAchse(dd, x, formel);
+  const pr = rechnePrivat(dd, ug, sz, x, kdc, formel);
+  const gruppe = gruppeReihe(dd.plan, ug, pr, kdc, formel);
+  return { d: dd, ps, sz, x, ug, kdc, pr, kz: kennzahlen(ug, pr, kdc, gruppe), formel, gruppe };
 }
 
 // ── Auswertung: Lage in drei Zahlen ──────────────────────────────────────────
@@ -248,7 +257,8 @@ export function auswertung(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], kdc
   const staende = zielStaende(d, ug, pr, kdc);
   const imPlan = staende.filter(z => z.status === 'erreicht' || z.status === 'im Plan').length;
   const knapp = staende.filter(z => z.status === 'knapp').length;
-  const kosten = (u: MonatUG) => u.kevin + u.malin + u.unterstuetzung + u.stellen + u.sach + u.holding;
+  // Laufende Kosten (Mindestumsatz) — aus dem Kern (`laufend`, mit Handwert).
+  const kosten = (u: MonatUG) => u.laufend ?? u.kevin + u.malin + u.unterstuetzung + u.stellen + u.sach + u.holding;
   const fenster = ug.slice(m0 - 1, m0 + 11);
   const schnitt = (f: (u: MonatUG) => number) => (fenster.length ? fenster.reduce((s, u) => s + f(u), 0) / fenster.length : 0);
   let naechste: Auswertung['steuer']['naechsteZahlung'] = null;

@@ -12,7 +12,7 @@
 // Space (lib/make-one/space-regeln.ts); Heute und ZOE sehen beides.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Building2, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid, Calculator } from 'lucide-react';
+import { Home, Briefcase, Building2, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
 
 export type { SpaceId };
@@ -32,7 +32,7 @@ export const SPACES: Space[] = [
     suche: 'In Privat suchen: Familie, Gesundheit, Zahlen',
     eintraege: [
       { href: '/os/uebersicht?space=privat', label: 'Übersicht', icon: LayoutGrid, passt: ['/os/uebersicht?space=privat'] },
-      { href: '/os/finanzen?s=privat', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=privat'] },
+      { href: '/os/finanzen?s=privat', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=privat', '/os/finanzen?s=finanzplanung&space=privat', '/os/finanzen?s=gesamt&space=privat', '/os/finanzplan'] },
       { href: '/os/aufgaben?space=privat', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben?space=privat', '/os/board?space=privat'] },
       { href: '/os/planung/jahr?space=privat', label: 'Ziele & Planung', icon: Target, passt: ['/os/planung?space=privat', '/os/fokus?space=privat', '/os/kompass?space=privat'] },
       { href: '/os/gesundheit', label: 'Gesundheit', icon: HeartPulse, passt: ['/os/gesundheit', '/os/sport', '/os/journal', '/os/ernaehrung', '/os/ritual', '/os/energie', '/os/tageslauf'] },
@@ -46,7 +46,7 @@ export const SPACES: Space[] = [
     suche: 'In Business suchen: Rechnungen, Mandate, Kontakte',
     eintraege: [
       { href: '/os/uebersicht?space=business', label: 'Übersicht', icon: LayoutGrid, passt: ['/os/uebersicht?space=business'] },
-      { href: '/os/finanzen?s=business', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=business', '/os/finanzen?s=steuern', '/os/finanzen?s=chef', '/os/finanzen/', '/os/controlling', '/os/business'] },
+      { href: '/os/finanzen?s=business', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=business', '/os/finanzen?s=steuern', '/os/finanzen?s=chef', '/os/finanzen?s=finanzplanung&space=business', '/os/finanzen?s=gesamt&space=business', '/os/finanzen/', '/os/controlling', '/os/business'] },
       { href: '/os/aufgaben?space=business', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben?space=business', '/os/board?space=business', '/os/meeting'] },
       { href: '/os/planung/jahr?space=business', label: 'Ziele & Planung', icon: Target, passt: ['/os/planung?space=business', '/os/fokus?space=business', '/os/kompass?space=business'] },
       { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm', '/os/prospecting', '/os/research', '/os/content'] },
@@ -60,8 +60,8 @@ export const SPACES: Space[] = [
 /** Eigener Knopf unter den Spaces (Kevin 26.09.: „das Agenten-Thema einzeln unter Business“). */
 export const EIGEN: SpaceEintrag[] = [
   { href: '/os/agenten', label: 'Agenten', icon: Bot, passt: ['/os/agenten', '/os/stapel', '/os/loop'] },
-  // Finanzplanung jetzt (Kevin 27.09.): eigener Bereich unter den Agenten, bis die Teile unter Privat › Finanzen und Business wandern.
-  { href: '/os/finanzplan', label: 'Finanzplanung jetzt', icon: Calculator, passt: ['/os/finanzplan'] },
+  // Finanzplanung (27.09. unter den Agenten) ist am 04.10. umgezogen (Kevin): Reiter „Finanzplanung“ unter Privat › Finanzen (alles)
+  // und Business › Finanzen (nur die Gesellschaften). /os/finanzplan leitet in die Privat-Sicht weiter.
   // Netzwerken (02.10.) steht NUR am Handy als fester Knopf unten in der Leiste (Handschlag) — Kevin 03.10.: „brauchen wir nicht
   // online auf der Plattform, wirklich nur auf dem Handy.“ Am Rechner bleibt die Seite über Links erreichbar (Event-Akte „Jetzt erfassen“).
 ];

@@ -211,6 +211,69 @@ Siehe `GO_LIVE_CHECKLISTE.md` › „Was beim Rückweg wegfällt“ (Eintrag „
 - Hebesatz je Gemeinde eintragen (bis dahin aus `steuerUG` abgeleitet, ~405 % bei 30 % Gesamtsatz); Rechtsform der Selbstständigkeit prüfen (Freiberuf = Gewerbesteuer-Zeile ausschalten).
 - Mindestbesteuerung beim Verlustvortrag, Progressionseffekt der Gehälter auf die Einkommensteuer — bewusst nicht abgebildet.
 
+## Jede Zahl bearbeitbar — Handwerte (04.10.2026, Branch `finanzplan-frei`, Kevins ausdrückliches Wort)
+
+Kevin 04.10.: „Bau sofort in der Finanzplanung, dass ich alle Felder — auch unten die Kosten, die Einzahlungen, die Steuern, whatever — alles
+selber bearbeiten kann. Jede Zahl. Nur die Formeln sind im Hintergrund immer hart gecodet.“ Die Formeln des Kerns bleiben unverändert; neu ist eine
+**Übersteuerungs-Schicht an EINER Stelle**.
+
+- **Wo die Schicht lebt:** `hand()` in `lib/finanzen/rechenkern.ts`. Ein Handwert ist ein Eintrag im Plan-Dokument `plan["<kennung>:<monat>"]` —
+  derselbe Ort, an dem das Blatt seit dem 27.09. Planzellen überschreibt (`ug.s.miete:3`, `ug.ob:3`). Jede gerechnete Größe des Kerns läuft über
+  `h('<kennung>', m, formelwert)`; steht ein Handwert da, gilt er, und alles Nachgelagerte rechnet damit weiter (Summen, Ergebnis, Ertragsteuer
+  inkl. Rücklage und Zahlung im Folgejahr, Konto und alle Folgemonate, frei verfügbar, Kennzahlen, Ziele, Töpfe, Gruppe, Business-Index-Quellen).
+  Werte ohne Monat (Abschluss 2026 der Selbstständigkeit) stehen unter Monat 0 (`ab.est:0`).
+- **Die Liste der Kennungen** (was sie heißen und worauf sie wirken): `HAND_FELDER` in `lib/finanzen/handwerte.ts` (~100 Größen: MAKE `ug.*`,
+  KD Ventures `kdv.*`, Selbstständigkeit `kdc.*`, Privat `p.*`, Gruppe `g.frei`, Abschluss `ab.*`). Die zehn alten Rechenzeilen behalten ihre Kennung.
+- **Summen mit Handwert** wirken über ihre Abweichung (`dPers`, `dLauf`, `dKost`, `dE`, `dA`, `dErg` im Kern) — ohne Handwert ist sie genau 0,
+  der Kern rechnet bit-genau wie vorher (Regressionsgold unverändert, plus Test „Handwert = Formelwert ändert keine Zahl“ für jede Kennung).
+- **Steuern:** Der Steuerrechner (`neuerSteuerrechner`, `lib/finanzen/ertragsteuer.ts`) nimmt je Monat Handwerte für den Aufwand je Steuerart
+  (KSt, Soli, Gewerbesteuer, ESt, Anrechnung), die Zahlung und den Verlustvortrag. Ein geänderter Aufwand geht in die Jahressteuer (Rücklage,
+  Zahlung im Folgejahr), eine geänderte Zahlung in das Gezahlte (Rücklage). Vereinfachung: bei Vorauszahlung je Quartal bleibt der Plan der
+  Vorauszahlungen beim Formelwert.
+- **Was wohin wirkt (Kern-Modell, unverändert):** Umsatz und Ergebnis sind Leistung (wirken auf Ergebnis und Steuer), der Zahlungseingang hat
+  eigene Zeilen (Eingang Retainer, Eingang aus Bausteinen, Einzahlungen). Kosten sind im Kern sofort bezahlt — ein Kosten-Handwert wirkt auch auf die
+  Auszahlungen. Bestände (Kontostand, Angespart, Partnerdarlehen offen) rechnen in den Folgemonaten vom Handwert weiter. Brücken haben auf beiden
+  Seiten eine eigene Kennung (z. B. `ug.ausschuettung` → `p.ausschuettung`, `ug.holding` → `kdv.umlage`/`kdv.holding`): ändert man die Senderseite,
+  folgt die Empfängerseite der Formel; ändert man die Empfängerseite, gilt dort der Handwert.
+- **Handwerte gelten für den ganzen Plan (alle Szenarien)** — wie die Zellen-Überschreibungen schon bisher; auch Vergleiche und „gegen Basis“ rechnen damit.
+- **Oberfläche:** Jede Zeile aller Blätter (Privat, MAKE Innovation GmbH, KD Ventures, Selbstständigkeit, Gesamt, Gruppe, Töpfe — Töpfe sind seit
+  04.10. ein Blatt) hat ihre Kennung; die Excel-Bedienung gilt überall (Enter/Tab/Pfeile/Entf/Escape, Rechtsklick/langer Druck: fortschreiben ab hier ·
+  12 Monate, „Auf Formel zurücksetzen (Formelwert)“, „Ab hier alle auf Formel“, „Ganze Zeile auf Formel“, Notiz). Von Hand = Strich der Person + ✎,
+  Tooltip „von Hand · Person · Datum — Formel … · Abweichung … — wirkt auf: …“. Über dem Blatt „✎ n von Hand · alle auf Formel“. Summen von Hand
+  stehen zusätzlich als ruhiger Hinweis unter dem Blatt (Handwert, Summe der Einzelzeilen, Abweichung) — nicht blockierend. Minus-Zeilen (Kosten,
+  Auszahlungen, Steuern als −) nehmen die Eingabe mit gezeigtem Vorzeichen und speichern positiv. Abschluss 2026: `HandZahl` (Klick → Feld, „↺ Formel“).
+  Handy: die Namensspalte ist auf `min(240px, 40vw)` begrenzt (vorher deckte sie bei langem Titel die Zahlen zu).
+- **Schreibweg:** nur die bestehenden Operationen (`PATCH /api/finanzplan`: basisStand, Sperre, 409, Protokoll, Zellen-Meta, Rückgängig als
+  Gegenoperation). Neu geprüft: `/plan/<kennung>:<monat>` braucht eine endliche Zahl und einen Monat 0 … Planlänge; höchstens `GRENZE_PLAN_ZELLEN`
+  (20.000) Zellen — darüber 413, gekürzt wird nie, Verkleinern geht immer. Haushalts-Tor (`haushaltVon`) unverändert.
+- **Bewusst nicht als Handwert:** gestellte Rechnungen und ihre Beträge (`rechnungSchutz`, anderer Bestand `/api/state/finanzplan` — Belege bleiben
+  unveränderlich, Storno wie bisher); IST-Werte aus Buchungen (die ändert man in den Buchungen bzw. im IST-Modus des Blatts); Auswertungen über
+  mehrere Monate (Kacheln „12 Monate“, Tiefpunkt, Break-even, Runway, Szenario-Vergleich, Mindestumsatz Ø) — sie folgen den Monatszellen;
+  Steuer-Sätze und Annahmen sind schon Felder (Karte „Welche Steuern gelten?“, Annahmen).
+- **ZOE** schreibt keine Finanzplan-Werte (nur Haushalts-Belege); sie liest `kennzahlenVon` → rechnet mit den Handwerten.
+- **Rückweg (alter Online-Stand):** Neue Felder gibt es nicht — Handwerte sind gewöhnliche `plan`-Schlüssel. `pruefeDokument` lässt `plan` unverändert
+  durch; der alte Kern liest nur seine zehn Rechenzeilen und die Planzeilen und ignoriert die neuen Schlüssel ohne Fehler (dort gilt die Formel). Die
+  Handwerte bleiben im Dokument und wirken wieder, sobald der neue Stand läuft. Ein Handwert auf einer der zehn alten Rechenzeilen wirkt in beiden.
+- **Tests:** `tests/finanzplan-handwerte.test.ts` (24 Fälle: ohne Handwerte gleich, Kostenzeile → Summe/Steuer/Konto, Steuerzeile → Konto/Rücklage/
+  Folgejahr, zurücksetzen und Rückgängig, Summe mit Abweichung, KD Ventures, Abschluss, Operationen-Prüfung, 409/413 im Schreibweg, alte Dokumente,
+  Kennungen ohne Personennamen und ohne Kollision mit Planzeilen-Präfixen).
+
+## Finanzplanung unter Privat und Business (04.10.2026, Branch `finanzplan-frei`)
+
+Kevin 04.10.: „Teile bitte die Finanzplanung … einmal bei Privat, wo man das Ganze sehen kann, und einmal Business bei Business — jeweils unter
+Finanzen. Business ist bei Business sichtbar, kein Privat. Bei Privat kann man aber alles sehen, also auch die Firmen.“
+
+- **Wo:** Reiter „Finanzplanung“ unter Finanzen › Privat (`/os/finanzen?s=finanzplanung&space=privat`) und Finanzen › Business
+  (`…&space=business`). Dieselbe Komponente mit `sicht`. Alte Links `/os/finanzplan?u=…` leiten in die Privat-Sicht weiter.
+- **Privat-Sicht:** wie bisher alles — acht Bereiche, auch die Gesellschaften.
+- **Business-Sicht:** Lage (nur Business-Kacheln und -Punkte), Planen, Business (MAKE, KD Ventures, Selbstständigkeit), Gesamt (nur Business,
+  Gehalt/Ausschüttung/Entnahme als Abfluss brutto), Buchungen & Check (Buchungen, Zu erledigen, Kalender, Schulden — je nur Business), Ziele &
+  Töpfe (nur Ziele „MAKE frei“ und „Partnerdarlehen“), Protokoll (nur Einträge mit Business-Pfad).
+- **Sicher, nicht nur versteckt:** der Server filtert (`lib/finanzen/plan/sicht.ts › businessSicht`), bevor das Dokument hinausgeht — auch in
+  der 409-Antwort. Schreiben aus der Business-Sicht nur auf Business-Pfade (`businessPfadErlaubt`, sonst 403). Die Business-Zahlen sind dieselben
+  wie in der vollen Sicht (Test). Rückweg: das Dokument bleibt gleich; neu ist nur das optionale Feld `pfad` an Protokolleinträgen (der alte Stand
+  ignoriert es).
+
 ## Produkte → Deals → Mandate → Planung (Kevin: „clean von vorne bis hinten“)
 - **Produkt** (`Leistung`, Katalog im CRM, Seite `/os/mandate?s=produkte`) trägt, was die Planung braucht: `preis.betrag`, `preis.basis`
   (monat · jahr · einmalig — neu, additiv in `lib/crm/typen.ts`; fehlt sie, leitet `preisBasisVon()` sie aus der Freitext-Einheit ab, „festklicken“ speichert

@@ -73,7 +73,10 @@ function reglerBaustein(art: Regler, preis: number, m0: number): Baustein {
 }
 
 export function Baukasten() {
-  const { d, ps: arbeitsplan, sz: treiber, aendere, geh, params, aw: awPlan } = usePlan();
+  const { d, ps: arbeitsplan, sz: treiber, aendere, geh, params, aw: awPlan, sicht } = usePlan();
+  // Business-Sicht (04.10.): keine privaten Bausteine, Regler und Kennzahlen — „frei verfügbar“ zählt nur die Gesellschaften.
+  const business = sicht === 'business';
+  const freiVon = (a: typeof awPlan) => (business ? a.frei.ug + a.frei.kdv + a.frei.kdc : a.frei.gesamt);
   const liste = planszenarienVon(d);
   const szParam = params.get('sz');
   const [gewaehlt, setGewaehlt] = useState<string | null>(szParam ?? arbeitsplan?.id ?? liste[0]?.id ?? null);
@@ -228,7 +231,7 @@ export function Baukasten() {
 
           <Karte i={1} akzent={feldParam === 'privat' ? C.aktiv : undefined}>
             <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-              {(['stelle', 'tool', 'miete', 'rate'] as KostenArt[]).map(k => <KnopfKlein key={k} farbe={C.inkDim} onClick={() => void bausteinDazu(neuerBaustein(neueKennung('b'), { art: 'kosten', kostenArt: k, einheit: k === 'stelle' || k === 'tool' ? 'ug' : 'privat', name: KOSTENART_LABEL[k], start: m0, ...(k === 'rate' ? { laufzeit: 24 } : {}) }), `${KOSTENART_LABEL[k]} angelegt`)}>+ {KOSTENART_LABEL[k]}</KnopfKlein>)}
+              {(['stelle', 'tool', 'miete', 'rate'] as KostenArt[]).map(k => <KnopfKlein key={k} farbe={C.inkDim} onClick={() => void bausteinDazu(neuerBaustein(neueKennung('b'), { art: 'kosten', kostenArt: k, einheit: k === 'stelle' || k === 'tool' || business ? 'ug' : 'privat', name: KOSTENART_LABEL[k], start: m0, ...(k === 'rate' ? { laufzeit: 24 } : {}) }), `${KOSTENART_LABEL[k]} angelegt`)}>+ {KOSTENART_LABEL[k]}</KnopfKlein>)}
             </span>}>Kostenbausteine — Stelle, Software, Miete, Rate</Ueberschrift>
             {kosten.length ? (
               <Tabelle klein>
@@ -265,8 +268,8 @@ export function Baukasten() {
             <ReglerZeile label={`Umsatz ${UG_KURZ} je Monat zusätzlich`} wert={reglerWert('regler:umsatz')} min={0} max={20000} schritt={250} einheit="€" onLive={v => setLive(l => ({ ...l, 'regler:umsatz': v }))} onFest={() => reglerFest('regler:umsatz')} />
             <ReglerZeile label="Kevin brutto" wert={reglerWert('kevinBrutto')} min={0} max={10000} schritt={100} einheit="€" onLive={v => setLive(l => ({ ...l, kevinBrutto: v }))} onFest={() => reglerFest('kevinBrutto')} />
             <ReglerZeile label="Malin brutto" wert={reglerWert('malinBrutto')} min={0} max={10000} schritt={100} einheit="€" onLive={v => setLive(l => ({ ...l, malinBrutto: v }))} onFest={() => reglerFest('malinBrutto')} />
-            <ReglerZeile label="Fixkosten privat ± (z. B. Miete)" wert={reglerWert('regler:miete')} min={-1000} max={2000} schritt={50} einheit="€" onLive={v => setLive(l => ({ ...l, 'regler:miete': v }))} onFest={() => reglerFest('regler:miete')} />
-            <ReglerZeile label="Neue Rate privat je Monat" wert={reglerWert('regler:rate')} min={0} max={2000} schritt={25} einheit="€" onLive={v => setLive(l => ({ ...l, 'regler:rate': v }))} onFest={() => reglerFest('regler:rate')} />
+            {!business && <ReglerZeile label="Fixkosten privat ± (z. B. Miete)" wert={reglerWert('regler:miete')} min={-1000} max={2000} schritt={50} einheit="€" onLive={v => setLive(l => ({ ...l, 'regler:miete': v }))} onFest={() => reglerFest('regler:miete')} />}
+            {!business && <ReglerZeile label="Neue Rate privat je Monat" wert={reglerWert('regler:rate')} min={0} max={2000} schritt={25} einheit="€" onLive={v => setLive(l => ({ ...l, 'regler:rate': v }))} onFest={() => reglerFest('regler:rate')} />}
             <ReglerZeile label={`Steuerquote ${UG_KURZ}`} wert={reglerWert('steuerUG')} min={0} max={0.5} schritt={0.01} einheit="%" prozent onLive={v => setLive(l => ({ ...l, steuerUG: v }))} onFest={() => reglerFest('steuerUG')} />
             <Hinweis>Regler sind gewöhnliche Bausteine bzw. Annahmen dieses Szenarios — sie stehen oben in den Listen und lassen sich dort feiner einstellen. Wirkung rechts sofort, gespeichert beim Loslassen.</Hinweis>
           </Karte>
@@ -276,21 +279,23 @@ export function Baukasten() {
           <Karte i={1} akzent={KUPFER}>
             <Ueberschrift>Wirkung — „{ps.name}“ gegen Basis</Ueberschrift>
             <Kacheln min={150}>
-              <Kachel label="Frei verfügbar jetzt" wert={<><Geld v={g.aw.frei.gesamt} /> €</>} unter={delta(g.aw.frei.gesamt, basis.aw.frei.gesamt)} />
+              <Kachel label={business ? 'Frei verfügbar Business jetzt' : 'Frei verfügbar jetzt'} wert={<><Geld v={freiVon(g.aw)} /> €</>} unter={delta(freiVon(g.aw), freiVon(basis.aw))} />
               <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={g.kz.minFrei >= sw.tiefpunktGut ? LEUCHT.gut : g.kz.minFrei >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.minFrei} /> €</>} unter={<>{monatLabel(d, g.kz.minMonat)} · {delta(g.kz.minFrei, basis.kz.minFrei)}</>} />
               <Kachel label={`Runway ${UG_KURZ}`} punkt={g.aw.runway.ug == null || g.aw.runway.ug >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.ug >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.ug, g.aw.runway.horizont)} unter={`Basis: ${runwayText(basis.aw.runway.ug, basis.aw.runway.horizont)}`} />
-              <Kachel label="Privat Luft, schlechtester Monat" punkt={g.kz.privatLuftMin >= sw.privatLuftGut ? LEUCHT.gut : g.kz.privatLuftMin >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.privatLuftMin} /> €</>} unter={delta(g.kz.privatLuftMin, basis.kz.privatLuftMin)} />
-              <Kachel label="Runway Privat" punkt={g.aw.runway.privat == null || g.aw.runway.privat >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.privat >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.privat, g.aw.runway.horizont)} unter={g.aw.frei.kontenFehlen ? `${g.aw.frei.kontenFehlen} Kontostände fehlen` : `Basis: ${runwayText(basis.aw.runway.privat, basis.aw.runway.horizont)}`} />
+              {!business && <Kachel label="Privat Luft, schlechtester Monat" punkt={g.kz.privatLuftMin >= sw.privatLuftGut ? LEUCHT.gut : g.kz.privatLuftMin >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.privatLuftMin} /> €</>} unter={delta(g.kz.privatLuftMin, basis.kz.privatLuftMin)} />}
+              {!business && <Kachel label="Runway Privat" punkt={g.aw.runway.privat == null || g.aw.runway.privat >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.privat >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.privat, g.aw.runway.horizont)} unter={g.aw.frei.kontenFehlen ? `${g.aw.frei.kontenFehlen} Kontostände fehlen` : `Basis: ${runwayText(basis.aw.runway.privat, basis.aw.runway.horizont)}`} />}
               <Kachel label="Ziele im Plan" punkt={g.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${g.aw.ziele.imPlan} / ${g.aw.ziele.gesamt}`} unter={g.aw.ziele.gekippt ? `${g.aw.ziele.gekippt} gekippt` : g.aw.ziele.knapp ? `${g.aw.ziele.knapp} knapp` : 'alle im Plan'} />
-              <Kachel label="Gruppe Dez 28" wert={<><Geld v={g.kz.gruppeDez28} /> €</>} unter={delta(g.kz.gruppeDez28, basis.kz.gruppeDez28)} />
+              {!business && <Kachel label="Gruppe Dez 28" wert={<><Geld v={g.kz.gruppeDez28} /> €</>} unter={delta(g.kz.gruppeDez28, basis.kz.gruppeDez28)} />}
               <Kachel label="Steuerrücklage jetzt" wert={<><Geld v={g.aw.steuer.ruecklageGesamt} /> €</>} unter="Näherung, keine Steuerberatung" />
             </Kacheln>
-            <Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LILA, text: 'Privat angespart' }, { farbe: C.inkLeise, text: 'gestrichelt: Basis' }]} />
+            <Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, ...(business ? [] : [{ farbe: LILA, text: 'Privat angespart' }]), { farbe: C.inkLeise, text: 'gestrichelt: Basis' }]} />
             <Linie labels={d.monate} tick={3} hoehe={220} serien={[
               { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: g.ug.map(u => u.frei), breite: 2.4 },
               { name: `${UG_KURZ} frei Basis`, farbe: KUPFER, werte: basis.ug.map(u => u.frei), gestrichelt: true, breite: 1.2 },
-              { name: 'Privat angespart', farbe: LILA, werte: g.pr.map(p => p.angespart), breite: 2 },
-              { name: 'Privat Basis', farbe: LILA, werte: basis.pr.map(p => p.angespart), gestrichelt: true, breite: 1.2 },
+              ...(business ? [] : [
+                { name: 'Privat angespart', farbe: LILA, werte: g.pr.map(p => p.angespart), breite: 2 },
+                { name: 'Privat Basis', farbe: LILA, werte: basis.pr.map(p => p.angespart), gestrichelt: true, breite: 1.2 },
+              ]),
             ]} />
           </Karte>
           <Karte i={2}>
@@ -313,7 +318,7 @@ export function Baukasten() {
       <Karte i={4}>
         <Ueberschrift rechts={<span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Klick wählt ab oder an</span>}>Nebeneinander — bis zu drei Szenarien</Ueberschrift>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>{vgPillen.map(p => <span key={p.id} style={{ fontSize: TYP.bedien, padding: '3px 9px', borderRadius: 999, border: `1px solid ${vgAn(p.id) ? C.aktiv : 'rgba(255,255,255,.08)'}`, color: vgAn(p.id) ? C.aktiv : C.inkLeise, cursor: 'pointer' }} onClick={() => vgWahl(p.id)}>{vgAn(p.id) ? '✓ ' : ''}{p.label}</span>)}</div>
-        <VergleichTabelle spalten={vg} d={d} alsArbeitsplan={alsArbeitsplan} />
+        <VergleichTabelle spalten={vg} d={d} alsArbeitsplan={alsArbeitsplan} business={business} />
       </Karte>
 
       {neu && <NeuDialog neu={neu} setNeu={setNeu} treiber={d.szenarien} onOk={() => { const n = neu.name.trim(); setNeu(null); if (n) void anlegen(n, neu.basis); }} />}
@@ -412,13 +417,13 @@ function ReglerZeile({ label, wert, min, max, schritt, einheit, prozent: pz, onL
   );
 }
 
-function VergleichTabelle({ spalten, d, alsArbeitsplan }: { spalten: ReturnType<typeof vergleich>; d: Gerechnet['dd']; alsArbeitsplan: (id: string | null) => void }) {
+function VergleichTabelle({ spalten, d, alsArbeitsplan, business = false }: { spalten: ReturnType<typeof vergleich>; d: Gerechnet['dd']; alsArbeitsplan: (id: string | null) => void; business?: boolean }) {
   if (!spalten.length) return <Nichts>Oben Szenarien anhaken — bis zu drei nebeneinander.</Nichts>;
   const runway = (r: number | null, h: number) => (r == null ? `> ${h} M` : `${r} M`);
-  const zeilen: { l: string; w: (s: ReturnType<typeof vergleich>[number]) => ReactNode }[] = [
+  const alleZeilen: { l: string; w: (s: ReturnType<typeof vergleich>[number]) => ReactNode }[] = [
     { l: 'Treiber', w: s => <span style={{ color: C.inkDim }}>{s.treiber}</span> },
     { l: 'Bausteine', w: s => <span style={{ color: C.inkDim }}>{s.ps ? `${s.ps.bausteine.filter(b => b.an).length} an` : '—'}</span> },
-    { l: 'Frei verfügbar jetzt', w: s => <><Geld v={s.aw.frei.gesamt} /> €</> },
+    { l: business ? 'Frei verfügbar Business jetzt' : 'Frei verfügbar jetzt', w: s => <><Geld v={business ? s.aw.frei.ug + s.aw.frei.kdv + s.aw.frei.kdc : s.aw.frei.gesamt} /> €</> },
     { l: `Tiefpunkt ${UG_KURZ} frei`, w: s => <><Geld v={s.g.kz.minFrei} /> € <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{monatLabel(d, s.g.kz.minMonat)}</span></> },
     { l: `Monate ${UG_KURZ} im Minus`, w: s => <span style={{ color: s.g.kz.monateMinus ? LEUCHT.kritisch : C.ink }}>{s.g.kz.monateMinus}</span> },
     { l: `Runway ${UG_KURZ}`, w: s => runway(s.aw.runway.ug, s.aw.runway.horizont) },
@@ -433,6 +438,7 @@ function VergleichTabelle({ spalten, d, alsArbeitsplan }: { spalten: ReturnType<
     { l: 'Ziele im Plan', w: s => <span style={{ color: s.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut }}>{s.aw.ziele.imPlan} / {s.aw.ziele.gesamt}{s.aw.ziele.gekippt ? ` · ${s.aw.ziele.gekippt} gekippt` : ''}</span> },
     { l: 'Steuerrücklage jetzt', w: s => <><Geld v={s.aw.steuer.ruecklageGesamt} farbe={C.inkDim} /> €</> },
   ];
+  const zeilen = alleZeilen.filter(z => !business || !/Privat|Gruppe/.test(z.l));
   return (
     <Tabelle klein>
       <thead><tr><th style={TH}></th>{spalten.map(s => <th key={s.id ?? '__basis'} style={{ ...THr, color: s.id && s.id === d.arbeitsplan ? C.aktiv : undefined }}>{s.id && s.id === d.arbeitsplan ? '★ ' : ''}{s.name}</th>)}</tr></thead>

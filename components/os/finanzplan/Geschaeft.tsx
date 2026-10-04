@@ -17,7 +17,7 @@ import {
   KOSTENART_LABEL, RHYTHMUS_LABEL, STEUER_HINWEIS, betragImMonat, neuerBaustein, type Baustein, type KostenArt, type Rhythmus,
 } from '@/lib/finanzen/szenarien';
 import {
-  BEISPIEL_PRODUKTE, KOSTENARTEN_BLATT, bausteineVon, einmaligeKostenMake, geschaeftsblatt, kostenFaktor, neuesProdukt, sachkostenDerMake, summe12,
+  BEISPIEL_PRODUKTE, KOSTENARTEN_BLATT, bausteineVon, geschaeftsblatt, kostenFaktor, neuesProdukt, sachkostenDerMake, summe12,
 } from '@/lib/finanzen/geschaeft';
 import { rechtsformVon, zeigeSteuer, steuerParameter } from '@/lib/finanzen/steuern';
 import { gesamtquote } from '@/lib/finanzen/ertragsteuer';
@@ -132,19 +132,22 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
   /** Steuer-Aufwand je Steuerart (positiv = Belastung, im Blatt negativ) — nur, was zur Rechtsform gehört und gilt. */
   const aufwandZeilen = (): DatenZeile[] => {
     const a = gb.steuerArten;
-    const z = (name: string, reihe: number[], optional = true, vorz = -1): DatenZeile => ({ name, get: (m: number) => vorz * reihe[m - 1], ind: true, optional });
+    // Jede Steuerzeile ist ein Handwert des Kerns (`<ort>.kst` …); Aufwand wird als Minus gezeigt, gespeichert positiv.
+    const z = (name: string, art: string, reihe: number[], optional = true, vorz = -1): DatenZeile => ({ name, edit: `${ort}.${art}`, get: (m: number) => vorz * reihe[m - 1], ind: true, optional, minus: vorz < 0 });
     const out: DatenZeile[] = [];
     if (rf === 'kapital') {
-      if (zeigeSteuer(dd, ort, 'kst')) out.push(z('Körperschaftsteuer', a.kst, false));
-      if (zeigeSteuer(dd, ort, 'soli')) out.push(z('Solidaritätszuschlag', a.soli));
-    } else if (zeigeSteuer(dd, ort, 'est')) { out.push(z('Einkommensteuer', a.est, false)); out.push(z('Anrechnung Gewerbesteuer (§ 35 EStG)', a.anrechnung, true, 1)); }
-    if (zeigeSteuer(dd, ort, 'gewst')) out.push(z('Gewerbesteuer', a.gewst, false));
-    if (ort === 'kdv' && zeigeSteuer(dd, ort, 'exit')) out.push(z('Steuer auf den Ausstieg', a.exit));
+      if (zeigeSteuer(dd, ort, 'kst')) out.push(z('Körperschaftsteuer', 'kst', a.kst, false));
+      if (zeigeSteuer(dd, ort, 'soli')) out.push(z('Solidaritätszuschlag', 'soli', a.soli));
+    } else if (zeigeSteuer(dd, ort, 'est')) { out.push(z('Einkommensteuer', 'est', a.est, false)); out.push(z('Anrechnung Gewerbesteuer (§ 35 EStG)', 'anrechnung', a.anrechnung, true, 1)); }
+    if (zeigeSteuer(dd, ort, 'gewst')) out.push(z('Gewerbesteuer', 'gewst', a.gewst, false));
+    if (ort === 'kdv' && zeigeSteuer(dd, ort, 'exit')) out.push(z('Steuer auf den Ausstieg', 'exitSteuer', a.exit));
     return out;
   };
   const ertragAn = (['kst', 'est', 'gewst'] as const).some(art => zeigeSteuer(dd, ort, art));
 
   const zeilen: BlattZeile[] = [];
+  // Jede Zeile trägt ihre Kennung (`edit`): Planzeilen wie bisher, gerechnete Zeilen als Handwert des Kerns (lib/finanzen/handwerte.ts).
+  // `minus`: als Minus gezeigt, positiv gespeichert. Produkte und Kosten-Bausteine schreiben in den Baustein (`zelle`).
   if (ort === 'ug') {
     const sachMake = sachkostenDerMake(d.sachkosten);   // Selbst-Zeilen stehen nur im Selbstständigkeits-Blatt
     const ustAn = zeigeSteuer(dd, 'ug', 'ust');
@@ -153,73 +156,76 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { name: 'Ankermandat', edit: 'ug.ob', get: m => U(m).ob, ind: true, optional: true }, { name: 'Retainer', edit: 'ug.retainer', get: m => U(m).retainer, ind: true, optional: true },
       { name: 'Provision', edit: 'ug.astarna', get: m => U(m).astarna, ind: true, optional: true }, { name: 'Events', edit: 'ug.events', get: m => U(m).events, ind: true, optional: true },
       ...prodZeilen(),
-      { name: 'Umsatz', sum: true, get: m => U(m).umsatz },
+      { name: 'Umsatz', edit: 'ug.umsatz', sum: true, get: m => U(m).umsatz },
       { grp: 'Kosten', leerName: ['weitere Kostenzeile', 'weitere Kostenzeilen'] },
       { name: `${personName('kevin')} brutto`, edit: 'ug.kevin', get: m => U(m).kevinBrutto, ind: true, aus: true, optional: true }, { name: `${personName('malin')} brutto`, edit: 'ug.malin', get: m => U(m).malinBrutto, ind: true, aus: true, optional: true },
       { name: 'Unterstützung', edit: 'ug.unterstuetzung', get: m => U(m).unterstuetzung, ind: true, aus: true, optional: true },
-      { name: 'Personal inkl. Arbeitgeber', get: m => U(m).kevin + U(m).malin + U(m).unterstuetzung, ind: true, aus: true },
+      { name: 'Personal inkl. Arbeitgeber', edit: 'ug.personal', sum: true, get: m => U(m).personal, ind: true, aus: true },
       ...kostenZeilen(['stelle']),
     );
     zeilen.push(
       { grp: 'Fixkosten (Sachkosten)', add: 'sachkosten', leerName: ['weitere Fixkostenzeile', 'weitere Fixkostenzeilen'] },
       ...sachMake.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true, aus: true, optional: true })),
       ...kostenZeilen(KOSTENARTEN_BLATT.filter(a => a !== 'stelle')),
-      { name: 'Einmalige Kosten und Ereignisse', get: m => einmaligeKostenMake(U(m), d, m), ind: true, aus: true, optional: true },
-      { name: 'Gründung', get: m => U(m).gruendung, ind: true, aus: true, optional: true },
-      { name: 'Holding-Umlage', get: m => U(m).holding, ind: true, aus: true, optional: true },
-      { name: 'Kosten gesamt', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
+      { name: 'Einmalige Kosten und Ereignisse', edit: 'ug.einmalig', get: m => U(m).einmalig, ind: true, aus: true, optional: true },
+      { name: 'Gründung', edit: 'ug.gruendung', get: m => U(m).gruendung, ind: true, aus: true, optional: true },
+      { name: 'Holding-Umlage', edit: 'ug.holding', get: m => U(m).holding, ind: true, aus: true, optional: true },
+      { name: 'Laufende Kosten (Mindestumsatz)', edit: 'ug.laufend', sum: true, aus: true, get: m => U(m).laufend, ind: true },
+      { name: 'Kosten gesamt', edit: 'ug.kosten', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
       { grp: 'Ergebnis' },
-      { name: 'Ergebnis vor Steuern', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },
+      { name: 'Ergebnis vor Steuern', edit: 'ug.gewinn', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },
       ...aufwandZeilen(),
-      { name: 'Ergebnis nach Steuern', sum: true, key: true, get: m => gb.ergebnisNachSteuern[m - 1] },
+      { name: 'Ergebnis nach Steuern', edit: 'ug.ergebnisNach', sum: true, key: true, get: m => gb.ergebnisNachSteuern[m - 1] },
       { grp: 'Zahlungsfluss und Liquidität', leerName: ['weitere Zeile', 'weitere Zeilen'] },
-      { name: 'Eingang Retainer', get: m => U(m).retainerEingang, ind: true, optional: true },
-      { name: 'Eingang aus Bausteinen', get: m => U(m).bausteineEingang, ind: true, optional: true },
-      { name: 'Stammkapital und Gesellschafterdarlehen', get: m => U(m).kapital, ind: true, optional: true },
-      { name: ustAn ? 'Einzahlungen' : 'Einzahlungen (inkl. USt-Durchlauf)', sum: true, get: m => U(m).einzahlungen },
-      { name: 'Ausschüttung an Privat', get: m => -U(m).ausschuettung, ind: true, optional: true },
-      { name: 'Partnerdarlehen-Rate', get: m => -U(m).bjoern, ind: true, optional: true },
-      { name: 'Darlehen zurück', get: m => -U(m).darlehen, ind: true, optional: true },
-      { name: ustAn ? 'Auszahlungen' : 'Auszahlungen (inkl. USt-Durchlauf)', sum: true, get: m => -U(m).auszahlungen },
-      { name: 'Kontostand', stock: true, get: m => U(m).konto },
-      { name: 'Frei verfügbar', stock: true, sum: true, key: true, get: m => U(m).frei },
+      { name: 'Eingang Retainer', edit: 'ug.retainerEingang', get: m => U(m).retainerEingang, ind: true, optional: true },
+      { name: 'Eingang aus Bausteinen', edit: 'ug.bausteineEingang', get: m => U(m).bausteineEingang, ind: true, optional: true },
+      { name: 'Stammkapital und Gesellschafterdarlehen', edit: 'ug.kapital', get: m => U(m).kapital, ind: true, optional: true },
+      ...(ustAn ? [] : [{ name: 'USt vereinnahmt (Durchlauf)', edit: 'ug.ustEin', get: (m: number) => U(m).ustEin, ind: true, optional: true } as DatenZeile]),
+      { name: ustAn ? 'Einzahlungen' : 'Einzahlungen (inkl. USt-Durchlauf)', edit: 'ug.einzahlungen', sum: true, get: m => U(m).einzahlungen },
+      { name: 'Ausschüttung an Privat', edit: 'ug.ausschuettung', minus: true, get: m => -U(m).ausschuettung, ind: true, optional: true },
+      { name: 'Partnerdarlehen-Rate', edit: 'ug.bjoern', minus: true, get: m => -U(m).bjoern, ind: true, optional: true },
+      { name: 'Darlehen zurück', edit: 'ug.darlehen', minus: true, get: m => -U(m).darlehen, ind: true, optional: true },
+      { name: ustAn ? 'Auszahlungen' : 'Auszahlungen (inkl. USt-Durchlauf)', edit: 'ug.auszahlungen', minus: true, sum: true, get: m => -U(m).auszahlungen },
+      { name: 'Kontostand', edit: 'ug.konto', stock: true, get: m => U(m).konto },
+      { name: 'Frei verfügbar', edit: 'ug.frei', stock: true, sum: true, key: true, get: m => U(m).frei },
       { grp: 'Steuern', leerName: steuerLeer },
       ...(ertragAn ? [
-        { name: 'Ertragsteuer-Zahlung', get: (m: number) => -U(m).steuer, ind: true, optional: true } as DatenZeile,
-        { name: 'Steuerrücklage', stock: true, get: (m: number) => -U(m).steuerRuecklage, optional: true } as DatenZeile,
-        { name: 'Verlustvortrag zu Jahresbeginn', stock: true, get: (m: number) => U(m).st.verlustvortrag, ind: true, optional: true } as DatenZeile,
+        { name: 'Ertragsteuer-Zahlung', edit: 'ug.steuer', minus: true, get: (m: number) => -U(m).steuer, ind: true, optional: true } as DatenZeile,
+        { name: 'Steuerrücklage', edit: 'ug.steuerRuecklage', minus: true, stock: true, get: (m: number) => -U(m).steuerRuecklage, optional: true } as DatenZeile,
+        { name: 'Verlustvortrag zu Jahresbeginn', edit: 'ug.verlustvortrag', stock: true, get: (m: number) => U(m).st.verlustvortrag, ind: true, optional: true } as DatenZeile,
       ] : []),
       ...(ustAn ? [
         { grp: 'Umsatzsteuer — Durchlauf', zu: true, leerName: steuerLeer } as BlattZeile,
-        { name: 'USt vereinnahmt', get: (m: number) => U(m).ustEin, ind: true, optional: true } as DatenZeile,
-        { name: 'USt an Finanzamt', get: (m: number) => -U(m).ustZahlung, ind: true, optional: true } as DatenZeile,
-        { name: 'USt offen', stock: true, sum: true, get: (m: number) => -U(m).ustOffen } as DatenZeile,
+        { name: 'USt vereinnahmt', edit: 'ug.ustEin', get: (m: number) => U(m).ustEin, ind: true, optional: true } as DatenZeile,
+        { name: 'USt an Finanzamt', edit: 'ug.ustZahlung', minus: true, get: (m: number) => -U(m).ustZahlung, ind: true, optional: true } as DatenZeile,
+        { name: 'USt offen', edit: 'ug.ustOffen', minus: true, stock: true, sum: true, get: (m: number) => -U(m).ustOffen } as DatenZeile,
       ] : []),
     );
   } else if (ort === 'kdv') {
     zeilen.push(
       { grp: 'Einnahmen', leerName: ['weitere Einnahmezeile', 'weitere Einnahmezeilen'] },
-      { name: `Umlage aus ${finanzOrtName('ug')}`, get: m => U(m).kdvUmlage, ind: true, optional: true },
-      { name: 'Partnerdarlehen-Rate von der Gesellschaft', get: m => U(m).kdvBjoernEin, ind: true, optional: true },
-      { name: 'Ausstieg (Tranchen)', get: m => U(m).kdvExit, ind: true, optional: true },
+      { name: `Umlage aus ${finanzOrtName('ug')}`, edit: 'kdv.umlage', get: m => U(m).kdvUmlage, ind: true, optional: true },
+      { name: 'Partnerdarlehen-Rate von der Gesellschaft', edit: 'kdv.bjoernEin', get: m => U(m).kdvBjoernEin, ind: true, optional: true },
+      { name: 'Ausstieg (Tranchen)', edit: 'kdv.exit', get: m => U(m).kdvExit, ind: true, optional: true },
       ...prodZeilen(),
-      { name: 'Einnahmen', sum: true, get: m => gb.umsatz[m - 1] },
+      { name: 'Einnahmen', edit: 'kdv.einnahmen', sum: true, get: m => gb.umsatz[m - 1] },
       { grp: 'Ausgaben', leerName: ['weitere Ausgabenzeile', 'weitere Ausgabenzeilen'] },
-      { name: 'Holdingkosten', get: m => U(m).kdvHolding, ind: true, aus: true, optional: true },
-      { name: 'Partnerdarlehen-Tilgung', get: m => U(m).kdvBjoern, ind: true, aus: true, optional: true },
+      { name: 'Holdingkosten', edit: 'kdv.holding', get: m => U(m).kdvHolding, ind: true, aus: true, optional: true },
+      { name: 'Partnerdarlehen-Tilgung', edit: 'kdv.tilgung', get: m => U(m).kdvBjoern, ind: true, aus: true, optional: true },
       ...kostenZeilen(KOSTENARTEN_BLATT, false),
-      { name: 'Ausgaben', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
+      { name: 'Ausgaben', edit: 'kdv.ausgaben', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
       { grp: 'Ergebnis' },
-      { name: 'Ergebnis vor Steuern', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },
+      { name: 'Ergebnis vor Steuern', edit: 'kdv.ergebnis', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },
       ...aufwandZeilen(),
-      { name: 'Ergebnis nach Steuern', sum: true, key: true, get: m => gb.ergebnisNachSteuern[m - 1] },
+      { name: 'Ergebnis nach Steuern', edit: 'kdv.ergebnisNach', sum: true, key: true, get: m => gb.ergebnisNachSteuern[m - 1] },
       { grp: 'Stand', leerName: ['weitere Zeile', 'weitere Zeilen'] },
-      { name: 'Partnerdarlehen-Ablösung', get: m => -U(m).kdvAbloesung, ind: true, optional: true },
-      { name: 'Ertragsteuer-Zahlung', get: m => -U(m).kdvSt.zahlung, ind: true, optional: true },
-      { name: 'Steuerrücklage', stock: true, get: m => -U(m).kdvSt.ruecklage, ind: true, optional: true },
-      { name: 'Kontostand KD Ventures', stock: true, get: m => U(m).kdvKonto },
-      { name: 'Frei verfügbar', stock: true, sum: true, key: true, get: m => U(m).kdvFrei },
-      { name: 'Partnerdarlehen offen', stock: true, get: m => -U(m).bjoernRest, optional: true },
+      { name: 'Partnerdarlehen-Ablösung', edit: 'kdv.abloesung', minus: true, get: m => -U(m).kdvAbloesung, ind: true, optional: true },
+      { name: 'Ertragsteuer-Zahlung', edit: 'kdv.steuer', minus: true, get: m => -U(m).kdvSt.zahlung, ind: true, optional: true },
+      { name: 'Steuerrücklage', edit: 'kdv.steuerRuecklage', minus: true, stock: true, get: m => -U(m).kdvSt.ruecklage, ind: true, optional: true },
+      { name: 'Verlustvortrag zu Jahresbeginn', edit: 'kdv.verlustvortrag', stock: true, get: m => U(m).kdvSt.verlustvortrag, ind: true, optional: true },
+      { name: 'Kontostand KD Ventures', edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
+      { name: 'Frei verfügbar', edit: 'kdv.frei', stock: true, sum: true, key: true, get: m => U(m).kdvFrei },
+      { name: 'Partnerdarlehen offen', edit: 'kdv.darlehenOffen', minus: true, stock: true, get: m => -U(m).bjoernRest, optional: true },
     );
   } else {
     const fix = d.sachkosten.filter(z => z.einheit === 'selbststaendigkeit');
@@ -227,30 +233,33 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
     zeilen.push(
       { grp: 'Umsatz netto' },
       ...prodZeilen(),
-      { name: 'Umsatz', sum: true, get: m => gb.umsatz[m - 1] },
+      { name: 'Umsatz', edit: 'kdc.umsatz', sum: true, get: m => gb.umsatz[m - 1] },
       { grp: 'Kosten' },
       ...kostenZeilen(KOSTENARTEN_BLATT),
       { grp: 'Fixkosten (Sachkosten)', add: 'sachkosten', addG: 'Selbstständigkeit', addE: 'selbststaendigkeit', leerName: ['weitere Fixkostenzeile', 'weitere Fixkostenzeilen'] },
       ...fix.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true, aus: true, optional: true })),
-      { name: 'Kosten gesamt', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
+      { name: 'Kosten gesamt', edit: 'kdc.kosten', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },
       { grp: 'Ergebnis' },
-      { name: 'Ergebnis vor Steuern', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },
+      { name: 'Ergebnis vor Steuern', edit: 'kdc.gewinn', sum: true, key: true, get: m => gb.ergebnisVorSteuern[m - 1] },
       ...aufwandZeilen(),
-      { name: 'Ergebnis nach Steuern', sum: true, key: true, get: m => gb.ergebnisNachSteuern[m - 1] },
+      { name: 'Ergebnis nach Steuern', edit: 'kdc.ergebnisNach', sum: true, key: true, get: m => gb.ergebnisNachSteuern[m - 1] },
       { grp: 'Zahlungsfluss und Liquidität', leerName: ['weitere Zeile', 'weitere Zeilen'] },
-      { name: 'Eingang aus Umsatz', get: m => K(m).eingang, ind: true, optional: true },
-      { name: ustAn ? 'Einzahlungen' : 'Einzahlungen (inkl. USt-Durchlauf)', sum: true, get: m => K(m).einzahlungen },
-      { name: 'Steuerzahlung (Einkommen- und Gewerbesteuer)', get: m => -K(m).st.zahlung, ind: true, optional: true },
-      { name: 'Entnahme an Privat', get: m => -K(m).entnahme, ind: true, optional: true },
-      { name: ustAn ? 'Auszahlungen' : 'Auszahlungen (inkl. USt-Durchlauf)', sum: true, get: m => -K(m).auszahlungen },
-      { name: 'Kontostand', stock: true, get: m => K(m).konto },
-      { name: gb.liquiditaetName, stock: true, sum: true, key: true, get: m => gb.liquiditaet[m - 1] },
+      { name: 'Eingang aus Umsatz', edit: 'kdc.eingang', get: m => K(m).eingang, ind: true, optional: true },
+      ...(ustAn ? [] : [{ name: 'USt vereinnahmt (Durchlauf)', edit: 'kdc.ustEin', get: (m: number) => K(m).ustEin, ind: true, optional: true } as DatenZeile]),
+      { name: ustAn ? 'Einzahlungen' : 'Einzahlungen (inkl. USt-Durchlauf)', edit: 'kdc.einzahlungen', sum: true, get: m => K(m).einzahlungen },
+      { name: 'Steuerzahlung (Einkommen- und Gewerbesteuer)', edit: 'kdc.steuer', minus: true, get: m => -K(m).st.zahlung, ind: true, optional: true },
+      { name: 'Entnahme an Privat', edit: 'kdc.entnahme', minus: true, get: m => -K(m).entnahme, ind: true, optional: true },
+      { name: ustAn ? 'Auszahlungen' : 'Auszahlungen (inkl. USt-Durchlauf)', edit: 'kdc.auszahlungen', minus: true, sum: true, get: m => -K(m).auszahlungen },
+      { name: 'Kontostand', edit: 'kdc.konto', stock: true, get: m => K(m).konto },
+      { name: gb.liquiditaetName, edit: 'kdc.frei', stock: true, sum: true, key: true, get: m => gb.liquiditaet[m - 1] },
       { grp: 'Steuern', leerName: steuerLeer },
-      { name: 'Steuerrücklage', stock: true, get: m => -K(m).steuerRuecklage, optional: true },
-      { name: 'Verlustvortrag zu Jahresbeginn', stock: true, get: m => K(m).st.verlustvortrag, ind: true, optional: true },
+      { name: 'Steuerrücklage', edit: 'kdc.steuerRuecklage', minus: true, stock: true, get: m => -K(m).steuerRuecklage, optional: true },
+      { name: 'Verlustvortrag zu Jahresbeginn', edit: 'kdc.verlustvortrag', stock: true, get: m => K(m).st.verlustvortrag, ind: true, optional: true },
       ...(ustAn ? [
         { grp: 'Umsatzsteuer — Durchlauf', zu: true, leerName: steuerLeer } as BlattZeile,
-        { name: 'USt offen', stock: true, get: (m: number) => -K(m).ustOffen, optional: true } as DatenZeile,
+        { name: 'USt vereinnahmt', edit: 'kdc.ustEin', get: (m: number) => K(m).ustEin, ind: true, optional: true } as DatenZeile,
+        { name: 'USt an Finanzamt', edit: 'kdc.ustZahlung', minus: true, get: (m: number) => -K(m).ustZahlung, ind: true, optional: true } as DatenZeile,
+        { name: 'USt offen', edit: 'kdc.ustOffen', minus: true, stock: true, get: (m: number) => -K(m).ustOffen, optional: true } as DatenZeile,
       ] : []),
     );
   }
@@ -275,7 +284,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
         <Blatt zeilen={zeilen} titel={`${label} · ${ps?.name ?? sz.name}`} werkzeuge={<Etikett einheit={ort === 'kdc' ? 'selbststaendigkeit' : ort} />}
           onZeile={setDialog} onNeueZeile={async (liste, gruppe, einheit) => { const { op, id } = neueZeileOp(liste, gruppe, einheit); if (await aendere([op], 'Zeile angelegt')) setDialog(id); }} />
         <Hinweis>
-          Zelle anklicken und tippen: bei Produkten und Kosten gilt der Wert für diesen Monat, bei Fixkosten und Gehältern überschreibt er den Plan (Entf setzt zurück).
+          Bei Produkten und Kosten-Bausteinen gilt ein eingetippter Wert für diesen Monat des Bausteins; jede andere Zahl überschreibt die Formel von Hand (✎) — Summen, Steuern, Ein- und Auszahlungen und Kontostand rechnen damit weiter.
           Leere Zeilen stehen hinter „weitere …“. {ort === 'kdc' && 'Die Selbstständigkeit rechnet auf eigener Monatsachse (eigenes Konto, Einkommen- und Gewerbesteuer); der Abschluss 2026 mit den Posten des laufenden Jahres steht darunter. '}
           {STEUER_HINWEIS}
         </Hinweis>
