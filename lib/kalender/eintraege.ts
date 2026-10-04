@@ -65,7 +65,7 @@ export function fristen(q: Quellen, von: string, bis: string, heute: string = vo
   for (const m of q.meilensteine ?? []) {
     // Kette (01.10.): wartet er noch auf einen offenen Vorgänger, sagt es der Titel — so auch in Glocke und Heute (eine Frist, keine zweite Meldung).
     const wartet = wartetText(m, q.meilensteine ?? []);
-    if (imZeitraum(m.faellig, von, bis)) raus.push({ id: `ms-${m.id}`, art: 'meilenstein', tag: m.faellig.slice(0, 10), titel: wartet ? `${m.titel} — ${wartet}` : m.titel, unter: m.bereich, href: `/os/planung/jahr?m=${encodeURIComponent(m.id)}`, erledigt: !!m.erledigt, bereich: (m.space ?? m.bereich) === 'business' ? 'business' : 'privat' });
+    if (imZeitraum(m.faellig, von, bis)) raus.push({ id: `ms-${m.id}`, art: 'meilenstein', tag: m.faellig.slice(0, 10), titel: wartet ? `${m.titel} — ${wartet}` : m.titel, unter: m.bereich, href: WEG.meilenstein(m.id), erledigt: !!m.erledigt, bereich: (m.space ?? m.bereich) === 'business' ? 'business' : 'privat' });
   }
   for (const e of q.etappen ?? []) {
     if (imZeitraum(e.ziel, von, bis)) raus.push({ id: `et-${e.id}`, art: 'etappe', tag: e.ziel, titel: e.name, unter: 'Bauplan-Etappe', href: '/os/bauplan?s=plan', bereich: 'business' });
@@ -83,12 +83,12 @@ export function fristen(q: Quellen, von: string, bis: string, heute: string = vo
   }
   for (const z of q.zahlungen ?? []) {
     if (z.status === 'bezahlt' || z.status === 'erledigt') continue;
-    if (imZeitraum(z.faellig, von, bis)) raus.push({ id: `za-${z.id}`, art: 'zahlung', tag: z.faellig.slice(0, 10), titel: `Zahlung: ${z.an || z.titel || '—'}`, unter: [z.titel && z.an ? z.titel : undefined, eur(z.betrag), werktagHinweis(z.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: '/os/finanzen', bereich: 'business' });
+    if (imZeitraum(z.faellig, von, bis)) raus.push({ id: `za-${z.id}`, art: 'zahlung', tag: z.faellig.slice(0, 10), titel: `Zahlung: ${z.an || z.titel || '—'}`, unter: [z.titel && z.an ? z.titel : undefined, eur(z.betrag), werktagHinweis(z.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: WEG.zahlung(z.id), bereich: 'business' });
   }
   for (const r of q.rechnungen ?? []) {
     // Nur gestellte Rechnungen: da wartet Geld. Geplante sind noch keine Frist.
     if (r.status && r.status !== 'gestellt' && r.status !== 'offen') continue;
-    if (imZeitraum(r.faellig, von, bis)) raus.push({ id: `re-${r.id}`, art: 'eingang', tag: r.faellig.slice(0, 10), titel: `Zahlungseingang: ${r.kunde || r.titel || '—'}`, unter: [r.titel && r.kunde ? r.titel : undefined, eur(r.betrag), werktagHinweis(r.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: '/os/finanzen', bereich: 'business' });
+    if (imZeitraum(r.faellig, von, bis)) raus.push({ id: `re-${r.id}`, art: 'eingang', tag: r.faellig.slice(0, 10), titel: `Zahlungseingang: ${r.kunde || r.titel || '—'}`, unter: [r.titel && r.kunde ? r.titel : undefined, eur(r.betrag), werktagHinweis(r.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: WEG.rechnung(r.id), bereich: 'business' });
   }
   // CRM-Fristen (K6a, Verbindung 4/7): DSGVO-Anträge (ohne Namen), Angebote „gültig bis“, Deals „Entscheidung bis“.
   for (const a of q.antraege ?? []) {
