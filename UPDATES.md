@@ -4,6 +4,23 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Strahl ruhig + Überblick „Für dich“ je Bereich (04.10.2026 abends, nur lokal — Branch `strahl-ueberblick`)
+
+Kevin 04.10.: „Oben die Symbole genial, aber das sieht zu spacig aus … Gliedere einfach mehr … Es darf nur ausgeschlagen werden, wenn etwas
+Unvorhergesehenes kommt oder etwas schiefgelaufen ist.“ und „Lass uns so immer den Überblick gestalten … wie es die letzten 3 Monate war, wie es
+jetzt ist und wie der Forecast ist … für jeden einzelnen Bereich.“ (UMBAU_ABEND_0410.md › 6 und › 4)
+
+- **Strahl (Planung › Jahr, Ziel, Meilenstein, Fokus):** je Bündel EIN Strang auf eigener Spur in seiner Ziel-Farbe, ab HEUTE zum rechten Rand
+  zusammenlaufend; ruhig = im Plan. Ausschlag nur aus Abweichungen (`lib/lichtfaeden/abweichung.ts`: Meilenstein überfällig, Ziel-Frist
+  überschritten, Frist gerissen, Deal ≥ 2× verschoben) — Stärke aus der Dauer. Weg: Partikel, Glühen, Netz, Hilfs-/Mittellinie, Puls und Schein am
+  HEUTE-Punkt, additive Mischtöne. Band 300 → 200 px (Handy 220 → 150), Fäden je Leinwand 300 → 56 (Handy 120 → 32). Parameter `STRAHL`
+  (`lib/lichtfaeden/strahl.ts`). Unter der Legende: „Alle Stränge laufen ruhig — im Plan“ bzw. die Gründe. Kapazität dockt über
+  `AbweichungsQuelle` an (`lib/lichtfaeden/abweichung-quellen-server.ts`). Website unverändert.
+- **Überblick „Für dich“:** Baustein `FlussKarte` (Ist 3 Monate · heute · Prognose gestrichelt, nur aus echten Daten, sonst Leerzustand) in
+  Markttraktion, Finanzen Privat + Business (Überblick, nicht Finanzplanung), Planung › Jahr/Monat/Quartal, Aufgaben, Kalender, Gesundheit, Familie,
+  Netzwerken, Inbox. Reihen serverseitig gefiltert (`GET /api/fluss`, `lib/fluss/server.ts`).
+- Wächter `tests/strahl-ruhig.test.ts`, `tests/fluss.test.ts`. Nicht hochgeladen.
+
 ## Aufräumen — ein Weg statt zwei (04.10.2026, nur lokal — Branch `aufraeumen`)
 
 Kevin 04.10.: „Dann ist die Software fast fertig.“ Befunde der Inventur (UMBAU_ABEND_0410.md Abschnitt 8), Arbeitspaket 6:

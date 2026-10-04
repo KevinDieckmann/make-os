@@ -102,8 +102,9 @@ describe('Spuren: gegliedert, glatt, zusammenlaufend', () => {
     const h = (x: number) => strahlHell(x, B, 1);
     expect(h(100)).toBeLessThan(h(520));
     for (let x = 0; x <= 1200; x += 5) expect(h(x)).toBeLessThanOrEqual(1 + 1e-9);
-    // kein Buckel um HEUTE: von 480 bis 560 monoton steigend bzw. gleich
-    for (let x = 480; x < 560; x += 2) expect(h(x + 2)).toBeGreaterThanOrEqual(h(x) - 1e-9);
+    // kein Buckel um HEUTE: bis HEUTE steigend, danach nie heller als voll — kein Lichtschnitt
+    for (let x = 470; x < 502; x += 2) expect(h(x + 2)).toBeGreaterThanOrEqual(h(x) - 1e-9);
+    for (let x = 502; x < 700; x += 2) expect(h(x)).toBeLessThanOrEqual(h(502) + 1e-9);
   });
 });
 
@@ -201,7 +202,9 @@ describe('Ansicht: ruhig im Plan, Ausschlag nur aus Abweichungen', () => {
     for (const b of biz.buendel.filter(x => x.id !== planung.id)) expect(b.ausschlag.every(v => v === 0)).toBe(true);
     expect(biz.abweichungen.map(x => x.text)).toEqual(['ms:m1 überfällig seit 17.09.']);
     const ziel = rechneAnsicht(baum, { ...OPT, wurzel: 'ziel:z1' })!.ansicht;
-    expect(ziel.buendel.find(b => b.id === 'direkt:ziel:z1')!.ausschlag.some(v => v > 0)).toBe(true);
+    // Blatt-Ebene: genau der Faden des überfälligen Meilensteins schlägt aus, der andere liegt glatt
+    expect(ziel.buendel.find(b => b.id === 'strang:ms:m1')!.ausschlag.some(v => v > 0)).toBe(true);
+    expect(ziel.buendel.find(b => b.id === 'strang:ms:m2')!.ausschlag.every(v => v === 0)).toBe(true);
     // Gesamt: Business schlägt aus, Privat (nur „Belegt“) nie
     const ges = rechneAnsicht(baum, { ...OPT, wurzel: GESAMT })!.ansicht;
     expect(ges.buendel.find(b => b.id === 'space:privat')!.ausschlag.every(v => v === 0)).toBe(true);

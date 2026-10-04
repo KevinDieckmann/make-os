@@ -115,7 +115,7 @@ async function finanzenBusiness(heute: string): Promise<FlussReihe> {
   // Nur Gesellschaften — eine Buchung ohne `ort` ist privat und gehört nie ins Business.
   const saldo = (buch?.buchungen ?? []).filter(b => istGesellschaft(b.ort) && tag(b.datum) && Number.isFinite(b.betrag)).map(b => ({ tag: b.datum!, wert: b.betrag! }));
   const v = plan ? vorschau(plan.firmen ?? [], plan.rechnungen ?? [], plan.zahlungen ?? [], plan.merkposten ?? [], heute, 13, false, liqui?.posten ?? [], 'real', undefined, true) : null;
-  const rechnungen = nurBusiness(plan?.rechnungen ?? []).filter(r => r.status !== 'bezahlt' && r.status !== 'storniert' && r.betrag > 0 && tag(r.faellig));
+  const rechnungen = nurBusiness((plan?.rechnungen ?? []) as (Parameters<typeof vorschau>[1][number] & { firmaId?: string })[]).filter(r => r.status !== 'bezahlt' && r.status !== 'storniert' && r.betrag > 0 && tag(r.faellig));
   const zahlungen = nurBusiness(plan?.zahlungen ?? []).filter(z => z.status === 'offen' && tag(z.faellig));
   return flussFinanzenBusiness({
     heute, saldo, link: WEG.liquiditaet(),

@@ -7,7 +7,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
-import { Karte, Leer, Punkt, prioFarbe, HakenZiel, FlussKarte, LEUCHT } from '../ui';
+import { Karte, Leer, Punkt, prioFarbe, HakenZiel, FlussKarte } from '../ui';
 import { kachelAufgaben, spaceStaende, wartetNoch, type KachelArt, type SpaceStand } from '@/lib/aufgaben/uebersicht';
 import { zoeAufgaben } from '@/lib/aufgaben/zoe';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';

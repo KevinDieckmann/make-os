@@ -44,7 +44,7 @@ describe('Reihen (rein)', () => {
     expect(istReihe([{ tag: '2026-07-15', wert: 10 }, { tag: '2026-10-01', wert: 5 }], HEUTE, 'monat')).toEqual([10, 0, 0, 5]);
   });
   it('Prognose: ab der laufenden Periode, Überfälliges zählt jetzt (oder gar nicht), danach nichts', () => {
-    const r = prognoseReihe([{ tag: '2026-10-01' }, { tag: '2026-10-05' }, { tag: '2026-12-28' }, { tag: '2027-06-01' }], HEUTE, 'woche');
+    const r = prognoseReihe([{ tag: '2026-10-01' }, { tag: '2026-10-05' }, { tag: '2026-12-21' }, { tag: '2026-12-28' }, { tag: '2027-06-01' }], HEUTE, 'woche');
     expect(r[0]).toBe(1); expect(r[1]).toBe(1); expect(r[12]).toBe(1);
     expect(r.reduce((a, v) => a + v, 0)).toBe(3);
     expect(prognoseReihe([{ tag: '2026-10-01' }], HEUTE, 'woche', { ueberfaelligHeute: false }).every(v => v === 0)).toBe(true);
