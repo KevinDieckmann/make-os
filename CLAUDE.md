@@ -1502,6 +1502,20 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
   Schreiben nur über die Operationen (`/plan/…`, Zahl, Monat 0 … Planlänge, `GRENZE_PLAN_ZELLEN` → 413). Gestellte Rechnungen sind keine Handwerte
   (`rechnungSchutz` bleibt). Details: `FINANZPLANUNG_JETZT.md` › „Jede Zahl bearbeitbar“.
 
+- **Finanzplanung unter Finanzen › Privat und › Business (04.10., Kevin: „Business ist bei Business sichtbar, kein Privat. Bei Privat kann man
+  alles sehen … Im Business-Bereich sieht man Privat nicht.“):** EINE Komponente `Finanzplan({ sicht, eingebettet })` als Reiter
+  „Finanzplanung“ in `FinanzenView` — Adresse `/os/finanzen?s=finanzplanung&space=privat|business&u=<Unterseite>` (`finanzplanAdresse`).
+  Privat-Sicht = alles (auch die Firmen). Business-Sicht = nur die Gesellschaften: **Trennung an EINER Stelle, serverseitig**
+  (`lib/finanzen/plan/sicht.ts`): `GET /api/finanzplan?sicht=business` liefert `businessSicht(d)` (Privat-Zeilen, private Buchungen/Posten/
+  Schulden/Ziele/Ereignisse/Bausteine, Check, Fokus, Abschlüsse, Regeln, Schwellen, Netto-Tabelle, Ausschüttungssteuer, `p.*`/`g.*`- und
+  private Zeilen-Schlüssel in plan/ist/notizen/meta und Protokolleinträge ohne sicheren Business-Pfad werden gar nicht ausgeliefert, auch nicht in der
+  409-Antwort); `PATCH ?sicht=business` prüft jeden Schritt mit `businessPfadErlaubt` in der Sperre → 403. Protokolleinträge tragen seit 04.10.
+  `pfad`. Oberfläche: `bereicheFuer`/`unterseiteFuer` (keine Unterseiten Privat, Budget, Wochen-Check, Entwicklung, Geldfluss), `LageBusiness`,
+  `GesamtBusiness`, `FRAGE_BUSINESS`; Einrichten/Import nur in der Privat-Sicht. `/os/finanzplan?…` leitet in die Privat-Sicht weiter (alle
+  Parameter bleiben); der Eintrag unter den Agenten ist weg. Neue Teile des Finanzplans: Privat oder Business? → in `sicht.ts` einordnen
+  (Wächter `tests/finanzplan-sicht.test.ts`). Die Sicht kommt heute aus der Adresse (gleicher Haushalt); für Teammitglieder ohne Privatzugang
+  erzwingt der Server sie später je Person (`sichtAus`).
+
 ## Tempo (27.09.)
 - Tempo misst man im **Prüfbau** (`make-os-pruefbau`, Port 3011, `MAKE_OS_DIST=.next-pruefbau npx next build`) oder auf dem Server — nie auf 3001 (Entwicklungsmodus übersetzt jede Seite beim ersten Aufruf).
 - **Prüfbau und Dev-Server teilen `.data` (28.09., K1 #40):** `make-os-pruefbau` (3011) und `make-os-entwicklung` (3001) lesen und schreiben denselben Datenordner — nie gleichzeitig schreibend benutzen (einen anhalten, bevor im anderen geklickt wird). `scripts/daten-verschluesselung.mjs` bricht ab, solange eine lebende App das Lockfile `.data/.schreiber` hält (29.09.), und warnt zusätzlich, wenn auf 3000/3001/3011 eine App läuft; der HOI meldet einen zweiten Schreiber.

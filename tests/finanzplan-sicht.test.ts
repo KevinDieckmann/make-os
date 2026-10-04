@@ -1,0 +1,232 @@
+// ─── Finanzplanung — Sichten Privat und Business (04.10.) ─────────────────────────────────────────
+// Kevin 04.10.: „Business ist bei Business sichtbar, kein Privat. Bei Privat kann man alles sehen … Im Business-Bereich sieht man
+// Privat nicht.“ Wächter: die Business-Sicht liefert keine private Zeile, kein privates Ziel, keine private Buchung und keinen privaten
+// Betrag aus; Schreiben auf Privat-Pfade wird abgelehnt (403); die Business-Zahlen sind dieselben wie in der vollen Sicht.
+// Erfundene Zahlen und Namen — nie echte.
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import type { FinanzDaten } from '../lib/finanzen/rechenkern';
+import { rechneMit } from '../lib/finanzen/szenarien';
+import { businessSicht, businessPfadErlaubt, pfadIstBusiness, sichtAus, fuerSicht, nurBusinessPunkte } from '../lib/finanzen/plan/sicht';
+import { bereicheFuer, unterseiteFuer, finanzplanAdresse, NUR_PRIVAT_UNTERSEITEN } from '../lib/finanzen/plan/hilfen';
+import { wendeOperationenAn, pruefeDokument } from '../lib/finanzen/plan/operationen';
+import { aktiverSpaceEintrag, EIGEN } from '../lib/make-one/spaces';
+import { planFix, arbeitsplanFix } from './fixtures/finanz-plan';
+
+const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-fp-sicht-'));
+process.env.MAKE_OS_DATEN_DIR = ordner;
+process.env.MAKE_OS_KEY = 'pruef-schluessel-sicht';
+delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/finanzen' }));
+
+const JETZT = '2026-10-04T10:00:00.000Z';
+/** Private Merkmale, die nie in der Business-Sicht auftauchen dürfen (erfunden). */
+const GEHEIM = ['Geheimmiete', 'Geheimjob', 'Geheimkredit', 'Privatempfaenger', 'Geheimnotiz', 'Geheimentscheidung', 'Geheimziel', 'Geheimposten', 'Geheimschuld', 'Geheimereignis', 'Geheimbaustein', 'Geheimcheck', '7777.77', '4321.09'];
+
+function planMitPrivat(): FinanzDaten {
+  const d = planFix(14000);
+  const ps = arbeitsplanFix();
+  ps.bausteine.push({ id: 'bp', art: 'kosten', einheit: 'privat', kostenArt: 'miete', name: 'Geheimbaustein', preis: 4321.09, menge: 1, rhythmus: 'monatlich', start: 2, an: true });
+  ps.annahmen.ausschuettungSteuer = 0.3;
+  return {
+    ...d,
+    planszenarien: [ps], arbeitsplan: ps.id,
+    privatBudget: [...d.privatBudget, { id: 'p.b.geheim', name: 'Geheimmiete', einheit: 'privat', gruppe: 'Fixkosten', soll: 7777.77, typ: 'fix' }],
+    privatEinnahmen: [{ id: 'p.e.geheim', name: 'Geheimjob', einheit: 'privat', gruppe: 'Einnahmen', soll: 1234, ab: 1 }],
+    privatSchulden: [{ id: 'p.d.geheim', name: 'Geheimkredit', einheit: 'privat', gruppe: 'Schulden', soll: 99, ab: 1 }],
+    buchungen: [
+      { id: 'bp1', d: '2026-09-02', b: -7777.77, n: 'Privatempfaenger', k: 'giro', z: 'p.b.geheim' },
+      { id: 'bb1', d: '2026-09-03', b: -250, n: 'Softwarehaus', k: 'firma', z: 'sk1', e: 'ug' },
+    ],
+    regeln: { privatempfaenger: 'p.b.geheim' },
+    ziele: [
+      { id: 'zp', name: 'Geheimziel', quelle: 'privat.angespart', ziel: 7777.77, bis: '2027-12', einheit: 'privat' },
+      { id: 'zg', name: 'Gruppe', quelle: 'gruppe', ziel: 50000, bis: '2028-12', einheit: 'privat' },
+      { id: 'zb', name: 'MAKE frei', quelle: 'ug.frei', ziel: 5000, bis: '2028-06', einheit: 'ug' },
+    ],
+    check: { punkte: ['Geheimcheck'], eintraege: [{ datum: '2026-09-28', wer: ['kevin'], erledigt: [0], notiz: 'Geheimcheck' }] },
+    notizen: { 'p.b.geheim:3': 'Geheimnotiz', 'sk1:3': 'Software-Notiz', 'p.luft:2': 'Geheimnotiz' },
+    fokus: { saetze: ['Geheimentscheidung'], regeln: [], schritte: [], entscheidung: 'Geheimentscheidung' },
+    posten: [
+      { id: 'xp', art: 'konto', einheit: 'privat', name: 'Geheimposten', betrag: 7777.77, status: 'eintragen' },
+      { id: 'xb', art: 'konto', einheit: 'ug', name: 'Firmenkonto', betrag: 5000, status: 'eintragen' },
+    ],
+    schulden: [
+      { id: 'sp', name: 'Geheimschuld', einheit: 'privat', rest: 7777.77, rate: 100, zins: 3, start: 1, status: 'läuft' },
+      { id: 'sb', name: 'Firmenkredit', einheit: 'ug', rest: 5000, rate: 200, zins: 4, start: 1, status: 'läuft' },
+    ],
+    szenarien: d.szenarien.map(s => ({ ...s, ereignisse: [...(s.ereignisse ?? []), { id: 'ep', name: 'Geheimereignis', einheit: 'privat', betrag: 7777.77, monat: 5 }] })),
+    abschluesse: [{ idx: 8, wer: 'kevin', wann: JETZT, uebertrag: 7777.77 }],
+    schwellen: { privatLuftGut: 4321.09 },
+    plan: { ...d.plan, 'p.b.geheim:4': 7777.77, 'p.luft:3': 4321.09, 'g.frei:5': 1, 'p.kevinNetto:2': 4321.09, 'ug.konto:4': 10000, 'sk1:5': 300, 'ab.est:0': 50 },
+    ist: { 'p.b.geheim:1': 7777.77, 'sk1:1': 260 },
+    meta: { 'p.b.geheim:4': { wer: 'malin', wann: JETZT }, 'ug.konto:4': { wer: 'kevin', wann: JETZT } },
+    protokoll: [
+      { wer: 'malin', wann: JETZT, feld: 'Geheimmiete · Jan 27', alt: '1', neu: '7777.77', pfad: '/plan/p.b.geheim:4' },
+      { wer: 'kevin', wann: JETZT, feld: 'Kontostand · Jan 27', alt: '', neu: '10000', pfad: '/plan/ug.konto:4' },
+      { wer: 'kevin', wann: JETZT, feld: 'Geheimmiete (alt, ohne Pfad)', alt: '', neu: '7777.77' },
+      { wer: 'kevin', wann: JETZT, feld: 'Geheimbaustein gelöscht', alt: 'Geheimbaustein', neu: 'zurückgesetzt', pfad: '/planszenarien/id=ps1/bausteine/id=weg' },
+    ],
+  };
+}
+
+describe('Business-Sicht: Privat wird gar nicht ausgeliefert', () => {
+  const voll = planMitPrivat();
+  const b = businessSicht(voll);
+  it('Wächter: kein privates Merkmal (Name, Betrag, Notiz) in der gefilterten Antwort', () => {
+    const json = JSON.stringify(b);
+    for (const g of GEHEIM) expect(json.includes(g), g).toBe(false);
+    // Das Original bleibt unverändert (rein).
+    expect(JSON.stringify(voll)).toContain('Geheimmiete');
+  });
+  it('keine Privat-Zeile, kein privates Ziel, keine private Buchung, kein privater Plan-/IST-Schlüssel, Protokoll nur Business', () => {
+    expect(b.privatEinnahmen).toEqual([]); expect(b.privatBudget).toEqual([]); expect(b.privatSchulden).toEqual([]);
+    expect(b.ziele.map(z => z.id)).toEqual(['zb']);
+    expect(b.buchungen.map(x => x.id)).toEqual(['bb1']);
+    expect(b.posten.map(x => x.id)).toEqual(['xb']); expect(b.schulden.map(x => x.id)).toEqual(['sb']);
+    expect(Object.keys(b.plan).sort()).toEqual(['ab.est:0', 'sk1:5', 'ug.events:9', 'ug.konto:4']);
+    expect(Object.keys(b.ist)).toEqual(['sk1:1']); expect(Object.keys(b.notizen)).toEqual(['sk1:3']); expect(Object.keys(b.meta)).toEqual(['ug.konto:4']);
+    expect(b.regeln).toEqual({}); expect(b.check.eintraege).toEqual([]); expect(b.fokus.entscheidung).toBeUndefined(); expect(b.abschluesse).toEqual([]);
+    expect('schwellen' in b).toBe(false);
+    expect(b.annahmen.nettoTabelle).toEqual([[0, 0], [1, 1]]);
+    expect(b.planszenarien?.[0].bausteine.some(x => x.einheit === 'privat')).toBe(false);
+    expect(b.planszenarien?.[0].annahmen.ausschuettungSteuer).toBeUndefined();
+    expect(b.szenarien[0].ereignisse?.some(e => e.einheit === 'privat')).toBe(false);
+    expect(b.protokoll.map(p => p.feld)).toEqual(['Kontostand · Jan 27']);
+  });
+  it('die Business-Zahlen sind dieselben wie in der vollen Sicht (MAKE, KD Ventures, Selbstständigkeit)', () => {
+    const a = rechneMit(voll, voll.planszenarien![0]), c = rechneMit(b, b.planszenarien![0]);
+    expect(JSON.stringify(c.ug)).toBe(JSON.stringify(a.ug));
+    expect(JSON.stringify(c.kdc)).toBe(JSON.stringify(a.kdc));
+  });
+  it('bleibt ein gültiges Dokument (die Prüfung läuft durch) und ist idempotent', () => {
+    expect(pruefeDokument(JSON.parse(JSON.stringify(b))).ok).toBe(true);
+    expect(JSON.stringify(businessSicht(b))).toBe(JSON.stringify(b));
+    expect(fuerSicht(voll, 'privat')).toBe(voll);
+  });
+  it('Punkte „Was jetzt zu entscheiden ist“ ohne Privat', () => {
+    expect(nurBusinessPunkte([{ id: 'privat-minus' }, { id: 'ug-minus' }, { id: 'konten' }, { id: 'netto' }, { id: 'privat-runway' }, { id: 'steuer' }]).map(p => p.id)).toEqual(['ug-minus', 'steuer']);
+  });
+});
+
+describe('Business-Sicht: Schreibschutz für Privat-Pfade', () => {
+  const d = planMitPrivat();
+  const nein = (pfad: string, neu?: unknown) => expect(businessPfadErlaubt(pfad, d, neu), pfad).not.toBeNull();
+  const ja = (pfad: string, neu?: unknown) => expect(businessPfadErlaubt(pfad, d, neu), pfad).toBeNull();
+  it('Privat-Bereiche und -Zellen: abgelehnt', () => {
+    nein('/privatBudget/id=pb1/soll', 1); nein('/privatEinnahmen/-', {}); nein('/privatSchulden/id=ps1'); nein('/check/eintraege/-', {}); nein('/fokus/entscheidung', 'x');
+    nein('/regeln/rewe', 'pb1'); nein('/schwellen/privatLuftGut', 1); nein('/abschluesse/-', {});
+    nein('/plan/pb1:3', 5); nein('/plan/p.luft:3', 5); nein('/plan/p.kevinNetto:3', 5); nein('/plan/g.frei:3', 5); nein('/ist/pb1:1', 5); nein('/notizen/pb1:3', 'x');
+    nein('/annahmen/nettoTabelle', [[0, 0], [1, 1]]);
+    nein('/planszenarien/id=ps1/bausteine/id=bp/preis', 1); nein('/planszenarien/id=ps1/bausteine/-', { id: 'n', einheit: 'privat' }); nein('/planszenarien/id=ps1/bausteine/id=b1/einheit', 'privat');
+    nein('/planszenarien/id=ps1/annahmen/ausschuettungSteuer', 0.2);
+    nein('/szenarien/id=s1/ereignisse/id=ep/betrag', 1); nein('/szenarien/id=s1/ereignisse/-', { id: 'n', einheit: 'privat' });
+    nein('/buchungen/id=bp1/z', 'sk1'); nein('/buchungen/id=bb1/e', 'privat'); nein('/posten/id=xp/betrag', 1); nein('/schulden/id=sp/rest', 1);
+    nein('/ziele/id=zp/ziel', 1); nein('/ziele/id=zb/quelle', 'privat.angespart'); nein('/ziele/-', { id: 'n', quelle: 'gruppe', einheit: 'privat' });
+    nein('/steuern/privat/zeilen/ust/an', true); nein('/sachkosten/-', { id: 'x', einheit: 'privat' }); nein('/unbekannt', 1);
+  });
+  it('Business-Pfade: erlaubt', () => {
+    ja('/plan/ug.konto:5', 1); ja('/plan/sk1:5', 1); ja('/plan/kdc.est:3', 1); ja('/plan/ab.est:0', 1); ja('/ist/sk1:2', 3); ja('/notizen/ug.konto:5', 'x');
+    ja('/annahmen/kevinBrutto', 3000); ja('/sachkosten/id=sk1/soll', 300); ja('/sachkosten/-', { id: 'n', einheit: 'ug' });
+    ja('/planszenarien/id=ps1/bausteine/id=b1/preis', 1); ja('/planszenarien/id=ps1/bausteine/-', { id: 'n', einheit: 'ug' }); ja('/planszenarien/id=ps1/annahmen/ausschuettung', { betrag: 1, ab: 2 });
+    ja('/szenarien/id=s1/ob/betrag', 1); ja('/szenarien/id=s1/ereignisse/id=e2/betrag', 1); ja('/aktiv', 's1'); ja('/arbeitsplan', 'ps1');
+    ja('/steuern/ug/zeilen/kst/satz', 0.15); ja('/selbst/vorsorge', 1); ja('/buchungen/id=bb1/z', 'sk2'); ja('/posten/id=xb/betrag', 1); ja('/schulden/id=sb/rate', 1);
+    ja('/ziele/id=zb/ziel', 1); ja('/ziele/-', { id: 'n', quelle: 'ug.frei', einheit: 'ug' }); ja('/einstellungen/reserveMonate', 2);
+  });
+  it('Protokoll: Business nur mit Pfad und auffindbarem Eintrag', () => {
+    expect(pfadIstBusiness('/plan/ug.konto:4', d)).toBe(true);
+    expect(pfadIstBusiness('/plan/p.b.geheim:4', d)).toBe(false);
+    expect(pfadIstBusiness('/planszenarien/id=ps1/bausteine/id=weg', d)).toBe(false);
+    const r = wendeOperationenAn(d, [{ pfad: '/plan/ug.konto:6', neu: 1 }], 'kevin', JETZT);
+    expect(r.protokoll[0].pfad).toBe('/plan/ug.konto:6');
+  });
+});
+
+describe('Route: GET/PATCH ?sicht=business', () => {
+  type Mod = { GET: (r: Request) => Promise<Response>; PATCH: (r: Request) => Promise<Response> };
+  let plan: Mod;
+  const kopf = { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' };
+  const req = (url: string, body?: unknown, method = 'GET') => new Request(`http://test${url}`, { method, headers: kopf, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+  beforeAll(async () => {
+    const db = await import('@/lib/store/local-db');
+    await db.saveJson('konten', { konten: [{ id: 'k1', speicher: 'kevin', email: 'k@example.invalid', name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-sicht' }], einladungen: [] });
+    const sp = await import('@/lib/finanzen/plan/speicher');
+    await sp.importieren('test-sicht', planMitPrivat(), false, 'kevin', 'Test');
+    plan = (await import('@/app/api/finanzplan/route')) as unknown as Mod;
+  });
+  afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
+  it('GET ?sicht=business liefert nur Business; ohne Sicht alles; eigenes ETag', async () => {
+    const r = await plan.GET(req('/api/finanzplan?sicht=business'));
+    const text = await r.text();
+    for (const g of GEHEIM) expect(text.includes(g), g).toBe(false);
+    expect(JSON.parse(text).sicht).toBe('business');
+    const voll = await plan.GET(req('/api/finanzplan'));
+    expect(await voll.text()).toContain('Geheimmiete');
+    expect(r.headers.get('etag')).not.toBe(voll.headers.get('etag'));
+  });
+  it('PATCH ?sicht=business: Privat-Pfad → 403, nichts geschrieben; Business-Pfad → ok; 409 trägt nur Business', async () => {
+    const stand = (JSON.parse(await (await plan.GET(req('/api/finanzplan?sicht=business'))).text()) as { dokument: FinanzDaten }).dokument.stand;
+    const verboten = await plan.PATCH(req('/api/finanzplan?sicht=business', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:5', neu: 1 }, { pfad: '/privatBudget/id=pb1/soll', neu: 1 }] }, 'PATCH'));
+    expect(verboten.status).toBe(403);
+    const ok = await plan.PATCH(req('/api/finanzplan?sicht=business', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:5', neu: 4242 }] }, 'PATCH'));
+    expect(ok.status).toBe(200);
+    const alt = await plan.PATCH(req('/api/finanzplan?sicht=business', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:6', neu: 1 }] }, 'PATCH'));
+    expect(alt.status).toBe(409);
+    const text = await alt.text();
+    for (const g of GEHEIM) expect(text.includes(g), g).toBe(false);
+    expect((JSON.parse(text) as { dokument: FinanzDaten }).dokument.plan['ug.konto:5']).toBe(4242);
+    // Die volle Sicht hat alles behalten — auch das Private, das der verbotene Schritt ändern wollte.
+    const voll = JSON.parse(await (await plan.GET(req('/api/finanzplan'))).text()) as { dokument: FinanzDaten };
+    expect(voll.dokument.privatBudget.find(z => z.id === 'pb1')?.soll).toBe(1200);
+    expect(voll.dokument.plan['ug.konto:5']).toBe(4242);
+  });
+});
+
+describe('Navigation und Deep-Links', () => {
+  it('Reiter „Finanzplanung“ hängt am richtigen Space; kein Eintrag mehr unter den Agenten', () => {
+    expect(aktiverSpaceEintrag('/os/finanzen', '?s=finanzplanung&space=business&u=ug')).toMatchObject({ space: 'business', eintrag: { label: 'Finanzen' } });
+    expect(aktiverSpaceEintrag('/os/finanzen', '?s=finanzplanung&space=privat&u=privat')).toMatchObject({ space: 'privat', eintrag: { label: 'Finanzen' } });
+    expect(aktiverSpaceEintrag('/os/finanzplan', '?u=lage').space).toBe('privat');
+    expect(EIGEN.some(e => e.href === '/os/finanzplan')).toBe(false);
+  });
+  it('alte Links /os/finanzplan?… landen mit allen Parametern in der Privat-Sicht', () => {
+    expect(finanzplanAdresse('privat', new URLSearchParams('u=buchungen&monat=8&zeile=pb1'))).toBe('/os/finanzen?s=finanzplanung&space=privat&u=buchungen&monat=8&zeile=pb1');
+    expect(finanzplanAdresse('business', { u: 'ug', steuern: '1', leer: '' })).toBe('/os/finanzen?s=finanzplanung&space=business&u=ug&steuern=1');
+    expect(finanzplanAdresse('privat', new URLSearchParams('s=x&space=business&u=lage'))).toBe('/os/finanzen?s=finanzplanung&space=privat&u=lage');
+  });
+  it('Business-Sicht: keine privaten Bereiche; private Unterseite fällt auf die Lage zurück', () => {
+    const alle = bereicheFuer('business').flatMap(b => b.unter.map(u => u.id));
+    expect(bereicheFuer('business').some(b => b.id === 'privat')).toBe(false);
+    for (const u of NUR_PRIVAT_UNTERSEITEN) expect(alle).not.toContain(u);
+    expect(alle).toEqual(expect.arrayContaining(['lage', 'planen', 'szenarien', 'ug', 'kdv', 'selbst', 'gesamt', 'buchungen', 'posten', 'kalender', 'schulden', 'ziele', 'toepfe', 'protokoll']));
+    expect(unterseiteFuer('privat', 'business')).toBe('lage'); expect(unterseiteFuer('budget', 'business')).toBe('lage'); expect(unterseiteFuer('ug', 'business')).toBe('ug');
+    expect(unterseiteFuer('privat', 'privat')).toBe('privat'); expect(unterseiteFuer('quatsch', 'privat')).toBe('lage');
+    expect(bereicheFuer('privat').length).toBe(8);
+    expect(sichtAus('business')).toBe('business'); expect(sichtAus(null)).toBe('privat'); expect(sichtAus('admin')).toBe('privat');
+  });
+});
+
+describe('Oberfläche der Business-Sicht zeigt kein Privat', () => {
+  it('Lage, Gesamt, Planen, Treiber, Ziele, Kalender, Schulden, Zu erledigen, Protokoll, Blätter: kein privates Merkmal, keine Privat-Kennzahl', async () => {
+    const { FinanzplanKontext, rechne } = await import('@/components/os/finanzplan/daten');
+    const { LageBusiness } = await import('@/components/os/finanzplan/Ueberblick');
+    const { Gesamt } = await import('@/components/os/finanzplan/Gesamt');
+    const { Baukasten } = await import('@/components/os/finanzplan/Baukasten');
+    const { Szenarien, Ziele, UG, KDV, Selbst, Toepfe } = await import('@/components/os/finanzplan/Planen');
+    const { Kalender, Schulden, ZuErledigen } = await import('@/components/os/finanzplan/Verpflichtungen');
+    const { Protokoll } = await import('@/components/os/finanzplan/Auswerten');
+    const { Buchungen } = await import('@/components/os/finanzplan/Monat');
+    const d = businessSicht(planMitPrivat());
+    const kontext = { d, ...rechne(d), sicht: 'business' as const, person: 'kevin', verbergen: false, aendere: async () => true, melde: () => {}, geh: () => {}, params: new URLSearchParams() };
+    for (const [name, k] of [['Lage', LageBusiness], ['Gesamt', Gesamt], ['Planen', Baukasten], ['Treiber', Szenarien], ['Ziele', Ziele], ['MAKE', UG], ['KDV', KDV], ['Selbst', Selbst], ['Töpfe', Toepfe], ['Kalender', Kalender], ['Schulden', Schulden], ['Zu erledigen', ZuErledigen], ['Protokoll', Protokoll], ['Buchungen', Buchungen]] as const) {
+      const html = renderToStaticMarkup(h(FinanzplanKontext.Provider, { value: kontext }, h(k as () => JSX.Element)));
+      for (const g of GEHEIM) expect(html.includes(g), `${name}: ${g}`).toBe(false);
+      for (const t of ['Privat angespart', 'Privat Luft', 'Runway Privat', 'Notgroschen', 'Gruppe Dez 28', 'Privat schuldenfrei', 'Privat-Konto', 'Netto-Tabelle fehlt']) expect(html.includes(t), `${name}: ${t}`).toBe(false);
+    }
+  });
+});

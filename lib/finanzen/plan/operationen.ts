@@ -167,13 +167,13 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       if (op.neu === undefined) {
         const alt = d.regeln[k];
         delete d.regeln[k];
-        protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt), neu: 'Regel entfernt' });
+        protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt), neu: 'Regel entfernt', pfad: op.pfad });
         continue;
       }
       if (typeof op.neu !== 'string' || !op.neu) throw new OperationUngueltig('Eine Regel braucht eine Planzeile.');
       const n = lerneRegel(d, k, op.neu);
       if (n) nachladen = true;
-      protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(op.alt), neu: `${op.neu} · Regel gemerkt, ${n} Buchungen angepasst` });
+      protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(op.alt), neu: `${op.neu} · Regel gemerkt, ${n} Buchungen angepasst`, pfad: op.pfad });
       continue;
     }
     if (teile[0] === 'aktiv') {
@@ -203,7 +203,7 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       if (op.neu === undefined) { delete d.meta[teile[1]]; meta[teile[1]] = null; }
       else { d.meta[teile[1]] = { wer: person, wann: jetzt }; meta[teile[1]] = { wer: person, wann: jetzt }; }
     }
-    protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt !== undefined ? alt : op.alt), neu: op.neu === undefined ? 'zurückgesetzt' : kurz(op.neu) });
+    protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt !== undefined ? alt : op.alt), neu: op.neu === undefined ? 'zurückgesetzt' : kurz(op.neu), pfad: op.pfad });
   }
   // Zellen-Grenze (nie abschneiden, ablehnen): wer über die Grenze wächst, bekommt 413 — Verkleinern geht immer.
   const zellen = Object.keys(d.plan ?? {}).length;

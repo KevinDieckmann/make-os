@@ -4,6 +4,17 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Finanzplanung unter Finanzen › Privat und › Business (04.10.2026, nur lokal — Branch `finanzplan-frei`)
+
+Kevin 04.10.: „Business ist bei Business sichtbar, kein Privat. Bei Privat kann man alles sehen … Im Business-Bereich sieht man Privat nicht.“
+
+- Reiter „Finanzplanung“ unter Finanzen › Privat (alles, auch die Firmen) und Finanzen › Business (nur MAKE Innovation GmbH, KD Ventures,
+  Selbstständigkeit) — eine Komponente, zwei Sichten. Der Eintrag „Finanzplanung jetzt“ unter den Agenten ist weg; alte Links leiten weiter.
+- Business-Sicht serverseitig gefiltert (`GET /api/finanzplan?sicht=business`), Schreiben auf Privat-Pfade → 403.
+- **Rückweg:** keine Datenänderung; Protokolleinträge tragen neu `pfad` (optional, der alte Stand ignoriert es). Der alte Stand kennt die
+  Reiter nicht und zeigt die Finanzplanung wieder unter den Agenten.
+- Nicht hochgeladen.
+
 ## Finanzplanung: jede Zahl bearbeitbar — Handwerte (04.10.2026, nur lokal — Branch `finanzplan-frei`)
 
 Kevin 04.10.: „Alle Felder — auch unten die Kosten, die Einzahlungen, die Steuern, whatever — alles selber bearbeiten. Jede Zahl. Nur die Formeln

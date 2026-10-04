@@ -64,7 +64,40 @@ export const FRAGE: Record<Unterseite, string> = {
   toepfe: 'Wem gehört das Geld auf dem Konto der Gesellschaft?',
   protokoll: 'Wer hat was wann geändert?',
 };
+/** Die Frage je Unterseite in der Business-Sicht, wo sie sich von der Privat-Sicht unterscheidet (04.10.). */
+export const FRAGE_BUSINESS: Partial<Record<Unterseite, string>> = {
+  lage: 'Wo stehen die Gesellschaften, was ist zu entscheiden und was ist noch offen?',
+  gesamt: 'Die drei Gesellschaften zusammen — Gehalt, Ausschüttung und Entnahme als Abfluss (brutto).',
+  buchungen: 'Was wurde im Business gebucht — und wohin gehört es?',
+  ziele: 'Welche Business-Ziele haben wir, und halten wir das Tempo?',
+  posten: 'Offene Posten, Rechnungen und Kontostände der Gesellschaften.',
+  kalender: 'Was ist im Business wann fällig — Zahlungen, Verträge, Kündigungen.',
+  schulden: 'Restschulden der Gesellschaften, Raten und was eine Sondertilgung bringt.',
+  protokoll: 'Wer hat im Business was wann geändert?',
+};
 export const bereichVon = (u: Unterseite): Bereich => BEREICHE.find(b => b.unter.some(x => x.id === u))?.id ?? 'lage';
+
+// ── Sichten (04.10., Kevin: „Business ist bei Business sichtbar, kein Privat“) ──
+/** Unterseiten, die nur Privat zeigen — in der Business-Sicht gibt es sie nicht. */
+export const NUR_PRIVAT_UNTERSEITEN: Unterseite[] = ['privat', 'budget', 'check', 'entwicklung', 'geldfluss'];
+/** Die Bereiche einer Sicht: Privat = alle acht; Business = ohne den Bereich Privat und ohne private Unterseiten. */
+export function bereicheFuer(sicht: 'privat' | 'business'): typeof BEREICHE {
+  if (sicht === 'privat') return BEREICHE;
+  return BEREICHE.filter(b => b.id !== 'privat').map(b => ({ ...b, unter: b.unter.filter(u => !NUR_PRIVAT_UNTERSEITEN.includes(u.id)) })).filter(b => b.unter.length);
+}
+/** Unterseite in einer Sicht — eine private Unterseite fällt in der Business-Sicht auf „lage“ zurück. */
+export const unterseiteFuer = (u: unknown, sicht: 'privat' | 'business'): Unterseite => (istUnterseite(u) && (sicht === 'privat' || !NUR_PRIVAT_UNTERSEITEN.includes(u)) ? u : 'lage');
+/**
+ * Die Adresse der Finanzplanung (04.10.: Reiter „Finanzplanung“ unter Finanzen › Privat und Finanzen › Business). Alte Links auf
+ * `/os/finanzplan?…` landen in der Privat-Sicht (dort ist alles); alle Parameter (u, monat, zeile, sz, feld, steuern …) bleiben.
+ */
+export function finanzplanAdresse(sicht: 'privat' | 'business', params?: URLSearchParams | Record<string, string | number | undefined>): string {
+  const q = new URLSearchParams();
+  q.set('s', 'finanzplanung'); q.set('space', sicht);
+  const eintraege = params instanceof URLSearchParams ? Array.from(params.entries()) : Object.entries(params ?? {});
+  for (const [k, v] of eintraege) if (k !== 's' && k !== 'space' && v !== undefined && v !== '') q.set(k, String(v));
+  return `/os/finanzen?${q.toString()}`;
+}
 export const istUnterseite = (v: unknown): v is Unterseite => BEREICHE.some(b => b.unter.some(x => x.id === v));
 
 // ── Zahlen ──────────────────────────────────────────────────────────────────

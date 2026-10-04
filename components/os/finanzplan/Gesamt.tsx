@@ -60,8 +60,72 @@ function UebergaengeKarte() {
   );
 }
 
+/**
+ * Gesamt der Business-Sicht (04.10.): nur die drei Gesellschaften und was sie an Gehalt, Ausschüttung und Entnahme hinausgeben
+ * (brutto, als Abfluss) — kein Netto, kein Privat-Konto, kein „Privat angespart“, keine Gruppe mit Privat.
+ */
+function GesamtBusiness() {
+  const { d, ug, kdc, aw, ps, sz } = usePlan();
+  const ertragAn = zeigeSteuer(d, 'ug', 'kst') || zeigeSteuer(d, 'ug', 'est');
+  const U = (m: number) => ug[m - 1], K = (m: number) => kdc[m - 1];
+  const m0 = aw.m0;
+  const frei = ug.map((u, i) => u.frei + u.kdvFrei + kdc[i].frei);
+  const zeilen: BlattZeile[] = [
+    { grp: `Abflüsse ${UG_KURZ} (brutto)` },
+    { name: `${personName('kevin')} brutto`, edit: 'ug.kevin', get: m => U(m).kevinBrutto, ind: true },
+    { name: `${personName('malin')} brutto`, edit: 'ug.malin', get: m => U(m).malinBrutto, ind: true },
+    { name: 'Personal inkl. Arbeitgeber', edit: 'ug.personal', get: m => U(m).personal, ind: true },
+    { name: 'Ausschüttung brutto', edit: 'ug.ausschuettung', get: m => U(m).ausschuettung, ind: true, optional: true },
+    { grp: UG_NAME },
+    { name: 'Umsatz netto', edit: 'ug.umsatz', get: m => U(m).umsatz, ind: true },
+    { name: 'Mindestumsatz (laufende Kosten)', edit: 'ug.laufend', get: m => U(m).laufend, ind: true },
+    { name: 'Gewinn', edit: 'ug.gewinn', sum: true, get: m => U(m).gewinn },
+    { name: 'Kontostand', edit: 'ug.konto', stock: true, get: m => U(m).konto },
+    { name: 'Frei verfügbar', edit: 'ug.frei', stock: true, key: true, get: m => U(m).frei },
+    ...(ertragAn ? [{ name: 'Steuerrücklage', edit: 'ug.steuerRuecklage', minus: true, stock: true, get: (m: number) => -U(m).steuerRuecklage, ind: true } as DatenZeile] : []),
+    { grp: 'KD Ventures' },
+    { name: 'Kontostand KD Ventures', edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
+    { name: 'Frei verfügbar KD Ventures', edit: 'kdv.frei', stock: true, key: true, get: m => U(m).kdvFrei },
+    { name: 'Partnerdarlehen offen', edit: 'kdv.darlehenOffen', minus: true, stock: true, get: m => -U(m).bjoernRest, ind: true },
+    { grp: finanzOrtName('kdc') },
+    { name: 'Umsatz netto Selbstständigkeit', edit: 'kdc.umsatz', get: m => K(m).umsatz, ind: true },
+    { name: 'Kosten Selbstständigkeit', edit: 'kdc.kosten', minus: true, get: m => -K(m).kosten, ind: true },
+    { name: 'Ergebnis vor Steuern Selbstständigkeit', edit: 'kdc.gewinn', sum: true, get: m => K(m).gewinn },
+    { name: 'Entnahme (Abfluss)', edit: 'kdc.entnahme', minus: true, get: m => -K(m).entnahme, ind: true, optional: true },
+    { name: 'Kontostand Selbstständigkeit', edit: 'kdc.konto', stock: true, get: m => K(m).konto },
+    { name: 'Frei verfügbar Selbstständigkeit', edit: 'kdc.frei', stock: true, key: true, get: m => K(m).frei },
+    { grp: 'Gesamt Business' },
+    // Summe der drei Gesellschaften — reine Anzeige, ändert man über die drei Zeilen „Frei verfügbar“ darüber.
+    { name: `Frei ${UG_KURZ} + KD Ventures + Selbstständigkeit`, stock: true, sum: true, key: true, get: m => frei[m - 1] },
+  ];
+  return (
+    <>
+      <Kacheln min={170}>
+        <Kachel label="Frei verfügbar Business jetzt" wert={<><Geld v={aw.frei.ug + aw.frei.kdv + aw.frei.kdc} /> €</>} unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Selbst. <Geld v={aw.frei.kdc} farbe={C.inkDim} /></>} />
+        <Kachel label={`Mindestumsatz ${UG_KURZ} je Monat`} wert={<><Geld v={aw.mindestumsatz.schnitt12} /> €</>} unter={<>Ø 12 Monate · Umsatz Ø <Geld v={aw.mindestumsatz.umsatzSchnitt12} farbe={C.inkDim} /> €</>} />
+        <Kachel label="Steuerrücklage jetzt" punkt={LEUCHT.achtung} wert={<><Geld v={aw.steuer.ruecklageGesamt} /> €</>} unter={aw.steuer.naechsteZahlung ? <>nächste Zahlung {monatLabel(d, aw.steuer.naechsteZahlung.monat)}: <Geld v={aw.steuer.naechsteZahlung.betrag} farbe={C.inkDim} /> €</> : 'keine Zahlung im Planzeitraum'} />
+        <Kachel label="Gehälter brutto je Monat" wert={<><Geld v={aw.uebergaenge.gehaelterBrutto} /> €</>} unter="Abfluss der Gesellschaft" />
+      </Kacheln>
+      <Karte i={0}>
+        <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: 'KD Ventures' }, { farbe: LEUCHT.achtung, text: 'Selbstständigkeit' }, { farbe: C.ink, text: 'Business gesamt' }]} />}>Business gesamt — {ps ? `Arbeitsplan „${ps.name}“` : `Treiber „${sz.name}“`}</Ueberschrift>
+        <Linie labels={d.monate} tick={3} hoehe={240} heute={m0 - 1} serien={[
+          { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: ug.map(u => u.frei), breite: 2.2 },
+          { name: 'KD Ventures', farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
+          { name: 'Selbstständigkeit', farbe: LEUCHT.achtung, werte: kdc.map(k => k.frei), breite: 1.4 },
+          { name: 'Business gesamt', farbe: C.ink, werte: frei, gestrichelt: true, breite: 1.4 },
+        ]} />
+      </Karte>
+      <Karte i={1}>
+        <Blatt zeilen={zeilen} titel="Business je Monat" werkzeuge={<span style={{ display: 'inline-flex', gap: 6 }}><Etikett einheit="ug" /><Etikett einheit="kdv" /><Etikett einheit="selbststaendigkeit" /></span>} />
+        <Hinweis>Nur Business. Gehalt, Ausschüttung und Entnahme stehen als Abfluss der Gesellschaft (brutto); was davon privat ankommt, steht unter Finanzen › Privat › Finanzplanung. {STEUER_HINWEIS}</Hinweis>
+      </Karte>
+    </>
+  );
+}
+
 export function Gesamt() {
-  const { d, ug, kdc, pr, aw, ps, sz, gruppe } = usePlan();
+  const { d, ug, kdc, pr, aw, ps, sz, gruppe, sicht } = usePlan();
+  if (sicht === 'business') return <GesamtBusiness />;
   const ertragAn = zeigeSteuer(d, 'ug', 'kst') || zeigeSteuer(d, 'ug', 'est');
   const ustAn = zeigeSteuer(d, 'ug', 'ust');
   const U = (m: number) => ug[m - 1], P = (m: number) => pr[m - 1], K = (m: number) => kdc[m - 1];

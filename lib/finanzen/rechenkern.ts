@@ -126,7 +126,8 @@ export interface Posten {
 }
 export interface SelbstPosten { id: string; name: string; art: 'einnahme' | 'ausgabe'; betrag: number; status: string; aus?: boolean }
 export interface Schritt { id: string; text: string; wer: string; bis: string; erledigt: boolean }
-export interface Aenderung { wer: string; wann: string; feld: string; alt: string; neu: string }
+/** Protokolleintrag. `pfad` (seit 04.10.) = der geänderte Pfad — damit die Business-Sicht nur Business-Einträge zeigt; ältere Einträge haben keinen. */
+export interface Aenderung { wer: string; wann: string; feld: string; alt: string; neu: string; pfad?: string }
 
 export interface FinanzDaten {
   version: 3; stand: string; monate: string[]; aktiv: string;

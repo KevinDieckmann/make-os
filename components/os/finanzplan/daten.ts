@@ -16,6 +16,7 @@ import { rechneMit, arbeitsplanVon, auswertung, type Planszenario, type Auswertu
 import { wendeOperationenAn, lies, pfadTeile, OperationUngueltig, type Operation } from '@/lib/finanzen/plan/operationen';
 import type { Unterseite } from '@/lib/finanzen/plan/hilfen';
 import type { Formeln } from '@/lib/finanzen/handwerte';
+import type { PlanSicht } from '@/lib/finanzen/plan/sicht';
 
 export type Zustand = 'laedt' | 'da' | 'leer' | 'kein' | 'fehler';
 export interface Meldung { id: number; art: 'ok' | 'fehler' | 'info'; titel: string; text?: string; aktion?: { label: string; tun: () => void } }
@@ -38,7 +39,12 @@ function gegenOperation(d: FinanzDaten, op: Operation): Operation | null {
   return alt === undefined ? { pfad: op.pfad, feld: op.feld } : { pfad: op.pfad, neu: alt, feld: op.feld };
 }
 
-export function useFinanzplanDaten() {
+/**
+ * `sicht` (04.10.): „business“ holt nur den Business-Teil vom Server (`?sicht=business`, Privat wird gar nicht ausgeliefert) und
+ * schreibt über denselben Weg (der Server lehnt private Pfade mit 403 ab). „privat“ = alles.
+ */
+export function useFinanzplanDaten(sicht: PlanSicht = 'privat') {
+  const adresse = sicht === 'business' ? '/api/finanzplan?sicht=business' : '/api/finanzplan';
   const [dokument, setDokument] = useState<FinanzDaten | null>(null);
   const [zustand, setZustand] = useState<Zustand>('laedt');
   const [person, setPerson] = useState<string>('');
@@ -63,7 +69,7 @@ export function useFinanzplanDaten() {
 
   const laden = useCallback(async () => {
     try {
-      const r = await fetch('/api/finanzplan', { cache: 'no-store', headers: etag.current ? { 'If-None-Match': etag.current } : {} });
+      const r = await fetch(adresse, { cache: 'no-store', headers: etag.current ? { 'If-None-Match': etag.current } : {} });
       if (r.status === 304) return;
       if (r.status === 403) { setZustand('kein'); return; }
       const d = (await r.json()) as Antwort;
@@ -73,7 +79,7 @@ export function useFinanzplanDaten() {
       setDokument(d.dokument ?? null);
       setZustand(d.dokument ? 'da' : 'leer');
     } catch { setZustand(z => (z === 'laedt' ? 'fehler' : z)); melde('fehler', 'Keine Verbindung', 'MAKE OS ist gerade nicht erreichbar.'); }
-  }, [melde]);
+  }, [melde, adresse]);
   useEffect(() => { void laden(); }, [laden]);
   useAbgleich(laden, { alle: 30_000, pausiert: () => unterwegs.current > 0 });
 
@@ -94,7 +100,7 @@ export function useFinanzplanDaten() {
     dokRef.current = lokal.dokument;
     unterwegs.current++;
     try {
-      const r = await fetch('/api/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ basisStand, ops: ops.map(o => ({ ...o, feld: o.feld ?? feld })) }) });
+      const r = await fetch(adresse, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ basisStand, ops: ops.map(o => ({ ...o, feld: o.feld ?? feld })) }) });
       const a = (await r.json()) as PatchAntwort;
       if (!a.ok) {
         if (r.status === 409 && a.dokument) { setDokument(a.dokument); dokRef.current = a.dokument; etag.current = null; undo.current = []; setUndoAnzahl(0); melde('fehler', 'Inzwischen geändert', a.fehler ?? 'Der Plan wurde neu geladen — bitte noch einmal.'); }
@@ -122,7 +128,7 @@ export function useFinanzplanDaten() {
       etag.current = null; await laden();
       return false;
     } finally { unterwegs.current--; }
-  }, [laden, melde, person]);
+  }, [laden, melde, person, adresse]);
 
   const rueckgaengig = useCallback(async () => {
     const letzte = undo.current.pop();
@@ -168,6 +174,8 @@ export function rechne(d: FinanzDaten, treiber?: Szenario, ps: Planszenario | nu
 
 export interface PlanKontext extends Gerechnet {
   d: FinanzDaten;
+  /** Privat = alles (Vorgabe, auch wenn es fehlt); Business = nur die Gesellschaften (das Dokument ist schon serverseitig gefiltert). */
+  sicht?: PlanSicht;
   person: string;
   verbergen: boolean;
   /** Änderung mit lesbarem Feldnamen; meldet „Gespeichert“ selbst. */

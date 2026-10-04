@@ -258,6 +258,22 @@ selber bearbeiten kann. Jede Zahl. Nur die Formeln sind im Hintergrund immer har
   Folgejahr, zurücksetzen und Rückgängig, Summe mit Abweichung, KD Ventures, Abschluss, Operationen-Prüfung, 409/413 im Schreibweg, alte Dokumente,
   Kennungen ohne Personennamen und ohne Kollision mit Planzeilen-Präfixen).
 
+## Finanzplanung unter Privat und Business (04.10.2026, Branch `finanzplan-frei`)
+
+Kevin 04.10.: „Teile bitte die Finanzplanung … einmal bei Privat, wo man das Ganze sehen kann, und einmal Business bei Business — jeweils unter
+Finanzen. Business ist bei Business sichtbar, kein Privat. Bei Privat kann man aber alles sehen, also auch die Firmen.“
+
+- **Wo:** Reiter „Finanzplanung“ unter Finanzen › Privat (`/os/finanzen?s=finanzplanung&space=privat`) und Finanzen › Business
+  (`…&space=business`). Dieselbe Komponente mit `sicht`. Alte Links `/os/finanzplan?u=…` leiten in die Privat-Sicht weiter.
+- **Privat-Sicht:** wie bisher alles — acht Bereiche, auch die Gesellschaften.
+- **Business-Sicht:** Lage (nur Business-Kacheln und -Punkte), Planen, Business (MAKE, KD Ventures, Selbstständigkeit), Gesamt (nur Business,
+  Gehalt/Ausschüttung/Entnahme als Abfluss brutto), Buchungen & Check (Buchungen, Zu erledigen, Kalender, Schulden — je nur Business), Ziele &
+  Töpfe (nur Ziele „MAKE frei“ und „Partnerdarlehen“), Protokoll (nur Einträge mit Business-Pfad).
+- **Sicher, nicht nur versteckt:** der Server filtert (`lib/finanzen/plan/sicht.ts › businessSicht`), bevor das Dokument hinausgeht — auch in
+  der 409-Antwort. Schreiben aus der Business-Sicht nur auf Business-Pfade (`businessPfadErlaubt`, sonst 403). Die Business-Zahlen sind dieselben
+  wie in der vollen Sicht (Test). Rückweg: das Dokument bleibt gleich; neu ist nur das optionale Feld `pfad` an Protokolleinträgen (der alte Stand
+  ignoriert es).
+
 ## Produkte → Deals → Mandate → Planung (Kevin: „clean von vorne bis hinten“)
 - **Produkt** (`Leistung`, Katalog im CRM, Seite `/os/mandate?s=produkte`) trägt, was die Planung braucht: `preis.betrag`, `preis.basis`
   (monat · jahr · einmalig — neu, additiv in `lib/crm/typen.ts`; fehlt sie, leitet `preisBasisVon()` sie aus der Freitext-Einheit ab, „festklicken“ speichert

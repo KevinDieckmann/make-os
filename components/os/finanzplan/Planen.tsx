@@ -198,8 +198,9 @@ function SelbstAbschluss() {
 const FARBEN_SZ = [KUPFER, LEUCHT.achtung, LEUCHT.kritisch, LEUCHT.puls, LILA, C.inkDim, C.ink];
 
 export function Szenarien() {
-  const { d, sz, ps, aendere, ug: ugAktiv } = usePlan();
+  const { d, sz, ps, aendere, ug: ugAktiv, sicht } = usePlan();
   const alle = useMemo(() => d.szenarien.map(s => ({ s, ...rechne(d, s) })), [d]);
+  const business = sicht === 'business';
   const a = d.annahmen;
   const [name, setName] = useState<string | null>(null);
   const [loeschen, setLoeschen] = useState(false);
@@ -214,7 +215,7 @@ export function Szenarien() {
       <Karte i={0}>
         <Ueberschrift rechts={ps ? <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>gerechnet mit den Bausteinen von „{ps.name}“</span> : undefined}>Treiber im Vergleich — Klick wählt den Treiber{ps ? ' für den Arbeitsplan' : ''}</Ueberschrift>
         <Tabelle klein>
-          <thead><tr><th style={TH}>Szenario</th><th style={THr}>Tiefpunkt frei</th><th style={THr}>Monate im Minus</th><th style={THr}>frei Dez 26</th><th style={THr}>frei Dez 27</th><th style={THr}>frei Dez 28</th><th style={THr}>Umsatz 2027</th><th style={THr}>OB-Anteil Jun 27</th><th style={THr}>Privat angespart Dez 27</th><th style={THr}>Gruppe Dez 28</th></tr></thead>
+          <thead><tr><th style={TH}>Szenario</th><th style={THr}>Tiefpunkt frei</th><th style={THr}>Monate im Minus</th><th style={THr}>frei Dez 26</th><th style={THr}>frei Dez 27</th><th style={THr}>frei Dez 28</th><th style={THr}>Umsatz 2027</th><th style={THr}>OB-Anteil Jun 27</th>{!business && <><th style={THr}>Privat angespart Dez 27</th><th style={THr}>Gruppe Dez 28</th></>}</tr></thead>
           <tbody>
             {alle.map(({ s: x, kz }) => (
               <tr key={x.id} onClick={() => { if (x.id === sz.id) return; void aendere([{ pfad: '/aktiv', alt: d.aktiv, neu: x.id }, ...(ps ? [{ pfad: `/planszenarien/id=${ps.id}/basis`, alt: ps.basis, neu: x.id }] : [])], `Treiber ${x.name} aktiv`); }} style={zeileStil(x.id === sz.id)}>
@@ -222,8 +223,8 @@ export function Szenarien() {
                 <td style={TDr}><Geld v={kz.minFrei} /> <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{monatLabel(d, kz.minMonat)}</span></td>
                 <td style={{ ...TDr, color: kz.monateMinus ? LEUCHT.kritisch : C.ink }}>{kz.monateMinus}</td>
                 <td style={TDr}><Geld v={kz.freiDez26} /></td><td style={TDr}><Geld v={kz.freiDez27} /></td><td style={TDr}><Geld v={kz.freiDez28} /></td>
-                <td style={TDr}><Geld v={kz.umsatz2027} /></td><td style={TDr}>{prozent(kz.obAnteilJun27)}</td><td style={TDr}><Geld v={kz.privatAngespartDez27} /></td>
-                <td style={TDr}><Geld v={kz.gruppeDez28} gross={false} stil={{ fontWeight: 700 }} /></td>
+                <td style={TDr}><Geld v={kz.umsatz2027} /></td><td style={TDr}>{prozent(kz.obAnteilJun27)}</td>
+                {!business && <><td style={TDr}><Geld v={kz.privatAngespartDez27} /></td><td style={TDr}><Geld v={kz.gruppeDez28} gross={false} stil={{ fontWeight: 700 }} /></td></>}
               </tr>
             ))}
           </tbody>
@@ -259,14 +260,14 @@ export function Szenarien() {
             </Tabelle>
           </Karte>
           <Karte i={2}>
-            <Ueberschrift rechts={<KnopfKlein onClick={() => void aendere([{ pfad: p('ereignisse/-'), neu: { id: neueKennung('e'), name: 'Neues Ereignis', einheit: 'privat', betrag: 0, monat: 4 } }], `Szenario ${sz.name} · Ereignis angelegt`)}>+ Ereignis</KnopfKlein>}>Lebensereignisse in „{sz.name}“</Ueberschrift>
+            <Ueberschrift rechts={<KnopfKlein onClick={() => void aendere([{ pfad: p('ereignisse/-'), neu: { id: neueKennung('e'), name: 'Neues Ereignis', einheit: business ? 'ug' : 'privat', betrag: 0, monat: 4 } }], `Szenario ${sz.name} · Ereignis angelegt`)}>+ Ereignis</KnopfKlein>}>{business ? 'Einmalige Ereignisse' : 'Lebensereignisse'} in „{sz.name}“</Ueberschrift>
             {ereignisse.length ? (
               <Tabelle klein>
                 <thead><tr><th style={TH}>Was</th><th style={TH}>Wo</th><th style={THr}>Betrag</th><th style={TH}>Monat</th><th style={TH}></th></tr></thead>
                 <tbody>{ereignisse.map(e => (
                   <tr key={e.id}>
                     <td style={TD}><TextFeld wert={e.name} onFertig={t => setze(`ereignisse/id=${e.id}/name`, e.name, t, `Ereignis ${e.name}`)} breite={150} titel="Was" /></td>
-                    <td style={TD}><Auswahl wert={e.einheit} onWahl={v => setze(`ereignisse/id=${e.id}/einheit`, e.einheit, v, `Ereignis ${e.name} · Einheit`)} optionen={[{ id: 'privat', label: 'Privat' }, { id: 'ug', label: `${UG_KURZ}` }]} titel="Einheit" /></td>
+                    <td style={TD}><Auswahl wert={e.einheit} onWahl={v => setze(`ereignisse/id=${e.id}/einheit`, e.einheit, v, `Ereignis ${e.name} · Einheit`)} optionen={business ? [{ id: 'ug', label: `${UG_KURZ}` }] : [{ id: 'privat', label: 'Privat' }, { id: 'ug', label: `${UG_KURZ}` }]} titel="Einheit" /></td>
                     <td style={TDr}><ZahlFeld wert={e.betrag} dezimal={0} breite={96} onFertig={v => setze(`ereignisse/id=${e.id}/betrag`, e.betrag, v ?? 0, `Ereignis ${e.name}`)} titel="Betrag" /></td>
                     <td style={TD}><MonatWahl wert={e.monat} onWahl={m => setze(`ereignisse/id=${e.id}/monat`, e.monat, m, `Ereignis ${e.name} · Monat`)} monate={d.monate} /></td>
                     <td style={TD}><KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: p(`ereignisse/id=${e.id}`), alt: e.name }], `Ereignis ${e.name} entfernt`)} titel="Ereignis entfernen">−</KnopfKlein></td>
@@ -289,9 +290,9 @@ export function Szenarien() {
         </Spalte>
       </Spalten>
       <div style={{ ...MIKRO, margin: '18px 0 8px' }}>Steuern — welche gelten, wie hoch</div>
-      {[...GESELLSCHAFTEN, 'privat' as const].map((o, k) => <SteuerKarte key={o} ort={o} i={5 + k} />)}
+      {[...GESELLSCHAFTEN, ...(business ? [] : ['privat' as const])].map((o, k) => <SteuerKarte key={o} ort={o} i={5 + k} />)}
       <EinstellungenKarte i={9} />
-      <SchwellenKarte i={10} />
+      {!business && <SchwellenKarte i={10} />}
       {name !== null && (
         <Dialog titel="Szenario umbenennen" onZu={() => setName(null)} aktionen={<><KnopfKlein farbe={C.inkDim} onClick={() => setName(null)}>Abbrechen</KnopfKlein><Knopf aus={!name.trim()} onClick={() => { const n = name.trim(); setName(null); if (n && n !== sz.name) void aendere([{ pfad: p('name'), alt: sz.name, neu: n }], `Szenario umbenannt: ${n}`); }}>Speichern</Knopf></>}>
           <input autoFocus value={name} aria-label="Name des Szenarios" onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { const n = name.trim(); setName(null); if (n && n !== sz.name) void aendere([{ pfad: p('name'), alt: sz.name, neu: n }], `Szenario umbenannt: ${n}`); } }} style={{ ...feld }} />
@@ -305,7 +306,10 @@ export function Szenarien() {
 const QUELLEN = [{ id: 'privat.angespart', label: 'Privat angespart' }, { id: 'ug.frei', label: `${UG_KURZ} frei verfügbar` }, { id: 'kdv.bjoern', label: 'Partnerdarlehen offen' }, { id: 'gruppe', label: 'Freies Geld Gruppe' }] as const;
 
 export function Ziele() {
-  const { d, ug, kdc, pr, aendere } = usePlan();
+  const { d, ug, kdc, pr, aendere, sicht } = usePlan();
+  const business = sicht === 'business';
+  // Business-Sicht: nur Messgrößen ohne Privat (MAKE frei, Partnerdarlehen).
+  const quellen = business ? QUELLEN.filter(q => q.id === 'ug.frei' || q.id === 'kdv.bjoern') : QUELLEN;
   const zs = zielStaende(d, ug, pr, kdc);
   const [plus, setPlus] = useState<Record<string, number>>({});
   const [neu, setNeu] = useState<string | null>(null);
@@ -326,7 +330,7 @@ export function Ziele() {
               <Formular>
                 <Feld label="Ziel €"><ZahlFeld wert={s.ziel.ziel} dezimal={0} breite="100%" onFertig={v => void aendere([{ pfad: `/ziele/id=${s.ziel.id}/ziel`, alt: s.ziel.ziel, neu: v ?? 0 }], `Ziel ${s.ziel.name}`)} titel="Ziel" /></Feld>
                 <Feld label="bis"><input type="month" value={s.ziel.bis} aria-label="bis" onChange={e => { if (e.target.value) void aendere([{ pfad: `/ziele/id=${s.ziel.id}/bis`, alt: s.ziel.bis, neu: e.target.value }], `Ziel ${s.ziel.name} · bis`); }} style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', borderRadius: 10 }} /></Feld>
-                <Feld label="Messgröße"><Auswahl wert={s.ziel.quelle} onWahl={v => void aendere([{ pfad: `/ziele/id=${s.ziel.id}/quelle`, alt: s.ziel.quelle, neu: v }], `Ziel ${s.ziel.name} · Messgröße`)} optionen={QUELLEN} titel="Messgröße" /></Feld>
+                <Feld label="Messgröße"><Auswahl wert={s.ziel.quelle} onWahl={v => void aendere([{ pfad: `/ziele/id=${s.ziel.id}/quelle`, alt: s.ziel.quelle, neu: v }], `Ziel ${s.ziel.name} · Messgröße`)} optionen={quellen} titel="Messgröße" /></Feld>
                 <Feld label="erreicht"><div style={{ padding: '8px 0', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{s.erreichtMonat ? monatLabel(d, s.erreichtMonat) : '—'}</div></Feld>
               </Formular>
               {!runter && (
@@ -346,7 +350,7 @@ export function Ziele() {
       </Raster>
       <div style={{ marginTop: 12 }}><Knopf onClick={() => setNeu('')}>+ Ziel</Knopf></div>
       {neu !== null && (
-        <Dialog titel="Neues Ziel" onZu={() => setNeu(null)} aktionen={<><KnopfKlein farbe={C.inkDim} onClick={() => setNeu(null)}>Abbrechen</KnopfKlein><Knopf aus={!neu.trim()} onClick={() => { const n = neu.trim(); setNeu(null); if (n) void aendere([{ pfad: '/ziele/-', neu: { id: neueKennung('g'), name: n, quelle: 'privat.angespart', ziel: 10000, bis: '2027-12', einheit: 'privat' } }], `Ziel angelegt: ${n}`); }}>Anlegen</Knopf></>}>
+        <Dialog titel="Neues Ziel" onZu={() => setNeu(null)} aktionen={<><KnopfKlein farbe={C.inkDim} onClick={() => setNeu(null)}>Abbrechen</KnopfKlein><Knopf aus={!neu.trim()} onClick={() => { const n = neu.trim(); setNeu(null); if (n) void aendere([{ pfad: '/ziele/-', neu: business ? { id: neueKennung('g'), name: n, quelle: 'ug.frei', ziel: 10000, bis: '2027-12', einheit: 'ug' } : { id: neueKennung('g'), name: n, quelle: 'privat.angespart', ziel: 10000, bis: '2027-12', einheit: 'privat' } }], `Ziel angelegt: ${n}`); }}>Anlegen</Knopf></>}>
           <input autoFocus value={neu} placeholder="Name des Ziels" aria-label="Name des Ziels" onChange={e => setNeu(e.target.value)} style={{ ...feld }} />
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Betrag, Datum und Messgröße stellst du danach auf der Karte ein.</div>
         </Dialog>
