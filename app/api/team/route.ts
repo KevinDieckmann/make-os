@@ -6,6 +6,8 @@
 // Personen werden deaktiviert (alte Delegiert-Marker zeigen weiter auf ihr Kurzwort).
 // Kevin und Malin sind feste Einträge aus den Konten (`konto-<speicher>`): Name aus dem Konto,
 // Kurzwort/Rolle/Bereich/Farbe hier pflegbar.
+// DSGVO-Nachtrag 04.10.: `deaktiviertAm` setzt nur der Server (`deaktivierungStempeln`) — 30 Tage danach löscht der
+// Morgenlauf die Kapazitätsdaten der Person (lib/kapazitaet/aufraeumen.ts); Reaktivieren davor nimmt den Zeitpunkt weg.
 
 import { NextResponse } from 'next/server';
 import { speicherStand } from '@/lib/store/local-db';
@@ -13,7 +15,7 @@ import { listePatchen, opsLesen, opsFehler, type ListenOp } from '@/lib/store/pa
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { karteiZugang, haushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { etagAus, unveraendert, jsonAntwort } from '@/lib/http/json-antwort';
-import { teamSpeicherName, teamStand, kontenDesHaushalts, saeubereTeamEintrag, type TeamDatei } from '@/lib/make-one/team-speicher';
+import { teamSpeicherName, teamStand, kontenDesHaushalts, saeubereTeamEintrag, deaktivierungStempeln, type TeamDatei } from '@/lib/make-one/team-speicher';
 import { kurzAus, KONTO_PRAEFIX, type TeamEintrag } from '@/lib/make-one/team-typen';
 
 export const runtime = 'nodejs';
@@ -61,10 +63,14 @@ export async function PATCH(req: Request) {
   const fremd = ops.map(opId).find(id => id.startsWith(KONTO_PRAEFIX) && !kontoIds.has(id));
   if (fremd) return NextResponse.json({ ok: false, fehler: `Unbekanntes Konto: ${fremd}` }, { status: 400 });
 
+  const jetzt = new Date().toISOString();
   const r = await listePatchen<TeamEintrag, TeamDatei & Record<string, unknown>>(teamSpeicherName(z.haushalt), 'team', ops, 10, undefined, {
     wer: werAus(req),
     // Teiländerung: Felder auflegen und neu prüfen — die Kennung bleibt.
     teil: (alt, felder) => saeubereTeamEintrag({ ...alt, ...felder, id: alt.id }),
+    // Deaktivierungszeitpunkt nur vom Server (der Browser kann ihn weder setzen noch verschieben).
+    vereinen: (neu, alt) => deaktivierungStempeln(neu, alt, jetzt),
+    neu: e => deaktivierungStempeln(e, undefined, jetzt),
     // Kurzwörter sind eindeutig (ohne Groß/Klein) — über Konten und alle Einträge, auch deaktivierte:
     // alte Delegiert-Marker zeigen sonst auf die falsche Person.
     pruefen: (liste, o) => {

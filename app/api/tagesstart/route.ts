@@ -149,6 +149,21 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Gesellschaften-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0g) Kapazität deaktivierter Team-Personen (DSGVO-Nachtrag 04.10.): 30 Tage nach dem Deaktivieren Grundwert, Urlaub/Blöcke,
+  //     Zuweisungen und Einwilligung löschen (idempotent, Protokoll „System“); alte Einträge ohne Zeitpunkt bekommen „jetzt“.
+  try {
+    const h = (await imHaushaltOderSystemlauf(req)) ? await haushaltDesInhabers() : null;
+    if (!h) schritte.push({ name: 'Kapazität deaktivierter Personen', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { kapaDeaktivierteAufraeumen } = await import('@/lib/kapazitaet/server');
+      const k = await kapaDeaktivierteAufraeumen(h);
+      const was = [k.personen ? `gelöscht: Kapazität von ${k.personen} Person${k.personen === 1 ? '' : 'en'}` : '', k.gestempelt ? `Frist begonnen für ${k.gestempelt}` : ''].filter(Boolean).join(' · ');
+      schritte.push({ name: 'Kapazität deaktivierter Personen', ok: true, info: was || 'nichts fällig' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Kapazität deaktivierter Personen', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read
   //    ist zäh (bis ~55s), das muss nicht jeden Morgen sein.
   if (st.kalenderAlterStd == null || st.kalenderAlterStd > 12) {

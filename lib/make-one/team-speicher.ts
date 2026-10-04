@@ -71,6 +71,19 @@ export async function teamFuerAnfrage(req: Request): Promise<TeamPerson[]> {
 const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 /**
+ * Deaktivierungszeitpunkt serverseitig festhalten (DSGVO-Nachtrag 04.10.) — `saeubereTeamEintrag` verwirft das Feld aus dem
+ * Netz, hier kommt es vom Server zurück: aktiv → Feld weg (Reaktivierung, die Frist ist vorbei); war schon inaktiv → alter
+ * Zeitpunkt bleibt (fehlt er, stempelt der Morgenlauf); wird gerade deaktiviert → `jetzt`.
+ */
+export function deaktivierungStempeln(neu: TeamEintrag, alt: TeamEintrag | undefined, jetzt: string): TeamEintrag {
+  const { deaktiviertAm: _weg, ...ohne } = neu;
+  void _weg;
+  if (neu.aktiv || neu.id.startsWith(KONTO_PRAEFIX)) return ohne;
+  if (alt && !alt.aktiv) return alt.deaktiviertAm ? { ...ohne, deaktiviertAm: alt.deaktiviertAm } : ohne;
+  return { ...ohne, deaktiviertAm: jetzt };
+}
+
+/**
  * Ein Eintrag aus dem Netz, geprüft — oder null. Konten-Einträge (`konto-…`) sind immer aktiv und tragen
  * keine E-Mail (die steht am Konto). Kennung fehlt → neue.
  */

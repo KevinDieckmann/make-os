@@ -152,6 +152,12 @@ function PersonKarte({ p, i, ich, inhaber, personen, bezuege, zuweisungen, aende
         <Ausnahmen p={p} darf={darf} los={los} />
         <Zuweisungen p={p} darf={darf} zuweisungen={zuweisungen} bezuege={bezuege} personen={personen} los={los} />
         {meldung && <span role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</span>}
+        {/* Art. 15 (DSGVO-Nachtrag 04.10.): Konto → nur die Person selbst, Team-Person ohne Konto → der Inhaber (Server prüft dasselbe). */}
+        {(p.quelle === 'konto' ? eigen : inhaber) && (
+          <a href={`/api/kapazitaet?auskunft=${encodeURIComponent(p.id)}`} download style={{ fontSize: TYP.bedien, color: C.inkDim, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
+            {eigen ? 'Meine Kapazitätsdaten herunterladen (Auskunft)' : `Kapazitätsdaten von ${p.name} herunterladen (Auskunft)`}
+          </a>
+        )}
       </div>
     </Karte>
   );
