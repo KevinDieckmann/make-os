@@ -13,8 +13,8 @@ import { istGesellschaft } from '@/lib/einheiten';
 import { zufallsUuid } from '@/lib/kennung';
 import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
 import {
-  GES_STATUS, RECHTSFORMEN, MIT_STAMMKAPITAL, anteile, eingezahltLautGesellschaftern, nachfolger, vorgaengerErlaubt, vorgaengerKette, statusLabel, rechtsformLabel,
-  type GesStatus, type Rechtsform,
+  GES_STATUS, GES_ROLLEN, RECHTSFORMEN, MIT_STAMMKAPITAL, anteile, eingezahltLautGesellschaftern, nachfolger, vorgaengerErlaubt, vorgaengerKette, statusLabel, rechtsformLabel,
+  type GesStatus, type GesRolle, type Rechtsform,
 } from '@/lib/gesellschaften/modell';
 import { Gesellschaften as Absender } from '../crm/stammdaten/Gesellschaften';
 import { useSchreiber, TextFeld, Auswahl, Felder, Feldzeile, klein, centText, centEingabe, tagText, type GAnzeige, type RegisterDaten } from './teile';
@@ -22,8 +22,9 @@ import { StatusPille } from './UnternehmenView';
 import { GesellschafterReiter } from './Gesellschafter';
 import { BeteiligungenReiter, VertraegeReiter, UnterlagenReiter } from './Vertraege';
 import { FahrplanKarte } from './Fahrplan';
+import { OrganeReiter } from './Organe';
 
-type ReiterId = 'steckbrief' | 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender';
+type ReiterId = 'steckbrief' | 'gesellschafter' | 'organe' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender';
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
 export function Detail({ g, daten, reiter, onReiter, zurueck, onNeu, neuLaden, oeffne }: {
@@ -34,7 +35,7 @@ export function Detail({ g, daten, reiter, onReiter, zurueck, onNeu, neuLaden, o
   const aktive = g.gesellschafter?.filter(x => !x.geloeschtAm && !x.ausgeschiedenAm).length ?? 0;
   const vertraege = g.vertraege?.filter(v => !v.geloeschtAm && v.status !== 'beendet').length ?? 0;
   const liste: { id: ReiterId; label: string }[] = [
-    { id: 'steckbrief', label: 'Steckbrief' }, { id: 'gesellschafter', label: `Gesellschafter${aktive ? ` · ${aktive}` : ''}` },
+    { id: 'steckbrief', label: 'Steckbrief' }, { id: 'gesellschafter', label: `Gesellschafter${aktive ? ` · ${aktive}` : ''}` }, { id: 'organe', label: 'Organe & Beschlüsse' },
     { id: 'beteiligungen', label: 'Beteiligungen' }, { id: 'vertraege', label: `Verträge${vertraege ? ` · ${vertraege}` : ''}` },
     { id: 'unterlagen', label: 'Unterlagen' }, ...(fest ? [{ id: 'absender' as const, label: 'Absender' }] : []),
   ];
@@ -47,6 +48,7 @@ export function Detail({ g, daten, reiter, onReiter, zurueck, onNeu, neuLaden, o
       {sw.unterwegs > 0 && <div role="status" style={klein}>speichert …</div>}
       {aktiv === 'steckbrief' && <Steckbrief g={g} daten={daten} schreibe={sw.schreibe} neuLaden={neuLaden} oeffne={oeffne} />}
       {aktiv === 'gesellschafter' && <GesellschafterReiter g={g} daten={daten} schreibe={sw.schreibe} />}
+      {aktiv === 'organe' && <OrganeReiter g={g} daten={daten} schreibe={sw.schreibe} />}
       {aktiv === 'beteiligungen' && <BeteiligungenReiter g={g} daten={daten} schreibe={sw.schreibe} oeffne={oeffne} />}
       {aktiv === 'vertraege' && <VertraegeReiter g={g} daten={daten} schreibe={sw.schreibe} />}
       {aktiv === 'unterlagen' && <UnterlagenReiter g={g} />}
@@ -110,6 +112,8 @@ function Steckbrief({ g, daten, schreibe, neuLaden, oeffne }: { g: GAnzeige; dat
             <Feldzeile label="Geschäftsjahr beginnt im"><Auswahl label="Beginn des Geschäftsjahres" wert={String(g.geschaeftsjahrBeginn ?? 1)} liste={MONATE.map((m, i) => ({ id: String(i + 1), label: i === 0 ? 'Januar (Kalenderjahr)' : m }))} onWahl={v => void setze({ geschaeftsjahrBeginn: Number(v) || null })} /></Feldzeile>
           </Felder>
           <Feldzeile label="Rechtsform"><Pillen liste={RECHTSFORMEN.map(x => ({ id: x.id, label: x.label }))} aktiv={g.rechtsform ?? null} onWahl={(r: Rechtsform) => void setze({ rechtsform: r })} /></Feldzeile>
+          <Feldzeile label="Rolle"><Pillen liste={GES_ROLLEN.map(r => ({ id: r.id, label: r.label }))} aktiv={g.rolle ?? 'operativ'} onWahl={(r: GesRolle) => void setze({ rolle: r })} /></Feldzeile>
+          {g.rolle === 'holding' && <div style={klein}>Als Holding gelten im Business-Index keine operativen Vertriebs- und Produktivitätskennzahlen{fest ? '' : ' (eigene Index-Sicht haben nur die drei festen Gesellschaften)'}.</div>}
           <Feldzeile label="Status"><Pillen liste={GES_STATUS.map(s => ({ id: s.id, label: s.label }))} aktiv={g.status ?? null} onWahl={(s: GesStatus) => void setze({ status: s })} /></Feldzeile>
           <Feldzeile label="Notizen"><TextFeld lang label="Notizen" wert={g.notizen ?? ''} onFertig={t => void setze({ notizen: t })} /></Feldzeile>
         </div>

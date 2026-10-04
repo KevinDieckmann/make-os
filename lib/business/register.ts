@@ -169,8 +169,20 @@ KENNZAHLEN.push(...fzKennzahlen('business').map(k => ({ ...k, saeule: 'fz' as Sa
 
 export const KENNZAHL = Object.fromEntries(KENNZAHLEN.map(k => [k.id, k])) as Record<string, KennzahlDef>;
 
-/** Die Kennzahlen, die in einer Sicht gelten. */
-export const kennzahlenFuer = (scope: Scope) => KENNZAHLEN.filter(k => (scope === 'gesamt' || !k.nurGesamt) && !k.nichtFuer?.includes(scope));
+/**
+ * Holding (04.10. Nachtrag, Kevin: „KD Ventures = reine Holding“): Ob eine Gesellschaft Holding ist, sagt das Register
+ * (Rolle im Steckbrief, lib/gesellschaften `holdingSichten`). `HOLDING_VORGABE` ist nur der Rückfall, solange dort keine
+ * Rolle steht — er entspricht den bisherigen Einträgen `nichtFuer: ['kdv']`. Ein `nichtFuer` mit einer Sicht der Vorgabe
+ * heißt deshalb „operative Kennzahl — gilt nicht für eine Holding“ und folgt der Rolle; andere `nichtFuer` gelten fest.
+ */
+export const HOLDING_VORGABE: readonly Scope[] = ['kdv'];
+const istOperativ = (k: KennzahlDef) => !!k.nichtFuer?.some(s => HOLDING_VORGABE.includes(s));
+
+/** Die Kennzahlen, die in einer Sicht gelten — `holdings` = Sichten, die laut Register eine Holding sind. */
+export const kennzahlenFuer = (scope: Scope, holdings: readonly Scope[] = HOLDING_VORGABE) => KENNZAHLEN.filter(k =>
+  (scope === 'gesamt' || !k.nurGesamt)
+  && !(istOperativ(k) && holdings.includes(scope))
+  && !k.nichtFuer?.some(s => s === scope && !HOLDING_VORGABE.includes(s)));
 
 export type Schwelle = KernSchwelle;
 

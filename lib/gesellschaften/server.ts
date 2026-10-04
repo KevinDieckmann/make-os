@@ -16,7 +16,8 @@ import {
   alleGesellschaften, gesellschaftVon, steckbriefAnwenden, gesellschafterSaeubern, beteiligungSaeubern, vertragSaeubern,
   eintragAktion, gesellschaftArchiv, gesellschaftVerweise, verweiseAnzahl, verweiseSatz, registerAufraeumen, GRENZEN, PRAEFIX,
   type RegisterDatei, type RegisterGesellschaft, type RegisterFehler, type RegisterListe, type EintragAktion, type CrmVerweisTeil,
-  type Gesellschafter, type FremdBeteiligung, type Vertrag,
+  beschlussSaeubern, organSaeubern, faelligeErinnerungen,
+  type Gesellschafter, type FremdBeteiligung, type Vertrag, type Beschluss, type Organ, type ListenEintrag,
 } from './modell';
 
 export const registerName = gesellschaftenName;
@@ -89,7 +90,7 @@ export const steckbrief = (felder: Record<string, unknown>): Aenderung => (alt, 
   return r.fehler.length ? { fehler: r.fehler } : { g: r.g };
 };
 
-type Eintrag = Gesellschafter | FremdBeteiligung | Vertrag;
+type Eintrag = ListenEintrag;
 
 /** Einen Listeneintrag anlegen (ohne `eintragId`, Kennung vom Server) oder ändern. */
 export const eintragSchreiben = (liste: RegisterListe, roh: unknown, eintragId?: string): Aenderung => alt => {
@@ -98,9 +99,11 @@ export const eintragSchreiben = (liste: RegisterListe, roh: unknown, eintragId?:
   if (eintragId && !vorhanden) return { fehler: [{ feld: 'eintragId', text: 'Eintrag nicht gefunden.' }], status: 404 };
   if (!vorhanden && l.length >= GRENZEN[liste]) return { fehler: [{ feld: liste, text: `Höchstens ${GRENZEN[liste]} Einträge.` }], status: 413 };
   const mitId = vorhanden ? roh : { ...((roh && typeof roh === 'object' ? roh : {}) as object), id: neueKennung(PRAEFIX[liste]) };
-  const r = liste === 'gesellschafter' ? gesellschafterSaeubern(mitId, alt.id, vorhanden as Gesellschafter | undefined)
+  const r: { e?: Eintrag; fehler: RegisterFehler[] } = liste === 'gesellschafter' ? gesellschafterSaeubern(mitId, alt.id, vorhanden as Gesellschafter | undefined)
     : liste === 'beteiligungen' ? beteiligungSaeubern(mitId, vorhanden as FremdBeteiligung | undefined)
-      : vertragSaeubern(mitId, vorhanden as Vertrag | undefined);
+      : liste === 'beschluesse' ? beschlussSaeubern(mitId, vorhanden as Beschluss | undefined)
+        : liste === 'organe' ? organSaeubern(mitId, vorhanden as Organ | undefined)
+          : vertragSaeubern(mitId, vorhanden as Vertrag | undefined);
   if (r.fehler.length || !r.e) return { fehler: r.fehler };
   const neu = vorhanden ? l.map(e => (e.id === vorhanden.id ? r.e! : e)) : [...l, r.e];
   return { g: { ...alt, [liste]: neu } };
@@ -150,4 +153,43 @@ export async function registerPapierkorbAufraeumen(haushalt: string, jetzt = new
   });
   if (n) await protokolliereBestand(registerName(haushalt), vorher, nachher, { art: 'system' } as Wer);
   return { eintraege: n };
+}
+
+/**
+ * Erinnerung vor „kündigen bis“ (04.10. Nachtrag): je fälligem Vertrag EINE Aufgabe (feste Kennung `vte-…`, Business, beide)
+ * über den Aufgaben-Schreibweg — gibt es sie schon (auch erledigt oder im Papierkorb), passiert nichts — und nur für eine NEU
+ * angelegte eine Meldung in der Glocke an jede Person des Haushalts. Läuft im Morgenlauf und nach jeder Vertragsänderung.
+ * Wirft nie; ohne Haushalt nichts.
+ */
+export async function vertragsErinnerungen(haushalt: string, heute = localDay()): Promise<{ neu: number }> {
+  try {
+    const { alleGesellschaften } = await import('./modell');
+    const faellig = faelligeErinnerungen(alleGesellschaften(await ladeRegister(haushalt)), heute);
+    if (!faellig.length) return { neu: 0 };
+    const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
+    const jetzt = new Date().toISOString();
+    let neu: typeof faellig = [];
+    await systemAufgabenAendern(stand => {
+      const da = new Set(stand.tasks.map(t => t.id));
+      neu = faellig.filter(e => !da.has(e.aufgabeId));
+      return {
+        neu: neu.map(e => ({
+          id: e.aufgabeId, title: e.titel, description: e.beschreibung, status: 'todo', priority: 'high', assignee: 'both', dueDate: e.kuendigenBis,
+          tags: ['vertrag', 'gesellschaft'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: 'business',
+          ...(istGesellschaft(e.gesellschaftId) ? { spaceId: e.gesellschaftId } : {}),
+        })),
+      };
+    }, { jetzt });
+    if (neu.length) {
+      const { ladeKonten } = await import('@/lib/zugang/konten');
+      const { melde } = await import('@/lib/meldungen/melden');
+      const { WEG } = await import('@/lib/wege');
+      const personen = (await ladeKonten()).konten.filter(k => k.haushalt === haushalt).map(k => k.speicher);
+      for (const e of neu) for (const an of personen) await melde({ an, art: 'vertrag', titel: e.titel, link: WEG.unternehmen(e.gesellschaftId, 'vertraege'), bezug: { art: 'aufgabe', id: e.aufgabeId } });
+    }
+    return { neu: neu.length };
+  } catch (e) {
+    console.error('[gesellschaften] Erinnerungen nicht angelegt:', e instanceof Error ? e.message : e);
+    return { neu: 0 };
+  }
 }

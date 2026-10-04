@@ -185,7 +185,20 @@ async function ladeRohFrisch(heute: string) {
     kapazitaet: einst.kapazitaet ?? {},
     einstellungen: einst,
     verlauf: verlauf ?? { tage: {}, mrr: {} },
+    holdings: await holdingsAusRegister(),
   };
+}
+
+/** Holding-Sichten aus dem Gesellschafts-Register des Inhaber-Haushalts (04.10.) — null = keine Rolle gepflegt (Vorgabe gilt). */
+async function holdingsAusRegister(): Promise<Scope[] | null> {
+  try {
+    const { haushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+    const h = await haushaltDesInhabers();
+    if (!h) return null;
+    const { ladeRegister } = await import('@/lib/gesellschaften/server');
+    const { holdingSichten } = await import('@/lib/gesellschaften/modell');
+    return holdingSichten(await ladeRegister(h));
+  } catch { return null; }
 }
 
 export type Roh = Awaited<ReturnType<typeof ladeRoh>>;

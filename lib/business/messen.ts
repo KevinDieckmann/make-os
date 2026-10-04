@@ -36,6 +36,8 @@ export interface Monatsabschluss {
 export interface Bestand {
   heute: string;
   scope: Scope;
+  /** Sichten, die laut Gesellschafts-Register eine Holding sind (04.10.) — fehlt/null = Vorgabe (lib/business/register.ts). */
+  holdings?: Scope[] | null;
   firmen: Firma[];
   rechnungen: (Rechnung & { firmaId?: string })[];
   zahlungen: Zahlung[];
