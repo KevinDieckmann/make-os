@@ -135,6 +135,8 @@ Legende (je Bündel ein Knopf „eine Ebene tiefer“), Engstellen als aufklappb
 | Farben | `FADEN_FARBEN`, `LICHT_GLAS` (design.ts), `THEMEN` (modell.ts) | Ziel je Space fortlaufend (Business orange → lila → pink, Privat grün → türkis → violett — nie Gelb/Rot, die gehören Engstellen und Zuständen; feste Töne `FADEN_TOENE`), Themen in Bereichsfarben, „ohne Ziel“ Zeit-Cyan, „Belegt“ Grau |
 | Website | `website/js/lichtfaeden.js` (erzeugt), `website/js/faden.js` | Granat/Smaragd, Charakter je Kapitel |
 
+**Strahl ruhig (04.10. abends, ersetzt die Parameter unten im Planungsband):** je Bündel EIN Strang auf eigener Spur, ab HEUTE zum Ziel zusammenlaufend, ausschlagen NUR bei echter Abweichung (Meilenstein überfällig, Ziel-Frist überschritten, Frist gerissen, Deal ≥ 2× verschoben; Kapazität dockt an) — Parameter `STRAHL` (`lib/lichtfaeden/strahl.ts`), Gründe `lib/lichtfaeden/abweichung.ts`, Details `LICHTFAEDEN.md` › Strahl ruhig. Keine Partikel, kein Glühen, kein Netz, kein Licht am HEUTE-Punkt; Themen in der Farbe ihres ersten Ziels.
+
 **Parameter (Strahl v3, 04.10.):** Fäden je Bündel ∝ √Last (5 … 44; Blatt-Ebene 2 … 6), höchstens 300 je Leinwand (Handy 120) · Stützpunkt alle 6 px (Handy 8) ·
 Strich 0,6 px · Deckkraft 0,2 (additiv) · Tempo 0,00028/ms · Ruhe-Spreizung 12 % · Auffächern 720 ms · Aufbau 1,9 s · Partikel alle 10 px (jeder 2. Faden; Handy
 14 px, jeder 3.) · Glühen über einen Schein-Puffer (¼ Größe, Weichzeichner 3 px, Stärke 0,7; Handy 0,6) · je Faden leiser ab 150 Fäden je Leinwand (√150/n) · höchstens 7 Bündel je Ebene (+ „Weitere“). Band 300 px

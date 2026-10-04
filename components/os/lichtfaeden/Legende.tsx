@@ -16,7 +16,7 @@ export function Legende({ buendel, hervor, onHervor, onTiefer }: { buendel: read
         const an = hervor == null || hervor === b.id;
         const inhalt = (
           <>
-            <span aria-hidden="true" style={{ flex: '0 0 auto', width: 16, height: 3, borderRadius: 2, background: b.farbe, boxShadow: `0 0 10px ${b.farbe}80` }} />
+            <span aria-hidden="true" style={{ flex: '0 0 auto', width: 16, height: 3, borderRadius: 2, background: b.farbe }} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</span>
             <span style={{ color: C.inkLeise, fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{b.anzahl}</span>
             {b.tiefer && <span aria-hidden="true" style={{ color: C.inkLeise, flex: '0 0 auto' }}>›</span>}

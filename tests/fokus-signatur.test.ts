@@ -15,7 +15,7 @@ import {
 import { fadenLinienProben, fadenlinie, FADENLINIE, type FadenLinieBild } from '@/lib/lichtfaeden/fadenlinie';
 import { fadenSaaten, versatz, fransen, buendelMitte, LICHTFAEDEN } from '@/lib/lichtfaeden/band';
 import { zeichneBuendel, type Probe } from '@/lib/lichtfaeden/zeichnen';
-import { faedenband, fransBei, spitzeRichtung, wocheBei, randBei, BAND_MASSE, BAND_FORM, type BandBild } from '@/lib/lichtfaeden/faedenband';
+import { faedenband, wocheBei, type BandBild } from '@/lib/lichtfaeden/faedenband';
 import { FOKUS_LICHT } from '@/lib/make-one/design';
 
 const h = (c: unknown, props: unknown, ...kids: unknown[]) => createElement(c as never, props as never, ...(kids as never[]));
@@ -86,29 +86,14 @@ describe('Strahl v3 — Fließen nach rechts, Ausfransen, Spitzen', () => {
     for (let k = -150; k <= 150; k++) { let c = 0; for (let s = 200; s < 1400; s++) c += m0[s] * m1[s + k]; if (c > best) { best = c; bestK = k; } }
     expect(bestK).toBeGreaterThan(0);
   });
-  it('Ausfransen ist begrenzt und wirkt nur rechts von HEUTE', () => {
+  it('Ausfransen (FadenLinie) ist begrenzt', () => {
     for (const f of fadenSaaten(20, 3)) for (const s of [0, 300, 900]) expect(Math.abs(fransen(f, s, 5000))).toBeLessThan(1.5);
-    const d = { heuteX: 400, heuteSeite: 'rechts' as const, breite: 1000 };
-    expect(fransBei(100, d)).toBe(0); expect(fransBei(400, d)).toBe(0);
-    expect(fransBei(900, d)).toBeGreaterThan(0.9);
-    expect(fransBei(100, { heuteX: null, heuteSeite: 'links', breite: 1000 })).toBeGreaterThan(0); // ganzes Fenster Zukunft
   });
-  it('v3.1: großes Band (≈ halber Zeichenbereich), Markierungen in eigener Zone, Spitzen bleiben im Band', () => {
-    for (const m of Object.values(BAND_MASSE)) {
-      const zone = m.maxReihen * m.reihe + m.abstand, fuss = 70;
-      expect(m.band / (zone + m.band + fuss)).toBeGreaterThanOrEqual(0.45);
-    }
-    for (const o of [-1000, -200, -50, 0, 30, 120, 5000]) expect(Math.abs(randBei(o, 100))).toBeLessThan(100.0001);
-    expect(randBei(10, 100)).toBeCloseTo(10, 0); // in der Mitte fast linear — Spitzen bleiben spitz
-    expect(BAND_FORM.hub.rechner).toBeGreaterThan(0.52); // kräftiger als v3
-  });
-  it('Spitzen: linear zwischen Wochenmitten (scharf), Vorzeichen meist nach oben', () => {
+  // Strahl ruhig (04.10. abends): Band, Spuren, Ausschlag nur aus Abweichungen — Wächter in tests/strahl-ruhig.test.ts.
+  it('Dichte je Woche: linear zwischen Wochenmitten', () => {
     const d = { breite: 70, tage: 70, wochenVersatz: 0 };
     expect(wocheBei([0, 1, 0], 10.5, d)).toBeCloseTo(1);
     expect(wocheBei([0, 1, 0], 7, d)).toBeCloseTo(0.5);
-    expect(wocheBei([0, 1, 0], 10.5, d, () => -1)).toBeCloseTo(-1);
-    const oben = Array.from({ length: 50 }, (_, w) => spitzeRichtung(w, 0)).filter(v => v < 0).length;
-    expect(oben).toBeGreaterThan(25);
   });
 });
 
@@ -148,7 +133,7 @@ describe('Zeichner v3', () => {
     expect(b.rechtecke()).toBeGreaterThan(6 * 50);
   });
   it('Fädenband: Aufbau läuft 0 → 1 und endet; reduzierte Bewegung = kein Aufbau, ein Standbild', () => {
-    const BILD: BandBild = { breite: 600, hoehe: 260, bandOben: 40, bandHoehe: 150, wochenVersatz: 0, tage: 182, buendel: [{ id: 'b', farbe: '#FF9F43', dichte: [0.2, 0.8, 0.3], spitze: [0, 1, 0], faeden: 20 }], heuteX: 200, heuteFarbe: '#4FC3F7', verbinder: [], engstellen: [], engstelleFarbe: '#FFC93C', hervor: null, handy: false };
+    const BILD: BandBild = { breite: 600, hoehe: 260, bandOben: 40, bandHoehe: 150, wochenVersatz: 0, tage: 182, buendel: [{ id: 'b', farbe: '#FF9F43', dichte: [0.2, 0.8, 0.3], ausschlag: [0, 1, 0], faeden: 8 }], heuteX: 200, heuteFarbe: '#4FC3F7', verbinder: [], engstellen: [], engstelleFarbe: '#FFC93C', hervor: null, handy: false };
     let tick = uhr();
     attrappe();
     const z = faedenband(attrappe().canvas, null as unknown as Element, false);

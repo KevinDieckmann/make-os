@@ -14,6 +14,8 @@
 // Tests: tests/lichtfaeden-baum.test.ts.
 
 import { gauss, saettigen } from './band';
+import { STRAHL } from './strahl';
+import { abweichungenAusStraengen, abweichungText, ausschlagJeWoche, type Abweichung } from './abweichung';
 import {
   BEIDE, BELEGT_FARBE, GESAMT, OHNE_FARBE, QUELLEN, SPACE_FADEN, SPACE_NAME, THEMEN, istGueltig, knotenId, passtZuPerson,
   type Knoten, type KnotenArt, type PersonSicht, type Strang, type StrangQuelle,
@@ -26,14 +28,12 @@ export const DICHTE_HALB = 0.6;
 export const SPANNE_MAX_WOCHEN = 12;
 /** Höchstens so viele Bündel je Ansicht — der Rest fließt in „Weitere“. Auf Strang-Ebene (Blätter) mehr, aber feiner. */
 export const MAX_BUENDEL = 7;
-export const MAX_STRANG_BUENDEL = 24;
-/** Fäden je Bündel ∝ Last (Wurzel der Last, damit kleine Bündel sichtbar bleiben), gedeckelt je Leinwand.
- *  v3 (04.10.): deutlich mehr, feinere Fäden — vorher 3 … 26 je Bündel, Deckel 160 / 80. */
-export const FAEDEN = { min: 5, max: 44, strangMin: 2, strangMax: 6, deckel: { rechner: 300, handy: 120 } } as const;
-/** Spitzen (v3): Exponent auf die gesättigte Rohlast und Schwelle darüber (v3.1: 0,3) — nur volle Wochen (deutlich über einer
- *  mittleren) schlagen aus, die übrigen bleiben ruhig (sonst zittert das Band Woche für Woche). */
-export const SPITZE_EXPONENT = 1.6;
-export const SPITZE_SCHWELLE = 0.3;
+/** Blatt-Ebene: jeder Strang eine eigene Spur — höchstens so viele (Strahl ruhig, 04.10. abends: vorher 24). */
+export const MAX_STRANG_BUENDEL = 12;
+/** Fäden je Bündel ∝ √Last, gedeckelt je Leinwand — die Werte stehen in `STRAHL.faeden` (lib/lichtfaeden/strahl.ts, eine Stelle). */
+export const FAEDEN = STRAHL.faeden;
+/** Höchstens so viele Abweichungen nennt eine Ansicht im Text (die schwersten). */
+export const MAX_ABWEICHUNGEN_TEXT = 8;
 /** Höchstens so viele Markierungen (Knöpfe über dem Band) je Ansicht — nach Gewicht, dann Datum. */
 export const MAX_MARKEN = 40;
 
@@ -178,8 +178,8 @@ export interface Buendel {
   roh: number[];
   /** Dichte je Woche 0 … 1 (geglättet, gesättigt) — treibt Spreizung und Leuchten. */
   dichte: number[];
-  /** Spitzen je Woche 0 … 1 (v3, UNgeglättet, gesättigt) — die scharfen Ausschläge des Strahls an echten Lastwochen. */
-  spitze: number[];
+  /** Ausschlag je Woche 0 … 1 — NUR aus echten Abweichungen (lib/lichtfaeden/abweichung.ts); ohne Abweichung überall 0. */
+  ausschlag: number[];
   summe: number;
   /** Stränge im Bündel (im Fenster). */
   anzahl: number;
@@ -197,6 +197,8 @@ export interface Marke {
   link?: string;
   erledigt: boolean;
 }
+/** Eine Abweichung, wie die Ansicht sie nennt (Text unter dem Band, Vorleser) — private der anderen Person nur „Belegt“. */
+export interface AbweichungKurz { id: string; art: Abweichung['art']; titel: string; von: string; staerke: number; buendel: string; text: string }
 export interface Ansicht {
   wurzel: Knoten;
   /** Brotkrumen von „gesamt“ bis zur Wurzel. */
@@ -210,8 +212,14 @@ export interface Ansicht {
   gesamt: number[];
   summe: number;
   anzahl: number;
+  /** Die Abweichungen dieser Ansicht (schwerste zuerst, höchstens MAX_ABWEICHUNGEN_TEXT) — der Grund jedes Ausschlags. */
+  abweichungen: AbweichungKurz[];
 }
-export interface AnsichtOptionen { wurzel: string; von: string; bis: string; heute: string; person: PersonSicht }
+export interface AnsichtOptionen {
+  wurzel: string; von: string; bis: string; heute: string; person: PersonSicht;
+  /** Abweichungen (Route: `abweichungenSammeln` samt angedockter Quellen); fehlt = nur die aus den Strängen des Baums. */
+  abweichungen?: readonly Abweichung[];
+}
 
 /** Die Stränge einer Ansicht (im Unterbaum der Wurzel, passend zur Person, im Fenster samt Glättungsrand). */
 export function straengeImBlick(baum: Baum, o: AnsichtOptionen): Strang[] {
@@ -272,7 +280,7 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
         roh.push({ id: k, art: 'direkt', name: direktName(wurzel.art, nurBelegt), farbe: nurBelegt ? BELEGT_FARBE : OHNE_FARBE, straenge: l, rang: 1e6 });
       } else {
         const kn = baum.knoten.get(k)!;
-        roh.push({ id: k, art: kn.art, name: kn.name, farbe: kn.farbe, tiefer: k, link: kn.link, straenge: l, rang: kn.rang });
+        roh.push({ id: k, art: kn.art, name: kn.name, farbe: themaFarbe(baum, kn), tiefer: k, link: kn.link, straenge: l, rang: kn.rang });
       }
     }
     roh.sort((a, b) => a.rang - b.rang || a.name.localeCompare(b.name, 'de') || a.id.localeCompare(b.id));
@@ -291,9 +299,17 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
   const geglaettet = ungeglaettet.map(w => gauss(w, DICHTE_SIGMA));
   const werte = geglaettet.flatMap(g => schneiden(g, n)).filter(v => v > 0.05);
   const halb = Math.max(DICHTE_HALB, werte.length ? werte.reduce((s, v) => s + v, 0) / werte.length : 0);
-  // Spitzen: dieselbe Sättigung auf die ungeglättete Last — eine Woche mit drei Fristen ragt heraus, statt im Gauß zu verschwimmen.
-  const rohWerte = ungeglaettet.flatMap(g => schneiden(g, n)).filter(v => v > 0.05);
-  const halbRoh = Math.max(DICHTE_HALB, rohWerte.length ? rohWerte.reduce((s, v) => s + v, 0) / rohWerte.length : 0);
+  // Ausschlag: NUR aus Abweichungen — jede am Bündel ihres Kind-Knotens (Blatt-Ebene: an ihrem Strang), Personen-Sicht wie die Stränge.
+  const alleAbw = (o.abweichungen ?? abweichungenAusStraengen(baum.straenge, o.heute))
+    .filter(a => a.pfad.includes(wurzel.id) && passtZuPerson(a, o.person));
+  const abwBuendel = (a: Abweichung): string | null => {
+    if (blatt) return a.strang && roh.some(x => x.id === `strang:${a.strang}`) ? `strang:${a.strang}` : null;
+    const i = a.pfad.indexOf(wurzel.id);
+    const k = i >= 0 && i + 1 < a.pfad.length ? a.pfad[i + 1] : `direkt:${wurzel.id}`;
+    return roh.some(x => x.id === k) ? k : roh.some(x => x.id === 'rest') ? 'rest' : null;
+  };
+  const abwJe = new Map<string, Abweichung[]>();
+  for (const a of alleAbw) { const b = abwBuendel(a); if (b) abwJe.set(b, [...(abwJe.get(b) ?? []), a]); }
   const summen = roh.map(x => x.straenge.filter(imFenster).reduce((s, y) => s + y.gewicht, 0));
   const maxSumme = Math.max(1e-9, ...summen);
   let buendel: Buendel[] = roh.map((x, i) => {
@@ -304,7 +320,7 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
     const darunter = x.tiefer ? hatDarunter(baum, x.tiefer) : false;
     return {
       id: x.id, art: x.art, name: x.name, farbe: x.farbe, ...(x.tiefer && (darunter || x.straenge.length > 1) ? { tiefer: x.tiefer } : {}), ...(x.link ? { link: x.link } : {}),
-      roh: rohW, dichte: schneiden(geglaettet[i], n).map(v => rund(saettigen(v, halb))), spitze: rohW.map(v => rund(Math.max(0, (saettigen(v, halbRoh) ** SPITZE_EXPONENT - SPITZE_SCHWELLE) / (1 - SPITZE_SCHWELLE)))), summe: rund(summen[i]), anzahl: x.straenge.filter(imFenster).length, faeden,
+      roh: rohW, dichte: schneiden(geglaettet[i], n).map(v => rund(saettigen(v, halb))), ausschlag: ausschlagJeWoche(abwJe.get(x.id) ?? [], r.wochen), summe: rund(summen[i]), anzahl: x.straenge.filter(imFenster).length, faeden,
     };
   });
   buendel = faedenDeckeln(buendel, FAEDEN.deckel.rechner);
@@ -324,10 +340,15 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
     });
 
   const gesamt = r.wochen.map((_, i) => rund(buendel.reduce((s, b) => s + b.roh[i], 0)));
+  const abweichungen: AbweichungKurz[] = [...abwJe.entries()]
+    .flatMap(([b, l]) => l.map(a => ({ id: a.id, art: a.art, titel: a.titel, von: a.von, staerke: a.staerke, buendel: b, text: abweichungText(a) })))
+    .filter(a => (a.von <= o.bis))
+    .sort((a, b) => b.staerke - a.staerke || a.von.localeCompare(b.von) || a.id.localeCompare(b.id))
+    .slice(0, MAX_ABWEICHUNGEN_TEXT);
   return {
     ansicht: {
       wurzel, pfad: pfadZu(baum, wurzel.id), von: o.von, bis: o.bis, wochen: r.wochen, buendel, marken, gesamt,
-      summe: rund(buendel.reduce((s, b) => s + b.summe, 0)), anzahl: buendel.reduce((s, b) => s + b.anzahl, 0),
+      summe: rund(buendel.reduce((s, b) => s + b.summe, 0)), anzahl: buendel.reduce((s, b) => s + b.anzahl, 0), abweichungen,
     },
     straenge: im,
     buendelVon: s => zuBuendel.get(s.id) ?? 'rest',
@@ -336,6 +357,16 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
 
 /** Nur die Ansicht (ohne Stränge). */
 export const ansicht = (baum: Baum, o: AnsichtOptionen): Ansicht | null => rechneAnsicht(baum, o)?.ansicht ?? null;
+
+/**
+ * Farbe eines Bündels (Kevin 04.10. abends: „Farben nur je Ziel“): Ein Thema trägt die Farbe seines ersten Ziels (Rang — die
+ * Farbe rechnet der Server, `zielFarben`); ein Thema ohne Ziel bleibt in seiner Themenfarbe. Alle anderen Knoten wie gehabt.
+ */
+function themaFarbe(baum: Baum, kn: Knoten): string {
+  if (kn.art !== 'thema') return kn.farbe;
+  const erstes = (baum.kinder.get(kn.id) ?? []).map(id => baum.knoten.get(id)).find(k => k?.art === 'ziel');
+  return erstes?.farbe ?? kn.farbe;
+}
 
 /** Gibt es unter einem Knoten noch etwas aufzufächern (Kind-Knoten oder mehrere Stränge)? */
 function hatDarunter(baum: Baum, id: string): boolean {
@@ -378,7 +409,8 @@ export function ansichtText(a: Ansicht): string {
     b.dichte.forEach((v, i) => { if (v > b.dichte[best]) best = i; });
     return `${b.name}: ${b.anzahl} ${b.anzahl === 1 ? 'Strang' : 'Stränge'}, am dichtesten in der Woche ab ${kurz(a.wochen[best])}`;
   });
-  return `Lichtfäden ${ebene}, ${a.anzahl} ${a.anzahl === 1 ? 'Strang' : 'Stränge'} im Zeitraum. ${teile.join('. ')}.`;
+  const abw = a.abweichungen.length ? ` Abweichungen vom Plan: ${a.abweichungen.map(x => x.text).join('; ')}.` : ' Alles im Plan — keine Abweichung.';
+  return `Lichtfäden ${ebene}, ${a.anzahl} ${a.anzahl === 1 ? 'Strang' : 'Stränge'} im Zeitraum. ${teile.join('. ')}.${abw}`;
 }
 
 /** Wer steckt in einem Bündel? (für Prüfungen und die Route) — die Personen-Sicht „alle“ inklusive BEIDE. */

@@ -11,6 +11,7 @@
 // ohne Titel, Link, Thema, Ziel (lib/lichtfaeden/modell.ts). „nur ich“ ohne bestimmbare Anlegerin sieht niemand; Familie
 // „nur ich“ der anderen Person kommt gar nicht erst an. Prüfung: tests/lichtfaeden-datenschutz.test.ts.
 // Schnell: Sammeln gemerkt (60 s, ungültig bei jeder Schreibung), die Ansicht selbst ist reine Rechnung; gzip ab 16 KB.
+// Ausschlag des Strahls NUR aus Abweichungen (lib/lichtfaeden/abweichung.ts, angedockt: abweichung-quellen-server.ts).
 // Keine Personendaten in Logs.
 
 import { NextResponse } from 'next/server';
@@ -22,6 +23,8 @@ import { ansichtText, baueBaum, personenSicht, rechneAnsicht } from '@/lib/licht
 import { engstellen } from '@/lib/lichtfaeden/fokus';
 import { wurzelAufloesen } from '@/lib/lichtfaeden/modell';
 import { straengeGemerkt } from '@/lib/lichtfaeden/sammeln-server';
+import { abweichungenSammeln } from '@/lib/lichtfaeden/abweichung';
+import { abweichungsQuellen } from '@/lib/lichtfaeden/abweichung-quellen-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +49,9 @@ export async function GET(req: Request) {
   if (sicht !== 'alle' && !personen.some(p => p.id === sicht)) return NextResponse.json({ ok: false, fehler: 'Diese Person gehört nicht zum Haushalt.' }, { status: 400 });
 
   const baum = baueBaum(sammlung.knoten, sammlung.straenge);
-  const e = rechneAnsicht(baum, { wurzel, von, bis, heute, person: personenSicht(sicht === 'alle' ? null : sicht) });
+  // Abweichungen (der Grund jedes Ausschlags): aus den Strängen (schon nach der Privat-Regel) + angedockte Quellen, je mit Privat-Regel.
+  const abweichungen = abweichungenSammeln({ heute, von, bis, straenge: baum.straenge }, ich, await abweichungsQuellen(ich, heute));
+  const e = rechneAnsicht(baum, { wurzel, von, bis, heute, person: personenSicht(sicht === 'alle' ? null : sicht), abweichungen });
   if (!e) return NextResponse.json({ ok: false, fehler: 'Diese Ebene gibt es nicht (mehr).' }, { status: 404 });
   return jsonAntwort(req, {
     ok: true, heute, sicht, personen, ansicht: e.ansicht,
