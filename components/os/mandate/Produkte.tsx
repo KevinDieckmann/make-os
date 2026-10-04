@@ -13,6 +13,9 @@
 // der Umsatzbausteine in der Finanzplanung — je Produkt Basis (Monat · Jahr ·
 // einmalig), Laufzeit, Aufwandsanteil; was der Planung fehlt, steht dran; und
 // in welchen Szenarien das Produkt steckt (lesend über /api/finanzplan/vorschlaege).
+// 04.10. (Kevin: „man kann keine Produkte löschen“): jede Produktzeile hängt am Baustein `ZeileAktionen` — Handy nach links
+// wischen, Rechner Knöpfe am Rand: Archivieren (= „eingestellt“, Reiter Archiv, zurückholbar) und Löschen (Papierkorb
+// 30 Tage, `geloeschtAm`; laufende Mandate/offene Deals → Rückfrage). Endgültig nur aus dem Papierkorb, ohne Verweise.
 
 import { WEG } from '@/lib/wege';
 import Link from 'next/link';
@@ -20,11 +23,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { preisBasisVon, planungFehlt, margeVon, einheitFuerBasis, produktEinheit, type PreisBasis } from '@/lib/finanzen/produkte';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, LEUCHT, Segmente, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import type { Leistung, ProduktPhase, Unterlage, UnterlageArt } from '@/lib/crm/typen';
-import { LINIEN, linienGruppen, linieVon, produktZahlen, portfolio, neuePhasenId } from '@/lib/crm/produkte';
+import { LINIEN, linienGruppen, linieVon, produktZahlen, portfolio, neuePhasenId, produktZustand, produktVerweise, verweisSatz, produktePapierkorb, PRODUKT_ARCHIVIEREN, PRODUKT_ZURUECK } from '@/lib/crm/produkte';
+import { PAPIERKORB_TAGE } from '@/lib/eintraege/sicher';
 import { mandateLink } from '@/lib/crm/adresse';
-import { type CrmApi, neueId, euro, kurzEuro } from '../crm/daten';
+import { type CrmApi, neueId, euro, kurzEuro, datum } from '../crm/daten';
 import { Feldzeile, Pillen, Feld } from '../crm/teile';
 import { Wahl } from '../crm/Wahl';
 import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
@@ -52,15 +56,77 @@ function useInSzenarien(): InSzenarien | null {
   return v;
 }
 
+type Sicht = 'produkte' | 'archiv' | 'papierkorb';
+
 export function Produkte({ api }: { api: CrmApi }) {
   const [auswahl, setAuswahl] = useLinkAuswahl();
+  const [sicht, setSicht] = useState<Sicht>('produkte');
+  const { melden, hinweis } = useRueckgaengig();
+  const { fragen, dialog } = useRueckfrage();
   const crm = api.crm;
-  const gruppen = useMemo(() => linienGruppen(crm?.stand.leistungen ?? []), [crm?.stand.leistungen]);
+  const alle = crm?.stand.leistungen;
+  const aktiv = useMemo(() => (alle ?? []).filter(l => produktZustand(l) === 'aktiv'), [alle]);
+  const archiv = useMemo(() => (alle ?? []).filter(l => produktZustand(l) === 'archiv'), [alle]);
+  const gruppen = useMemo(() => linienGruppen(sicht === 'archiv' ? archiv : aktiv), [sicht, archiv, aktiv]);
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   const p = portfolio(crm.stand);
-  const ohnePreis = crm.stand.leistungen.filter(l => l.status !== 'eingestellt' && !l.preis.betrag).length;
-  const unvollstaendig = crm.stand.leistungen.filter(l => l.status !== 'eingestellt' && planungFehlt(l).length).length;
-  const neu = () => { const id = neueId('l'); void api.setze('leistungen', { id, name: 'Neues Produkt', typ: 'retainer', stufe: 'kern', preis: { betrag: 0, einheit: 'Monat netto' }, lieferumfang: [], gesellschaft: 'offen', status: 'entwurf' }); setAuswahl(id); };
+  const korb = produktePapierkorb(crm.stand);
+  const ohnePreis = aktiv.filter(l => !l.preis.betrag).length;
+  const unvollstaendig = aktiv.filter(l => planungFehlt(l).length).length;
+  const neu = () => { const id = neueId('l'); void api.setze('leistungen', { id, name: 'Neues Produkt', typ: 'retainer', stufe: 'kern', preis: { betrag: 0, einheit: 'Monat netto' }, lieferumfang: [], gesellschaft: 'offen', status: 'entwurf' }); setSicht('produkte'); setAuswahl(id); };
+
+  // ── Archivieren · Zurückholen · Löschen (04.10.) — sicher statt endgültig, jeweils mit „Rückgängig“ ──
+  const archivieren = (l: Leistung) => {
+    const vorher = l.status;
+    if (auswahl === l.id) setAuswahl(null);
+    void api.teil('leistungen', l.id, { ...PRODUKT_ARCHIVIEREN });
+    melden(`„${l.name}“ archiviert — bleibt an Deals und Mandaten lesbar`, () => void api.teil('leistungen', l.id, { status: vorher }));
+  };
+  const zurueckholen = (l: Leistung) => {
+    void api.teil('leistungen', l.id, { ...PRODUKT_ZURUECK });
+    melden(`„${l.name}“ ist zurück — als Entwurf`, () => void api.teil('leistungen', l.id, { ...PRODUKT_ARCHIVIEREN }));
+  };
+  const inPapierkorb = (l: Leistung) => {
+    if (auswahl === l.id) setAuswahl(null);
+    // Die Zeit setzt der Server (lib/eintraege/sicher.ts `markeVomServer`) — der Browser schickt nur „jetzt“.
+    void api.teil('leistungen', l.id, { geloeschtAm: new Date().toISOString() });
+    melden(`„${l.name}“ im Papierkorb — 30 Tage wiederherstellbar`, () => void api.teil('leistungen', l.id, { geloeschtAm: null }));
+  };
+  const loeschen = (l: Leistung) => {
+    const v = produktVerweise(l.id, crm.stand);
+    const laufend = verweisSatz(v);
+    if (!laufend) { inPapierkorb(l); return; }
+    // Verknüpfungen: nie still — die Rückfrage nennt, was daran hängt, und bietet das Archiv als ruhigeren Weg an.
+    fragen({
+      titel: `„${l.name}“ in den Papierkorb?`,
+      text: <>An diesem Produkt hängen {laufend}. Sie bleiben, wie sie sind, und zeigen das Produkt weiter an. Endgültig gelöscht wird es erst, wenn nichts mehr daran hängt — bis dahin liegt es im Papierkorb. Soll es nur nicht mehr angeboten werden, ist <b>Archivieren</b> der ruhigere Weg.</>,
+      wahl: [{ label: 'Archivieren', ton: 'leise', tun: () => archivieren(l) }, { label: 'In den Papierkorb', ton: 'gefahr', tun: () => inPapierkorb(l) }],
+    });
+  };
+  const wiederherstellen = (id: string, name: string) => {
+    void api.teil('leistungen', id, { geloeschtAm: null });
+    melden(`„${name}“ wiederhergestellt`, () => void api.teil('leistungen', id, { geloeschtAm: new Date().toISOString() }));
+  };
+  const endgueltig = (id: string, name: string) => fragen({
+    titel: `„${name}“ endgültig löschen?`,
+    text: 'Das Produkt verschwindet ganz — mit Angebotstexten, Phasen und Unterlagen-Links. Das lässt sich nicht rückgängig machen.',
+    wahl: [{ label: 'Endgültig löschen', ton: 'gefahr', tun: () => api.weg('leistungen', id) }],
+  });
+
+  const zeile = (l: Leistung) => {
+    const z = produktZahlen(l, crm.stand);
+    const zahlen = [z.mandateAktiv ? `${z.mandateAktiv} aktiv` : '', z.mrr ? `${kurzEuro(z.mrr)}/Monat` : '', z.dealsOffen ? `${z.dealsOffen} Deal${z.dealsOffen === 1 ? '' : 's'} offen` : '', z.quote !== null ? `Quote ${Math.round(z.quote * 100)} %` : ''].filter(Boolean).join(' · ');
+    return (
+      <div key={l.id}>
+        <ZeileAktionen titel={l.name} archiviert={sicht === 'archiv'} onArchivieren={() => (sicht === 'archiv' ? zurueckholen(l) : archivieren(l))} onLoeschen={() => loeschen(l)}>
+          <Zeile onClick={() => setAuswahl(auswahl === l.id ? null : l.id)} aktiv={auswahl === l.id} links={<Punkt farbe={statusFarbe(l.status)} />}
+            titel={l.name} unter={[`${STUFE[l.stufe]} · ${preisText(l)}`, zahlen, sicht === 'produkte' && planungFehlt(l).length ? `Planung: ${planungFehlt(l).join(', ')} fehlt` : ''].filter(Boolean).join(' · ')}
+            rechts={<span style={{ display: 'flex', gap: 6 }}>{l.phasen?.length ? <Chip farbe={C.inkDim}>{l.phasen.length} Phasen</Chip> : null}{l.status !== 'eingestellt' && produktAngebotFehlt(l).length ? <Chip farbe={LEUCHT.achtung}>Text fehlt</Chip> : null}<Chip farbe={statusFarbe(l.status)}>{l.status}</Chip></span>} />
+        </ZeileAktionen>
+        {auswahl === l.id && <ProduktDetail l={l} api={api} />}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -68,33 +134,40 @@ export function Produkte({ api }: { api: CrmApi }) {
         <Ueberschrift rechts={<Knopf onClick={neu}>+ Produkt</Knopf>}>Produkte</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={String(p.produkteAktiv)} label="aktive Produkte" farbe={LEUCHT.gut} />
-          <Zahl wert={String(gruppen.length)} label={gruppen.length === 1 ? 'Produktlinie' : 'Produktlinien'} />
+          <Zahl wert={String(linienGruppen(aktiv).length)} label={linienGruppen(aktiv).length === 1 ? 'Produktlinie' : 'Produktlinien'} />
           <Zahl wert={String(ohnePreis)} label="noch ohne Preis" farbe={ohnePreis ? LEUCHT.achtung : undefined} />
           <Zahl wert={String(p.ohneProdukt)} label="laufende Mandate ohne Produkt" farbe={p.ohneProdukt ? LEUCHT.achtung : undefined} />
           <Zahl wert={String(unvollstaendig)} label="für die Planung unvollständig" farbe={unvollstaendig ? LEUCHT.achtung : undefined} />
         </Raster>
         <div style={{ ...klein, marginTop: 10 }}>Einstieg → Kern → Premium: jedes Produkt mit klarem Umfang, Preis und Ablauf. Entwürfe ohne Preis sind noch nicht verkaufbar. {p.ohneProdukt ? `${p.ohneProdukt} laufende Mandate hängen an keinem Produkt — im Mandat unter „Produkt“ zuordnen, dann zählen sie hier mit.` : ''}</div>
       </Karte>
-      {gruppen.map((g, gi) => (
+      <Segmente<Sicht> liste={[{ id: 'produkte', label: `Produkte · ${aktiv.length}` }, { id: 'archiv', label: `Archiv · ${archiv.length}` }, { id: 'papierkorb', label: `Papierkorb · ${korb.length}` }]} aktiv={sicht} onWahl={x => { setSicht(x); setAuswahl(null); }} />
+      {sicht !== 'papierkorb' && gruppen.map((g, gi) => (
         <Karte key={g.linie} i={gi + 1}>
-          <Ueberschrift farbe={LEUCHT.business} rechts={`${g.produkte.length} ${g.produkte.length === 1 ? 'Produkt' : 'Produkte'}`}>{g.linie}</Ueberschrift>
-          <Liste>
-            {g.produkte.map(l => {
-              const z = produktZahlen(l, crm.stand);
-              const zahlen = [z.mandateAktiv ? `${z.mandateAktiv} aktiv` : '', z.mrr ? `${kurzEuro(z.mrr)}/Monat` : '', z.dealsOffen ? `${z.dealsOffen} Deal${z.dealsOffen === 1 ? '' : 's'} offen` : '', z.quote !== null ? `Quote ${Math.round(z.quote * 100)} %` : ''].filter(Boolean).join(' · ');
-              return (
-                <div key={l.id}>
-                  <Zeile onClick={() => setAuswahl(auswahl === l.id ? null : l.id)} aktiv={auswahl === l.id} links={<Punkt farbe={statusFarbe(l.status)} />}
-                    titel={l.name} unter={[`${STUFE[l.stufe]} · ${preisText(l)}`, zahlen, planungFehlt(l).length ? `Planung: ${planungFehlt(l).join(', ')} fehlt` : ''].filter(Boolean).join(' · ')}
-                    rechts={<span style={{ display: 'flex', gap: 6 }}>{l.phasen?.length ? <Chip farbe={C.inkDim}>{l.phasen.length} Phasen</Chip> : null}{l.status !== 'eingestellt' && produktAngebotFehlt(l).length ? <Chip farbe={LEUCHT.achtung}>Text fehlt</Chip> : null}<Chip farbe={statusFarbe(l.status)}>{l.status}</Chip></span>} />
-                  {auswahl === l.id && <ProduktDetail l={l} api={api} />}
-                </div>
-              );
-            })}
-          </Liste>
+          <Ueberschrift farbe={sicht === 'archiv' ? C.inkDim : LEUCHT.business} rechts={`${g.produkte.length} ${g.produkte.length === 1 ? 'Produkt' : 'Produkte'}`}>{g.linie}</Ueberschrift>
+          <Liste>{g.produkte.map(zeile)}</Liste>
         </Karte>
       ))}
-      {!gruppen.length && <Karte i={1}><Leer>Noch keine Produkte — „+ Produkt“.</Leer></Karte>}
+      {sicht === 'produkte' && !gruppen.length && <Karte i={1}><Leer>Noch keine Produkte — „+ Produkt“.</Leer></Karte>}
+      {sicht === 'archiv' && !gruppen.length && <Karte i={1}><Leer>Das Archiv ist leer. Ein archiviertes Produkt wird nicht mehr angeboten, bleibt an Deals und Mandaten lesbar und lässt sich jederzeit zurückholen.</Leer></Karte>}
+      {sicht === 'papierkorb' && (
+        <Karte i={1}>
+          <Ueberschrift rechts={`${PAPIERKORB_TAGE} Tage`}>Papierkorb</Ueberschrift>
+          <Liste>
+            {korb.map(e => (
+              <Zeile key={e.id} links={<Punkt farbe={C.inkLeise} />} titel={e.name} umbrechen
+                unter={`gelöscht ${datum(e.geloeschtAm.slice(0, 10))} · ${e.haengt ? `bleibt, solange ${[e.verweise.mandate ? `${e.verweise.mandate} Mandat${e.verweise.mandate === 1 ? '' : 'e'}` : '', e.verweise.deals ? `${e.verweise.deals} Deal${e.verweise.deals === 1 ? '' : 's'}` : ''].filter(Boolean).join(' und ')} darauf zeig${e.verweise.mandate + e.verweise.deals === 1 ? 't' : 'en'}` : `endgültig ab ${datum(e.bisTag)}`}`}
+                rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Knopf leise onClick={() => wiederherstellen(e.id, e.name)}>Wiederherstellen</Knopf>
+                  {!e.haengt && <Knopf leise farbe={LEUCHT.kritisch} onClick={() => endgueltig(e.id, e.name)}>Endgültig löschen</Knopf>}
+                </span>} />
+            ))}
+          </Liste>
+          {!korb.length && <Leer>Der Papierkorb ist leer. Gelöschte Produkte liegen hier {PAPIERKORB_TAGE} Tage, bevor sie endgültig gehen.</Leer>}
+        </Karte>
+      )}
+      {dialog}
+      {hinweis}
     </>
   );
 }

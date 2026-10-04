@@ -323,7 +323,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         </div>
       </div>
       <Feldzeile label="Produkt">
-        <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => x.status !== 'eingestellt' || x.id === c.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={c.leistungId}
+        <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => (x.status !== 'eingestellt' && !x.geloeschtAm) || x.id === c.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={c.leistungId}
           onWahl={leistungId => setze({ leistungId })} onLeeren={() => setze({ leistungId: undefined })} />
       </Feldzeile>
       <Feldzeile label="Quelle"><Wahl label="Quelle" liste={QUELLEN} wert={c.quelle} onWahl={quelle => quelle !== c.quelle && setze({ quelle, quelleBezug: undefined })} onLeeren={() => setze({ quelle: undefined, quelleBezug: undefined })} /></Feldzeile>

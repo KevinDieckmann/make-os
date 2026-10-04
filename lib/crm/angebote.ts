@@ -344,7 +344,7 @@ export function positionAusProdukt(l: Leistung, id: string, opt: { kleinunterneh
 
 /** Produkte für den Katalog im Tool: aktive der Gesellschaft (dazu die ohne Gesellschaft), „Text fehlt“ markiert. */
 export function katalog(leistungen: readonly Leistung[], gesellschaft: Gesellschaftskennung): { l: Leistung; textFehlt: boolean; andere: boolean }[] {
-  return leistungen.filter(l => l.status === 'aktiv')
+  return leistungen.filter(l => l.status === 'aktiv' && !l.geloeschtAm)
     .map(l => ({ l, textFehlt: produktAngebotFehlt(l).length > 0, andere: l.gesellschaft !== gesellschaft && l.gesellschaft !== 'offen' }))
     .sort((a, b) => Number(a.andere) - Number(b.andere) || a.l.name.localeCompare(b.l.name, 'de'));
 }

@@ -7,6 +7,7 @@
 // Mandate und Deals zeigen über leistungId darauf.
 
 import type { CrmBestand, Leistung, Mandat, ChancenStufe } from './typen';
+import { imPapierkorb, papierkorbAbgelaufen, papierkorbBis } from '@/lib/eintraege/sicher';
 
 /** Die Linien in ihrer Reihenfolge — weitere (frei eingetragene) folgen alphabetisch. */
 export const LINIEN = ['Beratung & Begleitung', 'Workshops & Formate', 'Vermittlung & Provision', 'Software'] as const;
@@ -74,7 +75,7 @@ export function portfolio(crm: Pick<CrmBestand, 'mandate' | 'leistungen'>): { ak
   return {
     aktiv: aktiv.length, mrr,
     ohneProdukt: crm.mandate.filter(m => m.status !== 'beendet' && !m.leistungId).length,
-    produkteAktiv: crm.leistungen.filter(l => l.status === 'aktiv').length,
+    produkteAktiv: crm.leistungen.filter(l => l.status === 'aktiv' && !imPapierkorb(l)).length,
     groessterKunde: top && mrr ? { kunde: top[0], anteil: top[1] / mrr } : null,
   };
 }
@@ -93,4 +94,48 @@ export function neuePhasenId(l: Pick<Leistung, 'phasen'>): string {
   let i = (l.phasen ?? []).length + 1;
   while (da.has(`p${i}`)) i++;
   return `p${i}`;
+}
+
+// ── Archiv und Papierkorb der Produkte (04.10., Kevin: „man kann keine Produkte löschen“) ─────────────────────────
+// Archivieren = Status „eingestellt“ (bleibt an Deals und Mandaten lesbar, steht unter „Archiv“); Zurückholen = „Entwurf“
+// (aktiv geht ein Produkt erst wieder mit Leistungstext — dieselbe Regel wie beim Anlegen). Löschen = Papierkorb
+// (`geloeschtAm`, lib/eintraege/sicher.ts), 30 Tage; endgültig nur, wenn nichts mehr darauf zeigt.
+
+export type ProduktZustand = 'aktiv' | 'archiv' | 'papierkorb';
+/** Wo ein Produkt steht: Papierkorb vor Archiv (eingestellt) vor aktiv (aktiv/Entwurf). */
+export const produktZustand = (l: Pick<Leistung, 'status' | 'geloeschtAm'>): ProduktZustand => (imPapierkorb(l) ? 'papierkorb' : l.status === 'eingestellt' ? 'archiv' : 'aktiv');
+/** Wählbar in Mandat, Deal, Angebot und Planung: nicht im Papierkorb und nicht eingestellt. */
+export const produktWaehlbar = (l: Pick<Leistung, 'status' | 'geloeschtAm'>): boolean => produktZustand(l) === 'aktiv';
+/** Archivieren / Zurückholen als Einzelfelder (api.teil). */
+export const PRODUKT_ARCHIVIEREN = { status: 'eingestellt' } as const satisfies Partial<Leistung>;
+export const PRODUKT_ZURUECK = { status: 'entwurf' } as const satisfies Partial<Leistung>;
+
+export interface ProduktVerweise { mandateLaufend: number; mandate: number; dealsOffen: number; deals: number }
+/** Was auf ein Produkt zeigt — „laufend“ = Mandat nicht beendet, „offen“ = Deal noch nicht gewonnen/verloren. */
+export function produktVerweise(id: string, crm: Pick<CrmBestand, 'mandate' | 'chancen'>): ProduktVerweise {
+  const m = crm.mandate.filter(x => x.leistungId === id);
+  const c = crm.chancen.filter(x => x.leistungId === id);
+  return { mandateLaufend: m.filter(x => x.status !== 'beendet').length, mandate: m.length, dealsOffen: c.filter(x => OFFEN.includes(x.stufe)).length, deals: c.length };
+}
+/** „2 laufende Mandate und 1 offener Deal“ — leer, wenn nichts Laufendes daran hängt. */
+export function verweisSatz(v: ProduktVerweise): string {
+  const teile = [v.mandateLaufend ? `${v.mandateLaufend} ${v.mandateLaufend === 1 ? 'laufendes Mandat' : 'laufende Mandate'}` : '', v.dealsOffen ? `${v.dealsOffen} ${v.dealsOffen === 1 ? 'offener Deal' : 'offene Deals'}` : ''].filter(Boolean);
+  return teile.join(' und ');
+}
+
+export interface ProduktImPapierkorb { id: string; name: string; geloeschtAm: string; bisTag: string; verweise: ProduktVerweise; /** Bleibt über die Frist hinaus, solange etwas daran hängt. */ haengt: boolean }
+/** Der Papierkorb der Produkte, neueste zuerst. */
+export function produktePapierkorb(crm: Pick<CrmBestand, 'leistungen' | 'mandate' | 'chancen'>): ProduktImPapierkorb[] {
+  return crm.leistungen.filter(imPapierkorb).map(l => {
+    const verweise = produktVerweise(l.id, crm);
+    return { id: l.id, name: l.name, geloeschtAm: l.geloeschtAm!, bisTag: papierkorbBis(l.geloeschtAm!), verweise, haengt: verweise.mandate + verweise.deals > 0 };
+  }).sort((a, b) => b.geloeschtAm.localeCompare(a.geloeschtAm));
+}
+/**
+ * Morgenlauf: Produkte, die länger als 30 Tage im Papierkorb liegen UND an denen nichts mehr hängt (Mandat, Deal,
+ * Angebots-Position) — nur die gehen endgültig. Alles andere bleibt im Papierkorb (sonst zeigten Verweise ins Leere).
+ */
+export function produkteAbgelaufen(crm: Pick<CrmBestand, 'leistungen' | 'mandate' | 'chancen'> & { angebote?: CrmBestand['angebote'] }, jetzt: string): string[] {
+  const inAngebot = new Set((crm.angebote ?? []).flatMap(a => (a.positionen ?? []).map(p => p.leistungId).filter((x): x is string => !!x)));
+  return crm.leistungen.filter(l => papierkorbAbgelaufen(l, jetzt) && !inAngebot.has(l.id)).filter(l => { const v = produktVerweise(l.id, crm); return !v.mandate && !v.deals; }).map(l => l.id);
 }

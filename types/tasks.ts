@@ -106,9 +106,9 @@ export interface Task extends Timestamps {
   geloeschtAm?: string;
   /** Mit wem sie in den Papierkorb ging (Projekt- bzw. Eltern-Kennung) — Wiederherstellen holt die ganze Kette zurück. */
   geloeschtMit?: ID;
-  /** Archiviert durch „Neu anfangen“ (29.09., Kevin) — seit wann (ISO). Leser blenden es aus (`aufgabenSicht`); wiederherstellbar unter Aufgaben › Archiv. */
+  /** Archiviert durch „Neu anfangen“ (29.09., Kevin) oder einzeln (04.10., Wischen › Archivieren) — seit wann (ISO). Leser blenden es aus (`aufgabenSicht`); wiederherstellbar unter Aufgaben › Archiv. */
   archiviertAm?: string;
-  /** Kennung des „Neu anfangen“-Laufs (lib/aufgaben/neustart.ts) — Wiederherstellen ganz oder einzeln. */
+  /** Kennung des „Neu anfangen“-Laufs (`na-…`, lib/aufgaben/neustart.ts) bzw. des Einzel-Archivs (`ea-<Wurzel>`, lib/aufgaben/archiv-einzeln.ts). */
   archivId?: ID;
 }
 

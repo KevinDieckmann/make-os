@@ -77,7 +77,7 @@ export interface ProduktVorschlag {
 /** Produkte des Katalogs, wie die Planung sie braucht (aktiv zuerst, eingestellte nicht). */
 export function produktVorschlaege(crm: Pick<CrmBestand, 'leistungen'>): ProduktVorschlag[] {
   const rang = { aktiv: 0, entwurf: 1, eingestellt: 2 } as const;
-  return crm.leistungen.filter(l => l.status !== 'eingestellt').sort((a, b) => rang[a.status] - rang[b.status] || a.name.localeCompare(b.name)).map(l => ({
+  return crm.leistungen.filter(l => l.status !== 'eingestellt' && !l.geloeschtAm).sort((a, b) => rang[a.status] - rang[b.status] || a.name.localeCompare(b.name)).map(l => ({
     id: l.id, name: l.name, typ: l.typ, stufe: l.stufe, status: l.status, preis: l.preis.betrag, einheit: l.preis.einheit,
     basis: preisBasisVon(l), laufzeit: l.laufzeitMonate ?? null, gesellschaft: l.gesellschaft, fehlt: planungFehlt(l), planEinheit: einheitAusGesellschaft(l.gesellschaft),
   }));

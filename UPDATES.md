@@ -4,6 +4,29 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Löschen & Archivieren in Listen — Produkte und Aufgaben (04.10.2026, nur lokal — Branch `zeile-aktionen`)
+
+Kevin 04.10.: „Wenn man auf Produkte geht, kann man keine Produkte löschen … den Button, der kommt, wenn man z. B. nach links swiped: dann
+kommt da Löschen oder Archivieren.“ (UMBAU_ABEND_0410.md › 5)
+
+- **Neuer Baustein `ZeileAktionen`** (components/os/ui): Handy nach links wischen → „Archivieren“ · „Löschen“; Rechner: dieselben zwei als
+  Knöpfe am Rand beim Überfahren/Fokus. Dazu `Rueckfrage` (statt `window.confirm`) und `useRueckgaengig` (eine Leiste für Aufgaben, Planung,
+  Produkte). Regel in DESIGN_STANDARD.md: jede Liste mit Einträgen nutzt ihn (weitere Listen nach der Inventur).
+- **Produkte:** Reiter Produkte · Archiv · Papierkorb. Archivieren = Status „eingestellt“ (Zurückholen = „Entwurf“). Löschen = Papierkorb 30 Tage
+  (Marke setzt der Server); laufende Mandate/offene Deals → Rückfrage mit „Archivieren“ als ruhigerem Weg. Endgültig nur aus dem Papierkorb und nur
+  ohne Verweise; der Server lehnt `delete` außerhalb des Papierkorbs ab (409). Neuer Morgenlauf-Schritt „Produkte-Papierkorb“ (/api/tagesstart).
+  Papierkorb/Archiv tauchen in Angebots-Katalog, Planungs-Vorschlägen, Produkt-Wahl an Mandat/Deal und „aktive Produkte“ nicht mehr auf.
+- **Aufgaben:** jede Zeile im Baum wischbar; Archivieren nimmt den Teilbaum mit (Aufgaben › Archiv › „Archiviert“, Zurückholen samt Kette); Serien
+  ruhen so lange. Löschen wie bisher in den Papierkorb, die Rückfrage (jetzt im Standard-Dialog) nennt Unteraufgaben/Notiz/Dateien.
+- **Daten (Kompatibilitätsmodus):** EIN neues optionales Feld — `Leistung.geloeschtAm` (CRM-Bestand `crm`). Aufgaben nutzen die vorhandene Marke
+  `archiviertAm` + `archivId` (neue Kennung `ea-<Aufgabe>` neben den Läufen `na-…` von „Neu anfangen“). Kein neuer Speicher.
+- **Rückweg (alter Online-Stand liest weiter):** Ein Produkt im Papierkorb erscheint im alten Stand wieder als normales Produkt (das Feld wird
+  ignoriert und beim nächsten Speichern dieses Produkts verworfen) — vor dem Zurückrollen den Papierkorb leeren oder Einträge wiederherstellen.
+  Einzeln archivierte Aufgaben bleiben im alten Stand ausgeblendet (`ohneArchiv` kennt jede Marke), lassen sich dort aber nicht zurückholen
+  (die Archiv-Ansicht kennt nur Läufe) — vorher zurückholen. Nichts geht verloren.
+- Prüfung: tsc, eslint, vitest (134 Dateien rund um Aufgaben/CRM/Finanzen/Design + neuer Wächter `tests/zeile-aktionen.test.ts`), Sandbox 375 px
+  (Wischen per Touch) und 1280 px (Maus/Tastatur).
+
 ## makeinnovation.de „Standard“ — Glas, Kaskade, Einstieg, Aurora (04.10.2026, nur lokal — Branch `website-standard`)
 
 Kevin 04.10. (Vorlage getlayers.ai „New Era“): nicht alles übernehmen, nur den Standard + Aurora — „bleibe bei unserer CI“.

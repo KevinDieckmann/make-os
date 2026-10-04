@@ -3,6 +3,7 @@
 // still gekürzt (CLAUDE.md „Nie abschneiden, ablehnen“) — wer über eine Grenze will, bekommt einen Fehlertext,
 // die Route antwortet 413. Genutzt von /api/state/tasks und /api/tasks/create. Tests: tests/aufgaben-struktur.test.ts.
 
+import { istEinzelMarke } from './archiv-einzeln';
 import type {
   Task, TaskStatus, AufgabeBezug, AufgabeKommentar, AufgabenListe, AufgabenStatus, Project, ProjectCategory, AufgabenGruppe, AufgabenVorlage,
   EigenesFeld, FeldTyp, FeldWert, Wiederholung, WiederholungRegel, ZoeAuftrag, ZoeStatus, ProjektStatus, VorlageAufgabe, VorlageInhalt,
@@ -137,6 +138,7 @@ export function taskSauber(o: unknown): Task | null {
   zuViel(t.subTasks, AUFGABEN_GRENZEN.subTasks, 'Unteraufgaben (alt)');
   zuViel(t.dependencies, AUFGABEN_GRENZEN.dependencies, 'Abhängigkeiten');
   const jetzt = new Date().toISOString();
+  const einzelArchiv = typeof t.archivId === 'string' && istEinzelMarke(t.archivId) && !!zeitpunkt(t.archiviertAm);
   const raus: Task = {
     id, title, projectId: S(t.projectId, 80) ?? '', description: S(t.description, 4000),
     status: TASK_STATUS.includes(t.status as TaskStatus) ? (t.status as TaskStatus) : 'todo',
@@ -177,6 +179,10 @@ export function taskSauber(o: unknown): Task | null {
     // Papierkorb (29.09.)
     geloeschtAm: zeitpunkt(t.geloeschtAm),
     geloeschtMit: kennung(t.geloeschtMit),
+    // Einzel-Archiv (04.10.): nur die Marke `ea-…` mit Zeitpunkt kommt durch — die Läufe von „Neu anfangen“ (`na-…`) setzt
+    // nur der Server; `aufgabenAendern` hält gespeicherte Lauf-Marken fest (`archivMarkeSchuetzen`).
+    archiviertAm: einzelArchiv ? zeitpunkt(t.archiviertAm) : undefined,
+    archivId: einzelArchiv ? (t.archivId as string) : undefined,
   };
   if (!raus.geloeschtAm) delete raus.geloeschtMit;
   if (raus.parentId === id) delete raus.parentId;

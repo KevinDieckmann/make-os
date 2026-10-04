@@ -204,7 +204,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       <Feldzeile label="Titel"><Feld wert={m.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
       <Feldzeile label="Produkt">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => x.status !== 'eingestellt' || x.id === m.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={m.leistungId}
+          <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => (x.status !== 'eingestellt' && !x.geloeschtAm) || x.id === m.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={m.leistungId}
             onWahl={leistungId => leistungId !== m.leistungId && setze({ leistungId, phase: undefined })} onLeeren={() => setze({ leistungId: undefined, phase: undefined })} />
           {produkt && <Link href={mandateLink('produkte', produkt.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Produkt öffnen ›</Link>}
         </div>

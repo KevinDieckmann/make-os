@@ -174,6 +174,12 @@ export interface Leistung {
    * Ein Produkt geht erst mit `leistungstext` auf „aktiv“ (Server 409, lib/crm/angebote.ts `produktAngebotFehlt`).
    */
   angebot?: LeistungAngebot;
+  /**
+   * Papierkorb (04.10., optional — Kompatibilitätsmodus): gelöscht am (ISO, setzt der Server). 30 Tage wiederherstellbar,
+   * danach entfernt der Morgenlauf es, sofern nichts mehr darauf zeigt (lib/crm/produkte.ts `produkteAbgelaufen`).
+   * Archiv = Status „eingestellt“ (kein eigenes Feld).
+   */
+  geloeschtAm?: string;
   geaendert: string;
 }
 /** Texte eines Produkts für Angebote (28.09.) — `leistungstext` ist Pflicht, der Rest optional. */

@@ -24,6 +24,7 @@ import { tagePlus } from '@/lib/zeit';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
 import { imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
 import { aufgabenSerienNachziehen, papierkorbAufraeumen } from '@/lib/aufgaben/serie-server';
+import { produktePapierkorbAufraeumen } from '@/lib/crm/produkte-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -107,6 +108,17 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     schritte.push({ name: 'Aufgaben-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
+  // 0d) Produkte-Papierkorb (04.10.): älter als 30 Tage und ohne Verweise → endgültig; mit Verweisen bleibt es im Papierkorb.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Produkte-Papierkorb', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const p = await produktePapierkorbAufraeumen();
+      schritte.push({ name: 'Produkte-Papierkorb', ok: true, info: p.produkte ? `endgültig gelöscht: ${p.produkte} Produkt${p.produkte === 1 ? '' : 'e'}` : 'nichts älter als 30 Tage' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Produkte-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read
