@@ -196,6 +196,8 @@ main { position: relative; z-index: 1; }
 .held { padding-top: calc(16vh + var(--kopf)); margin-top: calc(-1 * var(--kopf)); }
 .held h1 { font-size: clamp(38px, 5.4vw, 82px); letter-spacing: -.038em; line-height: 1.01; margin-top: var(--xl); }
 .held h1 .ruhig { display: block; }
+/* Lesbarkeit über dem hellen Knoten der Szene: ein weicher Schatten in Grundfarbe statt eines Kastens. */
+.mit-szene .held h1, .mit-szene .held .satz, .mit-szene .leitsatz, .mit-szene .mitte .satz { text-shadow: 0 0 32px rgba(5, 6, 8, .9), 0 0 12px rgba(5, 6, 8, .7); }
 .held .satz { margin: var(--xl) auto 0; max-width: 46ch; color: var(--inkDim); font-size: clamp(16px, 1.35vw, 19px); }
 .scrollen { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 9vh; font-size: var(--mikro); letter-spacing: .2em; text-transform: uppercase; color: var(--inkLeise); }
 .scrollen span { width: 1px; height: 46px; background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .5)); }
