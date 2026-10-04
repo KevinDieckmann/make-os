@@ -37,7 +37,7 @@ distorted hands, extra fingers, warped faces, fast cuts, shaky camera, oversatur
 | 1 | 0–5 s | Berlin, blaue Stunde, Luftaufnahme langsam über die Spree Richtung Mitte, Fernsehturm in der Ferne | Higgsfield |
 | 2 | 5–9 s | Über dem Bild baut sich die Wortmarke **MAKE INNOVATION** auf, der rot-grüne Knoten leuchtet | Code |
 | 3 | 9–13 s | **INNOVATION platzt auf**: die Buchstaben lösen sich in feine Lichtfäden (Granat + Smaragd), die als Neuronen auseinanderfließen | Code |
-| 4 | 13–18 s | Die Fäden legen sich auf eine **ruhige Deutschlandkarte bei Nacht** (nur Umriss + Lichtpunkte): von Berlin aus nach **Hamburg, Bielefeld, Köln, München** — Städtenamen erscheinen, dazu klein „Fokus Innovation“ an jeder Stadt | Code |
+| 4 | 13–18 s | Die Fäden legen sich auf eine **ruhige Deutschlandkarte bei Nacht** (nur Umriss + Lichtpunkte): von Berlin aus nach **Hamburg, Bielefeld, Köln, München, Dresden** — Städtenamen erscheinen, dazu klein „Fokus Innovation“ an jeder Stadt | Code |
 | 5 | 18–22 s | **Hamburg** — Penthouse über dem Hafen, Abenddämmerung, kleine Runde im Gespräch | Higgsfield |
 | 6 | 22–26 s | **Bielefeld** — helles Dachgeschoss mit Holz und klaren Linien, Mittelständler und Gründerin am Tisch | Higgsfield |
 | 7 | 26–30 s | **Köln** — Rooftop-Terrasse, der Dom als Silhouette in der Ferne, Stehgespräche mit Gläsern | Higgsfield |
