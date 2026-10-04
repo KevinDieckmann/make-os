@@ -4,6 +4,26 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Abschlussprüfung Teil 1: Verbindungen & Standards (04.10.2026 spät, nur lokal — Branch `pruefung-verbindungen`)
+
+Kevin 04.10.: „kein Datenpunkt geht ins Leere, alles ist verbunden.“
+
+- **Kapazität → Strahl:** eine überlastete Woche (Bedarf > belastbar) ist eine Abweichung (Art `ueberlastet`, Stärke = Überlast) —
+  am Strang des Meilensteins/Ziels der Person, sonst am Space-Strang Business (`lib/kapazitaet/abweichung.ts`, Lader in
+  `abweichung-quellen-server.ts`, Stand nur über `kapaStandFuer`). Jede Abweichung trägt ihren Ort (`link`); die Zeilen unter
+  dem Band sind Links. Kapazität springt bei `?person=` zur Person.
+- **Überblick „Für dich“:** Zeilen führen zur Rechnung/Zahlung, zum Kalendertag, zur Kontakt-Akte, zu Sport/Routinen.
+- **Register verbunden:** Bezüge (Gesellschafter, Organe, Parteien, Beteiligungen) öffnen Akte/Firma/Gesellschaft; Nachfolger und
+  fremde Beteiligungen klickbar; Fahrplan-Ziel → zurück zur Gesellschaft; Holding-Hinweis im Business-Index → Register; Gesellschaft-Auswahl
+  (Deals, Mandate, Produkte) → Register; Vertrags-Erinnerung (Aufgabe) mit Link zum Vertrag.
+- **Schnellsuche:** findet Gesellschaften, Verträge, Beschlüsse (`GET /api/gesellschaften?suche=register`, nur Haushalt des Inhabers)
+  und die Seiten Unternehmen, Finanzplanung (je Sicht), Ziele & Planung, Kapazität.
+- **Kalender-Fristen:** Meilenstein → Detail (`WEG.meilenstein`), Zahlung/Eingang → genau diese Zahlung/Rechnung.
+- **Standards:** letztes `window.confirm` (IBAN entfernen) → Rückfrage-Karte, Wächter ohne Ausnahme; Kapazität entfernt mit „Rückgängig“;
+  Leerzustände mit Weg (Kapazität, Organe, Beschlüsse, Beteiligungen); Finanzplanung nennt `kdv` aus `lib/einheiten.ts`; Business-Index
+  liest die Fokus-Blöcke des Inhabers (Rolle) statt `'kevin'`. Neue WEG: `finanzplanung`, `familie`, `inbox`, `konto`, Reiter `organe`.
+- **Rückweg:** keine Datenänderung, kein neuer Bestand — nur Lesewege, Links und eine Notiz an neu angelegten Erinnerungs-Aufgaben.
+
 ## Kapazität — Zeit und Machbarkeit je Person, Säule im Business-Index (04.10.2026, nur lokal — Branch `kapazitaet`)
 
 Kevin 04.10.: „… manchmal sind die Ziele nicht zu erreichen, weil man sonst z. B. 30 Stunden am Tag arbeiten müsste … realistisch planbar.“
