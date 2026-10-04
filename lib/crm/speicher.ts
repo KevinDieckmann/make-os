@@ -4,6 +4,7 @@
 // hat einen eigenen Säuberer, damit nur durchkommt, was das Modell kennt.
 
 import { papierkorbMarke, markeVomServer } from '@/lib/eintraege/sicher';
+import { ablageZusatz, ablageVomServer, crmSicht, istPapierkorbListe, neuImPapierkorb, papierkorbPflicht } from './ablage';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { protokolliere, bestandDiff, listenDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
@@ -37,7 +38,17 @@ const TEMPERATUREN: readonly Temperatur[] = ['kalt', 'lau', 'warm', 'heiss'];
 export const CRM_SPEICHER = 'crm';
 export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [], angebote: [] });
 
+/**
+ * Der Bestand, wie alle Leser ihn sehen (04.10.): ohne Papierkorb der Firmen, Mandate, Events, Segmente, Beiträge, Ausgaben und
+ * Kampagnen (lib/crm/ablage.ts `crmSicht`) — so taucht ein gelöschter Eintrag nirgends mehr auf (Zahlen, Suche, ZOE, Kalender).
+ * Wer den Papierkorb braucht (Papierkorb-Liste, endgültig löschen, Morgenlauf), nimmt `ladeCrmMitPapierkorb`.
+ */
 export async function ladeCrm(): Promise<CrmBestand> {
+  return crmSicht(await ladeCrmMitPapierkorb());
+}
+
+/** Der ganze Bestand MIT Papierkorb — nur für Papierkorb-Liste, endgültiges Löschen und den Morgenlauf. */
+export async function ladeCrmMitPapierkorb(): Promise<CrmBestand> {
   const roh = { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
   // 27.09.: alte Deals und Mandate bekommen die Firmen-Kennung nachgetragen — hier im Speicher, dauerhaft mit der nächsten Änderung (aendereCrm).
   // 03.10.: die Scoring-Einstellungen (eigener Bestand `crm-scoring`) werden beim LESEN angehängt — jede Stelle, die Leads rechnet, sieht dieselben Werte;
@@ -425,7 +436,8 @@ function followup(o: Record<string, unknown>, jetzt: string, person: string): Fo
 export function saeubern(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
   const e = saeubernRoh(liste, roh, jetzt, person);
   if (!e) return e;
-  const mit = { ...e, ...zusatz(liste, roh) };
+  // Archiv & Papierkorb (04.10., lib/crm/ablage.ts): die Marken je Liste — die Zeit selbst setzt `wendeCrmAn` (Server-Zeit).
+  const mit = { ...e, ...zusatz(liste, roh), ...ablageZusatz(liste, roh) };
   return 'geaendert' in mit && liste !== 'antraege' && liste !== 'verarbeitungen' ? { ...mit, geaendertVon: person } : mit;
 }
 function saeubernRoh(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
@@ -493,6 +505,8 @@ export function regelnAbgelehnt(b: CrmBestand, ops: ListenOp[]): string[] {
     if (status === 'aktiv' && alt?.status !== 'aktiv' && fehlt.length) raus.push(`„${name}“ kann erst aktiv gehen, wenn die Angebotstexte stehen — für Angebote fehlt: ${fehlt.join(', ')}.`);
     else if (status === 'aktiv' && alt?.status === 'aktiv' && !produktAngebotFehlt(alt).length && fehlt.length) raus.push(`„${name}“ ist aktiv — der Leistungstext bleibt Pflicht. Erst auf Entwurf stellen, dann leeren.`);
   }
+  // Übrige Listen mit Papierkorb (04.10., lib/crm/ablage.ts): endgültig nur, was schon im Papierkorb liegt.
+  raus.push(...papierkorbPflicht(b, ops));
   return raus;
 }
 
@@ -585,7 +599,9 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
   // Erst Stand und Verweise (gegen den Bestand IN der Sperre), dann die Regeln — ein Konflikt lehnt alles ab.
   const konflikte = crmKonflikte(b, roh);
   if (konflikte.length) return { bestand: b, angewandt: 0, fehler: [], konflikte, sperren: [], grenze: [] };
-  const sperren = loeschSperren(b, roh, kontext);
+  // Firmen und Mandate kommen nur ohne Verweise in den Papierkorb (04.10.) — alle Leser blenden ihn aus, sonst zeigten
+  // Personen, Rechnungen und Dateien ins Leere. Dieselbe Prüfung wie beim endgültigen Löschen (`loeschSperren`).
+  const sperren = loeschSperren(b, [...roh, ...neuImPapierkorb(b, roh, ['firmen', 'mandate'])], kontext);
   if (sperren.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren, grenze: [] };
   // Nie abschneiden (28.09.): zu lange Listen → die ganze Änderung wird abgelehnt (413).
   const zuLang = crmGrenzen(roh);
@@ -603,10 +619,14 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
     const r = wendeAn(b[l] as unknown as Record<string, unknown>[], eigene, 'id', roh => saeubern(l, roh, jetzt, person));
     // Übergabe-Protokoll (03.10., netz-recht): schreibt NUR der Server (Route events › kunden-uebergabe, `aendereCrm` direkt) — der Browser
     // kann es über diesen generischen Weg weder setzen noch löschen oder fälschen; es gilt immer der gespeicherte Stand.
-    (neu as Record<string, unknown>)[l] = l === 'events' ? uebergabenVomAltstand(b.events, r.liste as unknown as CrmBestand['events'])
+    const liste = l === 'events' ? uebergabenVomAltstand(b.events, r.liste as unknown as CrmBestand['events'])
       // Papierkorb-Marke der Produkte (04.10.): neu = Server-Zeit, bestehend bleibt — der Browser verschiebt die Frist nie.
       : l === 'leistungen' ? (r.liste as unknown as Leistung[]).map(x => markeVomServer(b.leistungen.find(a => a.id === x.id), x, jetzt))
       : r.liste;
+    // Archiv- und Papierkorb-Marken der übrigen Listen (04.10., lib/crm/ablage.ts): ebenso Server-Zeit.
+    (neu as Record<string, unknown>)[l] = istPapierkorbListe(l)
+      ? (liste as unknown as { id: string }[]).map(x => ablageVomServer((b[l] as unknown as { id: string }[]).find(a => a.id === x.id), x, jetzt))
+      : liste;
     angewandt += r.angewandt;
   }
   // Mutterfirmen (28.09., #7): tote Mutter oder Kreis → nur diese Änderung zurück, mit Fehlertext.

@@ -18,7 +18,9 @@ import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { ListenOp } from '@/lib/sync';
-import { ladeCrm, aendereCrm, wendeCrmAn, type CrmAnwendung } from '@/lib/crm/speicher';
+import { ladeCrmMitPapierkorb, aendereCrm, wendeCrmAn, type CrmAnwendung } from '@/lib/crm/speicher';
+import { crmSicht, crmPapierkorb } from '@/lib/crm/ablage';
+import { papierkorbMarke } from '@/lib/eintraege/sicher';
 import { prognose, gesundheit, winRate, STUFEN, wahrscheinlichkeit } from '@/lib/crm/pipeline';
 import { mandatLage, mrr, konzentration, zahlungAusRechnungen, type RechnungKurz } from '@/lib/crm/kunden';
 import { eventZahlen } from '@/lib/crm/events';
@@ -42,14 +44,17 @@ const konfliktOhneIban = (k: CrmKonflikt): CrmKonflikt => {
   return k.liste === 'firmen' && k.aktuell && z?.iban ? { ...k, aktuell: { ...k.aktuell, zahlung: zahlungMaskiert(z) } } : k;
 };
 
-async function antwort(b: CrmBestand, ich: string) {
+async function antwort(voll: CrmBestand, ich: string) {
   const heute = localDay();
+  // Archiv & Papierkorb (04.10., lib/crm/ablage.ts): der Stand ohne Papierkorb — er kommt getrennt als `papierkorb` (nur
+  // Kennung, Titel, Tag) für die Papierkorb-Ansichten der Listen. Alle Zahlen rechnen ohne ihn.
+  const b = crmSicht(voll);
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const rechnungen = (await loadJson<{ rechnungen?: RechnungKurz[] }>('finanzplan'))?.rechnungen ?? [];
   return {
     // IBAN der Firmen nur maskiert (28.09., H4) — Speichern: maskiert/leer = unverändert (lib/crm/speicher.ts `ibanSchuetzen`).
     // Stand je Eintrag (28.09., K4) aus dem GESPEICHERTEN Eintrag — erst danach maskieren, sonst passt er nie.
-    ok: true, ich, heute, stand: ohneIban(crmMitStand(b)),
+    ok: true, ich, heute, stand: ohneIban(crmMitStand(b)), papierkorb: crmPapierkorb(voll),
     stufen: STUFEN.map(s => ({ ...s, p: wahrscheinlichkeit(s.id, b.wahrscheinlichkeiten) })),
     prognose: prognose(b.chancen, heute, b.wahrscheinlichkeiten),
     gewinnquote: winRate(b.chancen, localDay()),
@@ -74,7 +79,7 @@ export async function GET(req: Request) {
   const etag = etagAus('b5', await speicherStand(['crm', 'kontakte', 'finanzplan', 'crm-scoring']), localDay(), person);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
-  return jsonAntwort(req, await antwort(await ladeCrm(), person), etag);
+  return jsonAntwort(req, await antwort(await ladeCrmMitPapierkorb(), person), etag);
 }
 
 export async function PATCH(req: Request) {
@@ -93,7 +98,8 @@ export async function PATCH(req: Request) {
   const person = zugang.person;
   // Löschsperre (28.09., K4): Personen, Rechnungen und (seit 28.09. abends, W6) die Einträge der Dateiablage liegen
   // außerhalb des CRM-Bestands — nur laden, wenn Firmen oder Mandate gelöscht werden.
-  const loescht = ops.some(o => o?.op === 'delete' && (o.liste === 'firmen' || o.liste === 'mandate'));
+  // Seit 04.10. auch, wenn eine Firma/ein Mandat in den Papierkorb soll (lib/crm/ablage.ts `neuImPapierkorb`: nur ohne Verweise).
+  const loescht = ops.some(o => (o?.liste === 'firmen' || o?.liste === 'mandate') && (o.op === 'delete' || !!papierkorbMarke(((o.op === 'teil' ? o.felder : o.eintrag) ?? {}).geloeschtAm)));
   const haushalt = loescht ? await haushaltDesInhabers() : null;
   const kontext: VerweisKontext = loescht
     ? {

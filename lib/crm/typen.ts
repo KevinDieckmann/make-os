@@ -131,6 +131,8 @@ export interface Mandat {
   notiz?: string;
   /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
   zustaendig?: string;
+  /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit). Archiv = Status „beendet“. */
+  geloeschtAm?: string;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -256,6 +258,10 @@ export interface Angebot {
   personGeloest?: string;
   angelegt: string;
   angelegtVon?: string;
+  /** Archiv (04.10., optional): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, jederzeit zurückholbar (jeder Status). */
+  archiviertAm?: string;
+  /** Papierkorb (04.10., optional): nur Entwürfe — gestellte sind Geschäftsunterlagen und werden nie gelöscht. 30 Tage, dann endgültig. */
+  geloeschtAm?: string;
   geaendert: string;
   geaendertVon?: string;
 }
@@ -324,6 +330,10 @@ export interface Firma {
    * keine Kreise (Säuberung + `mutterPruefen` + Verbindungsprüfung). Töchter ergeben sich aus den Verweisen.
    */
   mutterId?: string;
+  /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
+  archiviertAm?: string;
+  /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit) — für alle Leser unsichtbar, 30 Tage wiederherstellbar. */
+  geloeschtAm?: string;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -383,6 +393,10 @@ export interface Event {
   zielpersonen?: EventZielperson[];
   /** Protokoll „An Kunden übergeben“ (Auftragsverarbeitung): wann, wer, wie viele Kontakte — nie die Kontakte selbst. */
   uebergaben?: EventUebergabe[];
+  /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
+  archiviertAm?: string;
+  /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit) — für alle Leser unsichtbar, 30 Tage wiederherstellbar. */
+  geloeschtAm?: string;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -484,7 +498,7 @@ export interface SegmentKriterien {
   /** Typ, Kategorie, Label (mehrfach, 28.09.): trifft, wenn die Person EINEN der Werte trägt (Groß-/Kleinschreibung egal). */
   typ?: string[]; kategorie?: string[]; label?: string[];
 }
-export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string; geaendertVon?: string }
+export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string; geaendertVon?: string; /** Archiv/Papierkorb (04.10., optional, lib/crm/ablage.ts). */ archiviertAm?: string; geloeschtAm?: string }
 export type BeitragKanal = 'linkedin' | 'newsletter' | 'blog' | 'podcast' | 'vortrag' | 'sonstig';
 export interface Beitrag {
   id: string; titel: string; kanal: BeitragKanal; saeule?: string;
@@ -502,6 +516,10 @@ export interface Beitrag {
   stimme?: string;
   /** Freigabe durch die Stimme, wenn jemand anderes schreibt. */
   freigabe?: Freigabe;
+  /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
+  archiviertAm?: string;
+  /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit) — für alle Leser unsichtbar, 30 Tage wiederherstellbar. */
+  geloeschtAm?: string;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -518,6 +536,10 @@ export interface NewsletterAusgabe {
   /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
   zustaendig?: string;
   freigabe?: Freigabe;
+  /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
+  archiviertAm?: string;
+  /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit) — für alle Leser unsichtbar, 30 Tage wiederherstellbar. */
+  geloeschtAm?: string;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -543,6 +565,10 @@ export interface Kampagne {
   vernetzen?: import('./netzwerk-form').VernetzenEinstellung;
   /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
   zustaendig?: string;
+  /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
+  archiviertAm?: string;
+  /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit) — für alle Leser unsichtbar, 30 Tage wiederherstellbar. */
+  geloeschtAm?: string;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;

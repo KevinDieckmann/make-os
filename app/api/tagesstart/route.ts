@@ -24,7 +24,7 @@ import { tagePlus } from '@/lib/zeit';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
 import { imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
 import { aufgabenSerienNachziehen, papierkorbAufraeumen } from '@/lib/aufgaben/serie-server';
-import { produktePapierkorbAufraeumen } from '@/lib/crm/produkte-server';
+import { produktePapierkorbAufraeumen, crmPapierkorbAufraeumen } from '@/lib/crm/produkte-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -119,6 +119,18 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     schritte.push({ name: 'Produkte-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
+  // 0e) CRM-Papierkorb der übrigen Listen (04.10., lib/crm/ablage.ts): Firmen, Mandate, Events, Segmente, Beiträge, Ausgaben,
+  //     Kampagnen — älter als 30 Tage und ohne Verweise → endgültig; Events mit Kalender-Termin/Übergaben nur von Hand.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'CRM-Papierkorb', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const p = await crmPapierkorbAufraeumen();
+      schritte.push({ name: 'CRM-Papierkorb', ok: true, info: p.eintraege ? `endgültig gelöscht: ${p.eintraege} Eintr${p.eintraege === 1 ? 'ag' : 'äge'}${p.bleiben ? ` · ${p.bleiben} mit Verweisen bleiben` : ''}` : p.bleiben ? `${p.bleiben} mit Verweisen bleiben im Papierkorb` : 'nichts älter als 30 Tage' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'CRM-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read
