@@ -90,6 +90,13 @@ werden. Oben die Symbole genial, aber das sieht schon zu spacig aus.“ (Gegenbe
   KEIN heller Ausbruch/Glühen am Heute-Punkt (eine ruhige senkrechte Heute-Linie reicht), keine rosa/violetten Mischtöne,
   Farben nur je Ziel (zielFarben), Hintergrund-Netz weg oder kaum sichtbar. Ziel: man liest Ziele/Fristen, der Faden
   ist Akzent (≤ 20 % Wirkung).
+- **Bedeutung statt Deko (Kevin 04.10. nachgeschärft):** „Gliedere einfach mehr. Die einzelnen Farben von den einzelnen
+  Themen müssen immer gebündelt sein und zusammenlaufen. Es darf nur ausgeschlagen werden, wenn etwas Unvorhergesehenes
+  kommt oder etwas schiefgelaufen ist. Ziel ist, dass alle Linien immer ruhig laufen — nach Ziel, Plan und Meilenstein.“
+  → Je Thema EIN gebündelter Strang (Fäden einer Farbe eng zusammen), Themen sauber gegliedert (eigene Spur/Lage), Stränge
+  laufen zum großen Ziel zusammen. Ruhelage = im Plan. Ausschlag NUR aus echten Abweichungen (Meilenstein überfällig/
+  verschoben, Frist gerissen, Ziel gekippt, Kapazität überlastet, ungeplantes Ereignis) — Stärke = Größe der Abweichung,
+  nie Zufall/Rauschen. Wächtertest: ohne Abweichung ist jeder Strang glatt (Amplitude 0 bis auf minimale Fadenbreite).
 - Technik: Parameter in lib/lichtfaeden/band.ts / zeichnen.ts (eine Stelle), damit Planung, Für-dich-Linien und Website
   zusammen ruhiger werden; Wächtertest auf Höchstwerte (Fadenzahl, Deckkraft, Amplitude), damit es nicht wieder kippt.
 
