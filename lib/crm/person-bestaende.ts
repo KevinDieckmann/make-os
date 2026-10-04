@@ -81,7 +81,9 @@ import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from './typen';
-import { aendereCrm, ladeCrm } from './speicher';
+// Art. 15/17, Zusammenführen, Verknüpfungs-Prüfung lesen den Bestand MIT Papierkorb (DSGVO-Prüfung 04.10.): sonst blieb eine
+// Person in einem gelöschten Event/Mandat/… stehen (die Vorprüfung sah sie nicht) und fehlte in der Auskunft. `ladeCrm` ist hier tabu.
+import { aendereCrm, ladeCrmMitPapierkorb as ladeCrm } from './speicher';
 import { personEntfernen as crmOhne, personUmbiegen as crmUm, personVerweise } from './person-verweise';
 import { KONFLIKT_SPEICHER, leererKonfliktStand, type KonfliktStand } from './import-konflikte';
 import { ablageName, dateiPfad } from '@/lib/dateien/ablage';
