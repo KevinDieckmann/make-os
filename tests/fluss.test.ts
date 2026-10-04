@@ -10,7 +10,7 @@ import path from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { istReihe, prognoseReihe, mitGrundlage, flussText, flussHatLinie, FLUSS_BEREICHE, FLUSS_FENSTER, type FlussReihe } from '@/lib/fluss/modell';
-import { flussAufgaben, flussPlanung, flussMarkttraktion, flussInbox, flussGesundheit, flussFinanzenPrivat } from '@/lib/fluss/bereiche';
+import { flussAufgaben, flussPlanung, flussMarkttraktion, flussInbox, flussGesundheit, flussFinanzenPrivat, flussFinanzenBusiness, flussKalender, flussNetzwerken } from '@/lib/fluss/bereiche';
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-fluss-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
@@ -236,5 +236,21 @@ describe('Baustein & Wächter', () => {
       expect(lies(f), f).not.toMatch(/<FlussKarte[^>]*fluss=\{\{/);
       expect(lies(f), f).not.toMatch(/\b(istReihe|prognoseReihe)\(/);
     }
+  });
+});
+
+describe('Jede Zeile führt zum Ort des Handelns (Prüfung 04.10.)', () => {
+  it('Zeilen tragen ihren eigenen Weg (Rechnung, Tag, Akte) vor dem Bereich', () => {
+    const h = '2026-10-04';
+    const b = flussFinanzenBusiness({ heute: h, saldo: [], vorschau: [], link: '/bereich', faellig: [{ id: 'r:1', titel: 'R', tag: '2026-10-10', wert: 100, eingang: true, link: '/os/finanzen/planung?r=1' }, { id: 'z:2', titel: 'Z', tag: '2026-10-11', wert: 50, eingang: false }] });
+    expect(b.zeilen.map(z => z.link)).toEqual(['/os/finanzen/planung?r=1', '/bereich']);
+    const k = flussKalender({ heute: h, link: '/os/kalender', termine: [{ id: 't', titel: 'T', start: '2026-10-06T09:00:00', ende: '2026-10-06T10:00:00', link: '/os/kalender?tag=2026-10-06' }] });
+    expect(k.zeilen[0].link).toBe('/os/kalender?tag=2026-10-06');
+    const n = flussNetzwerken({ heute: h, erfasst: [], link: '/os/netzwerken', nachfassen: [{ id: 'nf:1', titel: 'A', tag: '2026-10-08', link: '/akte' }] });
+    expect(n.zeilen[0].link).toBe('/akte');
+  });
+  it('alle Lader verlinken über WEG — keine festen Pfade', () => {
+    const quelle = readFileSync(path.resolve(__dirname, '..', 'lib/fluss/server.ts'), 'utf8');
+    expect(quelle).not.toMatch(/link: ['`]\/os/);
   });
 });

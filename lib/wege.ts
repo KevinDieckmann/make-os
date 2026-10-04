@@ -36,6 +36,9 @@ export const WEG = {
   heute: () => '/os/heute',
   uebersicht: (space: 'privat' | 'business') => `/os/uebersicht?space=${space}`,
   menschen: () => '/os/menschen',
+  /** Familie & Partnerschaft (Privat) · Inbox (eigenes Postfach). */
+  familie: () => '/os/familie',
+  inbox: () => '/os/inbox',
   /** Netzwerken (02.10.): die Seite für unterwegs (Erfassen, Abendbericht — `bericht` = Event; `event` = „Heute bei“ mit diesem Event vorwählen, 03.10.) · `netzwerkenKarte` = „Meine Visitenkarte“ (QR, vCard). */
   netzwerken: (o: { bericht?: string; event?: string } = {}) => q('/os/netzwerken', { bericht: o.bericht, event: o.event }),
   netzwerkenKarte: () => '/os/netzwerken/karte',
@@ -64,7 +67,7 @@ export const WEG = {
   grundlage: () => '/os/finanzen/grundlage',
 
   /** Gesellschafts-Register (04.10.): Liste bzw. eine Gesellschaft mit Reiter. */
-  unternehmen: (id?: string, reiter?: 'steckbrief' | 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender') => q('/os/unternehmen', { g: id, r: id && reiter && reiter !== 'steckbrief' ? reiter : undefined }),
+  unternehmen: (id?: string, reiter?: 'steckbrief' | 'gesellschafter' | 'organe' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender') => q('/os/unternehmen', { g: id, r: id && reiter && reiter !== 'steckbrief' ? reiter : undefined }),
   mandat: (id?: string) => mandateLink('mandate', id),
   produkt: (id?: string) => mandateLink('produkte', id),
   // Deal-Ebene (27.09.): eigener Reiter; ein Deal öffnet seine Akte.

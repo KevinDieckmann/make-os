@@ -64,7 +64,7 @@ export function flussFinanzenPrivat(i: { heute: string; ausgaben: readonly Fluss
   };
 }
 /** Business (Woche): Ist = Saldo der Firmen-Buchungen je Woche (€), Prognose = Liquiditäts-Vorschau (ein − aus je Woche). */
-export function flussFinanzenBusiness(i: { heute: string; saldo: readonly FlussEintrag[]; vorschau: readonly FlussEintrag[]; faellig: readonly { id: string; titel: string; tag: string; wert: number; eingang: boolean }[]; link?: string }): FlussReihe {
+export function flussFinanzenBusiness(i: { heute: string; saldo: readonly FlussEintrag[]; vorschau: readonly FlussEintrag[]; faellig: readonly { id: string; titel: string; tag: string; wert: number; eingang: boolean; link?: string }[]; link?: string }): FlussReihe {
   const p = prognoseReihe(i.vorschau, i.heute, 'woche');
   return {
     bereich: 'finanzen-business', titel: 'Saldo je Woche', einheit: 'euro', raster: 'woche', heute: i.heute,
@@ -72,7 +72,7 @@ export function flussFinanzenBusiness(i: { heute: string; saldo: readonly FlussE
     ...mitGrundlage(p, i.vorschau.filter(v => v.wert).length, 'aus der Liquiditäts-Vorschau'), prognoseLabel: 'ein − aus geplant',
     zeilen: zeilen([...i.faellig].sort((a, b) => a.tag.localeCompare(b.tag)).map(f => ({
       id: f.id, titel: f.titel, unter: `${f.eingang ? 'Eingang' : 'Zahlung'} · ${f.tag < i.heute ? `überfällig seit ${kurz(f.tag)}` : `fällig ${kurz(f.tag)}`}`,
-      zahl: `${f.eingang ? '+' : '−'}${flussZahl(f.wert, 'euro')}`, ton: f.tag < i.heute ? 'kritisch' as const : f.eingang ? 'gut' as const : 'info' as const, ...(i.link ? { link: i.link } : {}),
+      zahl: `${f.eingang ? '+' : '−'}${flussZahl(f.wert, 'euro')}`, ton: f.tag < i.heute ? 'kritisch' as const : f.eingang ? 'gut' as const : 'info' as const, ...((f.link ?? i.link) ? { link: f.link ?? i.link } : {}),
     }))),
     leer: 'Noch keine Firmen-Buchungen und keine Vorschau — beides erscheint mit Kontostand, Rechnungen und Zahlungen.',
   };
@@ -117,7 +117,7 @@ export function flussAufgaben(i: { heute: string; aufgaben: readonly AufgabePunk
 }
 
 // ── Kalender ─────────────────────────────────────────────────────────────────
-export interface TerminPunkt { id: string; titel: string; start: string; ende: string; ganztags?: boolean }
+export interface TerminPunkt { id: string; titel: string; start: string; ende: string; ganztags?: boolean; /** Ort zum Handeln (z. B. der Tag im Kalender) — sonst der Bereich. */ link?: string }
 export function flussKalender(i: { heute: string; termine: readonly TerminPunkt[]; link?: string }): FlussReihe {
   const zeitlich = i.termine.filter(t => !t.ganztags && tagVon(t.start));
   const stunden = (t: TerminPunkt) => Math.max(0, Math.min(24, (Date.parse(t.ende) - Date.parse(t.start)) / 36e5)) || 0;
@@ -127,14 +127,14 @@ export function flussKalender(i: { heute: string; termine: readonly TerminPunkt[
     ist: istReihe(zeitlich.filter(t => t.start.slice(0, 10) <= i.heute).map(t => ({ tag: t.start, wert: stunden(t) })), i.heute, 'woche'), istLabel: 'in Terminen',
     ...mitGrundlage(prognoseReihe(kuenftig.map(t => ({ tag: t.start, wert: stunden(t) })), i.heute, 'woche', { ueberfaelligHeute: false }), kuenftig.length, 'aus eingetragenen Terminen'), prognoseLabel: 'eingetragen',
     zeilen: zeilen([...kuenftig].sort((a, b) => a.start.localeCompare(b.start)).map(t => ({
-      id: t.id, titel: t.titel, unter: `Termin · ${kurz(t.start)} ${t.start.slice(11, 16)}`, zahl: flussZahl(stunden(t), 'stunden'), ton: 'info' as const, ...(i.link ? { link: i.link } : {}),
+      id: t.id, titel: t.titel, unter: `Termin · ${kurz(t.start)} ${t.start.slice(11, 16)}`, zahl: flussZahl(stunden(t), 'stunden'), ton: 'info' as const, ...((t.link ?? i.link) ? { link: t.link ?? i.link } : {}),
     }))),
     leer: 'Noch keine Termine — der Verlauf erscheint, sobald der Kalender verbunden ist.',
   };
 }
 
 // ── Gesundheit ───────────────────────────────────────────────────────────────
-export function flussGesundheit(i: { heute: string; einheiten: readonly string[]; planJeWoche: number; planAb?: string | null; termine: readonly { id: string; titel: string; tag: string }[]; link?: string }): FlussReihe {
+export function flussGesundheit(i: { heute: string; einheiten: readonly string[]; planJeWoche: number; planAb?: string | null; termine: readonly { id: string; titel: string; tag: string; link?: string }[]; link?: string }): FlussReihe {
   // Plan: je Woche ab der laufenden (bzw. ab Planstart) so viele Einheiten, wie der Wochenplan vorsieht — ein Plan, keine Schätzung.
   const plan: FlussEintrag[] = [];
   if (i.planJeWoche > 0) for (let w = 0; w < 13; w++) { const tag = wochenEnde(i.heute, 7 * w); if (!i.planAb || tag >= i.planAb) plan.push({ tag, wert: i.planJeWoche }); }
@@ -143,7 +143,7 @@ export function flussGesundheit(i: { heute: string; einheiten: readonly string[]
     bereich: 'gesundheit', titel: 'Training je Woche', einheit: 'anzahl', raster: 'woche', heute: i.heute,
     ist: istReihe(i.einheiten.map(tag => ({ tag })), i.heute, 'woche'), istLabel: 'Einheiten',
     ...mitGrundlage(prognoseReihe(plan, i.heute, 'woche', { ueberfaelligHeute: false }), plan.length, 'aus deinem Wochenplan'), prognoseLabel: 'geplant',
-    zeilen: zeilen(kommend.map(t => ({ id: t.id, titel: t.titel, unter: `Gesundheit · ${kurz(t.tag)}`, ton: 'info' as const, ...(i.link ? { link: i.link } : {}) }))),
+    zeilen: zeilen(kommend.map(t => ({ id: t.id, titel: t.titel, unter: `Gesundheit · ${kurz(t.tag)}`, ton: 'info' as const, ...((t.link ?? i.link) ? { link: t.link ?? i.link } : {}) }))),
     leer: 'Noch keine Einheiten — trag ein Training ein oder lege deinen Wochenplan an.',
   };
 }
@@ -163,7 +163,7 @@ export function flussFamilie(i: { heute: string; gewesen: readonly MomentPunkt[]
 }
 
 // ── Netzwerken ───────────────────────────────────────────────────────────────
-export function flussNetzwerken(i: { heute: string; erfasst: readonly string[]; nachfassen: readonly { id: string; titel: string; tag: string }[]; link?: string }): FlussReihe {
+export function flussNetzwerken(i: { heute: string; erfasst: readonly string[]; nachfassen: readonly { id: string; titel: string; tag: string; link?: string }[]; link?: string }): FlussReihe {
   const ueber = i.nachfassen.filter(n => n.tag < i.heute);
   const kommend = i.nachfassen.filter(n => n.tag >= i.heute).sort((a, b) => a.tag.localeCompare(b.tag));
   return {
@@ -172,7 +172,7 @@ export function flussNetzwerken(i: { heute: string; erfasst: readonly string[]; 
     ...mitGrundlage(prognoseReihe(i.nachfassen.map(n => ({ tag: n.tag })), i.heute, 'woche'), i.nachfassen.length, 'aus fälligem Nachfassen'), prognoseLabel: 'nachfassen',
     zeilen: zeilen([
       ueber.length > 0 && { id: 'ueberfaellig', titel: `${ueber.length} Kontakt${ueber.length === 1 ? '' : 'e'} nachfassen — überfällig`, unter: 'Netzwerken · Danke-Mail oder Anruf', zahl: String(ueber.length), ton: 'kritisch' as const, ...(i.link ? { link: i.link } : {}) },
-      ...kommend.map(n => ({ id: n.id, titel: n.titel, unter: `Nachfassen · ${kurz(n.tag)}`, ton: 'info' as const, ...(i.link ? { link: i.link } : {}) })),
+      ...kommend.map(n => ({ id: n.id, titel: n.titel, unter: `Nachfassen · ${kurz(n.tag)}`, ton: 'info' as const, ...((n.link ?? i.link) ? { link: n.link ?? i.link } : {}) })),
     ]),
     leer: 'Noch niemand erfasst — auf der nächsten Veranstaltung „Erfassen“ öffnen.',
   };

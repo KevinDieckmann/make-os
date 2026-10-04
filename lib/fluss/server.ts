@@ -121,8 +121,8 @@ async function finanzenBusiness(heute: string): Promise<FlussReihe> {
     heute, saldo, link: WEG.liquiditaet(),
     vorschau: (v?.wochen ?? []).map(w => ({ tag: w.von, wert: Math.round(w.eingang - w.ausgang) })),
     faellig: [
-      ...rechnungen.map(r => ({ id: `r:${r.id}`, titel: r.titel, tag: r.faellig!.slice(0, 10), wert: r.betrag, eingang: true })),
-      ...zahlungen.map(z => ({ id: `z:${z.id}`, titel: z.titel, tag: z.faellig!.slice(0, 10), wert: z.betrag, eingang: false })),
+      ...rechnungen.map(r => ({ id: `r:${r.id}`, titel: r.titel, tag: r.faellig!.slice(0, 10), wert: r.betrag, eingang: true, link: WEG.rechnung(r.id) })),
+      ...zahlungen.map(z => ({ id: `z:${z.id}`, titel: z.titel, tag: z.faellig!.slice(0, 10), wert: z.betrag, eingang: false, link: WEG.zahlung(z.id) })),
     ].filter(f => f.tag <= tagPlus(heute, 30)),
   });
 }
@@ -172,7 +172,7 @@ async function kalender(person: string, heute: string): Promise<FlussReihe> {
   const k = await termineFuerZoe(person, tagPlus(heute, -ZURUECK), tagPlus(heute, VORAUS));
   // Nur eigene und gemeinsame Termine — „Belegt“ der anderen Person ist ihre Zeit, nicht meine.
   const meine = [...k.termine, ...k.kemaris].filter(t => !t.maskiert && (!t.wer || t.wer === person || t.wer === BEIDE));
-  return flussKalender({ heute, link: WEG.kalender(), termine: meine.map(t => ({ id: t.id, titel: t.titel, start: t.start, ende: t.ende, ganztags: t.ganztags })) });
+  return flussKalender({ heute, link: WEG.kalender(), termine: meine.map(t => ({ id: t.id, titel: t.titel, start: t.start, ende: t.ende, ganztags: t.ganztags, link: WEG.kalender(t.start.slice(0, 10)) })) });
 }
 
 // ── Gesundheit (nur die eigene Person) ───────────────────────────────────────
@@ -190,8 +190,8 @@ async function gesundheit(person: string, heute: string): Promise<FlussReihe> {
     heute, planJeWoche, planAb: tag(sport?.planStart), link: WEG.gesundheit(),
     einheiten,
     termine: [
-      ...(sport?.ziele ?? []).filter(z => tag(z.datum) && !z.erledigt).map(z => ({ id: `sport:${z.id}`, titel: z.titel, tag: z.datum!.slice(0, 10) })),
-      ...routinen.map(x => ({ id: `routine:${x.id}`, titel: x.label, tag: x.naechstesMal!.slice(0, 10) })),
+      ...(sport?.ziele ?? []).filter(z => tag(z.datum) && !z.erledigt).map(z => ({ id: `sport:${z.id}`, titel: z.titel, tag: z.datum!.slice(0, 10), link: WEG.sport() })),
+      ...routinen.map(x => ({ id: `routine:${x.id}`, titel: x.label, tag: x.naechstesMal!.slice(0, 10), link: WEG.routinen() })),
     ],
   });
 }
@@ -215,7 +215,7 @@ async function familie(person: string, heute: string): Promise<FlussReihe | null
     ...sichtFuer(f.vereinbarungen ?? [], person).filter(v => v.status === 'offen' && v.faellig).map(v => ({ id: `v:${v.id}`, titel: v.text, tag: v.faellig!, art: 'vereinbarung' as const })),
     ...sichtFuer(f.tage ?? [], person).map(t => ({ id: `tag:${t.id}`, titel: t.titel, tag: naechstes(t.datum, heute) ?? '', art: 'tag' as const })),
   ].filter(m => tag(m.tag) && m.tag <= tagPlus(heute, VORAUS));
-  return flussFamilie({ heute, gewesen, geplant, link: '/os/familie' });
+  return flussFamilie({ heute, gewesen, geplant, link: WEG.familie() });
 }
 
 // ── Netzwerken (Haushalt, Business) ──────────────────────────────────────────
@@ -227,7 +227,7 @@ async function netzwerken(heute: string): Promise<FlussReihe> {
   const erfasst = crm.teilnahmen.filter(t => t.netzwerken && tag(t.netzwerken.erfasstAm)).map(t => t.netzwerken!.erfasstAm.slice(0, 10));
   const nachfassen = crm.teilnahmen.filter(t => t.netzwerken && tag(t.followUpAm) && !t.nachfassenVerzichtet).map(t => {
     const k = kontakte.get(t.kontaktId);
-    return { id: `nf:${t.id}`, titel: k ? [k.vorname, k.nachname].filter(Boolean).join(' ') || 'Kontakt' : 'Kontakt', tag: t.followUpAm!.slice(0, 10) };
+    return { id: `nf:${t.id}`, titel: k ? [k.vorname, k.nachname].filter(Boolean).join(' ') || 'Kontakt' : 'Kontakt', tag: t.followUpAm!.slice(0, 10), ...(k ? { link: WEG.akte(k.id) } : {}) };
   });
   return flussNetzwerken({ heute, erfasst, nachfassen, link: WEG.netzwerken() });
 }
@@ -244,5 +244,5 @@ async function inbox(person: string, heute: string): Promise<FlussReihe> {
   const eigene = new Set(koepfe.flatMap(k => [`gmail-${k.threadId}`, `gmail-${k.id}`]));
   const wiedervorlagen = Object.entries(status ?? {}).filter(([id, s]) => eigene.has(id) && s?.status === 'snoozed' && tag(s.bis)).map(([, s]) => s.bis!.slice(0, 10));
   const offen = koepfe.filter(k => k.labels.includes('INBOX') && k.labels.includes('UNREAD')).length;
-  return flussInbox({ heute, eingang, wiedervorlagen, offen, verbunden: !!g, link: '/os/inbox' });
+  return flussInbox({ heute, eingang, wiedervorlagen, offen, verbunden: !!g, link: WEG.inbox() });
 }
