@@ -15,7 +15,7 @@ import { tagPlus } from '@/lib/zeit/kalender-kern';
 import type { KapaStand, PersonStand, Machbarkeit, Ausnahme } from '@/lib/kapazitaet/typen';
 import { stufeVon } from '@/lib/kapazitaet/modell';
 import type { KapaOp } from '@/lib/kapazitaet/aendern';
-import { Seite, Karte, Ueberschrift, Zahl, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, auswahl, LEUCHT } from '../ui';
+import { Seite, Karte, Ueberschrift, Zahl, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, auswahl, useHandy, LEUCHT } from '../ui';
 import { PlanerLeiste } from '../PlanerLeiste';
 import { useKapazitaet, type Bezug } from './useKapazitaet';
 import { MachbarMarke, LastBand, STUFE_FARBE, STUFE_TEXT } from './teile';
@@ -84,7 +84,7 @@ function MachbarKarte({ posten }: { posten: Machbarkeit[] }) {
           <Link key={`${p.art}:${p.id}`} href={p.art === 'ziel' ? WEG.ziel(p.id) : WEG.meilenstein(p.id)} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
             <Zeile umbrechen titel={p.titel}
               links={<span style={{ fontSize: TYP.bedien, fontFamily: SCHRIFT.display, fontWeight: 600, color: C.inkLeise, width: 52, flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{p.termin ? kurz(p.termin) : '—'}</span>}
-              unter={<span>{p.art === 'ziel' ? 'Ziel · ' : ''}{p.rest != null ? `Rest ${z(p.rest)} h von ${z(p.aufwand ?? 0)} h` : ''}{p.istStunden ? ` · ${z(p.istStunden)} h gemessen` : ''} — {p.text}</span>}
+              unter={<span>{p.art === 'ziel' ? 'Ziel · ' : ''}{p.rest != null ? `Rest ${z(p.rest)} h von ${z(p.aufwand ?? 0)} h` : ''}{p.istStunden ? ` · ${z(p.istStunden)} h gemessen` : ''} — {p.text.replace(/^(machbar|eng|nicht machbar) — /, '')}</span>}
               rechts={<MachbarMarke m={p} />} />
           </Link>
         ))}
@@ -110,7 +110,9 @@ function PersonKarte({ p, i, ich, inhaber, personen, bezuege, zuweisungen, aende
   const darf = inhaber || ich === p.id;
   const [meldung, setMeldung] = useState<string | null>(null);
   const los = async (ops: KapaOp[]) => { setMeldung(await aendern(ops)); };
-  const wochen = p.wochen.slice(0, WOCHEN);
+  // Am Handy 6 Wochen (lesbare Beschriftung), am Rechner 12.
+  const handy = useHandy();
+  const wochen = p.wochen.slice(0, handy ? 6 : WOCHEN);
   const max = Math.max(1, ...wochen.map(w => Math.max(w.belastbar, w.bedarf)));
   const eigen = ich === p.id;
   return (
@@ -136,7 +138,7 @@ function PersonKarte({ p, i, ich, inhaber, personen, bezuege, zuweisungen, aende
       {p.erholung && eigen && (
         <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>Deine Erholung: Ø {p.erholung.wert} % → Faktor {z(p.erholung.faktor)} <span style={{ color: C.inkLeise }}>(nur du siehst den Wert — das Team sieht nur den gemeinsamen Faktor)</span></div>
       )}
-      <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, marginTop: 16 }}>
         {darf && <Grundwert p={p} los={los} />}
         <Ausnahmen p={p} darf={darf} los={los} />
         <Zuweisungen p={p} darf={darf} zuweisungen={zuweisungen} bezuege={bezuege} personen={personen} los={los} />
@@ -146,14 +148,14 @@ function PersonKarte({ p, i, ich, inhaber, personen, bezuege, zuweisungen, aende
   );
 }
 
-const zeileStil = { display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center' };
-const klein = { ...feld, width: 'auto', minWidth: 0, colorScheme: 'dark' as const };
+const zeileStil = { display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center', minWidth: 0 };
+const klein = { ...feld, width: 'auto', minWidth: 0, maxWidth: '100%', colorScheme: 'dark' as const };
 
 function Grundwert({ p, los }: { p: PersonStand; los: (ops: KapaOp[]) => Promise<void> }) {
   const [wert, setWert] = useState<string>(p.grundwertQuelle === 'einstellung' ? String(p.grundwert) : '');
   return (
     <div style={zeileStil}>
-      <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, minWidth: 110 }}>Grundwert</span>
+      <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, flex: '1 0 100%' }}>Grundwert</span>
       <input type="number" inputMode="decimal" min={0} max={80} step={1} value={wert} placeholder={`${z(p.grundwert)}`} aria-label={`Grundwert ${p.name} in Stunden je Woche`}
         onChange={e => setWert(e.target.value)} style={{ ...klein, width: 96 }} />
       <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>h je Woche</span>
@@ -173,8 +175,8 @@ function Ausnahmen({ p, darf, los }: { p: PersonStand; darf: boolean; los: (ops:
       {!p.ausnahmen.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine — Abwesenheiten und Feiertage aus dem Kalender zählen von selbst.</span>}
       <div style={zeileStil}>
         {p.ausnahmen.map(a => (
-          <span key={a.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Chip farbe={a.art === 'urlaub' ? LEUCHT.planung : LEUCHT.agenten}>{text(a)}{a.titel ? ` · ${a.titel}` : ''}</Chip>
+          <span key={a.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+            <Chip umbrechen farbe={a.art === 'urlaub' ? LEUCHT.planung : LEUCHT.agenten}>{text(a)}{a.titel ? ` · ${a.titel}` : ''}</Chip>
             {darf && <button type="button" aria-label={`${text(a)} entfernen`} onClick={() => void los([{ op: 'ausnahme-weg', person: p.id, id: a.id }])} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: 15 }}>×</button>}
           </span>
         ))}
@@ -184,10 +186,10 @@ function Ausnahmen({ p, darf, los }: { p: PersonStand; darf: boolean; los: (ops:
           <select value={art} onChange={e => setArt(e.target.value === 'block' ? 'block' : 'urlaub')} aria-label="Art der Ausnahme" style={auswahl}>
             <option value="urlaub">Urlaub</option><option value="block">fester Block</option>
           </select>
-          <input type="date" value={von} onChange={e => setVon(e.target.value)} aria-label="von" style={klein} />
-          <input type="date" value={bis} onChange={e => setBis(e.target.value)} aria-label={art === 'block' ? 'bis (optional)' : 'bis'} style={klein} />
+          <input type="date" value={von} onChange={e => setVon(e.target.value)} aria-label="von" style={{ ...klein, flex: '1 1 140px' }} />
+          <input type="date" value={bis} onChange={e => setBis(e.target.value)} aria-label={art === 'block' ? 'bis (optional)' : 'bis'} style={{ ...klein, flex: '1 1 140px' }} />
           {art === 'block' && <input type="number" min={1} max={80} value={sw} onChange={e => setSw(e.target.value)} placeholder="h/Woche" aria-label="Stunden je Woche" style={{ ...klein, width: 100 }} />}
-          <input value={titel} onChange={e => setTitel(e.target.value)} maxLength={80} placeholder="Notiz (nur du siehst sie)" aria-label="Notiz" style={{ ...klein, flex: '1 1 160px' }} />
+          <input value={titel} onChange={e => setTitel(e.target.value)} maxLength={80} placeholder="Notiz (nur du siehst sie)" aria-label="Notiz" style={{ ...klein, flex: '1 1 160px', width: 0 }} />
           <Knopf leise aus={!von || (art === 'urlaub' && !bis) || (art === 'block' && !sw)} onClick={async () => {
             await los([{ op: 'ausnahme', person: p.id, ausnahme: { art, von, ...(bis ? { bis } : {}), ...(art === 'block' ? { stundenWoche: Number(sw) } : {}), ...(titel.trim() ? { titel: titel.trim() } : {}) } }]);
             setVon(''); setBis(''); setSw(''); setTitel('');
@@ -207,8 +209,8 @@ function Zuweisungen({ p, darf, zuweisungen, bezuege, los }: { p: PersonStand; d
       {!zuweisungen.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine wiederkehrend gebundene Zeit.</span>}
       <div style={zeileStil}>
         {zuweisungen.map(x => (
-          <span key={x.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Chip farbe={LEUCHT.business}>{x.label} · {z(x.stundenWoche)} h/Woche</Chip>
+          <span key={x.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+            <Chip umbrechen farbe={LEUCHT.business}>{x.label} · {z(x.stundenWoche)} h/Woche</Chip>
             {darf && <button type="button" aria-label={`Zuweisung ${x.label} entfernen`} onClick={() => void los([{ op: 'zuweisung-weg', id: x.id }])} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 32, minHeight: 32, fontSize: 15 }}>×</button>}
           </span>
         ))}
