@@ -32,9 +32,9 @@ export const KP_KENNZAHLEN: KennzahlDefBasis[] = [
   { id: 'kp_puffer', label: 'Puffer je Woche', saeule: KP_ID, gruppe: 'Last', einheit: 'stunden', richtung: 'hoch', gruen: 8, rot: 0,
     formel: 'Ø (belastbare − verplante Stunden) je Woche, nächste 4 Wochen — Team gesamt',
     quelle: 'Kapazität', luecke: 'Noch nichts verplant', pflegen: PFLEGEN },
-  { id: 'kp_kopf', label: 'Kopf & Energie (Team)', saeule: KP_ID, gruppe: 'Kopf & Energie', einheit: 'prozent', richtung: 'hoch', gruen: 95, rot: 80,
-    formel: 'Ø Faktor aus der Erholung (grün 100 % · gelb 90 % · rot 75 %) — nur Personen, die ihre Gesundheit im Haushalt teilen; nur als Summe',
-    quelle: 'Erholung (Whoop, 7 Tage) — wirkt auf die nächsten 14 Tage', luecke: 'Keine geteilte Erholung gemessen', pflegen: PFLEGEN },
+  // „Kopf & Energie“ steht bewusst NICHT im Business-Index (DSGVO-Prüfung 04.10.): der Team-Faktor kommt aus Erholungswerten
+  // (Gesundheitsdaten, Art. 9) — bei einer einzigen teilenden Person wäre er ihr Einzelwert, und der Index geht an ZOE, in den
+  // Verlauf und in Berichte. Der Faktor wirkt nur IN der Kapazität (belastbare Zeit) und ist nur dort zu sehen.
 ];
 
 const z = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 1 });
@@ -69,10 +69,6 @@ export function kpMessung(id: string, k: KapaKennzahlen | null | undefined): Mes
     case 'kp_puffer': {
       if (k.pufferStdWoche == null) return { luecke: 'Noch nichts verplant' };
       return { wert: k.pufferStdWoche, anzeige: `${z(k.pufferStdWoche)} h/Woche`, quelle: `${z(k.belastbar4 - k.bedarf4)} h frei in 4 Wochen (Team)`, details: mindestens(postenDetails(k).slice(0, 3)) };
-    }
-    case 'kp_kopf': {
-      if (k.erholung == null) return { luecke: 'Keine geteilte Erholung gemessen — Kopf & Energie zählt dann neutral (100 %)' };
-      return { wert: k.erholung, anzeige: `${k.erholung} %`, quelle: `Team-Faktor aus ${k.erholungPersonen} Person${k.erholungPersonen === 1 ? '' : 'en'} · wirkt auf die nächsten 14 Tage`, details: [jePerson] };
     }
     default: return { luecke: 'Keine Messung hinterlegt' };
   }

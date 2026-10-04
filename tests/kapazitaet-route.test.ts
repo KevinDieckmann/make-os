@@ -73,6 +73,30 @@ describe('Kapazität — wer darf sehen', () => {
   });
 });
 
+describe('Kapazität — Gesundheit (Art. 9, DSGVO-Prüfung 04.10.)', () => {
+  it('der Business-Index bekommt NIE die Erholungs-Ableitung (auch nicht als Team-Faktor) — und keine Kennzahl „Kopf & Energie“', async () => {
+    const { kapaKennzahlenFuerIndex } = await import('@/lib/kapazitaet/server');
+    const k = await kapaKennzahlenFuerIndex();
+    expect(k).not.toBeNull();
+    expect(k!.erholung).toBeNull();
+    expect(k!.erholungPersonen).toBe(0);
+    const { KENNZAHLEN } = await import('@/lib/business/register');
+    expect(KENNZAHLEN.some(x => x.id === 'kp_kopf' || /erholung|whoop|recovery|gesundheit/i.test(`${x.label} ${x.formel} ${x.quelle}`))).toBe(false);
+  });
+  it('teilt eine Person nicht mit JEDEM Konto des Haushalts, zählt ihre Erholung gar nicht — auch nicht im Team-Faktor', async () => {
+    const konten = await db.loadJson<{ konten: Record<string, unknown>[] }>('konten');
+    // Ein drittes Konto im selben Haushalt — pa teilt nur mit pb, nicht mit pc.
+    await db.saveJson('konten', { ...konten, konten: [...konten!.konten, { id: '4', speicher: 'pc', email: 'pc@example.invalid', name: 'Carla Prüf', rolle: 'mitglied', hash: 'x', salz: 'x', angelegt: '2026-09-01', teilt: { gesundheit: [] }, haushalt: 'h-pruef' }] });
+    try {
+      const fuerC = await (await route.GET(get('pc'))).json();
+      expect(fuerC.ok).toBe(true);
+      expect(fuerC.stand.team.kopf).toMatchObject({ faktor: 1, personen: 0 });
+    } finally {
+      await db.saveJson('konten', konten);
+    }
+  });
+});
+
 describe('Kapazität — wer darf ändern', () => {
   it('eigene Kapa ja, fremde 403, Inhaber für das Team ja; Ausnahme-Titel sieht nur die Person selbst', async () => {
     expect((await route.PATCH(patch('pb', [{ op: 'grundwert', person: 'konto-pa', stundenWoche: 10 }]))).status).toBe(403);

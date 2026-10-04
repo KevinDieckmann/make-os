@@ -29,7 +29,7 @@ import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { meilensteinVonAufgabe, zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { zielJahr } from '@/lib/planung/zeitstrahl';
 import type { Meilenstein, ZieleDatei } from '@/lib/planung/typen';
-import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter } from './modell';
+import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit } from './modell';
 import { sauberKapaDatei, kapaAendern, type Ergebnis } from './aendern';
 import { WOCHEN_STANDARD, type KapaDatei, type KapaStand, type PersonEingabe, type PostenEingabe, type KapaKennzahlen } from './typen';
 
@@ -93,7 +93,10 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
     sicher(() => ladeCrm(), null),
   ]);
   const ms = (msDatei?.meilensteine ?? []).filter(m => meilensteinSpace(m) === 'business');
-  const kontoSpeicher = new Set(personen.filter(p => p.speicher).map(p => p.speicher as string));
+  // Teilen-Regel gegen ALLE Konten des Haushalts (auch solche, die gerade nicht im aktiven Team stehen) — jedes davon darf
+  // /api/kapazitaet lesen und sähe den Team-Faktor (DSGVO-Prüfung 04.10., Art. 9).
+  const haushalt = await haushaltDesInhabers();
+  const kontoSpeicher = new Set(konten.filter(k => haushalt ? k.haushalt === haushalt : personen.some(p => p.speicher === k.speicher)).map(k => k.speicher));
 
   // Ist: bewusste Business-Fokuszeit je Person und Tag (4 Wochen zurück) und je Meilenstein (über die Aufgaben-Liste).
   const ist: { person: string; tag: string; stunden: number }[] = [];
@@ -161,7 +164,11 @@ export async function kapaStandFuer(person: string, heute = localDay()) {
   return { stand: fuerBetrachter(stand, kapaIdVon(person)), bezuege };
 }
 
-/** Nur die Kennzahlen der Säule „Kapazität“ (Business-Index) — Summen, nie Einzelwerte. Fehler → null (Säule zählt nicht). */
+/**
+ * Nur die Kennzahlen der Säule „Kapazität“ (Business-Index) — Summen, nie Einzelwerte. Fehler → null (Säule zählt nicht).
+ * Ohne Gesundheits-Ableitung (DSGVO-Prüfung 04.10., Art. 9): der Index geht an ZOE, in den Verlauf und in Berichte — der
+ * Erholungs-Faktor bleibt in der Kapazität (`ohneGesundheit`).
+ */
 export async function kapaKennzahlenFuerIndex(heute = localDay()): Promise<KapaKennzahlen | null> {
-  try { return fuerBetrachter((await gemerkt(heute)).stand, null).kennzahlen; } catch { return null; }
+  try { return ohneGesundheit(fuerBetrachter((await gemerkt(heute)).stand, null).kennzahlen); } catch { return null; }
 }

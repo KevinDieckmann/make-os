@@ -317,3 +317,12 @@ export function fuerBetrachter(stand: KapaStand, betrachter: string | null): Kap
     }),
   };
 }
+
+/**
+ * Kennzahlen ohne Gesundheits-Ableitung (DSGVO-Prüfung 04.10., Art. 9): `erholung`/`erholungPersonen` fallen weg, bevor die
+ * Summen den Kapazitäts-Bereich verlassen (Business-Index → ZOE, Verlauf, Berichte). Bei einer einzigen teilenden Person
+ * wäre der Team-Faktor sonst ihr Einzelwert.
+ */
+export function ohneGesundheit(k: KapaKennzahlen): KapaKennzahlen {
+  return { ...k, erholung: null, erholungPersonen: 0 };
+}
