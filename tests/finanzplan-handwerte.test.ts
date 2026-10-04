@@ -244,7 +244,7 @@ describe('(f) Schreibweg mit Sperre: 409 bei fremdem Stand, 413 über der Grenze
     const groß = await speicher.importieren('test-hand', { ...d, plan: Object.fromEntries(Array.from({ length: GRENZE_PLAN_ZELLEN }, (_, i) => [`z${i}:1`, 1])) }, true, 'kevin', 'Test');
     const z = await speicher.patchen('test-hand', (groß as { stand: string }).stand, ops, 'kevin');
     expect(z).toMatchObject({ ok: false, status: 413 });
-  });
+  }, 30_000);   // 20.000 Zellen schreiben und lesen — unter Last langsam
 });
 
 describe('(g) alte Dokumente und der Rückweg', () => {

@@ -341,7 +341,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
               style={{ ...feld, minHeight: 32, width: Math.max(ZELLE_MIN - 4, 8 * bearbeitet!.text.length + 20), padding: '2px 6px', borderRadius: 6, fontSize: TYP.bedien, textAlign: 'right', fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', border: `1px solid ${C.aktiv}` }} />
           ) : <span style={geldStil}>{v == null ? (modus === 'plan' ? '' : '·') : eur(v)}</span>}
           {hatNotiz && !bearb && <span aria-hidden style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: LEUCHT.business }} />}
-          {vonHand && !bearb && <span aria-hidden title="von Hand" style={{ position: 'absolute', top: 1, left: 5, fontSize: 9, lineHeight: 1, color: LEUCHT.achtung, fontFamily: SCHRIFT.text }}>✎</span>}
+          {vonHand && !bearb && <span aria-hidden title="von Hand" style={{ position: 'absolute', top: 0, left: 3, fontSize: TYP.bedien, lineHeight: 1, color: LEUCHT.achtung, fontFamily: SCHRIFT.text }}>✎</span>}
         </td>
       );
     });

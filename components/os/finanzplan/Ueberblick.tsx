@@ -13,7 +13,7 @@ import { zielStaende, zahlungskalender, istSchnitt, sollBudget } from '@/lib/fin
 import type { ZielStand } from '@/lib/finanzen/rechenkern';
 import { eur, prozent, tagKurz, datumLang, plusTage, offeneBuchungen, heuteIndex, letzterVoller, tageIm, achse, monatLabel, neueKennung, postenOffen } from '@/lib/finanzen/plan/hilfen';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
-import { UG_KURZ } from '@/lib/einheiten';
+import { UG_KURZ, finanzOrtName } from '@/lib/einheiten';
 import { entscheidungen } from '@/lib/finanzen/szenarien';
 import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { luecken } from '@/lib/finanzen/luecken';
@@ -299,7 +299,7 @@ export function LageBusiness() {
           </Karte>
         </Spalte>
       </Spalten>
-      <Hinweis>Nur Business: MAKE Innovation GmbH, KD Ventures und Selbstständigkeit. Privat (Haushalt, Konten, Luft, private Ziele) steht unter Finanzen › Privat › Finanzplanung. Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
+      <Hinweis>Nur Business: {finanzOrtName('ug')}, {finanzOrtName('kdv')} und {finanzOrtName('kdc')}. Privat (Haushalt, Konten, Luft, private Ziele) steht unter Finanzen › Privat › Finanzplanung. Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
     </>
   );
 }
