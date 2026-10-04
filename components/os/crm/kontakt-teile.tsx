@@ -16,7 +16,7 @@ import { useEffect, useState, type ReactNode, type KeyboardEvent as TastenEreign
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Punkt, feld, LEUCHT, useRueckfrage } from '../ui';
 import { WEG } from '@/lib/wege';
-import { anzeigename, STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN, type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt, ROLLEN as KONTAKT_ROLLEN, ROLLE_LABEL, rollenVon, type Rolle } from '@/lib/make-one/crm';
+import { STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN, type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt, ROLLEN as KONTAKT_ROLLEN, ROLLE_LABEL, rollenVon, type Rolle } from '@/lib/make-one/crm';
 import type { Firma } from '@/lib/crm/typen';
 import { art14 } from '@/lib/crm/recht';
 import { nachweisLuecken } from '@/lib/crm/einwilligung';
