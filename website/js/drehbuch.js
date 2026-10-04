@@ -28,7 +28,7 @@
         optionen: { breite: 12, start: 'Berlin' } },
       { name: 'funken', formation: 'funken', s: 360, abstand: 15, hebung: 1, breite: 7, hoehe: 5, schub: .5, funkeln: 1 },
       { name: 'ki', formation: 'strahl', s: 394, abstand: 16, hebung: 2, breite: 10.4, hoehe: 5, schub: .5 },
-      { name: 'wirkung', formation: 'wirkung', s: 428, abstand: 16, hebung: 1.2, breite: 7.6, hoehe: 3.6, schub: .5 },
+      { name: 'wirkung', formation: 'wirkung', s: 428, abstand: 16, hebung: 1.2, breite: 9, hoehe: 3.6, schub: .5 },
       { name: 'kontakt', formation: 'zeichen', s: 466, abstand: 20, hebung: 0, breite: 12.6, hoehe: 5, schub: .5, optionen: { breite: 24 } },
     ],
   };

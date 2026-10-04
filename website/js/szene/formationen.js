@@ -300,7 +300,7 @@
 
     wirkung(b) {
       // Menschen in einer Runde (links), daraus drei Ströme nach rechts, die in einem Punkt zusammenlaufen.
-      const { z, N } = b, menschen = [], ys = [1.8, 0, -1.8], farben = [GRANAT, WEISS, SMARAGD], x0 = -.8, von = -2.4 + x0, bis = 7.4 + x0, lang = bis - von;
+      const { z, N } = b, menschen = [], ys = [1.8, 0, -1.8], farben = [GRANAT, WEISS, SMARAGD], x0 = .6, von = -2.4 + x0, bis = 7.4 + x0, lang = bis - von;
       for (let i = 0; i < 9; i++) { const a = i / 9 * TAU; menschen.push([-4.3 + x0 + Math.cos(a) * 1.7, Math.sin(a) * 1.7, Math.sin(a * 2) * .4]); }
       for (const [i, m] of menschen.entries()) for (let k = 0; k < 16; k++) b.punkt(m[0] + z.g() * .07, m[1] + z.g() * .07, m[2] + z.g() * .07, i % 3 === 0 ? GRANAT : i % 3 === 1 ? SMARAGD : HELL, .7 + .25 * z());
       menschen.forEach((m, i) => { b.linie(m, menschen[(i + 1) % 9], 0, 0, WEISS, .4, z()); b.linie(m, menschen[(i + 4) % 9], 0, 0, GRAU, .2, z()); });
