@@ -47,7 +47,10 @@ export interface BekannteAusgabe { titel: string; tag: string; wert: number; art
 /** Privat (Monat): Ist = Ausgaben der Buchungen (positiv, €), Prognose = bekannte Ausgaben (Raten, offene Rechnungen, feste Kosten). */
 export function flussFinanzenPrivat(i: { heute: string; ausgaben: readonly FlussEintrag[]; bekannt: readonly BekannteAusgabe[]; link?: string }): FlussReihe {
   const p = prognoseReihe(i.bekannt, i.heute, 'monat');
-  const naechste = [...i.bekannt].filter(b => b.art !== 'fix' && b.tag >= i.heute).sort((a, b) => a.tag.localeCompare(b.tag));
+  // Je Rate bzw. Rechnung nur die nächste Fälligkeit (eine Zeile je Posten, nicht jede Monatsrate).
+  const gesehen = new Set<string>();
+  const naechste = [...i.bekannt].filter(b => b.art !== 'fix' && b.tag >= i.heute).sort((a, b) => a.tag.localeCompare(b.tag))
+    .filter(b => (gesehen.has(`${b.art}:${b.titel}`) ? false : (gesehen.add(`${b.art}:${b.titel}`), true)));
   const ueber = i.bekannt.filter(b => b.art === 'rechnung' && b.tag < i.heute);
   return {
     bereich: 'finanzen-privat', titel: 'Ausgaben je Monat', einheit: 'euro', raster: 'monat', heute: i.heute,

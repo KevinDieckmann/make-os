@@ -72,6 +72,9 @@ describe('Reihen (rein)', () => {
     expect(flussInbox({ heute: HEUTE, eingang: [], wiedervorlagen: [], offen: 0, verbunden: false }).leer).toContain('Kein Postfach');
     expect(flussPlanung({ heute: HEUTE, punkte: [] }).prognoseGrundlage).toBeNull();
     expect(flussFinanzenPrivat({ heute: HEUTE, ausgaben: [], bekannt: [] }).prognose).toEqual([]);
+    const raten = flussFinanzenPrivat({ heute: HEUTE, ausgaben: [], bekannt: [10, 11, 12].map(m => ({ titel: 'Kredit', tag: `2026-${m}-16`, wert: 320, art: 'rate' as const })) });
+    expect(raten.zeilen.map(z => z.titel)).toEqual(['Kredit']); // je Posten nur die nächste Rate
+    expect(raten.prognose.slice(0, 3)).toEqual([320, 320, 320]);
   });
   it('Text für Vorleser nennt Ist und Prognose bzw. „Keine Prognose“', () => {
     const a = flussAufgaben({ heute: HEUTE, aufgaben: [{ id: 't1', titel: 'x', erledigt: true, erledigtAm: '2026-09-30' }] });
