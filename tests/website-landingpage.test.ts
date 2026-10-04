@@ -6,7 +6,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE, QUELLEN_LINKS, NAVIGATION, STAEDTE, FOKUS_SEITE, GEWICHT_GRENZE } from '../website/pruefen.mjs';
+import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE, QUELLEN_LINKS, NAVIGATION, STAEDTE, FOKUS_SEITE, GEWICHT_GRENZE, STEMPEL_VERWEIS, stempelVon, stempeln } from '../website/pruefen.mjs';
 import vm from 'node:vm';
 
 const ORDNER = join(process.cwd(), 'website');
@@ -218,7 +218,7 @@ describe('website/pruefen.mjs', () => {
     // Ein Kapitel ohne Standbild, ein Standbild mit falschem Namen, ein Skript aus einem fremden Ordner fallen auf.
     ersetze(k, 'index.html', '<img class="still" src="assets/szene/sales.svg" width="800" height="800" alt="" loading="lazy" decoding="async">', '');
     ersetze(k, 'index.html', 'src="assets/szene/ki.svg"', 'src="assets/szene/wirkung.svg"');
-    ersetze(k, 'index.html', '<script src="js/drehbuch.js" defer></script>', '<script src="js/fremd/drehbuch.js" defer></script>');
+    ersetze(k, 'index.html', /<script src="js\/drehbuch\.js\?v=[a-f0-9]+" defer><\/script>/, '<script src="js/fremd/drehbuch.js" defer></script>');
     const f = pruefeWebsite(k).fehler.join('\n');
     expect(f).toMatch(/jeder Abschnitt mit data-zustand beginnt mit seinem Standbild/);
     expect(f).toMatch(/Standbild von „ki“ ist assets\/szene\/wirkung\.svg/);
@@ -233,6 +233,23 @@ describe('website/pruefen.mjs', () => {
     fuellen(k3);
     ersetze(k3, 'index.html', '<div class="szene" aria-hidden="true">', '<div class="szene">');
     expect(pruefeWebsite(k3).fehler.join('\n')).toMatch(/Szene .* nicht aria-hidden/);
+  });
+
+  it('Stempel: jeder Verweis auf css/ und js/ trägt die Prüfsumme der Datei — geänderte Datei ohne neuen Stempel fällt auf', () => {
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    const verweise = Array.from(index.matchAll(STEMPEL_VERWEIS));
+    expect(verweise.length).toBeGreaterThanOrEqual(7);
+    for (const m of verweise) expect(m[3]).toBe(stempelVon(readFileSync(join(ORDNER, m[2]))));
+    const k = kopie();
+    fuellen(k);
+    writeFileSync(join(k, 'js/menue.js'), readFileSync(join(k, 'js/menue.js'), 'utf8') + '\n// geändert\n');
+    ersetze(k, 'impressum.html', /css\/seite\.css\?v=[a-f0-9]+/, 'css/seite.css');
+    const f = pruefeWebsite(k).fehler.join('\n');
+    expect(f).toMatch(/index\.html: js\/menue\.js ohne aktuellen Stempel/);
+    expect(f).toMatch(/impressum\.html: css\/seite\.css ohne aktuellen Stempel/);
+    // stempeln() bringt alle Seiten wieder in Ordnung (menue.js hängt an jeder Seite).
+    for (const d of readdirSync(k).filter(d => d.endsWith('.html'))) writeFileSync(join(k, d), stempeln(k, readFileSync(join(k, d), 'utf8')));
+    expect(pruefeWebsite(k).fehler.join('\n')).not.toMatch(/Stempel/);
   });
 
   it('v5 Fokus Innovation: Menüpunkt und Kapitel verlinken auf fokusinnovation.de, alle sechs Städte inkl. Dresden', () => {

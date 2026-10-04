@@ -161,3 +161,9 @@ Anliegen, eigener Hinweis vor dem Absenden) und im Abschnitt „Cookies und Spei
 > Verhalten der Seite und des Servers abgeleitet (Stand Oktober 2026: § 5 DDG, DSGVO, TDDDG; die frühere Pflicht zum
 > Link auf die EU-OS-Plattform ist mit deren Abschaltung im Juli 2025 entfallen). Vor der Freigabe von einer
 > fachkundigen Person prüfen lassen.
+
+## Stempel für Stile und Skripte (04.10.2026)
+Caddy liefert Seiten immer frisch, `css/` und `js/` bleiben einen Tag im Browser. Nach dem ersten v5-Upload sah deshalb wer
+die Seite vorher besucht hatte, die neue Seite mit alten Stilen/Skripten (kaputt). Seitdem trägt jeder Verweis die Prüfsumme der
+Datei (`css/seite.css?v=…`). **Nach jeder Änderung an `css/` oder `js/`: `node website/stempeln.mjs`** — `pruefen.mjs` meldet
+fehlende oder veraltete Stempel (Wächter: tests/website-landingpage.test.ts › Stempel).

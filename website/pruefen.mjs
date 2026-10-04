@@ -27,12 +27,15 @@
 //     (js/drehbuch.js) hat seinen Abschnitt (data-zustand, gleiche Reihenfolge) und sein Standbild (assets/szene/<name>.svg),
 //     Gewicht der Startseite (HTML + CSS + Skripte, gzip) höchstens GEWICHT_GRENZE.
 //   · Fokus Innovation: Menüpunkt und Kapitel verlinken auf FOKUS_SEITE, das Kapitel nennt alle STAEDTE.
+//   · Stempel (04.10.): jeder Verweis auf css/ und js/ trägt ?v=<Prüfsumme der Datei> (Caddy hält Stile/Skripte einen Tag,
+//     Seiten nie — ohne Stempel mischt ein Browser nach dem Upload die neue Seite mit alten Skripten). Setzen: node website/stempeln.mjs
 // Aufruf: node website/pruefen.mjs   → Ausgang 0 = freigabefähig, 1 = nicht freigabefähig.
 // Ohne Abhängigkeiten (läuft so auch auf dem Server oder in der CI).
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, relative, extname } from 'node:path';
 import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 export const ANMELDEN = 'https://app.makeinnovation.de/anmelden';
@@ -77,7 +80,16 @@ export const STAEDTE = ['Berlin', 'Hamburg', 'Bielefeld', 'Köln', 'München', '
 /** Höchstgewicht der Startseite: index.html + CSS + alle Skripte der Seite, gzip, ohne Schriften und Standbilder. */
 export const GEWICHT_GRENZE = 400 * 1024;
 /** Skripte der Seiten: eigene Dateien aus js/ oder js/szene/ (die wiederverwendbare Szene). */
-export const SKRIPT_PFAD = /^\/?js\/(?:szene\/)?[a-z0-9-]+\.js$/;
+export const SKRIPT_PFAD = /^\/?js\/(?:szene\/)?[a-z0-9-]+\.js(?:\?v=[a-f0-9]{10})?$/;
+/** Stempel: Prüfsumme des Dateiinhalts — ändert sich genau dann, wenn sich die Datei ändert. */
+export const stempelVon = inhalt => createHash('sha256').update(inhalt).digest('hex').slice(0, 10);
+/** Verweise auf eigene Stile/Skripte in Seiten (Gruppe 2 = Pfad, Gruppe 3 = vorhandener Stempel). */
+export const STEMPEL_VERWEIS = /(\s(?:src|href)=")(\/?(?:css|js)\/[a-z0-9\/-]+\.(?:css|js))(?:\?v=([a-f0-9]*))?"/g;
+/** Setzt in einer Seite jeden Verweis auf den aktuellen Stempel (Pfad relativ zum Ordner der Seite). */
+export const stempeln = (ordner, text) => text.replace(STEMPEL_VERWEIS, (ganz, vor, pfad) => {
+  const datei = join(ordner, pfad.replace(/^\//, ''));
+  return existsSync(datei) ? `${vor}${pfad}?v=${stempelVon(readFileSync(datei))}"` : ganz;
+});
 /** Logo-Dateien (erzeugt von scripts/website-logo.mjs, v5 „Synapse“). */
 export const LOGO_DATEIEN = ['bildmarke.svg', 'bildmarke-hell.svg', 'wortmarke.svg', 'wortmarke-hell.svg', 'kachel.svg', 'quer.svg', 'quer-hell.svg', 'kompakt.svg', 'kompakt-hell.svg',
   'gross.svg', 'gross-hell.svg', 'visitenkarte-make.svg', 'visitenkarte-make-hell.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-512.png', 'LOGO.md'].map(d => `assets/logo/${d}`);
@@ -187,6 +199,11 @@ export function pruefeWebsite(ordner) {
       const src = /\ssrc="([^"]*)"/.exec(m[1])?.[1];
       if (!src || !SKRIPT_PFAD.test(src) || m[2].trim() !== '') fehler.push(`${d}: <script> — nur eigene Dateien aus js/ (<script src="js/….js" defer>), nie Inline-Skript`);
     }
+    for (const m of text.matchAll(STEMPEL_VERWEIS)) {
+      const datei = join(ordner, m[2].replace(/^\//, ''));
+      if (!existsSync(datei)) fehler.push(`${d}: ${m[2]} — Datei fehlt`);
+      else if (m[3] !== stempelVon(readFileSync(datei))) fehler.push(`${d}: ${m[2]} ohne aktuellen Stempel (?v=…) — node website/stempeln.mjs`);
+    }
     if (/<style[\s>]/i.test(text)) fehler.push(`${d}: <style>-Block — Stile gehören nach css/ (CSP style-src 'self')`);
     if (/\sstyle="/i.test(text)) fehler.push(`${d}: style="…" — Inline-Stile blockiert die CSP`);
     if (/\son[a-z]+="/i.test(text)) fehler.push(`${d}: on…="…"-Handler — blockiert die CSP`);
@@ -218,7 +235,8 @@ export function pruefeWebsite(ordner) {
       const ziel = m[1];
       if (/^(https?:|mailto:|tel:)/.test(ziel)) continue;
       if (ziel.includes('[[KEVIN:')) { fehler.push(`${d}: Platzhalter als Link ${ziel}`); continue; }
-      const [pfadTeil, frag] = ziel.split('#');
+      const [mitStempel, frag] = ziel.split('#');
+      const pfadTeil = mitStempel.replace(/\?v=[a-f0-9]{10}$/, ''); // Stempel (siehe stempeln) gehört nicht zum Dateinamen
       const datei = pfadTeil === '' ? d : pfadTeil === '/' ? 'index.html' : pfadTeil.replace(/^\//, '');
       if (!dateien.includes(datei)) { fehler.push(`${d}: Link auf ${ziel} — Datei fehlt`); continue; }
       if (frag && datei.endsWith('.html') && !anker(inhalt.get(datei)).has(frag)) fehler.push(`${d}: Anker #${frag} fehlt in ${datei}`);
@@ -295,7 +313,7 @@ export function pruefeWebsite(ordner) {
     if (namen.join(' ') !== alleAbschnitte.join(' ')) fehler.push(`index.html: Abschnitte (${alleAbschnitte.join(', ')}) passen nicht zum Drehbuch js/drehbuch.js (${namen.join(', ')})`);
     // Gewicht: HTML + CSS + Skripte der Startseite (gzip), ohne Schriften und Standbilder.
     const teile = ['index.html', ...Array.from(index.matchAll(/<link rel="stylesheet" href="([^"]+)"/g), m => m[1]), ...Array.from(index.matchAll(/<script src="([^"]+)"/g), m => m[1])];
-    const gewicht = teile.filter(t => dateien.includes(t)).reduce((summe, t) => summe + gzipSync(readFileSync(join(ordner, t))).length, 0);
+    const gewicht = teile.map(t => t.split('?')[0]).filter(t => dateien.includes(t)).reduce((summe, t) => summe + gzipSync(readFileSync(join(ordner, t))).length, 0);
     if (gewicht > GEWICHT_GRENZE) fehler.push(`index.html: Startseite wiegt ${(gewicht / 1024).toFixed(0)} KB gzip (höchstens ${GEWICHT_GRENZE / 1024} KB)`);
     // Die Bühne zeichnet dieselbe Wortmarke wie assets/logo/wortmarke.svg (sonst laufen zwei Logos auseinander).
     const zeichen = /<svg class="zeichen"[\s\S]*?<\/svg>/.exec(index)?.[0] ?? '';
