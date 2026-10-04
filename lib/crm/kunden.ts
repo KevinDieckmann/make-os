@@ -9,7 +9,7 @@ import type { Mandat } from './typen';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { TEAM, BEIDE, zustaendig } from './team';
 import { bruttoAusNetto } from '@/lib/finanzen/ust';
-import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
+import { KERN_EINHEITEN, istRegisterKennung, type Gesellschaftskennung } from '@/lib/einheiten';
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
 function plusMonate(datum: string, n: number): string {
@@ -122,7 +122,8 @@ export function planpostenAus(m: Mandat, heute: string): Planposten | null {
   const basis = m.start && m.start > heute ? m.start : heute;
   const ab = plusTage(m.rechnungsrhythmus === 'einmalig' || m.honorar.basis === 'einmalig' ? basis : `${basis.slice(0, 8)}01`, m.zahlungszielTage || 14);
   const sicher = m.status === 'aktiv' && m.vertragUnterschrieben;
-  const firma = m.gesellschaft === 'offen' ? undefined : m.gesellschaft;
+  // Register-Gesellschaften (`g-…`, 04.10.) führt der Liquiplan noch nicht — dann ohne Firma (wie „offen“), nie still bei kdc.
+  const firma = m.gesellschaft === 'offen' || istRegisterKennung(m.gesellschaft) ? undefined : m.gesellschaft;
   return {
     id: m.planpostenId ?? `lp-mandat-${m.id}`, titel: `${m.kunde} · ${m.titel}`.slice(0, 120), betrag: brutto,
     rhythmus: m.honorar.basis === 'einmalig' || m.rechnungsrhythmus === 'einmalig' ? 'einmalig' : m.rechnungsrhythmus === 'quartal' ? 'quartal' : 'monatlich',

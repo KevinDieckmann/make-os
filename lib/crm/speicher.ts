@@ -31,6 +31,8 @@ import { personenSchranke, kampagnenHinweise, funktionsOps, PersonenSchrankeFehl
 import { ladeScoring } from './scoring-server';
 import { crmFolgen, geloeschteDeals, karteiBetroffen, kontaktLeadsOhneDeals } from './bestand-folgen';
 import type { Temperatur } from './typen';
+import type { Gesellschaft } from './typen';
+import { istRegisterKennung } from '@/lib/einheiten';
 
 const TEMPERATUREN: readonly Temperatur[] = ['kalt', 'lau', 'warm', 'heiss'];
 
@@ -67,6 +69,8 @@ function freigabe(v: unknown): Freigabe | undefined {
   return { status: f.status as Freigabe['status'], an, ...(wer(f.von) ? { von: wer(f.von) } : {}), ...(opt(f.am, 25) ? { am: opt(f.am, 25) } : {}), ...(opt(f.notiz, 600) ? { notiz: opt(f.notiz, 600) } : {}) };
 }
 const GES = ['kdv', 'kdc', 'ug', 'offen'] as const;
+/** Gesellschaft säubern: feste Kennung, „offen“ oder eine aus dem Register (`g-…`, offene Liste 04.10.) — sonst „offen“. */
+const ges = (v: unknown): Gesellschaft => (istRegisterKennung(v) ? v : aus(v, GES, 'offen'));
 const ARTEN = ['retainer', 'projekt', 'workshop', 'vermittlung', 'software'] as const;
 const Q = ['ja', 'nein', 'unklar'] as const;
 const STUFEN_IDS = STUFEN.map(s => s.id) as ChancenStufe[];
@@ -146,7 +150,7 @@ function chance(o: Record<string, unknown>, jetzt: string, person: string): Chan
     // Verschiebungen von „Entscheidung bis“ (28.09., K4) — gesetzt nur in dealRegeln, hier nur durchgereicht.
     ...(tag(o.erwartetUrsprung) ? { erwartetUrsprung: tag(o.erwartetUrsprung) } : {}),
     ...(zahl(o.erwartetVerschoben, 0, 999) ? { erwartetVerschoben: Math.round(zahl(o.erwartetVerschoben, 0, 999)) } : {}),
-    gesellschaft: aus(o.gesellschaft, GES, 'offen'), besitzer: wer(o.besitzer) ?? (wer(person) && wer(person) !== BEIDE ? person : verantwortlich('sales')),
+    gesellschaft: ges(o.gesellschaft), besitzer: wer(o.besitzer) ?? (wer(person) && wer(person) !== BEIDE ? person : verantwortlich('sales')),
     ...(opt(o.selbstauskunft, 300) ? { selbstauskunft: opt(o.selbstauskunft, 300) } : {}),
     angelegt: txt(o.angelegt, 25) || jetzt, geaendert: jetzt, ...(tag(String(o.letzteAktivitaet ?? '').slice(0, 10)) ? { letzteAktivitaet: String(o.letzteAktivitaet).slice(0, 10) } : {}),
     ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}),
@@ -161,7 +165,7 @@ function mandat(o: Record<string, unknown>, jetzt: string): Mandat | null {
   return {
     id: String(o.id), kunde: txt(o.kunde, 160), kontaktIds: ids(o.kontaktIds), titel: txt(o.titel, 200), art: aus(o.art, ARTEN, 'retainer'),
     ...(idOk(o.leistungId) ? { leistungId: String(o.leistungId) } : {}), ...(idOk(o.chanceId) ? { chanceId: String(o.chanceId) } : {}),
-    gesellschaft: aus(o.gesellschaft, GES, 'offen'), status: aus(o.status, ['angebot', 'verhandlung', 'aktiv', 'pausiert', 'beendet'] as const, 'verhandlung'),
+    gesellschaft: ges(o.gesellschaft), status: aus(o.status, ['angebot', 'verhandlung', 'aktiv', 'pausiert', 'beendet'] as const, 'verhandlung'),
     vertragUnterschrieben: o.vertragUnterschrieben === true,
     ...(tag(o.start) ? { start: tag(o.start) } : {}), ...(tag(o.ende) ? { ende: tag(o.ende) } : {}),
     ...(zahl(o.mindestlaufzeitMonate, 0, 120) ? { mindestlaufzeitMonate: zahl(o.mindestlaufzeitMonate, 0, 120) } : {}),
@@ -191,7 +195,7 @@ function leistung(o: Record<string, unknown>, jetzt: string): Leistung | null {
     ...(o.aufwand && typeof o.aufwand === 'object' ? (() => { const a = o.aufwand as Record<string, unknown>; const anteil = zahl(a.anteil, 0, 1); const stunden = zahl(a.stunden, 0, 100000); return anteil || stunden ? { aufwand: { ...(anteil ? { anteil } : {}), ...(stunden ? { stunden } : {}) } } : {}; })() : {}),
     ...(opt(o.beschreibung, 1500) ? { beschreibung: opt(o.beschreibung, 1500) } : {}), lieferumfang: texte(o.lieferumfang, grenzeVon('leistungen', 'lieferumfang'), 300),
     ...(opt(o.grenzen, 600) ? { grenzen: opt(o.grenzen, 600) } : {}), ...(opt(o.ergebnis, 600) ? { ergebnis: opt(o.ergebnis, 600) } : {}),
-    gesellschaft: aus(o.gesellschaft, GES, 'offen'), status: aus(o.status, ['aktiv', 'entwurf', 'eingestellt'] as const, 'entwurf'),
+    gesellschaft: ges(o.gesellschaft), status: aus(o.status, ['aktiv', 'entwurf', 'eingestellt'] as const, 'entwurf'),
     ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}),
     ...(opt(o.linie, 80) ? { linie: opt(o.linie, 80) } : {}),
     ...(Array.isArray(o.phasen) && o.phasen.length ? { phasen: (o.phasen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'phasen')).map((x, i) => ({ id: txt(x.id, 40) || `p${i}`, name: txt(x.name, 80), ...(zahl(x.dauerTage, 0, 730) ? { dauerTage: zahl(x.dauerTage, 0, 730) } : {}), ...(opt(x.beschreibung, 400) ? { beschreibung: opt(x.beschreibung, 400) } : {}) })).filter(x => x.name) } : {}),

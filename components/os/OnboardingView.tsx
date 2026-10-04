@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SCHRITTE, SPUREN, schritteVon, type Schritt, type Spur } from '@/lib/make-one/onboarding-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Fortschritt as FortschrittBalken, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Fortschritt as FortschrittBalken, LEUCHT } from './ui';
 
 /** Ein Verweis, der wie ein leiser Knopf aussieht. */
 const linkKnopf: CSSProperties = {
@@ -71,7 +71,7 @@ export function Fortschritt({ spur, z, gross }: { spur: Spur; z: Zustand | null;
         <span style={{ fontFamily: SCHRIFT.display, fontSize: gross ? 'clamp(28px,4vw,36px)' : TYP.zahl, fontWeight: 700, letterSpacing: '-.03em', lineHeight: 1, color: anteil === 1 ? LEUCHT.gut : C.ink, fontVariantNumeric: 'tabular-nums' }}>
           {fertig}<span style={{ color: C.inkLeise, fontWeight: 400 }}>/{alle.length}</span>
         </span>
-        <span style={{ fontSize: 12.5, color: C.inkLeise }}>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
           {anteil === 1 ? 'fertig' : `noch ${minuten} Min.`}
         </span>
       </div>
@@ -129,13 +129,13 @@ function karte(s: Schritt, nr: number, z: Zustand | null, haken: (id: string, an
             {s.befehl && (
               <pre style={{
                 margin: '9px 0 0', padding: '9px 11px', background: 'rgba(255,255,255,.05)', borderRadius: 9,
-                fontFamily: SCHRIFT.mono, fontSize: 12, color: LEUCHT.geld, overflowX: 'auto', whiteSpace: 'pre',
+                fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, color: LEUCHT.geld, overflowX: 'auto', whiteSpace: 'pre',
               }}>{s.befehl}</pre>
             )}
           </>
         )}
         {(s.wo || (handisch && !automatisch && z?.erledigt[s.id])) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: fertig ? 0 : 8, fontSize: 12, color: C.inkLeise }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: fertig ? 0 : 8, fontSize: TYP.bedien, color: C.inkLeise }}>
             {s.wo && <Link href={s.wo.href} style={link}>{s.wo.label} ›</Link>}
             {handisch && !automatisch && z?.erledigt[s.id] && <span>abgehakt von {z.erledigt[s.id].von}</span>}
           </div>
@@ -152,7 +152,7 @@ export function SpurView({ spur }: { spur: Spur }) {
 
   return (
     <Rahmen titel={meta.titel} unter={meta.satz} rechts={<Link href="/os/onboarding" className="fassbar" style={linkKnopf}>Onboarding ›</Link>}>
-      <Karte i={0} akzent={LEUCHT.schlaf}>
+      <Karte i={0} ton={LEUCHT.schlaf}>
         <Ueberschrift farbe={LEUCHT.schlaf}>Stand der Spur</Ueberschrift>
         <Fortschritt spur={spur} z={z} gross />
       </Karte>
@@ -183,13 +183,13 @@ export function OnboardingUebersicht() {
 
   return (
     <Rahmen titel="Onboarding" unter="Alles, was drin sein muss, damit MAKE OS für euch beide reibungslos läuft.">
-      <Karte i={0} akzent={LEUCHT.schlaf}>
+      <Karte i={0} ton={LEUCHT.schlaf}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts={`${fertig} von ${alle.length} Schritten`}>Stand</Ueberschrift>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(28px,4vw,36px)', fontWeight: 700, letterSpacing: '-.03em', lineHeight: 1, color: fertig === alle.length ? LEUCHT.gut : C.ink, fontVariantNumeric: 'tabular-nums' }}>
             {fertig}<span style={{ color: C.inkLeise, fontWeight: 400 }}>/{alle.length}</span>
           </span>
-          <span style={{ fontSize: 12.5, color: C.inkLeise }}>{fertig === alle.length ? 'fertig' : `noch rund ${stunden} Stunden`}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fertig === alle.length ? 'fertig' : `noch rund ${stunden} Stunden`}</span>
         </div>
         <FortschrittBalken anteil={alle.length ? fertig / alle.length : 0} farbe={fertig === alle.length ? LEUCHT.gut : LEUCHT.schlaf} />
         <p style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.6, margin: '14px 0 0' }}>
@@ -205,10 +205,10 @@ export function OnboardingUebersicht() {
             <Link key={s.id} href={s.href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
               <Karte i={1 + i} style={{ height: '100%' }}>
                 <Ueberschrift rechts={<span>›</span>}>{s.titel}</Ueberschrift>
-                <p style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5, margin: '0 0 12px', minHeight: 34 }}>{s.satz}</p>
+                <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '0 0 12px', minHeight: 34 }}>{s.satz}</p>
                 <Fortschritt spur={s.id} z={z} />
                 {!!offen.length && (
-                  <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     als Nächstes: {offen[0].titel}
                   </div>
                 )}

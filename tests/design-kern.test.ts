@@ -232,7 +232,7 @@ describe('Praxis-Funde 04.10. (Handy-Tippziele, Kopf, Abschneiden)', () => {
   });
   it('Tagesplan und Produkte & Mandate hängen am Standard (ui-seite: Eingaben 16 px, Reiter 44 px am Handy)', () => {
     expect(lies('components/os/TagesplanView.tsx')).toMatch(/from '\.\/ui';/);
-    expect(lies('components/os/mandate/ProdukteMandate.tsx')).toMatch(/import \{ Seite, Segmente, LEUCHT \} from '\.\.\/ui';/);
+    expect(lies('components/os/mandate/ProdukteMandate.tsx')).toMatch(/import \{ Seite, Segmente, (Hinweis, )?LEUCHT \} from '\.\.\/ui';/);
   });
   it('Kopf-Suche wird am schmalen Rechner nicht zerquetscht; ZOE sendet nichts Leeres; Fokus-Frage nicht abgeschnitten', () => {
     expect(lies('components/os/Kopf.tsx')).toContain("flex: '1 1000 520px', minWidth: 150,");

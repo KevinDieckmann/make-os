@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from '@/components/os/Rich';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Liste, Zeile } from './schlank';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Liste, Zeile } from './ui';
 
 /** Entwürfe, die der Agent im Hintergrund (ZOE, Takt) abgelegt hat — GET /api/content (27.09.). */
 interface Entwurf { id: string; zeit: string; format: string; thema: string; text: string }
@@ -57,7 +57,7 @@ export function ContentView() {
       unter={<>Format wählen, Thema rein — der Agent entwirft in KEMARIS-Sprache (Souveränität, Klartext, keine Buzzwords). <b style={{ color: C.ink }}>Veröffentlichen bleibt dein Klick.</b></>}
       rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
     >
-      <Karte i={0} akzent={LEUCHT.agenten}>
+      <Karte i={0} ton={LEUCHT.agenten}>
         <Ueberschrift farbe={LEUCHT.agenten}>Format</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
           {FORMATS.map(f => {
@@ -65,7 +65,7 @@ export function ContentView() {
             return (
               <button key={f.id} onClick={() => setFormat(f.id)} className="fassbar" style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 14, cursor: 'pointer', border: 'none', fontFamily: SCHRIFT.text, background: an ? `${LEUCHT.agenten}1f` : 'rgba(255,255,255,.04)', transition: 'background .2s ease' }}>
                 <div style={{ fontSize: TYP.bedien, fontWeight: 700, color: an ? LEUCHT.agenten : C.ink }}>{f.label}</div>
-                <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 3, lineHeight: 1.4 }}>{f.hint}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 3, lineHeight: 1.4 }}>{f.hint}</div>
               </button>
             );
           })}
@@ -77,7 +77,7 @@ export function ContentView() {
         <textarea value={notizen} onChange={e => setNotizen(e.target.value)} rows={3} placeholder="Kernaussagen, Zahlen, Details, die rein sollen — der Agent erfindet nichts dazu." style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />
 
         <div style={{ marginTop: 14 }}>
-          <Knopf onClick={generate} aus={busy || !thema.trim()} farbe={LEUCHT.agenten}>
+          <Knopf haupt onClick={generate} aus={busy || !thema.trim()} farbe={LEUCHT.agenten}>
             {busy ? 'entwerfe …' : draft ? 'Neu entwerfen' : 'Entwurf schreiben'}
           </Knopf>
         </div>
@@ -89,14 +89,14 @@ export function ContentView() {
             Entwurf · {activeFmt?.label}
           </Ueberschrift>
           {busy ? <Leer>schreibe in CI …</Leer> : <Rich text={draft} />}
-          {draft && !busy && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 14 }}>Entwurf — gegenlesen &amp; selbst veröffentlichen.</div>}
+          {draft && !busy && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 14 }}>Entwurf — gegenlesen &amp; selbst veröffentlichen.</div>}
         </Karte>
       )}
 
       {entwuerfe.length > 0 && (
         <Karte i={2}>
           <Ueberschrift farbe={LEUCHT.agenten} rechts={`${entwuerfe.length}`}>Entwürfe von ZOE</Ueberschrift>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>Was der Agent im Hintergrund geschrieben hat (Auftrag an ZOE oder Takt). Öffnen lädt den Text oben; Löschen räumt ab.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>Was der Agent im Hintergrund geschrieben hat (Auftrag an ZOE oder Takt). Öffnen lädt den Text oben; Löschen räumt ab.</div>
           <Liste>
             {entwuerfe.map(e => (
               <Zeile key={e.id} titel={e.thema} unter={`${e.format} · ${her(e.zeit)} · ${e.text.replace(/\s+/g, ' ').slice(0, 90)}…`}

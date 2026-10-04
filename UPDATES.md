@@ -4,6 +4,87 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Aufräumen — ein Weg statt zwei (04.10.2026, nur lokal — Branch `aufraeumen`)
+
+Kevin 04.10.: „Dann ist die Software fast fertig.“ Befunde der Inventur (UMBAU_ABEND_0410.md Abschnitt 8), Arbeitspaket 6:
+- **Alt-Gruppe `app/(dashboard)` entfernt** (Dashboard mit Beispieldaten, Stub-Seiten Hund/Einkauf/Routinen, Wellness/Projekte auf Mock-Daten, eigene Leiste,
+  CommandPalette mit Ziel /dashboard) samt allem, was nur sie nutzte (≈ 85 Dateien, Erreichbarkeits-Analyse + tsc). Die drei Kontexte MakeOS/App/Privacy liefen
+  dadurch nicht mehr auf jeder Seite mit. Alte Adressen leiten weiter: `/dashboard` → `/os`, `/tasks` → `/os/aufgaben`, `/wellness` → `/os/gesundheit`,
+  `/routines` → `/os/planung/routinen`, `/groceries` und `/dog` → `/os/familie`.
+- **Stapel:** „Meilensteine“ führt in Ziele & Planung (`WEG.jahr()`) statt auf die Bau-Roadmap.
+- **OKR:** `/os/okr` leitet in Ziele & Planung (Business). Der OKR-Agent bleibt (ZOE ruft `/api/okr`); verloren ist nur die eigene Seite mit dem Knopf
+  „Zielbaum bauen“ und der Nordstern-Kachel — als Knopf in der Planung offen.
+- **Standard überall:** die letzten 28 Dateien von `schlank` auf `components/os/ui` (siehe DESIGN_STANDARD.md › Aufräumen).
+- Stammdaten doppelt (/os/stammdaten ↔ Markttraktion › Stammdaten › Gesellschaften) bewusst nicht angefasst — übernimmt das Gesellschafts-Register.
+- Wächter: `tests/aufraeumen.test.ts`, `tests/design-standard.test.ts` › Aufräumen. Nicht hochgeladen.
+## Gesellschafts-Register — Nachtrag nach Kevins Antworten (04.10.2026, nur lokal — Branch `gesellschaften-2`)
+
+- **Rolle „Holding“** im Steckbrief (operativ · Holding). Für eine Holding gelten im Business-Index die operativen Vertriebs-/Produktivitäts-
+  kennzahlen nicht — abgeleitet aus dem Register statt fest verdrahtet. Solange keine der drei festen Gesellschaften eine Rolle trägt, bleibt
+  alles wie bisher (KD Ventures ohne operative Kennzahlen). **Nach dem Upload:** bei KD Ventures „Holding“ wählen.
+- **Organe & Beschlüsse** als eigener Reiter je Gesellschaft (Geschäftsführung/Prokura/Beirat … mit seit/bis; Beschlüsse mit Datum, Art,
+  Inhalt, Status) — ZeileAktionen, Papierkorb, Rechte wie das Register.
+- **Erinnerung vor „kündigen bis“:** Vorlauf je Vertrag (Vorgabe 30 Tage, 0 = keine) → eine Aufgabe (fällig am Stichtag) + Meldung in der
+  Glocke (neue Art „Vertragsfrist“) für den Haushalt; im Morgenlauf („Vertrags-Erinnerungen“) und sofort nach dem Speichern, nie doppelt.
+- **Rückweg:** keine Formänderung; der Online-Stand ignoriert die neuen Felder und behält sie. Meldungen der Art `vertrag` kennt der alte Stand
+  nicht (er verwirft sie beim Lesen der Glocke höchstens) — sonst nichts.
+
+## Gesellschafts-Register „Unternehmen“ (04.10.2026, nur lokal — Branch `gesellschaften`; UMBAU_ABEND_0410.md › 8, Paket 3)
+
+Kevin 04.10.: „Kriegen wir dort jetzt alles sauber geplant — vor allem die MAKE Innovation GmbH?“ Entscheidungen: MAKE wird von der KD Ventures
+gehalten, KEMARIS geht in MAKE über (Umfirmierung), eigene Gesellschaften als offene Liste.
+
+- **Neue Seite Business › Unternehmen** (`/os/unternehmen`): Gesellschaften · Struktur („wer hält wen“) · Archiv · Papierkorb; je Gesellschaft
+  Steckbrief (Rechtsform, Status geplant/in Gründung/eingetragen/ruhend/aufgelöst, Sitz, Register, Gründung/Eintragung, Stammkapital
+  gezeichnet/eingezahlt, Geschäftsjahr, „hervorgegangen aus“ in zwei Klicks), Gesellschafter (Cap-Table mit Balken, Prozent aus Nennbeträgen,
+  Summenprüfung gegen das Stammkapital), Beteiligungen (eigene abgeleitet + fremde CRM-Firmen), Verträge (Art, Parteien, Status, Laufzeit,
+  „kündigen bis“, Stichtage, Unterlagen) → **Kalender** (Fristen-Ebene), Unterlagen (Dateiablage), Absender (die bisherige Pflege der Angebote).
+- **Eine Quelle:** derselbe Speicher `gesellschaften--<haushalt>` wie die Absender; Markttraktion › Stammdaten › Gesellschaften und System ›
+  Stammdaten › Firmen verweisen dorthin (alte Firmen-Karten bleiben lesbar stehen). Auswahlen in Deals, Mandaten, Produkten und die
+  Planungs-Einheiten kennen jetzt auch die weiteren Gesellschaften (`g-…`). ZOE: `gesellschaften_lesen` (nur lesen).
+- **Löschen/Archivieren** mit `ZeileAktionen` (Rückfrage bei Verweisen, Rückgängig, Papierkorb 30 Tage, Morgenlauf-Schritt „Gesellschaften-Papierkorb“).
+- **Nur Grunddaten** für weitere Gesellschaften: Finanzplan/Rechnungen, Steuern, Business-Index-Sicht, Aufgaben-Spaces, Angebots-Absender und
+  ZOE-Schreibwerkzeuge kennen weiter nur kdc · kdv · ug. „Rechnung aus dem Honorar“ zeigt bei einer `g-…`-Gesellschaft einen Hinweis statt die
+  Rechnung still der Selbstständigkeit zuzuordnen.
+- **Datenschutz:** Register im Speicher-Register jetzt „tilgen“ (CRM-Kontakte nur als Kennung; Art. 17 tilgt sie, Cap-Table bleibt).
+- **Rückweg (Kompatibilitätsmodus, Online-Stand):** keine Formänderung, kein neuer Speicher. Der alte Stand liest die drei festen Einträge wie
+  bisher und schreibt sie als `{ ...alt, … }` zurück — Register-Felder und `g-…`-Einträge bleiben erhalten (Test). Verloren gingen beim Zurückgehen
+  nur Deals/Mandate/Produkte, die eine `g-…`-Gesellschaft tragen: der alte Säuberer macht daraus beim nächsten Schreiben „offen“. Vorher prüfen:
+  `grep -c '"gesellschaft":"g-' ` im entschlüsselten CRM (bzw. in der Oberfläche nach Gesellschaft filtern).
+- **Gründungsfahrplan (Paket 4, eigener Commit):** bei jeder Gesellschaft im Steckbrief „Fahrplan anlegen“ → Jahresziel (Business, Einheit =
+  diese Gesellschaft) + neun Meilensteine mit Kette (Vertrag/Satzungsänderung → Notar → Konto & Stammkapital → Handelsregister bzw.
+  Umfirmierung „Vorgänger → Name“ → Transparenzregister · Finanzamt · IHK · Buchhaltung/Versicherungen · Website erst nach Eintragung) und
+  Aufgaben. Vorlage rein in `lib/gesellschaften/fahrplan.ts` (keine Namen, Termine = Vorschläge ab heute); geschrieben über die bestehenden
+  Wege (Ziele-/Meilensteine-PATCH, /api/tasks/create), feste Kennungen → ein zweiter Klick ergänzt nur. Einzahlung Stammkapital nur als Weg
+  in die Liquidität (der Finanzplan wird gerade umgebaut).
+- **Nach dem Upload:** Kevin trägt Stammkapital, Gesellschafter (KD Ventures → MAKE 100 %), Vorgänger (KEMARIS Innovation GmbH) und die Verträge
+  ein — nichts davon steht im Code.
+## Finanzplanung unter Finanzen › Privat und › Business (04.10.2026, nur lokal — Branch `finanzplan-frei`)
+
+Kevin 04.10.: „Business ist bei Business sichtbar, kein Privat. Bei Privat kann man alles sehen … Im Business-Bereich sieht man Privat nicht.“
+
+- Reiter „Finanzplanung“ unter Finanzen › Privat (alles, auch die Firmen) und Finanzen › Business (nur MAKE Innovation GmbH, KD Ventures,
+  Selbstständigkeit) — eine Komponente, zwei Sichten. Der Eintrag „Finanzplanung jetzt“ unter den Agenten ist weg; alte Links leiten weiter.
+- Business-Sicht serverseitig gefiltert (`GET /api/finanzplan?sicht=business`), Schreiben auf Privat-Pfade → 403.
+- **Rückweg:** keine Datenänderung; Protokolleinträge tragen neu `pfad` (optional, der alte Stand ignoriert es). Der alte Stand kennt die
+  Reiter nicht und zeigt die Finanzplanung wieder unter den Agenten.
+- Nicht hochgeladen.
+
+## Finanzplanung: jede Zahl bearbeitbar — Handwerte (04.10.2026, nur lokal — Branch `finanzplan-frei`)
+
+Kevin 04.10.: „Alle Felder — auch unten die Kosten, die Einzahlungen, die Steuern, whatever — alles selber bearbeiten. Jede Zahl. Nur die Formeln
+sind im Hintergrund immer hart gecodet.“
+
+- Jede gerechnete Zahl in den Blättern (Privat, MAKE Innovation GmbH, KD Ventures, Selbstständigkeit, Gesamt, Gruppe, Töpfe) und im Abschluss 2026
+  ist anklickbar und überschreibbar; alles Nachgelagerte (Summen, Steuern auf Folgejahre, Kontostand, frei verfügbar, Kennzahlen, Ziele) rechnet
+  mit dem Handwert weiter. Von Hand = ✎ + Strich der Person, Tooltip mit Formelwert und Abweichung, Summen von Hand als ruhiger Hinweis.
+- Zurücksetzen auf die Formel je Zelle (Entf), Zeile (Rechtsklick/langer Druck) oder alle im Blatt; Rückgängig (Cmd+Z) wie gewohnt.
+- Schicht an einer Stelle: `hand()` im Rechenkern, Kennungen in `lib/finanzen/handwerte.ts`; Formeln unverändert, ohne Handwerte bit-genau wie vorher.
+- Handy: Namensspalte begrenzt — vorher deckte sie bei langem Titel die Zahlen zu.
+- **Rückweg:** keine neuen Felder, Handwerte sind gewöhnliche `plan`-Schlüssel. Der alte Online-Stand liest Dokumente mit Handwerten ohne Fehler
+  und ignoriert die neuen Schlüssel (dort gilt die Formel); sie bleiben erhalten und wirken wieder mit dem neuen Stand.
+- Nicht hochgeladen.
+
 ## makeinnovation.de „Klar“ — Neubau auf der Basis „Superconscious“, 80 % Seriosität (04.10.2026, nur lokal — Branch `website-klar`)
 
 Kevin 04.10.: „Das ist too much. Das muss klarer sein … Basis Superconscious, ein bisschen von unserer futuristischen Sache mitnehmen —

@@ -16,7 +16,7 @@ import { BUDGET_GRUPPEN, eur, prozent, letzterVoller, monatLabel, neueKennung } 
 import { usePlan, rechne } from './daten';
 import { Blatt, type BlattZeile, type DatenZeile, type ZeilenListe } from './Blatt';
 import { ZeileDialog, neueZeileOp } from './ZeileDialog';
-import { Geld, Kachel, Kacheln, Etikett, StatusPille, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, AnteilBalken, Dialog, Feld, Formular, Legende, KUPFER, LILA, Nichts, Schalter } from './teile';
+import { Geld, Kachel, Kacheln, Etikett, StatusPille, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, AnteilBalken, Dialog, Feld, Formular, Legende, KUPFER, LILA, Nichts, Schalter, HandZahl, personName } from './teile';
 import { Stapel, Linie, MiniLinie } from './diagramme';
 import { Geschaeft } from './Geschaeft';
 import { AnnahmenAlle, SchwellenKarte, EinstellungenKarte } from './Annahmen';
@@ -44,19 +44,24 @@ export function Privat() {
   const zeilen: BlattZeile[] = [
     { grp: 'Einnahmen', add: 'privatEinnahmen' },
     ...d.privatEinnahmen.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), ind: true })),
-    { name: 'Kevin netto', edit: 'p.kevinNetto', get: m => P(m).kevinNetto, ind: true },
-    { name: 'Malin netto', edit: 'p.malinNetto', get: m => P(m).malinNetto, ind: true },
-    { name: 'Verfügbar', sum: true, get: m => P(m).verfuegbar, hist: i => Math.round(h.einnahmen[i]) || null, drill: 'x.einnahme' },
+    { name: `${personName('kevin')} netto`, edit: 'p.kevinNetto', get: m => P(m).kevinNetto, ind: true },
+    { name: `${personName('malin')} netto`, edit: 'p.malinNetto', get: m => P(m).malinNetto, ind: true },
+    { name: 'Ausschüttung netto', edit: 'p.ausschuettung', get: m => P(m).ausschuettung, ind: true, optional: true },
+    { name: 'Entnahme aus der Selbstständigkeit', edit: 'p.entnahme', get: m => P(m).entnahme, ind: true, optional: true },
+    { name: 'Einnahmen aus Bausteinen', edit: 'p.bausteineEin', get: m => P(m).bausteineEin, ind: true, optional: true },
+    { name: 'Verfügbar', edit: 'p.verfuegbar', sum: true, get: m => P(m).verfuegbar, hist: i => Math.round(h.einnahmen[i]) || null, drill: 'x.einnahme' },
     ...BUDGET_GRUPPEN.flatMap((g): BlattZeile[] => [{ grp: g, add: 'privatBudget', addG: g }, ...d.privatBudget.filter(z => z.gruppe === g).map(budgetZeile)]),
     ...(andere.length ? [{ grp: 'Weitere' } as BlattZeile, ...andere.map(budgetZeile)] : []),
-    { name: 'Bedarf', sum: true, get: m => P(m).bedarf, hist: i => Math.round(h.ausgaben[i] - (h.zeilen['p.d.altlasten']?.[i] ?? 0)) || null, istGet: m => { let s = 0, n = 0; for (const z of d.privatBudget) { const k = key(z.id, m); if (k in d.ist) { s += d.ist[k]; n++; } } return n ? s : null; } },
+    { name: 'Bedarf', edit: 'p.bedarf', sum: true, get: m => P(m).bedarf, hist: i => Math.round(h.ausgaben[i] - (h.zeilen['p.d.altlasten']?.[i] ?? 0)) || null, istGet: m => { let s = 0, n = 0; for (const z of d.privatBudget) { const k = key(z.id, m); if (k in d.ist) { s += d.ist[k]; n++; } } return n ? s : null; } },
     { grp: 'Schulden & Ereignisse', add: 'privatSchulden' },
     ...d.privatSchulden.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, d.plan), hist: hz(z.id), drill: z.id, ind: true, aus: true })),
-    { name: 'Lebensereignisse', get: m => P(m).ereignisse, ind: true },
+    { name: 'Schulden', edit: 'p.schulden', sum: true, aus: true, get: m => P(m).schulden },
+    { name: 'Lebensereignisse', edit: 'p.ereignisse', get: m => P(m).ereignisse, ind: true },
+    { name: 'Ausgaben aus Bausteinen', edit: 'p.bausteineAus', get: m => P(m).bausteineAus, ind: true, aus: true, optional: true },
     { grp: 'Ergebnis' },
-    { name: 'Luft je Monat', get: m => P(m).luft, hist: i => Math.round(h.einnahmen[i] - h.ausgaben[i]) || null },
-    { name: 'Sparen + Luft', sum: true, get: m => P(m).sparen },
-    { name: 'Angespart', stock: true, key: true, get: m => P(m).angespart },
+    { name: 'Luft je Monat', edit: 'p.luft', sum: true, get: m => P(m).luft, hist: i => Math.round(h.einnahmen[i] - h.ausgaben[i]) || null },
+    { name: 'Sparen + Luft', edit: 'p.sparen', get: m => P(m).sparen },
+    { name: 'Angespart', edit: 'p.angespart', stock: true, key: true, get: m => P(m).angespart },
   ];
   const schnitt = (r: DatenZeile, k: number) => (r.z ? istSchnitt(h.zeilen[r.z.id], k, L) : r.drill === 'x.einnahme' ? istSchnitt(h.einnahmen, k, L) : null);
   const extra = [
@@ -96,7 +101,8 @@ export function UG() { return <Geschaeft ort="ug" />; }
 // ── Töpfe MAKE (Kennung ug) ──────────────────────────────────────────────────
 export function Toepfe() {
   const { d, ug, aendere } = usePlan();
-  const t = toepfeUG(ug, d.einstellungen.reserveMonate);
+  const t = toepfeUG(ug, d.einstellungen.reserveMonate, d.plan);
+  const T = (m: number) => t[m - 1];
   const farben = [C.inkLeise, LEUCHT.achtung, LEUCHT.puls, KUPFER];
   return (
     <>
@@ -107,10 +113,17 @@ export function Toepfe() {
         <Hinweis>Profit First, angepasst: Jeder Eingang wird gedanklich verteilt — erst Finanzamt, dann Steuer, dann Reserve, der Rest ist frei. Vorschlag: bei der Bank je Topf ein Unterkonto und einmal im Monat umbuchen.</Hinweis>
       </Karte>
       <Karte i={1}>
-        <Tabelle klein>
-          <thead><tr><th style={TH}>Monat</th><th style={THr}>Konto</th><th style={THr}>USt</th><th style={THr}>Steuer</th><th style={THr}>Reserve</th><th style={THr}>Reserve-Ziel</th><th style={THr}>frei</th></tr></thead>
-          <tbody>{t.map(x => <tr key={x.m}><td style={TD}>{monatLabel(d, x.m)}</td><td style={TDr}><Geld v={x.konto} /></td><td style={TDr}><Geld v={x.ust} farbe={C.inkDim} /></td><td style={TDr}><Geld v={x.steuer} farbe={C.inkDim} /></td><td style={TDr}><Geld v={x.reserve} farbe={x.reserve < x.reserveZiel - 1 ? LEUCHT.achtung : undefined} /></td><td style={TDr}><Geld v={x.reserveZiel} farbe={C.inkLeise} /></td><td style={TDr}><Geld v={x.frei} /></td></tr>)}</tbody>
-        </Tabelle>
+        {/* Seit 04.10. ein Blatt: jede Zahl der Töpfe ist bearbeitbar (Konto, USt, Steuer aus dem Kern; Reserve und frei als Handwerte der Töpfe). */}
+        <Blatt titel={`Töpfe ${UG_KURZ}`} zeilen={[
+          { grp: 'Konto' },
+          { name: 'Kontostand', edit: 'ug.konto', stock: true, get: m => T(m).konto },
+          { grp: 'Töpfe' },
+          { name: 'USt (Finanzamt)', edit: 'ug.ustOffen', stock: true, get: m => T(m).ust, ind: true },
+          { name: 'Steuerrücklage', edit: 'ug.steuerRuecklage', stock: true, get: m => T(m).steuer, ind: true },
+          { name: 'Reserve-Ziel', edit: 'ug.reserveZiel', stock: true, get: m => T(m).reserveZiel, ind: true },
+          { name: 'Reserve', edit: 'ug.reserve', stock: true, get: m => T(m).reserve, ind: true },
+          { name: 'Frei', edit: 'ug.topfFrei', stock: true, sum: true, key: true, get: m => T(m).frei },
+        ]} />
       </Karte>
     </>
   );
@@ -127,7 +140,9 @@ export function Selbst() {
 /** Abschluss 2026 der Selbstständigkeit: Posten des laufenden Jahres, Einkommensteuer, frei nach Abschluss. */
 function SelbstAbschluss() {
   const { d, aendere } = usePlan();
-  const r = rechneSelbst(d); const s = d.selbst;
+  const formel: Record<string, number> = {};
+  const r = rechneSelbst(d, formel); const s = d.selbst;
+  const hz = (k: string, v: number, name: string, extra?: { farbe?: string; minus?: boolean }) => <HandZahl kennung={k} wert={v} name={name} formel={formel[`${k}:0`]} {...extra} />;
   const STATUS = ['geplant', 'offen', 'bezahlt', 'unklar'].map(x => ({ id: x, label: x }));
   const zeile = (l: React.ReactNode, w: React.ReactNode, fett?: boolean) => <tr><td style={{ ...TD, fontWeight: fett ? 700 : 500 }}>{l}</td><td style={{ ...TDr, fontWeight: fett ? 700 : 500 }}>{w}</td></tr>;
   return (
@@ -157,19 +172,19 @@ function SelbstAbschluss() {
           <Ueberschrift>Abschluss &amp; Steuer</Ueberschrift>
           <Tabelle klein>
             <tbody>
-              {zeile('Einnahmen', <><Geld v={r.ein} dezimal={2} /> €</>)}
-              {zeile('Ausgaben', <>−<Geld v={r.aus} dezimal={2} /> €</>)}
-              {zeile('Gewinn', <><Geld v={r.gewinn} dezimal={2} /> €</>, true)}
+              {zeile('Einnahmen', hz('ab.ein', r.ein, 'Einnahmen 2026'))}
+              {zeile('Ausgaben', hz('ab.aus', r.aus, 'Ausgaben 2026', { minus: true }))}
+              {zeile('Gewinn', hz('ab.gewinn', r.gewinn, 'Gewinn 2026'), true)}
               {zeile('Vorsorge', <ZahlFeld wert={s.vorsorge} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/vorsorge', alt: s.vorsorge, neu: v ?? 0 }], 'Selbstständigkeit Vorsorge')} titel="Vorsorge" />)}
               {zeile('Sonderausgaben', <ZahlFeld wert={s.sonderausgaben} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/sonderausgaben', alt: s.sonderausgaben, neu: v ?? 0 }], 'Selbstständigkeit Sonderausgaben')} titel="Sonderausgaben" />)}
-              {zeile('zu versteuern', <><Geld v={r.zve} /> €</>)}
-              {zeile('Einkommensteuer 2026 (Näherung)', <><Geld v={r.est} farbe={r.est > 0 ? LEUCHT.achtung : undefined} /> €</>, true)}
+              {zeile('zu versteuern', hz('ab.zve', r.zve, 'zu versteuern 2026'))}
+              {zeile('Einkommensteuer 2026 (Näherung)', hz('ab.est', r.est, 'Einkommensteuer 2026', { farbe: r.est > 0 ? LEUCHT.achtung : undefined }), true)}
               {zeile('Kontostand heute', <ZahlFeld wert={s.kontoStart} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/kontoStart', alt: s.kontoStart, neu: v ?? 0 }], 'Selbstständigkeit Kontostand')} titel="Kontostand" />)}
               {zeile(`Darlehen an die ${UG_NAME}`, <ZahlFeld wert={s.darlehenAnUG} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/darlehenAnUG', alt: s.darlehenAnUG, neu: v ?? 0 }], `Selbstständigkeit Darlehen an ${UG_KURZ}`)} titel={`Darlehen an die ${UG_NAME}`} />)}
               {zeile('Sicherheit Steuer', <ZahlFeld wert={s.sicherheit} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/sicherheit', alt: s.sicherheit, neu: v ?? 0 }], 'Selbstständigkeit Sicherheit')} titel="Sicherheit Steuer" />)}
-              {zeile('Frei nach Abschluss', <><Geld v={r.frei} /> €</>, true)}
+              {zeile('Frei nach Abschluss', hz('ab.frei', r.frei, 'Frei nach Abschluss'), true)}
               {zeile('Ablösung', <ZahlFeld wert={s.consorsAbloesung} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/consorsAbloesung', alt: s.consorsAbloesung, neu: v ?? 0 }], 'Selbstständigkeit Ablösung')} titel="Ablösung" />)}
-              {zeile('nach Ablösung', <><Geld v={r.nachConsors} /> €</>)}
+              {zeile('nach Ablösung', hz('ab.nachConsors', r.nachConsors, 'nach Ablösung'))}
             </tbody>
           </Tabelle>
           <Hinweis>Grundtarif 2026 (§ 32a EStG) als Näherung, Gewerbesteuer unter Freibetrag angenommen, Gründungszuschuss steuerfrei — Hinweis, keine Steuerberatung.</Hinweis>
@@ -183,8 +198,9 @@ function SelbstAbschluss() {
 const FARBEN_SZ = [KUPFER, LEUCHT.achtung, LEUCHT.kritisch, LEUCHT.puls, LILA, C.inkDim, C.ink];
 
 export function Szenarien() {
-  const { d, sz, ps, aendere, ug: ugAktiv } = usePlan();
+  const { d, sz, ps, aendere, ug: ugAktiv, sicht } = usePlan();
   const alle = useMemo(() => d.szenarien.map(s => ({ s, ...rechne(d, s) })), [d]);
+  const business = sicht === 'business';
   const a = d.annahmen;
   const [name, setName] = useState<string | null>(null);
   const [loeschen, setLoeschen] = useState(false);
@@ -199,7 +215,7 @@ export function Szenarien() {
       <Karte i={0}>
         <Ueberschrift rechts={ps ? <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>gerechnet mit den Bausteinen von „{ps.name}“</span> : undefined}>Treiber im Vergleich — Klick wählt den Treiber{ps ? ' für den Arbeitsplan' : ''}</Ueberschrift>
         <Tabelle klein>
-          <thead><tr><th style={TH}>Szenario</th><th style={THr}>Tiefpunkt frei</th><th style={THr}>Monate im Minus</th><th style={THr}>frei Dez 26</th><th style={THr}>frei Dez 27</th><th style={THr}>frei Dez 28</th><th style={THr}>Umsatz 2027</th><th style={THr}>OB-Anteil Jun 27</th><th style={THr}>Privat angespart Dez 27</th><th style={THr}>Gruppe Dez 28</th></tr></thead>
+          <thead><tr><th style={TH}>Szenario</th><th style={THr}>Tiefpunkt frei</th><th style={THr}>Monate im Minus</th><th style={THr}>frei Dez 26</th><th style={THr}>frei Dez 27</th><th style={THr}>frei Dez 28</th><th style={THr}>Umsatz 2027</th><th style={THr}>OB-Anteil Jun 27</th>{!business && <><th style={THr}>Privat angespart Dez 27</th><th style={THr}>Gruppe Dez 28</th></>}</tr></thead>
           <tbody>
             {alle.map(({ s: x, kz }) => (
               <tr key={x.id} onClick={() => { if (x.id === sz.id) return; void aendere([{ pfad: '/aktiv', alt: d.aktiv, neu: x.id }, ...(ps ? [{ pfad: `/planszenarien/id=${ps.id}/basis`, alt: ps.basis, neu: x.id }] : [])], `Treiber ${x.name} aktiv`); }} style={zeileStil(x.id === sz.id)}>
@@ -207,8 +223,8 @@ export function Szenarien() {
                 <td style={TDr}><Geld v={kz.minFrei} /> <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{monatLabel(d, kz.minMonat)}</span></td>
                 <td style={{ ...TDr, color: kz.monateMinus ? LEUCHT.kritisch : C.ink }}>{kz.monateMinus}</td>
                 <td style={TDr}><Geld v={kz.freiDez26} /></td><td style={TDr}><Geld v={kz.freiDez27} /></td><td style={TDr}><Geld v={kz.freiDez28} /></td>
-                <td style={TDr}><Geld v={kz.umsatz2027} /></td><td style={TDr}>{prozent(kz.obAnteilJun27)}</td><td style={TDr}><Geld v={kz.privatAngespartDez27} /></td>
-                <td style={TDr}><Geld v={kz.gruppeDez28} gross={false} stil={{ fontWeight: 700 }} /></td>
+                <td style={TDr}><Geld v={kz.umsatz2027} /></td><td style={TDr}>{prozent(kz.obAnteilJun27)}</td>
+                {!business && <><td style={TDr}><Geld v={kz.privatAngespartDez27} /></td><td style={TDr}><Geld v={kz.gruppeDez28} gross={false} stil={{ fontWeight: 700 }} /></td></>}
               </tr>
             ))}
           </tbody>
@@ -244,14 +260,14 @@ export function Szenarien() {
             </Tabelle>
           </Karte>
           <Karte i={2}>
-            <Ueberschrift rechts={<KnopfKlein onClick={() => void aendere([{ pfad: p('ereignisse/-'), neu: { id: neueKennung('e'), name: 'Neues Ereignis', einheit: 'privat', betrag: 0, monat: 4 } }], `Szenario ${sz.name} · Ereignis angelegt`)}>+ Ereignis</KnopfKlein>}>Lebensereignisse in „{sz.name}“</Ueberschrift>
+            <Ueberschrift rechts={<KnopfKlein onClick={() => void aendere([{ pfad: p('ereignisse/-'), neu: { id: neueKennung('e'), name: 'Neues Ereignis', einheit: business ? 'ug' : 'privat', betrag: 0, monat: 4 } }], `Szenario ${sz.name} · Ereignis angelegt`)}>+ Ereignis</KnopfKlein>}>{business ? 'Einmalige Ereignisse' : 'Lebensereignisse'} in „{sz.name}“</Ueberschrift>
             {ereignisse.length ? (
               <Tabelle klein>
                 <thead><tr><th style={TH}>Was</th><th style={TH}>Wo</th><th style={THr}>Betrag</th><th style={TH}>Monat</th><th style={TH}></th></tr></thead>
                 <tbody>{ereignisse.map(e => (
                   <tr key={e.id}>
                     <td style={TD}><TextFeld wert={e.name} onFertig={t => setze(`ereignisse/id=${e.id}/name`, e.name, t, `Ereignis ${e.name}`)} breite={150} titel="Was" /></td>
-                    <td style={TD}><Auswahl wert={e.einheit} onWahl={v => setze(`ereignisse/id=${e.id}/einheit`, e.einheit, v, `Ereignis ${e.name} · Einheit`)} optionen={[{ id: 'privat', label: 'Privat' }, { id: 'ug', label: `${UG_KURZ}` }]} titel="Einheit" /></td>
+                    <td style={TD}><Auswahl wert={e.einheit} onWahl={v => setze(`ereignisse/id=${e.id}/einheit`, e.einheit, v, `Ereignis ${e.name} · Einheit`)} optionen={business ? [{ id: 'ug', label: `${UG_KURZ}` }] : [{ id: 'privat', label: 'Privat' }, { id: 'ug', label: `${UG_KURZ}` }]} titel="Einheit" /></td>
                     <td style={TDr}><ZahlFeld wert={e.betrag} dezimal={0} breite={96} onFertig={v => setze(`ereignisse/id=${e.id}/betrag`, e.betrag, v ?? 0, `Ereignis ${e.name}`)} titel="Betrag" /></td>
                     <td style={TD}><MonatWahl wert={e.monat} onWahl={m => setze(`ereignisse/id=${e.id}/monat`, e.monat, m, `Ereignis ${e.name} · Monat`)} monate={d.monate} /></td>
                     <td style={TD}><KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: p(`ereignisse/id=${e.id}`), alt: e.name }], `Ereignis ${e.name} entfernt`)} titel="Ereignis entfernen">−</KnopfKlein></td>
@@ -274,9 +290,9 @@ export function Szenarien() {
         </Spalte>
       </Spalten>
       <div style={{ ...MIKRO, margin: '18px 0 8px' }}>Steuern — welche gelten, wie hoch</div>
-      {[...GESELLSCHAFTEN, 'privat' as const].map((o, k) => <SteuerKarte key={o} ort={o} i={5 + k} />)}
+      {[...GESELLSCHAFTEN, ...(business ? [] : ['privat' as const])].map((o, k) => <SteuerKarte key={o} ort={o} i={5 + k} />)}
       <EinstellungenKarte i={9} />
-      <SchwellenKarte i={10} />
+      {!business && <SchwellenKarte i={10} />}
       {name !== null && (
         <Dialog titel="Szenario umbenennen" onZu={() => setName(null)} aktionen={<><KnopfKlein farbe={C.inkDim} onClick={() => setName(null)}>Abbrechen</KnopfKlein><Knopf aus={!name.trim()} onClick={() => { const n = name.trim(); setName(null); if (n && n !== sz.name) void aendere([{ pfad: p('name'), alt: sz.name, neu: n }], `Szenario umbenannt: ${n}`); }}>Speichern</Knopf></>}>
           <input autoFocus value={name} aria-label="Name des Szenarios" onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { const n = name.trim(); setName(null); if (n && n !== sz.name) void aendere([{ pfad: p('name'), alt: sz.name, neu: n }], `Szenario umbenannt: ${n}`); } }} style={{ ...feld }} />
@@ -290,7 +306,10 @@ export function Szenarien() {
 const QUELLEN = [{ id: 'privat.angespart', label: 'Privat angespart' }, { id: 'ug.frei', label: `${UG_KURZ} frei verfügbar` }, { id: 'kdv.bjoern', label: 'Partnerdarlehen offen' }, { id: 'gruppe', label: 'Freies Geld Gruppe' }] as const;
 
 export function Ziele() {
-  const { d, ug, kdc, pr, aendere } = usePlan();
+  const { d, ug, kdc, pr, aendere, sicht } = usePlan();
+  const business = sicht === 'business';
+  // Business-Sicht: nur Messgrößen ohne Privat (MAKE frei, Partnerdarlehen).
+  const quellen = business ? QUELLEN.filter(q => q.id === 'ug.frei' || q.id === 'kdv.bjoern') : QUELLEN;
   const zs = zielStaende(d, ug, pr, kdc);
   const [plus, setPlus] = useState<Record<string, number>>({});
   const [neu, setNeu] = useState<string | null>(null);
@@ -311,7 +330,7 @@ export function Ziele() {
               <Formular>
                 <Feld label="Ziel €"><ZahlFeld wert={s.ziel.ziel} dezimal={0} breite="100%" onFertig={v => void aendere([{ pfad: `/ziele/id=${s.ziel.id}/ziel`, alt: s.ziel.ziel, neu: v ?? 0 }], `Ziel ${s.ziel.name}`)} titel="Ziel" /></Feld>
                 <Feld label="bis"><input type="month" value={s.ziel.bis} aria-label="bis" onChange={e => { if (e.target.value) void aendere([{ pfad: `/ziele/id=${s.ziel.id}/bis`, alt: s.ziel.bis, neu: e.target.value }], `Ziel ${s.ziel.name} · bis`); }} style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', borderRadius: 10 }} /></Feld>
-                <Feld label="Messgröße"><Auswahl wert={s.ziel.quelle} onWahl={v => void aendere([{ pfad: `/ziele/id=${s.ziel.id}/quelle`, alt: s.ziel.quelle, neu: v }], `Ziel ${s.ziel.name} · Messgröße`)} optionen={QUELLEN} titel="Messgröße" /></Feld>
+                <Feld label="Messgröße"><Auswahl wert={s.ziel.quelle} onWahl={v => void aendere([{ pfad: `/ziele/id=${s.ziel.id}/quelle`, alt: s.ziel.quelle, neu: v }], `Ziel ${s.ziel.name} · Messgröße`)} optionen={quellen} titel="Messgröße" /></Feld>
                 <Feld label="erreicht"><div style={{ padding: '8px 0', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{s.erreichtMonat ? monatLabel(d, s.erreichtMonat) : '—'}</div></Feld>
               </Formular>
               {!runter && (
@@ -331,7 +350,7 @@ export function Ziele() {
       </Raster>
       <div style={{ marginTop: 12 }}><Knopf onClick={() => setNeu('')}>+ Ziel</Knopf></div>
       {neu !== null && (
-        <Dialog titel="Neues Ziel" onZu={() => setNeu(null)} aktionen={<><KnopfKlein farbe={C.inkDim} onClick={() => setNeu(null)}>Abbrechen</KnopfKlein><Knopf aus={!neu.trim()} onClick={() => { const n = neu.trim(); setNeu(null); if (n) void aendere([{ pfad: '/ziele/-', neu: { id: neueKennung('g'), name: n, quelle: 'privat.angespart', ziel: 10000, bis: '2027-12', einheit: 'privat' } }], `Ziel angelegt: ${n}`); }}>Anlegen</Knopf></>}>
+        <Dialog titel="Neues Ziel" onZu={() => setNeu(null)} aktionen={<><KnopfKlein farbe={C.inkDim} onClick={() => setNeu(null)}>Abbrechen</KnopfKlein><Knopf aus={!neu.trim()} onClick={() => { const n = neu.trim(); setNeu(null); if (n) void aendere([{ pfad: '/ziele/-', neu: business ? { id: neueKennung('g'), name: n, quelle: 'ug.frei', ziel: 10000, bis: '2027-12', einheit: 'ug' } : { id: neueKennung('g'), name: n, quelle: 'privat.angespart', ziel: 10000, bis: '2027-12', einheit: 'privat' } }], `Ziel angelegt: ${n}`); }}>Anlegen</Knopf></>}>
           <input autoFocus value={neu} placeholder="Name des Ziels" aria-label="Name des Ziels" onChange={e => setNeu(e.target.value)} style={{ ...feld }} />
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Betrag, Datum und Messgröße stellst du danach auf der Karte ein.</div>
         </Dialog>

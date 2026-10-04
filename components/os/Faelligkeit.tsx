@@ -18,16 +18,16 @@ import { localDay } from '@/lib/zeit';
 // Die Rechnung selbst steht jetzt in lib/ — hier bleibt nur die Ansicht.
 // Weiterhin von hier exportiert, damit die bestehenden Importe stimmen.
 import { tageDazu, datumKurz, tageBis, datumFarbe } from '@/lib/make-one/faelligkeit';
-import { feld } from './schlank';
+import { feld } from './ui';
 
 export { tageDazu, datumKurz, tageBis, datumFarbe };
 
 /** Rahmenlose Pille als Wahlknopf — dieselbe Sprache wie Chip. */
 const pille = (leise?: boolean): CSSProperties => ({
-  flex: 1, fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '7px 0', borderRadius: 999,
+  flex: 1, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, cursor: 'pointer', padding: '7px 0', borderRadius: 999,
   border: 'none', background: 'rgba(255,255,255,.06)', color: leise ? C.inkLeise : C.inkDim, whiteSpace: 'nowrap',
 });
-const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, marginBottom: 6 };
+const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, marginBottom: 6 };
 
 export function Faelligkeit({ wert, setzen, klein = false, spaetPuls = false }: {
   wert?: string;

@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, MIKRO } from '@/lib/make-one/design';
-import { feld as feldBasis } from '@/components/os/schlank';
+import { eingabe as feldBasis } from '@/components/os/ui/felder';
 import { personLesen, werVergessen } from '@/lib/make-one/arbeitsplatz-browser';
 
 type Art = 'anmelden' | 'einrichten' | 'beitreten';

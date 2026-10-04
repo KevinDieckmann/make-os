@@ -100,6 +100,9 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // ── Netzwerken (02.10., Erfassen) ──
   K('netzwerken-erfassungen--*', 'Journal der Netzwerken-Erfassungen (lib/crm/netzwerken-server.ts): nur Zufalls-Kennung, abgehakte Schrittnamen, Zeiten — bis zum Abschluss dazu die Kennung der Person bzw. des Termins, beim Abschluss geleert (nie fertig gewordene nach 60 Tagen weg); keine Namen, Adressen oder Texte. Fotos/Sprachnotizen liegen in `crm-dateien--*`, Teilnahme und Info in `crm`, Verlauf in `kontakte` — dort greift Art. 17.'),
   // Übergabe-Journal (03.10., netz-recht): Nachweis der Übermittlungen an Kunden nach dem Löschen eines Events (Art. 5 Abs. 2, 15, 19).
+  // Gesellschafts-Register (04.10.): eigene Gesellschaften; Gesellschafter, Vertragsparteien und Beteiligungen können CRM-Kontakte/-Firmen
+  // NUR per Kennung nennen — Art. 17 tilgt die Kennung der Person („[gelöscht]“), Cap-Table und Vertrag bleiben (eigene Geschäftsunterlagen).
+  T('gesellschaften--*', 'Gesellschafts-Register des Haushalts (lib/gesellschaften): Firmendaten, Nummernkreise, Steckbrief, Gesellschafter, Beteiligungen, Verträge — Dritte nur als Kontakt-/Firmen-Kennung; deren Kennung wird getilgt, der Eintrag bleibt.'),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):
@@ -211,7 +214,6 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('tagesstart', 'Riegel des Morgenlaufs.'),
   K('willkommen', 'Willkommens-Hinweise.'),
   K('crm-scoring', 'Scoring-Einstellungen des CRM (Kriterien, Stufen, Schwellen MQL/SQL) samt früheren Fassungen und Vermerk wer/wann — keine Personendaten (Leads tragen ihre Antworten selbst, in crm/kontakte).'),
-  K('gesellschaften--*', 'Die eigenen Gesellschaften des Haushalts (Firmendaten, Nummernkreise).'),
   K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
   K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),
   K('performance--*', 'Wachstums-Score je Person (Zahlen).'),

@@ -102,6 +102,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   danke: { Icon: Mail, label: 'Danke-Mails', farbe: C.achtung },
   // 03.10.: etwas am eigenen Zugang wurde geändert (Anmelde-Adresse).
   sicherheit: { Icon: ShieldCheck, label: 'Sicherheit', farbe: C.achtung },
+  // 04.10.: „kündigen bis“ eines Vertrags naht (Gesellschafts-Register).
+  vertrag: { Icon: Hourglass, label: 'Vertragsfrist', farbe: C.achtung },
 };
 
 function zeitVon(m: Meldung, jetzt: number): string {

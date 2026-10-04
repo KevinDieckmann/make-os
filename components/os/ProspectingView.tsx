@@ -12,7 +12,8 @@ import {
   DEFAULT_ICP, PROSPECT_STATUS_ORDER, PROSPECT_STATUS_LABEL, PIPELINE_HINT,
   type Prospect, type ProspectStatus, type ProspectsState,
 } from '@/lib/make-one/prospecting-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Zahl, feld, LEUCHT } from './schlank';
+import { Building2 } from 'lucide-react';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Chip, Zahl, feld, LEUCHT } from './ui';
 
 const scoreColor = (s?: number) => (s == null ? C.inkLeise : s >= 80 ? LEUCHT.gut : s >= 50 ? LEUCHT.achtung : LEUCHT.kritisch);
 const statusColor = (s: ProspectStatus) => (s === 'kontaktiert' ? LEUCHT.gut : s === 'qualifiziert' ? LEUCHT.business : s === 'verworfen' ? LEUCHT.kritisch : C.inkLeise);
@@ -24,7 +25,7 @@ const z = (n: number) => (n ? String(n) : undefined);
 function Wahl({ an, farbe, onClick, children, title, aus }: { an: boolean; farbe?: string; onClick: () => void; children: ReactNode; title?: string; aus?: boolean }) {
   const f = farbe ?? C.aktiv;
   return (
-    <button onClick={onClick} title={title} disabled={aus} className="fassbar" style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 999, border: 'none', cursor: aus ? 'default' : 'pointer', background: an ? `${f}22` : 'rgba(255,255,255,.05)', color: an ? f : C.inkDim, whiteSpace: 'nowrap', transition: 'background .2s ease, color .2s ease' }}>{children}</button>
+    <button onClick={onClick} title={title} disabled={aus} className="fassbar" style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '5px 12px', borderRadius: 999, border: 'none', cursor: aus ? 'default' : 'pointer', background: an ? `${f}22` : 'rgba(255,255,255,.05)', color: an ? f : C.inkDim, whiteSpace: 'nowrap', transition: 'background .2s ease, color .2s ease' }}>{children}</button>
   );
 }
 
@@ -147,7 +148,7 @@ export function ProspectingView() {
       rechts={<Chip farbe={LEUCHT.agenten}>live · autonom</Chip>}
     >
       {/* Kennzahlen */}
-      <Karte i={0} akzent={LEUCHT.business}>
+      <Karte i={0} ton={LEUCHT.business}>
         <Ueberschrift farbe={LEUCHT.business}>Zielliste</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
           <Zahl wert={z(rows.length)} label="In Liste" />
@@ -162,14 +163,14 @@ export function ProspectingView() {
         <details>
           <summary style={{ cursor: 'pointer', ...mikro, color: LEUCHT.business }}>Ideales Kundenprofil (ICP)</summary>
           <textarea value={icp} onChange={e => setIcpP(e.target.value)} rows={7} style={{ ...feld, marginTop: 12, resize: 'vertical', lineHeight: 1.5, color: C.inkDim }} />
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Das Profil steuert das Scoring. Änderungen werden gespeichert.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>Das Profil steuert das Scoring. Änderungen werden gespeichert.</div>
         </details>
       </Karte>
 
       {/* Aktionen + Liste */}
       <Karte i={2}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
-          <Knopf onClick={scoreAll} aus={bulk || !unscored} farbe={LEUCHT.business}>
+          <Knopf haupt onClick={scoreAll} aus={bulk || !unscored} farbe={LEUCHT.business}>
             {bulk ? 'qualifiziere …' : unscored ? `Alle ${unscored} qualifizieren` : 'Alle qualifiziert ✓'}
           </Knopf>
           <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 220 }}>
@@ -181,7 +182,7 @@ export function ProspectingView() {
         {!loaded ? (
           <Leer>lade Zielliste …</Leer>
         ) : rows.length === 0 ? (
-          <Leer>Noch keine Firmen. Füg oben welche hinzu — oder sag mir im Chat „bau die Zielliste aus“, dann ziehe ich echte Mittelstands-Firmen (Explorium) rein.</Leer>
+          <Leerzustand symbol={<Building2 size={26} />} ton={LEUCHT.business} titel="Noch keine Firmen in der Zielliste">Oben eine Firma hinzufügen — oder ZOE im Chat sagen „bau die Zielliste aus“, dann zieht sie echte Mittelstands-Firmen (Explorium) rein.</Leerzustand>
         ) : (
           <Liste>
             {sorted.map(p => {
@@ -204,7 +205,7 @@ export function ProspectingView() {
                     <div style={{ padding: '6px 2px 18px 56px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {p.fit && <div><div style={{ ...mikro, marginBottom: 4 }}>Fit</div><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.fit}</div></div>}
                       {p.angle && <div><div style={{ ...mikro, marginBottom: 4 }}>Aufhänger</div><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.angle}</div></div>}
-                      {!p.fit && !p.angle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch nicht qualifiziert — „Qualifizieren“ klicken.</div>}
+                      {!p.fit && !p.angle && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Noch nicht qualifiziert — „Qualifizieren“ klicken.</div>}
 
                       {/* Outreach: Ansprache entwerfen — Versand bleibt bei Kevin */}
                       {p.score != null && (
@@ -235,9 +236,9 @@ export function ProspectingView() {
                             <Knopf leise onClick={() => { try { navigator.clipboard.writeText(`${entwurf.betreff}\n\n${entwurf.email}`); } catch { /* egal */ } }}>E-Mail kopieren</Knopf>
                             {entwurf.linkedin && <Knopf leise onClick={() => { try { navigator.clipboard.writeText(entwurf.linkedin); } catch { /* egal */ } }}>LinkedIn kopieren</Knopf>}
                             <Knopf leise onClick={() => setRowsP(rows.map(x => x.id === p.id ? { ...x, status: 'kontaktiert' } : x))}>→ als kontaktiert markieren</Knopf>
-                            {mailInfo && <span style={{ fontSize: 12, color: LEUCHT.gut }}>{mailInfo}</span>}
+                            {mailInfo && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>{mailInfo}</span>}
                           </div>
-                          {entwurf.hinweis && <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>{entwurf.hinweis}</div>}
+                          {entwurf.hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{entwurf.hinweis}</div>}
                         </div>
                       )}
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -246,7 +247,7 @@ export function ProspectingView() {
                         ))}
                         <span style={{ marginLeft: 'auto' }}><Knopf leise onClick={() => setRowsP(rows.filter(x => x.id !== p.id))}>Löschen</Knopf></span>
                       </div>
-                      {p.source && <div style={{ fontSize: 12, color: C.inkLeise }}>Quelle: {p.source}</div>}
+                      {p.source && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Quelle: {p.source}</div>}
                     </div>
                   )}
                 </div>

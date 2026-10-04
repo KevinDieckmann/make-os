@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Spalten, Spalte } from './schlank';
+import { Seite, Spalten, Spalte } from './ui';
 import { WIDGETS } from './flaeche/widgets';
 import { Anlaesse } from './kalender/Anlaesse';
 import { Anstehend } from './heute/Anstehend';

@@ -11,6 +11,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Spalten, Spalte, Haken, LEUCHT } from '../ui';
 import type { Einheit, Posten, Schuld } from '@/lib/finanzen/rechenkern';
 import { tilgungsplan, zahlungskalender, istSchnitt, sollBudget } from '@/lib/finanzen/rechenkern';
+import { nurBusinessTermine } from '@/lib/finanzen/plan/sicht';
 import { EINHEIT_LABEL, KAL, monatLabel, tagKurz, plusTage, letzterVoller, neueKennung, postenOffen, personKennung } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
 import { UG_NAME } from '@/lib/einheiten';
@@ -19,11 +20,14 @@ import { Geld, Kachel, Kacheln, Etikett, Tabelle, TH, THr, TD, TDr, TDleise, Zah
 import { Linie } from './diagramme';
 
 const EINHEITEN = (Object.keys(EINHEIT_LABEL) as Einheit[]).map(e => ({ id: e, label: EINHEIT_LABEL[e] }));
+/** Business-Sicht (04.10.): Einheiten ohne Privat; neue Einträge starten bei der MAKE Innovation GmbH. */
+const einheitenFuer = (business: boolean) => (business ? EINHEITEN.filter(e => e.id !== 'privat') : EINHEITEN);
 const WER = [{ id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'beide', label: 'Beide' }];
 
 // ── Schulden ────────────────────────────────────────────────────────────────
 export function Schulden() {
-  const { d, ug, sz, aendere } = usePlan();
+  const { d, ug, sz, aendere, sicht } = usePlan();
+  const business = sicht === 'business';
   const [sonder, setSonder] = useState<Record<string, number>>({});
   const N = d.monate.length;
   const plaene = d.schulden.map(s => ({ s, t: tilgungsplan(s, sonder[s.id] ?? 0, N), t0: tilgungsplan(s, 0, N) }));
@@ -38,7 +42,7 @@ export function Schulden() {
     <>
       <Kacheln min={170}>
         <Kachel label="Schulden heute" wert={<><Geld v={heute} /> €</>} unter={<>inkl. Partnerdarlehen <Geld v={d.annahmen.bjoernBetrag} farbe={C.inkDim} /> €</>} />
-        <Kachel label="Privat schuldenfrei" wert={freiPrivat === null ? '—' : freiPrivat === 0 ? 'jetzt' : monatLabel(d, freiPrivat)} unter={freiPrivat === null ? 'ohne Rate kein Datum' : 'bei den eingetragenen Raten'} />
+        {!business && <Kachel label="Privat schuldenfrei" wert={freiPrivat === null ? '—' : freiPrivat === 0 ? 'jetzt' : monatLabel(d, freiPrivat)} unter={freiPrivat === null ? 'ohne Rate kein Datum' : 'bei den eingetragenen Raten'} />}
         <Kachel label="Partnerdarlehen getilgt" wert={darlehenFrei} unter={`über die ${UG_NAME} · Szenario ${sz.name}`} />
         <Kachel label="Ungeklärt" wert={String(unklar.length)} punkt={unklar.length ? LEUCHT.achtung : LEUCHT.gut} unter={<><Geld v={unklar.reduce((a, s) => a + s.rest, 0)} farbe={C.inkDim} /> € ohne Plan</>} />
       </Kacheln>
@@ -47,7 +51,7 @@ export function Schulden() {
         <Linie labels={d.monate} hoehe={200} serien={[{ name: 'Schulden gesamt', farbe: LEUCHT.kritisch, werte: summe }, { name: 'Partnerdarlehen', farbe: KUPFER, werte: ug.map(u => u.bjoernRest), breite: 1.3 }]} />
       </Karte>
       <Karte i={1}>
-        <Ueberschrift rechts={<KnopfKlein onClick={() => void aendere([{ pfad: '/schulden/-', neu: { id: neueKennung('s'), name: 'Neue Schuld', einheit: 'privat', rest: 0, rate: 0, zins: 0, start: 1, status: 'läuft' } }], 'Schuld angelegt')}>+ Schuld</KnopfKlein>}>Einzeln</Ueberschrift>
+        <Ueberschrift rechts={<KnopfKlein onClick={() => void aendere([{ pfad: '/schulden/-', neu: { id: neueKennung('s'), name: 'Neue Schuld', einheit: business ? 'ug' : 'privat', rest: 0, rate: 0, zins: 0, start: 1, status: 'läuft' } }], 'Schuld angelegt')}>+ Schuld</KnopfKlein>}>Einzeln</Ueberschrift>
         <Tabelle klein>
           <thead><tr><th style={TH}>Name</th><th style={TH}>Einheit</th><th style={TH}>Status</th><th style={THr}>Rest</th><th style={THr}>Rate</th><th style={THr}>Zins %</th><th style={TH}>erste Rate</th><th style={TH}>Sondertilgung / Monat (Probe)</th><th style={TH}>schuldenfrei</th><th style={THr}>Zinsen</th><th style={TH}></th></tr></thead>
           <tbody>
@@ -59,7 +63,7 @@ export function Schulden() {
             {plaene.map(({ s, t, t0 }) => (
               <tr key={s.id}>
                 <td style={TD}><TextFeld wert={s.name} onFertig={v => setze(s, 'name', s.name, v, 'Name')} breite={160} titel="Name" />{s.notiz && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, maxWidth: 240 }}>{s.notiz}</div>}</td>
-                <td style={TD}><Auswahl wert={s.einheit} onWahl={v => setze(s, 'einheit', s.einheit, v, 'Einheit')} optionen={EINHEITEN} titel="Einheit" /></td>
+                <td style={TD}><Auswahl wert={s.einheit} onWahl={v => setze(s, 'einheit', s.einheit, v, 'Einheit')} optionen={einheitenFuer(business)} titel="Einheit" /></td>
                 <td style={TD}><Auswahl wert={s.status} onWahl={v => setze(s, 'status', s.status, v, 'Status')} optionen={[{ id: 'läuft', label: 'läuft' }, { id: 'unklar', label: 'unklar' }, { id: 'getilgt', label: 'getilgt' }]} titel="Status" /></td>
                 <td style={TDr}><ZahlFeld wert={s.rest} onFertig={v => setze(s, 'rest', s.rest, v ?? 0, 'Rest')} breite={100} titel="Rest" /></td>
                 <td style={TDr}><ZahlFeld wert={s.rate} onFertig={v => setze(s, 'rate', s.rate, v ?? 0, 'Rate')} breite={84} titel="Rate" /></td>
@@ -84,7 +88,8 @@ const ARTEN: { id: Posten['art']; label: string }[] = [{ id: 'rechnung', label: 
 const statusFuer = (art: Posten['art']) => (art === 'konto' ? ['eintragen', 'prüfen', 'aktuell'] : art === 'forderung' ? ['offen', 'unklar', 'erledigt'] : ['offen', 'unklar', 'bezahlt', 'erledigt']).map(s => ({ id: s, label: s }));
 
 export function ZuErledigen() {
-  const { d, aendere, person } = usePlan();
+  const { d, aendere, person, sicht } = usePlan();
+  const business = sicht === 'business';
   const heute = d.einstellungen.heute, in7 = plusTage(heute, 7);
   const [filter, setFilter] = useState<'offen' | 'alle'>('offen');
   const [wer, setWer] = useState('alle');
@@ -103,7 +108,7 @@ export function ZuErledigen() {
         const l = d.posten.filter(p => p.art === a.id && (filter === 'alle' || postenOffen(p)) && (wer === 'alle' || personKennung(p.wer || 'beide') === wer)).sort((x, y) => (x.faellig || '9') < (y.faellig || '9') ? -1 : 1);
         return (
           <Karte key={a.id} i={ai}>
-            <Ueberschrift rechts={<KnopfKlein onClick={() => void aendere([{ pfad: '/posten/-', neu: { id: neueKennung('x'), art: a.id, einheit: 'privat', name: 'Neu', betrag: null, status: a.id === 'konto' ? 'eintragen' : 'offen', wer: person || 'beide', faellig: '' } }], `${a.label}: Posten angelegt`)}>+</KnopfKlein>}>{a.label}</Ueberschrift>
+            <Ueberschrift rechts={<KnopfKlein onClick={() => void aendere([{ pfad: '/posten/-', neu: { id: neueKennung('x'), art: a.id, einheit: business ? 'ug' : 'privat', name: 'Neu', betrag: null, status: a.id === 'konto' ? 'eintragen' : 'offen', wer: person || 'beide', faellig: '' } }], `${a.label}: Posten angelegt`)}>+</KnopfKlein>}>{a.label}</Ueberschrift>
             <Tabelle klein>
               <thead><tr><th style={TH}></th><th style={TH}>Name</th><th style={TH}>Einheit</th><th style={TH}>wer</th><th style={TH}>fällig</th><th style={TH}>Status</th><th style={THr}>Betrag</th><th style={TH}>Notiz</th><th style={TH}></th></tr></thead>
               <tbody>
@@ -113,7 +118,7 @@ export function ZuErledigen() {
                     <tr key={p.id}>
                       <td style={TD}>{a.id !== 'konto' && <Haken an={!offen} onChange={() => setze(p, 'status', p.status, offen ? (p.art === 'rechnung' ? 'bezahlt' : 'erledigt') : 'offen', offen ? 'erledigt' : 'wieder offen')} />}</td>
                       <td style={TD}><TextFeld wert={p.name} onFertig={v => setze(p, 'name', p.name, v, 'Name')} breite={170} titel="Name" /></td>
-                      <td style={TD}><Auswahl wert={p.einheit} onWahl={v => setze(p, 'einheit', p.einheit, v, 'Einheit')} optionen={EINHEITEN} titel="Einheit" /></td>
+                      <td style={TD}><Auswahl wert={p.einheit} onWahl={v => setze(p, 'einheit', p.einheit, v, 'Einheit')} optionen={einheitenFuer(business)} titel="Einheit" /></td>
                       <td style={TD}><Auswahl wert={personKennung(p.wer || 'beide')} onWahl={v => setze(p, 'wer', p.wer, v, 'wer')} optionen={WER} titel="Wer" /></td>
                       <td style={TD}><input type="date" value={p.faellig ?? ''} aria-label="fällig" onChange={e => setze(p, 'faellig', p.faellig, e.target.value, 'fällig')} style={{ ...eingabeStil, width: 140, borderColor: ueber ? LEUCHT.kritisch : bald ? LEUCHT.achtung : undefined, color: ueber ? LEUCHT.kritisch : C.ink }} /></td>
                       <td style={TD}><Auswahl wert={p.status} onWahl={v => setze(p, 'status', p.status, v, 'Status')} optionen={statusFuer(a.id)} titel="Status" /></td>
@@ -135,10 +140,12 @@ export function ZuErledigen() {
 
 // ── Kalender & Verträge ─────────────────────────────────────────────────────
 export function Kalender() {
-  const { d, ug, kdc, pr, h, sz } = usePlan();
+  const { d, ug, kdc, pr, h, sz, sicht } = usePlan();
   const [zeile, setZeile] = useState<string | null>(null);
   const L = letzterVoller(d);
-  const termine = zahlungskalender(d, ug, pr, 62, kdc);
+  // Business-Sicht: keine privaten Termine (Gehälter netto, Ausschüttung netto, private Raten).
+  const alleTermine = zahlungskalender(d, ug, pr, 62, kdc);
+  const termine = sicht === 'business' ? nurBusinessTermine(alleTermine) : alleTermine;
   const wochen = new Map<string, typeof termine>();
   for (const t of termine) { const dt = new Date(`${t.datum}T00:00:00Z`); const mo = new Date(dt); mo.setUTCDate(dt.getUTCDate() - ((dt.getUTCDay() + 6) % 7)); const k = mo.toISOString().slice(0, 10); wochen.set(k, [...(wochen.get(k) ?? []), t]); }
   const vertraege = [...d.privatBudget.filter(z => z.typ === 'fix' || z.typ === 'jahr'), ...d.privatSchulden, ...d.sachkosten];

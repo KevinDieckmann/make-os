@@ -13,10 +13,11 @@ import { zielStaende, zahlungskalender, istSchnitt, sollBudget } from '@/lib/fin
 import type { ZielStand } from '@/lib/finanzen/rechenkern';
 import { eur, prozent, tagKurz, datumLang, plusTage, offeneBuchungen, heuteIndex, letzterVoller, tageIm, achse, monatLabel, neueKennung, postenOffen } from '@/lib/finanzen/plan/hilfen';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
-import { UG_KURZ } from '@/lib/einheiten';
+import { UG_KURZ, finanzOrtName } from '@/lib/einheiten';
 import { entscheidungen } from '@/lib/finanzen/szenarien';
 import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { luecken } from '@/lib/finanzen/luecken';
+import { nurBusinessPunkte, nurBusinessTermine } from '@/lib/finanzen/plan/sicht';
 import { usePlan } from './daten';
 import { Geld, Kachel, Kacheln, Etikett, StatusPille, PersonMarke, AnteilBalken, KnopfKlein, Auswahl, ampel, personName, KUPFER, LILA, Nichts, Hinweis, Legende } from './teile';
 import { Linie } from './diagramme';
@@ -216,6 +217,89 @@ export function Lage() {
         </Spalte>
       </Spalten>
       <Hinweis>Steuern und Netto sind Näherungen aus den Annahmen — Hinweis, keine Steuerberatung.</Hinweis>
+    </>
+  );
+}
+
+/**
+ * Lage der Business-Sicht (04.10., Kevin: „Business ist bei Business sichtbar, kein Privat“): frei verfügbar der drei Gesellschaften,
+ * Runway MAKE, Business-Ziele, „Was jetzt zu entscheiden ist“ und „Noch offen“ nur mit Business-Punkten, Verlauf und die nächsten
+ * 14 Tage ohne private Termine. Kein Privat-Konto, keine Luft, kein Notgroschen, keine Entscheidung der Woche (die gehört dem Haushalt).
+ */
+export function LageBusiness() {
+  const { d, ug, kdc, pr, aw, ps, sz, kz, geh } = usePlan();
+  const punkte = nurBusinessPunkte(entscheidungen(d, { ug, pr, ps }, aw, 12)).slice(0, 6);
+  const offenPunkte = nurBusinessPunkte(luecken(d, ug, 0)).slice(0, 7);
+  const sw = schwellenVon(d);
+  const m0 = aw.m0;
+  const freiBusiness = aw.frei.ug + aw.frei.kdv + aw.frei.kdc;
+  const zs = zielStaende(d, ug, pr, kdc);
+  const imPlan = zs.filter(z => z.status === 'erreicht' || z.status === 'im Plan').length;
+  const termine = nurBusinessTermine(zahlungskalender(d, ug, pr, 14, kdc));
+  const stufeFarbe = { kritisch: LEUCHT.kritisch, achtung: LEUCHT.achtung, info: LEUCHT.puls } as const;
+  const rw = aw.runway.ug;
+  return (
+    <>
+      <Kacheln min={220}>
+        <Kachel label="Frei verfügbar Business" punkt={freiBusiness >= sw.freiGut ? LEUCHT.gut : freiBusiness >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={freiBusiness} /> €</>}
+          unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Selbst. <Geld v={aw.frei.kdc} farbe={C.inkDim} /></>} />
+        <Kachel label={`Runway ${UG_KURZ}`} punkt={rw == null || rw >= sw.runwayGutMonate ? LEUCHT.gut : rw >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={rw == null ? `> ${aw.runway.horizont} M` : rw === 0 ? 'jetzt' : `${rw} M`} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
+        <Kachel label="Business-Ziele im Plan" punkt={zs.length - imPlan ? LEUCHT.achtung : LEUCHT.gut} wert={`${imPlan} / ${zs.length}`} unter={zs.length ? 'MAKE frei · Partnerdarlehen' : 'noch keine Business-Ziele'} />
+        <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={ampel(kz.minFrei >= sw.tiefpunktGut, kz.minFrei >= 0)} wert={<><Geld v={kz.minFrei} /> €</>} unter={monatLabel(d, kz.minMonat)} />
+      </Kacheln>
+      <Karte i={0} ton={C.aktiv}>
+        <Ueberschrift rechts={<Knopf onClick={() => geh('planen')}>Planungsrunde öffnen ›</Knopf>}>Was jetzt zu entscheiden ist</Ueberschrift>
+        {punkte.length ? punkte.map(p => (
+          <div key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien, lineHeight: 1.45 }}>
+            <span className={p.stufe === 'kritisch' ? 'zeit-puls' : undefined} style={{ width: 9, height: 9, borderRadius: '50%', background: stufeFarbe[p.stufe], flex: '0 0 auto', marginTop: 5 }} />
+            <span style={{ flex: 1 }}>{p.text}{p.hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{p.hinweis}</div>}</span>
+            <KnopfKlein onClick={() => geh(p.ziel.u, p.ziel.params)}>Öffnen ›</KnopfKlein>
+          </div>
+        )) : <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: LEUCHT.gut }} />Nichts drängt im Business.</div>}
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Rechnet mit {ps ? <>dem Arbeitsplan <b style={{ color: C.inkDim }}>{ps.name}</b> auf Treiber {sz.name}</> : <>dem Treiber <b style={{ color: C.inkDim }}>{sz.name}</b></>} · Stichtag {datumLang(d.einstellungen.heute)} · nur Business.</div>
+      </Karte>
+      {offenPunkte.length > 0 && (
+        <Karte i={1}>
+          <Ueberschrift>Noch offen in der Planung</Ueberschrift>
+          {offenPunkte.map(p => (
+            <div key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien, lineHeight: 1.45 }}>
+              <span style={{ width: 9, height: 9, borderRadius: '50%', border: `2px solid ${C.inkLeise}`, flex: '0 0 auto', marginTop: 5 }} />
+              <span style={{ flex: 1 }}>{p.text}</span>
+              <KnopfKlein onClick={() => geh(p.ziel.u, p.ziel.params)}>Ausfüllen ›</KnopfKlein>
+            </div>
+          ))}
+        </Karte>
+      )}
+      <Spalten verhaeltnis="3:2">
+        <Spalte>
+          <Karte i={2}>
+            <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: 'KD Ventures' }, { farbe: LEUCHT.achtung, text: 'Selbstständigkeit' }]} />}>Frei verfügbar je Gesellschaft — {sz.name}</Ueberschrift>
+            <Linie labels={d.monate} heute={m0 - 1} tick={3} serien={[
+              { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: ug.map(u => u.frei), breite: 2.4 },
+              { name: 'KD Ventures', farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
+              { name: 'Selbstständigkeit', farbe: LEUCHT.achtung, werte: kdc.map(k => k.frei), breite: 1.4 },
+            ]} />
+          </Karte>
+        </Spalte>
+        <Spalte>
+          <Karte i={3}>
+            <Ueberschrift>Nächste 14 Tage</Ueberschrift>
+            {termine.length ? termine.map((t, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien }}>
+                <span style={{ color: C.inkLeise, width: 44, fontVariantNumeric: 'tabular-nums' }}>{tagKurz(t.datum)}</span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.text}</span>
+                <Etikett einheit={t.einheit} />
+                <Geld v={t.betrag} farbe={t.betrag > 0 ? LEUCHT.gut : undefined} stil={{ width: 84, textAlign: 'right' }} />
+              </div>
+            )) : <Nichts>Nichts fällig.</Nichts>}
+          </Karte>
+          <Karte i={4}>
+            <Ueberschrift>Business-Ziele</Ueberschrift>
+            {zs.length ? zs.map(s => <ZielKurz key={s.ziel.id} s={s} bjoernStart={d.annahmen.bjoernBetrag} />) : <Nichts>Noch keine Business-Ziele — unter Ziele &amp; Töpfe anlegen.</Nichts>}
+          </Karte>
+        </Spalte>
+      </Spalten>
+      <Hinweis>Nur Business: {finanzOrtName('ug')}, {finanzOrtName('kdv')} und {finanzOrtName('kdc')}. Privat (Haushalt, Konten, Luft, private Ziele) steht unter Finanzen › Privat › Finanzplanung. Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
     </>
   );
 }

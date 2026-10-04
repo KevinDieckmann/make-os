@@ -117,9 +117,9 @@ export const DEPARTMENTS: Department[] = [
       { id: 'performance', name: 'Score-Agent', role: 'Den Wachstums-Score rechnen und einordnen', status: 'live', autonomy: 'autonom', model: 'stark', href: '/os/wachstum',
         funktionen: ['Fünf Säulen aus echten Daten rechnen', 'Messlücken ausweisen statt raten', 'Verlauf mitschreiben', 'Größten Hebel benennen'],
         bauplan: 'LIVE: /api/performance. Rechnet je Person getrennt (seit 07.09.), weil Gesundheit und Journal persönlich sind. Was nicht gemessen ist, wird als Messlücke ausgewiesen und zählt nicht als schlechter Wert. ZOE startet ihn selbst.' },
-      { id: 'okr', name: 'OKR-/Ziel-Agent', role: 'Weg zum 1-Mio-Ziel, MSI-Anbindung', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/okr',
+      { id: 'okr', name: 'OKR-/Ziel-Agent', role: 'Weg zum 1-Mio-Ziel, MSI-Anbindung', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/planung/jahr?space=business',
         funktionen: ['Nordstern → Objectives + Key Results', 'Echte Aufgaben den Zielen zuordnen', 'Lücken flaggen (wo nichts einzahlt)', 'Live gegen Controlling-Zahlen'],
-        bauplan: 'LIVE: liest Controlling-Zahlen + echte Aufgaben, Anthropic baut OKR-Baum, ordnet vorhandene Tasks zu & benennt Lücken. Vorschlag — du entscheidest. → /os/okr' },
+        bauplan: 'LIVE: liest Controlling-Zahlen + echte Aufgaben, Anthropic baut OKR-Baum, ordnet vorhandene Tasks zu & benennt Lücken. Vorschlag — du entscheidest. Seit 04.10. ohne eigene Seite: ZOE startet ihn (/api/okr), die Ziele leben in Ziele & Planung (/os/okr leitet dorthin).' },
     ],
   },
   {

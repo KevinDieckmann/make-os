@@ -245,6 +245,11 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'business', risiko: 'frei',
     vorschau: schlicht('Business-Index lesen', i => `${text(i.sicht) || 'gesamt'}${i.kennzahl ? ` · ${text(i.kennzahl)}` : ''}`),
   },
+  // Gesellschafts-Register (04.10.): nur lesen, Haushalt des Inhabers.
+  gesellschaften_lesen: {
+    gruppe: 'business', risiko: 'frei',
+    vorschau: schlicht('Gesellschaften lesen', i => (i.name ? `„${text(i.name, 80)}“` : 'alle')),
+  },
   monatsabschluss_erfassen: { gruppe: 'finanzen', risiko: 'freigabe', vorschau: vsMonatsabschluss },
   // Ideen an MAKE OS selbst — landen in „Ideen“; gebaut wird erst, was Kevin oder Malin nach „Bereit“ ziehen.
   bauplan_notieren: {

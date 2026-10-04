@@ -10,8 +10,9 @@ import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { Aenderung, FinanzDaten } from '@/lib/finanzen/rechenkern';
 import { zielStaende } from '@/lib/finanzen/rechenkern';
 import { rechneMit, arbeitsplanVon, auswertung } from '@/lib/finanzen/szenarien';
-import { wendeOperationenAn, neuerStand, pruefeDokument, OperationUngueltig, type Operation } from './operationen';
+import { wendeOperationenAn, neuerStand, pruefeDokument, OperationUngueltig, OperationZuGross, type Operation } from './operationen';
 import { offeneBuchungen, faelligeZahl } from './hilfen';
+import { businessPfadErlaubt, fuerSicht, type PlanSicht } from './sicht';
 
 export function speicherName(haushalt: string): string {
   if (!HAUSHALT_OK.test(haushalt)) throw new Error(`Ungültiger Haushalt: ${haushalt}`);
@@ -32,14 +33,14 @@ export const dateiStand = (haushalt: string) => speicherStand([speicherName(haus
 
 export type PatchErgebnis =
   | { ok: true; stand: string; protokoll: Aenderung[]; meta: Record<string, { wer: string; wann: string } | null>; nachladen: boolean }
-  | { ok: false; status: 400 | 404 | 409; fehler: string; stand?: string; dokument?: FinanzDaten };
+  | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; stand?: string; dokument?: FinanzDaten };
 
 /**
  * Operationen anwenden — Prüfung und Schreiben in EINER Sperre. Bei fremdem
  * Stand: 409 mit dem aktuellen Dokument, damit die Oberfläche beide Werte
  * zeigen kann statt still zu überschreiben.
  */
-export async function patchen(haushalt: string, basisStand: unknown, ops: Operation[], person: string): Promise<PatchErgebnis> {
+export async function patchen(haushalt: string, basisStand: unknown, ops: Operation[], person: string, sicht: PlanSicht = 'privat'): Promise<PatchErgebnis> {
   const jetzt = new Date();
   let ergebnis: PatchErgebnis = { ok: false, status: 404, fehler: 'Noch kein Finanzplan — erst den Startbestand hochladen oder leer beginnen.' };
   await updateJson<unknown>(speicherName(haushalt), aktuell => {
@@ -48,8 +49,16 @@ export async function patchen(haushalt: string, basisStand: unknown, ops: Operat
     if (!p.ok) { ergebnis = { ok: false, status: 400, fehler: `Der gespeicherte Plan ist beschädigt: ${p.fehler}` }; return aktuell; }
     const d = p.dokument;
     if (typeof basisStand !== 'string' || basisStand !== d.stand) {
-      ergebnis = { ok: false, status: 409, fehler: 'Inzwischen hat jemand geändert — der Plan wurde neu geladen, bitte noch einmal.', stand: d.stand, dokument: d };
+      // Die 409-Antwort trägt das Dokument — in der Business-Sicht nur den Business-Teil (Privat verlässt den Server nie).
+      ergebnis = { ok: false, status: 409, fehler: 'Inzwischen hat jemand geändert — der Plan wurde neu geladen, bitte noch einmal.', stand: d.stand, dokument: fuerSicht(d, sicht) };
       return aktuell;
+    }
+    // Business-Sicht (04.10.): jeder Schritt muss Business sein — sonst 403, nichts wird geschrieben.
+    if (sicht === 'business') {
+      for (const op of Array.isArray(ops) ? ops : []) {
+        const grund = businessPfadErlaubt(String(op?.pfad ?? ''), d, op?.neu);
+        if (grund) { ergebnis = { ok: false, status: 403, fehler: `In der Business-Sicht nicht änderbar: ${grund}` }; return aktuell; }
+      }
     }
     try {
       const r = wendeOperationenAn(d, ops, person, jetzt.toISOString());
@@ -57,7 +66,7 @@ export async function patchen(haushalt: string, basisStand: unknown, ops: Operat
       ergebnis = { ok: true, stand, protokoll: r.protokoll, meta: r.meta, nachladen: r.nachladen };
       return { ...r.dokument, stand };
     } catch (err) {
-      ergebnis = { ok: false, status: 400, fehler: err instanceof OperationUngueltig ? err.message : 'Änderung nicht verwertbar.' };
+      ergebnis = { ok: false, status: err instanceof OperationZuGross ? 413 : 400, fehler: err instanceof OperationUngueltig ? err.message : 'Änderung nicht verwertbar.' };
       return aktuell;
     }
   });

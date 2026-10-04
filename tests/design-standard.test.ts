@@ -187,6 +187,30 @@ describe('Planung, Fokus und Lichtfäden hängen am Standard (03.10., „Fokus a
   });
 });
 
+describe('Aufräumen 04.10.: der Standard überall (keine Altbausteine mehr)', () => {
+  // Begründete Ausnahmen: components/os/ui reicht die Nicht-Standard-Teile (Ring, Balken, Punkt, Haken, Spalten, useHochzaehlen, LEUCHT …)
+  // aus schlank.tsx durch — über EINE Stelle. Sonst holt keine Datei mehr etwas aus schlank.tsx.
+  const AUSNAHMEN = ['components/os/ui/index.ts', 'components/os/ui/flaechen.tsx'];
+  const ALLE = [...dateien('components'), ...dateien('app')];
+  it('kein Import aus schlank.tsx außerhalb von components/os/ui', () => {
+    const direkt = ALLE.filter(f => !AUSNAHMEN.includes(f) && /from '(@\/components\/os\/|(\.\.?\/)+)schlank'/.test(lies(f)));
+    expect(direkt).toEqual([]);
+  });
+  it('die umgestellten Seiten: Fließtext nicht unter 13 px, Fehler als Hinweis-Karte', () => {
+    const UMGESTELLT = ['BoardView', 'ContentView', 'MeetingView', 'ProspectingView', 'ResearchView', 'RoadmapView', 'RitualView', 'OnboardingView',
+      'TageslaufView', 'ZusammenarbeitView', 'HeuteView', 'Abhaengigkeit', 'Faelligkeit'].map(n => `components/os/${n}.tsx`)
+      .concat(dateien('components/os/bauplan'), dateien('components/os/zeit'), ['components/os/heute/Anstehend.tsx', 'components/os/netzwerken/MeineKarte.tsx',
+        'components/os/mandate/ProdukteMandate.tsx', 'components/os/austausch/BeitragsVerlauf.tsx']);
+    const klein: string[] = []; const fehler: string[] = [];
+    for (const f of UMGESTELLT) lies(f).split('\n').forEach((z, i) => {
+      if (/fontSize: (9|10|11\.5|12|12\.5)(?![\d.])/.test(z) && !z.includes('uppercase')) klein.push(`${f}:${i + 1}`);
+      if (/\{(fehler|err|api\.fehler) && <(div|span)[^>]*color: LEUCHT\.kritisch/.test(z)) fehler.push(`${f}:${i + 1}`);
+    });
+    expect(klein).toEqual([]);
+    expect(fehler).toEqual([]);
+  });
+});
+
 describe('Dokumentation', () => {
   it('DESIGN_STANDARD.md nennt jeden Baustein und jeden Token', () => {
     const md = lies('DESIGN_STANDARD.md');
