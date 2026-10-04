@@ -11,6 +11,8 @@
 import type { Scope, Schwelle } from './register';
 import type { ZeitBild } from '@/lib/zeitmessung/modell';
 import { fzMessen } from '@/lib/zeitmessung/kennzahlen';
+import { kpMessen } from '@/lib/kapazitaet/kennzahlen';
+import type { KapaKennzahlen } from '@/lib/kapazitaet/typen';
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
 import { computeMetrics } from '@/lib/make-one/finance-data';
@@ -70,6 +72,8 @@ export interface Bestand {
   schwellen?: Record<string, Schwelle>;
   /** Zeit & Fokus der anfragenden Person (26.09. spät) — die Säule „Fokus & Zeit“ ist persönlich. */
   zeit?: ZeitBild | null;
+  /** Kapazität (04.10.): nur die Team-Summen (lib/kapazitaet, `kapaKennzahlenFuerIndex`) — fehlt sie, zählt die Säule nicht. */
+  kapa?: KapaKennzahlen | null;
 }
 
 export type { Messung, Detail } from '@/lib/kennzahlen/kern';
@@ -327,6 +331,7 @@ export const MESSEN_MODELL: Record<string, (b: Bestand) => Messung> = {
 export const MESSEN: Record<string, (b: Bestand) => Messung> = {
   ...MESSEN_MODELL,
   ...fzMessen<Bestand>('business', b => b.zeit),
+  ...kpMessen<Bestand>(b => b.kapa),
   liquiditaet(b) {
     const k = kasse(b), mk = monatsKosten(b);
     if (!k) return { luecke: 'Kontostände der Geschäftskonten fehlen', details: kontenDetails(b) };

@@ -28,7 +28,15 @@ export interface KennzahlDefBasis {
   /** Gewicht in der Säule (Standard 1) — Kernkennzahlen wiegen mehr. */
   gewicht?: number;
 }
-export interface SaeuleDef { id: string; label: string; gewicht: number; satz: string }
+export interface SaeuleDef {
+  id: string; label: string; gewicht: number; satz: string;
+  /**
+   * Zählt nur mit Messung (04.10., Säule „Kapazität“): ohne Wert (oder zu dünn) fällt die Säule auch aus dem Gesamtgewicht der
+   * Mindestabdeckung und der Abdeckung — der Index ist dann EXAKT der ohne diese Säule (die übrigen sind im selben Verhältnis
+   * skaliert). Ohne die Marke zählt eine leere Säule im Gesamtgewicht mit (bisheriges Verhalten, z. B. Fokus & Zeit).
+   */
+  nurMitMessung?: boolean;
+}
 
 export const MIN_ABDECKUNG = 0.4;
 
@@ -103,15 +111,20 @@ export function berechneModell<B>(m: {
   // Säulen mit Gewicht 0 (z. B. „Grundlage“ der Markttraktion) werden gezeigt, zählen aber nicht.
   const zaehlt = saeulen.filter(s => s.score != null && !s.zuDuenn && s.gewicht > 0);
   const gw = zaehlt.reduce((a, s) => a + s.gewicht, 0);
-  const gesamtGewicht = saeulen.reduce((a, s) => a + Math.max(0, s.gewicht), 0);
+  // „nurMitMessung“ (Kapazität, 04.10.): ohne Messung raus aus dem Gesamtgewicht — sonst drückte die leere Säule die Abdeckung.
+  const ohneMessung = new Set(m.saeulen.filter(s => s.nurMitMessung).map(s => s.id).filter(id => { const s = saeulen.find(x => x.id === id); return !s || s.score == null || s.zuDuenn; }));
+  const aktiv = saeulen.filter(s => !ohneMessung.has(s.id));
+  const alleGewicht = saeulen.reduce((a, s) => a + Math.max(0, s.gewicht), 0);
+  const gesamtGewicht = aktiv.reduce((a, s) => a + Math.max(0, s.gewicht), 0);
   const wert = gw <= 0 ? null
     : m.geometrisch ? Math.round(Math.exp(zaehlt.reduce((a, s) => a + s.gewicht * Math.log(Math.max(1, s.score as number)), 0) / gw))
     : Math.round(zaehlt.reduce((a, s) => a + (s.score as number) * s.gewicht, 0) / gw);
   // Mindestabdeckung auch für das Gesamt — dieselbe Schwelle wie je Säule.
   const genug = gesamtGewicht > 0 && gw / gesamtGewicht >= MIN_ABDECKUNG;
   const index = genug ? wert : null;
-  const teil = !genug && wert != null ? { wert, saeulen: zaehlt.length, von: saeulen.filter(s => s.gewicht > 0).length } : null;
-  const abdeckung = saeulen.reduce((a, s) => a + (s.zuDuenn || s.score == null ? 0 : s.abdeckung) * s.gewicht, 0);
+  const teil = !genug && wert != null ? { wert, saeulen: zaehlt.length, von: aktiv.filter(s => s.gewicht > 0).length } : null;
+  const abdeckungRoh = saeulen.reduce((a, s) => a + (s.zuDuenn || s.score == null ? 0 : s.abdeckung) * s.gewicht, 0);
+  const abdeckung = ohneMessung.size && gesamtGewicht > 0 ? abdeckungRoh * alleGewicht / gesamtGewicht : abdeckungRoh;
   let hebel: IndexErgebnis['hebel'] = null, best = -1;
   for (const s of zaehlt) for (const k of s.kennzahlen) {
     if (!k.gemessen) continue;

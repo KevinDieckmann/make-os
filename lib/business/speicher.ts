@@ -14,6 +14,7 @@ import { traktionsIndex, alsTraktion } from '@/lib/crm/traktion-index';
 import { ladeIndexDatei } from '@/lib/kennzahlen/speicher';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
+import { kapaKennzahlenFuerIndex } from '@/lib/kapazitaet/server';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { localDay } from '@/lib/zeit';
 import { SCOPES, schwelleSauber, type Scope, type Schwelle } from './register';
@@ -150,6 +151,8 @@ async function ladeRohFrisch(heute: string) {
     loadJson<BusinessVerlauf>(VERLAUF),
     ladeIndexDatei('traktion-index'),
   ]);
+  // Kapazität (04.10.): nur die Team-Summen — eigener Lesefehler darf den Index nie kippen (null = Säule zählt nicht).
+  const kapa = await kapaKennzahlenFuerIndex(heute);
   // V1-Export: nur die Business-Teile. Umsatz/Kosten = Selbständigkeit (Consulting);
   // Fixkosten getrennt: s = Selbständigkeit, u = „KD Management UG“ = Gründungsname der
   // KD Ventures UG (CLAUDE.md) → kdv, NICHT die MAKE Innovation GmbH. Private Kredite (p.sch) bleiben draußen.
@@ -180,6 +183,7 @@ async function ladeRohFrisch(heute: string) {
     // Nur die Felder, die der Index braucht (Auftragstexte können lang sein).
     auftraege: (auftraege?.auftraege ?? []).map(a => ({ status: a.status, beendet: a.beendet, zeit: a.zeit, anlass: a.anlass, name: a.name, auftrag: typeof a.auftrag === 'string' ? a.auftrag.slice(0, 120) : undefined })),
     meilensteine: ms?.meilensteine ?? [],
+    kapa,
     fte: einst.fte,
     ziele: einst.ziele ?? {},
     kapazitaet: einst.kapazitaet ?? {},
