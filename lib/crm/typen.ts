@@ -180,6 +180,8 @@ export interface Leistung {
    * Archiv = Status „eingestellt“ (kein eigenes Feld).
    */
   geloeschtAm?: string;
+  /** Status vor dem Archivieren (04.10., optional): Zurückholen stellt genau diesen wieder her (Kevin: „wieder aktiv“). */
+  statusVorArchiv?: 'aktiv' | 'entwurf';
   geaendert: string;
 }
 /** Texte eines Produkts für Angebote (28.09.) — `leistungstext` ist Pflicht, der Rest optional. */

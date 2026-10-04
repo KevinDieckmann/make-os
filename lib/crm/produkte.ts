@@ -97,8 +97,9 @@ export function neuePhasenId(l: Pick<Leistung, 'phasen'>): string {
 }
 
 // ── Archiv und Papierkorb der Produkte (04.10., Kevin: „man kann keine Produkte löschen“) ─────────────────────────
-// Archivieren = Status „eingestellt“ (bleibt an Deals und Mandaten lesbar, steht unter „Archiv“); Zurückholen = „Entwurf“
-// (aktiv geht ein Produkt erst wieder mit Leistungstext — dieselbe Regel wie beim Anlegen). Löschen = Papierkorb
+// Archivieren = Status „eingestellt“ (bleibt an Deals und Mandaten lesbar, steht unter „Archiv“) und merkt den Status davor
+// (`statusVorArchiv`); Zurückholen stellt ihn wieder her (Kevin 04.10.: „wieder aktiv“) — „aktiv“ nur mit Leistungstext
+// (dieselbe Regel wie beim Anlegen, sonst „Entwurf“). Löschen = Papierkorb
 // (`geloeschtAm`, lib/eintraege/sicher.ts), 30 Tage; endgültig nur, wenn nichts mehr darauf zeigt.
 
 export type ProduktZustand = 'aktiv' | 'archiv' | 'papierkorb';
@@ -107,8 +108,11 @@ export const produktZustand = (l: Pick<Leistung, 'status' | 'geloeschtAm'>): Pro
 /** Wählbar in Mandat, Deal, Angebot und Planung: nicht im Papierkorb und nicht eingestellt. */
 export const produktWaehlbar = (l: Pick<Leistung, 'status' | 'geloeschtAm'>): boolean => produktZustand(l) === 'aktiv';
 /** Archivieren / Zurückholen als Einzelfelder (api.teil). */
-export const PRODUKT_ARCHIVIEREN = { status: 'eingestellt' } as const satisfies Partial<Leistung>;
-export const PRODUKT_ZURUECK = { status: 'entwurf' } as const satisfies Partial<Leistung>;
+export const produktArchivieren = (l: Pick<Leistung, 'status'>): Partial<Leistung> =>
+  ({ status: 'eingestellt', ...(l.status === 'aktiv' || l.status === 'entwurf' ? { statusVorArchiv: l.status } : {}) });
+/** Zurückholen: der Status vor dem Archivieren (ohne Merker: „aktiv“); „aktiv“ nur, wenn der Leistungstext da ist. */
+export const produktZurueck = (l: Pick<Leistung, 'statusVorArchiv'>, aktivErlaubt: boolean): Partial<Leistung> =>
+  ({ status: (l.statusVorArchiv ?? 'aktiv') === 'aktiv' && aktivErlaubt ? 'aktiv' : 'entwurf' });
 
 export interface ProduktVerweise { mandateLaufend: number; mandate: number; dealsOffen: number; deals: number }
 /** Was auf ein Produkt zeigt — „laufend“ = Mandat nicht beendet, „offen“ = Deal noch nicht gewonnen/verloren. */

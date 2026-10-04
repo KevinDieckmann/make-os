@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, LEUCHT, Segmente, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import type { Leistung, ProduktPhase, Unterlage, UnterlageArt } from '@/lib/crm/typen';
-import { LINIEN, linienGruppen, linieVon, produktZahlen, portfolio, neuePhasenId, produktZustand, produktVerweise, verweisSatz, produktePapierkorb, PRODUKT_ARCHIVIEREN, PRODUKT_ZURUECK } from '@/lib/crm/produkte';
+import { LINIEN, linienGruppen, linieVon, produktZahlen, portfolio, neuePhasenId, produktZustand, produktVerweise, verweisSatz, produktePapierkorb, produktArchivieren, produktZurueck } from '@/lib/crm/produkte';
 import { PAPIERKORB_TAGE } from '@/lib/eintraege/sicher';
 import { mandateLink } from '@/lib/crm/adresse';
 import { type CrmApi, neueId, euro, kurzEuro, datum } from '../crm/daten';
@@ -79,12 +79,13 @@ export function Produkte({ api }: { api: CrmApi }) {
   const archivieren = (l: Leistung) => {
     const vorher = l.status;
     if (auswahl === l.id) setAuswahl(null);
-    void api.teil('leistungen', l.id, { ...PRODUKT_ARCHIVIEREN });
+    void api.teil('leistungen', l.id, produktArchivieren(l));
     melden(`„${l.name}“ archiviert — bleibt an Deals und Mandaten lesbar`, () => void api.teil('leistungen', l.id, { status: vorher }));
   };
   const zurueckholen = (l: Leistung) => {
-    void api.teil('leistungen', l.id, { ...PRODUKT_ZURUECK });
-    melden(`„${l.name}“ ist zurück — als Entwurf`, () => void api.teil('leistungen', l.id, { ...PRODUKT_ARCHIVIEREN }));
+    const felder = produktZurueck(l, !produktAngebotFehlt(l).length);
+    void api.teil('leistungen', l.id, felder);
+    melden(`„${l.name}“ ist zurück — ${felder.status === 'aktiv' ? 'wieder aktiv' : 'als Entwurf (Leistungstext fehlt für „aktiv“)'}`, () => void api.teil('leistungen', l.id, { status: 'eingestellt' }));
   };
   const inPapierkorb = (l: Leistung) => {
     if (auswahl === l.id) setAuswahl(null);

@@ -346,3 +346,15 @@ describe('Server: nur wer darf — und Löschen nie ohne Papierkorb', () => {
     expect((await db.loadJson<TasksState>('tasks'))!.tasks.find(t => t.id === 'a')!.archiviertAm).toBeUndefined();
   });
 });
+
+describe('Produkt zurückholen (Kevin 04.10.: „wieder aktiv“)', () => {
+  it('merkt den Status vor dem Archivieren und stellt ihn wieder her — „aktiv“ nur mit Leistungstext', async () => {
+    const { produktArchivieren, produktZurueck } = await import('@/lib/crm/produkte');
+    expect(produktArchivieren({ status: 'aktiv' })).toEqual({ status: 'eingestellt', statusVorArchiv: 'aktiv' });
+    expect(produktArchivieren({ status: 'entwurf' })).toEqual({ status: 'eingestellt', statusVorArchiv: 'entwurf' });
+    expect(produktZurueck({ statusVorArchiv: 'aktiv' }, true)).toEqual({ status: 'aktiv' });
+    expect(produktZurueck({}, true)).toEqual({ status: 'aktiv' });
+    expect(produktZurueck({ statusVorArchiv: 'entwurf' }, true)).toEqual({ status: 'entwurf' });
+    expect(produktZurueck({ statusVorArchiv: 'aktiv' }, false)).toEqual({ status: 'entwurf' });
+  });
+});

@@ -200,6 +200,7 @@ function leistung(o: Record<string, unknown>, jetzt: string): Leistung | null {
     ...(Array.isArray(o.unterlagen) && o.unterlagen.length ? { unterlagen: (o.unterlagen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'unterlagen')).map((x, i) => ({ id: txt(x.id, 40) || `u${i}`, titel: txt(x.titel, 120), art: aus(x.art, ['angebot', 'vertrag', 'deck', 'onepager', 'sonstiges'] as const, 'sonstiges'), ...(unterlageLink(x.url) ? { url: unterlageLink(x.url)! } : {}) })).filter(x => x.titel) } : {}),
     // Papierkorb (04.10.): nur eine gültige Marke; die Zeit selbst setzt `wendeCrmAn` (Server-Zeit, `markeVomServer`).
     ...(papierkorbMarke(o.geloeschtAm) ? { geloeschtAm: papierkorbMarke(o.geloeschtAm) } : {}),
+    ...(o.statusVorArchiv === 'aktiv' || o.statusVorArchiv === 'entwurf' ? { statusVorArchiv: o.statusVorArchiv } : {}),
     geaendert: jetzt,
   };
 }
