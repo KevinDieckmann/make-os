@@ -1,0 +1,98 @@
+# Umbau 04.10.2026 abends — vorgemerkt (Kevin)
+
+Kevin, 04.10.: „später einfach aufnehmen — wir machen heute Abend noch einen größeren Umbau, wenn wir das alles einmal
+angeschaut haben.“ Nichts davon ist gebaut. Erst nach gemeinsamem Ansehen von makeinnovation.de (Standard, Branch
+website-standard, auf entwicklung) und fokusinnovation.de (Branch fokus-3d).
+
+Vorlage für alle drei Punkte: getlayers.ai „Solaris“ (Three.js-Punktwolke). Übernommen wird die WIRKUNG, nicht der Code:
+**unsere CI** (Granat #C9465C, Smaragd #2FA878, unser dunkler Grund, Archivo + Public Sans), kein CDN/Three.js auf den
+statischen Seiten (CSP 'self' → eigene WebGL-1-Engine website/js/szene/*), keine fremden Farben.
+
+## Die Solaris-Wirkung (Kern der Vorlage, zum Nachbauen)
+- Dichte Punktwolken-Kugel (~120 k Punkte, SphereGeometry 4.2 · 200 × 600 als Points), additiv, atmet mit Simplex-Rauschen
+  (zwei Oktaven, Ausschlag entlang der Normale).
+- Farbverlauf kühl → warm über die Kugel (bei uns Smaragd → Granat), hohle dunkle Mitte, heller Fresnel-Rand
+  (edgeFade = smoothstep(0.4, 0.9, rim)).
+- Einstieg 2,4 s easeOutCubic: Kugel erst gefüllt und nah, dann fährt die Kamera zurück und die Mitte höhlt sich zum
+  leuchtenden Ring aus; die ganze Wolke blüht aus dem Nichts auf.
+- „Sonneneruption“ unter dem Zeiger: Strahl auf eine unsichtbare Pick-Kugel, Punkte in Reichweite (Radius 2) schießen
+  entlang der Normale hinaus (Flare 1,4), flackern wie Plasma, werden größer und glühen Richtung Weiß; Stärke und Ort
+  folgen weich (0,09 / 0,18 je Bild).
+- Aurora in den Ecken (fBm, Mitte frei) — haben wir auf makeinnovation.de schon (Granat/Smaragd, dezent).
+- Bloom (UnrealBloom 1,64 / 1,14 / 0,04) — auf der Homepage bisher bewusst weggelassen; für ZOE/Brain in der App prüfen.
+
+## 1 · ZOE tritt so auf (MAKE OS)
+- Immer wenn wir mit ZOE sprechen: die Kugel als ihr Gesicht (Zustände zuhören / denken / sprechen über Farbe und Atem,
+  wie heute in components/os/ZoeHirn.tsx — das SVG-Hirn wird abgelöst bzw. bleibt Rückfall ohne WebGL).
+- Zusätzlich **unten als kleines Symbol** (ZoePanel, app/os/layout.tsx), dieselbe Kugel klein.
+- **Keine** Verwandlung in einen Weg in der App (Kevin: „nur auf der Homepage“).
+- Leistung: kleines Symbol mit wenigen Punkten und niedriger Bildrate; Schleifen pausieren, wenn unsichtbar;
+  reduced motion → ruhiges Standbild.
+
+## 2 · makeinnovation.de startet mit der Kugel → wird zum Weg
+> **Stand 04.10. nachmittags:** teilweise überholt — Kevin hat den 80/20-Neubau auf der klaren „Superconscious“-Basis
+> (hell → dunkel) beauftragt (Branch website-klar). Dort sitzt die Partikel-Kugel im dunklen Raum. Ob sie zum Weg wird,
+> beim gemeinsamen Ansehen klären.
+- Einstieg = diese Kugel (ohne den Namen ZOE — Website nennt die Software nicht), die beim Scrollen in den Neuronen-Weg
+  übergeht, wie bei „New Era“ (Kugel → nächste Form über smoothstep-Phasen am Scroll-Fortschritt).
+- Ersetzt den heutigen „Lichtwolke blüht auf“-Einstieg; Zeiger-Eruption auf der Kugel am Rechner, am Handy aus.
+
+## 3 · Brain als Punkte-Kugel (MAKE OS, app/os/wissen → WissenView)
+- **Alles in MAKE OS als Datenpunkte** (Kevin): Kontakte, Firmen, Aufgaben, Ziele, Termine, Wissen — eingefärbt nach
+  Bereich, gruppiert (Cluster je Bereich/Space), Größe/Helligkeit z. B. nach Aktualität/Bedeutung.
+- Zeiger: Eruption an der Stelle + Titel des Punkts und seine Verbindungen; Klick öffnet den Datensatz.
+- **Privat bleibt privat:** nur Punkte, die der Betrachter sehen darf (fuerBetrachter/personStreng/nurIchBesitzer —
+  dieselben Filter wie die Lichtfäden), Testkunden sehen nie unsere Daten. Daten über eine Lese-Route, eine Quelle.
+- Leistung: Punktzahl deckeln, Daten zusammengefasst ausliefern, Schleife pausieren.
+
+## 4 · Überblick-Muster „Für dich“ für JEDEN Bereich (MAKE OS)
+Kevin, 04.10. (Screenshot Markttraktion → Überblick, Karte „Für dich“): „finde ich mega. Lass uns so immer den
+Überblick gestalten und dann den Flow so anzeigen, wie es die letzten 3 Monate war, wie es jetzt ist und wie der
+Forecast ist. So können wir das immer so klar abbilden — für jeden einzelnen Bereich.“
+- Vorbild: components/os/crm/Ueberblick.tsx (+ crm/fokus-reihen.ts) — `Karte ton="fokus"`, oben die `FadenLinie`
+  (components/os/ui/fokus.tsx), darunter wenige priorisierte Zeilen (Punkt · Titel · Unterzeile mit Bereich und
+  Handlung · Zahl-Pille), Person rechts oben.
+- NEU die Zeitachse: **letzte 3 Monate (Ist) → heute (Markierung) → Forecast**. Ist und Prognose sichtbar
+  unterschieden (z. B. Prognose gestrichelt/leiser, Beschriftung „Prognose“), Achse „−3 M · heute · +X“.
+- Ehrlich: nur echte Datenreihen (bestehende Regel „FadenLinie nur mit echter Reihe“); die Prognose wird aus echten
+  Daten gerechnet (Fälligkeiten, Pipeline × Wahrscheinlichkeit, Pläne/Raten, Termine) — nie geschätzt oder erfunden;
+  ohne Grundlage keine Prognose, sondern ein klarer Leerzustand.
+- EIN gemeinsamer Baustein (z. B. `Ueberblick`/`FlussKarte` in components/os/ui/) + eine Reihen-Schnittstelle je
+  Bereich (Ist-Reihe, heute, Prognose-Reihe, Zeilen) — nicht je Bereich neu bauen. Wächtertest: jede Bereichsseite
+  nutzt den Baustein.
+- Für jeden Bereich: Markttraktion (Vorbild), Finanzen, Planung/Ziele, Aufgaben, Kalender, Gesundheit, Familie,
+  Netzwerken, Inbox, Wissen/Brain … (Liste beim Umbau aus der Navigation ziehen). Privatfilter wie überall.
+- 80/20-Regel gilt (Memory feedback-80-20-seriositaet): die Linie ist der Akzent, der Rest ruhig und klar.
+
+## 5 · Löschen & Archivieren überall gleich (MAKE OS, Usability)
+Kevin, 04.10.: „Wenn man auf Produkte geht, kann man keine Produkte löschen — das macht das Ganze wieder ein bisschen
+wild. Für die Usability können wir auch immer Tasks, Produkte etc. einfach löschen bzw. den Button, der kommt, wenn man
+z. B. nach links swiped: dann kommt da Löschen oder Archivieren. Alles andere macht da keinen Sinn.“
+- Befund: components/os/mandate/Produkte.tsx kann Lieferumfang/Phasen/Unterlagen entfernen, aber kein Produkt selbst.
+  Beim Umbau alle Listen prüfen (Aufgaben, Produkte, Mandate, Kontakte/Firmen, Deals, Events, Ziele, Notizen …),
+  wo Löschen/Archivieren fehlt oder je Ort anders aussieht.
+- EIN gemeinsamer Baustein (z. B. `ZeileAktionen` in components/os/ui/): am Handy nach links wischen → „Archivieren“
+  und „Löschen“ erscheinen; am Rechner dieselben zwei Aktionen beim Überfahren bzw. im „…“-Menü der Zeile. Tastatur
+  erreichbar, Vorleser-Beschriftung.
+- Sicher statt endgültig: Archivieren = ausblenden, jederzeit zurückholbar. Löschen = in den Papierkorb (bestehende
+  Grabsteine/Archiv-Logik nutzen, z. B. wie /api/crm/firma-archiv mit 30 Tagen), dazu „Rückgängig“ für einige Sekunden.
+  Endgültig weg erst nach Ablauf. Verknüpfungen prüfen (Produkt mit laufenden Mandaten → Hinweis statt stillem Löschen).
+- Rechte: nur wer darf, sieht die Aktion (Haushalts-Tor, Besitzer); Testkunden nie fremde Daten.
+- Wächtertest: jede Liste mit Einträgen nutzt den Baustein.
+
+## 6 · Lichtfäden-Strahl in der Planung zurücknehmen (MAKE OS)
+Kevin, 04.10. (Screenshot Planung › Business, Zeitstrahl Jan 2026 – Dez 2027): „Das muss auch noch ein wenig zurückgeholt
+werden. Oben die Symbole genial, aber das sieht schon zu spacig aus.“ (Gegenbewegung zu Strahl v3.1 vom Vormittag:
+„deutlich größer + kräftige Wellen“ — jetzt gilt die 80/20-Regel.)
+- **Bleibt:** die Marker oben (Raute = Meilenstein, Quadrat = Steuerfrist) mit Stiel zur Linie, „+N“-Bündel, Zeitraum-Wahl,
+  „Heute“, „+ Meilenstein“, Monats-/Quartalsachse.
+- **Zurücknehmen:** das Band — deutlich weniger und dünnere Fäden, geringere Deckkraft, viel kleinere Wellen-Amplitude,
+  KEIN heller Ausbruch/Glühen am Heute-Punkt (eine ruhige senkrechte Heute-Linie reicht), keine rosa/violetten Mischtöne,
+  Farben nur je Ziel (zielFarben), Hintergrund-Netz weg oder kaum sichtbar. Ziel: man liest Ziele/Fristen, der Faden
+  ist Akzent (≤ 20 % Wirkung).
+- Technik: Parameter in lib/lichtfaeden/band.ts / zeichnen.ts (eine Stelle), damit Planung, Für-dich-Linien und Website
+  zusammen ruhiger werden; Wächtertest auf Höchstwerte (Fadenzahl, Deckkraft, Amplitude), damit es nicht wieder kippt.
+
+## Offen aus dem Tag (nicht vergessen)
+- Bildfolgen-Platz „Beratung“ (makeinnovation.de) und „Abend“ (fokus) für echte Fotos/Film später — Kevin: erst 3D.
+- Kevins Satz zur Vertriebserfahrung (Platzhalter), Datenschutz-Bestätigungen.
