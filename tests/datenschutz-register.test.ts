@@ -162,6 +162,40 @@ describe('Register aller Bestände (#74)', () => {
   });
 });
 
+// ── DSGVO-Prüfung 04.10. (Teil 2): Rechtsgrundlage, Art. 15, Löschfrist, Kategorie ─────────────────────────────
+// Jeder NEUE Speicher mit Personenbezug trägt die Angaben (lib/crm/speicher-register.ts `mit(…)`). Die Altbestände ohne sie
+// dürfen nur weniger werden — wer einen ergänzt, senkt die Zahl hier.
+const ALTBESTAND_OHNE_ANGABEN = 93;
+describe('Register: Pflicht-Angaben für neue Speicher (DSGVO-Prüfung 04.10.)', () => {
+  const ohne = SPEICHER_REGISTER.filter(e => e.bezug !== 'kein' && !(e.rechtsgrundlage && e.art15 && e.loeschfrist));
+  it(`neue Speicher mit Personenbezug haben Rechtsgrundlage, Art.-15-Weg und Löschfrist (Altbestand höchstens ${ALTBESTAND_OHNE_ANGABEN})`, () => {
+    expect(ohne.length, `Neuer Speicher ohne rechtsgrundlage/art15/loeschfrist — mit mit(…) ergänzen: ${ohne.slice(-5).map(e => e.muster).join(', ')}`).toBeLessThanOrEqual(ALTBESTAND_OHNE_ANGABEN);
+  });
+  it('die Speicher vom 04.10. tragen die Angaben vollständig', () => {
+    for (const m of ['gesellschaften--*', 'kapazitaet--*']) {
+      const e = registerEintrag(m.replace('*', 'h-pruef'));
+      expect(e?.rechtsgrundlage, m).toMatch(/Art\. 6/);
+      expect(e?.art15?.length, m).toBeGreaterThan(20);
+      expect(e?.loeschfrist?.length, m).toBeGreaterThan(10);
+    }
+    expect(registerEintrag('kapazitaet--h')?.kategorie).toContain('beschaeftigte');
+    expect(registerEintrag('gesellschaften--h')?.kategorie).toContain('vertraulich');
+  });
+  it('Gesundheits-Bestände sind als besondere Kategorie (Art. 9) markiert — mit Art.-9-Grundlage', () => {
+    for (const n of ['vitals', 'vitals--h', 'sport--h', 'haut--h', 'health-log--h', 'gesundheitszeit']) {
+      const e = registerEintrag(n);
+      expect(e?.kategorie, n).toContain('art9');
+      expect(e?.rechtsgrundlage, n).toMatch(/Art\. 9 Abs\. 2/);
+    }
+  });
+  it('Business-Index und Kapazitäts-Kennzahlen lesen keinen Gesundheits-Bestand direkt', () => {
+    for (const d of ['lib/business/messen.ts', 'lib/business/speicher.ts', 'lib/business/register.ts', 'lib/kapazitaet/kennzahlen.ts']) {
+      const t = fs.readFileSync(path.join(WURZEL, d), 'utf8');
+      expect(/['"`](vitals|sport|haut|health-log)(--|['"`])/.test(t), d).toBe(false);
+    }
+  });
+});
+
 describe('Art. 18 zentral (#72): loadJson(\'kontakte\') nur in der Erlaubnisliste', () => {
   const stellen = aufrufe().filter(a => a.fn === 'loadJson' && a.name === 'kontakte');
   it('jede Lesestelle der Kartei ist erlaubt (mit Grund) — sonst kontakteFuerVerarbeitung()', () => {
