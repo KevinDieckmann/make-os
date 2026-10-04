@@ -116,7 +116,7 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
     <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
       {bereich === 'business' ? 'Business rechnet' : 'Privat rechnet'}
       <Auswahl<string> wert={wahlWert} onWahl={waehle} titel={`Szenario des Bereichs ${bereich === 'business' ? 'Business' : 'Privat'}`}
-        optionen={[{ id: '__gemeinsam', label: `gemeinsam mit ${anderer} (${gemeinsamName})` }, { id: '__basis', label: 'eigenes: Basis (nur Treiber)' }, ...(roh?.planszenarien ?? []).map(p => ({ id: p.id, label: `eigenes: ${p.name}` }))]} />
+        optionen={[{ id: '__gemeinsam', label: `gemeinsamer Arbeitsplan (${gemeinsamName})${roh && !bereichEigen(roh, bereich === 'business' ? 'privat' : 'business') ? ` — wie ${anderer}` : ''}` }, { id: '__basis', label: 'eigenes: Basis (nur Treiber)' }, ...(roh?.planszenarien ?? []).map(p => ({ id: p.id, label: `eigenes: ${p.name}` }))]} />
     </label>
   );
 

@@ -230,7 +230,7 @@ export function Lage() {
  * 14 Tage ohne private Termine. Kein Privat-Konto, keine Luft, kein Notgroschen, keine Entscheidung der Woche (die gehört dem Haushalt).
  */
 export function LageBusiness() {
-  const { d, dd, ug, kdc, pr, aw, ps, sz, kz, geh } = usePlan();
+  const { d, dd, ug, kdc, pr, aw, ps, sz, kz, geh, sicht } = usePlan();
   const punkte = nurBusinessPunkte(entscheidungen(d, { ug, pr, ps }, aw, 12)).slice(0, 6);
   const offenPunkte = nurBusinessPunkte(luecken(d, ug, 0)).slice(0, 7);
   const sw = schwellenVon(d);
@@ -259,7 +259,7 @@ export function LageBusiness() {
             <KnopfKlein onClick={() => geh(p.ziel.u, p.ziel.params)}>Öffnen ›</KnopfKlein>
           </div>
         )) : <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: LEUCHT.gut }} />Nichts drängt im Business.</div>}
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Rechnet mit {ps ? <>dem Arbeitsplan <b style={{ color: C.inkDim }}>{ps.name}</b> auf Treiber {sz.name}</> : <>dem Treiber <b style={{ color: C.inkDim }}>{sz.name}</b></>} · Stichtag {datumLang(d.einstellungen.heute)} · nur Business.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Rechnet mit {ps ? <>dem Arbeitsplan <b style={{ color: C.inkDim }}>{ps.name}</b> auf Treiber {sz.name}</> : <>dem Treiber <b style={{ color: C.inkDim }}>{sz.name}</b></>} · Stichtag {datumLang(d.einstellungen.heute)} · Kennzahlen der Gesellschaften.</div>
       </Karte>
       {offenPunkte.length > 0 && (
         <Karte i={1}>
@@ -302,7 +302,7 @@ export function LageBusiness() {
           </Karte>
         </Spalte>
       </Spalten>
-      <Hinweis>Nur Business: {finanzOrtName('ug')}, {finanzOrtName('kdv')} und {finanzOrtName('kdc')}. Privat (Haushalt, Konten, Luft, private Ziele) steht unter Finanzen › Privat › Finanzplanung. Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
+      <Hinweis>Kennzahlen der Gesellschaften: {finanzOrtName('ug')}, {finanzOrtName('kdv')} und {finanzOrtName('kdc')}. {sicht === 'business' ? 'Privat (Haushalt, Konten, Luft, private Ziele) ist für dieses Konto nicht freigegeben.' : 'Die ganze Planung — auch Privat — steht in den Reitern darüber; die privaten Kennzahlen zeigt die Lage unter Finanzen › Privat.'} Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
     </>
   );
 }
