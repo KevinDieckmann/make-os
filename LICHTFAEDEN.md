@@ -161,6 +161,8 @@ Kevin: „Der Strahl läuft im Grunde genommen immer von links nach rechts — g
 - **baum.ts:** `Buendel.spitze` je Woche = gesättigte UNgeglättete Last hoch `SPITZE_EXPONENT` (1,6) — die scharfen Ausschläge; Fäden-Deckel 300/120.
 - **faedenband.ts:** Aufbau (`aufbau()` für Prüfungen, Messpunkt `data-aufbau`), `fransBei` (ab HEUTE), `spitzeRichtung` (meist nach oben), `wocheBei`
   (linear, mit Vorzeichen), Hilfslinien, Mittellinie, Netz, Glühen.
+- **v3.1 (größeres Band):** `BAND_MASSE` 300/220 px mit `abstand` zur Markierungszone, `BAND_FORM` (Spreizung höchstens 72 % der halben Höhe,
+  Spitzen 0,86/0,7), `SPREIZ_EXPONENT` 1,35 (ruhig eng, voll voluminös), `randBei` (weiche Grenze der Leitkurve), `SPITZE_SCHWELLE` 0,3.
 - **fadenlinie.ts (FadenLinie, Mini-Strahl):** `fadenLinienProben` (rein: Leitkurve aus normalisierten Werten, Normale aus der Steigung, Spreizung/Helligkeit
   aus dem Wert, Ausfransen ab `heute`), `fadenlinie(canvas, beobachte, ruhig)` mit 12 Fäden (Handy 8), ~30 Bilder je Sekunde, Aufbau 1,4 s.
 - **reihen.ts:** `jeTag`, `jeWoche`, `summeJeMonat`, `summeJeTagZurueck`, `normalisiere`, `reiheGueltig`, `reiheText` + Beschriftungen — rein, `heute` vom Aufrufer.

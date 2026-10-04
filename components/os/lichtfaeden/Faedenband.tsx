@@ -82,7 +82,8 @@ export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, 
   const st = stapeln(ansicht.marken.map(m => ({ x: frak(m.tag) * breite, w: pillB(m) })), breite, masse.maxReihen);
   const hatUeberlauf = st.buendel.length > 0;
   const reihen = (ansicht.marken.length ? Math.max(1, Math.min(masse.maxReihen, st.reihen)) : 0) + (hatUeberlauf ? 1 : 0);
-  const bandOben = reihen * masse.reihe + 12;
+  // Eigene Zone für die Markierungen über dem Band (v3.1): Reihen + Luft — die Spitzen bleiben im Band (lib/lichtfaeden/faedenband.ts `randBei`).
+  const bandOben = reihen * masse.reihe + masse.abstand;
   const achseY = bandOben + masse.band;
   const bandMitte = bandOben + masse.band / 2;
   const hoehe = achseY + FUSS - 12 + QUARTAL_H + 6;

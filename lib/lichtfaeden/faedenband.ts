@@ -56,9 +56,24 @@ export interface BandUebergang { richtung: 'auf' | 'zu'; fokus: string; oben: re
 
 /** Maße: Reihen der Markierungen, Knopf (Tippziel), Chip, Reihen bis „+n“, Bandhöhe — Rechner · Handy (Knopf 44 px). */
 export const BAND_MASSE = {
-  rechner: { reihe: 30, knopf: 28, chip: 24, maxReihen: 4, band: 150 },
-  handy: { reihe: 46, knopf: 44, chip: 28, maxReihen: 2, band: 120 },
+  // v3.1 (04.10., Kevin: „Band deutlich größer, kräftige Wellen“): das Band nimmt etwa die Hälfte des Zeichenbereichs ein; die
+  // Markierungen haben ihre eigene Zone darüber (`abstand` = Luft zwischen Zone und Band), Spitzen bleiben im Band (`randBei`).
+  rechner: { reihe: 30, knopf: 28, chip: 24, maxReihen: 4, band: 300, abstand: 18 },
+  handy: { reihe: 46, knopf: 44, chip: 28, maxReihen: 2, band: 220, abstand: 14 },
 } as const;
+/** Kontrast ruhig/voll: Exponent auf die Dichte für die Spreizung — ruhige Wochen bleiben eng an der Mittellinie. */
+export const SPREIZ_EXPONENT = 1.35;
+/** Höchste Spreizung eines Bündels (Anteil der halben Bandhöhe) und Ausschlag der Spitzen (Anteil der halben Bandhöhe). */
+export const BAND_FORM = { spreizMax: 0.72, hub: { rechner: 0.86, handy: 0.7 } } as const;
+
+/**
+ * Weiche Grenze der Leitkurve: Ausschlag `o` (Pixel ab der Mittellinie) bleibt innerhalb ±`grenze` — linear in der Mitte, sanft
+ * gesättigt am Rand (tanh). So schlagen Spitzen kräftig aus, ragen aber nie aus dem Band in die Zone der Markierungen.
+ */
+export function randBei(o: number, grenze: number): number {
+  const g = Math.max(1, grenze);
+  return g * Math.tanh(o / g);
+}
 export const bandMasse = (breite: number) => (breite < 520 ? BAND_MASSE.handy : BAND_MASSE.rechner);
 /** Dauer des Auf-/Zufächerns (ms). */
 export const UEBERGANG_MS = 720;
@@ -68,8 +83,9 @@ export function hellBei(x: number, d: Pick<BandBild, 'heuteX' | 'heuteSeite'>, d
   let zeit: number;
   if (d.heuteX == null) zeit = d.heuteSeite === 'rechts' ? 0.32 : 1;
   else zeit = (0.32 + 0.68 * glatt(x, d.heuteX - 26, d.heuteX + 4)) * (1 - 0.3 * glatt(x, d.heuteX + 20, d.heuteX + 560));
-  const schnitt = d.heuteX == null ? 0 : Math.exp(-(((x - d.heuteX) / 14) ** 2)) * 0.25;
-  return zeit * (0.55 + 0.85 * dichte) + schnitt;
+  const schnitt = d.heuteX == null ? 0 : Math.exp(-(((x - d.heuteX) / 14) ** 2)) * 0.15;
+  // v3.1: Dichte hebt sanfter (vorher +0,85) — das größere Band fächert stärker auf, sonst laufen volle Stellen ins Weiße.
+  return zeit * (0.55 + 0.6 * dichte) + schnitt;
 }
 
 /** Ausfransen 0 … 1 an einer Stelle (v3): ab HEUTE nach rechts zunehmend — die Zukunft ist unsicher. */
@@ -155,13 +171,16 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
     const dicke = 0.55 + 0.45 * Math.sqrt(liste[i].faeden / maxF);
     const sp = liste[i].spitze;
     const richtung = (w: number) => spitzeRichtung(w, i);
-    const hubPx = halb * (d.handy ? 0.32 : 0.52);
+    const hubPx = halb * (d.handy ? BAND_FORM.hub.handy : BAND_FORM.hub.rechner);
     const hub = (x: number) => (sp && sp.length ? hubPx * wocheBei(sp, x, d, richtung) : 0);
+    // Spreizung mit Kontrast: ruhig eng, voll voluminös — aber nie breiter als `spreizMax` der halben Bandhöhe.
+    const spreizung = (x: number) => Math.min(halb * BAND_FORM.spreizMax, spreizungBei(Math.pow(dichteBei(liste[i], x, d), SPREIZ_EXPONENT), halb) * dicke);
     return {
       dichte: (x: number) => dichteBei(liste[i], x, d),
       hub,
-      mitte: (x: number) => mitte + halb * buendelMitte(i, liste.length, x, t, dichteBei(liste[i], x, d)) + hub(x),
-      spreizung: (x: number) => spreizungBei(dichteBei(liste[i], x, d), halb) * dicke,
+      // Leitkurve: Schwingen + Spitze, weich begrenzt, damit das ganze Bündel (± Spreizung) im Band bleibt.
+      mitte: (x: number) => mitte + randBei(halb * buendelMitte(i, liste.length, x, t, dichteBei(liste[i], x, d)) + hub(x), Math.max(halb * 0.28, halb * 0.97 - spreizung(x) * 1.05)),
+      spreizung,
     };
   };
 
@@ -179,7 +198,8 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
       proben.push({ x, y, nx: 0, ny: 1, s: x, spreizung: sp, hell: hellBei(x, d, dx) * faktor * alpha, frans: fransBei(x, d), hub });
     }
     const punkte: PunkteStil = d.handy ? { ...LICHTFAEDEN.punkte, abstand: 14, jeder: 3 } : { ...LICHTFAEDEN.punkte, jeder: 2 };
-    zeichneBuendel(ctx, proben, { farbe: b.farbe, saaten: [MITTE], deckkraft: 0.05, strich: d.handy ? 8 : 12, front }, t);
+    // Schein entlang der Leitkurve — breiter und kräftiger als v3, damit volle Stellen glühen (er folgt den Spitzen).
+    zeichneBuendel(ctx, proben, { farbe: b.farbe, saaten: [MITTE], deckkraft: 0.065, strich: d.handy ? 12 : 20, front }, t);
     zeichneBuendel(ctx, proben, { farbe: b.farbe, saaten: saaten(b.id, Math.max(1, b.faeden)), front, punkte }, t);
   }
 
@@ -223,7 +243,7 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
     ctx.fillStyle = ml;
     ctx.fillRect(0, mitte - 0.5, front === Infinity ? d.breite : Math.max(0, Math.min(d.breite, front)), 1);
     // Netz-Motiv oben rechts (nur Rechner), sehr leise und langsam.
-    if (!d.handy && d.breite > 640) zeichneNetz(ctx, { x: d.breite * 0.74, y: Math.max(0, d.bandOben - 6), breite: d.breite * 0.25, hoehe: d.bandHoehe * 0.42, t, farbe: d.heuteFarbe, saat: 41, knoten: 12, deckkraft: 0.1 * erreicht(d.breite * 0.8) });
+    if (!d.handy && d.breite > 640) zeichneNetz(ctx, { x: d.breite * 0.74, y: Math.max(0, d.bandOben - 6), breite: d.breite * 0.25, hoehe: d.bandHoehe * 0.3, t, farbe: d.heuteFarbe, saat: 41, knoten: 12, deckkraft: 0.07 * erreicht(d.breite * 0.8) });
 
     ctx.globalCompositeOperation = 'lighter';
     const mitten = new Map<string, (x: number) => number>();
@@ -246,7 +266,7 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
       d.buendel.forEach((b, i) => { const g = geometrie(d, d.buendel, i, t); mitten.set(b.id, g.mitte); zeichneSatz(d, b, g, t, 1, undefined, 1, front); });
     }
     // Glühen dichter Stellen: das Gezeichnete klein und weich additiv darüber (ein drawImage hin, eines zurück).
-    if (glanz && d.buendel.length) glanz.auf(ctx, canvas, d.breite, d.hoehe, d.handy ? 0.45 : LICHTFAEDEN.glanz.staerke);
+    if (glanz && d.buendel.length) glanz.auf(ctx, canvas, d.breite, d.hoehe, d.handy ? 0.6 : LICHTFAEDEN.glanz.staerke);
     // Die Front des Aufbaus: ein leises Licht, das vorausläuft und mit dem Ende des Aufbaus verlischt.
     if (front !== Infinity && aufbauP != null) {
       const [r, g, bl] = rgb(d.heuteFarbe);
@@ -266,7 +286,7 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
       ctx.fillStyle = schein;
       ctx.fillRect(x - halb * 1.1, mitte - halb * 1.1, halb * 2.2, halb * 2.2);
       const linie = ctx.createLinearGradient(0, d.bandOben - 8, 0, d.bandOben + d.bandHoehe + 8);
-      linie.addColorStop(0, `rgba(${r},${g},${bl},0)`); linie.addColorStop(0.5, `rgba(${r},${g},${bl},.85)`); linie.addColorStop(1, `rgba(${r},${g},${bl},0)`);
+      linie.addColorStop(0, `rgba(${r},${g},${bl},0)`); linie.addColorStop(0.5, `rgba(${r},${g},${bl},.62)`); linie.addColorStop(1, `rgba(${r},${g},${bl},0)`);
       ctx.fillStyle = linie;
       ctx.fillRect(x - 0.75, d.bandOben - 8, 1.5, d.bandHoehe + 16);
     }

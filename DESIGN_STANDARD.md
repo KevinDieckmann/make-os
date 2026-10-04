@@ -135,8 +135,8 @@ Legende (je Bündel ein Knopf „eine Ebene tiefer“), Engstellen als aufklappb
 
 **Parameter (Strahl v3, 04.10.):** Fäden je Bündel ∝ √Last (5 … 44; Blatt-Ebene 2 … 6), höchstens 300 je Leinwand (Handy 120) · Stützpunkt alle 6 px (Handy 8) ·
 Strich 0,6 px · Deckkraft 0,2 (additiv) · Tempo 0,00028/ms · Ruhe-Spreizung 12 % · Auffächern 720 ms · Aufbau 1,9 s · Partikel alle 10 px (jeder 2. Faden; Handy
-14 px, jeder 3.) · Glühen über einen Schein-Puffer (¼ Größe, Weichzeichner 2,5 px, Stärke 0,55; Handy 0,45) · je Faden leiser ab 150 Fäden je Leinwand (√150/n) · höchstens 7 Bündel je Ebene (+ „Weitere“). Band 150 px
-(Handy 120), Markierungen 28 px (Handy 44 px) in höchstens 4 (Handy 2) Reihen. Dichte: Gauß σ = 2 Wochen, gesättigt je Ansicht; Spitzen: ungeglättete Last,
+14 px, jeder 3.) · Glühen über einen Schein-Puffer (¼ Größe, Weichzeichner 3 px, Stärke 0,7; Handy 0,6) · je Faden leiser ab 150 Fäden je Leinwand (√150/n) · höchstens 7 Bündel je Ebene (+ „Weitere“). Band 300 px
+(Handy 220), Markierungen 28 px (Handy 44 px) in höchstens 4 (Handy 2) Reihen. Dichte: Gauß σ = 2 Wochen, gesättigt je Ansicht; Spitzen: ungeglättete Last,
 gesättigt, hoch 1,6, erst über der Schwelle 0,4 (`spitze` je Woche — nur deutlich volle Wochen schlagen aus).
 
 **Strahl v3 (04.10., Kevin: „Der Strahl läuft im Grunde genommen immer von links nach rechts — guck dir den Verlauf an. Ich will diese Klarheit überall drin
@@ -151,6 +151,10 @@ haben.“)** — Vorbild: Data-Viz-Strahl mit hunderten feiner Fäden.
 5. **Bühne wie im Vorbild:** Punkt-Textur entlang der Fäden, Glühen an dichten Stellen, dünne helle Mittellinie, gestrichelte Hilfslinien, Markierungen mit
    abgerundetem Quadrat (Frist/Ziel) bzw. Raute (Meilenstein) + Label, leises Netz-Motiv oben rechts (nur Rechner), das langsam treibt. Perspektive bewusst aus
    (Lesbarkeit, Trefferflächen der Bündel). 60 fps am Rechner, Handy leichter; „Bewegung reduzieren“ = Standbild; pausiert außer Sicht.
+6. **v3.1 (04.10., Kevin: „Band deutlich größer, kräftige Wellen“):** Band 300 px (Handy 220) ≈ die Hälfte des Zeichenbereichs; Spreizung mit Kontrast
+   (Dichte hoch 1,35, höchstens 72 % der halben Höhe), Spitzen 0,86 der halben Höhe (Handy 0,7) ab Schwelle 0,3, breiterer Schein entlang der
+   Leitkurve, Glühen 0,7. Die Leitkurve ist weich begrenzt (`randBei`, tanh), das ganze Bündel bleibt im Band; die Markierungen haben ihre
+   eigene Zone darüber (+ 18 px Luft, Handy 14), Stapeln und „+n“ wie bisher (Rechner 4, Handy 2 Reihen). Farben bunt nach Zielen.
 
 **Regeln:** 1. Bewegung nur als ruhiges Fließen und beim Ebenenwechsel; bei `prefers-reduced-motion` ein Standbild ohne Übergang. 2. Lauf pausiert
 außerhalb des Bildes und im verborgenen Tab. 3. Zeichnen < 4 ms je Bild am Rechner. 4. Vergangenes gedämpft, HEUTE leuchtet, Engstellen als ruhige

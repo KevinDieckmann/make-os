@@ -15,7 +15,7 @@ import {
 import { fadenLinienProben, fadenlinie, FADENLINIE, type FadenLinieBild } from '@/lib/lichtfaeden/fadenlinie';
 import { fadenSaaten, versatz, fransen, buendelMitte, LICHTFAEDEN } from '@/lib/lichtfaeden/band';
 import { zeichneBuendel, type Probe } from '@/lib/lichtfaeden/zeichnen';
-import { faedenband, fransBei, spitzeRichtung, wocheBei, type BandBild } from '@/lib/lichtfaeden/faedenband';
+import { faedenband, fransBei, spitzeRichtung, wocheBei, randBei, BAND_MASSE, BAND_FORM, type BandBild } from '@/lib/lichtfaeden/faedenband';
 import { FOKUS_LICHT } from '@/lib/make-one/design';
 
 const h = (c: unknown, props: unknown, ...kids: unknown[]) => createElement(c as never, props as never, ...(kids as never[]));
@@ -92,6 +92,15 @@ describe('Strahl v3 — Fließen nach rechts, Ausfransen, Spitzen', () => {
     expect(fransBei(100, d)).toBe(0); expect(fransBei(400, d)).toBe(0);
     expect(fransBei(900, d)).toBeGreaterThan(0.9);
     expect(fransBei(100, { heuteX: null, heuteSeite: 'links', breite: 1000 })).toBeGreaterThan(0); // ganzes Fenster Zukunft
+  });
+  it('v3.1: großes Band (≈ halber Zeichenbereich), Markierungen in eigener Zone, Spitzen bleiben im Band', () => {
+    for (const m of Object.values(BAND_MASSE)) {
+      const zone = m.maxReihen * m.reihe + m.abstand, fuss = 70;
+      expect(m.band / (zone + m.band + fuss)).toBeGreaterThanOrEqual(0.45);
+    }
+    for (const o of [-1000, -200, -50, 0, 30, 120, 5000]) expect(Math.abs(randBei(o, 100))).toBeLessThan(100.0001);
+    expect(randBei(10, 100)).toBeCloseTo(10, 0); // in der Mitte fast linear — Spitzen bleiben spitz
+    expect(BAND_FORM.hub.rechner).toBeGreaterThan(0.52); // kräftiger als v3
   });
   it('Spitzen: linear zwischen Wochenmitten (scharf), Vorzeichen meist nach oben', () => {
     const d = { breite: 70, tage: 70, wochenVersatz: 0 };

@@ -19,6 +19,9 @@ immer wichtig. Und der Strahl läuft im Grunde genommen immer von links nach rec
 - **Eingebaut:** Markttraktion (Für dich, Traktions-Index, Qualifizierungsrunde, Power Hour, Deals-Prognose), Planung (Ziel-Seite, Ziel-Zeilen,
   aufgeklappte Engstelle), Zahlen (Liquidität als Lichtfäden-Band, Business-/Privat-Index-Verlauf), Fokus (Schaufenster). Funktion und Daten unverändert,
   keine neue Route, kein neuer Bestand — alle Reihen aus dem, was die Seiten schon laden.
+- **v3.1 (Kevins Entscheidung nach dem ersten Blick):** Band deutlich größer (300 px, Handy 220 — etwa die halbe Höhe des Zeichenbereichs), kräftige
+  Ausschläge und voluminöse Auffächerung an vollen Wochen, ruhige Wochen eng an der Mittellinie; Spitzen bleiben im Band, Markierungen in eigener
+  Zone darüber (alle wie bisher, Stapeln + „+n“); Farben bunt nach Zielen.
 - **Rückweg:** reine Darstellung; `Buendel.spitze` ist nur Antwortfeld der Lichtfäden-Route (nicht gespeichert).
 
 ## Review-Nacharbeit: eine Quelle durchgesetzt (03./04.10.2026, nur lokal — Branch `review-fix`)

@@ -16,7 +16,7 @@
       aufbauSpitze: 46,
       punkte: { abstand: 10, tempo: 0.011, groesse: 1.1, hell: 2.4 },
       frans: { weite: 0.95, min: 7, blass: 0.6 },
-      glanz: { teiler: 4, weich: 2.5, staerke: 0.55 },
+      glanz: { teiler: 4, weich: 3, staerke: 0.7 },
   };
   const TAU = Math.PI * 2;
   function zufall(saat) {

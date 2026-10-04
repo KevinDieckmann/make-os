@@ -45,7 +45,7 @@ export const LICHTFAEDEN = {
   /** Ausfransen rechts von HEUTE: Weite (Anteil der Spreizung, mindestens `fransMin` px) und Abschlag der Deckkraft. */
   frans: { weite: 0.95, min: 7, blass: 0.6 },
   /** Glühen dichter Stellen: Teiler des Schein-Puffers, Weichzeichner (px im Puffer), Stärke. */
-  glanz: { teiler: 4, weich: 2.5, staerke: 0.55 },
+  glanz: { teiler: 4, weich: 3, staerke: 0.7 },
 } as const;
 
 export const TAU = Math.PI * 2;

@@ -101,7 +101,7 @@ export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenste
               label={`Lichtfäden ${aktuell.pfad.map(k => k.name).join(' › ')}, ${fenster.fenster.label}`} />
             <Pfeil richtung={1} onBlaettern={fenster.blaettern} />
           </div>
-        ) : !fehler && <div style={{ height: 220, borderRadius: 16, background: 'rgba(255,255,255,.02)' }} aria-busy="true" aria-label="Lichtfäden laden" />}
+        ) : !fehler && <div style={{ height: 380, borderRadius: 16, background: 'rgba(255,255,255,.02)' }} aria-busy="true" aria-label="Lichtfäden laden" />}
         {aktuell && !aktuell.buendel.length && !laedt && (
           <Leerzustand symbol="✦" titel="Hier läuft noch nichts zusammen">
             Im Zeitraum ist auf dieser Ebene nichts terminiert. Meilensteine, Termine, Fristen und Follow-ups erscheinen hier, sobald sie ein Datum haben.

@@ -30,10 +30,10 @@ export const MAX_STRANG_BUENDEL = 24;
 /** Fäden je Bündel ∝ Last (Wurzel der Last, damit kleine Bündel sichtbar bleiben), gedeckelt je Leinwand.
  *  v3 (04.10.): deutlich mehr, feinere Fäden — vorher 3 … 26 je Bündel, Deckel 160 / 80. */
 export const FAEDEN = { min: 5, max: 44, strangMin: 2, strangMax: 6, deckel: { rechner: 300, handy: 120 } } as const;
-/** Spitzen (v3): Exponent auf die gesättigte Rohlast und Schwelle darüber — nur deutlich volle Wochen (gut das Doppelte einer
+/** Spitzen (v3): Exponent auf die gesättigte Rohlast und Schwelle darüber (v3.1: 0,3) — nur volle Wochen (deutlich über einer
  *  mittleren) schlagen aus, die übrigen bleiben ruhig (sonst zittert das Band Woche für Woche). */
 export const SPITZE_EXPONENT = 1.6;
-export const SPITZE_SCHWELLE = 0.4;
+export const SPITZE_SCHWELLE = 0.3;
 /** Höchstens so viele Markierungen (Knöpfe über dem Band) je Ansicht — nach Gewicht, dann Datum. */
 export const MAX_MARKEN = 40;
 
