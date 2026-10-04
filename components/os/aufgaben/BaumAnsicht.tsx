@@ -9,11 +9,13 @@
 // über EINE Karte je Render (#84), lange Listen in Stücken zu 200 Zeilen („weitere zeigen“).
 // Mehrstufig (01.10., Kevin: „Unteraufgaben bei dem HOS unter Produkten“): jede Ebene klappt auf, zeigt n/m ihrer direkten
 // Unteraufgaben und hat „+ Unteraufgabe“ bis zur Grenze `AUFGABEN_EBENEN_MAX` (lib/aufgaben/ebenen.ts); tiefer eingerückt.
+// Löschen & Archivieren (04.10., Kevin: „nach links swiped: dann kommt da Löschen oder Archivieren“): jede Zeile hängt am
+// Baustein `ZeileAktionen` — Handy wischen, Rechner Knöpfe am Rand; Papierkorb/Archiv mit „Rückgängig“ über den HandlungProvider.
 
 import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { MessageSquare, Link2, ChevronRight, Lock, Sparkles, StickyNote } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, HakenZiel, Punkt, feld, prioFarbe, ZielChip, useZielBezug } from '../ui';
+import { Karte, HakenZiel, Punkt, feld, prioFarbe, ZielChip, useZielBezug, ZeileAktionen } from '../ui';
 import { istMeilensteinListe } from '@/lib/planung/meilenstein-aufgaben';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { statusVon, fortschritt, sonstigeProjektId, nachReihe, type BaumProjekt, type BaumAufgabe, type BaumListe } from '@/lib/aufgaben/struktur';
@@ -137,6 +139,7 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     const weiter = new Set(gesehen).add(t.id);
     return (
       <div key={t.id}>
+        <ZeileAktionen titel={t.title} onArchivieren={() => handlung.archivieren(t)} onLoeschen={() => { void handlung.loeschen(t).then(weg => { if (weg && istOffen) onOeffnen(null); }); }}>
         <div className="zeile" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 4px', paddingLeft: 4 + tiefe * (breit ? 26 : 16), borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44, background: istOffen ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: istOffen ? 10 : 0 }}>
           {klappbar ? (
             <button onClick={() => umschalten(auf, setAuf, t.id)} aria-label={aufgeklappt ? `Unteraufgaben von „${t.title}“ zuklappen` : `Unteraufgaben von „${t.title}“ aufklappen`} aria-expanded={aufgeklappt} className="fassbar"
@@ -150,6 +153,7 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
           </button>
           {breit && meta(t, a.unter, false)}
         </div>
+        </ZeileAktionen>
         {aufgeklappt && <>
           {a.unter.filter(u => !weiter.has(u.id)).map(u => zeile({ task: u, unter: kinder.get(u.id) ?? [] }, tiefe + 1, weiter))}
           {darfUnter

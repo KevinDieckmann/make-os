@@ -222,7 +222,7 @@ export function AufgabenRaum() {
       {tot && (
         <Karte i={1}>
           <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
-            <span>{tot === 'papierkorb' ? 'Diese Aufgabe liegt im Papierkorb.' : tot === 'archiv' ? 'Diese Aufgabe ist archiviert („Neu anfangen“).' : tot === 'unsichtbar' ? 'Diese Aufgabe ist hier nicht sichtbar.' : 'Diese Aufgabe gibt es nicht mehr.'}</span>
+            <span>{tot === 'papierkorb' ? 'Diese Aufgabe liegt im Papierkorb.' : tot === 'archiv' ? 'Diese Aufgabe ist archiviert — unter Aufgaben › Archiv zurückzuholen.' : tot === 'unsichtbar' ? 'Diese Aufgabe ist hier nicht sichtbar.' : 'Diese Aufgabe gibt es nicht mehr.'}</span>
             {(tot === 'papierkorb' || tot === 'archiv') && <button onClick={() => gehe({ ansicht: 'archiv' })} style={{ ...leiseKnopf, color: C.aktiv }}>Zum Archiv ›</button>}
             <button onClick={() => setOffen(null)} style={{ ...leiseKnopf, marginLeft: 'auto' }}>schließen</button>
           </div>

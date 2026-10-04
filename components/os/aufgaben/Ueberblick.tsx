@@ -18,6 +18,7 @@ import type { AufgabenAktion } from '@/context/TasksContext';
 import { tagKurz, spaceLabel, projektTitel } from './hilfe';
 import { Papierkorb } from './Papierkorb';
 import { NeustartArchiv } from './NeustartArchiv';
+import { EinzelArchiv } from './EinzelArchiv';
 import { useHandlung } from './Handlung';
 import { NurIchZeichen, PrioZeichen } from './Zeichen';
 
@@ -163,6 +164,7 @@ export function AufgabenArchiv({ state, dispatch, spaces, heute, gehe }: { state
         ))}
         {!projekte.length && <Leer>Kein Projekt im Archiv.</Leer>}
       </Karte>
+      <EinzelArchiv spaces={spaces} />
       <NeustartArchiv spaces={spaces} />
       <Papierkorb spaces={spaces} />
       {/* Export (29.09., #81): alles, was du sehen darfst, als eine JSON-Datei (Umzug, Auskunft). Kein Seitenwechsel — ein Download. */}

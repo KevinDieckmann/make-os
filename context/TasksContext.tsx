@@ -14,6 +14,7 @@ import {
 import { istNeuLaden, NEU_LADEN_EREIGNIS } from '@/lib/bau/kennung';
 import { SpeicherHinweis } from '@/components/os/aufgaben/SpeicherHinweis';
 import { nachfahrenIn } from '@/lib/aufgaben/ebenen';
+import { aufgabeArchivieren, aufgabeAusArchiv } from '@/lib/aufgaben/archiv-einzeln';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -41,6 +42,9 @@ export type AufgabenAktion =
   // Papierkorb (29.09.): „Löschen“ legt hinein (DELETE_PROJECT/DELETE_TASK), zurückholen samt Kette, endgültig getrennt.
   | { type: 'WIEDERHERSTELLEN'; payload: { art: 'projekt' | 'aufgabe'; id: string } }
   | { type: 'ENDGUELTIG_LOESCHEN'; payload: { art: 'projekt' | 'aufgabe'; id: string } }
+  // Einzel-Archiv (04.10., Wischen › Archivieren): ausblenden samt Teilbaum, zurück genau diese Kette (lib/aufgaben/archiv-einzeln.ts).
+  | { type: 'ARCHIVIEREN'; payload: { id: string } }
+  | { type: 'AUS_ARCHIV'; payload: { id: string } }
   // Abgleich (29.09., A1/A4): neuer Serverstand + ausstehende Änderungen wieder darauf; einzelne Zeilen setzen.
   | { type: 'ABGLEICH'; payload: { basis: TasksState; altServer: TasksState; serverGewinnt?: readonly string[] } }
   | { type: 'ZEILEN_SETZEN'; payload: { liste: ListenArt; id: string; eintrag: Zeile | null }[] };
@@ -122,6 +126,10 @@ export function tasksReducer(state: TasksState, action: AufgabenAktion): TasksSt
       return wiederherstellen(state, action.payload.art, action.payload.id, now);
     case 'ENDGUELTIG_LOESCHEN':
       return endgueltigEntfernen(state, action.payload.art, action.payload.id).state;
+    case 'ARCHIVIEREN':
+      return aufgabeArchivieren(state, action.payload.id, now);
+    case 'AUS_ARCHIV':
+      return aufgabeAusArchiv(state, action.payload.id, now);
     case 'ABGLEICH': {
       // Ausstehend = was die Sicht vom alten Serverstand unterscheidet; es kommt wieder auf den neuen (außer Zeilen, bei denen der Server gewinnt).
       const gewinnt = new Set(action.payload.serverGewinnt ?? []);

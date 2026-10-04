@@ -12,4 +12,6 @@ export { ZielBezug } from './ziel-bezug';
 export { useHandy, useBreit, useMedien, HANDY_BIS, SPALTEN_AB } from './medien';
 // Fokus-Signatur (04.10., DESIGN_STANDARD.md › Fokus-Signatur): Mini-Strahl über einer echten Reihe, Segmentbalken, Kante, Netz.
 export { FadenLinie, Segmentbalken, FokusKante, NetzMotiv, type FadenLinieProps } from './fokus';
+// Zeilen-Aktionen (04.10., DESIGN_STANDARD.md › Löschen & Archivieren): Wischen/Überfahren → Archivieren · Löschen, „Rückgängig“, Rückfrage.
+export { ZeileAktionen, RueckgaengigLeiste, useRueckgaengig, Rueckfrage, useRueckfrage, RUECKGAENGIG_MS, AKTION_BREITE, RICHTUNG_AB, type ZeileAktionenProps, type Rueckgaengig, type RueckfrageDaten, type RueckfrageWahl } from './zeile-aktionen';
 export { Ring, Balken, Punkt, Haken, Spalten, Spalte, aufZwei, useHochzaehlen, LEUCHT, zoneFarbe, prioFarbe } from '../schlank';

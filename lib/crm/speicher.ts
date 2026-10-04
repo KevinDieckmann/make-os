@@ -3,6 +3,7 @@
 // Zu zweit werden nur Einzeländerungen geschrieben (lib/sync.ts); jede Liste
 // hat einen eigenen Säuberer, damit nur durchkommt, was das Modell kennt.
 
+import { papierkorbMarke, markeVomServer } from '@/lib/eintraege/sicher';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { protokolliere, bestandDiff, listenDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
@@ -197,6 +198,8 @@ function leistung(o: Record<string, unknown>, jetzt: string): Leistung | null {
     // Angebotstexte (28.09.): Leistungstext ist Pflicht für „aktiv“ — die Regel prüft `regelnAbgelehnt`.
     ...(leistungAngebotSaeubern(o.angebot) ? { angebot: leistungAngebotSaeubern(o.angebot) } : {}),
     ...(Array.isArray(o.unterlagen) && o.unterlagen.length ? { unterlagen: (o.unterlagen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'unterlagen')).map((x, i) => ({ id: txt(x.id, 40) || `u${i}`, titel: txt(x.titel, 120), art: aus(x.art, ['angebot', 'vertrag', 'deck', 'onepager', 'sonstiges'] as const, 'sonstiges'), ...(unterlageLink(x.url) ? { url: unterlageLink(x.url)! } : {}) })).filter(x => x.titel) } : {}),
+    // Papierkorb (04.10.): nur eine gültige Marke; die Zeit selbst setzt `wendeCrmAn` (Server-Zeit, `markeVomServer`).
+    ...(papierkorbMarke(o.geloeschtAm) ? { geloeschtAm: papierkorbMarke(o.geloeschtAm) } : {}),
     geaendert: jetzt,
   };
 }
@@ -472,7 +475,13 @@ export function regelnAbgelehnt(b: CrmBestand, ops: ListenOp[]): string[] {
     // Event mit Übergaben an Kunden (03.10.): der Nachweis (Art. 15/19) darf nicht still mit dem Event verschwinden — löschen geht nur über die
     // Event-Route (`aktion: 'loeschen'`, ausdrückliche Bestätigung, Protokoll wandert ins Übergabe-Journal und ist dann vom Event gelöst).
     if (o.liste === 'events' && o.op === 'delete' && b.events.find(x => x.id === o.id)?.uebergaben?.length) { raus.push('Dieses Event hat Übergaben an Kunden im Protokoll — löschen nur über „Event löschen“ in der Event-Akte (der Nachweis geht ins Übergabe-Journal).'); continue; }
-    if (o.liste !== 'leistungen' || o.op === 'delete') continue;
+    // Produkte (04.10., „sicher statt endgültig“): endgültig löschen nur, was im Papierkorb liegt — Löschen legt erst hinein.
+    if (o.liste === 'leistungen' && o.op === 'delete') {
+      const l = b.leistungen.find(x => x.id === String(o.id));
+      if (l && !l.geloeschtAm) raus.push(`„${l.name}“ liegt nicht im Papierkorb — Löschen legt ein Produkt erst in den Papierkorb (30 Tage wiederherstellbar), endgültig nur von dort.`);
+      continue;
+    }
+    if (o.liste !== 'leistungen') continue;
     const id = String(o.op === 'teil' ? o.id : (o.eintrag as { id?: unknown } | undefined)?.id ?? '');
     const alt = b.leistungen.find(l => l.id === id);
     const roh = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>;
@@ -593,7 +602,10 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
     const r = wendeAn(b[l] as unknown as Record<string, unknown>[], eigene, 'id', roh => saeubern(l, roh, jetzt, person));
     // Übergabe-Protokoll (03.10., netz-recht): schreibt NUR der Server (Route events › kunden-uebergabe, `aendereCrm` direkt) — der Browser
     // kann es über diesen generischen Weg weder setzen noch löschen oder fälschen; es gilt immer der gespeicherte Stand.
-    (neu as Record<string, unknown>)[l] = l === 'events' ? uebergabenVomAltstand(b.events, r.liste as unknown as CrmBestand['events']) : r.liste;
+    (neu as Record<string, unknown>)[l] = l === 'events' ? uebergabenVomAltstand(b.events, r.liste as unknown as CrmBestand['events'])
+      // Papierkorb-Marke der Produkte (04.10.): neu = Server-Zeit, bestehend bleibt — der Browser verschiebt die Frist nie.
+      : l === 'leistungen' ? (r.liste as unknown as Leistung[]).map(x => markeVomServer(b.leistungen.find(a => a.id === x.id), x, jetzt))
+      : r.liste;
     angewandt += r.angewandt;
   }
   // Mutterfirmen (28.09., #7): tote Mutter oder Kreis → nur diese Änderung zurück, mit Fehlertext.

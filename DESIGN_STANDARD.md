@@ -50,6 +50,8 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 | `Erfolg`, `Schritte`, `Fortschritt` | Haken, Schrittanzeige, Balken |
 | `eingabe`, `feld`, `auswahl`, `Feldzeile` | Formularfeld 48/16 · kompakt 44 · Auswahlliste 40/44 · Feld mit Beschriftung und Fehlertext |
 | `Aktionsleiste` | die Hauptaktion unten mitlaufend am Handy, über der Tastatur beim Tippen |
+| `ZeileAktionen` | Archivieren & Löschen an jeder Listenzeile: Handy nach links wischen, Rechner Knöpfe am Rand (siehe „Löschen & Archivieren“) |
+| `Rueckfrage`/`useRueckfrage`, `RueckgaengigLeiste`/`useRueckgaengig` | Rückfrage statt `window.confirm` (Abbrechen hat den Fokus) · Hinweis unten mit „Rückgängig“ (10 s) |
 
 ## Regeln
 1. **Eine Hauptaktion je Ansicht** (`Knopf haupt`). Alles andere `leise` oder normal.
@@ -213,3 +215,36 @@ Deals › Prognose (Fokus-Karte, erwartete Abschlüsse gewichtet je Monat) · Pl
 Ziel-Zeilen (Segmentbalken), aufgeklappte Engstelle (Kante) · Zahlen › Liquidität (Verlauf als Lichtfäden-Band), Business- und Privat-Index (Verlauf) ·
 Fokus (Schaufenster: „Unser Fokus“ mit Netz, Regler als Segmentbalken, Fokus-Minuten je Tag, darunter der Strahl v3).
 
+
+## Löschen & Archivieren (04.10.)
+Kevin: „Wenn man auf Produkte geht, kann man keine Produkte löschen — das macht das Ganze wieder ein bisschen wild. Für die Usability können wir auch
+immer Tasks, Produkte etc. einfach löschen bzw. den Button, der kommt, wenn man z. B. nach links swiped: dann kommt da Löschen oder Archivieren.
+Alles andere macht da keinen Sinn.“ Baustein `components/os/ui/zeile-aktionen.tsx`, Regeln `lib/eintraege/sicher.ts`, Wächter `tests/zeile-aktionen.test.ts`.
+
+**Regel: Jede Liste mit Einträgen nutzt `ZeileAktionen`** — keine eigenen Löschen-Knöpfe, kein `window.confirm`, kein endgültiges Löschen mit dem ersten Klick.
+
+| Teil | Verhalten |
+|---|---|
+| Handy | Zeile nach links wischen → „Archivieren“ (ruhig, Fläche) und „Löschen“ (Achtung-Farbe `BEDEUTUNG_FARBE.kritisch`), je 88 px breit. Ab 40 % der Breite bleibt sie offen; zurückwischen, Tippen daneben, Tippen auf die Zeile oder Escape schließt. Immer nur EINE Zeile offen. Senkrechtes Scrollen bleibt frei: `touch-action: pan-y` + Richtungs-Erkennung ab 10 px (waagerecht erst, wenn \|dx\| > 1,2 · \|dy\|). Der Klick nach dem Wischen öffnet die Zeile nicht. Pointer-Events, keine Bibliothek. |
+| Rechner | Dieselben zwei Aktionen als Symbol-Knöpfe (40 px) am rechten Rand der Zeile, sichtbar beim Überfahren und beim Tastatur-Fokus (Tab erreicht sie, Fokus-Rahmen sichtbar). Beschriftung für Vorleser: „„Titel“ archivieren“ / „„Titel“ löschen (Papierkorb)“; im Archiv „… aus dem Archiv zurückholen“. Ohne Zeiger (Handy) sind die Rand-Knöpfe nur für Vorleser/Tastatur da. |
+| Rechte | **Entschieden wird auf dem Server** (Plattform-Regel: Sicht/Rolle/Haushalt nie nur in der Oberfläche): Produkte nur im Haushalt des Inhabers (`/api/crm/bestand`, fremder Haushalt/Testkunde/Partner 403 — auch beim Lesen des Papierkorbs); Aufgaben: fremde „nur ich“ gibt es für andere nicht (Papierkorb-/Archiv-Liste serverseitig gefiltert, `sichtFuer`; löschen, endgültig löschen, archivieren, wiederherstellen → 404). `darf={false}` blendet die Aktion zusätzlich aus, ersetzt die Prüfung aber nie. Wächter: `tests/zeile-aktionen.test.ts` › Server. |
+| Bewegung | `transform` + Breite, 0,24 s; „Bewegung reduzieren“ = sofort (Regel in globals.css). Nur Token-Farben. |
+
+**Sicher statt endgültig (eine Logik):** Archivieren = ausblenden, jederzeit zurückholbar (Ansicht „Archiv“). Löschen = Papierkorb (`geloeschtAm`, Marke setzt
+der Server, Frist `PAPIERKORB_TAGE` = 30, nicht verschiebbar), danach unten „Rückgängig“ für 10 s (`useRueckgaengig`). Endgültig erst nach Ablauf
+(Morgenlauf) oder als eigener Schritt aus dem Papierkorb mit Rückfrage. Hängt etwas daran (laufende Mandate, offene Deals, Unteraufgaben), nennt die
+`Rueckfrage` es vorher — nie still.
+
+**Einsatz in einer neuen Liste (2–3 Zeilen):**
+```tsx
+<ZeileAktionen titel={x.name} onArchivieren={() => archivieren(x)} onLoeschen={() => loeschen(x)} darf={darf}>
+  <Zeile titel={x.name} … />
+</ZeileAktionen>
+// archivieren/loeschen: Bestand ändern + melden(`„${x.name}“ im Papierkorb`, () => zurück(x)) aus useRueckgaengig()
+```
+
+**Eingebaut (04.10.):** Produkte (Reiter Produkte · Archiv · Papierkorb; Archiv = Status „eingestellt“, Zurückholen = „Entwurf“; Papierkorb bleibt über
+die Frist hinaus, solange Mandate/Deals daran hängen; Morgenlauf-Schritt „Produkte-Papierkorb“) · Aufgaben (Baum: jede Ebene; Archiv › „Archiviert“
+mit Zurückholen; Einzel-Archiv = dieselbe Marke wie „Neu anfangen“ mit Kennung `ea-<Aufgabe>`, nimmt den Teilbaum mit, Serien ruhen; Löschen wie bisher in
+den Papierkorb, die Rückfrage nennt Unteraufgaben/Notiz/Dateien). Planung und Aufgaben-Hinweise hängen am selben `useRueckgaengig`.
+Folgt nach der Inventur: Mandate, Kontakte/Firmen, Deals, Events, Ziele, Notizen … (Kalender: eigener 8-s-Hinweis beim Verschieben, wird umgestellt).

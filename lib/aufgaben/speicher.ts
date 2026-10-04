@@ -18,6 +18,7 @@ import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vor
 import { alsStand, orgZuordnung, darfSehen, istNurIch, haushaltsPersonen } from './sicht';
 import { beideAufloesen, anlegerinVon, alleZustaendigen, SYSTEM } from './zustaendig';
 import { aufgabePruefen } from './pruefen';
+import { archivMarkeSchuetzen } from './archiv-einzeln';
 import { aufgabenSicht, projektInPapierkorb, aufgabeInPapierkorb, endgueltigEntfernen, imPapierkorb } from './papierkorb';
 import { aufgabenSchreiben, UMBAU_VERSION } from './umbau';
 import { abhaengigAngleichen, kreisBei } from './abhaengig';
@@ -300,6 +301,8 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
             if (s && s.spaceId === n.spaceId && n.status !== s.basis) n.status = s.basis;
           }
           // ── Paket T1 (29.09.): Server-Felder, eine Verantwortliche, „nur ich“, Prüfregeln ──
+          // Archiv-Marke (04.10.): der Browser setzt/löst nur das Einzel-Archiv; Läufe von „Neu anfangen“ bleiben, wie gespeichert.
+          n = archivMarkeSchuetzen(n, alt);
           n = serverFelder(n, alt, { person: opt.person, echtePerson, jetzt, zoeStatus: !!opt.zoeStatus });
           if (n.sichtbarkeit === 'nur-ich' && !istNurIch(alt)) {
             // Auf „nur ich“ stellen darf nur die Anlegerin (unbekannt → wer es tut, wird es).

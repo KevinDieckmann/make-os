@@ -888,3 +888,39 @@ nav a:hover { transform: translateX(2px); }
   .ui-monat-punkte { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; min-height: 9px; }
   .ui-monat-zelle { min-height: 56px !important; padding: 4px 2px !important; justify-items: center; }
 }
+
+/* ─── Zeilen-Aktionen: Archivieren & Löschen (04.10., components/os/ui/zeile-aktionen.tsx) ─────────────────────────
+   Handy: Zeile nach links wischen (die Aktionen liegen dahinter, sichtbar nur die freigewischte Breite). Rechner: Symbol-Knöpfe
+   am rechten Rand beim Überfahren/Fokus. `touch-action: pan-y` lässt das senkrechte Scrollen dem Browser. */
+.ui-za { position: relative; }
+.ui-za-bahn { position: relative; overflow: hidden; }
+.ui-za-inhalt { position: relative; touch-action: pan-y; transition: transform .24s cubic-bezier(.22, 1, .36, 1); }
+.ui-za-hinten { position: absolute; top: 0; right: 0; bottom: 0; overflow: hidden; display: flex; justify-content: flex-end; transition: width .24s cubic-bezier(.22, 1, .36, 1); }
+.ui-za-zieht .ui-za-inhalt, .ui-za-zieht .ui-za-hinten { transition: none; }
+/* Die Zeile ist im Baustein immer „letztes Kind“ — der Trenner richtet sich nach dem Platz des Bausteins in der Liste. */
+.ui-za:not(:last-child) > .ui-za-bahn > .ui-za-inhalt > .zeile:last-child { border-bottom: 1px solid rgba(255, 255, 255, .05) !important; }
+.ui-za:not(:last-child) > .ui-za-bahn > .ui-za-inhalt > .ui-zeile:last-child { border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.ui-za-inhalt > .ui-zeile-klick { margin: 0; }
+.ui-za-reihe { display: flex; height: 100%; flex: 0 0 auto; }
+.ui-za-aktion { width: 88px; height: 100%; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: none; font-weight: 600; line-height: 1.2; cursor: pointer; }
+.ui-za-schnell { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; padding: 2px; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 2; box-shadow: 0 8px 24px -10px rgba(0, 0, 0, .7); }
+.ui-za:hover > .ui-za-schnell, .ui-za-schnell:focus-within { opacity: 1; pointer-events: auto; }
+.ui-za-offen > .ui-za-schnell { opacity: 0 !important; pointer-events: none !important; }
+.ui-za-knopf { width: 40px; height: 40px; display: grid; place-items: center; border: none; background: none; border-radius: 10px; cursor: pointer; }
+.ui-za-knopf:hover { background: rgba(255, 255, 255, .07); }
+.ui-za-knopf:focus-visible, .ui-za-aktion:focus-visible { outline: 2px solid #58D9CD; outline-offset: -2px; }
+/* Ohne Zeiger (Handy/Tablet): die Rand-Knöpfe nur für Vorleser und Tastatur — gewischt wird hinter der Zeile. */
+@media (hover: none), (pointer: coarse) {
+  .ui-za-schnell:not(:focus-within) { clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; padding: 0; border: 0 !important; box-shadow: none; }
+}
+.ui-rueckgaengig { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 9998; width: min(460px, calc(100vw - 32px)); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 14px; box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .7); box-sizing: border-box; }
+.ui-rueckgaengig-knopf { background: none; border-radius: 10px; cursor: pointer; font-weight: 700; padding: 8px 12px; min-height: 44px; }
+.ui-rueckfrage-grund { position: fixed; inset: 0; z-index: 10000; background: rgba(5, 7, 8, .62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.ui-rueckfrage { width: min(460px, 100%); border-radius: 20px; padding: 20px 22px; display: grid; gap: 12px; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .8); box-sizing: border-box; }
+.ui-rueckfrage-wahl { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+@media (max-width: 720px) {
+  .ui-rueckfrage-grund { align-items: flex-end; padding: 0; }
+  .ui-rueckfrage { width: 100%; border-radius: 20px 20px 0 0; padding: 18px 16px max(18px, env(safe-area-inset-bottom)); }
+  .ui-rueckfrage-wahl { flex-direction: column-reverse; }
+  .ui-rueckfrage-wahl .ui-knopf { width: 100%; }
+}
