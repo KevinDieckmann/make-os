@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Haken, Knopf, Leer, Chip, Hinweis, feld, LEUCHT, Segmentbalken } from '../ui';
+import { Seite, Karte, Ueberschrift, Haken, Knopf, Leer, Chip, Hinweis, feld, LEUCHT, Segmentbalken, useRueckgaengig } from '../ui';
 import { Lichtfaeden } from '../lichtfaeden/Lichtfaeden';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
@@ -28,7 +28,6 @@ import { zielJahr } from '@/lib/planung/zeitstrahl';
 import { ZIEL_HORIZONTE, type Meilenstein, type Ziel, type ZielHorizont } from '@/lib/planung/typen';
 import { usePlanung, type PlanungStand } from './usePlanung';
 import { useMeilensteinFenster } from './MeilensteinFenster';
-import { useRueckgaengig } from './Rueckgaengig';
 import { PfeilRang } from './PfeilRang';
 import { loescheZiel } from './ziel-loeschen';
 

@@ -21,6 +21,10 @@
 // Seit 01.10. (Ziel ↔ Meilenstein): der Ziel-Titel führt ins Ziel-Detail (`WEG.ziel`), der Ziel-Bezug am Meilenstein ebenso;
 // ein Meilenstein, der noch auf einen offenen Vorgänger wartet, sagt es in der Zeile; Löschen räumt die Kette mit
 // (`loescheMeilenstein`), ein gelöschtes Ziel lässt seine Meilensteine stehen („ohne Ziel“).
+// 04.10. (Kevin: „alles anpassbar“): jede Zeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`: aus der Liste
+// ausgeblendet, Bereich „Archiv“ unten, zurückholbar; zählt nie als erledigt; Abgeleitetes wird dabei gelöst, damit die
+// Kaskade es nicht neu anlegt) und Löschen (mit „Rückgängig“; Abgeleitetes → Rückfrage, Archiv als Weg — gelöscht käme es
+// beim nächsten Nachziehen wieder). Der ✕-Knopf in der Zeile ist damit weg; „lösen“ bleibt.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -32,7 +36,7 @@ import { meilensteinSpace, bereichAusSpace } from '@/lib/planung/meilensteine';
 import { offenErledigt, verschiebe, naechsterRang } from '@/lib/planung/rang';
 import { imZeitraum } from '@/lib/planung/zeitraum';
 import { meilensteinImJahr, zielJahr } from '@/lib/planung/zeitstrahl';
-import { useRueckgaengig, type Rueckgaengig } from './Rueckgaengig';
+import { useRueckgaengig, useRueckfrage, ZeileAktionen, type Rueckgaengig } from '../ui';
 import type { Meilenstein, Ziel, ZielHorizont } from '@/lib/planung/typen';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Hinweis, feld, LEUCHT, Segmentbalken } from '../ui';
 import { zielRahmen } from '../ziel';
@@ -92,6 +96,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const p = planung ?? eigen;
   const eigenerHinweis = useRueckgaengig();
   const rueck = rueckgaengig ?? eigenerHinweis;
+  const { fragen, dialog } = useRueckfrage();
   const laufend = Number(p.heute.slice(0, 4));
   const planJahr = horizont === 'jahr' ? (planJahrProp ?? laufend) : laufend;
   const zeitLabel = horizont === 'jahr' ? String(planJahr) : p.zr.label;
@@ -112,16 +117,21 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const imBusiness = spaceFilter === 'business';
 
   // ── Ziele im Filter ──
-  const zieleSicht = useMemo(() => p.ziele.filter(z => (spaceFilter === 'alle' || !z.space || z.space === spaceFilter) && (!imBusiness || passtEinheit(z.einheit, einheitFilter))
+  // Archiviertes (04.10.) steht nur im Bereich „Archiv“ — Offen/Erledigt rechnen ohne es.
+  const zieleImFilter = useMemo(() => p.ziele.filter(z => (spaceFilter === 'alle' || !z.space || z.space === spaceFilter) && (!imBusiness || passtEinheit(z.einheit, einheitFilter))
     && (horizont !== 'jahr' || zielJahr(z, laufend) === planJahr)), [p.ziele, spaceFilter, imBusiness, einheitFilter, horizont, laufend, planJahr]);
+  const zieleSicht = useMemo(() => zieleImFilter.filter(z => !z.archiviertAm), [zieleImFilter]);
+  const zArchiv = useMemo(() => zieleImFilter.filter(z => z.archiviertAm), [zieleImFilter]);
   const { offen: zOffen, erledigt: zErledigt } = useMemo(() => offenErledigt(zieleSicht), [zieleSicht]);
 
   // ── Meilensteine im Zeitraum und Filter ──
-  const msSicht = useMemo(() => p.ms.filter(m => {
+  const msImFilter = useMemo(() => p.ms.filter(m => {
     const spaceOk = spaceFilter === 'alle' || meilensteinSpace(m) === spaceFilter;
     const zeitOk = horizont === 'jahr' ? meilensteinImJahr(m, planJahr, laufend) : imZeitraum(m.faellig, p.zr);
     return spaceOk && zeitOk && (!imBusiness || passtEinheit(m.einheit, einheitFilter));
   }), [p.ms, spaceFilter, horizont, p.zr, imBusiness, einheitFilter, planJahr, laufend]);
+  const msSicht = useMemo(() => msImFilter.filter(m => !m.archiviertAm), [msImFilter]);
+  const mArchiv = useMemo(() => msImFilter.filter(m => m.archiviertAm), [msImFilter]);
   const { offen: mOffen, erledigt: mErledigt } = useMemo(() => offenErledigt(msSicht), [msSicht]);
 
   // ── Neu anlegen ──
@@ -186,6 +196,30 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const mLoeschen = (id: string) => { loescheMeilenstein(stand, id, rueck); };
   const mBewegen = (id: string, r: 'auf' | 'ab') => p.persistMs(verschiebe(p.ms, id, r, mOffen.map(m => m.id)));
 
+  // ── Archivieren · Zurückholen · Löschen (04.10., ZeileAktionen) ──
+  // „Rückgängig“ läuft später — immer auf dem jüngsten Stand (`stand`), nie auf dem dieser Zeichnung.
+  const zMarke = (id: string, archiviertAm: string | undefined) => { const q = stand.current; q.persistZiele(q.ziele.map(z => (z.id === id ? { ...z, archiviertAm } : z))); };
+  const mMarke = (id: string, archiviertAm: string | undefined) => { const q = stand.current; q.persistMs(q.ms.map(m => (m.id === id ? { ...m, archiviertAm } : m))); };
+  // Archivieren löst Abgeleitetes zugleich (`angepasst`) — sonst legte die Kaskade es beim nächsten Nachziehen neu an.
+  const zArchivieren = (z: Ziel) => {
+    if (z.archiviertAm) { zMarke(z.id, undefined); rueck.melden(`Ziel „${z.titel}“ ist zurück`, () => zMarke(z.id, new Date().toISOString())); return; }
+    zPatch(z.id, { archiviertAm: new Date().toISOString() }, true);
+    rueck.melden(`Ziel „${z.titel}“ archiviert — unten unter „Archiv“ zurückholbar`, () => zMarke(z.id, undefined));
+  };
+  const mArchivieren = (m: Meilenstein) => {
+    if (m.archiviertAm) { mMarke(m.id, undefined); rueck.melden(`„${m.titel}“ ist zurück`, () => mMarke(m.id, new Date().toISOString())); return; }
+    mPatch(m.id, { archiviertAm: new Date().toISOString() }, true);
+    rueck.melden(`„${m.titel}“ archiviert — unten unter „Archiv“ zurückholbar`, () => mMarke(m.id, undefined));
+  };
+  /** Abgeleitetes (nicht gelöst) käme gelöscht beim nächsten Nachziehen zurück — die Rückfrage bietet das Archiv an. */
+  const abgeleitetFragen = (titel: string, archivieren: () => void) => fragen({
+    titel: `„${titel}“ kommt aus dem Jahresziel`,
+    text: 'Abgeleitetes legt die Kaskade beim nächsten Nachziehen neu an — gelöscht wäre es gleich wieder da. Archivieren löst es vom Jahresziel und blendet es dauerhaft aus (zurückholbar). Ganz weg geht es mit dem Jahresziel selbst.',
+    wahl: [{ label: 'Archivieren', tun: archivieren }],
+  });
+  const zLoeschenFrage = (z: Ziel) => (z.abgeleitetVon && !z.angepasst ? abgeleitetFragen(z.titel, () => zArchivieren(z)) : zLoeschen(z.id));
+  const mLoeschenFrage = (m: Meilenstein) => (m.abgeleitetVon && !m.angepasst ? abgeleitetFragen(m.titel, () => mArchivieren(m)) : mLoeschen(m.id));
+
   // ── Titel bearbeiten (Stift) ──
   const [bearbeite, setBearbeite] = useState<{ id: string; text: string } | null>(null);
   const titelFeld = (id: string, fertig: (text: string) => void) => (
@@ -214,7 +248,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const v = z.erledigt ? 100 : z.fortschritt;
     const f = z.space ? SPACE_FARBE[z.space] : farbe;
     return (
-      <Zeile key={z.id}
+      <ZeileAktionen key={z.id} titel={z.titel} archiviert={!!z.archiviertAm} onArchivieren={() => zArchivieren(z)} onLoeschen={() => zLoeschenFrage(z)}>
+      <Zeile
         links={<Haken an={!!z.erledigt} farbe={f} onChange={() => zErledigen(z)} />}
         titel={bearbeite?.id === z.id ? titelFeld(z.id, t => zPatch(z.id, { titel: t }, true)) : <Link href={WEG.ziel(z.id)} title="Ziel öffnen — Meilensteine als Kette, Beschreibung, Messlatte" style={{ fontWeight: 600, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none' }}>{z.titel}</Link>}
         unter={unterZeile([
@@ -243,11 +278,10 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
                 <button onClick={() => setBearbeite({ id: z.id, text: z.titel })} aria-label="Ziel umbenennen" title="umbenennen" style={loeschen}>✎</button>
               </>
             )}
-            {z.abgeleitetVon && !z.angepasst
-              ? <button onClick={() => zPatch(z.id, { angepasst: true })} aria-label="Vom Jahresziel lösen" title="Vom Jahresziel lösen — wird ein eigenes Ziel" style={{ ...loeschen, fontSize: 12, color: LEUCHT.agenten }}>lösen</button>
-              : <button onClick={() => zLoeschen(z.id)} aria-label="Ziel löschen" style={loeschen}>✕</button>}
+            {z.abgeleitetVon && !z.angepasst && <button onClick={() => zPatch(z.id, { angepasst: true })} aria-label="Vom Jahresziel lösen" title="Vom Jahresziel lösen — wird ein eigenes Ziel" style={{ ...loeschen, fontSize: 12, color: LEUCHT.agenten }}>lösen</button>}
           </span>
         } />
+      </ZeileAktionen>
     );
   };
 
@@ -264,6 +298,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const ms = aufgabenStand(aufgabenVonMeilenstein(tasksState, m.id));
     return (
       <div key={m.id} id={`ziel-${m.id}`} style={zielRahmen(zielM === m.id, bf)}>
+        <ZeileAktionen titel={m.titel} archiviert={!!m.archiviertAm} onArchivieren={() => mArchivieren(m)} onLoeschen={() => mLoeschenFrage(m)}>
         <Zeile
           links={<Haken an={m.erledigt} farbe={bf} onChange={() => mErledigen(m)} />}
           titel={bearbeite?.id === m.id ? titelFeld(m.id, t => mPatch(m.id, { titel: t }, true)) : <Link href={WEG.meilenstein(m.id)} title="Meilenstein öffnen — Aufgaben, Verlauf, Dateien, Notizen" style={{ color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none' }}>{m.titel}</Link>}
@@ -299,19 +334,18 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
                     : <button onClick={() => setBearbeite({ id: m.id, text: m.titel })} aria-label="Meilenstein umbenennen" title="umbenennen" style={loeschen}>✎</button>}
                 </>
               )}
-              {m.abgeleitetVon && !m.angepasst
-                ? <button onClick={() => mPatch(m.id, { angepasst: true })} aria-label="Vom Jahresziel lösen" title="Vom Jahresziel lösen — wird ein eigener Meilenstein" style={{ ...loeschen, fontSize: 12, color: LEUCHT.agenten }}>lösen</button>
-                : <button onClick={() => mLoeschen(m.id)} aria-label="Meilenstein löschen" style={loeschen}>✕</button>}
+              {m.abgeleitetVon && !m.angepasst && <button onClick={() => mPatch(m.id, { angepasst: true })} aria-label="Vom Jahresziel lösen" title="Vom Jahresziel lösen — wird ein eigener Meilenstein" style={{ ...loeschen, fontSize: 12, color: LEUCHT.agenten }}>lösen</button>}
             </span>
           } />
+        </ZeileAktionen>
       </div>
     );
   };
 
-  const erledigtBereich = (liste: ReactNode[], n: number) => (n > 0 ? (
+  const erledigtBereich = (liste: ReactNode[], n: number, name = 'Erledigt') => (n > 0 ? (
     <div style={{ marginTop: 14, borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise, marginBottom: 2 }}>
-        <span>Erledigt</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{n}</span>
+        <span>{name}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{n}</span>
       </div>
       <div style={{ maxHeight: ERLEDIGT_HOEHE, overflowY: 'auto', paddingRight: 2 }}><Liste>{liste}</Liste></div>
     </div>
@@ -324,6 +358,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     <>
       {p.hinweis && <Hinweis art="achtung" rolle="status">{p.hinweis}</Hinweis>}
       {!rueckgaengig && eigenerHinweis.hinweis}
+      {dialog}
       {/* Filter: Space · Einheiten (Business) */}
       <div className="os-auf" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', ['--i' as string]: i }}>
         {(['privat', 'business', 'alle'] as const).map(k => (
@@ -365,6 +400,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             : !zOffen.length ? <Leer>Alles erledigt{spaceHinweis} — was kommt als Nächstes?</Leer>
             : <Liste>{zOffen.map((z, k) => zielZeile(z, k, zOffen.length))}</Liste>}
           {erledigtBereich(zErledigt.map((z, k) => zielZeile(z, k, zErledigt.length)), zErledigt.length)}
+          {erledigtBereich(zArchiv.map((z, k) => zielZeile(z, k, zArchiv.length)), zArchiv.length, 'Archiv')}
         </Karte>
 
         {/* Meilensteine */}
@@ -388,6 +424,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             : !mOffen.length ? <Leer>Alle Meilensteine für {zeitLabel} erledigt.</Leer>
             : <Liste>{mOffen.map((m, k) => msZeile(m, k, mOffen.length))}</Liste>}
           {erledigtBereich(mErledigt.map((m, k) => msZeile(m, k, mErledigt.length)), mErledigt.length)}
+          {erledigtBereich(mArchiv.map((m, k) => msZeile(m, k, mArchiv.length)), mArchiv.length, 'Archiv')}
         </Karte>
       </div>
     </>

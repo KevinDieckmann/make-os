@@ -9,7 +9,7 @@ import { ohneStand } from '@/lib/make-one/liste-stand';
 import { ohneMeilenstein, verweiseZurueck } from '@/lib/planung/meilenstein-kette';
 import type { Meilenstein } from '@/lib/planung/typen';
 import type { PlanungStand } from './usePlanung';
-import type { Rueckgaengig } from './Rueckgaengig';
+import type { Rueckgaengig } from '../ui';
 
 /** Löscht den Meilenstein; `stand` ist der jüngste Stand (das Zurückholen läuft später). Liefert, wie viele Nachfolger betroffen waren. */
 export function loescheMeilenstein(stand: MutableRefObject<PlanungStand>, id: string, rueck: Rueckgaengig): number {

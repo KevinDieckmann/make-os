@@ -16,7 +16,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Haken, Knopf, Segmente, Leer, Chip, Hinweis, feld, useBreit, LEUCHT } from '../ui';
+import { Seite, Karte, Haken, Knopf, Segmente, Leer, Chip, Hinweis, feld, useBreit, LEUCHT, useRueckfrage, useRueckgaengig } from '../ui';
 import { Lichtfaeden } from '../lichtfaeden/Lichtfaeden';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
@@ -39,7 +39,6 @@ import { NotizAnzeige } from '../aufgaben/Notiz';
 import { usePersonen, useIch } from '../aufgaben/hilfe';
 import { useMeilensteinFenster } from './MeilensteinFenster';
 import { datumVorVorgaenger, nachfolger, wartetText } from '@/lib/planung/meilenstein-kette';
-import { useRueckgaengig } from './Rueckgaengig';
 import { BeitragsVerlauf } from '../austausch/BeitragsVerlauf';
 
 type Abschnitt = 'aufgaben' | 'verlauf' | 'dateien' | 'notizen';
@@ -280,6 +279,7 @@ export function MeilensteinDetail({ id }: { id: string }) {
 function Links({ raum, aktion, laeuft, personen }: { raum: RaumSicht | null; aktion: (a: Record<string, unknown>) => Promise<boolean>; laeuft: boolean; personen: readonly { speicher: string; name: string }[] }) {
   const [url, setUrl] = useState('');
   const [titel, setTitel] = useState('');
+  const { bestaetigen, dialog } = useRueckfrage();
   const gueltig = /^https?:\/\/\S+$/i.test(url.trim());
   const name = (s: string) => personen.find(p => p.speicher === s)?.name ?? s;
   const links = raum?.links ?? [];
@@ -291,7 +291,7 @@ function Links({ raum, aktion, laeuft, personen }: { raum: RaumSicht | null; akt
         <div key={l.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', minWidth: 0 }}>
           <a href={l.url} target="_blank" rel="noopener noreferrer nofollow" style={{ color: C.aktiv, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{l.titel}</a>
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '0 0 auto' }}>{name(l.von)}</span>
-          <button onClick={() => { if (window.confirm(`Link „${l.titel}“ entfernen?`)) void aktion({ art: 'link-entfernen', id: l.id }); }} aria-label="Link entfernen" style={leise}>✕</button>
+          <button onClick={async () => { if (await bestaetigen({ titel: `Link „${l.titel}“ entfernen?`, text: 'Der Link verschwindet aus dem Meilenstein-Raum.', ja: 'Entfernen', gefahr: true })) void aktion({ art: 'link-entfernen', id: l.id }); }} aria-label="Link entfernen" style={leise}>✕</button>
         </div>
       ))}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
@@ -299,6 +299,7 @@ function Links({ raum, aktion, laeuft, personen }: { raum: RaumSicht | null; akt
         <input value={titel} onChange={e => setTitel(e.target.value)} placeholder="Titel (optional)" aria-label="Titel des Links" maxLength={RAUM_GRENZEN.linkTitel} style={{ ...feld, flex: '1 1 140px', width: 'auto', minWidth: 0, fontSize: TYP.bedien, padding: '8px 12px' }} />
         <Knopf aus={!gueltig || laeuft} onClick={async () => { if (await aktion({ art: 'link', url: url.trim(), titel: titel.trim() })) { setUrl(''); setTitel(''); } }}>+ Link</Knopf>
       </div>
+      {dialog}
     </div>
   );
 }

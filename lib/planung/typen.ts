@@ -45,6 +45,8 @@ export interface Ziel {
   abgeleitetVon?: string;
   /** Abgeleitet, aber von Hand geändert — die Kaskade rechnet es nicht mehr neu. */
   angepasst?: boolean;
+  /** Archiv (04.10., optional): archiviert am (ISO) — aus der Planungsliste ausgeblendet, zurückholbar; zählt nirgends als erledigt. */
+  archiviertAm?: string;
   /**
    * Mandat an Zielen und Zeit (28.09.): das CRM-Mandat, auf das dieses Ziel einzahlt — nur im Business.
    * Ist es gesetzt, kommen Firma und Einheit aus dem Mandat (lib/planung/mandat.ts `mitMandatBezug`).
@@ -84,6 +86,8 @@ export interface Meilenstein {
   einheit?: string;
   abgeleitetVon?: string;
   angepasst?: boolean;
+  /** Archiv (04.10., optional): archiviert am (ISO) — aus der Planungsliste ausgeblendet, zurückholbar; zählt nirgends als erledigt. */
+  archiviertAm?: string;
   /** Mandat an Zielen und Zeit (28.09., wie am Ziel) — nur im Business; Firma und Einheit kommen aus dem Mandat. */
   mandatId?: string;
   firmaId?: string;

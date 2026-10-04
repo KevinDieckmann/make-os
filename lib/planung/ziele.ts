@@ -13,6 +13,9 @@ const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 /** Länge der Notiz/Beschreibung eines Ziels (wie bisher — der alte Stand kürzt nicht anders). */
 export const ZIEL_NOTIZ_MAX = 400;
 
+/** ISO-Zeitpunkt wie `toISOString` (Archiv-Marke, 04.10.). */
+const ISO_ZEIT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+
 export function sauberZiel(roh: unknown): Ziel | null {
   const z = (roh ?? {}) as Partial<Ziel> & Record<string, unknown>;
   const titel = String(z.titel ?? '').trim().slice(0, 200);
@@ -40,6 +43,8 @@ export function sauberZiel(roh: unknown): Ziel | null {
   if (istPlanJahr(z.jahr)) aus.jahr = z.jahr;
   if (typeof z.abgeleitetVon === 'string' && z.abgeleitetVon) aus.abgeleitetVon = z.abgeleitetVon.slice(0, 80);
   if (aus.abgeleitetVon && z.angepasst === true) aus.angepasst = true;
+  // Archiv (04.10.): nur ein gültiger ISO-Zeitpunkt (Planungsliste blendet es aus, zurückholbar).
+  if (typeof z.archiviertAm === 'string' && ISO_ZEIT.test(z.archiviertAm)) aus.archiviertAm = z.archiviertAm;
   // Mandat an Zielen (28.09.): nur im Business, nur die Form der Kennungen — Firma/Einheit leitet der Schreibweg ab.
   Object.assign(aus, bezugSaeubern(z, aus.space === 'business'));
   return aus;

@@ -28,7 +28,7 @@ import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { NORDSTERN } from '@/lib/make-one/nordstern-data';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT, Segmente, Knopf } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT, Segmente, Knopf, useRueckgaengig } from './ui';
 import { useZiel, useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
 import { SPACE_LABEL, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
@@ -45,7 +45,6 @@ import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 import { usePlanung } from './planung/usePlanung';
 import { useStrahlFenster, adresseSetzen } from './planung/useStrahlFenster';
 import { useMeilensteinFenster } from './planung/MeilensteinFenster';
-import { useRueckgaengig } from './planung/Rueckgaengig';
 import { NeuAnfangenKnopf } from './aufgaben/NeuAnfangen';
 import { Lichtfaeden } from './lichtfaeden/Lichtfaeden';
 

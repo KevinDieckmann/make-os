@@ -79,6 +79,8 @@ export function sauberMeilenstein(roh: unknown): Meilenstein | null {
     ...(typeof m.zielId === 'string' && ZIEL_KENNUNG.test(m.zielId) ? { zielId: m.zielId } : {}),
     // Abhängigkeit (01.10.): „wartet auf“ andere Meilensteine — nur die Form; Existenz, Kreise, Grenze prüft der Schreibweg.
     ...(wartetAuf ? { wartetAuf } : {}),
+    // Archiv (04.10.): nur ein gültiger ISO-Zeitpunkt — die Planungsliste blendet ihn aus, zurückholbar.
+    ...(typeof m.archiviertAm === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(m.archiviertAm) ? { archiviertAm: m.archiviertAm } : {}),
   };
 }
 
