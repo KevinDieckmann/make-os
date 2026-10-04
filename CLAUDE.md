@@ -44,6 +44,11 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Bereiche (Kalender, Aufgaben, Finanzen, ZOE) andocken — so, dass eine Instanz „nur Markttraktion“ zeigen kann.
 - **Instanz-fähig:** Adressen, Domains, Namen, Schlüssel kommen aus der Umgebung/Einrichtung, nie fest im Code.
 - **Zeigbar:** Alles muss mit erfundenen Beispieldaten (Demo-Instanz) vorführbar sein, ohne echte Daten.
+- **Trennung serverseitig, nie nur versteckt (Kevin 04.10.: „absolut wichtig, immer wieder mit reinnehmen — wir müssen
+  uns zur Software entwickeln, die wir verkaufen können“):** Sichten (Privat/Business), Rollen (Inhaber, Partner,
+  Teammitglied), Haushalte und Gesellschaften werden auf dem SERVER gefiltert — die Antwort enthält nur, was die Sicht
+  sehen darf (eine reine, getestete Filterstelle je Bereich); Schreiben auf fremde Pfade → 403. Die Oberfläche blendet
+  nie bloß aus. Jedes neue Feature mit Wächtertest „Sicht X bekommt nichts aus Y“.
 - **Testkunden nie auf unserer Instanz** (Kevin: „dürfen nie unsere Daten sehen, sollen aber ihren eigenen Space aufbauen
   können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
   Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.
