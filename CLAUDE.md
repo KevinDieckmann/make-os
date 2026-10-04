@@ -1592,19 +1592,19 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
   Szenario › alle › Formel, nur über `planMitSzenario` (rechneMit); Umsatz-Summe von Hand zieht den Eingang mit (Zahlungsziel-Vorgabe des
   Arbeitsplans, `Zusatz.umsatzZiel`); Steuer-Handwerte wandern in die Quartals-Vorauszahlungen. Details: `FINANZPLANUNG_JETZT.md` › „Jede Zahl bearbeitbar“.
 
-- **Finanzplanung unter Finanzen › Privat und › Business (04.10., Kevin: „Business ist bei Business sichtbar, kein Privat. Bei Privat kann man
-  alles sehen … Im Business-Bereich sieht man Privat nicht.“):** EINE Komponente `Finanzplan({ sicht, eingebettet })` als Reiter
-  „Finanzplanung“ in `FinanzenView` — Adresse `/os/finanzen?s=finanzplanung&space=privat|business&u=<Unterseite>` (`finanzplanAdresse`).
-  Privat-Sicht = alles (auch die Firmen). Business-Sicht = nur die Gesellschaften: **Trennung an EINER Stelle, serverseitig**
-  (`lib/finanzen/plan/sicht.ts`): `GET /api/finanzplan?sicht=business` liefert `businessSicht(d)` (Privat-Zeilen, private Buchungen/Posten/
-  Schulden/Ziele/Ereignisse/Bausteine, Check, Fokus, Abschlüsse, Regeln, Schwellen, Netto-Tabelle, Ausschüttungssteuer, `p.*`/`g.*`- und
-  private Zeilen-Schlüssel in plan/ist/notizen/meta und Protokolleinträge ohne sicheren Business-Pfad werden gar nicht ausgeliefert, auch nicht in der
-  409-Antwort); `PATCH ?sicht=business` prüft jeden Schritt mit `businessPfadErlaubt` in der Sperre → 403. Protokolleinträge tragen seit 04.10.
-  `pfad`. Oberfläche: `bereicheFuer`/`unterseiteFuer` (keine Unterseiten Privat, Budget, Wochen-Check, Entwicklung, Geldfluss), `LageBusiness`,
-  `GesamtBusiness`, `FRAGE_BUSINESS`; Einrichten/Import nur in der Privat-Sicht. `/os/finanzplan?…` leitet in die Privat-Sicht weiter (alle
-  Parameter bleiben); der Eintrag unter den Agenten ist weg. Neue Teile des Finanzplans: Privat oder Business? → in `sicht.ts` einordnen
-  (Wächter `tests/finanzplan-sicht.test.ts`). Die Sicht kommt heute aus der Adresse (gleicher Haushalt); für Teammitglieder ohne Privatzugang
-  erzwingt der Server sie später je Person (`sichtAus`).
+- **Finanzplanung unter Finanzen › Privat und › Business — beide komplett, separat einstellbar (04.10. spät, Kevin: „Ich will im Business
+  meine Planung haben … immer sehen können. Das ist der USP.“; ersetzt die Business-Filterung nach Adresse vom selben Tag):** EINE Komponente
+  `Finanzplan({ bereich, eingebettet })` als Reiter „Finanzplanung“ in `FinanzenView` (`/os/finanzen?s=finanzplanung&space=privat|business&u=…`,
+  `/os/finanzplan?…` leitet weiter). **Daten entscheidet NUR der Server aus dem Konto** (`planZugangFuer` in lib/finanzen/haushalt/zugriff.ts):
+  der Haushalt des Inhabers (Kevin + Malin) sieht in BEIDEN Bereichen alles; nur Konten mit `finanzRecht: 'business'` (Teammitglieder/Partner
+  ohne Privatzugang, spätere Kunden-Rollen; setzt der Inhaber über `PUT /api/konto/haushalt`, nie am Inhaber selbst) bekommen
+  `businessSicht(d)` und 403 auf Privat-Pfade (`businessPfadErlaubt`) und haben KEINEN Zugang zu den Haushaltsfinanzen (`haushaltFuer` → null).
+  Die Adresse wählt nur den **Bereich**: eigenes Planszenario je Bereich (`FinanzDaten.bereiche.<privat|business>.arbeitsplan`, null = Basis;
+  fehlt = gemeinsamer `arbeitsplan`; `arbeitsplanFuer`/`mitBereich` in szenarien.ts, Auswahl „Privat/Business rechnet …“ über dem Blatt;
+  „★ Arbeitsplan“ schreibt bei eigener Wahl in den Bereich), eigene Ansicht je Bereich (Jahr, Plan/IST/Abweichung, eingeklappte Gruppen,
+  IST-Schalter im Browser, `make-fp-ansicht:<bereich>:<blatt>`), eigene Kennzahlen in der Lage (Privat: frei verfügbar privat, Runway Privat;
+  Business: `LageBusiness` mit MAKE frei, Runway, Tiefpunkt) — alles aus der einen Rechnung. Wächter: `tests/finanzplan-sicht.test.ts`,
+  `tests/finanzplan-bereiche.test.ts`.
 
 ## Tempo (27.09.)
 - Tempo misst man im **Prüfbau** (`make-os-pruefbau`, Port 3011, `MAKE_OS_DIST=.next-pruefbau npx next build`) oder auf dem Server — nie auf 3001 (Entwicklungsmodus übersetzt jede Seite beim ersten Aufruf).

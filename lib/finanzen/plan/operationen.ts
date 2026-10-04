@@ -22,6 +22,7 @@
 //                              dieses Empfängers (lerneRegel im Rechenkern)
 //   /planszenarien/id=ps1/bausteine/id=b1/preis   Szenario-Baukasten (27.09.)
 //   /arbeitsplan               Kennung des Planszenarios, das als Arbeitsplan gilt (oder null)
+//   /bereiche/business/arbeitsplan   eigenes Planszenario des Bereichs (04.10. spät; null = Basis); /bereiche/business entfernen = gemeinsam
 //   /steuern/ug/zeilen/kst/satz   Welche Steuern gelten (02.10., lib/finanzen/steuern.ts) — wird nach jeder Änderung bereinigt
 //   /planszenarien/id=ps1/annahmen/steuern/ug/…   dieselben Felder nur für ein Szenario (Überlagerung, ebenso bereinigt)
 //   /schwellen/runwayWarnMonate   eigene Ampel-Schwellen (02.10., lib/finanzen/schwellen.ts)
@@ -51,7 +52,7 @@ const MAX_TEXT = 4000;
 const MAX_WERT_JSON = 40_000;
 const PROTOKOLL_MAX = 500;
 const GESPERRT = new Set(['version', 'stand', 'monate', 'historie', 'meta', 'protokoll']);
-const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan', 'steuern', 'schwellen']);
+const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan', 'bereiche', 'steuern', 'schwellen']);
 const GEFAEHRLICH = new Set(['__proto__', 'constructor', 'prototype']);
 
 export class OperationUngueltig extends Error {}
@@ -185,6 +186,13 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       if (teile.length !== 1) throw new OperationUngueltig('Arbeitsplan ist eine Kennung.');
       if (op.neu !== undefined && op.neu !== null && (typeof op.neu !== 'string' || !(d.planszenarien ?? []).some(s => s.id === op.neu))) throw new OperationUngueltig('Dieses Planszenario gibt es nicht.');
     }
+    // Eigene Einstellung je Bereich (04.10. spät): /bereiche/<privat|business>/arbeitsplan = Planszenario oder null (Basis); /bereiche/<b> entfernen = gemeinsam.
+    if (teile[0] === 'bereiche') {
+      if (teile.length === 1 || !['privat', 'business'].includes(teile[1]) || teile.length > 3 || (teile.length === 3 && teile[2] !== 'arbeitsplan')) throw new OperationUngueltig('Bereich: /bereiche/<privat|business>/arbeitsplan.');
+      const wahl = teile.length === 3 ? op.neu : op.neu === undefined ? undefined : (op.neu as { arbeitsplan?: unknown } | null)?.arbeitsplan;
+      if (op.neu !== undefined && (teile.length === 2 ? (typeof op.neu !== 'object' || op.neu === null || Object.keys(op.neu).some(k => k !== 'arbeitsplan')) : false)) throw new OperationUngueltig('Bereich: nur { arbeitsplan }.');
+      if (wahl !== undefined && wahl !== null && (typeof wahl !== 'string' || !(d.planszenarien ?? []).some(s => s.id === wahl))) throw new OperationUngueltig('Dieses Planszenario gibt es nicht.');
+    }
     if (teile[0] === 'planszenarien' && teile.length === 2 && teile[1] === '-') {
       const n = op.neu;
       if (!istObjekt(n) || typeof n.id !== 'string' || (d.planszenarien ?? []).some(s => s.id === n.id)) throw new OperationUngueltig('Ein neues Planszenario braucht eine freie Kennung.');
@@ -229,6 +237,13 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
   if (!d.szenarien.some(s => s.id === d.aktiv)) d.aktiv = d.szenarien[0].id;
   // Ein gelöschtes Planszenario darf nicht Arbeitsplan bleiben; ein gelöschter Treiber zieht seine Planszenarien auf den aktiven.
   if (d.arbeitsplan && !(d.planszenarien ?? []).some(s => s.id === d.arbeitsplan)) d.arbeitsplan = null;
+  // Ebenso je Bereich: ein gelöschtes Planszenario wird dort zur Basis.
+  for (const b of ['privat', 'business'] as const) {
+    const e = d.bereiche?.[b];
+    if (e && !('arbeitsplan' in e)) delete d.bereiche![b];   // ohne Wahl = gemeinsam (auch nach Rückgängig)
+    else if (e?.arbeitsplan && !(d.planszenarien ?? []).some(s => s.id === e.arbeitsplan)) e.arbeitsplan = null;
+  }
+  if (d.bereiche && !d.bereiche.privat && !d.bereiche.business) delete d.bereiche;
   for (const ps of d.planszenarien ?? []) if (!d.szenarien.some(s => s.id === ps.basis)) ps.basis = d.aktiv;
   d.protokoll = [...protokoll.slice().reverse(), ...(Array.isArray(d.protokoll) ? d.protokoll : [])].slice(0, PROTOKOLL_MAX);
   return { dokument: d, protokoll, meta, nachladen };
@@ -306,6 +321,13 @@ export function pruefeDokument(roh: unknown): Pruefung {
   // Szenario-Baukasten (27.09.): ältere Dokumente haben keinen — dann leer, Arbeitsplan null.
   const planszenarien = pruefePlanszenarien(roh.planszenarien, szenarien.map(s => s.id));
   const arbeitsplan = typeof roh.arbeitsplan === 'string' && planszenarien.some(s => s.id === roh.arbeitsplan) ? roh.arbeitsplan : null;
+  // Einstellung je Bereich (04.10. spät, optional): nur gültige Einträge bleiben; ein unbekanntes Szenario wird Basis (null).
+  const bereiche: NonNullable<FinanzDaten['bereiche']> = {};
+  for (const b of ['privat', 'business'] as const) {
+    const e = objekt(objekt(roh.bereiche)[b]);
+    if (!('arbeitsplan' in e)) continue;
+    bereiche[b] = { arbeitsplan: typeof e.arbeitsplan === 'string' && planszenarien.some(s => s.id === e.arbeitsplan) ? e.arbeitsplan : null };
+  }
   const s = objekt(roh.selbst);
   const c = objekt(roh.check);
   const f = objekt(roh.fokus);
@@ -313,6 +335,7 @@ export function pruefeDokument(roh: unknown): Pruefung {
     version: 3,
     stand: typeof roh.stand === 'string' && roh.stand ? roh.stand : heute,
     monate, aktiv, planszenarien, arbeitsplan,
+    ...(bereiche.privat || bereiche.business ? { bereiche } : {}),
     ...(pruefeSteuern(roh.steuern) ? { steuern: pruefeSteuern(roh.steuern) } : {}),
     ...(pruefeSchwellen(roh.schwellen) ? { schwellen: pruefeSchwellen(roh.schwellen) } : {}),
     schulden: liste(roh.schulden),

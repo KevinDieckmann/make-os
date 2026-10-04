@@ -51,9 +51,10 @@ function LageKopf() {
   return (
     <>
       <Kacheln min={230}>
-        <Kachel label="Frei verfügbar diesen Monat" punkt={aw.frei.gesamt >= sw.freiGut ? LEUCHT.gut : aw.frei.gesamt >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.gesamt} /> €</>}
-          unter={<>{UG_KURZ} frei <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
-        <Kachel label="Runway" punkt={rwFarbe(Math.min(aw.runway.ug ?? 99, aw.runway.privat ?? 99))} wert={<>{UG_KURZ} {rw(aw.runway.ug, aw.runway.horizont)} · Privat {rw(aw.runway.privat, aw.runway.horizont)}</>} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
+        {/* Kennzahlen des Bereichs Privat (04.10. spät): frei verfügbar privat und Privat-Runway vorn — die Gesellschaften stehen unter Business › Lage. */}
+        <Kachel label="Frei verfügbar privat" punkt={aw.frei.privat >= sw.freiGut ? LEUCHT.gut : aw.frei.privat >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.privat} /> €</>}
+          unter={<>Konten <Geld v={aw.frei.privatKonten} farbe={C.inkDim} /> · Luft diesen Monat <Geld v={aw.frei.privatLuft} farbe={C.inkDim} /> · alles zusammen <Geld v={aw.frei.gesamt} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
+        <Kachel label="Runway Privat" punkt={rwFarbe(aw.runway.privat)} wert={rw(aw.runway.privat, aw.runway.horizont)} unter={<>Monate ab jetzt, bis die privaten Konten unter null fallen · {UG_KURZ} {rw(aw.runway.ug, aw.runway.horizont)}</>} />
         <Kachel label="Ziele im Plan" punkt={aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${aw.ziele.imPlan} / ${aw.ziele.gesamt}`} unter={aw.ziele.gesamt ? `${aw.ziele.gekippt} gekippt · ${aw.ziele.knapp} knapp` : 'noch keine Ziele'} />
       </Kacheln>
       <Karte i={0} ton={C.aktiv}>

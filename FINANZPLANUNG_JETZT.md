@@ -269,6 +269,21 @@ selber bearbeiten kann. Jede Zahl. Nur die Formeln sind im Hintergrund immer har
   Folgejahr, zurücksetzen und Rückgängig, Summe mit Abweichung, KD Ventures, Abschluss, Operationen-Prüfung, 409/413 im Schreibweg, alte Dokumente,
   Kennungen ohne Personennamen und ohne Kollision mit Planzeilen-Präfixen).
 
+## Korrektur 04.10. spät: in Business die komplette Planung, beide Bereiche separat einstellbar (Branch `finanzplan-3`)
+
+Kevin: „Ich will im Business meine Planung haben, ändere das wieder. Diese will ich immer sehen können. Das ist der USP.“ — „beide Planungen
+als Basis und separat einstellbar.“ Ersetzt die Filterung nach Adresse aus dem Abschnitt darunter:
+
+- **Wer was sieht, entscheidet das Konto (Server), nie die Adresse:** der Haushalt des Inhabers sieht unter Privat UND Business die komplette
+  Finanzplanung (Privat-Blatt, Liquidität, Gesamt, Ziele & Töpfe …). Die Business-Filterung (`businessSicht`, Kennzahlen ohne Privat, 403 auf
+  Privat-Pfade) gilt nur noch für Konten mit `finanzRecht: 'business'` — die haben auch keinen Zugang zu den Haushaltsfinanzen.
+- **Separat je Bereich:** eigenes Planszenario (Auswahl „Privat rechnet …“ / „Business rechnet …“: gemeinsam, eigenes Basis, eigenes
+  Szenario; Feld `bereiche` im Dokument, optional), eigene Ansicht (Jahr, Plan/IST/Abweichung, eingeklappte Gruppen, IST — im Browser je
+  Bereich gemerkt), eigene Kennzahlen in der Lage (Privat: frei verfügbar privat, Runway Privat · Business: MAKE frei, Runway, Tiefpunkt).
+- **Rückweg:** der alte Stand kennt `bereiche` nicht (`pruefeDokument` lässt es beim Lesen fallen und schreibt es bei der nächsten Änderung
+  nicht mit) → beide Bereiche rechnen dort wieder den gemeinsamen Arbeitsplan. `finanzRecht` am Konto ignoriert der alte Stand: ein solches Konto
+  hätte dort vollen Haushaltszugang — vor einem Rückweg das Feld bzw. den Haushalt dieses Kontos entfernen (heute hat kein Konto das Feld).
+
 ## Finanzplanung unter Privat und Business (04.10.2026, Branch `finanzplan-frei`)
 
 Kevin 04.10.: „Teile bitte die Finanzplanung … einmal bei Privat, wo man das Ganze sehen kann, und einmal Business bei Business — jeweils unter

@@ -140,6 +140,12 @@ export interface FinanzDaten {
   planszenarien?: Planszenario[];
   /** Kennung des Planszenarios, das als Arbeitsplan gilt — null/fehlt: der reine Treiber (`aktiv`). */
   arbeitsplan?: string | null;
+  /**
+   * Eigene Einstellung je Bereich (04.10. spät, Kevin: „beide Planungen als Basis und separat einstellbar“): welches Planszenario der
+   * Bereich Privat bzw. Business rechnet — `arbeitsplan: null` = Basis (reiner Treiber). Fehlt der Bereich (oder das Feld), gilt wie bisher
+   * der gemeinsame `arbeitsplan`. Optional (Kompatibilitätsmodus).
+   */
+  bereiche?: { privat?: { arbeitsplan: string | null }; business?: { arbeitsplan: string | null } };
   /** Welche Steuern gelten und wie hoch (02.10., Rechtsform, Sätze und Regeln je Ort) — der Kern rechnet damit (`steuerParameter`); leere Felder = Vorgabe. Fehlt in älteren Dokumenten. */
   steuern?: Steuern;
   /** Eigene Ampel-Schwellen (02.10.) — fehlt: die bisherigen Vorgaben. */

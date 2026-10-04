@@ -38,14 +38,17 @@ export function FinanzenView() {
   const [zugang, setZugang] = useState<boolean | null>(null);
   // Business-Index und Steuern gehören dem Haushalt des Inhabers (eigene Prüfung in der API).
   const [inhaber, setInhaber] = useState<boolean | null>(null);
+  // Finanzplanung (04.10. spät): auch Konten ohne Privatzugang (Finanzrecht „nur Business“) haben sie — der Server filtert.
+  const [planZugang, setPlanZugang] = useState(false);
   useEffect(() => {
     fetch('/api/haushalt?nur=zugang').then(r => setZugang(r.ok)).catch(() => setZugang(false));
+    fetch('/api/finanzplan?nur=kennzahlen').then(r => setPlanZugang(r.ok)).catch(() => setPlanZugang(false));
     fetch('/api/business?scope=gesamt&kompakt=1').then(r => setInhaber(r.ok)).catch(() => setInhaber(false));
   }, []);
   const gewuenscht = p.get('s') as Sicht | null;
   // Der Head of Finance ist für alle da — ohne Haushalt sieht er nur Business.
   const sicht: Sicht = gewuenscht === 'chef' ? 'chef'
-    : zugang === false ? 'business'
+    : zugang === false ? (gewuenscht === 'finanzplanung' && planZugang ? 'finanzplanung' : 'business')
     : gewuenscht === 'business' || gewuenscht === 'gesamt' || gewuenscht === 'finanzplanung' || (gewuenscht === 'steuern' && inhaber !== false) ? gewuenscht
     : zugang ? 'privat' : (gewuenscht ?? 'privat');
   const setze = (s: Record<string, string | null>) => {
@@ -56,11 +59,12 @@ export function FinanzenView() {
   };
   const chef = { id: 'chef' as Sicht, label: 'Head of Finance' };
   // Reiter je Space (26.09. abends, Kevin: „im Business nur Business, im Privat nur Privat“). „Gesamt“ ist die Brücke und steht in beiden.
-  // Finanzplanung: dieselbe Brücke — die Sicht folgt dem Space (privat = alles, business = nur die Gesellschaften).
+  // Finanzplanung: in beiden Bereichen die KOMPLETTE Planung (Kevin 04.10. spät: „im Business meine Planung haben“) — der Bereich wählt nur
+  // Szenario, Ansicht und Kennzahlen; was ein Konto ohne Privatzugang sieht, entscheidet der Server.
   const imPrivat = sicht === 'privat' || ((sicht === 'gesamt' || sicht === 'finanzplanung') && p.get('space') === 'privat');
   const planung = { id: 'finanzplanung' as Sicht, label: 'Finanzplanung' };
   const liste = !zugang
-    ? [{ id: 'business' as Sicht, label: 'Business' }, chef]
+    ? [{ id: 'business' as Sicht, label: 'Business' }, ...(planZugang ? [planung] : []), chef]
     : imPrivat
       ? [{ id: 'privat' as Sicht, label: 'Privat' }, planung, { id: 'gesamt' as Sicht, label: 'Gesamt' }]
       : [{ id: 'business' as Sicht, label: 'Business' }, planung, ...(inhaber ? [{ id: 'steuern' as Sicht, label: 'Steuern' }] : []), { id: 'gesamt' as Sicht, label: 'Gesamt' }, chef];
@@ -75,7 +79,7 @@ export function FinanzenView() {
       )}
       {zugang === null && sicht === 'privat' ? null
         : sicht === 'privat' ? <HaushaltView reiter={p.get('t')} onReiter={t => setze({ t, k: null, monat: null, kat: null, q: null })} />
-        : sicht === 'finanzplanung' ? (zugang ? <Finanzplan key={imPrivat ? 'privat' : 'business'} sicht={imPrivat ? 'privat' : 'business'} eingebettet /> : null)
+        : sicht === 'finanzplanung' ? (zugang || planZugang ? <Finanzplan key={imPrivat && zugang ? 'privat' : 'business'} bereich={imPrivat && zugang ? 'privat' : 'business'} eingebettet /> : null)
         : sicht === 'gesamt' ? <GesamtView />
         : sicht === 'chef' ? <FinanzchefView />
         : sicht === 'steuern' ? <SteuernView />

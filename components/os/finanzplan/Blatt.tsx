@@ -78,12 +78,33 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   zeilen: BlattZeile[]; titel: string; hist?: boolean; extra?: ExtraSpalte[];
   onZeile?: (id: string) => void; onNeueZeile?: (liste: ZeilenListe, gruppe?: string, einheit?: Zeile['einheit']) => void; onDrill?: (histIdx: number, zeile: string) => void; werkzeuge?: ReactNode;
 }) {
-  const { d, aendere, verbergen, person, formel, melde, ps } = usePlan();
+  const { d, aendere, verbergen, person, formel, melde, ps, bereich = 'privat' } = usePlan();
   const [modus, setModus] = useState<Modus>('plan');
   const [jahr, setJahr] = useState<Jahr>('alle');
   const [verlauf, setVerlauf] = useState(true);
   const [zu, setZu] = useState<Record<string, boolean>>(() => Object.fromEntries(zeilen.filter((r): r is GruppenZeile => istGruppe(r) && !!r.zu).map(r => [r.grp, true])));
   const [leerZeigen, setLeerZeigen] = useState<Record<string, boolean>>({});
+  // Ansicht je Bereich merken (04.10. spät, Kevin: „separat einstellbar“): Jahr, Plan/IST/Abweichung, eingeklappte Gruppen, IST-Schalter —
+  // je Bereich (Privat/Business) und Blatt im Browser (nur Bequemlichkeit; ohne Speicher gilt die Vorgabe).
+  const merkKey = `make-fp-ansicht:${bereich}:${titel}`;
+  const geladen = useRef(false);
+  useEffect(() => {
+    geladen.current = false;
+    try {
+      const m = JSON.parse(localStorage.getItem(merkKey) ?? 'null') as { modus?: Modus; jahr?: Jahr; verlauf?: boolean; zu?: Record<string, boolean> } | null;
+      if (m) {
+        if (m.modus === 'plan' || m.modus === 'ist' || m.modus === 'delta') setModus(m.modus);
+        if (m.jahr === 'alle' || m.jahr === '2026' || m.jahr === '2027' || m.jahr === '2028') setJahr(m.jahr);
+        if (typeof m.verlauf === 'boolean') setVerlauf(m.verlauf);
+        if (m.zu && typeof m.zu === 'object') setZu(m.zu);
+      }
+    } catch { /* ohne Speicher: Vorgabe */ }
+    geladen.current = true;
+  }, [merkKey]);
+  useEffect(() => {
+    if (!geladen.current) return;
+    try { localStorage.setItem(merkKey, JSON.stringify({ modus, jahr, verlauf, zu })); } catch { /* egal */ }
+  }, [merkKey, modus, jahr, verlauf, zu]);
   const [sel, setSel] = useState<{ e: string; m: number } | null>(null);
   const [bearbeitet, setBearbeitet] = useState<{ e: string; m: number; text: string } | null>(null);
   const [menue, setMenue] = useState<{ x: number; y: number; e: string; m: number } | null>(null);
