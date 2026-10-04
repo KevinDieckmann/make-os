@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ─── MAKE Innovation · Landingpage: Freigabe-Prüfung (v3 01.10.2026, v4 03.10.2026: Neuronen-Bühne, Firmierung) ───
+// ─── MAKE Innovation · Landingpage: Freigabe-Prüfung (v3 01.10.2026, v4 03.10.2026: Firmierung, v5 04.10.2026: Szene) ───
 // Die Seite unter makeinnovation.de geht erst online, wenn Kevin sie gesehen und freigegeben hat. Dieser
 // Prüfschritt sagt, ob sie freigabefähig ist:
 //   · Platzhalter: steht irgendwo noch „[[KEVIN:“, ist die Seite NICHT freigabefähig (Impressum/Datenschutz
@@ -23,11 +23,16 @@
 //     Titel/Beschreibung). KEMARIS steht nur in dieser Firmierung (und in der Adresse @kemaris.de im Impressum).
 //   · Vorschau: solange robots.txt alles sperrt, trägt jede Seite <meta name="robots" content="noindex">; jede Seite
 //     hat eine Beschreibung (<meta name="description">).
+//   · Szene (v5): Skripte auch aus js/szene/, Leinwand rein dekorativ (aria-hidden), jedes Kapitel des Drehbuchs
+//     (js/drehbuch.js) hat seinen Abschnitt (data-zustand, gleiche Reihenfolge) und sein Standbild (assets/szene/<name>.svg),
+//     Gewicht der Startseite (HTML + CSS + Skripte, gzip) höchstens GEWICHT_GRENZE.
+//   · Fokus Innovation: Menüpunkt und Kapitel verlinken auf FOKUS_SEITE, das Kapitel nennt alle STAEDTE.
 // Aufruf: node website/pruefen.mjs   → Ausgang 0 = freigabefähig, 1 = nicht freigabefähig.
 // Ohne Abhängigkeiten (läuft so auch auf dem Server oder in der CI).
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, relative, extname } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 export const ANMELDEN = 'https://app.makeinnovation.de/anmelden';
@@ -65,8 +70,14 @@ export const MAIL_BETREFFE = {
   'Make.One – Einladung': 'Make.One%20%E2%80%93%20Einladung',
   'Make.Beteiligungen – Projekt': 'Make.Beteiligungen%20%E2%80%93%20Projekt',
 };
-/** Navigation im Kopf der Startseite (Kevin 01.10.). */
-export const NAVIGATION = ['#markttraktion', '#make-one', '#beteiligungen', '#ueber-uns', '#kontakt'];
+/** Navigation im Kopf der Startseite (Kevin 01.10.; 04.10.: Fokus Innovation als eigener Menüpunkt). */
+export const NAVIGATION = ['#markttraktion', '#make-one', FOKUS_SEITE, '#ueber-uns', '#kontakt'];
+/** Städte von Fokus Innovation (Kevin 04.10.: Dresden dazu) — stehen im Kapitel #fokus-innovation. */
+export const STAEDTE = ['Berlin', 'Hamburg', 'Bielefeld', 'Köln', 'München', 'Dresden'];
+/** Höchstgewicht der Startseite: index.html + CSS + alle Skripte der Seite, gzip, ohne Schriften und Standbilder. */
+export const GEWICHT_GRENZE = 400 * 1024;
+/** Skripte der Seiten: eigene Dateien aus js/ oder js/szene/ (die wiederverwendbare Szene). */
+export const SKRIPT_PFAD = /^\/?js\/(?:szene\/)?[a-z0-9-]+\.js$/;
 /** Logo-Dateien (erzeugt von scripts/website-logo.mjs, v5 „Synapse“). */
 export const LOGO_DATEIEN = ['bildmarke.svg', 'bildmarke-hell.svg', 'wortmarke.svg', 'wortmarke-hell.svg', 'kachel.svg', 'quer.svg', 'quer-hell.svg', 'kompakt.svg', 'kompakt-hell.svg',
   'gross.svg', 'gross-hell.svg', 'visitenkarte-make.svg', 'visitenkarte-make-hell.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-512.png', 'LOGO.md'].map(d => `assets/logo/${d}`);
@@ -174,7 +185,7 @@ export function pruefeWebsite(ordner) {
     // CSP der Freigabe-Fassung: script-src 'self' — nur eigene Dateien aus js/, nie Inline; style-src 'self' (keine Inline-Stile).
     for (const m of text.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
       const src = /\ssrc="([^"]*)"/.exec(m[1])?.[1];
-      if (!src || !/^\/?js\/[a-z0-9-]+\.js$/.test(src) || m[2].trim() !== '') fehler.push(`${d}: <script> — nur eigene Dateien aus js/ (<script src="js/….js" defer>), nie Inline-Skript`);
+      if (!src || !SKRIPT_PFAD.test(src) || m[2].trim() !== '') fehler.push(`${d}: <script> — nur eigene Dateien aus js/ (<script src="js/….js" defer>), nie Inline-Skript`);
     }
     if (/<style[\s>]/i.test(text)) fehler.push(`${d}: <style>-Block — Stile gehören nach css/ (CSP style-src 'self')`);
     if (/\sstyle="/i.test(text)) fehler.push(`${d}: style="…" — Inline-Stile blockiert die CSP`);
@@ -265,6 +276,27 @@ export function pruefeWebsite(ordner) {
     for (const [name, betreff] of Object.entries(MAIL_BETREFFE)) if (!index.includes(`href="${KONTAKT}?subject=${betreff}"`)) fehler.push(`index.html: Mail-Knopf „${name}“ fehlt`);
     const p = PREISE.exec(index.replace(/<[^>]+>/g, ' '));
     if (p) fehler.push(`index.html: „${p[0]}“ — keine Preise auf der Seite`);
+    // Fokus Innovation (Kevin 04.10.): eigener Menüpunkt + klarer Weg im Kapitel, alle Städte genannt.
+    const fokus = /<section\b[^>]*\sid="fokus-innovation"[\s\S]*?<\/section>/.exec(index)?.[0] ?? '';
+    if (!fokus) fehler.push('index.html: Kapitel #fokus-innovation fehlt');
+    else {
+      if (!fokus.includes(`href="${FOKUS_SEITE}"`)) fehler.push(`index.html: Kapitel Fokus Innovation ohne Link auf ${FOKUS_SEITE}`);
+      for (const st of STAEDTE) if (!fokus.includes(`<b>${st}</b>`)) fehler.push(`index.html: Fokus Innovation — Stadt ${st} fehlt`);
+    }
+    // Szene: rein dekorativ, Drehbuch und Seite passen zusammen, jedes Kapitel hat sein Standbild.
+    if (!/<div class="szene" aria-hidden="true">\s*<canvas><\/canvas>/.test(index)) fehler.push('index.html: Szene (<div class="szene" aria-hidden="true"><canvas>) fehlt oder ist nicht aria-hidden');
+    const haupt = /<main\b[\s\S]*<\/main>/.exec(index)?.[0] ?? '';
+    const abschnitte = Array.from(haupt.matchAll(/<(?:section|div)\b[^>]*\sdata-zustand="([a-z-]+)"[^>]*>\s*<img class="still" src="([^"]+)"/g), m => [m[1], m[2]]);
+    const alleAbschnitte = Array.from(haupt.matchAll(/\sdata-zustand="([a-z-]+)"/g), m => m[1]);
+    if (abschnitte.length !== alleAbschnitte.length) fehler.push('index.html: jeder Abschnitt mit data-zustand beginnt mit seinem Standbild (<img class="still" src="assets/szene/<name>.svg">)');
+    for (const [name, src] of abschnitte) if (src !== `assets/szene/${name}.svg`) fehler.push(`index.html: Standbild von „${name}“ ist ${src} (erwartet assets/szene/${name}.svg)`);
+    const drehbuch = inhalt.get('js/drehbuch.js') ?? '';
+    const namen = Array.from(drehbuch.matchAll(/\{ name: '([a-z-]+)'/g), m => m[1]);
+    if (namen.join(' ') !== alleAbschnitte.join(' ')) fehler.push(`index.html: Abschnitte (${alleAbschnitte.join(', ')}) passen nicht zum Drehbuch js/drehbuch.js (${namen.join(', ')})`);
+    // Gewicht: HTML + CSS + Skripte der Startseite (gzip), ohne Schriften und Standbilder.
+    const teile = ['index.html', ...Array.from(index.matchAll(/<link rel="stylesheet" href="([^"]+)"/g), m => m[1]), ...Array.from(index.matchAll(/<script src="([^"]+)"/g), m => m[1])];
+    const gewicht = teile.filter(t => dateien.includes(t)).reduce((summe, t) => summe + gzipSync(readFileSync(join(ordner, t))).length, 0);
+    if (gewicht > GEWICHT_GRENZE) fehler.push(`index.html: Startseite wiegt ${(gewicht / 1024).toFixed(0)} KB gzip (höchstens ${GEWICHT_GRENZE / 1024} KB)`);
     // Die Bühne zeichnet dieselbe Wortmarke wie assets/logo/wortmarke.svg (sonst laufen zwei Logos auseinander).
     const zeichen = /<svg class="zeichen"[\s\S]*?<\/svg>/.exec(index)?.[0] ?? '';
     // Formen: Pfade (d + Strich- oder Füllfarbe), Kreise (Lage, Radius, Farbe) und Striche (Rechtecke) — ohne Klassen.

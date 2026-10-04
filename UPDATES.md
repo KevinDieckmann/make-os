@@ -4,6 +4,25 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## makeinnovation.de v5 „Der Weg“ — 3D-Scroll-Erlebnis (04.10.2026, nur lokal — Branch `website-v5`)
+
+Kevin 04.10.: „Die ganze Homepage bei MAKE Innovation neu auf viel besser und hohes Niveau … Das soll ein Erlebnis werden. Ich will, dass du da
+wirklich 3D-mäßig das Ganze anpasst.“ Dazu: Kapitel 4 seriös und beratend („Wachstum scheitert selten an Ideen. Meist an der Umsetzung.“), Dresden
+als sechste Stadt, Fokus Innovation verlinkt.
+
+- **Eine durchgehende WebGL-Szene** hinter dem Text (eigenes WebGL 1, keine Bibliothek, CSP unverändert): Scrollen = Kamerafahrt entlang eines
+  Lichtpfads (Granat/Smaragd, Staub fließt nach vorn) durch ein Neuronennetz; dieselben Teilchen formen je Kapitel ein Bild — INNOVATION in der Typo
+  der Wortmarke, zwei Stränge, eine Wand mit Öffnung, Sales-Trichter, Sichtbarkeits-Ringe, drei Gitter der Umsetzung, Runden des Netzwerks,
+  Deutschlandkarte mit echten Koordinaten (Berlin → Hamburg, Bielefeld, Köln, München, Dresden), Funken, Strahl, drei Ströme, am Ende das Logo.
+- **Wiederverwendbar:** `website/js/szene/` (kern · formationen · motor) kennt keine Inhalte, die Seite bringt `js/drehbuch.js` mit; die Karte nimmt
+  eine Städte-Liste — fokus/ kann später per Generator andocken (eine Quelle, LIESMICH › Andocken).
+- **Fallbacks:** ohne WebGL / „Bewegung reduzieren“ / ohne Skript je Kapitel ein gestaltetes Standbild aus derselben Geometrie
+  (`node website/standbild.mjs` → `assets/szene/*.svg`), sonst ungeladen.
+- **Gemessen:** ≈ 42 KB gzip (HTML + CSS + Skripte), Text sofort, 60 fps / längstes Bild 16,8 ms beim Scrollen (Rechner, Handy-Emulation), Konsole leer.
+- **Prüfung:** `pruefen.mjs` kennt Szene (Drehbuch ↔ Abschnitte, Standbilder, `aria-hidden`), Fokus-Innovation-Link + sechs Städte, Gewichtsgrenze
+  400 KB; Wächtertests in `tests/website-landingpage.test.ts`. Datenschutz: nur die Zahl der Skripte (sechs, WebGL) angepasst.
+- **Offen:** Kevins Satz zur Vertriebserfahrung (Platzhalter), Freigabe; fokus/ nennt Dresden auf der Event-Seite (Paket fokus/), 3D-Niveau für fokus/.
+
 ## Fokus-Signatur + Strahl v3 (04.10.2026, nur lokal — Branch `fokus-signatur`)
 
 Kevin 04.10.: „Diese Akzente will ich überall drauf haben, wo Fokus ist. Mache das Ganze offline, damit wir da nochmal den Standard heben. Dezent, aber

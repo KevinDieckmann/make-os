@@ -1,11 +1,10 @@
 # Landingpage makeinnovation.de — MAKE Innovation (eine Marke der KEMARIS Innovation GmbH)
 
-Statische Seite (HTML + eine CSS-Datei + sechs kleine eigene Skripte, keine Cookies, kein Tracking, kein Speicher im
-Browser, Schriften selbst gehostet). Stand **v4 (03.10.2026)**: „Innovation braucht Umsetzung.“ — Beratung (Interim CSO,
-Interim Head of Sales, Events & Netzwerk-Strategie), Make.One als Netzwerk für junge und erfahrene Entscheider,
-Make.Beteiligungen und Development kompakt, „Warum wir“. Dazu die **Neuronen-Bühne**: oben das Logo, beim Scrollen
-lösen sich Rot und Grün in Neuronen auf, die je Kapitel ein Bild formen; im Kontakt fließt das Netz zurück ins Logo.
-Der Name der Software steht bewusst nirgends auf der Seite; oben rechts nur ein kleiner Knopf „Login“.
+Statische Seite (HTML + eine CSS-Datei + sechs eigene Skripte, keine Cookies, kein Tracking, kein Speicher im Browser,
+Schriften selbst gehostet). Stand **v5 „Der Weg“ (04.10.2026)**: ein Scroll-Erlebnis — eine durchgehende WebGL-Szene hinter dem
+Text, Scrollen = Kamerafahrt entlang eines Lichtpfads durch ein Neuronennetz. Ton seriös und beratend („Du“ im professionellen
+Register): Beratung für Unternehmen mit Umsetzungsstärke. Der Name der Software steht bewusst nirgends auf der Seite; oben
+rechts nur ein kleiner Knopf „Login“.
 
 **Firmierung (Kevin 03.10., rechtlich):** Eine GmbH unter dem Namen „MAKE Innovation“ ist nicht eingetragen. Überall steht
 „MAKE Innovation“ und darunter klein „eine Marke der KEMARIS Innovation GmbH“; Impressum und Datenschutz nennen die
@@ -13,68 +12,76 @@ Kemaris Innovation GmbH (Schönefeld, HRB 19873, AG Cottbus). `pruefen.mjs` häl
 
 Sie liegt im Repo, Caddy liest sie auf dem Server read-only aus `/srv/make-os/app/website` (compose.yml → `/srv/website`).
 Sie ist als **nicht indexierte Vorschau** aktiv (`X-Robots-Tag: noindex`, `robots.txt` sperrt, jede Seite trägt
-`<meta name="robots" content="noindex">`).
+`<meta name="robots" content="noindex">`). Die CSP bleibt unverändert (`script-src 'self'` reicht: eigenes WebGL, kein eval, keine Worker).
 
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Kopf (Logo quer, Navigation Beratung · Make.One · Beteiligungen · Warum wir · Kontakt, Handy-Menü, „Login“), dann die **Reise**: sticky Bühne (`.buehne`: Canvas, Logo-SVG, Standbild) hinter acht Kapiteln (`.kapitel`, je `data-formation`): Start (Logo) · 01 Die Lage (laerm) · 02 Warum Innovation (impuls) · 03 Consulting & Beratung `#markttraktion` (pfad; Angebote, Themen, drei Phasen `#so-arbeiten-wir`) · 04 Make.One (kreise) · 05 Make.Beteiligungen + Development „Coming Soon“ (fokus) · 06 Warum MAKE `#ueber-uns` (kern) · 07 Erstgespräch `#erstgespraech` + Kontakt `#kontakt` (Logo). Fuß mit Firmierung |
-| `impressum.html` | Pflichtangaben nach § 5 DDG (Kemaris Innovation GmbH), Verantwortlich nach § 18 Abs. 2 MStV |
-| `datenschutz.html` | Hinweis passend zum tatsächlichen Verhalten (Hetzner DE, Caddy ohne Zugriffsprotokoll, keine Cookies, mailto, Bühne rechnet nur im Browser); Verantwortliche: Kemaris Innovation GmbH |
-| `404.html` | Seite für unbekannte Adressen (absolute Pfade, weil sie unter jeder Adresse erscheint) |
-| `css/seite.css` | CI-Tokens aus `lib/make-one/design.ts`; Rot/Grün (edler, wie Logo v5) nur für Personen, Logo und Bühne; Bewegung nur ohne `prefers-reduced-motion` |
-| `js/formationen.js` | Geometrie der Bühne (sechs Formationen, ohne DOM — läuft auch in Node für das Standbild) |
-| `js/neuronen.js` | die Bühne: Canvas 2D, mischt die Formationen entlang des Scrollens, Logo ↔ Netz überblenden; pausiert außerhalb des Bildes; `prefers-reduced-motion` = ein Standbild je Kapitel; liest, speichert, sendet nichts |
-| `js/lichtfaeden.js` | Lichtfäden: Mathematik + Zeichner (Canvas 2D) — **erzeugt** aus denselben Dateien wie die Planung der App (`node scripts/lichtfaeden-website.mjs`, nie von Hand ändern; ein Test vergleicht) |
-| `js/faden.js` | der rote Faden: zwei Bündel Granat/Smaragd aus dem Logo durch alle Kapitel (eigene Leinwand `canvas.faeden` in der Bühne, hinter dem Netz); pausiert außerhalb des Bildes; `prefers-reduced-motion` = Standbild; liest, speichert, sendet nichts |
+| `index.html` | Kopf (Logo, Navigation Beratung · Make.One · **Fokus Innovation ↗** (fokusinnovation.de) · Warum wir · Kontakt, Handy-Menü, „Login“), die Szene (`.szene`, `aria-hidden`: Leinwand, Beschriftungen, Logo-SVG `svg.zeichen`), die Kapitel-Leiste (Rechner, links) und die Kapitel — jedes mit `data-zustand` (= Eintrag im Drehbuch) und seinem Standbild (`img.still`). Fuß mit Firmierung |
+| `js/szene/kern.js` | **wiederverwendbar:** Mathematik ohne DOM — Zufall, Matrizen, der Pfad (auch als GLSL), die Lichtfäden entlang des Pfads (JS + GLSL aus einer Quelle), Kamera aus dem Scroll-Stand, SVG-Formen abtasten |
+| `js/szene/formationen.js` | **wiederverwendbar:** Formationen (Neuronennetz, Schriftzug, Stationen, Deutschlandkarte mit Städte-Liste, Knoten/Logo …) als Punkte + Linien, `bauen(drehbuch, { handy, logo })`, `logoAusSvg()` |
+| `js/szene/motor.js` | **wiederverwendbar:** WebGL-1-Motor (4 kleine Shader: Teilchen, Linien, Lichtfäden, Staub), Scroll → Zustand, Beschriftungen und Logo als HTML/SVG über der Leinwand, Fallbacks, Pause im verborgenen Tab, senkt bei Bedarf die Auflösung |
+| `js/drehbuch.js` | **nur diese Seite:** was die Szene je Kapitel zeigt (Formation, Kamera, Optionen) |
+| `standbild.mjs` | erzeugt `assets/szene/<zustand>.svg` aus derselben Geometrie (Arbeitsdatei; Caddy liefert `*.mjs` nie aus) |
+| `assets/szene/*.svg` | je Kapitel ein Standbild (nur geladen, wenn die Szene nicht läuft) |
+| `js/lichtfaeden.js` | Lichtfäden-Zeichner (Canvas 2D) — **erzeugt** aus der App (`node scripts/lichtfaeden-website.mjs`), auf der Startseite v5 nicht eingebunden (die Szene zeichnet ihre Fäden selbst); bleibt für den Generator und als gemeinsame Quelle mit fokus/ |
 | `js/menue.js` | schließt das Handy-Menü (`<details>`) nach einem Klick, mit Esc oder per Klick daneben |
 | `js/erstgespraech.js` | übernimmt das Ziel aus `#erstgespraech-link` für alle Knöpfe mit `data-erstgespraech` |
-| `assets/buehne/standbild.svg` | Standbild der Bühne ohne Skript/Canvas (`node website/standbild.mjs`) |
+| `css/seite.css` | Tokens wie `lib/make-one/design.ts` und `fokus/css/fokus.css` (gleich gehalten), neu nur `--tief`/`--tiefGanz`; Kapitel-Layout, Szene, Standbilder, Rechtstexte |
+| `impressum.html`, `datenschutz.html`, `404.html` | Rechtstexte (Inhalt unverändert; Datenschutz: nur die Zahl der Skripte und „WebGL“ an v5 angepasst) |
 | `assets/logo/` | Logo v5 „Synapse“ aus `scripts/website-logo.mjs` (nie von Hand ändern) — Konstruktion in `assets/logo/LOGO.md` |
-| `logo-entwuerfe.html` | drei Logo-Entwürfe + alle Fassungen (Arbeitsdatei, wird nie ausgeliefert) |
-| `standbild.mjs` | erzeugt das Standbild (Arbeitsdatei; Caddy liefert `*.mjs` nie aus) |
-| `assets/fonts/` | Archivo + Public Sans (SIL Open Font License, selbst gehostet — keine Google-Fonts-Anfrage) |
-| `favicon.svg` | App-Kachel (= `assets/logo/kachel.svg`) |
-| `pruefen.mjs` | Freigabe-Prüfung (wird nie ausgeliefert) |
+| `logo-entwuerfe.html`, `pruefen.mjs`, `LIESMICH.md` | Arbeitsdateien (werden nie ausgeliefert) |
 
-## Die Neuronen-Bühne — Dramaturgie
+## Die Szene — Dramaturgie (Scroll = Kamerafahrt)
 
-| Kapitel | Formation | Bild |
-|---|---|---|
-| Start | Logo | Das Logo steht (SVG). Beim ersten Scrollen werden Striche und Buchstaben zu Teilchen. |
-| 01 Die Lage | `laerm` | zerfasertes Netz: viele kleine Inseln, meist grau — Lärm, wenig Verbindung |
-| 02 Warum Innovation | `impuls` | Rot und Grün laufen als zwei Stränge zusammen, ein Impuls läuft durch den Knoten und gemeinsam weiter |
-| 03 Beratung | `pfad` | Struktur: drei wachsende Gitter (Analyse, Aufbau, Skalierung), Spalten Rot/Grün, ein Pfad darüber |
-| 04 Make.One | `kreise` | Runden von Menschen, Rot und Grün gemischt, mit Brücken verbunden |
-| 05 Beteiligungen | `fokus` | ein ruhiger Ring (der Markt), darin drei dichte, ausgewählte Knoten |
-| 06 Warum MAKE | `kern` | Rot und Grün verschmelzen spiralförmig zu einem stabilen Kern, dreht sich sehr langsam |
-| 07 Kontakt | Logo | das Netz fließt zurück in das Logo |
+| # | Kapitel (`data-zustand`) | Formation | Bild |
+|---|---|---|---|
+| 01 | Der Weg (`weg`) | `weg` | Start IM Neuronennetz; Granat und Smaragd verflochten als Lichtpfad, Staub fließt nach vorn — beim Scrollen geht die Kamera den Pfad |
+| 02 | INNOVATION (`innovation`) | `schriftzug` | die Teilchen formen INNOVATION in der Typo der Wortmarke (aus dem Logo-SVG), darunter Rot · Knoten · Grün; das Wort steht als echtes HTML (`h2.wort`, mit Szene unsichtbar) |
+| 02 | Der Satz (`satz`) | `strom` | „Innovation braucht Umsetzung und Sichtbarkeit.“ — zwei Stränge laufen zu einem Faden zusammen (Kamera im Strang) |
+| 03 | Beratung (`beratung`) | `huerde` | „Wachstum scheitert selten an Ideen. Meist an der Umsetzung.“ — eine graue Wand mit Öffnung, der Weg führt hindurch |
+| 3.1 | Sales (`sales`) | `trichter` | von vielen Kontakten links zu einem klaren Strahl rechts (Interim CSO, Interim Head of Sales, Go-to-Market-Beratung) |
+| 3.2 | Sichtbarkeit (`sichtbarkeit`) | `signal` | Leuchtpunkt, Ringe breiten sich aus, ein Strahl steigt auf (Events & Netzwerk-Strategie) |
+| 3.3 | Umsetzung (`umsetzung`) | `stufen` | drei wachsende Gitter Analyse · Aufbau · Skalierung, Pfad darüber (Development „Coming Soon“) |
+| 3.4 | Netzwerk (`netzwerk`) | `runden` | Runden von Menschen auf einer Kugel, Brücken dazwischen (Make.One, Make.Beteiligungen) |
+| 04 | Fokus Innovation (`fokus`) | `karte` | die Szene wird zur Deutschlandkarte (echte Koordinaten): Lichtfäden von Berlin nach Hamburg, Bielefeld, Köln, München, Dresden; Kapitel-Knopf und Menüpunkt → fokusinnovation.de |
+| 05 | Ideen (`funken`) | `funken` | verstreute Funken (41 %, 57 % mit Fußnote) |
+| 05 | KI (`ki`) | `strahl` | ein Strahl aus vielen feinen Fäden, fließt links → rechts (wie der Strahl v3 der App; 66 %, 7 %) |
+| 05 | Wirkung (`wirkung`) | `wirkung` | eine Runde von Menschen, daraus drei Ströme Umsetzung · Sichtbarkeit · Netzwerk |
+| 06 | Kontakt (`kontakt`) | `zeichen` | alles fließt in den Knoten des Logos; die Teilchen formen das Logo, dann steht es scharf als SVG (Logo unverändert) |
 
-Desktop (≥ 1100 px): Text links, Bühne rechts. Schmaler: Bühne als ruhiges oberes Band, das Netz gedimmt hinter dem Text.
-Ruhig wie die frühere Bühne („wie ein Auge“): dünne Linien, kein Glühen, langsame Drift; die Verwandlung folgt dem Scrollen.
+Rechner (≥ 1100 px): Text links, die Szene rechts daneben (Objektiv-Verschiebung, Platz bis zur gemessenen Textkante); die großen
+Sätze (INNOVATION, der Satz) mittig und stehend (sticky), während sich die Szene formt. Handy: die Szene oben, der Text kommt als
+ruhige Fläche darüber; weniger Teilchen (1.800 statt 4.200), Netz 1.100 statt 2.600 Knoten, Auflösung ≤ 1,5.
 
-Lokal ansehen: `python3 -m http.server 3013 -d website` über einen Eintrag in `.claude/launch.json` (nicht per Bash),
-oder die HTML-Datei direkt im Browser öffnen. Logo ändern: `node scripts/website-logo.mjs`, danach den Bühnen-Block
-(`node scripts/website-logo.mjs --buehne`) in `index.html` übernehmen. Formationen ändern: danach `node website/standbild.mjs`.
+### Kapitel ändern
+- **Text:** in `index.html` im Abschnitt mit dem passenden `data-zustand`.
+- **Bild:** in `js/drehbuch.js` (Formation, `s` = Lage am Pfad, Kamera `abstand/hebung/seite/blick`, `breite/hoehe`, `schub`, `faeden/nah`,
+  `optionen`). Neues Kapitel = neuer Eintrag im Drehbuch + Abschnitt mit gleichem `data-zustand` in derselben Reihenfolge + Standbild.
+- **Danach:** `node website/standbild.mjs` (Standbilder neu) und `node website/pruefen.mjs` (prüft Reihenfolge, Standbilder, Gewicht).
+- **Lokal ansehen:** `python3 -m http.server 3013 -d website` über einen Eintrag in `.claude/launch.json` (nicht per Bash) — die Szene braucht
+  einen Server (Schriften, gleiche Herkunft); ohne Server zeigt die Datei die Standbilder.
+- **Neue Formation:** Funktion in `FORMEN` (`js/szene/formationen.js`) — lokal am Anker bauen (x rechts, y oben, z zur Kamera), Punkte mit
+  `b.punkt`, Linien mit `b.zug` (t = 0…1 für Aufbau von links und Lichtimpulse), Beschriftungen mit `b.marke` (+ `span.marke` in `.szene`).
 
-## Der rote Faden (Lichtfäden, 03.10.2026)
+### Fallbacks
+- **Ohne WebGL** (oder Fehler im Aufbau): der Motor setzt `.ohne-szene` → je Kapitel das Standbild (Rechner: rechts, sticky; Handy: über dem Text).
+- **„Bewegung reduzieren“:** keine Szene, dieselben Standbilder (`@media (prefers-reduced-motion: reduce)`), kein Lauf-Effekt.
+- **Ohne Skript:** alle Inhalte, Links, Impressum; die Standbilder stehen (`@media (scripting: none)`).
+- Mit Skript und Bewegung bleiben die Standbilder ungeladen (`display: none` + `loading="lazy"`).
 
-Zwei Bündel feiner Lichtfäden — **Granat** (#C9465C) und **Smaragd** (#2FA878), die Farben der Synapse im Logo (das Logo selbst bleibt
-unverändert) — kommen aus dem Logo: Rot hinter dem roten Strich aus dessen linkem Ende, Grün hinter dem grünen Strich und in einem Bogen
-unter dem Logo zurück. Unterhalb treffen sie sich und ziehen sich am Rechner zwischen Text und Bühne durch die Seite, am Handy an den
-beiden Rändern. Der Charakter wechselt mit dem Kapitel (`CHARAKTER` in `js/faden.js`):
+### Technik, Gewicht, Tempo (gemessen 04.10., headless Chrome, Apple M3)
+- **Eigenes WebGL statt three.js:** die Szene besteht nur aus Punkten und 1-px-Linien mit additivem Licht — dafür reichen vier kleine Shader.
+  So bleibt alles selbst gehostet ohne Bibliothek (three.js allein wäre ~170 KB gzip und enthält Muster, die `pruefen.mjs` für Seiten-Skripte sperrt).
+- **Gewicht:** Startseite (HTML + CSS + sechs Skripte) **≈ 42 KB gzip**, mit Schriften ≈ 102 KB (`pruefen.mjs`: Grenze 400 KB). Standbilder je ≈ 21–46 KB gzip, nur im Fallback.
+- **Erster Text:** sofort als HTML (First Contentful Paint ≈ 0,08 s lokal); die Szene baut sich nach dem ersten Bild auf (einmalig ≈ 90 ms Rechnen, Handy gedrosselt ≈ 160 ms).
+- **Bildrate:** 60 fps beim Scrollen über die ganze Seite, längstes Bild 16,8 ms (Rechner und Handy-Emulation mit 4× gedrosselter CPU). Konsole leer.
 
-| Kapitel | Faden |
-|---|---|
-| Start | aus den Strichen des Logos, Bogen unter dem Logo |
-| 01 Die Lage | zwei ruhige Bündel nebeneinander, leicht unruhig |
-| 02 Warum Innovation | verflochten — die Kreuzungen wandern langsam |
-| 03 Beratung | eng zu einem Pfad, drei Stufen zur Bühne hin, Licht steigt in ihm auf |
-| 04 Make.One | weit aufgefächert |
-| 05–06 | ruhig, leicht verflochten (Kern) |
-| 07 Kontakt | zurück in die Striche und den Knoten |
-
-Ruhig gehalten (wenige, dünne Fäden; die Neuronen-Bühne bleibt das Hauptbild). Gemessen: 60 fps beim Scrollen, keine langen Aufgaben;
-zusammen +19 KB Skript. Rein dekorativ (`aria-hidden` über die Bühne), im Text beschrieben (`.unsichtbar`).
+### Andocken für fokus/ (später, eine Quelle)
+`js/szene/kern.js`, `formationen.js`, `motor.js` kennen keine Inhalte. Wie beim Lichtfäden-Zeichner kann ein Generator
+(`scripts/szene-website.mjs`, Muster `scripts/lichtfaeden-website.mjs` mit Liste `ZIELE`) sie byte-gleich nach `fokus/js/szene/` kopieren
+(Wächtertest vergleicht). fokus/ bringt nur ein eigenes `js/drehbuch.js` (z. B. `karte` mit `optionen.staedte` = eigene Liste, `schriftzug`
+mit eigener SVG-Form, `zeichen` mit dem Fokus-Knoten), Abschnitte mit `data-zustand`, `.szene` mit Leinwand und die Standbilder
+(`standbild.mjs` mit Ordner als Parameter). `fokus/pruefen.mjs` müsste dafür `js/szene/` als Skript-Pfad erlauben.
 
 ## Freigabe — in dieser Reihenfolge
 
@@ -101,9 +108,9 @@ zusammen +19 KB Skript. Rein dekorativ (`aria-hidden` über die Bühne), im Text
    von selbst). Prüfen: `curl -sI https://makeinnovation.de` → 200 mit `content-security-policy`,
    `curl -sI https://www.makeinnovation.de` → 301 auf `https://makeinnovation.de/`.
 
-## Offene Platzhalter (Stand 03.10.2026, v4)
+## Offene Platzhalter (Stand 04.10.2026, v5)
 
-- **Startseite › Warum MAKE:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
+- **Startseite › Kontakt › Warum MAKE:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
 
 ## Später auf Buchungsseite umstellen
 
@@ -136,8 +143,8 @@ Anliegen, eigener Hinweis vor dem Absenden) und im Abschnitt „Cookies und Spei
 - Gründer-Texte: MAKE = Malin + Kevin, Malins Zeile aus v2 (Kevins Worte, 27.09.). Ohne Fotos — Initialen in
   Personenfarbe. Fotos nur, wenn ihr sie freigebt (dann als Datei in `assets/`, `img-src 'self'` erlaubt das).
 - Anrede auf der Startseite **„Du“** (Kevin 03.10.: unter Unternehmern üblich, natürlich und souverän; Überschrift „Warum du mit uns arbeiten solltest.“). **Impressum und Datenschutz bleiben förmlich („Sie“)** — Rechtstexte.
-- **Belegte Zahlen** (Kevin 03.10.): vier Kacheln in „01 Die Lage“ und „02 Warum Innovation“, jede mit Fußnote und Quellenliste
-  unter dem Kapitel. Nur Originalquellen, direkt am Dokument geprüft (Stand der Prüfung 03.10.2026). Neue Zahl = neue Quelle in
+- **Belegte Zahlen** (Kevin 03.10.): vier Kacheln im Kapitel „05 KI & Innovation in Deutschland“ (je zwei in den Schritten Ideen und KI),
+  jede mit Fußnote; die Quellenliste steht am Ende des Kapitels. Nur Originalquellen, direkt am Dokument geprüft (Stand der Prüfung 03.10.2026). Neue Zahl = neue Quelle in
   `QUELLEN_LINKS` (`pruefen.mjs`) eintragen — der Prüfer verlangt je Kachel eine Fußnote mit genau einem dieser Links.
   Jährlich neu prüfen, ob eine jüngere Ausgabe erschienen ist:
 

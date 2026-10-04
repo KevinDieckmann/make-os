@@ -6,7 +6,8 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE, QUELLEN_LINKS } from '../website/pruefen.mjs';
+import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE, QUELLEN_LINKS, NAVIGATION, STAEDTE, FOKUS_SEITE, GEWICHT_GRENZE } from '../website/pruefen.mjs';
+import vm from 'node:vm';
 
 const ORDNER = join(process.cwd(), 'website');
 const kopien: string[] = [];
@@ -209,5 +210,82 @@ describe('website/pruefen.mjs', () => {
     expect(f).toMatch(/Zahlen-Kachel ohne Zahl oder ohne Fußnote/);
     expect(f).toMatch(/ohne rel="noopener noreferrer"/);
     expect(f).toMatch(/Fußnote ohne genau einen geprüften Quellenlink/);
+  });
+
+  it('v5 Szene: Drehbuch und Seite passen zusammen, jedes Kapitel hat sein Standbild, Skripte nur aus js/ und js/szene/', () => {
+    const k = kopie();
+    fuellen(k);
+    // Ein Kapitel ohne Standbild, ein Standbild mit falschem Namen, ein Skript aus einem fremden Ordner fallen auf.
+    ersetze(k, 'index.html', '<img class="still" src="assets/szene/sales.svg" width="800" height="800" alt="" loading="lazy" decoding="async">', '');
+    ersetze(k, 'index.html', 'src="assets/szene/ki.svg"', 'src="assets/szene/wirkung.svg"');
+    ersetze(k, 'index.html', '<script src="js/drehbuch.js" defer></script>', '<script src="js/fremd/drehbuch.js" defer></script>');
+    const f = pruefeWebsite(k).fehler.join('\n');
+    expect(f).toMatch(/jeder Abschnitt mit data-zustand beginnt mit seinem Standbild/);
+    expect(f).toMatch(/Standbild von „ki“ ist assets\/szene\/wirkung\.svg/);
+    expect(f).toMatch(/<script> — nur eigene Dateien aus js\//);
+    // Reihenfolge im Drehbuch ≠ Seite.
+    const k2 = kopie();
+    fuellen(k2);
+    ersetze(k2, 'js/drehbuch.js', "{ name: 'ki',", "{ name: 'kix',");
+    expect(pruefeWebsite(k2).fehler.join('\n')).toMatch(/passen nicht zum Drehbuch/);
+    // Die Leinwand bleibt rein dekorativ.
+    const k3 = kopie();
+    fuellen(k3);
+    ersetze(k3, 'index.html', '<div class="szene" aria-hidden="true">', '<div class="szene">');
+    expect(pruefeWebsite(k3).fehler.join('\n')).toMatch(/Szene .* nicht aria-hidden/);
+  });
+
+  it('v5 Fokus Innovation: Menüpunkt und Kapitel verlinken auf fokusinnovation.de, alle sechs Städte inkl. Dresden', () => {
+    expect(STAEDTE).toEqual(['Berlin', 'Hamburg', 'Bielefeld', 'Köln', 'München', 'Dresden']);
+    expect(NAVIGATION).toContain(FOKUS_SEITE);
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    const nav = /<nav class="haupt"[\s\S]*?<\/nav>/.exec(index)?.[0] ?? '';
+    expect(nav).toContain(`href="${FOKUS_SEITE}"`);
+    const k = kopie();
+    fuellen(k);
+    ersetze(k, 'index.html', '<li><b>Dresden</b></li>', '');
+    ersetze(k, 'index.html', `<a class="knopf gross" href="${FOKUS_SEITE}">`, '<a class="knopf gross" href="#kontakt">');
+    ersetze(k, 'index.html', `<a href="${FOKUS_SEITE}">Fokus Innovation <span class="aussen" aria-hidden="true">↗</span></a>\n      <a href="#ueber-uns">`, '<a href="#ueber-uns">');
+    const f = pruefeWebsite(k).fehler.join('\n');
+    expect(f).toMatch(/Stadt Dresden fehlt/);
+    expect(f).toMatch(/Kapitel Fokus Innovation ohne Link/);
+    expect(f).toMatch(/Navigation ohne https:\/\/fokusinnovation\.de/);
+  });
+
+  it('v5 Gewicht: Startseite (HTML, CSS, Skripte, gzip) bleibt unter der Grenze — ein schwerer Zusatz fällt auf', () => {
+    expect(GEWICHT_GRENZE).toBe(400 * 1024);
+    const k = kopie();
+    fuellen(k);
+    // 2 MB Zufall (lässt sich nicht packen) als Skript-Kommentar anhängen.
+    let z = 7; const zufall = Array.from({ length: 2_000_000 }, () => { z = (Math.imul(z, 1103515245) + 12345) & 0x7fffffff; return String.fromCharCode(97 + (z % 26)); }).join('');
+    writeFileSync(join(k, 'js/drehbuch.js'), readFileSync(join(k, 'js/drehbuch.js'), 'utf8') + `\n/* ${zufall} */\n`);
+    expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/Startseite wiegt \d+ KB gzip/);
+  });
+
+  it('v5 Geometrie: läuft ohne DOM, Deutschlandkarte nimmt eine eigene Städte-Liste (Schnittstelle für fokus/)', () => {
+    const ctx: Record<string, unknown> = {};
+    vm.createContext(ctx);
+    for (const d of ['js/szene/kern.js', 'js/szene/formationen.js', 'js/drehbuch.js']) vm.runInContext(readFileSync(join(ORDNER, d), 'utf8'), ctx);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const S = ctx.MakeSzene as any;
+    const logo = S.formationen.logoAusSvg(readFileSync(join(ORDNER, 'assets/logo/wortmarke.svg'), 'utf8'));
+    expect(logo.knoten).toEqual([154.84, 77.5]);
+    const welt = S.formationen.bauen(S.drehbuch, { handy: true, logo, anzahl: 600 });
+    expect(welt.formationen).toHaveLength(S.drehbuch.zustaende.length);
+    for (const f of welt.formationen) expect(f.punkte.length).toBe(600 * 4);
+    const karte = welt.formationen[welt.Z.findIndex((z: { formation: string }) => z.formation === 'karte')];
+    expect(karte.marken).toHaveLength(6);
+    // Eigene Liste: drei Städte → drei Marken; Dresden liegt östlich und südlich von Berlin, Köln westlich (echte Koordinaten).
+    const eigene = S.formationen.bauen({ zustaende: [{ name: 'k', formation: 'karte', s: 50, optionen: { staedte: [{ name: 'Berlin', lat: 52.52, lon: 13.405 }, { name: 'Dresden', lat: 51.05, lon: 13.738 }, { name: 'Köln', lat: 50.938, lon: 6.96 }] } }, { name: 'z', formation: 'funken', s: 90 }] }, { anzahl: 400 });
+    const [berlin, dresden, koeln] = eigene.formationen[0].marken;
+    const r = S.kern.rahmen(50), lokal = (p: number[]) => [S.kern.dot(S.kern.sub(p, r.p), r.r), S.kern.dot(S.kern.sub(p, r.p), r.t)]; // [Osten, Norden]
+    expect(lokal(dresden)[0]).toBeGreaterThan(lokal(berlin)[0]);
+    expect(lokal(dresden)[1]).toBeLessThan(lokal(berlin)[1]);
+    expect(lokal(koeln)[0]).toBeLessThan(lokal(berlin)[0]);
+    // Die Kamera liefert für jeden Scroll-Stand endliche Werte.
+    for (const T of [0, .5, 3.3, welt.Z.length - 1]) {
+      const kam = S.kern.kamera(welt.Z, T, 0, 0, 1.6, { kante: .05 });
+      expect([...kam.auge, ...kam.ziel].every(Number.isFinite)).toBe(true);
+    }
   });
 });
