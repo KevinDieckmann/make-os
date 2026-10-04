@@ -93,6 +93,50 @@ werden. Oben die Symbole genial, aber das sieht schon zu spacig aus.“ (Gegenbe
 - Technik: Parameter in lib/lichtfaeden/band.ts / zeichnen.ts (eine Stelle), damit Planung, Für-dich-Linien und Website
   zusammen ruhiger werden; Wächtertest auf Höchstwerte (Fadenzahl, Deckkraft, Amplitude), damit es nicht wieder kippt.
 
+## 7 · Säule „Kapazität“ im Business-Index + Kapazitätsplanung (extrem wichtig)
+Kevin, 04.10.: „Schlichtweg die Zeit und Machbarkeit über die Personen und Kapas … Wir haben Kunden, Ziele, Meilensteine,
+die wir erreichen wollen. Das Ziel ist super, wir brauchen aber auch die Umsetzung dahinter. Das heißt, wir müssen schauen,
+wie wir Kapa reingeben für welche Sachen. Dann können wir nachher den Fokus und die Umsetzung zu den Zielen und Meilensteinen
+messen. Und manchmal sind die Ziele nicht zu erreichen, weil man sonst z. B. 30 Stunden am Tag arbeiten müsste. Macht
+keinen Sinn … also das Ganze messbar machen mit den Kapas, die da sind. Realistisch planbar.“ + „Kopf & Energie“.
+- **Erledigt (sofort):** „Unternehmer-DNA“ heißt „Personal“ (Kennung `ud` bleibt), Text überall aus `SAEULEN_TEXT`.
+- **Gewichte:** „Verhältnis halten“ — Kapazität bekommt 15 %, alle anderen Säulen schrumpfen im gleichen Verhältnis
+  (heute FH 45 · Personal 27 · MT 18 · Fokus & Zeit 10 → ×0,85). Fehlt die Messung, zählt die Säule nicht (wie bei FZ).
+- **Kapazitätsplanung:** je Person verfügbare Stunden (Woche/Monat, abzüglich Termine, Urlaub, feste Blöcke) — Kapa
+  bewusst Zielen/Meilensteinen/Mandaten/Kunden zuweisen (geplante Stunden je Meilenstein) — Ist aus Zeitmessung/Fokuszeit.
+  Machbarkeit je Ziel: Bedarf bis Termin ÷ verfügbare Kapa → „machbar / eng / nicht machbar (bräuchte N h/Tag)“.
+  Im Planungs-Zeitstrahl sichtbar (Kevin mag, dass Punkte und Meilensteine sauber in den Zeitstrahl laufen — so kann man
+  vorplanen): Last-Band je Woche unter dem Strahl, Engpass-Wochen markiert.
+- **Kopf & Energie:** Belastbarkeit von Kevin/Malin (Fokuszeit, Meeting-Last, Erholung z. B. Whoop) als Faktor auf die
+  verfügbare Kapa — im Business nur als Summe, keine privaten Details (Privatfilter!).
+- Kennzahlen-Vorschlag der Säule: Auslastung nächste 4 Wochen, Anteil Ziele „machbar“, Plan-Treue (geplant vs. Ist),
+  Puffer, Erholung (nur Summe). Auslastung wandert ggf. aus „Personal“ hierher (doppelt zählen vermeiden).
+
+## 8 · Ergebnis der Gesamtprüfung 04.10. + Entscheidungen
+Bericht (nur gelesen) — Kernaussagen:
+- Eigene Gesellschaften sind fest auf `'kdc' | 'kdv' | 'ug'` verdrahtet (lib/einheiten.ts, UG_NAME = „MAKE Innovation GmbH“);
+  Stammdaten an zwei Stellen (lib/crm/gesellschaften.ts + Firmen-Kartei /os/stammdaten), drei weitere Org-Listen
+  (lib/make-one/organisation-data.ts ORGS, lib/planung/einheiten.ts, CRM-Firmen mit mutterId/rolle).
+- Es fehlen: Gesellschafter/Anteile/Cap-Table, Stammkapital eingezahlt, Gründungsstatus, Organe/Beschlüsse, Vertragsregister
+  mit Fristen, Beteiligungen.
+- Produkte: Server kann löschen (PATCH delete leistungen, 409 → „eingestellt“), Oberfläche nicht; Mandate/Angebote ohne
+  Löschen/Archiv; Ziele kennen kein Produkt; Mandat.ziele[] ist zweite Zielliste.
+- Usability: Wischen nirgends; window.confirm in ~50 Dateien; `Leerzustand` nur 8×, `Leer` 131×; 33 Dateien noch auf
+  `schlank` statt `ui`; tote Gruppe app/(dashboard) (Stubs/Mock) noch erreichbar; Stapel-Link „Meilensteine“ zeigt auf die
+  Bau-Roadmap; /os/okr doppelt zu Planung; Stammdaten doppelt; /os/finanzplan neben Finanzen.
+**Entscheidungen Kevin 04.10.:**
+- MAKE Innovation GmbH wird von der **KD Ventures UG** gehalten.
+- **KEMARIS wird aufgelöst bzw. daraus wird die MAKE Innovation GmbH** (Umfirmierung — im Register: „hervorgegangen aus
+  KEMARIS Innovation GmbH“; Website-Firmierung erst nach Handelsregister-Eintrag umstellen).
+- Eigene Gesellschaften als **offene Liste** (Status geplant · in Gründung · eingetragen · ruhend · aufgelöst; die drei
+  bestehenden Kennungen bleiben, neue `g-…`).
+- Wischen nach links zeigt **Archivieren und Löschen**.
+**Arbeitspakete (Reihenfolge):** 1 ZeileAktionen (läuft) · 2 Produkte/Mandate auf Standard · 3 Gesellschafts-Register ·
+4 Gründungsfahrplan MAKE (Vorlage Ziel/Meilensteine/Aufgaben) · 5 Überblick „Für dich“ je Bereich · 6 Aufräumen
+(app/(dashboard), okr, Stapel-Link, schlank→ui, Leer→Leerzustand, confirm→Baustein) · 7 Kapazität (Abschnitt 7) ·
+8 Strahl zurücknehmen (Abschnitt 6) · 9 ZOE-Kugel · 10 Brain-Kugel. Offen: F2 (Rolle KD Ventures), F5 (Tiefe Cap-Table),
+F6 (Vertragswerk-Tiefe), F8 (app/(dashboard) löschen?).
+
 ## Offen aus dem Tag (nicht vergessen)
 - Bildfolgen-Platz „Beratung“ (makeinnovation.de) und „Abend“ (fokus) für echte Fotos/Film später — Kevin: erst 3D.
 - Kevins Satz zur Vertriebserfahrung (Platzhalter), Datenschutz-Bestätigungen.
