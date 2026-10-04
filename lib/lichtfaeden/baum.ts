@@ -198,7 +198,7 @@ export interface Marke {
   erledigt: boolean;
 }
 /** Eine Abweichung, wie die Ansicht sie nennt (Text unter dem Band, Vorleser) — private der anderen Person nur „Belegt“. */
-export interface AbweichungKurz { id: string; art: Abweichung['art']; titel: string; von: string; staerke: number; buendel: string; text: string }
+export interface AbweichungKurz { id: string; art: Abweichung['art']; titel: string; von: string; staerke: number; buendel: string; text: string; /** Ort zum Handeln (fehlt bei „Belegt“). */ link?: string }
 export interface Ansicht {
   wurzel: Knoten;
   /** Brotkrumen von „gesamt“ bis zur Wurzel. */
@@ -341,7 +341,7 @@ export function rechneAnsicht(baum: Baum, o: AnsichtOptionen): AnsichtErgebnis |
 
   const gesamt = r.wochen.map((_, i) => rund(buendel.reduce((s, b) => s + b.roh[i], 0)));
   const abweichungen: AbweichungKurz[] = [...abwJe.entries()]
-    .flatMap(([b, l]) => l.map(a => ({ id: a.id, art: a.art, titel: a.titel, von: a.von, staerke: a.staerke, buendel: b, text: abweichungText(a) })))
+    .flatMap(([b, l]) => l.map(a => ({ id: a.id, art: a.art, titel: a.titel, von: a.von, staerke: a.staerke, buendel: b, text: abweichungText(a), ...(a.link ? { link: a.link } : {}) })))
     .filter(a => (a.von <= o.bis))
     .sort((a, b) => b.staerke - a.staerke || a.von.localeCompare(b.von) || a.id.localeCompare(b.id))
     .slice(0, MAX_ABWEICHUNGEN_TEXT);

@@ -11,9 +11,10 @@
 //   · Meilenstein überfällig        — offener Meilenstein, dessen Tag vor heute liegt              (Art `ueberfaellig`)
 //   · Ziel gekippt                  — offenes Ziel, dessen Frist vor heute liegt                   (Art `ziel-gekippt`)
 //   · Frist gerissen                — offene Steuerfrist / Projekt-Ende / gestellte Rechnung vorbei (Art `frist-gerissen`)
-// Angedockt werden kann jede weitere reine Quelle über `AbweichungsQuelle` (z. B. das Kapazitäts-Paket: Woche „überlastet“,
-// UMBAU_ABEND_0410.md › 7) — ein Lader in `LADER` (lib/lichtfaeden/abweichung-quellen-server.ts), sonst nichts. Angedockt ist
-// schon `verschoben` für Deals (Entscheidung ≥ 2× verschoben, `dealsVerschoben`). Ohne Datengrundlage: `verschoben` für
+// Angedockt werden kann jede weitere reine Quelle über `AbweichungsQuelle` — ein Lader in `LADER`
+// (lib/lichtfaeden/abweichung-quellen-server.ts), sonst nichts. Angedockt sind `verschoben` für Deals (Entscheidung ≥ 2×
+// verschoben, `dealsVerschoben`) und `ueberlastet` aus der Kapazität (lib/kapazitaet/abweichung.ts, Woche über 100 %).
+// Jede Abweichung trägt ihren Ort zum Handeln (`link`) — die Zeile unter dem Band führt dorthin. Ohne Datengrundlage: `verschoben` für
 // Meilensteine (sie speichern keinen ursprünglichen Termin) und `ungeplant` (kein Bestand kennt es) — die Arten sind da.
 
 import { BEIDE, GESAMT, type Strang, type StrangQuelle } from './modell';
@@ -41,6 +42,8 @@ export interface Abweichung {
   strang?: string;
   /** Privat: Titel, Strang und Ort unter dem Space nur für die eigene Person (wie `Strang.privat`). */
   privat?: boolean;
+  /** Wohin die Zeile unter dem Band führt — der Ort zum Handeln (WEG-Adresse; aus Strängen deren `link`). „Belegt“ hat keinen. */
+  link?: string;
 }
 
 /** Die Regeln — EINE Stelle. */
@@ -79,7 +82,7 @@ export function abweichungenAusStraengen(straenge: readonly Strang[], heute: str
     if (!regel || s.status === 'erledigt' || !(s.zeit.tag < heute)) continue;
     const staerke = abweichungsStaerke(tage(s.zeit.tag, heute), regel.gewicht);
     if (!(staerke > 0)) continue;
-    aus.push({ id: `${regel.art}:${s.id}`, art: regel.art, pfad: s.pfad, person: s.person, von: s.zeit.tag, bis: heute, staerke, verlauf: 'anstieg', titel: s.titel, strang: s.id, ...(s.privat ? { privat: true } : {}) });
+    aus.push({ id: `${regel.art}:${s.id}`, art: regel.art, pfad: s.pfad, person: s.person, von: s.zeit.tag, bis: heute, staerke, verlauf: 'anstieg', titel: s.titel, strang: s.id, ...(s.privat ? { privat: true } : {}), ...(s.link ? { link: s.link } : {}) });
   }
   return aus;
 }
@@ -187,7 +190,7 @@ export function dealsVerschoben(deals: readonly DealVerschiebung[], ab: number):
       const vorbei = d.erwartetUrsprung.slice(0, 10) < k.heute;
       aus.push({
         id: `verschoben:${s.id}`, art: 'verschoben', pfad: s.pfad, person: s.person, von: vorbei ? d.erwartetUrsprung.slice(0, 10) : k.heute, bis: k.heute,
-        staerke, verlauf: vorbei ? 'anstieg' : 'gleich', titel: d.titel, strang: s.id,
+        staerke, verlauf: vorbei ? 'anstieg' : 'gleich', titel: d.titel, strang: s.id, ...(s.link ? { link: s.link } : {}),
       });
     }
     return aus;

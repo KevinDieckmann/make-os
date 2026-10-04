@@ -7,7 +7,7 @@
 // Server (lib/kapazitaet), gefiltert auch dort — hier wird gezeichnet und über PATCH /api/kapazitaet geändert.
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
@@ -31,6 +31,13 @@ export function KapazitaetAnsicht() {
   const k = useKapazitaet();
   const heute = localDay();
   const s = k.stand;
+  // `WEG.kapazitaet(person)` (z. B. aus einer Überlast-Zeile am Strahl): sobald der Stand da ist, zur Person springen.
+  const geladen = !!s;
+  useEffect(() => {
+    if (!geladen) return;
+    const p = new URLSearchParams(window.location.search).get('person');
+    if (p) document.getElementById(`person-${p}`)?.scrollIntoView({ block: 'start' });
+  }, [geladen]);
   return (
     <Seite titel="Kapazität" unter="Zeit und Machbarkeit über die Personen — was wir uns vornehmen, gegen die Stunden, die wirklich da sind.">
       <PlanerLeiste aktiv="kapazitaet" />

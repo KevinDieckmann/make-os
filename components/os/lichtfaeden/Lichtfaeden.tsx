@@ -10,6 +10,7 @@
 //   Legende   je Bündel ein Knopf „eine Ebene tiefer“ (barrierefreier Weg), Engstellen als Liste, Textäquivalent.
 // Daten: GET /api/lichtfaeden (Haushalts-Tor, Privat-Regel serverseitig). Logik rein in lib/lichtfaeden/*.
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, LEUCHT, LICHT_GLAS, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { STRAHL_RAEUME, type StrahlRaum } from '@/lib/planung/zeitstrahl';
@@ -132,7 +133,7 @@ function Abweichungen({ liste }: { liste: readonly AbweichungKurz[] }) {
         {liste.map(a => (
           <li key={a.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: TYP.bedien, color: C.inkDim }}>
             <span aria-hidden="true" style={{ flex: '0 0 auto', width: 6, height: 6, borderRadius: '50%', background: LEUCHT.achtung, transform: 'translateY(-1px)' }} />
-            <span>{a.text}</span>
+            {a.link ? <Link href={a.link} style={{ color: 'inherit', textDecoration: 'none' }}>{a.text} ›</Link> : <span>{a.text}</span>}
           </li>
         ))}
       </ul>
