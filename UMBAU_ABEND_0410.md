@@ -178,3 +178,9 @@ F6 (Vertragswerk-Tiefe), F8 (app/(dashboard) löschen?).
   Onboarding-Routen kevin/malin, WillkommenMalin.
 - ZOE-Werkzeug „Kapazität lesen“ fehlt; Finanzplanung-Tabellen (Bausteine/Schulden/Posten) noch ohne ZeileAktionen;
   FlussKarte-Leerzustände ohne Knopf; Kennzahlen kp_treue/kp_puffer/kp_kopf ohne Detail-Link.
+
+## 12 · DSGVO-Antworten Kevin (04.10. spät)
+- Datenschutzhinweis der App: **erst Anwalt** — Entwurf bleibt intern (DATENSCHUTZ_APP.md Abschnitt 4).
+- Einwilligung Erholung (Art. 9): Schalter reicht für Kevin & Malin; für Kunden-Instanzen mit Angestellten Gegenlesen vormerken.
+- Team-Personen: Kapazitätsdaten **30 Tage nach Deaktivieren automatisch löschen** + Art.-15-Export (noch bauen).
+- Unterlagen beim endgültigen Löschen von Gesellschaft/Vertrag: **behalten (§ 257 HGB) + deutlicher Hinweis mit Link** in der Rückfrage (noch bauen).
