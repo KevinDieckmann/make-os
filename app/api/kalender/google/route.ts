@@ -6,6 +6,7 @@
 //      { aktion: 'voll' }              → syncToken verwerfen, alles neu lesen
 //      { aktion: 'kalender', kalenderId } → anderen Google-Kalender wählen (Bestand wird neu aufgesetzt)
 // Nur die eigene Person (Sitzung) — Dienstweg und andere Konten 403 (lib/google/zugang.ts). Nie Tokens in Antworten.
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { googleStatus, GoogleVerbindungsFehler } from '@/lib/google/verbindung';
 import { GoogleApiFehler } from '@/lib/google/http';
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
   const z = await eigenePerson(req, true);
   if (z instanceof NextResponse) return z;
   let b: { aktion?: string; kalenderId?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   try {
     if (b.aktion === 'abgleichen' || b.aktion === 'voll') {
       const r = await googleAbgleichen(z.person, { voll: b.aktion === 'voll' });

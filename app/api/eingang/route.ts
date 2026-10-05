@@ -17,6 +17,7 @@
 // Schreibweg `aufgabenAendern` (Übernahme, Verlauf, Protokoll, Meldungen) — vorher schrieb die Route `{ projects, tasks }`
 // zurück und warf Listen, eigene Status, Gruppen und Vorlagen weg. Abgehakt wird eine Zeile erst, wenn gespeichert ist.
 
+import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import { homedir } from 'os';
@@ -110,7 +111,7 @@ export async function POST(req: Request) {
   const zugang = await imHaushaltOderSystemlauf(req);
   if (!zugang) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: { anlegen?: boolean } = {};
-  try { body = await req.json(); } catch { /* ohne Body ist ok */ }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch { /* ohne Body ist ok */ }
 
   // Datei erstmalig anlegen
   if (body.anlegen) {

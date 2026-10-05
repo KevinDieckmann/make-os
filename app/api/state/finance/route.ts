@@ -1,4 +1,5 @@
 // ─── MAKE OS — Controlling-Zustand persistieren (lokal) ─────────────────────
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { schwellen } from '@/lib/schwellen';
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const s = body as Partial<FinanceState>;
   if (!s || !Array.isArray(s.months) || typeof s.zielUmsatz !== 'number') {
     return NextResponse.json({ ok: false, error: 'Ungültiger Zustand.' }, { status: 400 });
@@ -81,7 +82,7 @@ export async function PUT(req: Request) {
 export async function PATCH(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: { ops?: ListenOp[]; felder?: Record<string, unknown> };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const zahl = (v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
   let angewandt = 0;
   const next = await updateJson<FinanceState>('finance', current => {

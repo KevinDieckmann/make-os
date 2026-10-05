@@ -3,6 +3,7 @@
 // steht das Häkchen im Bestand und nicht nur im Browser: ein anderer Browser,
 // ein gelöschter Verlauf oder ein zweiter Rechner sollen ihn nicht wiederholen.
 
+import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
@@ -20,7 +21,7 @@ export async function GET() {
 /** Als gesehen stempeln — danach kommt der Gruß nie wieder. */
 export async function POST(req: Request) {
   // Die Person kommt aus der Sitzung, nicht aus dem Body (26.09.).
-  try { await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
+  try { await jsonBegrenzt(req, JSON_GROSS); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
   const person = personAus(req);
   const next = await updateJson<Datei>('willkommen', current => {
     const f = current ?? { gesehen: {} };

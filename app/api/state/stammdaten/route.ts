@@ -5,6 +5,7 @@
 // Geschützt gespeichert: fällt eine der vier Listen plötzlich auf weniger als
 // die Hälfte, wird der Schreibvorgang abgelehnt und der alte Stand behalten.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: Partial<Stammdaten>;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, grund: 'kein JSON' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, grund: 'kein JSON' }, { status: 400 }); }
 
   const zuViel = LISTEN.find(l => Array.isArray(body[l]) && (body[l] as unknown[]).length > GRENZE);
   if (zuViel) return NextResponse.json({ ok: false, grund: `Abgelehnt: ${zuViel} hat mehr als ${GRENZE} Einträge. Nichts gespeichert.` }, { status: 413 });

@@ -7,6 +7,7 @@
 //        Kein Guthaben → 402 { ok:false, grund:'guthaben' } — die Oberfläche zeigt einen
 //        freundlichen Hinweis statt eines Fehlers. Es wird nichts gespeichert und nichts verschickt.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { NextResponse } from 'next/server';
 import { resolveAgent } from '@/lib/agent-config';
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   if (zuGross(req, 20_000)) return ZU_GROSS(20_000);
   let b: { id?: unknown; frage?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, 20_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(b.id ?? '');
   if (!/^c-[a-z0-9-]{4,60}$/.test(id)) return NextResponse.json({ ok: false, fehler: 'Kontakt fehlt.' }, { status: 400 });
   const frage = typeof b.frage === 'string' ? b.frage.replace(/\s+/g, ' ').trim().slice(0, FRAGE_MAX) : '';

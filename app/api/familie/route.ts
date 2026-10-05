@@ -5,6 +5,7 @@
 // Nur Haushaltsmitglieder (haushaltVon, streng). Kein Business-Agent liest das.
 // S1 (29.09.): mehr als OPS_MAX Einzeländerungen → 413 (vorher still auf 200 gekürzt); PATCH prüft die Bau-Kennung.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { merken } from '@/lib/store/memo';
@@ -90,7 +91,7 @@ export async function PATCH(req: Request) {
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   let b: { ops?: ListenOp[]; felder?: Record<string, unknown> };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (Array.isArray(b.ops) && b.ops.length > OPS_MAX) return NextResponse.json({ ok: false, fehler: `Höchstens ${OPS_MAX} Änderungen auf einmal.` }, { status: 413 });
   const jetzt = new Date().toISOString();
   let abgelehnt = 0, angewandt = 0;

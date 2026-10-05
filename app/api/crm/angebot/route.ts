@@ -12,6 +12,7 @@
 // Zugang: Haushalt des Inhabers (Default-Deny); Stellen braucht dazu eine benannte Person mit Haushalt
 // (Dateiablage und Gesellschaften liegen je Haushalt). Nichts wird versendet — das Mail-Programm öffnet der Browser.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
   if (alterBau) return alterBau;
   let b: { aktion?: string; id?: unknown; felder?: unknown; stand?: unknown; grund?: unknown; nachfassenAm?: unknown };
-  try { b = await req.json(); } catch { return fehler('Kein JSON.', 400); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? fehler('Kein JSON.', 400); }
   // Person aus dem Zugang (Regel 5) — Sitzung oder Dienstweg mit Person.
   const person = z.person;
   const wer = werAus(req);

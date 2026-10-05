@@ -3,6 +3,7 @@
 // Sichtbarkeit selbst. Hier liegt nur die geordnete Liste der aktiven
 // Widget-IDs — die Widgets selbst wohnen im Dashboard-Code.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -18,7 +19,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   let body: { widgets?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const widgets = (Array.isArray(body.widgets) ? body.widgets : [])
     .map(w => String(w).slice(0, 40)).filter(Boolean).slice(0, 30);
   if (!widgets.length) return NextResponse.json({ ok: false, error: 'widgets darf nicht leer sein.' }, { status: 400 });

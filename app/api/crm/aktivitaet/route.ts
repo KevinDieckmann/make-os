@@ -4,6 +4,7 @@
 // Wiedervorlage angelegt. Wer es war, kommt aus dem Raum (Kevin oder Malin),
 // nicht aus dem Body — sonst könnte ein Fenster im falschen Namen schreiben.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
@@ -94,7 +95,7 @@ async function notizAktion(req: Request, b: { aktion: NotizAktion; id?: string; 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string; wann?: string; ort?: string; anlass?: string; aktion?: string; anker?: string; stand?: string; vorschlagId?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion === 'aendern' || b.aktion === 'loeschen') return notizAktion(req, { ...b, aktion: b.aktion });
   if (b.aktion !== undefined) return NextResponse.json({ ok: false, fehler: 'aktion ist aendern oder loeschen.' }, { status: 400 });
   const id = String(b.id ?? '').trim();

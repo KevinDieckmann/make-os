@@ -10,6 +10,7 @@
 // Was und wie: lib/planung/wochenplan-uebernahme(-server).ts. Nur der Haushalt des Inhabers; Build-Kennung wie jede
 // schreibende Route. S1 (29.09.): alle drei Aktionen nur von Hand (Dienstweg → 403), Protokoll mit der Person der Sitzung.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { bauPruefen } from '@/lib/bau/pruefen';
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   let b: { aktion?: string; bestaetigt?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Übernahme und Zurücknehmen nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
   if (b.aktion === 'zuruecknehmen') {
     try {

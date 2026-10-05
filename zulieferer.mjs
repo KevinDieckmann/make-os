@@ -8,8 +8,12 @@
 //
 // Einstellungen in ~/.make-os/zulieferer.env (NIE ins Repo, nie in iCloud):
 //   MAKE_OS_SERVER=https://<eure-adresse>
-//   MAKE_OS_SERVER_KEY=<MAKE_OS_KEY des Servers>
+//   MAKE_OS_ZULIEFERER_KEY=<eigener Zulieferer-Schlüssel>   (seit 05.10. — öffnet am Server NUR die Zulieferung)
+//   MAKE_OS_SERVER_KEY=<MAKE_OS_KEY des Servers>             (alt; nur noch Übergang, danach entfernen)
 //   MAKE_OS_LOKAL=http://localhost:3001        (optional)
+// Den Zulieferer-Schlüssel legt deploy/zulieferer-schluessel.sh an (verdeckt, nie im Chat). Sind beide gesetzt, nimmt
+// das Skript zuerst den Zulieferer-Schlüssel und fällt nur bei 401/403 auf den alten zurück — so bleibt die Reihenfolge
+// der Umstellung (Mac zuerst oder Server zuerst) egal.
 // Den lokalen Schlüssel liest es aus .env.local.
 //
 //   node zulieferer.mjs            # dauerhaft (alle paar Minuten)
@@ -29,11 +33,11 @@ function lies(pfad) {
 const env = { ...lies(join(homedir(), '.make-os', 'zulieferer.env')), ...process.env };
 const lokalEnv = lies(new URL('.env.local', import.meta.url));
 const SERVER = (env.MAKE_OS_SERVER ?? '').replace(/\/+$/, '');
-const SERVER_KEY = env.MAKE_OS_SERVER_KEY ?? '';
+const SERVER_KEYS = [env.MAKE_OS_ZULIEFERER_KEY, env.MAKE_OS_SERVER_KEY].map(k => (k ?? '').trim()).filter(Boolean);
 const LOKAL = (env.MAKE_OS_LOKAL ?? 'http://localhost:3001').replace(/\/+$/, '');
 const LOKAL_KEY = env.MAKE_OS_KEY ?? lokalEnv.MAKE_OS_KEY ?? '';
-if (!SERVER || !SERVER_KEY || !LOKAL_KEY) {
-  console.error('[Zulieferer] Es fehlt MAKE_OS_SERVER, MAKE_OS_SERVER_KEY (~/.make-os/zulieferer.env) oder der lokale MAKE_OS_KEY. Beende.');
+if (!SERVER || !SERVER_KEYS.length || !LOKAL_KEY) {
+  console.error('[Zulieferer] Es fehlt MAKE_OS_SERVER, MAKE_OS_ZULIEFERER_KEY bzw. MAKE_OS_SERVER_KEY (~/.make-os/zulieferer.env) oder der lokale MAKE_OS_KEY. Beende.');
   process.exit(1);
 }
 
@@ -53,10 +57,16 @@ async function liefere(p) {
   if (!r.ok || (daten && !Array.isArray(daten) && daten.error && p.art !== 'kontakte')) throw new Error(`lokal: ${daten?.error ?? r.status}`);
   if (p.art === 'kontakte' && daten?.error) throw new Error(`lokal: ${daten.error}`);
   const at = r.headers.get('x-stand') ?? new Date().toISOString();
-  const s = await fetch(`${SERVER}/api/zulieferung`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-make-key': SERVER_KEY },
-    body: JSON.stringify({ art: p.art, daten, at }), signal: AbortSignal.timeout(60_000),
-  });
+  const body = JSON.stringify({ art: p.art, daten, at });
+  let s;
+  for (const [i, key] of SERVER_KEYS.entries()) {
+    s = await fetch(`${SERVER}/api/zulieferung`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-make-key': key }, body, signal: AbortSignal.timeout(60_000),
+    });
+    // Abgewiesen (Schlüssel dem Server noch nicht bekannt bzw. alter Schlüssel nicht mehr erlaubt)? Den nächsten versuchen.
+    if ((s.status === 401 || s.status === 403) && i < SERVER_KEYS.length - 1) continue;
+    break;
+  }
   const a = await s.json().catch(() => ({}));
   if (!a.ok) throw new Error(`Server: ${a.fehler ?? s.status}`);
   return a.anzahl;

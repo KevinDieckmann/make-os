@@ -9,6 +9,7 @@
 // TEAM (28.09., U4): Namen und Kurzwörter kommen zur Laufzeit aus `team--<haushalt>`
 // (lib/make-one/team-speicher.ts) — nie aus dem Code; leerer Speicher → Rollen-Platzhalter.
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -47,7 +48,7 @@ export async function GET() {
 export async function POST(req: Request) {
   // Hintergrundlauf (ZOE, Takt) legt die Runde ab — die Aufgaben-Seite zeigt sie dann als „von ZOE“ (27.09.).
   let ablegen = false;
-  try { ablegen = (await req.json())?.ablegen === true; } catch { /* ohne Rumpf: nicht ablegen */ }
+  try { ablegen = (await jsonBegrenzt(req))?.ablegen === true; } catch { /* ohne Rumpf: nicht ablegen */ }
   const schranke = modellSchranke(req); if (schranke) return schranke;
   if (!sperren('delegation')) return NextResponse.json({ error: 'Die Delegations-Runde läuft gerade schon — einen Moment.' }, { status: 200 });
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });

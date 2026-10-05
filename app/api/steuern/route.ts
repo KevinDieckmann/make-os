@@ -6,6 +6,7 @@
 //      { abhaken: { key, an: true|false } } → Frist oder Übergabe-Punkt abhaken
 // Nur der Haushalt des Inhabers und der Dienstweg. Hinweis, keine Steuerberatung.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { steuernStand, speichereSteuern, steuerAufgabenAbgleichen } from '@/lib/steuern/speicher';
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   const wer = await imHaushaltDesInhabers(req);
   if (!wer) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const r = await speichereSteuern(b, wer.person);
   return NextResponse.json(r, { status: r.ok ? 200 : 400 });
 }

@@ -2,6 +2,7 @@
 // Wer schon einmal durchgelassen wurde, landet direkt im Postfach. Wer neu
 // ist, wartet im Screener — genau eine Entscheidung, dann nie wieder.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -21,7 +22,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   let body: { absender?: string; status?: string; fach?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const key = String(body.absender ?? '').toLowerCase().trim().slice(0, 200);
   if (!key) return NextResponse.json({ ok: false, error: 'Kein Absender.' }, { status: 400 });
   const status = body.status === 'geblockt' ? 'geblockt' : 'durchgelassen';

@@ -2,6 +2,7 @@
 // Die Mandate von KD Ventures: wer, Status, monatlicher Cashflow, nächster
 // Schritt. Roadmap Phase 5 — hier beginnt der Kundenbereich.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -53,7 +54,7 @@ function sauberKunde(roh: unknown): Kunde | null {
 export async function PUT(req: Request) {
   if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: { kunden?: Kunde[] };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!Array.isArray(body.kunden)) return NextResponse.json({ ok: false, error: 'kunden fehlt.' }, { status: 400 });
   // Mehr als 50: ablehnen, nie still kürzen (28.09., K1).
   if (body.kunden.length > 50) return NextResponse.json({ ok: false, error: `Abgelehnt: ${body.kunden.length} Kunden — höchstens 50.` }, { status: 413 });
@@ -69,7 +70,7 @@ export async function PUT(req: Request) {
 export async function PATCH(req: Request) {
   if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: { ops?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const ops = opsLesen<Kunde>(body.ops, sauberKunde, 50);
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, 50) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   const r = await listePatchen<Kunde, KundenFile & Record<string, unknown>>('kunden', 'kunden', ops, 4, undefined, { wer: werAus(req) });

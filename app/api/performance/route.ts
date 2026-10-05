@@ -3,6 +3,7 @@
 // POST {}        → Tages-Schnappschuss festhalten (einmal pro Tag genug)
 // POST {analyse} → zusätzlich: MAKE ordnet die Lage ein und benennt den Hebel
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { merken } from '@/lib/store/memo';
 import { personAus } from '@/lib/zoe/raum';
@@ -68,7 +69,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { analyse?: boolean } = {};
-  try { body = await req.json(); } catch { /* ohne Body ist ok */ }
+  try { body = await jsonBegrenzt(req); } catch { /* ohne Body ist ok */ }
 
   const aktuell = await computeIndex(undefined, personAus(req));
 

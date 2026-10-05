@@ -12,6 +12,7 @@ import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, Hinweis, Feldzeile, feld, LEUCHT, useRueckfrage } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { HaushaltZuordnung } from './HaushaltZuordnung';
+import { ZugangEinstellungen } from './ZugangEinstellungen';
 import { TeamKarte } from './TeamKarte';
 import { AnmeldeAdressen } from './AnmeldeAdressen';
 
@@ -175,6 +176,7 @@ export function KontoView() {
         </Kachel>
       )}
       {ich.rolle === 'inhaber' && <Kachel id="haushalt" titel="Haushalt" breite={3}><HaushaltZuordnung /></Kachel>}
+      {ich.rolle === 'inhaber' && <Kachel id="zugang-instanz" titel="Zugang der Instanz" breite={3}><ZugangEinstellungen /></Kachel>}
       {/* Team (28.09.): lebt in den Daten (team--<haushalt>); hier gepflegt, weil die alte Säulen-Seite auf /os/familie umleitet. */}
       <Kachel id="team" titel="Team" breite={6}><TeamKarte i={3} /></Kachel>
       <Kachel id="teilen" titel="Gesundheit teilen" breite={3}>

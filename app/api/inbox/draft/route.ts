@@ -3,6 +3,7 @@
 // Kevin selbst (öffnet in Apple Mail). Läuft über die gemeinsame KI-Schicht;
 // die fremde Mail geht als DATEN in den Prompt (Injection-Schutz).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let p: { sender?: string; senderEmail?: string; subject?: string; body?: string; hint?: string };
-  try { p = await req.json(); } catch { return NextResponse.json({ draft: '', error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { p = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ draft: '', error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   if (!hasAnthropicKey()) return NextResponse.json({ draft: '', needsKey: true, error: 'Kein Anthropic-Key hinterlegt (.env.local).' });
   const agent = await resolveAgent('inbox');

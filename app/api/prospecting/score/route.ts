@@ -2,6 +2,7 @@
 // Bewertet einen Prospect gegen das ICP: Score 0–100 + Fit-Begründung + Aufhänger.
 // Nutzt die gemeinsame KI-Schicht (Timeout, Retry, robustes JSON).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -15,7 +16,7 @@ interface ProspectIn { company?: string; domain?: string; industry?: string; siz
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { prospect?: ProspectIn; icp?: string };
-  try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { payload = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const p = payload.prospect ?? {};
   const icp = (payload.icp ?? '').trim();
   if (!p.company) return NextResponse.json({ error: 'Kein Unternehmen angegeben.' }, { status: 400 });

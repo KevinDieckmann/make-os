@@ -78,6 +78,43 @@ export interface InnenLage {
   kalenderGoogle?: GoogleKalenderLage | null;
   /** Gmail in der Inbox (03.10.): je verbundener Person Alter/Fehler des Abgleichs und Push — nur Zähler und Zustände, nie Adressen oder Betreffs. null = niemand verbunden. */
   gmail?: GmailLage | null;
+  /** Zugang & Schlüssel (05.10.): Zulieferer-Schlüssel, Übergang, Start-Riegel — nur Zustände, nie Werte. */
+  zugang?: ZugangLage;
+}
+
+/** Zugang & Schlüssel (05.10., Paket „Zugang & Schlüssel härten“). */
+export interface ZugangLage {
+  /** Eigener Zulieferer-Schlüssel (MAKE_OS_ZULIEFERER_KEY) auf dem Server gesetzt? */
+  zuliefererSchluessel: boolean;
+  /** Letzter Übergangs-Aufruf: der Mac lieferte noch mit MAKE_OS_KEY von außen — null = nie. */
+  zuliefererAltZuletzt: string | null;
+  /** 2FA-Pflicht der Instanz und wie viele Konten ohne zweiten Faktor sind (nur Zahlen). */
+  zweiFaktor?: { pflicht: boolean; ohne: number; konten: number };
+  /** Start-Riegel (lib/zugang/start-riegel.ts): Modus und Mängel (nur Namen, nie Werte). */
+  riegel?: { modus: 'entwicklung' | 'aus' | 'lokal' | 'scharf' | 'streng'; maengel: { was: string; art: 'fehlt' | 'zu-kurz'; hart: boolean }[] };
+}
+
+/** Zugang & Schlüssel (05.10.): Zulieferer im Übergang → gelb, mit eigenem Schlüssel → grün; nie benutzt → kein Befund. */
+export function zugangBefunde(z: ZugangLage | undefined, jetzt: string): Befund[] {
+  if (!z) return [];
+  const b: Befund[] = [];
+  const altTage = z.zuliefererAltZuletzt ? (Date.parse(jetzt) - Date.parse(z.zuliefererAltZuletzt)) / 864e5 : null;
+  if (z.zuliefererSchluessel) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gruen', wert: 'eigener Schlüssel', satz: 'öffnet nur die Zulieferung — der Dienstschlüssel gilt nur noch von innen' });
+  else if (altTage !== null && altTage <= 7) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gelb', wert: 'liefert noch mit dem Dienstschlüssel', satz: 'Übergang: MAKE_OS_KEY reist noch übers Internet — Zulieferer-Schlüssel einrichten (deploy/zulieferer-schluessel.sh mac → server → aufraeumen, UPDATES.md)' });
+  const zf = z.zweiFaktor;
+  if (zf && zf.konten > 0) {
+    if (zf.pflicht) b.push({ id: 'zwei-faktor', bereich: 'sicherheit', label: 'Zweiter Faktor', ampel: zf.ohne ? 'gelb' : 'gruen', wert: zf.ohne ? `Pflicht an · ${zf.ohne} noch ohne` : 'Pflicht an · alle Konten', satz: zf.ohne ? 'wer noch keinen hat, richtet ihn beim nächsten Anmelden ein' : 'jedes Konto meldet sich mit Passwort und Code an' });
+    else b.push({ id: 'zwei-faktor', bereich: 'sicherheit', label: 'Zweiter Faktor', ampel: zf.ohne ? 'gelb' : 'gruen', wert: zf.ohne ? `keine Pflicht · ${zf.ohne} von ${zf.konten} ohne` : 'keine Pflicht · alle haben ihn', satz: zf.ohne ? 'für Kundendaten: Konto › Zugang der Instanz › „Zweiter Faktor für alle Pflicht“' : 'Pflicht einschalten, damit es so bleibt (Konto › Zugang der Instanz)' });
+  }
+  const r = z.riegel;
+  if (r && r.modus !== 'entwicklung' && r.modus !== 'lokal') {
+    const liste = r.maengel.map(m => `${m.was} ${m.art === 'fehlt' ? 'fehlt' : 'zu kurz'}`).join(', ');
+    if (r.modus === 'aus') b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'rot', wert: 'ausgeschaltet', satz: 'MAKE_OS_START_RIEGEL=aus — nur für Sandbox/Prüfbau; auf dieser Instanz die Zeile aus der .env nehmen' });
+    else if (r.maengel.length) b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gelb', wert: `${r.modus}: ${liste}`, satz: 'fehlende oder kurze Geheimnisse setzen (openssl rand -hex 32), dann MAKE_OS_START_RIEGEL=streng (UPDATES.md › „Zugang & Schlüssel härten“)' });
+    else if (r.modus === 'scharf') b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gruen', wert: 'scharf — alle Geheimnisse gesetzt', satz: 'bereit für MAKE_OS_START_RIEGEL=streng (dann bricht auch ein kurzer Schlüssel oder fehlender Pepper den Start ab)' });
+    else b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gruen', wert: 'streng', satz: 'ohne Datenschlüssel, Pepper oder SESSION_SECRET (je ≥ 32 Zeichen) startet MAKE OS nicht' });
+  }
+  return b;
 }
 
 /** Zustand von Gmail (HOI): worst case über alle Personen mit Gmail. */
@@ -259,6 +296,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...kalenderBefunde(innen.kalender, jetzt));
   b.push(...googleKalenderBefunde(innen.kalenderGoogle));
   b.push(...gmailBefunde(innen.gmail));
+  b.push(...zugangBefunde(innen.zugang, jetzt));
 
   // ── Außen ──
   const aAlter = alterMin(aussen?.zeit);

@@ -6,6 +6,7 @@
 // Massenänderungen (Import, Regel rückwirkend, Fixkosten je Empfänger)
 // laufen über /api/haushalt/aktion — mit Vorschau.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { speicherStand } from '@/lib/store/local-db';
@@ -42,7 +43,7 @@ export async function PATCH(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let b: { teil?: unknown; ops?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const teil = TEILE.find(t => t === b.teil);
   if (!teil) return NextResponse.json({ ok: false, fehler: 'Unbekannter Teil.' }, { status: 400 });
   if (!Array.isArray(b.ops) || !b.ops.length) return NextResponse.json({ ok: false, fehler: 'Keine Änderungen.' }, { status: 400 });

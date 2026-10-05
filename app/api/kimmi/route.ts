@@ -3,6 +3,7 @@
 // ANTHROPIC_API_KEY in .env.local steht. Ohne Key antwortet MAKE freundlich
 // statt zu crashen — die App bleibt benutzbar.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { agentRoster, LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { gatherBrain, promptBrain, kalenderImPrompt } from '@/lib/brain';
@@ -122,7 +123,7 @@ export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   if (zuGross(req, 2_000_000)) return ZU_GROSS(2_000_000);
   let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[]; space?: string; bezug?: unknown };
-  try { payload = await req.json(); } catch { return NextResponse.json({ reply: 'Ich habe die Anfrage nicht verstanden.' }); }
+  try { payload = await jsonBegrenzt(req, 2_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ reply: 'Ich habe die Anfrage nicht verstanden.' }); }
   const message = String(payload.message ?? '').trim().slice(0, 8000);
   // Verlauf und Zusatz begrenzt — der Prompt darf nicht beliebig wachsen (26.09.).
   if (Array.isArray(payload.verlauf)) payload.verlauf = payload.verlauf.slice(-40).map(v => ({ ...v, text: typeof v.text === 'string' ? v.text.slice(0, 8000) : '' }));

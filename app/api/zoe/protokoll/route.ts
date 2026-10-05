@@ -6,6 +6,7 @@
 // Kein Schnappschuss der Datei — das würde fremde Änderungen mitlöschen, die
 // seitdem passiert sind (Malin arbeitet im zweiten Fenster).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { lies, eintrag, stempleZurueckgenommen } from '@/lib/zoe/protokoll';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   let body: { id?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(body.id ?? '');
   const e = id ? await eintrag(id) : null;
   if (!e) return NextResponse.json({ ok: false, error: 'Eintrag nicht gefunden.' }, { status: 404 });

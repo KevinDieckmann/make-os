@@ -3,6 +3,7 @@
 // wurden. Speist die Säule „Beziehung & Team": die einzige Größe dort, die
 // Kevin aktiv steuern kann.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
 /** Ein Ritual für einen Tag an/aus — ohne die anderen Tage zu berühren. */
 export async function PUT(req: Request) {
   let body: { date?: string; id?: string; an?: boolean };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = (body.id ?? '').trim();
   if (!id) return NextResponse.json({ ok: false, error: 'Kein Ritual.' }, { status: 400 });
 

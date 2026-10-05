@@ -2,6 +2,7 @@
 // POST { funktionen?: ['kalender'] } → { ok, url } — die Adresse der Google-Anmeldeseite (Authorization-Code + PKCE + state).
 // Der Browser leitet dorthin; Google kommt über /api/google/rueckruf zurück. Nur die eigene Person. Scopes je Funktion
 // (inkrementell, `include_granted_scopes`): später kommen weitere Funktionen ohne zweite Verbindung dazu.
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { verbindungStarten, istGoogleFunktion, GoogleVerbindungsFehler, type GoogleFunktion } from '@/lib/google/verbindung';
 import { eigenePerson } from '@/lib/google/zugang';
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   const z = await eigenePerson(req, true);
   if (z instanceof NextResponse) return z;
   let b: { funktionen?: unknown } = {};
-  try { b = await req.json(); } catch { /* ohne Körper: Kalender */ }
+  try { b = await jsonBegrenzt(req); } catch { /* ohne Körper: Kalender */ }
   const wunsch = Array.isArray(b.funktionen) ? b.funktionen.filter(istGoogleFunktion) : ['kalender' as GoogleFunktion];
   const funktionen = (wunsch.length ? wunsch : ['kalender' as GoogleFunktion]) as GoogleFunktion[];
   try {

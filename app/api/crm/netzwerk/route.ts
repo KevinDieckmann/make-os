@@ -18,6 +18,7 @@
 //                                 ohne `uebernehmen` nur die Vorschau.
 // MAKE OS versendet nichts — es merkt sich, was Kevin oder Malin in LinkedIn tun.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; id?: string; url?: string; kampagneId?: string; text?: string; art?: string; wortlaut?: string; csv?: string; uebernehmen?: boolean };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = zugang.person;
   const profilName = nameVon(person);
   const heute = localDay();

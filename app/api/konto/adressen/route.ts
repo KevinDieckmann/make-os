@@ -8,6 +8,7 @@
 // Jede Änderung braucht das aktuelle Passwort (wie Passwort ändern / zweiten Faktor ausschalten; dieselbe Bremse `pw:<person>`),
 // gilt nur für das EIGENE Konto (Person aus der Sitzung — der Dienstweg hat keine → 403), steht im Sicherheitsprotokoll
 // (Adresse maskiert) und meldet sich in der Glocke des Kontos. Eine Adresse darf in der Instanz nur einmal vorkommen.
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, emailSauber, passwortStimmt, adresseVergeben, adresseMaskiert, alleAdressen, oeffentlich, MAX_WEITERE_EMAILS } from '@/lib/zugang/konten';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
   const wer = req.headers.get('x-make-user');
   if (!wer || !/^[a-z0-9-]{1,40}$/.test(wer)) return fehler('Nur für die angemeldete Person selbst.', 403);
   let b: { aktion?: string; email?: string; passwort?: string };
-  try { b = await req.json(); } catch { return fehler('Kein gültiges JSON.', 400); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? fehler('Kein gültiges JSON.', 400); }
   if (!b || typeof b.aktion !== 'string' || !AKTIONEN.includes(b.aktion)) return fehler('aktion = hinzu | haupt | weg', 400);
   const aktion = b.aktion as Aktion;
   const ich = (await ladeKonten()).konten.find(k => k.speicher === wer);

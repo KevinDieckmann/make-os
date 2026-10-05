@@ -2,6 +2,7 @@
 // Der Plan prüft sich selbst. Die Regeln dafür liegen in lib/onboarding-status,
 // weil auch die Startfläche den Fortschritt zeigt — eine Quelle für beide.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { pruefeAlles, type Handisch } from '@/lib/onboarding-status';
@@ -21,7 +22,7 @@ export async function GET() {
 /** Einen Schritt von Hand abhaken oder das Häkchen wieder entfernen. */
 export async function POST(req: Request) {
   let body: { id?: string; an?: boolean; von?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(body.id ?? '').slice(0, 60);
   if (!id) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
   const p = personAus(req); const von = p.charAt(0).toUpperCase() + p.slice(1);

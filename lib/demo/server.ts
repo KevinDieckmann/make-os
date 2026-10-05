@@ -65,7 +65,7 @@ export async function demoZuruecksetzen(person: string): Promise<SaatBericht> {
   // Zugang behalten: dieselben Hash/Salz (Sitzung bleibt gültig), zweiter Faktor und Abmelde-Stand.
   const zugang: Record<string, Zugang> = {};
   for (const k of konten.konten) {
-    zugang[k.speicher] = { hash: k.hash, salz: k.salz, ...(k.zweiterFaktor ? { zweiterFaktor: k.zweiterFaktor } : {}), ...(k.sitzungenAb ? { sitzungenAb: k.sitzungenAb } : {}), ...(k.widerrufen ? { widerrufen: k.widerrufen } : {}) };
+    zugang[k.speicher] = { hash: k.hash, salz: k.salz, ...(k.kdf ? { kdf: k.kdf } : {}), ...(k.zweiterFaktor ? { zweiterFaktor: k.zweiterFaktor } : {}), ...(k.sitzungenAb ? { sitzungenAb: k.sitzungenAb } : {}), ...(k.widerrufen ? { widerrufen: k.widerrufen } : {}) };
   }
   // Schreibpause: laufende Schreibungen zu Ende kommen lassen, dann leeren (unsere eigenen Schreibungen kommen erst danach).
   await schreibpauseSetzen(15_000, 10_000);

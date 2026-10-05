@@ -2,6 +2,7 @@
 // Belegte Recherche mit Web-Suche. Read-only → braucht KEINE Freigabe.
 // Anthropic Messages API + server-seitiges web_search-Tool.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { askWithSearch, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
@@ -21,7 +22,7 @@ const SYSTEM = [
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { query?: string };
-  try { payload = await req.json(); } catch { return NextResponse.json({ reply: '', error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ reply: '', error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const query = (payload.query ?? '').trim();
   if (!query) return NextResponse.json({ reply: 'Sag mir, was ich recherchieren soll.' });
 

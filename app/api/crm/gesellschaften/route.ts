@@ -7,6 +7,7 @@
 // Gesellschafts-Register (/os/unternehmen, /api/gesellschaften); hier nur die Absender der drei festen Gesellschaften.
 // Zugang: Haushalt des Inhabers UND benannte Person mit Haushalt (wie die Dateiablage).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -67,7 +68,7 @@ export async function PATCH(req: Request) {
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
   if (alterBau) return alterBau;
   let b: { id?: unknown; felder?: unknown; stand?: unknown };
-  try { b = await req.json(); } catch { return fehler('Kein JSON.', 400); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? fehler('Kein JSON.', 400); }
   if (!istGesellschaftId(b.id)) return fehler('id: kdc, kdv oder ug.', 400);
   if (!b.felder || typeof b.felder !== 'object' || Array.isArray(b.felder)) return fehler('felder fehlen.', 400);
   // Das Logo hängt nur über den Upload (POST) — nie per Kennung aus dem Browser.

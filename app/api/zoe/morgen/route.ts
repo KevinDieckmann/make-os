@@ -12,6 +12,7 @@
 // Unterschied ist nicht das Werkzeug, sondern dass niemand danach gefragt hat.
 // Was ZOE nachts allein erarbeitet, soll Kevin einmal gesehen haben.
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey, guthabenLeer } from '@/lib/anthropic';
 import { regelBericht } from '@/lib/zoe/regelwerk';
@@ -140,7 +141,7 @@ export async function POST(req: Request) {
   const person = personAus(req);
   const origin = innenAdresse(req);
   let body: { zeit?: Tageszeit } = {};
-  try { body = await req.json(); } catch { /* ohne Rumpf gilt Morgen */ }
+  try { body = await jsonBegrenzt(req); } catch { /* ohne Rumpf gilt Morgen */ }
   const zeit: Tageszeit = body.zeit === 'abend' ? 'abend' : 'morgen';
 
   let lage = '';

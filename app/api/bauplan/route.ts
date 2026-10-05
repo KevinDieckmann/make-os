@@ -11,6 +11,7 @@
 //   etappe { id?, name, ziel?, beschreibung? } · etappe_weg { id }
 // Versendet wird nichts; Bilder über /api/bauplan/bild.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { merken } from '@/lib/store/memo';
 import { personAus } from '@/lib/zoe/raum';
@@ -30,7 +31,7 @@ const txt = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').tr
 
 export async function POST(req: Request) {
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);
   const jetzt = new Date().toISOString();
   const id = txt(b.id, 80);

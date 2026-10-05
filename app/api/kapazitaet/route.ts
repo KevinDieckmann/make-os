@@ -9,6 +9,7 @@
 //          ohne Konto: nur der Inhaber. Die Daten eines anderen Kontos (Ausnahme-Titel, Einwilligung) nie → 403. Unbekannt → 404.
 // Nur der Haushalt des Inhabers mit Person (Sitzung oder Dienstweg mit x-make-person) — Testkunden/andere Haushalte 403.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { zuGross } from '@/lib/zugang/umfang';
@@ -48,7 +49,7 @@ export async function PATCH(req: Request) {
   if (!wer) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   if (zuGross(req, 64 * 1024)) return NextResponse.json({ ok: false, fehler: 'Anfrage zu groß.' }, { status: 413 });
   let b: { ops?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, 64 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const r = await kapaSchreiben(wer.person, b.ops);
   if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
   const [{ stand, bezuege }, inhaber] = await Promise.all([kapaStandFuer(wer.person), istInhaber(wer.person)]);

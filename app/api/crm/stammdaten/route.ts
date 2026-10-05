@@ -11,6 +11,7 @@
 // POST { aktion: 'wertelisten', wertelisten: Teil }          → Verlustgründe, Kadenz, Ergebnisse, Ziele
 //                                                              (Teil-Update, lib/crm/wertelisten.ts prüft und säubert)
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { PROTOKOLL_ID } from '@/lib/crm/loeschprotokoll';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
@@ -130,7 +131,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; stufe?: string; p?: number | null; wertelisten?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion === 'firmen-abgleich') return NextResponse.json({ ok: true, ...(await firmenAbgleichen()) });
   if (b.aktion === 'pflichtangaben') {
     const crm = await ladeCrm();

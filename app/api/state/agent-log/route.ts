@@ -6,6 +6,7 @@
 // GET  ?prefix=loop-&limit=20 → alle Loops (Filter VOR dem Kürzen)
 // POST { agent, title, payload }
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { logRun, recentRuns } from '@/lib/agent-log';
 import { istDienst } from '@/lib/zugang/dienst';
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   // Agentenläufe steuern den Wochen-Loop — nur Dienstweg oder Inhaber tragen ein (26.09.).
   if (!istDienst(req) && !(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let body: { agent?: string; title?: string; payload?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const agent = (body.agent ?? '').trim();
   if (!agent) return NextResponse.json({ ok: false, error: 'agent fehlt.' }, { status: 400 });
   await logRun(agent, body.title ?? agent, body.payload ?? null);

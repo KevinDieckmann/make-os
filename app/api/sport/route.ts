@@ -6,6 +6,7 @@
 // Zugang: nur die angemeldete Person (Sitzung → x-make-user; Dienstweg nennt die
 // Person). Kein ?fuer= — Sport ist persönlich, jede Person sieht nur Eigenes.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
@@ -60,7 +61,7 @@ export async function PUT(req: Request) {
   if (!person) return KEINE_PERSON;
   if (zuGross(req, 1_000_000)) return ZU_GROSS(1_000_000);
   let body: { ops?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, 1_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const ops = Array.isArray(body.ops) ? (body.ops as Op[]).slice(0, MAX_OPS) : [];
   if (!ops.length) return NextResponse.json({ ok: false, error: 'Keine Änderungen.' }, { status: 400 });
   let fehler: string | null = null;

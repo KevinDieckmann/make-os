@@ -15,6 +15,7 @@
 // nie, was ein anderes Fenster (oder Malin) inzwischen geändert hat (Client: F2 N7, Kalender.tsx `einstSetzen`). Der alte
 // Weg (ganzer Stand im Körper, oberste Ebene ersetzt) geht weiter (z. B. SteuernView).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
@@ -39,7 +40,7 @@ export async function PUT(req: Request) {
   if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const alt = bauPruefen(req); if (alt) return alt;
   let body: Partial<Datei> & { teil?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!istObjekt(body)) return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 });
   if (body.teil !== undefined && !istObjekt(body.teil)) return NextResponse.json({ ok: false, error: '`teil` muss ein Objekt sein.' }, { status: 400 });
   const teil = body.teil as Record<string, unknown> | undefined;

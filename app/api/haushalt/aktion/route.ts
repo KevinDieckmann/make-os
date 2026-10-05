@@ -10,6 +10,7 @@
 //   steuerquote  Annahme für den Mindestumsatz
 //   testdaten    NUR im Haushalt „test“: erfundene Daten einspielen
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { regelLernen, importieren, kreditZuSchuld, fixkostenMarkieren, turnusSetzen } from '@/lib/finanzen/haushalt/aktionen';
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const vorschau = b.vorschau === true;
   try {
     switch (b.aktion) {

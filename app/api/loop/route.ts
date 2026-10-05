@@ -9,6 +9,7 @@
 // benannte Person (nie der Rückfall auf „kevin“). Kein fester Gesundheitskontext mehr im Prompt — optional aus dem
 // eigenen Profil der Person (lib/gesundheit/kontext.ts); das Journal ist das der Person (`speicherFuer`).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { logRun, recentRuns } from '@/lib/agent-log';
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
   const person = zugang.person;
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { loop?: string; today?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const loop = body.loop ?? 'morgen';
   if (!sperren('loop-' + loop)) return NextResponse.json({ error: 'Dieser Loop läuft gerade schon — einen Moment.' }, { status: 200 });
   const today = body.today && /^\d{4}-\d{2}-\d{2}$/.test(body.today) ? body.today : localKey(new Date());

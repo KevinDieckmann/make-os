@@ -1,5 +1,6 @@
 // ─── MAKE OS — Space-Zuordnungen (Postfächer) ───────────────────────────────
 // GET → { postfaecher }  ·  PUT { postfaecher } → gemerkt (Haushalt-weit, eine Wahrheit).
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { spaceEinstellungenSauber, type SpaceEinstellungen } from '@/lib/make-one/space-einstellungen';
@@ -13,7 +14,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   let b: unknown;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const next = await updateJson<SpaceEinstellungen>('spaces', cur => {
     const alt = spaceEinstellungenSauber(cur);
     const neu = spaceEinstellungenSauber(b);

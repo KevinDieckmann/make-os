@@ -14,9 +14,10 @@
 // einladen. Mitglieder dürfen alles andere. Ein „Haushalt" ist die Instanz —
 // wer später verkauft, zieht diese Datei je Kunde einmal hoch.
 
-import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
+import { scrypt, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson, beschaedigt } from '@/lib/store/local-db';
 import type { Wiederherstellung } from './totp';
+import type { Aenderung } from '@/lib/store/aenderungsprotokoll';
 
 export type Rolle = 'inhaber' | 'mitglied';
 
@@ -35,6 +36,8 @@ export interface Konto {
   rolle: Rolle;
   hash: string;
   salz: string;
+  /** scrypt-Parameter des Hashes (05.10.). Fehlt = Node-Vorgabe N=2^14 (`KDF_STANDARD`) — so lesen alte Stände jedes Konto. */
+  kdf?: Kdf;
   angelegt: string;
   /** Wem diese Person ihre Gesundheitsdaten zeigt (speicher-Namen). */
   teilt: { gesundheit: string[] };
@@ -67,7 +70,30 @@ export interface Einladung { code: string; von: string; bis: string; speicher?: 
 /** Namen, die nur über eine gebundene Einladung vergeben werden — nie durch den frei gewählten Vornamen. */
 export const RESERVIERTE_SPEICHER = ['kevin', 'malin'];
 
-export interface KontenStand { konten: Konto[]; einladungen: Einladung[] }
+/**
+ * Einstellungen der Instanz zum Zugang (05.10., Paket „Zugang & Schlüssel härten“). Setzt nur der Inhaber
+ * (`PUT /api/konto/einstellungen`). Fehlt das Feld (laufende Instanz vor 05.10.), gilt: keine 2FA-Pflicht, Leerlauf 12 h.
+ */
+export interface ZugangEinstellungen {
+  /** Konten ohne zweiten Faktor werden beim nächsten Anmelden zur Einrichtung geführt (vorher kommen sie nirgends hin). */
+  zweiFaktorPflicht?: boolean;
+  /** Seit wann die Pflicht gilt (ISO) — Sitzungen von davor laufen bis zu ihrem Ende (Leerlauf, 14 Tage) weiter. */
+  zweiFaktorPflichtSeit?: string;
+  /** Leerlauf-Ende einer Sitzung in Stunden (1–336, Standard `LEERLAUF_STUNDEN`). */
+  leerlaufStunden?: number;
+}
+export interface KontenStand { konten: Konto[]; einladungen: Einladung[]; einstellungen?: ZugangEinstellungen }
+
+/** Leerlauf-Ende einer Sitzung ohne Einstellung: 12 Stunden ohne Anfrage → neu anmelden (zusätzlich zur 14-Tage-Grenze). */
+export const LEERLAUF_STUNDEN = 12;
+export function leerlaufStunden(e: ZugangEinstellungen | undefined): number {
+  const h = Number(e?.leerlaufStunden);
+  return Number.isFinite(h) && h >= 1 && h <= 336 ? Math.round(h) : LEERLAUF_STUNDEN;
+}
+/** Muss dieses Konto erst den zweiten Faktor einrichten (Pflicht an, Faktor fehlt)? */
+export function zweiFaktorOffen(e: ZugangEinstellungen | undefined, k: Pick<Konto, 'zweiterFaktor'>): boolean {
+  return !!e?.zweiFaktorPflicht && !k.zweiterFaktor;
+}
 
 const STORE = 'konten';
 export const EINLADUNG_STUNDEN = 48;
@@ -125,35 +151,93 @@ export function passwortTauglich(p: unknown): p is string {
 }
 
 const CODE_ZEICHEN = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-export function neuerEinladungscode(zufall: () => number = Math.random): string {
+/** Einladungscode XXXX-XXXX (40 Bit). Seit 05.10. kryptografischer Zufall (`crypto.randomInt`). */
+export function neuerEinladungscode(ziehe: (n: number) => number = n => randomInt(n)): string {
   let c = '';
-  for (let i = 0; i < 8; i++) c += CODE_ZEICHEN[Math.floor(zufall() * CODE_ZEICHEN.length)];
+  for (let i = 0; i < 8; i++) c += CODE_ZEICHEN[ziehe(CODE_ZEICHEN.length)];
   return `${c.slice(0, 4)}-${c.slice(4)}`;
 }
 
 export function leererStand(): KontenStand { return { konten: [], einladungen: [] }; }
 
 /** Was der Browser über ein Konto wissen darf — nie Hash oder Salz. */
-export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz' | 'widerrufen' | 'zweiterFaktor' | 'zweiterFaktorEntwurf'> & { zweiterFaktorAn: boolean } {
-  const { hash: _h, salz: _s, widerrufen: _w, zweiterFaktor: _z, zweiterFaktorEntwurf: _e, ...rest } = k;
+export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz' | 'kdf' | 'widerrufen' | 'zweiterFaktor' | 'zweiterFaktorEntwurf'> & { zweiterFaktorAn: boolean } {
+  const { hash: _h, salz: _s, kdf: _k, widerrufen: _w, zweiterFaktor: _z, zweiterFaktorEntwurf: _e, ...rest } = k;
   return { ...rest, zweiterFaktorAn: !!k.zweiterFaktor };
 }
 
 // ── Passwort ─────────────────────────────────────────────────────────────────
+// scrypt (05.10.): N=2^17, r=8, p=1 (OWASP-Empfehlung, 128 MiB je Hash, ~0,3 s) statt der Node-Vorgabe N=2^14. Die
+// Parameter stehen am Konto (`kdf`); alte Hashes ohne Feld bleiben gültig und werden beim nächsten erfolgreichen
+// Anmelden neu gehasht — mit DEMSELBEN Salz, damit der Sitzungs-Stand (Fingerabdruck des Salzes) gleich bleibt und
+// kein anderes Gerät rausfliegt.
+// Rückweg: der alte Online-Stand kennt `kdf` nicht und rechnet immer mit N=2^14 — ein neu gehashtes Konto käme dort
+// nicht mehr hinein. Deshalb gilt N=2^17 erst mit MAKE_OS_KDF=stark: neue Instanzen von Anfang an (env.server.beispiel),
+// die laufende, sobald der Rückweg zu ist (zusammen mit MAKE_OS_FORMAT=v2, UPDATES.md). Vorher schreibt MAKE OS weiter
+// N=2^14 (mit `kdf` am Konto, das der alte Stand still übergeht).
 
-function scryptHex(passwort: string, salz: string): Promise<string> {
-  return new Promise((res, rej) => scrypt(passwort, salz, 64, (e, k) => (e ? rej(e) : res(k.toString('hex')))));
+export interface Kdf { n: number; r: number; p: number }
+export const KDF_STANDARD: Kdf = { n: 16384, r: 8, p: 1 };
+export const KDF_STARK: Kdf = { n: 131072, r: 8, p: 1 };
+
+/** Welche Parameter neue Hashes bekommen (siehe oben: stark nur ohne Rückweg-Bedarf). */
+export function kdfFuerNeu(env: Record<string, string | undefined> = process.env): Kdf {
+  return (env.MAKE_OS_KDF ?? '').trim().toLowerCase() === 'stark' ? KDF_STARK : KDF_STANDARD;
+}
+/** Parameter eines Kontos (ohne Feld: Node-Vorgabe) — nur bekannte, sinnvolle Werte; alles andere gilt als Vorgabe. */
+export function kdfVon(k: Pick<Konto, 'kdf'>): Kdf {
+  const d = k.kdf;
+  const ok = !!d && [d.n, d.r, d.p].every(Number.isInteger) && d.n >= 16384 && d.n <= 1048576 && (d.n & (d.n - 1)) === 0 && d.r >= 1 && d.r <= 16 && d.p >= 1 && d.p <= 4;
+  return ok ? { n: d!.n, r: d!.r, p: d!.p } : KDF_STANDARD;
+}
+/** Sollte dieser Hash beim nächsten erfolgreichen Anmelden neu gerechnet werden? */
+export const kdfVeraltet = (k: Pick<Konto, 'kdf'>, ziel: Kdf = kdfFuerNeu()): boolean => kdfVon(k).n < ziel.n;
+
+// Höchstens zwei starke Hashes gleichzeitig (je 128 MiB) — der Server hat 1280 MB für die App.
+const PARALLEL = 2;
+let laufend = 0;
+const warten: (() => void)[] = [];
+async function mitPlatz<T>(f: () => Promise<T>): Promise<T> {
+  if (laufend >= PARALLEL) await new Promise<void>(r => warten.push(r));
+  laufend++;
+  try { return await f(); } finally { laufend--; warten.shift()?.(); }
 }
 
-export async function passwortHashen(passwort: string): Promise<{ hash: string; salz: string }> {
-  const salz = randomBytes(16).toString('hex');
-  return { hash: await scryptHex(passwort, salz), salz };
+function scryptHex(passwort: string, salz: string, kdf: Kdf): Promise<string> {
+  const maxmem = 128 * kdf.n * kdf.r + 32 * 1024 * 1024;
+  return mitPlatz(() => new Promise((res, rej) => scrypt(passwort, salz, 64, { N: kdf.n, r: kdf.r, p: kdf.p, maxmem }, (e, k) => (e ? rej(e) : res(k.toString('hex'))))));
 }
 
-export async function passwortStimmt(passwort: string, konto: Pick<Konto, 'hash' | 'salz'>): Promise<boolean> {
-  const h = Buffer.from(await scryptHex(passwort, konto.salz), 'hex');
+export async function passwortHashen(passwort: string, kdf: Kdf = kdfFuerNeu(), salz = randomBytes(16).toString('hex')): Promise<{ hash: string; salz: string; kdf: Kdf }> {
+  return { hash: await scryptHex(passwort, salz, kdf), salz, kdf };
+}
+
+export async function passwortStimmt(passwort: string, konto: Pick<Konto, 'hash' | 'salz' | 'kdf'>): Promise<boolean> {
+  const h = Buffer.from(await scryptHex(passwort, konto.salz, kdfVon(konto)), 'hex');
   const s = Buffer.from(konto.hash, 'hex');
   return h.length === s.length && timingSafeEqual(h, s);
+}
+
+/**
+ * Nach einem erfolgreichen Anmelden: veralteten Hash mit DEMSELBEN Salz und den aktuellen Parametern neu rechnen und
+ * speichern (nur wenn sich Hash/Salz inzwischen nicht geändert haben). Wirft nie — das Anmelden ist dann schon geschehen.
+ */
+export async function passwortNachziehen(passwort: string, konto: Pick<Konto, 'speicher' | 'hash' | 'salz' | 'kdf'>): Promise<boolean> {
+  try {
+    const ziel = kdfFuerNeu();
+    if (!kdfVeraltet(konto, ziel)) return false;
+    const neu = await passwortHashen(passwort, ziel, konto.salz);
+    let gesetzt = false;
+    await aendereKonten(s => ({ ...s, konten: s.konten.map(k => {
+      if (k.speicher !== konto.speicher || k.hash !== konto.hash || k.salz !== konto.salz) return k;
+      gesetzt = true;
+      return { ...k, hash: neu.hash, kdf: neu.kdf };
+    }) }));
+    return gesetzt;
+  } catch (e) {
+    console.error('[konten] Passwort-Hash nicht nachgezogen:', e instanceof Error ? e.message : e);
+    return false;
+  }
 }
 
 // ── Speicher ─────────────────────────────────────────────────────────────────
@@ -166,14 +250,54 @@ export async function ladeKonten(): Promise<KontenStand> {
     if (await beschaedigt(STORE)) throw new Error('Kontenbestand beschädigt — Sicherung zurückspielen (konten.json.corrupt-*).');
     return leererStand();
   }
-  return { konten: s.konten, einladungen: Array.isArray(s.einladungen) ? s.einladungen : [] };
+  return { konten: s.konten, einladungen: Array.isArray(s.einladungen) ? s.einladungen : [], ...(einstellungenAus(s) ? { einstellungen: einstellungenAus(s) } : {}) };
+}
+
+function einstellungenAus(s: Partial<KontenStand> | null | undefined): ZugangEinstellungen | undefined {
+  const e = s?.einstellungen;
+  return e && typeof e === 'object' && !Array.isArray(e) ? e : undefined;
+}
+
+/**
+ * Konto-Änderungen fürs Änderungsprotokoll (05.10.): NUR Kennungen und Feldnamen, nie Werte — neu, gelöscht, Rolle,
+ * Haushalt, Finanzrecht, zweiter Faktor an/aus; Instanz-Einstellungen unter der Kennung `instanz`. Rein.
+ */
+export const KONTO_FELDER = ['rolle', 'haushalt', 'finanzRecht'] as const;
+export function kontoAenderungen(alt: KontenStand | null, neu: KontenStand): Aenderung[] {
+  const vorher = new Map((alt?.konten ?? []).map(k => [k.id, k]));
+  const nachher = new Map(neu.konten.map(k => [k.id, k]));
+  const raus: Aenderung[] = [];
+  for (const [id, n] of Array.from(nachher)) {
+    const a = vorher.get(id);
+    if (!a) { raus.push({ op: 'neu', id }); continue; }
+    const felder: string[] = KONTO_FELDER.filter(f => (a[f] ?? null) !== (n[f] ?? null));
+    if (!!a.zweiterFaktor !== !!n.zweiterFaktor) felder.push('zweiterFaktor');
+    if (felder.length) raus.push({ op: 'geaendert', id, felder });
+  }
+  for (const id of Array.from(vorher.keys())) if (!nachher.has(id)) raus.push({ op: 'geloescht', id });
+  const ea = alt?.einstellungen ?? {}, en = neu.einstellungen ?? {};
+  const efelder = (['zweiFaktorPflicht', 'leerlaufStunden'] as const).filter(f => (ea[f] ?? null) !== (en[f] ?? null));
+  if (efelder.length) raus.push({ op: 'geaendert', id: 'instanz', felder: [...efelder] });
+  return raus;
 }
 
 export async function aendereKonten(mut: (s: KontenStand) => KontenStand): Promise<KontenStand> {
-  return updateJson<KontenStand>(STORE, current => {
-    const s = current && Array.isArray(current.konten) ? { konten: current.konten, einladungen: Array.isArray(current.einladungen) ? current.einladungen : [] } : leererStand();
-    return mut(s);
+  let vorher: KontenStand | null = null;
+  const ergebnis = await updateJson<KontenStand>(STORE, current => {
+    const e = einstellungenAus(current);
+    const s: KontenStand = current && Array.isArray(current.konten) ? { konten: current.konten, einladungen: Array.isArray(current.einladungen) ? current.einladungen : [], ...(e ? { einstellungen: e } : {}) } : leererStand();
+    vorher = s;
+    const neu = mut(s);
+    // Wer nur Konten/Einladungen schreibt (z. B. `{ konten, einladungen }` ohne Spread), verliert die Einstellungen nicht.
+    const behalten = 'einstellungen' in neu ? neu.einstellungen : s.einstellungen;
+    const { einstellungen: _weg, ...rest } = neu;
+    return behalten ? { ...rest, einstellungen: behalten } : rest;
   });
+  // Änderungsprotokoll (05.10.): wer wann welches Konto angelegt, gelöscht oder an Rolle/Haushalt/Finanzrecht/2FA geändert
+  // hat — nur Kennungen. Dynamisch geladen (das Protokoll liest selbst Konten). Wirft nie.
+  const aenderungen = kontoAenderungen(vorher, ergebnis);
+  if (aenderungen.length) await import('@/lib/store/aenderungsprotokoll').then(m => m.protokolliere('konten', aenderungen)).catch(() => {});
+  return ergebnis;
 }
 
 /** Konto zu einer Anmelde-Adresse (Haupt- oder weitere). */

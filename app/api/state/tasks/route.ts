@@ -23,6 +23,7 @@
 //   · Übernahme des Altbestands (Space, Unteraufgaben, Sonstige) beim Lesen und in jeder Schreibsperre.
 // Die Logik liegt in lib/aufgaben/speicher.ts (Server) und lib/aufgaben/struktur.ts (rein).
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { etagAus, unveraendert, jsonAntwort } from '@/lib/http/json-antwort';
@@ -68,7 +69,7 @@ export async function GET(req: Request) {
 async function body(req: Request): Promise<Record<string, unknown> | NextResponse> {
   if (zuGross(req, MAX_BYTES)) return NextResponse.json({ ok: false, error: 'Abgelehnt: zu groß.' }, { status: 413 });
   try {
-    const b = await req.json();
+    const b = await jsonBegrenzt(req, MAX_BYTES);
     return b && typeof b === 'object' ? (b as Record<string, unknown>) : NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 });
   } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 }

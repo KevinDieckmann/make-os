@@ -7,6 +7,7 @@
 // trotzdem (28.09., U3): ab „gestellt“ wird eine Rechnung nicht gelöscht, nur mit
 // Vermerk einer Firma zugeordnet — Löschversuche bekommen 409.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import { randomUUID } from 'crypto';
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   if (!istEchterHaushalt(z.haushalt)) return NextResponse.json({ ok: false, fehler: 'Nur im echten Haushalt.' }, { status: 403 });
   let b: { entscheidungen?: { quelle: Quelle; id: string; aktion: Aktion }[] };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const h = await ladeHaushalt(z.haushalt);
   const vorher = await bestand();
   const sperre = entflechtungSperre((vorher.finanzplan?.rechnungen ?? []) as Rechnung[], b.entscheidungen ?? []);

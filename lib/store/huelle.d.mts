@@ -7,6 +7,7 @@ export interface SchluesselRing { aktiv: Schluessel | null; alle: Schluessel[] }
 export function schluesselAus(geheim: string): Schluessel;
 export function schluesselNeuLaden(): void;
 export function schluesselQuelle(env?: NodeJS.ProcessEnv): 'datei' | 'umgebung' | 'keiner';
+export function schluesselLaenge(env?: NodeJS.ProcessEnv): number;
 export function schluesselRing(env?: NodeJS.ProcessEnv): SchluesselRing;
 export function aadFuer(bestand: string): Buffer;
 export function aadAlternativen(bestand: string): string[];

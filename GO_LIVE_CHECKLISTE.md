@@ -14,6 +14,25 @@ unten unter „Rückweg“). Erst `MAKE_OS_FORMAT=v2` macht den Upload zur Einba
 Alle Befehle auf dem Server als `make`, im Ordner `/srv/make-os/app`, außer wo „am Mac“ steht. Werte (Schlüssel, Passwörter)
 nie in Chat oder Repo.
 
+## Zusatz: Paket „Zugang & Schlüssel härten“ (S3, 05.10., Branch `sicher-zugang`) — nur wenn es im Upload steckt
+Einzelheiten und Rückweg: UPDATES.md › „Zugang & Schlüssel härten“.
+- **Vor dem Upload (Mac):** Caddyfile geändert → prüfen:
+  `docker run --rm -e MAKE_OS_DOMAIN=example.invalid -v "$PWD/deploy/caddy:/etc/caddy:ro" -v "$PWD/website:/srv/website:ro" -v "$PWD/fokus:/srv/fokus:ro" caddy:2@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`
+  → „Valid configuration“. Am Server nur prüfen (keine Werte zeigen):
+  `for v in MAKE_OS_KEY SESSION_SECRET; do grep -q "^$v=." .env && echo "$v gesetzt" || echo "$v FEHLT"; done; grep -q '^MAKE_OS_DATEN_SCHLUESSEL=.' .env || test -s /srv/make-os/schluessel/daten && echo "Datenschlüssel da" || echo "Datenschlüssel FEHLT"`
+  → dreimal gesetzt/da. Fehlt etwas, startet die neue Version NICHT (Start-Riegel) — erst setzen.
+- **Direkt nach dem Upload:** `docker compose logs --since 10m app | grep -i "riegel"` → höchstens die Warnung
+  „Start-Riegel (scharf): Pepper … fehlt — läuft trotzdem“ (erwartet, bis Pepper + `streng` gesetzt sind). Dann Caddy neu laden:
+  `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`.
+  `docker compose ps` → arbeiter läuft (jetzt schreibgeschützt); HOI „Arbeiter (Takt)“ binnen 5 Minuten grün.
+- **Kurztest zusätzlich:** anmelden (ohne 2FA-Pflicht unverändert) · `/os/hoi`: „Mac-Zulieferer“ gelb (Übergang, erwartet,
+  sobald der Mac geliefert hat), „Start-Riegel“ gelb oder grün, „Zweiter Faktor“ · Konto › „Zugang der Instanz“ sichtbar (Inhaber).
+  Mit dem Generalschlüssel kommt von außen niemand mehr hinein (am Server; der Schlüssel geht über eine Dateikennung, nie auf
+  die Kommandozeile): `curl -s -o /dev/null -w "%{http_code}\n" -X POST -H @<(grep '^MAKE_OS_KEY=' .env | sed 's/^MAKE_OS_KEY=/x-make-key: /') https://app.makeinnovation.de/api/zoe/takt` → **401**.
+- **Danach (Kevin, in Ruhe):** Zulieferer-Schlüssel (UPDATES.md Schritt 2/3), Entscheidung 2FA-Pflicht, Pepper + `MAKE_OS_START_RIEGEL=streng`.
+- **Rückweg:** wie unten; zusätzlich Caddyfile aus dem alten Stand + `caddy reload`; mit `MAKE_OS_KDF=stark` nachgezogene Konten
+  kämen im alten Stand nicht hinein (deshalb `stark` erst mit `MAKE_OS_FORMAT=v2`).
+
 ## Vor dem Upload
 1. `git status --short` → leer, und `git status -sb` → erste Zeile ohne „ahead“ (sonst bricht das Ausrollen ab).
 2. **Platz:** `df -h /` und `docker system df` → auf `/` mindestens **5 GB frei**. Sonst zuerst `docker builder prune -af`

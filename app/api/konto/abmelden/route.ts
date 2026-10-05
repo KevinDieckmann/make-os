@@ -2,6 +2,7 @@
 // POST {}            → dieser Zettel wird widerrufen, Cookie gelöscht.
 // POST { alle: true } → alle anderen Geräte raus: Zettel, die vor jetzt ausgestellt
 //                       wurden, gelten nicht mehr; dieses Gerät bekommt einen neuen.
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { ohneSitzung, mitSitzung } from '@/lib/zugang/antwort';
 import { SITZUNG_COOKIE, sitzungPruefen, sitzungsGeheimnis } from '@/lib/zugang/sitzung';
 import { ladeKonten, aendereKonten } from '@/lib/zugang/konten';
@@ -18,7 +19,7 @@ function cookieWert(req: Request): string | undefined {
 
 export async function POST(req: Request) {
   let body: { alle?: boolean } = {};
-  try { body = await req.json(); } catch { /* ohne Body: nur dieses Gerät */ }
+  try { body = await jsonBegrenzt(req); } catch { /* ohne Body: nur dieses Gerät */ }
   const s = await sitzungPruefen(sitzungsGeheimnis(), cookieWert(req));
   if (!s) return ohneSitzung();
   const jetzt = Date.now();

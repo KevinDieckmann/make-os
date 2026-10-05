@@ -24,6 +24,7 @@
 //    (`datenschutzStempeln`); Einschränkung (Art. 18) und Fristverlängerung ändert nur /api/crm/datenschutz;
 //    eine eingeschränkte Person ist nicht bearbeitbar, eine neue Einwilligung braucht Wortlaut + Beleg (409)
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
@@ -89,7 +90,7 @@ export async function PATCH(req: Request) {
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   let body: { ops?: unknown; erzwingen?: boolean };
-  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Nie abschneiden (K2): zu viele Aktivitäten/Einwilligungen an einem Kontakt → 413 statt stillem Kürzen.
   const zuViel = Array.isArray(body.ops) ? (body.ops as ({ eintrag?: unknown; felder?: unknown } | null)[]).map(o => kontaktZuGross(o?.eintrag) ?? kontaktZuGross(o?.felder)).find(Boolean) : null;
   if (zuViel) return NextResponse.json({ error: zuViel }, { status: 413 });

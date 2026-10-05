@@ -9,6 +9,7 @@
 // eine gelöschte Person auch daraus heraus — sie kommt beim Wiederherstellen nicht zurück.
 // Zugang: angemeldete Person mit Rolle Inhaber (Dienstweg/ZOE → 403: wiederhergestellt wird nur von Hand, mit Person im Protokoll).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   const bau = bauPruefen(req);
   if (bau) return bau;
   let b: { aktion?: unknown; datei?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   try {
     if (b.aktion === 'liste') return NextResponse.json({ ok: true, sicherungen: await firmenArchive() });
     if (b.aktion === 'wiederherstellen') {

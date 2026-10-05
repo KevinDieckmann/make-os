@@ -1,8 +1,9 @@
 // GET → wer bin ich, wer ist sonst noch da (Namen, keine Geheimnisse).
 // PUT → Name oder Passwort ändern.
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { personAus } from '@/lib/zoe/raum';
-import { ladeKonten, aendereKonten, oeffentlich, passwortTauglich, passwortHashen, passwortStimmt } from '@/lib/zugang/konten';
+import { ladeKonten, aendereKonten, oeffentlich, passwortTauglich, passwortHashen, passwortStimmt, zweiFaktorOffen } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { notiere, adresseGekuerzt, letzte } from '@/lib/zugang/anmeldungen';
@@ -17,6 +18,8 @@ export async function GET(req: Request) {
   if (!ich) return NextResponse.json({ error: 'Konto nicht gefunden.' }, { status: 401 });
   return NextResponse.json({
     ich: oeffentlich(ich),
+    // 2FA-Pflicht der Instanz (05.10.): /anmelden führt dann zur Einrichtung statt weiter.
+    zweiterFaktorEinrichten: zweiFaktorOffen(s.einstellungen, ich),
     anmeldungen: await letzte(wer, 5),
     andere: s.konten.filter(k => k.speicher !== wer).map(k => ({ speicher: k.speicher, name: k.name, rolle: k.rolle, teiltGesundheitMitMir: k.teilt.gesundheit.includes(wer) })),
   });
@@ -25,7 +28,7 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   const wer = personAus(req);
   let b: { name?: string; passwortAlt?: string; passwortNeu?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const s = await ladeKonten();
   const ich = s.konten.find(k => k.speicher === wer);
   if (!ich) return NextResponse.json({ error: 'Konto nicht gefunden.' }, { status: 401 });

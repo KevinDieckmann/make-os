@@ -3,6 +3,7 @@
 // GET    ?name=…                  → das Bild (nur Haushalt des Inhabers)
 // DELETE { id }                   → Bild vom Gericht nehmen und löschen
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   if (zuGross(req, 3_500_000)) return ZU_GROSS(3_500_000);
   let b: { id?: string; daten?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, 3_500_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(b.id ?? '').slice(0, 40);
   const f = sauberDatei(await loadJson<ErnaehrungFile>('ernaehrung'));
   const g = f.gerichte.find(x => x.id === id);
@@ -45,7 +46,7 @@ export async function DELETE(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   let b: { id?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, 3_500_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(b.id ?? '').slice(0, 40);
   let alt = '';
   await updateJson<ErnaehrungFile>('ernaehrung', cur => {

@@ -12,6 +12,7 @@
 // Werblicher Kanal (mail, linkedin, newsletter): bei „planen“ kommen Personen mit roter Ampel nicht in die Kampagne, gelbe mit Hinweis (03.10., netz-recht).
 // Versendet wird nichts.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; playbook?: string; segmentId?: string; id?: string; kontaktId?: string; ergebnis?: string; von?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const heute = localDay();
   const person = zugang.person;
 

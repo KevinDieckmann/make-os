@@ -20,6 +20,7 @@
 // S1 (29.09.): nie still gekürzt — Text über 300, Notiz über 1000 Zeichen (auch zusammen mit der bisherigen Notiz bzw.
 // „Als Nächstes“) → 413; POST prüft die Bau-Kennung (`bauPruefen`, Dienstweg ausgenommen).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
@@ -110,7 +111,7 @@ export async function POST(req: Request) {
   if (!zugang) return KEIN_ZUGANG();
   const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = zugang.person;
   if (typeof b.text === 'string' && b.text.trim().length > TEXT_MAX) return ZU_LANG('Text', TEXT_MAX);
   if (typeof b.notiz === 'string' && b.notiz.trim().length > NOTIZ_MAX) return ZU_LANG('Notiz', NOTIZ_MAX);

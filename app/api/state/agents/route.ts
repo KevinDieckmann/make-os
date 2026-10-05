@@ -2,6 +2,7 @@
 // Überschreibungen je Agent: Autonomie, aktiv/aus, Modell, Bau-Priorität.
 // Map: { [agentId]: { autonomy?, enabled?, model?, buildNext? } }
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
@@ -26,7 +27,7 @@ export async function PUT(req: Request) {
   // Autonomie-Regler wirken in Kevins Kalender und Aufgaben — nur der Inhaber stellt sie (26.09.).
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const roh = body as Record<string, Record<string, unknown>>;
   if (!roh || typeof roh !== 'object' || Array.isArray(roh)) {
     return NextResponse.json({ ok: false, error: 'Ungültige Konfig.' }, { status: 400 });

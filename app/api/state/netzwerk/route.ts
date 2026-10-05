@@ -2,6 +2,7 @@
 // Kevins und Malins eigenes Netzwerk: Kontakte und die Chancen daran.
 // Bewusst leer beim Start — hier gehören nur echte Menschen rein.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -69,7 +70,7 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: Partial<NetzFile>;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Mehr als 2000 je Liste: ablehnen, nie still kürzen (28.09., K1).
   if ((Array.isArray(body.kontakte) && body.kontakte.length > 2000) || (Array.isArray(body.chancen) && body.chancen.length > 2000)) return NextResponse.json({ ok: false, error: 'Abgelehnt: höchstens 2000 Kontakte bzw. Chancen. Nichts gespeichert.' }, { status: 413 });
 
@@ -110,7 +111,7 @@ export async function PUT(req: Request) {
 export async function PATCH(req: Request) {
   if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: { ops?: ListenOp[] };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Mehr als 500 auf einmal: ablehnen, nie still kürzen (28.09., K1).
   if (Array.isArray(body.ops) && body.ops.length > 500) return NextResponse.json({ ok: false, error: `Abgelehnt: ${body.ops.length} Änderungen auf einmal — höchstens 500.` }, { status: 413 });
   const ops = Array.isArray(body.ops) ? body.ops : [];

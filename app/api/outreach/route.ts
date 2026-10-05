@@ -4,6 +4,7 @@
 // Kevins Stimme — als E-Mail UND als LinkedIn-Nachricht. Entwurf-Autonomie:
 // versendet wird NIE automatisch, Kevin prüft und schickt selbst (Gate ✋).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -25,7 +26,7 @@ const RECHT =
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { prospect?: ProspectIn; icp?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const p = body.prospect;
   if (!p?.company) return NextResponse.json({ error: 'prospect.company nötig.' }, { status: 400 });
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });
