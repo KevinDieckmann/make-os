@@ -145,7 +145,7 @@ void main(){
   if (r2 > 1.0) discard;
   // Feines Korn (Wolke) bzw. Stern mit hellem Kern und weichem Halo (Datensatz im Brain).
   float korn = exp(-r2 * 5.0) * (1.0 - r2);
-  float stern = exp(-r2 * 26.0) * 1.6 + exp(-r2 * 3.2) * 0.42 * (1.0 - r2);
+  float stern = exp(-r2 * 26.0) * 1.7 + exp(-r2 * 3.0) * 0.5 * (1.0 - r2);
   float w = mix(korn, stern, vStern);
   float a = clamp(vAlpha, 0.0, 2.0) * w;
   vec3 kern = mix(vFarbe, vec3(1.0), vStern * exp(-r2 * 40.0) * 0.55);

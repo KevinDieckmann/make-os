@@ -59,7 +59,8 @@ export interface BrainLayout {
   /** Punkt-Kennung je Puffer-Index (nur Datenpunkte). */
   ids: string[];
   /** Mitte der sichtbaren Cluster (für Beschriftung und Kamerafahrt). */
-  cluster: { bereich: KugelBereich; mitte: Vec3; anzahl: number }[];
+  /** `weite` = Winkelradius des ganzen Clusters (Bogenmaß) — die Beschriftung steht außerhalb davon. */
+  cluster: { bereich: KugelBereich; mitte: Vec3; anzahl: number; weite: number }[];
 }
 
 /** Punkte (schon nach Aktualität sortiert, neueste zuerst) → Puffer für den Motor. `huelle` = Zahl der Formpunkte. */
@@ -91,13 +92,14 @@ export function brainLayout(punkte: readonly BrainPunkt[], heute: string, huelle
     const mitte = BEREICH_MITTE[bereich];
     const arten = KUGEL_ARTEN.filter(a => g.has(a));
     const f = alsRgb(KUGEL_BEREICH_FARBE[bereich]);
-    let anzahl = 0;
+    let anzahl = 0, weite = 0.08;
     arten.forEach((art, j) => {
       const liste = g.get(art)!;
       anzahl += liste.length;
       // Unter-Cluster je Art um die Bereichsmitte; ein einzelner sitzt in der Mitte.
       const c = arten.length === 1 ? mitte : versetzt(mitte, 0.2 + 0.05 * arten.length, (j / arten.length) * Math.PI * 2 + 0.6);
       const radius = klemme(0.05 + 0.014 * Math.sqrt(liste.length), 0.05, 0.62);
+      weite = Math.max(weite, (arten.length === 1 ? 0 : 0.2 + 0.05 * arten.length) + radius);
       liste.forEach((pi, k) => {
         const p = punkte[pi];
         const zitter = (hashZahl(p.id) % 1000) / 1000;
@@ -108,13 +110,13 @@ export function brainLayout(punkte: readonly BrainPunkt[], heute: string, huelle
         pos.set([ort[0] * tief, ort[1] * tief, ort[2] * tief], i * 3);
         farbe.set(f, i * 3);
         // x Größe (Bedeutung + Aktualität) · y Helligkeit (Aktualität) · z Saat · w = Stern
-        wert.set([0.75 + fr * 0.45 + be * 0.8, 0.7 + fr * 0.6, zitter, 1], i * 4);
+        wert.set([0.8 + fr * 0.45 + be * 0.8, 0.85 + fr * 0.65, zitter, 1], i * 4);
         index.set(p.id, i);
         ids.push(p.id);
         i++;
       });
     });
-    cluster.push({ bereich, mitte, anzahl });
+    cluster.push({ bereich, mitte, anzahl, weite });
   }
   // Galaxie: Formpunkte im Volumen (nach außen dichter), leise; nahe einem Cluster leise in dessen Farbe (Farbnebel).
   if (huelle) {
@@ -125,11 +127,12 @@ export function brainLayout(punkte: readonly BrainPunkt[], heute: string, huelle
       // Gleichmäßige Richtung (Kugel-Stichprobe) — ein Drittel als Schleier in Richtung der Cluster gezogen.
       const zz = z() * 2 - 1, w = z() * Math.PI * 2, rr = Math.sqrt(1 - zz * zz);
       let d: Vec3 = [Math.cos(w) * rr, zz, Math.sin(w) * rr];
-      if (nebel.length && z() < 0.33) {
+      if (nebel.length && z() < 0.4) {
         const ziel = nebel[Math.floor(z() * nebel.length)];
         d = versetzt(ziel.mitte, ziel.weite * Math.sqrt(z()), z() * Math.PI * 2);
       }
-      const r = 0.42 + 0.58 * Math.sqrt(z());
+      // Zur Kante dichter (wie ein Fresnel-Rand): die meisten Formpunkte liegen in der äußeren Schale.
+      const r = 0.5 + 0.5 * Math.pow(z(), 0.32);
       pos.set([d[0] * r, d[1] * r, d[2] * r], i * 3);
       // Farbnebel: Anteil der Bereichsfarbe nach Nähe zur Clustermitte.
       let t = 0, nf = grau;
@@ -137,9 +140,9 @@ export function brainLayout(punkte: readonly BrainPunkt[], heute: string, huelle
         const naehe = klemme((d[0] * c.mitte[0] + d[1] * c.mitte[1] + d[2] * c.mitte[2] - Math.cos(c.weite)) / (1 - Math.cos(c.weite)), 0, 1);
         if (naehe > t) { t = naehe; nf = c.f; }
       }
-      const m = t * 0.75;
+      const m = t * 0.92;
       farbe.set([grau[0] + (nf[0] - grau[0]) * m, grau[1] + (nf[1] - grau[1]) * m, grau[2] + (nf[2] - grau[2]) * m], i * 3);
-      wert.set([0.3 + z() * 0.25, (0.11 + z() * 0.1) * (0.6 + 0.4 * r) + t * 0.16, z(), 0], i * 4);
+      wert.set([0.3 + z() * 0.28, (0.13 + z() * 0.12) * (0.55 + 0.45 * r) + t * 0.26, z(), 0], i * 4);
     }
   }
   return { daten: { pos: pos.subarray(0, i * 3), farbe: farbe.subarray(0, i * 3), wert: wert.subarray(0, i * 4), pickbar: ids.length }, index, ids, cluster };

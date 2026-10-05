@@ -223,7 +223,7 @@ describe('Brain-Layout (rein)', () => {
     expect(l.cluster.map(c => c.bereich)).toEqual(['markttraktion', 'planung', 'kalender', 'wissen', 'unternehmen']);
     // Sterne sind Sterne (w = 1), die Hülle ist leise und liegt im Inneren (Galaxie).
     expect(l.daten.wert[3]).toBe(1);
-    const h = punkte.length; expect(l.daten.wert[h * 4 + 3]).toBe(0); expect(l.daten.wert[h * 4 + 1]).toBeLessThan(0.4);
+    const h = punkte.length; expect(l.daten.wert[h * 4 + 3]).toBe(0); expect(l.daten.wert[h * 4 + 1]).toBeLessThan(0.6);
     expect(laenge([l.daten.pos[h * 3], l.daten.pos[h * 3 + 1], l.daten.pos[h * 3 + 2]])).toBeLessThanOrEqual(1.0001);
     for (const q of punkte) {
       const i = l.index.get(q.id)!;
@@ -260,5 +260,30 @@ describe('Brain: Bögen', () => {
     expect(bogenPunkt(a, b, 0).map(x => Math.round(x * 1e6) / 1e6)).toEqual([1, 0, 0]);
     expect(laenge(bogenPunkt(a, b, 1))).toBeCloseTo(1, 6);
     expect(laenge(bogenPunkt(a, b, 0.5))).toBeGreaterThan(1.3);
+  });
+});
+
+describe('Brain: Beschriftungen', () => {
+  it('liegen außerhalb ihres Clusters, nie auf Sternen, überlappen sich nicht und bleiben im Bild; hinten außerhalb des Umrisses', async () => {
+    const { schilderLegen } = await import('@/components/os/kugel/BrainKugel');
+    const schilder = [
+      { x: 120, y: 200, r: 30, w: 150, h: 18 }, { x: 150, y: 210, r: 25, w: 160, h: 18 },
+      { x: 250, y: 120, r: 30, w: 120, h: 18 }, { x: 190, y: 190, r: 20, w: 140, h: 18, hinten: true },
+    ];
+    const sterne = [{ x: 260, y: 90 }, { x: 140, y: 160 }, { x: 60, y: 230 }];
+    const u = { mitte: { x: 187, y: 187 }, radius: 120, breite: 375, hoehe: 375, sterne };
+    const lage = schilderLegen(schilder, u);
+    lage.forEach((p, i) => {
+      const s = schilder[i];
+      const l = p.x - s.w / 2, r = p.x + s.w / 2, o = p.y - s.h / 2, un = p.y + s.h / 2;
+      expect(l >= 0 && r <= 375 && o >= 0 && un <= 375, `Schild ${i} im Bild`).toBe(true);
+      const nx = Math.max(l, Math.min(s.x, r)), ny = Math.max(o, Math.min(s.y, un));
+      expect(Math.hypot(nx - s.x, ny - s.y), `Schild ${i} vom Cluster`).toBeGreaterThanOrEqual(s.r);
+      for (const st of sterne) expect(st.x > l && st.x < r && st.y > o && st.y < un, `Schild ${i} auf Stern`).toBe(false);
+      for (let j = 0; j < i; j++) expect(Math.abs(p.x - lage[j].x) < (s.w + schilder[j].w) / 2 && Math.abs(p.y - lage[j].y) < (s.h + schilder[j].h) / 2, `Schild ${i} über ${j}`).toBe(false);
+    });
+    const h = lage[3], s3 = schilder[3];
+    const fx = Math.max(h.x - s3.w / 2, Math.min(187, h.x + s3.w / 2)), fy = Math.max(h.y - s3.h / 2, Math.min(187, h.y + s3.h / 2));
+    expect(Math.hypot(fx - 187, fy - 187)).toBeGreaterThanOrEqual(117);
   });
 });

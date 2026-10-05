@@ -19,6 +19,11 @@ Kevin nach dem Upload: „Überarbeite das Brain nochmal … auch ZOE — das mu
   leisen Formpunkten im Volumen mit Farbnebel je Cluster; Datensätze als helle Sterne mit Halo (Größe = Verbindungen + Aktualität,
   leichte Tiefe je Stern), vorne heller/größer; Cluster-Beschriftung (anklicken → Kamera fährt hin, „‹ Gesamt“ zurück); Zeigen = Stern
   glüht, Verbindungen als leuchtende 3D-Bögen über der Kugel, Titelkarte im Glas-Stil; Legende filtert Bereiche ein/aus.
+- **Feinschliff Brain (05.10. spät):** Cluster-Schilder stehen AUSSERHALB ihrer Cluster (`schilderLegen`, rein, getestet): radial nach
+  außen, sonst über/unter/seitlich, sonst Raster-Suche über die Fläche — Kosten: Sterne darunter (Raster 16 px, Rückseite leichter) vor
+  eigenem Clusterkreis vor Kugelumriss (Rückseite), keine Überlappung, immer im Bild, Schatten aus `FARBE.grund`; neu gelegt jedes 6. Bild.
+  Handy: Kugel füllt 64 % (Platz für Schilder). Die doppelte Karte „Dein Brain“ ist weg — ohne offene Notiz sind Bühne + Frage-Bereich die
+  Übersicht. Galaxie heller und zur Kante verdichtet (Fresnel-Wirkung), Nebel sichtbarer, Sterne mit mehr Glut (Bloom 1,35).
 - **Unverändert:** Route `/api/brain/punkte` samt Filter- und Datenschutzregeln, Rückfälle (ohne WebGL ZoeHirn/Orb/Liste, reduzierte
   Bewegung = Standbild), Farben nur aus Token.
 - **Messung (Sandbox, M3, Headless-Chrome mit Metal):** ZOE 80 k 58–60 Bilder/s, ~0,1–0,2 ms CPU je Bild; Brain 30 k 60 Bilder/s,

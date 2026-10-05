@@ -17,7 +17,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useZurueck, nachOben } from './Verlauf';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { bloecke, inline, sichererLink, type Block, type Teil } from '@/lib/make-one/markdown';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, Segmente, Punkt, Chip, Zahl, Wahl, feld, LEUCHT, Spalten, Spalte, useBreit } from './ui';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, Segmente, Punkt, Chip, Wahl, feld, LEUCHT, Spalten, Spalte, useBreit } from './ui';
 import { Regeln } from './wissen/Regeln';
 import { Inbox } from './wissen/Inbox';
 import { BrainKugel } from './kugel/BrainKugel';
@@ -160,7 +160,6 @@ export function WissenView() {
   const [liste, setListe] = useState<Eintrag[] | null>(null);
   const [durchsucht, setDurchsucht] = useState<number | null>(null);
   const [offen, setOffen] = useState<Voll | null>(null);
-  const [laedtNotiz, setLaedtNotiz] = useState(false);
   // Die offene Notiz steht im Link (?n=) — jeder Sprung ist ein Verlaufseintrag, Zurück geht Notiz für Notiz zurück (25.09.).
   const router = useRouter();
   const n = useSearchParams().get('n');
@@ -229,9 +228,7 @@ export function WissenView() {
   }, [frage, bereich]);
 
   const laden = useCallback(async (id: string) => {
-    setLaedtNotiz(true);
     const d: Voll = await fetch(`/api/zoe/wissen?notiz=${encodeURIComponent(id)}`).then(r => r.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
-    setLaedtNotiz(false);
     setOffen(d);
     lesefenster.current?.scrollTo?.({ top: 0 });
     if (!breit) nachOben();
@@ -398,28 +395,7 @@ export function WissenView() {
         </>
       )}
     </Karte>
-  ) : (
-    <Karte i={2} akzent={LEUCHT.agenten}>
-      <Ueberschrift farbe={LEUCHT.agenten}>Dein Brain</Ueberschrift>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 14 }}>
-        <Zahl wert={stand ? String(stand.notizen) : undefined} label="Notizen für dich" farbe={LEUCHT.agenten} />
-        <Zahl wert={stand ? String(stand.jeWurzel.make ?? 0) : undefined} label="aus Obsidian" />
-        <Zahl wert={stand ? String(stand.privat) : undefined} label="davon privat" farbe={LEUCHT.beziehung} />
-      </div>
-      <div style={{ display: 'grid', gap: 2, marginBottom: 12 }}>
-        {BEREICHE.filter(b => stand?.jeBereich[b]).map(b => (
-          <button key={b} onClick={() => { setBereich(b); setModus('stoebern'); }} className="zeile-klick" style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none', background: 'transparent', color: C.ink, font: 'inherit', cursor: 'pointer', padding: '8px 6px', margin: '0 -6px', boxSizing: 'content-box', textAlign: 'left' }}>
-            <Punkt farbe={bereichFarbe(b)} groesse={8} />
-            <span style={{ flex: 1, fontSize: TYP.body }}>{b}</span>
-            <span style={{ fontSize: 13, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{stand?.jeBereich[b]}</span>
-          </button>
-        ))}
-      </div>
-      <Leer>
-        {laedtNotiz ? 'Öffne …' : 'Links fragen oder stöbern, hier lesen. ZOE sucht zuerst hier, bevor er etwas behauptet, und nennt dir die Quelle. Gepflegt wird in Obsidian — jede Notiz hat den Griff dorthin.'}
-      </Leer>
-    </Karte>
-  );
+  ) : null;
 
   // Der Inhalt des gewählten Reiters — EINE Stelle für breit und schmal (Praxis-Fund 04.10.: am Handy zeigten „Regeln“ und
   // „Inbox“ die Stöbern-Liste, weil der schmale Zweig nur zwei Fälle kannte).
@@ -438,14 +414,14 @@ export function WissenView() {
           <BrainKugel />
         </Karte>
       )}
-      {breit ? (
+      {/* Ohne offene Notiz ist die Bühne die Übersicht (05.10.: die frühere Karte „Dein Brain“ war doppelt) — darunter der Frage-Bereich.
+          Mit offener Notiz: links fragen/stöbern, rechts lesen. */}
+      {!offen ? <>{reiterInhalt}</> : breit ? (
         <Spalten verhaeltnis="1:1">
           <Spalte>{reiterInhalt}</Spalte>
           <Spalte klebt><div ref={lesefenster}>{leseKarte}</div></Spalte>
         </Spalten>
-      ) : offen ? leseKarte : (
-        <>{reiterInhalt}{leseKarte}</>
-      )}
+      ) : leseKarte}
     </Seite>
   );
 }

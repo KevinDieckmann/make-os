@@ -16,7 +16,7 @@ import { starteMotor, type KugelDaten, type Motor, type MotorOptionen } from './
 export const KUGEL_VORGABEN: Record<'gross' | 'symbol' | 'brain', Omit<MotorOptionen, 'ruhig' | 'farben' | 'nachBild'>> = {
   gross: { fps: 60, punktPx: 1.5, verlauf: true, drehTempo: 0.06, neigung: 0.3, fuellung: 0.74, einstieg: true, zeigerRadius: 0.4, flare: 0.34, grund: 0.06, tiefe: 0.6, bloom: 1.15, bloomAuto: true, bloomNurSterne: false },
   symbol: { fps: 24, punktPx: 1.15, verlauf: true, drehTempo: 0.14, neigung: 0.3, fuellung: 0.9, einstieg: true, zeigerRadius: 0, flare: 0, grund: 0.05, tiefe: 0.55, bloom: 0, bloomAuto: false, bloomNurSterne: false },
-  brain: { fps: 60, punktPx: 4.4, verlauf: false, drehTempo: 0.03, neigung: 0.26, fuellung: 0.84, einstieg: true, zeigerRadius: 0.07, flare: 0.05, grund: 0.7, tiefe: 0.7, bloom: 1.1, bloomAuto: true, bloomNurSterne: true },
+  brain: { fps: 60, punktPx: 4.4, verlauf: false, drehTempo: 0.03, neigung: 0.26, fuellung: 0.84, einstieg: true, zeigerRadius: 0.07, flare: 0.05, grund: 0.55, tiefe: 0.7, bloom: 1.35, bloomAuto: true, bloomNurSterne: true },
 };
 
 export const KUGEL_FARBEN = { a: alsRgb(KUGEL.smaragd), b: alsRgb(KUGEL.granat), glut: alsRgb(KUGEL.glut) };

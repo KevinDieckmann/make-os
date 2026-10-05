@@ -79,6 +79,8 @@ export interface Motor {
   /** Wo ein Punkt (Index) bzw. ein beliebiger Ort auf/über der Kugel gerade auf dem Bildschirm steht (CSS-Pixel). */
   bildschirm(index: number): { x: number; y: number; vorne: boolean } | null;
   ort(p: Vec3): { x: number; y: number; vorne: boolean };
+  /** Radius der Kugel (Radius 1) auf dem Bildschirm in CSS-Pixeln — Umriss für Beschriftungen. */
+  schirmRadius(): number;
   /** Drehung anhalten (z. B. solange ein Punkt gezeigt wird — Titel und Bögen bleiben dann stehen). */
   halte(an: boolean): void;
   /** Kamera fährt weich auf die Richtung `c` (näher: Anteil des Abstands, z. B. 0,6) — null = zurück in die Gesamtsicht. */
@@ -452,6 +454,7 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
       return amSchirm([daten.pos[i * 3], daten.pos[i * 3 + 1], daten.pos[i * 3 + 2]]);
     },
     ort: amSchirm,
+    schirmRadius() { const a = aufBildschirm([0, 0, 0], drehung(0, 0), proj, abstand, breiteCss, hoeheCss), b = aufBildschirm([1, 0, 0], drehung(0, 0), proj, abstand, breiteCss, hoeheCss); return Math.abs(b.x - a.x); },
     halte(an) { halten = an; },
     fliegeZu(c, naeher = 0.62) {
       if (!c) { fahrt = null; neuZeichnen(); return; }

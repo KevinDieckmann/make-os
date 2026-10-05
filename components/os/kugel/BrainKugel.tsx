@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP, KUGEL_BEREICH_FARBE, RAND, LICHT_GLAS, ZIEL } from '@/lib/make-one/design';
 import { ART_NAME, BEREICH_NAME, KUGEL_BEREICHE, nachbarn, wegFuer, type BrainPunkt, type KugelArt, type KugelBereich } from '@/lib/brain/kugel';
 import { Kugel } from './Kugel';
-import { brainLayout, HUELLE_PUNKTE, HUELLE_PUNKTE_HANDY, type BrainLayout } from './brain-layout';
+import { brainLayout, versetzt, HUELLE_PUNKTE, HUELLE_PUNKTE_HANDY, type BrainLayout } from './brain-layout';
 import type { Motor } from './motor';
 import { RUHE, norm, type Vec3 } from './geometrie';
 import { Leer, Punkt, feld, useHandy } from '../ui';
@@ -42,6 +42,88 @@ export function bogenPunkt(a: Vec3, b: Vec3, t: number): Vec3 {
   const la = Math.hypot(a[0], a[1], a[2]), lb = Math.hypot(b[0], b[1], b[2]);
   const h = (la + (lb - la) * t) * (1 + BOGEN_HOEHE * d * Math.sin(Math.PI * t));
   return [m[0] * h, m[1] * h, m[2] * h];
+}
+
+
+export interface Schild { x: number; y: number; r: number; w: number; h: number; /** Cluster liegt auf der Rückseite. */ hinten?: boolean }
+export interface Umgebung {
+  /** Kugelmittelpunkt und -radius auf dem Bildschirm (px). */
+  mitte: { x: number; y: number }; radius: number;
+  breite: number; hoehe: number;
+  /** Sterne auf dem Bildschirm — kein Schild soll auf ihnen liegen; `g` = Gewicht (vorne schwer, hinten leichter, Vorgabe 1). */
+  sterne?: readonly { x: number; y: number; g?: number }[];
+}
+/**
+ * Beschriftungen außerhalb ihrer Cluster legen (rein). Je Schild werden Richtungen probiert — radial vom Kugelmittelpunkt
+ * nach außen, dann über/unter dem Cluster, dann seitlich — und der Abstand schrittweise vergrößert, bis die Box (a) den
+ * Clusterkreis nicht berührt, (b) keinen Stern der Vorderseite überdeckt, (c) kein anderes Schild überlappt und (d) ganz im Bild
+ * liegt. Schilder von Clustern auf der Rückseite stehen außerhalb des Kugelumrisses. Liefert die Mitten.
+ */
+export function schilderLegen(schilder: readonly Schild[], u: Umgebung, luft = 10): { x: number; y: number }[] {
+  const gelegt: { x: number; y: number; w: number; h: number }[] = [];
+  // Sterne in ein Raster (16 px) — die Prüfung „liegt ein Stern unter der Box?“ fragt nur die berührten Zellen.
+  const Z = 16, raster = new Map<number, { x: number; y: number; g?: number }[]>();
+  const zelle = (cx: number, cy: number) => cx * 4096 + cy;
+  for (const p of u.sterne ?? []) { const k = zelle(Math.floor(p.x / Z), Math.floor(p.y / Z)); const l = raster.get(k); if (l) l.push(p); else raster.set(k, [p]); }
+  /** Wie viele Sterne liegen unter der Box (mit Rand für ihren Halo)? */
+  const sterneIn = (l: number, r: number, o: number, unten: number) => {
+    let n = 0;
+    for (let cx = Math.floor((l - 8) / Z); cx <= Math.floor((r + 8) / Z); cx++) for (let cy = Math.floor((o - 8) / Z); cy <= Math.floor((unten + 8) / Z); cy++) {
+      for (const p of raster.get(zelle(cx, cy)) ?? []) if (p.x > l - 8 && p.x < r + 8 && p.y > o - 8 && p.y < unten + 8) n += p.g ?? 1;
+    }
+    return n;
+  };
+  /** Kosten eines Platzes: unendlich = verboten (außerhalb des Bilds, über einem anderen Schild), sonst gewichtete Störungen. */
+  const kosten = (x: number, y: number, s: Schild) => {
+    const l = x - s.w / 2, r = x + s.w / 2, o = y - s.h / 2, unten = y + s.h / 2;
+    if (u.breite && (l < 4 || r > u.breite - 4)) return Infinity;
+    if (u.hoehe && (o < 2 || unten > u.hoehe - 2)) return Infinity;
+    for (const g of gelegt) if (Math.abs(g.x - x) < (g.w + s.w) / 2 + 6 && Math.abs(g.y - y) < (g.h + s.h) / 2 + 3) return Infinity;
+    // Weich gewichtet: Sterne unter dem Schild wiegen am schwersten, dann der eigene Clusterkreis, dann (Rückseite) der Kugelumriss.
+    // So findet sich auch auf engen Flächen ein Platz, der höchstens Hülle überdeckt — nie zuerst Sterne.
+    let k = sterneIn(l, r, o, unten) * 10;
+    const nx = Math.max(l, Math.min(s.x, r)), ny = Math.max(o, Math.min(s.y, unten));
+    if (Math.hypot(nx - s.x, ny - s.y) < s.r + 4) k += 5;
+    if (s.hinten) { const fx = Math.max(l, Math.min(u.mitte.x, r)), fy = Math.max(o, Math.min(u.mitte.y, unten)); if (Math.hypot(fx - u.mitte.x, fy - u.mitte.y) < u.radius * 0.98) k += 3; }
+    return k;
+  };
+  return schilder.map(s => {
+    const dx = s.x - u.mitte.x, dy = s.y - u.mitte.y, l = Math.hypot(dx, dy);
+    const radial = l < 8 ? { x: 0, y: -1 } : { x: dx / l, y: dy / l };
+    const senk = radial.y <= 0 ? -1 : 1;
+    const richtungen = [radial, { x: 0, y: senk }, { x: 0, y: -senk }, { x: radial.x >= 0 ? 1 : -1, y: 0 }, { x: radial.x >= 0 ? -1 : 1, y: 0 }];
+    let best: { x: number; y: number; k: number } | null = null;
+    suche: for (const d of richtungen) {
+      const start = s.r + luft + Math.abs(d.x) * s.w / 2 + Math.abs(d.y) * s.h / 2;
+      for (let weg = start; weg < start + Math.max(320, u.breite, u.hoehe); weg += 6) {
+        const x = s.x + d.x * weg, y = s.y + d.y * weg, k = kosten(x, y, s);
+        if (k === Infinity) continue;
+        if (k === 0) { best = { x, y, k: 0 }; break suche; }
+        const kk = k + (weg - start) / 400;
+        if (!best || kk < best.k) best = { x, y, k: kk };
+      }
+    }
+    // Auf den Strahlen kein ganz freier Platz (enge Fläche, Handy): die ganze Fläche im Raster absuchen — der Platz mit den
+    // geringsten Kosten gewinnt, bei Gleichstand der nächste am Cluster.
+    if ((!best || best.k > 0) && u.breite && u.hoehe) {
+      for (let y = s.h / 2 + 2; y <= u.hoehe - s.h / 2 - 2; y += 14) for (let x = s.w / 2 + 4; x <= u.breite - s.w / 2 - 4; x += 16) {
+        const k = kosten(x, y, s);
+        if (k === Infinity) continue;
+        const kk = k + Math.hypot(x - s.x, y - s.y) / 400;
+        if (!best || kk < best.k) best = { x, y, k: kk };
+      }
+    }
+    // Gar kein Platz: radial außen, im Bild gehalten.
+    if (!best) {
+      const weg = s.r + luft + Math.abs(radial.x) * s.w / 2 + Math.abs(radial.y) * s.h / 2;
+      best = {
+        x: u.breite ? Math.min(Math.max(s.x + radial.x * weg, s.w / 2 + 4), u.breite - s.w / 2 - 4) : s.x + radial.x * weg,
+        y: u.hoehe ? Math.min(Math.max(s.y + radial.y * weg, s.h / 2 + 2), u.hoehe - s.h / 2 - 2) : s.y + radial.y * weg, k: 0,
+      };
+    }
+    gelegt.push({ x: best.x, y: best.y, w: s.w, h: s.h });
+    return { x: best.x, y: best.y };
+  });
 }
 
 export function BrainKugel() {
@@ -83,7 +165,7 @@ export function BrainKugel() {
   const aktivNachbarn = useMemo(() => (aktiv ? netz.get(aktiv) ?? KEINE : KEINE), [aktiv, netz]);
 
   // Was der Bild-Takt braucht, ohne React je Bild zu bemühen.
-  const stand = useRef<{ layout: BrainLayout; aktiv: string | null; nachbarn: readonly string[]; fokus: KugelBereich | null; gezeichnet: boolean }>({ layout, aktiv, nachbarn: aktivNachbarn, fokus, gezeichnet: false });
+  const stand = useRef<{ layout: BrainLayout; aktiv: string | null; nachbarn: readonly string[]; fokus: KugelBereich | null; gezeichnet: boolean; takt: number; schilderGelegt: boolean }>({ layout, aktiv, nachbarn: aktivNachbarn, fokus, gezeichnet: false, takt: 0, schilderGelegt: false });
   stand.current = { ...stand.current, layout, aktiv, nachbarn: aktivNachbarn, fokus };
 
   const nachBild = useCallback(() => {
@@ -92,16 +174,33 @@ export function BrainKugel() {
     const s = stand.current;
     const pos = s.layout.daten.pos;
     const ortVon = (id: string): Vec3 | null => { const i = s.layout.index.get(id); return i === undefined ? null : [pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]]; };
-    // Cluster-Beschriftung: über der Clustermitte, hinten leise.
-    for (const k of s.layout.cluster) {
+    // Cluster-Beschriftung: AUSSERHALB des Clusters (radial nach außen), ohne Überlappung, hinten leise — nie über Sternen.
+    const breite = flaeche.current?.clientWidth ?? 0, hoehe = flaeche.current?.clientHeight ?? 0;
+    // Die Schilder wandern langsam — neu gelegt wird nur jedes 6. Bild (die CSS-Überblendung glättet), sonst kostet es CPU.
+    s.takt = (s.takt + 1) % 6;
+    if (s.takt === 0 || !s.schilderGelegt) {
+    s.schilderGelegt = true;
+    const mitteSchirm = m.ort([0, 0, 0]);
+    const liste = s.layout.cluster.map(k => {
       const el = schilder.current.get(k.bereich);
-      if (!el) continue;
-      const p = m.ort([k.mitte[0] * 1.14, k.mitte[1] * 1.14, k.mitte[2] * 1.14]);
-      // Im Bild halten: am Handy stünden die seitlichen Schilder sonst halb über dem Rand.
-      const halb = el.offsetWidth / 2, breite = flaeche.current?.clientWidth ?? 0, hoehe = flaeche.current?.clientHeight ?? 0;
-      const x = breite ? Math.min(Math.max(p.x, halb + 6), breite - halb - 6) : p.x, y = hoehe ? Math.min(Math.max(p.y, 24), hoehe - 24) : p.y;
-      el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
-      el.style.opacity = p.vorne ? (s.fokus && s.fokus !== k.bereich ? '0.35' : '1') : '0.22';
+      const p = m.ort(k.mitte);
+      let r = 0;
+      for (let q = 0; q < 6; q++) { const e = m.ort(versetzt(k.mitte, k.weite, (q * Math.PI) / 3)); r = Math.max(r, Math.hypot(e.x - p.x, e.y - p.y)); }
+      return { k, el, p, schild: { x: p.x, y: p.y, r, w: el?.offsetWidth ?? 80, h: Math.min(el?.offsetHeight ?? 22, 22), hinten: !p.vorne } };
+    });
+    // Alle Sterne (≤ 3000, je Bild projiziert — Bruchteile einer Millisekunde); die der Rückseite wiegen leichter.
+    const sterne: { x: number; y: number; g: number }[] = [];
+    for (let i = 0; i < s.layout.ids.length; i++) { const q = m.bildschirm(i); if (q) sterne.push({ x: q.x, y: q.y, g: q.vorne ? 1 : 0.35 }); }
+    // Die größten Cluster zuerst: sie bekommen den besten Platz.
+    const reihe = liste.map((x, i) => i).sort((a, b) => liste[b].k.anzahl - liste[a].k.anzahl);
+    const gelegt = schilderLegen(reihe.map(i => liste[i].schild), { mitte: mitteSchirm, radius: m.schirmRadius(), breite, hoehe, sterne });
+    const lage: { x: number; y: number }[] = [];
+    reihe.forEach((i, j) => { lage[i] = gelegt[j]; });
+    liste.forEach(({ k, el, p }, i) => {
+      if (!el) return;
+      el.style.transform = `translate(${lage[i].x.toFixed(1)}px, ${lage[i].y.toFixed(1)}px) translate(-50%, -50%)`;
+      el.style.opacity = p.vorne ? (s.fokus && s.fokus !== k.bereich ? '0.45' : '1') : '0.4';
+    });
     }
     // Bögen und Titel.
     const r = c.getBoundingClientRect();
@@ -140,9 +239,8 @@ export function BrainKugel() {
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     const t = titelKarte.current, p = m.ort(a);
     if (t) {
-      const breite = flaeche.current?.clientWidth ?? 400;
       t.style.visibility = 'visible';
-      t.style.transform = `translate(${Math.min(Math.max(8, p.x + 16), breite - 240).toFixed(1)}px, ${Math.max(8, p.y - 58).toFixed(1)}px)`;
+      t.style.transform = `translate(${Math.min(Math.max(8, p.x + 16), (breite || 400) - 240).toFixed(1)}px, ${Math.max(8, p.y - 58).toFixed(1)}px)`;
     }
   }, [nachId]);
 
@@ -212,6 +310,8 @@ export function BrainKugel() {
             art="brain"
             daten={layout.daten}
             zustand={RUHE}
+            // Am Handy füllt die Kugel weniger der Fläche — sonst ist neben den Clustern kein Platz für die Schilder.
+            optionen={handy ? { fuellung: 0.64 } : undefined}
             nachBild={nachBild}
             onMotor={m => { motor.current = m; }}
             rueckfall={<RueckfallMerker aus={() => setMitGl(false)} />}
@@ -223,22 +323,22 @@ export function BrainKugel() {
               onClick={() => fliege(fokus === k.bereich ? null : k.bereich)}
               aria-label={`${BEREICH_NAME[k.bereich]}: ${k.anzahl} Datensätze — ${fokus === k.bereich ? 'zurück zur Gesamtsicht' : 'hinfahren'}`}
               style={{
-                position: 'absolute', left: 0, top: 0, transform: 'translate(-9999px, 0)', minHeight: ZIEL.handy, padding: '0 10px', border: 'none',
+                position: 'absolute', left: 0, top: 0, transform: 'translate(-9999px, 0)', minHeight: ZIEL.handy, padding: '0 8px', border: 'none',
                 background: 'transparent', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.12em',
-                textTransform: 'uppercase', color: KUGEL_BEREICH_FARBE[k.bereich], whiteSpace: 'nowrap', transition: 'opacity .4s ease',
-                textShadow: `0 0 12px ${KUGEL_BEREICH_FARBE[k.bereich]}80`,
+                textTransform: 'uppercase', color: KUGEL_BEREICH_FARBE[k.bereich], whiteSpace: 'nowrap', transition: 'opacity .4s ease, transform .1s linear',
+                textShadow: `0 0 3px ${C.grund}, 0 0 8px ${C.grund}, 0 0 16px ${KUGEL_BEREICH_FARBE[k.bereich]}66`,
               }}>
               {BEREICH_NAME[k.bereich]} <span style={{ color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{k.anzahl}</span>
             </button>
           ))}
           {fokus && (
             <button type="button" onClick={() => fliege(null)} style={{
-              position: 'absolute', left: 12, top: 12, minHeight: ZIEL.handy, padding: '0 14px', borderRadius: 999, cursor: 'pointer',
+              position: 'absolute', left: 12, top: 12, zIndex: 3, minHeight: ZIEL.handy, padding: '0 14px', borderRadius: 999, cursor: 'pointer',
               background: LICHT_GLAS.flaeche, border: `1px solid ${RAND.stark}`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien,
             }}>‹ Gesamt</button>
           )}
           <div ref={titelKarte} role="presentation" style={{
-            position: 'absolute', left: 0, top: 0, visibility: 'hidden', width: 232,
+            position: 'absolute', left: 0, top: 0, zIndex: 2, visibility: 'hidden', width: 232,
             pointerEvents: auswahl ? 'auto' : 'none', background: LICHT_GLAS.flaeche,
             border: `1px solid ${aktivPunkt ? LICHT_GLAS.rand(KUGEL_BEREICH_FARBE[aktivPunkt.bereich]) : RAND.stark}`,
             boxShadow: aktivPunkt ? LICHT_GLAS.schein(KUGEL_BEREICH_FARBE[aktivPunkt.bereich]) : undefined,
