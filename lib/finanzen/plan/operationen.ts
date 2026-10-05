@@ -34,7 +34,7 @@ import { pruefePlanszenarien } from '@/lib/finanzen/szenarien';
 import { pruefeSteuern } from '@/lib/finanzen/steuern';
 import { pruefeSchwellen } from '@/lib/finanzen/schwellen';
 import { KAL, istUnterseite } from './hilfen';
-import { GRENZE_PLAN_ZELLEN, ZELLE_MUSTER, zelleTeile } from '@/lib/finanzen/handwerte';
+import { GRENZE_PLAN_ZELLEN, ZELLE_MUSTER, zelleTeile, HAND_FELDER } from '@/lib/finanzen/handwerte';
 
 import { localDay } from '@/lib/zeit';
 export interface Operation {
@@ -202,6 +202,10 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       if (teile.length !== 2) throw new OperationUngueltig('Eine Planzelle ist „<Zeile>:<Monat>“.');
       const t = ZELLE_MUSTER.exec(teile[1]);
       if (!t || Number(t[1]) > d.monate.length) throw new OperationUngueltig(`Planzelle unbrauchbar: ${teile[1].slice(0, 60)}`);
+      // Formel-Prüfung 05.10.: Monat 0 gibt es nur für Werte ohne Monat (Abschluss, `ab.*`) — und die nie in einem Monat. Vorher nahm der
+      // Schreibweg z. B. `ug.konto:0` still an, gerechnet wurde damit nie.
+      const zt0 = zelleTeile(teile[1]);
+      if (zt0 && (zt0.m === 0) !== (HAND_FELDER[zt0.id]?.ort === 'abschluss')) throw new OperationUngueltig(zt0.m === 0 ? `Monat 0 gibt es nur für Werte ohne Monat (${teile[1].slice(0, 60)}).` : `Dieser Wert hat keinen Monat — Monat 0 (${teile[1].slice(0, 60)}).`);
       // Handwert nur in einem Szenario (`<kennung>@<szenario>:<monat>`): das Szenario muss es geben.
       const zt = zelleTeile(teile[1]);
       if (zt?.szenario !== null && zt?.szenario !== undefined && !(d.planszenarien ?? []).some(p => p.id === zt.szenario)) throw new OperationUngueltig('Dieses Szenario gibt es nicht.');

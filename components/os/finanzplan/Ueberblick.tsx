@@ -139,7 +139,7 @@ export function Lage() {
           <div>
             <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Wo sollten wir stehen?</div>
             {zeile(`Flexibel ${lab[ji] ?? ''} bis Tag ${tag}`, <><Geld v={flexIst} farbe={flexIst > (flexPlan * tag) / tim * 1.05 ? LEUCHT.achtung : LEUCHT.gut} /> / <Geld v={(flexPlan * tag) / tim} farbe={C.inkDim} /> €</>)}
-            {zeile('Privat Luft ab Okt', <><Geld v={pr[0]?.luft} /> €</>)}
+            {zeile(`Privat Luft ${monatLabel(d, aw.m0)}`, <><Geld v={pr[aw.m0 - 1]?.luft} /> €</>)}
             {zeile(`${UG_KURZ} frei Dez 26`, <><Geld v={ug[2]?.frei} /> €</>)}
             {ng && zeile('Notgroschen Dez 27', <><Geld v={pr[14]?.angespart} farbe={ng.status === 'verfehlt' ? LEUCHT.achtung : LEUCHT.gut} /> / <Geld v={ng.ziel.ziel} farbe={C.inkDim} /> €</>)}
           </div>
@@ -302,7 +302,7 @@ export function LageBusiness() {
           </Karte>
         </Spalte>
       </Spalten>
-      <Hinweis>Kennzahlen der Gesellschaften: {finanzOrtName('ug')}, {finanzOrtName('kdv')} und {finanzOrtName('kdc')}. {sicht === 'business' ? 'Privat (Haushalt, Konten, Luft, private Ziele) ist für dieses Konto nicht freigegeben.' : 'Die ganze Planung — auch Privat — steht in den Reitern darüber; die privaten Kennzahlen zeigt die Lage unter Finanzen › Privat.'} Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
+      <Hinweis>Kennzahlen der Gesellschaften: {finanzOrtName('ug')}, {finanzOrtName('kdv')} und {finanzOrtName('kdc')}. {sicht === 'business' ? 'Der Business-Bereich zeigt nur die Gesellschaften.' : 'Die privaten Kennzahlen zeigt die Lage im Privat-Bereich.'} Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
     </>
   );
 }

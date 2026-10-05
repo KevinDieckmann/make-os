@@ -119,9 +119,12 @@ export const prozent = (v: number, dezimal = 0) => `${eur(v * 100, dezimal)} %`;
  * „€“ und Leerzeichen ignoriert. Leer → null; Unsinn → NaN.
  */
 export function parseBetrag(eingabe: string): number | null {
-  let s = String(eingabe ?? '').trim().replace(/\s|€/g, '');
+  // Formel-Prüfung 05.10.: „%“ wird wie „€“ ignoriert (Prozentfelder rechnen selbst um); englische Tausender „1,234.50“ sind 1.234,50
+  // (vorher 1,2345 — ein Komma vor einem Punkt ist immer ein Tausender-Trenner).
+  let s = String(eingabe ?? '').trim().replace(/\s|€|%/g, '');
   if (s === '') return null;
-  if (/,/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
+  if (/^-?\d{1,3}(,\d{3})+\.\d+$/.test(s) || /^-?\d{1,3}(,\d{3}){2,}$/.test(s)) s = s.replace(/,/g, '');
+  else if (/,/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
   else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
   const v = Number(s);
   return Number.isNaN(v) ? NaN : v;

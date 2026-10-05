@@ -29,6 +29,16 @@ export const PLAN_SICHTEN: PlanSicht[] = ['privat', 'business'];
 export type PlanBereich = 'privat' | 'business';
 export const bereichAus = (wert: string | null | undefined): PlanBereich => (wert === 'business' ? 'business' : 'privat');
 
+/**
+ * Die Datensicht einer Anfrage (05.10., Kevin: „Bei Business kann ich niemals auf Privat gehen … Privat kann Business sehen, aufrufen und
+ * bearbeiten, aber nicht umgekehrt.“): Business, wenn die Anfrage aus dem Business-Bereich kommt (`?sicht=business` — eine SICHT-Entscheidung,
+ * gilt für jeden, auch den Inhaber) ODER das Konto kein Privat-Recht hat (`finanzRecht: 'business'` — eine RECHTE-Entscheidung, die keine
+ * Adresse aufheben kann). Sonst die volle Sicht (Privat sieht alles, auch Business).
+ */
+export function wirksameSicht(recht: PlanSicht, anfrage: string | null | undefined): PlanSicht {
+  return recht === 'business' || anfrage === 'business' ? 'business' : 'privat';
+}
+
 const BUSINESS_EINHEITEN: Einheit[] = ['ug', 'kdv', 'selbststaendigkeit'];
 const istBusinessEinheit = (e: unknown): boolean => typeof e === 'string' && (BUSINESS_EINHEITEN as string[]).includes(e);
 

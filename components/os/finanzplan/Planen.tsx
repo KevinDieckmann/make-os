@@ -34,7 +34,7 @@ function useZeilenDialog() {
 
 // ── Privat ──────────────────────────────────────────────────────────────────
 export function Privat() {
-  const { d, dd, pr, h, sz, geh } = usePlan();
+  const { d, dd, pr, h, sz, geh, aw } = usePlan();
   const zd = useZeilenDialog();
   const L = letzterVoller(d);
   const P = (m: number) => pr[m - 1];
@@ -68,7 +68,8 @@ export function Privat() {
     { h: 'Ø 3 M', t: 'IST der letzten drei vollen Monate', get: (r: DatenZeile) => { const v = schnitt(r, 3); return v == null ? '' : <span style={{ color: r.z && r.z.typ !== 'sparen' && v > r.z.soll * 1.1 ? LEUCHT.achtung : undefined }}>{eur(v)}</span>; } },
     { h: 'Ø 6 M', t: 'IST der letzten sechs vollen Monate', get: (r: DatenZeile) => { const v = schnitt(r, 6); return v == null ? '' : eur(v); } },
   ];
-  const p1 = P(1);
+  // Formel-Prüfung 05.10.: die Kacheln zeigen den laufenden Monat (Stichtag) — vorher fest Okt 26, auch Monate später.
+  const p1 = P(aw.m0), m0Label = monatLabel(d, aw.m0);
   const flexIst = d.privatBudget.filter(z => z.typ === 'flex').reduce((s, z) => s + istSchnitt(h.zeilen[z.id], 3, L), 0);
   const fixIst = d.privatBudget.filter(z => z.typ === 'fix').reduce((s, z) => s + istSchnitt(h.zeilen[z.id], 3, L), 0);
   const topfDez27 = d.privatBudget.filter(z => z.typ === 'jahr').reduce((s, z) => s + (pr[14]?.toepfe[z.id] ?? 0), 0);
@@ -82,8 +83,8 @@ export function Privat() {
         {topf('Fixkosten je Monat', p1?.fix ?? 0, fixIst, <>Ø IST <Geld v={fixIst} farbe={C.inkDim} /> € · steht fest</>, LEUCHT.puls)}
         {topf('Flexibel je Monat', p1?.flex ?? 0, flexIst, <>Ø IST <Geld v={flexIst} farbe={C.inkDim} /> €{flexIst > (p1?.flex ?? 0) ? <span style={{ color: LEUCHT.kritisch }}> · {eur(flexIst - (p1?.flex ?? 0))} drüber</span> : null}{roll ? <> · Übertrag <Geld v={roll} farbe={C.inkDim} /> €</> : null}</>, C.aktiv)}
         {topf('Jahreskosten-Topf', p1?.jahr ?? 0, 0, <>Topf Dez 27: <Geld v={topfDez27} farbe={C.inkDim} /> €</>, KUPFER)}
-        {topf('Sparen', p1?.sparenSoll ?? 0, 0, <>+ Luft <Geld v={p1?.luft} farbe={C.inkDim} /> € im Okt</>, LILA)}
-        <Kachel label="Verfügbar Okt 26" wert={<><Geld v={p1?.verfuegbar} /> €</>} unter={<>Luft <Geld v={p1?.luft} /> € · Ø IST Einnahmen <Geld v={istSchnitt(h.einnahmen, 3, L)} farbe={C.inkDim} /> €</>} />
+        {topf('Sparen', p1?.sparenSoll ?? 0, 0, <>+ Luft <Geld v={p1?.luft} farbe={C.inkDim} /> € im {m0Label}</>, LILA)}
+        <Kachel label={`Verfügbar ${m0Label}`} wert={<><Geld v={p1?.verfuegbar} /> €</>} unter={<>Luft <Geld v={p1?.luft} /> € · Ø IST Einnahmen <Geld v={istSchnitt(h.einnahmen, 3, L)} farbe={C.inkDim} /> €</>} />
       </Kacheln>
       <Karte i={1}>
         <Blatt zeilen={zeilen} titel={`Privat · ${sz.name}`} hist extra={extra} werkzeuge={<Etikett einheit="privat" text="Kevin & Malin" />} onZeile={zd.oeffne} onNeueZeile={zd.neu} onDrill={(i, z) => geh('buchungen', { monat: i, zeile: z })} />

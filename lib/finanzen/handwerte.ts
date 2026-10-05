@@ -108,6 +108,7 @@ export const HAND_FELDER: Record<string, HandFeld> = {
 
   // ── Selbstständigkeit (Kennung kdc) ──
   'kdc.umsatz': f('Umsatz', 'kdc', 'Ergebnis, Einkommen- und Gewerbesteuer, Entnahme-Anteil und den Eingang (Abweichung mit dem Zahlungsziel des Arbeitsplans, sonst im selben Monat)', { summe: true }),
+  'kdc.malin': f('Gehalt 2 brutto (über die Selbstständigkeit)', 'kdc', 'Personal (mit Arbeitgeberanteil), Ergebnis, Steuer, Konto; Privat folgt der Formel'),
   'kdc.kosten': f('Kosten gesamt', 'kdc', 'Ergebnis, Steuern, Auszahlungen', { summe: true }),
   'kdc.gewinn': f('Ergebnis vor Steuern', 'kdc', 'Einkommen- und Gewerbesteuer, Entnahme-Anteil', { summe: true }),
   'kdc.kst': f('Körperschaftsteuer', 'kdc', ERTRAG),

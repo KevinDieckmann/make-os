@@ -79,7 +79,10 @@ describe('Nicht betroffene Teile bleiben exakt gleich (Gold aus c83cb1f)', () =>
     expect(aw.frei.ug).toBeCloseTo(v.awFrei.ug, 9); expect(aw.frei.kdv).toBeCloseTo(v.awFrei.kdv, 9); expect(aw.frei.privat).toBeCloseTo(v.awFrei.privat, 9);
     expect(aw.runway).toEqual(v.awRunway);
     expect(aw.frei.gesamt).toBeCloseTo(v.awFrei.gesamt + aw.frei.kdc, 9);
-    expect(aw.frei.kdc).toBeCloseTo(planGold().selbst.kontoStart, 9);   // ohne Bausteine der Selbstständigkeit steht nur das Konto
+    // Formel-Prüfung 05.10. (bewusst geändert): Gehalt 2 läuft vor der GmbH (malinAb 3) über die Selbstständigkeit — deren Konto trägt jetzt die
+    // Kosten (2.500 × 1,2 = 3.000 im Okt 26). Vorher: frei = Kontostart 5.000 (Geld aus dem Nichts), nachher 2.000.
+    const a = planGold().annahmen;
+    expect(aw.frei.kdc).toBeCloseTo(planGold().selbst.kontoStart - (aw.m0 < a.malinAb ? a.malinBrutto * (1 + a.agAnteil) : 0), 9);
   });
 });
 

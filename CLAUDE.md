@@ -1722,19 +1722,16 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
   Szenario › alle › Formel, nur über `planMitSzenario` (rechneMit); Umsatz-Summe von Hand zieht den Eingang mit (Zahlungsziel-Vorgabe des
   Arbeitsplans, `Zusatz.umsatzZiel`); Steuer-Handwerte wandern in die Quartals-Vorauszahlungen. Details: `FINANZPLANUNG_JETZT.md` › „Jede Zahl bearbeitbar“.
 
-- **Finanzplanung unter Finanzen › Privat und › Business — beide komplett, separat einstellbar (04.10. spät, Kevin: „Ich will im Business
-  meine Planung haben … immer sehen können. Das ist der USP.“; ersetzt die Business-Filterung nach Adresse vom selben Tag):** EINE Komponente
-  `Finanzplan({ bereich, eingebettet })` als Reiter „Finanzplanung“ in `FinanzenView` (`/os/finanzen?s=finanzplanung&space=privat|business&u=…`,
-  `/os/finanzplan?…` leitet weiter). **Daten entscheidet NUR der Server aus dem Konto** (`planZugangFuer` in lib/finanzen/haushalt/zugriff.ts):
-  der Haushalt des Inhabers (Kevin + Malin) sieht in BEIDEN Bereichen alles; nur Konten mit `finanzRecht: 'business'` (Teammitglieder/Partner
-  ohne Privatzugang, spätere Kunden-Rollen; setzt der Inhaber über `PUT /api/konto/haushalt`, nie am Inhaber selbst) bekommen
-  `businessSicht(d)` und 403 auf Privat-Pfade (`businessPfadErlaubt`) und haben KEINEN Zugang zu den Haushaltsfinanzen (`haushaltFuer` → null).
-  Die Adresse wählt nur den **Bereich**: eigenes Planszenario je Bereich (`FinanzDaten.bereiche.<privat|business>.arbeitsplan`, null = Basis;
-  fehlt = gemeinsamer `arbeitsplan`; `arbeitsplanFuer`/`mitBereich` in szenarien.ts, Auswahl „Privat/Business rechnet …“ über dem Blatt;
-  „★ Arbeitsplan“ schreibt bei eigener Wahl in den Bereich), eigene Ansicht je Bereich (Jahr, Plan/IST/Abweichung, eingeklappte Gruppen,
-  IST-Schalter im Browser, `make-fp-ansicht:<bereich>:<blatt>`), eigene Kennzahlen in der Lage (Privat: frei verfügbar privat, Runway Privat;
-  Business: `LageBusiness` mit MAKE frei, Runway, Tiefpunkt) — alles aus der einen Rechnung. Wächter: `tests/finanzplan-sicht.test.ts`,
-  `tests/finanzplan-bereiche.test.ts`.
+- **Finanzplanung unter Finanzen › Privat und › Business (05.10., Kevin: „Bei Business kann ich niemals auf Privat gehen … Privat kann
+  Business sehen, aufrufen und bearbeiten, aber nicht umgekehrt.“):** EINE Komponente `Finanzplan({ bereich, eingebettet })` als Reiter
+  „Finanzplanung“ in `FinanzenView` (`/os/finanzen?s=finanzplanung&space=privat|business&u=…`). Der Business-Bereich fragt `?sicht=business` an —
+  der Server liefert dann für JEDEN nur `businessSicht(d)` und lehnt Privat-Pfade mit 403 ab (`wirksameSicht` in `lib/finanzen/plan/sicht.ts`;
+  Sicht-Entscheidung). Zusätzlich die Rechte-Entscheidung aus dem Konto (`planZugangFuer`, `finanzRecht: 'business'` → nie Privates, auch nicht
+  mit `?sicht=privat`, kein Haushaltszugang). Privat-Bereich = alles inkl. Business (bearbeitbar). Je Bereich eigenes Planszenario
+  (`FinanzDaten.bereiche`, `arbeitsplanFuer`/`mitBereich`), eigene Blatt-Ansicht (Browser), eigene Lage-Kennzahlen. Wächter:
+  `tests/finanzplan-sicht.test.ts`, `tests/finanzplan-bereiche.test.ts`.
+- **Formel-Prüfung 05.10.:** Prüfstand `tests/finanzplan-pruefstand.test.ts` rechnet einen erfundenen Plan unabhängig von Hand nach — bei
+  Formel-Änderungen dort einen Fall ergänzen. Funde und offene Fragen: `FINANZPLANUNG_JETZT.md` › „Formel-Prüfung 05.10.“.
 
 ## Tempo (27.09.)
 - Tempo misst man im **Prüfbau** (`make-os-pruefbau`, Port 3011, `MAKE_OS_DIST=.next-pruefbau npx next build`) oder auf dem Server — nie auf 3001 (Entwicklungsmodus übersetzt jede Seite beim ersten Aufruf).
