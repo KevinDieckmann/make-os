@@ -14,6 +14,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 import { saeubereHaut, hautTrend, type HautLog } from '@/lib/gesundheit/eintraege';
 import { localDay } from '@/lib/zeit';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const person = ansichtPerson(req);
   if (!(await darfGesundheitSehen(req, person))) return NextResponse.json({ error: 'Diese Person teilt ihre Gesundheitsdaten nicht mit dir.' }, { status: 403 });
+  leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const log = (await loadJson<HautLog>(speicherFuer('haut', person))) ?? {};
   return NextResponse.json({ person, log, trend: hautTrend(log, localDay()) });
 }

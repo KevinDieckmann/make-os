@@ -19,6 +19,7 @@ import { istGesellschaftId } from '@/lib/einheiten';
 import { gesellschaftVon, geloeschterBezug, unterlagenFiltern, anzeigeName } from '@/lib/gesellschaften/modell';
 import { ladeRegister } from '@/lib/gesellschaften/server';
 import { imPapierkorb } from '@/lib/eintraege/sicher';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,6 +41,7 @@ export async function GET(req: Request) {
   if (!istGesellschaftId(id)) return fehler('id: kdc, kdv, ug oder g-….', 400);
   const vertragId = new URL(req.url).searchParams.get('vertrag');
   if (vertragId !== null && !/^vt-[a-z0-9][a-z0-9-]{3,62}$/.test(vertragId)) return fehler('vertrag: Kennung vt-….', 400);
+  leseZugriff(req, 'gesellschaften', { ids: [id, ...(vertragId ? [vertragId] : [])] }); // Lese-Protokoll (05.10.) — Unterlagen
   try {
     const register = await ladeRegister(z.haushalt);
     const g = gesellschaftVon(register, id);

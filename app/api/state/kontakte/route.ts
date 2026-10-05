@@ -42,6 +42,7 @@ import { personEntfernen, art17Vormerken, art17Verwerfen } from '@/lib/crm/perso
 import { ladeCrm } from '@/lib/crm/speicher';
 import { firmaWechselAnwenden, firmaWechselFehlt, istFirmaWechsel, FIRMA_WECHSEL_FEHLT } from '@/lib/crm/stationen';
 import { datenschutzStempeln, pruefeDatenschutz } from '@/lib/crm/datenschutz-stempel';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,6 +64,7 @@ const sicht = (k: Kontakt, ich: string | null): Kontakt => (ich ? fuerPerson(k, 
 export async function GET(req: Request) {
   // Haushalt des Inhabers (28.09., K1 #66/#67) — vorher reichte „angemeldet“.
   if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
+  leseZugriff(req, 'kontakte'); // Lese-Protokoll (05.10.) — die ganze Kartei
   // Nie Rückfall auf „kevin“ (Regel 5): ohne ausdrückliche Person keine privaten Notizen.
   const ich = personStreng(req);
   // Der Abgleich fragt alle 20 Sekunden — unverändert gibt es 304 statt 750 KB (lib/http/json-antwort.ts).

@@ -8,6 +8,7 @@ import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { neueKennung } from '@/lib/kennung';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,7 @@ interface KundenFile { kunden: Kunde[] }
 export async function GET(req: Request) {
   // Haushalt des Inhabers (28.09., K1 #66/#67) — vorher reichte „angemeldet“.
   if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
+  leseZugriff(req, 'kontakte'); // Lese-Protokoll (05.10.) — Kundenliste
   const f = await loadJson<KundenFile>('kunden');
   return NextResponse.json({ kunden: Array.isArray(f?.kunden) ? f.kunden : [] });
 }

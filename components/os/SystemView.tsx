@@ -29,6 +29,7 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
     { href: '/os/agenten', label: 'Agenten', was: 'wer live ist, wer nicht — und warum' },
     { href: '/os/loop', label: 'Loops', was: 'die Regelkreise' },
     { href: '/os/hoi', label: 'Head of IT', was: 'Server, App, Sicherheit und der Blick von außen — in Ampeln' },
+    { href: '/os/datenschutz/nachweise', label: 'Nachweise', was: 'Lese-Protokoll, Protokoll-Kette, Verschlüsselung — nur Inhaber' },
   ] },
   { titel: 'Zugang & Daten', eintraege: [
     { href: '/os/konto', label: 'Konto', was: 'Name, Passwort, Telegram, Einladen, Gesundheit teilen' },

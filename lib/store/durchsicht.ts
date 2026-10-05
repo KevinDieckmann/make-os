@@ -145,8 +145,18 @@ export async function durchsichtLauf(jetzt = new Date(), erzwingen = false): Pro
     // Nur die Zahlen der letzten 31 Tage — ältere Tage fallen heraus (keine Inhalte, reine Zähler).
     return { letzter: ergebnis, zeilen: zeilen.slice(-TAGE_BEHALTEN) };
   });
+  // Protokolle (05.10.): Lese-Protokoll über 12 Monate leeren, ungesiegelte Altbestände versiegeln, die Kette prüfen
+  // (Ergebnis in `protokoll-pruefung`, der Head of IT zeigt „Protokoll unverändert ✓“ bzw. den Bruch).
+  let kette = '';
+  try {
+    const { leseprotokollAufraeumen } = await import('./leseprotokoll');
+    const geleert = await leseprotokollAufraeumen(jetzt);
+    const { kettePruefenUndMerken } = await import('./protokoll-kette');
+    const k = await kettePruefenUndMerken(jetzt);
+    kette = `, Protokoll-Kette ${k.ok ? 'unverändert' : `${k.fehler} Bruch/Brüche`} (${k.dateien} Dateien, ${k.eintraege} Einträge)${geleert.length ? `, ${geleert.length} Lese-Protokoll-Monat(e) nach 12 Monaten geleert` : ''}`;
+  } catch (e) { console.error('[durchsicht] Protokoll-Kette nicht geprüft:', e instanceof Error ? e.message : e); kette = ', Protokoll-Kette nicht geprüft'; }
   const v = 'fehler' in ergebnis.verbindungen ? `Verbindungen ${ergebnis.verbindungen.fehler} Fehler/${ergebnis.verbindungen.warnung} Warnungen` : 'Verbindungen nicht geprüft';
   const a = ergebnis.absichten ? `, Absichten ${ergebnis.absichten.fertig} fertiggestellt/${ergebnis.absichten.offen} offen/${ergebnis.absichten.gescheitert} gescheitert` : '';
-  const text = `${ergebnis.bestaende} Bestände, ${ergebnis.zeilen} Zeilen, ${ergebnis.fehler.length} unlesbar, ${ergebnis.spruenge.length} Sprünge, ${ergebnis.klartext} Klartext, ${ergebnis.alteHuellen} alte Hüllen, ${ergebnis.tmpReste} .tmp-Reste, ${v}${a} (${ergebnis.dauerMs} ms)`;
+  const text = `${ergebnis.bestaende} Bestände, ${ergebnis.zeilen} Zeilen, ${ergebnis.fehler.length} unlesbar, ${ergebnis.spruenge.length} Sprünge, ${ergebnis.klartext} Klartext, ${ergebnis.alteHuellen} alte Hüllen, ${ergebnis.tmpReste} .tmp-Reste, ${v}${a}${kette} (${ergebnis.dauerMs} ms)`;
   return { ok: ergebnis.fehler.length === 0, text, ergebnis };
 }

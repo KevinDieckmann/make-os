@@ -31,6 +31,7 @@ import { opsFehler } from '@/lib/store/patch-liste';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
 import { eventSpiegelNachziehen, spiegelHinweiseMelden } from '@/lib/kalender/spiegel-server';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,7 @@ export async function GET(req: Request) {
   // Person aus dem Zugang (28.09. abends, Regel 5): Sitzung oder Dienstweg MIT Person im Haushalt — kein Rückfall auf „kevin“.
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  leseZugriff(req, 'firmen'); // Lese-Protokoll (05.10.) — Firmen, Deals, Mandate, Angebote
   const person = zugang.person;
   // Alles, woraus die Antwort entsteht: die drei Speicher, der Tag (Ampeln, Prognose) und wer fragt.
   // Angebote (28.09.): gestellte nach „gültig bis“ → abgelaufen, bevor der Stand gerechnet wird (schreibt nur bei Bedarf).

@@ -13,6 +13,7 @@ import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt, patchen, type Op, speicherName } from '@/lib/finanzen/haushalt/speicher';
 import { belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
 import { faelligeZeilen } from '@/lib/finanzen/haushalt/zoe';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,7 @@ export async function GET(req: Request) {
   // Nur fragen, ob es einen Zugang gibt — ohne die Daten zu laden.
   const nur = new URL(req.url).searchParams.get('nur');
   if (nur === 'zugang') return NextResponse.json({ ok: true, haushalt: z.haushalt });
+  leseZugriff(req, 'haushalt'); // Lese-Protokoll (05.10.) — Buchungen, Belege, Schulden, Plan
   // Für die Heute-Seite: nur, was ansteht — Raten, Rechnungen, fehlender Kontoauszug.
   if (nur === 'signale') {
     const h = await ladeHaushalt(z.haushalt);
