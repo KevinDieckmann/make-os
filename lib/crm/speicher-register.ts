@@ -228,6 +228,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('oauth-tokens', 'Zugangsschlüssel des Haushalts (Whoop/Microsoft) — keine Dritten.'),
   H('oauth-states', 'Kurzlebige OAuth-Zustände — keine Dritten.'),
   H('ki-verbrauch', 'Kosten der Modellaufrufe je Person des Haushalts.'),
+  K('demo-instanz', 'Demo-Marke (05.10., lib/demo/schutz.ts): Saat-Version, Zeitpunkt, Haushalt-Kennung und Zählungen — nur in einer Demo-Instanz, keine Personendaten.'),
   K('backlog', 'Bauplan der Software (Ideen/Etappen) — keine Kontakte.'),
   K('bauzeit', 'Bauzeiten der Software.'),
   K('agents-config', 'Agenten-Schalter.'),

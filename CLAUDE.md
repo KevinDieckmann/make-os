@@ -73,6 +73,18 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
   Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.
 
+## Demo-Instanz (05.10., nur lokal, Branch `demo-schnappschuss`; Anleitung `DEMO.md`)
+- **Saat** `scripts/demo-saat.mjs` → `lib/demo/server.ts` `demoSaenInLeerenOrdner` → `lib/demo/saat.ts` `demoSaen`: erfundener Haushalt
+  `demo` (Lena/Jonas `@example.invalid`, Team-Person Mira), CRM, Unternehmen mit Holding + Gründungsfahrplan, Ziele/Meilensteine,
+  Aufgaben, Termine (`calendar-cache`), Kapazität mit festgehaltenen Wochenplänen, Finanzplanung, Familie/Gesundheit minimal, Wissen.
+  Geschrieben über die ROUTEN in-process (`rufe(…)`, Kopf `x-make-user`) — neue Bereiche ebenso anschließen, nie an der Datenschicht vorbei
+  (Ausnahmen stehen im Kopf von saat.ts). Keine echten Namen/Firmen/Beträge (Wächter `tests/demo.test.ts` liest jede Datei der Demo).
+- **Riegel** `lib/demo/schutz.ts` (rein, getestet): eigener `MAKE_OS_DATEN_DIR`, nie `.data` im Pfad, säen nur leer; Zurücksetzen nur
+  `MAKE_OS_DEMO=1` (sonst `/api/demo` 404), Inhaber mit Sitzung, Demo-Marke `demo-instanz`, nur `@example.invalid`-Konten, Umgebung ohne
+  echte Quellen (`umgebungGruende`). Knopf: `components/os/DemoKarte.tsx` unter System (Rückfrage). Zurücksetzen behält Hash/Salz der Konten.
+- **Namen je Instanz:** `NEXT_PUBLIC_MAKE_OS_EINHEITEN` (lib/einheiten.ts, Anzeigenamen kdc/kdv/ug) und `NEXT_PUBLIC_MAKE_OS_CRM_TEAM`
+  (lib/crm/team.ts `TEAM`) — ohne Variable alles wie bisher. Im Docker-Bild als Build-Args.
+
 ## Eiserne Regeln
 1. **Privates bleibt hier.** Gesundheits-, Journal- und Finanzdaten gehören
    Kevin & Malin. `.env.local` und `.data/` sind gitignored und bleiben es —

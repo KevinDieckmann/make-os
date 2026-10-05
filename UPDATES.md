@@ -4,6 +4,20 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Demo-Instanz: Saat + „Demo zurücksetzen“ (05.10.2026, nur lokal — Branch `demo-schnappschuss`; Anleitung DEMO.md)
+
+Kevin 04.10.: „Wir müssen alles anpassbar haben, auch wenn wir mal einen Demo-Account machen.“
+- **Saat** `node scripts/demo-saat.mjs` (lib/demo/saat.ts): vollständig erfundene Demo über die bestehenden Schreibwege — nur in einen
+  leeren, eigenen Datenordner, nie `.data`. Was gesät wird: DEMO.md.
+- **Zurücksetzen** unter System (nur Demo-Instanz `MAKE_OS_DEMO=1`, nur Inhaber, Rückfrage) — `GET/POST /api/demo`; in jeder anderen
+  Instanz 404 (Wächtertest). Riegel: lib/demo/schutz.ts.
+- **Namen je Instanz** (`NEXT_PUBLIC_MAKE_OS_EINHEITEN`, `NEXT_PUBLIC_MAKE_OS_CRM_TEAM`, Dockerfile-Build-Args) — ohne Variablen
+  unverändert; Startbestand der alten Finanz-Seite nimmt sie mit. System: doppelte React-Kennung der Liste behoben.
+- **Tests:** `tests/demo.test.ts` (Riegel, Saat, keine echten Namen in den Dateien der Demo, Zurücksetzen nur Inhaber/nur Demo).
+- **Rückweg:** Für unsere Instanz ändert sich nichts (keine Variable gesetzt, `/api/demo` → 404). Code-Rückweg: Branch nicht mergen bzw.
+  `lib/demo/`, `app/api/demo/`, `components/os/DemoKarte.tsx`, `scripts/demo-saat.mjs` entfernen; die Build-Args im Dockerfile sind leer
+  harmlos. Kein Bestand unserer Instanz wird angelegt oder verändert.
+
 ## Kapazität: Wochenplan festhalten → echte Plan-Treue „geplant vs. Ist“ (05.10.2026, nur lokal — Branch `demo-schnappschuss`)
 
 Kevin 05.10.: „Jeden Montag wird der Wochenplan festgehalten → echte Plan-Treue ‚geplant vs. Ist‘.“

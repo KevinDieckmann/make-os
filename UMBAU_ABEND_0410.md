@@ -155,6 +155,7 @@ F6 (Vertragswerk-Tiefe), F8 (app/(dashboard) löschen?).
 - **Demo-Konto:** eigene Instanz/Datenordner mit erfundenen Beispieldaten (Seed), leer startbar, alles darin bearbeitbar und
   löschbar; nie unsere Daten (Plattform-Regel „Testkunden nie auf unserer Instanz“). Seed-Skript + Zurücksetzen-Knopf für
   Vorführungen als eigenes Paket.
+  **Gebaut 05.10. (lokal, Branch `demo-schnappschuss`):** Seed `scripts/demo-saat.mjs`, Knopf „Demo zurücksetzen“ unter System — DEMO.md.
 
 ## Offen aus dem Tag (nicht vergessen)
 - Bildfolgen-Platz „Beratung“ (makeinnovation.de) und „Abend“ (fokus) für echte Fotos/Film später — Kevin: erst 3D.
