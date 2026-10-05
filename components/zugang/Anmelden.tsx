@@ -53,7 +53,8 @@ export function Anmelden() {
     setFehler(''); setLaeuft(true);
     const pfad = art === 'anmelden' ? '/api/konto/anmelden' : art === 'einrichten' ? '/api/konto/einrichten' : '/api/konto/beitreten';
     try {
-      const body = art === 'anmelden' ? { email: f.email, passwort: f.passwort, ...(zweiter ? { code: f.faktor } : {}) } : f;
+      const body = art === 'anmelden' ? { email: f.email, passwort: f.passwort, ...(zweiter ? { code: f.faktor } : {}) }
+        : art === 'einrichten' ? { code: f.schluessel, email: f.email, name: f.name, passwort: f.passwort } : f;
       const r = await fetch(pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await r.json();
       if (!r.ok || d.error) { setFehler(d.error ?? `Fehler ${r.status}`); setLaeuft(false); return; }
@@ -81,9 +82,9 @@ export function Anmelden() {
         {art === 'einrichten' && (
           <>
             <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: 0 }}>
-              Es gibt noch kein Konto. Das erste ist der Inhaber — es darf später andere einladen. Zum Beweis, dass du diese Installation besitzt, einmal den Schlüssel aus <code>.env.local</code>.
+              Es gibt noch kein Konto. Das erste ist der Inhaber — es darf später andere einladen. Zum Beweis, dass du diese Installation besitzt, den Einrichtungs-Code aus dem Terminal: <code>node scripts/einrichtung-token.mjs</code> (am Server mit <code>docker compose exec app</code> davor). Er gilt einmal.
             </p>
-            <input type="password" placeholder="MAKE_OS_KEY" value={f.schluessel} onChange={s('schluessel')} style={feld} autoComplete="off" />
+            <input placeholder="Einrichtungs-Code (XXXX-XXXX-XXXX-XXXX-XXXX)" value={f.schluessel} onChange={s('schluessel')} style={{ ...feld, fontFamily: SCHRIFT.mono, letterSpacing: '.08em', textTransform: 'uppercase' }} autoComplete="off" spellCheck={false} />
           </>
         )}
         {art === 'beitreten' && (<>

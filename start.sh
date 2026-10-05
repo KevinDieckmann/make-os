@@ -167,8 +167,12 @@ fi
 ADRESSE="http://localhost:3001/anmelden"
 echo "  Alles bereit. Ich öffne gleich den Browser."
 echo ""
-echo "  Anmelden mit deinem Konto. Beim allerersten Mal: Erstes Konto einrichten —"
-echo "  dafür braucht es einmal den Schlüssel aus .env.local (MAKE_OS_KEY)."
+echo "  Anmelden mit deinem Konto."
+# Beim allerersten Mal (05.10.): ein Einmal-Code statt des Schlüssels aus .env.local (scripts/einrichtung-token.mjs).
+if [ ! -s .data/konten.json ]; then
+  echo "  Noch kein Konto — „Erstes Konto einrichten“ mit diesem Einmal-Code:"
+  node scripts/einrichtung-token.mjs 2>/dev/null | sed -n '4p' || true
+fi
 echo ""
 echo "  Falls sich nichts öffnet, diese Adresse einfügen:"
 echo "  $ADRESSE"

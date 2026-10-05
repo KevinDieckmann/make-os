@@ -1,7 +1,8 @@
 // ─── MAKE OS — Das erste Konto ──────────────────────────────────────────────
-// Nur, solange es KEIN Konto gibt, und nur mit dem Zugangsschlüssel aus
-// .env.local — der Beweis, dass hier der Besitzer der Installation sitzt.
-// Das erste Konto ist der Inhaber und darf einladen.
+// Nur, solange es KEIN Konto gibt, und nur mit dem Einrichtungs-Code (seit 05.10.: Einmal-Code aus
+// `node scripts/einrichtung-token.mjs`, lib/zugang/einrichtung.mjs) — der Beweis, dass hier der Besitzer der
+// Installation sitzt. Der Generalschlüssel MAKE_OS_KEY gilt dafür nicht mehr (er landete sonst im Browser).
+// Das erste Konto ist der Inhaber und darf einladen; der Code ist danach verbraucht (Datei gelöscht).
 //
 // Der Speichername entsteht aus dem Vornamen. Für Kevin heißt das „kevin" —
 // und damit hängen seine gewachsenen Bestände ohne Umzug am neuen Konto.
@@ -9,7 +10,7 @@
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, emailSauber, passwortTauglich, passwortHashen, speicherName, type Konto } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
-import { gleich } from '@/lib/zugang/sitzung';
+import { einrichtungsCodePruefen, einrichtungsCodeVerbrauchen } from '@/lib/zugang/einrichtungs-code';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { neueKennung } from '@/lib/kennung';
 
@@ -17,14 +18,21 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  let b: { schluessel?: string; email?: string; name?: string; passwort?: string };
+  let b: { code?: string; schluessel?: string; email?: string; name?: string; passwort?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Bremse gegen das Raten des Schlüssels (26.09.).
   const bremse = `einrichten:${adresse(req)}`;
   const warte = pruefe(bremse).warteSek;
   if (warte > 0) return NextResponse.json({ error: `Zu viele Versuche — bitte in ${warte} Sekunden erneut.` }, { status: 429, headers: { 'Retry-After': String(warte) } });
   if ((await ladeKonten()).konten.length) return NextResponse.json({ error: 'Es gibt schon ein Konto. Bitte anmelden oder eine Einladung nutzen.' }, { status: 409 });
-  if (!process.env.MAKE_OS_KEY || !gleich(String(b.schluessel ?? ''), process.env.MAKE_OS_KEY)) { fehlschlag(bremse); return NextResponse.json({ error: 'Der Zugangsschlüssel stimmt nicht.' }, { status: 403 }); }
+  // `schluessel` = Feldname der alten Anmeldeseite (ein offener Tab vor dem Upload schickt den Code darunter).
+  const pruefung = await einrichtungsCodePruefen(b.code || b.schluessel);
+  if (pruefung !== 'ok') {
+    fehlschlag(bremse);
+    const text = pruefung === 'falsch' ? 'Der Einrichtungs-Code stimmt nicht.'
+      : 'Es gibt keinen gültigen Einrichtungs-Code. Im Terminal erzeugen: node scripts/einrichtung-token.mjs (am Server: docker compose exec app node scripts/einrichtung-token.mjs).';
+    return NextResponse.json({ error: text }, { status: 403 });
+  }
   erfolg(bremse);
   const email = emailSauber(b.email);
   const name = String(b.name ?? '').trim().slice(0, 80);
@@ -40,5 +48,6 @@ export async function POST(req: Request) {
     return { ...s, konten: [konto] };
   });
   if (!konto) return NextResponse.json({ error: 'Gleichzeitig eingerichtet — bitte anmelden.' }, { status: 409 });
+  await einrichtungsCodeVerbrauchen();
   return mitSitzung(konto);
 }

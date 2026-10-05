@@ -2,8 +2,8 @@
 // Seit 23.09.: echte Konten. Wer eine gültige Sitzung hat, kommt hinein — und
 // die Middleware sagt jeder Route, wer das ist (Kopf x-make-user). Wer keine
 // hat, landet auf /anmelden. Der Zugangsschlüssel MAKE_OS_KEY gilt seit 05.10. nur
-// noch für den internen Dienstweg (Arbeiter, Bote, Takt — nur von innen, lib/zugang/intern.ts)
-// und das Einrichten des allerersten Kontos.
+// noch für den internen Dienstweg (Arbeiter, Bote, Takt — nur von innen, lib/zugang/intern.ts);
+// das allererste Konto entsteht mit einem Einmal-Code (lib/zugang/einrichtung.mjs).
 //
 // Gelernt aus dem Audit (weiter gültig): dem Host-Header nicht trauen, dem
 // Origin bei Schreibzugriffen schon. Und: Köpfe, mit denen sich ein Client
