@@ -12,7 +12,7 @@
 //              Buchstabe für Buchstabe auf, der Ablauf kommt Zeile für Zeile.
 //   0,41–0,60  Formate & Themen: die Tafel tritt zurück (von oben, gedimmt), die Themen stehen in einer Reihe.
 //   0,60–0,83  Die Städte: aus der Tafel wird die Deutschlandkarte, feine Fäden von Berlin in die Städte; die Liste daneben.
-//   0,83–1,00  Schluss: Wortmarke über eigenem Verlauf, „Auf Einladung — oder per Bewerbung.“; der Rahmen schnappt ein.
+//   0,83–1,00  Schluss: Wortmarke über eigenem Verlauf, „Offen für alle — solange Plätze frei sind.“ (Kevin 05.10.: offene Anmeldung); der Rahmen schnappt ein.
 // Liest nichts, speichert nichts, sendet nichts.
 (function (wurzel) {
   'use strict';

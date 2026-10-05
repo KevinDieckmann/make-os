@@ -27,7 +27,7 @@ Lesetext, keine konkurrierenden Bewegungen.
 | 0,15–0,41 | **01 Der Abend** | Dunkler Raum, die **Tafel** (Formation `tafel`): eine lange Tafel bei Nacht, zwölf Menschen als ruhige Lichter, Kerzen, wenige Gespräche als Bögen, ein leiser Boden aus Licht. Die Kamera fährt ruhig näher. „Eine kleine Runde. / Gespräche mit Substanz.“ steigt Buchstabe für Buchstabe auf, dann Satz und Ablauf (Ankommen · Impuls · Gespräche am Tisch · Ausklang). Rechner: Text links, Tafel rechts; hochkant: Tafel oben, Text unten (am Handy der Ablauf nur mit den vier Teilen). |
 | 0,41–0,60 | **02 Formate & Themen** | Die Tafel tritt zurück (klein, gedimmt). „Jeder Abend hat ein Thema. / Zum Beispiel:“, zwei Formate (Abendrunde mit Impuls, Tischgespräch), unten in einer Reihe: KI im Unternehmen · Vertrieb & Markteintritt · Sichtbarkeit · Umsetzung im Mittelstand. |
 | 0,60–0,83 | **03 Die Städte** | Aus der Tafel wird die **Deutschlandkarte** (Formation `karte`, echte Koordinaten), feine Fäden von Berlin in die fünf Städte, Beschriftungen legt der Motor über die Leinwand. Links „Aus Berlin / in sechs Städte.“ und die Liste — jede Stadt „Termin in Planung“, Berlin „Ausgangspunkt“. |
-| 0,83–1,00 | **Schluss** | Wortmarke **FOKUS INNOVATION** über eigenem Verlauf, „Auf Einladung — / oder per Bewerbung.“, „Teilnahme anfragen“ / „Gastgeber oder Partner werden“; der Rahmen aus Papier schnappt ein. |
+| 0,83–1,00 | **Schluss** | Wortmarke **FOKUS INNOVATION** über eigenem Verlauf, „Offen für alle — / solange Plätze frei sind.“, „Teilnahme anfragen“ / „Gastgeber oder Partner werden“; der Rahmen aus Papier schnappt ein. |
 | danach | **Im Detail** (Off-White) | **04 Teilnahme** (Hauptweg `#teilnahme-link`, vorbereitete Mail, was hineingehört) · **05 Gastgeber & Partner** (je eine vorbereitete Mail, Betreff „Fokus Innovation – Gastgeber/Partner“) · **06 Absender** (Make.One, Link zu makeinnovation.de) · ruhiger dunkler Fuß (MAKE-Logo, Firmierung, Impressum, Datenschutz, makeinnovation.de, Mail). |
 
 **Navigation:** Kachel-Pille wie makeinnovation.de (dunkel auf jedem Grund): Zeichen + „Fokus Innovation“ · Der Abend · Themen · Städte ·
@@ -109,7 +109,7 @@ und was ein Besuch der Startseite lädt (HTML + CSS + Skripte, gzip, ohne Schrif
 ## Bitte zusätzlich prüfen (Kevins Entscheidung)
 
 - Texte: Titelsatz, „Eine kleine Runde. Gespräche mit Substanz.“ mit Satz und Ablauf, „Jeder Abend hat ein Thema. Zum Beispiel:“ mit
-  zwei Formaten und vier Themen, Städte-Satz, „Auf Einladung — oder per Bewerbung.“, Gastgeber- und Partner-Texte.
+  zwei Formaten und vier Themen, Städte-Satz, „Offen für alle — solange Plätze frei sind.“ (Kevin 05.10.: offene Anmeldung), Gastgeber- und Partner-Texte.
 - „Fokus Innovation ist eine Runde auf Einladung — die Gäste laden wir persönlich ein“ — passt das zu eurem Vorgehen?
 - Die ruhige Karte: vereinfachter Umriss, Städte an echten Koordinaten; keine Grenzkarte.
 - Der Film (`marketing/film/DREHBUCH.md`) hat auf der „Klar“-Seite noch keinen Platz (früher ein Standbild „Der Film folgt“ — entfernt,
