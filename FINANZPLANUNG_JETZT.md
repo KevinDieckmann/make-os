@@ -447,9 +447,27 @@ Konto der Selbstständigkeit mit“. Technik und Regel: CLAUDE.md › „Bereich
 - **Steuer-Seite unter Privat und Business:** Privat zeigt alles (Privat · Selbstständigkeit, dann KD Ventures · MAKE), Business nur KD Ventures · MAKE —
   serverseitig (`?space=business` oder `finanzRecht: 'business'`). Fristen-Links von Privat/Selbstständigkeit führen in die Privat-Sicht.
 - **Runway Privat (Finanzplanung):** Privatkonten + aufgelaufene Luft + `frei` der Selbstständigkeit (Konto − Steuerrücklage − offene USt) je Monat.
-  planFix: vorher 0 Monate (Privat allein sofort unter null) → nachher „im Plan nie“. Die Entnahme zählt nicht doppelt.
+  planFix: vorher 0 Monate (Privat allein sofort unter null) → nachher „im Plan nie“. Die Entnahme zählt nicht doppelt. **Von Kevin bestätigt (05.10. abends).**
 - **Vorher → Nachher Steuern (Regression `finanz-einheiten-summen`, erfundene Zahlen):** Fristen 26 → 30 (Selbstständigkeit +4 Gewerbesteuer-
   Vorauszahlungen), Soll Privat 15.900 € (Steuerquote 30 %) → 0 € mit „fehlt“ (der Testfall hat keinen Plan), Summe 17.400 → 1.500 €.
+
+## selbst-privat-2 (05.10. abends): Vorauszahlungen aus EINER Quelle · Monatsabschluss der Selbstständigkeit unter Privat
+Kevins Entscheidungen zu den offenen Punkten von `selbst-privat` (Technik: CLAUDE.md › „Bereich je Einheit“ › Teil 2; UPDATES.md).
+- **Vorauszahlungen — eine Quelle, Finanzplanung führend:** Der Steuern-Bereich zog bisher die Vorauszahlungen aus den Steuer-Einstellungen ab (ESt und GewSt
+  der Selbstständigkeit je Quartal laut Bescheid, bis heute fällig), die Finanzplanung rechnete mit `selbst.estVorausgezahlt` (+ Quartalszahlungen im Plan). Jetzt:
+  mit Finanzplanung für das Jahr zieht der Steuern-Bereich NUR deren `EstJahr.vorausgezahlt` ab (dieselbe Zahl wie „schon vorausgezahlt“ in der Karte
+  „Einkommensteuer gemeinsam“) — zuerst auf die Einkommensteuer, der Rest auf die Gewerbesteuer; ESt + GewSt im Steuern-Bereich = Abschlusszahlung der
+  Finanzplanung (nie darunter). Die Beträge der Steuer-Einstellungen zählen dann nicht und stehen als Hinweis da („zählen hier nicht — führend ist die
+  Finanzplanung“); Rücklage & Prognose nennt die Quelle. Ohne Finanzplanung bleibt die Steuer-Einstellung die Quelle. An den Fristen stehen weiter die
+  Bescheid-Beträge der Einstellungen (nur Anzeige, kein Abzug). Wächter: tests/steuern.test.ts „Wächter Vorauszahlungen“ (6 Fälle, mit/ohne Einstellungen).
+  **Vorher → Nachher (Test, erfundene Zahlen):** Steuer des Jahres 11.100 € (ESt-Teil 9.600, GewSt 1.500), Einstellungen 1.000 €/Quartal ESt + 200 €/Quartal
+  GewSt, Finanzplanung „schon vorausgezahlt“ 0: ESt-Zeile 6.600 → 9.600 €, GewSt 900 → 1.500 € (die 3.600 € aus den Einstellungen zählen nicht mehr — für Kevin:
+  die schon gezahlten Vorauszahlungen 2026 in der Finanzplanung unter Selbstständigkeit › Abschluss eintragen). Mit 10.000 € in der Finanzplanung: ESt 0,
+  GewSt 1.100 €.
+- **Monatsabschluss der Selbstständigkeit:** unter Privat › Finanzplanung › Selbstständigkeit (Karte „Monatsabschluss“, derselbe Baustein wie im
+  Business-Cockpit, Route `/api/privat/abschluss`). Alte Einträge aus dem Business-Cockpit sind dort wieder sichtbar und bearbeitbar (EIN Bestand, kein
+  Umzug). Sie speisen weder den Business-Index noch die Finanzplanung (der Abschluss Jan–Sep der Finanzplanung bleibt `selbst.posten`).
+- **Runway Privat** mit `frei` der Selbstständigkeit: bestätigt.
 
 ## Gegenprüfung finanzplan-5 (05.10.) — Funde und Status (Branch `finanzplan-5b`)
 

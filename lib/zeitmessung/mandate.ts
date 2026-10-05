@@ -8,7 +8,7 @@
 // durch die erfasste Zeit). Das ist bewusst nur ein Hinweis, kein Rechnungsbezug.
 
 import { mandatLabel, type MandatKurz } from '@/lib/planung/mandat';
-import { zeitraumVon, bloeckeImZeitraum, arbeitsPruefer, type Zeitraum } from './einheiten';
+import { zeitraumVon, bloeckeImZeitraum, arbeitsPruefer, nurBusinessBloecke, type Zeitraum } from './einheiten';
 import type { FokusBlock, ZeitDatei } from './modell';
 
 /** Zeile „ohne Mandat“ — der Marker kann mit keiner CRM-Kennung kollidieren. */
@@ -88,11 +88,13 @@ export function zeitJeMandat(
   mandate: ReadonlyMap<string, MandatKurz>,
   zeitraum: Zeitraum,
   stichtag: string,
+  /** Konten ohne Privatzugang: nur Business-Blöcke (die Arbeit der Selbstständigkeit gehört zu Privat). */
+  nurBusiness = false,
 ): ZeitJeMandat {
   const { von, bis, label } = zeitraumVon(zeitraum, stichtag);
   const alle: FokusBlock[] = [];
   // Arbeit (05.10. abends): Business-Blöcke und Privat-Blöcke mit Mandat/Einheit einer Privat-Arbeits-Einheit (Selbstständigkeit).
-  const istArbeit = arbeitsPruefer(null, mandate);
+  const istArbeit = nurBusiness ? nurBusinessBloecke : arbeitsPruefer(null, mandate);
   const jePerson = personen.map(p => {
     const b = bloeckeImZeitraum(p.datei, von, bis, istArbeit);
     alle.push(...b);

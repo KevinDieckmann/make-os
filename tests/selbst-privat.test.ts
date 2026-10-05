@@ -219,7 +219,8 @@ describe('Steuern: gewerblich, gemeinsame Einkommensteuer aus der Finanzplanung 
   });
 });
 
-describe('Runway Privat zählt das freie Geld der Selbstständigkeit mit', () => {
+// Kevin hat das am 05.10. abends ausdrücklich BESTÄTIGT (selbst-privat-2, offene Frage 4) — gewollt, kein Zufallsbefund.
+describe('Runway Privat zählt das freie Geld der Selbstständigkeit mit (von Kevin bestätigt 05.10.)', () => {
   it('Privatkonto + aufgelaufene Luft + frei der Selbstständigkeit (Monat für Monat)', async () => {
     const [{ rechneMit, arbeitsplanVon, auswertung }, { planFix }] = await mit(false, () => Promise.all([import('../lib/finanzen/szenarien'), import('./fixtures/finanz-plan')]));
     const d = planFix();

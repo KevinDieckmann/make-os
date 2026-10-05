@@ -97,6 +97,31 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
   `BUSINESS_GESELLSCHAFTEN` (die Achse `kdc` bleibt dort fest privat).
 - **Tests:** tests/selbst-privat.test.ts (Vorher → Nachher, Umzug Altbestand, Plattform-Umstellung). Mechanik-Tests mit der Selbstständigkeit im Business
   setzen die Instanz-Einstellung per `vi.hoisted` (business-index, business-modell, business-verankert, finanz-einheiten-summen, kapazitaet).
+- **Teil 2 (05.10. abends, Branch `selbst-privat-2`, Kevins Entscheidungen; UPDATES.md):**
+  - **Arbeit ≠ Bereich:** zweite Zuordnung je Einheit `ZAEHLT_ALS_ARBEIT` (Vorgabe aus der Rechtsart: jede Firma und jedes Einzelunternehmen ja, Privat nie; je
+    Instanz `{"kdc":{"arbeit":false}}`). Lesen NUR über `zaehltAlsArbeit`, `ARBEIT_GESELLSCHAFTEN`, `ARBEIT_EINHEITEN_NAMEN`, `privatArbeitsEinheit` (Privat-Einheit,
+    deren Zeit Arbeit ist), `privatEinheit`, `PRIVAT_EINHEITEN_NAMEN`. Zeit & Fokus, Zeit je Einheit/Mandat und Kapazität rechnen ARBEIT, nicht „Business“.
+  - **Planung (Ziele, Meilensteine, Routinen, Blöcke): Bereich abgeleitet, Speicherform bleibt** — `lib/planung/bereich.ts`: `wirksamerSpace` (Privat-Einheit →
+    privat, sonst gespeicherter Space), `speicherSpace` (Schreibweg: Privat + Privat-Einheit wird als `business` + Einheit abgelegt — die Form, die der alte Stand
+    kennt; nichts geht beim Rückweg verloren), `zaehltAlsArbeit` (Kapazität). `meilensteinSpace` ist jetzt der abgeleitete Bereich; `meilensteinSpeicherSpace`
+    nur für Schreibweg, Mandat-Bezug und den Aufgaben-Space der Meilenstein-Liste (die Liste zieht NIE um). `spaceVonZiel`/`spaceVonRoutine` ebenso abgeleitet.
+    Ansichten lesen nur darüber (Horizont, Ziele/Meilensteine, Ziel-/Meilenstein-Detail, Fenster, Routinen, Lichtfäden, Kalender-Fristen, Fluss, Brain-Kugel,
+    Brain/ZOE-Kontext, Loop, Säulen-Ansicht); der Business-Index filtert Meilensteine der Privat-Einheit serverseitig (`ladeRoh`). Einheiten-Chip einer
+    Privat-Einheit in Privat-Farbe; im Privat-Filter ist die Privat-Einheit beim Anlegen wählbar. Neu nie `z.space === …` für den Bereich lesen.
+  - **Fokus:** Privat-Blöcke behalten eine Zuordnung nur, wenn sie zu einer Privat-Arbeits-Einheit führt (Aufgabe im Space der Selbstständigkeit, Einheit, Mandat;
+    `zuordnungSaeubern` → `arbeitImPrivat`); `arbeitsPruefer(aufgaben, mandate)` → `bloeckeImZeitraum(…, istArbeit)` (ohne Prüfer wie bisher nur Business);
+    `AufgabeKurz.arbeit`; Zeilen der Zeit je Einheit tragen `bereich` (Selbstständigkeit als „Privat · …“, nie Business-Einheit); Fokus-Blöcke-Karte: Privat-Block
+    „Arbeit · Selbstständigkeit“ zuordnen.
+  - **Monatsabschluss unter Privat:** `/api/privat/abschluss` (GET/POST, `finanz-privat`, `privatFinanzZugang`) — EIN Bestand `business-abschluesse`, getrennt über
+    den Bereich der Firma (`ladeAbschluesse/speichereAbschluss/loescheAbschluss(…, bereich)`, falscher Bereich → 400). Karte = `MonatsabschlussKarte` mit
+    `firmen`/`adresse` unter Privat › Finanzplanung › Selbstständigkeit. Business-Index unverändert 400 für kdc.
+  - **Vorauszahlungen eine Quelle:** `prognose().vorauszahlung` — mit Finanzplanung zählen NUR `EstJahr.vorausgezahlt` (ESt zuerst, Rest GewSt), die Beträge der
+    Steuer-Einstellungen nicht (Hinweis „ungenutzt“); ohne Plan die Steuer-Einstellung. Wächter tests/steuern.test.ts („kein Doppelabzug“).
+  - **Runway Privat** mit `frei` der Selbstständigkeit: von Kevin bestätigt (05.10. abends).
+  - Tests: tests/selbst-privat-2.test.ts (Umzug Altbestand Ziel-Kette/Meilensteine/Routinen/Blöcke, Arbeit, Instanz-Umstellungen), tests/selbst-privat-2-routen.test.ts
+    (Monatsabschluss-Route: Rechte, Bereichsgrenze, EIN Bestand; Kapazität mit Privat-Fokusblock).
+  - **Plattform-Schuld (nicht gebaut):** Zuordnung je Einheit (Bereich, Arbeit) kommt heute nur aus der Build-Variable; aus Register/Inhaber-Einstellung braucht
+    sie eine Laufzeit-Zuordnung statt Modul-Konstanten (Bauplan in UPDATES.md › selbst-privat-2).
 
 ## Demo-Instanz (05.10., nur lokal, Branch `demo-schnappschuss`; Anleitung `DEMO.md`)
 - **Saat** `scripts/demo-saat.mjs` → `lib/demo/server.ts` `demoSaenInLeerenOrdner` → `lib/demo/saat.ts` `demoSaen`: erfundener Haushalt
@@ -641,7 +666,8 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   `aufwandSaeubern` in lib/planung/meilensteine.ts, auch für Ziele; die Kaskade lässt beides stehen). Alles andere im Bestand
   `kapazitaet--<haushalt>` (Haushalt des Inhabers; Register `H`): je Person Grundwert + Ausnahmen (Urlaub, Block), Zuweisungen
   Person × Mandat/Kunde (nur CRM-Kennungen). Personen = Team des Haushalts (`teamStand`, Kennung `konto-<speicher>` bzw. Team-Kennung,
-  nie Platzhalter, nichts fest im Code). Ist = bewusste Business-Fokuszeit (`zeit--<person>`), je Meilenstein über die Aufgaben-Liste.
+  nie Platzhalter, nichts fest im Code). Ist = bewusste Fokuszeit der ARBEIT (`zeit--<person>`; seit 05.10. abends auch die Selbstständigkeit unter Privat,
+  `arbeitsPruefer`), je Meilenstein über die Aufgaben-Liste. Posten = Meilensteine/Ziele, die als Arbeit zählen (`zaehltAlsArbeit`, lib/planung/bereich.ts).
 - **Server:** `lib/kapazitaet/server.ts` (vorhandene Lesewege: `verfuegbarkeitFuer`, vitals, Zeit, Meilensteine/Ziele, CRM; `merken` 60 s
   je Haushalt+Tag). Route `GET/PATCH /api/kapazitaet` (nur Haushalt des Inhabers mit Person). **Privatfilter serverseitig**
   (`fuerBetrachter`): Erholungswert, Ausnahme-Titel und `erholungAm` nur für die Person selbst; Erholung zählt überhaupt nur mit eigener

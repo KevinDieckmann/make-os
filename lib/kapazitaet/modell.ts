@@ -352,6 +352,33 @@ export function fuerBetrachter(stand: KapaStand, betrachter: string | null): Kap
   };
 }
 
+/** Titel eines Postens aus dem Privat-Bereich für Konten ohne Privatzugang (05.10. abends). */
+export const PRIVAT_BELEGT = 'Privat (belegt)';
+/** Schlüssel eines Postens für `ohnePrivatePosten` — Meilenstein und Ziel haben getrennte Kennungen. */
+export const postenSchluessel = (p: { art: 'meilenstein' | 'ziel'; id: string }): string => `${p.art}:${p.id}`;
+
+/**
+ * Posten aus dem Privat-Bereich (05.10. abends: die Selbstständigkeit — zählt als Arbeit, gehört aber zu Privat) für Konten ohne Privatzugang
+ * (`finanzRecht: 'business'`) und den Business-Index: die Stunden bleiben in Last und Machbarkeit (die Zeit ist belegt), Titel und Ziel-Bezug
+ * nicht; in der Liste „kritisch“ (geht an den Business-Index, ZOE, Berichte) fehlen sie ganz. Rein; `privat` = `postenSchluessel`.
+ */
+export function ohnePrivatePosten(stand: KapaStand, privat: ReadonlySet<string>): KapaStand {
+  if (!privat.size) return stand;
+  return {
+    ...stand,
+    posten: stand.posten.map(p => {
+      if (!privat.has(postenSchluessel(p))) return p;
+      const { zielId: _z, ...rest } = p;
+      return { ...rest, titel: PRIVAT_BELEGT };
+    }),
+    kennzahlen: ohnePrivateKennzahlen(stand.kennzahlen, privat),
+  };
+}
+/** Kennzahlen ohne die Titel privater Posten (Liste „kritisch“). */
+export function ohnePrivateKennzahlen(k: KapaKennzahlen, privat: ReadonlySet<string>): KapaKennzahlen {
+  return privat.size ? { ...k, kritisch: k.kritisch.filter(p => !privat.has(postenSchluessel(p))) } : k;
+}
+
 /**
  * Kennzahlen ohne Gesundheits-Ableitung (DSGVO-Prüfung 04.10., Art. 9): `erholung`/`erholungPersonen` fallen weg, bevor die
  * Summen den Kapazitäts-Bereich verlassen (Business-Index → ZOE, Verlauf, Berichte). Bei einer einzigen teilenden Person

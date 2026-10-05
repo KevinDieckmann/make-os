@@ -255,18 +255,23 @@ export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<
   };
 }
 
-/** Die ganze Auswertung: je Person und gesamt (alle übergebenen Personen zusammen). */
+/**
+ * Die ganze Auswertung: je Person und gesamt (alle übergebenen Personen zusammen). `nurBusiness` (05.10. abends): für Konten ohne
+ * Privatzugang (`finanzRecht: 'business'`) nur die Business-Blöcke — die Arbeit der Selbstständigkeit gehört zum Privat-Bereich und geht an
+ * sie nie hinaus (serverseitig, die Route entscheidet aus dem Konto).
+ */
 export function zeitJeEinheit(
   personen: readonly { person: string; name: string; datei: ZeitDatei }[],
   aufgaben: readonly AufgabeKurz[],
   zeitraum: Zeitraum,
   stichtag: string,
   mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null,
+  nurBusiness = false,
 ): ZeitJeEinheit {
   const { von, bis, label } = zeitraumVon(zeitraum, stichtag);
   const karte = new Map(aufgaben.map(a => [a.id, a]));
   const alle: FokusBlock[] = [];
-  const istArbeit = arbeitsPruefer(karte, mandate);
+  const istArbeit = nurBusiness ? nurBusinessBloecke : arbeitsPruefer(karte, mandate);
   const jePerson = personen.map(p => {
     const b = bloeckeImZeitraum(p.datei, von, bis, istArbeit);
     alle.push(...b);

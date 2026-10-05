@@ -18,6 +18,7 @@ import { berlinTag, type Zeitraum } from '@/lib/zeitmessung/einheiten';
 import { zeitJeMandat } from '@/lib/zeitmessung/mandate';
 import { zeitPersonenVon } from '@/lib/zeitmessung/personen';
 import { mandateKurz } from '@/lib/planung/mandat-server';
+import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,9 +34,11 @@ export async function GET(req: Request) {
   const stichtag = s && TAG.test(s) && Number.isFinite(Date.parse(`${s}T12:00:00Z`)) ? s : berlinTag(new Date().toISOString());
   const { schluessel, personen } = await zeitPersonenVon(zugang.person);
   const crmStand = await speicherStand([CRM_SPEICHER]);
-  const daten = await merken(`zeit-mandate:${schluessel}:${zeitraum}:${stichtag}:${zeitBloeckeStand()}:${crmStand}`, 60_000, async () => {
+  // Konten ohne Privatzugang: nur Business-Blöcke (die Arbeit der Selbstständigkeit gehört zu Privat, 05.10. abends).
+  const nurBusiness = (await planZugangFuer(zugang.person))?.sicht === 'business';
+  const daten = await merken(`zeit-mandate:${schluessel}:${nurBusiness ? 'b' : 'p'}:${zeitraum}:${stichtag}:${zeitBloeckeStand()}:${crmStand}`, 60_000, async () => {
     const [mandate, dateien] = await Promise.all([mandateKurz(), Promise.all(personen.map(p => ladeZeit(p.person)))]);
-    return zeitJeMandat(personen.map((p, i) => ({ ...p, datei: dateien[i] })), mandate, zeitraum, stichtag);
+    return zeitJeMandat(personen.map((p, i) => ({ ...p, datei: dateien[i] })), mandate, zeitraum, stichtag, nurBusiness);
   });
   return NextResponse.json({ ok: true, ich: zugang.person, ...daten }, { headers: { 'Cache-Control': 'no-store' } });
 }

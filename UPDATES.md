@@ -4,6 +4,47 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Selbstständigkeit unter Privat, Teil 2 — Planung, Arbeit, Monatsabschluss, Vorauszahlungen (05.10.2026 abends, nur lokal — Branch `selbst-privat-2`)
+
+Kevins Entscheidungen zu den offenen Punkten von `selbst-privat` (Regel: CLAUDE.md › „Bereich je Einheit“ › Teil 2; Finanzen: FINANZPLANUNG_JETZT.md › selbst-privat-2).
+- **Ziele, Meilensteine, Routinen, Wochen-Blöcke mit Einheit „Selbstständigkeit“ stehen unter Privat** — abgeleitet (`lib/planung/bereich.ts`
+  `wirksamerSpace`), KEIN Datenumzug: gespeichert bleibt die alte Form (`space: 'business'` + `einheit`), Einheit, Mandat, Ziel-Kette, Aufwand, Personen und die
+  Aufgaben-Liste des Meilensteins (Space der Selbstständigkeit) bleiben. Neu unter Privat mit der Einheit angelegt → der Server legt es in derselben Form ab.
+  Mit: Horizont, Ziele/Meilensteine (Filter, Chip in Privat-Farbe, Einheit wählbar unter Privat), Ziel-/Meilenstein-Detail, Meilenstein-Fenster, Routinen
+  (Privat-Einheit wählbar), Lichtfäden, Kalender-Fristen (Konten ohne Privatrecht sehen sie nicht mehr), Fluss „Für dich“, Brain-Kugel, ZOE-Kontext/Loop,
+  Säulen-Ansicht, Business-Index (Meilenstein-Kennzahl ohne sie, serverseitig). Nebenbei behoben: Dateien am Meilenstein der Selbstständigkeit liefen seit
+  `selbst-privat` in die Bereichsprüfung (Projekt Privat, Anfrage Business → 409).
+- **Die Selbstständigkeit zählt weiter als Arbeit** (eigene Zuordnung je Einheit `ZAEHLT_ALS_ARBEIT`, Vorgabe: jede Firma/Einzelunternehmen ja, Privat nein):
+  Fokus-Blöcke unter Privat auf Aufgaben/Einheit/Mandat der Selbstständigkeit behalten ihre Zuordnung und zählen in Zeit je Einheit (Zeile „Privat ·
+  Selbstständigkeit“, nie Business), Zeit je Mandat und Kapazität (Ist je Meilenstein, Plan-Treue). Meilensteine/Ziele der Selbstständigkeit bleiben in der
+  Kapazität (Aufwand, Machbarkeit, Last). Konten ohne Privatzugang (`finanzRecht: 'business'`) sehen ihre Posten nur als „Privat (belegt)“ und ihre Fokuszeit
+  gar nicht; der Business-Index nennt sie nicht (Stunden zählen in der Last).
+- **Monatsabschluss der Selbstständigkeit** unter Privat › Finanzplanung › Selbstständigkeit — neue Route `/api/privat/abschluss` (Routen-Register:
+  `finanz-privat`), alte Einträge aus dem Business-Cockpit wieder sichtbar/bearbeitbar, Business-Index weiter 400.
+- **Vorauszahlungen eine Quelle:** mit Finanzplanung zählen im Steuern-Bereich nur deren Vorauszahlungen (Hinweis, wenn in den Steuer-Einstellungen
+  andere stehen); ohne Finanzplanung die Steuer-Einstellung. **Kevin muss:** die 2026 schon gezahlten Vorauszahlungen in der Finanzplanung eintragen
+  (Selbstständigkeit › Abschluss › „Vorauszahlungen 2026 schon bezahlt“) — sonst steht die Rücklage im Steuern-Bereich höher als bisher.
+- **Runway Privat** mit der Selbstständigkeit: bestätigt (Doku/Test).
+- **Vorher → Nachher (erfundene Zahlen, Tests):** Zeit je Einheit: 60 → 180 min (90 + 30 min Selbstständigkeit unter Privat zählen jetzt, Zeile „Privat ·
+  Selbstständigkeit“ 120 min); Kapazität: Ist am Meilenstein der Selbstständigkeit leer → 2 h (Privat-Fokusblock); Steuern: ESt 6.600 → 9.600 €, GewSt
+  900 → 1.500 € (Einstellungs-Vorauszahlungen zählen mit Finanzplanung nicht mehr). Machbarkeit/Aufwand der Meilensteine: unverändert (zählten schon vorher).
+- Neue Route: `/api/privat/abschluss`. Keine neuen gespeicherten Felder, keine Datenänderung beim Laden.
+
+**Rückweg:** alten Stand (`selbst-privat`) zurückspielen — er liest alles unverändert: Ziele/Meilensteine/Routinen/Blöcke der Selbstständigkeit stehen in
+der Form, die er kennt (Business + Einheit), und erscheinen dort wieder unter Business; unter Privat neu angelegte ebenso. Fokus-Blöcke unter Privat mit
+Zuordnung zur Selbstständigkeit behält er (zählt sie nicht; beim nächsten Zuordnen dieses Blocks verwirft er sie). Monatsabschlüsse der Selbstständigkeit
+bleiben im Bestand (dort wieder unsichtbar). Die Steuer-Seite zieht wieder die Einstellungs-Vorauszahlungen ab. Ohne Rückweg im Code: Arbeit je Instanz
+`{"kdc":{"arbeit":false}}`, Bereich `{"kdc":{"bereich":"business"}}` (NEXT_PUBLIC_MAKE_OS_EINHEITEN).
+
+**Plattform-Schuld (geprüft, bewusst nicht halb gebaut):** Die Zuordnung je Einheit (Bereich, Arbeit) kommt nur aus der Build-Variable. Aus dem
+Gesellschafts-Register (Rechtsform) oder einer Inhaber-Einstellung geht es nicht ohne Umbau: ~140 Stellen (davon 9 Client-Dateien) lesen
+`BEREICH_JE_EINHEIT`/`BUSINESS_GESELLSCHAFTEN`/… als Modul-Konstanten synchron, Client wie Server; die festen Einheiten kdc/kdv/ug stehen nicht im
+Register (dort nur `g-…`). Bauplan: (1) `lib/einheiten.ts` → Zuordnung hinter `zuordnung()` statt Konstanten (Startwert = Build-Variable), Konstanten als
+Funktionen; (2) feste Einheiten mit Register-Einträgen verknüpfen (Rechtsform `einzel` → privat, Kapitalgesellschaft → business; `arbeit` je Eintrag);
+(3) Server: beim Start und nach jeder Register-/Einstellungsänderung `setzeZuordnung()` (Inhaber-Einstellung > Register > Build-Variable), Memo-Reset;
+(4) Client: Zuordnung mit der Sitzung ausliefern (Layout/`/api/instanz`) + `useEinheitenZuordnung()`; (5) Wächter: keine Konstanten-Leser mehr, Vorrang-Test,
+Sicht-Tests je Bereich. Aufwand: ein eigenes Paket (≈ 1 Tag).
+
 ## Selbstständigkeit überall unter Privat · Steuern gewerblich · Runway Privat (05.10.2026, nur lokal — Branch `selbst-privat`)
 
 Kevin 05.10.: „Selbstständigkeit raus aus Business“ — „Ich habe in der Selbstständigkeit einfach ein Gewerbe angemeldet“ — „Ja, überall unter
@@ -21,8 +62,8 @@ Rechtsart, je Instanz umstellbar über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{
   unter Business nur KD Ventures/MAKE (serverseitig). Jörg-Frage 2 beantwortet (FINANZPLANUNG_JETZT.md).
 - **Runway Privat** (Finanzplanung) zählt das freie Geld der Selbstständigkeit mit.
 - Keine neue Route; `/api/steuern` kann jetzt `?space=business` (Routen-Register-Text ergänzt). Keine Datenänderung beim Laden, keine neuen Felder.
-- **Vor dem Upload für Kevin:** Monatsabschlüsse der Selbstständigkeit im Business-Cockpit (falls je eingetragen) bleiben gespeichert, werden aber
-  nirgends mehr gezeigt — Entscheidung offen. Ziele/Meilensteine mit Einheit „Selbstständigkeit“ bleiben im Business, bis Kevin entscheidet.
+- **Vor dem Upload für Kevin:** ~~Monatsabschlüsse der Selbstständigkeit … Entscheidung offen. Ziele/Meilensteine mit Einheit „Selbstständigkeit“ bleiben im
+  Business, bis Kevin entscheidet.~~ Entschieden und gebaut in `selbst-privat-2` (Eintrag oben).
 
 **Rückweg:** alten Stand zurückspielen — es gibt keine neuen gespeicherten Felder; der alte Stand liest alles weiter. Einzige gespeicherte Änderung:
 Aufgaben im Space `kdc` tragen nach dem ersten Schreiben `space: 'privat'` — der alte Stand leitet `space` aus `spaceId` neu ab (`uebernehmen`)

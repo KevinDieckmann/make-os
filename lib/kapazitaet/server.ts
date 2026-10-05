@@ -28,12 +28,13 @@ import { bloeckeImZeitraum, berlinTag, arbeitsPruefer, aufgabeKurz } from '@/lib
 import { ladeAufgaben } from '@/lib/aufgaben/sicht';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { mandatKurzListe, mandatLabel } from '@/lib/planung/mandat';
-import { meilensteinSpeicherSpace } from '@/lib/planung/meilensteine';
-import { zaehltAlsArbeit } from '@/lib/planung/bereich';
+import { meilensteinSpace, meilensteinSpeicherSpace } from '@/lib/planung/meilensteine';
+import { wirksamerSpace, zaehltAlsArbeit } from '@/lib/planung/bereich';
 import { meilensteinVonAufgabe, zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { zielJahr } from '@/lib/planung/zeitstrahl';
 import type { Meilenstein, ZieleDatei } from '@/lib/planung/typen';
-import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit } from './modell';
+import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit, ohnePrivatePosten, ohnePrivateKennzahlen, postenSchluessel } from './modell';
+import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { sauberKapaDatei, kapaAendern, type Ergebnis } from './aendern';
 import { kapaLoeschPlan, kapaOhnePersonen, kapaAuskunft, kapaVerwaisteKonten, type KapaAuskunft } from './aufraeumen';
 import { planFesthalten, planOhnePersonen, sauberPlanDatei, planAufbewahrenAb } from './plan';
@@ -94,7 +95,7 @@ function erholungAus(v: VitalsLog | null, heute: string): number | null {
 const sicher = async <T>(f: () => Promise<T>, rueck: T): Promise<T> => { try { return await f(); } catch { return rueck; } };
 
 /** Alles laden und rechnen — ungefiltert (nur Server). Wer ausliefert, nimmt `kapaStandFuer`. */
-async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege: { art: 'mandat' | 'kunde'; id: string; label: string }[] }> {
+async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege: { art: 'mandat' | 'kunde'; id: string; label: string }[]; privat: Set<string> }> {
   const ende = tagPlus(montagVon(heute), 7 * WOCHEN_STANDARD);
   const istAb = tagPlus(montagVon(heute), -28);
   const [personen, konten, datei, msDatei, zieleDatei, aufgaben, crm, planDatei] = await Promise.all([
@@ -170,7 +171,10 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
     ...Array.from(new Map(mandate.filter(m => m.aktiv && m.firmaId).map(m => [m.firmaId as string, { art: 'kunde' as const, id: m.firmaId as string, label: m.firma }])).values()),
   ];
 
-  return { stand: kapazitaetRechnen({ heute, personen: eingaben, datei, posten, ist, bezugNamen, plaene: planDatei.wochen }), bezuege };
+  // Posten aus dem Privat-Bereich (Selbstständigkeit): sie zählen als Arbeit, ihre Titel gehen aber nie an Konten ohne Privatzugang
+  // oder in den Business-Index (`ohnePrivatePosten`, 05.10. abends).
+  const privat = new Set(posten.filter(p => (p.art === 'meilenstein' ? ms.some(m => m.id === p.id && meilensteinSpace(m) === 'privat') : (zieleDatei?.jahr ?? []).some(z => z.id === p.id && wirksamerSpace(z) === 'privat'))).map(postenSchluessel));
+  return { stand: kapazitaetRechnen({ heute, personen: eingaben, datei, posten, ist, bezugNamen, plaene: planDatei.wochen }), bezuege, privat };
 }
 
 /** Gemerkt (60 s) — jede Schreibung über local-db setzt den Speicher zurück. Schlüssel: Haushalt + Tag (ungefiltert, gefiltert wird danach). */
@@ -178,8 +182,10 @@ const gemerkt = async (heute: string) => merken(`kapazitaet:${await kapaSpeicher
 
 /** Der Stand für eine Person (Plattform-Regel: serverseitig gefiltert — Erholung/Titel nur die eigenen). */
 export async function kapaStandFuer(person: string, heute = localDay()) {
-  const { stand, bezuege } = await gemerkt(heute);
-  return { stand: fuerBetrachter(stand, kapaIdVon(person)), bezuege };
+  const [{ stand, bezuege, privat }, zugang] = await Promise.all([gemerkt(heute), planZugangFuer(person)]);
+  const fuerIhn = fuerBetrachter(stand, kapaIdVon(person));
+  // Konten ohne Privatzugang (finanzRecht „business“): Posten der Selbstständigkeit nur als „Privat (belegt)“ (serverseitig, 05.10. abends).
+  return { stand: zugang?.sicht === 'business' ? ohnePrivatePosten(fuerIhn, privat) : fuerIhn, bezuege };
 }
 
 /**
@@ -188,7 +194,8 @@ export async function kapaStandFuer(person: string, heute = localDay()) {
  * Erholungs-Faktor bleibt in der Kapazität (`ohneGesundheit`).
  */
 export async function kapaKennzahlenFuerIndex(heute = localDay()): Promise<KapaKennzahlen | null> {
-  try { return ohneGesundheit(fuerBetrachter((await gemerkt(heute)).stand, null).kennzahlen); } catch { return null; }
+  // Der Business-Index nennt keine Posten aus dem Privat-Bereich (Selbstständigkeit) — ihre Stunden zählen in der Last mit (Arbeit).
+  try { const g = await gemerkt(heute); return ohneGesundheit(ohnePrivateKennzahlen(fuerBetrachter(g.stand, null).kennzahlen, g.privat)); } catch { return null; }
 }
 
 // ── Wochenplan festhalten (Kevin 05.10.: „Jeden Montag wird der Wochenplan festgehalten“) — Regeln rein in ./plan.ts ──

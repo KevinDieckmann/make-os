@@ -110,4 +110,30 @@ describe('Kapazität rechnet die Selbstständigkeit weiter als Arbeit (Meilenste
     expect(ms.istStunden).toBeCloseTo(2, 5);
     expect(j.stand.posten.some((p: { id: string }) => p.id === 'ms-privat')).toBe(false);
   });
+  it('Konto ohne Privatzugang (finanzRecht „business“): die Stunden zählen, aber Titel und Ziel der Selbstständigkeit gehen nie hinaus', async () => {
+    const { PRIVAT_BELEGT } = await import('@/lib/kapazitaet/modell');
+    const r = await kapa.GET!(anfrage('/api/kapazitaet', 'pt'));
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    const ms = j.stand.posten.find((p: { id: string }) => p.id === 'ms-selbst');
+    expect(ms).toMatchObject({ titel: PRIVAT_BELEGT, aufwand: 30 });
+    expect(JSON.stringify(j)).not.toContain('Erfundene Website');
+    // Der Business-Index bekommt keine privaten Posten in „kritisch“.
+    const { kapaKennzahlenFuerIndex } = await import('@/lib/kapazitaet/server');
+    expect(JSON.stringify(await kapaKennzahlenFuerIndex())).not.toContain('Erfundene Website');
+  });
+  it('Zeit je Einheit: der Haushalt sieht die Arbeit der Selbstständigkeit (Privat-Zeile), ein Konto ohne Privatzugang nicht', async () => {
+    const zeit = await import('@/app/api/state/zeit/einheiten/route') as Route;
+    const gestern = new Date(Date.now() - 86_400_000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+    const zeile = async (p: string) => {
+      const j = await (await zeit.GET!(anfrage(`/api/state/zeit/einheiten?zeitraum=woche&stichtag=${gestern}`, p))).json();
+      return j.gesamt.zeilen.find((z: { label: string }) => z.label === 'Selbstständigkeit') as { sek: number; bereich: string; aufgaben: { titel: string }[] } | undefined;
+    };
+    const fuerA = await zeile('pa');
+    expect(fuerA).toMatchObject({ sek: 7200, bereich: 'privat' });
+    expect(fuerA!.aufgaben.map(a => a.titel)).toEqual(['Texte']);
+    const fuerT = await zeile('pt');
+    expect(fuerT?.sek ?? 0).toBe(0);
+    expect(fuerT?.aufgaben ?? []).toEqual([]);
+  });
 });
