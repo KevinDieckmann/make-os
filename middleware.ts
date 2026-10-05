@@ -13,7 +13,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SITZUNG_COOKIE, WER_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
-import { standGueltig, zweiterFaktorOffen } from '@/lib/zugang/stand-pruefung';
+import { standPruefen, zweiterFaktorOffen } from '@/lib/zugang/stand-pruefung';
 import { crossSiteVerboten } from '@/lib/zugang/cross-site';
 import { sitzungsGeheimnisFehlt } from '@/lib/zugang/start-riegel';
 import { anfrageIntern, zuliefererSchluessel, ZULIEFERUNG, EINGESCHRAENKT_MIN } from '@/lib/zugang/intern';
@@ -126,7 +126,14 @@ export async function middleware(req: NextRequest) {
 
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);
   // Passt der Zettel noch zum Passwort? (nach einem Wechsel: alle anderen Geräte binnen einer Minute raus)
-  if (sitzung && await standGueltig(req, sitzung, schluessel)) {
+  const urteil = sitzung ? await standPruefen(req, sitzung, schluessel) : 'ungueltig';
+  // Fail-closed (05.10.): weiß der Server gerade nicht, ob der Zettel gilt (kein frischer Stand, keine Antwort), gibt es
+  // 503 statt still durchzulassen — die Sitzung bleibt, ein Neuladen in ein paar Sekunden genügt.
+  if (sitzung && urteil === 'unklar') {
+    if (pfad.startsWith('/api/')) return NextResponse.json({ error: 'MAKE OS ist gerade nicht erreichbar — bitte gleich noch einmal.' }, { status: 503, headers: { 'Retry-After': '5' } });
+    return new NextResponse('MAKE OS startet gerade — bitte in ein paar Sekunden neu laden.', { status: 503, headers: { 'Retry-After': '5', 'Content-Type': 'text/plain; charset=utf-8' } });
+  }
+  if (sitzung && urteil === 'gueltig') {
     // 2FA-Pflicht der Instanz (05.10.): wer noch keinen zweiten Faktor hat, darf nur ihn einrichten (oder sich abmelden).
     if (zweiterFaktorOffen(sitzung) && !ZF_EINRICHTEN.some(([m, r]) => m === req.method && r.test(pfad))) {
       if (pfad.startsWith('/api/')) return NextResponse.json({ error: 'Erst den zweiten Faktor einrichten.', zweiterFaktorEinrichten: true }, { status: 403 });
