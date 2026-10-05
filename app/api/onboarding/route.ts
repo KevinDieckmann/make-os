@@ -3,6 +3,7 @@
 // weil auch die Startfläche den Fortschritt zeigt — eine Quelle für beide.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { pruefeAlles, type Handisch } from '@/lib/onboarding-status';
@@ -11,7 +12,8 @@ import { personAus } from '@/lib/zoe/raum';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const [handisch, befunde] = await Promise.all([
     loadJson<Handisch>('onboarding'),
     pruefeAlles(),
@@ -21,6 +23,7 @@ export async function GET() {
 
 /** Einen Schritt von Hand abhaken oder das Häkchen wieder entfernen. */
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { id?: string; an?: boolean; von?: string };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(body.id ?? '').slice(0, 60);

@@ -6,13 +6,15 @@
 // Beschreibung im Gehirn ist schlimmer als keine — ZOE antwortet daraus.
 
 import { NextResponse } from 'next/server';
+import { imHaushaltDesInhabers, nurHaushalt, nurInhaber, nurDerInhaber } from '@/lib/zugang/tor';
 import { blaetter } from '@/lib/zoe/selbstbild';
 import { schreibeEigene } from '@/lib/zoe/vault';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const liste = await blaetter();
   return NextResponse.json({
     ok: true,
@@ -20,7 +22,8 @@ export async function GET() {
   });
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  if (!(await nurInhaber(req))) return nurDerInhaber();
   const liste = await blaetter();
   const ergebnisse = [];
   for (const b of liste) {

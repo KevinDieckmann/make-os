@@ -4,6 +4,7 @@
 // Jede Person hat ihr eigenes (speicherFuer): Kevin und Malin gestalten unabhängig.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, speicherFuer } from '@/lib/zoe/raum';
@@ -13,6 +14,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   const seite = new URL(req.url).searchParams.get('seite') ?? '';
   if (!seiteOk(seite)) return NextResponse.json({ ok: false, error: 'Seite fehlt.' }, { status: 400 });
   const d = sauberDatei(await loadJson<FlaecheDatei>(speicherFuer('flaeche', personAus(req))));
@@ -20,6 +22,7 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   let b: { seite?: string; layout?: unknown };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const seite = String(b.seite ?? '');

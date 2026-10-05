@@ -3,6 +3,7 @@
 // ist, wartet im Screener — genau eine Entscheidung, dann nie wieder.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -15,12 +16,14 @@ interface AbsenderFile {
   bekannt: Record<string, { status: 'durchgelassen' | 'geblockt'; seit: string; fach?: string }>;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const f = await loadJson<AbsenderFile>('inbox-absender');
   return NextResponse.json({ bekannt: f?.bekannt && typeof f.bekannt === 'object' ? f.bekannt : {} });
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { absender?: string; status?: string; fach?: string };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const key = String(body.absender ?? '').toLowerCase().trim().slice(0, 200);

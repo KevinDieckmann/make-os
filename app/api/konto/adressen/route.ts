@@ -9,6 +9,7 @@
 // gilt nur für das EIGENE Konto (Person aus der Sitzung — der Dienstweg hat keine → 403), steht im Sicherheitsprotokoll
 // (Adresse maskiert) und meldet sich in der Glocke des Kontos. Eine Adresse darf in der Instanz nur einmal vorkommen.
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { personDerSitzung } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, emailSauber, passwortStimmt, adresseVergeben, adresseMaskiert, alleAdressen, oeffentlich, MAX_WEITERE_EMAILS } from '@/lib/zugang/konten';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
@@ -27,8 +28,8 @@ const fehler = (error: string, status: number, extra: Record<string, unknown> = 
 
 export async function POST(req: Request) {
   // Nur die Person der Sitzung (von der Middleware gesetzt) — Dienstweg und Systemläufe haben keine → 403.
-  const wer = req.headers.get('x-make-user');
-  if (!wer || !/^[a-z0-9-]{1,40}$/.test(wer)) return fehler('Nur für die angemeldete Person selbst.', 403);
+  const wer = personDerSitzung(req);
+  if (!wer) return fehler('Nur für die angemeldete Person selbst.', 403);
   let b: { aktion?: string; email?: string; passwort?: string };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? fehler('Kein gültiges JSON.', 400); }
   if (!b || typeof b.aktion !== 'string' || !AKTIONEN.includes(b.aktion)) return fehler('aktion = hinzu | haupt | weg', 400);

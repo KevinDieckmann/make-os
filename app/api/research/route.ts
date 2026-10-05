@@ -3,6 +3,7 @@
 // Anthropic Messages API + server-seitiges web_search-Tool.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { askWithSearch, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
@@ -21,6 +22,7 @@ const SYSTEM = [
 ].join('\n');
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { query?: string };
   try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ reply: '', error: 'Kein gültiges JSON.' }, { status: 400 }); }

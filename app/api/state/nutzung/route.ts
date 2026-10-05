@@ -8,6 +8,7 @@
 // zieht der Verbesserungs-Loop später seine Vorschläge.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -34,7 +35,8 @@ interface Datei {
 const LEER: Datei = { seiten: {}, tage: {} };
 const TAGE_BEHALTEN = 60;
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const d = (await loadJson<Datei>('nutzung')) ?? LEER;
   const seiten = Object.entries(d.seiten ?? {})
     .map(([pfad, s]) => ({ pfad, ...s }))
@@ -49,6 +51,7 @@ export async function GET() {
 
 /** Einen Aufruf mitschreiben. Absichtlich schmal: Pfad, Zeit, wer. */
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { pfad?: string; person?: string; sekunden?: number };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false }, { status: 400 }); }
   const pfad = String(body.pfad ?? '').slice(0, 120);
@@ -79,7 +82,8 @@ export async function POST(req: Request) {
 }
 
 /** Stempelt, dass eine Analyse gelaufen ist. */
-export async function PUT() {
+export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const next = await updateJson<Datei>('nutzung', current => ({
     ...(current ?? LEER),
     letzteAnalyse: new Date().toISOString(),

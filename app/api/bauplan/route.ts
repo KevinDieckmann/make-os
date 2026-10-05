@@ -12,6 +12,7 @@
 // Versendet wird nichts; Bilder über /api/bauplan/bild.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { merken } from '@/lib/store/memo';
 import { personAus } from '@/lib/zoe/raum';
@@ -22,7 +23,8 @@ import { neueKennung } from '@/lib/kennung';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const body = await merken('bauplan', 20_000, async () => { const d = await ladeBauplan(); return { ok: true, items: d.items, etappen: d.etappen ?? [], warteschlange: warteschlange(d.items).map(i => i.id) }; });
   return NextResponse.json(body);
 }
@@ -30,6 +32,7 @@ export async function GET() {
 const txt = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);

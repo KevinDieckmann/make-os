@@ -5,6 +5,7 @@
 // versendet wird NIE automatisch, Kevin prüft und schickt selbst (Gate ✋).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -26,6 +27,7 @@ const RECHT =
   'B2B-Kaltansprache per E-Mail ist in DE nur mit mutmaßlicher Einwilligung sauber (§7 UWG) — bei kaltem Kontakt ist LinkedIn oder Telefon der sichere erste Kanal. Versand bleibt bei dir.';
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { prospect?: ProspectIn; icp?: string };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }

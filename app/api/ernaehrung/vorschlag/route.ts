@@ -8,6 +8,7 @@
 // wird per Klick. Kein Medizin-/Ernährungsrat.
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
+import { nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd } from '@/lib/anthropic';
@@ -36,7 +37,8 @@ const profilText = (p: ErnaehrungFile['profile'][number]) => [
 const VORSCHLAG = 'ernaehrung-vorschlag';
 
 /** Der abgelegte Vorschlag (höchstens 14 Tage alt). */
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const s = await loadJson<{ zeit: string; vorschlag: unknown }>(VORSCHLAG);
   const frisch = s && Date.now() - Date.parse(s.zeit) < 14 * 864e5 ? s : null;
   return NextResponse.json({ ok: true, ...(frisch ?? { zeit: null, vorschlag: null }) }, { headers: { 'Cache-Control': 'no-store' } });

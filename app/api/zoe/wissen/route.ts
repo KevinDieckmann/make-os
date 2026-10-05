@@ -13,6 +13,7 @@
 // Geschrieben wird hier nichts. Kevin pflegt sein Brain in Obsidian.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { bestand, darfSehen, neueste, notiz, suche, WURZELN } from '@/lib/zoe/vault';
 import { personAus } from '@/lib/zoe/raum';
@@ -26,6 +27,7 @@ export const dynamic = 'force-dynamic';
 const zahl = (v: string | null, std: number, max: number) => Math.max(1, Math.min(max, Number(v) || std));
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const p = new URL(req.url).searchParams;
   const sicht = { person: personAus(req) };
   const bereich = p.get('bereich')?.trim() || undefined;
@@ -71,6 +73,7 @@ export async function GET(req: Request) {
 
 /** Mit dem Brain chatten: eine Frage, dazu der bisherige Verlauf (nur Text). */
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let b: { frage?: unknown; verlauf?: unknown };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }

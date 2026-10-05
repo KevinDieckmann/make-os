@@ -6,6 +6,7 @@
 // der Ausfall wird ehrlich ausgewiesen statt still verschluckt.
 
 import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -37,7 +38,8 @@ interface Mail { id: string; account?: string; sender?: string; subject?: string
 
 const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const f = await loadJson<LaufFile>('tageslauf');
   const laeufe = Array.isArray(f?.laeufe) ? f.laeufe : [];
   const heute = tagKey();

@@ -4,6 +4,7 @@
 // Results, ordnet vorhandene Tasks zu und flaggt Lücken. Read-only Synthese.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { gatherBrain } from '@/lib/brain';
@@ -19,6 +20,7 @@ export const dynamic = 'force-dynamic';
 interface TaskLite { title?: string; status?: string; priority?: string; description?: string; }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { finance?: FinanceState; tasks?: TaskLite[] };
   try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }

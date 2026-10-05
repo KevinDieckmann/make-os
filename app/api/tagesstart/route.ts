@@ -14,6 +14,7 @@
 // /api/apple-calendar: er stößt den Abgleich an und zählt über `termineFuerZoe` (für die Person gefiltert).
 
 import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { recentRuns } from '@/lib/agent-log';
@@ -56,7 +57,8 @@ async function status(today: string) {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   return NextResponse.json(await status(localDay()));
 }
 

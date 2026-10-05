@@ -5,6 +5,7 @@
 // kann für niemanden einwilligen. Nachweis unveränderlich (lib/datenschutz/gesundheit-einwilligung.ts).
 
 import { NextResponse } from 'next/server';
+import { personDerSitzung } from '@/lib/zugang/tor';
 import { istDienst } from '@/lib/zugang/dienst';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { GESUNDHEIT_FASSUNG, GESUNDHEIT_TEXTE, GESUNDHEIT_ZWECKE, gesundheitErklaeren, gesundheitNachweis, gesundheitStandFuer } from '@/lib/datenschutz/gesundheit-einwilligung';
@@ -19,7 +20,7 @@ const NUR_SELBST = () => NextResponse.json({ ok: false, error: 'Einwilligen kann
 /** Die Person aus der SITZUNG — nie aus dem Dienstweg. */
 function selbst(req: Request): string | null {
   if (istDienst(req)) return null;
-  const p = req.headers.get('x-make-user');
+  const p = personDerSitzung(req);
   return p && PERSON.test(p) ? p : null;
 }
 

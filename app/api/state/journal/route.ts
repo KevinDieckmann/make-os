@@ -3,6 +3,7 @@
 // So entstehen über Zeit echte Daten, um den Weg immer wieder anzupassen.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
@@ -42,6 +43,7 @@ export async function PUT(req: Request) {
   { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let body: unknown;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  if (!personStreng(req)) return ohnePerson();
   const j = body as Journal;
   if (!j || typeof j !== 'object' || Array.isArray(j)) {
     return NextResponse.json({ ok: false, error: 'Ungültiges Journal.' }, { status: 400 });
@@ -67,6 +69,7 @@ export async function PATCH(req: Request) {
   { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let b: { datum?: string; eintrag?: Partial<JournalEntry> };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  if (!personStreng(req)) return ohnePerson();
   const datum = b.datum && /^\d{4}-\d{2}-\d{2}$/.test(b.datum) ? b.datum : localDay();
   const e = b.eintrag ?? {};
   const t = (v: unknown, n: number) => { const s = String(v ?? '').trim().slice(0, n); return s || undefined; };

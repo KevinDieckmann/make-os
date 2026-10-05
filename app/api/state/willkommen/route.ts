@@ -4,6 +4,7 @@
 // ein gelöschter Verlauf oder ein zweiter Rechner sollen ihn nicht wiederholen.
 
 import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
@@ -13,13 +14,15 @@ export const dynamic = 'force-dynamic';
 
 interface Datei { gesehen: Record<string, string> }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const d = await loadJson<Datei>('willkommen');
   return NextResponse.json({ gesehen: d?.gesehen ?? {} });
 }
 
 /** Als gesehen stempeln — danach kommt der Gruß nie wieder. */
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   // Die Person kommt aus der Sitzung, nicht aus dem Body (26.09.).
   try { await jsonBegrenzt(req, JSON_GROSS); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
   const person = personAus(req);
@@ -34,6 +37,7 @@ export async function POST(req: Request) {
 
 /** Zurücksetzen — damit der Gruß erneut gezeigt werden kann (?person=malin). */
 export async function DELETE(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const person = new URL(req.url).searchParams.get('person');
   const next = await updateJson<Datei>('willkommen', current => {
     const f = current ?? { gesehen: {} };

@@ -6,6 +6,7 @@
 // fällige Zahlungen) — hier steht, was ERWARTET wird.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { privatFinanzZugang, keinFinanzZugang } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
@@ -74,12 +75,14 @@ function sauber(p: Partial<Planposten>, _i: number): Planposten | null {
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
+  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   const f = await loadJson<Datei>('liquiplan');
   return NextResponse.json({ posten: Array.isArray(f?.posten) ? f.posten : [] });
 }
 
 export async function PUT(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
+  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   let body: Partial<Datei>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!Array.isArray(body.posten)) return NextResponse.json({ ok: false, error: 'posten fehlt.' }, { status: 400 });
@@ -96,6 +99,7 @@ export async function PUT(req: Request) {
  */
 export async function PATCH(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
+  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   let body: { ops?: ListenOp[] };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const ops = (Array.isArray(body.ops) ? body.ops : []).filter(o => o.liste === 'posten').slice(0, 300);

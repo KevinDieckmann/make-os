@@ -4,6 +4,7 @@
 // Widget-IDs — die Widgets selbst wohnen im Dashboard-Code.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -12,12 +13,14 @@ export const dynamic = 'force-dynamic';
 
 interface BoardFile { widgets: string[] }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const f = await loadJson<BoardFile>('dashboard');
   return NextResponse.json({ widgets: Array.isArray(f?.widgets) ? f.widgets : [] });
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { widgets?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const widgets = (Array.isArray(body.widgets) ? body.widgets : [])

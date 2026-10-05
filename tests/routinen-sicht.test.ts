@@ -2,6 +2,7 @@
 // Der Gesundheits-Index las alle Routinen des Haushalts — die der Partnerin standen mit Titel im Index und verfälschten die
 // eigene Quote. Dieselbe Lücke in GET /api/state/routinen für persönliche Zählungen (`?sicht=ich`).
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { haushaltKonten } from './fixtures/konten';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -15,6 +16,7 @@ const r = (id: string, label: string, owner?: string) => ({ id, label, wann: 'mo
 
 beforeAll(async () => {
   const db = await import('@/lib/store/local-db');
+  await haushaltKonten(db);
   await db.saveJson('routinen', { routinen: [r('r-k', 'Kevins Dehnen', 'kevin'), r('r-m', 'Malins Yoga', 'malin'), r('r-b', 'Gemeinsam spazieren', 'beide'), r('r-alt', 'Altroutine ohne Besitz')] });
 });
 afterAll(() => rmSync(ordner, { recursive: true, force: true }));

@@ -4,6 +4,30 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Routen-Register + Zugangs-Wächter (05.10.2026, nur lokal — Branch `routen`, Sicherheits-Audit 05.10.)
+
+Kevin 04./05.10.: „alle Standards der DSGVO, damit wir Kundendaten aufnehmen können“ — Trennung serverseitig. Das Audit fand 89 von
+239 Schnittstellen, die außer der Anmeldung nichts prüften. Jetzt:
+- **Register** `lib/zugang/routen-register.ts`: jede Schnittstelle mit Methoden, Klasse (offen · dienst · person · haushalt · inhaber ·
+  finanz-privat · finanz-business · modul:markttraktion) und Begründung. **Wächter** `tests/routen-register.test.ts`: jede Route im
+  Register, jede Methode ruft das Tor ihrer Klasse, Laufzeit-Stichproben (fremder Haushalt, Partner „nur Business“, Testkunde ohne
+  Haushalt, Dienstweg ohne Person → 401/403). Neue Route ohne Eintrag → Test rot.
+- **Nachgezogen (77 Routen; `state/kompass` kam mit `dsgvo-ki`):** gemeinsame Bestände (Ziele, Meilensteine, Routinen, Meetings, Labels, Filter, Ordnung, Bauplan + Bilder,
+  Onboarding, Anwesenheit, Nutzung, Spaces, Dashboard, Willkommen, Arbeitsmodus/-platz, Bauzeit, Fokus-Regler, Absender-Register),
+  ZOE (Gedächtnis, Wissen, Protokoll, Aufträge, Empfang, Morgen, Verbrauch, Selbstbild, Gespräch), Agenten (Delegation, OKR, Board,
+  Recherche, Meeting, Fokus, Performance, Finanzchef, Inbox-Entwurf/-Triage, Content, Outreach, Prospecting), Risk, Startfläche,
+  Tageslauf-/Tagesstart-Stand → nur Haushalt des Inhabers (bzw. Systemlauf). Beleg lesen/übernehmen, Buchungen, Liquiplan,
+  Finanzplan-Altweg, Prüfliste → nur volles Finanzrecht im Inhaber-Haushalt. M365-Postfach lesen, Kontakt-Vorschläge daraus,
+  Browser-Fehler lesen, Selbstbild in den Vault → nur Inhaber. Persönliches (Fläche, Rituale, ZOE-Verlauf, Telegram-Kopplung, Konto,
+  Gesundheit schreiben) → ausdrücklich benannte Person (401 statt Rückfall auf „kevin“). Telegram-Stand nur für den Boten.
+- **Feste „kevin“ neutralisiert:** Risk-Blöcke der Person bzw. des Inhabers aus den Konten; Startfläche nimmt die andere Person aus dem Haushalt.
+- **Lesen schreibt nicht:** Bauplan-Altbestand zeigt den Startbestand nur an; verbleibende schreibende GETs sind im Register begründet.
+- **Entfernt:** `apple-calendar/create`, `apple-calendar/termin`, `state/wochenplan` (410, nichts zeigt mehr darauf).
+- **Spürbar nach dem Upload:** Konten mit `finanzRecht: 'business'` bekommen auf Buchungen, Liquiplan und Rechnungen-Altweg 403 (die
+  Business-Sicht der Finanzplanung bleibt); Konten aus einem anderen Haushalt bzw. ohne Haushalt sehen ZOE, Ziele, Bauplan usw. nicht
+  mehr (vorher offen). Kevin und Malin merken nichts. Keine Datenänderung, keine Umgebungsvariable.
+- **Rückweg:** Commits zurücknehmen — es gibt keine neuen Bestände; der Bauplan-Altbestand wird ohnehin beim ersten Schreiben gespeichert.
+
 ## DSGVO-Grundlagen im Code (05.10.2026, nur lokal — Branch `dsgvo-grund`)
 
 Kevin 05.10.: „Die Software muss auf allen Standards der DSGVO sein, damit wir auch Kundendaten aufnehmen können.“ Aus dem

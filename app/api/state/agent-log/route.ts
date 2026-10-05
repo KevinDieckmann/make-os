@@ -7,6 +7,7 @@
 // POST { agent, title, payload }
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { logRun, recentRuns } from '@/lib/agent-log';
 import { istDienst } from '@/lib/zugang/dienst';
@@ -16,6 +17,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const url = new URL(req.url);
   const agent = url.searchParams.get('agent') ?? undefined;
   const prefix = url.searchParams.get('prefix') ?? undefined;

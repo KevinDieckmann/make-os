@@ -264,6 +264,24 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   (512) und arbeiter (128), Arbeiter `read_only` + tmpfs. App `read_only` offen (Next schreibt `.next/cache`).
 - Tests: `tests/sicher-zugang-*.test.ts` (dienst, riegel, einrichten, zwei-faktor, passwort, protokoll, sitzung, json, caddy).
 
+## Sicherheit — Routen-Register + Zugangs-Wächter (05.10., Branch `routen`, nur lokal; UPDATES.md)
+- **Regel: neue Route → Eintrag im Register.** JEDE `app/api/**/route.ts` steht in `lib/zugang/routen-register.ts` mit ihren
+  Methoden, der Klasse je Methode und einem Satz warum: `offen` · `dienst` · `person` · `haushalt` · `inhaber` · `finanz-privat` ·
+  `finanz-business` · `modul:<name>` (z. B. `modul:markttraktion`; bis zur Lizenz-Prüfung gilt das Haushalts-Tor). Der Wächter
+  `tests/routen-register.test.ts` findet alle route.ts und wird rot bei: Route/Methode ohne Eintrag, verwaistem Eintrag, Methode ohne
+  das Tor ihrer Klasse (statisch über `lib/zugang/routen-analyse.ts`, auch über Hilfsfunktionen der Datei), neuem `offen` ohne
+  Eintrag in `OFFEN_ERLAUBT`, lesendem GET, der schreibt, ohne Begründung (`getSchreibt`). Laufzeit-Stichproben je Klasse: fremder
+  Haushalt, Partner mit `finanzRecht: 'business'`, Testkunde ohne Haushalt, Dienstweg ohne Person → 401/403.
+- **Tor-Zeile am Anfang** (Vorlagen und fertige Antworten in `lib/zugang/tor.ts`, ein Import): `imHaushaltDesInhabers` (Person nötig) bzw.
+  `imHaushaltOderSystemlauf` (Takt/Agenten ohne Person) → `nurHaushalt()`; `personStreng` → `ohnePerson()` (401, nie Rückfall auf
+  „kevin“); `personDerSitzung` für Konto-Wege nur per Sitzung; `nurInhaber` → `nurDerInhaber()`; `istDienst` → `nurDienstweg()`;
+  `privatFinanzZugang` → `keinFinanzZugang()`. Eine eigene Prüfung nur mit `tor` + Begründung im Register.
+- **Private Finanzen in gemeinsamen Beständen** (`buchungen`, `liquiplan`, `finanzplan`, Belege, Prüfliste der Entflechtung):
+  `privatFinanzZugang` = Haushaltsmitglied ohne `finanzRecht: 'business'` UND Haushalt des Inhabers — `haushaltVon` allein ließe einen
+  anderen Haushalt an Bestände, die nicht je Haushalt getrennt liegen. Business-Konten sehen Finanzen nur über `/api/finanzplan`.
+- **Lesen schreibt nicht** (außer begründet: Caches, idempotente Tagespunkte, Erststart). `state/backlog` zeigt den Startbestand nur an.
+- Alte 410-Wege (`apple-calendar/create`, `apple-calendar/termin`, `state/wochenplan`) sind entfernt (`ENTFERNTE_ROUTEN`).
+
 ## Verschlüsselung lückenlos + Protokolle nachweisfest (05.10., Branch `verschluesselung`, nur lokal — UPDATES.md 05.10.)
 - **Brain-Index nie im Klartext auf der Platte:** Ort nur über `indexOrt()` (`lib/brain/index-ort.ts`, rein): mit Datenschlüssel tmpfs
   (Server: compose `/brain-index`, `MAKE_OS_BRAIN_INDEX=/brain-index/index/brain-index.sqlite`, 256 MB) oder `:memory:`; ein Plattenpfad wird

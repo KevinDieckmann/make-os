@@ -13,6 +13,7 @@
 // Was ZOE nachts allein erarbeitet, soll Kevin einmal gesehen haben.
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey, guthabenLeer, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { regelBericht } from '@/lib/zoe/regelwerk';
@@ -139,6 +140,7 @@ function anweisungAbend(person: Person, lage: string, liegt: string): string {
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   const person = personAus(req);
   const origin = innenAdresse(req);

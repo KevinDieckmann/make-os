@@ -16,6 +16,7 @@
 // zu schweigen.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { nurDienstweg } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { ladeStand, aendereStand, loeseCode, personFuerChat, sendeAnChat } from '@/lib/telegram';
 import { nameVon } from '@/lib/zoe/raum';
@@ -68,7 +69,8 @@ async function inDenVerlauf(person: string, frage: string, antwort: string, jetz
   return id;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!istDienst(req)) return nurDienstweg();
   const s = await ladeStand();
   const je: Record<string, number> = {};
   for (const k of s.kopplungen) je[k.person] = (je[k.person] ?? 0) + 1;

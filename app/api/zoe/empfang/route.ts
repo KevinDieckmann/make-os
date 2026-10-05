@@ -8,6 +8,7 @@
 // die Software lieber nicht so oft auf".
 
 import { NextResponse } from 'next/server';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { gatherBrain, promptBrain, brainKategorien } from '@/lib/brain';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
@@ -61,6 +62,7 @@ function anweisung(person: Person, offen: number): string {
 }
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   const person = personAus(req);
   const stunde = stundeJetzt();

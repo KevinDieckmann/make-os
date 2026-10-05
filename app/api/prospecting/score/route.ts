@@ -3,6 +3,7 @@
 // Nutzt die gemeinsame KI-Schicht (Timeout, Retry, robustes JSON).
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -15,6 +16,7 @@ export const dynamic = 'force-dynamic';
 interface ProspectIn { company?: string; domain?: string; industry?: string; size?: string; region?: string; }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { prospect?: ProspectIn; icp?: string };
   try { payload = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }

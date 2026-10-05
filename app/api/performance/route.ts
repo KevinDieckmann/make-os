@@ -4,6 +4,7 @@
 // POST {analyse} → zusätzlich: MAKE ordnet die Lage ein und benennt den Hebel
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { merken } from '@/lib/store/memo';
 import { personAus } from '@/lib/zoe/raum';
@@ -46,6 +47,7 @@ async function history(person: string): Promise<PerfSnapshot[]> {
 }
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   // Der Score hängt an persönlichen Beständen (Gesundheit, Journal,
   // Routinen) — er gehört deshalb der Person, die fragt.
   // Tempo (26.09.): der Score rechnet über viele Bestände — fünf Minuten merken, jede Schreibung setzt zurück.
@@ -70,6 +72,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { analyse?: boolean } = {};
   try { body = await jsonBegrenzt(req); } catch { /* ohne Body ist ok */ }

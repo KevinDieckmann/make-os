@@ -2,7 +2,7 @@
 // alten Wochenplan-Blöcke, Spiegel von Event/Familie mit echter UID, Umschalter Kalender | Aufgaben. Reine Regeln;
 // Server-Abläufe mit gemocktem iCloud in tests/kalender-k5-server.test.ts. Erfundene Daten.
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
@@ -249,8 +249,9 @@ describe('Wächter K5', () => {
     // Die Analyse-Route (Kalender-Agent, autonom) repariert Paket R-Z — sie ruft den Altweg danach nicht mehr (410).
     const aufrufer = QUELLEN.filter(p => !p.startsWith('app/api/apple-calendar/') && p !== 'app/api/kalender/analyse/route.ts' && /fetch\([^)]*\/api\/apple-calendar\/(create|termin)/.test(lies(p)));
     expect(aufrufer).toEqual([]);
-    expect(lies('app/api/apple-calendar/create/route.ts')).toContain('status: 410');
-    expect(lies('app/api/apple-calendar/termin/route.ts')).toContain('status: 410');
+    // Die 410-Stummel sind seit 05.10. entfernt (Routen-Register, ENTFERNTE_ROUTEN) — Next antwortet dort 404.
+    expect(existsSync(path.join(WURZEL, 'app/api/apple-calendar/create/route.ts'))).toBe(false);
+    expect(existsSync(path.join(WURZEL, 'app/api/apple-calendar/termin/route.ts'))).toBe(false);
   });
   it('keine KEMARIS-Beispieldaten mehr in Heute, Tagesplan, Energie, Signalen, Vorschlag (M365 kommt echt)', () => {
     // Offen für Paket R-Z: der ZOE-Lesepfad (lib/kalender/zoe-sicht-server.ts, genutzt von Brain, plan_block, Vorschlag,

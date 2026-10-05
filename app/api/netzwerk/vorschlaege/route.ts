@@ -4,6 +4,7 @@
 // im Netzwerk haben — sortiert danach, wie oft man voneinander hört.
 
 import { NextResponse } from 'next/server';
+import { nurInhaber, nurDerInhaber } from '@/lib/zugang/tor';
 import { loadJson } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/netzwerk-data';
 
@@ -15,7 +16,8 @@ interface MsMail { senderName?: string; senderEmail?: string; subject?: string; 
 /** Absender, die nie eine Person sind. */
 const KEINE_PERSON = /no-?reply|noreply|donotreply|newsletter|mailing|notification|benachricht|info@|support@|service@|team@|hello@|kontakt@|automat/i;
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await nurInhaber(req))) return nurDerInhaber();
   const [ms, netz] = await Promise.all([
     loadJson<{ emails: MsMail[]; at?: string }>('microsoft-inbox'),
     loadJson<{ kontakte: Kontakt[] }>('netzwerk'),

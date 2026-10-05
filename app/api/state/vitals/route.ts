@@ -4,6 +4,7 @@
 // PUT { date, vitals } → einen Tag setzen (ohne die anderen zu verlieren)
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
@@ -40,6 +41,7 @@ export async function PUT(req: Request) {
   { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let body: { date?: string; vitals?: DayVitals };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  if (!personStreng(req)) return ohnePerson();
 
   const date = body.date && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : localDay();
   const v = body.vitals ?? {};

@@ -3,6 +3,7 @@
 // Kevins Bedingung: sofort merken, dafür sichtbar und jederzeit löschbar.
 
 import { NextResponse } from 'next/server';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { lies, vergiss, type FaktArt } from '@/lib/zoe/gedaechtnis';
 import { personAus } from '@/lib/zoe/raum';
 
@@ -10,6 +11,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const p = new URL(req.url).searchParams;
   // Nach Raum gefiltert: die Liste zeigt nur den eigenen und den gemeinsamen
   // Bestand. Ohne das sähe Kevin in der Oberfläche, was Malin ZOE erzählt
@@ -24,6 +26,7 @@ export async function GET(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!id) return NextResponse.json({ ok: false, error: 'Keine id.' }, { status: 400 });
   // Nur Fakten des eigenen oder gemeinsamen Raums (26.09.).

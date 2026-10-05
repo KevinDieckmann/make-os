@@ -107,9 +107,11 @@ describe('Nur im Haushalt des Inhabers', () => {
       expect(r.status).toBe(200);
       return { namen: mitschnitt[0].tools.map(t => t.name), system: mitschnitt[0].system };
     };
-    const fremd = await zug('fremd');
-    for (const n of NEU) expect(fremd.namen, n).not.toContain(n);
-    expect(fremd.system).not.toContain('CRM-BEZUG');
+    // Ein Konto aus einem anderen Haushalt bekommt seit 05.10. (Routen-Register) gar kein Gespräch: 403, kein Modellaufruf.
+    mitschnitt.length = 0;
+    const fremd = await POST(anfrage('/api/kimmi', sitzung('fremd'), 'POST', { message: 'Was steht hier an?', bezug: { art: 'kontakt', id: 'c-anna-1' } }));
+    expect(fremd.status).toBe(403);
+    expect(mitschnitt).toHaveLength(0);
     const malin = await zug('malin');
     for (const n of NEU) expect(malin.namen, n).toContain(n);
     expect(malin.system).toContain('CRM-BEZUG');

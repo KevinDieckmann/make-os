@@ -6,6 +6,7 @@
 // Jede Änderung landet (nur Feldnamen) im Änderungsprotokoll (lib/zugang/konten.ts › aendereKonten).
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { personDerSitzung } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, leerlaufStunden } from '@/lib/zugang/konten';
 
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 /** Nur mit Sitzung (x-make-user) — nie über den Dienstweg (ZOE, Skripte), auch nicht „im Auftrag“. */
 async function inhaber(req: Request) {
-  const p = req.headers.get('x-make-user');
+  const p = personDerSitzung(req);
   const st = await ladeKonten();
   const ich = p && /^[a-z0-9-]{1,40}$/.test(p) ? st.konten.find(k => k.speicher === p && k.rolle === 'inhaber') : undefined;
   return ich ? { ich, st } : null;

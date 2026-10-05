@@ -4,6 +4,7 @@
 // die fremde Mail geht als DATEN in den Prompt (Injection-Schutz).
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -15,6 +16,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let p: { sender?: string; senderEmail?: string; subject?: string; body?: string; hint?: string };
   try { p = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ draft: '', error: 'Kein gültiges JSON.' }, { status: 400 }); }

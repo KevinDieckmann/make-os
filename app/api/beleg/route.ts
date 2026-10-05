@@ -9,6 +9,7 @@
 // Kann Fotos (JPEG/PNG/WebP) und PDFs.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { privatFinanzZugang, keinFinanzZugang } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { loadJson } from '@/lib/store/local-db';
@@ -52,6 +53,7 @@ const SYSTEM = [
 ].join('\n');
 
 export async function POST(req: Request) {
+  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   if (zuGross(req, 12000000)) return ZU_GROSS(12000000);
   if (!hasAnthropicKey()) {

@@ -4,6 +4,7 @@
 // Auto-Mitschrift (Granola/Fireflies) ist der spätere Zusatz.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
@@ -26,6 +27,7 @@ const PROJECTS = [
 ];
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { transcript?: string; datum?: string };
   try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }

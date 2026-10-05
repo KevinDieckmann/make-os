@@ -12,7 +12,7 @@ process.env.MAKE_OS_KEY = 'pruef-schluessel-k1-seed';
 delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 
 type Handler = (r: Request) => Promise<Response>;
-let finanzplan: { GET: Handler }, kunden: { GET: Handler }, meilensteine: { GET: () => Promise<Response> };
+let finanzplan: { GET: Handler }, kunden: { GET: Handler }, meilensteine: { GET: Handler };
 let db: typeof import('@/lib/store/local-db');
 let bestand: typeof import('@/lib/finanzen/finanzplan-bestand');
 const kevin = () => new Request('http://test/api/state/x', { headers: { 'x-make-user': 'kevin' } });
@@ -24,7 +24,7 @@ beforeAll(async () => {
   await db.saveJson('konten', { konten: [{ id: 'k1', speicher: 'kevin', email: 'k@test.invalid', name: 'Kevin', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'haus-seed' }], einladungen: [] });
   finanzplan = (await import('@/app/api/state/finanzplan/route')) as unknown as { GET: Handler };
   kunden = (await import('@/app/api/state/kunden/route')) as unknown as { GET: Handler };
-  meilensteine = (await import('@/app/api/state/meilensteine/route')) as unknown as { GET: () => Promise<Response> };
+  meilensteine = (await import('@/app/api/state/meilensteine/route')) as unknown as { GET: Handler };
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 
@@ -78,7 +78,7 @@ describe('Kunden und Meilensteine: kein Startbestand mehr', () => {
     const k = await (await kunden.GET(kevin())).json() as { kunden: unknown[] };
     expect(k.kunden).toEqual([]);
     expect(existsSync(datei('kunden'))).toBe(false);
-    const m = await (await meilensteine.GET()).json() as { meilensteine: unknown[] };
+    const m = await (await meilensteine.GET(kevin())).json() as { meilensteine: unknown[] };
     expect(m.meilensteine).toEqual([]);
     expect(existsSync(datei('meilensteine'))).toBe(false);
   });

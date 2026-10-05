@@ -3,6 +3,7 @@
 // Map: { [agentId]: { autonomy?, enabled?, model?, buildNext? } }
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
@@ -18,7 +19,8 @@ const AUTONOMIEN: string[] = ['entwurf', 'freigabe', 'autonom', 'nur-vorschlag',
 export interface AgentConfig { autonomy?: string; enabled?: boolean; model?: string; buildNext?: boolean; }
 export type AgentConfigMap = Record<string, AgentConfig>;
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const config = (await loadJson<AgentConfigMap>('agents-config')) ?? {};
   return NextResponse.json({ config });
 }

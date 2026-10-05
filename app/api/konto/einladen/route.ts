@@ -1,7 +1,7 @@
 // POST → Einladungscode (nur Inhaber). 48 Stunden gültig, einmal einlösbar.
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
+import { personDerSitzung, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/zoe/raum';
 import { ladeKonten, aendereKonten, neuerEinladungscode, speicherName, emailSauber, adresseVergeben, EINLADUNG_STUNDEN } from '@/lib/zugang/konten';
 import { aussenAdresse } from '@/lib/innen';
 
@@ -9,7 +9,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const wer = personAus(req);
+  const wer = personDerSitzung(req);
+  if (!wer) return ohnePerson();
   const ich = (await ladeKonten()).konten.find(k => k.speicher === wer);
   if (!ich || ich.rolle !== 'inhaber') return NextResponse.json({ error: 'Nur der Inhaber darf einladen.' }, { status: 403 });
   // Optional: für wen (Vorname) — bindet den Speichernamen an den Code (26.09.).

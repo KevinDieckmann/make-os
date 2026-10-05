@@ -4,6 +4,7 @@
 // nächste Jahr. Geprüft über die Routen (wie im Browser) und das ZOE-Werkzeug.
 // Eigener Datenordner, erfundene Einträge.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { haushaltKonten } from './fixtures/konten';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -30,6 +31,7 @@ beforeAll(async () => {
   ziele = (await import('@/app/api/state/ziele/route')) as unknown as Mod;
   meilensteine = (await import('@/app/api/state/meilensteine/route')) as unknown as Mod;
   db = await import('@/lib/store/local-db');
+  await haushaltKonten(db);
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 

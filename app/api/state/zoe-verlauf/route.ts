@@ -6,6 +6,7 @@
 // kann ein Client mit veraltetem Stand die Historie nicht überschreiben.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { GRENZEN, titelAus, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
@@ -52,6 +53,7 @@ function sauber(g: Partial<Gespraech>): Gespraech | null {
 const gehoert = (g: { person?: string }, person: string) => (g.person ?? 'kevin') === person;
 
 export async function GET(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   const person = personAus(req);
   const f = await loadJson<Datei>('zoe-verlauf');
   const gespraeche = (Array.isArray(f?.gespraeche) ? f.gespraeche : []).filter(g => gehoert(g, person))
@@ -66,6 +68,7 @@ export async function GET(req: Request) {
 
 /** Ein Gespräch anlegen oder aktualisieren. Body: { gespraech: Gespraech }. */
 export async function PUT(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   let body: { gespraech?: Partial<Gespraech> };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const g = sauber(body.gespraech ?? {});
@@ -96,6 +99,7 @@ export async function PUT(req: Request) {
 
 /** Ein einzelnes Gespräch entfernen. */
 export async function DELETE(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
   const person = personAus(req);

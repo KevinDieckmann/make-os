@@ -4,6 +4,7 @@
 // statt zu crashen — die App bleibt benutzbar.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { personImHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { agentRoster, LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { gatherBrain, promptBrain, kalenderImPrompt, brainKategorien } from '@/lib/brain';
@@ -152,6 +153,7 @@ export async function POST(req: Request) {
   // seit S1 (29.09.) nie mehr der Rückfall `personAus` → „kevin“ (Regel 5).
   const person = personStreng(req);
   if (!person) return NextResponse.json({ reply: 'Ohne angemeldete Person antworte ich nicht.', error: 'Keine Person.' }, { status: 400 });
+  if (!(await personImHaushaltDesInhabers(person))) return nurHaushalt();
 
   // Haushaltsfinanzen (24.09.): nur mit ausdrücklich benannter Person, die
   // einem Haushalt angehört. Der Block steht bewusst NICHT im gemeinsamen

@@ -7,6 +7,7 @@
 // gebaut wird, und trägt nichts Wichtiges ein.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
@@ -24,12 +25,14 @@ export interface Bauzeit {
 
 const LEER: Bauzeit = { aktiv: false, woran: '', seit: null, von: 'Kevin' };
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const b = await loadJson<Bauzeit>('bauzeit');
   return NextResponse.json(b ?? LEER);
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: Partial<Bauzeit>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const aktiv = !!body.aktiv;

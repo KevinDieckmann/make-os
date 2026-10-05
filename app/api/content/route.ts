@@ -3,6 +3,7 @@
 // Klick (Human-in-the-Loop). Anthropic Messages API.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
@@ -36,6 +37,7 @@ interface ContentEntwurf { id: string; zeit: string; format: string; thema: stri
 const ENTWUERFE = 'content-entwuerfe';
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { format?: string; thema?: string; notizen?: string; ablegen?: boolean };
   try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
@@ -75,12 +77,14 @@ export async function POST(req: Request) {
 }
 
 /** Die abgelegten Entwürfe (Content › Entwürfe von ZOE). */
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const s = await loadJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE);
   return NextResponse.json({ ok: true, entwuerfe: s?.entwuerfe ?? [] }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function DELETE(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!/^ce-[a-z0-9-]{1,60}$/.test(id)) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
   await updateJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE, cur => ({ entwuerfe: (cur?.entwuerfe ?? []).filter(e => e.id !== id) }));

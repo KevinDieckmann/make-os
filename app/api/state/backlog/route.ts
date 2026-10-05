@@ -1,10 +1,11 @@
 // ─── MAKE OS — Bauplan speichern (lokal) ────────────────────────────────────
-// GET    → alle Punkte (beim Erststart mit dem Startbestand gefüllt)
+// GET    → alle Punkte (beim Erststart der Startbestand — nur angezeigt, gespeichert erst beim Schreiben)
 // PUT    → komplette Liste ersetzen (UI-Änderungen)
 // POST   → EINEN Punkt anhängen — dafür gedacht, dass ich unterwegs etwas
 //          eintrage, ohne die Liste zu überschreiben.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { SEED, type BacklogItem } from '@/lib/make-one/backlog-data';
@@ -21,18 +22,17 @@ const seeded = (): BacklogItem[] => {
   return SEED.map(s => ({ ...s, angelegt: now }));
 };
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const file = await loadJson<BacklogFile>('backlog');
-  // Erststart: mit dem, was aus Audit/Review/Gesprächen bekannt ist.
-  if (!file || !Array.isArray(file.items) || !file.items.length) {
-    const items = seeded();
-    await updateJson<BacklogFile>('backlog', () => ({ items }));
-    return NextResponse.json({ items });
-  }
+  // Erststart: mit dem, was aus Audit/Review/Gesprächen bekannt ist — nur ANGEZEIGT. Ein lesender GET schreibt nicht
+  // (05.10., Routen-Register): gespeichert wird der Startbestand mit dem ersten PUT/POST (POST legt ihn selbst an).
+  if (!file || !Array.isArray(file.items) || !file.items.length) return NextResponse.json({ items: seeded(), startbestand: true });
   return NextResponse.json({ items: file.items });
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: unknown;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const b = body as { items?: BacklogItem[] };
@@ -45,6 +45,7 @@ export async function PUT(req: Request) {
 
 /** Einen Punkt anhängen — ohne die übrigen anzufassen. */
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   let body: Partial<BacklogItem>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const titel = (body.titel ?? '').trim();

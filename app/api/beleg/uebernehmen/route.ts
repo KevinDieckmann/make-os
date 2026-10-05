@@ -7,6 +7,7 @@
 //   ausgang  → Rechnung im Finanzplan (jemand schuldet Kevin Geld)
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { privatFinanzZugang, keinFinanzZugang } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -22,6 +23,7 @@ interface Buchung { id: string; datum: string; wer: string; betrag: number; kate
 interface Rechnung { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string; netto?: number; ustSatz?: number }
 
 export async function POST(req: Request) {
+  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   let b: {
     ziel?: 'buchung' | 'rechnung';
     partner?: string; datum?: string; betrag?: number; betragBrutto?: number; betragNetto?: number; ustSatz?: number; kategorie?: string;

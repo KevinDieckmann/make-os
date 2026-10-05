@@ -4,6 +4,7 @@
 // Zahl — lieber eine leere Kachel als eine erfundene.
 
 import { NextResponse } from 'next/server';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { lesen, kennzahlen as finanzKennzahlen, type MalinExport } from '@/lib/make-one/grundlage';
@@ -13,12 +14,23 @@ import { computeIndex, indexLabel } from '@/lib/performance';
 import { personAus, darfGesundheitSehen } from '@/lib/zoe/raum';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { ladeKonten } from '@/lib/zugang/konten';
+
+/** Ein weiteres Konto im Haushalt des Inhabers (das erste nach Anlage) — oder null. */
+async function anderePersonImHaushalt(ich: string): Promise<string | null> {
+  const { konten } = await ladeKonten();
+  const inhaber = konten.find(k => k.rolle === 'inhaber');
+  if (!inhaber) return null;
+  const imHaushalt = (k: (typeof konten)[number]) => k.speicher === inhaber.speicher || (!!inhaber.haushalt && k.haushalt === inhaber.haushalt);
+  return konten.find(k => k.speicher !== ich && imHaushalt(k))?.speicher ?? null;
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const heute = localDay();
   const [ob, tasks, perf, netz, plan, grund] = await Promise.all([
     fortschritt(),
@@ -49,8 +61,9 @@ export async function GET(req: Request) {
   // Je Person ihr Score — Gesundheit, Journal, Rituale sind persönlich; den der anderen Person nur mit Freigabe (26.09.).
   const ich = personAus(req);
   const idx = await computeIndex(undefined, ich);
-  const andere = ich === 'kevin' ? 'malin' : 'kevin';
-  const idxAndere = (await darfGesundheitSehen(req, andere)) ? await computeIndex(undefined, andere) : null;
+  // Die andere Person = ein weiteres Konto im Haushalt des Inhabers (aus den Konten, kein fester Name — Plattform-Regel, 05.10.).
+  const andere = await anderePersonImHaushalt(ich);
+  const idxAndere = andere && (await darfGesundheitSehen(req, andere)) ? await computeIndex(undefined, andere) : null;
   const idxKevin = ich === 'kevin' ? idx : idxAndere, idxMalin = ich === 'malin' ? idx : idxAndere;
   const reihe = (perf?.snapshots ?? []).slice().sort((a, b) => a.date.localeCompare(b.date));
   const vorher = reihe.filter(s => s.date < idx.stand).at(-1);

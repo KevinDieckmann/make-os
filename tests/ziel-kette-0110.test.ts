@@ -6,6 +6,7 @@
 // Bezug, Verbindungsprüfung, Glocke (Frist). Rückweg: der WÖRTLICH kopierte alte Säuberer (af4679a) verwirft die neuen
 // Felder und sonst nichts.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { haushaltKonten } from './fixtures/konten';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -278,6 +279,7 @@ const ZUKUNFT = `${Number(new Date().getFullYear()) + 1}`;
 beforeAll(async () => {
   zieleRoute = (await import('@/app/api/state/ziele/route')) as unknown as Mod;
   msRoute = (await import('@/app/api/state/meilensteine/route')) as unknown as Mod;
+  await haushaltKonten(await import('@/lib/store/local-db'));
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 
