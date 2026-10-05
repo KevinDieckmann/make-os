@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { eigenePerson } from '@/lib/google/zugang';
 import { gmailEntwurf, EntwurfFehler } from '@/lib/gmail/entwurf';
 import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
+import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   if (!id) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
   try {
     const r = await gmailEntwurf(z.person, id, typeof b.hinweis === 'string' ? b.hinweis : undefined);
-    return NextResponse.json({ ok: true, ...r });
+    return NextResponse.json({ ok: true, ...r, ki: kiKennzeichen() }); // KI-VO Art. 50 (05.10.)
   } catch (e) {
     if (e instanceof EntwurfFehler) return NextResponse.json({ ok: false, fehler: e.message, ...(e.needsKey ? { needsKey: true } : {}) }, { status: e.status });
     return NextResponse.json({ ok: false, fehler: 'ZOE konnte gerade keinen Entwurf schreiben.' }, { status: 502 });

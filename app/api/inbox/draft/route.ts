@@ -7,6 +7,8 @@ import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
     p.hint ? `Kevins Hinweis für die Antwort: ${p.hint}` : 'Schreibe eine passende, knappe Antwort.',
   ].join('\n');
 
-  const r = await askText({ zweck: 'inbox-draft', system, user: message, maxTokens: 4000, model: agent.model });
+  const r = await askText({ zweck: 'inbox-draft', ki: kiAus(req, ['postfach'], { anzahl: 1 }), system, user: message, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.text) return NextResponse.json({ draft: '', error: r.error ?? 'Konnte gerade keinen Entwurf schreiben — nochmal versuchen.' });
-  return NextResponse.json({ draft: r.text });
+  return NextResponse.json({ draft: r.text, ki: kiKennzeichen() }); // KI-VO Art. 50 (05.10.)
 }
