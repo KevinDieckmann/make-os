@@ -12,6 +12,7 @@ import { WEG } from '@/lib/wege';
 import { VerantwortlicherKarte, type EinrichtungAntwort } from './datenschutz/Verantwortlicher';
 import { EmpfaengerKarte } from './datenschutz/Empfaenger';
 import { PruefungKarte } from './datenschutz/Pruefung';
+import { VerzeichnisKarte } from './datenschutz/Verzeichnis';
 
 export function DatenschutzView() {
   const [d, setD] = useState<EinrichtungAntwort | null>(null);
@@ -29,7 +30,8 @@ export function DatenschutzView() {
       {d && <PruefungKarte stand={stand} i={0} />}
       {d && <VerantwortlicherKarte d={d} onGeaendert={() => void laden()} i={0} />}
       {d && <EmpfaengerKarte liste={d.empfaenger} darf={d.darf} onGeaendert={() => void laden()} i={1} />}
-      <Karte i={2}>
+      {d && <VerzeichnisKarte i={2} />}
+      <Karte i={3}>
         <Hinweis art="info" titel="CRM-Datenschutz" aktion={<Knopf leise href={WEG.stammdaten('datenschutz')}>Öffnen</Knopf>}>Pflichtangaben, Betroffenenanträge, Löschkonzept und Löschfristen der Kontakte liegen unter Markttraktion › Stammdaten › Datenschutz.</Hinweis>
       </Karte>
     </Seite>

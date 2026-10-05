@@ -11,7 +11,7 @@ import type { Kontakt, Herkunft, Rechtsgrundlage } from '@/lib/make-one/crm';
 import type { CrmBestand, Verarbeitung } from './typen';
 import { art14 } from './recht';
 import { speicherbegrenzung } from './kennzahlen';
-import { SICHERUNG_GENERATIONEN } from './loeschfristen';
+import { SICHERUNG_GENERATIONEN, SICHERUNG_SATZ } from './loeschfristen';
 
 import { tagVon } from '@/lib/zeit';
 import { hatTyp, kategorienVon } from './mehrfach';
@@ -157,13 +157,32 @@ export const LOESCHREGELN = [
   { id: 'unterlagen-register', titel: 'Unterlagen einer endgültig gelöschten Gesellschaft bzw. eines Vertrags (Dateiablage)', frist: '6 bzw. 10 Jahre ab Jahresende', aktion: 'Aufbewahren (Ablage, Bezug „(gelöscht)“ bleibt lesbar)', norm: '§ 257 HGB, § 147 AO' },
 ] as const;
 
+/** Schutzmaßnahmen, die für jede Verarbeitung gelten (Art. 32) — Stand 05.10.; Einzelheiten: datenschutz/TOM.md. */
+export const TOMS_BASIS = 'Zugang nur mit Anmeldung (Passwort, zweiter Faktor), Trennung je Haushalt serverseitig, HTTPS, Server in Deutschland (Hetzner), Bestände und Dateien verschlüsselt auf der Platte (AES-256-GCM), nächtliche verschlüsselte Sicherung (bis zu 12 Monate, danach überschrieben), Änderungsprotokoll ohne Werte, KI nur mit gekapselten Arbeitsfeldern (ohne Privatnotiz, ohne gesperrte Personen)';
+/** Alte Fassung der Schutzmaßnahmen im Startbestand (bis 05.10.) — wird gehoben, solange unverändert. */
+const TOMS_START_ALT = 'Zugang nur mit Anmeldung (zwei Konten), HTTPS, Server in Deutschland (Hetzner), nächtliche verschlüsselte Sicherung, Agentenpakete ohne Privatnotiz';
+/** Empfänger-Register (System › Datenschutz) je Verarbeitung des Startbestands — der Export nennt sie mit AVV-Status. */
+const START_EMPFAENGER: Record<string, string[]> = {
+  'vv-kontakte': ['hetzner', 'anthropic', 'microsoft-365', 'google-workspace', 'apple-icloud'],
+  'vv-vertrieb': ['hetzner', 'anthropic'],
+  'vv-mandate': ['hetzner', 'anthropic'],
+  'vv-events': ['hetzner', 'google-workspace', 'microsoft-365', 'apple-icloud'],
+  'vv-netzwerken': ['hetzner', 'microsoft-365', 'google-workspace', 'apple-icloud', 'anthropic'],
+  'vv-besuche-kunde': ['hetzner'],
+  'vv-kunden-export': ['hetzner'],
+  'vv-kalender-google': ['google-workspace', 'hetzner'],
+  'vv-email-google': ['google-workspace', 'hetzner', 'anthropic'],
+  'vv-gesellschaften': ['hetzner', 'anthropic'],
+  'vv-kapazitaet': ['hetzner'],
+};
+
 /** Startbestand für das Verzeichnis (Art. 30) — MAKE OS, nicht Operations. Wird einmal angelegt, danach gepflegt. */
 export function verarbeitungenStart(jetzt: string): Verarbeitung[] {
   const s = tagVon(jetzt);
   const v = (id: string, name: string, zweck: string, personen: string, daten: string, rechtsgrundlage: string, empfaenger: string, loeschfrist: string): Verarbeitung => ({
     id, name, zweck, personen, daten, rechtsgrundlage, empfaenger, drittland: 'Anthropic (USA) nur für KI-Auswertung: Standardvertragsklauseln / Data Privacy Framework — prüfen', loeschfrist,
     // Verantwortlicher (05.10.): nie fest im Code — der Platzhalter verweist auf die Einrichtung (System › Datenschutz).
-    toms: 'Zugang nur mit Anmeldung (zwei Konten), HTTPS, Server in Deutschland (Hetzner), nächtliche verschlüsselte Sicherung, Agentenpakete ohne Privatnotiz', verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: s,
+    toms: TOMS_BASIS, verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: s, ...(START_EMPFAENGER[id] ? { empfaengerIds: START_EMPFAENGER[id] } : {}),
   });
   return [
     v('vv-kontakte', 'Kontakt- und Interessentenverwaltung', 'Pflege geschäftlicher Kontakte, Anbahnung von Mandaten, persönliche Ansprache', 'Geschäftskontakte, Interessenten, Kunden, Partner', 'Name, Firma, Position, Kontaktdaten, Gesprächsnotizen, Einwilligungen', 'Art. 6 Abs. 1 lit. b, f; lit. a bei Einwilligung', 'Kevin, Malin; KI-Auswertung (Auftragsverarbeiter)', '24 Monate ohne Interaktion, Kunden 36 Monate nach Vertragsende'),
@@ -351,7 +370,78 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
   if (opt.google) { l = verarbeitungKalenderNachtragen(l, jetzt); l = verarbeitungEmailNachtragen(l, jetzt); }
+  l = verarbeitungenPlattformNachtragen(l, jetzt);
+  l = alteFassungenHeben(l);
   l = verantwortlichHeben(l);
   const geaendert = l.length !== vorhanden.length || l.some((v, i) => v !== vorhanden[i] && JSON.stringify(v) !== JSON.stringify(vorhanden[i]));
   return { liste: geaendert ? l : [...vorhanden], geaendert };
+}
+
+// ── Verzeichnis vervollständigt (05.10., Punkt 5 des Pakets): alle Verarbeitungen der Plattform ──
+// Das Verzeichnis kannte bis hierher das CRM, Netzwerken, Register und Kapazität. Es fehlten: Konten, Terminbuchung, Gesundheit (Art. 9),
+// Familie, Finanzen, ZOE/KI, Brain/Vault, Telegram, Mac-Zulieferer/M365, Aufgaben + Zeit, Kampagnen/Scoring, Sicherungen/Protokolle, Bauplan.
+// Idempotent nach `id` nachgetragen; von Hand Geändertes bleibt. Hinweis, keine Rechtsberatung — anwaltlich gegenlesen (datenschutz/).
+
+export const VV_PLATTFORM_NAMEN: Record<string, string> = {
+  'vv-konten': 'Nutzerkonten und Anmeldeprotokoll',
+  'vv-buchung': 'Terminbuchung (öffentliche Buchungsseiten)',
+  'vv-gesundheit': 'Gesundheit, Sport und Körperwerte (Art. 9)',
+  'vv-familie': 'Familie und Partnerschaft',
+  'vv-finanzen': 'Finanzen, Haushalt und Rechnungen',
+  'vv-zoe': 'ZOE und KI-Auswertung (auch automatische Läufe)',
+  'vv-brain': 'Brain (Wissensbasis, Vault auf GitHub)',
+  'vv-telegram': 'Hinweise per Telegram',
+  'vv-mac-m365': 'Zulieferung vom Rechner und Microsoft 365 (Postfach, Kalender, Kontakte)',
+  'vv-aufgaben-zeit': 'Aufgaben, Zeit und Fokus',
+  'vv-kampagnen': 'Newsletter, Kampagnen und Scoring (Profiling)',
+  'vv-sicherungen': 'Sicherungen, Server- und Sicherheitsprotokolle',
+  'vv-bauplan': 'Bauplan (Verbesserungen, Bildschirmfotos)',
+};
+export const VV_PLATTFORM_IDS = Object.keys(VV_PLATTFORM_NAMEN);
+
+export function verarbeitungenPlattform(jetzt: string): Verarbeitung[] {
+  const stand = tagVon(jetzt);
+  const v = (id: string, x: Omit<Verarbeitung, 'id' | 'name' | 'toms' | 'verantwortlich' | 'stand'> & { toms?: string }): Verarbeitung => ({ id, name: VV_PLATTFORM_NAMEN[id], ...x, toms: x.toms ? `${TOMS_BASIS}; ${x.toms}` : TOMS_BASIS, verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand });
+  const USA = 'USA: Data Privacy Framework bzw. Standardvertragsklauseln — prüfen';
+  return [
+    v('vv-konten', { zweck: 'Bereitstellung der Anwendung: Anmeldung, Sitzungen, zweiter Faktor, Einladungen, Schutz vor Missbrauch (Anmelde-Bremse, Alarm bei neuem Netz)', personen: 'Nutzerinnen und Nutzer der Instanz (Haushalt, Team, eingeladene Personen)', daten: 'Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash und Salz, zweiter Faktor (Geheimnis, Hashes der Wiederherstellungscodes), Rolle, Haushalt; Anmeldeprotokoll: Zeit, Ergebnis, Art, Netzadresse (höchstens 300 Einträge, rollierend)', rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung), lit. f bzw. Art. 32 (Sicherheit, Anmeldeprotokoll)', empfaenger: 'nur intern; Hetzner (Hosting); Telegram nur für den Anmelde-Alarm der Person selbst (neutral)', empfaengerIds: ['hetzner', 'telegram'], drittland: 'keines (Telegram ohne Personendaten Dritter)', loeschfrist: 'Konto bis zum Entfernen; Anmeldeprotokoll rollierend (die letzten 300 Einträge); Sitzungen laufen ab bzw. werden beim Abmelden widerrufen' }),
+    v('vv-buchung', { zweck: 'Terminanfragen über öffentliche Buchungsseiten annehmen, bestätigen und vorbereiten', personen: 'Gäste, die einen Termin anfragen', daten: 'Name, E-Mail, Firma, Anliegen, gewählter Termin, Nachweis der Kenntnisnahme des Hinweises (Wortlaut, Fassung, Zeitpunkt), Status, Schlüssel-Hash der Status-Seite', rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (vorvertragliche Maßnahme auf Anfrage)', empfaenger: 'Kevin bzw. die Person der Buchungsseite; Hetzner; der Kalender der Person (Apple iCloud bzw. Google) nach Bestätigung', empfaengerIds: ['hetzner', 'apple-icloud', 'google-workspace'], drittland: USA, loeschfrist: 'nicht bestätigte/abgelehnte/abgesagte/abgelaufene Anfragen 30 Tage nach der letzten Änderung, bestätigte 30 Tage nach dem Termin (Frist „buchungen“, einstellbar); danach gilt die Frist der Kartei', toms: 'keine Cookies, nichts von fremden Servern, Honigtopf, Drosselung, Status-Link nur mit Schlüssel' }),
+    v('vv-gesundheit', { zweck: 'Eigene Gesundheit verstehen und planen: Körperwerte, Sport, Haut-Tagebuch, Gesundheits-Log, Ernährung', personen: 'die Person selbst (Konto); andere Konten nur, wenn sie „Teilen“ einschaltet', daten: 'Gesundheitsdaten (Art. 9): Erholung, Schlaf, Belastung (WHOOP), Trainings, Haut-Tagebuch, Gesundheits-Log, Ernährungsprofil', rechtsgrundlage: 'Art. 9 Abs. 2 lit. a DSGVO — ausdrückliche Einwilligung durch eigenes Erfassen bzw. Verbinden; Teilen nur auf Schalter; in der Kapazität nur mit gesonderter Einwilligung als Team-Faktor', empfaenger: 'nur die Person (und wem sie teilt); Hetzner; WHOOP als Quelle (eigener Verantwortlicher); Anthropic nur für die eigenen Werte der fragenden Person', empfaengerIds: ['hetzner', 'whoop', 'anthropic'], drittland: USA, loeschfrist: 'bis die Person sie löscht bzw. ihr Konto entfernt wird', toms: 'nie im Business-Index, nie in Prompts für andere, kein Gesundheitskontext im Code' }),
+    v('vv-familie', { zweck: 'Familie und Partnerschaft des Haushalts: Rituale, Menschen mit Geburtstag, gemeinsame Planung', personen: 'Personen des Haushalts, Familienmitglieder und Freunde', daten: 'Name, Geburtstag, Beziehung, Notizen, Rituale', rechtsgrundlage: 'überwiegend persönlich-familiär (Art. 2 Abs. 2 lit. c DSGVO); soweit nicht: Art. 6 Abs. 1 lit. f', empfaenger: 'nur der Haushalt; Hetzner; Anthropic nur im eigenen ZOE-Kontext', empfaengerIds: ['hetzner', 'anthropic'], drittland: USA, loeschfrist: 'bis zur Löschung durch den Haushalt; eine verknüpfte CRM-Person verliert bei Art. 17 nur die Verknüpfung' }),
+    v('vv-finanzen', { zweck: 'Haushalts- und Geschäftsfinanzen: Konten, Buchungen, Rechnungen, Liquidität, Steuern, Finanzplanung', personen: 'Personen des Haushalts; Kunden und Zahlungspartner auf Rechnungen und Buchungen', daten: 'Buchungen (Betrag, Verwendungszweck, Gegenpartei), Rechnungen (Kunde, Leistung, Betrag), IBAN (im Browser maskiert), Steuerdaten', rechtsgrundlage: 'Art. 6 Abs. 1 lit. b, c DSGVO (Buchführung, § 147 AO, § 257 HGB), lit. f (Planung)', empfaenger: 'Haushalt (Business-Sicht ohne Privates für Team-Konten); Steuerberatung auf Weitergabe; Hetzner; Anthropic für den Finanzchef (gekapselt)', empfaengerIds: ['hetzner', 'anthropic'], drittland: USA, loeschfrist: 'Rechnungen und Buchungsbelege 8 bzw. 10 Jahre ab Jahresende (§ 147 AO, § 257 HGB); sonst bis zur Löschung durch den Haushalt' }),
+    v('vv-zoe', { zweck: 'Assistenz durch ZOE: Fragen beantworten, Entwürfe, Vorschläge zur Freigabe, automatische Läufe (Morgen-/Abendlauf, Heads, Markttraktion, Durchsicht) — jede Wirkung nach außen nur nach Freigabe', personen: 'die fragende Person; Personen, die in gekapselten Arbeitsfeldern vorkommen (Kontakte, Absender, Teilnehmende)', daten: 'Gesprächsverlauf, Gedächtnis-Fakten, Protokoll (Kennungen, Feldnamen), Vorschläge; an den KI-Anbieter nur gekapselte Ausschnitte — nie private Notizen, nie eingeschränkte/gesperrte Personen, IBAN maskiert', rechtsgrundlage: 'Art. 6 Abs. 1 lit. b (Nutzung), lit. f DSGVO (Unterstützung der Arbeit, Interessenabwägung); keine Entscheidung mit Rechtswirkung (Art. 22) — Human-in-the-Loop', empfaenger: 'Anthropic (Auftragsverarbeiter); Hetzner', empfaengerIds: ['anthropic', 'hetzner'], drittland: USA, loeschfrist: 'Gespräche 12 Monate, Gedächtnis 24 Monate ohne Erneuerung, Protokoll/entschiedene Vorschläge 90 Tage, Entscheidungen 36 Monate (Löschfristen-Tabelle)', toms: 'Text Dritter läuft durch fremd() und darf nur Vorschläge auslösen; Agenten einzeln abschaltbar; Modell-Drossel je Person' }),
+    v('vv-brain', { zweck: 'Wissensbasis des Haushalts (Vault): Notizen, Berichte, Suche und Konsolidierung; Spiegel ausgewählter App-Inhalte', personen: 'Personen, die in Notizen genannt sind (Geschäftskontakte, Partner)', daten: 'Notizen und Berichte (Freitext), Such-Index', rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Wissensmanagement des Geschäftsbetriebs)', empfaenger: 'Haushalt; GitHub (privates Repository des Vaults, Abgleich alle 10 Minuten); Hetzner; Anthropic (Suche/Fragen, gekapselt)', empfaengerIds: ['github', 'hetzner', 'anthropic'], drittland: USA, loeschfrist: 'bis zur Löschung im Vault; Git-Historie nur über das dokumentierte Verfahren (DATENARCHITEKTUR.md); Such-Index zieht sofort nach' }),
+    v('vv-telegram', { zweck: 'Neutrale Hinweise aufs Telefon (Fristen, Alarm, Tagesbericht des Head of IT)', personen: 'Personen des Haushalts, die Telegram verbunden haben', daten: 'Chat-Kennung, neutrale Hinweistexte ohne Namen Dritter', rechtsgrundlage: 'Art. 6 Abs. 1 lit. a DSGVO (die Person verbindet selbst) bzw. lit. f', empfaenger: 'Telegram (eigener Verantwortlicher, kein AVV möglich)', empfaengerIds: ['telegram'], drittland: 'außerhalb der EU, ohne Garantie — deshalb nie Daten Dritter', loeschfrist: 'Verknüpfung bis zum Trennen; Nachrichten im Telegram-Konto der Person' }),
+    v('vv-mac-m365', { zweck: 'Postfach, Kalender, Erinnerungen und Adressbuch des Inhabers in MAKE OS anzeigen und zuordnen (Zulieferung vom Rechner bzw. Microsoft Graph)', personen: 'Absender und Empfänger von Mails, Teilnehmende von Terminen, Kontakte des Adressbuchs', daten: 'Mail-Köpfe und Vorschau, Termine samt Teilnehmern, Erinnerungen, Adressbuch-Einträge (Zwischenspeicher)', rechtsgrundlage: 'Art. 6 Abs. 1 lit. b, f DSGVO (Geschäftsbetrieb)', empfaenger: 'nur der Inhaber; Microsoft (Auftragsverarbeiter); Apple iCloud; Hetzner', empfaengerIds: ['microsoft-365', 'apple-icloud', 'hetzner'], drittland: USA, loeschfrist: 'Postfach-Zwischenspeicher 30 Tage, Kalender-Zwischenspeicher 12 Monate; Wahrheit beim Anbieter (Löschung dort)' }),
+    v('vv-aufgaben-zeit', { zweck: 'Aufgaben, Projekte, Meilensteine und Ziele führen; Zeit und Fokus messen und planen', personen: 'Personen des Haushalts/Teams; in Aufgaben genannte Kontakte', daten: 'Aufgaben (Titel, Beschreibung, Fälligkeit, Zuständigkeit, Verweise), Dateien zu Aufgaben, Fokus-Blöcke und gemessene Zeiten je Person', rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Arbeitsorganisation), lit. f', empfaenger: 'Haushalt/Team; Hetzner; Anthropic (ZOE-Vorschläge, gekapselt)', empfaengerIds: ['hetzner', 'anthropic'], drittland: USA, loeschfrist: 'Papierkorb 30 Tage; sonst bis zur Löschung; Art. 17 einer Person tilgt Namen und Verweise in Aufgaben' }),
+    v('vv-kampagnen', { zweck: 'Kampagnen und Newsletter an Personen mit Einwilligung; Lead-Score und Qualifizierung zur Priorisierung der Ansprache', personen: 'Interessenten, Kontakte mit Einwilligung', daten: 'Einwilligungs-Nachweis (Double-Opt-in), Kampagnen-Schritte, Öffnungen/Klicks (beim Versanddienst), Scoring-Antworten und Stufe (MQL/SQL)', rechtsgrundlage: 'Werbung: Art. 6 Abs. 1 lit. a DSGVO, § 7 UWG; Scoring: Art. 6 Abs. 1 lit. f — Profiling ohne automatisierte Entscheidung (Art. 22), Widerspruch nach Art. 21 jederzeit', empfaenger: 'Haushalt; Newsletter-Werkzeug (sobald in Gebrauch); Hetzner; Anthropic (Entwürfe, gekapselt)', empfaengerIds: ['newsletter', 'hetzner', 'anthropic'], drittland: 'je nach Versanddienst — EU bevorzugt', loeschfrist: 'Einwilligungs-Nachweis mit dem Kontakt, auch nach Widerruf als Nachweis (Art. 7 Abs. 1); Scoring mit dem Kontakt (Frist der Kartei); Werbesperre bleibt' }),
+    v('vv-sicherungen', { zweck: 'Wiederherstellbarkeit (Art. 32 Abs. 1 lit. c) und Sicherheit: nächtliche Sicherung, Tageskopien je Bestand, Server-/Sicherheitsprotokolle, Head of IT, Außenprüfung', personen: 'alle Personen, deren Daten in der Instanz liegen; Zugreifende (Netzadressen)', daten: 'verschlüsselte Abbilder aller Bestände; Protokolle: Zeit, Netzadresse, Anfrage, Fehler (keine Inhalte), CSP-Meldungen, Lage-Zahlen', rechtsgrundlage: 'Art. 6 Abs. 1 lit. c, f DSGVO i. V. m. Art. 32', empfaenger: 'Hetzner (Server, Abbilder 7 Tage); Healthchecks (nur Ping); GitHub (Außenprüfung: nur Erreichbarkeit)', empfaengerIds: ['hetzner', 'healthchecks', 'github'], drittland: 'keines für die Sicherungen (Hetzner, Deutschland); GitHub: USA — prüfen', loeschfrist: SICHERUNG_SATZ, toms: 'age-Verschlüsselung der Sicherung (privater Schlüssel nicht auf dem Server), Grabsteine außerhalb des Datenordners, Probe-Wiederherstellung' }),
+    v('vv-bauplan', { zweck: 'Verbesserung der Software: Ideen, Fehler, Abnahmen, Bildschirmfotos von Hand angehängt', personen: 'Personen des Haushalts; Personen, die auf einem Bildschirmfoto zu sehen sind (z. B. Kontakte in einer Liste)', daten: 'Karten (Titel, Beschreibung, Kommentare, wer), Bildschirmfotos (können Personendaten zeigen)', rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Weiterentwicklung und Fehlerbehebung)', empfaenger: 'Haushalt; Hetzner; Anthropic nur für Kartentexte (ZOE), nie die Bilder', empfaengerIds: ['hetzner', 'anthropic'], drittland: USA, loeschfrist: 'Bildschirmfotos fertiger oder verworfener Karten 90 Tage nach Abschluss, nicht zugeordnete nach 7 Tagen (Frist „bauplan-bilder“); Karten bis zur Löschung', toms: 'Bildschirmfotos verschlüsselt abgelegt (wie die Dateiablage), nur angemeldet abrufbar; vor dem Anhängen Personendaten möglichst schwärzen' }),
+  ];
+}
+
+/** Fehlende Plattform-Verarbeitungen ergänzen (idempotent nach `id`; vorhandene — auch geänderte — bleiben). */
+export function verarbeitungenPlattformNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  const da = new Set(vorhanden.map(v => v.id));
+  const dazu = verarbeitungenPlattform(jetzt).filter(v => !da.has(v.id));
+  return dazu.length ? [...vorhanden, ...dazu] : [...vorhanden];
+}
+
+/**
+ * Unveränderte alte Fassungen heben (05.10.): Schutzmaßnahmen des Startbestands, alle Einträge aus `ALTE_FASSUNGEN`, und das neue
+ * Feld `empfaengerIds` dort, wo es noch fehlt (der Startwert je bekannter Verarbeitung). Von Hand Geändertes bleibt.
+ */
+export function alteFassungenHeben(vorhanden: readonly Verarbeitung[]): Verarbeitung[] {
+  let gehoben = false;
+  const neu = vorhanden.map(v => {
+    let x = v;
+    if (x.toms === TOMS_START_ALT) { x = { ...x, toms: TOMS_BASIS }; gehoben = true; }
+    const f = ALTE_FASSUNGEN[x.id];
+    if (f) for (const [k, w] of Object.entries(f) as [keyof Verarbeitung, { alt: string | string[]; neu: string }][]) {
+      if ((Array.isArray(w.alt) ? w.alt : [w.alt]).includes(String(x[k]))) { x = { ...x, [k]: w.neu }; gehoben = true; }
+    }
+    if (!x.empfaengerIds && START_EMPFAENGER[x.id]) { x = { ...x, empfaengerIds: START_EMPFAENGER[x.id] }; gehoben = true; }
+    return x;
+  });
+  return gehoben ? neu : [...vorhanden];
 }
