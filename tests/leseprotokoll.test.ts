@@ -34,7 +34,7 @@ beforeAll(async () => {
   // Ältere Monate (Altbestand ohne Kette) — liegen vor dem ersten neuen Eintrag da, wie nach dem Hochladen.
   await db.saveJson(`leseprotokoll--${H}--2025-09`, { eintraege: [{ at: '2025-09-02T10:00:00.000Z', wer: 'person', person: 'kevin', bereich: 'finanzplan' }] });
   await db.saveJson(`leseprotokoll--${H}--2025-11`, { eintraege: [{ at: '2025-11-02T10:00:00.000Z', wer: 'person', person: 'kevin', bereich: 'finanzplan' }] });
-  await db.saveJson('vitals--malin', { '2026-10-01': { rec: 42, note: 'GEHEIME-NOTIZ-ZUM-SCHLAF' } });
+  await db.saveJson('vitals--malin', { '2026-10-01': { rec: 73.0412, note: 'GEHEIME-NOTIZ-ZUM-SCHLAF' } });
   await db.saveJson('kontakte', { kontakte: [{ id: 'c-anna-beispiel@test.invalid', vorname: 'Anna', nachname: 'Beispiel', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01' }] });
   vitals = (await import('@/app/api/state/vitals/route')) as Route;
   kontakte = (await import('@/app/api/state/kontakte/route')) as Route;
@@ -53,7 +53,8 @@ describe('Lese-Protokoll ohne Inhalte', () => {
     expect(e[0]).toMatchObject({ wer: 'person', person: 'kevin', bereich: 'gesundheit', betroffen: 'malin', weg: '/api/state/vitals' });
     expect(typeof (e[0] as unknown as { h?: string }).h).toBe('string'); // verkettet
     const t = roh();
-    expect(t).not.toMatch(/GEHEIME-NOTIZ|42|Anna|suche/);
+    // Wert mit Punkt und Sekunden > 59: kann weder in einem Hash (hex) noch in einer Zeit („SS.mmm“) zufällig vorkommen (vorher „42“ — wackelig).
+    expect(t).not.toMatch(/GEHEIME-NOTIZ|73\.0412|Anna|suche/);
   });
 
   it('gedrosselt: derselbe Zugriff innerhalb von 10 Minuten nur einmal; ZOE im Auftrag zählt eigen', async () => {
