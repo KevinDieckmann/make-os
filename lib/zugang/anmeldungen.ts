@@ -1,8 +1,11 @@
 // ─── MAKE OS — Anmelde-Protokoll (26.09.) ───────────────────────────────────
 // Wer sich wann angemeldet hat (und ob es klappte), damit ein Einbruch nicht
 // unbemerkt bleibt. Adresse gekürzt (kein volles Nutzerprofil), 300 Einträge.
+// Seit 05.10. mit Hash-Kette und Siegel (lib/store/protokoll-kette.ts): rollend — fallen vorne Einträge heraus, rückt der
+// Kettenanfang nach (`kette.verworfen` zählt sie), ein gelöschter oder veränderter Eintrag fällt bei der Prüfung auf.
 
-import { updateJson, loadJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
+import { anhaengenVerkettet } from '@/lib/store/protokoll-kette';
 
 export type AnmeldeArt = 'anmelden' | 'passwort' | 'alle-abgemeldet' | 'abmelden' | 'zweiter-faktor-an' | 'zweiter-faktor-aus'
   /** Anmelde-Adressen (03.10.): hinzugefügt, zur Hauptadresse gemacht, entfernt — `detail` nennt die Adresse nur maskiert. */
@@ -19,7 +22,7 @@ export function adresseGekuerzt(a: string): string {
 }
 
 export async function notiere(e: Omit<Anmeldung, 'zeit'>): Promise<void> {
-  await updateJson<{ eintraege: Anmeldung[] }>(STORE, alt => ({ eintraege: [...(alt?.eintraege ?? []), { zeit: new Date().toISOString(), ...e }].slice(-MAX) })).catch(() => null);
+  await anhaengenVerkettet(STORE, [{ zeit: new Date().toISOString(), ...e }], { max: MAX }).catch(err => console.error('[anmeldungen] nicht notiert:', err instanceof Error ? err.message : err));
 }
 
 /** Das ganze Protokoll (höchstens MAX Einträge) — für den Anmelde-Alarm. */

@@ -31,7 +31,7 @@ const k = (id: string, vorname: string, nachname: string, x: Partial<Kontakt> = 
 const leer = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [], angebote: [] });
 
 /** Alle Bestände außer den Datenordner-Dateien, die zufällige/zeitliche Teile tragen, als ein vergleichbarer Text. */
-async function stand(ohne: RegExp = /^(konten|absichten--.*|crm-loeschprotokoll|datenschutz-.*|aenderungsprotokoll--.*|crm-sperrliste--.*)$/): Promise<string> {
+async function stand(ohne: RegExp = /^(konten|absichten--.*|crm-loeschprotokoll|datenschutz-.*|aenderungsprotokoll--.*|protokoll-siegel|crm-sperrliste--.*)$/): Promise<string> {
   const namen = readdirSync(ordner).filter(n => n.endsWith('.json')).map(n => n.slice(0, -5)).filter(n => !ohne.test(n)).sort();
   const teile = await Promise.all(namen.map(async n => `${n}:${JSON.stringify(await db.loadJson(n))}`));
   // Zeitstempel (updatedAt, geaendert …) unterscheiden sich zwischen zwei Läufen — gleich gemacht.
@@ -202,7 +202,7 @@ describe('Art. 17 mit Absichtsprotokoll (#17/#21)', () => {
     expect(JSON.stringify(await db.loadJson('kontakte'))).not.toContain('Wegmann'); // Kartei schon geschrieben
     expect(JSON.stringify(await db.loadJson('crm'))).toContain('Wegmann'); // Rest noch nicht
     await fort.offeneFertigstellen();
-    expect(await stand(/^(konten|absichten--.*|crm-loeschprotokoll|datenschutz-.*|aenderungsprotokoll--.*|crm-sperrliste--.*)$/)).not.toMatch(/Wegmann|c-testawegmann/);
+    expect(await stand(/^(konten|absichten--.*|crm-loeschprotokoll|datenschutz-.*|aenderungsprotokoll--.*|protokoll-siegel|crm-sperrliste--.*)$/)).not.toMatch(/Wegmann|c-testawegmann/);
   });
   it('eine Vormerkung ohne Löschen (abgelehnt/abgebrochen vor der Kartei) verfällt — die Person bleibt', async () => {
     await weltArt17();
