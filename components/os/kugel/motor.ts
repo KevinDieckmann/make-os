@@ -326,10 +326,13 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
       document.removeEventListener('visibilitychange', sichtbarkeit);
       leinwand.removeEventListener('webglcontextlost', verloren);
       leinwand.removeEventListener('webglcontextrestored', zurueck);
-      if (gl && !gl.isContextLost()) {
-        gl.deleteBuffer(puffer.pos); gl.deleteBuffer(puffer.farbe); gl.deleteBuffer(puffer.wert);
-        if (programm) gl.deleteProgram(programm);
-        gl.getExtension('WEBGL_lose_context')?.loseContext();
+      const g = gl;
+      if (g && !g.isContextLost()) {
+        g.deleteBuffer(puffer.pos); g.deleteBuffer(puffer.farbe); g.deleteBuffer(puffer.wert);
+        if (programm) g.deleteProgram(programm);
+        // Kontext erst freigeben, wenn die Leinwand wirklich weg ist: React (Strict Mode, schneller Neuaufbau) startet auf
+        // DERSELBEN Leinwand neu — ein schon verlorener Kontext ließe sich dort nicht mehr nutzen (Shader schlägt fehl).
+        setTimeout(() => { if (!leinwand.isConnected && !g.isContextLost()) g.getExtension('WEBGL_lose_context')?.loseContext(); }, 0);
       }
       gl = null;
     },

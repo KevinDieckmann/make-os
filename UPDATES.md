@@ -4,6 +4,26 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Update 3 · ZOE-Kugel + Brain-Kugel (05.10.2026, nur lokal — Branch `kugeln`; UMBAU_ABEND_0410.md › 1 und 3)
+
+Vorlage „Solaris“ — übernommen die Wirkung, nicht der Code, in unserer CI (Granat #C9465C, Smaragd #2FA878). 80/20: die Kugel ist der Akzent.
+- **Kern `components/os/kugel/*`** (eigene WebGL-1-Shader, kein three.js): `geometrie.ts` (rein: Fibonacci-Kugel, Matrizen, Zeiger-Strahl,
+  Projektion, Zustände, Einstieg), `shader.ts` (Simplex-Atmen entlang der Normale, Fresnel-Rand mit hohler Mitte, Zeiger-Ausbruch, Einstieg
+  2,4 s), `motor.ts` (Puffer nach Layout-Box, dpr ≤ 2, Bildrate gedeckelt mit Sollzeit, Pause außer Sicht/im Hintergrund, Standbild bei
+  „Bewegung reduzieren“, Kontextverlust, `loseContext` beim Abbau, Messpunkt `data-bilder/-mittel-ms/-fps/-punkte/-puffer` außerhalb der
+  Produktion), `Kugel.tsx` (React-Hülle + Rückfall), `ZoeKugel.tsx`, `BrainKugel.tsx`, `brain-layout.ts`, `wolke.ts`.
+- **ZOE:** groß im Empfang (/zoe, statt ZoeHirn; 14 000 Punkte, Handy 7 000 bei 40 Bildern/s), klein als Symbol im ZoePanel (Knopf und
+  Fensterkopf; 900 Punkte, 24 Bilder/s). Zustände über Tempo (Takte des ZoeHirns) und Farbgewicht; Hof/Zustandszeile im Empfang in
+  Kugel-Tönen (`ZOE_KUGEL_TON`). Rückfall ohne WebGL: ZoeHirn-SVG bzw. Orb. Keine Verwandlung in einen Weg.
+- **Brain:** `GET /api/brain/punkte` (Haushalt des Inhabers, Dienstweg 403) → Lader `lib/brain/kugel-server.ts` mit den vorhandenen
+  Sicht-Funktionen, reine Filterstelle `lib/brain/kugel.ts` (`kugelPunkteFuer`: privat nur mit Privatzugang aus `planZugangFuer`/Inhaber,
+  „gehört“ nur der Person; nur Kennung/Art/Bereich/Titel/Datum/Verknüpfungen; Deckel 3000, älteste zuerst weg, `gekuerzt`). Gesundheit
+  nie als Punkt, Art.-18-Eingeschränkte fehlen, M365-Spiegel ohne Link fehlt. Kugel in Brain › „Dein Brain“, Liste mit Suche als Rückfall.
+  Neu `WEG.wissen()`/`WEG.notiz(id)`.
+- **Tests:** `tests/kugeln.test.ts`, `tests/brain-kugel.test.ts`.
+- **Rückweg:** rein additiv — neue Route, neue Dateien, Token in design.ts; ZoeStart/ZoePanel nehmen beim Zurücksetzen wieder ZoeHirn/Orb
+  (zwei Stellen, Commit `ZOE als Lichtkugel …` zurücknehmen). Keine Bestände, keine Datenänderung, nichts zu migrieren.
+
 ## DSGVO-Nachtrag: Kapazität deaktivierter Team-Personen + Unterlagen gelöschter Gesellschaften/Verträge (04.10.2026 spät, nur lokal — Branch `dsgvo-2`; UMBAU_ABEND_0410.md › 12)
 
 Kevin 04.10.: „Team-Personen: Kapazitätsdaten 30 Tage nach Deaktivieren automatisch löschen + Art.-15-Export“ und „Unterlagen beim

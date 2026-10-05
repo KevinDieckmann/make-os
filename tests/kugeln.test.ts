@@ -142,7 +142,7 @@ describe('Shader und Motor: Vorlage nachgebaut, Leistung im Griff', () => {
     const m = lies('components/os/kugel/motor.ts');
     expect(m).toContain('IntersectionObserver'); expect(m).toContain("'visibilitychange'"); expect(m).toContain('document.hidden');
     expect(m).toContain('Math.min(2, window.devicePixelRatio'); expect(m).toContain('ResizeObserver');
-    expect(m).toContain('mindestAbstand'); expect(m).toContain('loseContext()'); expect(m).toContain("'webglcontextlost'");
+    expect(m).toContain('mindestAbstand'); expect(m).toContain('loseContext()'); expect(m).toContain('leinwand.isConnected'); expect(m).toContain("'webglcontextlost'");
     expect(m).toMatch(/opt\.ruhig\) \{ zeichne\(performance\.now\(\)\); return; \}/); // Standbild: keine Schleife
   });
   it('Symbol: wenige Punkte, 24–30 Bilder je Sekunde, kein Zeiger; groß am Handy weniger Punkte', async () => {
