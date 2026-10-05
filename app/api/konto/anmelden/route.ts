@@ -2,7 +2,7 @@
 // E-Mail + Passwort → Sitzung. Bei falschen Angaben immer dieselbe Antwort,
 // egal ob die E-Mail existiert: sonst könnte man Konten erraten.
 import { NextResponse } from 'next/server';
-import { aendereKonten, emailSauber, passwortStimmt, kontoZuEmail } from '@/lib/zugang/konten';
+import { aendereKonten, emailSauber, passwortStimmt, kontoZuEmail, ladeKonten, zweiFaktorOffen } from '@/lib/zugang/konten';
 import { codePruefen, wiederherstellungPruefen } from '@/lib/zugang/totp';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
@@ -65,6 +65,8 @@ export async function POST(req: Request) {
   // Sicherheit (27.09.): eine Anmeldung aus einem neuen Netz meldet MAKE OS der Person per Telegram — geprüft VOR dem Eintrag, sonst kennt es die Adresse schon.
   void alarmNeueAdresse(konto.speicher, adresseGekuerzt(adr));
   await notiere({ speicher: konto.speicher, art: 'anmelden', ok: true, adresse: adresseGekuerzt(adr) });
+  // 2FA-Pflicht der Instanz (05.10.): ohne zweiten Faktor gibt es eine Sitzung, die NUR die Einrichtung erlaubt (middleware.ts).
+  if (zweiFaktorOffen((await ladeKonten()).einstellungen, konto)) return mitSitzung(konto, { zweiterFaktorEinrichten: true });
   return mitSitzung(konto);
 }
 

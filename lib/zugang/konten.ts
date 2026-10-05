@@ -67,7 +67,30 @@ export interface Einladung { code: string; von: string; bis: string; speicher?: 
 /** Namen, die nur über eine gebundene Einladung vergeben werden — nie durch den frei gewählten Vornamen. */
 export const RESERVIERTE_SPEICHER = ['kevin', 'malin'];
 
-export interface KontenStand { konten: Konto[]; einladungen: Einladung[] }
+/**
+ * Einstellungen der Instanz zum Zugang (05.10., Paket „Zugang & Schlüssel härten“). Setzt nur der Inhaber
+ * (`PUT /api/konto/einstellungen`). Fehlt das Feld (laufende Instanz vor 05.10.), gilt: keine 2FA-Pflicht, Leerlauf 12 h.
+ */
+export interface ZugangEinstellungen {
+  /** Konten ohne zweiten Faktor werden beim nächsten Anmelden zur Einrichtung geführt (vorher kommen sie nirgends hin). */
+  zweiFaktorPflicht?: boolean;
+  /** Seit wann die Pflicht gilt (ISO) — Sitzungen von davor laufen bis zu ihrem Ende (Leerlauf, 14 Tage) weiter. */
+  zweiFaktorPflichtSeit?: string;
+  /** Leerlauf-Ende einer Sitzung in Stunden (1–336, Standard `LEERLAUF_STUNDEN`). */
+  leerlaufStunden?: number;
+}
+export interface KontenStand { konten: Konto[]; einladungen: Einladung[]; einstellungen?: ZugangEinstellungen }
+
+/** Leerlauf-Ende einer Sitzung ohne Einstellung: 12 Stunden ohne Anfrage → neu anmelden (zusätzlich zur 14-Tage-Grenze). */
+export const LEERLAUF_STUNDEN = 12;
+export function leerlaufStunden(e: ZugangEinstellungen | undefined): number {
+  const h = Number(e?.leerlaufStunden);
+  return Number.isFinite(h) && h >= 1 && h <= 336 ? Math.round(h) : LEERLAUF_STUNDEN;
+}
+/** Muss dieses Konto erst den zweiten Faktor einrichten (Pflicht an, Faktor fehlt)? */
+export function zweiFaktorOffen(e: ZugangEinstellungen | undefined, k: Pick<Konto, 'zweiterFaktor'>): boolean {
+  return !!e?.zweiFaktorPflicht && !k.zweiterFaktor;
+}
 
 const STORE = 'konten';
 export const EINLADUNG_STUNDEN = 48;
@@ -166,13 +189,23 @@ export async function ladeKonten(): Promise<KontenStand> {
     if (await beschaedigt(STORE)) throw new Error('Kontenbestand beschädigt — Sicherung zurückspielen (konten.json.corrupt-*).');
     return leererStand();
   }
-  return { konten: s.konten, einladungen: Array.isArray(s.einladungen) ? s.einladungen : [] };
+  return { konten: s.konten, einladungen: Array.isArray(s.einladungen) ? s.einladungen : [], ...(einstellungenAus(s) ? { einstellungen: einstellungenAus(s) } : {}) };
+}
+
+function einstellungenAus(s: Partial<KontenStand> | null | undefined): ZugangEinstellungen | undefined {
+  const e = s?.einstellungen;
+  return e && typeof e === 'object' && !Array.isArray(e) ? e : undefined;
 }
 
 export async function aendereKonten(mut: (s: KontenStand) => KontenStand): Promise<KontenStand> {
   return updateJson<KontenStand>(STORE, current => {
-    const s = current && Array.isArray(current.konten) ? { konten: current.konten, einladungen: Array.isArray(current.einladungen) ? current.einladungen : [] } : leererStand();
-    return mut(s);
+    const e = einstellungenAus(current);
+    const s: KontenStand = current && Array.isArray(current.konten) ? { konten: current.konten, einladungen: Array.isArray(current.einladungen) ? current.einladungen : [], ...(e ? { einstellungen: e } : {}) } : leererStand();
+    const neu = mut(s);
+    // Wer nur Konten/Einladungen schreibt (z. B. `{ konten, einladungen }` ohne Spread), verliert die Einstellungen nicht.
+    const behalten = 'einstellungen' in neu ? neu.einstellungen : s.einstellungen;
+    const { einstellungen: _weg, ...rest } = neu;
+    return behalten ? { ...rest, einstellungen: behalten } : rest;
   });
 }
 

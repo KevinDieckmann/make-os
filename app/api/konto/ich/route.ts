@@ -2,7 +2,7 @@
 // PUT → Name oder Passwort ändern.
 import { NextResponse } from 'next/server';
 import { personAus } from '@/lib/zoe/raum';
-import { ladeKonten, aendereKonten, oeffentlich, passwortTauglich, passwortHashen, passwortStimmt } from '@/lib/zugang/konten';
+import { ladeKonten, aendereKonten, oeffentlich, passwortTauglich, passwortHashen, passwortStimmt, zweiFaktorOffen } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { notiere, adresseGekuerzt, letzte } from '@/lib/zugang/anmeldungen';
@@ -17,6 +17,8 @@ export async function GET(req: Request) {
   if (!ich) return NextResponse.json({ error: 'Konto nicht gefunden.' }, { status: 401 });
   return NextResponse.json({
     ich: oeffentlich(ich),
+    // 2FA-Pflicht der Instanz (05.10.): /anmelden führt dann zur Einrichtung statt weiter.
+    zweiterFaktorEinrichten: zweiFaktorOffen(s.einstellungen, ich),
     anmeldungen: await letzte(wer, 5),
     andere: s.konten.filter(k => k.speicher !== wer).map(k => ({ speicher: k.speicher, name: k.name, rolle: k.rolle, teiltGesundheitMitMir: k.teilt.gesundheit.includes(wer) })),
   });

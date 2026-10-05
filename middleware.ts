@@ -13,7 +13,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SITZUNG_COOKIE, WER_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
-import { standGueltig } from '@/lib/zugang/stand-pruefung';
+import { standGueltig, zweiterFaktorOffen } from '@/lib/zugang/stand-pruefung';
 import { crossSiteVerboten } from '@/lib/zugang/cross-site';
 import { sitzungsGeheimnisFehlt } from '@/lib/zugang/start-riegel';
 import { anfrageIntern, zuliefererSchluessel, ZULIEFERUNG, EINGESCHRAENKT_MIN } from '@/lib/zugang/intern';
@@ -32,6 +32,9 @@ const GOOGLE_MELDEWEG = /^\/api\/(kalender\/google|google\/gmail)\/meldung$/;
 // ihre Status-Seite und genau deren zwei Schnittstellen. Adresse = lesbarer Vorsatz + 96 Bit Zufall (lib/kalender/buchung.ts
 // `slugOk`); alles andere (auch /buchen ohne Adresse oder tiefere Pfade) bleibt zu. Die Routen drosseln selbst.
 const BUCHUNG_OFFEN = [/^\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/, /^\/api\/buchung\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/];
+
+/** Solange die 2FA-Pflicht offen ist, erlaubt: den Faktor einrichten, sich selbst sehen, abmelden (05.10.). */
+const ZF_EINRICHTEN: [string, RegExp][] = [['POST', /^\/api\/konto\/zwei-faktor$/], ['GET', /^\/api\/konto\/ich$/], ['POST', /^\/api\/konto\/abmelden$/]];
 
 function adresseHost(): string | null {
   try { const a = process.env.MAKE_OS_ADRESSE?.trim(); return a ? new URL(a).host : null; } catch { return null; }
@@ -124,6 +127,14 @@ export async function middleware(req: NextRequest) {
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);
   // Passt der Zettel noch zum Passwort? (nach einem Wechsel: alle anderen Geräte binnen einer Minute raus)
   if (sitzung && await standGueltig(req, sitzung, schluessel)) {
+    // 2FA-Pflicht der Instanz (05.10.): wer noch keinen zweiten Faktor hat, darf nur ihn einrichten (oder sich abmelden).
+    if (zweiterFaktorOffen(sitzung) && !ZF_EINRICHTEN.some(([m, r]) => m === req.method && r.test(pfad))) {
+      if (pfad.startsWith('/api/')) return NextResponse.json({ error: 'Erst den zweiten Faktor einrichten.', zweiterFaktorEinrichten: true }, { status: 403 });
+      const ziel = req.nextUrl.clone();
+      ziel.pathname = '/anmelden';
+      ziel.search = `?einrichten=2fa${pfad && pfad !== '/' ? `&zu=${encodeURIComponent(pfad)}` : ''}`;
+      return NextResponse.redirect(ziel);
+    }
     kopf.set('x-make-user', sitzung.speicher);
     return NextResponse.next({ request: { headers: kopf } });
   }

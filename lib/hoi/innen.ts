@@ -26,6 +26,7 @@ import { grabsteinOrdnerKonfiguriert } from '@/lib/datenschutz/grabsteine';
 import { zuliefererSchluessel } from '@/lib/zugang/intern';
 import { altSchluesselZuletzt } from '@/lib/zugang/zulieferer';
 import { riegelBild } from '@/lib/zugang/start-riegel-lauf';
+import { ladeKonten } from '@/lib/zugang/konten';
 
 export const HOI_AUSSEN = 'hoi-aussen';
 export const HOI_CSP = 'hoi-csp';
@@ -125,7 +126,11 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     kalender: await kalenderLage(jetzt),
     kalenderGoogle: await googleLage(Date.parse(jetzt)).catch((): GoogleKalenderLage | null => null),
     gmail: await gmailLage(Date.parse(jetzt)).catch((): GmailLage | null => null),
-    zugang: { zuliefererSchluessel: zuliefererSchluessel() !== null, zuliefererAltZuletzt: await altSchluesselZuletzt(), riegel: (({ modus, maengel }) => ({ modus, maengel }))(riegelBild()) },
+    zugang: {
+      zuliefererSchluessel: zuliefererSchluessel() !== null, zuliefererAltZuletzt: await altSchluesselZuletzt(),
+      riegel: (({ modus, maengel }) => ({ modus, maengel }))(riegelBild()),
+      zweiFaktor: await ladeKonten().then(st => ({ pflicht: !!st.einstellungen?.zweiFaktorPflicht, ohne: st.konten.filter(k => !k.zweiterFaktor).length, konten: st.konten.length })).catch(() => undefined),
+    },
   };
 }
 

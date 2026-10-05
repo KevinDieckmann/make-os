@@ -14,7 +14,7 @@ import type { Sitzung } from '@/lib/zugang/sitzung';
 const TTL_MS = 15_000;
 /** Ein schon abgelehnter Zettel wird frühestens nach so vielen ms erneut beim Server nachgefragt. */
 const NACHFRAGE_MS = 5_000;
-interface Stand { stand: string; ab: number; widerrufen: string[]; bis: number; geholt: number; abgelehnt: Map<string, number> }
+interface Stand { stand: string; ab: number; widerrufen: string[]; bis: number; geholt: number; abgelehnt: Map<string, number>; /** 2FA-Pflicht offen (05.10.) und ab wann. */ zfOffen: boolean; zfAb: number }
 /** speicher → Stand laut Server (stand '' = Konto gibt es nicht mehr). */
 const gemerkt = new Map<string, Stand>();
 /** Läuft für ein Konto gerade eine Nachfrage, hängen sich alle anderen Anfragen daran (27.09., Tempo): ein Seitenstart
@@ -27,12 +27,13 @@ async function nachfragen(req: Request, speicher: string, schluessel: string, al
   const p = (async () => {
     const r = await fetch(`${innenAdresse(req)}/api/konto/stand?speicher=${encodeURIComponent(speicher)}`, { headers: { 'x-make-key': schluessel }, cache: 'no-store' });
     if (!r.ok && r.status !== 404) throw new Error(`Stand: ${r.status}`);
-    const d = r.status === 404 ? { stand: '', ab: 0, widerrufen: [] } : ((await r.json()) as { stand?: unknown; ab?: unknown; widerrufen?: unknown });
+    const d = r.status === 404 ? { stand: '', ab: 0, widerrufen: [] } : ((await r.json()) as { stand?: unknown; ab?: unknown; widerrufen?: unknown; zfOffen?: unknown; zfAb?: unknown });
     if (typeof d.stand !== 'string') throw new Error('Stand: keine Antwort');
     const neu: Stand = {
       stand: d.stand, ab: typeof d.ab === 'number' ? d.ab : 0,
       widerrufen: Array.isArray(d.widerrufen) ? d.widerrufen.filter((x): x is string => typeof x === 'string') : [],
       bis: jetzt + TTL_MS, geholt: jetzt, abgelehnt: alt?.abgelehnt ?? new Map<string, number>(),
+      zfOffen: 'zfOffen' in d && d.zfOffen === true, zfAb: 'zfAb' in d && typeof d.zfAb === 'number' ? d.zfAb : 0,
     };
     gemerkt.set(speicher, neu);
     return neu;
@@ -67,6 +68,15 @@ export async function standGueltig(req: Request, s: Sitzung, schluessel: string)
   } catch {
     return alt ? passt(alt, s) : true;
   }
+}
+
+/**
+ * 2FA-Pflicht (05.10.): muss diese Sitzung erst den zweiten Faktor einrichten? Nur nach `standGueltig` (der Stand ist dann
+ * höchstens 15 s alt). Sitzungen, die VOR dem Einschalten der Pflicht ausgestellt wurden, laufen bis zu ihrem Ende weiter.
+ */
+export function zweiterFaktorOffen(s: Sitzung): boolean {
+  const m = gemerkt.get(s.speicher);
+  return !!m && m.zfOffen && s.ausgestellt >= m.zfAb;
 }
 
 /** Für Tests: den gemerkten Stand vergessen. */

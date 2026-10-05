@@ -44,10 +44,12 @@ export async function POST(req: Request) {
   let konto: Konto | undefined;
   await aendereKonten(s => {
     if (s.konten.length) return s;
-    konto = { id: neueKennung('k'), speicher: speicherName(name, []), email, name, rolle: 'inhaber', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] } };
-    return { ...s, konten: [konto] };
+    const jetzt = new Date().toISOString();
+    konto = { id: neueKennung('k'), speicher: speicherName(name, []), email, name, rolle: 'inhaber', hash, salz, angelegt: jetzt, teilt: { gesundheit: [] } };
+    // Neue Instanz (05.10.): 2FA-Pflicht von Anfang an — der Inhaber richtet den zweiten Faktor gleich mit ein.
+    return { ...s, konten: [konto], einstellungen: { ...s.einstellungen, zweiFaktorPflicht: true, zweiFaktorPflichtSeit: jetzt } };
   });
   if (!konto) return NextResponse.json({ error: 'Gleichzeitig eingerichtet — bitte anmelden.' }, { status: 409 });
   await einrichtungsCodeVerbrauchen();
-  return mitSitzung(konto);
+  return mitSitzung(konto, { zweiterFaktorEinrichten: true });
 }

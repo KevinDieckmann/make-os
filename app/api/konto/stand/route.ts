@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { istDienst } from '@/lib/zugang/dienst';
-import { ladeKonten } from '@/lib/zugang/konten';
+import { ladeKonten, zweiFaktorOffen } from '@/lib/zugang/konten';
 import { kontoStand } from '@/lib/zugang/sitzung';
 
 export const runtime = 'nodejs';
@@ -15,12 +15,16 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   if (!istDienst(req)) return NextResponse.json({ error: 'Nur für den Dienstweg.' }, { status: 403 });
   const speicher = new URL(req.url).searchParams.get('speicher') ?? '';
-  const k = (await ladeKonten()).konten.find(x => x.speicher === speicher);
+  const st = await ladeKonten();
+  const k = st.konten.find(x => x.speicher === speicher);
   if (!k) return NextResponse.json({ error: 'Konto nicht gefunden.' }, { status: 404 });
   const jetzt = Date.now();
   return NextResponse.json({
     ok: true, stand: await kontoStand(k.salz),
     ab: k.sitzungenAb ? Date.parse(k.sitzungenAb) || 0 : 0,
     widerrufen: (k.widerrufen ?? []).filter(w => w.bis > jetzt).map(w => w.sid),
+    // 2FA-Pflicht (05.10.): Sitzungen ab `zfAb` dürfen nur noch den zweiten Faktor einrichten (middleware.ts).
+    zfOffen: zweiFaktorOffen(st.einstellungen, k),
+    zfAb: st.einstellungen?.zweiFaktorPflichtSeit ? Date.parse(st.einstellungen.zweiFaktorPflichtSeit) || 0 : 0,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }

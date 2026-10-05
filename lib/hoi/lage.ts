@@ -88,6 +88,8 @@ export interface ZugangLage {
   zuliefererSchluessel: boolean;
   /** Letzter Übergangs-Aufruf: der Mac lieferte noch mit MAKE_OS_KEY von außen — null = nie. */
   zuliefererAltZuletzt: string | null;
+  /** 2FA-Pflicht der Instanz und wie viele Konten ohne zweiten Faktor sind (nur Zahlen). */
+  zweiFaktor?: { pflicht: boolean; ohne: number; konten: number };
   /** Start-Riegel (lib/zugang/start-riegel.ts): Modus und Mängel (nur Namen, nie Werte). */
   riegel?: { modus: 'entwicklung' | 'aus' | 'lokal' | 'scharf' | 'streng'; maengel: { was: string; art: 'fehlt' | 'zu-kurz'; hart: boolean }[] };
 }
@@ -99,6 +101,11 @@ export function zugangBefunde(z: ZugangLage | undefined, jetzt: string): Befund[
   const altTage = z.zuliefererAltZuletzt ? (Date.parse(jetzt) - Date.parse(z.zuliefererAltZuletzt)) / 864e5 : null;
   if (z.zuliefererSchluessel) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gruen', wert: 'eigener Schlüssel', satz: 'öffnet nur die Zulieferung — der Dienstschlüssel gilt nur noch von innen' });
   else if (altTage !== null && altTage <= 7) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gelb', wert: 'liefert noch mit dem Dienstschlüssel', satz: 'Übergang: MAKE_OS_KEY reist noch übers Internet — Zulieferer-Schlüssel einrichten (deploy/zulieferer-schluessel.sh mac → server → aufraeumen, UPDATES.md)' });
+  const zf = z.zweiFaktor;
+  if (zf && zf.konten > 0) {
+    if (zf.pflicht) b.push({ id: 'zwei-faktor', bereich: 'sicherheit', label: 'Zweiter Faktor', ampel: zf.ohne ? 'gelb' : 'gruen', wert: zf.ohne ? `Pflicht an · ${zf.ohne} noch ohne` : 'Pflicht an · alle Konten', satz: zf.ohne ? 'wer noch keinen hat, richtet ihn beim nächsten Anmelden ein' : 'jedes Konto meldet sich mit Passwort und Code an' });
+    else b.push({ id: 'zwei-faktor', bereich: 'sicherheit', label: 'Zweiter Faktor', ampel: zf.ohne ? 'gelb' : 'gruen', wert: zf.ohne ? `keine Pflicht · ${zf.ohne} von ${zf.konten} ohne` : 'keine Pflicht · alle haben ihn', satz: zf.ohne ? 'für Kundendaten: Konto › Zugang der Instanz › „Zweiter Faktor für alle Pflicht“' : 'Pflicht einschalten, damit es so bleibt (Konto › Zugang der Instanz)' });
+  }
   const r = z.riegel;
   if (r && r.modus !== 'entwicklung' && r.modus !== 'lokal') {
     const liste = r.maengel.map(m => `${m.was} ${m.art === 'fehlt' ? 'fehlt' : 'zu kurz'}`).join(', ');
