@@ -46,6 +46,7 @@ export function KapazitaetAnsicht() {
       {k.zugang && !s && !k.fehler && <Karte><Leer>Rechnet die Kapazität …</Leer></Karte>}
       {s && <>
         <Ueberblick s={s} heute={heute} />
+        <TreueKarte s={s} />
         <MachbarKarte posten={s.posten} />
         {s.personen.map((p, i) => (
           <PersonKarte key={p.id} p={p} i={i + 2} ich={k.ich} inhaber={k.inhaber} personen={s.personen} bezuege={k.bezuege}
@@ -68,12 +69,49 @@ function Ueberblick({ s, heute }: { s: KapaStand; heute: string }) {
         <Zahl wert={kz.last4 == null ? '—' : `${z(kz.last4)} %`} label={kz.last4 == null ? 'Last 4 Wochen · noch nichts verplant' : `Last 4 Wochen · ${z(kz.bedarf4)} von ${z(kz.belastbar4)} h`} farbe={lastFarbe} />
         <Zahl wert={kz.machbar.bewertet ? `${kz.machbar.machbar} / ${kz.machbar.bewertet}` : '—'} label={kz.machbar.bewertet ? `machbar${kz.machbar.eng ? ` · ${kz.machbar.eng} eng` : ''}${kz.machbar.nicht ? ` · ${kz.machbar.nicht} nicht` : ''}` : 'Meilensteine mit Aufwand'} farbe={kz.machbar.nicht || kz.machbar.ueberfaellig ? LEUCHT.kritisch : kz.machbar.eng ? LEUCHT.achtung : undefined} />
         <Zahl wert={kz.pufferStdWoche == null ? '—' : `${z(kz.pufferStdWoche)} h`} label="Puffer je Woche (Ø 4 Wochen)" farbe={kz.pufferStdWoche != null && kz.pufferStdWoche < 0 ? LEUCHT.kritisch : undefined} />
+        <Zahl wert={kz.planTreue == null ? '—' : `${z(kz.planTreue)} %`} label={kz.planTreue == null ? 'Plan-Treue · noch nicht messbar' : kz.planTreueQuelle === 'festgehalten' ? `Plan-Treue · ${kz.treueWochen?.length ?? 0} festgehaltene Woche${kz.treueWochen?.length === 1 ? '' : 'n'}` : 'Plan-Treue · Näherung'}
+          farbe={kz.planTreue == null ? undefined : kz.planTreue >= 80 ? LEUCHT.gut : kz.planTreue >= 50 ? LEUCHT.achtung : LEUCHT.kritisch} />
         <Zahl wert={`${Math.round(s.team.kopf.faktor * 100)} %`} label={s.team.kopf.personen ? 'Kopf & Energie (Team, 14 Tage)' : 'Kopf & Energie · ohne geteilte Messung'} />
       </div>
       <LastBand stand={s} von={heute} bis={tagPlus(heute, WOCHEN * 7 - 1)} hoehe={34} />
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>
         <span>{kurz(heute)}</span><span>{kurz(tagPlus(heute, WOCHEN * 7 - 1))}</span>
       </div>
+    </Karte>
+  );
+}
+
+/**
+ * Plan-Treue „geplant vs. Ist“ (Kevin 05.10.): die abgeschlossenen Wochen, deren Plan der Morgenlauf montags festgehalten hat —
+ * ohne festgehaltene Woche steht ehrlich da, dass die Zahl eine Näherung ist. Ziel des Detail-Links der Kennzahl `kp_treue`.
+ */
+function TreueKarte({ s }: { s: KapaStand }) {
+  const kz = s.kennzahlen;
+  const wochen = kz.treueWochen ?? [];
+  const plan = s.wochenPlan;
+  const dieseWoche = plan ? plan.personen.reduce((a, p) => a + p.geplant, 0) : 0;
+  return (
+    <Karte i={1} id="plan-treue">
+      <Ueberschrift rechts={kz.planTreueQuelle === 'festgehalten' ? 'geplant vs. Ist' : 'Näherung'}>Plan-Treue</Ueberschrift>
+      {wochen.length ? (
+        <Liste>
+          {wochen.slice().reverse().map(w => {
+            const q = w.geplant > 0 ? Math.round(w.ist / w.geplant * 1000) / 10 : null;
+            return (
+              <Zeile key={w.woche} titel={`Woche ab ${kurz(w.woche)}`}
+                unter={`${z(w.ist)} h gemessen von ${z(w.geplant)} h geplant · ${w.personen} Person${w.personen === 1 ? '' : 'en'} mit Konto`}
+                rechts={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, color: q == null ? C.inkLeise : q >= 80 ? LEUCHT.gut : q >= 50 ? LEUCHT.achtung : LEUCHT.kritisch }}>{q == null ? '—' : `${z(q)} %`}</span>} />
+            );
+          })}
+        </Liste>
+      ) : (
+        <Leer>Noch keine abgeschlossene Woche festgehalten. Der Morgenlauf hält montags (bzw. beim ersten Lauf der Woche) den Plan je Person fest; bis dahin ist die Plan-Treue eine Näherung: Ø gemessene Fokuszeit der letzten 4 Wochen ÷ Ø verplante Stunden der nächsten 4 Wochen.</Leer>
+      )}
+      {plan && plan.personen.length > 0 && (
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>
+          Diese Woche (ab {kurz(plan.woche)}) verplant: {z(dieseWoche)} h — festgehalten wird, was der Morgenlauf am ersten Lauf der Woche sieht.
+        </div>
+      )}
     </Karte>
   );
 }

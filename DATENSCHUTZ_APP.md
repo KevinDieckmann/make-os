@@ -44,6 +44,10 @@ Anwendung“ — den gibt es noch nicht. Abschnitt 4 ist ein **Entwurf** dafür;
 - Löschfrist (Nachtrag 04.10., Kevin): Team-Personen ohne Konto — **30 Tage nach dem Deaktivieren** löscht der Morgenlauf Grundwert,
   Urlaub/Blöcke, Zuweisungen und die Einwilligung (`lib/kapazitaet/aufraeumen.ts`); den Zeitpunkt (`deaktiviertAm`) setzt nur der
   Server, Reaktivieren davor erhält alles. Offen: Einträge eines entfernten Kontos (Konten werden nicht deaktiviert).
+- Festgehaltener Wochenplan (05.10., `kapazitaet-plan--<haushalt>`): montags je Person verfügbare Zeit (Netto, **ohne**
+  Erholungs-Faktor), geplante/gebundene Stunden je Meilenstein/Zuweisung (nur Kennungen) — für die Plan-Treue „geplant vs. Ist“.
+  Löschfrist **24 Monate** je Woche (Morgenlauf), Team-Personen ohne Konto mit den übrigen Kapazitätsdaten nach 30 Tagen;
+  Art. 15 in der Kapazitäts-Auskunft (`wochenplaene`).
 
 **Papierkörbe** (CRM-Listen, Produkte, Aufgaben, Gesellschafts-Register): 30 Tage, dann endgültig (Morgenlauf; mit Verweisen
 bleibt der Eintrag). Für alle Leser unsichtbar — **aber** Art. 15/17 und das Zusammenführen lesen den Bestand mit Papierkorb.

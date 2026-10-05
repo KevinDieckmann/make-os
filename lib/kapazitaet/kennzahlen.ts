@@ -7,7 +7,7 @@
 // Bewusst NICHT hier (sonst doppelt gezählt): „Auslastung“ (fakturierte Tage ÷ Beratertage) und „Meeting-Last“ stehen in
 // „Personal“ — die Meeting-Last wirkt hier nur als Umschaltzeit in der verfügbaren Kapa, nicht als eigene Kennzahl.
 
-import type { KennzahlDefBasis, Messung, Detail } from '@/lib/kennzahlen/kern';
+import type { KennzahlDefBasis, Messung, Detail, Ampel } from '@/lib/kennzahlen/kern';
 import { WEG } from '@/lib/wege';
 import type { KapaKennzahlen } from './typen';
 import { MACHBAR_LABEL } from './typen';
@@ -27,8 +27,8 @@ export const KP_KENNZAHLEN: KennzahlDefBasis[] = [
     formel: 'machbare (eng zählt halb) ÷ bewertete offene Meilensteine und Ziele mit Aufwand und Termin',
     quelle: 'Machbarkeit je Meilenstein/Ziel (Restbedarf ÷ freie Zeit bis zum Termin)', luecke: 'Noch kein Meilenstein mit Aufwand und Termin', pflegen: AUFWAND },
   { id: 'kp_treue', label: 'Plan-Treue', saeule: KP_ID, gruppe: 'Umsetzung', einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
-    formel: 'Ø gemessene Business-Fokuszeit je Woche (letzte 4 Wochen) ÷ Ø verplante Stunden je Woche (nächste 4 Wochen)',
-    quelle: 'Fokus-Zähler (Zeit & Fokus) + Kapazität', luecke: 'Noch keine Fokus-Zeit gemessen oder nichts verplant', pflegen: { text: 'Oben im Kopf „Fokus“ starten', href: WEG.kapazitaet() } },
+    formel: 'Σ gemessene Business-Fokuszeit ÷ Σ geplante Stunden der abgeschlossenen Wochen, deren Plan montags festgehalten wurde (letzte 4, Personen mit Konto) — ohne festgehaltene Woche Näherung: Ø gemessen je Woche (letzte 4 Wochen) ÷ Ø verplant je Woche (nächste 4 Wochen)',
+    quelle: 'Fokus-Zähler (Zeit & Fokus) + festgehaltener Wochenplan der Kapazität (Morgenlauf)', luecke: 'Noch keine Fokus-Zeit gemessen oder nichts verplant', pflegen: { text: 'Oben im Kopf „Fokus“ starten', href: WEG.kapazitaet() } },
   { id: 'kp_puffer', label: 'Puffer je Woche', saeule: KP_ID, gruppe: 'Last', einheit: 'stunden', richtung: 'hoch', gruen: 8, rot: 0,
     formel: 'Ø (belastbare − verplante Stunden) je Woche, nächste 4 Wochen — Team gesamt',
     quelle: 'Kapazität', luecke: 'Noch nichts verplant', pflegen: PFLEGEN },
@@ -62,9 +62,18 @@ export function kpMessung(id: string, k: KapaKennzahlen | null | undefined): Mes
       return { wert: k.machbarAnteil, anzeige: `${z(k.machbarAnteil)} %`, quelle: `${m.machbar} machbar · ${m.eng} eng · ${m.nicht} nicht machbar${m.ueberfaellig ? ` · ${m.ueberfaellig} überfällig` : ''}${m.ohneAufwand ? ` · ${m.ohneAufwand} ohne Aufwand` : ''}`, details: mindestens(postenDetails(k)) };
     }
     case 'kp_treue': {
-      if (k.planTreue == null) return { luecke: k.planStdWoche > 0 ? 'Noch keine Business-Fokuszeit gemessen (letzte 4 Wochen)' : 'Noch nichts verplant' };
-      return { wert: k.planTreue, anzeige: `${z(k.planTreue)} %`, quelle: `Ø ${z(k.istStdWoche ?? 0)} h gemessen ÷ Ø ${z(k.planStdWoche)} h verplant je Woche`,
-        details: [{ titel: 'Gemessen je Woche', wert: `${z(k.istStdWoche ?? 0)} h`, unter: 'bewusste Business-Fokuszeit, letzte 4 Wochen', href: WEG.kapazitaet() }, { titel: 'Verplant je Woche', wert: `${z(k.planStdWoche)} h`, unter: 'nächste 4 Wochen', href: WEG.kapazitaet() }] };
+      const zurKapa = [{ titel: 'Plan-Treue in der Kapazität', href: `${WEG.kapazitaet()}#plan-treue` }];
+      if (k.planTreue == null) return { luecke: k.planStdWoche > 0 ? 'Noch keine Business-Fokuszeit gemessen (letzte 4 Wochen)' : 'Noch nichts verplant', details: zurKapa };
+      const wochen = k.treueWochen ?? [];
+      if (k.planTreueQuelle === 'festgehalten' && wochen.length) {
+        return { wert: k.planTreue, anzeige: `${z(k.planTreue)} %`,
+          quelle: `geplant vs. Ist · ${wochen.length} festgehaltene Woche${wochen.length === 1 ? '' : 'n'}: Ø ${z(k.istStdWoche ?? 0)} h gemessen ÷ Ø ${z(k.planStdWoche)} h geplant`,
+          details: wochen.slice().reverse().map(w => ({ titel: `Woche ab ${wocheKurz(w.woche)}`, wert: w.geplant > 0 ? `${z(Math.round(w.ist / w.geplant * 1000) / 10)} %` : '—',
+            unter: `${z(w.ist)} h gemessen von ${z(w.geplant)} h geplant (montags festgehalten)`, href: `${WEG.kapazitaet()}#plan-treue`,
+            ampel: (w.ist / w.geplant >= 0.8 ? 'gruen' : w.ist / w.geplant >= 0.5 ? 'gelb' : 'rot') as Ampel })) };
+      }
+      return { wert: k.planTreue, anzeige: `${z(k.planTreue)} %`, quelle: `Näherung (noch kein Wochenplan festgehalten): Ø ${z(k.istStdWoche ?? 0)} h gemessen ÷ Ø ${z(k.planStdWoche)} h verplant je Woche`,
+        details: [{ titel: 'Gemessen je Woche', wert: `${z(k.istStdWoche ?? 0)} h`, unter: 'bewusste Business-Fokuszeit, letzte 4 Wochen', href: WEG.kapazitaet() }, { titel: 'Verplant je Woche', wert: `${z(k.planStdWoche)} h`, unter: 'nächste 4 Wochen — Näherung, bis der Morgenlauf den ersten Wochenplan festgehalten hat', href: WEG.kapazitaet() }] };
     }
     case 'kp_puffer': {
       if (k.pufferStdWoche == null) return { luecke: 'Noch nichts verplant' };

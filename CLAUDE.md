@@ -475,6 +475,14 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   Meilenstein- und Ziel-Detail (Ziel: „Eigener Aufwand“). Browser nur über `useKapazitaet` (`kapazitaetNeu()` nach dem Speichern).
 - Tests `tests/kapazitaet.test.ts` (30-h/Tag-Fall, Reihenfolge, Urlaub/Block/Termine, Kopf & Energie, Andock, Rechte, alte Daten,
   Säule ohne Messung = alter Index), `tests/kapazitaet-route.test.ts` (Testkunde 403, Privatfilter, Rechte).
+- **Wochenplan festhalten (05.10., Kevin: „Jeden Montag wird der Wochenplan festgehalten“):** die Rechnung liefert `KapaStand.wochenPlan`
+  (laufende Woche ab heute, je Person verfügbar = Netto OHNE Kopf & Energie, geplant = Bedarf, gebunden, je Posten/Zuweisung nur Kennungen).
+  Der Morgenlauf (Schritt „Wochenplan festhalten“, `kapaPlanFesthalten`) legt ihn einmal je Woche in `kapazitaet-plan--<haushalt>` ab
+  (idempotent, `ab` = Tag des ersten Laufs) und löscht Wochen älter als 24 Monate. Regeln rein in `lib/kapazitaet/plan.ts`
+  (`planFesthalten`, `treueAusPlaenen`, `planOhnePersonen`, `planFuerPerson`). **Plan-Treue** = Σ Ist ÷ Σ geplant der abgeschlossenen,
+  festgehaltenen Wochen (letzte 4, nur Konten, Ist ab `ab`); ohne Schnappschuss die alte Näherung, immer mit `planTreueQuelle`
+  beschriftet. Team-Löschfrist (30 Tage) und Art. 15 (`wochenplaene` in der Auskunft) gelten mit. Nie einen Gesundheitswert oder
+  Titel/Namen in den Schnappschuss schreiben. Tests `tests/kapazitaet-plan.test.ts`.
 
 ## Ernährung & Einkauf zu zweit (seit 26.09.2026, online)
 - Modell `lib/ernaehrung/modell.ts` (rein): Profile je Person (Konto = nur selbst, Gast = Haushalt), Stammliste

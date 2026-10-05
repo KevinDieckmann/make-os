@@ -4,6 +4,25 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Kapazität: Wochenplan festhalten → echte Plan-Treue „geplant vs. Ist“ (05.10.2026, nur lokal — Branch `demo-schnappschuss`)
+
+Kevin 05.10.: „Jeden Montag wird der Wochenplan festgehalten → echte Plan-Treue ‚geplant vs. Ist‘.“
+
+- **Morgenlauf-Schritt „Wochenplan festhalten“** (`kapaPlanFesthalten`, lib/kapazitaet/server.ts; Regeln rein in lib/kapazitaet/plan.ts):
+  montags bzw. beim ersten Lauf der Woche je Person den Plan der laufenden Woche ablegen — verfügbar (Netto, OHNE Kopf & Energie: kein
+  Gesundheitswert), geplant (= Bedarf), gebunden (Zuweisungen), je Meilenstein/Ziel und je Zuweisung (nur Kennungen). Idempotent (ein
+  Schnappschuss je Woche; ein späterer erster Lauf hält ab diesem Tag fest, `ab`). Bestand `kapazitaet-plan--<haushalt>`, Protokoll „System“.
+- **Plan-Treue `kp_treue`:** mit festgehaltenen Wochen Σ gemessene Business-Fokuszeit ÷ Σ geplant der abgeschlossenen Wochen (letzte 4,
+  Personen mit Konto, Ist ab `ab`); ohne sie die bisherige Näherung — in Kennzahl und Kapazität als „Näherung“ beschriftet. Details je
+  Woche, alle mit Link auf die Kapazität (`#plan-treue`). Kapazität: fünfte Zahl „Plan-Treue“ + Karte „Plan-Treue“ (Wochen geplant vs. Ist).
+- **DSGVO:** Speicher-Register `kapazitaet-plan--*` (Beschäftigtendaten, Art. 6 Abs. 1 lit. b / § 26 BDSG), Löschfrist 24 Monate je Woche
+  (im selben Morgenlauf-Schritt), Team-Personen ohne Konto: ihre Zeilen mit den übrigen Kapazitätsdaten 30 Tage nach dem Deaktivieren;
+  Art. 15 über die Kapazitäts-Auskunft (`wochenplaene`). Löschkonzept `kapazitaet-plan`, Verzeichnis `vv-kapazitaet` (Fassung vom 04.10.
+  wird gehoben, von Hand Geändertes bleibt).
+- **Tests:** `tests/kapazitaet-plan.test.ts`.
+- **Rückweg:** Der alte Stand liest `kapazitaet-plan--*` nicht (Bestand bleibt liegen, schadet nicht; bei Bedarf löschen) und rechnet die
+  Näherung wie bisher. Die optionalen Felder (`wochenPlan`, `planTreueQuelle`, `treueWochen`) ignoriert er.
+
 ## DSGVO-Nachtrag: Kapazität deaktivierter Team-Personen + Unterlagen gelöschter Gesellschaften/Verträge (04.10.2026 spät, nur lokal — Branch `dsgvo-2`; UMBAU_ABEND_0410.md › 12)
 
 Kevin 04.10.: „Team-Personen: Kapazitätsdaten 30 Tage nach Deaktivieren automatisch löschen + Art.-15-Export“ und „Unterlagen beim
