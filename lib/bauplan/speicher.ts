@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
-import { bildAblegen, bildOeffnen } from '@/lib/store/bild-ablage';
+import { bildAblegen, bildEntfernen, bildOeffnen } from '@/lib/store/bild-ablage';
 import { bilderFaellig, VERWAIST_TAGE } from './bilder-frist';
 import { SEED, type BacklogItem } from '@/lib/make-one/backlog-data';
 import { neueKarte, bildNameOk, type BauplanDatei } from './board';
@@ -82,6 +82,6 @@ export async function bauplanBilderAufraeumen(grenze: string, jetzt = new Date()
   await aendereBauplan(d => (d.items.some(k => (k.bilder ?? []).some(b => weg.has(b)))
     ? { ...d, items: d.items.map(k => (k.bilder ?? []).some(b => weg.has(b)) ? { ...k, bilder: (k.bilder ?? []).filter(b => !weg.has(b)) } : k) }
     : d));
-  for (const n of weg) await fs.unlink(path.join(bilderOrdner(), n)).catch(() => {});
+  for (const n of weg) await bildEntfernen(BILDER, n); // über die Ablage: wartet auf ein laufendes Schreiben desselben Bildes
   return weg.size;
 }
