@@ -1,15 +1,14 @@
 // ─── MAKE OS — Fotos zu Gerichten (Server) ──────────────────────────────────
 // Kevin (26.09.): „Foto zum Gericht — vom Handy, erscheint in Bibliothek und Plan.“
-// Dateien liegen unter .data/bilder-gerichte (nie im Repo, mit der nächtlichen
-// Sicherung gesichert; im Ruhezustand NICHT verschlüsselt — Paket B). Das Handy
-// verkleinert vor dem Hochladen (ErnaehrungView), der Server prüft Typ an den
-// ersten Bytes und Größe. Muster wie lib/bauplan/speicher.ts.
+// Dateien liegen unter <daten>/bilder-gerichte (nie im Repo, mit der nächtlichen Sicherung gesichert). Seit 05.10.
+// verschlüsselt und atomar wie die Dateiablage (lib/store/bild-ablage.ts; alte Klartext-Bilder werden beim ersten Lesen
+// verschlüsselt). Das Handy verkleinert vor dem Hochladen (ErnaehrungView), der Server prüft Typ an den ersten Bytes
+// und Größe. Muster wie lib/bauplan/speicher.ts.
 
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { bildAblegen, bildOeffnen, bildEntfernen } from '@/lib/store/bild-ablage';
 
-const ORDNER = path.join(process.env.MAKE_OS_DATEN_DIR ?? path.join(process.cwd(), '.data'), 'bilder-gerichte');
+const ORDNER = 'bilder-gerichte' as const;
 const TYPEN: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 export const GERICHT_BILD_MAX = 2 * 1024 * 1024;
 
@@ -23,22 +22,20 @@ export async function gerichtBildSpeichern(dataUrl: string): Promise<{ name: str
   const echt = buf.subarray(0, 4).toString('hex');
   const passt = m[1] === 'image/jpeg' ? echt.startsWith('ffd8ff') : m[1] === 'image/png' ? echt === '89504e47' : buf.subarray(8, 12).toString('ascii') === 'WEBP';
   if (!passt) return { fehler: 'Die Datei ist kein echtes Bild.' };
-  await fs.mkdir(ORDNER, { recursive: true, mode: 0o700 });
   const name = `${randomUUID()}.${TYPEN[m[1]]}`;
-  await fs.writeFile(path.join(ORDNER, name), buf, { mode: 0o600 });
+  await bildAblegen(ORDNER, name, buf);
   return { name };
 }
 
 export async function gerichtBildLesen(name: string): Promise<{ daten: Buffer; mime: string } | null> {
   if (!bildNameOk(name)) return null;
-  try {
-    const daten = await fs.readFile(path.join(ORDNER, name));
-    const ext = name.split('.').pop()!;
-    return { daten, mime: ext === 'jpg' ? 'image/jpeg' : `image/${ext}` };
-  } catch { return null; }
+  const daten = await bildOeffnen(ORDNER, name).catch(() => null);
+  if (!daten) return null;
+  const ext = name.split('.').pop()!;
+  return { daten, mime: ext === 'jpg' ? 'image/jpeg' : `image/${ext}` };
 }
 
 export async function gerichtBildLoeschen(name: string): Promise<void> {
   if (!bildNameOk(name)) return;
-  try { await fs.unlink(path.join(ORDNER, name)); } catch { /* schon weg */ }
+  await bildEntfernen(ORDNER, name);
 }
