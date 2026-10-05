@@ -6,6 +6,7 @@
 // je Monat — hier lebt die Planung/Verwaltung davor.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { privatFinanzZugang, keinFinanzZugang } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateJsonAsync, updateGeschuetztListen } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -24,6 +25,7 @@ const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen �
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
+  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   let f = await loadJson<FinanzplanFile>('finanzplan');
   if (!f || !Array.isArray(f.firmen) || !f.firmen.length) {
     f = await updateJson<FinanzplanFile>('finanzplan', () => SEED);
@@ -44,6 +46,7 @@ export async function GET(req: Request) {
 /** Kompletten Stand setzen (die Seite verwaltet die Listen). */
 export async function PUT(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
+  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   let body: Partial<FinanzplanFile>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Erste Posten bei der UG in einem Plan ohne UG-Konto → leeres UG-Konto dazu (28.09., additiv).
@@ -92,6 +95,7 @@ export async function PUT(req: Request) {
  */
 export async function PATCH(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
+  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   let body: { ops?: unknown; felder?: Record<string, unknown>; aktion?: unknown; rechnungId?: unknown; am?: unknown; stand?: unknown; grund?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (body.aktion === 'bezahlt') return bezahlt(body);

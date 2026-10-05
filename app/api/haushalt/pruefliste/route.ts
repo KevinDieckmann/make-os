@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import { randomUUID } from 'crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
+import { privatFinanzZugang, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt, aendereBuchungen, aendereSchulden, speicherName } from '@/lib/finanzen/haushalt/speicher';
 import { istZuordnung, pruefliste, type Aktion, type Businessbestand, type Quelle } from '@/lib/finanzen/haushalt/entflechtung';
 import type { Beleg, Buchung, Schuld } from '@/lib/finanzen/haushalt/typen';
@@ -30,7 +30,7 @@ async function bestand(): Promise<Businessbestand> {
 }
 
 export async function GET(req: Request) {
-  const z = await haushaltVon(req);
+  const z = await privatFinanzZugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   // Die Firmen-Speicher gehören der Instanz — also nur dem echten Haushalt.
   // Test- und Probe-Haushalte sehen nichts davon (gefunden 24.09.).
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const z = await haushaltVon(req);
+  const z = await privatFinanzZugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   if (!istEchterHaushalt(z.haushalt)) return NextResponse.json({ ok: false, fehler: 'Nur im echten Haushalt.' }, { status: 403 });
   let b: { entscheidungen?: { quelle: Quelle; id: string; aktion: Aktion }[] };
