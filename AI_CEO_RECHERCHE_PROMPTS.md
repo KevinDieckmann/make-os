@@ -6,8 +6,8 @@
 2. Kopiere jeweils alles zwischen `--- PROMPT P… START ---` und `--- PROMPT P… ENDE ---`.
 3. Wenn Gemini vorab einen Rechercheplan zeigt: prüfen, ob alle nummerierten Fragen drin sind, sonst „bitte alle Fragen 1–n abdecken“ antworten, dann starten.
 4. Ergebnisse als Google Doc exportieren und als `research/ai-ceo/P01-markt.md` … `P10-gtm.md` ablegen (oder mir die Docs geben).
-5. Zusätzlich **P12** und **P13** (Stimme der Kunden, Weg zu 100 Kunden) — sie machen aus guter Recherche einen klaren Fahrplan.
-6. Zum Schluss den **Bonus-Prompt P11** mit allen zwölf Ergebnissen laufen lassen (oder ich mache die Synthese mit dir).
+5. Zusätzlich **P12–P16** (Stimme der Kunden, Weg zu 100 Kunden, Integrationen, Förderung, Gestaltung) — damit ist das Bild rundum vollständig.
+6. Zum Schluss den **Bonus-Prompt P11** mit allen fünfzehn Ergebnissen laufen lassen (oder ich mache die Synthese mit dir). Mehr Prompts lohnen danach nicht — der nächste Erkenntnissprung kommt aus Gesprächen mit Pilotkunden (Leitfaden aus P12).
 
 **Die 10 Läufe im Überblick**
 | Nr. | Thema | Wofür wir es brauchen |
@@ -24,7 +24,10 @@
 | P10 | Weg in den Markt, Positionierung, Marke, Vertrieb (DACH) | Wie wir es extrem gut verkaufen |
 | P12 | Stimme der Kunden: Worte, Schmerzen, Wechselauslöser, Aha-Moment | Richtige Reihenfolge der Funktionen und die Sprache, die verkauft |
 | P13 | Vom Plan zu 100 Kunden: Fallstudien, Reihenfolge, Betriebsmodell | Ein belastbarer Fahrplan mit Meilensteinen und Abbruchkriterien |
-| P11 | Bonus: Synthese aller zwölf Ergebnisse (zuletzt laufen lassen) | Ein Bauplan mit Prioritäten |
+| P14 | Integrationen und Ökosystem DACH (DATEV, Banken, Buchhaltung, Signatur …) | Was angebunden sein muss, damit Steuerberater und Kunden Ja sagen |
+| P15 | Förderung und Finanzierung des Baus | Geld für Entwicklung und Piloten, ohne die Richtung aufzugeben |
+| P16 | Gestaltung von KI-Aufsicht, Cockpits und ruhiger Technik | Damit das Cockpit weltweit zu den besten Oberflächen gehört |
+| P11 | Bonus: Synthese aller fünfzehn Ergebnisse (zuletzt laufen lassen) | Ein Bauplan mit Prioritäten |
 
 ---
 
@@ -462,9 +465,113 @@ Du bist eine Beraterin für Unternehmensaufbau von Software-Firmen (0 → 1 → 
 
 ---
 
+--- PROMPT P14 START ---
+
+Du bist eine Produktmanagerin für Integrationen und Software-Ökosysteme im DACH-Mittelstand und bei Selbstständigen. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS ist das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System), eigene verschlüsselte Instanz je Kunde in Deutschland. Heute angebunden: Microsoft 365 (Mail, Kalender), Google (Kalender, Gmail, OAuth je Person), Apple (Kalender, Erinnerungen, Kontakte über einen Mac-Zulieferer), Whoop, Telegram, Miro. Selbst gebaut: CRM, Rechnungen/Zahlungen, Buchungen, Belege, Finanzplanung mit Steuern (ESt, GewSt, KSt, USt), Liquidität. Nicht angebunden: Banken, DATEV, Buchhaltungssoftware, E-Rechnung, digitale Signatur, Zahlungsanbieter. Das geplante AI-CEO-Modul soll auch externe Menschen (z. B. den Steuerberater) sauber einbinden.
+
+**Ziel dieses Laufs:** Herausfinden, welche Integrationen ein AI CEO im DACH-Raum **zwingend** braucht, welche Wettbewerbsvorteile bringen, wie man sie technisch und rechtlich baut — und was wir bewusst selbst lösen.
+
+**Beantworte ausführlich und mit Quellen:**
+1. **Steuerberater-Ökosystem:** DATEV (Unternehmen online, DATEV-Schnittstellen/Marktplatz, Belegtransfer, Buchungsdatenservice, Partnerprogramm, Voraussetzungen, Kosten, Dauer der Zertifizierung), Alternativen (Agenda, Addison, Stotax). Was erwarten Steuerberater von einer Software ihrer Mandanten? Wie viele Selbstständige arbeiten mit DATEV-Kanzleien?
+2. **Banken:** Kontoanbindung über PSD2/XS2A-Aggregatoren (finAPI, Tink, GoCardless Bank Account Data, Plaid EU, Salt Edge, Yapily) und FinTS/HBCI; Kosten, Lizenz (Kontoinformationsdienst nach ZAG), Datenschutz, Abdeckung deutscher Banken (Sparkassen, Volksbanken, Neobanken wie Qonto, Kontist, Finom, N26).
+3. **Buchhaltung und Rechnungen:** lexoffice/Lexware Office, sevDesk, Debitoor, Billomat, FastBill, Candis, BuchhaltungsButler — APIs, Marktanteile bei Solo-Selbstständigen, was man anbinden statt nachbauen sollte.
+4. **E-Rechnung:** Pflichten in Deutschland seit 2025 (Empfang) und Übergangsfristen bis 2027/2028 (Versand), Formate XRechnung/ZUGFeRD, Peppol; was muss MAKE OS können, um rechtssicher zu sein (GoBD, Archivierung)?
+5. **Zahlungen:** Stripe, Mollie, PayPal, SumUp, GoCardless (Lastschrift) — für Rechnungsstellung, Abos, Eventtickets; Gebühren und Integrationsaufwand.
+6. **Signatur und Dokumente:** qualifizierte/fortgeschrittene elektronische Signatur (eIDAS 2.0), Anbieter (DocuSign, Skribble, Yousign, FP Sign), Kosten, Einsatz für Angebote/Verträge/Beschlüsse.
+7. **Kommunikation und Kalender:** Tiefe der Microsoft-Graph- und Google-Workspace-APIs (Agenten-Zugriff, Grenzen, Verifizierung von Google-OAuth-Apps mit sensiblen Scopes, Kosten des Sicherheits-Assessments), WhatsApp Business API, Telefonie/Notetaker (Teams, Zoom, Meet) — was ist für AI CEOs wichtig?
+8. **Offene Standards für Agenten:** Model Context Protocol (MCP) und Agent2Agent (A2A) — welche DACH-Dienste bieten 2026 schon MCP-Server an (DATEV? lexoffice? Banken?), und wie kann MAKE OS selbst MCP-Server/-Client sein (Chancen, Sicherheitsrisiken)?
+9. **Behörden und Pflichten:** ELSTER/ERiC (Umsatzsteuer-Voranmeldung, Einkommensteuer), Unternehmensregister/Transparenzregister, Handelsregister-Abrufe, Bundesanzeiger — was davon ist für AI CEOs per Software sinnvoll und erlaubt (Abgrenzung Steuerberatungsgesetz)?
+10. **Priorisierung:** Erstelle eine Integrations-Roadmap für MAKE OS: Muss (vor dem ersten Kunden), Soll (erste 100 Kunden), Kann (später) — mit Aufwand, Kosten, Abhängigkeiten, rechtlichen Voraussetzungen und dem Verkaufsargument je Integration.
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), Entwicklerdokumentation und Preisseiten direkt prüfen, Gesetzestexte/BMF-Schreiben für E-Rechnung und GoBD, jede Quelle mit Datum und Link. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Kernaussagen, davon die 5 Pflicht-Integrationen)
+2. Kapitel je Frage mit Vergleichstabellen (Anbieter × API × Kosten × Abdeckung × Datenschutz × Aufwand)
+3. Steuerberater-Sicht: Was eine Kanzlei braucht, damit sie MAKE OS ihren Mandanten empfiehlt
+4. Integrations-Roadmap (Muss/Soll/Kann) mit Aufwand und Voraussetzungen
+5. „Was das für MAKE OS heißt“: anbinden vs. selbst bauen, Partnerprogramme, Verkaufsargumente
+6. Quellenliste
+
+--- PROMPT P14 ENDE ---
+
+---
+
+--- PROMPT P15 START ---
+
+Du bist eine Fördermittel- und Finanzierungsberaterin für Software- und KI-Unternehmen in Deutschland (Schwerpunkt Brandenburg/Berlin und bundesweit) mit Überblick über EU-Programme und Investoren. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (wir):** MAKE Innovation (Marke der KEMARIS Innovation GmbH, Sitz im Land Brandenburg, künftig MAKE Innovation GmbH, gehalten von der KD Ventures UG), zwei Gründer, entwickelt MAKE OS — das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System, eigene verschlüsselte Instanz je Kunde in Deutschland, DSGVO und KI-Verordnung eingebaut). Das Produkt läuft produktiv für uns selbst; als Nächstes bauen wir ein AI-CEO-Modul, eine Instanz-Fabrik und ein Pilotprogramm mit 3–5 Kunden. Dazu betreiben wir die Event-Reihe „Fokus Innovation“.
+
+**Ziel dieses Laufs:** Alle realistischen Wege finden, die Entwicklung, Piloten und den Markteintritt zu finanzieren — Zuschüsse, Darlehen, Beteiligungen —, mit Fristen, Bedingungen und einem Finanzierungsfahrplan.
+
+**Beantworte ausführlich und mit Quellen:**
+1. **Bundesprogramme:** ZIM (Zentrales Innovationsprogramm Mittelstand), Forschungszulage (steuerliche FuE-Förderung, auch für Software/KI — Voraussetzungen, Bescheinigung BSFZ, Höhe 2026), KI-Förderlinien des BMBF/BMWK (bzw. Nachfolge-Ministerien), Digital Jetzt (Status), go-digital/go-inno, INVEST-Zuschuss, EXIST (Eignung?), DLR/VDI-Projektträger-Ausschreibungen 2026.
+2. **Land Brandenburg/Berlin:** ILB-Programme (z. B. ProFIT Brandenburg, BIG-Digital, Brandenburg-Kredit Innovativ), WFBB-Angebote, Innovationsgutscheine, Gründungszuschüsse, Beratungsförderung; Berliner Programme falls relevant (IBB).
+3. **EU:** EIC Accelerator, Horizon Europe (Cluster 4), Digital Europe Programme (KI, Cybersicherheit), EIT Digital, EU-Programme für KMU-KI-Einführung — realistische Erfolgsquoten und Aufwand für ein Zwei-Personen-Team.
+4. **KfW und Darlehen:** ERP-Gründerkredit, ERP-Digitalisierungs- und Innovationskredit, Bürgschaftsbanken — Bedingungen und Kombination mit Zuschüssen.
+5. **Förderung für Kunden (indirekter Verkaufshebel):** Programme, die Kleinunternehmen die Einführung von Digitalisierung/KI bezuschussen (z. B. Digitalisierungsprämien der Länder, BAFA-Beratung, Weiterbildungsförderung) — kann MAKE OS bzw. unsere Einrichtung förderfähig sein, und wie verkauft man das?
+6. **Beteiligungskapital:** Business Angels und Fonds in DACH für KI-Anwendungen/Produktivität/Future of Work (Seed/Pre-Seed), High-Tech Gründerfonds, Brandenburg Kapital/BFB-Fonds, ILB-Beteiligungen, Corporate-Programme; was erwarten Investoren 2026 bei KI-Anwendungen (Kennzahlen, Verteidigungsfähigkeit), typische Bewertungen und Beträge.
+7. **Alternative Finanzierung:** Umsatzbasierte Finanzierung, Vorauszahlungen von Pilotkunden, Lizenz-Vorverkäufe, Crowdinvesting — Vor- und Nachteile.
+8. **Kombinierbarkeit und Beihilferecht:** De-minimis-Grenzen (aktuelle Höhe), AGVO, Kumulierung, was man nicht kombinieren darf; Fallstricke (vorzeitiger Maßnahmenbeginn, Eigenanteil, Abrechnung von Eigenleistung der Gründer).
+9. **Antragspraxis:** Was macht Anträge für Software-/KI-Projekte erfolgreich (Innovationshöhe, Arbeitspakete, Verwertung), typische Bearbeitungszeiten, Kosten von Antragsberatern, Fehler, die zur Ablehnung führen.
+10. **Finanzierungsfahrplan:** Konkreter Vorschlag für MAKE OS über 24 Monate: welche Programme in welcher Reihenfolge, Beträge (Bandbreiten), Fristen/Stichtage 2026/2027, Eigenanteil, Abhängigkeiten zum Produktfahrplan (Phasen: Plattform-Schulden, CEO-Cockpit, KI-Führungsteam, Instanz-Fabrik, Piloten, Markt).
+
+**Arbeitsweise:** Nur aktuelle, offizielle Quellen (Förderdatenbank des Bundes foerderdatenbank.de, Programmseiten ILB/WFBB/KfW/EU-Portale, Richtlinientexte mit Datum), Fristen und Beträge mit Stand angeben, Unsicherheiten benennen. Keine erfundenen Programme oder Beträge — nicht Gefundenes als „nicht belegt“ kennzeichnen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (die 5 besten Hebel mit Betrag, Frist, Aufwand)
+2. Tabelle aller Programme (Name × Träger × Förderart × Höhe/Quote × Bedingungen × Frist × Eignung für uns hoch/mittel/gering × Link)
+3. Kapitel je Frage
+4. Kombinations- und Beihilfe-Übersicht
+5. 24-Monats-Finanzierungsfahrplan (Tabelle, an Produktphasen gekoppelt)
+6. „Was das für MAKE OS heißt“: nächste 3 Anträge mit Checkliste, Förderung als Verkaufsargument für Kunden, Investoren-Geschichte
+7. Quellenliste
+
+--- PROMPT P15 ENDE ---
+
+---
+
+--- PROMPT P16 START ---
+
+Du bist eine Design-Direktorin für Software, die Menschen und KI-Agenten zusammenarbeiten lässt — mit Schwerpunkt auf Aufsicht, Vertrauen, Ruhe und Klarheit. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS ist das Betriebssystem für „AI CEOs“. Geplant ist ein **CEO-Cockpit**: eine Seite mit Richtung (Nordstern, Quartalsziele), „Heute entscheiden“ (gebündelte Freigaben mit Vorher/Nachher und „was passiert, wenn ich nichts tue“), Abteilungen (eine Zeile je KI-Abteilungsleiter mit Ampel, Kennzahl, Vorschlägen, Budget), Balance (Kapazität, Energie mit Einwilligung, geschützte Zeit), einem Zeitstrahl („Lichtfäden“) und „Was ohne mich lief“ (zurücknehmbare Schritte). Dazu ein KI-Chief-of-Staff „ZOE“ (Gespräch, Sprache, als ruhige Partikel-Kugel dargestellt). Gestaltungsregeln: 80 % Seriosität, höchstens 20 % futuristische Akzente, klare Linien, kein Gewusel; dunkler Grund, Akzentfarben Granat (#C9465C) und Smaragd (#2FA878), Schriften Archivo und Public Sans; Business sieht nie Privates.
+
+**Ziel dieses Laufs:** Die weltweit besten Muster für Oberflächen sammeln, in denen Menschen KI-Agenten führen, Entscheidungen treffen und ihren Tag steuern — damit unser Cockpit zu den besten Oberflächen der Welt gehört.
+
+**Beantworte ausführlich und mit Quellen (mit Links zu Beispielen, Screenshots-Beschreibungen, Fallstudien):**
+1. **Menschliche Aufsicht über KI:** Leitlinien und Forschung (Google PAIR Guidebook, Microsoft HAX Toolkit/Guidelines for Human-AI Interaction, Apple Human Interface Guidelines zu Apple Intelligence, Anthropic/OpenAI zu Agenten-Oberflächen, Nielsen Norman Group zu KI-UX, aktuelle CHI/CSCW-Arbeiten). Welche Prinzipien sind belegt?
+2. **Freigabe-Gestaltung:** Wie zeigen die Besten Vorschläge von Agenten (Diff/Vorher-Nachher, Begründung, Zuversicht, Quellen, Rücknahme, Bündelung), ohne Freigabe-Müdigkeit und blindes Bestätigen? Beispiele: GitHub Copilot/Workspace-Reviews, Cursor, Linear-Agenten, Superhuman, Intercom Fin, Notion AI, Claude/ChatGPT-Agentenansichten, Banking-Freigaben.
+3. **Cockpits und Lagebilder:** Beste Beispiele für ruhige, dichte Übersichten (Linear, Stripe Dashboard, Things, Arc, Apple Wetter/Fitness, Bloomberg vs. Gegenbeispiele, Flugzeug-Cockpits/„Glass Cockpit“-Prinzipien, Leitstände). Was macht eine Übersicht in 2 Minuten erfassbar? Informationsdesign (Tufte, Few, Pre-attentive Attributes).
+4. **Ruhige Technik:** Calm Technology (Weiser/Brown, Amber Case), Benachrichtigungen bündeln, „Do not disturb“-Muster, Rhythmus statt Dauerfeuer — belegte Wirkung.
+5. **KI-Persönlichkeit und Darstellung:** Wie wirken KI-Figuren/Avatare/abstrakte Formen (Kugeln, Wellen) auf Vertrauen und Ernsthaftigkeit? Beispiele (Siri, Gemini, ChatGPT Voice, Pi, Humane/Rabbit als Gegenbeispiele) und Forschung zu Anthropomorphisierung.
+6. **Erklärbarkeit und Nachweis:** Wie zeigt man „warum“, „womit“ (Datenkategorien), „wer“ (welcher Agent) und „was danach passierte“ verständlich — ohne Textwüste?
+7. **Privat und Business in einer Oberfläche:** Muster für Bereiche/Räume/Modi (Apple Focus-Modi, Arc Spaces, Slack Workspaces, Microsoft Profile), sichtbare Grenzen, Wechsel ohne Verwirrung.
+8. **Mobil:** Freigaben unterwegs (Wischen, Widgets, Benachrichtigungen mit Aktionen, Sprachbedienung), Tagesübersicht auf kleinem Bildschirm, Apple Watch/Wear OS.
+9. **Barrierefreiheit und Qualität:** WCAG 2.2 / EN 301 549 / Barrierefreiheitsstärkungsgesetz (seit 2025) — was gilt für uns, wie prüft man; dunkles Design und Kontrast.
+10. **Gestaltungsregeln für unser Cockpit:** Leite 25–30 konkrete, begründete Regeln ab (Layout, Typografie, Farbe nur mit Bedeutung, Zahlen, Ampeln, Bewegung, Freigaben, Sprache der KI, Leere Zustände „keine Daten“, Fehlerzustände) und beschreibe einen Entwurf des Cockpits in Worten (Bereiche, Reihenfolge, Verhalten) sowie 3 Varianten zum Testen.
+
+**Arbeitsweise:** Primärquellen (Leitlinien der Hersteller, Forschungsarbeiten mit DOI, Design-Fallstudien der Firmen), aktuelle Beispiele (letzte 12–18 Monate) mit Link und Datum. Belegte Wirkung von Geschmack trennen (kennzeichnen).
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Prinzipien mit Beleg)
+2. Kapitel je Frage mit Beispielen (Link, was gut ist, was wir übernehmen)
+3. Muster-Bibliothek: Freigabe, Lagezeile, Begründung, Rücknahme, Bereichswechsel, Leerer Zustand
+4. Gestaltungsregeln für das CEO-Cockpit (25–30 Regeln)
+5. Cockpit-Entwurf in Worten + 3 Testvarianten + Testplan (5 Nutzer, Aufgaben, Messgrößen)
+6. „Was das für MAKE OS heißt“: Änderungen am Design-Standard, ZOE-Darstellung, mobile Freigaben
+7. Quellenliste
+
+--- PROMPT P16 ENDE ---
+
+---
+
 --- PROMPT P11 (BONUS: SYNTHESE) START ---
 
-Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen zwölf Recherche-Berichte vor (P1 Markt & Zielgruppe, P2 Wettbewerb Produktivität, P3 Wettbewerb Agenten-Plattformen, P4 Privat-Bereich, P5 KI-Entwicklung 2026–2030, P6 Agenten-Architektur, P7 Recht & Vertrauen, P8 Arbeit & Wohlbefinden, P9 Geschäftsmodell & Preise, P10 Go-to-Market, P12 Stimme der Kunden, P13 Weg zu 100 Kunden). Sie betreffen MAKE OS, das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System, eigene Instanz in Deutschland, Mensch entscheidet). Heute ist Oktober 2026.
+Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen fünfzehn Recherche-Berichte vor (P1 Markt & Zielgruppe, P2 Wettbewerb Produktivität, P3 Wettbewerb Agenten-Plattformen, P4 Privat-Bereich, P5 KI-Entwicklung 2026–2030, P6 Agenten-Architektur, P7 Recht & Vertrauen, P8 Arbeit & Wohlbefinden, P9 Geschäftsmodell & Preise, P10 Go-to-Market, P12 Stimme der Kunden, P13 Weg zu 100 Kunden, P14 Integrationen DACH, P15 Förderung & Finanzierung, P16 Gestaltung KI-Aufsicht). Sie betreffen MAKE OS, das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System, eigene Instanz in Deutschland, Mensch entscheidet). Heute ist Oktober 2026.
 
 **Aufgabe:** Führe die Berichte zu **einer** Entscheidungsgrundlage zusammen.
 
@@ -473,7 +580,7 @@ Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen zwölf Recherche-Beric
 3. Die erste Zielgruppe (eine), die erste Edition und der erste Preis — mit Begründung.
 4. Die 10 Funktionen mit dem höchsten Wert für die erste Zielgruppe, sortiert nach Wirkung/Aufwand, mit Verweis auf die Belege.
 5. Die 10 KI-Trends, die wir jetzt einbauen müssen, und 5 Dinge, die wir nicht bauen sollten.
-6. Pflichten aus Recht und Sicherheit vor dem ersten Kunden.
+6. Pflichten aus Recht und Sicherheit vor dem ersten Kunden; Pflicht-Integrationen (P14) je Stufe; Finanzierung des Fahrplans (P15: welche Förderung wann beantragen, Fristen); Gestaltungsprinzipien für das Cockpit (P16) als verbindliche Liste.
 7. Positionierung in einem Satz, Kernbotschaft, drei Belege, Einwandbehandlung.
 8. Fahrplan in Stufen nach dem Muster aus P13 (z. B. Kunde 0 → 10 Piloten → 100 Kunden): je Stufe Ziel, Funktionen, Recht, Vertrieb, Events, Betrieb, Kennzahlen, Eintritts- und Abbruchkriterien; dazu 90-Tage-Plan im Wochenraster.
 9. Die 10 größten Risiken mit Gegenmitteln und Frühindikatoren.
