@@ -86,7 +86,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
             <Liste>
               {d.selbstpruefung.map(p => (
                 <Zeile key={p.id} links={<Punkt farbe={P_FARBE[p.status]} />} titel={p.titel} unter={`${p.befund} · ${p.norm}`}
-                  rechts={p.status !== 'erfuellt' && (p.id === 'rechtsgrundlage' || p.id === 'herkunft' || p.id === 'art14' || p.id === 'antraege') ? <Knopf leise onClick={() => waehle('datenschutz')}>Beheben</Knopf> : <Chip farbe={P_FARBE[p.status]}>{p.status === 'erfuellt' ? 'erfüllt' : p.status}</Chip>} />
+                  rechts={p.status !== 'erfuellt' && (p.id === 'rechtsgrundlage' || p.id === 'herkunft' || p.id === 'art14' || p.id === 'antraege') ? <Knopf leise onClick={() => waehle('datenschutz')}>Beheben</Knopf> : p.status !== 'erfuellt' && p.weg ? <Knopf leise href={p.weg.href} titel={p.weg.text}>Beheben</Knopf> : <Chip farbe={P_FARBE[p.status]}>{p.status === 'erfuellt' ? 'erfüllt' : p.status}</Chip>} />
               ))}
             </Liste>
           </Karte>

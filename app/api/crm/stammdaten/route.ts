@@ -21,6 +21,7 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import { anzeigename } from '@/lib/make-one/crm';
 import { pflichtangaben, selbstpruefung, verzeichnisVervollstaendigen, LOESCHREGELN } from '@/lib/crm/datenschutz';
 import { verantwortlicherLaden } from '@/lib/datenschutz/einrichtung-server';
+import { datenschutzUmfeld } from '@/lib/datenschutz/umfeld';
 import { verantwortlicherText } from '@/lib/datenschutz/einrichtung';
 import { googleKonfiguriert } from '@/lib/google/verbindung';
 import { netzwerkenKontakteUeberFrist } from '@/lib/crm/netzwerken-loeschen';
@@ -102,7 +103,8 @@ export async function GET(req: Request) {
       ist: { umsatzNeu30: crm.chancen.some(c => c.stufe === 'gewonnen') ? umsatzNeu30 : null, sql30: kpis.find(k => k.id === 'sql_30')?.wert ?? null, gespraecheWoche: kpis.find(k => k.id === 'gespraeche')?.wert ?? null, dealsOffen: crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).length },
     },
     letzterImport: letzterImport ? { zeit: letzterImport.ts, text: letzterImport.title ?? '' } : null,
-    selbstpruefung: selbstpruefung(kontakte, crm, heute, { konten: konten.length, mitPasswort: konten.filter(k => !!k.hash).length }, fristen.kontakte),
+    // 05.10.: echte Prüfung auch außerhalb des CRM (Verantwortlicher, AVV, zweiter Faktor, Sicherung, KI) — lib/datenschutz/umfeld.ts.
+    selbstpruefung: selbstpruefung(kontakte, crm, heute, { konten: konten.length, mitPasswort: konten.filter(k => !!k.hash).length }, fristen.kontakte, await datenschutzUmfeld()),
     pflichtangaben: {
       anzahl: vorschlag.length, herkunft: zaehl(v => v.herkunft), rechtsgrundlage: zaehl(v => v.rechtsgrundlage), fremddaten: vorschlag.filter(v => v.fremddaten).length,
       beispiele: vorschlag.slice(0, 8).map(v => ({ name: anzeigename(nachId.get(v.id)!), herkunft: v.herkunft, rechtsgrundlage: v.rechtsgrundlage, fremddaten: !!v.fremddaten, grund: v.grund })),

@@ -185,3 +185,16 @@ describe('Empfänger — Route', () => {
     expect(g.empfaenger.find((e: { id: string }) => e.id === 'hetzner').avv.unterlage).toBe('avv.pdf');
   });
 });
+
+describe('Selbstprüfung — Route (Punkt 3)', () => {
+  it('Testkunde 403; Haushalt bekommt die echte Prüfung mit Umfeld (2FA, AVV, Sicherung unbekannt)', async () => {
+    const pr = (await import('@/app/api/datenschutz/pruefung/route')) as unknown as { GET: (r: Request) => Promise<Response> };
+    const req = (p: string) => new Request('http://test/api/datenschutz/pruefung', { headers: { 'x-make-user': p } });
+    expect((await pr.GET(req('px'))).status).toBe(403);
+    const j = await (await pr.GET(req('pb'))).json();
+    const p = Object.fromEntries(j.selbstpruefung.map((x: { id: string }) => [x.id, x]));
+    expect(p.zugang.befund).toMatch(/0 von 2 Konten im Haushalt mit zweitem Faktor/); // Testkunde zählt nicht zum Haushalt
+    expect(p.sicherung.befund).toMatch(/^unbekannt/);
+    expect(p.avv.befund).toMatch(/AVV bestätigt/);
+  });
+});

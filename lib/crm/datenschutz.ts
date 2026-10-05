@@ -18,7 +18,8 @@ import { hatTyp, kategorienVon } from './mehrfach';
 import { informationOffen, INFO_FRIST_TAGE } from './netzwerken-recht';
 import { UG_NAME } from '@/lib/einheiten';
 import { createHash } from 'node:crypto';
-import { VERANTWORTLICH_EINRICHTUNG } from '@/lib/datenschutz/einrichtung';
+import { VERANTWORTLICH_EINRICHTUNG, avvOffen, avvText, drittlandOhneGarantie, type Empfaenger } from '@/lib/datenschutz/einrichtung';
+import { WEG } from '@/lib/wege';
 export interface PflichtVorschlag { id: string; herkunft?: Herkunft; rechtsgrundlage?: Rechtsgrundlage; fremddaten?: boolean; grund: string }
 
 export function pflichtangaben(kontakte: Kontakt[], crm: CrmBestand): PflichtVorschlag[] {
@@ -48,32 +49,93 @@ export function pflichtangaben(kontakte: Kontakt[], crm: CrmBestand): PflichtVor
 }
 
 export type PruefStatus = 'erfuellt' | 'teilweise' | 'offen';
-export interface Pruefpunkt { id: string; titel: string; status: PruefStatus; befund: string; norm: string }
+/** `weg`: wohin der Knopf „Beheben“ führt (05.10.: jede Prüfung mit Weg zum Beheben). */
+export interface Pruefpunkt { id: string; titel: string; status: PruefStatus; befund: string; norm: string; weg?: { text: string; href: string } }
 
-export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: string, anmeldung: { konten: number; mitPasswort: number }, loeschMonate = 24): Pruefpunkt[] {
+/**
+ * Was die Selbstprüfung außerhalb des CRM braucht (05.10., Paket „DSGVO-Grundlagen im Code“) — der Server sammelt es
+ * (`datenschutzUmfeld`, lib/datenschutz/umfeld.ts). Fehlt es (alte Aufrufer, Tests), prüfen die betroffenen Punkte ehrlich
+ * „nicht geprüft“ statt „erfüllt“.
+ */
+export interface DatenschutzUmfeld {
+  verantwortlicher: { gesetzt: boolean; quelle: 'einrichtung' | 'umgebung' | null; luecken: string[] };
+  empfaenger: readonly Empfaenger[];
+  /** Zweiter Faktor der Konten im Haushalt des Inhabers (die Konten, die an die Daten kommen). */
+  zweiterFaktor: { konten: number; mit: number };
+  /** Letzte Nachtsicherung laut Statusdatei vom Server (`system/sicherung.json`); null = keine Datei (lokal, oder Server meldet nicht). */
+  sicherung: { verfahren: 'age' | 'openssl' | null; zeit?: string } | null;
+  /** Agenten (automatische KI-Läufe), je einzeln abschaltbar unter Agenten (agents-config). */
+  agenten: { aktiv: number; gesamt: number };
+}
+
+const W = {
+  stammdaten: { text: 'Stammdaten › Datenschutz', href: WEG.stammdaten('datenschutz') },
+  qualitaet: { text: 'Stammdaten › Datenqualität', href: WEG.stammdaten('qualitaet') },
+  verantwortlicher: { text: 'Verantwortlichen eintragen', href: WEG.datenschutz('verantwortlicher') },
+  empfaenger: { text: 'AVV-Nachweise eintragen', href: WEG.datenschutz('empfaenger') },
+  verzeichnis: { text: 'Verzeichnis öffnen', href: WEG.datenschutz('verzeichnis') },
+  konto: { text: 'Konto › Zweiter Faktor', href: WEG.konto() },
+  agenten: { text: 'Agenten einzeln abschalten', href: WEG.agenten() },
+  hoi: { text: 'Head of IT › Sicherung (age einrichten, DEPLOY.md)', href: '/os/hoi' },
+} as const;
+
+export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: string, anmeldung: { konten: number; mitPasswort: number }, loeschMonate = 24, umfeld?: DatenschutzUmfeld): Pruefpunkt[] {
   const n = kontakte.length || 1;
   const quote = (x: number) => (x === 0 ? 'erfuellt' : x / n > 0.5 ? 'offen' : 'teilweise') as PruefStatus;
   const ohneRg = kontakte.filter(k => !k.rechtsgrundlage).length, ohneHerkunft = kontakte.filter(k => !k.herkunft).length;
   const art14faellig = kontakte.filter(k => art14(k, heute)?.faellig).length;
   const widerrufenOhneSperre = kontakte.filter(k => !k.werbesperre && (k.einwilligungen ?? []).length > 0 && (k.einwilligungen ?? []).every(e => e.widerrufenAm)).length;
-  const antraegeUeber = crm.antraege.filter(a => a.status === 'offen' && a.frist < heute).length;
+  const offeneAntraege = crm.antraege.filter(a => a.status === 'offen');
+  const antraegeUeber = offeneAntraege.filter(a => a.frist < heute).length;
   const alt = speicherbegrenzung(kontakte, heute, loeschMonate, crm).length;
   // Netzwerken (03.10., netz-recht): die drei Verarbeitungen von Veranstaltungs-Kontakten müssen im Verzeichnis stehen; Personen ohne Datenschutzhinweis (Art. 13) zählen.
   const nwFehlt = VV_NETZWERKEN_IDS.filter(id => !crm.verarbeitungen.some(v => v.id === id));
   const ohneInfo = informationOffen(kontakte, heute).length;
   const nwPersonen = kontakte.filter(k => !!k.rechtsgrundlageNotiz).length;
-  return [
-    { id: 'verzeichnis', titel: 'Verzeichnis der Verarbeitungstätigkeiten', status: nwFehlt.length ? 'teilweise' : crm.verarbeitungen.length >= 4 ? 'erfuellt' : crm.verarbeitungen.length ? 'teilweise' : 'offen', befund: `${crm.verarbeitungen.length} Verarbeitungen beschrieben${nwFehlt.length ? ` — es fehlt: ${nwFehlt.map(id => VV_NETZWERKEN_NAMEN[id]).join(', ')}` : ''}`, norm: 'Art. 30 DSGVO' },
-    { id: 'rechtsgrundlage', titel: 'Rechtsgrundlage je Kontakt', status: quote(ohneRg), befund: ohneRg ? `${ohneRg} von ${kontakte.length} ohne dokumentierte Grundlage` : 'bei allen dokumentiert', norm: 'Art. 6 DSGVO' },
-    { id: 'herkunft', titel: 'Herkunft der Daten', status: quote(ohneHerkunft), befund: ohneHerkunft ? `${ohneHerkunft} ohne Herkunft` : 'bei allen dokumentiert', norm: 'Art. 14 DSGVO' },
-    { id: 'info-veranstaltung', titel: 'Information bei Veranstaltungs-Kontakten', status: !ohneInfo ? 'erfuellt' : ohneInfo / Math.max(1, nwPersonen) > 0.5 ? 'offen' : 'teilweise', befund: ohneInfo ? `${ohneInfo} Personen aus Netzwerken seit über ${INFO_FRIST_TAGE} Tagen ohne Datenschutzhinweis (Danke-Mail „ist raus“ oder von Hand vermerkt)` : nwPersonen ? 'alle Personen aus Netzwerken informiert (Danke-Mail oder persönlich)' : 'keine Personen aus Netzwerken', norm: 'Art. 13 DSGVO' },
-    { id: 'art14', titel: 'Information bei Fremddaten', status: art14faellig ? 'offen' : 'erfuellt', befund: art14faellig ? `${art14faellig} Personen seit über 25 Tagen nicht informiert` : 'keine Frist überschritten', norm: 'Art. 14 Abs. 3 DSGVO' },
-    { id: 'widerspruch', titel: 'Werbewiderspruch wirksam gesperrt', status: widerrufenOhneSperre ? 'offen' : 'erfuellt', befund: widerrufenOhneSperre ? `${widerrufenOhneSperre} haben alles widerrufen, sind aber nicht gesperrt` : 'Sperre greift in Liste, Entwurf und Agenten', norm: 'Art. 21 Abs. 3 DSGVO' },
-    { id: 'antraege', titel: 'Betroffenenanträge fristgerecht', status: antraegeUeber ? 'offen' : 'erfuellt', befund: antraegeUeber ? `${antraegeUeber} Anträge über der Monatsfrist` : `${crm.antraege.filter(a => a.status === 'offen').length} offen, keiner überfällig`, norm: 'Art. 12 Abs. 3 DSGVO' },
-    { id: 'loeschkonzept', titel: 'Speicherbegrenzung', status: alt ? 'teilweise' : 'erfuellt', befund: alt ? `${alt} Kontakte ohne Beziehung und Aktivität seit ${loeschMonate} Monaten — löschen oder Frist mit Grund verlängern` : 'nichts über der Frist', norm: 'Art. 5 Abs. 1 lit. e DSGVO' },
-    { id: 'zugang', titel: 'Zugang nur mit Anmeldung', status: anmeldung.konten && anmeldung.mitPasswort === anmeldung.konten ? 'erfuellt' : 'teilweise', befund: `${anmeldung.mitPasswort} von ${anmeldung.konten} Konten mit Passwort`, norm: 'Art. 32 DSGVO' },
-    { id: 'ki', titel: 'KI nur mit Arbeitsfeldern', status: 'erfuellt', befund: 'Agentenpakete ohne Privatnotiz und ohne gesperrte Personen (im Code erzwungen)', norm: 'Art. 5 Abs. 1 lit. c, Art. 28 DSGVO' },
-  ];
+  const raus: Pruefpunkt[] = [];
+  // ── Einrichtung (05.10.): Verantwortlicher ──
+  if (umfeld) {
+    const v = umfeld.verantwortlicher;
+    raus.push({ id: 'verantwortlicher', titel: 'Verantwortlicher benannt', status: v.gesetzt ? 'erfuellt' : 'offen', befund: v.gesetzt ? (v.quelle === 'umgebung' ? 'aus der Umgebung der Instanz (in der Einrichtung überschreibbar)' : 'in der Einrichtung eingetragen') : `fehlt — ${v.luecken.length ? `es fehlt: ${v.luecken.join(', ')}` : 'eintragen'}; Auskunft und Verzeichnis zeigen „Verantwortlicher fehlt“`, norm: 'Art. 13 Abs. 1 lit. a, Art. 30 Abs. 1 lit. a DSGVO', ...(v.gesetzt ? {} : { weg: W.verantwortlicher }) });
+  }
+  raus.push(
+    { id: 'verzeichnis', titel: 'Verzeichnis der Verarbeitungstätigkeiten', status: nwFehlt.length ? 'teilweise' : crm.verarbeitungen.length >= 4 ? 'erfuellt' : crm.verarbeitungen.length ? 'teilweise' : 'offen', befund: `${crm.verarbeitungen.length} Verarbeitungen beschrieben${nwFehlt.length ? ` — es fehlt: ${nwFehlt.map(id => VV_NETZWERKEN_NAMEN[id]).join(', ')}` : ''}`, norm: 'Art. 30 DSGVO', weg: W.verzeichnis },
+    { id: 'rechtsgrundlage', titel: 'Rechtsgrundlage je Kontakt', status: quote(ohneRg), befund: ohneRg ? `${ohneRg} von ${kontakte.length} ohne dokumentierte Grundlage` : 'bei allen dokumentiert', norm: 'Art. 6 DSGVO', weg: W.stammdaten },
+    { id: 'herkunft', titel: 'Herkunft der Daten', status: quote(ohneHerkunft), befund: ohneHerkunft ? `${ohneHerkunft} ohne Herkunft` : 'bei allen dokumentiert', norm: 'Art. 14 DSGVO', weg: W.stammdaten },
+    { id: 'info-veranstaltung', titel: 'Information bei Veranstaltungs-Kontakten', status: !ohneInfo ? 'erfuellt' : ohneInfo / Math.max(1, nwPersonen) > 0.5 ? 'offen' : 'teilweise', befund: ohneInfo ? `${ohneInfo} Personen aus Netzwerken seit über ${INFO_FRIST_TAGE} Tagen ohne Datenschutzhinweis (Danke-Mail „ist raus“ oder von Hand vermerkt)` : nwPersonen ? 'alle Personen aus Netzwerken informiert (Danke-Mail oder persönlich)' : 'keine Personen aus Netzwerken', norm: 'Art. 13 DSGVO', weg: { text: 'Netzwerken › Danke-Mails', href: WEG.netzwerken() } },
+    { id: 'art14', titel: 'Information bei Fremddaten', status: art14faellig ? 'offen' : 'erfuellt', befund: art14faellig ? `${art14faellig} Personen seit über 25 Tagen nicht informiert` : 'keine Frist überschritten', norm: 'Art. 14 Abs. 3 DSGVO', weg: W.stammdaten },
+    { id: 'widerspruch', titel: 'Werbewiderspruch wirksam gesperrt', status: widerrufenOhneSperre ? 'offen' : 'erfuellt', befund: widerrufenOhneSperre ? `${widerrufenOhneSperre} haben alles widerrufen, sind aber nicht gesperrt` : 'Sperre greift in Liste, Entwurf und Agenten', norm: 'Art. 21 Abs. 3 DSGVO', weg: W.qualitaet },
+    { id: 'antraege', titel: 'Betroffenenanträge fristgerecht', status: antraegeUeber ? 'offen' : 'erfuellt', befund: antraegeUeber ? `${antraegeUeber} von ${offeneAntraege.length} offenen Anträgen über der Monatsfrist` : offeneAntraege.length ? `${offeneAntraege.length} offen, keiner überfällig — nächste Frist ${offeneAntraege.map(a => a.frist).sort()[0]}` : 'kein offener Antrag', norm: 'Art. 12 Abs. 3 DSGVO', weg: W.stammdaten },
+    { id: 'loeschkonzept', titel: 'Speicherbegrenzung', status: alt ? 'teilweise' : 'erfuellt', befund: alt ? `${alt} Kontakte ohne Beziehung und Aktivität seit ${loeschMonate} Monaten — löschen oder Frist mit Grund verlängern` : 'nichts über der Frist', norm: 'Art. 5 Abs. 1 lit. e DSGVO', weg: W.stammdaten },
+  );
+  // ── Zugang (05.10.: auch der zweite Faktor) ──
+  const pw = anmeldung.konten > 0 && anmeldung.mitPasswort === anmeldung.konten;
+  const zf = umfeld?.zweiterFaktor;
+  const zfVoll = !!zf && zf.konten > 0 && zf.mit === zf.konten;
+  raus.push({ id: 'zugang', titel: 'Zugang nur mit Anmeldung und zweitem Faktor', status: pw && zfVoll ? 'erfuellt' : 'teilweise', befund: `${anmeldung.mitPasswort} von ${anmeldung.konten} Konten mit Passwort · ${zf ? `${zf.mit} von ${zf.konten} Konten im Haushalt mit zweitem Faktor` : 'zweiter Faktor nicht geprüft'}`, norm: 'Art. 32 DSGVO', ...(pw && zfVoll ? {} : { weg: W.konto }) });
+  if (!umfeld) {
+    raus.push({ id: 'ki', titel: 'KI nur mit Arbeitsfeldern und AVV', status: 'teilweise', befund: 'Arbeitsfelder gekapselt (im Code erzwungen) · AVV und Schalter nicht geprüft (ohne Einrichtung)', norm: 'Art. 5 Abs. 1 lit. c, Art. 28 DSGVO', weg: W.empfaenger });
+    return raus;
+  }
+  // ── KI (05.10.: echt — AVV des KI-Anbieters bestätigt? automatische Läufe abschaltbar?) ──
+  const ki = umfeld.empfaenger.filter(e => !e.archiviert && /anthropic/i.test(`${e.id} ${e.name}`));
+  const kiAvv = ki.length > 0 && ki.every(e => e.avv.status === 'bestaetigt');
+  const lauf = `automatische Läufe: ${umfeld.agenten.aktiv} von ${umfeld.agenten.gesamt} Agenten an — je Agent abschaltbar`;
+  raus.push({ id: 'ki', titel: 'KI nur mit Arbeitsfeldern und AVV', status: !ki.length ? 'teilweise' : kiAvv ? 'erfuellt' : 'offen',
+    befund: `Arbeitsfelder gekapselt, ohne Privatnotiz und gesperrte Personen (im Code erzwungen) · ${!ki.length ? 'KI-Anbieter fehlt im Empfänger-Register' : kiAvv ? `AVV ${ki.map(e => e.name).join(', ')}: ${avvText(ki[0].avv)}` : `AVV ${ki.map(e => e.name).join(', ')}: offen`} · ${lauf}`,
+    norm: 'Art. 5 Abs. 1 lit. c, Art. 28, Art. 44 ff. DSGVO', weg: kiAvv ? W.agenten : W.empfaenger });
+  // ── AVV-Nachweise je Auftragsverarbeiter, Drittland-Garantien ──
+  const inGebrauch = umfeld.empfaenger.filter(e => !e.archiviert && e.rolle === 'auftragsverarbeiter');
+  const offen = avvOffen(umfeld.empfaenger), ohneGarantie = drittlandOhneGarantie(umfeld.empfaenger);
+  raus.push({ id: 'avv', titel: 'AVV je Auftragsverarbeiter, Garantien für Drittländer', status: !inGebrauch.length && !ohneGarantie.length ? 'erfuellt' : !offen.length && !ohneGarantie.length ? 'erfuellt' : offen.length === inGebrauch.length ? 'offen' : 'teilweise',
+    befund: `${inGebrauch.length - offen.length} von ${inGebrauch.length} AVV bestätigt${offen.length ? ` — offen: ${offen.map(e => e.name).join(', ')}` : ''}${ohneGarantie.length ? ` · Drittland ohne Garantie: ${ohneGarantie.map(e => e.name).join(', ')}` : ''}`,
+    norm: 'Art. 28 Abs. 3, Art. 44–46 DSGVO', ...(offen.length || ohneGarantie.length ? { weg: W.empfaenger } : {}) });
+  // ── Sicherungen verschlüsselt (age = öffentlicher Schlüssel, privater nicht auf dem Server) ──
+  const s = umfeld.sicherung;
+  raus.push({ id: 'sicherung', titel: 'Sicherungen verschlüsselt (age)', status: s?.verfahren === 'age' ? 'erfuellt' : 'teilweise',
+    befund: !s ? 'unbekannt — keine Statusdatei vom Server (lokal normal; auf dem Server schreibt deploy/sicherung.sh system/sicherung.json)' : s.verfahren === 'age' ? `age (privater Schlüssel nicht auf dem Server)${s.zeit ? ` · letzte ${tagVon(s.zeit)}` : ''}` : s.verfahren === 'openssl' ? 'Übergangsverfahren (openssl mit Passwort auf demselben Server) — age einrichten' : 'Verfahren nicht gemeldet',
+    norm: 'Art. 32 Abs. 1 lit. a, c DSGVO', ...(s?.verfahren === 'age' ? {} : { weg: W.hoi }) });
+  return raus;
 }
 
 /** Löschkonzept — Regeln und was davon heute fällig ist. */
