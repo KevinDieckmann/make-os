@@ -20,6 +20,7 @@
 - **Teil H — Recherche:** was wir wissen müssen und wie wir die Ergebnisse einarbeiten
 - **Teil I — Risiken, offene Entscheidungen, Kennzahlen des Vorhabens**
 - **Teil J — Begriffe**
+- **Teil K — Erkenntnisse aus der Recherche (Stand 05.10.2026, 10 von 19 Berichten)**
 
 ---
 
@@ -224,6 +225,9 @@ Microsoft 365 (Postfach, Kalender), Google (Kalender, Gmail; je Person per OAuth
 | Finanz-/Buchhaltung | Lexoffice, sevDesk, Qonto, Pliant | Keine Planung mit Privat, keine Führung |
 | „Life OS“ / persönliche Systeme | Notion-Vorlagen, Obsidian-Systeme, Rize, Whoop/Oura-Apps | Kein Business, kein Team aus Agenten |
 | Founder-/CEO-Werkzeuge | Board-/Investor-Reporting, OKR-Werkzeuge | Kein Alltag, kein Privat |
+| **„AI CEO“-/Company-OS-Startups** (neu, P3) | Tycoon („Astra“ als KI-CEO für Ein-Personen-Firmen), Voyd (KI-Rollen CEO bis CFO), Sintra (KI-Team, 39–97 $, > 40.000 Zahlende) | Dort ist die **KI** der CEO — bei uns bleibt der **Mensch** CEO; kein Privatleben, keine eigene EU-Instanz, Freigabe nicht Pflicht |
+
+**Stand nach Recherche (Teil K):** Ein „fertiges KI-Team“ allein ist kein Alleinstellungsmerkmal mehr (Tycoon, Voyd, Sintra). Tragfähig ist nur die **Kombination** der vier Punkte unten.
 
 **Unsere Behauptung (zu belegen):** Es gibt keine Plattform, die (1) Privat und Business in **einem** System mit **serverseitiger** Trennung führt, (2) ein **fertiges** KI-Führungsteam mit Grenzen, Evals und Lernen mitbringt, (3) als **eigene Instanz** mit europäischem Datenschutz betrieben wird und (4) Fokus & Zeit zum Kern macht.
 
@@ -543,6 +547,11 @@ Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innov
 6. **Pilotkunden:** wer, wann, Preis im Pilot?
 7. **Externe Zugänge:** Steuerberater (Jörg) als erster externer Nutzer?
 8. **KI-Budget:** Höhe je Head/Monat für unsere Instanz?
+9. **Name nach außen** (neu, P3/P10): „AI CEO“ ist bei Tycoon als „KI ist der CEO“ besetzt. Vorschlag: „AI CEO“ nur als Edition-/Community-Name, nach außen „Das Betriebssystem für Unternehmer ohne Mitarbeiter“ + „Sie bleiben CEO“.
+10. **Erste Zielgruppe** (neu, P1/P11): wissensbasierte Solo-Unternehmer mit mehreren Gesellschaften (Berater, Fractional Executives, Agenturinhaber, Holding-Unternehmer) statt breit „Solo-Unternehmer“?
+11. **Erste Edition** (neu, P11): eine einzige Start-Edition („AI CEO Starter“: Cockpit, Heads Sales/Finance/Operations/IT, Stapel, Fokus & Zeit, DATEV-Export) statt drei Editionen zum Start?
+12. **Datenschutzbeauftragter** (neu, P7): Gesundheitsdaten + KI → DSFA sehr wahrscheinlich → nach § 38 Abs. 1 S. 2 BDSG DSB-Pflicht unabhängig von der Größe. Intern oder extern benennen?
+13. **Streak im Gesundheitsbereich** (neu, P8): Forschung rät von Streaks ab (Druck, Orthosomnie). Behalten, abschaltbar machen oder entfernen?
 
 ## I2 · Risiken
 | Risiko | Wirkung | Gegenmittel |
@@ -554,7 +563,12 @@ Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innov
 | Zu sehr auf uns zugeschnitten | nicht verkaufbar | Phase 0, Demo-Instanz mit fremder Persona als Prüfstein |
 | Rechtliche Unklarheit KI-VO/DSGVO | Verzögerung | frühe anwaltliche Prüfung, Datenschutz im Bauplan |
 | Mac-Ressourcen beim Bau | Abstürze, Zeitverlust | max. 2 schwere Agenten, Arbeitskopien aufräumen |
-| Abhängigkeit von einem KI-Anbieter | Ausfall, Preis | Regelwerk-Rückfall, Modellstufen kapseln, Anbieter austauschbar halten |
+| Abhängigkeit von einem KI-Anbieter | Ausfall, Preis | Regelwerk-Rückfall, Modellstufen kapseln, Anbieter austauschbar halten; Werkzeuge als MCP-Schnittstelle kapseln (P3) |
+| **Prompt Injection über Mails, PDFs, Webseiten** (neu, P3/P6) | Agent folgt fremden Anweisungen, Datenabfluss | Quarantäne-Schritt im Head-Rahmen (werkzeugloser Lauf übersetzt Fremdtext in festes Schema), Spotlighting-Marken, Rechte je Werkzeug |
+| **Falsches im Gedächtnis** (neu, P3/P6) | ZOE merkt sich Erfundenes oder Fremdes dauerhaft | Nichts aus Fremdinhalten automatisch ins Gedächtnis; „sofort merken“ nur aus Aussagen der Person |
+| **Kostenexplosion durch Schleifen** (neu, P3/P6) | ein Lauf verbrennt das Budget | harte Grenzen je Lauf (Schritte, Werkzeugaufrufe, Laufzeit, Euro) |
+| **Datenschutz-Versprechen zu groß** (neu, P1/P10) | „Daten bleiben in Deutschland“ stimmt für KI-Läufe nicht ohne Weiteres | ehrlich formulieren: Instanz und Daten in DE, KI-Läufe beim Modellanbieter (USA) mit Pseudonymisierung, Schaltern, Protokoll; ZDR-Vertrag und EU-Region prüfen |
+| **EU-US-Datenabkommen wackelt** (neu, P7) | Grundlage der USA-Übermittlung fällt weg | Standardvertragsklauseln + TIA als Rückfall, EU-Region des Modellanbieters prüfen, Modell austauschbar halten |
 
 ## I3 · Kennzahlen des Vorhabens
 - Tägliche Nutzung des Cockpits (Kevin, später Piloten)
@@ -589,4 +603,85 @@ Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innov
 
 ---
 
-*Erstellt am 05.10.2026 aus dem Code-Stand `6b10a5ba`, PLATTFORM_PLAN.md, UMBAU_ABEND_0410.md, CLAUDE.md und Kevins Entscheidungen. Nächster Schritt: Recherche mit `AI_CEO_RECHERCHE_PROMPTS.md`, danach Klickrunde zu Teil I1 und Start mit Phase 0.*
+---
+
+# Teil K — Erkenntnisse aus der Recherche (Stand 05.10.2026)
+
+**Grundlage:** 10 Gemini-Deep-Research-Berichte (P1, P2, P3, P4, P6, P7, P8, P9, P10, frühe P11), vollständig abgelegt unter `research/ai-ceo/` (Volltext + Auszug je Bericht). Noch offen: **P5** (KI-Entwicklung 2026–2030) und **P12–P19**, danach die endgültige Synthese P11.
+
+## K1 · Wie belastbar die Berichte sind (zuerst lesen)
+- **Zirkelbeleg:** Alle Berichte zitieren diese Datei (`AI_CEO_MODUL.md`) selbst als Quelle. Aussagen wie „MAKE OS besetzt eine Lücke“ oder „etablierter Standard“ sind deshalb oft **unsere eigene Hypothese, zurückgespiegelt** — keine Bestätigung. Für P5 und P12–P19 die Datei **nicht** als Kontext mitgeben.
+- **Stichproben:** Je Bericht wurden 4–9 wichtige Zahlen im Netz geprüft. Viele stimmen (Destatis ~1,8 Mio. Solo-Selbstständige, WKO 376.112 EPU, Notion-/ClickUp-Preise, Gartner 40 %, Tycoon, Oura 5,7 Mio., Bitkom 93 %, KI-VO-Omnibus-Zeitplan, Spotlighting-Wirkung, Prompt-Caching-Preise, Ego-Depletion d = 0,04, Orthosomnie 3–14 %), einige sind **falsch oder überdehnt** (siehe K6). Jede Zahl, die in Website, Vertrieb oder Investoren-Material geht, braucht eine eigene Prüfung.
+- **Gemini rechnet mit veralteten KI-Preisen** (Claude-3.5-Ära). Echte KI-Kosten je Head messen wir aus dem KI-Protokoll, bevor Preise festgelegt werden.
+
+## K2 · Was sich bestätigt (mit echten Belegen, nicht nur Rückspiegelung)
+1. **Premium statt Masse:** Die Zahl der Solo-Selbstständigen in Deutschland sinkt (−25 % seit 2012, ~1,8 Mio.), nur der qualifizierte Teil wächst (P1). → Premium-Positionierung, kein Massenmarkt.
+2. **Freigabe-Pflicht ist Verkaufsargument:** Haftungsfälle (Moffatt v. Air Canada, NYC-MyCity-Bot) und Motion (verschiebt Termine ohne Bestätigung) zeigen den Bedarf an Kontrolle (P2/P3).
+3. **KI-Budget statt Kredite:** Notion (Custom Agents, 10 $ je 1.000 Credits seit 04.05.2026), ClickUp, monday rechnen in Credits; unser Budget je Head mit Regelwerk-Rückfall („nichts blockiert“) ist ein klares Gegenmodell (P2/P9).
+4. **Datenschutz zieht in DACH:** 93 % der Firmen bevorzugen KI aus Deutschland (Bitkom, geprüft) (P10).
+5. **Höherer Preis hält Kunden besser:** KI-Produkte über 250 $/Monat halten Kunden ähnlich gut wie klassische B2B-Software, unter 50 $ schlecht (ChartMogul, geprüft) (P9/P10).
+6. **Gut belegte Gestaltungsprinzipien (P8):** Freigaben bündeln, geschützte Zeit, die der Mensch selbst kontrolliert, Gesundheitswerte nur beschreibend (keine Noten, Nocebo/Orthosomnie), Kapazität **warnt**, blockiert nicht.
+
+## K3 · Was neu ist und in den Plan gehört
+| Neu | Quelle | Wohin im Plan |
+|---|---|---|
+| **Quarantäne-Schritt** für Fremdinhalte (Mail, PDF, Web) + Spotlighting-Marken | P6 | D3.1 Head-Rahmen (Pflichtteil), Phase 2.1 |
+| **Harte Grenzen je Lauf** (Schritte, Werkzeugaufrufe, Laufzeit, Euro) | P6 | D3.1 + D11, Phase 2.1/2.6 — im Code prüfen |
+| **Fehlerbudget je Head:** fallen die Eval-Werte, automatisch zurück auf „nur Freigabe“ | P6 | D3.1, Phase 2.1 |
+| **Idempotenz-Schlüssel** für jede schreibende Aktion | P6 | D3.1, Phase 2.1 |
+| **Drei Eval-Stufen:** bei jedem Commit, Smoke-Test, vor Upload pass^3 auf der Demo-Saat | P6 | E4 Qualitätsregeln |
+| **Prompt-Caching messen** (Cache 5 Min. verfällt bei seltenen Head-Läufen; 1-Std.-Option prüfen) | P6 | D11 |
+| **ZOE-Werkzeuge entschlacken/gruppieren** (36 Werkzeuge; Überlappung vermeiden) | P6 | Phase 2.1 |
+| **„Sicher entnehmbarer Unternehmerlohn“** als Cockpit-Kennzahl (Runway Privat + Steuer-Vorauszahlungen + Business) | P4/P1 | D2 Cockpit, Phase 1.1 — Daten vorhanden |
+| **Planungsfehlschluss sichtbar:** neben jeder Schätzung, wie lange Ähnliches wirklich dauerte | P8 | D7 Balance / Kapazität, Phase 4.1 — Daten vorhanden |
+| **Schnellerfassung per Tastatur** und **Import-Assistenten** („was du kündigen kannst“) | P2/P1 | neu in D1 (Wechselhilfe), Phase 5.1 |
+| **Kalender in beide Richtungen verlässlich**, geführte Rituale wie Sunsama | P2 | D4 Rhythmus, Phase 1.2 |
+| **Oura-Anbindung prüfen** (5,7 Mio. Zahlende, größer als Whoop) | P4 | P14 Integrationen |
+| **Privat abschaltbar halten**; mit gemeinsamen Ressourcen (Zeit, Geld, Energie) argumentieren statt „alles an einem Ort“ | P4 | C4 Prinzipien, G4 |
+| **KI-Kennzeichnung auch für ausgehende Mails/Exporte** (KI-VO Art. 50 Abs. 2, maschinenlesbar) — gilt für neue Kunden-Instanzen ab Verkauf | P7 | D12, vor Phase 5.6 |
+| **DATEV-Export** für die Kanzlei (Steuerberater-Allianz, provisionsfrei) | P10/P11 | P14 Integrationen, Phase 3.2 |
+| **Holding-Funktionen:** Darlehensverrechnung zwischen Gesellschaften, Beschluss-/Fristenkalender, Treuhänder-/Steuerberater-Zugang | P1 | D6, Phase 3.2 (vorziehen, falls Holding-Segment zuerst) |
+
+## K4 · Recht: Pflichten vor dem ersten Kunden (Abgleich mit DATENSCHUTZ_APP.md, P7)
+| Pflicht | Status |
+|---|---|
+| AVV-Vorlage für Kunden (wir als Auftragsverarbeiter) | fehlt |
+| Verzeichnis als Auftragsverarbeiter (Art. 30 Abs. 2) | fehlt |
+| Transfer-Folgenabschätzung USA (TIA) + Standardvertragsklauseln als Rückfall | fehlt |
+| Zero-Data-Retention / EU-Region mit Anthropic klären | Kevin |
+| DSFA (Gesundheit + KI) und Muster für Kunden; DSB benennen (§ 38 Abs. 1 S. 2 BDSG) | Kevin + Anwalt |
+| AGB, Haftungsbegrenzung | fehlt |
+| Hinweis „kein Medizinprodukt“ (Gesundheitsbereich) | fehlt |
+| Verschwiegenheit nach § 62a StBerG / § 203 StGB für Steuerberater-/Berater-Zugang (AVV reicht nicht) | fehlt — Voraussetzung für Phase 3.2 |
+| KI-Kennzeichnung ausgehender Inhalte (Art. 50 Abs. 2) | teilweise (App-Kennzeichnung da, ausgehende Mails/Exporte fehlen) |
+| Klären: Gilt „Belastung“ aus Gesundheitsdaten als Emotionserkennung (Art. 50 Abs. 3 KI-VO)? | Anwalt |
+| Bestätigt: KI-VO-Omnibus (VO 2026/1744): Hochrisiko-Pflichten erst ab 02.12.2027 bzw. 02.08.2028; Art. 50 gilt ab 02.08.2026 | — |
+
+## K5 · Preise, Markt, Vertrieb (Arbeitsstand, Widersprüche offen)
+- **Preisvorschläge widersprechen sich:** P9 99 / 149 / 249 € (Monat), P10 149 / 299 / 499 €, frühe P11 eine Edition 249 €. P1 setzte 49/99/199 € ohne Grundlage. → **Arbeitshypothese:** AI CEO um 249 €/Monat (199 € bei Jahreszahlung), bezahlter Pilot statt Gratis-Tarif (P9: 199 € für 30 Tage, voll anrechenbar), Einrichtungspaket 990 €. Erst nach gemessenen KI-Kosten und Preis-Test mit Piloten festlegen.
+- **KI-Budget-Regel (P9):** Budget so, dass 90 % im Rahmen bleiben; Hinweis bei 85 %, bei 100 % Rückfall aufs Regelwerk, Nachkauf nur per Klick.
+- **Marge:** P9-Rechnung in sich stimmig (69–75 %); mit vorsichtigeren Annahmen (Server 12 €, KI 30 €, Betreuung 25 €) für AI CEO etwa **68 %** — trägt.
+- **Ziele Jahr 1 widersprechen sich** (35 / 100 / 1.000 Kunden). 1.000 ist unrealistisch; **Arbeitshypothese 30–50 Kunden in Jahr 1** über Piloten und Abende.
+- **Kanäle (P10):** Make.One-/Fokus-Innovation-Abende (8–12 Gäste, Live-Lösung an der Demo-Instanz, 48-Std.-Nachfassen), Kevin als Gesicht auf LinkedIn (nur mit echten Zahlen), VGSD-Inhalte, provisionsfreie Steuerberater-Allianz (Steuerberater dürfen keine Vermittlungsprovision nehmen), Berater als Einrichtungspartner erst nach geführter Einrichtung; bezahlte Werbung erst ab ~100 Kunden. Event-Quoten aus P10 (80–90 % Erscheinen, 25–45 % Abschluss) stammen aus dem Großkunden-Vertrieb — selbst messen.
+- **Wortwahl (P10):** ja: Betriebssystem, KI-Führungsteam, Freigabe-Stapel, eigene Instanz, Mensch entscheidet. Nein: KI-Tool, Bots, Autopilot, „autonom“, „KI ersetzt den Menschen“, Hustle.
+- **Erste Zielgruppe (P1/P11):** wissensbasierte Solo-Unternehmer mit mehreren Gesellschaften (Berater, Fractional Executives, Agenturinhaber, Holding-Unternehmer). Coaches und Creator: geringste Zahlungsbereitschaft.
+- **Reihenfolge (P1/P3/P11 einig):** Cockpit + Rhythmus → Freigabe-Stapel sichtbar → Head of Operations als erster neuer Head (vor Product; P3 nennt Strategy vor Product) → geführte Einrichtung → Balance.
+
+## K6 · Was NICHT stimmt oder nicht verwendet werden darf
+- „4,2 Mio. Solo-Selbstständige“ (P11) → laut Destatis ~1,8 Mio.
+- „87 % Burnout“ → gilt für Gründer allgemein und „irgendein psychisches Problem“.
+- Marktgröße P1 zählt Kunden der drei Editionen doppelt; Kurzfassung und Tabelle widersprechen sich.
+- P8: „23 Min. 15 Sek.“ nur aus einem Interview; Zeitmanagement-Metaanalyse falsch zitiert; „40 % Fehler beim Aufgabenwechsel“ und „60 % weniger Aufmerksamkeitsrest“ nicht belegt.
+- P6: „15–20 Werkzeuge als Grenze“ steht so nicht im OpenAI-Leitfaden (dort: Überlappung vermeiden).
+- P7: Umfragewerte 82/88/76/71 % nicht auffindbar.
+- P10 über uns: „zwei Gesellschaften profitabel ohne Angestellte“, „15 h → 3 h Verwaltung“, „Bruttomarge > 80 %“ — **unbelegt, nicht nach außen verwenden** (Business-Zahlen stehen seit 05.10. auf 0).
+- „Zertifizierte europäische Datenhoheit“ — wir haben **keine** Zertifizierung.
+
+## K7 · Nächste Schritte
+1. Morgen: P5 und P12–P19 laufen lassen (ohne diese Datei als Kontext).
+2. Danach endgültige Synthese P11 über alle 18 Berichte; Teil K und die Teile C/D/F/G/I nachziehen.
+3. Klickrunde mit Kevin zu I1 (jetzt 13 Punkte).
+4. KI-Kosten je Head aus dem KI-Protokoll messen (für Preis und Budget).
+5. Start Phase 0 + Cockpit v1 (mit „sicher entnehmbarem Unternehmerlohn“).
+
+*Erstellt am 05.10.2026 aus dem Code-Stand `6b10a5ba`, PLATTFORM_PLAN.md, UMBAU_ABEND_0410.md, CLAUDE.md und Kevins Entscheidungen; Teil K ergänzt am 05.10.2026 aus 10 Recherche-Berichten (`research/ai-ceo/`). Nächster Schritt: restliche Recherche (P5, P12–P19), Synthese P11, Klickrunde zu Teil I1, Start mit Phase 0.*

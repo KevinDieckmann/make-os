@@ -8,6 +8,7 @@
 4. Ergebnisse als Google Doc exportieren und als `research/ai-ceo/P01-markt.md` … `P10-gtm.md` ablegen (oder mir die Docs geben).
 5. Zusätzlich **P12–P19** (Stimme der Kunden, Weg zu 100 Kunden, Integrationen, Förderung, Gestaltung, Homepage, Umsatzströme, KI-Brain) — damit ist das Bild rundum vollständig.
 6. Zum Schluss den **Bonus-Prompt P11** mit allen achtzehn Ergebnissen laufen lassen (oder ich mache die Synthese mit dir). Mehr Prompts lohnen danach nicht — der nächste Erkenntnissprung kommt aus Gesprächen mit Pilotkunden (Leitfaden aus P12).
+**Wichtig (Erkenntnis aus den ersten Läufen):** Gemini **keine weiteren Dateien als Kontext mitgeben** (vor allem nicht `AI_CEO_MODUL.md`) — sonst zitiert Gemini unseren eigenen Plan als „Beleg“. Der nötige Kontext steht schon in jedem Prompt.
 
 **Die 10 Läufe im Überblick**
 | Nr. | Thema | Wofür wir es brauchen |
