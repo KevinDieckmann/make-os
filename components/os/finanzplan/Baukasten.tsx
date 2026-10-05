@@ -36,6 +36,8 @@ const KDV = finanzOrtName('kdv');
 const RHYTHMEN = (Object.keys(RHYTHMUS_LABEL) as Rhythmus[]).map(id => ({ id, label: RHYTHMUS_LABEL[id] }));
 const KOSTENARTEN = (Object.keys(KOSTENART_LABEL) as KostenArt[]).map(id => ({ id, label: KOSTENART_LABEL[id] }));
 const EINHEITEN = (Object.keys(BAUSTEIN_EINHEIT_LABEL) as BausteinEinheit[]).map(id => ({ id, label: BAUSTEIN_EINHEIT_LABEL[id] }));
+/** Business-Sicht (05.10.): Bausteine nur bei den Gesellschaften — Privat und die Selbstständigkeit gehören zu Privat (Server: 403). */
+const einheitenFuer = (sicht: string | undefined) => (sicht === 'business' ? EINHEITEN.filter(e => e.id === 'ug' || e.id === 'kdv') : EINHEITEN);
 const ZIELE = [0, 1, 2, 3].map(n => ({ id: String(n), label: n ? `${n} Monat${n > 1 ? 'e' : ''}` : 'sofort' }));
 
 interface Vorschlaege { produkte: ProduktVorschlag[]; istBasis: IstBasisVorschlag[] }
@@ -78,7 +80,7 @@ export function Baukasten() {
   const { d, ps: arbeitsplan, sz: treiber, aendere, geh, params, aw: awPlan, sicht } = usePlan();
   // Business-Sicht (04.10.): keine privaten Bausteine, Regler und Kennzahlen — „frei verfügbar“ zählt nur die Gesellschaften.
   const business = sicht === 'business';
-  const freiVon = (a: typeof awPlan) => (business ? a.frei.ug + a.frei.kdv + a.frei.kdc : a.frei.gesamt);
+  const freiVon = (a: typeof awPlan) => (business ? a.frei.business : a.frei.gesamt);
   const liste = planszenarienVon(d);
   const szParam = params.get('sz');
   const [gewaehlt, setGewaehlt] = useState<string | null>(szParam ?? arbeitsplan?.id ?? liste[0]?.id ?? null);
@@ -256,14 +258,16 @@ export function Baukasten() {
               <Feld label="Ausschüttung ab"><MonatWahl wert={ps.annahmen.ausschuettung?.ab ?? m0} onWahl={m => void setze('/annahmen/ausschuettung', ps.annahmen.ausschuettung, { betrag: ps.annahmen.ausschuettung?.betrag ?? 0, ab: m }, 'Ausschüttung ab')} monate={d.monate} /></Feld>
               <Feld label={`Steuer auf Ausschüttung, pauschal (Vorgabe ${prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)})`}><ZahlFeld wert={ps.annahmen.ausschuettungSteuer ?? null} leer platzhalter={String(AUSSCHUETTUNG_STEUER_VORGABE).replace('.', ',')} dezimal={3} breite="100%" onFertig={v => void setze('/annahmen/ausschuettungSteuer', ps.annahmen.ausschuettungSteuer, v == null ? undefined : Math.max(0, Math.min(1, v)), 'Steuer auf Ausschüttung')} titel="Steuerquote auf die Ausschüttung als Dezimalzahl (0,264 = 26,4 %)" /></Feld>
               <Feld label={`Steuer auf den Ausstieg ${KDV} (Plan: ${prozent(d.annahmen.exitSteuer)})`}><ZahlFeld wert={ps.annahmen.exitSteuer ?? null} leer platzhalter="wie Plan" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/exitSteuer', ps.annahmen.exitSteuer, v == null ? undefined : Math.max(0, Math.min(1, v)), 'Steuer auf den Ausstieg')} titel="Steuer auf den Ausstieg als Dezimalzahl" /></Feld>
+              {!business && <>
               <Feld label="Entnahme Selbstständigkeit → Privat je Monat"><ZahlFeld wert={ps.annahmen.entnahme?.betrag ?? null} leer platzhalter="keine" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/entnahme', ps.annahmen.entnahme, entnahmeNeu({ betrag: v ?? undefined }), 'Entnahme')} titel="Entnahme je Monat" /></Feld>
               <Feld label="Entnahme: Anteil am Ergebnis nach Steuern (0–1)"><ZahlFeld wert={ps.annahmen.entnahme?.anteil ?? null} leer platzhalter="keiner" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/entnahme', ps.annahmen.entnahme, entnahmeNeu({ anteil: v == null ? undefined : Math.max(0, Math.min(1, v)) }), 'Entnahme Anteil')} titel="Entnahme als Anteil am Ergebnis nach Steuern" /></Feld>
               <Feld label="Entnahme ab"><MonatWahl wert={ps.annahmen.entnahme?.ab ?? m0} onWahl={m => void setze('/annahmen/entnahme', ps.annahmen.entnahme, entnahmeNeu({ ab: m }), 'Entnahme ab')} monate={d.monate} /></Feld>
+              </>}
             </Formular>
-            <Hinweis>Leer heißt: wie im Plan (Treiber &amp; Annahmen). Die Entnahme ist schon versteuert. Alle weiteren Steuer-Sätze und -Regeln dieses Szenarios (Hebesatz, Verlustvortrag, Zahlweise …) stehen darunter je Gesellschaft. Ausschüttung nimmt Geld brutto aus der {UG_KURZ}-Kasse; privat kommt brutto minus pauschale Steuer an (Vorgabe Kapitalertragsteuer + Soli {prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)}), der Abzug steht unter Gesamt bei den Übergängen. {STEUER_HINWEIS}</Hinweis>
+            <Hinweis>Leer heißt: wie im Plan (Treiber &amp; Annahmen).{business ? '' : ' Die Entnahme aus der Selbstständigkeit ist schon versteuert.'} Alle weiteren Steuer-Sätze und -Regeln dieses Szenarios (Hebesatz, Verlustvortrag, Zahlweise …) stehen darunter je Gesellschaft. Ausschüttung nimmt Geld brutto aus der {UG_KURZ}-Kasse; privat kommt brutto minus pauschale Steuer an (Vorgabe Kapitalertragsteuer + Soli {prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)}), der Abzug steht unter Gesamt bei den Übergängen. {STEUER_HINWEIS}</Hinweis>
           </Karte>
 
-          {GESELLSCHAFTEN.map((o, k) => <SteuerKarte key={o} ort={o} szenario={ps} i={3 + k} />)}
+          {GESELLSCHAFTEN.filter(o => !business || o !== 'kdc').map((o, k) => <SteuerKarte key={o} ort={o} szenario={ps} i={3 + k} />)}
 
           <Karte i={3}>
             <Ueberschrift rechts={Object.keys(live).length ? <span style={{ color: LEUCHT.achtung, fontSize: TYP.bedien }}>Loslassen speichert</span> : undefined}>Was wäre, wenn — Regler</Ueberschrift>
@@ -288,7 +292,7 @@ export function Baukasten() {
               {!business && <Kachel label="Runway Privat" punkt={g.aw.runway.privat == null || g.aw.runway.privat >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.privat >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.privat, g.aw.runway.horizont)} unter={g.aw.frei.kontenFehlen ? `${g.aw.frei.kontenFehlen} Kontostände fehlen` : `Basis: ${runwayText(basis.aw.runway.privat, basis.aw.runway.horizont)}`} />}
               <Kachel label="Ziele im Plan" punkt={g.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${g.aw.ziele.imPlan} / ${g.aw.ziele.gesamt}`} unter={g.aw.ziele.gekippt ? `${g.aw.ziele.gekippt} gekippt` : g.aw.ziele.knapp ? `${g.aw.ziele.knapp} knapp` : 'alle im Plan'} />
               {!business && <Kachel label="Gruppe Dez 28" wert={<><Geld v={g.kz.gruppeDez28} /> €</>} unter={delta(g.kz.gruppeDez28, basis.kz.gruppeDez28)} />}
-              <Kachel label="Steuerrücklage jetzt" wert={<><Geld v={g.aw.steuer.ruecklageGesamt} /> €</>} unter="Näherung, keine Steuerberatung" />
+              <Kachel label="Steuerrücklage jetzt" wert={<><Geld v={business ? g.aw.steuer.ruecklageBusiness : g.aw.steuer.ruecklageGesamt} /> €</>} unter="Näherung, keine Steuerberatung" />
             </Kacheln>
             <Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, ...(business ? [] : [{ farbe: LILA, text: 'Privat angespart' }]), { farbe: C.inkLeise, text: 'gestrichelt: Basis' }]} />
             <Linie labels={d.monate} tick={3} hoehe={220} serien={[
@@ -351,6 +355,7 @@ function NeuDialog({ neu, setNeu, treiber, onOk }: { neu: { name: string; basis:
 type Setze = (pfad: string, alt: unknown, neu: unknown, feld: string) => Promise<boolean>;
 
 function UmsatzZeile({ b, ps, produkte, setze, summe, monate, entfernen }: { b: Baustein; ps: Planszenario; produkte: ProduktVorschlag[]; setze: Setze; summe: number; monate: string[]; entfernen: () => void }) {
+  const { sicht } = usePlan();
   const p = (f: string) => `/bausteine/id=${b.id}/${f}`;
   const n = `Baustein ${b.kunde ? `${b.kunde} · ` : ''}${b.produkt ?? b.name}`;
   const produkt = b.produktId ? produkte.find(x => x.id === b.produktId) : undefined;
@@ -375,7 +380,7 @@ function UmsatzZeile({ b, ps, produkte, setze, summe, monate, entfernen }: { b: 
         {produkt?.fehlt.length ? <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 2 }}>fehlt im Produkt: {produkt.fehlt.join(', ')}</div> : null}
       </td>
       <td style={TD}><TextFeld wert={b.kunde ?? ''} onFertig={t => void setze(p('kunde'), b.kunde, t || undefined, `${n} · Kunde`)} breite={150} titel="Kunde oder Segment" platzhalter="Kunde / Segment" /></td>
-      <td style={TD}><Auswahl wert={b.einheit} onWahl={v => void setze(p('einheit'), b.einheit, v, `${n} · Wo`)} optionen={EINHEITEN} titel="Wo" /></td>
+      <td style={TD}><Auswahl wert={b.einheit} onWahl={v => void setze(p('einheit'), b.einheit, v, `${n} · Wo`)} optionen={einheitenFuer(sicht)} titel="Wo" /></td>
       <td style={TDr}><ZahlFeld wert={b.preis} dezimal={0} breite={96} onFertig={v => void setze(p('preis'), b.preis, v ?? 0, `${n} · Preis`)} titel="Preis netto" /></td>
       <td style={TDr}><ZahlFeld wert={b.menge} dezimal={0} breite={60} onFertig={v => void setze(p('menge'), b.menge, v ?? 1, `${n} · Menge`)} titel="Menge" /></td>
       <td style={TD}><Auswahl wert={b.rhythmus} onWahl={v => void setze(p('rhythmus'), b.rhythmus, v, `${n} · Rhythmus`)} optionen={RHYTHMEN} titel="Rhythmus" /></td>
@@ -389,6 +394,7 @@ function UmsatzZeile({ b, ps, produkte, setze, summe, monate, entfernen }: { b: 
 }
 
 function KostenZeile({ b, setze, summe, monate, entfernen }: { b: Baustein; setze: Setze; summe: number; monate: string[]; entfernen: () => void }) {
+  const { sicht } = usePlan();
   const p = (f: string) => `/bausteine/id=${b.id}/${f}`;
   const n = `Baustein ${b.name}`;
   return (
@@ -396,7 +402,7 @@ function KostenZeile({ b, setze, summe, monate, entfernen }: { b: Baustein; setz
       <td style={TD}><Schalter an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} ariaLabel={`${n} rechnet mit`} /></td>
       <td style={TD}><Auswahl wert={b.kostenArt ?? 'sonstiges'} onWahl={v => void setze(p('kostenArt'), b.kostenArt, v, `${n} · Art`)} optionen={KOSTENARTEN} titel="Art" /></td>
       <td style={TD}><TextFeld wert={b.name} onFertig={t => void setze(p('name'), b.name, t, `${n} · Name`)} breite={160} titel="Name" /></td>
-      <td style={TD}><Auswahl wert={b.einheit} onWahl={v => void setze(p('einheit'), b.einheit, v, `${n} · Wo`)} optionen={EINHEITEN} titel="Wo" /></td>
+      <td style={TD}><Auswahl wert={b.einheit} onWahl={v => void setze(p('einheit'), b.einheit, v, `${n} · Wo`)} optionen={einheitenFuer(sicht)} titel="Wo" /></td>
       <td style={TDr}><ZahlFeld wert={b.preis} dezimal={0} breite={96} onFertig={v => void setze(p('preis'), b.preis, v ?? 0, `${n} · Betrag`)} titel={b.kostenArt === 'stelle' ? 'Brutto je Monat (Arbeitgeberanteil kommt dazu)' : 'Betrag'} /></td>
       <td style={TDr}><ZahlFeld wert={b.menge} dezimal={0} breite={60} onFertig={v => void setze(p('menge'), b.menge, v ?? 1, `${n} · Menge`)} titel="Menge" /></td>
       <td style={TD}><Auswahl wert={b.rhythmus} onWahl={v => void setze(p('rhythmus'), b.rhythmus, v, `${n} · Rhythmus`)} optionen={RHYTHMEN} titel="Rhythmus" /></td>
@@ -425,7 +431,7 @@ function VergleichTabelle({ spalten, d, alsArbeitsplan, business = false }: { sp
   const alleZeilen: { l: string; w: (s: ReturnType<typeof vergleich>[number]) => ReactNode }[] = [
     { l: 'Treiber', w: s => <span style={{ color: C.inkDim }}>{s.treiber}</span> },
     { l: 'Bausteine', w: s => <span style={{ color: C.inkDim }}>{s.ps ? `${s.ps.bausteine.filter(b => b.an).length} an` : '—'}</span> },
-    { l: business ? 'Frei verfügbar Business jetzt' : 'Frei verfügbar jetzt', w: s => <><Geld v={business ? s.aw.frei.ug + s.aw.frei.kdv + s.aw.frei.kdc : s.aw.frei.gesamt} /> €</> },
+    { l: business ? 'Frei verfügbar Business jetzt' : 'Frei verfügbar jetzt', w: s => <><Geld v={business ? s.aw.frei.business : s.aw.frei.gesamt} /> €</> },
     { l: `Tiefpunkt ${UG_KURZ} frei`, w: s => <><Geld v={s.g.kz.minFrei} /> € <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{monatLabel(d, s.g.kz.minMonat)}</span></> },
     { l: `Monate ${UG_KURZ} im Minus`, w: s => <span style={{ color: s.g.kz.monateMinus ? LEUCHT.kritisch : C.ink }}>{s.g.kz.monateMinus}</span> },
     { l: `Runway ${UG_KURZ}`, w: s => runway(s.aw.runway.ug, s.aw.runway.horizont) },
@@ -438,7 +444,7 @@ function VergleichTabelle({ spalten, d, alsArbeitsplan, business = false }: { sp
     { l: `${KDV} Dez 28`, w: s => <><Geld v={s.g.kz.kdvDez28} /> €</> },
     { l: 'Gruppe Dez 28', w: s => <b><Geld v={s.g.kz.gruppeDez28} /> €</b> },
     { l: 'Ziele im Plan', w: s => <span style={{ color: s.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut }}>{s.aw.ziele.imPlan} / {s.aw.ziele.gesamt}{s.aw.ziele.gekippt ? ` · ${s.aw.ziele.gekippt} gekippt` : ''}</span> },
-    { l: 'Steuerrücklage jetzt', w: s => <><Geld v={s.aw.steuer.ruecklageGesamt} farbe={C.inkDim} /> €</> },
+    { l: 'Steuerrücklage jetzt', w: s => <><Geld v={business ? s.aw.steuer.ruecklageBusiness : s.aw.steuer.ruecklageGesamt} farbe={C.inkDim} /> €</> },
   ];
   const zeilen = alleZeilen.filter(z => !business || !/Privat|Gruppe/.test(z.l));
   return (

@@ -6,7 +6,7 @@
 // Ampel-Schwellen (Runway, frei verfügbar, Luft …) stehen ebenfalls als Felder da; leer = die bisherige Vorgabe.
 
 import type { ReactNode } from 'react';
-import { FARBE as C, MIKRO } from '@/lib/make-one/design';
+import { FARBE as C, MIKRO, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift } from '../ui';
 import { finanzOrtName, GESELLSCHAFTEN, type Gesellschaftskennung } from '@/lib/einheiten';
 import { annahmeGruppen, type AnnahmeFeld } from '@/lib/finanzen/annahmen-felder';
@@ -35,6 +35,7 @@ export function AnnahmenKarte({ ort, i = 5 }: { ort: Gesellschaftskennung; i?: n
         {f.art === 'anteil' ? <ProzentFeld wert={v} titel={f.label} breite="100%" onFertig={x => speichere(x)} />
           : f.art === 'monat' ? <MonatWahl wert={v} aus onWahl={m => speichere(m)} monate={d.monate} breite={150} />
             : <ZahlFeld wert={v} dezimal={f.dezimal} breite="100%" titel={f.label} onFertig={speichere} />}
+        {f.hinweis && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.4 }}>{f.hinweis}</span>}
       </FeldK>
     );
   };
@@ -54,7 +55,10 @@ export function AnnahmenKarte({ ort, i = 5 }: { ort: Gesellschaftskennung; i?: n
 
 /** Alle Annahmen aller Gesellschaften nacheinander. */
 export function AnnahmenAlle({ i = 3 }: { i?: number }) {
-  return <>{GESELLSCHAFTEN.map((o, k) => <AnnahmenKarte key={o} ort={o} i={i + k} />)}</>;
+  const { sicht } = usePlan();
+  // Business-Sicht (05.10.): nur die Gesellschaften — die Selbstständigkeit gehört zu Privat.
+  const orte = sicht === 'business' ? GESELLSCHAFTEN.filter(o => o !== 'kdc') : GESELLSCHAFTEN;
+  return <>{orte.map((o, k) => <AnnahmenKarte key={o} ort={o} i={i + k} />)}</>;
 }
 
 /** Eigene Ampel-Schwellen — leer = Vorgabe. */

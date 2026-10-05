@@ -27,7 +27,7 @@ export const SONDER_ZEILEN: Record<string, string> = {
 export const RECHENZEILEN: Record<string, string> = Object.fromEntries(Object.entries(HAND_FELDER).map(([k, f]) => [k, f.name]));
 
 // ── Aufbau (Kevin 27.09. abends: acht Bereiche, die alten Unterseiten leben darunter weiter) ──
-// Lage → Planen (Szenarien bauen · Treiber, Annahmen & Steuern) → Privat → Business (MAKE Innovation GmbH · KD Ventures · Selbstständigkeit)
+// Lage → Planen (Szenarien bauen · Treiber, Annahmen & Steuern) → Privat (Privat · Selbstständigkeit, seit 05.10.) → Business (MAKE Innovation GmbH · KD Ventures)
 // → Gesamt (Gesamt · Entwicklung · Geldfluss) → Buchungen & Check (Buchungen · Budget · Wochen-Check · Zu erledigen ·
 // Kalender & Verträge · Schulden) → Ziele & Töpfe (Ziele · Töpfe MAKE) → Protokoll. Alte `?u=`-Werte lösen weiter auf.
 export type Bereich = 'lage' | 'planen' | 'privat' | 'business' | 'gesamt' | 'buchungen' | 'ziele' | 'protokoll';
@@ -37,8 +37,9 @@ export type Unterseite =
 export const BEREICHE: { id: Bereich; label: string; unter: { id: Unterseite; label: string }[] }[] = [
   { id: 'lage', label: 'Lage', unter: [{ id: 'lage', label: 'Lage' }] },
   { id: 'planen', label: 'Planen', unter: [{ id: 'planen', label: 'Szenarien bauen' }, { id: 'szenarien', label: 'Treiber, Annahmen & Steuern' }] },
-  { id: 'privat', label: 'Privat', unter: [{ id: 'privat', label: 'Privat' }] },
-  { id: 'business', label: 'Business', unter: [{ id: 'ug', label: finanzOrtName('ug') }, { id: 'kdv', label: KDV }, { id: 'selbst', label: 'Selbstständigkeit' }] },
+  // 05.10. (Kevin): die Selbstständigkeit gehört zu Privat (eine Einkommensteuer) — Business sind nur noch die Gesellschaften.
+  { id: 'privat', label: 'Privat', unter: [{ id: 'privat', label: 'Privat' }, { id: 'selbst', label: finanzOrtName('kdc') }] },
+  { id: 'business', label: 'Business', unter: [{ id: 'ug', label: finanzOrtName('ug') }, { id: 'kdv', label: KDV }] },
   { id: 'gesamt', label: 'Gesamt', unter: [{ id: 'gesamt', label: 'Gesamt' }, { id: 'entwicklung', label: 'Entwicklung' }, { id: 'geldfluss', label: 'Geldfluss' }] },
   { id: 'buchungen', label: 'Buchungen & Check', unter: [{ id: 'buchungen', label: 'Buchungen' }, { id: 'budget', label: 'Budget' }, { id: 'check', label: 'Wochen-Check' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }] },
   { id: 'ziele', label: 'Ziele & Töpfe', unter: [{ id: 'ziele', label: 'Ziele' }, { id: 'toepfe', label: `Töpfe ${UG_KURZ}` }] },
@@ -52,7 +53,7 @@ export const FRAGE: Record<Unterseite, string> = {
   privat: 'Was kommt privat herein, was geht heraus, was bleibt übrig?',
   ug: 'Umsatz, Kosten und Ergebnis dieser Gesellschaft — mit Steuern, Break-even und Runway.',
   kdv: 'Einnahmen, Ausgaben und Kontostand dieser Gesellschaft — mit Steuern und Runway.',
-  selbst: 'Umsatz, Kosten und Ergebnis der Selbstständigkeit — und der Abschluss 2026.',
+  selbst: 'Umsatz, Kosten und Ergebnis der Selbstständigkeit, die gemeinsame Einkommensteuer mit Privat — und der Abschluss 2026.',
   gesamt: 'Alles zusammen: Privat und die Gesellschaften, verbunden über Gehalt und Ausschüttung.',
   entwicklung: 'Wie entwickeln sich Einnahmen und Ausgaben?',
   geldfluss: 'Wohin fließt das Geld in einem Monat?',
@@ -69,7 +70,7 @@ export const FRAGE: Record<Unterseite, string> = {
 /** Die Frage je Unterseite in der Business-Sicht, wo sie sich von der Privat-Sicht unterscheidet (04.10.). */
 export const FRAGE_BUSINESS: Partial<Record<Unterseite, string>> = {
   lage: 'Wo stehen die Gesellschaften, was ist zu entscheiden und was ist noch offen?',
-  gesamt: 'Die drei Gesellschaften zusammen — Gehalt, Ausschüttung und Entnahme als Abfluss (brutto).',
+  gesamt: 'Die Gesellschaften zusammen — Gehalt und Ausschüttung als Abfluss (brutto).',
   buchungen: 'Was wurde im Business gebucht — und wohin gehört es?',
   ziele: 'Welche Business-Ziele haben wir, und halten wir das Tempo?',
   posten: 'Offene Posten, Rechnungen und Kontostände der Gesellschaften.',
@@ -81,7 +82,7 @@ export const bereichVon = (u: Unterseite): Bereich => BEREICHE.find(b => b.unter
 
 // ── Sichten (04.10., Kevin: „Business ist bei Business sichtbar, kein Privat“) ──
 /** Unterseiten, die nur Privat zeigen — in der Business-Sicht gibt es sie nicht. */
-export const NUR_PRIVAT_UNTERSEITEN: Unterseite[] = ['privat', 'budget', 'check', 'entwicklung', 'geldfluss'];
+export const NUR_PRIVAT_UNTERSEITEN: Unterseite[] = ['privat', 'selbst', 'budget', 'check', 'entwicklung', 'geldfluss'];
 /** Die Bereiche einer Sicht: Privat = alle acht; Business = ohne den Bereich Privat und ohne private Unterseiten. */
 export function bereicheFuer(sicht: 'privat' | 'business'): typeof BEREICHE {
   if (sicht === 'privat') return BEREICHE;

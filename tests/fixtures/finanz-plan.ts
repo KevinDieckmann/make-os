@@ -2,7 +2,7 @@
 // Zwei Fassungen desselben Dokuments: A (kleiner Umsatz, kaum Steuer) und B (größerer Umsatz, Steuer fällt an).
 // Die Erwartungswerte in tests/finanzplan-regression.test.ts wurden MIT DEM UNVERÄNDERTEN Rechenkern (Stand 1818c5c) gerechnet.
 import type { FinanzDaten, Szenario } from '../../lib/finanzen/rechenkern';
-import { monatsLabels } from '../../lib/finanzen/plan/operationen';
+import { monatsLabels, leeresDokument } from '../../lib/finanzen/plan/operationen';
 import { neuesPlanszenario, neuerBaustein, type Planszenario } from '../../lib/finanzen/szenarien';
 
 export const treiberFix = (obBetrag: number): Szenario => ({
@@ -80,4 +80,75 @@ export function planGold(): FinanzDaten {
     { id: 'b3', d: '2026-06-01', b: 2000, n: 'Kunde', k: 'giro', z: 'x.einnahme' }, { id: 'b4', d: '2026-06-02', b: -40, n: 'Unbekannt', k: 'giro', z: 'x.offen' },
   ];
   return d;
+}
+
+/**
+ * Alt-Plan für den Umzug Selbstständigkeit → Privat (finanzplan-5, 05.10.): Bausteine der Selbstständigkeit, Handwerte auf kdc-Kennungen (allgemein
+ * und nur in einem Szenario), ein Handwert im Abschluss, Bereichs-Einstellungen (Privat/Business rechnen verschiedene Szenarien), Steuerprofile
+ * (auch nur im Szenario), Entnahme-Regel, Sachkosten-Zeile der Selbstständigkeit, Altdarlehen. Der Vorher-Stand dazu stammt aus dem Kern auf
+ * `entwicklung` (4efe90a2) — tests/fixtures/finanzplan5-vorher.json. Erfundene Zahlen.
+ */
+export function planAltMigration(): FinanzDaten {
+  const d = planFix(14000);
+  const ps2 = arbeitsplanSelbst();
+  ps2.annahmen = { ...ps2.annahmen, entnahme: { betrag: 1500, ab: 2 }, steuern: { kdc: { param: { zahlweise: 'quartal' } } } };
+  const ps3 = arbeitsplanOhneSelbst();
+  return {
+    ...d, planszenarien: [ps2, ps3], arbeitsplan: 'ps2', bereiche: { privat: { arbeitsplan: 'ps2' }, business: { arbeitsplan: 'ps3' } },
+    steuern: { kdc: { zeilen: { gewst: { hebesatz: 380 } } }, ug: { zeilen: { gewst: { hebesatz: 410 } } } },
+    sachkosten: [...d.sachkosten, { id: 'sk-kdc', name: 'Coworking', einheit: 'selbststaendigkeit', gruppe: 'Räume', soll: 150, ab: 1 }],
+    plan: { ...d.plan, 'kdc.konto:5': 12345, 'kdc.est:3': 800, 'kdc.kosten:6': 2000, 'kdc.umsatz@ps2:4': 9000, 'kdc.entnahme@ps2:7': 0, 'ab.est:0': 50, 'ug.konto:7': 4242, 'p.luft:9': 100, 'sk-kdc:3': 300 },
+    meta: { 'kdc.konto:5': { wer: 'kevin', wann: '2026-10-01T10:00:00.000Z' }, 'ab.est:0': { wer: 'malin', wann: '2026-10-01T10:00:00.000Z' } },
+  };
+}
+/**
+ * Derselbe Alt-Plan ohne die bewusst geänderten Teile (Gehalt nicht in der Einkommensteuer, kein Abschluss Jan–Sep, kein Altdarlehen, kein
+ * Handwert ab.est) — muss mit dem neuen Kern bit-genau wie mit dem alten rechnen.
+ */
+export function planAltNeutral(): FinanzDaten {
+  const d = planAltMigration();
+  const { 'ab.est:0': _ab, ...plan } = d.plan;
+  return { ...d, plan, annahmen: { ...d.annahmen, darlehenKevin: 0 }, selbst: { ...d.selbst, posten: [] }, steuern: { ...d.steuern, kdc: { ...d.steuern!.kdc, param: { lohnEinbeziehen: false } } } };
+}
+
+/** Der Plan des Rechen-Prüfstands (tests/finanzplan-pruefstand.test.ts, Formel-Prüfung 05.10.) — alle Erwartungen dort sind von Hand gerechnet. */
+export function pruefPlan(): FinanzDaten {
+  const d = leeresDokument('2026-10-01');
+  d.annahmen = {
+    ...d.annahmen, kevinBrutto: 4000, kevinAb: 1, malinBrutto: 3000, malinAb: 1, agAnteil: 0.2, stammkapital: 25000, gruendungskosten: 1000,
+    darlehenKevin: 0, darlehenRueckMonat: 0, retainerVerzug: 1, astarnaProvision: 0, steuerUG: 0.3, ust: 0.19, steuerMonat: 6,
+    holdingKosten: 500, holdingAb: 2, kdvStart: 10000, exitSteuer: 0.25, nettoTabelle: [[0, 0], [4000, 2600], [8000, 4800]], gehaltTag: 28,
+  };
+  d.steuern = {
+    ug: { rechtsform: 'kapital', zeilen: { kst: { satz: 0.15 }, soli: { satz: 0.055 }, gewst: { satz: 0.035, hebesatz: 400 } }, param: { zahlweise: 'folgejahr', zahlMonat: 6 } },
+    kdv: { rechtsform: 'kapital', zeilen: { kst: { satz: 0.15 }, soli: { satz: 0.055 }, gewst: { satz: 0.035, hebesatz: 400 } }, param: { zahlweise: 'folgejahr', zahlMonat: 6 } },
+    kdc: { rechtsform: 'einzel', zeilen: { gewst: { satz: 0.035, hebesatz: 400 } }, param: { zahlweise: 'folgejahr', zahlMonat: 6, freibetrag: 24500, anrechnung: 4 } },
+  };
+  d.szenarien = [{ id: 'basis', name: 'Basis', ob: { betrag: 10000, start: 1, laufzeit: 99 }, retainer: [{ betrag: 2000, start: 2, laufzeit: 99 }], astarna: { betrag: 0, ab: 0 }, events: { betrag: 0, ab: 0 },
+    erhoehung: { betrag: 0, ab: 0 }, unterstuetzung: { betrag: 0, ab: 0 }, exit1: { betrag: 50000, monat: 13 }, exit2: { betrag: 0, monat: 0 }, bjoernAbloesen: false,
+    ereignisse: [{ id: 'e1', name: 'Messe', einheit: 'ug', betrag: 1200, monat: 3 }, { id: 'e2', name: 'Umzug', einheit: 'privat', betrag: 800, monat: 4 }] }];
+  d.sachkosten = [
+    { id: 'ug.s.miete', name: 'Miete', einheit: 'ug', gruppe: 'Räume', soll: 1500, ab: 1 },
+    { id: 'ug.s.tool', name: 'Software', einheit: 'ug', gruppe: 'Tools', soll: 300, ab: 1, bis: 2 },
+    { id: 'ug.s.kdc', name: 'Büro Selbstständigkeit', einheit: 'selbststaendigkeit', gruppe: 'Räume', soll: 200, ab: 1 },
+  ];
+  d.privatBudget = [
+    { id: 'p.b.miete', name: 'Miete', einheit: 'privat', gruppe: 'Fixkosten', soll: 2000, typ: 'fix', tag: 3 },
+    { id: 'p.b.essen', name: 'Essen', einheit: 'privat', gruppe: 'Flexibel', soll: 800, typ: 'flex' },
+    { id: 'p.b.vers', name: 'Versicherung', einheit: 'privat', gruppe: 'Jahreskosten & Puffer', soll: 100, typ: 'jahr', jahresbetrag: 1200, faellig: [12] },
+    { id: 'p.b.spar', name: 'Rücklage', einheit: 'privat', gruppe: 'Sparen', soll: 300, typ: 'sparen' },
+  ];
+  d.privatSchulden = [{ id: 'p.d.kredit', name: 'Kredit', einheit: 'privat', gruppe: 'Schulden', soll: 250, ab: 1, bis: 3, tag: 5 }];
+  d.selbst = { posten: [{ id: 'sp1', name: 'Honorar', art: 'einnahme', betrag: 20000, status: 'bezahlt' }, { id: 'sp2', name: 'Kosten', art: 'ausgabe', betrag: 4000, status: 'offen' }], vorsorge: 0, sonderausgaben: 0, sicherheit: 0, darlehenAnUG: 0, consorsAbloesung: 0, kontoStart: 8000 };
+  const ps: Planszenario = {
+    ...neuesPlanszenario('ps1', 'Plan', 'basis', '2026-10-01T00:00:00.000Z'),
+    bausteine: [
+      neuerBaustein('k1', { art: 'umsatz', einheit: 'kdc', name: 'Interim', preis: 6000, start: 1, zahlungsziel: 1 }),
+      neuerBaustein('u1', { art: 'umsatz', einheit: 'ug', name: 'Produkt', preis: 1000, start: 2, zahlungsziel: 2 }),
+      neuerBaustein('st', { art: 'kosten', einheit: 'ug', kostenArt: 'stelle', name: 'Assistenz', preis: 3000, start: 3 }),
+      neuerBaustein('kv', { art: 'kosten', einheit: 'kdv', kostenArt: 'sonstiges', name: 'Beratung', preis: 100, start: 1 }),
+    ],
+    annahmen: { ausschuettung: { betrag: 1000, ab: 4 }, entnahme: { betrag: 2000, ab: 2 }, zahlungsziel: 0 },
+  };
+  return { ...d, planszenarien: [ps], arbeitsplan: 'ps1', plan: {} };
 }

@@ -140,7 +140,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
     if (rf === 'kapital') {
       if (zeigeSteuer(dd, ort, 'kst')) out.push(z('Körperschaftsteuer', 'kst', a.kst, false));
       if (zeigeSteuer(dd, ort, 'soli')) out.push(z('Solidaritätszuschlag', 'soli', a.soli));
-    } else if (zeigeSteuer(dd, ort, 'est')) { out.push(z('Einkommensteuer', 'est', a.est, false)); out.push(z('Anrechnung Gewerbesteuer (§ 35 EStG)', 'anrechnung', a.anrechnung, true, 1)); out.push(z('Solidaritätszuschlag (über der Freigrenze)', 'soli', a.soli)); }
+    } else if (zeigeSteuer(dd, ort, 'est')) { out.push(z(ort === 'kdc' ? 'Einkommensteuer (gemeinsam mit Privat, Mehrsteuer)' : 'Einkommensteuer', 'est', a.est, false)); out.push(z('Anrechnung Gewerbesteuer (§ 35 EStG)', 'anrechnung', a.anrechnung, true, 1)); out.push(z('Solidaritätszuschlag (über der Freigrenze)', 'soli', a.soli)); }
     if (zeigeSteuer(dd, ort, 'gewst')) out.push(z('Gewerbesteuer', 'gewst', a.gewst, false));
     if (ort === 'kdv' && zeigeSteuer(dd, ort, 'exit')) out.push(z('Steuer auf den Ausstieg', 'exitSteuer', a.exit));
     return out;
@@ -182,12 +182,13 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { name: 'Eingang Retainer', edit: 'ug.retainerEingang', get: m => U(m).retainerEingang, ind: true, optional: true },
       { name: 'Eingang aus Bausteinen', edit: 'ug.bausteineEingang', get: m => U(m).bausteineEingang, ind: true, optional: true },
       { name: 'Eingang aus Umsatz von Hand', edit: 'ug.umsatzEingang', get: m => U(m).umsatzEingang, ind: true, optional: true },
-      { name: 'Stammkapital und Gesellschafterdarlehen', edit: 'ug.kapital', get: m => U(m).kapital, ind: true, optional: true },
+      { name: 'Stammkapital und Gesellschafterdarlehen (alt)', edit: 'ug.kapital', get: m => U(m).kapital, ind: true, optional: true },
+      { name: 'Darlehen erhalten oder zurückerhalten', edit: 'ug.darlehenEin', get: m => U(m).darlehenEin, ind: true, optional: true },
       ...(ustAn ? [] : [{ name: 'USt vereinnahmt (Durchlauf)', edit: 'ug.ustEin', get: (m: number) => U(m).ustEin, ind: true, optional: true } as DatenZeile]),
       { name: ustAn ? 'Einzahlungen' : 'Einzahlungen (inkl. USt-Durchlauf)', edit: 'ug.einzahlungen', sum: true, get: m => U(m).einzahlungen },
       { name: 'Ausschüttung an Privat', edit: 'ug.ausschuettung', minus: true, get: m => -U(m).ausschuettung, ind: true, optional: true },
       { name: 'Partnerdarlehen-Rate', edit: 'ug.bjoern', minus: true, get: m => -U(m).bjoern, ind: true, optional: true },
-      { name: 'Darlehen zurück', edit: 'ug.darlehen', minus: true, get: m => -U(m).darlehen, ind: true, optional: true },
+      { name: 'Darlehen ausgezahlt oder zurückgezahlt', edit: 'ug.darlehen', minus: true, get: m => -U(m).darlehen, ind: true, optional: true },
       { name: ustAn ? 'Auszahlungen' : 'Auszahlungen (inkl. USt-Durchlauf)', edit: 'ug.auszahlungen', minus: true, sum: true, get: m => -U(m).auszahlungen },
       { name: 'Kontostand', edit: 'ug.konto', stock: true, get: m => U(m).konto },
       { name: 'Frei verfügbar', edit: 'ug.frei', stock: true, sum: true, key: true, get: m => U(m).frei },
@@ -224,6 +225,8 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { grp: 'Stand', leerName: ['weitere Zeile', 'weitere Zeilen'] },
       { name: 'Partnerdarlehen-Ablösung', edit: 'kdv.abloesung', minus: true, get: m => -U(m).kdvAbloesung, ind: true, optional: true },
       { name: 'Ertragsteuer-Zahlung', edit: 'kdv.steuer', minus: true, get: m => -U(m).kdvSt.zahlung, ind: true, optional: true },
+      { name: 'Darlehen erhalten oder zurückerhalten (kein Ergebnis)', edit: 'kdv.darlehenEin', get: m => U(m).kdvDarlehenEin, ind: true, optional: true },
+      { name: 'Darlehen ausgezahlt oder zurückgezahlt (kein Ergebnis)', edit: 'kdv.darlehenAus', minus: true, get: m => -U(m).kdvDarlehenAus, ind: true, optional: true },
       { name: 'Steuerrücklage', edit: 'kdv.steuerRuecklage', minus: true, stock: true, get: m => -U(m).kdvSt.ruecklage, ind: true, optional: true },
       { name: 'Verlustvortrag zu Jahresbeginn', edit: 'kdv.verlustvortrag', stock: true, get: m => U(m).kdvSt.verlustvortrag, ind: true, optional: true },
       { name: `Kontostand ${KDV}`, edit: 'kdv.konto', stock: true, get: m => U(m).kdvKonto },
@@ -250,9 +253,11 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { grp: 'Zahlungsfluss und Liquidität', leerName: ['weitere Zeile', 'weitere Zeilen'] },
       { name: 'Eingang aus Umsatz', edit: 'kdc.eingang', get: m => K(m).eingang, ind: true, optional: true },
       ...(ustAn ? [] : [{ name: 'USt vereinnahmt (Durchlauf)', edit: 'kdc.ustEin', get: (m: number) => K(m).ustEin, ind: true, optional: true } as DatenZeile]),
+      { name: 'Darlehen erhalten oder zurückerhalten', edit: 'kdc.darlehenEin', get: m => K(m).darlehenEin, ind: true, optional: true },
       { name: ustAn ? 'Einzahlungen' : 'Einzahlungen (inkl. USt-Durchlauf)', edit: 'kdc.einzahlungen', sum: true, get: m => K(m).einzahlungen },
       { name: 'Steuerzahlung (Einkommen- und Gewerbesteuer)', edit: 'kdc.steuer', minus: true, get: m => -K(m).st.zahlung, ind: true, optional: true },
       { name: 'Entnahme an Privat', edit: 'kdc.entnahme', minus: true, get: m => -K(m).entnahme, ind: true, optional: true },
+      { name: 'Darlehen ausgezahlt oder zurückgezahlt', edit: 'kdc.darlehenAus', minus: true, get: m => -K(m).darlehenAus, ind: true, optional: true },
       { name: ustAn ? 'Auszahlungen' : 'Auszahlungen (inkl. USt-Durchlauf)', edit: 'kdc.auszahlungen', minus: true, sum: true, get: m => -K(m).auszahlungen },
       { name: 'Kontostand', edit: 'kdc.konto', stock: true, get: m => K(m).konto },
       { name: gb.liquiditaetName, edit: 'kdc.frei', stock: true, sum: true, key: true, get: m => gb.liquiditaet[m - 1] },
@@ -289,7 +294,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
           onZeile={setDialog} onNeueZeile={async (liste, gruppe, einheit) => { const { op, id } = neueZeileOp(liste, gruppe, einheit); if (await aendere([op], 'Zeile angelegt')) setDialog(id); }} />
         <Hinweis>
           Bei Produkten und Kosten-Bausteinen gilt ein eingetippter Wert für diesen Monat des Bausteins; jede andere Zahl überschreibt die Formel von Hand (✎) — Summen, Steuern, Ein- und Auszahlungen und Kontostand rechnen damit weiter.
-          Leere Zeilen stehen hinter „weitere …“. {ort === 'kdc' && 'Die Selbstständigkeit rechnet auf eigener Monatsachse (eigenes Konto, Einkommen- und Gewerbesteuer); der Abschluss 2026 mit den Posten des laufenden Jahres steht darunter. '}
+          Leere Zeilen stehen hinter „weitere …“. {ort === 'kdc' && 'Die Selbstständigkeit gehört zu Privat und rechnet auf eigener Monatsachse (eigenes Konto). Die Einkommensteuer ist EINE Steuer je Jahr über Gewinn und Gehalt (Progression) — im Blatt steht der Teil, den die Selbstständigkeit zusätzlich zur Lohnsteuer kostet; 2026 beginnt mit dem Gewinn Jan–Sep aus dem Abschluss darunter. '}
           {STEUER_HINWEIS}
         </Hinweis>
         {dialog && <ZeileDialog id={dialog} onZu={() => setDialog(null)} />}

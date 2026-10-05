@@ -53,7 +53,7 @@ function LageKopf() {
       <Kacheln min={230}>
         {/* Kennzahlen des Bereichs Privat (04.10. spät): frei verfügbar privat und Privat-Runway vorn — die Gesellschaften stehen unter Business › Lage. */}
         <Kachel label="Frei verfügbar privat" punkt={aw.frei.privat >= sw.freiGut ? LEUCHT.gut : aw.frei.privat >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.privat} /> €</>}
-          unter={<>Konten <Geld v={aw.frei.privatKonten} farbe={C.inkDim} /> · Luft diesen Monat <Geld v={aw.frei.privatLuft} farbe={C.inkDim} /> · alles zusammen <Geld v={aw.frei.gesamt} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
+          unter={<>Konten <Geld v={aw.frei.privatKonten} farbe={C.inkDim} /> · Luft diesen Monat <Geld v={aw.frei.privatLuft} farbe={C.inkDim} /> · mit Selbstständigkeit <Geld v={aw.frei.privatBereich} farbe={C.inkDim} /> · alles zusammen <Geld v={aw.frei.gesamt} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
         <Kachel label="Runway Privat" punkt={rwFarbe(aw.runway.privat)} wert={rw(aw.runway.privat, aw.runway.horizont)} unter={<>Monate ab jetzt, bis die privaten Konten unter null fallen · {UG_KURZ} {rw(aw.runway.ug, aw.runway.horizont)}</>} />
         <Kachel label="Ziele im Plan" punkt={aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${aw.ziele.imPlan} / ${aw.ziele.gesamt}`} unter={aw.ziele.gesamt ? `${aw.ziele.gekippt} gekippt · ${aw.ziele.knapp} knapp` : 'noch keine Ziele'} />
       </Kacheln>
@@ -225,17 +225,17 @@ export function Lage() {
 }
 
 /**
- * Lage der Business-Sicht (04.10., Kevin: „Business ist bei Business sichtbar, kein Privat“): frei verfügbar der drei Gesellschaften,
+ * Lage der Business-Sicht (04.10., Kevin: „Business ist bei Business sichtbar, kein Privat“; 05.10.: die Selbstständigkeit gehört zu Privat): frei verfügbar der Gesellschaften,
  * Runway MAKE, Business-Ziele, „Was jetzt zu entscheiden ist“ und „Noch offen“ nur mit Business-Punkten, Verlauf und die nächsten
  * 14 Tage ohne private Termine. Kein Privat-Konto, keine Luft, kein Notgroschen, keine Entscheidung der Woche (die gehört dem Haushalt).
  */
 export function LageBusiness() {
   const { d, dd, ug, kdc, pr, aw, ps, sz, kz, geh, sicht } = usePlan();
-  const punkte = nurBusinessPunkte(entscheidungen(d, { ug, pr, ps }, aw, 12)).slice(0, 6);
+  const punkte = nurBusinessPunkte(entscheidungen(d, { ug, pr, ps }, aw, 12, true)).slice(0, 6);
   const offenPunkte = nurBusinessPunkte(luecken(d, ug, 0)).slice(0, 7);
   const sw = schwellenVon(d);
   const m0 = aw.m0;
-  const freiBusiness = aw.frei.ug + aw.frei.kdv + aw.frei.kdc;
+  const freiBusiness = aw.frei.business;
   const zs = zielStaende(dd, ug, pr, kdc);
   const imPlan = zs.filter(z => z.status === 'erreicht' || z.status === 'im Plan').length;
   const termine = nurBusinessTermine(zahlungskalender(d, ug, pr, 14, kdc));
@@ -245,7 +245,7 @@ export function LageBusiness() {
     <>
       <Kacheln min={220}>
         <Kachel label="Frei verfügbar Business" punkt={freiBusiness >= sw.freiGut ? LEUCHT.gut : freiBusiness >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={freiBusiness} /> €</>}
-          unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Selbst. <Geld v={aw.frei.kdc} farbe={C.inkDim} /></>} />
+          unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /></>} />
         <Kachel label={`Runway ${UG_KURZ}`} punkt={rw == null || rw >= sw.runwayGutMonate ? LEUCHT.gut : rw >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={rw == null ? `> ${aw.runway.horizont} M` : rw === 0 ? 'jetzt' : `${rw} M`} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
         <Kachel label="Business-Ziele im Plan" punkt={zs.length - imPlan ? LEUCHT.achtung : LEUCHT.gut} wert={`${imPlan} / ${zs.length}`} unter={zs.length ? 'MAKE frei · Partnerdarlehen' : 'noch keine Business-Ziele'} />
         <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={ampel(kz.minFrei >= sw.tiefpunktGut, kz.minFrei >= 0)} wert={<><Geld v={kz.minFrei} /> €</>} unter={monatLabel(d, kz.minMonat)} />
@@ -276,11 +276,10 @@ export function LageBusiness() {
       <Spalten verhaeltnis="3:2">
         <Spalte>
           <Karte i={2}>
-            <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: KDV }, { farbe: LEUCHT.achtung, text: 'Selbstständigkeit' }]} />}>Frei verfügbar je Gesellschaft — {sz.name}</Ueberschrift>
+            <Ueberschrift rechts={<Legende eintraege={[{ farbe: KUPFER, text: `${UG_KURZ} frei` }, { farbe: LEUCHT.puls, text: KDV }]} />}>Frei verfügbar je Gesellschaft — {sz.name}</Ueberschrift>
             <Linie labels={d.monate} heute={m0 - 1} tick={3} serien={[
               { name: `${UG_KURZ} frei`, farbe: KUPFER, werte: ug.map(u => u.frei), breite: 2.4 },
               { name: KDV, farbe: LEUCHT.puls, werte: ug.map(u => u.kdvFrei), breite: 1.4 },
-              { name: 'Selbstständigkeit', farbe: LEUCHT.achtung, werte: kdc.map(k => k.frei), breite: 1.4 },
             ]} />
           </Karte>
         </Spalte>
@@ -302,7 +301,7 @@ export function LageBusiness() {
           </Karte>
         </Spalte>
       </Spalten>
-      <Hinweis>Kennzahlen der Gesellschaften: {finanzOrtName('ug')}, {finanzOrtName('kdv')} und {finanzOrtName('kdc')}. {sicht === 'business' ? 'Der Business-Bereich zeigt nur die Gesellschaften.' : 'Die privaten Kennzahlen zeigt die Lage im Privat-Bereich.'} Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
+      <Hinweis>Kennzahlen der Gesellschaften: {finanzOrtName('ug')} und {finanzOrtName('kdv')}. {sicht === 'business' ? 'Der Business-Bereich zeigt nur die Gesellschaften.' : 'Die privaten Kennzahlen zeigt die Lage im Privat-Bereich.'} Steuern sind Näherungen — Hinweis, keine Steuerberatung.</Hinweis>
     </>
   );
 }

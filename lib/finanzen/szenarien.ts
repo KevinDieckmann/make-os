@@ -25,7 +25,7 @@
 // Oberfläche findet sie wieder, die Rechnung behandelt sie wie alle anderen.
 
 import type { Annahmen, FinanzDaten, MonatPrivat, MonatSelbst, MonatUG, Szenario, ZielStand, Zusatz } from './rechenkern';
-import { rechneUG, rechnePrivat, rechneSelbstAchse, kennzahlen, zielStaende, planMonat, kalMonat, gruppeReihe } from './rechenkern';
+import { rechneUG, rechnePrivat, rechneSelbstAchse, kennzahlen, zielStaende, planMonat, kalMonat, gruppeReihe, lohnJahre } from './rechenkern';
 import { pruefeSteuern, steuernMit, type Steuern } from './steuern';
 import type { Unterseite } from './plan/hilfen';
 import { schwellenVon } from './schwellen';
@@ -208,6 +208,8 @@ export interface Gerechnet {
   formel: Formeln;
   /** Freies Geld der Gruppe je Monat (mit Handwert `g.frei`). */
   gruppe: number[];
+  /** Lohneinkünfte je Kalenderjahr, die mit der Selbstständigkeit zusammen versteuert werden (05.10., `lohnJahre`). */
+  lohn: Record<number, number>;
 }
 
 /**
@@ -225,10 +227,11 @@ export function rechneMit(d: FinanzDaten, ps: Planszenario | null, treiber?: Sze
   const x = ps ? { ...reihen(ps, d.monate.length), umsatzZiel: ps.annahmen.zahlungsziel } : undefined;
   const formel: Formeln = {};
   const ug = rechneUG(dd, sz, x, formel);
-  const kdc = rechneSelbstAchse(dd, x, formel);
+  // Die Selbstständigkeit (seit 05.10. Teil von Privat) braucht die GmbH-Monate für die gemeinsame Einkommensteuer (Gehalt 1).
+  const kdc = rechneSelbstAchse(dd, x, formel, ug);
   const pr = rechnePrivat(dd, ug, sz, x, kdc, formel);
   const gruppe = gruppeReihe(dd.plan, ug, pr, kdc, formel);
-  return { d: dd, ps, sz, x, ug, kdc, pr, kz: kennzahlen(ug, pr, kdc, gruppe), formel, gruppe };
+  return { d: dd, ps, sz, x, ug, kdc, pr, kz: kennzahlen(ug, pr, kdc, gruppe), formel, gruppe, lohn: lohnJahre(dd, ug) };
 }
 
 // ── Auswertung: Lage in drei Zahlen ──────────────────────────────────────────
@@ -247,7 +250,9 @@ export function kontostand(d: Pick<FinanzDaten, 'posten'>, einheit: KernEinheit 
 export interface Auswertung {
   m0: number;
   /** Frei verfügbar diesen Monat: MAKE frei (nach Steuer, USt) + KD Ventures (nach Steuerrücklage) + Selbstständigkeit (eigenes Konto nach Rücklage und USt) + Privat (Konten + Luft dieses Monats). */
-  frei: { gesamt: number; ug: number; kdv: number; kdc: number; privat: number; privatLuft: number; privatKonten: number; kontenFehlen: number };
+  frei: { gesamt: number; ug: number; kdv: number; kdc: number; privat: number; privatLuft: number; privatKonten: number; kontenFehlen: number;
+    /** 05.10.: Business = nur die Gesellschaften (MAKE + KD Ventures); Privat-Bereich = Privat + Selbstständigkeit. gesamt = business + privatBereich. */
+    business: number; privatBereich: number };
   /** Monate ab jetzt, bis UG frei bzw. Privat unter null fällt — null: im Planzeitraum nicht. */
   runway: { ug: number | null; privat: number | null; horizont: number };
   ziele: { imPlan: number; knapp: number; gekippt: number; gesamt: number; staende: ZielStand[] };
@@ -259,6 +264,8 @@ export interface Auswertung {
     ust: number;
     /** Nächste Ertragsteuer-Zahlung aller drei Gesellschaften zusammen (Summe im frühesten Monat ab jetzt). */
     naechsteZahlung: { monat: number; betrag: number } | null;
+    /** 05.10.: nur die Gesellschaften (MAKE + KD Ventures) — für die Business-Sicht; die Selbstständigkeit gehört zu Privat. */
+    ruecklageBusiness: number; naechsteZahlungBusiness: { monat: number; betrag: number } | null;
     /** pauschale Steuer auf die Ausschüttung dieses Monats */ ausschuettung: number;
   };
   uebergaenge: { gehaelterNetto: number; gehaelterBrutto: number; /** brutto aus der UG */ ausschuettung: number; ausschuettungSteuer: number; ausschuettungNetto: number; /** Entnahme aus der Selbstständigkeit (schon versteuert) */ entnahme: number };
@@ -284,18 +291,24 @@ export function auswertung(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], kdc
   const kosten = (u: MonatUG) => u.laufend ?? u.kevin + u.malin + u.unterstuetzung + u.stellen + u.sach + u.holding;
   const fenster = ug.slice(m0 - 1, m0 + 11);
   const schnitt = (f: (u: MonatUG) => number) => (fenster.length ? fenster.reduce((s, u) => s + f(u), 0) / fenster.length : 0);
-  let naechste: Auswertung['steuer']['naechsteZahlung'] = null;
+  let naechste: Auswertung['steuer']['naechsteZahlung'] = null, naechsteB: Auswertung['steuer']['naechsteZahlung'] = null;
   for (let m = m0; m <= N; m++) {
     const zahl = ug[m - 1].steuer + ug[m - 1].kdvSt.zahlung + (kdc?.[m - 1]?.st.zahlung ?? 0);
     if (zahl > 0.005) { naechste = { monat: m, betrag: zahl }; break; }
   }
+  for (let m = m0; m <= N; m++) {
+    const zahl = ug[m - 1].steuer + ug[m - 1].kdvSt.zahlung;
+    if (zahl > 0.005) { naechsteB = { monat: m, betrag: zahl }; break; }
+  }
   return {
     m0,
-    frei: { gesamt: u0.frei + u0.kdvFrei + (k0?.frei ?? 0) + privat, ug: u0.frei, kdv: u0.kdvFrei, kdc: k0?.frei ?? 0, privat, privatLuft: p0.luft, privatKonten: pk.summe, kontenFehlen: pk.fehlen },
+    frei: { gesamt: u0.frei + u0.kdvFrei + (k0?.frei ?? 0) + privat, ug: u0.frei, kdv: u0.kdvFrei, kdc: k0?.frei ?? 0, privat, privatLuft: p0.luft, privatKonten: pk.summe, kontenFehlen: pk.fehlen,
+      business: u0.frei + u0.kdvFrei, privatBereich: privat + (k0?.frei ?? 0) },
     runway,
     ziele: { imPlan, knapp, gekippt: staende.length - imPlan - knapp, gesamt: staende.length, staende },
     mindestumsatz: { jetzt: kosten(u0), schnitt12: schnitt(kosten), umsatzSchnitt12: schnitt(u => u.umsatz) },
-    steuer: { ruecklage: u0.steuerRuecklage, ruecklageKdv: u0.kdvSt.ruecklage, ruecklageKdc: k0?.steuerRuecklage ?? 0, ruecklageGesamt: u0.steuerRuecklage + u0.kdvSt.ruecklage + (k0?.steuerRuecklage ?? 0), ust: u0.ustOffen + (k0?.ustOffen ?? 0), naechsteZahlung: naechste, ausschuettung: p0.ausschuettungSteuer },
+    steuer: { ruecklage: u0.steuerRuecklage, ruecklageKdv: u0.kdvSt.ruecklage, ruecklageKdc: k0?.steuerRuecklage ?? 0, ruecklageGesamt: u0.steuerRuecklage + u0.kdvSt.ruecklage + (k0?.steuerRuecklage ?? 0), ust: u0.ustOffen + (k0?.ustOffen ?? 0), naechsteZahlung: naechste, ausschuettung: p0.ausschuettungSteuer,
+      ruecklageBusiness: u0.steuerRuecklage + u0.kdvSt.ruecklage, naechsteZahlungBusiness: naechsteB },
     uebergaenge: { gehaelterNetto: p0.kevinNetto + p0.malinNetto, gehaelterBrutto: u0.kevinBrutto + u0.malinBrutto, ausschuettung: u0.ausschuettung, ausschuettungSteuer: p0.ausschuettungSteuer, ausschuettungNetto: p0.ausschuettung, entnahme: p0.entnahme },
   };
 }
@@ -306,7 +319,8 @@ export interface Entscheidung { id: string; stufe: 'kritisch' | 'achtung' | 'inf
 const RANG: Record<Entscheidung['stufe'], number> = { kritisch: 0, achtung: 1, info: 2 };
 
 /** Konkrete Punkte aus den Zahlen — jeder mit Sprung ins passende Feld. Höchstens `max`, kritisch zuerst. */
-export function entscheidungen(d: FinanzDaten, g: Pick<Gerechnet, 'ug' | 'pr' | 'ps'>, aw: Auswertung, max = 6): Entscheidung[] {
+/** `business` (05.10.): die Steuerzahlung nur der Gesellschaften — die Selbstständigkeit gehört zu Privat. */
+export function entscheidungen(d: FinanzDaten, g: Pick<Gerechnet, 'ug' | 'pr' | 'ps'>, aw: Auswertung, max = 6, business = false): Entscheidung[] {
   const { ug, pr } = g;
   const sw = schwellenVon(d);
   const out: Entscheidung[] = [];
@@ -324,7 +338,8 @@ export function entscheidungen(d: FinanzDaten, g: Pick<Gerechnet, 'ug' | 'pr' | 
   if (aw.mindestumsatz.umsatzSchnitt12 < aw.mindestumsatz.schnitt12 - 0.5) out.push({ id: 'mindestumsatz', stufe: 'achtung', text: `Umsatz der nächsten 12 Monate (Ø ${eur(aw.mindestumsatz.umsatzSchnitt12)} €) liegt unter den laufenden ${UG_KURZ}-Kosten (Ø ${eur(aw.mindestumsatz.schnitt12)} €).`, hinweis: 'Mindestumsatz je Monat = Personal + Sachkosten + Holding. Was fehlt, kommt aus Kapital oder Bausteinen.', ziel: { u: 'gesamt' } });
   for (const z of aw.ziele.staende.filter(z => z.status === 'verfehlt').slice(0, 2)) out.push({ id: `ziel-${z.ziel.id}`, stufe: 'achtung', text: `Ziel „${z.ziel.name}“ kippt: ${eur(z.ziel.ziel)} € bis ${z.ziel.bis.slice(5)}/${z.ziel.bis.slice(2, 4)} wird im Plan nicht erreicht.`, ziel: { u: 'ziele' } });
   for (const z of aw.ziele.staende.filter(z => z.status === 'knapp').slice(0, 1)) out.push({ id: `ziel-${z.ziel.id}`, stufe: 'info', text: `Ziel „${z.ziel.name}“ ist knapp — erreicht ${z.erreichtMonat ? monat(z.erreichtMonat) : '—'}.`, ziel: { u: 'ziele' } });
-  if (aw.steuer.naechsteZahlung && aw.steuer.naechsteZahlung.monat - aw.m0 <= 3) out.push({ id: 'steuer', stufe: 'info', text: `Ertragsteuer (alle Gesellschaften) im ${monat(aw.steuer.naechsteZahlung.monat)}: ${eur(aw.steuer.naechsteZahlung.betrag)} € (Näherung, keine Steuerberatung) — Rücklage prüfen.`, ziel: { u: 'toepfe' } });
+  const nz = business ? aw.steuer.naechsteZahlungBusiness : aw.steuer.naechsteZahlung;
+  if (nz && nz.monat - aw.m0 <= 3) out.push({ id: 'steuer', stufe: 'info', text: `${business ? 'Ertragsteuer der Gesellschaften' : 'Steuern (Gesellschaften und Einkommensteuer)'} im ${monat(nz.monat)}: ${eur(nz.betrag)} € (Näherung, keine Steuerberatung) — Rücklage prüfen.`, ziel: { u: 'toepfe' } });
   if (aw.frei.kontenFehlen) out.push({ id: 'konten', stufe: 'info', text: `${aw.frei.kontenFehlen} private Kontostände fehlen — „frei verfügbar“ ist bis dahin eine Schätzung.`, ziel: { u: 'posten' } });
   const offen = d.buchungen.filter(b => b.z === 'x.offen').length;
   if (offen >= sw.buchungenOffen) out.push({ id: 'buchungen', stufe: 'info', text: `${offen} Buchungen ohne Zuordnung — das IST ist unscharf.`, ziel: { u: 'buchungen' } });

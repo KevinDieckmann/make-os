@@ -9,8 +9,9 @@
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Spalten, Spalte, Haken, LEUCHT } from '../ui';
-import type { Einheit, Posten, Schuld } from '@/lib/finanzen/rechenkern';
-import { tilgungsplan, zahlungskalender, istSchnitt, sollBudget } from '@/lib/finanzen/rechenkern';
+import type { Darlehen, DarlehenOrt, Einheit, Posten, Schuld } from '@/lib/finanzen/rechenkern';
+import { tilgungsplan, zahlungskalender, istSchnitt, sollBudget, darlehenListe, darlehenOffen, DARLEHEN_ALT } from '@/lib/finanzen/rechenkern';
+import { DARLEHEN_ORTE, DARLEHEN_BUSINESS, darlehenOrtName, darlehenBusinessAenderbar, darlehenFuerBusiness, neuesDarlehen } from '@/lib/finanzen/darlehen';
 import { nurBusinessTermine } from '@/lib/finanzen/plan/sicht';
 import { EINHEIT_LABEL, KAL, monatLabel, tagKurz, plusTage, letzterVoller, neueKennung, postenOffen, personKennung } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
@@ -20,8 +21,8 @@ import { Geld, Kachel, Kacheln, Etikett, Tabelle, TH, THr, TD, TDr, TDleise, Zah
 import { Linie } from './diagramme';
 
 const EINHEITEN = (Object.keys(EINHEIT_LABEL) as Einheit[]).map(e => ({ id: e, label: EINHEIT_LABEL[e] }));
-/** Business-Sicht (04.10.): Einheiten ohne Privat; neue Einträge starten bei der MAKE Innovation GmbH. */
-const einheitenFuer = (business: boolean) => (business ? EINHEITEN.filter(e => e.id !== 'privat') : EINHEITEN);
+/** Business-Sicht (04.10.; seit 05.10. ohne die Selbstständigkeit — sie gehört zu Privat): nur die Gesellschaften; neue Einträge starten bei der MAKE Innovation GmbH. */
+const einheitenFuer = (business: boolean) => (business ? EINHEITEN.filter(e => e.id === 'ug' || e.id === 'kdv') : EINHEITEN);
 const WER = [{ id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'beide', label: 'Beide' }];
 
 // ── Schulden ────────────────────────────────────────────────────────────────
@@ -79,7 +80,54 @@ export function Schulden() {
         </Tabelle>
         <Hinweis>Ungeklärte Schulden stehen hier, damit sie nicht vergessen werden. Rate eintragen, dann rechnet die Seite das Datum. Die Sondertilgung ist eine Probe (nicht gespeichert). Privat-Raten gehören zusätzlich als Zeile ins Privat-Blatt.</Hinweis>
       </Karte>
+      <DarlehenKarte />
     </>
+  );
+}
+
+// ── Darlehen zwischen den Einheiten (05.10.) ─────────────────────────────────
+/**
+ * Kevin 05.10.: „Es gibt kein Gesellschafterdarlehen, außer ungefähr 1.500 € privat in der KD Ventures.“ Jedes Darlehen hat Geber und Nehmer;
+ * die Auszahlung geht beim Geber hinaus und beim Nehmer hinein, die Rückzahlung umgekehrt — nur Kasse, kein Ergebnis, keine Steuer.
+ * Business-Sicht: nur Darlehen mit einer Gesellschaft; eine private Seite heißt „außerhalb des Plans“ und ist dort nicht änderbar (Server: 403).
+ */
+function DarlehenKarte() {
+  const { d, aw, aendere, sicht } = usePlan();
+  const business = sicht === 'business';
+  // Business-Sicht: die private Seite heißt „außerhalb des Plans“, der Name „Darlehen (privat)“ (darlehenFuerBusiness).
+  const liste = business ? darlehenListe(d).map(l => darlehenFuerBusiness(l)).filter((l): l is NonNullable<typeof l> => !!l) : darlehenListe(d);
+  const orte = (business ? DARLEHEN_ORTE.filter(o => DARLEHEN_BUSINESS.includes(o) || o === 'extern') : DARLEHEN_ORTE).map(o => ({ id: o, label: darlehenOrtName(o) }));
+  const setze = (l: Darlehen, feld: keyof Darlehen, alt: unknown, neu: unknown, label: string) => void aendere([{ pfad: `/darlehen/id=${l.id}/${feld}`, alt, neu }], `Darlehen ${l.name} · ${label}`);
+  const offenJetzt = liste.reduce((s, l) => s + darlehenOffen(l, aw.m0), 0);
+  const neu = () => void aendere([{ pfad: '/darlehen/-', neu: neuesDarlehen(neueKennung('dl'), business ? { geber: 'extern', nehmer: 'kdv' } : {}) }], 'Darlehen angelegt');
+  return (
+    <Karte i={2}>
+      <Ueberschrift rechts={<KnopfKlein onClick={neu}>+ Darlehen</KnopfKlein>}>Darlehen zwischen {business ? 'den Gesellschaften' : 'Privat, Selbstständigkeit und den Gesellschaften'} · offen jetzt <Geld v={offenJetzt} /> €</Ueberschrift>
+      <Tabelle klein>
+        <thead><tr><th style={TH}>Name</th><th style={TH}>Geber</th><th style={TH}>Nehmer</th><th style={THr}>Betrag</th><th style={TH}>ausgezahlt</th><th style={TH}>zurück</th><th style={THr}>offen jetzt</th><th style={TH}></th></tr></thead>
+        <tbody>
+          {liste.map(l => {
+            const alt = l.id === DARLEHEN_ALT;
+            const fest = alt || (business && !darlehenBusinessAenderbar(l));
+            const ort = (o: DarlehenOrt, feld: 'geber' | 'nehmer') => (fest ? darlehenOrtName(o) : <Auswahl wert={o} onWahl={v => setze(l, feld, o, v, feld === 'geber' ? 'Geber' : 'Nehmer')} optionen={orte.filter(x => x.id !== (feld === 'geber' ? l.nehmer : l.geber))} titel={feld === 'geber' ? 'Geber' : 'Nehmer'} />);
+            return (
+              <tr key={l.id}>
+                <td style={TD}>{fest ? l.name : <TextFeld wert={l.name} onFertig={v => setze(l, 'name', l.name, v, 'Name')} breite={160} titel="Name" />}{alt && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, maxWidth: 260 }}>aus den Annahmen (Gesellschafterdarlehen, Geber außerhalb des Plans) — nur eintragen, wenn es ein echtes Darlehen gibt, sonst dort auf 0 setzen</div>}</td>
+                <td style={TD}>{ort(l.geber, 'geber')}</td>
+                <td style={TD}>{ort(l.nehmer, 'nehmer')}</td>
+                <td style={TDr}>{fest ? <Geld v={l.betrag} /> : <ZahlFeld wert={l.betrag} onFertig={v => setze(l, 'betrag', l.betrag, v ?? 0, 'Betrag')} breite={100} titel="Betrag" />}</td>
+                <td style={TD}>{fest ? (l.aus ? monatLabel(d, l.aus) : 'vor Planbeginn') : <MonatWahl wert={l.aus} leer="vor Planbeginn" onWahl={m => setze(l, 'aus', l.aus, m, 'ausgezahlt')} monate={d.monate} />}</td>
+                <td style={TD}>{fest ? (l.zurueck ? monatLabel(d, l.zurueck) : 'offen') : <MonatWahl wert={l.zurueck} leer="offen" onWahl={m => setze(l, 'zurueck', l.zurueck, m, 'zurück')} monate={d.monate} />}</td>
+                <td style={TDr}><Geld v={darlehenOffen(l, aw.m0)} /></td>
+                <td style={TD}>{fest ? null : <KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: `/darlehen/id=${l.id}`, alt: l.name }], `Darlehen entfernt: ${l.name}`)} titel="Darlehen entfernen">−</KnopfKlein>}</td>
+              </tr>
+            );
+          })}
+          {!liste.length && <tr><td colSpan={8} style={TDleise}>Keine Darlehen.</td></tr>}
+        </tbody>
+      </Tabelle>
+      <Hinweis>Auszahlung „vor Planbeginn“ = das Geld ist schon geflossen und steckt in den Kontoständen; im Plan zählt dann nur die Rückzahlung (beim Nehmer hinaus, beim Geber zurück). Darlehen sind nur Kasse — kein Ergebnis, keine Steuer, kein Zins.{business ? ' Darlehen mit privater Seite ändern Sie in der Privat-Sicht.' : ''}</Hinweis>
+    </Karte>
   );
 }
 

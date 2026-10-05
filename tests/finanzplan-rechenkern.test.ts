@@ -231,7 +231,13 @@ describe('Kalender, Tilgung, Tempo, Selbstständigkeit', () => {
     const d = mini({ selbst: { posten: [{ id: 'a', name: 'Honorar', art: 'einnahme', betrag: 20000, status: 'bezahlt' }, { id: 'b', name: 'Offen', art: 'einnahme', betrag: 5000, status: 'offen' }, { id: 'c', name: 'Laptop', art: 'ausgabe', betrag: 2000, status: 'bezahlt' }, { id: 'd', name: 'Alt', art: 'ausgabe', betrag: 999, status: 'bezahlt', aus: true }], vorsorge: 3000, sonderausgaben: 0, sicherheit: 500, darlehenAnUG: 1000, consorsAbloesung: 200, kontoStart: 4000 } });
     const r = rechneSelbst(d);
     expect(r.ein).toBe(25000); expect(r.aus).toBe(2000); expect(r.gewinn).toBe(23000); expect(r.zve).toBe(20000); expect(r.est).toBe(1570);
-    expect(r.frei).toBe(4000 + 5000 - 0 - 1000 - 1570 - 500);
+    // finanzplan-5 (05.10., Kevin: kein Gesellschafterdarlehen): das Altfeld `darlehenAnUG` zählt nicht mehr — der Abschluss zieht nur Darlehen ab,
+    // die die Selbstständigkeit laut Darlehensliste im Plan noch auszahlt (hier keins). Vorher 5.930 → 6.930. Gegenprüfung 05.10.: die Annahme
+    // `darlehenKevin` hat keinen Geber im Plan mehr (außerhalb) — sie mindert den Abschluss nicht (finanzplan-5: −1.000).
+    expect(r.darlehen).toBe(0);
+    expect(r.frei).toBe(4000 + 5000 - 0 - 1570 - 500);
+    expect(rechneSelbst({ ...d, annahmen: { ...d.annahmen, darlehenKevin: 1000, darlehenRueckMonat: 5 } }).frei).toBe(4000 + 5000 - 1570 - 500);
+    expect(rechneSelbst({ ...d, darlehen: [{ id: 'x', name: 'x', geber: 'kdc', nehmer: 'ug', betrag: 1000, aus: 1, zurueck: 5 }] }).frei).toBe(4000 + 5000 - 1000 - 1570 - 500);
     expect(r.nachConsors).toBe(r.frei - 200);
   });
 });

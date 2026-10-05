@@ -71,7 +71,8 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'ug.einzahlungen': f('Einzahlungen', 'ug', 'Kontostand, frei verfügbar', { summe: true }),
   'ug.ausschuettung': f('Ausschüttung an Privat', 'ug', 'Auszahlungen, Kontostand; Privat folgt der Formel'),
   'ug.bjoern': f('Partnerdarlehen-Rate', 'ug', 'Auszahlungen, Kontostand; KD Ventures folgt der Formel'),
-  'ug.darlehen': f('Darlehen zurück', 'ug', 'Auszahlungen, Kontostand'),
+  'ug.darlehen': f('Darlehen ausgezahlt oder zurückgezahlt', 'ug', 'Auszahlungen, Kontostand (die Gegenseite folgt dem Handwert)'),
+  'ug.darlehenEin': f('Darlehen erhalten oder zurückerhalten', 'ug', 'Einzahlungen, Kontostand (die Gegenseite folgt dem Handwert)'),
   'ug.ustZahlung': f('USt an Finanzamt', 'ug', 'Auszahlungen, Kontostand'),
   'ug.auszahlungen': f('Auszahlungen', 'ug', 'Kontostand, frei verfügbar', { summe: true }),
   'ug.konto': f('Kontostand', 'ug', 'Frei verfügbar und alle Folgemonate', { stand: true }),
@@ -102,6 +103,8 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'kdv.abloesung': f('Partnerdarlehen-Ablösung', 'kdv', 'Kontostand, Partnerdarlehen offen'),
   'kdv.steuer': f('Ertragsteuer-Zahlung', 'kdv', 'Kontostand, Steuerrücklage'),
   'kdv.steuerRuecklage': f('Steuerrücklage', 'kdv', 'Frei verfügbar'),
+  'kdv.darlehenEin': f('Darlehen erhalten oder zurückerhalten', 'kdv', 'Kontostand (kein Ergebnis; die Gegenseite folgt dem Handwert)'),
+  'kdv.darlehenAus': f('Darlehen ausgezahlt oder zurückgezahlt', 'kdv', 'Kontostand (kein Ergebnis; die Gegenseite folgt dem Handwert)'),
   'kdv.konto': f('Kontostand KD Ventures', 'kdv', 'Frei verfügbar und alle Folgemonate', { stand: true }),
   'kdv.frei': f('Frei verfügbar KD Ventures', 'kdv', 'Kennzahlen, Ziele, Gruppe', { stand: true }),
   'kdv.darlehenOffen': f('Partnerdarlehen offen', 'kdv', 'Ziele (Partnerdarlehen) und alle Folgemonate', { stand: true }),
@@ -124,6 +127,8 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'kdc.steuer': f('Steuerzahlung (Einkommen- und Gewerbesteuer)', 'kdc', 'Auszahlungen, Kontostand, Steuerrücklage'),
   'kdc.entnahme': f('Entnahme an Privat', 'kdc', 'Auszahlungen, Kontostand; Privat folgt der Formel'),
   'kdc.ustZahlung': f('USt an Finanzamt', 'kdc', 'Auszahlungen, Kontostand'),
+  'kdc.darlehenEin': f('Darlehen erhalten oder zurückerhalten', 'kdc', 'Einzahlungen, Kontostand (die Gegenseite folgt dem Handwert)'),
+  'kdc.darlehenAus': f('Darlehen ausgezahlt oder zurückgezahlt', 'kdc', 'Auszahlungen, Kontostand (die Gegenseite folgt dem Handwert)'),
   'kdc.auszahlungen': f('Auszahlungen', 'kdc', 'Kontostand', { summe: true }),
   'kdc.konto': f('Kontostand', 'kdc', 'Frei verfügbar und alle Folgemonate', { stand: true }),
   'kdc.steuerRuecklage': f('Steuerrücklage', 'kdc', 'Frei verfügbar'),
@@ -139,6 +144,8 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'p.ausschuettungSteuer': f('Steuer auf die Ausschüttung', 'privat', 'Ausschüttung netto, Verfügbar'),
   'p.ausschuettung': f('Ausschüttung netto', 'privat', 'Verfügbar, Luft'),
   'p.entnahme': f('Entnahme aus der Selbstständigkeit', 'privat', 'Verfügbar, Luft'),
+  'p.darlehenEin': f('Darlehen zurückerhalten oder erhalten', 'privat', 'Verfügbar, Luft (die Gegenseite folgt dem Handwert)'),
+  'p.darlehenAus': f('Darlehen ausgezahlt oder zurückgezahlt', 'privat', 'Luft, Angespart (die Gegenseite folgt dem Handwert)'),
   'p.verfuegbar': f('Verfügbar', 'privat', 'Luft, Angespart', { summe: true }),
   'p.bedarf': f('Bedarf', 'privat', 'Luft, Angespart', { summe: true }),
   'p.schulden': f('Schulden', 'privat', 'Luft, Angespart', { summe: true }),
@@ -155,8 +162,8 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'ab.ein': f('Einnahmen 2026', 'abschluss', 'Gewinn, Steuer, frei nach Abschluss', { summe: true }),
   'ab.aus': f('Ausgaben 2026', 'abschluss', 'Gewinn, Steuer, frei nach Abschluss', { summe: true }),
   'ab.gewinn': f('Gewinn 2026', 'abschluss', 'zu versteuern, Einkommensteuer', { summe: true }),
-  'ab.zve': f('zu versteuern', 'abschluss', 'Einkommensteuer 2026'),
-  'ab.est': f('Einkommensteuer 2026', 'abschluss', 'frei nach Abschluss'),
+  'ab.zve': f('zu versteuern', 'abschluss', 'Einkommensteuer 2026 (Jan–Sep + Gehalt)'),
+  'ab.est': f('Einkommensteuer 2026', 'abschluss', 'Steuer 2026 (Rücklage, Zahlung 2027), frei nach Abschluss'),
   'ab.frei': f('Frei nach Abschluss', 'abschluss', 'nach Ablösung'),
   'ab.nachConsors': f('nach Ablösung', 'abschluss', 'Nur die Anzeige'),
 };
@@ -219,3 +226,38 @@ export function handwerteImPlan(plan: Record<string, number>): string[] {
 export const GRENZE_PLAN_ZELLEN = 20_000;
 /** Ein Zellen-Schlüssel: Kennung (ohne Doppelpunkt/Leerzeichen) + „:“ + Monat (0 = ohne Monat). */
 export const ZELLE_MUSTER = /^[^:\s]{1,160}:(\d{1,3})$/;
+
+// ── Handwerte aus dem Stand vor finanzplan-5 (Gegenprüfung 05.10., Fund 5) ─────────────────────────────────────────────
+// Mit finanzplan-5 haben einige gerechnete Größen eine NEUE Bedeutung bekommen: der Abschluss rechnet „zu versteuern“ und die Einkommensteuer mit dem
+// Gehalt (eine Progression), die Steuer auf Jan–Sep geht in die Steuer 2026 (Rücklage, Zahlung 2027), und die Steuerwerte der Selbstständigkeit sind
+// die Mehrsteuer über der Lohnsteuer (Jahr 2026 inkl. Jan–Sep, eigener Gewerbesteuer-Vortrag, § 35 mit Höchstbetrag). Ein Handwert, der VORHER
+// eingetragen wurde, meinte die alte Größe — still mit der neuen Bedeutung anwenden wäre falsch (Beispiel: ab.est 50 € senkte die Steuer 2026 um 860 €).
+// Darum: Dokumente ohne `kernStand` (= vor finanzplan-5) legen diese Handwerte beim Lesen in `handAlt` (Wert bleibt, gerechnet wird damit nicht),
+// bis jemand in Privat › Selbstständigkeit „übernehmen“ (wieder in den Plan) oder „verwerfen“ klickt. Optional (Kompatibilitätsmodus).
+
+/** Stand der Handwert-Bedeutungen (finanzplan-5). Fehlt `kernStand` im Dokument, stammt es von vorher. */
+export const KERN_STAND = 5;
+/** Kennungen, deren Bedeutung sich mit finanzplan-5 geändert hat. */
+export const BEDEUTUNG_NEU_FP5: readonly string[] = ['ab.zve', 'ab.est', 'kdc.est', 'kdc.soli', 'kdc.gewst', 'kdc.anrechnung', 'kdc.verlustvortrag', 'kdc.steuer', 'kdc.steuerRuecklage'];
+/** Ist dieser Zellen-Schlüssel (auch `<kennung>@<szenario>:<monat>`) ein Handwert mit geänderter Bedeutung? */
+export const bedeutungNeu = (k: string): boolean => { const t = zelleTeile(k); return !!t && BEDEUTUNG_NEU_FP5.includes(t.id); };
+/**
+ * Umzug beim Lesen (pruefeDokument): ohne `kernStand` wandern die Handwerte mit geänderter Bedeutung aus `plan` nach `handAlt` (gleicher Schlüssel,
+ * gleicher Wert); mit `kernStand` bleibt `handAlt`, wie es ist (nur endliche Zahlen, nur bekannte Schlüssel). Rein — neue Objekte.
+ */
+export function handAltUmzug(plan: Record<string, number>, kernStand: unknown, handAlt: unknown): { plan: Record<string, number>; handAlt?: Record<string, number> } {
+  const alt: Record<string, number> = {};
+  if (handAlt && typeof handAlt === 'object' && !Array.isArray(handAlt)) {
+    for (const [k, v] of Object.entries(handAlt as Record<string, unknown>)) if (typeof v === 'number' && Number.isFinite(v) && ZELLE_MUSTER.test(k) && bedeutungNeu(k)) alt[k] = v;
+  }
+  let neu = plan;
+  if (kernStand !== KERN_STAND) {
+    for (const [k, v] of Object.entries(plan)) {
+      if (!bedeutungNeu(k)) continue;
+      if (neu === plan) neu = { ...plan };
+      delete neu[k];
+      if (typeof v === 'number' && Number.isFinite(v)) alt[k] = v;
+    }
+  }
+  return { plan: neu, ...(Object.keys(alt).length ? { handAlt: alt } : {}) };
+}

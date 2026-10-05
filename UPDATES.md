@@ -4,6 +4,52 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Finanzplanung: Selbstständigkeit zu Privat · EINE Einkommensteuer · Darlehen (05.10.2026, nur lokal — Branches `finanzplan-5` + `finanzplan-5b`)
+
+> **Rückweg nur mit Sicherung von vor dem Upload** — sonst gehen Darlehen, Gehalt Jan–Sep (1 und 2), Vorauszahlungen 2026, Veranlagung/Pauschbetrag
+> und die Markierung alter Handwerte (`kernStand`/`handAlt`) beim ERSTEN Schreiben des alten Stands verloren (sein Säuberer kennt die Felder nicht).
+> Alte Handwerte, die der neue Stand schon in `handAlt` gelegt hat, sind nach dem Rückweg ebenfalls weg. Also: vor dem Upload den Finanzplan des
+> Haushalts sichern (Backup der Datei `finanzen-plan--<haushalt>`); im Rückweg-Fall die Sicherung zurückspielen statt mit dem alten Stand weiterzuschreiben.
+> Dokumentierter Fall: tests/finanzplan-gegenpruefung.test.ts › „f) Fund 6: Rückweg“.
+
+**Nachbesserung finanzplan-5b (Gegenprüfung 05.10., Kevin: „Achte bei der Finanzplanung nur, dass wir das wirklich sauber machen.“)** — 13 Funde
+behoben, Liste mit Status: FINANZPLANUNG_JETZT.md › „Gegenprüfung finanzplan-5“. Spürbar:
+- **Altes Gesellschafterdarlehen** (`annahmen.darlehenKevin`): Geber „außerhalb des Plans“ (wie vor finanzplan-5) — es fließt NICHT mehr aus der
+  Selbstständigkeit, wirkt nicht auf Privat; ein Business-Konto kann darüber keine private Kasse mehr bewegen. Hinweis in der Annahmen-Karte:
+  „Nur eintragen, wenn es ein echtes Darlehen gibt — sonst 0“.
+- **Handwerte auf Darlehen:** die Gegenseite folgt dem Handwert (anteilig je Darlehen), nicht mehr der Formel.
+- **Alte Handwerte** auf `ab.est`/`ab.zve` und den Steuerwerten der Selbstständigkeit (`kdc.est/soli/gewst/anrechnung/verlustvortrag/steuer/
+  steuerRuecklage`) aus der Zeit vor finanzplan-5 werden beim ersten Lesen nicht mehr angewendet, sondern unter Privat › Selbstständigkeit mit
+  „übernehmen“/„verwerfen“ angezeigt (Einzelklick mit Rückfrage). Kevin: dort entscheiden.
+- **Business-Sicht:** Protokoll ohne angehängte private Einträge; ganze gemischte Objekte (Annahmen, Treiber, Planszenarien, Listen) aus Business
+  nicht ersetzbar (403); zusätzlich prüft der Schreibweg, dass sich am privaten Teil nichts ändert (403). Darlehen mit privater Seite heißen dort
+  „Darlehen (privat)“. Kennzahlen je Bereich mit dessen Planszenario.
+- **Steuer:** Gewerbesteuer-Verlustvortrag getrennt auch ohne Gehalt; § 35-Anrechnung mit dem gesetzlichen Ermäßigungshöchstbetrag (kann die
+  Anrechnung senken, wenn Vorsorge/Sonderausgaben das Gehalt steuerfrei machen). Karte „Einkommensteuer gemeinsam“ rechnet jetzt GENAU wie Rücklage
+  und Zahlung (mit Handwerten und Vorauszahlungen). Neues Feld im Abschluss: Gehalt 2 brutto Jan–Sep 2026 (zählt bei Zusammenveranlagung).
+- **Darlehen:** Monate außerhalb des Plans → 400 mit Meldung (vorher still auf den letzten Planmonat gezogen).
+- Neue Felder (optional): `kernStand`, `handAlt`, `selbst.lohn2VorPlan`, Protokoll `eintrag`. Keine neue Route.
+
+Kevin 05.10.: „Selbstständigkeit und Privat können zusammengeführt werden … bei Business nur noch KD Ventures und MAKE Innovation GmbH.“ —
+„Es gibt kein Gesellschafterdarlehen, außer ungefähr 1.500 € privat in der KD Ventures.“ Details und Vorher → Nachher: FINANZPLANUNG_JETZT.md › „finanzplan-5“.
+- **Sicht:** Die Selbstständigkeit ist eine Unterseite von Privat; Business (Server und Oberfläche) zeigt nur MAKE und KD Ventures — keine
+  kdc-/Abschluss-Werte, -Zeilen, -Bausteine, -Steuern, keine Entnahme; Schreiben dorthin aus Business → 403; Business-Kennzahlen nur der Gesellschaften.
+- **Einkommensteuer:** EINE je Jahr über Gewinn der Selbstständigkeit + Gehalt 1 (Progression, Mehrsteuer über der Lohnsteuer); 2026 = Abschluss
+  Jan–Sep + Okt–Dez in einem Jahr, Zahlung im Folgejahr. Neue Felder: Gehälter einbeziehen, Veranlagung, Pauschbetrag; im Abschluss Gehalt Jan–Sep
+  und schon bezahlte Vorauszahlungen 2026.
+- **Darlehen:** Liste mit Geber/Nehmer (Schulden › Darlehen), Rückzahlung kommt beim Geber an; das alte Gesellschafterdarlehen hat seit
+  finanzplan-5b den Geber „außerhalb des Plans“ (finanzplan-5 hatte die Selbstständigkeit als Geber).
+- **Spürbar nach dem Upload:** In Kevins Plan sinken „frei Selbstständigkeit“, „frei gesamt“ und „Gruppe“ (die Steuer auf Jan–Sep und die
+  Progression mit dem Gehalt stehen jetzt in der Rücklage), die Steuerzahlung Juni 27 steigt entsprechend. Die Selbstständigkeit steht unter
+  Privat › Finanzplanung, nicht mehr unter Business. Kevin trägt danach ein: Darlehen 1.500 € (Privat → KD Ventures) unter Schulden › „+ Darlehen“;
+  „Gesellschafterdarlehen an MAKE (alt)“ auf 0, falls gesetzt; Gehalt Jan–Sep 2026 und schon bezahlte Vorauszahlungen 2026 im Abschluss.
+- **Keine Datenänderung beim Upload**, keine Umgebungsvariable, keine neue Route. Neue Felder alle optional.
+- **Rückweg (nur mit Sicherung, siehe Kasten oben):** Commits zurücknehmen UND die Sicherung von vor dem Upload zurückspielen. Ohne Sicherung: der
+  alte Stand liest Dokumente mit den neuen Feldern (`darlehen`, `selbst.lohnVorPlan`, `selbst.lohn2VorPlan`, `selbst.estVorausgezahlt`,
+  `steuern.kdc.param.lohnEinbeziehen/veranlagung/werbungskosten`, `kernStand`, `handAlt`) ohne Fehler, lässt sie aber beim ersten Schreiben fallen —
+  Darlehen, Gehalt Jan–Sep, Vorauszahlungen und Veranlagung sind dann weg, alte Handwerte in `handAlt` ebenso. Er rechnet wieder getrennt (ESt ohne
+  Gehalt, Abschluss für sich) und zeigt die Selbstständigkeit unter Business. Übrige Handwerte und Szenarien bleiben (gleiche Kennungen).
+
 ## Routen-Register + Zugangs-Wächter (05.10.2026, nur lokal — Branch `routen`, Sicherheits-Audit 05.10.)
 
 Kevin 04./05.10.: „alle Standards der DSGVO, damit wir Kundendaten aufnehmen können“ — Trennung serverseitig. Das Audit fand 89 von

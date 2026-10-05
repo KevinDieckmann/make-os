@@ -26,15 +26,21 @@
 //   /steuern/ug/zeilen/kst/satz   Welche Steuern gelten (02.10., lib/finanzen/steuern.ts) — wird nach jeder Änderung bereinigt
 //   /planszenarien/id=ps1/annahmen/steuern/ug/…   dieselben Felder nur für ein Szenario (Überlagerung, ebenso bereinigt)
 //   /schwellen/runwayWarnMonate   eigene Ampel-Schwellen (02.10., lib/finanzen/schwellen.ts)
-// Nicht änderbar: version, stand, monate, historie, meta, protokoll.
+//   /darlehen/-, /darlehen/id=d1/betrag   Darlehen zwischen den Einheiten (05.10., lib/finanzen/darlehen.ts) — nach jeder Änderung bereinigt;
+//                              Monate außerhalb des Plans → 400 (nie geklemmt)
+//   /handAlt/ab.est:0          entfernen = Handwert aus dem Stand vor finanzplan-5 verwerfen (Gegenprüfung 05.10.); „übernehmen“ =
+//                              /plan/ab.est:0 setzen — jedes Schreiben auf /plan/<k> entfernt handAlt[k]; setzen nur als Rückgängig
+// Nicht änderbar: version, stand, monate, historie, meta, protokoll, kernStand.
+// Nur { pfad, neu } — JSON-Patch-Schritte mit `op`/`from` (move, copy …) gibt es nicht und werden abgelehnt (400).
 
 import type { Aenderung, FinanzDaten, Szenario } from '@/lib/finanzen/rechenkern';
 import { lerneRegel } from '@/lib/finanzen/rechenkern';
 import { pruefePlanszenarien } from '@/lib/finanzen/szenarien';
 import { pruefeSteuern } from '@/lib/finanzen/steuern';
 import { pruefeSchwellen } from '@/lib/finanzen/schwellen';
+import { darlehenMonatFehler, pruefeDarlehen } from '@/lib/finanzen/darlehen';
 import { KAL, istUnterseite } from './hilfen';
-import { GRENZE_PLAN_ZELLEN, ZELLE_MUSTER, zelleTeile, HAND_FELDER } from '@/lib/finanzen/handwerte';
+import { GRENZE_PLAN_ZELLEN, ZELLE_MUSTER, zelleTeile, HAND_FELDER, KERN_STAND, handAltUmzug, bedeutungNeu } from '@/lib/finanzen/handwerte';
 
 import { localDay } from '@/lib/zeit';
 export interface Operation {
@@ -51,8 +57,8 @@ export const MAX_OPS = 500;
 const MAX_TEXT = 4000;
 const MAX_WERT_JSON = 40_000;
 const PROTOKOLL_MAX = 500;
-const GESPERRT = new Set(['version', 'stand', 'monate', 'historie', 'meta', 'protokoll']);
-const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan', 'bereiche', 'steuern', 'schwellen']);
+const GESPERRT = new Set(['version', 'stand', 'monate', 'historie', 'meta', 'protokoll', 'kernStand']);
+const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan', 'bereiche', 'steuern', 'schwellen', 'darlehen', 'handAlt']);
 const GEFAEHRLICH = new Set(['__proto__', 'constructor', 'prototype']);
 
 export class OperationUngueltig extends Error {}
@@ -160,6 +166,8 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
   let nachladen = false;
   for (const op of ops) {
     if (!op || typeof op !== 'object') throw new OperationUngueltig('Schritt unbrauchbar.');
+    // Kein JSON-Patch: move/copy würden Werte von einem Pfad an einen anderen tragen (Gegenprüfung 05.10.) — hier gibt es nur { pfad, neu }.
+    if ('op' in op || 'from' in op) throw new OperationUngueltig('Nur Schritte { pfad, neu } — „op“/„from“ (move, copy …) gibt es nicht.');
     const teile = pfadTeile(op.pfad);
     pruefeWert(op.neu, op.pfad);
     const feld = typeof op.feld === 'string' && op.feld.trim() ? op.feld.trim().slice(0, 160) : op.pfad;
@@ -178,6 +186,10 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(op.alt), neu: `${op.neu} · Regel gemerkt, ${n} Buchungen angepasst`, pfad: op.pfad });
       continue;
     }
+    // Alte Handwerte (vor finanzplan-5): verwerfen = /handAlt/<schlüssel> entfernen, übernehmen = /plan/<schlüssel> setzen. Setzen geht nur für
+    // Rückgängig (eine Zahl auf einem Schlüssel mit geänderter Bedeutung) — gerechnet wird damit nie.
+    if (teile[0] === 'handAlt' && (teile.length !== 2 || (op.neu !== undefined && (typeof op.neu !== 'number' || !Number.isFinite(op.neu) || !ZELLE_MUSTER.test(teile[1]) || !bedeutungNeu(teile[1]) || teile[1] in (d.plan ?? {})))))
+      throw new OperationUngueltig('Alte Handwerte: /handAlt/<schlüssel> entfernen (verwerfen) — übernehmen über /plan/<schlüssel>.');
     if (teile[0] === 'aktiv') {
       if (teile.length !== 1 || typeof op.neu !== 'string' || !d.szenarien.some(s => s.id === op.neu)) throw new OperationUngueltig('Dieses Szenario gibt es nicht.');
     }
@@ -214,12 +226,15 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
     const alt = lies(d, teile);
     if (alt === undefined && op.neu === undefined) continue; // nichts zu tun, nichts zu protokollieren
     setze(d as unknown as Beliebig, teile, op.neu);
-    // Wer hat diese Planzelle zuletzt angefasst?
+    // Wer hat diese Planzelle zuletzt angefasst? Ein neuer Wert (oder Zurücksetzen) ersetzt auch einen alten Handwert dieses Schlüssels.
+    if (teile[0] === 'plan' && teile.length === 2 && d.handAlt && teile[1] in d.handAlt) { delete d.handAlt[teile[1]]; if (!Object.keys(d.handAlt).length) delete d.handAlt; }
     if (teile[0] === 'plan' && teile.length === 2) {
       if (op.neu === undefined) { delete d.meta[teile[1]]; meta[teile[1]] = null; }
       else { d.meta[teile[1]] = { wer: person, wann: jetzt }; meta[teile[1]] = { wer: person, wann: jetzt }; }
     }
-    protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt !== undefined ? alt : op.alt), neu: op.neu === undefined ? 'zurückgesetzt' : kurz(op.neu), pfad: op.pfad });
+    // Angehängt: die Kennung des neuen Eintrags mitschreiben (die Business-Sicht prüft damit Einheit/Bereich des Eintrags, nicht nur die Liste).
+    const eintrag = teile[teile.length - 1] === '-' && istObjekt(op.neu) && typeof op.neu.id === 'string' && op.neu.id ? op.neu.id.slice(0, 80) : undefined;
+    protokoll.push({ wer: person, wann: jetzt, feld, alt: kurz(alt !== undefined ? alt : op.alt), neu: op.neu === undefined ? 'zurückgesetzt' : kurz(op.neu), pfad: op.pfad, ...(eintrag ? { eintrag } : {}) });
   }
   // Zellen-Grenze (nie abschneiden, ablehnen): wer über die Grenze wächst, bekommt 413 — Verkleinern geht immer.
   const zellen = Object.keys(d.plan ?? {}).length;
@@ -233,6 +248,21 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
   // Steuer-Überlagerungen der Szenarien (`annahmen.steuern`) ebenso bereinigen.
   if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/planszenarien') && o.pfad.includes('/annahmen/steuern'))) {
     for (const ps of d.planszenarien ?? []) { if (!ps.annahmen?.steuern) continue; const st = pruefeSteuern(ps.annahmen.steuern); if (st) ps.annahmen.steuern = st; else delete ps.annahmen.steuern; }
+  }
+  // Darlehen bereinigen (Seiten, Monate, Beträge); ein unbrauchbares neues Darlehen wird abgelehnt statt still verworfen.
+  if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/darlehen'))) {
+    const roh = Array.isArray(d.darlehen) ? d.darlehen : [];
+    const sauber = pruefeDarlehen(roh, d.monate.length) ?? [];
+    if (sauber.length !== roh.length) throw new OperationUngueltig('Ein Darlehen braucht eine Kennung, zwei verschiedene Seiten (Geber und Nehmer) und eine eindeutige Kennung.');
+    // Monate außerhalb des Plans: ablehnen statt klemmen (Gegenprüfung 05.10., Fund 9).
+    for (const l of sauber) { const f = darlehenMonatFehler(l, d.monate.length); if (f) throw new OperationUngueltig(f); }
+    if (sauber.length) d.darlehen = sauber; else delete d.darlehen;
+  }
+  if (d.handAlt && !Object.keys(d.handAlt).length) delete d.handAlt;
+  // Pflicht-Annahmen bleiben Zahlen (ein Entfernen würde das Dokument beim nächsten Lesen unbrauchbar machen).
+  if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/annahmen'))) {
+    const fehlt = PFLICHT_ANNAHMEN.find(k => !zahl((d.annahmen as unknown as Record<string, unknown>)?.[k]));
+    if (fehlt) throw new OperationUngueltig(`annahmen.${fehlt} muss eine Zahl bleiben.`);
   }
   // Die Netto-Tabelle muss rechenbar bleiben: mindestens zwei Paare, Brutto aufsteigend.
   if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/annahmen/nettoTabelle')) && !nettoTabelleOk(d.annahmen.nettoTabelle)) throw new OperationUngueltig('Die Netto-Tabelle braucht mindestens zwei Paare, Brutto von unten nach oben.');
@@ -334,6 +364,11 @@ export function pruefeDokument(roh: unknown): Pruefung {
   }
   const s = objekt(roh.selbst);
   const c = objekt(roh.check);
+  // Darlehen: Monate außerhalb des Plans → Fehler (Gegenprüfung 05.10., Fund 9 — nie still klemmen).
+  const darlehen = pruefeDarlehen(roh.darlehen, monate.length);
+  for (const l of darlehen ?? []) { const fl = darlehenMonatFehler(l, monate.length); if (fl) return { ok: false, fehler: `darlehen: ${fl}` }; }
+  // Handwerte aus dem Stand vor finanzplan-5 (ohne `kernStand`) mit geänderter Bedeutung → `handAlt` (Gegenprüfung 05.10., Fund 5).
+  const hw = handAltUmzug(objekt(roh.plan) as Record<string, number>, roh.kernStand, roh.handAlt);
   const f = objekt(roh.fokus);
   const dokument: FinanzDaten = {
     version: 3,
@@ -342,6 +377,9 @@ export function pruefeDokument(roh: unknown): Pruefung {
     ...(bereiche.privat || bereiche.business ? { bereiche } : {}),
     ...(pruefeSteuern(roh.steuern) ? { steuern: pruefeSteuern(roh.steuern) } : {}),
     ...(pruefeSchwellen(roh.schwellen) ? { schwellen: pruefeSchwellen(roh.schwellen) } : {}),
+    ...(darlehen ? { darlehen } : {}),
+    kernStand: KERN_STAND,
+    ...(hw.handAlt ? { handAlt: hw.handAlt } : {}),
     schulden: liste(roh.schulden),
     meta: objekt(roh.meta) as FinanzDaten['meta'],
     abschluesse: liste(roh.abschluesse),
@@ -356,10 +394,14 @@ export function pruefeDokument(roh: unknown): Pruefung {
     annahmen: annahmenOhneAlt(a),
     sachkosten: liste(roh.sachkosten), privatEinnahmen: liste(roh.privatEinnahmen), privatBudget: liste(roh.privatBudget), privatSchulden: liste(roh.privatSchulden),
     szenarien,
-    selbst: { posten: liste(s.posten), vorsorge: zahl(s.vorsorge) ? s.vorsorge : 0, sonderausgaben: zahl(s.sonderausgaben) ? s.sonderausgaben : 0, sicherheit: zahl(s.sicherheit) ? s.sicherheit : 0, darlehenAnUG: zahl(s.darlehenAnUG) ? s.darlehenAnUG : 0, consorsAbloesung: zahl(s.consorsAbloesung) ? s.consorsAbloesung : 0, kontoStart: zahl(s.kontoStart) ? s.kontoStart : 0 },
+    selbst: { posten: liste(s.posten), vorsorge: zahl(s.vorsorge) ? s.vorsorge : 0, sonderausgaben: zahl(s.sonderausgaben) ? s.sonderausgaben : 0, sicherheit: zahl(s.sicherheit) ? s.sicherheit : 0, darlehenAnUG: zahl(s.darlehenAnUG) ? s.darlehenAnUG : 0, consorsAbloesung: zahl(s.consorsAbloesung) ? s.consorsAbloesung : 0, kontoStart: zahl(s.kontoStart) ? s.kontoStart : 0,
+      // 05.10. (optional): Arbeitslohn Jan–Sep 2026 und schon bezahlte Vorauszahlungen 2026 — gemeinsame Einkommensteuer.
+      ...(zahl(s.lohnVorPlan) ? { lohnVorPlan: Math.max(0, s.lohnVorPlan) } : {}), ...(zahl(s.estVorausgezahlt) ? { estVorausgezahlt: Math.max(0, s.estVorausgezahlt) } : {}),
+      // Gegenprüfung 05.10. (optional): Gehalt 2 brutto Jan–Sep 2026 — zählt bei Zusammenveranlagung.
+      ...(zahl(s.lohn2VorPlan) ? { lohn2VorPlan: Math.max(0, s.lohn2VorPlan) } : {}) },
     posten: liste(roh.posten),
     fokus: { saetze: liste<string>(f.saetze), regeln: liste<string>(f.regeln), schritte: liste(f.schritte), ...(typeof f.entscheidung === 'string' ? { entscheidung: f.entscheidung } : {}) },
-    plan: objekt(roh.plan) as Record<string, number>, ist: objekt(roh.ist) as Record<string, number>,
+    plan: hw.plan, ist: objekt(roh.ist) as Record<string, number>,
     protokoll: liste(roh.protokoll),
   };
   return { ok: true, dokument };
@@ -383,7 +425,7 @@ export function monatsLabels(vonJahr: number, vonMonat: number, anzahl: number):
  */
 export function leeresDokument(heute: string): FinanzDaten {
   return {
-    version: 3, stand: heute, monate: monatsLabels(2026, 10, 27), aktiv: 'basis', planszenarien: [], arbeitsplan: null,
+    version: 3, stand: heute, monate: monatsLabels(2026, 10, 27), aktiv: 'basis', planszenarien: [], arbeitsplan: null, kernStand: KERN_STAND,
     schulden: [], meta: {}, abschluesse: [], historie: monatsLabels(2026, 1, 9),
     einstellungen: { heute, reserveMonate: 1 },
     buchungen: [], regeln: {}, ziele: [], check: { punkte: CHECK_PUNKTE, eintraege: [] }, notizen: {},

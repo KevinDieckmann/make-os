@@ -18,8 +18,8 @@ Startbestand `finanzen-plan.json` (🔒 echte Zahlen, nie ins Repo — kommt per
 |---|---|---|
 | Lage | Lage | Frei verfügbar diesen Monat · Runway · Ziele im Plan — und was jetzt zu entscheiden ist (mit Sprung ins Feld) |
 | Planen | Szenarien bauen · Treiber, Annahmen & Steuern | Szenario = Basis + Bausteine + Annahmen; Regler; Vergleich; Arbeitsplan |
-| Privat | Privat | Das Privat-Blatt (IST-Historie + Plan) |
-| Business | MAKE Innovation GmbH · KD Ventures · Selbstständigkeit | Die Gesellschaften getrennt |
+| Privat | Privat · Selbstständigkeit (seit 05.10.) | Das Privat-Blatt (IST-Historie + Plan); die Selbstständigkeit mit der gemeinsamen Einkommensteuer |
+| Business | MAKE Innovation GmbH · KD Ventures | Die Gesellschaften getrennt |
 | Gesamt | Gesamt · Entwicklung · Geldfluss | Übergänge (Gehalt, Ausschüttung), Mindestumsatz, Steuerrücklage, Gruppe je Monat |
 | Buchungen & Check | Buchungen · Budget · Wochen-Check · Zu erledigen · Kalender & Verträge · Schulden | IST, Tempo, Verpflichtungen, Rhythmus |
 | Ziele & Töpfe | Ziele · Töpfe MAKE | Ziele mit Tempo, Profit-First-Töpfe |
@@ -269,7 +269,7 @@ selber bearbeiten kann. Jede Zahl. Nur die Formeln sind im Hintergrund immer har
   Folgejahr, zurücksetzen und Rückgängig, Summe mit Abweichung, KD Ventures, Abschluss, Operationen-Prüfung, 409/413 im Schreibweg, alte Dokumente,
   Kennungen ohne Personennamen und ohne Kollision mit Planzeilen-Präfixen).
 
-## Sichtregel 05.10. (ersetzt „Inhaber sieht in Business alles“ vom 04.10. spät)
+## Sichtregel 05.10. (ersetzt „Inhaber sieht in Business alles“ vom 04.10. spät; seit finanzplan-5 gehört die Selbstständigkeit zu Privat)
 
 Kevin: „Bei Business kann ich niemals auf Privat gehen … Privat kann Business sehen, aufrufen und bearbeiten, aber nicht umgekehrt. Im
 Business-Bereich kann man nie Privat sehen.“
@@ -280,6 +280,8 @@ Business-Bereich kann man nie Privat sehen.“
 - **Rechte bleiben zusätzlich:** ein Konto mit `finanzRecht: 'business'` bekommt nie Privates — auch nicht mit `?sicht=privat`.
 - Getrennte Einstellungen je Bereich (Szenario, Ansicht, Kennzahlen) bleiben. Wächter: `tests/finanzplan-sicht.test.ts`
   („Business-Sicht enthält nie Privates — für jede Person“, „Privat-Sicht enthält Business“).
+- **finanzplan-5 (05.10.):** Business = nur MAKE Innovation GmbH und KD Ventures; die Selbstständigkeit gehört zu Privat (Wächter-Merkmale der
+  Selbstständigkeit in `tests/finanzplan-sicht.test.ts`, Abschnitt „finanzplan-5“ unten).
 
 ## Formel-Prüfung 05.10. (Kevin: „alle Formeln wirklich überprüfen — wenn ich reingehe, wird nicht immer richtig gerechnet“)
 
@@ -310,16 +312,182 @@ Jahre; USt mit einem Monat Verzug ans Finanzamt; Retainer-Verzug; Zahlungsziel d
 doppelt; Szenario-Handwert gilt nur im Szenario; Jahreskosten-Topf; Netto-Tabelle (Interpolation, darüber Fortschreibung); Abschluss 2026.
 Business-Index-Quellen: der Business-Index liest den Finanzplan nicht (eigene Quellen) — nichts zu prüfen.
 
-**Verdächtig, aber ohne Kevins Wort nicht geändert (Fragen):**
-- Ankermandat ohne USt: Einzahlungen und USt rechnen das Ankermandat netto ohne USt (Retainer/Provision/Events mit). Absicht (Kunde ohne
-  deutsche USt) oder Fehler?
-- Gesellschafterdarlehen: kommt in Okt 26 in die GmbH (mit dem Stammkapital), die Rückzahlung (`darlehenRueckMonat`) verlässt die GmbH, kommt
-  aber nirgends an (weder Privat noch Selbstständigkeit; `selbst.darlehenAnUG` existiert getrennt). Wohin soll die Rückzahlung fließen?
-- Abschluss 2026 der Selbstständigkeit und Monatsachse sind getrennt: die ESt 2026 auf Jan–Sep (Abschluss) wird in der Monatsachse nie gezahlt,
-  und die ESt auf Okt–Dez rechnet ohne den Gewinn Jan–Sep (Progression). Zusammenführen?
-- Selbstständigkeit als Freiberuf? Dann fiele die Gewerbesteuer weg (Schalter in „Welche Steuern gelten?“), heute Vorgabe an.
-- Vorsteuer auf Kosten wird nicht abgezogen (USt-Zahllast = volle USt auf Eingänge) — gewollte Vereinfachung?
-- Runway Privat zählt Sparen als ausgegeben; liegen die Sparkonten in den Kontoständen, ist der Runway zu kurz.
+**Verdächtig, aber ohne Kevins Wort nicht geändert (Fragen) — Kevins Antworten 05.10. (umgesetzt in „finanzplan-5“ unten):**
+- Ankermandat ohne USt: Einzahlungen und USt rechnen das Ankermandat netto ohne USt (Retainer/Provision/Events mit). → **Absicht** (Kevin), bleibt so;
+  Kommentar im Kern, Prüfstand-Fall „Ankermandat ohne USt ist Absicht“, Grund klärt Kevin mit Jörg (Fragen unten).
+- Gesellschafterdarlehen: kam in Okt 26 in die GmbH, die Rückzahlung verschwand. → **Es gibt kein Gesellschafterdarlehen** (Kevin), außer ca. 1.500 €
+  privat in der KD Ventures. Darlehen jetzt allgemein mit Geber und Nehmer, die Rückzahlung kommt beim Geber an (unten).
+- Abschluss 2026 und Monatsachse getrennt. → **Zusammengeführt**: EIN Steuerjahr 2026 (unten).
+- Selbstständigkeit als Freiberuf? → Frage an Jörg (unten); Schalter bleibt.
+- Vorsteuer auf Kosten wird nicht abgezogen. → **Kevin klärt mit Jörg**, nichts geändert.
+- Runway Privat zählt Sparen als ausgegeben. → Frage an Jörg/Kevin (unten), nichts geändert.
+
+## finanzplan-5 (05.10.): Selbstständigkeit gehört zu Privat · EINE Einkommensteuer · Darlehen sauber
+
+Kevin 05.10.: „Selbstständigkeit und Privat können zusammengeführt werden. Das wird am Ende ja auch zusammen gerechnet und besteuert. Somit wäre bei
+Business nur noch KD Ventures und MAKE Innovation GmbH.“ — „Es gibt kein Gesellschafterdarlehen, außer ungefähr 1.500 € privat in der KD Ventures.
+Die gebe ich Privat/Selbstständigkeit rein.“ — Ankermandat ohne USt ist Absicht. — Vorsteuer klärt Kevin mit Jörg. — „Achte bei der Finanzplanung
+nur, dass wir das wirklich sauber machen.“
+
+### 1. Selbstständigkeit → Privat (Sicht, Navigation, Server)
+- **Navigation:** Privat = Privat · Selbstständigkeit; Business = MAKE Innovation GmbH · KD Ventures (`BEREICHE`, `NUR_PRIVAT_UNTERSEITEN` + `selbst`).
+  Die Unterseite `?u=selbst` im Business-Bereich fällt auf die Lage zurück.
+- **Server (`lib/finanzen/plan/sicht.ts`):** Business = nur `ug`/`kdv`. `businessSicht` liefert keine Werte `kdc.*`/`ab.*` (Plan, IST, Notizen, Meta),
+  keinen Abschluss (`selbst` leer), keine Sachkosten-Zeilen/Posten/Buchungen/Schulden der Selbstständigkeit, keine kdc-Bausteine, kein Steuerprofil
+  `kdc`/`privat` (auch nicht in Szenario-Überlagerungen), keine Entnahme-Regel. Schreiben aus Business auf `/selbst/…`, `/plan/kdc.*`, `/plan/ab.*`,
+  `/steuern/kdc/…`, `…/annahmen/entnahme`, kdc-Bausteine, Selbstständigkeits-Zeilen → 403. `finanzRecht: 'business'`-Konten sehen die
+  Selbstständigkeit nie. Kennzahlen `?nur=kennzahlen&sicht=business`: ohne `kdc*`, „frei jetzt“ und „Steuerrücklage“ nur der Gesellschaften
+  (`kennzahlenVon(d, 'business')`, vorher steckten dort Privat- und Selbstständigkeits-Anteile drin).
+- **Oberfläche Business:** Lage, Gesamt, Baukasten, Vergleich, Treiber & Steuern, Annahmen, Schulden/Posten-Auswahl, Termine („Nächste 14 Tage“)
+  ohne Selbstständigkeit; „Was jetzt zu entscheiden ist“ nennt nur die Ertragsteuer der Gesellschaften (`entscheidungen(…, business)`,
+  `aw.steuer.naechsteZahlungBusiness`/`ruecklageBusiness`, `aw.frei.business`). Privat-Lage zeigt zusätzlich „mit Selbstständigkeit“ (`aw.frei.privatBereich`).
+- **Handwerte und Kennungen bleiben** (`kdc.*`, `ab.*`, Szenario-Schlüssel `kdc.…@<sz>:<m>`): kein Umzug der Daten, nur die Sicht ändert sich.
+  Migrationstest `tests/finanzplan-umzug-selbst.test.ts` mit einem Alt-Plan (Handwerte allgemein und je Szenario, Abschluss-Handwert, Bereiche,
+  Steuerprofile, Entnahme, Sachkosten-Zeile, Altdarlehen): nichts geht beim Lesen/Schreiben verloren; gegen den Kern von `entwicklung` (4efe90a2,
+  `tests/fixtures/finanzplan5-vorher.json`) rechnen MAKE, KD Ventures und Privat exakt gleich, ohne die drei gewollten Änderungen auch die
+  Selbstständigkeit bit-genau.
+
+### 2. EINE Einkommensteuer je Jahr (Privat + Selbstständigkeit)
+- **Lohneinkünfte** (`lohnJahre` im Kern): Gehalt 1 brutto aus der GmbH (`ug.kevin`, mit Handwert) + neu `selbst.lohnVorPlan` (Gehalt Jan–Sep 2026),
+  je Person minus Werbungskosten-Pauschbetrag (Vorgabe 1.230 €). Bei Zusammenveranlagung auch Gehalt 2 (vor der GmbH über die Selbstständigkeit).
+- **Formel (Differenzmethode, `jahresSteuer` in `lib/finanzen/ertragsteuer.ts`):** ESt = Tarif(Gewinn + Lohn − Verlustvortrag − Vorsorge − Sonderausgaben)
+  − Tarif(Lohn − Vorsorge − Sonderausgaben). Die Lohnsteuer steckt in der Netto-Tabelle (Näherung: Lohnsteuer = Tarif auf den Lohn allein); der Plan
+  zahlt aus dem Konto der Selbstständigkeit nur die Mehrsteuer. Ein Verlust mindert so auch die Steuer aufs Gehalt (Erstattung im Folgejahr); was der
+  Lohn nicht aufnimmt, wird Verlustvortrag (die Gewerbesteuer hat einen eigenen Vortrag nur aus dem Gewinn). Gewerbesteuer nur auf den Gewinn
+  (Freibetrag 24.500 €), Anrechnung § 35 höchstens der Ermäßigungshöchstbetrag (seit 5b; vorher: bis zur Mehrsteuer), Soli = Soli(gesamt nach Anrechnung) − Soli(Lohn allein), Freigrenze bei
+  Splitting doppelt. Ausschüttungen bleiben pauschal (Abgeltungsteuer, „geltende Logik“), keine Kirchensteuer.
+- **2026 = EIN Jahr:** der Gewinn Jan–Sep aus dem Abschluss steht am Jahresanfang des Steuerrechners (`vorab`), die Planmonate Okt–Dez tragen nur
+  den Zuwachs (richtige Progression); die Steuer auf Jan–Sep steht ab Okt 26 in der Rücklage der Selbstständigkeit und wird mit der ganzen Steuer 2026
+  im Zahlmonat 2027 bezahlt — minus neu `selbst.estVorausgezahlt` (schon bezahlte Vorauszahlungen 2026). Vorher wurden Vorsorge/Sonderausgaben 2026
+  zweimal abgezogen (Abschluss und Achse) und die Steuer auf Jan–Sep nie gezahlt. Ein Handwert auf `ab.est`/`ab.zve` geht als Korrektur in die Steuer 2026.
+- **Neue Felder** (Karte „Welche Steuern gelten?“ der Selbstständigkeit, leer = Vorgabe): „Gehälter in die Einkommensteuer einbeziehen“ (ja),
+  „Veranlagung“ (einzeln/zusammen, Vorgabe einzeln), „Werbungskosten-Pauschbetrag je Gehalt“ (1.230 €). Test „geändert wirkt, geleert = Vorgabe“
+  in `tests/kern-steuern.test.ts`. Abschluss-Karte: „Gehalt brutto Jan–Sep 2026“, „Vorauszahlungen 2026 schon bezahlt“, „Steuer auf Jan–Sep gesamt“.
+- **Ansicht:** Privat › Selbstständigkeit › Karte „Einkommensteuer gemeinsam“ je Jahr (`estJahre`): Gewinn, Lohneinkünfte, zvE, Steuer gesamt, davon
+  auf das Gehalt, Mehrsteuer, Gewerbesteuer, Anrechnung, Soli, Steuer des Jahres. Zahlung/Vorauszahlungen wie bisher (Folgejahr oder Quartal).
+
+### 3. Darlehen (Geber und Nehmer, Rückzahlung beim Geber)
+- `FinanzDaten.darlehen?: { id, name, geber, nehmer, betrag, aus, zurueck, notiz? }[]`, Seiten Privat · Selbstständigkeit · MAKE · KD Ventures · „außerhalb des
+  Plans“. `aus` = Plan-Monat der Auszahlung (0 = schon vor Planbeginn geflossen, steckt in den Kontoständen), `zurueck` = Monat der Rückzahlung
+  (0 = offen). Nur Kasse: kein Ergebnis, keine Steuer, kein Zins. Kern: `darlehenFluesse` → `ug.darlehenEin`/`ug.darlehen`, `kdv.darlehenEin/Aus`,
+  `kdc.darlehenEin/Aus`, `p.darlehenEin/Aus` (alle Handwerte, Zeilen in den Blättern, Termine im Zahlungskalender). Säuberer `lib/finanzen/darlehen.ts`
+  (Geber = Nehmer oder unbekannte Seite → 400; Rückzahlung vor Auszahlung → offen). Oberfläche: Buchungen & Check › Schulden › Karte „Darlehen“.
+- **Altes Gesellschafterdarlehen** (`annahmen.darlehenKevin`/`darlehenRueckMonat`, Vorgabe 0 im leeren Plan): finanzplan-5 führte es als Darlehen
+  Selbstständigkeit → MAKE — **seit finanzplan-5b (Gegenprüfung, Funde 1+2) mit Geber „außerhalb des Plans“**: Geld kommt im Okt 26 in die GmbH
+  (`ug.kapital`), die Rückzahlung geht nach außen (`ug.darlehen`), Selbstständigkeit und Privat bleiben unberührt (wie vor finanzplan-5). Annahmen-Karte:
+  „Nur eintragen, wenn es ein echtes Darlehen gibt — sonst 0“. Handwerte auf Darlehen: die Gegenseite folgt dem Handwert (anteilig je Darlehen). Der Abschluss zieht jetzt die Darlehen ab, die die Selbstständigkeit im Plan noch auszahlt
+  (`rechneSelbst().darlehen`); das Altfeld `selbst.darlehenAnUG` zählt nicht mehr (eine Zahl je Darlehen).
+- **Kevins 1.500 € (Privat → KD Ventures):** selbst eintragen unter Finanzen › Privat › Finanzplanung › Buchungen & Check › Schulden › „+ Darlehen“:
+  Geber Privat (oder Selbstständigkeit), Nehmer KD Ventures, Betrag 1.500, ausgezahlt „vor Planbeginn“, zurück im geplanten Monat (oder „offen“).
+  Und unter Planen › Treiber, Annahmen & Steuern › Annahmen MAKE „Gesellschafterdarlehen an MAKE (alt)“ auf 0 setzen, falls dort noch ein Wert steht.
+
+### Vorher → Nachher (erfundene Test-Pläne; alle anderen Goldwerte unverändert)
+| Test | Wert | vorher | nachher | Ursache |
+|---|---|---|---|---|
+| Prüfstand | ESt-Aufwand Dez 26 Selbstständigkeit | 940 (ESt auf Okt–Dez allein) | 1.861 | gemeinsame ESt: Jan–Sep 16.000 + Gehalt 1 (10.770 Lohneinkünfte) in der Progression |
+| Prüfstand | Rücklage Dez 26 / Zahlung Juni 27 | 940 / 940 | 8.559 / 8.559 | EINE Steuer 2026 (zvE 44.170) inkl. Jan–Sep; GewSt 1.246 voll angerechnet |
+| Prüfstand | Frei Selbstständigkeit Okt 26 / Dez 26 | 7.800 / 14.460 | 2.847 / 6.841 | Rücklage trägt die Steuer 2026 ab Okt |
+| Prüfstand | Lage frei gesamt Okt 26 | 42.600 | 37.647 | dito (Business 33.700 und Privat 1.100 unverändert) |
+| Prüfstand | Gruppe Jan 27 | 57.546 | 47.897 | dito + Jan 27 mit Gehalt 48.000 in der Progression (2.030 statt 0) |
+| Prüfstand | ESt Dez von Hand 1.500: Rücklage/Zahlung | 1.500 | 8.198 | der Handwert ersetzt nur den Dez-Aufwand (1.861), Jan–Nov bleiben |
+| Prüfstand | Abschluss ESt (mit Gehalt) | 633 | 3.324 | Anteil Jan–Sep an der gemeinsamen Steuer (ohne Gehalt weiter 633) |
+| Regression | Auswertung frei Selbstständigkeit Okt 26 (planGold) | 2.000 | −1.302 | Altdarlehen 3.000 geht aus der Selbstständigkeit; Rücklage 302 (gemeinsame ESt) |
+| Regression | `rechneSelbst(planFix())` | ein/aus/gewinn/zve/est/frei wie vorher | + `lohn`/`steuer`/`korr`/`darlehen`/`vorausgezahlt` | nur neue Felder; mit Gehalt ESt 21 → 910 |
+| Geschäftsblatt | Konto Selbstständigkeit Okt 26 | 2.595 | −405 | Altdarlehen 3.000 (zurück im Monat 14) |
+| Rechenkern | `rechneSelbst` frei (darlehenAnUG 1.000, darlehenKevin 0) | 5.930 | 6.930 | Altfeld `darlehenAnUG` zählt nicht mehr — nur Darlehen, die im Plan hinausgehen |
+| kern-steuern | Achse ohne Bausteine / Gehalt 2 vor der GmbH | — | gleiche Zahlen | Fälle isoliert (ohne Abschluss/Altdarlehen bzw. Gehalt nicht einbezogen), neuer Fall mit beiden |
+Unverändert: alle MAKE-, KD-Ventures- und Privat-Zahlen (Regression A/B mit und ohne Arbeitsplan, `kern-vorher-gold.json`), Töpfe, Ziele (außer „Gruppe“).
+
+**Was das für den echten Plan heißt (ohne ihn anzusehen):** Die Rücklage der Selbstständigkeit enthält ab Okt die Steuer auf Jan–Sep und die
+Progression mit Gehalt 1 → „frei Selbstständigkeit“, „frei gesamt“ und „Gruppe“ sinken, die Zahlung im Juni 27 steigt. Steht bei Kevin
+`darlehenKevin` > 0, ~~geht der Betrag jetzt im Okt 26 aus dem Konto der Selbstständigkeit~~ (seit 5b: nicht mehr — Geber außerhalb des Plans). Steht
+`darlehenAnUG` ≠ 0, steigt „frei nach Abschluss“ um diesen Betrag (das Altfeld zählt nicht mehr, seit 5b auch nicht über `darlehenKevin`). Liegt der Gewinn Jan–Sep über 24.500 €, zieht der Abschluss jetzt auch die
+Gewerbesteuer darauf ab (angerechnet, netto meist 0).
+
+### Näherungen (Hinweis, keine Steuerberatung)
+Lohnsteuer = Tarif auf den Lohn allein (die Netto-Tabelle rechnet die echte) · Werbungskosten nur pauschal · Verlustausgleich mit dem Lohn im selben
+Jahr, Rest als Vortrag; Gewerbesteuer-Vortrag getrennt nur aus dem Gewinn (seit 5b in beiden Pfaden; ein Handwert auf „Verlustvortrag“ setzt beide) ·
+Anrechnung § 35 mit Ermäßigungshöchstbetrag ESt × Gewinn / (Gewinn + Lohneinkünfte) (seit 5b; vorher bis zur Mehrsteuer) ·
+Erstattungen kommen im Konto der Selbstständigkeit an · keine Kirchensteuer · Darlehen ohne Zins.
+
+### Fragen an Jörg (Steuerberater)
+1. **Vorsteuer:** Der Plan zieht keine Vorsteuer auf Kosten ab (USt-Zahllast = volle USt auf die Eingänge) — bei MAKE, KD Ventures und der Selbstständigkeit.
+   Welche Kosten sind vorsteuerabzugsfähig, soll der Plan sie abziehen?
+2. **Selbstständigkeit gewerblich oder freiberuflich?** Der Plan rechnet heute Gewerbesteuer (Freibetrag, Anrechnung). Der Steuern-Bereich (`lib/steuern`)
+   führt sie als Freiberuf ohne Gewerbesteuer — eins von beiden stimmt nicht. Bei Freiberuf: Gewerbesteuer-Zeile der Selbstständigkeit ausschalten.
+3. **Ankermandat ohne USt:** Grund bestätigen (Kunde im Ausland/Reverse Charge, steuerfreie Leistung …?) — der Plan rechnet es bewusst ohne USt.
+4. **Runway Privat** zählt Sparen als ausgegeben: liegen die Sparkonten in den Kontoständen (dann ist der Runway zu kurz) oder nicht?
+5. **Gemeinsame Einkommensteuer:** Einzel- oder Zusammenveranlagung (Splitting; dann zählt auch Gehalt 2)? Reicht der Pauschbetrag oder gibt es
+   höhere Werbungskosten? Welche Vorsorge/Sonderausgaben 2026/2027?
+6. **Vorauszahlungen:** Welche Einkommen-/Gewerbesteuer-Vorauszahlungen sind 2026 schon gezahlt (Feld „Vorauszahlungen 2026 schon bezahlt“), und setzt
+   das Finanzamt nach der Gründung Quartals-Vorauszahlungen fest (dann Zahlweise „Quartal“)?
+7. **Lohnsteuer vs. Netto-Tabelle:** Stimmt die Netto-Tabelle (Steuerklasse I) — bei Zusammenveranlagung wäre die Lohnsteuer eine andere.
+8. **Gehalt vor der GmbH** (Gehalt 2 über die Selbstständigkeit): Betriebsausgabe der Selbstständigkeit mit Arbeitgeberanteil — korrekt so?
+9. **Offene Posten Jan–Sep** (offene Einnahmen/Ausgaben im Abschluss) fließen in der Monatsachse nie (nur in „frei nach Abschluss“) — in welchem Monat
+   sollen sie kommen? (Plan-Frage, steuerlich: Ist- oder Soll-Versteuerung der USt?)
+10. **Darlehen Privat → KD Ventures (1.500 €):** Zinslos in Ordnung (verdeckte Einlage/Zinsvorteil)?
+
+### Rückweg
+Siehe UPDATES.md (Eintrag finanzplan-5). Kurz: neue Felder optional (`darlehen`, `selbst.lohnVorPlan`, `selbst.estVorausgezahlt`,
+`steuern.kdc.param.{lohnEinbeziehen,veranlagung,werbungskosten}`); der alte Stand liest das Dokument weiter und lässt sie beim nächsten Schreiben fallen
+(`pruefeDokument`, `pruefeSteuern` verwerfen Unbekanntes), rechnet dann wieder getrennt (Abschluss für sich, ESt ohne Gehalt) und zeigt die
+Selbstständigkeit wieder unter Business. Handwerte bleiben erhalten (gleiche Kennungen).
+
+## Gegenprüfung finanzplan-5 (05.10.) — Funde und Status (Branch `finanzplan-5b`)
+
+Kevin: „Achte bei der Finanzplanung nur, dass wir das wirklich sauber machen.“ Unabhängige Gegenprüfung (eigene Tarif-, Soli-, GewSt-Formeln):
+`tests/finanzplan-gegenpruefung.test.ts` (Abschnitte a–e: Prüfung, f: Wächter je Fund nach der Behebung). Kevins Vorgaben für offene Entscheidungen:
+Business sieht NIE Privat/Selbstständigkeit und schreibt dort nichts (403, auch Inhaber); kein Gesellschafterdarlehen (nur ~1.500 € Privat → KD Ventures,
+trägt Kevin ein); Selbstständigkeit = Gewerbe (GewSt gilt).
+
+| # | Fund | Ursache | Fix | Test | Status |
+|---|------|---------|-----|------|--------|
+| 1 | Altdarlehen per Handwert „ausgeschaltet“ (`ug.kapital`, `ug.darlehen`) — die Selbstständigkeit zahlte trotzdem aus | finanzplan-5 deutete `darlehenKevin` als Darlehen Selbstständigkeit → MAKE und buchte die Gegenseite nach Formel | Geber „außerhalb des Plans“ (`darlehenListe`); Handwerte auf Darlehen: die Gegenseite folgt dem wirksamen Wert, anteilig je Darlehen (`darlehenFluesse`, alle Darlehen) | c) Altdarlehen, f) Fund 1+2 | behoben |
+| 2 | Business-Konto konnte über `annahmen.darlehenKevin` die Kasse der (privaten) Selbstständigkeit bewegen | wie 1 | wie 1 — das Feld wirkt nur noch auf die GmbH; Hinweis in der Annahmen-Karte „Nur eintragen, wenn es ein echtes Darlehen gibt — sonst 0“ | c) Fund 2, f) | behoben |
+| 3 | Angehängte private Bausteine, Sachkosten-Zeilen, Ereignisse standen mit Name/Preis im Business-Protokoll | `pfadIstBusiness` prüfte bei `…/-` nur die Liste, nicht den neuen Eintrag | Protokoll trägt `eintrag` (Kennung des angehängten Eintrags); geprüft wird der Eintrag; ohne Kennung/gelöscht → nicht Business; ganze Treiber/Planszenarien nie im Business-Protokoll | d) Funde, f) Fund 3 | behoben |
+| 4 | Business konnte ganze gemischte Objekte ersetzen (`/annahmen` → Netto-Tabelle weg, `/szenarien/id=…` → private Ereignisse weg, `/planszenarien/-` mit Steuern der Selbstständigkeit, `/planszenarien` als Liste) | Pfad-Regeln nur für Blätter gedacht | Pfad-Regeln für jeden Wurzelschlüssel (`businessPfadErlaubt`) + Netz: `schreibeAlsBusiness` vergleicht den privaten Teil vor/nach dem Anwenden (`privatTeil`, lib/finanzen/plan/business-schreiben.ts) → 403; JSON-Patch `op`/`from` (move/copy) → 400 | d) Funde, f) Wächter-Tabelle (alle Wurzelschlüssel) | behoben |
+| 5 | Alte Abschluss-Handwerte (`ab.est`/`ab.zve`) bekamen still eine neue Bedeutung (Beispiel: 50 € senkten die Steuer 2026 um 860 €) | finanzplan-5 änderte die Formel (Gehalt in der Progression, Korrektur geht in die Steuer 2026) | Dokument ohne `kernStand` (= vor finanzplan-5): Handwerte auf `ab.zve`, `ab.est`, `kdc.est/soli/gewst/anrechnung/verlustvortrag/steuer/steuerRuecklage` wandern beim Lesen nach `handAlt` (nicht gerechnet); Privat › Selbstständigkeit: Karte „Handwerte aus dem alten Stand“ mit „übernehmen“/„verwerfen“ (Rückfrage) | e), f) Fund 5 | behoben |
+| 6 | Rückweg verliert neue Felder beim ersten Schreiben | alter Säuberer kennt sie nicht | im alten Code nicht behebbar → UPDATES.md: Rückweg nur mit Sicherung von vor dem Upload | f) Fund 6 (dokumentierter Fall) | dokumentiert |
+| 7 | GewSt-Verlustvortrag ging verloren, wenn auf ein Jahr MIT Lohn eines OHNE Lohn folgte | Pfad ohne Lohn nahm den ESt-Vortrag auch für die GewSt | eigener GewSt-Vortrag in beiden Pfaden | a) Fund, f) Fund 7 | behoben |
+| 8 | § 35-Anrechnung bis zur Mehrsteuer statt Ermäßigungshöchstbetrag | Näherung | min(4,0 × Messbetrag, GewSt, ESt × Gewinn / (Gewinn + Lohneinkünfte)) | a) Fund + Raster, f) Fund 8 | behoben |
+| 9 | Rückzahlung nach Planende wurde still auf den letzten Planmonat gezogen | Säuberer klemmte Monate | Säuberer klemmt nie; Schreibweg und Import → 400 „liegt außerhalb des Plans“ | c) Fund, f) Fund 9 | behoben |
+| 10 | Frei gewählter Name eines Darlehens mit privater Seite stand in der Business-Sicht | `darlehenFuerBusiness` behielt den Namen | neutraler Name „Darlehen (privat)“ (Notiz ebenso weg); Bank- und Gesellschaftsdarlehen behalten Name und Notiz | c) Fund, f) Fund 10 | behoben |
+| 11 | Kein Feld für Gehalt 2 Jan–Sep 2026 | fehlte | `selbst.lohn2VorPlan` (zählt bei Zusammenveranlagung), Zeile in der Abschluss-Karte | e), f) Fund 11 | behoben |
+| 12 | Karte „Einkommensteuer gemeinsam“ ignorierte Handwerte (`ab.*`) und Vorauszahlungen; Warnhinweis prüfte nur `kdc.*` | zweite Rechnung neben dem Steuerrechner | `estJahre` füttert DENSELBEN Steuerrechner (`selbstSteuerrechner`, `Steuerrechner.jahre()`) mit denselben Monatsgewinnen und Handwerten; Zeilen „von Hand“, „Steuer des Jahres“, „schon vorausgezahlt“, „Abschlusszahlung“; Hinweis nennt alle wirksamen Handwerte | b) Fund, f) Fund 12 | behoben |
+| 13 | `?nur=kennzahlen&sicht=business` rechnete den gemeinsamen Arbeitsplan | `kennzahlenVon` nahm `arbeitsplanVon` | `arbeitsplanFuer(d, sicht)` + `mitBereich` — Business mit `bereiche.business`, Privat mit `bereiche.privat` | d) Fund, f) Fund 13 (nicht zufällig grün: ps2/ps3 unterscheiden sich) | behoben |
+| 14 | Lichtfäden führen Posten der Selbstständigkeit im Business-Space | außerhalb des Finanzplans | Paket `selbst-privat` | d) `it.fails` | offen (anderes Paket) |
+
+**Vorher → Nachher (erfundene Test-Pläne):**
+
+| Test | Wert | finanzplan-5 | 5b | Ursache |
+|---|---|---|---|---|
+| Regression | Auswertung frei Selbstständigkeit Okt 26 (planGold) | −1.302 | 1.698 | Altdarlehen 3.000 nicht mehr aus der Selbstständigkeit |
+| Regression | `rechneSelbst(planFix())` darlehen / frei / nach Ablösung | 3.000 / −3.021 / −5.021 | 0 / −21 / −2.021 | dito (Altfeld `darlehenAnUG` zählt weiter nicht) |
+| Geschäftsblatt | Konto Selbstständigkeit Okt 26 | −405 | 2.595 | dito (wie vor finanzplan-5) |
+| kern-steuern | Achse planFix: Konto Okt / Nov / Darlehen zurück Monat 14 | −1.000 / −4.000 / 3.000 | 2.000 / −1.000 / 0 | dito; Ende (Monat 27) unverändert −1.000, Steuern unverändert |
+| Prüfstand | Altdarlehen 3.000: Gruppe Monat 1–13 | = ohne Darlehen | + 3.000 | das Geld kommt von außen und geht im Monat 14 nach außen zurück |
+| Rechenkern | `rechneSelbst` frei mit `darlehenKevin` 1.000 | 5.930 | 6.930 | Darlehen mindern den Abschluss nur noch aus der Darlehensliste (Geber Selbstständigkeit) |
+| Gegenprüfung | § 35-Raster (576 Fälle) | Deckel Mehrsteuer | Ermäßigungshöchstbetrag | 3 Fälle ändern sich (höchstens 695 € weniger Anrechnung, z. B. Gewinn 60.000, Lohn 20.000, Abzüge 30.000, Splitting) |
+| Prüfstand / Ansichten | alle Zahlen | — | unverändert | § 35-Höchstbetrag liegt dort über 4 × Messbetrag; kein Jahr ohne Lohn nach einem Verlustjahr mit Lohn |
+| sicht | Business-Darlehen Privat → KDV: Name | frei gewählt | „Darlehen (privat)“ | Fund 10 |
+| handwerte / umzug | `pruefeDokument` eines Alt-Dokuments: `ab.est:0`, `kdc.est:3` | im Plan | in `handAlt` | Fund 5 (Wert bleibt, gerechnet erst nach „übernehmen“) |
+
+**Was das für den echten Plan heißt (ohne ihn anzusehen):** Steht `darlehenKevin` > 0, fließt es nicht mehr aus der Selbstständigkeit — „frei
+Selbstständigkeit“ steigt gegenüber finanzplan-5 um diesen Betrag (bis zur Rückzahlung); Kevin setzt das Feld auf 0, wenn es kein echtes Darlehen gibt.
+Hat Kevin vor dem Upload Handwerte auf `ab.est`/`ab.zve` oder auf Steuerwerten der Selbstständigkeit gesetzt, erscheinen sie nach dem Upload unter
+Privat › Finanzplanung › Selbstständigkeit oben in der Karte „Handwerte aus dem alten Stand“ — bis zur Entscheidung rechnet der Plan mit der Formel.
+**Kevin muss:** dort je Wert „übernehmen“ oder „verwerfen“; ggf. Gehalt 2 Jan–Sep 2026 eintragen (nur bei Zusammenveranlagung wirksam); vor dem Upload
+den Finanzplan sichern (Rückweg nur mit Sicherung).
+
+**Business-Schreibwege (Wächter-Tabelle, Stand 5b):** gesperrt für alle: `version`, `stand`, `monate`, `historie`, `meta`, `protokoll`, `kernStand` ·
+nur Privat: `privatEinnahmen`, `privatBudget`, `privatSchulden`, `check`, `fokus`, `abschluesse`, `regeln`, `schwellen`, `selbst`, `handAlt`,
+`bereiche/privat`, `/annahmen` ganz und `annahmen/nettoTabelle`, ganze Listen (`sachkosten`, `schulden`, `posten`, `buchungen`, `ziele`, `darlehen`,
+`szenarien`, `planszenarien`, `…/bausteine`, `…/ereignisse`), ganze Treiber/Planszenarien ersetzen, Treiber/Planszenarien mit Privatem löschen,
+`…/annahmen` eines Planszenarios ganz, `entnahme`, `ausschuettungSteuer`, `steuern` ganz/`privat`/`kdc` · erlaubt: Blätter und reine Business-Teilbäume
+(Annahmen-Felder, Business-Zeilen/-Einträge, `steuern/ug|kdv`, Darlehen ohne private Seite, `plan`/`ist`/`notizen` mit Business-Schlüsseln) und die
+bewusst gemeinsamen Einstellungen `aktiv`, `arbeitsplan`, `einstellungen`, `bereiche/business`. JSON-Patch `op`/`from` gibt es nicht (400).
+Zusätzlich lehnt der Schreibweg jede Business-Änderung ab, die den privaten Teil verändert (auch über Nebenwirkungen, z. B. ein gelöschtes
+Planszenario, das der Privat-Bereich rechnet).
 
 ## Korrektur 04.10. spät: in Business die komplette Planung, beide Bereiche separat einstellbar (Branch `finanzplan-3`)
 

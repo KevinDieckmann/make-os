@@ -256,10 +256,14 @@ describe('(g) alte Dokumente und der Rückweg', () => {
     expect(p.ok).toBe(true);
     if (p.ok) expect(p.dokument.plan).toEqual(d.plan);
   });
-  it('Handwerte bleiben beim Lesen erhalten (die Prüfung lässt den Plan, wie er ist)', () => {
+  it('Handwerte bleiben beim Lesen erhalten (die Prüfung lässt den Plan, wie er ist — mit kernStand; ohne wandern alte Werte geänderter Bedeutung nach handAlt)', () => {
     const d = mit(planFix(14000), { 'ug.konto:4': 1, 'kdc.est:3': 2, 'ab.est:0': 3 });
-    const p = pruefeDokument(JSON.parse(JSON.stringify(d)));
+    const p = pruefeDokument(JSON.parse(JSON.stringify({ ...d, kernStand: 5 })));
     expect(p.ok && p.dokument.plan).toEqual(d.plan);
+    // Dokument von vor finanzplan-5 (kein kernStand): kdc.est/ab.est meinten damals etwas anderes — Wert bleibt, aber in handAlt (Gegenprüfung 05.10.).
+    const alt = pruefeDokument(JSON.parse(JSON.stringify(d)));
+    expect(alt.ok && alt.dokument.plan).toEqual({ 'ug.events:9': 1200, 'ug.konto:4': 1 });
+    expect(alt.ok && alt.dokument.handAlt).toEqual({ 'kdc.est:3': 2, 'ab.est:0': 3 });
     expect(handwerteImPlan(d.plan).sort()).toEqual(['ab.est:0', 'kdc.est:3', 'ug.events:9', 'ug.konto:4']);
   });
 });
