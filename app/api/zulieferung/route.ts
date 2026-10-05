@@ -1,8 +1,9 @@
 // ─── Zulieferung vom Mac (24.09., Kevins Entscheidung „Mac liefert zu“) ────
 // Auf dem Server gibt es kein Apple. Kevins Mac liest Kalender, Mail,
 // Erinnerungen und Kontakte (zulieferer.mjs) und schiebt den Stand hierher.
-// Nur mit dem Dienstschlüssel — eine Anmeldung im Browser reicht nicht, denn
-// wer hier schreibt, bestimmt, was ZOE für Kevins Kalender hält.
+// Nur mit dem Zulieferer-Schlüssel (MAKE_OS_ZULIEFERER_KEY, seit 05.10.) oder dem Dienstweg von innen — eine Anmeldung
+// im Browser reicht nicht, denn wer hier schreibt, bestimmt, was ZOE für Kevins Kalender hält. Übergang: ohne
+// Zulieferer-Schlüssel auf dem Server lässt die Middleware MAKE_OS_KEY von außen NUR hierher durch (`alt`, HOI gelb).
 // GET zeigt, was wann zuletzt ankam (ohne Inhalte).
 
 import { NextResponse } from 'next/server';
@@ -13,11 +14,13 @@ import { verbunden } from '@/lib/kalender/icloud';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { istDienst as dienst } from '@/lib/zugang/dienst';
+import { istZulieferer } from '@/lib/zugang/dienst';
+import { altSchluesselVermerken } from '@/lib/zugang/zulieferer';
 const MAX_BYTES = 3_000_000;
 
 export async function POST(req: Request) {
-  if (!dienst(req)) return NextResponse.json({ ok: false, fehler: 'Nur mit Dienstschlüssel.' }, { status: 403 });
+  if (!istZulieferer(req)) return NextResponse.json({ ok: false, fehler: 'Nur mit Zulieferer-Schlüssel.' }, { status: 403 });
+  if (req.headers.get('x-make-zulieferer') === 'alt') await altSchluesselVermerken();
   const text = await req.text();
   if (text.length > MAX_BYTES) return NextResponse.json({ ok: false, fehler: 'Zu groß.' }, { status: 413 });
   let b: { art?: unknown; daten?: unknown; at?: unknown };

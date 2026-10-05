@@ -1,9 +1,9 @@
 // ─── MAKE OS — Zugangsschutz ────────────────────────────────────────────────
 // Seit 23.09.: echte Konten. Wer eine gültige Sitzung hat, kommt hinein — und
 // die Middleware sagt jeder Route, wer das ist (Kopf x-make-user). Wer keine
-// hat, landet auf /anmelden. Der Zugangsschlüssel MAKE_OS_KEY wird nur noch
-// für zwei Dinge gebraucht: den internen Dienstweg (Arbeiter, Bote, Takt) und
-// das Einrichten des allerersten Kontos.
+// hat, landet auf /anmelden. Der Zugangsschlüssel MAKE_OS_KEY gilt seit 05.10. nur
+// noch für den internen Dienstweg (Arbeiter, Bote, Takt — nur von innen, lib/zugang/intern.ts)
+// und das Einrichten des allerersten Kontos.
 //
 // Gelernt aus dem Audit (weiter gültig): dem Host-Header nicht trauen, dem
 // Origin bei Schreibzugriffen schon. Und: Köpfe, mit denen sich ein Client
@@ -15,6 +15,7 @@ import type { NextRequest } from 'next/server';
 import { SITZUNG_COOKIE, WER_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
 import { standGueltig } from '@/lib/zugang/stand-pruefung';
 import { crossSiteVerboten } from '@/lib/zugang/cross-site';
+import { anfrageIntern, zuliefererSchluessel, ZULIEFERUNG, EINGESCHRAENKT_MIN } from '@/lib/zugang/intern';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
 const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitreten)$/];
@@ -66,23 +67,40 @@ export async function middleware(req: NextRequest) {
   const pfad = req.nextUrl.pathname;
   const kopf = new Headers(req.headers);
 
+  // Alles, was nicht der interne Dienstweg ist, darf sich NICHT selbst benennen.
+  const ohneSelbstbenennung = () => { for (const k of ['x-make-user', 'x-make-person', 'x-make-hoi', 'x-make-zulieferer']) kopf.delete(k); };
+
   // Interner Dienstweg: Arbeiter, Bote, Takt. Sie dürfen die Person im Kopf
   // mitgeben (x-make-person) — sie handeln im Auftrag.
+  // Seit 05.10. NUR von innen (Docker-Netz, Loopback — lib/zugang/intern.ts): über Caddy ist der Dienstschlüssel kein
+  // Generalschlüssel mehr. Einzige Ausnahme (Übergang): der Mac-Zulieferer, solange MAKE_OS_ZULIEFERER_KEY fehlt.
   const dienstKopf = req.headers.get('x-make-key');
   if (dienstKopf && gleich(dienstKopf, schluessel)) {
-    return NextResponse.next({ request: { headers: kopf } });
+    if (anfrageIntern(req.headers)) return NextResponse.next({ request: { headers: kopf } });
+    if (req.method === 'POST' && ZULIEFERUNG.test(pfad) && !zuliefererSchluessel()) {
+      ohneSelbstbenennung();
+      kopf.delete('x-make-key');
+      kopf.set('x-make-zulieferer', 'alt');
+      return NextResponse.next({ request: { headers: kopf } });
+    }
+    return verweigertApi();
   }
-  // Alles andere darf sich NICHT selbst benennen.
-  kopf.delete('x-make-user');
-  kopf.delete('x-make-person');
-  kopf.delete('x-make-hoi');
+  ohneSelbstbenennung();
 
   // Eingeschränkter Schlüssel des Head of IT (27.09.): öffnet NUR /api/hoi/* — damit meldet der
   // GitHub-Läufer den Außenblick, ohne den Dienstschlüssel zu kennen. Für alles andere: 401.
   const hoiSchluessel = process.env.MAKE_OS_KEY_HOI?.trim();
-  if (dienstKopf && hoiSchluessel && hoiSchluessel.length >= 24 && gleich(dienstKopf, hoiSchluessel)) {
+  if (dienstKopf && hoiSchluessel && hoiSchluessel.length >= EINGESCHRAENKT_MIN && gleich(dienstKopf, hoiSchluessel)) {
     if (!pfad.startsWith('/api/hoi/')) return verweigertApi();
     kopf.set('x-make-hoi', '1');
+    return NextResponse.next({ request: { headers: kopf } });
+  }
+  // Eigener Schlüssel des Mac-Zulieferers (05.10., Vorbild HOI): öffnet NUR die Zulieferung (POST), nie den Dienstweg.
+  const zSchluessel = zuliefererSchluessel();
+  if (dienstKopf && zSchluessel && gleich(dienstKopf, zSchluessel)) {
+    if (req.method !== 'POST' || !ZULIEFERUNG.test(pfad)) return verweigertApi();
+    kopf.delete('x-make-key');
+    kopf.set('x-make-zulieferer', '1');
     return NextResponse.next({ request: { headers: kopf } });
   }
   if (CSP_MELDEWEG.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });

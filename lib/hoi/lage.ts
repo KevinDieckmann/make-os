@@ -78,6 +78,26 @@ export interface InnenLage {
   kalenderGoogle?: GoogleKalenderLage | null;
   /** Gmail in der Inbox (03.10.): je verbundener Person Alter/Fehler des Abgleichs und Push — nur Zähler und Zustände, nie Adressen oder Betreffs. null = niemand verbunden. */
   gmail?: GmailLage | null;
+  /** Zugang & Schlüssel (05.10.): Zulieferer-Schlüssel, Übergang, Start-Riegel — nur Zustände, nie Werte. */
+  zugang?: ZugangLage;
+}
+
+/** Zugang & Schlüssel (05.10., Paket „Zugang & Schlüssel härten“). */
+export interface ZugangLage {
+  /** Eigener Zulieferer-Schlüssel (MAKE_OS_ZULIEFERER_KEY) auf dem Server gesetzt? */
+  zuliefererSchluessel: boolean;
+  /** Letzter Übergangs-Aufruf: der Mac lieferte noch mit MAKE_OS_KEY von außen — null = nie. */
+  zuliefererAltZuletzt: string | null;
+}
+
+/** Zugang & Schlüssel (05.10.): Zulieferer im Übergang → gelb, mit eigenem Schlüssel → grün; nie benutzt → kein Befund. */
+export function zugangBefunde(z: ZugangLage | undefined, jetzt: string): Befund[] {
+  if (!z) return [];
+  const b: Befund[] = [];
+  const altTage = z.zuliefererAltZuletzt ? (Date.parse(jetzt) - Date.parse(z.zuliefererAltZuletzt)) / 864e5 : null;
+  if (z.zuliefererSchluessel) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gruen', wert: 'eigener Schlüssel', satz: 'öffnet nur die Zulieferung — der Dienstschlüssel gilt nur noch von innen' });
+  else if (altTage !== null && altTage <= 7) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gelb', wert: 'liefert noch mit dem Dienstschlüssel', satz: 'Übergang: MAKE_OS_KEY reist noch übers Internet — Zulieferer-Schlüssel einrichten (deploy/zulieferer-schluessel.sh mac → server → aufraeumen, UPDATES.md)' });
+  return b;
 }
 
 /** Zustand von Gmail (HOI): worst case über alle Personen mit Gmail. */
@@ -259,6 +279,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...kalenderBefunde(innen.kalender, jetzt));
   b.push(...googleKalenderBefunde(innen.kalenderGoogle));
   b.push(...gmailBefunde(innen.gmail));
+  b.push(...zugangBefunde(innen.zugang, jetzt));
 
   // ── Außen ──
   const aAlter = alterMin(aussen?.zeit);
