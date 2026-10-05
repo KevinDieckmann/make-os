@@ -39,7 +39,18 @@ export interface SteuerParamEin {
   soliFreigrenze?: number;
   /** Eckwerte des Einkommensteuer-Tarifs (Vorgabe 2026). */
   tarif?: Partial<EstTarif>;
+  /**
+   * Gemeinsame Einkommensteuer (05.10., Kevin: Selbstständigkeit und Privat „werden am Ende zusammen gerechnet und besteuert“): Gehälter in
+   * die Progression einbeziehen (Vorgabe: ja). Aus = wie bis 05.10. (nur der Gewinn der Selbstständigkeit).
+   */
+  lohnEinbeziehen?: boolean;
+  /** Einzel- oder Zusammenveranlagung (Splitting; dann zählen beide Gehälter). Vorgabe: einzeln (nur Gehalt 1). */
+  veranlagung?: Veranlagung;
+  /** Werbungskosten-Pauschbetrag auf den Arbeitslohn je Person (Vorgabe 2026: 1.230 €). */
+  werbungskosten?: number;
 }
+export type Veranlagung = 'einzeln' | 'zusammen';
+export const VERANLAGUNG_LABEL: Record<Veranlagung, string> = { einzeln: 'Einzelveranlagung (Gehalt 1)', zusammen: 'Zusammenveranlagung (Splitting, beide Gehälter)' };
 export interface Steuerprofil {
   rechtsform?: Rechtsform;
   zeilen?: Partial<Record<SteuerArt, SteuerZeileEin>>;
@@ -65,7 +76,7 @@ export const STEUER_ARTEN: Record<SteuerArt, SteuerArtInfo> = {
   kst: { id: 'kst', label: 'Körperschaftsteuer', kurz: 'KSt', eingabe: 'satz', wirkung: 'auf den Gewinn des Jahres, bezahlt im Folgejahr (oder als Vorauszahlung)' },
   soli: { id: 'soli', label: 'Solidaritätszuschlag auf die KSt', kurz: 'Soli', eingabe: 'satz', wirkung: 'Zuschlag auf die Körperschaftsteuer' },
   gewst: { id: 'gewst', label: 'Gewerbesteuer', kurz: 'GewSt', eingabe: 'gewerbe', wirkung: 'Messzahl × Hebesatz auf den Gewinn' },
-  est: { id: 'est', label: 'Einkommensteuer (Grundtarif)', kurz: 'ESt', eingabe: 'keine', wirkung: 'Tarif nach § 32a EStG auf den Gewinn abzüglich Vorsorge und Sonderausgaben' },
+  est: { id: 'est', label: 'Einkommensteuer (gemeinsam mit Privat)', kurz: 'ESt', eingabe: 'keine', wirkung: 'Tarif nach § 32a EStG auf Gewinn + Gehalt abzüglich Vorsorge und Sonderausgaben — der Plan zahlt die Mehrsteuer über der Lohnsteuer' },
   ust: { id: 'ust', label: 'Umsatzsteuer (Durchlauf)', kurz: 'USt', eingabe: 'satz', wirkung: 'vereinnahmt und im Folgemonat ans Finanzamt — verändert den Gewinn nicht' },
   exit: { id: 'exit', label: 'Steuer auf den Ausstieg', kurz: 'Ausstieg', eingabe: 'satz', wirkung: 'pauschaler Satz auf die Tranchen des Ausstiegs — zusätzlich zu den laufenden Steuern' },
   netto: { id: 'netto', label: 'Lohnsteuer und Sozialabgaben', kurz: 'Netto', eingabe: 'keine', wirkung: 'Brutto → Netto aus der Netto-Tabelle' },
@@ -145,10 +156,18 @@ export function steuerParameter(d: Pick<FinanzDaten, 'steuern' | 'annahmen'> & P
     freibetrag: num(pa.freibetrag) ?? STEUER_VORGABE.freibetrag,
     anrechnung: num(pa.anrechnung) ?? STEUER_VORGABE.anrechnung,
     soliFreigrenze: num(pa.soliFreigrenze) ?? STEUER_VORGABE.soliFreigrenze,
+    werbungskosten: num(pa.werbungskosten) ?? STEUER_VORGABE.werbungskosten,
+    splitting: pa.veranlagung === 'zusammen',
     verlustvortrag: pa.verlustvortrag ?? true,
     zahlweise: pa.zahlweise ?? 'folgejahr',
     zahlMonat: monat !== undefined ? Math.max(1, Math.min(12, Math.round(monat))) : Math.max(1, Math.min(12, Math.round(d.annahmen.steuerMonat))),
   };
+}
+
+/** Gemeinsame Einkommensteuer der Selbstständigkeit mit Privat (05.10.): Gehälter einbeziehen (Vorgabe ja) und Veranlagung (Vorgabe einzeln). */
+export function estGemeinsam(d: Pick<FinanzDaten, 'steuern'>): { lohn: boolean; zusammen: boolean } {
+  const pa = profilVon(d, 'kdc').param ?? {};
+  return { lohn: pa.lohnEinbeziehen !== false, zusammen: pa.veranlagung === 'zusammen' };
 }
 
 // ── Die Felder der Karte — jedes mit Wert, Vorgabe und „gesetzt“ ───────────────
@@ -171,12 +190,14 @@ export interface SteuerFeld {
 const PFAD: Record<string, string[]> = {
   'kst.satz': ['zeilen', 'kst', 'satz'], 'soli.satz': ['zeilen', 'soli', 'satz'], 'gewst.satz': ['zeilen', 'gewst', 'satz'], 'gewst.hebesatz': ['zeilen', 'gewst', 'hebesatz'],
   freibetrag: ['param', 'freibetrag'], anrechnung: ['param', 'anrechnung'], soliFreigrenze: ['param', 'soliFreigrenze'], verlustvortrag: ['param', 'verlustvortrag'], zahlweise: ['param', 'zahlweise'], zahlMonat: ['param', 'zahlMonat'],
+  lohnEinbeziehen: ['param', 'lohnEinbeziehen'], veranlagung: ['param', 'veranlagung'], werbungskosten: ['param', 'werbungskosten'],
 };
 const pfadVon = (id: string): string[] | null => (id.startsWith('tarif.') ? ['param', 'tarif', id.slice(6)] : PFAD[id] ?? null);
 const lesen = (o: unknown, pfad: string[]): unknown => pfad.reduce<unknown>((x, k) => (x && typeof x === 'object' ? (x as Record<string, unknown>)[k] : undefined), o);
 
-function wertVon(p: Steuerparameter, id: string): number | boolean | string {
+function wertVon(p: Steuerparameter, id: string, pa: SteuerParamEin = {}): number | boolean | string {
   switch (id) {
+    case 'lohnEinbeziehen': return pa.lohnEinbeziehen ?? true; case 'veranlagung': return pa.veranlagung ?? 'einzeln'; case 'werbungskosten': return p.werbungskosten ?? STEUER_VORGABE.werbungskosten;
     case 'kst.satz': return p.kst; case 'soli.satz': return p.soli; case 'gewst.satz': return p.messzahl; case 'gewst.hebesatz': return p.hebesatz;
     case 'freibetrag': return p.freibetrag; case 'anrechnung': return p.anrechnung; case 'soliFreigrenze': return p.soliFreigrenze ?? STEUER_VORGABE.soliFreigrenze; case 'verlustvortrag': return p.verlustvortrag; case 'zahlweise': return p.zahlweise; case 'zahlMonat': return p.zahlMonat;
     default: return id.startsWith('tarif.') ? p.tarif[id.slice(6) as keyof EstTarif] : 0;
@@ -194,7 +215,7 @@ export function steuerFelder(d: Pick<FinanzDaten, 'steuern' | 'annahmen'> & Part
   const jetzt = steuerParameter(d, ort), grund = steuerParameter({ ...d, steuern: unter }, ort);
   const feld = (id: string, label: string, art: FeldArt, dezimal: number, gruppe: SteuerFeld['gruppe'], extra: Partial<SteuerFeld> = {}): SteuerFeld => {
     const pf = pfadVon(id)!;
-    return { id, label, art, dezimal, gruppe, wert: wertVon(jetzt, id), vorgabe: wertVon(grund, id), gesetzt: lesen(schicht?.[ort], pf) !== undefined, ...extra };
+    return { id, label, art, dezimal, gruppe, wert: wertVon(jetzt, id, profilVon(d, ort).param), vorgabe: wertVon(grund, id, profilVon({ steuern: unter }, ort).param), gesetzt: lesen(schicht?.[ort], pf) !== undefined, ...extra };
   };
   const out: SteuerFeld[] = [];
   if (rf === 'kapital') {
@@ -208,6 +229,11 @@ export function steuerFelder(d: Pick<FinanzDaten, 'steuern' | 'annahmen'> & Part
     feld('verlustvortrag', 'Verlust mindert die Folgejahre', 'schalter', 0, 'regeln'),
     feld('zahlweise', 'Zahlweise', 'wahl', 0, 'regeln', { optionen: (Object.keys(ZAHLWEISE_LABEL) as Zahlweise[]).map(id => ({ id, label: ZAHLWEISE_LABEL[id] })) }),
     feld('zahlMonat', 'Zahlung (Abschluss) im Kalendermonat', 'monat', 0, 'regeln', { hinweis: 'Vorauszahlungen laufen im März, Juni, September und Dezember' }),
+  );
+  if (rf === 'einzel' && ort === 'kdc') out.push(
+    feld('lohnEinbeziehen', 'Gehälter in die Einkommensteuer einbeziehen (Progression)', 'schalter', 0, 'regeln', { hinweis: 'gemeinsam mit Privat; der Plan zahlt nur die Mehrsteuer über der Lohnsteuer' }),
+    feld('veranlagung', 'Veranlagung', 'wahl', 0, 'regeln', { optionen: (Object.keys(VERANLAGUNG_LABEL) as Veranlagung[]).map(id => ({ id, label: VERANLAGUNG_LABEL[id] })) }),
+    feld('werbungskosten', 'Werbungskosten-Pauschbetrag je Gehalt €', 'betrag', 0, 'regeln', { hinweis: 'wird vom Arbeitslohn abgezogen (2026: 1.230 €)' }),
   );
   if (rf === 'einzel') for (const t of TARIF_FELDER) out.push(feld(`tarif.${t.k}`, t.label, t.art === 'anteil' ? 'anteil' : 'betrag', t.art === 'anteil' ? 2 : t.art === 'koeff' ? 2 : 0, 'tarif'));
   return out;
@@ -320,6 +346,9 @@ export function pruefeSteuern(roh: unknown): Steuern | undefined {
       const f = num(q.freibetrag); if (f !== undefined) pa.freibetrag = Math.max(0, Math.min(1e9, f));
       const an = num(q.anrechnung); if (an !== undefined) pa.anrechnung = Math.max(0, Math.min(20, an));
       const sf = num(q.soliFreigrenze); if (sf !== undefined) pa.soliFreigrenze = Math.max(0, Math.min(1e9, sf));
+      if (typeof q.lohnEinbeziehen === 'boolean') pa.lohnEinbeziehen = q.lohnEinbeziehen;
+      if (q.veranlagung === 'einzeln' || q.veranlagung === 'zusammen') pa.veranlagung = q.veranlagung;
+      const wk = num(q.werbungskosten); if (wk !== undefined) pa.werbungskosten = Math.max(0, Math.min(1e6, wk));
       if (istObjekt(q.tarif)) {
         const t: Partial<EstTarif> = {};
         for (const [k, v] of Object.entries(q.tarif)) { const x = num(v); if (x !== undefined && TARIF_SCHLUESSEL.has(k)) t[k as keyof EstTarif] = Math.max(0, Math.min(1e8, x)); }

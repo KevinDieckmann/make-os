@@ -23,7 +23,7 @@ export function annahmeGruppen(person1: string, person2: string): AnnahmeGruppe[
       f('agAnteil', 'Arbeitgeberanteil', 'anteil'), f('gehaltTag', 'Gehaltstag im Monat', 'zahl'),
     ] },
     { id: 'kapital', label: `Kapital und Gründung ${UG_KURZ}`, ort: 'ug', felder: [
-      f('stammkapital', 'Stammkapital'), f('gruendungskosten', 'Gründungskosten'), f('darlehenKevin', `Darlehen der Gesellschafter an ${UG_KURZ}`), f('darlehenRueckMonat', 'Rückzahlung in Monat', 'monat'),
+      f('stammkapital', 'Stammkapital'), f('gruendungskosten', 'Gründungskosten'), f('darlehenKevin', `Gesellschafterdarlehen an ${UG_KURZ} (alt, Vorgabe 0 — Darlehen jetzt unter Schulden › Darlehen)`), f('darlehenRueckMonat', 'Rückzahlung in Monat', 'monat'),
     ] },
     { id: 'umsatz', label: `Umsatz-Treiber ${UG_KURZ}`, ort: 'ug', felder: [f('retainerVerzug', 'Retainer-Zahlungsverzug (Monate)', 'zahl'), f('astarnaProvision', 'Provision je vermitteltem Kunden')] },
     { id: 'holding', label: 'Holding und Start KD Ventures', ort: 'kdv', felder: [f('holdingKosten', 'Holdingkosten je Monat'), f('holdingAb', 'Holding ab Monat', 'monat'), f('kdvStart', 'Kontostand zum Start')] },

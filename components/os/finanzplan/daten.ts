@@ -164,6 +164,8 @@ export interface Gerechnet {
   formel: Formeln;
   /** Freies Geld der Gruppe je Monat (mit Handwert). */
   gruppe: number[];
+  /** Lohneinkünfte je Jahr in der gemeinsamen Einkommensteuer (05.10.); fehlt in älteren Kontexten (Tests) = keine. */
+  lohn?: Record<number, number>;
 }
 
 /**
@@ -173,7 +175,7 @@ export interface Gerechnet {
  */
 export function rechne(d: FinanzDaten, treiber?: Szenario, ps: Planszenario | null = arbeitsplanVon(d)): Gerechnet {
   const g = rechneMit(d, ps, treiber);
-  return { sz: g.sz, ps: g.ps, dd: g.d, x: g.x, ug: g.ug, kdc: g.kdc, pr: g.pr, kz: g.kz, h: istHistorie(d), aw: auswertung(g.d, g.ug, g.pr, g.kdc), formel: g.formel, gruppe: g.gruppe };
+  return { sz: g.sz, ps: g.ps, dd: g.d, x: g.x, ug: g.ug, kdc: g.kdc, pr: g.pr, kz: g.kz, h: istHistorie(d), aw: auswertung(g.d, g.ug, g.pr, g.kdc), formel: g.formel, gruppe: g.gruppe, lohn: g.lohn };
 }
 
 export interface PlanKontext extends Gerechnet {

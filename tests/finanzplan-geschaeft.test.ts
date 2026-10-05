@@ -64,7 +64,10 @@ describe('Geschäftsblatt je Gesellschaft', () => {
     expect(b.liquiditaet).toEqual(g.kdc.map(k => k.frei));
     // Konto-Start 5.000 + Eingang 500 (kein Zahlungsziel) + USt − Gehalt 2 mit Arbeitgeberanteil (läuft bis Nov über die Selbstständigkeit,
     // Formel-Prüfung 05.10.; vorher 5.595 und Break-even ab Okt, weil die Kosten fehlten).
-    expect(g.kdc[0].konto).toBeCloseTo(5000 + 500 * 1.19 - 2500 * 1.2, 9);
+    // finanzplan-5 (05.10.): das alte Gesellschafterdarlehen (3.000, Annahmen) geht im Okt 26 aus dem Konto der Selbstständigkeit an MAKE
+    // (vorher kam es bei MAKE aus dem Nichts an) — 2.595 → −405; zurück im Monat 14.
+    expect(g.kdc[0].konto).toBeCloseTo(5000 + 500 * 1.19 - 2500 * 1.2 - 3000, 9);
+    expect(g.kdc[13].darlehenEin).toBe(3000);
     expect(b.breakEven.monatlich).toBe(3);
   });
   it('Stellen zählen im Blatt mit Arbeitgeberanteil (wie im Kern)', () => {

@@ -90,8 +90,12 @@ export async function importieren(haushalt: string, dokument: FinanzDaten, erset
   return ergebnis;
 }
 
-/** Verdichtete Zahlen des Arbeitsplans (sonst des aktiven Treibers) — für ZOE und die Startfläche, ohne Zeilen und Buchungen. */
-export function kennzahlenVon(d: FinanzDaten) {
+/**
+ * Verdichtete Zahlen des Arbeitsplans (sonst des aktiven Treibers) — für ZOE und die Startfläche, ohne Zeilen und Buchungen.
+ * `sicht: 'business'` (05.10.): „frei jetzt“ und „Steuerrücklage“ nur der Gesellschaften (MAKE + KD Ventures) — Privat und die
+ * Selbstständigkeit (seit 05.10. Teil von Privat) zählen dort nicht; die übrigen privaten Schlüssel filtert `kennzahlenFuerSicht`.
+ */
+export function kennzahlenVon(d: FinanzDaten, sicht: 'privat' | 'business' = 'privat') {
   const ps = arbeitsplanVon(d);
   const { d: dd, sz, ug, kdc, pr, kz } = rechneMit(d, ps);
   const aw = auswertung(dd, ug, pr, kdc);
@@ -99,8 +103,8 @@ export function kennzahlenVon(d: FinanzDaten) {
   return {
     szenario: sz.name, szenarioId: sz.id, arbeitsplan: ps?.name ?? null, arbeitsplanId: ps?.id ?? null, stand: d.stand, heute: d.einstellungen.heute,
     ...kz,
-    freiJetzt: aw.frei.gesamt, runwayUG: aw.runway.ug, runwayPrivat: aw.runway.privat, runwayHorizont: aw.runway.horizont,
-    zieleImPlan: aw.ziele.imPlan, zieleGesamt: aw.ziele.gesamt, mindestumsatz: aw.mindestumsatz.schnitt12, steuerRuecklage: aw.steuer.ruecklageGesamt,
+    freiJetzt: sicht === 'business' ? aw.frei.business : aw.frei.gesamt, runwayUG: aw.runway.ug, runwayPrivat: aw.runway.privat, runwayHorizont: aw.runway.horizont,
+    zieleImPlan: aw.ziele.imPlan, zieleGesamt: aw.ziele.gesamt, mindestumsatz: aw.mindestumsatz.schnitt12, steuerRuecklage: sicht === 'business' ? aw.steuer.ruecklageBusiness : aw.steuer.ruecklageGesamt,
     privatLuftOkt: pr[0]?.luft ?? 0, ugFreiDez26: ug[2]?.frei ?? 0,
     offeneBuchungen: offeneBuchungen(d), faelligePosten: faelligeZahl(d),
     kontostaendeFehlen: d.posten.filter(p => p.art === 'konto' && p.betrag == null).length,

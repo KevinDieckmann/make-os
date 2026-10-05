@@ -5,7 +5,7 @@
 // ein geleerter wirkt wie die Vorgabe (letzter Block).
 import { describe, it, expect } from 'vitest';
 import type { FinanzDaten } from '../lib/finanzen/rechenkern';
-import { est2026, jahrVon, kalMonat, rechneSelbstAchse } from '../lib/finanzen/rechenkern';
+import { est2026, jahrVon, kalMonat, rechneSelbstAchse, rechneSelbst, estJahre } from '../lib/finanzen/rechenkern';
 import {
   estTarif, jahresSteuer, neuerSteuerrechner, TARIF_2026, gesamtquote, type Steuerparameter,
 } from '../lib/finanzen/ertragsteuer';
@@ -249,15 +249,30 @@ describe('Selbstständigkeit auf eigener Monatsachse', () => {
     nah(g.kdc[2].frei, g.kdc[2].konto - g.kdc[2].steuerRuecklage - g.kdc[2].ustOffen);
     expect(g.kdc[2].steuerRuecklage).toBeGreaterThan(0); nah(g.kdc[8].steuerRuecklage, g.kdc[8].st.ruecklage);
   });
+  // finanzplan-5 (05.10.): ohne Abschluss-Posten und ohne Altdarlehen — so bleibt nur, was diese beiden Fälle prüfen (Abschluss Jan–Sep und
+  // Darlehen haben unten eigene Fälle). Vorher liefen sie mit dem Fixture-Abschluss (Gewinn 16.000) und dem Altdarlehen 3.000.
+  const ohneAbschluss = (malinAb: number): FinanzDaten => { const f = planFix(); return { ...f, annahmen: { ...f.annahmen, malinAb, darlehenKevin: 0 }, selbst: { ...f.selbst, posten: [] } }; };
   it('Ohne Bausteine der Selbstständigkeit steht nur das Konto: Achse leer, Ergebnis null (Gehalt 2 schon in der GmbH)', () => {
-    const e = rechneSelbstAchse({ ...planFix(), annahmen: { ...planFix().annahmen, malinAb: 1 } });
+    const e = rechneSelbstAchse(ohneAbschluss(1));
     expect(e.length).toBe(27); expect(e.every(k => k.gewinn === 0 && k.st.summe === 0 && k.konto === 5000 && k.entnahme === 0)).toBe(true);
   });
   it('Formel-Prüfung 05.10.: vor der GmbH (malinAb 3) zahlt die Selbstständigkeit Gehalt 2 — Okt und Nov je 3.000 mit Arbeitgeberanteil', () => {
-    const e = rechneSelbstAchse(planFix());
+    // Gehälter nicht in die Einkommensteuer (Schalter) — sonst mindert der Verlust die Steuer aufs Gehalt (eigener Fall bei „gemeinsam“).
+    const e = rechneSelbstAchse({ ...ohneAbschluss(3), steuern: { kdc: { param: { lohnEinbeziehen: false } } } });
     expect(e.map(k => k.malinBrutto).slice(0, 4)).toEqual([2500, 2500, 0, 0]);
     expect(e[0].konto).toBeCloseTo(2000, 9); expect(e[1].konto).toBeCloseTo(-1000, 9); expect(e[26].konto).toBeCloseTo(-1000, 9);
     expect(e.every(k => k.st.summe === 0)).toBe(true);   // Verlust: keine Steuer
+  });
+  it('finanzplan-5: dasselbe mit Abschluss (Gewinn Jan–Sep 16.000) und Altdarlehen — EIN Steuerjahr 2026, das Darlehen geht hin und zurück', () => {
+    const e = rechneSelbstAchse(planFix());
+    // Konto: 5.000 − 3.000 (Gehalt 2 Okt) − 3.000 (Altdarlehen an MAKE, Okt) = −1.000; Nov −3.000 → −4.000; Monat 14 (Nov 27) +3.000 zurück.
+    expect(e[0].darlehenAus).toBe(3000); expect(e[0].konto).toBeCloseTo(-1000, 9); expect(e[1].konto).toBeCloseTo(-4000, 9);
+    expect(e[13].darlehenEin).toBe(3000); expect(e[26].konto).toBeCloseTo(-1000, 9);
+    // Steuer 2026: Gewinn 16.000 − 3.000 − 3.000 = 10.000; Lohneinkünfte 4.770; Abzüge 3.500 → zvE 11.270 ≤ 12.348 → 0 €.
+    // Am Jahresanfang stand die Steuer auf Jan–Sep allein (zvE 17.270 → 910 €) in der Rücklage, Okt (zvE 14.270 → 302 €) und Nov (0 €)
+    // nehmen sie zurück: Aufwand −608 und −302, zusammen −910; keine Zahlung 2027.
+    expect(e[0].st.summe).toBeCloseTo(302 - 910, 9); expect(e[1].st.summe).toBeCloseTo(0 - 302, 9); expect(e[0].steuerRuecklage).toBeCloseTo(302, 9);
+    expect(e[2].steuerRuecklage).toBe(0); expect(e.every(k => k.st.zahlung === 0)).toBe(true);
   });
   it('Sachkosten-Zeilen der Selbstständigkeit laufen dort, alle anderen bei MAKE', () => {
     const e = planFix(); e.sachkosten = [...e.sachkosten, { id: 'sk9', name: 'Büro Selbst', einheit: 'selbststaendigkeit', gruppe: 'X', soll: 700, ab: 1 }];
@@ -350,7 +365,9 @@ describe('Alte Dokumente: gelöschte Felder werden beim Lesen ignoriert', () => 
 // ── Kevin: „alles anpassen, damit ich selber spielen kann“ ─────────────────
 describe('Jeder Parameter ist ein Feld: geändert wirkt er, geleert wirkt er wie die Vorgabe', () => {
   // Plan mit Verlust 2026 und Gewinn 2027 in MAKE und KD Ventures, Gewinn in der Selbstständigkeit, damit jeder Parameter etwas bewegt.
-  const spielwiese = () => spiel([
+  // finanzplan-5: mit Gehalt 1 (3.000 €/Monat aus MAKE), damit auch die Felder der gemeinsamen Einkommensteuer etwas bewegen.
+  const spielwiese = () => { const sw = spielwieseRoh(); sw.d.annahmen.kevinBrutto = 3000; return sw; };
+  const spielwieseRoh = () => spiel([
     neuerBaustein('u0', { art: 'kosten', einheit: 'ug', kostenArt: 'sonstiges', name: 'Anlauf', preis: 50000, rhythmus: 'einmalig', start: 1 }),
     neuerBaustein('u1', { art: 'umsatz', einheit: 'ug', name: 'Projekte', preis: 12000, start: 4, laufzeit: 24 }),
     neuerBaustein('v1', { art: 'kosten', einheit: 'kdv', name: 'Holding', preis: 1000, rhythmus: 'einmalig', start: 1 }),
@@ -372,6 +389,9 @@ describe('Jeder Parameter ist ein Feld: geändert wirkt er, geleert wirkt er wie
     ['Selbstständigkeit: Tarif Spitzensatz', F('kdc', 'tarif.satz3', 0.5)], ['Selbstständigkeit: Tarif Grundfreibetrag', F('kdc', 'tarif.grundfreibetrag', 20000)], ['Selbstständigkeit: Tarif Zone 1 a', F('kdc', 'tarif.a1', 1500)],
     ['Selbstständigkeit: Gewerbesteuer aus', { ort: 'kdc', a: { art: 'an', steuer: 'gewst', wert: false } }], ['Selbstständigkeit: Einkommensteuer aus', { ort: 'kdc', a: { art: 'an', steuer: 'est', wert: false } }],
     ['MAKE: Rechtsform Einzel', { ort: 'ug', a: { art: 'rechtsform', wert: 'einzel' } }],
+    // finanzplan-5 (05.10.): gemeinsame Einkommensteuer
+    ['Selbstständigkeit: Gehälter nicht einbeziehen', F('kdc', 'lohnEinbeziehen', false)], ['Selbstständigkeit: Zusammenveranlagung', F('kdc', 'veranlagung', 'zusammen')],
+    ['Selbstständigkeit: Pauschbetrag', F('kdc', 'werbungskosten', 5000)],
   ];
   // Verlustvortrag wirkt nur, wenn es einen Verlust gibt: MAKE 2026 (−50.000) und KD Ventures 2026 (−1.000) — beides in der Spielwiese.
   for (const [name, f] of faelle) {
@@ -411,5 +431,82 @@ describe('Jeder Parameter ist ein Feld: geändert wirkt er, geleert wirkt er wie
     const basis = kdv(ps);
     nah(kdv({ ...ps, annahmen: { exitSteuer: 0.5 } }), basis - 5000);     // 20.000 × (50 % − 25 %)
     expect(rechneMit(d, { ...ps, annahmen: { entnahme: { betrag: 100, ab: 1 } } }).pr[0].entnahme).toBe(100);
+  });
+});
+
+// ─── finanzplan-5 (05.10., Kevin: „Selbstständigkeit und Privat … werden am Ende ja auch zusammen gerechnet und besteuert“) ──────────────
+// EINE Einkommensteuer je Jahr über Gewinn der Selbstständigkeit + Lohneinkünfte. Die Lohnsteuer steckt in der Netto-Tabelle; gezahlt wird
+// die Mehrsteuer = Tarif(Gewinn + Lohn − Abzüge) − Tarif(Lohn − Abzüge). Alle Tarifwerte unten von Hand nach § 32a EStG 2026:
+//   Zone 1 (12.349–17.799): (914,51·y + 1.400)·y, y = (x − 12.348)/10.000 · Zone 2 (–69.878): (173,10·z + 2.397)·z + 1.034,87, z = (x − 17.799)/10.000
+//   Zone 3 (–277.825): 0,42·x − 11.135,63 · jeweils abgerundet.
+describe('Gemeinsame Einkommensteuer: Selbstständigkeit + Gehalt (Progression)', () => {
+  const lohn = (l: Record<number, number>, teil: Partial<Steuerparameter> = {}) => einz({ hebesatz: 400, lohn: l, ...teil });
+  it('Gewinn 20.000 + Lohneinkünfte 40.000: T(60.000) = 14.233, T(40.000) = 7.209 → Mehrsteuer 7.024 (ohne Gehalt nur 1.570)', () => {
+    // T(60.000): z = 4,2201 → (173,10·4,2201 + 2.397)·4,2201 + 1.034,87 = 14.233,23 → 14.233; T(40.000): z = 2,2201 → 7.209,53 → 7.209; T(20.000): z = 0,2201 → 1.570,83 → 1.570.
+    expect(estTarif(60000)).toBe(14233); expect(estTarif(40000)).toBe(7209); expect(estTarif(20000)).toBe(1570);
+    const j = jahresSteuer(lohn({ 2027: 40000 }), 20000, 0, 2027);
+    expect(j.est).toBe(7024); expect(j.gewst).toBe(0); expect(j.soli).toBe(0); expect(j.summe).toBe(7024);
+    expect(jahresSteuer(lohn({ 2027: 40000 }), 20000, 0, 2026).est).toBe(1570);   // anderes Jahr: kein Lohn → wie bisher
+  });
+  it('Verlust der Selbstständigkeit mindert die Steuer aufs Gehalt (Erstattung): −10.000 bei Lohn 40.000 → T(30.000) − T(40.000) = 4.217 − 7.209 = −2.992', () => {
+    expect(estTarif(30000)).toBe(4217);
+    expect(jahresSteuer(lohn({ 2027: 40000 }), -10000, 0, 2027).est).toBe(-2992);
+  });
+  it('Zusammenveranlagung (Splitting): 2·T(30.000) − 2·T(20.000) = 8.434 − 3.140 = 5.294', () => {
+    expect(jahresSteuer(lohn({ 2027: 40000 }, { splitting: true }), 20000, 0, 2027).est).toBe(5294);
+  });
+  it('Soli, Gewerbesteuer und Anrechnung mit Gehalt: Gewinn 100.000, Lohn 60.000', () => {
+    // estGesamt = T(160.000) = 0,42·160.000 − 11.135,63 = 56.064 (abgerundet); auf den Lohn T(60.000) = 14.233 → Mehrsteuer 41.831.
+    // Messbetrag (100.000 − 24.500) × 3,5 % = 2.642,50; GewSt × 400 % = 10.570; Anrechnung min(4 × 2.642,50; 10.570; 41.831) = 10.570.
+    // Soli auf (56.064 − 10.570) = 45.494: min(5,5 % = 2.502,17; 11,9 % × (45.494 − 20.350) = 2.992,14) = 2.502,17; auf den Lohn allein (14.233 < 20.350) 0.
+    const j = jahresSteuer(lohn({ 2027: 60000 }), 100000, 0, 2027);
+    expect(j.est).toBe(41831); expect(j.gewst).toBeCloseTo(10570, 9); expect(j.anrechnung).toBeCloseTo(10570, 9); expect(j.soli).toBeCloseTo(2502.17, 9);
+    expect(j.summe).toBeCloseTo(10570 + 41831 - 10570 + 2502.17, 9);
+  });
+  it('Kern: Gehalt 1 aus MAKE (4.000 € ab Okt 26) und Selbstständigkeit 5.000 €/Monat — 2026 und 2027 je EINE Steuer', () => {
+    const { d, ps } = spiel([neuerBaustein('k', { art: 'umsatz', einheit: 'kdc', name: 'Interim', preis: 5000, start: 1 })]);
+    d.annahmen.kevinBrutto = 4000; d.annahmen.kevinAb = 1;
+    const g = rechneMit(d, ps);
+    expect(g.lohn).toEqual({ 2026: 12000 - 1230, 2027: 48000 - 1230, 2028: 48000 - 1230 });
+    // 2026: zvE = 15.000 + 10.770 = 25.770 → z = 0,7971 → 3.055,50 → 3.055; Lohn allein T(10.770) = 0 → 3.055, gezahlt im Juni 27 (Monat 9).
+    expect(g.kdc.slice(0, 3).reduce((s, k) => s + k.st.summe, 0)).toBeCloseTo(3055, 9);
+    expect(g.kdc[8].st.zahlung).toBeCloseTo(3055, 9);
+    // 2027: zvE = 60.000 + 46.770 = 106.770 → 0,42·106.770 − 11.135,63 = 33.707; Lohn T(46.770) = 9.432 → Mehrsteuer 24.275.
+    // GewSt (60.000 − 24.500) × 3,5 % × 400 % = 4.970, voll angerechnet; Soli auf 33.707 − 4.970 = 28.737: min(1.580,54; 11,9 % × 8.387 = 998,053) = 998,053.
+    const s27 = 4970 + 24275 - 4970 + 0.119 * (28737 - 20350);
+    expect(g.kdc.slice(3, 15).reduce((s, k) => s + k.st.summe, 0)).toBeCloseTo(s27, 6);
+    expect(g.kdc[20].st.zahlung).toBeCloseTo(s27, 6);   // Juni 28
+    // Ohne Gehalt in der Progression (Schalter aus): 2027 nur T(60.000) = 14.233 (GewSt angerechnet, Soli unter der Freigrenze).
+    const aus = rechneMit({ ...d, steuern: { kdc: { param: { lohnEinbeziehen: false } } } }, ps);
+    expect(aus.kdc[20].st.zahlung).toBeCloseTo(14233, 6);
+    // Die Übersicht je Jahr zeigt dieselben Zahlen.
+    const ej = estJahre(g.d, g.kdc, g.ug);
+    expect(ej.map(j => j.jahr)).toEqual([2026, 2027, 2028]);
+    expect(ej[0].summe).toBeCloseTo(3055, 9); expect(ej[1].summe).toBeCloseTo(s27, 6); expect(ej[1].zve).toBe(106770); expect(ej[1].estLohn).toBe(9432);
+  });
+  it('Abschluss Jan–Sep und Okt–Dez sind EIN Jahr: Progression über das ganze Jahr, Steuer auf Jan–Sep sofort in der Rücklage, bezahlt im Juni 27', () => {
+    const { d, ps } = spiel([neuerBaustein('k', { art: 'umsatz', einheit: 'kdc', name: 'Interim', preis: 5000, start: 1 })]);
+    d.selbst = { ...d.selbst, posten: [{ id: 'a', name: 'Honorar', art: 'einnahme', betrag: 30000, status: 'bezahlt' }], kontoStart: 10000 };
+    const g = rechneMit(d, ps), ab = rechneSelbst(g.d, undefined, g.lohn);
+    // Kein Gehalt: Jan–Sep allein T(30.000) = 4.217 (Abschluss); das ganze Jahr T(45.000): z = 2,7201 → 8.835,71 → 8.835; GewSt (45.000 − 24.500) × 3,5 % × 4 = 2.870,
+    // angerechnet; Aufwand Okt–Dez = 8.835 − 4.217 = 4.618 (vorher getrennt: T(15.000) = 300 — und die 4.217 wurden nie gezahlt).
+    expect(estTarif(45000)).toBe(8835); expect(ab.est).toBe(4217);
+    expect(g.kdc[0].steuerRuecklage).toBeGreaterThan(4217);
+    expect(g.kdc.slice(0, 3).reduce((s, k) => s + k.st.est, 0)).toBeCloseTo(8835 - 4217, 9);
+    expect(g.kdc[2].steuerRuecklage).toBeCloseTo(8835, 9);
+    expect(g.kdc[8].st.zahlung).toBeCloseTo(8835, 9);
+    // Schon bezahlte Vorauszahlungen 2026 (3.000 €) mindern Rücklage und Zahlung.
+    const v = rechneMit({ ...d, selbst: { ...d.selbst, estVorausgezahlt: 3000 } }, ps);
+    expect(v.kdc[2].steuerRuecklage).toBeCloseTo(8835 - 3000, 9); expect(v.kdc[8].st.zahlung).toBeCloseTo(8835 - 3000, 9);
+    // Gehalt Jan–Sep (lohnVorPlan 20.000 → 18.770 Einkünfte) zählt in die Progression 2026: T(63.770) − T(18.770).
+    const l = rechneMit({ ...d, selbst: { ...d.selbst, lohnVorPlan: 20000 } }, ps);
+    expect(l.lohn[2026]).toBe(18770);
+    expect(l.kdc[8].st.zahlung).toBeCloseTo(estTarif(63770) - estTarif(18770), 9);
+  });
+  it('Handwert auf die Einkommensteuer Jan–Sep (ab.est) wirkt in der Steuer 2026 der Monatsachse', () => {
+    const { d, ps } = spiel([]);
+    d.selbst = { ...d.selbst, posten: [{ id: 'a', name: 'Honorar', art: 'einnahme', betrag: 30000, status: 'bezahlt' }] };
+    const g = rechneMit({ ...d, plan: { 'ab.est:0': 5000 } }, ps);
+    expect(g.kdc[0].steuerRuecklage).toBeCloseTo(5000, 9); expect(g.kdc[8].st.zahlung).toBeCloseTo(5000, 9);
   });
 });

@@ -37,7 +37,7 @@ export async function GET(req: Request) {
     const d = await ladeFinanzplan(z.haushalt);
     if (!d) return NextResponse.json({ ok: true, leer: true });
     // Business-Sicht: Kennzahlen aus dem gefilterten Dokument, ohne Privat-Werte (lib/finanzen/plan/sicht.ts).
-    return NextResponse.json({ ok: true, leer: false, ...kennzahlenFuerSicht(kennzahlenVon(fuerSicht(d, sicht)), sicht) });
+    return NextResponse.json({ ok: true, leer: false, ...kennzahlenFuerSicht(kennzahlenVon(fuerSicht(d, sicht), sicht), sicht) });
   }
   const etag = etagAus('fp', await dateiStand(z.haushalt), z.haushalt, z.person, sicht);
   const gleich = unveraendert(req, etag);

@@ -26,6 +26,7 @@
 //   /steuern/ug/zeilen/kst/satz   Welche Steuern gelten (02.10., lib/finanzen/steuern.ts) — wird nach jeder Änderung bereinigt
 //   /planszenarien/id=ps1/annahmen/steuern/ug/…   dieselben Felder nur für ein Szenario (Überlagerung, ebenso bereinigt)
 //   /schwellen/runwayWarnMonate   eigene Ampel-Schwellen (02.10., lib/finanzen/schwellen.ts)
+//   /darlehen/-, /darlehen/id=d1/betrag   Darlehen zwischen den Einheiten (05.10., lib/finanzen/darlehen.ts) — nach jeder Änderung bereinigt
 // Nicht änderbar: version, stand, monate, historie, meta, protokoll.
 
 import type { Aenderung, FinanzDaten, Szenario } from '@/lib/finanzen/rechenkern';
@@ -33,6 +34,7 @@ import { lerneRegel } from '@/lib/finanzen/rechenkern';
 import { pruefePlanszenarien } from '@/lib/finanzen/szenarien';
 import { pruefeSteuern } from '@/lib/finanzen/steuern';
 import { pruefeSchwellen } from '@/lib/finanzen/schwellen';
+import { pruefeDarlehen } from '@/lib/finanzen/darlehen';
 import { KAL, istUnterseite } from './hilfen';
 import { GRENZE_PLAN_ZELLEN, ZELLE_MUSTER, zelleTeile, HAND_FELDER } from '@/lib/finanzen/handwerte';
 
@@ -52,7 +54,7 @@ const MAX_TEXT = 4000;
 const MAX_WERT_JSON = 40_000;
 const PROTOKOLL_MAX = 500;
 const GESPERRT = new Set(['version', 'stand', 'monate', 'historie', 'meta', 'protokoll']);
-const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan', 'bereiche', 'steuern', 'schwellen']);
+const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan', 'bereiche', 'steuern', 'schwellen', 'darlehen']);
 const GEFAEHRLICH = new Set(['__proto__', 'constructor', 'prototype']);
 
 export class OperationUngueltig extends Error {}
@@ -234,6 +236,13 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
   if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/planszenarien') && o.pfad.includes('/annahmen/steuern'))) {
     for (const ps of d.planszenarien ?? []) { if (!ps.annahmen?.steuern) continue; const st = pruefeSteuern(ps.annahmen.steuern); if (st) ps.annahmen.steuern = st; else delete ps.annahmen.steuern; }
   }
+  // Darlehen bereinigen (Seiten, Monate, Beträge); ein unbrauchbares neues Darlehen wird abgelehnt statt still verworfen.
+  if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/darlehen'))) {
+    const roh = Array.isArray(d.darlehen) ? d.darlehen : [];
+    const sauber = pruefeDarlehen(roh, d.monate.length) ?? [];
+    if (sauber.length !== roh.length) throw new OperationUngueltig('Ein Darlehen braucht eine Kennung, zwei verschiedene Seiten (Geber und Nehmer) und eine eindeutige Kennung.');
+    if (sauber.length) d.darlehen = sauber; else delete d.darlehen;
+  }
   // Die Netto-Tabelle muss rechenbar bleiben: mindestens zwei Paare, Brutto aufsteigend.
   if (ops.some(o => typeof o.pfad === 'string' && o.pfad.startsWith('/annahmen/nettoTabelle')) && !nettoTabelleOk(d.annahmen.nettoTabelle)) throw new OperationUngueltig('Die Netto-Tabelle braucht mindestens zwei Paare, Brutto von unten nach oben.');
   // Ein gelöschtes Szenario darf nicht aktiv bleiben.
@@ -342,6 +351,7 @@ export function pruefeDokument(roh: unknown): Pruefung {
     ...(bereiche.privat || bereiche.business ? { bereiche } : {}),
     ...(pruefeSteuern(roh.steuern) ? { steuern: pruefeSteuern(roh.steuern) } : {}),
     ...(pruefeSchwellen(roh.schwellen) ? { schwellen: pruefeSchwellen(roh.schwellen) } : {}),
+    ...(pruefeDarlehen(roh.darlehen, monate.length) ? { darlehen: pruefeDarlehen(roh.darlehen, monate.length) } : {}),
     schulden: liste(roh.schulden),
     meta: objekt(roh.meta) as FinanzDaten['meta'],
     abschluesse: liste(roh.abschluesse),
@@ -356,7 +366,9 @@ export function pruefeDokument(roh: unknown): Pruefung {
     annahmen: annahmenOhneAlt(a),
     sachkosten: liste(roh.sachkosten), privatEinnahmen: liste(roh.privatEinnahmen), privatBudget: liste(roh.privatBudget), privatSchulden: liste(roh.privatSchulden),
     szenarien,
-    selbst: { posten: liste(s.posten), vorsorge: zahl(s.vorsorge) ? s.vorsorge : 0, sonderausgaben: zahl(s.sonderausgaben) ? s.sonderausgaben : 0, sicherheit: zahl(s.sicherheit) ? s.sicherheit : 0, darlehenAnUG: zahl(s.darlehenAnUG) ? s.darlehenAnUG : 0, consorsAbloesung: zahl(s.consorsAbloesung) ? s.consorsAbloesung : 0, kontoStart: zahl(s.kontoStart) ? s.kontoStart : 0 },
+    selbst: { posten: liste(s.posten), vorsorge: zahl(s.vorsorge) ? s.vorsorge : 0, sonderausgaben: zahl(s.sonderausgaben) ? s.sonderausgaben : 0, sicherheit: zahl(s.sicherheit) ? s.sicherheit : 0, darlehenAnUG: zahl(s.darlehenAnUG) ? s.darlehenAnUG : 0, consorsAbloesung: zahl(s.consorsAbloesung) ? s.consorsAbloesung : 0, kontoStart: zahl(s.kontoStart) ? s.kontoStart : 0,
+      // 05.10. (optional): Arbeitslohn Jan–Sep 2026 und schon bezahlte Vorauszahlungen 2026 — gemeinsame Einkommensteuer.
+      ...(zahl(s.lohnVorPlan) ? { lohnVorPlan: Math.max(0, s.lohnVorPlan) } : {}), ...(zahl(s.estVorausgezahlt) ? { estVorausgezahlt: Math.max(0, s.estVorausgezahlt) } : {}) },
     posten: liste(roh.posten),
     fokus: { saetze: liste<string>(f.saetze), regeln: liste<string>(f.regeln), schritte: liste(f.schritte), ...(typeof f.entscheidung === 'string' ? { entscheidung: f.entscheidung } : {}) },
     plan: objekt(roh.plan) as Record<string, number>, ist: objekt(roh.ist) as Record<string, number>,

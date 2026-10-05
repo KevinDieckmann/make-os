@@ -54,7 +54,10 @@ export function AnnahmenKarte({ ort, i = 5 }: { ort: Gesellschaftskennung; i?: n
 
 /** Alle Annahmen aller Gesellschaften nacheinander. */
 export function AnnahmenAlle({ i = 3 }: { i?: number }) {
-  return <>{GESELLSCHAFTEN.map((o, k) => <AnnahmenKarte key={o} ort={o} i={i + k} />)}</>;
+  const { sicht } = usePlan();
+  // Business-Sicht (05.10.): nur die Gesellschaften — die Selbstständigkeit gehört zu Privat.
+  const orte = sicht === 'business' ? GESELLSCHAFTEN.filter(o => o !== 'kdc') : GESELLSCHAFTEN;
+  return <>{orte.map((o, k) => <AnnahmenKarte key={o} ort={o} i={i + k} />)}</>;
 }
 
 /** Eigene Ampel-Schwellen — leer = Vorgabe. */

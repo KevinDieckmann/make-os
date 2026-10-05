@@ -10,7 +10,7 @@ import { useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Raster, Spalten, Spalte, Knopf, LEUCHT, feld, Haken } from '../ui';
 import type { Szenario, Zeile } from '@/lib/finanzen/rechenkern';
-import { wert, sollBudget, key, istSchnitt, toepfeUG, rechneSelbst, zielStaende } from '@/lib/finanzen/rechenkern';
+import { wert, sollBudget, key, istSchnitt, toepfeUG, rechneSelbst, zielStaende, estJahre } from '@/lib/finanzen/rechenkern';
 import { UG_NAME, UG_KURZ } from '@/lib/einheiten';
 import { BUDGET_GRUPPEN, eur, prozent, letzterVoller, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfen';
 import { usePlan, rechne } from './daten';
@@ -21,6 +21,7 @@ import { Stapel, Linie, MiniLinie } from './diagramme';
 import { Geschaeft } from './Geschaeft';
 import { AnnahmenAlle, SchwellenKarte, EinstellungenKarte } from './Annahmen';
 import { SteuerKarte } from './Steuern';
+import { STEUER_HINWEIS } from '@/lib/finanzen/szenarien';
 import { GESELLSCHAFTEN } from '@/lib/einheiten';
 
 /** Blatt + Zeilen-Dialog + neue Zeile — für Privat und die MAKE Innovation GmbH (ug) gemeinsam. */
@@ -49,6 +50,7 @@ export function Privat() {
     { name: 'Ausschüttung netto', edit: 'p.ausschuettung', get: m => P(m).ausschuettung, ind: true, optional: true },
     { name: 'Entnahme aus der Selbstständigkeit', edit: 'p.entnahme', get: m => P(m).entnahme, ind: true, optional: true },
     { name: 'Einnahmen aus Bausteinen', edit: 'p.bausteineEin', get: m => P(m).bausteineEin, ind: true, optional: true },
+    { name: 'Darlehen zurückerhalten oder erhalten', edit: 'p.darlehenEin', get: m => P(m).darlehenEin, ind: true, optional: true },
     { name: 'Verfügbar', edit: 'p.verfuegbar', sum: true, get: m => P(m).verfuegbar, hist: i => Math.round(h.einnahmen[i]) || null, drill: 'x.einnahme' },
     ...BUDGET_GRUPPEN.flatMap((g): BlattZeile[] => [{ grp: g, add: 'privatBudget', addG: g }, ...d.privatBudget.filter(z => z.gruppe === g).map(budgetZeile)]),
     ...(andere.length ? [{ grp: 'Weitere' } as BlattZeile, ...andere.map(budgetZeile)] : []),
@@ -58,6 +60,7 @@ export function Privat() {
     { name: 'Schulden', edit: 'p.schulden', sum: true, aus: true, get: m => P(m).schulden },
     { name: 'Lebensereignisse', edit: 'p.ereignisse', get: m => P(m).ereignisse, ind: true },
     { name: 'Ausgaben aus Bausteinen', edit: 'p.bausteineAus', get: m => P(m).bausteineAus, ind: true, aus: true, optional: true },
+    { name: 'Darlehen ausgezahlt oder zurückgezahlt', edit: 'p.darlehenAus', get: m => P(m).darlehenAus, ind: true, aus: true, optional: true },
     { grp: 'Ergebnis' },
     { name: 'Luft je Monat', edit: 'p.luft', sum: true, get: m => P(m).luft, hist: i => Math.round(h.einnahmen[i] - h.ausgaben[i]) || null },
     { name: 'Sparen + Luft', edit: 'p.sparen', get: m => P(m).sparen },
@@ -133,16 +136,59 @@ export function Toepfe() {
 // ── KD Ventures ──────────────────────────────────────────────────────────────
 export function KDV() { return <Geschaeft ort="kdv" />; }
 
-// ── Selbstständigkeit 2026 ───────────────────────────────────────────────────
+// ── Selbstständigkeit (seit 05.10. unter Privat) ─────────────────────────────
 export function Selbst() {
-  return <><Geschaeft ort="kdc" /><SelbstAbschluss /></>;
+  return <><Geschaeft ort="kdc" /><EinkommensteuerGemeinsam /><SelbstAbschluss /></>;
+}
+
+/**
+ * Die gemeinsame Einkommensteuer je Jahr (05.10., Kevin: Selbstständigkeit und Privat „werden am Ende ja auch zusammen gerechnet und besteuert“):
+ * Gewinn der Selbstständigkeit (2026 inkl. Jan–Sep) + Lohneinkünfte → zu versteuern → Steuer gesamt, davon auf den Lohn allein (steckt in der
+ * Netto-Tabelle als Lohnsteuer), Mehrsteuer durch die Selbstständigkeit, Gewerbesteuer, Anrechnung, Soli. Nur Anzeige — gerechnet im Kern.
+ */
+function EinkommensteuerGemeinsam() {
+  const { dd, kdc, ug, formel } = usePlan();
+  const jahre = estJahre(dd, kdc, ug);
+  const steuerHand = Object.keys(formel).some(k => /^kdc\.(est|gewst|soli|anrechnung|kst|verlustvortrag):/.test(k));
+  const z = (l: string, f: (j: (typeof jahre)[number]) => number, fett?: boolean, minus?: boolean) => (
+    <tr><td style={{ ...TD, fontWeight: fett ? 700 : 500 }}>{l}</td>{jahre.map(j => <td key={j.jahr} style={{ ...TDr, fontWeight: fett ? 700 : 500 }}><Geld v={(minus ? -1 : 1) * f(j)} /></td>)}</tr>
+  );
+  return (
+    <Karte i={6}>
+      <Ueberschrift>Einkommensteuer gemeinsam — Selbstständigkeit und Gehalt</Ueberschrift>
+      <Tabelle klein>
+        <thead><tr><th style={TH}>je Kalenderjahr</th>{jahre.map(j => <th key={j.jahr} style={THr}>{j.jahr}</th>)}</tr></thead>
+        <tbody>
+          {z('Gewinn der Selbstständigkeit', j => j.gewinn)}
+          {jahre.some(j => j.vorab) ? z('davon Jan–Sep (Abschluss)', j => j.vorab) : null}
+          {z('Lohneinkünfte (Gehalt − Pauschbetrag)', j => j.lohn)}
+          {z('zu versteuern (nach Vorsorge, Sonderausgaben, Verlustvortrag)', j => j.zve)}
+          {z('Einkommensteuer gesamt', j => j.estGesamt)}
+          {z('davon auf das Gehalt allein (Lohnsteuer, schon im Netto)', j => j.estLohn, false, true)}
+          {z('Mehrsteuer durch die Selbstständigkeit', j => j.est, true)}
+          {z('Gewerbesteuer', j => j.gewst)}
+          {z('Anrechnung (§ 35 EStG)', j => j.anrechnung, false, true)}
+          {z('Soli (Mehrbetrag)', j => j.soli)}
+          {z('Steuer des Jahres aus dem Plan (Zahlung im Folgejahr)', j => j.summe, true)}
+        </tbody>
+      </Tabelle>
+      <Hinweis>
+        EINE Einkommensteuer je Jahr über Privat und Selbstständigkeit: Gewinn und Gehalt laufen durch denselben Tarif (Progression). Die Lohnsteuer
+        auf das Gehalt steckt schon im Netto (Netto-Tabelle); der Plan zahlt aus dem Konto der Selbstständigkeit nur den Teil darüber — ein Verlust
+        mindert so auch die Steuer auf das Gehalt (Erstattung im Folgejahr). Ausschüttungen bleiben pauschal versteuert (Abgeltungsteuer).
+        Einstellbar unter „Welche Steuern gelten?“: Gehälter einbeziehen, Einzel- oder Zusammenveranlagung, Pauschbetrag.
+        {steuerHand ? ' Achtung: Steuerwerte stehen von Hand im Blatt — die Monatsachse rechnet mit ihnen, diese Übersicht mit der Formel.' : ''} {STEUER_HINWEIS}
+      </Hinweis>
+    </Karte>
+  );
 }
 
 /** Abschluss 2026 der Selbstständigkeit: Posten des laufenden Jahres, Einkommensteuer, frei nach Abschluss. */
 function SelbstAbschluss() {
-  const { d, aendere } = usePlan();
+  const { d, dd, aendere, lohn } = usePlan();
   const formel: Record<string, number> = {};
-  const r = rechneSelbst(d, formel); const s = d.selbst;
+  // Wie die Monatsachse: mit den Überlagerungen des gerechneten Szenarios (Steuerprofil, Szenario-Handwerte) und den Lohneinkünften.
+  const r = rechneSelbst(dd, formel, lohn); const s = d.selbst;
   const hz = (k: string, v: number, name: string, extra?: { farbe?: string; minus?: boolean }) => <HandZahl kennung={k} wert={v} name={name} formel={formel[`${k}:0`]} {...extra} />;
   const STATUS = ['geplant', 'offen', 'bezahlt', 'unklar'].map(x => ({ id: x, label: x }));
   const zeile = (l: React.ReactNode, w: React.ReactNode, fett?: boolean) => <tr><td style={{ ...TD, fontWeight: fett ? 700 : 500 }}>{l}</td><td style={{ ...TDr, fontWeight: fett ? 700 : 500 }}>{w}</td></tr>;
@@ -178,17 +224,21 @@ function SelbstAbschluss() {
               {zeile('Gewinn', hz('ab.gewinn', r.gewinn, 'Gewinn 2026'), true)}
               {zeile('Vorsorge', <ZahlFeld wert={s.vorsorge} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/vorsorge', alt: s.vorsorge, neu: v ?? 0 }], 'Selbstständigkeit Vorsorge')} titel="Vorsorge" />)}
               {zeile('Sonderausgaben', <ZahlFeld wert={s.sonderausgaben} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/sonderausgaben', alt: s.sonderausgaben, neu: v ?? 0 }], 'Selbstständigkeit Sonderausgaben')} titel="Sonderausgaben" />)}
-              {zeile('zu versteuern', hz('ab.zve', r.zve, 'zu versteuern 2026'))}
-              {zeile('Einkommensteuer 2026 (Näherung)', hz('ab.est', r.est, 'Einkommensteuer 2026', { farbe: r.est > 0 ? LEUCHT.achtung : undefined }), true)}
+              {zeile('Gehalt brutto Jan–Sep 2026 (zählt in die Einkommensteuer)', <ZahlFeld wert={s.lohnVorPlan ?? null} leer platzhalter="0" dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/lohnVorPlan', alt: s.lohnVorPlan, ...(v == null ? {} : { neu: v }) }], 'Selbstständigkeit Gehalt Jan–Sep')} titel="Gehalt brutto Jan–Sep 2026" />)}
+              {zeile('Lohneinkünfte 2026 (ganzes Jahr)', <Geld v={r.lohn} />)}
+              {zeile('zu versteuern 2026 (Jan–Sep + Gehalt)', hz('ab.zve', r.zve, 'zu versteuern 2026'))}
+              {zeile('Einkommensteuer-Anteil Jan–Sep (Näherung)', hz('ab.est', r.est, 'Einkommensteuer 2026', { farbe: r.est > 0 ? LEUCHT.achtung : undefined }), true)}
+              {zeile('Steuer auf Jan–Sep gesamt (mit Gewerbesteuer, Soli)', <Geld v={r.steuer} />)}
+              {zeile('Vorauszahlungen 2026 schon bezahlt', <ZahlFeld wert={s.estVorausgezahlt ?? null} leer platzhalter="0" dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/estVorausgezahlt', alt: s.estVorausgezahlt, ...(v == null ? {} : { neu: v }) }], 'Selbstständigkeit Vorauszahlungen 2026')} titel="Vorauszahlungen 2026 schon bezahlt" />)}
               {zeile('Kontostand heute', <ZahlFeld wert={s.kontoStart} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/kontoStart', alt: s.kontoStart, neu: v ?? 0 }], 'Selbstständigkeit Kontostand')} titel="Kontostand" />)}
-              {zeile(`Darlehen an die ${UG_NAME}`, <ZahlFeld wert={s.darlehenAnUG} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/darlehenAnUG', alt: s.darlehenAnUG, neu: v ?? 0 }], `Selbstständigkeit Darlehen an ${UG_KURZ}`)} titel={`Darlehen an die ${UG_NAME}`} />)}
+              {zeile('Darlehen, die noch hinausgehen', <Geld v={r.darlehen} />)}
               {zeile('Sicherheit Steuer', <ZahlFeld wert={s.sicherheit} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/sicherheit', alt: s.sicherheit, neu: v ?? 0 }], 'Selbstständigkeit Sicherheit')} titel="Sicherheit Steuer" />)}
               {zeile('Frei nach Abschluss', hz('ab.frei', r.frei, 'Frei nach Abschluss'), true)}
               {zeile('Ablösung', <ZahlFeld wert={s.consorsAbloesung} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/consorsAbloesung', alt: s.consorsAbloesung, neu: v ?? 0 }], 'Selbstständigkeit Ablösung')} titel="Ablösung" />)}
               {zeile('nach Ablösung', hz('ab.nachConsors', r.nachConsors, 'nach Ablösung'))}
             </tbody>
           </Tabelle>
-          <Hinweis>Grundtarif 2026 (§ 32a EStG) als Näherung, Gewerbesteuer unter Freibetrag angenommen, Gründungszuschuss steuerfrei — Hinweis, keine Steuerberatung.</Hinweis>
+          <Hinweis>Seit 05.10. EIN Steuerjahr: Jan–Sep (hier) und Okt–Dez (Blatt oben) werden zusammen versteuert, mit dem Gehalt in derselben Progression. Die Steuer 2026 steht ab Okt in der Rücklage der Selbstständigkeit und wird im Zahlmonat 2027 bezahlt (minus schon bezahlter Vorauszahlungen). Darlehen erfassen Sie unter Buchungen &amp; Check › Schulden › Darlehen. Grundtarif 2026 (§ 32a EStG) als Näherung — Hinweis, keine Steuerberatung.</Hinweis>
         </Karte>
       </Spalte>
     </Spalten>
@@ -291,7 +341,8 @@ export function Szenarien() {
         </Spalte>
       </Spalten>
       <div style={{ ...MIKRO, margin: '18px 0 8px' }}>Steuern — welche gelten, wie hoch</div>
-      {[...GESELLSCHAFTEN, ...(business ? [] : ['privat' as const])].map((o, k) => <SteuerKarte key={o} ort={o} i={5 + k} />)}
+      {/* 05.10.: die Selbstständigkeit (Einkommensteuer gemeinsam mit Privat) gehört zu Privat — die Business-Sicht zeigt nur die Gesellschaften. */}
+      {[...GESELLSCHAFTEN.filter(o => !business || o !== 'kdc'), ...(business ? [] : ['privat' as const])].map((o, k) => <SteuerKarte key={o} ort={o} i={5 + k} />)}
       <EinstellungenKarte i={9} />
       {!business && <SchwellenKarte i={10} />}
       {name !== null && (

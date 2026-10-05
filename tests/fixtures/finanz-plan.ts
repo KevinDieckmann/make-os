@@ -81,3 +81,32 @@ export function planGold(): FinanzDaten {
   ];
   return d;
 }
+
+/**
+ * Alt-Plan für den Umzug Selbstständigkeit → Privat (finanzplan-5, 05.10.): Bausteine der Selbstständigkeit, Handwerte auf kdc-Kennungen (allgemein
+ * und nur in einem Szenario), ein Handwert im Abschluss, Bereichs-Einstellungen (Privat/Business rechnen verschiedene Szenarien), Steuerprofile
+ * (auch nur im Szenario), Entnahme-Regel, Sachkosten-Zeile der Selbstständigkeit, Altdarlehen. Der Vorher-Stand dazu stammt aus dem Kern auf
+ * `entwicklung` (4efe90a2) — tests/fixtures/finanzplan5-vorher.json. Erfundene Zahlen.
+ */
+export function planAltMigration(): FinanzDaten {
+  const d = planFix(14000);
+  const ps2 = arbeitsplanSelbst();
+  ps2.annahmen = { ...ps2.annahmen, entnahme: { betrag: 1500, ab: 2 }, steuern: { kdc: { param: { zahlweise: 'quartal' } } } };
+  const ps3 = arbeitsplanOhneSelbst();
+  return {
+    ...d, planszenarien: [ps2, ps3], arbeitsplan: 'ps2', bereiche: { privat: { arbeitsplan: 'ps2' }, business: { arbeitsplan: 'ps3' } },
+    steuern: { kdc: { zeilen: { gewst: { hebesatz: 380 } } }, ug: { zeilen: { gewst: { hebesatz: 410 } } } },
+    sachkosten: [...d.sachkosten, { id: 'sk-kdc', name: 'Coworking', einheit: 'selbststaendigkeit', gruppe: 'Räume', soll: 150, ab: 1 }],
+    plan: { ...d.plan, 'kdc.konto:5': 12345, 'kdc.est:3': 800, 'kdc.kosten:6': 2000, 'kdc.umsatz@ps2:4': 9000, 'kdc.entnahme@ps2:7': 0, 'ab.est:0': 50, 'ug.konto:7': 4242, 'p.luft:9': 100, 'sk-kdc:3': 300 },
+    meta: { 'kdc.konto:5': { wer: 'kevin', wann: '2026-10-01T10:00:00.000Z' }, 'ab.est:0': { wer: 'malin', wann: '2026-10-01T10:00:00.000Z' } },
+  };
+}
+/**
+ * Derselbe Alt-Plan ohne die bewusst geänderten Teile (Gehalt nicht in der Einkommensteuer, kein Abschluss Jan–Sep, kein Altdarlehen, kein
+ * Handwert ab.est) — muss mit dem neuen Kern bit-genau wie mit dem alten rechnen.
+ */
+export function planAltNeutral(): FinanzDaten {
+  const d = planAltMigration();
+  const { 'ab.est:0': _ab, ...plan } = d.plan;
+  return { ...d, plan, annahmen: { ...d.annahmen, darlehenKevin: 0 }, selbst: { ...d.selbst, posten: [] }, steuern: { ...d.steuern, kdc: { ...d.steuern!.kdc, param: { lohnEinbeziehen: false } } } };
+}
