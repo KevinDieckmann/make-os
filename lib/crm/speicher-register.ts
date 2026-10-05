@@ -158,6 +158,12 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   { muster: 'finance', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Controlling-Zahlen, Rechnungen — Aufbewahrungspflicht § 147 AO.' },
   { muster: 'grundlage', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanz-Export aus Malins Dashboard (Original, nur gelesen) — Buchführung, Aufbewahrungspflicht.' },
   K('business-abschluesse', 'Monatszahlen der Gesellschaften — keine Personen.'),
+  // 0-Punkt (05.10.): Eröffnung je Gesellschaft — offene Posten tragen Namen von Kunden/Gläubigern (wie Rechnungen im Finanzplan).
+  mit({ muster: 'business-eroeffnung', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Eröffnung (0-Punkt) der Gesellschaften: Stichtag, Kontostand, offene Forderungen/Verbindlichkeiten mit Namen von Kunden/Gläubigern — Buchführung, Aufbewahrungspflicht § 147 AO / § 257 HGB; Historie bleibt (Rückgängig markiert nur).' }, {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 147 AO / § 257 HGB (Buchführung); Art. 6 Abs. 1 lit. b für Kunden/Lieferanten',
+    art15: 'Auskunft über den Inhaber (Zahlen › Business › 0-Punkt zeigt jede Zeile mit Namen)',
+    loeschfrist: 'Ablauf der Aufbewahrungsfrist (10 Jahre nach Ende des Geschäftsjahres)',
+  }),
   // Familie & Partnerschaft (29.09., K2 — Name dynamisch `familie--<haushalt>`, der Scanner sieht ihn nicht; hier trotzdem
   // eingetragen): „Unsere Menschen“ tragen Name und Geburtstag Dritter — persönlich-familiär (Art. 2 Abs. 2 lit. c DSGVO),
   // gepflegt nur vom Haushalt, nie im CRM, nie in einem Agentenpaket außer dem eigenen ZOE-Kontext. Eine verknüpfte

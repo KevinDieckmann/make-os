@@ -40,8 +40,10 @@ async function senden(body: Record<string, unknown>, adresse = '/api/business') 
   return fetch(adresse, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
 }
 
-export function MonatsabschlussKarte({ eintraege, onGespeichert, firmen = FIRMA_LISTE, adresse = '/api/business', hinweis, i = 5 }: {
+export function MonatsabschlussKarte({ eintraege, onGespeichert, firmen = FIRMA_LISTE, adresse = '/api/business', hinweis, i = 5, stichtage }: {
   eintraege: Monatsabschluss[]; onGespeichert: () => void;
+  /** 0-Punkt je Gesellschaft (05.10.): Abschlüsse vor dem Stichtag-Monat sind archiviert — sie stehen hier weiter, zählen aber nicht. */
+  stichtage?: Partial<Record<Firma, string>>;
   /** Firmen der Karte (Vorgabe: die Business-Gesellschaften; unter Privat: die Privat-Einheiten). */
   firmen?: { id: Firma; label: string }[];
   /** Schreibweg (Vorgabe: /api/business; unter Privat: /api/privat/abschluss). */
@@ -115,7 +117,8 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert, firmen = FIRMA_
             <tbody>
               {eintraege.map(e => (
                 <tr key={`${e.firma}-${e.monat}`} style={{ borderTop: '1px solid rgba(255,255,255,.06)', textAlign: 'right', color: C.ink }}>
-                  <td style={{ textAlign: 'left', padding: '6px 8px' }}><button onClick={() => { setFirma(e.firma); setMonat(e.monat); }} style={{ background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', padding: 0, fontSize: TYP.bedien }}>{e.monat}</button></td>
+                  <td style={{ textAlign: 'left', padding: '6px 8px' }}><button onClick={() => { setFirma(e.firma); setMonat(e.monat); }} style={{ background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', padding: 0, fontSize: TYP.bedien }}>{e.monat}</button>
+                    {stichtage?.[e.firma] && e.monat < stichtage[e.firma]!.slice(0, 7) && <span title="vor dem 0-Punkt — zählt nicht mehr" style={{ marginLeft: 6, color: C.inkLeise }}>archiviert</span>}</td>
                   <td style={{ textAlign: 'left', padding: '6px 8px', color: C.inkDim }}>{liste.find(f => f.id === e.firma)?.label}</td>
                   <td style={{ padding: '6px 8px' }}>{euro(e.umsatz)}</td><td style={{ padding: '6px 8px' }}>{euro(e.kosten)}</td><td style={{ padding: '6px 8px' }}>{euro(e.personal)}</td><td style={{ padding: '6px 8px' }}>{e.fakturierteTage != null ? String(e.fakturierteTage).replace('.', ',') : '—'}</td><td style={{ padding: '6px 8px' }}>{euro(e.eigenkapital)}</td>
                   <td style={{ padding: '6px 8px' }}><button onClick={() => void loeschen(e)} aria-label="löschen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 13 }}>✕</button></td>

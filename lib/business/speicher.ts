@@ -22,6 +22,8 @@ import { localDay } from '@/lib/zeit';
 import { SCOPES, schwelleSauber, type Scope, type Schwelle } from './register';
 import { mrrJeKunde, type Bestand, type Monatsabschluss } from './messen';
 import { berechne, type Ampel, type BusinessIndex } from './index';
+import { abEroeffnung, abschlussVor, gesamtAbMonat, geltendeEroeffnungen, type Geltende } from './eroeffnung';
+import { ladeEroeffnungen } from './eroeffnung-server';
 import { BUSINESS_GESELLSCHAFTEN, PRIVAT_GESELLSCHAFTEN, KERN_EINHEITEN, GEHOERT_ZU_PRIVAT, bereichVon, bereichVonFirma, bereichVonGesellschaft, finanzOrtName, istBusinessGesellschaft, istGesellschaft, type Bereich, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export const EINSTELLUNGEN = 'business-einstellungen';
@@ -58,6 +60,8 @@ const nurBusinessWerte = <T>(o: Partial<Record<Gesellschaftskennung, T>> | undef
 /** Zählt eigene Schreibvorgänge — Zwischenspeicher (ZOE, Head of Finance) wissen so, wann sie neu rechnen müssen. */
 let schreibStand = 0;
 export const businessSchreibStand = () => schreibStand;
+/** Eine Schreibung außerhalb dieses Moduls (Eröffnung, 05.10.) — Zwischenspeicher rechnen neu. */
+export const businessGeaendert = () => { schreibStand++; };
 const zahlOder = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Number.isFinite(Number(v)) && v !== '' && v != null ? Number(v) : undefined);
 
 /** Einstellungen des Business-Bereichs — nur die Business-Firmen (05.10.: Werte der Selbstständigkeit bleiben gespeichert, gehen aber nicht hinaus). */
@@ -163,7 +167,7 @@ export async function ladeRoh(heute = localDay()) {
   return merken(`business-roh:${heute}`, 2 * 60_000, () => ladeRohFrisch(heute));
 }
 async function ladeRohFrisch(heute: string) {
-  const [fp, lp, fin, grund, abschluesse, crm, kartei, cal, plan, auftraege, ms, einst, verlauf, traktionDatei] = await Promise.all([
+  const [fp, lp, fin, grund, abschluesseAlle, crm, kartei, cal, plan, auftraege, ms, einst, verlauf, traktionDatei, eroeffnungen] = await Promise.all([
     loadJson<{ firmen?: Firma[]; rechnungen?: (Rechnung & { firmaId?: string })[]; zahlungen?: Zahlung[]; merkposten?: Merkposten[] }>('finanzplan'),
     loadJson<{ posten?: Planposten[] }>('liquiplan'),
     loadJson<FinanceState>('finance'),
@@ -179,7 +183,12 @@ async function ladeRohFrisch(heute: string) {
     ladeEinstellungen(),
     loadJson<BusinessVerlauf>(VERLAUF),
     ladeIndexDatei('traktion-index'),
+    ladeEroeffnungen(),
   ]);
+  // 0-Punkt (05.10.): je Business-Gesellschaft mit Eröffnung rechnet alles ab dem Stichtag (lib/business/eroeffnung.ts) — Konten starten beim
+  // Anfangsbestand, Posten/Abschlüsse davor sind archiviert (gespeichert, nicht gezählt), offene Posten der Eröffnung kommen dazu.
+  const eroeffnung: Geltende = geltendeEroeffnungen(eroeffnungen);
+  const abschluesse = abschluesseAlle.filter(a => !abschlussVor(a, eroeffnung));
   // Kapazität (04.10.): nur die Team-Summen — eigener Lesefehler darf den Index nie kippen (null = Säule zählt nicht).
   const kapa = await kapaKennzahlenFuerIndex(heute);
   // V1-Export: nur die Business-Teile. Umsatz/Kosten = Selbständigkeit (Consulting);
@@ -204,13 +213,24 @@ async function ladeRohFrisch(heute: string) {
   // Privat-Einheit — ohne Firma ist das der bisherige Rückfall Selbstständigkeit (`bereichVonFirma`) — und ihre Deals/Mandate kommen
   // hier gar nicht erst an. Nichts wird gelöscht; Privat sieht sie weiter.
   const imBusiness = <T extends { firmaId?: string }>(l: T[]): T[] => l.filter(x => bereichVonFirma(x.firmaId) === 'business');
+  const ab0 = abEroeffnung({
+    firmen: (fp?.firmen ?? []).filter(f => bereichVonFirma(f.id) === 'business'), rechnungen: imBusiness(fp?.rechnungen ?? []), zahlungen: imBusiness(fp?.zahlungen ?? []),
+    planposten: imBusiness(lp?.posten ?? []),
+  }, eroeffnung);
+  // Controlling (Gesamt-Ist ohne Firma): Monate vor dem 0-Punkt zählen nur dann nicht mehr, wenn JEDE Business-Gesellschaft eröffnet ist.
+  const gesamtAb = gesamtAbMonat(eroeffnung);
+  const finance = fin && gesamtAb && Array.isArray(fin.months) ? { ...fin, months: fin.months.map((m, i) => (`${fin.jahr}-${String(i + 1).padStart(2, '0')}` < gesamtAb ? { ...m, umsatz: 0, kosten: 0 } : m)) } : fin;
   return {
     heute,
-    firmen: (fp?.firmen ?? []).filter(f => bereichVonFirma(f.id) === 'business'), rechnungen: imBusiness(fp?.rechnungen ?? []), zahlungen: imBusiness(fp?.zahlungen ?? []), merkposten: imBusiness(fp?.merkposten ?? []),
-    planposten: imBusiness(lp?.posten ?? []), finance: fin ?? null,
-    grundlageMonate: g && selbstImBusiness ? monatsBild(g).map(m => ({ monat: m.monat, umsatzNetto: m.umsatzNetto, kostenNetto: m.kostenNetto })) : [],
+    firmen: ab0.firmen, rechnungen: ab0.rechnungen, zahlungen: ab0.zahlungen, merkposten: imBusiness(fp?.merkposten ?? []),
+    planposten: ab0.planposten, finance: finance ?? null,
+    // Grundlage = Ist der Selbstständigkeit (nur im Business, wenn sie dort steht) — mit ihrem 0-Punkt, falls sie einen hat.
+    grundlageMonate: g && selbstImBusiness ? monatsBild(g).filter(m => !abschlussVor({ firma: 'kdc', monat: m.monat }, eroeffnung)).map(m => ({ monat: m.monat, umsatzNetto: m.umsatzNetto, kostenNetto: m.kostenNetto })) : [],
     grundlageFixkosten,
     abschluesse,
+    /** Monatsabschlüsse vor dem 0-Punkt (archiviert, nicht gezählt) — die Karte zeigt sie weiter. */
+    abschluesseArchiv: abschluesseAlle.filter(a => abschlussVor(a, eroeffnung)),
+    eroeffnung,
     mandate: crm.mandate.filter(m => bereichVonGesellschaft(m.gesellschaft) === 'business'),
     chancen: crm.chancen.filter(c => bereichVonGesellschaft(c.gesellschaft) === 'business'),
     leistungen: crm.leistungen,

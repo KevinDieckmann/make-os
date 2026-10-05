@@ -11,6 +11,7 @@
 //   · Feste Wahrheiten (Nordstern, Meilensteine, Team) leben hier, nicht
 //     verstreut in Routen.
 
+import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
@@ -148,7 +149,8 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     computeIndex(heute, person),
     recentRuns(undefined, 10),
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
-    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[] }>('finanzplan'),
+    // 0-Punkt (05.10.): Konten und Rechnungen ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
+    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[] }>('finanzplan').then(f => (f ? mitEroeffnung(f) : f)),
     // Kunden/Mandate gehören dem Haushalt des Inhabers (28.09.): eine Person aus einem anderen Haushalt bekommt
     // davon nichts in ihren ZOE-Kontext — auch keine Zahlen.
     personImHaushaltDesInhabers(person).then(ja => (ja ? ladeCrm().then(kundenAusMandaten) : { kunden: [] })),

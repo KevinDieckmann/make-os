@@ -4,6 +4,34 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 0-Punkt (Eröffnung) je Business-Gesellschaft (05.10.2026, nur lokal — Branch `nullpunkt`, geht VOR dem Upload online)
+
+Kevin 05.10.: „Bring in Business einen 0-Punkt rein. Ich lade alles hoch an Zahlen.“ Entscheidung: Eröffnung mit Stichtag je Gesellschaft des Business
+(MAKE Innovation GmbH, KD Ventures). Regel: CLAUDE.md › „0-Punkt (Eröffnung)“; Finanzplanung: FINANZPLANUNG_JETZT.md › „0-Punkt“.
+- **Wo Kevin einträgt:** Zahlen › Business → Karte „0-Punkt (Eröffnung)“ (auch über Unternehmen › Gesellschaft › Steckbrief „Öffnen“, Link
+  `/os/finanzen?s=business#eroeffnung`): Gesellschaft wählen, Stichtag (Vorgabe heute), Kontostand am Stichtag, offene Forderungen und
+  Verbindlichkeiten als Zeilen (Name, Betrag, fällig), Notiz → „0-Punkt setzen“ (Rückfrage „Ab <Stichtag> rechnet <Gesellschaft> neu. Ältere Zahlen bleiben
+  archiviert.“). Danach steht, wie viele Posten jetzt ausgeblendet sind; „Vor dem 0-Punkt (archiviert)“ klappt sie auf; „Verlauf“ zeigt jede Fassung;
+  „Rückgängig“ nimmt die jüngste zurück. **Offene Rechnungen von vor dem Stichtag bitte als offene Forderung eintragen** (sie zählen sonst nicht mehr).
+- **Wirkung ab Stichtag (nur diese Gesellschaft):** Kontostand = Anfangsbestand (ein Kontostand, der NACH dem Stichtag eingetragen wird, löst ihn ab — am
+  Stichtag selbst gilt die Eröffnung); Rechnungen/Zahlungen/Planposten/Buchungen/Monatsabschlüsse davor zählen nicht mehr in Business-Index/Cockpit,
+  Liquidität, Zahlen › Business, Controlling-Liquidität, Rechnungen & Zahlungen (Summen; die Liste kennzeichnet sie „vor dem 0-Punkt“), Fluss „Für dich“,
+  Head of Finance, Schilde, Startfläche, Brain/ZOE-Kontext; offene Posten der Eröffnung zählen als offene Forderung/Verbindlichkeit. Finanzplanung: Konto-
+  Startwert im Stichtag-Monat (Handwert gewinnt), Monate davor „vor Eröffnung“. Nichts wird gelöscht.
+- **Bewusst NICHT betroffen:** Steuern (USt/Fristen sind Rechtslage, nicht 0-Punkt), CRM-Umsatz je Kunde (Kundenhistorie), Lichtfäden/Kalender-Fristen
+  (zeigen Termine weiter), Privat und die Selbstständigkeit (kein 0-Punkt). Posten ohne Firma bleiben wie bisher (Prüfliste unter Privat zum Zuordnen).
+- **Vorher → Nachher (erfundene Zahlen, tests/nullpunkt.test.ts):** MAKE Kontostand 5.000 (Stand vor dem Stichtag) → 8.000 € (Anfangsbestand); Liquidität
+  MAKE 2,0 → 8,0 Monate (der Monatsabschluss vor dem Stichtag mit 2.500 € Kosten zählt nicht mehr, die laufende Miete 1.000 € trägt); überfällige Forderungen
+  40 % → 0 % (die alte Rechnung archiviert, offen jetzt Neukunde + offene Forderung der Eröffnung); Liquiditäts-Start 6.000 → 9.000 €. Nach „Rückgängig“ ist der
+  Index bit-gleich wie vorher.
+- **Neu:** Bestand `business-eroeffnung` (Speicher-Register, Aufbewahrungspflicht), Route `/api/business/eroeffnung` (Routen-Register `haushalt`; schreiben
+  nur Personen mit Finanzrecht im Haushalt, nie Dienstweg/ZOE; Privat-Einheit → 400), optionales Lese-Feld `FinanzDaten.eroeffnung` (nie gespeichert). Demo:
+  Beispiel-Eröffnung der MAKE-Gesellschaft zum Monatsersten.
+
+**Rückweg:** alten Stand zurückspielen — er kennt `business-eroeffnung` nicht und liest alles wie vorher (keine Formänderung an bestehenden Beständen, kein
+Feld an Firmen/Rechnungen; das Lese-Feld `eroeffnung` am Finanzplan wird nie gespeichert). Die Eröffnungen bleiben als eigener Bestand liegen, ungenutzt.
+Ohne Rückweg im Code: in der App je Gesellschaft „Rückgängig“, bis keine Eröffnung mehr gilt — dann rechnet alles bit-gleich wie vorher.
+
 ## Selbstständigkeit unter Privat, Teil 2 — Planung, Arbeit, Monatsabschluss, Vorauszahlungen (05.10.2026 abends, nur lokal — Branch `selbst-privat-2`)
 
 Kevins Entscheidungen zu den offenen Punkten von `selbst-privat` (Regel: CLAUDE.md › „Bereich je Einheit“ › Teil 2; Finanzen: FINANZPLANUNG_JETZT.md › selbst-privat-2).

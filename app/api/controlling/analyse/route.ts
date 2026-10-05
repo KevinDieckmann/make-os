@@ -2,6 +2,7 @@
 // Kennzahlen kommen deterministisch rein (server-seitig gerechnet), die KI
 // liefert nur die ehrliche Einordnung: Kurs zum 1-Mio-Ziel, Runway, Fokus.
 
+import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
@@ -29,7 +30,9 @@ export async function POST(req: Request) {
   if (!roh || !Array.isArray(roh.months)) return NextResponse.json({ error: 'Kein Finanzstand hinterlegt — Zahlen unter /os/controlling pflegen.' }, { status: 200 });
 
   // Kasse immer aus den Firmenkonten — auch wenn die Seite ihren Stand mitschickt.
-  const plan = await loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan');
+  // 0-Punkt (05.10.): die Kasse aus den Konten ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts).
+  const planRoh = await loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan');
+  const plan = planRoh ? await mitEroeffnung(planRoh) : null;
   const s = mitKasse(roh, plan?.firmen);
   const m = computeMetrics(s);
   if (!hasAnthropicKey()) return NextResponse.json({ briefing: 'Kein Anthropic-Key hinterlegt — die Kennzahlen stehen aber (siehe Cockpit).', metrics: m });

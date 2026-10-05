@@ -54,7 +54,9 @@ export async function GET(req: Request) {
     holding: scope !== 'gesamt' && (roh.holdings ?? HOLDING_VORGABE).includes(scope),
     sichten: Object.fromEntries(SCOPES.map(x => [x.id, { index: ergebnis[x.id].index, label: ergebnis[x.id].label }])),
     vor30, wechsel, verlauf,
-    abschluesse: roh.abschluesse.slice(0, 36),
+    // Die Karte zeigt auch die Abschlüsse vor dem 0-Punkt (archiviert, zählen nicht — `stichtage` markiert sie).
+    abschluesse: [...roh.abschluesse, ...roh.abschluesseArchiv].sort((a, b) => b.monat.localeCompare(a.monat) || a.firma.localeCompare(b.firma)).slice(0, 36),
+    stichtage: Object.fromEntries(Object.entries(roh.eroeffnung).map(([f, e]) => [f, e!.stichtag])),
     einstellungen: await ladeEinstellungen(),
     modell: geschaeftsmodell(roh.mandate, roh.leistungen, scope, fixkostenDer(bestandFuer(roh, scope, zeit))),
   }, { headers: { 'Cache-Control': 'no-store' } });

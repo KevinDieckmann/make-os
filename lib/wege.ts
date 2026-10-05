@@ -8,7 +8,7 @@
 //     Privat    &t=uebersicht|buchungen|einnahmen|analyse|fixkosten|plan|schulden (+ monat, kat, q bei Buchungen)
 //               &k=<Kennzahl des Privat-Index>  #index · #ruecklage
 //     Steuern   #fristen · #ruecklage · #ust · #uebergabe
-//     Business  &f=kdc|kdv (Sicht) &k=<Kennzahl>  #abschluss · #einstellungen · #modell
+//     Business  &f=kdc|kdv (Sicht) &k=<Kennzahl>  #abschluss · #einstellungen · #modell · #eroeffnung (0-Punkt)
 //   Rechnung    /os/finanzen/planung?r=<id>        (springt hin und hebt hervor)
 //   Planposten  /os/finanzen/liquiditaet?p=<id>    (öffnet den Posten) · #kontostaende
 //   Woche       /os/kalender?modus=planen&tag=YYYY-MM-DD   (K5: der Wochenplaner ist der Modus „Planen“ im Kalender;
@@ -52,6 +52,8 @@ export const WEG = {
     q('/os/finanzen', { s: 'business', f: o.f && o.f !== 'gesamt' ? o.f : undefined, k: o.k }, o.abschnitt),
   abschluss: (f?: string) => q('/os/finanzen', { s: 'business', f: f && f !== 'gesamt' ? f : undefined }, 'abschluss'),
   einstellungen: () => q('/os/finanzen', { s: 'business' }, 'einstellungen'),
+  /** 0-Punkt (Eröffnung, 05.10.) unter Zahlen › Business — Karte mit Stichtag, Anfangsbestand, offenen Posten und dem Archiv davor. */
+  eroeffnung: () => q('/os/finanzen', { s: 'business' }, 'eroeffnung'),
   /** Privat: ein Reiter, bei Buchungen optional Monat, Kategorie (Id oder __offen) und Suche. */
   privat: (t?: string, filter: { monat?: string; kat?: string; q?: string; k?: string } = {}) =>
     q('/os/finanzen', { s: 'privat', t: t && t !== 'uebersicht' ? t : undefined, ...filter }),
@@ -64,9 +66,10 @@ export const WEG = {
   /** Finanzplanung (04.10.): Reiter unter Finanzen › Privat (alles) bzw. › Business (nur Gesellschaften); `u` = Unterseite. Weitere Parameter: `finanzplanAdresse`. */
   finanzplanung: (sicht: 'privat' | 'business', u?: string) => q('/os/finanzen', { s: 'finanzplanung', space: sicht, u }),
 
-  rechnung: (id?: string) => q('/os/finanzen/planung', { r: id }),
+  // Offene Posten der Eröffnung (Kennung `er-…`, lib/business/eroeffnung.ts) stehen nicht in der Rechnungsliste — sie führen zum 0-Punkt.
+  rechnung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen/planung', { r: id })),
   rechnungen: () => '/os/finanzen/planung',
-  zahlung: (id?: string) => q('/os/finanzen/planung', { z: id }),
+  zahlung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen/planung', { z: id })),
   planposten: (id?: string) => q('/os/finanzen/liquiditaet', { p: id }),
   kontostaende: () => '/os/finanzen/liquiditaet#kontostaende',
   liquiditaet: () => '/os/finanzen/liquiditaet',

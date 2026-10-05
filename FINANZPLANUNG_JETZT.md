@@ -469,6 +469,18 @@ Kevins Entscheidungen zu den offenen Punkten von `selbst-privat` (Technik: CLAUD
   Umzug). Sie speisen weder den Business-Index noch die Finanzplanung (der Abschluss Jan–Sep der Finanzplanung bleibt `selbst.posten`).
 - **Runway Privat** mit `frei` der Selbstständigkeit: bestätigt.
 
+## 0-Punkt (Eröffnung) je Business-Gesellschaft (05.10., Branch `nullpunkt`, Kevin: „Bring in Business einen 0-Punkt rein. Ich lade alles hoch an Zahlen.“)
+Technik: CLAUDE.md › „0-Punkt (Eröffnung)“; Bedienung und Rückweg: UPDATES.md.
+- **Startwert des Kontos aus der Eröffnung:** `FinanzDaten.eroeffnung` (`{ ug?, kdv? }` je `{ monat, betrag, stichtag }`) setzt der Server beim Lesen
+  (`ladeFinanzplan` → `mitKontoStart`, aus dem Bestand `business-eroeffnung`) — **nie gespeichert**, kein Schreibweg (`/eroeffnung` → 400). Im Kern
+  (`rechneUG`) startet das Konto der Gesellschaft im Stichtag-Monat beim Anfangsbestand: `konto(m0) = Anfangsbestand + Saldo(m0)`, die Folgemonate rechnen
+  weiter. Ein Handwert `ug.konto:<m0>` bzw. `kdv.konto:<m0>` gewinnt wie immer. Plan-Monat = Monat des Stichtags (1 = Okt 26); Stichtag vor dem Plan → Monat 1,
+  nach dem Plan → kein Startwert. **Ohne Eröffnung rechnet der Kern bit-genau wie vorher** (Regressionswächter unverändert grün; tests/nullpunkt.test.ts).
+- **Blatt:** Monate vor dem Stichtag heißen im Blatt der Gesellschaft „vor Eröffnung“ (gedämpft), der Stichtag-Monat trägt „0-Punkt“; „Plan gesamt“ zählt
+  erst ab dem Stichtag-Monat. Die Selbstständigkeit (Privat) hat keinen 0-Punkt.
+- **Näherung:** Ein Stichtag mitten im Monat zählt den ganzen Monat (Monatsraster des Kerns). Ein späterer Kontostand im Liquiplan (Kontostand-Datum nach
+  dem Stichtag) löst den Anfangsbestand in Zahlen/Liquidität ab — in der Finanzplanung bleibt der Anfangsbestand der Startwert (dort führt der Plan).
+
 ## Gegenprüfung finanzplan-5 (05.10.) — Funde und Status (Branch `finanzplan-5b`)
 
 Kevin: „Achte bei der Finanzplanung nur, dass wir das wirklich sauber machen.“ Unabhängige Gegenprüfung (eigene Tarif-, Soli-, GewSt-Formeln):

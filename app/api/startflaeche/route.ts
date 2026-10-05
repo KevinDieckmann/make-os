@@ -3,6 +3,7 @@
 // Daten kommen." Ein Bereich ohne gepflegte Quelle bekommt hier bewusst keine
 // Zahl — lieber eine leere Kachel als eine erfundene.
 
+import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { loadJson } from '@/lib/store/local-db';
@@ -37,7 +38,8 @@ export async function GET(req: Request) {
     ladeAufgabenSicht(personStreng(req)), // Sichtfilter „nur ich“ (29.09.)
     loadJson<{ snapshots?: { date: string; index: number; abdeckung?: number; label?: string; hebel?: string; saeulen?: Record<string, number | null> }[] }>('performance'),
     loadJson<{ kontakte?: unknown[]; chancen?: { wert?: number; stufe?: string }[] }>('netzwerk'),
-    loadJson<{ firmen?: { kontostand?: number }[]; zahlungen?: { status?: string }[] }>('finanzplan'),
+    // 0-Punkt (05.10.): Konten und Zahlungen ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts).
+    loadJson<{ firmen?: { id: string; kontostand?: number | null }[]; zahlungen?: { status?: string; firmaId?: string; faellig?: string }[] }>('finanzplan').then(f => (f ? mitEroeffnung(f) : f)),
     loadJson<{ roh: MalinExport; stand: string }>('grundlage'),
   ]);
 

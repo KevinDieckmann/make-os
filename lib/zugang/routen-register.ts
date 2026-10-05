@@ -251,6 +251,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'privat': r('GET,POST', 'finanz-privat', 'Privat-Finanzen je Haushalt.'),
   'privat/abschluss': r('GET,POST', 'finanz-privat', 'Monatsabschluss der Privat-Einheiten (Selbstständigkeit) im gemeinsamen Bestand business-abschluesse — Privatzugang im Inhaber-Haushalt; nur Firmen des Privat-Bereichs (Business-Gesellschaft → 400), der Business-Index umgekehrt.'),
   'steuern': r('GET,POST', 'haushalt', 'Steuerfristen der Firmen des Haushalts; seit 05.10. mit Bereichs-Sicht: ?space=business oder finanzRecht business → nur die Business-Gesellschaften (Selbstständigkeit und Privat serverseitig gefiltert, Schreiben darauf 403).'),
+  'business/eroeffnung': r('GET,POST', 'haushalt', '0-Punkt (Eröffnung) je Business-Gesellschaft (Bestand business-eroeffnung, Historie) — Haushalt des Inhabers wie der Business-Index; schreiben nur Personen mit Finanzrecht (Inhaber/Konto mit Haushalt), nie Dienstweg/ZOE; Privat-Einheit → 400.'),
   'business': r('GET,POST', 'haushalt', 'Business-Index des Haushalts — Monatsabschlüsse/Einstellungen nur der Business-Gesellschaften (eine Privat-Einheit → 400; deren Abschluss: /api/privat/abschluss).'),
   'controlling/analyse': r('POST', 'haushalt', 'Controlling-Agent über das Business des Haushalts.'),
   'gesellschaften': r('GET,POST,PATCH', 'haushalt', 'Gesellschafts-Register des Haushalts.'),

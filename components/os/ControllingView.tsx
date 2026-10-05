@@ -21,6 +21,8 @@ import {
   type FinanceState,
 } from '@/lib/make-one/finance-data';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Zahl, Ring, feld, auswahl, zoneFarbe, LEUCHT } from './ui';
+import { useGeltendeEroeffnung } from './business/Eroeffnung';
+import { abEroeffnung } from '@/lib/business/eroeffnung';
 
 /** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
 interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
@@ -88,6 +90,7 @@ export function ControllingView() {
   const heute = localDay();
   // Dieselben Planposten wie unter Zahlen und Liquidität — sonst zeigt jede Seite eine andere Kurve.
   const [posten, setPosten] = useState<Planposten[]>([]);
+  const eroeffnung = useGeltendeEroeffnung();
   useEffect(() => {
     fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
   }, []);
@@ -181,7 +184,9 @@ export function ControllingView() {
 
       {/* ── Liquidität: was ist wann da, und wann wird es eng ── */}
       {fplan && (() => {
-        const v = vorschau(fplan.firmen, fplan.rechnungen, fplan.zahlungen, fplan.merkposten, heute, 12, optimistisch, posten, 'real', undefined, true);
+        // 0-Punkt (05.10.): ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
+        const ab = abEroeffnung({ ...fplan, planposten: posten }, eroeffnung);
+        const v = vorschau(ab.firmen, ab.rechnungen, ab.zahlungen, ab.merkposten, heute, 12, optimistisch, ab.planposten, 'real', undefined, true);
         const fix = monatlicheLast(nurBusiness(fplan.merkposten));
         return (
           <Karte i={1}>
