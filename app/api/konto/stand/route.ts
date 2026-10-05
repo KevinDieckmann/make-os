@@ -4,6 +4,7 @@
 // Salzes, kein Geheimnis — aber die Route bleibt hinter dem Dienstschlüssel,
 // damit niemand Kontonamen durchprobieren kann.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { istDienst } from '@/lib/zugang/dienst';
 import { ladeKonten, aendereKonten, zweiFaktorOffen, leerlaufStunden } from '@/lib/zugang/konten';
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!istDienst(req)) return NextResponse.json({ error: 'Nur für den Dienstweg.' }, { status: 403 });
   let b: { speicher?: unknown; sid?: unknown; bis?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const speicher = typeof b.speicher === 'string' ? b.speicher : '';
   const sid = typeof b.sid === 'string' && /^[a-f0-9]{12}$/.test(b.sid) ? b.sid : '';
   const bis = typeof b.bis === 'number' && Number.isFinite(b.bis) ? b.bis : 0;

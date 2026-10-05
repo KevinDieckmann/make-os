@@ -10,6 +10,7 @@
 //
 // Bewusst flüchtig: nur der letzte Stand je Person, nichts wird mitgeschrieben.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, nameVon } from '@/lib/zoe/raum';
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   let body: { person?: string; pfad?: string; suche?: string; space?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false }, { status: 400 }); }
   // Seit den Konten (23.09.): die Person aus der Sitzung, nicht aus der Anfrage.
   const person = personAus(req);
   // Mit Abfrage (Markttraktion: welcher Bereich, welche Person) — so sieht man „Malin ist gerade bei …“.

@@ -8,6 +8,7 @@
 // jede Schreibaktion im Kalender (F1 #10, `bauPruefen`).
 // Die tägliche Sicherung selbst läuft im Takt (lib/kalender/sicherung-server.ts). Regeln: lib/kalender/sicherung.ts.
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { istDienst } from '@/lib/zugang/dienst';
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
   // F1 #10: ein Fenster mit altem Bau (vor einem Update) spielt nichts zurück — erst neu laden (409 `neuLaden`).
   const alt = bauPruefen(req); if (alt) return alt;
   let b: Record<string, unknown>;
-  try { const x = await req.json(); b = x && typeof x === 'object' ? x as Record<string, unknown> : {}; } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { const x = await jsonBegrenzt(req); b = x && typeof x === 'object' ? x as Record<string, unknown> : {}; } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const kalender = text(b.kalender, 100);
   const datei = text(b.datei, 160);
   if (!kalender) return NextResponse.json({ ok: false, fehler: 'kalender fehlt.' }, { status: 400 });

@@ -1,6 +1,7 @@
 // ─── MAKE OS — Anmelden ─────────────────────────────────────────────────────
 // E-Mail + Passwort → Sitzung. Bei falschen Angaben immer dieselbe Antwort,
 // egal ob die E-Mail existiert: sonst könnte man Konten erraten.
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { aendereKonten, emailSauber, passwortStimmt, passwortNachziehen, kdfFuerNeu, kontoZuEmail, ladeKonten, zweiFaktorOffen } from '@/lib/zugang/konten';
 import { codePruefen, wiederherstellungPruefen } from '@/lib/zugang/totp';
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   let b: { email?: string; passwort?: string; code?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const email = emailSauber(b.email);
   // Bremse gegen Raten (lib/zugang/drossel.ts): je Adresse (IP) und je Paar IP + KONTO — nicht je E-Mail
   // allein, sonst könnte jemand mit Kevins Adresse dessen Anmeldung dauerhaft sperren (26.09.). Das Paar zählt je Konto

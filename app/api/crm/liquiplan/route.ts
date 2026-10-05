@@ -5,6 +5,7 @@
 // GET  → je Mandat der Posten, den es erzeugen würde, und ob er schon da ist
 // POST { mandatId, aktion: 'anlegen' | 'verknuepfen', postenId? }
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -40,7 +41,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { mandatId?: string; aktion?: string; postenId?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const crm = await ladeCrm();
   const m = crm.mandate.find(x => x.id === b.mandatId);
   if (!m) return NextResponse.json({ ok: false, fehler: 'Mandat nicht gefunden.' }, { status: 404 });

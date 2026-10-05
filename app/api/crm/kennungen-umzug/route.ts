@@ -8,6 +8,7 @@
 // Nie automatisch: Kevin startet den Umzug nach dem Upload (DEPLOY.md „Kennungs-Umzug“). Logik: lib/crm/kennungen-umzug.ts.
 // Zugang: angemeldete Person mit Rolle Inhaber (kein Dienstweg ohne Person — der Umzug steht mit Person im Protokoll).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   const bau = bauPruefen(req);
   if (bau) return bau;
   let b: { aktion?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   try {
     if (b.aktion === 'vorschau') return NextResponse.json({ ok: true, ...(await umzugVorschau()) });
     if (b.aktion === 'ausfuehren') return NextResponse.json({ ok: true, ...(await umzugAusfuehren(z.person)), vorschau: await umzugVorschau() });

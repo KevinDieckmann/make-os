@@ -9,6 +9,7 @@
 // Nachziehen (Datum/Absage) passiert nach jeder Änderung im Modul durch eine Person (lib/kalender/spiegel-server.ts).
 // Nur Haushalt des Inhabers; Familie nur, wenn es DESSEN Familie ist. Nie Teilnehmer, nie Einladungen.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { bauPruefen } from '@/lib/bau/pruefen';
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   let b: { art?: string; id?: string; aktion?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const id = typeof b.id === 'string' ? b.id : '';
   if (!KENNUNG.test(id)) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
   try {

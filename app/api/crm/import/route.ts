@@ -38,6 +38,7 @@
 // { csv, name } schickt die Datei selbst (auf Hetzner gibt es keinen
 // Schreibtisch), höchstens 12 MB.
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { readFile } from 'node:fs/promises';
@@ -91,7 +92,7 @@ export async function POST(req: Request) {
   if (!wer) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   if (zuGross(req, 12_000_000)) return ZU_GROSS(12_000_000);
   let body: Body = {};
-  try { body = await req.json(); } catch { /* ohne Body: Standarddatei */ }
+  try { body = await jsonBegrenzt(req, 12_000_000); } catch { /* ohne Body: Standarddatei */ }
   // Protokoll als Teil des Imports (wie der Import selbst), mit der entscheidenden Person.
   if (body.aktion === 'konflikt') return konfliktLoesen(body, { art: 'import', person: wer.person });
   if (body.aktion === 'rueckgaengig') return rueckgaengig(body, wer.person);

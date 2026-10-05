@@ -1,6 +1,7 @@
 // ─── MAKE OS — Entwurf für einen Kontakt ────────────────────────────────────
 // POST { id } → Betreff, E-Mail, LinkedIn-Nachricht. Kein Versand.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let b: { id?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });
   // Art. 18 zentral (29.09.): kein Entwurf für eingeschränkte Personen.
   const k = (await kontakteFuerVerarbeitung()).find(x => x.id === String(b.id ?? ''));

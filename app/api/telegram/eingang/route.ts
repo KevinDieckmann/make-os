@@ -12,6 +12,7 @@
 // Server, die es hier nicht gibt. Die Antwort sagt das ehrlich, statt still
 // zu schweigen.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ladeStand, aendereStand, loeseCode, personFuerChat, sendeAnChat } from '@/lib/telegram';
 import { nameVon } from '@/lib/zoe/raum';
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
   // Nur der Bote (Dienstschlüssel) liefert Telegram-Updates an — sonst könnte jede Sitzung als gekoppelte Person schreiben (26.09.).
   if (!istDienst(req)) return NextResponse.json({ error: 'Nur der Bote.' }, { status: 403 });
   let b: { update?: Update };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const u = b.update;
   if (!u || typeof u.update_id !== 'number') return NextResponse.json({ error: 'update fehlt.' }, { status: 400 });
 

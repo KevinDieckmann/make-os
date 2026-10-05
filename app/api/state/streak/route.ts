@@ -5,6 +5,7 @@
 //
 // Haltung: unterstützend, nie wertend. Ein Rückfall ist ein Datum.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   let b: { datum?: string; eintrag?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const datum = b.datum && /^\d{4}-\d{2}-\d{2}$/.test(b.datum) ? b.datum : localDay();
   const e = saeubereStreak(b.eintrag, new Date().toISOString());
   if (!e) return NextResponse.json({ error: 'eintrag.sauber (true/false) fehlt.' }, { status: 400 });

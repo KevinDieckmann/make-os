@@ -4,6 +4,7 @@
 // eingefügtes Rezept (`text`, z. B. aus einer Webseite kopiert) in diese Form.
 // Das Rezept wird gespeichert und, wenn Tag/Mahlzeit dabei sind, dem Plan-Feld zugeordnet.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd } from '@/lib/anthropic';
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
   if (!z) return NextResponse.json({ error: 'Nur für den Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { name?: string; beschreibung?: string; text?: string; tag?: string; mahlzeit?: string } = {};
-  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const name = String(body.name ?? '').trim().slice(0, 120);
   if (!name) return NextResponse.json({ error: 'Gericht fehlt.' }, { status: 400 });
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });

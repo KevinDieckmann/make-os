@@ -7,6 +7,7 @@
 // Der Speichername entsteht aus dem Vornamen. Für Kevin heißt das „kevin" —
 // und damit hängen seine gewachsenen Bestände ohne Umzug am neuen Konto.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, emailSauber, passwortTauglich, passwortHashen, speicherName, type Konto } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
@@ -19,7 +20,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   let b: { code?: string; schluessel?: string; email?: string; name?: string; passwort?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Bremse gegen das Raten des Schlüssels (26.09.).
   const bremse = `einrichten:${adresse(req)}`;
   const warte = pruefe(bremse).warteSek;

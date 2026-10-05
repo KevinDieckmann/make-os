@@ -6,6 +6,7 @@
 // (lib/inbox/status-sicht.ts): eigene Gmail-Nachrichten; Apple-Mail/M365 nur der Inhaber. Fremde Einträge stehen nie in
 // der Antwort und bleiben beim Schreiben unberührt. Test: tests/inbox-status-zugang.test.ts.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
@@ -38,7 +39,7 @@ export async function PUT(req: Request) {
   const e = await eigentum(req);
   if (!e) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const map = body as InboxStatusMap;
   if (!map || typeof map !== 'object' || Array.isArray(map)) {
     return NextResponse.json({ ok: false, error: 'Ungültige Status-Map.' }, { status: 400 });
@@ -64,7 +65,7 @@ export async function PATCH(req: Request) {
   const e = await eigentum(req);
   if (!e) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let body: { ops?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const roh = Array.isArray(body.ops) ? body.ops.slice(0, 300) : null;
   if (!roh) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
 

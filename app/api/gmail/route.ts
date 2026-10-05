@@ -7,6 +7,7 @@
 //      { aktion: 'ausschalten' }                             → nur Gmail aus (Kalender bleibt): Spiegel weg, Überwachung beendet
 // NUR die eigene Person (Sitzung) — Dienstweg und andere Konten 403 (lib/google/zugang.ts): kein Mail-Inhalt für ZOE, Takt oder
 // das andere Konto. Nie Tokens in Antworten.
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { googleStatus } from '@/lib/google/verbindung';
 import { eigenePerson } from '@/lib/google/zugang';
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
   const z = await eigenePerson(req, true);
   if (z instanceof NextResponse) return z;
   let b: { aktion?: string; id?: unknown; was?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   try {
     if (b.aktion === 'abgleichen' || b.aktion === 'voll') {
       const r = await gmailAbgleichen(z.person, { voll: b.aktion === 'voll' });

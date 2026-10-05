@@ -4,6 +4,7 @@
 //                                          Wiederherstellungscodes (genau einmal sichtbar),
 //                                          alle anderen Geräte abgemeldet
 // POST { aktion: 'aus', passwort }       → Faktor aus (Passwort nötig)
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, passwortStimmt } from '@/lib/zugang/konten';
 import { personAus } from '@/lib/zoe/raum';
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   let b: { aktion?: string; code?: string; passwort?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const wer = personAus(req);
   const ich = (await ladeKonten()).konten.find(k => k.speicher === wer);
   if (!ich) return NextResponse.json({ error: 'Konto nicht gefunden.' }, { status: 401 });

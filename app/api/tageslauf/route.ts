@@ -5,6 +5,7 @@
 // Jeder Schritt ist gekapselt: fällt einer aus, laufen die anderen weiter und
 // der Ausfall wird ehrlich ausgewiesen statt still verschluckt.
 
+import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -50,7 +51,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { art?: LaufArt } = {};
-  try { body = await req.json(); } catch { /* ohne Body ok */ }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch { /* ohne Body ok */ }
   const art: LaufArt = (['voll', 'kurz', 'puls'] as const).includes(body.art as never) ? body.art! : 'voll';
   if (!sperren('tageslauf-' + art)) return NextResponse.json({ error: 'Dieser Lauf ist gerade eben schon gestartet — einen Moment.' }, { status: 200 });
 

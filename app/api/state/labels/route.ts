@@ -7,6 +7,7 @@
 // Kevins und Malins Sprache ist: wie die Prioritäten heißen, welche Kategorien
 // es bei Buchungen und Zahlungen gibt, wie die Orte heißen.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -56,7 +57,7 @@ export async function GET() {
 /** Teilweise setzen: nur die mitgeschickten Felder ändern sich. */
 export async function PUT(req: Request) {
   let body: Partial<Datei>;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   /**
    * Zusammenführen mit Löschregel: ein leer geschickter Name bedeutet „zurück

@@ -5,6 +5,7 @@
 // Haushalt), alle anderen nur Business. Die Prüfung ist streng (haushaltVon,
 // ohne Rückfall auf eine Person).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, saveJson } from '@/lib/store/local-db';
@@ -93,7 +94,7 @@ const ohneBetraege = (t: string) => t.replace(/[+−-]?\d{1,3}(?:\.\d{3})*(?:,\d
 export async function POST(req: Request) {
   const agentCfg = await resolveAgent('finanzchef'); if (!agentCfg.enabled) return NextResponse.json(disabledResponse(agentCfg), { status: 409 });
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const u = await umfangVon(req, typeof b.umfang === 'string' ? b.umfang : null);
   if (u.haushalt && !istEchterHaushalt(u.haushalt) && b.aktion === 'lauf' && b.ausgeloest === 'takt') return NextResponse.json({ ok: false, fehler: 'Kein Takt für Test-Haushalte.' }, { status: 400 });
 

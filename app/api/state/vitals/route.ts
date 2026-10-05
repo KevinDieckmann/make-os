@@ -3,6 +3,7 @@
 // GET            → komplettes Log + die aktuell gültigen Werte
 // PUT { date, vitals } → einen Tag setzen (ohne die anderen zu verlieren)
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
@@ -33,7 +34,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   let body: { date?: string; vitals?: DayVitals };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   const date = body.date && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : localDay();
   const v = body.vitals ?? {};

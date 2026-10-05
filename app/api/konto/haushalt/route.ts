@@ -3,6 +3,7 @@
 // finanzRecht (04.10. spät): 'business' = nur die Business-Sicht der Finanzplanung (kein Privatzugang); null = alles; fehlt = unverändert.
 // Private Finanzen sieht nur, wer hier einem Haushalt zugeordnet ist.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten } from '@/lib/zugang/konten';
 import { personStreng, HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   if (!(await istInhaber(req))) return NextResponse.json({ ok: false, fehler: 'Nur der Inhaber.' }, { status: 403 });
   let b: { speicher?: unknown; haushalt?: unknown; finanzRecht?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const speicher = String(b.speicher ?? '');
   const haushalt = b.haushalt === null || b.haushalt === '' ? null : String(b.haushalt ?? '').trim().toLowerCase();
   if (haushalt !== null && !HAUSHALT_OK.test(haushalt)) return NextResponse.json({ ok: false, fehler: 'Ungültiger Haushaltsname.' }, { status: 400 });

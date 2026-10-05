@@ -6,6 +6,7 @@
 //   eingang  → Buchung (Kevin zahlt: Lieferantenrechnung, Quittung, Einkauf)
 //   ausgang  → Rechnung im Finanzplan (jemand schuldet Kevin Geld)
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
     /** Idempotenz (29.09., Paket D-A #19): je Beleg einmal im Browser erzeugt, bei Wiederholung dieselbe. */
     anfrageId?: string;
   };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
 
   // Ein Netz-Retry mit derselben anfrageId legt nichts doppelt an — die erste Antwort kommt zurück.
   const r = await einmalig(`beleg:${b.ziel === 'rechnung' ? 'rechnung' : 'buchung'}`, b.anfrageId, () => uebernehmen(b));

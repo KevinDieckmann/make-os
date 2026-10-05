@@ -5,6 +5,7 @@
 //                                          erst, wenn die Ursache behoben ist (NOTFALL.md „Absichten“)
 // Logik: lib/store/absichten.ts, lib/store/absichten-fortsetzen.ts. Der Takt und die Durchsicht tun dasselbe von selbst.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { absichtenHaushalte, absichtenLaden, absichtErneutVersuchen } from '@/lib/store/absichten';
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, fehler: 'Nur der Inhaber.' }, { status: 403 });
   let b: { aktion?: unknown; id?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion === 'erneut') {
     const id = String(b.id ?? '');
     if (!/^ab-[0-9a-f-]{36}$/.test(id)) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });

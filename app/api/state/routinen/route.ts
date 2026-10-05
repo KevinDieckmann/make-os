@@ -16,6 +16,7 @@
 // (Schrumpf-Schutz in der Sperre); PUT { bloecke } ist abgeschaltet, weil er die
 // Blöcke BEIDER Personen ersetzte.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler, type ListenOp, type PatchErgebnis } from '@/lib/store/patch-liste';
@@ -68,7 +69,7 @@ const MAX_BLOECKE = 500;
 
 export async function PUT(req: Request) {
   let body: { routinen?: unknown; bloecke?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   if (body.bloecke !== undefined) {
     return NextResponse.json({ ok: false, error: 'Blöcke bitte einzeln ändern (PATCH { bloecke: ops }) — Seite neu laden.' }, { status: 409 });
@@ -95,7 +96,7 @@ export async function PUT(req: Request) {
  */
 export async function PATCH(req: Request) {
   let body: { ops?: unknown; bloecke?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   if (body.bloecke !== undefined) {
     const ich = personStreng(req);

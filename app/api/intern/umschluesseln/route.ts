@@ -4,6 +4,7 @@
 // Hülle des Schreibformats (MAKE_OS_FORMAT: kompatibel = v1 wie aeb4964, sonst v2) mit dem aktiven Schlüssel.
 // Antwort: nur Zähler und Schlüssel-ID (nie ein Schlüssel).
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { istDienst } from '@/lib/zugang/dienst';
 import { allesUmschluesseln } from '@/lib/store/umschluesseln';
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   if (!istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Nur Dienstweg.' }, { status: 403 });
   let b: { nurLaden?: unknown };
-  try { b = await req.json(); } catch { b = {}; }
+  try { b = await jsonBegrenzt(req); } catch { b = {}; }
   if (b.nurLaden === true) {
     // Nach dem Entfernen des alten Schlüssels: Ring neu lesen und zeigen, was noch drin ist.
     schluesselNeuLaden();

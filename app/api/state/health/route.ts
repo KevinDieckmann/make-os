@@ -2,6 +2,7 @@
 // Log: { "YYYY-MM-DD": ["journal","supps",...] } — welche Routinen an dem Tag
 // erledigt wurden. So entstehen Streaks & Verlauf, lokal auf dem Mac.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const log = body as HealthLog;
   if (!log || typeof log !== 'object' || Array.isArray(log)) {
     return NextResponse.json({ ok: false, error: 'Ungültiges Log.' }, { status: 400 });

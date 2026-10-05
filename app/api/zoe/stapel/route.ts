@@ -19,6 +19,7 @@
 // entscheidet nur der Haushalt des Inhabers; ausgeführt wird immer als die ausdrücklich benannte Person (`personStreng`),
 // nie mehr über den Rückfall `personAus` → „kevin“. Schreibaufrufe aus dem Browser prüfen die Bau-Kennung (`bauPruefen`).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { lies, hole, entscheide, beanspruche, loslassen, vorschlagSichtbar, type Vorschlag } from '@/lib/zoe/stapel';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
@@ -96,7 +97,7 @@ export async function POST(req: Request) {
   if (!zugang) return GESPERRT();
   const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   let body: Eingang;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const origin = innenAdresse(req);
   // Die ausdrücklich benannte Person (Sitzung oder Dienstweg mit Person) — sie entscheidet und in ihrem Namen läuft es.
   const wer = zugang.person;

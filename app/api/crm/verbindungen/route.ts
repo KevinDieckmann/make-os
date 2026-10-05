@@ -19,6 +19,7 @@
 // kommt für die Anzeige `namen` mit (Kennung → Name/Titel, lib/crm/verbindungen-namen.ts) — nur Auflösbares aus den
 // geladenen Beständen, Termin-Titel nur, wenn der Termin für die fragende Person nicht maskiert ist.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -88,7 +89,7 @@ export async function POST(req: Request) {
   if (!person) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   if (zuGross(req, 20_000)) return ZU_GROSS(20_000);
   let body: { ids?: unknown; vorschau?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, 20_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const roh = Array.isArray(body.ids) ? body.ids.slice(0, 60) : [];
   const ids = Array.from(new Set(roh.filter(istReparierbar)));
   if (!ids.length || ids.length !== new Set(roh).size) return NextResponse.json({ ok: false, fehler: `ids: nur reparierbare Befunde (${REPARIERBAR.join(', ')}).` }, { status: 400 });

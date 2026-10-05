@@ -13,6 +13,7 @@
 // Erfassung ist eine menschliche Handlung (Kontakt anlegen, Termin buchen, Meldung an die andere Person) — und ohne Person
 // gar nichts: 403. Nichts wird versendet; die Danke-Mail öffnet nur das Mail-Programm des Geräts.
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
   if (alterBau) return alterBau;
   if (zuGross(req, KOERPER_MAX)) return fehler('Die Erfassung ist zu groß — bitte weniger oder kleinere Fotos.', 413);
   let body: Record<string, unknown>;
-  try { const b = await req.json(); if (!b || typeof b !== 'object' || Array.isArray(b)) throw new Error('kein Objekt'); body = b as Record<string, unknown>; } catch { return fehler('Kein gültiges JSON.', 400); }
+  try { const b = await jsonBegrenzt(req, KOERPER_MAX); if (!b || typeof b !== 'object' || Array.isArray(b)) throw new Error('kein Objekt'); body = b as Record<string, unknown>; } catch { return fehler('Kein gültiges JSON.', 400); }
 
   if (body.aktion === 'danke-raus') {
     const eventId = typeof body.eventId === 'string' ? body.eventId : '', kontaktId = typeof body.kontaktId === 'string' ? body.kontaktId : '';

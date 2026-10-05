@@ -41,6 +41,7 @@
 //      nie Namen). Die Übergabe ist eine Übermittlung an einen Dritten (Art. 13/15/19), MAKE bleibt eigener Verantwortlicher.
 // Alles nur auf Klick von Kevin oder Malin — hier wird nichts versendet.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
@@ -118,7 +119,7 @@ function aenderungAus(v: unknown): PunktAenderung | null {
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; eventId?: string; punktId?: string; erledigt?: boolean; aenderung?: unknown; teilnahmeId?: string; ergebnis?: string; hinweisBestaetigt?: boolean; bestandIds?: unknown; uebergabenBestaetigt?: boolean };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const eventId = String(b.eventId ?? '');
   if (!ID.test(eventId)) return NextResponse.json({ ok: false, fehler: 'eventId nötig.' }, { status: 400 });
   // Endgültig löschen geht seit 04.10. nur aus dem Papierkorb (lib/crm/ablage.ts) — dafür den Bestand MIT Papierkorb;

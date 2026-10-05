@@ -4,6 +4,7 @@
 // POST   → EINEN Punkt anhängen — dafür gedacht, dass ich unterwegs etwas
 //          eintrage, ohne die Liste zu überschreiben.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { SEED, type BacklogItem } from '@/lib/make-one/backlog-data';
@@ -33,7 +34,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const b = body as { items?: BacklogItem[] };
   if (!b || !Array.isArray(b.items)) return NextResponse.json({ ok: false, error: 'items fehlt.' }, { status: 400 });
   const etappen = (await loadJson<BacklogFile>('backlog'))?.etappen;
@@ -45,7 +46,7 @@ export async function PUT(req: Request) {
 /** Einen Punkt anhängen — ohne die übrigen anzufassen. */
 export async function POST(req: Request) {
   let body: Partial<BacklogItem>;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const titel = (body.titel ?? '').trim();
   if (!titel) return NextResponse.json({ ok: false, error: 'Kein Titel.' }, { status: 400 });
 

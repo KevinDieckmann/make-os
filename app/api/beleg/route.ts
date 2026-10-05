@@ -8,6 +8,7 @@
 //
 // Kann Fotos (JPEG/PNG/WebP) und PDFs.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { loadJson } from '@/lib/store/local-db';
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
   }
 
   let body: { datei?: string; medientyp?: string; name?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, 12000000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
 
   const datei = String(body.datei ?? '').replace(/^data:[^;]+;base64,/, '');
   const medientyp = String(body.medientyp ?? '');

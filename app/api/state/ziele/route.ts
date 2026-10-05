@@ -9,6 +9,7 @@
 // Seit 28.09. („Mandat an Zielen und Zeit“): Business-Ziele tragen optional `mandatId`/`firmaId`;
 // Firma und Einheit werden im Schreibweg aus dem Mandat abgeleitet (lib/planung/mandat.ts).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
@@ -92,7 +93,7 @@ async function mitStaenden(f: ZieleDatei): Promise<ZieleDatei> {
  */
 export async function PUT(req: Request) {
   let body: { horizont?: string; ziele?: unknown; fokus?: string; fuer?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const sp = await speicherFuerAnfrage(req, body.fuer ?? null);
   if (!sp) return NextResponse.json({ ok: false, error: 'Diese Person gehört nicht zu deinem Haushalt.' }, { status: 403 });
   if (!sp.darfSchreiben) return NextResponse.json({ ok: false, error: 'Den Fokus einer anderen Person kannst du nur lesen.' }, { status: 403 });
@@ -122,7 +123,7 @@ export async function PUT(req: Request) {
  */
 export async function PATCH(req: Request) {
   let body: { horizont?: string; ops?: unknown; fuer?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const sp = await speicherFuerAnfrage(req, body.fuer ?? null);
   if (!sp) return NextResponse.json({ ok: false, error: 'Diese Person gehört nicht zu deinem Haushalt.' }, { status: 403 });
   if (!sp.darfSchreiben) return NextResponse.json({ ok: false, error: 'Die Ziele einer anderen Person kannst du nur lesen.' }, { status: 403 });

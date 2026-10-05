@@ -2,6 +2,7 @@
 // GET → je Anbieter: konfiguriert? verbunden? (nur Metadaten, NIE Tokens).
 // POST { provider, aktion: 'trennen' } → Tokens lokal löschen.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { PROVIDER, konfiguriert, tokenStatus, trennen } from '@/lib/oauth';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
@@ -32,7 +33,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let body: { provider?: string; aktion?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (body.aktion !== 'trennen' || !PROVIDER[body.provider ?? '']) {
     return NextResponse.json({ ok: false, error: 'provider + aktion=trennen nötig.' }, { status: 400 });
   }

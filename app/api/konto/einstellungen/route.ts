@@ -5,6 +5,7 @@
 // er sich beim nächsten Anmelden selbst in die Einrichtung. Vorgabe: neue Instanzen an (einrichten), laufende aus.
 // Jede Änderung landet (nur Feldnamen) im Änderungsprotokoll (lib/zugang/konten.ts › aendereKonten).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, leerlaufStunden } from '@/lib/zugang/konten';
 
@@ -36,7 +37,7 @@ export async function PUT(req: Request) {
   const i = await inhaber(req);
   if (!i) return NextResponse.json({ ok: false, fehler: 'Nur der Inhaber.' }, { status: 403 });
   let b: { zweiFaktorPflicht?: unknown; leerlaufStunden?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.zweiFaktorPflicht !== undefined && typeof b.zweiFaktorPflicht !== 'boolean') return NextResponse.json({ ok: false, fehler: 'zweiFaktorPflicht: true oder false.' }, { status: 400 });
   const h = b.leerlaufStunden === undefined ? undefined : Number(b.leerlaufStunden);
   if (h !== undefined && !(Number.isInteger(h) && h >= 1 && h <= 336)) return NextResponse.json({ ok: false, fehler: 'Leerlauf: ganze Stunden von 1 bis 336.' }, { status: 400 });

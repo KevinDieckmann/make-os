@@ -9,6 +9,7 @@
 // DSGVO-Nachtrag 04.10.: `deaktiviertAm` setzt nur der Server (`deaktivierungStempeln`) — 30 Tage danach löscht der
 // Morgenlauf die Kapazitätsdaten der Person (lib/kapazitaet/aufraeumen.ts); Reaktivieren davor nimmt den Zeitpunkt weg.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { speicherStand } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler, type ListenOp } from '@/lib/store/patch-liste';
@@ -48,7 +49,7 @@ export async function PATCH(req: Request) {
   const z = await zugang(req);
   if (z instanceof Response) return z;
   let body: { ops?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (Array.isArray(body.ops) && body.ops.some(o => (o as { op?: unknown })?.op === 'delete')) {
     return NextResponse.json({ ok: false, fehler: 'Personen werden nicht gelöscht, sondern deaktiviert (aktiv: false).' }, { status: 400 });
   }

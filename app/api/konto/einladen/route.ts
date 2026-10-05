@@ -1,4 +1,5 @@
 // POST → Einladungscode (nur Inhaber). 48 Stunden gültig, einmal einlösbar.
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { personAus } from '@/lib/zoe/raum';
 import { ladeKonten, aendereKonten, neuerEinladungscode, speicherName, emailSauber, adresseVergeben, EINLADUNG_STUNDEN } from '@/lib/zugang/konten';
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   // eines Kontos, andere offene Einladung) und ist dann bis zum Ablauf für diese Einladung reserviert.
   let fuer = '';
   let adresseRoh: unknown;
-  try { const b = await req.json(); fuer = typeof b?.fuer === 'string' ? b.fuer.trim().slice(0, 40) : ''; adresseRoh = b?.email; } catch { /* kein Body ist in Ordnung */ }
+  try { const b = await jsonBegrenzt(req); fuer = typeof b?.fuer === 'string' ? b.fuer.trim().slice(0, 40) : ''; adresseRoh = b?.email; } catch { /* kein Body ist in Ordnung */ }
   const email = adresseRoh === undefined || adresseRoh === null || adresseRoh === '' ? undefined : emailSauber(adresseRoh);
   if (email === null) return NextResponse.json({ error: 'E-Mail ungültig.' }, { status: 400 });
   const speicher = fuer ? speicherName(fuer, []) : undefined;

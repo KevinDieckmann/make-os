@@ -35,6 +35,7 @@
 //     Akte aus dem Termin, lib/crm/termin-aktivitaet.ts). Kontakt gelöst oder Termin gelöscht, solange er in der Zukunft
 //     lag → die Meeting-Aktivität fällt weg (mit Löschmarke). Serien: die Vorkommen legt der Signal-Lauf an.
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminAufloesen, terminLesen, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
@@ -97,7 +98,7 @@ const nichtDeiner = () => NextResponse.json({ ok: false, fehler: 'Privater Termi
 const nurVonHand = () => NextResponse.json({ ok: false, fehler: 'Einladungen, Änderungen an Gäste und Antworten nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
 
 async function json(req: Request): Promise<Record<string, unknown> | null> {
-  try { const b = await req.json(); return b && typeof b === 'object' ? b as Record<string, unknown> : null; } catch { return null; }
+  try { const b = await jsonBegrenzt(req); return b && typeof b === 'object' ? b as Record<string, unknown> : null; } catch { return null; }
 }
 
 /** Einladungen protokollieren: wer, UID, Anzahl der Gäste — nie Adressen (K3). */

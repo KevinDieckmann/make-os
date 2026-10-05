@@ -8,6 +8,7 @@
 //                               Kostet Modell-Aufrufe — nur bewusst auslösen,
 //                               z. B. vor und nach einer Prompt-Änderung.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
   if (zuGross(req, 1000000)) return ZU_GROSS(1000000);
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let b: { head?: string; n?: number; k?: number; modus?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, 1000000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const h = headAus(b.head);
   if (!h) return NextResponse.json({ ok: false, fehler: 'head=sales|marketing|event' }, { status: 400 });
   if (!hasAnthropicKey()) return NextResponse.json({ ok: false, fehler: 'Kein Anthropic-Schlüssel.' }, { status: 400 });

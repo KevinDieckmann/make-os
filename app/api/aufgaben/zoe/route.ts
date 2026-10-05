@@ -17,6 +17,7 @@
 // Zugang: Haushalt des Inhabers (Sitzung oder Dienstweg mit Person dieses Haushalts), sonst 403.
 // ZOE versendet über diese Route nichts und löscht nichts.
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { hasAnthropicKey, guthabenLeer } from '@/lib/anthropic';
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
   if (alterBau) return alterBau;
   if (zuGross(req, MAX_BYTES)) return NextResponse.json({ ok: false, error: 'Abgelehnt: zu groß.' }, { status: 413 });
   let b: Eingang;
-  try { b = (await req.json()) as Eingang; } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = (await jsonBegrenzt(req, MAX_BYTES)) as Eingang; } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!b || typeof b !== 'object') return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 });
   const str = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : undefined);
 

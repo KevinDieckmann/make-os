@@ -3,6 +3,7 @@
 // aktiv gearbeitet wird — und ob abends wirklich ausgeloggt wurde.
 // Log: { "YYYY-MM-DD": { sessions: [{ von: "HH:MM", bis: "HH:MM"|null }] } }
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -46,7 +47,7 @@ export async function GET() {
 /** POST { aktion: 'an' | 'aus', was?: 'arbeit' | 'gesundheit' } — schaltet den jeweiligen Zähler. */
 export async function POST(req: Request) {
   let body: { aktion?: string; was?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (body.aktion !== 'an' && body.aktion !== 'aus') {
     return NextResponse.json({ ok: false, error: 'aktion an|aus nötig.' }, { status: 400 });
   }

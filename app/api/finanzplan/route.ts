@@ -9,6 +9,7 @@
 // in beiden Bereichen alles. Ein Konto mit `finanzRecht: 'business'`: GET liefert nur den Business-Teil (lib/finanzen/plan/sicht.ts › businessSicht), PATCH ändert nur
 // Business-Pfade (sonst 403), die 409-Antwort trägt ebenfalls nur den Business-Teil.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
@@ -47,7 +48,7 @@ export async function PATCH(req: Request) {
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   if (zuGross(req, MAX_BODY)) return ZU_GROSS(MAX_BODY);
   let b: { basisStand?: unknown; ops?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, MAX_BODY); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!Array.isArray(b.ops) || !b.ops.length) return NextResponse.json({ ok: false, fehler: 'Keine Änderungen.' }, { status: 400 });
   if (b.ops.length > MAX_OPS) return NextResponse.json({ ok: false, fehler: `Höchstens ${MAX_OPS} Schritte auf einmal.` }, { status: 400 });
   const e = await patchen(z.haushalt, b.basisStand, b.ops as Operation[], z.person, z.sicht);
