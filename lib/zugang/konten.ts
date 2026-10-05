@@ -17,6 +17,7 @@
 import { scrypt, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson, beschaedigt } from '@/lib/store/local-db';
 import type { Wiederherstellung } from './totp';
+import type { Aenderung } from '@/lib/store/aenderungsprotokoll';
 
 export type Rolle = 'inhaber' | 'mitglied';
 
@@ -257,16 +258,46 @@ function einstellungenAus(s: Partial<KontenStand> | null | undefined): ZugangEin
   return e && typeof e === 'object' && !Array.isArray(e) ? e : undefined;
 }
 
+/**
+ * Konto-Änderungen fürs Änderungsprotokoll (05.10.): NUR Kennungen und Feldnamen, nie Werte — neu, gelöscht, Rolle,
+ * Haushalt, Finanzrecht, zweiter Faktor an/aus; Instanz-Einstellungen unter der Kennung `instanz`. Rein.
+ */
+export const KONTO_FELDER = ['rolle', 'haushalt', 'finanzRecht'] as const;
+export function kontoAenderungen(alt: KontenStand | null, neu: KontenStand): Aenderung[] {
+  const vorher = new Map((alt?.konten ?? []).map(k => [k.id, k]));
+  const nachher = new Map(neu.konten.map(k => [k.id, k]));
+  const raus: Aenderung[] = [];
+  for (const [id, n] of Array.from(nachher)) {
+    const a = vorher.get(id);
+    if (!a) { raus.push({ op: 'neu', id }); continue; }
+    const felder: string[] = KONTO_FELDER.filter(f => (a[f] ?? null) !== (n[f] ?? null));
+    if (!!a.zweiterFaktor !== !!n.zweiterFaktor) felder.push('zweiterFaktor');
+    if (felder.length) raus.push({ op: 'geaendert', id, felder });
+  }
+  for (const id of Array.from(vorher.keys())) if (!nachher.has(id)) raus.push({ op: 'geloescht', id });
+  const ea = alt?.einstellungen ?? {}, en = neu.einstellungen ?? {};
+  const efelder = (['zweiFaktorPflicht', 'leerlaufStunden'] as const).filter(f => (ea[f] ?? null) !== (en[f] ?? null));
+  if (efelder.length) raus.push({ op: 'geaendert', id: 'instanz', felder: [...efelder] });
+  return raus;
+}
+
 export async function aendereKonten(mut: (s: KontenStand) => KontenStand): Promise<KontenStand> {
-  return updateJson<KontenStand>(STORE, current => {
+  let vorher: KontenStand | null = null;
+  const ergebnis = await updateJson<KontenStand>(STORE, current => {
     const e = einstellungenAus(current);
     const s: KontenStand = current && Array.isArray(current.konten) ? { konten: current.konten, einladungen: Array.isArray(current.einladungen) ? current.einladungen : [], ...(e ? { einstellungen: e } : {}) } : leererStand();
+    vorher = s;
     const neu = mut(s);
     // Wer nur Konten/Einladungen schreibt (z. B. `{ konten, einladungen }` ohne Spread), verliert die Einstellungen nicht.
     const behalten = 'einstellungen' in neu ? neu.einstellungen : s.einstellungen;
     const { einstellungen: _weg, ...rest } = neu;
     return behalten ? { ...rest, einstellungen: behalten } : rest;
   });
+  // Änderungsprotokoll (05.10.): wer wann welches Konto angelegt, gelöscht oder an Rolle/Haushalt/Finanzrecht/2FA geändert
+  // hat — nur Kennungen. Dynamisch geladen (das Protokoll liest selbst Konten). Wirft nie.
+  const aenderungen = kontoAenderungen(vorher, ergebnis);
+  if (aenderungen.length) await import('@/lib/store/aenderungsprotokoll').then(m => m.protokolliere('konten', aenderungen)).catch(() => {});
+  return ergebnis;
 }
 
 /** Konto zu einer Anmelde-Adresse (Haupt- oder weitere). */
