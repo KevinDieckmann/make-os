@@ -17,7 +17,7 @@
 // Blöcke BEIDER Personen ersetzte.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
-import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler, type ListenOp, type PatchErgebnis } from '@/lib/store/patch-liste';
@@ -54,7 +54,7 @@ const antwort = (f: RoutinenDatei | null | undefined) => ({
  * Ritual, Energie, Planen, Journal). Ohne Person bei `sicht=ich`: nur die gemeinsamen.
  */
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt(); // lesen auch der Systemlauf (Takt, ZOE)
   let f = await loadJson<RoutinenDatei>('routinen');
   if (!f || !Array.isArray(f.routinen) || !f.routinen.length) {
     f = await updateJson<RoutinenDatei>('routinen', cur => ({ ...(cur ?? {}), routinen: seed() }));

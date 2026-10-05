@@ -5,6 +5,7 @@
 // Nur mit Sitzung (der Dienstweg liest hier nichts).
 
 import { NextResponse } from 'next/server';
+import { personDerSitzung } from '@/lib/zugang/tor';
 import { istDienst } from '@/lib/zugang/dienst';
 import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { KI_PROTOKOLL_MONATE, empfaengerAuskunft, kiProtokollLesen } from '@/lib/datenschutz/ki-protokoll';
@@ -16,7 +17,7 @@ const PERSON = /^[a-z0-9-]{1,40}$/;
 
 export async function GET(req: Request) {
   if (istDienst(req)) return NextResponse.json({ ok: false, error: 'Nur mit Anmeldung.' }, { status: 403 });
-  const person = req.headers.get('x-make-user');
+  const person = personDerSitzung(req);
   if (!person || !PERSON.test(person)) return NextResponse.json({ ok: false, error: 'Nur mit Anmeldung.' }, { status: 403 });
   const url = new URL(req.url);
   if (url.searchParams.get('auskunft') === '1') {

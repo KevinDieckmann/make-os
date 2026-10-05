@@ -2,7 +2,7 @@
 // GET  Stand und Liste. POST reiht ein — mehrere auf einmal, das ist der Sinn.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
-import { imHaushaltOderSystemlauf, nurHaushalt, imHaushaltDesInhabers } from '@/lib/zugang/tor';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { reihe, lies, stand, type NeuerAuftrag } from '@/lib/zoe/auftraege';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt(); // einreihen auch der Systemlauf (Takt, starte_auftraege)
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { auftraege?: NeuerAuftrag[] };
   try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }

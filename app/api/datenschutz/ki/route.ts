@@ -6,6 +6,7 @@
 // Andere Personen sehen fremde Schalter nicht. Erzwungen wird im KI-Tor (lib/datenschutz/ki-tor.ts) und in fuehreAus.
 
 import { NextResponse } from 'next/server';
+import { personDerSitzung } from '@/lib/zugang/tor';
 import { istDienst } from '@/lib/zugang/dienst';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
@@ -21,7 +22,7 @@ export const dynamic = 'force-dynamic';
 const PERSON = /^[a-z0-9-]{1,40}$/;
 function selbst(req: Request): string | null {
   if (istDienst(req)) return null;
-  const p = req.headers.get('x-make-user');
+  const p = personDerSitzung(req);
   return p && PERSON.test(p) ? p : null;
 }
 const VERBOTEN = (t: string) => NextResponse.json({ ok: false, error: t }, { status: 403 });

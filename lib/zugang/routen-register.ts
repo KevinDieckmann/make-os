@@ -135,7 +135,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'tasks/create': r('POST', 'haushalt', 'Aufgabe anlegen; Systemlauf nur mit owner (S1).'),
   'state/ziele': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsame Ziele („wir“) und persönliche Ziele des Haushalts.'),
   'state/meilensteine': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsamer Meilenstein-Bestand des Haushalts.'),
-  'state/routinen': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsamer Routinen-Bestand des Haushalts (Blöcke je Person).', undefined, 'Erststart: leerer Bestand bekommt einmal die Startroutinen (idempotent, in der Sperre).'),
+  'state/routinen': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsamer Routinen-Bestand des Haushalts (Blöcke je Person); lesen auch als Systemlauf.', undefined, 'Erststart: leerer Bestand bekommt einmal die Startroutinen (idempotent, in der Sperre).'),
   'planung/einheiten': r('GET,POST', 'haushalt', 'Planungs-Einheiten je Haushalt (`planung-einheiten--<haushalt>`, ohne Haushalt je Person).', 'haushaltFuer'),
   'planung/meilenstein': r('GET,POST', 'haushalt', 'Meilenstein-Detail und Austausch des Haushalts.'),
   'planung/vorschlag': r('POST', 'haushalt', 'Wochenvorschlag (KI) aus Kalender und Aufgaben des Haushalts.'),
@@ -176,7 +176,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'kimmi': r('POST', 'haushalt', 'ZOE-Gespräch: liest Brain und Bestände des Haushalts — nur Personen im Haushalt (400 ohne Person, S1).'),
   'zoe/stapel': r('GET,POST', 'haushalt', 'Vorschlags-Stapel des Haushalts (S1).'),
   'zoe/takt': r('GET,POST', 'haushalt', 'Takt: Dienstweg oder Haushalt (S1).'),
-  'zoe/auftraege': r('GET,POST', 'haushalt', 'Auftrags-Warteschlange des Haushalts; lesen auch als Systemlauf.'),
+  'zoe/auftraege': r('GET,POST', 'haushalt', 'Auftrags-Warteschlange des Haushalts; lesen und einreihen auch als Systemlauf.'),
   'zoe/auftraege/lauf': r('POST', 'dienst', 'Arbeiter führt Aufträge aus.'),
   'zoe/auftraege/nimm': r('POST', 'dienst', 'Arbeiter holt Aufträge.'),
   'zoe/empfang': r('GET', 'haushalt', 'Begrüßung aus Brain und Lage des Haushalts.', undefined, 'Zwischenspeicher der Begrüßung je Stunde und Person (spart Modell-Aufrufe), nur aktueller und vorheriger Schlüssel.'),
@@ -307,6 +307,16 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'buchung/[slug]/status': r('POST', 'offen', 'Status einer Buchung (K4) — wie oben, mit Token.'),
 
   // ── Konto, Anmeldung, System ───────────────────────────────────────────────────────────────────────────────
+  // ── Datenschutz (05.10., DSGVO-Pakete) ────────────────────────────────────────────────────────────────────
+  'datenschutz/einrichtung': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Verantwortlicher, Empfänger/AVV der Instanz: ansehen im Haushalt, pflegen nur der Inhaber von Hand.'),
+  'datenschutz/gesundheit': r('GET,POST', 'person', 'Art.-9-Einwilligung — nur die Person selbst per Sitzung (Dienstweg und Inhaber → 403).'),
+  'datenschutz/ki': r('GET,PUT', 'person', 'KI-Schalter: eigene Schalter nur selbst; Instanz-Schalter prüft die Route zusätzlich auf den Inhaber.'),
+  'datenschutz/ki-protokoll': r('GET', 'person', 'Eigene Zeilen des KI-Protokolls (Art. 15); Systemläufe zusätzlich nur für den Inhaber.'),
+  'datenschutz/nachweise': r('GET,POST', 'inhaber', 'Lese-Protokoll und Kettenprüfung — nur der Inhaber selbst.'),
+  'datenschutz/pannen': r('GET,POST', 'inhaber', 'Pannen-Register (Art. 33 Abs. 5) — nur der Inhaber, nur von Hand.'),
+  'datenschutz/pruefung': r('GET', 'haushalt', 'Datenschutz-Selbstprüfung der Instanz.'),
+  'datenschutz/verzeichnis': r('GET', 'haushalt', 'Verzeichnis der Verarbeitungstätigkeiten (Art. 30) als Dokument.', undefined, 'Vervollständigt das Verzeichnis vorher idempotent (in der Sperre des CRM, nie Personendaten).'),
+
   'konto/status': r('GET', 'offen', 'Ob es schon Konten gibt (für /anmelden) — nur ein Ja/Nein.'),
   'konto/anmelden': r('POST', 'offen', 'Anmeldung: eigene Drossel, Passwort, 2FA, Protokoll.'),
   'konto/einrichten': r('POST', 'offen', 'Erstes Konto nur mit Einmal-Code (S3).'),
