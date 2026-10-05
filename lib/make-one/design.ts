@@ -245,3 +245,35 @@ export const FOKUS_STIL = {
   /** Unbelegte Segmente eines Segmentbalkens. */
   segmentLeer: 'rgba(255,255,255,.09)',
 } as const;
+
+// ─── Kugeln (05.10., ZOE-Kugel + Brain-Kugel, DESIGN_STANDARD.md › Kugeln) ─────
+// Vorlage „Solaris“ (UMBAU_ABEND_0410.md 1 + 3) — übernommen wird die Wirkung, nicht der Code: eine Punktwolken-Kugel in
+// UNSERER CI (Granat und Smaragd auf dem dunklen Grund). 80/20: die Kugel ist der eine Akzent, alles andere bleibt ruhig.
+/** Das Kugel-Paar (= die Logo-Farben der Website, website/css/seite.css): Verlauf kühl → warm über die Kugel. */
+export const KUGEL = {
+  smaragd: '#2FA878',
+  granat: '#C9465C',
+  /** Wohin ein Punkt beim Zeiger-Ausbruch glüht — unser Weiß, kein reines Weiß. */
+  glut: FARBE.ink,
+  /** Die leise Hülle der Brain-Kugel (nur Form, keine Daten). */
+  huelle: FARBE.inkLeise,
+} as const;
+
+/** Mischt zwei Token-Farben (#RRGGBB) — für abgestufte Töne aus dem Kugel-Paar statt neuer Farben. */
+export function mischHex(a: string, b: string, t: number): string {
+  const k = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  const x = (i: number) => Math.round(k(a, i) + (k(b, i) - k(a, i)) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, '0');
+  return `#${x(0)}${x(1)}${x(2)}`.toUpperCase();
+}
+
+/**
+ * Bereichsfarben der Brain-Kugel — NUR aus dem Kugel-Paar und unserem Weiß abgeleitet (keine fremden Farben, Wächter
+ * tests/kugeln.test.ts): Markttraktion Granat · Planung Smaragd · Kalender Smaragd hell · Unternehmen Granat hell · Wissen Silber.
+ */
+export const KUGEL_BEREICH_FARBE = {
+  markttraktion: KUGEL.granat,
+  planung: KUGEL.smaragd,
+  kalender: mischHex(KUGEL.smaragd, FARBE.ink, 0.5),
+  unternehmen: mischHex(KUGEL.granat, FARBE.ink, 0.5),
+  wissen: FARBE.inkDim,
+} as const;

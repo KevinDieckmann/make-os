@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { ZurueckKnopf } from './Verlauf';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO, ZIEL } from '@/lib/make-one/design';
 import { ZoeHirn, TON } from './ZoeHirn';
+import { ZoeKugel, ZOE_KUGEL_TON } from './kugel';
 import { useStimme } from '@/hooks/useStimme';
 import { useLautstaerke } from '@/hooks/useLautstaerke';
 import { useAtem } from '@/hooks/useAtem';
@@ -91,7 +92,9 @@ export function ZoeStart() {
   const stimme = useStimme(satz => { void frag(satz); });
 
   const zustand = zustandVon({ hoert: stimme.hoert, spricht: stimme.spricht, denkt });
-  const ton = TON[zustand];
+  // Seit 05.10. ist ZOE eine Lichtkugel in unserer CI: Hof, Zustandszeile und Bedienung nehmen ihre Töne (Smaragd ·
+  // Granat), Wort und Takt bleiben die des Hirns. Das SVG-Hirn ist nur noch der Rückfall ohne WebGL.
+  const ton = { ...TON[zustand], farbe: ZOE_KUGEL_TON[zustand] };
 
   // Der Pegel: beim Zuhören gemessen, beim Sprechen gerechnet.
   // Ehrlich benannt — die Sprachausgabe des Browsers gibt keine Lautstärke
@@ -241,24 +244,33 @@ export function ZoeStart() {
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         flex: 1, minHeight: 0,
       }}>
-        {/* ── Das Hirn ──────────────────────────────────────────────────── */}
+        {/* ── ZOE: die Lichtkugel (05.10.; ohne WebGL das Hirn) ───────────── */}
         {/* Sobald ein Gespräch läuft, tritt das Hirn zurück: es bleibt
             sichtbar (der Zustand muss ablesbar bleiben), gibt aber den Platz
             an das ab, was gerade gesagt wird. */}
         <div style={{
           flex: '0 0 auto',
           width: zuege.length ? 'min(230px, 38vw, 22vh)' : 'min(520px, 72vw, 40vh)',
+          aspectRatio: '1 / 1',
           marginTop: 'clamp(0px,1.5vh,20px)',
           transition: 'width .7s cubic-bezier(.22,1,.36,1)',
         }}>
-          <ZoeHirn
-            aktiv={aktiv}
-            groesse={460}
+          <ZoeKugel
+            groesse="gross"
             zustand={zustand}
             pegel={pegel}
-            zeit={atem.zeit}
-            maus={atem.maus}
-            ruhig={atem.ruhig}
+            aktiv={aktiv}
+            rueckfall={
+              <ZoeHirn
+                aktiv={aktiv}
+                groesse={460}
+                zustand={zustand}
+                pegel={pegel}
+                zeit={atem.zeit}
+                maus={atem.maus}
+                ruhig={atem.ruhig}
+              />
+            }
           />
         </div>
 

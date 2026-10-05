@@ -32,6 +32,8 @@ import { useSpace } from '@/hooks/useSpace';
 import { useStimme } from '@/hooks/useStimme';
 import { fuerStimme, titelAus, wannText, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 import { ZOE_FRAGEN_EREIGNIS, CRM_BEZUG_LABEL, crmBezugAus, type CrmBezug } from '@/lib/zoe/crm-bezug';
+import { ZoeKugel, type ZoeZustand } from './kugel';
+import { KUGEL } from '@/lib/make-one/design';
 
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
@@ -96,6 +98,18 @@ function Orb({ size = 30, puls = false }: { size?: number; puls?: boolean }) {
       {puls && <span className="zoe-orb-ring" style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1.5px solid ${J}` }} />}
       <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1.5px solid ${J}` }} />
       <span className={puls ? 'zoe-orb-kern' : undefined} style={{ position: 'absolute', inset: size * 0.28, borderRadius: '50%', background: J, boxShadow: `0 0 ${size * 0.4}px ${J}66` }} />
+    </span>
+  );
+}
+
+/**
+ * ZOE als kleine Lichtkugel (05.10., UMBAU_ABEND_0410.md 1): dieselbe Kugel wie im Empfang, wenige Punkte, 24 Bilder je
+ * Sekunde, pausiert außerhalb des Bildes und im Hintergrund-Tab. Ohne WebGL bleibt das bisherige Symbol (`Orb`).
+ */
+function ZoeSymbol({ size, zustand, puls }: { size: number; zustand: ZoeZustand; puls: boolean }) {
+  return (
+    <span aria-hidden="true" style={{ position: 'relative', width: size, height: size, flex: '0 0 auto', display: 'inline-block' }}>
+      <ZoeKugel groesse="symbol" zustand={zustand} rueckfall={<Orb size={size} puls={puls} />} />
     </span>
   );
 }
@@ -371,12 +385,14 @@ export function ZoePanel() {
     fetch(`/api/state/zoe-verlauf?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
   };
 
+  const kugelZustand: ZoeZustand = stimme.hoert ? 'hoert' : stimme.spricht ? 'spricht' : thinking ? 'denkt' : 'ruht';
+
   // ── Zu: das kleine pulsierende Icon, das überall mitgeht ──
   if (!fenster.offen) {
     return (
       <button onClick={() => setFenster(f => ({ ...f, offen: true }))} aria-label="ZOE öffnen" title="ZOE" className="zoe-fab"
-        style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 70, width: 52, height: 52, borderRadius: '50%', border: 'none', background: FLAECHE, cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${J}33, inset 0 1px 0 rgba(255,255,255,.08)` }}>
-        <Orb size={30} puls />
+        style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 70, width: 52, height: 52, borderRadius: '50%', border: 'none', background: FLAECHE, cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${KUGEL.smaragd}2E, inset 0 1px 0 rgba(255,255,255,.08)` }}>
+        <ZoeSymbol size={38} zustand={kugelZustand} puls />
         {(thinking || stimme.hoert || stimme.spricht) && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung, boxShadow: `0 0 8px ${stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung}33` }} />}
       </button>
     );
@@ -409,7 +425,7 @@ export function ZoePanel() {
       {/* Kopf — am Kopf packst du das Fenster und schiebst es, wohin du willst */}
       <div onPointerDown={zugStart('ort')}
         style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px 10px 20px', borderBottom: `1px solid ${HAAR}`, background: 'rgba(255,255,255,.03)', cursor: 'grab', touchAction: 'none' }}>
-        <Orb size={26} puls={stimme.hoert || stimme.spricht} />
+        <ZoeSymbol size={28} zustand={kugelZustand} puls={stimme.hoert || stimme.spricht} />
         <div style={{ minWidth: 0, flex: '0 0 auto' }}>
           <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, letterSpacing: '.06em' }}>ZOE</div>
           <div style={{ fontSize: TYP.mikro, fontWeight: 600, color: zustandFarbe, whiteSpace: 'nowrap' }}>{zustand}</div>

@@ -314,3 +314,16 @@ Rein Darstellung (80/20), Funktion und Daten unverändert:
 5. ✕ an Abhängigkeiten ist `SymbolKnopf eingebettet` (Tippziel 44 px).
 Nicht angefasst: `window.confirm` und Löschen in Listen (eigenes Paket `ZeileAktionen`/`useRueckfrage`).
 
+## Kugeln — ZOE und Brain (05.10.)
+Kevin (04.10.): ZOE tritt als Lichtkugel auf (Vorlage „Solaris“, Wirkung statt Code), das Brain wird eine Kugel aus allen Datensätzen. Kern
+`components/os/kugel/*`, Token `KUGEL`, `KUGEL_BEREICH_FARBE`, `mischHex` (design.ts), Wächter `tests/kugeln.test.ts`, `tests/brain-kugel.test.ts`.
+
+| Ort | Kugel | Regeln |
+|---|---|---|
+| Empfang `/zoe` | `ZoeKugel groesse="gross"` | Punktwolke Smaragd → Granat, hohle Mitte, heller Rand, Einstieg 2,4 s, Ausbruch unter dem Zeiger (nur Rechner); Zustände über Tempo/Farbgewicht; Hof und Zustandszeile in `ZOE_KUGEL_TON` |
+| ZoePanel | `ZoeKugel groesse="symbol"` | 900 Punkte, 24 Bilder/s, kein Zeiger |
+| Brain › „Dein Brain“ | `BrainKugel` | Punkt = Datensatz, Farbe = Bereich (Legende), Größe/Helligkeit = Aktualität; Zeiger zeigt Titel + Linien zu Verbindungen, Klick öffnet über `WEG`, am Handy erst zeigen, dann „Öffnen ›“; darunter die Liste (Tastatur, Vorleser) |
+
+**Regeln:** 1. 80/20 — die Kugel ist der eine Akzent der Ansicht; ruhiges Atmen, keine Effektfeuerwerke, kein Bloom. 2. Nur Token-Farben (kein Hex/rgb im
+Ordner). 3. Leinwand `aria-hidden`, alles Gezeigte steht auch als Text (Zustandszeile, Liste, Legende). 4. „Bewegung reduzieren“ = Standbild, ohne WebGL der
+Rückfall (ZoeHirn, Orb, Liste). 5. Daten der Brain-Kugel nur aus `/api/brain/punkte` — die Oberfläche filtert nichts selbst.

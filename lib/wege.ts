@@ -134,6 +134,9 @@ export const WEG = {
    */
   ziel: (id: string) => `/os/planung/ziel/${encodeURIComponent(id)}`,
   agenten: () => '/os/agenten',
+  /** Brain (05.10.): die Seite bzw. eine Notiz im Lesefenster (`?n=` — Kennung relativ zum Vault, wie /api/zoe/wissen sie liefert). */
+  wissen: () => '/os/wissen',
+  notiz: (id: string) => q('/os/wissen', { n: id }),
   aufgabe: (id: string) => q('/os/aufgaben', { offen: id }),
   /**
    * Aufgaben-Seite (Navigation wie im CRM, 28.09. spät — lib/aufgaben/adresse.ts): ohne Angabe der Überblick;
