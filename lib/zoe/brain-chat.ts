@@ -11,7 +11,7 @@
 // Kevin fragt sein eigenes Brain und darf dabei auch Privates sehen, Malin
 // alles außer Kevins Privatem. Die Antwort geht nur an die Person zurück.
 
-import { askText, fremd, FREMD_REGEL } from '@/lib/anthropic';
+import { askText, fremd, FREMD_REGEL, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { suche, notiz, type Sicht, type Treffer } from './vault';
 import { regelnFuerPrompt } from '@/lib/brain/regeln';
 import { nameVon } from './raum';
@@ -136,9 +136,10 @@ export async function frageBrain(frage: string, verlauf: Zug[], sicht: Sicht): P
   let antwort = '';
 
   for (let runde = 0; runde < RUNDEN; runde++) {
-    const r = await askText({ system, user: frage, messages: msgs, tools: WERKZEUGE, maxTokens: 3500, timeoutMs: 120_000, zweck: 'brain-chat' });
+    const r = await askText({ system, user: frage, messages: msgs, tools: WERKZEUGE, maxTokens: 3500, timeoutMs: 120_000, zweck: 'brain-chat',
+      ki: { lauf: 'gespraech', person: sicht.person ?? null, kategorien: ['brain'] } });
     if (!r.ok) {
-      const fehler = r.error === 'no-key' ? 'Ohne Anthropic-Schlüssel kann das Brain nicht antworten.' : `Die KI hat nicht geantwortet (${r.status || 'offline'}).`;
+      const fehler = r.error === 'no-key' ? 'Ohne Anthropic-Schlüssel kann das Brain nicht antworten.' : kiGesperrt(r) ? `${kiSperrText(r)}.` : `Die KI hat nicht geantwortet (${r.status || 'offline'}).`;
       return { ok: false, antwort: '', quellen: [], fehler };
     }
     const content: Block[] = Array.isArray((r.raw as { content?: Block[] })?.content) ? (r.raw as { content: Block[] }).content : [];

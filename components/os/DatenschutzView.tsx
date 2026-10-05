@@ -5,6 +5,8 @@
 // mit AVV-Nachweis (Art. 28/30), Selbstprüfung, Verzeichnis-Export (Art. 30), Pannen-Register (Art. 33 Abs. 5, nur Inhaber), Dokumente. Nur im Haushalt des Inhabers
 // (die Routen antworten sonst 403); ändern darf nur der Inhaber. Die Datenschutz-Arbeit am CRM (Pflichtangaben, Anträge,
 // Löschfristen) bleibt unter Markttraktion › Stammdaten › Datenschutz.
+// Seit 05.10. EINE Seite für alles: dazu Gesundheit/KI/Telegram/KI-Protokoll je Person (datenschutz/KiGesundheit.tsx — für jede
+// angemeldete Person, auch ohne Inhaber-Recht) und die Nachweise (Lese-Protokoll, Protokoll-Kette, Verschlüsselung — nur Inhaber).
 
 import { useCallback, useEffect, useState } from 'react';
 import { Seite, Karte, Hinweis, Knopf } from './ui';
@@ -15,6 +17,8 @@ import { PruefungKarte } from './datenschutz/Pruefung';
 import { VerzeichnisKarte } from './datenschutz/Verzeichnis';
 import { PannenKarte } from './datenschutz/Pannen';
 import { DokumenteKarte } from './datenschutz/Dokumente';
+import { KiGesundheitKarten } from './datenschutz/KiGesundheit';
+import { NachweiseKarten } from './datenschutz/Nachweise';
 
 export function DatenschutzView() {
   const [d, setD] = useState<EinrichtungAntwort | null>(null);
@@ -27,17 +31,19 @@ export function DatenschutzView() {
   }, []);
   useEffect(() => { void laden(); }, [laden]);
   return (
-    <Seite titel="Datenschutz" unter="Verantwortlicher, Empfänger, Selbstprüfung und Verzeichnis — eine Quelle für die ganze Instanz.">
+    <Seite titel="Datenschutz" unter="Verantwortlicher, Einwilligungen, KI, Empfänger, Verzeichnis und Nachweise — eine Quelle für die ganze Instanz. Hinweis, keine Rechtsberatung.">
       {fehler && <Hinweis art="kritisch" titel="Nicht geladen" aktion={<Knopf leise onClick={() => void laden()}>Nochmal</Knopf>}>{fehler}</Hinweis>}
       {d && <PruefungKarte stand={stand} i={0} />}
-      {d && <VerantwortlicherKarte d={d} onGeaendert={() => void laden()} i={0} />}
-      {d && <EmpfaengerKarte liste={d.empfaenger} darf={d.darf} onGeaendert={() => void laden()} i={1} />}
-      {d && <VerzeichnisKarte i={2} />}
-      {d?.darf && <PannenKarte i={3} />}
-      <Karte i={4}>
+      {d && <VerantwortlicherKarte d={d} onGeaendert={() => void laden()} i={1} />}
+      <KiGesundheitKarten i={2} />
+      {d && <EmpfaengerKarte liste={d.empfaenger} darf={d.darf} onGeaendert={() => void laden()} i={6} />}
+      {d && <VerzeichnisKarte i={7} />}
+      {d?.darf && <div id="nachweise"><NachweiseKarten i={8} /></div>}
+      {d?.darf && <PannenKarte i={9} />}
+      <Karte i={10}>
         <Hinweis art="info" titel="CRM-Datenschutz" aktion={<Knopf leise href={WEG.stammdaten('datenschutz')}>Öffnen</Knopf>}>Pflichtangaben, Betroffenenanträge, Löschkonzept und Löschfristen der Kontakte liegen unter Markttraktion › Stammdaten › Datenschutz.</Hinweis>
       </Karte>
-      <DokumenteKarte i={5} />
+      <DokumenteKarte i={11} />
     </Seite>
   );
 }

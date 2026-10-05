@@ -16,6 +16,8 @@ import { logRun } from '@/lib/agent-log';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { TAGE, MAHLZEITEN, KATEGORIEN, sauberDatei, neueId, kategorieRaten, gleichesLebensmittel, type ErnaehrungFile, type Tag, type Mahlzeiten, type Gericht, type EinkaufPosten, type PlanGerichte, type Kategorie } from '@/lib/ernaehrung/modell';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { profileFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -53,7 +55,9 @@ export async function POST(req: Request) {
 
   const f = sauberDatei(await loadJson<ErnaehrungFile>('ernaehrung'));
   const gaeste = new Set(Array.isArray(body.gaeste) ? body.gaeste.map(String) : []);
-  const profile = f.profile.filter(p => p.konto || gaeste.has(p.person));
+  // Art. 9 (05.10.): Bedürfnisse/Unverträglichkeiten nur mit Einwilligung (b) der Person an die KI — sonst (und für Gäste
+  // immer) nur als neutrale Küchenregel „nie“ (lib/datenschutz/gesundheit-ki.ts).
+  const { profile, mitGesundheit } = await profileFuerKi(f.profile.filter(p => p.konto || gaeste.has(p.person)));
   const namen = profile.map(p => p.name || p.person);
   const bevorzugt = f.lebensmittel.filter(l => l.bevorzugt).map(l => (l.hinweis ? `${l.name} (${l.hinweis})` : l.name));
   const vorrat = f.vorrat.map(v => (v.menge ? `${v.name} (${v.menge})` : v.name));
@@ -78,7 +82,7 @@ export async function POST(req: Request) {
   const user = body.hinweis ? fremd('hinweis', `Hinweis für diese Woche: ${String(body.hinweis).slice(0, 300)}`) : 'Plane eine normale Woche.';
 
   const r = await askJson<{ begruendung?: string; plan?: Partial<Record<Tag, Partial<Mahlzeiten>>>; gerichte?: unknown[]; einkauf?: unknown[] }>({
-    zweck: 'ernaehrung-vorschlag', system, user, maxTokens: 12000, model: agent.model, timeoutMs: 240_000,
+    zweck: 'ernaehrung-vorschlag', ki: kiAus(req, mitGesundheit ? ['allgemein', 'gesundheit'] : ['allgemein']), system, user, maxTokens: 12000, model: agent.model, timeoutMs: 240_000,
   });
   if (!r.ok || !r.data?.plan) return NextResponse.json({ error: r.error ?? 'Kein Vorschlag erhalten.' }, { status: 200 });
 

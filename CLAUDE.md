@@ -188,6 +188,7 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
 - **Gesundheit in der Kapazität:** Erholung zählt nur mit eigener Einwilligung (`PersonEinstellung.erholungAm`, Op `erholung` nur die
   Person selbst, auch nicht der Inhaber; Vorgabe AUS) UND Teilen mit allen Konten des Haushalts; nie im Business-Index (keine
   Kennzahl `kp_kopf`, `ohneGesundheit` in `kapaKennzahlenFuerIndex`), nie an ZOE/Protokolle. Andere sehen nicht einmal `erholungAm`.
+  Seit 05.10. zusätzlich die Art.-9-Einwilligung je Person (Abschnitt „KI, Gesundheit, Telegram“) — `erholungAm` bleibt eigene Einwilligung.
 - **Papierkorb und Art. 15/17:** `ladeCrm` blendet Papierkorb aus — `lib/crm/person-bestaende.ts` liest deshalb IMMER
   `ladeCrmMitPapierkorb` (Auskunft, Löschlauf, Zusammenführen, Verknüpfungs-Prüfung). Neue Art.-15/17-Leser ebenso.
 - **Gesellschafts-Register:** Art. 15 `registerAuskunft` (lib/gesellschaften/auskunft.ts) in `personAufzaehlen.gesellschaften`;
@@ -280,6 +281,31 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Rechtmäßige Umschreibungen (Art. 17, Fingerabdruck-Umrechnung, Umzug, Löschfrist mit `bereinigt`) bleiben gültig; jede andere Änderung
   an Protokolldateien ist ein Bruch (HOI rot). Prüfung nächtlich in der Durchsicht, Siegel `protokoll-siegel`, Ergebnis `protokoll-pruefung`.
 - **Format v2** stellt nur Kevin um (Anleitung UPDATES.md 05.10.); System › Nachweise zeigt Modus und Bereitschaft (`v2Bereitschaft`).
+
+## KI, Gesundheit, Telegram — DSGVO-Paket 05.10. (Branch `dsgvo-ki`; Doku `DATENSCHUTZ_APP.md`)
+- **EINE Stelle für Daten an das Modell:** `askText` (lib/anthropic.ts) ruft vor jedem Aufruf das KI-Tor (`lib/datenschutz/ki-tor.ts`).
+  **Jeder neue Aufrufer gibt `ki: { lauf, person, kategorien[, anzahl, pseudonym] }` an** — in Routen `kiAus(req, [...])`
+  (lib/datenschutz/ki-lauf.ts). Kategorien: crm · kalender · aufgaben · finanzen · brain · gesundheit · postfach · web · konto · allgemein —
+  nur, was WIRKLICH im Prompt steht (`brainKategorien` für promptBrain). Wächter-Scan in tests/ki-datenschutz.test.ts. Gesperrt →
+  `error: 'ki-gesperrt:<grund>'` (`kiGesperrt`, `kiSperrText`) — Läufe fallen dann aufs Regelwerk zurück bzw. melden „übersprungen“.
+- **Gesundheit (Art. 9):** Einwilligung je Person in drei Zwecken (`lib/datenschutz/gesundheit-einwilligung.ts`): (a) verarbeiten,
+  (b) an die KI, (c) Partner inkl. dessen ZOE; Nachweis nur anhängend; nur die Person selbst (403 sonst). Gesundheitswerte gehen nur
+  über `gatherBrain` (`gesundheitFrei`), `eigenerGesundheitsKontext`, `lib/datenschutz/gesundheit-ki.ts` (`indexFuerKi`, `profileFuerKi`)
+  in Prompts — neue Leser NUR darüber. Neue Schreibwege für Gesundheitsdaten: `gesundheitSchreibSperre(person)` zuerst.
+  Der Kompass-Regler „Körperdaten an Agenten“ ist weg (ersetzt durch (b)); `/api/state/kompass` nur im Haushalt des Inhabers.
+- **KI-Schalter** (`lib/datenschutz/ki-einstellungen.ts`): Instanz (Inhaber) UND Person (nur einschränken): Hintergrund-KI, Web-Suche,
+  Bereiche. Vorgabe neue Instanz „sparsam“ (Hintergrund-KI/Web-Suche aus), Altbestand (Kevin: `ki-verbrauch` vorhanden oder Konten vor
+  06.10.) „kompatibel“ — einmal festgeschrieben; `MAKE_OS_KI_VORGABE` erzwingt. ZOE-Werkzeuge: Gruppe → Kategorie in
+  `lib/datenschutz/ki-werkzeuge.ts` (neue Werkzeug-Gruppe dort eintragen); `fuehreAus` sperrt, kimmi bietet gesperrte nicht an.
+  Hintergrund = Takt: Arbeiter (`imHintergrund`, AsyncLocalStorage) + Kopf `x-make-lauf` (nur Dienstweg); `KI_LAEUFE` (lib/zoe/takt.ts)
+  reiht der Takt bei ausgeschalteter Hintergrund-KI gar nicht ein.
+- **KI-Protokoll** (`ki-protokoll--JJJJ-MM`, 12 Monate): nur Metadaten, schreibt allein `askText`. Art. 15: `/api/datenschutz/ki-protokoll
+  ?auskunft=1`, Kontakte `personAufzaehlen.kiEmpfaenger`. **Pseudonymisierung** in Hintergrund-Läufen automatisch (Kontaktnamen →
+  `[K17]`); `ki.pseudonym: false` nur mit Begründung im Code (Research).
+- **Telegram:** nur neutrale Hinweise mit Link (`lib/datenschutz/telegram-text.ts`); Inhalte nur mit der Ausnahme je Person
+  (`telegramVollFuer`); `sendeAnPerson` hat ein Sicherheitsnetz (`telegramSicher`). Neue Telegram-Texte: ohne Werte, Beträge, Namen.
+- **KI-VO Art. 50:** Routen mit KI-Text, der an Dritte gehen kann, liefern `ki: kiKennzeichen()`; die Oberfläche zeigt `<KiMarke />`.
+- **Oberfläche:** System › Datenschutz (`/os/datenschutz`, components/os/DatenschutzView.tsx); Hinweis im Bereich Gesundheit.
 
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),

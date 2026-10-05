@@ -4,7 +4,10 @@
 //   · unbekannter Chat → ein Satz, sonst nichts. Keine Daten, kein ZOE.
 //   · gekoppelt        → die Nachricht geht an ZOE (/api/kimmi) — mit der
 //                        Person im Kopf, damit Werkzeuge in den richtigen
-//                        Raum schreiben — und die Antwort zurück in den Chat.
+//                        Raum schreiben. Die Antwort landet seit 05.10. (DSGVO)
+//                        im ZOE-Verlauf der Person in MAKE OS; in den Chat geht nur
+//                        „Neue Nachricht in MAKE OS“ mit Link — außer die Person hat
+//                        die Ausnahme „ZOE-Antworten vollständig über Telegram“ an.
 //
 // GET liefert dem Boten, wo er weitermachen soll (letzte update_id).
 //
@@ -18,10 +21,13 @@ import { ladeStand, aendereStand, loeseCode, personFuerChat, sendeAnChat } from 
 import { nameVon } from '@/lib/zoe/raum';
 import { nachrichtFuer } from '@/lib/gesundheit/lauf';
 import { faelligeSlots, type TaktStand } from '@/lib/gesundheit/takt';
-import { loadJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
 import { istDienst } from '@/lib/zugang/dienst';
 import { localDay } from '@/lib/zeit';
-import { innenAdresse } from '@/lib/innen';
+import { innenAdresse, aussenAdresse } from '@/lib/innen';
+import { GRENZEN, titelAus, type Gespraech } from '@/lib/make-one/zoe-verlauf';
+import { telegramVollFuer } from '@/lib/datenschutz/ki-einstellungen';
+import { TELEGRAM_FREMD, appLink, hinweisNeueNachricht } from '@/lib/datenschutz/telegram-text';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,7 +43,30 @@ interface Update {
   };
 }
 
-const FREMD = 'Dieser Bot gehört Kevin und Malin. Kopplung nur über MAKE OS → Gesundheit → Telegram.';
+// Neutral (Plattform-Regel, 05.10.): kein Name, kein Haushalt — ein fremder Chat erfährt nur, dass es eine private Instanz ist.
+const FREMD = TELEGRAM_FREMD;
+
+/** Frage und Antwort aus Telegram in den ZOE-Verlauf der Person (ein Gespräch je Tag) — dort liest sie die Antwort. */
+async function inDenVerlauf(person: string, frage: string, antwort: string, jetzt: Date): Promise<string> {
+  const tag = localDay(jetzt);
+  const id = `tg-${tag}`;
+  const zeit = jetzt.toISOString();
+  await updateJson<{ gespraeche: Gespraech[] }>('zoe-verlauf', cur => {
+    const f = { gespraeche: Array.isArray(cur?.gespraeche) ? cur!.gespraeche : [] };
+    const i = f.gespraeche.findIndex(g => g.id === id && (g.person ?? 'kevin') === person);
+    const neu = [{ rolle: 'kevin' as const, text: frage.slice(0, GRENZEN.zeichenProNachricht), zeit }, { rolle: 'zoe' as const, text: antwort.slice(0, GRENZEN.zeichenProNachricht), zeit }];
+    if (i >= 0) {
+      const g = f.gespraeche[i];
+      f.gespraeche[i] = { ...g, zuletzt: zeit, nachrichten: [...g.nachrichten, ...neu].slice(-GRENZEN.nachrichtenProGespraech) };
+    } else {
+      f.gespraeche.push({ id, begonnen: zeit, zuletzt: zeit, titel: `Telegram · ${titelAus(frage)}`, nachrichten: neu, person });
+    }
+    f.gespraeche.sort((a, b) => (b.zuletzt ?? '').localeCompare(a.zuletzt ?? ''));
+    f.gespraeche = f.gespraeche.slice(0, GRENZEN.gespraeche);
+    return f;
+  });
+  return id;
+}
 
 export async function GET() {
   const s = await ladeStand();
@@ -81,7 +110,7 @@ export async function POST(req: Request) {
     await aendereStand(s => { const r = loeseCode(s, code, chatId, jetzt, m.from?.first_name); person = r.person; grund = r.grund; return r.stand; });
     if (!person) { await sendeAnChat(chatId, grund ?? 'Code unbekannt.'); return NextResponse.json({ ok: true, was: 'code abgelehnt' }); }
     // Gekoppelt — und wenn heute gerade ein Slot offen ist, kommt er sofort.
-    let gruss = `Gekoppelt als ${nameVon(person)}. Ich melde mich morgens, mittags und abends — und du kannst mir jederzeit schreiben.`;
+    let gruss = `Gekoppelt als ${nameVon(person)}. Ich melde mich morgens, mittags und abends — und du kannst mir jederzeit schreiben. Meine Antworten liegen in MAKE OS; hier kommt nur ein Hinweis (außer du schaltest unter System › Datenschutz die Telegram-Ausnahme ein).`;
     try {
       const st = (await loadJson<TaktStand>('gesundheit-takt')) ?? {};
       const slot = faelligeSlots(st, person, jetzt, localDay(jetzt))[0];
@@ -123,6 +152,10 @@ export async function POST(req: Request) {
   } catch {
     antwort = 'Ich bin gerade nicht erreichbar. Versuch es gleich nochmal.';
   }
-  const s = await sendeAnChat(chatId, antwort);
-  return NextResponse.json({ ok: s.ok, person, was: s.ok ? 'beantwortet' : `senden: ${s.fehler}` });
+  // Datenschutz (05.10.): die Antwort bleibt in MAKE OS (ZOE-Verlauf); über Telegram nur der Hinweis mit Link — außer die
+  // Person hat die Ausnahme „ZOE-Antworten vollständig über Telegram“ ausdrücklich eingeschaltet (System › Datenschutz).
+  const voll = await telegramVollFuer(person).catch(() => false);
+  await inDenVerlauf(person, text, antwort, jetzt).catch(() => undefined);
+  const s = await sendeAnChat(chatId, voll ? antwort : hinweisNeueNachricht(appLink(aussenAdresse(), '/os')));
+  return NextResponse.json({ ok: s.ok, person, was: s.ok ? (voll ? 'beantwortet' : 'hinweis') : `senden: ${s.fehler}` });
 }

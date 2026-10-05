@@ -515,6 +515,8 @@ export function ZoePanel() {
           : <div key={i} style={{ maxWidth: '96%' }}>
               <div style={{ ...lbl, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: J }}>ZOE</span>
+                {/* KI-VO Art. 50 (05.10.): dezent als KI-erzeugt gekennzeichnet — wichtig, wenn Text weitergegeben wird. */}
+                <span title="KI-erzeugt (KI-VO Art. 50) — vor dem Weitergeben prüfen" aria-label="KI-erzeugt" style={{ color: C.inkLeise, fontWeight: 500 }}>· KI</span>
                 {stimme.kannSprechen && (
                   <button onClick={() => stimme.spricht ? stimme.schweig() : stimme.lies(fuerStimme(m.text))} title={stimme.spricht ? 'Still' : 'Vorlesen'}
                     style={{ background: 'transparent', border: 0, color: C.inkLeise, cursor: 'pointer', fontSize: TYP.mikro, padding: 0, fontFamily: SCHRIFT.text }}>

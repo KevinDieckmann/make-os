@@ -12,6 +12,8 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { sauberDatei, wendeAn, neueId, TAGE, MAHLZEITEN, type ErnaehrungFile, type Gericht, type Tag, type Mahlzeit, type Op } from '@/lib/ernaehrung/modell';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { profileFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,7 +31,8 @@ export async function POST(req: Request) {
   if (!agent.enabled) return NextResponse.json(disabledResponse(agent));
 
   const f = sauberDatei(await loadJson<ErnaehrungFile>('ernaehrung'));
-  const profile = f.profile.filter(p => p.konto);
+  // Art. 9 (05.10.): wie der Wochenvorschlag — Gesundheitsangaben nur mit Einwilligung (b) (lib/datenschutz/gesundheit-ki.ts).
+  const { profile, mitGesundheit } = await profileFuerKi(f.profile.filter(p => p.konto));
   const system = [
     `Du schreibst EIN Rezept für den Haushalt (${profile.map(p => p.name || p.person).join(' und ') || 'zwei Personen'}) — Alltagsküche, durchhaltbar.`,
     'GRUNDSÄTZE:', f.grundsaetze || 'anti-entzündlich, regelmäßig, einfach',
@@ -43,7 +46,7 @@ export async function POST(req: Request) {
   const user = text
     ? `Gericht: ${name}\nBring dieses eingefügte Rezept in die JSON-Form — Mengen und Schritte übernehmen, nichts erfinden, nur kürzen:\n${fremd('rezept-text', text)}`
     : `Gericht: ${name}${beschreibung ? `\nWunsch: ${beschreibung}` : ''}`;
-  const r = await askJson<Partial<Gericht>>({ zweck: 'ernaehrung-rezept', system, user, maxTokens: 2500, model: agent.model, timeoutMs: 120_000 });
+  const r = await askJson<Partial<Gericht>>({ zweck: 'ernaehrung-rezept', ki: kiAus(req, mitGesundheit ? ['allgemein', 'gesundheit'] : ['allgemein']), system, user, maxTokens: 2500, model: agent.model, timeoutMs: 120_000 });
   if (!r.ok || !r.data?.zutaten) return NextResponse.json({ error: r.error ?? 'Kein Rezept erhalten.' }, { status: 200 });
 
   const jetzt = new Date().toISOString();

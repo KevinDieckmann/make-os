@@ -16,6 +16,7 @@ import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/l
 import { saeubereHaut, hautTrend, type HautLog } from '@/lib/gesundheit/eintraege';
 import { localDay } from '@/lib/zeit';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,8 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
+  { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let b: { datum?: string; eintrag?: unknown };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const datum = b.datum && /^\d{4}-\d{2}-\d{2}$/.test(b.datum) ? b.datum : localDay();

@@ -182,6 +182,29 @@ Danach geht es zum alten Stand **nur noch per Sicherung von vor der Umstellung**
   im Protokoll belegt) und kein Angriff; der Befund bleibt als Nachweis stehen.
 - Tests: `tests/brain-index-ort`, `tests/bilder-verschluesselt`, `tests/leseprotokoll`, `tests/protokoll-kette`, `tests/hoi-verschluesselung`.
 
+## DSGVO-Paket „KI, Gesundheit (Art. 9) und Telegram datenschutzfest“ (05.10.2026, nur lokal — Branch `dsgvo-ki`)
+
+Aus dem DSGVO-Audit 05.10.; Kevin: „Die Software muss auf allen Standards der DSGVO sein, damit wir auch Kundendaten aufnehmen können.“
+Doku: `DATENSCHUTZ_APP.md` (Abschnitt 2 „KI, Gesundheit, Telegram“), CLAUDE.md (Abschnitt „KI, Gesundheit, Telegram — DSGVO-Paket 05.10.“).
+- **Art.-9-Einwilligung** je Person, drei Zwecke (verarbeiten · an die KI · Partner inkl. dessen ZOE), Nachweis unveränderlich
+  (`gesundheit-einwilligungen`); Vorgabe (b)/(c) AUS. **Wirkung beim Upload:** Kevin und Malin (Bestand) sehen im Bereich Gesundheit
+  „Bitte bestätigen“ — bis dahin wie bisher, ABER ZOE und alle KI-Läufe bekommen ab sofort keine Gesundheitswerte mehr (auch der
+  Morgenlauf nicht), bis jeweils „An die KI geben“ eingeschaltet ist. Der Kompass-Regler „Körperdaten an Agenten“ ist weg.
+- **KI-Schalter** (System › Datenschutz): Kevins Instanz bekommt beim ersten Lesen die Vorgabe „kompatibel“ (alles an wie bisher, weil
+  `ki-verbrauch` existiert) — festgeschrieben in `ki-einstellungen`. Neue/Demo-Instanzen: „sparsam“ (Hintergrund-KI und Web-Suche aus).
+- **KI-Protokoll** `ki-protokoll--JJJJ-MM` (nur Metadaten, 12 Monate) — wächst je Modellaufruf um eine Zeile (wie `ki-verbrauch`).
+- **Pseudonymisierung** der Kontaktnamen in Hintergrund-Läufen (Morgen-/Abendlauf vom Takt, Heads/Head of Finance vom Takt,
+  ZOE-Aufgaben, Konsolidierung, Tageslauf vom Takt). Research bewusst nicht (offen).
+- **Telegram:** Gesundheits-Takt und ZOE-Antworten nur noch als neutraler Hinweis mit Link (`MAKE_OS_ADRESSE` muss gesetzt sein, sonst
+  steht nur der Pfad `/os`); ZOE-Antworten aus Telegram stehen im ZOE-Verlauf („Telegram · …“). Wer es wie früher will: Ausnahme
+  „ZOE-Antworten vollständig über Telegram“ selbst einschalten.
+- **KI-VO Art. 50:** Marke „KI-Entwurf“ an Entwürfen, „· KI“ an ZOE-Antworten, Kennzeichen `ki` in den Routen.
+- **Kompatibilitätsmodus:** nur neue Bestände (`gesundheit-einwilligungen`, `ki-einstellungen`, `ki-protokoll--*`), alle über
+  `updateJson` im Format des Modus; nichts an vorhandenen Beständen umgebaut. Neue optionale Ausgabefelder (`ki`, `kiEmpfaenger`).
+- **Rückweg:** Commits zurücknehmen; die drei neuen Bestände bleiben harmlos liegen (oder löschen). Achtung: wer nach dem Upload
+  Einwilligungen erklärt hat, verliert mit dem Rückweg nur die Wirkung, nicht den Nachweis (Bestand bleibt). Der alte Kompass-Wert
+  `koerper-an-agenten` steht weiter im Bestand `kompass` und wirkt nach einem Rückweg wieder wie vorher.
+
 ## Kugeln 2 · „Solaris“-Überarbeitung von ZOE und Brain (05.10.2026, nur lokal — Branch `kugeln-2`)
 
 Kevin nach dem Upload: „Überarbeite das Brain nochmal … auch ZOE — das muss sehr geil aussehen.“ Vorher zu dünn, zu dunkel, zu leer.

@@ -43,6 +43,7 @@ import { useFirmaWechselFrage, type FirmaWechselFrageFn } from './kontakt/FirmaW
 import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
 import type { LifecyclePhase } from '@/lib/crm/lifecycle';
 import { geburtstagSaeubern, geburtstagText, naechsterGeburtstag } from '@/lib/kalender/geburtstag';
+import { KiMarke } from '../KiMarke';
 
 export const PHASEN: { id: Lebensphase; label: string }[] = [
   { id: 'kontakt', label: 'Kontakt' }, { id: 'interessent', label: 'Interessent' }, { id: 'kunde', label: 'Kunde' }, { id: 'ex_kunde', label: 'Ex-Kunde' }, { id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' },
@@ -266,6 +267,7 @@ export function EntwurfTeil({ k, mailOk, ohneTitel }: { k: Kontakt; mailOk: bool
       {entwurf === 'laedt' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>ZOE schreibt …</span>}
       {entwurf && entwurf !== 'laedt' && (
         <div style={{ display: 'grid', gap: 8 }}>
+          <KiMarke />
           <div style={{ fontWeight: 600 }}>{entwurf.betreff}</div>
           <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55 }}>{entwurf.email}</pre>
           {entwurf.linkedin && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 8 }}>{entwurf.linkedin}</pre>}

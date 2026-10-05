@@ -14,6 +14,7 @@ import {
 } from '@/lib/make-one/prospecting-data';
 import { Building2 } from 'lucide-react';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Chip, Zahl, feld, LEUCHT } from './ui';
+import { KiMarke } from './KiMarke';
 
 const scoreColor = (s?: number) => (s == null ? C.inkLeise : s >= 80 ? LEUCHT.gut : s >= 50 ? LEUCHT.achtung : LEUCHT.kritisch);
 const statusColor = (s: ProspectStatus) => (s === 'kontaktiert' ? LEUCHT.gut : s === 'qualifiziert' ? LEUCHT.business : s === 'verworfen' ? LEUCHT.kritisch : C.inkLeise);
@@ -217,6 +218,7 @@ export function ProspectingView() {
                       )}
                       {entwurf?.fuer === p.id && (
                         <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <KiMarke />
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                             <span style={{ ...mikro, color: LEUCHT.business }}>E-Mail</span>
                             <input value={entwurf.betreff} onChange={e => setEntwurf({ ...entwurf, betreff: e.target.value })} aria-label="Betreff"

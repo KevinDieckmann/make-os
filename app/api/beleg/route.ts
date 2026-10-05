@@ -15,6 +15,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { UG_NAME } from '@/lib/einheiten';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
       : ''),
     user: 'Beleg lesen.',
     messages: [{ role: 'user', content: inhalt }],
+    zweck: 'beleg', ki: kiAus(req, ['finanzen'], { anzahl: 1 }),
     maxTokens: 1500,
     timeoutMs: 120_000,
   });

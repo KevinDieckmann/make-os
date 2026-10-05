@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from '@/components/os/Rich';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Liste, Zeile } from './ui';
+import { KiMarke } from './KiMarke';
 
 /** Entwürfe, die der Agent im Hintergrund (ZOE, Takt) abgelegt hat — GET /api/content (27.09.). */
 interface Entwurf { id: string; zeit: string; format: string; thema: string; text: string }
@@ -89,7 +90,7 @@ export function ContentView() {
             Entwurf · {activeFmt?.label}
           </Ueberschrift>
           {busy ? <Leer>schreibe in CI …</Leer> : <Rich text={draft} />}
-          {draft && !busy && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 14 }}>Entwurf — gegenlesen &amp; selbst veröffentlichen.</div>}
+          {draft && !busy && <div style={{ marginTop: 14 }}><KiMarke text="KI-Entwurf — gegenlesen und selbst veröffentlichen" /></div>}
         </Karte>
       )}
 

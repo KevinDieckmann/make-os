@@ -14,7 +14,7 @@
 // „Charge rückgängig“ in lib/zoe/aufgaben-charge.ts).
 
 import type { Task, TasksState } from '@/types/tasks';
-import { askText, extractJson, fremd, FREMD_REGEL, guthabenLeer, hasAnthropicKey } from '@/lib/anthropic';
+import { askText, extractJson, fremd, FREMD_REGEL, guthabenLeer, hasAnthropicKey, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { loadJson } from '@/lib/store/local-db';
 import { ladeAufgabenSicht, ladeAufgabenUngefiltert } from '@/lib/aufgaben/speicher';
 import { darfSehen } from '@/lib/aufgaben/sicht';
@@ -242,11 +242,13 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
         state: await ladeAufgabenSicht(a), heute: localDay(), crm: await crmFuer(aktuell), dateien: await unterlagenFuer(aktuell, a), hinweis: zoeHinweis(aktuell),
         abgelehnt: alt?.status === 'abgelehnt' && alt.bezug?.id === aktuell.id ? (alt.grund ?? 'ohne Grund') : null,
       });
-      const r = await askText({ system: ZOE_AUFGABEN_SYSTEM, user: text, schema: SCHEMA as unknown as Record<string, unknown>, maxTokens: 4000, zweck: 'zoe-aufgaben', timeoutMs: 90_000, retries: 1 });
+      const r = await askText({ system: ZOE_AUFGABEN_SYSTEM, user: text, schema: SCHEMA as unknown as Record<string, unknown>, maxTokens: 4000, zweck: 'zoe-aufgaben', timeoutMs: 90_000, retries: 1,
+        // Datenschutz (05.10.): vom Takt (ohne Person) = Hintergrund-KI mit Pseudonymisierung; von Hand = Aufruf.
+        ki: { lauf: opt.person ? 'aufruf' : 'hintergrund', person: a, kategorien: ['aufgaben', 'crm'] } });
       if (!r.ok) {
         await zurueckAufOffen(aktuell, a);
-        erg.uebersprungen.push({ id: t.id, grund: `Modell: ${(r.error ?? 'nicht erreichbar').slice(0, 120)}` });
-        if (r.error === 'guthaben-leer' || r.error === 'no-key') break;
+        erg.uebersprungen.push({ id: t.id, grund: kiGesperrt(r) ? kiSperrText(r) : `Modell: ${(r.error ?? 'nicht erreichbar').slice(0, 120)}` });
+        if (r.error === 'guthaben-leer' || r.error === 'no-key' || r.error === 'ki-gesperrt:hintergrund-aus') break;
         continue;
       }
       const inhalt: ZoeVorschlagInhalt | null = vorschlagSauber(extractJson<Record<string, unknown>>(r.text), aktuell.id, localDay());

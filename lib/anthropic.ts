@@ -9,6 +9,9 @@
 //   2) JSON kommt manchmal in ```json-Fences oder mit Vor-/Nachtext. → robuste
 //      Extraktion des äußersten {...}.
 
+import type { KiKontext } from './datenschutz/ki-tor';
+export type { KiKontext } from './datenschutz/ki-tor';
+
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 export const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5';
 
@@ -94,6 +97,13 @@ export interface AskOptions {
   cacheSystem?: boolean;
   /** Denktiefe (output_config.effort). Lehnt die API sie ab, läuft der Aufruf ohne — das Schema bleibt. */
   effort?: 'low' | 'medium' | 'high';
+  /**
+   * Datenschutz (05.10., Pflicht für jeden Aufrufer — Wächter tests/ki-datenschutz.test.ts): Lauf-Art, Person und
+   * Datenkategorien dieses Aufrufs. Das KI-Tor (lib/datenschutz/ki-tor.ts) entscheidet damit, ob der Aufruf überhaupt
+   * hinausgeht (Hintergrund-KI, Bereiche, Gesundheits-Einwilligung), ob die Web-Suche bleibt und ob Namen
+   * pseudonymisiert werden; das KI-Protokoll schreibt daraus eine Zeile ohne Inhalte.
+   */
+  ki?: KiKontext;
 }
 
 export interface AskResult {
@@ -152,12 +162,52 @@ export function extractJson<T>(raw: string): T | null {
 const RETRYABLE = new Set([429, 500, 502, 503, 529]);
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+/** Hat das KI-Tor den Aufruf gesperrt (Datenschutz-Schalter, Einwilligung)? Dann ist nichts hinausgegangen. */
+export const kiGesperrt = (r: { error?: string } | null | undefined): boolean => !!r?.error?.startsWith('ki-gesperrt:');
+/** Ein Satz zur Sperre — für Lauf-Zeilen und Antworten an die Oberfläche. */
+export function kiSperrText(r: { error?: string } | null | undefined): string {
+  const g = r?.error?.replace(/^ki-gesperrt:/, '') ?? '';
+  if (g === 'hintergrund-aus') return 'Hintergrund-KI ist ausgeschaltet (System › Datenschutz)';
+  if (g === 'einwilligung-gesundheit') return 'Gesundheitsdaten nur mit Einwilligung an die KI (System › Datenschutz)';
+  if (g.startsWith('bereich-')) return `Bereich „${g.slice(8)}“ ist für die KI ausgeschaltet (System › Datenschutz)`;
+  return 'Durch die Datenschutz-Einstellungen gesperrt (System › Datenschutz)';
+}
+
+const istWebSuche = (t: unknown) => /^web_search/.test(String((t as { type?: unknown } | null)?.type ?? ''));
+
 /** Ein Freitext-Aufruf. Gibt niemals throw — Fehler stehen in .error.
- *  Enthält Timeout (AbortController) und Retry mit Backoff bei 429/5xx. */
+ *  Enthält Timeout (AbortController) und Retry mit Backoff bei 429/5xx.
+ *  Seit 05.10. geht JEDER Aufruf zuerst durch das KI-Tor (Datenschutz): gesperrt → `error: 'ki-gesperrt:<grund>'`,
+ *  Status 403, nichts verlässt den Server; jeder Aufruf (auch ein gesperrter) bekommt eine Zeile im KI-Protokoll. */
 export async function askText(opts: AskOptions): Promise<AskResult> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, status: 0, text: '', error: 'no-key' };
   if (guthabenLeer()) return { ok: false, status: 402, text: '', error: 'guthaben-leer' };
+
+  const [{ kiTor, pseudonymFuerLauf }, { kiProtokollieren }] = await Promise.all([import('./datenschutz/ki-tor'), import('./datenschutz/ki-protokoll')]);
+  const webGewuenscht = (opts.tools ?? []).some(istWebSuche);
+  const tor = await kiTor(opts.ki, webGewuenscht);
+  const kategorien = opts.ki?.kategorien?.length ? opts.ki.kategorien : ['allgemein' as const];
+  const protokoll = (ergebnis: 'ok' | 'fehler' | 'gesperrt', extra: { grund?: string; pseudonym?: number; websuche?: boolean } = {}) =>
+    void kiProtokollieren({ zweck: opts.zweck ?? 'unbenannt', lauf: tor.lauf, person: tor.person, kategorien: extra.websuche ? [...kategorien, 'web'] : kategorien, anzahl: opts.ki?.anzahl, modell: String(opts.model ?? MODEL), ergebnis, ...extra });
+  if (!tor.ok) {
+    protokoll('gesperrt', { grund: tor.grund });
+    return { ok: false, status: 403, text: '', error: `ki-gesperrt:${tor.grund}` };
+  }
+  const tools = webGewuenscht && !tor.websuche ? (opts.tools ?? []).filter(t => !istWebSuche(t)) : opts.tools;
+  const ps = tor.pseudonym ? await pseudonymFuerLauf().catch(() => null) : null;
+  const r = await askTextSenden(ps
+    ? { ...opts, tools, system: ps.ersetze(opts.system), user: ps.ersetze(opts.user ?? ''), ...(opts.messages ? { messages: ps.tiefErsetzen(opts.messages) } : {}) }
+    : { ...opts, tools });
+  const websuche = webGewuenscht && tor.websuche;
+  protokoll(r.ok ? 'ok' : 'fehler', { ...(ps?.ersetzt() ? { pseudonym: ps.ersetzt() } : {}), ...(websuche ? { websuche } : {}) });
+  if (!ps) return r;
+  return { ...r, text: ps.zurueck(r.text), ...(r.raw !== undefined ? { raw: ps.tiefZurueck(r.raw) } : {}) };
+}
+
+/** Der eigentliche Versand (nach dem Tor). */
+async function askTextSenden(opts: AskOptions): Promise<AskResult> {
+  const key = process.env.ANTHROPIC_API_KEY ?? '';
 
   const body: Record<string, unknown> = {
     model: opts.model ?? MODEL,
@@ -257,6 +307,9 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
 /** Wie askText, aber mit Web-Suche — fällt sauber auf reine Antwort zurück,
  *  falls das Tool auf dem Account nicht freigeschaltet ist. */
 export async function askWithSearch(opts: AskOptions): Promise<AskResult & { webUsed: boolean }> {
+  // Web-Suche aus (Instanz/Person, 05.10.): gleich ohne Werkzeug — die Antwort sagt ehrlich webUsed:false.
+  const { websucheErlaubt } = await import('./datenschutz/ki-tor');
+  if (!(await websucheErlaubt(opts.ki))) return { ...(await askText({ ...opts, tools: undefined })), webUsed: false };
   const withTool = await askText({ ...opts, tools: [WEB_SEARCH_TOOL] });
   if (withTool.ok) return { ...withTool, webUsed: true };
   if (/tool|web_search|not.*support|permission|invalid_request/i.test(withTool.error ?? '')) {

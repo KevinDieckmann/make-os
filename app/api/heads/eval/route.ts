@@ -22,6 +22,7 @@ import type { ReplayStand } from '@/lib/heads/lauf';
 import { nurInhaber, imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
     const wdh: Bewertung[] = [];
     const modell = process.env.ANTHROPIC_MODEL ?? (REVIEW_MODI.has(f.modus) ? MODEL_BY_TIER.stark : agent.model);
     for (let i = 0; i < k; i++) {
-      const r = await askText({ system: SYSTEM[h], user: '', messages: [{ role: 'user', content: [{ type: 'text', text: datenBlock(f.daten), cache_control: { type: 'ephemeral' } }, { type: 'text', text: aufgabe(f.modus) }] }], model: modell, effort: REVIEW_MODI.has(f.modus) ? 'high' : 'medium', schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens: 12000, timeoutMs: 200_000, zweck: `${AGENT_ID[h]}-eval` });
+      const r = await askText({ system: SYSTEM[h], user: '', messages: [{ role: 'user', content: [{ type: 'text', text: datenBlock(f.daten), cache_control: { type: 'ephemeral' } }, { type: 'text', text: aufgabe(f.modus) }] }], model: modell, effort: REVIEW_MODI.has(f.modus) ? 'high' : 'medium', schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens: 12000, timeoutMs: 200_000, zweck: `${AGENT_ID[h]}-eval`, ki: kiAus(req, ['crm']) });
       if (!r.ok) { fehler.push(`${f.modus}: ${r.error}`); break; }
       wdh.push(bewerte(normalisiere(extractJson(r.text), h), f.daten, kontakte, crm, f.heute));
     }

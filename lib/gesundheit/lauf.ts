@@ -16,6 +16,9 @@ import { ladeStand, chatsFuerPerson, sendeAnPerson, telegramKonfiguriert } from 
 import { faelligeSlots, markiere, morgenText, mittagText, abendText, wochenText, type Slot, type TaktStand } from './takt';
 import { hautTrend, streakStand, routineQuote, type HautLog, type StreakLog, type RoutinenLog } from './eintraege';
 import { sichtbarFuer } from '@/lib/planung/routinen';
+import { telegramVollFuer } from '@/lib/datenschutz/ki-einstellungen';
+import { appLink, hinweisCheckIn } from '@/lib/datenschutz/telegram-text';
+import { aussenAdresse } from '@/lib/innen';
 
 interface Routine { id: string; label: string; wann: string; aktiv: boolean; owner?: string }
 
@@ -60,9 +63,15 @@ async function haushaltZeilen(person: Person): Promise<string> {
   } catch { return ''; }
 }
 
+/**
+ * Die Telegram-Nachricht eines Slots. Seit 05.10. (DSGVO, Telegram ist nicht Ende-zu-Ende-verschlüsselt, Drittland):
+ * ohne die Ausnahme „ZOE-Antworten vollständig über Telegram“ der Person NUR ein neutraler Hinweis mit Link — keine
+ * Werte (Recovery, Schlaf), keine Fragen zu Beschwerden, keine Beträge. Mit der Ausnahme wie früher.
+ */
 export async function nachrichtFuer(person: Person, slot: Slot, origin: string): Promise<string> {
   const heute = localDay();
   const name = (await namenVon())[person] ?? nameVon(person);
+  if (!(await telegramVollFuer(person).catch(() => false))) return hinweisCheckIn(name, slot, appLink(aussenAdresse(), '/os/gesundheit'));
   const alle = await routinen(person);
   if (slot === 'morgen') {
     if (person === 'kevin') await whoopHolen(origin);

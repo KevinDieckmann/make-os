@@ -17,6 +17,7 @@ import { localDay } from '@/lib/zeit';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { FAECHER, FACH, fachVon, absenderKey } from '@/lib/make-one/inbox-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, Punkt, feld, LEUCHT, SymbolKnopf } from './ui';
+import { KiMarke } from './KiMarke';
 
 // ─── Normalisierte Nachricht (Apple Mail live + M365 Snapshot) ───────────────
 type Source = 'apple' | 'ms';
@@ -814,6 +815,7 @@ export function InboxView() {
                     <Knopf leise onClick={() => makeDraft(selMsg)}>✍ Antwort entwerfen (MAKE)</Knopf>
                   )}
                   {draftBusy && <Leer>MAKE schreibt einen Entwurf in deiner Stimme …</Leer>}
+                  {draftText && !draftBusy && <div style={{ margin: '4px 0 8px' }}><KiMarke /></div>}
                   {draftText && (
                     <div>
                       <textarea value={draftText} onChange={e => setDraftText(e.target.value)} rows={8} aria-label="Antwort-Entwurf"

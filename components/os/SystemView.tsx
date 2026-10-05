@@ -29,14 +29,13 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
     { href: '/os/agenten', label: 'Agenten', was: 'wer live ist, wer nicht — und warum' },
     { href: '/os/loop', label: 'Loops', was: 'die Regelkreise' },
     { href: '/os/hoi', label: 'Head of IT', was: 'Server, App, Sicherheit und der Blick von außen — in Ampeln' },
-    { href: '/os/datenschutz/nachweise', label: 'Nachweise', was: 'Lese-Protokoll, Protokoll-Kette, Verschlüsselung — nur Inhaber' },
   ] },
   { titel: 'Zugang & Daten', eintraege: [
     { href: '/os/konto', label: 'Konto', was: 'Name, Passwort, Telegram, Einladen, Gesundheit teilen' },
     { href: '/os/verbindungen', label: 'Verbindungen', was: 'Whoop, Microsoft, Miro' },
     { href: '/os/datenbasis', label: 'Datenbasis', was: 'wo welche Zahl herkommt' },
     { href: '/os/stammdaten', label: 'Stammdaten', was: 'Firmen, Konten, Adressen' },
-    { href: '/os/datenschutz', label: 'Datenschutz', was: 'Verantwortlicher, Empfänger und AVV, Selbstprüfung, Verzeichnis' },
+    { href: '/os/datenschutz', label: 'Datenschutz', was: 'Verantwortlicher, Gesundheits-Einwilligung, KI-Schalter, Telegram, AVV, Verzeichnis, Nachweise' },
   ] },
   { titel: 'Bauen', eintraege: [
     { href: '/os/bauplan', label: 'Bauplan', was: 'was als Nächstes gebaut wird' },

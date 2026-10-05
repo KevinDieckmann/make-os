@@ -11,7 +11,8 @@
 import { businessFuerChef } from '@/lib/business/fuer-chef';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
+import { askText, extractJson, hasAnthropicKey, kiGesperrt, kiSperrText } from '@/lib/anthropic';
+import type { KiKontext } from '@/lib/datenschutz/ki-tor';
 import { resolveAgent, MODEL_BY_TIER } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { schwellen } from '@/lib/schwellen';
@@ -115,13 +116,14 @@ const SUCHE: Werkzeug = { name: 'buchungen_suchen', description: 'Sucht Haushalt
 
 interface Block { type: string; id?: string; name?: string; input?: Record<string, unknown>; text?: string }
 
-async function frageModell(o: { system: string; user: string; model: string; tools: Werkzeug[]; haushalt: string | null; maxTokens: number }) {
+async function frageModell(o: { system: string; user: string; model: string; tools: Werkzeug[]; haushalt: string | null; maxTokens: number; ki: KiKontext }) {
   const messages: { role: string; content: unknown }[] = [{ role: 'user', content: o.user }];
   const werkzeugWerte: number[] = [];
   const werkzeuge: string[] = [];
   let text = '';
   for (let runde = 0; runde < 5; runde++) {
-    const r = await askText({ system: o.system, user: '', messages, model: o.model, schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, tools: runde < 4 && o.tools.length ? o.tools : undefined, maxTokens: o.maxTokens, timeoutMs: 170_000, zweck: 'finanzchef' });
+    const r = await askText({ system: o.system, user: '', messages, model: o.model, schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, tools: runde < 4 && o.tools.length ? o.tools : undefined, maxTokens: o.maxTokens, timeoutMs: 170_000, zweck: 'finanzchef', ki: o.ki });
+    if (kiGesperrt(r)) return { ok: false as const, fehler: kiSperrText(r), messages, werkzeugWerte, werkzeuge };
     if (!r.ok && r.stopReason !== 'tool_use') return { ok: false as const, fehler: r.error ?? 'Modell antwortet nicht', messages, werkzeugWerte, werkzeuge };
     const bloecke = ((r.raw as { content?: Block[] })?.content ?? []);
     if (r.stopReason === 'tool_use') {
@@ -202,7 +204,9 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
 
   // Der tägliche Check braucht kein Reasoning-Modell; die großen Läufe schon.
   const modell = a.modus === 'tagescheck' && /opus/.test(agent.model) && !process.env.ANTHROPIC_MODEL ? MODEL_BY_TIER.ausgewogen : agent.model;
-  const r1 = await frageModell({ system: SYSTEM, user, model: modell, tools, haushalt: a.haushalt, maxTokens });
+  // Datenschutz (05.10.): Takt = Hintergrund (Schalter, Pseudonymisierung), sonst Aufruf; Daten: Finanzen (+ Mandate/Pipeline).
+  const ki: KiKontext = { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person ?? null, kategorien: ['finanzen', 'crm'] };
+  const r1 = await frageModell({ system: SYSTEM, user, model: modell, tools, haushalt: a.haushalt, maxTokens, ki });
   if (!r1.ok) return { ok: false, fehler: r1.fehler };
   let antwort: Antwort = normalisiere(extractJson(r1.text), a.modus);
   if (!antwort.zusammenfassung && !antwort.antwort) return { ok: false, fehler: 'Antwort ohne verwertbares JSON.' };
@@ -211,7 +215,7 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   let werkzeuge = r1.werkzeuge;
   if (!sauber(pruefung)) {
     // Genau eine Korrekturrunde mit konkreter Fehlerliste.
-    const r2 = await askText({ system: SYSTEM, user: '', messages: [...r1.messages, { role: 'user', content: korrekturAuftrag(pruefung) }], model: modell, schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens, timeoutMs: 170_000, zweck: 'finanzchef-korrektur' });
+    const r2 = await askText({ system: SYSTEM, user: '', messages: [...r1.messages, { role: 'user', content: korrekturAuftrag(pruefung) }], model: modell, schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens, timeoutMs: 170_000, zweck: 'finanzchef-korrektur', ki });
     const neu = r2.ok ? extractJson(r2.text) : null;
     if (neu) {
       const a2 = normalisiere(neu, a.modus);

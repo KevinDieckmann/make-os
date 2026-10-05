@@ -11,6 +11,9 @@ import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { runAgent, AUSFUEHRBAR, type Ausfuehrbar } from '@/lib/zoe/agenten';
 import { innenAdresse } from '@/lib/innen';
 import { istDienst } from '@/lib/zugang/dienst';
+import { imHintergrund } from '@/lib/datenschutz/ki-lauf';
+import { kiSchalterFuer } from '@/lib/datenschutz/ki-einstellungen';
+import { KI_LAEUFE } from '@/lib/zoe/takt';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,7 +40,17 @@ export async function POST(req: Request) {
       // Der Lauf sagt selbst, ob er geklappt hat. Vorher wurde das am Text
       // erraten — und ein gutes Board-Pack dreimal wiederholt, weil darin
       // „… ist nicht erreichbar" über die Run-Rate stand (gefunden 07.09.).
-      const lauf = await runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined);
+      // Datenschutz (05.10.): was der Takt eingereiht hat, ist ein Hintergrund-Lauf — mit ausgeschalteter Hintergrund-KI
+      // laufen die KI-Läufe gar nicht erst (Entscheidung, kein Aussetzer: nicht neu einreihen); sonst trägt der Lauf die
+      // Art im selben Prozess (AsyncLocalStorage) und über den Kopf `x-make-lauf` weiter ans KI-Tor.
+      const hintergrund = /^Takt:/.test(a.anlass ?? '');
+      if (hintergrund && KI_LAEUFE.has(a.name) && !(await kiSchalterFuer(a.person ?? null)).hintergrund) {
+        await melde(a.id, token, 'fertig', 'Hintergrund-KI ist ausgeschaltet (System › Datenschutz) — nicht gelaufen.', true);
+        return NextResponse.json({ ok: true, ergebnis: 'Hintergrund-KI aus' });
+      }
+      const lauf = hintergrund
+        ? await imHintergrund(() => runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined, { hintergrund: true }))
+        : await runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined);
       // Ein abgeschalteter Agent ist eine Entscheidung, kein Aussetzer —
       // den Auftrag deshalb nicht wieder in die Schlange legen.
       const abgeschaltet = /ist ausgeschaltet/.test(lauf.text);

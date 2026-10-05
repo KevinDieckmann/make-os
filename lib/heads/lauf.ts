@@ -18,7 +18,7 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
-import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
+import { askText, extractJson, hasAnthropicKey, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { resolveAgent } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { localDay, tagVon } from '@/lib/zeit';
@@ -120,12 +120,14 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
     const aufg = aufgabe(a.modus, a.frage);
     // Zwei Cache-Punkte: System (stabil) und das Datenpaket — so trifft die Korrekturrunde den Cache.
     const erste = [{ role: 'user', content: [{ type: 'text', text: daten_, cache_control: { type: 'ephemeral' } }, { type: 'text', text: aufg }] }];
-    const ruf = (messages: unknown[], zweck: string) => askText({ system: SYSTEM[a.head], user: '', messages, model: modell, effort: review ? 'high' : 'medium', schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens: review ? 16000 : 10000, timeoutMs: 200_000, zweck });
+    const ruf = (messages: unknown[], zweck: string) => askText({ system: SYSTEM[a.head], user: '', messages, model: modell, effort: review ? 'high' : 'medium', schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens: review ? 16000 : 10000, timeoutMs: 200_000, zweck,
+      // Datenschutz (05.10.): der Takt läuft als Hintergrund (Schalter, Pseudonymisierung der Kontaktnamen), von Hand/ZOE als Aufruf.
+      ki: { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person, kategorien: ['crm', 'kalender'] } });
     const r1 = await ruf(erste, `${AGENT_ID[a.head]}-${a.modus}`);
     zaehle(r1);
     const roh1 = r1.ok ? normalisiere(extractJson(r1.text), a.head) : null;
     if (!r1.ok || !roh1 || (!roh1.zusammenfassung && !roh1.antwort)) {
-      const grund = !r1.ok ? fehlerGrund(r1.status, r1.error ?? '') : r1.stopReason === 'max_tokens' ? 'Antwort abgeschnitten (max_tokens)' : 'Antwort ohne verwertbares JSON';
+      const grund = kiGesperrt(r1) ? kiSperrText(r1) : !r1.ok ? fehlerGrund(r1.status, r1.error ?? '') : r1.stopReason === 'max_tokens' ? 'Antwort abgeschnitten (max_tokens)' : 'Antwort ohne verwertbares JSON';
       if (!g) return { ok: false, fehler: grund };
       regelwerk(grund);
     } else {

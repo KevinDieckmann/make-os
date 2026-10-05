@@ -19,6 +19,10 @@ process.env.TZ = testZone;
 // weiter Schlüssel-ID, AAD, „MKOSDAT2“ und `_v`. Den Standard „kompatibel“ (ohne Variable) prüft
 // tests/format-kompatibel.test.ts ausdrücklich (setzt MAKE_OS_FORMAT selbst).
 process.env.MAKE_OS_FORMAT ??= 'v2';
+// KI-Vorgabe (05.10., DSGVO-Paket): ohne Variable entscheidet die Instanz nach Altbestand und Datum — in Tests mit frischen
+// Datenordnern hinge das vom Kalendertag ab. Deshalb „kompatibel“ (wie Kevins Instanz); tests/ki-datenschutz.test.ts prüft
+// „sparsam“ ausdrücklich (setzt die Variable selbst).
+process.env.MAKE_OS_KI_VORGABE ??= 'kompatibel';
 
 export default defineConfig({
   resolve: {
@@ -30,6 +34,6 @@ export default defineConfig({
   oxc: { jsx: { runtime: 'automatic' } },
   test: {
     include: ['tests/**/*.test.ts'],
-    env: { TZ: testZone, MAKE_OS_FORMAT: process.env.MAKE_OS_FORMAT },
+    env: { TZ: testZone, MAKE_OS_FORMAT: process.env.MAKE_OS_FORMAT, MAKE_OS_KI_VORGABE: process.env.MAKE_OS_KI_VORGABE },
   },
 });

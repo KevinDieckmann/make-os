@@ -6,7 +6,11 @@
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { agentRoster, LIVE_AGENTS } from '@/lib/make-one/agents-data';
-import { gatherBrain, promptBrain, kalenderImPrompt } from '@/lib/brain';
+import { gatherBrain, promptBrain, kalenderImPrompt, brainKategorien } from '@/lib/brain';
+import { kiSchalterFuer, type KiBereich, type KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
+import { kategorieVonWerkzeug, werkzeugSperre } from '@/lib/datenschutz/ki-werkzeuge';
+import { gesundheitStandFuer } from '@/lib/datenschutz/gesundheit-einwilligung';
+import { gruppeVon } from '@/lib/zoe/register';
 import { jetztSatz } from '@/lib/zeit';
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { fuerPrompt, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
@@ -32,6 +36,7 @@ import { ARBEIT_WERKZEUG_DEFS } from '@/lib/zoe/arbeit-werkzeug';
 import { CRM_WERKZEUG_DEFS, crmBezugAus, crmBezugHinweis } from '@/lib/zoe/crm-werkzeug-defs';
 import { UG_NAME } from '@/lib/einheiten';
 import { AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
+import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,12 +46,13 @@ export const dynamic = 'force-dynamic';
 // Live-Bewusstsein kommt jetzt aus dem Brain — derselben Kontextschicht, die
 // auch Loops und Tageslauf nutzen. Eine Wahrheit statt vier Sammler.
 // `kalenderFremd` (29.09., #K1): stehen Termintitel/Namen im Prompt, gilt das Gespräch als „fremd gelesen“.
-async function liveContext(person: string): Promise<{ text: string; kalenderFremd: boolean }> {
+// KI-Schalter (05.10.): ausgeschaltete Bereiche stehen nicht im Live-Zustand; `kategorien` = was wirklich drinsteht.
+async function liveContext(person: string, bereiche: Record<KiBereich, boolean>): Promise<{ text: string; kalenderFremd: boolean; kategorien: KiKategorie[] }> {
   try {
     const b = await gatherBrain(undefined, person);
-    return { text: promptBrain(b), kalenderFremd: kalenderImPrompt(b) };
+    return { text: promptBrain(b, { bereiche }), kalenderFremd: bereiche.kalender && kalenderImPrompt(b), kategorien: brainKategorien(b, { bereiche }) };
   } catch {
-    return { text: '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)', kalenderFremd: false };
+    return { text: '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)', kalenderFremd: false, kategorien: ['allgemein'] };
   }
 }
 function systemPrompt(extra: string | undefined, live: string | undefined, fortsetzung: boolean, gedaechtnis: string, person: string, brain = '', space: 'privat' | 'business' | null = null): string {
@@ -150,9 +156,17 @@ export async function POST(req: Request) {
   // Haushaltsfinanzen (24.09.): nur mit ausdrücklich benannter Person, die
   // einem Haushalt angehört. Der Block steht bewusst NICHT im gemeinsamen
   // Brain — Board, OKR & Co. bekommen ihn nie.
-  const haushalt = await haushaltVon(req).catch(() => null);
+  // KI-Schalter je Instanz und Person (05.10., System › Datenschutz) und die Gesundheits-Einwilligung (b): was hier
+  // ausgeschaltet ist, steht weder im Prompt noch unter den Werkzeugen — und das KI-Tor in askText prüft es noch einmal.
+  const kiS = await kiSchalterFuer(person);
+  const gStand = await gesundheitStandFuer(person);
+  const gesundheitKi = gStand.ki.an && gStand.verarbeitungErlaubt;
+  const kategorien = new Set<KiKategorie>(['konto', 'allgemein']);
+  const haushalt = kiS.bereiche.finanzen ? await haushaltVon(req).catch(() => null) : null;
   const haushaltBlock = haushalt ? await ladeHaushalt(haushalt.haushalt).then(h => blockHaushalt(h)).catch(() => '') : '';
-  const lage = await liveContext(person);
+  if (haushaltBlock) kategorien.add('finanzen');
+  const lage = await liveContext(person, kiS.bereiche);
+  lage.kategorien.forEach(k => kategorien.add(k));
   const live = [lage.text, haushaltBlock].filter(Boolean).join('\n\n');
   // Das Langzeit-Gedächtnis geht in jeden Zug mit — knapp gehalten, damit es
   // den Kontext nicht auffrisst (siehe gedaechtnis.ts).
@@ -163,7 +177,7 @@ export async function POST(req: Request) {
   const crmErlaubt = await crmWerkzeugErlaubt(personStreng(req));
   const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a));
   // „ZOE fragen“ aus der Markttraktion (28.09., C7): nur Art + Kennung (geprüft, kein Text Dritter) — und nur im Haushalt.
-  const crmBezug = crmErlaubt ? crmBezugAus(payload.bezug) : null;
+  const crmBezug = crmErlaubt && kiS.bereiche.crm ? crmBezugAus(payload.bezug) : null;
   // Werkzeuge nur, wenn nicht ausdrücklich abgeschaltet (z.B. Tagesplan = reiner Text).
   const tools: unknown[] = [];
   if (!payload.noTools) {
@@ -668,6 +682,11 @@ export async function POST(req: Request) {
       },
     });
   }
+  // Werkzeuge gesperrter Bereiche und Gesundheit ohne Einwilligung gar nicht erst anbieten (fuehreAus prüft es zusätzlich).
+  const angeboten = tools.filter(t => {
+    const name = String((t as { name?: unknown }).name ?? '');
+    return !WERKZEUGE[name] || !werkzeugSperre(kategorieVonWerkzeug(name, gruppeVon(name)), kiS, gesundheitKi);
+  });
 
   try {
     // Tool-Use-Schleife: ZOE darf Agenten ausführen (run_agent), bekommt die
@@ -696,9 +715,13 @@ export async function POST(req: Request) {
     let vertraulich = kontextFremd || lage.kalenderFremd || !!crmBezug || verlaufVertraulich(payload.verlauf, quelleVon);
 
     // Grundlage aus dem Obsidian-Brain (00_ZOE_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
-    const brain = await brainAnweisung(person).catch(() => '');
+    // Brain/Vault nur, wenn der Bereich für ZOE an ist (05.10.).
+    const brain = kiS.bereiche.brain ? await brainAnweisung(person).catch(() => '') : '';
+    if (brain) kategorien.add('brain');
+    if (crmBezug) kategorien.add('crm');
     for (let runde = 0; runde < 3; runde++) {
-      const r = await askText({ system: [systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null), crmBezug ? crmBezugHinweis(crmBezug) : ''].filter(Boolean).join('\n\n'), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'zoe-gespraech' });
+      const r = await askText({ system: [systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null), crmBezug ? crmBezugHinweis(crmBezug) : ''].filter(Boolean).join('\n\n'), user: message, messages: msgs, maxTokens: 4000, tools: angeboten, timeoutMs: 180_000, zweck: 'zoe-gespraech',
+        ki: { lauf: 'gespraech', person, kategorien: Array.from(kategorien) } });
       if (!r.ok) {
         return NextResponse.json(
           { reply: `Anthropic hat abgelehnt (${r.status || 'offline'}). Prüf den Key/das Modell.`, error: r.error?.slice(0, 300) },
@@ -745,6 +768,8 @@ export async function POST(req: Request) {
       const outs = await Promise.all(zulaessig.map(z =>
         z.gueltig ? z.lauf() : Promise.resolve('Nicht ausgeführt (unbekannter Agent oder Lauf-Budget erschöpft).')
       ));
+      // Was die Werkzeuge zurückgeben, geht in der nächsten Runde ans Modell — fürs KI-Protokoll mitzählen.
+      for (const z of zulaessig) if (z.gueltig && WERKZEUGE[z.agentId]) { const k = kategorieVonWerkzeug(z.agentId, gruppeVon(z.agentId)); if (k) kategorien.add(k); }
       const results: unknown[] = zulaessig.map((z, zi) => {
         ran.push({ agent: z.agentId, ok: z.gueltig && !/fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein/i.test(outs[zi]) });
         // Fremde Inhalte gekapselt zurückgeben — Daten, keine Anweisungen. Seit 26.09. für ALLE Kanäle mit
@@ -776,7 +801,8 @@ export async function POST(req: Request) {
 
     const fallback = handoffs.length ? 'Ich habe etwas für dich vorbereitet:' : 'Ich habe gerade keine Antwort erzeugt — frag mich nochmal.';
     const stapelOffen = await offeneAnzahl().catch(() => 0);
-    return NextResponse.json({ reply: reply || fallback, handoffs, ran, stapelOffen });
+    // KI-VO Art. 50 (05.10.): ZOE-Antworten tragen das Kennzeichen — die Oberfläche markiert sie, wo sie weitergehen können.
+    return NextResponse.json({ reply: reply || fallback, handoffs, ran, stapelOffen, ...(reply ? { ki: kiKennzeichen() } : {}) });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ reply: 'Ich konnte Anthropic nicht erreichen (offline?). Versuch es gleich nochmal.', error: msg }, { status: 200 });
