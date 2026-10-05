@@ -9,7 +9,7 @@
 
 import type { Kontakt, Herkunft, Rechtsgrundlage } from '@/lib/make-one/crm';
 import type { CrmBestand, Verarbeitung } from './typen';
-import { art14 } from './recht';
+import { art14Frist } from '@/lib/datenschutz/art14';
 import { speicherbegrenzung } from './kennzahlen';
 import { SICHERUNG_GENERATIONEN, SICHERUNG_SATZ } from './loeschfristen';
 
@@ -85,7 +85,12 @@ export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: stri
   const n = kontakte.length || 1;
   const quote = (x: number) => (x === 0 ? 'erfuellt' : x / n > 0.5 ? 'offen' : 'teilweise') as PruefStatus;
   const ohneRg = kontakte.filter(k => !k.rechtsgrundlage).length, ohneHerkunft = kontakte.filter(k => !k.herkunft).length;
-  const art14faellig = kontakte.filter(k => art14(k, heute)?.faellig).length;
+  // Art. 14 (05.10., Betroffenenrechte v2): spätestens EIN MONAT nach der Aufnahme informieren (Abs. 3 lit. a) — „bald“ ab Tag 25.
+  const a14 = kontakte.filter(k => !k.eingeschraenkt).map(k => art14Frist(k, heute));
+  const stufe = (x: (typeof a14)[number]) => ('stufe' in x ? x.stufe : null);
+  const art14ueber = a14.filter(x => stufe(x) === 'ueberfaellig').length;
+  const art14bald = a14.filter(x => stufe(x) === 'bald').length;
+  const art14faellig = art14ueber + art14bald;
   const widerrufenOhneSperre = kontakte.filter(k => !k.werbesperre && (k.einwilligungen ?? []).length > 0 && (k.einwilligungen ?? []).every(e => e.widerrufenAm)).length;
   const offeneAntraege = crm.antraege.filter(a => a.status === 'offen');
   const antraegeUeber = offeneAntraege.filter(a => a.frist < heute).length;
@@ -105,7 +110,7 @@ export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: stri
     { id: 'rechtsgrundlage', titel: 'Rechtsgrundlage je Kontakt', status: quote(ohneRg), befund: ohneRg ? `${ohneRg} von ${kontakte.length} ohne dokumentierte Grundlage` : 'bei allen dokumentiert', norm: 'Art. 6 DSGVO', weg: W.stammdaten },
     { id: 'herkunft', titel: 'Herkunft der Daten', status: quote(ohneHerkunft), befund: ohneHerkunft ? `${ohneHerkunft} ohne Herkunft` : 'bei allen dokumentiert', norm: 'Art. 14 DSGVO', weg: W.stammdaten },
     { id: 'info-veranstaltung', titel: 'Information bei Veranstaltungs-Kontakten', status: !ohneInfo ? 'erfuellt' : ohneInfo / Math.max(1, nwPersonen) > 0.5 ? 'offen' : 'teilweise', befund: ohneInfo ? `${ohneInfo} Personen aus Netzwerken seit über ${INFO_FRIST_TAGE} Tagen ohne Datenschutzhinweis (Danke-Mail „ist raus“ oder von Hand vermerkt)` : nwPersonen ? 'alle Personen aus Netzwerken informiert (Danke-Mail oder persönlich)' : 'keine Personen aus Netzwerken', norm: 'Art. 13 DSGVO', weg: { text: 'Netzwerken › Danke-Mails', href: WEG.netzwerken() } },
-    { id: 'art14', titel: 'Information bei Fremddaten', status: art14faellig ? 'offen' : 'erfuellt', befund: art14faellig ? `${art14faellig} Personen seit über 25 Tagen nicht informiert` : 'keine Frist überschritten', norm: 'Art. 14 Abs. 3 DSGVO', weg: W.stammdaten },
+    { id: 'art14', titel: 'Information bei Fremddaten (spätestens 1 Monat)', status: art14ueber ? 'offen' : art14bald ? 'teilweise' : 'erfuellt', befund: art14faellig ? [art14ueber ? `${art14ueber} Personen länger als einen Monat nicht informiert — Frist überschritten` : '', art14bald ? `${art14bald} Personen werden in den nächsten Tagen fällig (Frist: 1 Monat nach der Aufnahme)` : ''].filter(Boolean).join(' · ') + ' — in der Akte „Information nach Art. 14“ als Entwurf öffnen, selbst senden, dann „ist raus“' : 'keine Frist offen (Daten aus Recherche, Liste oder Empfehlung: Information spätestens 1 Monat nach der Aufnahme)', norm: 'Art. 14 Abs. 3 lit. a DSGVO', weg: W.stammdaten },
     { id: 'widerspruch', titel: 'Werbewiderspruch wirksam gesperrt', status: widerrufenOhneSperre ? 'offen' : 'erfuellt', befund: widerrufenOhneSperre ? `${widerrufenOhneSperre} haben alles widerrufen, sind aber nicht gesperrt` : 'Sperre greift in Liste, Entwurf und Agenten', norm: 'Art. 21 Abs. 3 DSGVO', weg: W.qualitaet },
     { id: 'antraege', titel: 'Betroffenenanträge fristgerecht', status: antraegeUeber ? 'offen' : 'erfuellt', befund: antraegeUeber ? `${antraegeUeber} von ${offeneAntraege.length} offenen Anträgen über der Monatsfrist` : offeneAntraege.length ? `${offeneAntraege.length} offen, keiner überfällig — nächste Frist ${offeneAntraege.map(a => a.frist).sort()[0]}` : 'kein offener Antrag', norm: 'Art. 12 Abs. 3 DSGVO', weg: W.stammdaten },
     { id: 'loeschkonzept', titel: 'Speicherbegrenzung', status: alt ? 'teilweise' : 'erfuellt', befund: alt ? `${alt} Kontakte ohne Beziehung und Aktivität seit ${loeschMonate} Monaten — löschen oder Frist mit Grund verlängern` : 'nichts über der Frist', norm: 'Art. 5 Abs. 1 lit. e DSGVO', weg: W.stammdaten },

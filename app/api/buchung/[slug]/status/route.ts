@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { melde } from '@/lib/meldungen/melden';
 import { tagKurz, berlinerTag } from '@/lib/zeit/kalender-kern';
+import { datenschutzOeffentlichLaden } from '@/lib/datenschutz/einrichtung-server';
 import { slugOk, statusSicht, mailLinkGueltig, OFFEN, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
 import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, tokenPasst, mailTokenPasst, TOKEN_OK } from '@/lib/kalender/buchung-speicher';
 import { buchungAnfragen, mailBestaetigtNachtragen } from '@/lib/kalender/buchung-ablauf';
@@ -69,13 +70,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
     await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id: fertig.id, felder: ['oeffentlich', 'emailBestaetigtAm'] }], { art: 'system' });
     // Nachweis im CRM nachtragen (nur, wenn der Kontakt schon besteht) — ein Fehler bricht die Antwort nicht ab.
     await mailBestaetigtNachtragen(fertig.id, jetzt).catch(e => console.error('[buchung] Nachweis offen:', e instanceof Error ? e.message : e));
-    return antwort({ ok: true, mail: true, sicht: statusSicht(fertig, seite) });
+    return antwort({ ok: true, mail: true, sicht: statusSicht(fertig, seite, await datenschutzOeffentlichLaden()) });
   }
 
   const buchung = seite ? bestand.buchungen.find(b => b.seiteId === seite.id && tokenPasst(token, b.tokenHash)) : undefined;
   if (!seite || !buchung) { fehlschlag(schluessel); return antwort(NICHT_GEFUNDEN, 404); }
 
-  if (aktion === 'ansehen') return antwort({ ok: true, sicht: statusSicht(buchung, seite) });
+  if (aktion === 'ansehen') return antwort({ ok: true, sicht: statusSicht(buchung, seite, await datenschutzOeffentlichLaden()) });
 
   let fehler = '', status = 409, danach: Buchung | null = null, vorher: Buchung['status'] = buchung.status;
   await aendereBuchungBestand(bs => {
@@ -110,5 +111,5 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
         : { an: seite.person, art: 'buchung', titel: `Terminanfrage „${seite.titel}“ vom Gast zurückgezogen`, link: '/os/kalender?buchungen=1' });
     }
   }
-  return antwort({ ok: true, sicht: statusSicht(fertig, seite) });
+  return antwort({ ok: true, sicht: statusSicht(fertig, seite, await datenschutzOeffentlichLaden()) });
 }

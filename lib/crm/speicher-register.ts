@@ -196,7 +196,12 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('haushalt-*--*', 'Haushaltsfinanzen (Konten, Buchungen, Rechnungen) — eigene Daten des Haushalts.'),
   H('haushalt-umzug--*', 'Umzugs-Kopie der Haushaltsfinanzen — eigene Daten des Haushalts.'),
   H('telegram', 'Telegram-Verknüpfung der Personen des Haushalts (Chat-Kennungen).'),
-  H('anmeldungen', 'Anmeldungen der Konten des Haushalts (Zeit, Gerät; bei Änderungen der Anmelde-Adressen die betroffene Adresse nur maskiert) — Art. 15/17 über das Konto. Seit 05.10. mit Hash-Kette (rollend, 300 Einträge).'),
+  // Betroffenenrechte v2 (05.10.): mit Frist und Angaben — 12 Monate (FRIST_MONATE, lib/zugang/anmeldungen.ts), nicht mehr „300 Einträge“.
+  mit(H('anmeldungen', 'Anmeldungen der Konten (Zeit, Art, ok, gekürzte Netzadresse; bei Änderungen der Anmelde-Adressen die betroffene Adresse nur maskiert; seit 05.10. auch Datenexport, Konto löschen, Instanz-Export) — mit Hash-Kette (rollend).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Schutz der Konten vor Missbrauch) i. V. m. Art. 32 Abs. 1 lit. b, Art. 5 Abs. 2',
+    art15: 'Konto › Meine Daten (Export `protokolle.anmeldungen`, GET /api/konto/daten); die letzten Anmeldungen zeigt Konto › Name & Passwort',
+    loeschfrist: '12 Monate (rollend bei jedem neuen Eintrag, Notbremse 50 000); Konto gelöscht: die Einträge bleiben als Nachweis, die Kennung der Person wird „[gelöscht]“',
+  }),
   H('content-entwuerfe', 'Eigene Marketing-Entwürfe (ZOE) — Themen und Texte des Haushalts, keine Kartei-Daten.'),
   H('delegation-runde', 'Delegations-Vorschläge an Personen des Haushalts (Aufgaben-Titel).'),
   { muster: 'anfragen-ergebnis', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Idempotenz-Ablage (lib/store/anfragen.ts): Antworten höchstens 24 h, danach automatisch weg — kein eigener Löschlauf nötig.' },
@@ -218,7 +223,11 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('aenderungen', 'Altes Browser-Änderungsprotokoll (nur Person des Haushalts, Bestand, Seite) — nur gelesen.'),
   H('arbeitsmodus', 'Arbeitsmodus des Haushalts.'),
   H('arbeitsplatz', 'Arbeitsplatz-Einstellungen des Haushalts.'),
-  H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter System › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'),
+  mit(H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter System › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Bereitstellung der Anwendung) bzw. § 26 BDSG für Beschäftigte; lit. f (Sicherheit)',
+    art15: 'Konto › Meine Daten: Auskunft (HTML), „Meine Daten herunterladen“ (JSON, alle Bestände laut Register — lib/datenschutz/konto-daten.ts); nie Hash, Salz, zweiter Faktor',
+    loeschfrist: 'bis die Person „Mein Konto löschen“ wählt (Konto › Meine Daten; Inhaber erst ohne andere Konten) bzw. die Instanz endet (scripts/instanz-loeschen.mjs); Grabstein (nur Fingerabdruck der Konto-Kennung) 13 Monate',
+  }),
   H('team--*', 'Team des Haushalts (Rollen/Namen der Mitglieder; `deaktiviertAm` = Beginn der 30-Tage-Frist für die Kapazitätsdaten, setzt nur der Server).'),
   mit(H('kapazitaet--*', 'Kapazität je Haushalt (04.10.): Grundwert und Ausnahmen (Urlaub, feste Blöcke) je Team-Person, Zuweisungen Person × Mandat/Kunde (nur CRM-Kennungen, keine Namen Dritter) — eigene Planung des Haushalts. Gespeichert wird KEIN Gesundheitswert (die Erholung wird beim Rechnen aus vitals--* gelesen, nur mit Einwilligung + Teilen, nur als Team-Faktor); `erholungAm` = Zeitpunkt der Einwilligung (Nachweis).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Planung der Arbeitszeit im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (realistische Planung); Erholung: Art. 9 Abs. 2 lit. a — eigene Einwilligung der Person (`erholungAm`, Schalter in der Kapazität, Vorgabe aus) UND Teilen mit allen Konten (siehe vitals--*)',

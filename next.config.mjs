@@ -49,6 +49,9 @@ const nextConfig = {
       { source: '/((?!finanz-dashboard\\.html).*)', headers: [...basis, ...csp] },
       { source: '/buchen/:pfad*', headers: buchung },
       { source: '/api/buchung/:pfad*', headers: buchung },
+      // Abmeldelink (05.10., Betroffenenrechte v2): das Token steht im Pfad — dieselbe strenge Richtlinie (kein Referrer, nicht indexieren).
+      { source: '/abmelden/:pfad*', headers: buchung },
+      { source: '/api/abmelden/:pfad*', headers: buchung },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten

@@ -32,6 +32,11 @@ const GOOGLE_MELDEWEG = /^\/api\/(kalender\/google|google\/gmail)\/meldung$/;
 // ihre Status-Seite und genau deren zwei Schnittstellen. Adresse = lesbarer Vorsatz + 96 Bit Zufall (lib/kalender/buchung.ts
 // `slugOk`); alles andere (auch /buchen ohne Adresse oder tiefere Pfade) bleibt zu. Die Routen drosseln selbst.
 const BUCHUNG_OFFEN = [/^\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/, /^\/api\/buchung\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/];
+// Abmeldelink (05.10., Betroffenenrechte v2, lib/datenschutz/abmelden.ts): die Seite und ihre Schnittstelle sind ohne Sitzung offen — NUR mit
+// einem Token der Form `a1-<32 hex>`. Die Seite zeigt nie Daten, die Schnittstelle kann nur abmelden (POST; auch One-Click nach RFC 8058 von den
+// Servern der Mail-Anbieter, ohne Origin) und antwortet immer gleich. GET auf die Schnittstelle (Mail-Programm öffnet den List-Unsubscribe-Link)
+// leitet nur auf die Seite um — deshalb auch von einer fremden Seite aus erreichbar (vor `crossSiteVerboten`).
+const ABMELDE_OFFEN = [/^\/abmelden\/a1-[0-9a-f]{32}$/, /^\/api\/abmelden\/a1-[0-9a-f]{32}$/];
 
 /** Solange die 2FA-Pflicht offen ist, erlaubt: den Faktor einrichten, sich selbst sehen, abmelden (05.10.). */
 const ZF_EINRICHTEN: [string, RegExp][] = [['POST', /^\/api\/konto\/zwei-faktor$/], ['GET', /^\/api\/konto\/ich$/], ['POST', /^\/api\/konto\/abmelden$/]];
@@ -114,6 +119,8 @@ export async function middleware(req: NextRequest) {
   }
   if (CSP_MELDEWEG.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
   if (GOOGLE_MELDEWEG.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
+  // Abmeldelink: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Route handelt für niemanden.
+  if (ABMELDE_OFFEN.some(r => r.test(pfad)) && (req.method === 'GET' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
 
   // Eine Schnittstelle ist nie das Ziel einer Navigation von einer fremden Seite (26.09.): so kann kein
   // fremder Link mit dem Cookie im Gepäck eine GET-Route mit Wirkung auslösen.

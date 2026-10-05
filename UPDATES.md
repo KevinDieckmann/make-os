@@ -49,6 +49,30 @@ Kevin 04./05.10.: „alle Standards der DSGVO, damit wir Kundendaten aufnehmen k
   mehr (vorher offen). Kevin und Malin merken nichts. Keine Datenänderung, keine Umgebungsvariable.
 - **Rückweg:** Commits zurücknehmen — es gibt keine neuen Bestände; der Bauplan-Altbestand wird ohnehin beim ersten Schreiben gespeichert.
 
+## Betroffenenrechte v2 (05.10.2026, nur lokal — Branch `betroffenenrechte`)
+
+Kevin 05.10.: „Die Software muss auf allen Standards der DSGVO sein, damit wir auch die Daten der Kunden aufnehmen können.“
+- **Auskunft (Art. 15) vollständig** — Kontakt (Akte › Betroffenenrechte: „Auskunft als Datei“ + neu „Auskunft druckbar“) und Konto
+  (Konto › Meine Daten): Zwecke, Kategorien, Empfänger aus dem Register mit Drittland/Garantie, Speicherdauer, Rechte, Beschwerde,
+  Herkunft, automatisierte Entscheidungen (Lead-Score/KI ehrlich). Optional neu in der Einrichtung: zuständige Aufsichtsbehörde.
+- **Konto › Meine Daten** (neue Kachel): Auskunft ansehen, „Meine Daten herunterladen“ (JSON), „Mein Konto löschen“ (Rückfrage, Passwort,
+  zweiter Faktor, „LÖSCHEN“; Inhaber erst ohne andere Konten).
+- **System › Datenschutz:** Karte „Information nach Art. 14“ (Vorlage) und „Vertragsende“ (nur Inhaber: Instanz-Export mit Passwort/2FA).
+  Löschen der Instanz nur per `scripts/instanz-loeschen.mjs` (Trockenlauf + Code) — Anleitung `datenschutz/KUNDEN_ONBOARDING_DATENSCHUTZ.md` › E.
+- **Art. 14 in der Akte:** „Information als Entwurf“ → im Mail-Programm senden → „Ist raus“. Selbstprüfung: Frist 1 Monat (bald ab Tag 25).
+- **Buchungsseiten:** Verantwortlicher aus der Einrichtung (Feld der Seite nur noch Abweichung), Link zum Datenschutzhinweis, Satz vor dem Absenden.
+- **Abmeldelink** in jedem Newsletter-/Segment-Export (Spalten `abmeldelink`, `list_unsubscribe`, `list_unsubscribe_post`); öffentliche Seite
+  `/abmelden/<token>` + One-Click (RFC 8058). Braucht `MAKE_OS_PEPPER` und `MAKE_OS_ADRESSE` — sonst bleiben die Spalten leer.
+- **Nebenbei:** drei Datenschutz-Routen lasen den Körper noch mit `req.json()` (Wächter `sicher-zugang-json` war rot) → `jsonBegrenzt`.
+- **Vor dem Hochladen (Kevin):** Datenschutzhinweis-Adresse und (optional) Aufsichtsbehörde unter System › Datenschutz eintragen; Art.-14-Text
+  und die Texte der Auskunft anwaltlich gegenlesen; im Versanddienst die Spalte `abmeldelink` in den Fuß jeder Mail setzen; Caddy braucht
+  nichts Neues (die App setzt die strengen Köpfe für `/abmelden` selbst, next.config.mjs).
+- **Rückweg:** Commits zurücknehmen. Neue Felder sind optional (`Verantwortlicher.aufsicht`, `DatenschutzEinrichtung.art14`) und werden vom
+  alten Stand ignoriert. Was nicht zurückkommt: gelöschte Konten (nur aus einer Sicherung, dann löscht der Grabstein sie beim nächsten
+  Anwenden erneut — vorher den Konto-Grabstein aus `grabsteine.json` entfernen, wenn das Zurückholen gewollt ist); per Abmeldelink gesetzte
+  Werbesperren bleiben (gewollt). Buchungsseiten ohne eigenen Verantwortlichen sind im alten Stand nicht buchbar (dort Pflichtfeld) — vor dem
+  Rückweg an jeder Seite eintragen.
+
 ## DSGVO-Grundlagen im Code (05.10.2026, nur lokal — Branch `dsgvo-grund`)
 
 Kevin 05.10.: „Die Software muss auf allen Standards der DSGVO sein, damit wir auch Kundendaten aufnehmen können.“ Aus dem

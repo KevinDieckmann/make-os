@@ -15,10 +15,11 @@ import { HaushaltZuordnung } from './HaushaltZuordnung';
 import { ZugangEinstellungen } from './ZugangEinstellungen';
 import { TeamKarte } from './TeamKarte';
 import { AnmeldeAdressen } from './AnmeldeAdressen';
+import { MeineDaten } from './MeineDaten';
 
 interface Ich { speicher: string; email: string; weitereEmails?: string[]; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
 /** Anzeige im „Zuletzt“-Protokoll; unbekannte Arten erscheinen unverändert. */
-const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt' };
+const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt', 'daten-export': 'eigene Daten abgerufen', 'instanz-export': 'Instanz exportiert', 'konto-loeschen': 'Konto löschen versucht' };
 interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean }
 interface Telegram { konfiguriert: boolean; bot?: string; chats: number; code?: string; minuten?: number; fehler?: string }
 
@@ -192,6 +193,8 @@ export function KontoView() {
       </Liste>
       </Karte>
       </Kachel>
+      {/* Betroffenenrechte (05.10.): Auskunft, Herunterladen, Konto löschen — jede Person selbst. */}
+      <Kachel id="meine-daten" titel="Meine Daten" breite={3}><MeineDaten i={2} zweiterFaktorAn={!!ich.zweiterFaktorAn} inhaber={ich.rolle === 'inhaber'} andere={andere.length} /></Kachel>
       <Kachel id="bote" titel="Der Bote · Telegram" breite={3}>
       <Karte i={3}>
       <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>

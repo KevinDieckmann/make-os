@@ -25,7 +25,7 @@ import { Fenster } from '../Fenster';
 import { WEG } from '@/lib/wege';
 import { usePersonen } from '../aufgaben/hilfe';
 import type { KTermin, Wer } from './teile';
-import { bestaetigungsMail, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
+import { bestaetigungsMail, verantwortlichFuerSeite, type Buchung, type BuchungsSeite, type DatenschutzOeffentlich } from '@/lib/kalender/buchung';
 import { mailtoLink } from '@/lib/crm/angebote';
 
 type SeiteSicht = BuchungsSeite & { pfad: string };
@@ -34,7 +34,7 @@ type BuchungSicht = Omit<Buchung, 'tokenHash' | 'mailLink'> & { mailLinkBis?: st
 type Antwort = { ok: boolean; fehler?: string; konflikt?: boolean; unbestaetigt?: boolean; token?: string; pfad?: string; bis?: string };
 /** Ein fertiger Mail-Entwurf zum Bestätigungslink. */
 interface Entwurf { id: string; an: string; betreff: string; text: string; mailto: string }
-interface Stand { seiten: SeiteSicht[]; buchungen: BuchungSicht[]; vorschlaege: Record<string, { art: 'qualifizierung' | 'deal'; text: string; kontaktId: string }> }
+interface Stand { seiten: SeiteSicht[]; buchungen: BuchungSicht[]; vorschlaege: Record<string, { art: 'qualifizierung' | 'deal'; text: string; kontaktId: string }>; /** 05.10.: Verantwortlicher + Hinweis-Adresse aus System › Datenschutz (für Seiten ohne eigenen Eintrag). */ datenschutz?: DatenschutzOeffentlich }
 
 const STATUS_TEXT: Record<Buchung['status'], string> = { vorlaeufig: 'vorläufig', angefragt: 'angefragt', bestaetigt: 'bestätigt', abgelehnt: 'abgelehnt', abgesagt: 'abgesagt', abgelaufen: 'abgelaufen' };
 const zeit = (b: Pick<Buchung, 'start' | 'ende'>) => `${b.start.slice(8, 10)}.${b.start.slice(5, 7)}. ${b.start.slice(11, 16)}–${b.ende.slice(11, 16)}`;
@@ -102,7 +102,7 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
     const r = await senden({ aktion: 'mail-link', id: x.id });
     if (!r.ok || !r.pfad || !r.bis) return;
     const s = stand?.seiten.find(y => y.id === x.seiteId);
-    const m = bestaetigungsMail({ name: x.name, titel: s?.titel ?? 'Termin', start: x.start, ende: x.ende, link: `${window.location.origin}${r.pfad}`, verantwortlich: s?.verantwortlich ?? '', bis: r.bis });
+    const m = bestaetigungsMail({ name: x.name, titel: s?.titel ?? 'Termin', start: x.start, ende: x.ende, link: `${window.location.origin}${r.pfad}`, verantwortlich: verantwortlichFuerSeite(s, stand?.datenschutz), bis: r.bis });
     setTextKopiert(false);
     setEntwurf({ id: x.id, an: x.email, ...m, mailto: mailtoLink(x.email, m.betreff, m.text) });
   };
@@ -142,7 +142,7 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
           <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.aktiv ? LEUCHT.gut : C.inkLeise, flex: '0 0 auto' }} />
             <button onClick={() => oeffnen(s)} style={{ background: 'none', border: 'none', color: s.aktiv ? C.ink : C.inkLeise, cursor: 'pointer', padding: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, flex: 1, minWidth: 0 }}>{s.titel}</button>
-            {(!s.verantwortlich || s.verantwortlich.trim().length < 5) && <button onClick={() => oeffnen(s)} title="Ohne Verantwortlichen zeigt die Seite keine Termine (Datenschutz-Hinweis)" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>Verantwortlich fehlt</button>}
+            {verantwortlichFuerSeite(s, stand?.datenschutz).length < 5 && <button onClick={() => oeffnen(s)} title="Ohne Verantwortlichen (hier oder unter System › Datenschutz) zeigt die Seite keine Termine" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>Verantwortlich fehlt</button>}
             <button onClick={() => void kopieren(s)} disabled={!s.aktiv} style={{ background: 'none', border: 'none', color: s.aktiv ? LEUCHT.puls : C.inkLeise, cursor: s.aktiv ? 'pointer' : 'default', fontSize: TYP.bedien, fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>{kopiert === s.id ? 'kopiert ✓' : 'Link kopieren'}</button>
           </div>
         ))}
@@ -209,7 +209,7 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
       {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 8 }}>{meldung}</div>}
       {stand && (stand.buchungen.length > 0) && <GastDatenschutz onFertig={laden} />}
       {/* S1 #15: Stand der gelesenen Fassung mitschicken — hat jemand die Seite inzwischen geändert, antwortet der Server 409. */}
-      {bearbeiten && <SeiteBearbeiten start={bearbeiten} onZu={() => setBearbeiten(null)} onSpeichern={async s => { if (await aktion({ aktion: 'seite', seite: s, ...(bearbeiten.geaendert ? { stand: bearbeiten.geaendert } : {}) })) setBearbeiten(null); }} onLoeschen={bearbeiten.id ? async () => { if (await aktion({ aktion: 'seite-loeschen', id: bearbeiten.id, ...(bearbeiten.geaendert ? { stand: bearbeiten.geaendert } : {}) })) setBearbeiten(null); } : undefined} fehler={meldung} />}
+      {bearbeiten && <SeiteBearbeiten start={bearbeiten} datenschutz={stand?.datenschutz} onZu={() => setBearbeiten(null)} onSpeichern={async s => { if (await aktion({ aktion: 'seite', seite: s, ...(bearbeiten.geaendert ? { stand: bearbeiten.geaendert } : {}) })) setBearbeiten(null); }} onLoeschen={bearbeiten.id ? async () => { if (await aktion({ aktion: 'seite-loeschen', id: bearbeiten.id, ...(bearbeiten.geaendert ? { stand: bearbeiten.geaendert } : {}) })) setBearbeiten(null); } : undefined} fehler={meldung} />}
     </Karte>
   );
 }
@@ -244,7 +244,7 @@ function MailEntwurf({ e, kopiert, onKopieren, onZu }: { e: Entwurf; kopiert: bo
 
 const WT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { start: Partial<SeiteSicht>; onZu: () => void; onSpeichern: (s: Record<string, unknown>) => Promise<void>; onLoeschen?: () => Promise<void>; fehler: string }) {
+function SeiteBearbeiten({ start, datenschutz, onZu, onSpeichern, onLoeschen, fehler }: { start: Partial<SeiteSicht>; datenschutz?: DatenschutzOeffentlich; onZu: () => void; onSpeichern: (s: Record<string, unknown>) => Promise<void>; onLoeschen?: () => Promise<void>; fehler: string }) {
   const personen = usePersonen();
   const f0 = start.fenster?.[0] ?? { tage: [1, 2, 3, 4, 5], von: '09:00', bis: '17:00' };
   const [s, setS] = useState({
@@ -256,7 +256,10 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
   const zeile = (label: string, kind: React.ReactNode) => <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{label}</span>{kind}</label>;
   const klein = { ...feld, fontSize: 13, padding: '8px 10px' };
   // Nachtrag F1: Pflichtfelder sagen schon vor dem Speichern, was fehlt — keine Platzhalter, die wie Werte aussehen.
-  const fehlt = { titel: !s.titel.trim(), kalender: !s.zielKalender.trim(), verantwortlich: s.verantwortlich.trim().length < 5 };
+  // Verantwortlich (05.10.): kommt aus System › Datenschutz — das Feld hier ist nur eine Abweichung für diese Seite.
+  const ausEinrichtung = datenschutz?.verantwortlich ?? null;
+  const eigen = s.verantwortlich.trim();
+  const fehlt = { titel: !s.titel.trim(), kalender: !s.zielKalender.trim(), verantwortlich: eigen ? eigen.length < 5 : !ausEinrichtung };
   const hinweis = (text: string) => <span role="note" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{text}</span>;
   const beispiel = (text: string) => <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{text}</span>;
   return (
@@ -279,8 +282,9 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
         ))}
         {zeile('Zielkalender * (Name wie in der Kalender-App)', <><input value={s.zielKalender} maxLength={100} required aria-required="true" aria-invalid={fehlt.kalender || undefined} onChange={e => setS({ ...s, zielKalender: e.target.value })} style={klein} />{fehlt.kalender ? hinweis('Zielkalender fehlt — genau so geschrieben wie in der Kalender-App.') : beispiel('Hier legt die Freigabe den festen Termin an.')}</>)}
         {zeile('Ort oder Videolink (sieht der Gast erst nach der Freigabe)', <input value={s.ort} maxLength={300} onChange={e => setS({ ...s, ort: e.target.value })} style={klein} />)}
-        {zeile('Verantwortlich * (Pflicht — steht im Datenschutz-Hinweis: Name/Firma und Kontakt)', <input value={s.verantwortlich} maxLength={300} required aria-required="true" onChange={e => setS({ ...s, verantwortlich: e.target.value })} style={klein} />)}
-        {fehlt.verantwortlich && hinweis('Verantwortlich fehlt — Name/Firma, Anschrift und eine Kontakt-Adresse für den Datenschutz.')}
+        {zeile(ausEinrichtung ? 'Verantwortlich — nur falls abweichend (sonst wie unter System › Datenschutz)' : 'Verantwortlich * (steht im Datenschutz-Hinweis: Name/Firma und Kontakt)', <input value={s.verantwortlich} maxLength={300} aria-required={!ausEinrichtung} placeholder={ausEinrichtung ? 'leer lassen = wie in System › Datenschutz' : undefined} onChange={e => setS({ ...s, verantwortlich: e.target.value })} style={klein} />)}
+        {ausEinrichtung && !eigen && beispiel(`Auf der Seite steht: ${ausEinrichtung}${datenschutz?.seite ? ` · Datenschutzhinweis: ${datenschutz.seite}` : ' · ohne Link zum Datenschutzhinweis (unter System › Datenschutz eintragen)'}`)}
+        {fehlt.verantwortlich && hinweis(eigen ? 'Zu kurz — Name/Firma und eine Kontakt-Adresse, oder leer lassen.' : 'Verantwortlich fehlt — am besten einmal unter System › Datenschutz eintragen (gilt dann für alle Seiten).')}
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
           <label><input type="checkbox" checked={s.firma} onChange={e => setS({ ...s, firma: e.target.checked })} /> nach Firma fragen</label>
           <label><input type="checkbox" checked={s.anliegen} onChange={e => setS({ ...s, anliegen: e.target.checked })} /> nach Anliegen fragen</label>

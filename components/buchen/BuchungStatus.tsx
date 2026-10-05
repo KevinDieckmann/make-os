@@ -16,7 +16,7 @@ import { useGastZone } from './Buchen';
 import { gastZeitText, zonenOrt } from '@/lib/kalender/gast-zeit';
 
 type Status = 'vorlaeufig' | 'angefragt' | 'bestaetigt' | 'abgelehnt' | 'abgesagt' | 'abgelaufen';
-interface Sicht { status: Status; titel: string; start: string; ende: string; reserviertBis?: string; ort?: string; grund?: string; verantwortlich?: string; emailBestaetigt?: true }
+interface Sicht { status: Status; titel: string; start: string; ende: string; reserviertBis?: string; ort?: string; grund?: string; verantwortlich?: string; datenschutzLink?: string; emailBestaetigt?: true }
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
 /** Was im Fragment (#…) steht: der Bestätigungslink (`mail=`), der persönliche Status-Link — oder nichts Brauchbares. */
@@ -114,7 +114,7 @@ export function BuchungStatus({ slug }: { slug: string }) {
             <div style={{ ...klein, borderTop: `1px solid ${C.linie}`, paddingTop: 12, display: 'grid', gap: 8 }}>
               <span>Diese Seite ist Ihr persönlicher Zugang zur Anfrage — bitte den Link aufbewahren (z. B. als Lesezeichen). Er wird nicht per E-Mail verschickt.</span>
               <button onClick={() => void kopieren()} style={{ ...knopf(true, true), justifySelf: 'start', fontSize: 13, minHeight: 36, padding: '8px 12px' }}>{kopiert ? 'Link kopiert' : 'Link kopieren'}</button>
-              {sicht.verantwortlich && <span>Verantwortlich: {sicht.verantwortlich}</span>}
+              {sicht.verantwortlich && <span>Verantwortlich: {sicht.verantwortlich}{sicht.datenschutzLink ? <> · <a href={sicht.datenschutzLink} target="_blank" rel="noopener noreferrer" style={{ color: AKZENT }}>Datenschutzhinweis</a></> : null}</span>}
             </div>
           </section>
         )}

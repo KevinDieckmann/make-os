@@ -10,21 +10,25 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Feldzeile, feld, LEUCHT, Hinweis } from '../ui';
 import { verantwortlicherPruefen, verantwortlicherText, type Verantwortlicher as V, type VerantwortlicherWirksam, type Empfaenger } from '@/lib/datenschutz/einrichtung';
 
-export interface EinrichtungAntwort { ok: boolean; verantwortlicher: V | null; wirksam: VerantwortlicherWirksam; empfaenger: Empfaenger[]; darf: boolean; fehler?: string }
+export interface EinrichtungAntwort {
+  ok: boolean; verantwortlicher: V | null; wirksam: VerantwortlicherWirksam; empfaenger: Empfaenger[]; darf: boolean; fehler?: string;
+  /** Vorlage der Information nach Art. 14 (05.10.): gespeichert (oder null) und wirksam, dazu die Platzhalter. */
+  art14?: { betreff: string; text: string } | null; art14Wirksam?: { betreff: string; text: string }; platzhalter?: Record<string, string>;
+}
 
-const LEER = { name: '', anschrift: '', mail: '', telefon: '', vertretung: '', dsbName: '', dsbMail: '', seite: '' };
+const LEER = { name: '', anschrift: '', mail: '', telefon: '', vertretung: '', dsbName: '', dsbMail: '', seite: '', aufsicht: '' };
 
 export function VerantwortlicherKarte({ d, onGeaendert, i = 0 }: { d: EinrichtungAntwort; onGeaendert: () => void; i?: number }) {
   const [f, setF] = useState(LEER);
   const [meldung, setMeldung] = useState<{ text: string; gut: boolean } | null>(null);
   useEffect(() => {
     const v = d.verantwortlicher;
-    setF(v ? { name: v.name, anschrift: v.anschrift, mail: v.mail, telefon: v.telefon ?? '', vertretung: v.vertretung ?? '', dsbName: v.dsb?.name ?? '', dsbMail: v.dsb?.mail ?? '', seite: v.seite ?? '' } : LEER);
+    setF(v ? { name: v.name, anschrift: v.anschrift, mail: v.mail, telefon: v.telefon ?? '', vertretung: v.vertretung ?? '', dsbName: v.dsb?.name ?? '', dsbMail: v.dsb?.mail ?? '', seite: v.seite ?? '', aufsicht: v.aufsicht ?? '' } : LEER);
   }, [d.verantwortlicher]);
   const w = d.wirksam;
   const setze = (k: keyof typeof LEER) => (e: { target: { value: string } }) => setF(x => ({ ...x, [k]: e.target.value }));
   const speichern = async () => {
-    const roh = { name: f.name, anschrift: f.anschrift, mail: f.mail, telefon: f.telefon, vertretung: f.vertretung, dsb: { name: f.dsbName, mail: f.dsbMail }, seite: f.seite };
+    const roh = { name: f.name, anschrift: f.anschrift, mail: f.mail, telefon: f.telefon, vertretung: f.vertretung, dsb: { name: f.dsbName, mail: f.dsbMail }, seite: f.seite, aufsicht: f.aufsicht };
     const p = verantwortlicherPruefen(roh);
     if (!p.ok) { setMeldung({ text: p.fehler, gut: false }); return; }
     const r = await fetch('/api/datenschutz/einrichtung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'verantwortlicher', verantwortlicher: roh }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
@@ -47,7 +51,8 @@ export function VerantwortlicherKarte({ d, onGeaendert, i = 0 }: { d: Einrichtun
         {ein('telefon', 'Telefon (optional)', { typ: 'tel' })}
         {ein('dsbName', 'Datenschutzbeauftragter (optional)')}
         {ein('dsbMail', 'Mail des Datenschutzbeauftragten (optional)', { typ: 'email' })}
-        {ein('seite', 'Datenschutzhinweis — Adresse (optional)', { platz: 'example.de/datenschutz' })}
+        {ein('seite', 'Datenschutzhinweis — Adresse (optional; steht auf Buchungsseiten und in der Danke-Mail)', { platz: 'example.de/datenschutz' })}
+        <Feldzeile label="Zuständige Aufsichtsbehörde (optional; steht in jeder Auskunft)"><textarea value={f.aufsicht} onChange={setze('aufsicht')} rows={2} disabled={!d.darf} placeholder="Name der Landesbehörde, Anschrift bzw. Webseite" style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} /></Feldzeile>
       </div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
         {d.darf ? <Knopf onClick={speichern}>Speichern</Knopf> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ändern kann nur der Inhaber.</span>}

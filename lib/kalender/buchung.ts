@@ -126,7 +126,10 @@ export interface BuchungsSeite {
   ort: string;
   /** Welche freiwilligen Fragen gestellt werden (Name und E-Mail sind immer Pflicht). */
   fragen: { firma: boolean; anliegen: boolean };
-  /** Verantwortlicher für den Datenschutz-Hinweis (Name/Firma + Kontakt). */
+  /**
+   * Verantwortlicher für den Datenschutz-Hinweis (Name/Firma + Kontakt). Seit 05.10. (Betroffenenrechte v2) nur noch eine ABWEICHUNG:
+   * leer = der Verantwortliche aus der Einrichtung (System › Datenschutz, `verantwortlichFuerSeite`). Pflicht nur ohne Einrichtung.
+   */
   verantwortlich: string;
   aktiv: boolean;
   angelegt: string;
@@ -207,7 +210,7 @@ export function slugVorsatz(titel: string): string {
  * Buchungsseite aus einer Eingabe säubern. Feste Felder (id, slug, angelegt) kommen aus `alt` bzw. vom Server.
  * Liefert den Fehlertext statt still zu kürzen (Regel „nie abschneiden, ablehnen“).
  */
-export function seiteSauber(roh: Record<string, unknown>, fest: Pick<BuchungsSeite, 'id' | 'slug' | 'angelegt'>, person: string, jetzt: string): { ok: true; seite: BuchungsSeite } | { ok: false; fehler: string } {
+export function seiteSauber(roh: Record<string, unknown>, fest: Pick<BuchungsSeite, 'id' | 'slug' | 'angelegt'>, person: string, jetzt: string, opt: { /** Steht ein Verantwortlicher in der Einrichtung (System › Datenschutz)? Dann ist das Feld der Seite freiwillig. */ einrichtung?: boolean } = {}): { ok: true; seite: BuchungsSeite } | { ok: false; fehler: string } {
   const titel = txt(roh.titel);
   if (!titel) return { ok: false, fehler: 'Titel fehlt.' };
   if (titel.length > GRENZEN.titel) return { ok: false, fehler: `Titel höchstens ${GRENZEN.titel} Zeichen.` };
@@ -220,8 +223,10 @@ export function seiteSauber(roh: Record<string, unknown>, fest: Pick<BuchungsSei
   if (kal.length > GRENZEN.kalender) return { ok: false, fehler: 'Kalendername zu lang.' };
   if (!kal) return { ok: false, fehler: 'Zielkalender fehlt (Name wie in der Kalender-App).' };
   if (verantwortlich.length > GRENZEN.verantwortlich) return { ok: false, fehler: `Verantwortlicher höchstens ${GRENZEN.verantwortlich} Zeichen.` };
-  // Art. 13 Abs. 1 a DSGVO: ohne Verantwortlichen kein Datenschutz-Hinweis — und damit keine Seite (R-K2 #79).
-  if (verantwortlich.length < 5) return { ok: false, fehler: 'Verantwortlich fehlt (Name/Firma und Kontakt, z. B. E-Mail) — Pflicht für den Datenschutz-Hinweis.' };
+  // Art. 13 Abs. 1 a DSGVO: ohne Verantwortlichen kein Datenschutz-Hinweis — und damit keine Seite (R-K2 #79). Seit 05.10. kommt er aus der
+  // Einrichtung; ein eigener Eintrag an der Seite ist nur noch eine Abweichung (leer lassen = wie in System › Datenschutz).
+  if (verantwortlich.length > 0 && verantwortlich.length < 5) return { ok: false, fehler: 'Verantwortlich: Name/Firma und Kontakt (mindestens 5 Zeichen) — oder leer lassen, dann gilt System › Datenschutz.' };
+  if (!verantwortlich && !opt.einrichtung) return { ok: false, fehler: 'Verantwortlich fehlt — unter System › Datenschutz eintragen (gilt dann für alle Seiten) oder hier für diese Seite (Name/Firma und Kontakt).' };
   const f = (roh.fragen && typeof roh.fragen === 'object' ? roh.fragen : {}) as Record<string, unknown>;
   return {
     ok: true,
@@ -379,23 +384,40 @@ export function loeschfristAnwenden(bestand: BuchungBestand, jetzt: Date, tage =
   return { bestand: entfernt.length ? { ...bestand, buchungen: bleiben } : bestand, entfernt };
 }
 
+/**
+ * Datenschutz-Angaben der Instanz für die öffentlichen Seiten (05.10.): Verantwortlicher als Zeile und die Adresse des Datenschutzhinweises —
+ * aus der Einrichtung (lib/datenschutz/einrichtung.ts `verantwortlicherText`, `seite`). Null-Felder = nichts eingetragen.
+ */
+export interface DatenschutzOeffentlich { verantwortlich: string | null; seite: string | null }
+/** Der wirksame Verantwortliche einer Seite: eigener Eintrag (Abweichung) vor der Einrichtung; leer = keiner (dann nicht buchbar). */
+export const verantwortlichFuerSeite = (seite: Pick<BuchungsSeite, 'verantwortlich'> | undefined, ds?: DatenschutzOeffentlich | null): string =>
+  (seite?.verantwortlich ?? '').trim() || (ds?.verantwortlich ?? '').trim();
+/** Link zum Datenschutzhinweis (https, nur eine Adresse ohne Leerzeichen) — oder null. */
+export function datenschutzLink(ds?: DatenschutzOeffentlich | null): string | null {
+  const t = (ds?.seite ?? '').trim().replace(/^https?:\/\//i, '');
+  return t && /^[a-z0-9.-]+\.[a-z]{2,}(\/\S*)?$/i.test(t) ? `https://${t}` : null;
+}
+
 /** Was der Buchende auf seiner Status-Seite sieht — ohne Namen anderer, ohne Termininhalte; Ort erst nach Freigabe. */
-export interface StatusSicht { status: BuchungStatus; titel: string; start: string; ende: string; reserviertBis?: string; ort?: string; grund?: string; verantwortlich?: string; emailBestaetigt?: true }
-export function statusSicht(b: Buchung, seite: BuchungsSeite | undefined): StatusSicht {
+export interface StatusSicht { status: BuchungStatus; titel: string; start: string; ende: string; reserviertBis?: string; ort?: string; grund?: string; verantwortlich?: string; datenschutzLink?: string; emailBestaetigt?: true }
+export function statusSicht(b: Buchung, seite: BuchungsSeite | undefined, ds?: DatenschutzOeffentlich | null): StatusSicht {
+  const verantwortlich = verantwortlichFuerSeite(seite, ds), link = datenschutzLink(ds);
   return {
     status: b.status, titel: seite?.titel ?? 'Termin', start: b.start, ende: b.ende,
     ...(b.status === 'vorlaeufig' ? { reserviertBis: b.reserviertBis } : {}),
     ...(b.status === 'bestaetigt' && seite?.ort ? { ort: seite.ort } : {}),
     ...(b.status === 'abgelehnt' && b.grund ? { grund: b.grund } : {}),
-    ...(seite?.verantwortlich ? { verantwortlich: seite.verantwortlich } : {}),
+    ...(verantwortlich ? { verantwortlich } : {}),
+    ...(link ? { datenschutzLink: link } : {}),
     ...(b.emailBestaetigtAm ? { emailBestaetigt: true as const } : {}),
   };
 }
 
 /** Öffentliche Sicht einer Seite: Titel, Dauer, Fragen, Hinweise — nie Person, Kalender, Ort, Buchungen. */
-export interface OeffentlicheSeite { titel: string; dauerMin: number; fragen: BuchungsSeite['fragen']; verantwortlich: string; hinweis: string[]; einwilligung: { wortlaut: string; version: string } }
-export function oeffentlich(seite: BuchungsSeite, fristen: HinweisFristen = HINWEIS_FRISTEN_STANDARD): OeffentlicheSeite {
-  return { titel: seite.titel, dauerMin: seite.dauerMin, fragen: seite.fragen, verantwortlich: seite.verantwortlich, hinweis: datenschutzHinweis(fristen), einwilligung: { wortlaut: EINWILLIGUNG_WORTLAUT, version: hinweisFassung(fristen) } };
+export interface OeffentlicheSeite { titel: string; dauerMin: number; fragen: BuchungsSeite['fragen']; verantwortlich: string; hinweis: string[]; einwilligung: { wortlaut: string; version: string }; /** Link zum Datenschutzhinweis der Instanz (05.10.) — die Seite zeigt ihn vor dem Absenden. */ datenschutzLink?: string }
+export function oeffentlich(seite: BuchungsSeite, fristen: HinweisFristen = HINWEIS_FRISTEN_STANDARD, ds?: DatenschutzOeffentlich | null): OeffentlicheSeite {
+  const link = datenschutzLink(ds);
+  return { titel: seite.titel, dauerMin: seite.dauerMin, fragen: seite.fragen, verantwortlich: verantwortlichFuerSeite(seite, ds), hinweis: datenschutzHinweis(fristen), einwilligung: { wortlaut: EINWILLIGUNG_WORTLAUT, version: hinweisFassung(fristen) }, ...(link ? { datenschutzLink: link } : {}) };
 }
 
 /** Vor- und Nachname aus einer Namenszeile (letztes Wort = Nachname). */

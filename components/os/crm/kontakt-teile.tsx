@@ -10,6 +10,8 @@
 import { kennengelerntZeilen } from '@/lib/crm/netzwerken-recht';
 import { useNachfrage } from './Nachfrage';
 import { useArt17 } from './kontakt/art17';
+import { Art14Entwurf } from './kontakt/art14';
+import { einMonatNach } from '@/lib/datenschutz/art14';
 import { localDay } from '@/lib/zeit';
 import { DealAnlegen } from './DealAnlegen';
 import { useEffect, useState, type ReactNode, type KeyboardEvent as TastenEreignis } from 'react';
@@ -396,7 +398,11 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
             : <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>noch nicht erteilt — in der Danke-Mail oder beim ersten Kontakt geben</span>{!gesperrt && <Knopf leise onClick={() => void datenschutzAktion(api, { aktion: 'datenschutz-informiert', id: k.id })}>Heute persönlich erteilt</Knopf>}</div>}
         </Feldzeile>}
         <Feldzeile label="Herkunft (Art. 14)"><Wahl label="Herkunft" liste={HERKUNFT_WAHL} wert={k.herkunft} onWahl={(h: Herkunft) => void setze({ herkunft: h, ...(HERKUNFT.find(x => x.id === h)?.fremd ? { fremddaten: true } : { fremddaten: undefined }) })} /></Feldzeile>
-        {k.fremddaten && <Feldzeile label="Informiert"><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k.art14InformiertAm ? `am ${datum(k.art14InformiertAm)}` : 'noch nicht'}</span>{!k.art14InformiertAm && <Knopf leise onClick={() => void setze({ art14InformiertAm: heute })}>Heute informiert</Knopf>}</div></Feldzeile>}
+        {(k.fremddaten || HERKUNFT.find(x => x.id === k.herkunft)?.fremd) && <Feldzeile label="Informiert (Art. 14)"><div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: TYP.bedien, color: k.art14InformiertAm ? C.inkDim : LEUCHT.achtung }}>{k.art14InformiertAm ? `am ${datum(k.art14InformiertAm)}` : `noch nicht — spätestens ${datum(einMonatNach(k.importiertAm.slice(0, 10)))}`}</span>{!k.art14InformiertAm && <Knopf leise onClick={() => void setze({ art14InformiertAm: heute })}>Heute informiert</Knopf>}</div>
+          {/* 05.10. (Betroffenenrechte v2): Entwurf aus der Vorlage der Einrichtung — senden nur von Hand, dann „ist raus“. */}
+          {!k.art14InformiertAm && <Art14Entwurf k={k} api={api} />}
+        </div></Feldzeile>}
         <Feldzeile label="Hinweis bei Erhebung">
           {k.hinweisBeiErhebung
             ? <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>erteilt am {datum(k.hinweisBeiErhebung.am)}{k.hinweisBeiErhebung.von ? ` · vermerkt von ${nameVon(k.hinweisBeiErhebung.von)}` : ''} — Bestandskunden-Werbung per Mail möglich (§ 7 Abs. 3 UWG)</span>
@@ -447,7 +453,9 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
       <div>
         <Ueberschrift>Betroffenenrechte</Ueberschrift>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${k.id}`; }}>Auskunft (Art. 15) als Datei</Knopf>
+          <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${encodeURIComponent(k.id)}`; }}>Auskunft (Art. 15) als Datei</Knopf>
+          {/* 05.10.: dieselbe Auskunft druckbar (Angaben a–h + Kopie) — Browser › Drucken › als PDF. */}
+          <Knopf leise onClick={() => window.open(`/api/crm/datenschutz?id=${encodeURIComponent(k.id)}&format=html`, '_blank', 'noopener')}>Auskunft druckbar</Knopf>
           {/* Ein Weg für Zeile und Karteikarte (04.10., kontakt/art17.tsx): Rückfrage → Grund fürs Löschprotokoll → Ergebnis. */}
           <Knopf leise aus={gesperrt} onClick={() => art17.loeschen(k)}>Löschen (Art. 17)</Knopf>
           {art17.dialog}

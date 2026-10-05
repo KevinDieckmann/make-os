@@ -13,7 +13,7 @@ import { gastZeitText, zweiteZone, zonenOrt } from '@/lib/kalender/gast-zeit';
 
 interface Daten {
   ok: boolean; fehler?: string; stempel: string; hinweis?: string;
-  seite: { titel: string; dauerMin: number; fragen: { firma: boolean; anliegen: boolean }; verantwortlich: string; hinweis: string[]; einwilligung: { wortlaut: string; version: string } };
+  seite: { titel: string; dauerMin: number; fragen: { firma: boolean; anliegen: boolean }; verantwortlich: string; hinweis: string[]; einwilligung: { wortlaut: string; version: string }; datenschutzLink?: string };
   plaetze: { start: string; ende: string }[];
 }
 
@@ -97,6 +97,8 @@ export function Buchen({ slug }: { slug: string }) {
           <h2 style={{ fontSize: 14, margin: '0 0 8px', color: C.ink }}>Datenschutz in Kürze</h2>
           <ul style={{ ...klein, margin: 0, paddingLeft: 18, display: 'grid', gap: 5, color: C.inkDim }}>{s.hinweis.map((h, i) => <li key={i}>{h}</li>)}</ul>
           <p style={{ ...klein, margin: '8px 0 0', color: C.inkDim }}>Verantwortlich: {s.verantwortlich}</p>
+          {/* Datenschutzhinweis der Instanz (05.10., aus System › Datenschutz) — vollständig, mit allen Rechten. */}
+          {s.datenschutzLink && <p style={{ ...klein, margin: '6px 0 0' }}><a href={s.datenschutzLink} target="_blank" rel="noopener noreferrer" style={{ color: AKZENT }}>Vollständiger Datenschutzhinweis</a></p>}
         </section>
 
         <div className="buchen-raster" style={{ display: 'grid', gap: 18 }}>
@@ -137,6 +139,8 @@ export function Buchen({ slug }: { slug: string }) {
                 <span>{s.einwilligung.wortlaut} <span style={klein}>(Pflicht · Fassung {s.einwilligung.version} · Hinweise oben)</span></span>
               </label>
               {fehler && <div role="alert" style={{ color: C.achtung, fontSize: 14 }}>{fehler}</div>}
+              {/* Hinweis direkt vor dem Absenden (05.10., Art. 13): was mit den Angaben geschieht, und wo es vollständig steht. */}
+              <p style={{ ...klein, margin: 0 }}>Mit „Termin anfragen“ übermitteln Sie Name, E-Mail{s.fragen.firma ? ', Firma' : ''}{s.fragen.anliegen ? ' und Ihr Anliegen' : ''} an {s.verantwortlich ? s.verantwortlich.split(',')[0] : 'uns'} — nur zur Bearbeitung Ihrer Terminanfrage.{s.datenschutzLink ? <> Mehr im <a href={s.datenschutzLink} target="_blank" rel="noopener noreferrer" style={{ color: AKZENT }}>Datenschutzhinweis</a>.</> : ' Mehr in den Hinweisen oben.'}</p>
               <button onClick={() => void buchen()} disabled={!bereit} aria-busy={sendet} style={knopf(bereit)}>{sendet ? 'Wird reserviert …' : 'Termin anfragen'}</button>
               <p style={{ ...klein, margin: 0 }}>Der Platz wird 30 Minuten für Sie reserviert. Auf der nächsten Seite bestätigen Sie die Anfrage; danach bestätigen wir den Termin persönlich.</p>
             </div>

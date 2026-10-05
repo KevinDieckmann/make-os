@@ -17,7 +17,8 @@ function dateien(dir: string, ende = /\.tsx?$/): string[] {
 
 /** Seiten, die nur weiterleiten (redirect aus next/navigation, sonst nichts). */
 const NUR_WEITERLEITUNG = ['app/page.tsx', 'app/jarvis/page.tsx'];
-const ERLAUBT = ['os', 'zoe', 'anmelden', 'buchen', 'api', 'jarvis', 'schriften'];
+// `abmelden` (05.10., Betroffenenrechte v2): öffentliche Seite des Abmeldelinks — wie `buchen` ohne Sitzung (middleware.ts ABMELDE_OFFEN).
+const ERLAUBT = ['os', 'zoe', 'anmelden', 'buchen', 'abmelden', 'api', 'jarvis', 'schriften'];
 
 describe('Routen: ein Weg statt zwei', () => {
   it('app/ hat nur die erlaubten Bereiche — keine Routengruppe, kein Alt-Dashboard', () => {
@@ -26,8 +27,8 @@ describe('Routen: ein Weg statt zwei', () => {
     expect(ordner.some(n => n.startsWith('('))).toBe(false);
   });
 
-  it('Seiten außerhalb von /os, /zoe, /anmelden, /buchen leiten nur weiter', () => {
-    const seiten = dateien('app', /^page\.tsx$/).filter(p => !/^app\/(os|zoe|anmelden|buchen|api)\//.test(p));
+  it('Seiten außerhalb von /os, /zoe, /anmelden, /buchen, /abmelden leiten nur weiter', () => {
+    const seiten = dateien('app', /^page\.tsx$/).filter(p => !/^app\/(os|zoe|anmelden|buchen|abmelden|api)\//.test(p));
     expect(seiten.sort()).toEqual([...NUR_WEITERLEITUNG].sort());
     for (const p of NUR_WEITERLEITUNG) expect(lies(p)).toMatch(/redirect\(/);
   });

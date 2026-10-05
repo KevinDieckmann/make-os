@@ -129,7 +129,7 @@ export async function grabsteineAufraeumen(grenze: string): Promise<number> {
   });
 }
 
-export interface GrabsteinLauf { grabsteine: number; entfernt: number; sperrliste: number; uebersprungen: boolean; stand: string }
+export interface GrabsteinLauf { grabsteine: number; entfernt: number; sperrliste: number; uebersprungen: boolean; stand: string; /** Gelöschte Konten, die ein Restore zurückgebracht hatte (05.10.). */ konten?: number }
 
 /**
  * Grabsteine auf den Datenordner anwenden. Ohne `erzwingen` nur, wenn sich die Grabsteine seit dem letzten Anwenden
@@ -140,7 +140,7 @@ export async function grabsteineAnwenden(opt: { erzwingen?: boolean; jetzt?: Dat
   const marke = (await loadJson<GrabsteinMarke>(GRABSTEIN_MARKE)) ?? {};
   if (!opt.erzwingen && (marke.stand ?? '') === stand) return { grabsteine: 0, entfernt: 0, sperrliste: 0, uebersprungen: true, stand };
   const g = await grabsteineLesen();
-  let entfernt = 0, sperrliste = 0;
+  let entfernt = 0, sperrliste = 0, konten = 0;
   if (g.length) {
     const kontakte = (await loadJson<{ kontakte?: Kontakt[] }>('kontakte'))?.kontakte ?? [];
     const { personEntfernen } = await import('@/lib/crm/person-bestaende');
@@ -151,9 +151,13 @@ export async function grabsteineAnwenden(opt: { erzwingen?: boolean; jetzt?: Dat
     }
     const am = (opt.jetzt ?? new Date()).toISOString();
     for (const x of g) if (x.m.length) sperrliste += await sperrHashesAufnehmen(x.m, 'loeschung', x.am || am);
+    // Gelöschte KONTEN (05.10., Betroffenenrechte v2): Grabstein = Fingerabdruck der Konto-Kennung, ohne Merkmale — ein Restore holt
+    // das Konto zurück, hier fällt es samt seiner Bestände erneut weg (lib/datenschutz/konto-daten.ts).
+    const { kontenNachGrabstein } = await import('./konto-daten');
+    konten = await kontenNachGrabstein(g);
   }
   await updateJson<GrabsteinMarke>(GRABSTEIN_MARKE, () => ({ stand, am: (opt.jetzt ?? new Date()).toISOString(), angewendet: entfernt }));
-  return { grabsteine: g.length, entfernt, sperrliste, uebersprungen: false, stand };
+  return { grabsteine: g.length, entfernt, sperrliste, uebersprungen: false, stand, ...(konten ? { konten } : {}) };
 }
 
 /** Für den Takt: sind die Grabsteine seit dem letzten Anwenden neu (oder nach einem Restore)? Wirft nie. */

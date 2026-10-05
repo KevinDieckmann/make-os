@@ -1,5 +1,6 @@
 // ─── CRM — Betroffenenrechte ────────────────────────────────────────────────
-// GET  ?id=…  → Auskunft nach Art. 15: alles, was wir über die Person haben
+// GET  ?id=…[&format=html] → Auskunft nach Art. 15: alles, was wir über die Person haben — seit 05.10. mit den Angaben nach
+//              Art. 15 Abs. 1 a–h (`art15`, lib/datenschutz/art15.ts) und als druckbares HTML (`format=html`); Lese-Protokoll.
 //              (Kartei, Firma, alle CRM-Listen, Dateiablage nur als Metadaten,
 //              Import-Konflikte, Head-Vorschläge, Termine, Aufgaben) als JSON-Datei —
 //              seit U2 mit den Einwilligungs-Nachweisen vollständig (Zeitpunkt, wer,
@@ -22,6 +23,8 @@
 // POST { aktion: 'datenschutz-informiert', id }                 → Datenschutzhinweis (Art. 13) persönlich gegeben, Tag heute (netz-recht, 03.10.;
 //              für Personen ohne Mail oder ohne Gespräch — bei der Danke-Mail setzt der Server den Tag selbst)
 // POST { aktion: 'fristen', fristen: { <art>: Zahl | null } }    → Löschfristen anpassen (Standard nie gespeichert)
+// POST { aktion: 'art14-entwurf', id }  → Information nach Art. 14 als Entwurf { betreff, text, an, mailto, frist } — versendet NICHTS (05.10.)
+// POST { aktion: 'art14-raus', id }     → die Information ist (im Mail-Programm, Einzelklick) raus: `art14InformiertAm` = heute + Verlauf
 // POST { aktion: 'grabsteine' }  (Dienstweg, auch ohne Person)    → Grabsteine erzwungen anwenden — ruft das
 //              Restore-Skript (deploy/wiederherstellen.sh) nach jedem Zurückspielen ZWINGEND auf (29.09., #70).
 // Alle Schreibwege nur mit ausdrücklicher Person (Regel 5) — sie steht im Vermerk.
@@ -40,12 +43,19 @@ import { zahlungMaskiert } from '@/lib/crm/zahlung';
 import { personAufzaehlen, personEntfernen } from '@/lib/crm/person-bestaende';
 import { nachweisAuskunft } from '@/lib/crm/einwilligung';
 import { einschraenkungSetzen, einschraenkungAufheben } from '@/lib/crm/einschraenkung';
-import { SICHERUNG_SATZ, LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristenSpeichern, verlaengerungPruefen, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
+import { SICHERUNG_SATZ, LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristText, fristenSpeichern, verlaengerungPruefen, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { istDienst } from '@/lib/zugang/dienst';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { verantwortlicherAuskunft, empfaengerAuskunft } from '@/lib/datenschutz/einrichtung';
 import { verantwortlicherLaden, empfaengerLaden } from '@/lib/datenschutz/einrichtung-server';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { auskunftAngaben } from '@/lib/datenschutz/auskunft-server';
+import { auskunftHtml, kontaktBereiche, HTML_KOPF } from '@/lib/datenschutz/art15';
+import { herkunftSatz, anredeSatz, art14Fuellen, art14Frist, ART14_STANDARD } from '@/lib/datenschutz/art14';
+import { ladeEinrichtung } from '@/lib/datenschutz/einrichtung-server';
+import { verantwortlicherWirksam, verantwortlicherText, empfaengerWirksam } from '@/lib/datenschutz/einrichtung';
+import { mailtoLink } from '@/lib/crm/angebote';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,6 +72,8 @@ export async function GET(req: Request) {
   const id = url.searchParams.get('id') ?? '';
   const k = ((await loadJson<Bestand>('kontakte'))?.kontakte ?? []).find(x => x.id === id);
   if (!k) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
+  // Lese-Protokoll (05.10., Betroffenenrechte v2): die Auskunft liest die ganze Akte — notiert (Kennung nur als Fingerabdruck).
+  leseZugriff(req, 'kontakte', { ids: [id] });
   const crm = await ladeCrm();
   const auskunft = {
     // Verantwortlicher (05.10.): aus der Einrichtung (System › Datenschutz) bzw. der Umgebung — nie fest im Code; fehlt er, steht es deutlich da.
@@ -89,7 +101,24 @@ export async function GET(req: Request) {
     // Import-Konflikte, Head-Vorschläge, kommender Termin, eindeutig zugeordnete Aufgaben.
     ...(await personAufzaehlen(id)),
   };
-  return new Response(JSON.stringify(auskunft, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': `attachment; filename="Auskunft-Art15-${id}-${localDay()}.json"` } });
+  // Art. 15 Abs. 1 a–h (05.10., Betroffenenrechte v2): Zwecke, Kategorien, Empfänger (Register, mit Drittland + Garantie), Speicherdauer,
+  // Rechte, Beschwerde, Herkunft, automatisierte Entscheidungen — aus Verzeichnis, Einrichtung und Löschfristen (lib/datenschutz/art15.ts).
+  const art15 = await auskunftAngaben('kontakt', { bereiche: kontaktBereiche(auskunft as unknown as Record<string, unknown>), herkunft: kontaktHerkunft(k) });
+  const dateiName = `Auskunft-Art15-${localDay()}`;
+  if (url.searchParams.get('format') === 'html') {
+    return new Response(auskunftHtml({ titel: 'Auskunft nach Art. 15 DSGVO', erstellt: auskunft.erstellt, angaben: art15, daten: auskunft, hinweis: 'Kopie Ihrer Daten — maschinenlesbar zusätzlich als JSON-Datei' }), { headers: HTML_KOPF });
+  }
+  // Dateiname ohne Kennung (05.10.): die Kontakt-Kennung trägt die E-Mail-Adresse.
+  return new Response(JSON.stringify({ ...auskunft, art15 }, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Disposition': `attachment; filename="${dateiName}.json"` } });
+}
+
+/** Herkunft der Daten (Art. 15 Abs. 1 lit. g) — aus Herkunft, Quelle, Netzwerken und Aufnahme. */
+function kontaktHerkunft(k: Kontakt): string[] {
+  const z = [`Aufgenommen am ${k.importiertAm.slice(0, 10)}: ${herkunftSatz(k)}`];
+  if (k.rechtsgrundlageNotiz || k.kennengelerntFuer?.length) z.push('Persönlich auf einer Veranstaltung erhalten (Visitenkarte bzw. Gespräch).');
+  if (k.hubspotId) z.push('Übernommen aus unserem früheren CRM.');
+  if (k.fremddaten) z.push(`Nicht bei Ihnen selbst erhoben${k.art14InformiertAm ? ` — informiert am ${k.art14InformiertAm} (Art. 14)` : ''}.`);
+  return z;
 }
 
 type Body = { aktion?: string; id?: string; grund?: string; antragId?: string; bis?: string; fristen?: unknown };
@@ -157,6 +186,31 @@ export async function POST(req: Request) {
 
   if (!id || id.length > 80) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
 
+  // Art. 14 (05.10., Betroffenenrechte v2): Information als ENTWURF — Text aus der Vorlage der Einrichtung, Werte der Person. Nichts wird
+  // versendet: die Oberfläche öffnet das Mail-Programm (Einzelklick); erst „ist raus“ setzt `art14InformiertAm` (Server-Tag).
+  if (b.aktion === 'art14-entwurf') {
+    const k = ((await loadJson<Bestand>('kontakte'))?.kontakte ?? []).find(x => x.id === id);
+    if (!k) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
+    if (k.eingeschraenkt) return NextResponse.json({ ok: false, fehler: 'Verarbeitung eingeschränkt (Art. 18) — kein Entwurf.' }, { status: 409 });
+    leseZugriff(req, 'kontakte', { ids: [id] });
+    const e = await ladeEinrichtung();
+    const v = verantwortlicherWirksam(e).v;
+    if (!v) return NextResponse.json({ ok: false, fehler: 'Verantwortlicher fehlt — erst unter System › Datenschutz eintragen.' }, { status: 409 });
+    const fristen = fristenWirksam(((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {}).fristen);
+    const r = art14Fuellen(e.art14 ?? ART14_STANDARD, {
+      anrede: anredeSatz(k), name: [k.vorname, k.nachname].filter(Boolean).join(' '), herkunft: herkunftSatz(k), verantwortlicher: verantwortlicherText(v),
+      kontakt: v.dsb?.mail || v.mail, datenschutzseite: v.seite ?? '',
+      empfaenger: empfaengerAuskunft(empfaengerWirksam(e)).map(x => (x.drittland ? `${x.name} (${x.drittland}; ${x.garantie})` : x.name)).join('; ') || 'keine',
+      frist: `${fristText('kontakte', fristen.kontakte)} nach unserem letzten Kontakt, sofern keine Geschäftsbeziehung entsteht; danach löschen wir`,
+    });
+    return NextResponse.json({ ok: true, an: k.email ?? null, ...r, mailto: k.email ? mailtoLink(k.email, r.betreff, r.text) : null, frist: art14Frist(k, heute) }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+  if (b.aktion === 'art14-raus') {
+    return kontaktAendern(req, id, ['art14InformiertAm', 'aktivitaeten'], k => (k.eingeschraenkt ? { fehler: 'Verarbeitung eingeschränkt (Art. 18) — nichts vermerkt.', status: 409 } : k.art14InformiertAm ? k : {
+      ...k, art14InformiertAm: heute,
+      aktivitaeten: [...(k.aktivitaeten ?? []), { am: jetzt, art: 'system' as const, von, text: 'Information nach Art. 14 DSGVO gegeben (Mail selbst gesendet)' }],
+    }));
+  }
   if (b.aktion === 'einschraenken') {
     if (grund.length < 3) return NextResponse.json({ ok: false, fehler: 'Einschränken nur mit Grund.' }, { status: 400 });
     const antragId = typeof b.antragId === 'string' && b.antragId ? b.antragId : undefined;
