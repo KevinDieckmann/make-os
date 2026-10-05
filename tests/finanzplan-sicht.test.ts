@@ -11,7 +11,7 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { FinanzDaten } from '../lib/finanzen/rechenkern';
 import { rechneMit } from '../lib/finanzen/szenarien';
-import { businessSicht, businessPfadErlaubt, pfadIstBusiness, bereichAus, fuerSicht, nurBusinessPunkte } from '../lib/finanzen/plan/sicht';
+import { businessSicht, businessPfadErlaubt, pfadIstBusiness, bereichAus, fuerSicht, nurBusinessPunkte, wirksameSicht } from '../lib/finanzen/plan/sicht';
 import { bereicheFuer, unterseiteFuer, finanzplanAdresse, NUR_PRIVAT_UNTERSEITEN } from '../lib/finanzen/plan/hilfen';
 import { wendeOperationenAn, pruefeDokument } from '../lib/finanzen/plan/operationen';
 import { aktiverSpaceEintrag, EIGEN } from '../lib/make-one/spaces';
@@ -155,11 +155,12 @@ describe('Business-Sicht: Schreibschutz für Privat-Pfade', () => {
   });
 });
 
-describe('Route: die Datensicht entscheidet das Konto, nie die Adresse (04.10. spät)', () => {
+describe('Route: Business-Bereich nie Privat (für jeden), Privat-Bereich alles; ohne Privat-Recht nie Privat (05.10.)', () => {
   type Mod = { GET: (r: Request) => Promise<Response>; PATCH: (r: Request) => Promise<Response> };
   let plan: Mod;
   const kopf = (person: string) => ({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': person });
   const req = (url: string, body?: unknown, method = 'GET', person = 'kevin') => new Request(`http://test${url}`, { method, headers: kopf(person), ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+  const lade = async (url: string, person: string) => JSON.parse(await (await plan.GET(req(url, undefined, 'GET', person))).text()) as { sicht: string; dokument: FinanzDaten } & Record<string, unknown>;
   beforeAll(async () => {
     const db = await import('@/lib/store/local-db');
     const konto = (id: string, speicher: string, rolle: string, extra: Record<string, unknown> = {}) => ({ id, speicher, email: `${speicher}@example.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-sicht', ...extra });
@@ -169,46 +170,57 @@ describe('Route: die Datensicht entscheidet das Konto, nie die Adresse (04.10. s
     plan = (await import('@/app/api/finanzplan/route')) as unknown as Mod;
   });
   afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
-  it('Inhaber-Haushalt bekommt in BEIDEN Bereichen alles — auch mit ?sicht=business in der Adresse', async () => {
-    for (const person of ['kevin', 'malin']) for (const url of ['/api/finanzplan', '/api/finanzplan?sicht=business', '/api/finanzplan?space=business']) {
-      const j = JSON.parse(await (await plan.GET(req(url, undefined, 'GET', person))).text()) as { sicht: string; dokument: FinanzDaten };
-      expect(j.sicht, `${person} ${url}`).toBe('privat');
-      expect(JSON.stringify(j.dokument)).toContain('Geheimmiete');
-      expect(j.dokument.privatBudget.length).toBeGreaterThan(0);
+  it('Wächter: die Business-Sicht enthält nie Privates — für jede Person (Dokument und Kennzahlen)', async () => {
+    for (const person of ['kevin', 'malin', 'partner']) {
+      const j = await lade('/api/finanzplan?sicht=business', person);
+      expect(j.sicht, person).toBe('business');
+      const text = JSON.stringify(j);
+      for (const g of GEHEIM) expect(text.includes(g), `${person}: ${g}`).toBe(false);
+      expect(j.dokument.privatBudget, person).toEqual([]);
+      const k = await lade('/api/finanzplan?nur=kennzahlen&sicht=business', person);
+      expect(Object.keys(k).filter(x => /privat|gruppe/i.test(x)), person).toEqual([]);
     }
   });
-  it('Konto ohne Privatzugang (finanzRecht „business“): nichts Privates — Dokument, Kennzahlen, 409; kein Zugang zu den Haushaltsfinanzen', async () => {
-    const r = await plan.GET(req('/api/finanzplan', undefined, 'GET', 'partner'));
-    const text = await r.text();
-    for (const g of GEHEIM) expect(text.includes(g), g).toBe(false);
-    expect(JSON.parse(text).sicht).toBe('business');
-    const k = JSON.parse(await (await plan.GET(req('/api/finanzplan?nur=kennzahlen', undefined, 'GET', 'partner'))).text()) as Record<string, unknown>;
-    expect(Object.keys(k).filter(x => /privat|gruppe/i.test(x))).toEqual([]);
-    expect(k).toHaveProperty('freiDez26');
-    const voll = JSON.parse(await (await plan.GET(req('/api/finanzplan?nur=kennzahlen'))).text()) as Record<string, unknown>;
-    expect(voll).toHaveProperty('runwayPrivat');
+  it('Wächter: die Privat-Sicht enthält Business (und Privat) — für den Haushalt des Inhabers', async () => {
+    for (const person of ['kevin', 'malin']) {
+      const j = await lade('/api/finanzplan', person);
+      expect(j.sicht).toBe('privat');
+      expect(JSON.stringify(j.dokument)).toContain('Geheimmiete');
+      expect(j.dokument.sachkosten.some(z => z.einheit === 'ug')).toBe(true);
+      expect(j.dokument.planszenarien?.[0].bausteine.some(b => b.einheit === 'ug')).toBe(true);
+      expect(j.dokument.plan['ug.konto:4']).toBe(10000);
+      expect(await lade('/api/finanzplan?nur=kennzahlen', person)).toHaveProperty('runwayPrivat');
+    }
+  });
+  it('ohne Privat-Recht gibt es Privat auch mit ?sicht=privat nicht; kein Zugang zu den Haushaltsfinanzen', async () => {
+    for (const url of ['/api/finanzplan', '/api/finanzplan?sicht=privat']) {
+      const j = await lade(url, 'partner');
+      expect(j.sicht).toBe('business');
+      for (const g of GEHEIM) expect(JSON.stringify(j).includes(g), g).toBe(false);
+    }
     const { haushaltFuer, planZugangFuer } = await import('@/lib/finanzen/haushalt/zugriff');
     expect(await haushaltFuer('partner')).toBeNull();
     expect(await planZugangFuer('partner')).toMatchObject({ haushalt: 'test-sicht', sicht: 'business' });
-    expect(await planZugangFuer('kevin')).toMatchObject({ sicht: 'privat' });
   });
-  it('Schreiben: Konto ohne Privatzugang → Privat-Pfad 403 (nichts geschrieben), Business-Pfad ok, 409 nur Business; der Inhaber darf alles', async () => {
-    const stand = (JSON.parse(await (await plan.GET(req('/api/finanzplan', undefined, 'GET', 'partner'))).text()) as { dokument: FinanzDaten }).dokument.stand;
-    const verboten = await plan.PATCH(req('/api/finanzplan', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:5', neu: 1 }, { pfad: '/privatBudget/id=pb1/soll', neu: 1 }] }, 'PATCH', 'partner'));
+  it('Schreiben aus dem Business-Bereich auf Privat → 403 (auch für den Inhaber); Business geht; 409 nur Business; Privat-Bereich bearbeitet Business', async () => {
+    const stand = (await lade('/api/finanzplan?sicht=business', 'kevin')).dokument.stand;
+    const verboten = await plan.PATCH(req('/api/finanzplan?sicht=business', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:5', neu: 1 }, { pfad: '/privatBudget/id=pb1/soll', neu: 1 }] }, 'PATCH', 'kevin'));
     expect(verboten.status).toBe(403);
-    const ok = await plan.PATCH(req('/api/finanzplan', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:5', neu: 4242 }] }, 'PATCH', 'partner'));
+    const ok = await plan.PATCH(req('/api/finanzplan?sicht=business', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:5', neu: 4242 }] }, 'PATCH', 'kevin'));
     expect(ok.status).toBe(200);
-    const alt = await plan.PATCH(req('/api/finanzplan', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:6', neu: 1 }] }, 'PATCH', 'partner'));
+    const alt = await plan.PATCH(req('/api/finanzplan?sicht=business', { basisStand: stand, ops: [{ pfad: '/plan/ug.konto:6', neu: 1 }] }, 'PATCH', 'malin'));
     expect(alt.status).toBe(409);
     const text = await alt.text();
     for (const g of GEHEIM) expect(text.includes(g), g).toBe(false);
-    // Der Inhaber schreibt auch mit ?sicht=business in der Adresse auf Privat (die Adresse ändert nichts).
-    const st2 = (JSON.parse(await (await plan.GET(req('/api/finanzplan'))).text()) as { dokument: FinanzDaten }).dokument.stand;
-    const inhaber = await plan.PATCH(req('/api/finanzplan?sicht=business', { basisStand: st2, ops: [{ pfad: '/privatBudget/id=pb1/soll', neu: 1300 }] }, 'PATCH'));
-    expect(inhaber.status).toBe(200);
-    const voll = JSON.parse(await (await plan.GET(req('/api/finanzplan'))).text()) as { dokument: FinanzDaten };
-    expect(voll.dokument.privatBudget.find(z => z.id === 'pb1')?.soll).toBe(1300);
-    expect(voll.dokument.plan['ug.konto:5']).toBe(4242);
+    const partner = await plan.PATCH(req('/api/finanzplan?sicht=privat', { basisStand: (await lade('/api/finanzplan', 'partner')).dokument.stand, ops: [{ pfad: '/privatBudget/id=pb1/soll', neu: 2 }] }, 'PATCH', 'partner'));
+    expect(partner.status).toBe(403);
+    // Privat-Bereich: Privat UND Business bearbeitbar.
+    const st2 = (await lade('/api/finanzplan', 'kevin')).dokument.stand;
+    const privat = await plan.PATCH(req('/api/finanzplan', { basisStand: st2, ops: [{ pfad: '/privatBudget/id=pb1/soll', neu: 1300 }, { pfad: '/plan/ug.konto:7', neu: 777 }] }, 'PATCH', 'kevin'));
+    expect(privat.status).toBe(200);
+    const voll = (await lade('/api/finanzplan', 'kevin')).dokument;
+    expect(voll.privatBudget.find(z => z.id === 'pb1')?.soll).toBe(1300);
+    expect(voll.plan['ug.konto:5']).toBe(4242); expect(voll.plan['ug.konto:7']).toBe(777);
   });
 });
 
@@ -232,6 +244,7 @@ describe('Navigation und Deep-Links', () => {
     expect(unterseiteFuer('privat', 'business')).toBe('lage'); expect(unterseiteFuer('budget', 'business')).toBe('lage'); expect(unterseiteFuer('ug', 'business')).toBe('ug');
     expect(unterseiteFuer('privat', 'privat')).toBe('privat'); expect(unterseiteFuer('quatsch', 'privat')).toBe('lage');
     expect(bereicheFuer('privat').length).toBe(8);
+    expect(wirksameSicht('privat', 'business')).toBe('business'); expect(wirksameSicht('business', 'privat')).toBe('business'); expect(wirksameSicht('privat', null)).toBe('privat');
     expect(bereichAus('business')).toBe('business'); expect(bereichAus(null)).toBe('privat'); expect(bereichAus('admin')).toBe('privat');
   });
 });

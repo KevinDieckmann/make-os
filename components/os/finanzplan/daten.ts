@@ -44,9 +44,10 @@ function gegenOperation(d: FinanzDaten, op: Operation): Operation | null {
  * `finanzRecht: 'business'` nur den Business-Teil (Privat wird gar nicht ausgeliefert, Schreiben auf Privat → 403). Die Antwort sagt,
  * welche Sicht gilt (`sicht`) — die Oberfläche richtet sich danach, nie nach der Adresse.
  */
-export function useFinanzplanDaten() {
-  const adresse = '/api/finanzplan';
-  const [sicht, setSicht] = useState<PlanSicht>('privat');
+export function useFinanzplanDaten(bereich: Bereich = 'privat') {
+  // 05.10. (Kevin): der Business-Bereich fragt immer die Business-Sicht an — der Server liefert dann für JEDEN nur Business.
+  const adresse = bereich === 'business' ? '/api/finanzplan?sicht=business' : '/api/finanzplan';
+  const [sicht, setSicht] = useState<PlanSicht>(bereich === 'business' ? 'business' : 'privat');
   const [dokument, setDokument] = useState<FinanzDaten | null>(null);
   const [zustand, setZustand] = useState<Zustand>('laedt');
   const [person, setPerson] = useState<string>('');
