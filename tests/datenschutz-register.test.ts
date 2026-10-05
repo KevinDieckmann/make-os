@@ -165,7 +165,7 @@ describe('Register aller Bestände (#74)', () => {
 // ── DSGVO-Prüfung 04.10. (Teil 2): Rechtsgrundlage, Art. 15, Löschfrist, Kategorie ─────────────────────────────
 // Jeder NEUE Speicher mit Personenbezug trägt die Angaben (lib/crm/speicher-register.ts `mit(…)`). Die Altbestände ohne sie
 // dürfen nur weniger werden — wer einen ergänzt, senkt die Zahl hier.
-const ALTBESTAND_OHNE_ANGABEN = 93;
+const ALTBESTAND_OHNE_ANGABEN = 91;
 describe('Register: Pflicht-Angaben für neue Speicher (DSGVO-Prüfung 04.10.)', () => {
   const ohne = SPEICHER_REGISTER.filter(e => e.bezug !== 'kein' && !(e.rechtsgrundlage && e.art15 && e.loeschfrist));
   it(`neue Speicher mit Personenbezug haben Rechtsgrundlage, Art.-15-Weg und Löschfrist (Altbestand höchstens ${ALTBESTAND_OHNE_ANGABEN})`, () => {

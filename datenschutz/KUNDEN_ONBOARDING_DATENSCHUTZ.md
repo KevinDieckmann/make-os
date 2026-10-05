@@ -88,12 +88,19 @@ Kunde: ‹Firma› · Instanz: ‹kennung› · Domain: ‹instanz-domain› · 
 
 - [ ] Kündigung/Ende erfasst; Frist zur Wahl Rückgabe ‹Datum›.
 - [ ] Lizenz auf „nur lesen“ (kein Sperren, kein Löschen vor der Rückgabe — Kunde behält Zugriff/Export).
-- [ ] **Export** erstellt: CSV-Exporte + Gesamtarchiv der Bestände (entschlüsselt mit `scripts/daten-verschluesselung.mjs` in einen
-      **temporären** Ordner, sofort wieder verschlüsselt verpackt — age-Empfänger des Kunden oder Passwort getrennt übermittelt).
-      [[KEVIN: Ein-Klick-Export fehlt noch]]
+- [ ] **Export** (seit 05.10. ein Klick, Paket „Betroffenenrechte v2“): der Inhaber des Kunden unter **System › Datenschutz › Vertragsende**
+      → „Alles exportieren“ (Passwort + zweiter Faktor) = EINE JSON-Datei mit allen Beständen, Dateien und Bildern, entschlüsselt
+      (`/api/datenschutz/instanz-export`, nur Inhaber-Sitzung, steht im Lese- und Anmeldeprotokoll). Die Datei sofort verschlüsselt
+      weitergeben (age-Empfänger des Kunden oder Passwort getrennt übermittelt) und danach löschen. Zusätzlich auf Wunsch die CSV-Exporte.
 - [ ] Übergabe bestätigt vom Kunden ‹Datum›.
-- [ ] **Löschung:** Container/Volumes, Datenordner, Grabsteine, Vault, Nachtarchive Server, Sicherungsort MAKE (alle Generationen),
-      Schlüssel (Daten, Pepper, age) aus dem Passwort-Manager, Support-SSH-Schlüssel, DNS, Healthcheck, Hoster-Abbilder (oder Ablauf 7 Tage).
+- [ ] **Löschung der Instanz** — nie aus der App, nie automatisch: App anhalten, dann auf dem Server
+      `node scripts/instanz-loeschen.mjs --ordner <Datenordner der Instanz>` (**Trockenlauf**: zeigt Umfang, Grabstein-Ordner, die Nachtarchive
+      mit dem Tag, an dem sie spätestens überschrieben sind, und einen **Bestätigungs-Code**, der nur heute und nur für diesen Stand gilt) →
+      `… --ausfuehren --code <CODE> --bericht loeschbestaetigung.txt` löscht Datenordner (inkl. Tagessicherungen und Archiv-Kopien) und
+      Grabstein-Ordner und schreibt den Entwurf der Löschbestätigung. Das Skript bricht ab, wenn eine App den Ordner hält, und fasst nie `.data` an.
+- [ ] Danach von Hand: Container/Volumes, Vault, Nachtarchive Server und Sicherungsort MAKE (alle Generationen — oder Ablauf ≤ 12 Monate
+      abwarten und das so in die Bestätigung schreiben), Schlüssel (Daten, Pepper, age) aus dem Passwort-Manager (= Restkopien unlesbar),
+      Support-SSH-Schlüssel, DNS, Healthcheck, Hoster-Abbilder (oder Ablauf 7 Tage).
 - [ ] Temporäre Export-Ordner gelöscht.
 - [ ] **Löschbestätigung** (Vorlage `AVV_VORLAGE.md` § 11 Abs. 4) an den Kunden ‹Datum›.
 

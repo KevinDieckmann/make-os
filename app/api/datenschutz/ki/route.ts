@@ -55,7 +55,7 @@ export async function PUT(req: Request) {
   if (!person) return VERBOTEN('Nur mit Anmeldung — der Dienstweg stellt keine Datenschutz-Schalter.');
   if (zuGross(req, 8_000)) return ZU_GROSS(8_000);
   let b: { ebene?: unknown; schalter?: unknown; telegramVoll?: unknown; fassung?: unknown; person?: unknown };
-  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, 8_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.person !== undefined && b.person !== person) return VERBOTEN('Schalter einer anderen Person stellt nur sie selbst.');
   const neu = schalterSaeubern(b.schalter);
 

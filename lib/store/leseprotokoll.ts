@@ -1,7 +1,7 @@
 // ─── Lese-Protokoll (05.10., Paket „Protokolle nachweisfest“, Art. 5 Abs. 2 / Art. 32 DSGVO) ───────────────────────
 // Kevin: „alle Standards der DSGVO, damit wir Kundendaten aufnehmen können.“ Das Änderungsprotokoll zeigt, wer etwas
 // GEÄNDERT hat — für besonders schutzwürdige Daten muss sich auch belegen lassen, wer sie GELESEN hat:
-//   gesundheit · erholung (Art. 9) · finanzplan · haushalt · rechnungen · kontakte · firmen · gesellschaften
+//   gesundheit · erholung (Art. 9) · finanzplan · haushalt · rechnungen · kontakte · firmen · gesellschaften · export (05.10.)
 // Eintrag: Zeit, wer (Person · ZOE im Auftrag · System), Bereich, wessen Daten (`betroffen`, Konto-Speicher — nur bei
 // personenbezogenen Bereichen wie Gesundheit), Umfang (`anzahl`) und Kennungen nur als Fingerabdruck (Kontakte `c2#…`,
 // sonst `k2#…`, Gesellschafts-/Vertrags-Kennungen bleiben lesbar), dazu der Weg (Pfad OHNE Abfrage — Suchbegriffe können
@@ -21,7 +21,7 @@ import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 
-export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften';
+export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'export';
 export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> = {
   gesundheit: { label: 'Gesundheit', art9: true },
   erholung: { label: 'Erholung', art9: true },
@@ -31,6 +31,8 @@ export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> 
   kontakte: { label: 'Kontakte' },
   firmen: { label: 'Firmen & CRM' },
   gesellschaften: { label: 'Gesellschafts-Register' },
+  // 05.10. (Betroffenenrechte v2): eigene Daten heruntergeladen (`betroffen` = die Person selbst) bzw. die ganze Instanz exportiert (Inhaber).
+  export: { label: 'Export (eigene Daten / ganze Instanz)' },
 };
 export const istLeseBereich = (b: unknown): b is LeseBereich => typeof b === 'string' && b in LESE_BEREICHE;
 

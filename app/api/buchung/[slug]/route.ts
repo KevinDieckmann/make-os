@@ -30,7 +30,8 @@ import { googleAbgleichen, googleAlter } from '@/lib/kalender/google/abgleich';
 import { verfuegbarkeitFuer } from '@/lib/kalender/verfuegbarkeit';
 import { belegungenAus, sperrTageAus } from '@/lib/kalender/freie-zeit';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
-import { plaetzeFuerSeite, oeffentlich, eingabePruefen, ausfuellZeitOk, reservieren, slugOk, standBuchbar, hinweisFassung, NICHT_BUCHBAR, NICHT_ANGENOMMEN, type BuchungsSeite, type Reservierung } from '@/lib/kalender/buchung';
+import { plaetzeFuerSeite, oeffentlich, eingabePruefen, ausfuellZeitOk, reservieren, slugOk, standBuchbar, hinweisFassung, verantwortlichFuerSeite, NICHT_BUCHBAR, NICHT_ANGENOMMEN, type BuchungsSeite, type DatenschutzOeffentlich, type Reservierung } from '@/lib/kalender/buchung';
+import { datenschutzOeffentlichLaden } from '@/lib/datenschutz/einrichtung-server';
 import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, formularStempel, stempelZeit, neuesToken, tokenHash, hinweisFristenLaden } from '@/lib/kalender/buchung-speicher';
 
 export const runtime = 'nodejs';
@@ -77,9 +78,9 @@ async function frischAbgleichen(seite: BuchungsSeite): Promise<boolean> {
   } catch { return false; }
 }
 
-/** Ist gerade etwas buchbar? (Verantwortlicher gesetzt, iCloud verbunden, Stand frisch und ohne Fehler) */
-async function buchbar(seite: BuchungsSeite, jetzt: Date): Promise<boolean> {
-  if (!seite.verantwortlich || seite.verantwortlich.trim().length < 5) return false;
+/** Ist gerade etwas buchbar? (Verantwortlicher — an der Seite oder in der Einrichtung —, iCloud verbunden, Stand frisch und ohne Fehler) */
+async function buchbar(seite: BuchungsSeite, jetzt: Date, ds: DatenschutzOeffentlich): Promise<boolean> {
+  if (verantwortlichFuerSeite(seite, ds).length < 5) return false;
   // Jede verbundene Quelle muss frisch und fehlerfrei sein: iCloud (wenn verbunden) und jeder Google-Kalender (03.10.).
   const quellen: { a: ReturnType<typeof abgleichAlter> | null }[] = [];
   if (verbunden()) quellen.push({ a: abgleichAlter(await ladeStand(), jetzt.getTime()) });
@@ -102,11 +103,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ slug: string }>
   const bis = tagPlus(heute, seite.tageVoraus + 1);
   // Verfügbarkeit der Person (K1: beschäftigt, Abwesend, Feiertage) — die Fenster der Seite bestimmen die buchbaren Zeiten.
   // `verfuegbarkeitFuer` erneuert einen Stand, der älter als 2 Min. ist; danach entscheidet `standBuchbar`.
-  const [v, bestand, einst, fristen] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeBuchungBestand(jetzt), ladeEinstellungen(), hinweisFristenLaden()]);
+  const [v, bestand, einst, fristen, ds] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeBuchungBestand(jetzt), ladeEinstellungen(), hinweisFristenLaden(), datenschutzOeffentlichLaden()]);
   const stempel = formularStempel(slug, jetzt.getTime());
-  if (!(await buchbar(seite, jetzt))) return antwort({ ok: true, seite: oeffentlich(seite, fristen), plaetze: [], stempel, hinweis: NICHT_BUCHBAR });
+  if (!(await buchbar(seite, jetzt, ds))) return antwort({ ok: true, seite: oeffentlich(seite, fristen, ds), plaetze: [], stempel, hinweis: NICHT_BUCHBAR });
   const plaetze = plaetzeFuerSeite(seite, belegungenAus(v), bestand, jetzt, sperrTageAus(v, einst.freieTage, heute, bis), heute).map(p => ({ start: p.start, ende: p.ende }));
-  return antwort({ ok: true, seite: oeffentlich(seite, fristen), plaetze, stempel });
+  return antwort({ ok: true, seite: oeffentlich(seite, fristen, ds), plaetze, stempel });
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ slug: string }> }) {
@@ -132,7 +133,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   if (!e.ok) return antwort({ ok: false, fehler: e.fehler }, e.status);
 
   // #73: nie auf einem alten Stand reservieren — erst frisch abgleichen; scheitert das oder ist der Stand nicht frisch → 503.
-  if (!(await kalenderQuelleDa()) || !(await frischAbgleichen(seite)) || !(await buchbar(seite, jetzt))) return antwort({ ok: false, fehler: NICHT_BUCHBAR }, 503, { 'Retry-After': '600' });
+  if (!(await kalenderQuelleDa()) || !(await frischAbgleichen(seite)) || !(await buchbar(seite, jetzt, await datenschutzOeffentlichLaden()))) return antwort({ ok: false, fehler: NICHT_BUCHBAR }, 503, { 'Retry-After': '600' });
 
   const heute = localDay(jetzt);
   const bis = tagPlus(heute, seite.tageVoraus + 1);

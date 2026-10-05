@@ -86,14 +86,28 @@ in Follow-ups/Aufgaben, die aus einer Erfassung entstanden — die Info dort lö
 | Kalender-Umzugs-Sicherung iCloud → Google (`kalender-umzug-sicherung--*`) | 30 Tage | Takt |
 | Kalender-Tagessicherung (Archiv `kalender-export-*`) | 14 Tage; **nicht** im Nachtarchiv | automatisch |
 | Google-Anmelde-Zustand (`google-oauth-zustand`) | 15 Minuten | automatisch |
-| Anmelde-Protokoll (`anmeldungen`) | letzte 300 Einträge (keine Zeitfrist) | beim Schreiben gekürzt |
+| Anmelde-Protokoll (`anmeldungen`) | **12 Monate** (seit 05.10.; Notbremse 50 000 Einträge) — Konto gelöscht: Einträge bleiben, Kennung „[gelöscht]“ | beim Schreiben gekürzt |
 | Agenten-Log (`agent-log`) | letzte 200 Einträge | beim Schreiben gekürzt |
 | Offline-Warteschlange im Browser (IndexedDB) | Warnung ab 14 Tagen, nach 30 Tagen verworfen; Abmelden löscht | im Browser |
-| Konten (`konten`), eigene Daten des Haushalts (Gesundheit, Journal, Finanzen, Familie, Ziele …) | bis die Person löscht bzw. das Konto entfernt wird | von Hand |
+| Konten (`konten`), eigene Daten des Haushalts (Gesundheit, Journal, Finanzen, Familie, Ziele …) | bis die Person löscht bzw. ihr Konto löscht | **Konto › Meine Daten › „Mein Konto löschen“** (05.10., siehe 3a) |
 | Kapazität eines **entfernten Kontos** | **offen** — Konten werden nicht deaktiviert; Wochenpläne erst nach 24 Monaten | Lücke (Abschnitt 7, A3) |
 | Löschprotokoll (`crm-loeschprotokoll`), Sperrliste | keine Frist (nur Protokoll-IDs bzw. HMACs) | [[KEVIN: Frist für das Löschprotokoll festlegen]] |
 | Spiegel Apple (`calendar-cache`, `kalender-icloud`, `apple-*-cache`), Google Kalender (`kalender-google--*`) | Wahrheit beim Anbieter; Spiegel baut sich neu auf | Art. 17 meldet „n Einträge in Apple/Google nennen die Person — dort löschen“ (**von Hand**) |
 | Rechnungen, Buchungen, Finanzplan (`finanzplan`, `buchungen`, `liquiplan`, `finance` …) | Aufbewahrungspflicht | von Art. 17 ausgenommen (Kundenname auf der Rechnung bleibt) |
+
+### 3a · Konto löschen (Art. 17, seit 05.10. — `lib/datenschutz/konto-daten.ts`, Route `POST /api/konto/daten`)
+
+Jede Person löscht ihr Konto selbst (Rückfrage, Passwort, zweiter Faktor, „LÖSCHEN“). Der Inhaber erst, wenn es keine anderen Konten gibt.
+
+| Was | Wirkung |
+|---|---|
+| Grabstein | HMAC der zufälligen Konto-Kennung (keine Adresse, kein Name) — ein Zurückspielen holt das Konto nicht zurück (`grabsteineAnwenden` → `kontenNachGrabstein`); ein neues Konto mit gleichem Vornamen trifft er nicht |
+| Bestände je Person (`PERSON_BESTAENDE`: Zeit, Fokus, Sport, Vitalwerte, Haut, Serien, Gesundheits-Log, Journal, eigene Ziele, Visitenkarten, Meldungen, Wachstum, Flächen, Google-Kalender-/Gmail-Spiegel, Google-Verbindung) | Datei **und** ihre Tagessicherungen in `backup/` entfernt (`bestandEntfernen`); Google-Token vorher widerrufen |
+| Konto, eigene Einladungen, „teilt Gesundheit mit“ der anderen | entfernt |
+| ZOE-Gespräche, Telegram-Kopplung, KI-Schalter der Person, private Aufgaben („nur ich“), Team-Eintrag, Kapazität | entfernt |
+| Protokolle (Anmelde-, Lese-, Änderungs-, KI-Protokoll), Einwilligungs-Nachweis Gesundheit | Einträge bleiben (Nachweis, Art. 5 Abs. 2), Kennung → „[gelöscht]“ — rechtmäßige Umschreibung, die Hash-Kette zählt sie als „getilgt“ |
+| Aufgaben des Teams, die der Person zugewiesen sind | bleiben (Arbeit des Haushalts) — die Antwort nennt die Zahl, neu zuweisen |
+| Tagessicherungen geteilter Bestände (`backup/`, 14 Tage), Nachtarchive (≤ 12 Monate) | laufen ab; ein Zurückspielen löscht über den Grabstein erneut |
 
 ---
 
@@ -138,7 +152,17 @@ Auf Weisung des Kunden (AVV § 11): **Rückgabe** (Export, Abschnitt Onboarding)
 4. Hoster-Abbildern (Ablauf 7 Tage abwarten oder löschen), Support-Notizen.
 
 Schriftliche **Löschbestätigung** an den Kunden mit Datum, Umfang, Restbeständen mit Grund (z. B. eigene Rechnungen). Vorlage:
-`AVV_VORLAGE.md` › § 11. Technisch ist das heute **Handarbeit** (keine Instanz-Fabrik) — Checkliste in `KUNDEN_ONBOARDING_DATENSCHUTZ.md` › E.
+`AVV_VORLAGE.md` › § 11. Checkliste in `KUNDEN_ONBOARDING_DATENSCHUTZ.md` › E.
+
+**Seit 05.10. (Betroffenenrechte v2) mit Werkzeug — nie automatisch:**
+1. **Rückgabe:** System › Datenschutz › Vertragsende → „Alles exportieren“ (nur Inhaber-Sitzung + Passwort + zweiter Faktor; alle Bestände,
+   Dateien, Bilder entschlüsselt in EINER JSON-Datei; Eintrag im Lese- und Anmeldeprotokoll). Nicht enthalten: `backup/`, `archiv/`,
+   Grabsteine, Schlüssel (steht im Kopf der Datei).
+2. **Löschen:** `node scripts/instanz-loeschen.mjs --ordner <Datenordner>` — Trockenlauf (Vorgabe) zeigt Umfang, Grabstein-Ordner und die
+   Nachtarchive mit „spätestens überschrieben am“ (jüngstes Archiv + 12 Monate), dazu einen Bestätigungs-Code (gilt nur heute, nur für
+   diesen Stand). `--ausfuehren --code <CODE> [--bericht <datei>]` löscht Datenordner + Grabstein-Ordner und schreibt den Entwurf der
+   Löschbestätigung. Bricht ab, wenn eine App den Ordner hält; fasst nie `.data` an; löscht Sicherungen nie einzeln (sie werden genannt).
+3. Schlüssel, Archive, Abbilder, DNS usw. wie oben von Hand.
 
 ---
 
