@@ -203,6 +203,36 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Gesellschaft/Vertrag endgültig → Unterlagen bleiben (§ 257 HGB): Rückfrage `UnterlagenBleiben` mit `WEG.unterlagen(g, v?)`, Register vermerkt
   Gelöschtes (`RegisterDatei.geloescht`, `geloeschtVermerken` — neue Schreibwege auf das Register IMMER darüber), Bezüge „„Name“ (gelöscht)“.
 
+## Sicherheit — Zugang & Schlüssel, Prüfung S3 (05.10., Branch `sicher-zugang`, nur lokal; Anleitung UPDATES.md)
+- **Dienstschlüssel nur von innen:** `MAKE_OS_KEY` (`x-make-key`) gilt nur, wenn `anfrageIntern` (lib/zugang/intern.ts) —
+  `x-forwarded-for` ganz Loopback/privat (Docker-Netz, `MAKE_OS_INTERN`, `docker compose exec`), keine Caddy-Marke
+  `X-Make-Vorbau`. `istDienst` prüft dasselbe. Von außen → 401; einzige Übergangs-Ausnahme: `POST /api/zulieferung`, solange
+  `MAKE_OS_ZULIEFERER_KEY` fehlt (Kopf `x-make-zulieferer: alt`, HOI gelb). Der Zulieferer-Schlüssel öffnet NUR diese Route
+  (`istZulieferer`), nie den Dienstweg; `x-make-key` wird dabei nicht an die Route gereicht. Neue Außen-Zugänge nur so:
+  eigener eingeschränkter Schlüssel (Vorbild HOI/Zulieferer) + Wächtertest — nie den Dienstschlüssel nach draußen geben.
+- **Start-Riegel** (lib/zugang/start-riegel.ts, instrumentation.ts): `scharf` (production + https) startet nicht ohne
+  MAKE_OS_KEY, SESSION_SECRET, Datenschlüssel; `streng` (MAKE_OS_START_RIEGEL=streng, Vorgabe neuer Instanzen) zusätzlich
+  Länge ≥ 32 und Pepper; Prüfbau (ohne https), Entwicklung, `aus` nur Warnung. Nie Werte ins Log — nur Namen/Längen.
+- **Erstes Konto** nur mit Einmal-Code (`node scripts/einrichtung-token.mjs`, lib/zugang/einrichtung.mjs: Fingerabdruck +
+  Ablauf in `<daten>/system/einrichtung.json`, danach gelöscht) — MAKE_OS_KEY gilt dort nicht mehr.
+- **Konto-Einstellungen der Instanz** (`konten.json › einstellungen`, nur Inhaber per Sitzung, `PUT /api/konto/einstellungen`):
+  2FA-Pflicht (neue Instanz an, laufende ohne Feld aus; Sitzungen ab `zweiFaktorPflichtSeit` ohne Faktor dürfen nur
+  `/api/konto/{zwei-faktor,ich,abmelden}`), Leerlauf-Ende (Standard 12 h). `aendereKonten` bewahrt `einstellungen` und
+  protokolliert Konto neu/gelöscht, rolle, haushalt, finanzRecht, zweiterFaktor, Instanz-Felder (nur Kennungen) — neue
+  Konto-Schreibwege IMMER über `aendereKonten`.
+- **Passwörter:** `Konto.kdf` am Hash; ohne = N=2^14. `MAKE_OS_KDF=stark` → N=2^17 für neue Hashes, alte werden beim
+  Anmelden mit DEMSELBEN Salz nachgezogen (Stand bleibt). Ohne die Variable kein Nachziehen (Rückweg zum alten Stand).
+  Einladungscodes nur mit `crypto.randomInt` — nie `Math.random` für Geheimnisse.
+- **Sitzung:** `standPruefen` → gueltig/ungueltig/unklar; ohne Server-Antwort trägt nur ein ≤ 5 min alter Stand, sonst 503
+  (fail-closed, Sitzung bleibt). Leerlauf je Zettel im Prozess, abgelaufen → Widerruf über `POST /api/konto/stand`.
+- **Anmeldeprotokoll** 12 Monate (`FRIST_MONATE`), Notbremse 50 000 — nie wieder nach Anzahl kürzen.
+- **JSON-Körper:** Routen lesen NIE `req.json()`, sondern `jsonBegrenzt(req, n)` (lib/zugang/json-grenze.ts; Standard 1 MB,
+  Bestände/Importe/Bilder `JSON_GROSS` 20 MB oder die eigene `zuGross`-Grenze), im catch `jsonZuGross(e) ?? <400>` → 413.
+  Wächter in tests/sicher-zugang-json.test.ts.
+- **Caddy/Compose:** Software-Block entfernt `x-middleware-subrequest` und setzt `X-Make-Vorbau "1"`; `pids_limit` für app
+  (512) und arbeiter (128), Arbeiter `read_only` + tmpfs. App `read_only` offen (Next schreibt `.next/cache`).
+- Tests: `tests/sicher-zugang-*.test.ts` (dienst, riegel, einrichten, zwei-faktor, passwort, protokoll, sitzung, json, caddy).
+
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),
   Petrol `#21B5AA` als Akzent. Motion-Sprache in `app/globals.css`.
@@ -1216,6 +1246,7 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
 - Der HOI ist kein KI-Agent, sondern ein Lagebild aus Zahlen: `lib/hoi/lage.ts` (rein: Befunde + Ampeln), `lib/hoi/innen.ts` (einsammeln), `lib/hoi/rechnen.ts` (Zähler), Seite `/os/hoi`, Routen `/api/hoi/{lage,aussen,csp}`.
 - Drei Quellen: innen (App), Host (`deploy/lage-sammeln.sh` → `<daten>/system/lage.json`, Klartext, nur Zähler), außen (`.github/workflows/hoi-aussenblick.yml`).
 - `MAKE_OS_KEY_HOI` ist ein eingeschränkter Schlüssel: die Middleware öffnet damit NUR `/api/hoi/*` (Kopf `x-make-hoi: 1`). Nie den Dienstschlüssel an GitHub geben.
+  Ebenso `MAKE_OS_ZULIEFERER_KEY` (05.10.) nur für `POST /api/zulieferung`. Befunde „Mac-Zulieferer“, „Start-Riegel“, „Zweiter Faktor“: `zugangBefunde` in `lage.ts`.
 - `/api/hoi/csp` (POST) ist bewusst offen (Browser-Berichte kommen ohne Sitzung): nur Zähler speichern, Rate begrenzen, nie Inhalte. Neue Befunde: Schwelle + Satz in `lage.ts`, Test in `tests/hoi-lage.test.ts`.
 - Grundsatz: keine Personen, keine Adressen, keine Inhalte im Lagebild — Zähler und Zustände.
 
