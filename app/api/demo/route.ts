@@ -5,6 +5,7 @@
 //        dann ist nichts verändert. In jeder Nicht-Demo-Instanz gibt es diesen Weg NICHT: 404 vor jeder anderen Prüfung
 //        (Wächtertest tests/demo.test.ts).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { istDemoInstanz } from '@/lib/demo/schutz';
 import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   let b: { aktion?: unknown; bestaetigt?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion !== 'zuruecksetzen') return NextResponse.json({ ok: false, fehler: 'Unbekannte Aktion.' }, { status: 400 });
   if (b.bestaetigt !== true) return NextResponse.json({ ok: false, fehler: 'Bitte bestätigen — alles in der Demo geht auf den Ausgangsstand zurück.' }, { status: 400 });
   const { demoZuruecksetzen, DemoGesperrt } = await import('@/lib/demo/server');

@@ -6,6 +6,7 @@
 // Seit 28.09. ist `space` das echte Feld; das Altfeld `bereich` (business | gesundheit)
 // wird beim Speichern gespiegelt, damit die älteren Leser weiterlaufen.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
@@ -49,7 +50,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   let body: { meilensteine?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (Array.isArray(body.meilensteine) && body.meilensteine.length > GRENZE) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${GRENZE} Meilensteine.` }, { status: 413 });
   const gesaeubert = sauberListe(body.meilensteine, await mandateFuerBezug(body.meilensteine));
   if (!gesaeubert.length) return NextResponse.json({ ok: false, error: 'meilensteine darf nicht leer sein.' }, { status: 400 });
@@ -79,7 +80,7 @@ export async function PUT(req: Request) {
  */
 export async function PATCH(req: Request) {
   let body: { ops?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (Array.isArray(body.ops) && body.ops.length > 160) return NextResponse.json({ ok: false, error: 'Abgelehnt: höchstens 160 Änderungen je Aufruf.' }, { status: 413 });
   const mandate = await mandateFuerBezug(body.ops);
   const ops = opsLesen<Meilenstein>(body.ops, e => sauberListe([e], mandate)[0] ?? null, 160);

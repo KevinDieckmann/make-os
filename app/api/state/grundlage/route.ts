@@ -7,6 +7,7 @@
 // weniger Positionen als der gespeicherte wird abgelehnt (409) — ein halb
 // geladenes Dashboard soll die Grundlage nicht auslöschen.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { lesen, kennzahlen, monatsBild, kostenNachKategorie, type MalinExport } from '@/lib/make-one/grundlage';
@@ -52,7 +53,7 @@ export async function PUT(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   if (zuGross(req, 4000000)) return ZU_GROSS(4000000);
   let body: { roh?: MalinExport; stand?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, 4000000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const roh = body.roh;
   if (!roh || typeof roh !== 'object' || (!roh.s?.invOut && !roh.p?.bank)) {
     return NextResponse.json({ ok: false, error: 'Das sieht nicht nach einem Export aus dem Finanz-Dashboard aus (s.invOut/p.bank fehlen).' }, { status: 400 });

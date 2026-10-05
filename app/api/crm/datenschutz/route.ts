@@ -26,6 +26,7 @@
 //              Restore-Skript (deploy/wiederherstellen.sh) nach jedem Zurückspielen ZWINGEND auf (29.09., #70).
 // Alle Schreibwege nur mit ausdrücklicher Person (Regel 5) — sie steht im Vermerk.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -127,7 +128,7 @@ export async function POST(req: Request) {
   const von = personStreng(req);
   if (!von) return NextResponse.json({ ok: false, fehler: 'Nur mit angemeldeter Person.' }, { status: 401 });
   let b: Body;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const heute = localDay();
   const jetzt = new Date().toISOString();
   const id = String(b.id ?? '');

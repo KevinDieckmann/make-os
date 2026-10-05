@@ -4,6 +4,75 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Zugang & Schlüssel härten (05.10.2026, nur lokal — Branch `sicher-zugang`, Sicherheits-Audit S3)
+
+Kevin 05.10.: „Die Software muss auf allen Standards der DSGVO sein, damit wir Kundendaten aufnehmen können.“ Neun Punkte,
+jeder rückwärtsverträglich: nach dem Upload läuft die Instanz, der Mac-Zulieferer und der Arbeiter weiter wie bisher —
+die strengeren Schalter legt Kevin danach selbst um (unten, Reihenfolge beachten).
+
+- **Generalschlüssel nur noch im Haus:** `MAKE_OS_KEY` öffnet nur Anfragen aus dem Docker-Netz bzw. vom Server selbst
+  (Arbeiter, Selbstaufrufe, `docker compose exec`). Über das Internet ist er wertlos (401) — einzige Übergangs-Ausnahme:
+  der Mac-Zulieferer darf ihn für `POST /api/zulieferung` weiter schicken, bis er seinen **eigenen Zulieferer-Schlüssel**
+  hat (öffnet nur die Zulieferung, sonst nichts). Der Head of IT zeigt „Mac-Zulieferer“ gelb, solange der Übergang läuft.
+- **Start-Riegel:** auf dem Server (production + https) startet MAKE OS nicht ohne MAKE_OS_KEY, SESSION_SECRET und
+  Datenschlüssel. Länge ≥ 32 und Pepper sind erst mit `MAKE_OS_START_RIEGEL=streng` Pflicht (bis dahin gelb im HOI) —
+  die laufende Instanz hat den Pepper laut Paket D-B noch nicht, ein harter Abbruch hätte sie beim Upload stillgelegt.
+  Prüfbau am Mac (3011, ohne https) und Entwicklung warnen nur.
+- **Erstes Konto per Einmal-Code** (`node scripts/einrichtung-token.mjs`, 24 h, einmal) statt MAKE_OS_KEY im Browser.
+- **2FA-Pflicht als Schalter** (Konto › „Zugang der Instanz“, nur Inhaber, nur mit eigenem zweiten Faktor): Konten ohne
+  zweiten Faktor richten ihn beim nächsten Anmelden ein und kommen vorher nirgends hin. Neue Instanzen: an. **Laufende: aus
+  — Kevin entscheidet.** Auf derselben Karte: Leerlauf-Ende (Standard 12 Stunden).
+- **Passwörter:** Einladungscodes mit kryptografischem Zufall; scrypt N=2^17 (Parameter am Konto) ab `MAKE_OS_KDF=stark`,
+  alte Hashes gelten weiter und werden beim Anmelden mit demselben Salz nachgezogen (kein Gerät fliegt raus).
+- **Protokolle:** Anmeldungen 12 Monate statt 300 Einträge; Konto neu/gelöscht, Rolle, Haushalt, Finanzrecht, 2FA an/aus
+  und die Instanz-Schalter stehen im Änderungsprotokoll (nur Kennungen und Feldnamen).
+- **Sitzung:** nach 12 Stunden ohne Aktivität neu anmelden (zusätzlich zu 14 Tagen); antwortet der Server kurz nicht, gilt
+  der höchstens 5 Minuten alte Stand weiter — danach 503 „gleich noch einmal“ statt still durchzulassen (Sitzung bleibt).
+- **JSON-Grenze:** jede Route liest den Körper begrenzt (1 MB, Bestände/Importe/Bilder 20 MB bzw. ihre eigene Grenze) → 413.
+- **Caddy/Compose:** Kopf `x-middleware-subrequest` wird entfernt, Marke `X-Make-Vorbau` gesetzt; `pids_limit` für App und
+  Arbeiter, der Arbeiter läuft schreibgeschützt.
+
+**Rückweg:** Commits zurücknehmen bzw. altes Bild (`make-os:<tag>`), Caddyfile/compose.yml aus dem alten Stand. Was dabei
+zu beachten ist:
+- `konten.json` trägt evtl. `einstellungen` und `kdf` — der alte Stand übergeht beide still (`kdf` = N=2^14, solange
+  `MAKE_OS_KDF=stark` NICHT gesetzt war). **Mit `MAKE_OS_KDF=stark` nachgezogene Konten kommen im alten Stand nicht mehr
+  hinein** → `MAKE_OS_KDF=stark` erst setzen, wenn der Rückweg zu ist (zusammen mit `MAKE_OS_FORMAT=v2`).
+- Der Mac liefert mit dem alten Stand nur, solange `MAKE_OS_SERVER_KEY` am Mac noch steht → `aufraeumen` (unten, Schritt 3)
+  erst nach stabilen Tagen. Zurück am Server: Zeile `MAKE_OS_ZULIEFERER_KEY` aus der `.env` nehmen + `docker compose up -d app`.
+- Anmeldeprotokoll: ältere Einträge als 12 Monate sind gelöscht (gewollt), der alte Stand kürzt wieder auf 300.
+
+**Vor dem Upload (zentral):** Caddyfile prüfen (im Repo-Ordner am Mac, ohne Zertifikate):
+```
+docker run --rm -e MAKE_OS_DOMAIN=example.invalid -v "$PWD/deploy/caddy:/etc/caddy:ro" -v "$PWD/website:/srv/website:ro" \
+  -v "$PWD/fokus:/srv/fokus:ro" caddy:2@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52 \
+  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+```
+→ „Valid configuration“. Am Server nach dem Ausrollen (Caddy liest die Datei nicht von selbst neu):
+`docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` und dann
+`docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`. Reihenfolge App/Caddy ist egal
+(die App erkennt „von außen“ auch ohne Marke an der öffentlichen Adresse in `x-forwarded-for`).
+
+**Was Kevin tun muss (nach dem Upload, in dieser Reihenfolge; nie Werte in den Chat):**
+1. **Prüfen, dass die Instanz läuft** (der Start-Riegel bricht nur ab, wenn MAKE_OS_KEY, SESSION_SECRET oder der
+   Datenschlüssel fehlen — laut DEPLOY/UPDATES gesetzt). Bei 502: `docker compose logs app | grep START-RIEGEL` nennt, was fehlt.
+2. **Zulieferer-Schlüssel** (Mac zuerst oder Server zuerst, beides geht):
+   am Mac `bash deploy/zulieferer-schluessel.sh mac` → am Server
+   `ssh -t make@2.28.108.162 bash /srv/make-os/app/deploy/zulieferer-schluessel.sh server` (Schlüssel aus der Zwischenablage
+   einfügen, verdeckt) → HOI „Mac-Zulieferer“ grün.
+3. Nach ein paar stabilen Tagen am Mac `bash deploy/zulieferer-schluessel.sh aufraeumen` (der Mac vergisst den Generalschlüssel).
+4. **Entscheiden: 2FA-Pflicht für die laufende Instanz** — Konto › „Zugang der Instanz“ (vorher selbst den zweiten Faktor an;
+   Malin wird beim nächsten Anmelden zur Einrichtung geführt). Für Kundendaten empfohlen.
+5. **Pepper setzen** (Paket D-B, falls noch nicht), dann in `/srv/make-os/app/.env` `MAKE_OS_START_RIEGEL=streng` +
+   `docker compose up -d` — der HOI-Befund „Start-Riegel“ zeigt vorher, ob noch etwas fehlt oder zu kurz ist.
+6. **Später, zusammen mit `MAKE_OS_FORMAT=v2`** (Rückweg zu): `MAKE_OS_KDF=stark` in die `.env` + `docker compose up -d`.
+Am Mac für den Prüfbau (3011, NODE_ENV=production ohne https) ändert sich nichts — er warnt nur.
+
+**Offen:** App-Container `read_only` (Next schreibt `.next/cache` im Bild — erst mit tmpfs/Volume für den Cache prüfen);
+das Anmeldeprotokoll wird nur beim nächsten Eintrag gekürzt (kein eigener Löschlauf); `speicher-register` nennt die neue
+Frist für `anmeldungen` noch nicht (Datei des DSGVO-Pakets — dort nachtragen). Die Leerlauf-Uhr lebt im Prozess: nach
+einem Neustart beginnt sie für bestehende Sitzungen neu (gewollt: keine Abmelde-Welle); ein offener Tab, der regelmäßig
+nachlädt, gilt als aktiv.
+
 ## Kugeln 2 · „Solaris“-Überarbeitung von ZOE und Brain (05.10.2026, nur lokal — Branch `kugeln-2`)
 
 Kevin nach dem Upload: „Überarbeite das Brain nochmal … auch ZOE — das muss sehr geil aussehen.“ Vorher zu dünn, zu dunkel, zu leer.

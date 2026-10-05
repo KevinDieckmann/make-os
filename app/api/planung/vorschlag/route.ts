@@ -8,6 +8,7 @@
 // benannte Person (nie der Rückfall auf „kevin“). Kein Gesundheitskontext mehr im Code — optional aus dem eigenen
 // Profil der fragenden Person (lib/gesundheit/kontext.ts), nie aus dem der anderen.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
   const agentCfg = await resolveAgent('planung'); if (!agentCfg.enabled) return NextResponse.json(disabledResponse(agentCfg), { status: 409 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { woche?: string; hinweis?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const woche = body.woche ?? '';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(woche)) return NextResponse.json({ error: 'woche=YYYY-MM-DD (Montag) nötig.' }, { status: 400 });
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });

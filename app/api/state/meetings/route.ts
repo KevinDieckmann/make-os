@@ -7,6 +7,7 @@
 // dem Termin verknüpft, aus dem es stammt. Gepflegt wird der Termin weiter im
 // Apple-Kalender — MAKE OS liest ihn nur und hängt das Protokoll daran.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -69,7 +70,7 @@ export async function GET() {
 /** Ein Protokoll anhängen oder aktualisieren — die übrigen bleiben unberührt. */
 export async function POST(req: Request) {
   let body: Partial<Meeting>;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const m = sauber(body, 0);
   if (!m) return NextResponse.json({ ok: false, error: 'Weder Titel noch Zusammenfassung.' }, { status: 400 });
 

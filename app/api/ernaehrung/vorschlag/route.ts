@@ -7,6 +7,7 @@
 // verbraucht und steht nicht auf der Liste. NUR ein Vorschlag — übernommen
 // wird per Klick. Kein Medizin-/Ernährungsrat.
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd } from '@/lib/anthropic';
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
   if (!z) return NextResponse.json({ error: 'Nur für den Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { hinweis?: string; gaeste?: string[] } = {};
-  try { body = await req.json(); } catch { /* leer ok */ }
+  try { body = await jsonBegrenzt(req); } catch { /* leer ok */ }
   const ablegen = (body as { ablegen?: boolean })?.ablegen === true;
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });
   const agent = await resolveAgent('health');

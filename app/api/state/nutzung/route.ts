@@ -7,6 +7,7 @@
 // nicht. Keine Inhalte, keine Texte, nichts, was das Haus verlässt. Daraus
 // zieht der Verbesserungs-Loop später seine Vorschläge.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -49,7 +50,7 @@ export async function GET() {
 /** Einen Aufruf mitschreiben. Absichtlich schmal: Pfad, Zeit, wer. */
 export async function POST(req: Request) {
   let body: { pfad?: string; person?: string; sekunden?: number };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false }, { status: 400 }); }
   const pfad = String(body.pfad ?? '').slice(0, 120);
   if (!pfad.startsWith('/os')) return NextResponse.json({ ok: true, ignoriert: true });
   const person = personAus(req);

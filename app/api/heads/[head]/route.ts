@@ -11,6 +11,7 @@
 //      Frist wird es deren nächster Schritt (erscheint dann in der Power
 //      Hour), sonst eine Aufgabe. Nichts wird versendet.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { WEG } from '@/lib/wege';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
@@ -91,7 +92,7 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
   // Der Schalter unter /os/agenten gilt auch für den direkten Aufruf (27.09.) — vorher nur für ZOE und den Takt.
   const agentCfg = await resolveAgent(AGENT_ID[h]); if (!agentCfg.enabled) return NextResponse.json({ ok: false, fehler: disabledResponse(agentCfg).error, disabled: true }, { status: 409 });
   let b: { aktion?: string; modus?: string; frage?: string; ausgeloest?: string; id?: string; status?: string; grund?: string; entwurf?: string; text?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = zugang.person;
 
   if (b.aktion === 'lauf') {

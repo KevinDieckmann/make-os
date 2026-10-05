@@ -9,6 +9,7 @@
 // GET  ?kompakt=1 → nur diese Sicht, ohne Verlauf/Abschlüsse (für die Fachseiten)
 // Nur der Haushalt des Inhabers (Kevin & Malin) und der Dienstweg.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { alleSichten, vergleich, speichereAbschluss, loescheAbschluss, speichereEinstellungen, ladeEinstellungen, ladeRoh, bestandFuer } from '@/lib/business/speicher';
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
   const wer = await imHaushaltDesInhabers(req);
   if (!wer) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion === 'abschluss') {
     const r = await speichereAbschluss(b, wer.person);
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });

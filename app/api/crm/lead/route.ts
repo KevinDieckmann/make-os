@@ -25,6 +25,7 @@
 // `sql` prüft es im Anlageweg (lib/crm/deal-anlegen.ts). Mandat-Kunde nur aus der Firma, sonst „Privatkunde“ —
 // nie der Deal-Titel (der konnte einen Personennamen tragen).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
@@ -90,7 +91,7 @@ export async function POST(req: Request) {
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
   if (alterBau) return alterBau;
   let b: { aktion?: string; id?: string; felder?: Record<string, unknown>; deal?: Record<string, unknown>; trotzdem?: boolean; zweiter?: boolean; chanceId?: string; an?: string; bis?: string; grundArt?: string; grund?: string; notiz?: string; personIds?: unknown[]; von?: string; nach?: string; leadMit?: boolean; dealsMit?: boolean; behalten?: string; weg?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);
   const jetzt = new Date().toISOString();
   if (VON_HAND.includes(String(b.aktion)) && zugang.dienst) return NextResponse.json({ ok: false, fehler: 'Das geht nur von Hand, nicht über den Dienstweg.' }, { status: 403 });

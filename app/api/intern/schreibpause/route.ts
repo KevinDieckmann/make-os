@@ -5,6 +5,7 @@
 // nach 30 s läuft es von selbst weiter (die App bleibt nie hängen, auch wenn das Skript abbricht).
 // Nur Dienstweg (x-make-key) — keine Sitzung, keine Person.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { istDienst } from '@/lib/zugang/dienst';
 import { schreibpauseSetzen, schreibpauseAufheben } from '@/lib/store/local-db';
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   if (!istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Nur Dienstweg.' }, { status: 403 });
   let b: { an?: unknown; aus?: unknown; sekunden?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aus === true) { schreibpauseAufheben(); return NextResponse.json({ ok: true, pause: false }); }
   if (b.an !== true) return NextResponse.json({ ok: false, fehler: '{ an: true, sekunden } oder { aus: true }' }, { status: 400 });
   const sekunden = Math.max(1, Math.min(30, Number(b.sekunden) || 30));

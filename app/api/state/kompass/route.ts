@@ -3,6 +3,7 @@
 // Bewusst schlank: Modi liegen im Code, hier steht nur, was Kevin & Malin
 // davon abweichend eingestellt haben.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -36,7 +37,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   let body: Partial<KompassFile> & { zuruecksetzen?: boolean };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   const next = await updateJson<KompassFile>('kompass', current => {
     const modusNeu = body.modus && MODI.has(body.modus) ? body.modus : (current?.modus ?? 'aufbau');

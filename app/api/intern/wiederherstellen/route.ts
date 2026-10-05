@@ -5,6 +5,7 @@
 // POST { bestand, tag, liste, auswahl: { id: stand|null } } → übernimmt einzeln, 409 bei inzwischen geändert
 // Logik: lib/store/wiederherstellen.ts. Skript: scripts/einzel-wiederherstellen.mjs (Dienstweg = Systemlauf).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
@@ -33,7 +34,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, fehler: 'Nur der Inhaber.' }, { status: 403 });
   let b: { bestand?: unknown; tag?: unknown; liste?: unknown; auswahl?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const auswahl = b.auswahl && typeof b.auswahl === 'object' && !Array.isArray(b.auswahl) ? b.auswahl as Record<string, unknown> : null;
   if (!auswahl || Object.values(auswahl).some(v => v !== null && typeof v !== 'string')) return NextResponse.json({ ok: false, fehler: 'auswahl = { id: stand | null }' }, { status: 400 });
   try {

@@ -5,6 +5,7 @@
 // Zugang: nur Personen im Haushalt des Inhabers (Sitzung oder Dienstweg MIT Person — kein Systemlauf, kein Rückfall
 // auf „kevin“); schreiben mit Build-Kennung (bauPruefen); Körper ≤ 128 KB (413); Grenzen je Feld → 413, nie gekürzt.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
   if (alt) return alt;
   if (zuGross(req, MAX_BYTES)) return NextResponse.json({ ok: false, error: 'Abgelehnt: zu groß (höchstens 128 KB). Nichts gespeichert.' }, { status: 413 });
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, MAX_BYTES); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = typeof b?.id === 'string' && KENNUNG.test(b.id) ? b.id : null;
   const aktion = aktionLesen(b?.aktion);
   if (!id || !aktion) return NextResponse.json({ ok: false, error: 'id + aktion nötig.' }, { status: 400 });

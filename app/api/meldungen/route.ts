@@ -6,6 +6,7 @@
 // Zugang: angemeldete Person im Haushalt des Inhabers (`imHaushaltDesInhabers` — streng, Regel 5);
 // Dienstweg ohne Person → 403. Es gibt nur die EIGENEN Meldungen — keine Abfrage für andere Personen.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
   if (!person) return NextResponse.json(GESPERRT, { status: 403 });
   if (zuGross(req, 200_000)) return NextResponse.json({ ok: false, fehler: 'Zu groß.' }, { status: 413 });
   let body: { aktion?: unknown; ids?: unknown; alle?: unknown; telegram?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, 200_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   if (body.aktion === 'gelesen') {
     const alle = body.alle === true;

@@ -6,6 +6,7 @@
 // vorhandene Schreibweise). Umbenennen/Löschen bewusst nicht — Ziele tragen den
 // Namen als Text; das käme mit einer Stammdaten-Pflege später.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { speicherFuer } from '@/lib/zoe/raum';
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
   const name = await speicher(req);
   if (!name) return OHNE_PERSON();
   let b: { name?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   let einheit: string | null = null;
   const next = await updateJson<EinheitenDatei>(name, cur => {
     const f = sauberEinheitenDatei(cur);

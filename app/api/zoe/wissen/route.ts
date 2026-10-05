@@ -12,6 +12,7 @@
 //
 // Geschrieben wird hier nichts. Kevin pflegt sein Brain in Obsidian.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bestand, darfSehen, neueste, notiz, suche, WURZELN } from '@/lib/zoe/vault';
 import { personAus } from '@/lib/zoe/raum';
@@ -72,7 +73,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let b: { frage?: unknown; verlauf?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const frage = String(b.frage ?? '').trim().slice(0, 1500);
   if (!frage) return NextResponse.json({ ok: false, fehler: 'Frage fehlt.' }, { status: 400 });
   if (!hasAnthropicKey()) {

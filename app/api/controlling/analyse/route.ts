@@ -2,6 +2,7 @@
 // Kennzahlen kommen deterministisch rein (server-seitig gerechnet), die KI
 // liefert nur die ehrliche Einordnung: Kurs zum 1-Mio-Ziel, Runway, Fokus.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { state?: FinanceState };
-  try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Ohne Body: Server liest selbst — damit ZOE den Agenten direkt ausführen kann.
   const roh = payload.state ?? (await loadJson<FinanceState>('finance'));
   if (!roh || !Array.isArray(roh.months)) return NextResponse.json({ error: 'Kein Finanzstand hinterlegt — Zahlen unter /os/controlling pflegen.' }, { status: 200 });

@@ -5,6 +5,7 @@
 // PUT schreibt IMMER nur ein Gespräch (upsert), nie die ganze Liste. Damit
 // kann ein Client mit veraltetem Stand die Historie nicht überschreiben.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { GRENZEN, titelAus, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
@@ -66,7 +67,7 @@ export async function GET(req: Request) {
 /** Ein Gespräch anlegen oder aktualisieren. Body: { gespraech: Gespraech }. */
 export async function PUT(req: Request) {
   let body: { gespraech?: Partial<Gespraech> };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const g = sauber(body.gespraech ?? {});
   if (!g) return NextResponse.json({ ok: false, error: 'gespraech.id fehlt.' }, { status: 400 });
   // Leeres Gespräch nicht anlegen — sonst füllt jeder Panel-Aufruf die Liste.

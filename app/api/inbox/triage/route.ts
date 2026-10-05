@@ -6,6 +6,7 @@
 // EINMAL eingestuft, egal wie oft die Inbox lädt.
 // Basis: Absender + Betreff (+ Vorschau wenn da) — keine Mail-Bodies im Prompt.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
@@ -33,7 +34,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { nachrichten?: NachrichtIn[] };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const rein = (Array.isArray(body.nachrichten) ? body.nachrichten : [])
     .filter(n => n && typeof n.fp === 'string' && n.fp.length > 3)
     .slice(0, 60);

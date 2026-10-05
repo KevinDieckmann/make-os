@@ -16,6 +16,7 @@
 // wie beim Schreiben. Cap-Table und Verträge sind sensibel: die Antwort enthält nie etwas aus einem anderen Haushalt.
 // Speicher und Schreibstelle: lib/gesellschaften/server.ts (dieselbe wie /api/crm/gesellschaften).
 
+import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -131,7 +132,7 @@ export async function GET(req: Request) {
 async function lesenJson(req: Request): Promise<Record<string, unknown> | null> {
   const n = Number(req.headers.get('content-length') ?? '');
   if (Number.isFinite(n) && n > MAX_BODY) return null;
-  try { const b = await req.json(); return b && typeof b === 'object' && !Array.isArray(b) ? b as Record<string, unknown> : null; } catch { return null; }
+  try { const b = await jsonBegrenzt(req, JSON_GROSS); return b && typeof b === 'object' && !Array.isArray(b) ? b as Record<string, unknown> : null; } catch { return null; }
 }
 
 async function antwort(r: Ergebnis, haushalt: string) {

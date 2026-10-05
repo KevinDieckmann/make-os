@@ -46,8 +46,9 @@ Daten bleiben auf Kevins Mac. Zusammengeführt wird über GitHub.
    Werte eintragen — eigener `MAKE_OS_KEY` (frei ausdenken), Anthropic-Key
    von Kevin. Die Datei bleibt auf deinem Rechner, Git ignoriert sie.
 4. **Starten:** `npm run dev` → `http://localhost:3001/anmelden`. Beim ersten
-   Start „Erstes Konto einrichten" — dafür einmal deinen eigenen `MAKE_OS_KEY`
-   aus deiner `.env.local`. Danach ist alles leer — das ist richtig so: deine
+   Start „Erstes Konto einrichten" — dafür einmal den Einrichtungs-Code aus
+   `node scripts/einrichtung-token.mjs` (seit 05.10.; einmal gültig, 24 Stunden).
+   Danach ist alles leer — das ist richtig so: deine
    Kopie, deine Testdaten.
 
    **Im gemeinsamen System** (Kevins Instanz, später der Server) brauchst du

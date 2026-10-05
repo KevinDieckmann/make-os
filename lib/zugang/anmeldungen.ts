@@ -1,6 +1,8 @@
 // ─── MAKE OS — Anmelde-Protokoll (26.09.) ───────────────────────────────────
 // Wer sich wann angemeldet hat (und ob es klappte), damit ein Einbruch nicht
-// unbemerkt bleibt. Adresse gekürzt (kein volles Nutzerprofil), 300 Einträge.
+// unbemerkt bleibt. Adresse gekürzt (kein volles Nutzerprofil). Aufbewahrung seit 05.10. nach FRIST statt nach Anzahl:
+// 12 Monate (vorher 300 Einträge — bei einem Ratenangriff wären echte Anmeldungen binnen Minuten verdrängt worden),
+// darüber hinaus nur eine Notbremse gegen Fluten (`MAX_NOTBREMSE`). Gekürzt wird bei jedem neuen Eintrag.
 
 import { updateJson, loadJson } from '@/lib/store/local-db';
 
@@ -9,7 +11,18 @@ export type AnmeldeArt = 'anmelden' | 'passwort' | 'alle-abgemeldet' | 'abmelden
   | 'adresse-hinzu' | 'adresse-haupt' | 'adresse-weg';
 export interface Anmeldung { zeit: string; speicher: string | null; art: AnmeldeArt; ok: boolean; adresse: string; /** Nur bei Adress-Änderungen: die betroffene Adresse maskiert (k***@example.invalid). */ detail?: string }
 const STORE = 'anmeldungen';
-const MAX = 300;
+/** Aufbewahrungsfrist des Anmeldeprotokolls in Monaten (Sicherheitszweck, Art. 6 Abs. 1 lit. f — danach gelöscht). */
+export const FRIST_MONATE = 12;
+/** Notbremse: mehr Einträge werden nie gehalten, auch innerhalb der Frist (Schutz der Platte bei einer Flut). */
+export const MAX_NOTBREMSE = 50_000;
+
+/** Einträge innerhalb der Frist, älteste zuerst, höchstens MAX_NOTBREMSE (die neuesten). Rein. */
+export function nachFrist(eintraege: Anmeldung[], jetzt: Date = new Date()): Anmeldung[] {
+  const grenze = new Date(jetzt);
+  grenze.setMonth(grenze.getMonth() - FRIST_MONATE);
+  const ab = grenze.toISOString();
+  return eintraege.filter(e => typeof e?.zeit === 'string' && e.zeit >= ab).slice(-MAX_NOTBREMSE);
+}
 
 /** IPv4: die ersten drei Gruppen, IPv6: die ersten drei Blöcke — genug zum Erkennen, zu wenig zum Verfolgen. */
 export function adresseGekuerzt(a: string): string {
@@ -19,10 +32,11 @@ export function adresseGekuerzt(a: string): string {
 }
 
 export async function notiere(e: Omit<Anmeldung, 'zeit'>): Promise<void> {
-  await updateJson<{ eintraege: Anmeldung[] }>(STORE, alt => ({ eintraege: [...(alt?.eintraege ?? []), { zeit: new Date().toISOString(), ...e }].slice(-MAX) })).catch(() => null);
+  const jetzt = new Date();
+  await updateJson<{ eintraege: Anmeldung[] }>(STORE, alt => ({ eintraege: nachFrist([...(Array.isArray(alt?.eintraege) ? alt.eintraege : []), { zeit: jetzt.toISOString(), ...e }], jetzt) })).catch(() => null);
 }
 
-/** Das ganze Protokoll (höchstens MAX Einträge) — für den Anmelde-Alarm. */
+/** Das ganze Protokoll (innerhalb der Frist) — für den Anmelde-Alarm und den Head of IT. */
 export async function alle(): Promise<Anmeldung[]> {
   return (await loadJson<{ eintraege: Anmeldung[] }>(STORE))?.eintraege ?? [];
 }

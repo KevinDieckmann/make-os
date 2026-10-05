@@ -4,6 +4,7 @@
 // Stufe, Trockenlauf und Protokoll. Ein Werkzeug, das eine Freigabe braucht,
 // landet auch aus dem Hintergrund im Stapel statt im Bestand.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { lies, melde, pachtGueltig } from '@/lib/zoe/auftraege';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   if (!istDienst(req)) return NextResponse.json({ ok: false, error: 'Nur der Arbeiter (Dienstschlüssel).' }, { status: 403 });
   let body: { id?: string; token?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(body.id ?? '');
   if (!(await lies()).some(x => x.id === id)) return NextResponse.json({ ok: false, error: 'Auftrag nicht gefunden.' }, { status: 404 });
   // Pacht-Token (29.09., Paket D-A #20): nur der aktuelle Halter führt aus — ein Läufer mit abgelaufener

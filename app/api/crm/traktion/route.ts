@@ -11,6 +11,7 @@
 //       Wochen-Scoreboard (8 Kalenderwochen, lib/crm/scoreboard.ts) und ob der
 //       Telegram-Bote für die angemeldete Person bereitsteht.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { merken } from '@/lib/store/memo';
@@ -108,7 +109,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (!b.schwelle || typeof b.schwelle !== 'object') return NextResponse.json({ ok: false, fehler: 'Schwelle fehlt.' }, { status: 400 });
   const r = await speichereSchwelle('traktion-index', TRAKTION_KENNZAHLEN, b.schwelle as Record<string, unknown>);
   return NextResponse.json(r, { status: r.ok ? 200 : 400 });

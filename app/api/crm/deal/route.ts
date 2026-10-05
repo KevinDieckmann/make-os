@@ -6,6 +6,7 @@
 // Stufenwechsel laufen weiter über PATCH /api/crm/bestand (op teil) — die Regeln
 // prüft der Server dort (lib/crm/speicher.ts dealRegeln).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { dealAnlegen, type DealEingabe } from '@/lib/crm/deal-anlegen';
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: DealEingabe & { aktion?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion !== 'anlegen') return NextResponse.json({ ok: false, fehler: 'aktion: anlegen.' }, { status: 400 });
   const r = await dealAnlegen(b, zugang.person, undefined, werAus(req));
   if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler, ...(r.offen ? { offen: r.offen } : {}) }, { status: r.status });

@@ -5,6 +5,7 @@
 //   → 409 { code:'eingeschraenkt' }                       Art. 18: an eingeschränkte Personen nie
 // NUR die eigene Person aus der Sitzung: der Dienstweg (ZOE, Takt, Arbeiter, Skripte) bekommt IMMER 403 — jede Mail erst Entwurf,
 // dann Einzelklick (Versand-Regel). `anfrageId` macht einen Netz-Retry wirkungslos (einmalig, 24 h).
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { eigenePerson } from '@/lib/google/zugang';
 import { gmailSenden, SendenFehler } from '@/lib/gmail/senden';
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
   if (z instanceof NextResponse) return z;
   if (zuGross(req, 512 * 1024)) return ZU_GROSS(512 * 1024);
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, 512 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const wer = werAus(req);
   try {
     const r = await einmalig<Record<string, unknown>>('gmail-senden', b.anfrageId, async () => {

@@ -18,6 +18,7 @@
 //  · Paket D-C (29.09., #17/#33): Absicht VOR dem Kartei-Schreiben (lib/crm/absichten-crm.ts) — bricht der Lauf danach ab,
 //    biegt die Wiederaufnahme die Verweise um; ein abgelehnter/nicht gefundener Fall verwirft die Absicht.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
   const person = personStreng(req);
   if (!person) return NextResponse.json({ ok: false, fehler: 'Zusammenführen nur mit angemeldeter Person.' }, { status: 401 });
   let body: { behalten?: string; weg?: string; aktion?: string; laufId?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const wer: Wer = { art: 'person', person };
   if (body.aktion === 'rueckgaengig') return rueckgaengig(String(body.laufId ?? ''), person, wer);
   if (body.aktion !== undefined) return NextResponse.json({ ok: false, fehler: 'aktion ist rueckgaengig.' }, { status: 400 });

@@ -17,6 +17,7 @@
 // S1 #9 (29.09.): kein fester Gesundheits-/Personenkontext mehr im Prompt — optional aus dem eigenen Profil der fragenden
 // Person (lib/gesundheit/kontext.ts), nie aus dem der anderen; das Ziel kommt aus den gepflegten Zielen (`ziele`).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { askJson, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -87,7 +88,7 @@ export async function POST(req: Request) {
   if (!zugang) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { today?: string };
-  try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const today = payload.today && /^\d{4}-\d{2}-\d{2}$/.test(payload.today) ? payload.today : localKey(new Date());
 
   // Derselbe Lesepfad wie die Kalender-Sicht, für die fragende Person gefiltert (Befund 1, #K4).

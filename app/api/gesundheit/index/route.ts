@@ -5,6 +5,7 @@
 // POST { schwelle: { id, gruen, rot } | { id, zuruecksetzen: true } } — nur die eigenen.
 // Sehen: die eigenen immer, fremde nur, wenn die Person teilt (Konto → teilt.gesundheit).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ansichtPerson, personAus, darfGesundheitSehen } from '@/lib/zoe/raum';
 import { gesundheitStand, speichereGesundheitSchwelle } from '@/lib/gesundheit/speicher';
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const person = personAus(req);
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (!b.schwelle || typeof b.schwelle !== 'object') return NextResponse.json({ ok: false, fehler: 'Schwelle fehlt.' }, { status: 400 });
   const r = await speichereGesundheitSchwelle(person, b.schwelle as Record<string, unknown>);
   return NextResponse.json(r, { status: r.ok ? 200 : 400 });

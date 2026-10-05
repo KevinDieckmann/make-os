@@ -11,6 +11,7 @@
 // Zeit je Einheit (Woche/Monat, je Person und gesamt): /api/state/zeit/einheiten; Zeit je Mandat: /api/state/zeit/mandate.
 // Die laufende Messung kommt über die Anwesenheit (/api/state/anwesenheit).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { fokusAbschliessen, fokusZuordnen, fokusUmbuchen, aufgabenKurz, zeitBildFuer } from '@/lib/zeitmessung/speicher';
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
   const person = personStreng(req);
   if (!person) return NextResponse.json({ ok: false, error: 'Keine Person.' }, { status: 401 });
   let b: { aktion?: string; von?: unknown; bis?: unknown; schluessel?: unknown; label?: unknown; aufgabeId?: unknown; einheit?: unknown; mandatId?: unknown; firmaId?: unknown; space?: unknown; terminUid?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion === 'umbuchen') {
     const von = iso(b.von);
     const ziel = b.space === 'privat' || b.space === 'business' ? b.space : null;

@@ -3,6 +3,7 @@
 // Kennzahlen deterministisch in JS, das Narrativ (Lage, Risiken, Fokus) von der
 // KI. Read-only Synthese über die anderen Agenten.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { gatherBrain } from '@/lib/brain';
@@ -24,7 +25,7 @@ interface TaskLite { title?: string; status?: string; priority?: string; dueDate
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let p: { finance?: FinanceState; prospects?: ProspectLite[]; tasks?: TaskLite[]; today?: string };
-  try { p = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { p = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   // Server-seitig aus dem Brain — der Browser ist nicht mehr der Datenlieferant.
   // POST-Body bleibt als Override erlaubt (Tests), sonst gilt das Brain.

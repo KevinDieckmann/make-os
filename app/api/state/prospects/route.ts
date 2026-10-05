@@ -2,6 +2,7 @@
 // GET  → { state } (oder null beim Erststart)
 // PUT  → speichert ICP + komplette Zielliste
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt } from '@/lib/store/local-db';
 import type { ProspectsState } from '@/lib/make-one/prospecting-data';
@@ -23,7 +24,7 @@ export async function PUT(req: Request) {
   if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   if (zuGross(req, 2000000)) return ZU_GROSS(2000000);
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, 2000000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const s = body as Partial<ProspectsState>;
   if (!s || !Array.isArray(s.prospects) || typeof s.icp !== 'string') {
     return NextResponse.json({ ok: false, error: 'Ungültiger Zustand: icp/prospects fehlen.' }, { status: 400 });

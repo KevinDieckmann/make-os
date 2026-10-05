@@ -6,6 +6,7 @@
 // POST → eine Meldung anhängen (vom Fehler-Melder im /os-Layout)
 // DELETE → Liste leeren, wenn alles behoben ist
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, saveJson } from '@/lib/store/local-db';
@@ -33,7 +34,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   let body: Partial<Meldung>;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false }, { status: 400 }); }
   const text = String(body.text ?? '').trim().slice(0, 600);
   if (!text) return NextResponse.json({ ok: false }, { status: 400 });
 

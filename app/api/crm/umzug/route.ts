@@ -5,6 +5,7 @@
 // ohne eigene Änderungen zu überschreiben. Nur mit Dienstschlüssel oder
 // angemeldet (Middleware); Daten kommen aus dem Aufruf, nie aus dem Repo.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
@@ -23,7 +24,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { daten?: BrainDaten; verknuepfung?: Record<string, string> };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (!b.daten || typeof b.daten !== 'object') return NextResponse.json({ ok: false, fehler: 'daten fehlt.' }, { status: 400 });
   const person = personAus(req);
   const jetzt = new Date().toISOString();

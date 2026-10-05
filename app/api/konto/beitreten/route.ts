@@ -1,6 +1,7 @@
 // ─── MAKE OS — Mit Einladung beitreten ──────────────────────────────────────
 // Code + E-Mail + Name + Passwort → Konto als Mitglied. Der Speichername kommt
 // aus dem Vornamen: Malin wird „malin" — und findet ihre bestehenden Bestände.
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, emailSauber, adresseVergeben, passwortTauglich, passwortHashen, speicherName, RESERVIERTE_SPEICHER, type Konto } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   let b: { code?: string; email?: string; name?: string; passwort?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const code = String(b.code ?? '').trim().toUpperCase();
   const email = emailSauber(b.email);
   const name = String(b.name ?? '').trim().slice(0, 80);
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
   const ohneEigene = { ...s0, einladungen: s0.einladungen.filter(e => e.code !== code) };
   if (adresseVergeben(ohneEigene, email)) return NextResponse.json({ error: 'Diese E-Mail hat schon ein Konto — bitte anmelden.' }, { status: 409 });
 
-  const { hash, salz } = await passwortHashen(b.passwort);
+  const { hash, salz, kdf } = await passwortHashen(b.passwort);
   let konto: Konto | undefined;
   let doppelt = false;
   await aendereKonten(s => {
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
     // aber nie ein reservierter Name: „Malin“ als Vorname übernimmt nicht Malins Bestände (26.09.).
     const vergeben = s.konten.map(k => k.speicher);
     const gebunden = einladung.speicher && !vergeben.includes(einladung.speicher) ? einladung.speicher : undefined;
-    konto = { id: neueKennung('k'), speicher: gebunden ?? speicherName(name, [...vergeben, ...RESERVIERTE_SPEICHER]), email, name, rolle: 'mitglied', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] }, eingeladenVon: einladung.von };
+    konto = { id: neueKennung('k'), speicher: gebunden ?? speicherName(name, [...vergeben, ...RESERVIERTE_SPEICHER]), email, name, rolle: 'mitglied', hash, salz, kdf, angelegt: new Date().toISOString(), teilt: { gesundheit: [] }, eingeladenVon: einladung.von };
     return { konten: [...s.konten, konto], einladungen: s.einladungen.filter(e => e.code !== code) };
   });
   if (doppelt) return NextResponse.json({ error: 'Diese E-Mail hat schon ein Konto — bitte anmelden.' }, { status: 409 });

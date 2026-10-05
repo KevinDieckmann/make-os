@@ -14,6 +14,7 @@
 // und kostet einen Bruchteil. Die Notbremse ANTHROPIC_MODEL gilt wie überall.
 // Geputzt wird die Antwort in lib/crm/visitenkarte.ts (rein, getestet).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
   }
 
   let body: { bild?: unknown; medientyp?: unknown };
-  try { body = await req.json(); } catch { return antwort({ ok: false, fehler: 'Kein gültiges JSON.' }, 400); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? antwort({ ok: false, fehler: 'Kein gültiges JSON.' }, 400); }
 
   const bild = pruefeBild(body.bild, body.medientyp);
   if (!bild.ok) return antwort({ ok: false, fehler: bild.fehler }, bild.status);

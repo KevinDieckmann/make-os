@@ -5,6 +5,7 @@
 // PUT    → Altweg (ganzer Plan/Liste/Grundsätze), bleibt für ältere Ansichten
 // Profile pflegt jede Person selbst (Konto), Gäste pflegt der Haushalt.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -68,7 +69,7 @@ export async function PATCH(req: Request) {
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   if (zuGross(req, 1_000_000)) return ZU_GROSS(1_000_000);
   let body: { ops?: Op[] };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, 1_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const ops = (Array.isArray(body.ops) ? body.ops : []).slice(0, 200);
   if (!ops.length) return NextResponse.json({ ok: false, error: 'Keine Schritte übergeben.' }, { status: 400 });
   let abgelehnt: string[] = [];
@@ -86,7 +87,7 @@ export async function PUT(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   let body: Partial<ErnaehrungFile>;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, 1_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Altweg: nur Plan, Liste und Grundsätze — Profile, Stammliste, Vorrat und Rezepte gehen über PATCH.
   let verloren: string | null = null;
   const next = await updateJson<ErnaehrungFile>(STORE, current => {

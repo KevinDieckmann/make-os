@@ -5,6 +5,7 @@
 // Ein vorhandenes Dokument wird nur mit ausdrücklichem `ersetzen` überschrieben,
 // sonst 409. Echte Zahlen bleiben auf dem Server — nie im Repo.
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
       quelle = f.name || 'Datei';
       roh = JSON.parse(await f.text());
     } else {
-      const b = (await req.json()) as { dokument?: unknown; leer?: unknown; ersetzen?: unknown };
+      const b = (await jsonBegrenzt(req, MAX_BYTES)) as { dokument?: unknown; leer?: unknown; ersetzen?: unknown };
       ersetzen = ersetzen || ja(b.ersetzen);
       if (ja(b.leer)) { roh = leeresDokument(heuteBerlin()); quelle = 'leer begonnen'; }
       else { roh = b.dokument; quelle = 'Dokument'; }

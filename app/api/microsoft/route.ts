@@ -1,3 +1,4 @@
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { istDienst } from '@/lib/zugang/dienst';
@@ -70,7 +71,7 @@ export async function PUT(req: Request) {
   // Der Spiegel fließt in Kontaktverläufe und ZOE — nur der Zulieferer (Dienst) oder der Inhaber schreibt ihn (26.09.).
   if (!istDienst(req) && !(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let body: { mails?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
   if (!Array.isArray(body.mails)) return NextResponse.json({ ok: false, error: 'Feld "mails" (Liste) fehlt.' }, { status: 400 });
 
   const mails: M365Mail[] = (body.mails as Record<string, unknown>[])

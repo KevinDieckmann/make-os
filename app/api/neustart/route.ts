@@ -8,6 +8,7 @@
 // Nur Personen im Haushalt des Inhabers mit eigener Sitzung — kein Dienstweg (ZOE und Takt fangen nie neu an).
 // Logik: lib/aufgaben/neustart-server.ts (Server), lib/aufgaben/neustart.ts + lib/planung/neustart.ts (rein).
 
+import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { bauPruefen } from '@/lib/bau/pruefen';
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
   if (alterBau) return alterBau;
   if (zuGross(req, 64 * 1024)) return NextResponse.json({ ok: false, error: 'Abgelehnt: zu groß.' }, { status: 413 });
   let b: Record<string, unknown>;
-  try { b = (await req.json()) as Record<string, unknown>; } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = (await jsonBegrenzt(req, 64 * 1024)) as Record<string, unknown>; } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const laufId = typeof b?.laufId === 'string' && LAUF_ID.test(b.laufId) ? b.laufId : null;
   if (!laufId) return NextResponse.json({ ok: false, error: 'laufId (na-…) fehlt.' }, { status: 400 });
   try {

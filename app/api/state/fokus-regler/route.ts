@@ -4,6 +4,7 @@
 // Wirkung: Aufgaben-Vorsortierung (Wochenplaner-Leiste) und ZOE' Wochen-
 // vorschlag gewichten danach.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -26,7 +27,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   let body: { regler?: Partial<Regler> };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!body.regler || typeof body.regler !== 'object') {
     return NextResponse.json({ ok: false, error: 'regler fehlt.' }, { status: 400 });
   }

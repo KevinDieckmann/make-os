@@ -9,6 +9,7 @@
 // eigene Notizen bleiben stehen. Geschrieben wird in den Bestand der
 // angemeldeten Person.
 
+import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC } from '@/lib/mac';
 import { readdir, readFile, stat } from 'fs/promises';
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
       if (!f || typeof f === 'string') return NextResponse.json({ ok: false, error: 'Keine Datei erhalten.' }, { status: 400 });
       csv = tabelleAus(Buffer.from(await f.arrayBuffer()), f.name); quelle = f.name;
     } else {
-      const body = await req.json() as { csv?: string; ausDownloads?: boolean };
+      const body = await jsonBegrenzt(req, JSON_GROSS) as { csv?: string; ausDownloads?: boolean };
       if (body.ausDownloads) {
         const n = await neuesterExport();
         if (!n) return NextResponse.json({ ok: false, error: 'Im Downloads-Ordner liegt kein Whoop-Export (my_whoop_data_….zip). Erst in der Whoop-Mail auf „Daten herunterladen" klicken.' }, { status: 404 });

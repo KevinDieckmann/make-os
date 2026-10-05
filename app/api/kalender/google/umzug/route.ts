@@ -4,6 +4,7 @@
 // POST { kalender: string[], mitVergangenen?, bestaetigt: true } → ausführen: Sicherung → je Termin Google anlegen →
 //                                                       Verweise umhängen → in iCloud löschen (lib/kalender/google/umzug.ts)
 // Nur die EIGENE Person (Sitzung), nie der Dienstweg; ohne `bestaetigt: true` passiert nichts. Eigene Aktion — nie automatisch.
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { eigenePerson } from '@/lib/google/zugang';
 import { umzugVorschau, umzugAusfuehren } from '@/lib/kalender/google/umzug';
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   const z = await eigenePerson(req, true);
   if (z instanceof NextResponse) return z;
   let b: { kalender?: unknown; mitVergangenen?: unknown; bestaetigt?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const kalender = namen(b.kalender);
   if (b.bestaetigt !== true || !kalender.length) return NextResponse.json({ ok: false, fehler: 'Bitte Kalender wählen und den Umzug bestätigen — vorher zeigt die Vorschau, was passiert.' }, { status: 400 });
   try {

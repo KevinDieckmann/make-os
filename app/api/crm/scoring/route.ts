@@ -8,6 +8,7 @@
 // Wirkung: Leads, Akte, Lifecycle (MQL), Segmente, Heads und ZOE rechnen sofort mit den neuen Werten (crm.scoring, ladeCrm).
 // Speicher: Bestand `crm-scoring` (lib/crm/scoring-server.ts).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { bauPruefen } from '@/lib/bau/pruefen';
@@ -47,7 +48,7 @@ export async function PATCH(req: Request) {
   const laenge = Number(req.headers.get('content-length') ?? '');
   if (Number.isFinite(laenge) && laenge > MAX_BYTES) return NextResponse.json({ ok: false, fehler: 'Die Einstellungen sind zu groß.' }, { status: 413 });
   let b: { aktion?: string; einstellungen?: unknown; stand?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const auftrag: ScoringAuftrag | null = b.aktion === 'speichern' ? { art: 'eigen', roh: b.einstellungen } : b.aktion === 'standard' || b.aktion === 'vorschlag' ? { art: 'standard' } : b.aktion === 'bisherig' ? { art: 'bisherig' } : b.aktion === 'zurueck' ? { art: 'zurueck' } : null;
   if (!auftrag) return NextResponse.json({ ok: false, fehler: 'aktion: speichern, standard, bisherig oder zurueck.' }, { status: 400 });
   const r = await scoringSchreiben(auftrag, b.stand, zugang.person ?? personAus(req), werAus(req));

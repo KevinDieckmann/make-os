@@ -5,6 +5,7 @@
 // (`app_chunks`, lib/brain/app-index.ts) neu bauen — Haushalt des Inhabers. Der Takt macht das
 // alle 10 Minuten von selbst; hier für den Knopf auf der Wissen-Seite.
 
+import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { aktualisieren, indexStand, indexPfad } from '@/lib/brain/index';
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return KEIN_ZUGANG();
   let b: { aktion?: string } = {};
-  try { b = await req.json(); } catch { /* Standard: aufbauen */ }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch { /* Standard: aufbauen */ }
   try {
     if (b.aktion === 'vektoren') return NextResponse.json({ ok: true, ...(await vektorenAuffuellen(128)), stand: indexStand() });
     if (b.aktion === 'arbeit') { const a = await import('@/lib/brain/app-index'); return NextResponse.json({ ok: true, lauf: await a.appIndexNeuBauen(), arbeit: a.appIndexStand() }); }

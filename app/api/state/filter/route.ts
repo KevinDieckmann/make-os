@@ -3,6 +3,7 @@
 // Auswahl, die man wieder aufrufen kann) und eigene Stichworte, die die fest
 // eingebauten ergänzen.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { neueKennung } from '@/lib/kennung';
@@ -85,7 +86,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   let body: Partial<FilterFile>;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   const vorher = await loadJson<FilterFile>('filter');
   const sauber: FilterFile = {

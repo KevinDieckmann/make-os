@@ -10,6 +10,7 @@
 //
 // Das Passwort geht nur an Supabase. Es wird weder gespeichert noch geloggt.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import { loadJson, saveJson } from '@/lib/store/local-db';
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let b: { schritt?: unknown; email?: unknown; passwort?: unknown; sicherung?: Sicherung; v1?: V1Export | null };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   if (b.schritt === 'probe') {
     const v = verbindungAusUmgebung();

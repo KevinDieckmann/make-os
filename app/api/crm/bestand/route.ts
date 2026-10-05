@@ -8,6 +8,7 @@
 //         `konflikte` (aktueller Eintrag); ohne Stand nur `teil`/`delete`. Löschen einer Firma/eines Mandats mit
 //         Verweisen → 409 mit `sperren` (nur Anzahlen). Über der Grenze der Deal-Historie → 413. Nichts geschrieben.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
@@ -89,7 +90,7 @@ export async function PATCH(req: Request) {
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   let body: { ops?: ListenOp[] };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   // Mehr als 200 auf einmal: ablehnen, nie still kürzen (28.09., K1) — vorher fielen alle ab der 201. weg.
   const ueber = opsFehler(body.ops, 200);
   if (ueber && Array.isArray(body.ops)) return NextResponse.json({ ok: false, fehler: ueber }, { status: 413 });

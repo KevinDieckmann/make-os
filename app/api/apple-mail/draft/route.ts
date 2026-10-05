@@ -2,6 +2,7 @@
 // Erstellt ein SICHTBARES Kompositionsfenster in Mail.app (kein automatischer
 // Versand!). Kevin prüft und sendet selbst — sauberes Human-in-the-Loop.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
 import { spawn } from 'child_process';
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   if (!AUF_DEM_MAC) return nurMac();
   let p: { to?: string; subject?: string; body?: string };
-  try { p = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { p = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const to = (p.to ?? '').trim();
   const subject = (p.subject ?? '').trim();
   const body = (p.body ?? '').trim();

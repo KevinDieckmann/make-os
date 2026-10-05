@@ -3,6 +3,7 @@
 // Die Action-Items lassen sich (mit Freigabe) in echte Aufgaben übernehmen.
 // Auto-Mitschrift (Granola/Fireflies) ist der spätere Zusatz.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
@@ -26,7 +27,7 @@ const PROJECTS = [
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { transcript?: string; datum?: string };
-  try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const transcript = (payload.transcript ?? '').trim();
   if (transcript.length < 20) return NextResponse.json({ error: 'Bitte Transkript oder Notizen einfügen (etwas mehr Text).' }, { status: 400 });
   const heute = payload.datum && /^\d{4}-\d{2}-\d{2}$/.test(payload.datum) ? payload.datum : localDay();

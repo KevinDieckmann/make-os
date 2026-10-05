@@ -2,6 +2,7 @@
 // Entwürfe in Kevins/KEMARIS-CI. Autonomie: Entwurf — Publizieren bleibt dein
 // Klick (Human-in-the-Loop). Anthropic Messages API.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
@@ -35,7 +36,7 @@ const ENTWUERFE = 'content-entwuerfe';
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { format?: string; thema?: string; notizen?: string; ablegen?: boolean };
-  try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const fmt = FORMATS[payload.format ?? ''] ?? FORMATS.linkedin;
   const thema = (payload.thema ?? '').trim();
   const notizen = (payload.notizen ?? '').trim();

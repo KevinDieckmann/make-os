@@ -13,6 +13,7 @@
 // (`personStreng`), sonst laufen sie als Systemlauf. Der Kalender-Schritt liest nichts mehr aus dem Altweg
 // /api/apple-calendar: er stößt den Abgleich an und zählt über `termineFuerZoe` (für die Person gefiltert).
 
+import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { recentRuns } from '@/lib/agent-log';
@@ -61,7 +62,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   let body: { force?: boolean } = {};
-  try { body = await req.json(); } catch { /* Aufruf ohne Body ist ok */ }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch { /* Aufruf ohne Body ist ok */ }
   const today = localDay();
   const st = await status(today);
 

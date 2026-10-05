@@ -12,6 +12,7 @@
 // 01.10.: `parentId` darf auf eine Unteraufgabe jeder Ebene zeigen (bis AUFGABEN_EBENEN_MAX, lib/aufgaben/ebenen.ts — der
 // Schreibweg lehnt tiefer ab: 400); unbekanntes/unsichtbares Elternteil → 404 (vorher still als Hauptaufgabe angelegt).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { bauPruefen } from '@/lib/bau/pruefen';
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   let body: NewTask;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!body || typeof body !== 'object') return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 });
   try { beteiligteSauber(body.beteiligte); } catch (e) { if (e instanceof ZuGross) return NextResponse.json({ ok: false, error: e.message }, { status: 413 }); throw e; }
   const title = String(body.title ?? '').trim();

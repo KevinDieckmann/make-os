@@ -2,6 +2,7 @@
 // POST { id, hinweis? } → { ok, draft, quellen } — nur ein VORSCHLAG; gesendet wird nur auf den Einzelklick (/api/gmail/senden).
 // Nur die eigene Person (Sitzung), nur eine Mail aus dem eigenen Spiegel; eingeschränkte Personen (Art. 18) bekommen 409;
 // Modell-Drossel (`modellSchranke`). Brain-Kontext: die Sicht der Person ohne private Notizen.
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { eigenePerson } from '@/lib/google/zugang';
 import { gmailEntwurf, EntwurfFehler } from '@/lib/gmail/entwurf';
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   if (zuGross(req, 16 * 1024)) return ZU_GROSS(16 * 1024);
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let b: { id?: unknown; hinweis?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, 16 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const id = typeof b.id === 'string' && /^[A-Za-z0-9]{6,40}$/.test(b.id) ? b.id : '';
   if (!id) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
   try {

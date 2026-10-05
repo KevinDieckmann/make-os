@@ -8,6 +8,7 @@
 // Wenn die Software später auf dem Server läuft, hängt daran die Trennung —
 // bis dahin trennt sie die Sicht.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -35,7 +36,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   let body: Partial<Datei>;
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const next = await updateJson<Datei>('arbeitsplatz', current => ({
     ...sauber({ ...sauber(current ?? LEER), ...body }),
     gewechselt: new Date().toISOString(),

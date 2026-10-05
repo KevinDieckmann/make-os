@@ -12,6 +12,7 @@
 // S1 #20 (29.09.): Apple-Erinnerungen (Mac des Inhabers) nur für den Inhaber, private Fristen nur für Personen mit
 // Haushalt — serverseitig (`fuerPersonFiltern`, lib/kalender/eintraege.ts), nicht erst im Browser.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
   const zugang = await kalenderZugang(req);
   if (!zugang) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   let b: { aktion?: string };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion !== 'abgleichen') return NextResponse.json({ ok: false, fehler: 'Unbekannte Aktion.' }, { status: 400 });
   // Google (03.10.): der eigene Google-Kalender der Person (falls verbunden) wird mit abgeglichen — nie der einer anderen Person.
   const googleEigen = zugang.person && (await googleKalenderNamen())[zugang.person] ? zugang.person : null;

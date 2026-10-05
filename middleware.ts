@@ -1,9 +1,9 @@
 // ─── MAKE OS — Zugangsschutz ────────────────────────────────────────────────
 // Seit 23.09.: echte Konten. Wer eine gültige Sitzung hat, kommt hinein — und
 // die Middleware sagt jeder Route, wer das ist (Kopf x-make-user). Wer keine
-// hat, landet auf /anmelden. Der Zugangsschlüssel MAKE_OS_KEY wird nur noch
-// für zwei Dinge gebraucht: den internen Dienstweg (Arbeiter, Bote, Takt) und
-// das Einrichten des allerersten Kontos.
+// hat, landet auf /anmelden. Der Zugangsschlüssel MAKE_OS_KEY gilt seit 05.10. nur
+// noch für den internen Dienstweg (Arbeiter, Bote, Takt — nur von innen, lib/zugang/intern.ts);
+// das allererste Konto entsteht mit einem Einmal-Code (lib/zugang/einrichtung.mjs).
 //
 // Gelernt aus dem Audit (weiter gültig): dem Host-Header nicht trauen, dem
 // Origin bei Schreibzugriffen schon. Und: Köpfe, mit denen sich ein Client
@@ -13,8 +13,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SITZUNG_COOKIE, WER_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
-import { standGueltig } from '@/lib/zugang/stand-pruefung';
+import { standPruefen, zweiterFaktorOffen } from '@/lib/zugang/stand-pruefung';
 import { crossSiteVerboten } from '@/lib/zugang/cross-site';
+import { sitzungsGeheimnisFehlt } from '@/lib/zugang/start-riegel';
+import { anfrageIntern, zuliefererSchluessel, ZULIEFERUNG, EINGESCHRAENKT_MIN } from '@/lib/zugang/intern';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
 const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitreten)$/];
@@ -31,9 +33,15 @@ const GOOGLE_MELDEWEG = /^\/api\/(kalender\/google|google\/gmail)\/meldung$/;
 // `slugOk`); alles andere (auch /buchen ohne Adresse oder tiefere Pfade) bleibt zu. Die Routen drosseln selbst.
 const BUCHUNG_OFFEN = [/^\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/, /^\/api\/buchung\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/];
 
+/** Solange die 2FA-Pflicht offen ist, erlaubt: den Faktor einrichten, sich selbst sehen, abmelden (05.10.). */
+const ZF_EINRICHTEN: [string, RegExp][] = [['POST', /^\/api\/konto\/zwei-faktor$/], ['GET', /^\/api\/konto\/ich$/], ['POST', /^\/api\/konto\/abmelden$/]];
+
 function adresseHost(): string | null {
   try { const a = process.env.MAKE_OS_ADRESSE?.trim(); return a ? new URL(a).host : null; } catch { return null; }
 }
+
+/** Den Riegel nur einmal je Prozess ins Log schreiben (sonst je Anfrage). */
+let riegelGemeldet = false;
 
 function verweigertApi(): NextResponse {
   return NextResponse.json({ error: 'Nicht angemeldet.' }, { status: 401 });
@@ -43,8 +51,10 @@ export async function middleware(req: NextRequest) {
   const schluessel = process.env.MAKE_OS_KEY;
   // Ohne konfigurierten Schlüssel bleibt alles zu — lieber gesperrt als offen.
   if (!schluessel) return new NextResponse('MAKE OS ist nicht eingerichtet (MAKE_OS_KEY fehlt).', { status: 503 });
-  // Auf dem Server ist das Sitzungsgeheimnis Pflicht (26.09.) — kein Rückfall auf den Dienstschlüssel.
-  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) return new NextResponse('MAKE OS ist nicht eingerichtet (SESSION_SECRET fehlt in .env).', { status: 503 });
+  // Auf dem Server ist das Sitzungsgeheimnis Pflicht (26.09.) — kein Rückfall auf den Dienstschlüssel; im strengen
+  // Start-Riegel (05.10.) zusätzlich mindestens 32 Zeichen. Den Rest (Datenschlüssel, Pepper) prüft instrumentation.ts.
+  const riegel = sitzungsGeheimnisFehlt();
+  if (riegel) { if (!riegelGemeldet) { riegelGemeldet = true; console.error(`[MAKE OS] Middleware: ${riegel} — alle Anfragen 503.`); } return new NextResponse(`MAKE OS ist nicht eingerichtet (${riegel}).`, { status: 503 }); }
 
   // CSRF-Schutz: Schreibzugriffe aus fremden Browser-Kontexten abweisen.
   if (req.method !== 'GET' && req.method !== 'HEAD' && !CSP_MELDEWEG.test(req.nextUrl.pathname) && !(GOOGLE_MELDEWEG.test(req.nextUrl.pathname) && req.method === 'POST')) {
@@ -66,23 +76,40 @@ export async function middleware(req: NextRequest) {
   const pfad = req.nextUrl.pathname;
   const kopf = new Headers(req.headers);
 
+  // Alles, was nicht der interne Dienstweg ist, darf sich NICHT selbst benennen.
+  const ohneSelbstbenennung = () => { for (const k of ['x-make-user', 'x-make-person', 'x-make-hoi', 'x-make-zulieferer']) kopf.delete(k); };
+
   // Interner Dienstweg: Arbeiter, Bote, Takt. Sie dürfen die Person im Kopf
   // mitgeben (x-make-person) — sie handeln im Auftrag.
+  // Seit 05.10. NUR von innen (Docker-Netz, Loopback — lib/zugang/intern.ts): über Caddy ist der Dienstschlüssel kein
+  // Generalschlüssel mehr. Einzige Ausnahme (Übergang): der Mac-Zulieferer, solange MAKE_OS_ZULIEFERER_KEY fehlt.
   const dienstKopf = req.headers.get('x-make-key');
   if (dienstKopf && gleich(dienstKopf, schluessel)) {
-    return NextResponse.next({ request: { headers: kopf } });
+    if (anfrageIntern(req.headers)) return NextResponse.next({ request: { headers: kopf } });
+    if (req.method === 'POST' && ZULIEFERUNG.test(pfad) && !zuliefererSchluessel()) {
+      ohneSelbstbenennung();
+      kopf.delete('x-make-key');
+      kopf.set('x-make-zulieferer', 'alt');
+      return NextResponse.next({ request: { headers: kopf } });
+    }
+    return verweigertApi();
   }
-  // Alles andere darf sich NICHT selbst benennen.
-  kopf.delete('x-make-user');
-  kopf.delete('x-make-person');
-  kopf.delete('x-make-hoi');
+  ohneSelbstbenennung();
 
   // Eingeschränkter Schlüssel des Head of IT (27.09.): öffnet NUR /api/hoi/* — damit meldet der
   // GitHub-Läufer den Außenblick, ohne den Dienstschlüssel zu kennen. Für alles andere: 401.
   const hoiSchluessel = process.env.MAKE_OS_KEY_HOI?.trim();
-  if (dienstKopf && hoiSchluessel && hoiSchluessel.length >= 24 && gleich(dienstKopf, hoiSchluessel)) {
+  if (dienstKopf && hoiSchluessel && hoiSchluessel.length >= EINGESCHRAENKT_MIN && gleich(dienstKopf, hoiSchluessel)) {
     if (!pfad.startsWith('/api/hoi/')) return verweigertApi();
     kopf.set('x-make-hoi', '1');
+    return NextResponse.next({ request: { headers: kopf } });
+  }
+  // Eigener Schlüssel des Mac-Zulieferers (05.10., Vorbild HOI): öffnet NUR die Zulieferung (POST), nie den Dienstweg.
+  const zSchluessel = zuliefererSchluessel();
+  if (dienstKopf && zSchluessel && gleich(dienstKopf, zSchluessel)) {
+    if (req.method !== 'POST' || !ZULIEFERUNG.test(pfad)) return verweigertApi();
+    kopf.delete('x-make-key');
+    kopf.set('x-make-zulieferer', '1');
     return NextResponse.next({ request: { headers: kopf } });
   }
   if (CSP_MELDEWEG.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
@@ -99,7 +126,22 @@ export async function middleware(req: NextRequest) {
 
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);
   // Passt der Zettel noch zum Passwort? (nach einem Wechsel: alle anderen Geräte binnen einer Minute raus)
-  if (sitzung && await standGueltig(req, sitzung, schluessel)) {
+  const urteil = sitzung ? await standPruefen(req, sitzung, schluessel) : 'ungueltig';
+  // Fail-closed (05.10.): weiß der Server gerade nicht, ob der Zettel gilt (kein frischer Stand, keine Antwort), gibt es
+  // 503 statt still durchzulassen — die Sitzung bleibt, ein Neuladen in ein paar Sekunden genügt.
+  if (sitzung && urteil === 'unklar') {
+    if (pfad.startsWith('/api/')) return NextResponse.json({ error: 'MAKE OS ist gerade nicht erreichbar — bitte gleich noch einmal.' }, { status: 503, headers: { 'Retry-After': '5' } });
+    return new NextResponse('MAKE OS startet gerade — bitte in ein paar Sekunden neu laden.', { status: 503, headers: { 'Retry-After': '5', 'Content-Type': 'text/plain; charset=utf-8' } });
+  }
+  if (sitzung && urteil === 'gueltig') {
+    // 2FA-Pflicht der Instanz (05.10.): wer noch keinen zweiten Faktor hat, darf nur ihn einrichten (oder sich abmelden).
+    if (zweiterFaktorOffen(sitzung) && !ZF_EINRICHTEN.some(([m, r]) => m === req.method && r.test(pfad))) {
+      if (pfad.startsWith('/api/')) return NextResponse.json({ error: 'Erst den zweiten Faktor einrichten.', zweiterFaktorEinrichten: true }, { status: 403 });
+      const ziel = req.nextUrl.clone();
+      ziel.pathname = '/anmelden';
+      ziel.search = `?einrichten=2fa${pfad && pfad !== '/' ? `&zu=${encodeURIComponent(pfad)}` : ''}`;
+      return NextResponse.redirect(ziel);
+    }
     kopf.set('x-make-user', sitzung.speicher);
     return NextResponse.next({ request: { headers: kopf } });
   }

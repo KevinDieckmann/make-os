@@ -1,6 +1,7 @@
 // ─── MAKE OS — Aufträge einreihen und ansehen ───────────────────────────────
 // GET  Stand und Liste. POST reiht ein — mehrere auf einmal, das ist der Sinn.
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { reihe, lies, stand, type NeuerAuftrag } from '@/lib/zoe/auftraege';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { auftraege?: NeuerAuftrag[] };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Die Person kommt aus der Sitzung (bzw. dem Dienstkopf), nie aus dem Body —
   // sonst könnte jedes Konto einen Auftrag als jemand anderes einreihen (26.09.).
   const person = personStreng(req) ?? undefined;

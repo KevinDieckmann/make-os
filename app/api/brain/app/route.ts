@@ -7,6 +7,7 @@
 // POST { aktion: 'jetzt' }: Tagesbericht ablegen und den Spiegel abgleichen — sonst macht das der nächtliche Lauf.
 // Nur im Haushalt des Inhabers (Aufgaben und CRM gehören ihm).
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { bauPruefen } from '@/lib/bau/pruefen';
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
   // S1 #19: schreibt (Spiegel, Einstellungen) — nur aus dem aktuellen Bau; der Dienstweg ist ausgenommen.
   const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   let b: { privat?: unknown; aktion?: unknown; zeitAuswertung?: unknown } = {};
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion === 'jetzt') {
     const [{ appTagesbericht }, { appSpiegel }] = await Promise.all([import('@/lib/brain/app-bericht'), import('@/lib/brain/app-spiegel')]);
     const bericht = await appTagesbericht();

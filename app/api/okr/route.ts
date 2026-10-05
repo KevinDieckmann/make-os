@@ -3,6 +3,7 @@
 // Zahlen (Controlling) und den echten Aufgaben zusammen: Objectives + Key
 // Results, ordnet vorhandene Tasks zu und flaggt Lücken. Read-only Synthese.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { gatherBrain } from '@/lib/brain';
@@ -19,7 +20,7 @@ interface TaskLite { title?: string; status?: string; priority?: string; descrip
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { finance?: FinanceState; tasks?: TaskLite[] };
-  try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Server-seitig aus dem Brain; Body bleibt optionaler Override.
   const brain = await gatherBrain();
   const fin = payload.finance ?? brain.finance ?? undefined;

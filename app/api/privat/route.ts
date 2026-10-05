@@ -7,6 +7,7 @@
 //      { schwelle: { id, zuruecksetzen: true } }
 // Nur der eigene Haushalt (Konto mit Haushalt), streng ohne Rückfall.
 
+import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { privatStand, speicherePrivat } from '@/lib/privat/speicher';
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let b: Record<string, unknown>;
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const r = await speicherePrivat(z.haushalt, b, z.person);
   return NextResponse.json(r, { status: r.ok ? 200 : 400 });
 }

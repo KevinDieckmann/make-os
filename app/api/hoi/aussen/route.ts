@@ -4,6 +4,7 @@
 // MAKE_OS_KEY_HOI (Middleware: x-make-hoi) oder dem Dienstweg. Es bleiben die
 // letzten 60 Meldungen. GET: die Reihe für die Seite (Haushalt des Inhabers).
 
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (req.headers.get('x-make-hoi') !== '1' && !istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Nur mit dem HOI-Schlüssel.' }, { status: 403 });
   let roh: unknown;
-  try { roh = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  try { roh = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const m = aussenSaeubern(roh, new Date().toISOString());
   if (!m) return NextResponse.json({ ok: false, fehler: 'Meldung unlesbar.' }, { status: 400 });
   const s = await updateJson<AussenSpeicher>(HOI_AUSSEN, cur => ({ meldungen: [...(cur?.meldungen ?? []), m].slice(-MAX) }));
