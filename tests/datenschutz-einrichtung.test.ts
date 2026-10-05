@@ -132,3 +132,56 @@ describe('Route — nur Haushalt sieht, nur Inhaber ändert, nie über den Diens
     expect(l.wirksam.v).toBeNull();
   });
 });
+
+// ─── Empfänger und Auftragsverarbeiter (Punkt 4) ────────────────────────────
+import { EMPFAENGER_START, empfaengerPruefen, empfaengerWirksam, empfaengerAuskunft, avvOffen, drittlandOhneGarantie, avvText } from '@/lib/datenschutz/einrichtung';
+
+describe('Empfänger-Register — Regeln (rein)', () => {
+  it('Vorgabe-Liste: die angebundenen Dienste, AVV startet „offen“, Whoop/Telegram ohne AVV, Newsletter archiviert', () => {
+    const ids = EMPFAENGER_START.map(e => e.id);
+    for (const id of ['hetzner', 'google-workspace', 'microsoft-365', 'apple-icloud', 'anthropic', 'telegram', 'github', 'healthchecks', 'newsletter', 'whoop']) expect(ids, id).toContain(id);
+    for (const e of EMPFAENGER_START) expect(empfaengerPruefen(e).ok, e.id).toBe(true);
+    expect(EMPFAENGER_START.filter(e => e.rolle === 'auftragsverarbeiter').every(e => e.avv.status === 'offen')).toBe(true);
+    expect(EMPFAENGER_START.find(e => e.id === 'whoop')?.rolle).toBe('eigener-verantwortlicher');
+    expect(EMPFAENGER_START.find(e => e.id === 'newsletter')?.archiviert).toBe(true);
+    expect(empfaengerWirksam({}).length).toBe(EMPFAENGER_START.length);
+    expect(empfaengerWirksam({ empfaenger: [] })).toEqual([]); // bewusst leer bleibt leer
+  });
+  it('AVV „bestätigt“ braucht den Tag; Auftragsverarbeiter nie „nicht nötig“', () => {
+    const h = EMPFAENGER_START.find(e => e.id === 'hetzner')!;
+    expect(empfaengerPruefen({ ...h, avv: { status: 'bestaetigt' } }).ok).toBe(false);
+    expect(empfaengerPruefen({ ...h, avv: { status: 'nicht-noetig' } }).ok).toBe(false);
+    const r = empfaengerPruefen({ ...h, avv: { status: 'bestaetigt', am: '2026-10-05', unterlage: 'AVV-Hosting.pdf' } });
+    expect(r.ok && avvText(r.e.avv)).toBe('bestätigt am 05.10.2026 (AVV-Hosting.pdf)');
+  });
+  it('offene AVVs, Drittland ohne Garantie und die Auskunft (nur in Gebrauch, nur mit Daten Dritter, ohne Notiz)', () => {
+    const l = empfaengerWirksam({});
+    expect(avvOffen(l).map(e => e.id)).not.toContain('newsletter'); // archiviert zählt nicht
+    expect(avvOffen(l).map(e => e.id)).toContain('anthropic');
+    expect(drittlandOhneGarantie(l)).toEqual([]); // Telegram: keine Daten Dritter
+    const a = empfaengerAuskunft(l);
+    expect(a.map(x => x.name).join()).toContain('Anthropic');
+    expect(a.map(x => x.name).join()).not.toMatch(/WHOOP|Telegram|Newsletter/);
+    expect(JSON.stringify(a)).not.toContain('notiz');
+  });
+});
+
+describe('Empfänger — Route', () => {
+  it('nur Inhaber pflegt; erster Schreibzugriff übernimmt die Vorgabe; archivieren und löschen', async () => {
+    const h = EMPFAENGER_START.find(e => e.id === 'hetzner')!;
+    expect((await route.POST(post('pb', { aktion: 'empfaenger', empfaenger: h }))).status).toBe(403);
+    const r = await (await route.POST(post('pa', { aktion: 'empfaenger', empfaenger: { ...h, avv: { status: 'bestaetigt', am: '2026-10-05', unterlage: 'avv.pdf' } } }))).json();
+    expect(r.ok).toBe(true);
+    expect(r.empfaenger.length).toBe(EMPFAENGER_START.length);
+    expect(r.empfaenger.find((e: { id: string }) => e.id === 'hetzner').avv.status).toBe('bestaetigt');
+    const a = await (await route.POST(post('pa', { aktion: 'empfaenger-archiv', id: 'github', archiviert: true }))).json();
+    expect(a.empfaenger.find((e: { id: string }) => e.id === 'github').archiviert).toBe(true);
+    const z = await (await route.POST(post('pa', { aktion: 'empfaenger-archiv', id: 'github', archiviert: false }))).json();
+    expect(z.empfaenger.find((e: { id: string }) => e.id === 'github')).not.toHaveProperty('archiviert');
+    const w = await (await route.POST(post('pa', { aktion: 'empfaenger-weg', id: 'healthchecks' }))).json();
+    expect(w.empfaenger.some((e: { id: string }) => e.id === 'healthchecks')).toBe(false);
+    expect((await route.POST(post('pa', { aktion: 'empfaenger-weg', id: 'gibt-es-nicht' }))).status).toBe(404);
+    const g = await (await route.GET(get('pb'))).json();
+    expect(g.empfaenger.find((e: { id: string }) => e.id === 'hetzner').avv.unterlage).toBe('avv.pdf');
+  });
+});

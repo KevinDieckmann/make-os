@@ -43,8 +43,8 @@ import { SICHERUNG_SATZ, LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, 
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { istDienst } from '@/lib/zugang/dienst';
 import { bauPruefen } from '@/lib/bau/pruefen';
-import { verantwortlicherAuskunft } from '@/lib/datenschutz/einrichtung';
-import { verantwortlicherLaden } from '@/lib/datenschutz/einrichtung-server';
+import { verantwortlicherAuskunft, empfaengerAuskunft } from '@/lib/datenschutz/einrichtung';
+import { verantwortlicherLaden, empfaengerLaden } from '@/lib/datenschutz/einrichtung-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -81,6 +81,9 @@ export async function GET(req: Request) {
     loeschfristVerlaengert: k.loeschfristVerlaengert ?? null,
     // 05.10.: wie lange Daten nach dem Löschen noch in Sicherungen stehen können (wahrheitsgemäß, deploy/generationen.sh).
     sicherungen: SICHERUNG_SATZ,
+    // Art. 15 Abs. 1 lit. c (05.10.): Empfänger und Auftragsverarbeiter in Gebrauch, bei denen Daten Dritter ankommen — aus dem Register
+    // unter System › Datenschutz (EINE Quelle, ohne interne Notizen und AVV-Unterlagen).
+    empfaenger: empfaengerAuskunft(await empfaengerLaden()),
     // Alle Speicher aus einer Stelle (28.09., lib/crm/person-bestaende.ts): CRM-Listen, Dateiablage (nur Metadaten),
     // Import-Konflikte, Head-Vorschläge, kommender Termin, eindeutig zugeordnete Aufgaben.
     ...(await personAufzaehlen(id)),

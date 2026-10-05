@@ -8,9 +8,9 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Feldzeile, feld, LEUCHT, Hinweis } from '../ui';
-import { verantwortlicherPruefen, verantwortlicherText, type Verantwortlicher as V, type VerantwortlicherWirksam } from '@/lib/datenschutz/einrichtung';
+import { verantwortlicherPruefen, verantwortlicherText, type Verantwortlicher as V, type VerantwortlicherWirksam, type Empfaenger } from '@/lib/datenschutz/einrichtung';
 
-export interface EinrichtungAntwort { ok: boolean; verantwortlicher: V | null; wirksam: VerantwortlicherWirksam; darf: boolean; fehler?: string }
+export interface EinrichtungAntwort { ok: boolean; verantwortlicher: V | null; wirksam: VerantwortlicherWirksam; empfaenger: Empfaenger[]; darf: boolean; fehler?: string }
 
 const LEER = { name: '', anschrift: '', mail: '', telefon: '', vertretung: '', dsbName: '', dsbMail: '' };
 

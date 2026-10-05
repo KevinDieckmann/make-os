@@ -246,3 +246,12 @@ export function empfaengerSetzen(liste: readonly Empfaenger[], e: Empfaenger, je
   const raus = [...liste]; raus[i] = { ...neu, ...(liste[i].start ? { start: true } : {}) };
   return raus;
 }
+
+/** Archivieren (nicht in Gebrauch) bzw. zurückholen — ohne `archiviert: false` im Bestand. */
+export function empfaengerArchivieren(liste: readonly Empfaenger[], id: string, an: boolean, jetzt: string): Empfaenger[] {
+  return liste.map(x => {
+    if (x.id !== id) return x;
+    const { archiviert: _alt, ...rest } = x;
+    return { ...rest, ...(an ? { archiviert: true } : {}), geaendert: jetzt };
+  });
+}
