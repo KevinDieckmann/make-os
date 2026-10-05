@@ -10,12 +10,16 @@
 //   2. die Auswertung (`zeitJeEinheit`): Woche (Mo–So) oder Monat, Tage nach
 //      Berliner Wandzeit (nie nach der Zone der Maschine), je Person und gesamt,
 //      Stunden je Kerneinheit · eigene · ohne Einheit, dazu die Top-Aufgaben.
-// Gezählt werden nur bewusste Business-Blöcke — die automatische Zeit kennt
-// keine Aufgabe. Die Einheit eines Blocks kommt LIVE aus seiner Aufgabe (wird
+// Gezählt werden nur bewusste Blöcke der ARBEIT — die automatische Zeit kennt
+// keine Aufgabe. Arbeit (05.10. abends, Kevin: „Die Selbstständigkeit zählt WEITER
+// als Arbeit“) = jeder Business-Block und ein Privat-Block, dessen Einheit (live aus
+// Aufgabe/Mandat, sonst am Block) eine Privat-Arbeits-Einheit ist (lib/einheiten.ts
+// `privatArbeitsEinheit`, unsere Instanz: die Selbstständigkeit). Arbeit ≠ Bereich:
+// die Zeile der Selbstständigkeit steht als Privat-Einheit da, nie als Business. Die Einheit eines Blocks kommt LIVE aus seiner Aufgabe (wird
 // die Einheit der Aufgabe später gesetzt, zählt sie rückwirkend); der am Block
 // gespeicherte Wert ist Rückfall (Aufgabe gelöscht) bzw. die direkte Wahl.
 
-import { BUSINESS_EINHEITEN_NAMEN, einheitName } from '@/lib/einheiten';
+import { ARBEIT_EINHEITEN_NAMEN, KERN_EINHEITEN, bereichVon, einheitName, privatArbeitsEinheit, type Bereich } from '@/lib/einheiten';
 import { sauberEinheit } from '@/lib/planung/einheiten';
 import { aufgabeEinheit, EINHEIT_OHNE } from '@/lib/aufgaben/einheit';
 import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
@@ -27,6 +31,11 @@ import { kalenderwoche } from '@/lib/zeit/kalender-kern';
 /** Das, was die Auswertung und die Säuberung von einer Aufgabe brauchen. */
 export interface AufgabeKurz {
   id: string; titel: string; einheit?: string; business: boolean; offen: boolean;
+  /**
+   * Zählt Zeit auf diese Aufgabe als Arbeit (05.10. abends)? Business-Aufgaben immer; Privat-Aufgaben, wenn ihr Space oder ihre Einheit eine
+   * Privat-Arbeits-Einheit ist (unsere Instanz: der Space der Selbstständigkeit). Fehlt (Altaufrufer) = wie `business`.
+   */
+  arbeit?: boolean;
   /** Mandat der Aufgabe (`Task.bezug.mandatId`, 28.09. abends) — ein Fokus-Block auf die Aufgabe übernimmt es. */
   mandatId?: string;
 }
@@ -35,11 +44,16 @@ type AufgabeRoh = { id: string; title: string; description?: string; projectId: 
 
 /** Aus einer gespeicherten Aufgabe (types/tasks.ts) die Kurzform — Space und Einheit über dieselben Regeln wie der Aufgaben-Schreibweg. */
 export function aufgabeKurz(t: AufgabeRoh, orgZuordnung: Record<string, string> = {}): AufgabeKurz {
+  const business = spaceVonAufgabe(t, orgZuordnung) === 'business';
+  // Aufgaben im Space einer Privat-Arbeits-Einheit (Selbstständigkeit) ohne eigene Einheit zählen für diese Einheit (05.10. abends).
+  const spaceEinheit = privatArbeitsEinheit(t.spaceId);
+  const einheit = aufgabeEinheit(t, orgZuordnung) ?? (spaceEinheit ? KERN_EINHEITEN.find(e => e.id === spaceEinheit)?.label : undefined);
   return {
     id: t.id,
     titel: String(t.title ?? '').slice(0, 120),
-    einheit: aufgabeEinheit(t, orgZuordnung),
-    business: spaceVonAufgabe(t, orgZuordnung) === 'business',
+    einheit,
+    business,
+    arbeit: business || !!spaceEinheit || !!privatArbeitsEinheit(einheit),
     offen: t.status !== 'done',
     ...(typeof t.bezug?.mandatId === 'string' && t.bezug.mandatId ? { mandatId: t.bezug.mandatId } : {}),
   };
@@ -63,7 +77,7 @@ export function zuordnungSaeubern(
   aufgabe?: AufgabeKurz | null,
   mandate?: ReadonlyMap<string, MandatKurz> | null,
 ): BlockZuordnung {
-  if (teile(schluessel).space !== 'business') return {};
+  if (teile(schluessel).space !== 'business') return arbeitImPrivat(roh, aufgabe, mandate);
   const id = typeof roh.aufgabeId === 'string' ? roh.aufgabeId.trim() : '';
   const mitAufgabe = !!id && id.length <= AUFGABE_ID_MAX && !!aufgabe && aufgabe.id === id && aufgabe.business;
   const einheit = (mitAufgabe ? sauberEinheit(aufgabe!.einheit) : null) ?? sauberEinheit(roh.einheit) ?? undefined;
@@ -71,6 +85,24 @@ export function zuordnungSaeubern(
   const bezugRoh = mitAufgabe && aufgabe!.mandatId ? { ...roh, mandatId: aufgabe!.mandatId } : roh;
   const z: BlockZuordnung = { ...(mitAufgabe ? { aufgabeId: id } : {}), ...(einheit ? { einheit } : {}), ...bezugSaeubern(bezugRoh, true) };
   return mitMandatBezug(z, mandate, true);
+}
+
+/**
+ * Privat- (und Gemeinsam-)Blöcke (05.10. abends): eine Zuordnung bleibt nur, wenn sie zu einer Privat-Arbeits-Einheit führt (unsere Instanz:
+ * eine Aufgabe im Space der Selbstständigkeit, die Einheit „Selbstständigkeit“ oder ein Mandat der Selbstständigkeit) — dann zählt der Block als
+ * Arbeit unter Privat. Alles andere verwirft der Schreibweg wie bisher (Business-Arbeit: „ins Business“ umbuchen).
+ */
+function arbeitImPrivat(
+  roh: { aufgabeId?: unknown; einheit?: unknown; mandatId?: unknown; firmaId?: unknown },
+  aufgabe?: AufgabeKurz | null,
+  mandate?: ReadonlyMap<string, MandatKurz> | null,
+): BlockZuordnung {
+  const id = typeof roh.aufgabeId === 'string' ? roh.aufgabeId.trim() : '';
+  const mitAufgabe = !!id && id.length <= AUFGABE_ID_MAX && !!aufgabe && aufgabe.id === id && !aufgabe.business && !!aufgabe.arbeit;
+  const einheit = (mitAufgabe ? sauberEinheit(aufgabe!.einheit) : null) ?? sauberEinheit(roh.einheit) ?? undefined;
+  const bezugRoh = mitAufgabe && aufgabe!.mandatId ? { ...roh, mandatId: aufgabe!.mandatId } : roh;
+  const z = mitMandatBezug({ ...(mitAufgabe ? { aufgabeId: id } : {}), ...(einheit ? { einheit } : {}), ...bezugSaeubern(bezugRoh, true) } as BlockZuordnung, mandate, true);
+  return privatArbeitsEinheit(z.einheit) ? z : {};
 }
 
 /**
@@ -130,6 +162,8 @@ export interface EinheitZeile {
   id: string;
   label: string;
   art: 'kern' | 'eigen' | 'ohne';
+  /** Bereich der Einheit (05.10. abends): `privat` für eine Privat-Arbeits-Einheit (Selbstständigkeit) — Anzeige „Privat · …“, nie Business. */
+  bereich: Bereich;
   sek: number;
   bloecke: number;
   /** Die Aufgaben mit der meisten Zeit, höchstens TOP_AUFGABEN. */
@@ -144,15 +178,37 @@ export interface ZeitJeEinheit { zeitraum: Zeitraum; von: string; bis: string; l
 export const TOP_AUFGABEN = 3;
 const norm = (s: string) => s.toLocaleLowerCase('de-DE');
 
-/** Die Business-Blöcke einer Datei, deren Anfang (Berlin) im Zeitraum liegt. */
-export function bloeckeImZeitraum(d: ZeitDatei, von: string, bis: string): FokusBlock[] {
+/** Wer entscheidet, ob ein Block Arbeit ist — `arbeitsPruefer`; ohne Angabe nur Business-Blöcke (wie bis 05.10.). */
+export type ArbeitsPruefer = (b: FokusBlock) => boolean;
+export const nurBusinessBloecke: ArbeitsPruefer = b => teile(b.schluessel).space === 'business';
+
+/**
+ * Ist ein Block Arbeit (05.10. abends)? Business-Blöcke immer; Privat-/Gemeinsam-Blöcke, wenn ihre Einheit — live aus Aufgabe bzw. Mandat,
+ * sonst die am Block — eine Privat-Arbeits-Einheit ist (unsere Instanz: die Selbstständigkeit). Aufgaben/Mandate dürfen fehlen.
+ */
+export function arbeitsPruefer(aufgaben?: ReadonlyMap<string, AufgabeKurz> | null, mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null): ArbeitsPruefer {
+  const karte = aufgaben ?? new Map<string, AufgabeKurz>();
+  return b => nurBusinessBloecke(b) || !!privatArbeitsEinheit(einheitVonBlock(b, karte, mandate));
+}
+
+/** Bereich einer Einheiten-Zeile (Anzeige „Privat · …“): eine feste Einheit nach ihrem Bereich, sonst Business. */
+export const bereichVonEinheit = (name: string): Bereich => {
+  const g = KERN_EINHEITEN.find(e => norm(e.label) === norm(name))?.id;
+  return g ? bereichVon(g) : 'business';
+};
+
+/**
+ * Die Arbeits-Blöcke einer Datei, deren Anfang (Berlin) im Zeitraum liegt. Ohne Prüfer nur die Business-Blöcke (wie bisher); mit
+ * `arbeitsPruefer(…)` auch die Arbeit unter Privat (Selbstständigkeit).
+ */
+export function bloeckeImZeitraum(d: ZeitDatei, von: string, bis: string, istArbeit: ArbeitsPruefer = nurBusinessBloecke): FokusBlock[] {
   // Die Tages-Schlüssel der Datei folgen der Zone des Servers — deshalb einen Tag Puffer und dann nach Berlin filtern.
   const vorher = tagPlus(von, -1), nachher = tagPlus(bis, 1);
   const aus: FokusBlock[] = [];
   for (const [tag, t] of Object.entries(d.tage ?? {})) {
     if (tag < vorher || tag > nachher) continue;
     for (const b of t.bloecke ?? []) {
-      if (teile(b.schluessel).space !== 'business' || !(b.sek > 0)) continue;
+      if (!(b.sek > 0) || !istArbeit(b)) continue;
       const bt = berlinTag(b.von);
       if (bt >= von && bt <= bis) aus.push(b);
     }
@@ -161,8 +217,9 @@ export function bloeckeImZeitraum(d: ZeitDatei, von: string, bis: string): Fokus
 }
 
 /**
- * Blöcke → Zeilen: die Business-Einheiten immer (seit 05.10. ohne die Selbstständigkeit — sie gehört zu Privat; ältere Blöcke mit ihr
- * zählen weiter als eigene Zeile), eigene nur mit Zeit (nach Zeit), „ohne Einheit“ immer zuletzt.
+ * Blöcke → Zeilen: die Arbeits-Einheiten immer (`ARBEIT_EINHEITEN_NAMEN` — unsere Instanz alle drei; die Selbstständigkeit mit `bereich:
+ * 'privat'`, 05.10. abends: sie zählt WEITER als Arbeit, steht aber unter Privat, nie als Business-Einheit), eigene nur mit Zeit (nach Zeit),
+ * „ohne Einheit“ immer zuletzt.
  */
 export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<string, AufgabeKurz>, mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null): EinheitAuswertung {
   const topf = new Map<string, { label: string; sek: number; bloecke: number; aufgaben: Map<string, number>; ohneAufgabeSek: number }>();
@@ -171,7 +228,7 @@ export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<
     if (!t) { t = { label, sek: 0, bloecke: 0, aufgaben: new Map(), ohneAufgabeSek: 0 }; topf.set(id, t); }
     return t;
   };
-  for (const n of BUSINESS_EINHEITEN_NAMEN) holen(norm(n), n);
+  for (const n of ARBEIT_EINHEITEN_NAMEN) holen(norm(n), n);
   holen(EINHEIT_OHNE, 'ohne Einheit');
   let sek = 0;
   for (const b of bloecke) {
@@ -181,20 +238,20 @@ export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<
     if (b.aufgabeId) t.aufgaben.set(b.aufgabeId, (t.aufgaben.get(b.aufgabeId) ?? 0) + b.sek);
     else t.ohneAufgabeSek += b.sek;
   }
-  const kern = new Set(BUSINESS_EINHEITEN_NAMEN.map(norm));
+  const kern = new Set(ARBEIT_EINHEITEN_NAMEN.map(norm));
   const zeile = (id: string, art: EinheitZeile['art']): EinheitZeile => {
     const t = topf.get(id)!;
     const top = [...t.aufgaben.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .slice(0, TOP_AUFGABEN)
       .map(([aid, s]) => ({ id: aid, titel: aufgaben.get(aid)?.titel || 'Aufgabe (gelöscht)', sek: s }));
-    return { id: art === 'ohne' ? EINHEIT_OHNE : t.label, label: t.label, art, sek: t.sek, bloecke: t.bloecke, aufgaben: top, ohneAufgabeSek: t.ohneAufgabeSek };
+    return { id: art === 'ohne' ? EINHEIT_OHNE : t.label, label: t.label, art, bereich: art === 'ohne' ? 'business' : bereichVonEinheit(t.label), sek: t.sek, bloecke: t.bloecke, aufgaben: top, ohneAufgabeSek: t.ohneAufgabeSek };
   };
   const eigene = [...topf.keys()].filter(k => k !== EINHEIT_OHNE && !kern.has(k) && topf.get(k)!.sek > 0)
     .sort((a, b) => topf.get(b)!.sek - topf.get(a)!.sek || a.localeCompare(b));
   return {
     sek, bloecke: bloecke.length,
-    zeilen: [...BUSINESS_EINHEITEN_NAMEN.map(n => zeile(norm(n), 'kern')), ...eigene.map(k => zeile(k, 'eigen')), zeile(EINHEIT_OHNE, 'ohne')],
+    zeilen: [...ARBEIT_EINHEITEN_NAMEN.map(n => zeile(norm(n), 'kern')), ...eigene.map(k => zeile(k, 'eigen')), zeile(EINHEIT_OHNE, 'ohne')],
   };
 }
 
@@ -209,8 +266,9 @@ export function zeitJeEinheit(
   const { von, bis, label } = zeitraumVon(zeitraum, stichtag);
   const karte = new Map(aufgaben.map(a => [a.id, a]));
   const alle: FokusBlock[] = [];
+  const istArbeit = arbeitsPruefer(karte, mandate);
   const jePerson = personen.map(p => {
-    const b = bloeckeImZeitraum(p.datei, von, bis);
+    const b = bloeckeImZeitraum(p.datei, von, bis, istArbeit);
     alle.push(...b);
     return { person: p.person, name: p.name, auswertung: auswerten(b, karte, mandate) };
   });

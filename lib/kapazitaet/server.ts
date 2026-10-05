@@ -5,8 +5,10 @@
 //   Kalender     verfuegbarkeitFuer (K1: Wochenvorlage, Abwesend, Feiertage, Termine) — nur Konten
 //   Erholung     Whoop-Recovery (`vitals[--person]`), NUR wenn die Person ihre Gesundheit mit allen anderen Konten
 //                des Haushalts teilt — und dann nur als Team-Faktor (fuerBetrachter entfernt Einzelwerte)
-//   Ist          bewusste Business-Fokuszeit (`zeit--<person>`, Fokus-Blöcke), je Meilenstein über die Aufgaben-Liste
-//   Posten       Meilensteine (Business) und Jahresziele mit Aufwand
+//   Ist          bewusste Fokuszeit der ARBEIT (`zeit--<person>`, Fokus-Blöcke: Business + die Selbstständigkeit unter Privat), je Meilenstein
+//                über die Aufgaben-Liste
+//   Posten       Meilensteine und Jahresziele mit Aufwand, die als Arbeit zählen (Business + Selbstständigkeit — 05.10. abends, Kevin: „Die
+//                Selbstständigkeit zählt WEITER als Arbeit“; lib/planung/bereich.ts `zaehltAlsArbeit`, Arbeit ≠ Bereich)
 // Die Rechnung selbst ist rein: lib/kapazitaet/modell.ts.
 
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
@@ -22,11 +24,12 @@ import { verfuegbarkeitFuer } from '@/lib/kalender/verfuegbarkeit';
 import { speicherFuer } from '@/lib/zoe/raum';
 import type { VitalsLog } from '@/lib/vitals';
 import { ladeZeit } from '@/lib/zeitmessung/speicher';
-import { bloeckeImZeitraum, berlinTag } from '@/lib/zeitmessung/einheiten';
+import { bloeckeImZeitraum, berlinTag, arbeitsPruefer, aufgabeKurz } from '@/lib/zeitmessung/einheiten';
 import { ladeAufgaben } from '@/lib/aufgaben/sicht';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { mandatKurzListe, mandatLabel } from '@/lib/planung/mandat';
-import { meilensteinSpace } from '@/lib/planung/meilensteine';
+import { meilensteinSpeicherSpace } from '@/lib/planung/meilensteine';
+import { zaehltAlsArbeit } from '@/lib/planung/bereich';
 import { meilensteinVonAufgabe, zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { zielJahr } from '@/lib/planung/zeitstrahl';
 import type { Meilenstein, ZieleDatei } from '@/lib/planung/typen';
@@ -37,6 +40,9 @@ import { planFesthalten, planOhnePersonen, sauberPlanDatei, planAufbewahrenAb } 
 import { WOCHEN_STANDARD, type KapaDatei, type KapaStand, type PersonEingabe, type PostenEingabe, type KapaKennzahlen, type PlanDatei } from './typen';
 
 const KONTO = 'konto-';
+
+/** Ein Meilenstein zählt in der Kapazität, wenn er Arbeit ist: gespeichert Business (auch die Selbstständigkeit, die seit 05.10. unter Privat steht). */
+const alsArbeit = (m: Meilenstein): boolean => zaehltAlsArbeit({ space: meilensteinSpeicherSpace(m), einheit: m.einheit });
 
 /** Der Bestandsname eines Haushalts (ohne gültigen Haushalt: der Inhaber-Bestand). */
 export const kapaSpeicherFuer = (h: string | null | undefined) => (h && HAUSHALT_OK.test(h) ? `kapazitaet--${h}` : 'kapazitaet--inhaber');
@@ -101,7 +107,7 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
     sicher(() => ladeCrm(), null),
     sicher(async () => sauberPlanDatei(await loadJson<PlanDatei>(kapaPlanSpeicherFuer(await haushaltDesInhabers()))), { wochen: [] } as PlanDatei),
   ]);
-  const ms = (msDatei?.meilensteine ?? []).filter(m => meilensteinSpace(m) === 'business');
+  const ms = (msDatei?.meilensteine ?? []).filter(alsArbeit);
   // Teilen-Regel gegen ALLE Konten des Haushalts (auch solche, die gerade nicht im aktiven Team stehen) — jedes davon darf
   // /api/kapazitaet lesen und sähe den Team-Faktor (DSGVO-Prüfung 04.10., Art. 9).
   const haushalt = await haushaltDesInhabers();
@@ -111,6 +117,8 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
   const ist: { person: string; tag: string; stunden: number }[] = [];
   const istJeMs = new Map<string, number>();
   const aufgabeNach = new Map((aufgaben?.tasks ?? []).map(t => [t.id, t]));
+  // Arbeit (05.10. abends): Business-Blöcke und die Blöcke der Selbstständigkeit unter Privat (Einheit live aus Aufgabe/Mandat).
+  const istArbeit = arbeitsPruefer(new Map((aufgaben?.tasks ?? []).map(t => [t.id, aufgabeKurz(t)])), new Map(mandatKurzListe(crm).map(m => [m.id, m])));
   const eingaben: PersonEingabe[] = await Promise.all(personen.map(async p => {
     if (!p.speicher) return { id: p.id, name: p.name, quelle: 'team' as const };
     const sp = p.speicher;
@@ -126,7 +134,7 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
     const andere = [...kontoSpeicher].filter(x => x !== sp);
     const teilt = !!k && andere.every(a => k.teilt?.gesundheit?.includes(a)) && !!datei.personen[p.id]?.erholungAm;
     if (zeit) {
-      for (const b of bloeckeImZeitraum(zeit, tagPlus(heute, -400), heute)) {
+      for (const b of bloeckeImZeitraum(zeit, tagPlus(heute, -400), heute, istArbeit)) {
         const tag = berlinTag(b.von);
         if (tag >= istAb) ist.push({ person: p.id, tag, stunden: b.sek / 3600 });
         const task = b.aufgabeId ? aufgabeNach.get(b.aufgabeId) : undefined;
@@ -146,7 +154,7 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
       ...(istJeMs.has(m.id) ? { istStunden: istJeMs.get(m.id) } : {}),
     })),
     // Jahresziele mit eigenem Aufwand (zusätzlich zu ihren Meilensteinen); Termin = Frist, sonst Ende des Zieljahres.
-    ...(zieleDatei?.jahr ?? []).filter(z => z.space !== 'privat' && (z.aufwand ?? 0) > 0).map(z => ({
+    ...(zieleDatei?.jahr ?? []).filter(z => zaehltAlsArbeit(z, true) && (z.aufwand ?? 0) > 0).map(z => ({
       art: 'ziel' as const, id: z.id, titel: z.titel, termin: z.termin ?? `${zielJahr(z, laufend)}-12-31`, aufwand: z.aufwand,
       ...(z.personen?.length ? { personen: z.personen } : {}), fortschritt: z.erledigt ? 100 : z.fortschritt, erledigt: !!z.erledigt, ...(z.rang ? { rang: z.rang } : {}),
     })),
@@ -282,8 +290,8 @@ export async function kapaEntfernteKontenAufraeumen(haushalt: string): Promise<{
 async function postenMitPersonen() {
   const [ms, ziele] = await Promise.all([loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'), loadJson<ZieleDatei>('ziele')]);
   return [
-    ...(ms?.meilensteine ?? []).filter(m => meilensteinSpace(m) === 'business' && m.personen?.length).map(m => ({ art: 'meilenstein' as const, id: m.id, titel: m.titel, personen: m.personen })),
-    ...(ziele?.jahr ?? []).filter(z => z.space !== 'privat' && z.personen?.length).map(z => ({ art: 'ziel' as const, id: z.id, titel: z.titel, personen: z.personen })),
+    ...(ms?.meilensteine ?? []).filter(m => alsArbeit(m) && m.personen?.length).map(m => ({ art: 'meilenstein' as const, id: m.id, titel: m.titel, personen: m.personen })),
+    ...(ziele?.jahr ?? []).filter(z => zaehltAlsArbeit(z, true) && z.personen?.length).map(z => ({ art: 'ziel' as const, id: z.id, titel: z.titel, personen: z.personen })),
   ];
 }
 

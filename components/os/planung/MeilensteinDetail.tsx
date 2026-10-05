@@ -22,7 +22,8 @@ import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import { SPACE_LABEL, SPACE_FARBE } from '@/lib/make-one/space-regeln';
-import { meilensteinSpace } from '@/lib/planung/meilensteine';
+import { meilensteinSpace, meilensteinSpeicherSpace } from '@/lib/planung/meilensteine';
+import { hatPrivatEinheit, zaehltAlsArbeit } from '@/lib/planung/bereich';
 import {
   aufgabenVonMeilenstein, aufgabenStand, fortschrittAusAufgaben, wirksamerFortschritt, meilensteinListeId, meilensteinAufgabenSpace,
   meilensteinProjektId, zielVonMeilenstein,
@@ -189,7 +190,7 @@ export function MeilensteinDetail({ id }: { id: string }) {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise }}>
           <Chip farbe={SPACE_FARBE[sp]}>{SPACE_LABEL[sp]}</Chip>
           {space && space.id !== 'privat' && <Chip farbe={space.farbe}>{space.label}</Chip>}
-          {m.einheit && space?.label !== m.einheit && <Chip farbe={SPACE_FARBE.business}>{m.einheit}</Chip>}
+          {m.einheit && space?.label !== m.einheit && <Chip farbe={hatPrivatEinheit(m) ? SPACE_FARBE.privat : SPACE_FARBE.business}>{m.einheit}</Chip>}
           <span style={{ color: spaet ? LEUCHT.kritisch : undefined }}>{m.faellig ? `${spaet ? 'überfällig seit' : 'fällig'} ${m.faellig.slice(8)}.${m.faellig.slice(5, 7)}.${m.faellig.slice(0, 4)}` : m.zeitfenster ?? 'ohne Datum'}</span>
           {ziel && <span>Ziel: <Link href={WEG.ziel(ziel.id)} style={{ color: C.inkDim, fontWeight: 600, textDecoration: 'none' }}>{ziel.titel}</Link> · {ziel.erledigt ? 100 : ziel.fortschritt} %</span>}
         </div>
@@ -203,7 +204,7 @@ export function MeilensteinDetail({ id }: { id: string }) {
         )}
         {m.messlatte && <div style={{ marginTop: 8, fontSize: TYP.bedien, color: C.inkDim }}><span style={mikro}>Messlatte </span>{m.messlatte}</div>}
         {/* Kapazität (04.10.): Aufwand, wer daran arbeitet, machbar bis zum Datum? — nur Business, gerechnet auf dem Server. */}
-        {sp === 'business' && !m.erledigt && <MachbarZeile art="meilenstein" id={m.id} />}
+        {zaehltAlsArbeit({ space: meilensteinSpeicherSpace(m), einheit: m.einheit }) && !m.erledigt && <MachbarZeile art="meilenstein" id={m.id} />}
         {/* Fortschritt: aus den Aufgaben, sobald es welche gibt — sonst von Hand. */}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
           <div style={{ flex: '1 1 220px', minWidth: 0 }}>

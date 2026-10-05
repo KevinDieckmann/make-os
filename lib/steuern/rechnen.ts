@@ -209,6 +209,13 @@ export interface Prognose {
   jahr: number;
   zeilen: PrognoseZeile[];
   je: Record<Einheit, { soll: number; ist: number | null; deckung: number | null }>;
+  /**
+   * Woher die abgezogenen Vorauszahlungen auf Einkommen- und Gewerbesteuer der Selbstständigkeit kommen (05.10. abends, Kevin: „eine
+   * Quelle“): mit Finanzplanung NUR von dort (`EstJahr.vorausgezahlt` — „Vorauszahlungen schon bezahlt“ + Quartalszahlungen im Plan), sonst
+   * aus den Steuer-Einstellungen (je Quartal laut Bescheid, bis heute fällig). Nie beide — kein Doppelabzug. `ungenutzt` = Beträge der
+   * Steuer-Einstellungen, die wegen der Finanzplanung NICHT zählen (Hinweis in der Oberfläche).
+   */
+  vorauszahlung: { quelle: 'finanzplanung' | 'einstellungen' | 'keine'; est: number; gewst: number; ungenutzt?: { est?: number; gewstKdc?: number } };
 }
 export interface Jahresgewinn { gewinn: number; monate: number; hochgerechnet: number; quelle: string }
 
@@ -231,7 +238,6 @@ const vzBisHeute = (heute: string, monate: number[]) => monate.filter(m => `${he
 export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<SteuerFirma, Jahresgewinn | null>, ustOffen: Partial<Record<SteuerFirma, number>>, ug: { rechnungen: number } = { rechnungen: 0 }, est: EstGemeinsam | null = null): Prognose {
   const jahr = Number(heute.slice(0, 4));
   const z: PrognoseZeile[] = [];
-  const e4 = (n?: number) => (n ?? 0) * 4;
   const gezahlt = (n: number | undefined, monate: number[]) => (n ?? 0) * vzBisHeute(heute, monate);
   const R = WEG.steuern('ruecklage');
   // Umsatzsteuer: laufender Zeitraum, noch nicht angemeldet.
@@ -240,20 +246,31 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<S
   const PLAN = WEG.finanzplanung('privat', 'selbst');
   const zahl = (n: number) => Math.round(n).toLocaleString('de-DE');
   const titelEst = `Einkommensteuer ${jahr} gemeinsam (Gehalt + Selbstständigkeit)`;
+  let vorauszahlung: Prognose['vorauszahlung'];
   if (!est) {
     z.push({ id: 'est', einheit: 'privat', titel: titelEst, betrag: null, formel: 'Finanzplanung › Selbstständigkeit › Einkommensteuer gemeinsam', luecke: `Die Finanzplanung rechnet ${jahr} nicht (kein Plan oder Jahr außerhalb des Plans) — keine Schätzung`, href: PLAN });
     if (e.kdc.gewerbe) z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: null, formel: '(Gewinn − Freibetrag) × Messzahl × Hebesatz, aus der Finanzplanung', luecke: `Die Finanzplanung rechnet ${jahr} nicht — keine Schätzung`, href: PLAN });
+    // Ohne Finanzplanung bleibt die Steuer-Einstellung die Quelle der Vorauszahlungen (hier nur benannt — ohne Plan gibt es keinen Betrag).
+    const vEst = gezahlt(e.vorauszahlung.est, [3, 6, 9, 12]), vGew = gezahlt(e.vorauszahlung.gewstKdc, [2, 5, 8, 11]);
+    vorauszahlung = { quelle: vEst || vGew ? 'einstellungen' : 'keine', est: vEst, gewst: vGew };
   } else {
     // Mehrsteuer über der Lohnsteuer (die steckt in der Netto-Tabelle) nach Anrechnung § 35, mit Soli und Handwert-Korrekturen der Finanzplanung
-    // (`summe` = Steuer des Jahres wie in Rücklage und Zahlung, ohne die Gewerbesteuer) — minus die bis heute gezahlten Vorauszahlungen.
+    // (`summe` = Steuer des Jahres wie in Rücklage und Zahlung, ohne die Gewerbesteuer) — minus die Vorauszahlungen.
+    // EINE Quelle (05.10. abends, Kevin): mit Finanzplanung zählen NUR deren Vorauszahlungen (`est.vorausgezahlt` — Einkommen- und
+    // Gewerbesteuer zusammen, wie Rücklage und Abschlusszahlung dort), zuerst auf die Einkommensteuer, der Rest auf die Gewerbesteuer.
+    // Die Beträge der Steuer-Einstellungen zählen dann nicht (sonst Doppelabzug) — sie stehen nur noch als Hinweis da.
     const estSoll = est.summe - est.gewst;
-    const vzEst = gezahlt(e.vorauszahlung.est, [3, 6, 9, 12]);
+    const vzPlan = Math.max(0, Number.isFinite(est.vorausgezahlt) ? est.vorausgezahlt : 0);
+    const vzEst = Math.min(Math.max(0, estSoll), vzPlan);
+    const vzGew = est.gewerbe ? Math.min(Math.max(0, est.gewst), vzPlan - vzEst) : 0;
+    const ungenutztEst = gezahlt(e.vorauszahlung.est, [3, 6, 9, 12]), ungenutztGew = gezahlt(e.vorauszahlung.gewstKdc, [2, 5, 8, 11]);
+    vorauszahlung = { quelle: 'finanzplanung', est: vzEst, gewst: vzGew, ...(ungenutztEst || ungenutztGew ? { ungenutzt: { ...(ungenutztEst ? { est: ungenutztEst } : {}), ...(ungenutztGew ? { gewstKdc: ungenutztGew } : {}) } } : {}) };
+    const quelleText = 'Vorauszahlungen laut Finanzplanung (Selbstständigkeit › „Vorauszahlungen schon bezahlt“ + Quartalszahlungen im Plan)';
     z.push({ id: 'est', einheit: 'privat', titel: titelEst, betrag: Math.max(0, estSoll - vzEst),
-      formel: `zvE ${zahl(est.zve)} € (Gewinn ${zahl(est.gewinn)} € + Lohneinkünfte ${zahl(est.lohn)} €${est.splitting ? ', Splitting' : ''}) → Mehrsteuer ${zahl(est.est)} €${est.anrechnung ? ` − ${zahl(est.anrechnung)} € Anrechnung § 35` : ''}${est.soli ? ` + ${zahl(est.soli)} € Soli` : ''}${est.korr ? ` ${est.korr > 0 ? '+' : '−'} ${zahl(Math.abs(est.korr))} € von Hand` : ''} − ${zahl(vzEst)} € gezahlte Vorauszahlungen${e.vorauszahlung.est ? ` (Jahr: ${zahl(e4(e.vorauszahlung.est))} €)` : ''} · Finanzplanung${est.plan ? ` „${est.plan}“` : ''}`, href: PLAN });
+      formel: `zvE ${zahl(est.zve)} € (Gewinn ${zahl(est.gewinn)} € + Lohneinkünfte ${zahl(est.lohn)} €${est.splitting ? ', Splitting' : ''}) → Mehrsteuer ${zahl(est.est)} €${est.anrechnung ? ` − ${zahl(est.anrechnung)} € Anrechnung § 35` : ''}${est.soli ? ` + ${zahl(est.soli)} € Soli` : ''}${est.korr ? ` ${est.korr > 0 ? '+' : '−'} ${zahl(Math.abs(est.korr))} € von Hand` : ''} − ${zahl(vzEst)} € ${quelleText} · Finanzplanung${est.plan ? ` „${est.plan}“` : ''}`, href: PLAN });
     if (est.gewerbe) {
-      const vzGew = gezahlt(e.vorauszahlung.gewstKdc, [2, 5, 8, 11]);
       z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: Math.max(0, est.gewst - vzGew),
-        formel: `(${zahl(est.gewinn)} € Gewinn − ${zahl(est.freibetrag)} € Freibetrag) × Messzahl × ${zahl(est.hebesatz)} % Hebesatz = ${zahl(est.gewst)} € − ${zahl(vzGew)} € Vorauszahlungen (bis zum ${est.anrechnungFaktor}-fachen Messbetrag auf die Einkommensteuer angerechnet)`, href: PLAN });
+        formel: `(${zahl(est.gewinn)} € Gewinn − ${zahl(est.freibetrag)} € Freibetrag) × Messzahl × ${zahl(est.hebesatz)} % Hebesatz = ${zahl(est.gewst)} € − ${zahl(vzGew)} € ${vzGew ? 'Rest der ' : ''}${quelleText} (bis zum ${est.anrechnungFaktor}-fachen Messbetrag auf die Einkommensteuer angerechnet)`, href: PLAN });
     }
   }
   // KD Ventures: Körperschaftsteuer + Soli, Gewerbesteuer.
@@ -273,7 +290,7 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<S
     const ist = e.ruecklageIst[x] ?? null;
     return [x, { soll, ist, deckung: ist != null && soll > 0 ? ist / soll : ist != null ? 1 : null }];
   })) as Prognose['je'];
-  return { jahr, zeilen: z, je };
+  return { jahr, zeilen: z, je, vorauszahlung };
 }
 
 // ── 4 · Belege ──────────────────────────────────────────────────────────────
@@ -377,7 +394,9 @@ export function steuernNurBusiness<T extends SteuerSichtTeile>(st: T): T {
     einstellungen: { ...e, kdc: { ...STANDARD_STEUERN.kdc }, privat: { ...STANDARD_STEUERN.privat }, steuerquote: null, vorauszahlung: vz, ruecklageIst },
     fristen: st.fristen.filter(f => biz(f.einheit)),
     ust: st.ust.filter(u => biz(u.firma)),
-    prognose: { ...st.prognose, zeilen: st.prognose.zeilen.filter(z => biz(z.einheit)), je },
+    // Vorauszahlungen (05.10. abends): die Einkommensteuer ist privat — in der Business-Sicht nie; die Gewerbesteuer der Selbstständigkeit nur,
+    // wenn diese Instanz sie im Business führt.
+    prognose: { ...st.prognose, zeilen: st.prognose.zeilen.filter(z => biz(z.einheit)), je, vorauszahlung: biz('kdc') ? { quelle: st.prognose.vorauszahlung.quelle, est: 0, gewst: st.prognose.vorauszahlung.gewst } : { quelle: 'keine', est: 0, gewst: 0 } },
     gewinn: Object.fromEntries(Object.entries(st.gewinn).filter(([k]) => biz(k))),
     uebergabe: { ...st.uebergabe, jahresPunkte: st.uebergabe.jahresPunkte.filter(p => !p.einheit || biz(p.einheit)) },
   };

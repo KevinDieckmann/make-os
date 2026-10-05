@@ -3,11 +3,13 @@
 // mit Wettkampf-/Stichtag. Tägliche Routinen zählen nicht — sie wären ein gleichmäßiges Rauschen über jede Woche.
 // Gesundheit ist persönlich: Stränge einer Person sind `privat` (die andere sieht ein anonymes „belegt“ — dieselbe
 // Regel wie Gesundheits-Termine im Kalender). Gemeinsame Routinen (Besitz „beide“) sind nicht privat.
-// Routine-Kategorie: gesundheit → Privat › Gesundheit, leben → Privat › Ziele & Planung, business → Business › Ziele & Planung.
+// Routine-Kategorie: gesundheit → Privat › Gesundheit, leben → Privat › Ziele & Planung, business → Business › Ziele & Planung
+// (eine Routine der Selbstständigkeit → Privat › Ziele & Planung, 05.10. abends).
 
 import { BEIDE, gewichtVon, statusVon, tagAus, themaPfad, type Strang } from '../modell';
+import { hatPrivatEinheit } from '@/lib/planung/bereich';
 
-export interface GsRoutine { id: string; label: string; kategorie: string; aktiv: boolean; owner?: string; rhythmus?: string; naechstesMal?: string; space?: string }
+export interface GsRoutine { id: string; label: string; kategorie: string; aktiv: boolean; owner?: string; rhythmus?: string; naechstesMal?: string; space?: string; einheit?: string }
 export interface GsSportZiel { id: string; titel: string; datum?: string; erledigt?: boolean }
 export interface GesundheitDaten {
   routinen: GsRoutine[];
@@ -26,7 +28,9 @@ export function gesundheitStraenge(d: GesundheitDaten): Strang[] {
     if (!tag || !r.aktiv || TAEGLICH.has(r.rhythmus ?? 'taeglich')) continue;
     const person = !r.owner || r.owner === BEIDE ? BEIDE : r.owner;
     const gesundheit = r.kategorie === 'gesundheit';
-    const pfad = gesundheit ? themaPfad('privat', 'gesundheit') : themaPfad(r.kategorie === 'business' || r.space === 'business' ? 'business' : 'privat', 'planung');
+    // 05.10. abends: eine Routine einer Privat-Einheit (Selbstständigkeit) läuft unter Privat, auch mit Kategorie „business“.
+    const business = !hatPrivatEinheit(r) && (r.kategorie === 'business' || r.space === 'business');
+    const pfad = gesundheit ? themaPfad('privat', 'gesundheit') : themaPfad(business ? 'business' : 'privat', 'planung');
     aus.push({ id: `routine:${r.id}`, quelle: 'training', titel: r.label, pfad, person, zeit: { tag }, gewicht: gewichtVon('training'), status: statusVon(false, tag, d.heute), link: d.links.routinen, ...(gesundheit && person !== BEIDE ? { privat: true } : {}) });
   }
   for (const s of d.sport) {

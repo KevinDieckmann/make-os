@@ -36,12 +36,12 @@ export const istRegisterKennung = (v: unknown): v is RegisterKennung => typeof v
 // ersetzt die ANZEIGENAMEN der drei festen Gesellschaften — die Kennungen bleiben. Ohne Variable gilt alles wie bisher (unsere
 // Instanz). NEXT_PUBLIC_, weil Oberfläche und Server dieselben Namen zeigen müssen (Next setzt den Wert beim Bauen bzw. im
 // Dev-Server ein). Ungültiges wird ignoriert (Vorgabe bleibt). Doku: DEMO.md.
-type NamenUeberschreibung = Partial<Record<Gesellschaftskennung, { label?: string; kurz?: string; bereich?: Bereich }>>;
+type NamenUeberschreibung = Partial<Record<Gesellschaftskennung, { label?: string; kurz?: string; bereich?: Bereich; arbeit?: boolean }>>;
 function namenAusUmgebung(): NamenUeberschreibung {
   const roh = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN : undefined;
   if (!roh) return {};
   try {
-    const o = JSON.parse(roh) as Record<string, { label?: unknown; kurz?: unknown; bereich?: unknown }>;
+    const o = JSON.parse(roh) as Record<string, { label?: unknown; kurz?: unknown; bereich?: unknown; arbeit?: unknown }>;
     const aus: NamenUeberschreibung = {};
     for (const id of ['kdc', 'kdv', 'ug'] as const) {
       const e = o?.[id];
@@ -49,7 +49,8 @@ function namenAusUmgebung(): NamenUeberschreibung {
       const label = typeof e.label === 'string' && e.label.trim() ? e.label.trim().slice(0, 80) : undefined;
       const kurz = typeof e.kurz === 'string' && e.kurz.trim() ? e.kurz.trim().slice(0, 20) : undefined;
       const bereich = e.bereich === 'privat' || e.bereich === 'business' ? e.bereich : undefined;
-      if (label || kurz || bereich) aus[id] = { ...(label ? { label } : {}), ...(kurz ? { kurz } : {}), ...(bereich ? { bereich } : {}) };
+      const arbeit = typeof e.arbeit === 'boolean' ? e.arbeit : undefined;
+      if (label || kurz || bereich || arbeit !== undefined) aus[id] = { ...(label ? { label } : {}), ...(kurz ? { kurz } : {}), ...(bereich ? { bereich } : {}), ...(arbeit !== undefined ? { arbeit } : {}) };
     }
     return aus;
   } catch { return {}; }
@@ -78,6 +79,22 @@ export const BEREICH_JE_EINHEIT: Readonly<Record<Gesellschaftskennung, Bereich>>
   kdv: NAMEN.kdv?.bereich ?? bereichAusRechtsart(RECHTSART.kdv),
   ug: NAMEN.ug?.bereich ?? bereichAusRechtsart(RECHTSART.ug),
 };
+
+// ─── Arbeit je Einheit (05.10. abends, Kevin: „Die Selbstständigkeit zählt WEITER als Arbeit“) ───────────────────────────────────────
+// Arbeit (Zeit & Fokus, Kapazität, Auslastung, „Zeit je Einheit“) ist NICHT dasselbe wie Geld/Bereich: die Selbstständigkeit gehört zu
+// Privat (Bereich, Finanzen, Sichten), ihre Stunden sind aber Arbeit. Darum eine zweite, eigene Zuordnung je Einheit statt Sonderfälle:
+// Vorgabe aus der Rechtsart — jede Firma und jedes Einzelunternehmen zählt als Arbeit, Privat nie; je Instanz umstellbar über
+// `NEXT_PUBLIC_MAKE_OS_EINHEITEN` (`{"kdc":{"arbeit":false}}`). Lesen NUR über `zaehltAlsArbeit`/`ARBEIT_GESELLSCHAFTEN`/`privatArbeitsEinheit`.
+
+/** Vorgabe: jede Firma und jedes Einzelunternehmen zählt als Arbeit (Kapitalgesellschaft wie Einzelunternehmen). */
+export const arbeitAusRechtsart = (r: Rechtsart): boolean => r === 'einzelunternehmen' || r === 'kapitalgesellschaft';
+/** Zählt die Zeit in einer festen Einheit als Arbeit (Instanz-Einstellung vor Vorgabe)? */
+export const ZAEHLT_ALS_ARBEIT: Readonly<Record<Gesellschaftskennung, boolean>> = {
+  kdc: NAMEN.kdc?.arbeit ?? arbeitAusRechtsart(RECHTSART.kdc),
+  kdv: NAMEN.kdv?.arbeit ?? arbeitAusRechtsart(RECHTSART.kdv),
+  ug: NAMEN.ug?.arbeit ?? arbeitAusRechtsart(RECHTSART.ug),
+};
+
 /** Die Namen, die diese Instanz über die Umgebung setzt (leer = unsere Instanz) — für Startbestände mit eigenen Langnamen. */
 export const EINHEITEN_UEBERSCHRIEBEN: Readonly<NamenUeberschreibung> = NAMEN;
 
@@ -227,6 +244,33 @@ export const gehoertZuPrivat = (v: unknown): boolean => v === 'privat' || (istGe
 export const BUSINESS_EINHEITEN_NAMEN: readonly string[] = KERN_EINHEITEN.filter(e => BEREICH_JE_EINHEIT[e.id] === 'business').map(e => e.label);
 /** Satz für Stellen, an denen eine Privat-Einheit aus dem Business-Bereich angefragt wird. */
 export const GEHOERT_ZU_PRIVAT = (v: Gesellschaftskennung): string => `${finanzOrtName(v)} gehört zu Privat — sie steht im Privat-Bereich, nicht im Business.`;
+/**
+ * Zählt eine Kennung als Arbeit (Zeit & Fokus, Kapazität)? `privat` nie; die festen Gesellschaften nach `ZAEHLT_ALS_ARBEIT` (unsere Instanz:
+ * alle drei — auch die Selbstständigkeit unter Privat); Register-Gesellschaften (`g-…`) als Firmen ja; Unbekanntes nein.
+ */
+export function zaehltAlsArbeit(v: unknown): boolean {
+  if (istGesellschaft(v)) return ZAEHLT_ALS_ARBEIT[v];
+  return istRegisterKennung(v);
+}
+/** Die festen Einheiten, deren Zeit als Arbeit zählt — Reihenfolge wie GESELLSCHAFTEN. */
+export const ARBEIT_GESELLSCHAFTEN: readonly Gesellschaftskennung[] = GESELLSCHAFTEN.filter(g => ZAEHLT_ALS_ARBEIT[g]);
+/**
+ * Eine Einheit (Name oder Kennung, auch Altnamen), die zu PRIVAT gehört (Bereich) und deren Zeit als Arbeit zählt — unsere Instanz: die
+ * Selbstständigkeit. Sonst undefined. Für Zeit & Fokus und Kapazität: Arbeit, die im Privat-Bereich stattfindet.
+ */
+export function privatArbeitsEinheit(v: unknown): Gesellschaftskennung | undefined {
+  const g = istGesellschaft(v) ? v : gesellschaftAusEinheit(typeof v === 'string' ? v : undefined);
+  return g && BEREICH_JE_EINHEIT[g] === 'privat' && ZAEHLT_ALS_ARBEIT[g] ? g : undefined;
+}
+/** Eine Einheit (Name oder Kennung, auch Altnamen), die zu Privat gehört — unsere Instanz: die Selbstständigkeit. Sonst undefined. */
+export function privatEinheit(v: unknown): Gesellschaftskennung | undefined {
+  const g = istGesellschaft(v) ? v : gesellschaftAusEinheit(typeof v === 'string' ? v : undefined);
+  return g && BEREICH_JE_EINHEIT[g] === 'privat' ? g : undefined;
+}
+/** Die Privat-Einheiten als Namen (Einheiten-Wahl im Privat-Bereich: Ziele, Meilensteine, Routinen). */
+export const PRIVAT_EINHEITEN_NAMEN: readonly string[] = KERN_EINHEITEN.filter(e => BEREICH_JE_EINHEIT[e.id] === 'privat').map(e => e.label);
+/** Die Arbeits-Einheiten als Namen (Zeit je Einheit) — Reihenfolge wie KERN_EINHEITEN. */
+export const ARBEIT_EINHEITEN_NAMEN: readonly string[] = KERN_EINHEITEN.filter(e => ZAEHLT_ALS_ARBEIT[e.id]).map(e => e.label);
 /** Eine der drei festen ODER eine Register-Gesellschaft (`g-…`) — für Auswahl und Anzeige, nie zum Rechnen. */
 export const istGesellschaftId = (v: unknown): v is GesellschaftId => istGesellschaft(v) || istRegisterKennung(v);
 export const istFinanzOrt = (v: unknown): v is FinanzOrt => FINANZ_ORT_IDS.includes(v as FinanzOrt);

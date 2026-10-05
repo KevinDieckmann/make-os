@@ -13,7 +13,7 @@ import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import type { Meilenstein } from '@/lib/planung/typen';
-import { sauberMeilensteine, meilensteinSpace } from '@/lib/planung/meilensteine';
+import { sauberMeilensteine, meilensteinSpeicherSpace } from '@/lib/planung/meilensteine';
 import { mitMandatBezug, type MandatKurz } from '@/lib/planung/mandat';
 import { mandateFuerBezug } from '@/lib/planung/mandat-server';
 import { fortschrittAnwenden } from '@/lib/planung/meilenstein-aufgaben';
@@ -41,7 +41,7 @@ const GRENZE = 500;
 // Säuberung (seit 28.09. mit echtem `space`, `bereich` gespiegelt): lib/planung/meilensteine.ts.
 // Mandat an Meilensteinen (28.09.): Firma und Einheit aus dem Mandat (lib/planung/mandat.ts) — nur im Business.
 const sauberListe = (roh: unknown, mandate: ReadonlyMap<string, MandatKurz> | null = null): Meilenstein[] =>
-  sauberMeilensteine(roh).map(m => mitMandatBezug(m, mandate, meilensteinSpace(m) === 'business'));
+  sauberMeilensteine(roh).map(m => mitMandatBezug(m, mandate, meilensteinSpeicherSpace(m) === 'business'));
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();

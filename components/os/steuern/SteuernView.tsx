@@ -171,6 +171,7 @@ export function SteuernView({ bereich = 'business' }: { bereich?: 'privat' | 'bu
                 );
               })}
             </div>
+            {bereich === 'privat' && <VorauszahlungQuelle v={d.prognose.vorauszahlung} />}
             <RuecklageEingabe e={d.einstellungen} einheiten={EINHEITEN} onSpeichern={x => tun({ einstellungen: { ruecklageIst: x } })} />
           </Abschnitt>
         </Spalte>
@@ -290,6 +291,23 @@ function RuecklageEingabe({ e, einheiten: EINHEITEN, onSpeichern }: { e: SteuerE
   );
 }
 
+/**
+ * Woher die abgezogenen Vorauszahlungen (Einkommen- und Gewerbesteuer der Selbstständigkeit) kommen — EINE Quelle (05.10. abends): mit
+ * Finanzplanung nur von dort; Beträge der Steuer-Einstellungen, die deshalb nicht zählen, nennt der Hinweis (kein stiller Doppelabzug).
+ */
+function VorauszahlungQuelle({ v }: { v: Antwort['prognose']['vorauszahlung'] }) {
+  if (v.quelle === 'keine' && !v.ungenutzt) return null;
+  const summe = v.est + v.gewst;
+  return (
+    <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginTop: 10 }}>
+      {v.quelle === 'finanzplanung'
+        ? <>Vorauszahlungen abgezogen: {euro(summe)} — aus der <Link href={WEG.finanzplanung('privat', 'selbst')} style={{ color: C.inkDim }}>Finanzplanung › Selbstständigkeit</Link> („Vorauszahlungen schon bezahlt“ und Quartalszahlungen im Plan).</>
+        : v.quelle === 'einstellungen' ? <>Vorauszahlungen aus den Steuer-Einstellungen (je Quartal laut Bescheid, bis heute fällig): {euro(summe)}.</> : null}
+      {v.ungenutzt && <span style={{ color: LEUCHT.achtung }}> Die Vorauszahlungen in den Steuer-Einstellungen ({[v.ungenutzt.est ? `ESt ${euro(v.ungenutzt.est)}` : '', v.ungenutzt.gewstKdc ? `GewSt ${euro(v.ungenutzt.gewstKdc)}` : ''].filter(Boolean).join(', ')} bis heute) zählen hier nicht — führend ist die Finanzplanung; dort eintragen, was schon gezahlt ist.</span>}
+    </div>
+  );
+}
+
 function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstellungen; gewinn: Antwort['gewinn']; tun: (b: Record<string, unknown>) => Promise<void>; bereich: 'privat' | 'business'; est: EstGemeinsam | null }) {
   const [offen, setOffen] = useState(false);
   const [vz, setVz] = useState({ est: '', kst: '', gewstKdc: '', gewstKdv: '' });
@@ -357,7 +375,7 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
             <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Aufgabe Tage vorher</span><input inputMode="numeric" value={vorlauf} onChange={ev => setVorlauf(ev.target.value)} style={eingabe} /></label>
             <Knopf onClick={() => void tun({ einstellungen: { vorauszahlung: vzSenden, hebesatz: hebe, vorlaufTage: vorlauf } })}>Speichern</Knopf>
           </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{bereich === 'privat' && <>Einkommensteuer und Gewerbesteuer der Selbstständigkeit rechnet die Finanzplanung (gemeinsam mit dem Gehalt, Gewerbesteuer mit Freibetrag 24.500 € und dem Hebesatz aus „Welche Steuern gelten?“, Anrechnung § 35, Soli) — die frühere Steuerquote gilt nicht mehr. </>}KD Ventures rechnet mit 15,825 % (KSt + Soli) und 3,5 % × Hebesatz Gewerbesteuer.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{bereich === 'privat' && est && <>Vorauszahlungen auf Einkommen- und Gewerbesteuer der Selbstständigkeit: für die Rücklage zählen die der Finanzplanung (eine Quelle) — „ESt je Quartal“ und „GewSt Selbstständigkeit“ hier gelten nur ohne Finanzplanung und als Betrag an den Fristen. </>}{bereich === 'privat' && <>Einkommensteuer und Gewerbesteuer der Selbstständigkeit rechnet die Finanzplanung (gemeinsam mit dem Gehalt, Gewerbesteuer mit Freibetrag 24.500 € und dem Hebesatz aus „Welche Steuern gelten?“, Anrechnung § 35, Soli) — die frühere Steuerquote gilt nicht mehr. </>}KD Ventures rechnet mit 15,825 % (KSt + Soli) und 3,5 % × Hebesatz Gewerbesteuer.</div>
         </div>
       )}
     </Karte>

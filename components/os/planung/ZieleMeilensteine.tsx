@@ -25,6 +25,10 @@
 // ausgeblendet, Bereich „Archiv“ unten, zurückholbar; zählt nie als erledigt; Abgeleitetes wird dabei gelöst, damit die
 // Kaskade es nicht neu anlegt) und Löschen (mit „Rückgängig“; Abgeleitetes → Rückfrage, Archiv als Weg — gelöscht käme es
 // beim nächsten Nachziehen wieder). Der ✕-Knopf in der Zeile ist damit weg; „lösen“ bleibt.
+// 05.10. abends (Kevin: Ziele/Meilensteine der Selbstständigkeit „automatisch nach Privat“): der Bereich jeder Zeile ist abgeleitet
+// (`wirksamerSpace`/`meilensteinSpace`, lib/planung/bereich.ts) — Einträge mit der Einheit „Selbstständigkeit“ stehen unter Privat, ihr
+// Einheiten-Chip in der Privat-Farbe (nie als Business-Einheit). Im Privat-Filter lässt sich die Privat-Einheit beim Anlegen wählen;
+// gespeichert wird in der Form, die der alte Stand kennt (Server, `speicherSpace`).
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -32,7 +36,9 @@ import { localDay } from '@/lib/zeit';
 import { useSpace } from '@/hooks/useSpace';
 import { SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 import { passtEinheit } from '@/lib/planung/einheiten';
-import { meilensteinSpace, bereichAusSpace } from '@/lib/planung/meilensteine';
+import { meilensteinSpace, meilensteinSpeicherSpace, bereichAusSpace } from '@/lib/planung/meilensteine';
+import { wirksamerSpace, hatPrivatEinheit, speicherSpace } from '@/lib/planung/bereich';
+import { PRIVAT_EINHEITEN_NAMEN } from '@/lib/einheiten';
 import { offenErledigt, verschiebe, naechsterRang } from '@/lib/planung/rang';
 import { imZeitraum } from '@/lib/planung/zeitraum';
 import { meilensteinImJahr, zielJahr } from '@/lib/planung/zeitstrahl';
@@ -115,11 +121,14 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const [einheitNeu, setEinheitNeu] = useState<string | null>(null);
   const heute = localDay();
   const imBusiness = spaceFilter === 'business';
+  // Privat-Einheiten (05.10. abends, unsere Instanz: die Selbstständigkeit) — wählbar beim Anlegen im Privat-Filter.
+  const einheitImPrivat = spaceFilter === 'privat' && PRIVAT_EINHEITEN_NAMEN.length > 0;
+  const privatEinheitOk = (e: string) => PRIVAT_EINHEITEN_NAMEN.includes(e);
 
   // ── Ziele im Filter ──
   // Archiviertes (04.10.) steht nur im Bereich „Archiv“ — Offen/Erledigt rechnen ohne es.
-  const zieleImFilter = useMemo(() => p.ziele.filter(z => (spaceFilter === 'alle' || !z.space || z.space === spaceFilter) && (!imBusiness || passtEinheit(z.einheit, einheitFilter))
-    && (horizont !== 'jahr' || zielJahr(z, laufend) === planJahr)), [p.ziele, spaceFilter, imBusiness, einheitFilter, horizont, laufend, planJahr]);
+  const zieleImFilter = useMemo(() => p.ziele.filter(z => { const zs = wirksamerSpace(z); return (spaceFilter === 'alle' || !zs || zs === spaceFilter) && (!imBusiness || passtEinheit(z.einheit, einheitFilter)); })
+    .filter(z => horizont !== 'jahr' || zielJahr(z, laufend) === planJahr), [p.ziele, spaceFilter, imBusiness, einheitFilter, horizont, laufend, planJahr]);
   const zieleSicht = useMemo(() => zieleImFilter.filter(z => !z.archiviertAm), [zieleImFilter]);
   const zArchiv = useMemo(() => zieleImFilter.filter(z => z.archiviertAm), [zieleImFilter]);
   const { offen: zOffen, erledigt: zErledigt } = useMemo(() => offenErledigt(zieleSicht), [zieleSicht]);
@@ -144,14 +153,15 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const mandatFelder = (m: MandatKurz | null) => ({ mandatId: m?.id, firmaId: m?.firmaId, ...(m?.einheit ? { einheit: m.einheit } : {}) });
   useEffect(() => { if (spaceFilter !== 'alle') setMsNeu(m => ({ ...m, space: spaceFilter })); }, [spaceFilter]);
 
-  const einheitWahl = (wert: string, setzen: (v: string) => void, label: string) => (
-    <select value={wert} aria-label={label} style={wahl} onChange={async e => {
+  /** Einheit beim Anlegen — im Business die Einheiten des Haushalts (+ neu), im Privat-Filter nur die Privat-Einheiten (ohne „neu“). */
+  const einheitWahl = (wert: string, setzen: (v: string) => void, label: string, privat = false) => (
+    <select value={privat && !privatEinheitOk(wert) ? '' : wert} aria-label={label} style={wahl} onChange={async e => {
       if (e.target.value === NEU_EINHEIT) { const n = window.prompt('Neue Einheit (z. B. eine Firma, ein Kunde):'); const s = n ? await p.einheitAnlegen(n) : null; setzen(s ?? ''); return; }
       setzen(e.target.value);
     }}>
-      <option value="">Einheit …</option>
-      {p.einheiten.map(e => <option key={e} value={e}>{e}</option>)}
-      <option value={NEU_EINHEIT}>+ neue Einheit</option>
+      <option value="">{privat ? 'ohne Einheit' : 'Einheit …'}</option>
+      {(privat ? PRIVAT_EINHEITEN_NAMEN : p.einheiten).map(e => <option key={e} value={e}>{e}</option>)}
+      {!privat && <option value={NEU_EINHEIT}>+ neue Einheit</option>}
     </select>
   );
 
@@ -161,8 +171,10 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const zahl = Number(neu.zahl.replace(',', '.'));
     const z: Ziel = {
       id: neueKennung('z'), titel: t, fortschritt: 0, rang: naechsterRang(zOffen),
-      ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}),
+      ...(spaceFilter !== 'alle' ? { space: speicherSpace(spaceFilter, einheitImPrivat && privatEinheitOk(neu.einheit) ? neu.einheit : undefined) } : {}),
       ...(imBusiness && (neu.einheit || (einheitFilter !== 'alle' ? einheitFilter : '')) ? { einheit: neu.einheit || einheitFilter } : {}),
+      // Privat-Einheit (Selbstständigkeit): der Server legt das Ziel in der alten Form ab (Business + Einheit), angezeigt unter Privat.
+      ...(einheitImPrivat && privatEinheitOk(neu.einheit) ? { einheit: neu.einheit } : {}),
       ...(imBusiness && neu.mandatId ? { mandatId: neu.mandatId } : {}),
       ...(horizont === 'jahr' && isFinite(zahl) && zahl > 0 ? { zielwert: zahl } : {}),
       ...(horizont === 'jahr' && neu.termin ? { termin: neu.termin } : {}),
@@ -180,9 +192,12 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const zeitfenster = horizont === 'jahr' && !faellig && planJahr !== laufend ? String(planJahr) : undefined;
     // Seit 28.09. das echte Feld `space`; `bereich` nur gespiegelt für ältere Leser.
     const space: SpaceId = spaceFilter !== 'alle' ? spaceFilter : msNeu.space;
-    const einheit = space === 'business' && imBusiness ? (msNeu.einheit || (einheitFilter !== 'alle' ? einheitFilter : '')) : '';
+    const einheit = space === 'business' && imBusiness ? (msNeu.einheit || (einheitFilter !== 'alle' ? einheitFilter : ''))
+      : space === 'privat' && einheitImPrivat && privatEinheitOk(msNeu.einheit) ? msNeu.einheit : '';
     const mandatId = space === 'business' ? msNeu.mandatId : '';
-    p.persistMs([...p.ms, { id: neueKennung('ms'), titel: t, space, bereich: bereichAusSpace(space), faellig: faellig || undefined, ...(zeitfenster ? { zeitfenster } : {}), fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}), ...(mandatId ? { mandatId } : {}) }]);
+    // Speicherform (05.10. abends): Privat + Privat-Einheit wie bisher als Business + Einheit — angezeigt unter Privat.
+    const gespeichert = speicherSpace(space, einheit) ?? space;
+    p.persistMs([...p.ms, { id: neueKennung('ms'), titel: t, space: gespeichert, bereich: bereichAusSpace(gespeichert), faellig: faellig || undefined, ...(zeitfenster ? { zeitfenster } : {}), fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}), ...(mandatId ? { mandatId } : {}) }]);
     setMsNeu({ titel: '', faellig: '', space, einheit: msNeu.einheit, mandatId: msNeu.mandatId });
   };
 
@@ -232,7 +247,12 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
 
   const herkunft = (e: { abgeleitetVon?: string; angepasst?: boolean }, was: string): ReactNode =>
     e.abgeleitetVon ? <span style={{ color: e.angepasst ? LEUCHT.achtung : LEUCHT.agenten }}>{e.angepasst ? 'angepasst' : `abgeleitet aus ${was}`}</span> : null;
-  const einheitChip = (e: { einheit?: string; space?: SpaceId }) => (e.einheit && e.space === 'business' && !(imBusiness && einheitFilter !== 'alle') ? <Chip farbe={SPACE_FARBE.business}>{e.einheit}</Chip> : null);
+  /** Einheit am Eintrag: Business-Einheiten in Business-Farbe; eine Privat-Einheit (Selbstständigkeit) in Privat-Farbe — nie als Business-Einheit. */
+  const einheitChip = (e: { einheit?: string; space?: SpaceId }) => {
+    if (!e.einheit) return null;
+    if (hatPrivatEinheit(e)) return <Chip farbe={SPACE_FARBE.privat}>{e.einheit}</Chip>;
+    return e.space === 'business' && !(imBusiness && einheitFilter !== 'alle') ? <Chip farbe={SPACE_FARBE.business}>{e.einheit}</Chip> : null;
+  };
   /** Mandat am Eintrag (nur Business): gesetzt als Chip, sonst „+ Mandat“ (nicht im kompakten Modus, nicht bei Erledigtem). */
   const mandatChip = (e: { mandatId?: string; erledigt?: boolean }, business: boolean, setzen: (m: MandatKurz | null) => void) => {
     if (!business || (!e.mandatId && (!mandatZugang || kompakt || e.erledigt))) return null;
@@ -246,7 +266,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const zielZeile = (z: Ziel, pos: number, n: number) => {
     const zMs = meilensteineVonZiel(z.id, p.ms);
     const v = z.erledigt ? 100 : z.fortschritt;
-    const f = z.space ? SPACE_FARBE[z.space] : farbe;
+    const zs = wirksamerSpace(z);
+    const f = zs ? SPACE_FARBE[zs] : farbe;
     return (
       <ZeileAktionen key={z.id} titel={z.titel} archiviert={!!z.archiviertAm} onArchivieren={() => zArchivieren(z)} onLoeschen={() => zLoeschenFrage(z)}>
       <Zeile
@@ -255,7 +276,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
         unter={unterZeile([
           einheitChip(z),
           mandatChip(z, z.space === 'business', m => zPatch(z.id, mandatFelder(m), true)),
-          spaceFilter === 'alle' && z.space ? <span style={{ color: SPACE_FARBE[z.space] }}>{SPACE_LABEL[z.space]}</span> : null,
+          spaceFilter === 'alle' && zs ? <span style={{ color: SPACE_FARBE[zs] }}>{SPACE_LABEL[zs]}</span> : null,
           z.termin ? `bis ${dtKurz(z.termin)}` : null,
           horizont === 'jahr' && z.zielwert ? `Ziel ${z.zielwert}` : null,
           zMs.length ? <Link href={WEG.ziel(z.id)} title={zMs.map(x => x.titel).join(' · ')} style={{ color: 'inherit' }}>{zMs.length === 1 ? '1 Meilenstein' : `${zMs.length} Meilensteine`}{zMs.some(x => !x.erledigt && wartetText(x, p.ms)) ? ' · Kette' : ''}</Link> : null,
@@ -265,8 +286,11 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
         rechts={
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto', opacity: z.erledigt ? 0.7 : 1 }}>
             {!z.erledigt && !kompakt && spaceFilter === 'alle' && (
-              <button onClick={() => zPatch(z.id, { space: z.space === 'privat' ? 'business' : z.space === 'business' ? undefined : 'privat', ...(z.space === 'business' ? { einheit: undefined } : {}) }, true)} title={z.space ? `${SPACE_LABEL[z.space]} — Klick wechselt` : 'gemeinsam — Klick wechselt'}
-                style={{ ...pille(!!z.space, z.space ? SPACE_FARBE[z.space] : C.inkLeise), padding: '2px 8px', fontSize: 12 }}>{z.space ? SPACE_LABEL[z.space] : 'gemeinsam'}</button>
+              <button onClick={() => zPatch(z.id, zs === 'privat'
+                // Privat → Business: eine Privat-Einheit (samt Mandat, das sie mitbrächte) fällt weg — sonst stünde das Ziel weiter unter Privat.
+                ? { space: 'business', ...(hatPrivatEinheit(z) ? { einheit: undefined, mandatId: undefined, firmaId: undefined } : {}) }
+                : zs === 'business' ? { space: undefined, einheit: undefined } : { space: 'privat' }, true)} title={zs ? `${SPACE_LABEL[zs]} — Klick wechselt` : 'gemeinsam — Klick wechselt'}
+                style={{ ...pille(!!zs, zs ? SPACE_FARBE[zs] : C.inkLeise), padding: '2px 8px', fontSize: 12 }}>{zs ? SPACE_LABEL[zs] : 'gemeinsam'}</button>
             )}
             {!z.erledigt && (
               <>
@@ -309,7 +333,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             m.zielId ? zielName(m.zielId) : null,
             wartetHinweis(m),
             einheitChip({ einheit: m.einheit, space: sp }),
-            mandatChip(m, sp === 'business', x => mPatch(m.id, mandatFelder(x), true)),
+            mandatChip(m, meilensteinSpeicherSpace(m) === 'business', x => mPatch(m.id, mandatFelder(x), true)),
             spaceFilter === 'alle' && (kompakt || m.erledigt) ? <span style={{ color: bf }}>{SPACE_LABEL[sp]}</span> : null,
             ms.gesamt ? <Link href={WEG.meilenstein(m.id)} style={{ color: 'inherit' }}>{ms.erledigt}/{ms.gesamt} Aufgaben</Link> : null,
             m.messlatte ? `Messlatte: ${m.messlatte}` : null,
@@ -319,7 +343,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
           rechts={
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto', opacity: m.erledigt ? 0.7 : 1 }}>
               {!m.erledigt && !kompakt && spaceFilter === 'alle' && (
-                <button onClick={() => { const neu: SpaceId = sp === 'privat' ? 'business' : 'privat'; mPatch(m.id, { space: neu, bereich: bereichAusSpace(neu), ...(neu === 'privat' ? { einheit: undefined } : {}) }, true); }} title={`${SPACE_LABEL[sp]} — Klick wechselt`}
+                <button onClick={() => { const neu: SpaceId = sp === 'privat' ? 'business' : 'privat'; mPatch(m.id, { space: neu, bereich: bereichAusSpace(neu), ...(neu === 'privat' || hatPrivatEinheit(m) ? { einheit: undefined } : {}), ...(neu === 'business' && hatPrivatEinheit(m) ? { mandatId: undefined, firmaId: undefined } : {}) }, true); }} title={`${SPACE_LABEL[sp]} — Klick wechselt`}
                   style={{ ...pille(true, bf), padding: '2px 8px', fontSize: 12 }}>{SPACE_LABEL[sp]}</button>
               )}
               {!m.erledigt && (
@@ -392,6 +416,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               </>
             )}
             {imBusiness && einheitWahl(neu.einheit, v => setNeu({ ...neu, einheit: v }), 'Einheit des Ziels')}
+            {einheitImPrivat && einheitWahl(neu.einheit, v => setNeu({ ...neu, einheit: v }), 'Einheit des Ziels (Privat)', true)}
             {imBusiness && mandatZugang && <MandatWahl ohneLink wert={neu.mandatId || undefined} setzen={m => setNeu({ ...neu, mandatId: m?.id ?? '', einheit: m?.einheit ?? neu.einheit })} />}
             <Knopf onClick={zielAnlegen}>+ Ziel</Knopf>
           </div>
@@ -417,6 +442,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               </select>
             )}
             {imBusiness && einheitWahl(msNeu.einheit, v => setMsNeu({ ...msNeu, einheit: v }), 'Einheit des Meilensteins')}
+            {einheitImPrivat && einheitWahl(msNeu.einheit, v => setMsNeu({ ...msNeu, einheit: v }), 'Einheit des Meilensteins (Privat)', true)}
             {msBusiness && mandatZugang && <MandatWahl ohneLink wert={msNeu.mandatId || undefined} setzen={m => setMsNeu({ ...msNeu, mandatId: m?.id ?? '', einheit: m?.einheit ?? msNeu.einheit })} />}
             <Knopf onClick={msAnlegen}>+ Meilenstein</Knopf>
           </div>

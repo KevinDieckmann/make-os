@@ -34,6 +34,7 @@ import { MachbarZeile } from '../kapazitaet/MachbarZeile';
 import { kapazitaetNeu } from '../kapazitaet/useKapazitaet';
 import { PfeilRang } from './PfeilRang';
 import { loescheZiel } from './ziel-loeschen';
+import { hatPrivatEinheit, wirksamerSpace, zaehltAlsArbeit } from '@/lib/planung/bereich';
 
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
@@ -111,7 +112,9 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
 
   const zPatch = (patch: Partial<Ziel>) => p.persistZiele(p.ziele.map(x => (x.id === z.id ? { ...x, ...patch, ...(x.abgeleitetVon ? { angepasst: true } : {}) } : x)));
   const abgeleitet = !!z.abgeleitetVon && !z.angepasst;
-  const space: SpaceId | undefined = z.space;
+  // Bereich abgeleitet (05.10. abends): ein Ziel der Selbstständigkeit steht unter Privat, zählt aber als Arbeit (Kapazität).
+  const space: SpaceId | undefined = wirksamerSpace(z);
+  const arbeit = zaehltAlsArbeit(z, true);
   const farbe = space ? SPACE_FARBE[space] : LEUCHT.schlaf;
   const fortschritt = z.erledigt ? 100 : live ?? z.fortschritt;
   const jahr = zielJahr(z, laufend);
@@ -120,7 +123,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
   const vorgabe = (extra: { faellig?: string; wartetAuf?: string[] } = {}) => ({
     zielId: z.id,
     space: space ?? ('business' as const),
-    ...(space !== 'privat' && z.einheit ? { einheit: z.einheit } : {}),
+    ...((space !== 'privat' || hatPrivatEinheit(z)) && z.einheit ? { einheit: z.einheit } : {}),
     faellig: extra.faellig ?? z.termin ?? (horizont === 'jahr' ? (jahr === laufend ? heute : `${jahr}-01-15`) : p.zr.bis),
     ...(extra.wartetAuf ? { wartetAuf: extra.wartetAuf } : {}),
   });
@@ -201,7 +204,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise }}>
           <Chip farbe={farbe}>{HORIZONT_NAME[horizont]}{horizont === 'jahr' ? ` ${jahr}` : ''}</Chip>
           {space && <Chip farbe={SPACE_FARBE[space]}>{SPACE_LABEL[space]}</Chip>}
-          {z.einheit && space === 'business' && <Chip farbe={SPACE_FARBE.business}>{z.einheit}</Chip>}
+          {z.einheit && (space === 'business' || hatPrivatEinheit(z)) && <Chip farbe={hatPrivatEinheit(z) ? SPACE_FARBE.privat : SPACE_FARBE.business}>{z.einheit}</Chip>}
           {z.id.startsWith(FAHRPLAN_ZIEL_PRAEFIX) && <FahrplanHerkunft zielId={z.id} />}
           {z.termin && <span>Frist {dt(z.termin)}</span>}
           {z.zielwert ? <span>Zahlenziel {z.zielwert}</span> : null}
@@ -213,8 +216,8 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
             onBlur={() => { if (messlatte !== null && messlatte.trim() !== (z.messlatte ?? '')) zPatch({ messlatte: messlatte.trim() || undefined }); setMesslatte(null); }}
             style={{ ...feld, textTransform: 'none', letterSpacing: 0, fontWeight: 400 }} />
         </label>
-        {space !== 'privat' && <MachbarZeile art="ziel" id={z.id} />}
-        {space !== 'privat' && horizont === 'jahr' && !abgeleitet && (
+        {arbeit && <MachbarZeile art="ziel" id={z.id} />}
+        {arbeit && horizont === 'jahr' && !abgeleitet && (
           <label style={{ display: 'grid', gap: 6, marginTop: 10, ...mikro }}>Eigener Aufwand (h, zusätzlich zu den Meilensteinen)
             <input type="number" inputMode="decimal" min={0} max={10000} value={aufwand ?? (z.aufwand ? String(z.aufwand) : '')} onChange={e => setAufwand(e.target.value)} placeholder="optional"
               onBlur={() => {

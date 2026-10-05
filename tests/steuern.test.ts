@@ -2,7 +2,7 @@
 // mit/ohne Steuerberater, Umsatzsteuer je Zeitraum (Ist/Soll), Rücklage & Prognose,
 // Belege, Übergabe-Checkliste. Hinweis, keine Steuerberatung.
 import { describe, it, expect } from 'vitest';
-import { STANDARD_STEUERN, erklaerungsFrist, fristen, zeitraumVon, ustZeitraum, prognose, jahresgewinn, belegPunkte, uebergabeMonat, uebergabeJahr, mitFinanzplanung, type SteuerEinstellungen } from '../lib/steuern/rechnen';
+import { STANDARD_STEUERN, erklaerungsFrist, fristen, zeitraumVon, ustZeitraum, prognose, jahresgewinn, belegPunkte, uebergabeMonat, uebergabeJahr, mitFinanzplanung, steuernNurBusiness, type SteuerEinstellungen } from '../lib/steuern/rechnen';
 import type { EstGemeinsam } from '../lib/finanzen/est-gemeinsam';
 import type { Beleg } from '../lib/finanzen/haushalt/typen';
 
@@ -84,23 +84,50 @@ describe('Rücklage & Prognose', () => {
     jahr: 2026, gewinn: 40000, vorab: 30000, lohn: 10770, zve: 50770, estGesamt: 12000, estLohn: 1000, est: 11000, soli: 0, gewst: 1500, anrechnung: 1400, korr: 0, summe: 11100, vorausgezahlt: 0, zahlung: 11100,
     gewerbe: true, hebesatz: 410, freibetrag: 24500, anrechnungFaktor: 4, splitting: false, plan: 'Arbeitsplan',
   };
-  it('ESt gemeinsam und GewSt der Selbstständigkeit aus der Finanzplanung, KSt+Soli+GewSt für KD Ventures, Vorauszahlungen abgezogen', () => {
+  it('ESt gemeinsam und GewSt der Selbstständigkeit aus der Finanzplanung, KSt+Soli+GewSt für KD Ventures, Vorauszahlungen aus EINER Quelle', () => {
     const e: SteuerEinstellungen = { ...STANDARD_STEUERN, steuerquote: 30, vorauszahlung: { est: 1000, gewstKdc: 200 }, ruecklageIst: { privat: 10000 } };
     const g = { kdc: jahresgewinn(ist(10000, 5000), 2026), kdv: jahresgewinn(ist(5000, 5000 - 20000 / 12), 2026) };
     const p = prognose(e, HEUTE, g, { kdc: 171 }, { rechnungen: 0 }, est);
     const z = Object.fromEntries(p.zeilen.map(x => [x.id, x.betrag]));
-    // Mehrsteuer 11.000 − Anrechnung 1.400 + Soli 0 − 3 Vorauszahlungen à 1.000 bis heute = 6.600 (die Steuerquote 30 % zählt nicht mehr)
-    expect(z.est).toBeCloseTo(11000 - 1400 - 3000, 5);
-    // Gewerbesteuer 1.500 − 3 Vorauszahlungen à 200 (Feb, Mai, Aug) = 900
-    expect(z['gewst-kdc']).toBeCloseTo(1500 - 600, 5);
+    // 05.10. abends (Kevin: „Vorauszahlungen eine Quelle — führend ist die Finanzplanung“): Mehrsteuer 11.000 − Anrechnung 1.400 + Soli 0 = 9.600,
+    // minus die Vorauszahlungen der FINANZPLANUNG (hier 0). Vorher (selbst-privat) zogen die Steuer-Einstellungen 3 × 1.000 ab → 6.600; die zählen
+    // mit Finanzplanung nicht mehr (sonst stünden zwei Quellen nebeneinander) — sie werden als „ungenutzt“ benannt.
+    expect(z.est).toBeCloseTo(11000 - 1400, 5);
+    // Gewerbesteuer 1.500 (vorher − 3 × 200 aus den Einstellungen = 900)
+    expect(z['gewst-kdc']).toBeCloseTo(1500, 5);
+    expect(p.vorauszahlung).toEqual({ quelle: 'finanzplanung', est: 0, gewst: 0, ungenutzt: { est: 3000, gewstKdc: 600 } });
+    expect(p.zeilen.find(x => x.id === 'est')?.formel).toContain('Vorauszahlungen laut Finanzplanung');
     expect(p.zeilen.find(x => x.id === 'est')?.titel).toContain('gemeinsam');
     expect(p.zeilen.find(x => x.id === 'est')?.href).toBe('/os/finanzen?s=finanzplanung&space=privat&u=selbst');
     expect(z.kst).toBeCloseTo(20000 * 0.15825 + 20000 * 0.035 * 4.1, 3);
     expect(z['ust-kdc']).toBe(171);
-    expect(p.je.privat).toMatchObject({ soll: 6600, ist: 10000 });
-    expect(p.je.kdc.soll).toBeCloseTo(900 + 171, 5);
+    expect(p.je.privat).toMatchObject({ soll: 9600, ist: 10000 });
+    expect(p.je.kdc.soll).toBeCloseTo(1500 + 171, 5);
     // Gewerbesteuer abgeschaltet (Freiberuf) → keine Gewerbesteuer-Zeile
     expect(prognose(e, HEUTE, g, {}, { rechnungen: 0 }, { ...est, gewerbe: false }).zeilen.some(x => x.id === 'gewst-kdc')).toBe(false);
+  });
+  it('Wächter Vorauszahlungen (05.10. abends): mit Finanzplanung zählt NUR deren `vorausgezahlt` — ESt zuerst, Rest GewSt, nie doppelt', () => {
+    const g = { kdc: null, kdv: null };
+    const ohneEinst: SteuerEinstellungen = { ...STANDARD_STEUERN, vorauszahlung: {} };
+    const mitEinst: SteuerEinstellungen = { ...STANDARD_STEUERN, vorauszahlung: { est: 2500, gewstKdc: 400 } };
+    for (const vz of [0, 3000, 9600, 10000, 11100, 20000]) {
+      const plan = { ...est, vorausgezahlt: vz, zahlung: est.summe - vz };
+      const a = prognose(ohneEinst, HEUTE, g, {}, { rechnungen: 0 }, plan), b = prognose(mitEinst, HEUTE, g, {}, { rechnungen: 0 }, plan);
+      const summe = (p: typeof a) => p.zeilen.filter(x => x.id === 'est' || x.id === 'gewst-kdc').reduce((s, x) => s + (x.betrag ?? 0), 0);
+      // Kein Doppelabzug: ESt + GewSt = Abschlusszahlung der Finanzplanung (nie darunter), egal was in den Steuer-Einstellungen steht.
+      expect(summe(a)).toBeCloseTo(Math.max(0, est.summe - vz), 5);
+      expect(summe(b)).toBeCloseTo(summe(a), 5);
+      expect(b.vorauszahlung.est + b.vorauszahlung.gewst).toBeCloseTo(Math.min(vz, est.summe), 5);
+      expect(b.vorauszahlung.quelle).toBe('finanzplanung');
+    }
+    // Aufteilung: 10.000 vorausgezahlt → ESt 9.600 voll gedeckt, 400 auf die Gewerbesteuer (1.500 → 1.100).
+    const p = prognose(mitEinst, HEUTE, g, {}, { rechnungen: 0 }, { ...est, vorausgezahlt: 10000 });
+    expect(Object.fromEntries(p.zeilen.map(x => [x.id, x.betrag]))).toMatchObject({ est: 0, 'gewst-kdc': 1100 });
+    // Ohne Finanzplanung bleibt die Steuer-Einstellung die Quelle (benannt; einen Betrag gibt es ohne Plan nicht).
+    expect(prognose(mitEinst, HEUTE, g, {}, { rechnungen: 0 }, null).vorauszahlung).toEqual({ quelle: 'einstellungen', est: 7500, gewst: 1200 });
+    // Business-Sicht: die Einkommensteuer-Vorauszahlung ist privat — sie geht nie hinaus.
+    const st = steuernNurBusiness({ einstellungen: mitEinst, fristen: [], ust: [], prognose: p, gewinn: { kdc: null, kdv: null }, uebergabe: { monat: '2026-08', punkte: [], jahr: 2025, jahresPunkte: [] } });
+    expect(st.prognose.vorauszahlung).toEqual({ quelle: 'keine', est: 0, gewst: 0 });
   });
   it('ohne Finanzplanung für das Jahr: ehrlich „fehlt“, kein Schätzwert — auch nicht aus der alten Steuerquote', () => {
     const e: SteuerEinstellungen = { ...STANDARD_STEUERN, steuerquote: 30 };

@@ -27,6 +27,8 @@ import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 import { bereichAusSpace, meilensteinSpace } from '@/lib/planung/meilensteine';
+import { hatPrivatEinheit, speicherSpace, wirksamerSpace } from '@/lib/planung/bereich';
+import { PRIVAT_EINHEITEN_NAMEN } from '@/lib/einheiten';
 import { naechsterRang, offenErledigt } from '@/lib/planung/rang';
 import { zielJahr } from '@/lib/planung/zeitstrahl';
 import type { Meilenstein, Ziel } from '@/lib/planung/typen';
@@ -76,13 +78,18 @@ const NEU_EINHEIT = '__neu__';
 const wahl: CSSProperties = { ...feld, colorScheme: 'dark', cursor: 'pointer' };
 const beschriftung: CSSProperties = { display: 'grid', gap: 6, fontSize: TYP.bedien, fontWeight: 700, letterSpacing: '.04em', color: C.inkLeise, minWidth: 0 };
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
+/**
+ * 05.10. abends: Arbeit im Formular — Business oder Privat mit einer Privat-Einheit (Selbstständigkeit). Dann bleiben Einheit, Mandat,
+ * Aufwand und Personen (Kapazität: die Selbstständigkeit zählt WEITER als Arbeit); gespeichert in der Form, die der alte Stand kennt.
+ */
+const mitPrivatEinheit = (f: Pick<Form, 'space' | 'einheit'>) => f.space === 'privat' && PRIVAT_EINHEITEN_NAMEN.includes(f.einheit) && hatPrivatEinheit(f);
 
 function formAus(m: Meilenstein | null, v: MsVorgabe): Form {
   if (m) {
     const sp = meilensteinSpace(m);
     return { titel: m.titel, faellig: m.faellig ?? '', space: sp, einheit: m.einheit ?? '', mandatId: m.mandatId ?? '', zielId: m.zielId ?? '', wartetAuf: m.wartetAuf ?? [], fortschritt: m.fortschritt, erledigt: m.erledigt, messlatte: m.messlatte ?? '', aufgaben: '', aufwand: m.aufwand ? String(m.aufwand) : '', personen: m.personen ?? [] };
   }
-  return { titel: '', faellig: v.faellig ?? '', space: v.space ?? 'business', einheit: v.space === 'privat' ? '' : v.einheit ?? '', mandatId: '', zielId: v.zielId ?? '', wartetAuf: v.wartetAuf ?? [], fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '', aufwand: '', personen: [] };
+  return { titel: '', faellig: v.faellig ?? '', space: v.space ?? 'business', einheit: v.space === 'privat' && !PRIVAT_EINHEITEN_NAMEN.includes(v.einheit ?? '') ? '' : v.einheit ?? '', mandatId: '', zielId: v.zielId ?? '', wartetAuf: v.wartetAuf ?? [], fortschritt: 0, erledigt: false, messlatte: '', aufgaben: '', aufwand: '', personen: [] };
 }
 
 export interface MeilensteinFensterApi {
@@ -109,9 +116,12 @@ export function useMeilensteinFenster(planung: PlanungStand, rueck: Rueckgaengig
   /** Speichert; bei einem neuen Meilenstein die Kennung (sonst null). */
   const speichern = (f: Form): Meilenstein | null => {
     const p = stand.current;
-    const business = f.space === 'business';
+    // Arbeit (05.10. abends): Business oder Privat mit Privat-Einheit — dann bleiben Einheit, Mandat, Aufwand, Personen.
+    const business = f.space === 'business' || mitPrivatEinheit(f);
+    // Speicherform: Privat + Privat-Einheit wie bisher als Business + Einheit (der Server tut dasselbe, `speicherSpace`).
+    const space = speicherSpace(f.space, business ? f.einheit : undefined) ?? f.space;
     const felder = {
-      titel: f.titel.trim().slice(0, 200), space: f.space, bereich: bereichAusSpace(f.space),
+      titel: f.titel.trim().slice(0, 200), space, bereich: bereichAusSpace(space),
       faellig: f.faellig || undefined, fortschritt: f.erledigt ? 100 : f.fortschritt, erledigt: f.erledigt,
       einheit: business && f.einheit ? f.einheit : undefined,
       mandatId: business && f.mandatId ? f.mandatId : undefined,
@@ -187,7 +197,9 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
   // Mandat-Chip nur, wenn es aktive Mandate gibt (oder schon eins gesetzt ist) — sonst stünde ein leeres Feld da.
   const { zugang, mandate } = useMandate();
   const mandatZugang = zugang && mandate.length > 0;
-  const business = f.space === 'business';
+  // Arbeit (05.10. abends): Business oder Privat mit Privat-Einheit (Selbstständigkeit) — Mandat und Kapazität wie im Business.
+  const business = f.space === 'business' || mitPrivatEinheit(f);
+  const einheitPrivat = f.space === 'privat' && PRIVAT_EINHEITEN_NAMEN.length > 0;
   // Kapazität: Personen aus dem Team und die Machbarkeit dieses Meilensteins (nur im Business, nur lesen).
   const kapa = useKapazitaet(business);
   const kapaPersonen = (kapa.stand?.personen ?? []).filter(x => !x.ohneKapa || f.personen.includes(x.id));
@@ -195,7 +207,7 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
   const laufend = Number(planung.heute.slice(0, 4));
   const jahr = f.faellig ? Number(f.faellig.slice(0, 4)) : laufend;
   // Ziel-Bezug: Jahresziele im Jahr des Datums und im selben Bereich (gemeinsame zählen mit) — der gesetzte bleibt wählbar.
-  const zielWahl: Ziel[] = planung.ziele.filter(z => !z.abgeleitetVon && (z.id === f.zielId || ((!z.space || z.space === f.space) && zielJahr(z, laufend) === jahr && !z.erledigt)));
+  const zielWahl: Ziel[] = planung.ziele.filter(z => !z.abgeleitetVon && (z.id === f.zielId || ((!wirksamerSpace(z) || wirksamerSpace(z) === f.space) && zielJahr(z, laufend) === jahr && !z.erledigt)));
 
   // Kette (01.10.): wer als Vorgänger in Frage kommt — offene, nicht der Meilenstein selbst, keiner, der einen Kreis schlösse;
   // die aus demselben Ziel stehen zuerst.
@@ -237,12 +249,20 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
             <input type="date" value={f.faellig} onChange={e => setze({ faellig: e.target.value })} style={{ ...feld, colorScheme: 'dark' }} />
           </label>
           <label style={beschriftung}>Bereich
-            <select value={f.space} onChange={e => { const s: SpaceId = e.target.value === 'privat' ? 'privat' : 'business'; setze({ space: s, ...(s === 'privat' ? { einheit: '', mandatId: '' } : {}) }); }} style={{ ...wahl, color: SPACE_FARBE[f.space] }}>
+            <select value={f.space} onChange={e => { const s: SpaceId = e.target.value === 'privat' ? 'privat' : 'business'; setze({ space: s, ...(s === 'privat' || PRIVAT_EINHEITEN_NAMEN.includes(f.einheit) ? { einheit: '', mandatId: '' } : {}) }); }} style={{ ...wahl, color: SPACE_FARBE[f.space] }}>
               <option value="business">{SPACE_LABEL.business}</option>
               <option value="privat">{SPACE_LABEL.privat}</option>
             </select>
           </label>
-          {business && (
+          {einheitPrivat && (
+            <label style={beschriftung}>Einheit
+              <select value={PRIVAT_EINHEITEN_NAMEN.includes(f.einheit) ? f.einheit : ''} onChange={e => setze({ einheit: e.target.value, ...(e.target.value ? {} : { mandatId: '' }) })} style={wahl}>
+                <option value="">ohne Einheit</option>
+                {PRIVAT_EINHEITEN_NAMEN.map(x => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </label>
+          )}
+          {f.space === 'business' && (
             <label style={beschriftung}>Einheit
               <select value={f.einheit} onChange={async e => {
                 if (e.target.value === NEU_EINHEIT) { const n = window.prompt('Neue Einheit (z. B. eine Firma, ein Kunde):'); const s = n ? await planung.einheitAnlegen(n) : null; setze({ einheit: s ?? '' }); return; }

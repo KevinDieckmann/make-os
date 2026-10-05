@@ -23,7 +23,8 @@ import { EinheitWahl, useEinheiten } from './aufgaben/Einheit';
 import { Wahl, type WahlEintrag } from './crm/Wahl';
 import { einheitFarbe, einheitKurz, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
 import { EINHEIT_MIN, EINHEIT_MAX } from '@/lib/planung/einheiten';
-import { einheitName } from '@/lib/einheiten';
+import { einheitName, PRIVAT_EINHEITEN_NAMEN } from '@/lib/einheiten';
+import { hatPrivatEinheit, speicherSpace } from '@/lib/planung/bereich';
 import { rhythmusKurz, naechstesMalNach } from '@/lib/planung/rhythmus';
 import { PlanerLeiste } from './PlanerLeiste';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT, Schalter, Pillen } from './ui';
@@ -145,14 +146,26 @@ export function RoutinenPlanerView() {
   }, [routinenSchreiber, blockSchreiber]);
 
   const nameVon = (sp: string) => (sp === OWNER_BEIDE ? 'gemeinsam' : personen.find(p => p.speicher === sp)?.name ?? (sp === ich ? 'ich' : sp));
-  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p, ...(p.space === 'privat' ? { einheit: undefined } : {}) } : x)));
+  // Wechsel des Bereichs: Privat verwirft die Einheit; nach Business fällt auch eine Privat-Einheit (Selbstständigkeit) weg — sonst stünde die
+  // Routine weiter unter Privat (05.10. abends, Bereich abgeleitet).
+  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p, ...(p.space === 'privat' || (p.space === 'business' && hatPrivatEinheit(x)) ? { einheit: undefined } : {}) } : x)));
+  /** Privat-Einheit (Selbstständigkeit) an einer Privat-Routine setzen/lösen — gespeichert in der Form des alten Stands (Business + Einheit). */
+  const privatEinheitSetzen = (id: string, e: string) => persist(routinen.map(x => (x.id !== id ? x : e ? { ...x, space: speicherSpace('privat', e), einheit: e } : { ...x, space: 'privat' as const, einheit: undefined })));
+  const privatEinheitWahl = (wert: string | undefined, setzen: (e: string) => void) => (PRIVAT_EINHEITEN_NAMEN.length ? (
+    <select value={wert && PRIVAT_EINHEITEN_NAMEN.includes(wert) ? wert : ''} onChange={e => setzen(e.target.value)} aria-label="Einheit der Routine (Privat)" style={{ ...wahl, padding: '5px 8px', color: wert ? SPACE_FARBE.privat : C.inkDim }}>
+      <option value="">ohne Einheit</option>
+      {PRIVAT_EINHEITEN_NAMEN.map(n => <option key={n} value={n}>{n}</option>)}
+    </select>
+  ) : null);
 
   const add = () => {
     const l = neu.label.trim();
     if (!l) return;
     const r: Routine = {
       id: neueKennung('r'), label: l, wann: neu.wann, kategorie: neu.kat, dauerMin: 15, aktiv: true,
-      space: neu.space, owner: neu.owner, rang: naechsterRang(routinen), ...(neu.space === 'business' && neu.einheit ? { einheit: neu.einheit } : {}),
+      space: neu.space === 'privat' && neu.einheit && PRIVAT_EINHEITEN_NAMEN.includes(neu.einheit) ? speicherSpace('privat', neu.einheit) : neu.space, owner: neu.owner, rang: naechsterRang(routinen),
+      ...(neu.space === 'business' && neu.einheit ? { einheit: neu.einheit } : {}),
+      ...(neu.space === 'privat' && neu.einheit && PRIVAT_EINHEITEN_NAMEN.includes(neu.einheit) ? { einheit: neu.einheit } : {}),
       ...(neu.rhythmus !== 'taeglich' ? { rhythmus: neu.rhythmus } : {}),
       ...(neu.rhythmus !== 'taeglich' && neu.rhythmus !== '3x-woche' && neu.naechstesMal ? { naechstesMal: neu.naechstesMal } : {}),
     };
@@ -199,10 +212,11 @@ export function RoutinenPlanerView() {
           <input value={neu.label} onChange={e => setNeu({ ...neu, label: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') add(); }}
             placeholder="z. B. 10 Min Spazieren nach dem Mittag · Steuererklärung · Arzt …"
             style={{ ...feld, width: 'auto', flex: '1 1 240px', minWidth: 0 }} />
-          <select value={neu.space} onChange={e => setNeu({ ...neu, space: e.target.value as SpaceId, kat: e.target.value === 'business' ? 'business' : neu.kat === 'business' ? 'leben' : neu.kat })} aria-label="Space" style={{ ...wahl, color: SPACE_FARBE[neu.space] }}>
+          <select value={neu.space} onChange={e => setNeu({ ...neu, space: e.target.value as SpaceId, einheit: undefined, kat: e.target.value === 'business' ? 'business' : neu.kat === 'business' ? 'leben' : neu.kat })} aria-label="Space" style={{ ...wahl, color: SPACE_FARBE[neu.space] }}>
             <option value="privat">Privat</option><option value="business">Business</option>
           </select>
           {neu.space === 'business' && <EinheitWahl wert={neu.einheit} setzen={e => setNeu({ ...neu, einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der Routine" />}
+          {neu.space === 'privat' && privatEinheitWahl(neu.einheit, e => setNeu({ ...neu, einheit: e || undefined }))}
           <select value={neu.owner} onChange={e => setNeu({ ...neu, owner: e.target.value })} aria-label="Wer" style={wahl}>
             <option value={OWNER_BEIDE}>gemeinsam</option>
             {personen.map(p => <option key={p.speicher} value={p.speicher}>{p.name}</option>)}
@@ -254,6 +268,7 @@ export function RoutinenPlanerView() {
                         style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 500 }} />
                       <Chip farbe={SPACE_FARBE[sp]}>{SPACE_LABEL[sp]}</Chip>
                       {sp === 'business' && <EinheitWahl wert={r.einheit} setzen={e => patch(r.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der Routine" />}
+                      {sp === 'privat' && hatPrivatEinheit(r) && <Chip farbe={SPACE_FARBE.privat}>{r.einheit}</Chip>}
                       <Chip farbe={owner === OWNER_BEIDE ? LEUCHT.beziehung : LEUCHT.puls}>{nameVon(owner)}</Chip>
                       {rh !== 'taeglich' && <Chip farbe={LEUCHT.agenten}>{rhythmusKurz(rh)}{r.naechstesMal ? ` · ${dtKurz(r.naechstesMal)}` : ''}</Chip>}
                       <PfeilRang label={r.label} obenAus={pos === 0} untenAus={pos === eigene.length - 1} onAuf={() => persist(verschiebe(routinen, r.id, 'auf', ids))} onAb={() => persist(verschiebe(routinen, r.id, 'ab', ids))} />
@@ -263,6 +278,7 @@ export function RoutinenPlanerView() {
                       <select value={sp} onChange={e => patch(r.id, { space: e.target.value as SpaceId })} aria-label="Space" style={{ ...wahl, padding: '5px 8px', color: SPACE_FARBE[sp] }}>
                         <option value="privat">Privat</option><option value="business">Business</option>
                       </select>
+                      {sp === 'privat' && privatEinheitWahl(r.einheit, e => privatEinheitSetzen(r.id, e))}
                       <select value={owner} onChange={e => patch(r.id, { owner: e.target.value })} aria-label="Wer" style={{ ...wahl, padding: '5px 8px' }}>
                         <option value={OWNER_BEIDE}>gemeinsam</option>
                         {personen.map(p => <option key={p.speicher} value={p.speicher}>{p.name}</option>)}

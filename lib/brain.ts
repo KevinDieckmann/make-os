@@ -42,6 +42,7 @@ import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { VITALS_GESPERRT, indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 import type { KiBereich, KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
+import { meilensteinSpace } from '@/lib/planung/meilensteine';
 
 // ── Formen ──
 interface StoredTask { id: string; title: string; status: string; priority: string; dueDate?: string; projectId?: string; assignee?: string; /** Business-Einheit (27.09.) — nur im Business gesetzt. */ einheit?: string }
@@ -245,7 +246,8 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     laeufe: val(laeufeR) ?? [],
     // Business-Meilensteine aus dem Store — Fallback: alte Konstante.
     meilensteine: (() => {
-      const ms = (val(meilR)?.meilensteine ?? []).filter(m => m.bereich === 'business');
+      // 05.10. abends: Meilensteine der Selbstständigkeit (Privat-Einheit) sind keine Business-Meilensteine (`meilensteinSpace`, abgeleitet).
+      const ms = (val(meilR)?.meilensteine ?? []).filter(m => m.bereich === 'business' && meilensteinSpace(m) === 'business');
       if (!ms.length) return [...MILESTONES];
       // Datum mit Jahr, sobald es nicht das laufende ist (30.09.: Meilensteine im nächsten Jahr sind sonst nicht unterscheidbar).
       const tag = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4) !== heute.slice(0, 4) ? d.slice(0, 4) : ''}`;

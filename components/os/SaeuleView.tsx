@@ -18,6 +18,7 @@ import { eur, computeMetrics, type FinanceState, type Kasse } from '@/lib/make-o
 import { localDay } from '@/lib/zeit';
 import { aufgabeStatusSetzen } from '@/lib/aufgaben/status';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Ring, Zahl, Balken, Fortschritt, Haken, feld, LEUCHT, ZielBezug } from './ui';
+import { meilensteinSpace } from '@/lib/planung/meilensteine';
 
 export { SAEULEN_META };
 
@@ -71,7 +72,7 @@ function WerkzeugBusiness() {
       .catch(() => {});
     fetch('/api/state/meilensteine')
       .then(r => r.json())
-      .then(d => setMs((d.meilensteine ?? []).filter((x: { bereich: string }) => x.bereich === 'business')))
+      .then(d => setMs((d.meilensteine ?? []).filter((x: { bereich: string; space?: string; einheit?: string }) => x.bereich === 'business' && meilensteinSpace(x) === 'business')))
       .catch(() => {});
   }, []);
   const stufen = [

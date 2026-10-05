@@ -16,12 +16,13 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
 import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { kapaKennzahlenFuerIndex } from '@/lib/kapazitaet/server';
+import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { localDay } from '@/lib/zeit';
 import { SCOPES, schwelleSauber, type Scope, type Schwelle } from './register';
 import { mrrJeKunde, type Bestand, type Monatsabschluss } from './messen';
 import { berechne, type Ampel, type BusinessIndex } from './index';
-import { BUSINESS_GESELLSCHAFTEN, KERN_EINHEITEN, GEHOERT_ZU_PRIVAT, bereichVon, bereichVonFirma, bereichVonGesellschaft, istBusinessGesellschaft, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
+import { BUSINESS_GESELLSCHAFTEN, PRIVAT_GESELLSCHAFTEN, KERN_EINHEITEN, GEHOERT_ZU_PRIVAT, bereichVon, bereichVonFirma, bereichVonGesellschaft, finanzOrtName, istBusinessGesellschaft, istGesellschaft, type Bereich, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export const EINSTELLUNGEN = 'business-einstellungen';
 export const ABSCHLUESSE = 'business-abschluesse';
@@ -104,19 +105,33 @@ export async function speichereEinstellungen(roh: Record<string, unknown>): Prom
   return fehler ? { ok: false, fehler } : { ok: true, einstellungen: { ...e, fte: nurBusinessWerte(e.fte), ziele: nurBusinessWerte(e.ziele), kapazitaet: nurBusinessWerte(e.kapazitaet), schwellen: Object.fromEntries(Object.entries(e.schwellen ?? {}).filter(([k]) => k === 'alle' || k === 'gesamt' || istBusinessGesellschaft(k))) } };
 }
 
-/** Monatsabschlüsse des Business-Bereichs (05.10.: die einer Privat-Einheit bleiben gespeichert, gehen aber nicht hinaus). */
-export async function ladeAbschluesse(): Promise<Monatsabschluss[]> {
-  return ((await loadJson<{ eintraege: Monatsabschluss[] }>(ABSCHLUESSE))?.eintraege ?? []).filter(a => istBusinessGesellschaft(a.firma));
+// ── Monatsabschlüsse je Bereich (05.10. abends, Kevin: „Privat › Selbstständigkeit bekommt den Monatsabschluss“) ──
+// EIN Bestand (`business-abschluesse`, wie bisher) — jede Zeile gehört über ihre Firma zu einem Bereich (`bereichVon`). Der Business-Index
+// liest und schreibt nur die Business-Gesellschaften, Privat (Route /api/privat/abschluss, Privatzugang) nur die Privat-Einheiten (unsere
+// Instanz: die Selbstständigkeit). Die vor dem 05.10. im Business-Cockpit eingetragenen Abschlüsse der Selbstständigkeit sind damit unter
+// Privat wieder sichtbar und bearbeitbar — ohne Umzug, gleiche Kennungen. Ein Bereich schreibt nie in den anderen (400).
+
+/** Die Firmen mit Monatsabschluss in einem Bereich. */
+export const abschlussFirmen = (bereich: Bereich): readonly Gesellschaftskennung[] => (bereich === 'business' ? FIRMEN : PRIVAT_GESELLSCHAFTEN);
+/** Gehört die Zeile (Firma) zu diesem Bereich? */
+const imBereich = (firma: unknown, bereich: Bereich): boolean => istGesellschaft(firma) && bereichVon(firma) === bereich;
+/** Satz, wenn eine Firma im falschen Bereich angefragt wird. */
+const falscherBereich = (firma: Gesellschaftskennung, bereich: Bereich): string =>
+  bereich === 'business' ? GEHOERT_ZU_PRIVAT(firma) : `${finanzOrtName(firma)} gehört zum Business — ihr Monatsabschluss steht im Business-Cockpit, nicht unter Privat.`;
+
+/** Monatsabschlüsse eines Bereichs (Vorgabe Business; die des anderen Bereichs bleiben gespeichert, gehen aber nicht hinaus). */
+export async function ladeAbschluesse(bereich: Bereich = 'business'): Promise<Monatsabschluss[]> {
+  return ((await loadJson<{ eintraege: Monatsabschluss[] }>(ABSCHLUESSE))?.eintraege ?? []).filter(a => imBereich(a.firma, bereich));
 }
 
 export const ABSCHLUSS_FELDER = ['umsatz', 'kosten', 'personal', 'marketingVertrieb', 'afa', 'fakturierteTage', 'eigenkapital', 'bilanzsumme', 'kurzfrVerbindlichkeiten', 'bankschulden'] as const;
 
-/** Monatsabschluss eintragen oder ändern (je Firma und Monat). Leeres Feld = entfernen. */
-export async function speichereAbschluss(roh: Record<string, unknown>, von: string): Promise<{ ok: true; eintrag: Monatsabschluss } | { ok: false; fehler: string }> {
-  const firma = FIRMEN.find(f => f === roh.firma);
+/** Monatsabschluss eintragen oder ändern (je Firma und Monat) — nur für eine Firma des Bereichs (Vorgabe Business). Leeres Feld = entfernen. */
+export async function speichereAbschluss(roh: Record<string, unknown>, von: string, bereich: Bereich = 'business'): Promise<{ ok: true; eintrag: Monatsabschluss } | { ok: false; fehler: string }> {
+  const firma = abschlussFirmen(bereich).find(f => f === roh.firma);
   const monat = typeof roh.monat === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(roh.monat) ? roh.monat : null;
-  if (!firma && istGesellschaft(roh.firma)) return { ok: false, fehler: GEHOERT_ZU_PRIVAT(roh.firma) };
-  if (!firma) return { ok: false, fehler: `Firma fehlt (${KERN_EINHEITEN.filter(e => istBusinessGesellschaft(e.id)).map(e => e.label).join(' oder ')}).` };
+  if (!firma && istGesellschaft(roh.firma)) return { ok: false, fehler: falscherBereich(roh.firma, bereich) };
+  if (!firma) return { ok: false, fehler: `Firma fehlt (${KERN_EINHEITEN.filter(e => imBereich(e.id, bereich)).map(e => e.label).join(' oder ') || 'keine im Bereich'}).` };
   if (!monat) return { ok: false, fehler: 'Monat im Format JJJJ-MM fehlt.' };
   if (monat > localDay().slice(0, 7)) return { ok: false, fehler: 'Ein Abschluss für die Zukunft geht nicht.' };
   let eintrag!: Monatsabschluss;
@@ -133,9 +148,9 @@ export async function speichereAbschluss(roh: Record<string, unknown>, von: stri
   return { ok: true, eintrag };
 }
 
-export async function loescheAbschluss(firma: string, monat: string): Promise<void> {
-  // Nur der Business-Bereich (05.10.): ein Abschluss einer Privat-Einheit wird von hier nie gelöscht.
-  if (!istBusinessGesellschaft(firma)) return;
+export async function loescheAbschluss(firma: string, monat: string, bereich: Bereich = 'business'): Promise<void> {
+  // Nur der eigene Bereich (05.10.): ein Abschluss des anderen Bereichs wird von hier nie gelöscht.
+  if (!imBereich(firma, bereich)) return;
   schreibStand++;
   await updateJson<{ eintraege: Monatsabschluss[] }>(ABSCHLUESSE, alt => ({ eintraege: (alt?.eintraege ?? []).filter(x => !(x.firma === firma && x.monat === monat)) }));
 }
@@ -160,7 +175,7 @@ async function ladeRohFrisch(heute: string) {
     // Fokus-Blöcke (K5: Kalender-Termine der Art Fokus/Block + Archiv) — der Plan des Inhabers (Rolle, keine feste Person im Code).
     inhaberSpeicher().then(p => (p ? planBloeckeLesen({ person: p, von: tagPlus(heute, -42), bis: tagPlus(heute, 1) }) : [])).catch(() => []),
     loadJson<{ auftraege?: { status: string; beendet?: string; zeit?: string; anlass?: string; name?: string; auftrag?: string }[] }>('zoe-auftraege'),
-    loadJson<{ meilensteine?: { id?: string; titel?: string; bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
+    loadJson<{ meilensteine?: { id?: string; titel?: string; bereich: string; space?: string; einheit?: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     ladeEinstellungen(),
     loadJson<BusinessVerlauf>(VERLAUF),
     ladeIndexDatei('traktion-index'),
@@ -205,7 +220,9 @@ async function ladeRohFrisch(heute: string) {
     bloecke: plan.filter(x => x.date >= abTag).map(x => ({ date: x.date, dauerMin: x.dauerMin, art: x.art })),
     // Nur die Felder, die der Index braucht (Auftragstexte können lang sein).
     auftraege: (auftraege?.auftraege ?? []).map(a => ({ status: a.status, beendet: a.beendet, zeit: a.zeit, anlass: a.anlass, name: a.name, auftrag: typeof a.auftrag === 'string' ? a.auftrag.slice(0, 120) : undefined })),
-    meilensteine: ms?.meilensteine ?? [],
+    // Meilensteine einer Privat-Einheit (05.10. abends: gespeichert Business + Einheit „Selbstständigkeit“) gehören zu Privat — serverseitig
+    // heraus (`meilensteinSpace`, abgeleitet). Das Altfeld `bereich` bleibt im Speicher „business“ (für den alten Stand).
+    meilensteine: (ms?.meilensteine ?? []).filter(m => !(m.bereich === 'business' && meilensteinSpace(m) === 'privat')),
     kapa,
     fte: einst.fte,
     ziele: einst.ziele ?? {},

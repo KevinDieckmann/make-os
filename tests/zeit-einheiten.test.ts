@@ -46,8 +46,9 @@ describe('Zeit je Einheit — Säuberung der Zuordnung', () => {
 
   it('aufgabeKurz nimmt Space und Einheit nach den Aufgaben-Regeln (Privat trägt keine Einheit)', () => {
     const t = { id: 't1', title: 'Angebot', projectId: 'p', space: 'business' as const, einheit: 'kdc', status: 'todo' };
-    expect(aufgabeKurz(t)).toEqual({ id: 't1', titel: 'Angebot', einheit: 'Selbstständigkeit', business: true, offen: true });
-    expect(aufgabeKurz({ ...t, space: 'privat', status: 'done' })).toMatchObject({ einheit: undefined, business: false, offen: false });
+    // 05.10. abends: `arbeit` — zählt Zeit auf die Aufgabe als Arbeit (Business immer; Privat nur im Space einer Privat-Arbeits-Einheit).
+    expect(aufgabeKurz(t)).toEqual({ id: 't1', titel: 'Angebot', einheit: 'Selbstständigkeit', business: true, arbeit: true, offen: true });
+    expect(aufgabeKurz({ ...t, space: 'privat', status: 'done' })).toMatchObject({ einheit: undefined, business: false, arbeit: false, offen: false });
   });
 });
 
@@ -135,7 +136,7 @@ describe('Zeit je Einheit — Auswertung', () => {
     expect(zeitJeEinheit([{ person: 'p', name: 'P', datei: d }], [], 'monat', '2026-10-15').gesamt.sek).toBe(1800);
   });
 
-  it('Business-Einheiten immer, eigene nur mit Zeit, „ohne Einheit“ zuletzt; Privat zählt nicht', () => {
+  it('Arbeits-Einheiten immer (Selbstständigkeit als Privat-Zeile), eigene nur mit Zeit, „ohne Einheit“ zuletzt; Privat ohne Arbeit zählt nicht', () => {
     const b = [
       B('2026-09-22T08:00:00Z', 60, { aufgabeId: 'a1' }),
       B('2026-09-22T10:00:00Z', 30, { einheit: 'Kunde Nord' }),
@@ -144,9 +145,10 @@ describe('Zeit je Einheit — Auswertung', () => {
       B('2026-09-22T13:00:00Z', 99, { schluessel: 'privat:gesundheit', einheit: 'KD Ventures' }),
     ];
     const a = auswerten(bloeckeImZeitraum(datei(...b), '2026-09-21', '2026-09-27'), karte(...aufgaben));
-    expect(a.zeilen.map(z => [z.label, z.art, z.sek / 60])).toEqual([
-      // 05.10.: die Selbstständigkeit gehört zu Privat — keine feste Business-Zeile mehr (vorher ['Selbstständigkeit', 'kern', 0] vorne).
-      ['KD Ventures', 'kern', 60], ['MAKE Innovation GmbH', 'kern', 0], ['Kunde Nord', 'eigen', 30], ['ohne Einheit', 'ohne', 35],
+    expect(a.zeilen.map(z => [z.label, z.art, z.sek / 60, z.bereich])).toEqual([
+      // 05.10. abends (Kevin: „Die Selbstständigkeit zählt WEITER als Arbeit“): ihre Zeile ist wieder fest dabei — als PRIVAT-Zeile (selbst-privat
+      // hatte sie herausgenommen; davor stand sie als Business-Zeile vorne).
+      ['Selbstständigkeit', 'kern', 0, 'privat'], ['KD Ventures', 'kern', 60, 'business'], ['MAKE Innovation GmbH', 'kern', 0, 'business'], ['Kunde Nord', 'eigen', 30, 'business'], ['ohne Einheit', 'ohne', 35, 'business'],
     ]);
     expect(a.sek).toBe(125 * 60);
     expect(a.bloecke).toBe(4);

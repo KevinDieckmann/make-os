@@ -35,6 +35,7 @@ import { teamFuerAnfrage } from '@/lib/make-one/team-speicher';
 import { delegierbar } from '@/lib/make-one/team-typen';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
+import { meilensteinSpace } from '@/lib/planung/meilensteine';
 
 /** Frühere Loop-Ergebnisse ohne Gesundheits-Ableitungen (rein): kein Gesundheits-Loop, im Morgen-Loop ohne Tagesform/Schutz. */
 function ohneGesundheit<T extends { agent: string; payload?: unknown }>(l: T[]): T[] {
@@ -229,7 +230,8 @@ export async function POST(req: Request) {
       planBloeckeLesen({ person, von: montagVon(today), bis: tagPlus(montagVon(today), 7) }).catch(() => []),
     ]);
     const m = g.fin ? computeMetrics(g.fin) : null;
-    const msBiz = (msF?.meilensteine ?? []).filter(x => x.bereich === 'business' && !x.erledigt);
+    // 05.10. abends: Meilensteine der Selbstständigkeit (Privat-Einheit) zählen nicht als Business (`meilensteinSpace`, abgeleitet).
+    const msBiz = (msF?.meilensteine ?? []).filter(x => x.bereich === 'business' && meilensteinSpace(x) === 'business' && !x.erledigt);
     const msGes = (msF?.meilensteine ?? []).filter(x => x.bereich === 'gesundheit' && !x.erledigt);
     const formatJson = 'Antworte NUR als JSON: {"lage":"<2-3 Sätze ehrliche Lage>","punkte":[{"titel":"<konkret>","warum":"<1 Satz>"}],"eineSache":"<DIE eine Handlung — klein genug, dass sie wirklich passiert>","warnung":"<optional, sonst leer>"} — maximal 4 punkte.';
     const kopf = 'Du bist ZOE, Kevins Chief of Staff. Du bekommst FERTIGE Zahlen aus echten Stores — rechne nicht neu, erfinde nichts, sei ehrlich auch wenn es unbequem ist. Deutsch, knapp, kein Startup-Sprech.';

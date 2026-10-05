@@ -6,7 +6,7 @@
 // und Annahmen bearbeitbar) · Ziele (mit „Was wäre wenn“). Alle Zahlen kommen
 // aus dem Rechenkern; das Blatt schreibt nur Zellen-Überschreibungen.
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Raster, Spalten, Spalte, Knopf, LEUCHT, feld, Haken } from '../ui';
 import type { Szenario, Zeile } from '@/lib/finanzen/rechenkern';
@@ -25,6 +25,9 @@ import { STEUER_HINWEIS } from '@/lib/finanzen/szenarien';
 import { GESELLSCHAFTEN } from '@/lib/einheiten';
 import { HAND_FELDER, zelleTeile } from '@/lib/finanzen/handwerte';
 import { useRueckfrage } from '../ui/zeile-aktionen';
+import { MonatsabschlussKarte } from '../business/Abschluss';
+import type { Monatsabschluss } from '@/lib/business/messen';
+import type { Gesellschaftskennung } from '@/lib/einheiten';
 
 /** Blatt + Zeilen-Dialog + neue Zeile — für Privat und die MAKE Innovation GmbH (ug) gemeinsam. */
 function useZeilenDialog() {
@@ -140,7 +143,25 @@ export function KDV() { return <Geschaeft ort="kdv" />; }
 
 // ── Selbstständigkeit (seit 05.10. unter Privat) ─────────────────────────────
 export function Selbst() {
-  return <><AlteHandwerte /><Geschaeft ort="kdc" /><EinkommensteuerGemeinsam /><SelbstAbschluss /></>;
+  return <><AlteHandwerte /><Geschaeft ort="kdc" /><EinkommensteuerGemeinsam /><SelbstAbschluss /><SelbstMonatsabschluss /></>;
+}
+
+/**
+ * Monatsabschluss der Selbstständigkeit unter Privat (05.10. abends, Kevin: „Privat › Selbstständigkeit bekommt den Monatsabschluss“): derselbe
+ * Baustein wie im Business-Cockpit, aber über /api/privat/abschluss (Privatzugang, nur Privat-Einheiten). Die vor dem 05.10. im Business-Cockpit
+ * eingetragenen Abschlüsse der Selbstständigkeit stehen hier wieder und lassen sich bearbeiten. Ohne Privat-Einheit (Instanz-Einstellung) keine Karte.
+ */
+function SelbstMonatsabschluss() {
+  const [d, setD] = useState<{ firmen: { id: Gesellschaftskennung; label: string }[]; abschluesse: Monatsabschluss[] } | null>(null);
+  const laden = useCallback(() => {
+    fetch('/api/privat/abschluss', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => setD(x?.ok ? x : null)).catch(() => setD(null));
+  }, []);
+  useEffect(() => { laden(); }, [laden]);
+  if (!d?.firmen.length) return null;
+  return (
+    <MonatsabschlussKarte i={7} eintraege={d.abschluesse} firmen={d.firmen} adresse="/api/privat/abschluss" onGespeichert={laden}
+      hinweis="Die Monatszahlen (BWA) der Selbstständigkeit — gespeichert im Privat-Bereich, nicht im Business-Index. Ältere Einträge aus dem Business-Cockpit stehen hier mit." />
+  );
 }
 
 /** Handwert-Schlüssel als Text: Name der Größe, Monat (0 = ohne Monat), ggf. „nur in Szenario …“. */

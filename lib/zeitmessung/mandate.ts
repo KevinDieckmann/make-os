@@ -1,14 +1,14 @@
 // ─── Zeit & Fokus — Zeit je Mandat (28.09., rein, getestet) ─────────────────
 // Kevin: „Mandat an Zielen und Zeit“ — z. B. Zeit je Mandat für Abrechnung und
 // Auslastung. Gezählt werden (wie bei der Zeit je Einheit) nur bewusste
-// Business-Blöcke; der Zeitraum ist die Berliner Woche (Mo–So) oder der
+// Blöcke der Arbeit (Business und, seit 05.10. abends, die Arbeit der Selbstständigkeit unter Privat); der Zeitraum ist die Berliner Woche (Mo–So) oder der
 // Kalendermonat (lib/zeitmessung/einheiten.ts `zeitraumVon`/`bloeckeImZeitraum`).
 // Je Mandat: Stunden, Blöcke — und, wenn das Mandat ein Monatshonorar hat, ein
 // grober Hinweis „≈ € je Stunde“ (Monatshonorar anteilig auf den Zeitraum geteilt
 // durch die erfasste Zeit). Das ist bewusst nur ein Hinweis, kein Rechnungsbezug.
 
 import { mandatLabel, type MandatKurz } from '@/lib/planung/mandat';
-import { zeitraumVon, bloeckeImZeitraum, type Zeitraum } from './einheiten';
+import { zeitraumVon, bloeckeImZeitraum, arbeitsPruefer, type Zeitraum } from './einheiten';
 import type { FokusBlock, ZeitDatei } from './modell';
 
 /** Zeile „ohne Mandat“ — der Marker kann mit keiner CRM-Kennung kollidieren. */
@@ -91,8 +91,10 @@ export function zeitJeMandat(
 ): ZeitJeMandat {
   const { von, bis, label } = zeitraumVon(zeitraum, stichtag);
   const alle: FokusBlock[] = [];
+  // Arbeit (05.10. abends): Business-Blöcke und Privat-Blöcke mit Mandat/Einheit einer Privat-Arbeits-Einheit (Selbstständigkeit).
+  const istArbeit = arbeitsPruefer(null, mandate);
   const jePerson = personen.map(p => {
-    const b = bloeckeImZeitraum(p.datei, von, bis);
+    const b = bloeckeImZeitraum(p.datei, von, bis, istArbeit);
     alle.push(...b);
     return { person: p.person, name: p.name, auswertung: mandateAuswerten(b, mandate, zeitraum) };
   });

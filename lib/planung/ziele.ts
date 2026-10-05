@@ -9,6 +9,7 @@ import type { Ziel } from './typen';
 import { neueKennung } from '@/lib/kennung';
 import { istPlanJahr, zielJahr } from './zeitstrahl';
 import { aufwandSaeubern } from './meilensteine';
+import { speicherSpace } from './bereich';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 /** Länge der Notiz/Beschreibung eines Ziels (wie bisher — der alte Stand kürzt nicht anders). */
@@ -31,7 +32,10 @@ export function sauberZiel(roh: unknown): Ziel | null {
   // Messlatte (01.10., Ziel-Detail): woran „erreicht“ gemessen wird — optional, wie am Meilenstein.
   if (typeof z.messlatte === 'string' && z.messlatte.trim()) aus.messlatte = z.messlatte.trim().slice(0, 300);
   if (typeof z.erledigtAm === 'string' && ISO_TAG.test(z.erledigtAm)) aus.erledigtAm = z.erledigtAm;
-  if (istSpace(z.space)) aus.space = z.space;
+  // Speicherform (05.10. abends, lib/planung/bereich.ts): Privat + eine Privat-Einheit (Selbstständigkeit) wird als Business + Einheit
+  // abgelegt — so liest der alte Stand das Ziel unverändert; der Bereich (Privat) wird beim Lesen abgeleitet (`wirksamerSpace`).
+  const space = speicherSpace(istSpace(z.space) ? z.space : undefined, z.einheit);
+  if (space) aus.space = space;
   const rang = Number(z.rang);
   if (Number.isInteger(rang) && rang > 0) aus.rang = rang;
   // Einheiten nur im Business — privat kennt keine (27.09.).

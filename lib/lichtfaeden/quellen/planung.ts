@@ -13,6 +13,7 @@
 import { spaceBereich, type SpaceId } from '@/lib/make-one/space-regeln';
 import { meilensteinListeId, zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { WEG } from '@/lib/wege';
+import { wirksamerSpace } from '@/lib/planung/bereich';
 import { nurIchBesitzer } from '@/lib/aufgaben/sicht';
 import type { AufgabenSichtbarkeit } from '@/types/tasks';
 import { abstufen } from '../baum';
@@ -24,13 +25,15 @@ import {
 export interface PlanungZiel {
   id: string; titel: string; space?: SpaceId; rang?: number; termin?: string; erledigt?: boolean;
   abgeleitetVon?: string; mandatId?: string; firmaId?: string;
+  /** Einheit (05.10. abends): eine Privat-Einheit (Selbstständigkeit) legt das Ziel unter Privat (`spaceVonZiel`). */
+  einheit?: string;
   /** Wem das Ziel gehört: gemeinsame Ziele BEIDE, eigene Ziele die Person. */
   person: string;
   /** Die Ziel-Farbe vom Server (`zielFarben` über alle Ziele des Haushalts). */
   farbe: string;
 }
 export interface PlanungMeilenstein {
-  id: string; titel: string; faellig?: string; erledigt?: boolean; space?: SpaceId; bereich?: string;
+  id: string; titel: string; faellig?: string; erledigt?: boolean; space?: SpaceId; bereich?: string; einheit?: string;
   zielId?: string; abgeleitetVon?: string; mandatId?: string; firmaId?: string; rang?: number;
 }
 export interface PlanungAufgabe {
@@ -101,7 +104,9 @@ export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
   const sortiert = [...d.meilensteine].sort((a, b) => (a.faellig ?? '9').localeCompare(b.faellig ?? '9') || a.id.localeCompare(b.id));
   for (const m of sortiert) {
     const z = wurzelZiel(zielVonMeilenstein(m));
-    const space: SpaceId = m.space ?? (m.bereich === 'business' ? 'business' : m.bereich === 'gesundheit' ? 'privat' : z ? spaceVonZiel(z) : 'business');
+    const gespeichert: SpaceId = m.space ?? (m.bereich === 'business' ? 'business' : m.bereich === 'gesundheit' ? 'privat' : z ? spaceVonZiel(z) : 'business');
+    // 05.10. abends: ein Meilenstein einer Privat-Einheit (Selbstständigkeit) läuft unter Privat (`wirksamerSpace`, abgeleitet).
+    const space: SpaceId = wirksamerSpace({ space: gespeichert, einheit: m.einheit }) ?? gespeichert;
     const oben = z ? zielPfad.get(z.id)! : themaPfad(space, meilensteinThema(m));
     const pfad = [...oben, knotenId.meilenstein(m.id)];
     msPfad.set(m.id, pfad);

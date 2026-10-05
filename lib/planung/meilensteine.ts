@@ -13,14 +13,27 @@
 
 import { istSpace, type SpaceId } from '@/lib/make-one/space-regeln';
 import { sauberEinheit } from './einheiten';
+import { speicherSpace, wirksamerSpace } from './bereich';
 import { bezugSaeubern } from './mandat';
 import type { Meilenstein, MeilensteinBereich } from './typen';
 import { neueKennung } from '@/lib/kennung';
 
-/** Der Space eines Meilensteins — `space`, sonst aus dem Altfeld; ohne beides Business (wie bisher). */
-export function meilensteinSpace(m: { space?: unknown; bereich?: unknown }): SpaceId {
+/**
+ * Der GESPEICHERTE Space eines Meilensteins — `space`, sonst aus dem Altfeld; ohne beides Business (wie bisher). Nur für den Schreibweg und
+ * Kennungen, die am gespeicherten Space hängen (Aufgaben-Space der Meilenstein-Liste, Mandat-Bezug). Wer anzeigt oder filtert, nimmt
+ * `meilensteinSpace` (05.10. abends: eine Privat-Einheit wie die Selbstständigkeit gehört zu Privat, lib/planung/bereich.ts).
+ */
+export function meilensteinSpeicherSpace(m: { space?: unknown; bereich?: unknown }): SpaceId {
   if (istSpace(m.space)) return m.space;
   return m.bereich === 'gesundheit' ? 'privat' : 'business';
+}
+
+/**
+ * Der Bereich eines Meilensteins (Anzeige, Filter, Fluss, Lichtfäden, Kalender, Brain, Business-Index): der gespeicherte Space — außer die
+ * Einheit gehört zu Privat (unsere Instanz: die Selbstständigkeit), dann Privat (`wirksamerSpace`, 05.10. abends). Kein Datenumzug.
+ */
+export function meilensteinSpace(m: { space?: unknown; bereich?: unknown; einheit?: unknown }): SpaceId {
+  return wirksamerSpace({ space: meilensteinSpeicherSpace(m), einheit: typeof m.einheit === 'string' ? m.einheit : undefined }) ?? 'business';
 }
 
 /** Das Altfeld zum Space — nur zum Spiegeln für ältere Leser. */
@@ -70,8 +83,10 @@ export function sauberMeilenstein(roh: unknown): Meilenstein | null {
   const titel = String(m.titel ?? '').slice(0, 200);
   if (!titel) return null;
   const rang = Number(m.rang);
-  const space = meilensteinSpace(m);
-  // Einheit nur im Business — Privat kennt keine Einheiten.
+  // Speicherform (05.10. abends): Privat + eine Privat-Einheit (Selbstständigkeit) wird als Business + Einheit abgelegt — so, wie der alte
+  // Stand sie kennt; der Bereich (Privat) wird beim Lesen abgeleitet (`meilensteinSpace`).
+  const space = speicherSpace(meilensteinSpeicherSpace(m), m.einheit) ?? 'business';
+  // Einheit nur im (gespeicherten) Business — Privat kennt keine Einheiten.
   const einheit = space === 'business' ? sauberEinheit(m.einheit) : null;
   const id = String(m.id ?? '').slice(0, 80) || neueKennung('ms');
   const wartetAuf = sauberWartetAuf(m.wartetAuf, id);

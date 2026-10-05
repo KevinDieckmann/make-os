@@ -14,6 +14,7 @@
 import { FADEN_FARBEN, FADEN_TOENE, LEUCHT } from '@/lib/make-one/design';
 import type { SpaceId } from '@/lib/make-one/space-regeln';
 import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
+import { wirksamerSpace } from '@/lib/planung/bereich';
 
 // ── Knoten ───────────────────────────────────────────────────────────────────
 
@@ -69,9 +70,10 @@ export const OHNE_FARBE = FADEN_FARBEN.ohne;
 
 // ── Ziele: Space, Wurzel, Thema, Farbe — je EINE Regel ───────────────────────
 
-/** Der Space eines Ziels — ohne Angabe Business (wie die Planung). Die EINE Regel, überall genutzt (Lichtfäden, Farben,
- *  Ziel-Bezug); ein Wächter (tests/ziele-eine-quelle.test.ts) lässt keine zweite zu. */
-export const spaceVonZiel = (z: { space?: SpaceId }): SpaceId => z.space ?? 'business';
+/** Der Space eines Ziels — ohne Angabe Business (wie die Planung); eine Privat-Einheit (Selbstständigkeit) → Privat (05.10. abends,
+ *  `wirksamerSpace`, lib/planung/bereich.ts). Die EINE Regel, überall genutzt (Lichtfäden, Farben, Ziel-Bezug); ein Wächter
+ *  (tests/ziele-eine-quelle.test.ts) lässt keine zweite zu. */
+export const spaceVonZiel = (z: { space?: SpaceId; einheit?: string }): SpaceId => wirksamerSpace(z) ?? 'business';
 
 /**
  * Kennung → Kennung des Wurzel-Ziels (Jahresziel) für alle Ziele der Menge: abgeleitete Ziele (Kaskade, auch angepasste,
@@ -105,7 +107,7 @@ export function meilensteinThema(m: { mandatId?: string; firmaId?: string; berei
  * Thema eines Wurzel-Ziels: Mandat/Firma am Ziel → Mandate (im Business); ein privates Ziel mit einem Gesundheits-
  * Meilenstein → Gesundheit; sonst Ziele & Planung. Die EINE Zuordnung — Lichtfäden-Baum und Ziel-Bezug der Seiten.
  */
-export function zielThema(z: { space?: SpaceId; mandatId?: string; firmaId?: string }, meilensteine: readonly { bereich?: string }[]): ThemaId {
+export function zielThema(z: { space?: SpaceId; einheit?: string; mandatId?: string; firmaId?: string }, meilensteine: readonly { bereich?: string }[]): ThemaId {
   const space = spaceVonZiel(z);
   if (z.mandatId || z.firmaId) return space === 'business' ? 'mandate' : 'planung';
   return space === 'privat' && meilensteine.some(m => m.bereich === 'gesundheit') ? 'gesundheit' : 'planung';

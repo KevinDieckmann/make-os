@@ -5,6 +5,8 @@
 // Umsatz, Kosten, Personal, Marketing & Vertrieb, Abschreibungen, Eigenkapital,
 // Bilanzsumme, kurzfristige Verbindlichkeiten, Bankschulden. Alles optional —
 // jede Zahl schließt eine Messlücke. Später: DATEV-BWA-Import.
+// 05.10. abends: dieselbe Karte unter Privat › Finanzplanung › Selbstständigkeit (`firmen` = Privat-Einheiten, `adresse` =
+// /api/privat/abschluss) — ein Baustein, zwei Bereiche; getrennt wird serverseitig über den Bereich der Firma.
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -34,12 +36,22 @@ const FELDER: { id: keyof Monatsabschluss; label: string; hilfe: string; tage?: 
 const letzterMonat = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
 const euro = (n?: number) => (n == null ? '—' : new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(n));
 
-async function senden(body: Record<string, unknown>) {
-  return fetch('/api/business', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+async function senden(body: Record<string, unknown>, adresse = '/api/business') {
+  return fetch(adresse, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
 }
 
-export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: Monatsabschluss[]; onGespeichert: () => void }) {
-  const [firma, setFirma] = useState<Firma>(FIRMA_LISTE[0]?.id ?? 'kdv');
+export function MonatsabschlussKarte({ eintraege, onGespeichert, firmen = FIRMA_LISTE, adresse = '/api/business', hinweis, i = 5 }: {
+  eintraege: Monatsabschluss[]; onGespeichert: () => void;
+  /** Firmen der Karte (Vorgabe: die Business-Gesellschaften; unter Privat: die Privat-Einheiten). */
+  firmen?: { id: Firma; label: string }[];
+  /** Schreibweg (Vorgabe: /api/business; unter Privat: /api/privat/abschluss). */
+  adresse?: string;
+  /** Satz unter der Überschrift (z. B. was der Abschluss im jeweiligen Bereich speist). */
+  hinweis?: string;
+  i?: number;
+}) {
+  const liste = firmen;
+  const [firma, setFirma] = useState<Firma>(firmen[0]?.id ?? 'kdv');
   const { bestaetigen, dialog } = useRueckfrage();
   const [monat, setMonat] = useState(letzterMonat());
   const [werte, setWerte] = useState<Record<string, string>>({});
@@ -58,23 +70,24 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: 
     setLaeuft(true); setMeldung(null);
     const zahlen = Object.fromEntries(FELDER.map(f => [f.id, werte[f.id]?.trim() ? Number(werte[f.id].replace(/\./g, '').replace(',', '.')) : null]));
     if (Object.values(zahlen).some(v => v != null && !Number.isFinite(v))) { setLaeuft(false); setMeldung({ ok: false, text: 'Bitte nur Zahlen eintragen (z. B. 12.500 oder 12500,50).' }); return; }
-    const r = await senden({ aktion: 'abschluss', firma, monat, ...zahlen, notiz });
+    const r = await senden({ aktion: 'abschluss', firma, monat, ...zahlen, notiz }, adresse);
     setLaeuft(false);
-    if (r.ok) { setMeldung({ ok: true, text: `Gespeichert — ${FIRMA_LISTE.find(f => f.id === firma)?.label} ${monat}.` }); onGespeichert(); }
+    if (r.ok) { setMeldung({ ok: true, text: `Gespeichert — ${liste.find(f => f.id === firma)?.label} ${monat}.` }); onGespeichert(); }
     else setMeldung({ ok: false, text: r.fehler ?? 'Nicht gespeichert.' });
   };
   const loeschen = async (e: Monatsabschluss) => {
-    if (!(await bestaetigen({ titel: `Abschluss ${FIRMA_LISTE.find(f => f.id === e.firma)?.label} ${e.monat} löschen?`, text: 'Die eingetragenen Monatswerte dieser Firma fallen weg.', ja: 'Löschen', gefahr: true }))) return;
-    const r = await senden({ aktion: 'abschluss_weg', firma: e.firma, monat: e.monat });
+    if (!(await bestaetigen({ titel: `Abschluss ${liste.find(f => f.id === e.firma)?.label} ${e.monat} löschen?`, text: 'Die eingetragenen Monatswerte dieser Firma fallen weg.', ja: 'Löschen', gefahr: true }))) return;
+    const r = await senden({ aktion: 'abschluss_weg', firma: e.firma, monat: e.monat }, adresse);
     if (r.ok) onGespeichert();
   };
 
   return (
-    <Karte i={5}>
+    <Karte i={i}>
       <div id="abschluss" style={{ scrollMarginTop: 90 }} />
       <Ueberschrift farbe={LEUCHT.geld} rechts={<span>alles optional — jede Zahl schließt eine Messlücke</span>}>Monatsabschluss</Ueberschrift>
+      {hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10, lineHeight: 1.45 }}>{hinweis}</div>}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-        <Pillen liste={FIRMA_LISTE} aktiv={firma} onWahl={setFirma} farbe={LEUCHT.geld} />
+        <Pillen liste={liste} aktiv={firma} onWahl={setFirma} farbe={LEUCHT.geld} />
         <input type="month" value={monat} max={letzterMonat()} onChange={e => setMonat(e.target.value)} aria-label="Monat" style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '7px 11px', colorScheme: 'dark' }} />
         {vorhanden && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>schon eingetragen — Änderungen überschreiben</span>}
       </div>
@@ -103,7 +116,7 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: 
               {eintraege.map(e => (
                 <tr key={`${e.firma}-${e.monat}`} style={{ borderTop: '1px solid rgba(255,255,255,.06)', textAlign: 'right', color: C.ink }}>
                   <td style={{ textAlign: 'left', padding: '6px 8px' }}><button onClick={() => { setFirma(e.firma); setMonat(e.monat); }} style={{ background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', padding: 0, fontSize: TYP.bedien }}>{e.monat}</button></td>
-                  <td style={{ textAlign: 'left', padding: '6px 8px', color: C.inkDim }}>{FIRMA_LISTE.find(f => f.id === e.firma)?.label}</td>
+                  <td style={{ textAlign: 'left', padding: '6px 8px', color: C.inkDim }}>{liste.find(f => f.id === e.firma)?.label}</td>
                   <td style={{ padding: '6px 8px' }}>{euro(e.umsatz)}</td><td style={{ padding: '6px 8px' }}>{euro(e.kosten)}</td><td style={{ padding: '6px 8px' }}>{euro(e.personal)}</td><td style={{ padding: '6px 8px' }}>{e.fakturierteTage != null ? String(e.fakturierteTage).replace('.', ',') : '—'}</td><td style={{ padding: '6px 8px' }}>{euro(e.eigenkapital)}</td>
                   <td style={{ padding: '6px 8px' }}><button onClick={() => void loeschen(e)} aria-label="löschen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 13 }}>✕</button></td>
                 </tr>

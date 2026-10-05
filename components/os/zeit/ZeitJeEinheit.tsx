@@ -7,6 +7,8 @@
 //   ZeitJeEinheitKarte  — Woche/Monat, blättern, je Person und gesamt (Seite Fokus)
 //   FokusBloeckeKarte   — die eigenen Blöcke der letzten 7 Tage: Business zuordnen, Privat ins Business umbuchen
 // Rechnung: lib/zeitmessung/einheiten.ts über /api/state/zeit/einheiten (gemerkt je Haushalt).
+// 05.10. abends (Kevin: „Die Selbstständigkeit zählt WEITER als Arbeit“): gezählt wird die Arbeit — Business und die Arbeit der
+// Selbstständigkeit unter Privat. Deren Zeile steht als „Privat · …“ da, nie als Business-Einheit; Privat-Blöcke lassen sich ihr zuordnen.
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
@@ -15,6 +17,12 @@ import { bereichLabel } from '@/lib/zeitmessung/kennzahlen';
 import { ZEITRAUM_LABEL, type EinheitAuswertung, type ZeitJeEinheit, type Zeitraum } from '@/lib/zeitmessung/einheiten';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { einheitFarbe, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
+import { PRIVAT_EINHEITEN_NAMEN, privatArbeitsEinheit } from '@/lib/einheiten';
+import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
+
+/** Die Privat-Einheiten, deren Zeit als Arbeit zählt (unsere Instanz: die Selbstständigkeit). */
+const PRIVAT_ARBEIT = PRIVAT_EINHEITEN_NAMEN.filter(n => !!privatArbeitsEinheit(n));
+const ARBEIT_TEXT = PRIVAT_ARBEIT.length ? `im Business und für ${PRIVAT_ARBEIT.join(', ')} (Privat)` : 'im Business';
 import { Karte, Ueberschrift, Leer, Hinweis, Segmente, Fortschritt } from '../ui';
 import { ZEIT_EREIGNIS } from '../Kopf';
 import { ZuordnungWahl, type Zuordnung } from './Zuordnung';
@@ -29,16 +37,16 @@ export const zeitEinheitenAdresse = (zeitraum: Zeitraum, stichtag?: string) =>
 export function EinheitBalken({ a, kompakt }: { a: EinheitAuswertung; kompakt?: boolean }) {
   const zeilen = kompakt ? a.zeilen.filter(z => z.sek > 0) : a.zeilen;
   const max = Math.max(1, ...a.zeilen.map(z => z.sek));
-  if (!a.sek) return <Leer>Noch keine Fokus-Blöcke im Business in diesem Zeitraum — oben „Fokus“ starten und einer Aufgabe zuordnen.</Leer>;
+  if (!a.sek) return <Leer>Noch keine Fokus-Blöcke der Arbeit ({ARBEIT_TEXT}) in diesem Zeitraum — oben „Fokus“ starten und einer Aufgabe zuordnen.</Leer>;
   return (
     <div style={{ display: 'grid', gap: kompakt ? 8 : 12 }}>
       {zeilen.map(z => {
-        const farbe = z.art === 'ohne' ? EINHEIT_GRAU : einheitFarbe(z.label);
+        const farbe = z.art === 'ohne' ? EINHEIT_GRAU : z.bereich === 'privat' ? SPACE_FARBE.privat : einheitFarbe(z.label);
         const anteil = a.sek ? Math.round((z.sek / a.sek) * 100) : 0;
         return (
           <div key={z.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 10px', alignItems: 'center' }}>
             <span style={{ fontSize: TYP.bedien, color: z.sek ? C.ink : C.inkLeise, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {z.label}{z.sek > 0 && <span style={{ color: C.inkLeise, fontWeight: 400 }}> · {anteil} %{!kompakt && ` · ${z.bloecke} ${z.bloecke === 1 ? 'Block' : 'Blöcke'}`}</span>}
+              {z.bereich === 'privat' && z.art !== 'ohne' && <span style={{ color: SPACE_FARBE.privat, fontWeight: 600 }}>Privat · </span>}{z.label}{z.sek > 0 && <span style={{ color: C.inkLeise, fontWeight: 400 }}> · {anteil} %{!kompakt && ` · ${z.bloecke} ${z.bloecke === 1 ? 'Block' : 'Blöcke'}`}</span>}
             </span>
             <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: z.sek ? C.ink : C.inkLeise }}>{zeitText(z.sek)}</span>
             <div style={{ gridColumn: '1 / -1' }}><Fortschritt anteil={z.sek / max} farbe={farbe} /></div>
@@ -101,7 +109,7 @@ export function ZeitJeEinheitKarte({ i = 0 }: { i?: number }) {
         )}
       </div>
       {d === undefined ? <Leer>lade …</Leer> : !a ? <Hinweis art="achtung">Die Zeit je Einheit ist gerade nicht erreichbar.</Hinweis> : <EinheitBalken a={a} />}
-      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 12 }}>Gezählt werden bewusste Fokus-Blöcke im Business. Die Einheit kommt aus der zugeordneten Aufgabe, sonst aus der Wahl am Block.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 12 }}>Gezählt werden bewusste Fokus-Blöcke der Arbeit — {ARBEIT_TEXT}. Die Einheit kommt aus der zugeordneten Aufgabe, sonst aus der Wahl am Block.</div>
     </Karte>
   );
 }
@@ -187,6 +195,15 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
                   {privat.map(b => (
                     <div key={b.von} style={{ ...zeile, opacity: 0.85 }}>
                       {kopf(b)}
+                      {/* Arbeit unter Privat (05.10. abends): ein Privat-Block der Selbstständigkeit zählt als Arbeit — zuordnen oder lösen. */}
+                      {PRIVAT_ARBEIT.length > 0 && (
+                        <select value={b.einheit && PRIVAT_ARBEIT.includes(b.einheit) ? b.einheit : ''} onChange={e => void zuordnen(b, { ...(b.aufgabeId && e.target.value ? { aufgabeId: b.aufgabeId } : {}), ...(e.target.value ? { einheit: e.target.value } : {}) })}
+                          aria-label="Arbeit für" title="Arbeit unter Privat — zählt in Zeit je Einheit und Kapazität" className="fassbar"
+                          style={{ fontFamily: 'inherit', fontSize: TYP.bedien, padding: '4px 8px', borderRadius: 999, border: `1px solid ${SPACE_FARBE.privat}55`, background: 'transparent', color: b.einheit ? SPACE_FARBE.privat : C.inkDim, colorScheme: 'dark' }}>
+                          <option value="">keine Arbeit</option>
+                          {PRIVAT_ARBEIT.map(n => <option key={n} value={n}>Arbeit · {n}</option>)}
+                        </select>
+                      )}
                       <button onClick={() => void umbuchen(b, 'business')} disabled={laeuft === b.von} title="Ins Business umbuchen — danach Aufgabe oder Einheit zuordnen" className="fassbar"
                         style={{ fontFamily: 'inherit', fontSize: TYP.bedien, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${LEUCHT.business}66`, background: `${LEUCHT.business}14`, color: LEUCHT.business }}>
                         {laeuft === b.von ? '…' : 'ins Business'}

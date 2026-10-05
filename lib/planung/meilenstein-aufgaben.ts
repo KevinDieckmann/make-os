@@ -24,7 +24,7 @@
 
 import type { Meilenstein, Ziel } from './typen';
 import type { AufgabenListe, Project, Task, TasksState } from '@/types/tasks';
-import { meilensteinSpace } from './meilensteine';
+import { meilensteinSpeicherSpace } from './meilensteine';
 import { finanzOrtAus, istGesellschaft } from '@/lib/einheiten';
 import { istMandantSpace, mandantSpaceId, istAbgeschlossen } from '@/lib/aufgaben/struktur';
 import { anteilFertig, kinderKarte } from '@/lib/aufgaben/ebenen';
@@ -54,7 +54,9 @@ export const istMeilensteinListe = (id: string | undefined | null): boolean => !
 
 /** Der Aufgaben-Space eines Meilensteins (siehe Kopf). */
 export function meilensteinAufgabenSpace(m: Pick<Meilenstein, 'space' | 'bereich' | 'firmaId' | 'einheit'>): string {
-  if (meilensteinSpace(m) === 'privat') return 'privat';
+  // Gespeicherter Space (05.10. abends): ein Meilenstein der Selbstständigkeit (gespeichert Business + Einheit) behält seine Liste im Space der
+  // Selbstständigkeit — der steht seit 05.10. selbst unter Privat; die Aufgaben ziehen nicht um.
+  if (meilensteinSpeicherSpace(m) === 'privat') return 'privat';
   if (m.firmaId) { const s = mandantSpaceId(m.firmaId); if (istMandantSpace(s)) return s; }
   const g = finanzOrtAus(m.einheit);
   if (g && istGesellschaft(g)) return g;

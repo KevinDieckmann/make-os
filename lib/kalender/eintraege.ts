@@ -20,6 +20,7 @@ import { mandatFristen, type MandatFristFelder } from '@/lib/crm/kunden';
 import { reviewZaehlt } from '@/lib/crm/review';
 import { werktagAbOder } from '@/lib/zeit/kalender-kern';
 import { wartetText } from '@/lib/planung/meilenstein-kette';
+import { meilensteinSpace } from '@/lib/planung/meilensteine';
 
 export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang' | 'steuer' | 'dsgvo' | 'angebot' | 'deal' | 'vertrag';
 /**
@@ -43,7 +44,7 @@ const kurzTag = (tag: string) => `${tag.slice(8, 10)}.${tag.slice(5, 7)}.`;
 const werktagHinweis = (tag: string): string | undefined => { const w = werktagAbOder(tag); return w !== tag ? `zählt bis ${kurzTag(w)} (nächster Werktag)` : undefined; };
 
 export interface Quellen {
-  meilensteine?: { id: string; titel: string; faellig?: string; erledigt?: boolean; bereich?: string; space?: string; wartetAuf?: string[] }[];
+  meilensteine?: { id: string; titel: string; faellig?: string; erledigt?: boolean; bereich?: string; space?: string; einheit?: string; wartetAuf?: string[] }[];
   etappen?: { id: string; name: string; ziel?: string }[];
   mandate?: ({ id: string; kunde: string; titel?: string; status?: string; naechstesReview?: string; zustaendig?: string } & Partial<MandatFristFelder>)[];
   zahlungen?: { id: string; an?: string; titel?: string; betrag?: number; status?: string; faellig?: string; firmaId?: string }[];
@@ -66,7 +67,7 @@ export function fristen(q: Quellen, von: string, bis: string, heute: string = vo
   for (const m of q.meilensteine ?? []) {
     // Kette (01.10.): wartet er noch auf einen offenen Vorgänger, sagt es der Titel — so auch in Glocke und Heute (eine Frist, keine zweite Meldung).
     const wartet = wartetText(m, q.meilensteine ?? []);
-    if (imZeitraum(m.faellig, von, bis)) raus.push({ id: `ms-${m.id}`, art: 'meilenstein', tag: m.faellig.slice(0, 10), titel: wartet ? `${m.titel} — ${wartet}` : m.titel, unter: m.bereich, href: WEG.meilenstein(m.id), erledigt: !!m.erledigt, bereich: (m.space ?? m.bereich) === 'business' ? 'business' : 'privat' });
+    if (imZeitraum(m.faellig, von, bis)) raus.push({ id: `ms-${m.id}`, art: 'meilenstein', tag: m.faellig.slice(0, 10), titel: wartet ? `${m.titel} — ${wartet}` : m.titel, unter: m.bereich, href: WEG.meilenstein(m.id), erledigt: !!m.erledigt, bereich: m.space || m.bereich ? meilensteinSpace(m) : 'privat' }); // 05.10. abends: Selbstständigkeit → privat (abgeleitet)
   }
   for (const e of q.etappen ?? []) {
     if (imZeitraum(e.ziel, von, bis)) raus.push({ id: `et-${e.id}`, art: 'etappe', tag: e.ziel, titel: e.name, unter: 'Bauplan-Etappe', href: '/os/bauplan?s=plan', bereich: 'business' });

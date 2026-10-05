@@ -125,7 +125,8 @@ describe('3 · Space ohne Angabe: nur spaceVonZiel', () => {
     const leser = [...dateien('lib/lichtfaeden'), 'lib/make-one/ziel-bezug.ts', 'lib/aufgaben/ziel-bezug.ts', 'lib/planung/ziel-farben-server.ts', 'lib/planung/ziele-client.ts'];
     const zweite = leser.filter(f => !f.endsWith('lib/lichtfaeden/modell.ts') && /\b(z|ziel|w)\??\.space\s*(\?\?|[!=]==?\s*undefined)/.test(ohneKommentare(lies(f))));
     expect(zweite).toEqual([]);
-    expect(lies('lib/lichtfaeden/modell.ts')).toMatch(/export const spaceVonZiel = \(z: \{ space\?: SpaceId \}\): SpaceId => z\.space \?\? 'business';/);
+    // 05.10. abends: eine Privat-Einheit (Selbstständigkeit) ergibt Privat — weiter EINE Regel (`wirksamerSpace`, lib/planung/bereich.ts).
+    expect(lies('lib/lichtfaeden/modell.ts')).toMatch(/export const spaceVonZiel = \(z: \{ space\?: SpaceId; einheit\?: string \}\): SpaceId => wirksamerSpace\(z\) \?\? 'business';/);
   });
 });
 

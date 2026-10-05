@@ -9,6 +9,7 @@ import { OWNER_BEIDE, istRhythmus, type Block, type Routine, type SpaceId, type 
 import { faelligkeit, type Faelligkeit } from './rhythmus';
 import { sauberEinheit } from './einheiten';
 import { neueKennung } from '@/lib/kennung';
+import { speicherSpace, wirksamerSpace } from './bereich';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 const UHR = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -33,7 +34,9 @@ export function sauberRoutine(roh: unknown): Routine | null {
     dauerMin: Math.max(5, Math.min(120, Math.round(Number(r.dauerMin)) || 15)),
     aktiv: r.aktiv !== false,
   };
-  if (istSpace(r.space)) aus.space = r.space;
+  // Speicherform (05.10. abends): Privat + Privat-Einheit (Selbstständigkeit) → Business + Einheit, wie der alte Stand sie kennt.
+  const space = speicherSpace(istSpace(r.space) ? r.space : undefined, r.einheit);
+  if (space) aus.space = space;
   if (r.owner !== undefined && r.owner !== null && r.owner !== '') aus.owner = sauberOwner(r.owner);
   if (istRhythmus(r.rhythmus) && r.rhythmus !== 'taeglich') aus.rhythmus = r.rhythmus;
   if (aus.rhythmus && aus.rhythmus !== '3x-woche' && typeof r.naechstesMal === 'string' && ISO_TAG.test(r.naechstesMal)) aus.naechstesMal = r.naechstesMal;
@@ -54,7 +57,8 @@ export function sauberBlock(roh: unknown): Block | null {
   if (!UHR.test(von) || !UHR.test(bis) || bis <= von) return null;
   const rang = Number(b.rang);
   const titel = String(b.titel ?? '').trim().slice(0, 60);
-  const art: SpaceId = b.art === 'business' ? 'business' : 'privat';
+  // Arbeit für eine Privat-Einheit (Selbstständigkeit) ist ein Arbeits-Block (05.10. abends: zählt WEITER als Arbeit) — gespeichert wie bisher.
+  const art: SpaceId = speicherSpace(b.art === 'business' ? 'business' : 'privat', b.einheit) ?? 'privat';
   // Einheit (28.09.): wie bei Routinen nur im Business, Namen aus der einen Quelle — Privat verwirft sie.
   const einheit = art === 'business' ? sauberEinheit(b.einheit) : null;
   return {
@@ -67,7 +71,8 @@ export function sauberBlock(roh: unknown): Block | null {
   };
 }
 
-export const spaceVonRoutine = (r: Pick<Routine, 'space'>): SpaceId => r.space ?? 'privat';
+/** Der Bereich einer Routine: fehlt `space` → privat; eine Privat-Einheit (Selbstständigkeit) → privat (05.10. abends, abgeleitet). */
+export const spaceVonRoutine = (r: Pick<Routine, 'space' | 'einheit'>): SpaceId => wirksamerSpace(r) ?? 'privat';
 export const ownerVonRoutine = (r: Pick<Routine, 'owner'>): string => r.owner || OWNER_BEIDE;
 export const istGemeinsam = (r: Pick<Routine, 'owner'>): boolean => ownerVonRoutine(r) === OWNER_BEIDE;
 
