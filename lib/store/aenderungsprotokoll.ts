@@ -10,8 +10,11 @@
 // Speicher: `aenderungsprotokoll--<haushalt>--<JJJJ-MM>` (Monatsdateien, Berliner Monat) —
 // es wird nur angehängt, nie gekürzt, nie überschrieben. Ein Fehler beim Protokollieren bricht
 // den eigentlichen Schreibvorgang nie ab (er ist dann schon geschehen).
+// Seit 05.10. mit Hash-Kette und Siegel (lib/store/protokoll-kette.ts `anhaengenVerkettet`) — jeder Eintrag trägt `h`,
+// die Datei `kette`; Prüfung nächtlich (Durchsicht) und unter System › Nachweise.
 
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
+import { anhaengenVerkettet } from '@/lib/store/protokoll-kette';
 import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
@@ -22,7 +25,7 @@ export interface Wer { art: WerArt; person?: string }
 export type ProtokollOp = 'neu' | 'geaendert' | 'geloescht';
 /** Eine Änderung an einem Datensatz — ohne Inhalt. `liste` nur bei Beständen mit mehreren Listen (CRM). */
 export interface Aenderung { liste?: string; op: ProtokollOp; id: string; felder?: string[] }
-export interface ProtokollEintrag extends Aenderung { at: string; wer: WerArt; person?: string; bestand: string }
+export interface ProtokollEintrag extends Aenderung { at: string; wer: WerArt; person?: string; bestand: string; /** Glied der Hash-Kette (05.10.). */ h?: string }
 export interface ProtokollDatei { eintraege: ProtokollEintrag[] }
 
 export const PROTOKOLL_PRAEFIX = 'aenderungsprotokoll';
@@ -147,7 +150,7 @@ export async function protokolliere(bestand: string, aenderungen: Aenderung[], w
       at, wer: w.art, ...(w.person ? { person: w.person } : {}), bestand,
       ...(a.liste ? { liste: a.liste } : {}), op: a.op, id: protokollKennung(a.id), ...(a.felder?.length ? { felder: a.felder } : {}),
     }));
-    await updateJson<ProtokollDatei>(protokollName(haushalt, monatBerlin(jetzt)), cur => ({ eintraege: [...(Array.isArray(cur?.eintraege) ? cur.eintraege : []), ...neu] }));
+    await anhaengenVerkettet(protokollName(haushalt, monatBerlin(jetzt)), neu as unknown as Record<string, unknown>[], { jetzt });
   } catch (e) {
     console.error(`[protokoll] ${bestand}: nicht protokolliert —`, e instanceof Error ? e.message : e);
   }

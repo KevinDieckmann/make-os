@@ -106,7 +106,14 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   T('zoe-entscheidungen--*', 'Dauerhafte Entscheidungen — bleiben (Rechenschaft), Fingerabdruck → c#geloescht, Name getilgt.', 'zoe-entscheidungen'),
   T('zoe-auftraege', 'Warteschlange der Läufe — Aufträge/Ergebnisse getilgt.'),
   T('zoe-empfang', 'Begrüßungstext der Stunde — getilgt.'),
-  T('aenderungsprotokoll--*', 'Änderungsprotokoll — bleibt (nur Feldnamen), Fingerabdruck der Person → c#geloescht.', 'aenderungsprotokoll'),
+  T('aenderungsprotokoll--*', 'Änderungsprotokoll — bleibt (nur Feldnamen), Fingerabdruck der Person → c#geloescht. Seit 05.10. mit Hash-Kette und Siegel (lib/store/protokoll-kette.ts).', 'aenderungsprotokoll'),
+  // Lese-Protokoll (05.10., lib/store/leseprotokoll.ts): wer Gesundheit/Erholung, Finanzen, Kontakt-/Firmenakten und das
+  // Gesellschafts-Register gelesen hat — nur Metadaten, Kennungen als Fingerabdruck, mit Hash-Kette.
+  mit(T('leseprotokoll--*', 'Lese-Protokoll je Haushalt und Monat — wer (Konto/ZOE/System), wann, welcher Bereich, wessen Daten (Konto), Umfang und Kennungen nur als Fingerabdruck; nie Inhalte. Art. 17: Fingerabdruck der Person → c#geloescht, der Zugriff bleibt belegt.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c i. V. m. Art. 5 Abs. 2 und Art. 32 Abs. 1 lit. b/d DSGVO (Nachweis- und Sicherheitspflicht: Zugriffe auf besonders schutzwürdige Daten nachvollziehbar)',
+    art15: 'Konten: System › Nachweise (Inhaber) bzw. auf Anfrage beim Inhaber; Kontakte: Fingerabdrücke über die Auskunft auflösbar',
+    loeschfrist: '12 Monate (ältere Monate leert die nächtliche Durchsicht, Vermerk mit Anzahl bleibt), in Sicherungen bis zu 12 Monate länger',
+  }),
   T('agent-log', 'Agenten-Log — Titel/Texte getilgt.'),
   T('client-fehler', 'Fehlermeldungen der Oberfläche — getilgt, falls sie die Person nennen.'),
   T('meldungen--*', 'Glocke je Person — Texte getilgt.'),
@@ -164,7 +171,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // mit. Im Browser liegt nur ein Offline-Abbild (localStorage `make-karten-cache`) — das Abmelden räumt es weg. Das
   // Änderungsprotokoll nennt Kennung + Feldnamen, nie Werte.
   H('visitenkarten--*', 'Eigene Visitenkarten je Person (Netzwerken) — eigene Daten der Person, nie Dritte; Art. 17 = Profil löschen bzw. Konto entfernen.'),
-  H('ernaehrung', 'Eigene Daten des Haushalts (Essen, Einkauf).'),
+  H('ernaehrung', 'Eigene Daten des Haushalts (Essen, Einkauf); Fotos zu Gerichten liegen seit 05.10. verschlüsselt unter bilder-gerichte/ (lib/store/bild-ablage.ts).'),
   H('ernaehrung-vorschlag', 'Essens-Vorschlag des Haushalts.'),
   // Seit 29.09. (K2) findet der Wächter auch Namen aus Konstanten, Namens-Funktionen und speicherFuer() — diese
   // Bestände standen schon im Code, fehlten aber hier:
@@ -189,7 +196,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('haushalt-*--*', 'Haushaltsfinanzen (Konten, Buchungen, Rechnungen) — eigene Daten des Haushalts.'),
   H('haushalt-umzug--*', 'Umzugs-Kopie der Haushaltsfinanzen — eigene Daten des Haushalts.'),
   H('telegram', 'Telegram-Verknüpfung der Personen des Haushalts (Chat-Kennungen).'),
-  H('anmeldungen', 'Anmeldungen der Konten des Haushalts (Zeit, Gerät; bei Änderungen der Anmelde-Adressen die betroffene Adresse nur maskiert) — Art. 15/17 über das Konto.'),
+  H('anmeldungen', 'Anmeldungen der Konten des Haushalts (Zeit, Gerät; bei Änderungen der Anmelde-Adressen die betroffene Adresse nur maskiert) — Art. 15/17 über das Konto. Seit 05.10. mit Hash-Kette (rollend, 300 Einträge).'),
   H('content-entwuerfe', 'Eigene Marketing-Entwürfe (ZOE) — Themen und Texte des Haushalts, keine Kartei-Daten.'),
   H('delegation-runde', 'Delegations-Vorschläge an Personen des Haushalts (Aufgaben-Titel).'),
   { muster: 'anfragen-ergebnis', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Idempotenz-Ablage (lib/store/anfragen.ts): Antworten höchstens 24 h, danach automatisch weg — kein eigener Löschlauf nötig.' },
@@ -229,7 +236,9 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('oauth-states', 'Kurzlebige OAuth-Zustände — keine Dritten.'),
   H('ki-verbrauch', 'Kosten der Modellaufrufe je Person des Haushalts.'),
   K('demo-instanz', 'Demo-Marke (05.10., lib/demo/schutz.ts): Saat-Version, Zeitpunkt, Haushalt-Kennung und Zählungen — nur in einer Demo-Instanz, keine Personendaten.'),
-  K('backlog', 'Bauplan der Software (Ideen/Etappen) — keine Kontakte.'),
+  K('backlog', 'Bauplan der Software (Ideen/Etappen) — keine Kontakte. Bildschirmfotos der Karten liegen seit 05.10. verschlüsselt unter bauplan-bilder/ (lib/store/bild-ablage.ts) — sie können App-Inhalte zeigen; darum nie Fotos mit Kontaktdaten anhängen, ein solches Bild an der Karte entfernen.'),
+  K('protokoll-siegel', 'Siegel der Protokoll-Kette (05.10., lib/store/protokoll-kette.ts): je Protokolldatei Anzahl der Einträge und letzter Hash — keine Inhalte, keine Personen.'),
+  K('protokoll-pruefung', 'Ergebnis der letzten Kettenprüfung (Zahlen, Dateinamen, Befunde) — keine Inhalte.'),
   K('bauzeit', 'Bauzeiten der Software.'),
   K('agents-config', 'Agenten-Schalter.'),
   K('brain-konsolidierung', 'Riegel der Brain-Konsolidierung.'),

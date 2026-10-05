@@ -32,6 +32,8 @@ export interface UmschluesselErgebnis {
   sicherungen: number;
   archiv: { neu: number; schon: number };
   ablage: { neu: number; schon: number };
+  /** Bilder (05.10., lib/store/bild-ablage.ts). */
+  bilder?: { neu: number; schon: number };
   fehler: string[];
 }
 
@@ -90,5 +92,10 @@ export async function allesUmschluesseln(neuLaden = true): Promise<UmschluesselE
       }
     }));
   }
+  // 4. Bilder (05.10.): Fotos zu Gerichten und Bauplan-Bildschirmfotos — je Bild in dessen Warteschlange.
+  const { bilderUmschluesseln } = await import('./bild-ablage');
+  const b = await bilderUmschluesseln();
+  r.bilder = { neu: b.neu, schon: b.schon };
+  r.fehler.push(...b.fehler);
   return r;
 }

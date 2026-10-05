@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 import { resolveVitals, localDay, type VitalsLog, type DayVitals } from '@/lib/vitals';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
   // Lesen dürfen sich beide gegenseitig (?fuer=, seit 23.09.).
   const person = ansichtPerson(req);
   if (!(await darfGesundheitSehen(req, person))) return NextResponse.json({ error: 'Diese Person teilt ihre Gesundheitsdaten nicht mit dir.' }, { status: 403 });
+  leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const log = (await loadJson<VitalsLog>(speicherFuer('vitals', person))) ?? {};
   // Auch der Rückfallwert gehört der Person: resolveVitals nimmt für Kevin
   // seinen Whoop-Export als Ausgangspunkt und für Malin ehrlich Null. Ohne

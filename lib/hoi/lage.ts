@@ -78,6 +78,10 @@ export interface InnenLage {
   kalenderGoogle?: GoogleKalenderLage | null;
   /** Gmail in der Inbox (03.10.): je verbundener Person Alter/Fehler des Abgleichs und Push — nur Zähler und Zustände, nie Adressen oder Betreffs. null = niemand verbunden. */
   gmail?: GmailLage | null;
+  /** Brain-Index (05.10., Verschlüsselung lückenlos): wo er liegt (tmpfs/Arbeitsspeicher/Platte), Größe, Neubau nach dem Start. */
+  brainIndex?: BrainIndexLage | null;
+  /** Protokolle (05.10.): Hash-Kette über Änderungs-, Lese- und Anmeldeprotokoll — Ergebnis der letzten Prüfung. */
+  protokollKette?: KettenLage | null;
   /** Zugang & Schlüssel (05.10.): Zulieferer-Schlüssel, Übergang, Start-Riegel — nur Zustände, nie Werte. */
   zugang?: ZugangLage;
 }
@@ -115,6 +119,59 @@ export function zugangBefunde(z: ZugangLage | undefined, jetzt: string): Befund[
     else b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gruen', wert: 'streng', satz: 'ohne Datenschlüssel, Pepper oder SESSION_SECRET (je ≥ 32 Zeichen) startet MAKE OS nicht' });
   }
   return b;
+}
+
+/** Protokoll-Kette (HOI): Ergebnis der letzten Prüfung (lib/store/protokoll-kette.ts) — nur Zahlen und Dateinamen. */
+export interface KettenLage { zeit: string; ok: boolean; dateien: number; eintraege: number; fehler: number; warnungen: number; getilgt: number; namen: string[] }
+
+/** Befund zur Protokoll-Kette (rein): Bruch = rot, ungesiegelt/alt = gelb, sonst „Protokoll unverändert ✓“. */
+export function kettenBefunde(k: KettenLage | null | undefined, jetzt?: string): Befund[] {
+  if (k === undefined) return [];
+  if (k === null) return [{ id: 'protokoll-kette', bereich: 'sicherheit', label: 'Protokolle (Hash-Kette)', ampel: 'grau', wert: 'noch nicht geprüft', satz: 'die nächtliche Durchsicht prüft Änderungs-, Lese- und Anmeldeprotokoll ab 4 Uhr — oder System › Nachweise › „Jetzt prüfen“' }];
+  const alt = jetzt ? (Date.parse(jetzt) - Date.parse(k.zeit)) / 3_600_000 : 0;
+  const ampel: Ampel = !k.ok ? 'rot' : k.warnungen || alt > 30 ? 'gelb' : 'gruen';
+  return [{
+    id: 'protokoll-kette', bereich: 'sicherheit', label: 'Protokolle (Hash-Kette)', ampel,
+    wert: k.ok ? `Protokoll unverändert ✓ · ${k.dateien} Dateien · ${k.eintraege} Einträge${k.getilgt ? ` · ${k.getilgt} nach Art. 17 getilgt` : ''}` : `${k.fehler} Datei${k.fehler === 1 ? '' : 'en'} mit Bruch: ${k.namen.slice(0, 3).join(', ')}${k.namen.length > 3 ? ' …' : ''}`,
+    satz: !k.ok ? 'ein Protokoll wurde verändert, gekürzt, vertauscht oder zurückgespielt — System › Nachweise zeigt wo; mit den Sicherungen vom Vortag vergleichen und als mögliche Datenpanne prüfen (datenschutz/DATENPANNEN.md)'
+      : k.warnungen ? `${k.warnungen} Datei${k.warnungen === 1 ? '' : 'en'} noch ohne vollständiges Siegel — wird beim nächsten Anhängen bzw. nachts nachgeholt`
+      : alt > 30 ? 'letzte Prüfung älter als 30 Stunden — läuft die nächtliche Durchsicht?' : 'Änderungs-, Lese- und Anmeldeprotokoll lückenlos verkettet und gesiegelt',
+  }];
+}
+
+/** Brain-Index (HOI): nur Zustände und Zahlen, nie Inhalte. */
+export interface BrainIndexLage {
+  ort: 'tmpfs' | 'arbeitsspeicher' | 'platte';
+  grund: string;
+  klartextAufPlatte: boolean;
+  /** Liegt noch ein alter Klartext-Index im Datenordner? */
+  altDateiDa: boolean;
+  groesseMb: number;
+  /** Größenlimit des tmpfs (MB) — null ohne tmpfs. */
+  grenzeMb: number | null;
+  notizen: number;
+  bereit: boolean;
+  neubau: { fertig: string | null; dauerMs: number | null; fehler: string | null };
+}
+
+/** Befund zum Brain-Index (rein): Klartext auf der Platte = rot, Altdatei/voll/Neubau gescheitert = gelb. */
+export function brainIndexBefunde(b: BrainIndexLage | null | undefined, verschluesselt: boolean, laufzeitStunden: number): Befund[] {
+  if (!b) return [];
+  const voll = b.grenzeMb ? b.groesseMb / b.grenzeMb : 0;
+  const rot = verschluesselt && b.klartextAufPlatte;
+  const nichtGebaut = !b.bereit && laufzeitStunden > 0.5;
+  const gelb = b.altDateiDa || voll > 0.8 || !!b.neubau.fehler || nichtGebaut;
+  const ortText = b.ort === 'tmpfs' ? 'tmpfs (nur Arbeitsspeicher)' : b.ort === 'arbeitsspeicher' ? 'Arbeitsspeicher des Prozesses' : 'Datei auf der Platte';
+  return [{
+    id: 'brain-index', bereich: 'sicherheit', label: 'Brain-Index (Suche)', ampel: rot ? 'rot' : gelb ? 'gelb' : 'gruen',
+    wert: `${ortText} · ${b.groesseMb.toFixed(1)} MB${b.grenzeMb ? ` von ${b.grenzeMb} MB` : ''} · ${b.notizen} Notizen${b.neubau.dauerMs != null ? ` · Neubau ${(b.neubau.dauerMs / 1000).toFixed(1)} s` : ''}`,
+    satz: rot ? 'Index im Klartext auf der Platte (Notweg MAKE_OS_BRAIN_INDEX_PLATTE=1) — Variable entfernen, docker compose up -d'
+      : b.altDateiDa ? 'alter Klartext-Index liegt noch im Datenordner — wird beim nächsten Start überschrieben und gelöscht (oder: App neu starten)'
+      : b.neubau.fehler ? `Neubau nach dem Start gescheitert: ${b.neubau.fehler.slice(0, 100)} — ZOE sucht bis dahin über die Dateien`
+      : nichtGebaut ? 'Index noch nicht gebaut — ZOE sucht über die Dateien (langsamer); Takt und Vault prüfen'
+      : voll > 0.8 ? 'tmpfs fast voll — Größenlimit in compose.yml (/brain-index size=…) erhöhen'
+      : b.ort === 'platte' ? 'ohne Datenschlüssel (lokal): Datei im Datenordner wie die Bestände' : 'nie im Klartext auf der Platte — nach jedem Start aus Vault und verschlüsselten Beständen neu gebaut',
+  }];
 }
 
 /** Zustand von Gmail (HOI): worst case über alle Personen mit Gmail. */
@@ -297,6 +354,9 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...googleKalenderBefunde(innen.kalenderGoogle));
   b.push(...gmailBefunde(innen.gmail));
   b.push(...zugangBefunde(innen.zugang, jetzt));
+  // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
+  b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));
+  b.push(...kettenBefunde(innen.protokollKette, jetzt));
 
   // ── Außen ──
   const aAlter = alterMin(aussen?.zeit);

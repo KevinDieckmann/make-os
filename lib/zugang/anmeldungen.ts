@@ -3,8 +3,11 @@
 // unbemerkt bleibt. Adresse gekürzt (kein volles Nutzerprofil). Aufbewahrung seit 05.10. nach FRIST statt nach Anzahl:
 // 12 Monate (vorher 300 Einträge — bei einem Ratenangriff wären echte Anmeldungen binnen Minuten verdrängt worden),
 // darüber hinaus nur eine Notbremse gegen Fluten (`MAX_NOTBREMSE`). Gekürzt wird bei jedem neuen Eintrag.
+// Seit 05.10. zusätzlich mit Hash-Kette und Siegel (lib/store/protokoll-kette.ts): rollend — fallen vorne Einträge heraus
+// (Frist oder Notbremse), rückt der Kettenanfang nach (`kette.verworfen`), ein gelöschter oder veränderter Eintrag fällt auf.
 
-import { updateJson, loadJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
+import { anhaengenVerkettet } from '@/lib/store/protokoll-kette';
 
 export type AnmeldeArt = 'anmelden' | 'passwort' | 'alle-abgemeldet' | 'abmelden' | 'zweiter-faktor-an' | 'zweiter-faktor-aus'
   /** Anmelde-Adressen (03.10.): hinzugefügt, zur Hauptadresse gemacht, entfernt — `detail` nennt die Adresse nur maskiert. */
@@ -33,7 +36,8 @@ export function adresseGekuerzt(a: string): string {
 
 export async function notiere(e: Omit<Anmeldung, 'zeit'>): Promise<void> {
   const jetzt = new Date();
-  await updateJson<{ eintraege: Anmeldung[] }>(STORE, alt => ({ eintraege: nachFrist([...(Array.isArray(alt?.eintraege) ? alt.eintraege : []), { zeit: jetzt.toISOString(), ...e }], jetzt) })).catch(() => null);
+  const grenze = new Date(jetzt); grenze.setMonth(grenze.getMonth() - FRIST_MONATE);
+  await anhaengenVerkettet(STORE, [{ zeit: jetzt.toISOString(), ...e }], { max: MAX_NOTBREMSE, abZeit: grenze.toISOString(), jetzt }).catch(err => console.error('[anmeldungen] nicht notiert:', err instanceof Error ? err.message : err));
 }
 
 /** Das ganze Protokoll (innerhalb der Frist) — für den Anmelde-Alarm und den Head of IT. */

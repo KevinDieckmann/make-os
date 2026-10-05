@@ -12,6 +12,7 @@ import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type S
 import { ladeStand, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
 import type { TaktStand } from '@/lib/gesundheit/takt';
 import { sichtbarFuer } from '@/lib/planung/routinen';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,7 @@ interface Routine { id: string; label: string; wann: string; aktiv: boolean; kat
 export async function GET(req: Request) {
   const person = ansichtPerson(req);
   if (!(await darfGesundheitSehen(req, person))) return NextResponse.json({ error: 'Diese Person teilt ihre Gesundheitsdaten nicht mit dir.' }, { status: 403 });
+  leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const ich = personAus(req);
   const heute = localDay();
   const [vitals, haut, streak, hl, journal, routinenF, tg, takt] = await Promise.all([

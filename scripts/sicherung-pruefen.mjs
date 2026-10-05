@@ -15,7 +15,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { schluesselRing, huellenVersion, huelleOeffnen } from '../lib/store/huelle.mjs';
-import { binVersion, binOeffnen } from '../lib/store/datei-huelle.mjs';
+import { binVersion, binOeffnen, BILD_ORDNER, BILD_NAME } from '../lib/store/datei-huelle.mjs';
 
 const ordner = process.argv[2];
 const alsJson = process.argv.includes('--json');
@@ -56,6 +56,16 @@ for (const h of await fs.readdir(path.join(ordner, 'dateien')).catch(() => [])) 
     const b = await fs.readFile(path.join(ordner, 'dateien', h, n));
     if (!binVersion(b)) continue;
     try { binOeffnen(b, ring, h, n.slice(0, -4)); } catch { ergebnis.ablageFehler++; ergebnis.ablageFehlerNamen.push(`dateien/${h}/${n}`); }
+  }
+}
+// Bilder (05.10.): <ordner>/<name> mit derselben Hülle — zählen wie die Ablage (Klartext-Altbestand wird nur gezählt).
+for (const o of BILD_ORDNER) {
+  for (const n of await fs.readdir(path.join(ordner, o)).catch(() => [])) {
+    if (!BILD_NAME.test(n)) continue;
+    ergebnis.ablage++;
+    const b = await fs.readFile(path.join(ordner, o, n));
+    if (!binVersion(b)) continue;
+    try { binOeffnen(b, ring, o, n); } catch { ergebnis.ablageFehler++; ergebnis.ablageFehlerNamen.push(`${o}/${n}`); }
   }
 }
 ergebnis.dauerMs = Date.now() - t0;

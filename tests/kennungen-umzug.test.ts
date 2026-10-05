@@ -239,7 +239,7 @@ describe('Kennungs-Umzug an 500 Kontakten', () => {
 
   it('Rückweg ohne spätere Änderungen: derselbe Stand wie vor dem Umzug; neue Kennungen leiten zurück', async () => {
     await welt();
-    const vorher = await alles(/^(konten|kennung-alias--.*|absichten--.*|aenderungsprotokoll--.*)$/);
+    const vorher = await alles(/^(konten|kennung-alias--.*|absichten--.*|aenderungsprotokoll--.*|protokoll-siegel)$/);
     expect((await aufruf('ausfuehren')).status).toBe(200);
     const v = await umzug.umzugVorschau();
     expect(v.rueckweg).toEqual({ moeglich: true, gruende: [] });
@@ -250,7 +250,7 @@ describe('Kennungs-Umzug an 500 Kontakten', () => {
     // Protokoll-Fingerabdrücke: zurück auf die alte Kennung (das Protokoll selbst bekommt neue Zeilen „Kennung geändert“).
     const { protokollKennung } = await import('@/lib/store/aenderungsprotokoll');
     expect(JSON.stringify(await db.loadJson(`aenderungsprotokoll--${HAUS}--2026-09`))).toContain(protokollKennung(alteId(70)));
-    const nachher = await alles(/^(konten|kennung-alias--.*|absichten--.*|aenderungsprotokoll--.*)$/);
+    const nachher = await alles(/^(konten|kennung-alias--.*|absichten--.*|aenderungsprotokoll--.*|protokoll-siegel)$/);
     expect(nachher).toBe(vorher);
     expect(await kennungAufloesen(neu0)).toBe(alteId(0));
     expect(await kennungAufloesen(alteId(0))).toBeNull();

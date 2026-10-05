@@ -270,6 +270,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'zoe-empfang', muster: /^zoe-empfang$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'zoe-entscheidungen--*', muster: /^zoe-entscheidungen--[a-z0-9-]+--\d{4}-\d{2}$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'aenderungsprotokoll--*', muster: /^aenderungsprotokoll--[a-z0-9-]+--\d{4}-\d{2}$/, behandlung: 'tilgen', wirkung: tilgen },
+  // Lese-Protokoll (05.10., lib/store/leseprotokoll.ts): nur Fingerabdrücke — die der Person → c#geloescht, der Zugriff bleibt belegt.
+  { name: 'leseprotokoll--*', muster: /^leseprotokoll--[a-z0-9-]+--\d{4}-\d{2}$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'crm-import-laeufe--*', muster: /^crm-import-laeufe--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'agent-log', muster: /^agent-log$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'client-fehler', muster: /^client-fehler$/, behandlung: 'tilgen', wirkung: tilgen },
