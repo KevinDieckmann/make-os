@@ -562,6 +562,8 @@ Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innov
 11. **Erste Edition** (neu, P11): eine einzige Start-Edition („AI CEO Starter“: Cockpit, Heads Sales/Finance/Operations/IT, Stapel, Fokus & Zeit, DATEV-Export) statt drei Editionen zum Start?
 12. **Datenschutzbeauftragter** (neu, P7): Gesundheitsdaten + KI → DSFA sehr wahrscheinlich → nach § 38 Abs. 1 S. 2 BDSG DSB-Pflicht unabhängig von der Größe. Intern oder extern benennen?
 13. **Streak im Gesundheitsbereich** (neu, P8): Forschung rät von Streaks ab (Druck, Orthosomnie). Behalten, abschaltbar machen oder entfernen?
+14. **KI-Datenweg** (neu, verifiziert): bei Anthropic direkt bleiben (global/USA, SCC, ZDR beantragen) oder für Kunden-Instanzen auf eine **EU-Region über AWS Bedrock / Google Vertex** umstellen (~+10 %)? Entscheidet, ob wir je „Verarbeitung in der EU“ sagen dürfen.
+15. **Testinstanzen ohne Gesundheitsmodul?** (neu, verifiziert): senkt DSFA-/DSB-Druck für die 3–4 Testpersonen deutlich.
 
 ## I2 · Risiken
 | Risiko | Wirkung | Gegenmittel |
@@ -686,6 +688,17 @@ Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innov
 - P7: Umfragewerte 82/88/76/71 % nicht auffindbar.
 - P10 über uns: „zwei Gesellschaften profitabel ohne Angestellte“, „15 h → 3 h Verwaltung“, „Bruttomarge > 80 %“ — **unbelegt, nicht nach außen verwenden** (Business-Zahlen stehen seit 05.10. auf 0).
 - „Zertifizierte europäische Datenhoheit“ — wir haben **keine** Zertifizierung.
+
+## K6a · Ergebnis der eigenen Faktenprüfung (Stand 05.10.2026, Details: `research/ai-ceo/VERIFIZIERT.md`)
+104 Aussagen geprüft: 58 ✅ · 30 ⚠️ · 14 ❌ · 2 ⏳. **Was sich gegenüber K1–K6 ändert:**
+- **K4 „EU-Region mit Anthropic klären“ ist beantwortet:** Beim Direktanbieter gibt es keine; EU-Verarbeitung nur über **AWS Bedrock oder Google Vertex** (~+10 %). → neue Architektur-Entscheidung (I1 Nr. 14).
+- **Testinstanzen sind keine Ausnahme:** Auch kostenlose Abgabe an die 3–4 Testpersonen ist „Bereitstellung“ → maschinenlesbare KI-Kennzeichnung ausgehender Inhalte **vor** der ersten Übergabe; AVV, Verzeichnis als Auftragsverarbeiter, Pannen-Meldeweg ebenfalls vorher.
+- **DSFA/DSB stärker belegt** (DSK-Muss-Liste Nr. 17, Wearable-Daten) → Option: Testinstanzen **ohne Gesundheitsmodul** (I1 Nr. 15).
+- **K5 Preise:** KI-Kosten jetzt mit echten Preisen (Haiku 4.5 1/5 $, Sonnet 5/5.5 2/10 $, Opus 5.5 4/20 $); Zahlungsbereitschaft und Segmentgrößen sind **nicht belegt** → nur über Gespräche mit den Testpersonen.
+- **K2.4 korrigiert:** „8 von 10 Unternehmen (ab 20 Beschäftigten) bevorzugen KI aus Deutschland“ statt „93 %“.
+- **K3:** OWASP LLM Top 10 **2026** und Agentic Top 10 als Prüfliste für den Quarantäne-Schritt; keine feste Werkzeug-Obergrenze, aber ZOE-Werkzeuge auf Überlappung prüfen; Haiku cacht erst ab 4.096 Token (kurze Quarantäne-Läufe ohne Cache einplanen).
+- **Neu für den Steuerberater-Zugang:** Provisionsverbot § 2 Abs. 3 BOStB (nicht § 5).
+- **Eigene Texte:** „Data Privacy Framework“ in 6 App-Texten erst nach Prüfung der DPF-Liste stehen lassen, sonst auf „Standardvertragsklauseln“ korrigieren.
 
 ## K7 · Nächste Schritte (angepasst an den Rahmen „erst für uns + 3–4“)
 1. **Eigene Faktenprüfung** der 10 vorhandenen Berichte → `research/ai-ceo/VERIFIZIERT.md` (läuft); Teil K danach auf „nur Verifiziertes“ umstellen.
