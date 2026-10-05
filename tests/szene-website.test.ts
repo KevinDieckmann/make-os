@@ -30,7 +30,7 @@ describe('fokus/js/szene/ = website/js/szene/ (Byte für Byte)', () => {
   });
 
   it('fokus/pruefen.mjs vergleicht dieselben Dateien (ohne Abhängigkeiten)', () => {
-    for (const d of DATEIEN) expect(GLEICH_WIE_WEBSITE[`js/szene/${d}`]).toBe(`js/szene/${d}`);
+    for (const d of DATEIEN) expect((GLEICH_WIE_WEBSITE as Record<string, string>)[`js/szene/${d}`]).toBe(`js/szene/${d}`);
   });
 
   it('eine geänderte Kopie fällt auf', () => {
