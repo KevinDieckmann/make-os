@@ -38,7 +38,7 @@ export function EmpfaengerKarte({ liste, darf, onGeaendert, i = 1 }: { liste: Em
   );
   return (
     <Karte i={i} id="empfaenger" akzent={offeneAvv ? LEUCHT.achtung : undefined}>
-      <Ueberschrift rechts={darf ? <Knopf leise onClick={() => setNeu({ id: `e-${Date.now().toString(36)}`, name: '', rolle: 'auftragsverarbeiter', zweck: '', daten: '', drittland: '', garantie: 'eu', avv: { status: 'offen' }, dritte: true })}>+ Empfänger</Knopf> : undefined}>Empfänger und Auftragsverarbeiter</Ueberschrift>
+      <Ueberschrift rechts={darf ? <Knopf leise onClick={() => setNeu({ id: `e-${crypto.randomUUID().slice(0, 13)}`, name: '', rolle: 'auftragsverarbeiter', zweck: '', daten: '', drittland: '', garantie: 'eu', avv: { status: 'offen' }, dritte: true })}>+ Empfänger</Knopf> : undefined}>Empfänger und Auftragsverarbeiter</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: offeneAvv ? LEUCHT.achtung : C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>
         {offeneAvv ? `${offeneAvv} Auftragsverarbeiter ohne bestätigten AVV (Art. 28 Abs. 3) — öffnen, „bestätigt“ mit Tag und Unterlage eintragen.` : 'Alle Auftragsverarbeiter in Gebrauch haben einen bestätigten AVV.'} Diese Liste speist das Verzeichnis, die Auskunft an Betroffene und die Selbstprüfung.
       </div>
