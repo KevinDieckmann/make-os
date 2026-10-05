@@ -1,0 +1,405 @@
+# AI-CEO-Modul · 10 Recherche-Aufträge für Gemini Deep Research
+
+**Stand:** 05.10.2026 · gehört zu `AI_CEO_MODUL.md`
+**So benutzt du die Datei:**
+1. Öffne **10 getrennte** Gemini-Läufe (Deep Research). Jeder Lauf bekommt **genau einen** Prompt (P1–P10). Jeder Prompt ist vollständig für sich, du musst nichts ergänzen.
+2. Kopiere jeweils alles zwischen `--- PROMPT P… START ---` und `--- PROMPT P… ENDE ---`.
+3. Wenn Gemini vorab einen Rechercheplan zeigt: prüfen, ob alle nummerierten Fragen drin sind, sonst „bitte alle Fragen 1–n abdecken“ antworten, dann starten.
+4. Ergebnisse als Google Doc exportieren und als `research/ai-ceo/P01-markt.md` … `P10-gtm.md` ablegen (oder mir die Docs geben).
+5. Zum Schluss den **Bonus-Prompt P11** mit allen 10 Ergebnissen laufen lassen (oder ich mache die Synthese mit dir).
+
+**Die 10 Läufe im Überblick**
+| Nr. | Thema | Wofür wir es brauchen |
+|---|---|---|
+| P1 | Markt & Zielgruppe: Solo-/AI-native Unternehmen | Wie groß, wer genau, was zahlen sie |
+| P2 | Wettbewerb I: Arbeits-, Planungs- und Produktivitätssoftware mit KI | Was es gibt, wo die Lücke ist |
+| P3 | Wettbewerb II: Agenten-Plattformen, „KI-Mitarbeiter“, Founder-/CEO-Systeme | Wer dem AI-CEO-Gedanken am nächsten kommt |
+| P4 | Wettbewerb III: Privatleben, Gesundheit, Familie, persönliche Finanzen, „Second Brain“ | Warum Privat + Business zusammen gewinnt |
+| P5 | Wie sich KI 2026–2030 entwickelt | Trends, die wir heute schon einbauen |
+| P6 | Agenten-Architektur und beste Praxis | Wie wir das Führungsteam technisch richtig bauen |
+| P7 | Recht, Datenschutz, Sicherheit, Vertrauen (EU/DE) | Was Pflicht ist, was Verkaufsargument wird |
+| P8 | Arbeit, Fokus, Gesundheit und Leistungsfähigkeit von Gründern | Belege für Balance als Funktion |
+| P9 | Geschäftsmodell, Preise, Kosten der KI, Kennzahlen | Wie wir Geld verdienen, ohne Marge zu verlieren |
+| P10 | Weg in den Markt, Positionierung, Marke, Vertrieb (DACH) | Wie wir es extrem gut verkaufen |
+| P11 | Bonus: Synthese aller zehn Ergebnisse | Ein Bauplan mit Prioritäten |
+
+---
+
+## Gemeinsame Qualitätsregeln (stehen in jedem Prompt schon drin)
+- Nur **aktuelle** Quellen bevorzugen (letzte 12–18 Monate; ältere nur für Grundlagen, dann mit Hinweis), jede Quelle mit **Datum** und **Link**.
+- Deutsch- **und** englischsprachige Quellen; Primärquellen vor Sekundärquellen (Studien, Behörden, Anbieterseiten, Geschäftsberichte, Gesetzestexte, wissenschaftliche Arbeiten).
+- Jede Aussage einordnen: **Fakt** (belegt) · **Schätzung** (mit Methode) · **Meinung/Prognose** (wer sagt es).
+- **Keine erfundenen Zahlen.** Wenn nichts Belastbares zu finden ist: „nicht belegt“ schreiben.
+- Je Kapitel ein Abschnitt **„Was das für MAKE OS heißt“**: konkrete Funktionen, Trends zum Einbauen, Verkaufsargumente, Risiken.
+- Ausgabe auf **Deutsch**, mit Tabellen, am Ende eine Quellenliste.
+
+---
+
+--- PROMPT P1 START ---
+
+Du bist eine erfahrene Marktanalystin für Software und Arbeitswelt mit Schwerpunkt Europa/DACH. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS ist eine Software, mit der ein einzelner Mensch sein Unternehmen und sein Privatleben in einem System steuert: Fokus & Zeit (Kalender, Ziele, Meilensteine, Aufgaben, Kapazität), Business (CRM/Vertrieb, Marketing, Events, Finanzplanung, Steuern, Gesellschaften), Privat (Haushaltsfinanzen, Gesundheit, Familie) und ein KI-Führungsteam (ein KI-Chief-of-Staff und KI-Abteilungsleiter für Sales, Marketing, Finance, Operations, IT …), das vorschlägt, während der Mensch entscheidet. Business sieht nie Privates, Privat sieht das Business; jede Kundin, jeder Kunde bekommt eine eigene, verschlüsselte Instanz in Europa. Wir bauen als Nächstes ein „AI-CEO-Modul“: die Plattform für Menschen, die ihr Unternehmen ohne oder fast ohne Mitarbeiter mit KI-Agenten führen („AI CEO“) und Privat und Business zusammen steuern wollen.
+
+**Ziel dieses Laufs:** Den Markt und die Zielgruppe „AI CEO / Solo- und Kleinstunternehmen mit KI“ vollständig vermessen, um zu entscheiden, für wen wir zuerst bauen und wie groß die Chance ist.
+
+**Beantworte ausführlich und mit Quellen:**
+1. Wie viele Solo-Selbstständige, Freiberufler, Einzelunternehmen und Kleinstunternehmen (0–9 Beschäftigte) gibt es in Deutschland, Österreich, der Schweiz, der EU und den USA (aktuellste amtliche Zahlen: Destatis, Statistik Austria, BFS, Eurostat, US Census/BLS)? Entwicklung der letzten 5–10 Jahre.
+2. Welche Belege gibt es für den Trend „Unternehmen ohne Mitarbeiter“ / „One-Person-Companies mit KI“ / „AI-native Solopreneurs“ (Studien, Umfragen, Gründungsstatistiken, Aussagen von Investoren und KI-Unternehmen wie OpenAI, Anthropic, Y Combinator, Sequoia, a16z)? Was davon ist belegt, was ist Erzählung?
+3. Welche Untergruppen gibt es (Berater/Experten, Coaches/Trainer, Agenturen ohne Angestellte, Software-/Produkt-Kleinunternehmen, Creator, E-Commerce, Holding-/Beteiligungsunternehmer, Event-/Community-Unternehmer)? Größe, Wachstum, typische Umsätze, typische Software-Ausgaben je Gruppe.
+4. Wie viel geben Solo- und Kleinstunternehmen für Software und KI aus (pro Monat/Jahr, Anzahl Werkzeuge, „Tool-Wildwuchs“)? Aktuelle Umfragen (z. B. Bitkom, KfW, ZEW, Gartner, Capterra/GetApp, Zapier, Notion, HubSpot-Reports).
+5. Wie verbreitet ist KI-Nutzung in dieser Gruppe heute (DACH vs. USA), wofür, mit welchen Hürden (Datenschutz, Vertrauen, Kompetenz, Kosten)?
+6. Wie stark verschwimmen bei dieser Gruppe Privat und Business (gemeinsame Finanzen, Steuern, Kalender, Gesundheit/Belastung, Familie)? Gibt es Studien zum Bedarf, beides in einem System zu führen?
+7. Personas: Beschreibe 4–6 realistische Personas (Demografie, Lebenslage, Geschäftsmodell, Tagesablauf, Schmerzen, Ziele, heutige Werkzeuge, Zahlungsbereitschaft, Kaufauslöser, Einwände) — jeweils mit Belegen aus Studien/Foren/Interviews, wo möglich.
+8. Zahlungsbereitschaft: Was zahlen diese Gruppen heute für vergleichbare Produkte (Produktivität, CRM, Buchhaltung, KI-Assistenten)? Gibt es Studien zu Zahlungsbereitschaft für „KI-Mitarbeiter“?
+9. Marktgröße: Leite eine nachvollziehbare TAM/SAM/SOM-Schätzung für DACH und EU her (Methode offenlegen, Annahmen in Tabelle), getrennt für die Editionen „nur Vertrieb/CRM“, „Privat+Business-Betriebssystem“, „AI CEO mit KI-Führungsteam“.
+10. Wie wird sich die Zielgruppe bis 2030 entwickeln (Prognosen, Szenarien, Treiber, Bremsen)?
+
+**Arbeitsweise:** Aktuelle Quellen bevorzugen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, Primärquellen vor Sekundärquellen. Jede Aussage als Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen — wenn nichts belegt ist, „nicht belegt“ schreiben.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Kernaussagen mit Beleg)
+2. Je Frage ein Kapitel mit Tabellen
+3. TAM/SAM/SOM-Tabelle mit Annahmen
+4. Persona-Steckbriefe
+5. „Was das für MAKE OS heißt“: erste Zielgruppe (Empfehlung mit Begründung), Funktionen mit höchster Priorität, Verkaufsargumente, Risiken
+6. Offene Fragen, die nur Interviews klären können (mit Interviewleitfaden, 10 Fragen)
+7. Quellenliste (Titel, Herausgeber, Datum, Link)
+
+--- PROMPT P1 ENDE ---
+
+---
+
+--- PROMPT P2 START ---
+
+Du bist eine Produktstrategin und Wettbewerbsanalystin für Arbeits- und Produktivitätssoftware. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS ist eine Software, mit der ein einzelner Mensch sein Unternehmen und sein Privatleben in einem System steuert: Fokus & Zeit (Kalender, Ziele → Meilensteine → Aufgaben, Kapazitätsplanung, Routinen, Wochenplanung), Business (CRM, Vertrieb, Marketing, Events, Finanzplanung, Steuern, Gesellschaften), Privat (Haushaltsfinanzen, Gesundheit, Familie) und ein KI-Führungsteam (KI-Chief-of-Staff „ZOE“ plus KI-Abteilungsleiter), das vorschlägt, während der Mensch entscheidet. Eigene verschlüsselte Instanz je Kunde in Europa. Wir bauen ein „AI-CEO-Modul“ für Menschen, die ihr Unternehmen ohne Mitarbeiter mit KI führen und Privat + Business zusammen steuern.
+
+**Ziel dieses Laufs:** Den Wettbewerb bei Arbeits-, Planungs- und Produktivitätssoftware mit KI vollständig kartieren und die Lücke für MAKE OS belegen.
+
+**Untersuche mindestens:** Notion (inkl. Notion AI/Agents), ClickUp (Brain/Agents), Asana (AI Studio), Monday.com, Microsoft 365 Copilot (Planner/Loop), Google Workspace mit Gemini, Motion, Reclaim.ai, Sunsama, Akiflow, Amie, Morgen, Todoist, Things, TickTick, Superhuman, Shortwave, Fyxer, Linear (als Referenz für Qualität), Coda, Airtable — plus alle relevanten Neulinge 2025/2026 (bitte aktiv suchen).
+
+**Beantworte ausführlich und mit Quellen:**
+1. Funktionsmatrix: Kalender, Aufgaben, Ziele/OKR, Kapazitäts-/Zeitplanung, Wochenplanung, Routinen, CRM, Finanzen, Privatleben, KI-Agenten (was tun sie wirklich selbst?), Freigabe-Mechanismen, Gedächtnis, Integrationen, Mobil, Offline.
+2. KI-Funktionen im Detail: Welche Agenten handeln eigenständig, welche schlagen nur vor? Wie lösen sie Vertrauen, Kontrolle, Rücknahme, Protokoll?
+3. Preise (aktuell, je Edition, KI-Aufpreis), Preismodelle (Sitz, Verbrauch, Pauschale), Veränderungen 2025/2026.
+4. Datenschutz und Betrieb: Datenstandort, EU-Option, eigene Instanz/Self-Hosting, Verschlüsselung, Zertifizierungen, AVV, Einstellungen zu KI-Training mit Kundendaten.
+5. Zielgruppen und Positionierung (Wortlaut der Startseiten, Claims), Größe (Nutzer, Umsatz, Finanzierung, Bewertung — wo belegt).
+6. Nutzerkritik: Was bemängeln Solo-Unternehmer an diesen Werkzeugen (G2, Capterra, Reddit, Product Hunt, Hacker News, YouTube-Rezensionen)? Häufigste Schmerzpunkte als Rangliste.
+7. Welche Anbieter versuchen, Privat und Business zu verbinden? Wie gut, mit welcher Trennung?
+8. Trends der Kategorie 2026–2028 (Agenten statt Apps, „Work OS“, Kalender als Steuerzentrale, KI-Planung) mit Belegen.
+9. Lücke: Wo genau ist der freie Platz für „ein System für Unternehmen und Leben mit KI-Führungsteam, eigener Instanz und EU-Datenschutz“? Wer könnte ihn als Nächstes besetzen?
+10. Was können wir von den Besten übernehmen (Bedienung, Onboarding, Preisgestaltung, Vorlagen, Community)? Konkrete Beispiele mit Screenshots-Beschreibung/Links.
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, Anbieterseiten und Preislisten direkt prüfen. Jede Aussage als Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen — sonst „nicht belegt“.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (Lücke in 5 Sätzen + 10 Kernaussagen)
+2. Große Vergleichstabelle (Anbieter × Funktionen × Preis × Datenschutz)
+3. Steckbrief je Anbieter (Stärken, Schwächen, Preis, Zielgruppe, KI-Reife)
+4. Rangliste der Nutzerschmerzen mit Belegen
+5. Positionierungskarte (Achsen: Privat↔Business, Werkzeug↔Agenten-Team) mit Einordnung
+6. „Was das für MAKE OS heißt“: Funktionen, die wir haben müssen; Funktionen, mit denen wir uns abheben; Verkaufsargumente gegen jeden Hauptwettbewerber („Warum MAKE OS statt X“)
+7. Quellenliste
+
+--- PROMPT P2 ENDE ---
+
+---
+
+--- PROMPT P3 START ---
+
+Du bist Analystin für KI-Agenten und Automatisierungsplattformen. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS ist ein Betriebssystem für einen Menschen, der sein Unternehmen und sein Leben steuert. Es hat bereits ein KI-Führungsteam: einen KI-Chief-of-Staff (ZOE) und KI-Abteilungsleiter („Heads“) für Sales, Marketing, Events, Finance und IT — mit Regeln ohne KI als Rückfall, Prüfer (keine erfundenen Personen, erlaubte Kanäle, Werbesperren), Evals, Lernen aus Entscheidungen und Freigabe-Stapel (nichts mit Außenwirkung ohne Freigabe). Wir bauen ein „AI-CEO-Modul“: CEO-Cockpit, vollständiges KI-Führungsteam (auch Operations, Product, People, Strategy), Führungsrhythmus (Tag/Woche/Monat/Quartal), Entscheidungssystem, Delegation an Agenten und externe Menschen, Balance von Privat und Business. Eigene Instanz je Kunde, EU-Datenschutz.
+
+**Ziel dieses Laufs:** Alle Anbieter kartieren, die „KI-Mitarbeiter“, Agenten-Teams oder Betriebssysteme für Gründer/CEOs anbieten, und herausfinden, wer dem AI-CEO-Gedanken am nächsten kommt.
+
+**Untersuche mindestens:** Lindy, Relevance AI, Gumloop, n8n (inkl. AI Agents), Zapier Agents/Central, Make.com, Microsoft Copilot Studio/Agents, Salesforce Agentforce, Google Agentspace, OpenAI (Agents, Operator/ChatGPT Agent, GPTs), Anthropic (Claude, Projekte, Agenten-Funktionen), Sintra AI, Motion („AI Employees“), Artisan, 11x, Ema, Beam AI, CrewAI, Manus, Genspark, Devin (als Referenz), Personal-AI-Anbieter (z. B. Personal.ai, Rewind/Limitless, Granola), „Founder OS“/„CEO OS“-Startups — und **aktiv nach neuen Anbietern 2025/2026** suchen, die sich „AI CEO“, „AI COO“, „autonomous company“, „one-person company OS“ nennen.
+
+**Beantworte ausführlich und mit Quellen:**
+1. Steckbrief je Anbieter: Was tun die Agenten wirklich (Belege, Demos, unabhängige Tests), Autonomiegrad, Freigaben, Gedächtnis, Integrationen, Preis, Zielgruppe, Finanzierung.
+2. Wer verkauft „ganze Abteilungen“ oder „ein Team“ statt einzelner Automatisierungen? Wie gut funktioniert das laut Nutzern?
+3. Welche Probleme berichten Nutzer (Halluzinationen, Fehler mit Außenwirkung, Kosten, Wartungsaufwand, Vertrauensverlust)? Konkrete Vorfälle mit Quellen.
+4. Wie lösen die Besten Kontrolle: Autonomiestufen, Freigaben, Protokolle, Rücknahme, Budgets, Evals?
+5. Gibt es ein Produkt, das ein Unternehmen **und** das Privatleben einer Person mit Agenten führt? Wenn ja, wie weit ist es?
+6. Wie entwickeln sich Preise und Geschäftsmodelle (pro Agent, pro Aufgabe, ergebnisbasiert, Sitz)?
+7. Was sagen Investoren und Analysten (Gartner, Forrester, IDC, McKinsey, Sequoia, a16z, YC) zur Zukunft von „AI employees“ und „agentic enterprise“ für Kleinunternehmen?
+8. Welche offenen Standards prägen die Kategorie (Model Context Protocol, Agent2Agent, OpenAI Agents SDK, Anthropic Agent SDK) und was heißt das für Anbindbarkeit?
+9. Wo scheitern Agenten-Produkte bei Solo-Unternehmern typischerweise (Einrichtungsaufwand, „Werkzeugkasten statt Lösung“)?
+10. Lücke und Bedrohung: Wer könnte MAKE OS kopieren oder überholen, und was wäre unser dauerhafter Vorsprung?
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, unabhängige Tests vor Herstellerangaben. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Kernaussagen)
+2. Vergleichstabelle (Anbieter × Autonomie × Kontrolle × Preis × Zielgruppe × Datenschutz)
+3. Steckbriefe
+4. Liste dokumentierter Agenten-Fehler und wie man sie verhindert
+5. „Muster der Besten“ für Kontrolle und Vertrauen
+6. „Was das für MAKE OS heißt“: Was wir übernehmen, was wir besser machen, welche Abteilungen/Heads zuerst, Verkaufsargumente gegen Werkzeugkästen
+7. Quellenliste
+
+--- PROMPT P3 ENDE ---
+
+---
+
+--- PROMPT P4 START ---
+
+Du bist Analystin für Verbraucher-Software rund um Gesundheit, Familie, persönliche Finanzen und persönliches Wissensmanagement. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS verbindet Unternehmen und Privatleben eines Menschen in einem System. Privat umfasst heute: Haushaltsfinanzen (Budget, Fixkosten, Runway), Gesundheit (Whoop-Daten, Routinen, Journal, Sport, Ernährung — nur mit ausdrücklicher Einwilligung), Familie & Partnerschaft (geteilte und „nur ich“-Bereiche), Kontakte, ein persönliches Wissensarchiv („Brain“ auf Obsidian-Basis) und einen KI-Chief-of-Staff. Business sieht nie Privates; Privat sieht das Business. Wir bauen ein „AI-CEO-Modul“, in dem Energie, Kapazität und geschützte Zeit für Familie und Gesundheit Führungsgrößen sind.
+
+**Ziel dieses Laufs:** Verstehen, was es im Privat-Bereich gibt, und belegen, ob und warum die Verbindung von Privat und Business ein Kaufgrund ist.
+
+**Untersuche mindestens:** Whoop, Oura, Garmin, Apple Health/Fitness, Google Fit/Fitbit, Ultrahuman; Familien-Organizer (Cozi, FamilyWall, OurHome, Maple, Ohai, Skylight); persönliche Finanzen (YNAB, Monarch, Copilot Money, Finanzguru, Outbank, Moneywiz, Buddy); Second Brain/Notizen (Obsidian, Reflect, Mem, Tana, Capacities, Notion Life-OS-Vorlagen, Heptabase); persönliche KI (Rewind/Limitless, Pi, ChatGPT-Gedächtnis, Gemini Personal Context, Apple Intelligence); „Life OS“-Angebote und Coaches — plus **neue Anbieter 2025/2026**.
+
+**Beantworte ausführlich und mit Quellen:**
+1. Was können diese Produkte, was kosten sie, wie viele Nutzer haben sie, wie gehen sie mit Daten um (insbesondere Gesundheitsdaten nach Art. 9 DSGVO)?
+2. Gibt es Produkte, die Privatleben **und** Unternehmen verbinden? Wie trennen sie Daten, wie verkaufen sie das?
+3. Welche Belege gibt es, dass Menschen mit eigenem Unternehmen Privat und Business gemeinsam planen wollen (Studien, Umfragen, Foren, Life-OS-Bewegung, Vorlagen-Verkäufe)?
+4. Wie nutzen Menschen Gesundheits- und Erholungsdaten für die Arbeitsplanung (z. B. „Erholung niedrig → leichter Tag“)? Wirksamkeit laut Studien?
+5. Familienkoordination: Welche Schmerzen haben Gründer mit Familie (Zeit, mentale Last, Kalender)? Was hilft nachweislich?
+6. Persönliche Finanzen bei Selbstständigen: Vermischung mit Geschäftsfinanzen, Steuern, Runway — welche Werkzeuge lösen das, welche Lücke bleibt?
+7. Second Brain und persönliches Gedächtnis mit KI: Trends, Datenschutz, Akzeptanz.
+8. Was sind die größten Datenschutz- und Vertrauensbedenken bei solchen Daten, und welche Lösungen überzeugen Nutzer (lokal, eigene Instanz, Ende-zu-Ende)?
+9. Trends 2026–2030 für persönliche KI, Gesundheitsdaten, Familien-Software.
+10. Welche Funktionen im Privat-Bereich würden für AI CEOs den größten Unterschied machen (Rangliste mit Belegen)?
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, Studien vor Marketing. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Kernaussagen)
+2. Vergleichstabellen je Kategorie
+3. Belege für „Privat + Business zusammen“ (für und gegen)
+4. Datenschutz- und Vertrauensmuster
+5. „Was das für MAKE OS heißt“: Privat-Funktionen mit Priorität, wie wir die Verbindung zum Business verkaufen, was wir bewusst nicht bauen
+6. Quellenliste
+
+--- PROMPT P4 ENDE ---
+
+---
+
+--- PROMPT P5 START ---
+
+Du bist eine führende Technologie-Analystin für künstliche Intelligenz mit Blick auf Produktstrategie. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS ist ein Betriebssystem für Menschen, die ihr Unternehmen ohne Mitarbeiter mit KI-Agenten führen und Privat + Business in einem System steuern. Es nutzt heute Claude-Modelle in drei Stufen (schnell/ausgewogen/stark), einen KI-Chief-of-Staff, KI-Abteilungsleiter mit Regeln-Rückfall ohne KI, Prüfer, Evals und Freigaben, eine lokale Wissensbasis mit Volltextsuche und Embeddings, Sprache, Kalender- und Mail-Anbindungen. Eigene Instanz je Kunde in Europa. Wir wollen heute so bauen, dass das Produkt in den nächsten Jahren mit der KI-Entwicklung **mitwächst** statt veraltet.
+
+**Ziel dieses Laufs:** Eine belastbare, sehr ausführliche Analyse, wie sich KI 2026–2030 entwickelt und welche Trends wir **jetzt** in Architektur und Produkt einbauen müssen.
+
+**Beantworte ausführlich und mit Quellen:**
+1. **Fähigkeiten:** Wohin entwickeln sich Sprachmodelle bis 2030 (Schlussfolgern, lange Aufgaben, Planen, Werkzeugnutzung, Computer-Bedienung, Gedächtnis, Multimodalität, Sprache in Echtzeit)? Was sagen Benchmarks (z. B. METR-Messungen zur Länge autonom lösbarer Aufgaben, SWE-bench, GAIA, OSWorld) und die großen Labore (Anthropic, OpenAI, Google DeepMind, Meta, Mistral)?
+2. **Kosten:** Wie entwickeln sich Preise je Token und je Aufgabe? Was wird praktisch kostenlos, was bleibt teuer? Folgen für Preismodelle von Software.
+3. **Agenten:** Ab wann sind mehrstündige/mehrtägige autonome Agenten für Geschäftsaufgaben verlässlich? Welche Aufgaben eines Kleinunternehmens werden wann realistisch automatisierbar (Zeitleiste mit Unsicherheit)?
+4. **Gedächtnis und Personalisierung:** Langzeitgedächtnis, persönliche Modelle, Kontextfenster, Abruf — Stand und Richtung.
+5. **Lokal vs. Cloud:** Wie stark werden kleine/lokale/offene Modelle (Llama, Mistral, Qwen, Gemma usw.)? Was heißt das für Datenschutz-Positionierung und eigene Instanzen in Europa?
+6. **Schnittstellen:** Sprache, Brillen/Wearables, Assistenten im Betriebssystem (Apple, Google, Microsoft), „Agent-zu-Agent“-Kommunikation, Protokolle (MCP, A2A). Welche Oberflächen verlieren, welche gewinnen?
+7. **Plattformrisiko:** Werden große Anbieter (OpenAI, Google, Microsoft, Apple) Funktionen wie „KI-Chief-of-Staff“ selbst anbieten? Was bleibt für spezialisierte Anbieter (Daten, Vertrauen, Domäne, Arbeitsablauf, Regulierung)?
+8. **Wirtschaft und Arbeit:** Prognosen zur Produktivität, zu Ein-Personen-Unternehmen, zu Berufen, die sich ändern (OECD, IMF, WEF, McKinsey, Stanford AI Index, Epoch AI) — mit Bandbreiten.
+9. **Szenarien 2027/2028/2030:** drei Szenarien (langsam, erwartet, schnell) mit Kennzeichen, Wahrscheinlichkeit und Frühindikatoren, an denen wir erkennen, welches eintritt.
+10. **Konkrete Bau-Empfehlungen:** Welche 15–20 Architektur- und Produktentscheidungen sollten wir **jetzt** treffen, damit MAKE OS mit jeder Modellgeneration besser wird (z. B. Modelle austauschbar kapseln, Evals als Fundament, Regeln-Rückfall, Daten- und Rechte-Schicht als Vorsprung, Gedächtnis in eigener Hand, Budgets, Protokolle)? Welche Fehler sollten wir vermeiden (Dinge bauen, die das nächste Modell gratis kann)?
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate; Grundlagenarbeiten älter mit Hinweis), jede Quelle mit Datum und Link, Deutsch und Englisch, Primärquellen (Forschungsarbeiten, Labor-Veröffentlichungen, Benchmarks) vor Medien. Prognosen immer mit Urheber und Bandbreite. Keine erfundenen Zahlen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (15 Kernaussagen)
+2. Zeitleiste 2026–2030 (Tabelle: Fähigkeit × erwarteter Zeitpunkt × Sicherheit × Quelle)
+3. Kapitel je Frage
+4. Drei Szenarien mit Frühindikatoren
+5. „Was das für MAKE OS heißt“: 15–20 Bau-Entscheidungen (Priorität, Aufwand, Begründung), Dinge, die wir nicht bauen sollten, Trends als Verkaufsargument („mitwachsend“)
+6. Quellenliste
+
+--- PROMPT P5 ENDE ---
+
+---
+
+--- PROMPT P6 START ---
+
+Du bist eine Software-Architektin für KI-Agenten-Systeme in Produktion. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS (Next.js/TypeScript, verschlüsselte Bestände je Instanz, eigener Server in Europa) hat ein KI-Führungsteam: einen KI-Chief-of-Staff (ZOE) mit 36 Werkzeugen und KI-Abteilungsleiter („Heads“). Jeder Head: Datenpaket → Regeln-Grundlauf ohne KI → Modell-Lauf mit JSON-Schema → Prüfer (keine erfundenen Kennungen, erlaubte Kanäle, Werbesperre) → Freigabe-Stapel; Autonomie nur für Internes und Zurücknehmbares; deterministische Evals mit pass^k; Lernen aus angenommenen/abgelehnten Vorschlägen und gemessener Wirkung; Takt auf dem Server; KI-Protokoll nur mit Metadaten; Pseudonymisierung in automatischen Läufen. Wir wollen daraus einen allgemeinen „Head-Rahmen“ machen und das Team auf Operations, Product, People und Strategy ausweiten, mit Budgets je Head.
+
+**Ziel dieses Laufs:** Den aktuellen Stand der besten Praxis für Agenten in Produktion zusammentragen und daraus eine Architektur-Empfehlung für unser Führungsteam ableiten.
+
+**Beantworte ausführlich und mit Quellen:**
+1. Orchestrierungsmuster: Einzelagent mit Werkzeugen vs. Mehr-Agenten (Supervisor, Hierarchie, Übergaben), Workflows vs. Agenten — was empfehlen Anthropic („Building effective agents“), OpenAI („A practical guide to building agents“), Google, Microsoft, LangChain/LangGraph, CrewAI? Wann lohnt sich was?
+2. Evals für Agenten: Methoden (deterministische Prüfungen, Modell-als-Richter, pass^k, Regressionstests, Online-Bewertung), Werkzeuge (z. B. Braintrust, LangSmith, Langfuse, Arize, promptfoo, Inspect), beste Praxis für kleine Teams.
+3. Autonomiestufen und menschliche Freigabe: Frameworks, Risikostufen, Muster für „Mensch entscheidet“ ohne Freigabe-Müdigkeit (Bündeln, Vorher/Nachher, Vertrauensaufbau, schrittweise mehr Autonomie).
+4. Gedächtnis: Kurz-/Langzeitgedächtnis, Fakten vs. Episoden, Vergessen, Korrektur durch Nutzer, Datenschutz.
+5. Werkzeuge und Protokolle: MCP, A2A, Funktionsaufrufe, strukturierte Ausgaben; Sicherheitsfragen (Prompt Injection über Mails/Webseiten, Rechte je Werkzeug, Sandbox). Bekannte Angriffe und Gegenmittel (OWASP Top 10 für LLM-Anwendungen, aktuelle Fälle).
+6. Kostensteuerung: Modell-Routing, Caching (Prompt-Caching), Budgets, Abbruchregeln, Messung „Kosten je Ergebnis“.
+7. Beobachtbarkeit und Nachweis: Tracing, Protokolle, Erklärbarkeit gegenüber Nutzern, Prüfpfade für Regulierung.
+8. Zuverlässigkeit: Rückfälle ohne Modell, Wiederholungen, Idempotenz, Zeitpläne/Takt, Fehlerbudgets.
+9. Lernen ohne Training: Rückmeldungen, Ablehnungsgründe, Beispiele im Kontext, automatische Prompt-Verbesserung (z. B. DSPy) — was funktioniert nachweislich?
+10. Konkrete Architektur-Empfehlung für einen „Head-Rahmen“: Bausteine, Schnittstellen, Datenfluss, Tests, Rollout-Strategie; was wir weglassen sollten.
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Englisch und Deutsch, Primärquellen (Labor-Leitfäden, Forschungsarbeiten, Engineering-Blogs) vor Meinungsartikeln. Fakt / Schätzung / Meinung kennzeichnen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Kernaussagen)
+2. Kapitel je Frage mit Mustern, Beispielen, Fallstricken
+3. Tabelle „Risiko × Gegenmittel“ (Sicherheit, Zuverlässigkeit, Kosten)
+4. Referenz-Architektur für den Head-Rahmen (Text-Diagramm + Komponenten)
+5. „Was das für MAKE OS heißt“: priorisierte Bauliste (Must/Should/Could), Evals-Plan, Sicherheits-Checkliste
+6. Quellenliste
+
+--- PROMPT P6 ENDE ---
+
+---
+
+--- PROMPT P7 START ---
+
+Du bist eine Expertin für europäisches Digitalrecht, Datenschutz und Informationssicherheit mit Praxis in Software-Produkten. Führe eine gründliche, belegte Tiefenrecherche durch (keine Rechtsberatung, aber präzise mit Fundstellen). Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS ist eine Software aus Deutschland, mit der Einzelpersonen ihr Unternehmen und Privatleben führen; jede Kundin, jeder Kunde bekommt eine eigene, verschlüsselte Instanz auf einem Server in Deutschland. Verarbeitet werden u. a. Geschäftskontakte (CRM, Newsletter, Events), Finanz- und Steuerdaten, Kalender und Mails, Gesundheitsdaten (Art. 9, nur mit ausdrücklicher Einwilligung je Zweck), Familiendaten. KI: Anthropic (USA) als Modell-Anbieter, KI-Agenten schlagen vor, Menschen entscheiden; KI-Protokoll, Pseudonymisierung, KI-Kennzeichnung, Auskunft/Export/Löschung, Verzeichnis nach Art. 30, Pannen-Register, Hash-verkettete Protokolle sind gebaut. Wir bauen ein „AI-CEO-Modul“ mit KI-Abteilungsleitern, Delegation an externe Menschen (z. B. Steuerberater) und Balance-Steuerung.
+
+**Ziel dieses Laufs:** Vollständige Übersicht, was rechtlich Pflicht ist, wo Risiken liegen und wie wir Recht, Datenschutz und Sicherheit zum **Verkaufsargument** machen.
+
+**Beantworte ausführlich und mit Fundstellen:**
+1. **KI-Verordnung (EU AI Act):** aktueller Zeitplan der Pflichten (inkl. etwaiger Verschiebungen/„Digital Omnibus“ 2025/2026), Einstufung eines solchen Produkts (Risikoklassen), Transparenzpflichten (Art. 50), Pflichten als Anbieter/Betreiber von KI-Systemen und bei Nutzung von GPAI-Modellen, KI-Kompetenz (Art. 4). Was gilt für uns konkret, ab wann?
+2. **DSGVO:** Art. 6, 9 (Gesundheit), 13/14 (Information), 15–22 (Rechte, insbesondere Art. 22 automatisierte Entscheidungen), 25 (Datenschutz durch Technik), 28 (AVV), 30, 32, 33/34, 35 (DSFA). Wann ist eine DSFA Pflicht? Rolle Verantwortlicher vs. Auftragsverarbeiter, wenn wir Instanzen für Kunden betreiben.
+3. **Drittlandübermittlung USA:** EU-US Data Privacy Framework (aktueller Stand, Klagen), Standardvertragsklauseln, Zero-Data-Retention-Optionen der KI-Anbieter, EU-Rechenzentren der Anbieter (Anthropic, OpenAI, Google, Microsoft, Mistral) — was ist heute möglich?
+4. **Deutsches Recht:** § 7 UWG (Werbung per Mail), TDDDG, § 26 BDSG/Beschäftigtendaten bei kleinen Teams, Datenschutzbeauftragter (§ 38 BDSG), Berufsrecht/Steuerberatungsgesetz bei Finanz- und Steuerfunktionen (Abgrenzung erlaubte Software vs. unerlaubte Hilfeleistung in Steuersachen), GoBD bei Buchungen/Belegen.
+5. **Haftung:** Wer haftet, wenn ein Agent mit Freigabe/ohne Freigabe Fehler macht (Produkthaftungsrichtlinie neu 2024/2026 für Software, vertragliche Haftung, AGB-Gestaltung)?
+6. **Cyber Resilience Act und NIS2:** Gilt das für uns, ab wann, was ist zu tun?
+7. **Sicherheitsstandards als Verkaufsargument:** ISO 27001, BSI C5, BSI IT-Grundschutz, TISAX (irrelevant?), SOC 2 — was erwarten Kleinunternehmen und ihre Steuerberater, was ist mit wenig Aufwand erreichbar?
+8. **Gesundheitsdaten:** Grenzen für Wellbeing-Funktionen (kein Medizinprodukt nach MDR), Einwilligungsgestaltung, Weitergabe an Partner.
+9. **Vertrauen:** Welche Datenschutz- und Sicherheitsmerkmale entscheiden laut Studien über Kauf und Wechsel bei KI-Software in DACH (Bitkom, eco, BSI, Umfragen)?
+10. **Checkliste:** Was müssen wir vor dem Verkauf an die ersten Kunden haben (Dokumente, Verträge, technische Maßnahmen), was später?
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate; Gesetzestexte in aktueller Fassung), jede Quelle mit Datum und Link (EUR-Lex, gesetze-im-internet.de, EDPB, DSK, BfDI, Landesdatenschutzbehörden, BSI, Kommission), Fachliteratur und Kanzlei-Analysen mit Angabe. Unsicherheiten offen benennen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Pflichten, 5 Risiken, 5 Verkaufsargumente)
+2. Kapitel je Frage mit Fundstellen
+3. Zeitleiste der Pflichten 2025–2028
+4. Checkliste „vor dem ersten Kunden“ / „im ersten Jahr“ / „später“
+5. „Was das für MAKE OS heißt“: Funktionen, die Recht erfüllen und zugleich verkaufen; Formulierungen für Website und Vertrieb (rechtssicher vorsichtig)
+6. Quellenliste
+
+--- PROMPT P7 ENDE ---
+
+---
+
+--- PROMPT P8 START ---
+
+Du bist eine Forscherin für Arbeitspsychologie, Unternehmertum und Leistungsfähigkeit. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS hilft Menschen, die ihr Unternehmen ohne oder fast ohne Mitarbeiter mit KI führen („AI CEO“), Unternehmen und Privatleben zusammen zu steuern. Funktionen heute: Fokus-Blöcke, Wochenplanung, Kapazitätsplanung (machbar/eng/nicht machbar), Routinen, Gesundheitsdaten (Whoop: Erholung, HRV, Schlaf — nur mit Einwilligung), Familienbereiche, ein KI-Chief-of-Staff, der morgens und abends bündelt, und Freigaben gesammelt statt ständiger Unterbrechungen. Wir wollen Balance (Energie, Kapazität, geschützte Zeit) zu einer **Führungsgröße** machen — ohne zu bevormunden.
+
+**Ziel dieses Laufs:** Wissenschaftlich belegen, welche Funktionen Leistung **und** Wohlbefinden von Solo-Unternehmern wirklich verbessern, und wie KI die Arbeit dieser Menschen in den nächsten Jahren verändert.
+
+**Beantworte ausführlich und mit Quellen:**
+1. Belastung von Gründern und Solo-Selbstständigen: Burnout, Stress, Einsamkeit, Entscheidungsmüdigkeit — aktuelle Studien und Zahlen (DACH, international).
+2. Aufmerksamkeit und Fokus: Kosten von Unterbrechungen, Kontextwechsel, Deep Work, Bündeln von Entscheidungen — was ist belegt, was ist Mythos?
+3. Planung: Wirkung von Wochenplanung, Zeitblöcken, Implementation Intentions, Kapazitätsgrenzen, Planungsfehlschluss — Belege und Effektgrößen.
+4. Erholung und Leistung: Zusammenhang Schlaf/HRV/Erholung und Entscheidungsqualität/Produktivität; Nutzen und Risiken von Wearables (Orthosomnie, Datenangst).
+5. Grenzen zwischen Arbeit und Privatleben: Segmentierung vs. Integration (Boundary Theory), was hilft Selbstständigen mit Familie?
+6. KI und Arbeit: Studien zu Produktivität, Qualität, Kompetenzverlust („deskilling“), Vertrauen, Überwachung, „Automation Bias“ — was heißt das für einen KI-Chief-of-Staff?
+7. Menschliche Kontrolle: Wie gestaltet man Freigaben, damit Menschen nicht blind bestätigen (Ermüdung, Automation Complacency)? Belegte Gestaltungsprinzipien.
+8. Motivation und Gewohnheiten: Was hält Menschen dauerhaft in einer Software und in guten Gewohnheiten (Selbstbestimmungstheorie, Gewohnheitsforschung), ohne manipulative Muster?
+9. Wie verändert sich die Arbeit von Solo-Unternehmern mit KI bis 2030 (Rollen, Fähigkeiten, Zeitverwendung)?
+10. Konkrete, belegte Funktionsprinzipien für „Balance als Führungsgröße“ (Rangliste mit Evidenzstärke).
+
+**Arbeitsweise:** Peer-reviewte Studien und Metaanalysen bevorzugen, Effektgrößen nennen, aktuelle Arbeiten (letzte 3–5 Jahre) mit Grundlagenarbeiten ergänzen, jede Quelle mit Datum und Link (DOI). Evidenzstärke je Aussage (hoch/mittel/gering). Populärliteratur nur mit Hinweis.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Kernaussagen mit Evidenzstärke)
+2. Kapitel je Frage
+3. Tabelle „Funktion × Wirkung × Evidenz × Risiko“
+4. „Was das für MAKE OS heißt“: Gestaltungsregeln für Cockpit, Freigaben, Balance, ZOE-Sprache; was wir nie tun sollten; Verkaufsargumente mit Beleg („Wissenschaft hinter MAKE OS“)
+5. Quellenliste
+
+--- PROMPT P8 ENDE ---
+
+---
+
+--- PROMPT P9 START ---
+
+Du bist eine SaaS-Geschäftsmodell- und Preisstrategin mit Schwerpunkt KI-Produkte für Kleinunternehmen. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS wird als **eigene Instanz je Kunde** betrieben (eigener Container, eigene Schlüssel, eigene Sicherung, Server in Deutschland), nicht als gemeinsames SaaS. Geplante Editionen: „Markttraktion“ (CRM/Vertrieb/Marketing/Events mit KI-Abteilungsleitern), „MAKE OS“ (Fokus & Zeit, Business, Privat, KI-Chief-of-Staff), „AI CEO“ (alles + CEO-Cockpit + vollständiges KI-Führungsteam + Playbooks). Lizenzen sollen signiert und offline prüfbar sein; nach Ablauf nur lesen, nie Daten sperren. KI-Kosten entstehen pro Nutzung (Claude-Modelle in drei Stufen). Dazu bietet die MAKE Innovation GmbH Beratung/Einrichtung und Event-Formate an.
+
+**Ziel dieses Laufs:** Ein belastbares Geschäftsmodell mit Preisen, Kostenrechnung und Kennzahlen.
+
+**Beantworte ausführlich und mit Quellen:**
+1. Preismodelle für KI-Software 2025/2026: Sitz, Verbrauch, Kredite, ergebnisbasiert, Pauschale mit Fair-Use, Hybrid — Beispiele und Erfahrungen (Intercom Fin, Salesforce Agentforce, Zapier, Notion, ClickUp, Lindy, Cursor u. a.).
+2. Preise der Vergleichskategorien (Produktivität, CRM, Buchhaltung, KI-Assistenten, Agenten-Plattformen) für Solo-/Kleinstunternehmen in DACH/EU/USA — Tabelle mit Stand und Quelle.
+3. Kosten der KI je Nutzer: realistische Token-Mengen für Chief-of-Staff + Abteilungsleiter mit Morgen-/Abendläufen, Kostenentwicklung, Caching, Modell-Routing — Rechenbeispiele.
+4. Kosten einer eigenen Instanz je Kunde (Server, Sicherung, Überwachung, Support) vs. Mehrmandanten-SaaS; ab wie vielen Kunden lohnt Automatisierung; Beispiele von Anbietern mit „dedicated instance“/Self-Hosting-Modellen.
+5. Kennzahlen-Benchmarks für SMB-Software: Bruttomarge (inkl. KI-Kosten), Kundengewinnungskosten, Abwanderung, Netto-Umsatzbindung, Amortisationszeit — aktuelle Reports (OpenView, KeyBanc, ChartMogul, Paddle/ProfitWell, Bessemer).
+6. Zahlungsbereitschaft von Solo-Unternehmern für „KI-Mitarbeiter“ bzw. ein „Betriebssystem fürs Unternehmen“: Studien, Preistests, Anker (z. B. Kosten einer Assistenz/Teilzeitkraft).
+7. Dienstleistung + Software: Wie kombinieren erfolgreiche Anbieter Einrichtung/Beratung mit Software (Marge, Skalierung, Abhängigkeit)?
+8. Lizenz- und Vertragsgestaltung: Jahres- vs. Monatsverträge, Testphasen, Pilotpreise, Rabatte, Kündigung, Datenexport als Vertrauensmerkmal.
+9. Finanzierung: Bootstrapping vs. Wagniskapital für diese Kategorie; was Investoren 2026 bei KI-Anwendungen sehen wollen (Kennzahlen, Defensibilität).
+10. Konkreter Vorschlag: Preisliste je Edition (Monat/Jahr), Einrichtungspaket, KI-Budget-Regel, Pilotangebot — mit Unit-Economics-Rechnung (Tabelle) und Sensitivität (KI-Kosten ±50 %, Abwanderung ±50 %).
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Anbieter-Preisseiten direkt prüfen, Benchmarks mit Stichprobe/Herkunft. Fakt / Schätzung / Meinung kennzeichnen; Rechnungen mit offengelegten Annahmen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (Empfehlung in 10 Punkten)
+2. Kapitel je Frage mit Tabellen
+3. Unit-Economics-Modell (Tabelle, Annahmen, Sensitivität)
+4. „Was das für MAKE OS heißt“: Preisliste, Editionen, Lizenzregeln, Pilotangebot, Kennzahlen-Ziele Jahr 1/2/3
+5. Quellenliste
+
+--- PROMPT P9 ENDE ---
+
+---
+
+--- PROMPT P10 START ---
+
+Du bist eine Go-to-Market- und Markenstrategin für B2B-Software im DACH-Raum mit Erfahrung bei Solo- und Kleinunternehmern. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt und Unternehmen):** MAKE OS ist das Betriebssystem für „AI CEOs“: Menschen, die ihr Unternehmen ohne oder fast ohne Mitarbeiter mit einem KI-Führungsteam führen und Privat + Business in einem System steuern — mit eigener, verschlüsselter Instanz in Deutschland und „Mensch entscheidet“ als Grundsatz. Anbieter ist die MAKE Innovation (Marke der KEMARIS Innovation GmbH, künftig MAKE Innovation GmbH, gehalten von KD Ventures), Gründer Kevin Dieckmann und Malin. Wir nutzen das Produkt selbst und führen damit zwei Gesellschaften. Kanäle heute: eigene Event-Reihe „Fokus Innovation“ (Make.One-Abende in mehreren Städten, Gespräche am Tisch), Netzwerk, Website makeinnovation.de. Markenbild: seriös (80 %), wenige futuristische Akzente (20 %), klare Linien.
+
+**Ziel dieses Laufs:** Den besten Weg finden, MAKE OS im DACH-Raum extrem gut zu positionieren und zu verkaufen — erst an die ersten 10, dann an die ersten 100 und 1.000 Kunden.
+
+**Beantworte ausführlich und mit Quellen:**
+1. Wo erreicht man Solo-Unternehmer, Berater, Coaches, Agenturinhaber und Gründer im DACH-Raum (Communities, Verbände wie VGSD/BVMW/IHK, Coworkings, Podcasts, LinkedIn, Newsletter, Events, Steuerberater-/Berater-Netzwerke, Plattformen)? Reichweite und Wirkung mit Belegen.
+2. Welche Go-to-Market-Strategien funktionieren 2025/2026 für KI-Software an Kleinunternehmen (produktgeführt vs. vertriebsgeführt vs. community-/eventgeführt, Gründer als Gesicht, „Build in Public“)? Fallbeispiele aus DACH und international mit Zahlen.
+3. Events als Vertriebskanal: Wie wandeln erfolgreiche Anbieter Abende/Workshops in Kunden um (Formate, Nachfassen, Quoten)?
+4. Positionierung und Botschaft: Welche Begriffe und Versprechen ziehen bei der Zielgruppe („AI CEO“, „Betriebssystem“, „KI-Team“, „Chief of Staff“, „Fokus“, „Privat und Business“)? Was wirkt abschreckend (Hype, Überwachung, Kontrollverlust)? Belege aus Umfragen, Suchvolumen, Social Listening.
+5. Kategorie gestalten: Lohnt es sich, eine eigene Kategorie zu prägen („Plattform für AI CEOs“)? Beispiele erfolgreicher Kategorie-Schöpfung und Risiken.
+6. Vertrauen verkaufen: Wie nutzen Anbieter Datenschutz, „Made in Germany“, eigene Instanz, Zertifikate und Transparenz im Vertrieb — was wirkt nachweislich?
+7. Partner und Multiplikatoren: Steuerberater, Unternehmensberater, Coaches, Banken, Gründerzentren, Hochschulen — Partnerprogramme, Provisionen, Beispiele.
+8. Beweise: Wie bauen erfolgreiche Anbieter Fallstudien, Demos (Demo-Instanz mit erfundenen Daten), Vorher/Nachher-Belege und Empfehlungen auf?
+9. Startplan: Ein konkreter 90-Tage-Plan und ein 12-Monats-Plan für den Markteintritt (Pilotkunden, Inhalte, Events, Website, Kennzahlen je Stufe).
+10. Investoren- und Presse-Geschichte: Wie erzählt man „AI CEO“ glaubwürdig, welche Medien/Investoren in DACH interessieren sich dafür?
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, Fallbeispiele mit Zahlen vor allgemeinen Ratschlägen. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Empfehlungen)
+2. Kapitel je Frage mit Tabellen
+3. Kanal-Bewertung (Kanal × Reichweite × Kosten × Wirkung × Aufwand)
+4. Botschafts-Rahmen: Kernbotschaft, 3 Belege, Einwandbehandlung, Wortwahl (do/don't)
+5. 90-Tage- und 12-Monats-Plan
+6. „Was das für MAKE OS heißt“: Vertriebs- und Markenentscheidungen, Website-Aufbau, Event-Formate, Partnerprogramm
+7. Quellenliste
+
+--- PROMPT P10 ENDE ---
+
+---
+
+--- PROMPT P11 (BONUS: SYNTHESE) START ---
+
+Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen zehn Recherche-Berichte vor (P1 Markt & Zielgruppe, P2 Wettbewerb Produktivität, P3 Wettbewerb Agenten-Plattformen, P4 Privat-Bereich, P5 KI-Entwicklung 2026–2030, P6 Agenten-Architektur, P7 Recht & Vertrauen, P8 Arbeit & Wohlbefinden, P9 Geschäftsmodell & Preise, P10 Go-to-Market). Sie betreffen MAKE OS, das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System, eigene Instanz in Deutschland, Mensch entscheidet). Heute ist Oktober 2026.
+
+**Aufgabe:** Führe die Berichte zu **einer** Entscheidungsgrundlage zusammen.
+
+1. Die 15 wichtigsten Erkenntnisse über alle Berichte (mit Verweis auf Bericht und Quelle).
+2. Widersprüche zwischen den Berichten und wie man sie auflöst.
+3. Die erste Zielgruppe (eine), die erste Edition und der erste Preis — mit Begründung.
+4. Die 10 Funktionen mit dem höchsten Wert für die erste Zielgruppe, sortiert nach Wirkung/Aufwand, mit Verweis auf die Belege.
+5. Die 10 KI-Trends, die wir jetzt einbauen müssen, und 5 Dinge, die wir nicht bauen sollten.
+6. Pflichten aus Recht und Sicherheit vor dem ersten Kunden.
+7. Positionierung in einem Satz, Kernbotschaft, drei Belege, Einwandbehandlung.
+8. 90-Tage-Plan (Produkt, Recht, Vertrieb, Events) und 12-Monats-Plan mit Kennzahlen.
+9. Die 10 größten Risiken mit Gegenmitteln und Frühindikatoren.
+10. Offene Fragen, die nur Kundeninterviews oder Tests klären — mit Testdesign.
+
+**Ausgabe:** Deutsch, klar, Tabellen, jede Aussage mit Verweis auf den Ursprungsbericht. Keine neuen Behauptungen ohne Beleg.
+
+--- PROMPT P11 (BONUS: SYNTHESE) ENDE ---
