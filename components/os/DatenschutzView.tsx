@@ -38,6 +38,10 @@ export function DatenschutzView() {
       {d && <PruefungKarte stand={stand} i={0} />}
       {d && <VerantwortlicherKarte d={d} onGeaendert={() => void laden()} i={1} />}
       <KiGesundheitKarten i={2} />
+      {/* Betroffenenrechte v2 (05.10.): jede Person kommt hier an ihre eigenen Daten — für alle sichtbar, auch ohne Inhaber-Recht. */}
+      <Karte i={2}>
+        <Hinweis art="info" titel="Ihre eigenen Daten" aktion={<Knopf leise href={WEG.konto()}>Konto › Meine Daten</Knopf>}>Auskunft nach Art. 15 (druckbar), „Meine Daten herunterladen“ (Art. 20) und „Mein Konto löschen“ (Art. 17) — selbst, ohne den Inhaber zu fragen.</Hinweis>
+      </Karte>
       {d && <EmpfaengerKarte liste={d.empfaenger} darf={d.darf} onGeaendert={() => void laden()} i={6} />}
       {d && <Art14VorlageKarte d={d} onGeaendert={() => void laden()} i={6} />}
       {d && <VerzeichnisKarte i={7} />}

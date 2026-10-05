@@ -101,7 +101,7 @@ beforeAll(async () => {
   await db.saveJson('telegram', { kopplungen: [{ chatId: 1, person: 'lena', seit: '2026-01-01', name: 'Lena Probe' }, { chatId: 2, person: 'mira', seit: '2026-01-01' }], codes: { ABC: { person: 'lena', bis: '2099-01-01' } } });
   await db.saveJson('ki-einstellungen', { vorgabe: 'kompatibel', festgelegtAm: '2026-01-01', personen: { lena: { hintergrund: false }, mira: { websuche: false } } });
   await db.saveJson('gesundheit-einwilligungen', { ereignisse: [{ zeit: '2026-09-01T10:00:00.000Z', person: 'lena', zweck: 'verarbeiten', an: true, fassung: '1', wortlaut: 'abc', von: 'lena' }] });
-  await db.saveJson('tasks', { tasks: [{ id: 't1', title: 'privat', assignee: 'lena', sichtbarkeit: 'nur-ich', angelegtVon: 'lena' }, { id: 't2', title: 'Team-Aufgabe', assignee: 'lena', angelegtVon: 'chef' }] });
+  await db.saveJson('tasks', { tasks: [{ id: 't1', title: 'privat', assignee: 'lena', sichtbarkeit: 'nur-ich', angelegtVon: 'lena' }, { id: 't2', title: 'Team-Aufgabe', assignee: 'lena', angelegtVon: 'chef' }, { id: 't3', title: 'Mira mit Lena', assignee: 'mira', beteiligte: ['lena', 'chef'] }] });
   await db.saveJson(`team--${HAUS}`, { team: [{ id: 'konto-lena', rolle: 'Vertrieb' }, { id: 'konto-mira', rolle: 'Marketing' }] });
   await kette.anhaengenVerkettet(`leseprotokoll--${HAUS}--2026-10`, [{ at: '2026-10-01T09:00:00.000Z', wer: 'person', person: 'lena', bereich: 'gesundheit', betroffen: 'lena' }, { at: '2026-10-01T09:05:00.000Z', wer: 'person', person: 'mira', bereich: 'kontakte' }]);
   await kette.anhaengenVerkettet(`aenderungsprotokoll--${HAUS}--2026-10`, [{ at: '2026-10-01T09:00:00.000Z', wer: 'person', person: 'lena', bestand: 'tasks', op: 'neu', id: 't1' }]);
@@ -324,7 +324,9 @@ describe('Konto löschen', () => {
       expect(t, f).not.toContain('Lena Probe');
       if (!f.endsWith(`${path.sep}tasks.json`)) expect(t, f).not.toMatch(/"lena"/);
     }
-    expect(((await db.loadJson<{ tasks: { id: string }[] }>('tasks'))!.tasks).map(t => t.id)).toEqual(['t2']);
+    const tasks = (await db.loadJson<{ tasks: { id: string; beteiligte?: string[] }[] }>('tasks'))!.tasks;
+    expect(tasks.map(t => t.id)).toEqual(['t2', 't3']);
+    expect(tasks.find(t => t.id === 't3')!.beteiligte).toEqual(['chef']);
     expect(((await db.loadJson<{ gespraeche: { id: string }[] }>('zoe-verlauf'))!.gespraeche).map(g => g.id)).toEqual(['g2']);
     expect(((await db.loadJson<{ team: { id: string }[] }>(`team--${HAUS}`))!.team).map(t => t.id)).toEqual(['konto-mira']);
     // Protokolle: Einträge bleiben, Kennung „[gelöscht]“ — die Kette bleibt gültig (rechtmäßige Umschreibung).

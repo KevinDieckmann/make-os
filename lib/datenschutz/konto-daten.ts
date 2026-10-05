@@ -235,12 +235,19 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     return n ? { ...(cur ?? {}), ereignisse: r } : (cur as Obj);
   }); return n; });
   // Private Aufgaben der Person („nur ich“) gehen mit — sonst sähe sie niemand mehr. Alle anderen bleiben (Arbeit des Haushalts).
-  await nurWenn('tasks', async () => { let weg: string[] = []; await updateJson<Obj>('tasks', cur => {
+  await nurWenn('tasks', async () => { let weg: string[] = [], beteiligt: string[] = []; await updateJson<Obj>('tasks', cur => {
     const l = liste(cur, 'tasks') as Obj[];
     weg = l.filter(t => t.sichtbarkeit === 'nur-ich' && t.angelegtVon === speicher).map(t => String(t.id));
     bericht.aufgabenZugewiesen = l.filter(t => !weg.includes(String(t.id)) && t.assignee === speicher).length;
-    return weg.length ? { ...(cur ?? {}), tasks: l.filter(t => !weg.includes(String(t.id))) } : (cur as Obj);
-  }); if (weg.length) await protokolliere('tasks', weg.map(id => ({ op: 'geloescht' as const, id })), { art: 'system' }); return weg.length; });
+    // Als Beteiligte fällt die Person überall heraus (reiner Verweis); Zuständige/Anlegerin bleibt als Geschäftsunterlage stehen.
+    const ohneBeteiligt = (t: Obj): Obj => (Array.isArray(t.beteiligte) && t.beteiligte.includes(speicher) ? { ...t, beteiligte: (t.beteiligte as string[]).filter(x => x !== speicher) } : t);
+    const rest = l.filter(t => !weg.includes(String(t.id)));
+    const neu = rest.map(ohneBeteiligt);
+    beteiligt = neu.filter((t, i) => t !== rest[i]).map(t => String(t.id));
+    return weg.length || beteiligt.length ? { ...(cur ?? {}), tasks: neu } : (cur as Obj);
+  });
+  if (weg.length || beteiligt.length) await protokolliere('tasks', [...weg.map(id => ({ op: 'geloescht' as const, id })), ...beteiligt.map(id => ({ op: 'geaendert' as const, id, felder: ['beteiligte'] }))], { art: 'system' });
+  return weg.length + beteiligt.length; });
   if (konto.haushalt) {
     const team = teamSpeicherName(konto.haushalt);
     await nurWenn(team, async () => { let n = 0; await updateJson<Obj>(team, cur => { const l = liste(cur, 'team'); const r = l.filter(e => (e as Obj).id !== `${KONTO_PRAEFIX}${speicher}`); n = l.length - r.length; return n ? { ...(cur ?? {}), team: r } : (cur as Obj); }); return n; });

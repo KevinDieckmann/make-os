@@ -179,6 +179,7 @@ describe('Wache: kein Kartei-Schreibweg ohne Protokoll', () => {
     'lib/crm/abgleich.ts', 'lib/crm/loeschfristen-lauf.ts', 'lib/crm/person-bestaende.ts',
     'app/api/crm/datenschutz/route.ts', 'app/api/crm/dubletten/route.ts', 'app/api/crm/import/route.ts',
     'lib/crm/kennungen-umzug.ts', // Kennungs-Umzug (D-C #35): je Kontakt „Kennung geändert“ unter der neuen Kennung
+    'lib/datenschutz/abmelden-server.ts', // Abmeldelink (05.10., Betroffenenrechte v2): Werbesperre als „System“, protokolliert selbst
   ]);
   const wurzel = path.resolve(__dirname, '..');
   const dateien = (d: string): string[] => readdirSync(path.join(wurzel, d)).flatMap(n => {
