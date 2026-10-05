@@ -16,7 +16,9 @@ import { Baukasten } from '@/components/os/finanzplan/Baukasten';
 import { Gesamt } from '@/components/os/finanzplan/Gesamt';
 import { Geschaeft } from '@/components/os/finanzplan/Geschaeft';
 import { SteuerKarte } from '@/components/os/finanzplan/Steuern';
-import { planFix, arbeitsplanFix } from './fixtures/finanz-plan';
+import { planFix, arbeitsplanFix, pruefPlan } from './fixtures/finanz-plan';
+import { LageBusiness } from '@/components/os/finanzplan/Ueberblick';
+import { businessSicht } from '@/lib/finanzen/plan/sicht';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/finanzplan' }));
 
@@ -85,6 +87,15 @@ describe('Business-Blatt und Steuerkarte', () => {
     const t = blatt('kdc');
     for (const s of ['Einkommensteuer', 'Entnahme nach Privat', 'Kontostand', 'Steuerrücklage', 'Fixkosten (Sachkosten)', 'Zahlungsfluss und Liquidität']) expect(t, s).toContain(s);
   });
+  it('finanzplan-5: Selbstständigkeit (Privat) zeigt die gemeinsame Einkommensteuer je Jahr und den Abschluss mit Gehalt Jan–Sep und Vorauszahlungen', () => {
+    const t = render(mitPlan(), Selbst);
+    for (const s of ['Einkommensteuer gemeinsam', 'Lohneinkünfte', 'Mehrsteuer durch die Selbstständigkeit', 'Gehalt brutto Jan–Sep 2026', 'Vorauszahlungen 2026 schon bezahlt', 'Darlehen, die noch hinausgehen', '2026', '2027', '2028']) expect(t, s).toContain(s);
+  });
+  it('finanzplan-5: Schulden zeigen die Darlehen (auch das Altdarlehen aus den Annahmen, nur lesbar)', () => {
+    const d = { ...mitPlan(), darlehen: [{ id: 'dl-1', name: 'Privat an KD Ventures', geber: 'privat' as const, nehmer: 'kdv' as const, betrag: 1500, aus: 0, zurueck: 5 }] };
+    const t = render(d, Schulden);
+    for (const s of ['Darlehen zwischen', 'Privat an KD Ventures', 'Gesellschafterdarlehen (alt)', 'vor Planbeginn']) expect(t, s).toContain(s);
+  });
   it('Gesamt: Selbstständigkeit als eigener Strom (Block, Linie, Entnahme-Zeile)', () => {
     const t = render(mitPlan(), Gesamt);
     for (const s of ['Selbstständigkeit', 'Entnahme', 'Frei verfügbar']) expect(t, s).toContain(s);
@@ -94,5 +105,41 @@ describe('Business-Blatt und Steuerkarte', () => {
     expect(render(mitPlan(), () => h(SteuerKarte, { ort: 'privat', offen: true }))).toContain('Brutto → Netto');
     const kdv = render(mitPlan(), () => h(SteuerKarte, { ort: 'kdv', offen: true }));
     expect(kdv).toContain('Steuer auf den Ausstieg'); expect(kdv).toContain('Gewerbesteuer'); expect(kdv).toContain('Körperschaftsteuer');
+  });
+});
+
+// finanzplan-5 (05.10.): jede Ansicht einmal gegen den Prüfstand — die Zahlen, die tests/finanzplan-pruefstand.test.ts von Hand rechnet, müssen
+// so in den Seiten stehen (Stichtag Okt 26). Privat-Bereich sieht alles, Business-Bereich nur die Gesellschaften.
+describe('Ansichten gegen den Prüfstand (Zahlen von Hand, finanzplan-5)', () => {
+  const d = (): FinanzDaten => ({ ...pruefPlan(), einstellungen: { heute: '2026-10-01', reserveMonate: 2 } });
+  const renderB = (k: () => JSX.Element) => { const b = businessSicht(d()); return renderToStaticMarkup(h(FinanzplanKontext.Provider, { value: { ...kontext(b), sicht: 'business' } }, h(k))); };
+  it('Lage (Privat): frei privat 1.100, mit Selbstständigkeit 3.947, alles zusammen 37.647', () => {
+    const t = render(d(), Lage);
+    for (const s of ['1.100', '3.947', '37.647']) expect(t, s).toContain(s);
+  });
+  it('Lage (Business): frei 33.700 = MAKE 23.800 + KDV 9.900 — ohne Selbstständigkeit', () => {
+    const t = renderB(LageBusiness);
+    for (const s of ['33.700', '23.800', '9.900']) expect(t, s).toContain(s);
+    expect(t).not.toContain('Selbstst');
+  });
+  it('Gesamt (Privat): frei 37.647, Selbstständigkeit Jan–Sep frei 676 mit Steuer-Anteil 3.324', () => {
+    const t = render(d(), Gesamt);
+    for (const s of ['37.647', '676', '3.324']) expect(t, s).toContain(s);
+  });
+  it('Gesamt (Business): frei 33.700, keine Selbstständigkeit', () => {
+    const t = renderB(Gesamt);
+    expect(t).toContain('33.700'); expect(t).not.toContain('Selbstst');
+  });
+  it('Selbstständigkeit (Privat): Einkommensteuer gemeinsam 2026 und 2027 wie von Hand; Abschluss zvE 26.770 und Anteil 3.324', () => {
+    const t = render(d(), Selbst);
+    // 2026: Gewinn 33.400, Lohn 10.770, zvE 44.170, ESt 8.559, GewSt 1.246 · 2027: 69.600, 46.770, 116.370, 37.739, Lohn 9.432, Mehrsteuer 28.307, GewSt 6.314, Soli 1.318, Summe 29.625
+    for (const s of ['33.400', '10.770', '44.170', '8.559', '1.246', '69.600', '46.770', '116.370', '37.739', '9.432', '28.307', '6.314', '1.318', '29.625', '26.770', '3.324']) expect(t, s).toContain(s);
+  });
+  it('Geldfluss/Gruppe (Privat): Freies Geld Gruppe Jan 27 = 47.897', () => {
+    expect(render(d(), Geldfluss)).toContain('47.897');
+  });
+  it('Kalender: Entnahme 2.000 im Nov (Privat sieht sie, Business nicht)', () => {
+    expect(render(d(), Kalender)).toContain('Entnahme');
+    expect(renderB(Kalender)).not.toContain('Entnahme');
   });
 });
