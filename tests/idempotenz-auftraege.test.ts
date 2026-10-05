@@ -1,6 +1,7 @@
 // Paket D-A (29.09.): Idempotenz der Beleg-Übernahme (#19), Pacht-Token der Auftragswarteschlange (#20),
 // Angebots-PDF außerhalb der CRM-Sperre mit Nummern-Reservierung und Stand-Prüfung (#13). Eigener Datenordner.
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { haushaltKonten } from './fixtures/konten';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -36,8 +37,9 @@ describe('einmalig (anfrageId, 24 h)', () => {
   });
   it('Beleg-Übernahme: derselbe Klick zweimal (Netz-Retry) legt EINE Rechnung an', async () => {
     const route = await import('@/app/api/beleg/uebernehmen/route');
+    await haushaltKonten(db); // Beleg übernehmen = private Finanzen: nur Haushaltsmitglieder mit vollem Recht (05.10.)
     const body = { ziel: 'rechnung', partner: 'Beispiel GmbH', betragBrutto: 119, betragNetto: 100, ustSatz: 19, anfrageId: 'anf-beleg-0001' };
-    const schick = () => route.POST(new Request('http://t/api/beleg/uebernehmen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }));
+    const schick = () => route.POST(new Request('http://t/api/beleg/uebernehmen', { method: 'POST', headers: { 'content-type': 'application/json', 'x-make-user': 'kevin' }, body: JSON.stringify(body) }));
     const r1 = await (await schick()).json();
     const r2 = await (await schick()).json();
     expect(r1.ok).toBe(true);

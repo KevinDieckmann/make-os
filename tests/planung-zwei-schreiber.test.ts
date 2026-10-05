@@ -5,6 +5,7 @@
 // /api/state/ziele), die Kaskade läuft in derselben Sperre. Zwei Schreiber, keiner
 // verliert etwas. Eigener Datenordner, erfundene Ziele.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { haushaltKonten } from './fixtures/konten';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -34,6 +35,7 @@ const schreiber = (h = 'jahr') => new ListenSchreiber<ZZ>({ pfad: '/api/state/zi
 beforeAll(async () => {
   ziele = (await import('@/app/api/state/ziele/route')) as unknown as Mod;
   meilensteine = (await import('@/app/api/state/meilensteine/route')) as unknown as Mod;
+  await haushaltKonten(await import('@/lib/store/local-db'));
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 

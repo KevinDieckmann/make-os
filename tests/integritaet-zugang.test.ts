@@ -111,11 +111,14 @@ describe('kimmi bietet CRM-Werkzeuge und -Agenten nur im Haushalt des Inhabers a
     const auftraege = tools.find(t => t.name === 'starte_auftraege')?.input_schema?.properties?.auftraege?.items?.properties?.agent?.enum ?? [];
     return { namen, agenten, auftraege };
   };
-  it('fremdes Konto: kein crm_lage, suche_kontakt, … und kein CRM-Agent', async () => {
-    const z = await zug(sitzung('fremd'));
-    expect(z.namen.length).toBeGreaterThan(0);
-    for (const n of W.CRM_WERKZEUGE) expect(z.namen, n).not.toContain(n);
-    for (const a of W.CRM_AGENTEN) { expect(z.agenten, a).not.toContain(a); expect(z.auftraege, a).not.toContain(a); }
+  it('fremdes Konto bzw. Konto ohne Haushalt: kein Gespräch überhaupt (403, kein Modellaufruf — Routen-Register 05.10.)', async () => {
+    const { POST } = await import('@/app/api/kimmi/route');
+    for (const p of ['fremd', 'ohne']) {
+      mitschnitt.length = 0;
+      const r = await POST(anfrage('/api/kimmi', sitzung(p), 'POST', { message: 'Wen soll ich heute anrufen?' }));
+      expect(r.status, p).toBe(403);
+      expect(mitschnitt.length, p).toBe(0);
+    }
   });
   it('Dienstweg ohne Person (fiele früher auf „kevin“): kein Gespräch überhaupt (S1: 400, kein Modellaufruf)', async () => {
     const { POST } = await import('@/app/api/kimmi/route');

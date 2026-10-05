@@ -4,6 +4,7 @@
 // PUT { routinen } las den Bestand außerhalb der Sperre und schrieb ihn mit zurück.
 // Eigener Datenordner, erfundene Blöcke.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { haushaltKonten } from './fixtures/konten';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -29,6 +30,7 @@ const block = (id: string, owner: string, wochentag: 1 | 2 | 3 = 1): Block => ({
 
 beforeAll(async () => {
   route = (await import('@/app/api/state/routinen/route')) as unknown as Mod;
+  await haushaltKonten(await import('@/lib/store/local-db'));
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 
