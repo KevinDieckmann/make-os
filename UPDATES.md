@@ -4,6 +4,27 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Finanzplanung: Selbstständigkeit zu Privat · EINE Einkommensteuer · Darlehen (05.10.2026, nur lokal — Branch `finanzplan-5`)
+
+Kevin 05.10.: „Selbstständigkeit und Privat können zusammengeführt werden … bei Business nur noch KD Ventures und MAKE Innovation GmbH.“ —
+„Es gibt kein Gesellschafterdarlehen, außer ungefähr 1.500 € privat in der KD Ventures.“ Details und Vorher → Nachher: FINANZPLANUNG_JETZT.md › „finanzplan-5“.
+- **Sicht:** Die Selbstständigkeit ist eine Unterseite von Privat; Business (Server und Oberfläche) zeigt nur MAKE und KD Ventures — keine
+  kdc-/Abschluss-Werte, -Zeilen, -Bausteine, -Steuern, keine Entnahme; Schreiben dorthin aus Business → 403; Business-Kennzahlen nur der Gesellschaften.
+- **Einkommensteuer:** EINE je Jahr über Gewinn der Selbstständigkeit + Gehalt 1 (Progression, Mehrsteuer über der Lohnsteuer); 2026 = Abschluss
+  Jan–Sep + Okt–Dez in einem Jahr, Zahlung im Folgejahr. Neue Felder: Gehälter einbeziehen, Veranlagung, Pauschbetrag; im Abschluss Gehalt Jan–Sep
+  und schon bezahlte Vorauszahlungen 2026.
+- **Darlehen:** Liste mit Geber/Nehmer (Schulden › Darlehen), Rückzahlung kommt beim Geber an; das alte Gesellschafterdarlehen hat die
+  Selbstständigkeit als Geber.
+- **Spürbar nach dem Upload:** In Kevins Plan sinken „frei Selbstständigkeit“, „frei gesamt“ und „Gruppe“ (die Steuer auf Jan–Sep und die
+  Progression mit dem Gehalt stehen jetzt in der Rücklage), die Steuerzahlung Juni 27 steigt entsprechend. Die Selbstständigkeit steht unter
+  Privat › Finanzplanung, nicht mehr unter Business. Kevin trägt danach ein: Darlehen 1.500 € (Privat → KD Ventures) unter Schulden › „+ Darlehen“;
+  „Gesellschafterdarlehen an MAKE (alt)“ auf 0, falls gesetzt; Gehalt Jan–Sep 2026 und schon bezahlte Vorauszahlungen 2026 im Abschluss.
+- **Keine Datenänderung beim Upload**, keine Umgebungsvariable, keine neue Route. Neue Felder alle optional.
+- **Rückweg:** Commits zurücknehmen. Der alte Stand liest Dokumente mit den neuen Feldern (`darlehen`, `selbst.lohnVorPlan`, `selbst.estVorausgezahlt`,
+  `steuern.kdc.param.lohnEinbeziehen/veranlagung/werbungskosten`) ohne Fehler und lässt sie beim nächsten Schreiben fallen; er rechnet dann wieder
+  getrennt (ESt ohne Gehalt, Abschluss für sich, Rückzahlung des Altdarlehens ohne Empfänger) und zeigt die Selbstständigkeit unter Business.
+  Handwerte und Szenarien bleiben erhalten (gleiche Kennungen). Wer die Darlehen behalten will: vorher notieren.
+
 ## Routen-Register + Zugangs-Wächter (05.10.2026, nur lokal — Branch `routen`, Sicherheits-Audit 05.10.)
 
 Kevin 04./05.10.: „alle Standards der DSGVO, damit wir Kundendaten aufnehmen können“ — Trennung serverseitig. Das Audit fand 89 von
