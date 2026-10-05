@@ -18,7 +18,8 @@ import { gunzipSync } from 'zlib';
 import { updateJson } from '@/lib/store/local-db';
 import { personAus, speicherFuer } from '@/lib/zoe/raum';
 import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei, type WhoopLog } from '@/lib/whoop-export';
-import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { nurInhaber, inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
+import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,8 @@ async function neuesterExport(): Promise<{ pfad: string; name: string; zeit: Dat
 /** GET → welcher Export läge im Downloads-Ordner bereit (für den Knopf). */
 export async function GET(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
+  // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
+  { const sperre = await gesundheitSchreibSperre(await inhaberSpeicher()); if (sperre) return sperre; }
   // Auf dem Server gibt es keinen Downloads-Ordner — die Oberfläche zeigt dann nur die Dateiauswahl (26.09.).
   const n = AUF_DEM_MAC ? await neuesterExport() : null;
   return NextResponse.json({ ok: true, aufDemMac: AUF_DEM_MAC, downloads: n ? { name: n.name, zeit: n.zeit.toISOString() } : null });

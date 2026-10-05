@@ -25,6 +25,9 @@ beforeAll(async () => {
   route = (await import('@/app/api/sport/route')) as unknown as Mod;
   // Erfundene Vitalwerte für die Prüfperson (Whoop-Format des Morgen-Checks).
   await db.saveJson('vitals--pruefling', { [H]: { rec: 71, sleep: 7.4, hrv: 61, rhr: 52 }, '2020-01-01': { rec: 50 } });
+  // Art. 9 (05.10.): Sport schreibt nur mit der Einwilligung (a) der Person — die Prüfperson willigt ein.
+  const e = await import('@/lib/datenschutz/gesundheit-einwilligung');
+  await e.gesundheitErklaeren('pruefling', 'verarbeiten', true, e.GESUNDHEIT_FASSUNG);
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 

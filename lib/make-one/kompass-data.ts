@@ -31,7 +31,7 @@ export type ReglerId =
   | 'tageslast' | 'kritisch-grenze' | 'vorschau-tage' | 'wochenlast'
   | 'tuersteher' | 'triage-tiefe'
   | 'agenten-leine' | 'auto-takt' | 'nachtruhe-ab' | 'tagesstart-auto'
-  | 'schutzzeit' | 'recovery-gruen' | 'runway-warnung' | 'koerper-an-agenten';
+  | 'schutzzeit' | 'recovery-gruen' | 'runway-warnung';
 
 export interface Regler {
   id: ReglerId;
@@ -116,9 +116,8 @@ export const REGLER: Regler[] = [
     wirktIn: [{ label: 'Gesundheit', href: '/os/gesundheit' }, { label: 'Tag', href: '/os/planung' }], skala: ['schnell grün', 'nur wirklich erholt'] },
   { id: 'runway-warnung', label: 'Runway-Warnung ab', bereich: 'schutz', erklaert: 'Ab wie wenigen Monaten Geldreichweite das System rot schlägt.', min: 1, max: 12, schritt: 1, einheit: 'Monate',
     wirktIn: [{ label: 'Finanzen', href: '/os/finanzen' }, { label: 'Controlling', href: '/os/controlling' }], skala: ['erst spät nervös', 'früh warnen'] },
-  { id: 'koerper-an-agenten', label: 'Körperdaten an Agenten', bereich: 'schutz', schalter: true,
-    erklaert: 'Ob Gesundheitswerte in die Arbeitsaufträge der Agenten fließen. Aus bedeutet: Business-Agenten sehen sie gar nicht erst.', min: 0, max: 100, schritt: 100,
-    wirktIn: [{ label: 'Agenten', href: '/os/agenten' }, { label: 'Gesundheit', href: '/os/gesundheit' }], skala: ['bleiben privat', 'fließen mit ein'] },
+  // „Körperdaten an Agenten“ (global, Vorgabe an) ist seit 05.10. entfernt — ersetzt durch die Art.-9-Einwilligung (b)
+  // „An die KI geben“ JE PERSON (System › Datenschutz, lib/datenschutz/gesundheit-einwilligung.ts; Vorgabe aus).
 ];
 
 export const REGLER_MAP = Object.fromEntries(REGLER.map(r => [r.id, r])) as Record<ReglerId, Regler>;
@@ -149,7 +148,7 @@ export const MODI: Modus[] = [
       tuersteher: 50, 'triage-tiefe': 50,
       'agenten-leine': 75, 'auto-takt': 75,
       schutzzeit: 50,
-      'fokus-schwelle': 65, 'wochenlast': 50, 'nachtruhe-ab': 22, 'tagesstart-auto': 100, 'recovery-gruen': 66, 'runway-warnung': 3, 'koerper-an-agenten': 100,
+      'fokus-schwelle': 65, 'wochenlast': 50, 'nachtruhe-ab': 22, 'tagesstart-auto': 100, 'recovery-gruen': 66, 'runway-warnung': 3,
     },
   },
   {
@@ -162,7 +161,7 @@ export const MODI: Modus[] = [
       tuersteher: 25, 'triage-tiefe': 25,
       'agenten-leine': 75, 'auto-takt': 100,
       schutzzeit: 50,
-      'fokus-schwelle': 60, 'wochenlast': 55, 'nachtruhe-ab': 22, 'tagesstart-auto': 100, 'recovery-gruen': 66, 'runway-warnung': 4, 'koerper-an-agenten': 100,
+      'fokus-schwelle': 60, 'wochenlast': 55, 'nachtruhe-ab': 22, 'tagesstart-auto': 100, 'recovery-gruen': 66, 'runway-warnung': 4,
     },
   },
   {
@@ -175,7 +174,7 @@ export const MODI: Modus[] = [
       tuersteher: 100, 'triage-tiefe': 75,
       'agenten-leine': 50, 'auto-takt': 50,
       schutzzeit: 100,
-      'fokus-schwelle': 70, 'wochenlast': 35, 'nachtruhe-ab': 20, 'tagesstart-auto': 0, 'recovery-gruen': 70, 'runway-warnung': 6, 'koerper-an-agenten': 100,
+      'fokus-schwelle': 70, 'wochenlast': 35, 'nachtruhe-ab': 20, 'tagesstart-auto': 0, 'recovery-gruen': 70, 'runway-warnung': 6,
     },
   },
   {
@@ -188,7 +187,7 @@ export const MODI: Modus[] = [
       tuersteher: 100, 'triage-tiefe': 100,
       'agenten-leine': 100, 'auto-takt': 100,
       schutzzeit: 25,
-      'fokus-schwelle': 55, 'wochenlast': 60, 'nachtruhe-ab': 23, 'tagesstart-auto': 100, 'recovery-gruen': 60, 'runway-warnung': 6, 'koerper-an-agenten': 100,
+      'fokus-schwelle': 55, 'wochenlast': 60, 'nachtruhe-ab': 23, 'tagesstart-auto': 100, 'recovery-gruen': 60, 'runway-warnung': 6,
     },
   },
 ];

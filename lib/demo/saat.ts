@@ -75,6 +75,7 @@ const R = {
   familie: () => import('@/app/api/familie/route') as Promise<Modul>,
   vitals: () => import('@/app/api/state/vitals/route') as Promise<Modul>,
   sport: () => import('@/app/api/sport/route') as Promise<Modul>,
+  gesundheitEinwilligung: () => import('@/app/api/datenschutz/gesundheit/route') as Promise<Modul>,
 };
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -330,6 +331,10 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { liste: 'menschen', ...upsert({ id: 'fm-demo-1', von: LENA, am: jetzt.toISOString(), name: 'Oma Ilse (Beispiel)', rolle: 'eltern', geburtstag: '12.11.', kontaktAlleTage: 14, letzterKontakt: tagPlus(heute, -9), notiz: '' }) },
     { liste: 'tage', ...upsert({ id: 'ft-demo-1', von: LENA, am: jetzt.toISOString(), titel: 'Hochzeitstag', art: 'jahrestag', datum: '06-21', vorlaufTage: 7, wer: 'beide', aktion: 'feier', erledigt: [] }) },
   ] });
+  // Art. 9 (05.10.): Gesundheitsdaten nur mit Einwilligung (a) — die Demo-Person erklärt sie über denselben Weg wie die
+  // Oberfläche (System › Datenschutz). (b) „An die KI“ und (c) „Partner“ bleiben aus (Vorgabe) — vorführbar im Dialog.
+  const { GESUNDHEIT_FASSUNG } = await import('@/lib/datenschutz/gesundheit-einwilligung');
+  await rufe(R.gesundheitEinwilligung(), 'POST', '/api/datenschutz/gesundheit', LENA, { zweck: 'verarbeiten', an: true, fassung: GESUNDHEIT_FASSUNG });
   for (let i = 1; i <= 7; i++) {
     await rufe(R.vitals(), 'PUT', '/api/state/vitals', LENA, { date: tagPlus(heute, -i), vitals: { rec: 55 + ((i * 7) % 25), sleep: 7 + (i % 3) * 0.3, hrv: 48 + (i % 4) * 3, rhr: 56 + (i % 3) } });
   }

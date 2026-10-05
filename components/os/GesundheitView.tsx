@@ -31,6 +31,7 @@ import { ErnaehrungView } from './ErnaehrungView';
 import { EnergieView } from './EnergieView';
 import { GesundheitIndex, GesundheitIndexKurz } from './gesundheit/GesundheitIndex';
 import { SportKurz } from './sport/SportKurz';
+import { EinwilligungHinweis } from './gesundheit/EinwilligungHinweis';
 import { useZuZiel } from './ziel';
 import { WEG } from '@/lib/wege';
 
@@ -211,6 +212,7 @@ export function GesundheitView() {
       ) : undefined}
       >
       {/* Die Umschalter stehen im Inhalt als EINE wischbare Leiste (Standard, Regel 11) — nicht im Kopf. */}
+      {eigene && <EinwilligungHinweis />}
       <Segmente liste={SEGMENTE} aktiv={segment} onWahl={geheZu} />
       <ZielBezug bereich="gesundheit" />
 

@@ -780,10 +780,13 @@ async function monatsabschlussErfassen(input: Record<string, unknown>, _origin: 
 async function gesundheitsIndex(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
   if (!person) return KEINE_PERSON;
   const fuer = typeof input.person === 'string' && /^[a-z0-9-]{1,40}$/.test(input.person) ? input.person : person;
-  if (fuer !== person) {
-    const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
-    const k = await kontoFuerSpeicher(fuer);
-    if (!k?.teilt.gesundheit.includes(person)) return 'Kein Zugang: Diese Person teilt ihre Gesundheitsdaten nicht.';
+  // Art. 9 (05.10.): an die KI nur mit Einwilligung — eigene Werte mit (b); fremde nur, wenn die Person (b) UND (c)
+  // „mit dem Partner teilen, auch an dessen ZOE“ erklärt hat und mit dir teilt. Vorher reichte „teilt“ allein.
+  const { gesundheitFuerZoe } = await import('@/lib/datenschutz/gesundheit-einwilligung');
+  if (!(await gesundheitFuerZoe(fuer, person))) {
+    return fuer === person
+      ? 'Kein Zugang: Gesundheitsdaten gehen nur mit deiner Einwilligung „An die KI geben“ an ZOE (System › Datenschutz).'
+      : 'Kein Zugang: Diese Person gibt ihre Gesundheitsdaten nicht an deine ZOE frei.';
   }
   const { gesundheitsIndexFuer } = await import('@/lib/gesundheit/speicher');
   const { schwellenText } = await import('@/lib/business/text');
@@ -944,7 +947,7 @@ async function notiereKontakt(input: Record<string, unknown>, _origin: string, p
   return `${teile.join(' · ')}.${folgeHinweis ? ` ${folgeHinweis}` : ''}`;
 }
 
-async function entwurfAnsprache(input: Record<string, unknown>): Promise<string> {
+async function entwurfAnsprache(input: Record<string, unknown>, _o?: string, person?: string): Promise<string> {
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { treffer, mehrere } = await kontaktFinden(hinweis);
@@ -952,7 +955,7 @@ async function entwurfAnsprache(input: Record<string, unknown>): Promise<string>
   const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
   const { entwurfFuer } = await import('@/lib/ansprache');
-  const r = await entwurfFuer(treffer);
+  const r = await entwurfFuer(treffer, { lauf: 'gespraech', person: person ?? null, kategorien: ['crm'], anzahl: 1 });
   if (!r.ok) return `Entwurf fehlgeschlagen: ${r.fehler}`;
   const { ampel } = await import('@/lib/crm/recht');
   const wege = ampel(treffer).map(c => `${c.kanal} ${c.farbe === 'gruen' ? 'zulässig' : c.farbe === 'gelb' ? 'nur persönlich' : 'NICHT zulässig'}`).join(', ') || 'kein Kanal hinterlegt';

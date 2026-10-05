@@ -29,7 +29,7 @@ export interface SpeicherEintrag extends Partial<Angaben> { muster: string; bezu
 const mit = (e: SpeicherEintrag, a: Angaben): SpeicherEintrag => ({ ...e, ...a });
 /** Gesundheitsdaten der Person selbst (Art. 9): Grundlage und Wege — eine Formulierung für alle Gesundheits-Bestände. */
 const GESUNDHEIT: Angaben = {
-  rechtsgrundlage: 'Art. 9 Abs. 2 lit. a DSGVO — ausdrückliche Einwilligung der Person durch eigenes Erfassen bzw. Verbinden (Whoop); an andere Konten nur über „Teilen“ (Konto › teilt.gesundheit), an ZOE nur die eigenen Werte',
+  rechtsgrundlage: 'Art. 9 Abs. 2 lit. a DSGVO — ausdrückliche Einwilligung der Person, getrennt je Zweck (05.10., `gesundheit-einwilligungen`): (a) verarbeiten, (b) an die KI, (c) mit dem Partner teilen inkl. dessen ZOE; an andere Konten nur über „Teilen“ (Konto › teilt.gesundheit), an ZOE/KI-Läufe nur mit (b), an die ZOE des Partners nur mit (b)+(c)',
   art15: 'die Person sieht und exportiert ihre Werte selbst (Gesundheit); andere Konten sehen sie nur bei „Teilen“',
   loeschfrist: 'bis die Person sie löscht bzw. ihr Konto entfernt wird',
   kategorie: ['art9'],
@@ -228,6 +228,22 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('oauth-tokens', 'Zugangsschlüssel des Haushalts (Whoop/Microsoft) — keine Dritten.'),
   H('oauth-states', 'Kurzlebige OAuth-Zustände — keine Dritten.'),
   H('ki-verbrauch', 'Kosten der Modellaufrufe je Person des Haushalts.'),
+  // ── KI, Gesundheit, Telegram (05.10., DSGVO-Paket; lib/datenschutz/) ──
+  mit(H('gesundheit-einwilligungen', 'Nachweis der Art.-9-Einwilligungen Gesundheit je Person (Zweck a/b/c, an/aus, Zeitpunkt, Fassung, Fingerabdruck des Wortlauts, wer) — nur anhängend, nie geändert (lib/datenschutz/gesundheit-einwilligung.ts). Keine Gesundheitswerte.'), {
+    rechtsgrundlage: 'Art. 7 Abs. 1 DSGVO (Nachweis der Einwilligung) i. V. m. Art. 6 Abs. 1 lit. c',
+    art15: 'GET /api/datenschutz/gesundheit (eigener Nachweis), System › Datenschutz',
+    loeschfrist: 'solange das Konto besteht; danach 3 Jahre (Nachweis, Verjährung § 195 BGB) — automatisches Löschen nach Kontoende noch offen',
+  }),
+  mit(H('ki-einstellungen', 'KI-Schalter der Instanz (Inhaber) und je Person (Hintergrund-KI, Web-Suche, Bereiche) und die Telegram-Ausnahme je Person (Zeitpunkt, Fassung des Hinweises) — keine Inhalte (lib/datenschutz/ki-einstellungen.ts).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c/f DSGVO (Datenschutz durch Technikgestaltung, Art. 25); Telegram-Ausnahme: Art. 6 Abs. 1 lit. a',
+    art15: 'GET /api/datenschutz/ki (eigene Schalter), System › Datenschutz',
+    loeschfrist: 'solange das Konto bzw. die Instanz besteht',
+  }),
+  mit(H('ki-protokoll--*', 'KI-Protokoll je Monat: je Modell-Aufruf NUR Metadaten — Zeit, Zweck, Lauf-Art, Person (Konto), Datenkategorien, Anzahl, pseudonymisiert ja/nein, gesperrt mit Grund. Nie Inhalte, nie Kennungen oder Namen Dritter (lib/datenschutz/ki-protokoll.ts).'), {
+    rechtsgrundlage: 'Art. 5 Abs. 2, Art. 30 DSGVO (Rechenschaft), Art. 6 Abs. 1 lit. c/f',
+    art15: 'GET /api/datenschutz/ki-protokoll?auskunft=1 (Empfänger, Kategorien, Zeitraum, eigene Zeilen); Kontakte: Kategorie „crm“ in der Kontakt-Auskunft',
+    loeschfrist: '12 Monate (ältere Monate leert das Protokoll beim Schreiben, Marke „bereinigt“)',
+  }),
   K('demo-instanz', 'Demo-Marke (05.10., lib/demo/schutz.ts): Saat-Version, Zeitpunkt, Haushalt-Kennung und Zählungen — nur in einer Demo-Instanz, keine Personendaten.'),
   K('backlog', 'Bauplan der Software (Ideen/Etappen) — keine Kontakte.'),
   K('bauzeit', 'Bauzeiten der Software.'),
