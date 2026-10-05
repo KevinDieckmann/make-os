@@ -229,7 +229,18 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('oauth-states', 'Kurzlebige OAuth-Zustände — keine Dritten.'),
   H('ki-verbrauch', 'Kosten der Modellaufrufe je Person des Haushalts.'),
   K('demo-instanz', 'Demo-Marke (05.10., lib/demo/schutz.ts): Saat-Version, Zeitpunkt, Haushalt-Kennung und Zählungen — nur in einer Demo-Instanz, keine Personendaten.'),
-  K('backlog', 'Bauplan der Software (Ideen/Etappen) — keine Kontakte.'),
+  // Bauplan (05.10., DSGVO-Grundlagen): vorher „kein Personenbezug“ — falsch: Karten nennen, wer sie schrieb, und die Bildschirmfotos
+  // (Dateien in <daten>/bauplan-bilder, kein Bestand — hier der Vollständigkeit halber) können Personendaten Dritter zeigen.
+  mit(H('backlog', 'Bauplan der Software (Karten: Titel, Beschreibung, Kommentare, wer; Etappen) — Personen des Haushalts; Namen Dritter höchstens im Freitext.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Weiterentwicklung und Fehlerbehebung der eigenen Software)',
+    art15: 'die Karten sieht der Haushalt im Bauplan (/os/bauplan); Art. 15/17 einer Person über das Konto',
+    loeschfrist: 'bis zur Löschung durch den Haushalt; angehängte Bildschirmfotos nach der Frist „bauplan-bilder“ (siehe bauplan-bilder)',
+  }),
+  mit({ muster: 'bauplan-bilder', bezug: 'dritte', behandlung: 'ausgenommen', frist: 'bauplan-bilder', grund: 'Bildschirmfotos an Bauplan-Karten (Dateien <daten>/bauplan-bilder, verschlüsselt wie die Dateiablage): können Personendaten Dritter zeigen (Listen, Mails) — eine Suche nach der Person in Bildern ist nicht möglich, deshalb kurze Frist statt Art.-17-Suche: fertige/verworfene Karten 90 Tage, verwaiste 7 Tage (lib/bauplan/bilder-frist.ts).' }, {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Fehlerbehebung; Bildschirmfoto von Hand angehängt — vor dem Anhängen Personendaten möglichst schwärzen)',
+    art15: 'nur über den Bauplan (Karte öffnen, Bild ansehen); in der Kontakt-Auskunft nicht auffindbar (Bildinhalt ist nicht durchsuchbar) — deshalb die kurze Frist',
+    loeschfrist: '90 Tage nach Abschluss der Karte (fertig/verworfen, Frist einstellbar 7–365), nicht zugeordnete nach 7 Tagen; offene Karten: solange offen',
+  }),
   K('bauzeit', 'Bauzeiten der Software.'),
   K('agents-config', 'Agenten-Schalter.'),
   K('brain-konsolidierung', 'Riegel der Brain-Konsolidierung.'),

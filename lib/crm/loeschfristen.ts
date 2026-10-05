@@ -26,6 +26,7 @@
 //                                          bleiben (dokumentiert, nie automatisch)
 //   Altbestand Netzwerk        24 Monate   KEINE automatische Löschung — zählt in die Löschfrist-Aufgabe (stilllegen)
 //   Grabsteine                 13 Monate   außerhalb des Datenordners; länger als jede Sicherung (lib/datenschutz/grabsteine.ts)
+//   Bauplan-Bildschirmfotos    90 Tage     ab Abschluss der Karte (fertig/verworfen); nicht zugeordnete nach 7 Tagen
 //   Sicherungen                bis 12 Mon. fest — Generationen der Nachtsicherung (deploy/generationen.sh: 14 Tages-, 8 Wochen-,
 //                                          12 Monatsgenerationen), Tageskopien je Bestand (letzte 14 Schreibtage); „beyond use“,
 //                                          Restore wendet die Grabsteine an (Wächter: tests/datenschutz-sicherungsfrist.test.ts)
@@ -41,7 +42,9 @@ export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'head
   // Netzwerken (03.10., netz-recht): Medien, Veranstaltungs-Kontakte ohne Interaktion, Gesprächs-Info, Übergabe-Protokolle.
   | 'netzwerken-karten' | 'netzwerken-sprachnotizen' | 'netzwerken-kontakte' | 'netzwerken-info' | 'uebergabe-protokolle'
   // Gmail in der Inbox (03.10., Branch gmail): der Mail-Spiegel je Person (Köpfe + Texte) — Gmail bleibt das Original.
-  | 'mail-spiegel';
+  | 'mail-spiegel'
+  // 05.10. (DSGVO-Grundlagen): Bildschirmfotos im Bauplan (können Personendaten zeigen).
+  | 'bauplan-bilder';
 export type Einheit = 'tage' | 'monate';
 
 export interface FristDef {
@@ -90,6 +93,8 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'uebergabe-protokolle', titel: 'Übergabe-Protokolle (Kunden-Events)', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2, Art. 15, Art. 19 DSGVO', hinweis: 'Nachweis, wann welche Personen an welchen Kunden übergeben wurden (am Event bzw. im Übergabe-Journal) — danach weg.' },
   // 03.10. (gmail): Gmail-Spiegel je Person — nur eine Kopie zum Lesen/Zuordnen/Antworten in MAKE OS; das Original bleibt bei Google.
   { id: 'mail-spiegel', titel: 'Mail-Spiegel (Gmail in der Inbox)', einheit: 'tage', standard: 180, min: 30, max: 730, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Kopie der Gmail-Nachrichten je Person (Kopf, Ausschnitt, Text) — ältere fallen im Spiegel weg, in Gmail bleiben sie (dort gilt die Aufbewahrung des Postfachs). Anhänge liegen nie im Spiegel.' },
+  // 05.10. (DSGVO-Grundlagen): Bildschirmfotos im Bauplan — lib/bauplan/bilder-frist.ts.
+  { id: 'bauplan-bilder', titel: 'Bauplan: Bildschirmfotos', einheit: 'tage', standard: 90, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Bildschirmfotos können Personendaten zeigen: an fertigen oder verworfenen Karten fallen sie nach der Frist ab Abschluss weg, nicht zugeordnete nach 7 Tagen; an offenen Karten bleiben sie.' },
   // 05.10. (DSGVO-Grundlagen): vorher „14 Tage“ — falsch, die Nachtsicherung hält Generationen bis ~12 Monate (deploy/generationen.sh).
   { id: 'sicherungen', titel: 'Sicherungen (Tages-, Wochen-, Monatsgenerationen)', einheit: 'monate', standard: SICHERUNG_GENERATIONEN.monatlich, min: SICHERUNG_GENERATIONEN.monatlich, max: SICHERUNG_GENERATIONEN.monatlich, wirkung: 'fest', anzeige: `bis zu ${SICHERUNG_GENERATIONEN.monatlich} Monate`, norm: 'Art. 5 Abs. 1 lit. e, Art. 17, Art. 32 DSGVO', hinweis: SICHERUNG_SATZ },
 ];

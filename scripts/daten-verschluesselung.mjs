@@ -111,5 +111,7 @@ for (const h of await fs.readdir(path.join(DATEN, 'dateien')).catch(() => [])) {
   const ordner = path.join(DATEN, 'dateien', h);
   for (const n of await fs.readdir(ordner).catch(() => [])) if (/^d-[a-z0-9-]+\.bin$/.test(n)) await ablageDatei(path.join(ordner, n), h, n.slice(0, -4));
 }
+// Bauplan-Bildschirmfotos (05.10., DSGVO-Grundlagen): dieselbe Hülle, AAD `bauplan-bilder/<name>` (lib/bauplan/speicher.ts).
+for (const n of await fs.readdir(path.join(DATEN, 'bauplan-bilder')).catch(() => [])) if (/^[a-z0-9-]{8,60}\.(jpg|png|webp)$/.test(n)) await ablageDatei(path.join(DATEN, 'bauplan-bilder', n), 'bauplan-bilder', n);
 console.log(`${modus.slice(2)}: ${getan} Dateien umgestellt, ${gelassen} schon passend, ${fehler} Fehler.`);
 process.exit(fehler ? 1 : 0);

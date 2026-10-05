@@ -326,6 +326,13 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('uebergabe-journal', await journalAufraeumen(heute, f['uebergabe-protokolle']));
   });
 
+  // 16 · Bauplan-Bildschirmfotos (05.10., DSGVO-Grundlagen): können Personendaten zeigen — fertige/verworfene Karten nach der Frist,
+  //      verwaiste nach 7 Tagen (lib/bauplan/bilder-frist.ts).
+  await schritt('bauplan-bilder', async () => {
+    const { bauplanBilderAufraeumen } = await import('@/lib/bauplan/speicher');
+    zaehle('bauplan-bilder', await bauplanBilderAufraeumen(stichtag('bauplan-bilder', f['bauplan-bilder'], heute), jetzt));
+  });
+
   await updateJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER, cur => ({ ...(cur ?? {}), lauf: { tag: heute, am: jetztIso, ueberFrist: ueber.length, bereinigt } }));
   const summe = Object.values(bereinigt).reduce((a, x) => a + x, 0);
   return {

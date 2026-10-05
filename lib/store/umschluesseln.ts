@@ -90,5 +90,20 @@ export async function allesUmschluesseln(neuLaden = true): Promise<UmschluesselE
       }
     }));
   }
+  // 4. Bauplan-Bildschirmfotos (05.10., DSGVO-Grundlagen): AAD `bauplan-bilder/<name>`, Klartext-Altbestand wird verschlüsselt.
+  //    Zählt in `ablage` mit (gleiche Hülle wie die Dateiablage).
+  const bilder = path.join(ordner, 'bauplan-bilder');
+  for (const n of (await fs.readdir(bilder).catch(() => [] as string[])).filter(f => /^[a-z0-9-]{8,60}\.(jpg|png|webp)$/.test(f))) {
+    const p = path.join(bilder, n);
+    try {
+      const b = await fs.readFile(p);
+      if (!binVersion(b)) { await atomarSchreiben(p, binImModus(b, aktiv, 'bauplan-bilder', n)); r.ablage.neu++; continue; }
+      let o: { klar: Buffer; version: 1 | 2; kid: string };
+      try { o = binOeffnen(b, ring, 'bauplan-bilder', n); } catch { r.fehler.push(`bauplan-bilder/${n}: kein Schlüssel passt`); continue; }
+      if (binAktuell(o, aktiv)) { r.ablage.schon++; continue; }
+      await atomarSchreiben(p, binImModus(o.klar, aktiv, 'bauplan-bilder', n));
+      r.ablage.neu++;
+    } catch (e) { if ((e as NodeJS.ErrnoException)?.code !== 'ENOENT') r.fehler.push(`bauplan-bilder/${n}: ${e instanceof Error ? e.message.slice(0, 80) : String(e)}`); }
+  }
   return r;
 }
