@@ -4,6 +4,7 @@
 // DELETE → alle Chats dieser Person entkoppeln
 
 import { NextResponse } from 'next/server';
+import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { personAus } from '@/lib/zoe/raum';
 import { ladeStand, aendereStand, codeAnlegen, chatsFuerPerson, telegramKonfiguriert, CODE_MINUTEN } from '@/lib/telegram';
 
@@ -20,6 +21,7 @@ async function botName(): Promise<string | undefined> {
 }
 
 export async function GET(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   const person = personAus(req);
   const s = await ladeStand();
   return NextResponse.json({
@@ -32,6 +34,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   if (!telegramKonfiguriert()) return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN fehlt in .env.local.' }, { status: 200 });
   const person = personAus(req);
   let code = '';
@@ -40,6 +43,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   const person = personAus(req);
   await aendereStand(s => ({ ...s, kopplungen: s.kopplungen.filter(k => k.person !== person) }));
   return NextResponse.json({ ok: true });

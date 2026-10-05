@@ -1,4 +1,5 @@
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { nurDerInhaber } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { istDienst } from '@/lib/zugang/dienst';
@@ -31,7 +32,8 @@ interface PostfachStore { stand: string; mails: M365Mail[] }
 /** Ab wann ein Postfach-Stand nicht mehr als Wahrheit durchgeht. */
 const MAX_TAGE = 7;
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await nurInhaber(req))) return nurDerInhaber();
   const store = await loadJson<PostfachStore>('m365-postfach');
   const mails = Array.isArray(store?.mails) ? store.mails : [];
   const stand = store?.stand ?? null;

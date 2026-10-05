@@ -7,6 +7,7 @@
 // DELETE → Liste leeren, wenn alles behoben ist
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { nurDerInhaber, personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, saveJson } from '@/lib/store/local-db';
@@ -26,13 +27,15 @@ interface Datei { meldungen: Meldung[] }
 
 const MAX = 60;
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await nurInhaber(req))) return nurDerInhaber();
   const f = await loadJson<Datei>('client-fehler');
   const meldungen = Array.isArray(f?.meldungen) ? f.meldungen : [];
   return NextResponse.json({ meldungen, anzahl: meldungen.length });
 }
 
 export async function POST(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   let body: Partial<Meldung>;
   try { body = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false }, { status: 400 }); }
   const text = String(body.text ?? '').trim().slice(0, 600);

@@ -2,15 +2,16 @@
 // Das ersetzt Kevins Entscheidung „Malin sieht alles" vom Vormittag durch
 // eine Einstellung, die jede Person selbst trifft.
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/zoe/raum';
 import { ladeKonten, aendereKonten } from '@/lib/zugang/konten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function PUT(req: Request) {
-  const wer = personAus(req);
+  const wer = personStreng(req);
+  if (!wer) return ohnePerson();
   let b: { gesundheit?: unknown };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const alle = (await ladeKonten()).konten.map(k => k.speicher);

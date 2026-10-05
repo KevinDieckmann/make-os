@@ -1,8 +1,8 @@
 // GET → wer bin ich, wer ist sonst noch da (Namen, keine Geheimnisse).
 // PUT → Name oder Passwort ändern.
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/zoe/raum';
 import { ladeKonten, aendereKonten, oeffentlich, passwortTauglich, passwortHashen, passwortStimmt, zweiFaktorOffen } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
@@ -12,7 +12,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  const wer = personAus(req);
+  const wer = personStreng(req);
+  if (!wer) return ohnePerson();
   const s = await ladeKonten();
   const ich = s.konten.find(k => k.speicher === wer);
   if (!ich) return NextResponse.json({ error: 'Konto nicht gefunden.' }, { status: 401 });
@@ -26,7 +27,8 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const wer = personAus(req);
+  const wer = personStreng(req);
+  if (!wer) return ohnePerson();
   let b: { name?: string; passwortAlt?: string; passwortNeu?: string };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const s = await ladeKonten();

@@ -6,6 +6,7 @@
 // Sehen: die eigenen immer, fremde nur, wenn die Person teilt (Konto → teilt.gesundheit).
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { ansichtPerson, personAus, darfGesundheitSehen } from '@/lib/zoe/raum';
 import { gesundheitStand, speichereGesundheitSchwelle } from '@/lib/gesundheit/speicher';
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   const person = personAus(req);
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }

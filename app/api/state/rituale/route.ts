@@ -4,6 +4,7 @@
 // Kevin aktiv steuern kann.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
@@ -19,12 +20,14 @@ type RitualLog = Record<string, string[]>;
 const name = (req: Request) => personDatei('rituale', personAus(req));
 
 export async function GET(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   const log = (await loadJson<RitualLog>(name(req))) ?? {};
   return NextResponse.json({ log });
 }
 
 /** Ein Ritual für einen Tag an/aus — ohne die anderen Tage zu berühren. */
 export async function PUT(req: Request) {
+  if (!personStreng(req)) return ohnePerson();
   let body: { date?: string; id?: string; an?: boolean };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = (body.id ?? '').trim();
