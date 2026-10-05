@@ -4,6 +4,34 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## fokusinnovation.de „Klar“ — Neubau auf der Basis von makeinnovation.de, 80 % Seriosität (05.10.2026, nur lokal — Branch `fokus-klar`)
+
+Kevin 04.10.: „80 % Seriosität und Souveränität, höchstens 20 % Akzente, klare Linien, kein Gewusel.“ Die verspielte Fassung (Branch
+`fokus-3d`, drei Vorlagen) ist verworfen; die Event-Seite steht jetzt auf denselben Bausteinen wie makeinnovation.de „Klar“.
+
+- **Dramaturgie (ein Showreel, Fortschritt p):** Titelkarte „Fokus Innovation“ auf Off-White mit einem Fenster in den Abend (die Szene live)
+  → das Fenster öffnet sich zum dunklen Raum: **01 Der Abend** (lange Tafel bei Nacht, Menschen als Lichter, „Eine kleine Runde. Gespräche
+  mit Substanz.“, Ablauf in vier Teilen) → **02 Formate & Themen** (Tafel tritt gedimmt zurück; KI im Unternehmen · Vertrieb & Markteintritt ·
+  Sichtbarkeit · Umsetzung im Mittelstand) → **03 Die Städte** (3D-Karte, Fäden von Berlin; sechs Städte „Termin in Planung“) → Schluss
+  „Auf Einladung — oder per Bewerbung.“ mit Wortmarke FOKUS INNOVATION → im Detail: Teilnahme (`#teilnahme-link`), Gastgeber & Partner
+  (vorbereitete Mails „Fokus Innovation – Gastgeber/Partner“), Absender Make.One → ruhiger Fuß. Kein Vorhang, kein Laufband, kein Flug.
+- **Eine Quelle:** `fokus/js/szene/` (kern · formationen · motor · spur · verlauf) und `js/menue.js` sind Byte-Kopien aus `website/`
+  (`scripts/szene-website.mjs`, über `node scripts/fokus-seite.mjs`; Wächter `tests/szene-website.test.ts`). Neu in `website/js/szene/`
+  nur die freiwillige Formation **`tafel`** — makeinnovation.de unverändert (Standbild `raum.svg` Byte für Byte gleich, Prüfung grün;
+  `website/index.html` nur neu gestempelt). `website/standbild.mjs` nimmt einen Ordner (`… fokus`), `website/pruefen.mjs` teilt die
+  Showreel-Prüfung als `pruefeShowreel()` (Meldungen für makeinnovation.de unverändert).
+- **Aus `fokus-3d` übernommen** (einzeln, kein Merge): Generator `scripts/szene-website.mjs` (erweitert um spur/verlauf), Wortmarke
+  `fokusWortmarke` (Glyphen F, U, S in `scripts/website-logo.mjs`), Städte-Block im Drehbuch, Prüfregeln (Gastgeber/Partner, Stempel,
+  Städte in Szene + Drehbuch), Texte (Themen, Gastgeber, Partner, Teilnahme), Lichtfäden-Ablösung (`scripts/lichtfaeden-website.mjs`
+  nur noch website/). **Nicht** übernommen: Laufband, Kachel-Flug, Dock, Aufdeck-Fuß, Bildfolge/Lade-Spielerei, die acht Abend-Formationen.
+- **Entfernt:** `fokus/js/lichtfaeden.js`, `fokus/js/fokus-faeden.js` (Lichtfäden im Held), Film-Platzhalter `assets/film/standbild.svg`.
+- **Prüfung `fokus/pruefen.mjs`:** Regeln unverändert scharf (Termine, Mengen, Preise, Betreffs, Firmierung, Städte, CSP, Stempel); neu:
+  Showreel wie makeinnovation.de, höchstens **zwei** Lichter, Gastgeber/Partner-Knöpfe. **Größe:** 250 KB gelten weiter für alles Eigene
+  (heute ≈ 190 KB); die Byte-Kopie der Szene hat eine eigene Grenze (120 KB, heute 104 KB); Startseite gzip ≤ 80 KB (heute ≈ 60 KB).
+- **Gemessen:** Rechner 60 fps (längstes Bild 16,8 ms), Handy CPU × 4 59,5 fps; Konsole leer; 375/820/1440 px ohne waagerechtes Scrollen.
+- **Online:** nichts — Caddy-Block und Ordner bestehen seit 04.10. (Vorschau, noindex); Upload nur auf Kevins Wort. **Rückweg:** Branch
+  verwerfen; nichts am Server, keine Daten.
+
 ## DSGVO-Nachtrag: Kapazität deaktivierter Team-Personen + Unterlagen gelöschter Gesellschaften/Verträge (04.10.2026 spät, nur lokal — Branch `dsgvo-2`; UMBAU_ABEND_0410.md › 12)
 
 Kevin 04.10.: „Team-Personen: Kapazitätsdaten 30 Tage nach Deaktivieren automatisch löschen + Art.-15-Export“ und „Unterlagen beim

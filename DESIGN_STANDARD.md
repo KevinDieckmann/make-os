@@ -164,7 +164,7 @@ haben.“)** — Vorbild: Data-Viz-Strahl mit hunderten feiner Fäden.
 außerhalb des Bildes und im verborgenen Tab. 3. Zeichnen < 4 ms je Bild am Rechner. 4. Vergangenes gedämpft, HEUTE leuchtet, Engstellen als ruhige
 Säule + KW-Knopf (Bedeutung „achtung“, nie Alarmrot). 5. Farben nur aus `FADEN_FARBEN`/`THEMEN` (App) bzw. den Logo-Farben (Website). 6. Private Stränge der
 anderen Person nur als „Belegt“ (grau, ohne Titel/Link). 7. Wer `band.ts`/`zeichnen.ts` ändert, ruft `node scripts/lichtfaeden-website.mjs`
-— es schreibt `website/js/lichtfaeden.js` UND `fokus/js/lichtfaeden.js` (Liste `ZIELE`; Wächter `tests/lichtfaeden.test.ts`). 8. Nie im Zeichner Daten rechnen.
+— es schreibt `website/js/lichtfaeden.js` (Liste `ZIELE`; Wächter `tests/lichtfaeden.test.ts`; fokus/ zeichnet seit 04.10. mit der Szene aus `website/js/szene/`). 8. Nie im Zeichner Daten rechnen.
 9. Ziel-Farben rechnet nur der Server (`lib/planung/ziel-farben-server.ts`, Feld `farbe` an jedem Ziel) — Oberflächen nehmen sie, wie sie kommen.
 
 ## Umgestellt: Kern — Shell · Aufgaben · Kalender · Inbox (03.10.)

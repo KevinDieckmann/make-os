@@ -121,6 +121,43 @@ export const VERBOTENE_WOERTER = /\b(?:Dashboard|Tool|Tools|Disruption|Reporting
 export const SKRIPT_VERBOTEN = /\b(?:fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|localStorage|sessionStorage|indexedDB|eval|Function)\b|document\.cookie|import\s*\(|innerHTML|\.src\s*=/;
 export const TRACKER = /google-analytics|googletagmanager|gtag\(|fonts\.googleapis|fonts\.gstatic|facebook\.(?:net|com)|hotjar|matomo|plausible|clarity\.ms|doubleclick/i;
 
+/**
+ * Showreel und Szene einer Startseite („Klar“ 04.10.; gemeinsam mit fokus/pruefen.mjs, damit beide Seiten nach denselben Regeln
+ * gebaut sind): Szene rein dekorativ (aria-hidden), die Bühne steht in der Spur (.spur > .buehne), jeder Zustand des Drehbuchs hat
+ * seine Lage p (aufsteigend, 0…1), jeder mit `standbild: true` sein Standbild (assets/szene/<name>.svg, von der Seite genutzt) und
+ * in assets/szene/ liegt nichts anderes; Blöcke mit data-spur-p tragen eine Lage 0…1; höchstens `lichter` Leinwände (80 %
+ * Seriosität); zerlegt werden nur die H1 (data-zerfall) und eine H2 im dunklen Raum (data-aufstieg); der Schlussblock zeigt die
+ * Wortmarke. Gibt die Fehler zurück.
+ */
+export function pruefeShowreel({ index, drehbuch, dateien, wortmarke, lichter = LICHTER_HOECHSTENS, standbildBefehl = 'node website/standbild.mjs' }) {
+  const fehler = [];
+  if (!/<div class="szene" aria-hidden="true">\s*<canvas><\/canvas>/.test(index)) fehler.push('index.html: Szene (<div class="szene" aria-hidden="true"><canvas>) fehlt oder ist nicht aria-hidden');
+  const haupt = /<main\b[\s\S]*<\/main>/.exec(index)?.[0] ?? '';
+  if (!/<div class="spur"[^>]*>\s*<div class="buehne">/.test(haupt)) fehler.push('index.html: Showreel ohne Spur und Bühne (<div class="spur"><div class="buehne">)');
+  const zustaende = Array.from(drehbuch.matchAll(/\{ name: '([a-z-]+)', p: ([\d.]+)(?:, bis: ([\d.]+))?([^\n]*)/g), m => ({ name: m[1], p: +m[2], bis: m[3] ? +m[3] : +m[2], standbild: /\sstandbild: true/.test(m[4]) }));
+  const alleNamen = Array.from(drehbuch.matchAll(/\{ name: '([a-z-]+)'/g), m => m[1]);
+  if (zustaende.length !== alleNamen.length || zustaende.length < 2) fehler.push(`js/drehbuch.js: jeder Zustand braucht seine Lage im Showreel ({ name, p[, bis] }) — mindestens zwei (${alleNamen.join(', ')})`);
+  let vorher = 0;
+  for (const z of zustaende) {
+    if (!(z.p >= vorher && z.bis >= z.p && z.bis <= 1)) fehler.push(`js/drehbuch.js: Zustand „${z.name}“ liegt nicht aufsteigend zwischen 0 und 1 (p ${z.p}, bis ${z.bis})`);
+    vorher = z.bis;
+  }
+  const mitBild = zustaende.filter(z => z.standbild).map(z => `assets/szene/${z.name}.svg`);
+  for (const d of mitBild) {
+    if (!dateien.includes(d)) fehler.push(`${d}: fehlt (${standbildBefehl})`);
+    if (!index.includes(`src="${d}"`)) fehler.push(`index.html: Standbild ${d} wird nicht gezeigt (Titelkarte oder ruhige Fassung)`);
+  }
+  for (const d of dateien.filter(d => d.startsWith('assets/szene/'))) if (!mitBild.includes(d)) fehler.push(`${d}: kein Zustand mit standbild: true — tote Datei`);
+  for (const m of haupt.matchAll(/\sdata-spur-p="([^"]*)"/g)) if (!/^(?:0|1|0?\.\d+)$/.test(m[1]) || +m[1] > 1) fehler.push(`index.html: data-spur-p="${m[1]}" — Lage im Showreel zwischen 0 und 1`);
+  const zahl = (index.match(/<canvas\b/g) ?? []).length;
+  if (zahl > lichter) fehler.push(`index.html: ${zahl} Leinwände — die Lichter stehen an höchstens ${lichter} Stellen (80 % Seriosität)`);
+  const zerlegt = Array.from(index.matchAll(/<(\w+)\b[^>]*\sdata-(zerfall|aufstieg)\b[^>]*>/g), m => `${m[1]}:${m[2]}`);
+  if (zerlegt.join(' ') !== 'h1:zerfall h2:aufstieg') fehler.push(`index.html: Buchstaben-Bewegung nur an der H1 (data-zerfall) und der Überschrift des dunklen Raums (h2 data-aufstieg) — gefunden: ${zerlegt.join(', ') || 'keine'}`);
+  const ende = /<section class="ende"[\s\S]*?<\/section>/.exec(index)?.[0] ?? '';
+  if (!ende.includes(`src="${wortmarke}"`)) fehler.push(`index.html: Schlussblock ohne Wortmarke (${wortmarke})`);
+  return fehler;
+}
+
 /** Alle Dateien unter `ordner` (relativ, mit „/“). */
 /** Alle Dateien eines Ordners (rekursiv, relativ, sortiert) — auch von fokus/pruefen.mjs genutzt. */
 export function alleDateien(ordner, basis = ordner) {
@@ -306,31 +343,8 @@ export function pruefeWebsite(ordner) {
       if (!fokus.includes(`href="${FOKUS_SEITE}"`)) fehler.push(`index.html: Kapitel Fokus Innovation ohne Link auf ${FOKUS_SEITE}`);
       for (const st of STAEDTE) if (!fokus.includes(`<b>${st}</b>`)) fehler.push(`index.html: Fokus Innovation — Stadt ${st} fehlt`);
     }
-    // Szene: rein dekorativ; die Bühne steht in der Spur; Drehbuch, Lagen und Standbilder passen zusammen.
-    if (!/<div class="szene" aria-hidden="true">\s*<canvas><\/canvas>/.test(index)) fehler.push('index.html: Szene (<div class="szene" aria-hidden="true"><canvas>) fehlt oder ist nicht aria-hidden');
-    const haupt = /<main\b[\s\S]*<\/main>/.exec(index)?.[0] ?? '';
-    if (!/<div class="spur"[^>]*>\s*<div class="buehne">/.test(haupt)) fehler.push('index.html: Showreel ohne Spur und Bühne (<div class="spur"><div class="buehne">)');
-    const drehbuch = inhalt.get('js/drehbuch.js') ?? '';
-    const zustaende = Array.from(drehbuch.matchAll(/\{ name: '([a-z-]+)', p: ([\d.]+)(?:, bis: ([\d.]+))?([^\n]*)/g), m => ({ name: m[1], p: +m[2], bis: m[3] ? +m[3] : +m[2], standbild: /\sstandbild: true/.test(m[4]) }));
-    const alleNamen = Array.from(drehbuch.matchAll(/\{ name: '([a-z-]+)'/g), m => m[1]);
-    if (zustaende.length !== alleNamen.length || zustaende.length < 2) fehler.push(`js/drehbuch.js: jeder Zustand braucht seine Lage im Showreel ({ name, p[, bis] }) — mindestens zwei (${alleNamen.join(', ')})`);
-    let vorher = 0;
-    for (const z of zustaende) {
-      if (!(z.p >= vorher && z.bis >= z.p && z.bis <= 1)) fehler.push(`js/drehbuch.js: Zustand „${z.name}“ liegt nicht aufsteigend zwischen 0 und 1 (p ${z.p}, bis ${z.bis})`);
-      vorher = z.bis;
-    }
-    const mitBild = zustaende.filter(z => z.standbild).map(z => `assets/szene/${z.name}.svg`);
-    for (const d of mitBild) {
-      if (!dateien.includes(d)) fehler.push(`${d}: fehlt (node website/standbild.mjs)`);
-      if (!index.includes(`src="${d}"`)) fehler.push(`index.html: Standbild ${d} wird nicht gezeigt (Titelkarte oder ruhige Fassung)`);
-    }
-    for (const d of dateien.filter(d => d.startsWith('assets/szene/'))) if (!mitBild.includes(d)) fehler.push(`${d}: kein Zustand mit standbild: true — tote Datei`);
-    for (const m of haupt.matchAll(/\sdata-spur-p="([^"]*)"/g)) if (!/^(?:0|1|0?\.\d+)$/.test(m[1]) || +m[1] > 1) fehler.push(`index.html: data-spur-p="${m[1]}" — Lage im Showreel zwischen 0 und 1`);
-    const lichter = (index.match(/<canvas\b/g) ?? []).length;
-    if (lichter > LICHTER_HOECHSTENS) fehler.push(`index.html: ${lichter} Leinwände — die Lichter stehen an höchstens ${LICHTER_HOECHSTENS} Stellen (80 % Seriosität)`);
-    const zerlegt = Array.from(index.matchAll(/<(\w+)\b[^>]*\sdata-(zerfall|aufstieg)\b[^>]*>/g), m => `${m[1]}:${m[2]}`);
-    if (zerlegt.join(' ') !== 'h1:zerfall h2:aufstieg') fehler.push(`index.html: Buchstaben-Bewegung nur an der H1 (data-zerfall) und der Überschrift des dunklen Raums (h2 data-aufstieg) — gefunden: ${zerlegt.join(', ') || 'keine'}`);
-    if (!/<section class="ende"[\s\S]*?src="assets\/logo\/wortmarke\.svg"[\s\S]*?<\/section>/.test(index)) fehler.push('index.html: Schlussblock ohne Wortmarke (assets/logo/wortmarke.svg)');
+    // Szene und Showreel (gemeinsame Regeln mit fokus/pruefen.mjs): Drehbuch, Lagen, Standbilder, Lichter, Buchstaben, Schluss.
+    fehler.push(...pruefeShowreel({ index, drehbuch: inhalt.get('js/drehbuch.js') ?? '', dateien, wortmarke: 'assets/logo/wortmarke.svg' }));
     // Gewicht: HTML + CSS + Skripte der Startseite (gzip), ohne Schriften und Standbilder.
     const teile = ['index.html', ...Array.from(index.matchAll(/<link rel="stylesheet" href="([^"]+)"/g), m => m[1]), ...Array.from(index.matchAll(/<script src="([^"]+)"/g), m => m[1])];
     const gewicht = teile.map(t => t.split('?')[0]).filter(t => dateien.includes(t)).reduce((summe, t) => summe + gzipSync(readFileSync(join(ordner, t))).length, 0);

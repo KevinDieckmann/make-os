@@ -1,29 +1,39 @@
 #!/usr/bin/env node
-// ─── MAKE Innovation · Standbilder der Szene (v5 04.10.2026; „Klar“ 04.10.2026) ─────────────────────────────
+// ─── MAKE Innovation · Standbilder der Szene (v5 04.10.2026; „Klar“ 04.10.2026; fokusinnovation.de 05.10.2026) ─────────────
 // Gerechnet aus DERSELBEN Geometrie wie die Szene im Browser (js/szene/kern.js + formationen.js nach js/drehbuch.js), mit derselben
 // Kamera, nur ruhig: Netz, Lichtfäden, Linien und Teilchen der Formation als SVG (Punkte = runde Striche, gruppiert nach Farbe
 // und Helligkeit; dazu ein weicher Schein über eine Filter-Kopie der hellen Teile). Ohne Stil-Attribute (CSP).
 // makeinnovation.de braucht eines: die Kugel (Zustand „raum“) — in der Titelkarte und in der ruhigen Fassung des dunklen Raums.
+// Eine Quelle für jede Seite mit der Szene (website/, fokus/): der Ordner liest seine eigene Kopie der Szene (js/szene/), sein
+// Drehbuch (js/drehbuch.js; optional `logo` = Pfad der Wortmarke, nur für die Formation „zeichen“) und die Beschriftungen aus
+// index.html (<span class="marke[ stadt]" data-zustand data-nr>) — dieselben, die der Motor über die Leinwand legt.
 // Arbeitsdatei (wird nie ausgeliefert: Caddy versteckt *.mjs).
-//   node website/standbild.mjs   → website/assets/szene/<zustand>.svg (je Zustand des Drehbuchs; trägt ein Zustand `standbild: true`,
-//                                   nur diese)
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+//   node website/standbild.mjs         → website/assets/szene/<zustand>.svg (je Zustand des Drehbuchs; trägt ein Zustand
+//                                        `standbild: true`, nur diese)
+//   node website/standbild.mjs fokus   → fokus/assets/szene/<zustand>.svg (Ordner relativ zum Repo oder absolut)
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import vm from 'node:vm';
 
-const hier = new URL('./', import.meta.url);
+const hier = process.argv[2] ? pathToFileURL(resolve(fileURLToPath(new URL('../', import.meta.url)), process.argv[2]) + '/') : new URL('./', import.meta.url);
 const kontext = {}; vm.createContext(kontext);
 for (const d of ['js/szene/kern.js', 'js/szene/formationen.js', 'js/drehbuch.js']) vm.runInContext(readFileSync(new URL(d, hier), 'utf8'), kontext);
 const S = kontext.MakeSzene, K = S.kern, FM = S.formationen;
-const wortmarke = readFileSync(new URL('assets/logo/wortmarke.svg', hier), 'utf8');
-const logo = FM.logoAusSvg(wortmarke);
+const logoDatei = new URL(S.drehbuch.logo || 'assets/logo/wortmarke.svg', hier);
+const wortmarke = existsSync(logoDatei) ? readFileSync(logoDatei, 'utf8') : null;
+const logo = wortmarke ? FM.logoAusSvg(wortmarke) : null;
 const welt = FM.bauen(S.drehbuch, { handy: false, logo, anzahl: (S.drehbuch.teilchen && S.drehbuch.teilchen.standbild) || 2600 });
 const mitStandbild = S.drehbuch.zustaende.some(z => z.standbild);
 const Z = welt.Z, W = 800, H = 800;
 const hex = c => '#' + c.map(v => Math.round(Math.min(1, v) * 255).toString(16).padStart(2, '0')).join('');
 const FARBEN = FM.PALETTE.map(hex);
 const r1 = n => Math.round(n * 10) / 10;
-/** Beschriftungen je Zustand (wie die Marken in index.html). */
-const MARKEN = { umsetzung: ['Analyse', 'Aufbau', 'Skalierung'], fokus: (S.formationen.STAEDTE).map(s => s.name), wirkung: ['Umsetzung', 'Sichtbarkeit', 'Netzwerk'] };
+/** Beschriftungen je Zustand — aus den Marken in index.html (Text, und ob es eine Stadt ist: dann rechts am Punkt). */
+const MARKEN = {};
+for (const m of readFileSync(new URL('index.html', hier), 'utf8').matchAll(/<span class="marke([^"]*)" data-zustand="([a-z-]+)" data-nr="(\d+)">([^<]+)<\/span>/g)) {
+  (MARKEN[m[2]] ??= [])[+m[3]] = { text: m[4], stadt: /\bstadt\b/.test(m[1]) };
+}
 
 mkdirSync(new URL('assets/szene/', hier), { recursive: true });
 let summe = 0;
@@ -86,10 +96,10 @@ Z.forEach((zst, k) => {
   const namen = MARKEN[zst.name];
   if (namen) F.marken.forEach((p, i) => {
     const q = proj(p); if (!q || !namen[i]) return;
-    const stadt = zst.name === 'fokus';
-    svg += `<text x="${r1(q[0] + (stadt ? 8 : 0))}" y="${r1(q[1] + (stadt ? 4 : -6))}" fill="#EEF1F0" fill-opacity=".85" font-family="Archivo, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" letter-spacing="1.6"${stadt ? '' : ' text-anchor="middle"'}>${namen[i].toUpperCase()}</text>`;
+    const stadt = namen[i].stadt;
+    svg += `<text x="${r1(q[0] + (stadt ? 8 : 0))}" y="${r1(q[1] + (stadt ? 4 : -6))}" fill="#EEF1F0" fill-opacity=".85" font-family="Archivo, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" letter-spacing="1.6"${stadt ? '' : ' text-anchor="middle"'}>${namen[i].text.toUpperCase()}</text>`;
   });
-  if (zst.formation === 'zeichen' && F.marken.length === 2) {
+  if (zst.formation === 'zeichen' && logo && F.marken.length === 2) {
     const a = proj(F.marken[0]), c = proj(F.marken[1]);
     if (a && c) {
       const innen = /<svg\b[^>]*>([\s\S]*)<\/svg>/.exec(wortmarke)[1], sk = (c[0] - a[0]) / logo.breite;
@@ -99,6 +109,6 @@ Z.forEach((zst, k) => {
   svg += '</svg>\n';
   writeFileSync(new URL(`assets/szene/${zst.name}.svg`, hier), svg);
   summe += svg.length;
-  console.log(`✓ assets/szene/${zst.name}.svg (${(svg.length / 1024).toFixed(1)} KB)`);
+  console.log(`✓ ${fileURLToPath(new URL(`assets/szene/${zst.name}.svg`, hier)).split('/').slice(-4).join('/')} (${(svg.length / 1024).toFixed(1)} KB)`);
 });
 console.log(`  zusammen ${(summe / 1024).toFixed(0)} KB`);

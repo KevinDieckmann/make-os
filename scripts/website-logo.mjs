@@ -109,9 +109,37 @@ const GLYPHEN = {
   },
   T(H, s, B) { return { polys: [rechteck(0, 0, B, s), rechteck(B / 2 - s / 2, 0, s, H)], breite: B }; },
   O(H, s) { const ra = H * .515, ri = ra - s * 1.04; return { ring: [ra, ri], breite: ra * 2 }; },
+  // F, U, S (04.10.2026) für die Wortmarke „FOKUS INNOVATION“ (fokusinnovation.de) — dieselbe Konstruktion.
+  F(H, s, B) {
+    const hm = s * .9, ym = H * .485 - hm / 2;
+    return { polys: [rechteck(0, 0, s, H), rechteck(0, 0, B, s), rechteck(0, ym, B * .84, hm)], breite: B };
+  },
+  U(H, s, B) {
+    // Zwei Stämme, unten ein halber Ring (wie das O ein wenig über die Grundlinie hinaus).
+    const ra = B / 2, ri = ra - s * 1.02, cx = B / 2, yc = H * 1.012 - ra, pts = [[0, 0], [s, 0]];
+    for (let i = 0; i <= 24; i++) { const t = Math.PI - i / 24 * Math.PI; pts.push([cx + ri * Math.cos(t), yc + ri * Math.sin(t)]); }
+    pts.push([B - s, 0], [B, 0]);
+    for (let i = 0; i <= 24; i++) { const t = i / 24 * Math.PI; pts.push([cx + ra * Math.cos(t), yc + ra * Math.sin(t)]); }
+    return { polys: [flaeche(pts)], breite: B };
+  },
+  S(H, s, B) {
+    // Zwei Bögen (Ellipsen) mit gleicher Strichstärke, punktsymmetrisch um die Mitte; der obere etwas kleiner.
+    const o = H * .015, w = s * .96, ry1 = (H + 2 * o - w) / (2 * 2.08), ry2 = ry1 * 1.08, rx2 = (B - w) / 2, rx1 = rx2 * .93;
+    const cx = B / 2, y1 = -o + w / 2 + ry1, y2 = y1 + ry1 + ry2;
+    const bogen = (cy, rx, ry, t0, t1) => {
+      const aussen = [], innen = [];
+      for (let i = 0; i <= 40; i++) {
+        const t = t0 + (t1 - t0) * i / 40, x = cx + rx * Math.cos(t), y = cy + ry * Math.sin(t), nx = ry * Math.cos(t), ny = rx * Math.sin(t), l = Math.hypot(nx, ny);
+        aussen.push([x + nx / l * w / 2, y + ny / l * w / 2]); innen.push([x - nx / l * w / 2, y - ny / l * w / 2]);
+      }
+      return flaeche([...aussen, ...innen.reverse()]);
+    };
+    const g = Math.PI / 180;
+    return { polys: [bogen(y1, rx1, ry1, -28 * g, -270 * g), bogen(y2, rx2, ry2, -90 * g, 152 * g)], breite: B };
+  },
 };
 /** Breite je Buchstabe als Vielfaches der Versalhöhe. */
-const BREITE = { M: 1.06, A: 1.0, K: .84, E: .69, N: .8, V: .9, T: .8 };
+const BREITE = { M: 1.06, A: 1.0, K: .84, E: .69, N: .8, V: .9, T: .8, F: .62, U: .78, S: .7 };
 
 /** Ein Wort aus der Schrift: Polygone (Tinte), Ringe (O) und Akzente (rot/grün), x ab 0. `sperr` = Abstände. */
 function wort(text, H, s, sperr, akzent = {}) {
@@ -249,6 +277,29 @@ export function buehne() {
   return `<svg class="zeichen" viewBox="0 0 ${r(BREITE_WORT)} ${HOEHE_BLOCK}" aria-hidden="true" focusable="false">${blockInnen(GEWAEHLT, FARBEN.dunkel, { klassen: true })}</svg>`;
 }
 
+// ── Fokus Innovation (fokusinnovation.de, 04.10.2026; „Klar“ 05.10.2026) ─────────────────────────────────────────
+// Dieselbe Konstruktion wie MAKE: FOKUS als Wort, darunter die Synapse (Rot unter FO, Knoten unter der Fuge zwischen O und K,
+// Grün unter KUS — die Fuge bleibt eng, damit FOKUS als ein Wort liest), darunter INNOVATION im Blocksatz. Wird NICHT von
+// `schreiben()` geschrieben (website/ bleibt unverändert): scripts/fokus-seite.mjs schreibt fokus/assets/logo/fokus-wortmarke.svg
+// (Schlussblock des Showreels auf fokusinnovation.de).
+// O und S stehen wie üblich ein wenig über Versal- und Grundlinie hinaus — die Wortmarke beginnt deshalb 1 tiefer.
+const FOKUS_SPERR = [8, 13, 10, 8], FOKUS_OBEN = 1, FOKUS_HOEHE = HOEHE_BLOCK + FOKUS_OBEN;
+function fokusInnen(f) {
+  const w = wort('FOKUS', MASS.H, MASS.s, FOKUS_SPERR), b = w.breite, fuge = (w.kanten[1][1] + w.kanten[2][0]) / 2;
+  const k = () => '', h = MASS.linie, kn = MASS.knoten, sp = MASS.spalt, y = Y_LINIE + FOKUS_OBEN, cy = y + h / 2;
+  let s = pfad(wortInnen(w, f, 0, FOKUS_OBEN).tinte, f.ink, k('make'));
+  s += `<rect${k('strich strich-ma')} x="0" y="${r(y)}" width="${r(fuge - kn - sp)}" height="${h}" fill="${f.rot}"/>` +
+    `<rect${k('strich strich-ke')} x="${r(fuge + kn + sp)}" y="${r(y)}" width="${r(b - fuge - kn - sp)}" height="${h}" fill="${f.gruen}"/>` +
+    `<g${k('knoten')}><path d="M${r(fuge)} ${r(cy - kn)}A${kn} ${kn} 0 0 0 ${r(fuge)} ${r(cy + kn)}Z" fill="${f.rot}"/>` +
+    `<path d="M${r(fuge)} ${r(cy - kn)}A${kn} ${kn} 0 0 1 ${r(fuge)} ${r(cy + kn)}Z" fill="${f.gruen}"/></g>`;
+  s += pfad(wortInnen(blocksatz('INNOVATION', MASS.zusatzH, MASS.zusatzS, b), f, 0, Y_ZUSATZ + FOKUS_OBEN).tinte, f.zusatz, k('zusatz'));
+  return { innen: s, breite: b };
+}
+/** Wortmarke „FOKUS INNOVATION“ als eigene Datei (dunkel). */
+export function fokusWortmarke() {
+  const m = fokusInnen(FARBEN.dunkel);
+  return svg(m.breite, FOKUS_HOEHE, m.innen, 'Fokus Innovation');
+}
 // ── Übersicht (logo-entwuerfe.html) ───────────────────────────────────────────────────────────────────
 const KOPF = '<?xml version="1.0" encoding="UTF-8"?>\n';
 const ENTWUERFE = {

@@ -146,7 +146,7 @@ Antwort (Schlüssel Ebene|Person|Zeitraum, `lichtSchluessel`) und wird nach dem 
 und Fäden aus `band.ts`, Striche gebündelt aus `zeichnen.ts` (Path2D-Eimer, additiv). Übergang 720 ms (`UEBERGANG_MS`,
 sanftes Ein-/Ausschwingen); bei „Bewegung reduzieren“ kein Übergang und keine Eigenbewegung (Standbild). Der Lauf pausiert
 außerhalb des Bildes und im verborgenen Tab. Die Website nutzt `band.ts` + `zeichnen.ts` unverändert (übersetzt nach
-`website/js/lichtfaeden.js` und `fokus/js/lichtfaeden.js` — `node scripts/lichtfaeden-website.mjs`, Liste `ZIELE`, Wächter
+`website/js/lichtfaeden.js` — `node scripts/lichtfaeden-website.mjs`, Liste `ZIELE` (fokus/ seit 04.10. mit der WebGL-Szene), Wächter
 `tests/lichtfaeden.test.ts`). Der Messpunkt am Band (`data-bilder`, `data-mittel-ms` …) läuft nur außerhalb der Produktion oder
 mit `data-messen` an der Seite.
 

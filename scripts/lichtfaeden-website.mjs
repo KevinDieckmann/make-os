@@ -2,13 +2,13 @@
 // ─── Lichtfäden → Website (03.10.2026) ──────────────────────────────────────
 // Die Landingpage (website/) ist statisch und hat keinen Bau-Schritt. Damit dort DIESELBEN Lichtfäden laufen wie in der
 // Planung, übersetzt dieses Skript lib/lichtfaeden/band.ts + zeichnen.ts (reine Mathematik + Zeichner, ohne Framework)
-// in EINE Datei (IIFE, `globalThis.Lichtfaeden`) — für JEDE statische Seite in `ZIELE`: website/ (makeinnovation.de) und
-// fokus/ (fokusinnovation.de). Keine Abhängigkeit zur Laufzeit.
+// in EINE Datei (IIFE, `globalThis.Lichtfaeden`) — für JEDE statische Seite in `ZIELE`. Keine Abhängigkeit zur Laufzeit.
+// (fokus/ — fokusinnovation.de — zeichnet seit 04.10.2026 mit der WebGL-Szene aus website/js/szene/, siehe
+// scripts/szene-website.mjs; der 2D-Zeichner wird dort nicht mehr gebraucht.)
 //
-//   node scripts/lichtfaeden-website.mjs           → schreibt website/js/lichtfaeden.js UND fokus/js/lichtfaeden.js
+//   node scripts/lichtfaeden-website.mjs           → schreibt website/js/lichtfaeden.js
 //   node scripts/lichtfaeden-website.mjs --pruefen → Ausgang 1, wenn eine der Dateien nicht zum Quelltext passt
 // Wächter: tests/lichtfaeden.test.ts vergleicht jede Datei mit `erzeugen()` — wer band.ts/zeichnen.ts ändert, ruft das Skript.
-// (scripts/fokus-seite.mjs erzeugt fokus/js/lichtfaeden.js mit demselben `erzeugen()` — beide schreiben dasselbe.)
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -18,7 +18,7 @@ import ts from 'typescript';
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const QUELLEN = ['lib/lichtfaeden/band.ts', 'lib/lichtfaeden/zeichnen.ts'];
 /** Wohin der Zeichner geschrieben wird — eine Zeile je statischer Seite. */
-export const ZIELE = ['website/js/lichtfaeden.js', 'fokus/js/lichtfaeden.js'];
+export const ZIELE = ['website/js/lichtfaeden.js'];
 
 /** Den Inhalt von website/js/lichtfaeden.js aus dem Quelltext erzeugen (rein, deterministisch). */
 export function erzeugen(wurzel = WURZEL) {

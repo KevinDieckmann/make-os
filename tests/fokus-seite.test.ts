@@ -1,10 +1,11 @@
-// Event-Seite fokusinnovation.de (fokus/, 03.10.): Bau-Regeln, gemeinsame Dateien aus EINER Quelle, Inhalt ohne Erfundenes.
+// Event-Seite fokusinnovation.de (fokus/, 03.10.; „Klar“ 05.10.): Bau-Regeln, gemeinsame Dateien aus EINER Quelle, Inhalt ohne
+// Erfundenes, Showreel nach denselben Regeln wie makeinnovation.de.
 import { describe, it, expect } from 'vitest';
 import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pruefeFokus, TERMIN, MENGEN, EXTERN_ERLAUBT, impressumKern } from '../fokus/pruefen.mjs';
-import { pruefen, STAEDTE, UMRISS, projiziere, karteSvg } from '../scripts/fokus-seite.mjs';
+import { pruefeFokus, TERMIN, MENGEN, EXTERN_ERLAUBT, impressumKern, GROESSE_MAX, SZENE_MAX } from '../fokus/pruefen.mjs';
+import { pruefen, STAEDTE, UMRISS, projiziere, karteSvg, markenHtml, staedteJs } from '../scripts/fokus-seite.mjs';
 
 const wurzel = process.cwd();
 const FOKUS = join(wurzel, 'fokus');
@@ -22,7 +23,8 @@ describe('fokus/ — Freigabe-Prüfung', () => {
     const r = pruefeFokus(FOKUS);
     expect(r.fehler).toEqual([]);
     expect(r.platzhalter.every((p: { datei: string }) => p.datei === 'datenschutz.html')).toBe(true);
-    expect(r.groesse).toBeLessThan(250 * 1024);
+    expect(r.groesse).toBeLessThan(GROESSE_MAX);
+    expect(r.szene).toBeLessThan(SZENE_MAX);
   });
 
   it('gemeinsame und erzeugte Dateien passen zur Quelle (node scripts/fokus-seite.mjs)', async () => {
@@ -61,10 +63,11 @@ describe('fokus/ — Freigabe-Prüfung', () => {
   it('Mail nur an die MAKE-Adresse mit Betreff „Fokus Innovation …“; Firmierung und Absender auf jeder Seite', () => {
     const k = kopie();
     try {
-      k.aendern('index.html', t => t.replace('subject=Fokus%20Innovation%20Hamburg%20%E2%80%93%20Teilnahme', 'subject=Hallo'));
+      k.aendern('index.html', t => t.replace('subject=Fokus%20Innovation%20%E2%80%93%20Gastgeber', 'subject=Hallo'));
       k.aendern('datenschutz.html', t => t.split('eine Marke der KEMARIS Innovation GmbH').join('eine Marke'));
       const f = pruefeFokus(k.fokus).fehler.join('\n');
       expect(f).toMatch(/Betreff „Hallo“/);
+      expect(f).toMatch(/Knopf „Gastgeber werden“/);
       expect(f).toMatch(/datenschutz\.html: Firmierung/);
     } finally { k.weg(); }
   });
@@ -131,19 +134,58 @@ describe('Karte — echte Positionen', () => {
   });
 });
 
-describe('Lichtfäden im Held — Strahl v3 aus dem gemeinsamen Zeichner (04.10.)', () => {
-  const quelle = readFileSync(join(FOKUS, 'js', 'fokus-faeden.js'), 'utf8');
-  it('Aufbau von links (Front), Lichtpunkte, Glühen, Ausfransen — alles über js/lichtfaeden.js, nichts kopiert', () => {
-    for (const teil of ['front', 'punkte', 'L.glanzPuffer()', 'frans:', 'L.zeichneBuendel(', 'P.aufbau']) expect(quelle).toContain(teil);
-    // keine eigene Fassung der Mathematik/des Zeichners
-    expect(quelle).not.toMatch(/function (?:versatz|fransen|zeichneBuendel|kurve)\b/);
+describe('Showreel „Klar“ (05.10.) — dieselben Regeln wie makeinnovation.de', () => {
+  it('Standbild, Lichter, Buchstaben-Bewegung, Schluss mit Wortmarke, Stempel und H1 fallen auf, wenn sie nicht stimmen', () => {
+    const k = kopie();
+    try {
+      rmSync(join(k.fokus, 'assets/szene/abend.svg'));
+      k.aendern('index.html', t => t.replace('<canvas class="verlauf" aria-hidden="true"></canvas>', '<canvas class="verlauf" aria-hidden="true"></canvas><canvas></canvas>')
+        .replace('<h2 id="themen-titel">', '<h2 id="themen-titel" data-aufstieg>')
+        .replace('src="assets/logo/fokus-wortmarke.svg"', 'src="assets/logo/make-quer.svg"')
+        .replace(/css\/fokus\.css\?v=[a-f0-9]{10}/, 'css/fokus.css?v=0000000000')
+        .replace('Fokus <span class="ruhig">Innovation</span></h1>', 'Fokus</h1>'));
+      const f = pruefeFokus(k.fokus).fehler.join('\n');
+      expect(f).toMatch(/assets\/szene\/abend\.svg: fehlt \(node website\/standbild\.mjs fokus\)/);
+      expect(f).toMatch(/3 Leinwände — die Lichter stehen an höchstens 2 Stellen/);
+      expect(f).toMatch(/Buchstaben-Bewegung nur an der H1/);
+      expect(f).toMatch(/Schlussblock ohne Wortmarke \(assets\/logo\/fokus-wortmarke\.svg\)/);
+      expect(f).toMatch(/css\/fokus\.css ohne aktuellen Stempel/);
+      expect(f).toMatch(/H1 „Fokus Innovation“ fehlt/);
+    } finally { k.weg(); }
   });
-  it('„Bewegung reduzieren“ = Standbild ohne Aufbau; Lauf pausiert über starteLauf', () => {
-    expect(quelle).toMatch(/const p = ruhig \? 1 :/);
-    expect(quelle).toContain('L.starteLauf({ beobachte: held, zeichne, ruhig })');
+
+  it('eine geänderte Kopie der Szene oder eine Stadt, die in Drehbuch oder Beschriftung fehlt, fällt auf', () => {
+    const k = kopie();
+    try {
+      k.aendern('js/szene/spur.js', t => `${t}\n// eigene Fassung\n`);
+      k.aendern('js/drehbuch.js', t => t.replace("{ name: 'Dresden', lat: ", "{ name: 'Leipzig', lat: "));
+      k.aendern('index.html', t => t.replace('data-nr="5">Dresden</span>', 'data-nr="5">Leipzig</span>'));
+      const f = pruefeFokus(k.fokus).fehler.join('\n');
+      expect(f).toMatch(/js\/szene\/spur\.js: weicht von website\/js\/szene\/spur\.js ab/);
+      expect(f).toMatch(/js\/drehbuch\.js: Stadt Dresden fehlt auf der Karte der Szene/);
+      expect(f).toMatch(/Stadt Dresden fehlt in den Beschriftungen der Szene/);
+    } finally { k.weg(); }
   });
-  it('Handy leichter: weniger Fäden und Lichtpunkte', () => {
-    expect(quelle).toMatch(/fadenSaaten\(handy \? 10 : 18/);
-    expect(quelle).toMatch(/handy \? \{ \.\.\.P\.punkte, abstand: 14, jeder: 3 \}/);
+
+  it('die Szene zählt nicht in die 250 KB, hat aber ihre eigene Grenze; das Eigene der Seite bleibt bei 250 KB', () => {
+    const k = kopie();
+    try {
+      writeFileSync(join(k.fokus, 'assets/szene/abend.svg'), `<svg xmlns="http://www.w3.org/2000/svg">${' '.repeat(260 * 1024)}</svg>`);
+      expect(pruefeFokus(k.fokus).fehler.join('\n')).toMatch(/KB ausgeliefert \(ohne die Kopie der Szene\) — höchstens 250 KB/);
+    } finally { k.weg(); }
+  });
+
+  it('die Städte stehen aus EINER Liste im Drehbuch und in den Beschriftungen der Szene (node scripts/fokus-seite.mjs)', () => {
+    const drehbuch = readFileSync(join(FOKUS, 'js', 'drehbuch.js'), 'utf8'), index = readFileSync(join(FOKUS, 'index.html'), 'utf8');
+    for (const zeile of staedteJs().split('\n')) expect(drehbuch).toContain(zeile.trim());
+    for (const zeile of markenHtml().split('\n')) expect(index).toContain(zeile);
+    expect(markenHtml()).toContain('class="marke stadt start" data-zustand="staedte" data-nr="0">Berlin</span>');
+  });
+
+  it('kein Vorhang, kein Laufband, kein Kachel-Flug — und die Szene ruht erst, wenn der Schluss sie verdeckt', () => {
+    const drehbuch = readFileSync(join(FOKUS, 'js', 'drehbuch.js'), 'utf8'), index = readFileSync(join(FOKUS, 'index.html'), 'utf8');
+    expect(drehbuch).toMatch(/vorhang: false/);
+    expect(index).not.toMatch(/class="(?:laufband|flug|kacheln|karussell)/);
+    expect(drehbuch).toMatch(/ruht: p => p > \.9/);
   });
 });

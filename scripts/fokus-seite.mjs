@@ -1,22 +1,29 @@
 #!/usr/bin/env node
-// ─── Fokus Innovation · Event-Seite: gemeinsame und erzeugte Dateien (03.10.2026) ──────────────────
-// Die Seite fokusinnovation.de (Ordner fokus/) ist statisch wie website/ und teilt sich einiges mit ihr. Nichts davon wird
+// ─── Fokus Innovation · Event-Seite: gemeinsame und erzeugte Dateien (03.10.2026; „Klar“ 05.10.2026) ──────────────────
+// Die Seite fokusinnovation.de (Ordner fokus/) ist statisch wie website/ und steht auf denselben Bausteinen. Nichts davon wird
 // von Hand kopiert — dieses Skript erzeugt es aus EINER Quelle:
-//   · Schriften (Archivo, Public Sans): Byte für Byte aus website/assets/fonts/.
-//   · Lichtfäden-Zeichner fokus/js/lichtfaeden.js: aus lib/lichtfaeden/band.ts + zeichnen.ts (dasselbe `erzeugen()` wie
-//     scripts/lichtfaeden-website.mjs — nie von Hand ändern).
-//   · Deutschlandkarte (inline in fokus/index.html zwischen den Markierungen KARTE_ANFANG/KARTE_ENDE): Umriss und die sechs
-//     Städte aus echten Koordinaten (Breite/Länge), Fäden von Berlin aus.
-//   · Standbild des Films (fokus/assets/film/standbild.svg) und das Favicon (fokus/favicon.svg, der Knoten).
+//   · Schriften (Archivo, Public Sans), das MAKE-Logo (quer) und das Handy-Menü (js/menue.js): Byte für Byte aus website/.
+//   · Szene und Showreel-Baukasten fokus/js/szene/ (kern · formationen · motor · spur · verlauf): Byte für Byte aus
+//     website/js/szene/ (Liste in scripts/szene-website.mjs).
+//   · Die Wortmarke „FOKUS INNOVATION“ (fokus/assets/logo/fokus-wortmarke.svg, Schlussblock) — gebaut in
+//     scripts/website-logo.mjs aus derselben Schrift wie MAKE — und das Favicon (fokus/favicon.svg, der Knoten).
+//   · Die Städte aus EINER Liste (`STAEDTE`, echte Koordinaten) an drei Stellen: im Drehbuch fokus/js/drehbuch.js (Karte der
+//     Szene, zwischen STAEDTE_ANFANG/STAEDTE_ENDE), als Beschriftungen der Szene in fokus/index.html (MARKEN_ANFANG/MARKEN_ENDE)
+//     und als ruhige SVG-Karte in fokus/index.html (KARTE_ANFANG/KARTE_ENDE — ohne Szene, ohne Skript, „Bewegung reduzieren“).
+//   · Am Ende die Stempel: jeder Verweis auf css/ und js/ in den Seiten bekommt ?v=<Prüfsumme> (stempeln() aus website/pruefen.mjs).
+// Das Standbild der Szene (fokus/assets/szene/abend.svg) rechnet `node website/standbild.mjs fokus` (dieselbe Geometrie).
 //
 //   node scripts/fokus-seite.mjs            → schreibt alles
 //   node scripts/fokus-seite.mjs --pruefen  → Ausgang 1, wenn eine Datei nicht zur Quelle passt
-// Wächter: tests/fokus-seite.test.ts (ruft `pruefen()`); fokus/pruefen.mjs vergleicht zusätzlich ohne Abhängigkeiten die
-// Schriften und den Zeichner mit website/.
+// Wächter: tests/fokus-seite.test.ts (ruft `pruefen()`) und tests/szene-website.test.ts; fokus/pruefen.mjs vergleicht
+// zusätzlich ohne Abhängigkeiten die Schriften, das Logo, das Menü und die Szene mit website/.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { kopien as szeneKopien } from './szene-website.mjs';
+import { fokusWortmarke } from './website-logo.mjs';
+import { stempeln, alleDateien } from '../website/pruefen.mjs';
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -28,19 +35,26 @@ export const SMARAGD = '#2FA878';
 export const KOPIEN = [
   ['website/assets/fonts/archivo-latin.woff2', 'fokus/assets/fonts/archivo-latin.woff2'],
   ['website/assets/fonts/public-sans-latin.woff2', 'fokus/assets/fonts/public-sans-latin.woff2'],
-  // Absender: das MAKE-Logo (quer) aus scripts/website-logo.mjs — nie eine eigene Fassung.
+  // Absender im Fuß: das MAKE-Logo (quer) aus scripts/website-logo.mjs — nie eine eigene Fassung.
   ['website/assets/logo/quer.svg', 'fokus/assets/logo/make-quer.svg'],
+  // Handy-Menü (<details>, geht ohne Skript; das Skript schließt es nur nach einem Klick).
+  ['website/js/menue.js', 'fokus/js/menue.js'],
 ];
-export const ZEICHNER = 'fokus/js/lichtfaeden.js';
-export const KARTE_IN = 'fokus/index.html';
+export const FAVICON = 'fokus/favicon.svg';
+export const WORTMARKE = 'fokus/assets/logo/fokus-wortmarke.svg';
+export const SEITE = 'fokus/index.html';
+export const DREHBUCH = 'fokus/js/drehbuch.js';
 export const KARTE_ANFANG = '<!-- KARTE_ANFANG: erzeugt mit node scripts/fokus-seite.mjs — nicht von Hand ändern -->';
 export const KARTE_ENDE = '<!-- KARTE_ENDE -->';
-export const STANDBILD = 'fokus/assets/film/standbild.svg';
-export const FAVICON = 'fokus/favicon.svg';
+export const MARKEN_ANFANG = '<!-- MARKEN_ANFANG: erzeugt mit node scripts/fokus-seite.mjs — nicht von Hand ändern -->';
+export const MARKEN_ENDE = '<!-- MARKEN_ENDE -->';
+export const STAEDTE_ANFANG = '// STAEDTE_ANFANG: erzeugt mit node scripts/fokus-seite.mjs aus STAEDTE — nicht von Hand ändern';
+export const STAEDTE_ENDE = '// STAEDTE_ENDE';
 
 /**
- * Die Städte der Reihe (Kevin 03.10.) mit echten Koordinaten (WGS84, Stadtmitte). Berlin ist der Knoten — von dort gehen
- * die Fäden aus (Drehbuch Szene 4). `anker` = wohin der Name rückt (links · rechts · unten).
+ * Die Städte der Reihe (Kevin 03.10., Dresden 04.10.) mit echten Koordinaten (WGS84, Stadtmitte). Berlin ist der
+ * Ausgangspunkt — von dort gehen die Fäden aus (Szene „staedte“ und ruhige Karte). `anker` = wohin der Name in der ruhigen
+ * Karte rückt (links · rechts · unten).
  */
 export const STAEDTE = [
   { id: 'berlin', name: 'Berlin', breite: 52.520, laenge: 13.405, anker: 'rechts' },
@@ -122,27 +136,6 @@ export function karteSvg() {
   return z.join('\n');
 }
 
-/** Standbild des Films (16:9, ohne Text — Text gehört in die Seite): Nacht, Umriss, Fäden von Berlin in die Städte. */
-export function standbildSvg() {
-  const B = 1600, H = 900, s = 1.62, ox = B / 2 - (KARTE_BREITE * s) / 2 + 120, oy = H / 2 - (KARTE_HOEHE * s) / 2;
-  const t = ([x, y]) => [ox + x * s, oy + y * s];
-  const pos = Object.fromEntries(STAEDTE.map(c => [c.id, t(projiziere([c.breite, c.laenge]))]));
-  const pfad = UMRISS.map((p, i) => { const [x, y] = t(projiziere(p)); return `${i ? 'L' : 'M'}${r1(x)} ${r1(y)}`; }).join('') + 'Z';
-  const z = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${B} ${H}" width="${B}" height="${H}">`,
-    '<defs><radialGradient id="licht" cx="62%" cy="40%" r="70%"><stop offset="0" stop-color="#16201F"/><stop offset="1" stop-color="#0B0E10"/></radialGradient></defs>',
-    `<rect width="${B}" height="${H}" fill="url(#licht)"/>`,
-    `<path d="${pfad}" fill="#11171A" stroke="#2A3337" stroke-width="1.4"/>`];
-  for (const c of STAEDTE.filter(x => x.id !== 'berlin')) {
-    for (const [farbe, v] of [[GRANAT, -3], [SMARAGD, 3]]) z.push(`<path d="${faden(pos.berlin, pos[c.id], 0.14, v)}" fill="none" stroke="${farbe}" stroke-width="1.6" stroke-opacity=".8" stroke-linecap="round"/>`);
-    const [x, y] = pos[c.id];
-    z.push(`<circle cx="${r1(x)}" cy="${r1(y)}" r="5" fill="#E8ECEA"/>`);
-  }
-  const [bx, by] = pos.berlin;
-  z.push(`<path d="M${r1(bx)} ${r1(by - 9)}A9 9 0 0 0 ${r1(bx)} ${r1(by + 9)}Z" fill="${GRANAT}"/><path d="M${r1(bx)} ${r1(by - 9)}A9 9 0 0 1 ${r1(bx)} ${r1(by + 9)}Z" fill="${SMARAGD}"/>`);
-  z.push('</svg>', '');
-  return z.join('\n');
-}
-
 /** Favicon: der Knoten (links Granat, rechts Smaragd) mit den zwei Strichen auf dunkler, abgerundeter Fläche. */
 export function faviconSvg() {
   return [
@@ -154,23 +147,37 @@ export function faviconSvg() {
   ].join('\n');
 }
 
-/** Soll-Inhalt jeder erzeugten Datei (Pfad → Buffer|String). Die Karte ist nur ein Block in index.html. */
+/** Die Städte als Zeilen für das Drehbuch (Szene „staedte“: Formation `karte` mit eigener Liste). */
+export function staedteJs() {
+  return `const STAEDTE = [\n${STAEDTE.map(s => `  { name: '${s.name}', lat: ${s.breite}, lon: ${s.laenge} },`).join('\n')}\n];`;
+}
+/** Die Beschriftungen der Karte in der Szene (der Motor legt sie über die Leinwand; Reihenfolge = Marken der Formation). */
+export function markenHtml() {
+  return STAEDTE.map((s, i) => `<span class="marke stadt${s.id === 'berlin' ? ' start' : ''}" data-zustand="staedte" data-nr="${i}">${s.name}</span>`).join('\n');
+}
+
+/** Soll-Inhalt jeder erzeugten Datei (Pfad → Buffer|String). */
 export async function sollDateien(wurzel = WURZEL) {
-  const { erzeugen } = await import('./lichtfaeden-website.mjs');
   const soll = new Map();
-  for (const [q, z] of KOPIEN) soll.set(z, readFileSync(join(wurzel, q)));
-  soll.set(ZEICHNER, erzeugen(wurzel));
-  soll.set(STANDBILD, standbildSvg());
+  for (const [q, z] of [...KOPIEN, ...szeneKopien()]) soll.set(z, readFileSync(join(wurzel, q)));
   soll.set(FAVICON, faviconSvg());
+  soll.set(WORTMARKE, `<?xml version="1.0" encoding="UTF-8"?>\n${fokusWortmarke()}\n`);
   return soll;
 }
 
-/** index.html mit frisch erzeugtem Karten-Block (zwischen den Markierungen). */
-export function mitKarte(html) {
-  const a = html.indexOf(KARTE_ANFANG), e = html.indexOf(KARTE_ENDE);
-  if (a < 0 || e < a) throw new Error(`${KARTE_IN}: Markierungen der Karte fehlen`);
-  return `${html.slice(0, a + KARTE_ANFANG.length)}\n${karteSvg()}\n${html.slice(e)}`;
+/** Ersetzt den Block zwischen zwei Markierungen (die Markierungen bleiben stehen). */
+export function mitBlock(text, anfang, ende, inhalt, datei = '') {
+  const a = text.indexOf(anfang), e = text.indexOf(ende);
+  if (a < 0 || e < a) throw new Error(`${datei}: Markierungen ${anfang.slice(0, 24)}… fehlen`);
+  const einzug = /[ \t]*$/.exec(text.slice(0, e))[0];
+  return `${text.slice(0, a + anfang.length)}\n${einzug}${inhalt.split('\n').join(`\n${einzug}`)}\n${einzug}${text.slice(e)}`;
 }
+/** Erzeugte Blöcke: [Datei, Anfang, Ende, Inhalt]. */
+export const BLOECKE = () => [
+  [DREHBUCH, STAEDTE_ANFANG, STAEDTE_ENDE, staedteJs()],
+  [SEITE, MARKEN_ANFANG, MARKEN_ENDE, markenHtml()],
+  [SEITE, KARTE_ANFANG, KARTE_ENDE, karteSvg()],
+];
 
 /** Abweichungen (leer = alles aktuell). */
 export async function pruefen(wurzel = WURZEL) {
@@ -181,9 +188,26 @@ export async function pruefen(wurzel = WURZEL) {
     const ist = readFileSync(ziel);
     if (!ist.equals(Buffer.isBuffer(inhalt) ? inhalt : Buffer.from(inhalt))) fehler.push(`${pfad}: passt nicht zur Quelle`);
   }
-  const html = readFileSync(join(wurzel, KARTE_IN), 'utf8');
-  try { if (mitKarte(html) !== html) fehler.push(`${KARTE_IN}: Karten-Block passt nicht zur Quelle`); } catch (x) { fehler.push(String(x.message)); }
+  for (const [datei, anfang, ende, inhalt] of BLOECKE()) {
+    const text = readFileSync(join(wurzel, datei), 'utf8');
+    try { if (mitBlock(text, anfang, ende, inhalt, datei) !== text) fehler.push(`${datei}: erzeugter Block ${anfang.slice(5, 18).trim()} passt nicht zur Quelle`); } catch (x) { fehler.push(String(x.message)); }
+  }
+  const ordner = join(wurzel, 'fokus');
+  for (const d of alleDateien(ordner).filter(d => d.endsWith('.html'))) {
+    const text = readFileSync(join(ordner, d), 'utf8');
+    if (stempeln(ordner, text) !== text) fehler.push(`fokus/${d}: Stempel (?v=…) nicht aktuell`);
+  }
   return fehler;
+}
+
+/** Stempelt alle Seiten von fokus/ (nach jeder Änderung an css/ oder js/). */
+export function allesStempeln(wurzel = WURZEL) {
+  const ordner = join(wurzel, 'fokus'), geaendert = [];
+  for (const d of alleDateien(ordner).filter(d => d.endsWith('.html'))) {
+    const vorher = readFileSync(join(ordner, d), 'utf8'), nachher = stempeln(ordner, vorher);
+    if (nachher !== vorher) { writeFileSync(join(ordner, d), nachher); geaendert.push(`fokus/${d}`); }
+  }
+  return geaendert;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
@@ -198,7 +222,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       writeFileSync(join(WURZEL, pfad), inhalt);
       console.log(`geschrieben: ${pfad}`);
     }
-    const p = join(WURZEL, KARTE_IN);
-    if (existsSync(p)) { writeFileSync(p, mitKarte(readFileSync(p, 'utf8'))); console.log(`Karte erneuert: ${KARTE_IN}`); }
+    for (const [datei, anfang, ende, inhalt] of BLOECKE()) {
+      const p = join(WURZEL, datei);
+      writeFileSync(p, mitBlock(readFileSync(p, 'utf8'), anfang, ende, inhalt, datei));
+      console.log(`Block erneuert: ${datei}`);
+    }
+    for (const d of allesStempeln()) console.log(`gestempelt: ${d}`);
   }
 }

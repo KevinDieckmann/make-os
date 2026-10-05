@@ -66,7 +66,7 @@ Scrollbalken-Trick, kein Scroll-Sperren.
 | `js/szene/spur.js` | **wiederverwendbar — der Showreel-Baukasten:** p über die Spur + Feder, Stufen (rechner/tablet/handy wie `--sr-*`), Vorhang, Werkzeuge (`sicht`, `stil`, Buchstaben-Zerfall/-Aufstieg, Karussell nach cos, Rasten, Trommel am Fortschritt, Maus, Szene steuern, Verlauf), Anker/Tastatur-Fokus, ruhige Fassung. Kennt keine Inhalte. |
 | `js/szene/verlauf.js` | **wiederverwendbar:** ruhiger Mesh-Gradient (WebGL 1, Auflösung 1, höchstens 36 fps, nur sichtbar und gebraucht) |
 | `js/szene/kern.js` | **wiederverwendbar:** Mathematik ohne DOM (Zufall, Matrizen, Pfad, Kamera, Feder, Optionen) |
-| `js/szene/formationen.js` | **wiederverwendbar:** Formationen als Punkte + Linien — neu `kugel` (dichte Hülle, links Granat, rechts Smaragd, heller Rand, hohle Mitte, eigener fester Zufall: mehrere Zustände = dieselbe Kugel); `netz: false` / `pfad: false` im Drehbuch stellen Netz, Lichtfäden und Staub ab |
+| `js/szene/formationen.js` | **wiederverwendbar:** Formationen als Punkte + Linien — neu `kugel` (dichte Hülle, links Granat, rechts Smaragd, heller Rand, hohle Mitte, eigener fester Zufall: mehrere Zustände = dieselbe Kugel); `netz: false` / `pfad: false` im Drehbuch stellen Netz, Lichtfäden und Staub ab; `tafel` nur für fokusinnovation.de |
 | `js/szene/motor.js` | **wiederverwendbar:** WebGL-1-Motor der Szene — neu: `fortschritt: 'extern'` (folgt `MakeSzene.fortschritt` statt Abschnitten), `teilchen` je Gerät, `hell` je Zustand, `handy()` aus dem Drehbuch, `.szene[data-ruht]` (zeichnet nicht, solange verdeckt), kein Teilchen-Bogen, wenn die Formation gleich bleibt |
 | `js/drehbuch.js` | **nur diese Seite:** Zustände der Szene (raum · band · flug mit p/bis) und die Choreografie (`MakeSzene.showreel`: was bei welchem p geschieht) |
 | `js/menue.js`, `js/erstgespraech.js` | Handy-Menü schließen; Ziel des Erstgesprächs für alle Knöpfe mit `data-erstgespraech` |
@@ -87,11 +87,16 @@ Lesetext `--tinteDim` #4F5A5D (INNOVATION im hellen Logo, 6,4 : 1), Beschriftung
 - **Danach immer:** `node website/stempeln.mjs` und `node website/pruefen.mjs`.
 - **Lokal ansehen:** `python3 -m http.server 3013 -d website` über einen Eintrag in `.claude/launch.json` (nicht per Bash).
 
-### Andocken für fokus/ (eine Quelle)
-`js/szene/spur.js`, `verlauf.js`, `kern.js`, `formationen.js`, `motor.js` kennen keine Inhalte. fokus/ bringt nur ein eigenes
-`js/drehbuch.js` mit (eigene Zustände/Formationen, eigene `bild(p, w)`), dieselbe Spur-Struktur (`.spur > .buehne`, `data-spur-p`) und
-eigene `--sr-*`. Kopieren byte-gleich wie bei den Schriften (Muster `scripts/fokus-seite.mjs`, Wächtertest vergleicht);
-`fokus/pruefen.mjs` müsste dafür `js/szene/` als Skript-Pfad erlauben.
+### Andocken für fokus/ (seit 05.10.2026, eine Quelle)
+`js/szene/spur.js`, `verlauf.js`, `kern.js`, `formationen.js`, `motor.js` kennen keine Inhalte und sind das **Original** auch für
+fokusinnovation.de: `node scripts/fokus-seite.mjs` (über `scripts/szene-website.mjs`, Liste `ZIELE`) kopiert sie byte-gleich nach
+`fokus/js/szene/` und stempelt fokus/ (Wächter `tests/szene-website.test.ts`, `fokus/pruefen.mjs` › `GLEICH_WIE_WEBSITE`). fokus/ bringt
+nur ein eigenes `js/drehbuch.js` (Zustände, `bild(p, w)`), dieselbe Spur-Struktur (`.spur > .buehne`, `data-spur-p`) und eigene `--sr-*`.
+**Nach jeder Änderung hier:** `node website/stempeln.mjs`, `node website/standbild.mjs` (darf sich für diese Seite nicht ändern),
+`node scripts/fokus-seite.mjs`, `node website/standbild.mjs fokus`. Was fokus/ dazu brauchte, ist **freiwillig** — ohne Angabe im
+Drehbuch bleibt diese Seite unverändert: die Formation `tafel` (ein Abend in kleiner Runde, eigener fester Zufall wie `kugel`).
+`standbild.mjs` nimmt einen Ordner und liest die Beschriftungen aus `index.html` (`span.marke[data-zustand][data-nr]`); die Prüfung des
+Showreels steht als `pruefeShowreel()` in `pruefen.mjs` und gilt für beide Seiten (fokus/: höchstens zwei Lichter).
 
 ### Gewicht, Tempo (gemessen 04.10., headless Chrome, Apple M3)
 - **Startseite** (HTML + CSS + acht Skripte, gzip) ≈ 64 KB; ausgeliefert ohne Schriften ≈ 82 KB (mit Standbild der Kugel 17 KB),
