@@ -15,6 +15,7 @@ import type { NextRequest } from 'next/server';
 import { SITZUNG_COOKIE, WER_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
 import { standGueltig } from '@/lib/zugang/stand-pruefung';
 import { crossSiteVerboten } from '@/lib/zugang/cross-site';
+import { sitzungsGeheimnisFehlt } from '@/lib/zugang/start-riegel';
 import { anfrageIntern, zuliefererSchluessel, ZULIEFERUNG, EINGESCHRAENKT_MIN } from '@/lib/zugang/intern';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
@@ -36,6 +37,9 @@ function adresseHost(): string | null {
   try { const a = process.env.MAKE_OS_ADRESSE?.trim(); return a ? new URL(a).host : null; } catch { return null; }
 }
 
+/** Den Riegel nur einmal je Prozess ins Log schreiben (sonst je Anfrage). */
+let riegelGemeldet = false;
+
 function verweigertApi(): NextResponse {
   return NextResponse.json({ error: 'Nicht angemeldet.' }, { status: 401 });
 }
@@ -44,8 +48,10 @@ export async function middleware(req: NextRequest) {
   const schluessel = process.env.MAKE_OS_KEY;
   // Ohne konfigurierten Schlüssel bleibt alles zu — lieber gesperrt als offen.
   if (!schluessel) return new NextResponse('MAKE OS ist nicht eingerichtet (MAKE_OS_KEY fehlt).', { status: 503 });
-  // Auf dem Server ist das Sitzungsgeheimnis Pflicht (26.09.) — kein Rückfall auf den Dienstschlüssel.
-  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) return new NextResponse('MAKE OS ist nicht eingerichtet (SESSION_SECRET fehlt in .env).', { status: 503 });
+  // Auf dem Server ist das Sitzungsgeheimnis Pflicht (26.09.) — kein Rückfall auf den Dienstschlüssel; im strengen
+  // Start-Riegel (05.10.) zusätzlich mindestens 32 Zeichen. Den Rest (Datenschlüssel, Pepper) prüft instrumentation.ts.
+  const riegel = sitzungsGeheimnisFehlt();
+  if (riegel) { if (!riegelGemeldet) { riegelGemeldet = true; console.error(`[MAKE OS] Middleware: ${riegel} — alle Anfragen 503.`); } return new NextResponse(`MAKE OS ist nicht eingerichtet (${riegel}).`, { status: 503 }); }
 
   // CSRF-Schutz: Schreibzugriffe aus fremden Browser-Kontexten abweisen.
   if (req.method !== 'GET' && req.method !== 'HEAD' && !CSP_MELDEWEG.test(req.nextUrl.pathname) && !(GOOGLE_MELDEWEG.test(req.nextUrl.pathname) && req.method === 'POST')) {

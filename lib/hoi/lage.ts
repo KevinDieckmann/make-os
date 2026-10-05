@@ -88,6 +88,8 @@ export interface ZugangLage {
   zuliefererSchluessel: boolean;
   /** Letzter Übergangs-Aufruf: der Mac lieferte noch mit MAKE_OS_KEY von außen — null = nie. */
   zuliefererAltZuletzt: string | null;
+  /** Start-Riegel (lib/zugang/start-riegel.ts): Modus und Mängel (nur Namen, nie Werte). */
+  riegel?: { modus: 'entwicklung' | 'aus' | 'lokal' | 'scharf' | 'streng'; maengel: { was: string; art: 'fehlt' | 'zu-kurz'; hart: boolean }[] };
 }
 
 /** Zugang & Schlüssel (05.10.): Zulieferer im Übergang → gelb, mit eigenem Schlüssel → grün; nie benutzt → kein Befund. */
@@ -97,6 +99,14 @@ export function zugangBefunde(z: ZugangLage | undefined, jetzt: string): Befund[
   const altTage = z.zuliefererAltZuletzt ? (Date.parse(jetzt) - Date.parse(z.zuliefererAltZuletzt)) / 864e5 : null;
   if (z.zuliefererSchluessel) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gruen', wert: 'eigener Schlüssel', satz: 'öffnet nur die Zulieferung — der Dienstschlüssel gilt nur noch von innen' });
   else if (altTage !== null && altTage <= 7) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gelb', wert: 'liefert noch mit dem Dienstschlüssel', satz: 'Übergang: MAKE_OS_KEY reist noch übers Internet — Zulieferer-Schlüssel einrichten (deploy/zulieferer-schluessel.sh mac → server → aufraeumen, UPDATES.md)' });
+  const r = z.riegel;
+  if (r && r.modus !== 'entwicklung' && r.modus !== 'lokal') {
+    const liste = r.maengel.map(m => `${m.was} ${m.art === 'fehlt' ? 'fehlt' : 'zu kurz'}`).join(', ');
+    if (r.modus === 'aus') b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'rot', wert: 'ausgeschaltet', satz: 'MAKE_OS_START_RIEGEL=aus — nur für Sandbox/Prüfbau; auf dieser Instanz die Zeile aus der .env nehmen' });
+    else if (r.maengel.length) b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gelb', wert: `${r.modus}: ${liste}`, satz: 'fehlende oder kurze Geheimnisse setzen (openssl rand -hex 32), dann MAKE_OS_START_RIEGEL=streng (UPDATES.md › „Zugang & Schlüssel härten“)' });
+    else if (r.modus === 'scharf') b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gruen', wert: 'scharf — alle Geheimnisse gesetzt', satz: 'bereit für MAKE_OS_START_RIEGEL=streng (dann bricht auch ein kurzer Schlüssel oder fehlender Pepper den Start ab)' });
+    else b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gruen', wert: 'streng', satz: 'ohne Datenschlüssel, Pepper oder SESSION_SECRET (je ≥ 32 Zeichen) startet MAKE OS nicht' });
+  }
   return b;
 }
 
