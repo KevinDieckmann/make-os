@@ -140,7 +140,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
     if (rf === 'kapital') {
       if (zeigeSteuer(dd, ort, 'kst')) out.push(z('Körperschaftsteuer', 'kst', a.kst, false));
       if (zeigeSteuer(dd, ort, 'soli')) out.push(z('Solidaritätszuschlag', 'soli', a.soli));
-    } else if (zeigeSteuer(dd, ort, 'est')) { out.push(z('Einkommensteuer', 'est', a.est, false)); out.push(z('Anrechnung Gewerbesteuer (§ 35 EStG)', 'anrechnung', a.anrechnung, true, 1)); }
+    } else if (zeigeSteuer(dd, ort, 'est')) { out.push(z('Einkommensteuer', 'est', a.est, false)); out.push(z('Anrechnung Gewerbesteuer (§ 35 EStG)', 'anrechnung', a.anrechnung, true, 1)); out.push(z('Solidaritätszuschlag (über der Freigrenze)', 'soli', a.soli)); }
     if (zeigeSteuer(dd, ort, 'gewst')) out.push(z('Gewerbesteuer', 'gewst', a.gewst, false));
     if (ort === 'kdv' && zeigeSteuer(dd, ort, 'exit')) out.push(z('Steuer auf den Ausstieg', 'exitSteuer', a.exit));
     return out;
@@ -239,6 +239,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       { name: 'Umsatz', edit: 'kdc.umsatz', sum: true, get: m => gb.umsatz[m - 1] },
       { grp: 'Kosten' },
       ...kostenZeilen(KOSTENARTEN_BLATT),
+      { name: `${personName('malin')} brutto (bis zur GmbH, Arbeitgeberanteil kommt dazu)`, edit: 'kdc.malin', get: m => K(m).malinBrutto, ind: true, aus: true, optional: true },
       { grp: 'Fixkosten (Sachkosten)', add: 'sachkosten', addG: 'Selbstständigkeit', addE: 'selbststaendigkeit', leerName: ['weitere Fixkostenzeile', 'weitere Fixkostenzeilen'] },
       ...fix.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, dd.plan), ind: true, aus: true, optional: true })),
       { name: 'Kosten gesamt', edit: 'kdc.kosten', sum: true, aus: true, get: m => gb.kostenSumme[m - 1] },

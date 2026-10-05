@@ -4,6 +4,16 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Finanzplanung: Business sieht nie Privat · Formel-Prüfung mit 7 Funden (05.10.2026, nur lokal — Branch `finanzplan-4`)
+
+- **Sichtregel (Kevin):** Business › Finanzen › Finanzplanung zeigt für jeden nur Business (Server filtert, Schreiben auf Privat → 403);
+  Privat zeigt alles und bearbeitet Business. Ersetzt „Inhaber sieht in Business alles“ vom 04.10. spät.
+- **Formel-Prüfung:** Prüfstand mit Handrechnung; behoben: Gehalt 2 vor der GmbH kostet jetzt die Selbstständigkeit, Soli auf die ESt über der
+  Freigrenze, Zahlungskalender (USt-Satz, fehlende Posten), Kennzahlen „Dez 28“, Monat 0, Eingaben „1,234.50“/„12 %“, Kacheln mit festem Monat.
+  Fragen an Kevin: Ankermandat ohne USt, Darlehens-Rückzahlung, Abschluss 2026 vs. Monatsachse, Freiberuf ohne GewSt, Vorsteuer, Runway Privat.
+- **Rückweg:** keine neuen Felder im Plan (neu nur das optionale Steuerfeld `soliFreigrenze`, der alte Stand verwirft es beim Bereinigen). Der
+  alte Stand rechnet ohne die Korrekturen (Gehalt 2 ohne Kosten, kein Soli) und zeigt Business wieder mit Privat. Nicht hochgeladen.
+
 ## Zugang & Schlüssel härten (05.10.2026, nur lokal — Branch `sicher-zugang`, Sicherheits-Audit S3)
 
 Kevin 05.10.: „Die Software muss auf allen Standards der DSGVO sein, damit wir Kundendaten aufnehmen können.“ Neun Punkte,

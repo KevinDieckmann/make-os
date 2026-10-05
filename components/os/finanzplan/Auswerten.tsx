@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Spalten, Spalte, LEUCHT } from '../ui';
 import { istSchnitt, sollBudget, wert } from '@/lib/finanzen/rechenkern';
-import { achse, letzterVoller, prozent } from '@/lib/finanzen/plan/hilfen';
+import { achse, letzterVoller, prozent, monatLabel } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
 import { UG_NAME, finanzOrtName } from '@/lib/einheiten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, Auswahl, Hinweis, Legende, PersonMarke, KUPFER, LILA, Nichts, Pillen } from './teile';
@@ -20,7 +20,7 @@ const KDV = finanzOrtName('kdv');
 
 // ── Entwicklung ─────────────────────────────────────────────────────────────
 export function Entwicklung() {
-  const { d, pr, h } = usePlan();
+  const { d, pr, h, aw } = usePlan();
   const [k, setK] = useState<1 | 3 | 6>(3);
   const hi = d.historie.length, L = letzterVoller(d);
   const lab = achse(d).slice(0, hi + 15);
@@ -31,8 +31,10 @@ export function Entwicklung() {
   const e0 = sch(h.einnahmen), a0 = sch(h.ausgaben), e1 = vor(h.einnahmen), a1 = vor(h.ausgaben);
   const pfeil = (v: number, w: number, gut: boolean) => { if (!w) return null; const dlt = (v - w) / Math.abs(w); const f = Math.abs(dlt) < 0.03 ? C.inkLeise : (dlt > 0) === gut ? LEUCHT.gut : LEUCHT.kritisch; return <span style={{ color: f, fontSize: TYP.bedien }}>{dlt > 0 ? '▲' : '▼'} {prozent(Math.abs(dlt))} gegenüber davor</span>; };
   const bewegung = [...d.privatBudget, ...d.privatSchulden].map(z => ({ z, jetzt: sch(h.zeilen[z.id]), vorher: vor(h.zeilen[z.id]) })).filter(x => x.jetzt || x.vorher).sort((a, b) => Math.abs(b.jetzt - b.vorher) - Math.abs(a.jetzt - a.vorher)).slice(0, 8);
-  const planLuft = (pr[0]?.luft ?? 0) + (pr[0]?.sparenSoll ?? 0);
-  const p3 = pr[3];
+  // Formel-Prüfung 05.10.: Plan-Werte des laufenden Monats (vorher fest Okt 26 bzw. Jan 27).
+  const p0 = pr[aw.m0 - 1];
+  const planLuft = (p0?.luft ?? 0) + (p0?.sparenSoll ?? 0);
+  const p3 = p0;
   return (
     <>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
@@ -42,7 +44,7 @@ export function Entwicklung() {
       <Kacheln min={160}>
         <Kachel label="Einnahmen" wert={<><Geld v={e0} /> €</>} unter={pfeil(e0, e1, true) ?? 'kein Vergleich'} />
         <Kachel label="Ausgaben" wert={<><Geld v={a0} /> €</>} unter={pfeil(a0, a1, false) ?? 'kein Vergleich'} />
-        <Kachel label="Überschuss" wert={<><Geld v={e0 - a0} /> €</>} unter={<>Plan ab Okt <Geld v={planLuft} farbe={C.inkDim} /> €</>} />
+        <Kachel label="Überschuss" wert={<><Geld v={e0 - a0} /> €</>} unter={<>Plan {monatLabel(d, aw.m0)} <Geld v={planLuft} farbe={C.inkDim} /> €</>} />
         <Kachel label="Sparquote" wert={e0 ? prozent((e0 - a0) / e0) : '—'} unter={p3 && p3.verfuegbar ? `Plan ${prozent((p3.luft + p3.sparenSoll) / p3.verfuegbar)}` : ''} />
         <Kachel label="Fixkostenquote" wert={e0 ? prozent(fixIst / e0) : '—'} unter="je höher, desto weniger Spielraum" />
         <Kachel label="Schuldendienst" wert={<><Geld v={sch(h.zeilen['p.d.altlasten'])} /> €</>} unter="Ø je Monat" />

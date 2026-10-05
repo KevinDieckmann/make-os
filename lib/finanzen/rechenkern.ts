@@ -368,6 +368,11 @@ export interface MonatSelbst {
   umsatz: number; eingang: number; ustEin: number;
   /** Personal inkl. Arbeitgeberanteil, Sach- und Fixkosten, Kosten gesamt. */
   personal: number; sach: number; kosten: number;
+  /**
+   * Gehalt 2 brutto, solange es über die Selbstständigkeit läuft (vor `malinAb`, Formel-Prüfung 05.10.: Privat bekam das Netto schon immer,
+   * die Kosten fehlten aber in der Selbstständigkeit — Geld aus dem Nichts). Im Personal enthalten (mit Arbeitgeberanteil). 0 ab `malinAb`.
+   */
+  malinBrutto: number;
   /** Ergebnis vor Steuern, Ertragsteuer im Detail (Einkommensteuer, Gewerbesteuer, Anrechnung), Ergebnis nach Steuern (Aufwand). */
   gewinn: number; st: SteuerMonat; ergebnisNach: number;
   ustZahlung: number;
@@ -398,7 +403,8 @@ export function rechneSelbstAchse(d: FinanzDaten, x?: Zusatz, f?: Formeln): Mona
     if (umsatz !== umsatzRoh && i + ziel < N) handEin[i + ziel] += umsatz - umsatzRoh;   // Umsatz von Hand → Eingang (Zahlungsziel)
     const eingang = h('kdc.eingang', m, zx(x?.kdcEingang, i) + handEin[i]);
     const ustEin = h('kdc.ustEin', m, eingang * a.ust);
-    const personal = zx(x?.kdcPersonal, i) * (1 + a.agAnteil);
+    const malinBrutto = m < a.malinAb ? h('kdc.malin', m, a.malinBrutto) : 0;
+    const personal = zx(x?.kdcPersonal, i) * (1 + a.agAnteil) + malinBrutto * (1 + a.agAnteil);
     const sach = zeilen.reduce((s, z) => s + wert(z, m, p), 0) + zx(x?.kdcSach, i);
     const kosten = h('kdc.kosten', m, personal + sach);
     const gewinn = h('kdc.gewinn', m, umsatz - kosten);
@@ -414,7 +420,7 @@ export function rechneSelbstAchse(d: FinanzDaten, x?: Zusatz, f?: Formeln): Mona
     const s: SteuerMonat = ruecklage === s0.ruecklage ? s0 : { ...s0, ruecklage };
     const ustOffen = h('kdc.ustOffen', m, ustEin);
     out.push({
-      m, umsatz, eingang, ustEin, personal, sach, kosten, gewinn, st: s, ergebnisNach: nach, ustZahlung, entnahme, einzahlungen, auszahlungen, saldo,
+      m, umsatz, eingang, ustEin, personal, sach, kosten, malinBrutto, gewinn, st: s, ergebnisNach: nach, ustZahlung, entnahme, einzahlungen, auszahlungen, saldo,
       konto, steuerRuecklage: ruecklage, ustOffen, frei: h('kdc.frei', m, konto - ruecklage - ustOffen),
     });
     vorUst = ustOffen;
@@ -448,7 +454,8 @@ export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Z
     const weitere = h('p.weitere', m, d.privatEinnahmen.reduce((s, z) => s + wert(z, m, p), 0));
     const kevinBrutto = u.kevinBrutto;
     // Malin: vor der UG über Kevins Selbstständigkeit angestellt — gleiches Brutto.
-    const malinBrutto = m >= a.malinAb ? u.malinBrutto : h('p.malinSelbst', m, a.malinBrutto);
+    // Vor der GmbH über die Selbstständigkeit angestellt: Brutto von dort (dort stehen auch die Kosten); `p.malinSelbst` bleibt der Handwert auf Privat-Seite.
+    const malinBrutto = m >= a.malinAb ? u.malinBrutto : h('p.malinSelbst', m, kdc?.[u.m - 1]?.malinBrutto ?? a.malinBrutto);
     const kevinNetto = h('p.kevinNetto', m, netto(kevinBrutto, a.nettoTabelle));
     const malinNetto = h('p.malinNetto', m, netto(malinBrutto, a.nettoTabelle));
     const bEin = h('p.bausteineEin', m, zx(x?.privatEin, u.m - 1)), bAus = h('p.bausteineAus', m, zx(x?.privatAus, u.m - 1));
@@ -521,9 +528,10 @@ export function kennzahlen(ug: MonatUG[], pr: MonatPrivat[], kdc?: MonatSelbst[]
     obAnteilJun27: jun27.umsatz > 0 ? jun27.ob / jun27.umsatz : 0,
     retainerDez26: bei(3).retainerAnzahl, retainerJun27: jun27.retainerAnzahl,
     umsatz2027: umsatzJahr(2027), umsatz2028: umsatzJahr(2028),
-    privatLuftMin: Math.min(...pr.map(p => p.luft)), privatKumDez28: pr[pr.length - 1].luftKum,
+    // Formel-Prüfung 05.10.: „Dez 28“ = Plan-Monat 27 wie bei allen anderen Kennzahlen (vorher der letzte Monat — falsch bei längeren Plänen).
+    privatLuftMin: Math.min(...pr.map(p => p.luft)), privatKumDez28: pr[Math.min(27, pr.length) - 1].luftKum,
     kdcFreiDez28: kdc?.[Math.min(27, kdc.length) - 1]?.frei ?? 0,
-    gruppeDez28: bei(27).frei + bei(27).kdvFrei + (kdc?.[Math.min(27, kdc.length) - 1]?.frei ?? 0) + pr[pr.length - 1].angespart + gruppeHand(ug, pr, kdc, gruppe),
+    gruppeDez28: bei(27).frei + bei(27).kdvFrei + (kdc?.[Math.min(27, kdc.length) - 1]?.frei ?? 0) + pr[Math.min(27, pr.length) - 1].angespart + gruppeHand(ug, pr, kdc, gruppe),
     privatAngespartDez27: pr[14].angespart,
     bjoernRestDez27: bei(15).bjoernRest,
   };
@@ -621,8 +629,16 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, 31, `Ertragsteuer ${UG_KURZ}`, -u.steuer, 'ug');
     add(m, 31, 'Ertragsteuer KD Ventures', -u.kdvSt.zahlung, 'kdv');
     add(m, 5, 'Eingang One Banking', u.ob, 'ug');
-    add(m, 15, 'Eingang Retainer', u.retainerEingang * 1.19, 'ug');
-    add(m, 15, 'Eingang aus Bausteinen', u.bausteineEingang * (1 + d.annahmen.ust), 'ug');
+    // Formel-Prüfung 05.10.: USt-Satz aus den Annahmen (vorher fest 19 %); Provision/Events, Umsatz von Hand, Kapital, Holding-Umlage und
+    // Darlehen fehlten im Kalender, obwohl sie im Konto stehen.
+    const brutto = 1 + d.annahmen.ust;
+    add(m, 15, 'Eingang Retainer', u.retainerEingang * brutto, 'ug');
+    add(m, 15, 'Eingang Provision und Events', (u.astarna + u.events) * brutto, 'ug');
+    add(m, 15, 'Eingang aus Bausteinen', u.bausteineEingang * brutto, 'ug');
+    add(m, 15, 'Eingang aus Umsatz von Hand', (u.umsatzEingang ?? 0) * brutto, 'ug');
+    add(m, 1, 'Stammkapital und Gesellschafterdarlehen', u.kapital, 'ug');
+    add(m, 1, 'Holding-Umlage an KD Ventures', -u.holding, 'ug');
+    add(m, 1, 'Darlehen zurück', -u.darlehen, 'ug');
     add(m, d.annahmen.gehaltTag ?? 28, 'Weitere Stellen inkl. Arbeitgeber', -u.stellen, 'ug');
     add(m, 1, 'Ausschüttung an Privat', -u.ausschuettung, 'ug');
     add(m, 1, `Ausschüttung aus der ${UG_NAME} (netto)`, p.ausschuettung, 'privat');
@@ -630,6 +646,8 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     const k = kdc?.[m - 1];
     if (k) {
       add(m, 15, 'Eingang Selbstständigkeit', k.eingang + k.ustEin, 'selbststaendigkeit');
+      add(m, d.annahmen.gehaltTag ?? 28, 'Personal Selbstständigkeit inkl. Arbeitgeber', -k.personal, 'selbststaendigkeit');
+      add(m, 1, 'Sachkosten Selbstständigkeit', -k.sach, 'selbststaendigkeit');
       add(m, 10, 'Umsatzsteuer Selbstständigkeit an Finanzamt', -k.ustZahlung, 'selbststaendigkeit');
       add(m, 31, 'Steuer Selbstständigkeit', -k.st.zahlung, 'selbststaendigkeit');
       add(m, 1, 'Entnahme an Privat', -k.entnahme, 'selbststaendigkeit');

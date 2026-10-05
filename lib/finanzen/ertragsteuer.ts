@@ -12,7 +12,8 @@
 //   · Verlustvortrag einfach: ein Verlust mindert den Gewinn der Folgejahre in voller Höhe (die Mindestbesteuerung ab
 //     1 Mio. € wird nicht abgebildet); ein Topf für KSt, Gewerbesteuer und Einkommensteuer.
 //   · Jedes Kalenderjahr steht für sich; das erste Planjahr zählt nur ab Planbeginn (Okt 26).
-//   · Soli auf die Einkommensteuer entfällt (Freigrenze), Kirchensteuer wird nicht gerechnet.
+//   · Soli auf die Einkommensteuer erst über der Freigrenze (Vorgabe 2026: 20.350 € Einkommensteuer, Milderungszone 11,9 % — Formel-Prüfung
+//     05.10.; vorher fiel er immer weg), Kirchensteuer wird nicht gerechnet.
 // Der Rechenkern (rechenkern.ts) ruft das über `neuerSteuerrechner` Monat für Monat auf.
 
 export type Rechtsform = 'kapital' | 'einzel';
@@ -69,6 +70,8 @@ export interface Steuerparameter {
   freibetrag: number;
   /** Anrechnung der Gewerbesteuer auf die Einkommensteuer, § 35 EStG: Faktor × Messbetrag (4,0), höchstens Gewerbesteuer und Einkommensteuer; 0 = keine. */
   anrechnung: number;
+  /** Einzelunternehmen: Soli auf die Einkommensteuer erst über dieser Freigrenze (Einkommensteuer nach Anrechnung, Vorgabe 2026 20.350 €), darüber gemildert (11,9 % des Überschusses). */
+  soliFreigrenze?: number;
   verlustvortrag: boolean;
   zahlweise: Zahlweise;
   /** Kalendermonat der Zahlung (Folgejahr) bzw. des Abschlusses der Vorauszahlungen (1–12). */
@@ -94,7 +97,10 @@ export function jahresSteuer(p: Steuerparameter, gewinn: number, vortrag = 0): J
   const gewst = messbetrag * heb;
   const est = p.estAn ? estTarif(Math.max(0, basis - Math.max(0, p.estAbzug)), p.tarif) : 0;
   const anrechnung = Math.min(Math.max(0, p.anrechnung) * messbetrag, gewst, est);
-  return { kst: 0, soli: 0, gewst, est, anrechnung, summe: gewst + est - anrechnung };
+  // Soli auf die festzusetzende Einkommensteuer (nach Anrechnung): 0 bis zur Freigrenze, dann höchstens 11,9 % des Überschusses (Milderungszone).
+  const estNach = est - anrechnung, grenze = Math.max(0, p.soliFreigrenze ?? STEUER_VORGABE.soliFreigrenze);
+  const soli = p.soliAn && estNach > grenze ? Math.min(p.soli * estNach, STEUER_VORGABE.soliMilderung * (estNach - grenze)) : 0;
+  return { kst: 0, soli, gewst, est, anrechnung, summe: soli > 0 ? gewst + est - anrechnung + soli : gewst + est - anrechnung };
 }
 
 /** Was in einem Monat steuerlich passiert. */
@@ -193,7 +199,7 @@ export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => numb
 }
 
 /** Vorgaben der Sätze — aus dem früheren Gesamtsatz so abgeleitet, dass bei unveränderten Eingaben dieselbe Gesamtquote herauskommt. */
-export const STEUER_VORGABE = { kst: 0.15, soli: 0.055, messzahl: 0.035, freibetrag: 24500, anrechnung: 4 } as const;
+export const STEUER_VORGABE = { kst: 0.15, soli: 0.055, messzahl: 0.035, freibetrag: 24500, anrechnung: 4, soliFreigrenze: 20350, soliMilderung: 0.119 } as const;
 
 /**
  * Aufteilung eines Gesamtsatzes (Anteil am Gewinn, z. B. 0,3) in KSt + Soli + Gewerbesteuer-Hebesatz: KSt, Soli und Messzahl in

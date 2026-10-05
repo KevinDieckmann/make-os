@@ -33,7 +33,7 @@ describe('(a) ohne Handwerte rechnet der Kern wie vorher', () => {
     const formelWerte = rechneMit(mit(d, Object.fromEntries(Object.keys(HAND_FELDER).filter(k => !k.startsWith('ab.')).map(k => [`${k}:${monat}`, 0]))), ps).formel;
     // formelWerte enthält zu jeder Kennung den Formelwert bei Handwert 0 — für den Vergleich nehmen wir je Kennung einzeln den echten Formelwert.
     for (const k of Object.keys(HAND_FELDER).filter(x => !x.startsWith('ab.') && !x.startsWith('ug.reserve') && x !== 'ug.topfFrei')) {
-      const mm = k === 'p.malinSelbst' ? 2 : monat;   // gilt nur vor dem Start in der Gesellschaft
+      const mm = k === 'p.malinSelbst' || k === 'kdc.malin' ? 2 : monat;   // gilt nur vor dem Start in der Gesellschaft
       const probe = rechneMit(mit(d, { [`${k}:${mm}`]: 0 }), ps).formel[`${k}:${mm}`];
       expect(probe, `Formelwert für ${k} gesammelt`).toBeTypeOf('number');
       const gleich = rechneMit(mit(d, { [`${k}:${mm}`]: probe }), ps);

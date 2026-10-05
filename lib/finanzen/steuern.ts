@@ -35,6 +35,8 @@ export interface SteuerParamEin {
   freibetrag?: number;
   /** Faktor auf den Gewerbesteuer-Messbetrag für die Anrechnung (§ 35 EStG, Vorgabe 4,0; 0 = keine Anrechnung). */
   anrechnung?: number;
+  /** Einzelunternehmen: Soli-Freigrenze auf die Einkommensteuer (Vorgabe 2026: 20.350 €). */
+  soliFreigrenze?: number;
   /** Eckwerte des Einkommensteuer-Tarifs (Vorgabe 2026). */
   tarif?: Partial<EstTarif>;
 }
@@ -142,6 +144,7 @@ export function steuerParameter(d: Pick<FinanzDaten, 'steuern' | 'annahmen'> & P
     estAbzug: ort === 'kdc' ? (d.selbst?.vorsorge ?? 0) + (d.selbst?.sonderausgaben ?? 0) : 0,
     freibetrag: num(pa.freibetrag) ?? STEUER_VORGABE.freibetrag,
     anrechnung: num(pa.anrechnung) ?? STEUER_VORGABE.anrechnung,
+    soliFreigrenze: num(pa.soliFreigrenze) ?? STEUER_VORGABE.soliFreigrenze,
     verlustvortrag: pa.verlustvortrag ?? true,
     zahlweise: pa.zahlweise ?? 'folgejahr',
     zahlMonat: monat !== undefined ? Math.max(1, Math.min(12, Math.round(monat))) : Math.max(1, Math.min(12, Math.round(d.annahmen.steuerMonat))),
@@ -167,7 +170,7 @@ export interface SteuerFeld {
 
 const PFAD: Record<string, string[]> = {
   'kst.satz': ['zeilen', 'kst', 'satz'], 'soli.satz': ['zeilen', 'soli', 'satz'], 'gewst.satz': ['zeilen', 'gewst', 'satz'], 'gewst.hebesatz': ['zeilen', 'gewst', 'hebesatz'],
-  freibetrag: ['param', 'freibetrag'], anrechnung: ['param', 'anrechnung'], verlustvortrag: ['param', 'verlustvortrag'], zahlweise: ['param', 'zahlweise'], zahlMonat: ['param', 'zahlMonat'],
+  freibetrag: ['param', 'freibetrag'], anrechnung: ['param', 'anrechnung'], soliFreigrenze: ['param', 'soliFreigrenze'], verlustvortrag: ['param', 'verlustvortrag'], zahlweise: ['param', 'zahlweise'], zahlMonat: ['param', 'zahlMonat'],
 };
 const pfadVon = (id: string): string[] | null => (id.startsWith('tarif.') ? ['param', 'tarif', id.slice(6)] : PFAD[id] ?? null);
 const lesen = (o: unknown, pfad: string[]): unknown => pfad.reduce<unknown>((x, k) => (x && typeof x === 'object' ? (x as Record<string, unknown>)[k] : undefined), o);
@@ -175,7 +178,7 @@ const lesen = (o: unknown, pfad: string[]): unknown => pfad.reduce<unknown>((x, 
 function wertVon(p: Steuerparameter, id: string): number | boolean | string {
   switch (id) {
     case 'kst.satz': return p.kst; case 'soli.satz': return p.soli; case 'gewst.satz': return p.messzahl; case 'gewst.hebesatz': return p.hebesatz;
-    case 'freibetrag': return p.freibetrag; case 'anrechnung': return p.anrechnung; case 'verlustvortrag': return p.verlustvortrag; case 'zahlweise': return p.zahlweise; case 'zahlMonat': return p.zahlMonat;
+    case 'freibetrag': return p.freibetrag; case 'anrechnung': return p.anrechnung; case 'soliFreigrenze': return p.soliFreigrenze ?? STEUER_VORGABE.soliFreigrenze; case 'verlustvortrag': return p.verlustvortrag; case 'zahlweise': return p.zahlweise; case 'zahlMonat': return p.zahlMonat;
     default: return id.startsWith('tarif.') ? p.tarif[id.slice(6) as keyof EstTarif] : 0;
   }
 }
@@ -197,7 +200,8 @@ export function steuerFelder(d: Pick<FinanzDaten, 'steuern' | 'annahmen'> & Part
   if (rf === 'kapital') {
     out.push(feld('kst.satz', 'Körperschaftsteuer-Satz', 'anteil', 2, 'saetze'), feld('soli.satz', 'Soli auf die KSt', 'anteil', 2, 'saetze'));
   } else {
-    out.push(feld('freibetrag', 'Gewerbesteuer-Freibetrag €', 'betrag', 0, 'saetze', { hinweis: 'auf den Gewerbeertrag, nur Einzelunternehmen' }), feld('anrechnung', 'Anrechnung auf die Einkommensteuer (Faktor)', 'zahl', 1, 'saetze', { hinweis: '§ 35 EStG, Faktor × Messbetrag; 0 = keine Anrechnung' }));
+    out.push(feld('freibetrag', 'Gewerbesteuer-Freibetrag €', 'betrag', 0, 'saetze', { hinweis: 'auf den Gewerbeertrag, nur Einzelunternehmen' }), feld('anrechnung', 'Anrechnung auf die Einkommensteuer (Faktor)', 'zahl', 1, 'saetze', { hinweis: '§ 35 EStG, Faktor × Messbetrag; 0 = keine Anrechnung' }),
+      feld('soliFreigrenze', 'Soli: Freigrenze der Einkommensteuer €', 'betrag', 0, 'saetze', { hinweis: 'darüber Soli 5,5 %, gemildert (11,9 % des Überschusses)' }));
   }
   out.push(feld('gewst.satz', 'Gewerbesteuer-Messzahl', 'anteil', 2, 'saetze'), feld('gewst.hebesatz', 'Hebesatz der Gemeinde in %', 'zahl', 1, 'saetze', { hinweis: 'leer = aus dem bisherigen Gesamtsatz abgeleitet' }));
   out.push(
@@ -315,6 +319,7 @@ export function pruefeSteuern(roh: unknown): Steuern | undefined {
       const m = num(q.zahlMonat); if (m !== undefined) pa.zahlMonat = Math.max(1, Math.min(12, Math.round(m)));
       const f = num(q.freibetrag); if (f !== undefined) pa.freibetrag = Math.max(0, Math.min(1e9, f));
       const an = num(q.anrechnung); if (an !== undefined) pa.anrechnung = Math.max(0, Math.min(20, an));
+      const sf = num(q.soliFreigrenze); if (sf !== undefined) pa.soliFreigrenze = Math.max(0, Math.min(1e9, sf));
       if (istObjekt(q.tarif)) {
         const t: Partial<EstTarif> = {};
         for (const [k, v] of Object.entries(q.tarif)) { const x = num(v); if (x !== undefined && TARIF_SCHLUESSEL.has(k)) t[k as keyof EstTarif] = Math.max(0, Math.min(1e8, x)); }

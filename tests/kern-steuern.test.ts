@@ -249,9 +249,15 @@ describe('Selbstständigkeit auf eigener Monatsachse', () => {
     nah(g.kdc[2].frei, g.kdc[2].konto - g.kdc[2].steuerRuecklage - g.kdc[2].ustOffen);
     expect(g.kdc[2].steuerRuecklage).toBeGreaterThan(0); nah(g.kdc[8].steuerRuecklage, g.kdc[8].st.ruecklage);
   });
-  it('Ohne Bausteine der Selbstständigkeit steht nur das Konto: Achse leer, Ergebnis null', () => {
-    const e = rechneSelbstAchse(planFix());
+  it('Ohne Bausteine der Selbstständigkeit steht nur das Konto: Achse leer, Ergebnis null (Gehalt 2 schon in der GmbH)', () => {
+    const e = rechneSelbstAchse({ ...planFix(), annahmen: { ...planFix().annahmen, malinAb: 1 } });
     expect(e.length).toBe(27); expect(e.every(k => k.gewinn === 0 && k.st.summe === 0 && k.konto === 5000 && k.entnahme === 0)).toBe(true);
+  });
+  it('Formel-Prüfung 05.10.: vor der GmbH (malinAb 3) zahlt die Selbstständigkeit Gehalt 2 — Okt und Nov je 3.000 mit Arbeitgeberanteil', () => {
+    const e = rechneSelbstAchse(planFix());
+    expect(e.map(k => k.malinBrutto).slice(0, 4)).toEqual([2500, 2500, 0, 0]);
+    expect(e[0].konto).toBeCloseTo(2000, 9); expect(e[1].konto).toBeCloseTo(-1000, 9); expect(e[26].konto).toBeCloseTo(-1000, 9);
+    expect(e.every(k => k.st.summe === 0)).toBe(true);   // Verlust: keine Steuer
   });
   it('Sachkosten-Zeilen der Selbstständigkeit laufen dort, alle anderen bei MAKE', () => {
     const e = planFix(); e.sachkosten = [...e.sachkosten, { id: 'sk9', name: 'Büro Selbst', einheit: 'selbststaendigkeit', gruppe: 'X', soll: 700, ab: 1 }];

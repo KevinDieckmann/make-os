@@ -269,6 +269,58 @@ selber bearbeiten kann. Jede Zahl. Nur die Formeln sind im Hintergrund immer har
   Folgejahr, zurücksetzen und Rückgängig, Summe mit Abweichung, KD Ventures, Abschluss, Operationen-Prüfung, 409/413 im Schreibweg, alte Dokumente,
   Kennungen ohne Personennamen und ohne Kollision mit Planzeilen-Präfixen).
 
+## Sichtregel 05.10. (ersetzt „Inhaber sieht in Business alles“ vom 04.10. spät)
+
+Kevin: „Bei Business kann ich niemals auf Privat gehen … Privat kann Business sehen, aufrufen und bearbeiten, aber nicht umgekehrt. Im
+Business-Bereich kann man nie Privat sehen.“
+- **Business › Finanzen › Finanzplanung** zeigt für JEDEN (auch den Inhaber) nur die Business-Sicht: kein Privat-Reiter, kein Privat-Blatt,
+  keine privaten Ziele/Töpfe/Kennzahlen. Der Server liefert sie über `?sicht=business` (`wirksameSicht` in `lib/finanzen/plan/sicht.ts`:
+  eine Sicht-Entscheidung); Schreiben aus dem Business-Bereich auf Privat-Pfade → 403, auch für den Inhaber.
+- **Privat › Finanzen › Finanzplanung** zeigt alles inkl. Business und bearbeitet Business.
+- **Rechte bleiben zusätzlich:** ein Konto mit `finanzRecht: 'business'` bekommt nie Privates — auch nicht mit `?sicht=privat`.
+- Getrennte Einstellungen je Bereich (Szenario, Ansicht, Kennzahlen) bleiben. Wächter: `tests/finanzplan-sicht.test.ts`
+  („Business-Sicht enthält nie Privates — für jede Person“, „Privat-Sicht enthält Business“).
+
+## Formel-Prüfung 05.10. (Kevin: „alle Formeln wirklich überprüfen — wenn ich reingehe, wird nicht immer richtig gerechnet“)
+
+**Prüfstand** `tests/finanzplan-pruefstand.test.ts`: erfundener Plan mit allen Teilen (Privat, MAKE, KD Ventures, Selbstständigkeit, Gehälter,
+Fixkosten, Stelle, Ereignisse, Retainer mit Verzug, Produkt mit Zahlungsziel, USt, KSt/Soli/GewSt, ESt mit GewSt-Freibetrag, Ausschüttung,
+Entnahme, Jahreskosten-Topf, Handwerte allgemein/je Szenario/Umsatz/Steuer). Okt 26 – Jan 27 und das Jahresende 2026 (Zahlung Juni 27) sind
+von Hand gerechnet (Rechenweg im Test), der Kern wird nur geprüft. Ergebnis: Summen, Ergebnis, Steuern (Sätze, Hebesatz, Freibetrag,
+Verlustvortrag, Zahlmonat), USt-Durchlauf, Eingänge vs. Umsatz, Kontostand-Fortschreibung, frei verfügbar, Rücklage, Töpfe, Lage, Gruppe
+(Gehalt, Entnahme, Ausschüttung je einmal) und Abschluss 2026 stimmen auf den Cent. **Gefunden und behoben:**
+
+| # | Fund | Ursache | Fix | Test |
+|---|------|---------|-----|------|
+| 1 | Gehalt 2 vor der GmbH (vor `malinAb`) kam privat netto an, kostete aber niemanden — „Geld aus dem Nichts“ in Gruppe/Gesamt | Die Selbstständigkeit bekam am 02.10. eine eigene Achse, das Gehalt, das laut Kern über sie läuft, wurde dort nie gebucht | `MonatSelbst.malinBrutto` (Handwert `kdc.malin`), Personal der Selbstständigkeit inkl. Arbeitgeberanteil; Privat nimmt das Brutto von dort | Prüfstand „Funde …“, kern-steuern |
+| 2 | Kein Soli auf die Einkommensteuer der Selbstständigkeit, auch weit über der Freigrenze | Näherung „Soli entfällt (Freigrenze)“ galt für jede Höhe | Soli 5,5 % auf die ESt nach § 35-Anrechnung, Freigrenze 20.350 € (2026), Milderungszone 11,9 %; Freigrenze als Feld („Welche Steuern gelten?“), Zeile im Selbstständigkeits-Blatt | Prüfstand |
+| 3 | Zahlungskalender: Retainer-Eingang fest × 1,19 — falsch bei anderem USt-Satz (z. B. 0 %) | Konstante statt `annahmen.ust` | Satz aus den Annahmen; dazu fehlten Provision/Events, Umsatz von Hand, Kapital, Holding-Umlage, Darlehen zurück, Personal und Sachkosten der Selbstständigkeit | Prüfstand |
+| 4 | Kennzahlen „Privat Dez 28“ und „Gruppe Dez 28“ nahmen den letzten Planmonat statt Dez 28 (falsch bei Plänen > 27 Monate) | `pr[pr.length − 1]` statt Monat 27 | Monat 27 wie alle anderen Kennzahlen | Prüfstand |
+| 5 | Handwert in Monat 0 (z. B. `ug.konto:0`) wurde still gespeichert, aber nie gerechnet; Abschluss-Werte (`ab.*`) ließen sich in Monaten speichern | Prüfung nur auf das Zellen-Muster | Monat 0 nur für Werte ohne Monat, die nie in Monaten (400) | Prüfstand |
+| 6 | Eingabe „1,234.50“ wurde 1,2345; „12 %“ wurde nicht verstanden | Komma galt immer als Dezimal; „%“ nicht entfernt | Komma vor Punkt = Tausender; „%“ wie „€“ ignoriert | Prüfstand |
+| 7 | Privat-Kacheln („Verfügbar Okt 26“, „+ Luft im Okt“), Lage „Privat Luft ab Okt“ und Entwicklung („Plan ab Okt“, Sparquote Jan 27) zeigten immer Okt 26 bzw. Jan 27 | Feste Monate statt Stichtag | Laufender Monat (`aw.m0`) mit Monatsnamen | Ansichten-Test |
+
+**Bewusst geänderte Testwerte (Vorher → Nachher, Fixture `planFix`, Gehalt 2 bis Nov über die Selbstständigkeit):** Regression „frei
+Selbstständigkeit Okt 26“ 5.000 → 2.000 (2.500 × 1,2 Kosten); Geschäftsblatt Konto Selbstständigkeit Okt 26 5.595 → 2.595, Break-even ab Okt →
+ab Dez; kern-steuern „Achse ohne Bausteine“ jetzt mit Gehalt 2 erst ab der GmbH (`malinAb: 1`) + neuer Fall mit 2.000/−1.000. Alle anderen
+Goldwerte unverändert.
+
+**Geprüft und richtig:** Rücklage = aufgelaufene minus gezahlte Steuer; Quartals-Vorauszahlungen und ihr Abschluss; Verlustvortrag über
+Jahre; USt mit einem Monat Verzug ans Finanzamt; Retainer-Verzug; Zahlungsziel der Produkte; Handwert auf Summe und Einzelzeile wirkt nicht
+doppelt; Szenario-Handwert gilt nur im Szenario; Jahreskosten-Topf; Netto-Tabelle (Interpolation, darüber Fortschreibung); Abschluss 2026.
+Business-Index-Quellen: der Business-Index liest den Finanzplan nicht (eigene Quellen) — nichts zu prüfen.
+
+**Verdächtig, aber ohne Kevins Wort nicht geändert (Fragen):**
+- Ankermandat ohne USt: Einzahlungen und USt rechnen das Ankermandat netto ohne USt (Retainer/Provision/Events mit). Absicht (Kunde ohne
+  deutsche USt) oder Fehler?
+- Gesellschafterdarlehen: kommt in Okt 26 in die GmbH (mit dem Stammkapital), die Rückzahlung (`darlehenRueckMonat`) verlässt die GmbH, kommt
+  aber nirgends an (weder Privat noch Selbstständigkeit; `selbst.darlehenAnUG` existiert getrennt). Wohin soll die Rückzahlung fließen?
+- Abschluss 2026 der Selbstständigkeit und Monatsachse sind getrennt: die ESt 2026 auf Jan–Sep (Abschluss) wird in der Monatsachse nie gezahlt,
+  und die ESt auf Okt–Dez rechnet ohne den Gewinn Jan–Sep (Progression). Zusammenführen?
+- Selbstständigkeit als Freiberuf? Dann fiele die Gewerbesteuer weg (Schalter in „Welche Steuern gelten?“), heute Vorgabe an.
+- Vorsteuer auf Kosten wird nicht abgezogen (USt-Zahllast = volle USt auf Eingänge) — gewollte Vereinfachung?
+- Runway Privat zählt Sparen als ausgegeben; liegen die Sparkonten in den Kontoständen, ist der Runway zu kurz.
+
 ## Korrektur 04.10. spät: in Business die komplette Planung, beide Bereiche separat einstellbar (Branch `finanzplan-3`)
 
 Kevin: „Ich will im Business meine Planung haben, ändere das wieder. Diese will ich immer sehen können. Das ist der USP.“ — „beide Planungen

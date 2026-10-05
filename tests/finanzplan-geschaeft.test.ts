@@ -62,8 +62,10 @@ describe('Geschäftsblatt je Gesellschaft', () => {
     const b = blatt('kdc');
     expect(b.umsatz.slice(0, 6)).toEqual([500, 500, 500, 500, 500, 500]); expect(b.umsatz[6]).toBe(0);
     expect(b.liquiditaet).toEqual(g.kdc.map(k => k.frei));
-    expect(g.kdc[0].konto).toBeCloseTo(5000 + 500 * 1.19, 9);   // Konto-Start 5.000 + Eingang 500 (kein Zahlungsziel) + USt
-    expect(b.breakEven.monatlich).toBe(1);      // keine Kosten: das Ergebnis ist nie negativ
+    // Konto-Start 5.000 + Eingang 500 (kein Zahlungsziel) + USt − Gehalt 2 mit Arbeitgeberanteil (läuft bis Nov über die Selbstständigkeit,
+    // Formel-Prüfung 05.10.; vorher 5.595 und Break-even ab Okt, weil die Kosten fehlten).
+    expect(g.kdc[0].konto).toBeCloseTo(5000 + 500 * 1.19 - 2500 * 1.2, 9);
+    expect(b.breakEven.monatlich).toBe(3);
   });
   it('Stellen zählen im Blatt mit Arbeitgeberanteil (wie im Kern)', () => {
     const b = blatt('ug');
