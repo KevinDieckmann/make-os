@@ -5,6 +5,7 @@
 
 import type { Verarbeitung } from '@/lib/crm/typen';
 import { UG_NAME } from '@/lib/einheiten';
+import { tagVon } from '@/lib/zeit';
 import { KI_EMPFAENGER, KI_PROTOKOLL_MONATE } from './ki-protokoll';
 
 export const VV_KI = 'vv-ki';
@@ -20,7 +21,7 @@ export function verarbeitungKi(jetzt: string): Verarbeitung {
     drittland: 'USA — EU-US Data Privacy Framework bzw. Standardvertragsklauseln (Anthropic); Telegram nur für neutrale Hinweise (Inhalte nur mit ausdrücklicher Ausnahme der Person)',
     loeschfrist: `Beim Anbieter nach dessen Aufbewahrungsregeln für API-Daten (prüfen/AVV); KI-Protokoll (nur Metadaten) ${KI_PROTOKOLL_MONATE} Monate`,
     toms: 'EINE Stelle für alle Modell-Aufrufe (KI-Tor): Schalter je Instanz und Person (Hintergrund-KI, Web-Suche, Bereiche), Einwilligungsprüfung Art. 9, Pseudonymisierung in Hintergrund-Läufen, KI-Protokoll ohne Inhalte, Fremdtext gekapselt, schreibende Werkzeuge nur als Vorschlag, KI-Kennzeichnung (KI-VO Art. 50)',
-    verantwortlich: UG_NAME, stand: jetzt.slice(0, 10),
+    verantwortlich: UG_NAME, stand: tagVon(jetzt),
   };
 }
 
