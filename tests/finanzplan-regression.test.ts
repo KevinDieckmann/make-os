@@ -84,7 +84,11 @@ describe('Nicht betroffene Teile bleiben exakt gleich (Gold aus c83cb1f)', () =>
   it('Auswertung: frei MAKE/KD Ventures/Privat und Runway wie vorher; Gesamt = vorher + Konto der Selbstständigkeit', () => {
     const g = rechneMit(planGold(), arbeitsplanOhneSelbst()), aw = auswertung(g.d, g.ug, g.pr, g.kdc), v = gold.ohneSelbst;
     expect(aw.frei.ug).toBeCloseTo(v.awFrei.ug, 9); expect(aw.frei.kdv).toBeCloseTo(v.awFrei.kdv, 9); expect(aw.frei.privat).toBeCloseTo(v.awFrei.privat, 9);
-    expect(aw.runway).toEqual(v.awRunway);
+    // selbst-privat (05.10., Kevin: „Runway Privat zählt das Konto der Selbstständigkeit mit“, bewusst geändert): MAKE-Runway und Horizont wie Gold;
+    // Runway Privat vorher 0 (Privat allein sofort unter null) → nachher null (mit dem freien Geld der Selbstständigkeit im Plan nie unter null).
+    const gr = v.awRunway as { ug: number | null; privat: number | null; horizont: number };
+    expect({ ug: aw.runway.ug, horizont: aw.runway.horizont }).toEqual({ ug: gr.ug, horizont: gr.horizont });
+    expect([gr.privat, aw.runway.privat]).toEqual([0, null]);
     expect(aw.frei.gesamt).toBeCloseTo(v.awFrei.gesamt + aw.frei.kdc, 9);
     // Formel-Prüfung 05.10. (bewusst geändert): Gehalt 2 läuft vor der GmbH (malinAb 3) über die Selbstständigkeit — deren Konto trägt jetzt die
     // Kosten (2.500 × 1,2 = 3.000 im Okt 26). Vorher: frei = Kontostart 5.000 (Geld aus dem Nichts), nachher 2.000.
