@@ -4,6 +4,31 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## DSGVO-Grundlagen im Code (05.10.2026, nur lokal — Branch `dsgvo-grund`)
+
+Kevin 05.10.: „Die Software muss auf allen Standards der DSGVO sein, damit wir auch Kundendaten aufnehmen können.“ Aus dem
+DSGVO-Audit vom 05.10. (Dokumente: `datenschutz/`):
+- **System › Datenschutz** (`/os/datenschutz`, neu): Selbstprüfung · Verantwortlicher · Empfänger und Auftragsverarbeiter (AVV) ·
+  Verzeichnis-Export · Pannen-Register (nur Inhaber) · Dokumente. Nur Haushalt des Inhabers (403 sonst); ändern nur der Inhaber, nie ZOE.
+- **Verantwortlicher aus der Einrichtung** statt fest im Code (Bestand `datenschutz-einrichtung`; Rückfall `MAKE_OS_VERANTWORTLICHER_*`,
+  `MAKE_OS_DSB_*`). Ohne Eintrag zeigen Auskunft, Verzeichnis und Selbstprüfung „Verantwortlicher fehlt — eintragen“. Das Verzeichnis
+  trägt den Platzhalter „laut Einrichtung …“; alte feste Namen werden beim ersten Öffnen gehoben. Danke-Mail (Netzwerken) holt
+  Verantwortlichen, Kontakt-Mail (DSB vor Kontakt) und Datenschutz-Seite aus der Einrichtung.
+- **Sicherungsfrist wahrheitsgemäß:** „bis zu 12 Monate“ statt „14 Tage“ (Generationen 14/8/12 aus `deploy/generationen.sh`) in Löschfrist,
+  Löschkonzept, Auskunft (`sicherungen`) und Buchungs-Hinweis (Fassung `buchung-2026-10-05-4`); Wächter vergleicht mit der Grabstein-Frist.
+- **Selbstprüfung echt:** Verantwortlicher, AVV je Auftragsverarbeiter + Drittland-Garantie, KI (AVV Anthropic + Agenten-Schalter),
+  zweiter Faktor im Haushalt, Sicherungs-Verschlüsselung (`system/sicherung.json`: age / Übergang / unbekannt), Datenpannen — je mit Weg.
+- **Verzeichnis (Art. 30)** um 13 Plattform-Verarbeitungen ergänzt, Export HTML (drucken/PDF) und JSON: `/api/datenschutz/verzeichnis`.
+- **Bauplan-Bildschirmfotos** verschlüsselt (wie Dateiablage), Löschfrist 90 Tage nach Abschluss / verwaist 7 Tage, im Register mit Personenbezug.
+- **Neue Löschfristen:** Löschprotokoll 36 Monate, Pannen-Register 36 Monate ab Abschluss, Kapazität entfernter Konten beim nächsten Morgenlauf.
+- **Vor dem Hochladen (Kevin):** Verantwortlichen unter System › Datenschutz eintragen; AVVs prüfen und je Dienst „bestätigt am“ +
+  Unterlage eintragen; Website-Erklärung (`website/datenschutz.html`) an denselben Verantwortlichen angleichen (nicht Teil dieses Pakets).
+- **Rückweg:** Commits zurücknehmen. Neue Bestände `datenschutz-einrichtung`, `datenschutz-pannen` bleiben unbenutzt liegen (alter Code liest
+  sie nicht). Im Verzeichnis gehobene Einträge (Platzhalter statt Name, neue TOMs, `empfaengerIds`, 13 neue Verarbeitungen) bleiben —
+  alter Code zeigt den Platzhalter als Text; bei Bedarf von Hand ändern. Bauplan-Bilder, die schon verschlüsselt abgelegt wurden, kann
+  der alte Stand NICHT lesen: vorher `node scripts/daten-verschluesselung.mjs --entschluesseln` (stellt auch `bauplan-bilder/` um) — oder
+  die Bilder gehen für den alten Stand verloren (die Karten bleiben). Buchungs-Hinweis: alte Fassung gilt wieder für neue Buchungen.
+
 ## Kugeln 2 · „Solaris“-Überarbeitung von ZOE und Brain (05.10.2026, nur lokal — Branch `kugeln-2`)
 
 Kevin nach dem Upload: „Überarbeite das Brain nochmal … auch ZOE — das muss sehr geil aussehen.“ Vorher zu dünn, zu dunkel, zu leer.
