@@ -20,6 +20,7 @@ import { bloecke, inline, sichererLink, type Block, type Teil } from '@/lib/make
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Segmente, Punkt, Chip, Zahl, Wahl, feld, LEUCHT, Spalten, Spalte, useBreit } from './ui';
 import { Regeln } from './wissen/Regeln';
 import { Inbox } from './wissen/Inbox';
+import { BrainKugel } from './kugel/BrainKugel';
 
 interface Stand {
   person?: string;
@@ -400,6 +401,8 @@ export function WissenView() {
   ) : (
     <Karte i={2} akzent={LEUCHT.agenten}>
       <Ueberschrift farbe={LEUCHT.agenten}>Dein Brain</Ueberschrift>
+      {/* Die Brain-Kugel (05.10.): alle MAKE-OS-Datensätze, die du sehen darfst, als Punkte — Klick öffnet den Datensatz. */}
+      <div style={{ marginBottom: 16 }}><BrainKugel /></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 14 }}>
         <Zahl wert={stand ? String(stand.notizen) : undefined} label="Notizen für dich" farbe={LEUCHT.agenten} />
         <Zahl wert={stand ? String(stand.jeWurzel.make ?? 0) : undefined} label="aus Obsidian" />
