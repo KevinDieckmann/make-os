@@ -1760,9 +1760,22 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
   die Steuer aufs Gehalt, GewSt-Vortrag getrennt); 2026 beginnt mit dem Abschluss-Gewinn Jan–Sep (`vorab` im Steuerrechner, `rechneSelbst(d, f, lohn)`),
   bezahlt im Zahlmonat 2027 minus `selbst.estVorausgezahlt`. Ohne Gehalt/Abschluss/Darlehen rechnet der Kern bit-genau wie vorher
   (`tests/finanzplan-umzug-selbst.test.ts` gegen `tests/fixtures/finanzplan5-vorher.json` aus 4efe90a2). Darlehen: `FinanzDaten.darlehen[]`
-  (`lib/finanzen/darlehen.ts`, Kern `darlehenFluesse`), das alte `annahmen.darlehenKevin` = Darlehen Selbstständigkeit → MAKE; `selbst.darlehenAnUG`
-  zählt nicht mehr. Ankermandat ohne USt ist Absicht (Kommentar im Kern). Fragen an den Steuerberater: `FINANZPLANUNG_JETZT.md` › „Fragen an Jörg“.
+  (`lib/finanzen/darlehen.ts`, Kern `darlehenFluesse`), das alte `annahmen.darlehenKevin` hat seit 5b den Geber „außerhalb des Plans“ (siehe unten);
+  `selbst.darlehenAnUG` zählt nicht mehr. Ankermandat ohne USt ist Absicht (Kommentar im Kern). Fragen an den Steuerberater: `FINANZPLANUNG_JETZT.md` › „Fragen an Jörg“.
   Business-Index/Cockpit, Steuern-Bereich, Spaces und Liquiplan führen `kdc` weiter als Business — offen, Kevins Entscheidung.
+- **finanzplan-5b (Gegenprüfung 05.10., Kevin: „wirklich sauber“) — Regeln:** Funde und Status: `FINANZPLANUNG_JETZT.md` › „Gegenprüfung
+  finanzplan-5“; Wächter `tests/finanzplan-gegenpruefung.test.ts` (Abschnitt f). (1) **Business schreibt nur über `schreibeAlsBusiness`**
+  (`lib/finanzen/plan/business-schreiben.ts`): Pfad-Regeln (`businessPfadErlaubt`, nie ganze gemischte Objekte/Listen) UND Vergleich des privaten Teils
+  (`privatTeil`) vor/nach dem Anwenden → 403. Neuer Wurzelschlüssel in `FinanzDaten` = Zeile in der Wächter-Tabelle und, wenn privat, in `privatTeil`
+  (der Test „deckt jeden Wurzelschlüssel ab“ wird sonst rot). Operationen sind nur `{ pfad, neu }` — `op`/`from` → 400. (2) **Protokoll:** bei `…/-`
+  schreibt der Server `eintrag` (Kennung); die Business-Sicht prüft den Eintrag, ohne Kennung nie. (3) **Handwert-Bedeutungen:** ändert sich die
+  Bedeutung einer gerechneten Größe, `KERN_STAND` erhöhen und die Kennung in `BEDEUTUNG_NEU_FP5` (lib/finanzen/handwerte.ts) aufnehmen — alte Werte
+  wandern beim Lesen nach `handAlt` (nicht gerechnet), Privat › Selbstständigkeit zeigt „übernehmen“/„verwerfen“. (4) **Darlehen:** Altdarlehen
+  (`darlehenKevin`) mit Geber außerhalb des Plans; Handwert auf einer Seite → die Gegenseite folgt dem Handwert (anteilig); Monate außerhalb des
+  Plans → 400 (nie klemmen); Business-Name bei privater Seite „Darlehen (privat)“. (5) **Steuer:** eigener GewSt-Vortrag in beiden Pfaden; § 35 mit
+  Ermäßigungshöchstbetrag; `estJahre` nutzt DENSELBEN Steuerrechner wie die Achse (`selbstSteuerrechner`, `Steuerrechner.jahre()`) — nie eine zweite
+  Steuerrechnung daneben. (6) **Kennzahlen** je Bereich mit dessen Arbeitsplan (`arbeitsplanFuer`). (7) Neue optionale Felder: `kernStand`, `handAlt`,
+  `selbst.lohn2VorPlan` (Gehalt 2 Jan–Sep, nur bei Zusammenveranlagung), `Aenderung.eintrag`. **Rückweg nur mit Sicherung** (UPDATES.md).
 
 ## Tempo (27.09.)
 - Tempo misst man im **Prüfbau** (`make-os-pruefbau`, Port 3011, `MAKE_OS_DIST=.next-pruefbau npx next build`) oder auf dem Server — nie auf 3001 (Entwicklungsmodus übersetzt jede Seite beim ersten Aufruf).
