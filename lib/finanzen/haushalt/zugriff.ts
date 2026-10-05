@@ -6,6 +6,7 @@
 // UND am Konto einen Haushalt eingetragen hat.
 
 import { kontoFuerSpeicher } from '@/lib/zugang/konten';
+import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
 export const HAUSHALT_OK = /^[a-z0-9][a-z0-9-]{0,39}$/;
 
@@ -31,6 +32,19 @@ export async function haushaltFuer(person: string | null | undefined): Promise<H
   // Konten mit Finanzrecht „nur Business“ (04.10.) haben KEINEN Zugang zu den privaten Haushaltsfinanzen — nur die Business-Sicht der Finanzplanung.
   if (k?.finanzRecht === 'business') return null;
   return h && HAUSHALT_OK.test(h) ? { person, haushalt: h } : null;
+}
+
+/**
+ * Private Finanzen in den GEMEINSAMEN Beständen der Instanz (`buchungen`, `finanzplan`, `liquiplan`, Belege), 05.10.:
+ * Sie gehören dem Haushalt des Inhabers — und tragen private Zeilen (Privatkonto, `ort`/`firmaId` „privat“). Darum
+ * genügt hier weder „im Haushalt des Inhabers“ (ließe Konten mit `finanzRecht: 'business'` an Privates) noch
+ * `haushaltVon` allein (ließe einen ANDEREN Haushalt an die Bestände, die nicht je Haushalt getrennt liegen).
+ * Beides zusammen: Haushaltsmitglied ohne Einschränkung UND Haushalt des Inhabers — sonst null (→ 403).
+ */
+export async function privatFinanzZugang(req: Request): Promise<HaushaltZugang | null> {
+  const z = await haushaltVon(req);
+  if (!z) return null;
+  return z.haushalt === (await haushaltDesInhabers()) ? z : null;
 }
 
 /** Zugang zur Finanzplanung des Haushalts: welcher Haushalt und welche Datensicht — die Sicht entscheidet der Server aus dem Konto. */
