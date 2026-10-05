@@ -597,7 +597,11 @@ export interface PowerHourSitzung {
 export type AntragArt = 'auskunft' | 'berichtigung' | 'loeschung' | 'einschraenkung' | 'uebertragbarkeit' | 'widerspruch';
 export interface Antrag { id: string; art: AntragArt; name: string; email?: string; kontaktId?: string; eingang: string; frist: string; status: 'offen' | 'erledigt'; ergebnis?: string; erledigtAm?: string; von?: string; geaendert: string }
 /** Verzeichnis der Verarbeitungstätigkeiten (Art. 30 DSGVO). */
-export interface Verarbeitung { id: string; name: string; zweck: string; personen: string; daten: string; rechtsgrundlage: string; empfaenger: string; drittland: string; loeschfrist: string; toms: string; verantwortlich: string; stand: string }
+export interface Verarbeitung {
+  id: string; name: string; zweck: string; personen: string; daten: string; rechtsgrundlage: string; empfaenger: string; drittland: string; loeschfrist: string; toms: string; verantwortlich: string; stand: string;
+  /** Kennungen aus dem Empfänger-/AVV-Register (System › Datenschutz, 05.10.) — der Export nennt sie mit Rolle, Drittland/Garantie und AVV-Status. Optional (Altbestand). */
+  empfaengerIds?: string[];
+}
 
 // ── Follow-up-Ebene (27.09., Kevin: „die ganze Follow-up-Ebene sauber einpflegen“) ──
 // Bisher lagen Nachfass-Termine an acht Stellen (nächster Schritt und Wiedervorlage am

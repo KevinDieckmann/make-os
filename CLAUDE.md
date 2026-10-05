@@ -203,6 +203,36 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Gesellschaft/Vertrag endgültig → Unterlagen bleiben (§ 257 HGB): Rückfrage `UnterlagenBleiben` mit `WEG.unterlagen(g, v?)`, Register vermerkt
   Gelöschtes (`RegisterDatei.geloescht`, `geloeschtVermerken` — neue Schreibwege auf das Register IMMER darüber), Bezüge „„Name“ (gelöscht)“.
 
+## Sicherheit & DSGVO — S3: Grundlagen im Code (05.10., Branch `dsgvo-grund`, nur lokal; Dokumente `datenschutz/`)
+- **System › Datenschutz** (`/os/datenschutz`, `components/os/DatenschutzView.tsx` + `components/os/datenschutz/*`): Selbstprüfung,
+  Verantwortlicher, Empfänger/AVV, Verzeichnis-Export, Pannen-Register (nur Inhaber), Dokumente. CRM-Datenschutz bleibt unter Stammdaten.
+- **Einrichtung** `lib/datenschutz/einrichtung.ts` (rein, client-sicher) + `einrichtung-server.ts`; Bestand `datenschutz-einrichtung`;
+  Route `/api/datenschutz/einrichtung` (GET Haushalt, `?nur=angaben` für die Danke-Mail; POST nur Inhaber, nie Dienstweg, `bauPruefen`).
+  **Verantwortlicher NIE fest im Code**: überall `verantwortlicherLaden()`/`verantwortlicherWirksam()`; im Verzeichnis-Feld `verantwortlich`
+  steht `VERANTWORTLICH_EINRICHTUNG` (Anzeige/Export über `verantwortlichAufloesen`), ohne Eintrag `VERANTWORTLICHER_FEHLT`. Wächter in
+  `tests/datenschutz-einrichtung.test.ts` (kein Personenname in den Datenschutz-Dateien).
+- **Empfänger/AVV-Register** (`EMPFAENGER_START`, je Instanz bearbeitbar): Rolle, Zweck, Daten, Drittland + Garantie, AVV-Status (offen /
+  bestätigt am + Unterlage), `dritte` (→ Auskunft Art. 15 Abs. 1 lit. c `empfaengerAuskunft`). Neuer Dienst = Eintrag dort (Startwert) UND
+  `empfaengerIds` an der Verarbeitung.
+- **Verzeichnis**: EINE Stelle `verzeichnisVervollstaendigen` (lib/crm/datenschutz.ts) — Start, Netzwerken, Organisation, Google,
+  Plattform (`verarbeitungenPlattform`, 13 Einträge), `alteFassungenHeben`, `verantwortlichHeben`. Neue Verarbeitung: dort ergänzen; alte
+  Fassung eines Textes in `ALTE_FASSUNGEN` eintragen, damit unveränderte Bestände gehoben werden. Export `/api/datenschutz/verzeichnis`
+  (`lib/datenschutz/verzeichnis-export.ts`, HTML escaped, CSP ohne Skripte).
+- **Selbstprüfung** `selbstpruefung(…, umfeld)`; Umfeld `lib/datenschutz/umfeld.ts` (Einrichtung, 2FA im Haushalt, `system/sicherung.json`,
+  Agenten-Schalter, Pannen). Ohne Umfeld nie „erfüllt“ für ki/zugang. Jeder Punkt mit `weg` zum Beheben. Route `/api/datenschutz/pruefung`.
+- **Sicherungen**: `SICHERUNG_GENERATIONEN` (14/8/12) + `SICHERUNG_SATZ` (lib/crm/loeschfristen.ts) müssen zu `deploy/sicherung.sh` /
+  `sicherung-abholen.sh` passen — Wächter `tests/datenschutz-sicherungsfrist.test.ts` (auch: Grabstein-Frist > älteste Sicherung).
+  Generationen ändern → Satz, Buchungs-Hinweis-Fassung und Grabstein-Minimum prüfen.
+- **Bauplan-Bilder** `<daten>/bauplan-bilder`, verschlüsselt (AAD `bauplan-bilder/<name>`), Frist `bauplan-bilder` (lib/bauplan/bilder-frist.ts),
+  Umschlüsseln/Ein-Aus-Skript stellen sie mit um. Bildschirmfotos nie an ZOE.
+- **Pannen-Register** `lib/datenschutz/pannen.ts`, Bestand `datenschutz-pannen`, `/api/datenschutz/pannen` — nur Inhaber (GET und POST).
+  Keine Namen Betroffener, nur Kategorien/Anzahl. Prozess `datenschutz/DATENPANNEN.md`.
+- **Löschfristen neu**: `bauplan-bilder` (90 T.), `loeschprotokoll` (36 M.), `pannen` (36 M. ab Abschluss); Kapazität entfernter Konten:
+  `kapaEntfernteKontenAufraeumen` im Morgenlauf (nur `konto-*` ohne Konto, nie bei leerem Konten-Bestand).
+- **Offen (nicht in diesem Paket):** globaler Schalter „KI im Hintergrund aus“ (heute je Agent unter /os/agenten); Buchungsseiten haben
+  weiter ihr eigenes Feld „Verantwortlich“ (Pflicht je Seite); Website-Erklärung nennt einen anderen Verantwortlichen; Verzeichnis-Einträge,
+  die man löscht, kommen beim nächsten Öffnen wieder (Nachtrag nach `id`).
+
 ## Sicherheit — Zugang & Schlüssel, Prüfung S3 (05.10., Branch `sicher-zugang`, nur lokal; Anleitung UPDATES.md)
 - **Dienstschlüssel nur von innen:** `MAKE_OS_KEY` (`x-make-key`) gilt nur, wenn `anfrageIntern` (lib/zugang/intern.ts) —
   `x-forwarded-for` ganz Loopback/privat (Docker-Netz, `MAKE_OS_INTERN`, `docker compose exec`), keine Caddy-Marke

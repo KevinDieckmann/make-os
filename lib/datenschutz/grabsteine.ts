@@ -15,7 +15,8 @@
 //             (Marke `datenschutz-grabsteine` IM Datenordner — ein Restore bringt eine alte Marke mit, also läuft es nach
 //             jedem Restore beim nächsten Takt von selbst) und ZWINGEND im Restore-Skript (deploy/wiederherstellen.sh →
 //             POST /api/crm/datenschutz { aktion: 'grabsteine' }).
-//   Frist     13 Monate (länger als jede Sicherung, Löschklasse „grabsteine“) — danach fallen sie weg; die Sperrliste bleibt.
+//   Frist     13 Monate (länger als jede Sicherung — die älteste Monatsgeneration ist bis zu 12 Monate alt; Wächter
+//             tests/datenschutz-sicherungsfrist.test.ts; Löschklasse „grabsteine“) — danach fallen sie weg; die Sperrliste bleibt.
 
 import { promises as fs } from 'fs';
 import path from 'path';

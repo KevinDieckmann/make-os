@@ -76,7 +76,9 @@ describe('Datenschutz als Code', () => {
   it('Selbstprüfung aus dem Bestand, Verzeichnis mit Startbestand erfüllt', () => {
     const crm = { ...leererBestand(), verarbeitungen: verarbeitungenNachtragen(verarbeitungenStart(J), J) }; // Startbestand + die Netzwerken-Verarbeitungen (netz-recht)
     const p = selbstpruefung([k('a', { herkunft: 'selbst', rechtsgrundlage: 'vertrag' })], crm, HEUTE, { konten: 2, mitPasswort: 2 });
-    expect(p.filter(x => x.status !== 'erfuellt').map(x => x.id)).toEqual([]);
+    // Seit 05.10. prüfen „zugang“ (zweiter Faktor) und „ki“ (AVV, Schalter) das Umfeld — ohne Umfeld ehrlich „nicht geprüft“
+    // (tests/datenschutz-selbstpruefung.test.ts); alles aus dem CRM-Bestand ist erfüllt.
+    expect(p.filter(x => x.status !== 'erfuellt').map(x => x.id)).toEqual(['zugang', 'ki']);
     expect(selbstpruefung([k('b')], leererBestand(), HEUTE, { konten: 1, mitPasswort: 1 }).find(x => x.id === 'rechtsgrundlage')?.status).toBe('offen');
   });
   it('Befunde: überfälliger Schritt vor offenen Punkten, jede Person nur mit echtem Anlass', () => {

@@ -56,7 +56,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   E('crm-signale', 'Altbestand: kommender Termin der Person raus (seit F3 nicht mehr geschrieben, der Lauf überschreibt ohne).', 'signale'),
   E('tasks', 'Nur eindeutig zugeordnete Aufgaben: Name → „[gelöscht]“, Link und bezug.kontaktId raus — die Aufgabe bleibt.'),
   { muster: 'crm-sperrliste--*', bezug: 'dritte', behandlung: 'pseudonym', grund: 'Person KOMMT HINZU (Grund „loeschung“) — nur HMAC-Fingerabdrücke, damit ein Import sie nie neu anlegt.' },
-  { muster: 'crm-loeschprotokoll', bezug: 'dritte', behandlung: 'pseudonym', grund: 'Nur Protokoll-ID `lp-…`, Tag, Grund, wer — nie die Kennung (lib/crm/loeschprotokoll.ts).' },
+  { muster: 'crm-loeschprotokoll', bezug: 'dritte', behandlung: 'pseudonym', frist: 'loeschprotokoll', grund: 'Nur Protokoll-ID `lp-…`, Tag, Grund, wer — nie die Kennung (lib/crm/loeschprotokoll.ts); abgeschlossene Einträge nach 36 Monaten weg (Frist „loeschprotokoll“, 05.10.).' },
   // ── Weitere Speicher (lib/crm/person-weitere.ts, 29.09.) ──
   E('netzwerk', 'Altbestand vor der Kartei — Datensätze der Person (Adresse/Name) samt Chancen raus; wird stillgelegt.', 'netzwerk'),
   E('kunden', 'Altbestand Kunden — Privatkunde mit dem Namen der Person raus, Rest getilgt.'),
@@ -223,20 +223,31 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   mit(H('kapazitaet--*', 'Kapazität je Haushalt (04.10.): Grundwert und Ausnahmen (Urlaub, feste Blöcke) je Team-Person, Zuweisungen Person × Mandat/Kunde (nur CRM-Kennungen, keine Namen Dritter) — eigene Planung des Haushalts. Gespeichert wird KEIN Gesundheitswert (die Erholung wird beim Rechnen aus vitals--* gelesen, nur mit Einwilligung + Teilen, nur als Team-Faktor); `erholungAm` = Zeitpunkt der Einwilligung (Nachweis).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Planung der Arbeitszeit im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (realistische Planung); Erholung: Art. 9 Abs. 2 lit. a — eigene Einwilligung der Person (`erholungAm`, Schalter in der Kapazität, Vorgabe aus) UND Teilen mit allen Konten (siehe vitals--*)',
     art15: 'GET /api/kapazitaet zeigt der Person ihre Werte samt eigener Ausnahme-Titel; als Datei GET /api/kapazitaet?auskunft=<person> (Konto: nur die Person selbst; Team-Person ohne Konto: der Inhaber, auch deaktiviert) und in der Kontakt-Auskunft (`personAufzaehlen.kapazitaet`, Zuordnung über die E-Mail der Team-Person) — lib/kapazitaet/aufraeumen.ts',
-    loeschfrist: 'Ausnahmen/Zuweisungen bis zur Löschung durch Person bzw. Inhaber (Planung › Kapazität); Team-Person ohne Konto: 30 Tage nach dem Deaktivieren automatisch (Morgenlauf `kapaDeaktivierteAufraeumen`, Zeitpunkt `deaktiviertAm` am Team-Eintrag, Reaktivieren davor erhält alles). Offen: Einträge eines entfernten Kontos (Konten werden nicht deaktiviert)',
+    loeschfrist: 'Ausnahmen/Zuweisungen bis zur Löschung durch Person bzw. Inhaber (Planung › Kapazität); Team-Person ohne Konto: 30 Tage nach dem Deaktivieren automatisch (Morgenlauf `kapaDeaktivierteAufraeumen`, Zeitpunkt `deaktiviertAm` am Team-Eintrag, Reaktivieren davor erhält alles); Konto entfernt: beim nächsten Morgenlauf (`kapaEntfernteKontenAufraeumen`, 05.10.)',
     kategorie: ['beschaeftigte'],
   }),
   mit(H('kapazitaet-plan--*', 'Festgehaltene Wochenpläne je Haushalt (Kevin 05.10.): montags je Person verfügbare Zeit (Netto, OHNE Erholungs-Faktor), geplante Stunden und gebundene Stunden, je Meilenstein/Ziel und Zuweisung nur als Kennung — Grundlage der Plan-Treue „geplant vs. Ist“ (lib/kapazitaet/plan.ts). Kein Gesundheitswert, keine Namen.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Arbeitszeitplanung im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (Vergleich Plan gegen Umsetzung)',
     art15: 'in der Kapazitäts-Auskunft `wochenplaene` (GET /api/kapazitaet?auskunft=<person>, Rechte wie dort; Kontakt-Auskunft für Team-Personen ohne Konto) — lib/kapazitaet/aufraeumen.ts',
-    loeschfrist: '24 Monate je Woche (Morgenlauf „Wochenplan festhalten“, `PLAN_LOESCHEN_NACH_MONATEN`); Team-Person ohne Konto: ihre Zeilen 30 Tage nach dem Deaktivieren mit den übrigen Kapazitätsdaten (`kapaDeaktivierteAufraeumen`). Offen wie bei kapazitaet--*: Zeilen eines entfernten Kontos bis zur 24-Monats-Frist',
+    loeschfrist: '24 Monate je Woche (Morgenlauf „Wochenplan festhalten“, `PLAN_LOESCHEN_NACH_MONATEN`); Team-Person ohne Konto: ihre Zeilen 30 Tage nach dem Deaktivieren mit den übrigen Kapazitätsdaten (`kapaDeaktivierteAufraeumen`). Konto entfernt: beim nächsten Morgenlauf (`kapaEntfernteKontenAufraeumen`, 05.10.)',
     kategorie: ['beschaeftigte'],
   }),
   H('oauth-tokens', 'Zugangsschlüssel des Haushalts (Whoop/Microsoft) — keine Dritten.'),
   H('oauth-states', 'Kurzlebige OAuth-Zustände — keine Dritten.'),
   H('ki-verbrauch', 'Kosten der Modellaufrufe je Person des Haushalts.'),
   K('demo-instanz', 'Demo-Marke (05.10., lib/demo/schutz.ts): Saat-Version, Zeitpunkt, Haushalt-Kennung und Zählungen — nur in einer Demo-Instanz, keine Personendaten.'),
-  K('backlog', 'Bauplan der Software (Ideen/Etappen) — keine Kontakte. Bildschirmfotos der Karten liegen seit 05.10. verschlüsselt unter bauplan-bilder/ (lib/store/bild-ablage.ts) — sie können App-Inhalte zeigen; darum nie Fotos mit Kontaktdaten anhängen, ein solches Bild an der Karte entfernen.'),
+  // Bauplan (05.10., DSGVO-Grundlagen): vorher „kein Personenbezug“ — falsch: Karten nennen, wer sie schrieb, und die Bildschirmfotos
+  // (Dateien in <daten>/bauplan-bilder, kein Bestand — hier der Vollständigkeit halber) können Personendaten Dritter zeigen.
+  mit(H('backlog', 'Bauplan der Software (Karten: Titel, Beschreibung, Kommentare, wer; Etappen) — Personen des Haushalts; Namen Dritter höchstens im Freitext.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Weiterentwicklung und Fehlerbehebung der eigenen Software)',
+    art15: 'die Karten sieht der Haushalt im Bauplan (/os/bauplan); Art. 15/17 einer Person über das Konto',
+    loeschfrist: 'bis zur Löschung durch den Haushalt; angehängte Bildschirmfotos nach der Frist „bauplan-bilder“ (siehe bauplan-bilder)',
+  }),
+  mit({ muster: 'bauplan-bilder', bezug: 'dritte', behandlung: 'ausgenommen', frist: 'bauplan-bilder', grund: 'Bildschirmfotos an Bauplan-Karten (Dateien <daten>/bauplan-bilder, verschlüsselt wie die Dateiablage): können Personendaten Dritter zeigen (Listen, Mails) — eine Suche nach der Person in Bildern ist nicht möglich, deshalb kurze Frist statt Art.-17-Suche: fertige/verworfene Karten 90 Tage, verwaiste 7 Tage (lib/bauplan/bilder-frist.ts).' }, {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Fehlerbehebung; Bildschirmfoto von Hand angehängt — vor dem Anhängen Personendaten möglichst schwärzen)',
+    art15: 'nur über den Bauplan (Karte öffnen, Bild ansehen); in der Kontakt-Auskunft nicht auffindbar (Bildinhalt ist nicht durchsuchbar) — deshalb die kurze Frist',
+    loeschfrist: '90 Tage nach Abschluss der Karte (fertig/verworfen, Frist einstellbar 7–365), nicht zugeordnete nach 7 Tagen; offene Karten: solange offen',
+  }),
   K('protokoll-siegel', 'Siegel der Protokoll-Kette (05.10., lib/store/protokoll-kette.ts): je Protokolldatei Anzahl der Einträge und letzter Hash — keine Inhalte, keine Personen.'),
   K('protokoll-pruefung', 'Ergebnis der letzten Kettenprüfung (Zahlen, Dateinamen, Befunde) — keine Inhalte.'),
   K('bauzeit', 'Bauzeiten der Software.'),
@@ -274,6 +285,19 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('business-verlauf', 'Verlauf des Business-Index (Zahlen).'),
   K('zoe-chargen--*', 'ZOE-Chargen: nur Kennungen von Aufgaben/Vorschlägen und Feldstände, keine Texte.'),
   K('aufgaben-dateien--*', 'Aufgaben-Ablage (Dateien zu Aufgaben, lib/dateien/aufgaben-ablage.ts) — Kontakt-Dateien liegen in crm-dateien--*.'),
+  // Datenschutz-Einrichtung der Instanz (05.10., lib/datenschutz/einrichtung.ts): Verantwortlicher (Name/Firma, Anschrift, Kontakt, ggf.
+  // Datenschutzbeauftragter — Pflichtangabe nach Art. 13/30) und das Empfänger-/AVV-Register (Firmen, keine Personen Dritter).
+  mit(H('datenschutz-einrichtung', 'Datenschutz-Einrichtung: Verantwortlicher (Name/Firma, Anschrift, Kontakt-Mail, optional Telefon, Vertretung, Datenschutzbeauftragter) und Empfänger/Auftragsverarbeiter mit AVV-Nachweis — schreibt nur der Inhaber (System › Datenschutz), Protokoll nur mit Feldnamen.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO (Pflichtangaben Art. 13 Abs. 1 lit. a/b, Art. 30 Abs. 1 lit. a, Nachweis Art. 5 Abs. 2, Art. 28)',
+    art15: 'System › Datenschutz zeigt dem Haushalt des Inhabers alles; die Angaben stehen in jeder Auskunft (GET /api/crm/datenschutz › verantwortlich) und im Verzeichnis-Export',
+    loeschfrist: 'solange die Instanz betrieben wird; der Inhaber ändert bzw. leert die Angaben jederzeit (frühere Fassungen nur in den Sicherungen, bis zu 12 Monate)',
+  }),
+  // Pannen-Register (05.10., Zusatz; Art. 33 Abs. 5): nur Kategorien/Anzahl Betroffener, keine Namen; nur der Inhaber.
+  mit(H('datenschutz-pannen', 'Pannen-Register (lib/datenschutz/pannen.ts): Kenntnis, Beschreibung, Art, Betroffene nur als Kategorien/Anzahl, Datenkategorien, Risiko, Meldung an die Behörde, Benachrichtigung, Maßnahmen, Abschluss, wer — liest und schreibt nur der Inhaber.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. Art. 33 Abs. 5 (Dokumentationspflicht)',
+    art15: 'System › Datenschutz › Pannen-Register (nur Inhaber); Betroffene sind dort nicht namentlich geführt',
+    loeschfrist: 'abgeschlossene Pannen 36 Monate ab Abschluss (Frist „pannen“, einstellbar 12–120 Monate); offene bleiben',
+  }),
   K('datenschutz-grabsteine', 'Marke „Grabsteine zuletzt angewendet“ (Fingerabdruck der Grabstein-Datei, Zahl).'),
   K('datenschutz-migration', 'Marke der Umrechnung v1 → v2 je Pepper (nur Zahlen).'),
 ];

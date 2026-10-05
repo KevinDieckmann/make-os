@@ -40,10 +40,12 @@ import { zahlungMaskiert } from '@/lib/crm/zahlung';
 import { personAufzaehlen, personEntfernen } from '@/lib/crm/person-bestaende';
 import { nachweisAuskunft } from '@/lib/crm/einwilligung';
 import { einschraenkungSetzen, einschraenkungAufheben } from '@/lib/crm/einschraenkung';
-import { LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristenSpeichern, verlaengerungPruefen, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
+import { SICHERUNG_SATZ, LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristenSpeichern, verlaengerungPruefen, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { istDienst } from '@/lib/zugang/dienst';
 import { bauPruefen } from '@/lib/bau/pruefen';
+import { verantwortlicherAuskunft, empfaengerAuskunft } from '@/lib/datenschutz/einrichtung';
+import { verantwortlicherLaden, empfaengerLaden } from '@/lib/datenschutz/einrichtung-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,7 +64,8 @@ export async function GET(req: Request) {
   if (!k) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
   const crm = await ladeCrm();
   const auskunft = {
-    erstellt: new Date().toISOString(), verantwortlich: 'Kevin Dieckmann (KD Ventures / Kevin Dieckmann Consulting)',
+    // Verantwortlicher (05.10.): aus der Einrichtung (System › Datenschutz) bzw. der Umgebung — nie fest im Code; fehlt er, steht es deutlich da.
+    erstellt: new Date().toISOString(), verantwortlich: verantwortlicherAuskunft((await verantwortlicherLaden()).v),
     // Private Notizen sieht nur, wer sie schrieb — auch in der Auskunft (26.09.).
     // IBAN (Entscheidung 28.09., H4): Die Auskunft nach Art. 15 enthält die volle IBAN, wenn sie zur Person
     // gehört (Kontakt.zahlung — nur bei Personen ohne Firma). Die IBAN einer Firma ist kein Datum der Person:
@@ -77,6 +80,11 @@ export async function GET(req: Request) {
     geprueft: k.geprueftAm ? { am: k.geprueftAm, von: k.geprueftVon ?? null } : null,
     hinweisBeiErhebung: k.hinweisBeiErhebung ?? null,
     loeschfristVerlaengert: k.loeschfristVerlaengert ?? null,
+    // 05.10.: wie lange Daten nach dem Löschen noch in Sicherungen stehen können (wahrheitsgemäß, deploy/generationen.sh).
+    sicherungen: SICHERUNG_SATZ,
+    // Art. 15 Abs. 1 lit. c (05.10.): Empfänger und Auftragsverarbeiter in Gebrauch, bei denen Daten Dritter ankommen — aus dem Register
+    // unter System › Datenschutz (EINE Quelle, ohne interne Notizen und AVV-Unterlagen).
+    empfaenger: empfaengerAuskunft(await empfaengerLaden()),
     // Alle Speicher aus einer Stelle (28.09., lib/crm/person-bestaende.ts): CRM-Listen, Dateiablage (nur Metadaten),
     // Import-Konflikte, Head-Vorschläge, kommender Termin, eindeutig zugeordnete Aufgaben.
     ...(await personAufzaehlen(id)),
