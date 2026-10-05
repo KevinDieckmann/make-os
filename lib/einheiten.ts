@@ -36,24 +36,48 @@ export const istRegisterKennung = (v: unknown): v is RegisterKennung => typeof v
 // ersetzt die ANZEIGENAMEN der drei festen Gesellschaften — die Kennungen bleiben. Ohne Variable gilt alles wie bisher (unsere
 // Instanz). NEXT_PUBLIC_, weil Oberfläche und Server dieselben Namen zeigen müssen (Next setzt den Wert beim Bauen bzw. im
 // Dev-Server ein). Ungültiges wird ignoriert (Vorgabe bleibt). Doku: DEMO.md.
-type NamenUeberschreibung = Partial<Record<Gesellschaftskennung, { label?: string; kurz?: string }>>;
+type NamenUeberschreibung = Partial<Record<Gesellschaftskennung, { label?: string; kurz?: string; bereich?: Bereich }>>;
 function namenAusUmgebung(): NamenUeberschreibung {
   const roh = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN : undefined;
   if (!roh) return {};
   try {
-    const o = JSON.parse(roh) as Record<string, { label?: unknown; kurz?: unknown }>;
+    const o = JSON.parse(roh) as Record<string, { label?: unknown; kurz?: unknown; bereich?: unknown }>;
     const aus: NamenUeberschreibung = {};
     for (const id of ['kdc', 'kdv', 'ug'] as const) {
       const e = o?.[id];
       if (!e || typeof e !== 'object') continue;
       const label = typeof e.label === 'string' && e.label.trim() ? e.label.trim().slice(0, 80) : undefined;
       const kurz = typeof e.kurz === 'string' && e.kurz.trim() ? e.kurz.trim().slice(0, 20) : undefined;
-      if (label || kurz) aus[id] = { ...(label ? { label } : {}), ...(kurz ? { kurz } : {}) };
+      const bereich = e.bereich === 'privat' || e.bereich === 'business' ? e.bereich : undefined;
+      if (label || kurz || bereich) aus[id] = { ...(label ? { label } : {}), ...(kurz ? { kurz } : {}), ...(bereich ? { bereich } : {}) };
     }
     return aus;
   } catch { return {}; }
 }
 const NAMEN = namenAusUmgebung();
+
+// ─── Bereich je Einheit (05.10., EINE Quelle) ───────────────────────────────────────────────────────────────────────────────────
+// Kevin 05.10.: „Selbstständigkeit raus aus Business“ — „Ja, überall unter Privat“. Business = nur die Kapitalgesellschaften
+// (MAKE Innovation GmbH, KD Ventures). Ein Einzelunternehmen (die Selbstständigkeit) wird mit dem Privaten zusammen versteuert
+// (gemeinsame Einkommensteuer, lib/finanzen/ertragsteuer.ts) und gehört darum zu PRIVAT — in Spaces, Aufgaben, Liquiplan,
+// Lichtfäden, Finanzplanung, Steuern und im Business-Index. Plattform-Regel: nie `kdc` als Sonderfall abfragen, sondern
+// `bereichVon(…)`/`BUSINESS_GESELLSCHAFTEN`/`PRIVAT_GESELLSCHAFTEN`. Vorgabe aus der Rechtsart (Einzelunternehmen → privat,
+// Kapitalgesellschaft → business); je Instanz überschreibbar über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` (`{"kdc":{"bereich":"business"}}`).
+// Die Kennungen und gespeicherten Daten bleiben — nur die Zuordnung zum Bereich ändert sich (kein Datenumzug).
+
+/** Wohin eine Einheit gehört: der Privat-Bereich (mit dem Haushalt) oder der Business-Bereich. */
+export type Bereich = 'privat' | 'business';
+/** Rechtsart einer festen Einheit — bestimmt die Vorgabe des Bereichs. */
+export type Rechtsart = 'einzelunternehmen' | 'kapitalgesellschaft';
+export const RECHTSART: Readonly<Record<Gesellschaftskennung, Rechtsart>> = { kdc: 'einzelunternehmen', kdv: 'kapitalgesellschaft', ug: 'kapitalgesellschaft' };
+/** Vorgabe: Einzelunternehmen (gemeinsam mit Privat versteuert) → privat, Kapitalgesellschaft → business. */
+export const bereichAusRechtsart = (r: Rechtsart): Bereich => (r === 'einzelunternehmen' ? 'privat' : 'business');
+/** Bereich der drei festen Einheiten in dieser Instanz (Umgebung vor Vorgabe). */
+export const BEREICH_JE_EINHEIT: Readonly<Record<Gesellschaftskennung, Bereich>> = {
+  kdc: NAMEN.kdc?.bereich ?? bereichAusRechtsart(RECHTSART.kdc),
+  kdv: NAMEN.kdv?.bereich ?? bereichAusRechtsart(RECHTSART.kdv),
+  ug: NAMEN.ug?.bereich ?? bereichAusRechtsart(RECHTSART.ug),
+};
 /** Die Namen, die diese Instanz über die Umgebung setzt (leer = unsere Instanz) — für Startbestände mit eigenen Langnamen. */
 export const EINHEITEN_UEBERSCHRIEBEN: Readonly<NamenUeberschreibung> = NAMEN;
 
@@ -117,6 +141,27 @@ export function firmaFuerGesellschaft(g: string | null | undefined): Gesellschaf
 export function finanzFirmaFuer(g: string | null | undefined): Gesellschaftskennung | null {
   return istRegisterKennung(g) ? null : firmaFuerGesellschaft(g);
 }
+/**
+ * Bereich eines Firmen-Postens (Rechnung, Zahlung, Planposten, Konto) aus seiner `firmaId` (05.10.): `privat` → privat, eine
+ * Privat-Einheit (die Selbstständigkeit, auch Altnamen) → privat, alles andere → business. OHNE Firma bleibt ein Posten im Business
+ * (wie seit 24.09. in der Liquidität: „was nicht ausdrücklich privat ist, ist Business“ — er gilt als nicht zugeordnet, die Prüfliste
+ * zeigt ihn), ebenso unbekannte Firmen (KEMARIS, Register-Gesellschaften).
+ */
+export function bereichVonFirma(firmaId: string | null | undefined): Bereich {
+  if (firmaId === 'privat') return 'privat';
+  if (firmaId == null || firmaId === '' || istRegisterKennung(firmaId)) return 'business';
+  const g = istGesellschaft(firmaId) ? firmaId : finanzOrtAus(firmaId);
+  if (g === 'privat') return 'privat';
+  return g ? BEREICH_JE_EINHEIT[g] : 'business';
+}
+/**
+ * Bereich einer CRM-Gesellschaft (Deal, Mandat, Produkt): nur eine ausdrücklich gesetzte Privat-Einheit (Selbstständigkeit) ist
+ * privat — „offen“, leer und Unbekanntes bleiben im Business (dort war es schon immer „noch nicht zugeordnet“).
+ */
+export function bereichVonGesellschaft(g: string | null | undefined): Bereich {
+  const k = istGesellschaft(g) ? g : gesellschaftAusEinheit(g);
+  return k && BEREICH_JE_EINHEIT[k] === 'privat' ? 'privat' : 'business';
+}
 /** Satz für die Oberfläche, wenn `finanzFirmaFuer` null ergibt. */
 export const NUR_GRUNDDATEN = 'Diese Gesellschaft steht im Register, wird im Finanzplan aber noch nicht geführt — Rechnungen und Zahlen gibt es heute nur für die drei festen Gesellschaften.';
 
@@ -159,6 +204,29 @@ export const FINANZ_ORT_IDS: readonly FinanzOrt[] = FINANZ_ORTE.map(o => o.id);
 export const GESELLSCHAFTEN: readonly Gesellschaftskennung[] = KERN_EINHEITEN.map(e => e.id);
 
 export const istGesellschaft = (v: unknown): v is Gesellschaftskennung => GESELLSCHAFTEN.includes(v as Gesellschaftskennung);
+
+/**
+ * Der Bereich einer Kennung (EINE Quelle, 05.10.): `privat` → privat; die festen Gesellschaften nach `BEREICH_JE_EINHEIT`
+ * (unsere Instanz: Selbstständigkeit → privat, KD Ventures und MAKE → business); Register-Gesellschaften (`g-…`) und alles
+ * andere, was eine Firma ist, → business. Nur `privat` und die Privat-Einheiten sind privat.
+ */
+export function bereichVon(v: unknown): Bereich {
+  if (v === 'privat') return 'privat';
+  if (istGesellschaft(v)) return BEREICH_JE_EINHEIT[v];
+  return 'business';
+}
+/** Die festen Gesellschaften im Business-Bereich (unsere Instanz: KD Ventures, MAKE Innovation GmbH) — Reihenfolge wie GESELLSCHAFTEN. */
+export const BUSINESS_GESELLSCHAFTEN: readonly Gesellschaftskennung[] = GESELLSCHAFTEN.filter(g => BEREICH_JE_EINHEIT[g] === 'business');
+/** Die festen Einheiten, die zu Privat gehören (unsere Instanz: die Selbstständigkeit). */
+export const PRIVAT_GESELLSCHAFTEN: readonly Gesellschaftskennung[] = GESELLSCHAFTEN.filter(g => BEREICH_JE_EINHEIT[g] === 'privat');
+/** Eine feste Gesellschaft im Business-Bereich? (Rechnen im Business-Index, Business-Sichten.) */
+export const istBusinessGesellschaft = (v: unknown): v is Gesellschaftskennung => istGesellschaft(v) && BEREICH_JE_EINHEIT[v] === 'business';
+/** Gehört eine Kennung zu Privat — `privat` selbst oder eine Privat-Einheit (Selbstständigkeit)? Unbekanntes: nein. */
+export const gehoertZuPrivat = (v: unknown): boolean => v === 'privat' || (istGesellschaft(v) && BEREICH_JE_EINHEIT[v] === 'privat');
+/** Die Business-Einheiten als Namen (Filter, Wertelisten im Business-Bereich). */
+export const BUSINESS_EINHEITEN_NAMEN: readonly string[] = KERN_EINHEITEN.filter(e => BEREICH_JE_EINHEIT[e.id] === 'business').map(e => e.label);
+/** Satz für Stellen, an denen eine Privat-Einheit aus dem Business-Bereich angefragt wird. */
+export const GEHOERT_ZU_PRIVAT = (v: Gesellschaftskennung): string => `${finanzOrtName(v)} gehört zu Privat — sie steht im Privat-Bereich, nicht im Business.`;
 /** Eine der drei festen ODER eine Register-Gesellschaft (`g-…`) — für Auswahl und Anzeige, nie zum Rechnen. */
 export const istGesellschaftId = (v: unknown): v is GesellschaftId => istGesellschaft(v) || istRegisterKennung(v);
 export const istFinanzOrt = (v: unknown): v is FinanzOrt => FINANZ_ORT_IDS.includes(v as FinanzOrt);

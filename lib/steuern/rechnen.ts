@@ -13,7 +13,8 @@ import type { Rechnung } from '@/lib/make-one/liquiditaet';
 import { UST_REGEL, aufCent, ustAusBrutto } from '@/lib/finanzen/ust';
 import type { Beleg } from '@/lib/finanzen/haushalt/typen';
 import { WEG } from '@/lib/wege';
-import { FINANZ_ORT_IDS, UG_KURZ, UG_NAME, finanzOrtName, type FinanzOrt, type Gesellschaftskennung } from '@/lib/einheiten';
+import { FINANZ_ORT_IDS, UG_KURZ, UG_NAME, bereichVon, finanzOrtName, type Bereich, type FinanzOrt, type Gesellschaftskennung } from '@/lib/einheiten';
+import type { EstGemeinsam } from '@/lib/finanzen/est-gemeinsam';
 
 // Die eine Einheitenliste (28.09., lib/einheiten.ts): Privat · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH.
 // Die MAKE Innovation GmbH (Kennung ug; bis 30.09. „UG“ — steuerlich dasselbe, keine neue Regel) ist eine Körperschaft — sie wird NICHT wie die Selbstständigkeit gerechnet. Solange ihre
@@ -43,7 +44,11 @@ export interface SteuerEinstellungen {
   privat: { estVorauszahlung: boolean };
   /** Vorauszahlungen je Quartal laut Bescheid (Euro). */
   vorauszahlung: { est?: number; kst?: number; gewstKdc?: number; gewstKdv?: number };
-  /** Durchschnittlicher ESt-Satz auf den Gewinn aus Consulting (Prozent) — eure Annahme. */
+  /**
+   * Durchschnittlicher ESt-Satz auf den Gewinn aus Consulting (Prozent) — bis 05.10. die Annahme für die Einkommensteuer. Seit 05.10.
+   * rechnet die Einkommensteuer gemeinsam aus der Finanzplanung (lib/finanzen/est-gemeinsam.ts); das Feld bleibt nur gespeichert
+   * (älterer Stand liest es weiter) und wird nicht mehr gerechnet.
+   */
   steuerquote: number | null;
   /** Gewerbesteuer-Hebesatz der Gemeinde (Prozent). */
   hebesatz: number;
@@ -55,7 +60,9 @@ export interface SteuerEinstellungen {
 
 export const STANDARD_STEUERN: SteuerEinstellungen = {
   mitBerater: true,
-  kdc: { rechtsform: 'freiberuf', ust: 'quartal', dauerfrist: false, istVersteuerung: true, gewerbe: false },
+  // 05.10. (Kevin: „Ich habe in der Selbstständigkeit einfach ein Gewerbe angemeldet“): gewerblich mit Gewerbesteuer. Mit Finanzplanung
+  // kommen Rechtsform/Gewerbesteuer ohnehin aus deren Steuerprofil (`mitFinanzplanung`) — das hier ist nur die Vorgabe ohne Plan.
+  kdc: { rechtsform: 'einzel', ust: 'quartal', dauerfrist: false, istVersteuerung: true, gewerbe: true },
   kdv: { rechtsform: 'ug', ust: 'quartal', dauerfrist: false, istVersteuerung: false, gewerbe: true },
   privat: { estVorauszahlung: true },
   vorauszahlung: {},
@@ -66,6 +73,23 @@ export const STANDARD_STEUERN: SteuerEinstellungen = {
 };
 
 export const HINWEIS = 'Hinweis, keine Steuerberatung — Termine gerechnet, Beträge geschätzt. Verbindlich sind Bescheid und Steuerberater.';
+
+/**
+ * EINE Quelle für die Selbstständigkeit (05.10.): Gibt es eine Finanzplanung, kommen Rechtsform und Gewerbesteuer der Selbstständigkeit aus
+ * deren Steuerprofil („Welche Steuern gelten?“) — gewerblich = Einzelunternehmen mit Gewerbesteuer, ausgeschaltete Gewerbesteuer =
+ * Freiberuf. Ohne Plan bleiben die gespeicherten Einstellungen. USt-Rhythmus, Dauerfrist und Ist-Versteuerung bleiben Steuer-Einstellungen.
+ */
+export function mitFinanzplanung(e: SteuerEinstellungen, est: Pick<EstGemeinsam, 'gewerbe'> | null): SteuerEinstellungen {
+  if (!est) return e;
+  return { ...e, kdc: { ...e.kdc, rechtsform: est.gewerbe ? 'einzel' : 'freiberuf', gewerbe: est.gewerbe } };
+}
+
+/** Bereich einer Steuer-Einheit (05.10.): Privat und die Selbstständigkeit → privat, KD Ventures und MAKE → business (`bereichVon`). */
+export const steuerBereich = (x: Einheit): Bereich => bereichVon(x);
+/** Die Einheiten in der Reihenfolge der Steuer-Seite: erst der Privat-Bereich (Privat, Selbstständigkeit), dann Business. */
+/** Ein Link auf die Steuer-Seite führt bei Privat und der Selbstständigkeit in die Privat-Sicht (dort stehen sie seit 05.10.). */
+export const hrefImBereich = (href: string, x: Einheit): string => (bereichVon(x) === 'privat' && href.startsWith('/os/finanzen?s=steuern') && !href.includes('space=') ? href.replace('?s=steuern', '?s=steuern&space=privat') : href);
+export const STEUER_EINHEITEN: readonly Einheit[] = [...FINANZ_ORT_IDS.filter(x => bereichVon(x) === 'privat'), ...FINANZ_ORT_IDS.filter(x => bereichVon(x) === 'business')];
 
 // ── Hilfen ──────────────────────────────────────────────────────────────────
 
@@ -108,7 +132,7 @@ export function fristen(e: SteuerEinstellungen, heute: string, erledigt: Record<
   const dazu = (einheit: Einheit, f: Omit<Frist, 'id' | 'einheit' | 'tage' | 'aufgabeAb' | 'erledigt'>) => {
     if (f.datum < von || f.datum > bis) return;
     const id = `${einheit}-${f.art}-${f.datum}`;
-    raus.push({ ...f, id, einheit, tage: tageBis(heute, f.datum), aufgabeAb: tagPlus(f.datum, -e.vorlaufTage), erledigt: !!erledigt[`f:${id}`] });
+    raus.push({ ...f, href: hrefImBereich(f.href, einheit), id, einheit, tage: tageBis(heute, f.datum), aufgabeAb: tagPlus(f.datum, -e.vorlaufTage), erledigt: !!erledigt[`f:${id}`] });
   };
   for (const firma of STEUER_FIRMEN) {
     const f = e[firma];
@@ -127,7 +151,7 @@ export function fristen(e: SteuerEinstellungen, heute: string, erledigt: Record<
     }
   }
   if (e.privat.estVorauszahlung) for (const t of steuertermine(von, bis, { ust: 'keine', dauerfrist: false, estVorauszahlung: true, gewstVorauszahlung: false })) {
-    dazu('privat', { datum: t.datum, art: 'est', titel: t.titel, hinweis: 'enthält die Steuer auf den Gewinn aus Consulting', ...(e.vorauszahlung.est ? { betrag: e.vorauszahlung.est } : {}), href: WEG.steuern('ruecklage') });
+    dazu('privat', { datum: t.datum, art: 'est', titel: t.titel, hinweis: 'gemeinsam: Gehalt und Gewinn der Selbstständigkeit', ...(e.vorauszahlung.est ? { betrag: e.vorauszahlung.est } : {}), href: WEG.steuern('ruecklage') });
   }
   for (let j = Number(heute.slice(0, 4)) - 2; j <= Number(heute.slice(0, 4)); j++) {
     dazu('privat', { datum: erklaerungsFrist(j, e.mitBerater), art: 'erklaerung', titel: `Einkommensteuererklärung ${j}`, hinweis: `Kevin & Malin${e.mitBerater ? ' — Frist mit Steuerberater' : ''}`, href: WEG.steuern('uebergabe') });
@@ -199,7 +223,12 @@ export function jahresgewinn(ist: { monat: string; umsatz: number; kosten: numbe
 /** Vorauszahlungen dieses Jahres, die bis heute fällig waren. */
 const vzBisHeute = (heute: string, monate: number[]) => monate.filter(m => `${heute.slice(0, 4)}-${String(m).padStart(2, '0')}-10` <= heute).length;
 
-export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<SteuerFirma, Jahresgewinn | null>, ustOffen: Partial<Record<SteuerFirma, number>>, ug: { rechnungen: number } = { rechnungen: 0 }): Prognose {
+/**
+ * Rücklage & Prognose. Seit 05.10. kommen Einkommensteuer (gemeinsam: Gehalt + Selbstständigkeit) und Gewerbesteuer der Selbstständigkeit
+ * aus der Finanzplanung (`est`, lib/finanzen/est-gemeinsam.ts — EINE Rechenquelle); `gewinn.kdc` wird nicht mehr gerechnet (bleibt für
+ * die Anzeige). Ohne Finanzplanung für das Jahr: ehrlich „fehlt“, kein Schätzwert.
+ */
+export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<SteuerFirma, Jahresgewinn | null>, ustOffen: Partial<Record<SteuerFirma, number>>, ug: { rechnungen: number } = { rechnungen: 0 }, est: EstGemeinsam | null = null): Prognose {
   const jahr = Number(heute.slice(0, 4));
   const z: PrognoseZeile[] = [];
   const e4 = (n?: number) => (n ?? 0) * 4;
@@ -207,18 +236,24 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<S
   const R = WEG.steuern('ruecklage');
   // Umsatzsteuer: laufender Zeitraum, noch nicht angemeldet.
   for (const f of STEUER_FIRMEN) if (ustOffen[f] != null) z.push({ id: `ust-${f}`, einheit: f, titel: 'Umsatzsteuer laufender Zeitraum', betrag: Math.max(0, ustOffen[f]!), formel: 'USt aus Rechnungen − bekannte Vorsteuer', href: WEG.steuern('ust') });
-  // Einkommensteuer auf den Consulting-Gewinn (privat).
-  const gk = gewinn.kdc;
-  if (!gk) z.push({ id: 'est', einheit: 'privat', titel: `Einkommensteuer ${jahr} (Anteil Consulting)`, betrag: null, formel: 'Gewinn × Steuerquote − Vorauszahlungen', luecke: 'Ist-Monate Consulting fehlen', href: WEG.abschluss('kdc') });
-  else if (e.steuerquote == null) z.push({ id: 'est', einheit: 'privat', titel: `Einkommensteuer ${jahr} (Anteil Consulting)`, betrag: null, formel: 'Gewinn × Steuerquote − Vorauszahlungen', luecke: 'Steuerquote fehlt (Einstellungen unten)', href: `${R}` });
-  else {
-    const steuer = Math.max(0, gk.hochgerechnet) * e.steuerquote / 100;
-    const offen = steuer - gezahlt(e.vorauszahlung.est, [3, 6, 9, 12]);
-    z.push({ id: 'est', einheit: 'privat', titel: `Einkommensteuer ${jahr} (Anteil Consulting)`, betrag: Math.max(0, offen), formel: `${Math.round(gk.hochgerechnet).toLocaleString('de-DE')} € Gewinn (hochgerechnet) × ${e.steuerquote} % = ${Math.round(steuer).toLocaleString('de-DE')} € − ${Math.round(gezahlt(e.vorauszahlung.est, [3, 6, 9, 12])).toLocaleString('de-DE')} € gezahlte Vorauszahlungen${e.vorauszahlung.est ? ` (Jahr: ${Math.round(e4(e.vorauszahlung.est)).toLocaleString('de-DE')} €)` : ''}`, href: R });
-  }
-  if (e.kdc.gewerbe && gk) {
-    const gew = Math.max(0, gk.hochgerechnet - 24_500) * 0.035 * e.hebesatz / 100;
-    z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: Math.max(0, gew - gezahlt(e.vorauszahlung.gewstKdc, [2, 5, 8, 11])), formel: `(Gewinn − 24.500 € Freibetrag) × 3,5 % × ${e.hebesatz} % Hebesatz − Vorauszahlungen (wird größtenteils auf die ESt angerechnet)`, href: R });
+  // Einkommensteuer gemeinsam (privat) und Gewerbesteuer der Selbstständigkeit — aus der Finanzplanung (05.10., EINE Rechenquelle).
+  const PLAN = WEG.finanzplanung('privat', 'selbst');
+  const zahl = (n: number) => Math.round(n).toLocaleString('de-DE');
+  const titelEst = `Einkommensteuer ${jahr} gemeinsam (Gehalt + Selbstständigkeit)`;
+  if (!est) {
+    z.push({ id: 'est', einheit: 'privat', titel: titelEst, betrag: null, formel: 'Finanzplanung › Selbstständigkeit › Einkommensteuer gemeinsam', luecke: `Die Finanzplanung rechnet ${jahr} nicht (kein Plan oder Jahr außerhalb des Plans) — keine Schätzung`, href: PLAN });
+    if (e.kdc.gewerbe) z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: null, formel: '(Gewinn − Freibetrag) × Messzahl × Hebesatz, aus der Finanzplanung', luecke: `Die Finanzplanung rechnet ${jahr} nicht — keine Schätzung`, href: PLAN });
+  } else {
+    // Mehrsteuer über der Lohnsteuer (die steckt in der Netto-Tabelle) nach Anrechnung § 35, mit Soli — minus die bis heute gezahlten Vorauszahlungen.
+    const estSoll = est.est - est.anrechnung + est.soli;
+    const vzEst = gezahlt(e.vorauszahlung.est, [3, 6, 9, 12]);
+    z.push({ id: 'est', einheit: 'privat', titel: titelEst, betrag: Math.max(0, estSoll - vzEst),
+      formel: `zvE ${zahl(est.zve)} € (Gewinn ${zahl(est.gewinn)} € + Lohneinkünfte ${zahl(est.lohn)} €${est.splitting ? ', Splitting' : ''}) → Mehrsteuer ${zahl(est.est)} €${est.anrechnung ? ` − ${zahl(est.anrechnung)} € Anrechnung § 35` : ''}${est.soli ? ` + ${zahl(est.soli)} € Soli` : ''} − ${zahl(vzEst)} € gezahlte Vorauszahlungen${e.vorauszahlung.est ? ` (Jahr: ${zahl(e4(e.vorauszahlung.est))} €)` : ''} · Finanzplanung${est.plan ? ` „${est.plan}“` : ''}`, href: PLAN });
+    if (est.gewerbe) {
+      const vzGew = gezahlt(e.vorauszahlung.gewstKdc, [2, 5, 8, 11]);
+      z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: Math.max(0, est.gewst - vzGew),
+        formel: `(${zahl(est.gewinn)} € Gewinn − ${zahl(est.freibetrag)} € Freibetrag) × Messzahl × ${zahl(est.hebesatz)} % Hebesatz = ${zahl(est.gewst)} € − ${zahl(vzGew)} € Vorauszahlungen (bis zum ${est.anrechnungFaktor}-fachen Messbetrag auf die Einkommensteuer angerechnet)`, href: PLAN });
+    }
   }
   // KD Ventures: Körperschaftsteuer + Soli, Gewerbesteuer.
   const gv = gewinn.kdv;
@@ -231,6 +266,7 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<S
   }
   // MAKE Innovation GmbH: sichtbar, aber nicht gerechnet (Körperschaft ≠ Selbstständigkeit) — Betrag bleibt leer.
   z.push({ id: 'ug', einheit: 'ug', titel: `Steuern ${UG_NAME} ${jahr}`, betrag: null, formel: `Körperschaft-, Gewerbe- und Umsatzsteuer der ${UG_NAME}`, luecke: `${UG_NICHT_HINTERLEGT}${ug.rechnungen ? ` ${ug.rechnungen} ${UG_KURZ}-Rechnung${ug.rechnungen === 1 ? '' : 'en'} zählen noch in keiner Umsatzsteuer.` : ''}`, href: R });
+  for (const zl of z) zl.href = hrefImBereich(zl.href, zl.einheit);
   const je = Object.fromEntries(FINANZ_ORT_IDS.map(x => {
     const soll = z.filter(y => y.einheit === x).reduce((s, y) => s + (y.betrag ?? 0), 0);
     const ist = e.ruecklageIst[x] ?? null;
@@ -265,7 +301,7 @@ export function belegPunkte(rechnungen: (Rechnung & { firmaId?: string })[], bel
 // ── 5 · Übergabe an den Steuerberater ───────────────────────────────────────
 
 export type PunktStatus = 'ok' | 'offen' | 'hand';
-export interface UebergabePunkt { key: string; titel: string; unter: string; status: PunktStatus; abgehakt: { am: string; von: string } | null; href?: string }
+export interface UebergabePunkt { key: string; titel: string; unter: string; status: PunktStatus; abgehakt: { am: string; von: string } | null; href?: string; /** Jahres-Punkte: zu welcher Einheit (05.10., für die Bereichs-Sicht). */ einheit?: Einheit }
 
 export function uebergabeMonat(monat: string, x: {
   rechnungen: (Rechnung & { firmaId?: string })[]; belege: Beleg[]; abschluesse: { firma: string; monat: string }[]; buchungsMonate: string[];
@@ -275,7 +311,9 @@ export function uebergabeMonat(monat: string, x: {
   const imMonat = x.rechnungen.filter(r => (r.status === 'gestellt' || r.status === 'bezahlt') && r.datum?.startsWith(monat));
   const unvollstaendig = imMonat.filter(r => !r.nummer || (r.ustSatz == null && r.netto == null));
   const belegeOffen = x.belege.filter(b => b.einheit !== 'privat' && !b.erledigt && b.art === 'beleg' && (!b.faellig_am || b.faellig_am <= ende));
-  const abschluss = ['kdc', 'kdv'].filter(f => x.abschluesse.some(a => a.firma === f && a.monat === monat));
+  // Monatsabschluss (Business-Index) gibt es seit 05.10. nur für die Business-Gesellschaften — die Selbstständigkeit gehört zu Privat.
+  const pflicht = STEUER_FIRMEN.filter(f => bereichVon(f) === 'business');
+  const abschluss = pflicht.filter(f => x.abschluesse.some(a => a.firma === f && a.monat === monat));
   const k = (id: string) => `m:${monat}:${id}`;
   const p = (id: string, titel: string, unter: string, abgeleitet: PunktStatus, href?: string): UebergabePunkt => {
     const h = x.abgehakt[k(id)] ?? null;
@@ -285,7 +323,7 @@ export function uebergabeMonat(monat: string, x: {
     p('konto', 'Kontoauszüge der Geschäftskonten vollständig', x.buchungsMonate.includes(monat) ? 'Buchungen für den Monat sind da' : 'keine Geschäftsbuchungen in MAKE OS — im Bankzugang des Steuerberaters prüfen und abhaken', x.buchungsMonate.includes(monat) ? 'ok' : 'hand', '/os/finanzen/buchungen'),
     p('rechnungen', 'Ausgangsrechnungen vollständig', imMonat.length ? (unvollstaendig.length ? `${unvollstaendig.length} von ${imMonat.length} ohne Nummer oder USt-Satz` : `${imMonat.length} Rechnungen mit Nummer und USt-Satz`) : 'keine Rechnung mit Datum in diesem Monat', unvollstaendig.length ? 'offen' : 'ok', unvollstaendig[0] ? WEG.rechnung(unvollstaendig[0].id) : WEG.rechnungen()),
     p('belege', 'Eingangsbelege vollständig', belegeOffen.length ? `${belegeOffen.length} Beleg${belegeOffen.length === 1 ? '' : 'e'} fehlen noch` : 'kein fehlender Beleg bis Monatsende', belegeOffen.length ? 'offen' : 'ok', WEG.steuern('ust')),
-    p('abschluss', 'Monatsabschluss eingetragen', abschluss.length === 2 ? `${EINHEIT_LABEL.kdc} und ${EINHEIT_LABEL.kdv}` : abschluss.length ? `nur ${EINHEIT_LABEL[abschluss[0] as Einheit]}` : 'noch keiner', abschluss.length === 2 ? 'ok' : 'offen', WEG.abschluss()),
+    p('abschluss', 'Monatsabschluss eingetragen', abschluss.length === pflicht.length && pflicht.length ? pflicht.map(f => EINHEIT_LABEL[f]).join(' und ') : abschluss.length ? `nur ${abschluss.map(f => EINHEIT_LABEL[f]).join(', ')}` : 'noch keiner', abschluss.length === pflicht.length ? 'ok' : 'offen', WEG.abschluss()),
     p('abgleich', 'Offene Posten abgeglichen', 'Forderungen und Verbindlichkeiten mit dem Konto verglichen', 'hand', WEG.rechnungen()),
     p('uebergeben', 'An den Steuerberater übergeben', 'Belege hochgeladen bzw. Freigabe erteilt', 'hand'),
   ];
@@ -306,6 +344,71 @@ export function uebergabeJahr(jahr: number, abgehakt: Record<string, { am: strin
   return JAHRES_PUNKTE.map(p => {
     const key = `j:${jahr}:${p.id}`;
     const h = abgehakt[key] ?? null;
-    return { key, titel: p.titel, unter: `${EINHEIT_LABEL[p.einheit]} · ${p.unter}`, status: h ? 'ok' : 'hand', abgehakt: h };
+    return { key, titel: p.titel, unter: `${EINHEIT_LABEL[p.einheit]} · ${p.unter}`, status: h ? 'ok' : 'hand', abgehakt: h, einheit: p.einheit };
   });
+}
+
+
+// ── 6 · Bereichs-Sicht (05.10.) ─────────────────────────────────────────────
+// Kevin: „Selbstständigkeit raus aus Business“ — die Steuer-Seite gibt es unter Privat (alles: Privat, Selbstständigkeit und die
+// Gesellschaften — Privat sieht Business) und unter Business (nur die Business-Gesellschaften). Der Server filtert, BEVOR die Antwort
+// hinausgeht (GET /api/steuern?space=business); was die Business-Sicht nicht trägt, wird nicht nur versteckt.
+
+/** Was eine Bereichs-Sicht von der Steuer-Seite braucht (Teilmenge von `steuernStand`). */
+export interface SteuerSichtTeile {
+  einstellungen: SteuerEinstellungen; fristen: Frist[]; ust: UstZeitraum[]; prognose: Prognose;
+  gewinn: Partial<Record<SteuerFirma, Jahresgewinn | null>>; uebergabe: { monat: string; punkte: UebergabePunkt[]; jahr: number; jahresPunkte: UebergabePunkt[] };
+}
+
+/**
+ * Die Business-Sicht: Fristen, Umsatzsteuer, Prognose-Zeilen, Rücklage-Werte, Gewinne und Jahres-Punkte nur der Business-Gesellschaften;
+ * Einstellungen ohne Privates (Steuerquote, ESt- und Selbstständigkeits-Vorauszahlungen, Rücklage Privat/Selbstständigkeit; die Firmen-
+ * Einstellungen der Selbstständigkeit und Privat stehen auf der Vorgabe). Belege und Monats-Übergabe filtert der Aufrufer an der Quelle.
+ */
+export function steuernNurBusiness<T extends SteuerSichtTeile>(st: T): T {
+  const biz = (x: string) => bereichVon(x) === 'business';
+  const je = Object.fromEntries(Object.entries(st.prognose.je).map(([k, v]) => [k, biz(k) ? v : { soll: 0, ist: null, deckung: null }])) as Prognose['je'];
+  const e = st.einstellungen;
+  const vz = Object.fromEntries(Object.entries(e.vorauszahlung).filter(([k]) => k === 'kst' || k === 'gewstKdv')) as SteuerEinstellungen['vorauszahlung'];
+  const ruecklageIst = Object.fromEntries(Object.entries(e.ruecklageIst).filter(([k]) => biz(k))) as SteuerEinstellungen['ruecklageIst'];
+  return {
+    ...st,
+    einstellungen: { ...e, kdc: { ...STANDARD_STEUERN.kdc }, privat: { ...STANDARD_STEUERN.privat }, steuerquote: null, vorauszahlung: vz, ruecklageIst },
+    fristen: st.fristen.filter(f => biz(f.einheit)),
+    ust: st.ust.filter(u => biz(u.firma)),
+    prognose: { ...st.prognose, zeilen: st.prognose.zeilen.filter(z => biz(z.einheit)), je },
+    gewinn: Object.fromEntries(Object.entries(st.gewinn).filter(([k]) => biz(k))),
+    uebergabe: { ...st.uebergabe, jahresPunkte: st.uebergabe.jahresPunkte.filter(p => !p.einheit || biz(p.einheit)) },
+  };
+}
+
+
+/**
+ * Darf die Business-Sicht diese Änderung schreiben? (05.10.) Nein für Privat und die Privat-Einheiten (Selbstständigkeit): deren
+ * Firmen-Einstellungen, Steuerquote, ESt-/Selbstständigkeits-Vorauszahlungen, Rücklage, Beleg-Erledigung und Frist-/Jahres-Punkte.
+ * Liefert null (erlaubt) oder den Grund.
+ */
+export function businessSchreibenErlaubt(roh: Record<string, unknown>): string | null {
+  const privatE = (x: string) => bereichVon(x) === 'privat';
+  const e = (roh.einstellungen ?? null) as Record<string, unknown> | null;
+  if (e) {
+    for (const k of Object.keys(e)) {
+      if (k === 'privat' || k === 'steuerquote' || ((k === 'kdc' || k === 'kdv' || k === 'ug') && privatE(k))) return 'Diese Einstellung gehört zu Privat.';
+    }
+    const vz = (e.vorauszahlung ?? {}) as Record<string, unknown>;
+    if ('est' in vz || ('gewstKdc' in vz && privatE('kdc')) || ('gewstKdv' in vz && privatE('kdv'))) return 'Diese Vorauszahlung gehört zu Privat.';
+    const rl = (e.ruecklageIst ?? {}) as Record<string, unknown>;
+    if (Object.keys(rl).some(privatE)) return 'Diese Rücklage gehört zu Privat.';
+  }
+  if (roh.belegErledigt) return 'Belege erledigen geht in der Privat-Sicht der Steuern.';
+  const ab = roh.abhaken as { key?: unknown } | undefined;
+  if (ab && typeof ab.key === 'string') {
+    // f:<einheit>-… (Frist) · j:<jahr>:<punkt> (Jahres-Punkt mit Einheit) · m:<monat>:… (Monats-Übergabe, Business)
+    if (ab.key.startsWith('f:') && privatE(ab.key.slice(2).split('-')[0])) return 'Diese Frist gehört zu Privat.';
+    if (ab.key.startsWith('j:')) {
+      const punkt = JAHRES_PUNKTE.find(p => p.id === ab.key!.toString().split(':')[2]);
+      if (!punkt || privatE(punkt.einheit)) return 'Dieser Punkt gehört zu Privat.';
+    }
+  }
+  return null;
 }

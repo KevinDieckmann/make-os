@@ -7,6 +7,8 @@
 //
 // Client-safe: keine Server-Importe.
 
+import { bereichVonFirma, gehoertZuPrivat } from '@/lib/einheiten';
+
 export interface Firma { id: string; name: string; kontostand: number | null; stand: string | null }
 /**
  * Kevins Ansage: „Was bringt es, 3.000 € einzutragen, wenn die Abläufe dahinter
@@ -48,10 +50,19 @@ export interface Merkposten { id: string; titel: string; betrag: number; art: st
 // firmaId „privat“ — die zählen in keiner Business-Rechnung mehr. Was NICHT
 // ausdrücklich privat markiert ist, gilt als Business (ältere Einträge ohne
 // Firma sind Firmen-Posten; die Prüfliste unter Privat zeigt sie zum Zuordnen).
+//
+// 05.10. (Kevin: „Selbstständigkeit raus aus Business … überall unter Privat“): Der BUSINESS-Bereich (`nurBusiness`, `businessFirmen`,
+// `vorschau(…, ohnePrivat)`) lässt zusätzlich die Posten und Konten der Privat-Einheiten weg (lib/einheiten.ts `bereichVonFirma`,
+// unsere Instanz: die Selbstständigkeit `kdc`). Posten ohne Firma bleiben Business wie bisher. `istPrivatPosten` bleibt das enge
+// „ausdrücklich privat“ (CRM-Umsatz, Steuern rechnen die Selbstständigkeit weiter mit) — `ohnePrivatPosten` ist die Liste dazu.
 export const PRIVAT_ID = 'privat';
 export const istPrivatPosten = (x: { firmaId?: string; kategorie?: string }) => x.firmaId === PRIVAT_ID || x.kategorie === PRIVAT_ID;
-export const nurBusiness = <T extends { firmaId?: string; kategorie?: string }>(l: T[]): T[] => l.filter(x => !istPrivatPosten(x));
-export const businessFirmen = <F extends { id: string }>(f: F[]): F[] => f.filter(x => x.id !== PRIVAT_ID);
+/** Nur ohne die ausdrücklich privaten Posten (die Selbstständigkeit bleibt drin) — Steuern, CRM-Umsatz. */
+export const ohnePrivatPosten = <T extends { firmaId?: string; kategorie?: string }>(l: T[]): T[] => l.filter(x => !istPrivatPosten(x));
+/** Business-Bereich: ohne Privat und ohne die Privat-Einheiten (Selbstständigkeit). */
+export const nurBusiness = <T extends { firmaId?: string; kategorie?: string }>(l: T[]): T[] => l.filter(x => !istPrivatPosten(x) && bereichVonFirma(x.firmaId) === 'business');
+/** Geschäftskonten des Business-Bereichs: ohne das Privatkonto und ohne die Konten der Privat-Einheiten. */
+export const businessFirmen = <F extends { id: string }>(f: F[]): F[] => f.filter(x => x.id !== PRIVAT_ID && bereichVonFirma(x.id) === 'business');
 
 export interface Bewegung {
   datum: string;
@@ -185,7 +196,11 @@ export function vorschau(
   /** true: Privates bleibt draußen (Business-Sicht). Standard für alle Firmen-Rechnungen. */
   ohnePrivat = false,
 ): Vorschau {
-  if (ohnePrivat && nurFirma !== PRIVAT_ID) {
+  if (ohnePrivat && nurFirma !== PRIVAT_ID && gehoertZuPrivat(nurFirma)) {
+    // Eine Privat-Einheit ausdrücklich gewählt (Selbstständigkeit): nur das ausdrücklich Private bleibt draußen — wie vor dem 05.10.
+    firmen = firmen.filter(x => x.id !== PRIVAT_ID); rechnungen = ohnePrivatPosten(rechnungen as (Rechnung & { firmaId?: string })[]);
+    zahlungen = ohnePrivatPosten(zahlungen); merkposten = ohnePrivatPosten(merkposten); planposten = ohnePrivatPosten(planposten);
+  } else if (ohnePrivat && nurFirma !== PRIVAT_ID) {
     firmen = businessFirmen(firmen); rechnungen = nurBusiness(rechnungen as (Rechnung & { firmaId?: string })[]);
     zahlungen = nurBusiness(zahlungen); merkposten = nurBusiness(merkposten); planposten = nurBusiness(planposten);
   }

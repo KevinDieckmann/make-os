@@ -6,12 +6,13 @@
 // Haushalt und Probeläufe schreiben nie in die echte Aufgabenliste.
 
 import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
-import { finanzOrtAus, istGesellschaft } from '@/lib/einheiten';
+import { finanzOrtAus, gehoertZuPrivat, istGesellschaft } from '@/lib/einheiten';
 import { ladeHaushalt } from './speicher';
 import { heuteBerlin } from './monat';
 
-const spaceVon = (einheit: string | undefined) => (einheit === 'privat' ? 'privat' : 'business') as 'privat' | 'business';
-/** Aufgaben-Space eines Belegs (29.09.): privat → Privat, eine Gesellschaft → ihr Space, sonst KD Ventures. */
+/** Bereich eines Belegs: Privat und Privat-Einheiten (05.10.: Selbstständigkeit, `gehoertZuPrivat`) → privat, sonst Business. */
+const spaceVon = (einheit: string | undefined) => (einheit === 'privat' || gehoertZuPrivat(finanzOrtAus(einheit)) ? 'privat' : 'business') as 'privat' | 'business';
+/** Aufgaben-Space eines Belegs (29.09.): privat → Privat, eine Gesellschaft → ihr Space (die Selbstständigkeit: ihr Space unter Privat), sonst KD Ventures. */
 const spaceIdVon = (einheit: string | undefined): string => {
   if (einheit === 'privat') return 'privat';
   const g = finanzOrtAus(einheit);

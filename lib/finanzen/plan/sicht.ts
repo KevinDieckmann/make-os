@@ -28,6 +28,7 @@ import type { Steuern } from '@/lib/finanzen/steuern';
 import { HAND_FELDER, zelleTeile } from '@/lib/finanzen/handwerte';
 import { lies } from './operationen';
 import { darlehenBusinessAenderbar, darlehenFuerBusiness } from '@/lib/finanzen/darlehen';
+import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
 
 export type PlanSicht = 'privat' | 'business';
 export const PLAN_SICHTEN: PlanSicht[] = ['privat', 'business'];
@@ -46,8 +47,8 @@ export function wirksameSicht(recht: PlanSicht, anfrage: string | null | undefin
   return recht === 'business' || anfrage === 'business' ? 'business' : 'privat';
 }
 
-/** Business = nur die Gesellschaften (seit 05.10. ohne die Selbstständigkeit — sie gehört zu Privat). */
-const BUSINESS_EINHEITEN: Einheit[] = ['ug', 'kdv'];
+/** Business = nur die Gesellschaften (seit 05.10. ohne die Selbstständigkeit — sie gehört zu Privat; Zuordnung aus lib/einheiten.ts `BUSINESS_GESELLSCHAFTEN`). */
+const BUSINESS_EINHEITEN: Einheit[] = BUSINESS_GESELLSCHAFTEN.filter(g => g !== 'kdc');   // die Achse `kdc` ist hier fest privat (selbst, ab.*, Entnahme)
 const istBusinessEinheit = (e: unknown): boolean => typeof e === 'string' && (BUSINESS_EINHEITEN as string[]).includes(e);
 
 /** Planzeilen, die zum Business gehören (Sachkosten der Gesellschaften — die der Selbstständigkeit sind seit 05.10. privat). */

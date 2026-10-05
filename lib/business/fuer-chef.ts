@@ -8,13 +8,13 @@ import { SCOPES, SAEULEN_TEXT, KENNZAHL, type Scope } from './register';
 import { ladeRoh, bestandFuer, businessSchreibStand } from './speicher';
 import { berechne, type BusinessIndex, type KennzahlStand } from './index';
 import { schwellenText } from './text';
-import { GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
+import { BUSINESS_GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
 
 export interface ChefHinweis { schwere: 'hoch' | 'mittel' | 'niedrig'; bereich: 'business' | 'daten'; text: string; quelle: string }
 
 let zwischen: { t: number; tag: string; stand: number; alle: Record<Scope, BusinessIndex>; abschlussFehlt: { firma: string; monat: string }[] } | null = null;
 
-/** Alle Sichten (Gesamt + die drei Gesellschaften, ohne Schnappschuss) — eine Minute zwischengespeichert. */
+/** Alle Sichten (Gesamt + die Business-Gesellschaften, ohne Schnappschuss; seit 05.10. ohne die Selbstständigkeit) — eine Minute zwischengespeichert. */
 export async function sichtenFuerChef(heute = localDay()) {
   if (zwischen && zwischen.tag === heute && zwischen.stand === businessSchreibStand() && Date.now() - zwischen.t < 60_000) return zwischen;
   const roh = await ladeRoh(heute);
@@ -23,7 +23,7 @@ export async function sichtenFuerChef(heute = localDay()) {
   const d = new Date(`${heute}T12:00:00`); d.setDate(1); d.setMonth(d.getMonth() - 1);
   const vormonat = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   // Die MAKE Innovation GmbH wird erst angemahnt, wenn sie überhaupt Abschlüsse führt (wie die Gesamtsicht, messen.ts).
-  const pflicht = GESELLSCHAFTEN.filter(f => f !== 'ug' || roh.abschluesse.some(a => a.firma === 'ug'));
+  const pflicht = BUSINESS_GESELLSCHAFTEN.filter(f => f !== 'ug' || roh.abschluesse.some(a => a.firma === 'ug'));
   const abschlussFehlt = pflicht
     .filter(f => !roh.abschluesse.some(a => a.firma === f && a.monat === vormonat) && !(f === 'kdc' && roh.grundlageMonate.some(m => m.monat === vormonat)))
     .map(firma => ({ firma, monat: vormonat }));
@@ -31,7 +31,7 @@ export async function sichtenFuerChef(heute = localDay()) {
   return zwischen;
 }
 
-const FIRMA: Record<string, string> = { gesamt: 'Gesamt', ...Object.fromEntries(GESELLSCHAFTEN.map(g => [g, finanzOrtName(g)])) };
+const FIRMA: Record<string, string> = { gesamt: 'Gesamt', ...Object.fromEntries(BUSINESS_GESELLSCHAFTEN.map(g => [g, finanzOrtName(g)])) };
 const kurz = (k: KennzahlStand) => ({ kennzahl: k.label, wert: k.anzeige, ampel: k.ampel, schwellen: schwellenText(k), quelle: k.quelle });
 
 /** Der Block im Datenpaket des Head of Finance + seine Hinweise. */
@@ -53,7 +53,7 @@ export async function businessFuerChef(heute = localDay()): Promise<{ block: Rec
   const block = {
     erklaerung: `Business-Index mit eigenen Zahlen: ${SAEULEN_TEXT}. Punkte je Kennzahl: rote Schwelle 20, grüne 100. Eine Säule zählt ab 40 % gemessener Kennzahlen.`,
     gesamt: { index: g.index, label: g.label, abdeckung_prozent: Math.round(g.abdeckung * 100), groesster_hebel: g.hebel?.label ?? null },
-    je_firma: Object.fromEntries(GESELLSCHAFTEN.map(f => [FIRMA[f], { index: alle[f].index, label: alle[f].label }])),
+    je_firma: Object.fromEntries(BUSINESS_GESELLSCHAFTEN.map(f => [FIRMA[f], { index: alle[f].index, label: alle[f].label }])),
     saeulen: g.saeulen.map(s => ({ saeule: s.label, score: s.zuDuenn ? null : s.score, gemessen: `${s.kennzahlen.filter(k => k.gemessen).length}/${s.kennzahlen.length}` })),
     finanzielle_gesundheit: g.saeulen.find(s => s.id === 'fh')!.kennzahlen.filter(k => k.gemessen).map(kurz),
     rot: g.saeulen.flatMap(s => s.kennzahlen.filter(k => k.ampel === 'rot').map(kurz)),

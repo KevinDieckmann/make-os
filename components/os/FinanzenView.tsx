@@ -61,12 +61,13 @@ export function FinanzenView() {
   // Reiter je Space (26.09. abends, Kevin: „im Business nur Business, im Privat nur Privat“). „Gesamt“ ist die Brücke und steht in beiden.
   // Finanzplanung: in beiden Bereichen die KOMPLETTE Planung (Kevin 04.10. spät: „im Business meine Planung haben“) — der Bereich wählt nur
   // Szenario, Ansicht und Kennzahlen; was ein Konto ohne Privatzugang sieht, entscheidet der Server.
-  const imPrivat = sicht === 'privat' || ((sicht === 'gesamt' || sicht === 'finanzplanung') && p.get('space') === 'privat');
+  // Steuern (05.10.): auch unter Privat — dort mit der Selbstständigkeit (gemeinsame Einkommensteuer); unter Business nur die Gesellschaften.
+  const imPrivat = sicht === 'privat' || ((sicht === 'gesamt' || sicht === 'finanzplanung' || sicht === 'steuern') && p.get('space') === 'privat');
   const planung = { id: 'finanzplanung' as Sicht, label: 'Finanzplanung' };
   const liste = !zugang
     ? [{ id: 'business' as Sicht, label: 'Business' }, ...(planZugang ? [planung] : []), chef]
     : imPrivat
-      ? [{ id: 'privat' as Sicht, label: 'Privat' }, planung, { id: 'gesamt' as Sicht, label: 'Gesamt' }]
+      ? [{ id: 'privat' as Sicht, label: 'Privat' }, planung, ...(inhaber ? [{ id: 'steuern' as Sicht, label: 'Steuern' }] : []), { id: 'gesamt' as Sicht, label: 'Gesamt' }]
       : [{ id: 'business' as Sicht, label: 'Business' }, planung, ...(inhaber ? [{ id: 'steuern' as Sicht, label: 'Steuern' }] : []), { id: 'gesamt' as Sicht, label: 'Gesamt' }, chef];
 
   return (
@@ -74,7 +75,7 @@ export function FinanzenView() {
       {/* Eine wischbare Leiste (Standard-Baustein) — am Handy steht der Inhalt gleich darunter, der Kopf bleibt klein. */}
       {zugang !== null && (
         <nav aria-label="Zahlen" className="ui-reiter-zeile">
-          <Reiter ariaLabel="Sicht der Zahlen" liste={liste} aktiv={sicht} onWahl={s => setze({ s, space: s === 'gesamt' || s === 'finanzplanung' ? (imPrivat ? 'privat' : 'business') : null, t: null, k: null, f: null, monat: null, kat: null, q: null, u: null, zeile: null, sz: null, feld: null, steuern: null })} />
+          <Reiter ariaLabel="Sicht der Zahlen" liste={liste} aktiv={sicht} onWahl={s => setze({ s, space: s === 'gesamt' || s === 'finanzplanung' || s === 'steuern' ? (imPrivat ? 'privat' : 'business') : null, t: null, k: null, f: null, monat: null, kat: null, q: null, u: null, zeile: null, sz: null, feld: null, steuern: null })} />
         </nav>
       )}
       {zugang === null && sicht === 'privat' ? null
@@ -82,7 +83,7 @@ export function FinanzenView() {
         : sicht === 'finanzplanung' ? (zugang || planZugang ? <Finanzplan key={imPrivat && zugang ? 'privat' : 'business'} bereich={imPrivat && zugang ? 'privat' : 'business'} eingebettet /> : null)
         : sicht === 'gesamt' ? <GesamtView />
         : sicht === 'chef' ? <FinanzchefView />
-        : sicht === 'steuern' ? <SteuernView />
+        : sicht === 'steuern' ? <SteuernView key={imPrivat ? 'privat' : 'business'} bereich={imPrivat ? 'privat' : 'business'} />
         : inhaber ? <BusinessCockpit eingebettet darunter={<ZahlenBusiness ohneStreifen />} />
         : inhaber === false ? <ZahlenBusiness /> : null}
     </Seite>

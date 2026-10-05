@@ -57,7 +57,8 @@ export const WEG = {
     q('/os/finanzen', { s: 'privat', t: t && t !== 'uebersicht' ? t : undefined, ...filter }),
   /** Privat-Übersicht mit dem Privat-Index (#index) bzw. der Rücklage (#ruecklage). */
   privatIndex: (abschnitt: 'index' | 'ruecklage' = 'index', k?: string) => q('/os/finanzen', { s: 'privat', k }, abschnitt),
-  steuern: (abschnitt?: 'fristen' | 'ruecklage' | 'ust' | 'uebergabe') => q('/os/finanzen', { s: 'steuern' }, abschnitt),
+  /** Steuern (05.10.: auch unter Privat — `space=privat` zeigt Privat und die Selbstständigkeit, ohne bzw. `business` nur die Gesellschaften). */
+  steuern: (abschnitt?: 'fristen' | 'ruecklage' | 'ust' | 'uebergabe', space?: 'privat' | 'business') => q('/os/finanzen', { s: 'steuern', space: space === 'privat' ? 'privat' : undefined }, abschnitt),
   gesamt: () => q('/os/finanzen', { s: 'gesamt' }),
   chef: () => q('/os/finanzen', { s: 'chef' }),
   /** Finanzplanung (04.10.): Reiter unter Finanzen › Privat (alles) bzw. › Business (nur Gesellschaften); `u` = Unterseite. Weitere Parameter: `finanzplanAdresse`. */

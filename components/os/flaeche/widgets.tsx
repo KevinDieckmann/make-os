@@ -44,8 +44,8 @@ import type { Routine as PlanungsRoutine } from '@/lib/planung/typen';
 import { WhoopImport } from '../WhoopImport';
 import { EinheitMarke } from '../aufgaben/Einheit';
 import type { Task } from '@/types/tasks';
-import { EINHEIT_OHNE, passtEinheitFilter } from '@/lib/aufgaben/einheit';
-import { KERN_EINHEITEN_NAMEN, gesellschaftAusEinheit } from '@/lib/einheiten';
+import { EINHEIT_OHNE, einheitErlaubt, passtEinheitFilter } from '@/lib/aufgaben/einheit';
+import { BUSINESS_EINHEITEN_NAMEN, BUSINESS_GESELLSCHAFTEN, KERN_EINHEITEN_NAMEN, bereichVon, gesellschaftAusEinheit } from '@/lib/einheiten';
 import { sonstigeProjektId, einheitVonSpace } from '@/lib/aufgaben/struktur';
 import { spaceAusFlaeche } from '@/lib/flaeche/space';
 
@@ -98,7 +98,8 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
   const n = num(e.anzahl, 8), nur = str(e.nur, 'dran'), sp = str(e.space, spaceAusFlaeche(seite)), eh = str(e.einheit, 'alle');
   // Heute sieht beides (Kevin 26.09.); ein Widget kann auf einen Space begrenzt sein —
   // und im Business auf eine Einheit (27.09.): dann zählen nur Business-Aufgaben dieser Einheit.
-  const passtEh = (t: Task) => eh === 'alle' || (spaceVonAufgabe(t) === 'business' && passtEinheitFilter(t.einheit, eh === 'ohne' ? EINHEIT_OHNE : eh));
+  // 05.10.: eine Einheit tragen auch die Firmen-Spaces unter Privat (Selbstständigkeit) — `einheitErlaubt` statt „nur Business“.
+  const passtEh = (t: Task) => eh === 'alle' || (einheitErlaubt(t) && passtEinheitFilter(t.einheit, eh === 'ohne' ? EINHEIT_OHNE : eh));
   // Unteraufgaben (28.09. abends) nur, wenn sie dran sind (fällig/kritisch) — in „alle offenen“ zählt die Aufgabe selbst.
   // Abgebrochene sind nicht offen (29.09.); wer noch auf eine andere Aufgabe wartet, heißt „wartet“, nicht „überfällig“ (#36).
   const offen = state.tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled' && (sp === 'alle' || spaceVonAufgabe(t) === sp) && passtEh(t) && (!t.parentId || nur !== 'alle'));
@@ -109,9 +110,12 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
     const p = parseSchnell(neu.trim(), state.projects, undefined, personen); if (!p.title) return;
     // @Name aus dem Team, eine Verantwortliche (29.09., F4): ohne @ = ich, „@beide“ = ich + die anderen beteiligt.
     const z = schnellZustaendigkeit(p, personLesen() || personen[0]?.speicher || 'kevin', personen.map(x => x.speicher));
-    const space = sp === 'privat' || sp === 'business' ? sp : eh !== 'alle' ? 'business' : undefined;
-    // Aufgaben-Space (28.09. abends): Privat → privat; Business → die Firma der Einheit, sonst KD Ventures; ohne Projekt → „Sonstige“.
-    const spaceId = space === 'privat' ? 'privat' : space === 'business' ? (gesellschaftAusEinheit(eh) ?? 'kdv') : undefined;
+    // Die Firma der Einheit bestimmt auch den Bereich (05.10.: Selbstständigkeit → Privat, `bereichVon`).
+    const ehFirma = eh !== 'alle' && eh !== 'ohne' ? gesellschaftAusEinheit(eh) : undefined;
+    const space = sp === 'privat' || sp === 'business' ? sp : eh !== 'alle' ? (ehFirma ? bereichVon(ehFirma) : 'business') : undefined;
+    // Aufgaben-Space (28.09. abends): Privat → privat (bzw. die Privat-Einheit der gewählten Einheit); Business → die Firma der Einheit,
+    // sonst die erste Business-Gesellschaft; ohne Projekt → „Sonstige“.
+    const spaceId = space === 'privat' ? (ehFirma && bereichVon(ehFirma) === 'privat' ? ehFirma : 'privat') : space === 'business' ? (ehFirma ?? BUSINESS_GESELLSCHAFTEN[0] ?? 'kdv') : undefined;
     const einheit = spaceId ? einheitVonSpace(spaceId) : undefined;
     dispatch({ type: 'ADD_TASK', payload: { projectId: p.projectId ?? (spaceId ? sonstigeProjektId(spaceId) : state.projects[0]?.id ?? ''), ...(space ? { space } : {}), ...(spaceId ? { spaceId } : {}), ...(einheit ? { einheit } : {}), title: p.title, description: '', status: 'todo', priority: p.priority, assignee: z.assignee as Owner, ...(z.beteiligte ? { beteiligte: z.beteiligte } : {}), tags: [], subTasks: [], dependencies: [], sortOrder: 0, dueDate: p.dueDate ?? heute } });
     setNeu('');
@@ -126,7 +130,7 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
           <Zeile key={t.id} onClick={() => router.push(WEG.aufgabe(t.id))}
             links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
             titel={t.title}
-            unter={[sp === 'alle' ? <span key="s" style={{ color: SPACE_FARBE[spaceVonAufgabe(t)] }}>{SPACE_LABEL[spaceVonAufgabe(t)]}</span> : null, eh === 'alle' && t.einheit && spaceVonAufgabe(t) === 'business' ? <EinheitMarke key="e" name={t.einheit} /> : null, projekt(t.projectId), wartetAuf(t, state.tasks).length ? `wartet auf „${wartetAuf(t, state.tasks)[0].title}“` : t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : t.dueDate ? `bis ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : ''].filter(Boolean).map((x, k, arr) => <span key={k}>{x}{k < arr.length - 1 ? ' · ' : ''}</span>)}
+            unter={[sp === 'alle' ? <span key="s" style={{ color: SPACE_FARBE[spaceVonAufgabe(t)] }}>{SPACE_LABEL[spaceVonAufgabe(t)]}</span> : null, eh === 'alle' && t.einheit && einheitErlaubt(t) ? <EinheitMarke key="e" name={t.einheit} /> : null, projekt(t.projectId), wartetAuf(t, state.tasks).length ? `wartet auf „${wartetAuf(t, state.tasks)[0].title}“` : t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : t.dueDate ? `bis ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : ''].filter(Boolean).map((x, k, arr) => <span key={k}>{x}{k < arr.length - 1 ? ' · ' : ''}</span>)}
             rechts={<Punkt farbe={prioFarbe(t.priority)} />} />
         ))}
       </Liste>
@@ -647,7 +651,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'fokus', label: 'Wochenfokus', beschreibung: 'Worauf es diese Woche ankommt', bereich: 'Tag', breite: 2, voreinstellung: { horizont: 'woche' } },
   { art: 'zeit', label: 'Zeit & Fokus · Privat', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'zeit', label: 'Zeit & Fokus · Business', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2, voreinstellung: { space: 'business' } },
-  { art: 'zeit', label: 'Zeit je Einheit', beschreibung: `Bewusste Business-Zeit je ${KERN_EINHEITEN_NAMEN.join(' · ')} · ohne Einheit`, bereich: 'Business', breite: 2, voreinstellung: { space: 'business', nach: 'einheit' } },
+  { art: 'zeit', label: 'Zeit je Einheit', beschreibung: `Bewusste Business-Zeit je ${BUSINESS_EINHEITEN_NAMEN.join(' · ')} · ohne Einheit`, bereich: 'Business', breite: 2, voreinstellung: { space: 'business', nach: 'einheit' } },
   { art: 'koerper', label: 'Körper', beschreibung: WIDGETS.koerper.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen', label: 'Routinen & Streak', beschreibung: WIDGETS.routinen.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen-heute', label: 'Routinen heute · Privat', beschreibung: 'Heute fällige private Routinen — eigene und gemeinsame, abhakbar', bereich: 'Tag', breite: 2, voreinstellung: { space: 'privat' } },

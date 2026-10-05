@@ -231,7 +231,7 @@ describe('8 · Deal gewonnen → Mandat hebt die Lifecycle-Phase', () => {
 });
 
 describe('10 · Übergabe-Aufgaben tragen die Einheit', () => {
-  it('Deal mit Gesellschaft → Aufgabe mit Einheit im Business', async () => {
+  it('Deal mit Gesellschaft → Aufgabe mit Einheit (Selbstständigkeit: seit 05.10. im Privat-Bereich)', async () => {
     const { uebergeben } = await import('@/lib/crm/uebergabe');
     const { einheitAusGesellschaft } = await import('@/lib/einheiten');
     const r = await uebergeben({ art: 'chance', id: 'ch-uebergabe', an: 'malin' }, 'kevin');
@@ -239,7 +239,8 @@ describe('10 · Übergabe-Aufgaben tragen die Einheit', () => {
     const tasks = (await db.loadJson<{ tasks: Record<string, unknown>[] }>('tasks'))?.tasks ?? [];
     const t = tasks.find(x => String(x.title).includes('Übergabe-Deal'))!;
     expect(einheitAusGesellschaft('kdc')).toBeTruthy();
-    expect(t).toMatchObject({ space: 'business', einheit: einheitAusGesellschaft('kdc'), assignee: 'malin' });
+    // 05.10.: die Selbstständigkeit gehört zu Privat — Space `kdc` bleibt, der Bereich ist privat, die Einheit bleibt (vorher space 'business').
+    expect(t).toMatchObject({ space: 'privat', einheit: einheitAusGesellschaft('kdc'), assignee: 'malin' });
     // 28.09. spät: CRM-Bezug + Space der Gesellschaft; der Link bleibt in der Beschreibung.
     expect(t).toMatchObject({ spaceId: 'kdc', bezug: { dealId: 'ch-uebergabe' } });
     expect(String(t.description)).toContain('ch-uebergabe');

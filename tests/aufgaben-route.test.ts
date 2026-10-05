@@ -120,7 +120,8 @@ describe('Schreiben', () => {
     const g = await gespeichert();
     expect(g.tasks.map(t => t.id).sort()).toEqual(['a1', 'a2', 'a2--s1', 'b1']);
     expect(g.tasks.find(t => t.id === 'a1')!.spaceId).toBe('kdv');
-    expect(g.tasks.find(t => t.id === 'b1')).toMatchObject({ spaceId: 'kdc', projectId: 'proj-kdm', einheit: 'Selbstständigkeit', space: 'business' });
+    // 05.10.: der Space der Selbstständigkeit steht im Privat-Bereich — `space` wird privat, Space und Einheit bleiben (vorher space 'business').
+    expect(g.tasks.find(t => t.id === 'b1')).toMatchObject({ spaceId: 'kdc', projectId: 'proj-kdm', einheit: 'Selbstständigkeit', space: 'privat' });
     expect(g.listen).toEqual([]);
   });
   it('Struktur: Projekt, Listen, eigener Status in einem Aufruf; Aufgabe mit eigenem Status trägt dessen Grundstatus', async () => {

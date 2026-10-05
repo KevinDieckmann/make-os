@@ -18,7 +18,7 @@ import { FARBE as C, TYP, LEUCHT, SCHRIFT, RAND } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leerzustand, Leer, Reiter, Pillen, Feldzeile, eingabe, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import { zufallsUuid } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
-import { istGesellschaft } from '@/lib/einheiten';
+import { istGesellschaft, gehoertZuPrivat } from '@/lib/einheiten';
 import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
 import {
   GES_STATUS, RECHTSFORMEN, istArchiviertStatus, statusLabel, rechtsformLabel, strukturBaum, gesellschafterKurz, verweiseAnzahl, verweiseSatz,
@@ -174,7 +174,8 @@ function Uebersicht({ daten, sicht, oeffne, neuLaden }: { daten: RegisterDaten; 
         {!liste.length ? leer : (
           <Liste>
             {liste.map(g => {
-              const unter = [rechtsformLabel(g.rechtsform), g.sitz || g.ort, gesellschafterKurz(g, name)].filter(Boolean).join(' · ') || 'Steckbrief noch leer';
+              // 05.10.: eine Privat-Einheit (Selbstständigkeit) steht im Register (Struktur), gehört aber zum Privat-Bereich — sagen.
+              const unter = [rechtsformLabel(g.rechtsform), g.sitz || g.ort, gesellschafterKurz(g, name), gehoertZuPrivat(g.id) ? 'gehört zu Privat' : null].filter(Boolean).join(' · ') || 'Steckbrief noch leer';
               const fest = istGesellschaft(g.id);
               const zeile = <Zeile titel={g.name} unter={unter} onClick={() => oeffne(g.id)} rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>{!!g.luecken.length && sicht === 'liste' && <span style={klein} title={`Fehlt: ${g.luecken.join(', ')}`}>{g.luecken.length} offen</span>}<StatusPille s={g.status} /><span aria-hidden style={{ color: C.inkLeise }}>›</span></span>} />;
               if (sicht === 'papierkorb') {

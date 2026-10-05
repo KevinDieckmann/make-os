@@ -82,9 +82,10 @@ describe('Einheit — Filter und Vorgabe (rein)', () => {
     expect(passtEinheitFilter('Kunden', EINHEIT_OHNE)).toBe(false);
     expect(passtEinheitFilter(undefined, 'KD Ventures')).toBe(false);
   });
-  it('Pillen: Alle · drei Kerneinheiten · genutzte eigene · ohne — mit Anzahl', () => {
+  it('Pillen: Alle · Business-Einheiten · genutzte eigene · ohne — mit Anzahl', () => {
     const o = einheitFilterOptionen(['KD Ventures', 'KD Ventures', 'Kunden', undefined, 'Pilot GmbH'], ['Selbstständigkeit', 'KD Ventures', 'MAKE Innovation GmbH', 'Kunden', 'Leerlauf']);
-    expect(o.map(x => x.label)).toEqual(['Alle', 'Selbstständigkeit', 'KD Ventures', 'MAKE Innovation GmbH', 'Kunden', 'Pilot GmbH', 'ohne Einheit']);
+    // 05.10.: die Selbstständigkeit gehört zu Privat — keine Business-Pille mehr (vorher: 'Alle', 'Selbstständigkeit', 'KD Ventures', …).
+    expect(o.map(x => x.label)).toEqual(['Alle', 'KD Ventures', 'MAKE Innovation GmbH', 'Kunden', 'Pilot GmbH', 'ohne Einheit']);
     expect(o.find(x => x.id === 'KD Ventures')?.anzahl).toBe(2);
     expect(o.find(x => x.id === EINHEIT_OHNE)?.anzahl).toBe(1);
     expect(o[0].anzahl).toBe(5);

@@ -253,7 +253,7 @@ export interface Auswertung {
   frei: { gesamt: number; ug: number; kdv: number; kdc: number; privat: number; privatLuft: number; privatKonten: number; kontenFehlen: number;
     /** 05.10.: Business = nur die Gesellschaften (MAKE + KD Ventures); Privat-Bereich = Privat + Selbstständigkeit. gesamt = business + privatBereich. */
     business: number; privatBereich: number };
-  /** Monate ab jetzt, bis UG frei bzw. Privat unter null fällt — null: im Planzeitraum nicht. */
+  /** Monate ab jetzt, bis UG frei bzw. Privat (seit 05.10. mit dem freien Geld der Selbstständigkeit) unter null fällt — null: im Planzeitraum nicht. */
   runway: { ug: number | null; privat: number | null; horizont: number };
   ziele: { imPlan: number; knapp: number; gekippt: number; gesamt: number; staende: ZielStand[] };
   /** Laufende UG-Kosten je Monat (Personal inkl. Stellen, Sach, Holding) — so viel Umsatz braucht die UG mindestens. */
@@ -278,7 +278,10 @@ export function auswertung(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], kdc
   const privat = pk.summe + p0.luft;
   const runwayAb = (test: (m: number) => boolean): number | null => { for (let m = m0; m <= N; m++) if (test(m)) return m - m0; return null; };
   let kum = 0; const privatKonto: number[] = [];
-  for (let m = 1; m <= N; m++) { if (m >= m0) kum += pr[m - 1].luft; privatKonto[m - 1] = pk.summe + kum; }
+  // Runway Privat (05.10., Kevin: „Runway Privat zählt das Konto der Selbstständigkeit mit“): Privatkonten + aufgelaufene Luft + das, was
+  // auf dem Konto der Selbstständigkeit frei ist (Konto − Steuerrücklage − offene USt, `frei` der Achse) — die Selbstständigkeit gehört zu
+  // Privat. Die Entnahme zählt nicht doppelt: sie verlässt das Konto der Selbstständigkeit und kommt als Luft bei Privat an.
+  for (let m = 1; m <= N; m++) { if (m >= m0) kum += pr[m - 1].luft; privatKonto[m - 1] = pk.summe + kum + (kdc?.[m - 1]?.frei ?? 0); }
   const runway = {
     ug: runwayAb(m => ug[m - 1].frei < -0.5),
     privat: runwayAb(m => privatKonto[m - 1] < -0.5),

@@ -68,7 +68,10 @@ describe('Umzug Selbstständigkeit → Privat: Zahlen vorher → nachher', () =>
     it(`${ps}, ohne die gewollten Änderungen (Gehalt nicht in der ESt, kein Abschluss, kein Altdarlehen): alles bit-genau wie vorher`, () => {
       const g = lauf(planAltNeutral(), ps), v = vorher.neutral[ps];
       gleich(json(g.ug), v.ug, 'ug'); gleich(json(g.kdc), v.kdc, 'kdc'); gleich(json(g.pr), v.pr, 'pr');
-      gleich(g.gruppe, v.gruppe, 'gruppe'); gleich(json(g.kz), v.kz, 'kz'); gleich(json(g.aw), v.aw, 'aw');
+      gleich(g.gruppe, v.gruppe, 'gruppe'); gleich(json(g.kz), v.kz, 'kz');
+      // Runway Privat zählt seit 05.10. (selbst-privat) das freie Geld der Selbstständigkeit mit — gewollt anders (tests/selbst-privat.test.ts).
+      const ohneRunwayPrivat = (aw: unknown) => { const a = json(aw) as { runway: Record<string, unknown> }; return { ...a, runway: { ...a.runway, privat: 'gewollt anders' } }; };
+      gleich(ohneRunwayPrivat(g.aw), ohneRunwayPrivat(v.aw), 'aw');
     });
     it(`${ps}, voller Alt-Plan: MAKE, KD Ventures und Privat exakt wie vorher — die Selbstständigkeit ändert nur Steuer, Darlehen und was daraus folgt`, () => {
       const g = lauf(planAltMigration(), ps), v = vorher.voll[ps];
@@ -90,7 +93,10 @@ describe('Umzug Selbstständigkeit → Privat: Zahlen vorher → nachher', () =>
       for (const k of Object.keys(v.kz).filter(k => k !== 'kdcFreiDez28' && k !== 'gruppeDez28')) expect((g.kz as unknown as Record<string, number>)[k], k).toBeCloseTo(v.kz[k], 9);
       const awv = v.aw as { frei: Record<string, number>; runway: unknown; mindestumsatz: unknown; uebergaenge: unknown; steuer: Record<string, number> };
       for (const k of ['ug', 'kdv', 'privat', 'privatLuft', 'privatKonten']) expect(g.aw.frei[k as 'ug'], `frei.${k}`).toBeCloseTo(awv.frei[k], 9);
-      expect(g.aw.runway).toEqual(awv.runway); gleich(json(g.aw.mindestumsatz), awv.mindestumsatz); gleich(json(g.aw.uebergaenge), awv.uebergaenge);
+      // Runway Privat zählt seit 05.10. (selbst-privat, Kevin: „Runway Privat zählt das Konto der Selbstständigkeit mit“) das freie Geld der
+      // Selbstständigkeit mit — gewollt anders, geprüft in tests/selbst-privat.test.ts; MAKE-Runway und Horizont bleiben bit-genau.
+      const rv = awv.runway as { ug: unknown; horizont: unknown };
+      expect(g.aw.runway.ug).toEqual(rv.ug); expect(g.aw.runway.horizont).toEqual(rv.horizont); gleich(json(g.aw.mindestumsatz), awv.mindestumsatz); gleich(json(g.aw.uebergaenge), awv.uebergaenge);
       expect(g.aw.steuer.ruecklage).toBeCloseTo(awv.steuer.ruecklage, 9); expect(g.aw.steuer.ruecklageKdv).toBeCloseTo(awv.steuer.ruecklageKdv, 9);
     });
   }

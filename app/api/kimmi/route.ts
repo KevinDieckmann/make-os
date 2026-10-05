@@ -27,7 +27,7 @@ import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/zoe/gedaechtnis';
 import { innenAdresse } from '@/lib/innen';
 import { ARTEN as BAU_ARTEN, BEREICHE as BAU_BEREICHE } from '@/lib/bauplan/form';
-import { KENNZAHLEN as BUSINESS_KENNZAHLEN, SAEULEN_TEXT } from '@/lib/business/register';
+import { KENNZAHLEN as BUSINESS_KENNZAHLEN, SAEULEN_TEXT, SCOPES as BUSINESS_SCOPES } from '@/lib/business/register';
 import { GESUNDHEIT_KENNZAHLEN } from '@/lib/gesundheit/index';
 import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { FREMD_WERKZEUGE, FREMD_AGENTEN, SELBST_GEKAPSELT } from '@/lib/zoe/fremd';
@@ -59,7 +59,7 @@ async function liveContext(person: string, bereiche: Record<KiBereich, boolean>)
 function systemPrompt(extra: string | undefined, live: string | undefined, fortsetzung: boolean, gedaechtnis: string, person: string, brain = '', space: 'privat' | 'business' | null = null): string {
   return [
     // Der aktive Space (26.09.): Privat oder Business — ZOE legt Neues dort ab und antwortet aus dieser Sicht.
-    space ? `AKTIVER SPACE: ${space === 'privat' ? 'PRIVAT (Familie, Gesundheit, Haushalt, private Ziele)' : 'BUSINESS (KD Ventures, Consulting, KEMARIS, Markttraktion, Mandate)'}. Der Nutzer schaut gerade auf diesen Space. Aufgaben und Ziele, die du anlegst, gehören in diesen Space (Feld „space“), außer er sagt ausdrücklich etwas anderes. Antworte aus dieser Sicht; Dinge aus dem anderen Space erwähnst du nur, wenn sie hier wichtig sind.` : '',
+    space ? `AKTIVER SPACE: ${space === 'privat' ? 'PRIVAT (Familie, Gesundheit, Haushalt, private Ziele)' : `BUSINESS (KD Ventures, ${UG_NAME}, KEMARIS, Markttraktion, Mandate — die Selbstständigkeit/Consulting gehört seit 05.10. zu PRIVAT)`}. Der Nutzer schaut gerade auf diesen Space. Aufgaben und Ziele, die du anlegst, gehören in diesen Space (Feld „space“), außer er sagt ausdrücklich etwas anderes. Antworte aus dieser Sicht; Dinge aus dem anderen Space erwähnst du nur, wenn sie hier wichtig sind.` : '',
     // 24.09.: Die Identität kommt live aus Kevins Obsidian-Brain (AGENTS.md §5).
     brain ? `DEINE GRUNDLAGE AUS KEVINS OBSIDIAN-BRAIN — gilt für jede Antwort. Die Regeln dieser Software unten gehen bei Widerspruch vor (Werkzeuge, Freigaben, Live-Zahlen).\n\n${brain}` : '',
     fortsetzung
@@ -197,7 +197,7 @@ export async function POST(req: Request) {
           wer: { type: 'string', enum: ['kevin', 'malin', 'both'], description: 'Wer macht es (optional, Standard Kevin)' },
           faellig: { type: 'string', description: 'Fällig am, YYYY-MM-DD (optional)' },
           space: { type: 'string', enum: ['privat', 'business'], description: 'Privat oder Business — Standard: der aktive Space' },
-          einheit: { type: 'string', description: `Nur bei Business: zu welcher Einheit die Aufgabe gehört — „Selbstständigkeit“ (Kevin Dieckmann Consulting), „KD Ventures“ (die Beteiligungsgesellschaft) oder „${UG_NAME}“; auch eine eigene Einheit des Haushalts (z. B. „Kunden“). Nur setzen, wenn es aus dem Gespräch klar ist; bei Privat weglassen.` },
+          einheit: { type: 'string', description: `Zu welcher Einheit die Aufgabe gehört — im Business „KD Ventures“ (die Beteiligungsgesellschaft) oder „${UG_NAME}“, auch eine eigene Einheit des Haushalts (z. B. „Kunden“). „Selbstständigkeit“ (Kevin Dieckmann Consulting) gehört seit 05.10. zu PRIVAT: dann space „privat“ und einheit „Selbstständigkeit“. Nur setzen, wenn es aus dem Gespräch klar ist; sonst bei Privat weglassen.` },
         },
         required: ['title'],
       },
@@ -302,7 +302,8 @@ export async function POST(req: Request) {
       input_schema: {
         type: 'object',
         properties: {
-          sicht: { type: 'string', enum: ['gesamt', 'kdc', 'kdv', 'ug'], description: `gesamt (Standard), kdc = Selbstständigkeit (Kevin Dieckmann Consulting), kdv = KD Ventures, ug = ${UG_NAME}` },
+          // Seit 05.10. nur der Business-Bereich (die Selbstständigkeit gehört zu Privat, lib/einheiten.ts `bereichVon`).
+          sicht: { type: 'string', enum: BUSINESS_SCOPES.map(x => x.id), description: `${BUSINESS_SCOPES.map(x => `${x.id} = ${x.label}`).join(', ')} — die Selbstständigkeit gehört zu Privat und steht nicht im Business-Index` },
           kennzahl: { type: 'string', enum: BUSINESS_KENNZAHLEN.map(k => k.id), description: BUSINESS_KENNZAHLEN.map(k => `${k.id} = ${k.label}`).join('; ') },
         },
       },
@@ -329,7 +330,7 @@ export async function POST(req: Request) {
       input_schema: {
         type: 'object',
         properties: {
-          firma: { type: 'string', enum: ['kdc', 'kdv', 'ug'], description: `kdc = Selbstständigkeit (Consulting), kdv = KD Ventures, ug = ${UG_NAME}` },
+          firma: { type: 'string', enum: BUSINESS_SCOPES.filter(x => x.id !== 'gesamt').map(x => x.id), description: `${BUSINESS_SCOPES.filter(x => x.id !== 'gesamt').map(x => `${x.id} = ${x.label}`).join(', ')} (nur Business; die Selbstständigkeit gehört zu Privat)` },
           monat: { type: 'string', description: 'YYYY-MM (ein abgeschlossener Monat)' },
           umsatz: { type: 'number' }, kosten: { type: 'number', description: 'Kosten gesamt' }, personal: { type: 'number', description: 'davon Personal' },
           marketingVertrieb: { type: 'number', description: 'davon Marketing & Vertrieb' }, afa: { type: 'number', description: 'Abschreibungen' },

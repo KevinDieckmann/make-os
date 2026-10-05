@@ -6,13 +6,13 @@ import { describe, it, expect } from 'vitest';
 import { vorschau, monatlicheLast, nurBusiness, businessFirmen, istPrivatPosten } from '../lib/make-one/liquiditaet';
 
 const heute = '2026-09-24';
-const firmen = [{ id: 'kdc', name: 'Beispiel Consulting', kontostand: 1000, stand: null }, { id: 'privat', name: 'Privat', kontostand: 500, stand: null }];
+const firmen = [{ id: 'kdv', name: 'Beispiel Holding', kontostand: 1000, stand: null }, { id: 'privat', name: 'Privat', kontostand: 500, stand: null }];
 const zahlungen = [
-  { id: 'z1', an: 'Lieferant Beispiel', titel: 'x', betrag: 100, status: 'offen', faellig: '2026-09-26', firmaId: 'kdc' },
+  { id: 'z1', an: 'Lieferant Beispiel', titel: 'x', betrag: 100, status: 'offen', faellig: '2026-09-26', firmaId: 'kdv' },
   { id: 'z2', an: 'Vermieter Beispiel', titel: 'x', betrag: 900, status: 'offen', faellig: '2026-09-20', firmaId: 'privat' },
 ];
 const merkposten = [
-  { id: 'm1', titel: 'Kredit Firma', betrag: -5000, art: 'kredit', notiz: 'Rate 100 €/Monat', firmaId: 'kdc' },
+  { id: 'm1', titel: 'Kredit Firma', betrag: -5000, art: 'kredit', notiz: 'Rate 100 €/Monat', firmaId: 'kdv' },
   { id: 'm2', titel: 'Kredit privat', betrag: -3000, art: 'kredit', notiz: 'Rate 90 €/Monat', firmaId: 'privat' },
 ];
 
@@ -22,7 +22,10 @@ describe('Entflechtung Privat / Business', () => {
     expect(istPrivatPosten({ kategorie: 'privat' })).toBe(true);
     expect(istPrivatPosten({})).toBe(false);
     expect(nurBusiness([...zahlungen]).map(z => z.id)).toEqual(['z1']);
-    expect(businessFirmen(firmen).map(f => f.id)).toEqual(['kdc']);
+    expect(businessFirmen(firmen).map(f => f.id)).toEqual(['kdv']);
+    // 05.10.: die Selbstständigkeit gehört zu Privat — ihr Konto und ihre Posten zählen im Business-Bereich nicht (ohne Firma: weiter Business).
+    expect(businessFirmen([...firmen, { id: 'kdc', name: 'Selbstständigkeit', kontostand: 7, stand: null }]).map(f => f.id)).toEqual(['kdv']);
+    expect(nurBusiness([{ id: 'a', firmaId: 'kdc' }, { id: 'b' }, { id: 'c', firmaId: 'kemaris' }]).map(x => x.id)).toEqual(['b', 'c']);
   });
   it('Business-Vorschau: ohne privaten Kontostand, ohne private Zahlung, ohne private Rate', () => {
     const v = vorschau(firmen, [], zahlungen, merkposten, heute, 4, false, [], 'real', undefined, true);

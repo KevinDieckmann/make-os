@@ -13,10 +13,10 @@
 //   · Status: vier feste (Offen · In Arbeit · Wartend · Erledigt) + eigene je Space mit Grundstatus (`basis`).
 
 import type { Task, TaskStatus, Project, TasksState, AufgabenListe, AufgabenStatus, AufgabenSpaceId } from '@/types/tasks';
-import { einheitAusGesellschaft, FINANZ_ORTE, istFinanzOrt, istGesellschaft, finanzOrtAus } from '@/lib/einheiten';
+import { bereichVon, einheitAusGesellschaft, FINANZ_ORTE, istFinanzOrt, istGesellschaft, finanzOrtAus } from '@/lib/einheiten';
 import { EINHEIT_FARBE } from './einheit';
 import { orgVon } from '@/lib/make-one/organisation-data';
-import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
+import { spaceBereich, type SpaceId } from '@/lib/make-one/space-regeln';
 import { abhaengigAngleichen } from './abhaengig';
 import { beideAufloesen, anlegerinVon } from './zustaendig';
 import { berlinerTag, istTag } from './wiederholung';
@@ -44,10 +44,14 @@ export const MANDANT_EINHEIT = 'Kunden';
 export const PRIVAT_FARBE = '#D9A45B';
 export const MANDANT_FARBE = '#6E7EF5';
 
-/** Die festen Spaces = die eine Liste aus lib/einheiten.ts (Privat · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH). */
+/**
+ * Die festen Spaces = die eine Liste aus lib/einheiten.ts (Privat · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH). Der Bereich
+ * kommt seit 05.10. aus `bereichVon` (Kevin: „Ja, überall unter Privat“): die Selbstständigkeit ist ein Firmen-Space IM PRIVAT-BEREICH —
+ * Kennung `kdc` und alle Aufgaben darin bleiben, sie erscheinen nur unter Privat statt unter Business.
+ */
 export const FESTE_SPACES: readonly AufgabenSpace[] = FINANZ_ORTE.map(o => (o.id === 'privat'
   ? { id: o.id, label: o.label, bereich: 'privat' as const, art: 'privat' as const, farbe: PRIVAT_FARBE }
-  : { id: o.id, label: o.label, bereich: 'business' as const, art: 'firma' as const, farbe: EINHEIT_FARBE[o.id] }));
+  : { id: o.id, label: o.label, bereich: spaceBereich(o.id), art: 'firma' as const, farbe: EINHEIT_FARBE[o.id] }));
 
 const MANDANT_ID = /^m-[a-z0-9][a-z0-9-]{1,63}$/;
 export const istMandantSpace = (id: unknown): id is string => typeof id === 'string' && MANDANT_ID.test(id);
@@ -57,7 +61,8 @@ export function istSpaceId(v: unknown): v is AufgabenSpaceId {
 }
 export const mandantSpaceId = (firmaId: string): string => `${MANDANT_PRAEFIX}${firmaId}`;
 export const firmaVonSpace = (id: string | undefined | null): string | undefined => (istMandantSpace(id) ? id.slice(MANDANT_PRAEFIX.length) : undefined);
-export const bereichVonSpace = (id: string | undefined | null): SpaceId => (id === 'privat' ? 'privat' : 'business');
+/** Bereich eines Space (05.10.: Privat-Einheiten wie die Selbstständigkeit → privat; Business-Firmen und Mandanten → business). */
+export const bereichVonSpace = (id: string | undefined | null): SpaceId => (id ? spaceBereich(id) : 'business');
 
 /** Die Einheit eines Space: Kerneinheit bzw. „Kunden“; Privat keine. */
 export function einheitVonSpace(id: string | undefined | null): string | undefined {
@@ -177,8 +182,13 @@ export function spaceFuerAltProjekt(p: Pick<Project, 'id' | 'title' | 'descripti
  * (Kerneinheit), dann die Selbstständigkeit per Ort, dann der Space des Projekts, sonst KD Ventures.
  */
 export function spaceFuerAltAufgabe(t: Pick<Task, 'id' | 'title' | 'description' | 'projectId' | 'space' | 'einheit'>, projekt: Pick<Project, 'spaceId'> | undefined, orgs: Record<string, string> = {}): AufgabenSpaceId {
-  if (spaceVonAufgabe(t, orgs) === 'privat') return 'privat';
+  // Eine Privat-Einheit als Einheit (05.10.: „Selbstständigkeit“, auch mit `space: 'privat'` — ZOE legt sie so an) → ihr Firmen-Space,
+  // der im Privat-Bereich steht. Vor dem 05.10. trug eine Privat-Aufgabe nie eine Einheit; für den Altbestand ändert sich nichts.
   const g = finanzOrtAus(t.einheit);
+  if (g && istGesellschaft(g) && bereichVon(g) === 'privat') return g;
+  // Nur „privat“ im engen Sinn führt in den Space Privat (Abweichung `space` bzw. Ort „privat“) — eine Selbstständigkeits-Aufgabe
+  // bekommt weiter den Space `kdc` (der seit 05.10. selbst im Privat-Bereich steht), nie den Space Privat.
+  if ((t.space ?? (orgVon(t, orgs) === 'privat' ? 'privat' : 'business')) === 'privat') return 'privat';
   if (g && istGesellschaft(g)) return g;
   if (orgVon(t, orgs) === 'kdc') return 'kdc';
   if (projekt?.spaceId && projekt.spaceId !== 'privat') return projekt.spaceId;

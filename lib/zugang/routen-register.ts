@@ -249,7 +249,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'haushalt/sicherung': r('GET', 'finanz-privat', 'Sicherung der Haushaltsfinanzen je Haushalt.'),
   'haushalt/umzug': r('GET,POST', 'finanz-privat', 'Umzug der Haushaltsfinanzen je Haushalt.'),
   'privat': r('GET,POST', 'finanz-privat', 'Privat-Finanzen je Haushalt.'),
-  'steuern': r('GET,POST', 'haushalt', 'Steuerfristen der Firmen des Haushalts.'),
+  'steuern': r('GET,POST', 'haushalt', 'Steuerfristen der Firmen des Haushalts; seit 05.10. mit Bereichs-Sicht: ?space=business oder finanzRecht business → nur die Business-Gesellschaften (Selbstständigkeit und Privat serverseitig gefiltert, Schreiben darauf 403).'),
   'business': r('GET,POST', 'haushalt', 'Business-Index des Haushalts.'),
   'controlling/analyse': r('POST', 'haushalt', 'Controlling-Agent über das Business des Haushalts.'),
   'gesellschaften': r('GET,POST,PATCH', 'haushalt', 'Gesellschafts-Register des Haushalts.'),

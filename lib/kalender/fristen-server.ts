@@ -35,11 +35,13 @@ export async function vertragsFristenLesen(): Promise<NonNullable<Quellen['vertr
  * kopiert keine eigene Regel und keine Beträge; abgehakte Fristen gelten als erledigt.
  */
 export async function steuerFristenLesen(heute: string): Promise<NonNullable<Quellen['steuer']>> {
-  const { ladeSteuerEinstellungen, STEUERN } = await import('@/lib/steuern/speicher');
+  const { ladeSteuerEinstellungenMitPlan: ladeSteuerEinstellungen, STEUERN } = await import('@/lib/steuern/speicher');
   const { fristen: steuerFristen, EINHEIT_LABEL } = await import('@/lib/steuern/rechnen');
+  const { gehoertZuPrivat } = await import('@/lib/einheiten');
   const [e, d] = await Promise.all([ladeSteuerEinstellungen(), loadJson<{ abgehakt?: Record<string, unknown> }>(STEUERN)]);
   return steuerFristen(e, heute, d?.abgehakt ?? {}).filter(f => !f.erledigt)
-    .map(f => ({ datum: f.datum, art: `${f.einheit}-${f.art}`, titel: `${EINHEIT_LABEL[f.einheit]}: ${f.titel}`, hinweis: f.hinweis, ...(f.einheit === 'privat' ? { privat: true } : {}) }));
+    // Privat sind auch die Fristen der Privat-Einheiten (05.10.: Selbstständigkeit, `gehoertZuPrivat`) — Konten ohne Privat-Recht sehen sie nicht.
+    .map(f => ({ datum: f.datum, art: `${f.einheit}-${f.art}`, titel: `${EINHEIT_LABEL[f.einheit]}: ${f.titel}`, hinweis: f.hinweis, ...(gehoertZuPrivat(f.einheit) ? { privat: true } : {}) }));
 }
 
 /** Die Quellen der Fristen (ohne Rechnung). Das Fenster wählt `fristen` (Steuer-Vorlage: −30 … +365 Tage ab heute). */

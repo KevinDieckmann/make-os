@@ -15,6 +15,7 @@
 // ohne Beträge, mit Hinweis. Zahlungen/Eingänge auf Wochenende/Feiertag tragen den Hinweis auf den nächsten Werktag.
 
 import { WEG } from '@/lib/wege';
+import { bereichVonFirma } from '@/lib/einheiten';
 import { mandatFristen, type MandatFristFelder } from '@/lib/crm/kunden';
 import { reviewZaehlt } from '@/lib/crm/review';
 import { werktagAbOder } from '@/lib/zeit/kalender-kern';
@@ -45,8 +46,8 @@ export interface Quellen {
   meilensteine?: { id: string; titel: string; faellig?: string; erledigt?: boolean; bereich?: string; space?: string; wartetAuf?: string[] }[];
   etappen?: { id: string; name: string; ziel?: string }[];
   mandate?: ({ id: string; kunde: string; titel?: string; status?: string; naechstesReview?: string; zustaendig?: string } & Partial<MandatFristFelder>)[];
-  zahlungen?: { id: string; an?: string; titel?: string; betrag?: number; status?: string; faellig?: string }[];
-  rechnungen?: { id: string; kunde?: string; titel?: string; betrag?: number; status?: string; faellig?: string }[];
+  zahlungen?: { id: string; an?: string; titel?: string; betrag?: number; status?: string; faellig?: string; firmaId?: string }[];
+  rechnungen?: { id: string; kunde?: string; titel?: string; betrag?: number; status?: string; faellig?: string; firmaId?: string }[];
   /** K6a (Verbindung 7): gesetzliche Frist offener Betroffenenanträge (Art. 12 Abs. 3 DSGVO) — ohne Namen im Titel. */
   antraege?: { id: string; art: string; frist: string; status: string }[];
   /** K6a: „gültig bis“ gestellter Angebote. */
@@ -83,12 +84,12 @@ export function fristen(q: Quellen, von: string, bis: string, heute: string = vo
   }
   for (const z of q.zahlungen ?? []) {
     if (z.status === 'bezahlt' || z.status === 'erledigt') continue;
-    if (imZeitraum(z.faellig, von, bis)) raus.push({ id: `za-${z.id}`, art: 'zahlung', tag: z.faellig.slice(0, 10), titel: `Zahlung: ${z.an || z.titel || '—'}`, unter: [z.titel && z.an ? z.titel : undefined, eur(z.betrag), werktagHinweis(z.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: WEG.zahlung(z.id), bereich: 'business' });
+    if (imZeitraum(z.faellig, von, bis)) raus.push({ id: `za-${z.id}`, art: 'zahlung', tag: z.faellig.slice(0, 10), titel: `Zahlung: ${z.an || z.titel || '—'}`, unter: [z.titel && z.an ? z.titel : undefined, eur(z.betrag), werktagHinweis(z.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: WEG.zahlung(z.id), bereich: bereichVonFirma(z.firmaId) });   // 05.10.: Selbstständigkeit → Privat
   }
   for (const r of q.rechnungen ?? []) {
     // Nur gestellte Rechnungen: da wartet Geld. Geplante sind noch keine Frist.
     if (r.status && r.status !== 'gestellt' && r.status !== 'offen') continue;
-    if (imZeitraum(r.faellig, von, bis)) raus.push({ id: `re-${r.id}`, art: 'eingang', tag: r.faellig.slice(0, 10), titel: `Zahlungseingang: ${r.kunde || r.titel || '—'}`, unter: [r.titel && r.kunde ? r.titel : undefined, eur(r.betrag), werktagHinweis(r.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: WEG.rechnung(r.id), bereich: 'business' });
+    if (imZeitraum(r.faellig, von, bis)) raus.push({ id: `re-${r.id}`, art: 'eingang', tag: r.faellig.slice(0, 10), titel: `Zahlungseingang: ${r.kunde || r.titel || '—'}`, unter: [r.titel && r.kunde ? r.titel : undefined, eur(r.betrag), werktagHinweis(r.faellig.slice(0, 10))].filter(Boolean).join(' · ') || undefined, href: WEG.rechnung(r.id), bereich: bereichVonFirma(r.firmaId) });
   }
   // CRM-Fristen (K6a, Verbindung 4/7): DSGVO-Anträge (ohne Namen), Angebote „gültig bis“, Deals „Entscheidung bis“.
   for (const a of q.antraege ?? []) {

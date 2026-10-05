@@ -16,7 +16,7 @@ import { eur } from '@/lib/make-one/finance-data';
 import { vorschau, businessFirmen, nurBusiness, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT } from './ui';
-import { GESELLSCHAFTEN, finanzOrtKurz, finanzOrtName, istFinanzOrt, istGesellschaft } from '@/lib/einheiten';
+import { BUSINESS_GESELLSCHAFTEN, finanzOrtAus, finanzOrtKurz, finanzOrtName, gehoertZuPrivat, istBusinessGesellschaft, istFinanzOrt } from '@/lib/einheiten';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { IndexStreifen, STREIFEN } from './business/IndexStreifen';
 
@@ -44,8 +44,9 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
   useEffect(() => {
     fetch('/api/state/finanzplan').then(r => r.json()).then(setPlan).catch(() => {});
     fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
-    // Nur Firmen-Buchungen: ohne „ort“ gilt eine Buchung als privat (Regel der Buchungs-Route).
-    fetch('/api/state/buchungen').then(r => r.json()).then(d => setBuchungen((d.buchungen ?? []).filter((b: Buchung) => istGesellschaft(b.ort)))).catch(() => {});
+    // Nur Firmen-Buchungen des Business: ohne „ort“ gilt eine Buchung als privat (Regel der Buchungs-Route), die der Selbstständigkeit
+    // gehören seit 05.10. zu Privat (`istBusinessGesellschaft`).
+    fetch('/api/state/buchungen').then(r => r.json()).then(d => setBuchungen((d.buchungen ?? []).filter((b: Buchung) => istBusinessGesellschaft(b.ort)))).catch(() => {});
     fetch('/api/state/grundlage').then(r => r.json()).then(setGrund).catch(() => {});
   }, []);
 
@@ -161,12 +162,12 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
  */
 function BelegeBusiness() {
   const [liste, setListe] = useState<{ id: string; art: string; bezeichnung: string; empfaenger: string | null; betrag: number | null; faellig_am: string | null; einheit: string; erledigt: boolean }[] | null>(null);
-  useEffect(() => { fetch('/api/haushalt').then(r => (r.ok ? r.json() : null)).then(d => setListe(d?.ok ? (d.belege ?? []).filter((b: { einheit: string; erledigt: boolean }) => b.einheit !== 'privat' && !b.erledigt) : null)).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/haushalt').then(r => (r.ok ? r.json() : null)).then(d => setListe(d?.ok ? (d.belege ?? []).filter((b: { einheit: string; erledigt: boolean }) => !gehoertZuPrivat(finanzOrtAus(b.einheit) ?? b.einheit) && !b.erledigt) : null)).catch(() => {}); }, []);
   if (!liste) return null;
   const heute = localDay();
   return (
     <Karte i={5}>
-      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen?s=steuern#ust" style={{ color: C.inkLeise, textDecoration: 'none' }}>erledigen ›</Link>}>Rechnungen & Belege · {GESELLSCHAFTEN.map(finanzOrtKurz).join(' / ')}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen?s=steuern#ust" style={{ color: C.inkLeise, textDecoration: 'none' }}>erledigen ›</Link>}>Rechnungen & Belege · {BUSINESS_GESELLSCHAFTEN.map(finanzOrtKurz).join(' / ')}</Ueberschrift>
       <Liste>
         {!liste.length && <Leer>Nichts offen.</Leer>}
         {liste.slice(0, 8).map(b => (

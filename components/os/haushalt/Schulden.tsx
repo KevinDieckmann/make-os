@@ -16,7 +16,7 @@ import type { Beleg, Schuld } from '@/lib/finanzen/haushalt/typen';
 import { eur, zuCent, EINHEITEN, EINHEIT_NAME } from '@/lib/finanzen/haushalt/typen';
 import { laufzeit, schuldenfreiAm, sondertilgung } from '@/lib/finanzen/haushalt/schulden';
 import { datumDe, tagPlus, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
-import { KERN_EINHEITEN_NAMEN } from '@/lib/einheiten';
+import { BUSINESS_EINHEITEN_NAMEN, gehoertZuPrivat } from '@/lib/einheiten';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, Spalten, Spalte, LEUCHT, Hinweis as HinweisKarte } from '../ui';
 import { Dialog, Feld, Hinweis, Kachel, Kacheln, Leiste, auswahl, type HaushaltDaten, type Op, type PatchErgebnis } from './gemeinsam';
 
@@ -46,8 +46,10 @@ export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
   const [zeilenFehler, setZeilenFehler] = useState<Record<string, string>>({});
   const [laeuft, setLaeuft] = useState<Record<string, boolean>>({});
 
-  const belege = useMemo(() => h.belege.filter(b => b.einheit === 'privat').map(b => (vorab[b.id] ? { ...b, ...vorab[b.id] } : b)), [h.belege, vorab]);
-  const anderswo = h.belege.filter(b => b.einheit !== 'privat' && !b.erledigt).length;
+  // Privat und die Privat-Einheiten (05.10.: die Selbstständigkeit gehört zu Privat, `gehoertZuPrivat`) — Belege der Business-Gesellschaften
+  // stehen unter Business.
+  const belege = useMemo(() => h.belege.filter(b => gehoertZuPrivat(b.einheit)).map(b => (vorab[b.id] ? { ...b, ...vorab[b.id] } : b)), [h.belege, vorab]);
+  const anderswo = h.belege.filter(b => !gehoertZuPrivat(b.einheit) && !b.erledigt).length;
   const offeneR = useMemo(() => belege.filter(b => b.art === 'rechnung' && !b.erledigt).sort(sortierung), [belege]);
   const bezahlteR = useMemo(() => belege.filter(b => b.art === 'rechnung' && b.erledigt).sort((a, b) => String(b.bezahlt_am ?? '').localeCompare(String(a.bezahlt_am ?? ''))), [belege]);
   const ueber = offeneR.filter(b => b.faellig_am && b.faellig_am < heute);
@@ -190,7 +192,7 @@ export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
                 {fehlerzeile(b, true)}
               </div>
             ))}
-            {anderswo > 0 && <Hinweis>{anderswo} weitere offene Rechnung{anderswo === 1 ? '' : 'en'} oder Belege gehören zu einer Gesellschaft ({KERN_EINHEITEN_NAMEN.join(' · ')}) — die stehen unter Business.</Hinweis>}
+            {anderswo > 0 && <Hinweis>{anderswo} weitere offene Rechnung{anderswo === 1 ? '' : 'en'} oder Belege gehören zu einer Gesellschaft ({BUSINESS_EINHEITEN_NAMEN.join(' · ')}) — die stehen unter Business.</Hinweis>}
           </Karte>
         </Spalte>
       </Spalten>

@@ -15,12 +15,12 @@ import { useSpeichern } from '@/hooks/useSpeichern';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import {
-  vorschau, KATEGORIEN, KATEGORIE, SZENARIO_LABEL,
+  vorschau, businessFirmen, KATEGORIEN, KATEGORIE, SZENARIO_LABEL,
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, auswahl, LEUCHT, FadenLinie } from './ui';
-import { finanzOrtName, istGesellschaft } from '@/lib/einheiten';
+import { bereichVonFirma, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 import { mandatAusPlanposten, PLANPOSTEN_MANDAT } from '@/lib/crm/mandant-link';
 import { MandantLink } from './crm/MandantLink';
 import { useMandate } from './zeit/useMandate';
@@ -185,6 +185,8 @@ export function LiquiditaetView() {
         <Zeile onClick={() => setOffen(auf ? null : p.id)} aktiv={auf} titel={p.titel} unter={RHYTHMUS_LABEL[p.rhythmus]}
           rechts={<>
             {!p.sicher && <Chip farbe={LEUCHT.achtung}>unsicher</Chip>}
+            {/* 05.10.: Posten einer Privat-Einheit (Selbstständigkeit) bleiben hier sichtbar und änderbar, zählen aber nicht in die Business-Vorschau. */}
+            {p.firmaId && p.firmaId !== 'privat' && bereichVonFirma(p.firmaId) === 'privat' && <Chip farbe={LEUCHT.geld}>Privat · {istGesellschaft(p.firmaId) ? finanzOrtName(p.firmaId) : p.firmaId}</Chip>}
             <span style={{ ...geld, color: raus ? LEUCHT.achtung : LEUCHT.gut }}>{raus ? '−' : '+'}{eur(Math.abs(p.betrag))}</span>
             <span style={{ ...leise, width: 12, textAlign: 'center' }}>{auf ? '▾' : '▸'}</span>
           </>} />
@@ -258,8 +260,8 @@ export function LiquiditaetView() {
           {/* Der Verlauf */}
           <Karte i={0} ton={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}>
             <Ueberschrift farbe={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}
-              rechts={plan && plan.firmen.length > 1 ? (
-                <Segmente liste={['alle', ...plan.firmen.map(f => f.id)].map(fid => ({ id: fid, label: fid === 'alle' ? 'Alle Konten' : istGesellschaft(fid) ? finanzOrtName(fid) : plan.firmen.find(f => f.id === fid)?.name.split(' ')[0] ?? fid }))}
+              rechts={plan && businessFirmen(plan.firmen).length > 1 ? (
+                <Segmente liste={['alle', ...businessFirmen(plan.firmen).map(f => f.id)].map(fid => ({ id: fid, label: fid === 'alle' ? 'Alle Konten' : istGesellschaft(fid) ? finanzOrtName(fid) : plan.firmen.find(f => f.id === fid)?.name.split(' ')[0] ?? fid }))}
                   aktiv={nurFirma} onWahl={setNurFirma} />
               ) : undefined}>
               Verlauf · {wochen} Wochen

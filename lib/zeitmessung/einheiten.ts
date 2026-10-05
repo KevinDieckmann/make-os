@@ -15,7 +15,7 @@
 // die Einheit der Aufgabe später gesetzt, zählt sie rückwirkend); der am Block
 // gespeicherte Wert ist Rückfall (Aufgabe gelöscht) bzw. die direkte Wahl.
 
-import { KERN_EINHEITEN_NAMEN, einheitName } from '@/lib/einheiten';
+import { BUSINESS_EINHEITEN_NAMEN, einheitName } from '@/lib/einheiten';
 import { sauberEinheit } from '@/lib/planung/einheiten';
 import { aufgabeEinheit, EINHEIT_OHNE } from '@/lib/aufgaben/einheit';
 import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
@@ -160,7 +160,10 @@ export function bloeckeImZeitraum(d: ZeitDatei, von: string, bis: string): Fokus
   return aus;
 }
 
-/** Blöcke → Zeilen: die drei Kerneinheiten immer, eigene nur mit Zeit (nach Zeit), „ohne Einheit“ immer zuletzt. */
+/**
+ * Blöcke → Zeilen: die Business-Einheiten immer (seit 05.10. ohne die Selbstständigkeit — sie gehört zu Privat; ältere Blöcke mit ihr
+ * zählen weiter als eigene Zeile), eigene nur mit Zeit (nach Zeit), „ohne Einheit“ immer zuletzt.
+ */
 export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<string, AufgabeKurz>, mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null): EinheitAuswertung {
   const topf = new Map<string, { label: string; sek: number; bloecke: number; aufgaben: Map<string, number>; ohneAufgabeSek: number }>();
   const holen = (id: string, label: string) => {
@@ -168,7 +171,7 @@ export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<
     if (!t) { t = { label, sek: 0, bloecke: 0, aufgaben: new Map(), ohneAufgabeSek: 0 }; topf.set(id, t); }
     return t;
   };
-  for (const n of KERN_EINHEITEN_NAMEN) holen(norm(n), n);
+  for (const n of BUSINESS_EINHEITEN_NAMEN) holen(norm(n), n);
   holen(EINHEIT_OHNE, 'ohne Einheit');
   let sek = 0;
   for (const b of bloecke) {
@@ -178,7 +181,7 @@ export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<
     if (b.aufgabeId) t.aufgaben.set(b.aufgabeId, (t.aufgaben.get(b.aufgabeId) ?? 0) + b.sek);
     else t.ohneAufgabeSek += b.sek;
   }
-  const kern = new Set(KERN_EINHEITEN_NAMEN.map(norm));
+  const kern = new Set(BUSINESS_EINHEITEN_NAMEN.map(norm));
   const zeile = (id: string, art: EinheitZeile['art']): EinheitZeile => {
     const t = topf.get(id)!;
     const top = [...t.aufgaben.entries()]
@@ -191,7 +194,7 @@ export function auswerten(bloecke: readonly FokusBlock[], aufgaben: ReadonlyMap<
     .sort((a, b) => topf.get(b)!.sek - topf.get(a)!.sek || a.localeCompare(b));
   return {
     sek, bloecke: bloecke.length,
-    zeilen: [...KERN_EINHEITEN_NAMEN.map(n => zeile(norm(n), 'kern')), ...eigene.map(k => zeile(k, 'eigen')), zeile(EINHEIT_OHNE, 'ohne')],
+    zeilen: [...BUSINESS_EINHEITEN_NAMEN.map(n => zeile(norm(n), 'kern')), ...eigene.map(k => zeile(k, 'eigen')), zeile(EINHEIT_OHNE, 'ohne')],
   };
 }
 

@@ -4,10 +4,13 @@
 // eine Quelle mit Aufgaben und CRM) · Kunden, weitere frei
 // anlegbar. Die Liste gehört dem Haushalt (Speicher planung-einheiten--<h>).
 // Privat kennt keine Einheiten.
+// 05.10. (Kevin: „Selbstständigkeit raus aus Business“): vorbelegt sind nur die Business-Einheiten (`BUSINESS_EINHEITEN_NAMEN`,
+// lib/einheiten.ts — unsere Instanz: KD Ventures · MAKE Innovation GmbH) · Kunden. Gespeicherte Einträge mit „Selbstständigkeit“
+// bleiben, wie sie sind (der Name wird weiter erkannt); angeboten wird er im Business nicht mehr.
 
-import { KERN_EINHEITEN_NAMEN, einheitName } from '@/lib/einheiten';
+import { BUSINESS_EINHEITEN_NAMEN, einheitName } from '@/lib/einheiten';
 
-export const EINHEITEN_STANDARD: readonly string[] = [...KERN_EINHEITEN_NAMEN, 'Kunden'];
+export const EINHEITEN_STANDARD: readonly string[] = [...BUSINESS_EINHEITEN_NAMEN, 'Kunden'];
 export const EINHEIT_MIN = 2;
 export const EINHEIT_MAX = 40;
 export const EINHEITEN_HOECHSTENS = 30;

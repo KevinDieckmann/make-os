@@ -11,11 +11,12 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, feld, LEUCHT, useRueckfrage } from '../ui';
 import { Pillen } from '../crm/teile';
 import type { Monatsabschluss } from '@/lib/business/messen';
-import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
+import { KERN_EINHEITEN, istBusinessGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
-// Die eine Einheitenliste (28.09.): Selbstständigkeit · KD Ventures · MAKE Innovation GmbH.
+// Die eine Einheitenliste (28.09.), seit 05.10. nur der Business-Bereich (`bereichVon`, unsere Instanz: KD Ventures · MAKE Innovation
+// GmbH) — die Selbstständigkeit gehört zu Privat; ihre gespeicherten Abschlüsse bleiben im Speicher, der Server liefert sie hier nicht aus.
 type Firma = Gesellschaftskennung;
-const FIRMA_LISTE: { id: Firma; label: string }[] = KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label }));
+const FIRMA_LISTE: { id: Firma; label: string }[] = KERN_EINHEITEN.filter(e => istBusinessGesellschaft(e.id)).map(e => ({ id: e.id, label: e.label }));
 const leer = (): Record<Firma, string> => ({ kdc: '', kdv: '', ug: '' });
 const jeFirma = (f: (id: Firma) => string): Record<Firma, string> => ({ kdc: f('kdc'), kdv: f('kdv'), ug: f('ug') });
 const FELDER: { id: keyof Monatsabschluss; label: string; hilfe: string; tage?: boolean }[] = [
@@ -38,7 +39,7 @@ async function senden(body: Record<string, unknown>) {
 }
 
 export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: Monatsabschluss[]; onGespeichert: () => void }) {
-  const [firma, setFirma] = useState<Firma>('kdc');
+  const [firma, setFirma] = useState<Firma>(FIRMA_LISTE[0]?.id ?? 'kdv');
   const { bestaetigen, dialog } = useRueckfrage();
   const [monat, setMonat] = useState(letzterMonat());
   const [werte, setWerte] = useState<Record<string, string>>({});
@@ -146,7 +147,7 @@ export function EinstellungenKarte({ einstellungen, onGespeichert }: { einstellu
               <input inputMode="decimal" value={fte[f.id]} onChange={e => setFte({ ...fte, [f.id]: e.target.value })} placeholder="z. B. 1,5" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} /></label>
             <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Jahresumsatzziel (€)</span>
               <input inputMode="decimal" value={ziele[f.id]} onChange={e => setZiele({ ...ziele, [f.id]: e.target.value })} placeholder="z. B. 250.000" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', fontVariantNumeric: 'tabular-nums' }} /></label>
-            {f.id === 'kdc' && <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Kapazität (Beratertage/Monat)</span>
+            {<label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Kapazität (Beratertage/Monat)</span>
               <input inputMode="decimal" value={kap[f.id]} onChange={e => setKap({ ...kap, [f.id]: e.target.value })} placeholder="z. B. 15" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', fontVariantNumeric: 'tabular-nums' }} /></label>}
           </div>
         ))}

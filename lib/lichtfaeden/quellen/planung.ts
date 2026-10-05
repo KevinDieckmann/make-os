@@ -10,7 +10,7 @@
 // Farbe je Ziel: NICHT hier gerechnet — sie kommt fertig vom Server (`farbe`, lib/planung/ziel-farben-server.ts, über alle
 // Ziele des Haushalts), damit Lichtfäden, Ziel-Chips und Ziel-Bezug dieselbe Farbe zeigen.
 
-import type { SpaceId } from '@/lib/make-one/space-regeln';
+import { spaceBereich, type SpaceId } from '@/lib/make-one/space-regeln';
 import { meilensteinListeId, zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { WEG } from '@/lib/wege';
 import { nurIchBesitzer } from '@/lib/aufgaben/sicht';
@@ -53,7 +53,8 @@ export interface PlanungErgebnis {
 }
 
 const personVon = (v: string | undefined): string => (!v || v === 'both' || v === BEIDE ? BEIDE : v);
-const spaceAusAufgabe = (a: Pick<PlanungAufgabe, 'spaceId' | 'space'>): SpaceId => (a.spaceId ? (a.spaceId === 'privat' ? 'privat' : 'business') : a.space ?? 'business');
+// Bereich aus dem Aufgaben-Space (05.10.: die Selbstständigkeit steht unter Privat — `spaceBereich`, EINE Zuordnung).
+const spaceAusAufgabe = (a: Pick<PlanungAufgabe, 'spaceId' | 'space'>): SpaceId => (a.spaceId ? spaceBereich(a.spaceId) : a.space ?? 'business');
 const themaAusSpaceId = (spaceId: string | undefined): ThemaId => (spaceId?.startsWith('m-') ? 'mandate' : 'planung');
 
 /** Eigene Ziele einer Person (nicht der gemeinsame Bestand) sind privat: Knoten nur für sie, Stränge für andere „Belegt“. */
@@ -135,7 +136,7 @@ export function planungStraenge(d: PlanungDaten): PlanungErgebnis {
   for (const p of d.projekte) {
     const tag = tagAus(p.ende ?? p.dueDate);
     if (!tag || p.archived || p.geloeschtAm || p.archiviertAm || p.status === 'abgeschlossen') continue;
-    const space: SpaceId = p.spaceId ? (p.spaceId === 'privat' ? 'privat' : 'business') : p.category === 'business' ? 'business' : 'privat';
+    const space: SpaceId = p.spaceId ? spaceBereich(p.spaceId) : p.category === 'business' ? 'business' : 'privat';
     straenge.push({ id: `projekt:${p.id}`, quelle: 'projekt', titel: p.title, pfad: themaPfad(space, themaAusSpaceId(p.spaceId)), person: p.category === 'joint' || !p.owner ? BEIDE : personVon(p.owner), zeit: { tag }, gewicht: gewichtVon('projekt'), status: statusVon(false, tag, d.heute), link: p.spaceId ? WEG.aufgaben({ s: p.spaceId, p: p.id }) : WEG.aufgaben() });
   }
 

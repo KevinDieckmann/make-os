@@ -1,14 +1,16 @@
 // ─── Business-Index — messen (rein, getestet) ───────────────────────────────
-// Jede Kennzahl aus dem Bestand, getrennt nach Sicht (gesamt · Selbstständigkeit ·
-// KD Ventures · MAKE Innovation GmbH — lib/einheiten.ts, seit 28.09.). Privates zählt nie. Fehlt etwas, gibt es keinen Schätzwert,
-// sondern eine Messlücke.
+// Jede Kennzahl aus dem Bestand, getrennt nach Sicht (gesamt · KD Ventures · MAKE Innovation GmbH — lib/einheiten.ts, seit 28.09.;
+// seit 05.10. ohne die Selbstständigkeit: sie gehört zu Privat, `bereichVon`). Privates zählt nie. Fehlt etwas, gibt es keinen
+// Schätzwert, sondern eine Messlücke.
 //
 // Ist-Zahlen je Monat (Umsatz, Kosten, Personal …) in dieser Reihenfolge:
 //   1. Monatsabschluss (von euch eingetragen, je Firma) — die belastbarste Zahl
-//   2. Grundlage (V1-Export der Selbständigkeit) — nur für Consulting
+//   2. Grundlage (V1-Export der Selbständigkeit) — nur für Consulting, also nur, wenn die Selbstständigkeit im Business steht
+//      (unsere Instanz seit 05.10.: nein — dann trägt die Grundlage nichts mehr zum Business-Index bei)
 //   3. Controlling (Monatsumsatz/-kosten) — nur für die Gesamtsicht
 
 import type { Scope, Schwelle } from './register';
+import { KENNZAHL } from './register';
 import type { ZeitBild } from '@/lib/zeitmessung/modell';
 import { fzMessen } from '@/lib/zeitmessung/kennzahlen';
 import { kpMessen } from '@/lib/kapazitaet/kennzahlen';
@@ -22,7 +24,7 @@ import type { Mandat, Chance } from '@/lib/crm/typen';
 import { winRate, prognose, gesamtwert, wahrscheinlichkeit, OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { markttraktion } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
-import { finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
+import { BUSINESS_GESELLSCHAFTEN, bereichVonFirma, bereichVonGesellschaft, firmaFuerGesellschaft, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export interface Monatsabschluss {
   firma: Gesellschaftskennung;
@@ -96,22 +98,43 @@ const pz = (n: number) => `${zahl(n, 1)} %`;
 const firmenLabel = (id: string) => (istGesellschaft(id) ? finanzOrtName(id) : undefined);
 
 /**
- * Die Firmen einer Sicht. Gesamt = Selbstständigkeit + KD Ventures und die MAKE Innovation GmbH,
- * sobald sie einen Monatsabschluss hat (28.09.): „Gesamt vollständig“ heißt „alle Firmen
- * mit Abschluss im Monat“ — eine UG ohne jeden Abschluss darf die Gesamtsicht nicht
- * auf „nur 2 von 3 Firmen“ kippen (die Summen blieben sonst nicht gleich).
+ * Die Firmen einer Sicht. Gesamt = die Gesellschaften im Business-Bereich (`BUSINESS_GESELLSCHAFTEN`, unsere Instanz seit 05.10.:
+ * KD Ventures + MAKE; vorher auch die Selbstständigkeit), die MAKE Innovation GmbH erst, sobald sie einen Monatsabschluss hat
+ * (28.09.): „Gesamt vollständig“ heißt „alle Firmen mit Abschluss im Monat“ — eine GmbH ohne jeden Abschluss darf die Gesamtsicht
+ * nicht auf „nur 1 von 2 Firmen“ kippen (die Summen blieben sonst nicht gleich).
  */
 function firmenDer(b: Bestand): Gesellschaftskennung[] {
   if (b.scope !== 'gesamt') return [b.scope];
-  return b.abschluesse.some(a => a.firma === 'ug') ? ['kdc', 'kdv', 'ug'] : ['kdc', 'kdv'];
+  return BUSINESS_GESELLSCHAFTEN.filter(f => f !== 'ug' || b.abschluesse.some(a => a.firma === 'ug'));
 }
 
-/** Gehört ein Posten zu dieser Sicht? (Privates ist vorher schon raus.) Ohne Firma → gesamt und Consulting (ältere Einträge). */
-function inSicht(firmaId: string | undefined, scope: Scope): boolean {
-  if (scope === 'gesamt') return true;
-  return (firmaId ?? 'kdc') === scope;
+/**
+ * Die Firmen, deren Zahlen eine operative Kennzahl in dieser Sicht trägt (05.10.): je Firma die Firma selbst; in Gesamt die
+ * Business-Gesellschaften, die die Kennzahl nicht ausnimmt (`nichtFuer` — Auslastung/Tagessatz: nicht KD Ventures, nicht MAKE). So rechnet
+ * eine Instanz mit der Selbstständigkeit im Business wie vor dem 05.10. (Gesamt = Selbstständigkeit), unsere hat dafür keine Firma.
+ */
+function firmenFuerKennzahl(b: Bestand, id: string): Gesellschaftskennung[] {
+  if (b.scope !== 'gesamt') return [b.scope];
+  const aus = KENNZAHL[id]?.nichtFuer ?? [];
+  return BUSINESS_GESELLSCHAFTEN.filter(f => !aus.includes(f));
 }
-const gesellschaftInSicht = (g: string | undefined, scope: Scope) => scope === 'gesamt' || g === scope;
+const KEINE_FIRMA = 'Keine Daten: gilt für keine Gesellschaft im Business (die Selbstständigkeit mit ihren Beratertagen gehört zu Privat)';
+
+/** Die Firma, deren Ist-Zahlen der V1-Export (Grundlage) trägt — die Selbstständigkeit. Zählt nur, wenn sie in der Sicht steht. */
+const GRUNDLAGE_FIRMA: Gesellschaftskennung = 'kdc';
+
+/**
+ * Gehört ein Posten zu dieser Sicht? (Privates ist vorher schon raus.) Ohne Firma → der Rückfall `firmaFuerGesellschaft` (ältere
+ * Einträge waren Consulting). Gesamt = alles im Business-Bereich (seit 05.10. ohne die Selbstständigkeit, `bereichVonFirma`).
+ */
+function inSicht(firmaId: string | undefined, scope: Scope): boolean {
+  if (scope === 'gesamt') return bereichVonFirma(firmaId) === 'business';
+  return firmaFuerGesellschaft(firmaId) === scope;
+}
+/** CRM (Deals, Mandate): Gesamt = alles außer einer Privat-Einheit („offen“ bleibt im Business), sonst genau die Gesellschaft. */
+const gesellschaftInSicht = (g: string | undefined, scope: Scope) => (scope === 'gesamt' ? bereichVonGesellschaft(g) === 'business' : g === scope);
+/** Geschäftskonten der Sicht (ohne Privat und ohne Privat-Einheiten). */
+const kontenDerSicht = (b: Bestand) => businessFirmen(b.firmen).filter(f => (b.scope === 'gesamt' ? bereichVonFirma(f.id) === 'business' : f.id === b.scope));
 
 export interface IstMonat { monat: string; umsatz: number; kosten: number; personal?: number; marketingVertrieb?: number; afa?: number; fakturierteTage?: number; quelle: string }
 
@@ -128,7 +151,7 @@ export function istMonate(b: Bestand): IstMonat[] {
     const je = firmen.map(f => {
       const a = b.abschluesse.find(x => x.firma === f && x.monat === m && (x.umsatz != null || x.kosten != null));
       if (a) return { umsatz: a.umsatz ?? 0, kosten: a.kosten ?? 0, personal: a.personal, marketingVertrieb: a.marketingVertrieb, afa: a.afa, fakturierteTage: a.fakturierteTage, quelle: 'Monatsabschluss' };
-      if (f === 'kdc') { const g = b.grundlageMonate.find(x => x.monat === m); if (g) return { umsatz: g.umsatzNetto, kosten: g.kostenNetto, quelle: 'Grundlage' }; }
+      if (f === GRUNDLAGE_FIRMA) { const g = b.grundlageMonate.find(x => x.monat === m); if (g) return { umsatz: g.umsatzNetto, kosten: g.kostenNetto, quelle: 'Grundlage' }; }
       return null;
     });
     const da = je.filter((x): x is NonNullable<typeof x> => !!x);
@@ -149,7 +172,7 @@ export function istMonate(b: Bestand): IstMonat[] {
 const quellenText = (l: IstMonat[]) => `${l.length} Monat${l.length === 1 ? '' : 'e'} (${Array.from(new Set(l.flatMap(x => x.quelle.split(' + ')))).join(', ')})`;
 
 function kasse(b: Bestand): { betrag: number; konten: number } | null {
-  const k = businessFirmen(b.firmen).filter(f => (b.scope === 'gesamt' || f.id === b.scope) && typeof f.kontostand === 'number');
+  const k = kontenDerSicht(b).filter(f => typeof f.kontostand === 'number');
   return k.length ? { betrag: k.reduce((s, f) => s + (f.kontostand as number), 0), konten: k.length } : null;
 }
 
@@ -175,7 +198,7 @@ function wiederkehrendePosten(b: Bestand, kategorie?: string): Planposten[] {
 function wiederkehrendeKosten(b: Bestand): number | null {
   const l = wiederkehrendePosten(b);
   if (l.length) return l.reduce((s, p) => s + postenMonat(p), 0);
-  const g = b.scope === 'gesamt' ? Object.values(b.grundlageFixkosten).reduce<number>((s, x) => s + (x ?? 0), 0) : b.grundlageFixkosten[b.scope] ?? 0;
+  const g = b.scope === 'gesamt' ? BUSINESS_GESELLSCHAFTEN.reduce<number>((s, f) => s + (b.grundlageFixkosten[f] ?? 0), 0) : b.grundlageFixkosten[b.scope] ?? 0;
   return g > 0 ? g : null;
 }
 
@@ -222,7 +245,7 @@ function ampelVon(w: number, g: { gruen: number; rot: number }): Ampel {
 }
 
 function kontenDetails(b: Bestand): Detail[] {
-  return businessFirmen(b.firmen).filter(f => b.scope === 'gesamt' || f.id === b.scope).map(f => {
+  return kontenDerSicht(b).map(f => {
     const da = typeof f.kontostand === 'number';
     const alt = da && f.stand ? tageZwischen(f.stand, b.heute) : null;
     return {
@@ -281,7 +304,10 @@ export const MESSEN_MODELL: Record<string, (b: Bestand) => Messung> = {
       ] };
   },
   auslastung(b) {
-    const firmen: Gesellschaftskennung[] = b.scope === 'gesamt' ? ['kdc'] : [b.scope];
+    // Gesamt (05.10.): die Business-Gesellschaften, für die die Kennzahl gilt (`nichtFuer`) — vorher fest die Selbstständigkeit, die seit
+    // 05.10. zu Privat gehört. Gilt sie für keine (unsere Instanz: KD Ventures und MAKE sind ausgenommen), ehrlich „keine Daten“.
+    const firmen = firmenFuerKennzahl(b, 'auslastung');
+    if (!firmen.length) return { luecke: KEINE_FIRMA };
     const kap = firmen.reduce((s, f) => s + (b.kapazitaet?.[f] ?? 0), 0);
     if (!kap) return { luecke: 'Kapazität (verfügbare Beratertage je Monat) ist nicht eingetragen', details: [{ titel: 'Kapazität eintragen', href: WEG.einstellungen() }] };
     const ist = istMonate({ ...b, scope: firmen.length === 1 ? firmen[0] : b.scope }).filter(m => m.fakturierteTage != null).slice(-3);
@@ -292,8 +318,10 @@ export const MESSEN_MODELL: Record<string, (b: Bestand) => Messung> = {
       details: ist.map(m => ({ titel: m.monat, wert: `${zahl(m.fakturierteTage ?? 0)} Tage`, unter: `${pz(((m.fakturierteTage ?? 0) / kap) * 100)} ausgelastet`, href: WEG.abschluss(b.scope) })).concat([{ titel: 'Kapazität', wert: `${zahl(kap)} Tage/Monat`, unter: 'verfügbare Beratertage', href: WEG.einstellungen() }]) };
   },
   tagessatz(b) {
-    const firma = b.scope === 'gesamt' ? 'kdc' : b.scope;
-    const ist = istMonate({ ...b, scope: firma }).filter(m => (m.fakturierteTage ?? 0) > 0).slice(-3);
+    // Gesamt (05.10.): die Business-Gesellschaften, für die die Kennzahl gilt (vorher fest die Selbstständigkeit, seit 05.10. Privat).
+    const firmen = firmenFuerKennzahl(b, 'tagessatz');
+    if (!firmen.length) return { luecke: KEINE_FIRMA };
+    const ist = istMonate({ ...b, scope: firmen.length === 1 ? firmen[0] : b.scope }).filter(m => (m.fakturierteTage ?? 0) > 0).slice(-3);
     if (!ist.length) return { luecke: 'Fakturierte Tage im Monatsabschluss fehlen' };
     const tage = ist.reduce((s, m) => s + (m.fakturierteTage ?? 0), 0);
     const w = ist.reduce((s, m) => s + m.umsatz, 0) / tage;
@@ -356,7 +384,9 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
     const k = kasse(b), mk = monatsKosten(b);
     if (!k) return { luecke: 'Kontostände der Geschäftskonten fehlen', details: kontenDetails(b) };
     if (!mk || mk.betrag <= 0) return { luecke: 'Monatliche Kosten fehlen' };
-    const v = vorschau(b.firmen, b.rechnungen, b.zahlungen, b.merkposten, b.heute, 13, false, b.planposten, 'real', b.scope === 'gesamt' ? undefined : b.scope, true);
+    // Nur der Business-Bereich (05.10.): Konten und Posten der Selbstständigkeit gehören zu Privat und fallen vorher heraus.
+    const imBereich = <T extends { firmaId?: string }>(l: T[]) => l.filter(x => bereichVonFirma(x.firmaId) === 'business');
+    const v = vorschau(b.firmen.filter(f => bereichVonFirma(f.id) === 'business'), imBereich(b.rechnungen), imBereich(b.zahlungen), imBereich(b.merkposten), b.heute, 13, false, imBereich(b.planposten), 'real', b.scope === 'gesamt' ? undefined : b.scope, true);
     const w = v.tiefpunkt.stand / mk.betrag;
     const bisTief = v.wochen.slice(0, Math.max(1, v.wochen.findIndex(x => x.label === v.tiefpunkt.label) + 1));
     const groesste = bisTief.flatMap(x => x.bewegungen).filter(x => x.betrag < 0).sort((x, y) => x.betrag - y.betrag).slice(0, 2);
@@ -473,7 +503,7 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
   },
 
   umsatz_kopf(b) {
-    const fte = b.scope === 'gesamt' ? Object.values(b.fte).reduce<number>((s, x) => s + (x ?? 0), 0) : b.fte[b.scope] ?? 0;
+    const fte = b.scope === 'gesamt' ? BUSINESS_GESELLSCHAFTEN.reduce<number>((s, f) => s + (b.fte[f] ?? 0), 0) : b.fte[b.scope] ?? 0;
     if (!fte) return { luecke: 'Köpfe (FTE) sind nicht eingetragen', details: [{ titel: 'Köpfe eintragen', href: WEG.einstellungen() }] };
     const ist = istMonate(b);
     if (!ist.length) return { luecke: 'Umsatz der letzten Monate fehlt', details: [{ titel: 'Monatsabschluss eintragen', href: WEG.abschluss(b.scope) }] };

@@ -156,8 +156,8 @@ describe('Baum', () => {
     expect(buch.offen).toBe(1);
     expect(b[2]).toMatchObject({ fremd: true });
     expect(b[3]).toMatchObject({ virtuell: true, id: 'sonstige-kdc' });
-    // Die private Aufgabe im selben Projekt steht nicht im Business-Space.
-    expect(JSON.stringify(b)).not.toContain('"privat"');
+    // Die private Aufgabe im selben Projekt steht nicht im Firmen-Space (seit 05.10. trägt der Space der Selbstständigkeit selbst `space: 'privat'`).
+    expect(JSON.stringify(b)).not.toContain('"id":"privat"');
   });
   it('Filter: Aufgabe erscheint, wenn sie oder eine Unteraufgabe passt; ohne Treffer steht „Sonstige“ nicht leer herum', () => {
     const nurOffen = baum(st, 'kdc', t => t.status !== 'done');

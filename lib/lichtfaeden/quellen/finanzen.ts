@@ -5,12 +5,14 @@
 //   · Finanzplanung jetzt (Haushalt): offene Posten mit `faellig` (Rechnung, Forderung, Beleg, Aufgabe — kein Konto).
 //   · Haushaltsfinanzen: offene Rechnungen/Belege mit `faellig_am`.
 //   · Steuerfristen (lib/steuern, −30 … +365 Tage): offen und abgehakt (leise).
-// Space aus der Einheit: „privat“ → Privat › Finanzen, jede Gesellschaft → Business › Finanzen. Eine Rechnung mit Mandat
+// Space aus der Einheit: „privat“ und die Selbstständigkeit (seit 05.10., `bereichVon`) → Privat › Finanzen, jede Business-Gesellschaft →
+// Business › Finanzen. Eine Rechnung mit Mandat
 // läuft in das Ziel mit demselben Mandat (ZielBezuege). Finanzen gehören dem Haushalt (BEIDE), außer ein Posten nennt `wer`.
 // Nicht hier: Liquiditäts-Planposten (wiederkehrende Prognose, keine Handlung — sie würden jeden Monat gleich leuchten).
 
 import type { SpaceId } from '@/lib/make-one/space-regeln';
 import { WEG } from '@/lib/wege';
+import { bereichVonFirma } from '@/lib/einheiten';
 import { BEIDE, gewichtVon, statusVon, tagAus, themaPfad, type Strang } from '../modell';
 import { KEINE_BEZUEGE, type ZielBezuege } from './planung';
 
@@ -24,7 +26,12 @@ export interface FinanzDaten {
   heute: string; bezuege?: ZielBezuege;
 }
 
-const spaceVon = (einheit: string | undefined): SpaceId => (einheit === 'privat' ? 'privat' : 'business');
+/**
+ * Space aus der Einheit (05.10.: EINE Zuordnung, lib/einheiten.ts `bereichVon`): „privat“ und Privat-Einheiten (die Selbstständigkeit,
+ * auch Altwerte wie `selbststaendigkeit`) → Privat › Finanzen; jede Business-Gesellschaft, Posten ohne Firma und Unbekanntes →
+ * Business › Finanzen wie bisher (`bereichVonFirma`).
+ */
+const spaceVon = (einheit: string | undefined): SpaceId => bereichVonFirma(einheit);
 const OFFEN_POSTEN = (s: string) => s !== 'erledigt' && s !== 'bezahlt';
 
 export function finanzStraenge(d: FinanzDaten): Strang[] {
@@ -34,7 +41,7 @@ export function finanzStraenge(d: FinanzDaten): Strang[] {
   for (const z of d.zahlungen ?? []) {
     const tag = tagAus(z.faellig);
     if (!tag || z.status !== 'offen') continue;
-    aus.push({ id: `zahlung:${z.id}`, quelle: 'zahlung', titel: z.titel, pfad: pfad(z.firmaId ?? 'kdc'), person: BEIDE, zeit: { tag }, gewicht: gewichtVon('zahlung'), status: statusVon(false, tag, d.heute), link: WEG.zahlung(z.id) });
+    aus.push({ id: `zahlung:${z.id}`, quelle: 'zahlung', titel: z.titel, pfad: pfad(z.firmaId), person: BEIDE, zeit: { tag }, gewicht: gewichtVon('zahlung'), status: statusVon(false, tag, d.heute), link: WEG.zahlung(z.id) });
   }
   for (const r of d.rechnungen ?? []) {
     const gestellt = r.status === 'gestellt';
@@ -42,7 +49,7 @@ export function finanzStraenge(d: FinanzDaten): Strang[] {
     if (!tag) continue;
     aus.push({
       id: `rechnung:${r.id}`, quelle: 'rechnung', titel: gestellt ? `Zahlungseingang: ${r.titel}` : `Rechnung stellen: ${r.titel}`,
-      pfad: (r.mandatId && bez.mandat.get(r.mandatId)) || pfad(r.firmaId ?? 'kdc'), person: BEIDE, zeit: { tag }, gewicht: gewichtVon('rechnung'), status: statusVon(false, tag, d.heute), link: WEG.rechnung(r.id),
+      pfad: (r.mandatId && bez.mandat.get(r.mandatId)) || pfad(r.firmaId), person: BEIDE, zeit: { tag }, gewicht: gewichtVon('rechnung'), status: statusVon(false, tag, d.heute), link: WEG.rechnung(r.id),
     });
   }
   for (const p of d.posten ?? []) {

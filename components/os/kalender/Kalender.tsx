@@ -60,6 +60,7 @@ import { icsVonPlanArt, planArtAusTitel } from '@/lib/planung/bloecke';
 import { AufgabenModus, type AufgabenModusFilter } from './AufgabenModus';
 import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
 import { modusAusAdresse, startAnsicht, type Modus, type KalenderAnsicht } from '@/lib/kalender/modus';
+import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
 
 type Ansicht = KalenderAnsicht;
 /** Ansichten mit Zeitraster — nur dort lässt sich planen. */
@@ -214,7 +215,7 @@ export function Kalender() {
   const ohne = useMemo(() => (ebenen.aufgaben ? ohneTermin(aufgabenStand.tasks, { sicht, bereich, suche: such, ich }) : []), [aufgabenStand.tasks, ebenen.aufgaben, such, sicht, bereich, ich]);
   const ka = useAufgabenImKalender();
   useTerminAusAdresse(daten?.termine, setAnker, setOffen);
-  const neuVon = (art: TerminArt, tag = ansicht === 'tag' ? anker : heute): Vorgabe => ({ tag, art, ...(art === 'abwesend' || art === 'arbeitsort' ? { ganztags: true } : { von: '09:00' }), ...(sicht === 'kevin' || sicht === 'malin' || sicht === 'beide' ? { wer: sicht } : ich === 'kevin' || ich === 'malin' ? { wer: ich } : {}), ...(bereich === 'business' ? { spaceId: 'kdc' } : {}) });
+  const neuVon = (art: TerminArt, tag = ansicht === 'tag' ? anker : heute): Vorgabe => ({ tag, art, ...(art === 'abwesend' || art === 'arbeitsort' ? { ganztags: true } : { von: '09:00' }), ...(sicht === 'kevin' || sicht === 'malin' || sicht === 'beide' ? { wer: sicht } : ich === 'kevin' || ich === 'malin' ? { wer: ich } : {}), ...(bereich === 'business' ? { spaceId: BUSINESS_GESELLSCHAFTEN[0] ?? 'kdv' } : {}) });
   const neuImRaster = (tag: string, m: number, ende?: number) => {
     // Planen: ist ein Baustein gewählt, entsteht hier der Block (kein Dialog).
     if (planen.platzieren(tag, m, ende)) return;

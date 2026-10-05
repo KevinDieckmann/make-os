@@ -66,7 +66,8 @@ describe('Altnamen → ug → neuer Anzeigename', () => {
     expect(['MAKE', 'MAKE Innovation', 'für die MAKE Innovation GmbH', 'die UG', 'MAKE OS UG'].map(firmaAusAngabe)).toEqual(['ug', 'ug', 'ug', 'ug', 'ug']);
   });
   it('Werteliste des Haushalts: ein gespeicherter Altname verschwindet in der Kerneinheit (keine Doppelte)', () => {
-    expect(einheitenListe(['MAKE OS UG', 'Kunde Nord'])).toEqual(['Selbstständigkeit', 'KD Ventures', UG_NAME, 'Kunden', 'Kunde Nord']);
+    // 05.10.: Business-Einheiten ohne die Selbstständigkeit (sie gehört zu Privat).
+    expect(einheitenListe(['MAKE OS UG', 'Kunde Nord'])).toEqual(['KD Ventures', UG_NAME, 'Kunden', 'Kunde Nord']);
     expect(sauberEinheitenDatei({ eigene: ['Neue UG', 'MAKE OS UG', 'Kunde Nord'] })).toEqual({ eigene: ['Kunde Nord'] });
   });
   it('Filter-Pillen: Aufgaben mit Alt- und Neuname zählen zusammen', () => {

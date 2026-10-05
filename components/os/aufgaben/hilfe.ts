@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type Dispatch } from 'react';
 import { useTeam } from '@/hooks/useTeam';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import type { CrmVerweise } from '@/lib/aufgaben/crm-verweise';
-import { einheitVonSpace, firmaVonSpace, sonstigeProjektId, istSonstigeProjekt, FESTE_SPACES, type AufgabenSpace } from '@/lib/aufgaben/struktur';
+import { bereichVonSpace, einheitVonSpace, firmaVonSpace, sonstigeProjektId, istSonstigeProjekt, FESTE_SPACES, type AufgabenSpace } from '@/lib/aufgaben/struktur';
 import type { Task, TasksState, AufgabeBezug, Project } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
@@ -92,7 +92,7 @@ export function aufgabeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksS
     // Ohne Angabe ist die anlegende Person verantwortlich (29.09. — vorher fest „kevin“).
     id, title: neu.title, description: neu.description ?? '', status: 'todo', priority: neu.priority ?? 'medium', assignee: neu.assignee ?? ((personLesen() || 'kevin') as Owner),
     tags: [], subTasks: [], dependencies: [], sortOrder: imOrt.reduce((m, t) => Math.max(m, t.sortOrder ?? 0), -1) + 1,
-    spaceId, projectId: eltern?.projectId ?? ziel.projectId ?? sonstigeProjektId(spaceId), space: spaceId === 'privat' ? 'privat' : 'business',
+    spaceId, projectId: eltern?.projectId ?? ziel.projectId ?? sonstigeProjektId(spaceId), space: bereichVonSpace(spaceId),
     ...(einheitVonSpace(spaceId) ? { einheit: einheitVonSpace(spaceId) } : {}),
     ...((eltern?.listeId ?? ziel.listeId) ? { listeId: eltern?.listeId ?? ziel.listeId } : {}),
     ...(eltern ? { parentId: eltern.id } : {}),
@@ -152,7 +152,7 @@ export function umzugTeil(state: TasksState, t: Task, ziel: { spaceId?: string; 
   if (listeId && (state.listen ?? []).find(l => l.id === listeId)?.projektId !== projectId) listeId = undefined;
   const statusFremd = spaceId !== t.spaceId && t.statusId;
   return {
-    spaceId, projectId, listeId, space: spaceId === 'privat' ? 'privat' : 'business', einheit: einheitVonSpace(spaceId),
+    spaceId, projectId, listeId, space: bereichVonSpace(spaceId), einheit: einheitVonSpace(spaceId),
     ...(statusFremd ? { statusId: undefined } : {}),
   };
 }

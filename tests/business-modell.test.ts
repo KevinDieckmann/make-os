@@ -1,6 +1,11 @@
 // Business-Modell (25.09.): Geschäftsmodell-Kennzahlen, die Punkte hinter jeder
 // Kachel (2–3, verlinkt) und dass kein Link ins Leere zeigt.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+// 05.10. (Selbstständigkeit → Privat): Diese Datei prüft die MECHANIK des Business-Index mit der Selbstständigkeit als Business-Firma —
+// das ist weiter eine gültige Instanz-Einstellung (`NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}`, lib/einheiten.ts). Unsere
+// Instanz (Selbstständigkeit unter Privat) prüft tests/selbst-privat.test.ts mit Vorher → Nachher.
+vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ kdc: { bereich: 'business' } }); });
+
 import { berechne } from '../lib/business/index';
 import { MESSEN, type Bestand } from '../lib/business/messen';
 import { kennzahlenFuer, KENNZAHLEN } from '../lib/business/register';

@@ -23,7 +23,7 @@ import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, HakenZiel, Knopf, SymbolKnopf, feld, prioFarbe, ZielChip, useZielBezug } from '../ui';
 import { Wahl, WahlMehrfach, type WahlEintrag } from '../crm/Wahl';
 import { TextMitLinks } from '../TextMitLinks';
-import { statusListe, statusVon, erwaehnungen, sonstigeProjektId, fortschritt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
+import { bereichVonSpace, statusListe, statusVon, erwaehnungen, sonstigeProjektId, fortschritt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
 import { crmSuchen, bezugName, bezugLink, bezugSetzen, bezugOhne, BEZUG_ARTEN, BEZUG_LABEL } from '@/lib/aufgaben/crm-verweise';
 import { fokusFuerAufgabe } from '@/lib/zeitmessung/fokus-laufend';
 import { wartetAuf, wuerdeKreisen } from '@/lib/aufgaben/abhaengig';
@@ -274,10 +274,11 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
         </>
       )}
 
-      {t.spaceId !== 'privat' && <ZeitJeAufgabeZeile ids={[t.id, ...teilbaum.map(u => u.id)]} personen={personen} />}
+      {/* Zeit und Fokus gibt es nur im Business (05.10.: die Selbstständigkeit steht unter Privat, `bereichVonSpace`). */}
+      {bereichVonSpace(t.spaceId) === 'business' && <ZeitJeAufgabeZeile ids={[t.id, ...teilbaum.map(u => u.id)]} personen={personen} />}
 
       <div style={{ marginTop: 16 }} />
-      <ProjektDateien projektId={t.projectId} aufgabeId={t.id} space={t.spaceId === 'privat' ? 'privat' : 'business'} />
+      <ProjektDateien projektId={t.projectId} aufgabeId={t.id} space={bereichVonSpace(t.spaceId)} />
 
       <ZoeAufgabe task={t} ich={ich} personen={personen} />
 
@@ -289,7 +290,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
       </details>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-        {t.spaceId !== 'privat' && t.status !== 'done' && (
+        {bereichVonSpace(t.spaceId) === 'business' && t.status !== 'done' && (
           <Knopf leise onClick={() => fokusFuerAufgabe({ id: t.id, einheit: t.einheit })}>▶ Fokus</Knopf>
         )}
         <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>angelegt {zeit(t.createdAt)}</span>

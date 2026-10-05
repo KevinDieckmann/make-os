@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, feld, LEUCHT, Raster, Wahl } from './ui';
-import { KERN_EINHEITEN, istGesellschaft } from '@/lib/einheiten';
+import { KERN_EINHEITEN, istBusinessGesellschaft } from '@/lib/einheiten';
 
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; konto?: string; ort?: string; rechnungId?: string }
 
@@ -22,11 +22,11 @@ const tag: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontS
  * mal zusammenfassen." Deshalb gibt es beides — die Firmen einzeln UND als eine
  * Auswahl „Geschäftlich".
  */
-// Seit 28.09. die eine Einheitenliste (lib/einheiten.ts): Geschäftlich = alle drei Gesellschaften.
+// Seit 28.09. die eine Einheitenliste (lib/einheiten.ts); seit 05.10. Geschäftlich = die Business-Gesellschaften (die Selbstständigkeit gehört zu Privat, eigene Pille bleibt).
 const ORTE: { id: string; label: string; trifft: (o?: string) => boolean }[] = [
   { id: 'alle', label: 'Alles', trifft: () => true },
   { id: 'privat', label: 'Privat', trifft: o => o === 'privat' },
-  { id: 'geschaeft', label: 'Geschäftlich', trifft: o => istGesellschaft(o) },
+  { id: 'geschaeft', label: 'Geschäftlich', trifft: o => istBusinessGesellschaft(o) },
   ...KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label, trifft: (o?: string) => o === e.id })),
 ];
 

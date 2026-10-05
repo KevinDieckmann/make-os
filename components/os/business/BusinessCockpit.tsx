@@ -28,7 +28,7 @@ import type { Geschaeftsmodell } from '@/lib/business/modell';
 import type { BusinessIndex } from '@/lib/business/index';
 import type { Monatsabschluss } from '@/lib/business/messen';
 import { SCOPES, SAEULEN_TEXT, scopeAus, type Scope } from '@/lib/business/register';
-import type { Gesellschaftskennung } from '@/lib/einheiten';
+import { GEHOERT_ZU_PRIVAT, gehoertZuPrivat, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 interface Antwort {
   ok: boolean; scope: Scope; bi: BusinessIndex;
@@ -52,6 +52,9 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
   const pfad = usePathname() ?? '/os/finanzen';
   const params = useSearchParams();
   const scope: Scope = scopeAus(params.get('f'));
+  // Alter Link auf die Selbstständigkeit (?f=kdc): sie gehört seit 05.10. zu Privat — sagen statt still „Gesamt“ zu zeigen.
+  const fRoh = params.get('f');
+  const privatSicht = istGesellschaft(fRoh) && gehoertZuPrivat(fRoh) ? fRoh : null;
   const [d, setD] = useState<Antwort | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [offen, setOffen] = useLinkAuswahl('k');
@@ -89,6 +92,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
         </div>
       )}
       {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
+      {privatSicht && <Hinweis>{GEHOERT_ZU_PRIVAT(privatSicht)} Ihre Zahlen stehen unter Finanzen › Privat › Finanzplanung; hier siehst du „Gesamt“ ohne sie.</Hinweis>}
 
       <Flaeche seite="business">
       {/* Der Index */}

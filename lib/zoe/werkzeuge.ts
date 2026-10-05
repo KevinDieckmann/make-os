@@ -19,7 +19,7 @@ import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
 import { GRENZEN, UG_FIRMA, rechnungSchutz, sauberFile, type Rechnung as FpRechnung } from '@/lib/finanzen/finanzplan-bestand';
-import { firmaAusAngabe, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
+import { GEHOERT_ZU_PRIVAT, finanzOrtAus, firmaAusAngabe, finanzOrtName, gehoertZuPrivat, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { FaktArt } from './gedaechtnis';
 import { projektUnterlagen, dateiLesen } from './aufgaben-unterlagen';
 import { AUFGABEN_WERKZEUGE } from './aufgaben-werkzeuge';
@@ -623,8 +623,9 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined,
     // Space (26.09.): ZOE kennt den aktiven Space und legt die Aufgabe dort ab.
     space: input.space === 'privat' || input.space === 'business' ? String(input.space) : undefined,
-    // Einheit (27.09.): nur Business — Kerneinheit oder eigene; die Route säubert und verwirft sie bei Privat.
-    einheit: typeof input.einheit === 'string' && input.einheit.trim() && input.space !== 'privat' ? input.einheit.trim().slice(0, 40) : undefined,
+    // Einheit (27.09.): Business — Kerneinheit oder eigene; die Route säubert und verwirft sie bei Privat. Seit 05.10. auch bei Privat eine
+    // Privat-Einheit („Selbstständigkeit“) — die Aufgabe landet dann in deren Space unter Privat.
+    einheit: typeof input.einheit === 'string' && input.einheit.trim() && (input.space !== 'privat' || gehoertZuPrivat(finanzOrtAus(input.einheit))) ? input.einheit.trim().slice(0, 40) : undefined,
     // Meilenstein (30.09.): Teil des Namens → die Aufgabe landet in seiner Liste (Space/Projekt/Liste vom Meilenstein).
     meilensteinId: await meilensteinAus(input.meilenstein),
   };
@@ -727,6 +728,9 @@ async function businessIndex(input: Record<string, unknown>, _origin: string, pe
   if (!person || !(await personImHaushaltDesInhabers(person))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
   const { businessText } = await import('@/lib/business/fuer-chef');
   const { scopeAus } = await import('@/lib/business/register');
+  // Seit 05.10. gehört die Selbstständigkeit zu Privat — der Business-Index führt sie nicht (ehrlich sagen statt still „Gesamt“).
+
+  if (istGesellschaft(input.sicht) && gehoertZuPrivat(input.sicht)) return `${GEHOERT_ZU_PRIVAT(input.sicht)} Der Business-Index rechnet nur die Gesellschaften im Business; ihre Zahlen stehen unter Finanzen › Privat › Finanzplanung.`;
   const sicht = scopeAus(input.sicht);
   return businessText(sicht, typeof input.kennzahl === 'string' && input.kennzahl ? input.kennzahl : undefined);
 }

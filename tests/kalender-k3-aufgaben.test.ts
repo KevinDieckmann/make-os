@@ -47,7 +47,7 @@ describe('Aufgaben im Kalender (K3)', () => {
   });
 
   it('Sicht und Bereich: verantwortlich/beteiligt, Gemeinsam = mehrere, Business nach Space', () => {
-    const liste = [t('k', { dueDate: '2026-10-01' }), t('m', { dueDate: '2026-10-01', assignee: 'malin', beteiligte: ['kevin'] }), t('b', { dueDate: '2026-10-01', spaceId: 'kdc' })];
+    const liste = [t('k', { dueDate: '2026-10-01' }), t('m', { dueDate: '2026-10-01', assignee: 'malin', beteiligte: ['kevin'] }), t('b', { dueDate: '2026-10-01', spaceId: 'kdv' })];
     expect(aufgabenFuerKalender(liste, '2026-09-28', '2026-10-05', { ...f, sicht: 'malin' }).map(x => x.id)).toEqual(['m']);
     expect(aufgabenFuerKalender(liste, '2026-09-28', '2026-10-05', { ...f, sicht: 'beide' }).map(x => x.id)).toEqual(['m']);
     expect(aufgabenFuerKalender(liste, '2026-09-28', '2026-10-05', { ...f, bereich: 'business' }).map(x => x.id)).toEqual(['b']);

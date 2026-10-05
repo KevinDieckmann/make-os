@@ -2,6 +2,10 @@
 // der Head of Finance warnt bei Rot und fehlendem Monatsabschluss, eigene Schwellen
 // und Jahresziele werden gespeichert — alles nur für den Haushalt des Inhabers.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+// 05.10. (Selbstständigkeit → Privat): Diese Datei prüft die MECHANIK des Business-Index mit der Selbstständigkeit als Business-Firma —
+// das ist weiter eine gültige Instanz-Einstellung (`NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}`, lib/einheiten.ts). Unsere
+// Instanz (Selbstständigkeit unter Privat) prüft tests/selbst-privat.test.ts mit Vorher → Nachher.
+vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ kdc: { bereich: 'business' } }); });
 
 const speicher = new Map<string, unknown>();
 vi.mock('@/lib/store/local-db', () => ({

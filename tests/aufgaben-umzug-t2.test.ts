@@ -35,7 +35,8 @@ afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 describe('Umzug nach Privat', () => {
   it('rein: nur Aufgaben mit anderem Bereich', () => {
     const m = bereichGewechselt({ tasks: [aufgabe('a'), aufgabe('b'), aufgabe('c', { spaceId: 'kdc' })] as unknown as Task[] }, { tasks: [aufgabe('a', { spaceId: 'privat' }), aufgabe('b', { spaceId: 'kdc' }), aufgabe('c', { spaceId: 'kdv' })] as unknown as Task[] });
-    expect(Array.from(m.entries())).toEqual([['a', 'privat']]);
+    // 05.10.: kdv → kdc und kdc → kdv wechseln jetzt auch den Bereich (die Selbstständigkeit steht unter Privat) — vorher nur 'a'.
+    expect(Array.from(m.entries())).toEqual([['a', 'privat'], ['b', 'privat'], ['c', 'business']]);
   });
   it('Aufgabe (samt Unteraufgabe) nach Privat → ihre Dateien werden „privat“, andere bleiben', async () => {
     const d = await (await route.GET(new Request('http://test/api/state/tasks', { headers: { 'x-make-user': 'kevin' } }))).json() as { state: { tasks: (Task & { stand: string })[] } };

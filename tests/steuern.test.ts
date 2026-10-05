@@ -2,7 +2,8 @@
 // mit/ohne Steuerberater, Umsatzsteuer je Zeitraum (Ist/Soll), Rücklage & Prognose,
 // Belege, Übergabe-Checkliste. Hinweis, keine Steuerberatung.
 import { describe, it, expect } from 'vitest';
-import { STANDARD_STEUERN, erklaerungsFrist, fristen, zeitraumVon, ustZeitraum, prognose, jahresgewinn, belegPunkte, uebergabeMonat, uebergabeJahr, type SteuerEinstellungen } from '../lib/steuern/rechnen';
+import { STANDARD_STEUERN, erklaerungsFrist, fristen, zeitraumVon, ustZeitraum, prognose, jahresgewinn, belegPunkte, uebergabeMonat, uebergabeJahr, mitFinanzplanung, type SteuerEinstellungen } from '../lib/steuern/rechnen';
+import type { EstGemeinsam } from '../lib/finanzen/est-gemeinsam';
 import type { Beleg } from '../lib/finanzen/haushalt/typen';
 
 const HEUTE = '2026-09-25';
@@ -19,9 +20,21 @@ describe('Abgabefristen der Jahreserklärungen', () => {
 describe('Fristen', () => {
   const f = fristen(STANDARD_STEUERN, HEUTE, { 'f:privat-est-2026-09-10': { am: '2026-09-09', von: 'kevin' } });
   const ids = f.map(x => x.id);
-  it('Consulting (Freiberufler): Umsatzsteuer-Voranmeldung, keine Gewerbe- oder Körperschaftsteuer', () => {
+  it('Selbstständigkeit (seit 05.10. gewerblich): Umsatzsteuer-Voranmeldung und Gewerbesteuer-Vorauszahlungen, keine Körperschaftsteuer', () => {
+    // Kevin 05.10.: „Ich habe in der Selbstständigkeit einfach ein Gewerbe angemeldet.“ — vorher Freiberuf ohne Gewerbesteuer.
+    expect(STANDARD_STEUERN.kdc).toMatchObject({ rechtsform: 'einzel', gewerbe: true });
     expect(ids).toContain('kdc-ust-2026-10-12'); // 10.10.2026 ist ein Samstag
-    expect(f.some(x => x.einheit === 'kdc' && (x.art === 'gewst' || x.art === 'kst'))).toBe(false);
+    expect(ids).toContain('kdc-gewst-2026-11-16'); // 15.11.2026 ist ein Sonntag
+    expect(f.some(x => x.einheit === 'kdc' && x.art === 'kst')).toBe(false);
+    // Freiberuf bleibt einstellbar (Plattform) — dann ohne Gewerbesteuer.
+    const frei = fristen({ ...STANDARD_STEUERN, kdc: { ...STANDARD_STEUERN.kdc, rechtsform: 'freiberuf', gewerbe: false } }, HEUTE);
+    expect(frei.some(x => x.einheit === 'kdc' && x.art === 'gewst')).toBe(false);
+  });
+  it('EINE Quelle: mit Finanzplanung kommen Rechtsform und Gewerbesteuer der Selbstständigkeit aus deren Steuerprofil', () => {
+    const gespeichert: SteuerEinstellungen = { ...STANDARD_STEUERN, kdc: { ...STANDARD_STEUERN.kdc, rechtsform: 'freiberuf', gewerbe: false } };
+    expect(mitFinanzplanung(gespeichert, { gewerbe: true }).kdc).toMatchObject({ rechtsform: 'einzel', gewerbe: true, ust: 'quartal' });
+    expect(mitFinanzplanung(STANDARD_STEUERN, { gewerbe: false }).kdc).toMatchObject({ rechtsform: 'freiberuf', gewerbe: false });
+    expect(mitFinanzplanung(gespeichert, null)).toBe(gespeichert);   // ohne Plan: die gespeicherte Einstellung
   });
   it('KD Ventures (UG): Körperschaft- und Gewerbesteuer-Vorauszahlungen, Offenlegung', () => {
     expect(ids).toEqual(expect.arrayContaining(['kdv-kst-2026-12-10', 'kdv-gewst-2026-11-16', 'kdv-offenlegung-2026-12-31', 'kdv-erklaerung-2027-03-01']));
@@ -29,7 +42,9 @@ describe('Fristen', () => {
   it('Privat: ESt-Vorauszahlungen und die Erklärung; abgehakt bleibt abgehakt; Countdown und Aufgabe 7 Tage vorher', () => {
     const vz = f.find(x => x.id === 'privat-est-2026-09-10')!;
     expect(vz).toMatchObject({ tage: -15, erledigt: true });
-    expect(f.find(x => x.id === 'privat-est-2026-12-10')).toMatchObject({ tage: 76, aufgabeAb: '2026-12-03', erledigt: false, href: '/os/finanzen?s=steuern#ruecklage' });
+    // Seit 05.10. führen Privat-Fristen in die Privat-Sicht der Steuer-Seite.
+    expect(f.find(x => x.id === 'privat-est-2026-12-10')).toMatchObject({ tage: 76, aufgabeAb: '2026-12-03', erledigt: false, href: '/os/finanzen?s=steuern&space=privat#ruecklage' });
+    expect(f.find(x => x.id === 'kdv-kst-2026-12-10')?.href).toBe('/os/finanzen?s=steuern#ruecklage');
     expect(ids).toContain('privat-erklaerung-2027-03-01');
     expect(f.map(x => x.datum)).toEqual(f.map(x => x.datum).slice().sort());
   });
@@ -63,19 +78,36 @@ describe('Umsatzsteuer', () => {
 
 describe('Rücklage & Prognose', () => {
   const ist = (u: number, k: number) => Array.from({ length: 8 }, (_, i) => ({ monat: `2026-0${i + 1}`, umsatz: u, kosten: k, quelle: 'Monatsabschluss' }));
-  it('ESt-Anteil Consulting, KSt+Soli+GewSt für KD Ventures, Vorauszahlungen abgezogen, Deckung gegen die Rücklage', () => {
-    const e: SteuerEinstellungen = { ...STANDARD_STEUERN, steuerquote: 30, vorauszahlung: { est: 1000 }, ruecklageIst: { privat: 10000 } };
+  // 05.10.: Einkommensteuer gemeinsam (Gehalt + Selbstständigkeit) und Gewerbesteuer der Selbstständigkeit kommen aus der Finanzplanung
+  // (`est`, lib/finanzen/est-gemeinsam.ts) — vorher „hochgerechneter Consulting-Gewinn × Steuerquote“, ohne Gewerbesteuer.
+  const est: EstGemeinsam = {
+    jahr: 2026, gewinn: 40000, vorab: 30000, lohn: 10770, zve: 50770, estGesamt: 12000, estLohn: 1000, est: 11000, soli: 0, gewst: 1500, anrechnung: 1400, summe: 11100,
+    gewerbe: true, hebesatz: 410, freibetrag: 24500, anrechnungFaktor: 4, splitting: false, plan: 'Arbeitsplan',
+  };
+  it('ESt gemeinsam und GewSt der Selbstständigkeit aus der Finanzplanung, KSt+Soli+GewSt für KD Ventures, Vorauszahlungen abgezogen', () => {
+    const e: SteuerEinstellungen = { ...STANDARD_STEUERN, steuerquote: 30, vorauszahlung: { est: 1000, gewstKdc: 200 }, ruecklageIst: { privat: 10000 } };
     const g = { kdc: jahresgewinn(ist(10000, 5000), 2026), kdv: jahresgewinn(ist(5000, 5000 - 20000 / 12), 2026) };
-    expect(g.kdc).toMatchObject({ gewinn: 40000, monate: 8, hochgerechnet: 60000 });
-    const p = prognose(e, HEUTE, g, { kdc: 171 });
+    const p = prognose(e, HEUTE, g, { kdc: 171 }, { rechnungen: 0 }, est);
     const z = Object.fromEntries(p.zeilen.map(x => [x.id, x.betrag]));
-    expect(z.est).toBeCloseTo(18000 - 3000, 5); // 3 Vorauszahlungen bis heute
+    // Mehrsteuer 11.000 − Anrechnung 1.400 + Soli 0 − 3 Vorauszahlungen à 1.000 bis heute = 6.600 (die Steuerquote 30 % zählt nicht mehr)
+    expect(z.est).toBeCloseTo(11000 - 1400 - 3000, 5);
+    // Gewerbesteuer 1.500 − 3 Vorauszahlungen à 200 (Feb, Mai, Aug) = 900
+    expect(z['gewst-kdc']).toBeCloseTo(1500 - 600, 5);
+    expect(p.zeilen.find(x => x.id === 'est')?.titel).toContain('gemeinsam');
+    expect(p.zeilen.find(x => x.id === 'est')?.href).toBe('/os/finanzen?s=finanzplanung&space=privat&u=selbst');
     expect(z.kst).toBeCloseTo(20000 * 0.15825 + 20000 * 0.035 * 4.1, 3);
     expect(z['ust-kdc']).toBe(171);
-    expect(p.je.privat).toMatchObject({ soll: 15000, ist: 10000 });
-    expect(p.je.privat.deckung).toBeCloseTo(2 / 3, 5);
-    const ohneQuote = prognose({ ...e, steuerquote: null }, HEUTE, g, {});
-    expect(ohneQuote.zeilen.find(x => x.id === 'est')).toMatchObject({ betrag: null, luecke: expect.stringContaining('Steuerquote') });
+    expect(p.je.privat).toMatchObject({ soll: 6600, ist: 10000 });
+    expect(p.je.kdc.soll).toBeCloseTo(900 + 171, 5);
+    // Gewerbesteuer abgeschaltet (Freiberuf) → keine Gewerbesteuer-Zeile
+    expect(prognose(e, HEUTE, g, {}, { rechnungen: 0 }, { ...est, gewerbe: false }).zeilen.some(x => x.id === 'gewst-kdc')).toBe(false);
+  });
+  it('ohne Finanzplanung für das Jahr: ehrlich „fehlt“, kein Schätzwert — auch nicht aus der alten Steuerquote', () => {
+    const e: SteuerEinstellungen = { ...STANDARD_STEUERN, steuerquote: 30 };
+    const p = prognose(e, HEUTE, { kdc: jahresgewinn(ist(10000, 5000), 2026), kdv: null }, {}, { rechnungen: 0 }, null);
+    expect(p.zeilen.find(x => x.id === 'est')).toMatchObject({ betrag: null, luecke: expect.stringContaining('Finanzplanung') });
+    expect(p.zeilen.find(x => x.id === 'gewst-kdc')).toMatchObject({ betrag: null });
+    expect(p.je.privat.soll).toBe(0);
   });
 });
 

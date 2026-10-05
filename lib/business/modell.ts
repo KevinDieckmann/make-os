@@ -8,6 +8,7 @@ import type { Leistung, Mandat } from '@/lib/crm/typen';
 import { linieVon } from '@/lib/crm/produkte';
 import { WEG } from '@/lib/wege';
 import type { Scope } from './register';
+import { bereichVonGesellschaft } from '@/lib/einheiten';
 
 export interface ModellZeile { id: string; titel: string; unter?: string; mrr: number; einmalig: number; anteil: number; href: string }
 export interface Geschaeftsmodell {
@@ -27,7 +28,8 @@ const OHNE = '__ohne';
 const laufend = (m: Mandat) => m.status === 'aktiv' || m.status === 'pausiert';
 
 export function geschaeftsmodell(mandate: Mandat[], leistungen: Leistung[], scope: Scope, fixkosten: number | null): Geschaeftsmodell {
-  const inSicht = mandate.filter(m => (scope === 'gesamt' || m.gesellschaft === scope) && laufend(m) && m.honorar.betrag > 0);
+  // Gesamt = Business-Bereich (05.10.): Mandate einer Privat-Einheit (Selbstständigkeit) zählen hier nicht.
+  const inSicht = mandate.filter(m => (scope === 'gesamt' ? bereichVonGesellschaft(m.gesellschaft) === 'business' : m.gesellschaft === scope) && laufend(m) && m.honorar.betrag > 0);
   const mrrVon = (m: Mandat) => (m.status === 'aktiv' && m.honorar.basis === 'monat' ? m.honorar.betrag : 0);
   const einmaligVon = (m: Mandat) => (m.honorar.basis === 'einmalig' ? m.honorar.betrag : 0);
   const mrr = inSicht.reduce((s, m) => s + mrrVon(m), 0);

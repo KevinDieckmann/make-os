@@ -30,7 +30,9 @@ describe('Adressen', () => {
   });
   it('Links: WEG.aufgaben, Seitenleiste wird mitgeführt, Überblick im Privat ausdrücklich', () => {
     expect(WEG.aufgaben()).toBe('/os/aufgaben');
-    expect(WEG.aufgaben({ s: 'kdc', p: 'p1', t: 'aufgaben' })).toBe('/os/aufgaben?space=business&s=kdc&p=p1');
+    // 05.10.: der Space der Selbstständigkeit steht im Privat-Bereich (vorher space=business).
+    expect(WEG.aufgaben({ s: 'kdc', p: 'p1', t: 'aufgaben' })).toBe('/os/aufgaben?space=privat&s=kdc&p=p1');
+    expect(WEG.aufgaben({ s: 'kdv', p: 'p1', t: 'aufgaben' })).toBe('/os/aufgaben?space=business&s=kdv&p=p1');
     expect(WEG.aufgaben({ space: 'business', r: 'm-f-beispiel' })).toBe('/os/aufgaben?space=business&s=m-f-beispiel');
     expect(WEG.aufgaben({ b: 'archiv' })).toBe('/os/aufgaben?b=archiv');
     expect(aufgabenLink({ ansicht: 'ueberblick', bereich: 'privat' })).toBe('/os/aufgaben?space=privat&b=ueberblick');

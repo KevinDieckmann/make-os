@@ -150,7 +150,9 @@ export function AufgabenRaum() {
 
   const vorbelegt = raumId
     ? { spaceId: raumId, ...(projektId ? { projectId: projektId } : {}), ...(adresse.g ? { gruppeId: adresse.g } : {}), ...(adresse.l ? { listeId: adresse.l } : {}) }
-    : { spaceId: raumGemerkt && spaces.some(s => s.id === raumGemerkt && !s.archiv) && (adresse.bereich !== 'business' || raumGemerkt !== 'privat') ? raumGemerkt : adresse.bereich === 'business' ? 'kdc' : 'privat' };
+    // Gemerkter Raum nur, wenn er zum Bereich passt (05.10.: die Selbstständigkeit steht im Privat-Bereich); sonst der erste Firmen-Space
+    // des Business-Bereichs bzw. Privat.
+    : { spaceId: raumGemerkt && spaces.some(s => s.id === raumGemerkt && !s.archiv) && (adresse.bereich !== 'business' || bereichVonSpace(raumGemerkt) === 'business') ? raumGemerkt : adresse.bereich === 'business' ? (spaces.find(s => s.art === 'firma' && s.bereich === 'business' && !s.archiv)?.id ?? 'kdv') : 'privat' };
 
   const filterZeile = raum && (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '0 0 12px' }}>

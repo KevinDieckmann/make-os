@@ -21,7 +21,7 @@ const { localDay } = await import('@/lib/zeit');
 const H = localDay();
 const J = new Date().toISOString();
 const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', haushalt: string) => ({ id, speicher, email: `${speicher}@test.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt });
-const aufgabe = (id: string, title: string, x: Record<string, unknown> = {}) => ({ id, projectId: 'p-web', title, status: 'todo', priority: 'medium', assignee: 'kevin', tags: [], subTasks: [], dependencies: [], sortOrder: 0, createdAt: J, updatedAt: J, spaceId: 'kdc', ...x });
+const aufgabe = (id: string, title: string, x: Record<string, unknown> = {}) => ({ id, projectId: 'p-web', title, status: 'todo', priority: 'medium', assignee: 'kevin', tags: [], subTasks: [], dependencies: [], sortOrder: 0, createdAt: J, updatedAt: J, spaceId: 'kdv', ...x });   // 05.10.: KD Ventures (die Selbstständigkeit gehört seit 05.10. zu Privat)
 
 let db: typeof import('@/lib/store/local-db');
 let B: typeof import('@/lib/brain/app-bericht');
@@ -39,7 +39,7 @@ beforeAll(async () => {
   ] });
   await db.saveJson('tasks', {
     projects: [
-      { id: 'p-web', title: 'Webseite Relaunch', category: 'business', owner: 'kevin', color: '#fff', tags: [], archived: false, spaceId: 'kdc', notiz: 'Leitidee: Zeitlupe als Bildsprache.', createdAt: J, updatedAt: J },
+      { id: 'p-web', title: 'Webseite Relaunch', category: 'business', owner: 'kevin', color: '#fff', tags: [], archived: false, spaceId: 'kdv', notiz: 'Leitidee: Zeitlupe als Bildsprache.', createdAt: J, updatedAt: J },
       { id: 'p-haus', title: 'Umzug Keller', category: 'joint', owner: 'kevin', color: '#fff', tags: [], archived: false, spaceId: 'privat', notiz: 'PRIVAT-NOTIZ Kellerschlüssel', createdAt: J, updatedAt: J },
     ],
     tasks: [
@@ -126,7 +126,7 @@ describe('_App-Spiegel (direkt im Server-Vault)', () => {
     const r = await S.appSpiegel({ erzwingen: true });
     expect(r.ok).toBe(true);
     expect(r.geschrieben).toBeGreaterThanOrEqual(5);
-    const projekt = await lesen('_App/Projekte/Selbstständigkeit/Webseite Relaunch.md').catch(async () => {
+    const projekt = await lesen('_App/Projekte/KD Ventures/Webseite Relaunch.md').catch(async () => {
       const ordner = await fs.readdir(path.join(vault, '_App', 'Projekte'));
       throw new Error(`nicht gefunden, da: ${ordner.join(', ')}`);
     });
@@ -184,13 +184,13 @@ describe('_App-Spiegel (direkt im Server-Vault)', () => {
   });
   it('von Hand angelegte Dateien bleiben; verwaiste Spiegel fallen weg; Privat „voll“ legt Privat-Projekte an', async () => {
     await fs.writeFile(path.join(vault, '_App', 'Angebote.md'), '# Meine eigene Notiz\n', 'utf8');
-    await fs.writeFile(path.join(vault, '_App', 'Projekte', 'Selbstständigkeit', 'Alt.md'), '---\ntype: app-spiegel\n---\n# Alt\n', 'utf8');
+    await fs.writeFile(path.join(vault, '_App', 'Projekte', 'KD Ventures', 'Alt.md'), '---\ntype: app-spiegel\n---\n# Alt\n', 'utf8');
     const { einstellungSetzen } = await import('@/lib/brain/app-material');
     await einstellungSetzen('haus', 'voll', 'kevin');
     const r = await S.appSpiegel({ erzwingen: true });
     // Alt.md (verwaist) und Privat.md (bei „voll“ gibt es statt der Zahlen die Projekte selbst).
     expect(r.entfernt).toBe(2);
-    await expect(fs.access(path.join(vault, '_App', 'Projekte', 'Selbstständigkeit', 'Alt.md'))).rejects.toThrow();
+    await expect(fs.access(path.join(vault, '_App', 'Projekte', 'KD Ventures', 'Alt.md'))).rejects.toThrow();
     expect(await lesen('_App/Angebote.md')).toBe('# Meine eigene Notiz\n');
     const privat = await lesen('_App/Projekte/Privat/Umzug Keller.md');
     expect(privat).toContain('scope: privat');

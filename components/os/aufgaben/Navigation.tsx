@@ -24,10 +24,15 @@ const reiterStil = (an: boolean): CSSProperties => ({
   background: an ? C.ink : 'transparent', color: an ? C.grund : C.inkDim,
 });
 
-/** Die Leiste oben: Überblick · Privat · Firmen ▾ · Mandanten ▾ · Archiv. */
+/**
+ * Die Leiste oben: Überblick · Privat · (Privat-Einheiten, z. B. Selbstständigkeit) · Firmen ▾ · Mandanten ▾ · Archiv.
+ * 05.10. (Kevin: „Ja, überall unter Privat“): Firmen-Spaces im Privat-Bereich (`bereich: 'privat'`, lib/einheiten.ts `bereichVon`)
+ * stehen als eigene Reiter neben Privat; „Firmen ▾“ zeigt nur die Business-Firmen.
+ */
 export function AufgabenLeiste({ adresse, spaces, offenJe, gehe }: { adresse: AufgabenAdresse; spaces: readonly AufgabenSpace[]; offenJe: ReadonlyMap<string, number>; gehe: Gehe }) {
   const raum = adresse.ansicht === 'space' ? spaces.find(s => s.id === adresse.s) : undefined;
-  const firmen = spaces.filter(s => s.art === 'firma');
+  const firmen = spaces.filter(s => s.art === 'firma' && s.bereich === 'business');
+  const privatFirmen = spaces.filter(s => s.art === 'firma' && s.bereich === 'privat');
   const mandanten = spaces.filter(s => s.art === 'mandant' && !s.archiv);
   const archivZahl = spaces.filter(s => s.art === 'mandant' && s.archiv).length;
   const eintrag = (s: AufgabenSpace): WahlEintrag<string> => ({ id: s.id, label: s.label, punkt: s.farbe, ...(offenJe.get(s.id) ? { hinweis: `${offenJe.get(s.id)} offen` } : {}) });
@@ -39,8 +44,13 @@ export function AufgabenLeiste({ adresse, spaces, offenJe, gehe }: { adresse: Au
         <button role="tab" aria-selected={raum?.id === 'privat'} onClick={() => zuSpace('privat')} style={reiterStil(raum?.id === 'privat')}>
           Privat{offenJe.get('privat') ? <span style={{ opacity: .6, fontVariantNumeric: 'tabular-nums' }}>{offenJe.get('privat')}</span> : null}
         </button>
+        {privatFirmen.map(s => (
+          <button key={s.id} role="tab" aria-selected={raum?.id === s.id} onClick={() => zuSpace(s.id)} style={reiterStil(raum?.id === s.id)}>
+            {s.label}{offenJe.get(s.id) ? <span style={{ opacity: .6, fontVariantNumeric: 'tabular-nums' }}>{offenJe.get(s.id)}</span> : null}
+          </button>
+        ))}
         <span style={{ padding: '0 4px', display: 'inline-flex' }}>
-          <Wahl klein label="Firmen" leer="Firmen ▾" liste={firmen.map(eintrag)} wert={raum?.art === 'firma' ? raum.id : null} farbe={raum?.art === 'firma' ? raum.farbe : C.aktiv} onWahl={zuSpace} />
+          <Wahl klein label="Firmen" leer="Firmen ▾" liste={firmen.map(eintrag)} wert={raum?.art === 'firma' && raum.bereich === 'business' ? raum.id : null} farbe={raum?.art === 'firma' && raum.bereich === 'business' ? raum.farbe : C.aktiv} onWahl={zuSpace} />
         </span>
         <span style={{ padding: '0 4px 0 0', display: 'inline-flex' }}>
           <Wahl klein label="Mandanten" leer={mandanten.length ? `Mandanten (${mandanten.length}) ▾` : 'Mandanten ▾'} liste={mandanten.map(eintrag)} wert={raum?.art === 'mandant' && !raum.archiv ? raum.id : null} farbe={raum?.farbe ?? C.aktiv} onWahl={zuSpace} />
@@ -60,7 +70,7 @@ export function AufgabenLeiste({ adresse, spaces, offenJe, gehe }: { adresse: Au
 export function Brotkrumen({ adresse, state, spaces, gehe }: { adresse: AufgabenAdresse; state: TasksState; spaces: readonly AufgabenSpace[]; gehe: Gehe }) {
   const sid = adresse.s ?? 'privat';
   const raum = spaces.find(s => s.id === sid);
-  const spaceWahl: WahlEintrag<string>[] = spaces.filter(s => !s.archiv || s.id === sid).map(s => ({ id: s.id, label: s.label, punkt: s.farbe, hinweis: s.art === 'privat' ? 'Privat' : s.art === 'firma' ? 'Firma' : 'Mandant' }));
+  const spaceWahl: WahlEintrag<string>[] = spaces.filter(s => !s.archiv || s.id === sid).map(s => ({ id: s.id, label: s.label, punkt: s.farbe, hinweis: s.art === 'privat' ? 'Privat' : s.art === 'firma' ? (s.bereich === 'privat' ? 'Privat · Firma' : 'Firma') : 'Mandant' }));
   const projekte = projekteImSpace(state, sid);
   const projektWahl: WahlEintrag<string>[] = [{ id: ALLE, label: 'Alle Projekte' }, ...projekte.map(p => ({ id: p.id, label: p.title, punkt: p.color, ...(p.status && p.status !== 'aktiv' ? { hinweis: p.status } : {}) })), { id: sonstigeProjektId(sid), label: 'Sonstige' }];
   const p = adresse.p;

@@ -1,6 +1,11 @@
 // Business-Index (25.09.): unsere KSI-Logik mit unseren Zahlen — Punkte, Quellen,
 // Trennung der Firmen (Privates nie), jede Kennzahl, Säulen und Gesamt 50/30/20.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+// 05.10. (Selbstständigkeit → Privat): Diese Datei prüft die MECHANIK des Business-Index mit der Selbstständigkeit als Business-Firma —
+// das ist weiter eine gültige Instanz-Einstellung (`NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}`, lib/einheiten.ts). Unsere
+// Instanz (Selbstständigkeit unter Privat) prüft tests/selbst-privat.test.ts mit Vorher → Nachher.
+vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ kdc: { bereich: 'business' } }); });
+
 import { punkte, ampel, berechne } from '../lib/business/index';
 import { MESSEN, istMonate, type Bestand } from '../lib/business/messen';
 import { KENNZAHLEN, kennzahlenFuer, schwelleSauber } from '../lib/business/register';

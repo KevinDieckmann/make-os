@@ -1,6 +1,9 @@
 // ─── Kapazität (04.10.): Machbarkeit, Kopf & Energie, Rechte, Säule im Business-Index, alte Daten ─
 // Rein, erfundene Personen und Zahlen — keine echten Daten.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+// 05.10.: Die Index-Fälle unten rechnen mit der Selbstständigkeit als Business-Firma (Grundlage = Consulting) — gültige Instanz-Einstellung
+// (`NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}`); unsere Instanz: tests/selbst-privat.test.ts.
+vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ kdc: { bereich: 'business' } }); });
 import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, zielMachbarkeit, erholungFaktor } from '@/lib/kapazitaet/modell';
 import { lastJeWoche, engpassWochen } from '@/lib/kapazitaet/last';
 import { kapaAendern, sauberKapaDatei } from '@/lib/kapazitaet/aendern';

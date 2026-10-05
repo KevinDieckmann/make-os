@@ -11,12 +11,14 @@
 // (gruen/rot) und — wenn Daten fehlen — wie man die Lücke schließt.
 
 export type SaeuleId = 'fh' | 'ud' | 'mt' | 'fz' | 'kp';
-// Sichten (28.09., eine Einheitenliste): Gesamt + die drei Gesellschaften aus lib/einheiten.ts —
-// die MAKE Innovation GmbH ist eine eigene Sicht; Namen kommen von dort (kdc heißt „Selbstständigkeit“).
+// Sichten (28.09., eine Einheitenliste): Gesamt + die Gesellschaften aus lib/einheiten.ts — die MAKE Innovation GmbH ist eine
+// eigene Sicht; Namen kommen von dort. Seit 05.10. (Kevin: „Selbstständigkeit raus aus Business“) nur die Gesellschaften im
+// Business-Bereich (`bereichVon`, unsere Instanz: KD Ventures · MAKE) — die Selbstständigkeit gehört zu Privat und ist hier weder Sicht
+// noch Teil von „Gesamt“. Der Typ behält alle drei Kennungen (gespeicherte Verläufe/Schwellen lesen weiter), angeboten wird nur Business.
 export type Scope = 'gesamt' | Gesellschaftskennung;
 export const SCOPES: { id: Scope; label: string }[] = [
   { id: 'gesamt', label: 'Gesamt' },
-  ...KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label })),
+  ...KERN_EINHEITEN.filter(e => istBusinessGesellschaft(e.id)).map(e => ({ id: e.id, label: e.label })),
 ];
 /** Sicht aus einem Wert (URL, ZOE) — Unbekanntes ist die Gesamtsicht. */
 export const scopeAus = (v: unknown): Scope => SCOPES.find(s => s.id === v)?.id ?? 'gesamt';
@@ -39,7 +41,7 @@ export const SAEULEN: { id: SaeuleId; label: string; gewicht: number; satz: stri
 export const SAEULEN_TEXT = SAEULEN.map(s => `${s.label} ${Math.round(s.gewicht * 100)} %`).join(' · ');
 
 import type { KennzahlDefBasis, Schwelle as KernSchwelle } from '@/lib/kennzahlen/kern';
-import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
+import { KERN_EINHEITEN, istBusinessGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import { WEG } from '@/lib/wege';
 import { FZ_SAEULE, FZ_GEWICHT, fzKennzahlen } from '@/lib/zeitmessung/kennzahlen';
 import { KP_SAEULE, KP_GEWICHT, KP_KENNZAHLEN } from '@/lib/kapazitaet/kennzahlen';

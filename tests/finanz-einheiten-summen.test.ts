@@ -6,7 +6,11 @@
 // Umbau müssen dieselben Zahlen herauskommen. Wo sich eine Summe JE EINHEIT
 // bewusst verschiebt, steht es am Test (und im Bericht); die Gesamtsumme bleibt.
 // Alle Beträge sind ausgedacht.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+// 05.10. (Selbstständigkeit → Privat): Diese Regression vom 28.09. hält die Summen mit der Selbstständigkeit als BUSINESS-Firma fest — das ist
+// weiter eine gültige Instanz-Einstellung (`NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}`). Unsere Instanz (Selbstständigkeit
+// unter Privat) mit Vorher → Nachher: tests/selbst-privat.test.ts. Die Steuer-Schnappschüsse ändern sich gewollt (gewerblich, ESt aus der Finanzplanung).
+vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ kdc: { bereich: 'business' } }); });
 import { berechne } from '../lib/business/index';
 import { istMonate, type Bestand } from '../lib/business/messen';
 import { geschaeftsmodell } from '../lib/business/modell';
@@ -253,9 +257,9 @@ describe('Steuern — Fristen, USt, Prognose, Belege, Übergabe bleiben', () => 
     for (const x of f) je[x.einheit] = (je[x.einheit] ?? 0) + 1;
     expect({ gesamt: f.length, je }).toMatchInlineSnapshot(`
       {
-        "gesamt": 26,
+        "gesamt": 30,
         "je": {
-          "kdc": 5,
+          "kdc": 9,
           "kdv": 15,
           "privat": 6,
         },
@@ -298,10 +302,10 @@ describe('Steuern — Fristen, USt, Prognose, Belege, Übergabe bleiben', () => 
         "soll": {
           "kdc": 1200,
           "kdv": 300,
-          "privat": 15900,
+          "privat": 0,
         },
-        "summe": 17400,
-        "zeilenSumme": 17400,
+        "summe": 1500,
+        "zeilenSumme": 1500,
       }
     `);
   });

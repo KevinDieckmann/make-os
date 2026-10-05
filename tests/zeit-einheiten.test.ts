@@ -135,7 +135,7 @@ describe('Zeit je Einheit — Auswertung', () => {
     expect(zeitJeEinheit([{ person: 'p', name: 'P', datei: d }], [], 'monat', '2026-10-15').gesamt.sek).toBe(1800);
   });
 
-  it('Kerneinheiten immer, eigene nur mit Zeit, „ohne Einheit“ zuletzt; Privat zählt nicht', () => {
+  it('Business-Einheiten immer, eigene nur mit Zeit, „ohne Einheit“ zuletzt; Privat zählt nicht', () => {
     const b = [
       B('2026-09-22T08:00:00Z', 60, { aufgabeId: 'a1' }),
       B('2026-09-22T10:00:00Z', 30, { einheit: 'Kunde Nord' }),
@@ -145,7 +145,8 @@ describe('Zeit je Einheit — Auswertung', () => {
     ];
     const a = auswerten(bloeckeImZeitraum(datei(...b), '2026-09-21', '2026-09-27'), karte(...aufgaben));
     expect(a.zeilen.map(z => [z.label, z.art, z.sek / 60])).toEqual([
-      ['Selbstständigkeit', 'kern', 0], ['KD Ventures', 'kern', 60], ['MAKE Innovation GmbH', 'kern', 0], ['Kunde Nord', 'eigen', 30], ['ohne Einheit', 'ohne', 35],
+      // 05.10.: die Selbstständigkeit gehört zu Privat — keine feste Business-Zeile mehr (vorher ['Selbstständigkeit', 'kern', 0] vorne).
+      ['KD Ventures', 'kern', 60], ['MAKE Innovation GmbH', 'kern', 0], ['Kunde Nord', 'eigen', 30], ['ohne Einheit', 'ohne', 35],
     ]);
     expect(a.sek).toBe(125 * 60);
     expect(a.bloecke).toBe(4);

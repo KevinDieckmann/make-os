@@ -6,7 +6,7 @@
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
-import { nurBusiness, type Rechnung } from '@/lib/make-one/liquiditaet';
+import { ohnePrivatPosten, type Rechnung } from '@/lib/make-one/liquiditaet';
 import { lesen, type MalinExport } from '@/lib/make-one/grundlage';
 import { ladeHaushalt, patchen } from '@/lib/finanzen/haushalt/speicher';
 import { istEchterHaushalt, belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
@@ -15,9 +15,12 @@ import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeRoh, bestandFuer } from '@/lib/business/speicher';
 import { istMonate } from '@/lib/business/messen';
 import { localDay } from '@/lib/zeit';
-import { einheitAusGesellschaft, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
+import { bereichVon, bereichVonFirma, einheitAusGesellschaft, finanzOrtAus, finanzOrtName, istBusinessGesellschaft, istGesellschaft } from '@/lib/einheiten';
+import { ladeFinanzplan } from '@/lib/finanzen/plan/speicher';
+import { estGemeinsamFuer } from '@/lib/finanzen/est-gemeinsam';
 import {
   STANDARD_STEUERN, STEUER_FIRMEN, fristen, zeitraumVon, ustZeitraum, prognose, jahresgewinn, belegPunkte, uebergabeMonat, uebergabeJahr, HINWEIS,
+  mitFinanzplanung, steuernNurBusiness,
   type SteuerEinstellungen, type SteuerFirma, type FirmaSteuer, type Frist, type Grundlagenteil,
 } from './rechnen';
 
@@ -46,6 +49,18 @@ export async function ladeSteuerEinstellungen(): Promise<SteuerEinstellungen> {
     hebesatz: hebesatz > 0 ? hebesatz : STANDARD_STEUERN.hebesatz,
     steuerquote: hh?.meta.steuerquote ?? chef?.ruecklageQuote ?? null,
   };
+}
+
+/**
+ * Einstellungen MIT der Finanzplanung (05.10., EINE Quelle): Rechtsform und Gewerbesteuer der Selbstständigkeit aus deren Steuerprofil —
+ * für alle, die Fristen rechnen (Kalender, Lichtfäden), damit die Gewerbesteuer-Fristen der Selbstständigkeit überall gleich erscheinen.
+ */
+export async function ladeSteuerEinstellungenMitPlan(heute = localDay()): Promise<SteuerEinstellungen> {
+  const [e, hh] = await Promise.all([ladeSteuerEinstellungen(), haushaltDesInhabers().catch(() => null)]);
+  try {
+    const plan = hh ? await ladeFinanzplan(hh) : null;
+    return mitFinanzplanung(e, estGemeinsamFuer(plan, Number(heute.slice(0, 4))));
+  } catch { return e; }
 }
 
 const zahl = (v: unknown) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v.replace(/\./g, '').replace(',', '.')) : NaN);
@@ -116,9 +131,14 @@ export async function speichereSteuern(roh: Record<string, unknown>, von: string
   return { ok: true };
 }
 
-/** Alles für die Steuer-Seite. */
-export async function steuernStand(heute = localDay()) {
-  const [e, d, fp, grund, roh, hhId, buch] = await Promise.all([
+/**
+ * Alles für die Steuer-Seite. `bereich` (05.10.): „privat“ = alles (Privat, Selbstständigkeit und die Gesellschaften — Privat sieht
+ * Business), „business“ = nur die Business-Gesellschaften (Rechnungen, Belege und Übergabe schon an der Quelle gefiltert, der Rest über
+ * `steuernNurBusiness`). `alleFristen` sind immer ALLE Fristen — nur für den Aufgaben-Abgleich, nie für die Antwort.
+ * Einkommensteuer und Gewerbesteuer der Selbstständigkeit kommen aus der Finanzplanung (`estGemeinsamFuer`, EINE Rechenquelle).
+ */
+export async function steuernStand(heute = localDay(), bereich: 'privat' | 'business' = 'privat') {
+  const [e0, d, fp, grund, roh, hhId, buch] = await Promise.all([
     ladeSteuerEinstellungen(),
     loadJson<Datei>(STEUERN),
     loadJson<{ rechnungen?: (Rechnung & { firmaId?: string })[] }>('finanzplan'),
@@ -127,42 +147,56 @@ export async function steuernStand(heute = localDay()) {
     haushaltDesInhabers(),
     loadJson<{ buchungen?: { datum: string; ort?: string }[] }>('buchungen'),
   ]);
+  const jahr = Number(heute.slice(0, 4));
+  // Die Finanzplanung des Haushalts (dieselbe Rechnung wie Finanzen › Privat › Finanzplanung) — Fehler dort kippen die Steuer-Seite nie.
+  const plan = hhId ? await ladeFinanzplan(hhId).catch(() => null) : null;
+  let est: ReturnType<typeof estGemeinsamFuer> = null;
+  try { est = estGemeinsamFuer(plan, jahr); } catch (err) { console.error('[steuern] Finanzplanung nicht rechenbar:', err); }
+  const e = mitFinanzplanung(e0, est);
   const abgehakt = d?.abgehakt ?? {};
-  const rechnungen = nurBusiness(fp?.rechnungen ?? []);
+  const nurBiz = bereich === 'business';
+  // Steuern rechnen alle Firmen-Rechnungen (auch die der Selbstständigkeit, die seit 05.10. zu Privat gehört) — nur ausdrücklich Privates
+  // nicht; die Business-Sicht nur die Rechnungen der Business-Gesellschaften (ohne Firma: Business, wie in der Liquidität).
+  const alleRechnungen = ohnePrivatPosten(fp?.rechnungen ?? []);
+  const rechnungen = nurBiz ? alleRechnungen.filter(r => bereichVonFirma(r.firmaId) === 'business') : alleRechnungen;
   const g = grund?.roh ? lesen(grund.roh, grund.stand) : null;
   const gt: Grundlagenteil | null = g ? { stand: grund!.stand.slice(0, 10), kosten: g.kosten, ugRechnungen: g.ugRechnungen } : null;
   const hh = hhId ? await ladeHaushalt(hhId).catch(() => null) : null;
-  const belege = (hh?.belege ?? []).filter(b => b.einheit !== 'privat');
+  const belege = (hh?.belege ?? []).filter(b => b.einheit !== 'privat' && (!nurBiz || bereichVonFirma(finanzOrtAus(b.einheit) ?? b.einheit) === 'business'));
 
-  const f = fristen(e, heute, abgehakt);
+  const alleFristen = fristen(e, heute, abgehakt);
   // Umsatzsteuer: der laufende Zeitraum und der letzte, solange er noch nicht angemeldet ist.
   const ust = STEUER_FIRMEN.flatMap(firma => {
     const fs = e[firma];
     const jetzt = zeitraumVon(heute, fs.ust);
     if (!jetzt) return [];
     const davor = zeitraumVon(new Date(Date.parse(`${jetzt.von}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10), fs.ust)!;
-    const faelligFuer = (label: string) => f.find(x => x.einheit === firma && x.art === 'ust' && x.titel.endsWith(label))?.datum ?? null;
-    const alt = ustZeitraum(firma, fs, davor, rechnungen, gt, faelligFuer(davor.label));
-    const aktuell = ustZeitraum(firma, fs, jetzt, rechnungen, gt, faelligFuer(jetzt.label));
-    const altOffen = alt.faellig && alt.faellig >= heute && !f.find(x => x.einheit === firma && x.art === 'ust' && x.datum === alt.faellig)?.erledigt;
+    const faelligFuer = (label: string) => alleFristen.find(x => x.einheit === firma && x.art === 'ust' && x.titel.endsWith(label))?.datum ?? null;
+    const alt = ustZeitraum(firma, fs, davor, alleRechnungen, gt, faelligFuer(davor.label));
+    const aktuell = ustZeitraum(firma, fs, jetzt, alleRechnungen, gt, faelligFuer(jetzt.label));
+    const altOffen = alt.faellig && alt.faellig >= heute && !alleFristen.find(x => x.einheit === firma && x.art === 'ust' && x.datum === alt.faellig)?.erledigt;
     return altOffen ? [alt, aktuell] : [aktuell];
   });
-  const jahr = Number(heute.slice(0, 4));
-  const gewinn = { kdc: jahresgewinn(istMonate(bestandFuer(roh, 'kdc')), jahr), kdv: jahresgewinn(istMonate(bestandFuer(roh, 'kdv')), jahr) };
+  // Ist-Gewinne aus dem Business-Index — seit 05.10. nur für Business-Gesellschaften (die Selbstständigkeit rechnet über die Finanzplanung).
+  const gewinn = { kdc: null, kdv: istBusinessGesellschaft('kdv') ? jahresgewinn(istMonate(bestandFuer(roh, 'kdv')), jahr) : null };
   const ustOffen: Partial<Record<SteuerFirma, number>> = {};
   for (const u of ust) ustOffen[u.firma] = (ustOffen[u.firma] ?? 0) + (u.zahllast ?? 0);
-  const p = prognose(e, heute, gewinn, ustOffen, { rechnungen: rechnungen.filter(r => r.firmaId === 'ug' && (r.status === 'gestellt' || r.status === 'bezahlt')).length });
+  const p = prognose(e, heute, gewinn, ustOffen, { rechnungen: alleRechnungen.filter(r => r.firmaId === 'ug' && (r.status === 'gestellt' || r.status === 'bezahlt')).length }, est);
   const letzterMonat = (() => { const x = new Date(`${heute.slice(0, 7)}-01T12:00:00Z`); x.setUTCMonth(x.getUTCMonth() - 1); return x.toISOString().slice(0, 7); })();
-  const buchungsMonate = Array.from(new Set((buch?.buchungen ?? []).filter(b => istGesellschaft(b.ort)).map(b => b.datum.slice(0, 7))));
-  return {
-    hinweis: HINWEIS, heute, einstellungen: e, fristen: f, ust, prognose: p, gewinn,
+  const buchungsMonate = Array.from(new Set((buch?.buchungen ?? []).filter(b => (nurBiz ? istBusinessGesellschaft(b.ort) : istGesellschaft(b.ort))).map(b => b.datum.slice(0, 7))));
+  const voll = {
+    hinweis: HINWEIS, heute, bereich, einstellungen: e, fristen: alleFristen, ust, prognose: p, gewinn,
     belege: belegPunkte(rechnungen, belege, heute),
     uebergabe: {
       monat: letzterMonat, punkte: uebergabeMonat(letzterMonat, { rechnungen, belege, abschluesse: roh.abschluesse, buchungsMonate, abgehakt }),
       jahr: jahr - 1, jahresPunkte: uebergabeJahr(jahr - 1, abgehakt),
     },
     haushalt: hhId,
+    /** Gemeinsame Einkommensteuer aus der Finanzplanung (null = kein Plan für das Jahr) — nur in der Privat-Sicht. */
+    estGemeinsam: est,
   };
+  const st = nurBiz ? { ...steuernNurBusiness(voll), estGemeinsam: null } : voll;
+  return { ...st, alleFristen };
 }
 
 /** Business-Einheit einer Steuer-Aufgabe aus ihrer Kennung `steuer-<kdc|kdv|privat>-…` (27.09.) — privat hat keine. */
@@ -202,7 +236,8 @@ export async function steuerAufgabenAbgleichen(f: Frist[], heute = localDay()): 
         description: `Steuerfrist ${x.datum.slice(8, 10)}.${x.datum.slice(5, 7)}.${x.datum.slice(0, 4)} — ${x.hinweis}. Abhaken unter Zahlen → Steuern. ${HINWEIS}`,
         status: 'todo', priority: x.tage <= 3 ? 'high' : 'medium', assignee: 'kevin',
         tags: ['steuern', ...(x.einheit === 'privat' ? ['haushalt'] : [])], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, dueDate: x.datum,
-        ...(steuerEinheit(id) ? { space: 'business' as const, einheit: steuerEinheit(id) } : {}),
+        // Space der Gesellschaft (05.10.: die Selbstständigkeit steht unter Privat — `bereichVon`), Einheit bleibt.
+        ...(steuerEinheit(id) ? { space: bereichVon(x.einheit), spaceId: x.einheit, einheit: steuerEinheit(id) } : {}),
       };
     });
     return { neu: neue, teile };

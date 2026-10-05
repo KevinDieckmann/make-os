@@ -100,7 +100,7 @@ export function AufgabenUeberblick({ state, dispatch, spaces, ich, heute, gehe, 
   return (
     <>
       {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
-      <div style={{ marginBottom: 14 }}><FlussKarte bereich="aufgaben" farbe={LEUCHT.planung} /></div>
+      <div style={{ marginBottom: 14 }}><FlussKarte bereich="aufgaben" space={nur ?? null} farbe={LEUCHT.planung} /></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 14 }}>
         {KACHELN.map((k, i) => {
           const an = kachel === k.id;

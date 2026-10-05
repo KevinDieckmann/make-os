@@ -17,6 +17,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { merken } from '@/lib/store/memo';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import type { Meilenstein } from '@/lib/planung/typen';
+import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 import { punktId, kugelPunkteFuer, type Betrachter, type KugelAntwort, type RohPunkt } from './kugel';
 
 const sicher = async <T>(f: () => Promise<T>, sonst: T): Promise<T> => { try { return await f(); } catch { return sonst; } };
@@ -86,7 +87,8 @@ async function planung(person: string, ms: Meilenstein[]): Promise<RohPunkt[]> {
     const b = t.bezug ?? {};
     aus.push({
       art: 'aufgabe', kennung: t.id, titel: t.title, datum: t.updatedAt ?? t.dueDate ?? null,
-      privat: t.space === 'privat' || t.spaceId === 'privat', ...(besitzer ? { gehoert: besitzer } : {}),
+      // Privat auch im Firmen-Space einer Privat-Einheit (05.10.: Selbstständigkeit, `spaceVonAufgabe`) — Business-Konten sehen sie nicht.
+      privat: t.space === 'privat' || t.spaceId === 'privat' || spaceVonAufgabe(t) === 'privat', ...(besitzer ? { gehoert: besitzer } : {}),
       links: mit(m && punktId('meilenstein', m.id), t.parentId && punktId('aufgabe', t.parentId), b.kontaktId && punktId('kontakt', b.kontaktId), b.firmaId && punktId('firma', b.firmaId), b.mandatId && punktId('mandat', b.mandatId), b.dealId && punktId('deal', b.dealId)),
     });
   }

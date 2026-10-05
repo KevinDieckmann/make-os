@@ -86,7 +86,7 @@ async function finanzen(heute: string, bezuege: ZielBezuege): Promise<Strang[]> 
     h ? sicher(async () => (await (await import('@/lib/finanzen/plan/speicher')).ladeFinanzplan(h))?.posten ?? [], []) : Promise.resolve([]),
     h ? sicher(async () => (await (await import('@/lib/finanzen/haushalt/speicher')).ladeHaushalt(h)).belege, []) : Promise.resolve([]),
     sicher(async () => {
-      const [{ ladeSteuerEinstellungen, STEUERN }, { fristen }] = await Promise.all([import('@/lib/steuern/speicher'), import('@/lib/steuern/rechnen')]);
+      const [{ ladeSteuerEinstellungenMitPlan: ladeSteuerEinstellungen, STEUERN }, { fristen }] = await Promise.all([import('@/lib/steuern/speicher'), import('@/lib/steuern/rechnen')]);
       const [e, d] = await Promise.all([ladeSteuerEinstellungen(), loadJson<{ abgehakt?: Record<string, unknown> }>(STEUERN)]);
       return fristen(e, heute, d?.abgehakt ?? {}).map(f => ({ id: f.id, datum: f.datum, einheit: f.einheit, titel: f.titel, erledigt: f.erledigt, href: f.href }));
     }, []),

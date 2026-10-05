@@ -40,7 +40,9 @@ describe('Datei und Filter', () => {
     expect(passtEinheit(undefined, 'Kunden')).toBe(false);
   });
   it('Kerneinheiten aus lib/einheiten.ts, alte Schreibweisen werden vereinheitlicht', () => {
-    expect(EINHEITEN_STANDARD.slice(0, 3)).toEqual(['Selbstständigkeit', 'KD Ventures', 'MAKE Innovation GmbH']);
+    // 05.10.: nur die Business-Einheiten (die Selbstständigkeit gehört zu Privat) — vorher ['Selbstständigkeit', 'KD Ventures', 'MAKE Innovation GmbH'].
+    expect(EINHEITEN_STANDARD).toEqual(['KD Ventures', 'MAKE Innovation GmbH', 'Kunden']);
+    expect(sauberEinheit('Selbstständigkeit')).toBe('Selbstständigkeit');   // der Name wird weiter erkannt (gespeicherte Einträge bleiben)
     expect(sauberEinheit('Neue UG')).toBe('MAKE Innovation GmbH');
     expect(einheitHinzufuegen([], 'neue ug')).toEqual({ eigene: [], einheit: 'MAKE Innovation GmbH', neuAngelegt: false });
   });

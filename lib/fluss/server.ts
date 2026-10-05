@@ -39,7 +39,7 @@ export async function flussLaden(a: FlussAnfrage): Promise<FlussReihe | null> {
     case 'finanzen-privat': return finanzenPrivat(a.heute);
     case 'finanzen-business': return finanzenBusiness(a.heute);
     case 'planung': return planung(a.person, a.heute, a.space ?? null);
-    case 'aufgaben': return aufgaben(a.person, a.heute);
+    case 'aufgaben': return aufgaben(a.person, a.heute, a.space ?? null);
     case 'kalender': return kalender(a.person, a.heute);
     case 'gesundheit': return gesundheit(a.person, a.heute);
     case 'familie': return familie(a.person, a.heute);
@@ -77,14 +77,16 @@ async function finanzenPrivat(heute: string): Promise<FlussReihe | null> {
     import('@/lib/finanzen/haushalt/speicher'), import('@/lib/finanzen/haushalt/fixkosten'), import('@/lib/finanzen/haushalt/einordnung'),
   ]);
   const hh = await ladeHaushalt(h);
-  // NUR die Einheit „privat“ — Firmen-Buchungen derselben Datei gehören ins Business.
-  const privat = hh.buchungen.filter(b => b.einheit === 'privat' && !b.ist_umbuchung);
+  // Privat und die Privat-Einheiten (05.10.: die Selbstständigkeit gehört zu Privat, `gehoertZuPrivat`) — Buchungen der Business-
+  // Gesellschaften derselben Datei gehören ins Business.
+  const { gehoertZuPrivat } = await import('@/lib/einheiten');
+  const privat = hh.buchungen.filter(b => gehoertZuPrivat(b.einheit) && !b.ist_umbuchung);
   const ausgaben = privat.filter(b => b.betrag < 0 && b.datum >= tagPlus(heute, -ZURUECK)).map(b => ({ tag: b.datum, wert: -b.betrag / 100 }));
   const bis = monatPlus(heute, 4);
   const bekannt: BekannteAusgabe[] = [];
   for (const s of hh.schulden) {
     const ab = tag(s.naechste_faelligkeit);
-    if (s.einheit !== 'privat' || !s.rate || !ab) continue;
+    if (!gehoertZuPrivat(s.einheit) || !s.rate || !ab) continue;
     // Monatlich ab der nächsten Fälligkeit bis zum Ende (Tag im Monat höchstens 28 — jeder Monat hat ihn).
     const tagImMonat = String(Math.min(28, Number(ab.slice(8, 10)))).padStart(2, '0');
     for (let i = 0; i < 6; i++) {
@@ -94,7 +96,7 @@ async function finanzenPrivat(heute: string): Promise<FlussReihe | null> {
     }
   }
   for (const b of hh.belege) {
-    if (b.einheit !== 'privat' || b.erledigt || b.art !== 'rechnung' || !b.betrag || !tag(b.faellig_am)) continue;
+    if (!gehoertZuPrivat(b.einheit) || b.erledigt || b.art !== 'rechnung' || !b.betrag || !tag(b.faellig_am)) continue;
     bekannt.push({ titel: b.bezeichnung, tag: b.faellig_am!.slice(0, 10), wert: b.betrag / 100, art: 'rechnung' });
   }
   // Feste Kosten: erkannte Rhythmen der eigenen Buchungen (≥ 3 Treffer, Schwankung ≤ 20 %) — je Monat ihr Monatsbetrag.
@@ -105,15 +107,15 @@ async function finanzenPrivat(heute: string): Promise<FlussReihe | null> {
 }
 
 async function finanzenBusiness(heute: string): Promise<FlussReihe> {
-  const [{ vorschau, nurBusiness }, { istGesellschaft }] = await Promise.all([import('@/lib/make-one/liquiditaet'), import('@/lib/einheiten')]);
+  const [{ vorschau, nurBusiness }, { istBusinessGesellschaft }] = await Promise.all([import('@/lib/make-one/liquiditaet'), import('@/lib/einheiten')]);
   type Plan = { firmen?: Parameters<typeof vorschau>[0]; rechnungen?: Parameters<typeof vorschau>[1]; zahlungen?: Parameters<typeof vorschau>[2]; merkposten?: Parameters<typeof vorschau>[3] };
   const [plan, liqui, buch] = await Promise.all([
     loadJson<Plan>('finanzplan').catch(() => null),
     loadJson<{ posten?: Parameters<typeof vorschau>[7] }>('liquiplan').catch(() => null),
     loadJson<{ buchungen?: { datum?: string; betrag?: number; ort?: string }[] }>('buchungen').catch(() => null),
   ]);
-  // Nur Gesellschaften — eine Buchung ohne `ort` ist privat und gehört nie ins Business.
-  const saldo = (buch?.buchungen ?? []).filter(b => istGesellschaft(b.ort) && tag(b.datum) && Number.isFinite(b.betrag)).map(b => ({ tag: b.datum!, wert: b.betrag! }));
+  // Nur Business-Gesellschaften — eine Buchung ohne `ort` ist privat, eine der Selbstständigkeit gehört seit 05.10. zu Privat.
+  const saldo = (buch?.buchungen ?? []).filter(b => istBusinessGesellschaft(b.ort) && tag(b.datum) && Number.isFinite(b.betrag)).map(b => ({ tag: b.datum!, wert: b.betrag! }));
   const v = plan ? vorschau(plan.firmen ?? [], plan.rechnungen ?? [], plan.zahlungen ?? [], plan.merkposten ?? [], heute, 13, false, liqui?.posten ?? [], 'real', undefined, true) : null;
   const rechnungen = nurBusiness((plan?.rechnungen ?? []) as (Parameters<typeof vorschau>[1][number] & { firmaId?: string })[]).filter(r => r.status !== 'bezahlt' && r.status !== 'storniert' && r.betrag > 0 && tag(r.faellig));
   const zahlungen = nurBusiness(plan?.zahlungen ?? []).filter(z => z.status === 'offen' && tag(z.faellig));
@@ -154,10 +156,12 @@ async function planung(person: string, heute: string, space: SpaceId | null): Pr
 }
 
 // ── Aufgaben ─────────────────────────────────────────────────────────────────
-async function aufgaben(person: string, heute: string): Promise<FlussReihe> {
-  const { ladeAufgabenSicht } = await import('@/lib/aufgaben/sicht');
-  // Die Sicht DIESER Person: fremde „nur ich“ (samt Unteraufgaben) sind schon heraus, Papierkorb auch.
-  const s = await ladeAufgabenSicht(person);
+async function aufgaben(person: string, heute: string, space: SpaceId | null = null): Promise<FlussReihe> {
+  const [{ ladeAufgabenSicht }, { spaceVonAufgabe }] = await Promise.all([import('@/lib/aufgaben/sicht'), import('@/lib/make-one/space-regeln')]);
+  // Die Sicht DIESER Person: fremde „nur ich“ (samt Unteraufgaben) sind schon heraus, Papierkorb auch. Mit `space` (05.10.) nur die
+  // Aufgaben dieses Bereichs — serverseitig, damit der Business-Überblick die Arbeit der Selbstständigkeit (Privat) nicht ausliefert.
+  const s0 = await ladeAufgabenSicht(person);
+  const s = space ? { ...s0, tasks: s0.tasks.filter(t => spaceVonAufgabe(t) === space) } : s0;
   return flussAufgaben({
     heute, link: WEG.aufgaben(),
     aufgaben: s.tasks.filter(t => t.status !== 'cancelled').map(t => ({

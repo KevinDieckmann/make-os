@@ -5,6 +5,7 @@
 // Client-safe, keine Server-Importe.
 
 import { orgVon } from './organisation-data';
+import { bereichVon, istGesellschaft } from '@/lib/einheiten';
 
 export type SpaceId = 'privat' | 'business';
 export const SPACE_LABEL: Record<SpaceId, string> = { privat: 'Privat', business: 'Business' };
@@ -12,15 +13,21 @@ export const SPACE_LABEL: Record<SpaceId, string> = { privat: 'Privat', business
 export const SPACE_FARBE: Record<SpaceId, string> = { privat: '#D9A45B', business: '#6E7EF5' };
 export const istSpace = (v: unknown): v is SpaceId => v === 'privat' || v === 'business';
 
-/** Organisation → Space: nur „privat“ ist Privat. */
-export const spaceVonOrg = (org: string): SpaceId => (org === 'privat' ? 'privat' : 'business');
+/**
+ * Organisation → Space: „privat“ ist Privat — und seit 05.10. jede Einheit, die zu Privat gehört (lib/einheiten.ts `bereichVon`,
+ * unsere Instanz: die Selbstständigkeit `kdc`, Kevin: „Ja, überall unter Privat“). KD Ventures, KEMARIS und alles andere: Business.
+ */
+export const spaceVonOrg = (org: string): SpaceId => (org === 'privat' || (istGesellschaft(org) && bereichVon(org) === 'privat') ? 'privat' : 'business');
+/** Bereich eines Aufgaben-Space (`privat` · kdc · kdv · ug · `m-<firma>`): Privat und Privat-Einheiten → privat, Firmen und Mandanten → business. */
+export const spaceBereich = (spaceId: string): SpaceId => (spaceId === 'privat' || (istGesellschaft(spaceId) && bereichVon(spaceId) === 'privat') ? 'privat' : 'business');
 
 /**
- * Der Space einer Aufgabe: seit 28.09. abends zuerst der Aufgaben-Space (`spaceId`: privat → Privat, Firmen und
- * Mandanten → Business, lib/aufgaben/struktur.ts), sonst die eigene Abweichung, sonst der Ort (Text schlägt Projekt).
+ * Der Space einer Aufgabe: seit 28.09. abends zuerst der Aufgaben-Space (`spaceId`: privat und Privat-Einheiten wie die
+ * Selbstständigkeit → Privat, Business-Firmen und Mandanten → Business, lib/aufgaben/struktur.ts), sonst die eigene Abweichung,
+ * sonst der Ort (Text schlägt Projekt).
  */
 export function spaceVonAufgabe(t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId; spaceId?: string }, orgZuordnung: Record<string, string> = {}): SpaceId {
-  if (typeof t.spaceId === 'string' && t.spaceId) return t.spaceId === 'privat' ? 'privat' : 'business';
+  if (typeof t.spaceId === 'string' && t.spaceId) return spaceBereich(t.spaceId);
   return t.space ?? spaceVonOrg(orgVon(t, orgZuordnung));
 }
 

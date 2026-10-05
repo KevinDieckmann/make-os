@@ -21,7 +21,7 @@ import { localDay } from '@/lib/zeit';
 import { SCOPES, schwelleSauber, type Scope, type Schwelle } from './register';
 import { mrrJeKunde, type Bestand, type Monatsabschluss } from './messen';
 import { berechne, type Ampel, type BusinessIndex } from './index';
-import { GESELLSCHAFTEN, UG_NAME, type Gesellschaftskennung } from '@/lib/einheiten';
+import { BUSINESS_GESELLSCHAFTEN, KERN_EINHEITEN, GEHOERT_ZU_PRIVAT, bereichVon, bereichVonFirma, bereichVonGesellschaft, istBusinessGesellschaft, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export const EINSTELLUNGEN = 'business-einstellungen';
 export const ABSCHLUESSE = 'business-abschluesse';
@@ -44,17 +44,26 @@ export interface BusinessVerlauf {
   mrr: Record<string, Partial<Record<Scope, Record<string, number>>>>;
 }
 
-/** Die Firmen mit Einstellungen und Monatsabschluss — die eine Einheitenliste (28.09.: auch die MAKE Innovation GmbH). */
-const FIRMEN = GESELLSCHAFTEN;
+/**
+ * Die Firmen mit Einstellungen und Monatsabschluss — die eine Einheitenliste (28.09.: auch die MAKE Innovation GmbH), seit 05.10. nur
+ * der Business-Bereich (`BUSINESS_GESELLSCHAFTEN`; die Selbstständigkeit gehört zu Privat). Gespeicherte Werte einer Privat-Einheit
+ * bleiben im Speicher (nichts wird gelöscht), werden hier aber weder geschrieben noch ausgeliefert noch gerechnet.
+ */
+const FIRMEN = BUSINESS_GESELLSCHAFTEN;
+/** Nur die Werte der Business-Firmen eines Schlüssel-Objekts (fte, Ziele, Kapazität …). */
+const nurBusinessWerte = <T>(o: Partial<Record<Gesellschaftskennung, T>> | undefined): Partial<Record<Gesellschaftskennung, T>> =>
+  Object.fromEntries(Object.entries(o ?? {}).filter(([k]) => istBusinessGesellschaft(k))) as Partial<Record<Gesellschaftskennung, T>>;
 
 /** Zählt eigene Schreibvorgänge — Zwischenspeicher (ZOE, Head of Finance) wissen so, wann sie neu rechnen müssen. */
 let schreibStand = 0;
 export const businessSchreibStand = () => schreibStand;
 const zahlOder = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Number.isFinite(Number(v)) && v !== '' && v != null ? Number(v) : undefined);
 
+/** Einstellungen des Business-Bereichs — nur die Business-Firmen (05.10.: Werte der Selbstständigkeit bleiben gespeichert, gehen aber nicht hinaus). */
 export async function ladeEinstellungen(): Promise<BusinessEinstellungen> {
   const e = await loadJson<BusinessEinstellungen>(EINSTELLUNGEN);
-  return { fte: e?.fte ?? {}, ziele: e?.ziele ?? {}, kapazitaet: e?.kapazitaet ?? {}, schwellen: e?.schwellen ?? {} };
+  const schwellen = Object.fromEntries(Object.entries(e?.schwellen ?? {}).filter(([k]) => k === 'alle' || k === 'gesamt' || istBusinessGesellschaft(k)));
+  return { fte: nurBusinessWerte(e?.fte), ziele: nurBusinessWerte(e?.ziele), kapazitaet: nurBusinessWerte(e?.kapazitaet), schwellen };
 }
 
 /** Die geltenden eigenen Schwellen einer Sicht: „alle“, überschrieben von der Sicht selbst. */
@@ -79,7 +88,7 @@ export async function speichereEinstellungen(roh: Record<string, unknown>): Prom
       const s = roh.schwelle as Record<string, unknown>;
       const sicht = (['alle', ...SCOPES.map(x => x.id)] as const).find(x => x === s.sicht);
       const id = String(s.id ?? '');
-      if (!sicht) { fehler = 'Sicht fehlt (alle, gesamt, kdc, kdv oder ug).'; return alt ?? neu; }
+      if (!sicht) { fehler = `Sicht fehlt (alle, ${SCOPES.map(x => x.id).join(', ')}).`; return alt ?? neu; }
       const liste = { ...(neu.schwellen![sicht] ?? {}) };
       if (s.zuruecksetzen === true) delete liste[id];
       else {
@@ -92,11 +101,12 @@ export async function speichereEinstellungen(roh: Record<string, unknown>): Prom
     return neu;
   });
   if (!fehler) schreibStand++;
-  return fehler ? { ok: false, fehler } : { ok: true, einstellungen: e };
+  return fehler ? { ok: false, fehler } : { ok: true, einstellungen: { ...e, fte: nurBusinessWerte(e.fte), ziele: nurBusinessWerte(e.ziele), kapazitaet: nurBusinessWerte(e.kapazitaet), schwellen: Object.fromEntries(Object.entries(e.schwellen ?? {}).filter(([k]) => k === 'alle' || k === 'gesamt' || istBusinessGesellschaft(k))) } };
 }
 
+/** Monatsabschlüsse des Business-Bereichs (05.10.: die einer Privat-Einheit bleiben gespeichert, gehen aber nicht hinaus). */
 export async function ladeAbschluesse(): Promise<Monatsabschluss[]> {
-  return (await loadJson<{ eintraege: Monatsabschluss[] }>(ABSCHLUESSE))?.eintraege ?? [];
+  return ((await loadJson<{ eintraege: Monatsabschluss[] }>(ABSCHLUESSE))?.eintraege ?? []).filter(a => istBusinessGesellschaft(a.firma));
 }
 
 export const ABSCHLUSS_FELDER = ['umsatz', 'kosten', 'personal', 'marketingVertrieb', 'afa', 'fakturierteTage', 'eigenkapital', 'bilanzsumme', 'kurzfrVerbindlichkeiten', 'bankschulden'] as const;
@@ -105,7 +115,8 @@ export const ABSCHLUSS_FELDER = ['umsatz', 'kosten', 'personal', 'marketingVertr
 export async function speichereAbschluss(roh: Record<string, unknown>, von: string): Promise<{ ok: true; eintrag: Monatsabschluss } | { ok: false; fehler: string }> {
   const firma = FIRMEN.find(f => f === roh.firma);
   const monat = typeof roh.monat === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(roh.monat) ? roh.monat : null;
-  if (!firma) return { ok: false, fehler: `Firma fehlt (Selbstständigkeit, KD Ventures oder ${UG_NAME}).` };
+  if (!firma && istGesellschaft(roh.firma)) return { ok: false, fehler: GEHOERT_ZU_PRIVAT(roh.firma) };
+  if (!firma) return { ok: false, fehler: `Firma fehlt (${KERN_EINHEITEN.filter(e => istBusinessGesellschaft(e.id)).map(e => e.label).join(' oder ')}).` };
   if (!monat) return { ok: false, fehler: 'Monat im Format JJJJ-MM fehlt.' };
   if (monat > localDay().slice(0, 7)) return { ok: false, fehler: 'Ein Abschluss für die Zukunft geht nicht.' };
   let eintrag!: Monatsabschluss;
@@ -123,6 +134,8 @@ export async function speichereAbschluss(roh: Record<string, unknown>, von: stri
 }
 
 export async function loescheAbschluss(firma: string, monat: string): Promise<void> {
+  // Nur der Business-Bereich (05.10.): ein Abschluss einer Privat-Einheit wird von hier nie gelöscht.
+  if (!istBusinessGesellschaft(firma)) return;
   schreibStand++;
   await updateJson<{ eintraege: Monatsabschluss[] }>(ABSCHLUESSE, alt => ({ eintraege: (alt?.eintraege ?? []).filter(x => !(x.firma === firma && x.monat === monat)) }));
 }
@@ -160,9 +173,11 @@ async function ladeRohFrisch(heute: string) {
   const g = grund?.roh ? lesen(grund.roh, grund.stand) : null;
   const fixS = (grund?.roh?.s?.fixk ?? []).length, fixU = (grund?.roh?.u?.fixk ?? []).length;
   const fixListe = g?.fixkosten ?? [];
-  const grundlageFixkosten = {
-    kdc: fixListe.slice(fixU, fixU + fixS).reduce((s, f) => s + monatlich(f), 0),
-    kdv: fixListe.slice(0, fixU).reduce((s, f) => s + monatlich(f), 0),
+  // Seit 05.10. nur der Business-Bereich: die Teile der Selbstständigkeit (Umsatz/Kosten, Fixkosten) zählen nur, wenn sie dort steht.
+  const selbstImBusiness = bereichVon('kdc') === 'business';
+  const grundlageFixkosten: Partial<Record<Gesellschaftskennung, number>> = {
+    ...(selbstImBusiness ? { kdc: fixListe.slice(fixU, fixU + fixS).reduce((s, f) => s + monatlich(f), 0) } : {}),
+    ...(istBusinessGesellschaft('kdv') ? { kdv: fixListe.slice(0, fixU).reduce((s, f) => s + monatlich(f), 0) } : {}),
   };
   const kontakte = kartei?.kontakte ?? [];
   // Traktions-Index (26.09.): dieselbe Zahl wie im Markttraktion-Überblick — eine Wahrheit.
@@ -170,13 +185,20 @@ async function ladeRohFrisch(heute: string) {
   const tr = alsTraktion(ti);
   const ab = new Date(`${heute}T12:00:00`); ab.setDate(ab.getDate() - 35);
   const abTag = localDay(ab);
+  // Serverseitige Grenze des Business-Bereichs (05.10.): Konten, Rechnungen, Zahlungen, Merk- und Planposten (Liquiplan) einer
+  // Privat-Einheit — ohne Firma ist das der bisherige Rückfall Selbstständigkeit (`bereichVonFirma`) — und ihre Deals/Mandate kommen
+  // hier gar nicht erst an. Nichts wird gelöscht; Privat sieht sie weiter.
+  const imBusiness = <T extends { firmaId?: string }>(l: T[]): T[] => l.filter(x => bereichVonFirma(x.firmaId) === 'business');
   return {
     heute,
-    firmen: fp?.firmen ?? [], rechnungen: fp?.rechnungen ?? [], zahlungen: fp?.zahlungen ?? [], merkposten: fp?.merkposten ?? [],
-    planposten: lp?.posten ?? [], finance: fin ?? null,
-    grundlageMonate: g ? monatsBild(g).map(m => ({ monat: m.monat, umsatzNetto: m.umsatzNetto, kostenNetto: m.kostenNetto })) : [],
+    firmen: (fp?.firmen ?? []).filter(f => bereichVonFirma(f.id) === 'business'), rechnungen: imBusiness(fp?.rechnungen ?? []), zahlungen: imBusiness(fp?.zahlungen ?? []), merkposten: imBusiness(fp?.merkposten ?? []),
+    planposten: imBusiness(lp?.posten ?? []), finance: fin ?? null,
+    grundlageMonate: g && selbstImBusiness ? monatsBild(g).map(m => ({ monat: m.monat, umsatzNetto: m.umsatzNetto, kostenNetto: m.kostenNetto })) : [],
     grundlageFixkosten,
-    abschluesse, mandate: crm.mandate, chancen: crm.chancen, leistungen: crm.leistungen,
+    abschluesse,
+    mandate: crm.mandate.filter(m => bereichVonGesellschaft(m.gesellschaft) === 'business'),
+    chancen: crm.chancen.filter(c => bereichVonGesellschaft(c.gesellschaft) === 'business'),
+    leistungen: crm.leistungen,
     traktion: { score: tr.score, text: tr.score != null ? `${tr.welten.map(w => `${w.label} ${w.score ?? '—'}`).join(' · ')}${tr.vorlaeufig ? ' (vorläufig)' : ''}` : tr.hinweis, welten: tr.welten.map(w => ({ id: w.id, label: w.label, score: w.score })) },
     termine: (cal?.events ?? []).filter(e => !e.allDay && e.startDate && e.endDate).map(e => ({ start: e.startDate!, ende: e.endDate!, owner: e.owner })),
     termineVollstaendig: cal?.quelle === 'icloud',

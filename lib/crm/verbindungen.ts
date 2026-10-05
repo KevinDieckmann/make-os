@@ -35,7 +35,7 @@ import type { KonfliktStand } from './import-konflikte';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import type { FokusBlock } from '@/lib/zeitmessung/modell';
 import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
-import { istSpaceId } from '@/lib/aufgaben/struktur';
+import { istSpaceId, einheitVonSpace } from '@/lib/aufgaben/struktur';
 import type { AufgabeBezug } from '@/types/tasks';
 import { einheitenListe } from '@/lib/planung/einheiten';
 import { einheitName } from '@/lib/einheiten';
@@ -498,7 +498,9 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
       const business = spaceVonAufgabe(t, b.aufgaben.orte) === 'business';
       if (t.einheit) {
         const name = (einheitName(t.einheit) ?? '').toLocaleLowerCase('de-DE');
-        if (!business || !erlaubt.has(name)) melde('aufgabe-einheit-ungueltig', t.id);
+        // 05.10.: ein Firmen-Space unter Privat (Selbstständigkeit) trägt die Einheit seines Space — die ist gültig.
+        const imPrivatFirmenSpace = !business && typeof t.spaceId === 'string' && t.spaceId !== 'privat' && (einheitName(einheitVonSpace(t.spaceId)) ?? '').toLocaleLowerCase('de-DE') === name;
+        if (!imPrivatFirmenSpace && (!business || !erlaubt.has(name))) melde('aufgabe-einheit-ungueltig', t.id);
       } else if (business && t.status !== 'done' && !istSpaceId(t.spaceId)) melde('aufgabe-ohne-einheit', t.id); // mit Space: Einheit aus dem Space
       if (bezugTot(t.bezug, m).length) melde('aufgabe-bezug-tot', t.id);
     }

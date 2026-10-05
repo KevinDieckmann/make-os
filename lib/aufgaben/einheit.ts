@@ -6,7 +6,7 @@
 // Hier: Säuberung im Schreibweg, Ableitung für System-Aufgaben (Deal/Mandat/
 // Produkt → Gesellschaft → Einheit), Filter, Vorgabe, Farben. Rein, client-sicher.
 
-import { KERN_EINHEITEN, einheitAusGesellschaft, gesellschaftAusEinheit, einheitName, type Gesellschaftskennung } from '@/lib/einheiten';
+import { KERN_EINHEITEN, BUSINESS_EINHEITEN_NAMEN, einheitAusGesellschaft, gesellschaftAusEinheit, einheitName, type Gesellschaftskennung } from '@/lib/einheiten';
 import { sauberEinheit } from '@/lib/planung/einheiten';
 import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
 
@@ -30,13 +30,22 @@ export function einheitKurz(name: string | null | undefined): string | undefined
 type AufgabeMitOrt = { id: string; title: string; description?: string; projectId: string; space?: SpaceId; einheit?: unknown };
 
 /**
- * Die Einheit einer Aufgabe, wie sie gespeichert wird: nur im Business, Namen
+ * Darf eine Aufgabe eine Einheit tragen? Im Business ja — und seit 05.10. auch in einem Firmen-Space des Privat-Bereichs (die
+ * Selbstständigkeit `kdc` steht unter Privat, ihre Aufgaben tragen weiter „Selbstständigkeit“). Der Space „privat“ nie.
+ */
+export function einheitErlaubt(t: AufgabeMitOrt & { spaceId?: string }, orgZuordnung: Record<string, string> = {}): boolean {
+  if (typeof t.spaceId === 'string' && t.spaceId) return t.spaceId !== 'privat';
+  return spaceVonAufgabe(t, orgZuordnung) === 'business';
+}
+
+/**
+ * Die Einheit einer Aufgabe, wie sie gespeichert wird: nur im Business (und in Firmen-Spaces unter Privat, `einheitErlaubt`), Namen
  * über `einheitName` vereinheitlicht (Altnamen wie „Neue UG“ → „MAKE Innovation GmbH“), 2–40 Zeichen.
  * Alles andere → undefined (das Feld fällt weg).
  */
-export function aufgabeEinheit(t: AufgabeMitOrt, orgZuordnung: Record<string, string> = {}): string | undefined {
+export function aufgabeEinheit(t: AufgabeMitOrt & { spaceId?: string }, orgZuordnung: Record<string, string> = {}): string | undefined {
   if (t.einheit == null || t.einheit === '') return undefined;
-  if (spaceVonAufgabe(t, orgZuordnung) !== 'business') return undefined;
+  if (!einheitErlaubt(t, orgZuordnung)) return undefined;
   return sauberEinheit(t.einheit) ?? undefined;
 }
 
@@ -76,13 +85,13 @@ export function passtEinheitFilter(einheit: string | null | undefined, filter: E
 export interface EinheitOption { id: EinheitFilter; label: string; farbe: string; anzahl: number }
 
 /**
- * Die Filter-Pillen im Business: Alle · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH
- * · (eigene, sobald eine Aufgabe sie trägt) · ohne Einheit. `anzahl` zählt die übergebenen Aufgaben.
+ * Die Filter-Pillen im Business: Alle · KD Ventures · MAKE Innovation GmbH (seit 05.10. nur die Business-Einheiten — die
+ * Selbstständigkeit gehört zu Privat) · (eigene, sobald eine Aufgabe sie trägt) · ohne Einheit. `anzahl` zählt die übergebenen Aufgaben.
  */
 export function einheitFilterOptionen(genutzt: readonly (string | null | undefined)[], liste: readonly string[] = []): EinheitOption[] {
   const namen = genutzt.map(e => einheitName(e));
   const zaehle = (f: EinheitFilter) => namen.filter(e => passtEinheitFilter(e, f)).length;
-  const kern = KERN_EINHEITEN.map(k => k.label);
+  const kern = [...BUSINESS_EINHEITEN_NAMEN];
   const eigene: string[] = [];
   const gesehen = new Set(kern.map(norm));
   // Reihenfolge der Werteliste zuerst, dann was nur an Aufgaben hängt (z. B. aus einem alten Stand).

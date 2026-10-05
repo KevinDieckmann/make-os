@@ -1,11 +1,13 @@
 // ─── Business-Index (25.09.) ────────────────────────────────────────────────
-// GET  ?scope=gesamt|kdc|kdv|ug → Index, Säulen, Kennzahlen (Wert, Ampel, Formel,
+// GET  ?scope=gesamt|<Business-Gesellschaft> → Index, Säulen, Kennzahlen (Wert, Ampel, Formel,
 //      Quelle oder Messlücke, die Punkte dahinter mit Links), Trend, Ampel-Wechsel,
 //      Monatsabschlüsse, Einstellungen, Geschäftsmodell (Umsatz je Linie/Produkt/Mandat)
 // POST { aktion: 'abschluss', firma, monat, umsatz?, kosten?, personal?, … }
 //      { aktion: 'abschluss_weg', firma, monat }
-//      { aktion: 'einstellungen', fte?: { kdc?, kdv?, ug? }, ziele?: { kdc?, kdv?, ug? }, kapazitaet?: { kdc?, kdv?, ug? },
-//        schwelle?: { id, sicht: 'alle'|'gesamt'|'kdc'|'kdv'|'ug', gruen, rot } | { id, sicht, zuruecksetzen: true } }
+//      { aktion: 'einstellungen', fte?: { kdv?, ug? }, ziele?: { kdv?, ug? }, kapazitaet?: { kdv?, ug? },
+//        schwelle?: { id, sicht: 'alle'|'gesamt'|'kdv'|'ug', gruen, rot } | { id, sicht, zuruecksetzen: true } }
+// Seit 05.10. nur der Business-Bereich (lib/einheiten.ts `bereichVon`): die Selbstständigkeit (kdc) gehört zu Privat — keine Sicht,
+// nicht in „Gesamt“, ihre Abschlüsse/Einstellungen werden weder ausgeliefert noch geschrieben (400 „gehört zu Privat“); gespeichert bleibt alles.
 // GET  ?kompakt=1 → nur diese Sicht, ohne Verlauf/Abschlüsse (für die Fachseiten)
 // Nur der Haushalt des Inhabers (Kevin & Malin) und der Dienstweg.
 
@@ -17,7 +19,7 @@ import { berechne } from '@/lib/business/index';
 import { fixkostenDer } from '@/lib/business/messen';
 import { geschaeftsmodell } from '@/lib/business/modell';
 import { SCOPES, HOLDING_VORGABE, type Scope } from '@/lib/business/register';
-import { istGesellschaft } from '@/lib/einheiten';
+import { GEHOERT_ZU_PRIVAT, istBusinessGesellschaft, istGesellschaft } from '@/lib/einheiten';
 import { personAus } from '@/lib/zoe/raum';
 import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 
@@ -30,6 +32,8 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   const q = new URL(req.url).searchParams;
   const s = q.get('scope');
+  // Ausdrücklich eine Privat-Einheit angefragt (Selbstständigkeit): ehrlich ablehnen statt still „Gesamt“ zu liefern (05.10.).
+  if (istGesellschaft(s) && !istBusinessGesellschaft(s)) return NextResponse.json({ ok: false, fehler: GEHOERT_ZU_PRIVAT(s) }, { status: 400 });
   const scope: Scope = SCOPES.some(x => x.id === s) ? (s as Scope) : 'gesamt';
   // Zeit & Fokus der anfragenden Person — vierte Säule, persönlich (26.09. spät).
   const zeit = await zeitBildFuer(personAus(req)).catch(() => null);
@@ -67,6 +71,7 @@ export async function POST(req: Request) {
   }
   if (b.aktion === 'abschluss_weg') {
     if (!istGesellschaft(b.firma) || !/^\d{4}-\d{2}$/.test(String(b.monat))) return NextResponse.json({ ok: false, fehler: 'Firma und Monat nötig.' }, { status: 400 });
+    if (!istBusinessGesellschaft(b.firma)) return NextResponse.json({ ok: false, fehler: GEHOERT_ZU_PRIVAT(b.firma) }, { status: 400 });
     await loescheAbschluss(String(b.firma), String(b.monat));
     return NextResponse.json({ ok: true });
   }
