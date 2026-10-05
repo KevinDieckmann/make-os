@@ -10,10 +10,12 @@ import type { Gesellschaftskennung } from '@/lib/einheiten';
 import type { Annahmen } from './rechenkern';
 
 export type AnnahmeArt = 'betrag' | 'anteil' | 'monat' | 'zahl';
-export interface AnnahmeFeld { k: keyof Annahmen & string; label: string; art: AnnahmeArt; dezimal: number }
+export interface AnnahmeFeld { k: keyof Annahmen & string; label: string; art: AnnahmeArt; dezimal: number; /** Kurzer Hinweis unter dem Feld (optional). */ hinweis?: string }
 export interface AnnahmeGruppe { id: string; label: string; ort: Gesellschaftskennung; felder: AnnahmeFeld[] }
 
-const f = (k: keyof Annahmen & string, label: string, art: AnnahmeArt = 'betrag'): AnnahmeFeld => ({ k, label, art, dezimal: art === 'anteil' ? 4 : 0 });
+const f = (k: keyof Annahmen & string, label: string, art: AnnahmeArt = 'betrag', hinweis?: string): AnnahmeFeld => ({ k, label, art, dezimal: art === 'anteil' ? 4 : 0, ...(hinweis ? { hinweis } : {}) });
+/** Gegenprüfung 05.10. (Kevin: „Es gibt kein Gesellschafterdarlehen“): das alte Feld bleibt nur für ein echtes Darlehen von außen. */
+export const DARLEHEN_ALT_HINWEIS = 'Nur eintragen, wenn es ein echtes Darlehen gibt — sonst 0. Der Geber liegt außerhalb des Plans (Geld kommt in die GmbH, Rückzahlung geht hinaus); Darlehen zwischen Privat und den Gesellschaften unter Buchungen & Check › Schulden › Darlehen.';
 
 /** `person1`/`person2`: Namen der beiden Gehaltsempfänger (aus dem Team, nie fest im Code). */
 export function annahmeGruppen(person1: string, person2: string): AnnahmeGruppe[] {
@@ -23,7 +25,7 @@ export function annahmeGruppen(person1: string, person2: string): AnnahmeGruppe[
       f('agAnteil', 'Arbeitgeberanteil', 'anteil'), f('gehaltTag', 'Gehaltstag im Monat', 'zahl'),
     ] },
     { id: 'kapital', label: `Kapital und Gründung ${UG_KURZ}`, ort: 'ug', felder: [
-      f('stammkapital', 'Stammkapital'), f('gruendungskosten', 'Gründungskosten'), f('darlehenKevin', `Gesellschafterdarlehen an ${UG_KURZ} (alt, Vorgabe 0 — Darlehen jetzt unter Schulden › Darlehen)`), f('darlehenRueckMonat', 'Rückzahlung in Monat', 'monat'),
+      f('stammkapital', 'Stammkapital'), f('gruendungskosten', 'Gründungskosten'), f('darlehenKevin', `Gesellschafterdarlehen an ${UG_KURZ} (alt)`, 'betrag', DARLEHEN_ALT_HINWEIS), f('darlehenRueckMonat', 'Rückzahlung in Monat', 'monat'),
     ] },
     { id: 'umsatz', label: `Umsatz-Treiber ${UG_KURZ}`, ort: 'ug', felder: [f('retainerVerzug', 'Retainer-Zahlungsverzug (Monate)', 'zahl'), f('astarnaProvision', 'Provision je vermitteltem Kunden')] },
     { id: 'holding', label: 'Holding und Start KD Ventures', ort: 'kdv', felder: [f('holdingKosten', 'Holdingkosten je Monat'), f('holdingAb', 'Holding ab Monat', 'monat'), f('kdvStart', 'Kontostand zum Start')] },

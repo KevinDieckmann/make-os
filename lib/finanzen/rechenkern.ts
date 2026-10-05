@@ -15,7 +15,7 @@
 //   5. EINE Einkommensteuer je Jahr über Selbstständigkeit + Gehalt (`lohnJahre`, Differenzmethode in ertragsteuer.ts); 2026 = Abschluss Jan–Sep +
 //      Okt–Dez in EINEM Steuerjahr (`vorab`), bezahlt im Zahlmonat 2027 (minus `selbst.estVorausgezahlt`).
 //   6. Darlehen mit Geber und Nehmer (`darlehen`, `darlehenFluesse`); die Rückzahlung kommt beim Geber an. Das alte Gesellschafterdarlehen
-//      (`annahmen.darlehenKevin`, Vorgabe 0) hat die Selbstständigkeit als Geber.
+//      (`annahmen.darlehenKevin`, Vorgabe 0) hat seit der Gegenprüfung 05.10. den Geber „außerhalb des Plans“ (wie vor finanzplan-5).
 //   Ohne Gehalt, ohne Abschluss-Gewinn, ohne Darlehen rechnet der Kern bit-genau wie vorher (tests/finanzplan-umzug-selbst.test.ts).
 // Deterministisch und client-safe (keine Server-Importe), damit Seite, Routen
 // und ZOE dieselben Zahlen sehen. Gleiche Logik wie Finanzplan v4 (Excel),
@@ -45,7 +45,7 @@
 import type { Planszenario } from './szenarien';
 import type { Steuern } from './steuern';
 import { estGemeinsam, steuerParameter } from './steuern';
-import { estTarif, jahresSteuer, neuerSteuerrechner, type Steuerparameter, type SteuerHand, type SteuerMonat } from './ertragsteuer';
+import { estTarif, jahresSteuer, neuerSteuerrechner, type Steuerparameter, type SteuerHand, type SteuerMonat, type Steuerrechner } from './ertragsteuer';
 import type { Formeln } from './handwerte';
 import type { Schwellen } from './schwellen';
 import { UG_KURZ, UG_NAME } from '@/lib/einheiten';
@@ -147,7 +147,11 @@ export interface Schritt { id: string; text: string; wer: string; bis: string; e
 export type DarlehenOrt = 'privat' | 'kdc' | 'ug' | 'kdv' | 'extern';
 export interface Darlehen { id: string; name: string; geber: DarlehenOrt; nehmer: DarlehenOrt; betrag: number; aus: number; zurueck: number; notiz?: string }
 /** Protokolleintrag. `pfad` (seit 04.10.) = der geänderte Pfad — damit die Business-Sicht nur Business-Einträge zeigt; ältere Einträge haben keinen. */
-export interface Aenderung { wer: string; wann: string; feld: string; alt: string; neu: string; pfad?: string }
+export interface Aenderung {
+  wer: string; wann: string; feld: string; alt: string; neu: string; pfad?: string;
+  /** Kennung des angehängten Eintrags bei `…/-` (Gegenprüfung 05.10.) — damit die Business-Sicht den NEUEN Eintrag prüfen kann. Optional. */
+  eintrag?: string;
+}
 
 export interface FinanzDaten {
   version: 3; stand: string; monate: string[]; aktiv: string;
@@ -167,6 +171,13 @@ export interface FinanzDaten {
   schwellen?: Partial<Schwellen>;
   /** Darlehen zwischen Privat, Selbstständigkeit und den Gesellschaften (05.10.) — fehlt in älteren Dokumenten (= keine). */
   darlehen?: Darlehen[];
+  /**
+   * Stand der Handwert-Bedeutungen (Gegenprüfung 05.10., `KERN_STAND` in lib/finanzen/handwerte.ts). Fehlt er, stammt das Dokument von vor
+   * finanzplan-5 — Handwerte mit geänderter Bedeutung wandern beim Lesen nach `handAlt`. Optional.
+   */
+  kernStand?: number;
+  /** Handwerte aus dem Stand vor finanzplan-5 (Schlüssel wie in `plan`), mit denen NICHT gerechnet wird, bis jemand sie übernimmt oder verwirft. Optional. */
+  handAlt?: Record<string, number>;
   schulden: Schuld[];
   /** Wer hat eine Planzelle zuletzt geändert: key → {wer, wann}. */
   meta: Record<string, { wer: string; wann: string }>;
@@ -185,9 +196,10 @@ export interface FinanzDaten {
    * Selbstständigkeit — Abschluss Jan–Sep 2026 und Konto. Seit 05.10. Teil von Privat (EINE Einkommensteuer).
    * `darlehenAnUG` ist ein Altfeld (die Rechnung nimmt das Gesellschafterdarlehen jetzt aus `annahmen.darlehenKevin`, eine Zahl je Darlehen).
    * Neu und optional: `lohnVorPlan` = Arbeitslohn brutto Jan–Sep 2026 (Gehalt 1), zählt in die gemeinsame Einkommensteuer 2026;
-   * `estVorausgezahlt` = schon bezahlte Einkommen-/Gewerbesteuer-Vorauszahlungen 2026, mindern Rücklage und Abschlusszahlung 2027.
+   * `estVorausgezahlt` = schon bezahlte Einkommen-/Gewerbesteuer-Vorauszahlungen 2026, mindern Rücklage und Abschlusszahlung 2027;
+   * `lohn2VorPlan` (Gegenprüfung 05.10.) = Gehalt 2 brutto Jan–Sep 2026, zählt nur bei Zusammenveranlagung.
    */
-  selbst: { posten: SelbstPosten[]; vorsorge: number; sonderausgaben: number; sicherheit: number; darlehenAnUG: number; consorsAbloesung: number; kontoStart: number; lohnVorPlan?: number; estVorausgezahlt?: number };
+  selbst: { posten: SelbstPosten[]; vorsorge: number; sonderausgaben: number; sicherheit: number; darlehenAnUG: number; consorsAbloesung: number; kontoStart: number; lohnVorPlan?: number; lohn2VorPlan?: number; estVorausgezahlt?: number };
   posten: Posten[];
   fokus: { saetze: string[]; regeln: string[]; schritte: Schritt[]; /** Die Entscheidung der Woche (Überblick › Lage). */ entscheidung?: string };
   plan: Record<string, number>; ist: Record<string, number>; protokoll: Aenderung[];
@@ -227,29 +239,66 @@ export function hand(plan: Record<string, number>, f?: Formeln): (id: string, m:
 export const DARLEHEN_ALT = 'gesellschafterdarlehen-alt';
 /**
  * Alle Darlehen der Rechnung: die Liste des Dokuments und — solange `annahmen.darlehenKevin` > 0 — das alte Gesellschafterdarlehen in die
- * MAKE Innovation GmbH. Dessen Geber ist die Selbstständigkeit (dort stand es als „Darlehen an die …“ im Abschluss): Auszahlung im ersten Planmonat
- * (zusammen mit dem Stammkapital), Rückzahlung im `darlehenRueckMonat` zurück an die Selbstständigkeit (vor dem 05.10. kam sie nirgends an).
- * Die GmbH-Seite des Altdarlehens rechnet weiter über `ug.kapital`/`ug.darlehen` (bit-genau wie vorher).
+ * MAKE Innovation GmbH. Gegenprüfung 05.10. (Funde 1+2, Kevin: „Es gibt kein Gesellschafterdarlehen“): dessen Geber ist „außerhalb des Plans“ —
+ * das Geld kommt wie bis zum 05.10. in die GmbH (`ug.kapital`, Rückzahlung `ug.darlehen`), es fließt NICHT aus der Selbstständigkeit und wirkt
+ * nicht auf Privat. (finanzplan-5 hatte es als Darlehen Selbstständigkeit → MAKE umgedeutet: ein Altdarlehen per Handwert „ausgeschaltet“ ließ
+ * die Selbstständigkeit trotzdem auszahlen, und ein Business-Konto konnte über das Feld die private Kasse bewegen.)
  */
 export function darlehenListe(d: Pick<FinanzDaten, 'darlehen' | 'annahmen'>): (Darlehen & { alt?: true })[] {
   const out: (Darlehen & { alt?: true })[] = (d.darlehen ?? []).filter(l => l && Number.isFinite(l.betrag) && l.betrag > 0);
   const a = d.annahmen;
-  if (Number.isFinite(a.darlehenKevin) && a.darlehenKevin > 0) out.push({ id: DARLEHEN_ALT, name: 'Gesellschafterdarlehen (alt)', geber: 'kdc', nehmer: 'ug', betrag: a.darlehenKevin, aus: 1, zurueck: Math.max(0, Math.round(a.darlehenRueckMonat || 0)), alt: true });
+  if (Number.isFinite(a.darlehenKevin) && a.darlehenKevin > 0) out.push({ id: DARLEHEN_ALT, name: 'Gesellschafterdarlehen (alt)', geber: 'extern', nehmer: 'ug', betrag: a.darlehenKevin, aus: 1, zurueck: Math.max(0, Math.round(a.darlehenRueckMonat || 0)), alt: true });
   return out;
 }
 export interface DarlehenFluss { ein: number[]; aus: number[] }
-/** Kassenflüsse aller Darlehen je Ort und Plan-Monat (Index = Monat − 1). `extern` hat keine Kasse im Plan. */
-export function darlehenFluesse(d: Pick<FinanzDaten, 'darlehen' | 'annahmen'>, N: number): Record<Exclude<DarlehenOrt, 'extern'>, DarlehenFluss> {
+type DarlehenKasse = Exclude<DarlehenOrt, 'extern'>;
+/** Handwert-Kennung je Seite und Richtung (lib/finanzen/handwerte.ts). Die GmbH zahlt über `ug.darlehen` aus (mit dem Altdarlehen). */
+export const DARLEHEN_HAND: Record<DarlehenKasse, { ein: string; aus: string }> = {
+  ug: { ein: 'ug.darlehenEin', aus: 'ug.darlehen' }, kdv: { ein: 'kdv.darlehenEin', aus: 'kdv.darlehenAus' },
+  kdc: { ein: 'kdc.darlehenEin', aus: 'kdc.darlehenAus' }, privat: { ein: 'p.darlehenEin', aus: 'p.darlehenAus' },
+};
+/**
+ * Kassenflüsse aller Darlehen je Ort und Plan-Monat (Index = Monat − 1). `extern` hat keine Kasse im Plan.
+ * Handwerte (Gegenprüfung 05.10., Kevins Vorgabe): steht auf einer Seite ein Handwert, folgt die GEGENSEITE dem wirksamen Wert, nicht der
+ * Formel — die Abweichung (Handwert − Formel) geht anteilig an die Gegenseiten der Darlehen in dieser Zelle (je Darlehen nach seinem Betrag);
+ * eine Gegenseite mit eigenem Handwert behält ihn, eine Gegenseite „außerhalb des Plans“ nimmt nichts auf. Ohne Handwert genau 0 Abweichung
+ * (bit-genau wie vorher). Ein Handwert in einer Zelle ohne Darlehen hat keine Gegenseite.
+ */
+export function darlehenFluesse(d: Pick<FinanzDaten, 'darlehen' | 'annahmen'> & { plan?: Record<string, number> }, N: number): Record<DarlehenKasse, DarlehenFluss> {
   const leer = (): DarlehenFluss => ({ ein: new Array<number>(N).fill(0), aus: new Array<number>(N).fill(0) });
-  const r = { privat: leer(), kdc: leer(), ug: leer(), kdv: leer() };
-  const buche = (ort: DarlehenOrt, art: 'ein' | 'aus', m: number, b: number, alt?: boolean) => {
+  const r: Record<DarlehenKasse, DarlehenFluss> = { privat: leer(), kdc: leer(), ug: leer(), kdv: leer() };
+  /** Je Zelle (Ort, Richtung, Monat) die Anteile der Darlehen: Betrag und Gegenseite (Ort + Richtung) — für die Handwert-Weitergabe. */
+  const anteile = new Map<string, { b: number; gegen: DarlehenOrt; gegenArt: 'ein' | 'aus' }[]>();
+  const zelle = (ort: DarlehenOrt, art: 'ein' | 'aus', m: number) => `${ort}|${art}|${m}`;
+  const buche = (ort: DarlehenOrt, art: 'ein' | 'aus', m: number, b: number, gegen: DarlehenOrt, alt?: boolean) => {
     if (ort === 'extern' || m < 1 || m > N) return;
-    if (alt && ort === 'ug') return;   // Altdarlehen: GmbH-Seite über ug.kapital/ug.darlehen
+    if (alt && ort === 'ug') return;   // Altdarlehen: GmbH-Seite über ug.kapital/ug.darlehen (die Gegenseite ist außerhalb des Plans)
     r[ort][art][m - 1] += b;
+    const k = zelle(ort, art, m); const l = anteile.get(k) ?? []; l.push({ b, gegen, gegenArt: art === 'ein' ? 'aus' : 'ein' }); anteile.set(k, l);
   };
   for (const l of darlehenListe(d)) {
-    if (l.aus >= 1) { buche(l.geber, 'aus', l.aus, l.betrag, l.alt); buche(l.nehmer, 'ein', l.aus, l.betrag, l.alt); }
-    if (l.zurueck >= 1 && l.zurueck > l.aus) { buche(l.nehmer, 'aus', l.zurueck, l.betrag, l.alt); buche(l.geber, 'ein', l.zurueck, l.betrag, l.alt); }
+    if (l.aus >= 1) { buche(l.geber, 'aus', l.aus, l.betrag, l.nehmer, l.alt); buche(l.nehmer, 'ein', l.aus, l.betrag, l.geber, l.alt); }
+    if (l.zurueck >= 1 && l.zurueck > l.aus) { buche(l.nehmer, 'aus', l.zurueck, l.betrag, l.geber, l.alt); buche(l.geber, 'ein', l.zurueck, l.betrag, l.nehmer, l.alt); }
+  }
+  // Handwerte: die Gegenseite folgt dem wirksamen Wert.
+  const plan = d.plan ?? {};
+  const handWert = (ort: DarlehenKasse, art: 'ein' | 'aus', m: number): number | undefined => {
+    const v = plan[`${DARLEHEN_HAND[ort][art]}:${m}`];
+    return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+  };
+  const formel = { privat: { ein: [...r.privat.ein], aus: [...r.privat.aus] }, kdc: { ein: [...r.kdc.ein], aus: [...r.kdc.aus] }, ug: { ein: [...r.ug.ein], aus: [...r.ug.aus] }, kdv: { ein: [...r.kdv.ein], aus: [...r.kdv.aus] } };
+  for (const [k, liste] of anteile) {
+    const [ort, art, mText] = k.split('|') as [DarlehenKasse, 'ein' | 'aus', string];
+    const m = Number(mText), hw = handWert(ort, art, m);
+    if (hw === undefined) continue;
+    // Die GmbH-Zelle `ug.darlehen` trägt auch die Rückzahlung des Altdarlehens (Gegenseite außerhalb) — der Formelwert der Zelle zählt sie mit.
+    const fZelle = formel[ort][art][m - 1] + (ort === 'ug' && art === 'aus' && m === d.annahmen.darlehenRueckMonat && d.annahmen.darlehenKevin > 0 ? d.annahmen.darlehenKevin : 0);
+    const delta = hw - fZelle;
+    if (delta === 0 || fZelle === 0) continue;
+    for (const a of liste) {
+      if (a.gegen === 'extern' || handWert(a.gegen, a.gegenArt, m) !== undefined) continue;
+      r[a.gegen][a.gegenArt][m - 1] += delta * a.b / fZelle;
+    }
   }
   return r;
 }
@@ -371,7 +420,7 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz, f?: Formeln):
     const bjoern = h('ug.bjoern', m, abgeloest ? 0 : rateBasis);
     const abloesung = h('kdv.abloesung', m, sz.bjoernAbloesen && m === sz.exit1.monat && rest > 0
       ? rest + Math.min(a.bjoernZinsDeckel, a.bjoernZinsMonat * (m + 2)) : 0);
-    // Darlehen ausgezahlt bzw. zurückgezahlt: das Altdarlehen (Rückzahlung, kommt seit 05.10. bei der Selbstständigkeit an) + die Darlehensliste.
+    // Darlehen ausgezahlt bzw. zurückgezahlt: das Altdarlehen (Rückzahlung geht nach außerhalb des Plans, wie vor finanzplan-5) + die Darlehensliste.
     const darlehen = h('ug.darlehen', m, (m === a.darlehenRueckMonat ? a.darlehenKevin : 0) + dl.ug.aus[i]);
     const ustZahlung = h('ug.ustZahlung', m, vorUst);
     const auszahlungen = h('ug.auszahlungen', m, kevin + malin + unterstuetzung + stellen + sach + gruendung + ustZahlung + steuer + bjoern + holding + darlehen + bA + dPers + dLauf + dKost);
@@ -453,7 +502,7 @@ export interface MonatSelbst {
 /**
  * Lohneinkünfte je Kalenderjahr für die gemeinsame Einkommensteuer (05.10.): Gehalt 1 brutto (aus der GmbH, `ug.kevin` mit Handwert) plus
  * `selbst.lohnVorPlan` (Jan–Sep des ersten Planjahres); bei Zusammenveranlagung auch Gehalt 2 (vor `malinAb` über die Selbstständigkeit, sonst
- * aus der GmbH). Je Person und Jahr minus Werbungskosten-Pauschbetrag, nie unter 0. Aus („Gehälter nicht einbeziehen“) = leer.
+ * aus der GmbH, Jan–Sep aus `selbst.lohn2VorPlan`). Je Person und Jahr minus Werbungskosten-Pauschbetrag, nie unter 0. Aus („Gehälter nicht einbeziehen“) = leer.
  */
 export function lohnJahre(d: FinanzDaten, ug: MonatUG[]): Record<number, number> {
   const g = estGemeinsam(d);
@@ -461,8 +510,10 @@ export function lohnJahre(d: FinanzDaten, ug: MonatUG[]): Record<number, number>
   const a = d.annahmen, h = hand(d.plan ?? {});
   const wk = Math.max(0, steuerParameter(d, 'kdc').werbungskosten ?? 0);
   const p1: Record<number, number> = {}, p2: Record<number, number> = {};
-  const vor = d.selbst?.lohnVorPlan;
+  const vor = d.selbst?.lohnVorPlan, vor2 = d.selbst?.lohn2VorPlan;
   if (typeof vor === 'number' && Number.isFinite(vor) && vor > 0) p1[jahrVon(1)] = vor;
+  // Gehalt 2 Jan–Sep 2026 (Gegenprüfung 05.10., Fund 11) — zählt nur bei Zusammenveranlagung (wie Gehalt 2 im Plan).
+  if (g.zusammen && typeof vor2 === 'number' && Number.isFinite(vor2) && vor2 > 0) p2[jahrVon(1)] = vor2;
   for (const u of ug) {
     const j = jahrVon(u.m);
     p1[j] = (p1[j] ?? 0) + u.kevinBrutto;
@@ -475,6 +526,15 @@ export function lohnJahre(d: FinanzDaten, ug: MonatUG[]): Record<number, number>
 
 /** Steuerparameter der Selbstständigkeit mit den Lohneinkünften der Jahre (ohne `vorab`). */
 const selbstParameter = (d: FinanzDaten, lohn: Record<number, number>): Steuerparameter => ({ ...steuerParameter(d, 'kdc'), lohn });
+/**
+ * Der Steuerrechner der Selbstständigkeit — EINE Stelle für die Monatsachse und die Jahresübersicht (`estJahre`, Gegenprüfung 05.10., Fund 12):
+ * Lohneinkünfte, Abschluss Jan–Sep als `vorab` (mit Handwert-Korrektur `ab.*` und schon bezahlten Vorauszahlungen).
+ */
+function selbstSteuerrechner(d: FinanzDaten, lohn: Record<number, number>, f?: Formeln): { st: Steuerrechner; ab: ReturnType<typeof rechneSelbst> } {
+  const ab = rechneSelbst(d, f, lohn);
+  const st = neuerSteuerrechner({ ...selbstParameter(d, lohn), vorab: { jahr: jahrVon(1), gewinn: ab.gewinn, korr: ab.korr, bezahlt: ab.vorausgezahlt } }, jahrVon, kalMonat);
+  return { st, ab };
+}
 
 /**
  * Die Selbstständigkeit (Einzelunternehmen) — seit 05.10. Teil von Privat: Umsatz und Kosten aus ihren Bausteinen (`Zusatz.kdc*`) und ihren
@@ -488,8 +548,7 @@ export function rechneSelbstAchse(d: FinanzDaten, x?: Zusatz, f?: Formeln, ug?: 
   const a = d.annahmen, p = d.plan, N = d.monate.length;
   const h = hand(p, f);
   const lohn = lohnJahre(d, ug ?? rechneUG(d, d.szenarien.find(s => s.id === d.aktiv) ?? d.szenarien[0], x));
-  const ab = rechneSelbst(d, f, lohn);
-  const st = neuerSteuerrechner({ ...selbstParameter(d, lohn), vorab: { jahr: jahrVon(1), gewinn: ab.gewinn, korr: ab.korr, bezahlt: ab.vorausgezahlt } }, jahrVon, kalMonat);
+  const { st } = selbstSteuerrechner(d, lohn, f);
   const dl = darlehenFluesse(d, N);
   const zeilen = d.sachkosten.filter(istSelbstZeile);
   const out: MonatSelbst[] = [];
@@ -530,26 +589,30 @@ export function rechneSelbstAchse(d: FinanzDaten, x?: Zusatz, f?: Formeln, ug?: 
 
 /**
  * Die gemeinsame Einkommensteuer je Kalenderjahr zum Nachsehen (05.10.): Gewinn der Selbstständigkeit (das erste Jahr inkl. Jan–Sep),
- * Lohneinkünfte, zu versteuerndes Einkommen, Steuer gesamt und auf den Lohn allein, Mehrsteuer, Gewerbesteuer, Anrechnung, Soli — dieselbe
- * Formel wie der Steuerrechner, ohne Steuer-Handwerte (stehen solche im Plan, weicht die Achse davon ab).
+ * Lohneinkünfte, zu versteuerndes Einkommen, Steuer gesamt und auf den Lohn allein, Mehrsteuer, Gewerbesteuer, Anrechnung, Soli.
+ * Gegenprüfung 05.10. (Fund 12): aus GENAU derselben Rechnung wie Rücklage und Zahlung — derselbe Steuerrechner (`selbstSteuerrechner`), dieselben
+ * Monatsgewinne (`kdc[].gewinn`) und dieselben Handwerte (`kdc.*` je Monat, `ab.*` als Korrektur). `korr` = Summe der Handwert-Abweichungen,
+ * `summe` = Steuer des Jahres, wie sie in Rücklage und Zahlung steht (Formel + korr); `vorausgezahlt` = darauf schon gezahlt (vor Planbeginn und
+ * je Quartal), `zahlung` = `summe − vorausgezahlt` (Abschlusszahlung, negativ = Erstattung).
  */
-export interface EstJahr { jahr: number; gewinn: number; vorab: number; lohn: number; zve: number; estGesamt: number; estLohn: number; est: number; soli: number; gewst: number; anrechnung: number; summe: number }
+export interface EstJahr {
+  jahr: number; gewinn: number; vorab: number; lohn: number; zve: number; estGesamt: number; estLohn: number; est: number; soli: number; gewst: number; anrechnung: number;
+  korr: number; summe: number; vorausgezahlt: number; zahlung: number;
+}
 export function estJahre(d: FinanzDaten, kdc: MonatSelbst[], ug: MonatUG[]): EstJahr[] {
-  const lohn = lohnJahre(d, ug), p = selbstParameter(d, lohn), ab = rechneSelbst(d, undefined, lohn);
-  const jahre = Array.from(new Set(kdc.map(k => jahrVon(k.m))));
+  const lohn = lohnJahre(d, ug), p = selbstParameter(d, lohn);
+  const { st } = selbstSteuerrechner(d, lohn);
+  const h = hand(d.plan ?? {});
+  for (const k of kdc) st(k.m, k.gewinn, steuerHand(h, 'kdc', k.m));
   const tarif = (x: number): number => (p.splitting ? 2 * estTarif(x / 2, p.tarif) : estTarif(x, p.tarif));
-  let vortrag = 0, vortragGew = 0;
-  return jahre.map(j => {
-    const vorab = j === jahrVon(1) ? ab.gewinn : 0;
-    const gewinn = vorab + kdc.filter(k => jahrVon(k.m) === j).reduce((s, k) => s + k.gewinn, 0);
-    const js = jahresSteuer(p, gewinn, vortrag, j, vortragGew);
-    const l = lohn[j] ?? 0, v = p.verlustvortrag ? vortrag : 0, abzug = Math.max(0, p.estAbzug);
-    const zve = Math.max(0, gewinn - v + l - abzug);
+  return st.jahre().map(sj => {
+    const l = lohn[sj.jahr] ?? 0, v = p.verlustvortrag ? sj.vortrag : 0, abzug = Math.max(0, p.estAbzug);
+    const zve = Math.max(0, sj.gewinn - v + l - abzug);
     const estLohn = p.estAn && (l > 0 || p.splitting) ? tarif(Math.max(0, l - abzug)) : 0;
-    const r: EstJahr = { jahr: j, gewinn, vorab, lohn: l, zve, estGesamt: estLohn + js.est, estLohn, est: js.est, soli: js.soli, gewst: js.gewst, anrechnung: js.anrechnung, summe: js.summe };
-    vortrag = p.verlustvortrag ? Math.max(0, vortrag - (gewinn + l)) : 0;
-    vortragGew = p.verlustvortrag ? Math.max(0, vortragGew - gewinn) : 0;
-    return r;
+    return {
+      jahr: sj.jahr, gewinn: sj.gewinn, vorab: sj.vorab, lohn: l, zve, estGesamt: estLohn + sj.js.est, estLohn, est: sj.js.est, soli: sj.js.soli,
+      gewst: sj.js.gewst, anrechnung: sj.js.anrechnung, korr: sj.korr, summe: sj.steuer, vorausgezahlt: sj.vorausgezahlt, zahlung: sj.steuer - sj.vorausgezahlt,
+    };
   });
 }
 
@@ -628,7 +691,8 @@ export function gruppeReihe(plan: Record<string, number>, ug: MonatUG[], pr: Mon
  * Lohnsteuer); die Monatsachse rechnet das Jahr ab Okt weiter und zahlt die Steuer 2026 im Zahlmonat 2027. `lohn` = Lohneinkünfte je Jahr
  * (`lohnJahre`; fehlt: ohne Lohn wie bis 05.10.). `steuer` = alles auf Jan–Sep (ESt-Anteil + Gewerbesteuer − Anrechnung + Soli), `korr` =
  * Abweichung durch Handwerte auf „zu versteuern“/„Einkommensteuer“ (geht in die Steuer des Jahres). `darlehen` = was die Selbstständigkeit
- * im Plan noch als Darlehen auszahlt (Darlehensliste und Altdarlehen; vorher das Altfeld `darlehenAnUG`).
+ * im Plan noch als Darlehen auszahlt (Darlehensliste; das Altdarlehen hat seit der Gegenprüfung 05.10. keinen Geber im Plan; vorher das Altfeld
+ * `darlehenAnUG`).
  */
 export function rechneSelbst(d: FinanzDaten, f?: Formeln, lohn?: Record<number, number>) {
   const s = d.selbst;

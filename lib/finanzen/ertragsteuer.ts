@@ -127,9 +127,13 @@ export function jahresSteuer(p: Steuerparameter, gewinn: number, vortrag = 0, ja
     const gewst = p.gewstAn ? p.messzahl * heb * basis : 0;
     return { kst, soli, gewst, est: 0, anrechnung: 0, summe: kst + soli + gewst };
   }
-  const messbetrag = p.gewstAn ? p.messzahl * Math.max(0, basis - Math.max(0, p.freibetrag)) : 0;
+  // Gewerbesteuer mit ihrem EIGENEN Verlustvortrag (Gegenprüfung 05.10., Fund 7): auf ein Jahr MIT Lohn kann eines ohne Lohn folgen — dann ist der
+  // Einkommensteuer-Vortrag schon mit dem Lohn verrechnet, der Gewerbeertrag aber nicht. Ohne Lohn in allen Jahren sind beide Vorträge gleich.
+  const basisGew = Math.max(0, gewinn - (p.verlustvortrag ? Math.max(0, vortragGewerbe) : 0));
+  const messbetrag = p.gewstAn ? p.messzahl * Math.max(0, basisGew - Math.max(0, p.freibetrag)) : 0;
   const gewst = messbetrag * heb;
   const est = p.estAn ? estTarif(Math.max(0, basis - Math.max(0, p.estAbzug)), p.tarif) : 0;
+  // § 35 EStG: Ermäßigungshöchstbetrag = ESt × gewerbliche / alle positiven Einkünfte — hier nur gewerbliche Einkünfte, also die ganze ESt.
   const anrechnung = Math.min(Math.max(0, p.anrechnung) * messbetrag, gewst, est);
   // Soli auf die festzusetzende Einkommensteuer (nach Anrechnung): 0 bis zur Freigrenze, dann höchstens 11,9 % des Überschusses (Milderungszone).
   const estNach = est - anrechnung, grenze = Math.max(0, p.soliFreigrenze ?? STEUER_VORGABE.soliFreigrenze);
@@ -141,7 +145,8 @@ export function jahresSteuer(p: Steuerparameter, gewinn: number, vortrag = 0, ja
  * Gemeinsame Einkommensteuer (05.10.): Gewinn der Selbstständigkeit + Lohneinkünfte des Jahres, EINE Progression. Weil die Lohnsteuer schon in
  * der Netto-Tabelle steckt, zählt nur die Mehrsteuer: ESt = Tarif(Gewinn + Lohn − Vortrag − Abzüge) − Tarif(Lohn − Abzüge). Ein Verlust der
  * Selbstständigkeit mindert so auch die Steuer auf den Lohn (Verlustausgleich → Erstattung, ESt negativ). Gewerbesteuer nur auf den Gewinn
- * (eigener Vortrag), Anrechnung § 35 höchstens bis zur Mehrsteuer, Soli = Soli(gesamt nach Anrechnung) − Soli(Lohn allein).
+ * (eigener Vortrag), Anrechnung § 35 höchstens der Ermäßigungshöchstbetrag (ESt × Gewinn / Summe der Einkünfte), die Gewerbesteuer und Faktor ×
+ * Messbetrag; Soli = Soli(gesamt nach Anrechnung) − Soli(Lohn allein).
  */
 function jahresSteuerGemeinsam(p: Steuerparameter, gewinn: number, vortrag: number, vortragGewerbe: number, lohnEink: number): JahresSteuer {
   const v = p.verlustvortrag ? Math.max(0, vortrag) : 0, vg = p.verlustvortrag ? Math.max(0, vortragGewerbe) : 0;
@@ -153,7 +158,12 @@ function jahresSteuerGemeinsam(p: Steuerparameter, gewinn: number, vortrag: numb
   const estGesamt = p.estAn ? tarif(Math.max(0, gewinn - v + lohnEink - abzug)) : 0;
   const estLohn = p.estAn ? tarif(Math.max(0, lohnEink - abzug)) : 0;
   const est = estGesamt - estLohn;
-  const anrechnung = Math.min(Math.max(0, p.anrechnung) * messbetrag, gewst, Math.max(0, est));
+  // § 35 EStG (Gegenprüfung 05.10., Fund 8): höchstens der Ermäßigungshöchstbetrag = tarifliche ESt × positive gewerbliche Einkünfte / Summe der
+  // positiven Einkünfte (Gewinn + Lohneinkünfte, vor Verlustabzug), dazu höchstens die tatsächliche Gewerbesteuer und Faktor × Messbetrag.
+  // Vorher: höchstens die Mehrsteuer — zu hoch, sobald Vorsorge/Sonderausgaben den Lohn steuerfrei machen.
+  const gPos = Math.max(0, gewinn), lPos = Math.max(0, lohnEink);
+  const hoechstbetrag = gPos > 0 ? estGesamt * gPos / (gPos + lPos) : 0;
+  const anrechnung = Math.min(Math.max(0, p.anrechnung) * messbetrag, gewst, hoechstbetrag);
   const grenze = Math.max(0, p.soliFreigrenze ?? STEUER_VORGABE.soliFreigrenze) * (p.splitting ? 2 : 1);
   const soliVon = (x: number): number => (p.soliAn && x > grenze ? Math.min(p.soli * x, STEUER_VORGABE.soliMilderung * (x - grenze)) : 0);
   const soli = soliVon(estGesamt - anrechnung) - soliVon(estLohn);
@@ -181,12 +191,21 @@ export type SteuerHandFeld = 'kst' | 'soli' | 'gewst' | 'est' | 'anrechnung' | '
 export type SteuerHand = (feld: SteuerHandFeld, gerechnet: number) => number;
 
 /**
+ * Ein Kalenderjahr, wie der Steuerrechner es abschließt (Gegenprüfung 05.10., Fund 12): Gewinn des Jahres (das erste Planjahr inkl. `vorab`),
+ * Verlustvorträge zu Beginn (Einkommen-/Gewerbesteuer, mit Handwert), die Jahressteuer nach Formel (`js`), die Summe der Handwert-Abweichungen
+ * (`korr`, inkl. `vorab.korr`), die Steuer des Jahres (`steuer` = js.summe + korr — genau das, was Rücklage und Zahlung tragen) und das darauf
+ * schon Vorausgezahlte. Das laufende (letzte) Jahr steht mit dem Stand nach dem letzten Monat darin.
+ */
+export interface SteuerJahr { jahr: number; gewinn: number; vorab: number; vortrag: number; vortragGewerbe: number; js: JahresSteuer; korr: number; steuer: number; vorausgezahlt: number }
+export type Steuerrechner = ((m: number, gewinn: number, hand?: SteuerHand) => SteuerMonat) & { jahre: () => SteuerJahr[] };
+
+/**
  * Ein Steuerrechner für EINE Gesellschaft: Monat für Monat mit dem Gewinn vor Steuern füttern (m = Plan-Monat ab 1,
  * `jahr(m)`/`kal(m)` = Kalenderjahr bzw. -monat dazu). Zahlung hängt nur an Gewinnen bis zum Vormonat des Zahlmonats, Rücklage
  * und Aufwand an den Gewinnen bis einschließlich dieses Monats — darum reicht ein Durchlauf im Rechenkern.
  * `hand` (optional): Handwerte dieses Monats (siehe `SteuerHand`).
  */
-export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => number, kal: (m: number) => number): (m: number, gewinn: number, hand?: SteuerHand) => SteuerMonat {
+export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => number, kal: (m: number) => number): Steuerrechner {
   let aktJahr = Number.NaN, ytd = 0, vortrag = 0, letzteSteuer: JahresSteuer = NULL_ST;
   /** Gewerbesteuer-Verlustvortrag (05.10.): getrennt, weil ein Verlust bei der gemeinsamen Einkommensteuer auch den Lohn mindert, beim Gewerbeertrag nicht. Ohne Lohn = `vortrag`. */
   let vortragGew = 0, vorjahrVortragGewNachher = 0;
@@ -198,10 +217,18 @@ export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => numb
   const fertig = new Map<number, { steuer: number; vorausgezahlt: number }>();
   let gezahltGesamt = 0, aufgelaufenFertig = 0;
   let vorjahrVortragNachher = 0;
-  return (m, gewinn, hand) => {
+  /** Abgeschlossene Jahre (für `jahre()`) und der Gewinn vor Planbeginn des laufenden Jahres. */
+  const abgeschlossen: SteuerJahr[] = [];
+  let vorabJahr = 0;
+  const jahrJetzt = (): SteuerJahr => {
+    const js = jahresSteuer(p, ytd, vortrag, aktJahr, vortragGew);
+    return { jahr: aktJahr, gewinn: ytd, vorab: vorabJahr, vortrag, vortragGewerbe: vortragGew, js, korr: korrJahr, steuer: js.summe + korrJahr, vorausgezahlt: fertig.get(aktJahr)?.vorausgezahlt ?? 0 };
+  };
+  const rechner = (m: number, gewinn: number, hand?: SteuerHand): SteuerMonat => {
     const j = jahr(m), mo = kal(m);
     if (j !== aktJahr) {
       if (!Number.isNaN(aktJahr)) {
+        abgeschlossen.push(jahrJetzt());
         // Jahreswechsel: das Jahr abschließen (mit den Handwerten des Jahres), Verlustvortrag fortschreiben.
         let s = jahresSteuer(p, ytd, vortrag, aktJahr, vortragGew).summe;
         if (korrJahr !== 0) s += korrJahr;
@@ -211,11 +238,11 @@ export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => numb
         vorjahrVortragNachher = p.verlustvortrag ? Math.max(0, vortrag - (ytd + (p.form === 'einzel' ? lohnEinkuenfte(p, aktJahr) : 0))) : 0;
         vorjahrVortragGewNachher = p.verlustvortrag ? Math.max(0, vortragGew - ytd) : 0;
       }
-      aktJahr = j; ytd = 0; vortrag = vorjahrVortragNachher; vortragGew = vorjahrVortragGewNachher; letzteSteuer = NULL_ST; korrJahr = 0; korrVoraus = 0;
+      aktJahr = j; ytd = 0; vortrag = vorjahrVortragNachher; vortragGew = vorjahrVortragGewNachher; letzteSteuer = NULL_ST; korrJahr = 0; korrVoraus = 0; vorabJahr = 0;
       // Gewinn vor Planbeginn (Abschluss Jan–Sep): das Jahr beginnt damit — Progression über das ganze Jahr, die Steuer darauf steht sofort in
       // der Rücklage (über `jetzt.summe`), der Aufwand der Planmonate ist nur der Zuwachs.
       if (p.vorab && p.vorab.jahr === j && Number.isFinite(p.vorab.gewinn)) {
-        ytd = p.vorab.gewinn;
+        ytd = p.vorab.gewinn; vorabJahr = p.vorab.gewinn;
         letzteSteuer = jahresSteuer(p, ytd, vortrag, j, vortragGew);
         if (p.vorab.korr && Number.isFinite(p.vorab.korr)) korrJahr = p.vorab.korr;
         // Vor Planbeginn schon bezahlte Vorauszahlungen dieses Jahres: mindern Rücklage und Abschlusszahlung (gezahlt, aber nicht aus dem Plan-Konto).
@@ -267,6 +294,8 @@ export function neuerSteuerrechner(p: Steuerparameter, jahr: (m: number) => numb
     const ruecklage = Math.max(0, aufgelaufenFertig + jetzt.summe + korrJahr - gezahltGesamt);
     return { kst, soli, gewst, est, anrechnung, summe, zahlung, ruecklage, verlustvortrag: vortrag };
   };
+  // Die Jahre so, wie Rücklage und Zahlung sie tragen — EINE Rechnung für Blatt und Jahresübersicht (keine zweite Formel daneben).
+  return Object.assign(rechner, { jahre: (): SteuerJahr[] => (Number.isNaN(aktJahr) ? [...abgeschlossen] : [...abgeschlossen, jahrJetzt()]) });
 }
 
 /** Vorgaben der Sätze — aus dem früheren Gesamtsatz so abgeleitet, dass bei unveränderten Eingaben dieselbe Gesamtquote herauskommt. */

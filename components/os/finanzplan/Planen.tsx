@@ -23,6 +23,8 @@ import { AnnahmenAlle, SchwellenKarte, EinstellungenKarte } from './Annahmen';
 import { SteuerKarte } from './Steuern';
 import { STEUER_HINWEIS } from '@/lib/finanzen/szenarien';
 import { GESELLSCHAFTEN } from '@/lib/einheiten';
+import { HAND_FELDER, zelleTeile } from '@/lib/finanzen/handwerte';
+import { useRueckfrage } from '../ui/zeile-aktionen';
 
 /** Blatt + Zeilen-Dialog + neue Zeile — für Privat und die MAKE Innovation GmbH (ug) gemeinsam. */
 function useZeilenDialog() {
@@ -138,7 +140,51 @@ export function KDV() { return <Geschaeft ort="kdv" />; }
 
 // ── Selbstständigkeit (seit 05.10. unter Privat) ─────────────────────────────
 export function Selbst() {
-  return <><Geschaeft ort="kdc" /><EinkommensteuerGemeinsam /><SelbstAbschluss /></>;
+  return <><AlteHandwerte /><Geschaeft ort="kdc" /><EinkommensteuerGemeinsam /><SelbstAbschluss /></>;
+}
+
+/** Handwert-Schlüssel als Text: Name der Größe, Monat (0 = ohne Monat), ggf. „nur in Szenario …“. */
+function handText(d: ReturnType<typeof usePlan>['d'], k: string): string {
+  const t = zelleTeile(k); if (!t) return k;
+  const sz = t.szenario ? ` · nur in „${(d.planszenarien ?? []).find(p => p.id === t.szenario)?.name ?? t.szenario}“` : '';
+  return `${HAND_FELDER[t.id]?.name ?? t.id}${t.m ? ` · ${monatLabel(d, t.m)}` : ' (Abschluss)'}${sz}`;
+}
+
+/**
+ * Handwerte aus dem Stand vor finanzplan-5 (Gegenprüfung 05.10., Fund 5): ihre Bedeutung hat sich geändert (Abschluss und Einkommensteuer jetzt mit
+ * dem Gehalt in EINER Progression, Steuer 2026 inkl. Jan–Sep) — der Server legt sie beim Lesen in `handAlt`, gerechnet wird ohne sie. Je Wert
+ * ein Klick: „übernehmen“ (gilt ab jetzt mit der neuen Bedeutung) oder „verwerfen“ (die Formel gilt), jeweils mit Rückfrage.
+ */
+function AlteHandwerte() {
+  const { d, aendere } = usePlan();
+  const { bestaetigen, dialog } = useRueckfrage();
+  const alt = Object.entries(d.handAlt ?? {});
+  if (!alt.length) return null;
+  const uebernehmen = async (k: string, v: number) => {
+    if (!await bestaetigen({ titel: 'Alten Handwert übernehmen?', text: `${handText(d, k)}: ${eur(v)} €\nDer Wert wurde vor dem 05.10. eingetragen. Übernommen gilt er ab jetzt mit der NEUEN Bedeutung (gemeinsame Einkommensteuer mit dem Gehalt, Steuer 2026 inkl. Jan–Sep) und geht in Rücklage und Zahlung ein.`, ja: 'Übernehmen' })) return;
+    void aendere([{ pfad: `/plan/${k}`, neu: v }], `Alter Handwert übernommen: ${handText(d, k)}`);
+  };
+  const verwerfen = async (k: string, v: number) => {
+    if (!await bestaetigen({ titel: 'Alten Handwert verwerfen?', text: `${handText(d, k)}: ${eur(v)} €\nDanach gilt die Formel. Der alte Wert ist dann weg (im Protokoll steht er noch).`, ja: 'Verwerfen', gefahr: true })) return;
+    void aendere([{ pfad: `/handAlt/${k}`, alt: v }], `Alter Handwert verworfen: ${handText(d, k)}`);
+  };
+  return (
+    <Karte i={0}>
+      <Ueberschrift>Achtung: {alt.length === 1 ? 'ein Handwert' : `${alt.length} Handwerte`} aus dem alten Stand — Bedeutung geändert, wird nicht gerechnet</Ueberschrift>
+      <Tabelle klein>
+        <thead><tr><th style={TH}>Wert</th><th style={THr}>alter Handwert</th><th style={TH}></th></tr></thead>
+        <tbody>{alt.map(([k, v]) => (
+          <tr key={k}>
+            <td style={TD}>{handText(d, k)}</td>
+            <td style={TDr}><Geld v={v} /> €</td>
+            <td style={TD}><span style={{ display: 'inline-flex', gap: 6 }}><KnopfKlein onClick={() => void uebernehmen(k, v)}>übernehmen</KnopfKlein><KnopfKlein farbe={LEUCHT.kritisch} onClick={() => void verwerfen(k, v)}>verwerfen</KnopfKlein></span></td>
+          </tr>
+        ))}</tbody>
+      </Tabelle>
+      <Hinweis>Seit dem 05.10. rechnen der Abschluss und die Steuer der Selbstständigkeit mit dem Gehalt in EINER Einkommensteuer (und 2026 als ein Steuerjahr). Diese Werte wurden vorher von Hand eingetragen und meinten die alte Größe — bis Sie entscheiden, rechnet der Plan mit der Formel.</Hinweis>
+      {dialog}
+    </Karte>
+  );
 }
 
 /**
@@ -147,9 +193,11 @@ export function Selbst() {
  * Netto-Tabelle als Lohnsteuer), Mehrsteuer durch die Selbstständigkeit, Gewerbesteuer, Anrechnung, Soli. Nur Anzeige — gerechnet im Kern.
  */
 function EinkommensteuerGemeinsam() {
-  const { dd, kdc, ug, formel } = usePlan();
+  const { d, dd, kdc, ug, formel } = usePlan();
+  // Gegenprüfung 05.10. (Fund 12): dieselbe Rechnung wie Rücklage und Zahlung (derselbe Steuerrechner, dieselben Handwerte).
   const jahre = estJahre(dd, kdc, ug);
-  const steuerHand = Object.keys(formel).some(k => /^kdc\.(est|gewst|soli|anrechnung|kst|verlustvortrag):/.test(k));
+  // Alle wirksamen Handwerte, die in die Einkommensteuer eingehen (Abschluss, Selbstständigkeit, Gehälter) — nicht nur kdc-Steuerwerte.
+  const handwerte = Object.keys(formel).filter(k => /^(ab\.(ein|aus|gewinn|zve|est)|kdc\.(umsatz|eingang|kosten|gewinn|malin|est|gewst|soli|anrechnung|kst|verlustvortrag|steuer|steuerRuecklage)|ug\.(kevin|malin)):\d+$/.test(k));
   const z = (l: string, f: (j: (typeof jahre)[number]) => number, fett?: boolean, minus?: boolean) => (
     <tr><td style={{ ...TD, fontWeight: fett ? 700 : 500 }}>{l}</td>{jahre.map(j => <td key={j.jahr} style={{ ...TDr, fontWeight: fett ? 700 : 500 }}><Geld v={(minus ? -1 : 1) * f(j)} /></td>)}</tr>
   );
@@ -169,7 +217,10 @@ function EinkommensteuerGemeinsam() {
           {z('Gewerbesteuer', j => j.gewst)}
           {z('Anrechnung (§ 35 EStG)', j => j.anrechnung, false, true)}
           {z('Soli (Mehrbetrag)', j => j.soli)}
-          {z('Steuer des Jahres aus dem Plan (Zahlung im Folgejahr)', j => j.summe, true)}
+          {jahre.some(j => j.korr) ? z('davon von Hand (Abweichung der Handwerte)', j => j.korr) : null}
+          {z('Steuer des Jahres (Rücklage)', j => j.summe, true)}
+          {jahre.some(j => j.vorausgezahlt) ? z('schon vorausgezahlt', j => j.vorausgezahlt, false, true) : null}
+          {z('Abschlusszahlung im Folgejahr (negativ = Erstattung)', j => j.zahlung, true)}
         </tbody>
       </Tabelle>
       <Hinweis>
@@ -177,7 +228,7 @@ function EinkommensteuerGemeinsam() {
         auf das Gehalt steckt schon im Netto (Netto-Tabelle); der Plan zahlt aus dem Konto der Selbstständigkeit nur den Teil darüber — ein Verlust
         mindert so auch die Steuer auf das Gehalt (Erstattung im Folgejahr). Ausschüttungen bleiben pauschal versteuert (Abgeltungsteuer).
         Einstellbar unter „Welche Steuern gelten?“: Gehälter einbeziehen, Einzel- oder Zusammenveranlagung, Pauschbetrag.
-        {steuerHand ? ' Achtung: Steuerwerte stehen von Hand im Blatt — die Monatsachse rechnet mit ihnen, diese Übersicht mit der Formel.' : ''} {STEUER_HINWEIS}
+        {handwerte.length ? ` Achtung: ${handwerte.length === 1 ? 'ein Handwert wirkt' : `${handwerte.length} Handwerte wirken`} auf diese Steuer (${handwerte.slice(0, 6).map(k => handText(d, k)).join(', ')}${handwerte.length > 6 ? ' …' : ''}) — die Zeilen darüber zeigen die Formel, „von Hand“ die Abweichung; Rücklage und Zahlung rechnen mit den Handwerten.` : ''} {STEUER_HINWEIS}
       </Hinweis>
     </Karte>
   );
@@ -225,6 +276,7 @@ function SelbstAbschluss() {
               {zeile('Vorsorge', <ZahlFeld wert={s.vorsorge} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/vorsorge', alt: s.vorsorge, neu: v ?? 0 }], 'Selbstständigkeit Vorsorge')} titel="Vorsorge" />)}
               {zeile('Sonderausgaben', <ZahlFeld wert={s.sonderausgaben} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/sonderausgaben', alt: s.sonderausgaben, neu: v ?? 0 }], 'Selbstständigkeit Sonderausgaben')} titel="Sonderausgaben" />)}
               {zeile('Gehalt brutto Jan–Sep 2026 (zählt in die Einkommensteuer)', <ZahlFeld wert={s.lohnVorPlan ?? null} leer platzhalter="0" dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/lohnVorPlan', alt: s.lohnVorPlan, ...(v == null ? {} : { neu: v }) }], 'Selbstständigkeit Gehalt Jan–Sep')} titel="Gehalt brutto Jan–Sep 2026" />)}
+              {zeile('Gehalt 2 brutto Jan–Sep 2026 (zählt bei Zusammenveranlagung)', <ZahlFeld wert={s.lohn2VorPlan ?? null} leer platzhalter="0" dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/lohn2VorPlan', alt: s.lohn2VorPlan, ...(v == null ? {} : { neu: v }) }], 'Selbstständigkeit Gehalt 2 Jan–Sep')} titel="Gehalt 2 brutto Jan–Sep 2026" />)}
               {zeile('Lohneinkünfte 2026 (ganzes Jahr)', <Geld v={r.lohn} />)}
               {zeile('zu versteuern 2026 (Jan–Sep + Gehalt)', hz('ab.zve', r.zve, 'zu versteuern 2026'))}
               {zeile('Einkommensteuer-Anteil Jan–Sep (Näherung)', hz('ab.est', r.est, 'Einkommensteuer 2026', { farbe: r.est > 0 ? LEUCHT.achtung : undefined }), true)}

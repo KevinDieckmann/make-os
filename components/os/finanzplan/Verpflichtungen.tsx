@@ -94,7 +94,7 @@ export function Schulden() {
 function DarlehenKarte() {
   const { d, aw, aendere, sicht } = usePlan();
   const business = sicht === 'business';
-  // Business-Sicht: die private Seite (auch die Selbstständigkeit beim Altdarlehen) heißt „außerhalb des Plans“.
+  // Business-Sicht: die private Seite heißt „außerhalb des Plans“, der Name „Darlehen (privat)“ (darlehenFuerBusiness).
   const liste = business ? darlehenListe(d).map(l => darlehenFuerBusiness(l)).filter((l): l is NonNullable<typeof l> => !!l) : darlehenListe(d);
   const orte = (business ? DARLEHEN_ORTE.filter(o => DARLEHEN_BUSINESS.includes(o) || o === 'extern') : DARLEHEN_ORTE).map(o => ({ id: o, label: darlehenOrtName(o) }));
   const setze = (l: Darlehen, feld: keyof Darlehen, alt: unknown, neu: unknown, label: string) => void aendere([{ pfad: `/darlehen/id=${l.id}/${feld}`, alt, neu }], `Darlehen ${l.name} · ${label}`);
@@ -112,7 +112,7 @@ function DarlehenKarte() {
             const ort = (o: DarlehenOrt, feld: 'geber' | 'nehmer') => (fest ? darlehenOrtName(o) : <Auswahl wert={o} onWahl={v => setze(l, feld, o, v, feld === 'geber' ? 'Geber' : 'Nehmer')} optionen={orte.filter(x => x.id !== (feld === 'geber' ? l.nehmer : l.geber))} titel={feld === 'geber' ? 'Geber' : 'Nehmer'} />);
             return (
               <tr key={l.id}>
-                <td style={TD}>{fest ? l.name : <TextFeld wert={l.name} onFertig={v => setze(l, 'name', l.name, v, 'Name')} breite={160} titel="Name" />}{alt && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, maxWidth: 260 }}>aus den Annahmen (Gesellschafterdarlehen) — dort auf 0 setzen, wenn es keins gibt</div>}</td>
+                <td style={TD}>{fest ? l.name : <TextFeld wert={l.name} onFertig={v => setze(l, 'name', l.name, v, 'Name')} breite={160} titel="Name" />}{alt && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, maxWidth: 260 }}>aus den Annahmen (Gesellschafterdarlehen, Geber außerhalb des Plans) — nur eintragen, wenn es ein echtes Darlehen gibt, sonst dort auf 0 setzen</div>}</td>
                 <td style={TD}>{ort(l.geber, 'geber')}</td>
                 <td style={TD}>{ort(l.nehmer, 'nehmer')}</td>
                 <td style={TDr}>{fest ? <Geld v={l.betrag} /> : <ZahlFeld wert={l.betrag} onFertig={v => setze(l, 'betrag', l.betrag, v ?? 0, 'Betrag')} breite={100} titel="Betrag" />}</td>

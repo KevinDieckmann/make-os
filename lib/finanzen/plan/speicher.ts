@@ -9,10 +9,11 @@ import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { Aenderung, FinanzDaten } from '@/lib/finanzen/rechenkern';
 import { zielStaende } from '@/lib/finanzen/rechenkern';
-import { rechneMit, arbeitsplanVon, auswertung } from '@/lib/finanzen/szenarien';
+import { rechneMit, arbeitsplanFuer, mitBereich, auswertung } from '@/lib/finanzen/szenarien';
 import { wendeOperationenAn, neuerStand, pruefeDokument, OperationUngueltig, OperationZuGross, type Operation } from './operationen';
 import { offeneBuchungen, faelligeZahl } from './hilfen';
-import { businessPfadErlaubt, fuerSicht, type PlanSicht } from './sicht';
+import { fuerSicht, type PlanSicht } from './sicht';
+import { schreibeAlsBusiness } from './business-schreiben';
 
 export function speicherName(haushalt: string): string {
   if (!HAUSHALT_OK.test(haushalt)) throw new Error(`Ungültiger Haushalt: ${haushalt}`);
@@ -53,12 +54,14 @@ export async function patchen(haushalt: string, basisStand: unknown, ops: Operat
       ergebnis = { ok: false, status: 409, fehler: 'Inzwischen hat jemand geändert — der Plan wurde neu geladen, bitte noch einmal.', stand: d.stand, dokument: fuerSicht(d, sicht) };
       return aktuell;
     }
-    // Business-Sicht (04.10.): jeder Schritt muss Business sein — sonst 403, nichts wird geschrieben.
+    // Business-Sicht (04.10.; Gegenprüfung 05.10.): jeder Schritt muss Business sein UND der private Teil bleibt unverändert — sonst 403, nichts
+    // wird geschrieben (lib/finanzen/plan/business-schreiben.ts).
     if (sicht === 'business') {
-      for (const op of Array.isArray(ops) ? ops : []) {
-        const grund = businessPfadErlaubt(String(op?.pfad ?? ''), d, op?.neu);
-        if (grund) { ergebnis = { ok: false, status: 403, fehler: `In der Business-Sicht nicht änderbar: ${grund}` }; return aktuell; }
-      }
+      const b = schreibeAlsBusiness(d, ops, person, jetzt.toISOString());
+      if (!b.ok) { ergebnis = { ok: false, status: b.status, fehler: b.fehler }; return aktuell; }
+      const stand = neuerStand(d.stand, jetzt);
+      ergebnis = { ok: true, stand, protokoll: b.r.protokoll, meta: b.r.meta, nachladen: b.r.nachladen };
+      return { ...b.r.dokument, stand };
     }
     try {
       const r = wendeOperationenAn(d, ops, person, jetzt.toISOString());
@@ -91,13 +94,15 @@ export async function importieren(haushalt: string, dokument: FinanzDaten, erset
 }
 
 /**
- * Verdichtete Zahlen des Arbeitsplans (sonst des aktiven Treibers) — für ZOE und die Startfläche, ohne Zeilen und Buchungen.
+ * Verdichtete Zahlen des Arbeitsplans des Bereichs (sonst des aktiven Treibers) — für ZOE und die Startfläche, ohne Zeilen und Buchungen.
  * `sicht: 'business'` (05.10.): „frei jetzt“ und „Steuerrücklage“ nur der Gesellschaften (MAKE + KD Ventures) — Privat und die
  * Selbstständigkeit (seit 05.10. Teil von Privat) zählen dort nicht; die übrigen privaten Schlüssel filtert `kennzahlenFuerSicht`.
  */
 export function kennzahlenVon(d: FinanzDaten, sicht: 'privat' | 'business' = 'privat') {
-  const ps = arbeitsplanVon(d);
-  const { d: dd, sz, ug, kdc, pr, kz } = rechneMit(d, ps);
+  // Gegenprüfung 05.10. (Fund 13): jeder Bereich rechnet mit SEINEM Arbeitsplan (`bereiche.<sicht>.arbeitsplan`, ohne eigene Wahl der gemeinsame) —
+  // wie die Oberfläche (`mitBereich` in Finanzplan.tsx). Vorher rechneten die Kennzahlen immer den gemeinsamen Arbeitsplan.
+  const ps = arbeitsplanFuer(d, sicht);
+  const { d: dd, sz, ug, kdc, pr, kz } = rechneMit(mitBereich(d, sicht), ps);
   const aw = auswertung(dd, ug, pr, kdc);
   const ziele = zielStaende(dd, ug, pr, kdc).map(z => ({ id: z.ziel.id, name: z.ziel.name, status: z.status, erreichtMonat: z.erreichtMonat }));
   return {
