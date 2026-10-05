@@ -6,8 +6,8 @@
 2. Kopiere jeweils alles zwischen `--- PROMPT P… START ---` und `--- PROMPT P… ENDE ---`.
 3. Wenn Gemini vorab einen Rechercheplan zeigt: prüfen, ob alle nummerierten Fragen drin sind, sonst „bitte alle Fragen 1–n abdecken“ antworten, dann starten.
 4. Ergebnisse als Google Doc exportieren und als `research/ai-ceo/P01-markt.md` … `P10-gtm.md` ablegen (oder mir die Docs geben).
-5. Zusätzlich **P12–P16** (Stimme der Kunden, Weg zu 100 Kunden, Integrationen, Förderung, Gestaltung) — damit ist das Bild rundum vollständig.
-6. Zum Schluss den **Bonus-Prompt P11** mit allen fünfzehn Ergebnissen laufen lassen (oder ich mache die Synthese mit dir). Mehr Prompts lohnen danach nicht — der nächste Erkenntnissprung kommt aus Gesprächen mit Pilotkunden (Leitfaden aus P12).
+5. Zusätzlich **P12–P19** (Stimme der Kunden, Weg zu 100 Kunden, Integrationen, Förderung, Gestaltung, Homepage, Umsatzströme, KI-Brain) — damit ist das Bild rundum vollständig.
+6. Zum Schluss den **Bonus-Prompt P11** mit allen achtzehn Ergebnissen laufen lassen (oder ich mache die Synthese mit dir). Mehr Prompts lohnen danach nicht — der nächste Erkenntnissprung kommt aus Gesprächen mit Pilotkunden (Leitfaden aus P12).
 
 **Die 10 Läufe im Überblick**
 | Nr. | Thema | Wofür wir es brauchen |
@@ -27,7 +27,10 @@
 | P14 | Integrationen und Ökosystem DACH (DATEV, Banken, Buchhaltung, Signatur …) | Was angebunden sein muss, damit Steuerberater und Kunden Ja sagen |
 | P15 | Förderung und Finanzierung des Baus | Geld für Entwicklung und Piloten, ohne die Richtung aufzugeben |
 | P16 | Gestaltung von KI-Aufsicht, Cockpits und ruhiger Technik | Damit das Cockpit weltweit zu den besten Oberflächen gehört |
-| P11 | Bonus: Synthese aller fünfzehn Ergebnisse (zuletzt laufen lassen) | Ein Bauplan mit Prioritäten |
+| P17 | Homepage und Außendarstellung, die alles schlägt | Website, Marke, Demo, Video, Suche/KI-Suche — besser als alles, was wir heute haben |
+| P18 | Produkte verkaufen: alle Umsatzströme und Verkaufswege | Jede Möglichkeit, mit MAKE OS und den Produkten dahinter Geld zu verdienen |
+| P19 | Das KI-Brain sauber auf dem eigenen Server | Architektur für Wissen, Suche und Gedächtnis — sicher, schnell, je Kunden-Instanz |
+| P11 | Bonus: Synthese aller achtzehn Ergebnisse (zuletzt laufen lassen) | Ein Bauplan mit Prioritäten |
 
 ---
 
@@ -569,9 +572,126 @@ Du bist eine Design-Direktorin für Software, die Menschen und KI-Agenten zusamm
 
 ---
 
+--- PROMPT P17 START ---
+
+Du bist eine Kreativdirektorin und Conversion-Strategin, die für die besten Software-Marken der Welt Websites gebaut hat (B2B-SaaS, KI-Produkte, Premium-Marken) und den DACH-Markt kennt. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (wir und unser Produkt):** MAKE Innovation (Marke der KEMARIS Innovation GmbH, künftig MAKE Innovation GmbH; Gründer Kevin Dieckmann und Malin) baut **MAKE OS** — das Betriebssystem für „AI CEOs“: Menschen, die ihr Unternehmen ohne oder fast ohne Mitarbeiter mit einem KI-Führungsteam führen und Privat + Business in einem System steuern (Fokus & Zeit, Vertrieb/CRM, Marketing, Events, Finanzplanung mit Steuern, Gesundheit, Familie; KI-Chief-of-Staff „ZOE“; Mensch entscheidet; eigene verschlüsselte Instanz je Kunde in Deutschland; DSGVO und KI-Verordnung eingebaut). Editionen geplant: „Markttraktion“ (einzeln verkaufbar), „MAKE OS“, „AI CEO“. Dazu Beratung/Einrichtung und die Event-Reihe „Fokus Innovation“ (eigene Seite fokusinnovation.de). Heutige Website makeinnovation.de: hell → dunkel, ruhig, klare Linien (80 % Seriosität, höchstens 20 % futuristische Akzente), eigene 3D-Szene „Der Weg“ (Partikel), Überschrift „Innovation braucht Umsetzung und Sichtbarkeit.“, Farben Granat (#C9465C) und Smaragd (#2FA878), Schriften Archivo und Public Sans. Zielgruppe: Solo- und Kleinstunternehmer, Berater, Coaches, Agenturinhaber, Holding-Unternehmer im DACH-Raum, die mit KI wachsen wollen, ohne ihr Leben zu verlieren.
+
+**Ziel dieses Laufs:** Alles zusammentragen, was wir brauchen, um eine Website und Außendarstellung zu bauen, die **deutlich besser** ist als unsere heutige — und besser als die der Wettbewerber: klarer, glaubwürdiger, schöner, und sie verkauft.
+
+**Beantworte ausführlich und mit Quellen (mit Links zu den Beispielseiten und genauer Beschreibung, was dort wirkt):**
+1. **Die besten Websites 2025/2026:** Analysiere 20–30 herausragende Websites aus drei Gruppen: (a) KI-/Agenten-Produkte (z. B. Anthropic, Linear, Granola, Lindy, Motion, Reclaim, Sunsama, Superhuman, Arc/Dia, Raycast, Perplexity, Notion, Attio), (b) Premium-/Vertrauensmarken (z. B. Stripe, Apple, Mercury, Ramp, Teenage Engineering, Aesop), (c) DACH-Beispiele, die Vertrauen verkaufen (z. B. Personio, Qonto/Kontist, Langdock, DeepL, Celonis, Ottonova). Je Seite: Aufbau, Kernbotschaft, Beweisführung, Bildsprache, Bewegung, Typografie, Aufforderung zum Handeln — was übernehmen wir, was nicht?
+2. **Aufbau einer Startseite, die verkauft:** Belegte Muster für den ersten Bildschirm (Botschaft in 5 Sekunden), Reihenfolge der Abschnitte, Länge, Beweise (Zahlen, Kundenstimmen, Logos, Demo), Preisseite, Aufforderungen zum Handeln; aktuelle Conversion-Studien (z. B. Unbounce, CXL, Baymard, Nielsen Norman Group, Wynter-Botschaftstests) und A/B-Ergebnisse.
+3. **Produkt zeigen:** Wie zeigen die Besten ein komplexes Produkt (interaktive Demo, Produkt-Rundgang wie Arcade/Navattic/Storylane, kurze Filme, animierte Oberflächen, „Ein Tag mit …“, Demo-Instanz mit Beispieldaten)? Was wirkt nachweislich?
+4. **Botschaft und Positionierung für AI CEOs:** Welche Überschriften, Versprechen und Begriffe funktionieren für diese Zielgruppe (DACH vs. international)? Wie verkauft man „Privat + Business“ und „KI-Führungsteam“, ohne Hype oder Angst auszulösen? Liefere 10 Überschrift-Varianten mit Begründung und 3 vollständige Botschafts-Rahmen (Problem → Wandel → Beweis → Angebot).
+5. **Vertrauen und Datenschutz sichtbar machen:** Wie präsentieren die besten Anbieter Sicherheit, eigene Instanz, „Made in Germany“, Zertifikate, Transparenz (z. B. Trust Center, Statusseite, Datenschutz in Klartext)? Was wirkt in DACH?
+6. **Gründer und Geschichte:** Wie nutzen erfolgreiche junge Firmen ihre Gründer, „wir nutzen es selbst“, Build in Public, Fallstudien — Formate und Belege.
+7. **Gefunden werden — Google und KI-Suche:** SEO 2026 für SaaS im DACH-Raum, „Generative Engine Optimization“ (Sichtbarkeit in ChatGPT, Perplexity, Gemini, Google AI Overviews), strukturierte Daten, Inhalte, die zitiert werden, Vergleichsseiten („MAKE OS vs. …“), Glossar „AI CEO“. Was ist belegt, was Hype?
+8. **Technik und Qualität:** Ladezeit (Core Web Vitals), 3D/WebGL ohne Leistungsverlust, Barrierefreiheit (WCAG 2.2, Barrierefreiheitsstärkungsgesetz), Datenschutz der Website selbst (cookiefreie Analyse wie Plausible/Matomo, keine US-Tracker, rechtssicheres Impressum/Datenschutz), Mehrsprachigkeit DE/EN.
+9. **Gesamte Außendarstellung:** Markensystem (Logo-Einsatz, Farben, Bildsprache, Ton), LinkedIn-Auftritt der Gründer und der Firma, Präsentationen/Pitch-Deck, Event-Auftritt (Fokus Innovation), E-Mail-Signaturen, Produkt-Screenshots, Video-Stil — was haben die Besten gemeinsam? Wie verbindet man Firmenseite (makeinnovation.de), Produktseite (MAKE OS) und Event-Seite (fokusinnovation.de) sauber (eine Marke, mehrere Seiten oder Unterseiten)?
+10. **Bauplan unserer neuen Website:** Seitenstruktur (Sitemap), Startseite Abschnitt für Abschnitt (Ziel, Inhalt, Beweis, Gestaltung, Bewegung), Texte-Entwürfe für die wichtigsten Abschnitte in Kundensprache, Preisseite, Demo-/Rundgang-Konzept, Seiten je Edition und je Zielgruppe, Vergleichsseiten, Trust Center, Kennzahlen (Besuch → Demo → Pilot), Testplan (was zuerst A/B-testen).
+
+**Arbeitsweise:** Aktuelle Beispiele (letzte 12–18 Monate) mit Link und Datum, Studien und Tests mit Quelle, Geschmack klar von belegter Wirkung trennen. Keine erfundenen Zahlen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Prinzipien, die unsere Website von „gut“ zu „herausragend“ bringen)
+2. Galerie der besten Seiten (Tabelle: Seite × was wirkt × was wir übernehmen × Link)
+3. Kapitel je Frage
+4. Botschafts-Rahmen + 10 Überschriften + Einwandbehandlung
+5. **Website-Bauplan**: Sitemap, Startseite Abschnitt für Abschnitt mit Textentwürfen, Preisseite, Demo-Konzept, Trust Center, SEO/GEO-Plan
+6. Markensystem und Außendarstellung (LinkedIn, Deck, Events, Video) als Checkliste
+7. Testplan und Kennzahlen
+8. Quellenliste
+
+--- PROMPT P17 ENDE ---
+
+---
+
+--- PROMPT P18 START ---
+
+Du bist eine Umsatz- und Vertriebsstrategin (Revenue Architect) für Software- und Dienstleistungsunternehmen mit Erfahrung in KI-Produkten, Kleinunternehmer-Märkten und dem DACH-Raum. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (wir und unsere Produkte):** MAKE Innovation (Marke der KEMARIS Innovation GmbH, künftig MAKE Innovation GmbH, gehalten von KD Ventures; Gründer Kevin Dieckmann und Malin) hat bzw. plant:
+- **Software MAKE OS** als eigene Instanz je Kunde, Editionen „Markttraktion“ (CRM/Vertrieb/Marketing/Events mit KI-Abteilungsleitern, einzeln verkaufbar), „MAKE OS“ (Fokus & Zeit, Business, Privat, KI-Chief-of-Staff), „AI CEO“ (alles + CEO-Cockpit + vollständiges KI-Führungsteam + Playbooks); Lizenzen signiert, nach Ablauf nur lesen.
+- **Dienstleistung:** Beratung/Einrichtung („MAKE Innovation Development“), Begleitung beim Aufbau als AI CEO.
+- **Events:** Event-Reihe „Fokus Innovation“ / Make.One (Abende in mehreren Städten, Gespräche am Tisch, Workshops).
+- **Weitere denkbare Produkte:** Playbooks/Vorlagen je Geschäftsmodell, Schulung/Akademie, Community/Mitgliedschaft, Partner- und Wiederverkaufsprogramme, Zusatzmodule (z. B. Integrationen), KI-Guthaben.
+- Eigene Erfahrung: Wir führen zwei Gesellschaften mit MAKE OS selbst.
+
+**Ziel dieses Laufs:** Jede realistische Möglichkeit finden, mit MAKE OS und den Produkten dahinter Umsatz zu machen, die besten Kombinationen auswählen und den Verkaufsprozess so bauen, dass er zuverlässig funktioniert.
+
+**Beantworte ausführlich und mit Quellen:**
+1. **Umsatzströme — vollständige Landkarte:** Software-Abos, Einrichtungspakete, Done-for-you/Managed Service („wir betreiben dein KI-Team“), Beratung, Schulung/Zertifizierung, Community-Mitgliedschaft, Events/Tickets/Sponsoring, Vorlagen-/Playbook-Marktplatz, Partner-/Reseller-/White-Label-Lizenzen, Affiliate, Integrationen/Add-ons, KI-Guthaben, Unternehmens-/Verbandslizenzen, Förder-Beratung als Dienstleistung. Je Strom: Beispiele erfolgreicher Firmen, Marge, Skalierbarkeit, Aufwand, Risiko, Passung zu uns.
+2. **Kombinationen, die funktionieren:** Software + Dienstleistung + Community + Events — Fallstudien (z. B. HubSpot Academy/Partner, Notion-Ambassadors/Vorlagen, Webflow-Experten, Circle-Communitys, Lemlist/lempire, Sales-Communitys in DACH) mit Zahlen. Welche „Flywheels“ entstehen?
+3. **Angebotsgestaltung:** Einstiegsangebote (Pilot, Audit, „AI-CEO-Check“), Kernangebot, Premium (z. B. Inner Circle, Begleitung), Garantie- und Risikoumkehr-Modelle, Preisanker, Paketierung (Good-Better-Best), Jahresvorauszahlung — belegte Wirkung.
+4. **Verkaufsprozess:** Vom Erstkontakt (Event, Website, Empfehlung, LinkedIn) bis zur Unterschrift — Schritte, Skripte, Demo-Ablauf, Einwandbehandlung, Abschlussquoten-Benchmarks für Kleinunternehmer-Software und Beratung; Gründer-Vertrieb vs. erste Vertriebsperson; wie MAKE OS selbst (CRM, Heads, Power Hour) den Verkauf steuert.
+5. **Events als Umsatzmaschine:** Wie verdienen die Besten mit Abenden/Workshops/Konferenzen direkt (Tickets, Sponsoren) und indirekt (Pipeline)? Umwandlungsquoten, Nachfass-Sequenzen, Formate (Dinner, Masterminds, Retreats).
+6. **Partner und Multiplikatoren:** Steuerberater, Unternehmensberater, Coaches, Agenturen, Banken, IHKs, Coworkings — Provisionsmodelle (einmalig vs. wiederkehrend, Höhe), Partnerprogramm-Aufbau, Beispiele in DACH.
+7. **Bestandskunden-Umsatz:** Upsell (Edition, Plätze, Module), Cross-Sell (Dienstleistung, Events), Kundenbindung, Empfehlungsprogramme, Netto-Umsatzbindung — Benchmarks und Taktiken.
+8. **Preispsychologie und Zahlungsbereitschaft:** Was zahlen Solo-Unternehmer für Ergebnisse (Zeit gespart, Umsatz gewonnen) vs. für Software? Wert-basierte Preisargumente, ROI-Rechner, Vergleich mit Kosten einer Assistenz/Teilzeitkraft — mit Belegen.
+9. **Recht und Steuern der Umsatzströme:** Wichtige Punkte für Verträge (AGB B2B, Abo-Kündigung, Fernabsatz falls B2C), Umsatzsteuer bei Events/Online-Kursen/Software in DACH, Provisionsverträge, Haftungsgrenzen für Beratung — mit Fundstellen (keine Rechtsberatung).
+10. **Umsatz-Architektur für MAKE Innovation:** Konkreter Vorschlag: welche 3–5 Umsatzströme zuerst, welche später, Preisliste je Angebot, Verkaufsprozess je Kanal, Ziele und Kennzahlen für 12/24/36 Monate (Umsatz, Kunden, Mix Software vs. Dienstleistung vs. Events, Marge), Szenario-Rechnung (vorsichtig / erwartet / ehrgeizig) mit offengelegten Annahmen.
+
+**Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), Fallstudien mit Zahlen vor allgemeinen Ratschlägen, Benchmarks mit Herkunft, jede Quelle mit Datum und Link, Deutsch und Englisch. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (die 10 stärksten Umsatzhebel)
+2. Landkarte aller Umsatzströme (Tabelle: Strom × Beispiele × Marge × Skalierbarkeit × Aufwand × Passung)
+3. Kapitel je Frage
+4. Angebots-Treppe (Einstieg → Kern → Premium) mit Preisen und Inhalten
+5. Verkaufsprozess je Kanal (Schritte, Skripte, Quoten, Werkzeuge in MAKE OS)
+6. Partnerprogramm-Entwurf
+7. **Umsatz-Architektur** mit 12/24/36-Monats-Zielen und drei Szenarien
+8. Quellenliste
+
+--- PROMPT P18 ENDE ---
+
+---
+
+--- PROMPT P19 START ---
+
+Du bist eine Software-Architektin für Wissenssysteme, Suche (Retrieval) und KI-Gedächtnis mit Erfahrung im Selbstbetrieb auf kleinen Servern und strengem europäischem Datenschutz. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser heutiges „Brain“ in MAKE OS):**
+- **Wahrheit:** ein Obsidian-Vault (Markdown, rund 400 Notizen, wächst), Ziel: Server-Vault als Git-Repo (`/srv/make-os/vault`), Abgleich mit dem Mac per Git, zusätzlich Kopie zu GitHub; Bereiche: eigene Notizen (nur Menschen schreiben), `_App/` (Spiegel aus der App, generiert), `_inbox/` (Vorschläge der KI, Menschen geben frei).
+- **Index:** SQLite mit FTS5 (Volltext) + lokale Embeddings (`multilingual-e5-small`, Transformers.js/ONNX, int8, 384 Dimensionen; Modell ~120 MB außerhalb der Daten), Abschnitte ~400–600 Tokens an Überschriften mit 10 % Überlappung und vorangestelltem Kontext (nach Anthropic „Contextual Retrieval“), Frontmatter als Filter; zusätzlich Tabelle `app_chunks` für Arbeitsbestände (Aufgaben, Projekte, Angebote, Mandate, Kommentare). Index **nur im Arbeitsspeicher** (tmpfs 256 MB), nach jedem Start in ~1 s neu gebaut, nie im Klartext auf der Platte; Sichtrechte (wer darf was sehen) werden VOR dem Ranking angewandt.
+- **Gedächtnis und Regeln:** KI-Chief-of-Staff „ZOE“ mit Faktengedächtnis (sichtbare Liste), dauerhaftem Entscheidungs-Log, KONSTITUTION.md (Werte, harte Grenzen, immer geladen) + Regel-Notizen mit Priorität, nach Relevanz geladen; nächtliche Konsolidierung → höchstens 5 Vorschläge in die Inbox.
+- **Server:** Hetzner, **1 vCPU, 1,9 GB RAM**, 38 GB Platte, Docker (App-Grenze 1.280 MB), Daten verschlüsselt (AES-256-GCM), KI-Modelle über Anthropic-API (USA) mit KI-Schaltern, Pseudonymisierung und KI-Protokoll. Künftig: **eine Instanz je Kunde**, viele kleine Server oder mehrere Instanzen je Server.
+- **Ziel:** Das Brain soll das Gedächtnis eines „AI CEO“ werden — alles Wissen aus Privat und Business, sauber getrennt, schnell durchsuchbar, verlässlich für Agenten, datensparsam, sicher, wartbar und je Kunden-Instanz reproduzierbar.
+
+**Ziel dieses Laufs:** Die beste Architektur für ein selbst betriebenes KI-Brain finden — mit klaren Empfehlungen, was wir behalten, was wir ändern, und in welcher Reihenfolge.
+
+**Beantworte ausführlich und mit Quellen:**
+1. **Retrieval-Stand 2026:** Hybride Suche (BM25/FTS + Vektor), Neu-Sortierung (Reranker wie bge-reranker, Cohere Rerank, Jina), Contextual Retrieval, Late Chunking, Abfrage-Umformulierung, Agentic RAG, GraphRAG/Wissensgraphen (Microsoft GraphRAG, LightRAG), lange Kontextfenster vs. RAG — was bringt nachweislich wie viel (Benchmarks, Effektgrößen) für persönliche/kleine Wissensbasen?
+2. **Embedding-Modelle für Deutsch + Englisch, lokal auf CPU:** Vergleich (z. B. multilingual-e5-small/base, bge-m3, jina-embeddings-v3, nomic-embed, gte-multilingual, EmbeddingGemma, Snowflake Arctic) nach Qualität (MTEB/MMTEB deutschsprachig), Größe, RAM, Geschwindigkeit auf 1 vCPU, Lizenz. Lohnt ein Wechsel von e5-small?
+3. **Speicher für Vektoren:** SQLite (sqlite-vec, FTS5), DuckDB, LanceDB, pgvector, Qdrant, Chroma — für 1 vCPU/2 GB und für „eine Instanz je Kunde“: Leistung, Speicherbedarf, Verschlüsselung, Betrieb, Sicherung. Empfehlung mit Begründung.
+4. **Gedächtnis für Agenten:** Muster und Werkzeuge (z. B. Letta/MemGPT, Mem0, Zep/Graphiti, LangMem, Anthropic Memory-Funktionen, OpenAI Memory) — Fakten vs. Episoden vs. Regeln, Vergessen und Korrektur, Konflikte, Zeitbezug; was übernehmen wir, was bauen wir selbst?
+5. **Wissensqualität:** Wie verhindert man veraltetes/widersprüchliches Wissen (Konsolidierung, Gültigkeitsdatum, Quellenangabe, „Wahrheit“ vs. abgeleitete Daten), wie misst man Retrieval-Qualität (Evals: Recall@k, MRR, Ragas, eigene Fragensammlungen)? Konkreter Eval-Plan für uns.
+6. **Datenschutz und Sicherheit:** Verschlüsselung im Ruhezustand und im Speicher, Index im RAM vs. verschlüsselter Index (z. B. SQLCipher), Rechte je Abschnitt (Privat/Business, Personen), Löschung nach Art. 17 inkl. Git-Historie des Vaults (git filter-repo, BFG) und Embeddings, Prompt Injection über Notizen/Mails, Pseudonymisierung vor dem Modell, Protokolle.
+7. **Lokale Modelle vs. API:** Was kann auf 1 vCPU/2 GB oder einem etwas größeren Server lokal laufen (Embeddings, Reranker, kleine Sprachmodelle für Klassifikation/Zusammenfassung, z. B. Qwen/Gemma/Phi/Mistral klein, llama.cpp/Ollama)? Wo bleibt die API (Claude) sinnvoll? Kosten/Nutzen, EU-Optionen.
+8. **Vault und Synchronisation:** Obsidian + Git auf Server und Mac (Konflikte, iCloud-Probleme, Obsidian Git/Sync, Self-hosted LiveSync/CouchDB), Wiki-Editor im Web als Alternative; App-Spiegel `_App/` ja/nein; Struktur-Konventionen (PARA, Zettelkasten, Frontmatter-Schema) für Agenten-Tauglichkeit.
+9. **Je Kunden-Instanz:** Wie baut man das Brain reproduzierbar für viele Instanzen (Vorlagen-Vault, Konstitution je Kunde, Modelle teilen ohne Daten zu teilen, Ressourcen je Instanz, Update der Modelle, Neuaufbau-Zeiten bei 1.000–50.000 Notizen)? Server-Größen-Empfehlung (Hetzner-Typen) mit Kosten.
+10. **Ziel-Architektur und Fahrplan:** Konkrete Empfehlung für MAKE OS: Komponenten, Datenfluss (Vault → Abschnitte → Index → Suche → Agenten → Inbox → Vault), was wir behalten, was wir ändern, Schritt-für-Schritt-Fahrplan (Stufe 1 sofort auf dem heutigen Server, Stufe 2 mit Kunden-Instanzen, Stufe 3 Skalierung), Tests/Evals je Schritt, Risiken und Rückwege.
+
+**Arbeitsweise:** Primärquellen (Forschungsarbeiten mit DOI/arXiv, Benchmarks wie MTEB/BEIR, Herstellerdokumentation, Engineering-Blogs) vor Meinungen, aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link. Zahlen zu Leistung/RAM immer mit Messumgebung. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Benchmarks.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Empfehlungen: behalten / ändern / neu)
+2. Kapitel je Frage mit Vergleichstabellen (Modell/Speicher × Qualität × RAM × Geschwindigkeit × Lizenz × Datenschutz)
+3. Ziel-Architektur (Text-Diagramm + Komponentenliste)
+4. Eval-Plan für Suche und Gedächtnis (Fragensammlung, Kennzahlen, Schwellen)
+5. Datenschutz- und Sicherheits-Checkliste (inkl. Art. 17 im Vault und Index)
+6. **Fahrplan in 3 Stufen** mit Aufwand, Server-Bedarf, Kosten, Rückweg
+7. Quellenliste
+
+--- PROMPT P19 ENDE ---
+
+---
+
 --- PROMPT P11 (BONUS: SYNTHESE) START ---
 
-Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen fünfzehn Recherche-Berichte vor (P1 Markt & Zielgruppe, P2 Wettbewerb Produktivität, P3 Wettbewerb Agenten-Plattformen, P4 Privat-Bereich, P5 KI-Entwicklung 2026–2030, P6 Agenten-Architektur, P7 Recht & Vertrauen, P8 Arbeit & Wohlbefinden, P9 Geschäftsmodell & Preise, P10 Go-to-Market, P12 Stimme der Kunden, P13 Weg zu 100 Kunden, P14 Integrationen DACH, P15 Förderung & Finanzierung, P16 Gestaltung KI-Aufsicht). Sie betreffen MAKE OS, das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System, eigene Instanz in Deutschland, Mensch entscheidet). Heute ist Oktober 2026.
+Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen achtzehn Recherche-Berichte vor (P1 Markt & Zielgruppe, P2 Wettbewerb Produktivität, P3 Wettbewerb Agenten-Plattformen, P4 Privat-Bereich, P5 KI-Entwicklung 2026–2030, P6 Agenten-Architektur, P7 Recht & Vertrauen, P8 Arbeit & Wohlbefinden, P9 Geschäftsmodell & Preise, P10 Go-to-Market, P12 Stimme der Kunden, P13 Weg zu 100 Kunden, P14 Integrationen DACH, P15 Förderung & Finanzierung, P16 Gestaltung KI-Aufsicht, P17 Homepage & Außendarstellung, P18 Umsatzströme & Verkauf, P19 KI-Brain auf dem Server). Sie betreffen MAKE OS, das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System, eigene Instanz in Deutschland, Mensch entscheidet). Heute ist Oktober 2026.
 
 **Aufgabe:** Führe die Berichte zu **einer** Entscheidungsgrundlage zusammen.
 
@@ -580,7 +700,7 @@ Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen fünfzehn Recherche-Be
 3. Die erste Zielgruppe (eine), die erste Edition und der erste Preis — mit Begründung.
 4. Die 10 Funktionen mit dem höchsten Wert für die erste Zielgruppe, sortiert nach Wirkung/Aufwand, mit Verweis auf die Belege.
 5. Die 10 KI-Trends, die wir jetzt einbauen müssen, und 5 Dinge, die wir nicht bauen sollten.
-6. Pflichten aus Recht und Sicherheit vor dem ersten Kunden; Pflicht-Integrationen (P14) je Stufe; Finanzierung des Fahrplans (P15: welche Förderung wann beantragen, Fristen); Gestaltungsprinzipien für das Cockpit (P16) als verbindliche Liste.
+6. Pflichten aus Recht und Sicherheit vor dem ersten Kunden; Pflicht-Integrationen (P14) je Stufe; Finanzierung des Fahrplans (P15: welche Förderung wann beantragen, Fristen); Gestaltungsprinzipien für das Cockpit (P16) als verbindliche Liste; Website-Bauplan (P17) und Umsatz-Architektur (P18) je Stufe; Brain-Architektur (P19) als Entscheidung mit Bauschritten.
 7. Positionierung in einem Satz, Kernbotschaft, drei Belege, Einwandbehandlung.
 8. Fahrplan in Stufen nach dem Muster aus P13 (z. B. Kunde 0 → 10 Piloten → 100 Kunden): je Stufe Ziel, Funktionen, Recht, Vertrieb, Events, Betrieb, Kennzahlen, Eintritts- und Abbruchkriterien; dazu 90-Tage-Plan im Wochenraster.
 9. Die 10 größten Risiken mit Gegenmitteln und Frühindikatoren.

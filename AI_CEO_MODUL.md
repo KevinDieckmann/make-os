@@ -2,7 +2,7 @@
 
 **Stand:** 05.10.2026 · Online-Stand `6b10a5ba` (app.makeinnovation.de)
 **Auftrag (Kevin, 05.10.2026):** „Als Nächstes bauen wir ein AI-CEO-Modul. Wir bauen das Produkt und alle Funktionen selbst — mit der Software — und mit einem klaren Plan dahinter. Wir bauen auf der Software auf und bauen die erste Plattform für AI CEOs, die Privat und Business zusammen bekommen wollen.“
-**Begleitdatei:** `AI_CEO_RECHERCHE_PROMPTS.md` — 15 Recherche-Aufträge (P1–P10, P12–P16) für parallele Gemini-Deep-Research-Läufe + Synthese-Prompt P11.
+**Begleitdatei:** `AI_CEO_RECHERCHE_PROMPTS.md` — 18 Recherche-Aufträge (P1–P10, P12–P19) für parallele Gemini-Deep-Research-Läufe + Synthese-Prompt P11.
 
 > Diese Datei ist Planung. Was gebaut ist, steht in Teil B mit Belegstellen im Code. Was geplant ist, steht in Teil C–F und ist ausdrücklich als Plan, Hypothese oder offene Entscheidung markiert. Marktzahlen stehen hier bewusst **nicht** — sie kommen aus der Recherche (Teil H), nicht aus dem Bauch.
 
@@ -528,7 +528,7 @@ Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innov
 ## H2 · Wie wir die Ergebnisse einarbeiten
 - Ergebnis als Datei in `research/ai-ceo/` (mit Datum und Quellen), Zusammenfassung in diese Datei (Teil C/G aktualisieren, Hypothesen als bestätigt/verworfen markieren).
 - Jede belastbare Erkenntnis wird zu einer Bauplan-Karte oder ändert eine Phase.
-- Die 15 Recherche-Aufträge (P1–P10, P12–P16) und die Synthese (P11) stehen in **`AI_CEO_RECHERCHE_PROMPTS.md`**.
+- Die 18 Recherche-Aufträge (P1–P10, P12–P19) und die Synthese (P11) stehen in **`AI_CEO_RECHERCHE_PROMPTS.md`**.
 
 ---
 
