@@ -39,7 +39,7 @@ const KONTO_LENA = `konto-${LENA}`, KONTO_JONAS = `konto-${JONAS}`;
 
 export interface SaatBericht { schritte: { name: string; anzahl: number }[]; heute: string; personen: { name: string; email: string }[] }
 /** Zugangsdaten, die beim Zurücksetzen bleiben (die Sitzung des Vorführenden bleibt gültig). */
-export type Zugang = Pick<Konto, 'hash' | 'salz'> & Partial<Pick<Konto, 'zweiterFaktor' | 'sitzungenAb' | 'widerrufen'>>;
+export type Zugang = Pick<Konto, 'hash' | 'salz'> & Partial<Pick<Konto, 'kdf' | 'zweiterFaktor' | 'sitzungenAb' | 'widerrufen'>>;
 
 // ── Aufruf der bestehenden Routen (in-process) ────────────────────────────────────────────────────────────────────────
 

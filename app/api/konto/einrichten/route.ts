@@ -40,12 +40,12 @@ export async function POST(req: Request) {
   if (name.length < 2) return NextResponse.json({ error: 'Name fehlt.' }, { status: 400 });
   if (!passwortTauglich(b.passwort)) return NextResponse.json({ error: 'Passwort: mindestens 10 Zeichen.' }, { status: 400 });
 
-  const { hash, salz } = await passwortHashen(b.passwort);
+  const { hash, salz, kdf } = await passwortHashen(b.passwort);
   let konto: Konto | undefined;
   await aendereKonten(s => {
     if (s.konten.length) return s;
     const jetzt = new Date().toISOString();
-    konto = { id: neueKennung('k'), speicher: speicherName(name, []), email, name, rolle: 'inhaber', hash, salz, angelegt: jetzt, teilt: { gesundheit: [] } };
+    konto = { id: neueKennung('k'), speicher: speicherName(name, []), email, name, rolle: 'inhaber', hash, salz, kdf, angelegt: jetzt, teilt: { gesundheit: [] } };
     // Neue Instanz (05.10.): 2FA-Pflicht von Anfang an — der Inhaber richtet den zweiten Faktor gleich mit ein.
     return { ...s, konten: [konto], einstellungen: { ...s.einstellungen, zweiFaktorPflicht: true, zweiFaktorPflichtSeit: jetzt } };
   });

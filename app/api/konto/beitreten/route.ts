@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   const ohneEigene = { ...s0, einladungen: s0.einladungen.filter(e => e.code !== code) };
   if (adresseVergeben(ohneEigene, email)) return NextResponse.json({ error: 'Diese E-Mail hat schon ein Konto — bitte anmelden.' }, { status: 409 });
 
-  const { hash, salz } = await passwortHashen(b.passwort);
+  const { hash, salz, kdf } = await passwortHashen(b.passwort);
   let konto: Konto | undefined;
   let doppelt = false;
   await aendereKonten(s => {
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     // aber nie ein reservierter Name: „Malin“ als Vorname übernimmt nicht Malins Bestände (26.09.).
     const vergeben = s.konten.map(k => k.speicher);
     const gebunden = einladung.speicher && !vergeben.includes(einladung.speicher) ? einladung.speicher : undefined;
-    konto = { id: neueKennung('k'), speicher: gebunden ?? speicherName(name, [...vergeben, ...RESERVIERTE_SPEICHER]), email, name, rolle: 'mitglied', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] }, eingeladenVon: einladung.von };
+    konto = { id: neueKennung('k'), speicher: gebunden ?? speicherName(name, [...vergeben, ...RESERVIERTE_SPEICHER]), email, name, rolle: 'mitglied', hash, salz, kdf, angelegt: new Date().toISOString(), teilt: { gesundheit: [] }, eingeladenVon: einladung.von };
     return { konten: [...s.konten, konto], einladungen: s.einladungen.filter(e => e.code !== code) };
   });
   if (doppelt) return NextResponse.json({ error: 'Diese E-Mail hat schon ein Konto — bitte anmelden.' }, { status: 409 });

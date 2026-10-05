@@ -14,7 +14,7 @@
 // einladen. Mitglieder dürfen alles andere. Ein „Haushalt" ist die Instanz —
 // wer später verkauft, zieht diese Datei je Kunde einmal hoch.
 
-import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
+import { scrypt, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson, beschaedigt } from '@/lib/store/local-db';
 import type { Wiederherstellung } from './totp';
 
@@ -35,6 +35,8 @@ export interface Konto {
   rolle: Rolle;
   hash: string;
   salz: string;
+  /** scrypt-Parameter des Hashes (05.10.). Fehlt = Node-Vorgabe N=2^14 (`KDF_STANDARD`) — so lesen alte Stände jedes Konto. */
+  kdf?: Kdf;
   angelegt: string;
   /** Wem diese Person ihre Gesundheitsdaten zeigt (speicher-Namen). */
   teilt: { gesundheit: string[] };
@@ -148,35 +150,93 @@ export function passwortTauglich(p: unknown): p is string {
 }
 
 const CODE_ZEICHEN = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-export function neuerEinladungscode(zufall: () => number = Math.random): string {
+/** Einladungscode XXXX-XXXX (40 Bit). Seit 05.10. kryptografischer Zufall (`crypto.randomInt`). */
+export function neuerEinladungscode(ziehe: (n: number) => number = n => randomInt(n)): string {
   let c = '';
-  for (let i = 0; i < 8; i++) c += CODE_ZEICHEN[Math.floor(zufall() * CODE_ZEICHEN.length)];
+  for (let i = 0; i < 8; i++) c += CODE_ZEICHEN[ziehe(CODE_ZEICHEN.length)];
   return `${c.slice(0, 4)}-${c.slice(4)}`;
 }
 
 export function leererStand(): KontenStand { return { konten: [], einladungen: [] }; }
 
 /** Was der Browser über ein Konto wissen darf — nie Hash oder Salz. */
-export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz' | 'widerrufen' | 'zweiterFaktor' | 'zweiterFaktorEntwurf'> & { zweiterFaktorAn: boolean } {
-  const { hash: _h, salz: _s, widerrufen: _w, zweiterFaktor: _z, zweiterFaktorEntwurf: _e, ...rest } = k;
+export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz' | 'kdf' | 'widerrufen' | 'zweiterFaktor' | 'zweiterFaktorEntwurf'> & { zweiterFaktorAn: boolean } {
+  const { hash: _h, salz: _s, kdf: _k, widerrufen: _w, zweiterFaktor: _z, zweiterFaktorEntwurf: _e, ...rest } = k;
   return { ...rest, zweiterFaktorAn: !!k.zweiterFaktor };
 }
 
 // ── Passwort ─────────────────────────────────────────────────────────────────
+// scrypt (05.10.): N=2^17, r=8, p=1 (OWASP-Empfehlung, 128 MiB je Hash, ~0,3 s) statt der Node-Vorgabe N=2^14. Die
+// Parameter stehen am Konto (`kdf`); alte Hashes ohne Feld bleiben gültig und werden beim nächsten erfolgreichen
+// Anmelden neu gehasht — mit DEMSELBEN Salz, damit der Sitzungs-Stand (Fingerabdruck des Salzes) gleich bleibt und
+// kein anderes Gerät rausfliegt.
+// Rückweg: der alte Online-Stand kennt `kdf` nicht und rechnet immer mit N=2^14 — ein neu gehashtes Konto käme dort
+// nicht mehr hinein. Deshalb gilt N=2^17 erst mit MAKE_OS_KDF=stark: neue Instanzen von Anfang an (env.server.beispiel),
+// die laufende, sobald der Rückweg zu ist (zusammen mit MAKE_OS_FORMAT=v2, UPDATES.md). Vorher schreibt MAKE OS weiter
+// N=2^14 (mit `kdf` am Konto, das der alte Stand still übergeht).
 
-function scryptHex(passwort: string, salz: string): Promise<string> {
-  return new Promise((res, rej) => scrypt(passwort, salz, 64, (e, k) => (e ? rej(e) : res(k.toString('hex')))));
+export interface Kdf { n: number; r: number; p: number }
+export const KDF_STANDARD: Kdf = { n: 16384, r: 8, p: 1 };
+export const KDF_STARK: Kdf = { n: 131072, r: 8, p: 1 };
+
+/** Welche Parameter neue Hashes bekommen (siehe oben: stark nur ohne Rückweg-Bedarf). */
+export function kdfFuerNeu(env: Record<string, string | undefined> = process.env): Kdf {
+  return (env.MAKE_OS_KDF ?? '').trim().toLowerCase() === 'stark' ? KDF_STARK : KDF_STANDARD;
+}
+/** Parameter eines Kontos (ohne Feld: Node-Vorgabe) — nur bekannte, sinnvolle Werte; alles andere gilt als Vorgabe. */
+export function kdfVon(k: Pick<Konto, 'kdf'>): Kdf {
+  const d = k.kdf;
+  const ok = !!d && [d.n, d.r, d.p].every(Number.isInteger) && d.n >= 16384 && d.n <= 1048576 && (d.n & (d.n - 1)) === 0 && d.r >= 1 && d.r <= 16 && d.p >= 1 && d.p <= 4;
+  return ok ? { n: d!.n, r: d!.r, p: d!.p } : KDF_STANDARD;
+}
+/** Sollte dieser Hash beim nächsten erfolgreichen Anmelden neu gerechnet werden? */
+export const kdfVeraltet = (k: Pick<Konto, 'kdf'>, ziel: Kdf = kdfFuerNeu()): boolean => kdfVon(k).n < ziel.n;
+
+// Höchstens zwei starke Hashes gleichzeitig (je 128 MiB) — der Server hat 1280 MB für die App.
+const PARALLEL = 2;
+let laufend = 0;
+const warten: (() => void)[] = [];
+async function mitPlatz<T>(f: () => Promise<T>): Promise<T> {
+  if (laufend >= PARALLEL) await new Promise<void>(r => warten.push(r));
+  laufend++;
+  try { return await f(); } finally { laufend--; warten.shift()?.(); }
 }
 
-export async function passwortHashen(passwort: string): Promise<{ hash: string; salz: string }> {
-  const salz = randomBytes(16).toString('hex');
-  return { hash: await scryptHex(passwort, salz), salz };
+function scryptHex(passwort: string, salz: string, kdf: Kdf): Promise<string> {
+  const maxmem = 128 * kdf.n * kdf.r + 32 * 1024 * 1024;
+  return mitPlatz(() => new Promise((res, rej) => scrypt(passwort, salz, 64, { N: kdf.n, r: kdf.r, p: kdf.p, maxmem }, (e, k) => (e ? rej(e) : res(k.toString('hex'))))));
 }
 
-export async function passwortStimmt(passwort: string, konto: Pick<Konto, 'hash' | 'salz'>): Promise<boolean> {
-  const h = Buffer.from(await scryptHex(passwort, konto.salz), 'hex');
+export async function passwortHashen(passwort: string, kdf: Kdf = kdfFuerNeu(), salz = randomBytes(16).toString('hex')): Promise<{ hash: string; salz: string; kdf: Kdf }> {
+  return { hash: await scryptHex(passwort, salz, kdf), salz, kdf };
+}
+
+export async function passwortStimmt(passwort: string, konto: Pick<Konto, 'hash' | 'salz' | 'kdf'>): Promise<boolean> {
+  const h = Buffer.from(await scryptHex(passwort, konto.salz, kdfVon(konto)), 'hex');
   const s = Buffer.from(konto.hash, 'hex');
   return h.length === s.length && timingSafeEqual(h, s);
+}
+
+/**
+ * Nach einem erfolgreichen Anmelden: veralteten Hash mit DEMSELBEN Salz und den aktuellen Parametern neu rechnen und
+ * speichern (nur wenn sich Hash/Salz inzwischen nicht geändert haben). Wirft nie — das Anmelden ist dann schon geschehen.
+ */
+export async function passwortNachziehen(passwort: string, konto: Pick<Konto, 'speicher' | 'hash' | 'salz' | 'kdf'>): Promise<boolean> {
+  try {
+    const ziel = kdfFuerNeu();
+    if (!kdfVeraltet(konto, ziel)) return false;
+    const neu = await passwortHashen(passwort, ziel, konto.salz);
+    let gesetzt = false;
+    await aendereKonten(s => ({ ...s, konten: s.konten.map(k => {
+      if (k.speicher !== konto.speicher || k.hash !== konto.hash || k.salz !== konto.salz) return k;
+      gesetzt = true;
+      return { ...k, hash: neu.hash, kdf: neu.kdf };
+    }) }));
+    return gesetzt;
+  } catch (e) {
+    console.error('[konten] Passwort-Hash nicht nachgezogen:', e instanceof Error ? e.message : e);
+    return false;
+  }
 }
 
 // ── Speicher ─────────────────────────────────────────────────────────────────
