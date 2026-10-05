@@ -11,6 +11,7 @@
 // Bewusst flüchtig: nur der letzte Stand je Person, nichts wird mitgeschrieben.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, nameVon } from '@/lib/zoe/raum';
@@ -35,12 +36,14 @@ function aktive(f: Datei | null, jetzt: number) {
 }
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const ich = personAus(req);
   const f = await loadJson<Datei>('anwesenheit');
   return NextResponse.json({ aktiv: aktive(f, Date.now()), ich }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { person?: string; pfad?: string; suche?: string; space?: string };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false }, { status: 400 }); }
   // Seit den Konten (23.09.): die Person aus der Sitzung, nicht aus der Anfrage.

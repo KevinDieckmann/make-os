@@ -8,6 +8,7 @@
 // Apple-Kalender — MAKE OS liest ihn nur und hängt das Protokoll daran.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -60,7 +61,8 @@ function sauber(m: Partial<Meeting>, _i: number): Meeting | null {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const f = await loadJson<Datei>('meetings');
   const meetings = (Array.isArray(f?.meetings) ? f.meetings : [])
     .slice().sort((a, b) => (b.datum ?? '').localeCompare(a.datum ?? ''));
@@ -69,6 +71,7 @@ export async function GET() {
 
 /** Ein Protokoll anhängen oder aktualisieren — die übrigen bleiben unberührt. */
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: Partial<Meeting>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const m = sauber(body, 0);
@@ -88,6 +91,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
   const next = await updateJson<Datei>('meetings', current => {

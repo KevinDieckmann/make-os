@@ -4,6 +4,7 @@
 // von Hand gesetzten Stichworte.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -22,7 +23,8 @@ const STANDARD = ['recht', 'umsatz', 'produkt', 'leben'];
 const ERLAUBT = new Set(STANDARD);
 const ORG_IDS = new Set(['kdv', 'kdc', 'kemaris', 'privat']);
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const f = await loadJson<OrdnungFile>('ordnung');
   return NextResponse.json({
     reihenfolge: Array.isArray(f?.reihenfolge) && f.reihenfolge.length ? f.reihenfolge.filter(x => ERLAUBT.has(x)) : STANDARD,
@@ -33,6 +35,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: Partial<OrdnungFile>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 

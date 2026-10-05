@@ -4,6 +4,7 @@
 // Log: { "YYYY-MM-DD": { sessions: [{ von: "HH:MM", bis: "HH:MM"|null }] } }
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -35,7 +36,8 @@ function tagesStand(log: ModusLog, tag: string) {
 // ('gesundheitszeit' — Reha, Bewegung, Erholung; Kevins zweiter Schalter oben).
 const STORE_VON: Record<string, string> = { arbeit: 'arbeitsmodus', gesundheit: 'gesundheitszeit' };
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const [aLog, gLog] = await Promise.all([
     loadJson<ModusLog>('arbeitsmodus'),
     loadJson<ModusLog>('gesundheitszeit'),
@@ -46,6 +48,7 @@ export async function GET() {
 
 /** POST { aktion: 'an' | 'aus', was?: 'arbeit' | 'gesundheit' } — schaltet den jeweiligen Zähler. */
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { aktion?: string; was?: string };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (body.aktion !== 'an' && body.aktion !== 'aus') {

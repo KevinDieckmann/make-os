@@ -5,6 +5,7 @@
 // vorschlag gewichten danach.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
@@ -19,13 +20,15 @@ const KEYS: SaeuleKey[] = ['health', 'business', 'planning', 'finance', 'social'
 // Neutraler Start — Kevin stellt selbst. Kein erfundener Schwerpunkt.
 const NEUTRAL: Regler = { health: 50, business: 50, planning: 50, finance: 50, social: 50 };
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const f = await loadJson<ReglerFile>('fokus-regler');
   const regler = { ...NEUTRAL, ...(f?.regler ?? {}) };
   return NextResponse.json({ regler, stand: f?.stand ?? null });
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { regler?: Partial<Regler> };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!body.regler || typeof body.regler !== 'object') {

@@ -1,7 +1,8 @@
 // ─── Bauplan — Bildschirmfotos ──────────────────────────────────────────────
 // POST { daten: data-URL } → { name }  (JPEG/PNG/WebP, höchstens 3 MB, echte Bilddatei)
-// GET  ?name=…             → das Bild (nur angemeldet — die Middleware schützt alles)
+// GET  ?name=…             → das Bild — beides nur im Haushalt des Inhabers (Fotos können Personenbezug tragen, 05.10.)
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { bildSpeichern, bildLesen } from '@/lib/bauplan/speicher';
 
@@ -9,6 +10,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let b: { daten?: string };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const r = await bildSpeichern(String(b.daten ?? ''));
@@ -16,6 +18,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const name = new URL(req.url).searchParams.get('name') ?? '';
   const b = await bildLesen(name);
   if (!b) return new NextResponse('Nicht gefunden.', { status: 404 });

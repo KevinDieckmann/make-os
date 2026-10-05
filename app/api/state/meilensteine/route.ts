@@ -7,6 +7,7 @@
 // wird beim Speichern gespiegelt, damit die älteren Leser weiterlaufen.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
@@ -42,13 +43,15 @@ const GRENZE = 500;
 const sauberListe = (roh: unknown, mandate: ReadonlyMap<string, MandatKurz> | null = null): Meilenstein[] =>
   sauberMeilensteine(roh).map(m => mitMandatBezug(m, mandate, meilensteinSpace(m) === 'business'));
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const f = await loadJson<MeilensteinFile>('meilensteine');
   // Jede Zeile trägt ihren Stand — Änderungen kommen als PATCH mit diesem Stand zurück (28.09.).
   return NextResponse.json({ meilensteine: mitStand(Array.isArray(f?.meilensteine) ? f.meilensteine : []) });
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { meilensteine?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (Array.isArray(body.meilensteine) && body.meilensteine.length > GRENZE) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${GRENZE} Meilensteine.` }, { status: 413 });
@@ -79,6 +82,7 @@ export async function PUT(req: Request) {
  * veraltet → 409 mit dem aktuellen Bestand und `konflikte[]`, nichts überschrieben.
  */
 export async function PATCH(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { ops?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (Array.isArray(body.ops) && body.ops.length > 160) return NextResponse.json({ ok: false, error: 'Abgelehnt: höchstens 160 Änderungen je Aufruf.' }, { status: 413 });

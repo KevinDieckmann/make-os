@@ -17,6 +17,7 @@
 // Blöcke BEIDER Personen ersetzte.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler, type ListenOp, type PatchErgebnis } from '@/lib/store/patch-liste';
@@ -53,6 +54,7 @@ const antwort = (f: RoutinenDatei | null | undefined) => ({
  * Ritual, Energie, Planen, Journal). Ohne Person bei `sicht=ich`: nur die gemeinsamen.
  */
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let f = await loadJson<RoutinenDatei>('routinen');
   if (!f || !Array.isArray(f.routinen) || !f.routinen.length) {
     f = await updateJson<RoutinenDatei>('routinen', cur => ({ ...(cur ?? {}), routinen: seed() }));
@@ -68,6 +70,7 @@ const MAX_ROUTINEN = 200;
 const MAX_BLOECKE = 500;
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { routinen?: unknown; bloecke?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
@@ -95,6 +98,7 @@ export async function PUT(req: Request) {
  * Blöcke: nur die eigenen der angemeldeten Person — fremde anlegen, ändern oder löschen → 403.
  */
 export async function PATCH(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { ops?: unknown; bloecke?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 

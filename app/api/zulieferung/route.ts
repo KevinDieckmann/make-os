@@ -7,6 +7,7 @@
 // GET zeigt, was wann zuletzt ankam (ohne Inhalte).
 
 import { NextResponse } from 'next/server';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { SPEICHER, ZULIEFERUNGEN, type Gemerkt, type Zulieferung } from '@/lib/mac';
 import { verbunden } from '@/lib/kalender/icloud';
@@ -40,7 +41,8 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, art, anzahl: Array.isArray(b.daten) ? b.daten.length : undefined, at });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const stand: Record<string, string | null> = {};
   for (const art of ZULIEFERUNGEN) {
     const g = await loadJson<{ at?: string }>(SPEICHER[art]);

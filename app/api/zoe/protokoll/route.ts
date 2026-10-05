@@ -7,6 +7,7 @@
 // seitdem passiert sind (Malin arbeitet im zweiten Fenster).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { lies, eintrag, stempleZurueckgenommen } from '@/lib/zoe/protokoll';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
@@ -18,6 +19,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const p = new URL(req.url).searchParams;
   const anzahl = Math.max(1, Math.min(200, Number(p.get('anzahl')) || 60));
   // Einträge der Haushaltsfinanzen nur für Haushaltsmitglieder (24.09.).
@@ -30,6 +32,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { id?: string };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(body.id ?? '');

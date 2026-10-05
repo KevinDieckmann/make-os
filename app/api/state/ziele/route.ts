@@ -10,6 +10,7 @@
 // Firma und Einheit werden im Schreibweg aus dem Mandat abgeleitet (lib/planung/mandat.ts).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
@@ -68,6 +69,7 @@ function datei(roh: ZieleDatei | null | undefined): ZieleDatei {
 }
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const sp = await speicherFuerAnfrage(req, new URL(req.url).searchParams.get('fuer'));
   if (!sp) return NextResponse.json({ ok: false, error: 'Diese Person gehört nicht zu deinem Haushalt.' }, { status: 403 });
   const f = datei(await loadJson<ZieleDatei>(sp.name));
@@ -92,6 +94,7 @@ async function mitStaenden(f: ZieleDatei): Promise<ZieleDatei> {
  * der alte Weg „ganzen Horizont ersetzen“ überschrieb still, was der andere inzwischen angelegt hatte.
  */
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { horizont?: string; ziele?: unknown; fokus?: string; fuer?: string };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const sp = await speicherFuerAnfrage(req, body.fuer ?? null);
@@ -122,6 +125,7 @@ export async function PUT(req: Request) {
  * Die Kaskade läuft danach in DERSELBEN Sperre (lib/planung/kaskade.ts).
  */
 export async function PATCH(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { horizont?: string; ops?: unknown; fuer?: string };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const sp = await speicherFuerAnfrage(req, body.fuer ?? null);

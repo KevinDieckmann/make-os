@@ -11,6 +11,7 @@ import { schwellen } from '@/lib/schwellen';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 
 export interface Shield {
   id: string;
@@ -22,14 +23,19 @@ export interface Shield {
 
 const eur = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n || 0));
 
-export async function computeShields(today = localDay()): Promise<Shield[]> {
+/**
+ * `person` = wessen Planungsblöcke heute zählen (05.10.: die anfragende Person aus dem Haushalts-Tor). Ohne Angabe
+ * (Brain/ZOE) der Inhaber der Instanz — aus den Konten, nie ein fester Name (Plattform-Regel).
+ */
+export async function computeShields(today = localDay(), person?: string | null): Promise<Shield[]> {
+  const fuer = person ?? await inhaberSpeicher();
   const [fplan, fin, tasksF, msF, wplanF] = await Promise.all([
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
     loadJson<FinanceState>('finance'),
     ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean }[] }>('meilensteine'),
-    // Heutige Blöcke (K5: Kalender-Termine der Art Fokus/Block) — wie bisher Kevins Plan (der alte Bestand `wochenplan`).
-    planBloeckeLesen({ person: 'kevin', von: today, bis: tagPlus(today, 1) }).catch(() => []),
+    // Heutige Blöcke (K5: Kalender-Termine der Art Fokus/Block) der Person (bzw. des Inhabers) — ohne Konto keine.
+    fuer ? planBloeckeLesen({ person: fuer, von: today, bis: tagPlus(today, 1) }).catch(() => []) : Promise.resolve([] as Awaited<ReturnType<typeof planBloeckeLesen>>),
   ]);
 
   const shields: Shield[] = [];

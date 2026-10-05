@@ -4,6 +4,7 @@
 // eingebauten ergänzen.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { neueKennung } from '@/lib/kennung';
@@ -76,7 +77,8 @@ function sauberStichwort(s: Partial<EigenesStichwort>, _i: number): EigenesStich
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const f = await loadJson<FilterFile>('filter');
   return NextResponse.json({
     filter: Array.isArray(f?.filter) ? f.filter : [],
@@ -85,6 +87,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: Partial<FilterFile>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
