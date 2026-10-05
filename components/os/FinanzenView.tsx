@@ -13,7 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Seite, Reiter } from './ui';
+import { Seite, Reiter, Hinweis, Knopf } from './ui';
 import { ZahlenBusiness } from './ZahlenView';
 import { HaushaltView } from './haushalt/HaushaltView';
 import { GesamtView } from './haushalt/GesamtView';
@@ -79,7 +79,13 @@ export function FinanzenView() {
         </nav>
       )}
       {zugang === null && sicht === 'privat' ? null
-        : sicht === 'privat' ? <HaushaltView reiter={p.get('t')} onReiter={t => setze({ t, k: null, monat: null, kat: null, q: null })} />
+        : sicht === 'privat' ? (
+          <>
+            <HaushaltView reiter={p.get('t')} onReiter={t => setze({ t, k: null, monat: null, kat: null, q: null })} />
+            {/* 05.10.: Malins erstes Cockpit (V1) pflegt die Selbstständigkeit — sie gehört zu Privat, der Weg dorthin also auch (vorher unter Business). */}
+            {zugang && <Hinweis art="info" titel="Altbestand der Selbstständigkeit" aktion={<Knopf leise href="/os/finanzen/dashboard">Öffnen</Knopf>}>Malins erstes Cockpit (Version 1) — dort wird die Selbstständigkeit noch gepflegt.</Hinweis>}
+          </>
+        )
         : sicht === 'finanzplanung' ? (zugang || planZugang ? <Finanzplan key={imPrivat && zugang ? 'privat' : 'business'} bereich={imPrivat && zugang ? 'privat' : 'business'} eingebettet /> : null)
         : sicht === 'gesamt' ? <GesamtView />
         : sicht === 'chef' ? <FinanzchefView />

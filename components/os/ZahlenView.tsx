@@ -29,7 +29,6 @@ const BEREICHE = [
   { href: '/os/finanzen/buchungen', titel: 'Buchungen', satz: 'was auf den Konten wirklich passiert ist' },
   { href: '/os/finanzen/planung', titel: 'Rechnungen & Zahlungen', satz: 'was reinkommt, was raus muss, in welcher Reihenfolge' },
   { href: '/os/controlling', titel: 'Controlling & Ziele', satz: 'Kurs aufs Jahresziel, Run-Rate, Runway' },
-  { href: '/os/finanzen/dashboard', titel: 'Business-Altbestand', satz: 'Malins erstes Cockpit — dort wird die Selbstständigkeit noch gepflegt; Privates steht jetzt unter Privat' },
 ];
 
 /** Business: Konten, Fälliges, Monat, Grundlage, Belege, Bereiche. Unter Zahlen → Business steht es unter dem Cockpit (ohne eigenen Index-Streifen). */
