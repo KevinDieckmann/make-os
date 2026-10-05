@@ -4,6 +4,14 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 05.10.2026 — Business-Zahlen auf 0 (Kevin: „nur die Zahlen in dem Business-Bereich auf 0 setzen“)
+- Einmal-Werkzeug `scripts/business-auf-null.mjs` (Trockenlauf Vorgabe, `--ausfuehren` schreibt; nie bei laufender App).
+- Wirkung: KD Ventures, MAKE Innovation GmbH (und Register-Gesellschaften `g-…`) Kontostand 0; ihre Rechnungen, Zahlungen,
+  Merkposten (`finanzplan`), Liquiditäts-Planposten (`liquiplan`) und Buchungen (`buchungen`) endgültig entfernt (Kevins Wahl —
+  nur die nächtliche Sicherung bleibt). Privat, Selbstständigkeit, Finanzplanung, Monatsabschlüsse, Index-Verlauf unberührt.
+- Ausgeführt auf dem Server VOR dem Upload (Skript per `-v` in den Container der laufenden Version eingehängt), danach erst
+  die Sicherung vor dem Upload. Rückweg: nur über die nächtliche Sicherung des Vortags.
+
 ## Selbstständigkeit unter Privat, Teil 2 — Planung, Arbeit, Monatsabschluss, Vorauszahlungen (05.10.2026 abends, nur lokal — Branch `selbst-privat-2`)
 
 Kevins Entscheidungen zu den offenen Punkten von `selbst-privat` (Regel: CLAUDE.md › „Bereich je Einheit“ › Teil 2; Finanzen: FINANZPLANUNG_JETZT.md › selbst-privat-2).
