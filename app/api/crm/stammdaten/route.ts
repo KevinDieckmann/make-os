@@ -19,7 +19,9 @@ import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { anzeigename } from '@/lib/make-one/crm';
-import { pflichtangaben, selbstpruefung, verarbeitungenStart, verarbeitungenNachtragen, verarbeitungKalenderNachtragen, verarbeitungEmailNachtragen, verarbeitungenOrganisationNachtragen, LOESCHREGELN } from '@/lib/crm/datenschutz';
+import { pflichtangaben, selbstpruefung, verzeichnisVervollstaendigen, LOESCHREGELN } from '@/lib/crm/datenschutz';
+import { verantwortlicherLaden } from '@/lib/datenschutz/einrichtung-server';
+import { verantwortlicherText } from '@/lib/datenschutz/einrichtung';
 import { googleKonfiguriert } from '@/lib/google/verbindung';
 import { netzwerkenKontakteUeberFrist } from '@/lib/crm/netzwerken-loeschen';
 import { befunde } from '@/lib/crm/befunde';
@@ -51,15 +53,11 @@ export async function GET(req: Request) {
   // Löschfristen (U2 #52): wirksame Tabelle (Standard + Abweichungen), Personen über der Frist (nie automatisch gelöscht).
   const lf = (await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {};
   const fristen = fristenWirksam(lf.fristen);
-  if (!crm.verarbeitungen.length) crm = await aendereCrm(c => (c.verarbeitungen.length ? c : { ...c, verarbeitungen: verarbeitungenStart(new Date().toISOString()) }));
-  // Netzwerken (03.10.): fehlende Verarbeitungen von Veranstaltungs-Kontakten idempotent nachtragen (Verzeichnis nach Art. 30).
-  if (verarbeitungenNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungenNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
-  // Gesellschafts-Register und Kapazität (DSGVO-Prüfung 04.10.) — immer, sie gehören zu jeder Instanz.
-  if (verarbeitungenOrganisationNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungenOrganisationNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
-  // Google Kalender (03.10.): sobald Google eingerichtet ist, gehört „Kalender (Google Workspace)“ ins Verzeichnis (Art. 30).
-  if (googleKonfiguriert() && verarbeitungKalenderNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungKalenderNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
-  // 03.10. (gmail): „E-Mail (Google Workspace)“ — ebenfalls, sobald Google eingerichtet ist (idempotent).
-  if (googleKonfiguriert() && verarbeitungEmailNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungEmailNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
+  // Verzeichnis (Art. 30) an EINER Stelle vervollständigen (05.10.): Startbestand, Netzwerken, Register/Kapazität, Google (wenn
+  // eingerichtet), alte feste Verantwortliche → Platzhalter der Einrichtung. Idempotent, gerechnet in der Sperre des CRM.
+  const vvJetzt = new Date().toISOString();
+  if (verzeichnisVervollstaendigen(crm.verarbeitungen, vvJetzt, { google: googleKonfiguriert() }).geaendert) crm = await aendereCrm(c => { const r = verzeichnisVervollstaendigen(c.verarbeitungen, vvJetzt, { google: googleKonfiguriert() }); return r.geaendert ? { ...c, verarbeitungen: r.liste } : c; });
+  const verantwortlicher = await verantwortlicherLaden();
   const konten = (await ladeKonten()).konten;
   const vorschlag = pflichtangaben(kontakte, crm);
   const zaehl = (f: (v: (typeof vorschlag)[number]) => string | undefined) => vorschlag.reduce((a, v) => { const x = f(v); if (x) a[x] = (a[x] ?? 0) + 1; return a; }, {} as Record<string, number>);
@@ -119,6 +117,8 @@ export async function GET(req: Request) {
     })(),
     loeschfristen: { tabelle: LOESCHFRISTEN, wirksam: fristen, gespeichert: lf.fristen ?? {}, lauf: lf.lauf ?? null },
     antraege: crm.antraege, verarbeitungen: crm.verarbeitungen,
+    // Verantwortlicher aus der Einrichtung (05.10.) — eine Zeile, oder „fehlt — eintragen“; der Platzhalter im Verzeichnis zeigt darauf.
+    verantwortlicher: { text: verantwortlicherText(verantwortlicher.v), fehlt: !verantwortlicher.v, quelle: verantwortlicher.quelle },
     befunde: befunde(kontakte, crm, heute, { loeschMonate: fristen.kontakte }),
     // Nie die Kontakt-Kennung zeigen (29.09., #30): Altbestand mit Klartext-Kennung erscheint als „lp-alt“, bis der Löschfristen-Lauf ihn umschreibt.
     loeschprotokoll: ((await loadJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll'))?.eintraege ?? []).slice(-20).reverse().map(e => (PROTOKOLL_ID.test(e.id) ? e : { ...e, id: 'lp-alt' })),

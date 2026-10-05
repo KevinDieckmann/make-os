@@ -16,6 +16,8 @@ import { tagVon } from '@/lib/zeit';
 import { hatTyp, kategorienVon } from './mehrfach';
 import { informationOffen, INFO_FRIST_TAGE } from './netzwerken-recht';
 import { UG_NAME } from '@/lib/einheiten';
+import { createHash } from 'node:crypto';
+import { VERANTWORTLICH_EINRICHTUNG } from '@/lib/datenschutz/einrichtung';
 export interface PflichtVorschlag { id: string; herkunft?: Herkunft; rechtsgrundlage?: Rechtsgrundlage; fremddaten?: boolean; grund: string }
 
 export function pflichtangaben(kontakte: Kontakt[], crm: CrmBestand): PflichtVorschlag[] {
@@ -95,7 +97,8 @@ export function verarbeitungenStart(jetzt: string): Verarbeitung[] {
   const s = tagVon(jetzt);
   const v = (id: string, name: string, zweck: string, personen: string, daten: string, rechtsgrundlage: string, empfaenger: string, loeschfrist: string): Verarbeitung => ({
     id, name, zweck, personen, daten, rechtsgrundlage, empfaenger, drittland: 'Anthropic (USA) nur für KI-Auswertung: Standardvertragsklauseln / Data Privacy Framework — prüfen', loeschfrist,
-    toms: 'Zugang nur mit Anmeldung (zwei Konten), HTTPS, Server in Deutschland (Hetzner), nächtliche verschlüsselte Sicherung, Agentenpakete ohne Privatnotiz', verantwortlich: 'Kevin Dieckmann (KD Ventures / Kevin Dieckmann Consulting)', stand: s,
+    // Verantwortlicher (05.10.): nie fest im Code — der Platzhalter verweist auf die Einrichtung (System › Datenschutz).
+    toms: 'Zugang nur mit Anmeldung (zwei Konten), HTTPS, Server in Deutschland (Hetzner), nächtliche verschlüsselte Sicherung, Agentenpakete ohne Privatnotiz', verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: s,
   });
   return [
     v('vv-kontakte', 'Kontakt- und Interessentenverwaltung', 'Pflege geschäftlicher Kontakte, Anbahnung von Mandaten, persönliche Ansprache', 'Geschäftskontakte, Interessenten, Kunden, Partner', 'Name, Firma, Position, Kontaktdaten, Gesprächsnotizen, Einwilligungen', 'Art. 6 Abs. 1 lit. b, f; lit. a bei Einwilligung', 'Kevin, Malin; KI-Auswertung (Auftragsverarbeiter)', '24 Monate ohne Interaktion, Kunden 36 Monate nach Vertragsende'),
@@ -119,7 +122,7 @@ export function verarbeitungenNetzwerken(jetzt: string): Verarbeitung[] {
   const stand = tagVon(jetzt);
   const gemein = {
     toms: 'Zugang nur mit Anmeldung (zwei Konten, zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, nächtliche verschlüsselte Sicherung, Fotos/Sprachnotizen verschlüsselt abgelegt, Art. 18 und Werbesperre greifen überall',
-    verantwortlich: UG_NAME, stand,
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand,
   };
   const dritt = 'Microsoft, Apple, Anthropic (USA): Standardvertragsklauseln bzw. Data Privacy Framework — prüfen';
   return [
@@ -152,7 +155,7 @@ export function verarbeitungKalenderGoogle(jetzt: string): Verarbeitung {
     drittland: 'Google: Standardvertragsklauseln bzw. Data Privacy Framework, Datenstandort laut Workspace-Einstellung — prüfen',
     loeschfrist: 'Wahrheit ist Google (Löschung dort, Art. 17); der Spiegel in MAKE OS baut sich bei jedem Abgleich neu auf und fällt beim Trennen weg; Sicherung des iCloud→Google-Umzugs 30 Tage; Termine mit Personenbezug wie bei iCloud (Löschlauf meldet sie)',
     toms: 'Zugang nur mit Anmeldung (zwei Konten, zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, Token nie im Browser und nie in Protokollen, OAuth mit PKCE und state, nur die Domain der Firma, Push-Meldungen nur mit Kanal-Token',
-    verantwortlich: UG_NAME, stand: tagVon(jetzt),
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
   };
 }
 
@@ -178,7 +181,7 @@ export function verarbeitungEmailGoogle(jetzt: string): Verarbeitung {
     drittland: 'Google, Anthropic: Standardvertragsklauseln bzw. Data Privacy Framework, Datenstandort laut Workspace-Einstellung — prüfen',
     loeschfrist: 'Wahrheit ist Gmail (Löschung dort, Art. 17); Spiegel in MAKE OS 180 Tage (Löschfrist „Mail-Spiegel“, einstellbar 30–730 Tage) und beim Trennen sofort; Mails einer Person fallen mit Art. 17 im Spiegel weg (Antwort nennt „dort in Gmail löschen“); Verlaufszeile in der Kontaktakte = Betreff + Link, gilt wie die Kartei',
     toms: 'Zugang nur mit Anmeldung (zwei Konten, zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, je Person getrennt (nie für das andere Konto lesbar), Token nie im Browser und nie in Protokollen, nur die Scope gmail.modify (kein Löschen, keine Einstellungen), HTML nie gerendert (nur Text), Bilder nie geladen, Anhänge nur als Download auf Klick, Senden nie über den Dienstweg, keine Mail-Inhalte in Logs, Push nur mit OIDC-Token von Google',
-    verantwortlich: UG_NAME, stand: tagVon(jetzt),
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
   };
 }
 
@@ -221,7 +224,7 @@ export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
       empfaenger: 'Kevin, Malin; Hetzner (Hosting, Auftragsverarbeitung); Anthropic (ZOE liest das Register auf Frage — nur Kennungen, keine Kontaktnamen); Glocke/Telegram nur neutral („Eine Vertragsfrist naht“)',
       drittland: 'Anthropic (USA) nur für ZOE: Standardvertragsklauseln / Data Privacy Framework — prüfen',
       loeschfrist: GES_LOESCHFRIST,
-      toms, verantwortlich: UG_NAME, stand,
+      toms, verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand,
     },
     {
       id: 'vv-kapazitaet', name: VV_ORGANISATION_NAMEN['vv-kapazitaet'],
@@ -232,7 +235,7 @@ export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
       empfaenger: 'Personen des Haushalts (Einzelwerte der Erholung und Ausnahme-Titel nur die Person selbst); Hetzner (Hosting)',
       drittland: 'keines',
       loeschfrist: KAPA_LOESCHFRIST,
-      toms: `${toms}; Privatfilter serverseitig (fuerBetrachter), Index ohne Gesundheits-Ableitung (ohneGesundheit)`, verantwortlich: UG_NAME, stand,
+      toms: `${toms}; Privatfilter serverseitig (fuerBetrachter), Index ohne Gesundheits-Ableitung (ohneGesundheit)`, verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand,
     },
   ];
 }
@@ -255,4 +258,35 @@ export function verarbeitungenOrganisationNachtragen(vorhanden: readonly Verarbe
     return x;
   });
   return dazu.length || gehoben ? [...neu, ...dazu] : [...vorhanden];
+}
+
+// ── Verantwortlicher im Verzeichnis: EINE Quelle (05.10., Paket „DSGVO-Grundlagen im Code“) ──
+// Früher stand im Feld `verantwortlich` ein fester Name (Startbestand) bzw. der Anzeigename der Gesellschaft (UG_NAME) — drei Stellen,
+// drei verschiedene Angaben. Jetzt steht dort der Platzhalter VERANTWORTLICH_EINRICHTUNG, aufgelöst aus der Einrichtung
+// (lib/datenschutz/einrichtung.ts `verantwortlichAufloesen`). Unveränderte alte Fassungen werden gehoben; was jemand von Hand
+// eingetragen hat, bleibt. Die alten festen Namen stehen hier nur als Fingerabdruck (SHA-256, gekürzt) — kein Name im Code.
+const ALTE_VERANTWORTLICHE = new Set(['b5537dcde8cd44109c31cbab39db8a16', '460c542df6eebc66dfe3c80f81b8adce']);
+const fingerabdruck = (t: string) => createHash('sha256').update(t).digest('hex').slice(0, 32);
+/** Ist das eine unveränderte alte Fassung (fester Name aus dem Startbestand oder der Gesellschafts-Anzeigename)? */
+export const verantwortlichAlt = (t: string | undefined): boolean => !!t && (t === UG_NAME || ALTE_VERANTWORTLICHE.has(fingerabdruck(t.trim())));
+
+/** Alte feste Verantwortliche → Platzhalter (idempotent; gibt dieselbe Liste zurück, wenn nichts zu heben ist). */
+export function verantwortlichHeben(vorhanden: readonly Verarbeitung[]): Verarbeitung[] {
+  if (!vorhanden.some(v => verantwortlichAlt(v.verantwortlich))) return [...vorhanden];
+  return vorhanden.map(v => (verantwortlichAlt(v.verantwortlich) ? { ...v, verantwortlich: VERANTWORTLICH_EINRICHTUNG } : v));
+}
+
+/**
+ * Das Verzeichnis vollständig machen — EINE Stelle für alle Nachträge (Stammdaten, System › Datenschutz, Export):
+ * Startbestand (wenn leer), Netzwerken, Organisation (Register/Kapazität), Google-Kalender/-Mail (wenn Google eingerichtet),
+ * und alte feste Verantwortliche heben. Idempotent: `geaendert` = false, wenn nichts zu tun war.
+ */
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+  let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
+  l = verarbeitungenNachtragen(l, jetzt);
+  l = verarbeitungenOrganisationNachtragen(l, jetzt);
+  if (opt.google) { l = verarbeitungKalenderNachtragen(l, jetzt); l = verarbeitungEmailNachtragen(l, jetzt); }
+  l = verantwortlichHeben(l);
+  const geaendert = l.length !== vorhanden.length || l.some((v, i) => v !== vorhanden[i] && JSON.stringify(v) !== JSON.stringify(vorhanden[i]));
+  return { liste: geaendert ? l : [...vorhanden], geaendert };
 }

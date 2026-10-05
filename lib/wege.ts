@@ -38,6 +38,8 @@ export const WEG = {
   menschen: () => '/os/menschen',
   /** Konto (Kachel „Team“: Konten und Team-Personen des Haushalts pflegen). */
   konto: () => '/os/konto',
+  /** System › Datenschutz (05.10.): Verantwortlicher, Empfänger/AVV, Selbstprüfung, Verzeichnis-Export — `#abschnitt` springt hin. */
+  datenschutz: (abschnitt?: 'verantwortlicher' | 'empfaenger' | 'pruefung' | 'verzeichnis') => q('/os/datenschutz', {}, abschnitt),
   /** Familie & Partnerschaft (Privat) · Inbox (eigenes Postfach). */
   familie: () => '/os/familie',
   inbox: () => '/os/inbox',

@@ -13,7 +13,7 @@ import { ClipboardList } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
 import { berichtAus, dankeZeilen, dankeOffen, dankeEntwurf, dankeMailtoLink, schrittLabel, type DankeZeile } from '@/lib/crm/netzwerken';
-import { DANKE_UWG_HINWEIS, DANKE_FRIST_TAGE, werbeWoerter, datenschutzAngaben, weitergabeAnkuendigen } from '@/lib/crm/netzwerken-recht';
+import { DANKE_UWG_HINWEIS, DANKE_FRIST_TAGE, werbeWoerter, datenschutzAngaben, weitergabeAnkuendigen, type DatenschutzAngaben } from '@/lib/crm/netzwerken-recht';
 import { fuerFirmaId } from '@/lib/crm/besuche-form';
 import { tagVon, wandzeit } from '@/lib/zeit/kalender-kern';
 import { WEG, eventLink } from '@/lib/wege';
@@ -144,6 +144,22 @@ function AutoFeld({ wert, onWert, label, zeilen }: { wert: string; onWert: (v: s
   return <textarea ref={ref} value={wert} onChange={x => onWert(x.target.value)} rows={zeilen} style={{ ...eingabe, resize: 'none', overflow: 'hidden', lineHeight: 1.5, fontFamily: SCHRIFT.text }} aria-label={label} />;
 }
 
+/**
+ * Verantwortlicher und Kontaktweg für den Hinweis in der Danke-Mail — aus der Datenschutz-Einrichtung der Instanz (05.10., EINE Quelle:
+ * System › Datenschutz); bis die Antwort da ist bzw. ohne Einrichtung der Standard (`datenschutzAngaben`). Einmal je Seite geladen.
+ */
+let angabenLaden: Promise<DatenschutzAngaben | null> | null = null;
+function useDatenschutzAngaben(): DatenschutzAngaben {
+  const [a, setA] = useState<DatenschutzAngaben>(datenschutzAngaben);
+  useEffect(() => {
+    let lebt = true;
+    angabenLaden ??= fetch('/api/datenschutz/einrichtung?nur=angaben', { cache: 'no-store' }).then(r => r.json()).then(x => (x?.ok && x.mail && x.verantwortlich ? { mail: x.mail, seite: x.seite, verantwortlich: x.verantwortlich } as DatenschutzAngaben : null)).catch(() => { angabenLaden = null; return null; });
+    void angabenLaden.then(x => { if (lebt && x) setA(x); });
+    return () => { lebt = false; };
+  }, []);
+  return a;
+}
+
 function DankeKarte({ d, heute, absender, meine, vonName, api, kunde }: { d: DankeZeile; heute: string; absender: string; meine: boolean; vonName: string; api: CrmApi; kunde?: string }) {
   const n = d.teilnahme.netzwerken!;
   const { bestaetigen, dialog } = useRueckfrage();
@@ -152,7 +168,8 @@ function DankeKarte({ d, heute, absender, meine, vonName, api, kunde }: { d: Dan
   // bei einer an diesem Event neu angelegten Person angekündigt; Bestandspersonen „wiedergesehen“, ohne Visitenkarten-Satz (Art. 13/14).
   const neu = !!n.neuAngelegt;
   const kundeAnkuendigen = !!kunde && weitergabeAnkuendigen(d.kontakt, n);
-  const vorlage = useMemo(() => dankeEntwurf({ vorname: d.kontakt.vorname, nachname: d.kontakt.nachname, anrede, eventTitel: d.event.titel, wann: 'neulich', eventDatum: d.event.datum, heute, neu, gesprochen: !n.keinGespraech, schritt: n.schritt, terminAm: n.terminAm, absender, ...(kundeAnkuendigen && kunde ? { kunde } : {}), datenschutz: datenschutzAngaben() }), [d.kontakt.vorname, d.kontakt.nachname, anrede, d.event.titel, d.event.datum, heute, neu, n.keinGespraech, n.schritt, n.terminAm, absender, kunde, kundeAnkuendigen]);
+  const angaben = useDatenschutzAngaben();
+  const vorlage = useMemo(() => dankeEntwurf({ vorname: d.kontakt.vorname, nachname: d.kontakt.nachname, anrede, eventTitel: d.event.titel, wann: 'neulich', eventDatum: d.event.datum, heute, neu, gesprochen: !n.keinGespraech, schritt: n.schritt, terminAm: n.terminAm, absender, ...(kundeAnkuendigen && kunde ? { kunde } : {}), datenschutz: angaben }), [d.kontakt.vorname, d.kontakt.nachname, anrede, d.event.titel, d.event.datum, heute, neu, n.keinGespraech, n.schritt, n.terminAm, absender, kunde, kundeAnkuendigen, angaben]);
   const [text, setText] = useState<string | null>(null);
   const [betreff, setBetreff] = useState<string | null>(null);
   const [geoeffnet, setGeoeffnet] = useState(false);

@@ -43,6 +43,8 @@ import { LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristenSpeichern
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { istDienst } from '@/lib/zugang/dienst';
 import { bauPruefen } from '@/lib/bau/pruefen';
+import { verantwortlicherAuskunft } from '@/lib/datenschutz/einrichtung';
+import { verantwortlicherLaden } from '@/lib/datenschutz/einrichtung-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -61,7 +63,8 @@ export async function GET(req: Request) {
   if (!k) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
   const crm = await ladeCrm();
   const auskunft = {
-    erstellt: new Date().toISOString(), verantwortlich: 'Kevin Dieckmann (KD Ventures / Kevin Dieckmann Consulting)',
+    // Verantwortlicher (05.10.): aus der Einrichtung (System › Datenschutz) bzw. der Umgebung — nie fest im Code; fehlt er, steht es deutlich da.
+    erstellt: new Date().toISOString(), verantwortlich: verantwortlicherAuskunft((await verantwortlicherLaden()).v),
     // Private Notizen sieht nur, wer sie schrieb — auch in der Auskunft (26.09.).
     // IBAN (Entscheidung 28.09., H4): Die Auskunft nach Art. 15 enthält die volle IBAN, wenn sie zur Person
     // gehört (Kontakt.zahlung — nur bei Personen ohne Firma). Die IBAN einer Firma ist kein Datum der Person:
