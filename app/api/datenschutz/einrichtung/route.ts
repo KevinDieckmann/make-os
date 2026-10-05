@@ -16,7 +16,7 @@ import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber
 import { istDienst } from '@/lib/zugang/dienst';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { bauPruefen } from '@/lib/bau/pruefen';
-import { zuGross } from '@/lib/zugang/umfang';
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { EINRICHTUNG_SPEICHER, verantwortlicherPruefen, verantwortlicherWirksam, empfaengerPruefen, empfaengerSetzen, empfaengerWirksam, empfaengerArchivieren } from '@/lib/datenschutz/einrichtung';
 import { einrichtungAendern, ladeEinrichtung } from '@/lib/datenschutz/einrichtung-server';
@@ -43,9 +43,8 @@ export async function POST(req: Request) {
   const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   const person = personStreng(req);
   if (!person || !(await istInhaber(person))) return nein('Nur der Inhaber ändert die Datenschutz-Einrichtung.', 403);
-  if (zuGross(req, 64_000)) return nein('Anfrage zu groß.', 413);
   let b: { aktion?: string; verantwortlicher?: unknown; empfaenger?: unknown; id?: unknown; archiviert?: unknown };
-  try { b = await req.json(); } catch { return nein('Kein JSON.', 400); }
+  try { b = await jsonBegrenzt(req, 64_000); } catch (e) { return jsonZuGross(e) ?? nein('Kein JSON.', 400); }
   const jetzt = new Date().toISOString();
 
   if (b.aktion === 'verantwortlicher') {
