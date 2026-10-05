@@ -192,11 +192,10 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   const neu = (await rufe(R.gesellschaften(), 'POST', '/api/gesellschaften', LENA, { felder: { name: 'Nordlicht Ventures GmbH', rechtsform: 'gmbh', status: 'gruendung', rolle: 'holding', sitz: 'Bielefeld', stammkapitalCent: '25.000' } })).gesellschaft as { id: string; stand: string };
   let ng = (await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: neu.id, stand: neu.stand, liste: 'gesellschafter', eintrag: { wer: { art: 'gesellschaft', id: 'kdv' }, nennbetragCent: '15.000', einlage: 'nein' } })).gesellschaft as { stand: string };
   ng = (await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: neu.id, stand: ng.stand, liste: 'gesellschafter', eintrag: { wer: { art: 'person', id: JONAS }, nennbetragCent: '10.000', einlage: 'nein' } })).gesellschaft as { stand: string };
-  void ng;
+  void ng; void kdv; void ug;
   schritt('Gesellschaften', 4);
 
   // 5) Ziele (Jahr, Business + Privat) und Meilensteine mit Aufwand, Personen, Kette.
-  const jahr = heute.slice(0, 4);
   const opsLabel = einheitAusGesellschaft('ug') ?? 'Operativ';
   const ziele = [
     { id: 'z-demo-umsatz', titel: 'Wiederkehrender Umsatz 25.000 € je Monat', fortschritt: 40, space: 'business', einheit: opsLabel, zielwert: 25000, rang: 1, aufwand: 60, personen: [KONTO_LENA] },
