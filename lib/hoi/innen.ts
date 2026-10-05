@@ -23,6 +23,7 @@ import { fehlerquote24h, fehlanmeldungen24h, neueNetze7d, cspBild, type CspMeldu
 import { hasAnthropicKey, guthabenStand } from '@/lib/anthropic';
 import { pepperGesetzt } from '@/lib/datenschutz/pepper';
 import { grabsteinOrdnerKonfiguriert } from '@/lib/datenschutz/grabsteine';
+import type { BrainIndexLage, KettenLage } from './lage';
 
 export const HOI_AUSSEN = 'hoi-aussen';
 export const HOI_CSP = 'hoi-csp';
@@ -96,6 +97,29 @@ async function durchsichtKurz(): Promise<DurchsichtKurz | null> {
   return { zeit: d.zeit, bestaende: d.bestaende, zeilen: d.zeilen, fehler: d.fehler.length, klartext: d.klartext, alteHuellen: d.alteHuellen, alteForm: d.alteForm, spruenge: d.spruenge, tmpReste: d.tmpReste, verbindungen: d.verbindungen };
 }
 
+/** Brain-Index (05.10.): Ort, Größe, tmpfs-Grenze, Neubau — nur Zahlen. null, wenn der Index aus ist. */
+export async function brainIndexLage(): Promise<BrainIndexLage | null> {
+  if (process.env.MAKE_OS_BRAIN_INDEX === 'aus') return null;
+  try {
+    const ix = await import('@/lib/brain/index');
+    const ort = ix.indexOrt();
+    let grenzeMb: number | null = null;
+    if (ort.art === 'tmpfs') {
+      try { const st = await fs.statfs(path.dirname(ort.pfad)); grenzeMb = Math.round((st.blocks * st.bsize) / 1_048_576); } catch { grenzeMb = null; }
+    }
+    const st = ix.indexStand();
+    const nb = ix.neubauStand();
+    return { ort: ort.art, grund: ort.grund, klartextAufPlatte: ort.klartextAufPlatte, altDateiDa: await ix.alterIndexDa(), groesseMb: ix.indexGroesseMb(), grenzeMb, notizen: st.notizen, bereit: ix.indexBereit(), neubau: { fertig: nb.fertig, dauerMs: nb.dauerMs, fehler: nb.fehler } };
+  } catch { return null; }
+}
+
+/** Letzte Prüfung der Protokoll-Kette (05.10.) — null: noch keine. */
+async function kettenLage(): Promise<KettenLage | null> {
+  const { letztePruefung } = await import('@/lib/store/protokoll-kette');
+  const p = await letztePruefung();
+  return p ? { zeit: p.zeit, ok: p.ok, dateien: p.dateien, eintraege: p.eintraege, fehler: p.fehler, warnungen: p.warnungen, getilgt: p.getilgt, namen: p.befunde.filter(b => b.stand === 'fehler').map(b => b.name) } : null;
+}
+
 export async function innenLage(jetzt = new Date().toISOString()): Promise<InnenLage> {
   const [auftraege, warte, anmeldungen, takt, best, fehlerDatei, csp, ds, sl, dk] = await Promise.all([
     lies().catch(() => []), stand().catch(() => ({ offen: 0, laeuft: 0, fertig: 0, fehler: 0 })), alle().catch(() => []), letzterTakt(jetzt), bestaende(),
@@ -122,6 +146,8 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     kalender: await kalenderLage(jetzt),
     kalenderGoogle: await googleLage(Date.parse(jetzt)).catch((): GoogleKalenderLage | null => null),
     gmail: await gmailLage(Date.parse(jetzt)).catch((): GmailLage | null => null),
+    brainIndex: await brainIndexLage(),
+    protokollKette: await kettenLage().catch(() => null),
   };
 }
 
