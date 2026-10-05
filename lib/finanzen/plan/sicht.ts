@@ -27,6 +27,7 @@ import type { Aenderung, Einheit, FinanzDaten, Zeile } from '@/lib/finanzen/rech
 import type { Steuern } from '@/lib/finanzen/steuern';
 import { HAND_FELDER, zelleTeile } from '@/lib/finanzen/handwerte';
 import { lies } from './operationen';
+import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { darlehenBusinessAenderbar, darlehenFuerBusiness } from '@/lib/finanzen/darlehen';
 
 export type PlanSicht = 'privat' | 'business';
@@ -273,8 +274,14 @@ export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown)
     }
     case 'bereiche':
       return t[1] === 'business' ? null : 'Die Einstellung des Privat-Bereichs gehört zu Privat.';
-    case 'aktiv': case 'arbeitsplan': case 'einstellungen':
-      return null;
+    // Gemeinsame Wahl (Kevin 05.10. spät: Business ändert NIE etwas, das Privat rechnet): das aktive Szenario fließt in die ESt aufs Gehalt
+    // (lohnJahre), der gemeinsame Arbeitsplan gilt für Privat, solange Privat keinen eigenen hat. Business setzt seinen Plan nur über
+    // /bereiche/business/arbeitsplan (die Oberfläche lenkt dorthin um). Erlaubt: die Reserve (nur Töpfe der GmbH, toepfeUG) und der
+    // Stichtag „auf heute setzen“ — nur auf den echten heutigen Tag (Europe/Berlin).
+    case 'aktiv': case 'arbeitsplan':
+      return 'Gilt auch für Privat — im Business-Bereich wird das eigene Planszenario gesetzt.';
+    case 'einstellungen':
+      return t.length === 2 && (t[1] === 'reserveMonate' || (t[1] === 'heute' && neu === heuteBerlin())) ? null : 'Diese Einstellung gilt auch für Privat — bitte im Privat-Bereich ändern.';
     default:
       return `„${b}“ ist in der Business-Sicht nicht änderbar.`;
   }

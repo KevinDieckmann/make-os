@@ -487,7 +487,7 @@ describe('f) Fund 4: Wächter-Tabelle „Pfad → aus Business erlaubt?“ über
     ['/check/punkte', [], false], ['/fokus/entscheidung', 'x', false], ['/abschluesse', [], false], ['/regeln/rewe', 'sk1', false], ['/schwellen/runwayWarnMonate', 2, false],
     ['/selbst/kontoStart', 1, false], ['/selbst', {}, false], ['/handAlt/ab.est:0', undefined, false],
     // Geteilte Einstellungen (bewusst gemeinsam, 04.10. spät) — erlaubt; der Privat-Bereich nie
-    ['/aktiv', 's1', true], ['/arbeitsplan', 'ps3', true], ['/einstellungen/reserveMonate', 3, true], ['/bereiche/business/arbeitsplan', 'ps3', true],
+    ['/aktiv', 's1', false], ['/arbeitsplan', 'ps3', false], ['/einstellungen/reserveMonate', 3, true], ['/bereiche/business/arbeitsplan', 'ps3', true],
     ['/bereiche/privat/arbeitsplan', 'ps3', false], ['/bereiche', {}, false],
     // Annahmen: nur Blätter, nie die Netto-Tabelle, nie das Ganze
     ['/annahmen/kevinBrutto', 3100, true], ['/annahmen/darlehenKevin', 0, true], ['/annahmen/nettoTabelle', [[0, 0], [1, 1]], false], ['/annahmen/nettoTabelle/0', [0, 0], false],

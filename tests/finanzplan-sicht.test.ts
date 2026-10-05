@@ -3,6 +3,7 @@
 // Privat nicht.“ Wächter: die Business-Sicht liefert keine private Zeile, kein privates Ziel, keine private Buchung und keinen privaten
 // Betrag aus; Schreiben auf Privat-Pfade wird abgelehnt (403); die Business-Zahlen sind dieselben wie in der vollen Sicht.
 // Erfundene Zahlen und Namen — nie echte.
+import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -182,9 +183,9 @@ describe('Business-Sicht: Schreibschutz für Privat-Pfade', () => {
     ja('/darlehen/id=dl-b/betrag', 2500); ja('/darlehen/-', { id: 'dl-n', geber: 'extern', nehmer: 'kdv', betrag: 1 }); ja('/darlehen/id=dl-b/nehmer', 'extern');
     ja('/annahmen/kevinBrutto', 3000); ja('/sachkosten/id=sk1/soll', 300); ja('/sachkosten/-', { id: 'n', einheit: 'ug' });
     ja('/planszenarien/id=ps1/bausteine/id=b1/preis', 1); ja('/planszenarien/id=ps1/bausteine/-', { id: 'n', einheit: 'ug' }); ja('/planszenarien/id=ps1/annahmen/ausschuettung', { betrag: 1, ab: 2 });
-    ja('/szenarien/id=s1/ob/betrag', 1); ja('/szenarien/id=s1/ereignisse/id=e2/betrag', 1); ja('/aktiv', 's1'); ja('/arbeitsplan', 'ps1');
+    ja('/szenarien/id=s1/ob/betrag', 1); ja('/szenarien/id=s1/ereignisse/id=e2/betrag', 1); nein('/aktiv', 's1'); nein('/arbeitsplan', 'ps1'); // gemeinsame Wahl wirkt auf Privat (05.10. spät)
     ja('/steuern/ug/zeilen/kst/satz', 0.15); ja('/buchungen/id=bb1/z', 'sk2'); ja('/posten/id=xb/betrag', 1); ja('/schulden/id=sb/rate', 1);
-    ja('/ziele/id=zb/ziel', 1); ja('/ziele/-', { id: 'n', quelle: 'ug.frei', einheit: 'ug' }); ja('/einstellungen/reserveMonate', 2);
+    ja('/ziele/id=zb/ziel', 1); ja('/ziele/-', { id: 'n', quelle: 'ug.frei', einheit: 'ug' }); ja('/einstellungen/reserveMonate', 2); nein('/einstellungen', { heute: '2020-01-01', reserveMonate: 1 }); ja('/einstellungen/heute', heuteBerlin()); nein('/einstellungen/heute', '2020-01-01');
   });
   it('Protokoll: Business nur mit Pfad und auffindbarem Eintrag', () => {
     expect(pfadIstBusiness('/plan/ug.konto:4', d)).toBe(true);
