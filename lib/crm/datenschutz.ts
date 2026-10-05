@@ -11,6 +11,7 @@ import type { Kontakt, Herkunft, Rechtsgrundlage } from '@/lib/make-one/crm';
 import type { CrmBestand, Verarbeitung } from './typen';
 import { art14 } from './recht';
 import { speicherbegrenzung } from './kennzahlen';
+import { SICHERUNG_GENERATIONEN } from './loeschfristen';
 
 import { tagVon } from '@/lib/zeit';
 import { hatTyp, kategorienVon } from './mehrfach';
@@ -89,6 +90,8 @@ export const LOESCHREGELN = [
   // Kevin 05.10.: festgehaltene Wochenpläne der Kapazität (lib/kapazitaet/plan.ts).
   { id: 'kapazitaet-plan', titel: 'Festgehaltene Wochenpläne (Kapazität: verfügbar, geplant je Meilenstein/Zuweisung)', frist: '24 Monate je Woche', aktion: 'Löschen (Morgenlauf „Wochenplan festhalten“; Team-Personen ohne Konto mit ihren Kapazitätsdaten 30 Tage nach dem Deaktivieren)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO, § 26 BDSG' },
   // DSGVO-Nachtrag 04.10. (Kevin): Unterlagen gelöschter Gesellschaften/Verträge bleiben (Aufbewahrungspflicht).
+  // 05.10. (DSGVO-Grundlagen): Sicherungen wahrheitsgemäß — Generationen bis ~12 Monate (deploy/generationen.sh), nicht 14 Tage.
+  { id: 'sicherungen', titel: 'Verschlüsselte Sicherungen (Tages-, Wochen-, Monatsgenerationen)', frist: `bis zu ${SICHERUNG_GENERATIONEN.monatlich} Monate, danach überschrieben`, aktion: 'Überschreiben (gelöschte Daten nicht mehr verwendet; nach einem Zurückspielen löschen die Grabsteine erneut)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17, Art. 32 DSGVO' },
   { id: 'unterlagen-register', titel: 'Unterlagen einer endgültig gelöschten Gesellschaft bzw. eines Vertrags (Dateiablage)', frist: '6 bzw. 10 Jahre ab Jahresende', aktion: 'Aufbewahren (Ablage, Bezug „(gelöscht)“ bleibt lesbar)', norm: '§ 257 HGB, § 147 AO' },
 ] as const;
 

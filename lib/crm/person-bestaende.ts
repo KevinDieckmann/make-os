@@ -56,7 +56,7 @@
 //   app_chunks (Such-Index, lib/brain/app-index.ts)   sofort nachgezogen (inkrementell; `secure_delete` überschreibt)
 //   _App-Spiegel im Vault                             neu erzeugt, wenn eingeschaltet (MAKE_OS_APP_SPIEGEL=an)
 //   crm-loeschprotokoll                               nur Protokoll-ID `lp-…`, Tag, Grund, Person — nie die Kennung
-// Bewusst NICHT hier (Grund im Register): Sicherungen (14 Tage „beyond use“, Grabsteine wenden die Löschung nach einem
+// Bewusst NICHT hier (Grund im Register): Sicherungen (bis zu 12 Monate „beyond use“, SICHERUNG_SATZ; Grabsteine wenden die Löschung nach einem
 // Restore an), Vault + Git-Historie (Verfahren in DATENARCHITEKTUR.md), Finanz-/Buchungsbestände (§ 147 AO / § 257 HGB).
 //
 // U2 (28.09., Datenschutz vollständig): Einwilligungs-Nachweise, Einschränkung (Art. 18), „geprüft“, Hinweis bei

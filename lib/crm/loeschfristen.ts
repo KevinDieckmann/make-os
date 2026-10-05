@@ -26,7 +26,9 @@
 //                                          bleiben (dokumentiert, nie automatisch)
 //   Altbestand Netzwerk        24 Monate   KEINE automatische Löschung — zählt in die Löschfrist-Aufgabe (stilllegen)
 //   Grabsteine                 13 Monate   außerhalb des Datenordners; länger als jede Sicherung (lib/datenschutz/grabsteine.ts)
-//   Sicherungen                14 Tage     fest — Tageskopien und Nachtsicherungen („beyond use“; Restore wendet Grabsteine an)
+//   Sicherungen                bis 12 Mon. fest — Generationen der Nachtsicherung (deploy/generationen.sh: 14 Tages-, 8 Wochen-,
+//                                          12 Monatsgenerationen), Tageskopien je Bestand (letzte 14 Schreibtage); „beyond use“,
+//                                          Restore wendet die Grabsteine an (Wächter: tests/datenschutz-sicherungsfrist.test.ts)
 //
 // Keine Rechtsberatung — die Werte einmal anwaltlich gegenlesen.
 
@@ -47,9 +49,18 @@ export interface FristDef {
   /** automatisch bereinigt (technischer Bestand) — sonst nur eine Aufgabe (Personen) bzw. fest (Art. 17). */
   wirkung: 'automatisch' | 'aufgabe' | 'fest';
   norm: string; hinweis: string;
-  /** Anzeige statt der Zahl (nur `fest`, z. B. „14 Tage“ für Sicherungen). */
+  /** Anzeige statt der Zahl (nur `fest`, z. B. „bis zu 12 Monate“ für Sicherungen). */
   anzeige?: string;
 }
+
+/**
+ * Generationen der verschlüsselten Nachtsicherung (Server und Zweitkopie) — MUSS zu `generationen_aufraeumen … 14 8 12` in
+ * deploy/sicherung.sh und deploy/sicherung-abholen.sh passen (Wächter: tests/datenschutz-sicherungsfrist.test.ts, der auch prüft,
+ * dass die Grabstein-Frist länger ist als die älteste behaltene Generation).
+ */
+export const SICHERUNG_GENERATIONEN = { taeglich: 14, woechentlich: 8, monatlich: 12 } as const;
+/** EIN Satz für Löschkonzept, Auskunft, Hinweise an Kontakte und Verzeichnis — wahrheitsgemäß zu den Generationen oben. */
+export const SICHERUNG_SATZ = `Verschlüsselte Sicherungen bewahren wir bis zu ${SICHERUNG_GENERATIONEN.monatlich} Monate auf (${SICHERUNG_GENERATIONEN.taeglich} Tages-, ${SICHERUNG_GENERATIONEN.woechentlich} Wochen- und ${SICHERUNG_GENERATIONEN.monatlich} Monatsstände), danach werden sie überschrieben. Gelöschte Daten können bis dahin noch in einer Sicherung stehen, werden dort aber nicht mehr verwendet; wird eine Sicherung zurückgespielt, werden sie sofort erneut gelöscht (über Löschvermerke, die außerhalb der Sicherungen liegen).`;
 
 export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'kontakte', titel: 'Kontakte ohne Beziehung und Aktivität', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch gelöscht: der Takt legt eine Aufgabe an — löschen oder mit Grund verlängern.' },
@@ -68,7 +79,7 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'kalender-caches', titel: 'Kalender-Zwischenspeicher', einheit: 'monate', standard: 12, min: 1, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Vergangene Termine im Zwischenspeicher — der Kalender selbst bleibt beim Anbieter.' },
   { id: 'archiv-umzug', titel: 'Umzugs- und Aufräum-Kopien im Archiv', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Kopien vor Umzügen und Aufräumarbeiten (CRM vor Brain-Umzug, Kennungs-Umzug, Firmen zusammenführen, MAKE.ORGA, Business, Kategorien). Andere Archiv-Dateien bleiben — nie automatisch.' },
   { id: 'netzwerk', titel: 'Altbestand Netzwerk (vor der Kartei)', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch: Einträge ohne Kontakt seit der Frist zählen in die Löschfrist-Aufgabe. Der Altbestand wird stillgelegt (in die Kartei übernehmen oder löschen).' },
-  { id: 'grabsteine', titel: 'Grabsteine gelöschter Personen', einheit: 'monate', standard: 13, min: 13, max: 120, wirkung: 'automatisch', norm: 'Art. 17, Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Fingerabdrücke außerhalb des Datenordners — länger als jede Sicherung, damit ein Restore niemanden zurückholt. Die Sperrliste bleibt.' },
+  { id: 'grabsteine', titel: 'Grabsteine gelöschter Personen', einheit: 'monate', standard: 13, min: 13, max: 120, wirkung: 'automatisch', norm: 'Art. 17, Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Fingerabdrücke außerhalb des Datenordners — länger als jede Sicherung (bis zu 12 Monate), damit ein Restore niemanden zurückholt. Die Sperrliste bleibt.' },
   // 29.09. (K4): Terminbuchungen der öffentlichen Buchungsseiten.
   { id: 'buchungen', titel: 'Terminbuchungen (Buchungsseiten)', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Nicht bestätigte, abgelehnte, abgesagte und abgelaufene Buchungen fallen nach der Frist weg, bestätigte die Frist nach dem Termin — Anfrage und Aktivität im CRM bleiben (dort gilt die Frist der Kartei).' },
   // 03.10. (netz-recht): Erfassungs-Daten von „Netzwerken“ — Medien und Info automatisch, Personen nie.
@@ -79,7 +90,8 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'uebergabe-protokolle', titel: 'Übergabe-Protokolle (Kunden-Events)', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2, Art. 15, Art. 19 DSGVO', hinweis: 'Nachweis, wann welche Personen an welchen Kunden übergeben wurden (am Event bzw. im Übergabe-Journal) — danach weg.' },
   // 03.10. (gmail): Gmail-Spiegel je Person — nur eine Kopie zum Lesen/Zuordnen/Antworten in MAKE OS; das Original bleibt bei Google.
   { id: 'mail-spiegel', titel: 'Mail-Spiegel (Gmail in der Inbox)', einheit: 'tage', standard: 180, min: 30, max: 730, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Kopie der Gmail-Nachrichten je Person (Kopf, Ausschnitt, Text) — ältere fallen im Spiegel weg, in Gmail bleiben sie (dort gilt die Aufbewahrung des Postfachs). Anhänge liegen nie im Spiegel.' },
-  { id: 'sicherungen', titel: 'Tageskopien und Nachtsicherungen', einheit: 'tage', standard: 14, min: 14, max: 14, wirkung: 'fest', anzeige: '14 Tage', norm: 'Art. 5 Abs. 1 lit. e, Art. 32 DSGVO', hinweis: 'Gelöschte Personen stehen bis zum Ablauf noch in Sicherungen („beyond use“) — nach jedem Zurückspielen wenden die Grabsteine die Löschung erneut an.' },
+  // 05.10. (DSGVO-Grundlagen): vorher „14 Tage“ — falsch, die Nachtsicherung hält Generationen bis ~12 Monate (deploy/generationen.sh).
+  { id: 'sicherungen', titel: 'Sicherungen (Tages-, Wochen-, Monatsgenerationen)', einheit: 'monate', standard: SICHERUNG_GENERATIONEN.monatlich, min: SICHERUNG_GENERATIONEN.monatlich, max: SICHERUNG_GENERATIONEN.monatlich, wirkung: 'fest', anzeige: `bis zu ${SICHERUNG_GENERATIONEN.monatlich} Monate`, norm: 'Art. 5 Abs. 1 lit. e, Art. 17, Art. 32 DSGVO', hinweis: SICHERUNG_SATZ },
 ];
 
 export type Fristen = Record<FristArt, number>;

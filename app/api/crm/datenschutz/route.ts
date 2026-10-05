@@ -39,7 +39,7 @@ import { zahlungMaskiert } from '@/lib/crm/zahlung';
 import { personAufzaehlen, personEntfernen } from '@/lib/crm/person-bestaende';
 import { nachweisAuskunft } from '@/lib/crm/einwilligung';
 import { einschraenkungSetzen, einschraenkungAufheben } from '@/lib/crm/einschraenkung';
-import { LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristenSpeichern, verlaengerungPruefen, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
+import { SICHERUNG_SATZ, LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristenSpeichern, verlaengerungPruefen, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { istDienst } from '@/lib/zugang/dienst';
 import { bauPruefen } from '@/lib/bau/pruefen';
@@ -79,6 +79,8 @@ export async function GET(req: Request) {
     geprueft: k.geprueftAm ? { am: k.geprueftAm, von: k.geprueftVon ?? null } : null,
     hinweisBeiErhebung: k.hinweisBeiErhebung ?? null,
     loeschfristVerlaengert: k.loeschfristVerlaengert ?? null,
+    // 05.10.: wie lange Daten nach dem Löschen noch in Sicherungen stehen können (wahrheitsgemäß, deploy/generationen.sh).
+    sicherungen: SICHERUNG_SATZ,
     // Alle Speicher aus einer Stelle (28.09., lib/crm/person-bestaende.ts): CRM-Listen, Dateiablage (nur Metadaten),
     // Import-Konflikte, Head-Vorschläge, kommender Termin, eindeutig zugeordnete Aufgaben.
     ...(await personAufzaehlen(id)),
