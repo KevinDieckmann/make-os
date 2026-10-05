@@ -4,6 +4,90 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Verschlüsselung lückenlos + Protokolle nachweisfest (05.10.2026, nur lokal — Branch `verschluesselung`)
+
+Aus dem Sicherheits-Audit 05.10. (Kevin: „alle Standards der DSGVO, damit wir Kundendaten aufnehmen können“). Lücke L9 der TOM
+(`datenschutz/TOM.md`) für Brain-Index und Bilder geschlossen, Lese-Protokoll neu, Hash-Kette über alle Protokolle, Format v2 vorbereitet.
+
+**1 · Brain-Index nie mehr im Klartext auf der Platte.** `daten/brain-index.sqlite` hielt Vault-Abschnitte UND `app_chunks` (Aufgaben,
+Notizen, Angebote, Mandate) im Klartext. Abgewogen:
+- (a) **SQLCipher** (`better-sqlite3-multiple-ciphers`): verworfen. Neue native Abhängigkeit; das Dockerfile baut mit
+  `npm ci --ignore-scripts` — Prebuilds/`node-gyp` liefen gar nicht, der Bau bräuchte Python/Compiler im Bild oder eine Ausnahme für
+  Install-Skripte (Lieferkette); andere API als `node:sqlite` (alle Abfragen umbauen); Schlüssel läge ohnehin im selben Prozess. Höchstes
+  Deploy-Risiko für keinen Gewinn gegenüber (b).
+- (c) **Inhalts-Spalten anwendungsseitig verschlüsseln**: verworfen. FTS5 braucht Klartext — es bliebe nur ein eigener Such-Ersatz
+  (Token-Hashes), der Ranking, Präfixe und Umlaute verliert.
+- (b) **Index nur im Arbeitsspeicher** — gewählt: keine neue Abhängigkeit, kein Bau-Risiko, der Index ist abgeleitet und schnell gebaut.
+  Server: tmpfs `/brain-index` mit `size=256m` (compose.yml, zählt zur Speichergrenze des Containers), `MAKE_OS_BRAIN_INDEX=/brain-index/
+  index/brain-index.sqlite`; WAL/SHM liegen daneben ebenfalls im tmpfs. Ohne tmpfs (oder Pfad auf der Platte) mit Datenschlüssel →
+  `:memory:` im Prozess. Ohne Datenschlüssel (lokal, Wegwerfdaten) wie bisher als Datei. Regeln rein in `lib/brain/index-ort.ts`.
+  `secure_delete=ON` bleibt. 20 s nach dem Start (`lib/store/betrieb.ts` → `indexNachStart`): alter Klartext-Index im Datenordner wird mit
+  Nullen überschrieben und gelöscht, dann Vault + Arbeitsbestände neu eingelesen; bis dahin sucht ZOE über die Dateien (bisheriger Rückfall).
+  **Gemessen** (Mac M3, synthetischer Vault): 700 Notizen/11 MB → 0,5 s, Index 24 MB; 2 000 Notizen/31 MB → 1,5 s, 69 MB; Suche 12–30 ms.
+  Echter Vault heute ≈ 660 Notizen/6 MB → auf 1 vCPU (Faktor 3–5) **≈ 2–3 s CPU nach jedem Start**, ≈ 15–25 MB im tmpfs. Embeddings sind
+  auf dem Server aus (1 vCPU) — mit `MAKE_OS_EMBEDDINGS=an` müssten die Vektoren nach jedem Start neu gerechnet werden (Minuten CPU).
+  HOI-Befund „Brain-Index (Suche)“: Ort, Größe/Grenze, Notizen, Neubau-Dauer; rot nur beim Notweg `MAKE_OS_BRAIN_INDEX_PLATTE=1`
+  (Klartext auf der Platte), gelb bei Altdatei/vollem tmpfs/gescheitertem Neubau.
+  **Restrisiko (dokumentiert):** Hetzner-Abbilder der letzten 7 Tage enthalten den alten Index noch; Swap des Hosts kann Speicherseiten
+  (auch tmpfs) auf die Platte legen — wie für alle entschlüsselten Daten im Arbeitsspeicher.
+
+**2 · Bilder verschlüsselt und atomar** (`lib/store/bild-ablage.ts`): Fotos zu Gerichten (`bilder-gerichte/`) und Bauplan-Bildschirmfotos
+(`bauplan-bilder/`, vorher unter `process.cwd()/.data` statt im Datenordner) über die Hülle der Dateiablage (`binImModus`: kompatibel
+„MKOSDAT1“, v2 „MKOSDAT2“ mit AAD `<ordner>/<name>`) und `atomarSchreiben`; Lesen über den Schlüsselring; alte Klartext-Bilder werden beim
+ersten Lesen einmal verschlüsselt (oder alle auf einmal: `scripts/daten-verschluesselung.mjs --verschluesseln`). Rotation
+(`/api/intern/umschluesseln`), das Verschlüsselungs-Skript und `scripts/sicherung-pruefen.mjs` nehmen die Bilder mit. Register: Fotos
+bei `ernaehrung`/`backlog` vermerkt.
+
+**3 · Lese-Protokoll** (`lib/store/leseprotokoll.ts`, Art. 5 Abs. 2/32): wer Gesundheit/Erholung (Art. 9), Finanzplan, Haushalt,
+Rechnungen, Kontakte, Firmen/CRM und das Gesellschafts-Register gelesen hat — Person (bzw. ZOE im Auftrag/System), Bereich, wessen Daten
+(Konto), Kennungen nur als Fingerabdruck, Weg ohne Abfrage, Zeit; nie Inhalte. Eine Zeile `leseZugriff(req, bereich, …)` nach der
+Zugangsprüfung in 16 GET-Routen (vitals, health, haut, gesundheit/stand + index, sport, kapazitaet (nur mit eigenem Erholungswert),
+state/finanzplan, finanzplan, haushalt, state/kontakte, state/kunden, crm/bestand, gesellschaften, gesellschaften/unterlagen,
+crm/gesellschaften); gedrosselt (gleicher Zugriff ≤ 1× je 10 Min.), hält die Antwort nicht auf. Speicher
+`leseprotokoll--<haushalt>--<JJJJ-MM>`, Aufbewahrung **12 Monate** (ältere Monate leert die nächtliche Durchsicht, Vermerk bleibt), Register
+mit Rechtsgrundlage/Art. 15/Löschfrist, Art. 17 tilgt Fingerabdrücke. Ansicht **System › Nachweise** (`/os/datenschutz/nachweise`,
+`GET/POST /api/datenschutz/nachweise`) nur für den Inhaber selbst (nicht Dienstweg, nicht andere Konten) — Filter Zeitraum/Bereich/„nur auf
+Daten anderer“.
+
+**4 · Hash-Kette über die Protokolle** (`lib/store/protokoll-kette.ts`): Änderungsprotokoll, Lese-Protokoll und Anmeldeprotokoll
+(rollend, 300) — je Eintrag `h` (HMAC-SHA-256 mit dem Pepper, ohne Pepper SHA-256), je Datei `kette` (Anfang bindet den Dateinamen und den
+Kopf des Vormonats), dazu das Siegel `protokoll-siegel` (Anzahl + letzter Hash je Datei, nur steigend → abgeschnittene Enden fallen auf).
+Erkannt: veränderte, eingeschobene, gelöschte Einträge, abgeschnittenes Ende, vertauschte/zurückgespielte Monatsdateien, gelöschte Dateien.
+Erlaubt (bleibt „unverändert“): Art. 17 / Umrechnung v1→v2 / Kennungs-Umzug (Kontakt-Fingerabdrücke gehen nur normalisiert in den Hash),
+„[gelöscht]“ (zählt als getilgt), Löschfrist-Leerung. Altbestand wird nachts sichtbar „nachversiegelt“. Prüfung nächtlich in der
+Durchsicht (Ergebnis `protokoll-pruefung`), auf Knopfdruck unter System › Nachweise; HOI „Protokolle (Hash-Kette)“: grün
+„Protokoll unverändert ✓“, rot bei Bruch. **Grenze:** wer Datenschlüssel UND Pepper hat (root), kann neu rechnen — das Siegel in den
+Sicherungen (Mac, 12 Monate) macht spätere Änderungen gegenüber älteren Ständen trotzdem sichtbar.
+
+**5 · Format v2 vorbereitet** (nicht umgestellt): Code-seitig fehlte für `MAKE_OS_FORMAT=v2` nur noch, dass Bilder und Brain-Index unter
+die Hülle bzw. von der Platte kommen — beides erledigt. System › Nachweise zeigt den Modus und eine Bereitschaftsliste (Schlüssel als
+Datei, Pepper, Bestände/Bilder ohne Klartext, Brain-Index). **Anleitung für Kevin (erst nach stabilen Tagen, nur auf dein Wort):**
+```bash
+# 0. Vorher: Pepper gesetzt? (HOI „Fingerabdrücke … HMAC mit Pepper (v2)“ grün) — sonst bleiben Sperrliste/Protokoll-Kennungen v1.
+cd /srv/make-os/app
+echo 'MAKE_OS_FORMAT=v2' >> .env                     # bzw. eine vorhandene Zeile MAKE_OS_FORMAT=… ändern
+docker compose stop app arbeiter
+docker compose run --rm -T --no-deps app node scripts/daten-verschluesselung.mjs --verschluesseln </dev/null
+docker compose up -d
+# Prüfen: HOI „Schreibformat der Daten: v2“ grün; System › Nachweise › Format v2 „v2 ist aktiv“; Durchsicht am nächsten Morgen
+#         „0 alte Hüllen“; Protokolle „unverändert ✓“.
+```
+Danach geht es zum alten Stand **nur noch per Sicherung von vor der Umstellung** (DEPLOY.md › Schreibformat).
+
+**Rückweg (dieses Pakets, solange `MAKE_OS_FORMAT` kompatibel ist):**
+- Brain-Index: nichts zu tun — der alte Code nimmt `MAKE_OS_BRAIN_INDEX` ebenfalls und läge damit weiter im tmpfs; ohne die compose-Zeilen
+  schriebe er wieder `daten/brain-index.sqlite` (Klartext).
+- Bilder: bleiben verschlüsselt — der alte Code liest sie roh und zeigt ein kaputtes Bild, verloren geht nichts; nach dem erneuten
+  Hochladen sind sie wieder da (Fotos, die der alte Stand dazwischen speichert, liegen im Klartext und werden dann beim ersten Lesen
+  verschlüsselt). Wer sie für den alten Stand braucht: einzeln über die App neu hochladen.
+- Protokolle: der alte Code liest `eintraege` weiter (zusätzliche Felder `h`/`kette` stören nicht); beim Anhängen schreibt er nur
+  `{ eintraege }` — die Kette des laufenden Monats fällt weg. Nach dem erneuten Hochladen wird sie beim nächsten Anhängen sichtbar
+  „nachversiegelt“ (gleiche Hashes für unveränderte Einträge, das Siegel passt wieder) — der Rückweg bleibt im Protokoll erkennbar.
+  Lese-Protokoll-Monate bleiben liegen (der alte Stand kennt sie nicht). Ausnahme Anmeldeprotokoll: der alte Stand schneidet bei 300 ohne
+  Zähler ab — rollt er in der Zwischenzeit über, meldet die Kette `anmeldungen` danach als „gekürzt“ (rot). Das ist dann erklärt (Rückweg
+  im Protokoll belegt) und kein Angriff; der Befund bleibt als Nachweis stehen.
+- Tests: `tests/brain-index-ort`, `tests/bilder-verschluesselt`, `tests/leseprotokoll`, `tests/protokoll-kette`, `tests/hoi-verschluesselung`.
+
 ## Kugeln 2 · „Solaris“-Überarbeitung von ZOE und Brain (05.10.2026, nur lokal — Branch `kugeln-2`)
 
 Kevin nach dem Upload: „Überarbeite das Brain nochmal … auch ZOE — das muss sehr geil aussehen.“ Vorher zu dünn, zu dunkel, zu leer.

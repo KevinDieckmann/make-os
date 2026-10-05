@@ -203,6 +203,24 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Gesellschaft/Vertrag endgültig → Unterlagen bleiben (§ 257 HGB): Rückfrage `UnterlagenBleiben` mit `WEG.unterlagen(g, v?)`, Register vermerkt
   Gelöschtes (`RegisterDatei.geloescht`, `geloeschtVermerken` — neue Schreibwege auf das Register IMMER darüber), Bezüge „„Name“ (gelöscht)“.
 
+## Verschlüsselung lückenlos + Protokolle nachweisfest (05.10., Branch `verschluesselung`, nur lokal — UPDATES.md 05.10.)
+- **Brain-Index nie im Klartext auf der Platte:** Ort nur über `indexOrt()` (`lib/brain/index-ort.ts`, rein): mit Datenschlüssel tmpfs
+  (Server: compose `/brain-index`, `MAKE_OS_BRAIN_INDEX=/brain-index/index/brain-index.sqlite`, 256 MB) oder `:memory:`; ein Plattenpfad wird
+  verworfen (Notweg `MAKE_OS_BRAIN_INDEX_PLATTE=1` = HOI rot); ohne Schlüssel (lokal) Datei wie bisher. Nach dem Start leer → `indexNachStart`
+  (betrieb.ts, +20 s) löscht den alten Klartext-Index (Nullen + unlink) und baut neu. Nie wieder eine Index-Datei in den Datenordner legen.
+- **Bilder** nur über `lib/store/bild-ablage.ts` (`bildAblegen`/`bildOeffnen`/`bildEntfernen`, Ordner in `BILD_ORDNER` aus datei-huelle.mjs):
+  Hülle `binImModus` mit AAD `<ordner>/<name>`, atomar, Migration alter Klartext-Bilder beim Lesen. Neuer Bilder-Ordner → in `BILD_ORDNER`
+  (Rotation, Skript, Sicherungsprüfung nehmen ihn dann mit). Nie `fs.writeFile` für Nutzerdateien.
+- **Lese-Protokoll** (`lib/store/leseprotokoll.ts`): GET-Routen mit Gesundheit/Erholung, Finanzplan/Haushalt/Rechnungen, Kontakten, Firmen/CRM
+  oder dem Gesellschafts-Register rufen nach der Zugangsprüfung `leseZugriff(req, bereich, { betroffen?, ids?, anzahl? })` — nie Inhalte,
+  Suchbegriffe oder Abfragen, Kennungen nur über `leseKennung`. Neue Route auf solchen Daten: Zeile dazunehmen. 12 Monate, Ansicht nur
+  Inhaber: System › Nachweise (`/os/datenschutz/nachweise`, `/api/datenschutz/nachweise`, Karten `NachweiseKarten` auch einbettbar).
+- **Hash-Kette** (`lib/store/protokoll-kette.ts`): Änderungs-, Lese- und Anmeldeprotokoll hängen NUR über `anhaengenVerkettet` an (nie
+  `updateJson` mit eigenem `{ eintraege }` — das ließe `kette`/`h` fallen). Neue Protokoll-Familie = `MONATS_FAMILIEN`/`ROLLENDE_FAMILIEN`.
+  Rechtmäßige Umschreibungen (Art. 17, Fingerabdruck-Umrechnung, Umzug, Löschfrist mit `bereinigt`) bleiben gültig; jede andere Änderung
+  an Protokolldateien ist ein Bruch (HOI rot). Prüfung nächtlich in der Durchsicht, Siegel `protokoll-siegel`, Ergebnis `protokoll-pruefung`.
+- **Format v2** stellt nur Kevin um (Anleitung UPDATES.md 05.10.); System › Nachweise zeigt Modus und Bereitschaft (`v2Bereitschaft`).
+
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),
   Petrol `#21B5AA` als Akzent. Motion-Sprache in `app/globals.css`.
@@ -1099,7 +1117,7 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
 - **Offen/Befund:** `/api/oauth/callback` (Whoop/M365) wird von der Cross-Site-Regel (`middleware` → `crossSiteVerboten`) bei einer Navigation vom Anbieter blockiert — siehe Bericht; nicht geändert.
 
 ## Brain (lib/brain, seit 27.09.)
-- Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — bei Zweifel Datei löschen, der Takt baut neu.
+- Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — seit 05.10. mit Datenschlüssel nur im tmpfs/Arbeitsspeicher (`indexOrt`, nach jedem Start neu gebaut), lokal ohne Schlüssel als Datei (bei Zweifel löschen, der Takt baut neu).
 - Suche immer über `suche()` in `lib/zoe/vault.ts` (nimmt den Index, sonst Dateisuche). Sicht (`darfSehen`) gilt VOR dem Ranking — nie nachträglich filtern.
 - ZOE schreibt ins Brain nur über `lib/brain/inbox.ts vorschlagAblegen` (plus Zoe_Log). Menschen: Regeln (`lib/brain/regeln.ts`) und Freigaben. Nie Notizen überschreiben.
 - Regeln (`00. Fundament/Regeln`) und Konstitution sind ANWEISUNGEN an ZOE — nur `status: aktiv` mit `freigegeben_von` einer BEKANNTEN Person (Konten) wird geladen (`regelnFuerPrompt` → `regelFreigegeben`, 29.09. D-B #100). Ein Kopf, den `leseKopf` nicht sicher versteht (verschachtelt, Blocktext `|`/`>`), liefert `warnungen` — solche Regeln werden nie geladen; mehrzeilige Listen (`key:` + `  - a`) liest er. Alles andere aus dem Vault bleibt Daten (`fremd()`).
