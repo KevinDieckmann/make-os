@@ -27,6 +27,10 @@ services:
     restart: unless-stopped
     # 27.09.: Summe der Grenzen (1280 + 384 + 128 = 1792 MB) bleibt unter den 2 GB des Servers — vorher 2304 MB.
     mem_limit: 1280m
+    # Prozess-/Thread-Grenze (05.10.): eine Fork-Bombe oder ein Thread-Leck legt nie den ganzen Server lahm. Node + Next
+    # brauchen um 30–60 (libuv-Pool, Worker, Brain-Embeddings); 512 lässt viel Luft. read_only bleibt AUS: Next schreibt
+    # in .next/cache (Bilder, Fetch-Cache) im Bild — erst prüfen, dann mit tmpfs (UPDATES.md, offen).
+    pids_limit: 512
     # Geordnetes Beenden (29.09., Paket D-A #16): Docker wartet bis zu 60 s statt 10 s, bevor es hart abbricht —
     # laufende Mehr-Bestand-Vorgänge (Import, Art. 17, Angebot) werden fertig; ab +20 s lehnt die Datenschicht
     # neue Schreibungen mit 503 ab (lib/store/betrieb.ts), danach verschwindet das Lockfile .schreiber.
@@ -65,6 +69,11 @@ services:
     image: make-os:aktuell
     restart: unless-stopped
     mem_limit: 384m
+    # Der Arbeiter spricht nur HTTP mit der App und schreibt nichts (05.10.): Dateisystem nur lesen, /tmp im Speicher,
+    # wenige Prozesse. Die PID-Datei (.data/worker.pid, nur am Mac gebraucht) schreibt er im Container still nicht.
+    pids_limit: 128
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
     command: ["node", "worker.mjs"]
     environment:
       TZ: Europe/Berlin

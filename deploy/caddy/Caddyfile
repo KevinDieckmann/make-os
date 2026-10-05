@@ -14,6 +14,12 @@
 # zusätzlich hier einzutragen, die schon in MAKE_OS_DOMAIN steht, ließe Caddy nicht starten (doppelte Site-Adresse).
 {$MAKE_OS_DOMAIN} {
 	encode zstd gzip
+	# Zugang & Schlüssel härten (05.10.): den internen Next-Kopf, mit dem sich die Middleware überspringen ließe
+	# (CVE-2025-29927, in Next 15.5 behoben — hier zusätzlich), nie von außen annehmen.
+	request_header -x-middleware-subrequest
+	# Marke „kam über den Vorbau“: der Dienstschlüssel MAKE_OS_KEY gilt nur OHNE sie (lib/zugang/intern.ts) — ersetzt
+	# jeden Wert, den ein Aufrufer selbst schickt.
+	request_header X-Make-Vorbau "1"
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
