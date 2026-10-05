@@ -11,11 +11,11 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   fibonacciKugel, zeigerAufKugel, aufBildschirm, drehung, perspektive, kameraAbstand, laenge, einstieg, EINSTIEG_MS,
-  zoeParameter, ZOE_ZUSTAND, nachziehen, alsRgb, verlaufT, type Vec3,
+  zoeParameter, ZOE_ZUSTAND, nachziehen, alsRgb, verlaufT, norm, type Vec3,
 } from '@/components/os/kugel/geometrie';
 import { zoeWolke, ZOE_PUNKTE } from '@/components/os/kugel/wolke';
 import { brainLayout, BEREICH_MITTE, frische, HUELLE_PUNKTE } from '@/components/os/kugel/brain-layout';
-import { UNIFORMS, ECKEN_SHADER, FLAECHEN_SHADER } from '@/components/os/kugel/shader';
+import { UNIFORMS, ECKEN_SHADER, FLAECHEN_SHADER, WEICH_SHADER, MISCH_SHADER } from '@/components/os/kugel/shader';
 import { KUGEL, KUGEL_BEREICH_FARBE, FARBE, mischHex } from '@/lib/make-one/design';
 import type { BrainPunkt } from '@/lib/brain/kugel';
 
@@ -88,7 +88,7 @@ describe('ZOE-Zustände: Atem-Tempo und Farbgewicht, kein Feuerwerk', () => {
   it('dezent: Atem höchstens 11 % des Radius, Tempo nie über das Doppelte (auch mit vielen Aufträgen)', () => {
     for (const z of ['ruht', 'hoert', 'denkt', 'spricht'] as const) {
       const p = zoeParameter(z, 1, 50);
-      expect(p.atem).toBeLessThanOrEqual(0.11); expect(p.tempo).toBeLessThanOrEqual(2); expect(Math.abs(p.weite)).toBeLessThanOrEqual(0.1);
+      expect(p.atem).toBeLessThanOrEqual(0.11); expect(p.tempo).toBeLessThanOrEqual(2); expect(Math.abs(p.weite)).toBeLessThanOrEqual(0.12); expect(p.puls).toBeLessThanOrEqual(0.05); expect(p.wirbel).toBeLessThanOrEqual(0.6);
     }
   });
   it('Zustandswechsel werden nachgezogen, nicht geschaltet — unabhängig von der Bildrate', () => {
@@ -130,12 +130,14 @@ describe('CI: nur Granat und Smaragd (und daraus abgeleitete Töne) — keine fr
 
 describe('Shader und Motor: Vorlage nachgebaut, Leistung im Griff', () => {
   it('Shader: Simplex-Atmen entlang der Normale, Fresnel-Rand (0,4 … 0,9), Ausbruch, Einstieg — jede Uniform deklariert', () => {
-    expect(ECKEN_SHADER).toContain('snoise(n * 1.5'); expect(ECKEN_SHADER).toContain('smoothstep(0.4, 0.9, 1.0 - abs(zu))');
-    expect(ECKEN_SHADER).toContain('e * uFlare * flacker'); expect(ECKEN_SHADER).toContain('uHohl');
+    expect(ECKEN_SHADER).toContain('snoise(n * 1.5'); expect(ECKEN_SHADER).toContain('smoothstep(0.4, 0.9, rim)');
+    expect(ECKEN_SHADER).toContain('e * uFlare'); expect(ECKEN_SHADER).toContain('uHohl'); expect(ECKEN_SHADER).toContain('uWirbel');
+    expect(WEICH_SHADER).toContain('uSchritt'); expect(MISCH_SHADER).toContain('uStaerke');
     for (const u of UNIFORMS) expect(ECKEN_SHADER).toMatch(new RegExp(`uniform \\w+ ${u};`));
     expect(FLAECHEN_SHADER).toContain('gl_PointCoord');
     // WebGL 1: keine Erweiterungen, keine Texturen, kein three.js.
     expect(ECKEN_SHADER + FLAECHEN_SHADER).not.toMatch(/#version|texture2D|#extension/);
+    expect(WEICH_SHADER + MISCH_SHADER).not.toMatch(/#version|#extension/);
     expect(JSON.parse(lies('package.json')).dependencies.three).toBeUndefined();
   });
   it('Motor: Bildrate gedeckelt, pausiert außer Sicht und im Hintergrund, dpr ≤ 2, Puffer nach Layout-Box, Kontext wird freigegeben', () => {
@@ -144,6 +146,21 @@ describe('Shader und Motor: Vorlage nachgebaut, Leistung im Griff', () => {
     expect(m).toContain('Math.min(2, window.devicePixelRatio'); expect(m).toContain('ResizeObserver');
     expect(m).toContain('mindestAbstand'); expect(m).toContain('loseContext()'); expect(m).toContain('leinwand.isConnected'); expect(m).toContain("'webglcontextlost'");
     expect(m).toMatch(/opt\.ruhig\) \{ zeichne\(performance\.now\(\)\); return; \}/); // Standbild: keine Schleife
+    // Glühen: kleiner Puffer (¼), zwei Weichzeichner-Runden, schaltet sich auf schwachen Geräten selbst ab.
+    expect(m).toContain('GLUEH_ANTEIL = 0.25'); expect(m).toContain('lauf(a, b, 2.2, 0)'); expect(m).toContain('opt.bloomAuto && gluehen');
+    expect(m).toContain('fliegeZu(c, naeher');
+    const a = lies('components/os/kugel/Aurora.tsx');
+    expect(a).toContain('IntersectionObserver'); expect(a).toContain("'visibilitychange'"); expect(a).toContain('AURORA_AUFLOESUNG = 1 / 6');
+    expect(a).toContain('if (ruhig) { zeichne(performance.now()); return; }');
+  });
+  it('Kamerafahrt: blickAuf dreht die Richtung genau zur Kamera; winkelNah nimmt den kurzen Weg', async () => {
+    const { blickAuf, winkelNah } = await import('@/components/os/kugel/geometrie');
+    for (const c of [[0.3, 0.5, -0.8], [-0.9, -0.1, 0.2], [0, 1, 0.01]] as Vec3[]) {
+      const b = blickAuf(c); const l = laenge(c);
+      const w = (await import('@/components/os/kugel/geometrie')).mal(drehung(b.gier, b.neigung), [c[0] / l, c[1] / l, c[2] / l]);
+      expect(nah(w[0], 0, 1e-6) && nah(w[1], 0, 1e-6) && nah(w[2], 1, 1e-6)).toBe(true);
+    }
+    expect(nah(winkelNah(0.1, 6.2), 6.2 - Math.PI * 2, 1e-9)).toBe(true);
   });
   it('Symbol: wenige Punkte, 24–30 Bilder je Sekunde, kein Zeiger; groß am Handy weniger Punkte', async () => {
     const { KUGEL_VORGABEN } = await import('@/components/os/kugel/Kugel');
@@ -179,6 +196,7 @@ describe('Einbau und Rückfall', () => {
   });
   it('Brain-Seite: die Kugel steht in der Brain-Übersicht, darunter die Liste als Rückfall (Tastatur, Vorleser)', () => {
     expect(lies('components/os/WissenView.tsx')).toContain('<BrainKugel />');
+    expect(lies('components/os/ZoeStart.tsx')).toContain('<Aurora />');
     const b = lies('components/os/kugel/BrainKugel.tsx');
     expect(b).toContain("fetch('/api/brain/punkte')"); expect(b).toContain('Alle Punkte als Liste');
     expect(b).toContain('onFocus={() => zeige(p.id)}'); expect(b).toContain('href={wegFuer(p)}');
@@ -201,18 +219,24 @@ describe('Brain-Layout (rein)', () => {
     expect(l.daten.pickbar).toBe(punkte.length);
     expect(l.ids).toHaveLength(punkte.length);
     expect(l.daten.pos.length).toBe((punkte.length + HUELLE_PUNKTE) * 3);
+    expect(HUELLE_PUNKTE).toBeGreaterThanOrEqual(20000); expect(HUELLE_PUNKTE).toBeLessThanOrEqual(40000);
+    expect(l.cluster.map(c => c.bereich)).toEqual(['markttraktion', 'planung', 'kalender', 'wissen', 'unternehmen']);
+    // Sterne sind Sterne (w = 1), die Hülle ist leise und liegt im Inneren (Galaxie).
+    expect(l.daten.wert[3]).toBe(1);
+    const h = punkte.length; expect(l.daten.wert[h * 4 + 3]).toBe(0); expect(l.daten.wert[h * 4 + 1]).toBeLessThan(0.4);
+    expect(laenge([l.daten.pos[h * 3], l.daten.pos[h * 3 + 1], l.daten.pos[h * 3 + 2]])).toBeLessThanOrEqual(1.0001);
     for (const q of punkte) {
       const i = l.index.get(q.id)!;
       expect(l.ids[i]).toBe(q.id);
-      expect(nah(laenge([l.daten.pos[i * 3], l.daten.pos[i * 3 + 1], l.daten.pos[i * 3 + 2]]), 1, 1e-5)).toBe(true);
+      const r = laenge([l.daten.pos[i * 3], l.daten.pos[i * 3 + 1], l.daten.pos[i * 3 + 2]]); expect(r).toBeGreaterThanOrEqual(0.9); expect(r).toBeLessThanOrEqual(1.04);
     }
     expect(brainLayout(punkte, '2026-10-05').daten.pos).toEqual(l.daten.pos); // deterministisch
   });
   it('Cluster: ein Punkt liegt näher an der Mitte SEINES Bereichs als an jeder anderen', () => {
-    const l = brainLayout(punkte, '2026-10-05', false);
+    const l = brainLayout(punkte, '2026-10-05', 0);
     for (const q of punkte) {
       const i = l.index.get(q.id)!;
-      const v: Vec3 = [l.daten.pos[i * 3], l.daten.pos[i * 3 + 1], l.daten.pos[i * 3 + 2]];
+      const v: Vec3 = norm([l.daten.pos[i * 3], l.daten.pos[i * 3 + 1], l.daten.pos[i * 3 + 2]]);
       const dot = (m: Vec3) => v[0] * m[0] + v[1] * m[1] + v[2] * m[2];
       const eigen = dot(BEREICH_MITTE[q.bereich]);
       for (const [b, m] of Object.entries(BEREICH_MITTE)) if (b !== q.bereich) expect(eigen).toBeGreaterThan(dot(m));
@@ -226,5 +250,15 @@ describe('Brain-Layout (rein)', () => {
     expect(l.daten.wert[k * 4]).toBeGreaterThan(l.daten.wert[f * 4]); expect(l.daten.wert[k * 4 + 1]).toBeGreaterThan(l.daten.wert[f * 4 + 1]);
     const g = alsRgb(KUGEL_BEREICH_FARBE.markttraktion);
     expect(Array.from(l.daten.farbe!.subarray(k * 3, k * 3 + 3)).map(x => Math.round(x * 255))).toEqual(g.map(x => Math.round(x * 255)));
+  });
+});
+
+describe('Brain: Bögen', () => {
+  it('ein Bogen beginnt und endet auf den Sternen und hebt sich in der Mitte über die Kugel', async () => {
+    const { bogenPunkt } = await import('@/components/os/kugel/BrainKugel');
+    const a: Vec3 = [1, 0, 0], b: Vec3 = [0, 1, 0];
+    expect(bogenPunkt(a, b, 0).map(x => Math.round(x * 1e6) / 1e6)).toEqual([1, 0, 0]);
+    expect(laenge(bogenPunkt(a, b, 1))).toBeCloseTo(1, 6);
+    expect(laenge(bogenPunkt(a, b, 0.5))).toBeGreaterThan(1.3);
   });
 });

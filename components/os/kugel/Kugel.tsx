@@ -12,11 +12,11 @@ import { KUGEL } from '@/lib/make-one/design';
 import { alsRgb, type KugelZustand } from './geometrie';
 import { starteMotor, type KugelDaten, type Motor, type MotorOptionen } from './motor';
 
-/** Voreinstellungen: groß (ZOE-Empfang), Symbol (unten im ZoePanel), Brain (Datenpunkte). */
-export const KUGEL_VORGABEN: Record<'gross' | 'symbol' | 'brain', Omit<MotorOptionen, 'ruhig' | 'farben'>> = {
-  gross: { fps: 60, punktPx: 2.1, verlauf: true, drehTempo: 0.05, neigung: 0.32, fuellung: 0.78, einstieg: true, zeigerRadius: 0.42, flare: 0.22, grund: 0.2 },
-  symbol: { fps: 24, punktPx: 1.6, verlauf: true, drehTempo: 0.12, neigung: 0.3, fuellung: 0.86, einstieg: true, zeigerRadius: 0, flare: 0, grund: 0.3 },
-  brain: { fps: 60, punktPx: 5, verlauf: false, drehTempo: 0.035, neigung: 0.28, fuellung: 0.8, einstieg: true, zeigerRadius: 0.2, flare: 0.1, grund: 0.55 },
+/** Voreinstellungen: groß (ZOE-Empfang), Symbol (unten im ZoePanel), Brain (Datenpunkte in der Partikel-Hülle). */
+export const KUGEL_VORGABEN: Record<'gross' | 'symbol' | 'brain', Omit<MotorOptionen, 'ruhig' | 'farben' | 'nachBild'>> = {
+  gross: { fps: 60, punktPx: 1.5, verlauf: true, drehTempo: 0.06, neigung: 0.3, fuellung: 0.74, einstieg: true, zeigerRadius: 0.4, flare: 0.34, grund: 0.06, tiefe: 0.6, bloom: 1.15, bloomAuto: true, bloomNurSterne: false },
+  symbol: { fps: 24, punktPx: 1.15, verlauf: true, drehTempo: 0.14, neigung: 0.3, fuellung: 0.9, einstieg: true, zeigerRadius: 0, flare: 0, grund: 0.05, tiefe: 0.55, bloom: 0, bloomAuto: false, bloomNurSterne: false },
+  brain: { fps: 60, punktPx: 4.4, verlauf: false, drehTempo: 0.03, neigung: 0.26, fuellung: 0.84, einstieg: true, zeigerRadius: 0.07, flare: 0.05, grund: 0.7, tiefe: 0.7, bloom: 1.1, bloomAuto: true, bloomNurSterne: true },
 };
 
 export const KUGEL_FARBEN = { a: alsRgb(KUGEL.smaragd), b: alsRgb(KUGEL.granat), glut: alsRgb(KUGEL.glut) };
@@ -39,7 +39,9 @@ export interface KugelProps {
   zustand: KugelZustand;
   art: keyof typeof KUGEL_VORGABEN;
   /** Einzelne Vorgaben überschreiben (z. B. fps). */
-  optionen?: Partial<Omit<MotorOptionen, 'ruhig' | 'farben'>>;
+  optionen?: Partial<Omit<MotorOptionen, 'ruhig' | 'farben' | 'nachBild'>>;
+  /** Nach jedem Bild (Beschriftungen, Bögen) — im Takt des Motors. */
+  nachBild?: () => void;
   /** Ohne WebGL (und solange es geprüft wird, nichts). */
   rueckfall: ReactNode;
   /** Zeiger-Ausbruch an der Stelle des Zeigers (ZOE groß). Die Brain-Kugel steuert den Zeiger selbst über `onMotor`. */
@@ -53,7 +55,7 @@ export interface KugelProps {
   name: string;
 }
 
-export function Kugel({ daten, zustand, art, optionen, rueckfall, zeiger, onMotor, style, className, messen, name }: KugelProps) {
+export function Kugel({ daten, zustand, art, optionen, rueckfall, zeiger, onMotor, nachBild, style, className, messen, name }: KugelProps) {
   const leinwand = useRef<HTMLCanvasElement>(null);
   const motor = useRef<Motor | null>(null);
   const [ohne, setOhne] = useState(false);
@@ -62,6 +64,8 @@ export function Kugel({ daten, zustand, art, optionen, rueckfall, zeiger, onMoto
   zustandRef.current = zustand;
   const onMotorRef = useRef(onMotor);
   onMotorRef.current = onMotor;
+  const nachBildRef = useRef(nachBild);
+  nachBildRef.current = nachBild;
   const opt = { ...KUGEL_VORGABEN[art], ...optionen };
   const optSchluessel = JSON.stringify(opt);
 
@@ -69,7 +73,7 @@ export function Kugel({ daten, zustand, art, optionen, rueckfall, zeiger, onMoto
     const c = leinwand.current;
     if (!c) return;
     let m: Motor | null = null;
-    try { m = starteMotor(c, daten, { ...JSON.parse(optSchluessel), ruhig, farben: KUGEL_FARBEN }, zustandRef.current); } catch { m = null; }
+    try { m = starteMotor(c, daten, { ...JSON.parse(optSchluessel), ruhig, farben: KUGEL_FARBEN, nachBild: () => nachBildRef.current?.() }, zustandRef.current); } catch { m = null; }
     if (!m) { setOhne(true); onMotorRef.current?.(null); return; }
     motor.current = m;
     onMotorRef.current?.(m);

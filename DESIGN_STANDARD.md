@@ -327,3 +327,8 @@ Kevin (04.10.): ZOE tritt als Lichtkugel auf (Vorlage „Solaris“, Wirkung sta
 **Regeln:** 1. 80/20 — die Kugel ist der eine Akzent der Ansicht; ruhiges Atmen, keine Effektfeuerwerke, kein Bloom. 2. Nur Token-Farben (kein Hex/rgb im
 Ordner). 3. Leinwand `aria-hidden`, alles Gezeigte steht auch als Text (Zustandszeile, Liste, Legende). 4. „Bewegung reduzieren“ = Standbild, ohne WebGL der
 Rückfall (ZoeHirn, Orb, Liste). 5. Daten der Brain-Kugel nur aus `/api/brain/punkte` — die Oberfläche filtert nichts selbst.
+
+**Überarbeitung „Solaris“ (05.10., Kevin: „das muss sehr geil aussehen“):** Hier IST der Effekt der Akzent — er darf leuchten, bleibt aber ruhig.
+Glühen (Bloom) nur auf der Kugel, schaltet sich auf schwachen Geräten selbst ab; ZOE dichter (80 k) mit hellem Ring, hohler Mitte und weißglühenden
+Spitzen, Aurora nur in den Ecken des Empfangs; Brain als eigene Bühne: Galaxie aus leisen Formpunkten, Datensätze als Sterne mit Halo, Cluster-
+Beschriftung mit Kamerafahrt, Bögen statt Striche, Legende als Filter. Schilder und Legende sind Knöpfe (≥ 44 px), Titelkarte im Glas-Stil (`LICHT_GLAS`).

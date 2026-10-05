@@ -401,8 +401,6 @@ export function WissenView() {
   ) : (
     <Karte i={2} akzent={LEUCHT.agenten}>
       <Ueberschrift farbe={LEUCHT.agenten}>Dein Brain</Ueberschrift>
-      {/* Die Brain-Kugel (05.10.): alle MAKE-OS-Datensätze, die du sehen darfst, als Punkte — Klick öffnet den Datensatz. */}
-      <div style={{ marginBottom: 16 }}><BrainKugel /></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 14 }}>
         <Zahl wert={stand ? String(stand.notizen) : undefined} label="Notizen für dich" farbe={LEUCHT.agenten} />
         <Zahl wert={stand ? String(stand.jeWurzel.make ?? 0) : undefined} label="aus Obsidian" />
@@ -432,6 +430,14 @@ export function WissenView() {
       unter={stand ? `Dein Obsidian-Brain · ${stand.notizen} ${stand.notizen === 1 ? 'Notiz' : 'Notizen'} · Nummer eins für ZOE` : 'Dein Obsidian-Brain · Nummer eins für ZOE'}
       rechts={obsidianVault ? <Knopf leise onClick={() => { window.location.href = obsidianVault; }}>Obsidian öffnen</Knopf> : undefined}
     >
+      {/* Die Brain-Kugel (05.10., Überarbeitung): die Bühne der Seite — alle MAKE-OS-Datensätze, die du sehen darfst, als Sterne.
+          Nur in der Übersicht (keine Notiz offen); am Handy volle Breite über dem Frage-Bereich. */}
+      {!offen && (
+        <Karte i={0}>
+          <Ueberschrift farbe={LEUCHT.agenten} rechts="alle Daten als Sterne">Brain-Kugel</Ueberschrift>
+          <BrainKugel />
+        </Karte>
+      )}
       {breit ? (
         <Spalten verhaeltnis="1:1">
           <Spalte>{reiterInhalt}</Spalte>

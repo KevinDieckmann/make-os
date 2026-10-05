@@ -52,7 +52,7 @@ export function ZoeKugel({ zustand, pegel = 0, aktiv = 0, groesse, rueckfall }: 
       zustand={ziel}
       zeiger={groesse === 'gross'}
       // Am Handy weniger Bilder für die große Kugel: ruhiger Akku, kaum sichtbarer Unterschied.
-      optionen={groesse === 'gross' && handy ? { fps: 40, punktPx: 2.4 } : undefined}
+      optionen={groesse === 'gross' && handy ? { fps: 40, punktPx: 1.5 } : undefined}
       rueckfall={rueckfall}
     />
   );

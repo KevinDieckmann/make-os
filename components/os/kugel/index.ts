@@ -4,3 +4,4 @@ export { ZoeKugel, ZOE_KUGEL_TON, type ZoeKugelProps } from './ZoeKugel';
 export { starteMotor, webglMoeglich, type Motor, type MotorOptionen, type KugelDaten, type Messung } from './motor';
 export { zoeParameter, ZOE_ZUSTAND, type KugelZustand, type ZoeZustand } from './geometrie';
 export { zoeWolke, ZOE_PUNKTE } from './wolke';
+export { Aurora, AURORA_AUFLOESUNG } from './Aurora';

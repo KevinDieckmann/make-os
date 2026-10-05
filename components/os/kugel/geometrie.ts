@@ -127,24 +127,26 @@ export function aufBildschirm(p: Vec3, dreh: Mat4, proj: Mat4, abstand: number, 
 
 // ── Zustände ─────────────────────────────────────────────────────────────────
 /**
- * Was die Kugel ausdrückt — über Atem-Tempo und Farbgewicht, nicht über Effekte (UMBAU_ABEND_0410.md 1).
+ * Was die Kugel ausdrückt — über Atem-Tempo und Farbgewicht, ruhig (UMBAU_ABEND_0410.md 1):
  *   tempo        Faktor auf die Zeit des Rauschens (1 = Ruheatmung ~5 s)
  *   atem         Ausschlag entlang der Normale (Anteil des Radius)
  *   weite        Grundgröße: < 0 zieht sich zusammen (zuhören), > 0 dehnt sich (sprechen)
  *   verschiebung Farbgewicht: < 0 mehr Smaragd (kühl, zuhören), > 0 mehr Granat (warm, denken)
  *   hell         Helligkeit
+ *   wirbel       Drall um die Hochachse (Bogenmaß) — wirbelnde Wärme beim Denken
+ *   puls         Ausschlag eines langsamen Pulses (Anteil des Radius) — Sprechen pulsiert mit
  *   pegel        0 … 1 Lautstärke — verstärkt atem/weite in Richtung des Zustands
  */
-export interface KugelZustand { tempo: number; atem: number; weite: number; verschiebung: number; hell: number; pegel: number }
+export interface KugelZustand { tempo: number; atem: number; weite: number; verschiebung: number; hell: number; wirbel: number; puls: number; pegel: number }
 
 export type ZoeZustand = 'ruht' | 'hoert' | 'denkt' | 'spricht';
 
-/** Dieselben vier Zustände und Takte wie das ZoeHirn (TON: 5,4 · 4,2 · 4,8 · 3,2 s) — nur ruhiger ausgedrückt. */
+/** Dieselben vier Zustände und Takte wie das ZoeHirn (TON: 5,4 · 4,2 · 4,8 · 3,2 s) — klar erkennbar, nie hektisch. */
 export const ZOE_ZUSTAND: Record<ZoeZustand, Omit<KugelZustand, 'pegel'>> = {
-  ruht: { tempo: 1, atem: 0.045, weite: 0, verschiebung: 0, hell: 0.92 },
-  hoert: { tempo: 5.4 / 4.2, atem: 0.05, weite: -0.035, verschiebung: -0.22, hell: 1 },
-  denkt: { tempo: 5.4 / 4.8, atem: 0.06, weite: 0, verschiebung: 0.24, hell: 0.96 },
-  spricht: { tempo: 5.4 / 3.2, atem: 0.055, weite: 0.03, verschiebung: 0.04, hell: 1.08 },
+  ruht: { tempo: 1, atem: 0.05, weite: 0, verschiebung: 0, hell: 1, wirbel: 0, puls: 0 },
+  hoert: { tempo: 5.4 / 4.2, atem: 0.04, weite: -0.07, verschiebung: -0.3, hell: 1, wirbel: 0, puls: 0 },
+  denkt: { tempo: 5.4 / 4.8, atem: 0.06, weite: 0, verschiebung: 0.32, hell: 1.06, wirbel: 0.55, puls: 0 },
+  spricht: { tempo: 5.4 / 3.2, atem: 0.055, weite: 0.035, verschiebung: 0.06, hell: 1.2, wirbel: 0, puls: 0.022 },
 };
 
 /** Zustand + Pegel + laufende Aufträge → Ziel-Parameter (laufende Aufträge machen den Atem etwas schneller, nie hektisch). */
@@ -154,20 +156,36 @@ export function zoeParameter(z: ZoeZustand, pegel = 0, aktiv = 0): KugelZustand 
   const richtung = z === 'hoert' ? -1 : z === 'spricht' ? 1 : 0;
   return {
     tempo: Math.min(b.tempo * (1 + Math.min(8, aktiv) * 0.035), 2),
-    atem: b.atem + p * 0.05,
-    weite: b.weite + richtung * p * 0.06,
+    atem: b.atem + p * 0.04,
+    weite: b.weite + richtung * p * 0.04,
     verschiebung: b.verschiebung,
-    hell: b.hell + p * 0.12,
+    hell: b.hell + p * 0.15,
+    wirbel: b.wirbel,
+    puls: b.puls * (1 + p),
     pegel: p,
   };
 }
+
+/** Ruhe ohne Ausdruck — die Brain-Kugel ist eine Karte, kein Gesicht. */
+export const RUHE: KugelZustand = { tempo: 0.5, atem: 0.012, weite: 0, verschiebung: 0, hell: 1, wirbel: 0, puls: 0, pegel: 0 };
 
 /** Weiches Nachziehen eines Zustands (je Bild, unabhängig von der Bildrate): k ≈ Anteil je 1/60 s. */
 export function nachziehen(ist: KugelZustand, ziel: KugelZustand, dtSek: number, k = 0.06): KugelZustand {
   const a = 1 - (1 - k) ** (dtSek * 60);
   const m = (x: number, y: number) => x + (y - x) * a;
-  return { tempo: m(ist.tempo, ziel.tempo), atem: m(ist.atem, ziel.atem), weite: m(ist.weite, ziel.weite), verschiebung: m(ist.verschiebung, ziel.verschiebung), hell: m(ist.hell, ziel.hell), pegel: m(ist.pegel, ziel.pegel) };
+  return {
+    tempo: m(ist.tempo, ziel.tempo), atem: m(ist.atem, ziel.atem), weite: m(ist.weite, ziel.weite), verschiebung: m(ist.verschiebung, ziel.verschiebung),
+    hell: m(ist.hell, ziel.hell), wirbel: m(ist.wirbel, ziel.wirbel), puls: m(ist.puls, ziel.puls), pegel: m(ist.pegel, ziel.pegel),
+  };
 }
+
+/** Drehung (Lauf um die Hochachse, Neigung), unter der die Richtung `c` genau zur Kamera zeigt — Ziel der Kamerafahrt. */
+export function blickAuf(c: Vec3): { gier: number; neigung: number } {
+  const v = norm(c);
+  return { gier: Math.atan2(-v[0], v[2]), neigung: Math.atan2(v[1], Math.hypot(v[0], v[2])) };
+}
+/** Kürzester Weg zwischen zwei Winkeln (für eine weiche Fahrt ohne Umweg). */
+export const winkelNah = (von: number, nach: number) => von + ((((nach - von) % TAU) + TAU * 1.5) % TAU) - Math.PI;
 
 /** Einstieg 2,4 s (Vorlage): gefüllt und nah → Kamera fährt zurück, die Mitte höhlt sich zum Ring, die Wolke blüht auf. */
 export const EINSTIEG_MS = 2400;

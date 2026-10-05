@@ -1647,6 +1647,9 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
 - **Ein Kern** `components/os/kugel/*` (WebGL 1, eigene Shader, kein three.js) für ZOE und Brain. Farben NUR aus `KUGEL`/`KUGEL_BEREICH_FARBE`
   (design.ts, Granat/Smaragd + abgeleitete Töne über `mischHex`) — Wächter: kein Farb-Literal im Ordner. Leistung: `fps`-Deckel, Pause außer
   Sicht/Hintergrund, dpr ≤ 2, Standbild bei reduzierter Bewegung, Rückfall ohne WebGL (ZoeHirn/Orb/Liste). Keine Verwandlung in einen Weg in der App.
+- **Überarbeitung 05.10. (Branch `kugeln-2`):** Motor mit Glühen (¼-Puffer, 2 × Gauß, `bloomAuto`), Kamerafahrt `fliegeZu`, `nachBild`-Takt für
+  Beschriftungen/Bögen (nie eigener Lauf, keine React-Zustände je Bild); `Aurora.tsx` nur im Empfang. Neue Effekte immer mit Leistungs-Messpunkt
+  (data-fps/-mittel-ms/-gluehen) im Headless-Chrome mit `--use-angle=metal` prüfen — der eingebaute Browser zeigt kein WebGL.
 - **Brain-Punkte nur über `GET /api/brain/punkte`** — Filter serverseitig in `kugelPunkteFuer` (lib/brain/kugel.ts): Privat nur mit
   Privatzugang (Inhaber bzw. `planZugangFuer(...).sicht === 'privat'`), „nur ich“/eigene Ziele/private Notizen nur der Person, nie Inhalte,
   nie Gesundheit (Art. 9), Deckel `PUNKTE_DECKEL` mit `gekuerzt`. Neue Punkt-Art: Zeile in `KUGEL_ARTEN`/`ART_BEREICH`, Lader in

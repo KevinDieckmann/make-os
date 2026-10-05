@@ -4,6 +4,27 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Kugeln 2 · „Solaris“-Überarbeitung von ZOE und Brain (05.10.2026, nur lokal — Branch `kugeln-2`)
+
+Kevin nach dem Upload: „Überarbeite das Brain nochmal … auch ZOE — das muss sehr geil aussehen.“ Vorher zu dünn, zu dunkel, zu leer.
+- **Motor** (`components/os/kugel/motor.ts`): Glühen (Bloom) in drei Schritten — Punkte in einen Puffer mit ¼ Kantenlänge (Brain: nur die
+  Sterne), 2 × trennbarer Gauß (zweite Runde weiter), additiv über die Kugel; läuft zum Leinwandrand weich aus (kein Rechteck). Schaltet
+  sich auf schwachen Geräten selbst ab (Median der Bildabstände > 1,6 × Soll in drei Prüfungen nach 4 s), `bloom: 0` = aus.
+  Kamera mit Lauf/Neigung/Abstand und weicher Fahrt `fliegeZu(richtung, näher)` (Brain-Cluster) — Projektion für Zeigen/Bögen = Shader.
+- **ZOE**: 80 000 Punkte (Handy 25 000 bei 40 Bildern/s, Symbol 1 400 bei 24), feinere Punkte, heller Fresnel-Ring, Mitte dunkel-hohl,
+  Verlauf Smaragd unten → Granat oben mit weißglühenden Spitzen; Zeiger-Ausbruch hebt die hohle Mitte auf und glüht weiß; Zustände:
+  zuhören zieht sich zusammen und wird kühler, denken wirbelt warm (`wirbel`), sprechen pulsiert mit und wird heller (`puls`). Empfang:
+  Kugel größer (bis 720 px / 56 vh), Aurora-Ecken (`Aurora.tsx`, fBm in Granat/Smaragd, ⅙ Auflösung, 20 Bilder/s, Mitte frei), Hof leiser.
+- **Brain**: eigene Bühnen-Karte über dem Frage-Bereich (Rechner bis 640 px hoch, Handy volle Breite); Galaxie aus 30 000 (Handy 12 000)
+  leisen Formpunkten im Volumen mit Farbnebel je Cluster; Datensätze als helle Sterne mit Halo (Größe = Verbindungen + Aktualität,
+  leichte Tiefe je Stern), vorne heller/größer; Cluster-Beschriftung (anklicken → Kamera fährt hin, „‹ Gesamt“ zurück); Zeigen = Stern
+  glüht, Verbindungen als leuchtende 3D-Bögen über der Kugel, Titelkarte im Glas-Stil; Legende filtert Bereiche ein/aus.
+- **Unverändert:** Route `/api/brain/punkte` samt Filter- und Datenschutzregeln, Rückfälle (ohne WebGL ZoeHirn/Orb/Liste, reduzierte
+  Bewegung = Standbild), Farben nur aus Token.
+- **Messung (Sandbox, M3, Headless-Chrome mit Metal):** ZOE 80 k 58–60 Bilder/s, ~0,1–0,2 ms CPU je Bild; Brain 30 k 60 Bilder/s,
+  ~0,4–1,2 ms; Handy ×4 gedrosselte CPU: ZOE 25 k 40 Bilder/s (Deckel), Brain 12 k 60 Bilder/s, Symbol 24; Glühen blieb an.
+- **Rückweg:** reine Darstellung — Commit zurücknehmen; keine Bestände, keine Route geändert.
+
 ## fokusinnovation.de „Klar“ — Neubau auf der Basis von makeinnovation.de, 80 % Seriosität (05.10.2026, nur lokal — Branch `fokus-klar`)
 
 Kevin 04.10.: „80 % Seriosität und Souveränität, höchstens 20 % Akzente, klare Linien, kein Gewusel.“ Die verspielte Fassung (Branch

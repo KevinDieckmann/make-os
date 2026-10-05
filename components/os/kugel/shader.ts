@@ -1,9 +1,12 @@
-// ─── MAKE OS — Kugel: Shader (WebGL 1, 05.10.2026) ──────────────────────────
-// Eigene, schlanke Shader statt three.js (nicht im Projekt; CSP und Bündelgröße). Ein Punkt je Datensatz bzw. je
-// Wolkenpunkt, additiv. Alles, was sich bewegt, rechnet die Grafikkarte: Atmen (Simplex-Rauschen, zwei Oktaven,
-// entlang der Normale), Zeiger-Ausbruch (Punkte nahe dem Zeiger schieben nach außen, flackern, werden heller und glühen
-// Richtung `uGlut`), Fresnel-Rand mit hohler dunkler Mitte (edgeFade = smoothstep(0.4, 0.9, rim) wie in der Vorlage),
-// Einstieg (gefüllt → Ring, Kamera fährt zurück, die Wolke blüht auf). Farben kommen als Uniform/Attribut aus den Token.
+// ─── MAKE OS — Kugel: Shader (WebGL 1, 05.10.2026 · Überarbeitung „Solaris“) ─
+// Eigene, schlanke Shader statt three.js. Drei Programme:
+//   1. PUNKTE  — die Wolke, additiv. Atmen (Simplex, zwei Oktaven, entlang der Normale), Wirbel (Denken), Puls (Sprechen),
+//      Zeiger-Ausbruch (Punkte schießen hinaus, flackern, glühen Richtung `uGlut`), Fresnel-Ring mit heller Kante und hohler
+//      dunkler Mitte (edgeFade = smoothstep(0.4, 0.9, rim) wie in der Vorlage), weißglühende Spitzen, Einstieg. Brain: Sterne
+//      (helle Datensätze mit Halo) in einer dunklen Partikel-Hülle — `vStern` unterscheidet sie.
+//   2. WEICH   — trennbarer Gauß (9 Abgriffe) für das Glühen (Bloom) in kleiner Auflösung.
+//   3. MISCH   — legt das Glühen additiv über die Kugel (nur dort, wo Punkte sind — kein Matsch).
+// Farben kommen als Uniform/Attribut aus den Token (lib/make-one/design.ts › KUGEL), nie als Literal.
 //
 // Simplex-Rauschen 3D: Ashima Arts / Stefan Gustavson (MIT-Lizenz, github.com/ashima/webgl-noise) — unverändert.
 
@@ -53,7 +56,10 @@ float snoise(vec3 v){
 }
 `;
 
-/** Attribute: aPos (Einheitsvektor), aFarbe (rgb, Brain), aWert (x Größe · y Helligkeit · z Saat · w Verlaufskoordinate). */
+/**
+ * Attribute: aPos (Ort; Einheitsvektor bzw. bei der Hülle im Inneren < 1), aFarbe (rgb, Brain), aWert (x Größe · y Helligkeit ·
+ * z Saat · w Verlaufskoordinate (ZOE) bzw. Stern 0/1 (Brain)).
+ */
 export const ECKEN_SHADER = `
 precision highp float;
 attribute vec3 aPos;
@@ -62,12 +68,15 @@ attribute vec4 aWert;
 uniform mat4 uProj;
 uniform mat4 uDreh;
 uniform float uAbstand;
+uniform float uBezug;
 uniform float uPhase;
 uniform float uUhr;
 uniform float uAtem;
 uniform float uWeite;
 uniform float uVerschiebung;
 uniform float uHell;
+uniform float uWirbel;
+uniform float uPuls;
 uniform float uVerlauf;
 uniform vec3 uFarbeA;
 uniform vec3 uFarbeB;
@@ -78,37 +87,50 @@ uniform float uZeigerRadius;
 uniform float uFlare;
 uniform float uSicht;
 uniform float uHohl;
-uniform float uNaeher;
 uniform float uPunktPx;
 uniform float uGrund;
+uniform float uTiefe;
+uniform float uMaske;
 varying vec3 vFarbe;
 varying float vAlpha;
+varying float vStern;
 ${RAUSCHEN}
 void main(){
-  vec3 n = aPos;
+  float lang = length(aPos);
+  vec3 n = aPos / max(lang, 1e-4);
+  // Denken: wirbelnde Wärme — ein langsamer Drall um die Hochachse, je Höhe verschieden (ruhig, nie hektisch).
+  float dreh = uWirbel * (sin(n.y * 3.1 + uPhase * 0.9) * 0.55 + snoise(n * 1.3 + uPhase * 0.25) * 0.45);
+  float cd = cos(dreh), sd = sin(dreh);
+  n = vec3(n.x * cd + n.z * sd, n.y, -n.x * sd + n.z * cd);
   // Atmen: zwei Oktaven Simplex entlang der Normale.
   float r = snoise(n * 1.5 + vec3(0.0, uPhase * 0.22, uPhase * 0.1)) * 0.65 + snoise(n * 3.1 - vec3(uPhase * 0.31)) * 0.35;
   // Ausbruch unter dem Zeiger: Reichweite uZeigerRadius, flackert wie Plasma (eigene Phase je Punkt).
   float e = smoothstep(uZeigerRadius, 0.0, distance(n, uZeiger)) * uZeigerKraft;
-  float flacker = 0.6 + 0.4 * sin(uUhr * 9.0 + aWert.z * 61.0);
-  float aus = 1.0 + uWeite + r * uAtem + e * uFlare * flacker;
+  float flacker = 0.55 + 0.45 * sin(uUhr * 11.0 + aWert.z * 61.0);
+  float puls = uPuls * sin(uUhr * 5.4);
+  float aus = (1.0 + uWeite + puls + r * uAtem) * lang + e * uFlare * (0.4 + 0.6 * flacker) * (0.6 + aWert.z * 0.8);
   vec3 welt = (uDreh * vec4(n * aus, 1.0)).xyz;
   vec3 nWelt = (uDreh * vec4(n, 0.0)).xyz;
-  float abstand = uAbstand * (1.0 - 0.38 * uNaeher);
-  vec3 sicht = welt - vec3(0.0, 0.0, abstand);
+  vec3 sicht = welt - vec3(0.0, 0.0, uAbstand);
   gl_Position = uProj * vec4(sicht, 1.0);
   vec3 blick = normalize(-sicht);
   float zu = dot(nWelt, blick);
   // Fresnel: der Rand leuchtet, die Mitte bleibt dunkel (erst nach dem Einstieg — vorher ist die Kugel gefüllt).
-  float rand = smoothstep(0.4, 0.9, 1.0 - abs(zu));
-  float mitte = mix(1.0, mix(uGrund, 1.0, rand), uHohl);
-  float hinten = mix(0.35, 1.0, smoothstep(-0.35, 0.25, zu));
+  float rim = 1.0 - abs(zu);
+  float rand = smoothstep(0.4, 0.9, rim);
+  // Ring: die Kante leuchtet heller als die gefüllte Kugel; der Ausbruch hebt die hohle Mitte an der Stelle auf.
+  float mitte = max(mix(1.0, mix(uGrund, 1.0, rand) * (1.0 + rand * 0.7), uHohl), e * 0.9);
+  float hinten = mix(1.0 - uTiefe, 1.0, smoothstep(-0.35, 0.3, zu));
   float t = clamp(aWert.w + uVerschiebung, 0.0, 1.0);
-  vec3 verlauf = mix(uFarbeA, uFarbeB, smoothstep(0.0, 1.0, t));
+  vec3 verlauf = mix(uFarbeA, uFarbeB, smoothstep(0.08, 0.92, t));
   vec3 f = mix(aFarbe, verlauf, uVerlauf);
-  vFarbe = mix(f, uGlut, clamp(e * flacker * 0.6, 0.0, 0.85));
-  vAlpha = uSicht * mitte * hinten * aWert.y * uHell * (1.0 + e * 0.8);
-  gl_PointSize = max(1.0, uPunktPx * aWert.x * (1.0 + e * 1.3) * (uAbstand / max(0.1, -sicht.z)) * mix(0.6, 1.0, uSicht));
+  // Weißglühende Spitzen: wo das Atmen am weitesten ausschlägt und an der Kante.
+  float spitze = smoothstep(0.35, 0.95, r) * uVerlauf * 0.45 + rand * rand * rand * 0.28 * uVerlauf;
+  float glut = clamp(spitze + e * flacker * 0.75, 0.0, 0.9);
+  vFarbe = mix(f, uGlut, glut);
+  vStern = (1.0 - uVerlauf) * aWert.w;
+  vAlpha = uSicht * (mitte * hinten * aWert.y * uHell * (1.0 + e * 1.6) + e * flacker * 0.55) * mix(1.0, step(0.5, aWert.w), uMaske);
+  gl_PointSize = max(1.0, uPunktPx * aWert.x * (1.0 + e * 1.6) * (uBezug / max(0.1, -sicht.z)) * mix(0.55, 1.0, uSicht));
 }
 `;
 
@@ -116,19 +138,59 @@ export const FLAECHEN_SHADER = `
 precision mediump float;
 varying vec3 vFarbe;
 varying float vAlpha;
+varying float vStern;
 void main(){
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float r2 = dot(c, c);
   if (r2 > 1.0) discard;
-  float w = exp(-r2 * 3.2) * (1.0 - r2);
-  float a = clamp(vAlpha, 0.0, 1.5) * w;
-  gl_FragColor = vec4(vFarbe * a, a);
+  // Feines Korn (Wolke) bzw. Stern mit hellem Kern und weichem Halo (Datensatz im Brain).
+  float korn = exp(-r2 * 5.0) * (1.0 - r2);
+  float stern = exp(-r2 * 26.0) * 1.6 + exp(-r2 * 3.2) * 0.42 * (1.0 - r2);
+  float w = mix(korn, stern, vStern);
+  float a = clamp(vAlpha, 0.0, 2.0) * w;
+  vec3 kern = mix(vFarbe, vec3(1.0), vStern * exp(-r2 * 40.0) * 0.55);
+  gl_FragColor = vec4(kern * a, min(a, 1.0));
 }
 `;
 
-/** Namen der Uniforms — eine Liste, damit Motor und Prüfung dieselben kennen. */
+/** Bildschirmfüllendes Dreieck (Weich- und Misch-Durchgang). */
+export const FLAECHE_ECKEN = `
+attribute vec2 aEcke;
+varying vec2 vUv;
+void main(){ vUv = aEcke * 0.5 + 0.5; gl_Position = vec4(aEcke, 0.0, 1.0); }
+`;
+
+/** Trennbarer Gauß mit 9 Abgriffen; `uSchritt` = Texel-Abstand × Richtung × Weite. */
+export const WEICH_SHADER = `
+precision mediump float;
+uniform sampler2D uBild;
+uniform vec2 uSchritt;
+varying vec2 vUv;
+void main(){
+  vec4 s = texture2D(uBild, vUv) * 0.2270270270;
+  s += (texture2D(uBild, vUv + uSchritt * 1.3846153846) + texture2D(uBild, vUv - uSchritt * 1.3846153846)) * 0.3162162162;
+  s += (texture2D(uBild, vUv + uSchritt * 3.2307692308) + texture2D(uBild, vUv - uSchritt * 3.2307692308)) * 0.0702702703;
+  gl_FragColor = s;
+}
+`;
+
+/** Glühen additiv über die Kugel; `uStaerke` 0 = aus. */
+export const MISCH_SHADER = `
+precision mediump float;
+uniform sampler2D uBild;
+uniform float uStaerke;
+varying vec2 vUv;
+void main(){
+  // Zum Rand der Leinwand weich auslaufen — sonst zeichnet das Glühen ein Rechteck.
+  float kante = smoothstep(0.0, 0.14, min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y)));
+  vec3 c = texture2D(uBild, vUv).rgb * uStaerke * kante;
+  gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
+}
+`;
+
+/** Namen der Uniforms der Punkte — eine Liste, damit Motor und Prüfung dieselben kennen. */
 export const UNIFORMS = [
-  'uProj', 'uDreh', 'uAbstand', 'uPhase', 'uUhr', 'uAtem', 'uWeite', 'uVerschiebung', 'uHell', 'uVerlauf', 'uFarbeA', 'uFarbeB', 'uGlut',
-  'uZeiger', 'uZeigerKraft', 'uZeigerRadius', 'uFlare', 'uSicht', 'uHohl', 'uNaeher', 'uPunktPx', 'uGrund',
+  'uProj', 'uDreh', 'uAbstand', 'uBezug', 'uPhase', 'uUhr', 'uAtem', 'uWeite', 'uVerschiebung', 'uHell', 'uWirbel', 'uPuls', 'uVerlauf',
+  'uFarbeA', 'uFarbeB', 'uGlut', 'uZeiger', 'uZeigerKraft', 'uZeigerRadius', 'uFlare', 'uSicht', 'uHohl', 'uPunktPx', 'uGrund', 'uTiefe', 'uMaske',
 ] as const;
 export type UniformName = typeof UNIFORMS[number];

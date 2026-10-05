@@ -24,7 +24,7 @@ import Link from 'next/link';
 import { ZurueckKnopf } from './Verlauf';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO, ZIEL } from '@/lib/make-one/design';
 import { ZoeHirn, TON } from './ZoeHirn';
-import { ZoeKugel, ZOE_KUGEL_TON } from './kugel';
+import { ZoeKugel, ZOE_KUGEL_TON, Aurora } from './kugel';
 import { useStimme } from '@/hooks/useStimme';
 import { useLautstaerke } from '@/hooks/useLautstaerke';
 import { useAtem } from '@/hooks/useAtem';
@@ -219,9 +219,11 @@ export function ZoeStart() {
           Der Hof nimmt die Farbe des Zustands an: wenn ZOE denkt, wird der
           ganze Raum bernsteinfarben. Das sieht man aus zwei Metern. */}
       <div className="buehne-hof" style={{
-        background: `radial-gradient(ellipse 55% 45% at 50% 40%, ${ton.farbe}22, transparent 70%)`,
+        background: `radial-gradient(ellipse 50% 40% at 50% 38%, ${ton.farbe}14, transparent 70%)`,
         transition: 'background .8s ease',
       }} />
+      {/* Aurora (05.10., Solaris): ein ruhiger Schleier in Granat/Smaragd nur in den Ecken — die Mitte bleibt der Kugel. */}
+      <Aurora />
       {/* Zweite, engere Lichtschicht. Bloom entsteht durch gestapelte
           Verläufe, nicht durch einen animierten Weichzeichner — ein
           Weichzeichner mit fester Stärke läuft auf dem Compositor, ein
@@ -229,7 +231,7 @@ export function ZoeStart() {
       <div style={{
         position: 'absolute', left: '50%', top: '30%', width: 'min(620px, 90vw)', height: 'min(620px, 90vw)',
         transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 1,
-        background: `radial-gradient(circle, ${ton.farbe}26 0%, ${ton.farbe}0F 34%, transparent 68%)`,
+        background: `radial-gradient(circle, transparent 28%, ${ton.farbe}0E 46%, transparent 64%)`,
         transition: 'background .8s ease',
       }} />
       <div className="buehne-vignette" />
@@ -250,7 +252,7 @@ export function ZoeStart() {
             an das ab, was gerade gesagt wird. */}
         <div style={{
           flex: '0 0 auto',
-          width: zuege.length ? 'min(230px, 38vw, 22vh)' : 'min(520px, 72vw, 40vh)',
+          width: zuege.length ? 'min(300px, 48vw, 28vh)' : 'min(720px, 94vw, 56vh)',
           aspectRatio: '1 / 1',
           marginTop: 'clamp(0px,1.5vh,20px)',
           transition: 'width .7s cubic-bezier(.22,1,.36,1)',
